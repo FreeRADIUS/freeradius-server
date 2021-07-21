@@ -166,6 +166,8 @@ typedef struct _tls_session_t {
 	char const	*label;
 	bool		allow_session_resumption;	//!< Whether session resumption is allowed.
 	bool		session_not_resumed;		//!< Whether our session was not resumed.
+
+	fr_tls_server_conf_t const *conf;		//! for better complaints
 } tls_session_t;
 
 /*
@@ -313,7 +315,7 @@ int		tls_error_io_log(REQUEST *request, tls_session_t *session, int ret, char co
 				 CC_HINT(format (printf, 4, 5));
 
 void		tls_global_cleanup(void);
-tls_session_t	*tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert);
+tls_session_t	*tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert, bool allow_tls13);
 tls_session_t	*tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, int fd, VALUE_PAIR **certs);
 fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
 fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs);
@@ -365,10 +367,11 @@ struct fr_tls_server_conf_t {
 	bool		disable_tlsv1;
 	bool		disable_tlsv1_1;
 	bool		disable_tlsv1_2;
-#ifdef TLS1_3_VERSION
-       bool		tls13_enable_magic;
-       bool		tls13_send_zero;
-#endif
+	bool		tls13_enable_magic;
+	bool		disallow_untrusted;		//!< allow untrusted CAs to issue client certificates
+
+	int		min_version;
+	int		max_version;
 
 	char const	*tls_min_version;
 	char const	*tls_max_version;
@@ -389,7 +392,7 @@ struct fr_tls_server_conf_t {
 	char const	*check_cert_issuer;
 
 	bool     	session_cache_enable;
-	uint32_t     	session_timeout;
+	uint32_t     	session_lifetime;
 	uint32_t     	session_cache_size;
 	char const	*session_id_name;
 	char const	*session_cache_path;

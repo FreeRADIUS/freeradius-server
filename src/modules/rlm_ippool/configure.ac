@@ -3,6 +3,9 @@ AC_INIT(rlm_ippool.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_ippool])
 
+AC_ARG_WITH([]modname,
+[  --with-[]modname              build []modname. (default=yes)])
+
 if test x$with_[]modname != xno; then
 
 	AC_PROG_CC

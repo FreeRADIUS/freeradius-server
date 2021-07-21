@@ -599,7 +599,7 @@ int fr_set_dumpable(bool allow_core_dumps)
 		struct rlimit no_core;
 
 		no_core.rlim_cur = 0;
-		no_core.rlim_max = 0;
+		no_core.rlim_max = core_limits.rlim_max;
 
 		if (setrlimit(RLIMIT_CORE, &no_core) < 0) {
 			fr_strerror_printf("Failed disabling core dumps: %s", fr_syserror(errno));

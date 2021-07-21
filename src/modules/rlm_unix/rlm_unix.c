@@ -382,7 +382,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	}
 
 	if (request->packet->src_ipaddr.af != AF_INET) {
-		RDEBUG2("IPv6 is not supported!");
+		RDEBUG2("IPv6 is not supported for the radwtmp file.");
 		return RLM_MODULE_NOOP;
 	}
 

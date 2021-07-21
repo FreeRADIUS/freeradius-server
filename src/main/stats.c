@@ -582,6 +582,23 @@ void request_stats_reply(REQUEST *request)
 				 */
 				if (!cl) return;
 			}
+#ifdef AF_INET6
+		} else {
+			server_ip = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_IPV6_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY);
+			if (server_ip) {
+				server_port = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_PORT, VENDORPEC_FREERADIUS, TAG_ANY);
+				if (server_port) {
+					ipaddr.af = AF_INET6;
+					ipaddr.ipaddr.ip6addr = server_ip->vp_ipv6addr;
+					cl = listener_find_client_list(&ipaddr, server_port->vp_integer, IPPROTO_UDP);
+
+					/*
+					 *	Not found: don't do anything
+					 */
+					if (!cl) return;
+				}
+			}
+#endif	/* AF_INET6 */
 		}
 
 
@@ -596,6 +613,19 @@ void request_stats_reply(REQUEST *request)
 				client = client_find(cl, &ipaddr, IPPROTO_TCP);
 			}
 #endif
+
+#ifdef AF_INET6
+		} else if ((vp = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_CLIENT_IPV6_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY)) != NULL) {
+			memset(&ipaddr, 0, sizeof(ipaddr));
+			ipaddr.af = AF_INET6;
+			ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+			client = client_find(cl, &ipaddr, IPPROTO_UDP);
+#ifdef WITH_TCP
+			if (!client) {
+				client = client_find(cl, &ipaddr, IPPROTO_TCP);
+			}
+#endif
+#endif	/* AF_INET6 */
 
 			/*
 			 *	Else look it up by number.
@@ -615,23 +645,44 @@ void request_stats_reply(REQUEST *request)
 			 *	When retrieving client by number, also
 			 *	echo back it's IP address.
 			 */
-			if ((vp->da->type == PW_TYPE_INTEGER) &&
-			    (client->ipaddr.af == AF_INET)) {
-				vp = radius_pair_create(request->reply,
-						       &request->reply->vps,
-						       PW_FREERADIUS_STATS_CLIENT_IP_ADDRESS, VENDORPEC_FREERADIUS);
-				if (vp) {
-					vp->vp_ipaddr = client->ipaddr.ipaddr.ip4addr.s_addr;
-				}
-
-				if (client->ipaddr.prefix != 32) {
+			if (vp->da->type == PW_TYPE_INTEGER) {
+				if (client->ipaddr.af == AF_INET) {
 					vp = radius_pair_create(request->reply,
-							       &request->reply->vps,
-							       PW_FREERADIUS_STATS_CLIENT_NETMASK, VENDORPEC_FREERADIUS);
+								&request->reply->vps,
+								PW_FREERADIUS_STATS_CLIENT_IP_ADDRESS, VENDORPEC_FREERADIUS);
 					if (vp) {
-						vp->vp_integer = client->ipaddr.prefix;
+						vp->vp_ipaddr = client->ipaddr.ipaddr.ip4addr.s_addr;
+					}
+
+					if (client->ipaddr.prefix != 32) {
+						vp = radius_pair_create(request->reply,
+									&request->reply->vps,
+									PW_FREERADIUS_STATS_CLIENT_NETMASK, VENDORPEC_FREERADIUS);
+						if (vp) {
+							vp->vp_integer = client->ipaddr.prefix;
+						}
 					}
 				}
+
+#ifdef AF_INET6
+				if (client->ipaddr.af == AF_INET6) {
+					vp = radius_pair_create(request->reply,
+								&request->reply->vps,
+								PW_FREERADIUS_STATS_CLIENT_IPV6_ADDRESS, VENDORPEC_FREERADIUS);
+					if (vp) {
+						vp->vp_ipv6addr = client->ipaddr.ipaddr.ip6addr;
+					}
+
+					if (client->ipaddr.prefix != 128) {
+						vp = radius_pair_create(request->reply,
+									&request->reply->vps,
+									PW_FREERADIUS_STATS_CLIENT_NETMASK, VENDORPEC_FREERADIUS);
+						if (vp) {
+							vp->vp_integer = client->ipaddr.prefix;
+						}
+					}
+				}
+#endif	/* AF_INET6 */
 			}
 
 			if (server_ip) {
@@ -674,21 +725,26 @@ void request_stats_reply(REQUEST *request)
 		 *	See if we need to look up the server by socket
 		 *	socket.
 		 */
-		server_ip = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_IP_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY);
-		if (!server_ip) return;
-
 		server_port = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_PORT, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (!server_port) return;
 
-		ipaddr.af = AF_INET;
-		ipaddr.ipaddr.ip4addr.s_addr = server_ip->vp_ipaddr;
-		this = listener_find_byipaddr(&ipaddr,
-					      server_port->vp_integer,
-					      IPPROTO_UDP);
+		server_ip = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_IP_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY);
+		if (server_ip) {
+			ipaddr.af = AF_INET;
+			ipaddr.ipaddr.ip4addr.s_addr = server_ip->vp_ipaddr;
+#ifdef AF_INET6
+		} else if ((server_ip = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_IPV6_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY)) != NULL) {
+			ipaddr.af = AF_INET6;
+			ipaddr.ipaddr.ip6addr = server_ip->vp_ipv6addr;
+#endif	/* AF_INET6 */
+		} else {
+			stats_error(request, "No listener IP address supplied");
+		}
 
 		/*
 		 *	Not found: don't do anything
 		 */
+		this = listener_find_byipaddr(&ipaddr, server_port->vp_integer, IPPROTO_UDP);
 		if (!this) {
 			stats_error(request, "No such listener");
 			return;
@@ -730,16 +786,6 @@ void request_stats_reply(REQUEST *request)
 		VALUE_PAIR *server_ip, *server_port;
 		fr_ipaddr_t ipaddr;
 
-		/*
-		 *	See if we need to look up the server by socket
-		 *	socket.
-		 */
-		server_ip = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_IP_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY);
-		if (!server_ip) {
-			stats_error(request, "No home server IP supplied");
-			return;
-		}
-
 		server_port = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_PORT, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (!server_port) {
 			stats_error(request, "No home server port supplied");
@@ -749,15 +795,30 @@ void request_stats_reply(REQUEST *request)
 #ifndef NDEBUG
 		memset(&ipaddr, 0, sizeof(ipaddr));
 #endif
-		ipaddr.af = AF_INET;
-		ipaddr.prefix = 32;
-		ipaddr.ipaddr.ip4addr.s_addr = server_ip->vp_ipaddr;
-		home = home_server_find(&ipaddr, server_port->vp_integer,
-					IPPROTO_UDP);
+
+		/*
+		 *	See if we need to look up the server by socket
+		 *	socket.
+		 */
+		server_ip = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_IP_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY);
+		if (server_ip) {
+			ipaddr.af = AF_INET;
+			ipaddr.prefix = 32;
+			ipaddr.ipaddr.ip4addr.s_addr = server_ip->vp_ipaddr;
+#ifdef AF_INET6
+		} else if ((server_ip = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_IPV6_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY)) != NULL) {
+			ipaddr.af = AF_INET6;
+			ipaddr.ipaddr.ip6addr = server_ip->vp_ipv6addr;
+#endif	/* AF_INET6 */
+		} else {
+			stats_error(request, "No home server IP supplied");
+			return;
+		}
 
 		/*
 		 *	Not found: don't do anything
 		 */
+		home = home_server_find(&ipaddr, server_port->vp_integer, IPPROTO_UDP);
 		if (!home) {
 			stats_error(request, "Failed to find home server IP");
 			return;

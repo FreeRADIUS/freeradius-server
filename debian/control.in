@@ -131,6 +131,7 @@ Description: kerberos module for FreeRADIUS server
 Package: freeradius-ldap
 Architecture: any
 Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Recommends: libsasl2-modules-gssapi-mit | libsasl2-modules-gssapi-heimdal
 Description: LDAP module for FreeRADIUS server
  The FreeRADIUS server can use LDAP to authenticate users, and this module
  is necessary for that.

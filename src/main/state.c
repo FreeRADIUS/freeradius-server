@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/state.h>
 #include <freeradius-devel/md5.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/process.h>
 
 typedef struct state_entry_t {
 	uint8_t		state[AUTH_VECTOR_LEN];
@@ -42,6 +43,11 @@ typedef struct state_entry_t {
 
 	TALLOC_CTX		*ctx;
 	VALUE_PAIR		*vps;
+
+	char		*server;
+	unsigned int	request_number;
+	RADCLIENT	*request_client;
+	main_config_t	*request_root;
 
 	void 		*opaque;
 	void 		(*free_opaque)(void *opaque);
@@ -84,21 +90,35 @@ static int state_entry_cmp(void const *one, void const *two)
 	return memcmp(a->state, b->state, sizeof(a->state));
 }
 
-/*
- *	When an entry is free'd, it's removed from the linked list of
- *	cleanup times.
- *
- *	Note that
- */
-static void state_entry_free(fr_state_t *state, state_entry_t *entry)
+static bool state_entry_link(fr_state_t *state, state_entry_t *entry)
 {
-	state_entry_t *prev, *next;
+	if (!rbtree_insert(state->tree, entry)) {
+		return false;
+	}
 
 	/*
-	 *	If we're deleting the whole tree, don't bother doing
-	 *	all of the fixups.
+	 *	Link it to the end of the list, which is implicitely
+	 *	ordered by cleanup time.
 	 */
-	if (!state || !state->tree) return;
+	if (!state->head) {
+		entry->prev = entry->next = NULL;
+		state->head = state->tail = entry;
+	} else {
+		rad_assert(state->tail != NULL);
+
+		entry->prev = state->tail;
+		state->tail->next = entry;
+
+		entry->next = NULL;
+		state->tail = entry;
+	}
+
+	return true;
+}
+
+static void state_entry_unlink(fr_state_t *state, state_entry_t *entry)
+{
+	state_entry_t *prev, *next;
 
 	prev = entry->prev;
 	next = entry->next;
@@ -119,6 +139,23 @@ static void state_entry_free(fr_state_t *state, state_entry_t *entry)
 		state->tail = prev;
 	}
 
+	rbtree_deletebydata(state->tree, entry);
+}
+
+/*
+ *	When an entry is free'd, it's removed from the linked list of
+ *	cleanup timers.
+ */
+static void state_entry_free(fr_state_t *state, state_entry_t *entry)
+{
+	/*
+	 *	If we're deleting the whole tree, don't bother doing
+	 *	all of the fixups.
+	 */
+	if (!state || !state->tree) return;
+
+	state_entry_unlink(state, entry);
+
 	if (entry->opaque) {
 		entry->free_opaque(entry->opaque);
 	}
@@ -126,8 +163,6 @@ static void state_entry_free(fr_state_t *state, state_entry_t *entry)
 #ifdef WITH_VERIFY_PTR
 	(void) talloc_get_type_abort(entry, state_entry_t);
 #endif
-	rbtree_deletebydata(state->tree, entry);
-
 	if (entry->ctx) talloc_free(entry->ctx);
 
 	talloc_free(entry);
@@ -183,31 +218,89 @@ void fr_state_delete(fr_state_t *state)
 }
 
 /*
- *	Create a new entry.  Called with the mutex held.
+ *	Create a fake request, based on what we know about the
+ *	session that has expired, and inject it into the server to
+ *	allow final logging or cleaning up.
  */
-static state_entry_t *fr_state_create(fr_state_t *state, const char *server, RADIUS_PACKET *packet, state_entry_t *old)
+static REQUEST *fr_state_cleanup_request(state_entry_t *entry)
 {
-	size_t i;
-	uint32_t x;
-	time_t now = time(NULL);
-	VALUE_PAIR *vp;
-	state_entry_t *entry, *next;
+	REQUEST		*request;
+	RADIUS_PACKET	*packet = NULL;
+	RADIUS_PACKET	*reply_packet = NULL;
+	VALUE_PAIR	*vp;
 
 	/*
-	 *	Clean up old entries.
+	 *	Allocate a new fake request with enough to keep
+	 *	the rest of the server happy.
 	 */
+	request = request_alloc(NULL);
+	if (unlikely(!request)) return NULL;
+
+	packet = rad_alloc(request, false);
+	if (unlikely(!packet)) {
+	error:
+		TALLOC_FREE(reply_packet);
+		TALLOC_FREE(packet);
+		TALLOC_FREE(request);
+		return NULL;
+	}
+
+	reply_packet = rad_alloc(request, false);
+	if (unlikely(!reply_packet)) goto error;
+
+	/*
+	 *	Move the server from the state entry over to the
+	 *	request. Clearing it in the state means this
+	 *	function will never be called again.
+	 */
+	request->server = talloc_steal(request, entry->server);
+	entry->server = NULL;
+
+	/*
+	 *	Build the fake request with the limited
+	 *	information we have from the state.
+	 */
+	request->packet = packet;
+	request->reply = reply_packet;
+	request->number = entry->request_number;
+	request->client = entry->request_client;
+	request->root = entry->request_root;
+	request->handle = rad_postauth;
+
+	/*
+	 *	Move session-state VPS over
+	 */
+	request->state_ctx = entry->ctx;
+	request->state = entry->vps;
+
+	entry->ctx = NULL;
+	entry->vps = NULL;
+
+	/*
+	 *	Set correct Post-Auth-Type section
+	 */
+	fr_pair_delete_by_num(&request->config, PW_POST_AUTH_TYPE, 0, TAG_ANY);
+	vp = pair_make_config("Post-Auth-Type", "Client-Lost", T_OP_SET);
+	if (unlikely(!vp)) goto error;
+
+	VERIFY_REQUEST(request);
+	return request;
+}
+
+/*
+ *	Check state for old entries that need to be cleaned up. If
+ *	they are old enough then move them from the global state
+ *	list to a list of entries to clean up (outside the mutex).
+ *	Called with the mutex held.
+ */
+static state_entry_t *fr_state_cleanup_find(fr_state_t *state)
+{
+	time_t now = time(NULL);
+	state_entry_t *entry, *next;
+	state_entry_t *head = NULL, **tail = &head;
+
 	for (entry = state->head; entry != NULL; entry = next) {
 		next = entry->next;
-
-		if (entry == old) continue;
-
-		/*
-		 *	Too old, we can delete it.
-		 */
-		if (entry->cleanup < now) {
-			state_entry_free(state, entry);
-			continue;
-		}
 
 		/*
 		 *	Unused.  We can delete it, even if now isn't
@@ -218,8 +311,84 @@ static state_entry_t *fr_state_create(fr_state_t *state, const char *server, RAD
 			continue;
 		}
 
-		break;
+		/*
+		 *	Not yet time to clean it up.
+		 */
+		if (entry->cleanup > now) {
+			continue;
+		}
+
+		/*
+		 *	We're not running the "client lost" section.
+		 *	Just nuke the entry now.
+		 */
+		if (!main_config.postauth_client_lost) {
+			state_entry_free(state, entry);
+			continue;
+		}
+
+		/*
+		 *	Old enough that the request has been removed.
+		 *	We can add it to the cleanup list.
+		 */
+		state_entry_unlink(state, entry);
+		entry->next = NULL;
+		(*tail) = entry;
+		tail = &entry->next;
 	}
+
+	return head;
+}
+
+/*
+ *	Inject all requests in cleanup list for cleanup post-auth
+ */
+static void fr_state_cleanup(state_entry_t *head)
+{
+	state_entry_t *entry, *next;
+
+	if (!head) return;
+
+	for (entry = head; entry != NULL; entry = next) {
+		REQUEST *request;
+
+		next = entry->next;
+
+		request = fr_state_cleanup_request(entry);
+		if (request) {
+			RDEBUG2("No response from client, cleaning up expired state");
+			RDEBUG2("Restoring &session-state");
+
+			/*
+			 *	@todo - print out message
+			 *	saying where the handler was
+			 *	in the process?  i.e. "sent
+			 *	server cert", etc.  This will
+			 *	require updating the EAP code
+			 *	to put a new attribute into
+			 *	the session state list.
+			 */
+
+			rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
+
+			request_inject(request);
+		}
+
+		talloc_free(entry);
+	}
+}
+
+
+/*
+ *	Create a new entry.  Called with the mutex held.
+ */
+static state_entry_t *fr_state_entry_create(fr_state_t *state, REQUEST *request, RADIUS_PACKET *packet, state_entry_t *old)
+{
+	size_t i;
+	uint32_t x;
+	time_t now = time(NULL);
+	VALUE_PAIR *vp;
+	state_entry_t *entry;
 
 	/*
 	 *	Limit the size of the cache based on how many requests
@@ -241,7 +410,7 @@ static state_entry_t *fr_state_create(fr_state_t *state, const char *server, RAD
 	 *	isn't perfect, but it's reasonable, and it's one less
 	 *	thing for an administrator to configure.
 	 */
-	entry->cleanup = now + main_config.max_request_time * 10;
+	entry->cleanup = now + main_config.max_request_time * 2;
 
 	/*
 	 *	Hacks for EAP, until we convert EAP to using the state API.
@@ -319,28 +488,24 @@ static state_entry_t *fr_state_create(fr_state_t *state, const char *server, RAD
 
 	/*	Make unique for different virtual servers handling same request
 	 */
-	if (server) *((uint32_t *)(&entry->state[4])) ^= fr_hash_string(server);
+	if (request->server) {
+		/*
+		 *	Make unique for different virtual servers handling same request
+		 */
+		*((uint32_t *)(&entry->state[4])) ^= fr_hash_string(request->server);
 
-	if (!rbtree_insert(state->tree, entry)) {
-		talloc_free(entry);
-		return NULL;
+		/*
+		 *	Copy server to state in case it's needed for cleanup
+		 */
+		entry->server = talloc_strdup(entry, request->server);
+		entry->request_number = request->number;
+		entry->request_client = request->client;
+		entry->request_root = request->root;
 	}
 
-	/*
-	 *	Link it to the end of the list, which is implicitely
-	 *	ordered by cleanup time.
-	 */
-	if (!state->head) {
-		entry->prev = entry->next = NULL;
-		state->head = state->tail = entry;
-	} else {
-		rad_assert(state->tail != NULL);
-
-		entry->prev = state->tail;
-		state->tail->next = entry;
-
-		entry->next = NULL;
-		state->tail = entry;
+	if (!state_entry_link(state, entry)) {
+		talloc_free(entry);
+		return NULL;
 	}
 
 	return entry;
@@ -394,8 +559,8 @@ static state_entry_t *fr_state_find(fr_state_t *state, const char *server, RADIU
 }
 
 /*
- *	Called when sending Access-Reject, so that all State is
- *	discarded.
+ *	Called when sending Access-Accept or Access-Reject, so
+ *	that all State is discarded.
  */
 void fr_state_discard(REQUEST *request, RADIUS_PACKET *original)
 {
@@ -426,8 +591,6 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	fr_state_t *state = &global_state;
 	TALLOC_CTX *old_ctx = NULL;
 
-	rad_assert(request->state == NULL);
-
 	/*
 	 *	No State, don't do anything.
 	 */
@@ -435,6 +598,8 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 		RDEBUG3("session-state: No State attribute");
 		return;
 	}
+
+	rad_assert(request->state == NULL);
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 	entry = fr_state_find(state, request->server, packet);
@@ -481,6 +646,7 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 {
 	state_entry_t *entry, *old;
 	fr_state_t *state = &global_state;
+	state_entry_t *cleanup_list;
 
 	if (!request->state) {
 		size_t i;
@@ -515,15 +681,21 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
+	cleanup_list = fr_state_cleanup_find(state);
+
 	if (original) {
 		old = fr_state_find(state, request->server, original);
 	} else {
 		old = NULL;
 	}
 
-	entry = fr_state_create(state, request->server, packet, old);
+	/*
+	 *	Create a new entry and add it to the list.
+	 */
+	entry = fr_state_entry_create(state, request, packet, old);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
+		fr_state_cleanup(cleanup_list);
 		return false;
 	}
 
@@ -535,98 +707,8 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 	request->state = NULL;
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
+	fr_state_cleanup(cleanup_list);
 
 	VERIFY_REQUEST(request);
-	return true;
-}
-
-/*
- *	Find the opaque data associated with a State attribute.
- *	Leave the data in the entry.
- */
-void *fr_state_find_data(fr_state_t *state, REQUEST *request, RADIUS_PACKET *packet)
-{
-	void *data;
-	state_entry_t *entry;
-
-	if (!state) return false;
-
-	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = fr_state_find(state, request->server, packet);
-	if (!entry) {
-		PTHREAD_MUTEX_UNLOCK(&state->mutex);
-		return NULL;
-	}
-
-	data = entry->opaque;
-	PTHREAD_MUTEX_UNLOCK(&state->mutex);
-
-	return data;
-}
-
-
-/*
- *	Get the opaque data associated with a State attribute.
- *	and remove the data from the entry.
- */
-void *fr_state_get_data(fr_state_t *state, REQUEST *request, RADIUS_PACKET *packet)
-{
-	void *data;
-	state_entry_t *entry;
-
-	if (!state) return NULL;
-
-	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = fr_state_find(state, request->server, packet);
-	if (!entry) {
-		PTHREAD_MUTEX_UNLOCK(&state->mutex);
-		return NULL;
-	}
-
-	data = entry->opaque;
-	entry->opaque = NULL;
-	PTHREAD_MUTEX_UNLOCK(&state->mutex);
-
-	return data;
-}
-
-
-/*
- *	Get the opaque data associated with a State attribute.
- *	and remove the data from the entry.
- */
-bool fr_state_put_data(fr_state_t *state, REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet,
-		       void *data, void (*free_data)(void *))
-{
-	state_entry_t *entry, *old;
-
-	if (!state) return false;
-
-	PTHREAD_MUTEX_LOCK(&state->mutex);
-
-	if (original) {
-		old = fr_state_find(state, request->server, original);
-	} else {
-		old = NULL;
-	}
-
-	entry = fr_state_create(state, request->server, packet, old);
-	if (!entry) {
-		PTHREAD_MUTEX_UNLOCK(&state->mutex);
-		return false;
-	}
-
-	/*
-	 *	If we're moving the data, ensure that we delete it
-	 *	from the old state.
-	 */
-	if (old && (old->opaque == data)) {
-		old->opaque = NULL;
-	}
-
-	entry->opaque = data;
-	entry->free_opaque = free_data;
-
-	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 	return true;
 }

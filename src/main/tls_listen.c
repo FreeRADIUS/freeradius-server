@@ -165,7 +165,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		rad_assert(sock->ssn == NULL);
 
 		sock->ssn = tls_new_session(sock, listener->tls, sock->request,
-					    listener->tls->require_client_cert);
+					    listener->tls->require_client_cert, true);
 		if (!sock->ssn) {
 			TALLOC_FREE(sock->request);
 			sock->packet = NULL;
@@ -187,6 +187,17 @@ static int tls_socket_recv(rad_listen_t *listener)
 
 	request = sock->request;
 
+	if (sock->state == LISTEN_TLS_SETUP) {
+		RDEBUG3("Setting connection state to RUNNING");
+		sock->state = LISTEN_TLS_RUNNING;
+
+		if (sock->ssn->clean_out.used < 20) {
+			goto get_application_data;
+		}
+
+		goto read_application_data;
+	}
+
 	RDEBUG3("Reading from socket %d", request->packet->sockfd);
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
 
@@ -198,7 +209,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	if (SSL_pending(sock->ssn->ssl)) {
 		RDEBUG3("Reading pending buffered data");
 		sock->ssn->dirty_in.used = 0;
-		goto get_application_data;
+		goto check_for_setup;
 	}
 
 	rcode = read(request->packet->sockfd,
@@ -237,6 +248,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	/*
 	 *	If we need to do more initialization, do that here.
 	 */
+check_for_setup:
 	if (!sock->ssn->is_init_finished) {
 		if (!tls_handshake_recv(request, sock->ssn)) {
 			RDEBUG("FAILED in TLS handshake receive");
@@ -253,10 +265,41 @@ static int tls_socket_recv(rad_listen_t *listener)
 		}
 
 		/*
-		 *	FIXME: Run the request through a virtual
-		 *	server in order to see if we like the
-		 *	certificate presented by the client.
+		 *	Else we MUST be finished the SSL setup.
 		 */
+	}
+
+	/*
+	 *	Run the request through a virtual server in
+	 *	order to see if we like the certificate
+	 *	presented by the client.
+	 */
+	if (sock->state == LISTEN_TLS_INIT) {
+		if (!SSL_is_init_finished(sock->ssn->ssl)) {
+			RDEBUG("FAILED in TLS handshake receive");
+			goto do_close;
+		}
+
+		sock->ssn->is_init_finished = true;
+		if (!listener->check_client_connections) {
+			sock->state = LISTEN_TLS_RUNNING;
+			goto get_application_data;
+		}
+
+		request->packet->vps = fr_pair_list_copy(request->packet, sock->certs);
+
+		/*
+		 *	Fake out a Status-Server packet, which
+		 *	does NOT have a Message-Authenticator,
+		 *	or any other contents.
+		 */
+		request->packet->code = PW_CODE_STATUS_SERVER;
+		request->packet->data = talloc_zero_array(request->packet, uint8_t, 20);
+		request->packet->data[0] = PW_CODE_STATUS_SERVER;
+		request->packet->data[3] = 20;
+		sock->state = LISTEN_TLS_CHECKING;
+		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+		return 1;
 	}
 
 	/*
@@ -264,7 +307,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	 */
 get_application_data:
 	status = tls_application_data(sock->ssn, request);
-	RDEBUG("Application data status %d", status);
+	RDEBUG3("Application data status %d", status);
 
 	if (status == FR_TLS_MORE_FRAGMENTS) {
 		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
@@ -276,6 +319,16 @@ get_application_data:
 		return 0;
 	}
 
+	/*
+	 *	Hold application data if we're not yet in the RUNNING
+	 *	state.
+	 */
+	if (sock->state != LISTEN_TLS_RUNNING) {
+		RDEBUG3("Holding application data until setup is complete");
+		return 0;
+	}
+
+read_application_data:
 	/*
 	 *	We now have a bunch of application data.
 	 */
@@ -360,6 +413,7 @@ redo:
 	rad_assert(client != NULL);
 
 	packet = talloc_steal(NULL, sock->packet);
+	sock->request->packet = NULL;
 	sock->packet = NULL;
 
 	/*
@@ -407,7 +461,11 @@ redo:
 #endif
 
 	case PW_CODE_STATUS_SERVER:
-		if (!main_config.status_server) {
+		if (!main_config.status_server
+#ifdef WITH_TLS
+		    && !listener->check_client_connections
+#endif
+			) {
 			FR_STATS_INC(auth, total_unknown_types);
 			WARN("Ignoring Status-Server request due to security configuration");
 			rad_free(&packet);
@@ -469,6 +527,28 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	rad_assert(listener->send == dual_tls_send);
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
+
+	/*
+	 *	See if the policies allowed this connection.
+	 */
+	if (sock->state == LISTEN_TLS_CHECKING) {
+		if (request->reply->code != PW_CODE_ACCESS_ACCEPT) {
+			listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
+			listener->tls = NULL; /* parent owns this! */
+
+			/*
+			 *	Tell the event handler that an FD has disappeared.
+			 */
+			radius_update_listener(listener);
+			return 0;
+		}
+
+		rad_assert(sock->request->packet != request->packet);
+
+		sock->state = LISTEN_TLS_SETUP;
+		(void) dual_tls_recv(listener);
+		return 0;
+	}
 
 	/*
 	 *	Accounting reject's are silently dropped.

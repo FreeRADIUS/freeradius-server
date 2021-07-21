@@ -149,7 +149,7 @@ eap {
 	#  Common TLS configuration for TLS-based EAP types
 	#  ------------------------------------------------
 	#
-	#  See raddb/certs/README for additional comments
+	#  See raddb/certs/README.md for additional comments
 	#  on certificates.
 	#
 	#  If OpenSSL was not found at the time the server was
@@ -360,12 +360,38 @@ eap {
 		#  "check_cert_issuer" is not set, or if
 		#  the check succeeds.
 		#
-		#  In 2.1.10 and later, this check can be done
-		#  more generally by checking the value of the
-		#  TLS-Client-Cert-Common-Name attribute.  This check
-		#  can be done via any mechanism you choose.
+		#  This check can be done more generally by writing
+		#  "unlang" statements to examine the value of the
+		#  TLS-Client-Cert-Common-Name attribute.
 		#
 	#	check_cert_cn = %{User-Name}
+
+		#
+		#  This configuration item only applies when there is
+		#  an intermediate CA between the "root" CA, and the
+		#  client certificate.  If we trust the root CA, then
+		#  by definition we also trust ANY intermediate CA
+		#  which is signed by that root.  This means ANOTHER
+		#  intermediate CA can issue client certificates, and
+		#  have them accepted by the EAP module.
+		#
+		#  The solution is to list ONLY the trusted CAs in the
+		#  FreeRADIUS configuration, and then set this
+		#  configuration item to "yes".
+		#
+		#  Then, when the server receives a client certificate
+		#  from an untrusted CA, that authentication request
+		#  can be rejected.
+		#
+		#  It is possible to do these checks in "unlang", by
+		#  checking for unknown names in the
+		#  TLS-Cert-Common-Name attribute, but that is
+		#  more complex.  So we add a configuration option
+		#  which can be set once, and which works for all
+		#  possible intermediate CAs, no matter what their
+		#  value.
+		#
+	#	reject_unknown_intermediate_ca = no
 
 		#  Set this option to specify the allowed
 		#  TLS cipher suites.  The format is listed
@@ -418,14 +444,54 @@ eap {
 		#
 		#  Allowed values are "1.0", "1.1", "1.2", and "1.3".
 		#
+		#  As of 2021, it is STRONGLY RECOMMENDED to set
+		#
+		#	tls_min_version = "1.2"
+		#
+		#  Older TLS versions are insecure and deprecated.
+		#
+		#  In order to enable TLS 1.0 and TLS 1.1, you may
+		#  also need to update cipher_list below to:
+		#
+		#	cipher_list = "DEFAULT@SECLEVEL=1"
+		#
 		#  The values must be in quotes.
+		#
+		#  We also STRONGLY RECOMMEND to set
+		#
+		#	tls_max_version = "1.2"
+		#
+		#  While the server will accept "1.3" as a value,
+		#  most EAP supplicants WILL NOT DO TLS 1.3 PROPERLY.
+		#
+		#  i.e. they WILL NOT WORK, SO DO NOT ASK QUESTIONS ON
+		#  THE LIST ABOUT WHY IT DOES NOT WORK.
+		#
+		#  The TLS 1.3 support is here for future
+		#  compatibility, as clients get upgraded, and people
+		#  don't upgrade their copies of FreeRADIUS.
+		#
+		#  Also note that we only support TLS 1.3 for EAP-TLS.
+		#  Other versions of EAP (PEAP, TTLS, FAST) DO NOT
+		#  SUPPORT TLS 1.3.
 		#
 		tls_min_version = "1.2"
 		tls_max_version = "1.2"
 
 		#  Elliptical cryptography configuration
 		#
-		#  Only for OpenSSL >= 0.9.8.f
+		#  This configuration should be one of the following:
+		#
+		#  * a name of the curve to use, e.g. "prime256v1".
+		#
+		#  * a colon separated list of curve NIDs or names.
+		#
+		#  * an empty string, in which case OpenSSL will choose
+		#    the "best" curve for the situation.
+		#
+		#  For supported curve names, please run
+		#
+		#	openssl ecparam -list_curves
 		#
 		ecdh_curve = "prime256v1"
 
@@ -476,8 +542,9 @@ eap {
 			#  Enable it.  The default is "no". Deleting the entire "cache"
 			#  subsection also disables caching.
 			#
-			#  As of version 3.0.14, the session cache requires the use
-			#  of the "name" and "persist_dir" configuration items, below.
+			#  The session cache requires the use of the
+			#  "name" and "persist_dir" configuration
+			#  items, below.
 			#
 			#  The internal OpenSSL session cache has been permanently
 			#  disabled.
@@ -543,9 +610,9 @@ eap {
 			}
 		}
 
-		#  As of version 2.1.10, client certificates can be
-		#  validated via an external command.  This allows
-		#  dynamic CRLs or OCSP to be used.
+		#  Client certificates can be validated via an
+		#  external command.  This allows dynamic CRLs or OCSP
+		#  to be used.
 		#
 		#  This configuration is commented out in the
 		#  default configuration.  Uncomment it, and configure
@@ -663,8 +730,8 @@ eap {
 
 	#  EAP-TLS
 	#
-	#  As of Version 3.0, the TLS configuration for TLS-based
-	#  EAP types is above in the "tls-config" section.
+	#  The TLS configuration for TLS-based EAP types is held in
+	#  the "tls-config" section, above.
 	#
 	tls {
 		#  Point to the common TLS configuration
@@ -677,6 +744,27 @@ eap {
 		#  be used to accept or reject the request.
 		#
 	#	virtual_server = check-eap-tls
+
+		#  You can control whether or not EAP-TLS requires a
+		#  client certificate by setting
+		#
+		#	configurable_client_cert = yes
+		#
+		#  Once that setting has been changed, you can then set
+		#
+		#	EAP-TLS-Require-Client-Cert = No
+		#
+		#  in the control items for a request, and the EAP-TLS
+		#  module will not require a client certificate from
+		#  the supplicant.
+		#
+		#  WARNING: This configuration should only be used
+		#  when the users are placed into a "captive portal"
+		#  or "walled garden", where they have limited network
+		#  access.  Otherwise the configuraton will allow
+		#  anyone on the network, without authenticating them!
+		#
+#		configurable_client_cert = no
 	}
 
 
@@ -725,14 +813,18 @@ eap {
 		#
 		copy_request_to_tunnel = no
 
-		#  As of version 3.0.5, this configuration item
-		#  is deprecated.  Instead, you should use
+		#  This configuration item is deprecated.  Instead,
+		#  you should use:
 		#
 		#    update outer.session-state {
 		#      ...
 		#    }
 		#
 		#  This will cache attributes for the final Access-Accept.
+		#
+		#  See "update outer.session-state" in the "post-auth"
+		#  sections of sites-available/default, and of
+		#  sites-available/inner-tunnel
 		#
 		#  The reply attributes sent to the NAS are usually
 		#  based on the name of the user 'outside' of the
@@ -840,8 +932,8 @@ eap {
 		#
 		copy_request_to_tunnel = no
 
-		#  As of version 3.0.5, this configuration item
-		#  is deprecated.  Instead, you should use
+		#  This configuration item is deprecated.  Instead,
+		#  you should use:
 		#
 		#    update outer.session-state {
 		#      ...
@@ -849,12 +941,21 @@ eap {
 		#
 		#  This will cache attributes for the final Access-Accept.
 		#
+		#  See "update outer.session-state" in the "post-auth"
+		#  sections of sites-available/default, and of
+		#  sites-available/inner-tunnel
+		#
 		use_tunneled_reply = no
 
 		#  When the tunneled session is proxied, the
 		#  home server may not understand EAP-MSCHAP-V2.
 		#  Set this entry to "no" to proxy the tunneled
 		#  EAP-MSCHAP-V2 as normal MSCHAPv2.
+		#
+		#  This setting can be over-ridden on a packet by
+		#  packet basis by setting
+		#
+		#	&control:Proxy-Tunneled-Request-As-EAP = yes
 		#
 	#	proxy_tunneled_request_as_eap = yes
 
@@ -907,21 +1008,18 @@ eap {
 	#  currently support.
 	#
 	mschapv2 {
-		#  Prior to version 2.1.11, the module never
-		#  sent the MS-CHAP-Error message to the
-		#  client.  This worked, but it had issues
-		#  when the cached password was wrong.  The
-		#  server *should* send "E=691 R=0" to the
-		#  client, which tells it to prompt the user
-		#  for a new password.
+		#  In earlier versions of the server, this module
+		#  never sent the MS-CHAP-Error message to the client.
+		#  This worked, but it had issues when the cached
+		#  password was wrong.  The server *should* send
+		#  "E=691 R=0" to the client, which tells it to prompt
+		#  the user for a new password.
 		#
-		#  The default is to behave as in 2.1.10 and
-		#  earlier, which is known to work.  If you
-		#  set "send_error = yes", then the error
-		#  message will be sent back to the client.
-		#  This *may* help some clients work better,
-		#  but *may* also cause other clients to stop
-		#  working.
+		#  The default is to use that functionality.  which is
+		#  known to work.  If you set "send_error = yes", then
+		#  the error message will be sent back to the client.
+		#  This *may* help some clients work better, but *may*
+		#  also cause other clients to stop working.
 		#
 	#	send_error = no
 

@@ -52,7 +52,7 @@ listen {
 	#	auth	  = only Access-Request
 	#	acct	  = only Accounting-Request
 	#	auth+acct = both
-	*	coa	  = only CoA / Disconnect requests
+	#	coa	  = only CoA / Disconnect requests
 	#
 	type = auth+acct
 
@@ -63,6 +63,24 @@ listen {
 	virtual_server = default
 
 	clients = radsec
+
+	#
+	#  When this is set to "yes", new TLS connections
+	#  are processed through a section called
+	#
+	#	Autz-Type New-TLS-Connection {
+	#		  ...
+	#	}
+	#
+	#  The request contains TLS client certificate attributes,
+	#  and nothing else.  The debug output will print which
+	#  attributes are available on your system.
+	#
+	#  If the section returns "ok" or "updated", then the
+	#  connection is accepted.  Otherwise the connection is
+	#  terminated.
+	#
+#	check_client_connections = yes
 
 	#
 	#  Connection limiting for sockets with "proto = tcp".
@@ -257,6 +275,13 @@ listen {
 		# behavior. Having it set to yes is a current best practice
 		# for TLS
 		cipher_server_preference = no
+
+		#
+		#  Older TLS versions are deprecated.  But for RadSec,
+		#  we CAN allow TLS 1.3.
+		#
+		tls_min_version = "1.2"
+		tls_max_version = "1.3"
 
 		#
 		#  Session resumption / fast reauthentication

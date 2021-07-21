@@ -29,45 +29,94 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifdef WITH_TLS
 void cbtls_info(SSL const *s, int where, int ret)
 {
-	char const *str, *state;
+	char const *role, *state;
 	REQUEST *request = SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
 
 	if ((where & ~SSL_ST_MASK) & SSL_ST_CONNECT) {
-		str="TLS_connect";
+		role = "Client ";
 	} else if (((where & ~SSL_ST_MASK)) & SSL_ST_ACCEPT) {
-		str="TLS_accept";
+		role = "Server ";
 	} else {
-		str="(other)";
+		role = "";
 	}
 
 	state = SSL_state_string_long(s);
 	state = state ? state : "<none>";
 
 	if ((where & SSL_CB_LOOP) || (where & SSL_CB_HANDSHAKE_START) || (where & SSL_CB_HANDSHAKE_DONE)) {
-		RDEBUG2("%s: %s", str, state);
+		if (RDEBUG_ENABLED3) {
+			char const *abbrv = SSL_state_string(s);
+			size_t len;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+			STACK_OF(SSL_CIPHER) *client_ciphers;
+			STACK_OF(SSL_CIPHER) *server_ciphers;
+#endif
+
+			/*
+			 *	Trim crappy OpenSSL state strings...
+			 */
+			len = strlen(abbrv);
+			if ((len > 1) && (abbrv[len - 1] == ' ')) len--;
+
+			RDEBUG3("(TLS) Handshake state [%.*s] - %s%s (%d)",
+				(int)len, abbrv, role, state, SSL_get_state(s));
+
+			/*
+			 *	After a ClientHello, list all the proposed ciphers from the client
+			 */
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+			if (SSL_get_state(s) == TLS_ST_SR_CLNT_HELLO) {
+				int i;
+				int num_ciphers;
+				const SSL_CIPHER *this_cipher;
+
+				server_ciphers = SSL_get_ciphers(s);
+				if (server_ciphers) {
+					RDEBUG3("Server preferred ciphers (by priority)");
+					num_ciphers = sk_SSL_CIPHER_num(server_ciphers);
+					for (i = 0; i < num_ciphers; i++) {
+						this_cipher = sk_SSL_CIPHER_value(server_ciphers, i);
+						RDEBUG3("(TLS)    [%i] %s", i, SSL_CIPHER_get_name(this_cipher));
+					}
+				}
+	
+				client_ciphers = SSL_get_client_ciphers(s);
+				if (client_ciphers) {
+					RDEBUG3("Client preferred ciphers (by priority)");
+					num_ciphers = sk_SSL_CIPHER_num(client_ciphers);
+					for (i = 0; i < num_ciphers; i++) {
+						this_cipher = sk_SSL_CIPHER_value(client_ciphers, i);
+						RDEBUG3("(TLS)    [%i] %s", i, SSL_CIPHER_get_name(this_cipher));
+					}
+				}
+			}
+#endif
+		} else {
+			RDEBUG2("(TLS) Handshake state - %s%s", role, state);
+		}
 		return;
 	}
 
 	if (where & SSL_CB_ALERT) {
 		if ((ret & 0xff) == SSL_AD_CLOSE_NOTIFY) return;
 
-		RERROR("TLS Alert %s:%s:%s", (where & SSL_CB_READ) ? "read": "write",
+		RERROR("(TLS) Alert %s:%s:%s", (where & SSL_CB_READ) ? "read": "write",
 		       SSL_alert_type_string_long(ret), SSL_alert_desc_string_long(ret));
 		return;
 	}
 
 	if (where & SSL_CB_EXIT) {
 		if (ret == 0) {
-			RERROR("%s: Failed in %s", str, state);
+			RERROR("(TLS) %s: Failed in %s", role, state);
 			return;
 		}
 
 		if (ret < 0) {
 			if (SSL_want_read(s)) {
-				RDEBUG2("%s: Need to read more data: %s", str, state);
+				RDEBUG2("(TLS) %s: Need to read more data: %s", role, state);
 				return;
 			}
-			ERROR("tls: %s: Error in %s", str, state);
+			RERROR("(TLS) %s: Error in %s", role, state);
 		}
 	}
 }
@@ -88,13 +137,13 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	 *	the SSL Session state.
 	 */
 	if ((msg_version == 0) && (content_type > UINT8_MAX)) {
-		DEBUG4("Ignoring cbtls_msg call with pseudo content type %i, version %i",
+		DEBUG4("(TLS) Ignoring cbtls_msg call with pseudo content type %i, version %i",
 		       content_type, msg_version);
 		return;
 	}
 
 	if ((write_p != 0) && (write_p != 1)) {
-		DEBUG4("Ignoring cbtls_msg call with invalid write_p %d", write_p);
+		DEBUG4("(TLS) Ignoring cbtls_msg call with invalid write_p %d", write_p);
 		return;
 	}
 
@@ -103,6 +152,25 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	 *	argument.  We should really log a serious error
 	 */
 	if (!state) return;
+
+	if (rad_debug_lvl > 3) {
+		size_t i, j, data_len = len;
+		char buffer[3*16 + 1];
+		uint8_t const *in = inbuf;
+
+		DEBUG("(TLS) Received %zu bytes of TLS data", len);
+		if (data_len > 256) data_len = 256;
+
+		for (i = 0; i < data_len; i += 16) {
+			for (j = 0; j < 16; j++) {
+				if ((i + j) >= data_len) break;
+
+				sprintf(buffer + 3 * j, "%02x ", in[i + j]);
+			}
+
+			DEBUG("(TLS)        %s", buffer);
+		}
+	}
 
 	/*
 	 *	0 - received (from peer)
@@ -113,27 +181,6 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	state->info.record_len = len;
 	state->info.version = msg_version;
 	state->info.initialized = true;
-
-
-#ifdef TLS1_3_VERSION
-	/*
-	 *	OpenSSL will send session tickets to the client BEFORE
-	 *	the user has been authenticated.  While bad for us,
-	 *	it's allowed by the spec.
-	 *
-	 *	As a result, we forcibly set the number of session
-	 *	tickets to zero here, even if resumption is enabled.
-	 *
-	 *	Then, once the client certs have been seen, eap_tls.c
-	 *	will reset the number of session tickets to 1, and
-	 *	*presumably* OpenSSL will send a session ticket to
-	 *	allow resumption.
-	 */
-	if ((msg_version == TLS1_3_VERSION) &&
-	    (SSL_get_state(ssl) == TLS_ST_SR_CLNT_HELLO)) {
-		SSL_set_num_tickets(ssl, 0);
-	}
-#endif
 
 	if (content_type == SSL3_RT_ALERT) {
 		state->info.alert_level = buf[0];
@@ -168,6 +215,7 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 		}
 #endif
 	}
+
 	tls_session_information(state);
 }
 

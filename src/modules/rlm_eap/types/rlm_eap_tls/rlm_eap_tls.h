@@ -42,6 +42,11 @@ typedef struct rlm_eap_tls_t {
 	 *	Virtual server for checking certificates
 	 */
 	char const *virtual_server;
+
+	/*
+	 * 	Configurable EAP-TLS-Require-Client-Cert
+	 */
+	bool configurable_client_cert;
 } rlm_eap_tls_t;
 
 #endif /* _RLM_EAP_TLS_H */

@@ -3,6 +3,9 @@ AC_INIT(rlm_pam.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_pam])
 
+AC_ARG_WITH([]modname,
+[  --with-[]modname              build []modname. (default=yes)])
+
 if test x$with_[]modname != xno; then
 
 	AC_PROG_CC

@@ -2,7 +2,7 @@ BUGS
 
 0. INTRODUCTION
 
-  The FreeRADIUS web site is at <URL: http://www.freeradius.org>, and
+  The FreeRADIUS web site is at <URL: https://freeradius.org>, and
   most information referenced in this document can be found there.
 
   This is primarily for non-developers of the FreeRADIUS server. If you are
@@ -28,7 +28,7 @@ BUGS
   you should file a bug against our documentation.
 
   For more information about the users list, the lists' archives and the
-  faq, please visit http://www.freeradius.org/list/users.html
+  faq, please visit https://freeradius.org/support/
   Please make sure to READ and RESPECT the house-rules. You will get much
   better response and much faster if you do!
 

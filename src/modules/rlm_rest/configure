@@ -641,6 +641,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_rest
 with_libcurl
 with_jsonc_include_dir
 with_jsonc_lib_dir
@@ -1261,6 +1262,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-rlm_rest              build rlm_rest. (default=yes)
   --with-libcurl=PREFIX   look for the curl library in PREFIX/lib and headers
                           in PREFIX/include
   --with-jsonc-include-dir=DIR
@@ -1939,6 +1941,13 @@ ac_config_headers="$ac_config_headers config.h"
 # Without curl-config, we can only guess what protocols are available,
 # or use curl_version_info to figure it out at runtime.
 
+
+
+
+# Check whether --with-rlm_rest was given.
+if test "${with_rlm_rest+set}" = set; then :
+  withval=$with_rlm_rest;
+fi
 
 
 if test x$with_rlm_rest != xno; then

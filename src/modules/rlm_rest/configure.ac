@@ -5,6 +5,9 @@ AC_DEFUN(modname,[rlm_rest])
 AC_CONFIG_HEADER(config.h)
 m4_include([m4/libcurl_check_config.m4])
 
+AC_ARG_WITH([]modname,
+[  --with-[]modname              build []modname. (default=yes)])
+
 if test x$with_[]modname != xno; then
 
 	AC_PROG_CC

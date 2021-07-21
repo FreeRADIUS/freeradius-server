@@ -221,6 +221,8 @@ typedef struct rlm_rest_request_t {
 
 	size_t			chunk;		//!< Chunk size
 
+	rlm_rest_section_t *section;	//!< Configuration data
+
 	void			*encoder;	//!< Encoder specific data.
 } rlm_rest_request_t;
 
@@ -271,7 +273,7 @@ typedef struct rlm_rest_handle_t {
  *	CURLOPT_READFUNCTION prototype.
  */
 typedef size_t (*rest_read_t)(void *ptr, size_t size, size_t nmemb,
-			      void *userdata, rlm_rest_section_t *section);
+			      void *userdata);
 
 /*
  *	Connection API callbacks

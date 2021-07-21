@@ -632,15 +632,25 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
-		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
-		       list_name, vp->da->name, vp->vp_strvalue);
+		if (vp->da->flags.secret && request->root->suppress_secrets && (rad_debug_lvl < 3)) {
+			RDEBUG("$%s{'%s'}[%i] = &%s:%s -> <<< secret >>>", hash_name, vp->da->name, *i,
+			       list_name, vp->da->name);
+		} else {
+			RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
+			       list_name, vp->da->name, vp->vp_strvalue);
+		}
 		sv = newSVpvn(vp->vp_strvalue, vp->vp_length);
 		break;
 
 	default:
 		len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
-		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
-		       list_name, vp->da->name, buffer);
+		if (vp->da->flags.secret && request->root->suppress_secrets && (rad_debug_lvl < 3)) {
+			RDEBUG("$%s{'%s'}[%i] = &%s:%s -> <<< secret >>>", hash_name, vp->da->name, *i,
+			       list_name, vp->da->name);
+		} else {
+			RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
+			       list_name, vp->da->name, buffer);
+		}
 		sv = newSVpvn(buffer, truncate_len(len, sizeof(buffer)));
 		break;
 	}
@@ -727,15 +737,25 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 		 */
 		switch (vp->da->type) {
 		case PW_TYPE_STRING:
-			RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name, list_name,
-			       vp->da->name, vp->vp_strvalue);
+			if (vp->da->flags.secret && request->root->suppress_secrets && (rad_debug_lvl < 3)) {
+				RDEBUG("$%s{'%s'} = &%s:%s -> <<< secret >>>", hash_name, vp->da->name, list_name,
+				       vp->da->name);
+			} else {
+				RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name, list_name,
+				       vp->da->name, vp->vp_strvalue);
+			}
 			(void)hv_store(rad_hv, name, strlen(name), newSVpvn(vp->vp_strvalue, vp->vp_length), 0);
 			break;
 
 		default:
 			len = vp_prints_value(tbuff, tbufflen, vp, 0);
-			RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name,
-			       list_name, vp->da->name, tbuff);
+			if (vp->da->flags.secret && request->root->suppress_secrets && (rad_debug_lvl < 3)) {
+				RDEBUG("$%s{'%s'} = &%s:%s -> <<< secret >>>", hash_name, vp->da->name, list_name,
+				       vp->da->name);
+			} else {
+				RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name,
+				       list_name, vp->da->name, tbuff);
+			}
 			(void)hv_store(rad_hv, name, strlen(name),
 				       newSVpvn(tbuff, truncate_len(len, tbufflen)), 0);
 			break;
@@ -755,7 +775,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 static void pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char *key, SV *sv, FR_TOKEN op,
 		      const char *hash_name, const char *list_name)
 {
-	char		*val = NULL;
+	char const     	*val = NULL;
 	VALUE_PAIR      *vp;
 	STRLEN len;
 
@@ -784,6 +804,10 @@ static void pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char
 		VERIFY_VP(vp);
 
 		if (fr_pair_value_from_str(vp, val, len) < 0) goto fail;
+	}
+
+	if (vp->da->flags.secret && request->root->suppress_secrets && (rad_debug_lvl < 3)) {
+		val = "<<< secret >>>";
 	}
 
 	RDEBUG("&%s:%s %s $%s{'%s'} -> '%s'", list_name, key, fr_int2str(fr_tokens, op, "<INVALID>"),

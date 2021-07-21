@@ -955,6 +955,65 @@ static void process_file(const char *root_dir, char const *filename)
 	if (fp != stdin) fclose(fp);
 }
 
+/** Dump all of the dictionary entries as
+ *
+ *	ALIAS name OID
+ *
+ *  To create dictionaries which allow files to be used with v4.
+ *
+ * rm -rf alias;mkdir alias;./build/make/jlibtool --mode=execute ./build/bin/radattr  -D ./share/ -A  | sort -n -k6 -k7 -k8 -k9 -k10 -k11 | gawk '{printf "%s\t%-40s\t%s\n", $1, $2, $3 >> "alias/alias." tolower($5) }'
+ *
+ *  And then post-process each file to remove the comments.
+ *
+ *  Note that we have to use GNU Awk, as OSX awk doesn't like redirection to a file which includes a variable.
+ */
+static int dump_aliases(void *ctx, void *data)
+{
+	DICT_ATTR *da = data;
+	FILE *fp = ctx;
+	int nest, attr, dv_type;
+	DICT_VENDOR *dv;
+	char buffer[1024];
+
+	if (!da->vendor || (da->vendor > FR_MAX_VENDOR)) return 0;
+
+	dv = dict_vendorbyvalue(da->vendor);
+	dv_type = dv->type;
+
+	(void) dict_print_oid(buffer, sizeof(buffer), da);
+	fprintf(fp, "ALIAS\t%s\t%s # %s %u", da->name, buffer, dv->name, da->vendor);
+
+	attr = da->attr;
+	switch (dv_type) {
+	default:
+	case 1:
+		fprintf(fp, " %u", attr & 0xff);
+
+		/*
+		 *	Only these ones are bit-packed.
+		 */
+		for (nest = 1; nest <= fr_attr_max_tlv; nest++) {
+			if (((attr >> fr_attr_shift[nest]) & fr_attr_mask[nest]) == 0) break;
+
+			fprintf(fp, " %u",
+				(attr >> fr_attr_shift[nest]) & fr_attr_mask[nest]);
+		}
+		break;
+
+	case 2:
+		fprintf(fp, " %u", attr & 0xffff);
+		break;
+
+	case 4:
+		fprintf(fp, " %u", attr);
+		break;
+	}
+
+	printf("\n");
+
+	return 0;
+}
+
 static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "usage: radattr [OPTS] filename\n");
@@ -970,6 +1029,7 @@ int main(int argc, char *argv[])
 {
 	int c;
 	bool report = false;
+	bool dump_alias = false;
 	char const *radius_dir = RADDBDIR;
 	char const *dict_dir = DICTDIR;
 	int *inst = &c;
@@ -983,7 +1043,10 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	while ((c = getopt(argc, argv, "d:D:xMh")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "Ad:D:xMh")) != EOF) switch (c) {
+		case 'A':
+			dump_alias = true;
+			break;
 		case 'd':
 			radius_dir = optarg;
 			break;
@@ -1025,6 +1088,11 @@ int main(int argc, char *argv[])
 	if (xlat_register("test", xlat_test, NULL, inst) < 0) {
 		fprintf(stderr, "Failed registering xlat");
 		return 1;
+	}
+
+	if (dump_alias) {
+		(void) dict_walk(dump_aliases, stdout);
+		return 0;
 	}
 
 	if (argc < 2) {

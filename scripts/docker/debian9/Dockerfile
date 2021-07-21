@@ -1,13 +1,13 @@
 ARG from=debian:stretch
 FROM ${from} as build
 
-ARG gccver=6
+ARG DEBIAN_FRONTEND=noninteractive
 
 #
 #  Install build tools
 #
 RUN apt-get update
-RUN apt-get install -y devscripts equivs git quilt g++-${gccver}
+RUN apt-get install -y devscripts equivs git quilt gcc
 
 #
 #  Create build directory

@@ -34,24 +34,43 @@ jobs:
 
     - name: Package manager performance improvements
       run: |
+        sed -i 's/deb.debian.org/debian-archive.trafficmanager.net/' /etc/apt/sources.list
+        sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/' /etc/apt/sources.list
         echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup
         echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
+        apt-get update
 
     - name: Install recent git
       run: |
-        apt-get update
         apt-get install -y --no-install-recommends git-core ca-certificates
 
     - uses: actions/checkout@v2
       with:
         path: freeradius
 
+    - name: Prepare filesystem
+      run: |
+        pwd
+        ls -la
+        cp -r freeradius freeradius-tests
+        mkdir debs
+        ls -la
+
     - name: Install build dependencies
       run: |
-        apt-get install -y --no-install-recommends build-essential devscripts quilt equivs
+        apt-get install -y --no-install-recommends build-essential devscripts quilt equivs procps
         debian/rules debian/control
         mk-build-deps -irt"apt-get -y" debian/control
       working-directory: freeradius
+
+    - name: Run tests and build eapol_test
+      run: |
+        apt-get install -y libnl-3-dev libnl-genl-3-dev
+        ./configure
+        make -j `nproc`
+        make test
+        mv scripts/ci/eapol_test/eapol_test ../debs/
+      working-directory: freeradius-tests
 
     - name: Build DEBs
       run: |
@@ -60,16 +79,7 @@ jobs:
 
     - name: Collect DEBs
       run: |
-        mkdir debs
-        mv *.deb debs
-
-    - name: Build eapol_test
-      run: |
-        apt-get install -y libnl-3-dev libnl-genl-3-dev
-        ./configure
-        make -C src/tests -j `nproc` eapol_test
-        mv scripts/ci/eapol_test/eapol_test ../debs
-      working-directory: freeradius
+        mv *.deb debs/
 
     - name: Store DEBs
       uses: actions/upload-artifact@v2
@@ -119,12 +129,6 @@ jobs:
 
     steps:
 
-    # For pkill
-    - name: Install procps
-      run: |
-        apt-get update
-        apt-get install -y --no-install-recommends procps
-
     - name: Load DEBs
       uses: actions/download-artifact@v2
       with:
@@ -132,12 +136,20 @@ jobs:
 
     - name: Package manager performance improvements
       run: |
+        sed -i 's/deb.debian.org/debian-archive.trafficmanager.net/' /etc/apt/sources.list
+        sed -i 's/archive.ubuntu.com/azure.archive.ubuntu.com/' /etc/apt/sources.list
         echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup
         echo 'man-db man-db/auto-update boolean false' | debconf-set-selections
+        apt-get update
+
+    # For pkill and strings
+    - name: Install procps and binutils
+      run: |
+        apt-get update
+        apt-get install -y --no-install-recommends procps binutils
 
     - name: Install DEBs
       run: |
-        apt-get update
         find . -maxdepth 1 -name '*.deb' | xargs apt-get install -y --no-install-recommends
 
     - name: Config test
@@ -161,8 +173,7 @@ jobs:
     - name: Run the post-install test target
       run: |
         echo "top_builddir := $(pwd)" > Make.inc
-        mkdir -p build/tests/eapol_test
-        echo "EAPOL_TEST=" $(which eapol_test) > build/tests/eapol_test/eapol_test.mk
+        make -C src/tests/ OPENSSL_LIBS=1 EAPOL_TEST_BIN="$(which eapol_test)" $(pwd)/build/tests/eapol_test/eapol_test.mk
         make -f scripts/ci/package-test.mk package-test
       working-directory: freeradius
 

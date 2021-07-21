@@ -883,6 +883,8 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		return -1;
 	}
 
+	if (flags.encrypt) flags.secret = 1;
+
 	if (flags.length && (type != PW_TYPE_OCTETS)) {
 		fr_strerror_printf("The \"length\" flag can only be set for attributes of type \"octets\"");
 		return -1;
@@ -1755,6 +1757,10 @@ static int process_attribute(char const* fn, int const line,
 							   "\"encrypt=3\" flag set", fn, line);
 					return -1;
 				}
+				flags.secret = 1;
+
+			} else if (strncmp(key, "secret", 6) == 0) {
+				flags.secret = 1;
 
 			} else if (strncmp(key, "array", 6) == 0) {
 				flags.array = 1;
@@ -2035,7 +2041,7 @@ static int process_value_alias(char const* fn, int const line, char **argv,
 }
 
 
-static int parse_format(char const *fn, int line, char const *format, int *pvalue, int *ptype, int *plength, bool *pcontinuation)
+static int parse_format(char const *fn, int line, char const *format, int *ptype, int *plength, bool *pcontinuation)
 {
 	char const *p;
 	int type, length;
@@ -2088,9 +2094,8 @@ static int parse_format(char const *fn, int line, char const *format, int *pvalu
 		}
 		continuation = true;
 
-		if ((*pvalue != VENDORPEC_WIMAX) ||
-		    (type != 1) || (length != 1)) {
-			fr_strerror_printf("dict_init: %s[%d]: Only WiMAX VSAs can have continuations",
+		if ((type != 1) || (length != 1)) {
+			fr_strerror_printf("dict_init: %s[%d]: Only 'format=1,1' VSAs can have continuations",
 					   fn, line);
 			return -1;
 		}
@@ -2145,7 +2150,7 @@ static int process_vendor(char const* fn, int const line, char **argv,
 	 *	Look for a format statement.  Allow it to over-ride the hard-coded formats below.
 	 */
 	if (argc == 3) {
-		if (parse_format(fn, line, argv[2], &value, &type, &length, &continuation) < 0) {
+		if (parse_format(fn, line, argv[2], &type, &length, &continuation) < 0) {
 			return -1;
 		}
 
@@ -2797,45 +2802,72 @@ int dict_init(char const *dir, char const *fn)
 	return 0;
 }
 
-static size_t print_attr_oid(char *buffer, size_t size, unsigned int attr,
-			     int dv_type)
+static size_t print_attr_oid(char *buffer, size_t bufsize, unsigned int attr, unsigned int vendor)
 {
-	int nest;
-	size_t outlen;
+	int nest, dv_type = 1;
 	size_t len;
+	char *p = buffer;
+
+	if (vendor > FR_MAX_VENDOR) {
+		len = snprintf(p, bufsize, "%u.", vendor / FR_MAX_VENDOR);
+		p += len;
+		bufsize -= len;
+		vendor &= (FR_MAX_VENDOR) - 1;
+	}
+
+	if (vendor) {
+		DICT_VENDOR *dv;
+
+		/*
+		 *	dv_type is the length of the vendor's type field
+		 *	RFC 2865 never defined a mandatory length, so
+		 *	different vendors have different length type fields.
+		 */
+		dv = dict_vendorbyvalue(vendor);
+		if (dv) dv_type = dv->type;
+
+		len = snprintf(p, bufsize, "26.%u.", vendor);
+
+		p += len;
+		bufsize -= len;
+	}
+
 
 	switch (dv_type) {
 	default:
 	case 1:
-		len = snprintf(buffer, size, "%u", attr & 0xff);
+		len = snprintf(p, bufsize, "%u", attr & 0xff);
+		p += len;
+		bufsize -= len;
+		if ((attr >> 8) == 0) return p - buffer;
 		break;
 
-	case 4:
-		return snprintf(buffer, size, "%u", attr);
-
 	case 2:
-		return snprintf(buffer, size, "%u", attr & 0xffff);
+		len = snprintf(p, bufsize, "%u", attr & 0xffff);
+		p += len;
+		return p - buffer;
+
+	case 4:
+		len = snprintf(p, bufsize, "%u", attr);
+		p += len;
+		return p - buffer;
 
 	}
 
-	if ((attr >> 8) == 0) return len;
-
-	outlen = len;
-	buffer += len;
-	size -= len;
-
+	/*
+	 *	"attr" is a sequence of packed numbers.  Unpack them.
+	 */
 	for (nest = 1; nest <= fr_attr_max_tlv; nest++) {
 		if (((attr >> fr_attr_shift[nest]) & fr_attr_mask[nest]) == 0) break;
 
-		len = snprintf(buffer, size, ".%u",
+		len = snprintf(p, bufsize, ".%u",
 			       (attr >> fr_attr_shift[nest]) & fr_attr_mask[nest]);
 
-		outlen = len;
-		buffer += len;
-		size -= len;
+		p += len;
+		bufsize -= len;
 	}
 
-	return outlen;
+	return p - buffer;
 }
 
 /** Free dynamically allocated (unknown attributes)
@@ -2876,7 +2908,6 @@ void dict_attr_free(DICT_ATTR const **da)
 int dict_unknown_from_fields(DICT_ATTR *da, unsigned int attr, unsigned int vendor)
 {
 	char *p;
-	int dv_type = 1;
 	size_t len = 0;
 	size_t bufsize = DICT_ATTR_MAX_NAME_LEN;
 
@@ -2902,32 +2933,7 @@ int dict_unknown_from_fields(DICT_ATTR *da, unsigned int attr, unsigned int vend
 	p += len;
 	bufsize -= len;
 
-	if (vendor > FR_MAX_VENDOR) {
-		len = snprintf(p, bufsize, "%u.", vendor / FR_MAX_VENDOR);
-		p += len;
-		bufsize -= len;
-		vendor &= (FR_MAX_VENDOR) - 1;
-	}
-
-	if (vendor) {
-		DICT_VENDOR *dv;
-
-		/*
-		 *	dv_type is the length of the vendor's type field
-		 *	RFC 2865 never defined a mandatory length, so
-		 *	different vendors have different length type fields.
-		 */
-		dv = dict_vendorbyvalue(vendor);
-		if (dv) {
-			dv_type = dv->type;
-		}
-		len = snprintf(p, bufsize, "26.%u.", vendor);
-
-		p += len;
-		bufsize -= len;
-	}
-
-	print_attr_oid(p, bufsize , attr, dv_type);
+	print_attr_oid(p, bufsize , attr, vendor);
 
 	return 0;
 }
@@ -3485,4 +3491,14 @@ DICT_ATTR const *dict_unknown_add(DICT_ATTR const *old)
 
 	da = dict_attrbyvalue(old->attr, old->vendor);
 	return da;
+}
+
+size_t dict_print_oid(char *buffer, size_t buflen, DICT_ATTR const *da)
+{
+	return print_attr_oid(buffer, buflen, da->attr, da->vendor);
+}
+
+int dict_walk(fr_hash_table_walk_t callback, void *context)
+{
+	return fr_hash_table_walk(attributes_byname, callback, context);
 }

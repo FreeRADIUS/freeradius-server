@@ -6,6 +6,10 @@ oracle_supported_versions="19 18 12 11 10 9"
 fail=
 mod_ldflags=
 mod_cflags=
+
+AC_ARG_WITH([]modname,
+[  --with-[]modname              build []modname. (default=yes)])
+
 if test x$with_[]modname != xno; then
 
     dnl ############################################################

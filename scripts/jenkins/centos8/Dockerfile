@@ -39,7 +39,7 @@ RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.n
 # Currently needed for hiredis:
 RUN yum config-manager --enable epel-testing
 # For json-c-devel and libpcap-devel ("PowerTools"?!):
-RUN yum config-manager --enable PowerTools
+RUN yum config-manager --enable powertools
 
 #
 #  Install build dependencies

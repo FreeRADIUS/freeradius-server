@@ -66,6 +66,7 @@ int request_enqueue(REQUEST *request);
 
 int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 		    RADCLIENT *client, RAD_REQUEST_FUNP fun);
+void request_inject(REQUEST *request);
 
 #ifdef WITH_PROXY
 int request_proxy_reply(RADIUS_PACKET *packet);

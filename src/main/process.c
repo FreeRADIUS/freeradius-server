@@ -690,7 +690,7 @@ static void request_done(REQUEST *request, int action)
 				home_server_t *home = request->home_pool->servers[i];
 
 				if (home->state == HOME_STATE_CONNECTION_FAIL) {
-					mark_home_server_dead(home, &now);
+					mark_home_server_dead(home, &now, false);
 				}
 			}
 		}
@@ -1115,6 +1115,11 @@ static void request_queue_or_run(REQUEST *request,
 #endif
 }
 
+void request_inject(REQUEST *request)
+{
+	request_queue_or_run(request, request_running);
+}
+
 
 static void request_dup(REQUEST *request)
 {
@@ -1506,7 +1511,8 @@ static void request_finish(REQUEST *request, int action)
 	/*
 	 *	See if we need to delay an Access-Reject packet.
 	 */
-	if ((request->reply->code == PW_CODE_ACCESS_REJECT) &&
+	if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
+	    (request->reply->code == PW_CODE_ACCESS_REJECT) &&
 	    (request->root->reject_delay.tv_sec > 0)) {
 		request->response_delay = request->root->reject_delay;
 
@@ -2505,19 +2511,18 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		remove_from_proxy_hash(request);
 	}
 
-	old_server = request->server;
 
 	/*
-	 *	If the home server is virtual, just run pre_proxy from
-	 *	that section.
+	 *	Run the request through the virtual server for the
+	 *	home server, OR through the virtual server for the
+	 *	home server pool.
 	 */
+	old_server = request->server;
 	if (request->home_server && request->home_server->server) {
 		request->server = request->home_server->server;
 
-	} else {
-		if (request->home_pool && request->home_pool->virtual_server) {
-			request->server = request->home_pool->virtual_server;
-		}
+	} else if (request->home_pool && request->home_pool->virtual_server) {
+		request->server = request->home_pool->virtual_server;
 	}
 
 	/*
@@ -3260,12 +3265,12 @@ do_home:
 		pre_proxy_type = vp->vp_integer;
 	}
 
-	old_server = request->server;
-
 	/*
-	 *	If the home server is virtual, just run pre_proxy from
-	 *	that section.
+	 *	Run the request through the virtual server for the
+	 *	home server, OR through the virtual server for the
+	 *	home server pool.
 	 */
+	old_server = request->server;
 	if (request->home_server && request->home_server->server) {
 		request->server = request->home_server->server;
 
@@ -3691,7 +3696,7 @@ static void ping_home_server(void *ctx)
 
 		if (timercmp(&when, &now, <)) {
 			DEBUG("PING: Zombie period is over for home server %s", home->log_name);
-			mark_home_server_dead(home, &now);
+			mark_home_server_dead(home, &now, false);
 		}
 	}
 
@@ -3720,6 +3725,7 @@ static void ping_home_server(void *ctx)
 	NO_CHILD_THREAD;
 
 	request->proxy = rad_alloc(request, true);
+	request->root = &main_config;
 	rad_assert(request->proxy != NULL);
 
 	if (home->ping_check == HOME_PING_CHECK_STATUS_SERVER) {
@@ -3921,7 +3927,7 @@ void revive_home_server(void *ctx)
 	       home->port);
 }
 
-void mark_home_server_dead(home_server_t *home, struct timeval *when)
+void mark_home_server_dead(home_server_t *home, struct timeval *when, bool down)
 {
 	int previous_state = home->state;
 	char buffer[128];
@@ -3933,6 +3939,15 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
 
 	home->state = HOME_STATE_IS_DEAD;
 	home_trigger(home, "home_server.dead");
+
+	/*
+	 *	Administratively down - don't do anything to bring it
+	 *	up.
+	 */
+	if (down) {
+		home->state = HOME_STATE_ADMIN_DOWN;
+		return;
+	}
 
 	/*
 	 *	Ping it if configured, AND we can ping it.
@@ -4013,7 +4028,7 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 *	as dead.
 		 */
 		if (home->state == HOME_STATE_CONNECTION_FAIL) {
-			mark_home_server_dead(home, &now);
+			mark_home_server_dead(home, &now, false);
 		}
 
 		/*
@@ -4104,7 +4119,7 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 *	as dead.
 		 */
 		if (home->state == HOME_STATE_CONNECTION_FAIL) {
-			mark_home_server_dead(home, &now);
+			mark_home_server_dead(home, &now, false);
 		}
 
 		response_window = request_response_window(request);
@@ -4256,6 +4271,7 @@ static void request_coa_originate(REQUEST *request)
 	VALUE_PAIR *vp;
 	REQUEST *coa;
 	fr_ipaddr_t ipaddr;
+	char const *old_server;
 	char buffer[256];
 
 	VERIFY_REQUEST(request);
@@ -4399,19 +4415,26 @@ static void request_coa_originate(REQUEST *request)
 		pre_proxy_type = vp->vp_integer;
 	}
 
-	if (coa->home_pool && coa->home_pool->virtual_server) {
-		char const *old_server = coa->server;
+	/*
+	 *	Run the request through the virtual server for the
+	 *	home server, OR through the virtual server for the
+	 *	home server pool.
+	 */
+	old_server = request->server;
+	if (coa->home_server && coa->home_server->server) {
+		coa->server = coa->home_server->server;
 
+	} else if (coa->home_pool && coa->home_pool->virtual_server) {
 		coa->server = coa->home_pool->virtual_server;
-		RDEBUG2("server %s {", coa->server);
-		RINDENT();
-		rcode = process_pre_proxy(pre_proxy_type, coa);
-		REXDENT();
-		RDEBUG2("}");
-		coa->server = old_server;
-	} else {
-		rcode = process_pre_proxy(pre_proxy_type, coa);
 	}
+
+	RDEBUG2("server %s {", coa->server);
+	RINDENT();
+	rcode = process_pre_proxy(pre_proxy_type, coa);
+	REXDENT();
+	RDEBUG2("}");
+	coa->server = old_server;
+
 	switch (rcode) {
 	default:
 		goto fail;

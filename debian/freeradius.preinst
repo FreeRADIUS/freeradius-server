@@ -51,7 +51,6 @@ case "$1" in
         rm_conffile "/etc/freeradius/certs/newcert.pem"
         rm_conffile "/etc/freeradius/certs/newreq.pem"
         rm_conffile "/etc/freeradius/certs/random"
-        rm_conffile "/etc/freeradius/certs/README"
         rm_conffile "/etc/freeradius/certs/root.der"
         rm_conffile "/etc/freeradius/certs/root.p12"
         rm_conffile "/etc/freeradius/certs/root.pem"

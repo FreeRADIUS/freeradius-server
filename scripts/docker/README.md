@@ -26,12 +26,15 @@ $ docker run --name my-radius -d freeradius/freeradius-server
 
 The image contains only the default FreeRADIUS configuration which
 has no users, and accepts test clients on 127.0.0.1. In order to
-use it in production, you will need to add clients to the
-`clients.conf` file, and users to the "users" file in
+use it in production, as a minimum you will need to add clients to
+the `clients.conf` file, and users to the "users" file in
 `mods-config/files/authorize`.
 
+**Without building a local image with a configuration, the
+container will refuse to answer any queries.**
 
-## Defining the configuration
+
+## Defining a local configuration
 
 Create a local `Dockerfile` based on the required image and
 COPY in the server configuration.
@@ -59,34 +62,45 @@ client dockernet {
 }
 ```
 
-and the `authorise` "users" file contains a test user:
+and the `authorize` "users" file contains a test user:
 
 ```
 bob	Cleartext-Password := "test"
 ```
 
-
-## Forwarding ports
-
-To forward external ports to the server, typically 1812/udp and/or
-1813/udp, start the server with
+Build the image locally:
 
 ```console
-$ docker run --name my-radius -p 1812-1813:1812-1813/udp freeradius/freeradius-server
+$ docker build -t my-radius-image -f Dockerfile .
 ```
 
 
-## Testing the configuration
+## Using the local configuration
 
 It should now be possible to test authentication against the
 server from the host machine, using the `radtest` utility supplied
-with FreeRADIUS and the credentials defined above:
+with FreeRADIUS and the credentials defined above.
+
+Start the local container. Ports will need to be forwarded to the
+server, typically 1812/udp and/or 1813/udp, for example:
+
+```console
+docker run --rm -d --name my-radius -p 1812-1813:1812-1813/udp my-radius-image
+```
+
+Send a test request, you will need the `radtest` utility:
 
 ```console
 $ radtest bob test 127.0.0.1 0 testing123
 ```
 
 which should return an "Access-Accept".
+
+The image can now be stopped with:
+
+```console
+docker stop my-radius
+```
 
 
 ## Running in debug mode
@@ -95,18 +109,20 @@ FreeRADIUS should always be tested in debug mode, using option
 `-X`. Coloured debug output also requres `-t` be passed to docker.
 
 ```console
-$ docker run --name my-radius -t -d freeradius/freeradius-server -X
+$ docker run --rm --name my-radius -t -p 1812-1813:1812-1813/udp freeradius/freeradius-server -X
 ```
 
 Guidelines for how to read and interpret the debug output are on the
 [FreeRADIUS Wiki](https://wiki.freeradius.org/radiusd-X).
+
 
 ## Security notes
 
 The configuration in the docker image comes with self-signed
 certificates for convenience. These should not be used in a
 production environment, but replaced with new certificates. See
-the file `raddb/certs/README` for more information.
+the file `raddb/certs/README.md` for more information.
+
 
 ## Debugging
 
@@ -123,7 +139,7 @@ privileges that would not ordinarily be given.
 
 ## `freeradius/freeradius-server:<version>`
 
-The de facto image which should be used unless you know you need
+The de-facto image which should be used unless you know you need
 another image. It is based on
 [Ubuntu Linux](https://hub.docker.com/_/ubuntu/) Docker images.
 
@@ -132,9 +148,9 @@ another image. It is based on
 
 Image based on the [Alpine Linux](https://hub.docker.com/_/alpine/)
 Docker images, which are much smaller than most Linux
-distributions. To keep the basic size as small as possible, this
+distributions. To keep the basic size as small as possible, **this
 image does not include libraries for all modules that have been
-built (especially the languages such as Perl or Python). Therefore
+built** (especially the languages such as Perl or Python). Therefore
 these extra libraries will need to be installed with `apk add` in
 your own Dockerfile if you intend on using modules that require
 them.
@@ -165,6 +181,7 @@ REPOSITORY           TAG            IMAGE ID            CREATED             SIZE
 freeradius-ubuntu16  latest         289b3c7aca94        4 minutes ago       218MB
 freeradius-alpine    latest         d7fb3041bea2        2 hours ago         88.6MB
 ```
+
 
 ## Build args
 

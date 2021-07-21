@@ -1,0 +1,85 @@
+######################################################################
+#
+#	$Id$
+#
+######################################################################
+#
+#  Simple server to do TOTP and not much else.
+#
+server totp {
+authorize {
+	#
+	#  TOTP only works for PAP
+	#
+	if (!&User-Password) {
+		reject
+	}
+
+	#
+	#  The 6-digit TOTP password should be at the end of the
+	#  User-Password attribute.  It can be at the beginning or at
+	#  the end, it doesn't really make any difference.  Just
+	#  update the regular expression for whatever you want.
+	#
+	#  If the password doesn't have 6 digits at the end, reject.
+	#
+	if (User-Password !~ /^(.*)([0-9]{6})$/) {
+		reject
+	}
+
+	#
+	#  Separate the two fields
+	#
+	update request {
+		User-Password := "%{1}"
+		TOTP-Password := "%{2}"
+	}
+
+	#
+	#  Get the users' real password and authorization credentials
+	#  from somewhere, such as a database.  This should also set
+	#
+	#	&control:TOTP-Secret
+	#
+	-ldap
+	-sql
+
+	#
+	#  As an example, fake out the TOTP secret
+	#
+	#  The value should be the base-32 version of the TOTP secret.
+	#
+	#  Note that the TOTP secret is effectively a password, and
+	#  should be kept secret!  At this time, there is no way to
+	#  "hide" or "encrypt" the TOTP secret for a user.  Even if it
+	#  was encrypted, the server would still need a key to decrypt
+	#  it.  So encrypying this field does not offer much benefit.
+	#
+	if (&User-Name == "bob") {
+		&control:TOTP-Secret := 12345678901234567890
+	}
+
+	#
+	#  Verify the 6-digit TOTP password.  If the module does not
+	#  return "ok", then the TOTP password is wrong.
+	#
+	totp.authenticate
+	if (!ok) {
+		reject
+	}
+
+	#
+	#  Set Auth-Type = PAP
+	#
+	pap
+}
+
+authenticate {
+	#
+	#  Check the User-Password against whatever we found in LDAP
+	#  or SQL.
+	#
+	pap
+}
+
+}

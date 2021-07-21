@@ -140,6 +140,15 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		if (!strcmp(name, TLS_CONFIG_SECTION))  continue;
 
 		/*
+		 *	Don't break configurations for lazy people who still have LEAP enabled.
+		 */
+		if (!strcmp(name, "leap")) {
+			WARN("rlm_eap (%s): Ignoring EAP method 'leap', because it is no longer supported",
+			     inst->xlat_name);
+			continue;
+		}
+
+		/*
 		 *	Easier sometimes than commenting out blocks,
 		 *	or deleting blocks.
 		 */

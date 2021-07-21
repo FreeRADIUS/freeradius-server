@@ -7,6 +7,10 @@ fail=
 SMART_LIBS=
 SMART_CLFAGS=
 SASL=
+
+AC_ARG_WITH([]modname,
+[  --with-[]modname              build []modname. (default=yes)])
+
 if test x$with_[]modname != xno; then
 
 	dnl ############################################################

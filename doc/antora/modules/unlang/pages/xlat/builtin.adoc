@@ -4,6 +4,8 @@ In addition to storing attribute references, the server has a number
 of built-in expansions.  These expansions act largely as functions
 which operate on inputs, and produce an output.
 
+
+
 == Attribute Manipulation
 
 === %{length: ... }
@@ -27,8 +29,8 @@ update control {
 }
 
 update reply {
-    &Reply-Message := "The length of %{control.Tmp-String-0} is %{length:&control.Tmp-String-0}"
-    &Reply-Message += "The length of %{control.Framed-IP-Address} is %{length:&control.Framed-IP-Address}"
+    &Reply-Message := "The length of %{control:Tmp-String-0} is %{length:&control:Tmp-String-0}"
+    &Reply-Message += "The length of %{control:Framed-IP-Address} is %{length:&control:Framed-IP-Address}"
 }
 ----
 
@@ -38,6 +40,10 @@ The length of Caipirinha is 10
 The length of 192.168.0.2 is 4
 ....
 ====
+
+`length` is built in to the server core.
+
+
 
 === %{integer:<&ref>}
 
@@ -65,10 +71,10 @@ unsigned 32-bit number.
 [source,unlang]
 ----
 update {
-    &control.Service-Type := Login-User
+    &control:Service-Type := Login-User
 }
 update reply {
-    &Reply-Message := "The value of Service-Type is %{integer:&control.Service-Type}"
+    &Reply-Message := "The value of Service-Type is %{integer:&control:Service-Type}"
 }
 ----
 
@@ -78,6 +84,10 @@ update reply {
 The value of Service-Type is 1
 ```
 ====
+
+`integer` is built in to the server core.
+
+
 
 === %{rand:<number>}
 
@@ -101,6 +111,10 @@ The random number is 347
 ```
 ====
 
+`rand` is provided by the `rlm_expr` module.
+
+
+
 === %{tag:<attribute ref>}
 
 CAUTION: This expansion is deprecated and will likely be removed.
@@ -122,7 +136,7 @@ update request {
 }
 
 update reply {
-    &Reply-Message := "The tag value of the second instance of Tunnel-Server-Enpoint is %{request.Tunnel-Server-Endpoint[1]}"
+    &Reply-Message := "The tag value of the second instance of Tunnel-Server-Enpoint is %{request:Tunnel-Server-Endpoint[1]}"
 }
 ----
 
@@ -133,9 +147,13 @@ The tag value of the second instance of Tunnel-Server-Enpoint is 192.0.5.2
 ```
 ====
 
+`tag` is built in to the server core.
+
+
+
 === %{string:<data>}
 
-Convert input to a string if (possible).  For _octets_ type attributes, this
+Convert input to a string (if possible).  For _octets_ type attributes, this
 means interpreting the data as a UTF8 string, and inserting octal escape
 sequences where appropriate.
 
@@ -153,7 +171,7 @@ update control {
     &Tmp-Octets-0 := 0x7465737431
 }
 update reply {
-    &Reply-Message := "The string value of %{control.Tmp-Octets-0} is %{string:%{control.Tmp-Octets-0}}"
+    &Reply-Message := "The string value of %{control:Tmp-Octets-0} is %{string:%{control:Tmp-Octets-0}}"
 }
 ----
 ====
@@ -163,6 +181,10 @@ update reply {
 ```
 The string value of 0x7465737431 is test1
 ```
+
+`string` is built in to the server core.
+
+
 
 == Server Manipulation
 
@@ -188,6 +210,10 @@ Server installed in /opt/freeradius
 Module rlm_exec.shell_escape = yes
 ```
 
+`config` is built in to the server core.
+
+
+
 === %{client:<key>}
 
 Refers to a variable that was defined in the client section for the
@@ -208,6 +234,10 @@ current client. See the sections `client { ... }` in `clients.conf`.
 The client ipaddr is 192.168.5.9
 ```
 
+`client` is built in to the server core.
+
+
+
 === %{debug:<level>}
 
 Dynamically change the debug level to something high, recording the old level.
@@ -219,7 +249,7 @@ Dynamically change the debug level to something high, recording the old level.
 [source,unlang]
 ----
 authorize {
-    if (&request.User-Name == "bob") {
+    if (&request:User-Name == "bob") {
         "%{debug:4}"
     } else {
         "%{debug:0}"
@@ -233,16 +263,20 @@ authorize {
 ```
 ...
 (0)  authorize {
-(0)    if (&request.User-Name == "bob") {
+(0)    if (&request:User-Name == "bob") {
 (0)      EXPAND %{debug:4}
 (0)        --> 2
-(0)    } # if (&request.User-Name == "bob") (...)
+(0)    } # if (&request:User-Name == "bob") (...)
 (0)    filter_username {
 (0)      if (&State) {
 (0)        ...
 (0)      }
 ...
 ```
+
+`debug` is built in to the server core.
+
+
 
 === %{debug_attr:<list:[index]>}
 
@@ -256,7 +290,7 @@ expands to a zero-length string.
 [source,unlang]
 ----
 authorize {
-    if (&request.User-Name == "bob") {
+    if (&request:User-Name == "bob") {
         "%{debug_attr:request[*]}"
     }
     ...
@@ -268,48 +302,23 @@ authorize {
 ```
 ...
 (0)  authorize {
-(0)    if (&request.User-Name == "bob") {
+(0)    if (&request:User-Name == "bob") {
 (0)      Attributes matching "request[*]"
-(0)        &request.User-Name = bob
-(0)        &request.User-Password = hello
-(0)        &request.NAS-IP-Address = 127.0.1.1
-(0)        &request.NAS-Port = 1
-(0)        &request.Message-Authenticator = 0x9210ee447a9f4c522f5300eb8fc15e14
+(0)        &request:User-Name = bob
+(0)        &request:User-Password = hello
+(0)        &request:NAS-IP-Address = 127.0.1.1
+(0)        &request:NAS-Port = 1
+(0)        &request:Message-Authenticator = 0x9210ee447a9f4c522f5300eb8fc15e14
 (0)      EXPAND %{debug_attr:request[*]}
-(0)    } # if (&request.User-Name == "bob") (...)
+(0)    } # if (&request:User-Name == "bob") (...)
 ...
 ```
 
+`debug_attr` is built in to the server core.
+
+
+
 == String manipulation
-
-=== %{concat:<delim> <&ref:[idx]>}
-
-Used to join two or more attributes, separated by a delimiter.
-
-.Return: _string_
-
-.Example
-
-[source,unlang]
-----
-update {
-    &control.Tmp-String-0 := "aaa"
-    &control.Tmp-String-0 += "bb"
-    &control.Tmp-String-0 += "c"
-}
-
-update reply {
-    &Reply-Message += "%{concat:, %{control.Tmp-String-0[*]}}"
-    &Reply-Message += "%{concat:,%{control.Tmp-String-0[*]}}"
-}
-----
-
-.Output
-
-```
-aaa, bb, c
-aaa,bb,c
-```
 
 === %{lpad:<&ref> <val> <char>}
 
@@ -325,7 +334,7 @@ update control {
     &Tmp-String-0 := "123"
 }
 update reply {
-    &Reply-Message := "Maximum should be %{lpad:&control.Tmp-String-0 11 0}"
+    &Reply-Message := "Maximum should be %{lpad:&control:Tmp-String-0 11 0}"
 }
 ----
 
@@ -334,6 +343,10 @@ update reply {
 ```
 Maximum should be 00000000123
 ```
+
+`lpad` is provided by the `rlm_expr` module.
+
+
 
 === %{rpad:<&ref> <val> <char>}
 
@@ -349,7 +362,7 @@ update control {
     &Tmp-String-0 := "123"
 }
 update reply {
-    &Reply-Message := "Maximum should be %{rpad:&control.Tmp-String-0 11 0}"
+    &Reply-Message := "Maximum should be %{rpad:&control:Tmp-String-0 11 0}"
 }
 ----
 
@@ -358,6 +371,10 @@ update reply {
 ```
 Maximum should be 12300000000
 ```
+
+`rpad` is provided by the `rlm_expr` module.
+
+
 
 === %{pairs:<&list:[*]>}
 
@@ -370,8 +387,8 @@ Serialize attributes as comma-delimited string.
 [source,unlang]
 ----
 update {
-    &control.Tmp-String-0 := "This is a string"
-    &control.Tmp-String-0 += "This is another one"
+    &control:Tmp-String-0 := "This is a string"
+    &control:Tmp-String-0 += "This is another one"
 }
 
 update reply {
@@ -384,6 +401,10 @@ update reply {
 ```
 Serialize output: Tmp-String-0 = \"This is a string\"Tmp-String-0 = \"This is another one\"
 ```
+
+`pairs` is provided by the `rlm_expr` module.
+
+
 
 === %{randstr: ...}
 
@@ -406,6 +427,10 @@ update reply {
 The random string output is 4Uq0gPyG
 ```
 
+`randstr` is provided by the `rlm_expr` module.
+
+
+
 === %{strlen: ... }
 
 Length of given string.
@@ -420,7 +445,7 @@ update control {
     &Tmp-String-0 := "Caipirinha"
 }
 update reply {
-    &Reply-Message := "The length of %{control.Tmp-String-0} is %{strlen:&control.Tmp-String-0}"
+    &Reply-Message := "The length of %{control:Tmp-String-0} is %{strlen:&control:Tmp-String-0}"
 }
 ----
 
@@ -429,6 +454,10 @@ update reply {
 ```
 The length of Caipirinha is 21
 ```
+
+`strlen` is built in to the server core.
+
+
 
 === %{tolower: ... }
 
@@ -445,7 +474,7 @@ update control {
     &Tmp-String-0 := "CAIPIRINHA"
 }
 update reply {
-    &Reply-Message := "tolower of %{control.Tmp-String-0} is %{tolower:%{control.Tmp-String-0}}"
+    &Reply-Message := "tolower of %{control:Tmp-String-0} is %{tolower:%{control:Tmp-String-0}}"
 }
 ----
 
@@ -454,6 +483,10 @@ update reply {
 ```
 tolower of CAIPIRINHA is caipirinha
 ```
+
+`tolower` is provided by the `rlm_expr` module.
+
+
 
 === %{toupper: ... }
 
@@ -470,7 +503,7 @@ update control {
     &Tmp-String-0 := "caipirinha"
 }
 update reply {
-    &Reply-Message := "toupper of %{control.Tmp-String-0} is %{toupper:%{control.Tmp-String-0}}"
+    &Reply-Message := "toupper of %{control:Tmp-String-0} is %{toupper:%{control:Tmp-String-0}}"
 }
 ----
 
@@ -479,6 +512,10 @@ update reply {
 ```
 toupper of caipirinha is CAIPIRINHA
 ```
+
+`toupper` is provided by the `rlm_expr` module.
+
+
 
 == String Conversion
 
@@ -496,7 +533,7 @@ update control {
     &Tmp-String-0 := "Caipirinha"
 }
 update reply {
-    &Reply-Message := "The base64 of %{control.Tmp-String-0} is %{base64:%{control.Tmp-String-0}}"
+    &Reply-Message := "The base64 of %{control:Tmp-String-0} is %{base64:%{control:Tmp-String-0}}"
 }
 ----
 
@@ -506,9 +543,14 @@ update reply {
 The base64 of foo is Q2FpcGlyaW5oYQ==
 ```
 
-=== %{base64decode: ... }
+`base64` is provided by the `rlm_expr` module.
 
-Decode a string previously encoded using Base64.
+
+
+=== %{base64tohex: ... }
+
+Decode a base64 string (e.g. previously encoded using `base64`) to
+hex.
 
 .Return: _string_
 
@@ -520,39 +562,19 @@ update control {
     &Tmp-String-0 := "Q2FpcGlyaW5oYQ=="
 }
 update reply {
-    &Reply-Message := "The base64decode of %{control.Tmp-String-0} is %{base64decode:%{control.Tmp-String-0}}"
+    &Reply-Message := "The base64tohex of %{control:Tmp-String-0} is %{base64tohex:%{control:Tmp-String-0}}"
 }
 ----
 
 .Output
 
 ```
-The base64decode of Q2FpcGlyaW5oYQ== is Caipirinha
+The base64decode of Q2FpcGlyaW5oYQ== is 436169706972696e6861
 ```
 
-=== %{bin: ... }
+`base64tohex` is provided by the `rlm_expr` module.
 
-Convert string to binary.
 
-.Return: _octal_
-
-.Example
-
-[source,unlang]
-----
-update control {
-    &Tmp-String-0 := "10"
-}
-update reply {
-    &Reply-Message := "The %{control.Tmp-String-0} in binary is %{bin:%{control.Tmp-String-0}}"
-}
-----
-
-.Output
-
-```
-The 10 in binary is \020
-```
 
 === %{hex: ... }
 
@@ -568,7 +590,7 @@ update control {
     &Tmp-String-0 := "12345"
 }
 update reply {
-    &Reply-Message := "The value of %{control.Tmp-String-0} in hex is %{hex:%{control.Tmp-String-0}}"
+    &Reply-Message := "The value of %{control:Tmp-String-0} in hex is %{hex:%{control:Tmp-String-0}}"
 }
 ----
 
@@ -577,6 +599,10 @@ update reply {
 ```
 The value of 12345 in hex is 3132333435
 ```
+
+`hex` is built in to the server core.
+
+
 
 === %{urlquote: ... }
 
@@ -589,10 +615,10 @@ Quote URL special characters.
 [source,unlang]
 ----
 update {
-    &control.Tmp-String-0 := "http://example.org/"
+    &control:Tmp-String-0 := "http://example.org/"
 }
 update reply {
-    &Reply-Message += "The urlquote of %{control.Tmp-String-0} is %{urlquote:%{control.Tmp-String-0}}"
+    &Reply-Message += "The urlquote of %{control:Tmp-String-0} is %{urlquote:%{control:Tmp-String-0}}"
 }
 ----
 
@@ -601,6 +627,10 @@ update reply {
 ```
 The urlquote of http://example.org/ is http%3A%2F%2Fexample.org%2F
 ```
+
+`urlquote` is provided by the `rlm_expr` module.
+
+
 
 === %{urlunquote: ... }
 
@@ -613,10 +643,10 @@ Unquote URL special characters.
 [source,unlang]
 ----
 update {
-    &control.Tmp-String-0 := "http%%3A%%2F%%2Fexample.org%%2F" # Attention for the double %.
+    &control:Tmp-String-0 := "http%%3A%%2F%%2Fexample.org%%2F" # Attention for the double %.
 }
 update reply {
-    &Reply-Message += "The urlunquote of %{control.Tmp-String-0} is %{urlunquote:%{control.Tmp-String-0}}"
+    &Reply-Message += "The urlunquote of %{control:Tmp-String-0} is %{urlunquote:%{control:Tmp-String-0}}"
 }
 ----
 
@@ -625,6 +655,10 @@ update reply {
 ```
 The urlunquote of http%3A%2F%2Fexample.org%2F is http://example.org/
 ```
+
+`urlunquote` is provided by the `rlm_expr` module.
+
+
 
 == Hashing and Encryption
 
@@ -639,16 +673,16 @@ Generate `HMAC-MD5` of string.
 [source,unlang]
 ----
 update {
-    &control.Tmp-String-0 := "mykey"
-    &control.Tmp-String-1 := "Caipirinha"
+    &control:Tmp-String-0 := "mykey"
+    &control:Tmp-String-1 := "Caipirinha"
 }
 update {
-    &control.Tmp-Octets-0 := "%{hmacmd5:%{control.Tmp-String-0} %{control.Tmp-String-1}}"
+    &control:Tmp-Octets-0 := "%{hmacmd5:%{control:Tmp-String-0} %{control:Tmp-String-1}}"
 }
 
 update reply {
-    &Reply-Message := "The HMAC-MD5 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
-    &Reply-Message += "The HMAC-MD5 of %{control.Tmp-String-1} in hex is %{hex:control.Tmp-Octets-0}"
+    &Reply-Message := "The HMAC-MD5 of %{control:Tmp-String-1} in octets is %{control:Tmp-Octets-0}"
+    &Reply-Message += "The HMAC-MD5 of %{control:Tmp-String-1} in hex is %{hex:control:Tmp-Octets-0}"
 }
 ----
 
@@ -658,6 +692,10 @@ update reply {
 The HMAC-MD5 of Caipirinha in octets is \317}\264@K\216\371\035\304\367\202,c\376\341\203
 The HMAC-MD5 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
 ```
+
+`hmacmd5` is provided by the `rlm_expr` module.
+
+
 
 === %{hmacsha1:<shared_key> <string>}
 
@@ -670,16 +708,16 @@ Generate `HMAC-SHA1` of string.
 [source,unlang]
 ----
 update {
-    &control.Tmp-String-0 := "mykey"
-    &control.Tmp-String-1 := "Caipirinha"
+    &control:Tmp-String-0 := "mykey"
+    &control:Tmp-String-1 := "Caipirinha"
 }
 update {
-    &control.Tmp-Octets-0 := "%{hmacsha1:%{control.Tmp-String-0} %{control.Tmp-String-1}}"
+    &control:Tmp-Octets-0 := "%{hmacsha1:%{control:Tmp-String-0} %{control:Tmp-String-1}}"
 }
 
 update reply {
-    &Reply-Message := "The HMAC-SHA1 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
-    &Reply-Message += "The HMAC-SHA1 of %{control.Tmp-String-1} in hex is %{hex:control.Tmp-Octets-0}"
+    &Reply-Message := "The HMAC-SHA1 of %{control:Tmp-String-1} in octets is %{control:Tmp-Octets-0}"
+    &Reply-Message += "The HMAC-SHA1 of %{control:Tmp-String-1} in hex is %{hex:control:Tmp-Octets-0}"
 }
 ----
 
@@ -689,6 +727,10 @@ update reply {
 The HMAC-SHA1 of Caipirinha in octets is \311\007\212\234j\355\207\035\225\256\372ʙ>R\"\341\351O)
 The HMAC-SHA1 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
 ```
+
+`hmacsha1` is provided by the `rlm_expr` module.
+
+
 
 === %{md5: ... }
 
@@ -705,8 +747,8 @@ update control {
     &Tmp-String-0 := "Caipirinha"
 }
 update reply {
-    &Reply-Message := "md5 of %{control.Tmp-String-0} is octal=%{md5:%{control.Tmp-String-0}}"
-    &Reply-Message := "md5 of %{control.Tmp-String-0} is hex=%{hex:%{md5:%{control.Tmp-String-0}}}"
+    &Reply-Message := "md5 of %{control:Tmp-String-0} is octal=%{md5:%{control:Tmp-String-0}}"
+    &Reply-Message := "md5 of %{control:Tmp-String-0} is hex=%{hex:%{md5:%{control:Tmp-String-0}}}"
 }
 ----
 
@@ -717,55 +759,9 @@ md5 of Caipirinha is octal=\024\204\013md||\230\243\3472\3703\330n\251
 md5 of Caipirinha is hex=14840b6d647c7c98a3e732f833d86ea9
 ```
 
-=== Other Hashing Functions
+`md5` is provided by the `rlm_expr` module.
 
-The following hashes are supported for all versions of OpenSSL.
 
-* `%{md2: ... }`
-* `%{md4: ... }`
-* `%{md5: ... }`
-* `%{sha1: ... }`
-* `%{sha224: ... }`
-* `%{sha256: ... }`
-* `%{sha384: ... }`
-* `%{sha512: ... }`
-
-The following hashes are supported for when OpenSSL 1.1.1 or greater
-is installed.  This version adds support for the `sha3` and `blake`
-families of digest functions.
-
-* `%{blake2s_256: ... }`
-* `%{blake2b_512: ... }`
-* `%{sha2_224: ... }`
-* `%{sha2_256: ... }`
-* `%{sha2_384: ... }`
-* `%{sha2_512: ... }`
-* `%{sha3_224: ... }`
-* `%{sha3_256: ... }`
-* `%{sha3_384: ... }`
-* `%{sha3_512: ... }`
-
-.Return: _octal_
-
-.Example
-
-[source,unlang]
-----
-update {
-    &control.Tmp-String-0 := "Caipirinha"
-}
-update reply {
-    &Reply-Message := "The md5 of %{control.Tmp-String-0} in octal is %{md5:%{control.Tmp-String-0}}"
-    &Reply-Message += "The md5 of %{control.Tmp-String-0} in hex is %{hex:%{md5:%{control.Tmp-String-0}}}"
-}
-----
-
-.Output
-
-```
-The md5 of Caipirinha in octal is \024\204\013md||\230\243\3472\3703\330n\251
-The md5 of Caipirinha in hex is 14840b6d647c7c98a3e732f833d86ea9
-```
 
 == Miscellaneous Expansions
 
@@ -777,6 +773,8 @@ groups in the pattern.
 
 Every time a regular expression is evaluated, whether it matches or not,
 the numbered capture group values will be cleared.
+
+
 
 === +%{regex:<named capture group>}+
 
@@ -806,6 +804,10 @@ Debug :   pcre2                    : 10.33 (2019-04-16) - retrieved at build tim
 ....
 ====
 
+`regex` is built in to the server core.
+
+
+
 === +%{nexttime:<time>}+
 
 Calculate number of seconds until next n hour(`s`), day(`s`), week(`s`), year(`s`).
@@ -829,43 +831,25 @@ update reply {
 You should wait for 2520s
 ```
 
-=== +%{pack:%{Attribute-Name}%{Attribute-Name}...}+
+`nexttime` is provided by the `rlm_expr` module.
 
-Pack multiple multiple attributes and/or literals into a binary string.
-For best results, each attribute passed to `pack` should be fixed size.
-That is, not data type `octets` or `string` as the length of those values
-will not be encoded.
 
-See also the `unpack` module, which is the inverse to `pack`.
-
-.Return: _octets_
-
-.Example:
-
-[source,unlang]
-----
-update reply {
-    &Class := "%{pack:%{reply.Framed-IP-Address}%{NAS-IP-Address}}"
-}
-----
-
-.Output
-
-```
-You should wait for 2520s
-```
 
 === +%{Packet-Type}+
 
 The packet type (`Access-Request`, etc.)
 
-=== +%{Packet-SRC-IP-Address} and %{Packet-SRC-IPv6-Address}+
+
+
+=== +%{Packet-Src-IP-Address} and %{Packet-Src-IPv6-Address}+
 
 The source IPv4 or IPv6 address of the packet. See also the expansions
 `%{client:ipaddr}` and `%{client:ipv6addr}`. The two expansions
 should be identical, unless `%{client:ipaddr}` contains a DNS hostname.
 
-=== +%{Packet-DST-IP-Address} and %{Packet-DST-IPv6-Address}+
+
+
+=== +%{Packet-Dst-IP-Address} and %{Packet-Dst-IPv6-Address}+
 
 The destination IPv4 or IPv6 address of the packet. See also the
 expansions `%{listen:ipaddr}` and `%{listen:ipv6addr}`. If the socket
@@ -874,7 +858,9 @@ different, as follows: the `%{listen:ipaddr}` will be the wildcard
 address and `%{Packet-DST-IP-Address}` will be the unicast address to
 which the packet was sent.
 
-=== +%{Packet-SRC-Port} and %{Packet-DST-Port}+
+
+
+=== +%{Packet-Src-Port} and %{Packet-Dst-Port}+
 
 The source/destination ports associated with the packet.
 
@@ -888,9 +874,9 @@ update control {
     &Tmp-String-0 := "user@example.com"
 }
 
-if (&control.Tmp-String-0 =~ /^(?<login>(.*))@(?<domain>(.*))$/) {
+if (&control:Tmp-String-0 =~ /^(?<login>(.*))@(?<domain>(.*))$/) {
     update reply {
-        &Reply-Message := "The %{control.Tmp-String-0} { login=%{regex:login}, domain=%{regex:domain} }"
+        &Reply-Message := "The %{control:Tmp-String-0} { login=%{regex:login}, domain=%{regex:domain} }"
     }
 }
 ----
@@ -899,30 +885,6 @@ if (&control.Tmp-String-0 =~ /^(?<login>(.*))@(?<domain>(.*))$/) {
 
 ```
 The user@example.com { login=user, domain=example.com }
-```
-
-### %{sub:/<regex>/[flags] <replace> <subject>}
-
-Substitute text just as easily as it can match it, even using regex patterns.
-
-.Return: _string_.
-
-.Example
-
-[source,unlang]
-----
-update control {
-    &Tmp-String-0 := "Caipirinha is a light and refreshing drink!"
-}
-update reply {
-    &Reply-Message := "%{sub:/ / , %{control.Tmp-String-0}}"
-}
-----
-
-.Output
-
-```
-Caipirinha,is,a,light,and,refreshing,drink!
 ```
 
 // Copyright (C) 2020 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.

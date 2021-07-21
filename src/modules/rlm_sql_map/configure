@@ -629,6 +629,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_sql_map
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1236,6 +1237,11 @@ if test -n "$ac_init_help"; then
 
   cat <<\_ACEOF
 
+Optional Packages:
+  --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
+  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-rlm_sql_map              build rlm_sql_map. (default=yes)
+
 Report bugs to the package provider.
 _ACEOF
 ac_status=$?
@@ -1665,6 +1671,13 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
+
+
+# Check whether --with-rlm_sql_map was given.
+if test "${with_rlm_sql_map+set}" = set; then :
+  withval=$with_rlm_sql_map;
+fi
 
 
 if test x$with_rlm_sql_map != xno; then

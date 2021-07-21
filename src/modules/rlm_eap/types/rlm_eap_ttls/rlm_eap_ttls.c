@@ -130,6 +130,25 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
+#ifdef TLS1_3_VERSION
+	if ((inst->tls_conf->min_version == TLS1_3_VERSION) && !inst->tls_conf->tls13_enable_magic) {
+		ERROR("There are no standards for using TLS 1.3 with TTLS.");
+		ERROR("You MUST enable TLS 1.2 for TTLS to work.");
+		return -1;
+	}
+
+	if ((inst->tls_conf->max_version == TLS1_3_VERSION) ||
+	    (inst->tls_conf->min_version == TLS1_3_VERSION)) {
+		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		WARN("!! There is no standard for using TTLS with TLS 1.3");
+		WARN("!! Please set tls_max_version = \"1.2\"");
+		WARN("!! FreeRADIUS only supports TLS 1.3 for special builds of wpa_supplicant and Windows");
+		WARN("!! This limitation is likely to change in late 2021.");
+		WARN("!! If you are using this version of FreeRADIUS after 2021, you will probably need to upgrade");
+		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+	}
+#endif
+
 	return 0;
 }
 
@@ -181,7 +200,11 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 		client_cert = inst->req_client_cert;
 	}
 
-	ssn = eaptls_session(handler, inst->tls_conf, client_cert);
+	/*
+	 *	Don't allow TLS 1.3 for us, even if it's allowed
+	 *	elsewhere.
+	 */
+	ssn = eaptls_session(handler, inst->tls_conf, client_cert, inst->tls_conf->tls13_enable_magic);
 	if (!ssn) {
 		return 0;
 	}
@@ -205,7 +228,7 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
 		REDEBUG("[eaptls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	} else {
-		RDEBUG2("[eaptls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+		RDEBUG3("[eaptls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	}
 	if (status == 0) return 0;
 
@@ -242,7 +265,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
 		REDEBUG("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	} else {
-		RDEBUG2("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+		RDEBUG3("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	}
 
 	/*

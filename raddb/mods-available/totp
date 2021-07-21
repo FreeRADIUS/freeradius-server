@@ -1,0 +1,40 @@
+# -*- text -*-
+#
+#  $Id$
+
+#
+#  Time-based One-Time Passwords (TOTP)
+#
+#  Defined in RFC 6238, and used in Google Authenticator.
+#
+#  This module can only be used in the "authenticate" section.
+#
+#  The Base32-encoded secret should be placed into:
+#
+#	&control:TOTP-Secret
+#
+#  The TOTP password entered by the user should be placed into:
+#
+#	&request:TOTP-Password
+#
+#  The module will return "ok" if the passwords match, and "fail"
+#  if the passwords do not match.
+#
+#  Note that this module will NOT interact with Google.  The module is
+#  intended to be used where the local administrator knows the TOTP
+#  secret key, and user has an authenticator app on their phone.
+#
+#  Note also that while you can use the Google "chart" APIs to
+#  generate a QR code, doing this will give the secret to Google!
+#
+#  Administrators should instead install a tool such as "qrcode"
+#
+#	https://linux.die.net/man/1/qrencode
+#
+#  and then run that locally to get an image.
+#  
+#
+#  The module takes no configuration items.
+#
+totp {
+}

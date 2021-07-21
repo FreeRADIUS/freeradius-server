@@ -43,6 +43,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 static CONF_PARSER module_config[] = {
 	{ "tls", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_tls_t, tls_conf_name), NULL },
 	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_tls_t, virtual_server), NULL },
+	{ "configurable_client_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_tls_t, configurable_client_cert), NULL },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -71,6 +72,19 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
+#ifdef TLS1_3_VERSION
+	if ((inst->tls_conf->max_version == TLS1_3_VERSION) ||
+	    (inst->tls_conf->min_version == TLS1_3_VERSION)) {
+		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		WARN("!! Most supplicants do not support EAP-TLS with TLS 1.3");
+		WARN("!! Please set tls_max_version = \"1.2\"");
+		WARN("!! FreeRADIUS only supports TLS 1.3 for special builds of wpa_supplicant and Windows");
+		WARN("!! This limitation is likely to change in late 2021.");
+		WARN("!! If you are using this version of FreeRADIUS after 2021, you will probably need to upgrade");
+		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+	}
+#endif
+
 	return 0;
 }
 
@@ -84,15 +98,32 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	tls_session_t	*ssn;
 	rlm_eap_tls_t	*inst;
 	REQUEST		*request = handler->request;
+	bool		require_client_cert = true;
 
 	inst = type_arg;
 
 	handler->tls = true;
 
 	/*
-	 *	EAP-TLS always requires a client certificate.
+	 *	Respect EAP-TLS-Require-Client-Cert, but only if
+	 *	enabled in the module configuration.
+	 *
+	 *	We can't change behavior of existing systems, so this
+	 *	change has to be enabled via a new configuration
+	 *	option.
 	 */
-	ssn = eaptls_session(handler, inst->tls_conf, true);
+	if (inst->configurable_client_cert) {
+		VALUE_PAIR *vp;
+
+		vp = fr_pair_find_by_num(handler->request->config, PW_EAP_TLS_REQUIRE_CLIENT_CERT, 0, TAG_ANY);
+		if (vp && !vp->vp_integer) require_client_cert = false;
+	}
+
+	/*
+	 *	EAP-TLS always requires a client certificate, and
+	 *	allows for TLS 1.3 if permitted.
+	 */
+	ssn = eaptls_session(handler, inst->tls_conf, require_client_cert, true);
 	if (!ssn) {
 		return 0;
 	}
@@ -108,7 +139,7 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
 		REDEBUG("[eaptls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	} else {
-		RDEBUG2("[eaptls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+		RDEBUG3("[eaptls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	}
 	if (status == 0) return 0;
 
@@ -137,7 +168,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
 		REDEBUG("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	} else {
-		RDEBUG2("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+		RDEBUG3("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	}
 
 

@@ -13,6 +13,9 @@ fail=
 mod_ldflags=
 mod_cflags=
 
+AC_ARG_WITH([]modname,
+[  --with-[]modname              build []modname. (default=yes)])
+
 if test x$with_[]modname != xno; then
 
 	targetname=modname

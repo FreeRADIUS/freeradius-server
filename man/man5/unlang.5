@@ -437,7 +437,7 @@ false.
 Compares 'foo' to 'bar', and evaluates to true if the comparison holds
 true.  Valid comparison operators are "==", "!=", "<", "<=", ">",
 ">=", "=~", and "!~", all with their usual meanings.  The operators
-":=" and "=" are assignment operators, and are not allowed for
+":=", "^=" and "=" are assignment operators, and are not allowed for
 comparisons.
 
 The operators "<", "<=", ">", and ">=" are also allowed for checking
@@ -748,6 +748,11 @@ Add the attribute to the tail of the list, even if attributes of the
 same name are already present in the list. When the right hand side
 of the expression resolves to multiple values, it means add all values
 to the tail of the list.
+.IP ^=
+Add the attribute to the head of the list, even if attributes of the
+same name are already present in the list.  When the right hand side
+of the expression resolves to multiple values, it means prepend all
+values to the head of the list.
 .RE
 .PP
 Enforcement and Filtering Operators

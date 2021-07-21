@@ -158,10 +158,6 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
 		client_list_free(clients);
 		return false;
 	}
-	if (!cs) {
-		rad_assert(root_clients == NULL);
-		root_clients = clients;
-	}
 
 	return clients;
 }
@@ -550,7 +546,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, bool tls_requir
 RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls_required)
 #endif
 {
-	bool		in_server = false;
+	bool		global = false, in_server = false;
 	CONF_SECTION	*cs;
 	RADCLIENT	*c = NULL;
 	RADCLIENT_LIST	*clients = NULL;
@@ -572,13 +568,13 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 		 *	so we still need to parse the clients here.
 		 */
 		if (clients->parsed) return clients;		
-		clients->parsed = true;
 	} else {
 		clients = client_list_init(section);
 		if (!clients) return NULL;
 	}
 
 	if (cf_top_section(section) == section) {
+		global = true;
 		clients->name = "global";
 		clients->server = NULL;
 	}
@@ -700,6 +696,14 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 
 	}
 
+	/*
+	 *	Replace the global list of clients with the new one.
+	 *	The old one is still referenced from the original
+	 *	configuration, and will be freed when that is freed.
+	 */
+	if (global) root_clients = clients;
+
+	clients->parsed = true;
 	return clients;
 }
 

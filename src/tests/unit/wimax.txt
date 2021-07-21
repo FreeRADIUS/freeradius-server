@@ -161,3 +161,11 @@ data 1a 0d 00 00 60 b5 03 07 00 ff ff ff ff
 decode -
 data WiMAX-GMT-Timezone-offset = -1
 
+#
+#  It's like a disease which keeps spreading.
+#
+encode Telrad-Reference-QOS-Profile-Name = "garbage"
+data 1a 14 00 00 14 cb 01 0e 00 03 0b 04 09 67 61 72 62 61 67 65
+
+decode -
+data Telrad-Reference-QOS-Profile-Name = "garbage"

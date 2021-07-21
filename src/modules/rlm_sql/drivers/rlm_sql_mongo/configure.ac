@@ -6,6 +6,9 @@ fail=
 mongoc_ldflags=
 mongoc_cflags=
 
+AC_ARG_WITH([]modname,
+[  --with-[]modname              build []modname. (default=yes)])
+
 if test x$with_[]modname != xno; then
 
   AC_ARG_WITH(mongoc_lib_dir, [AC_HELP_STRING([--with-mongoc-lib-dir],

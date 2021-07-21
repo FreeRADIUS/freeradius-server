@@ -3,6 +3,9 @@ AC_INIT(rlm_smsotp.c)
 AC_REVISION($Revision: 0.1 $)
 AC_DEFUN(modname,[rlm_smsotp])
 
+AC_ARG_WITH([]modname,
+[  --with-[]modname              build []modname. (default=yes)])
+
 if test x$with_[]modname != xno; then
 
 	AC_PROG_CC

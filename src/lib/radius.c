@@ -3696,7 +3696,7 @@ static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	/*
 	 *	WiMAX craziness
 	 */
-	if ((vendor == VENDORPEC_WIMAX) && dv->flags) {
+	if (dv->flags) {
 		rcode = data2vp_wimax(ctx, packet, original, secret, vendor,
 				      data, attrlen, packetlen, pvp);
 		return rcode;

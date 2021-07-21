@@ -121,24 +121,7 @@ VALUE_PAIR *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int attr, unsigned int v
 	DICT_ATTR const *da;
 
 	da = dict_attrbyvalue(attr, vendor);
-	if (!da) {
-		VALUE_PAIR *vp;
-
-		vp = fr_pair_alloc(ctx);
-		if (!vp) return NULL;
-
-		/*
-		 *	Ensure that the DA is parented by the VP.
-		 */
-		da = dict_unknown_afrom_fields(vp, attr, vendor);
-		if (!da) {
-			talloc_free(vp);
-			return NULL;
-		}
-
-		vp->da = da;
-		return vp;
-	}
+	if (!da) return NULL;
 
 	return fr_pair_afrom_da(ctx, da);
 }

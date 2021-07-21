@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS radacct (
   acctinterval int(12) default NULL,
   acctsessiontime int(12) unsigned default NULL,
   acctauthentic varchar(32) default NULL,
-  connectinfo_start varchar(50) default NULL,
-  connectinfo_stop varchar(50) default NULL,
+  connectinfo_start varchar(128) default NULL,
+  connectinfo_stop varchar(128) default NULL,
   acctinputoctets bigint(20) default NULL,
   acctoutputoctets bigint(20) default NULL,
   calledstationid varchar(50) NOT NULL default '',
@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS radacct (
   framedipv6prefix varchar(45) NOT NULL default '',
   framedinterfaceid varchar(44) NOT NULL default '',
   delegatedipv6prefix varchar(45) NOT NULL default '',
+  class varchar(64) default NULL,
   PRIMARY KEY (radacctid),
   UNIQUE KEY acctuniqueid (acctuniqueid),
   KEY username (username),
@@ -56,7 +57,8 @@ CREATE TABLE IF NOT EXISTS radacct (
   KEY acctstarttime (acctstarttime),
   KEY acctinterval (acctinterval),
   KEY acctstoptime (acctstoptime),
-  KEY nasipaddress (nasipaddress)
+  KEY nasipaddress (nasipaddress),
+  KEY class (class)
 ) ENGINE = INNODB;
 
 #
@@ -144,8 +146,10 @@ CREATE TABLE IF NOT EXISTS radpostauth (
   pass varchar(64) NOT NULL default '',
   reply varchar(32) NOT NULL default '',
   authdate timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  class varchar(64) default NULL,
   PRIMARY KEY  (id),
-  KEY username (username(32))
+  KEY username (username),
+  KEY class (class)
 ) ENGINE = INNODB;
 
 #

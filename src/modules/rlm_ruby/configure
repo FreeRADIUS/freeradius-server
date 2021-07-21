@@ -648,6 +648,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_ruby
 with_ruby
 '
       ac_precious_vars='build_alias
@@ -1266,6 +1267,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-rlm_ruby              build rlm_ruby. (default=yes)
   --with-ruby=[PATH]    absolute path to ruby executable
 
 Some influential environment variables:
@@ -2060,6 +2062,14 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 targetname=rlm_ruby
 mod_cflags=
 mod_ldflags=
+
+
+# Check whether --with-rlm_ruby was given.
+if test "${with_rlm_ruby+set}" = set; then :
+  withval=$with_rlm_ruby;
+fi
+
+
 if test x$with_rlm_ruby != xno; then
 	ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'

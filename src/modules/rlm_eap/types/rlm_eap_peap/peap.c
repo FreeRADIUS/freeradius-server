@@ -905,15 +905,15 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 
 		return RLM_MODULE_REJECT;
 
-		case PEAP_STATUS_PHASE2_INIT:
-			RDEBUG("In state machine in phase2 init?");
+	case PEAP_STATUS_PHASE2_INIT:
+		RDEBUG("In state machine in phase2 init?");
 
-		case PEAP_STATUS_PHASE2:
-			break;
+	case PEAP_STATUS_PHASE2:
+		break;
 
-		default:
-			REDEBUG("Unhandled state in peap");
-			return RLM_MODULE_REJECT;
+	default:
+		REDEBUG("Unhandled state in peap");
+		return RLM_MODULE_REJECT;
 	}
 
 	fake = request_alloc_fake(request);
@@ -1042,6 +1042,10 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 
 		if (vp) {
 			eap_tunnel_data_t *tunnel;
+			bool proxy_as_eap = t->proxy_tunneled_request_as_eap;
+			VALUE_PAIR *flag = fr_pair_find_by_num(fake->config, PW_PROXY_TUNNELED_REQUEST_AS_EAP, 0, TAG_ANY);
+
+			if (flag) proxy_as_eap = flag->vp_integer;
 
 			/*
 			 *	The tunneled request was NOT handled,
@@ -1058,7 +1062,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session, 
 			 *	Once the tunneled EAP session is ALMOST
 			 *	done, THEN we proxy it...
 			 */
-			if (!t->proxy_tunneled_request_as_eap) {
+			if (!proxy_as_eap) {
 				fake->options |= RAD_REQUEST_OPTION_PROXY_EAP;
 
 				/*

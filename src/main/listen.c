@@ -360,6 +360,43 @@ int rad_status_server(REQUEST *request)
 	int rcode = RLM_MODULE_OK;
 	DICT_VALUE *dval;
 
+#ifdef WITH_TLS
+	if (request->listener->tls) {
+		listen_socket_t *sock = request->listener->data;
+
+		if (sock->state == LISTEN_TLS_CHECKING) {
+			int autz_type = PW_AUTZ_TYPE;
+			char const *name = "Autz-Type";
+
+			if (request->listener->type == RAD_LISTEN_ACCT) {
+				autz_type = PW_ACCT_TYPE;
+				name = "Acct-Type";
+			}
+
+			RDEBUG("(TLS) Checking connection to see if it is authorized.");
+
+			dval = dict_valbyname(autz_type, 0, "New-TLS-Connection");
+			if (dval) {
+				rcode = process_authorize(dval->value, request);
+			} else {
+				rcode = RLM_MODULE_OK;
+				RWDEBUG("(TLS) Did not find '%s New-TLS-Connection' - defaulting to accept", name);
+			}
+
+			if ((rcode == RLM_MODULE_OK) || (rcode == RLM_MODULE_UPDATED)) {
+				RDEBUG("(TLS) Connection is authorized");
+				request->reply->code = PW_CODE_ACCESS_ACCEPT;
+			} else {
+				RWDEBUG("(TLS) Connection is not authorized - closing TCP socket.");
+				request->reply->code = PW_CODE_ACCESS_REJECT;
+			}
+
+			return 0;
+		}
+	}
+#endif
+
+
 	switch (request->listener->type) {
 #ifdef WITH_STATS
 	case RAD_LISTEN_NONE:
@@ -1068,6 +1105,10 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			}
 #endif
 
+
+			rcode = cf_item_parse(cs, "check_client_connections", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &this->check_client_connections), "no");
+			if (rcode < 0) return -1;
+
 		}
 #else  /* WITH_TLS */
 		/*
@@ -1521,13 +1562,12 @@ static int auth_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	FR_STATS_TYPE_INC(client->auth.total_requests);
-
 	/*
 	 *	Some sanity checks, based on the packet code.
 	 */
 	switch (code) {
 	case PW_CODE_ACCESS_REQUEST:
+		FR_STATS_TYPE_INC(client->auth.total_requests);
 		fun = rad_authenticate;
 		break;
 
@@ -1637,13 +1677,12 @@ static int acct_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	FR_STATS_TYPE_INC(client->acct.total_requests);
-
 	/*
 	 *	Some sanity checks, based on the packet code.
 	 */
 	switch (code) {
 	case PW_CODE_ACCOUNTING_REQUEST:
+		FR_STATS_TYPE_INC(client->acct.total_requests);
 		fun = rad_accounting;
 		break;
 
@@ -2116,6 +2155,14 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 
 static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
+#ifdef WITH_TLS
+	/*
+	 *	Don't encode fake packets.
+	 */
+	listen_socket_t *sock = listener->data;
+	if (sock->state == LISTEN_TLS_CHECKING) return 0;
+#endif
+
 	if (!request->reply->code) return 0;
 
 	if (rad_encode(request->reply, request->packet, request->client->secret) < 0) {

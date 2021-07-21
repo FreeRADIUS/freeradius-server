@@ -334,7 +334,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	It's left up to the user if they want to decode it or not.
 	 */
 	if (inst->id_len) {
-		vp = fr_pair_make(request, &request->packet->vps, "Yubikey-Public-ID", NULL, T_OP_SET);
+		vp = fr_pair_make(request->packet, &request->packet->vps, "Yubikey-Public-ID", NULL, T_OP_SET);
 		if (!vp) {
 			REDEBUG("Failed creating Yubikey-Public-ID");
 

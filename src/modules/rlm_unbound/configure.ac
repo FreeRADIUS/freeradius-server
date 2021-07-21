@@ -3,6 +3,9 @@ AC_INIT(rlm_unbound.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_unbound])
 
+AC_ARG_WITH([]modname,
+[  --with-[]modname              build []modname. (default=yes)])
+
 if test x$with_[]modname != xno; then
 	dnl extra argument: --with-rlm-unbound-lib-dir
 	rlm_unbound_lib_dir=

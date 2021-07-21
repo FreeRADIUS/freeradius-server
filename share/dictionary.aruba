@@ -71,6 +71,9 @@ ATTRIBUTE	Aruba-STP-Admin-Edge-Port		58	integer
 
 ATTRIBUTE	Aruba-UBT-Gateway-CPPM-Role		59	string
 
+ATTRIBUTE  	Aruba-AP-MAC-Address        		60      string
+ATTRIBUTE  	Aruba-Device-MAC-Address    		61      string
+
 VALUE	Aruba-AirGroup-Device-Type	Personal-Device		1
 VALUE	Aruba-AirGroup-Device-Type	Shared-Device		2
 VALUE	Aruba-AirGroup-Device-Type	Deleted-Device		3

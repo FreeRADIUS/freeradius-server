@@ -42,6 +42,10 @@ network
 #  DHCP-Router-Address and DHCP-Broadcast-Address since it is a common reply
 #  parameter for all DHCP requests originating from this network.
 #
+#  The use of the ^= "prepend" operator for setting DHCP-Domain-Name-Server
+#  results in this new value being inserted at the start of the list, meaning
+#  this will become the first DNS server presented in the reply.
+#
 #  Note: If the architecture has only a single subnet for each Layer 2 network
 #  then by placing all subnet-related options here we can avoid calling the
 #  dhcp_subnet policy after IP allocation.
@@ -51,6 +55,7 @@ network	DHCP-Network-Subnet < 10.20.0.0/16, Pool-Name := "smalldept"
 	DHCP-Domain-Name := "smalldept.example.org",
 	DHCP-Subnet-Mask := 255.255.0.0,
 	DHCP-Router-Address := 10.20.0.1,
+	DHCP-Domain-Name-Server ^= 10.20.0.2,
 	DHCP-Broadcast-Address := 10.20.255.255
 
 #

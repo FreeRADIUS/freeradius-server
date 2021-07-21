@@ -64,6 +64,10 @@ void listen_free(UNUSED rad_listen_t **head)
 	/* do nothing */
 }
 
+void request_inject(UNUSED REQUEST *request)
+{
+	/* do nothing */
+}
 
 static rad_listen_t *listen_alloc(void *ctx)
 {

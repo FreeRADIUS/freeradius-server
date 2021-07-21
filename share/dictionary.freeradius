@@ -182,4 +182,7 @@ ATTRIBUTE	FreeRADIUS-EAP-FAST-PKCS		186.20	octets
 
 ATTRIBUTE	FreeRADIUS-Stats-Error			187	string
 
+ATTRIBUTE	FreeRADIUS-Stats-Client-IPv6-Address	188	ipv6addr
+ATTRIBUTE	FreeRADIUS-Stats-Server-IPv6-Address	189	ipv6addr
+
 END-VENDOR FreeRADIUS

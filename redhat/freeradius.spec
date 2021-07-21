@@ -41,7 +41,7 @@
 
 Summary: High-performance and highly configurable free RADIUS server
 Name: freeradius
-Version: 3.0.22
+Version: 3.0.24
 Release: 1%{?dist}
 License: GPLv2+ and LGPLv2+
 Group: System Environment/Daemons
@@ -662,6 +662,7 @@ fi
 %{_libdir}/freeradius/rlm_sqlhpwippool.so
 %endif
 
+%{_libdir}/freeradius/rlm_totp.so
 %{_libdir}/freeradius/rlm_unpack.so
 %{_libdir}/freeradius/rlm_unix.so
 %{_libdir}/freeradius/rlm_utf8.so

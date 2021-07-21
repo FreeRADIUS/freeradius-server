@@ -1,19 +1,83 @@
-FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
+FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
+	Feature improvements
+	* Add sanitizer options to configure script.
+	* Log information needed by Wireshark to decode TLS sessions.
+	* Allow more liberal SQL commands in rlm_sql_map.
+	* Update dictionary.apc, dictionary.h3c
+	* Add new Acct-Status-Type Subsystem-On and Subsystem-Off.
+	  See dictionary.iana and
+	  https://freeradius.org/rfc/acct_status_type_subsystem.html
+	* add reject_unknown_intermediate_ca.  See mods-available/eap
+
+	Bug fixes
+	* Fix crash in trustrouter module (#4115). Patch from Alejandro Perez
+	* Fix crash in state handling.
+	* Don't alter global options in redhat logrotate scripts.
+	* EAP-FAST will print errors and continue, rather than exiting
+	  when OpenSSL fails various internal sanity checks.
+	* Allow admin to manually change core limits, even when core limits
+	  are disabled.
+	* Fix chunked rlm_rest HTTP body.  Closes #4131.
+	  Patch from Nathan Ward.
+
+FreeRADIUS 3.0.23 Thu 10 Jun 2021 12:00:00 EDT urgency=low
+	Feature improvements
+	* Update dictionary.aruba
+	* Add "set home_server state ... down" in order to mark the
+	  home server as administratively down.  Use "alive" to bring
+	  it back to life.
+	* Add Post-Auth-Type "Client-Lost" which should make it easier
+	  to log when clients stop responding.
+	* Add sites-available/totp as an example of how to use TOTP.
+	* Add %{mschap:Domain-Name}, fixes #3944.
+	* Cache TLS messages in &session-state, for more debugging.
+	* Notes in eap configuration about TLS 1.0 / TLS 1.1, and setting
+	  cipher_list = "DEFAULT@SECLEVEL=1"
+	* Added MANY warning messages about using TLS 1.3 with EAP.
+	  In short, don't use it.  Microsoft will support it in fall 2021.
+
+	Bug fixes
+	* Fix crash in some cases when home server is down, in debug mode.
+	* Fix (again) "read clients from SQL" functionality.
+	* Fix sql_map to return values in more situations.
+	* Silently ignore LEAP configuration instead of erroring out.
+
+FreeRADIUS 3.0.22 Mon 17 May 2021 12:00:00 EDT urgency=low
 	Feature improvements
 	* Many new "unlang" documentation files.  See "make docsite"
-	  and doc/antora
-	* Update dictionary.bskyb.  Fixes #3339.
-	* Update alcatel.sr. #3495
-	* Abfab-tls updates from Alejandro Perez.
+	  and then see build/docsite/freeradius-server/*/index.html
+	* Limited support for dynamic home servers.  See proxy.conf
+	  and doc/configuration/dynamic_home_servers.md
+	* Add support for prepend operator ^=.  See "man unlang" for
+	  for details.
+	* Added rlm_totp, for use with the Google Authenticator app.
+	  See mods-available/totp.
+	* The default minimum TLS version is now TLS 1.2, as per RFC 8996.
+	  Older versions can be allowed by setting tls_min_version, and
+	  updating "cipher_list".
+	* Significantly improve the readability and contents of TLS
+	  debug messages.
 	* Allow CoA and Disconnect messages over TLS sockets.
 	  Fixes #3356.
+	* Automatically set fragment size / MTU, so that PEAP/EAP-TLS
+	  works, and no longer requires manual changes to the configuration.
+	* Allow "configurable_client_cert=yes" for EAP-TLS.  This should
+	  only be used for a "walled garden".  See mods-available/eap
+	* Add TLS 1.2 support for EAP-Fast.  Patches from Alex Clouter.
+	* Add ca_path_reload_interval option for tls.  See mods-available/eap.
+	  Fixes #1831.  Patch from Boris Lytochkin.
+	* Abfab-tls updates from Alejandro Perez.
+	* Add "tls_min_version" to ldap module configuration.
+	* We now support running policies when receiving a RadSec connection.
+	  See sites-available/default, "New-TLS-Connection".
+	* Update TLS "ecdh_curve" code to allow for multiple curves.
+	* Allow delta CRLs.  Fixes #3393.
+	* add rlm_sql_map, which can handle multiple columns from an SQL
+	  query.  See raddb/mods-available/sql_map.
 	* New xlat for setting status of rlm_always instances and new
 	  resource-check example virtual server for manipulating control flow
 	  in unlang policies based on status of some external resource.
 	  Patches from Terry Burton.
-	* Allow delta CRLs.  Fixes #3393.
-	* Limited support for dynamic home servers.  See proxy.conf
-	  and doc/configuration/dynamic_home_servers.md
 	* Update radmin to show more information about the home servers
 	  using "show home_server list all".
 	* The default configuration now replies with EAP-Key-Name, if it
@@ -23,28 +87,22 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  Patch from Alexander Scheel.
 	* Remove native support for Cisco LEAP.  It is insecure, and
 	  should not be used.  Proxying LEAP is still supported.
-	* Automatically set fragment size / MTU, so that PEAP/EAP-TLS
-	  works, and no longer requires manual changes to the configuration.
 	* Allow use of password preparation methods with rlm_eap_pwd.
 	  Patch from Michael Braun.
-	* Add TLS 1.2 support for EAP-Fast.  Patches from Alex Clouter.
-	* Add a_path_reload_interval option for tls.  See mods-available/eap.
-	  Fixes #1831.  Patch from Boris Lytochkin.
 	* Many, many, improvements for DHCP from Nick Porter and Terry Burton.
+	* More RFC compliance for various corner cases of DHCP,
 	* Use DHCP-specific schemas.
 	* Add stored procedures for DHCP lease allocation
 	* Add support for DHCP-Decline.
-	* More RFC complaince for various corner cases of DHCP,
-	* Treat DHCP Discover and Request differently for lease allocation times.
-	* Add support for PBKDF2 keys. Fixes #2649
-	* Update dictionary.mikrotik, dictionary.aruba, dictionary.paloalto, dictionary.juniper.
-	* Update default PostgreSQL schema to use "text" instead of
-	  a fixed-size "varchar".
-	* The default minimum TLS version is not TLS 1.2
-	  Older versions can be allowed by setting tls_min_version
-	* Add "tls_min_version" to ldap module configuration.
 	* Added mods-available/dhcp_sql which is a DHCP-specific instance
 	  of the SQL module.
+	* Treat DHCP Discover and Request differently for lease allocation times.
+	* Add support for PBKDF2 keys. Fixes #2649
+	* Update dictionary.mikrotik, dictionary.aruba, dictionary.paloalto,
+	   dictionary.juniper, dictionary.bskyb (#3339),
+	  dictionary.alcatel.sr (#3495).
+	* Update default PostgreSQL schema to use "text" instead of
+	  a fixed-size "varchar".
 	* Add radmin command "show client list verbose", which gives a lot
 	  more information about each client.
 	* Add support for EAPS-AKA authentication to rlm_wimax.
@@ -58,7 +116,19 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  See src/tests/unit/rfc4849.txt
 	* Allow attributes using old names in configuration files, SQL,
 	  or modules to match attributes in the packet which use
-	  new names,
+	  new names.
+	* Allow querying IPv6 stats via FreeRADIUS-Stats-Client-IPv6-Address
+	  and FreeRADIUS-Stats-Server-IPv6-Address
+	* Add warnings if there is no "real" User-Name to identify users.
+	* Add sample configuration to update Stripped-User-Name and/or
+	  Class for user sessions. See sites-available/default
+	* Add configuration to suppress printing values for User-Name, etc.
+	  See radiusd.conf, "suppress_secrets"
+	* Support dictionary.telrad, which is also in WiMAX format.
+	* PEAP 'proxy_tunneled_request_as_eap' is now configurable
+	  at runtime with Proxy-Tunneled-Request-As-EAP.
+	* Debug output now lists client/server proposed TLS ciphers.
+	* Add support for TLS1.3, patches from Alexander Clouter
 
 	Bug fixes
 	* Fix long-term double free due to PCRE calling our "free"
@@ -88,7 +158,7 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	* Properly add SQL clients to virtual servers.
 	* Update documentation for cert generation.  Patch from Alexander Scheel.
 	* Use better API when decoding DHCP packets, to avoid unnecessary work.
-	  This improves performance noticably.
+	  This improves performance noticeably.
 	* Parse locale-dependent dates.  Fixes #3602.
 	* Strip out "-frecord-gcc-switches" from rlm_python3 configure build. Fixes #3693
 	* Fix radiusd.conf ENV LD_PRELOAD function.
@@ -108,6 +178,12 @@ FreeRADIUS 3.0.22 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	  full after writing an attribute value, and more attributes needed to be encoded.
 	  Reported by Adrian Smith.
 	* Fix leak with unknown attributes in detail reader.  Fixes #3937.
+	* Fix parenting issues in rlm_yubikey.  Fixes #4012.
+	* Update Mongo examples to be correct.
+
+	Notices
+	* CentOS 6, Debian 8 (Jessie) and Ubuntu 14 (Trusty) are EOL and no
+	  longer supported. Docker files have been removed.
 
 FreeRADIUS 3.0.21 Tue 24 Mar 2020 12:00:00 EDT urgency=low
 	Feature improvements

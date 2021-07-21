@@ -131,6 +131,25 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
+#ifdef TLS1_3_VERSION
+	if (inst->tls_conf->min_version == TLS1_3_VERSION) {
+		ERROR("There are no standards for using TLS 1.3 with EAP-FAST.");
+		ERROR("You MUST enable TLS 1.2 for EAP-FAST to work.");
+		return -1;
+	}
+
+	if ((inst->tls_conf->max_version == TLS1_3_VERSION) ||
+	    (inst->tls_conf->min_version == TLS1_3_VERSION)) {
+		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		WARN("!! There is no standard for using EAP-FAST with TLS 1.3");
+		WARN("!! Please set tls_max_version = \"1.2\"");
+		WARN("!! FreeRADIUS only supports TLS 1.3 for special builds of wpa_supplicant and Windows");
+		WARN("!! This limitation is likely to change in late 2021.");
+		WARN("!! If you are using this version of FreeRADIUS after 2021, you will probably need to upgrade");
+		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+	}
+#endif
+
 	rad_assert(PAC_A_ID_LENGTH == MD5_DIGEST_LENGTH);
 	FR_MD5_CTX ctx;
 	fr_md5_init(&ctx);
@@ -241,7 +260,7 @@ static int _session_ticket(SSL *s, uint8_t const *data, int len, void *arg)
 	DICT_ATTR const	*fast_da;
 	char const		*errmsg;
 	int			dlen, plen;
-	uint16_t		length;
+	int			length;
 	eap_fast_attr_pac_opaque_t const	*opaque = (eap_fast_attr_pac_opaque_t const *) data;
 	eap_fast_attr_pac_opaque_t		opaque_plaintext;
 
@@ -274,7 +293,7 @@ error:
 	 * so we have to use the length in the PAC-Opaque header
 	 */
 	length = ntohs(opaque->hdr.length);
-	if (len - sizeof(opaque->hdr) < length) {
+	if (len < (int) (length + sizeof(opaque->hdr))) {
 		errmsg = "PAC has bad length in header";
 		goto error;
 	}
@@ -293,7 +312,7 @@ error:
 	plen = eap_fast_decrypt(opaque->data, dlen, opaque->aad, PAC_A_ID_LENGTH,
 					(uint8_t const *) opaque->tag, t->pac_opaque_key, opaque->iv,
 					(uint8_t *)&opaque_plaintext);
-	if (plen == -1) {
+	if (plen < 0) {
 		errmsg = "PAC failed to decrypt";
 		goto error;
 	}
@@ -392,7 +411,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
 		REDEBUG("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	} else {
-		RDEBUG2("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+		RDEBUG3("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	}
 
 	/*
@@ -553,7 +572,12 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	} else {
 		client_cert = inst->req_client_cert;
 	}
-	handler->opaque = tls_session = eaptls_session(handler, inst->tls_conf, client_cert);
+
+	/*
+	 *	Don't allow TLS 1.3 for us, even if it's allowed
+	 *	elsewhere.
+	 */
+	handler->opaque = tls_session = eaptls_session(handler, inst->tls_conf, client_cert, false);
 
 	if (!tls_session) return 0;
 

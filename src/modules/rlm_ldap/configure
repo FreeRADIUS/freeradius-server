@@ -637,6 +637,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_ldap
 with_rlm_ldap_lib_dir
 with_rlm_ldap_include_dir
 '
@@ -1254,6 +1255,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-rlm_ldap              build rlm_ldap. (default=yes)
   --with-rlm-ldap-lib-dir=DIR	   directory for LDAP library files
   --with-rlm-ldap-include-dir=DIR   directory for LDAP include files
 
@@ -1855,6 +1857,14 @@ fail=
 SMART_LIBS=
 SMART_CLFAGS=
 SASL=
+
+
+# Check whether --with-rlm_ldap was given.
+if test "${with_rlm_ldap+set}" = set; then :
+  withval=$with_rlm_ldap;
+fi
+
+
 if test x$with_rlm_ldap != xno; then
 
 				ac_ext=c

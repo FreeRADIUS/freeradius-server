@@ -177,6 +177,7 @@ $INCLUDE dictionary.bt
 $INCLUDE dictionary.cablelabs
 $INCLUDE dictionary.cabletron
 $INCLUDE dictionary.camiant
+$INCLUDE dictionary.centec
 $INCLUDE dictionary.checkpoint
 $INCLUDE dictionary.chillispot
 $INCLUDE dictionary.cisco
@@ -295,6 +296,7 @@ $INCLUDE dictionary.symbol
 $INCLUDE dictionary.t_systems_nova
 $INCLUDE dictionary.telebit
 $INCLUDE dictionary.telkom
+$INCLUDE dictionary.telrad
 $INCLUDE dictionary.terena
 $INCLUDE dictionary.trapeze
 $INCLUDE dictionary.travelping

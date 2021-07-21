@@ -5,6 +5,9 @@ AC_DEFUN(modname,[rlm_perl])
 
 m4_include([ax_with_prog.m4])
 
+AC_ARG_WITH([]modname,
+[  --with-[]modname              build []modname. (default=yes)])
+
 if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
