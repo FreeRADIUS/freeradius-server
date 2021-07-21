@@ -73,22 +73,22 @@ fr_dict_attr_t const *attr_session_resumed;
 /*
  *	Certificate decoding attributes
  */
-fr_dict_attr_t const *attr_tls_cert;
-fr_dict_attr_t const *attr_tls_cert_serial;
-fr_dict_attr_t const *attr_tls_cert_signature;
-fr_dict_attr_t const *attr_tls_cert_signature_algorithm;
-fr_dict_attr_t const *attr_tls_cert_issuer;
-fr_dict_attr_t const *attr_tls_cert_not_before;
-fr_dict_attr_t const *attr_tls_cert_not_after;
-fr_dict_attr_t const *attr_tls_cert_subject;
-fr_dict_attr_t const *attr_tls_cert_common_name;
-fr_dict_attr_t const *attr_tls_cert_subject_alt_name_dns;
-fr_dict_attr_t const *attr_tls_cert_subject_alt_name_email;
-fr_dict_attr_t const *attr_tls_cert_subject_alt_name_upn;
-fr_dict_attr_t const *attr_tls_cert_x509v3_extended_key_usage;
-fr_dict_attr_t const *attr_tls_cert_x509v3_subject_key_identifier;
-fr_dict_attr_t const *attr_tls_cert_x509v3_authority_key_identifier;
-fr_dict_attr_t const *attr_tls_cert_x509v3_basic_constraints;
+fr_dict_attr_t const *attr_tls_certificate;
+fr_dict_attr_t const *attr_tls_certificate_serial;
+fr_dict_attr_t const *attr_tls_certificate_signature;
+fr_dict_attr_t const *attr_tls_certificate_signature_algorithm;
+fr_dict_attr_t const *attr_tls_certificate_issuer;
+fr_dict_attr_t const *attr_tls_certificate_not_before;
+fr_dict_attr_t const *attr_tls_certificate_not_after;
+fr_dict_attr_t const *attr_tls_certificate_subject;
+fr_dict_attr_t const *attr_tls_certificate_common_name;
+fr_dict_attr_t const *attr_tls_certificate_subject_alt_name_dns;
+fr_dict_attr_t const *attr_tls_certificate_subject_alt_name_email;
+fr_dict_attr_t const *attr_tls_certificate_subject_alt_name_upn;
+fr_dict_attr_t const *attr_tls_certificate_x509v3_extended_key_usage;
+fr_dict_attr_t const *attr_tls_certificate_x509v3_subject_key_identifier;
+fr_dict_attr_t const *attr_tls_certificate_x509v3_authority_key_identifier;
+fr_dict_attr_t const *attr_tls_certificate_x509v3_basic_constraints;
 
 fr_dict_attr_t const *attr_tls_client_error_code;
 fr_dict_attr_t const *attr_tls_ocsp_cert_valid;
@@ -116,22 +116,22 @@ fr_dict_attr_autoload_t tls_dict_attr[] = {
 	/*
 	 *	Certificate decoding attributes
 	 */
-	{ .out = &attr_tls_cert, .name = "TLS-Cert", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_serial, .name = "TLS-Cert.Serial", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_signature, .name = "TLS-Cert.Signature", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_signature_algorithm, .name = "TLS-Cert.Signature-Algorithm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_issuer, .name = "TLS-Cert.Issuer", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_not_before, .name = "TLS-Cert.Not-Before", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_not_after, .name = "TLS-Cert.Not-After", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_subject, .name = "TLS-Cert.Subject", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_common_name, .name = "TLS-Cert.Common-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_subject_alt_name_dns, .name = "TLS-Cert.Subject-Alt-Name-Dns", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_subject_alt_name_email, .name = "TLS-Cert.Subject-Alt-Name-Email", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_subject_alt_name_upn, .name = "TLS-Cert.Subject-Alt-Name-Upn", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_x509v3_extended_key_usage, .name = "TLS-Cert.X509v3-Extended-Key-Usage", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_x509v3_subject_key_identifier, .name = "TLS-Cert.X509v3-Subject-Key-Identifier", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_x509v3_authority_key_identifier, .name = "TLS-Cert.X509v3-Authority-Key-Identifier", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_x509v3_basic_constraints, .name = "TLS-Cert.X509v3-Basic-Constraints", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate, .name = "TLS-Certificate", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_serial, .name = "TLS-Certificate.Serial", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_signature, .name = "TLS-Certificate.Signature", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_signature_algorithm, .name = "TLS-Certificate.Signature-Algorithm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_issuer, .name = "TLS-Certificate.Issuer", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_not_before, .name = "TLS-Certificate.Not-Before", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_not_after, .name = "TLS-Certificate.Not-After", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_subject, .name = "TLS-Certificate.Subject", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_common_name, .name = "TLS-Certificate.Common-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_subject_alt_name_dns, .name = "TLS-Certificate.Subject-Alt-Name-Dns", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_subject_alt_name_email, .name = "TLS-Certificate.Subject-Alt-Name-Email", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_subject_alt_name_upn, .name = "TLS-Certificate.Subject-Alt-Name-Upn", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_x509v3_extended_key_usage, .name = "TLS-Certificate.X509v3-Extended-Key-Usage", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_x509v3_subject_key_identifier, .name = "TLS-Certificate.X509v3-Subject-Key-Identifier", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_x509v3_authority_key_identifier, .name = "TLS-Certificate.X509v3-Authority-Key-Identifier", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_x509v3_basic_constraints, .name = "TLS-Certificate.X509v3-Basic-Constraints", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_tls_client_error_code, .name = "TLS-Client-Error-Code", .type = FR_TYPE_UINT8, .dict = &dict_freeradius },
 	{ .out = &attr_tls_ocsp_cert_valid, .name = "TLS-OCSP-Cert-Valid", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },

@@ -21,4 +21,4 @@
  */
 RCSIDH(attrs_h, "$Id$")
 
-extern fr_dict_attr_t const *attr_tls_cert;
+extern fr_dict_attr_t const *attr_tls_certificate;

@@ -32,12 +32,12 @@
 
 static uint32_t instance_count = 0;
 
-fr_dict_attr_t const *attr_tls_cert;
+fr_dict_attr_t const *attr_tls_certificate;
 static fr_dict_t const *dict_freeradius; /*internal dictionary for server*/
 
 extern fr_dict_attr_autoload_t curl_attr[];
 fr_dict_attr_autoload_t curl_attr[] = {
-	{ .out = &attr_tls_cert, .name = "TLS-Cert", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate, .name = "TLS-Certificate", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
 	{ NULL }
 };
 
@@ -197,7 +197,7 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 		struct curl_slist *cert_attrs;
 		fr_pair_t *container;
 
-		MEM(container = fr_pair_afrom_da(request->request_ctx, attr_tls_cert));
+		MEM(container = fr_pair_afrom_da(request->request_ctx, attr_tls_certificate));
 		fr_pair_append(&cert_vps, container);
 
 		RDEBUG2("Processing certificate %i",i);
@@ -217,7 +217,7 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 			strlcpy(buffer, cert_attrs->data, (q - cert_attrs->data) + 1);
 			for (p = buffer; *p != '\0'; p++) if (*p == ' ') *p = '-';
 
-			da = fr_dict_attr_by_name(NULL, attr_tls_cert, buffer);
+			da = fr_dict_attr_by_name(NULL, attr_tls_certificate, buffer);
 			if (!da) {
 				RDEBUG3("Skipping %s += '%s'", buffer, q + 1);
 				RDEBUG3("If this value is required, define attribute \"%s\"", buffer);

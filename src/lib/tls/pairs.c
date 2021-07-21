@@ -70,7 +70,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	/*
 	 *	Subject
 	 */
-	MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_cert_subject) == 0);
+	MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_subject) == 0);
 	if (unlikely(X509_NAME_print_ex(fr_tls_bio_dbuff_thread_local(vp, 256, 0),
 					X509_get_subject_name(cert), 0, XN_FLAG_ONELINE) < 0)) {
 		fr_tls_bio_dbuff_thread_local_clear();
@@ -91,7 +91,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	if (slen > 0) {
 		char *cn;
 
-		MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_cert_common_name) == 0);
+		MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_common_name) == 0);
 		MEM(fr_pair_value_bstr_alloc(vp, &cn, (size_t)slen, true) == 0); /* Allocs \0 byte in addition to len */
 
 		slen = X509_NAME_get_text_by_NID(X509_get_subject_name(cert), NID_commonName, cn, (size_t)slen + 1);
@@ -110,20 +110,20 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 
 		X509_get0_signature(&sig, &alg, cert);
 
-		MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_cert_signature) == 0);
+		MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_signature) == 0);
 		MEM(fr_pair_value_memdup(vp,
 					 (uint8_t const *)ASN1_STRING_get0_data(sig),
 					 ASN1_STRING_length(sig), true) == 0);
 
 		OBJ_obj2txt(buff, sizeof(buff), alg->algorithm, 0);
-		MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_cert_signature_algorithm) == 0);
+		MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_signature_algorithm) == 0);
 		fr_pair_value_strdup(vp, buff);
 	}
 
 	/*
 	 *	Issuer
 	 */
-	MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_cert_issuer) == 0);
+	MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_issuer) == 0);
 	if (unlikely(X509_NAME_print_ex(fr_tls_bio_dbuff_thread_local(vp, 256, 0),
 					X509_get_issuer_name(cert), 0, XN_FLAG_ONELINE) < 0)) {
 		fr_tls_bio_dbuff_thread_local_clear();
@@ -144,7 +144,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 			goto error;
 		}
 
-		MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_cert_serial) == 0);
+		MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_serial) == 0);
 		MEM(fr_pair_value_memdup(vp, serial->data, serial->length, true) == 0);
 	}
 
@@ -158,7 +158,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 		goto error;
 	}
 
-	MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_cert_not_before) == 0);
+	MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_not_before) == 0);
 	vp->vp_date = fr_unix_time_from_sec(time);
 
 	/*
@@ -171,7 +171,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 		goto error;
 	}
 
-	MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_cert_not_after) == 0);
+	MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_not_after) == 0);
 	vp->vp_date = fr_unix_time_from_sec(time);
 
 	/*
@@ -194,7 +194,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 #ifdef GEN_EMAI
 			case GEN_EMAIL:
 				MEM(fr_pair_append_by_da(ctx, &vp, pair_list,
-							 attr_tls_cert_subject_alt_name_email) == 0);
+							 attr_tls_certificate_subject_alt_name_email) == 0);
 				MEM(fr_pair_value_bstrndup(vp,
 							   (char const *)ASN1_STRING_get0_data(name->d.rfc822Name),
 							   ASN1_STRING_length(name->d.rfc822Name), true) == 0);
@@ -203,7 +203,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 #ifdef GEN_DNS
 			case GEN_DNS:
 				MEM(fr_pair_append_by_da(ctx, &vp, pair_list,
-							 attr_tls_cert_subject_alt_name_dns) == 0);
+							 attr_tls_certificate_subject_alt_name_dns) == 0);
 				MEM(fr_pair_value_bstrndup(vp,
 							   (char const *)ASN1_STRING_get0_data(name->d.dNSName),
 							   ASN1_STRING_length(name->d.dNSName), true) == 0);
@@ -217,7 +217,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 				/* we've got a UPN - Must be ASN1-encoded UTF8 string */
 				if (name->d.otherName->value->type == V_ASN1_UTF8STRING) {
 					MEM(fr_pair_append_by_da(ctx, &vp, pair_list,
-								 attr_tls_cert_subject_alt_name_upn) == 0);
+								 attr_tls_certificate_subject_alt_name_upn) == 0);
 					MEM(fr_pair_value_bstrndup(vp,
 								   (char const *)ASN1_STRING_get0_data(name->d.otherName->value->value.utf8string),
 								   ASN1_STRING_length(name->d.otherName->value->value.utf8string),
@@ -294,7 +294,10 @@ skip_alt:
 				goto again;
 			}
 
-			da = fr_dict_attr_by_name(NULL, attr_tls_cert, (char *)fr_dbuff_current(out));
+			da = fr_dict_attr_by_name(NULL, attr_tls_certificate, (char *)fr_dbuff_current(out));
+
+			fr_dbuff_set(in, fr_dbuff_current(in) - 1);	/* Ensure the \0 isn't counted in remaining */
+
 			if (!da) {
 				RWDEBUG3("Skipping attribute %pV: "
 					 "Add a dictionary definition if you want to access it",

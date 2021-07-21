@@ -406,8 +406,8 @@ ATTRIBUTE	Log-Type				1896	integer
 #
 ATTRIBUTE	WiMAX-MN-NAI				1900	string
 
-ATTRIBUTE	TLS-Cert				1901	tlv
-BEGIN-TLV	TLS-Cert
+ATTRIBUTE	TLS-Certificate				1901	tlv
+BEGIN-TLV	TLS-Certificate
 ATTRIBUTE	Serial					1	octets
 ATTRIBUTE	Signature				2	octets
 ATTRIBUTE	Signature-Algorithm			3	string
@@ -425,7 +425,7 @@ ATTRIBUTE	X509v3-Extended-Key-Usage		14	string
 ATTRIBUTE	X509v3-Subject-Key-Identifier		15	string
 ATTRIBUTE	X509v3-Authority-Key-Identifier		16	string
 ATTRIBUTE	X509v3-Basic-Constraints		17	string
-END-TLV		TLS-Cert
+END-TLV		TLS-Certificate
 
 ATTRIBUTE	TLS-PSK-Identity			1933	string
 ATTRIBUTE	TLS-Session-Cert-File			1934	string

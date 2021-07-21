@@ -162,7 +162,7 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	}
 
 	if (verify_applies(conf->verify.pair_mode, depth, untrusted) &&
-	    (!(container = fr_pair_find_by_da(&request->session_state_pairs, attr_tls_cert, depth)) ||
+	    (!(container = fr_pair_find_by_da(&request->session_state_pairs, attr_tls_certificate, depth)) ||
 	     fr_pair_list_empty(&container->vp_group))) {
 	     	if (!container) {
 	    	     	unsigned int i;
@@ -172,13 +172,13 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 			 *
 			 *	OpenSSL passes us the deepest certificate
 			 *      first, so we need to build out sufficient
-			 *      TLS-Cert container TLVs so the TLS-Cert
+			 *      TLS-Certificate container TLVs so the TLS-Certificate
 			 *	indexes match the attribute depth.
 			 */
-			for (i = fr_pair_count_by_da(&request->session_state_pairs, attr_tls_cert);
+			for (i = fr_pair_count_by_da(&request->session_state_pairs, attr_tls_certificate);
 			     i <= (unsigned int)depth;
 			     i++) {
-				MEM(container = fr_pair_afrom_da(request->session_state_ctx, attr_tls_cert));
+				MEM(container = fr_pair_afrom_da(request->session_state_ctx, attr_tls_certificate));
 				fr_pair_append(&request->session_state_pairs, container);
 			}
 	     	}
@@ -200,7 +200,7 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		 */
 		if (fr_tls_session_pairs_from_x509_cert(&container->vp_group, container,
 							request, cert) < 0) {
-			fr_pair_delete_by_da(&request->session_state_pairs, attr_tls_cert);
+			fr_pair_delete_by_da(&request->session_state_pairs, attr_tls_certificate);
 			my_ok = 0;
 			goto done;
 		}

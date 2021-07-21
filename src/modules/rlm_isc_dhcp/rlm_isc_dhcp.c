@@ -1986,7 +1986,7 @@ static const rlm_isc_dhcp_cmd_t commands[] = {
 	{ "ldap-ssl STRING,", 			isc_ignore,   1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
 	{ "ldap-tls-ca-dir STRING", 		isc_ignore,   1}, // text string
 	{ "ldap-tls-ca-file STRING", 		isc_ignore,   1}, // text string
-	{ "ldap-tls-cert STRING", 		isc_ignore,   1}, // text string
+	{ "ldap-TLS-Certificate STRING", 		isc_ignore,   1}, // text string
 	{ "ldap-tls-ciphers STRING", 		isc_ignore,   1}, // text string
 	{ "ldap-tls-crlcheck STRING,", 		isc_ignore,   1}, // string options. e.g: opt1, opt2 or opt3 [arg1, ... ]
 	{ "ldap-tls-key STRING", 		isc_ignore,   1}, // text string
