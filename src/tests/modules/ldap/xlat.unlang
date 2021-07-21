@@ -85,4 +85,26 @@ if (&Tmp-String-8 != "Bob Smith") {
         test_fail
 }
 
+# A query which should return no results
+update request {
+        &Tmp-String-0 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=people,dc=example,dc=com?displayName?sub?(uid=notknown)}"
+}
+
+if (&Tmp-String-0 != "") {
+        test_fail
+}
+
+# Request an invalid DN
+update request {
+        &Tmp-String-0 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=notthere?displayName?sub?(uid=john)}"
+}
+
+if (&Tmp-String-0 != "") {
+        test_fail
+}
+
+if (&Module-Failure-Message != "LDAP server returned an error: lib error: No such object (32)") {
+        test_fail
+}
+
 test_pass
