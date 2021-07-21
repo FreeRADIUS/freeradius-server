@@ -211,10 +211,27 @@ void _fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t *parent, fr_pair_
 	fr_pair_list_log_sbuff(log, lvl, parent, list, file, line, &sbuff);
 }
 
-/** Useful for calling from debuggers
+/** Dumps a list to the default logging destination - Useful for calling from debuggers
  *
  */
 void fr_pair_list_debug(fr_pair_list_t const *list)
 {
 	_fr_pair_list_log(&default_log, 0, NULL, list, "<internal>", 0);
+}
+
+
+/** Dumps a pair to the default logging destination - Useful for calling from debuggers
+ *
+ */
+void fr_pair_debug(fr_pair_t const *pair)
+{
+	fr_sbuff_t sbuff;
+	char buffer[1024];
+
+	fr_sbuff_init(&sbuff, buffer, sizeof(buffer));
+
+	fr_pair_print(&sbuff, NULL, pair);
+
+	fr_log(&default_log, L_DBG, __FILE__, __LINE__, "%pV",
+	       fr_box_strvalue_len(fr_sbuff_start(&sbuff), fr_sbuff_used(&sbuff)));
 }

@@ -402,6 +402,7 @@ void			fr_pair_fprint(FILE *, fr_pair_t const *vp);
 void			_fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t *parent, fr_pair_list_t const *list, char const *file, int line);
 
 void			fr_pair_list_debug(fr_pair_list_t const *list);
+void			fr_pair_debug(fr_pair_t const *pair);
 
 /** @} */
 
