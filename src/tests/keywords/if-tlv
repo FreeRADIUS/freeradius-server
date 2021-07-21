@@ -2,9 +2,9 @@
 # PRE: update if
 #
 
-"%{map:&TLS-Cert.Issuer = 'foo'}"
+"%{map:&TLS-Certificate.Issuer = 'foo'}"
 
-if (!&TLS-Cert.Issuer) {
+if (!&TLS-Certificate.Issuer) {
 	test_fail
 }
 

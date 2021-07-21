@@ -77,12 +77,12 @@ and will just cause the server to emit a warning.
 == Default Configuration
 
 ```
-#	       TLS-Cert.Serial
-#	       TLS-Cert.Expiration
-#	       TLS-Cert.Subject
-#	       TLS-Cert.Issuer
-#	       TLS-Cert.Common-Name
-#	       TLS-Cert.Subject-Alt-Name-Email
+#	       TLS-Certificate.Serial
+#	       TLS-Certificate.Expiration
+#	       TLS-Certificate.Subject
+#	       TLS-Certificate.Issuer
+#	       TLS-Certificate.Common-Name
+#	       TLS-Certificate.Subject-Alt-Name-Email
 server tls-cache {
 	namespace = tls_cache
 	load tls-session {
