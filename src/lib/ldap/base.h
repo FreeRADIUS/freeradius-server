@@ -233,11 +233,9 @@ typedef struct {
 
 	uint16_t		referral_depth;		//!< How many referrals to chase
 
-	bool			rebind;			//!< Controls whether we set an ldad_rebind_proc function
-							///< and so determines if we can bind to other servers whilst
-							///< chasing referrals. If this is false, we will still chase
-							///< referrals on the same server, but won't bind to other
-							///< servers.
+	bool			rebind;			//!< If use_referral_credentials is false, controls whether we
+							///< bind as our admin credentials (true) or anonymously (false)
+							///< when connecting to a different server to follow a referral
 
 	/*
 	 *	TLS items.
