@@ -709,6 +709,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	SSL_set_msg_callback_arg(new_tls, state);
 	SSL_set_info_callback(new_tls, cbtls_info);
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	/*
 	 *	Allow policies to load context-specific certificate chains.
 	 */
@@ -744,7 +745,36 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 				      vp->vp_strvalue);
 			goto error;
 		}
+
+	} else if ((vp = fr_pair_find_by_num(request->config, PW_TLS_SESSION_CERT_CHAIN_FILE, 0, TAG_ANY)) != NULL) {
+		VALUE_PAIR *key = fr_pair_find_by_num(request->config, PW_TLS_SESSION_CERT_PRIVATE_KEY_FILE, 0, TAG_ANY);
+
+		if (!key) {
+			tls_error_log(request, "Missing TLS-Cert-Private-Key-File for TLS-Session-Cert-Chain-File");
+			goto error;
+		}
+
+		RDEBUG2("(TLS) Loading session certificate chain file \"%s\"", vp->vp_strvalue);
+
+		if (SSL_use_certificate_chain_file(state->ssl, vp->vp_strvalue) != 1) {
+			tls_error_log(request, "Failed loading TLS session certificate chain \"%s\"",
+				      vp->vp_strvalue);
+			goto error;
+		}
+
+		if (SSL_use_PrivateKey_file(state->ssl, key->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
+			tls_error_log(request, "Failed loading TLS session certificate private key \"%s\"",
+				      key->vp_strvalue);
+			goto error;
+		}
+
+		if (SSL_check_private_key(state->ssl) != 1) {
+			tls_error_log(request, "Failed validating TLS session certificate chain \"%s\"",
+				      vp->vp_strvalue);
+			goto error;
+		}
 	}
+#endif
 
 	/*
 	 *	In Server mode we only accept.
