@@ -57,8 +57,8 @@ fr_table_num_sorted_t const fr_ldap_connection_states[] = {
 size_t fr_ldap_connection_states_len = NUM_ELEMENTS(fr_ldap_connection_states);
 
 fr_table_num_sorted_t const fr_ldap_supported_extensions[] = {
-	{ L("bindname"),	LDAP_DEREF_NEVER	},
-	{ L("x-bindpw"),	LDAP_DEREF_SEARCHING	}
+	{ L("bindname"),	LDAP_EXT_BINDNAME	},
+	{ L("x-bindpw"),	LDAP_EXT_BINDPW		}
 };
 size_t fr_ldap_supported_extensions_len = NUM_ELEMENTS(fr_ldap_supported_extensions);
 
