@@ -710,6 +710,43 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	SSL_set_info_callback(new_tls, cbtls_info);
 
 	/*
+	 *	Allow policies to load context-specific certificate chains.
+	 */
+	vp = fr_pair_find_by_num(request->config, PW_TLS_SESSION_CERT_FILE, 0, TAG_ANY);
+	if (vp) {
+		RDEBUG2("(TLS) Loading session certificate file \"%s\"", vp->vp_strvalue);
+
+		if (SSL_use_certificate_file(state->ssl, vp->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
+			tls_error_log(request, "Failed loading TLS session certificate \"%s\"",
+				      vp->vp_strvalue);
+		error:
+			talloc_free(state);
+			return NULL;
+		}
+
+		/*
+		 *	Note that there is either no password, or it
+		 *	has to be the same as what's in the
+		 *	configuration.
+		 *
+		 *	There is just no additional security to
+		 *	putting a password into the same file system
+		 *	as the private key.
+		 */
+		if (SSL_use_PrivateKey_file(state->ssl, vp->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
+			tls_error_log(request, "Failed loading TLS session certificate \"%s\"",
+				      vp->vp_strvalue);
+			goto error;
+		}
+
+		if (SSL_check_private_key(state->ssl) != 1) {
+			tls_error_log(request, "Failed validating TLS session certificate \"%s\"",
+				      vp->vp_strvalue);
+			goto error;
+		}
+	}
+
+	/*
 	 *	In Server mode we only accept.
 	 */
 	SSL_set_accept_state(state->ssl);
