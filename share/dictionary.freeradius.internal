@@ -597,8 +597,7 @@ ATTRIBUTE	TLS-Session-Version			1947	string
 ATTRIBUTE	TLS-Session-Cipher-Suite		1948	string
 
 ATTRIBUTE	TLS-Session-Cert-File			1949	string
-ATTRIBUTE	TLS-Session-Cert-Chain-File		1950	string
-ATTRIBUTE	TLS-Session-Cert-Private-Key-File	1951	string
+ATTRIBUTE	TLS-Session-Cert-Private-Key-File	1950	string
 
 #
 #	Range:	1950-2099

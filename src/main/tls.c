@@ -715,14 +715,25 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	 */
 	vp = fr_pair_find_by_num(request->config, PW_TLS_SESSION_CERT_FILE, 0, TAG_ANY);
 	if (vp) {
+		VALUE_PAIR *key = fr_pair_find_by_num(request->config, PW_TLS_SESSION_CERT_PRIVATE_KEY_FILE, 0, TAG_ANY);
+		if (!key) key = vp;
+
 		RDEBUG2("(TLS) Loading session certificate file \"%s\"", vp->vp_strvalue);
 
-		if (SSL_use_certificate_file(state->ssl, vp->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
-			tls_error_log(request, "Failed loading TLS session certificate \"%s\"",
-				      vp->vp_strvalue);
-		error:
-			talloc_free(state);
-			return NULL;
+		if (conf->file_type) {
+			if (SSL_use_certificate_chain_file(state->ssl, vp->vp_strvalue) != 1) {
+				tls_error_log(request, "Failed loading TLS session certificate \"%s\"",
+					      vp->vp_strvalue);
+			error:
+				talloc_free(state);
+				return NULL;
+			}
+		} else {
+			if (SSL_use_certificate_file(state->ssl, vp->vp_strvalue, SSL_FILETYPE_ASN1) != 1) {
+				tls_error_log(request, "Failed loading TLS session certificate \"%s\"",
+					      vp->vp_strvalue);
+				goto error;
+			}
 		}
 
 		/*
@@ -734,42 +745,14 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 		 *	putting a password into the same file system
 		 *	as the private key.
 		 */
-		if (SSL_use_PrivateKey_file(state->ssl, vp->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
-			tls_error_log(request, "Failed loading TLS session certificate \"%s\"",
-				      vp->vp_strvalue);
-			goto error;
-		}
-
-		if (SSL_check_private_key(state->ssl) != 1) {
-			tls_error_log(request, "Failed validating TLS session certificate \"%s\"",
-				      vp->vp_strvalue);
-			goto error;
-		}
-
-	} else if ((vp = fr_pair_find_by_num(request->config, PW_TLS_SESSION_CERT_CHAIN_FILE, 0, TAG_ANY)) != NULL) {
-		VALUE_PAIR *key = fr_pair_find_by_num(request->config, PW_TLS_SESSION_CERT_PRIVATE_KEY_FILE, 0, TAG_ANY);
-
-		if (!key) {
-			tls_error_log(request, "Missing TLS-Cert-Private-Key-File for TLS-Session-Cert-Chain-File");
-			goto error;
-		}
-
-		RDEBUG2("(TLS) Loading session certificate chain file \"%s\"", vp->vp_strvalue);
-
-		if (SSL_use_certificate_chain_file(state->ssl, vp->vp_strvalue) != 1) {
-			tls_error_log(request, "Failed loading TLS session certificate chain \"%s\"",
-				      vp->vp_strvalue);
-			goto error;
-		}
-
 		if (SSL_use_PrivateKey_file(state->ssl, key->vp_strvalue, SSL_FILETYPE_PEM) != 1) {
-			tls_error_log(request, "Failed loading TLS session certificate private key \"%s\"",
+			tls_error_log(request, "Failed loading TLS session certificate \"%s\"",
 				      key->vp_strvalue);
 			goto error;
 		}
 
 		if (SSL_check_private_key(state->ssl) != 1) {
-			tls_error_log(request, "Failed validating TLS session certificate chain \"%s\"",
+			tls_error_log(request, "Failed validating TLS session certificate \"%s\"",
 				      vp->vp_strvalue);
 			goto error;
 		}
