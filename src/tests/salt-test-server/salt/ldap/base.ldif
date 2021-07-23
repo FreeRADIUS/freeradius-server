@@ -116,3 +116,10 @@ radiusClientShortname: client2
 radiusClientType: cisco
 radiusClientRequireMa: TRUE
 radiusClientComment: Another test client
+
+dn: dc=subdept,dc=example,dc=com
+objectClass: referral
+objectClass: extensibleObject
+dc: subdept
+ref: ldap://127.0.0.1:3892/
+ref: ldap://127.0.0.1:3891/dc=subdept,dc=example,dc=com
