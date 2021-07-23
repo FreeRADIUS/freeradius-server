@@ -288,6 +288,7 @@ jobs:
             mysql-setup.sh \
             openresty-setup.sh \
             ldap-setup.sh \
+            ldap2-setup.sh \
             redis-setup.sh; do
 
             script="./scripts/ci/$i"
