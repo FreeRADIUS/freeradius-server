@@ -1535,7 +1535,9 @@ static CONF_PARSER tls_server_config[] = {
 	{ "check_cert_issuer", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_issuer), NULL },
 	{ "require_client_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, require_client_cert), NULL },
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	{ "reject_unknown_intermediate_ca", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disallow_untrusted), .dflt = "no", },
+#endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef OPENSSL_NO_ECDH
@@ -3146,10 +3148,13 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 */
 	if (depth == 0) {
 		tls_session_t *ssn = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_SSN);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 		STACK_OF(X509)* untrusted = NULL;
+#endif
 
 		rad_assert(ssn != NULL);
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 		/*
 		 *	See if there are any untrusted certificates.
 		 *	If so, complain about them.
@@ -3178,6 +3183,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				my_ok = 0;
 			}
 		}
+#endif
 
 		/*
 		 *	If the conf tells us to, check cert issuer
