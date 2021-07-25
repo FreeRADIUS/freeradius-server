@@ -599,6 +599,8 @@ ATTRIBUTE	TLS-Session-Cipher-Suite		1948	string
 ATTRIBUTE	TLS-Session-Cert-File			1949	string
 ATTRIBUTE	TLS-Session-Cert-Private-Key-File	1950	string
 
+ATTRIBUTE	TLS-Server-Name-Indication		1951	string
+
 #
 #	Range:	1960-2099
 #		Free

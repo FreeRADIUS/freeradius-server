@@ -166,7 +166,32 @@ configuration in the server is for all TLS functionality, and not just
 EAP.
 
 This means that the server can accept RadSec connections, and then
-present different server certificates to different clients.  However,
-there is currently no standard way for RadSec clients to send a Server
-Name Indicator (SNI) as with HTTPS.  As a result, certificate
-selection has to be done on something else, such as source IP address.
+present different server certificates to different clients.
+
+For this functionality to work, the certificates for EAP and RadSec
+*should* be in separate directories.
+
+### Clients
+
+RadSec clients can set the SNI to send in the `tls` subsection of the
+`home_server` definition.  See `sites-available/tls` for examples.
+
+### Servers
+
+See the `realm_dir` configuration item in the `tls` subsection for the
+location of the server certificates.
+
+If the server receives an SNI for a realm it does not recognize, it
+will just use the default TLS configuration.
+
+If the realm is recognized (i.e. there is a file in
+`${realm_dir}/%{TLS-Server-Name-Indication}.pem`, then that certificate will be chosen, and
+present to the RadSec client.  If there is no such file, then the
+default TLS configuration is used.
+
+The current behavior is to _require_ that the server certificate is in
+a file which taken from
+`${realm_dir}/%{TLS-Server-Name-Indication}.pem`.  Only the
+`realm_dir` portion of the filename is configurable.  The SNI portion
+is taken from the TLS messages, and the `.pem` suffix is hard-coded in
+the source code.

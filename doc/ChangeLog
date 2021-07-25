@@ -12,6 +12,9 @@ FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	  See raddb/certs/realms/README.md
 	* Add Server Name Indication (SNI) for outbound RadSec connections.
 	  See raddb/sites-available/tls, and the home server tls configuration.
+	* Support SNI for inbound RadSec connections.  Certificates will
+	  be loaded from "realm_dir" in the "tls" section.  SNI will be
+	  cached in the TLS-Server-Name-Indication attribute.
 
 	Bug fixes
 	* Fix crash in trustrouter module (#4115). Patch from Alejandro Perez

@@ -615,6 +615,68 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	return 1;
 }
 
+typedef struct {
+	char const	*name;
+	SSL_CTX		*ctx;
+} fr_realm_ctx_t;		/* hack from tls. */
+
+static int tls_sni_callback(SSL *ssl, UNUSED int *al, void *arg)
+{
+	fr_tls_server_conf_t *conf = arg;
+	char const *name, *p;
+	int type;
+	fr_realm_ctx_t my_r, *r;
+	REQUEST *request;
+	char buffer[PATH_MAX];
+
+	/*
+	 *	No SNI, that's fine.
+	 */
+	type = SSL_get_servername_type(ssl);
+	if (type < 0) return SSL_TLSEXT_ERR_OK;
+
+	/*
+	 *	No realms configured, just use the default context.
+	 */
+	if (!conf->realms) return SSL_TLSEXT_ERR_OK;
+
+	name = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+	if (!name) return SSL_TLSEXT_ERR_OK;
+
+	/*
+	 *	RFC Section 6066 Section 3 says that the names are
+	 *	ASCII, without a trailing dot.  i.e. punycode.
+	 */
+	for (p = name; *p != '\0'; p++) {
+		if (*p == '-') continue;
+		if (*p == '.') continue;
+		if ((*p >= 'A') && (*p <= 'Z')) continue;
+		if ((*p >= 'a') && (*p <= 'z')) continue;
+		if ((*p >= '0') && (*p <= '9')) continue;
+
+		/*
+		 *	Anything else, ignore it.
+		 */
+		return SSL_TLSEXT_ERR_OK;
+	}
+
+	snprintf(buffer, sizeof(buffer), "%s/%s.pem", conf->realm_dir, name);
+
+	my_r.name = buffer;
+	r = fr_hash_table_finddata(conf->realms, &my_r);
+	if (!r) return SSL_TLSEXT_ERR_OK;
+
+	/*
+	 *	Set an attribute saying which server has been selected.
+	 */
+	request = (REQUEST *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+	if (request) {
+		(void) pair_make_config("TLS-Server-Name-Indication", name, T_OP_SET);
+	}
+
+	(void) SSL_set_SSL_CTX(ssl, r->ctx);
+	return SSL_TLSEXT_ERR_OK;
+}
 
 static int dual_tcp_accept(rad_listen_t *listener)
 {
@@ -770,6 +832,14 @@ static int dual_tcp_accept(rad_listen_t *listener)
 
 #ifdef WITH_TLS
 		if (this->tls) {
+			/*
+			 *	Set up SNI callback.  We don't do it
+			 *	in the main TLS code, because EAP
+			 *	doesn't need or use SNI.
+			 */
+			SSL_CTX_set_tlsext_servername_callback(this->tls->ctx, tls_sni_callback);
+			SSL_CTX_set_tlsext_servername_arg(this->tls->ctx, this->tls);
+
 			this->recv = dual_tls_recv;
 			this->send = dual_tls_send;
 		}
