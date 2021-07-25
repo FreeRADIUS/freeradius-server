@@ -1638,6 +1638,8 @@ static CONF_PARSER tls_client_config[] = {
 #endif
 	},
 
+	{ "hostname", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, client_hostname), NULL },
+
 	CONF_PARSER_TERMINATOR
 };
 

@@ -475,6 +475,23 @@ home_server tls {
 	status_check = none
 
 	tls {
+		#
+		#  Similarly to HTTP, the client can use Server Name
+		#  Indication to inform the RadSec server of which
+		#  domain it is requesting.  This selection allows
+		#  multiple sites to exist at the same IP address.
+		#
+		#  For example, and identity provider could host
+		#  multiple sites, but present itself with one public
+		#  IP address.
+		#
+		#  SNI also permits the use of a load balancer such as
+		#  haproxy.  That load balancer can terminate the TLS
+		#  connection, and then use SNI to route the
+		#  underlying RADIUS TCP traffic to a particular host.
+		#
+	#	hostname = "example.com"
+
 		private_key_password = whatever
 		private_key_file = ${certdir}/client.pem
 

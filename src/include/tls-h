@@ -434,6 +434,8 @@ struct fr_tls_server_conf_t {
 
 	char const	*realm_dir;
 	fr_hash_table_t	*realms;
+
+	char const	*client_hostname;
 };
 
 #ifdef __cplusplus

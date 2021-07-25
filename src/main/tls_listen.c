@@ -177,6 +177,18 @@ static int tls_socket_recv(rad_listen_t *listener)
 		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_TALLOC, sock);
 		sock->ssn->quick_session_tickets = true; /* we don't have inner-tunnel authentication */
 
+		/*
+		 *	Set SNI, if configured.
+		 *
+		 *	The OpenSSL API says the filename is "char
+		 *	const *", but some versions have it as "void
+		 *	*", without the "const".  So we un-const it
+		 *	here through various C magic.
+		 */
+		if (listener->tls->client_hostname) {
+			(void) SSL_set_tlsext_host_name(sock->ssn->ssl, (void *) (uintptr_t) listener->tls->client_hostname);
+		}
+
 		doing_init = true;
 	}
 
