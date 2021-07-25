@@ -8,6 +8,10 @@ FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	  See dictionary.iana and
 	  https://freeradius.org/rfc/acct_status_type_subsystem.html
 	* add reject_unknown_intermediate_ca.  See mods-available/eap
+	* Add dynamic loading of certificates via TLS-Session-Cert-File.
+	  See raddb/certs/realms/README.md
+	* Add Server Name Indication (SNI) for outbound RadSec connections.
+	  See raddb/sites-available/tls, and the home server tls configuration.
 
 	Bug fixes
 	* Fix crash in trustrouter module (#4115). Patch from Alejandro Perez
