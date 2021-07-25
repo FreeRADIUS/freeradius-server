@@ -158,6 +158,11 @@ static unsigned int 	record_plus(record_t *buf, void const *ptr,
 static unsigned int 	record_minus(record_t *buf, void *ptr,
 				     unsigned int size);
 
+typedef struct {
+	char const	*name;
+	SSL_CTX		*ctx;
+} fr_realm_ctx_t;
+
 DIAG_OFF(format-nonliteral)
 /** Print errors in the TLS thread local error stack
  *
@@ -724,6 +729,34 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 
 		RDEBUG2("(TLS) Loading session certificate file \"%s\"", vp->vp_strvalue);
 
+		if (conf->realms) {
+			fr_realm_ctx_t my_r, *r;
+
+			/*
+			 *	Use a pre-existing SSL CTX, if
+			 *	available.  Note that due to OpenSSL
+			 *	issues, this really changes only the
+			 *	certificate files, and leaves all
+			 *	other fields alone.  e.g. you can't
+			 *	select a different TLS version.
+			 *
+			 *	This is fine for our purposes in v3.
+			 *	Due to how we build them, the various
+			 *	additional SSL_CTXs are identical to
+			 *	the main one, except for certs.
+			 */
+			my_r.name = vp->vp_strvalue;
+			r = fr_hash_table_finddata(conf->realms, &my_r);
+			if (r) {
+				(void) SSL_set_SSL_CTX(state->ssl, r->ctx);
+				goto after_chain;
+			}
+
+			/*
+			 *	Else fall through to trying to dynamically load the certs.
+			 */
+		}
+
 		if (conf->file_type) {
 			if (SSL_use_certificate_chain_file(state->ssl, vp->vp_strvalue) != 1) {
 				tls_error_log(request, "Failed loading TLS session certificate \"%s\"",
@@ -761,6 +794,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 			goto error;
 		}
 	}
+after_chain:
 #endif
 
 	/*
@@ -4363,11 +4397,6 @@ static int store_cmp(void const *a, void const *b)
 
 	return (one < two) - (one > two);
 }
-
-typedef struct {
-	char const	*name;
-	SSL_CTX		*ctx;
-} fr_realm_ctx_t;
 
 static uint32_t realm_hash(void const *data)
 {
