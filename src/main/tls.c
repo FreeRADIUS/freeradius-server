@@ -38,6 +38,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <fcntl.h>
 #endif
 
+#ifdef HAVE_DIRENT_H
+#include <dirent.h>
+#endif
+
 #ifdef HAVE_UTIME_H
 #include <utime.h>
 #endif
@@ -1572,6 +1576,8 @@ static CONF_PARSER tls_server_config[] = {
 #ifdef TLS1_3_VERSION
 	{ "tls13_enable", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, tls13_enable_magic), NULL },
 #endif
+
+	{ "realm_dir", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, realm_dir), NULL },
 
 	{ "cache", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) cache_config },
 
@@ -4319,6 +4325,8 @@ static int _tls_server_conf_free(fr_tls_server_conf_t *conf)
 	conf->ocsp_store = NULL;
 #endif
 
+	if (conf->realms) fr_hash_table_free(conf->realms);
+
 #ifndef NDEBUG
 	memset(conf, 0, sizeof(*conf));
 #endif
@@ -4351,8 +4359,109 @@ static int store_cmp(void const *a, void const *b)
 	DICT_ATTR const *one = a;
 	DICT_ATTR const *two = b;
 
-	return one - two;
+	return (one < two) - (one > two);
 }
+
+typedef struct {
+	char const	*name;
+	SSL_CTX		*ctx;
+} fr_realm_ctx_t;
+
+static uint32_t realm_hash(void const *data)
+{
+	fr_realm_ctx_t const *r = data;
+
+	return fr_hash_string(r->name);
+}
+
+static int realm_cmp(void const *a, void const *b)
+{
+	fr_realm_ctx_t const *one = a;
+	fr_realm_ctx_t const *two = b;
+
+	return strcmp(one->name, two->name);
+}
+
+static void realm_free(void *data)
+{
+	fr_realm_ctx_t *r = data;
+
+	SSL_CTX_free(r->ctx);
+}
+
+static int tls_realms_load(fr_tls_server_conf_t *conf)
+{
+	fr_hash_table_t *ht;
+	DIR		*dir;
+	struct dirent	*dp;
+	char		buffer[PATH_MAX];
+	char		buffer2[PATH_MAX];
+
+	ht = fr_hash_table_create(realm_hash, realm_cmp, realm_free);
+	if (!ht) return -1;
+
+	dir = opendir(conf->realm_dir);
+	if (!dir) {
+		ERROR("Error reading directory %s: %s", conf->realm_dir, fr_syserror(errno));
+	error:
+		fr_hash_table_free(ht);
+		return -1;
+	}
+
+	/*
+	 *	Read only the PEM files
+	 */
+	while ((dp = readdir(dir)) != NULL) {
+		char *p;
+		struct stat stat_buf;
+		SSL_CTX *ctx;
+		fr_realm_ctx_t *r;
+		char const *private_key_file = buffer;
+
+		if (dp->d_name[0] == '.') continue;
+
+		p = strrchr(dp->d_name, '.');
+		if (!p) continue;
+
+		if (memcmp(p, ".pem", 5) != 0) continue; /* must END in .pem */
+
+		snprintf(buffer, sizeof(buffer), "%s/%s", conf->realm_dir, dp->d_name); /* ignore directories */
+		if ((stat(buffer, &stat_buf) != 0) ||
+		    S_ISDIR(stat_buf.st_mode)) continue;
+
+		strcpy(buffer2, buffer);
+		p = strchr(buffer2, '.'); /* which must be there... */
+		if (!p) continue;
+
+		/*
+		 *	If there's a key file, then use that.
+		 *	Otherwise assume that the private key is in
+		 *	the chain file.
+		 */
+		strcpy(p, ".key");
+		if (stat(buffer2, &stat_buf) != 0) private_key_file = buffer2;
+
+		ctx = tls_init_ctx(conf, 1, buffer, private_key_file);
+		if (!ctx) goto error;
+
+		r = talloc_zero(conf, fr_realm_ctx_t);
+		if (!r) {
+			SSL_CTX_free(ctx);
+			goto error;
+		}
+
+		r->name = talloc_strdup(r, buffer);
+		r->ctx = ctx;
+
+		if (fr_hash_table_insert(ht, r) < 0) {
+			ERROR("Failed inserting certificate file %s into hash table", buffer);
+			goto error;
+		}
+	}
+
+	return 0;
+}
+
 
 fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 {
@@ -4529,6 +4638,11 @@ skip_list:
 	WARN(LOG_PREFIX ": Disabling TLSv1.2 due to OpenSSL bugs");
 #endif
 #endif
+
+	/*
+	 *	Load certificates and private keys from the realm directory.
+	 */
+	if (conf->realm_dir && (tls_realms_load(conf) < 0)) goto error;
 
 	/*
 	 *	Cache conf in cs in case we're asked to parse this again.
