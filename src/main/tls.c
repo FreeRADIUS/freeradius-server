@@ -3554,7 +3554,7 @@ static const FR_NAME_NUMBER version2int[] = {
  * - Load the Private key & the certificate
  * - Set the Context options & Verify options
  */
-SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
+SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client, char const *chain_file, char const *private_key_file)
 {
 	SSL_CTX		*ctx;
 	X509_STORE	*certstore;
@@ -3771,24 +3771,25 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 	 *	the cert chain needs to be given in PEM from
 	 *	openSSL.org
 	 */
-	if (!conf->certificate_file) goto load_ca;
+	if (!chain_file) chain_file = conf->certificate_file;
+	if (!chain_file) goto load_ca;
 
 	if (type == SSL_FILETYPE_PEM) {
-		if (!(SSL_CTX_use_certificate_chain_file(ctx, conf->certificate_file))) {
+		if (!(SSL_CTX_use_certificate_chain_file(ctx, chain_file))) {
 			tls_error_log(NULL, "Failed reading certificate file \"%s\"",
-				      conf->certificate_file);
+				      chain_file);
 			return NULL;
 		}
 
-	} else if (!(SSL_CTX_use_certificate_file(ctx, conf->certificate_file, type))) {
+	} else if (!(SSL_CTX_use_certificate_file(ctx, chain_file, type))) {
 		tls_error_log(NULL, "Failed reading certificate file \"%s\"",
-			      conf->certificate_file);
+			      chain_file);
 		return NULL;
 	}
 
 load_ca:
 	/*
-	 * Load the CAs we trust and configure CRL checks if needed
+	 *	Load the CAs we trust and configure CRL checks if needed
 	 */
 #if defined(X509_V_FLAG_PARTIAL_CHAIN)
 	X509_STORE_set_flags(SSL_CTX_get_cert_store(ctx), X509_V_FLAG_PARTIAL_CHAIN);
@@ -3813,12 +3814,12 @@ load_ca:
 		conf->ca_path_reload_interval = 300;
 	}
 
-
 	/* Load private key */
-	if (conf->private_key_file) {
-		if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
+	if (!private_key_file) private_key_file = conf->private_key_file;
+	if (private_key_file) {
+		if (!(SSL_CTX_use_PrivateKey_file(ctx, private_key_file, type))) {
 			tls_error_log(NULL, "Failed reading private key file \"%s\"",
-				      conf->private_key_file);
+				      private_key_file);
 			return NULL;
 		}
 
@@ -4426,7 +4427,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	/*
 	 *	Initialize TLS
 	 */
-	conf->ctx = tls_init_ctx(conf, 0);
+	conf->ctx = tls_init_ctx(conf, 0, NULL, NULL);
 	if (conf->ctx == NULL) {
 		goto error;
 	}
@@ -4563,7 +4564,7 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 	/*
 	 *	Initialize TLS
 	 */
-	conf->ctx = tls_init_ctx(conf, 1);
+	conf->ctx = tls_init_ctx(conf, 1, NULL, NULL);
 	if (conf->ctx == NULL) {
 		goto error;
 	}
