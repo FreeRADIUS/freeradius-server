@@ -615,6 +615,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	return 1;
 }
 
+#ifdef WITH_TLS
 typedef struct {
 	char const	*name;
 	SSL_CTX		*ctx;
@@ -677,6 +678,7 @@ static int tls_sni_callback(SSL *ssl, UNUSED int *al, void *arg)
 	(void) SSL_set_SSL_CTX(ssl, r->ctx);
 	return SSL_TLSEXT_ERR_OK;
 }
+#endif
 
 static int dual_tcp_accept(rad_listen_t *listener)
 {
