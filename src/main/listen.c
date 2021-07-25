@@ -2991,6 +2991,18 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		DEBUG("(TLS) Trying new outgoing proxy connection to %s", buffer);
 
 		/*
+		 *	Set SNI, if configured.
+		 *
+		 *	The OpenSSL API says the filename is "char
+		 *	const *", but some versions have it as "void
+		 *	*", without the "const".  So we un-const it
+		 *	here through various C magic.
+		 */
+		if (home->tls->client_hostname) {
+			(void) SSL_set_tlsext_host_name(sock->ssn->ssl, (void *) (uintptr_t) "home->tls->client_hostname");
+		}
+
+		/*
 		 *	This is blocking.  :(
 		 */
 		sock->ssn = tls_new_client_session(sock, home->tls, this->fd, &sock->certs);

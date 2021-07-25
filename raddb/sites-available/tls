@@ -490,6 +490,10 @@ home_server tls {
 		#  connection, and then use SNI to route the
 		#  underlying RADIUS TCP traffic to a particular host.
 		#
+		#  Note that "hostname" here only for SNI, and is NOT
+		#  the hostname or IP address we connect to.  For that,
+		#  See "ipaddr", above.
+		#
 	#	hostname = "example.com"
 
 		private_key_password = whatever
