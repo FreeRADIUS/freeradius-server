@@ -656,17 +656,27 @@ static int tls_sni_callback(SSL *ssl, UNUSED int *al, void *arg)
 		if ((*p >= '0') && (*p <= '9')) continue;
 
 		/*
-		 *	Anything else, ignore it.
+		 *	Anything else, ignore fail.
 		 */
-		return SSL_TLSEXT_ERR_OK;
+		return SSL_TLSEXT_ERR_ALERT_FATAL;
 	}
+
+	/*
+	 *	Too long, fail.
+	 */
+	if ((p - name) > 255) return SSL_TLSEXT_ERR_ALERT_FATAL;
 
 	snprintf(buffer, sizeof(buffer), "%s/%s.pem", conf->realm_dir, name);
 
 	my_r.name = buffer;
 	r = fr_hash_table_finddata(conf->realms, &my_r);
-	if (!r) return SSL_TLSEXT_ERR_OK;
 
+	/*
+	 *	If found, switch certs.  Otherwise use the default
+	 *	one.
+	 */
+	if (r) (void) SSL_set_SSL_CTX(ssl, r->ctx);
+		
 	/*
 	 *	Set an attribute saying which server has been selected.
 	 */
@@ -675,7 +685,6 @@ static int tls_sni_callback(SSL *ssl, UNUSED int *al, void *arg)
 		(void) pair_make_config("TLS-Server-Name-Indication", name, T_OP_SET);
 	}
 
-	(void) SSL_set_SSL_CTX(ssl, r->ctx);
 	return SSL_TLSEXT_ERR_OK;
 }
 #endif

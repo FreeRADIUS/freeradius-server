@@ -10,12 +10,12 @@ network access, the server can present an `example.com` certificate.
 On the other hand, when a user `doug@example.org` requests network
 access, the server cna present an `example.org` certificate.
 
-This functionaltiy means that it is possible to configure only one
+This functionality means that it is possible to configure only one
 `eap` module, and then use multiple certificate chains. Previous
 versions of the server required that the administrator configure
 multiple EAP modules, one for each certificate being used.
 
-This functionality can be used in one of two ways.  First, the
+The selection can be performed in one of two ways.  First, the
 certificates can be loaded dynamically at run-time.  Second, the
 certificates can be pre-loaded for speed.
 
@@ -195,3 +195,20 @@ a file which taken from
 `realm_dir` portion of the filename is configurable.  The SNI portion
 is taken from the TLS messages, and the `.pem` suffix is hard-coded in
 the source code.
+
+Taking the filename from an untrusted source is fine here.  The
+standard (RFC 6066 Section 3) says that the Server Name Indication
+field is a DNS "A label".  Which means that there are a limited number
+of characters allowed:
+
+* `.`, `-`, `a-Z`, `A-Z`, `0-9`
+
+If the SNI contain anything else, the TLS connection is rejected.
+
+Note that if session resumption is enabled for RadSec, the session
+cache *must* also cache the `TLS-Server-Name-Indication` attribute.
+The SNI is sent on resumption for TLS 1.2 and earlier, but it is not
+sent for TLS 1.3.  As such, the only way to select the right policy on
+resumption is to check the value of the cached
+TLS-Server-Name-Indication attribute.
+
