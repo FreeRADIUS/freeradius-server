@@ -1189,11 +1189,6 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		} else if (strcmp(proto, "tcp") == 0) {
 			sock->proto = IPPROTO_TCP;
 
-			/*
-			 *	Add support for http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
-			 */
-			rcode = cf_item_parse(cs, "proxy_protocol", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &this->proxy_protocol), NULL);
-			if (rcode < 0) return -1;
 		} else {
 			cf_log_err_cs(cs,
 				   "Unknown proto name \"%s\"", proto);
@@ -1225,6 +1220,12 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 					      "TLS transport is not available for UDP sockets");
 				return -1;
 			}
+
+			/*
+			 *	Add support for http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
+			 */
+			rcode = cf_item_parse(cs, "proxy_protocol", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &this->proxy_protocol), NULL);
+			if (rcode < 0) return -1;
 
 			/*
 			 *	If unset, set to default.
