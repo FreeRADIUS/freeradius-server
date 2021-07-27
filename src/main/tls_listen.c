@@ -119,6 +119,83 @@ static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener, REQUEST *re
 	return 1;
 }
 
+/*
+ *	Check for PROXY protocol.  Once that's done, clear
+ *	listener->proxy_protocol.
+ */
+static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
+{
+	listen_socket_t *sock = listener->data;
+	uint8_t const *p, *end, *eol;
+
+	p = sock->ssn->dirty_in.data;
+
+	/*
+	 *	CRLF MUST be within the first 107 bytes.
+	 */
+	if (sock->ssn->dirty_in.used < 107) {
+		end = p + sock->ssn->dirty_in.used;
+	} else {
+		end = p + 107;
+	}
+	eol = NULL;
+
+	/*
+	 *	Scan for CRLF.  Keep reading until it's found.
+	 */
+	while ((p + 1) < end) {
+		if ((p[0] == 0x0d) && (p[1] == 0x0a)) {
+			eol = p;
+			break;
+		}
+
+		/*
+		 *	Other control characters, or non-ASCII data.
+		 *	That's a problem.
+		 */
+		if ((*p <= ' ') || (*p >= 0x80)) {
+		invalid_data:
+			DEBUG("Closing TLS PROXY socket from client port %u - received invalid data", sock->other_port);
+			return -1;
+		}
+
+		p++;
+	}
+
+	/*
+	 *	No CRLF, keep reading until we have it.
+	 */
+	if (!eol) {
+		ssize_t rcode;
+
+		rcode = read(request->packet->sockfd,
+			     sock->ssn->dirty_in.data + sock->ssn->dirty_in.used,
+			     sizeof(sock->ssn->dirty_in.data) - sock->ssn->dirty_in.used);
+		if (rcode < 0) {
+			if (errno == EINTR) return 0;
+			DEBUG("Failed reading from TLS PROXY socket from client port %u - %s", sock->other_port, fr_syserror(errno));
+			return -1;
+		}
+	}
+
+	p = sock->ssn->dirty_in.data;
+
+	/*
+	 *	We MUST have an EOL now.  Let's see if it's in any way well formed.
+	 */
+	if ((eol - p) < 14) goto invalid_data;
+	
+	/*
+	 *	We only support TCP4 and TCP6.
+	 */
+	if (memcmp(p, "PROXY TCP", 9) != 0) goto invalid_data;
+
+	/*
+	 *	@todo - parse the rest of the string
+	 */
+
+	return -1;		/* not done yet! */
+}
 
 static int tls_socket_recv(rad_listen_t *listener)
 {
@@ -186,6 +263,19 @@ static int tls_socket_recv(rad_listen_t *listener)
 	rad_assert(sock->ssn != NULL);
 
 	request = sock->request;
+
+	/*
+	 *	Bypass ALL of the TLS stuff until we've read the PROXY
+	 *	header.
+	 *
+	 *	If the PROXY header checks pass, then the flag is
+	 *	cleared, as we don't need it any more.
+	 */
+	if (listener->proxy_protocol) {
+		rcode = proxy_protocol_check(listener, request);
+		if (rcode < 0) goto do_close;
+		if (rcode == 0) return 1;
+	}
 
 	if (sock->state == LISTEN_TLS_SETUP) {
 		RDEBUG3("Setting connection state to RUNNING");
