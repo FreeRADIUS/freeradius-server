@@ -170,6 +170,8 @@ typedef struct listen_socket_t {
 
 	fr_ipaddr_t	haproxy_src_ipaddr;	//!< for proxy_protocol
 	fr_ipaddr_t	haproxy_dst_ipaddr;
+	uint16_t	haproxy_src_port;
+	uint16_t	haproxy_dst_port;
 #endif
 
 #ifdef WITH_TLS

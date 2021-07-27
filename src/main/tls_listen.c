@@ -127,6 +127,10 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 {
 	listen_socket_t *sock = listener->data;
 	uint8_t const *p, *end, *eol;
+	int af, argc, src_port, dst_port;
+	unsigned long num;
+	fr_ipaddr_t src, dst;
+	char *argv[5], *eos;
 
 	p = sock->ssn->dirty_in.data;
 
@@ -173,7 +177,7 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 			     sizeof(sock->ssn->dirty_in.data) - sock->ssn->dirty_in.used);
 		if (rcode < 0) {
 			if (errno == EINTR) return 0;
-			DEBUG("Failed reading from TLS PROXY socket from client port %u - %s", sock->other_port, fr_syserror(errno));
+			DEBUG("Closing TLS PROXY socket from client port %u due to read error - %s", sock->other_port, fr_syserror(errno));
 			return -1;
 		}
 	}
@@ -190,11 +194,90 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 	 */
 	if (memcmp(p, "PROXY TCP", 9) != 0) goto invalid_data;
 
-	/*
-	 *	@todo - parse the rest of the string
-	 */
+	p += 9;
 
-	return -1;		/* not done yet! */
+	if (*p == '4') {
+		af = AF_INET;
+
+	} else if (*p == '6') {
+		af = AF_INET6;
+
+	} else goto invalid_data;
+
+	p++;
+	if (*p != ' ') goto invalid_data;
+	p++;
+
+	sock->ssn->dirty_in.data[eol - sock->ssn->dirty_in.data] = '\0'; /* overwite the CRLF */
+
+	/*
+	 *	Check for trailing gunk.
+	 */
+	argc = str2argv((char *) &sock->ssn->dirty_in.data[p - sock->ssn->dirty_in.data], (char **) &argv, 5);
+	if (argc != 4) goto invalid_data;
+
+	memset(&src, 0, sizeof(src));
+	memset(&src, 0, sizeof(src));
+
+	if (fr_pton(&src, argv[0], -1, af, false) < 0) goto invalid_data;
+	if (fr_pton(&dst, argv[1], -1, af, false) < 0) goto invalid_data;
+
+	num = strtoul(argv[2], &eos, 10);
+	if (num > 65535) goto invalid_data;
+	if (*eos) goto invalid_data;
+	src_port = num;
+
+	num = strtoul(argv[3], &eos, 10);
+	if (num > 65535) goto invalid_data;
+	if (*eos) goto invalid_data;
+	dst_port = num;
+
+	/*
+	 *	And copy the various fields around.
+	 */
+	sock->haproxy_src_ipaddr = sock->other_ipaddr;
+	sock->haproxy_src_port = sock->other_port;
+
+	sock->haproxy_dst_ipaddr = sock->my_ipaddr;
+	sock->haproxy_dst_port = sock->my_port;
+
+	sock->my_ipaddr = dst;
+	sock->my_port = dst_port;
+
+	sock->other_ipaddr = src;
+	sock->other_port = src_port;
+
+	/*
+	 *	Move any remaining TLS data to the start of the buffer.
+	 */
+	eol += 2;
+	end = sock->ssn->dirty_in.data + sock->ssn->dirty_in.used;
+	if (eol < end) {
+		memmove(sock->ssn->dirty_in.data, eol, end - eol);
+		sock->ssn->dirty_in.used = end - eol;
+	} else {
+		sock->ssn->dirty_in.used = 0;
+	}
+		
+	/*
+	 *	Print out what we've changed.  Note that the address families may be different!
+	 */
+	if (RDEBUG_ENABLED) {
+		char src_buf[128], dst_buf[128];
+
+		RDEBUG("(TLS) Received PROXY protocol connection from client %s:%s -> %s:%s, via proxy %s:%u -> %s:%u",
+		       argv[0], argv[2], argv[1], argv[3],
+		       inet_ntop(af, &sock->haproxy_src_ipaddr, src_buf, sizeof(src_buf)),
+		       sock->haproxy_src_port,
+		       inet_ntop(af, &sock->haproxy_dst_ipaddr, dst_buf, sizeof(dst_buf)),
+		       sock->haproxy_dst_port);
+	}
+
+	/*
+	 *	It's no longer a PROXY protocol, but just straight TLS.
+	 */
+	listener->proxy_protocol = false;
+	return 0;
 }
 
 static int tls_socket_recv(rad_listen_t *listener)
