@@ -251,7 +251,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 check_for_setup:
 	if (!sock->ssn->is_init_finished) {
 		if (!tls_handshake_recv(request, sock->ssn)) {
-			RDEBUG("FAILED in TLS handshake receive");
+			RDEBUG("(TLS) Failed in TLS handshake receive");
 			goto do_close;
 		}
 

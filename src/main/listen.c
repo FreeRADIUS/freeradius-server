@@ -656,7 +656,7 @@ static int tls_sni_callback(SSL *ssl, UNUSED int *al, void *arg)
 		if ((*p >= '0') && (*p <= '9')) continue;
 
 		/*
-		 *	Anything else, ignore fail.
+		 *	Anything else, fail.
 		 */
 		return SSL_TLSEXT_ERR_ALERT_FATAL;
 	}

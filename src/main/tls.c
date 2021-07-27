@@ -889,7 +889,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 	int err;
 
 	if (ssn->invalid_hb_used) {
-		REDEBUG("OpenSSL Heartbeat attack detected.  Closing connection");
+		REDEBUG("(TLS) OpenSSL Heartbeat attack detected.  Closing connection");
 		return 0;
 	}
 
@@ -1015,7 +1015,6 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 		} else {
 			tls_error_log(NULL, "Error reading from OpenSSL");
 			record_init(&ssn->dirty_in);
-			RDEBUG2("(TLS) Tunnel data is established.");
 			return 0;
 		}
 	} else {
