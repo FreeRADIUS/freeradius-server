@@ -130,10 +130,31 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 	int af, argc, src_port, dst_port;
 	unsigned long num;
 	fr_ipaddr_t src, dst;
-	bool retry = false;
 	char *argv[5], *eos;
+	ssize_t rcode;
 
-rescan:
+	/*
+	 *	Begin by trying to fill the buffer.
+	 */
+	rcode = read(request->packet->sockfd,
+		     sock->ssn->dirty_in.data + sock->ssn->dirty_in.used,
+		     sizeof(sock->ssn->dirty_in.data) - sock->ssn->dirty_in.used);
+	if (rcode < 0) {
+		if (errno == EINTR) return 0;
+		RDEBUG("Closing TLS PROXY socket from client port %u due to read error - %s", sock->other_port, fr_syserror(errno));
+		return -1;
+	}
+
+	if (rcode == 0) {
+		RDEBUG("Closing TLS PROXY socket from client port %u - other end closed connection", sock->other_port);
+		return -1;
+	}
+
+	/*
+	 *	We've read data, scan the buffer for a CRLF.
+	 */
+	sock->ssn->dirty_in.used += rcode;
+
 	p = sock->ssn->dirty_in.data;
 
 	/*
@@ -147,7 +168,7 @@ rescan:
 	eol = NULL;
 
 	/*
-	 *	Scan for CRLF.  Keep reading until it's found.
+	 *	Scan for CRLF.
 	 */
 	while ((p + 1) < end) {
 		if ((p[0] == 0x0d) && (p[1] == 0x0a)) {
@@ -171,32 +192,12 @@ rescan:
 	/*
 	 *	No CRLF, keep reading until we have it.
 	 */
-	if (!eol) {
-		ssize_t rcode;
-
-		if (retry) return 0;
-
-		rcode = read(request->packet->sockfd,
-			     sock->ssn->dirty_in.data + sock->ssn->dirty_in.used,
-			     sizeof(sock->ssn->dirty_in.data) - sock->ssn->dirty_in.used);
-		if (rcode < 0) {
-			if (errno == EINTR) return 0;
-			DEBUG("Closing TLS PROXY socket from client port %u due to read error - %s", sock->other_port, fr_syserror(errno));
-			return -1;
-		}
-
-		/*
-		 *	We have more data, go scan the buffer again for EOL
-		 */
-		sock->ssn->dirty_in.used += rcode;
-		retry = true;
-		goto rescan;
-	}
+	if (!eol) return 0;
 
 	p = sock->ssn->dirty_in.data;
 
 	/*
-	 *	We MUST have an EOL now.  Let's see if it's in any way well formed.
+	 *	Let's see if the PROXY line is well-formed.
 	 */
 	if ((eol - p) < 14) goto invalid_data;
 	
@@ -222,13 +223,14 @@ rescan:
 	sock->ssn->dirty_in.data[eol - sock->ssn->dirty_in.data] = '\0'; /* overwite the CRLF */
 
 	/*
-	 *	Check for trailing gunk.
+	 *	Parse the fields (being a little forgiving), while
+	 *	checking for too many / too few fields.
 	 */
 	argc = str2argv((char *) &sock->ssn->dirty_in.data[p - sock->ssn->dirty_in.data], (char **) &argv, 5);
 	if (argc != 4) goto invalid_data;
 
 	memset(&src, 0, sizeof(src));
-	memset(&src, 0, sizeof(src));
+	memset(&dst, 0, sizeof(dst));
 
 	if (fr_pton(&src, argv[0], -1, af, false) < 0) goto invalid_data;
 	if (fr_pton(&dst, argv[1], -1, af, false) < 0) goto invalid_data;
