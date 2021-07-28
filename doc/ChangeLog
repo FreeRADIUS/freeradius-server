@@ -26,6 +26,7 @@ FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	  are disabled.
 	* Fix chunked rlm_rest HTTP body.  Closes #4131.
 	  Patch from Nathan Ward.
+	* Some fixes around the SQL ippool queries.conf
 
 FreeRADIUS 3.0.23 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	Feature improvements
