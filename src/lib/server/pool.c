@@ -1383,7 +1383,7 @@ void fr_pool_connection_release(fr_pool_t *pool, request_t *request, void *conn)
 	/*
 	 *	Record when the connection was last released
 	 */
-	this->last_reserved = fr_time();
+	this->last_released = fr_time();
 	pool->state.last_released = this->last_released;
 
 	/*
