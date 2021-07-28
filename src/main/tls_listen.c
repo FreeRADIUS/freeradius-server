@@ -130,8 +130,10 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 	int af, argc, src_port, dst_port;
 	unsigned long num;
 	fr_ipaddr_t src, dst;
+	bool retry = false;
 	char *argv[5], *eos;
 
+rescan:
 	p = sock->ssn->dirty_in.data;
 
 	/*
@@ -172,6 +174,8 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 	if (!eol) {
 		ssize_t rcode;
 
+		if (retry) return 0;
+
 		rcode = read(request->packet->sockfd,
 			     sock->ssn->dirty_in.data + sock->ssn->dirty_in.used,
 			     sizeof(sock->ssn->dirty_in.data) - sock->ssn->dirty_in.used);
@@ -180,6 +184,13 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 			DEBUG("Closing TLS PROXY socket from client port %u due to read error - %s", sock->other_port, fr_syserror(errno));
 			return -1;
 		}
+
+		/*
+		 *	We have more data, go scan the buffer again for EOL
+		 */
+		sock->ssn->dirty_in.used += rcode;
+		retry = true;
+		goto rescan;
 	}
 
 	p = sock->ssn->dirty_in.data;
