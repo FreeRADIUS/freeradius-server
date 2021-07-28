@@ -2,7 +2,7 @@
 #
 #  The database schemas are available at:
 #
-#       raddb/sql/ippool/<DB>/schema.sql
+#       raddb/mods-config/sql/ippool/<DB>/schema.sql
 #
 #  $Id$
 

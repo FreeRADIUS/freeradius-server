@@ -10,7 +10,7 @@
 #
 #  The database schemas are available at:
 #
-#       raddb/sql/ippool-dhcp/<DB>/schema.sql
+#       raddb/mods-config/sql/ippool-dhcp/<DB>/schema.sql
 #
 #  $Id$
 

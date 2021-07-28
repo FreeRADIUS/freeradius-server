@@ -5,8 +5,8 @@
 #
 #  Write Moonshot-*-TargetedId (MSTID) to the database.
 #
-#  Schema	raddb/sql/moonshot-targeted-ids/<DB>/schema.sql
-#  Queries	raddb/sql/moonshot-targeted-ids/<DB>/queries.conf
+#  Schema	raddb/mods-config/sql/moonshot-targeted-ids/<DB>/schema.sql
+#  Queries	raddb/mods-config/sql/moonshot-targeted-ids/<DB>/queries.conf
 #
 sql moonshot_tid_sql {
 

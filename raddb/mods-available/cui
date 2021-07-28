@@ -5,8 +5,8 @@
 #
 #  Write Chargeable-User-Identity to the database.
 #
-#  Schema	raddb/sql/cui/<DB>/schema.sql
-#  Queries	raddb/sql/cui/<DB>/queries.conf
+#  Schema	raddb/mods-config/sql/cui/<DB>/schema.sql
+#  Queries	raddb/mods-config/sql/cui/<DB>/queries.conf
 #
 sql cuisql {
 
