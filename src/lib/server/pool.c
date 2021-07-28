@@ -647,7 +647,7 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 	fr_time_t		now = fr_time();
 	fr_pool_connection_t	*this, *next;
 
-	if ((now - pool->state.last_checked) >= NSEC) {
+	if ((now - pool->state.last_checked) < NSEC) {
 		pthread_mutex_unlock(&pool->mutex);
 		return 1;
 	}
