@@ -686,7 +686,14 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 		 *	delete all of them.
 		 */
 		spawn = 0;
-		/* leave extra alone from above */
+		/*
+		 *	But if the pool size is already "min", we
+		 *	don't delete them.
+		 */
+		if ((pool->state.num + pool->state.pending) == pool->min) {
+			extra = 0;
+		}
+		/* Otherwise, leave extra alone from above */
 
 	/*
 	 *	min < num < max
