@@ -180,7 +180,7 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 		 *	Other control characters, or non-ASCII data.
 		 *	That's a problem.
 		 */
-		if ((*p <= ' ') || (*p >= 0x80)) {
+		if ((*p < ' ') || (*p >= 0x80)) {
 		invalid_data:
 			DEBUG("Closing TLS PROXY socket from client port %u - received invalid data", sock->other_port);
 			return -1;
