@@ -295,7 +295,7 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 
 static int tls_socket_recv(rad_listen_t *listener)
 {
-	bool doing_init = false;
+	bool doing_init = false, already_read = false;
 	ssize_t rcode;
 	RADIUS_PACKET *packet;
 	REQUEST *request;
@@ -371,6 +371,13 @@ static int tls_socket_recv(rad_listen_t *listener)
 		rcode = proxy_protocol_check(listener, request);
 		if (rcode < 0) goto do_close;
 		if (rcode == 0) return 1;
+
+		/*
+		 *	The buffer might already have data.  In that
+		 *	case, we don't want to do a blocking read
+		 *	later.
+		 */
+		already_read = (sock->ssn->dirty_in.used > 0);
 	}
 
 	if (sock->state == LISTEN_TLS_SETUP) {
@@ -398,26 +405,28 @@ static int tls_socket_recv(rad_listen_t *listener)
 		goto check_for_setup;
 	}
 
-	rcode = read(request->packet->sockfd,
-		     sock->ssn->dirty_in.data,
-		     sizeof(sock->ssn->dirty_in.data));
-	if ((rcode < 0) && (errno == ECONNRESET)) {
-	do_close:
-		DEBUG("Closing TLS socket from client port %u", sock->other_port);
-		tls_socket_close(listener);
-		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
-		return 0;
-	}
+	if (!already_read) {
+		rcode = read(request->packet->sockfd,
+			     sock->ssn->dirty_in.data,
+			     sizeof(sock->ssn->dirty_in.data));
+		if ((rcode < 0) && (errno == ECONNRESET)) {
+		do_close:
+			DEBUG("Closing TLS socket from client port %u", sock->other_port);
+			tls_socket_close(listener);
+			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+			return 0;
+		}
 
-	if (rcode < 0) {
-		RDEBUG("Error reading TLS socket: %s", fr_syserror(errno));
-		goto do_close;
-	}
+		if (rcode < 0) {
+			RDEBUG("Error reading TLS socket: %s", fr_syserror(errno));
+			goto do_close;
+		}
 
-	/*
-	 *	Normal socket close.
-	 */
-	if (rcode == 0) goto do_close;
+		/*
+		 *	Normal socket close.
+		 */
+		if (rcode == 0) goto do_close;
+	}
 
 	sock->ssn->dirty_in.used = rcode;
 
