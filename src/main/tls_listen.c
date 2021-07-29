@@ -155,6 +155,8 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 	 */
 	sock->ssn->dirty_in.used += rcode;
 
+	dump_hex("READ FROM PROXY PROTOCOL SOCKET", sock->ssn->dirty_in.data, sock->ssn->dirty_in.used);
+
 	p = sock->ssn->dirty_in.data;
 
 	/*
