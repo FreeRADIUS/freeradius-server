@@ -431,9 +431,10 @@ static int tls_socket_recv(rad_listen_t *listener)
 		 *	Normal socket close.
 		 */
 		if (rcode == 0) goto do_close;
-	}
 
-	sock->ssn->dirty_in.used = rcode;
+		sock->ssn->dirty_in.used = rcode;
+
+	}
 
 	dump_hex("READ FROM SSL", sock->ssn->dirty_in.data, sock->ssn->dirty_in.used);
 
