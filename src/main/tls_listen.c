@@ -261,19 +261,9 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 	sock->other_port = src_port;
 
 	/*
-	 *	Move any remaining TLS data to the start of the buffer.
-	 */
-	eol += 2;
-	end = sock->ssn->dirty_in.data + sock->ssn->dirty_in.used;
-	if (eol < end) {
-		memmove(sock->ssn->dirty_in.data, eol, end - eol);
-		sock->ssn->dirty_in.used = end - eol;
-	} else {
-		sock->ssn->dirty_in.used = 0;
-	}
-		
-	/*
-	 *	Print out what we've changed.  Note that the address families may be different!
+	 *	Print out what we've changed.  Note that the TCP
+	 *	socket address family and the PROXY address family may
+	 *	be different!
 	 */
 	if (RDEBUG_ENABLED) {
 		char src_buf[128], dst_buf[128];
@@ -286,6 +276,18 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 		       sock->haproxy_dst_port);
 	}
 
+	/*
+	 *	Move any remaining TLS data to the start of the buffer.
+	 */
+	eol += 2;
+	end = sock->ssn->dirty_in.data + sock->ssn->dirty_in.used;
+	if (eol < end) {
+		memmove(sock->ssn->dirty_in.data, eol, end - eol);
+		sock->ssn->dirty_in.used = end - eol;
+	} else {
+		sock->ssn->dirty_in.used = 0;
+	}
+		
 	/*
 	 *	It's no longer a PROXY protocol, but just straight TLS.
 	 */
