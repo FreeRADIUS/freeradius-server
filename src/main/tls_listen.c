@@ -375,7 +375,6 @@ static int tls_socket_recv(rad_listen_t *listener)
 	if (listener->proxy_protocol) {
 		rcode = proxy_protocol_check(listener, request);
 		if (rcode < 0) goto do_close;
-		if (rcode == 0) return 1;
 
 		/*
 		 *	The buffer might already have data.  In that
