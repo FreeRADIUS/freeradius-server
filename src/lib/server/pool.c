@@ -676,10 +676,12 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 		ROPTIONAL(RINFO, INFO, "Need %i more connections to reach min connections (%i)", spawn, pool->min);
 
 	/*
-	 *	But if we're already at "min", then don't spawn more,
+	 *	But if "min" and "max" are the same and
+	 *	we're already at "min", then don't spawn more,
 	 *	and we don't have any extra idle connections.
 	 */
-	} else if ((pool->state.num + pool->state.pending) >= pool->min) {
+	} else if ((pool->min == pool->max) &&
+		   (pool->state.num + pool->state.pending) == pool->min) {
 		spawn = 0;
 		extra = 0;
 
@@ -694,8 +696,7 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 		 *	delete all of them.
 		 */
 		spawn = 0;
-
-		/* Otherwise, leave extra alone from above */
+		/* leave extra alone from above */
 
 	/*
 	 *	min < num < max
