@@ -278,14 +278,17 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 	 *	Print out what we've changed.  Note that the address families may be different!
 	 */
 	if (RDEBUG_ENABLED) {
-		char src_buf[128], dst_buf[128];
+		char src_buf[128], dst_buf[128], csrc_buf[128], cdst_buf[128];
 
-		RDEBUG("(TLS) Received PROXY protocol connection from client %s:%s -> %s:%s, via proxy %s:%u -> %s:%u",
-		       argv[0], argv[2], argv[1], argv[3],
-		       inet_ntop(af, &sock->haproxy_src_ipaddr, src_buf, sizeof(src_buf)),
-		       sock->haproxy_src_port,
-		       inet_ntop(af, &sock->haproxy_dst_ipaddr, dst_buf, sizeof(dst_buf)),
-		       sock->haproxy_dst_port);
+		RDEBUG("(TLS) Received PROXY protocol connection from client %s:%d -> %s:%d, via proxy %s:%u -> %s:%u",
+		      inet_ntop(af, &src.ipaddr, csrc_buf, sizeof(csrc_buf)),
+		      src_port,
+		      inet_ntop(af, &dst.ipaddr, cdst_buf, sizeof(cdst_buf)),
+		      dst_port,
+		      inet_ntop(af, &sock->haproxy_src_ipaddr.ipaddr, src_buf, sizeof(src_buf)),
+		      (unsigned int)sock->haproxy_src_port,
+		      inet_ntop(af, &sock->haproxy_dst_ipaddr.ipaddr, dst_buf, sizeof(dst_buf)),
+		      (unsigned int)sock->haproxy_dst_port);
 	}
 
 	/*
