@@ -136,6 +136,8 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 rescan:
 	p = sock->ssn->dirty_in.data;
 
+	dump_hex("READ FROM PROXY PROTOCOL SOCKET", sock->ssn->dirty_in.data, sock->ssn->dirty_in.used);
+
 	/*
 	 *	CRLF MUST be within the first 107 bytes.
 	 */
@@ -159,7 +161,7 @@ rescan:
 		 *	Other control characters, or non-ASCII data.
 		 *	That's a problem.
 		 */
-		if ((*p <= ' ') || (*p >= 0x80)) {
+		if ((*p < ' ') || (*p >= 0x80)) {
 		invalid_data:
 			DEBUG("Closing TLS PROXY socket from client port %u - received invalid data", sock->other_port);
 			return -1;
@@ -228,7 +230,7 @@ rescan:
 	if (argc != 4) goto invalid_data;
 
 	memset(&src, 0, sizeof(src));
-	memset(&src, 0, sizeof(src));
+	memset(&dst, 0, sizeof(dst));
 
 	if (fr_pton(&src, argv[0], -1, af, false) < 0) goto invalid_data;
 	if (fr_pton(&dst, argv[1], -1, af, false) < 0) goto invalid_data;
@@ -274,14 +276,17 @@ rescan:
 	 *	Print out what we've changed.  Note that the address families may be different!
 	 */
 	if (RDEBUG_ENABLED) {
-		char src_buf[128], dst_buf[128];
+		char src_buf[128], dst_buf[128], csrc_buf[128], cdst_buf[128];
 
-		RDEBUG("(TLS) Received PROXY protocol connection from client %s:%s -> %s:%s, via proxy %s:%u -> %s:%u",
-		       argv[0], argv[2], argv[1], argv[3],
-		       inet_ntop(af, &sock->haproxy_src_ipaddr, src_buf, sizeof(src_buf)),
-		       sock->haproxy_src_port,
-		       inet_ntop(af, &sock->haproxy_dst_ipaddr, dst_buf, sizeof(dst_buf)),
-		       sock->haproxy_dst_port);
+		RDEBUG("(TLS) Received PROXY protocol connection from client %s:%d -> %s:%d, via proxy %s:%u -> %s:%u",
+		      inet_ntop(af, &src.ipaddr, csrc_buf, sizeof(csrc_buf)),
+		      src_port,
+		      inet_ntop(af, &dst.ipaddr, cdst_buf, sizeof(cdst_buf)),
+		      dst_port,
+		      inet_ntop(af, &sock->haproxy_src_ipaddr.ipaddr, src_buf, sizeof(src_buf)),
+		      (unsigned int)sock->haproxy_src_port,
+		      inet_ntop(af, &sock->haproxy_dst_ipaddr.ipaddr, dst_buf, sizeof(dst_buf)),
+		      (unsigned int)sock->haproxy_dst_port);
 	}
 
 	/*
