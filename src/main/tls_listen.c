@@ -294,7 +294,8 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 	 *	It's no longer a PROXY protocol, but just straight TLS.
 	 */
 	listener->proxy_protocol = false;
-	return 0;
+
+	return 1;
 }
 
 static int tls_socket_recv(rad_listen_t *listener)
