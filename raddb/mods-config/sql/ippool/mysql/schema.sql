@@ -1,7 +1,7 @@
 #
 # Table structure for table 'radippool'
 #
-CREATE TABLE radippool (
+CREATE TABLE IF NOT EXISTS radippool (
   id                    int(11) unsigned NOT NULL auto_increment,
   pool_name             varchar(30) NOT NULL,
   framedipaddress       varchar(15) NOT NULL default '',
