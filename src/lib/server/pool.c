@@ -679,7 +679,7 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 	 *	But if we're already at "min", then don't spawn more,
 	 *	and we don't have any extra idle connections.
 	 */
-	} else if ((pool->num + pool->pending) >= pool->min) {
+	} else if ((pool->state.num + pool->state.pending) >= pool->min) {
 		spawn = 0;
 		extra = 0;
 
