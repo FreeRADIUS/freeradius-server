@@ -677,11 +677,12 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 
 	/*
 	 *	But if we're already at "min", then don't spawn more,
-	 *	and we don't have any extra idle connections.
+	 *	and set extra to zero if there's no possibility for extra.
 	 */
 	} else if ((pool->state.num + pool->state.pending) >= pool->min) {
 		spawn = 0;
-		extra = 0;
+
+		if (pool->min == pool->max) extra = 0;
 
 	/*
 	 *	If we're about to create more than "max",
