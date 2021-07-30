@@ -132,6 +132,7 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 	fr_ipaddr_t src, dst;
 	char *argv[5], *eos;
 	ssize_t rcode;
+	RADCLIENT *client;
 
 	/*
 	 *	Begin by trying to fill the buffer.
@@ -277,6 +278,32 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 		       inet_ntop(af, &sock->haproxy_dst_ipaddr, dst_buf, sizeof(dst_buf)),
 		       sock->haproxy_dst_port);
 	}
+
+        /*
+         *      Ensure that the source IP indicated by the PROXY
+         *      protocol is a known TLS client.
+         */
+        if ((client = client_listener_find(listener, &src, src_port)) == NULL ||
+             client->proto != IPPROTO_TCP) {
+		RDEBUG("(TLS) Unknown client %s - dropping PROXY protocol connection", argv[0]);
+		return -1;
+        }
+
+        /*
+         *      Use the client indicated by the proxy.
+         */
+        sock->client = client;
+
+	/*
+         *      Fix up the current request so that the first packet's
+         *      src/dst is valid.  Subsequent packets will get the
+         *      clients IP from the listener and listen_sock
+         *      structures.
+         */
+        request->packet->dst_ipaddr = dst;
+        request->packet->dst_port = dst_port;
+        request->packet->src_ipaddr = src;
+        request->packet->src_port = src_port;
 
 	/*
 	 *	Move any remaining TLS data to the start of the buffer.
