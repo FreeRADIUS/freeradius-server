@@ -273,9 +273,9 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 
 		RDEBUG("(TLS) Received PROXY protocol connection from client %s:%s -> %s:%s, via proxy %s:%u -> %s:%u",
 		       argv[0], argv[2], argv[1], argv[3],
-		       inet_ntop(af, &sock->haproxy_src_ipaddr, src_buf, sizeof(src_buf)),
+		       inet_ntop(af, &sock->haproxy_src_ipaddr.ipaddr, src_buf, sizeof(src_buf)),
 		       sock->haproxy_src_port,
-		       inet_ntop(af, &sock->haproxy_dst_ipaddr, dst_buf, sizeof(dst_buf)),
+		       inet_ntop(af, &sock->haproxy_dst_ipaddr.ipaddr, dst_buf, sizeof(dst_buf)),
 		       sock->haproxy_dst_port);
 	}
 
