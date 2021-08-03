@@ -38,8 +38,15 @@ CREATE PROCEDURE fr_ippool_allocate_previous_or_new_address (
 	IN v_lease_duration INT,
 	IN v_requested_address VARCHAR(15)
 )
+SQL SECURITY INVOKER
 proc:BEGIN
 	DECLARE r_address VARCHAR(15);
+
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+	BEGIN
+		ROLLBACK;
+		RESIGNAL;
+	END;
 
 	SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
 
