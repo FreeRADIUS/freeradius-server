@@ -59,7 +59,7 @@ static fr_htrie_funcs_t const default_funcs[] = {
 /** An abstraction over our internal hashes, rb trees, and prefix tries
  *
  * This is useful where the data type being inserted into the tree
- * is used controlled, and so we need to pick the most efficient structure
+ * is user controlled, and so we need to pick the most efficient structure
  * for a given data type dynamically at runtime.
  *
  * @param[in] ctx		to bind the htrie's lifetime to.
