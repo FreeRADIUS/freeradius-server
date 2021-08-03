@@ -179,7 +179,7 @@ server detail {
 				#  into the server core.
 				#
 				#  Useful values: 1..256
-				maximum_outstanding = 1
+				max_outstanding = 1
 
 				#
 				#  Initial retransmit time: 1..60

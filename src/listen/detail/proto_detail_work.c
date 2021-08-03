@@ -78,7 +78,7 @@ static CONF_PARSER limit_config[] = {
 	 *	...again same as v2 and v3.
 	 */
 	{ FR_CONF_OFFSET("max_rtx_duration", FR_TYPE_TIME_DELTA, proto_detail_work_t, retry_config.mrd), .dflt = STRINGIFY(0) },
-	{ FR_CONF_OFFSET("maximum_outstanding", FR_TYPE_UINT32, proto_detail_work_t, max_outstanding), .dflt = STRINGIFY(1) },
+	{ FR_CONF_OFFSET("max_outstanding", FR_TYPE_UINT16, proto_detail_work_t, max_outstanding), .dflt = STRINGIFY(1) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -874,8 +874,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		FR_TIME_DELTA_BOUND_CHECK("limit.max_rtx_timer", inst->retry_config.mrt, <=, fr_time_delta_from_sec(30));
 	}
 
-	FR_INTEGER_BOUND_CHECK("limit.maximum_outstanding", inst->max_outstanding, >=, 1);
-	FR_INTEGER_BOUND_CHECK("limit.maximum_outstanding", inst->max_outstanding, <=, 256);
+	FR_INTEGER_BOUND_CHECK("limit.max_outstanding", inst->max_outstanding, >=, 1);
 
 	return 0;
 }

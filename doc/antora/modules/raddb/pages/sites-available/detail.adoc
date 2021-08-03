@@ -249,7 +249,7 @@ server detail {
 			max_entry_size = 65536
 			retransmit = yes
 			limit {
-				maximum_outstanding = 1
+				max_outstanding = 1
 				initial_rtx_time = 1
 				max_rtx_time = 30
 				max_rtx_count = 6
