@@ -31,7 +31,7 @@ RCSIDH(base64_h, "$Id$")
 
 bool fr_is_base64(char c);
 
-size_t fr_base64_encode(char *out, size_t outlen, uint8_t const *in, size_t inlen);
+ssize_t fr_base64_encode(char *out, size_t outlen, uint8_t const *in, size_t inlen);
 
 ssize_t fr_base64_decode(uint8_t *out, size_t outlen, char const *in, size_t inlen);
 
