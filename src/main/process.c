@@ -2534,7 +2534,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	 *	NULL after removing the request from the proxy
 	 *	hash.
 	 */
-	reverse_coa = request->proxy_listener->type != RAD_LISTEN_PROXY;
+	if (request->proxy_listener) reverse_coa = request->proxy_listener->type != RAD_LISTEN_PROXY;
 #endif
 
 	if (reply) {
