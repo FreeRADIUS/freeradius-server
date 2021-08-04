@@ -173,6 +173,9 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	switch (map->rhs->type) {
 	case TMPL_TYPE_REGEX_STRUCT: /* pre-compiled to a regex */
 		preg = map->rhs->tmpl_preg;
+#ifdef HAVE_PCRE
+		rad_assert(preg->precompiled);
+#endif
 		break;
 
 	default:
@@ -187,6 +190,9 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 			return -1;
 		}
 		preg = rreg;
+#ifdef HAVE_PCRE
+		rad_assert(!preg->precompiled);
+#endif
 		break;
 	}
 
