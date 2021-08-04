@@ -68,3 +68,14 @@ radiusAttribute: reply.Session-Timeout := 7200
 radiusAttribute: control.NAS-IP-Address := 1.2.3.4
 radiusProfileDN: cn=radprofile,ou=profiles,ou=subdept,dc=example,dc=com
 
+dn: ou=offsite,dc=subdept,dc=example,dc=com
+objectClass: referral
+objectClass: extensibleObject
+ou: offsite
+ref: ldap://127.0.0.1:3890/dc=example,dc=com??sub
+
+dn: ou=bounce1,dc=subdept,dc=example,dc=com
+objectClass: referral
+objectClass: extensibleObject
+ou: bounce1
+ref: ldap://127.0.0.1:3890/ou=bounce2,dc=example,dc=com??sub

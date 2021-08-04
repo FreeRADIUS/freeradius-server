@@ -123,3 +123,9 @@ objectClass: extensibleObject
 dc: subdept
 ref: ldap://127.0.0.1:3892/
 ref: ldap://127.0.0.1:3891/dc=subdept,dc=example,dc=com
+
+dn: ou=bounce2,dc=example,dc=com
+objectClass: referral
+objectClass: extensibleObject
+ou: bounce2
+ref: ldap://127.0.0.1:3891/dc=subdept,dc=example,dc=com??sub
