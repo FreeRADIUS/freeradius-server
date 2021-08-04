@@ -898,8 +898,9 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			cf_log_err_cs(cs, "Server not built with support for RADIUS over TCP");
 			goto error;
 #endif
-			if (home->ping_check != HOME_PING_CHECK_NONE) {
-				cf_log_err_cs(cs, "Only 'status_check = none' is allowed for home "
+			if ((home->ping_check != HOME_PING_CHECK_NONE) &&
+			    (home->ping_check != HOME_PING_CHECK_STATUS_SERVER)) {
+				cf_log_err_cs(cs, "Only 'status_check = status-server' is allowed for home "
 					      "servers with 'proto = tcp'");
 				goto error;
 			}
