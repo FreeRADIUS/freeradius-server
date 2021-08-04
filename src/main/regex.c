@@ -33,7 +33,9 @@ RCSID("$Id$")
 #define REQUEST_DATA_REGEX (0xadbeef00)
 
 typedef struct regcapture {
+#ifdef HAVE_PCRE
 	regex_t		*preg;		//!< Compiled pattern.
+#endif
 	char const	*value;		//!< Original string.
 	regmatch_t	*rxmatch;	//!< Match vectors.
 	size_t		nmatch;		//!< Number of match vectors.
@@ -94,11 +96,10 @@ void regex_sub_to_request(REQUEST *request, regex_t **preg, char const *value, s
 	if (!(*preg)->precompiled) {
 		new_sc->preg = talloc_steal(new_sc, *preg);
 		*preg = NULL;
-	} else
-#endif
-	{
+	} else {
 		new_sc->preg = *preg;
 	}
+#endif
 
 	request_data_add(request, request, REQUEST_DATA_REGEX, new_sc, true);
 }
