@@ -2298,6 +2298,18 @@ static void remove_from_proxy_hash(REQUEST *request)
 	 */
 	if (!request->in_proxy_hash) return;
 
+#ifdef WITH_TCP
+	/*
+	 *	Status-Server packets aren't removed from the proxy hash.  They're reused.
+	 *
+	 *	Unless we're tearing down the listener.
+	 */
+	if ((request->proxy->proto == IPPROTO_TCP) && (request->proxy->code == PW_CODE_STATUS_SERVER) &&
+	    request->proxy_listener && (request->proxy_listener->status < RAD_LISTEN_STATUS_EOL)) {
+		return;
+	}
+#endif
+
 	/*
 	 *	The "not in hash" flag is definitive.  However, if the
 	 *	flag says that it IS in the hash, there might still be
