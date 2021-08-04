@@ -145,6 +145,8 @@ static CONF_PARSER option_config[] = {
 
 	{ FR_CONF_OFFSET("use_referral_credentials", FR_TYPE_BOOL, rlm_ldap_t, handle_config.use_referral_credentials), .dflt = "no" },
 
+	{ FR_CONF_OFFSET("referral_depth", FR_TYPE_UINT16, rlm_ldap_t, handle_config.referral_depth), .dflt = "5" },
+
 	{ FR_CONF_OFFSET("rebind", FR_TYPE_BOOL, rlm_ldap_t, handle_config.rebind) },
 
 	{ FR_CONF_OFFSET("sasl_secprops", FR_TYPE_STRING, rlm_ldap_t, handle_config.sasl_secprops) },
@@ -178,6 +180,8 @@ static CONF_PARSER option_config[] = {
 	 */
 	/* timeout for search results */
 	{ FR_CONF_OFFSET("res_timeout", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.res_timeout), .dflt = "20" },
+
+	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.idle_timeout), .dflt = "300" },
 
 	CONF_PARSER_TERMINATOR
 };

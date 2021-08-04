@@ -231,6 +231,8 @@ typedef struct {
 
 	bool			use_referral_credentials;	//!< If true use credentials from the referral URL.
 
+	uint16_t		referral_depth;		//!< How many referrals to chase
+
 	bool			rebind;			//!< Controls whether we set an ldad_rebind_proc function
 							///< and so determines if we can bind to other servers whilst
 							///< chasing referrals. If this is false, we will still chase
@@ -300,6 +302,8 @@ typedef struct {
 	fr_time_delta_t		tls_handshake_timeout;	//!< How long we wait for the TLS handshake to complete.
 
 	fr_time_delta_t		reconnection_delay;	//!< How long to wait before attempting to reconnect.
+
+	fr_time_delta_t		idle_timeout;		//!< How long to wait before closing unused connections.
 } fr_ldap_config_t;
 
 typedef struct fr_ldap_thread_trunk_s fr_ldap_thread_trunk_t;
