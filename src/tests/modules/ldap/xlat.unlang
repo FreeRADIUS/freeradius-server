@@ -125,4 +125,26 @@ if (&Tmp-String-1 != "Fred Jones") {
         test_fail
 }
 
+# This query will follow 2 referrals, the second will present an alternate search base
+update request {
+        &Tmp-String-2 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=offsite,dc=subdept,dc=example,dc=com?displayName?sub?(uid=john)}"
+}
+
+if (&Tmp-String-2 != "John Doe") {
+        test_fail
+}
+
+# This query will follow 3 referrals - more than our max referral depth
+update request {
+        &Tmp-String-3 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=bounce1,dc=subdept,dc=example,dc=com?displayName?sub?(uid=fred)}"
+}
+
+if (&Tmp-String-3 != "") {
+        test_fail
+}
+
+if (&Module-Failure-Message != "Maximum LDAP referral depth (2) exceeded") {
+        test_fail
+}
+
 test_pass
