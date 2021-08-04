@@ -468,6 +468,7 @@ typedef struct fr_ldap_referral_s {
  *
  */
 typedef enum {
+	LDAP_PROC_REFERRAL = 2,				//!< LDAP server returned referral URLs.
 	LDAP_PROC_CONTINUE = 1,				//!< Operation is in progress.
 	LDAP_PROC_SUCCESS = 0,				//!< Operation was successfull.
 

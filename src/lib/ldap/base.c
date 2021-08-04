@@ -264,6 +264,11 @@ process_error:
 		fr_strerror_const("Success");
 		break;
 
+	case LDAP_REFERRAL:
+		fr_strerror_const("Referral");
+		status = LDAP_PROC_REFERRAL;
+		break;
+
 	case LDAP_SASL_BIND_IN_PROGRESS:
 		fr_strerror_const("Continuing");
 		status = LDAP_PROC_CONTINUE;
