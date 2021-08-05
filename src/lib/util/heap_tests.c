@@ -1,4 +1,5 @@
 #include <freeradius-devel/util/acutest.h>
+#include <freeradius-devel/util/time.h>
 
 #include "heap.c"
 
@@ -140,7 +141,9 @@ static void heap_cycle(void)
 	int		i;
 	heap_thing	*array;
 	int		to_remove;
+	int		inserted, removed;
 	int		ret;
+	fr_time_t	start_insert, start_remove, start_swap, end;
 
 	static bool	done_init = false;
 
@@ -159,6 +162,7 @@ static void heap_cycle(void)
 	 */
 	for (i = 0; i < HEAP_CYCLE_SIZE; i++) array[i].data = rand() % 65537;
 
+	start_insert = fr_time();
 	TEST_CASE("insertions");
 	for (i = 0; i < HEAP_CYCLE_SIZE; i++) {
 		TEST_CHECK((ret = fr_heap_insert(hp, &array[i])) >= 0);
@@ -172,6 +176,7 @@ static void heap_cycle(void)
 	 *	Remove a random number of elements from the heap
 	 */
 	to_remove = fr_heap_num_elements(hp) / 2;
+	start_remove = fr_time();
 	for (i = 0; i < to_remove; i++) {
 		heap_thing *t;
 
@@ -185,29 +190,36 @@ static void heap_cycle(void)
 	/*
 	 *	Now swap the inserted and removed set creating churn
 	 */
-	{
-		int inserted = 0, removed = 0;
+	start_swap = fr_time();
+	inserted = 0;
+	removed = 0;
 
-		for (i = 0; i < HEAP_CYCLE_SIZE; i++) {
-			if (array[i].heap == -1) {
-				TEST_CHECK((ret = fr_heap_insert(hp, &array[i])) >= 0);
-				TEST_MSG("insert failed, returned %i - %s", ret, fr_strerror());
-				inserted++;
-			} else {
-				TEST_CHECK((ret = fr_heap_extract(hp, &array[i])) >= 0);
-				TEST_MSG("element %i removal failed, returned %i", i, ret);
-				removed++;
-			}
+	for (i = 0; i < HEAP_CYCLE_SIZE; i++) {
+		if (array[i].heap == -1) {
+			TEST_CHECK((ret = fr_heap_insert(hp, &array[i])) >= 0);
+			TEST_MSG("insert failed, returned %i - %s", ret, fr_strerror());
+			inserted++;
+		} else {
+			TEST_CHECK((ret = fr_heap_extract(hp, &array[i])) >= 0);
+			TEST_MSG("element %i removal failed, returned %i", i, ret);
+			removed++;
 		}
-
-		TEST_CHECK(removed == (HEAP_CYCLE_SIZE - to_remove));
-		TEST_MSG("expected %i", HEAP_CYCLE_SIZE - to_remove);
-		TEST_MSG("got %i", removed);
-
-		TEST_CHECK(inserted == to_remove);
-		TEST_MSG("expected %i", to_remove);
-		TEST_MSG("got %i", inserted);
 	}
+
+	TEST_CHECK(removed == (HEAP_CYCLE_SIZE - to_remove));
+	TEST_MSG("expected %i", HEAP_CYCLE_SIZE - to_remove);
+	TEST_MSG("got %i", removed);
+
+	TEST_CHECK(inserted == to_remove);
+	TEST_MSG("expected %i", to_remove);
+	TEST_MSG("got %i", inserted);
+
+	end = fr_time();
+
+	TEST_MSG_ALWAYS("\ncycle size: %d\n", HEAP_CYCLE_SIZE);
+	TEST_MSG_ALWAYS("insert: %2.2f ns\n", ((double)(start_remove - start_insert)) / NSEC);
+	TEST_MSG_ALWAYS("extract: %2.2f ns\n", ((double)(start_swap - start_remove)) / NSEC);
+	TEST_MSG_ALWAYS("swap: %2.2f ns\n", ((double)(end - start_swap)) / NSEC);
 
 	talloc_free(hp);
 	free(array);
