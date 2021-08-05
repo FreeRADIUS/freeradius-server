@@ -213,9 +213,9 @@ static bool other_attr(fr_dict_attr_t const *da, fr_dict_attr_t const **from)
  *	- -2 on error.
  */
 #ifdef HAVE_REGEX
-int paircmp_pairs(request_t *request, fr_pair_t *check, fr_pair_t *vp)
+int paircmp_pairs(request_t *request, fr_pair_t const *check, fr_pair_t *vp)
 #else
-int paircmp_pairs(UNUSED request_t *request, fr_pair_t *check, fr_pair_t *vp)
+int paircmp_pairs(UNUSED request_t *request, fr_pair_t const *check, fr_pair_t *vp)
 #endif
 {
 	int ret = 0;
