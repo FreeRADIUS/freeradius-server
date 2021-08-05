@@ -1055,7 +1055,7 @@ int8_t fr_pair_cmp_by_parent_num(void const *a, void const *b)
  *	- 0 if false.
  *	- -1 on failure.
  */
-int fr_pair_cmp(fr_pair_t *a, fr_pair_t *b)
+int fr_pair_cmp(fr_pair_t const *a, fr_pair_t const *b)
 {
 	if (!a) return -1;
 

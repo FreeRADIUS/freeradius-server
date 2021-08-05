@@ -272,7 +272,7 @@ fr_pair_list_t	*fr_pair_children(fr_pair_t *head);
 #define		fr_pair_cmp_op(_op, _a, _b)	fr_value_box_cmp_op(_op, &_a->data, &_b->data)
 int8_t		fr_pair_cmp_by_da(void const *a, void const *b);
 int8_t		fr_pair_cmp_by_parent_num(void const *a, void const *b);
-int		fr_pair_cmp(fr_pair_t *a, fr_pair_t *b);
+int		fr_pair_cmp(fr_pair_t const *a, fr_pair_t const *b);
 int		fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b);
 void		fr_pair_list_sort(fr_pair_list_t *list, fr_cmp_t cmp) CC_HINT(nonnull);
 
