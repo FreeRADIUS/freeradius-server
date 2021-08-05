@@ -84,13 +84,13 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 		if (check->da->type == PW_TYPE_STRING) {
 			expr_p = check->vp_strvalue;
 		} else {
-			expr_p = expr = vp_aprints_value(check, check, '\0');
+			expr_p = expr = vp_aprints_value(request, check, '\0');
 		}
 
 		if (vp->da->type == PW_TYPE_STRING) {
 			value_p = vp->vp_strvalue;
 		} else {
-			value_p = value = vp_aprints_value(vp, vp, '\0');
+			value_p = value = vp_aprints_value(request, vp, '\0');
 		}
 
 		if (!expr_p || !value_p) {
