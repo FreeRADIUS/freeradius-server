@@ -543,7 +543,7 @@ finish:
  * @param[in] check		vp containing the group value (name or dn).
  */
 unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
-					    	fr_ldap_connection_t **pconn, fr_pair_t *check)
+						fr_ldap_connection_t **pconn, fr_pair_t const *check)
 {
 	fr_ldap_rcode_t	status;
 
@@ -645,7 +645,7 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, rlm_ldap_
  */
 unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
 					       fr_ldap_connection_t **pconn,
-					       char const *dn, fr_pair_t *check)
+					       char const *dn, fr_pair_t const *check)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_NOTFOUND, ret;
 	fr_ldap_rcode_t	status;
@@ -831,7 +831,7 @@ finish:
  * @param[in] check		vp containing the group value (name or dn).
  */
 unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
-				      rlm_ldap_t const *inst, request_t *request, fr_pair_t *check)
+				      rlm_ldap_t const *inst, request_t *request, fr_pair_t const *check)
 {
 	fr_pair_t	*vp;
 	int		ret;

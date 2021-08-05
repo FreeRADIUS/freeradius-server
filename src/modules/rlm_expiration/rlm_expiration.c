@@ -110,7 +110,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 /*
  *      Compare the expiration date.
  */
-static int expirecmp(UNUSED void *instance, request_t *req, UNUSED fr_pair_list_t *request_list, fr_pair_t *check)
+static int expirecmp(UNUSED void *instance, request_t *req, UNUSED fr_pair_list_t *request_list, fr_pair_t const *check)
 {
 	time_t now = 0;
 

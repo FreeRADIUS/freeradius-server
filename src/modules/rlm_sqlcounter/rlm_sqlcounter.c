@@ -340,7 +340,7 @@ static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *
 /*
  *	See if the counter matches.
  */
-static int counter_cmp(void *instance, request_t *request, UNUSED fr_pair_list_t *request_list , fr_pair_t *check)
+static int counter_cmp(void *instance, request_t *request, UNUSED fr_pair_list_t *request_list , fr_pair_t const *check)
 {
 	rlm_sqlcounter_t const *inst = talloc_get_type_abort_const(instance, rlm_sqlcounter_t);
 	uint64_t counter;

@@ -106,7 +106,7 @@ static paircmp_t *cmp;
 static int packet_cmp(UNUSED void *instance,
 		      request_t *request,
 		      UNUSED fr_pair_list_t *request_list,
-		      fr_pair_t *check_item)
+		      fr_pair_t const *check_item)
 {
 	VP_VERIFY(check_item);
 
@@ -121,7 +121,7 @@ static int packet_cmp(UNUSED void *instance,
 static int generic_cmp(UNUSED void *instance,
 		       request_t *request,
 		       UNUSED fr_pair_list_t *request_list,
-		       fr_pair_t *check_item)
+		       fr_pair_t const *check_item)
 {
 	VP_VERIFY(check_item);
 
@@ -474,7 +474,7 @@ static int paircmp_func(request_t *request,
  */
 int paircmp_virtual(request_t *request,
 		    fr_pair_list_t *request_list,
-		    fr_pair_t *check_item)
+		    fr_pair_t const *check_item)
 {
 	paircmp_t *c;
 
