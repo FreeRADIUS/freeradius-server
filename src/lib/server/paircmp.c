@@ -244,14 +244,14 @@ int paircmp_pairs(UNUSED request_t *request, fr_pair_t *check, fr_pair_t *vp)
 		if (check->vp_type == FR_TYPE_STRING) {
 			expr_p = check->vp_strvalue;
 		} else {
-			fr_value_box_aprint(check, &expr, &check->data, NULL);
+			fr_value_box_aprint(request, &expr, &check->data, NULL);
 			expr_p = expr;
 		}
 
 		if (vp->vp_type == FR_TYPE_STRING) {
 			value_p = vp->vp_strvalue;
 		} else {
-			fr_value_box_aprint(vp, &value, &vp->data, NULL);
+			fr_value_box_aprint(request, &value, &vp->data, NULL);
 			value_p = value;
 		}
 
