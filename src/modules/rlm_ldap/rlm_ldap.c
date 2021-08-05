@@ -601,8 +601,9 @@ static int rlm_ldap_groupcmp(void *instance, request_t *request, UNUSED fr_pair_
 	bool			found = false;
 	bool			check_is_dn;
 
-	fr_ldap_connection_t		*conn = NULL;
+	fr_ldap_connection_t	*conn = NULL;
 	char const		*user_dn;
+	fr_pair_t		*check_p = NULL;
 
 	fr_assert(inst->groupobj_base_dn);
 
@@ -621,18 +622,20 @@ static int rlm_ldap_groupcmp(void *instance, request_t *request, UNUSED fr_pair_
 		char	*norm;
 		size_t	len;
 
-		MEM(norm = talloc_array(check, char, talloc_array_length(check->vp_strvalue)));
+		check = check_p = fr_pair_copy(request, check); /* allocate a mutable version */
+
+		MEM(norm = talloc_array(check_p, char, talloc_array_length(check_p->vp_strvalue)));
 		len = fr_ldap_util_normalise_dn(norm, check->vp_strvalue);
 
 		/*
 		 *	Will clear existing buffer (i.e. check->vp_strvalue)
 		 */
-		fr_pair_value_bstrdup_buffer_shallow(check, norm, check->vp_tainted);
+		fr_pair_value_bstrdup_buffer_shallow(check_p, norm, check->vp_tainted);
 
 		/*
 		 *	Trim buffer to match normalised DN
 		 */
-		fr_pair_value_bstr_realloc(check, NULL, len);
+		fr_pair_value_bstr_realloc(check_p, NULL, len);
 	}
 	if ((check_is_dn && inst->cacheable_group_dn) || (!check_is_dn && inst->cacheable_group_name)) {
 		rlm_rcode_t our_rcode;
@@ -657,7 +660,7 @@ static int rlm_ldap_groupcmp(void *instance, request_t *request, UNUSED fr_pair_
 	}
 
 	conn = mod_conn_get(inst, request);
-	if (!conn) return 1;
+	if (!conn) goto cleanup;
 
 	/*
 	 *	This is used in the default membership filter.
@@ -665,7 +668,7 @@ static int rlm_ldap_groupcmp(void *instance, request_t *request, UNUSED fr_pair_
 	user_dn = rlm_ldap_find_user(inst, request, &conn, NULL, false, NULL, &rcode);
 	if (!user_dn) {
 		ldap_mod_conn_release(inst, request, conn);
-		return 1;
+		goto cleanup;
 	}
 
 	fr_assert(conn);
@@ -717,13 +720,16 @@ static int rlm_ldap_groupcmp(void *instance, request_t *request, UNUSED fr_pair_
 finish:
 	if (conn) ldap_mod_conn_release(inst, request, conn);
 
-	if (!found) {
-		RDEBUG2("User is not a member of \"%pV\"", &check->data);
-
-		return 1;
+	if (found) {
+		talloc_free(check_p);
+		return 0;
 	}
 
-	return 0;
+	RDEBUG2("User is not a member of \"%pV\"", &check->data);
+
+cleanup:
+	talloc_free(check_p);
+	return 1;
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
