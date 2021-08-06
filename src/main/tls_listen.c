@@ -401,7 +401,11 @@ static int tls_socket_recv(rad_listen_t *listener)
 	 */
 	if (listener->proxy_protocol) {
 		rcode = proxy_protocol_check(listener, request);
-		if (rcode < 0) goto do_close;
+		if (rcode < 0) {
+			DEBUG("Closing PROXY TLS socket from client port %u", sock->other_port);
+			tls_socket_close(listener);
+			return 0;
+		}
 		if (rcode == 0) return 1;
 
 		/*
