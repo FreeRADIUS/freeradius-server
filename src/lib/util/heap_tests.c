@@ -56,7 +56,7 @@ static void heap_test(int skip)
 	hp = fr_heap_alloc(NULL, heap_cmp, heap_thing, heap);
 	TEST_CHECK(hp != NULL);
 
-	array = malloc(sizeof(heap_thing) * HEAP_TEST_SIZE);
+	array = calloc(HEAP_TEST_SIZE, sizeof(heap_thing));
 
 	/*
 	 *	Initialise random values
@@ -155,7 +155,7 @@ static void heap_cycle(void)
 	hp = fr_heap_alloc(NULL, heap_cmp, heap_thing, heap);
 	TEST_CHECK(hp != NULL);
 
-	array = malloc(sizeof(heap_thing) * HEAP_CYCLE_SIZE);
+	array = calloc(HEAP_CYCLE_SIZE, sizeof(heap_thing));
 
 	/*
 	 *	Initialise random values

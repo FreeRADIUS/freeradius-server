@@ -94,7 +94,7 @@ static void lst_test(int skip)
 	lst = fr_lst_alloc(NULL, heap_cmp, heap_thing, index);
 	TEST_CHECK(lst != NULL);
 
-	array = malloc(sizeof(heap_thing) * LST_TEST_SIZE);
+	array = calloc(LST_TEST_SIZE, sizeof(heap_thing));
 
 	/*
 	 *	Initialise random values
