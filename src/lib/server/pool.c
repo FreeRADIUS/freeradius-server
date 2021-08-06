@@ -762,7 +762,7 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 		/*
 		 *	Don't open too many pending connections.
 		 */
-		if (pool->state.pending >= pool->max_pending) goto manage_connections;
+		if (pool->state.pending >= pool->pending_window) goto manage_connections;
 
 		/*
 		 *	Don't open too many connections, even if we
