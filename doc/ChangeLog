@@ -15,6 +15,8 @@ FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	* Support SNI for inbound RadSec connections.  Certificates will
 	  be loaded from "realm_dir" in the "tls" section.  SNI will be
 	  cached in the TLS-Server-Name-Indication attribute.
+	* Preliminary support for haproxy "PROXY" protocol.
+	  See sites-available/tls, "proxy_protocol".
 
 	Bug fixes
 	* Fix crash in trustrouter module (#4115). Patch from Alejandro Perez
@@ -26,7 +28,12 @@ FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	  are disabled.
 	* Fix chunked rlm_rest HTTP body.  Closes #4131.
 	  Patch from Nathan Ward.
-	* Some fixes around the SQL ippool queries.conf
+	* Many fixes around the SQL ippool queries.conf and schema.
+	  Patches from Jorge Periera.
+	* Fix MySQL stored procedures.  PR #4170 from Terry Burton.
+	* Rework connection pool management for corner cases.
+	  Fixes #4161, #4162, #4163.
+	* Final fix for double free in #3188.
 
 FreeRADIUS 3.0.23 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	Feature improvements
