@@ -148,27 +148,6 @@ libdir = @libdir@
 #
 pidfile = ${run_dir}/${name}.pid
 
-#
-#  correct_escapes: use correct backslash escaping
-#
-#  Prior to version 3.0.5, the handling of backslashes was a little
-#  awkward, i.e. "wrong".  In some cases, to get one backslash into
-#  a regex, you had to put 4 in the config files.
-#
-#  Version 3.0.5 fixes that.  However, for backwards compatibility,
-#  the new method of escaping is DISABLED BY DEFAULT.  This means
-#  that upgrading to 3.0.5 won't break your configuration.
-#
-#  If you don't have double backslashes (i.e. \\) in your configuration,
-#  this won't matter to you.  If you do have them, fix that to use only
-#  one backslash, and then set "correct_escapes = true".
-#
-#  You can check for this by doing:
-#
-#	$ grep '\\\\' $(find raddb -type f -print)
-#
-correct_escapes = true
-
 #  panic_action: Command to execute if the server dies unexpectedly.
 #
 #  FOR PRODUCTION SYSTEMS, ACTIONS SHOULD ALWAYS EXIT.
@@ -568,8 +547,7 @@ security {
 	#  rejects will be sent at 'cleanup_delay' time, when the request
 	#  is deleted from the internal cache of requests.
 	#
-	#  As of Version 3.0.5, "reject_delay" has sub-second resolution.
-	#  e.g. "reject_delay =  1.4" seconds is possible.
+	#  This number can be a decimal, e.g. 3.4
 	#
 	#  Useful ranges: 1 to 5
 	reject_delay = 1
@@ -784,19 +762,19 @@ modules {
 	#  directory from start to finish.  Which means that the
 	#  modules are read off of disk randomly.
 	#
-	#  As of 3.0.18, you can list individual modules *before* the
-	#  directory inclusion.  Those modules will be loaded first.
-	#  Then, when the directory is read, those modules will be
-	#  skipped and not read twice.
+	#  You can list individual modules *before* the directory
+	#  inclusion.  Those modules will be loaded first.  Then, when
+	#  the directory is read, those modules will be skipped and
+	#  not read twice.
 	#
 #	$INCLUDE mods-enabled/sql
 
 	#
-	#  As of 3.0, modules are in mods-enabled/.  Files matching
-	#  the regex /[a-zA-Z0-9_.]+/ are loaded.  The modules are
-	#  initialized ONLY if they are referenced in a processing
-	#  section, such as authorize, authenticate, accounting,
-	#  pre/post-proxy, etc.
+	#  All modules are in ther mods-enabled/ directory.  Files
+	#  matching the regex /[a-zA-Z0-9_.]+/ are read.  The
+	#  modules are initialized ONLY if they are referenced in a
+	#  processing section, such as authorize, authenticate,
+	#  accounting, pre/post-proxy, etc.
 	#
 	$INCLUDE mods-enabled/
 }
