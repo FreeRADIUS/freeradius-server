@@ -471,6 +471,8 @@ fr_dict_attr_t const	*fr_dict_root(fr_dict_t const *dict) CC_HINT(nonnull);
 
 bool			fr_dict_is_read_only(fr_dict_t const *dict);
 
+dl_t			*fr_dict_dl(fr_dict_t const *dict);
+
 ssize_t			fr_dict_by_protocol_substr(fr_dict_attr_err_t *err,
 						   fr_dict_t const **out, fr_sbuff_t *name, fr_dict_t const *dict_def);
 

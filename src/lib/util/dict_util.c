@@ -1871,6 +1871,11 @@ bool fr_dict_is_read_only(fr_dict_t const *dict)
 	return dict->read_only;
 }
 
+dl_t *fr_dict_dl(fr_dict_t const *dict)
+{
+	return dict->dl;
+}
+
 ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 				fr_dict_t **out, fr_sbuff_t *name, fr_dict_t const *dict_def)
 {
