@@ -274,13 +274,13 @@ int fr_get_lsan_state(void)
 #endif
 
 #if defined(HAVE_SYS_PROCCTL_H)
-static int fr_get_debug_state(void)
+int fr_get_debug_state(void)
 {
 	int status;
 
 	if (procctl(P_PID, getpid(), PROC_TRACE_STATUS, &status) == -1) {
 		fr_strerror_printf("Cannot get dumpable flag: procctl(PROC_TRACE_STATUS) failed: %s", fr_syserror(errno));
-		return DEBUG_STATE_UNKNOWN;
+		return DEBUGGER_STATE_UNKNOWN;
 	}
 
 	/*
@@ -292,9 +292,9 @@ static int fr_get_debug_state(void)
 	 *	the ptrace(2) syscall, data is set to 0.  If a debugger is attached,
 	 *	data is set to the pid of the debugger process.
 	 */
-	if (status <= 0) return DEBUG_STATE_NOT_ATTACHED;
+	if (status <= 0) return DEBUGGER_STATE_NOT_ATTACHED;
 
-	return DEBUG_STATE_ATTACHED;
+	return DEBUGGER_STATE_ATTACHED;
 }
 #elif defined(__APPLE__)
 /** The ptrace_attach() method no longer works as of macOS 11.4 (we always get eperm)
