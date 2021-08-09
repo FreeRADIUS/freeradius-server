@@ -38,7 +38,7 @@ typedef	uint32_t (*fr_hash_t)(void const *);
 /** Stores the state of the current iteration operation
  *
  */
-typedef struct {
+typedef struct fr_hash_iter_s {
 	uint32_t		bucket;
 	fr_hash_entry_t		*node;
 } fr_hash_iter_t;

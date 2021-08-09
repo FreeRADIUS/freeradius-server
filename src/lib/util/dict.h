@@ -618,6 +618,12 @@ void			fr_dict_global_ctx_debug(void);
 
 char const		*fr_dict_global_ctx_dir(void);
 
+typedef struct fr_hash_iter_s fr_dict_global_ctx_iter_t;
+
+fr_dict_t		*fr_dict_global_ctx_iter_init(fr_dict_global_ctx_iter_t *iter) CC_HINT(nonnull);
+
+fr_dict_t		*fr_dict_global_ctx_iter_next(fr_dict_global_ctx_iter_t *iter) CC_HINT(nonnull);
+
 fr_dict_t		*fr_dict_unconst(fr_dict_t const *dict);
 
 fr_dict_attr_t		*fr_dict_attr_unconst(fr_dict_attr_t const *da);

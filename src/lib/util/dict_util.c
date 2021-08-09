@@ -3593,6 +3593,24 @@ void fr_dict_global_ctx_debug(void)
 	}
 }
 
+/** Iterate protocols by name
+ *
+ */
+fr_dict_t *fr_dict_global_ctx_iter_init(fr_dict_global_ctx_iter_t *iter)
+{
+	if (!dict_gctx) return NULL;
+
+	return fr_hash_table_iter_init(dict_gctx->protocol_by_name, iter);
+}
+
+fr_dict_t *fr_dict_global_ctx_iter_next(fr_dict_global_ctx_iter_t *iter)
+{
+	if (!dict_gctx) return NULL;
+
+	return fr_hash_table_iter_next(dict_gctx->protocol_by_name, iter);
+}
+
+
 /** Coerce to non-const
  *
  */
