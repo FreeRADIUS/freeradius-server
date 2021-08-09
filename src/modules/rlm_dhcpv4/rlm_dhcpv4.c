@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/io/pair.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 
 #include <ctype.h>
@@ -70,63 +71,32 @@ static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				        request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				        fr_value_box_list_t *in)
 {
-	fr_value_box_t	*vb = NULL, *vb_decoded;
-	fr_pair_t	*vp = NULL;
+	int		decoded;
+	fr_value_box_t	*vb;
 	fr_pair_list_t	head;
-	int		decoded = 0;
+	fr_dcursor_t	cursor;
 
 	fr_pair_list_init(&head);
+	fr_dcursor_init(&cursor, &head);
 
-	while ((vb = fr_dlist_next(in, vb))) {
-		uint8_t const	*p, *end;
-		ssize_t		len;
-		fr_pair_list_t	vps;
-		fr_dcursor_t	options_cursor;
-
-		fr_pair_list_init(&vps);
-		if (vb->type != FR_TYPE_OCTETS) {
-			RWDEBUG("Skipping value \"%pV\", expected value of type %s, got type %s",
-				vb,
-				fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_OCTETS, "<INVALID>"),
-				fr_table_str_by_value(fr_value_box_type_table, vb->type, "<INVALID>"));
-			continue;
-		}
-
-		fr_dcursor_init(&options_cursor, &vps);
-
-		p = vb->vb_octets;
-		end = vb->vb_octets + vb->vb_length;
-
-		/*
-		 *	Loop over all the options data
-		 */
-		while (p < end) {
-			len = fr_dhcpv4_decode_option(request->request_ctx, &options_cursor, dict_dhcpv4,
-						      p, end - p, NULL);
-			if (len <= 0) {
-				RPERROR("DHCP option decoding failed");
-				fr_pair_list_free(&head);
-				return XLAT_ACTION_FAIL;
-			}
-			p += len;
-		}
-		fr_pair_list_append(&head, &vps);
+	decoded = fr_pair_decode_value_box_list(request->request_ctx, &cursor, request, NULL, fr_dhcpv4_decode_option, in);
+	if (decoded <= 0) {
+		RPERROR("DHCP option decoding failed");
+		return XLAT_ACTION_FAIL;
 	}
 
-	while ((vp = fr_pair_list_next(&head, vp))) {
-		RDEBUG2("dhcp_option: &%pP", vp);
-		decoded++;
-	}
+	/*
+	 *	Append the decoded options to the request list.
+	 */
+	fr_pair_list_append(&request->request_pairs, &head);
 
-	fr_pair_list_move(&request->request_pairs, &head, T_OP_ADD);
-
-	/* Free any unmoved pairs */
-	fr_pair_list_free(&head);
-
-	/* create a value box to hold the decoded count */
-	MEM(vb_decoded = fr_value_box_alloc(ctx, FR_TYPE_UINT16, NULL, false));
-	vb_decoded->vb_uint16 = decoded;
-	fr_dcursor_append(out, vb_decoded);
+	/*
+	 *	Create a value box to hold the decoded count, and add
+	 *	it to the output list.
+	 */
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false));
+	vb->vb_uint32 = decoded;
+	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }
