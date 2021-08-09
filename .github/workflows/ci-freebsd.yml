@@ -3,7 +3,7 @@ name: CI FreeBSD
 on:
   push:
     branches:
-      - packaging_test
+      - ci-debug
   schedule:
     - cron: '0 20 * * *'
 
@@ -39,9 +39,10 @@ jobs:
       working-directory: freeradius
 
     - name: Test using a FreeBSD VirtualBox VM
-      uses: vmactions/freebsd-vm@v0.0.9
+      uses: vmactions/freebsd-vm@v0.1.5
       with:
         usesh: true
+        sync: sshfs
         prepare: |
           pkg install -y         \
             curl                 \
@@ -63,7 +64,7 @@ jobs:
             net-snmp             \
             openldap-client      \
             python3              \
-            py37-pip             \
+            py38-pip             \
             postgresql12-client  \
             talloc               \
             unixODBC
@@ -81,3 +82,38 @@ jobs:
           echo 'test.digest:'    > src/tests/digest/all.mk
           echo 'test.radmin:'    > src/tests/radmin/all.mk
           gmake test
+
+    #
+    #  If the CI has failed and the branch is ci-debug then we start a tmate
+    #  session to provide interactive shell access to the session.
+    #
+    #  The SSH rendezvous point will be emited continuously in the job output,
+    #  which will look something like:
+    #
+    #      SSH: ssh VfuX8SrNuU5pGPMyZcz7TpJTa@sfo2.tmate.io
+    #
+    #  For example:
+    #
+    #      git push origin ci-debug --force
+    #
+    #  Look at the job output in: https://github.com/FreeRADIUS/freeradius-server/actions
+    #
+    #      ssh VfuX8SrNuU5pGPMyZcz7TpJTa@sfo2.tmate.io
+    #
+    #  Access requires that you have the private key corresponding to the
+    #  public key of the GitHub user that initiated the job.
+    #
+    #  The above will open a shell for the MacOS environment on which the
+    #  FreeBSD VM is running within VirtualBox.
+    #
+    #  Access the FreeBSD VM with:
+    #
+    #      ssh -t freebsd
+    #
+    - name: "Debug: Start tmate"
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+
