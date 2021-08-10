@@ -7,24 +7,6 @@
 #
 #  = DHCPv4 Module
 #
-#  The `dhcpv4` module is useful only for `xlat`. To use it,
-#  put `dhcp` into the `instantiate { ... }` section.
-#
-#  `%{dhcp_options:<Attribute-ref>}` may be used to decode
-#  DHCP options data included in RADIUS packets by vendors
-#  of DHCP to RADIUS gateways.
-#
-#  This is known to work with the following VSAs:
-#
-#  [options="header,autowidth"]
-#  |===
-#  | Vendor            | VSAs
-#  | Juniper           | `ERX-Dhcp-Options`
-#  | Alcatel lucent SR | `Alc-ToServer-Dhcp-Options`, `Alc-ToClient-Dhcp-Options`
-#  |===
-#
-#  e.g: `%{dhcp_options:RX-Dhcp-Options}`
-#
 
 #
 #  ## Configuration Settings
@@ -33,69 +15,3 @@
 #
 dhcpv4 {
 }
-
-#
-#  ## Expansions
-#
-#  The rlm_dhcpv4 provides the below xlat's functions to handle the DHCPV4 packets.
-#
-#  ### %(dhcpv4_decode:...)
-#
-#  Decode DHCP option declared in dictionary.rfc2131.
-#
-#  .Return: _string_
-#
-#  .Example
-#
-#  [source,unlang]
-#  ----
-#  update request {
-#    &Tmp-Octets-0 := 0x520d0103abcdef0206010203040506
-#  }
-#  if ("%(dhcpv4_decode:%{Tmp-Octets-0})" != 2) {
-#    update reply {
-#      &Reply-Message := "Problems decoding the DHPCv4 fields."
-#    }
-#    reject
-#  }
-#  update reply {
-#    &Reply-Message := "The value of Relay-Agent-Information.Circuit-ID=%{Relay-Agent-Information.Circuit-ID}, Relay-Agent-Information.Remote-ID=%{Relay-Agent-Information.Remote-ID}"
-#  }
-#  ----
-#
-#  .Output
-#
-#  ```
-#  "The value of Relay-Agent-Information.Circuit-ID=0xabcdef, Relay-Agent-Information.Remote-ID=0x010203040506"
-#  ```
-#
-#  ### %(dhcpv4_encode:...)
-#
-#  Encode DHCP option declared in dictionary.rfc2131.
-#
-#  .Return: _string_
-#
-#  .Example
-#
-#  [source,unlang]
-#  ----
-#  update request {
-#    &Relay-Agent-Information.Circuit-ID := 0xabcdef
-#    &Relay-Agent-Information.Remote-ID := 0x010203040506
-#  }
-#  update request {
-#    &Tmp-Octets-0 := "%(dhcpv4_encode:&request[*])"
-#  }
-#  if (&Tmp-Octets-0 != 0x520d0103abcdef0206010203040506) {
-#    update reply {
-#      &Reply-Message := "Invalid DHCP packets"
-#    }
-#    reject
-#  }
-#  ----
-#
-#  .Output
-#
-#  ```
-#
-#  ```
