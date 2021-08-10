@@ -3115,48 +3115,58 @@ static int protocol_decode_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t c
 	return 0;
 }
 
+static int xlat_protocol_register(fr_dict_t const *dict)
+{
+	fr_test_point_pair_decode_t *tp_decode;
+	xlat_t *xlat;
+	dl_t *dl = fr_dict_dl(dict);
+	char *p, buffer[256], name[256];
+
+	if (!dl) return -1;
+
+	strlcpy(name, fr_dict_root(dict)->name, sizeof(name));
+	for (p = name; *p != '\0'; p++) {
+		*p = tolower((int) *p);
+	}
+
+	/*
+	 *	See if there's a decode function for it.
+	 */
+	snprintf(buffer, sizeof(buffer), "%s_tp_decode_pair", name);
+
+	/*
+	 *	No decode == soft fail.
+	 */
+	tp_decode = dlsym(dl->handle, buffer);
+	if (!tp_decode) return 0;
+
+	snprintf(buffer, sizeof(buffer), "decode.%s", name);
+
+	xlat = xlat_register(NULL, buffer, protocol_decode_xlat, false);
+	xlat_func_args(xlat, protocol_decode_xlat_args);
+	xlat_async_instantiate_set(xlat, protocol_decode_xlat_instantiate, fr_test_point_pair_decode_t *, NULL, tp_decode);
+
+	return 0;
+}
 
 static int xlat_protocol_init(void)
 {
 	fr_dict_t *dict;
 	fr_dict_global_ctx_iter_t iter;
-	char *p, buffer[256], name[256];
 
 	/*
 	 *	@todo - add encoder, too
-	 *
-	 *	@todo - and for the "internal" protocol, too.
 	 */
 	for (dict = fr_dict_global_ctx_iter_init(&iter);
 	     dict != NULL;
 	     dict = fr_dict_global_ctx_iter_next(&iter)) {
-		dl_t *dl = fr_dict_dl(dict);
-		fr_test_point_pair_decode_t *tp_decode;
-		xlat_t *xlat;
-
-		strlcpy(name, fr_dict_root(dict)->name, sizeof(name));
-		for (p = name; *p != '\0'; p++) {
-			*p = tolower((int) *p);
-		}
-
-		/*
-		 *	See if there's a decode function for it.
-		 */
-		snprintf(buffer, sizeof(buffer), "%s_tp_decode_pair", name);
-
-		/*
-		 *	No decode == soft fail.
-		 */
-		tp_decode = dlsym(dl->handle, buffer);
-		if (!tp_decode) continue;
-
-		snprintf(buffer, sizeof(buffer), "decode.%s", name);
-		ERROR("TP Decode %s -> %p", name, tp_decode);
-
-		xlat = xlat_register(NULL, buffer, protocol_decode_xlat, false);
-		xlat_func_args(xlat, protocol_decode_xlat_args);
-		xlat_async_instantiate_set(xlat, protocol_decode_xlat_instantiate, fr_test_point_pair_decode_t *, NULL, tp_decode);
+		if (xlat_protocol_register(dict) < 0) return -1;
 	}
+
+	/*
+	 *	And the internal protocol, too.
+	 */
+	if (xlat_protocol_register(fr_dict_internal()) < 0) return -1;
 
 	return 0;
 }
@@ -3196,7 +3206,7 @@ int xlat_init(void)
 	}
 
 	/*
-	 *	Define encode/decode for the various protocols.
+	 *	Define encode/decode xlats for the various protocols.
 	 */
 	if (xlat_protocol_init() < 0) return -1;
 
