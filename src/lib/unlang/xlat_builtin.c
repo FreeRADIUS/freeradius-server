@@ -3109,15 +3109,103 @@ static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static int protocol_decode_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
+static int protocol_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
 {
 	*(void **) xlat_inst = uctx;
 	return 0;
 }
 
+static xlat_arg_parser_t const protocol_encode_xlat_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Encode protocol attributes / options
+ *
+ * Returns octet string created from the provided pairs
+ *
+ * Example:
+@verbatim
+%(encode.dhcpv4:&request[*])
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					  request_t *request, void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					  fr_value_box_list_t *in)
+{
+	tmpl_t		*vpt;
+	fr_pair_t	*vp;
+	fr_dcursor_t	cursor;
+	tmpl_pair_cursor_ctx_t	cc;
+	bool		tainted = false;
+	fr_value_box_t	*encoded;
+
+	uint8_t		binbuf[2048];
+	uint8_t		*p = binbuf, *end = p + sizeof(binbuf);
+	ssize_t		len = 0;
+	fr_value_box_t	*in_head = fr_dlist_head(in);
+
+	void		*encode_ctx = NULL;
+	fr_test_point_pair_encode_t const *tp_encode;
+
+	memcpy(&tp_encode, xlat_inst, sizeof(tp_encode)); /* const issues */
+
+	if (tmpl_afrom_attr_str(NULL, NULL, &vpt, in_head->vb_strvalue,
+				&(tmpl_rules_t){
+					.dict_def = request->dict,
+					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+				}) <= 0) {
+		RPEDEBUG("Failed parsing attribute reference");
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Create the encoding context.
+	 */
+	if (tp_encode->test_ctx) {
+		if (tp_encode->test_ctx(&encode_ctx, ctx) < 0) {
+			return XLAT_ACTION_FAIL;
+		}
+	}
+
+	/*
+	 *	Loop over the attributes, encoding them.
+	 */
+	for (vp = tmpl_pair_cursor_init(NULL, NULL, &cc, &cursor, request, vpt);
+	     vp != NULL;
+	     vp = fr_dcursor_next(&cursor)) {
+		if (vp->da->flags.internal) continue;
+		if (vp->da->dict != request->dict) continue; /* @todo - internal dictionary? */
+
+		len = tp_encode->func(&FR_DBUFF_TMP(p, end), &cursor, encode_ctx);
+		if (len < 0) {
+			RPEDEBUG("Protocol encoding failed");
+			tmpl_pair_cursor_clear(&cc);
+			return XLAT_ACTION_FAIL;
+		}
+
+		tainted |= vp->vp_tainted;
+		p += len;
+	}
+
+	tmpl_pair_cursor_clear(&cc);
+
+	/*
+	 *	Pass the options string back to the caller.
+	 */
+	MEM(encoded = fr_value_box_alloc_null(ctx));
+	fr_value_box_memdup(encoded, encoded, NULL, binbuf, (size_t)len, tainted);
+	fr_dcursor_append(out, encoded);
+
+	return XLAT_ACTION_DONE;
+}
+
 static int xlat_protocol_register(fr_dict_t const *dict)
 {
 	fr_test_point_pair_decode_t *tp_decode;
+	fr_test_point_pair_encode_t *tp_encode;
 	xlat_t *xlat;
 	dl_t *dl = fr_dict_dl(dict);
 	char *p, buffer[256], name[256];
@@ -3133,18 +3221,27 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 	 *	See if there's a decode function for it.
 	 */
 	snprintf(buffer, sizeof(buffer), "%s_tp_decode_pair", name);
+	tp_decode = dlsym(dl->handle, buffer);
+	if (tp_decode) {
+		snprintf(buffer, sizeof(buffer), "decode.%s", name);
+
+		xlat = xlat_register(NULL, buffer, protocol_decode_xlat, false);
+		xlat_func_args(xlat, protocol_decode_xlat_args);
+		xlat_async_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_decode_t *, NULL, tp_decode);
+	}
 
 	/*
-	 *	No decode == soft fail.
+	 *	See if there's an encode function for it.
 	 */
-	tp_decode = dlsym(dl->handle, buffer);
-	if (!tp_decode) return 0;
+	snprintf(buffer, sizeof(buffer), "%s_tp_encode_pair", name);
+	tp_encode = dlsym(dl->handle, buffer);
+	if (tp_encode) {
+		snprintf(buffer, sizeof(buffer), "encode.%s", name);
 
-	snprintf(buffer, sizeof(buffer), "decode.%s", name);
-
-	xlat = xlat_register(NULL, buffer, protocol_decode_xlat, false);
-	xlat_func_args(xlat, protocol_decode_xlat_args);
-	xlat_async_instantiate_set(xlat, protocol_decode_xlat_instantiate, fr_test_point_pair_decode_t *, NULL, tp_decode);
+		xlat = xlat_register(NULL, buffer, protocol_encode_xlat, false);
+		xlat_func_args(xlat, protocol_encode_xlat_args);
+		xlat_async_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_encode_t *, NULL, tp_encode);
+	}
 
 	return 0;
 }
