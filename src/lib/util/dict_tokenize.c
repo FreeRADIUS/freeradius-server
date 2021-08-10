@@ -2426,6 +2426,8 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir, char c
 		dict_dependent_add(dict, "global");
 	}
 
+	if (dict_dlopen(dict, "internal") < 0) goto error;
+
 	*out = dict;
 
 	return 0;
