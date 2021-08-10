@@ -3177,7 +3177,18 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	     vp != NULL;
 	     vp = fr_dcursor_next(&cursor)) {
 		if (vp->da->flags.internal) continue;
-		if (vp->da->dict != request->dict) continue; /* @todo - internal dictionary? */
+
+		/*
+		 *	Don't check the dictionaries.  By definition,
+		 *	vp->da->dict==request->dict, OR else we're
+		 *	using the internal encoder and encoding a real
+		 *	protocol.
+		 *
+		 *	However, we likely still want a
+		 *	dictionary-specific "is encodable" function,
+		 *	as AKA/SIM and DHCPv6 encode "bool"s only if
+		 *	their value is true.
+		 */
 
 		len = tp_encode->func(&FR_DBUFF_TMP(p, end), &cursor, encode_ctx);
 		if (len < 0) {
@@ -3251,9 +3262,6 @@ static int xlat_protocol_init(void)
 	fr_dict_t *dict;
 	fr_dict_global_ctx_iter_t iter;
 
-	/*
-	 *	@todo - add encoder, too
-	 */
 	for (dict = fr_dict_global_ctx_iter_init(&iter);
 	     dict != NULL;
 	     dict = fr_dict_global_ctx_iter_next(&iter)) {
