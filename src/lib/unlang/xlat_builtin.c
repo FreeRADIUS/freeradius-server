@@ -3166,6 +3166,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (tp_encode->test_ctx) {
 		if (tp_encode->test_ctx(&encode_ctx, ctx) < 0) {
+			talloc_free(vpt);
 			return XLAT_ACTION_FAIL;
 		}
 	}
@@ -3194,6 +3195,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (len < 0) {
 			RPEDEBUG("Protocol encoding failed");
 			tmpl_pair_cursor_clear(&cc);
+			talloc_free(vpt);
 			return XLAT_ACTION_FAIL;
 		}
 
@@ -3202,6 +3204,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	tmpl_pair_cursor_clear(&cc);
+	talloc_free(vpt);
 
 	/*
 	 *	Pass the options string back to the caller.
