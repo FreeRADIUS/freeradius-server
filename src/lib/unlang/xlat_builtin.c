@@ -3221,7 +3221,12 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 	dl_t *dl = fr_dict_dl(dict);
 	char *p, buffer[256+32], name[256];
 
-	if (!dl) return -1;
+	/*
+	 *	No library for this protocol, skip it.
+	 *
+	 *	Protocol TEST has no libfreeradius-test, so that's OK.
+	 */
+	if (!dl) return 0;
 
 	strlcpy(name, fr_dict_root(dict)->name, sizeof(name));
 	for (p = name; *p != '\0'; p++) {
