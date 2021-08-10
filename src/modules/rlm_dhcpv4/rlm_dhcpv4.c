@@ -51,55 +51,6 @@ typedef struct {
 	int nothing;
 } rlm_dhcpv4_t;
 
-static xlat_arg_parser_t const dhcpv4_decode_xlat_args[] = {
-	{ .single = true, .variadic = true, .type = FR_TYPE_VOID },
-	XLAT_ARG_PARSER_TERMINATOR
-};
-
-/** Decode DHCP option data
- *
- * Creates DHCP attributes based on the given binary option data
- *
- * Example:
-@verbatim
-%(dhcpv4_decode:%{Tmp-Octets-0})
-@endverbatim
- *
- * @ingroup xlat_functions
- */
-static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				        request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				        fr_value_box_list_t *in)
-{
-	int		decoded;
-	fr_value_box_t	*vb;
-	fr_pair_list_t	head;
-	fr_dcursor_t	cursor;
-
-	fr_pair_list_init(&head);
-	fr_dcursor_init(&cursor, &head);
-
-	decoded = fr_pair_decode_value_box_list(request->request_ctx, &cursor, request, NULL, fr_dhcpv4_decode_option, in);
-	if (decoded <= 0) {
-		RPERROR("DHCP option decoding failed");
-		return XLAT_ACTION_FAIL;
-	}
-
-	/*
-	 *	Append the decoded options to the request list.
-	 */
-	fr_pair_list_append(&request->request_pairs, &head);
-
-	/*
-	 *	Create a value box to hold the decoded count, and add
-	 *	it to the output list.
-	 */
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false));
-	vb->vb_uint32 = decoded;
-	fr_dcursor_append(out, vb);
-
-	return XLAT_ACTION_DONE;
-}
 
 static xlat_arg_parser_t const dhcpv4_encode_xlat_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_STRING },
@@ -183,8 +134,6 @@ static int dhcp_load(void)
 		return -1;
 	}
 
-	xlat = xlat_register(NULL, "dhcpv4_decode", dhcpv4_decode_xlat, false);
-	xlat_func_args(xlat, dhcpv4_decode_xlat_args);
 	xlat = xlat_register(NULL, "dhcpv4_encode", dhcpv4_encode_xlat, false);
 	xlat_func_args(xlat, dhcpv4_encode_xlat_args);
 
