@@ -3152,7 +3152,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	memcpy(&tp_encode, xlat_inst, sizeof(tp_encode)); /* const issues */
 
-	if (tmpl_afrom_attr_str(NULL, NULL, &vpt, in_head->vb_strvalue,
+	if (tmpl_afrom_attr_str(ctx, NULL, &vpt, in_head->vb_strvalue,
 				&(tmpl_rules_t){
 					.dict_def = request->dict,
 					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
@@ -3165,7 +3165,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Create the encoding context.
 	 */
 	if (tp_encode->test_ctx) {
-		if (tp_encode->test_ctx(&encode_ctx, ctx) < 0) {
+		if (tp_encode->test_ctx(&encode_ctx, vpt) < 0) {
 			talloc_free(vpt);
 			return XLAT_ACTION_FAIL;
 		}
