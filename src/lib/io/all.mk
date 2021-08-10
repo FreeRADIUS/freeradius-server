@@ -9,7 +9,6 @@ SOURCES	:= \
 	master.c \
 	message.c \
 	network.c \
-	pair.c \
 	queue.c \
 	ring_buffer.c \
 	schedule.c \

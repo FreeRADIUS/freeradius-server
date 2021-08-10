@@ -35,6 +35,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/regex.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
+#include <freeradius-devel/io/test_point.h>
+
 #include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
@@ -424,9 +426,7 @@ void _xlat_async_instantiate_set(xlat_t const *xlat,
 				 xlat_detach_t detach,
 				 void *uctx)
 {
-	xlat_t *c;
-
-	memcpy(&c, &xlat, sizeof(c));
+	xlat_t *c = UNCONST(xlat_t *, xlat);
 
 	c->instantiate = instantiate;
 	c->inst_type = inst_type;
@@ -456,9 +456,7 @@ void _xlat_async_thread_instantiate_set(xlat_t const *xlat,
 				        xlat_thread_detach_t thread_detach,
 				        void *uctx)
 {
-	xlat_t *c;
-
-	memcpy(&c, &xlat, sizeof(c));
+	xlat_t *c = UNCONST(xlat_t *, xlat);
 
 	c->thread_instantiate = thread_instantiate;
 	c->thread_inst_type = thread_inst_type;
@@ -3049,6 +3047,121 @@ static xlat_arg_parser_t const trigger_xlat_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
+static xlat_arg_parser_t const protocol_decode_xlat_args[] = {
+	{ .single = true, .variadic = true, .type = FR_TYPE_VOID },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Decode any protocol attribute / options
+ *
+ * Creates protocol-specific attributes based on the given binary option data
+ *
+ * Example:
+@verbatim
+%(decode.dhcpv4:%{Tmp-Octets-0})
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					  request_t *request, void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					  fr_value_box_list_t *in)
+{
+	int		decoded;
+	fr_value_box_t	*vb;
+	fr_pair_list_t	head;
+	fr_dcursor_t	cursor;
+	void		*decode_ctx = NULL;
+	fr_test_point_pair_decode_t const *tp_decode;
+
+	memcpy(&tp_decode, xlat_inst, sizeof(tp_decode)); /* const issues */
+
+	if (tp_decode->test_ctx) {
+		if (tp_decode->test_ctx(&decode_ctx, ctx) < 0) {
+			return XLAT_ACTION_FAIL;
+		}
+	}
+
+	fr_pair_list_init(&head);
+	fr_dcursor_init(&cursor, &head);
+
+	decoded = fr_pair_decode_value_box_list(request->request_ctx, &cursor, request, decode_ctx, tp_decode->func, in);
+	if (decoded <= 0) {
+		talloc_free(decode_ctx);
+		RPERROR("Protocol decoding failed");
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Append the decoded options to the request list.
+	 */
+	fr_pair_list_append(&request->request_pairs, &head);
+
+	/*
+	 *	Create a value box to hold the decoded count, and add
+	 *	it to the output list.
+	 */
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL, false));
+	vb->vb_uint32 = decoded;
+	fr_dcursor_append(out, vb);
+
+	talloc_free(decode_ctx);
+	return XLAT_ACTION_DONE;
+}
+
+static int protocol_decode_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	*(void **) xlat_inst = uctx;
+	return 0;
+}
+
+
+static int xlat_protocol_init(void)
+{
+	fr_dict_t *dict;
+	fr_dict_global_ctx_iter_t iter;
+	char *p, buffer[256], name[256];
+
+	/*
+	 *	@todo - add encoder, too
+	 *
+	 *	@todo - and for the "internal" protocol, too.
+	 */
+	for (dict = fr_dict_global_ctx_iter_init(&iter);
+	     dict != NULL;
+	     dict = fr_dict_global_ctx_iter_next(&iter)) {
+		dl_t *dl = fr_dict_dl(dict);
+		fr_test_point_pair_decode_t *tp_decode;
+		xlat_t *xlat;
+
+		strlcpy(name, fr_dict_root(dict)->name, sizeof(name));
+		for (p = name; *p != '\0'; p++) {
+			*p = tolower((int) *p);
+		}
+
+		/*
+		 *	See if there's a decode function for it.
+		 */
+		snprintf(buffer, sizeof(buffer), "%s_tp_decode_pair", name);
+
+		/*
+		 *	No decode == soft fail.
+		 */
+		tp_decode = dlsym(dl->handle, buffer);
+		if (!tp_decode) continue;
+
+		snprintf(buffer, sizeof(buffer), "decode.%s", name);
+		ERROR("TP Decode %s -> %p", name, tp_decode);
+
+		xlat = xlat_register(NULL, buffer, protocol_decode_xlat, false);
+		xlat_func_args(xlat, protocol_decode_xlat_args);
+		xlat_async_instantiate_set(xlat, protocol_decode_xlat_instantiate, fr_test_point_pair_decode_t *, NULL, tp_decode);
+	}
+
+	return 0;
+}
+
+
 /** Global initialisation for xlat
  *
  * @note Free memory with #xlat_free
@@ -3081,6 +3194,11 @@ int xlat_init(void)
 		ERROR("%s: Failed to create tree", __FUNCTION__);
 		return -1;
 	}
+
+	/*
+	 *	Define encode/decode for the various protocols.
+	 */
+	if (xlat_protocol_init() < 0) return -1;
 
 #define XLAT_REGISTER(_x) xlat = xlat_register_legacy(NULL, STRINGIFY(_x), xlat_func_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN); \
 	xlat_internal(xlat);

@@ -7,7 +7,7 @@ update control {
         &Tmp-Octets-0 := 0x520d0103abcdef0206010203040506
 }
 
-if ("%(dhcpv4_decode:%{control.Tmp-Octets-0})" != 2) {
+if ("%(decode.dhcpv4:%{control.Tmp-Octets-0})" != 2) {
         test_fail
 }
 

@@ -18,7 +18,7 @@
  * $Id$
  *
  * @brief Protocol agnostic encode/decoders
- * @file io/pair.c
+ * @file unlang/xlat_pair.c
  *
  * @copyright 2021 Network RADIUS SARL (legal@networkradius.com)
  */
