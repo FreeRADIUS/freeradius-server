@@ -52,99 +52,6 @@ typedef struct {
 } rlm_dhcpv4_t;
 
 
-static xlat_arg_parser_t const dhcpv4_encode_xlat_args[] = {
-	{ .required = true, .single = true, .type = FR_TYPE_STRING },
-	XLAT_ARG_PARSER_TERMINATOR
-};
-
-/** Encode DHCP option data
- *
- * Returns octet string created from the provided DHCP attributes
- *
- * Example:
-@verbatim
-%(dhcpv4_encode:&request[*])
-@endverbatim
- *
- * @ingroup xlat_functions
- */
-static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-					fr_value_box_list_t *in)
-{
-	tmpl_t		*vpt;
-	fr_pair_t	*vp;
-	fr_dcursor_t	*cursor;
-	tmpl_pair_cursor_ctx_t	cc;
-	bool		tainted = false;
-	fr_value_box_t	*encoded;
-
-	uint8_t		binbuf[2048];
-	uint8_t		*p = binbuf, *end = p + sizeof(binbuf);
-	ssize_t		len = 0;
-	fr_value_box_t	*in_head = fr_dlist_head(in);
-
-	if (tmpl_afrom_attr_str(NULL, NULL, &vpt, in_head->vb_strvalue,
-				&(tmpl_rules_t){
-					.dict_def = request->dict,
-					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
-				}) <= 0) {
-		RPEDEBUG("Failed parsing attribute reference");
-		return XLAT_ACTION_FAIL;
-	}
-
-	MEM(cursor = talloc(ctx, fr_dcursor_t));
-	talloc_steal(cursor, vpt);
-	vp = tmpl_pair_cursor_init(NULL, NULL, &cc, cursor, request, vpt);
-
-	if (!vp) return XLAT_ACTION_DONE; /* Nothing to encode */
-
-	while (fr_dcursor_filter_current(cursor, fr_dhcpv4_is_encodable, NULL)) {
-		vp = fr_dcursor_current(cursor);
-		if (vp->vp_tainted) tainted = true;
-		len = fr_dhcpv4_encode_option(&FR_DBUFF_TMP(p, end), cursor,
-					      &(fr_dhcpv4_ctx_t){ .root = fr_dict_root(dict_dhcpv4) });
-		if (len < 0) {
-			RPEDEBUG("DHCP option encoding failed");
-			talloc_free(cursor);
-			tmpl_pair_cursor_clear(&cc);
-			return XLAT_ACTION_FAIL;
-		}
-		p += len;
-	}
-	talloc_free(cursor);
-	tmpl_pair_cursor_clear(&cc);
-
-	/*
-	 *	Pass the options string back
-	 */
-	MEM(encoded = fr_value_box_alloc_null(ctx));
-	fr_value_box_memdup(encoded, encoded, NULL, binbuf, (size_t)len, tainted);
-	fr_dcursor_append(out, encoded);
-
-	return XLAT_ACTION_DONE;
-}
-
-static int dhcp_load(void)
-{
-	xlat_t	*xlat;
-
-	if (fr_dhcpv4_global_init() < 0) {
-		PERROR("Failed initialising protocol library");
-		return -1;
-	}
-
-	xlat = xlat_register(NULL, "dhcpv4_encode", dhcpv4_encode_xlat, false);
-	xlat_func_args(xlat, dhcpv4_encode_xlat_args);
-
-	return 0;
-}
-
-static void dhcp_unload(void)
-{
-	fr_dhcpv4_global_free();
-}
-
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -159,7 +66,4 @@ module_t rlm_dhcpv4 = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "dhcpv4",
 	.inst_size	= sizeof(rlm_dhcpv4_t),
-
-	.onload		= dhcp_load,
-	.unload		= dhcp_unload,
 };
