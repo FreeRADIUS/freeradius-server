@@ -55,7 +55,7 @@ typedef struct {
  *
  */
 typedef struct {
-	int			lst_id;
+	fr_lst_index_t		lst_id;
 	uint32_t		priority;
 	fr_time_t		recv_time;
 	fr_io_track_t		*track;
