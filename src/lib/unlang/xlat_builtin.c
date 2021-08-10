@@ -3219,7 +3219,7 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 	fr_test_point_pair_encode_t *tp_encode;
 	xlat_t *xlat;
 	dl_t *dl = fr_dict_dl(dict);
-	char *p, buffer[256], name[256];
+	char *p, buffer[256+32], name[256];
 
 	if (!dl) return -1;
 
