@@ -8,7 +8,7 @@ DEFAULT_SITES :=	default inner-tunnel
 LOCAL_SITES :=		$(addprefix raddb/sites-enabled/,$(DEFAULT_SITES))
 
 DEFAULT_MODULES :=	always attr_filter cache_eap chap client \
-			delay detail detail.log digest dhcpv4 eap \
+			delay detail detail.log digest eap \
 			eap_inner echo escape exec expiration expr files linelog logintime \
 			mschap ntlm_auth pap passwd radutmp \
 			soh sradutmp stats unix unpack utf8
