@@ -48,18 +48,6 @@ update <section> { ... }::
 
 
 
-NOTE: If you want to store authorization attributes too, consider
-performing LDAP/SQL lookups in the tls-cache virtual server and
-storing the results in `&session-state`.
-
-The complete list can then be restored along with the
-`Session-Data` using the entry below.
-
-Policies run in `post-auth` then have access to the same data
-irrespective of whether the session is being resumed.
-
-
-
 ### OCSP Session Configuration
 
 In addition to TLS sessions, the OCSP queries can be cached.
@@ -84,8 +72,7 @@ cache cache_tls_session {
 	key = &Session-Id
 	ttl = 3600	# 60 mins
 	update {
-		&session-state.Session-Data := &session-state.Session-Data
-#		&session-state += &session-state
+		&reply.Session-Data := &Session-Data
 	}
 }
 cache cache_ocsp {

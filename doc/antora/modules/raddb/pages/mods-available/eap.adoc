@@ -156,6 +156,64 @@ authenticate via EAP-TLS!  This is likely not what you
 want.
 
 
+[NOTE]
+====
+As of 4.0 the following TLS config items/config sections have been
+removed.  Equivalent functionality is available.
+
+[options="header,autowidth"]
+|===
+| Config item | Replacement
+
+| `verify_client_cert_cmd`
+| Unlang policy in the `verify certificate { ... }` section of the specified `virtual_server`.
+
+| `check_cert_issuer`
+| Unlang policy in the `verify certificate { ... }` section of the specified `virtual_server`.
+
+| `check_cert_cn`
+| Unlang policy in the `verify certificate { ... }` section of the specified `virtual_server`.
+
+| `ocsp`
+| rlm_ocsp call in the `verify certificate { ... }` section of the specified `virtual_server`.
+
+| `staple`
+| rlm_ocsp call in the `staple certificate { ... }` section of the specified `virtual_server`.
+|===
+
+
+virtual_server::
+
+All certificate checks and stateful session resumption calls will be
+made to the virtual server specified here.
+
+The virtual server must specify `namespace = tls`, and may contain
+the following sections:
+
+[options="header,autowidth"]
+|===
+| Section | Purpose
+
+| `load session { ... }`
+| Load stateful session information from a cache.
+
+| `store session { ... }`
+| Store stateful session information in a cache.
+
+| `clear session { ... }`
+| Clear stateful session information from a cache.
+
+| `verify certificate { ... }` |
+| Apply policies based on the client certificate presented.
+
+| `staple certificate { ... }`
+| Gather stapling information for one or more of our certificates.
+|===
+
+More information about the various sections can be found in
+link:../sites-available/tls.adoc[sites-available/tls].
+
+
 auto_chain::
 
 OpenSSL will automatically create certificate chains, unless
@@ -388,52 +446,7 @@ fragment size should be `1024` or less.
 
 
 
-check_crl:: Check the Certificate Revocation List.
-
-Will check CRLs for all certificates in the certificate chain.
-
-1. Copy CA certificates and CRLs to same directory.
-2. Execute `c_rehash <CA certs&CRLs Directory>`. `c_rehash` is
-   OpenSSL's command.
-3. uncomment the lines below.
-4. Restart radiusd.
-
-
-
 ca_path:: Full path to the CA file.
-
-
-
-allow_expired_crl:: Accept an expired Certificate Revocation List.
-
-
-
-check_cert_issuer::
-
-If `check_cert_issuer` is set, the value will be checked
-against the DN of the issuer in the client certificate.  If
-the values do not match, the certificate verification will
-fail, rejecting the user.
-
-This check can be done more generally by checking the value
-of the `TLS-Client-Cert-Issuer` attribute.  This check can be
-done via any mechanism you choose.
-
-
-
-check_cert_cn::
-
-If `check_cert_cn` is set, the value will be xlat'ed and
-checked against the CN in the client certificate.  If the
-values do not match, the certificate verification will fail
-rejecting the user.
-
-This check is done only if the previous `check_cert_issuer`
-is not set, or if the check succeeds.
-
-This check can be done more generally by checking the value
-of the `TLS-Client-Cert-Common-Name` attribute.  This check can be done
-via any mechanism you choose.
 
 
 
@@ -499,22 +512,121 @@ openssl ecparam -list_curves
 
 
 
+mode:: Which client certificates should be verified
+
+[options="header,autowidth"]
+|===
+| Value | Description
+
+| `disabled`
+| Don't verify any certificates.
+
+| `all`
+| Verify all certificates.  Check none have been
+  revoked via CRL, and that all are trusted.
+
+| `untrusted`
+| Verify all untrusted certificates,
+  i.e. those which were presented by the client
+  and not loaded on startup.
+
+| `client-and-issuer`
+| Verify the client certificate and its issuer.
+
+| `client`
+| Only verify the client certificate.
+|===
+
+It is recommended to leave mode as `all` except
+when debugging, or in an emergency situation.
+
+[NOTE]
+====
+This verification is only applied during a full
+handshake, and with stateful session resumption.
+Verification for stateless session resumption
+should be performed using the `verify [*] { ... }`
+section(s) of the specified `virtual_server`.
+====
+
+
+
+attribute_mode:: Which client certificates should
+be converted to attributes for use in the
+`verify * { ... }` sections of the specified
+`virtual_server`.
+
+Attributes created during certificate processing
+will be placed in the `&session-state` list.
+This is to simplify session-resumption, as the
+contents of this list also contains session data
+for stateful resumption, and this list is encoded
+in the session-ticket for stateless resumption.
+
+[options="header,autowidth"]
+|===
+| Value | Description
+
+| `disabled`
+| Don't produce any attributes.
+
+| `all`
+| Create attributes for all certificates from
+  the root, to the presented client certificate.
+
+| `untrusted`
+| Create attributes for untrusted certificates,
+  i.e. those which were presented by the client
+  and not loaded on startup.
+
+| `client-and-issuer`
+| Create attributes for the client certificate
+  and its issuer.
+| `client`
+
+| Only create attributes for the client
+  certificate.
+|===
+
+[NOTE]
+====
+Attribute generation is only performed on full
+handshake, or where we detect that attributes
+are missing from the &session-state list during
+stateful session-resumption.
+
+Certificate attributes will usually be retrieved
+from the the session-ticket in the case of
+stateless session-resumption.
+====
+
+
+
+check_crl:: Check the Certificate Revocation List.
+
+Will check CRLs for all certificates in the certificate chain.
+
+1. Copy CA certificates and CRLs to same directory.
+2. Execute `c_rehash <CA certs&CRLs Directory>`. `c_rehash` is
+   OpenSSL's command.
+3. uncomment the lines below.
+4. Restart radiusd.
+
+
+
+allow_expired_crl:: Accept an expired Certificate Revocation List.
+
+
 ### TLS Session resumption
 
-We currently support https://tools.ietf.org/html/rfc5246[RFC 5246] style TLS session resumption
-only.
+Once authentication has completed the TLS client may be
+provided with a unique session identifier (stateful resumption)
+or a session-ticket (stateless resumption) that it may present
+during its next authentication attempt.
 
-Once authentication has completed the TLS client is provided
-with a unique session identifier (or cookie) that it may
-present during its next authentication attempt.
-
-Presenting this identifier allows the client to skip the
-majority of TLS tunnel setup during its next authentication
-session.
-
-Resuming a TLS session avoids the certificate exchange and in
-the case `PEAP` and `TTLS`, allows the client to skip the inner
-`EAP` method.
+Presenting a session identifier or session-ticket allows the
+client to skip the majority of TLS tunnel setup during its next
+authentication session.
 
 Enabling `Session-Resumption` is highly recommended for sites
 using slow authentication backends such as winbindd/Active
@@ -523,30 +635,50 @@ internet, such as Eduroam.
 
 NOTE: You must ensure any attributes required for policy
 decisions are cached at the same time as the TLS session
-data. See link:../sites-available/tls-cache.adoc[sites-available/tls-cache] for documentation on
-how TLS cache now works.
+data. This is usually done by placing policy attributes in the
+`&session-state` list, or in the case of EAP-PEAP, EAP-TTLS and
+EAP-FAST, the `&parent.session-state` list (i.e. in the request
+that represents the TLS part of the authentication attempt),
+so that they are cached at the same time as the session resumption
+data.
 
-If using the default `tls-cache` virtual server and
-cache module config, policy attributes may be stored in the
-`&session-state.` list.
 
+mode:: What type of session caching should be allowed.
 
-virtual_server::
+[options="header,autowidth"]
+|===
+| Value | Description
 
-To enable session resumption, uncomment the virtual
-server entry below, and link
-link:../sites-available/tls-cache.adoc[sites-available/tls-cache] to `sites-enabled/tls-cache`.
+| `disabled`
+| Don't allow any kind of session resumption.
 
-You can disallow resumption for a particular user by
-adding the following attribute to the control item
-list:
+| `stateful`
+| Use <= TLS 1.2 style stateful session resumption.
+  A unique session-identifier is provided to the client.
+  The client provides this identifier during the next
+  authentication attempt, and we lookup session information
+  based on this identifier.
+  A `virtual_server` with `load session { ... }`,
+  `store session { ... }` and `clear session { ... }`
+  sections must be configured.
 
-  Allow-Session-Resumption = No
+| `stateless`
+| Allow session-ticket based resumption.  This requires no
+  external support.  All information required for resumption
+  is sent to the TLS client in an encrypted session-ticket.
+  The client returns this ticket during the next
+  authentication attempt.
 
-NOTE: If no virtual_server is specified you *CANNOT* enable
-resumption for just one user by setting the above
-attribute to `yes`.
+| `auto`
+| Choose an appropriate session resumption type based on
+  the TLS version used and whether a `virtual_server` is
+  configured and has the required `session` sections.
+|===
 
+It is recommended to set `mode = auto` *and* provide a
+correctly configured `virtual_server`.  wpa_supplicant
+does not request/allow session tickets by default for
+TLS < 1.3.
 
 
 name:: Name of the context TLS sessions are created under.
@@ -568,24 +700,8 @@ the value provided here is digested with SHA256.
 lifetime::
 
 The period for which a resumable session remains valid.
-The actual period is the lower of this value, and the
-ttl set in `rlm_cache`.
 
 Default is 24hrs inline with https://tools.ietf.org/html/rfc4346[RFC 4346].
-
-
-
-verify:: Revalidate client's certificate chain each time
-a session is resumed.
-
-Intermediaries provided by the client are not cached,
-or copied to the server's certificate store, so
-rebuilding the certificate chain will fail if we don't
-have the intermediaries loaded from `ca_file` or `ca_path`.
-
-This is useful with long cache lifetimes, where a
-certificate may be revoked in the interim between the
-session being created and re-used.
 
 
 
@@ -618,263 +734,15 @@ As of 4.0 OpenSSL's internal cache has been disabled due to
 scoping/threading issues.
 
 The following configuration options are deprecated.  TLS
-session caching is now handled by the `cache` module.
-That module is more configurable, and has more back-ends
-than the simple configurations below.
+session caching is now handled by FreeRADIUS
+either using session-tickets (stateless), or using TLS
+`virtual_server` and storing/retrieving sessions to/from
+an external datastore (stateful).
 
   * `enable`
   * `persist_dir`
   * `max_entries`
 ====
-
-
-
-### Dynamic CRLs or OCSP
-
-As of version 2.1.10, client certificates can be validated
-via an external command.  This allows dynamic CRLs or OCSP to
-be used.
-
-This configuration is commented out in the default
-configuration.  Uncomment it, and configure the correct paths
-below to enable it.
-
-
-tmpdir::
-
-A temporary directory where the client certificates
-are stored.  This directory MUST be owned by the UID
-of the server, and MUST not be accessible by any
-other users.  When the server starts, it will do
-`chmod go-rwx` on the directory, for security
-reasons.  The directory MUST exist when the server
-starts.
-
-You should also delete all of the files in the
-directory when the server starts.
-
-
-
-client::
-
-The command used to verify the client cert. We
-recommend using the OpenSSL command-line tool.
-
-The `${..ca_path}` text is a reference to the ca_path
-variable defined above.
-
-The `%{TLS-Client-Cert-Filename}` is the name of the
-temporary file containing the cert in PEM format.
-This file is automatically deleted by the server when
-the command returns.
-
-
-
-### OCSP Configuration
-
-Certificates can be verified against an OCSP Responder.
-This makes it possible to immediately revoke certificates without
-the distribution of new Certificate Revocation Lists (CRLs).
-
-In addition to the configuration items below, the behaviour of
-OCSP can be altered by runtime attributes.
-
-If OCSP is enabled, the `&reply.TLS-OCSP-Cert-Valid` attribute will
-be added after OCSP completes.  One of the following values will
-be set:
-
-[options="header,autowidth"]
-|===
-| Value   | Description
-| no      | OCSP responder indicated the certificate is not valid.
-| yes     | OCSP responder indicated the certificate is valid.
-| skipped | OCSP checks were skipped.
-|===
-
-If an OCSP check is performed, the `&reply.TLS-OCSP-Next-Update`
-attribute will also be added.  The value of this will attribute
-be the number of seconds until the certificate state need be refreshed.
-This can be used as a `Cache-TTL` value if you wish to use the cache
-module to store OCSP certificate validation status.
-
-If when the OCSP check is performed, a `&control.TLS-OCSP-Cert-Valid`
-attribute is present, its value will force the outcome of the OCSP
-check, and the OCSP responder will not be contacted.
-Values map to the following OCSP responses:
-
-[options="header,autowidth"]
-|===
-| Value   | Description
-| no      | Invalid.
-| yes     | Valid.
-| skipped | If `softfail = yes` value else invalid.
-|===
-
-
-enable::
-
-Deleting the entire `ocsp` subsection also disables ocsp checking.
-
-Default is `no`.
-
-
-
-virtual_server::
-
-OCSP checks are performed immediately after the
-complete certificate is received from the supplicant,
-and directly after the attributes from that
-certificate are inserted into the request.
-
-In order to retrieve cached OCSP states, a virtual
-server must be defined here.
-
-See `raddb/sites-available/tls-cache` for details.
-
-
-
-override_cert_url::
-
-The OCSP Responder URL can be automatically extracted
-from the certificate in question. To override the
-OCSP Responder URL set `override_cert_url = yes`.
-
-
-
-url::
-
-If the OCSP Responder address is not extracted from
-the certificate, the URL can be defined here.
-
-
-
-use_nonce::
-
-If the OCSP Responder can not cope with nonce in the
-request, then it can be disabled here.
-
-[WARNING]
-====
-  * For security reasons, disabling this option is not
-recommended as nonce protects against replay attacks.
-
-  * Microsoft AD Certificate Services OCSP
-Responder does not enable nonce by default. It is more
-secure to enable nonce on the responder than to
-disable it in the query here.
-
-See http://technet.microsoft.com/en-us/library/cc770413%28WS.10%29.aspx
-====
-
-
-
-timeout::
-
-Number of seconds before giving up waiting for OCSP
-response.
-
-Default is `0`.
-
-
-
-softfail::
-
-Normally an error in querying the OCSP responder (no
-response from server, server did not understand the
-request, etc) will result in a validation failure.
-
-To treat these errors as `soft` failures and still
-accept the certificate, enable this option.
-
-WARNING: this may enable clients with revoked
-certificates to connect if the OCSP responder is not
-available. *Use with caution*.
-
-
-
-### OCSP stapling for server certificates
-
-If requested, we query either the server listed below (as url),
-or the one specified in our server certificate, to retrieve an
-OCSP response to pass back to the TLS client.
-
-staple { ... }::
-
-This allows TLS clients to check for certificate revocation before
-divulging credentials to a (possibly rogue) server, that may be
-presenting a compromised certificate.
-
-
-enable::
-
-Enable it. Deleting the entire `ocsp` subsection also disables ocsp checking.
-
-Default is `no`.
-
-
-
-virtual_server::
-
-OCSP checks are performed whenever a TLS client includes
-an OCSP stapling extension.
-
-In order to retrieve cached OCSP staples, a virtual
-server must be defined here.
-
-The same virtual server can be used for caching
-client OCSP response states, and stapling information.
-
-See `raddb/sites-available/tls-cache` for details.
-
-
-
-override_cert_url::
-
-The OCSP Responder URL can be automatically extracted
-from the certificate in question. To override the
-OCSP Responder URL set `override_cert_url = yes`.
-
-
-
-url::
-
-If the OCSP Responder address is not extracted from
-the certificate, the URL can be defined here.
-
-
-
-use_nonce::
-
-If the OCSP Responder can not cope with nonce in the
-request, then it can be disabled here.
-
-[WARNING]
-====
-  * For security reasons, disabling this option is not
-recommended as nonce protects against replay attacks.
-
-  * Microsoft AD Certificate Services OCSP
-Responder does not enable nonce by default. It is more
-secure to enable nonce on the responder than to
-disable it in the query here. See
-http://technet.microsoft.com/en-us/library/cc770413%28WS.10%29.aspx
-====
-
-
-
-Number of seconds before giving up waiting for OCSP
-response.
-
-Default is `0`.
-
-
-
-softfail::
-
-Normally if we can't query the OCSP Responder
-we issue a fatal alert, and abort.  Set this to `true`
-to allow the session to continue without an OCSP
-stapling response being sent to the TLS client.
 
 
 
@@ -911,15 +779,6 @@ flag which is by default set to yes If set to `yes`,
 Total length of the message is included in EVERY
 packet we send. If set to `no`, Total length of the message is
 included ONLY in the First packet of a fragment series.
-
-
-
-virtual_server::
-
-As part of checking a client certificate, the `EAP-TLS` sets
-some attributes such as `TLS-Client-Cert-Common-Name`. This virtual
-server has access to these attributes, and can be used to
-accept or reject the request.
 
 
 
@@ -1283,57 +1142,6 @@ research purposes where programmable or virtual SIM cards
 are in use.
 
 
-request_identity:: Send a SIM-Start message to Requests
-an additional identity to the one from the EAP-Identity-Response.
-
-If `yes` - We send a request with AT_SUBTYPE SIM-start
-with an AT_ANY_ID_REQ attribute to prompt the supplicant
-to send a new identity.
-
-The type of identity requested can be controlled by adding
-one of the following attributes from the
-`recv Identity-Response { ... }` section of the specified
-EAP-SIM virtual_server, to the reply list:
-
-- &reply.Any-Id-Req
-- &reply.Fullauth-Id-Req
-- &reply.Permanent-Id-Req
-
-Even if this configuration item is set to 'no', additional
-identities can be requested by policy.
-See sites-available/eap-aka-sim for details.
-
-
-
-ephemeral_id_length:: The length of any pseudonyms or
-fastauth identities we generate (not including hint byte).
-
-See sites-available/eap-aka-sim for details on how to trigger
-the generation of pseudonym or fastauth identities.
-
-
-
-strip_permanent_identity_hint:: Strip the identity hint when
-copying &EAP-Identity or &Identity to &Permanent-Identity.
-
-The stripping is only performed if this config item is set
-to yes, and the hint byte matches what we'd expect for the
-EAP-Method being executed.
-
-
-
-protected_success:: Send a protected success message.
-
-If `yes` - indicate to the peer that we'd like to send
-a protected success message.  If the peer agrees and
-authentication succeeds, send a `SIM-Notification` (Success)
-packet protected with an `AT_MAC` attribute.
-
-After the Notification is ACKed by the peer, we send
-the final `EAP-Success` packet containing `MPPE` keys.
-
-
-
 virtual_server:: EAP-SIM virtual server containing policy
 sections.  This must be set, EAP-SIM will not function
 without it, as certain operations like vector gathering
@@ -1342,64 +1150,6 @@ require user configuration.
 
 
 ### EAP-AKA
-
-
-protected_success:: Send protected success messages
-
-
-
-virtual_server:: Same as for `TTLS`, `PEAP`, etc.
-
-
-request_identity:: Send a AKA-Identity message to request
-an additional identity to the one from the EAP-Identity-Response.
-
-If `yes` - We send a request with AT_SUBTYPE AKA-Identity
-with an AT_ANY_ID_REQ attribute to prompt the supplicant
-to send a new identity.
-
-The type of identity requested can be controlled by adding
-one of the following attributes from the
-`recv Identity-Response { ... }` section of the specified
-EAP-AKA virtual_server, to the reply list:
-
-- &reply.Any-Id-Req
-- &reply.Fullauth-Id-Req
-- &reply.Permanent-Id-Req
-
-Even if this configuration item is set to 'no', additional
-identities can be requested by policy.
-See sites-available/eap-aka-sim for details.
-
-
-
-ephemeral_id_length:: The length of any pseudonyms or
-fastauth identities we generate (not including hint byte).
-
-See sites-available/eap-aka-sim for details on how to trigger
-the generation of pseudonym or fastauth identities.
-
-
-
-strip_permanent_identity_hint:: Strip the identity hint when
-copying &EAP-Identity or &Identity to &Permanent-Identity.
-
-The stripping is only performed if this config item is set
-to yes, and the hint byte matches what we'd expect for the
-EAP-Method being executed.
-
-
-
-protected_success:: Send a protected success message.
-
-If `yes` - indicate to the peer that we'd like to send
-a protected success message.  If the peer agrees and
-authentication succeeds, send a `AKA-Notification` (Success)
-packet protected with an `AT_MAC` attribute.
-
-After the Notification is ACKed by the peer, we send
-the final `EAP-Success` packet containing `MPPE` keys.
-
 
 
 prefer_aka_prime:: Send the AT_BIDDING attribute in
@@ -1424,73 +1174,6 @@ require user configuration.
 
 
 ### EAP-AKA-Prime
-
-
-network_name:: The default value used for AT_KDF_INPUT
-
-EAP-AKA-Prime mixes various keys with a network identifier
-specifying the user's point of connection into the network
-to prevent vectors being used where they were not intended
-to be.
-
-The value of the AT_KDF_INPUT can be overridden in the
-eap-aka-prime virtual server with &reply.KDF-Input if
-this value needs to be determined dynamically.
-
-How this value should be created and formatted is specified
-in 3GPP.24.302.
-
-
-
-request_identity:: Send a AKA-Identity message to request
-an additional identity to the one from the EAP-Identity-Response.
-
-If `yes` - We send a request with AT_SUBTYPE AKA-Identity
-with an AT_ANY_ID_REQ attribute to prompt the supplicant
-to send a new identity.
-
-The type of identity requested can be controlled by adding
-one of the following attributes from the
-`recv Identity-Response { ... }` section of the specified
-EAP-AKA virtual_server, to the reply list:
-
-- &reply.Any-Id-Req
-- &reply.Fullauth-Id-Req
-- &reply.Permanent-Id-Req
-
-Even if this configuration item is set to 'no', additional
-identities can be requested by policy.
-See sites-available/eap-aka-sim for details.
-
-
-
-ephemeral_id_length:: The length of any pseudonyms or
-fastauth identities we generate (not including hint byte).
-
-See sites-available/eap-aka-sim for details on how to trigger
-the generation of pseudonym or fastauth identities.
-
-
-
-strip_permanent_identity_hint:: Strip the identity hint when
-copying &EAP-Identity or &Identity to &Permanent-Identity.
-
-The stripping is only performed if this config item is set
-to yes, and the hint byte matches what we'd expect for the
-EAP-Method being executed.
-
-
-
-protected_success:: Send a protected success message.
-
-If `yes` - indicate to the peer that we'd like to send
-a protected success message.  If the peer agrees and
-authentication succeeds, send a `AKA-Notification` (Success)
-packet protected with an `AT_MAC` attribute.
-
-After the Notification is ACKed by the peer, we send
-the final `EAP-Success` packet containing `MPPE` keys.
-
 
 
 virtual_server:: EAP-AKA virtual server containing policy
@@ -1628,6 +1311,7 @@ eap {
 		auth_type = PAP
 	}
 	tls-config tls-common {
+#		virtual_server = tls
 #		auto_chain = no
 		chain rsa {
 #			format = "PEM"
@@ -1650,52 +1334,30 @@ eap {
 #		psk_query = "%{sql:select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}'}"
 		dh_file = ${certdir}/dh
 #		fragment_size = 1024
-#		check_crl = yes
 		ca_path = ${cadir}
-#		allow_expired_crl = no
-#		check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
-#		check_cert_cn = %{User-Name}
 		cipher_list = "DEFAULT"
 		cipher_server_preference = yes
 #		tls_max_version = 1.2
 #		tls_min_version = 1.2
 		ecdh_curve = prime256v1
+		verify {
+#			mode = all
+#			attribute_mode = client-and-issuer
+#			check_crl = yes
+#			allow_expired_crl = no
+		}
 		cache {
-#			virtual_server = 'tls-cache'
+#			mode = auto
 #			name = "%{EAP-Type}%{Virtual-Server}"
 #			lifetime = 86400
-#			verify = no
 #			require_extended_master_secret = yes
 #			require_perfect_forward_secrecy = no
-		}
-		verify {
-#			tmpdir = /tmp/radiusd
-#			client = "/path/to/openssl verify -CApath ${..ca_path} %{TLS-Client-Cert-Filename}"
-		}
-		ocsp {
-#			enable = no
-#			virtual_server = 'tls-cache'
-			override_cert_url = yes
-			url = "http://127.0.0.1/ocsp/"
-#			use_nonce = yes
-#			timeout = 0
-#			softfail = no
-		}
-		staple {
-#			enable = no
-#			virtual_server = 'tls-cache'
-			override_cert_url = yes
-			url = "http://127.0.0.1/ocsp/"
-#			use_nonce = yes
-#			timeout = 0
-#			softfail = no
 		}
 	}
 	tls {
 		tls = tls-common
 #		require_client_cert = yes
 #		include_length = yes
-#		virtual_server = check-eap-tls
 	}
 	ttls {
 		tls = tls-common
@@ -1728,28 +1390,13 @@ eap {
 #		default_provisioning_eap_type = mschapv2
 	}
 	sim {
-#		request_identity = no
-#		ephemeral_id_length = 14
-#		strip_permanent_identity_hint = yes
-#		protected_success = yes
 		virtual_server = eap-aka-sim
 	}
 	aka {
-#		protected_success = no
-#		virtual_server = ""
-#		request_identity = no
-#		ephemeral_id_length = 14
-#		strip_permanent_identity_hint = yes
-#		protected_success = yes
 #		prefer_aka_prime = yes
 		virtual_server = eap-aka-sim
 	}
 	aka-prime {
-#		network_name = ""
-#		request_identity = no
-#		ephemeral_id_length = 14
-#		strip_permanent_identity_hint = yes
-#		protected_success = yes
 		virtual_server = eap-aka-sim
 	}
 }

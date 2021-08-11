@@ -16,21 +16,21 @@ The value of the attribute will be replaced with the output of the
 program which is executed.  Due to RADIUS protocol limitations,
 any output over `253` bytes will be ignored.
 
-The RADIUS attributes from the attribute list specified in the
-configuration item `input_list` will be placed
-into environment variables of the executed program, as
-described in `man unlang` and in `doc/unlang/xlat.adoc`
+The RADIUS attributes from the list referenced in the `input_pairs`
+configuraton item will be placed into environment variables of the executed
+program, as described in `man unlang` and in `doc/unlang/xlat.adoc`
 
-Alternatively to using the `xlat`, by setting the `program` configuration,
-item, the module can be called as a module.
+Alternatively, by setting the `program` item of the module configuration,
+the module can be called as a module rather than as an xlat function.
+See the `echo` module for an example of this.
 
-In this scenario, the output of executing the program will be parsed for
-attribute pairs which will be added to the list referenced in the
-`output_pairs` configuration item, if the `wait` configuration item
-is set to "yes".
+In this scenario, if the configuration item `output_pairs` is set,
+and the `wait` configuration item is set to "yes", the output of
+executing the program will be parsed for attribute pairs which
+will be added to the list referenced in `output_pairs`.
 
-The return value of the program run determines the result of the exec
-instance call as follows:
+When called as a module, the return value of the program run determines
+the result of the exec instance call as follows:
 
 [options="header,autowidth"]
 |===
@@ -57,18 +57,18 @@ instance call as follows:
 wait:: Wait for the program to finish.
 
 If we do NOT wait, then the program is "fire and
-forget", and any output from it is ignored.
+forget", and any output attributes from it are ignored.
 
 
 
-program:: The name of the program to execute, and its
-arguments.
+program:: The name of the program to execute, and it's
+arguments, when called as a module.
 
 Dynamic translation is done on this field, so things like
+the following example will work.
 
-    program = "/bin/true %{User-Name}"
+See the `echo` module for examples of how to use the module "in line".
 
-will work.
 
 
 input_pairs:: The attributes which are placed into the

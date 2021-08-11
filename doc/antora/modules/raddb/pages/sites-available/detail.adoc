@@ -14,6 +14,11 @@ following directory.
 
 
 
+The "listen" section MUST have a second name here, which
+says "load the detail file processor, and not the typical
+RADIUS UDP / TCP socket IO.
+
+
 Types of packets we are reading.
 
 
@@ -231,7 +236,7 @@ configuration.
 server detail {
 	namespace = radius
 	directory = ${radacctdir}/detail
-	listen {
+	listen detail {
 		type = Accounting-Request
 #		priority = 1
 		file {
@@ -254,7 +259,7 @@ server detail {
 	}
 recv Accounting-Request {
 	update request {
-		&Acct-Delay-Time := "%{expr:%{%{Acct-Delay-Time}:-0} + %c - %{%(integer:%{Event-Timestamp}):-%(integer:%{Packet-Original-Timestamp})}}"
+		&Acct-Delay-Time := "%{expr:%{%{Acct-Delay-Time}:-0} + %c - %(integer:%{%{Event-Timestamp}:-%{Packet-Original-Timestamp}})}"
 	}
 	ok
 }

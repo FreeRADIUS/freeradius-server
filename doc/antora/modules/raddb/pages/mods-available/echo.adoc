@@ -4,19 +4,14 @@
 
 = Echo Module
 
-The `echo` module is an example of the `exec` module, configured with
-its `program` configuration item set so it can be called as any other
-module i.e.
+The `echo` module an example of the `exec` module configured
+with a `program` configuration item set so it can be called
+as any other module, i.e.
 
     echo
 
-The sample `program` in the default configuration is a trivial example
-and should be replaced with something more meaningful.
-
-Arguments can be supplied to the program on the command line, with the
-value of `program` being dynamically expanded.  In addition, setting
-`input_pairs` causes the corresponding list of attributes to be placed
-in environment variables.
+The sample `program` below is a trivial example and should be replaced
+with something more meaningful.
 
 The return value of the program run determines the result of the exec
 instance call as follows:
@@ -67,6 +62,9 @@ the following example will work.
 
 input_pairs:: The attributes which are placed into the
 environment variables for the program.
+
+If your program does not require access to values from
+environment variables, then do not set this.
 
 Allowed values are:
 

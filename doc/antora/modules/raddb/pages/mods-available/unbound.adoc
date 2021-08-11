@@ -11,19 +11,29 @@ FQDNs to be resolved during request processing.
 
 ## Configuration Settings
 
-filename:: libunbound configuration file.  See `man unbound.conf` for
-details of options which can be set in this file.
 
-Defaults to `"${raddbdir}/mods-config/unbound/default.conf"`
+File to read unbound configuration details from.
 
-timeout:: maximum time to wait for a DNS resolution.
+filename = "${raddbdir}/mods-config/unbound/default.conf"
 
-Defaults to 3000
 
-resolvconf:: resolv.conf file to load.  Without this set unbound will
-query root servers.
+Timeout for unbound queries.
 
-hosts:: hosts file to load.
+timeout = 3000
+
+
+resolv.conf file to instruct unbound to load resolvers from.
+Defaults to not set.
+Without this set, unbound queries root DNS servers.  If a local
+caching DNS server is available that will improve performance.
+
+resolvconf = "/etc/resolv.conf"
+
+
+hosts file to load data from.  Defaults to not set.
+
+hosts = "/etc/hosts"
+
 
 ## xlat for DNS resolution
 
@@ -37,7 +47,7 @@ An xlat based on the instance name can be used to perform DNS lookups.
 ```
 
 Given an instance `dns` the above xlats will perform A record and
-AAA record lookups on www.example.com
+AAAA record lookups on www.example.com.
 
 .Example
 
@@ -48,12 +58,13 @@ AAA record lookups on www.example.com
 The above example will perform reverse DNS lookup on 192.168.1.1
 
 .Example
+
 ```
 %(dns:example.com MX 1)
 ```
 
-The above example will perform an MX lookup on example.com only
-returning the first record.
+The above example will perform an MX lookup on example.com returning
+just the first result.
 
 == Default Configuration
 

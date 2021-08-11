@@ -983,7 +983,6 @@ available).
 
 
 
-
 Insert the `link:https://freeradius.org/rfc/rfc2865.html#Class[Class]` attribute with a unique value into the
 response, which aids matching auth and acct records and
 protects against duplicate Acct-Session-Id.
@@ -1411,12 +1410,12 @@ send Access-Accept {
 #	}
 #	wimax
 #	update reply {
-#		&Reply-Message += "%{session-state.TLS-Cert-Serial}"
-#		&Reply-Message += "%{session-state.TLS-Cert-Not-After}"
-#		&Reply-Message += "%{session-state.TLS-Cert-Subject}"
-#		&Reply-Message += "%{session-state.TLS-Cert-Issuer}"
-#		&Reply-Message += "%{session-state.TLS-Cert-Common-Name}"
-#		&Reply-Message += "%{session-state.TLS-Cert-Subject-Alt-Name-Email}"
+#		&Reply-Message += "%{session-state.TLS-Certificate.Serial}"
+#		&Reply-Message += "%{session-state.TLS-Certificate.Not-After}"
+#		&Reply-Message += "%{session-state.TLS-Certificate.Subject}"
+#		&Reply-Message += "%{session-state.TLS-Certificate.Issuer}"
+#		&Reply-Message += "%{session-state.TLS-Certificate.Common-Name}"
+#		&Reply-Message += "%{session-state.TLS-Certificate.Subject-Alt-Name-Email}"
 #	}
 #	insert_acct_class
 #	if (&reply.EAP-Session-Id) {

@@ -247,7 +247,10 @@ The response format adds three optional fields:
 | `is_json` | If `true`, any nested JSON data will be copied to the attribute
               in string form. Defaults to `true`.
 | `op`      | Controls how the attribute is inserted into the target list.
-              Defaults to `:=`.
+              Defaults to `:=`. To create multiple attributes from multiple
+              values, this should be set to `+=`, otherwise only the last
+              value will be used, and it will be assigned to a single
+              attribute.
 |===
 
 [source,json]
@@ -424,30 +427,6 @@ message.
 The solution is to either lower the "min" connections,
 or increase lifetime/idle_timeout.
 ====
-
-
-## xlat for REST calls
-
-An xlat based on the instance name can be used to perform REST calls.
-
-.Example
-
-```
-%(rest:http://www.example.com/)
-%(rest:GET https://www.example.com/user/%{User-Name})
-%(rest:POST https://www.example.com/auth/%{User-Name} %{Called-Station-Id})
-```
-
-The xlat takes up to 3 arguments:
-
-  * Method
-  * URI
-  * Body data
-
-If only one argument is presented, that will be taken as the URI and the
-method will default to GET.
-
-Any attributes in the xlat read from the request packet will be escaped.
 
 
 == Default Configuration
