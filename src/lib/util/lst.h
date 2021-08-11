@@ -76,6 +76,17 @@ typedef int8_t (*fr_lst_cmp_t)(void const *a, void const *b);
 
 fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, size_t offset) CC_HINT(nonnull(2));
 
+/** Check if an entry is inserted into an LST.
+ * This checks a necessary condition for a fr_lst_index_t value to be
+ * that of an inserted entry. A more complete check would need the entry
+ * itself and a pointer to the fr_lst_t it may be inserted in.
+ * Provided here to let heap users move to LSTs.
+ */
+static inline bool fr_lst_entry_inserted(fr_lst_index_t lst_id)
+{
+	return (lst_id >= 0);
+}
+
 void 	*fr_lst_peek(fr_lst_t *lst) CC_HINT(nonnull);
 
 void 	*fr_lst_pop(fr_lst_t *lst) CC_HINT(nonnull);
