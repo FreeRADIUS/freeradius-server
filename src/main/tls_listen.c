@@ -784,7 +784,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	if (sock->state == LISTEN_TLS_CHECKING) {
 		if (request->reply->code != PW_CODE_ACCESS_ACCEPT) {
-			listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
+			listener->status = RAD_LISTEN_STATUS_EOL;
 			listener->tls = NULL; /* parent owns this! */
 
 			/*
