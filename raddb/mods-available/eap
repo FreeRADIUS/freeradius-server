@@ -596,8 +596,8 @@ eap {
 			#  | Only verify the client certificate.
 			#  |===
 			#
-			# It is recommended to leave mode as `all` except
-			# when debugging, or in an emergency situation.
+			#  It is recommended to leave mode as `all` except
+			#  when debugging, or in an emergency situation.
 			#
 			#  [NOTE]
 			#  ====
@@ -740,10 +740,10 @@ eap {
 			#    configured and has the required `session` sections.
 			#  |===
 			#
-			# It is recommended to set `mode = auto` *and* provide a
-			# correctly configured `virtual_server`.  wpa_supplicant
-			# does not request/allow session tickets by default for
-			# TLS < 1.3.
+			#  It is recommended to set `mode = auto` *and* provide a
+			#  correctly configured `virtual_server`.  wpa_supplicant
+			#  does not request/allow session tickets by default for
+			#  TLS < 1.3.
 			#
 #			mode = auto
 
