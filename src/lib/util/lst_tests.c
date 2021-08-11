@@ -63,12 +63,16 @@ static void lst_test_basic(void)
 		values[j].data = temp;
 	}
 
-	for (int i = 0; i < NVALUES; i++) fr_lst_insert(lst, &values[i]);
+	for (int i = 0; i < NVALUES; i++) {
+		TEST_CHECK(fr_lst_insert(lst, &values[i]) >= 0);
+		TEST_CHECK(fr_lst_entry_inserted(values[i].index));
+	}
 
 	for (int i = 0; i < NVALUES; i++) {
 		heap_thing	*value = fr_lst_pop(lst);
 
 		TEST_CHECK(value != NULL);
+		TEST_CHECK(!fr_lst_entry_inserted(value->index));
 		TEST_CHECK(value->data == i);
 	}
 	talloc_free(lst);
