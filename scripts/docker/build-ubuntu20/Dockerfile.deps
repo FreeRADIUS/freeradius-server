@@ -69,10 +69,10 @@ WORKDIR /usr/local/src/repositories
 
 
 #
-#  Set up NetworkRADIUS repositories for libkqueue
+#  Set up NetworkRADIUS extras repository
 #
 RUN wget -O - "https://packages.networkradius.com/pgp/packages%40networkradius.com" | apt-key add && \
-    echo "deb http://packages.networkradius.com/libkqueue/ubuntu/bionic bionic main" > /etc/apt/sources.list.d/networkradius.list && \
+    echo "deb http://packages.networkradius.com/extras/ubuntu/focal focal main" > /etc/apt/sources.list.d/networkradius-extras.list && \
     apt-get update
 
 

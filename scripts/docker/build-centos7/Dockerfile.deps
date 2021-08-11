@@ -83,22 +83,15 @@ WORKDIR /usr/local/src/repositories
 
 
 #
-#  Set up NetworkRADIUS repositories for libkqueue and json-c
+#  Set up NetworkRADIUS extras repository
 #
-RUN echo $'[nr-libkqueue]\n\
-name=NetworkRADIUS-libkqueue-$releasever\n\
-baseurl=http://packages.networkradius.com/libkqueue/centos/$releasever/\n\
-enabled=1\n\
-gpgcheck=1\n\
-gpgkey=https://packages.networkradius.com/pgp/packages@networkradius.com\n\
-\n\
-[nr-json-c]\n\
-name=NetworkRADIUS-json-c-$releasever\n\
-baseurl=http://packages.networkradius.com/json-c/centos/$releasever/\n\
+RUN echo $'[networkradius-extras]\n\
+name=NetworkRADIUS-extras-$releasever\n\
+baseurl=http://packages.networkradius.com/extras/centos/$releasever/\n\
 enabled=1\n\
 gpgcheck=1\n\
 gpgkey=https://packages.networkradius.com/pgp/packages@networkradius.com'\
-> /etc/yum.repos.d/networkradius.repo
+> /etc/yum.repos.d/networkradius-extras.repo
 RUN rpm --import https://packages.networkradius.com/pgp/packages@networkradius.com
 
 

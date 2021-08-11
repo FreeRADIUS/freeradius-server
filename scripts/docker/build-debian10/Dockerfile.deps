@@ -69,11 +69,10 @@ WORKDIR /usr/local/src/repositories
 
 
 #
-#  Set up NetworkRADIUS repositories for libkqueue and json-c
+#  Set up NetworkRADIUS extras repository
 #
 RUN wget -O - "https://packages.networkradius.com/pgp/packages%40networkradius.com" | apt-key add && \
-    echo "deb http://packages.networkradius.com/libkqueue/debian/buster buster main" > /etc/apt/sources.list.d/networkradius.list && \
-    echo "deb http://packages.networkradius.com/json-c/debian/buster buster main" >> /etc/apt/sources.list.d/networkradius.list && \
+    echo "deb http://packages.networkradius.com/extras/debian/buster buster main" >> /etc/apt/sources.list.d/networkradius-extras.list && \
     apt-get update
 
 
