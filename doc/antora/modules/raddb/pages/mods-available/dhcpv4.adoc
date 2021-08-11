@@ -4,100 +4,58 @@
 
 = DHCPv4 Module
 
-The `dhcpv4` module is useful only for `xlat`. To use it,
-put `dhcp` into the `instantiate { ... }` section.
-
-`%{dhcp_options:<Attribute-ref>}` may be used to decode
-DHCP options data included in RADIUS packets by vendors
-of DHCP to RADIUS gateways.
-
-This is known to work with the following VSAs:
-
-[options="header,autowidth"]
-|===
-| Vendor            | VSAs
-| Juniper           | `ERX-Dhcp-Options`
-| Alcatel lucent SR | `link:https://infoproducts.alcatel-lucent.com/html/0_add-h-f/93-0088-HTML/7750_SR_OS_Radius_Attributes_Reference_Guide/SROS_RADIUS_Attrib.html[Alc-ToServer-Dhcp-Options]`, `link:https://infoproducts.alcatel-lucent.com/html/0_add-h-f/93-0088-HTML/7750_SR_OS_Radius_Attributes_Reference_Guide/SROS_RADIUS_Attrib.html[Alc-ToClient-Dhcp-Options]`
-|===
-
-e.g: `%{dhcp_options:RX-Dhcp-Options}`
-
 
 
 ## Configuration Settings
 
-This module takes no configuration.
+The DHCPv4 module is used as a relay.
+
+For reach request, you should set &request.Packet-Dst-IP-Address to
+the address of the DHCPv4 server (or next relay).
+
+Packets MUST also have a Gateway-IP-Address option, otherwise they
+will be dropped.  This module does not (yet) support receiving
+replies from the DHCPv4 server.  Any packets sent to the socket
+IP/port will be dropped.
+
+
+ipaddr: The IP address we use for sending packets.
+
+This MUST be an IPv4 address.  IPv6 addresses are not
+supported for DHCPv4.
 
 
 
-## Expansions
+port:: The port we use for sending packets.
 
-The rlm_dhcpv4 provides the below xlat's functions to handle the DHCPV4 packets.
+The default DHCPv4 client port is 68.  It should be changed
+from this only for testing.
 
-### %(dhcpv4_decode:...)
 
-Decode DHCP option declared in dictionary.rfc2131.
 
-.Return: _string_
+interface:: Interface to bind to.
 
-.Example
 
-[source,unlang]
-----
-update request {
-  &Tmp-Octets-0 := 0x520d0103abcdef0206010203040506
-}
-if ("%(dhcpv4_decode:%{Tmp-Octets-0})" != 2) {
-  update reply {
-    &Reply-Message := "Problems decoding the DHPCv4 fields."
-  }
-  reject
-}
-update reply {
-  &Reply-Message := "The value of Relay-Agent-Information.Circuit-ID=%{Relay-Agent-Information.Circuit-ID}, Relay-Agent-Information.Remote-ID=%{Relay-Agent-Information.Remote-ID}"
-}
-----
 
-.Output
+max_packet_size:: The maximum packet size.
 
-```
-"The value of Relay-Agent-Information.Circuit-ID=0xabcdef, Relay-Agent-Information.Remote-ID=0x010203040506"
-```
+Packets which are larger than this will not be sent.
 
-### %(dhcpv4_encode:...)
+Useful range: 300..1500 or so.
 
-Encode DHCP option declared in dictionary.rfc2131.
 
-.Return: _string_
 
-.Example
+send_buff:: How big the kernel's send buffer should be.
 
-[source,unlang]
-----
-update request {
-  &Relay-Agent-Information.Circuit-ID := 0xabcdef
-  &Relay-Agent-Information.Remote-ID := 0x010203040506
-}
-update request {
-  &Tmp-Octets-0 := "%(dhcpv4_encode:&request[*])"
-}
-if (&Tmp-Octets-0 != 0x520d0103abcdef0206010203040506) {
-  update reply {
-    &Reply-Message := "Invalid DHCP packets"
-  }
-  reject
-}
-----
-
-.Output
-
-```
-
-```
 
 == Default Configuration
 
 ```
 dhcpv4 {
+	ipaddr = 127.0.0.1
+#	port = 68
+#	interface = eth0
+#	max_packet_size = 576
+#	send_buff = 1048576
 }
 ```
