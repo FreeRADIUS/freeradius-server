@@ -506,21 +506,9 @@ check_for_setup:
 	 *	presented by the client.
 	 */
 	if (sock->state == LISTEN_TLS_INIT) {
-		/*
-		 *	If INIT isn't finished, but there's no data,
-		 *	just close the connection.  The other end is
-		 *	being unfriendly.
-		 */
 		if (!SSL_is_init_finished(sock->ssn->ssl)) {
-			listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
-			listener->tls = NULL; /* parent owns this! */
-			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
-
-			/*
-			 *	Tell the event handler that an FD has disappeared.
-			 */
-			radius_update_listener(listener);
-			return 0;
+			RDEBUG("FAILED in TLS handshake receive");
+			goto do_close;
 		}
 
 		sock->ssn->is_init_finished = true;
