@@ -49,7 +49,7 @@ ATTRIBUTE	Relay-IP-Address			272	ipaddr
 VALUE	Flags				Broadcast		0x8000
 
 VALUE	Hardware-Type			Ethernet		1
-VALUE	Hardware-Type			Experiemental-Ethernet	2
+VALUE	Hardware-Type			Experimental-Ethernet	2
 VALUE	Hardware-Type			AX.25			3
 VALUE	Hardware-Type			Proteon-Token-Ring	4
 VALUE	Hardware-Type			Chaos			5
