@@ -383,6 +383,20 @@ int dict_fixup_clone(dict_fixup_ctx_t *fctx, char const *filename, int line,
 		     char const *ref, size_t ref_len)
 {
 	dict_fixup_clone_t *fixup;
+	fr_dict_attr_t const *target;
+
+	/*
+	 *	As a quick check, see if the types are compatible.
+	 */
+	target= fr_dict_attr_by_oid(NULL, fr_dict_root(da->dict), ref);
+	if (target) {
+		if (target->type != da->type) {
+			fr_strerror_printf("Clone reference MUST be to an attribute of type '%s' at [%s:%d]",
+					   fr_table_str_by_value(fr_value_box_type_table, target->type, "<UNKNOWN>"),
+					   filename, line);
+			return -1;
+		}
+	}
 
 	fixup = talloc(fctx->pool, dict_fixup_clone_t);
 	if (!fixup) {
