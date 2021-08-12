@@ -441,7 +441,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 	 *	We can only clone attributes of the same data type.
 	 */
 	if (da->type != fixup->da->type) {
-		fr_strerror_printf("Clone references MUST be to attributes of type '%s' at %s[%d]",
+		fr_strerror_printf("Clone reference MUST be to an attribute of type '%s' at %s[%d]",
 				   fr_table_str_by_value(fr_value_box_type_table, fixup->da->type, "<UNKNOWN>"),
 				   fr_cwd_strip(fixup->common.filename), fixup->common.line);
 		return -1;
