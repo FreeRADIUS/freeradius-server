@@ -1923,9 +1923,13 @@ ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 	dict = fr_hash_table_find(dict_gctx->protocol_by_name, &(fr_dict_t){ .root = &root });
 
 	if (!dict) {
-		fr_strerror_printf("Unknown protocol '%s'", root.name);
-		memcpy(out, &dict_def, sizeof(*out));
-		return 0;
+		if (strcasecmp(root.name, "internal") != 0) {
+			fr_strerror_printf("Unknown protocol '%s'", root.name);
+			memcpy(out, &dict_def, sizeof(*out));
+			return 0;
+		}
+
+		dict = dict_gctx->internal;
 	}
 
 	*out = dict;
