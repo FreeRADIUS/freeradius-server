@@ -3,8 +3,6 @@ FROM ${from}
 
 SHELL ["/usr/bin/nice", "-n", "5", "/usr/bin/ionice", "-c", "3", "/bin/sh", "-x", "-c"]
 
-ARG from=freeradius/debian9-deps
-
 ARG cc=gcc
 ARG branch=master
 ARG dh_key_size=2048
