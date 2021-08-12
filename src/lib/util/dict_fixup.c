@@ -294,7 +294,7 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 	/*
 	 *	Look up the attribute.
 	 */
-	da = fr_dict_attr_by_oid(NULL, fr_dict_root(*dict_def), ref + slen + 1);
+	da = fr_dict_attr_by_oid(NULL, fr_dict_root(dict), ref + slen + 1);
 	if (!da) {
 		fr_strerror_printf("No such attribute '%s' in reference at %s[%d]",
 				   ref + slen + 1, fr_cwd_strip(filename), line);
