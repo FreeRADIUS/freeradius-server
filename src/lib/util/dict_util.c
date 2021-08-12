@@ -2221,7 +2221,9 @@ ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 		return 0;
 	}
 
+#ifdef __clang_analyzer__
 	if (internal && !dict_gctx->internal) return -1;
+#endif
 
 	/*
 	 *	dict_def search in the specified dictionary
