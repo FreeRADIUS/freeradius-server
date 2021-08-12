@@ -2221,6 +2221,8 @@ ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 		return 0;
 	}
 
+	if (internal && !dict_gctx->internal) return -1;
+
 	/*
 	 *	dict_def search in the specified dictionary
 	 */
@@ -2243,8 +2245,6 @@ ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 	 *	Next in the internal dictionary
 	 */
 	if (internal) {
-		if (!dict_gctx->internal) goto error;
-
 		slen = func(&our_err, out, fr_dict_root(dict_gctx->internal), &our_in, tt);
 		switch (our_err) {
 		case FR_DICT_ATTR_OK:
@@ -2284,8 +2284,8 @@ ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 error:
 	/*
 	 *	Add a more helpful error message about
-	 *	which dictionaries we tried to locate t
-	 *	he attribute in.
+	 *	which dictionaries we tried to locate
+	 *	the attribute in.
 	 */
 	if (our_err == FR_DICT_ATTR_NOTFOUND) {
 		fr_sbuff_marker_t	start;
