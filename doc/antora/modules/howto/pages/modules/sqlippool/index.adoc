@@ -462,7 +462,7 @@ pools] for instructions on how to create lists of IPs for a pool.  And
 then xref:modules/sqlippool/insert.adoc[Inserting IPs into SQL]
 
 
-.Example shell command for populating the `radacct` table
+.Example shell command for populating the `radippool` table
 =============================================
  for i in `seq 10 250`; do
      echo "INSERT INTO radippool (          \
