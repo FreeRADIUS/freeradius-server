@@ -463,13 +463,10 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				return -1;
 			}
 
-			if ((type != FR_TYPE_TLV) && (type != FR_TYPE_STRUCT) &&
-			    !(flags->extra && (flags->subtype == FLAG_KEY_FIELD))) {
-				fr_strerror_printf("The 'clone' flag cannot be used for type '%s'",
-						   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
-				return -1;
-			}
-
+			/*
+			 *	Allow cloning of any types, so long as
+			 *	the types are the same.  We do the checks later.
+			 */
 			*ref = talloc_strdup(ctx->fixup.pool, value);
 
 		} else if (ctx->dict->subtype_table) {
