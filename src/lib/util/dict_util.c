@@ -2213,6 +2213,8 @@ ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 	ssize_t			slen = 0;
 	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
 
+	if (internal && !dict_gctx->internal) internal = false;
+
 	/*
 	 *	Always going to fail...
 	 */
@@ -2220,10 +2222,6 @@ ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 		if (err) *err = FR_DICT_ATTR_EINVAL;
 		return 0;
 	}
-
-#ifdef __clang_analyzer__
-	if (internal && !dict_gctx->internal) return -1;
-#endif
 
 	/*
 	 *	dict_def search in the specified dictionary
