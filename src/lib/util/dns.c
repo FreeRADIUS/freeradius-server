@@ -876,7 +876,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *buf, size_t buf_len, uin
  * @param[in] buf_len	total length of the buffer
  * @return
  *	- <=0 on error, where in the buffer the invalid label is located.
- *	- > 0 total size of the labels.  SHOULD be buf_len
+ *	- > 0 total size of the encoded label(s).  Will be <= buf_len
  */
 ssize_t fr_dns_labels_network_verify(uint8_t const *buf, size_t buf_len)
 {
@@ -885,11 +885,16 @@ ssize_t fr_dns_labels_network_verify(uint8_t const *buf, size_t buf_len)
 	uint8_t const *end = buf + buf_len;
 
 	for (label = buf; label < end; /* nothing */) {
+		if (*label == 0x00) {
+			label++;
+			break;
+		}
+
 		slen = fr_dns_label_uncompressed_length(buf, buf_len, &label);
 		if (slen <= 0) return slen; /* already is offset from 'buf' and not 'label' */
 	}
 
-	return buf_len;
+	return label - buf;
 }
 
 static ssize_t dns_label_decode(uint8_t const *buf, uint8_t const **start, uint8_t const **next)

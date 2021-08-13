@@ -360,7 +360,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_
 				 uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
 	ssize_t slen;
-	size_t total;
+	size_t total, labels_len;
 	fr_pair_t *vp;
 	uint8_t const *next = data;
 
@@ -381,23 +381,29 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_
 		 */
 		if (next != (data + data_len)) goto raw;
 
+		labels_len = next - data; /* decode only what we've found */
 	} else {
 		/*
-		 *	If any one of the labels are invalid, then treat the
-		 *	entire set as invalid.
+		 *	Get the length of the entire set of labels, up
+		 *	to (and including) the final 0x00.
+		 *
+		 *	If any of the labels point outside of this
+		 *	area, OR they are otherwise invalid, then that's an error.
 		 */
 		slen = fr_dns_labels_network_verify(data, data_len);
 		if (slen < 0) {
 		raw:
 			return decode_raw(ctx, cursor, dict, parent, data, data_len, decode_ctx);
 		}
+
+		labels_len = slen;
 	}
 
 	/*
 	 *	Loop over the input buffer, decoding the labels one by
 	 *	one.
 	 */
-	for (total = 0; total < data_len; total += slen) {
+	for (total = 0; total < labels_len; total += slen) {
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
 
@@ -406,7 +412,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_
 		 *	function should never fail unless there's a
 		 *	bug in the code.
 		 */
-		slen = fr_dns_label_to_value_box(vp, &vp->data, data, data_len, data + total, true);
+		slen = fr_dns_label_to_value_box(vp, &vp->data, data, labels_len, data + total, true);
 		if (slen <= 0) {
 			talloc_free(vp);
 			goto raw;
@@ -416,7 +422,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_
 		fr_dcursor_append(cursor, vp);
 	}
 
-	return data_len;
+	return labels_len;
 }
 
 
@@ -559,6 +565,13 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t co
 		fr_dcursor_insert(cursor, vp);
 	} else if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype) {
 		slen = decode_dns_labels(ctx, cursor, dict, da, data + 4, len, decode_ctx);
+		if (slen < 0) return slen;
+
+		/*
+		 *	The DNS labels may only partially fill the
+		 *	option.  If so, that's an error.
+		 */
+		if ((size_t) slen != len) return -slen;
 
 	} else if (da->flags.array) {
 		slen = decode_array(ctx, cursor, dict, da, data + 4, len, decode_ctx);
