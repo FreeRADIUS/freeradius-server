@@ -79,6 +79,26 @@ static inline ssize_t encode_option_hdr(fr_dbuff_marker_t *m, uint16_t option, s
 }
 
 
+static inline ssize_t encode_array(fr_dbuff_t *dbuff,
+				   fr_da_stack_t *da_stack, int depth,
+				   fr_dcursor_t *cursor, void *encode_ctx);
+
+static ssize_t encode_value_trampoline(fr_dbuff_t *dbuff,
+				       fr_da_stack_t *da_stack, unsigned int depth,
+				       fr_dcursor_t *cursor, void *encode_ctx)
+{
+	fr_dict_attr_t const	*da = da_stack->da[depth];
+
+	/*
+	 *	Write out the option's value
+	 */
+	if (da->flags.array) {
+		return encode_array(dbuff, da_stack, depth, cursor, encode_ctx);
+	}
+
+	return encode_value(dbuff, da_stack, depth, cursor, encode_ctx);
+}
+
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_dcursor_t *cursor, void *encode_ctx)
@@ -95,7 +115,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	Pack multiple attributes into into a single option
 	 */
 	if ((vp->da->type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
-		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, encode_tlv);
+		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value_trampoline, encode_tlv);
 		if (slen <= 0) return slen;
 
 		/*

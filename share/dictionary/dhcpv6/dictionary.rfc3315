@@ -125,7 +125,7 @@ ATTRIBUTE	Rapid-Commit				14	bool
 ATTRIBUTE	User-Class				15	octets array
 ATTRIBUTE	Vendor-Class				16	struct
 MEMBER		PEN					uint32
-MEMBER		Data					octets  # really 2 octets length + data, repeated
+MEMBER		Data					octets array
 
 ATTRIBUTE	Vendor-Opts				17	vsa
 ATTRIBUTE	Interface-ID				18	octets

@@ -628,7 +628,7 @@ match User-Class = 0x1122, User-Class = 0x334455
 #                       value in the option-len field).
 #
 encode-pair Vendor-Class.PEN = 11344, Vendor-Class.Data = 0xb33f
-match 00 10 00 06 00 00 2c 50 b3 3f
+match 00 10 00 08 00 00 2c 50 00 02 b3 3f
 
 decode-pair -
 match Vendor-Class.PEN = 11344, Vendor-Class.Data = 0xb33f
