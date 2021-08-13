@@ -1031,6 +1031,8 @@ static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *pare
 		return false;
 	}
 
+	flags->is_known_width = true;
+
 	return true;
 }
 
