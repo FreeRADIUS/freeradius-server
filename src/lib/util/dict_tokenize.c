@@ -499,9 +499,11 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 	}
 
 	/*
-	 *	Check that the flags are valid.
+	 *	Don't check the flags field for validity via
+	 *	dict_attr_flags_valid().  It may be updated by various
+	 *	protocol-specific callback functions.  And,
+	 *	fr_dict_attr_add() calls dict_attr_flags_valid() anyways.
 	 */
-	if (!dict_attr_flags_valid(ctx->dict, ctx->stack[ctx->stack_depth].da, name, NULL, type, flags)) return -1;
 
 	return 0;
 }

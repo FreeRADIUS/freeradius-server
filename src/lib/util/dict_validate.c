@@ -462,6 +462,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	case FR_TYPE_STRUCT:
 		ALLOW_FLAG(extra);
 		ALLOW_FLAG(subtype);
+		if (flags->is_known_width) ALLOW_FLAG(array);
 		if (all_flags) {
 			fr_strerror_const("Invalid flag for attribute inside of a 'struct'");
 			return false;
@@ -623,11 +624,6 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		return false;
 	}
 
-	/*
-	 *	Check the flags, data types, and parent data types and flags.
-	 */
-	if (!dict_attr_flags_valid(dict, parent, name, attr, type, flags)) return false;
-
 #if 0
 	if (parent->type == FR_TYPE_STRUCT) {
 		/*
@@ -654,31 +650,25 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 #endif
 
 	/*
-	 *	If attributes have number greater than 255, do sanity
-	 *	checks on their values, to ensure that they fit within
-	 *	the parent type.
-	 *
-	 *	We assume that the root attribute is of type TLV, with
-	 *	the appropriate flags set for attributes in this
-	 *	space.
+	 *	Initialize the length field, which is needed for the attr_valid() callback.
 	 */
-	if ((*attr > UINT8_MAX) && !flags->internal) {
-		for (v = parent; v != NULL; v = v->parent) {
-			if ((v->type == FR_TYPE_TLV) || (v->type == FR_TYPE_VENDOR)) {
-				if ((uint64_t) *attr >= (((uint64_t) 1) << (8 * v->flags.type_size))) {
-					fr_strerror_printf("Attributes must have value between 1..%" PRIu64,
-							   (((uint64_t) 1) << (8 * v->flags.type_size)) - 1);
-					return false;
-				}
-				break;
-			}
-		}
+	if (!flags->length) {
+		fr_value_box_t box;
+
+		fr_value_box_init(&box, type, NULL, false);
+		flags->length = fr_value_box_network_length(&box);
 	}
 
 	/*
-	 *	Run protocol-specific validation functions.
+	 *	Run protocol-specific validation functions, BEFORE we
+	 *	do the rest of the checks.
 	 */
-	if (dict->attr_valid) return dict->attr_valid(dict, parent, name, *attr, type, flags);
+	if (dict->attr_valid && !dict->attr_valid(dict, parent, name, *attr, type, flags)) return false;
+
+	/*
+	 *	Check the flags, data types, and parent data types and flags.
+	 */
+	if (!dict_attr_flags_valid(dict, parent, name, attr, type, flags)) return false;
 
 	return true;
 }
