@@ -161,6 +161,14 @@ size_t fr_dhcpv6_option_len(fr_pair_t const *vp)
 #endif
 
 		if (vp->da->flags.length) return vp->da->flags.length;	/* Variable type with fixed length */
+
+		/*
+		 *	Arrays get maxed at 2^16-1
+		 */
+		if (vp->da->flags.array && ((vp->vp_type == FR_TYPE_STRING) || (vp->vp_type == FR_TYPE_OCTETS))) {
+			if (vp->vp_length > 65535) return 65535;
+		}
+
 		return vp->vp_length;
 
 	case FR_TYPE_DATE:
@@ -1020,6 +1028,14 @@ void fr_dhcpv6_global_free(void)
 static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *parent,
 		       UNUSED char const *name, UNUSED int attr, fr_type_t type, fr_dict_attr_flags_t *flags)
 {
+	/*
+	 *	"arrays" of string/octets are encoded as a 16-bit
+	 *	length, followed by the actual data.
+	 */
+	if (flags->array && ((type == FR_TYPE_STRING) || (type == FR_TYPE_OCTETS))) {
+		flags->is_known_width = true;
+	}
+
 	/*
 	 *	"extra" signifies that subtype is being used by the
 	 *	dictionaries itself.
