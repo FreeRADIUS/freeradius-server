@@ -983,7 +983,8 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	 *	so, complain if we're adding a variable sized member.
 	 */
 	if (ctx->stack[ctx->stack_depth].da->flags.length &&
-	    ((type == FR_TYPE_STRING) || (type == FR_TYPE_TLV) ||
+	    ((type == FR_TYPE_TLV) ||
+	     ((type == FR_TYPE_STRING) && !flags.length) ||
 	     ((type == FR_TYPE_OCTETS) && !flags.length))) {
 		fr_strerror_printf("'struct' %s has fixed size %u, we cannot add a variable-sized member.",
 				   ctx->stack[ctx->stack_depth].da->name, ctx->stack[ctx->stack_depth].da->flags.length);
