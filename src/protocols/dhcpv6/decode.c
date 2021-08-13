@@ -569,9 +569,11 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t co
 
 		/*
 		 *	The DNS labels may only partially fill the
-		 *	option.  If so, that's an error.
+		 *	option.  If so, that's an error.  Point to the
+		 *	byte which caused the error, accounting for
+		 *	the option header.
 		 */
-		if ((size_t) slen != len) return -slen;
+		if ((size_t) slen != len) return -(4 + slen);
 
 	} else if (da->flags.array) {
 		slen = decode_array(ctx, cursor, dict, da, data + 4, len, decode_ctx);
