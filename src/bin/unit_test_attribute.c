@@ -339,7 +339,11 @@ static void mismatch_print(command_file_ctx_t *cc, char const *command,
 
 		spaces = talloc_zero_array(NULL, char, (e - expected) + 1);
 		memset(spaces, ' ', talloc_array_length(spaces) - 1);
-		ERROR("             %s^ differs here", spaces);
+		if ((e - expected) < 128) {
+			ERROR("             %s^ differs here", spaces);
+		} else {
+			ERROR("             %s^ differs here (%zu)", spaces, e - expected);
+		}
 		talloc_free(spaces);
 	}
 }
