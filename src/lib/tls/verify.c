@@ -151,7 +151,8 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	if (!my_ok) {
 		char const *p = X509_verify_cert_error_string(err);
 		if (!verify_applies(conf->verify.mode, depth, untrusted) ||
-		    ((conf->verify.allow_expired_crl) && (err == X509_V_ERR_CRL_HAS_EXPIRED))) {
+		    ((conf->verify.allow_expired_crl) && (err == X509_V_ERR_CRL_HAS_EXPIRED)) ||
+		    ((conf->verify.allow_not_yet_valid_crl) && (err == X509_V_ERR_CRL_NOT_YET_VALID))) {
 			RDEBUG2("Ignoring verification error - %s (%i)", p, err);
 			my_ok = 1;
 			X509_STORE_CTX_set_error(x509_ctx, 0);

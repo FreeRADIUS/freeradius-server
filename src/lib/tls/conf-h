@@ -120,6 +120,7 @@ typedef struct {
 
 	bool		check_crl;			//!< Check certificate revocation lists.
 	bool		allow_expired_crl;		//!< Don't error out if CRL is expired.
+	bool		allow_not_yet_valid_crl;	//!< Don't error out if CRL is not-yet-valid.
 } fr_tls_verify_conf_t;
 
 /* configured values goes right here */

@@ -111,6 +111,10 @@ allow_expired_crl:: See the `eap` module for common configuration explanation.
 
 
 
+allow_not_yet_valid_crl:: See the `eap` module for common configuration explanation.
+
+
+
 ## tls { ... }
 
 You SHOULD use different certificates than are used
@@ -161,6 +165,7 @@ eap inner-eap {
 #		check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
 #		check_cert_cn = %{User-Name}
 #		allow_expired_crl = no
+#		allow_not_yet_valid_crl = no
 	}
 	tls {
 		tls = tls-peer
