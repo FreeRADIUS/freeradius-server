@@ -151,6 +151,15 @@ size_t fr_dhcpv6_option_len(fr_pair_t const *vp)
 {
 	switch (vp->vp_type) {
 	case FR_TYPE_VARIABLE_SIZE:
+#ifndef NDEBUG
+		if (!vp->da->flags.extra &&
+		    ((vp->da->flags.subtype == FLAG_ENCODE_DNS_LABEL) ||
+		     (vp->da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL))) {
+			fr_assert_fail("DNS labels MUST be encoded/decoded with their own function, and not with generic 'string' functions");
+			return 0;
+		}
+#endif
+
 		if (vp->da->flags.length) return vp->da->flags.length;	/* Variable type with fixed length */
 		return vp->vp_length;
 
