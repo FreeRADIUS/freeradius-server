@@ -221,8 +221,8 @@ struct request_s {
 	rlm_rcode_t		rcode;		//!< Last rcode returned by a module
 
 	fr_rb_node_t		dedup_node;	//!< entry in the deduplication tree.
-	int32_t			runnable_id;	//!< entry in the queue / heap of runnable packets
-	int32_t			time_order_id;	//!< entry in the queue / heap of time ordered packets
+	int32_t			runnable_id;	//!< entry in the heap of runnable packets
+	int32_t			time_order_id;	//!< entry in the heap of time ordered packets
 
 	uint32_t		options;	//!< mainly for proxying EAP-MSCHAPv2.
 
