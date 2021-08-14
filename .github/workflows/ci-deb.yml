@@ -31,10 +31,11 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "ubuntu-18.04", "OS": "ubuntu:18.04",   "DIST": "ubuntu", "CODENAME": "bionic",  "NR_EXTRAS": "1" },
-              { "NAME": "ubuntu-20.04", "OS": "ubuntu:20.04",   "DIST": "ubuntu", "CODENAME": "focal",   "NR_EXTRAS": "1" },
-              { "NAME": "debian-10",    "OS": "debian:buster",  "DIST": "debian", "CODENAME": "buster",  "NR_EXTRAS": "1" },
-              { "NAME": "debian-sid",   "OS": "debian:sid",     "DIST": "debian", "CODENAME": "sid",     "NR_EXTRAS": ""  }
+              { "NAME": "ubuntu-18.04", "OS": "ubuntu:18.04",    "DIST": "ubuntu", "CODENAME": "bionic",   "NR_EXTRAS": "1" },
+              { "NAME": "ubuntu-20.04", "OS": "ubuntu:20.04",    "DIST": "ubuntu", "CODENAME": "focal",    "NR_EXTRAS": "1" },
+              { "NAME": "debian-10",    "OS": "debian:buster",   "DIST": "debian", "CODENAME": "buster",   "NR_EXTRAS": "1" },
+              { "NAME": "debian-11",    "OS": "debian:bullseye", "DIST": "debian", "CODENAME": "bullseye", "NR_EXTRAS": "1" },
+              { "NAME": "debian-sid",   "OS": "debian:sid",      "DIST": "debian", "CODENAME": "sid",      "NR_EXTRAS": ""  }
             ]
           }
         EOF
