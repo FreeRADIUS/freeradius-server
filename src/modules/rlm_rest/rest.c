@@ -2413,7 +2413,7 @@ int rest_request_perform(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t 
 	vp = pair_make_reply("REST-HTTP-Status-Code", NULL, T_OP_SET);
 	vp->vp_integer = rest_get_handle_code(handle);
 
-	RDEBUG2("Adding reply:REST-HTTP-Status-Code += \"%d\"", vp->vp_integer);
+	RDEBUG2("Adding reply:REST-HTTP-Status-Code = \"%d\"", vp->vp_integer);
 
 	return 0;
 }
