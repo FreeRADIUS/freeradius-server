@@ -20,6 +20,7 @@ jobs:
           - { NAME: "ubuntu-20.04", OS: "ubuntu:20.04" }
           - { NAME: "debian-9",     OS: "debian:stretch" }
           - { NAME: "debian-10",    OS: "debian:buster" }
+          - { NAME: "debian-11",    OS: "debian:bullseye" }
           - { NAME: "debian-sid",   OS: "debian:sid" }
       fail-fast: false
 
@@ -117,6 +118,7 @@ jobs:
           - { NAME: "ubuntu-20.04", OS: "ubuntu:20.04" }
           - { NAME: "debian-9", OS: "debian:stretch" }
           - { NAME: "debian-10", OS: "debian:buster" }
+          - { NAME: "debian-11", OS: "debian:bullseye" }
           - { NAME: "debian-sid", OS: "debian:sid" }
       fail-fast: false
 
