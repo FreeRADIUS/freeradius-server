@@ -10,11 +10,12 @@
 #
 ##############################################################################
 
-ATTRIBUTE	DNS-Recursive-Name-Server		74	struct
+ATTRIBUTE	RDNSS-Selection				74	struct
+MEMBER		DNS-Recursive-Name-Server		ipv6addr
 MEMBER		Preference				uint8
 VALUE	Preference			High			0x01
-VALUE	Preference			Medium			0x02
+VALUE	Preference			Medium			0x00
 VALUE	Preference			Low			0x03
-VALUE	Preference			Reserved		0x04
+VALUE	Preference			Reserved		0x02
 
-MEMBER		FQDN					octets	# really array of DNS labels
+MEMBER		FQDN					string dns_label,array
