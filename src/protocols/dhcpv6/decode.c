@@ -116,14 +116,14 @@ static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr
 				       fr_dict_attr_t const *parent,
 				       uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
-	if (parent->flags.array) return decode_array(ctx, cursor, dict, parent, data, data_len, decode_ctx);
-
 	/*
 	 *	@todo - we might need to limit this to only one DNS label.
 	 */
 	if ((parent->type == FR_TYPE_STRING) && !parent->flags.extra && parent->flags.subtype) {
 		return decode_dns_labels(ctx, cursor, dict, parent, data, data_len, decode_ctx);
 	}
+
+	if (parent->flags.array) return decode_array(ctx, cursor, dict, parent, data, data_len, decode_ctx);
 
 	return decode_value(ctx, cursor, dict, parent, data, data_len, decode_ctx);
 }
