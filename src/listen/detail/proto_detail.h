@@ -84,7 +84,7 @@ struct proto_detail_work_s {
 	uint32_t			poll_interval;		//!< interval between polling
 
 	fr_retry_config_t		retry_config;		//!< retry config with irt, mrt, etc.
-	uint32_t			max_outstanding;	//!< number of packets to run in parallel
+	uint16_t			max_outstanding;	//!< number of packets to run in parallel
 
 	bool				track_progress;		//!< do we track progress by writing?
 	bool				retransmit;		//!< are we retransmitting on error?
