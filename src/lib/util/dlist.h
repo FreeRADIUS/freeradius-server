@@ -353,7 +353,11 @@ static inline CC_HINT(nonnull) int fr_dlist_insert_after(fr_dlist_head_t *list_h
 #endif
 
 	entry = fr_dlist_item_to_entry(list_head->offset, ptr);
-	pos_entry = fr_dlist_item_to_entry(list_head->offset, pos);
+	if (!pos) {
+		pos_entry = &(list_head->entry);
+	} else {
+		pos_entry = fr_dlist_item_to_entry(list_head->offset, pos);
+	}
 
 	if (!fr_cond_assert(pos_entry->next != NULL)) return -1;
 	if (!fr_cond_assert(pos_entry->prev != NULL)) return -1;
@@ -385,7 +389,11 @@ static inline CC_HINT(nonnull) int fr_dlist_insert_before(fr_dlist_head_t *list_
 #endif
 
 	entry = fr_dlist_item_to_entry(list_head->offset, ptr);
-	pos_entry = fr_dlist_item_to_entry(list_head->offset, pos);
+	if (!pos) {
+		pos_entry = &(list_head->entry);
+	} else {
+		pos_entry = fr_dlist_item_to_entry(list_head->offset, pos);
+	}
 
 	if (!fr_cond_assert(pos_entry->next != NULL)) return -1;
 	if (!fr_cond_assert(pos_entry->prev != NULL)) return -1;
