@@ -97,15 +97,20 @@ static size_t kevent_filter_table_len = NUM_ELEMENTS(kevent_filter_table);
  *
  */
 struct fr_event_timer {
-	fr_event_list_t		*el;			//!< because talloc_parent() is O(N) in number of objects
 	fr_time_t		when;			//!< When this timer should fire.
+
 	fr_event_timer_cb_t	callback;		//!< Callback to execute when the timer fires.
 	void const		*uctx;			//!< Context pointer to pass to the callback.
+
 	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
 
-	fr_event_timer_t const	**parent;		//!< Previous timer.
+	fr_event_timer_t const	**parent;		//!< A pointer to the parent structure containing the timer
+							///< event.
+
 	int32_t			heap_id;	       	//!< Where to store opaque heap data.
-	fr_dlist_t		entry;			//!< in linked list of event timers
+	fr_dlist_t		entry;			//!< List of deferred timer events.
+
+	fr_event_list_t		*el;			//!< Event list containing this timer.
 
 #ifndef NDEBUG
 	char const		*file;			//!< Source file this event was last updated in.
