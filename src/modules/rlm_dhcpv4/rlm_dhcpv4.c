@@ -33,10 +33,12 @@ RCSID("$Id$")
 #include <ctype.h>
 
 static fr_dict_t const *dict_dhcpv4;
+static fr_dict_t const *dict_freeradius;
 
 extern fr_dict_autoload_t rlm_dhcpv4_dict[];
 fr_dict_autoload_t rlm_dhcpv4_dict[] = {
 	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
+	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ NULL }
 };
 
@@ -53,8 +55,8 @@ fr_dict_attr_autoload_t rlm_dhcpv4_dict_attr[] = {
 	{ .out = &attr_gateway_ip_address, .name = "Gateway-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
 	{ .out = &attr_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv4 },
-	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
-	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv4 },
+	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
 	{ NULL }
 };
 
