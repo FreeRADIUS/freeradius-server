@@ -357,9 +357,9 @@ static inline size_t fr_value_box_list_len(fr_value_box_list_t const *list)
  *	- true if the list has at least min boxes.
  *	- false if the list has fewer than min boxes.
  */
-static inline bool fr_value_box_list_len_min(fr_value_box_list_t const *list, size_t min)
+static inline bool fr_value_box_list_len_min(fr_value_box_list_t const *list, unsigned int min)
 {
-	size_t i = fr_dlist_num_elements(list);
+	unsigned int i = fr_dlist_num_elements(list);
 
 	return (i >= min);
 }

@@ -300,7 +300,7 @@ do { \
 	if (arg->single) {
 		if (fr_dlist_num_elements(list) > 1) {
 			RPEDEBUG("Incorrect number of values provided to argument %u, "
-				 "expected %s got %zu",
+				 "expected %s got %u",
 				 arg_num,
 				 arg->required ? "0-1" : "1",
 				 fr_dlist_num_elements(list));

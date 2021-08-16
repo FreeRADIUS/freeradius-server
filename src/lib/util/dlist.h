@@ -53,9 +53,10 @@ typedef struct {
 	char const	*type;		//!< of items contained within the list.  Used for talloc
 					///< validation.
 	fr_dlist_t	entry;		//!< Struct holding the head and tail of the list.
-	size_t		num_elements;
+	unsigned int	num_elements;	//!< Number of elements contained within the dlist.
 } fr_dlist_head_t;
 
+static_assert(sizeof(unsigned int) >= 4, "Unsigned integer too small on this platform");
 
 /** Iterate over the contents of a list
  *
@@ -80,7 +81,7 @@ static inline fr_dlist_t *fr_dlist_item_to_entry(size_t offset, void const *item
  */
 static inline void *fr_dlist_entry_to_item(size_t offset, fr_dlist_t const *entry)
 {
-	return (void *) (((uintptr_t) entry) - offset);
+	return (void *)(((uintptr_t) entry) - offset);
 }
 
 /** Initialise a linked list without metadata
@@ -247,6 +248,15 @@ static inline void fr_dlist_clear(fr_dlist_head_t *list_head)
 	list_head->num_elements = 0;
 }
 
+/** Verify we're not going to overflow the element count
+ *
+ */
+#define CHECK_ELEMENT_COUNT(_head, _add) \
+	if (unlikely((_head)->num_elements > (UINT_MAX - (_add)))) { \
+		fr_strerror_const("Maximum elements in list"); \
+		return -1; \
+	}
+
 /** Insert an item into the head of a list
  *
  * @note If #fr_dlist_talloc_init was used to initialise #fr_dlist_head_t
@@ -254,13 +264,16 @@ static inline void fr_dlist_clear(fr_dlist_head_t *list_head)
  *
  * @param[in] list_head	to insert ptr into.
  * @param[in] ptr	to insert.
+ * @return
+ * 	- 0 on success.
+ *	- -1 on failure.
  */
-static inline CC_HINT(nonnull(1)) void fr_dlist_insert_head(fr_dlist_head_t *list_head, void *ptr)
+static inline CC_HINT(nonnull) int fr_dlist_insert_head(fr_dlist_head_t *list_head, void *ptr)
 {
 	fr_dlist_t *entry;
 	fr_dlist_t *head;
 
-	if (!ptr) return;
+	CHECK_ELEMENT_COUNT(list_head, 1);
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
@@ -269,8 +282,8 @@ static inline CC_HINT(nonnull(1)) void fr_dlist_insert_head(fr_dlist_head_t *lis
 	entry = fr_dlist_item_to_entry(list_head->offset, ptr);
 	head = &(list_head->entry);
 
-	if (!fr_cond_assert(head->next != NULL)) return;
-	if (!fr_cond_assert(head->prev != NULL)) return;
+	if (!fr_cond_assert(head->next != NULL)) return -1;
+	if (!fr_cond_assert(head->prev != NULL)) return -1;
 
 	entry->prev = head;
 	entry->next = head->next;
@@ -278,6 +291,8 @@ static inline CC_HINT(nonnull(1)) void fr_dlist_insert_head(fr_dlist_head_t *lis
 	head->next = entry;
 
 	list_head->num_elements++;
+
+	return 0;
 }
 
 /** Insert an item into the tail of a list
@@ -287,13 +302,16 @@ static inline CC_HINT(nonnull(1)) void fr_dlist_insert_head(fr_dlist_head_t *lis
  *
  * @param[in] list_head	to insert ptr into.
  * @param[in] ptr	to insert.
+ * @return
+ * 	- 0 on success.
+ *	- -1 on failure.
  */
-static inline CC_HINT(nonnull(1)) void fr_dlist_insert_tail(fr_dlist_head_t *list_head, void *ptr)
+static inline CC_HINT(nonnull) int fr_dlist_insert_tail(fr_dlist_head_t *list_head, void *ptr)
 {
 	fr_dlist_t *entry;
 	fr_dlist_t *head;
 
-	if (!ptr) return;
+	CHECK_ELEMENT_COUNT(list_head, 1);
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
@@ -302,8 +320,8 @@ static inline CC_HINT(nonnull(1)) void fr_dlist_insert_tail(fr_dlist_head_t *lis
 	entry = fr_dlist_item_to_entry(list_head->offset, ptr);
 	head = &(list_head->entry);
 
-	if (!fr_cond_assert(head->next != NULL)) return;
-	if (!fr_cond_assert(head->prev != NULL)) return;
+	if (!fr_cond_assert(head->next != NULL)) return -1;
+	if (!fr_cond_assert(head->prev != NULL)) return -1;
 
 	entry->next = head;
 	entry->prev = head->prev;
@@ -311,6 +329,8 @@ static inline CC_HINT(nonnull(1)) void fr_dlist_insert_tail(fr_dlist_head_t *lis
 	head->prev = entry;
 
 	list_head->num_elements++;
+
+	return 0;
 }
 
 /** Insert an item after an item already in the list
@@ -322,11 +342,11 @@ static inline CC_HINT(nonnull(1)) void fr_dlist_insert_tail(fr_dlist_head_t *lis
  * @param[in] pos	to insert ptr after.
  * @param[in] ptr	to insert.
  */
-static inline CC_HINT(nonnull(1)) void fr_dlist_insert_after(fr_dlist_head_t *list_head, void *pos, void *ptr)
+static inline CC_HINT(nonnull) int fr_dlist_insert_after(fr_dlist_head_t *list_head, void *pos, void *ptr)
 {
 	fr_dlist_t *entry, *pos_entry;
 
-	if (!ptr) return;
+	CHECK_ELEMENT_COUNT(list_head, 1);
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
@@ -339,12 +359,14 @@ static inline CC_HINT(nonnull(1)) void fr_dlist_insert_after(fr_dlist_head_t *li
 		pos_entry = fr_dlist_item_to_entry(list_head->offset, pos);
 	}
 
-	if (!fr_cond_assert(pos_entry->next != NULL)) return;
-	if (!fr_cond_assert(pos_entry->prev != NULL)) return;
+	if (!fr_cond_assert(pos_entry->next != NULL)) return -1;
+	if (!fr_cond_assert(pos_entry->prev != NULL)) return -1;
 
 	fr_dlist_entry_link_after(pos_entry, entry);
 
 	list_head->num_elements++;
+
+	return 0;
 }
 
 /** Insert an item before an item already in the list
@@ -356,11 +378,11 @@ static inline CC_HINT(nonnull(1)) void fr_dlist_insert_after(fr_dlist_head_t *li
  * @param[in] pos	to insert ptr before.
  * @param[in] ptr	to insert.
  */
-static inline CC_HINT(nonnull(1)) void fr_dlist_insert_before(fr_dlist_head_t *list_head, void *pos, void *ptr)
+static inline CC_HINT(nonnull) int fr_dlist_insert_before(fr_dlist_head_t *list_head, void *pos, void *ptr)
 {
 	fr_dlist_t *entry, *pos_entry;
 
-	if (!pos || !ptr) return;
+	CHECK_ELEMENT_COUNT(list_head, 1);
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (list_head->type) ptr = _talloc_get_type_abort(ptr, list_head->type, __location__);
@@ -373,12 +395,14 @@ static inline CC_HINT(nonnull(1)) void fr_dlist_insert_before(fr_dlist_head_t *l
 		pos_entry = fr_dlist_item_to_entry(list_head->offset, pos);
 	}
 
-	if (!fr_cond_assert(pos_entry->next != NULL)) return;
-	if (!fr_cond_assert(pos_entry->prev != NULL)) return;
+	if (!fr_cond_assert(pos_entry->next != NULL)) return -1;
+	if (!fr_cond_assert(pos_entry->prev != NULL)) return -1;
 
 	fr_dlist_entry_link_before(pos_entry, entry);
 
 	list_head->num_elements++;
+
+	return 0;
 }
 
 /** Return the HEAD item of a list or NULL if the list is empty
@@ -658,28 +682,33 @@ static inline CC_HINT(nonnull) void fr_dlist_verify(char const *file, int line, 
 
 /** Merge two lists, inserting the source at the tail of the destination
  *
+ * @return
+ * 	- 0 on success.
+ *	- -1 on failure.
  */
-static inline CC_HINT(nonnull) void fr_dlist_move(fr_dlist_head_t *list_dst, fr_dlist_head_t *list_src)
+static inline CC_HINT(nonnull) int fr_dlist_move(fr_dlist_head_t *list_dst, fr_dlist_head_t *list_src)
 {
 	fr_dlist_t *dst = &(list_dst->entry);
 	fr_dlist_t *src = &(list_src->entry);
+
+	CHECK_ELEMENT_COUNT(list_dst, list_src->num_elements);
 
 #ifdef WITH_VERIFY_PTR
 	/*
 	 *	Must be both talloced or both not
 	 */
-	if (!fr_cond_assert((list_dst->type && list_src->type) || (!list_dst->type && !list_src->type))) return;
+	if (!fr_cond_assert((list_dst->type && list_src->type) || (!list_dst->type && !list_src->type))) return -1;
 
 	/*
 	 *	Must be of the same type
 	 */
-	if (!fr_cond_assert(!list_dst->type || (strcmp(list_dst->type, list_src->type) == 0))) return;
+	if (!fr_cond_assert(!list_dst->type || (strcmp(list_dst->type, list_src->type) == 0))) return -1;
 #endif
 
-	if (!fr_cond_assert(dst->next != NULL)) return;
-	if (!fr_cond_assert(dst->prev != NULL)) return;
+	if (!fr_cond_assert(dst->next != NULL)) return -1;
+	if (!fr_cond_assert(dst->prev != NULL)) return -1;
 
-	if (fr_dlist_empty(list_src)) return;
+	if (fr_dlist_empty(list_src)) return 0;
 
 	/*
 	 *	This is different to fr_dlist_entry_move
@@ -696,32 +725,39 @@ static inline CC_HINT(nonnull) void fr_dlist_move(fr_dlist_head_t *list_dst, fr_
 
 	fr_dlist_entry_init(src);
 	list_src->num_elements = 0;
+
+	return 0;
 }
 
 /** Merge two lists, inserting the source at the head of the destination
  *
+ * @return
+ * 	- 0 on success.
+ *	- -1 on failure.
  */
-static inline CC_HINT(nonnull) void fr_dlist_move_head(fr_dlist_head_t *list_dst, fr_dlist_head_t *list_src)
+static inline CC_HINT(nonnull) int fr_dlist_move_head(fr_dlist_head_t *list_dst, fr_dlist_head_t *list_src)
 {
 	fr_dlist_t *dst = &(list_dst->entry);
 	fr_dlist_t *src = &(list_src->entry);
+
+	CHECK_ELEMENT_COUNT(list_dst, list_src->num_elements);
 
 #ifdef WITH_VERIFY_PTR
 	/*
 	 *	Must be both talloced or both not
 	 */
-	if (!fr_cond_assert((list_dst->type && list_src->type) || (!list_dst->type && !list_src->type))) return;
+	if (!fr_cond_assert((list_dst->type && list_src->type) || (!list_dst->type && !list_src->type))) return -1;
 
 	/*
 	 *	Must be of the same type
 	 */
-	if (!fr_cond_assert(!list_dst->type || (strcmp(list_dst->type, list_src->type) == 0))) return;
+	if (!fr_cond_assert(!list_dst->type || (strcmp(list_dst->type, list_src->type) == 0))) return -1;
 #endif
 
-	if (!fr_cond_assert(dst->next != NULL)) return;
-	if (!fr_cond_assert(dst->prev != NULL)) return;
+	if (!fr_cond_assert(dst->next != NULL)) return -1;
+	if (!fr_cond_assert(dst->prev != NULL)) return -1;
 
-	if (fr_dlist_empty(list_src)) return;
+	if (fr_dlist_empty(list_src)) return 0;
 
 	src->next->prev = dst;
 	src->prev->next = dst->next;
@@ -733,6 +769,8 @@ static inline CC_HINT(nonnull) void fr_dlist_move_head(fr_dlist_head_t *list_dst
 
 	fr_dlist_entry_init(src);
 	list_src->num_elements = 0;
+
+	return 0;
 }
 
 /** Free the first item in the list
@@ -804,7 +842,7 @@ static inline void fr_dlist_talloc_reverse_free(fr_dlist_head_t *head)
  *
  * @param[in] head of list to count elements for.
  */
-static inline size_t fr_dlist_num_elements(fr_dlist_head_t const *head)
+static inline unsigned int fr_dlist_num_elements(fr_dlist_head_t const *head)
 {
 	return head->num_elements;
 }

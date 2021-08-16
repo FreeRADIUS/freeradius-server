@@ -2127,7 +2127,7 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 		 *	on free.
 		 */
 		fr_assert_msg(fr_dlist_num_elements(&treq->log) == 0,
-			      "Should have 0 remaining log entries, have %zu", fr_dlist_num_elements(&treq->log));
+			      "Should have 0 remaining log entries, have %u", fr_dlist_num_elements(&treq->log));
 #endif
 
 		talloc_free(treq);
@@ -2147,7 +2147,7 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	 *	on free.
 	 */
 	fr_assert_msg(fr_dlist_num_elements(&treq->log) == 0,
-		      "Should have 0 remaining log entries, have %zu", fr_dlist_num_elements(&treq->log));
+		      "Should have 0 remaining log entries, have %u", fr_dlist_num_elements(&treq->log));
 #endif
 
 	/*
@@ -2533,7 +2533,7 @@ void trunk_request_state_log_entry_add(char const *function, int line,
 
 	if (fr_dlist_num_elements(&treq->log) >= FR_TRUNK_REQUEST_STATE_LOG_MAX) {
 		slog = fr_dlist_head(&treq->log);
-		fr_assert_msg(slog, "slog list head NULL but element counter was %zu",
+		fr_assert_msg(slog, "slog list head NULL but element counter was %u",
 			      fr_dlist_num_elements(&treq->log));
 		(void)fr_dlist_remove(&treq->log, slog);	/* Returns NULL when removing the list head */
 		memset(slog, 0, sizeof(*slog));

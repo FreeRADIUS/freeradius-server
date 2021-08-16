@@ -4231,7 +4231,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 #ifndef NDEBUG
 			tmpl_attr_debug(vpt);
 #endif
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR_UNRESOLVED contains %zu "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR_UNRESOLVED contains %u "
 					     "references", file, line, fr_dlist_num_elements(&vpt->data.attribute.ar));
 		}
 		break;
@@ -4303,7 +4303,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 #ifndef NDEBUG
 			tmpl_attr_debug(vpt);
 #endif
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_LIST contains %zu "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_LIST contains %u "
 					     "references", file, line, fr_dlist_num_elements(&vpt->data.attribute.ar));
 		}
 		break;
