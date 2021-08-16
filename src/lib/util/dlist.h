@@ -342,7 +342,7 @@ static inline CC_HINT(nonnull) int fr_dlist_insert_tail(fr_dlist_head_t *list_he
  * @param[in] pos	to insert ptr after.
  * @param[in] ptr	to insert.
  */
-static inline CC_HINT(nonnull) int fr_dlist_insert_after(fr_dlist_head_t *list_head, void *pos, void *ptr)
+static inline CC_HINT(nonnull(1)) int fr_dlist_insert_after(fr_dlist_head_t *list_head, void *pos, void *ptr)
 {
 	fr_dlist_t *entry, *pos_entry;
 
@@ -378,7 +378,7 @@ static inline CC_HINT(nonnull) int fr_dlist_insert_after(fr_dlist_head_t *list_h
  * @param[in] pos	to insert ptr before.
  * @param[in] ptr	to insert.
  */
-static inline CC_HINT(nonnull) int fr_dlist_insert_before(fr_dlist_head_t *list_head, void *pos, void *ptr)
+static inline CC_HINT(nonnull(1)) int fr_dlist_insert_before(fr_dlist_head_t *list_head, void *pos, void *ptr)
 {
 	fr_dlist_t *entry, *pos_entry;
 
