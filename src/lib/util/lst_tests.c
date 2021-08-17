@@ -175,7 +175,7 @@ static void lst_stress_realloc(void)
 
 	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, index);
 	TEST_CHECK(lst != NULL);
-	hp = fr_heap_alloc(NULL, lst_cmp, lst_thing, index);
+	hp = fr_heap_alloc(NULL, lst_cmp, lst_thing, index, 0);
 
 	lst_array = calloc(2 * INITIAL_CAPACITY, sizeof(lst_thing));
 	hp_array = calloc(2 * INITIAL_CAPACITY, sizeof(lst_thing));

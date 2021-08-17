@@ -53,7 +53,7 @@ static void heap_test(int skip)
 		done_init = true;
 	}
 
-	hp = fr_heap_alloc(NULL, heap_cmp, heap_thing, heap);
+	hp = fr_heap_alloc(NULL, heap_cmp, heap_thing, heap, 0);
 	TEST_CHECK(hp != NULL);
 
 	array = calloc(HEAP_TEST_SIZE, sizeof(heap_thing));
@@ -152,7 +152,7 @@ static void heap_test_order(void)
 		done_init = true;
 	}
 
-	hp = fr_heap_alloc(NULL, heap_cmp, heap_thing, heap);
+	hp = fr_heap_alloc(NULL, heap_cmp, heap_thing, heap, 0);
 	TEST_CHECK(hp != NULL);
 
 	array = calloc(HEAP_TEST_SIZE, sizeof(heap_thing));
@@ -205,7 +205,7 @@ static void heap_cycle(void)
 		done_init = true;
 	}
 
-	hp = fr_heap_alloc(NULL, heap_cmp, heap_thing, heap);
+	hp = fr_heap_alloc(NULL, heap_cmp, heap_thing, heap, 0);
 	TEST_CHECK(hp != NULL);
 
 	array = calloc(HEAP_CYCLE_SIZE, sizeof(heap_thing));

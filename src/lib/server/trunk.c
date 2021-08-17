@@ -3481,8 +3481,7 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
 	 */
 	DO_CONNECTION_ALLOC(tconn);
 
-	MEM(tconn->pending = fr_heap_talloc_alloc(tconn, _trunk_request_prioritise,
-						   fr_trunk_request_t, heap_id));
+	MEM(tconn->pending = fr_heap_talloc_alloc(tconn, _trunk_request_prioritise, fr_trunk_request_t, heap_id, 0));
 	fr_dlist_talloc_init(&tconn->sent, fr_trunk_request_t, entry);
 	fr_dlist_talloc_init(&tconn->cancel, fr_trunk_request_t, entry);
 	fr_dlist_talloc_init(&tconn->cancel_sent, fr_trunk_request_t, entry);
@@ -4580,13 +4579,13 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	Request backlog queue
 	 */
 	MEM(trunk->backlog = fr_heap_talloc_alloc(trunk, _trunk_request_prioritise,
-						   fr_trunk_request_t, heap_id));
+						   fr_trunk_request_t, heap_id, 0));
 
 	/*
 	 *	Connection queues and trees
 	 */
 	MEM(trunk->active = fr_heap_talloc_alloc(trunk, trunk->funcs.connection_prioritise,
-						  fr_trunk_connection_t, heap_id));
+						  fr_trunk_connection_t, heap_id, 0));
 	fr_dlist_talloc_init(&trunk->init, fr_trunk_connection_t, entry);
 	fr_dlist_talloc_init(&trunk->connecting, fr_trunk_connection_t, entry);
 	fr_dlist_talloc_init(&trunk->full, fr_trunk_connection_t, entry);

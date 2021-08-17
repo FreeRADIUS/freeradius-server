@@ -1032,7 +1032,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 			.from_dir = true
 		};
 
-		MEM(frame->heap = fr_heap_alloc(frame->directory, filename_cmp, cf_file_heap_t, heap_id));
+		MEM(frame->heap = fr_heap_alloc(frame->directory, filename_cmp, cf_file_heap_t, heap_id, 0));
 
 		/*
 		 *	Read the whole directory before loading any

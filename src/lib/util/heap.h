@@ -37,13 +37,19 @@ extern "C" {
 typedef unsigned int fr_heap_index_t;
 typedef unsigned int fr_heap_iter_t;
 
-/*
+/** Comparator to order heap elements
+ *
  *  Return negative numbers to put 'a' at the top of the heap.
  *  Return positive numbers to put 'b' at the top of the heap.
  */
 typedef int8_t (*fr_heap_cmp_t)(void const *a, void const *b);
 
+/** The main heap structure
+ *
+ */
 typedef struct fr_heap_s fr_heap_t;
+
+size_t fr_heap_pre_alloc_size(unsigned int count);
 
 /** Creates a heap that can be used with non-talloced elements
  *
@@ -51,9 +57,11 @@ typedef struct fr_heap_s fr_heap_t;
  * @param[in] _cmp		Comparator used to compare elements.
  * @param[in] _type		Of elements.
  * @param[in] _field		to store heap indexes in.
+ * @param[in] _init		the initial number of elements to allocate.
+ *				Pass 0 to use the default.
  */
-#define fr_heap_alloc(_ctx, _cmp, _type, _field) \
-	_fr_heap_alloc(_ctx, _cmp, NULL, (size_t)offsetof(_type, _field))
+#define fr_heap_alloc(_ctx, _cmp, _type, _field, _init) \
+	_fr_heap_alloc(_ctx, _cmp, NULL, (size_t)offsetof(_type, _field), _init)
 
 /** Creates a heap that verifies elements are of a specific talloc type
  *
@@ -61,14 +69,16 @@ typedef struct fr_heap_s fr_heap_t;
  * @param[in] _cmp		Comparator used to compare elements.
  * @param[in] _talloc_type	of elements.
  * @param[in] _field		to store heap indexes in.
+ * @param[in] _init		the initial number of elements to allocate.
+ *				Pass 0 to use the default.
  * @return
  *	- A new heap.
  *	- NULL on error.
  */
-#define fr_heap_talloc_alloc(_ctx, _cmp, _talloc_type, _field) \
-	_fr_heap_alloc(_ctx, _cmp, #_talloc_type, (size_t)offsetof(_talloc_type, _field))
+#define fr_heap_talloc_alloc(_ctx, _cmp, _talloc_type, _field, _init) \
+	_fr_heap_alloc(_ctx, _cmp, #_talloc_type, (size_t)offsetof(_talloc_type, _field), _init)
 
-fr_heap_t	*_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *talloc_type, size_t offset) CC_HINT(nonnull(2));
+fr_heap_t	*_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *talloc_type, size_t offset, unsigned int init) CC_HINT(nonnull(2));
 
 /** Check if an entry is inserted into a heap
  *

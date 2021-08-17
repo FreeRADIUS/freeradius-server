@@ -145,7 +145,7 @@ static unlang_interpret_synchronous_t *unlang_interpret_synchronous_alloc(TALLOC
 	unlang_interpret_synchronous_t *intps;
 
 	MEM(intps = talloc_zero(ctx, unlang_interpret_synchronous_t));
-	MEM(intps->runnable = fr_heap_talloc_alloc(intps, fr_pointer_cmp, request_t, runnable_id));
+	MEM(intps->runnable = fr_heap_talloc_alloc(intps, fr_pointer_cmp, request_t, runnable_id, 0));
 	if (el) {
 		intps->el = el;
 	} else {

@@ -1265,13 +1265,13 @@ nomem:
 		goto fail;
 	}
 
-	worker->runnable = fr_heap_talloc_alloc(worker, worker_runnable_cmp, request_t, runnable_id);
+	worker->runnable = fr_heap_talloc_alloc(worker, worker_runnable_cmp, request_t, runnable_id, 0);
 	if (!worker->runnable) {
 		fr_strerror_const("Failed creating runnable heap");
 		goto fail;
 	}
 
-	worker->time_order = fr_heap_talloc_alloc(worker, worker_time_order_cmp, request_t, time_order_id);
+	worker->time_order = fr_heap_talloc_alloc(worker, worker_time_order_cmp, request_t, time_order_id, 0);
 	if (!worker->time_order) {
 		fr_strerror_const("Failed creating time_order heap");
 		goto fail;

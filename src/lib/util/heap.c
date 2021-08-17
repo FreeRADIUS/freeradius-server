@@ -48,6 +48,8 @@ struct fr_heap_s {
 	void		**p;			//!< Array of nodes.
 };
 
+#define INITIAL_CAPACITY	2048
+
 /*
  *	First node in a heap is element 1. Children of i are 2i and
  *	2i+1.  These macros wrap the logic, so the code is more
@@ -60,14 +62,37 @@ struct fr_heap_s {
 
 static void fr_heap_bubble(fr_heap_t *hp, fr_heap_index_t child);
 
-fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, size_t offset)
+/** Return how many bytes need to be allocated to hold a heap of a given size
+ *
+ * This is useful for passing to talloc[_zero]_pooled_object to avoid additional mallocs.
+ *
+ * @param[in] count	The initial element count.
+ * @return The number of bytes to pre-allocate.
+ */
+size_t fr_heap_pre_alloc_size(unsigned int count)
+{
+	return sizeof(fr_heap_t) + sizeof(void *) * count;
+}
+
+fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, size_t offset, unsigned int init)
 {
 	fr_heap_t *hp;
 
-	hp = talloc_zero(ctx, fr_heap_t);
-	if (!hp) return NULL;
+	/*
+	 *	If we've been provided with an initial
+	 *      element count, assume expanding past
+	 *      that size is going to be the uncommon
+	 *	case.
+	 */
+	if (init) {
+		hp = talloc_zero_pooled_object(ctx, fr_heap_t, 1, sizeof(void *) * init);
+	} else {
+		init = INITIAL_CAPACITY;
+		hp = talloc_zero(ctx, fr_heap_t);
+	}
+	if (unlikely(!hp)) return NULL;
 
-	hp->size = 2048;
+	hp->size = init;
 	hp->p = talloc_array(hp, void *, hp->size);
 	if (unlikely(!hp->p)) {
 		talloc_free(hp);
@@ -81,7 +106,6 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
 	 *	into the heap.
 	 */
 	hp->p[0] = (void *)UINTPTR_MAX;
-
 	hp->type = type;
 	hp->cmp = cmp;
 	hp->offset = offset;
@@ -179,7 +203,7 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 	return 0;
 }
 
-static inline void fr_heap_bubble(fr_heap_t *hp, fr_heap_index_t child)
+static inline CC_HINT(always_inline) void fr_heap_bubble(fr_heap_t *hp, fr_heap_index_t child)
 {
 	if (!fr_cond_assert(child > 0)) return;
 
