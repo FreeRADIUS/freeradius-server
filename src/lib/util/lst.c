@@ -620,7 +620,7 @@ int fr_lst_extract(fr_lst_t *lst, void *data)
 	}
 
 	_fr_lst_extract(lst, 0, data);
-	return 1;
+	return 0;
 }
 
 int fr_lst_insert(fr_lst_t *lst, void *data)
@@ -643,7 +643,7 @@ int fr_lst_insert(fr_lst_t *lst, void *data)
 	}
 
 	_fr_lst_insert(lst, 0, data);
-	return 1;
+	return 0;
 }
 
 fr_lst_index_t fr_lst_num_elements(fr_lst_t *lst)
