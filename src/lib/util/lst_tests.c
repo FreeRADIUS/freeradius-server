@@ -14,7 +14,7 @@ typedef struct {
         int		data;
 	fr_lst_index_t	index;
 	bool		visited;	/* Only used by iterator test */
-}       heap_thing;
+} lst_thing;
 
 #if 0
 static bool	lst_validate(fr_lst_t *lst, bool show_items);
@@ -29,21 +29,21 @@ static bool fr_lst_contains(fr_lst_t *lst, void *data)
 	return false;
 }
 
-static int8_t	heap_cmp(void const *one, void const *two)
+static int8_t lst_cmp(void const *one, void const *two)
 {
-	heap_thing const	*item1 = one, *item2 = two;
+	lst_thing const	*item1 = one, *item2 = two;
 
-	return (item1->data > item2->data) - (item2->data > item1->data);
+	return CMP(item1->data, item2->data);
 }
 
 #define NVALUES	20
 static void lst_test_basic(void)
 {
 	fr_lst_t	*lst;
-	heap_thing	values[NVALUES];
+	lst_thing	values[NVALUES];
 	fr_fast_rand_t	rand_ctx;
 
-	lst = fr_lst_alloc(NULL, heap_cmp, heap_thing, index);
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, index);
 	TEST_CHECK(lst != NULL);
 
 	for (int i = 0; i < NVALUES; i++) {
@@ -51,7 +51,7 @@ static void lst_test_basic(void)
 		values[i].index = 0;
 	}
 
-	/* shuffle values before insertion, so the heap has to work to give them back in order */
+	/* shuffle values before insertion, so the lst has to work to give them back in order */
 	rand_ctx.a = fr_rand();
 	rand_ctx.b = fr_rand();
 
@@ -69,7 +69,7 @@ static void lst_test_basic(void)
 	}
 
 	for (int i = 0; i < NVALUES; i++) {
-		heap_thing	*value = fr_lst_pop(lst);
+		lst_thing	*value = fr_lst_pop(lst);
 
 		TEST_CHECK(value != NULL);
 		TEST_CHECK(!fr_lst_entry_inserted(value->index));
@@ -84,7 +84,7 @@ static void lst_test(int skip)
 {
 	fr_lst_t	*lst;
 	int		i;
-	heap_thing	*array;
+	lst_thing	*array;
 	int		left;
 	int		ret;
 
@@ -95,10 +95,10 @@ static void lst_test(int skip)
 		done_init = true;
 	}
 
-	lst = fr_lst_alloc(NULL, heap_cmp, heap_thing, index);
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, index);
 	TEST_CHECK(lst != NULL);
 
-	array = calloc(LST_TEST_SIZE, sizeof(heap_thing));
+	array = calloc(LST_TEST_SIZE, sizeof(lst_thing));
 
 	/*
 	 *	Initialise random values
@@ -132,7 +132,7 @@ static void lst_test(int skip)
 	left = fr_lst_num_elements(lst);
 	for (i = 0; i < left; i++) {
 		TEST_CHECK(fr_lst_pop(lst) != NULL);
-		TEST_MSG("expected %i elements remaining in the heap", left - i);
+		TEST_MSG("expected %i elements remaining in the lst", left - i);
 		TEST_MSG("failed extracting %i", i);
 	}
 
@@ -163,22 +163,22 @@ static void lst_stress_realloc(void)
 {
 	fr_lst_t	*lst;
 	fr_heap_t	*hp;
-	heap_thing	*lst_array, *hp_array;
+	lst_thing	*lst_array, *hp_array;
 	static bool	done_init = false;
 	int		ret;
-	heap_thing	*from_lst, *from_hp;
+	lst_thing	*from_lst, *from_hp;
 
 	if (!done_init) {
 		srand((unsigned int) time(NULL));
 		done_init = true;
 	}
 
-	lst = fr_lst_alloc(NULL, heap_cmp, heap_thing, index);
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, index);
 	TEST_CHECK(lst != NULL);
-	hp = fr_heap_alloc(NULL, heap_cmp, heap_thing, index);
+	hp = fr_heap_alloc(NULL, lst_cmp, lst_thing, index);
 
-	lst_array = calloc(2 * INITIAL_CAPACITY, sizeof(heap_thing));
-	hp_array = calloc(2 * INITIAL_CAPACITY, sizeof(heap_thing));
+	lst_array = calloc(2 * INITIAL_CAPACITY, sizeof(lst_thing));
+	hp_array = calloc(2 * INITIAL_CAPACITY, sizeof(lst_thing));
 
 	/*
 	 *	Initialise random values
@@ -199,7 +199,7 @@ static void lst_stress_realloc(void)
 	for (int i = 0; i < INITIAL_CAPACITY / 2; i++) {
 		TEST_CHECK((from_lst = fr_lst_pop(lst)) != NULL);
 		TEST_CHECK((from_hp = fr_heap_pop(hp)) != NULL);
-		TEST_CHECK(heap_cmp(from_lst, from_hp) == 0);
+		TEST_CHECK(lst_cmp(from_lst, from_hp) == 0);
 	}
 
 	/*
@@ -220,7 +220,7 @@ static void lst_stress_realloc(void)
 	for (int i = 0; i < 3 * INITIAL_CAPACITY / 2; i++) {
 		TEST_CHECK((from_lst = fr_lst_pop(lst)) != NULL);
 		TEST_CHECK((from_hp = fr_heap_pop(hp)) != NULL);
-		TEST_CHECK(heap_cmp(from_lst, from_hp) == 0);
+		TEST_CHECK(lst_cmp(from_lst, from_hp) == 0);
 	}
 
 	TEST_CHECK(fr_lst_num_elements(lst) == 0);
@@ -237,7 +237,7 @@ static void lst_stress_realloc(void)
 static void lst_burn_in(void)
 {
 	fr_lst_t	*lst = NULL;
-	heap_thing	*array = NULL;
+	lst_thing	*array = NULL;
 	static bool	done_init = false;
 	int		insert_count = 0;
 	int		element_count = 0;
@@ -247,13 +247,13 @@ static void lst_burn_in(void)
 		done_init = true;
 	}
 
-	array = calloc(BURN_IN_OPS, sizeof(heap_thing));
+	array = calloc(BURN_IN_OPS, sizeof(lst_thing));
 	for (int i = 0; i < BURN_IN_OPS; i++) array[i].data = rand() % 65537;
 
-	lst = fr_lst_alloc(NULL, heap_cmp, heap_thing, index);
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, index);
 
 	for (int i = 0; i < BURN_IN_OPS; i++) {
-		heap_thing	*ret_thing = NULL;
+		lst_thing	*ret_thing = NULL;
 		int		ret_insert = -1;
 
 		if (fr_lst_num_elements(lst) == 0) {
@@ -289,7 +289,7 @@ static void lst_cycle(void)
 {
 	fr_lst_t	*lst;
 	int		i;
-	heap_thing	*array;
+	lst_thing	*array;
 	int		to_remove;
 	int 		inserted, removed;
 	int		ret;
@@ -302,10 +302,10 @@ static void lst_cycle(void)
 		done_init = true;
 	}
 
-	lst = fr_lst_alloc(NULL, heap_cmp, heap_thing, index);
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, index);
 	TEST_CHECK(lst != NULL);
 
-	array = calloc(LST_CYCLE_SIZE, sizeof(heap_thing));
+	array = calloc(LST_CYCLE_SIZE, sizeof(lst_thing));
 
 	/*
 	 *	Initialise random values
@@ -376,10 +376,10 @@ static void lst_iter(void)
 {
 	fr_lst_t	*lst;
 	fr_lst_iter_t	iter;
-	heap_thing	values[NVALUES], *data;
+	lst_thing	values[NVALUES], *data;
 	fr_fast_rand_t	rand_ctx;
 
-	lst = fr_lst_alloc(NULL, heap_cmp, heap_thing, index);
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, index);
 	TEST_CHECK(lst != NULL);
 
 	for (int i = 0; i < NVALUES; i++) {
@@ -479,8 +479,8 @@ static void lst_validate(fr_lst_t *lst, bool show_items)
 	 * one) should be in ascending order.
 	 */
 	for (int stack_index = 1; stack_index + 1 < depth; stack_index++) {
-		heap_thing	*current_pivot = pivot(lst, stack_index);
-		heap_thing	*next_pivot = pivot(lst, stack_index + 1);
+		lst_thing	*current_pivot = pivot(lst, stack_index);
+		lst_thing	*next_pivot = pivot(lst, stack_index + 1);
 
 		if (current_pivot && next_pivot && lst->cmp(current_pivot, next_pivot) < 0) pivots_in_order = false;
 	}
