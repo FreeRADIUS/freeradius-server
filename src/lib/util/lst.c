@@ -241,16 +241,16 @@ fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, siz
 	return lst;
 }
 
-/*
- * The length function for LSTs (how many buckets it contains)
+/** The length function for LSTs (how many buckets it contains)
+ *
  */
 static inline stack_index_t lst_length(fr_lst_t *lst, stack_index_t stack_index)
 {
 	return stack_depth(lst->s) - stack_index;
 }
 
-/*
- * The size function for LSTs (number of items a (sub)tree contains)
+/** The size function for LSTs (number of items a (sub)tree contains)
+ *
  */
 static CC_HINT(nonnull) fr_lst_index_t lst_size(fr_lst_t *lst, stack_index_t stack_index)
 {
@@ -266,8 +266,8 @@ static CC_HINT(nonnull) fr_lst_index_t lst_size(fr_lst_t *lst, stack_index_t sta
 	return (lst->capacity - reduced_idx) + reduced_right;
 }
 
-/*
- * Flatten an LST, i.e. turn it into the base-case one bucket [sub]tree
+/** Flatten an LST, i.e. turn it into the base-case one bucket [sub]tree
+ *
  * NOTE: so doing leaves the passed stack_index valid--we just add
  * everything once in the left subtree to it.
  */
@@ -276,8 +276,8 @@ static inline CC_HINT(always_inline, nonnull) void lst_flatten(fr_lst_t *lst, st
 	stack_pop(lst->s, stack_depth(lst->s) - stack_index);
 }
 
-/*
- * Move data to a specific location in an LST's array.
+/** Move data to a specific location in an LST's array.
+ *
  * The caller must have made sure the location is available and exists
  * in said array.
  */
@@ -287,12 +287,13 @@ static inline CC_HINT(always_inline, nonnull) void lst_move(fr_lst_t *lst, fr_ls
 	item_index_set(lst, data, index_reduce(lst, location));
 }
 
-/*
- * Add data to the bucket of a specified (sub)tree..
+/**  Add data to the bucket of a specified (sub)tree..
+ *
  */
 static void bucket_add(fr_lst_t *lst, stack_index_t stack_index, void *data)
 {
 	fr_lst_index_t	new_space;
+	stack_index_t	ridx;
 
 	/*
 	 * For each bucket to the right, starting from the top,
@@ -303,13 +304,13 @@ static void bucket_add(fr_lst_t *lst, stack_index_t stack_index, void *data)
 	 * The fictitious pivot doesn't correspond to an actual value,
 	 * so we save pivot moving for the end of the loop.
 	 */
-	for (stack_index_t rindex = 0; rindex < stack_index; rindex++) {
-		fr_lst_index_t	prev_pivot_index = stack_item(lst->s, rindex + 1);
+	for (ridx = 0; ridx < stack_index; ridx++) {
+		fr_lst_index_t	prev_pivot_index = stack_item(lst->s, ridx + 1);
 		bool		empty_bucket;
 
-		new_space = stack_item(lst->s, rindex);
+		new_space = stack_item(lst->s, ridx);
 		empty_bucket = (new_space - prev_pivot_index) == 1;
-		stack_set(lst->s, rindex, new_space + 1);
+		stack_set(lst->s, ridx, new_space + 1);
 
 		if (!empty_bucket) lst_move(lst, new_space, item(lst, prev_pivot_index + 1));
 
@@ -330,23 +331,21 @@ static void bucket_add(fr_lst_t *lst, stack_index_t stack_index, void *data)
 	lst->num_elements++;
 }
 
-/*
- * Reduce pivot stack indices based on their difference from lst->idx,
- * and then reduce lst->idx.
+/** Reduce pivot stack indices based on their difference from lst->idx, and then reduce lst->idx
+ *
  */
 static void lst_indices_reduce(fr_lst_t *lst)
 {
 	fr_lst_index_t	reduced_idx = index_reduce(lst, lst->idx);
-	stack_index_t	depth = stack_depth(lst->s);
+	stack_index_t	depth = stack_depth(lst->s), i;
 
-	for (stack_index_t i = 0; i < depth; i++) {
-		stack_set(lst->s, i, reduced_idx + stack_item(lst->s, i) - lst->idx);
-	}
+	for (i = 0; i < depth; i++) stack_set(lst->s, i, reduced_idx + stack_item(lst->s, i) - lst->idx);
+
 	lst->idx = reduced_idx;
 }
 
-/*
- * Make more space available in an LST.
+/** Make more space available in an LST
+ *
  * The LST paper only mentions this option in passing, pointing out that it's O(n); the only
  * constructor in the paper lets you hand it an array of items to initially insert
  * in the LST, so elements will have to be removed to make room for more (though it's
@@ -364,7 +363,7 @@ static bool lst_expand(fr_lst_t *lst)
 {
 	void 		**n;
 	size_t		n_capacity = 2 * lst->capacity;
-	fr_lst_index_t	old_capacity = lst->capacity;
+	fr_lst_index_t	old_capacity = lst->capacity, i;
 
 	n = talloc_realloc(lst, lst->p, void *, n_capacity);
 	if (unlikely(!n)) {
@@ -378,9 +377,10 @@ static bool lst_expand(fr_lst_t *lst)
 
 	lst_indices_reduce(lst);
 
-	for (fr_lst_index_t i = 0; i < lst->idx; i++) {
+	for (i = 0; i < lst->idx; i++) {
 		void		*to_be_moved = item(lst, i);
 		fr_lst_index_t	new_index = item_index(lst, to_be_moved) + old_capacity;
+
 		lst_move(lst, new_index, to_be_moved);
 	}
 

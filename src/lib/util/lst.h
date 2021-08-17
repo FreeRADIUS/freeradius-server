@@ -41,7 +41,7 @@ typedef struct fr_lst_s	fr_lst_t;
  * type of a structure with a member of type fr_lst_index_t. That member's name must be
  * passed as the _field argument.
  */
-typedef int	fr_lst_index_t;
+typedef int fr_lst_index_t;
 
 typedef fr_lst_index_t	fr_lst_iter_t;
 
