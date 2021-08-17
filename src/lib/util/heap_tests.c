@@ -180,6 +180,9 @@ static void heap_test_order(void)
 	}
 
 	TEST_CHECK(count == HEAP_TEST_SIZE);
+
+	talloc_free(hp);
+	free(array);
 }
 
 static void heap_cycle(void)
