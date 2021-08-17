@@ -144,7 +144,7 @@ bool is_bucket(fr_lst_t *lst, stack_index_t idx)
  * 2. one can fetch and modify arbitrary stack items; when array elements must be
  *    moved to keep them contiguous, the pivot stack entries must change to match.
  */
-static pivot_stack_t *stack_alloc(TALLOC_CTX *ctx)
+static inline CC_HINT(always_inline, nonnull) pivot_stack_t *stack_alloc(TALLOC_CTX *ctx)
 {
 	pivot_stack_t	*s;
 
@@ -230,8 +230,18 @@ fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, siz
 {
 	fr_lst_t	*lst;
 
-	lst = talloc_zero(ctx, fr_lst_t);
-	if (!lst) return NULL;
+	/*
+	 *	Pre-allocate stack memory as it is
+	 *	unlikely to need to grow in practice.
+	 *
+	 *	We don't pre-allocate the array of elements
+	 *	If we pre-allocated the array of elements
+	 *	we'd end up wasting that memory as soon as
+	 *	we needed to expand the array.
+	 */
+	lst = talloc_zero_pooled_object(ctx, fr_lst_t, 2,
+					sizeof(pivot_stack_t) + (INITIAL_STACK_CAPACITY * sizeof(fr_lst_index_t)));
+	if (unlikely(!lst)) return NULL;
 
 	lst->capacity = INITIAL_CAPACITY;
 	lst->p = talloc_array(lst, void *, lst->capacity);
