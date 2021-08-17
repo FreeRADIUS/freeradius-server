@@ -69,7 +69,7 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
 
 	hp->size = 2048;
 	hp->p = talloc_array(hp, void *, hp->size);
-	if (!hp->p) {
+	if (unlikely(!hp->p)) {
 		talloc_free(hp);
 		return NULL;
 	}
@@ -162,7 +162,7 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 		}
 
 		n = talloc_realloc(hp, hp->p, void *, n_size);
-		if (!n) {
+		if (unlikely(!n)) {
 			fr_strerror_printf("Failed expanding heap to %u elements (%u bytes)",
 					   n_size, (n_size * (unsigned int)sizeof(void *)));
 			return -1;
