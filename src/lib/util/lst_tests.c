@@ -407,7 +407,7 @@ static void lst_iter(void)
 	for (int i = 0; i < NVALUES; i++, data = fr_lst_iter_next(lst, &iter)) {
 		TEST_CHECK(data != NULL);
 		TEST_CHECK(!data->visited);
-		TEST_CHECK(data->index >= 0);
+		TEST_CHECK(data->index > 0);
 		data->visited = true;
 	}
 
