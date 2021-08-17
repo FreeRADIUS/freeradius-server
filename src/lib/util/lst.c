@@ -640,6 +640,10 @@ static inline CC_HINT(nonnull) void _fr_lst_extract(fr_lst_t *lst,  stack_index_
  */
 static inline CC_HINT(nonnull) void _fr_lst_insert(fr_lst_t *lst, stack_index_t stack_index, void *data)
 {
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	if (lst->type) (void)_talloc_get_type_abort(data, lst->type, __location__);
+#endif
+
 	if (is_bucket(lst, stack_index)) {
 		bucket_add(lst, stack_index, data);
 		return;
