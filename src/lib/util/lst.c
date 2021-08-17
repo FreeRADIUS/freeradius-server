@@ -68,7 +68,6 @@ struct fr_lst_s {
 };
 
 static inline fr_lst_index_t stack_item(pivot_stack_t *s, stack_index_t idx) CC_HINT(always_inline, nonnull);
-
 static inline stack_index_t lst_length(fr_lst_t *lst, stack_index_t stack_index) CC_HINT(always_inline, nonnull);
 
 static inline CC_HINT(always_inline, nonnull) void *index_addr(fr_lst_t *lst, void *data)
@@ -390,6 +389,7 @@ static bool lst_expand(fr_lst_t *lst)
 static inline CC_HINT(always_inline, nonnull) fr_lst_index_t bucket_lwb(fr_lst_t *lst, size_t stack_index)
 {
 	if (is_bucket(lst, stack_index)) return lst->idx;
+
 	return stack_item(lst->s, stack_index + 1) + 1;
 }
 
@@ -679,14 +679,14 @@ int fr_lst_insert(fr_lst_t *lst, void *data)
 	/*
 	 * Expand if need be. Not in the paper, but we want the capability.
 	 */
-	if (unlikely(lst->num_elements == lst->capacity && !lst_expand(lst))) return -1;
+	if (unlikely((lst->num_elements == lst->capacity) && !lst_expand(lst))) return -1;
 
 	/*
 	 * Don't insert something that looks like it's already in an LST.
 	 */
 	data_index = item_index(lst, data);
-	if (unlikely(data_index > 0 ||
-	    (data_index == 0 && lst->num_elements > 0 && lst->idx == 0 && item(lst, 0) == data))) {
+	if (unlikely((data_index > 0) ||
+	    ((data_index == 0) && (lst->num_elements > 0) && (lst->idx == 0) && (item(lst, 0) == data)))) {
 		fr_strerror_const("Node is already in the LST");
 		return -1;
 	}
