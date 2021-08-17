@@ -37,13 +37,23 @@ RCSID("$Id$")
  * operations.
  */
 
-typedef int	stack_index_t;
+/*
+ * The LST as defined in the paper has a fixed size set at creation.
+ * Here, as with quickheaps, but we want to allow for expansion...
+ * though given that, as the paper shows, the expected stack depth
+ * is proportion to the log of the number of items in the LST, expanding
+ * the pivot stack may be a rare event.
+ */
+#define INITIAL_CAPACITY	2048
+#define INITIAL_STACK_CAPACITY	32
+
+typedef int stack_index_t;
 
 typedef struct {
 	stack_index_t	depth;
 	stack_index_t	size;
 	fr_lst_index_t	*data;	/* array of indices of the pivots (sometimes called roots) */
-}	pivot_stack_t;
+} pivot_stack_t;
 
 struct fr_lst_s {
 	fr_lst_index_t	capacity;	//!< Number of elements that will fit
@@ -57,23 +67,50 @@ struct fr_lst_s {
 	fr_lst_cmp_t	cmp;		//!< Comparator function.
 };
 
-#define index_addr(_lst, _data) ((uint8_t *)(_data) + (_lst)->offset)
-#define item_index(_lst, _data) (*(fr_lst_index_t *)index_addr((_lst), (_data)))
+static inline fr_lst_index_t stack_item(pivot_stack_t *s, stack_index_t idx) CC_HINT(always_inline, nonnull);
 
-#define is_equivalent(_lst, _index1, _index2)	(index_reduce((_lst), (_index1) - (_index2)) == 0)
-#define item(_lst, _index)			((_lst)->p[index_reduce((_lst), (_index))])
-#define index_reduce(_lst, _index)		((_index) & ((_lst)->capacity - 1))
-#define pivot_item(_lst, _index)		item((_lst), stack_item((_lst)->s, (_index)))
+static inline stack_index_t lst_length(fr_lst_t *lst, stack_index_t stack_index) CC_HINT(always_inline, nonnull);
 
-/*
- * The LST as defined in the paper has a fixed size set at creation.
- * Here, as with quickheaps, but we want to allow for expansion...
- * though given that, as the paper shows, the expected stack depth
- * is proportion to the log of the number of items in the LST, expanding
- * the pivot stack may be a rare event.
- */
-#define INITIAL_CAPACITY	2048
-#define INITIAL_STACK_CAPACITY	32
+static inline CC_HINT(always_inline, nonnull) void *index_addr(fr_lst_t *lst, void *data)
+{
+	return ((uint8_t *)data) + (lst)->offset;
+}
+
+static inline CC_HINT(always_inline, nonnull) fr_lst_index_t item_index(fr_lst_t *lst, void *data)
+{
+	return (*(fr_lst_index_t *)index_addr(lst, data));
+}
+
+static inline CC_HINT(always_inline, nonnull) void item_index_set(fr_lst_t *lst, void *data, fr_lst_index_t idx)
+{
+	(*(fr_lst_index_t *)index_addr(lst, data)) = idx;
+}
+
+static inline CC_HINT(always_inline, nonnull) fr_lst_index_t index_reduce(fr_lst_t *lst, fr_lst_index_t idx)
+{
+	return idx & ((lst)->capacity - 1);
+}
+
+static inline CC_HINT(always_inline, nonnull)
+bool is_equivalent(fr_lst_t *lst, fr_lst_index_t idx1, fr_lst_index_t idx2)
+{
+	return (index_reduce(lst, idx1 - idx2) == 0);
+}
+
+static inline CC_HINT(always_inline, nonnull) void item_set(fr_lst_t *lst, fr_lst_index_t idx, void *data)
+{
+	lst->p[index_reduce(lst, idx)] = data;
+}
+
+static inline CC_HINT(always_inline, nonnull) void *item(fr_lst_t *lst, fr_lst_index_t idx)
+{
+	return (lst->p[index_reduce(lst, idx)]);
+}
+
+static inline CC_HINT(always_inline, nonnull) void *pivot_item(fr_lst_t *lst, stack_index_t idx)
+{
+	return item(lst, stack_item(lst->s, idx));
+}
 
 /*
  * The paper defines randomized priority queue operations appropriately for the
@@ -95,8 +132,11 @@ struct fr_lst_s {
  * The index is visible for the size and length functions, since they need
  * to know the subtree they're working on.
  */
-
-#define is_bucket(_lst, _stack_index) (lst_length((_lst), (_stack_index)) == 1)
+static inline CC_HINT(always_inline, nonnull)
+bool is_bucket(fr_lst_t *lst, stack_index_t idx)
+{
+	return lst_length(lst, idx) == 1;
+}
 
 /*
  * First, the canonical stack implementation, customized for LST usage:
@@ -105,7 +145,7 @@ struct fr_lst_s {
  * 2. one can fetch and modify arbitrary stack items; when array elements must be
  *    moved to keep them contiguous, the pivot stack entries must change to match.
  */
-static pivot_stack_t	*stack_alloc(TALLOC_CTX *ctx)
+static pivot_stack_t *stack_alloc(TALLOC_CTX *ctx)
 {
 	pivot_stack_t	*s;
 
@@ -157,14 +197,15 @@ static inline CC_HINT(always_inline, nonnull) size_t stack_depth(pivot_stack_t *
 	return s->depth;
 }
 
-static inline CC_HINT(always_inline, nonnull) fr_lst_index_t stack_item(pivot_stack_t *s, stack_index_t index)
+static inline fr_lst_index_t stack_item(pivot_stack_t *s, stack_index_t idx)
 {
-	return s->data[index];
+	return s->data[idx];
 }
 
-static inline CC_HINT(always_inline, nonnull) void stack_set(pivot_stack_t *s, stack_index_t index, fr_lst_index_t new_value)
+static inline CC_HINT(always_inline, nonnull)
+void stack_set(pivot_stack_t *s, stack_index_t idx, fr_lst_index_t new_value)
 {
-	s->data[index] = new_value;
+	s->data[idx] = new_value;
 }
 
 fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, size_t offset)
@@ -203,7 +244,7 @@ fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, siz
 /*
  * The length function for LSTs (how many buckets it contains)
  */
-static inline CC_HINT(always_inline, nonnull) stack_index_t lst_length(fr_lst_t *lst, stack_index_t stack_index)
+static inline stack_index_t lst_length(fr_lst_t *lst, stack_index_t stack_index)
 {
 	return stack_depth(lst->s) - stack_index;
 }
@@ -242,8 +283,8 @@ static inline CC_HINT(always_inline, nonnull) void lst_flatten(fr_lst_t *lst, st
  */
 static inline CC_HINT(always_inline, nonnull) void lst_move(fr_lst_t *lst, fr_lst_index_t location, void *data)
 {
-	item(lst, location) = data;
-	item_index(lst, data) = index_reduce(lst, location);
+	item_set(lst, location, data);
+	item_index_set(lst, data, index_reduce(lst, location));
 }
 
 /*
@@ -456,7 +497,7 @@ static void bucket_delete(fr_lst_t *lst, stack_index_t stack_index, void *data)
 	}
 
 	lst->num_elements--;
-	item_index(lst, data) = -1;
+	item_index_set(lst, data, -1);
 }
 
 /*
