@@ -33,7 +33,7 @@ static int8_t heap_cmp(void const *one, void const *two)
 {
 	heap_thing const *a = one, *b = two;
 
-	return (a->data > b->data) - (a->data < b->data);
+	return CMP_PREFER_SMALLER(a->data, b->data);
 }
 
 #define HEAP_TEST_SIZE (4096)
@@ -135,6 +135,53 @@ static void heap_test_skip_10(void)
 
 #define HEAP_CYCLE_SIZE (1600000)
 
+static void heap_test_order(void)
+{
+	fr_heap_t	*hp;
+	int		i;
+	heap_thing	*array;
+	heap_thing	*thing;
+	int		data = 0;
+	unsigned int	count = 0;
+	int		ret;
+
+	static bool	done_init = false;
+
+	if (!done_init) {
+		srand((unsigned int)time(NULL));
+		done_init = true;
+	}
+
+	hp = fr_heap_alloc(NULL, heap_cmp, heap_thing, heap);
+	TEST_CHECK(hp != NULL);
+
+	array = calloc(HEAP_TEST_SIZE, sizeof(heap_thing));
+
+	/*
+	 *	Initialise random values
+	 */
+	for (i = 0; i < HEAP_TEST_SIZE; i++) array[i].data = rand() % 65537;
+
+	TEST_CASE("insertions");
+	for (i = 0; i < HEAP_TEST_SIZE; i++) {
+		TEST_CHECK((ret = fr_heap_insert(hp, &array[i])) >= 0);
+		TEST_MSG("insert failed, returned %i - %s", ret, fr_strerror());
+
+		TEST_CHECK(fr_heap_check(hp, &array[i]));
+		TEST_MSG("element %i inserted but not in heap", i);
+	}
+
+	TEST_CASE("ordering");
+
+	while ((thing = fr_heap_pop(hp))) {
+		TEST_CHECK(thing->data >= data);
+		data = thing->data;
+		count++;
+	}
+
+	TEST_CHECK(count == HEAP_TEST_SIZE);
+}
+
 static void heap_cycle(void)
 {
 	fr_heap_t	*hp;
@@ -232,6 +279,7 @@ TEST_LIST = {
 	{ "heap_test_skip_0",		heap_test_skip_0	},
 	{ "heap_test_skip_2",		heap_test_skip_2	},
 	{ "heap_test_skip_10",		heap_test_skip_10	},
+	{ "heap_test_order",		heap_test_order		},
 	{ "heap_cycle",			heap_cycle		},
 	{ NULL }
 };
