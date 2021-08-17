@@ -41,7 +41,7 @@ typedef struct fr_lst_s	fr_lst_t;
  * type of a structure with a member of type fr_lst_index_t. That member's name must be
  * passed as the _field argument.
  */
-typedef int fr_lst_index_t;
+typedef unsigned int fr_lst_index_t;
 
 typedef fr_lst_index_t	fr_lst_iter_t;
 
@@ -77,6 +77,12 @@ typedef int8_t (*fr_lst_cmp_t)(void const *a, void const *b);
 fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, size_t offset) CC_HINT(nonnull(2));
 
 /** Check if an entry is inserted into an LST.
+ *
+ * @param[in] lst_id		An fr_lst_index_t value *as stored in an item*
+ *
+ * Thus one should only pass this function an index as retrieved directly from
+ * the item, *not* the value returned by item_index() (q.v.).
+ *
  * This checks a necessary condition for a fr_lst_index_t value to be
  * that of an inserted entry. A more complete check would need the entry
  * itself and a pointer to the fr_lst_t it may be inserted in.
@@ -84,7 +90,7 @@ fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, siz
  */
 static inline bool fr_lst_entry_inserted(fr_lst_index_t lst_id)
 {
-	return (lst_id >= 0);
+	return (lst_id > 0);
 }
 
 void 	*fr_lst_peek(fr_lst_t *lst) CC_HINT(nonnull);
