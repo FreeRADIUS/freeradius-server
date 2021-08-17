@@ -149,10 +149,10 @@ static inline CC_HINT(always_inline, nonnull) pivot_stack_t *stack_alloc(TALLOC_
 	pivot_stack_t	*s;
 
 	s = talloc_zero(ctx, pivot_stack_t);
-	if (!s) return NULL;
+	if (unlikely(!s)) return NULL;
 
 	s->data = talloc_array(s, fr_lst_index_t, INITIAL_STACK_CAPACITY);
-	if (!s->data) {
+	if (unlikely(!s->data)) {
 		talloc_free(s);
 		return NULL;
 	}
@@ -245,14 +245,14 @@ fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, siz
 
 	lst->capacity = INITIAL_CAPACITY;
 	lst->p = talloc_array(lst, void *, lst->capacity);
-	if (!lst->p) {
+	if (unlikely(!lst->p)) {
 	cleanup:
 		talloc_free(lst);
 		return NULL;
 	}
 
 	lst->s = stack_alloc(lst);
-	if (!lst->s) goto cleanup;
+	if (unlikely(!lst->s)) goto cleanup;
 
 	/* Initially the LST is empty and we start at the beginning of the array */
 	stack_push(lst->s, 0);
@@ -572,7 +572,7 @@ static inline CC_HINT(nonnull) void *_fr_lst_pop(fr_lst_t *lst, stack_index_t st
 	if (is_bucket(lst, stack_index)) partition(lst, stack_index);
 	++stack_index;
 	if (lst_size(lst, stack_index) == 0) {
-		void	*min = pivot_item(lst, stack_index);
+		void *min = pivot_item(lst, stack_index);
 
 		lst_flatten(lst, stack_index);
 		bucket_delete(lst, stack_index, min);
