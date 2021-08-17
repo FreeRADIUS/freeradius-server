@@ -47,12 +47,12 @@ RCSID("$Id$")
 #define INITIAL_CAPACITY	2048
 #define INITIAL_STACK_CAPACITY	32
 
-typedef int stack_index_t;
+typedef unsigned int stack_index_t;
 
 typedef struct {
-	stack_index_t	depth;
-	stack_index_t	size;
-	fr_lst_index_t	*data;	/* array of indices of the pivots (sometimes called roots) */
+	stack_index_t	depth;		//!< The current stack depth.
+	unsigned int	size;		//!< The current stack size (number of frames)
+	fr_lst_index_t	*data;		//!< Array of indices of the pivots (sometimes called roots)
 } pivot_stack_t;
 
 struct fr_lst_s {
@@ -164,12 +164,31 @@ static pivot_stack_t *stack_alloc(TALLOC_CTX *ctx)
 static bool stack_expand(pivot_stack_t *s)
 {
 	fr_lst_index_t	*n;
-	size_t		n_size = 2 * s->size;
+	unsigned int	n_size;
+
+#ifndef NDEBUG
+	/*
+	 *	This likely can't happen, we just include
+	 *	the guard to keep static analysis happy.
+	 */
+	if (unlikely(s->size > (UINT_MAX - s->size))) {
+		if (s->size == UINT_MAX) {
+			fr_strerror_const("lst stack is full");
+			return false;
+		} else {
+			n_size = UINT_MAX;
+		}
+	} else {
+#endif
+		n_size = s->size * 2;
+#ifndef NDEBUG
+	}
+#endif
 
 	n = talloc_realloc(s, s->data, fr_lst_index_t, n_size);
 	if (unlikely(!n)) {
-		fr_strerror_printf("Failed expanding lst stack to %zu elements (%zu bytes)",
-				   n_size, n_size * sizeof(fr_lst_index_t));
+		fr_strerror_printf("Failed expanding lst stack to %u elements (%u bytes)",
+				   n_size, n_size * (unsigned int)sizeof(fr_lst_index_t));
 		return false;
 	}
 
@@ -186,12 +205,12 @@ static inline CC_HINT(always_inline, nonnull) int stack_push(pivot_stack_t *s, f
 	return 0;
 }
 
-static inline CC_HINT(always_inline, nonnull) void stack_pop(pivot_stack_t *s, size_t n)
+static inline CC_HINT(always_inline, nonnull) void stack_pop(pivot_stack_t *s, unsigned int n)
 {
 	s->depth -= n;
 }
 
-static inline CC_HINT(always_inline, nonnull) size_t stack_depth(pivot_stack_t *s)
+static inline CC_HINT(always_inline, nonnull) stack_index_t stack_depth(pivot_stack_t *s)
 {
 	return s->depth;
 }
@@ -361,13 +380,24 @@ static void lst_indices_reduce(fr_lst_t *lst)
 static bool lst_expand(fr_lst_t *lst)
 {
 	void 		**n;
-	size_t		n_capacity = 2 * lst->capacity;
-	fr_lst_index_t	old_capacity = lst->capacity, i;
+	unsigned int	old_capacity = lst->capacity, n_capacity;
+	fr_lst_index_t	i;
+
+	if (unlikely(old_capacity > (UINT_MAX - old_capacity))) {
+		if (old_capacity == UINT_MAX) {
+			fr_strerror_const("lst is full");
+			return false;
+		} else {
+			n_capacity = UINT_MAX;
+		}
+	} else {
+		n_capacity = old_capacity * 2;
+	}
 
 	n = talloc_realloc(lst, lst->p, void *, n_capacity);
 	if (unlikely(!n)) {
-		fr_strerror_printf("Failed expanding lst to %zu elements (%zu bytes)",
-				   n_capacity, n_capacity * sizeof(void *));
+		fr_strerror_printf("Failed expanding lst to %u elements (%u bytes)",
+				   n_capacity, n_capacity * (unsigned int)sizeof(void *));
 		return false;
 	}
 
@@ -386,7 +416,7 @@ static bool lst_expand(fr_lst_t *lst)
 	return true;
 }
 
-static inline CC_HINT(always_inline, nonnull) fr_lst_index_t bucket_lwb(fr_lst_t *lst, size_t stack_index)
+static inline CC_HINT(always_inline, nonnull) fr_lst_index_t bucket_lwb(fr_lst_t *lst, stack_index_t stack_index)
 {
 	if (is_bucket(lst, stack_index)) return lst->idx;
 
@@ -396,7 +426,7 @@ static inline CC_HINT(always_inline, nonnull) fr_lst_index_t bucket_lwb(fr_lst_t
 /*
  * Note: buckets can be empty,
  */
-static inline CC_HINT(always_inline, nonnull) fr_lst_index_t bucket_upb(fr_lst_t *lst, size_t stack_index)
+static inline CC_HINT(always_inline, nonnull) fr_lst_index_t bucket_upb(fr_lst_t *lst, stack_index_t stack_index)
 {
 	return stack_item(lst->s, stack_index) - 1;
 }

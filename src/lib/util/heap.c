@@ -150,7 +150,7 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 		 *	integer overflow.  Tho TBH, that should really never
 		 *	happen.
 		 */
-		if (hp->size > (UINT_MAX - hp->size)) {
+		if (unlikely(hp->size > (UINT_MAX - hp->size))) {
 			if (hp->size == UINT_MAX) {
 				fr_strerror_const("Heap is full");
 				return -1;
