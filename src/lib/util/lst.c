@@ -648,6 +648,14 @@ void *fr_lst_peek(fr_lst_t *lst)
 	return _fr_lst_peek(lst, 0);
 }
 
+/** Remove an element from an LST
+ *
+ * @param[in] lst		the LST to remove an element from
+ * @param[in] data		the element to remove
+ * @return
+ *	- 0 if removal succeeds
+ * 	- -1 if removal fails
+ */
 int fr_lst_extract(fr_lst_t *lst, void *data)
 {
 	if (unlikely(lst->num_elements == 0)) {
@@ -692,18 +700,38 @@ unsigned int fr_lst_num_elements(fr_lst_t *lst)
 	return lst->num_elements;
 }
 
+/** Iterate over entries in LST
+ *
+ * @note If the LST is modified, the iterator should be considered invalidated.
+ *
+ * @param[in] lst	to iterate over.
+ * @param[in] iter	Pointer to an iterator struct, used to maintain
+ *			state between calls.
+ * @return
+ *	- User data.
+ *	- NULL if at the end of the list.
+ */
 void *fr_lst_iter_init(fr_lst_t *lst, fr_lst_iter_t *iter)
 {
-	if (unlikely(!lst) || (lst->num_elements == 0)) return NULL;
+	if (unlikely(lst->num_elements == 0)) return NULL;
 
 	*iter = lst->idx;
 	return item(lst, *iter);
 }
 
+/** Get the next entry in an LST
+ *
+ * @note If the LST is modified, the iterator should be considered invalidated.
+ *
+ * @param[in] lst	to iterate over.
+ * @param[in] iter	Pointer to an iterator struct, used to maintain
+ *			state between calls.
+ * @return
+ *	- User data.
+ *	- NULL if at the end of the list.
+ */
 void *fr_lst_iter_next(fr_lst_t *lst, fr_lst_iter_t *iter)
 {
-	if (unlikely(!lst)) return NULL;
-
 	if ((*iter + 1) >= stack_item(lst->s, 0)) return NULL;
 	*iter += 1;
 
