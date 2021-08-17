@@ -2813,7 +2813,7 @@ bool fr_trie_delete(fr_trie_t *ft, void const *data)
  *
  * @param[in] ft	to return node count for.
  */
-uint32_t fr_trie_num_elements(UNUSED fr_trie_t *ft)
+unsigned int fr_trie_num_elements(UNUSED fr_trie_t *ft)
 {
 	return 0;
 }

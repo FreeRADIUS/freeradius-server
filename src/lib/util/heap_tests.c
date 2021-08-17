@@ -5,12 +5,12 @@
 
 static bool fr_heap_check(fr_heap_t *hp, void *data)
 {
-	int i;
+	unsigned int i;
 
 	if (!hp || (hp->num_elements == 0)) return false;
 
 	for (i = 0; i < hp->num_elements; i++) {
-		if (hp->p[i] == data) {
+		if (hp->p[i + 1] == data) {
 			return true;
 		}
 	}
@@ -19,8 +19,8 @@ static bool fr_heap_check(fr_heap_t *hp, void *data)
 }
 
 typedef struct {
-	int	data;
-	int32_t	heap;		/* for the heap */
+	int		data;
+	unsigned int	heap;		/* for the heap */
 } heap_thing;
 
 
@@ -81,21 +81,21 @@ static void heap_test(int skip)
 
 	TEST_CASE("deletions");
 	{
-		int32_t entry;
+		unsigned int entry;
 
 		for (i = 0; i < HEAP_TEST_SIZE / skip; i++) {
 			entry = i * skip;
 
-			TEST_CHECK(array[entry].heap != -1);
+			TEST_CHECK(array[entry].heap != 0);
 			TEST_MSG("element %i removed out of order", entry);
 
 			TEST_CHECK((ret = fr_heap_extract(hp, &array[entry])) >= 0);
-			TEST_MSG("element %i removal failed, returned %i", entry, ret);
+			TEST_MSG("element %i removal failed, returned %i - %s", entry, ret, fr_strerror());
 
 			TEST_CHECK(!fr_heap_check(hp, &array[entry]));
 			TEST_MSG("element %i removed but still in heap", entry);
 
-			TEST_CHECK(array[entry].heap == -1);
+			TEST_CHECK(array[entry].heap == 0);
 			TEST_MSG("element %i removed out of order", entry);
 		}
 	}
@@ -140,7 +140,7 @@ static void heap_test_order(void)
 	fr_heap_t	*hp;
 	int		i;
 	heap_thing	*array;
-	heap_thing	*thing;
+	heap_thing	*thing, *prev = NULL;
 	int		data = 0;
 	unsigned int	count = 0;
 	int		ret;
@@ -175,7 +175,10 @@ static void heap_test_order(void)
 
 	while ((thing = fr_heap_pop(hp))) {
 		TEST_CHECK(thing->data >= data);
-		data = thing->data;
+		TEST_MSG("Expected data >= %i, got %i", data, thing->data);
+		if (thing->data >= data) data = thing->data;
+		TEST_CHECK(thing != prev);
+		prev = thing;
 		count++;
 	}
 
@@ -234,7 +237,7 @@ static void heap_cycle(void)
 		TEST_MSG("expected %i elements remaining in the heap", to_remove - i);
 
 		TEST_CHECK(fr_heap_extract(hp, t) >= 0);
-		TEST_MSG("failed extracting %i", i);
+		TEST_MSG("failed extracting %i - %s", i, fr_strerror());
 	}
 
 	/*
@@ -245,13 +248,13 @@ static void heap_cycle(void)
 	removed = 0;
 
 	for (i = 0; i < HEAP_CYCLE_SIZE; i++) {
-		if (array[i].heap == -1) {
+		if (!fr_heap_entry_inserted(array[i].heap)) {
 			TEST_CHECK((ret = fr_heap_insert(hp, &array[i])) >= 0);
 			TEST_MSG("insert failed, returned %i - %s", ret, fr_strerror());
 			inserted++;
 		} else {
 			TEST_CHECK((ret = fr_heap_extract(hp, &array[i])) >= 0);
-			TEST_MSG("element %i removal failed, returned %i", i, ret);
+			TEST_MSG("element %i removal failed, returned %i - %s", i, ret, fr_strerror());
 			removed++;
 		}
 	}

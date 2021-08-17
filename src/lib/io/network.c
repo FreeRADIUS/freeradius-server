@@ -60,7 +60,7 @@ typedef struct {
  *
  */
 typedef struct {
-	int32_t			heap_id;		//!< workers are in a heap
+	fr_heap_index_t		heap_id;		//!< workers are in a heap
 	fr_time_t		cpu_time;		//!< how much CPU time this worker has spent
 	fr_time_t		predicted;		//!< predicted processing time for one packet
 
@@ -330,7 +330,7 @@ void fr_network_listen_write(fr_network_t *nr, fr_listen_t *li, uint8_t const *p
 		},
 
 		.channel = {
-			.heap_id = -1,
+			.heap_id = 0,
 		},
 
 		.listen = li,
@@ -466,7 +466,7 @@ static void fr_network_recv_reply(void *ctx, fr_channel_t *ch, fr_channel_data_t
 	/*
 	 *	Ensure that heap insert works.
 	 */
-	cd->channel.heap_id = -1;
+	cd->channel.heap_id = 0;
 	if (fr_heap_insert(nr->replies, cd) < 0) {
 		fr_message_done(&cd->m);
 		fr_assert(0 == 1);

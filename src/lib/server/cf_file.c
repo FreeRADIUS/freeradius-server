@@ -817,8 +817,8 @@ static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, fr_token_t *to
 }
 
 typedef struct cf_file_heap_t {
-	char const	*filename;
-	int		heap_id;
+	char const		*filename;
+	fr_heap_index_t		heap_id;
 } cf_file_heap_t;
 
 static int8_t filename_cmp(void const *one, void const *two)
@@ -1077,7 +1077,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 
 			MEM(h = talloc_zero(frame->heap, cf_file_heap_t));
 			MEM(h->filename = talloc_typed_strdup(h, stack->buff[1]));
-			h->heap_id = -1;
+			h->heap_id = 0;
 			(void) fr_heap_insert(frame->heap, h);
 		}
 		closedir(dir);

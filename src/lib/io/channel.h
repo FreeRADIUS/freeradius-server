@@ -54,6 +54,7 @@ typedef struct fr_listen fr_listen_t;
 #include <freeradius-devel/io/control.h>
 #include <freeradius-devel/io/message.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/log.h>
 
 #include <sys/types.h>
@@ -120,7 +121,7 @@ typedef struct {
 		 */
 		struct {
 			fr_channel_t		*ch;		//!< channel where this messages was received
-			int32_t			heap_id;	//!< for the various queues
+			fr_heap_index_t		heap_id;	//!< for the various queues
 		} channel;
 	};
 

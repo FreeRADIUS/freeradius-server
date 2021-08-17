@@ -34,7 +34,8 @@ extern "C" {
 #include <stdint.h>
 #include <sys/types.h>
 
-typedef int32_t fr_heap_iter_t;
+typedef unsigned int fr_heap_index_t;
+typedef unsigned int fr_heap_iter_t;
 
 /*
  *  Return negative numbers to put 'a' at the top of the heap.
@@ -72,21 +73,21 @@ fr_heap_t	*_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *talloc
 /** Check if an entry is inserted into a heap
  *
  */
-static inline bool fr_heap_entry_inserted(int32_t heap_id)
+static inline bool fr_heap_entry_inserted(fr_heap_index_t heap_idx)
 {
-	return (heap_id >= 0);
+	return (heap_idx > 0);
 }
 
 int		fr_heap_insert(fr_heap_t *hp, void *data) CC_HINT(nonnull);
 int		fr_heap_extract(fr_heap_t *hp, void *data) CC_HINT(nonnull);
 void		*fr_heap_pop(fr_heap_t *hp) CC_HINT(nonnull);
-void		*fr_heap_peek(fr_heap_t *hp);
-void		*fr_heap_peek_tail(fr_heap_t *hp);
+void		*fr_heap_peek(fr_heap_t *hp) CC_HINT(nonnull);
+void		*fr_heap_peek_tail(fr_heap_t *hp) CC_HINT(nonnull);
 
-uint32_t	fr_heap_num_elements(fr_heap_t *hp);
+uint32_t	fr_heap_num_elements(fr_heap_t *hp) CC_HINT(nonnull);
 
-void		*fr_heap_iter_init(fr_heap_t *hp, fr_heap_iter_t *iter);
-void		*fr_heap_iter_next(fr_heap_t *hp, fr_heap_iter_t *iter);
+void		*fr_heap_iter_init(fr_heap_t *hp, fr_heap_iter_t *iter) CC_HINT(nonnull);
+void		*fr_heap_iter_next(fr_heap_t *hp, fr_heap_iter_t *iter) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

@@ -37,7 +37,7 @@ typedef struct {
 	rlm_cache_entry_t	fields;		//!< Entry data.
 
 	fr_rb_node_t		node;		//!< Entry used for lookups.
-	int32_t			heap_id;	//!< Offset used for expiry heap.
+	fr_heap_index_t		heap_id;	//!< Offset used for expiry heap.
 } rlm_cache_rb_entry_t;
 
 /** Compare two entries by key
@@ -143,7 +143,6 @@ static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_config_t const *con
 		RERROR("Failed allocating cache entry");
 		return NULL;
 	}
-	c->heap_id = -1;
 
 	return (rlm_cache_entry_t *)c;
 }

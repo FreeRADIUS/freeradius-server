@@ -102,7 +102,7 @@ struct fr_trunk_request_s {
 
 	uint64_t 		id;			//!< Trunk request ID.
 
-	int32_t			heap_id;		//!< Used to track the request conn->pending heap.
+	fr_heap_index_t		heap_id;		//!< Used to track the request conn->pending heap.
 
 	fr_dlist_t		entry;			//!< Used to track the trunk request in the conn->sent
 							///< or trunk->backlog request.
@@ -129,7 +129,7 @@ struct fr_trunk_connection_s {
 							///< This *MUST* be the first field in this
 							///< structure.
 
-	int32_t			heap_id;		//!< Used to track the connection in the connected
+	fr_heap_index_t		heap_id;		//!< Used to track the connection in the connected
 							///< heap.
 
 	fr_dlist_t		entry;			//!< Used to track the connection in the connecting,
@@ -3475,7 +3475,6 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
 	MEM(tconn = talloc_zero(trunk, fr_trunk_connection_t));
 	tconn->pub.trunk = trunk;
 	tconn->pub.state = FR_TRUNK_CONN_HALTED;	/* All connections start in the halted state */
-	tconn->heap_id = -1;	/* Helps with asserts */
 
 	/*
 	 *	Allocate a new fr_connection_t or fail.

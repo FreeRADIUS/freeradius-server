@@ -472,7 +472,7 @@ static void worker_request_time_tracking_start(fr_worker_t *worker, request_t *r
 	fr_time_tracking_yield(&request->async->tracking, now);
 	worker->num_active++;
 
-	fr_assert(request->runnable_id < 0);
+	fr_assert(!fr_heap_entry_inserted(request->runnable_id));
 	(void) fr_heap_insert(worker->runnable, request);
 
 	if (!worker->ev_cleanup) worker_max_request_timer(worker);
@@ -505,7 +505,7 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, size_t si
 	/*
 	 *	If we're sending a reply, then it's no longer runnable.
 	 */
-	fr_assert(request->runnable_id < 0);
+	fr_assert(!fr_heap_entry_inserted(request->runnable_id));
 
 	if (!size) {
 		size = request->async->listen->app_io->default_reply_size;
@@ -1170,7 +1170,7 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
 	       ((request = fr_heap_pop(worker->runnable)) != NULL)) {
 
 		REQUEST_VERIFY(request);
-		fr_assert(request->runnable_id < 0);
+		fr_assert(!fr_heap_entry_inserted(request->runnable_id));
 
 		/*
 		 *	For real requests, if the channel is gone,

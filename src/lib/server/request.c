@@ -197,9 +197,6 @@ static inline CC_HINT(always_inline) int request_init(char const *file, int line
 		.flags = {
 			.detachable = args->detachable
 		},
-		.runnable_id = -1,
-		.time_order_id = -1,
-
 		.alloc_file = file,
 		.alloc_line = line
 	};
@@ -338,8 +335,8 @@ static int _request_free(request_t *request)
 		 *	if the request is freed out of
 		 *	the free list.
 		 */
-		request->time_order_id = -1;
-		request->runnable_id = -1;
+		request->time_order_id = 0;
+		request->runnable_id = 0;
 #endif
 
 		/*

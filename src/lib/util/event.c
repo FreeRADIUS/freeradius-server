@@ -107,7 +107,7 @@ struct fr_event_timer {
 	fr_event_timer_t const	**parent;		//!< A pointer to the parent structure containing the timer
 							///< event.
 
-	int32_t			heap_id;	       	//!< Where to store opaque heap data.
+	fr_heap_index_t		heap_id;	       	//!< Where to store opaque heap data.
 	fr_dlist_t		entry;			//!< List of deferred timer events.
 
 	fr_event_list_t		*el;			//!< Event list containing this timer.
@@ -309,7 +309,7 @@ struct fr_event_pid {
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
 
 #ifdef LOCAL_PID
-	int32_t			heap_id;
+	fr_heap_index_t		heap_id;
 #endif
 
 #ifndef NDEBUG
@@ -1271,7 +1271,7 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 		if (ctx != el) talloc_link_ctx(ctx, ev);
 
 		talloc_set_destructor(ev, _event_timer_free);
-		ev->heap_id = -1;
+		ev->heap_id = 0;
 
 	} else {
 		memcpy(&ev, ev_p, sizeof(ev));	/* Not const to us */
@@ -1496,7 +1496,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 	}
 #else  /* LOCAL_PID */
 
-	ev->heap_id = -1;
+	ev->heap_id = 0;
 	if (unlikely(fr_heap_insert(el->pids, ev) < 0)) {
 		fr_strerror_printf("Failed adding waiter for PID %ld - %s", (long) pid, fr_strerror());
 		talloc_free(ev);
