@@ -80,7 +80,7 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
 	 *      that the data isn't currently inserted
 	 *	into the heap.
 	 */
-	hp->p[0] = UINTPTR_MAX;
+	hp->p[0] = (void *)UINTPTR_MAX;
 
 	hp->type = type;
 	hp->cmp = cmp;
