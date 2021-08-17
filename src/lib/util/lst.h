@@ -103,7 +103,7 @@ int 	fr_lst_insert(fr_lst_t *lst, void *data) CC_HINT(nonnull);
  */
 int	fr_lst_extract(fr_lst_t *lst, void *data) CC_HINT(nonnull);
 
-fr_lst_index_t	fr_lst_num_elements(fr_lst_t *lst) CC_HINT(nonnull);
+unsigned int	fr_lst_num_elements(fr_lst_t *lst) CC_HINT(nonnull);
 
 /** Iterate over entries in LST
  *

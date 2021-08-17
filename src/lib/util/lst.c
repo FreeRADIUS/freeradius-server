@@ -56,9 +56,9 @@ typedef struct {
 } pivot_stack_t;
 
 struct fr_lst_s {
-	fr_lst_index_t	capacity;	//!< Number of elements that will fit
+	unsigned int	capacity;	//!< Number of elements that will fit
 	fr_lst_index_t	idx;		//!< Starting index, initially zero
-	fr_lst_index_t	num_elements;	//!< Number of elements in the LST
+	unsigned int	num_elements;	//!< Number of elements in the LST
 	size_t		offset;		//!< Offset of heap index in element structure.
 	void		**p;		//!< Array of elements.
 	pivot_stack_t	*s;		//!< Stack of pivots, always with depth >= 1.
@@ -687,7 +687,7 @@ int fr_lst_insert(fr_lst_t *lst, void *data)
 	return 0;
 }
 
-fr_lst_index_t fr_lst_num_elements(fr_lst_t *lst)
+unsigned int fr_lst_num_elements(fr_lst_t *lst)
 {
 	return lst->num_elements;
 }
