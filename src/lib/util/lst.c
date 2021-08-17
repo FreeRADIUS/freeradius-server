@@ -723,7 +723,7 @@ int fr_lst_extract(fr_lst_t *lst, void *data)
 		return -1;
 	}
 
-	if (unlikely(item_index(lst, data) < 0)) {
+	if (unlikely(raw_item_index(lst, data) == 0)) {
 		fr_strerror_const("Tried to extract element not in LST");
 		return -1;
 	}
