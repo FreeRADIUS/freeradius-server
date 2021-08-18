@@ -41,14 +41,14 @@ struct fr_machine_state_s {
 	fr_machine_func_t	enter;			//!< run this when entering the state
 	fr_machine_process_t	process;		//!< run this to process the current state
 	fr_machine_func_t	exit;			//!< run this when exiting the state
-//	fr_machine_state_t	out[0];			//!< allowed OUT transitions
+//	fr_machine_state_t	out[];			//!< allowed OUT transitions
 };
 
 typedef struct {
 	int			max_state;		//!< 1..max_number are permitted
 	int			init;			//!< state to run on init
 	int			free;			//!< state to run on free
-	fr_machine_state_t	state[0];
+	fr_machine_state_t	state[];
 } fr_machine_def_t;
 
 fr_machine_t *fr_machine_alloc(TALLOC_CTX *ctx, fr_machine_def_t const *def, void *uctx);
