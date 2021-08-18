@@ -534,8 +534,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	}
 
 	/*
-	 *      Look for the key.  User-Name is special.  It means
-	 *      The REAL username, after stripping.
+	 *	Look for the key.  User-Name is special.  It means
+	 *	The REAL username, after stripping.
 	 */
 	if ((inst->key_attr->vendor == 0) && (inst->key_attr->attr == PW_USER_NAME)) {
 		key_vp = request->username;
@@ -548,7 +548,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	}
 
 	/*
-	 *      Look for the check item
+	 *	Look for the check item
 	 */
 	if ((da = dict_attrbyname(inst->limit_name)) == NULL) {
 		return rcode;
@@ -580,13 +580,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	if (radius_axlat(&expanded, request, query, NULL, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
-	talloc_free(expanded);
 
 	if (sscanf(expanded, "%" PRIu64, &counter) != 1) {
 		RDEBUG2("No integer found in result string \"%s\".  May be first session, setting counter to 0",
 			expanded);
 		counter = 0;
 	}
+
+	talloc_free(expanded);
 
 	/*
 	 *	Check if check item > counter
