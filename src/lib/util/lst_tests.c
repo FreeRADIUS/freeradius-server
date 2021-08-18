@@ -408,6 +408,24 @@ static void lst_iter(void)
 	talloc_free(lst);
 }
 
+static CC_HINT(noinline) lst_thing *array_pop(lst_thing **array, unsigned int count)
+{
+	lst_thing *low = NULL;
+	unsigned int idx = 0;
+
+	for (unsigned int j = 0; j < count; j++) {
+		if (!array[j]) continue;
+
+		if (!low || (lst_cmp(array[j], low) < 0)) {
+			idx = j;
+			low = array[j];
+		}
+	}
+	if (low) array[idx] = NULL;
+
+	return low;
+}
+
 /** Benchmarks for LSTs vs heaps when used as queues
  *
  */
@@ -510,19 +528,7 @@ static void queue_cmp(unsigned int count)
 
 		start_pop = fr_time();
 		for (i = 0; i < count; i++) {
-			lst_thing *low = NULL;
-			unsigned int idx = 0;
-
-			for (unsigned int j = 0; j < count; j++) {
-				if (!array[j]) continue;
-
-				if (!low || (lst_cmp(array[j], low) < 0)) {
-					idx = j;
-					low = array[j];
-				}
-			}
-			if (low) array[idx] = NULL;
-
+			TEST_CHECK(array_pop(array, count) != NULL);
 			if (i == 0) end_pop_first = fr_time();
 		}
 		end_pop = fr_time();
