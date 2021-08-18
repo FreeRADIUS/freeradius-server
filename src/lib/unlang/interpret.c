@@ -654,8 +654,8 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request)
 	 *	Nothing in this section, use the top frame stack->result.
 	 */
 	if ((stack->priority < 0) || (stack->result == RLM_MODULE_NOT_SET)) {
-			RDEBUG4("** [%i] %s - empty section, using stack result (%s %d)", stack->depth, __FUNCTION__,
-				fr_table_str_by_value(mod_rcode_table, stack->result, "<invalid>"), stack->priority);
+		RDEBUG4("** [%i] %s - empty section, using stack result (%s %d)", stack->depth, __FUNCTION__,
+			fr_table_str_by_value(mod_rcode_table, stack->result, "<invalid>"), stack->priority);
 		stack->result = frame->result;
 		stack->priority = frame->priority;
 	}
