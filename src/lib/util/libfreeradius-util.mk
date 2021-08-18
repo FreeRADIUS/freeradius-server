@@ -42,6 +42,7 @@ SOURCES		:= \
 		   isaac.c \
 		   log.c \
 		   lst.c \
+		   machine.c \
 		   md4.c \
 		   md5.c \
 		   misc.c \
