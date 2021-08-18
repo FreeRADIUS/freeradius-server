@@ -341,8 +341,6 @@ unsigned int fr_heap_num_elements(fr_heap_t *hp)
 {
 	heap_t *h = *hp;
 
-	if (h->num_elements == 0) return NULL;
-
 	return h->num_elements;
 }
 
