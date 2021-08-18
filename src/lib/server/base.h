@@ -35,7 +35,6 @@ RCSIDH(base_h, "$Id$")
 #include <freeradius-devel/server/components.h>
 #include <freeradius-devel/server/cond_eval.h>
 #include <freeradius-devel/server/connection.h>
-#include <freeradius-devel/server/crypt.h>
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/exec.h>

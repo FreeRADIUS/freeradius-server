@@ -27,7 +27,6 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/crypt.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/password.h>
 #include <freeradius-devel/tls/base.h>
@@ -42,8 +41,22 @@ USES_APPLE_DEPRECATED_API
 
 #include <ctype.h>
 
+#ifdef HAVE_CRYPT_H
+#  include <crypt.h>
+#endif
+#include <unistd.h>	/* Contains crypt function declarations */
+
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <openssl/evp.h>
+#endif
+
+/*
+ *	We don't have threadsafe crypt, so we have to wrap
+ *	calls in a mutex
+ */
+#ifndef HAVE_CRYPT_R
+#  include <pthread.h>
+static pthread_mutex_t fr_crypt_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 /*
@@ -171,10 +184,38 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_crypt(rlm_rcode_t *p_result,
 						       UNUSED rlm_pap_t const *inst, request_t *request,
 						       fr_pair_t const *known_good, fr_pair_t const *password)
 {
-	if (fr_crypt_check(password->vp_strvalue, known_good->vp_strvalue) != 0) {
+	char	*crypt_out;
+	int	cmp = 0;
+
+#ifdef HAVE_CRYPT_R
+	struct crypt_data crypt_data = { .initialized = 0 };
+
+	crypt_out = crypt_r(password->vp_strvalue, known_good->vp_strvalue, &crypt_data);
+	if (crypt_out) cmp = strcmp(reference_crypt, crypt_out);
+#else
+	/*
+	 *	Ensure we're thread-safe, as crypt() isn't.
+	 */
+	pthread_mutex_lock(&fr_crypt_mutex);
+	crypt_out = crypt(password->vp_strvalue, known_good->vp_strvalue);
+
+	/*
+	 *	Got something, check it within the lock.  This is
+	 *	faster than copying it to a local buffer, and the
+	 *	time spent within the lock is critical.
+	 */
+	if (crypt_out) cmp = strcmp(known_good->vp_strvalue, crypt_out);
+	pthread_mutex_unlock(&fr_crypt_mutex);
+#endif
+
+	/*
+	 *	Error.
+	 */
+	if (!crypt_out || (cmp != 0)) {
 		REDEBUG("Crypt digest does not match \"known good\" digest");
 		RETURN_MODULE_REJECT;
 	}
+
 	RETURN_MODULE_OK;
 }
 #endif

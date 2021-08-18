@@ -11,7 +11,6 @@ SOURCES	:= \
 	cond_eval.c \
 	cond_tokenize.c \
 	connection.c \
-	crypt.c \
 	dependency.c \
 	dl_module.c \
 	exec.c \
