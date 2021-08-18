@@ -134,7 +134,7 @@ static int _machine_free(fr_machine_t *m)
 	/*
 	 *	Exit the current state, and enter the free state.
 	 */
-	state_transition(m, m->def->free, _machine_free);
+	state_transition(m, m->def->free, (void *) _machine_free);
 
 	/*
 	 *	Don't call "process" on the free state.  Simply
@@ -362,7 +362,7 @@ int fr_machine_transition(fr_machine_t *m, int state)
 	 *	We're allowed to do the transition now, so exit the
 	 *	current state, and enter the new one.
 	 */
-	state_transition(m, state, fr_machine_transition);
+	state_transition(m, state, (void *) fr_machine_transition);
 
 	return 0;
 }
@@ -500,5 +500,5 @@ void fr_machine_resume(fr_machine_t *m)
 	state = m->deferred;
 	m->deferred = 0;
 
-	state_transition(m, state, fr_machine_resume);
+	state_transition(m, state, (void *) fr_machine_resume);
 }
