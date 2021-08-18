@@ -61,7 +61,7 @@ struct fr_lst_s {
 	unsigned int	num_elements;	//!< Number of elements in the LST
 	size_t		offset;		//!< Offset of heap index in element structure.
 	void		**p;		//!< Array of elements.
-	pivot_stack_t	*s;		//!< Stack of pivots, always with depth >= 1.
+	pivot_stack_t	s;		//!< Stack of pivots, always with depth >= 1.
 	fr_fast_rand_t	rand_ctx;	//!< Seed for random choices.
 	char const	*type;		//!< Type of elements.
 	fr_lst_cmp_t	cmp;		//!< Comparator function.
@@ -108,7 +108,7 @@ static inline CC_HINT(always_inline, nonnull) void *item(fr_lst_t *lst, fr_lst_i
 
 static inline CC_HINT(always_inline, nonnull) void *pivot_item(fr_lst_t *lst, stack_index_t idx)
 {
-	return item(lst, stack_item(lst->s, idx));
+	return item(lst, stack_item(&lst->s, idx));
 }
 
 /*
@@ -137,31 +137,7 @@ bool is_bucket(fr_lst_t *lst, stack_index_t idx)
 	return lst_length(lst, idx) == 1;
 }
 
-/*
- * First, the canonical stack implementation, customized for LST usage:
- * 1. pop doesn't return a stack value, and even lets you discard multiple
- *    stack items at a time
- * 2. one can fetch and modify arbitrary stack items; when array elements must be
- *    moved to keep them contiguous, the pivot stack entries must change to match.
- */
-static inline CC_HINT(always_inline, nonnull) pivot_stack_t *stack_alloc(TALLOC_CTX *ctx)
-{
-	pivot_stack_t	*s;
-
-	s = talloc_zero(ctx, pivot_stack_t);
-	if (unlikely(!s)) return NULL;
-
-	s->data = talloc_array(s, fr_lst_index_t, INITIAL_STACK_CAPACITY);
-	if (unlikely(!s->data)) {
-		talloc_free(s);
-		return NULL;
-	}
-	s->depth = 0;
-	s->size = INITIAL_STACK_CAPACITY;
-	return s;
-}
-
-static bool stack_expand(pivot_stack_t *s)
+static bool stack_expand(fr_lst_t *lst, pivot_stack_t *s)
 {
 	fr_lst_index_t	*n;
 	unsigned int	n_size;
@@ -185,7 +161,7 @@ static bool stack_expand(pivot_stack_t *s)
 	}
 #endif
 
-	n = talloc_realloc(s, s->data, fr_lst_index_t, n_size);
+	n = talloc_realloc(lst, s->data, fr_lst_index_t, n_size);
 	if (unlikely(!n)) {
 		fr_strerror_printf("Failed expanding lst stack to %u elements (%u bytes)",
 				   n_size, n_size * (unsigned int)sizeof(fr_lst_index_t));
@@ -197,9 +173,9 @@ static bool stack_expand(pivot_stack_t *s)
 	return true;
 }
 
-static inline CC_HINT(always_inline, nonnull) int stack_push(pivot_stack_t *s, fr_lst_index_t pivot)
+static inline CC_HINT(always_inline, nonnull) int stack_push(fr_lst_t *lst, pivot_stack_t *s, fr_lst_index_t pivot)
 {
-	if (unlikely(s->depth == s->size && !stack_expand(s))) return -1;
+	if (unlikely(s->depth == s->size && !stack_expand(lst, s))) return -1;
 
 	s->data[s->depth++] = pivot;
 	return 0;
@@ -229,6 +205,7 @@ void stack_set(pivot_stack_t *s, stack_index_t idx, fr_lst_index_t new_value)
 fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, size_t offset)
 {
 	fr_lst_t	*lst;
+	pivot_stack_t	*s;
 
 	/*
 	 *	Pre-allocate stack memory as it is
@@ -239,8 +216,7 @@ fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, siz
 	 *	we'd end up wasting that memory as soon as
 	 *	we needed to expand the array.
 	 */
-	lst = talloc_zero_pooled_object(ctx, fr_lst_t, 2,
-					sizeof(pivot_stack_t) + (INITIAL_STACK_CAPACITY * sizeof(fr_lst_index_t)));
+	lst = talloc_zero_pooled_object(ctx, fr_lst_t, 2, (INITIAL_STACK_CAPACITY * sizeof(fr_lst_index_t)));
 	if (unlikely(!lst)) return NULL;
 
 	lst->capacity = INITIAL_CAPACITY;
@@ -251,11 +227,18 @@ fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, siz
 		return NULL;
 	}
 
-	lst->s = stack_alloc(lst);
-	if (unlikely(!lst->s)) goto cleanup;
+	/*
+	 *	Allocate the initial stack
+	 */
+	s = &lst->s;
+	s->data = talloc_array(lst, fr_lst_index_t, INITIAL_STACK_CAPACITY);
+	if (unlikely(!s->data)) goto cleanup;
+	s->depth = 0;
+	s->size = INITIAL_STACK_CAPACITY;
 
 	/* Initially the LST is empty and we start at the beginning of the array */
-	stack_push(lst->s, 0);
+	stack_push(lst, &lst->s, 0);
+
 	lst->idx = 0;
 
 	/* Prepare for random choices */
@@ -274,7 +257,7 @@ fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, siz
  */
 static inline stack_index_t lst_length(fr_lst_t *lst, stack_index_t stack_index)
 {
-	return stack_depth(lst->s) - stack_index;
+	return stack_depth(&lst->s) - stack_index;
 }
 
 /** The size function for LSTs (number of items a (sub)tree contains)
@@ -286,7 +269,7 @@ static CC_HINT(nonnull) fr_lst_index_t lst_size(fr_lst_t *lst, stack_index_t sta
 
 	if (stack_index == 0) return lst->num_elements;
 
-	reduced_right = index_reduce(lst, stack_item(lst->s, stack_index));
+	reduced_right = index_reduce(lst, stack_item(&lst->s, stack_index));
 	reduced_idx = index_reduce(lst, lst->idx);
 
 	if (reduced_idx <= reduced_right) return reduced_right - reduced_idx;	/* No wraparound--easy. */
@@ -301,7 +284,7 @@ static CC_HINT(nonnull) fr_lst_index_t lst_size(fr_lst_t *lst, stack_index_t sta
  */
 static inline CC_HINT(always_inline, nonnull) void lst_flatten(fr_lst_t *lst, stack_index_t stack_index)
 {
-	stack_pop(lst->s, stack_depth(lst->s) - stack_index);
+	stack_pop(&lst->s, stack_depth(&lst->s) - stack_index);
 }
 
 /** Move data to a specific location in an LST's array.
@@ -333,12 +316,12 @@ static void bucket_add(fr_lst_t *lst, stack_index_t stack_index, void *data)
 	 * so we save pivot moving for the end of the loop.
 	 */
 	for (ridx = 0; ridx < stack_index; ridx++) {
-		fr_lst_index_t	prev_pivot_index = stack_item(lst->s, ridx + 1);
+		fr_lst_index_t	prev_pivot_index = stack_item(&lst->s, ridx + 1);
 		bool		empty_bucket;
 
-		new_space = stack_item(lst->s, ridx);
+		new_space = stack_item(&lst->s, ridx);
 		empty_bucket = (new_space - prev_pivot_index) == 1;
-		stack_set(lst->s, ridx, new_space + 1);
+		stack_set(&lst->s, ridx, new_space + 1);
 
 		if (!empty_bucket) lst_move(lst, new_space, item(lst, prev_pivot_index + 1));
 
@@ -352,8 +335,8 @@ static void bucket_add(fr_lst_t *lst, stack_index_t stack_index, void *data)
 	 * If it is the leftmost, the loop wasn't executed, but the fictitious
 	 * pivot isn't there, which is just as good.
 	 */
-	new_space = stack_item(lst->s, stack_index);
-	stack_set(lst->s, stack_index, new_space + 1);
+	new_space = stack_item(&lst->s, stack_index);
+	stack_set(&lst->s, stack_index, new_space + 1);
 	lst_move(lst, new_space, data);
 
 	lst->num_elements++;
@@ -365,9 +348,9 @@ static void bucket_add(fr_lst_t *lst, stack_index_t stack_index, void *data)
 static void lst_indices_reduce(fr_lst_t *lst)
 {
 	fr_lst_index_t	reduced_idx = index_reduce(lst, lst->idx);
-	stack_index_t	depth = stack_depth(lst->s), i;
+	stack_index_t	depth = stack_depth(&lst->s), i;
 
-	for (i = 0; i < depth; i++) stack_set(lst->s, i, reduced_idx + stack_item(lst->s, i) - lst->idx);
+	for (i = 0; i < depth; i++) stack_set(&lst->s, i, reduced_idx + stack_item(&lst->s, i) - lst->idx);
 
 	lst->idx = reduced_idx;
 }
@@ -430,7 +413,7 @@ static inline CC_HINT(always_inline, nonnull) fr_lst_index_t bucket_lwb(fr_lst_t
 {
 	if (is_bucket(lst, stack_index)) return lst->idx;
 
-	return stack_item(lst->s, stack_index + 1) + 1;
+	return stack_item(&lst->s, stack_index + 1) + 1;
 }
 
 /*
@@ -438,7 +421,7 @@ static inline CC_HINT(always_inline, nonnull) fr_lst_index_t bucket_lwb(fr_lst_t
  */
 static inline CC_HINT(always_inline, nonnull) fr_lst_index_t bucket_upb(fr_lst_t *lst, stack_index_t stack_index)
 {
-	return stack_item(lst->s, stack_index) - 1;
+	return stack_item(&lst->s, stack_index) - 1;
 }
 
 /*
@@ -459,7 +442,7 @@ static void partition(fr_lst_t *lst, stack_index_t stack_index)
 	 * Hoare partition doesn't do the trivial case, so catch it here.
 	 */
 	if (is_equivalent(lst, low, high)) {
-		stack_push(lst->s, low);
+		stack_push(lst, &lst->s, low);
 		return;
 	}
 
@@ -510,7 +493,7 @@ static void partition(fr_lst_t *lst, stack_index_t stack_index)
 		lst_move(lst, h, pivot);
 	}
 
-	stack_push(lst->s, h);
+	stack_push(lst, &lst->s, h);
 }
 
 /*
@@ -528,7 +511,7 @@ static void bucket_delete(fr_lst_t *lst, stack_index_t stack_index, void *data)
 		for (;;) {
 			top = bucket_upb(lst, stack_index);
 			if (!is_equivalent(lst, location, top)) lst_move(lst, location, item(lst, top));
-			stack_set(lst->s, stack_index, top);
+			stack_set(&lst->s, stack_index, top);
 			if (stack_index == 0) break;
 			lst_move(lst, top, item(lst, top + 1));
 			stack_index--;
@@ -776,7 +759,7 @@ void *fr_lst_iter_init(fr_lst_t *lst, fr_lst_iter_t *iter)
  */
 void *fr_lst_iter_next(fr_lst_t *lst, fr_lst_iter_t *iter)
 {
-	if ((*iter + 1) >= stack_item(lst->s, 0)) return NULL;
+	if ((*iter + 1) >= stack_item(&lst->s, 0)) return NULL;
 	*iter += 1;
 
 	return item(lst, *iter);
