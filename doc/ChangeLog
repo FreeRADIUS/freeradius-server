@@ -34,6 +34,7 @@ FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	* Rework connection pool management for corner cases.
 	  Fixes #4161, #4162, #4163.
 	* Final fix for double free in #3188.
+	* Fix sqlcounter wrong memory free. PR #4192 from Jorge Pereira
 
 FreeRADIUS 3.0.23 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	Feature improvements
