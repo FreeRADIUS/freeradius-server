@@ -191,7 +191,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_crypt(rlm_rcode_t *p_result,
 	struct crypt_data crypt_data = { .initialized = 0 };
 
 	crypt_out = crypt_r(password->vp_strvalue, known_good->vp_strvalue, &crypt_data);
-	if (crypt_out) cmp = strcmp(reference_crypt, crypt_out);
+	if (crypt_out) cmp = strcmp(known_good->vp_strvalue, crypt_out);
 #else
 	/*
 	 *	Ensure we're thread-safe, as crypt() isn't.
