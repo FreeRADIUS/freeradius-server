@@ -45,10 +45,12 @@ struct fr_heap_s {
 	char const	*type;			//!< Talloc type of elements.
 	fr_heap_cmp_t	cmp;			//!< Comparator function.
 
-	void		**p;			//!< Array of nodes.
+	void		*p[];			//!< Array of nodes.
 };
 
 #define INITIAL_CAPACITY	2048
+
+#define HEAP_DEREF(_p)	_p = *((fr_heap_t **)_p)
 
 /*
  *	First node in a heap is element 1. Children of i are 2i and
@@ -76,38 +78,29 @@ size_t fr_heap_pre_alloc_size(unsigned int count)
 
 fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, size_t offset, unsigned int init)
 {
-	fr_heap_t *hp;
+	fr_heap_t *hp, **hp_p;
+
+	if (!init) init = INITIAL_CAPACITY;
+
+	hp_p = talloc(ctx, fr_heap_t *);
+	if (unlikely(!hp_p)) return NULL;
 
 	/*
-	 *	If we've been provided with an initial
-	 *      element count, assume expanding past
-	 *      that size is going to be the uncommon
-	 *	case.
-	 *
-	 *	We seem to need two headers here otherwise
-	 *	we overflow the pool, and we get a
-	 *	significant slowdown in allocation performance.
+	 *	For small heaps (< 40 elements) the
+	 *	increase in memory locality gives us
+	 *	a 100% performance increase
+	 *	(talloc headers are big);
 	 */
-	if (init) {
-		hp = talloc_pooled_object(ctx, fr_heap_t, 2, sizeof(void *) * init);
-	} else {
-		init = INITIAL_CAPACITY;
-		hp = talloc(ctx, fr_heap_t);
-	}
+	hp = (fr_heap_t *)talloc_array(ctx, uint8_t, sizeof(fr_heap_t) + (sizeof(void *) * (init + 1)));
 	if (unlikely(!hp)) return NULL;
+	talloc_set_type(hp, fr_heap_t);
 
 	*hp = (fr_heap_t){
 		.size = init,
-		.p = talloc_array(hp, void *, init),
 		.type = type,
 		.cmp = cmp,
 		.offset = offset
 	};
-
-	if (unlikely(!hp->p)) {
-		talloc_free(hp);
-		return NULL;
-	}
 
 	/*
 	 *	As we're using unsigned index values
@@ -117,7 +110,9 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
 	 */
 	hp->p[0] = (void *)UINTPTR_MAX;
 
-	return hp;
+	*hp_p = hp;
+
+	return (fr_heap_t *)hp_p;
 }
 
 static inline CC_HINT(always_inline, nonnull) fr_heap_index_t index_get(fr_heap_t *hp, void *data)
@@ -154,7 +149,10 @@ static inline CC_HINT(always_inline, nonnull) void index_set(fr_heap_t *hp, void
  */
 int fr_heap_insert(fr_heap_t *hp, void *data)
 {
+	fr_heap_t **hp_p = (fr_heap_t **)hp;
 	fr_heap_index_t child;
+
+	HEAP_DEREF(hp);
 
 	child = index_get(hp, data);
 	if (fr_heap_entry_inserted(child)) {
@@ -171,8 +169,7 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 	/*
 	 *	Heap is full.  Double it's size.
 	 */
-	if (child == hp->size) {
-		void		**n;
+	if (child > hp->size) {
 		unsigned int	n_size;
 
 		/*
@@ -192,14 +189,15 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 			n_size = hp->size * 2;
 		}
 
-		n = talloc_realloc(hp, hp->p, void *, n_size);
-		if (unlikely(!n)) {
+		hp = (fr_heap_t *)talloc_realloc(NULL, hp, uint8_t, sizeof(fr_heap_t) + (sizeof(void *) * (n_size + 1)));
+		if (unlikely(!hp)) {
 			fr_strerror_printf("Failed expanding heap to %u elements (%u bytes)",
 					   n_size, (n_size * (unsigned int)sizeof(void *)));
 			return -1;
 		}
+		talloc_set_type(hp, fr_heap_t);
 		hp->size = n_size;
-		hp->p = n;
+		*hp_p = hp;
 	}
 
 	hp->p[child] = data;
@@ -246,6 +244,8 @@ static inline CC_HINT(always_inline) void fr_heap_bubble(fr_heap_t *hp, fr_heap_
 int fr_heap_extract(fr_heap_t *hp, void *data)
 {
 	fr_heap_index_t parent, child, max;
+
+	HEAP_DEREF(hp);
 
 	/*
 	 *	Extract element.
@@ -303,6 +303,8 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 
 void *fr_heap_peek(fr_heap_t *hp)
 {
+	HEAP_DEREF(hp);
+
 	if (hp->num_elements == 0) return NULL;
 
 	return hp->p[1];
@@ -310,18 +312,23 @@ void *fr_heap_peek(fr_heap_t *hp)
 
 void *fr_heap_pop(fr_heap_t *hp)
 {
+	fr_heap_t **hp_p = (fr_heap_t **)hp;
 	void *data;
+
+	HEAP_DEREF(hp);
 
 	if (hp->num_elements == 0) return NULL;
 
 	data = hp->p[1];
-	if (unlikely(fr_heap_extract(hp, data) < 0)) return NULL;
+	if (unlikely(fr_heap_extract((fr_heap_t *)hp_p, data) < 0)) return NULL;
 
 	return data;
 }
 
 void *fr_heap_peek_tail(fr_heap_t *hp)
 {
+	HEAP_DEREF(hp);
+
 	if (hp->num_elements == 0) return NULL;
 
 	/*
@@ -336,6 +343,8 @@ void *fr_heap_peek_tail(fr_heap_t *hp)
  */
 unsigned int fr_heap_num_elements(fr_heap_t *hp)
 {
+	HEAP_DEREF(hp);
+
 	return hp->num_elements;
 }
 
@@ -352,6 +361,8 @@ unsigned int fr_heap_num_elements(fr_heap_t *hp)
  */
 void *fr_heap_iter_init(fr_heap_t *hp, fr_heap_iter_t *iter)
 {
+	HEAP_DEREF(hp);
+
 	*iter = 1;
 
 	if (hp->num_elements == 0) return NULL;
@@ -372,6 +383,8 @@ void *fr_heap_iter_init(fr_heap_t *hp, fr_heap_iter_t *iter)
  */
 void *fr_heap_iter_next(fr_heap_t *hp, fr_heap_iter_t *iter)
 {
+	HEAP_DEREF(hp);
+
 	if ((*iter + 1) > hp->num_elements) return NULL;
 	*iter += 1;
 

@@ -415,10 +415,12 @@ static void lst_heap_cmp(void)
 {
 	fr_lst_t	*lst;
 	fr_heap_t	*heap;
+	lst_thing	**array;
 
-	lst_thing	values[40];
+	lst_thing	values[100];
 	fr_time_t	start_lst_alloc, end_lst_alloc, start_lst_insert, end_lst_insert, start_lst_pop, end_lst_pop;
 	fr_time_t	start_heap_alloc, end_heap_alloc, start_heap_insert, end_heap_insert, start_heap_pop, end_heap_pop;
+	fr_time_t	start_array_alloc, end_array_alloc, start_array_insert, end_array_insert, start_array_pop, end_array_pop;
 
 	unsigned int	i;
 
@@ -478,7 +480,43 @@ static void lst_heap_cmp(void)
 	TEST_MSG_ALWAYS("insert: %"PRIu64" μs\n", (end_heap_insert - start_heap_insert) / 1000);
 	TEST_MSG_ALWAYS("pop: %"PRIu64" μs\n", (end_heap_pop - start_heap_pop) / 1000);
 
-	talloc_free(heap);
+	/*
+	 *	Array
+	 */
+	populate_values(values, NUM_ELEMENTS(values));
+
+	start_array_alloc = fr_time();
+	array = talloc_array(NULL, lst_thing *, NUM_ELEMENTS(values));
+	end_array_alloc = fr_time();
+
+	start_array_insert = fr_time();
+	for (i = 0; i < NUM_ELEMENTS(values); i++) array[i] = &values[i];
+	end_array_insert = fr_time();
+
+	start_array_pop = fr_time();
+	for (i = 0; i < NUM_ELEMENTS(values); i++) {
+		lst_thing *low = NULL;
+		unsigned int idx = 0;
+
+		for (unsigned int j = 0; j < NUM_ELEMENTS(values); j++) {
+			if (!array[j]) continue;
+
+			if (!low || (lst_cmp(array[j], low) < 0)) {
+				idx = j;
+				low = array[j];
+			}
+		}
+
+		if (low) array[idx] = NULL;
+	}
+	end_array_pop = fr_time();
+
+	TEST_MSG_ALWAYS("\narray size: %zu\n", NUM_ELEMENTS(values));
+	TEST_MSG_ALWAYS("alloc: %"PRIu64" μs\n", (end_array_alloc - start_array_alloc) / 1000);
+	TEST_MSG_ALWAYS("insert: %"PRIu64" μs\n", (end_array_insert - start_array_insert) / 1000);
+	TEST_MSG_ALWAYS("pop: %"PRIu64" μs\n", (end_array_pop - start_array_pop) / 1000);
+
+	talloc_free(array);
 }
 
 #if 0
