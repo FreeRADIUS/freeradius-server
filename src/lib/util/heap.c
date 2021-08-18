@@ -91,9 +91,9 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
 	 *	a 100% performance increase
 	 *	(talloc headers are big);
 	 */
-	h = (heap_t *)talloc_array(ctx, uint8_t, sizeof(fr_heap_t) + (sizeof(void *) * (init + 1)));
-	if (unlikely(!hp)) return NULL;
-	talloc_set_type(hp, fr_heap_t);
+	h = (heap_t *)talloc_array(ctx, uint8_t, sizeof(heap_t) + (sizeof(void *) * (init + 1)));
+	if (unlikely(!h)) return NULL;
+	talloc_set_type(h, heap_t);
 
 	*h = (heap_t){
 		.size = init,
@@ -115,14 +115,14 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
 	return hp;
 }
 
-static inline CC_HINT(always_inline, nonnull) fr_heap_index_t index_get(heap_t *hp, void *data)
+static inline CC_HINT(always_inline, nonnull) fr_heap_index_t index_get(heap_t *h, void *data)
 {
-	return *((fr_heap_index_t const *)(((uint8_t const *)data) + hp->offset));
+	return *((fr_heap_index_t const *)(((uint8_t const *)data) + h->offset));
 }
 
-static inline CC_HINT(always_inline, nonnull) void index_set(heap_t *hp, void *data, fr_heap_index_t idx)
+static inline CC_HINT(always_inline, nonnull) void index_set(heap_t *h, void *data, fr_heap_index_t idx)
 {
-	*((fr_heap_index_t *)(((uint8_t *)data) + hp->offset)) = idx;
+	*((fr_heap_index_t *)(((uint8_t *)data) + h->offset)) = idx;
 }
 
 #define OFFSET_SET(_heap, _idx) index_set(_heap, _heap->p[_idx], _idx);
@@ -187,13 +187,13 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 			n_size = h->size * 2;
 		}
 
-		h = (heap_t *)talloc_realloc(NULL, h, uint8_t, sizeof(fr_heap_t) + (sizeof(void *) * (n_size + 1)));
+		h = (heap_t *)talloc_realloc(NULL, h, uint8_t, sizeof(heap_t) + (sizeof(void *) * (n_size + 1)));
 		if (unlikely(!h)) {
 			fr_strerror_printf("Failed expanding heap to %u elements (%u bytes)",
 					   n_size, (n_size * (unsigned int)sizeof(void *)));
 			return -1;
 		}
-		talloc_set_type(h, fr_heap_t);
+		talloc_set_type(h, heap_t);
 		h->size = n_size;
 		*hp = h;
 	}
