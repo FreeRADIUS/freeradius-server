@@ -116,7 +116,7 @@ static void lst_test(int skip)
 
 	TEST_CASE("deletions");
 	for (int entry = 0; entry < LST_TEST_SIZE; entry += skip) {
-		TEST_CHECK(array[entry].index != -1);
+		TEST_CHECK(array[entry].index != 0);
 		TEST_MSG("element %i removed out of order", entry);
 
 		TEST_CHECK((ret = fr_lst_extract(lst, &array[entry])) >= 0);
@@ -125,7 +125,7 @@ static void lst_test(int skip)
 		TEST_CHECK(!fr_lst_contains(lst, &array[entry]));
 		TEST_MSG("element %i removed but still in LST", entry);
 
-		TEST_CHECK(array[entry].index == -1);
+		TEST_CHECK(array[entry].index == 0);
 		TEST_MSG("element %i removed out of order", entry);
 	}
 
@@ -342,7 +342,7 @@ static void lst_cycle(void)
 	removed = 0;
 
 	for (i = 0; i < LST_CYCLE_SIZE; i++) {
-		if (array[i].index == -1) {
+		if (array[i].index == 0) {
 			TEST_CHECK((ret = fr_lst_insert(lst, &array[i])) >= 0);
 			TEST_MSG("insert failed, returned %i - %s", ret, fr_strerror());
 			inserted++;
@@ -407,7 +407,7 @@ static void lst_iter(void)
 	for (int i = 0; i < NVALUES; i++, data = fr_lst_iter_next(lst, &iter)) {
 		TEST_CHECK(data != NULL);
 		TEST_CHECK(!data->visited);
-		TEST_CHECK(data->index >= 0);
+		TEST_CHECK(data->index > 0);
 		data->visited = true;
 	}
 

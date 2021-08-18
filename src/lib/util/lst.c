@@ -75,14 +75,30 @@ static inline CC_HINT(always_inline, nonnull) void *index_addr(fr_lst_t *lst, vo
 	return ((uint8_t *)data) + (lst)->offset;
 }
 
+/*
+ * Concerning item_index() and item_index_set():
+ * To let zero be the value *as stored in an item* that indicates not being in an LST,
+ * we add one to the real index when storing it and subtract one when retrieving it.
+ *
+ * This lets the LST functions use item indices in [0, lst->capacity), important for
+ * 1. the circular array, which allows an important optimization for fr_lst_pop()
+ * 2. quick reduction of indices
+ *
+ * fr_item_insert() needs to see the value actually stored, hence raw_item_index().
+ */
+static inline CC_HINT(always_inline, nonnull) fr_lst_index_t raw_item_index(fr_lst_t *lst, void *data)
+{
+	return *(fr_lst_index_t *)index_addr(lst, data);
+}
+
 static inline CC_HINT(always_inline, nonnull) fr_lst_index_t item_index(fr_lst_t *lst, void *data)
 {
-	return (*(fr_lst_index_t *)index_addr(lst, data));
+	return  raw_item_index(lst, data) - 1;
 }
 
 static inline CC_HINT(always_inline, nonnull) void item_index_set(fr_lst_t *lst, void *data, fr_lst_index_t idx)
 {
-	(*(fr_lst_index_t *)index_addr(lst, data)) = idx;
+	(*(fr_lst_index_t *)index_addr(lst, data)) = idx + 1;
 }
 
 static inline CC_HINT(always_inline, nonnull) fr_lst_index_t index_reduce(fr_lst_t *lst, fr_lst_index_t idx)
@@ -690,7 +706,7 @@ int fr_lst_extract(fr_lst_t *lst, void *data)
 		return -1;
 	}
 
-	if (unlikely(item_index(lst, data) < 0)) {
+	if (unlikely(raw_item_index(lst, data) == 0)) {
 		fr_strerror_const("Tried to extract element not in LST");
 		return -1;
 	}
@@ -701,8 +717,6 @@ int fr_lst_extract(fr_lst_t *lst, void *data)
 
 int fr_lst_insert(fr_lst_t *lst, void *data)
 {
-	fr_lst_index_t	data_index;
-
 	/*
 	 * Expand if need be. Not in the paper, but we want the capability.
 	 */
@@ -711,9 +725,7 @@ int fr_lst_insert(fr_lst_t *lst, void *data)
 	/*
 	 * Don't insert something that looks like it's already in an LST.
 	 */
-	data_index = item_index(lst, data);
-	if (unlikely((data_index > 0) ||
-	    ((data_index == 0) && (lst->num_elements > 0) && (lst->idx == 0) && (item(lst, 0) == data)))) {
+	if (unlikely(raw_item_index(lst, data) > 0)) {
 		fr_strerror_const("Node is already in the LST");
 		return -1;
 	}
