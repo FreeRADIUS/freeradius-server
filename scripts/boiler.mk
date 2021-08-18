@@ -446,6 +446,14 @@ define INCLUDE_SUBMAKEFILE
         # has to be linked to both libfoo.a and -lbar.
 	ifeq "$${$${TGT}_SUFFIX}" ".exe"
 		$${TGT}_LDLIBS += $$(filter-out %.a %.so %.la,$${$${TGT_PREREQS}_LDLIBS})
+
+		#
+		#  OSX does lazy linking by default.  We want to over-ride that for binaries.
+		#  That way we catch errors at compile time, and not at run time.
+		#
+		ifneq "$(findstring apple-darwin,$(TARGET_SYSTEM))" ""
+			$${TGT}_LDFLAGS += -Wl,-undefined -Wl,error
+		endif
 	endif
 
         $${TGT}_BUILD := $$(if $$(suffix $${TGT}),$${BUILD_DIR}/lib,$${BUILD_DIR}/bin)
