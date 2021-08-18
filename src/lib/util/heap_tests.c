@@ -7,6 +7,8 @@ static bool fr_heap_check(fr_heap_t *hp, void *data)
 {
 	unsigned int i;
 
+	HEAP_DEREF(hp);
+
 	if (!hp || (hp->num_elements == 0)) return false;
 
 	for (i = 0; i < hp->num_elements; i++) {
