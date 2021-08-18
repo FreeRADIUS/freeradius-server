@@ -31,7 +31,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/event.h>
-#include <freeradius-devel/util/heap.h>
+#include <freeradius-devel/util/lst.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/strerror.h>
@@ -107,7 +107,7 @@ struct fr_event_timer {
 	fr_event_timer_t const	**parent;		//!< A pointer to the parent structure containing the timer
 							///< event.
 
-	fr_heap_index_t		heap_id;	       	//!< Where to store opaque heap data.
+	fr_lst_index_t		lst_id;	     	  	//!< Where to store opaque lst data.
 	fr_dlist_t		entry;			//!< List of deferred timer events.
 
 	fr_event_list_t		*el;			//!< Event list containing this timer.
@@ -309,7 +309,7 @@ struct fr_event_pid {
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
 
 #ifdef LOCAL_PID
-	fr_heap_index_t		heap_id;
+	fr_lst_index_t		lst_id;
 #endif
 
 #ifndef NDEBUG
@@ -351,10 +351,10 @@ typedef struct {
  *
  */
 struct fr_event_list {
-	fr_heap_t		*times;			//!< of timer events to be executed.
+	fr_lst_t		*times;			//!< of timer events to be executed.
 	fr_rb_tree_t		*fds;			//!< Tree used to track FDs with filters in kqueue.
 #ifdef LOCAL_PID
-	fr_heap_t		*pids;			//!< PIDs to wait for
+	fr_lst_t		*pids;			//!< PIDs to wait for
 #endif
 
 	int			will_exit;		//!< Will exit on next call to fr_event_corral.
@@ -446,7 +446,7 @@ uint64_t fr_event_list_num_timers(fr_event_list_t *el)
 {
 	if (unlikely(!el)) return -1;
 
-	return fr_heap_num_elements(el->times);
+	return fr_lst_num_elements(el->times);
 }
 
 /** Return the kq associated with an event list.
@@ -1184,7 +1184,7 @@ static int _event_timer_free(fr_event_timer_t *ev)
 	if (fr_dlist_entry_in_list(&ev->entry)) {
 		(void) fr_dlist_remove(&el->ev_to_add, ev);
 	} else {
-		int		ret = fr_heap_extract(el->times, ev);
+		int		ret = fr_lst_extract(el->times, ev);
 		char const	*err_file = "not-available";
 		int		err_line = 0;
 
@@ -1194,11 +1194,11 @@ static int _event_timer_free(fr_event_timer_t *ev)
 #endif
 
 		/*
-		 *	Events MUST be in the heap (or the insertion list).
+		 *	Events MUST be in the lst (or the insertion list).
 		 */
 		if (!fr_cond_assert_msg(ret == 0,
-					"Event %p, heap_id %i, allocd %s[%u], was not found in the event heap or "
-					"insertion list when freed: %s", ev, ev->heap_id, err_file, err_line,
+					"Event %p, lst_id %i, allocd %s[%u], was not found in the event lst or "
+					"insertion list when freed: %s", ev, ev->lst_id, err_file, err_line,
 					 fr_strerror())) return -1;
 	}
 
@@ -1271,7 +1271,7 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 		if (ctx != el) talloc_link_ctx(ctx, ev);
 
 		talloc_set_destructor(ev, _event_timer_free);
-		ev->heap_id = 0;
+		ev->lst_id = 0;
 
 	} else {
 		memcpy(&ev, ev_p, sizeof(ev));	/* Not const to us */
@@ -1284,7 +1284,7 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 		 *	context changes, we need to free the old
 		 *	event, and allocate a new one.
 		 *
-		 *	Freeing the event also removes it from the heap.
+		 *	Freeing the event also removes it from the lst.
 		 */
 		if (unlikely(ev->linked_ctx != ctx)) {
 			talloc_free(ev);
@@ -1294,14 +1294,14 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 		/*
 		 *	Event may have fired, in which case the event
 		 *	will no longer be in the event loop, so check
-		 *	if it's in the heap before extracting it.
+		 *	if it's in the lst before extracting it.
 		 */
 		if (!fr_dlist_entry_in_list(&ev->entry)) {
 			int		ret;
 			char const	*err_file = "not-available";
 			int		err_line = 0;
 
-			ret = fr_heap_extract(el->times, ev);
+			ret = fr_lst_extract(el->times, ev);
 
 #ifndef NDEBUG
 			err_file = ev->file;
@@ -1309,11 +1309,11 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 #endif
 
 			/*
-			 *	Events MUST be in the heap (or the insertion list).
+			 *	Events MUST be in the lst (or the insertion list).
 			 */
 			if (!fr_cond_assert_msg(ret == 0,
-						"Event %p, heap_id %i, allocd %s[%u], was not found in the event "
-						"heap or insertion list when freed: %s", ev, ev->heap_id,
+						"Event %p, lst_id %i, allocd %s[%u], was not found in the event "
+						"lst or insertion list when freed: %s", ev, ev->lst_id,
 						err_file, err_line, fr_strerror())) return -1;
 		}
 	}
@@ -1336,7 +1336,7 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 		 *	multiple times.
 		 */
 		if (!fr_dlist_entry_in_list(&ev->entry)) fr_dlist_insert_head(&el->ev_to_add, ev);
-	} else if (unlikely(fr_heap_insert(el->times, ev) < 0)) {
+	} else if (unlikely(fr_lst_insert(el->times, ev) < 0)) {
 		fr_strerror_const_push("Failed inserting event");
 		talloc_set_destructor(ev, NULL);
 		*ev_p = NULL;
@@ -1417,7 +1417,7 @@ static int _event_pid_free(fr_event_pid_t *ev)
 
 	(void) kevent(ev->el->kq, &evset, 1, NULL, 0, NULL);
 #else
-	(void) fr_heap_extract(ev->el->pids, ev);
+	(void) fr_lst_extract(ev->el->pids, ev);
 #endif
 
 	return 0;
@@ -1496,8 +1496,8 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 	}
 #else  /* LOCAL_PID */
 
-	ev->heap_id = 0;
-	if (unlikely(fr_heap_insert(el->pids, ev) < 0)) {
+	ev->lst_id = 0;
+	if (unlikely(fr_lst_insert(el->pids, ev) < 0)) {
 		fr_strerror_printf("Failed adding waiter for PID %ld - %s", (long) pid, fr_strerror());
 		talloc_free(ev);
 		return -1;
@@ -1692,12 +1692,12 @@ int fr_event_timer_run(fr_event_list_t *el, fr_time_t *when)
 
 	if (unlikely(!el)) return 0;
 
-	if (fr_heap_num_elements(el->times) == 0) {
+	if (fr_lst_num_elements(el->times) == 0) {
 		*when = 0;
 		return 0;
 	}
 
-	ev = fr_heap_peek(el->times);
+	ev = fr_lst_peek(el->times);
 	if (!ev) {
 		*when = 0;
 		return 0;
@@ -1745,7 +1745,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	fr_event_timer_t	*ev;
 #ifdef LOCAL_PID
 	fr_event_pid_t		*pid;
-	fr_heap_iter_t		iter;
+	fr_lst_iter_t		iter;
 	int			num_pid_events;
 #endif
 
@@ -1772,7 +1772,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	 *	events are in the past.  Or, we wait for a future
 	 *	timer event.
 	 */
-	ev = fr_heap_peek(el->times);
+	ev = fr_lst_peek(el->times);
 	if (ev) {
 		if (ev->when <= el->now) {
 			timer_event_ready = true;
@@ -1847,9 +1847,9 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	/*
 	 *	Brute-force wait for all open PIDs
 	 */
-	for (pid = fr_heap_iter_init(el->pids, &iter);
+	for (pid = fr_lst_iter_init(el->pids, &iter);
 	     pid != NULL;
-	     pid = fr_heap_iter_next(el->pids, &iter)) {
+	     pid = fr_lst_iter_next(el->pids, &iter)) {
 		int status;
 
 		if (waitpid(pid->pid, &status, WNOHANG) != pid->pid) continue;
@@ -2151,7 +2151,7 @@ service:
 	 *	Run all of the timer events.  Note that these can add
 	 *	new timers!
 	 */
-	if (fr_heap_num_elements(el->times) > 0) {
+	if (fr_lst_num_elements(el->times) > 0) {
 		do {
 			when = el->now;
 		} while (fr_event_timer_run(el, &when) == 1);
@@ -2160,10 +2160,10 @@ service:
 	/*
 	 *	New timers can be added while running the timer
 	 *	callback. Instead of being added to the main timer
-	 *	heap, they are instead added to the "to do" list.
+	 *	lst, they are instead added to the "to do" list.
 	 *	Once we're finished running the callbacks, we walk
 	 *	through the "to do" list, and add the callbacks to the
-	 *	timer heap.
+	 *	timer lst.
 	 *
 	 *	Doing it this way prevents the server from running
 	 *	into an infinite loop.  The timer callback MAY add a
@@ -2173,9 +2173,9 @@ service:
 	 */
 	while ((ev = fr_dlist_head(&el->ev_to_add)) != NULL) {
 		(void)fr_dlist_remove(&el->ev_to_add, ev);
-		if (unlikely(fr_heap_insert(el->times, ev) < 0)) {
+		if (unlikely(fr_lst_insert(el->times, ev) < 0)) {
 			talloc_free(ev);
-			fr_assert_msg(0, "failed inserting heap event: %s", fr_strerror());	/* Die in debug builds */
+			fr_assert_msg(0, "failed inserting lst event: %s", fr_strerror());	/* Die in debug builds */
 		}
 	}
 
@@ -2245,7 +2245,7 @@ static int _event_list_free(fr_event_list_t *el)
 {
 	fr_event_timer_t const *ev;
 
-	while ((ev = fr_heap_peek(el->times)) != NULL) fr_event_timer_delete(&ev);
+	while ((ev = fr_lst_peek(el->times)) != NULL) fr_event_timer_delete(&ev);
 
 	talloc_free_children(el);
 
@@ -2277,9 +2277,9 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	el->kq = -1;	/* So destructor can be used before kqueue() provides us with fd */
 	talloc_set_destructor(el, _event_list_free);
 
-	el->times = fr_heap_talloc_alloc(el, fr_event_timer_cmp, fr_event_timer_t, heap_id, 0);
+	el->times = fr_lst_talloc_alloc(el, fr_event_timer_cmp, fr_event_timer_t, lst_id);
 	if (!el->times) {
-		fr_strerror_const("Failed allocating event heap");
+		fr_strerror_const("Failed allocating event lst");
 	error:
 		talloc_free(el);
 		return NULL;
@@ -2292,9 +2292,9 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	}
 
 #ifdef LOCAL_PID
-	el->pids = fr_heap_talloc_alloc(el, fr_event_pid_cmp, fr_event_pid_t, heap_id, 0);
+	el->pids = fr_lst_talloc_alloc(el, fr_event_pid_cmp, fr_event_pid_t, lst_id, 0);
 	if (!el->pids) {
-		fr_strerror_const("Failed allocating PID heap");
+		fr_strerror_const("Failed allocating PID lst");
 		goto error;
 	}
 #endif
@@ -2342,7 +2342,7 @@ void fr_event_list_set_time_func(fr_event_list_t *el, fr_event_time_source_t fun
  */
 bool fr_event_list_empty(fr_event_list_t *el)
 {
-	return !fr_heap_num_elements(el->times) && !fr_rb_num_elements(el->fds);
+	return !fr_lst_num_elements(el->times) && !fr_rb_num_elements(el->fds);
 }
 
 #ifdef WITH_EVENT_DEBUG
@@ -2387,7 +2387,7 @@ static int event_timer_location_cmp(void const *one, void const *two)
  */
 void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
-	fr_heap_iter_t		iter;
+	fr_lst_iter_t		iter;
 	fr_event_timer_t const	*ev;
 	size_t			i;
 
@@ -2413,9 +2413,9 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	Show which events are due, when they're due,
 	 *	and where they were allocated
 	 */
-	for (ev = fr_heap_iter_init(el->times, &iter);
+	for (ev = fr_lst_iter_init(el->times, &iter);
 	     ev != NULL;
-	     ev = fr_heap_iter_next(el->times, &iter)) {
+	     ev = fr_lst_iter_next(el->times, &iter)) {
 		fr_time_delta_t diff = ev->when - now;
 
 		for (i = 0; i < NUM_ELEMENTS(decades); i++) {
@@ -2479,7 +2479,7 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 #ifndef NDEBUG
 void fr_event_timer_dump(fr_event_list_t *el)
 {
-	fr_heap_iter_t		iter;
+	fr_lst_iter_t		iter;
 	fr_event_timer_t 	*ev;
 	fr_time_t		now;
 
@@ -2487,9 +2487,9 @@ void fr_event_timer_dump(fr_event_list_t *el)
 
 	EVENT_DEBUG("Time is now %"PRId64"", now);
 
-	for (ev = fr_heap_iter_init(el->times, &iter);
+	for (ev = fr_lst_iter_init(el->times, &iter);
 	     ev;
-	     ev = fr_heap_iter_next(el->times, &iter)) {
+	     ev = fr_lst_iter_next(el->times, &iter)) {
 		(void)talloc_get_type_abort(ev, fr_event_timer_t);
 		EVENT_DEBUG("%s[%u]: %p time=%" PRId64 " (%c), callback=%p",
 			    ev->file, ev->line, ev, ev->when, now > ev->when ? '<' : '>', ev->callback);
