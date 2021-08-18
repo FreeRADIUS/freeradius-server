@@ -333,7 +333,7 @@ int tls_ctx_version_set(
 	}
 
 	{
-		int min_version = TLS1_2_VERSION;
+		int min_version;
 
 		if (conf->tls_min_version < (float) 1.0) {
 			ERROR("tls_min_version must be >= 1.0 as SSLv2 and SSLv3 are permanently disabled");
@@ -347,6 +347,7 @@ int tls_ctx_version_set(
 #  endif
 		else if (conf->tls_min_version >= (float) 1.2) min_version = TLS1_2_VERSION;
 		else if (conf->tls_min_version >= (float) 1.1) min_version = TLS1_1_VERSION;
+		else min_version = TLS1_VERSION;
 
 		/*
 		 *	Complain about insecure TLS versions.
@@ -375,11 +376,6 @@ int tls_ctx_version_set(
 		*ctx_options |= SSL_OP_NO_SSLv2;
 		*ctx_options |= SSL_OP_NO_SSLv3;
 
-		if (conf->tls_min_version < (float) 1.0) {
-			ERROR("SSLv2 and SSLv3 are permanently disabled due to critical security issues");
-			goto error;
-		}
-
 #  ifdef SSL_OP_NO_TLSv1
 		if (conf->tls_min_version > (float) 1.0) *ctx_options |= SSL_OP_NO_TLSv1;
 		ctx_tls_versions |= SSL_OP_NO_TLSv1;
@@ -400,7 +396,7 @@ int tls_ctx_version_set(
 #  endif
 
 		if ((*ctx_options & ctx_tls_versions) == ctx_tls_versions) {
-			ERROR("You have disabled all available TLS versions.  EAP will not work");
+			ERROR("You have disabled all available TLS versions");
 			goto error;
 		}
 	}
