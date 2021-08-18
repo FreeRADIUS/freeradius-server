@@ -44,12 +44,6 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/base.h>
 
 typedef struct {
-	fr_rb_node_t		node;			//!< Entry in the namespace tree.
-	char const		*namespace;		//!< Namespace function is registered to.
-	fr_dict_t const		*dict;			//!< dictionary to use
-} fr_virtual_namespace_t;
-
-typedef struct {
 	dl_module_inst_t	*proto_module;		//!< The proto_* module for a listen section.
 	fr_app_t const		*app;			//!< Easy access to the exported struct.
 } fr_virtual_listen_t;
