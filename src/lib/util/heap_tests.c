@@ -270,9 +270,9 @@ static void heap_cycle(void)
 	end = fr_time();
 
 	TEST_MSG_ALWAYS("\ncycle size: %d\n", HEAP_CYCLE_SIZE);
-	TEST_MSG_ALWAYS("insert: %2.2f ns\n", ((double)(start_remove - start_insert)) / NSEC);
-	TEST_MSG_ALWAYS("extract: %2.2f ns\n", ((double)(start_swap - start_remove)) / NSEC);
-	TEST_MSG_ALWAYS("swap: %2.2f ns\n", ((double)(end - start_swap)) / NSEC);
+	TEST_MSG_ALWAYS("insert: %2.2f s\n", ((double)(start_remove - start_insert)) / NSEC);
+	TEST_MSG_ALWAYS("extract: %2.2f s\n", ((double)(start_swap - start_remove)) / NSEC);
+	TEST_MSG_ALWAYS("swap: %2.2f s\n", ((double)(end - start_swap)) / NSEC);
 
 	talloc_free(hp);
 	free(array);

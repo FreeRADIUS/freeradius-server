@@ -31,7 +31,6 @@ extern "C" {
 #include <freeradius-devel/util/talloc.h>
 
 #include <stdint.h>
-#include <freeradius-devel/util/heap.h>
 
 typedef struct fr_lst_s	fr_lst_t;
 

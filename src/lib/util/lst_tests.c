@@ -2,6 +2,7 @@
 #include <freeradius-devel/util/acutest_helpers.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/time.h>
+#include <freeradius-devel/util/heap.h>
 
 /*
  *	This counterintuitive #include gives these separately-compiled tests
@@ -11,8 +12,8 @@
 #include "lst.c"
 
 typedef struct {
-        int		data;
-	fr_lst_index_t	index;
+	unsigned int	data;
+	fr_lst_index_t	idx;
 	bool		visited;	/* Only used by iterator test */
 } lst_thing;
 
@@ -22,9 +23,9 @@ static bool	lst_validate(fr_lst_t *lst, bool show_items);
 
 static bool fr_lst_contains(fr_lst_t *lst, void *data)
 {
-	int size = fr_lst_num_elements(lst);
+	unsigned int size = fr_lst_num_elements(lst);
 
-	for (int i = 0; i < size; i++) if (item(lst, i + lst->idx) == data) return true;
+	for (unsigned int i = 0; i < size; i++) if (item(lst, i + lst->idx) == data) return true;
 
 	return false;
 }
@@ -36,43 +37,51 @@ static int8_t lst_cmp(void const *one, void const *two)
 	return CMP(item1->data, item2->data);
 }
 
-#define NVALUES	20
-static void lst_test_basic(void)
+static void populate_values(lst_thing values[], unsigned int len)
 {
-	fr_lst_t	*lst;
-	lst_thing	values[NVALUES];
+	unsigned int i;
 	fr_fast_rand_t	rand_ctx;
 
-	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, index);
-	TEST_CHECK(lst != NULL);
-
-	for (int i = 0; i < NVALUES; i++) {
+	for (i = 0; i < len; i++) {
 		values[i].data = i;
-		values[i].index = 0;
+		values[i].idx = 0;
+		values[i].visited = false;
 	}
 
-	/* shuffle values before insertion, so the lst has to work to give them back in order */
+	/* shuffle values before insertion, so the heap has to work to give them back in order */
 	rand_ctx.a = fr_rand();
 	rand_ctx.b = fr_rand();
 
-	for (int i = 0; i < NVALUES - 1; i++) {
-		int	j = fr_fast_rand(&rand_ctx) % (NVALUES - i);
+	for (i = 0; i < len; i++) {
+		unsigned int	j = fr_fast_rand(&rand_ctx) % len;
 		int	temp = values[i].data;
 
 		values[i].data = values[j].data;
 		values[j].data = temp;
 	}
+}
 
-	for (int i = 0; i < NVALUES; i++) {
+#define NVALUES	20
+static void lst_test_basic(void)
+{
+	fr_lst_t	*lst;
+	lst_thing	values[NVALUES];
+
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx);
+	TEST_CHECK(lst != NULL);
+
+	populate_values(values, NUM_ELEMENTS(values));
+
+	for (unsigned int i = 0; i < NUM_ELEMENTS(values); i++) {
 		TEST_CHECK(fr_lst_insert(lst, &values[i]) >= 0);
-		TEST_CHECK(fr_lst_entry_inserted(values[i].index));
+		TEST_CHECK(fr_lst_entry_inserted(values[i].idx));
 	}
 
-	for (int i = 0; i < NVALUES; i++) {
+	for (unsigned int i = 0; i < NUM_ELEMENTS(values); i++) {
 		lst_thing	*value = fr_lst_pop(lst);
 
 		TEST_CHECK(value != NULL);
-		TEST_CHECK(!fr_lst_entry_inserted(value->index));
+		TEST_CHECK(!fr_lst_entry_inserted(value->idx));
 		TEST_CHECK(value->data == i);
 	}
 	talloc_free(lst);
@@ -83,9 +92,9 @@ static void lst_test_basic(void)
 static void lst_test(int skip)
 {
 	fr_lst_t	*lst;
-	int		i;
-	lst_thing	*array;
-	int		left;
+	unsigned int	i;
+	lst_thing	*values;
+	unsigned int	left;
 	int		ret;
 
 	static bool	done_init = false;
@@ -95,37 +104,37 @@ static void lst_test(int skip)
 		done_init = true;
 	}
 
-	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, index);
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx);
 	TEST_CHECK(lst != NULL);
 
-	array = calloc(LST_TEST_SIZE, sizeof(lst_thing));
+	values = calloc(LST_TEST_SIZE, sizeof(lst_thing));
 
 	/*
 	 *	Initialise random values
 	 */
-	for (i = 0; i < LST_TEST_SIZE; i++) array[i].data = rand() % 65537;
+	populate_values(values, LST_TEST_SIZE);
 
 	TEST_CASE("insertions");
 	for (i = 0; i < LST_TEST_SIZE; i++) {
-		TEST_CHECK((ret = fr_lst_insert(lst, &array[i])) >= 0);
+		TEST_CHECK((ret = fr_lst_insert(lst, &values[i])) >= 0);
 		TEST_MSG("insert failed, returned %i - %s", ret, fr_strerror());
 
-		TEST_CHECK(fr_lst_contains(lst, &array[i]));
+		TEST_CHECK(fr_lst_contains(lst, &values[i]));
 		TEST_MSG("element %i inserted but not in LST", i);
 	}
 
 	TEST_CASE("deletions");
 	for (int entry = 0; entry < LST_TEST_SIZE; entry += skip) {
-		TEST_CHECK(array[entry].index != 0);
+		TEST_CHECK(values[entry].idx != 0);
 		TEST_MSG("element %i removed out of order", entry);
 
-		TEST_CHECK((ret = fr_lst_extract(lst, &array[entry])) >= 0);
+		TEST_CHECK((ret = fr_lst_extract(lst, &values[entry])) >= 0);
 		TEST_MSG("element %i removal failed, returned %i", entry, ret);
 
-		TEST_CHECK(!fr_lst_contains(lst, &array[entry]));
+		TEST_CHECK(!fr_lst_contains(lst, &values[entry]));
 		TEST_MSG("element %i removed but still in LST", entry);
 
-		TEST_CHECK(array[entry].index == 0);
+		TEST_CHECK(values[entry].idx == 0);
 		TEST_MSG("element %i removed out of order", entry);
 	}
 
@@ -140,7 +149,7 @@ static void lst_test(int skip)
 	TEST_MSG("%i elements remaining", ret);
 
 	talloc_free(lst);
-	free(array);
+	free(values);
 }
 
 static void lst_test_skip_1(void)
@@ -173,9 +182,9 @@ static void lst_stress_realloc(void)
 		done_init = true;
 	}
 
-	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, index);
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx);
 	TEST_CHECK(lst != NULL);
-	hp = fr_heap_alloc(NULL, lst_cmp, lst_thing, index, 0);
+	hp = fr_heap_alloc(NULL, lst_cmp, lst_thing, idx, 0);
 
 	lst_array = calloc(2 * INITIAL_CAPACITY, sizeof(lst_thing));
 	hp_array = calloc(2 * INITIAL_CAPACITY, sizeof(lst_thing));
@@ -183,11 +192,11 @@ static void lst_stress_realloc(void)
 	/*
 	 *	Initialise random values
 	 */
-	for (int i = 0; i < 2 * INITIAL_CAPACITY; i++) lst_array[i].data = hp_array[i].data = rand() % 65537;
+	for (unsigned int i = 0; i < 2 * INITIAL_CAPACITY; i++) lst_array[i].data = hp_array[i].data = rand() % 65537;
 
 	/* Add the first INITIAL_CAPACITY values to lst and to hp */
 	TEST_CASE("partial fill");
-	for (int i = 0; i < INITIAL_CAPACITY; i++) {
+	for (unsigned int i = 0; i < INITIAL_CAPACITY; i++) {
 		TEST_CHECK((ret = fr_lst_insert(lst, &lst_array[i])) >= 0);
 		TEST_MSG("lst insert failed, iteration %d; returned %i - %s", i, ret, fr_strerror());
 		TEST_CHECK((ret = fr_heap_insert(hp, &hp_array[i])) >= 0);
@@ -196,7 +205,7 @@ static void lst_stress_realloc(void)
 
 	/* Pop INITIAL_CAPACITY / 2 values from each (they should all be equal) */
 	TEST_CASE("partial pop");
-	for (int i = 0; i < INITIAL_CAPACITY / 2; i++) {
+	for (unsigned int i = 0; i < INITIAL_CAPACITY / 2; i++) {
 		TEST_CHECK((from_lst = fr_lst_pop(lst)) != NULL);
 		TEST_CHECK((from_hp = fr_heap_pop(hp)) != NULL);
 		TEST_CHECK(lst_cmp(from_lst, from_hp) == 0);
@@ -208,16 +217,16 @@ static void lst_stress_realloc(void)
 	 * which is what we're testing here.
 	 */
 	TEST_CASE("force move with expansion");
-	for (int i = INITIAL_CAPACITY; i < 2 * INITIAL_CAPACITY; i++) {
+	for (unsigned int i = INITIAL_CAPACITY; i < 2 * INITIAL_CAPACITY; i++) {
 		TEST_CHECK((ret = fr_lst_insert(lst, &lst_array[i])) >= 0);
-		TEST_MSG("lst insert failed, iteration %d; returned %i - %s", i, ret, fr_strerror());
+		TEST_MSG("lst insert failed, iteration %u; returned %i - %s", i, ret, fr_strerror());
 		TEST_CHECK((ret = fr_heap_insert(hp, &hp_array[i])) >= 0);
-		TEST_MSG("heap insert failed, iteration %d; returned %i - %s", i, ret, fr_strerror());
+		TEST_MSG("heap insert failed, iteration %u; returned %i - %s", i, ret, fr_strerror());
 	}
 
 	/* pop the remaining 3 * INITIAL_CAPACITY / 2 values from each (they should all be equal) */
 	TEST_CASE("complete pop");
-	for (int i = 0; i < 3 * INITIAL_CAPACITY / 2; i++) {
+	for (unsigned int i = 0; i < 3 * INITIAL_CAPACITY / 2; i++) {
 		TEST_CHECK((from_lst = fr_lst_pop(lst)) != NULL);
 		TEST_CHECK((from_hp = fr_heap_pop(hp)) != NULL);
 		TEST_CHECK(lst_cmp(from_lst, from_hp) == 0);
@@ -248,11 +257,11 @@ static void lst_burn_in(void)
 	}
 
 	array = calloc(BURN_IN_OPS, sizeof(lst_thing));
-	for (int i = 0; i < BURN_IN_OPS; i++) array[i].data = rand() % 65537;
+	for (unsigned int i = 0; i < BURN_IN_OPS; i++) array[i].data = rand() % 65537;
 
-	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, index);
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx);
 
-	for (int i = 0; i < BURN_IN_OPS; i++) {
+	for (unsigned int i = 0; i < BURN_IN_OPS; i++) {
 		lst_thing	*ret_thing = NULL;
 		int		ret_insert = -1;
 
@@ -263,18 +272,18 @@ static void lst_burn_in(void)
 			element_count++;
 		} else {
 			switch (rand() % 3) {
-				case 0: /* insert */
-					goto insert;
+			case 0: /* insert */
+				goto insert;
 
-				case 1: /* pop */
-					ret_thing = fr_lst_pop(lst);
-					TEST_CHECK(ret_thing != NULL);
-					element_count--;
-					break;
-				case 2: /* peek */
-					ret_thing = fr_lst_peek(lst);
-					TEST_CHECK(ret_thing != NULL);
-					break;
+			case 1: /* pop */
+				ret_thing = fr_lst_pop(lst);
+				TEST_CHECK(ret_thing != NULL);
+				element_count--;
+				break;
+			case 2: /* peek */
+				ret_thing = fr_lst_peek(lst);
+				TEST_CHECK(ret_thing != NULL);
+				break;
 			}
 		}
 	}
@@ -289,7 +298,7 @@ static void lst_cycle(void)
 {
 	fr_lst_t	*lst;
 	int		i;
-	lst_thing	*array;
+	lst_thing	*values;
 	int		to_remove;
 	int 		inserted, removed;
 	int		ret;
@@ -302,20 +311,20 @@ static void lst_cycle(void)
 		done_init = true;
 	}
 
-	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, index);
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx);
 	TEST_CHECK(lst != NULL);
 
-	array = calloc(LST_CYCLE_SIZE, sizeof(lst_thing));
+	values = calloc(LST_CYCLE_SIZE, sizeof(lst_thing));
 
 	/*
 	 *	Initialise random values
 	 */
-	for (i = 0; i < LST_CYCLE_SIZE; i++) array[i].data = rand() % 65537;
+	populate_values(values, LST_CYCLE_SIZE);
 
 	start_insert = fr_time();
 	TEST_CASE("insertions");
 	for (i = 0; i < LST_CYCLE_SIZE; i++) {
-		TEST_CHECK((ret = fr_lst_insert(lst, &array[i])) >= 0);
+		TEST_CHECK((ret = fr_lst_insert(lst, &values[i])) >= 0);
 		TEST_MSG("insert failed, returned %i - %s", ret, fr_strerror());
 	}
 	TEST_CHECK(fr_lst_num_elements(lst) == LST_CYCLE_SIZE);
@@ -342,12 +351,12 @@ static void lst_cycle(void)
 	removed = 0;
 
 	for (i = 0; i < LST_CYCLE_SIZE; i++) {
-		if (array[i].index == 0) {
-			TEST_CHECK((ret = fr_lst_insert(lst, &array[i])) >= 0);
+		if (values[i].idx == 0) {
+			TEST_CHECK((ret = fr_lst_insert(lst, &values[i])) >= 0);
 			TEST_MSG("insert failed, returned %i - %s", ret, fr_strerror());
 			inserted++;
 		} else {
-			TEST_CHECK((ret = fr_lst_extract(lst, &array[i])) >= 0);
+			TEST_CHECK((ret = fr_lst_extract(lst, &values[i])) >= 0);
 			TEST_MSG("element %i removal failed, returned %i", i, ret);
 			removed++;
 		}
@@ -364,12 +373,12 @@ static void lst_cycle(void)
 	end = fr_time();
 
 	TEST_MSG_ALWAYS("\ncycle size: %d\n", LST_CYCLE_SIZE);
-	TEST_MSG_ALWAYS("insert: %2.2f ns\n", ((double)(start_remove - start_insert)) / NSEC);
-	TEST_MSG_ALWAYS("extract: %2.2f ns\n", ((double)(start_swap - start_remove)) / NSEC);
-	TEST_MSG_ALWAYS("swap: %2.2f ns\n", ((double)(end - start_swap)) / NSEC);
+	TEST_MSG_ALWAYS("insert: %2.2f s\n", ((double)(start_remove - start_insert)) / NSEC);
+	TEST_MSG_ALWAYS("extract: %2.2f s\n", ((double)(start_swap - start_remove)) / NSEC);
+	TEST_MSG_ALWAYS("swap: %2.2f s\n", ((double)(end - start_swap)) / NSEC);
 
 	talloc_free(lst);
-	free(array);
+	free(values);
 }
 
 static void lst_iter(void)
@@ -377,42 +386,99 @@ static void lst_iter(void)
 	fr_lst_t	*lst;
 	fr_lst_iter_t	iter;
 	lst_thing	values[NVALUES], *data;
-	fr_fast_rand_t	rand_ctx;
 
-	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, index);
+
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx);
 	TEST_CHECK(lst != NULL);
 
-	for (int i = 0; i < NVALUES; i++) {
-		values[i].data = i;
-		values[i].index = 0;
-		values[i].visited = false;
-	}
+	populate_values(values, NUM_ELEMENTS(values));
 
-	/* shuffle values before insertion, so the heap has to work to give them back in order */
-	rand_ctx.a = fr_rand();
-	rand_ctx.b = fr_rand();
-
-	for (int i = 0; i < NVALUES - 1; i++) {
-		int	j = fr_fast_rand(&rand_ctx) % (NVALUES - i);
-		int	temp = values[i].data;
-
-		values[i].data = values[j].data;
-		values[j].data = temp;
-	}
-
-	for (int i = 0; i < NVALUES; i++) fr_lst_insert(lst, &values[i]);
+	for (unsigned int i = 0; i < NUM_ELEMENTS(values); i++) fr_lst_insert(lst, &values[i]);
 
 	data = fr_lst_iter_init(lst, &iter);
 
-	for (int i = 0; i < NVALUES; i++, data = fr_lst_iter_next(lst, &iter)) {
+	for (unsigned int i = 0; i < NUM_ELEMENTS(values); i++, data = fr_lst_iter_next(lst, &iter)) {
 		TEST_CHECK(data != NULL);
 		TEST_CHECK(!data->visited);
-		TEST_CHECK(data->index > 0);
+		TEST_CHECK(data->idx > 0);
 		data->visited = true;
 	}
 
 	TEST_CHECK(data == NULL);
 	talloc_free(lst);
+}
+
+/** Benchmarks for LSTs vs heaps
+ *
+ */
+static void lst_heap_cmp(void)
+{
+	fr_lst_t	*lst;
+	fr_heap_t	*heap;
+
+	lst_thing	values[40];
+	fr_time_t	start_lst_alloc, end_lst_alloc, start_lst_insert, end_lst_insert, start_lst_pop, end_lst_pop;
+	fr_time_t	start_heap_alloc, end_heap_alloc, start_heap_insert, end_heap_insert, start_heap_pop, end_heap_pop;
+
+	unsigned int	i;
+
+	/*
+	 *	Check times for LST alloc, insert, pop
+	 */
+	populate_values(values, NUM_ELEMENTS(values));
+
+	start_lst_alloc = fr_time();
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx);
+	end_lst_alloc = fr_time();
+	TEST_CHECK(lst != NULL);
+
+	start_lst_insert = fr_time();
+	for (i = 0; i < NUM_ELEMENTS(values); i++) fr_lst_insert(lst, &values[i]);
+	end_lst_insert = fr_time();
+
+	start_lst_pop = fr_time();
+	for (i = 0; i < NUM_ELEMENTS(values); i++) {
+		TEST_CHECK(fr_lst_pop(lst) != NULL);
+		TEST_MSG("expected %zu elements remaining in the lst", NUM_ELEMENTS(values) - i);
+		TEST_MSG("failed extracting %u", i);
+	}
+	end_lst_pop = fr_time();
+
+	TEST_MSG_ALWAYS("\nlst size: %zu\n", NUM_ELEMENTS(values));
+	TEST_MSG_ALWAYS("alloc: %"PRIu64" ns\n", end_lst_alloc - start_lst_alloc);
+	TEST_MSG_ALWAYS("insert: %"PRIu64" ns\n", end_lst_insert - start_lst_insert);
+	TEST_MSG_ALWAYS("pop: %"PRIu64" ns\n", end_lst_pop - start_lst_pop);
+
+	talloc_free(lst);
+
+	/*
+	 *	Check times for heap alloc, insert, pop
+	 */
+	populate_values(values, NUM_ELEMENTS(values));
+
+	start_heap_alloc = fr_time();
+	heap = fr_heap_alloc(NULL, lst_cmp, lst_thing, idx, 0);
+	end_heap_alloc = fr_time();
+	TEST_CHECK(heap != NULL);
+
+	start_heap_insert = fr_time();
+	for (i = 0; i < NUM_ELEMENTS(values); i++) fr_heap_insert(heap, &values[i]);
+	end_heap_insert = fr_time();
+
+	start_heap_pop = fr_time();
+	for (i = 0; i < NUM_ELEMENTS(values); i++) {
+		TEST_CHECK(fr_heap_pop(heap) != NULL);
+		TEST_MSG("expected %zu elements remaining in the heap", NUM_ELEMENTS(values) - i);
+		TEST_MSG("failed extracting %u", i);
+	}
+	end_heap_pop = fr_time();
+
+	TEST_MSG_ALWAYS("\nheap size: %zu\n", NUM_ELEMENTS(values));
+	TEST_MSG_ALWAYS("alloc: %"PRIu64" ns\n", end_heap_alloc - start_heap_alloc);
+	TEST_MSG_ALWAYS("insert: %"PRIu64" ns\n", end_heap_insert - start_heap_insert);
+	TEST_MSG_ALWAYS("pop: %"PRIu64" ns\n", end_heap_pop - start_heap_pop);
+
+	talloc_free(heap);
 }
 
 #if 0
@@ -449,7 +515,7 @@ static void lst_validate(fr_lst_t *lst, bool show_items)
 	if (lst->num_elements) {
 		bucket_size_sum = 0;
 
-		for (int stack_index = 0; stack_index < depth; stack_index++)  {
+		for (lst_stack_idnex_t stack_index = 0; stack_index < depth; stack_index++)  {
 			lst_index bucket_size = bucket_upb(lst, stack_index) - bucket_lwb(lst, stack_index) + 1;
 			if (bucket_size > lst->num_elements) {
 				TEST_MSG_ALWAYS("bucket %d size %d is invalid\n", stack_index, bucket_size);
@@ -478,7 +544,7 @@ static void lst_validate(fr_lst_t *lst, bool show_items)
 	 * Otherwise, first, pivots from left to right (aside from the fictitious
 	 * one) should be in ascending order.
 	 */
-	for (int stack_index = 1; stack_index + 1 < depth; stack_index++) {
+	for (lst_stack_idnex_t stack_index = 1; stack_index + 1 < depth; stack_index++) {
 		lst_thing	*current_pivot = pivot(lst, stack_index);
 		lst_thing	*next_pivot = pivot(lst, stack_index + 1);
 
@@ -489,7 +555,7 @@ static void lst_validate(fr_lst_t *lst, bool show_items)
 	/*
 	 * Next, all non-fictitious pivots must correspond to non-null elements of the array.
 	 */
-	for (int stack_index = 1; stack_index < depth; stack_index++) {
+	for (lst_stack_idnex_t stack_index = 1; stack_index < depth; stack_index++) {
 		if (!pivot(lst, stack_index)) TEST_MSG_ALWAYS("pivot #%d refers to NULL", stack_index);
 	}
 
@@ -498,7 +564,7 @@ static void lst_validate(fr_lst_t *lst, bool show_items)
 	 * the bottom of the pivot stack. Here we *do* include the fictitious
 	 * pivot; we're just comparing indices.
 	 */
-	for (int stack_index = 0; stack_index + 1 < depth; stack_index++) {
+	for (lst_stack_idnex_t stack_index = 0; stack_index + 1 < depth; stack_index++) {
 		fr_lst_index_t current_pivot_index = stack_item(lst->s, stack_index);
 		fr_lst_index_t previous_pivot_index = stack_item(lst->s, stack_index + 1);
 
@@ -516,7 +582,7 @@ static void lst_validate(fr_lst_t *lst, bool show_items)
 	 * todo: this will find pivot ordering issues as well; get rid of that ultimately,
 	 * since pivot-pivot ordering errors are caught above.
 	 */
-	for (int stack_index = 0; stack_index < depth; stack_index++) {
+	for (lst_stack_idnex_t stack_index = 0; stack_index < depth; stack_index++) {
 		fr_lst_index_t	lwb, upb, pivot_index;
 		void		*pivot_item, *element;
 
@@ -558,5 +624,6 @@ TEST_LIST = {
 	{ "lst_burn_in",	lst_burn_in		},
 	{ "lst_cycle",		lst_cycle		},
 	{ "lst_iter",		lst_iter },
+	{ "lst_heap_cmp",	lst_heap_cmp },
 	{ NULL }
 };
