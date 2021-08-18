@@ -2292,7 +2292,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	}
 
 #ifdef LOCAL_PID
-	el->pids = fr_lst_talloc_alloc(el, fr_event_pid_cmp, fr_event_pid_t, lst_id, 0);
+	el->pids = fr_lst_talloc_alloc(el, fr_event_pid_cmp, fr_event_pid_t, lst_id);
 	if (!el->pids) {
 		fr_strerror_const("Failed allocating PID lst");
 		goto error;
