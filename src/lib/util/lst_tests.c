@@ -445,9 +445,9 @@ static void lst_heap_cmp(void)
 	end_lst_pop = fr_time();
 
 	TEST_MSG_ALWAYS("\nlst size: %zu\n", NUM_ELEMENTS(values));
-	TEST_MSG_ALWAYS("alloc: %"PRIu64" ns\n", end_lst_alloc - start_lst_alloc);
-	TEST_MSG_ALWAYS("insert: %"PRIu64" ns\n", end_lst_insert - start_lst_insert);
-	TEST_MSG_ALWAYS("pop: %"PRIu64" ns\n", end_lst_pop - start_lst_pop);
+	TEST_MSG_ALWAYS("alloc: %"PRIu64" μs\n", (end_lst_alloc - start_lst_alloc) / 1000);
+	TEST_MSG_ALWAYS("insert: %"PRIu64" μs\n", (end_lst_insert - start_lst_insert) / 1000);
+	TEST_MSG_ALWAYS("pop: %"PRIu64" μs\n", (end_lst_pop - start_lst_pop) / 1000);
 
 	talloc_free(lst);
 
@@ -457,7 +457,7 @@ static void lst_heap_cmp(void)
 	populate_values(values, NUM_ELEMENTS(values));
 
 	start_heap_alloc = fr_time();
-	heap = fr_heap_alloc(NULL, lst_cmp, lst_thing, idx, 0);
+	heap = fr_heap_alloc(NULL, lst_cmp, lst_thing, idx, NUM_ELEMENTS(values));
 	end_heap_alloc = fr_time();
 	TEST_CHECK(heap != NULL);
 
@@ -474,9 +474,9 @@ static void lst_heap_cmp(void)
 	end_heap_pop = fr_time();
 
 	TEST_MSG_ALWAYS("\nheap size: %zu\n", NUM_ELEMENTS(values));
-	TEST_MSG_ALWAYS("alloc: %"PRIu64" ns\n", end_heap_alloc - start_heap_alloc);
-	TEST_MSG_ALWAYS("insert: %"PRIu64" ns\n", end_heap_insert - start_heap_insert);
-	TEST_MSG_ALWAYS("pop: %"PRIu64" ns\n", end_heap_pop - start_heap_pop);
+	TEST_MSG_ALWAYS("alloc: %"PRIu64" μs\n", (end_heap_alloc - start_heap_alloc) / 1000);
+	TEST_MSG_ALWAYS("insert: %"PRIu64" μs\n", (end_heap_insert - start_heap_insert) / 1000);
+	TEST_MSG_ALWAYS("pop: %"PRIu64" μs\n", (end_heap_pop - start_heap_pop) / 1000);
 
 	talloc_free(heap);
 }

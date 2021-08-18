@@ -83,17 +83,27 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
 	 *      element count, assume expanding past
 	 *      that size is going to be the uncommon
 	 *	case.
+	 *
+	 *	We seem to need two headers here otherwise
+	 *	we overflow the pool, and we get a
+	 *	significant slowdown in allocation performance.
 	 */
 	if (init) {
-		hp = talloc_zero_pooled_object(ctx, fr_heap_t, 1, sizeof(void *) * init);
+		hp = talloc_pooled_object(ctx, fr_heap_t, 2, sizeof(void *) * init);
 	} else {
 		init = INITIAL_CAPACITY;
-		hp = talloc_zero(ctx, fr_heap_t);
+		hp = talloc(ctx, fr_heap_t);
 	}
 	if (unlikely(!hp)) return NULL;
 
-	hp->size = init;
-	hp->p = talloc_array(hp, void *, hp->size);
+	*hp = (fr_heap_t){
+		.size = init,
+		.p = talloc_array(hp, void *, init),
+		.type = type,
+		.cmp = cmp,
+		.offset = offset
+	};
+
 	if (unlikely(!hp->p)) {
 		talloc_free(hp);
 		return NULL;
@@ -106,9 +116,6 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
 	 *	into the heap.
 	 */
 	hp->p[0] = (void *)UINTPTR_MAX;
-	hp->type = type;
-	hp->cmp = cmp;
-	hp->offset = offset;
 
 	return hp;
 }

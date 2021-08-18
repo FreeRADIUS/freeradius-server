@@ -231,8 +231,11 @@ fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, siz
 	 *	If we pre-allocated the array of elements
 	 *	we'd end up wasting that memory as soon as
 	 *	we needed to expand the array.
+	 *
+	 *	Pre-allocating three chunks appears to be
+	 *	the optimum.
 	 */
-	lst = talloc_zero_pooled_object(ctx, fr_lst_t, 2, (INITIAL_STACK_CAPACITY * sizeof(fr_lst_index_t)));
+	lst = talloc_zero_pooled_object(ctx, fr_lst_t, 3, (INITIAL_STACK_CAPACITY * sizeof(fr_lst_index_t)));
 	if (unlikely(!lst)) return NULL;
 
 	lst->capacity = INITIAL_CAPACITY;
