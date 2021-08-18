@@ -6,13 +6,12 @@
 static bool fr_heap_check(fr_heap_t *hp, void *data)
 {
 	unsigned int i;
+	heap_t *h = *hp;
 
-	HEAP_DEREF(hp);
+	if (!h || (h->num_elements == 0)) return false;
 
-	if (!hp || (hp->num_elements == 0)) return false;
-
-	for (i = 0; i < hp->num_elements; i++) {
-		if (hp->p[i + 1] == data) {
+	for (i = 0; i < h->num_elements; i++) {
+		if (h->p[i + 1] == data) {
 			return true;
 		}
 	}

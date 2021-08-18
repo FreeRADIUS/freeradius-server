@@ -47,7 +47,7 @@ typedef int8_t (*fr_heap_cmp_t)(void const *a, void const *b);
 /** The main heap structure
  *
  */
-typedef struct fr_heap_s fr_heap_t;
+typedef struct fr_heap_s * fr_heap_t;
 
 size_t fr_heap_pre_alloc_size(unsigned int count);
 

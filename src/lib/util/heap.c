@@ -47,10 +47,9 @@ struct fr_heap_s {
 
 	void		*p[];			//!< Array of nodes.
 };
+typedef struct fr_heap_s heap_t;
 
 #define INITIAL_CAPACITY	2048
-
-#define HEAP_DEREF(_p)	_p = *((fr_heap_t **)_p)
 
 /*
  *	First node in a heap is element 1. Children of i are 2i and
@@ -62,7 +61,7 @@ struct fr_heap_s {
 /* #define HEAP_RIGHT(_x) (2 * (_x) + 1 ) */
 #define	HEAP_SWAP(_a, _b) { void *_tmp = _a; _a = _b; _b = _tmp; }
 
-static void fr_heap_bubble(fr_heap_t *hp, fr_heap_index_t child);
+static void fr_heap_bubble(heap_t *h, fr_heap_index_t child);
 
 /** Return how many bytes need to be allocated to hold a heap of a given size
  *
@@ -78,12 +77,13 @@ size_t fr_heap_pre_alloc_size(unsigned int count)
 
 fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, size_t offset, unsigned int init)
 {
-	fr_heap_t *hp, **hp_p;
+	fr_heap_t *hp;
+	heap_t *h;
 
 	if (!init) init = INITIAL_CAPACITY;
 
-	hp_p = talloc(ctx, fr_heap_t *);
-	if (unlikely(!hp_p)) return NULL;
+	hp = talloc(ctx, fr_heap_t);
+	if (unlikely(!hp)) return NULL;
 
 	/*
 	 *	For small heaps (< 40 elements) the
@@ -91,11 +91,11 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
 	 *	a 100% performance increase
 	 *	(talloc headers are big);
 	 */
-	hp = (fr_heap_t *)talloc_array(ctx, uint8_t, sizeof(fr_heap_t) + (sizeof(void *) * (init + 1)));
+	h = (heap_t *)talloc_array(ctx, uint8_t, sizeof(fr_heap_t) + (sizeof(void *) * (init + 1)));
 	if (unlikely(!hp)) return NULL;
 	talloc_set_type(hp, fr_heap_t);
 
-	*hp = (fr_heap_t){
+	*h = (heap_t){
 		.size = init,
 		.type = type,
 		.cmp = cmp,
@@ -108,19 +108,19 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
 	 *      that the data isn't currently inserted
 	 *	into the heap.
 	 */
-	hp->p[0] = (void *)UINTPTR_MAX;
+	h->p[0] = (void *)UINTPTR_MAX;
 
-	*hp_p = hp;
+	*hp = h;
 
-	return (fr_heap_t *)hp_p;
+	return hp;
 }
 
-static inline CC_HINT(always_inline, nonnull) fr_heap_index_t index_get(fr_heap_t *hp, void *data)
+static inline CC_HINT(always_inline, nonnull) fr_heap_index_t index_get(heap_t *hp, void *data)
 {
 	return *((fr_heap_index_t const *)(((uint8_t const *)data) + hp->offset));
 }
 
-static inline CC_HINT(always_inline, nonnull) void index_set(fr_heap_t *hp, void *data, fr_heap_index_t idx)
+static inline CC_HINT(always_inline, nonnull) void index_set(heap_t *hp, void *data, fr_heap_index_t idx)
 {
 	*((fr_heap_index_t *)(((uint8_t *)data) + hp->offset)) = idx;
 }
@@ -149,27 +149,25 @@ static inline CC_HINT(always_inline, nonnull) void index_set(fr_heap_t *hp, void
  */
 int fr_heap_insert(fr_heap_t *hp, void *data)
 {
-	fr_heap_t **hp_p = (fr_heap_t **)hp;
+	heap_t *h = *hp;
 	fr_heap_index_t child;
 
-	HEAP_DEREF(hp);
-
-	child = index_get(hp, data);
+	child = index_get(h, data);
 	if (fr_heap_entry_inserted(child)) {
 		fr_strerror_const("Node is already in the heap");
 		return -1;
 	}
 
-	child = hp->num_elements + 1;	/* Avoid using index 0 */
+	child = h->num_elements + 1;	/* Avoid using index 0 */
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
-	if (hp->type) (void)_talloc_get_type_abort(data, hp->type, __location__);
+	if (h->type) (void)_talloc_get_type_abort(data, h->type, __location__);
 #endif
 
 	/*
 	 *	Heap is full.  Double it's size.
 	 */
-	if (child > hp->size) {
+	if (child > h->size) {
 		unsigned int	n_size;
 
 		/*
@@ -178,37 +176,37 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 		 *	integer overflow.  Tho TBH, that should really never
 		 *	happen.
 		 */
-		if (unlikely(hp->size > (UINT_MAX - hp->size))) {
-			if (hp->size == UINT_MAX) {
+		if (unlikely(h->size > (UINT_MAX - h->size))) {
+			if (h->size == UINT_MAX) {
 				fr_strerror_const("Heap is full");
 				return -1;
 			} else {
 				n_size = UINT_MAX;
 			}
 		} else {
-			n_size = hp->size * 2;
+			n_size = h->size * 2;
 		}
 
-		hp = (fr_heap_t *)talloc_realloc(NULL, hp, uint8_t, sizeof(fr_heap_t) + (sizeof(void *) * (n_size + 1)));
-		if (unlikely(!hp)) {
+		h = (heap_t *)talloc_realloc(NULL, h, uint8_t, sizeof(fr_heap_t) + (sizeof(void *) * (n_size + 1)));
+		if (unlikely(!h)) {
 			fr_strerror_printf("Failed expanding heap to %u elements (%u bytes)",
 					   n_size, (n_size * (unsigned int)sizeof(void *)));
 			return -1;
 		}
-		talloc_set_type(hp, fr_heap_t);
-		hp->size = n_size;
-		*hp_p = hp;
+		talloc_set_type(h, fr_heap_t);
+		h->size = n_size;
+		*hp = h;
 	}
 
-	hp->p[child] = data;
-	hp->num_elements++;
+	h->p[child] = data;
+	h->num_elements++;
 
- 	fr_heap_bubble(hp, child);
+ 	fr_heap_bubble(h, child);
 
 	return 0;
 }
 
-static inline CC_HINT(always_inline) void fr_heap_bubble(fr_heap_t *hp, fr_heap_index_t child)
+static inline CC_HINT(always_inline) void fr_heap_bubble(heap_t *h, fr_heap_index_t child)
 {
 	if (!fr_cond_assert(child > 0)) return;
 
@@ -221,16 +219,16 @@ static inline CC_HINT(always_inline) void fr_heap_bubble(fr_heap_t *hp, fr_heap_
 		/*
 		 *	Parent is smaller than the child.  We're done.
 		 */
-		if (hp->cmp(hp->p[parent], hp->p[child]) < 0) break;
+		if (h->cmp(h->p[parent], h->p[child]) < 0) break;
 
 		/*
 		 *	Child is smaller than the parent, repeat.
 		 */
-		HEAP_SWAP(hp->p[child], hp->p[parent]);
-		OFFSET_SET(hp, child);
+		HEAP_SWAP(h->p[child], h->p[parent]);
+		OFFSET_SET(h, child);
 		child = parent;
 	}
-	OFFSET_SET(hp, child);
+	OFFSET_SET(h, child);
 }
 
 /** Remove a node from the heap
@@ -243,46 +241,45 @@ static inline CC_HINT(always_inline) void fr_heap_bubble(fr_heap_t *hp, fr_heap_
  */
 int fr_heap_extract(fr_heap_t *hp, void *data)
 {
+	heap_t *h = *hp;
 	fr_heap_index_t parent, child, max;
-
-	HEAP_DEREF(hp);
 
 	/*
 	 *	Extract element.
 	 */
-	parent = index_get(hp, data);
+	parent = index_get(h, data);
 
 	/*
 	 *	Out of bounds.
 	 */
-	if (unlikely((parent == 0) || (parent > hp->num_elements))) {
-		fr_strerror_printf("Heap parent (%i) out of bounds (0-%i)", parent, hp->num_elements);
+	if (unlikely((parent == 0) || (parent > h->num_elements))) {
+		fr_strerror_printf("Heap parent (%i) out of bounds (0-%i)", parent, h->num_elements);
 		return -1;
 	}
 
-	if (unlikely(data != hp->p[parent])) {
+	if (unlikely(data != h->p[parent])) {
 		fr_strerror_printf("Invalid heap index.  Expected data %p at offset %i, got %p", data,
-				   parent, hp->p[parent]);
+				   parent, h->p[parent]);
 		return -1;
 	}
-	max = hp->num_elements;
+	max = h->num_elements;
 
 	child = HEAP_LEFT(parent);
-	OFFSET_RESET(hp, parent);
+	OFFSET_RESET(h, parent);
 	while (child <= max) {
 		/*
 		 *	Maybe take the right child.
 		 */
 		if ((child != max) &&
-		    (hp->cmp(hp->p[child + 1], hp->p[child]) < 0)) {
+		    (h->cmp(h->p[child + 1], h->p[child]) < 0)) {
 			child = child + 1;
 		}
-		hp->p[parent] = hp->p[child];
-		OFFSET_SET(hp, parent);
+		h->p[parent] = h->p[child];
+		OFFSET_SET(h, parent);
 		parent = child;
 		child = HEAP_LEFT(child);
 	}
-	hp->num_elements--;
+	h->num_elements--;
 
 	/*
 	 *	We didn't end up at the last element in the heap.
@@ -293,9 +290,9 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 		 *	Fill hole with last entry and bubble up,
 		 *	reusing the insert code
 		 */
-		hp->p[parent] = hp->p[max];
+		h->p[parent] = h->p[max];
 
-		fr_heap_bubble(hp, parent);
+		fr_heap_bubble(h, parent);
 	}
 
 	return 0;
@@ -303,38 +300,37 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 
 void *fr_heap_peek(fr_heap_t *hp)
 {
-	HEAP_DEREF(hp);
+	heap_t *h = *hp;
 
-	if (hp->num_elements == 0) return NULL;
+	if (h->num_elements == 0) return NULL;
 
-	return hp->p[1];
+	return h->p[1];
 }
 
 void *fr_heap_pop(fr_heap_t *hp)
 {
-	fr_heap_t **hp_p = (fr_heap_t **)hp;
+	heap_t *h = *hp;
+
 	void *data;
 
-	HEAP_DEREF(hp);
+	if (h->num_elements == 0) return NULL;
 
-	if (hp->num_elements == 0) return NULL;
-
-	data = hp->p[1];
-	if (unlikely(fr_heap_extract((fr_heap_t *)hp_p, data) < 0)) return NULL;
+	data = h->p[1];
+	if (unlikely(fr_heap_extract(hp, data) < 0)) return NULL;
 
 	return data;
 }
 
 void *fr_heap_peek_tail(fr_heap_t *hp)
 {
-	HEAP_DEREF(hp);
+	heap_t *h = *hp;
 
-	if (hp->num_elements == 0) return NULL;
+	if (h->num_elements == 0) return NULL;
 
 	/*
 	 *	If this is NULL, we have a problem.
 	 */
-	return hp->p[hp->num_elements];
+	return h->p[h->num_elements];
 }
 
 /** Return the number of elements in the heap
@@ -343,9 +339,11 @@ void *fr_heap_peek_tail(fr_heap_t *hp)
  */
 unsigned int fr_heap_num_elements(fr_heap_t *hp)
 {
-	HEAP_DEREF(hp);
+	heap_t *h = *hp;
 
-	return hp->num_elements;
+	if (h->num_elements == 0) return NULL;
+
+	return h->num_elements;
 }
 
 /** Iterate over entries in heap
@@ -361,13 +359,13 @@ unsigned int fr_heap_num_elements(fr_heap_t *hp)
  */
 void *fr_heap_iter_init(fr_heap_t *hp, fr_heap_iter_t *iter)
 {
-	HEAP_DEREF(hp);
+	heap_t *h = *hp;
 
 	*iter = 1;
 
-	if (hp->num_elements == 0) return NULL;
+	if (h->num_elements == 0) return NULL;
 
-	return hp->p[1];
+	return h->p[1];
 }
 
 /** Get the next entry in a heap
@@ -383,10 +381,10 @@ void *fr_heap_iter_init(fr_heap_t *hp, fr_heap_iter_t *iter)
  */
 void *fr_heap_iter_next(fr_heap_t *hp, fr_heap_iter_t *iter)
 {
-	HEAP_DEREF(hp);
+	heap_t *h = *hp;
 
-	if ((*iter + 1) > hp->num_elements) return NULL;
+	if ((*iter + 1) > h->num_elements) return NULL;
 	*iter += 1;
 
-	return hp->p[*iter];
+	return h->p[*iter];
 }
