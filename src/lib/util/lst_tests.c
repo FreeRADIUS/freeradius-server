@@ -426,7 +426,7 @@ static void queue_cmp(unsigned int count)
 	 *	Check times for LST alloc, insert, pop
 	 */
 	{
-		fr_time_t	start_alloc, end_alloc, start_insert, end_insert, start_pop, end_pop;
+		fr_time_t	start_alloc, end_alloc, start_insert, end_insert, start_pop, end_pop, end_pop_first = 0;
 
 		populate_values(values, count);
 
@@ -442,6 +442,8 @@ static void queue_cmp(unsigned int count)
 		start_pop = fr_time();
 		for (i = 0; i < count; i++) {
 			TEST_CHECK(fr_lst_pop(lst) != NULL);
+			if (i == 0) end_pop_first = fr_time();
+
 			TEST_MSG("expected %u elements remaining in the lst", count - i);
 			TEST_MSG("failed extracting %u", i);
 		}
@@ -450,6 +452,7 @@ static void queue_cmp(unsigned int count)
 		TEST_MSG_ALWAYS("\nlst size: %u\n", count);
 		TEST_MSG_ALWAYS("alloc: %"PRIu64" μs\n", (end_alloc - start_alloc) / 1000);
 		TEST_MSG_ALWAYS("insert: %"PRIu64" μs\n", (end_insert - start_insert) / 1000);
+		TEST_MSG_ALWAYS("pop-first: %"PRIu64" μs\n", (end_pop_first - start_pop) / 1000);
 		TEST_MSG_ALWAYS("pop: %"PRIu64" μs\n", (end_pop - start_pop) / 1000);
 
 		talloc_free(lst);
@@ -459,7 +462,7 @@ static void queue_cmp(unsigned int count)
 	 *	Check times for heap alloc, insert, pop
 	 */
 	{
-		fr_time_t	start_alloc, end_alloc, start_insert, end_insert, start_pop, end_pop;
+		fr_time_t	start_alloc, end_alloc, start_insert, end_insert, start_pop, end_pop, end_pop_first = 0;
 
 		populate_values(values, count);
 
@@ -475,6 +478,8 @@ static void queue_cmp(unsigned int count)
 		start_pop = fr_time();
 		for (i = 0; i < count; i++) {
 			TEST_CHECK(fr_heap_pop(heap) != NULL);
+			if (i == 0) end_pop_first = fr_time();
+
 			TEST_MSG("expected %u elements remaining in the heap", count - i);
 			TEST_MSG("failed extracting %u", i);
 		}
@@ -483,6 +488,7 @@ static void queue_cmp(unsigned int count)
 		TEST_MSG_ALWAYS("\nheap size: %u\n", count);
 		TEST_MSG_ALWAYS("alloc: %"PRIu64" μs\n", (end_alloc - start_alloc) / 1000);
 		TEST_MSG_ALWAYS("insert: %"PRIu64" μs\n", (end_insert - start_insert) / 1000);
+		TEST_MSG_ALWAYS("pop-first: %"PRIu64" μs\n", (end_pop_first - start_pop) / 1000);
 		TEST_MSG_ALWAYS("pop: %"PRIu64" μs\n", (end_pop - start_pop) / 1000);
 	}
 
@@ -492,7 +498,7 @@ static void queue_cmp(unsigned int count)
 	{
 		lst_thing	**array;
 		populate_values(values, count);
-		fr_time_t	start_alloc, end_alloc, start_insert, end_insert, start_pop, end_pop;
+		fr_time_t	start_alloc, end_alloc, start_insert, end_insert, start_pop, end_pop, end_pop_first = 0;
 
 		start_alloc = fr_time();
 		array = talloc_array(NULL, lst_thing *, count);
@@ -515,14 +521,16 @@ static void queue_cmp(unsigned int count)
 					low = array[j];
 				}
 			}
-
 			if (low) array[idx] = NULL;
+
+			if (i == 0) end_pop_first = fr_time();
 		}
 		end_pop = fr_time();
 
 		TEST_MSG_ALWAYS("\narray size: %u\n", count);
 		TEST_MSG_ALWAYS("alloc: %"PRIu64" μs\n", (end_alloc - start_alloc) / 1000);
 		TEST_MSG_ALWAYS("insert: %"PRIu64" μs\n", (end_insert - start_insert) / 1000);
+		TEST_MSG_ALWAYS("pop-first: %"PRIu64" μs\n", (end_pop_first - start_pop) / 1000);
 		TEST_MSG_ALWAYS("pop: %"PRIu64" μs\n", (end_pop - start_pop) / 1000);
 
 		talloc_free(array);
