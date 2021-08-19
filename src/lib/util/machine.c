@@ -44,7 +44,7 @@ struct fr_machine_s {
 	int			paused;		//!< are transitions paused?
 	bool			dead;
 
-	fr_machine_state_inst_t state[0];	//!< all of the state transitions
+	fr_machine_state_inst_t state[];	//!< all of the state transitions
 };
 
 typedef struct {
