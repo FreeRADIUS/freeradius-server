@@ -33,41 +33,45 @@ typedef void (*fr_machine_func_t)(fr_machine_t *m, void *uctx);
 
 typedef int (*fr_machine_process_t)(fr_machine_t *m, void *uctx);
 
+typedef int (*fr_machine_signal_t)(fr_machine_t *m, int sig, void *uctx);
+
 typedef void (*fr_machine_hook_func_t)(fr_machine_t *m, int, int, void *uctx);
 
 struct fr_machine_state_s {
 	char const		*name;			//!< state name
-	int			number;			//!< automatically generated number
+	int			number;			//!< enum for this state machine
 	fr_machine_func_t	enter;			//!< run this when entering the state
 	fr_machine_process_t	process;		//!< run this to process the current state
 	fr_machine_func_t	exit;			//!< run this when exiting the state
-//	fr_machine_state_t	out[];			//!< allowed OUT transitions
+	fr_machine_signal_t	signal;			//!< to send async signals to the state machine
+	bool			allowed[];		//!< allow outbound transitions
 };
 
+#define ALLOW(_x) .allowed[_x] = true
+
 typedef struct {
-	int			max_state;		//!< 1..max_number are permitted
+	int			max_state;		//!< 1..max states are permitted
+	int			max_signal;		//!< 1..max signals are permitted
 	int			init;			//!< state to run on init
 	int			free;			//!< state to run on free
-	fr_machine_state_t	state[];
+	fr_machine_state_t	state[];		//!< states
 } fr_machine_def_t;
 
 fr_machine_t *fr_machine_alloc(TALLOC_CTX *ctx, fr_machine_def_t const *def, void *uctx);
 
-/** Process the state machine
- *
- *  This funtion should be called from the "user" of the machine.
- */
 int fr_machine_process(fr_machine_t *m);
 
 int fr_machine_transition(fr_machine_t *m, int state);
 
-int fr_machine_current(fr_machine_t *m);
-
-char const *fr_machine_state_name(fr_machine_t *m, int state);
+int fr_machine_signal(fr_machine_t *m, int signal);
 
 void fr_machine_pause(fr_machine_t *m);
 
 void fr_machine_resume(fr_machine_t *m);
+
+int fr_machine_current(fr_machine_t *m);
+
+char const *fr_machine_state_name(fr_machine_t *m, int state);
 
 typedef enum {
 	FR_MACHINE_ENTER,

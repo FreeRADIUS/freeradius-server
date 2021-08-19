@@ -29,6 +29,7 @@ typedef struct {
 	fr_dlist_head_t		enter[2];	//!< pre/post enter hooks
 	fr_dlist_head_t		process[2];	//!< pre/post process hooks
 	fr_dlist_head_t		exit[2];	//!< pre/post exit hooks
+	fr_dlist_head_t		signal[2];	//!< pre/post signal hooks
 } fr_machine_state_inst_t;
 
 /** Hooks
@@ -186,6 +187,7 @@ fr_machine_t *fr_machine_alloc(TALLOC_CTX *ctx, fr_machine_def_t const *def, voi
 			fr_dlist_init(&state->enter[j], fr_machine_hook_t, dlist);
 			fr_dlist_init(&state->process[j], fr_machine_hook_t, dlist);
 			fr_dlist_init(&state->exit[j], fr_machine_hook_t, dlist);
+			fr_dlist_init(&state->signal[j], fr_machine_hook_t, dlist);
 		}
 	}
 
@@ -218,6 +220,38 @@ fr_machine_t *fr_machine_alloc(TALLOC_CTX *ctx, fr_machine_def_t const *def, voi
 	if (next) fr_machine_transition(m, next);
 
 	return m;
+}
+
+
+static int state_post(fr_machine_t *m, int state)
+{
+#ifndef NDEBUG
+	fr_machine_state_inst_t *current = m->current;
+#endif
+
+	/*
+	 *	The called function requested that we transition to
+	 *	the "free" state.  Don't do that, but instead return
+	 *	an error to the caller.  The caller MUST do nothing
+	 *	other than free the state machine.
+	 */
+	if (state == m->def->free) {
+		m->dead = true;
+		return -1;
+	}
+
+	/*
+	 *	This is an assertion, because the state machine itself
+	 *	shouldn't be broken.
+	 */
+	fr_assert(current->def->allowed[state]);
+
+	/*
+	 *	Transition to the new state, and pause the transition if necessary.
+	 */
+	fr_machine_transition(m, state);
+
+	return state;
 }
 
 
@@ -261,23 +295,7 @@ int fr_machine_process(fr_machine_t *m)
 	 */
 	if (state == 0) return 0;
 
-	/*
-	 *	The called function requested that we transition to
-	 *	the "free" state.  Don't do that, but instead return
-	 *	an error to the caller.  The caller MUST do nothing
-	 *	other than free the state machine.
-	 */
-	if (state == m->def->free) {
-		m->dead = true;
-		return -1;
-	}
-
-	/*
-	 *	Transition to the new state.
-	 */
-	fr_machine_transition(m, state);
-
-	return state;
+	return state_post(m, state);
 }
 
 /** Transition to a new state
@@ -307,7 +325,7 @@ int fr_machine_transition(fr_machine_t *m, int state)
 	/*
 	 *	Bad states are not allowed.
 	 */
-	if ((state < 0) || (state > m->def->max_state)) return -1;
+	if ((state <= 0) || (state > m->def->max_state)) return -1;
 
 	/*
 	 *	If we are not in a state, we cannot transition to
@@ -320,15 +338,10 @@ int fr_machine_transition(fr_machine_t *m, int state)
 	 */
 	if (current->def->number == state) return 0;
 
-#if 0
 	/*
-	 *	Asked to do an illegal transition, that's an error.
+	 *	Check if the transitions are allowed.
 	 */
-	if (!current->out[state]) {
-		fr_assert(0);
-		return;
-	}
-#endif
+	if (!current->def->allowed[state]) return -1;
 
 	/*
 	 *	We cannot transition from inside of a particular
@@ -446,6 +459,10 @@ void *fr_machine_hook(fr_machine_t *m, TALLOC_CTX *ctx, int state_to_hook, fr_ma
 		head = &state->exit[sense];
 		break;
 
+	case FR_MACHINE_SIGNAL:
+		head = &state->signal[sense];
+		break;
+
 	default:
 		return NULL;
 	}
@@ -502,3 +519,52 @@ void fr_machine_resume(fr_machine_t *m)
 
 	state_transition(m, state, (void *) fr_machine_resume);
 }
+
+/** Send an async signal to the state machine.
+ *
+ * @param m	The state machine
+ * @param signal the signal to send to the state machne
+ * @return
+ *	- 0 for "no transition has occured"
+ *	- >0 for "we are in a new state".
+ *	-<0 for "error, you should tear down the state machine".
+ *
+ *  The signal function can return a new state.  i.e. some signals get
+ *  ignored, and others cause transitions.
+ */
+int fr_machine_signal(fr_machine_t *m, int signal)
+{
+	int old, state;
+	fr_machine_state_inst_t *current = m->current;
+
+	if (m->dead) return -1;
+
+	/*
+	 *	Bad signals are not allowed.
+	 */
+	if ((signal <= 0) || (signal > m->def->max_signal)) return -1;
+
+	m->in_handler = (void *) fr_machine_signal;
+	old = current->def->number;
+	state = 0;
+
+	/*
+	 *	Note that the callbacks (for laziness) take the
+	 *	_current_ state, and the _signal_.  Not the _new_
+	 *	state!
+	 */
+	call_hook(m, &current->signal[PRE], old, signal);
+	if (current->def->signal) state = current->def->signal(m, signal, m->uctx);
+	call_hook(m, &current->signal[POST], old, signal);
+
+	m->in_handler = NULL;
+
+	/*
+	 *	No changes.  Tell the caller to wait for something
+	 *	else to signal a transition.
+	 */
+	if (state == 0) return 0;
+
+	return state_post(m, state);
+}
+
