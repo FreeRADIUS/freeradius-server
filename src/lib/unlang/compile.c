@@ -3445,10 +3445,13 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 			cf_log_err(ci, "The \"%s\" module does not have a '%s %s' method.",
 				   inst->module->name,
 				   unlang_ctx->section_name1, unlang_ctx->section_name2);
-		} else {
+		} else if (unlang_ctx->section_name1) {
 			cf_log_err(ci, "The \"%s\" module does not have a '%s' method.",
 				   inst->module->name,
 				   unlang_ctx->section_name1);
+		} else {
+			cf_log_err(ci, "The \"%s\" module does not have any method. e.g: %s.method",
+				   inst->module->name, inst->module->name);
 		}
 
 		return NULL;
