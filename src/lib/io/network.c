@@ -77,7 +77,7 @@ typedef struct {
 
 	fr_network_t		*nr;			//!< O(N) issues in talloc
 	int			number;			//!< unique ID
-	fr_heap_index_t		heap_id;		//!< for the sockets_by_num heap
+	int			heap_id;		//!< for the sockets_by_num heap
 
 	fr_event_filter_t	filter;			//!< what type of filter it is
 

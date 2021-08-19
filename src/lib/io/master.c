@@ -27,6 +27,7 @@
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/lst.h>
 
 #include <freeradius-devel/unlang/base.h>
 
@@ -38,8 +39,8 @@ typedef struct {
 	fr_network_t			*nr;				//!< network for the master socket
 
 	fr_trie_t			*trie;				//!< trie of clients
-	fr_heap_t			*pending_clients;		//!< heap of pending clients
-	fr_heap_t			*alive_clients;			//!< heap of active clients
+	fr_lst_t			*pending_clients;		//!< LST of pending clients
+	fr_lst_t			*alive_clients;			//!< LST of active clients
 
 	fr_listen_t			*listen;			//!< The master IO path
 	fr_listen_t			*child;				//!< The child (app_io) IO path
@@ -54,7 +55,7 @@ typedef struct {
  *
  */
 typedef struct {
-	int			heap_id;
+	fr_lst_index_t		lst_id;
 	uint32_t		priority;
 	fr_time_t		recv_time;
 	fr_io_track_t		*track;
@@ -100,7 +101,7 @@ struct fr_io_client_s {
 	fr_event_timer_t const		*ev;		//!< when we clean up the client
 	fr_rb_tree_t			*table;		//!< tracking table for packets
 
-	fr_heap_t			*pending;	//!< pending packets for this client
+	fr_lst_t			*pending;	//!< pending packets for this client
 	fr_hash_table_t			*addresses;	//!< list of src/dst addresses used by this client
 
 	pthread_mutex_t			mutex;		//!< for parent / child signaling
@@ -168,8 +169,8 @@ static int track_dedup_free(fr_io_track_t *track)
 }
 
 /*
- *  Return negative numbers to put 'one' at the top of the heap.
- *  Return positive numbers to put 'two' at the top of the heap.
+ *  Return negative numbers to put 'one' at the top of the LST.
+ *  Return positive numbers to put 'two' at the top of the LST.
  */
 static int8_t pending_packet_cmp(void const *one, void const *two)
 {
@@ -198,7 +199,7 @@ static int8_t pending_packet_cmp(void const *one, void const *two)
 }
 
 /*
- *	Order clients in the pending_clients heap, based on the
+ *	Order clients in the pending_clients LST, based on the
  *	packets that they contain.
  */
 static int8_t pending_client_cmp(void const *one, void const *two)
@@ -209,8 +210,8 @@ static int8_t pending_client_cmp(void const *one, void const *two)
 	fr_io_client_t const *c1 = talloc_get_type_abort_const(one, fr_io_client_t);
 	fr_io_client_t const *c2 = talloc_get_type_abort_const(two, fr_io_client_t);
 
-	a = fr_heap_peek(c1->pending);
-	b = fr_heap_peek(c2->pending);
+	a = fr_lst_peek(c1->pending);
+	b = fr_lst_peek(c2->pending);
 
 	fr_assert(a != NULL);
 	fr_assert(b != NULL);
@@ -319,7 +320,7 @@ static fr_io_pending_packet_t *pending_packet_pop(fr_io_thread_t *thread)
 	fr_io_client_t *client;
 	fr_io_pending_packet_t *pending;
 
-	client = fr_heap_pop(thread->pending_clients);
+	client = fr_lst_pop(thread->pending_clients);
 	if (!client) {
 		/*
 		 *	99% of the time we don't have pending clients.
@@ -331,15 +332,15 @@ static fr_io_pending_packet_t *pending_packet_pop(fr_io_thread_t *thread)
 		return NULL;
 	}
 
-	pending = fr_heap_pop(client->pending);
+	pending = fr_lst_pop(client->pending);
 	fr_assert(pending != NULL);
 
 	/*
 	 *	If the client has more packets pending, add it back to
-	 *	the heap.
+	 *	the LST.
 	 */
-	if (fr_heap_num_elements(client->pending) > 0) {
-		if (fr_heap_insert(thread->pending_clients, client) < 0) {
+	if (fr_lst_num_elements(client->pending) > 0) {
+		if (fr_lst_insert(thread->pending_clients, client) < 0) {
 			fr_assert(0 == 1);
 		}
 	}
@@ -547,11 +548,11 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	connection->client->thread = thread;
 
 	/*
-	 *	Create a heap for packets which are pending for this
+	 *	Create an LST for packets which are pending for this
 	 *	client.
 	 */
-	MEM(connection->client->pending = fr_heap_alloc(connection->client, pending_packet_cmp,
-							 fr_io_pending_packet_t, heap_id, 0));
+	MEM(connection->client->pending = fr_lst_alloc(connection->client, pending_packet_cmp,
+							 fr_io_pending_packet_t, lst_id));
 
 	/*
 	 *	Clients for connected sockets are always a /32 or /128.
@@ -1033,7 +1034,7 @@ static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_client_t *client,
 	 *	Insert the pending packet for this client.  If it
 	 *	fails, silently discard the packet.
 	 */
-	if (fr_heap_insert(client->pending, pending) < 0) {
+	if (fr_lst_insert(client->pending, pending) < 0) {
 		talloc_free(pending);
 		return NULL;
 	}
@@ -1075,12 +1076,12 @@ static int _client_live_free(fr_io_client_t *client)
 {
 	fr_assert(client->in_trie);
 	fr_assert(!client->connection);
-	fr_assert(fr_heap_num_elements(client->thread->alive_clients) > 0);
+	fr_assert(fr_lst_num_elements(client->thread->alive_clients) > 0);
 
 	if (client->pending) TALLOC_FREE(client->pending);
 
 	(void) fr_trie_remove_by_key(client->thread->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
-	(void) fr_heap_extract(client->thread->alive_clients, client);
+	(void) fr_lst_extract(client->thread->alive_clients, client);
 
 	return 0;
 }
@@ -1136,7 +1137,7 @@ redo:
 			return -1;
 		}
 
-		pending = fr_heap_pop(connection->client->pending);
+		pending = fr_lst_pop(connection->client->pending);
 
 	} else if (thread->pending_clients) {
 		pending = pending_packet_pop(thread);
@@ -1372,7 +1373,7 @@ do_read:
 			radclient->active = true;
 
 		} else if (inst->dynamic_clients) {
-			if (inst->max_clients && (fr_heap_num_elements(thread->alive_clients) >= inst->max_clients)) {
+			if (inst->max_clients && ((uint32_t) fr_lst_num_elements(thread->alive_clients) >= inst->max_clients)) {
 				if (accept_fd < 0) {
 					DEBUG("proto_%s - ignoring packet from client IP address %pV - "
 					      "too many dynamic clients are defined",
@@ -1455,8 +1456,8 @@ do_read:
 		 *	Create the pending heap for pending clients.
 		 */
 		if (state == PR_CLIENT_PENDING) {
-			MEM(client->pending = fr_heap_alloc(client, pending_packet_cmp,
-							     fr_io_pending_packet_t, heap_id, 0));
+			MEM(client->pending = fr_lst_alloc(client, pending_packet_cmp,
+							     fr_io_pending_packet_t, lst_id));
 		}
 
 		/*
@@ -1496,7 +1497,7 @@ do_read:
 		 *	Track the live clients so that we can clean
 		 *	them up.
 		 */
-		(void) fr_heap_insert(thread->alive_clients, client);
+		(void) fr_lst_insert(thread->alive_clients, client);
 		client->pending_id = -1;
 
 		/*
@@ -1624,7 +1625,7 @@ have_client:
 				goto done;
 			}
 
-			if (fr_heap_num_elements(client->pending) > 1) {
+			if (fr_lst_num_elements(client->pending) > 1) {
 				DEBUG("Client %pV is still being dynamically defined.  "
 				      "Caching this packet until the client has been defined",
 				      fr_box_ipaddr(client->src_ipaddr));
@@ -1923,7 +1924,7 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	Count active packets AND pending packets.
 	 */
 	packets = client->packets;
-	if (client->pending) packets += fr_heap_num_elements(client->pending);
+	if (client->pending) packets += fr_lst_num_elements(client->pending);
 
 	/*
 	 *	It's a negative cache entry.  Just delete it.
@@ -2255,7 +2256,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	fr_assert(inst->dynamic_clients);
 	fr_assert(client->pending != NULL);
 
-	packets = client->packets + fr_heap_num_elements(client->pending);
+	packets = client->packets + fr_lst_num_elements(client->pending);
 
 
 	/*
@@ -2487,12 +2488,12 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	 *
 	 */
 	if (!thread->pending_clients) {
-		MEM(thread->pending_clients = fr_heap_alloc(thread, pending_client_cmp,
-							   fr_io_client_t, pending_id, 0));
+		MEM(thread->pending_clients = fr_lst_alloc(thread, pending_client_cmp,
+							   fr_io_client_t, pending_id));
 	}
 
 	fr_assert(client->pending_id < 0);
-	(void) fr_heap_insert(thread->pending_clients, client);
+	(void) fr_lst_insert(thread->pending_clients, client);
 
 finish:
 	/*
@@ -2509,7 +2510,7 @@ reread:
 	 *	least one), tell the network socket to call our read()
 	 *	function again.
 	 */
-	if (fr_heap_num_elements(client->pending) > 0) {
+	if (fr_lst_num_elements(client->pending) > 0) {
 		if (connection) {
 			fr_network_listen_read(connection->nr, connection->listen);
 		} else {
@@ -2876,7 +2877,7 @@ static int _thread_io_free(fr_io_thread_t *thread)
 	 *	Note that the clients *also* use thread->trie, so we
 	 *	have to free the clients *before* freeing thread->trie.
 	 */
-	while ((client = fr_heap_peek(thread->alive_clients)) != NULL) {
+	while ((client = fr_lst_peek(thread->alive_clients)) != NULL) {
 		talloc_free(client);
 	}
 
@@ -2953,8 +2954,8 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	 *	Create the trie of clients for this socket.
 	 */
 	MEM(thread->trie = fr_trie_alloc(thread, NULL, NULL));
-	MEM(thread->alive_clients = fr_heap_alloc(thread, alive_client_cmp,
-						   fr_io_client_t, alive_id, 0));
+	MEM(thread->alive_clients = fr_lst_alloc(thread, alive_client_cmp,
+						   fr_io_client_t, alive_id));
 
 	/*
 	 *	Set the listener to call our master trampoline function.
