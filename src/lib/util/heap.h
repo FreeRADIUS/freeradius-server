@@ -37,6 +37,10 @@ extern "C" {
 typedef unsigned int fr_heap_index_t;
 typedef unsigned int fr_heap_iter_t;
 
+/** How many talloc headers need to be pre-allocated for a heap
+ */
+#define FR_HEAP_TALLOC_HEADERS 2
+
 /** Comparator to order heap elements
  *
  *  Return negative numbers to put 'a' at the top of the heap.

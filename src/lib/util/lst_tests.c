@@ -508,6 +508,8 @@ static void queue_cmp(unsigned int count)
 		TEST_MSG_ALWAYS("insert: %"PRIu64" μs\n", (end_insert - start_insert) / 1000);
 		TEST_MSG_ALWAYS("pop-first: %"PRIu64" μs\n", (end_pop_first - start_pop) / 1000);
 		TEST_MSG_ALWAYS("pop: %"PRIu64" μs\n", (end_pop - start_pop) / 1000);
+
+		talloc_free(heap);
 	}
 
 	/*
