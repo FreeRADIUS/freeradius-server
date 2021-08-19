@@ -72,7 +72,7 @@ static void fr_heap_bubble(heap_t *h, fr_heap_index_t child);
  */
 size_t fr_heap_pre_alloc_size(unsigned int count)
 {
-	return sizeof(fr_heap_t) + sizeof(void *) * count;
+	return sizeof(fr_heap_t) + sizeof(heap_t) + sizeof(void *) * count;
 }
 
 fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, size_t offset, unsigned int init)
@@ -187,7 +187,7 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 			n_size = h->size * 2;
 		}
 
-		h = (heap_t *)talloc_realloc(NULL, h, uint8_t, sizeof(heap_t) + (sizeof(void *) * (n_size + 1)));
+		h = (heap_t *)talloc_realloc(hp, h, uint8_t, sizeof(heap_t) + (sizeof(void *) * (n_size + 1)));
 		if (unlikely(!h)) {
 			fr_strerror_printf("Failed expanding heap to %u elements (%u bytes)",
 					   n_size, (n_size * (unsigned int)sizeof(void *)));
