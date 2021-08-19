@@ -91,7 +91,7 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
 	 *	a 100% performance increase
 	 *	(talloc headers are big);
 	 */
-	h = (heap_t *)talloc_array(ctx, uint8_t, sizeof(heap_t) + (sizeof(void *) * (init + 1)));
+	h = (heap_t *)talloc_array(hp, uint8_t, sizeof(heap_t) + (sizeof(void *) * (init + 1)));
 	if (unlikely(!h)) return NULL;
 	talloc_set_type(h, heap_t);
 
