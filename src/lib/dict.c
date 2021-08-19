@@ -1273,6 +1273,8 @@ int dict_addvalue(char const *namestr, char const *attrstr, int value)
 				   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
 			return -1;
 		}
+		/* in v4 this is done with the UNCONST #define */
+		((DICT_ATTR *)((uintptr_t)(da)))->flags.has_value = 1;
 	} else {
 		value_fixup_t *fixup;
 
