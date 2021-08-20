@@ -1,12 +1,12 @@
 == Enabling PROXY Protocol
 
-Now that we have a working configuration in which RadSec connections from the
-test client are successfully proxied to the RadSec server via HAproxy and/or
-Traefik we are finally ready to enable PROXY Protocol.
+Now that we have a working configuration which used RadSec and HAproxy
+or Traefik, we are finally ready to enable PROXY Protocol.
 
-Configure FreeRADIUS on `radsecsvr` to expect PROXY Protocol for RadSec
-connections by editing the `listen {}` section of the `tls` virtual server to
-include the following:
+Configure FreeRADIUS on the `radsecsvr` host to expect the PROXY
+Protocol for RadSec connections.  This is done by editing the `listen
+{}` section of the `tls` virtual server to include a reference to the
+proxy protocol:
 
 .Enabling PROXY Protocol in a FreeRADIUS virtual server
 =======================================================
@@ -26,8 +26,9 @@ radiusd -fxxl /dev/stdout
 ----
 
 
-For HAproxy, enable PROXY Protocol on connections to the RadSec backend by
-amending the backends as follows:
+For HAproxy, you should enable the PROXY Protocol on connections to
+the RadSec backend, by editing the `backend` definition to add a
+`send-proxy` argument:
 
 .Example HAproxy backend configuration with PROXY Protocol
 ==========================================================
@@ -39,15 +40,19 @@ amending the backends as follows:
 
 ==========================================================
 
-Note the `send-proxy` argument in the server definition.
+Note the `send-proxy` argument in the `server` definition.
 
 Now reload the HAproxy service:
 
- service haproxy reload
+[source,shell]
+----
+service haproxy reload
+---
 
 
-For Traefik, enable PROXY Protocol on connections to the RadSec backend by
-amending the `radsec-service` definition, as follows:
+For Traefik, enable the PROXY Protocol on connections to the RadSec
+backend by editing the `radsec-service` definition to add a reference
+to the proxy protocol"
 
 .Example Traefik service configuration with PROXY Protocol
 ==========================================================
@@ -63,13 +68,14 @@ amending the `radsec-service` definition, as follows:
 
 Note the `proxyProtocol` and `version: 1` directives.
 
-Traefik should automatically detect the updates and reconfigure the service.
+Traefik should automatically detect the updates and reconfigure the
+service.
 
 
 === Testing RadSec connectivity via a proxy using PROXY Protocol
 
-Finally, with your test client configured to use the correct proxy homeserver,
-perform a test authentication:
+Finally, with your test client configured to use the proxy, perform a
+test authentication:
 
 [source,shell]
 ----
@@ -101,8 +107,8 @@ Now examine the FreeRADIUS debug output on the RadSec server:
 
 ======================================================
 
-The output indicates that FreeRADIUS is receiving the originating connection
-information for the RadSec connection using PROXY Protocol. It is then treating
-requests that are sent over the proxied RadSec connection as though they were
-being received directly from the originating client.
+The output indicates that FreeRADIUS is receiving the originating
+connection information from the PROXY Protocol.  FreeRADIUS then
+handles the RadSec requests as though they have been received directly
+from the originating client.
 

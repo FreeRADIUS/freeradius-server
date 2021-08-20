@@ -41,8 +41,9 @@ that it includes new frontend and backend configuration for the radsec service:
 
 ======================================
 
-Note the `mode tcp` directive which tells HAproxy to act as a Layer 4 proxy so
-that it doesn't attempt to perform SSL termination or to decode the protocol.
+Note the `mode tcp` directive which tells HAproxy to act as a Layer 4
+proxy, so that it doesn't attempt to perform SSL termination or
+decode the RADIUS protocol.
 
 [NOTE]
 ====
@@ -53,8 +54,11 @@ distributions. Other HTTP-related options that may already exist in the
 configuration will conflict with `mode tcp` (Layer 4 proxying) and should be
 removed if HAproxy complains about them.
 
-However, you should first get things working with the minimal configuration
-which is known to work, and them make customisations.
+However, you should first get things working with the minimal
+configuration which is known to work, and then make customisations.
+If you start off with a complex configuration, then there may be a
+large number of things which are broken, and debugging them all will
+be difficult.  Start simple, and then add complexity!
 ====
 
 Restart the haproxy service in foreground mode for debugging purposes:
@@ -67,11 +71,11 @@ haproxy -f /etc/haproxy/haproxy.cfg -db
 
 === Testing RadSec connectivity via HAproxy
 
-Now amend the test RadSec client so that instead of making connections directly
-to the RadSec server it makes them via HAproxy.
+Now edit the test RadSec client, so that instead of making connections directly
+to the RadSec server it makes connections to the HAproxy server.
 
-On `radseccli` amend `/etc/raddb/sites-enabled/tls` and set the IP address to
-that of the `haproxy` host.
+On `radseccli` edit the `/etc/raddb/sites-enabled/tls` file, and set
+the IP address to the address of the `haproxy` host.
 
 .Example updated test client homeserver configuration
 =====================================================
@@ -97,9 +101,9 @@ Perform a test authentication:
  echo "User-Name = bob" | radclient 127.0.0.1 auth testing123
 ----
 
-If the test client is able to successfully establish the RadSec connection via
-HAproxy and the RadSec server replies with an Access-Accept response then the
-output will be as follows:
+If the test client is able to successfully establish the RadSec
+connection via HAproxy, and the RadSec server replies with an
+Access-Accept response, then the output will be as follows:
 
 .Expected output from radclient
 ===============================
@@ -119,11 +123,12 @@ proxied, such as the following:
 
 =============================
 
-Any other output from radclient or HAproxy indicates that there is a problem
-with the HAproxy configuration or that FreeRADIUS is not accepting connection
-from the `haproxy` host, which must be solved before continuing.
+Any other output from radclient or HAproxy indicates that there is a
+problem with the HAproxy configuration, or that FreeRADIUS is not
+accepting connection from the `haproxy` host, which must be solved
+before continuing.
 
 Once proxied connections are working we are ready to
-xref:protocols/proxy/enable_proxy_protocol.adoc[enable the PROXY Protocol] on
-both HAproxy and the RadSec server.
+xref:protocols/proxy/enable_proxy_protocol.adoc[enable the PROXY
+Protocol] on both HAproxy and the RadSec server.
 
