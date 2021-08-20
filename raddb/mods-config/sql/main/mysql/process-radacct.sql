@@ -78,10 +78,17 @@ DELIMITER $$
 
 DROP PROCEDURE IF EXISTS fr_new_data_usage_period;
 CREATE PROCEDURE fr_new_data_usage_period ()
+SQL SECURITY INVOKER
 BEGIN
 
     DECLARE v_start DATETIME;
     DECLARE v_end DATETIME;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
 
     SELECT IFNULL(DATE_ADD(MAX(period_end), INTERVAL 1 SECOND), FROM_UNIXTIME(0)) INTO v_start FROM data_usage_by_period;
     SELECT NOW() INTO v_end;
