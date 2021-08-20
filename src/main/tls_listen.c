@@ -530,6 +530,14 @@ check_for_setup:
 		request->packet->data[3] = 20;
 		sock->state = LISTEN_TLS_CHECKING;
 		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+
+		/*
+		 *	Don't read from the socket until the request
+		 *	returns.
+		 */
+		listener->status = RAD_LISTEN_STATUS_PAUSE;
+		radius_update_listener(listener);
+
 		return 1;
 	}
 
@@ -793,6 +801,12 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 			radius_update_listener(listener);
 			return 0;
 		}
+
+		/*
+		 *	Resume reading from the listener.
+		 */
+		listener->status = RAD_LISTEN_STATUS_RESUME;
+		radius_update_listener(listener);
 
 		rad_assert(sock->request->packet != request->packet);
 

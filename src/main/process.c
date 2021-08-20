@@ -5428,6 +5428,7 @@ static void event_new_fd(rad_listen_t *this)
 		/*
 		 *	All sockets: add the FD to the event handler.
 		 */
+	insert_fd:
 		if (fr_event_fd_insert(el, 0, this->fd,
 				       event_socket_handler, this)) {
 			this->status = RAD_LISTEN_STATUS_KNOWN;
@@ -5437,6 +5438,13 @@ static void event_new_fd(rad_listen_t *this)
 		ERROR("Failed adding event handler for socket: %s", fr_strerror());
 		this->status = RAD_LISTEN_STATUS_REMOVE_NOW;
 	} /* end of INIT */
+
+	if (this->status == RAD_LISTEN_STATUS_PAUSE) {
+		fr_event_fd_delete(el, 0, this->fd);
+		return;
+	}
+
+	if (this->status == RAD_LISTEN_STATUS_RESUME) goto insert_fd;
 
 #ifdef WITH_TCP
 	/*
