@@ -460,7 +460,7 @@ static void conn_error_status_check(UNUSED fr_event_list_t *el, UNUSED int fd, U
 	fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
 }
 
-/** Status check timedout
+/** Status check timer when opening the connection for the first time.
  *
  * Setup retries, or fail the connection.
  */
@@ -1532,14 +1532,51 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 /** Revive a connection after "revive_interval"
  *
  */
-static void revive_timer(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void revive_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
 	udp_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
 
-	INFO("%s - Shutting down and reviving connection %s", h->module_name, h->name);
+	INFO("%s - Reviving connection %s", h->module_name, h->name);
 	fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 }
+
+/** Mark a connection dead after "zombie_interval"
+ *
+ */
+static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
+{
+	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+	udp_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
+
+	INFO("%s - No replies during 'zombie_period', marking connection %s as dead", h->module_name, h->name);
+
+	/*
+	 *	Don't use this connection, and re-queue all of its
+	 *	requests onto other connections.
+	 */
+	fr_trunk_connection_signal_inactive(tconn);
+	(void) fr_trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_ALL, 0, false);
+
+	/*
+	 *	We do have status checks.  Try to reconnect the
+	 *	connection immediately.  If the status checks pass,
+	 *	then the connection will be marked "alive"
+	 */
+	if (h->inst->parent->status_check) {
+		fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+		return;
+	}
+
+	/*
+	 *	Revive the connection after a time.
+	 */
+	if (fr_event_timer_at(h, el, &h->zombie_ev, now + h->inst->parent->revive_interval, revive_timeout, h) < 0) {
+		ERROR("Failed inserting revive timeout for connection");
+		fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+	}
+}
+
 
 /** See if the connection is zombied.
  *
@@ -1561,12 +1598,10 @@ static void revive_timer(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void 
  *  for zombie at BOTH the timeout and the mux / write function.
  *
  * @return
- *	- true if a connection state change was triggered.
- *	  The connection is likely now a zombie or was reconnected.
- *	- false if the connection did not change state.  It may
- *	  still be a zombie, but it was a zombie when this
+ *	- true if the connection is zombie.
+ *	- false if the connection is not zombie.
  */
-static bool check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, fr_time_t now)
+static bool check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, fr_time_t now, fr_time_t last_sent)
 {
 	udp_handle_t	*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
 
@@ -1577,104 +1612,84 @@ static bool check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 	fr_assert(!h->inst->replicate);
 
 	/*
-	 *	If there's already a zombie check started, don't do
-	 *	another one.
+	 *	If we're status checking OR already zombie, don't go to zombie
 	 *
-	 *	Or if we never sent a packet, we don't know (or care)
-	 *	if the home server is up.
-	 *
-	 *	Or if we had sent packets, and then went idle.
-	 *
-	 *	Or we had replies, and then went idle.
-	 *
-	 *	We do checks for both sent && replied, because we
-	 *	could have sent packets without getting replies (and
-	 *	then mark it zombie), or we could have gotten some
-	 *	replies which then stopped coming back (and then mark
-	 *	it zombie).
 	 */
-	if (h->status_checking || h->zombie_ev || !h->last_sent || (h->last_sent <= h->last_idle) ||
-	    (h->last_reply && (h->last_reply <= h->last_idle))) {
-		return false;
-	}
+	if (h->status_checking || h->zombie_ev) return true;
 
 	if (now == 0) now = fr_time();
 
 	/*
-	 *	We've sent a packet since we last went idle, and/or
-	 *	we've received replies since we last went idle.
-	 *
-	 *	If we have a reply, then set the zombie timeout from
-	 *	when we received the last reply.
-	 *
-	 *	If we haven't seen a reply, then set the zombie
-	 *	timeout from when we first started sending packets.
+	 *	We received a reply since this packet was sent, the connection isn't zombie.
 	 */
-	if (h->last_reply) {
-		if ((h->last_reply + h->inst->parent->zombie_period) >= now) return false;
-		DEBUG2("%s - We have passed 'zombie_period' time since the last reply on connection %s",
-		       h->module_name, h->name);
-	} else {
-		if ((h->first_sent + h->inst->parent->zombie_period) >= now) return false;
-		DEBUG2("%s - We have passed 'zombie_period' time since we first sent a packet, and "
-		       "there have been no replies on connection %s", h->module_name, h->name);
-	}
+	if (h->last_reply >= last_sent) return false;
 
 	/*
-	 *	No status checks: this connection is dead.
-	 *
-	 *	We will requeue this packet on another
-	 *	connection.
+	 *	If we've seen ANY response in the allowed window, then the connection is still alive.
 	 */
-	if (!h->inst->parent->status_check) {
-		fr_time_t when;
-
-		WARN("%s - Connection failed.  Reviving it in %pVs", h->module_name,
-		     fr_box_time_delta(h->inst->parent->revive_interval));
-		fr_trunk_connection_signal_inactive(tconn);
-		(void) fr_trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_ALL, 0, false);
-
-		when = now + h->inst->parent->revive_interval;
-		if (fr_event_timer_at(h, el, &h->zombie_ev, when, revive_timer, tconn) < 0) {
-			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
-			return true;
-		}
-
-		return true;
-	}
+	if (last_sent && ((last_sent + h->inst->parent->response_window) < now)) return false;
 
 	/*
 	 *	Mark the connection as inactive, but keep sending
 	 *	packets on it.
 	 */
 	WARN("%s - Entering Zombie state - connection %s", h->module_name, h->name);
-	h->status_checking = true;
-
-	/*
-	 *	Move ALL requests to other connections!
-	 */
 	fr_trunk_connection_signal_inactive(tconn);
-	(void) fr_trunk_connection_requests_requeue(tconn, FR_TRUNK_REQUEST_STATE_ALL, 0, false);
 
-	/*
-	 *	Queue up the status check packet.  It will be sent
-	 *	when the connection is writable.
-	 */
-	h->status_u->retry.start = 0;
-	h->status_r->treq = NULL;
+	if (h->inst->parent->status_check) {
+		h->status_checking = true;
 
-	if (fr_trunk_request_enqueue_on_conn(&h->status_r->treq, tconn, h->status_request,
-					     h->status_u, h->status_r, true) != FR_TRUNK_ENQUEUE_OK) {
-		fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+		/*
+		 *	Queue up the status check packet.  It will be sent
+		 *	when the connection is writable.
+		 */
+		h->status_u->retry.start = 0;
+		h->status_r->treq = NULL;
+
+		if (fr_trunk_request_enqueue_on_conn(&h->status_r->treq, tconn, h->status_request,
+						     h->status_u, h->status_r, true) != FR_TRUNK_ENQUEUE_OK) {
+			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+		}
+	} else {
+		if (fr_event_timer_at(h, el, &h->zombie_ev, now + h->inst->parent->zombie_period, zombie_timeout, h) < 0) {
+			ERROR("Failed inserting zombie timeout for connection");
+			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+		}
 	}
 
 	return true;
 }
 
-/** Handle retries for a request_t
+/** Handle timeouts when a request is being sent synchronously
  *
  */
 static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
+{
+	fr_trunk_request_t	*treq = talloc_get_type_abort(uctx, fr_trunk_request_t);
+	udp_handle_t		*h;
+	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
+	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
+	fr_trunk_connection_t	*tconn = treq->tconn;
+
+	fr_assert(treq->state == FR_TRUNK_REQUEST_STATE_SENT);		/* No other states should be timing out */
+	fr_assert(treq->preq);						/* Must still have a protocol request */
+	fr_assert(u->rr);
+	fr_assert(tconn);
+
+	h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
+
+	r->rcode = RLM_MODULE_FAIL;
+	fr_trunk_request_signal_complete(treq);
+
+	fr_assert(!u->status_check);
+
+	check_for_zombie(el, tconn, now, u->retry.start);
+}
+
+/** Handle retries when a request is being sent asynchronously
+ *
+ */
+static void request_retry(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_trunk_request_t	*treq = talloc_get_type_abort(uctx, fr_trunk_request_t);
 	udp_handle_t		*h;
@@ -1690,27 +1705,7 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
 
-	if (!u->status_check) {
-		/*
-		 *	If the connection just became a zombie
-		 *	the request that just timedout will
-		 *	have moved back into the trunk backlog,
-		 *	been assigned to another connection
-		 *	or freed.
-		 *
-		 *	In any case we must not continue to
-		 *	work with it, because we have no idea
-		 *	what state its in.
-		 */
-		if (check_for_zombie(el, tconn, now)) return;
-
-	} else {
-		/*
-		 *	Reset replies to 0 as we only count
-		 *	contiguous, good, replies.
-		 */
-		u->num_replies = 0;
-	}
+	fr_assert(!u->status_check);
 
 	switch (fr_retry_next(&u->retry, now)) {
 	/*
@@ -1739,12 +1734,62 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	r->rcode = RLM_MODULE_FAIL;
 	fr_trunk_request_signal_complete(treq);
 
-	if (!u->status_check) return;
+	check_for_zombie(el, tconn, now, u->retry.start);
+}
 
-	WARN("%s - No response to status check, marking connection as dead - %s", h->module_name, h->name);
+static void status_check_retry(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
+{
+	fr_trunk_request_t	*treq = talloc_get_type_abort(uctx, fr_trunk_request_t);
+	udp_handle_t		*h;
+	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
+	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
+	request_t		*request = treq->request;
+	fr_trunk_connection_t	*tconn = treq->tconn;
 
-	h->status_checking = false;
-	fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+	fr_assert(treq->state == FR_TRUNK_REQUEST_STATE_SENT);		/* No other states should be timing out */
+	fr_assert(treq->preq);						/* Must still have a protocol request */
+	fr_assert(u->rr);
+	fr_assert(tconn);
+
+	h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
+
+	fr_assert(u->status_check);
+
+	switch (fr_retry_next(&u->retry, now)) {
+	/*
+	 *	Queue the request for retransmission.
+	 *
+	 *	@todo - set up "next" timer here, instead of in
+	 *	request_mux() ?  That way we can catch the case of
+	 *	packets sitting in the queue for extended periods of
+	 *	time, and still run the timers.
+	 */
+	case FR_RETRY_CONTINUE:
+		fr_trunk_request_requeue(treq);
+		return;
+
+	case FR_RETRY_MRD:
+		REDEBUG("Reached maximum_retransmit_duration (%pVs > %pVs), failing request",
+			fr_box_time_delta(now - u->retry.start), fr_box_time_delta(u->retry.config->mrd));
+		break;
+
+	case FR_RETRY_MRC:
+		REDEBUG("Reached maximum_retransmit_count (%u > %u), failing request",
+		        u->retry.count, u->retry.config->mrc);
+		break;
+	}
+
+	r->rcode = RLM_MODULE_FAIL;
+	fr_trunk_request_signal_complete(treq);
+
+        WARN("%s - No response to status check, marking connection as dead - %s", h->module_name, h->name);
+
+	/*
+	 *	We're no longer status checking, reconnect the
+	 *	connection.
+	 */
+        h->status_checking = false;
+        fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 }
 
 static void request_mux(fr_event_list_t *el,
@@ -1757,10 +1802,10 @@ static void request_mux(fr_event_list_t *el,
 	size_t			total_len = 0;
 
 	/*
-	 *	If the connection just became a zombie
-	 *	don't try and enqueue things on it!
+	 *	If the connection is zombie, then don't try to enqueue
+	 *	things on it!
 	 */
-	if (check_for_zombie(el, tconn, 0)) return;
+	if (check_for_zombie(el, tconn, 0, h->last_sent)) return;
 
 	/*
 	 *	Encode multiple packets in preparation
@@ -1963,25 +2008,36 @@ static void request_mux(fr_event_list_t *el,
 			action = "Retransmitted";
 		}
 
-		if (!inst->parent->synchronous) {
-			RDEBUG("%s request.  Expecting response within %pVs", action,
+		if (u->status_check) {
+			RDEBUG("%s status check.  Expecting response within %pVs", action,
 			       fr_box_time_delta(u->retry.rt));
 
-			if (fr_event_timer_at(u, el, &u->ev, u->retry.next, request_timeout, treq) < 0) {
+			if (fr_event_timer_at(u, el, &u->ev, u->retry.next, status_check_retry, treq) < 0) {
 				RERROR("Failed inserting retransmit timeout for connection");
 				fr_trunk_request_signal_fail(treq);
 				continue;
 			}
-		} else {
+
+		} else if (!inst->parent->synchronous) {
+			RDEBUG("%s request.  Expecting response within %pVs", action,
+			       fr_box_time_delta(u->retry.rt));
+
+			if (fr_event_timer_at(u, el, &u->ev, u->retry.next, request_retry, treq) < 0) {
+				RERROR("Failed inserting retransmit timeout for connection");
+				fr_trunk_request_signal_fail(treq);
+				continue;
+			}
+
+		} else if (u->retry.count == 1) {
+			if (fr_event_timer_at(u, el, &u->ev, u->retry.start + h->inst->parent->response_window, request_timeout, treq) < 0) {
+				RERROR("Failed inserting timeout for connection");
+				fr_trunk_request_signal_fail(treq);
+				continue;
+			}
+
 			/*
 			 *	If the packet doesn't get a response,
 			 *	then udp_request_free() will notice, and run conn_zombie()
-			 *
-			 *	@todo - set up a response_window which is LESS
-			 *	than max_request_time.  That way we
-			 *	can return "fail", and process the
-			 *	request through a fail handler,
-			 *	instead of just freeing it.
 			 */
 			RDEBUG("%s request.  Relying on NAS to perform more retransmissions", action);
 		}
@@ -2641,13 +2697,19 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request,
 	 */
 	case FR_SIGNAL_DUP:
 		/*
-		 *	Connection just became a zombie
-		 *	we don't want to retransmit
-		 *	as the connection is now dead
-		 *	and we have no idea what state
-		 *	the request is in.
+		 *	If we're not synchronous, then rely on
+		 *	request_retry() to do the retransmissions.
 		 */
-		if (check_for_zombie(t->el, r->treq->tconn, 0)) return;
+		if (!t->inst->parent->synchronous) return;
+
+		/*
+		 *	We are synchronous, retransmit the current
+		 *	request on the same connection.
+		 *
+		 *	If it's zombie, we still resend it.  If the
+		 *	connection is dead, then a callback will move
+		 *	this request to a new connection.
+		 */
 		fr_trunk_request_requeue(r->treq);
 		return;
 
