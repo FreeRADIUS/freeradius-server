@@ -1666,7 +1666,6 @@ static bool check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_trunk_request_t	*treq = talloc_get_type_abort(uctx, fr_trunk_request_t);
-	udp_handle_t		*h;
 	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
 	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
 	fr_trunk_connection_t	*tconn = treq->tconn;
@@ -1675,8 +1674,6 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	fr_assert(treq->preq);						/* Must still have a protocol request */
 	fr_assert(u->rr);
 	fr_assert(tconn);
-
-	h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
 
 	r->rcode = RLM_MODULE_FAIL;
 	fr_trunk_request_signal_complete(treq);
@@ -1692,7 +1689,6 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 static void request_retry(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_trunk_request_t	*treq = talloc_get_type_abort(uctx, fr_trunk_request_t);
-	udp_handle_t		*h;
 	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
 	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
 	request_t		*request = treq->request;
@@ -1702,8 +1698,6 @@ static void request_retry(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 	fr_assert(treq->preq);						/* Must still have a protocol request */
 	fr_assert(u->rr);
 	fr_assert(tconn);
-
-	h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
 
 	fr_assert(!u->status_check);
 
