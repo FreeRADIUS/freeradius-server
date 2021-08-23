@@ -44,11 +44,11 @@ struct fr_machine_s {
 	fr_machine_def_t const	*def;		//!< static definition of states, names, callbacks for the state machine
 	void			*uctx;		//!< to pass to the various handlers
 	fr_machine_state_inst_t	*current;	//!< current state we are in
-	void const		*in_handler;	//!< block transitions if we're in a callback
+	void const		*in_handler;	//!< which handler we are in
 
 	fr_dlist_head_t		deferred;	//!< list of deferred entries
 	int			paused;		//!< are transitions paused?
-	bool			dead;
+	bool			dead;		//!< we were asked to exit, but aren't yet done cleaning up
 
 	fr_machine_state_inst_t state[];	//!< all of the state transitions
 };
@@ -118,6 +118,12 @@ static void state_transition(fr_machine_t *m, int state, void *in_handler)
 	if (current->def->enter) current->def->enter(m, m->uctx);
 	call_hook(m, &current->enter[POST], old, state);
 
+	/*
+	 *	We may have transitioned into the "free" state.  If
+	 *	so, mark the state machine as dead.
+	 */
+	m->dead = (state == m->def->free);
+
 	m->in_handler = NULL;
 }
 
@@ -134,6 +140,11 @@ static int _machine_free(fr_machine_t *m)
 	fr_assert(m->def);
 	fr_assert(m->def->free);
 
+	/*
+	 *	Don't transition into the free state multiple times.
+	 */
+	if (m->current->def->number == m->def->free) return 0;
+
 	fr_assert(m->state[m->def->free].enter != NULL);
 
 	/*
@@ -144,6 +155,9 @@ static int _machine_free(fr_machine_t *m)
 	/*
 	 *	Don't call "process" on the free state.  Simply
 	 *	entering the free state _should_ clean everything up.
+	 *
+	 *	Don't check for deferred states.  Once we enter the
+	 *	"free" state, we can't do anything else.
 	 */
 
 	return 0;
@@ -228,7 +242,9 @@ fr_machine_t *fr_machine_alloc(TALLOC_CTX *ctx, fr_machine_def_t const *def, voi
 	return m;
 }
 
-
+/** Post the new state to the state machine.
+ *
+ */
 static int state_post(fr_machine_t *m, int state)
 {
 #ifndef NDEBUG
@@ -279,27 +295,71 @@ static int state_post(fr_machine_t *m, int state)
 int fr_machine_process(fr_machine_t *m)
 {
 	int state, old;
-	fr_machine_state_inst_t *current = m->current;
+	fr_machine_state_inst_t *current;
+
+redo:
+	current = m->current;
+
+	/*
+	 *	Various sanity checks to ensure that the state machine
+	 *	implementation isn't doing anything crazy.
+	 */
 
 	fr_assert(current != NULL);
 	fr_assert(!m->dead);
 	fr_assert(!m->paused);
+	fr_assert(!m->in_handler);
 	fr_assert(fr_dlist_num_elements(&m->deferred) == 0);
 
 	m->in_handler = current;
 	old = current->def->number;
 
 	call_hook(m, &current->process[PRE], old, old);
+
+	/*
+	 *	Entering this state may, in fact, cause us to switch
+	 *	states.  If so, we process the new state, not the old
+	 *	one
+	 */
+	if (fr_dlist_num_elements(&m->deferred) > 0) {
+		m->in_handler = NULL;
+		fr_machine_resume(m);
+
+		/*
+		 *	We do not process dead state machines.
+		 */
+		if (m->dead) return m->def->free;
+
+		/*
+		 *	Start over with the new "pre" process handler.
+		 *
+		 *	Note that if we have a state transition, we
+		 *	skip both "process" and "post-process".
+		 */
+		goto redo;
+	}
+
 	state = current->def->process(m, m->uctx);
+
+	/*
+	 *	The "process" function CANNOT do state transitions on
+	 *	its own.
+	 */
+	fr_assert(fr_dlist_num_elements(&m->deferred) == 0);
+
 	call_hook(m, &current->process[POST], old, old);
 
 	m->in_handler = NULL;
 
 	/*
-	 *	No changes.  Tell the caller to wait for something
-	 *	else to signal a transition.
+	 *	No changes.
 	 */
-	if (state == 0) return 0;
+	if (state == 0) {
+		if (fr_dlist_num_elements(&m->deferred) == 0) return 0;
+
+		fr_machine_resume(m);
+		return m->current->def->number;
+	}
 
 	return state_post(m, state);
 }
@@ -350,14 +410,6 @@ int fr_machine_transition(fr_machine_t *m, int state)
 	if (!current->def->allowed[state]) return -1;
 
 	/*
-	 *	We cannot transition from inside of a particular
-	 *	state.  Instead, the state MUST return a new state
-	 *	number, and fr_machine_process() will do the
-	 *	transition.
-	 */
-	fr_assert(!m->in_handler);
-
-	/*
 	 *	The caller may be mucking with bits of the state
 	 *	machine and/or the code surrounding the state machine.
 	 *	In that case, the caller doesn't want transitions to
@@ -371,7 +423,7 @@ int fr_machine_transition(fr_machine_t *m, int state)
 	 *	and defer transitions until such time as the
 	 *	transitions are resumed.
 	 */
-	if (m->paused) {
+	if (m->in_handler || m->paused) {
 		fr_machine_defer_t *defer = talloc_zero(m, fr_machine_defer_t);
 
 		if (!defer) return -1;
@@ -386,6 +438,13 @@ int fr_machine_transition(fr_machine_t *m, int state)
 	 *	current state, and enter the new one.
 	 */
 	state_transition(m, state, (void *) fr_machine_transition);
+
+	/*
+	 *	Entering a state may cause state transitions to occur.
+	 *	Usually due to pre/post callbacks.  If that happens,
+	 *	then we immediately process the deferred states.
+	 */
+	if (fr_dlist_num_elements(&m->deferred) >= 0) fr_machine_resume(m);
 
 	return 0;
 }
@@ -509,6 +568,7 @@ void fr_machine_resume(fr_machine_t *m)
 	fr_machine_defer_t *defer, *next;
 
 	fr_assert(!m->dead);
+	fr_assert(!m->in_handler);
 
 	if (m->paused > 0) {
 		m->paused--;
@@ -519,13 +579,19 @@ void fr_machine_resume(fr_machine_t *m)
 
 	/*
 	 *	Process all of the deferred transitions
+	 *
+	 *	Hopefully this process does not cause new state
+	 *	transitions to occur.  Otherwise we might end up in an
+	 *	infinite loop.
 	 */
 	for (defer = fr_dlist_head(&m->deferred); defer != NULL; defer = next) {
-		next = fr_dlist_next(&m->deferred, defer);
+		int state = defer->state;
 
-		state_transition(m, defer->state, (void *) fr_machine_resume);
+		next = fr_dlist_next(&m->deferred, defer);
 		fr_dlist_remove(&m->deferred, defer);
 		talloc_free(defer);
+
+		state_transition(m, state, (void *) fr_machine_resume);
 	}
 }
 
@@ -553,6 +619,11 @@ int fr_machine_signal(fr_machine_t *m, int signal)
 	 */
 	if ((signal <= 0) || (signal > m->def->max_signal)) return -1;
 
+	/*
+	 *	Can't send an async signal from within a handler.
+	 */
+	if (m->in_handler) return -1;
+
 	m->in_handler = (void *) fr_machine_signal;
 	old = current->def->number;
 	state = 0;
@@ -573,6 +644,8 @@ int fr_machine_signal(fr_machine_t *m, int signal)
 	 *	else to signal a transition.
 	 */
 	if (state == 0) return 0;
+
+	fr_assert(state != old); /* can't ask us to transition to the current state */
 
 	return state_post(m, state);
 }
