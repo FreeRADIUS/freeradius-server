@@ -56,6 +56,7 @@ struct rlm_radius_s {
 	void			*io_instance;		//!< Easy access to the IO instance
 	CONF_SECTION		*io_conf;		//!< Easy access to the IO config section
 
+	fr_time_delta_t		response_window;
 	fr_time_delta_t		zombie_period;
 	fr_time_delta_t		revive_interval;
 

@@ -165,6 +165,12 @@ radius {
 	}
 
 	#
+	#  response_window: If we do not receive a reply within this time period, then
+	#  start `zombie_period`
+	#
+	response_window = 15
+
+	#
 	#  zombie_period:: If the home server does not reply to a packet, the
 	#  `zombie_period` starts.
 	#
