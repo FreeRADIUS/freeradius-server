@@ -1627,7 +1627,7 @@ static bool check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 	/*
 	 *	If we've seen ANY response in the allowed window, then the connection is still alive.
 	 */
-	if (last_sent && ((last_sent + h->inst->parent->response_window) < now)) return false;
+	if (h->inst->parent->synchronous && last_sent && ((last_sent + h->inst->parent->response_window) < now)) return false;
 
 	/*
 	 *	Mark the connection as inactive, but keep sending
