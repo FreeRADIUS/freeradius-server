@@ -444,7 +444,7 @@ int fr_machine_transition(fr_machine_t *m, int state)
 	 *	Usually due to pre/post callbacks.  If that happens,
 	 *	then we immediately process the deferred states.
 	 */
-	if (fr_dlist_num_elements(&m->deferred) >= 0) fr_machine_resume(m);
+	if (fr_dlist_num_elements(&m->deferred) > 0) fr_machine_resume(m);
 
 	return 0;
 }
