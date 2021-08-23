@@ -32,6 +32,11 @@ typedef struct {
 	fr_dlist_head_t		signal[2];	//!< pre/post signal hooks
 } fr_machine_state_inst_t;
 
+typedef struct {
+	int			state;		//!< state transition to defer
+	fr_dlist_t		dlist;		//!< linked list of deferred signals
+} fr_machine_defer_t;
+
 /** Hooks
  *
  */
@@ -41,7 +46,7 @@ struct fr_machine_s {
 	fr_machine_state_inst_t	*current;	//!< current state we are in
 	void const		*in_handler;	//!< block transitions if we're in a callback
 
-	int			deferred;	//!< deferred transition if we're paused
+	fr_dlist_head_t		deferred;	//!< list of deferred entries
 	int			paused;		//!< are transitions paused?
 	bool			dead;
 
@@ -91,7 +96,6 @@ static void state_transition(fr_machine_t *m, int state, void *in_handler)
 	int old;
 
 	fr_assert(current != NULL);
-	fr_assert(m->deferred == 0);
 
 	fr_assert(!m->in_handler);
 	m->in_handler = in_handler;
@@ -191,6 +195,8 @@ fr_machine_t *fr_machine_alloc(TALLOC_CTX *ctx, fr_machine_def_t const *def, voi
 		}
 	}
 
+	fr_dlist_init(&m->deferred, fr_machine_defer_t, dlist);
+
 	/*
 	 *	Set the current state to "init".
 	 */
@@ -276,9 +282,9 @@ int fr_machine_process(fr_machine_t *m)
 	fr_machine_state_inst_t *current = m->current;
 
 	fr_assert(current != NULL);
-	fr_assert(!m->deferred);
 	fr_assert(!m->dead);
 	fr_assert(!m->paused);
+	fr_assert(fr_dlist_num_elements(&m->deferred) == 0);
 
 	m->in_handler = current;
 	old = current->def->number;
@@ -366,8 +372,12 @@ int fr_machine_transition(fr_machine_t *m, int state)
 	 *	transitions are resumed.
 	 */
 	if (m->paused) {
-		fr_assert(!m->deferred);
-		m->deferred = state;
+		fr_machine_defer_t *defer = talloc_zero(m, fr_machine_defer_t);
+
+		if (!defer) return -1;
+
+		defer->state = state;
+		fr_dlist_insert_tail(&m->deferred, defer);
 		return 0;
 	}
 
@@ -411,9 +421,6 @@ char const *fr_machine_state_name(fr_machine_t *m, int state)
 	if (!state) {
 		if (m->current) {
 			state = m->current->def->number;
-
-		} else if (m->deferred) {
-			state = m->deferred;
 
 		} else {
 			return "???";
@@ -499,7 +506,7 @@ void fr_machine_pause(fr_machine_t *m)
  */
 void fr_machine_resume(fr_machine_t *m)
 {
-	int state;
+	fr_machine_defer_t *defer, *next;
 
 	fr_assert(!m->dead);
 
@@ -508,16 +515,18 @@ void fr_machine_resume(fr_machine_t *m)
 		if (m->paused > 0) return;
 	}
 
-	if (!m->deferred) return;
+	if (fr_dlist_num_elements(&m->deferred) == 0) return;
 
 	/*
-	 *	Clear the deferred transition before making any
-	 *	changes, as we're now doing the transition.
+	 *	Process all of the deferred transitions
 	 */
-	state = m->deferred;
-	m->deferred = 0;
+	for (defer = fr_dlist_head(&m->deferred); defer != NULL; defer = next) {
+		next = fr_dlist_next(&m->deferred, defer);
 
-	state_transition(m, state, (void *) fr_machine_resume);
+		state_transition(m, defer->state, (void *) fr_machine_resume);
+		fr_dlist_remove(&m->deferred, defer);
+		talloc_free(defer);
+	}
 }
 
 /** Send an async signal to the state machine.
