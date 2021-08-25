@@ -1569,17 +1569,15 @@ static bool compile_retry_section(unlang_actions_t *actions, CONF_ITEM *ci)
 	return true;
 }
 
-static bool compile_action_section(unlang_actions_t *actions, CONF_ITEM *ci)
+bool unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *parent)
 {
 	CONF_ITEM *csi;
 	CONF_SECTION *cs;
 
-	if (!cf_item_is_section(ci)) return true;
-
 	/*
 	 *	Over-ride the default return codes of the module.
 	 */
-	cs = cf_item_to_section(ci);
+	cs = cf_item_to_section(cf_section_to_item(parent));
 	for (csi=cf_item_next(cs, NULL);
 	     csi != NULL;
 	     csi=cf_item_next(cs, csi)) {
@@ -1615,7 +1613,7 @@ static bool compile_action_section(unlang_actions_t *actions, CONF_ITEM *ci)
 			CONF_ITEM *subci;
 			char const *value = cf_pair_value(cp);
 
-			subci = cf_reference_item(cs, cf_root(ci), value);
+			subci = cf_reference_item(cs, cf_root(cf_section_to_item(parent)), value);
 			if (!subci) {
 				cf_log_err(csi, "Unknown reference '%s'", value ? value : "???");
 				return false;
@@ -1701,7 +1699,7 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 		return false;
 	}
 
-	return compile_action_section(&c->actions, ci);
+	return unlang_compile_actions(&c->actions, subcs);
 }
 
 
@@ -3397,13 +3395,13 @@ static unlang_t *compile_function(unlang_t *parent, unlang_compile_t *unlang_ctx
 	/*
 	 *	Return the compiled thing if we can.
 	 */
-	if (cf_item_is_pair(ci)) return c;
+	if (!cf_item_is_section(ci)) return c;
 
 	/*
 	 *	Else we have a reference to a policy, and that reference
 	 *	over-rides the return codes for the policy!
 	 */
-	if (!compile_action_section(&c->actions, ci)) {
+	if (!unlang_compile_actions(&c->actions, cf_item_to_section(ci))) {
 		talloc_free(c);
 		return NULL;
 	}
@@ -3581,9 +3579,12 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	Set the default actions, and then try to compile an action subsection.
 	 */
 	compile_action_defaults(c, unlang_ctx);
-	if (!compile_action_section(&c->actions, ci)) {
-		talloc_free(c);
-		return NULL;
+
+	if (cf_item_is_section(ci)) {
+		if (!unlang_compile_actions(&c->actions, cf_item_to_section(ci))) {
+			talloc_free(c);
+			return NULL;
+		}
 	}
 
 	return c;

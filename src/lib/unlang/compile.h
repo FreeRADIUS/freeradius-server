@@ -42,6 +42,8 @@ int		unlang_compile(CONF_SECTION *cs, rlm_components_t component, tmpl_rules_t c
 
 bool		unlang_compile_is_keyword(const char *name);
 
+bool		unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *parent);
+
 #ifdef __cplusplus
 }
 #endif
