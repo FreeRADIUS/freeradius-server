@@ -234,6 +234,7 @@ void		_cf_vlog(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int li
 void		_cf_log(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line, char const *fmt, ...) CC_HINT(format (printf, 5, 6));
 
 #define		cf_log_perr(_cf, _fmt, ...) _cf_log_perr(L_ERR, CF_TO_ITEM(_cf),  __FILE__, __LINE__, NULL, _fmt, ## __VA_ARGS__)
+#define		cf_log_pwarn(_cf, _fmt, ...) _cf_log_perr(L_WARN, CF_TO_ITEM(_cf),  __FILE__, __LINE__, NULL, _fmt, ## __VA_ARGS__)
 void		_cf_log_perr(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line,
 			     fr_log_perror_format_t const *f_rules, char const *fmt, ...)
 		CC_HINT(format (printf, 6, 7));
