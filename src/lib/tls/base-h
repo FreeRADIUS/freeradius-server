@@ -183,15 +183,6 @@ void		fr_openssl_free(void);
 int		fr_tls_dict_init(void);
 
 /*
- *	tls/utils.c
- */
-char const	*fr_tls_utils_x509_pkey_type(X509 *cert);
-
-int		fr_tls_utils_keyblock_size_get(request_t *request, SSL *ssl);
-
-int		fr_tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1);
-
-/*
  *	tls/virtual_server.c
  */
 unlang_action_t fr_tls_call_push(request_t *child, unlang_function_t resume,

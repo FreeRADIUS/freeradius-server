@@ -40,6 +40,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "bio.h"
 #include "log.h"
 #include "session.h"
+#include "utils.h"
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */

@@ -28,9 +28,10 @@ RCSID("$Id$")
 
 #include "eap_fast.h"
 #include "eap_fast_crypto.h"
+#include <freeradius-devel/tls/utils.h>
 #include <freeradius-devel/util/sha1.h>
-#include <openssl/ssl.h>
 #include <openssl/rand.h>
+#include <openssl/ssl.h>
 
 #define RANDFILL(x) do { fr_assert(sizeof(x) % sizeof(uint32_t) == 0); for (size_t i = 0; i < sizeof(x); i += sizeof(uint32_t)) *((uint32_t *)&x[i]) = fr_rand(); } while(0)
 
