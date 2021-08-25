@@ -3685,6 +3685,18 @@ check_for_module:
 	if (realname != name) {
 		cf_log_warn(ci, "Ignoring \"%s\" as the \"%s\" module is not enabled.", name, realname);
 		return UNLANG_IGNORE;
+
+	}
+
+	/*
+	 *	The module exists, but it does not have the
+	 *	named method.
+	 */
+	if (!unlang_ctx2.section_name1) {
+		cf_log_err(ci, "The '%s' module does not have a '%s %s' method.",
+			   name, unlang_ctx->section_name1,
+			   unlang_ctx->section_name2 ? unlang_ctx->section_name2 : "");
+		return NULL;
 	}
 
 	/*
