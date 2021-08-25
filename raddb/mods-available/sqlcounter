@@ -81,7 +81,7 @@
 #	key = "%{%{Stripped-User-Name}:-%{User-Name}}"
 #
 #  counter_name:: Name of the `check` attribute to use to access the counter in
-#  the `users` file or SQL `radcheck` or `radcheckgroup` tables.
+#  the `users` file or SQL `radcheck` or `radgroupcheck` tables.
 #
 #	DEFAULT  Daily-Session-Time > 3600, Auth-Type = Reject
 #		 Reply-Message = "You've used up more than one hour today"
