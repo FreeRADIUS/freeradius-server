@@ -702,15 +702,18 @@ static unlang_group_t empty_group = {
 		.type = UNLANG_TYPE_GROUP,
 		.debug_name = "empty-group",
 		.actions = {
-			MOD_ACTION_RETURN,
-			MOD_ACTION_RETURN,
-			MOD_ACTION_RETURN,
-			MOD_ACTION_RETURN,
-			MOD_ACTION_RETURN,
-			MOD_ACTION_RETURN,
-			MOD_ACTION_RETURN,
-			MOD_ACTION_RETURN,
-			MOD_ACTION_RETURN
+			.actions = {
+				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN,
+				MOD_ACTION_RETURN
+			},
+			.retry = RETRY_INIT,
 		},
 	},
 };
