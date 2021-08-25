@@ -1504,6 +1504,71 @@ static int compile_action_pair(unlang_t *c, CONF_PAIR *cp)
 	return 1;
 }
 
+static bool compile_retry_section(unlang_t *c, CONF_ITEM *ci)
+{
+	CONF_ITEM *csi;
+	CONF_SECTION *cs;
+
+	cs = cf_item_to_section(ci);
+	for (csi=cf_item_next(cs, NULL);
+	     csi != NULL;
+	     csi=cf_item_next(cs, csi)) {
+		CONF_PAIR *cp;
+		char const *name, *value;
+
+		if (cf_item_is_section(csi)) {
+			cf_log_err(csi, "Invalid subsection in 'retry' configuration.");
+			return false;
+		}
+
+		if (!cf_item_is_pair(csi)) continue;
+
+		cp = cf_item_to_pair(csi);
+		name = cf_pair_attr(cp);
+		value = cf_pair_value(cp);
+
+		if (!value) {
+			cf_log_err(csi, "Retry configuration must specifiy a value");
+			return false;
+		}
+
+		/*
+		 *	We don't use CONF_PARSER here for various
+		 *	magical reasons.
+		 */
+		if (strcmp(name, "initial_rtx_time") == 0) {
+			if (fr_time_delta_from_str(&c->actions.retry.irt, value, FR_TIME_RES_SEC) < 0) {
+			error:
+				cf_log_err(csi, "Failed parsing '%s = %s' - %s",
+					   name, value, fr_strerror());
+				return false;
+			}
+
+		} else if (strcmp(name, "max_rtx_time") == 0) {
+			if (fr_time_delta_from_str(&c->actions.retry.mrt, value, FR_TIME_RES_SEC) < 0) goto error;
+
+		} else if (strcmp(name, "max_rtx_count") == 0) {
+			unsigned long v = strtoul(value, 0, 0);
+
+			if (v > 65536) {
+				cf_log_err(csi, "Invalid value for 'max_rtx_count = %s' - value must be between 0 and 65536",
+					   value);
+				return false;
+			}
+
+			c->actions.retry.mrc = v;
+
+		} else if (strcmp(name, "max_rtx_duration") == 0) {
+			if (fr_time_delta_from_str(&c->actions.retry.mrd, value, FR_TIME_RES_SEC) < 0) goto error;
+		} else {
+			cf_log_err(csi, "Invalid item '%s' in 'retry' configuration.", name);
+			return false;
+		}
+	}
+
+	return true;
+}
+
 static bool compile_action_section(unlang_t *c, CONF_ITEM *ci)
 {
 	CONF_ITEM *csi;
@@ -1518,15 +1583,49 @@ static bool compile_action_section(unlang_t *c, CONF_ITEM *ci)
 	for (csi=cf_item_next(cs, NULL);
 	     csi != NULL;
 	     csi=cf_item_next(cs, csi)) {
+		char const *name;
+		CONF_PAIR *cp;
 
 		if (cf_item_is_section(csi)) {
+			CONF_SECTION *subcs = cf_item_to_section(csi);
+
+			name = cf_section_name1(subcs);
+
+			/*
+			 *	Look for a "retry" section.
+			 */
+			if (name && (strcmp(name, "retry") == 0) && !cf_section_name2(subcs)) {
+				if (!compile_retry_section(c, csi)) return false;
+				continue;
+			}
+
 			cf_log_err(csi, "Invalid subsection.  Expected 'action = value'");
 			return false;
 		}
 
 		if (!cf_item_is_pair(csi)) continue;
 
-		if (!compile_action_pair(c, cf_item_to_pair(csi))) {
+		cp = cf_item_to_pair(csi);
+
+		/*
+		 *	Allow 'retry = path.to.retry.config'
+		 */
+		name = cf_pair_attr(cp);
+		if (strcmp(name, "retry") == 0) {
+			CONF_ITEM *subci;
+			char const *value = cf_pair_value(cp);
+
+			subci = cf_reference_item(cs, cf_root(ci), value);
+			if (!subci) {
+				cf_log_err(csi, "Unknown reference '%s'", value ? value : "???");
+				return false;
+			}
+
+			if (!compile_retry_section(c, subci)) return false;
+			continue;
+		}
+
+		if (!compile_action_pair(c, cp)) {
 			return false;
 		}
 	}
