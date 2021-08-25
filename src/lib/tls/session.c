@@ -525,18 +525,22 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 	if (where & SSL_CB_ALERT) {
 		if ((ret & 0xff) == SSL_AD_CLOSE_NOTIFY) return;
 
+		/*
+		 *	We got an alert...
+		 */
 		if (where & SSL_CB_READ) {
 			fr_pair_t *vp;
 
-			REDEBUG("Client sent %s TLS alert: %s", SSL_alert_type_string_long(ret),
-			        SSL_alert_desc_string_long(ret));
+			REDEBUG("Client sent %s TLS alert (%i) - %s", SSL_alert_type_string_long(ret),
+			        ret & 0xff, SSL_alert_desc_string_long(ret));
 
 			/*
 			 *	Offer helpful advice... Should be expanded.
 			 */
 			switch (ret & 0xff) {
 			case TLS1_AD_UNKNOWN_CA:
-				REDEBUG("Verify client has copy of CA certificate (and trusts CA)");
+				REDEBUG("Verify the client has a copy of the server's Certificate "
+					"Authority (CA) installed, and trusts that CA");
 				break;
 
 			default:
@@ -546,9 +550,27 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 			MEM(pair_update_request(&vp, attr_tls_client_error_code) >= 0);
 			vp->vp_uint8 = ret & 0xff;
 			RDEBUG2("&TLS-Client-Error-Code := %pV", &vp->data);
+		/*
+		 *	We're sending the client an alert.
+		 */
 		} else {
-			REDEBUG("Sending client %s TLS alert: %s %i", SSL_alert_type_string_long(ret),
-				SSL_alert_desc_string_long(ret), ret & 0xff);
+			REDEBUG("Sending client %s TLS alert (%i) - %s", SSL_alert_type_string_long(ret),
+				ret & 0xff, SSL_alert_desc_string_long(ret));
+
+			/*
+			 *	Offer helpful advice... Should be expanded.
+			 */
+			switch (ret & 0xff) {
+			case TLS1_AD_PROTOCOL_VERSION:
+				REDEBUG("Client requested a TLS protocol version that is not enabled or not supported. "
+				        "Upgrade FreeRADIUS + OpenSSL to their latest versions and/or adjust "
+				        "'tls_max_version'/'tls_min_version' if you want authentication to "
+				        "succeed");
+				break;
+
+			default:
+				break;
+			}
 		}
 		return;
 	}
