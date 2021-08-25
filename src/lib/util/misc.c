@@ -711,16 +711,15 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 		if (*tail == '-') tz *= -1;
 
 	done:
-		t = fr_time_from_utc(tm);
+		*date = fr_unix_time_from_utc(tm);
 
 		/*
 		 *	Add in the time zone offset, which the posix
 		 *	functions are too stupid to do.
 		 */
-		t += tz;
-
-		*date = fr_unix_time_from_timeval(&(struct timeval) { .tv_sec = t });
+		*date += fr_unix_time_from_sec(tz);
 		*date += subseconds;
+
 		return 0;
 	}
 
@@ -896,12 +895,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 		tm->tm_min = atoi(f[1]);
 	}
 
-	t = fr_time_from_utc(tm);
-
-	/*
-	 *	Get the UTC time, and manually add in the offset from GMT.
-	 */
-	*date = fr_unix_time_from_timeval(&(struct timeval) { .tv_sec = t });
+	*date = fr_unix_time_from_utc(tm);
 
 	/*
 	 *	Add in the time zone offset, which the posix

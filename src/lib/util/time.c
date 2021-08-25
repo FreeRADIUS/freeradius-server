@@ -539,7 +539,7 @@ void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char con
 /*
  *	Based on https://blog.reverberate.org/2020/05/12/optimizing-date-algorithms.html
  */
-fr_unix_time_t fr_time_from_utc(struct tm *tm)
+fr_unix_time_t fr_unix_time_from_utc(struct tm *tm)
 {
 	static const uint16_t month_yday[12] = {0,   31,  59,  90,  120, 151,
 						181, 212, 243, 273, 304, 334};
@@ -553,5 +553,5 @@ fr_unix_time_t fr_time_from_utc(struct tm *tm)
 	 *	2472692 adjusts the days for Unix epoch.  It is calculated as
 	 *	(365.2425 * (4800 + 1970))
 	 */
-	return (days - 2472692) * 86400 + (tm->tm_hour * 3600) + (tm->tm_min * 60) + tm->tm_sec;
+	return fr_unix_time_from_sec((days - 2472692) * 86400 + (tm->tm_hour * 3600) + (tm->tm_min * 60) + tm->tm_sec);
 }
