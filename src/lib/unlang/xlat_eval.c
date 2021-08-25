@@ -1107,7 +1107,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
 			xa = node->call.func->func.async(ctx, out, request,
-							 node->call.inst->data, thread_inst->data, result);
+							 node->call.inst ? node->call.inst->data : NULL,
+							 thread_inst ? thread_inst->data : NULL, result);
 			VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
 			if (RDEBUG_ENABLED2) xlat_debug_log_expansion(request, *in, &result_copy);

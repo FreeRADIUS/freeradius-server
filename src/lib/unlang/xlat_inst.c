@@ -312,21 +312,16 @@ static int _xlat_thread_instantiate(void *data, void *uctx)
  * @param[in] node to find thread specific data for.
  * @return
  *	- Thread specific data on success.
- *	- NULL if the xlat has no thread instance data (should not happen).
+ *	- NULL if the xlat has no thread instance data.
  */
 xlat_thread_inst_t *xlat_thread_instance_find(xlat_exp_t const *node)
 {
-	xlat_thread_inst_t	*found;
-
 	fr_assert(xlat_thread_inst_tree);
 	fr_assert(node->type == XLAT_FUNC);
 
 	if (node->call.ephemeral) return node->call.thread_inst;
 
-	found = fr_rb_find(xlat_thread_inst_tree, &(xlat_thread_inst_t){ .node = node });
-	fr_assert(found);
-
-	return found;
+	return fr_rb_find(xlat_thread_inst_tree, &(xlat_thread_inst_t){ .node = node });
 }
 
 /** Create thread specific instance tree and create thread instances
