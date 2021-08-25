@@ -699,25 +699,24 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 		}
 
 		/*
-		 *	We set this, but the timegm() function ignores
-		 *	it.  Note also that mktime() ignores it too,
-		 *	and treats the time zone as local.
+		 *	We set the time zone, but the timegm()
+		 *	function ignores it.  Note also that mktime()
+		 *	ignores it too, and treats the time zone as
+		 *	local.
 		 *
 		 *	We can't store this value in s_tm.gtmoff,
 		 *	because the timegm() function helpfully zeros
 		 *	it out.
+		 *
+		 *	So insyead of using stupid C library
+		 *	functions, we just roll our own.
 		 */
 		tz = tz_hour * 3600 + tz_min;
 		if (*tail == '-') tz *= -1;
 
 	done:
-		*date = fr_unix_time_from_utc(tm);
-
-		/*
-		 *	Add in the time zone offset, which the posix
-		 *	functions are too stupid to do.
-		 */
-		*date += fr_unix_time_from_sec(tz);
+		tm->tm_gmtoff = tz;
+		*date = fr_unix_time_from_tm(tm);
 		*date += subseconds;
 
 		return 0;
@@ -752,8 +751,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 				p = strptime(my_str, "%b %e %Y %H:%M:%S %Z", tm);
 				if (p && (*p == '\0')) {
 					talloc_free(my_str);
-					t = mktime(tm);
-					*date = fr_unix_time_from_timeval(&(struct timeval) { .tv_sec = t });
+					*date = fr_unix_time_from_tm(tm);
 					return 0;
 				}
 				talloc_free(my_str);
@@ -764,8 +762,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 
 	p = strptime(date_str, "%b %e %Y %H:%M:%S %Z", tm);
 	if (p && (*p == '\0')) {
-		t = mktime(tm);
-		*date = fr_unix_time_from_timeval(&(struct timeval) { .tv_sec = t });
+		*date = fr_unix_time_from_tm(tm);
 		return 0;
 	}
 
@@ -895,13 +892,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 		tm->tm_min = atoi(f[1]);
 	}
 
-	*date = fr_unix_time_from_utc(tm);
-
-	/*
-	 *	Add in the time zone offset, which the posix
-	 *	functions are too stupid to do.
-	 */
-	*date += gmtoff;
+	*date = fr_unix_time_from_tm(tm) + gmtoff;
 
 	return 0;
 }
