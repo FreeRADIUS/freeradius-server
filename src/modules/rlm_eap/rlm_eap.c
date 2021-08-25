@@ -974,6 +974,16 @@ static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *
 	}
 
 	/*
+	 *	This should never happen, but we may be here
+	 *	because there was an unexpected error in the
+	 *	EAP module.
+	 */
+	if (!fr_cond_assert(eap_session->this_round) || !fr_cond_assert(eap_session->this_round->request)) {
+		eap_session_destroy(&eap_session);		/* Free the EAP session, and dissociate it from the request */
+		RETURN_MODULE_FAIL;
+	}
+
+	/*
 	 *	Already set to failure, assume something else
 	 *	added EAP-Message with a failure code, do nothing.
 	 */
