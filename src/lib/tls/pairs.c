@@ -160,7 +160,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	}
 
 	MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_not_before) == 0);
-	vp->vp_date = fr_unix_time_from_sec(time);
+	vp->vp_date = fr_unix_time_from_time(time);
 
 	/*
 	 *	Not valid after
@@ -173,7 +173,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	}
 
 	MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_not_after) == 0);
-	vp->vp_date = fr_unix_time_from_sec(time);
+	vp->vp_date = fr_unix_time_from_time(time);
 
 	/*
 	 *	Get the RFC822 Subject Alternative Name

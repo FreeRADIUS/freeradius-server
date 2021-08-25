@@ -99,10 +99,27 @@ extern uint64_t				our_mach_epoch;
 /*
  *	Need cast because of difference in sign
  */
-#define fr_unix_time_from_nsec(_x)	((_x) < 0 ? 0 : (fr_unix_time_t)(_x))
-#define fr_unix_time_from_usec(_x)	((_x) < 0 ? 0 : (fr_unix_time_t)fr_time_delta_from_usec((fr_time_delta_t)(_x)))
-#define fr_unix_time_from_msec(_x)	((_x) < 0 ? 0 : (fr_unix_time_t)fr_time_delta_from_msec((fr_time_delta_t)(_x)))
-#define fr_unix_time_from_sec(_x)	((_x) < 0 ? 0 : (fr_unix_time_t)fr_time_delta_from_sec((fr_time_delta_t)(_x)))
+#define fr_unix_time_from_nsec(_x)	(fr_unix_time_t)(_x)
+#define fr_unix_time_from_usec(_x)	(fr_unix_time_t)fr_time_delta_from_usec((fr_time_delta_t)(_x))
+#define fr_unix_time_from_msec(_x)	(fr_unix_time_t)fr_time_delta_from_msec((fr_time_delta_t)(_x))
+#define fr_unix_time_from_sec(_x)	(fr_unix_time_t)fr_time_delta_from_sec((fr_time_delta_t)(_x))
+
+/** Covert a time_t into out internal fr_unix_time_t
+ *
+ * Our internal unix time representation is unsigned and in nanoseconds which
+ * is different from time_t which is signed and has seconds resolution.
+ *
+ * If time is negative we return 0.
+ *
+ * @param[in] time to convert.
+ * @return Unix time in seconds.
+ */
+static inline CC_HINT(nonnull) fr_unix_time_t fr_unix_time_from_time(time_t time)
+{
+	if (time < 0) return 0;
+
+	return (time * NSEC);
+}
 
 #define fr_unix_time_to_nsec(_x)	(uint64_t)(_x)
 #define fr_unix_time_to_usec(_x) 	(uint64_t)fr_time_delta_to_usec(_x)
