@@ -82,7 +82,9 @@ static char const * const comp2str[] = {
 	"post-auth"
 };
 
-typedef int unlang_actions_t[RLM_MODULE_NUMCODES];
+typedef struct {
+	int actions[RLM_MODULE_NUMCODES];
+} unlang_actions_t;
 
 typedef struct {
 	rlm_components_t	component;
@@ -1117,7 +1119,7 @@ static void compile_action_defaults(unlang_t *c, unlang_compile_t *unlang_ctx)
 	 */
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
 		if (!c->actions[i]) {
-			c->actions[i] = unlang_ctx->actions[0][i];
+			c->actions[i] = unlang_ctx->actions[0].actions[i];
 		}
 	}
 }
