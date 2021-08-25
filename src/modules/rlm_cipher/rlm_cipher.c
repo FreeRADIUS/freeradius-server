@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/tls/log.h>
+#include <freeradius-devel/tls/cert.h>
 #include <freeradius-devel/util/debug.h>
 
 #include <openssl/crypto.h>
@@ -55,6 +56,26 @@ typedef enum {
 	RLM_CIPHER_TYPE_INVALID = 0,
 	RLM_CIPHER_TYPE_RSA = 1,
 } cipher_type_t;
+
+/** Certificate validation modes
+ *
+ */
+typedef enum {
+	CIPHER_CERT_VERIFY_INVALID = 0,
+
+	CIPHER_CERT_VERIFY_HARD,				//!< Fail if the certificate isn't valid.
+	CIPHER_CERT_VERIFY_SOFT,				//!< Warn if the certificate isn't valid.
+	CIPHER_CERT_VERIFY_NONE					//!< Don't check to see if the we're between
+								///< notBefore or notAfter.
+} cipher_cert_verify_mode_t;
+
+typedef enum {
+	CIPHER_CERT_ATTR_UNKNOWN = 0,				//!< Unrecognised attribute.
+	CIPHER_CERT_ATTR_SERIAL,				//!< Certificate's serial number.
+	CIPHER_CERT_ATTR_FINGERPRINT,				//!< Dynamically calculated fingerprint.
+	CIPHER_CERT_ATTR_NOT_BEFORE,				//!< Time the certificate becomes valid.
+	CIPHER_CERT_ATTR_NOT_AFTER				//!< Time the certificate expires.
+} cipher_cert_attributes_t;
 
 /** Public key types
  *
@@ -84,6 +105,24 @@ static fr_table_num_sorted_t const cipher_type[] = {
 };
 static size_t cipher_type_len = NUM_ELEMENTS(cipher_type);
 
+static fr_table_num_sorted_t const cipher_cert_verify_mode_table[] = {
+	{ L("hard"),	CIPHER_CERT_VERIFY_HARD	},
+	{ L("none"),	CIPHER_CERT_VERIFY_SOFT	},
+	{ L("soft"),	CIPHER_CERT_VERIFY_NONE	}
+};
+static size_t cipher_cert_verify_mode_table_len = NUM_ELEMENTS(cipher_cert_verify_mode_table);
+
+/** Public key types
+ *
+ */
+static fr_table_num_sorted_t const cert_attributes[] = {
+	{ L("fingerprint"),	CIPHER_CERT_ATTR_FINGERPRINT	},
+	{ L("notAfter"),	CIPHER_CERT_ATTR_NOT_AFTER	},
+	{ L("notBefore"),	CIPHER_CERT_ATTR_NOT_BEFORE	},
+	{ L("serial"),		CIPHER_CERT_ATTR_SERIAL		},
+};
+static size_t cert_attributes_len = NUM_ELEMENTS(cert_attributes);
+
 typedef struct {
 	EVP_PKEY_CTX		*evp_encrypt_ctx;		//!< Pre-allocated evp_pkey_ctx.
 	EVP_PKEY_CTX		*evp_sign_ctx;			//!< Pre-allocated evp_pkey_ctx.
@@ -104,6 +143,8 @@ typedef struct {
 	char const		*label;				//!< Additional input to the hashing function.
 } cipher_rsa_oaep_t;
 
+
+
 /** Configuration for RSA encryption/decryption/signing
  *
  */
@@ -115,6 +156,10 @@ typedef struct {
 	EVP_PKEY		*private_key_file;		//!< Private key file.
 	EVP_PKEY		*certificate_file;		//!< Public (certificate) file.
 	X509			*x509_certificate_file;		//!< Needed for extracting certificate attributes.
+
+	cipher_cert_verify_mode_t verify_mode;			//!< How hard we try to verify the certificate.
+	fr_unix_time_t		not_before;			//!< Certificate isn't valid before this time.
+	fr_unix_time_t		not_after;			//!< Certificate isn't valid after this time.
 
 	int			padding;			//!< Type of padding to apply to the plaintext
 								///< or ciphertext before feeding it to RSA crypto
@@ -158,6 +203,14 @@ static const CONF_PARSER rsa_config[] = {
 	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING | FR_TYPE_SECRET, cipher_rsa_t, private_key_password) },	/* Must come before private_key */
 	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, cipher_rsa_t, private_key_file), .func = cipher_rsa_private_key_file_load },
 	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, cipher_rsa_t, certificate_file), .func = cipher_rsa_certificate_file_load },
+
+	{ FR_CONF_OFFSET("verify_mode", FR_TYPE_VOID, cipher_rsa_t, verify_mode),
+			 .func = cf_table_parse_int,
+			 .uctx = &(cf_table_parse_ctx_t){
+			 	.table = cipher_cert_verify_mode_table,
+			 	.len = &cipher_cert_verify_mode_table_len
+			 },
+			 .dflt = "hard" },
 
 	{ FR_CONF_OFFSET("random_file", FR_TYPE_STRING, cipher_rsa_t, random_file) },
 
@@ -459,9 +512,34 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, void *pa
 		cf_log_err(ci, "Expected certificate to contain %s public key, got %s public key",
 			   fr_table_str_by_value(pkey_types, EVP_PKEY_RSA, "?Unknown?"),
 			   fr_table_str_by_value(pkey_types, pkey_type, "?Unknown?"));
-
+	error:
 		EVP_PKEY_free(pkey);
 		return -1;
+	}
+
+	/*
+	 *	Certificate validity checks
+	 */
+	switch (fr_tls_cert_is_valid(&rsa_inst->not_before, &rsa_inst->not_after, cert)) {
+	case -1:
+
+		cf_log_perr(ci, "Malformed certificate");
+		return -1;
+
+	case -2:
+	case -3:
+		switch (rsa_inst->verify_mode) {
+		case CIPHER_CERT_VERIFY_SOFT:
+			cf_log_pwarn(ci, "Certificate validation failed");
+			break;
+
+		case CIPHER_CERT_VERIFY_HARD:
+			cf_log_perr(ci, "Certificate validation failed");
+			goto error;
+
+		default:
+			break;
+		}
 	}
 
 	talloc_set_type(pkey, EVP_PKEY);
@@ -795,8 +873,9 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_arg_parser_t const cipher_fingerprint_xlat_args[] = {
+static xlat_arg_parser_t const cipher_certificate_xlat_args[] = {
 	{ .required = true, .concat = false, .single = true, .variadic = false, .type = FR_TYPE_STRING },
+	{ .required = false, .concat = false, .single = true, .variadic = false, .type = FR_TYPE_STRING }, /* Optional hash for fingerprint mode */
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -805,7 +884,7 @@ static xlat_arg_parser_t const cipher_fingerprint_xlat_args[] = {
  * Arguments are @verbatim(<digest>)@endverbatim
  *
 @verbatim
-%(<inst>_fingerprint:<digest>)
+%(<inst>_certificate:fingerprint <digest>)
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -815,12 +894,21 @@ static xlat_action_t cipher_fingerprint_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					     fr_value_box_list_t *in)
 {
 	rlm_cipher_t const	*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst), rlm_cipher_t);
-	char const		*md_name = ((fr_value_box_t *)fr_dlist_head(in))->vb_strvalue;
+	char const		*md_name;
 	EVP_MD const		*md;
 	size_t			md_len;
 	fr_value_box_t		*vb;
 	uint8_t			*digest;
 
+	if (!fr_dlist_next(in, fr_dlist_head(in))) {
+		REDEBUG("Missing digest argument");
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Second arg...
+	 */
+	md_name = ((fr_value_box_t *)fr_dlist_next(in, fr_dlist_head(in)))->vb_strvalue;
 	md = EVP_get_digestbyname(md_name);
 	if (!md) {
 		REDEBUG("Specified digest \"%s\" is not a valid digest type", md_name);
@@ -842,14 +930,10 @@ static xlat_action_t cipher_fingerprint_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_arg_parser_t const cipher_serial_xlat_args[] = {
-	XLAT_ARG_PARSER_TERMINATOR
-};
-
 /** Return the serial of the public certificate
  *
 @verbatim
-%(<inst>_serial:)
+%(<inst>_certificate:serial)
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -896,6 +980,39 @@ static xlat_action_t cipher_serial_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
+}
+
+static xlat_action_t cipher_certificate_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					     request_t *request, void const *xlat_inst, void *xlat_thread_inst,
+					     fr_value_box_list_t *in)
+{
+	rlm_cipher_t const	*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst), rlm_cipher_t);
+	char const		*attribute = ((fr_value_box_t *)fr_dlist_head(in))->vb_strvalue;
+    	fr_value_box_t		*vb;
+
+	switch (fr_table_value_by_str(cert_attributes, attribute, CIPHER_CERT_ATTR_UNKNOWN)) {
+	default:
+		REDEBUG("Unknown certificate attribute \"%s\"", attribute);
+		return XLAT_ACTION_FAIL;
+
+	case CIPHER_CERT_ATTR_FINGERPRINT:
+		return cipher_fingerprint_xlat(ctx, out, request, xlat_inst, xlat_thread_inst, in);
+
+	case CIPHER_CERT_ATTR_SERIAL:
+		return cipher_serial_xlat(ctx, out, request, xlat_inst, xlat_thread_inst, in);
+
+	case CIPHER_CERT_ATTR_NOT_BEFORE:
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL, true));
+		vb->vb_date = inst->rsa->not_before;
+		fr_dcursor_append(out, vb);
+		return XLAT_ACTION_DONE;
+
+	case CIPHER_CERT_ATTR_NOT_AFTER:
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_DATE, NULL, true));
+		vb->vb_date = inst->rsa->not_after;
+		fr_dcursor_append(out, vb);
+		return XLAT_ACTION_DONE;
+	}
 }
 
 /** Talloc destructor for freeing an EVP_PKEY_CTX
@@ -1308,23 +1425,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 							  inst);
 			talloc_free(xlat_name);
 
-			xlat_name = talloc_asprintf(inst, "%s_fingerprint", inst->xlat_name);
-			xlat = xlat_register(inst, xlat_name, cipher_fingerprint_xlat, false);
-			xlat_func_args(xlat, cipher_fingerprint_xlat_args);
-			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
-						   rlm_cipher_t *,
-						   NULL,
-						   inst);
-			xlat_async_thread_instantiate_set(xlat,
-							  cipher_xlat_thread_instantiate,
-							  rlm_cipher_rsa_thread_inst_t *,
-							  NULL,
-							  inst);
-			talloc_free(xlat_name);
-
-			xlat_name = talloc_asprintf(inst, "%s_serial", inst->xlat_name);
-			xlat = xlat_register(inst, xlat_name, cipher_serial_xlat, false);
-			xlat_func_args(xlat, cipher_serial_xlat_args);
+			xlat_name = talloc_asprintf(inst, "%s_certificate", inst->xlat_name);
+			xlat = xlat_register(inst, xlat_name, cipher_certificate_xlat, false);
+			xlat_func_args(xlat, cipher_certificate_xlat_args);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
 						   rlm_cipher_t *,
 						   NULL,

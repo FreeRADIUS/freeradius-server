@@ -8,6 +8,7 @@ SOURCES	:= \
 	base.c \
 	bio.c \
 	cache.c \
+	cert.c \
 	conf.c \
 	ctx.c \
 	engine.c \

@@ -1,5 +1,5 @@
 update request {
-	&Tmp-Octets-0 := "%(cipher_rsa_serial:)"
+	&Tmp-Octets-0 := "%(cipher_rsa_certificate:serial)"
 }
 
 if ("%(length:%{Tmp-Octets-0})" != 1) {

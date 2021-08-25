@@ -75,7 +75,7 @@ static _Thread_local	fr_tls_log_bio_t	*request_log_bio;
 static _Thread_local	fr_tls_log_bio_t	*global_log_bio;
 
 static void _tls_ctx_print_cert_line(char const *file, int line,
-				     request_t *request, int index, X509 *cert)
+				     request_t *request, fr_log_type_t log_type, int idx, X509 *cert)
 {
 	char		subject[1024];
 
@@ -83,11 +83,11 @@ static void _tls_ctx_print_cert_line(char const *file, int line,
 	subject[sizeof(subject) - 1] = '\0';
 
 	if (request) {
-		log_request(L_DBG, fr_debug_lvl, request, file, line,
-			    "[%i] %s %s", index, fr_tls_utils_x509_pkey_type(cert), subject);
+		log_request(log_type, fr_debug_lvl, request, file, line,
+			    "[%i] %s %s", idx, fr_tls_utils_x509_pkey_type(cert), subject);
 	} else {
-		fr_log(LOG_DST, fr_debug_lvl, file, line,
-		       "[%i] %s %s", index, fr_tls_utils_x509_pkey_type(cert), subject);
+		fr_log(LOG_DST, log_type, file, line,
+		       "[%i] %s %s", idx, fr_tls_utils_x509_pkey_type(cert), subject);
 	}
 }
 
@@ -98,18 +98,19 @@ DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
  * @param[in] file	File where this function is being called.
  * @param[in] line	Line where this function is being called.
  * @param[in] request	Current request, may be NULL.
+ * @param[in] log_type	The type of log message to produce L_INFO, L_ERR, L_DBG etc...
  * @param[in] chain	The certificate chain.
  * @param[in] cert	The leaf certificate.
  */
 void _fr_tls_log_certificate_chain(char const *file, int line,
-				   request_t *request, STACK_OF(X509) *chain, X509 *cert)
+				   request_t *request, fr_log_type_t log_type, STACK_OF(X509) *chain, X509 *cert)
 {
 	int i;
 
 	for (i = sk_X509_num(chain); i > 0 ; i--) {
-		_tls_ctx_print_cert_line(file, line, request, i, sk_X509_value(chain, i - 1));
+		_tls_ctx_print_cert_line(file, line, request, log_type, i, sk_X509_value(chain, i - 1));
 	}
-	_tls_ctx_print_cert_line(file, line, request, i, cert);
+	_tls_ctx_print_cert_line(file, line, request, log_type, i, cert);
 }
 DIAG_ON(used-but-marked-unused)
 DIAG_ON(DIAG_UNKNOWN_PRAGMAS)

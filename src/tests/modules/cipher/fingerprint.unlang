@@ -3,7 +3,7 @@
 #  but we can test the digest length, and for smoke...
 #
 update request {
-	&Tmp-Octets-0 := "%(cipher_rsa_fingerprint:sha1)"
+	&Tmp-Octets-0 := "%(cipher_rsa_certificate:fingerprint sha1)"
 }
 
 if ("%(length:%{Tmp-Octets-0})" != 20) {
@@ -13,7 +13,7 @@ if ("%(length:%{Tmp-Octets-0})" != 20) {
 }
 
 update request {
-	&Tmp-Octets-0 := "%(cipher_rsa_fingerprint:sha256)"
+	&Tmp-Octets-0 := "%(cipher_rsa_certificate:fingerprint sha256)"
 }
 
 if ("%(length:%{Tmp-Octets-0})" != 32) {

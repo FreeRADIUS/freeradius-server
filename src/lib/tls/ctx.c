@@ -41,6 +41,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "base.h"
 #include "log.h"
+#include "cert.h"
 
 #ifndef OPENSSL_NO_ECDH
 static int ctx_ecdh_curve_set(SSL_CTX *ctx, char const *ecdh_curve, bool disable_single_dh_use)
@@ -116,7 +117,7 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 	return 0;
 }
 
-static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chain)
+static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain)
 {
 	char		*password;
 
@@ -224,6 +225,72 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 		return -1;
 	}
 
+	/*
+	 *	Loop over the certificates checking validity periods.
+	 *	SSL_CTX_build_cert_chain does this too, but we can
+	 *	produce significantly better errors here.
+	 *
+	 *	After looping over all the certs we figure out when
+	 *      the chain will next need refreshing.
+	 */
+	{
+		fr_unix_time_t  expires_first = 0;
+		int		ret;
+
+		for (ret = SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_FIRST);
+		     ret == 1;
+		     ret = SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_NEXT)) {
+			fr_unix_time_t	not_after;
+			STACK_OF(X509)	*our_chain;
+			X509		*our_cert;
+
+			our_cert = SSL_CTX_get0_certificate(ctx);
+			if (!SSL_CTX_get0_chain_certs(ctx, &our_chain)) {
+				fr_tls_log_error(NULL, "Failed retrieving chain certificates");
+				return -1;
+			}
+
+			switch (fr_tls_cert_is_valid(NULL, &not_after, our_cert)) {
+			case -1:
+				fr_tls_log_certificate_chain(NULL, L_ERR, our_chain, our_cert);
+				PERROR("Malformed certificate");
+				return -1;
+
+			case -2:
+			case -3:
+				switch (chain->verify_mode) {
+				case FR_TLS_CHAIN_VERIFY_SOFT:
+					fr_tls_log_certificate_chain(NULL, L_WARN, our_chain, our_cert);
+					PWARN("Certificate validation failed");
+					break;
+
+				case FR_TLS_CHAIN_VERIFY_HARD:
+					fr_tls_log_certificate_chain(NULL, L_ERR, our_chain, our_cert);
+					PERROR("Certificate validation failed");
+					return -1;
+
+				default:
+					break;
+				}
+
+			}
+
+			/*
+			 *	Record the time the first certificate in
+			 *	the chain expires so we can use it for
+			 *	runtime checks.
+			 */
+			if ((expires_first == 0) || (expires_first > not_after)) expires_first = not_after;
+		}
+
+		/*
+		 *	Record this as a unix timestamp as
+		 *	internal time might not progress at
+		 *	the same rate as wallclock time.
+		 */
+		chain->valid_until = expires_first;
+	}
+
 	{
 		int mode = SSL_BUILD_CHAIN_FLAG_CHECK;
 
@@ -265,6 +332,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t const *chai
 			break;
 		}
 	}
+
 	return 0;
 }
 
@@ -667,7 +735,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 					goto error;
 				}
 
-				if (DEBUG_ENABLED3) fr_tls_log_certificate_chain(NULL, our_chain, our_cert);
+				if (DEBUG_ENABLED3) fr_tls_log_certificate_chain(NULL, L_DBG, our_chain, our_cert);
 			}
 			(void)SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_FIRST);	/* Reset */
 		}

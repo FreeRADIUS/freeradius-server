@@ -259,8 +259,9 @@ typedef struct {
  *
  */
 struct module_ctx_s {
-	void		*instance;				//!< Global instance data for the module.
-	void		*thread;				//!< Thread specific instance data.
+	void				*instance;	//!< Global instance data for the module.
+	void				*thread;	//!< Thread specific instance data.
+	void				*rctx;		//!< Resume ctx that a module previously set.
 };
 
 /** @name Convenience wrappers around other internal APIs to make them easier to instantiate with modules

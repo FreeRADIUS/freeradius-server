@@ -34,10 +34,10 @@ RCSIDH(tls_log_h, "$Id$")
 
 #include "base.h"
 
-#define		fr_tls_log_certificate_chain(_request, _chain, _cert) \
-			_fr_tls_log_certificate_chain( __FILE__, __LINE__, _request, _chain, _cert)
+#define		fr_tls_log_certificate_chain(_request, _log_type, _chain, _cert) \
+			_fr_tls_log_certificate_chain( __FILE__, __LINE__, _request, _log_type, _chain, _cert)
 void		_fr_tls_log_certificate_chain(char const *file, int line,
-					      request_t *request, STACK_OF(X509) *chain, X509 *cert);
+					      request_t *request, fr_log_type_t log_type, STACK_OF(X509) *chain, X509 *cert);
 
 int		fr_tls_log_io_error(request_t *request, fr_tls_session_t *session, int ret, char const *msg, ...)
 				    CC_HINT(format (printf, 4, 5));

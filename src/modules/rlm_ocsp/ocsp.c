@@ -234,7 +234,7 @@ int fr_tls_ocsp_staple_cb(SSL *ssl, void *data)
 	if (RDEBUG_ENABLED3) {
 		RDEBUG3("Current SSL session cert store contents");
 		RINDENT();
-		fr_tls_log_certificate_chain(request, our_chain, cert);
+		fr_tls_log_certificate_chain(request, L_DBG, our_chain, cert);
 		REXDENT();
 	}
 
