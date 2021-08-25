@@ -374,6 +374,7 @@ int unlang_module_push(rlm_rcode_t *p_result, request_t *request,
 					[RLM_MODULE_NOOP]	= 0,
 					[RLM_MODULE_UPDATED]	= 0
 				},
+				.retry = RETRY_INIT,
 			},
 		},
 		.instance = module_instance,

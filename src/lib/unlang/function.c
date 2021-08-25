@@ -60,6 +60,7 @@ static unlang_t function_instruction = {
 			[RLM_MODULE_NOOP]	= 0,
 			[RLM_MODULE_UPDATED]	= 0
 		},
+		.retry = RETRY_INIT,
 	},
 };
 

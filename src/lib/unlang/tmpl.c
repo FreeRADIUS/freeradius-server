@@ -148,6 +148,7 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 				[RLM_MODULE_NOOP]	= 0,
 				[RLM_MODULE_UPDATED]	= 0
 			},
+			.retry = RETRY_INIT,
 		},
 	};
 

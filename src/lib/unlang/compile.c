@@ -99,63 +99,78 @@ static const unlang_actions_t default_actions[MOD_COUNT] =
 {
 	/* authenticate */
 	{
-		MOD_ACTION_RETURN,	/* reject   */
-		MOD_ACTION_RETURN,	/* fail     */
-		4,			/* ok       */
-		MOD_ACTION_RETURN,	/* handled  */
-		MOD_ACTION_RETURN,	/* invalid  */
-		MOD_ACTION_RETURN,	/* disallow */
-		1,			/* notfound */
-		2,			/* noop     */
-		3			/* updated  */
+		.actions = {
+			MOD_ACTION_RETURN,	/* reject   */
+			MOD_ACTION_RETURN,	/* fail     */
+			4,			/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* disallow */
+			1,			/* notfound */
+			2,			/* noop     */
+			3			/* updated  */
+		},
+		.retry = RETRY_INIT,
 	},
 	/* authorize */
 	{
-		MOD_ACTION_RETURN,	/* reject   */
-		MOD_ACTION_RETURN,	/* fail     */
-		3,			/* ok       */
-		MOD_ACTION_RETURN,	/* handled  */
-		MOD_ACTION_RETURN,	/* invalid  */
-		MOD_ACTION_RETURN,	/* disallow */
-		1,			/* notfound */
-		2,			/* noop     */
-		4			/* updated  */
+		.actions = {
+			MOD_ACTION_RETURN,	/* reject   */
+			MOD_ACTION_RETURN,	/* fail     */
+			3,			/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* disallow */
+			1,			/* notfound */
+			2,			/* noop     */
+			4			/* updated  */
+		},
+		.retry = RETRY_INIT,
 	},
 	/* preacct */
 	{
-		MOD_ACTION_RETURN,	/* reject   */
-		MOD_ACTION_RETURN,	/* fail     */
-		2,			/* ok       */
-		MOD_ACTION_RETURN,	/* handled  */
-		MOD_ACTION_RETURN,	/* invalid  */
-		MOD_ACTION_RETURN,	/* disallow */
-		MOD_ACTION_RETURN,	/* notfound */
-		1,			/* noop     */
-		3			/* updated  */
+		.actions = {
+			MOD_ACTION_RETURN,	/* reject   */
+			MOD_ACTION_RETURN,	/* fail     */
+			2,			/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* disallow */
+			MOD_ACTION_RETURN,	/* notfound */
+			1,			/* noop     */
+			3			/* updated  */
+		},
+		.retry = RETRY_INIT,
 	},
 	/* accounting */
 	{
-		MOD_ACTION_RETURN,	/* reject   */
-		MOD_ACTION_RETURN,	/* fail     */
-		2,			/* ok       */
-		MOD_ACTION_RETURN,	/* handled  */
-		MOD_ACTION_RETURN,	/* invalid  */
-		MOD_ACTION_RETURN,	/* disallow */
-		MOD_ACTION_RETURN,	/* notfound */
-		1,			/* noop     */
-		3			/* updated  */
+		.actions = {
+			MOD_ACTION_RETURN,	/* reject   */
+			MOD_ACTION_RETURN,	/* fail     */
+			2,			/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* disallow */
+			MOD_ACTION_RETURN,	/* notfound */
+			1,			/* noop     */
+			3			/* updated  */
+		},
+		.retry = RETRY_INIT,
 	},
 	/* post-auth */
 	{
-		MOD_ACTION_RETURN,	/* reject   */
-		MOD_ACTION_RETURN,	/* fail     */
-		3,			/* ok       */
-		MOD_ACTION_RETURN,	/* handled  */
-		MOD_ACTION_RETURN,	/* invalid  */
-		MOD_ACTION_RETURN,	/* disallow */
-		1,			/* notfound */
-		2,			/* noop     */
-		4			/* updated  */
+		.actions = {
+			MOD_ACTION_RETURN,	/* reject   */
+			MOD_ACTION_RETURN,	/* fail     */
+			3,			/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* disallow */
+			1,			/* notfound */
+			2,			/* noop     */
+			4			/* updated  */
+		},
+		.retry = RETRY_INIT,
 	}
 };
 

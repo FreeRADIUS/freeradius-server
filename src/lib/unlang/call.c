@@ -176,6 +176,7 @@ unlang_action_t unlang_call_push(request_t *request, CONF_SECTION *server_cs, bo
 						[RLM_MODULE_NOOP]	= 0,
 						[RLM_MODULE_UPDATED]	= 0
 					},
+					.retry = RETRY_INIT,
 				},
 			}
 		},

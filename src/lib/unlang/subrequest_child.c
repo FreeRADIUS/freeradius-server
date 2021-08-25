@@ -397,9 +397,10 @@ int unlang_subrequest_child_op_init(void)
 						[RLM_MODULE_INVALID]	= 0,
 						[RLM_MODULE_DISALLOW]	= 0,
 						[RLM_MODULE_NOTFOUND]	= 0,
-					[RLM_MODULE_NOOP]	= 0,
+						[RLM_MODULE_NOOP]	= 0,
 						[RLM_MODULE_UPDATED]	= 0
 					},
+					.retry = RETRY_INIT,
 				},
 			}
 		}
