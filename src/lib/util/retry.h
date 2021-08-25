@@ -36,6 +36,8 @@ typedef struct {
 	uint32_t		mrc;			//!< Maximum retransmission count
 } fr_retry_config_t;
 
+#define RETRY_INIT { 0, 0, 0, 0 }
+
 typedef struct {
 	fr_retry_config_t const	*config;		//!< master configuration
 	fr_time_t		start;			//!< when we started the retransmission
