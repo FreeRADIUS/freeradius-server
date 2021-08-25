@@ -83,10 +83,6 @@ static char const * const comp2str[] = {
 };
 
 typedef struct {
-	int actions[RLM_MODULE_NUMCODES];
-} unlang_actions_t;
-
-typedef struct {
 	rlm_components_t	component;
 	char const		*section_name1;
 	char const		*section_name2;
@@ -1098,15 +1094,15 @@ static void compile_action_defaults(unlang_t *c, unlang_compile_t *unlang_ctx)
 	    ((c->parent->type == UNLANG_TYPE_REDUNDANT) || (c->parent->type == UNLANG_TYPE_REDUNDANT_LOAD_BALANCE))) {
 		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
 			if (i == RLM_MODULE_FAIL) {
-				if (!c->actions[i]) {
-					c->actions[i] = 1;
+				if (!c->actions.actions[i]) {
+					c->actions.actions[i] = 1;
 				}
 
 				continue;
 			}
 
-			if (!c->actions[i]) {
-				c->actions[i] = MOD_ACTION_RETURN;
+			if (!c->actions.actions[i]) {
+				c->actions.actions[i] = MOD_ACTION_RETURN;
 			}
 		}
 
@@ -1118,8 +1114,8 @@ static void compile_action_defaults(unlang_t *c, unlang_compile_t *unlang_ctx)
 	 *	set.
 	 */
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-		if (!c->actions[i]) {
-			c->actions[i] = unlang_ctx->actions[0].actions[i];
+		if (!c->actions.actions[i]) {
+			c->actions.actions[i] = unlang_ctx->actions[0].actions[i];
 		}
 	}
 }
@@ -1480,13 +1476,13 @@ static int compile_action_pair(unlang_t *c, CONF_PAIR *cp)
 				   attr);
 			return 0;
 		}
-		c->actions[rcode] = action;
+		c->actions.actions[rcode] = action;
 
 	} else {		/* set all unset values to the default */
 		int i;
 
 		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-			if (!c->actions[i]) c->actions[i] = action;
+			if (!c->actions.actions[i]) c->actions.actions[i] = action;
 		}
 	}
 
@@ -2211,7 +2207,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 *	when we pick a 'case' statement, we don't
 	 *	fall through to processing the next one.
 	 */
-	for (i = 0; i < RLM_MODULE_NUMCODES; i++) c->actions[i] = MOD_ACTION_RETURN;
+	for (i = 0; i < RLM_MODULE_NUMCODES; i++) c->actions.actions[i] = MOD_ACTION_RETURN;
 
 	return c;
 }

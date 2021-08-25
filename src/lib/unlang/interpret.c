@@ -221,7 +221,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 	/*
 	 *	The child's action says return.  Do so.
 	 */
-	if (instruction->actions[*result] == MOD_ACTION_RETURN) {
+	if (instruction->actions.actions[*result] == MOD_ACTION_RETURN) {
 		if (*priority < 0) *priority = 0;
 
 		RDEBUG4("** [%i] %s - action says to return with (%s %d)",
@@ -237,7 +237,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 	 *	If "reject", break out of the loop and return
 	 *	reject.
 	 */
-	if (instruction->actions[*result] == MOD_ACTION_REJECT) {
+	if (instruction->actions.actions[*result] == MOD_ACTION_REJECT) {
 		if (*priority < 0) *priority = 0;
 
 		RDEBUG4("** [%i] %s - action says to return with (%s %d)",
@@ -254,7 +254,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 	 *	code.  Grab it in preference to any unset priority.
 	 */
 	if (*priority < 0) {
-		*priority = instruction->actions[*result];
+		*priority = instruction->actions.actions[*result];
 
 		RDEBUG4("** [%i] %s - setting priority to (%s %d)",
 			stack->depth, __FUNCTION__,
@@ -479,7 +479,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 			 *	RLM_MODULE_NOT_SET means the instruction
 			 *	doesn't want to modify the result.
 			 */
-			if (*result != RLM_MODULE_NOT_SET) *priority = instruction->actions[*result];
+			if (*result != RLM_MODULE_NOT_SET) *priority = instruction->actions.actions[*result];
 
 			if (result_calculate(request, frame, result, priority) == UNLANG_FRAME_ACTION_POP) {
 				return UNLANG_FRAME_ACTION_POP;

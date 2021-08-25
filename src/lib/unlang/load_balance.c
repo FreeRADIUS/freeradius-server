@@ -73,7 +73,7 @@ static unlang_action_t unlang_load_balance_next(rlm_rcode_t *p_result, request_t
 		 *	If the current child says "return", then do
 		 *	so.
 		 */
-		if (redundant->child->actions[*p_result] == MOD_ACTION_RETURN) {
+		if (redundant->child->actions.actions[*p_result] == MOD_ACTION_RETURN) {
 			/* DON'T change p_result, as it is taken from the child */
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}

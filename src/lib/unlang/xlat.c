@@ -79,15 +79,17 @@ static unlang_t xlat_instruction = {
 	.name = "xlat",
 	.debug_name = "xlat",
 	.actions = {
-		[RLM_MODULE_REJECT]	= 0,
-		[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-		[RLM_MODULE_OK]		= 0,
-		[RLM_MODULE_HANDLED]	= 0,
-		[RLM_MODULE_INVALID]	= 0,
-		[RLM_MODULE_DISALLOW]	= 0,
-		[RLM_MODULE_NOTFOUND]	= 0,
-		[RLM_MODULE_NOOP]	= 0,
-		[RLM_MODULE_UPDATED]	= 0
+		.actions = {
+			[RLM_MODULE_REJECT]	= 0,
+			[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
+			[RLM_MODULE_OK]		= 0,
+			[RLM_MODULE_HANDLED]	= 0,
+			[RLM_MODULE_INVALID]	= 0,
+			[RLM_MODULE_DISALLOW]	= 0,
+			[RLM_MODULE_NOTFOUND]	= 0,
+			[RLM_MODULE_NOOP]	= 0,
+			[RLM_MODULE_UPDATED]	= 0
+		},
 	},
 };
 

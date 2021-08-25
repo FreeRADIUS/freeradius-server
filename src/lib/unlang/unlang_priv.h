@@ -120,7 +120,7 @@ struct unlang_s {
 	char const 		*debug_name;	//!< Printed in log messages when the node is executed.
 	unlang_type_t		type;		//!< The specialisation of this node.
 	bool			closed;		//!< whether or not this section is closed to new statements
-	int			actions[RLM_MODULE_NUMCODES];	//!< Priorities for the various return codes.
+	unlang_actions_t	actions;	//!< Priorities, etc. for the various return codes.
 };
 
 /** Describes how to allocate an #unlang_group_t with additional memory keyword specific data

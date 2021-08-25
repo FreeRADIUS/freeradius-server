@@ -389,16 +389,18 @@ int unlang_subrequest_child_op_init(void)
 				.name = "subrequest",
 				.debug_name = "subrequest",
 				.actions = {
-					[RLM_MODULE_REJECT]	= 0,
-					[RLM_MODULE_FAIL]	= 0,
-					[RLM_MODULE_OK]		= 0,
-					[RLM_MODULE_HANDLED]	= 0,
-					[RLM_MODULE_INVALID]	= 0,
-					[RLM_MODULE_DISALLOW]	= 0,
-					[RLM_MODULE_NOTFOUND]	= 0,
+					.actions = {
+						[RLM_MODULE_REJECT]	= 0,
+						[RLM_MODULE_FAIL]	= 0,
+						[RLM_MODULE_OK]		= 0,
+						[RLM_MODULE_HANDLED]	= 0,
+						[RLM_MODULE_INVALID]	= 0,
+						[RLM_MODULE_DISALLOW]	= 0,
+						[RLM_MODULE_NOTFOUND]	= 0,
 					[RLM_MODULE_NOOP]	= 0,
-					[RLM_MODULE_UPDATED]	= 0
-				}
+						[RLM_MODULE_UPDATED]	= 0
+					},
+				},
 			}
 		}
 	};

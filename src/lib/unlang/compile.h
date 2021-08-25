@@ -32,6 +32,10 @@ extern "C" {
 #include <freeradius-devel/server/components.h>
 #include <freeradius-devel/server/tmpl.h>
 
+typedef struct {
+	int actions[RLM_MODULE_NUMCODES];
+} unlang_actions_t;
+
 int		unlang_compile(CONF_SECTION *cs, rlm_components_t component, tmpl_rules_t const *rules, void **instruction);
 
 bool		unlang_compile_is_keyword(const char *name);
