@@ -61,6 +61,7 @@ typedef struct {
 	rlm_unbound_thread_t	*t;		//!< Thread running this request
 	int			done;		//!< Indicator that the callback has been called
 						///< Negative values indicate errors.
+	bool			timedout;	//!< Request timedout.
 	fr_type_t		return_type;	//!< Data type to parse results into
 	bool			has_priority;	//!< Does the returned data start with a priority field
 	uint16_t		count;		//!< Number of results to return
@@ -263,9 +264,10 @@ static void xlat_unbound_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t no
 	unbound_request_t	*ur = talloc_get_type_abort(uctx, unbound_request_t);
 	request_t		*request = ur->request;
 
-	REDEBUG("Timeout waiting for DNS resolution");
-	talloc_free(ur);
+	REDEBUG("Timeout waiting for DNS resolution");;
 	unlang_interpret_mark_runnable(request);
+
+	ur->timedout = true;
 }
 
 /*
@@ -281,7 +283,6 @@ static void xlat_unbound_signal(request_t *request, UNUSED void *instance, UNUSE
 	if (ur->ev) (void)fr_event_timer_delete(&ur->ev);
 
 	RDEBUG2("Forcefully cancelling pending unbound request");
-	talloc_free(ur);
 }
 
 /*
@@ -294,6 +295,11 @@ static xlat_action_t xlat_unbound_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *o
 {
 	fr_value_box_t		*vb;
 	unbound_request_t	*ur = talloc_get_type_abort(rctx, unbound_request_t);
+
+	/*
+	 *	Request timed out
+	 */
+	if (ur->timedout) return XLAT_ACTION_FAIL;
 
 #define RCODEERROR(_code, _message) case _code: \
 	REDEBUG(_message, ur->t->inst->name); \

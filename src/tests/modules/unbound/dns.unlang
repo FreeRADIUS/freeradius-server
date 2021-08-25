@@ -108,7 +108,8 @@ if (&Tmp-String-1 != "") {
 	test_fail
 }
 
-if (&Module-Failure-Message != "dns - Nonexistent domain name") {
+# Running this on macOS produces a timeout due to the nonexistent TLD
+if ((&Module-Failure-Message != "dns - Nonexistent domain name") && (&Module-Failure-Message != "Timeout waiting for DNS resolution")) {
 	test_fail
 }
 
