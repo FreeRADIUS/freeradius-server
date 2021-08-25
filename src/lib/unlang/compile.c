@@ -1449,7 +1449,7 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 /*
  *	Compile action && rcode for later use.
  */
-static int compile_action_pair(unlang_t *c, CONF_PAIR *cp)
+static int compile_action_pair(unlang_actions_t *actions, CONF_PAIR *cp)
 {
 	int action;
 	char const *attr, *value;
@@ -1491,20 +1491,20 @@ static int compile_action_pair(unlang_t *c, CONF_PAIR *cp)
 				   attr);
 			return 0;
 		}
-		c->actions.actions[rcode] = action;
+		actions->actions[rcode] = action;
 
 	} else {		/* set all unset values to the default */
 		int i;
 
 		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-			if (!c->actions.actions[i]) c->actions.actions[i] = action;
+			if (!actions->actions[i]) actions->actions[i] = action;
 		}
 	}
 
 	return 1;
 }
 
-static bool compile_retry_section(unlang_t *c, CONF_ITEM *ci)
+static bool compile_retry_section(unlang_actions_t *actions, CONF_ITEM *ci)
 {
 	CONF_ITEM *csi;
 	CONF_SECTION *cs;
@@ -1537,7 +1537,7 @@ static bool compile_retry_section(unlang_t *c, CONF_ITEM *ci)
 		 *	magical reasons.
 		 */
 		if (strcmp(name, "initial_rtx_time") == 0) {
-			if (fr_time_delta_from_str(&c->actions.retry.irt, value, FR_TIME_RES_SEC) < 0) {
+			if (fr_time_delta_from_str(&actions->retry.irt, value, FR_TIME_RES_SEC) < 0) {
 			error:
 				cf_log_err(csi, "Failed parsing '%s = %s' - %s",
 					   name, value, fr_strerror());
@@ -1545,7 +1545,7 @@ static bool compile_retry_section(unlang_t *c, CONF_ITEM *ci)
 			}
 
 		} else if (strcmp(name, "max_rtx_time") == 0) {
-			if (fr_time_delta_from_str(&c->actions.retry.mrt, value, FR_TIME_RES_SEC) < 0) goto error;
+			if (fr_time_delta_from_str(&actions->retry.mrt, value, FR_TIME_RES_SEC) < 0) goto error;
 
 		} else if (strcmp(name, "max_rtx_count") == 0) {
 			unsigned long v = strtoul(value, 0, 0);
@@ -1556,10 +1556,10 @@ static bool compile_retry_section(unlang_t *c, CONF_ITEM *ci)
 				return false;
 			}
 
-			c->actions.retry.mrc = v;
+			actions->retry.mrc = v;
 
 		} else if (strcmp(name, "max_rtx_duration") == 0) {
-			if (fr_time_delta_from_str(&c->actions.retry.mrd, value, FR_TIME_RES_SEC) < 0) goto error;
+			if (fr_time_delta_from_str(&actions->retry.mrd, value, FR_TIME_RES_SEC) < 0) goto error;
 		} else {
 			cf_log_err(csi, "Invalid item '%s' in 'retry' configuration.", name);
 			return false;
@@ -1569,12 +1569,12 @@ static bool compile_retry_section(unlang_t *c, CONF_ITEM *ci)
 	return true;
 }
 
-static bool compile_action_section(unlang_t *c, CONF_ITEM *ci)
+static bool compile_action_section(unlang_actions_t *actions, CONF_ITEM *ci)
 {
 	CONF_ITEM *csi;
 	CONF_SECTION *cs;
 
-	if (!cf_item_is_section(ci)) return c;
+	if (!cf_item_is_section(ci)) return true;
 
 	/*
 	 *	Over-ride the default return codes of the module.
@@ -1595,7 +1595,7 @@ static bool compile_action_section(unlang_t *c, CONF_ITEM *ci)
 			 *	Look for a "retry" section.
 			 */
 			if (name && (strcmp(name, "retry") == 0) && !cf_section_name2(subcs)) {
-				if (!compile_retry_section(c, csi)) return false;
+				if (!compile_retry_section(actions, csi)) return false;
 				continue;
 			}
 
@@ -1621,11 +1621,11 @@ static bool compile_action_section(unlang_t *c, CONF_ITEM *ci)
 				return false;
 			}
 
-			if (!compile_retry_section(c, subci)) return false;
+			if (!compile_retry_section(actions, subci)) return false;
 			continue;
 		}
 
-		if (!compile_action_pair(c, cp)) {
+		if (!compile_action_pair(actions, cp)) {
 			return false;
 		}
 	}
@@ -1701,7 +1701,7 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 		return false;
 	}
 
-	return compile_action_section(c, ci);
+	return compile_action_section(&c->actions, ci);
 }
 
 
@@ -3403,7 +3403,7 @@ static unlang_t *compile_function(unlang_t *parent, unlang_compile_t *unlang_ctx
 	 *	Else we have a reference to a policy, and that reference
 	 *	over-rides the return codes for the policy!
 	 */
-	if (!compile_action_section(c, ci)) {
+	if (!compile_action_section(&c->actions, ci)) {
 		talloc_free(c);
 		return NULL;
 	}
@@ -3581,7 +3581,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	Set the default actions, and then try to compile an action subsection.
 	 */
 	compile_action_defaults(c, unlang_ctx);
-	if (!compile_action_section(c, ci)) {
+	if (!compile_action_section(&c->actions, ci)) {
 		talloc_free(c);
 		return NULL;
 	}
