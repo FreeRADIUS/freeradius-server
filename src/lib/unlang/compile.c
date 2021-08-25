@@ -82,13 +82,13 @@ static char const * const comp2str[] = {
 	"post-auth"
 };
 
-typedef int const unlang_action_table_t[RLM_MODULE_NUMCODES];
+typedef int unlang_actions_t[RLM_MODULE_NUMCODES];
 
 typedef struct {
 	rlm_components_t	component;
 	char const		*section_name1;
 	char const		*section_name2;
-	unlang_action_table_t	*actions;
+	unlang_actions_t const	*actions;
 	tmpl_rules_t const	*rules;
 } unlang_compile_t;
 
@@ -97,8 +97,7 @@ static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 static char const unlang_spaces[] = "                                                                                                                                                                                                                                                                ";
 
 
-static const int
-default_actions[MOD_COUNT][RLM_MODULE_NUMCODES] =
+static const unlang_actions_t default_actions[MOD_COUNT] =
 {
 	/* authenticate */
 	{
