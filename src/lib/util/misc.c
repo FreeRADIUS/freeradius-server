@@ -578,7 +578,7 @@ static int get_part(char **str, int *date, int min, int max, char term, char con
 int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_res_t hint)
 {
 	int		i;
-	time_t		t;
+	fr_unix_time_t	t;
 	struct tm	*tm, s_tm;
 	char		buf[64];
 	char		*p;
@@ -712,11 +712,6 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 
 	done:
 		t = fr_time_from_utc(tm);
-		if (t == (time_t) -1) {
-			fr_strerror_printf("Failed calling system function to parse time - %s",
-					   fr_syserror(errno));
-			return -1;
-		}
 
 		/*
 		 *	Add in the time zone offset, which the posix
@@ -901,15 +896,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 		tm->tm_min = atoi(f[1]);
 	}
 
-	/*
-	 *  Returns -1 on failure.
-	 */
 	t = fr_time_from_utc(tm);
-	if (t == (time_t) -1) {
-		fr_strerror_printf("Failed calling system function to parse time - %s",
-				   fr_syserror(errno));
-		return -1;
-	}
 
 	/*
 	 *	Get the UTC time, and manually add in the offset from GMT.
