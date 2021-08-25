@@ -59,4 +59,4 @@ if (&Module-Failure-Message != "Conversion was truncated") {
         test_fail
 }
 
-success
+test_pass
