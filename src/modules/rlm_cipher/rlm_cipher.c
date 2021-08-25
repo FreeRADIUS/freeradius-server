@@ -944,39 +944,17 @@ static xlat_action_t cipher_serial_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 {
 	rlm_cipher_t const	*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst), rlm_cipher_t);
 	ASN1_INTEGER const	*serial;
-	uint8_t			*serial_bin;
-    	BIGNUM			*bn;
     	fr_value_box_t		*vb;
-    	size_t			bn_len;
 
 	serial = X509_get0_serialNumber(inst->rsa->x509_certificate_file);
 	if (!serial) {
 		fr_tls_log_error(request, "Failed retrieving certificate serial");
-	error:
 		return XLAT_ACTION_FAIL;
 	}
 
-	bn = ASN1_INTEGER_to_BN(serial, NULL);
-	if (!bn) {
-		fr_tls_log_error(request, "Failed converting serial to bignum");
-		goto error;
-	}
-
-	bn_len = BN_num_bytes(bn);
-
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	MEM(fr_value_box_mem_alloc(vb, &serial_bin, vb, NULL, bn_len, true) == 0);
+	MEM(fr_value_box_memdup(vb, vb, NULL, serial->data, serial->length, true) == 0);
 
-	/*
-	 *	Copy the serial number into an octets buffer
-	 */
-	if (BN_bn2bin(bn, (unsigned char *)serial_bin) == 0) {
-		BN_free(bn);
-		talloc_free(vb);
-		fr_tls_log_error(request, "Failed converting serial bignum to binary data");
-		goto error;
-	}
-	BN_free(bn);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
