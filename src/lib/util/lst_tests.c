@@ -67,7 +67,7 @@ static void lst_test_basic(void)
 	fr_lst_t	*lst;
 	lst_thing	values[NVALUES];
 
-	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx);
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, NVALUES);
 	TEST_CHECK(lst != NULL);
 
 	populate_values(values, NUM_ELEMENTS(values));
@@ -83,6 +83,7 @@ static void lst_test_basic(void)
 		TEST_CHECK(value != NULL);
 		TEST_CHECK(!fr_lst_entry_inserted(value->idx));
 		TEST_CHECK(value->data == i);
+		TEST_MSG("iteration %u, popped %u", i, value->data);
 	}
 	talloc_free(lst);
 }
@@ -104,7 +105,7 @@ static void lst_test(int skip)
 		done_init = true;
 	}
 
-	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx);
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 0);
 	TEST_CHECK(lst != NULL);
 
 	values = calloc(LST_TEST_SIZE, sizeof(lst_thing));
@@ -182,7 +183,7 @@ static void lst_stress_realloc(void)
 		done_init = true;
 	}
 
-	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx);
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 0);
 	TEST_CHECK(lst != NULL);
 	hp = fr_heap_alloc(NULL, lst_cmp, lst_thing, idx, 0);
 
@@ -259,7 +260,7 @@ static void lst_burn_in(void)
 	array = calloc(BURN_IN_OPS, sizeof(lst_thing));
 	for (unsigned int i = 0; i < BURN_IN_OPS; i++) array[i].data = rand() % 65537;
 
-	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx);
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 0);
 
 	for (unsigned int i = 0; i < BURN_IN_OPS; i++) {
 		lst_thing	*ret_thing = NULL;
@@ -311,7 +312,7 @@ static void lst_cycle(void)
 		done_init = true;
 	}
 
-	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx);
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 0);
 	TEST_CHECK(lst != NULL);
 
 	values = calloc(LST_CYCLE_SIZE, sizeof(lst_thing));
@@ -388,7 +389,7 @@ static void lst_iter(void)
 	lst_thing	values[NVALUES], *data;
 
 
-	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx);
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 0);
 	TEST_CHECK(lst != NULL);
 
 	populate_values(values, NUM_ELEMENTS(values));
@@ -449,7 +450,7 @@ static void queue_cmp(unsigned int count)
 		populate_values(values, count);
 
 		start_alloc = fr_time();
-		lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx);
+		lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 0);
 		end_alloc = fr_time();
 		TEST_CHECK(lst != NULL);
 

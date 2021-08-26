@@ -23,6 +23,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/lst.h>
+#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/strerror.h>
 
@@ -46,6 +47,8 @@ RCSID("$Id$")
  */
 #define INITIAL_CAPACITY	2048
 #define INITIAL_STACK_CAPACITY	32
+
+#define is_power_of_2(_n)	((_n) && (((_n) & ((_n) - 1)) == 0))
 
 typedef unsigned int stack_index_t;
 
@@ -147,8 +150,7 @@ static inline CC_HINT(always_inline, nonnull) void *pivot_item(fr_lst_t *lst, st
  * The index is visible for the size and length functions, since they need
  * to know the subtree they're working on.
  */
-static inline CC_HINT(always_inline, nonnull)
-bool is_bucket(fr_lst_t *lst, stack_index_t idx)
+static inline CC_HINT(always_inline, nonnull) bool is_bucket(fr_lst_t *lst, stack_index_t idx)
 {
 	return lst_length(lst, idx) == 1;
 }
@@ -218,10 +220,16 @@ void stack_set(pivot_stack_t *s, stack_index_t idx, fr_lst_index_t new_value)
 	s->data[idx] = new_value;
 }
 
-fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, size_t offset)
+fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, size_t offset, fr_lst_index_t init)
 {
 	fr_lst_t	*lst;
 	pivot_stack_t	*s;
+
+	if (!init) {
+		init = INITIAL_CAPACITY;
+	} else if (!is_power_of_2(init)) {
+		init = 1 << fr_high_bit_pos(init);
+	}
 
 	/*
 	 *	Pre-allocate stack memory as it is
@@ -238,7 +246,7 @@ fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, siz
 	lst = talloc_zero_pooled_object(ctx, fr_lst_t, 3, (INITIAL_STACK_CAPACITY * sizeof(fr_lst_index_t)));
 	if (unlikely(!lst)) return NULL;
 
-	lst->capacity = INITIAL_CAPACITY;
+	lst->capacity = init;
 	lst->p = talloc_array(lst, void *, lst->capacity);
 	if (unlikely(!lst->p)) {
 	cleanup:

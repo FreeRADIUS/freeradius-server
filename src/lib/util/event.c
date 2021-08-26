@@ -2277,7 +2277,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	el->kq = -1;	/* So destructor can be used before kqueue() provides us with fd */
 	talloc_set_destructor(el, _event_list_free);
 
-	el->times = fr_lst_talloc_alloc(el, fr_event_timer_cmp, fr_event_timer_t, lst_id);
+	el->times = fr_lst_talloc_alloc(el, fr_event_timer_cmp, fr_event_timer_t, lst_id, 0);
 	if (!el->times) {
 		fr_strerror_const("Failed allocating event lst");
 	error:
@@ -2292,7 +2292,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	}
 
 #ifdef LOCAL_PID
-	el->pids = fr_lst_talloc_alloc(el, fr_event_pid_cmp, fr_event_pid_t, lst_id);
+	el->pids = fr_lst_talloc_alloc(el, fr_event_pid_cmp, fr_event_pid_t, lst_id, 0);
 	if (!el->pids) {
 		fr_strerror_const("Failed allocating PID lst");
 		goto error;
