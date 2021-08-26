@@ -33,7 +33,7 @@
 #
 #  The 'check_name' parameter is the name of the 'check'
 #  attribute to use to access the counter in the 'users' file
-#  or SQL radcheck or radcheckgroup tables.
+#  or SQL radcheck or radgroupcheck tables.
 #
 #  DEFAULT  Max-Daily-Session > 3600, Auth-Type = Reject
 #      Reply-Message = "You've used up more than one hour today"
