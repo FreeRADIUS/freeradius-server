@@ -552,7 +552,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 *	client.
 	 */
 	MEM(connection->client->pending = fr_lst_alloc(connection->client, pending_packet_cmp,
-							 fr_io_pending_packet_t, lst_id));
+							 fr_io_pending_packet_t, lst_id, 0));
 
 	/*
 	 *	Clients for connected sockets are always a /32 or /128.
@@ -1457,7 +1457,7 @@ do_read:
 		 */
 		if (state == PR_CLIENT_PENDING) {
 			MEM(client->pending = fr_lst_alloc(client, pending_packet_cmp,
-							     fr_io_pending_packet_t, lst_id));
+							     fr_io_pending_packet_t, lst_id, 0));
 		}
 
 		/*
@@ -2489,7 +2489,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	 */
 	if (!thread->pending_clients) {
 		MEM(thread->pending_clients = fr_lst_alloc(thread, pending_client_cmp,
-							   fr_io_client_t, pending_id));
+							   fr_io_client_t, pending_id, 0));
 	}
 
 	fr_assert(client->pending_id < 0);
@@ -2955,7 +2955,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	 */
 	MEM(thread->trie = fr_trie_alloc(thread, NULL, NULL));
 	MEM(thread->alive_clients = fr_lst_alloc(thread, alive_client_cmp,
-						   fr_io_client_t, alive_id));
+						   fr_io_client_t, alive_id, 0));
 
 	/*
 	 *	Set the listener to call our master trampoline function.

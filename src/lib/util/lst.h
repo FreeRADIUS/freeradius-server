@@ -56,9 +56,14 @@ typedef int8_t (*fr_lst_cmp_t)(void const *a, void const *b);
  * @param[in] _cmp		Comparator used to compare elements.
  * @param[in] _type		Of elements.
  * @param[in] _field		to store LST indexes in.
+ * @param[in] _init		initial capacity (0 for default initial size);
+ *				the capacity will be rounded up to a power of two.
+ * @return
+ *	- A pointer to the new LST.
+ *	- NULL on error
  */
-#define fr_lst_alloc(_ctx, _cmp, _type, _field) \
-	_fr_lst_alloc(_ctx, _cmp, NULL, (size_t)offsetof(_type, _field))
+#define fr_lst_alloc(_ctx, _cmp, _type, _field, _init) \
+	_fr_lst_alloc(_ctx, _cmp, NULL, (size_t)offsetof(_type, _field), _init)
 
 /** Creates an LST that verifies elements are of a specific talloc type
  *
@@ -66,14 +71,16 @@ typedef int8_t (*fr_lst_cmp_t)(void const *a, void const *b);
  * @param[in] _cmp		Comparator used to compare elements.
  * @param[in] _talloc_type	of elements.
  * @param[in] _field		to store heap indexes in.
+ * @param[in] _init		initial capacity (0 for default initial size);
+ *				the capacity will be rounded up to a power of two.
  * @return
  *	- A pointer to the new LST.
  *	- NULL on error.
  */
-#define fr_lst_talloc_alloc(_ctx, _cmp, _talloc_type, _field) \
-	_fr_lst_alloc(_ctx, _cmp, #_talloc_type, (size_t)offsetof(_talloc_type, _field))
+#define fr_lst_talloc_alloc(_ctx, _cmp, _talloc_type, _field, _init) \
+	_fr_lst_alloc(_ctx, _cmp, #_talloc_type, (size_t)offsetof(_talloc_type, _field), _init)
 
-fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, size_t offset) CC_HINT(nonnull(2));
+fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, size_t offset, fr_lst_index_t init) CC_HINT(nonnull(2));
 
 /** Check if an entry is inserted into an LST.
  *
