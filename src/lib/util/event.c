@@ -2378,7 +2378,7 @@ static int event_timer_location_cmp(void const *one, void const *two)
 
 	CMP_RETURN(a, b, file);
 
-	return CMP(line);
+	return CMP(a->line, b->line);
 }
 
 
