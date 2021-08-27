@@ -972,6 +972,20 @@ void log_request_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, 
 		ssize_t		slen;
 
 		slen = read(fd, fr_sbuff_current(&m_end), fr_sbuff_remaining(&m_end));
+		if (slen < 0) {
+			if (errno == EINTR) continue;
+
+			/*
+			 *	This can happen if the I/O handler is
+			 *	manually called to clear out any pending
+			 *	data, and we're using a nonblocking FD.
+			 *
+			 *	This can happen with the exec code if
+			 *	the EVFILT_PROC event gets passed before
+			 *	the EVFILT_READ event.
+			 */
+			if (errno == EWOULDBLOCK) slen = 0;
+		}
 		if ((slen < 0) && (errno == EINTR)) continue;
 
 		if (slen > 0) fr_sbuff_advance(&m_end, slen);
