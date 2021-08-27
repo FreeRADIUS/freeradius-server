@@ -46,7 +46,6 @@ RCSID("$Id$")
  * the pivot stack may be a rare event.
  */
 #define INITIAL_CAPACITY	2048
-#define INITIAL_STACK_CAPACITY	32
 
 #define is_power_of_2(_n)	((_n) && (((_n) & ((_n) - 1)) == 0))
 
@@ -224,12 +223,15 @@ fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, siz
 {
 	fr_lst_t	*lst;
 	pivot_stack_t	*s;
+	unsigned int	initial_stack_capacity;
 
 	if (!init) {
 		init = INITIAL_CAPACITY;
 	} else if (!is_power_of_2(init)) {
 		init = 1 << fr_high_bit_pos(init);
 	}
+
+	for (initial_stack_capacity = 1; (1U << initial_stack_capacity) < init; initial_stack_capacity++) ;
 
 	/*
 	 *	Pre-allocate stack memory as it is
@@ -243,7 +245,7 @@ fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, siz
 	 *	Pre-allocating three chunks appears to be
 	 *	the optimum.
 	 */
-	lst = talloc_zero_pooled_object(ctx, fr_lst_t, 3, (INITIAL_STACK_CAPACITY * sizeof(fr_lst_index_t)));
+	lst = talloc_zero_pooled_object(ctx, fr_lst_t, 3, (initial_stack_capacity * sizeof(fr_lst_index_t)));
 	if (unlikely(!lst)) return NULL;
 
 	lst->capacity = init;
@@ -258,10 +260,10 @@ fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, siz
 	 *	Allocate the initial stack
 	 */
 	s = &lst->s;
-	s->data = talloc_array(lst, fr_lst_index_t, INITIAL_STACK_CAPACITY);
+	s->data = talloc_array(lst, fr_lst_index_t, initial_stack_capacity);
 	if (unlikely(!s->data)) goto cleanup;
 	s->depth = 0;
-	s->size = INITIAL_STACK_CAPACITY;
+	s->size = initial_stack_capacity;
 
 	/* Initially the LST is empty and we start at the beginning of the array */
 	stack_push(lst, &lst->s, 0);
