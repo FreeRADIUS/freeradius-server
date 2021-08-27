@@ -40,6 +40,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/atexit.h>
 
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -76,7 +77,7 @@ DIAG_ON(unused-macros)
 
 static fr_table_num_sorted_t const kevent_filter_table[] = {
 #ifdef EVFILT_AIO
-	{ L("EVFILT_AIO"),		EVFILT_AIO },
+	{ L("EVFILT_AIO"),	EVFILT_AIO },
 #endif
 #ifdef EVFILT_EXCEPT
 	{ L("EVFILT_EXCEPT"),	EVFILT_EXCEPT },
@@ -128,10 +129,27 @@ typedef enum {
 #endif
 } fr_event_fd_type_t;
 
+typedef enum {
+	FR_EVENT_FUNC_IDX_NONE = 0,
+
+	FR_EVENT_FUNC_IDX_FILTER,			//!< Sign flip is performed i.e. -1 = 0The filter is used
+							//// as the index in the ev to func index.
+	FR_EVENT_FUNC_IDX_FFLAGS			//!< The bit position of the flags in FFLAGS
+							///< is used to provide the index.
+							///< i.e. 0x01 -> 0, 0x02 -> 1, 0x08 -> 3 etc..
+} fr_event_func_idx_type_t;
+
 #ifndef SO_GET_FILTER
 #  define FR_EVENT_FD_PCAP	0
 #endif
 
+/** Specifies a mapping between a function pointer in a structure and its respective event
+ *
+ * If the function pointer at the specified offset is set, then a matching event
+ * will be added.
+ *
+ * If the function pointer is NULL, then any existing events will be removed.
+ */
 typedef struct {
 	size_t			offset;			//!< Offset of function pointer in structure.
 	char const		*name;			//!< Name of the event.
@@ -140,110 +158,124 @@ typedef struct {
 	uint32_t		fflags;			//!< fflags to pass to filter.
 	int			type;			//!< Type this filter applies to.
 	bool			coalesce;		//!< Coalesce this map with the next.
+} fr_event_func_map_entry_t;
+
+typedef struct {
+	fr_event_func_idx_type_t	idx_type;	//!< What type of index we use for
+							///< event to function mapping.
+	fr_event_func_map_entry_t	*func_to_ev;	//!< Function -> Event maps coalesced, out of order.
+	fr_event_func_map_entry_t	**ev_to_func;	//!< Function -> Event maps in index order.
 } fr_event_func_map_t;
 
-static fr_event_func_map_t io_func_map[] = {
-	{
-		.offset		= offsetof(fr_event_io_func_t, read),
-		.name		= "read",
-		.filter		= EVFILT_READ,
-		.flags		= EV_ADD | EV_ENABLE,
+static fr_event_func_map_t filter_maps[] = {
+	[FR_EVENT_FILTER_IO] = {
+		.idx_type = FR_EVENT_FUNC_IDX_FILTER,
+		.func_to_ev = (fr_event_func_map_entry_t[]){
+			{
+				.offset		= offsetof(fr_event_io_func_t, read),
+				.name		= "read",
+				.filter		= EVFILT_READ,
+				.flags		= EV_ADD | EV_ENABLE,
 #ifdef NOTE_NONE
-		.fflags		= NOTE_NONE,
+				.fflags		= NOTE_NONE,
 #else
-		.fflags		= 0,
+				.fflags		= 0,
 #endif
-		.type		= FR_EVENT_FD_SOCKET | FR_EVENT_FD_FILE | FR_EVENT_FD_PCAP
+				.type		= FR_EVENT_FD_SOCKET | FR_EVENT_FD_FILE | FR_EVENT_FD_PCAP
+			},
+			{
+				.offset		= offsetof(fr_event_io_func_t, write),
+				.name		= "write",
+				.filter		= EVFILT_WRITE,
+				.flags		= EV_ADD | EV_ENABLE,
+				.fflags		= 0,
+				.type		= FR_EVENT_FD_SOCKET | FR_EVENT_FD_FILE | FR_EVENT_FD_PCAP
+			},
+			{ 0 }
+		}
 	},
-	{
-		.offset		= offsetof(fr_event_io_func_t, write),
-		.name		= "write",
-		.filter		= EVFILT_WRITE,
-		.flags		= EV_ADD | EV_ENABLE,
-		.fflags		= 0,
-		.type		= FR_EVENT_FD_SOCKET | FR_EVENT_FD_FILE | FR_EVENT_FD_PCAP
-	},
-	{ 0 }
-};
-
-static fr_event_func_map_t vnode_func_map[] = {
-	{
-		.offset		= offsetof(fr_event_vnode_func_t, delete),
-		.name		= "delete",
-		.filter		= EVFILT_VNODE,
-		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
-		.fflags		= NOTE_DELETE,
-		.type		= FR_EVENT_FD_FILE | FR_EVENT_FD_DIRECTORY,
-		.coalesce	= true
-	},
-	{
-		.offset		= offsetof(fr_event_vnode_func_t, write),
-		.name		= "write",
-		.filter		= EVFILT_VNODE,
-		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
-		.fflags		= NOTE_WRITE,
-		.type		= FR_EVENT_FD_FILE,
-		.coalesce	= true
-	},
-	{
-		.offset		= offsetof(fr_event_vnode_func_t, extend),
-		.name		= "extend",
-		.filter		= EVFILT_VNODE,
-		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
-		.fflags		= NOTE_EXTEND,
-		.type		= FR_EVENT_FD_FILE | FR_EVENT_FD_DIRECTORY,
-		.coalesce	= true
-	},
-	{
-		.offset		= offsetof(fr_event_vnode_func_t, attrib),
-		.name		= "attrib",
-		.filter		= EVFILT_VNODE,
-		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
-		.fflags		= NOTE_ATTRIB,
-		.type		= FR_EVENT_FD_FILE,
-		.coalesce	= true
-	},
-	{
-		.offset		= offsetof(fr_event_vnode_func_t, link),
-		.name		= "link",
-		.filter		= EVFILT_VNODE,
-		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
-		.fflags		= NOTE_LINK,
-		.type		= FR_EVENT_FD_FILE,
-		.coalesce	= true
-	},
-	{
-		.offset		= offsetof(fr_event_vnode_func_t, rename),
-		.name		= "rename",
-		.filter		= EVFILT_VNODE,
-		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
-		.fflags		= NOTE_RENAME,
-		.type		= FR_EVENT_FD_FILE,
-		.coalesce	= true
-	},
+	[FR_EVENT_FILTER_VNODE] = {
+		.idx_type = FR_EVENT_FUNC_IDX_FFLAGS,
+		.func_to_ev = (fr_event_func_map_entry_t[]){
+			{
+				.offset		= offsetof(fr_event_vnode_func_t, delete),
+				.name		= "delete",
+				.filter		= EVFILT_VNODE,
+				.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+				.fflags		= NOTE_DELETE,
+				.type		= FR_EVENT_FD_FILE | FR_EVENT_FD_DIRECTORY,
+				.coalesce	= true
+			},
+			{
+				.offset		= offsetof(fr_event_vnode_func_t, write),
+				.name		= "write",
+				.filter		= EVFILT_VNODE,
+				.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+				.fflags		= NOTE_WRITE,
+				.type		= FR_EVENT_FD_FILE,
+				.coalesce	= true
+			},
+			{
+				.offset		= offsetof(fr_event_vnode_func_t, extend),
+				.name		= "extend",
+				.filter		= EVFILT_VNODE,
+				.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+				.fflags		= NOTE_EXTEND,
+				.type		= FR_EVENT_FD_FILE | FR_EVENT_FD_DIRECTORY,
+				.coalesce	= true
+			},
+			{
+				.offset		= offsetof(fr_event_vnode_func_t, attrib),
+				.name		= "attrib",
+				.filter		= EVFILT_VNODE,
+				.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+				.fflags		= NOTE_ATTRIB,
+				.type		= FR_EVENT_FD_FILE,
+				.coalesce	= true
+			},
+			{
+				.offset		= offsetof(fr_event_vnode_func_t, link),
+				.name		= "link",
+				.filter		= EVFILT_VNODE,
+				.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+				.fflags		= NOTE_LINK,
+				.type		= FR_EVENT_FD_FILE,
+				.coalesce	= true
+			},
+			{
+				.offset		= offsetof(fr_event_vnode_func_t, rename),
+				.name		= "rename",
+				.filter		= EVFILT_VNODE,
+				.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+				.fflags		= NOTE_RENAME,
+				.type		= FR_EVENT_FD_FILE,
+				.coalesce	= true
+			},
 #ifdef NOTE_REVOKE
-	{
-		.offset		= offsetof(fr_event_vnode_func_t, revoke),
-		.name		= "revoke",
-		.filter		= EVFILT_VNODE,
-		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
-		.fflags		= NOTE_REVOKE,
-		.type		= FR_EVENT_FD_FILE,
-		.coalesce	= true
-	},
+			{
+				.offset		= offsetof(fr_event_vnode_func_t, revoke),
+				.name		= "revoke",
+				.filter		= EVFILT_VNODE,
+				.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+				.fflags		= NOTE_REVOKE,
+				.type		= FR_EVENT_FD_FILE,
+				.coalesce	= true
+			},
 #endif
 #ifdef NOTE_FUNLOCK
-	{
-		.offset		= offsetof(fr_event_vnode_func_t, funlock),
-		.name		= "funlock",
-		.filter		= EVFILT_VNODE,
-		.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
-		.fflags		= NOTE_FUNLOCK,
-		.type		= FR_EVENT_FD_FILE,
-		.coalesce	= true
-	},
+			{
+				.offset		= offsetof(fr_event_vnode_func_t, funlock),
+				.name		= "funlock",
+				.filter		= EVFILT_VNODE,
+				.flags		= EV_ADD | EV_ENABLE | EV_CLEAR,
+				.fflags		= NOTE_FUNLOCK,
+				.type		= FR_EVENT_FD_FILE,
+				.coalesce	= true
+			},
 #endif
-	{ 0 }
+			{ 0 }
+		}
+	}
 };
 
 static fr_table_num_sorted_t const fr_event_fd_type_table[] = {
@@ -376,6 +408,119 @@ struct fr_event_list {
 #endif
 };
 
+static void event_fd_func_index_build(fr_event_func_map_t *map)
+{
+	switch (map->idx_type) {
+	default:
+		return;
+
+	/*
+	 *	- Figure out the lowest filter value
+	 *      - Invert it
+	 *      - Allocate an array
+	 *	- Populate the array
+	 */
+	case FR_EVENT_FUNC_IDX_FILTER:
+	{
+		int				low = 0;
+		fr_event_func_map_entry_t	*entry;
+
+		for (entry = map->func_to_ev; entry->name; entry++) if (entry->filter < low) low = entry->filter;
+
+		map->ev_to_func = talloc_zero_array(NULL, fr_event_func_map_entry_t *, ~low + 1);
+		if (unlikely(!map->ev_to_func)) abort();
+
+		for (entry = map->func_to_ev; entry->name; entry++) map->ev_to_func[~entry->filter] = entry;
+	}
+		break;
+
+	/*
+	 *	- Figure out the highest bit position
+	 *	- Allocate an array
+	 *	- Populate the array
+	 */
+	case FR_EVENT_FUNC_IDX_FFLAGS:
+	{
+		uint8_t				high = 0, pos;
+		fr_event_func_map_entry_t	*entry;
+
+		for (entry = map->func_to_ev; entry->name; entry++) {
+			pos = fr_high_bit_pos(entry->fflags);
+			if (pos > high) high = pos;
+		}
+
+		map->ev_to_func = talloc_zero_array(NULL, fr_event_func_map_entry_t *, high);
+		if (unlikely(!map->ev_to_func)) abort();
+
+		for (entry = map->func_to_ev; entry->name; entry++) {
+			int fflags = entry->fflags;
+
+			/*
+			 *	Multiple notes can be associated
+			 *	with the same function.
+			 */
+			while ((pos = fr_high_bit_pos(fflags))) {
+				pos -= 1;
+				map->ev_to_func[pos] = entry;
+				fflags &= ~(1 << pos);
+			}
+		}
+	}
+		break;
+	}
+}
+
+/** Figure out which function to call given a kevent
+ *
+ * This function should be called in a loop until it returns NULL.
+ *
+ * @param[in] ef		File descriptor state handle.
+ * @param[in] filter		from the kevent.
+ * @param[in,out] fflags	from the kevent.  Each call will return the function
+ *				from the next most significant NOTE_*, with each
+ *				NOTE_* before unset from fflags.
+ * @return
+ *	- NULL there are no more callbacks to call.
+ *	- The next callback to call.
+ */
+static inline CC_HINT(always_inline) fr_event_fd_cb_t event_fd_func(fr_event_fd_t *ef, int *filter, int *fflags)
+{
+	fr_event_func_map_t const *map = ef->map;
+
+#define GET_FUNC(_ef, _offset) *((fr_event_fd_cb_t const *)((uint8_t const *)&(_ef)->active + _offset))
+
+	switch (map->idx_type) {
+	default:
+		fr_assert_fail("Invalid index type %i", map->idx_type);
+		return NULL;
+
+	case FR_EVENT_FUNC_IDX_FILTER:
+	{
+		int idx;
+
+		if (!*filter) return NULL;
+
+		idx = ~*filter;				/* Consume the filter */
+		*filter = 0;
+
+		return GET_FUNC(ef, map->ev_to_func[idx]->offset);
+	}
+
+	case FR_EVENT_FUNC_IDX_FFLAGS:
+	{
+		int			our_fflags = *fflags;
+		uint8_t			pos = fr_high_bit_pos(our_fflags);
+
+		if (!pos) return NULL;			/* No more fflags to consume */
+		pos -= 1;				/* Saves an array element */
+
+		*fflags = our_fflags & ~(1 << pos);	/* Consume the knote */
+
+		return GET_FUNC(ef, map->ev_to_func[pos]->offset);
+	}
+	}
+}
+
 /** Compare two timer events to see which one should occur first
  *
  * @param[in] a the first timer event.
@@ -491,7 +636,7 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 				    fr_event_funcs_t const *new, fr_event_funcs_t const *prev)
 {
 	struct kevent			*out = out_kev, *end = out + outlen;
-	fr_event_func_map_t const	*map;
+	fr_event_func_map_entry_t const *map;
 	struct kevent			add[10], *add_p = add;
 	size_t				i;
 
@@ -501,7 +646,7 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 	 *	Iterate over the function map, setting/unsetting
 	 *	filters and filter flags.
 	 */
-	for (map = ef->map; map->name; map++) {
+	for (map = ef->map->func_to_ev; map->name; map++) {
 		bool		has_current_func = false;
 		bool		has_prev_func = false;
 		uint32_t	current_fflags = 0;
@@ -587,7 +732,7 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 		} else if (!has_current_func && has_prev_func) {
 		     	EVENT_DEBUG("\tEV_SET EV_DELETE filter %s (%i), flags %i, fflags %i",
 		     		    fr_table_str_by_value(kevent_filter_table, map->filter, "<INVALID>"),
-		     		    map->filter, EV_DELETE, 0, 0);
+		     		    map->filter, EV_DELETE, 0);
 			EV_SET(out++, ef->fd, map->filter, EV_DELETE, 0, 0, ef);
 		}
 	}
@@ -954,19 +1099,16 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 			return -1;
 		}
 
-		switch (filter) {
-		case FR_EVENT_FILTER_IO:
-			ef->map = io_func_map;
-			break;
-
-		case FR_EVENT_FILTER_VNODE:
-			ef->map = vnode_func_map;
-			break;
-
-		default:
+		/*
+		 *	Check the filter value is valid
+		 */
+		if ((filter > (NUM_ELEMENTS(filter_maps) - 1))) {
+		not_supported:
 			fr_strerror_printf("Filter %i not supported", filter);
 			goto free;
 		}
+		ef->map = &filter_maps[filter];
+		if (ef->map->idx_type == FR_EVENT_FUNC_IDX_NONE) goto not_supported;
 
 		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active, ef, funcs, &ef->active);
 		if (count < 0) goto free;
@@ -1089,6 +1231,50 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
 	if ((talloc_free(ef) == -1) && ef->is_registered) return -1;
 
 	return 0;
+}
+
+/** Get the opaque event handle from a file descriptor
+ *
+ * @param[in] el	to search for fd/filter in.
+ * @param[in] fd	to search for.
+ * @param[in] filter	to search for.
+ * @return
+ *	- NULL if no event could be found.
+ *	- The opaque handle representing an fd event.
+ */
+fr_event_fd_t *fr_event_fd_handle(fr_event_list_t *el, int fd, fr_event_filter_t filter)
+{
+	fr_event_fd_t *ef;
+
+	ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
+	if (unlikely(!ef)) {
+		fr_strerror_printf("No events are registered for fd %i", fd);
+		return -1;
+	}
+
+	return ef;
+}
+
+/** Returns the appropriate callback function for a given event
+ *
+ * @param[in] ef	the event filter fd handle.
+ * @param[in] kq_filter	If the callbacks are indexed by filter.
+ * @param[in] kq_fflags If the callbacks are indexed by NOTES (fflags).
+ * @return
+ *	- NULL if no event it associated with the given ef/kq_filter or kq_fflags combo.
+ *	- The callback that would be called if an event with this filter/fflag combo was received.
+ */
+fr_event_fd_cb_t fr_event_fd_cb(fr_event_fd_t *ef, int kq_filter, int kq_fflags)
+{
+	return event_fd_func(ef, &kq_filter, &kq_fflags);
+}
+
+/** Returns the uctx associated with an fr_event_fd_t handle
+ *
+ */
+void *fr_event_fd_uctx(fr_event_fd_t *ef)
+{
+	return ef->uctx;
 }
 
 #ifndef NDEBUG
@@ -1835,10 +2021,6 @@ void fr_event_service(fr_event_list_t *el)
 	 */
 	el->in_handler = true;
 	for (i = 0; i < el->num_fd_events; i++) {
-		fr_event_fd_t	*ef;
-		int		fd_errno = 0;
-		int		flags = el->events[i].flags;
-
 		/*
 		 *	Process any user events
 		 */
@@ -1860,6 +2042,9 @@ void fr_event_service(fr_event_list_t *el)
 		}
 			continue;
 
+		/*
+		 *	Process proc events
+		 */
 		case EVFILT_PROC:
 		{
 			pid_t pid;
@@ -1883,133 +2068,72 @@ void fr_event_service(fr_event_list_t *el)
 		}
 			continue;
 
-		default:
-			break;
-		}
-
-		ef = talloc_get_type_abort(el->events[i].udata, fr_event_fd_t);
-		if (!ef->is_registered) continue;	/* Was deleted between corral and service */
-
-		if (unlikely(flags & EV_ERROR)) {
-			fd_errno = el->events[i].data;
-		ev_error:
-			/*
-			 *      Call the error handler
-			 */
-			if (ef->error) ef->error(el, ef->fd, flags, fd_errno, ef->uctx);
-			TALLOC_FREE(ef);
-			continue;
-		}
-
 		/*
-		 *      EOF can indicate we've actually reached
-		 *      the end of a file, but for sockets it usually
-		 *      indicates the other end of the connection
-		 *      has gone away.
+		 *	Process various types of file descriptor events
 		 */
-		if (flags & EV_EOF) {
+		default:
+		{
+			fr_event_fd_t		*ef = talloc_get_type_abort(el->events[i].udata, fr_event_fd_t);
+			int			fd_errno = 0;
+			fr_event_fd_cb_t	fd_cb;
+			int			fflags = el->events[i].fflags;	/* mutable */
+			int			filter = el->events[i].filter;
+			int			flags = el->events[i].flags;
+
+			if (!ef->is_registered) continue;	/* Was deleted between corral and service */
+
+			if (unlikely(flags & EV_ERROR)) {
+				fd_errno = el->events[i].data;
+			ev_error:
+				/*
+				 *      Call the error handler
+				 */
+				if (ef->error) ef->error(el, ef->fd, flags, fd_errno, ef->uctx);
+				TALLOC_FREE(ef);
+				continue;
+			}
+
 			/*
-			 *	This is fine, the callback will get notified
-			 *	via the flags field.
+			 *      EOF can indicate we've actually reached
+			 *      the end of a file, but for sockets it usually
+			 *      indicates the other end of the connection
+			 *      has gone away.
 			 */
-			if (ef->type == FR_EVENT_FD_FILE) goto service;
+			if (flags & EV_EOF) {
+				/*
+				 *	This is fine, the callback will get notified
+				 *	via the flags field.
+				 */
+				if (ef->type == FR_EVENT_FD_FILE) goto service;
 #if defined(__linux__) && defined(SO_GET_FILTER)
-			/*
-			 *      There seems to be an issue with the
-			 *      ioctl(...SIOCNQ...) call libkqueue
-			 *      uses to determine the number of bytes
-			 *	readable.  When ioctl returns, the number
-			 *	of bytes available is set to zero, which
-			 *	libkqueue interprets as EOF.
-			 *
-			 *      As a workaround, if we're not reading
-			 *	a file, and are operating on a raw socket
-			 *	with a packet filter attached, we ignore
-			 *	the EOF flag and continue.
-			 */
-			if ((ef->sock_type == SOCK_RAW) && (ef->type == FR_EVENT_FD_PCAP)) goto service;
+				/*
+				 *      There seems to be an issue with the
+				 *      ioctl(...SIOCNQ...) call libkqueue
+				 *      uses to determine the number of bytes
+				 *	readable.  When ioctl returns, the number
+				 *	of bytes available is set to zero, which
+				 *	libkqueue interprets as EOF.
+				 *
+				 *      As a workaround, if we're not reading
+				 *	a file, and are operating on a raw socket
+				 *	with a packet filter attached, we ignore
+				 *	the EOF flag and continue.
+				 */
+				if ((ef->sock_type == SOCK_RAW) && (ef->type == FR_EVENT_FD_PCAP)) goto service;
 #endif
-			fd_errno = el->events[i].fflags;
+				fd_errno = el->events[i].fflags;
 
-			goto ev_error;
+				goto ev_error;
+			}
+
+		service:
+			/*
+			 *	Service the event_fd events
+			 */
+			while ((fd_cb = event_fd_func(ef, &filter, &fflags))) {
+				fd_cb(el, ef->fd, flags, ef->uctx);
+			}
 		}
-
-service:
-		/*
-		 *	If any of these callbacks are NULL, then
-		 *	there's a logic error somewhere.
-		 *	Filters are only installed if there's a
-		 *	callback to handle them.
-		 */
-		switch (ef->filter) {
-		case FR_EVENT_FILTER_IO:
-			/*
-			 *	io.read can delete the event, in which case
-			 *	we *DON'T* want to call the write event.
-			 */
-			if (el->events[i].filter == EVFILT_READ) {
-				ef->active.io.read(el, ef->fd, flags, ef->uctx);
-			}
-			else if (el->events[i].filter == EVFILT_WRITE) {
-				ef->active.io.write(el, ef->fd, flags, ef->uctx);
-			}
-			break;
-
-		case FR_EVENT_FILTER_VNODE:
-			if (unlikely(!fr_cond_assert(el->events[i].filter == EVFILT_VNODE))) break;
-
-			if ((el->events[i].fflags & NOTE_DELETE) != 0) {
-				ef->active.vnode.delete(el, ef->fd, flags, ef->uctx);
-				el->events[i].fflags &= ~NOTE_DELETE;
-			}
-
-			if ((el->events[i].fflags & NOTE_WRITE) != 0) {
-				ef->active.vnode.write(el, ef->fd, flags, ef->uctx);
-				el->events[i].fflags &= ~NOTE_WRITE;
-			}
-
-			if ((el->events[i].fflags & NOTE_EXTEND) != 0) {
-				ef->active.vnode.extend(el, ef->fd, flags, ef->uctx);
-				el->events[i].fflags &= ~NOTE_EXTEND;
-			}
-
-			if ((el->events[i].fflags & NOTE_ATTRIB) != 0) {
-				ef->active.vnode.attrib(el, ef->fd, flags, ef->uctx);
-				el->events[i].fflags &= ~NOTE_ATTRIB;
-			}
-
-			/*
-			 *	NOTE_LINK is sometimes added even if we didn't ask for it.
-			 */
-			if ((el->events[i].fflags & NOTE_LINK) != 0) {
-				if (ef->active.vnode.link) ef->active.vnode.link(el, ef->fd, flags, ef->uctx);
-				el->events[i].fflags &= ~NOTE_LINK;
-			}
-
-			if ((el->events[i].fflags & NOTE_RENAME) != 0) {
-				ef->active.vnode.rename(el, ef->fd, flags, ef->uctx);
-				el->events[i].fflags &= ~NOTE_RENAME;
-			}
-
-#ifdef NOTE_REVOKE
-			if ((el->events[i].fflags & NOTE_REVOKE) != 0) {
-				ef->active.vnode.revoke(el, ef->fd, flags, ef->uctx);
-				el->events[i].fflags &= ~NOTE_REVOKE;
-			}
-#endif
-
-#ifdef NOTE_FUNLOCK
-			if ((el->events[i].fflags & NOTE_FUNLOCK) != 0) {
-				ef->active.vnode.funlock(el, ef->fd, flags, ef->uctx);
-				el->events[i].fflags &= ~NOTE_FUNLOCK;
-			}
-#endif
-
-			if (unlikely(!fr_cond_assert(el->events[i].fflags == 0))) break;
-			break;
-
-		default:
-			break;
 		}
 	}
 
@@ -2141,6 +2265,23 @@ static int _event_list_free(fr_event_list_t *el)
 	return 0;
 }
 
+/** Free any memory we allocated for indexes
+ *
+ */
+static void _event_free_indexes(void)
+{
+	unsigned int i;
+
+	for (i = 0; i < NUM_ELEMENTS(filter_maps); i++) talloc_free(filter_maps[i].ev_to_func);
+}
+
+static void _event_build_indexes(void)
+{
+	unsigned int i;
+
+	for (i = 0; i < NUM_ELEMENTS(filter_maps); i++) event_fd_func_index_build(&filter_maps[i]);
+}
+
 /** Initialise a new event list
  *
  * @param[in] ctx		to allocate memory in.
@@ -2152,8 +2293,16 @@ static int _event_list_free(fr_event_list_t *el)
  */
 fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t status, void *status_uctx)
 {
+
+
 	fr_event_list_t		*el;
 	struct kevent		kev;
+
+	/*
+	 *	Build the map indexes the first time this
+	 *	function is called.
+	 */
+	fr_atexit_global_once(_event_build_indexes, _event_free_indexes);
 
 	el = talloc_zero(ctx, fr_event_list_t);
 	if (!fr_cond_assert(el)) {
@@ -2250,7 +2399,7 @@ typedef struct {
 	uint32_t	count;
 } fr_event_counter_t;
 
-static int event_timer_location_cmp(void const *one, void const *two)
+static int8_t event_timer_location_cmp(void const *one, void const *two)
 {
 	fr_event_counter_t const	*a = one;
 	fr_event_counter_t const	*b = two;
@@ -2324,11 +2473,11 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 	EVENT_DEBUG("Event list %p", el);
 	EVENT_DEBUG("    fd events            : %"PRIu64, fr_event_list_num_fds(el));
 	EVENT_DEBUG("    events last iter     : %u", el->num_fd_events);
-	EVENT_DEBUG("    num timer events     : %u", fr_event_list_num_timers(el));
+	EVENT_DEBUG("    num timer events     : %"PRIu64, fr_event_list_num_timers(el));
 
 	for (i = 0; i < NUM_ELEMENTS(decades); i++) {
-		fr_rb_iter_inorder_t	iter;
-		void				*node;
+		fr_rb_iter_inorder_t	event_iter;
+		void			*node;
 
 		if (!array[i]) continue;
 
@@ -2340,9 +2489,9 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 			EVENT_DEBUG("    events %5s - %5s : %zu", decade_names[i - 1], decade_names[i], array[i]);
 		}
 
-		for (node = fr_rb_iter_init_inorder(&iter, locations[i]);
+		for (node = fr_rb_iter_init_inorder(&event_iter, locations[i]);
 		     node;
-		     node = fr_rb_iter_next_inorder(&iter)) {
+		     node = fr_rb_iter_next_inorder(&event_iter)) {
 			fr_event_counter_t	*counter = talloc_get_type_abort(node, fr_event_counter_t);
 
 			EVENT_DEBUG("                         : %u allocd at %s[%u]",

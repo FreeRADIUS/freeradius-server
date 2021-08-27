@@ -228,6 +228,12 @@ int		_fr_event_fd_insert(NDEBUG_LOCATION_ARGS
 
 int		fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter);
 
+fr_event_fd_t	*fr_event_fd_handle(fr_event_list_t *el, int fd, fr_event_filter_t filter);
+
+fr_event_fd_cb_t fr_event_fd_cb(fr_event_fd_t *ef, int filter, int fflags);
+
+void		*fr_event_fd_uctx(fr_event_fd_t *ef);
+
 #ifndef NDEBUG
 int		fr_event_fd_armour(fr_event_list_t *el, int fd, fr_event_filter_t, uintptr_t armour);
 int		fr_event_fd_unarmour(fr_event_list_t *el, int fd, fr_event_filter_t filter, uintptr_t armour);
