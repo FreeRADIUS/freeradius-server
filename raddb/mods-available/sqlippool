@@ -25,6 +25,11 @@ sqlippool {
 	ippool_table = "radippool"
 
 	# IP lease duration. (Leases expire even if Acct Stop packet is lost)
+	#
+	#  Note that you SHOULD also set Session-Timeout to this value!
+	#  That way the NAS will automatically kick the user offline when the
+	#  lease expires.
+	#
 	lease_duration = 3600
 
 	#
