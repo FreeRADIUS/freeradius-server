@@ -45,6 +45,35 @@ typedef void(*fr_atexit_t)(void *uctx);
 
 int	fr_atexit_global_setup(void);
 
+/** Setup pair of global init/free functions
+ *
+ * Simplifies setting up data structures the first time a given function
+ * is called.
+ *
+ * Should be used in the body of the function before any initialisation
+ * dependent code.
+ *
+ * Will not share init status outside of the function.
+ *
+ * @param[in] _init function to call. Will be called once during the process
+ *		    lifetime.
+ * @param[in] _free function to call. Will be called once at exit.
+ */
+#define fr_atexit_global_once(_init, _free) \
+{ \
+	static atomic_bool	_init_done = false; \
+	static pthread_mutex_t	_init_mutex = PTHREAD_MUTEX_INITIALIZER; \
+	if (unlikely(!atomic_load(&_init_done))) { \
+		pthread_mutex_lock(&_init_mutex); \
+		if (!atomic_load(&_init_done)) { \
+			_init(); \
+			if (_free) atexit(_free); \
+			atomic_store(&_init_done, true); \
+		} \
+		pthread_mutex_unlock(&_init_mutex); \
+	} \
+}
+
 /** Set a destructor for thread local storage to free the memory on thread exit
  *
  * @note Pointers to thread local storage seem to become unusable as threads are
