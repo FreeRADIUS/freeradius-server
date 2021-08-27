@@ -260,7 +260,8 @@ static void lst_burn_in(void)
 	array = calloc(BURN_IN_OPS, sizeof(lst_thing));
 	for (unsigned int i = 0; i < BURN_IN_OPS; i++) array[i].data = rand() % 65537;
 
-	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 0);
+	/* Make init small to exercise growing the pivot stack. */
+	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 32);
 
 	for (unsigned int i = 0; i < BURN_IN_OPS; i++) {
 		lst_thing	*ret_thing = NULL;
