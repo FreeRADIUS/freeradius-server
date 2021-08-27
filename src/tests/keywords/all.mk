@@ -86,6 +86,8 @@ KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_csv.la
 #  Otherwise, check the log file for a parse error which matches the
 #  ERROR line in the input.
 #
+#  NOTE: Grepping for $< is not safe cross platform, as on Linux it
+#  expands to the full absolute path, and on macOS it appears to be relative.
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_test.la rlm_csv.la rlm_unpack.la
 	$(eval CMD:=KEYWORD=$(notdir $@) $(TEST_BIN)/unit_test_module $(UNIT_TEST_KEYWORD_ARGS.$(subst -,_,$(notdir $@))) -D share/dictionary -d src/tests/keywords/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx)
 	@echo "KEYWORD-TEST $(notdir $@)"
@@ -98,7 +100,7 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYW
 			rm -f $(BUILD_DIR)/tests/test.keywords; \
 			exit 1; \
 		fi; \
-		FOUND=$$(grep -E '^(Error : )?$<' $@.log | head -1 | sed 's/.*\[//;s/\].*//'); \
+		FOUND=$$(grep -E '^(Error : )?src/tests/keywords/$(notdir $@)' $@.log | head -1 | sed 's/.*\[//;s/\].*//'); \
 		EXPECTED=$$(grep -n ERROR $< | sed 's/:.*//'); \
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat $@.log; \
