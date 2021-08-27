@@ -52,12 +52,17 @@ typedef struct {
 
 	log_fd_event_ctx_t		stdout_uctx;	//!< Config for the stdout logger.
 	log_fd_event_ctx_t		stderr_uctx;	//!< Config for the stderr logger.
+	char				stdout_prefix[sizeof("pid -9223372036854775808 (stdout)")];
+	char				stderr_prefix[sizeof("pid -9223372036854775808 (stderr)")];
 
 	pid_t				pid;		//!< child PID
 	int				stdin_fd;	//!< for writing to the child.
 	bool				stdin_used;	//!< use stdin fd?
 	int				stdout_fd;	//!< for reading from the child.
+
 	bool				stdout_used;	//!< use stdout fd?
+	TALLOC_CTX			*stdout_ctx;	//!< ctx to allocate output buffers
+
 	int				stderr_fd;	//!< for producing error messages.
 
 	fr_event_timer_t const		*ev;		//!< for timing out the child
@@ -70,7 +75,7 @@ typedef struct {
 	fr_pair_list_t			*vps;		//!< input VPs
 
 	request_t			*request;	//!< request this exec is related to
-	TALLOC_CTX			*outctx;	//!< ctx to allocate output buffers
+
 } fr_exec_state_t;
 
 
@@ -91,7 +96,9 @@ int	fr_exec_wait_start(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_
 			   request_t *request, fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs);
 
 int	fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
-			      fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs, fr_time_delta_t timeout);
+			      fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs,
+			      bool need_stdin, bool store_stdout, TALLOC_CTX *stdout_ctx,
+			      fr_time_delta_t timeout);
 #ifdef __cplusplus
 }
 #endif

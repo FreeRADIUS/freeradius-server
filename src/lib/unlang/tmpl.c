@@ -275,13 +275,12 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 
-	state->exec.stdout_used = (state->out) ? true : false;
-	state->exec.outctx = state;
-
 	/*
 	 *	@todo - make the timeout configurable
 	 */
-	if (fr_exec_wait_start_io(state->ctx, &state->exec, request, &state->box, state->exec.vps,
+	if (fr_exec_wait_start_io(state->ctx, &state->exec, request, &state->box,
+				  state->exec.vps,
+				  false, (state->out != NULL), state,
 				  fr_time_delta_from_sec(EXEC_TIMEOUT)) < 0) {
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;

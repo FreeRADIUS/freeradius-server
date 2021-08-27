@@ -822,6 +822,7 @@ int fr_exec_wait_start(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_
 			talloc_free(argv);
 			goto error;
 		}
+		if (fr_nonblock(stdin_pipe[1]) < 0) PERROR("Error setting stdin to nonblock");
 	}
 
 	if (stdout_fd) {
@@ -831,6 +832,7 @@ int fr_exec_wait_start(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_
 			close(stdin_pipe[1]);
 			goto error2;
 		}
+		if (fr_nonblock(stdout_pipe[0]) < 0) PERROR("Error setting stdout to nonblock");
 	}
 
 	if (stderr_fd) {
@@ -839,6 +841,7 @@ int fr_exec_wait_start(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_
 			close(stdout_pipe[1]);
 			goto error3;
 		}
+		if (fr_nonblock(stderr_pipe[0]) < 0) PERROR("Error setting stderr to nonblock");
 	}
 
 	pid = fork();
@@ -878,13 +881,11 @@ int fr_exec_wait_start(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_
 
 	if (stdout_fd) {
 		*stdout_fd = stdout_pipe[0];
-		fr_nonblock(*stdout_fd);
 		close(stdout_pipe[1]);
 	}
 
 	if (stderr_fd) {
 		*stderr_fd = stderr_pipe[0];
-		fr_nonblock(*stderr_fd);
 		close(stderr_pipe[1]);
 	}
 
@@ -898,6 +899,10 @@ static void exec_cleanup(fr_exec_state_t *exec) {
 	request_t	*request = exec->request;
 
 	if (exec->pid) DEBUG3("Cleaning up exec state for pid %u", exec->pid);
+
+	/*
+	 *	FIXME - Need to do something with stdin?
+	 */
 
 	if (exec->stdout_fd >= 0) {
 		if (fr_event_fd_delete(request->el, exec->stdout_fd, FR_EVENT_FILTER_IO) < 0){
@@ -926,10 +931,41 @@ static void exec_cleanup(fr_exec_state_t *exec) {
 /*
  *	Callback when exec has completed.  Record the status and tidy up.
  */
-static void exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pid, int status, void *uctx)
+static void exec_waitpid(fr_event_list_t *el, UNUSED pid_t pid, int status, void *uctx)
 {
-	fr_exec_state_t	*exec = uctx;
+	fr_exec_state_t *exec = uctx;	/* may not be talloced */
 	request_t	*request = exec->request;
+	int		wait_status;
+	int		ret;
+
+	/*
+	 *	Reap the process.  This is needed so the processes
+	 *	don't stick around indefinitely.  libkqueue/kqueue
+	 *	does not do this for us!
+	 *
+	 *	We do _not_ pass WNOHANG, if we hang here something
+	 *	is very wrong as we were notified that the process
+	 *	was done.
+	 */
+	ret = waitpid(exec->pid, &wait_status, WNOHANG);
+	if (ret < 0) {
+		RWDEBUG("Failed reaping PID %i: %s", exec->pid, fr_syserror(errno));
+	/*
+	 *	Either something cleaned up the process before us
+	 *	(bad!), or the notification system is broke
+	 *	(also bad!)
+	 *
+	 *	This could be caused by 3rd party libraries.
+	 */
+	} else if (ret == 0) {
+		RWDEBUG("Something reaped PID %d before us!", exec->pid);
+	/*
+	 *	This could be an implementation specific issue
+	 *      so don't assert.
+	 */
+	} else if (wait_status != status) {
+		RWDEBUG("Exit status from waitpid (%d) and kevent (%d) disagree", wait_status, status);
+	}
 
 	if (WIFEXITED(status)) {
 		RDEBUG("Program exited with status code %d", WEXITSTATUS(status));
@@ -946,17 +982,68 @@ static void exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pid, int statu
 	if (exec->ev) fr_event_timer_delete(&exec->ev);
 
 	/*
-	 *	We may receive the "child exited" signal before the
-	 *	"pipe has been closed" signal
+	 *	Process exit notifications (EV_PROC) and file
+	 *	descriptor read events (EV_READ) can race.
+	 *
+	 *	So... If the process has exited, trigger the IO
+	 *	handlers manually.
+	 *
+	 *	This is icky, but the only other option is to
+	 *      enhance our event loop so we can look for
+	 *	pending events associated with file
+	 *	descriptors...
+	 *
+	 *	Even then we might get the file readable
+	 *	notification and the process exited notification
+	 *	in different kevent() calls on busy systems.
 	 */
 	if (exec->stdout_fd >= 0) {
-		if (exec->stdout_used) {
-			RDEBUG("Program exited without EOF being read");
-			return;
-		}
-		(void) fr_event_fd_delete(exec->request->el, exec->stdout_fd, FR_EVENT_FILTER_IO);
+		fr_event_fd_t		*ef;
+		fr_event_fd_cb_t	cb;
+
+		ef = fr_event_fd_handle(el, exec->stdout_fd, FR_EVENT_FILTER_IO);
+		if (!fr_cond_assert_msg(ef, "no event associated with processes's stdout fd (%i)",
+					exec->stdout_fd)) goto close_stdout;
+
+		cb = fr_event_fd_cb(ef, EVFILT_READ, 0);
+		if (!fr_cond_assert_msg(cb, "no read callback associated with processes's stdout_fd (%i)",
+					exec->stdout_fd)) goto close_stdout;
+
+		/*
+		 *	Call the original read callback that
+		 *	was setup here to ensure that there's
+		 *	no pending data.
+		 */
+		cb(el, exec->stdout_fd, 0, fr_event_fd_uctx(ef));
+
+		/*
+		 *	...and delete the event from the event
+		 *	loop.  This should also suppress the
+		 *      EVFILT_READ event if there was one.
+		 */
+		(void) fr_event_fd_delete(el, exec->stdout_fd, FR_EVENT_FILTER_IO);
+	close_stdout:
 		close(exec->stdout_fd);
 		exec->stdout_fd = -1;
+	}
+
+	if (exec->stderr_fd >= 0) {
+		fr_event_fd_t		*ef;
+		fr_event_fd_cb_t	cb;
+
+		ef = fr_event_fd_handle(el, exec->stderr_fd, FR_EVENT_FILTER_IO);
+		if (!fr_cond_assert_msg(ef, "no event associated with processes's stderr fd (%i)",
+					exec->stderr_fd)) goto close_stderr;
+
+		cb = fr_event_fd_cb(ef, EVFILT_READ, 0);
+		if (!fr_cond_assert_msg(cb, "no read callback associated with processes's stderr_fd (%i)",
+					exec->stderr_fd)) goto close_stderr;
+
+		cb(el, exec->stderr_fd, 0, fr_event_fd_uctx(ef));
+		(void) fr_event_fd_delete(el, exec->stderr_fd, FR_EVENT_FILTER_IO);
+	close_stderr:
+		close(exec->stderr_fd);
+		exec->stderr_fd = -1;
 	}
 
 	unlang_interpret_mark_runnable(exec->request);
@@ -965,30 +1052,10 @@ static void exec_waitpid(UNUSED fr_event_list_t *el, UNUSED pid_t pid, int statu
 /*
  *	Callback when an exec times out.
  */
-static void exec_timeout(
-#ifndef __linux__
-			 UNUSED
-#endif
-			 fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void exec_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
-	fr_exec_state_t *exec = talloc_get_type_abort(uctx, fr_exec_state_t);
+	fr_exec_state_t *exec = uctx; /* may not be talloced */
 	request_t	*request = exec->request;
-
-	fr_assert(exec->pid > 0);
-
-#ifdef __linux__
-	int	status;
-
-	/*
-	 *	libkqueue on Linux isn't quite there yet.  Maybe the
-	 *	program has exited, and we haven't noticed.  In which
-	 *	case, do a graceful cleanup.
-	 */
-	if (waitpid(exec->pid, &status, WNOHANG) == exec->pid) {
-		exec_waitpid(el, exec->pid, status, exec);
-		return;
-	}
-#endif
 
 	if (exec->stdout_fd < 0) {
 		REDEBUG("Timeout waiting for program to exit - killing it and failing the request");
@@ -1037,6 +1104,15 @@ static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void
 		if (data_len < 0) {
 			if (errno == EINTR) continue;
 
+			/*
+			 *	This can happen when the callback is called
+			 *	manually when we're reaping the process.
+			 *
+			 *	It's pretty much an identical condition to
+			 *	data_len == 0.
+			 */
+			if (errno == EWOULDBLOCK) break;
+
 			REDEBUG("Error reading from child program - %s", fr_syserror(errno));
 			goto error;
 		}
@@ -1082,26 +1158,40 @@ static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void
 
 /** Call an child program, optionally reading it's output
  *
- * @param[in] ctx	to allocate events in.
- * @param[in,out] exec	structure holding the state of the external call.
- * @param[in] request	currently being processed.
- * @param[in] cmd	to call as a fr_value_boc_list_t.  Program will be the first box
- * 			and arguments in the subsequent boxes.
- * @param[in] env_pairs	list of pairs to be presented as evironment variables to the child.
- * @param[in] timeout	to wait for child to complete.
+ * @param[in] ctx		to allocate events in.
+ * @param[in,out] exec		structure holding the state of the external call.
+ * @param[in] request		currently being processed.
+ * @param[in] cmd		to call as a fr_value_boc_list_t.  Program will be the first box
+ * 				and arguments in the subsequent boxes.
+ * @param[in] env_pairs		list of pairs to be presented as evironment variables to the child.
+ * @param[in] need_stdin	If true, allocate a pipe that will allow us to send data to the
+ *      			process.
+ * @param[in] store_stdout	if true keep a copy of stdout in addition to logging
+ *				it if RDEBUG_ENABLED2.
+ * @param[in] stdout_ctx	ctx to alloc stdout data in.
+ * @param[in] timeout		to wait for child to complete.
  * @return
  *	- 0 on success
  *	- -1 on failure
  */
-int fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request, fr_value_box_list_t *cmd, fr_pair_list_t *env_pairs, fr_time_delta_t timeout)
+int fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
+			  fr_value_box_list_t *cmd, fr_pair_list_t *env_pairs,
+			  bool need_stdin, bool store_stdout, TALLOC_CTX *stdout_ctx,
+			  fr_time_delta_t timeout)
 {
-	int	*stdout_fd = (exec->stdout_used || RDEBUG_ENABLED2) ? &exec->stdout_fd : NULL;
+	int	*stdout_fd = (store_stdout || RDEBUG_ENABLED2) ? &exec->stdout_fd : NULL;
 
-	exec->request = request;
-	exec->vps = env_pairs;
-	exec->stdout_fd = -1;
-	exec->stderr_fd = -1;
-	exec->stdin_fd = -1;
+	*exec = (fr_exec_state_t){
+		.request = request,
+		.vps = env_pairs,
+		.stdout_fd = -1,
+		.stderr_fd = -1,
+		.stdin_fd = -1,
+		.status = -1,				/* default to program didn't work */
+		.stdin_used = need_stdin,
+		.stdout_used = store_stdout,
+		.stdout_ctx = stdout_ctx
+	};
 
 	if (fr_exec_wait_start(&exec->pid, exec->stdin_used ? &exec->stdin_fd : NULL,
 			       stdout_fd, &exec->stderr_fd, request, cmd, exec->vps) < 0) {
@@ -1110,7 +1200,6 @@ int fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *req
 		exec_cleanup(exec);
 		return -1;
 	}
-	exec->status = -1;	/* default to program didn't work */
 
 	/*
 	 *	Tell the event loop that it needs to wait for this PID
@@ -1124,9 +1213,7 @@ int fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *req
 	/*
 	 *	Setup event to kill the child process after a period of time.
 	 */
-	if (fr_event_timer_in(ctx, request->el, &exec->ev, timeout, exec_timeout, exec) < 0) {
-		goto fail;
-	}
+	if (fr_event_timer_in(ctx, request->el, &exec->ev, timeout, exec_timeout, exec) < 0) goto fail;
 
 	/*
 	 *	If we need to parse stdout, insert a special IO handler that
@@ -1136,7 +1223,7 @@ int fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *req
 		/*
 		 *	Accept a maximum of 32k of data from the process.
 		 */
-		fr_sbuff_init_talloc(exec->outctx, &exec->stdout_buff, &exec->stdout_tctx, 128, 32 * 1024);
+		fr_sbuff_init_talloc(exec->stdout_ctx, &exec->stdout_buff, &exec->stdout_tctx, 128, 32 * 1024);
 		if (fr_event_fd_insert(ctx, request->el, exec->stdout_fd, exec_stdout_read, NULL, NULL, exec) < 0) {
 			RPEDEBUG("Failed adding event listening to stdout");
 			goto fail;
@@ -1147,11 +1234,12 @@ int fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *req
 	 *	into the request log if we're logging at a high enough level of verbosity.
 	 */
 	} else if (RDEBUG_ENABLED2) {
+		snprintf(exec->stdout_prefix, sizeof(exec->stdout_prefix), "pid %u (stdout)", exec->pid);
 		exec->stdout_uctx = (log_fd_event_ctx_t) {
 			.type = L_DBG,
 			.lvl = L_DBG_LVL_2,
 			.request = request,
-			.prefix = fr_asprintf(exec->outctx, "pid %u (stdout)", exec->pid)
+			.prefix = exec->stdout_prefix
 		};
 
 		if (fr_event_fd_insert(ctx, request->el, exec->stdout_fd, log_request_fd_event,
@@ -1164,11 +1252,12 @@ int fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *req
 	/*
 	 *	Send stderr to the request log as error messages with a custom prefix
 	 */
+	snprintf(exec->stderr_prefix, sizeof(exec->stderr_prefix), "pid %u (stderr)", exec->pid);
 	exec->stderr_uctx = (log_fd_event_ctx_t) {
 		.type = L_DBG_ERR,
 		.lvl = L_DBG_LVL_1,
 		.request = request,
-		.prefix = fr_asprintf(exec->outctx, "pid %u (stderr)", exec->pid)
+		.prefix = exec->stderr_prefix
 	};
 
 	if (fr_event_fd_insert(ctx, request->el, exec->stderr_fd, log_request_fd_event,

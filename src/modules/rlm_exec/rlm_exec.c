@@ -137,11 +137,11 @@ static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out, reques
 		return XLAT_ACTION_DONE;
 	}
 
-	exec = talloc_zero(request, fr_exec_state_t);
-	exec->stdout_used = inst->wait;
-	exec->outctx = ctx;
+	MEM(exec = talloc_zero(request, fr_exec_state_t)); /* Fixme - Should be frame ctx */
 
-	if(fr_exec_wait_start_io(exec, exec, request, in, input_pairs, inst->timeout) < 0) {
+	if (fr_exec_wait_start_io(exec, exec, request, in, input_pairs,
+				  false, inst->wait, ctx,
+				  inst->timeout) < 0) {
 		talloc_free(exec);
 		return XLAT_ACTION_FAIL;
 	}
