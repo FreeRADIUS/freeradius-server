@@ -18,7 +18,7 @@ typedef struct {
 } lst_thing;
 
 #if 0
-static bool	lst_validate(fr_lst_t *lst, bool show_items);
+static void	lst_validate(fr_lst_t *lst);
 #endif
 
 static bool fr_lst_contains(fr_lst_t *lst, void *data)
@@ -569,10 +569,10 @@ static void queue_cmp_1000(void)
 }
 
 #if 0
-static void lst_validate(fr_lst_t *lst, bool show_items)
+static void lst_validate(fr_lst_t *lst)
 {
-	lst_index	fake_pivot_index, reduced_fake_pivot_index, reduced_end;
-	int		depth = stack_depth(lst->s);
+	fr_lst_index_t	fake_pivot_index, reduced_fake_pivot_index, reduced_end;
+	stack_index_t	depth = stack_depth(&(lst->s));
 	int		bucket_size_sum;
 	bool		pivots_in_order = true;
 	bool		pivot_indices_in_order = true;
@@ -589,9 +589,9 @@ static void lst_validate(fr_lst_t *lst, bool show_items)
 	 * Modulo circularity, idx + the number of elements should be the index
 	 * of the fictitious pivot.
 	 */
-	fake_pivot_index = stack_item(lst->s, 0);
-	reduced_fake_pivot_index = reduce(lst, fake_pivot_index);
-	reduced_end = reduce(lst, lst->idx + lst->num_elements);
+	fake_pivot_index = stack_item(&(lst->s), 0);
+	reduced_fake_pivot_index = index_reduce(lst, fake_pivot_index);
+	reduced_end = index_reduce(lst, lst->idx + lst->num_elements);
 	if (reduced_fake_pivot_index != reduced_end) {
 		TEST_MSG_ALWAYS("fictitious pivot inconsistent with idx and number of elements");
 	}
@@ -602,8 +602,8 @@ static void lst_validate(fr_lst_t *lst, bool show_items)
 	if (lst->num_elements) {
 		bucket_size_sum = 0;
 
-		for (lst_stack_idnex_t stack_index = 0; stack_index < depth; stack_index++)  {
-			lst_index bucket_size = bucket_upb(lst, stack_index) - bucket_lwb(lst, stack_index) + 1;
+		for (stack_index_t stack_index = 0; stack_index < depth; stack_index++)  {
+			fr_lst_index_t bucket_size = bucket_upb(lst, stack_index) - bucket_lwb(lst, stack_index) + 1;
 			if (bucket_size > lst->num_elements) {
 				TEST_MSG_ALWAYS("bucket %d size %d is invalid\n", stack_index, bucket_size);
 			}
@@ -618,7 +618,7 @@ static void lst_validate(fr_lst_t *lst, bool show_items)
 	/*d
 	 * No elements should be NULL.
 	 */
-	for (lst_index i = 0; i < lst->num_elements; i++) {
+	for (fr_lst_index_t i = 0; i < lst->num_elements; i++) {
 		if (!item(lst, lst->idx + i)) TEST_MSG_ALWAYS("null element at %d\n", lst->idx + i);
 	}
 
@@ -631,9 +631,9 @@ static void lst_validate(fr_lst_t *lst, bool show_items)
 	 * Otherwise, first, pivots from left to right (aside from the fictitious
 	 * one) should be in ascending order.
 	 */
-	for (lst_stack_idnex_t stack_index = 1; stack_index + 1 < depth; stack_index++) {
-		lst_thing	*current_pivot = pivot(lst, stack_index);
-		lst_thing	*next_pivot = pivot(lst, stack_index + 1);
+	for (stack_index_t stack_index = 1; stack_index + 1 < depth; stack_index++) {
+		lst_thing	*current_pivot = pivot_item(lst, stack_index);
+		lst_thing	*next_pivot = pivot_item(lst, stack_index + 1);
 
 		if (current_pivot && next_pivot && lst->cmp(current_pivot, next_pivot) < 0) pivots_in_order = false;
 	}
@@ -642,8 +642,8 @@ static void lst_validate(fr_lst_t *lst, bool show_items)
 	/*
 	 * Next, all non-fictitious pivots must correspond to non-null elements of the array.
 	 */
-	for (lst_stack_idnex_t stack_index = 1; stack_index < depth; stack_index++) {
-		if (!pivot(lst, stack_index)) TEST_MSG_ALWAYS("pivot #%d refers to NULL", stack_index);
+	for (stack_index_t stack_index = 1; stack_index < depth; stack_index++) {
+		if (!pivot_item(lst, stack_index)) TEST_MSG_ALWAYS("pivot #%d refers to NULL", stack_index);
 	}
 
 	/*
@@ -651,9 +651,9 @@ static void lst_validate(fr_lst_t *lst, bool show_items)
 	 * the bottom of the pivot stack. Here we *do* include the fictitious
 	 * pivot; we're just comparing indices.
 	 */
-	for (lst_stack_idnex_t stack_index = 0; stack_index + 1 < depth; stack_index++) {
-		fr_lst_index_t current_pivot_index = stack_item(lst->s, stack_index);
-		fr_lst_index_t previous_pivot_index = stack_item(lst->s, stack_index + 1);
+	for (stack_index_t stack_index = 0; stack_index + 1 < depth; stack_index++) {
+		fr_lst_index_t current_pivot_index = stack_item(&(lst->s), stack_index);
+		fr_lst_index_t previous_pivot_index = stack_item(&(lst->s), stack_index + 1);
 
 
 		if (previous_pivot_index >= current_pivot_index) pivot_indices_in_order = false;
@@ -669,13 +669,13 @@ static void lst_validate(fr_lst_t *lst, bool show_items)
 	 * todo: this will find pivot ordering issues as well; get rid of that ultimately,
 	 * since pivot-pivot ordering errors are caught above.
 	 */
-	for (lst_stack_idnex_t stack_index = 0; stack_index < depth; stack_index++) {
+	for (stack_index_t stack_index = 0; stack_index < depth; stack_index++) {
 		fr_lst_index_t	lwb, upb, pivot_index;
 		void		*pivot_item, *element;
 
 		if (stack_index > 0) {
-			lwb = (stack_index + 1 == depth) ? lst->idx : stack_item(lst->s, stack_index + 1);
-			pivot_index = upb = stack_item(lst->s, stack_index);
+			lwb = (stack_index + 1 == depth) ? lst->idx : stack_item(&(lst->s), stack_index + 1);
+			pivot_index = upb = stack_item(&(lst->s), stack_index);
 			pivot_item = item(lst, pivot_index);
 			for (fr_lst_index_t index = lwb; index < upb; index++) {
 				element = item(lst, index);
@@ -685,8 +685,8 @@ static void lst_validate(fr_lst_t *lst, bool show_items)
 			}
 		}
 		if (stack_index + 1 < depth) {
-			upb = stack_item(lst->s, stack_index);
-			lwb = pivot_index = stack_item(lst->s, stack_index + 1);
+			upb = stack_item(&(lst->s), stack_index);
+			lwb = pivot_index = stack_item(&(lst->s), stack_index + 1);
 			pivot_item = item(lst, pivot_index);
 			for (fr_lst_index_t index = lwb; index < upb; index++) {
 				element = item(lst, index);
