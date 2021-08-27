@@ -140,7 +140,8 @@ static int diameter_verify(request_t *request, uint8_t const *data, unsigned int
 /*
  *	Convert diameter attributes to our fr_pair_t's
  */
-static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *parent,
+static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcursor_t *cursor,
+				    fr_dict_attr_t const *parent,
 				    uint8_t const *data, size_t data_len,
 				    void *decode_ctx)
 {
@@ -170,6 +171,9 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_di
 			return -1;
 		}
 
+		RDEBUG3("%04zu %02x%02x%02x%02x %02x%02x%02x%02x ...", p - data,
+			p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+
 		attr = fr_net_to_uint32(p);
 		p += 4;
 
@@ -185,7 +189,10 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_di
 			goto error;
 		}
 
-		if ((p + ((value_len + 0x03) & ~0x03)) > end) {
+		/*
+		 *	Account for the 8 bytes we've already read from the packet.
+		 */
+		if ((p + ((value_len + 0x03) & ~0x03)) - 8 > end) {
 			fr_strerror_printf("Malformed diameter attribute at offset %zu.  Value length %u overflows input",
 					   p - data, (unsigned int) value_len);
 			goto error;
@@ -638,7 +645,7 @@ fr_radius_packet_code_t eap_ttls_process(request_t *request, eap_session_t *eap_
 	 *	Add the tunneled attributes to the request request.
 	 */
 	fr_dcursor_init(&cursor, &request->request_pairs);
-	if (eap_ttls_decode_pair(request->request_ctx, &cursor, fr_dict_root(fr_dict_internal()),
+	if (eap_ttls_decode_pair(request, request->request_ctx, &cursor, fr_dict_root(fr_dict_internal()),
 				 data, data_len, tls_session->ssl) < 0) {
 		RPEDEBUG("Decoding TTLS TLVs failed");
 		code = FR_RADIUS_CODE_ACCESS_REJECT;
