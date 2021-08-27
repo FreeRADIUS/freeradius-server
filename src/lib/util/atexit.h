@@ -67,7 +67,7 @@ int	fr_atexit_global_setup(void);
 		pthread_mutex_lock(&_init_mutex); \
 		if (!atomic_load(&_init_done)) { \
 			_init(); \
-			if (_free) atexit(_free); \
+			atexit(_free); \
 			atomic_store(&_init_done, true); \
 		} \
 		pthread_mutex_unlock(&_init_mutex); \
