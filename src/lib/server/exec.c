@@ -959,17 +959,14 @@ static void exec_waitpid(fr_event_list_t *el, UNUSED pid_t pid, int status, void
 	 */
 	} else if (ret == 0) {
 		RWDEBUG("Something reaped PID %d before us!", exec->pid);
-	/*
-	 *	This could be an implementation specific issue
-	 *      so don't assert.
-	 */
-	} else if (wait_status != status) {
-		RWDEBUG("Exit status from waitpid (%d) and kevent (%d) disagree", wait_status, status);
 	}
 
 	if (WIFEXITED(status)) {
 		RDEBUG("Program exited with status code %d", WEXITSTATUS(status));
 		exec->status = WEXITSTATUS(status);
+
+		if (exec->status != status) RWDEBUG("Exit status from waitpid (%d) and kevent (%d) disagree",
+						    wait_status, status);
 	} else if (WIFSIGNALED(status)) {
 		RDEBUG("Program exited due to signal with status code %d", WTERMSIG(status));
 		exec->status = -WTERMSIG(status);
