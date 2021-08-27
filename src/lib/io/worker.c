@@ -829,6 +829,9 @@ static int8_t worker_runnable_cmp(void const *one, void const *two)
 	ret = CMP(a->async->priority, b->async->priority);
 	if (ret != 0) return ret;
 
+	ret = CMP(a->async->sequence, b->async->sequence);
+	if (ret != 0) return ret;
+
 	return CMP(a->async->recv_time, b->async->recv_time);
 }
 

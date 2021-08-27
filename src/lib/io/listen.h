@@ -62,6 +62,8 @@ struct fr_async_s {
 	fr_listen_t		*listen;	//!< How we received this request,
 						//!< and how we'll send the reply.
 	uint32_t		priority;	//!< higher == higher priority
+
+	uint32_t		sequence;	//!< higher == higher priority, too
 };
 
 int fr_io_listen_free(fr_listen_t *li);
