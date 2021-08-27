@@ -152,6 +152,9 @@ static int track_free(fr_io_track_t *track)
 
 	talloc_free_children(track);
 
+	fr_assert(track->client->packets > 0);
+	track->client->packets--;
+
 	return 0;
 }
 
@@ -882,6 +885,7 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	 *	receive time, etc.
 	 */
 	if (!client->inst->app_io->track_duplicates) {
+		client->packets++;
 		talloc_set_destructor(track, track_free);
 		return track;
 	}
@@ -986,6 +990,7 @@ do_insert:
 		fr_assert(0);
 	}
 
+	client->packets++;
 	talloc_set_destructor(track, track_dedup_free);
 	return track;
 }
@@ -1639,15 +1644,6 @@ have_client:
 			 *	dynamic client.
 			 */
 			track->dynamic = recv_time;
-
-		} else {
-			/*
-			 *	One more packet being used by this client.
-			 *
-			 *	Note that pending packets don't count against
-			 *	the "live packet" count.
-			 */
-			client->packets++;
 		}
 
 		/*
@@ -1879,7 +1875,7 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	fr_io_instance_t const	*inst;
 	fr_io_connection_t	*connection;
 	fr_time_delta_t		delay;
-	int			packets, connections;
+	int			connections;
 
 	/*
 	 *	No event list?  We don't need to expire the client.
@@ -1923,17 +1919,11 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	}
 
 	/*
-	 *	Count active packets AND pending packets.
-	 */
-	packets = client->packets;
-	if (client->pending) packets += fr_heap_num_elements(client->pending);
-
-	/*
 	 *	It's a negative cache entry.  Just delete it.
 	 */
 	if (client->state == PR_CLIENT_NAK) {
 	delete_client:
-		fr_assert(packets == 0);
+		fr_assert(client->packets == 0);
 
 		/*
 		 *	It's a connected socket.  Remove it from the
@@ -1966,7 +1956,7 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 */
 	if ((client->state == PR_CLIENT_DYNAMIC) ||
 	    (client->state == PR_CLIENT_CONNECTED)) {
-		if (packets > 0) {
+		if (client->packets > 0) {
 			client->ready_to_delete = false;
 			return;
 		}
@@ -1992,7 +1982,7 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	to be run again.
 	 */
 	if (!client->use_connected) {
-		if (!packets) {
+		if (!client->packets) {
 			goto delete_client;
 		}
 
@@ -2126,9 +2116,6 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 */
 	talloc_free(track);
 
-	fr_assert(client->packets > 0);
-	client->packets--;
-
 	/*
 	 *	The client isn't dynamic, stop here.
 	 */
@@ -2156,7 +2143,6 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	fr_io_client_t *client;
 	RADCLIENT *radclient;
 	fr_listen_t *child;
-	int packets;
 	fr_event_list_t *el;
 
 	get_inst(li, &inst, &thread, &connection, &child);
@@ -2257,9 +2243,6 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	 */
 	fr_assert(inst->dynamic_clients);
 	fr_assert(client->pending != NULL);
-
-	packets = client->packets + fr_heap_num_elements(client->pending);
-
 
 	/*
 	 *	The request has timed out trying to define the dynamic
@@ -2502,7 +2485,7 @@ finish:
 	 *	Maybe we defined the client, but the original packet
 	 *	timed out, so there's nothing more to do.  In that case, set up the expiry timers.
 	 */
-	if (packets == 0) {
+	if (client->packets == 0) {
 		client_expiry_timer(el, 0, client);
 	}
 
