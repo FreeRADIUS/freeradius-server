@@ -345,8 +345,8 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
-static int mod_compare(void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
-		       void const *one, void const *two)
+static int mod_track_compare(void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
+			     void const *one, void const *two)
 {
 	int ret;
 	proto_radius_tcp_t const *inst = talloc_get_type_abort_const(instance, proto_radius_tcp_t);
@@ -594,7 +594,7 @@ fr_app_io_t proto_radius_tcp = {
 	.read			= mod_read,
 	.write			= mod_write,
 	.fd_set			= mod_fd_set,
-	.compare		= mod_compare,
+	.track_compare		= mod_track_compare,
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,
 	.client_find		= mod_client_find,

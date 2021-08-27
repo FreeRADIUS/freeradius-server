@@ -379,13 +379,14 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
-static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *packet, UNUSED size_t packet_len)
+static void *mod_track_create(void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
+			      TALLOC_CTX *ctx, uint8_t const *packet, UNUSED size_t packet_len)
 {
 	return talloc_memdup(ctx, packet, RADIUS_HEADER_LENGTH);
 }
 
-static int mod_compare(void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
-		       void const *one, void const *two)
+static int mod_track_compare(void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
+			     void const *one, void const *two)
 {
 	int ret;
 	proto_radius_udp_t const *inst = talloc_get_type_abort_const(instance, proto_radius_udp_t);
@@ -543,8 +544,8 @@ fr_app_io_t proto_radius_udp = {
 	.read			= mod_read,
 	.write			= mod_write,
 	.fd_set			= mod_fd_set,
-	.track			= mod_track_create,
-	.compare		= mod_compare,
+	.track_create  		= mod_track_create,
+	.track_compare		= mod_track_compare,
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,
 	.client_find		= mod_client_find,

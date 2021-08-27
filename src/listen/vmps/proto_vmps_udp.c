@@ -348,7 +348,8 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
-static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_len)
+static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
+			      TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_len)
 {
 	proto_vmps_track_t  *track;
 
@@ -370,8 +371,8 @@ static void *mod_track_create(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buf
 	return track;
 }
 
-static int mod_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
-		       void const *one, void const *two)
+static int mod_track_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
+			     void const *one, void const *two)
 {
 	proto_vmps_track_t const *a = talloc_get_type_abort_const(one, proto_vmps_track_t);
 	proto_vmps_track_t const *b = talloc_get_type_abort_const(two, proto_vmps_track_t);
@@ -518,8 +519,8 @@ fr_app_io_t proto_vmps_udp = {
 	.read			= mod_read,
 	.write			= mod_write,
 	.fd_set			= mod_fd_set,
-	.track			= mod_track_create,
-	.compare		= mod_compare,
+	.track_create  		= mod_track_create,
+	.track_compare		= mod_track_compare,
 	.connection_set		= mod_connection_set,
 	.network_get		= mod_network_get,
 	.client_find		= mod_client_find,

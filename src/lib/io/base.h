@@ -261,6 +261,9 @@ typedef void (*fr_io_data_vnode_t)(fr_listen_t *li, uint32_t fflags);
  *
  * For passing to fr_io_track_cmp_t
  *
+ * @param[in] instance		the context for this function
+ * @param[in] thread_instance	the thread instance for this function
+ * @param[in] client		the client associated with this packet
  * @param[in] ctx		The parent talloc ctx
  * @param[in] packet		The packet being summarized
  * @param[in] packet_len	Length of the packet being summarized
@@ -268,7 +271,7 @@ typedef void (*fr_io_data_vnode_t)(fr_listen_t *li, uint32_t fflags);
  *	- NULL on error
  *	- !NULL the packet tracking structure
  */
-typedef void *(*fr_io_track_create_t)(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len);
+typedef void *(*fr_io_track_create_t)(void const *instance, void *thread_instance, RADCLIENT *client, TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len);
 
 /** Compare two tracking structures for storing in a duplicate detection tree.
  *

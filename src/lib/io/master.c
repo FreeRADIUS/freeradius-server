@@ -280,10 +280,10 @@ static int8_t track_cmp(void const *one, void const *two)
 	/*
 	 *	Call the per-protocol comparison function.
 	 */
-	ret = a->client->inst->app_io->compare(a->client->inst->app_io_instance,
-					       a->client->thread->child->thread_instance,
-					       a->client->radclient,
-					       a->packet, b->packet);
+	ret = a->client->inst->app_io->track_compare(a->client->inst->app_io_instance,
+						     a->client->thread->child->thread_instance,
+						     a->client->radclient,
+						     a->packet, b->packet);
 	return CMP(ret, 0);
 }
 
@@ -306,10 +306,10 @@ static int8_t track_connected_cmp(void const *one, void const *two)
 	 *	Note that we pass the connection "client", as
 	 *	we may do negotiation specific to this connection.
 	 */
-	ret = a->client->inst->app_io->compare(a->client->inst->app_io_instance,
-					       a->client->connection->child->thread_instance,
-					       a->client->connection->client->radclient,
-					       a->packet, b->packet);
+	ret = a->client->inst->app_io->track_compare(a->client->inst->app_io_instance,
+						     a->client->connection->child->thread_instance,
+						     a->client->connection->client->radclient,
+						     a->packet, b->packet);
 	return CMP(ret, 0);
 }
 
@@ -890,7 +890,10 @@ static fr_io_track_t *fr_io_track_add(fr_io_client_t *client,
 	 *	We are checking for duplicates, see if there is a dup
 	 *	already in the tree.
 	 */
-	track->packet = client->inst->app_io->track(track, packet, packet_len);
+	track->packet = client->inst->app_io->track_create(client->inst->app_io_instance,
+							   client->thread->child->thread_instance,
+							   client->radclient,
+							   track, packet, packet_len);
 	if (!track->packet) {
 		talloc_free(track);
 		return NULL;
@@ -1463,7 +1466,7 @@ do_read:
 		 *	Create the packet tracking table for this client.
 		 */
 		if (inst->app_io->track_duplicates) {
-			fr_assert(inst->app_io->compare != NULL);
+			fr_assert(inst->app_io->track_compare != NULL);
 			MEM(client->table = fr_rb_inline_talloc_alloc(client, fr_io_track_t, node, track_cmp, NULL));
 		}
 
@@ -2581,8 +2584,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	} else {
 		FR_TIME_DELTA_BOUND_CHECK("cleanup_delay", inst->cleanup_delay, >=, fr_time_delta_from_sec(1));
 
-		if (!inst->app_io->track) {
-			cf_log_err(inst->app_io_conf, "Internal error: 'track_duplicates' is set, but there is no 'track' function");
+		if (!inst->app_io->track_create) {
+			cf_log_err(inst->app_io_conf, "Internal error: 'track_duplicates' is set, but there is no 'track create' function");
 			return -1;
 		}
 	}
