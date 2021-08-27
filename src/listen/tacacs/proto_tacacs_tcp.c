@@ -319,43 +319,42 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 }
 
 static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
-			      TALLOC_CTX *ctx, uint8_t const *buffer, UNUSED size_t buffer_len)
+			      fr_io_track_t *track, uint8_t const *buffer, UNUSED size_t buffer_len)
 {
 	fr_tacacs_packet_t const *pkt = (fr_tacacs_packet_t const *) buffer;
-	proto_tacacs_track_t     *track;
+	proto_tacacs_track_t     *t;
 
-	track = talloc_zero(ctx, proto_tacacs_track_t);
+	t = talloc_zero(track, proto_tacacs_track_t);
+	if (!t) return NULL;
 
-	if (!track) return NULL;
-
-	talloc_set_name_const(track, "proto_tacacs_track_t");
+	talloc_set_name_const(t, "proto_tacacs_track_t");
 
 	switch (pkt->hdr.type) {
 	case FR_TAC_PLUS_AUTHEN:
 		if (packet_is_authen_start_request(pkt)) {
-			track->type = FR_PACKET_TYPE_VALUE_AUTHENTICATION_START;
+			t->type = FR_PACKET_TYPE_VALUE_AUTHENTICATION_START;
 		} else {
-			track->type = FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE;
+			t->type = FR_PACKET_TYPE_VALUE_AUTHENTICATION_CONTINUE;
 		}
 		break;
 
 	case FR_TAC_PLUS_AUTHOR:
-		track->type = FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST;
+		t->type = FR_PACKET_TYPE_VALUE_AUTHORIZATION_REQUEST;
 		break;
 
 	case FR_TAC_PLUS_ACCT:
-		track->type = FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST;
+		t->type = FR_PACKET_TYPE_VALUE_ACCOUNTING_REQUEST;
 		break;
 
 	default:
-		talloc_free(track);
+		talloc_free(t);
 		fr_assert(0);
 		return NULL;
 	}
 
-	track->session_id = pkt->hdr.session_id;
+	t->session_id = pkt->hdr.session_id;
 
-	return track;
+	return t;
 }
 
 static int mod_track_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,

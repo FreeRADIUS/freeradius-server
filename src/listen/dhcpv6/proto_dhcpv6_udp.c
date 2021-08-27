@@ -380,11 +380,11 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 }
 
 static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
-			      TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len)
+			      fr_io_track_t *track, uint8_t const *packet, size_t packet_len)
 {
-	proto_dhcpv6_track_t *track;
+	proto_dhcpv6_track_t *t;
 	uint8_t const *option;
-	size_t track_size = sizeof(*track);
+	size_t t_size = sizeof(*t);
 	size_t option_len;
 
 	/*
@@ -417,17 +417,17 @@ static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_i
 
 	option_len = (option[2] << 8) | option[3];
 
-	track = (proto_dhcpv6_track_t *) talloc_zero_array(ctx, uint8_t, track_size + option_len);
-	if (!track) return NULL;
+	t = (proto_dhcpv6_track_t *) talloc_zero_array(track, uint8_t, t_size + option_len);
+	if (!t) return NULL;
 
-	talloc_set_name_const(track, "proto_dhcpv6_track_t");
+	talloc_set_name_const(t, "proto_dhcpv6_track_t");
 
-	memcpy(&track->header, packet, 4); /* packet code + 24-bit transaction ID */
+	memcpy(&t->header, packet, 4); /* packet code + 24-bit transaction ID */
 
-	memcpy(&track->client_id[0], option + 4, option_len);
-	track->client_id_len = option_len;
+	memcpy(&t->client_id[0], option + 4, option_len);
+	t->client_id_len = option_len;
 
-	return track;
+	return t;
 }
 
 

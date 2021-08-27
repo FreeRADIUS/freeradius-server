@@ -257,6 +257,8 @@ typedef int (*fr_io_data_inject_t)(fr_listen_t *li,uint8_t *buffer, size_t buffe
  */
 typedef void (*fr_io_data_vnode_t)(fr_listen_t *li, uint32_t fflags);
 
+typedef struct fr_io_track_s fr_io_track_t; /* in master.h */
+
 /** Convert a raw packet to a tracking structure
  *
  * For passing to fr_io_track_cmp_t
@@ -264,14 +266,14 @@ typedef void (*fr_io_data_vnode_t)(fr_listen_t *li, uint32_t fflags);
  * @param[in] instance		the context for this function
  * @param[in] thread_instance	the thread instance for this function
  * @param[in] client		the client associated with this packet
- * @param[in] ctx		The parent talloc ctx
+ * @param[in] track		The parent tracking structure
  * @param[in] packet		The packet being summarized
  * @param[in] packet_len	Length of the packet being summarized
  * @return
  *	- NULL on error
  *	- !NULL the packet tracking structure
  */
-typedef void *(*fr_io_track_create_t)(void const *instance, void *thread_instance, RADCLIENT *client, TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len);
+typedef void *(*fr_io_track_create_t)(void const *instance, void *thread_instance, RADCLIENT *client, fr_io_track_t *track, uint8_t const *packet, size_t packet_len);
 
 /** Compare two tracking structures for storing in a duplicate detection tree.
  *

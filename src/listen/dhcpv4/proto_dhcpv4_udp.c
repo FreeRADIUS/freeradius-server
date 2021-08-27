@@ -581,9 +581,9 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 
 
 static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
-			      TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len)
+			      fr_io_track_t *track, uint8_t const *packet, size_t packet_len)
 {
-	proto_dhcpv4_track_t *track;
+	proto_dhcpv4_track_t *t;
 	dhcp_packet_t const *dhcp = (dhcp_packet_t const *) packet;
 	uint8_t const  *option;
 
@@ -593,12 +593,12 @@ static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_i
 		return NULL;
 	}
 
-	track = talloc_zero(ctx, proto_dhcpv4_track_t);
-	if (!track) return NULL;
+	t = talloc_zero(track, proto_dhcpv4_track_t);
+	if (!t) return NULL;
 
-	memcpy(&track->xid, &dhcp->xid, sizeof(track->xid));
+	memcpy(&t->xid, &dhcp->xid, sizeof(t->xid));
 
-	track->message_type = option[2];
+	t->message_type = option[2];
 
 	/*
 	 *	Track most packets by chaddr.  For lease queries, that
@@ -608,15 +608,15 @@ static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_i
 	 *	exist according to RFC 4388 Section 6.3
 	 */
 	if (option[2] != FR_DHCP_LEASE_QUERY) {
-		if (dhcp->hlen == 6) memcpy(&track->chaddr, &dhcp->chaddr, 6);
+		if (dhcp->hlen == 6) memcpy(&t->chaddr, &dhcp->chaddr, 6);
 	}
 
-	track->broadcast = ((dhcp->flags & FR_FLAGS_VALUE_BROADCAST) != 0);
-	track->hops = dhcp->hops;
-	memcpy(&track->ciaddr, &dhcp->ciaddr, sizeof(track->ciaddr));
-	memcpy(&track->giaddr, &dhcp->giaddr, sizeof(track->giaddr));
+	t->broadcast = ((dhcp->flags & FR_FLAGS_VALUE_BROADCAST) != 0);
+	t->hops = dhcp->hops;
+	memcpy(&t->ciaddr, &dhcp->ciaddr, sizeof(t->ciaddr));
+	memcpy(&t->giaddr, &dhcp->giaddr, sizeof(t->giaddr));
 
-	return track;
+	return t;
 }
 
 static int mod_track_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,

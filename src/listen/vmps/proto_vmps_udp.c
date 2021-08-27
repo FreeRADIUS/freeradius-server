@@ -349,26 +349,26 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 }
 
 static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
-			      TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_len)
+			      fr_io_track_t *track, uint8_t const *buffer, size_t buffer_len)
 {
-	proto_vmps_track_t  *track;
+	proto_vmps_track_t  *t;
 
 	if (buffer_len < 4) {
 		ERROR("VMPS packet is too small. (%zu < 4)", buffer_len);
 		return NULL;
 	}
 
-	track = talloc_zero(ctx, proto_vmps_track_t);
+	t = talloc_zero(track, proto_vmps_track_t);
 
-	if (!track) return NULL;
+	if (!t) return NULL;
 
-	talloc_set_name_const(track, "proto_vmps_track_t");
+	talloc_set_name_const(t, "proto_vmps_track_t");
 
-	memcpy(&track->transaction_id, buffer, sizeof(track->transaction_id));
+	memcpy(&t->transaction_id, buffer, sizeof(t->transaction_id));
 
-	track->opcode = buffer[1];
+	t->opcode = buffer[1];
 
-	return track;
+	return t;
 }
 
 static int mod_track_compare(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
