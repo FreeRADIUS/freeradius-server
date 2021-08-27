@@ -952,7 +952,7 @@ static void exec_waitpid(fr_event_list_t *el, UNUSED pid_t pid, int status, void
 		RWDEBUG("Failed reaping PID %i: %s", exec->pid, fr_syserror(errno));
 	/*
 	 *	Either something cleaned up the process before us
-	 *	(bad!), or the notification system is broke
+	 *	(bad!), or the notification system is broken
 	 *	(also bad!)
 	 *
 	 *	This could be caused by 3rd party libraries.
@@ -977,7 +977,7 @@ static void exec_waitpid(fr_event_list_t *el, UNUSED pid_t pid, int status, void
 		RDEBUG("Program exited due to unknown status %d", exec->status);
 		exec->status = -status;
 	}
-	exec->pid = 0;
+	exec->pid = -1;	/* pid_t is signed */
 
 	if (exec->ev) fr_event_timer_delete(&exec->ev);
 
@@ -1184,6 +1184,7 @@ int fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *req
 	*exec = (fr_exec_state_t){
 		.request = request,
 		.vps = env_pairs,
+		.pid = -1,
 		.stdout_fd = -1,
 		.stderr_fd = -1,
 		.stdin_fd = -1,
