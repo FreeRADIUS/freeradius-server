@@ -163,7 +163,8 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_di
 		fr_dict_attr_t const	*our_parent = parent;
 
 		if ((end - p) < 8) {
-			fr_strerror_printf("Malformed diameter VPs.  Needed at least 8 bytes, got %zu bytes", end - p);
+			fr_strerror_printf("Malformed diameter attribute at offset %zu.  Needed at least 8 bytes, got %zu bytes",
+					   p - data, end - p);
 		error:
 			fr_dcursor_free_list(cursor);
 			return -1;
@@ -179,14 +180,14 @@ static ssize_t eap_ttls_decode_pair(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_di
 		p += 3;
 
 		if (value_len < 8) {
-			fr_strerror_printf("Malformed diameter VPs.  Needed at least length of 8, got %u",
-					   (unsigned int) value_len);
+			fr_strerror_printf("Malformed diameter attribute at offset %zu.  Needed at least length of 8, got %u",
+					   p - data, (unsigned int) value_len);
 			goto error;
 		}
 
 		if ((p + ((value_len + 0x03) & ~0x03)) > end) {
-			fr_strerror_printf("Malformed diameter VPs.  Value length %u overflows input",
-					   (unsigned int) value_len);
+			fr_strerror_printf("Malformed diameter attribute at offset %zu.  Value length %u overflows input",
+					   p - data, (unsigned int) value_len);
 			goto error;
 		}
 
