@@ -892,13 +892,33 @@ int fr_exec_wait_start(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_
 	return 0;
 }
 
-/*
- *	Cleanup an exec after failures
+/** Cleans up an exec'd process on error
+ *
+ * This function is intended to be called at any point after a successful
+ * #fr_exec_wait_start_io call in order to release resources and cleanup
+ * zombie processes.
+ *
+ * @param[in] exec	state to cleanup.
+ * @param[in] signal	If non-zero, and we think the process is still
+ *			running, send it a signal to cause it to exit.
+ *			The PID reaper we insert here will cleanup its
+ *			state so it doesn't become a zombie.
+ *
  */
-static void exec_cleanup(fr_exec_state_t *exec) {
+void fr_exec_cleanup(fr_exec_state_t *exec, int signal)
+{
 	request_t	*request = exec->request;
 
-	if (exec->pid) DEBUG3("Cleaning up exec state for pid %u", exec->pid);
+	if (exec->pid) RDEBUG3("Cleaning up exec state for pid %u", exec->pid);
+
+	/*
+	 *	There's still an EV_PROC event installed
+	 *	for the PID remove it (there's a destructor).
+	 */
+	if (exec->ev_pid) {
+		talloc_const_free(exec->ev_pid);
+		fr_assert(!exec->ev_pid);	/* Should be NULLified by destructor */
+	}
 
 	if (exec->stdout_fd >= 0) {
 		if (fr_event_fd_delete(request->el, exec->stdout_fd, FR_EVENT_FILTER_IO) < 0){
@@ -916,11 +936,13 @@ static void exec_cleanup(fr_exec_state_t *exec) {
 		exec->stderr_fd = -1;
 	}
 
-	if (exec->pid) {
-		exec->pid = 0;
+	if (exec->pid >= 0) {
+		if (signal > 0) kill(exec->pid, signal);
+
 		if (fr_event_pid_reap(request->el, exec->pid) < 0) {
 			RPERROR("Failed setting up async PID reaper, PID %u may now be a zombie", exec->pid);
 		}
+		exec->pid = -1;
 	}
 
 	if (exec->ev) fr_event_timer_delete(&exec->ev);
@@ -1053,10 +1075,9 @@ static void exec_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void 
 	} else {
 		REDEBUG("Timeout running program - killing it and failing the request");
 	}
-	kill(exec->pid, SIGKILL);
 	exec->failed = true;
 
-	exec_cleanup(exec);
+	fr_exec_cleanup(exec, SIGKILL);
 	unlang_interpret_mark_runnable(exec->request);
 }
 
@@ -1083,11 +1104,9 @@ static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void
 		if (unlikely(!remaining)) {
 			REDEBUG("Too much output from program - killing it and failing the request");
 
-			if (exec->pid > 0) kill(exec->pid, SIGKILL);
-
 		error:
 			exec->failed = true;
-			exec_cleanup(exec);
+			fr_exec_cleanup(exec, SIGKILL);
 			break;
 		}
 
@@ -1126,7 +1145,7 @@ static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void
 		close(fd);
 		exec->stdout_fd = -1;
 
-		if (exec->pid == 0) {
+		if (exec->pid < 0) {
 			/*
 			 *	Child has already exited - unlang can resume
 			 */
@@ -1194,14 +1213,14 @@ int fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *req
 		RPEDEBUG("Failed executing program");
 	fail:
 		/*
-		 *	Not done in exec_cleanup as it's
+		 *	Not done in fr_exec_cleanup as it's
 		 *	usually the caller's responsibility.
 		 */
 		if (exec->stdin_fd >= 0) {
 			close(exec->stdin_fd);
 			exec->stdin_fd = -1;
 		}
-		exec_cleanup(exec);
+		fr_exec_cleanup(exec, 0);
 		return -1;
 	}
 
@@ -1209,12 +1228,12 @@ int fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *req
 	 *	Tell the event loop that it needs to wait for this PID
 	 */
 	if (fr_event_pid_wait(ctx, request->el, &exec->ev_pid, exec->pid, exec_waitpid, exec) < 0) {
-		exec->pid = 0;
+		exec->pid = -1;
 		RPEDEBUG("Failed adding watcher for child process");
 
 	fail_and_close:
 		/*
-		 *	Avoid spurious errors in exec_cleanup
+		 *	Avoid spurious errors in fr_exec_cleanup
 		 *	when it tries to remove FDs from the
 		 *	event loop that were never added.
 		 */

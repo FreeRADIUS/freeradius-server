@@ -2109,7 +2109,7 @@ void fr_event_service(fr_event_list_t *el)
 			callback = pev->callback;
 			uctx = pev->uctx;
 
-			pev->pid = 0; /* so we won't hit kevent again when it's freed */
+			pev->pid = -1;	/* so we won't hit kevent again when it's freed */
 
 			/*
 			 *	Delete the event before calling it.

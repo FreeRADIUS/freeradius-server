@@ -37,50 +37,6 @@ RCSID("$Id$")
 #include <sys/wait.h>
 #endif
 
-/*
- *	Clean up everything except the waitpid handler.
- *
- *	If there is a waitpid handler, then this cleanup function MUST
- *	be called after setting the handler.
- */
-static void unlang_tmpl_exec_cleanup(request_t *request)
-{
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
-								       unlang_frame_state_tmpl_t);
-
-	if (state->exec.pid) RDEBUG3("Cleaning up exec state for pid %u", state->exec.pid);
-
-	if (state->exec.stdout_fd >= 0) {
-		if (fr_event_fd_delete(request->el, state->exec.stdout_fd, FR_EVENT_FILTER_IO) < 0) {
-			RPERROR("Failed removing stdout handler");
-		}
-		close(state->exec.stdout_fd);
-		state->exec.stdout_fd = -1;
-	}
-
-	if (state->exec.stderr_fd >= 0) {
-		if (fr_event_fd_delete(request->el, state->exec.stderr_fd, FR_EVENT_FILTER_IO) < 0) {
-			RPERROR("Failed removing stderr handler");
-		}
-		close(state->exec.stdout_fd);
-		state->exec.stdout_fd = -1;
-	}
-
-	/*
-	 *	It still hasn't exited.  Tell the event loop that we
-	 *	need to wait as long as necessary for the PID to exit,
-	 *	and that we don't care about the exit status.
-	 */
-	if (state->exec.pid) {
-		(void) fr_event_pid_wait(request->el, request->el, NULL, state->exec.pid, NULL, NULL);
-		state->exec.pid = 0;
-	}
-
-	if (state->exec.ev) fr_event_timer_delete(&state->exec.ev);
-}
-
 /** Send a signal (usually stop) to a request
  *
  * This is typically called via an "async" action, i.e. an action
@@ -97,21 +53,20 @@ static void unlang_tmpl_signal(request_t *request, unlang_stack_frame_t *frame, 
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
 
+	/*
+	 *	If we're cancelled, then kill any child processes
+	 */
+	if (action == FR_SIGNAL_CANCEL) fr_exec_cleanup(&state->exec, SIGKILL);
+
 	if (!state->signal) return;
 
 	state->signal(request, state->rctx, action);
 
 	/*
-	 *	If we're cancelled, then kill any child processes, and
-	 *	ignore future signals.
+	 *	If we're cancelled then disable this signal handler.
+	 *	fr_exec_cleanup should handle being called spuriously.
 	 */
-	if (action == FR_SIGNAL_CANCEL) {
-		if (state->exec.pid > 0) kill(state->exec.pid, SIGKILL);
-		state->exec.failed = true;
-
-		unlang_tmpl_exec_cleanup(request);
-		state->signal = NULL;
-	}
+	if (action == FR_SIGNAL_CANCEL) state->signal = NULL;
 }
 
 /** Push a tmpl onto the stack for evaluation
@@ -208,8 +163,6 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_tmpl_t);
 
-	unlang_tmpl_exec_cleanup(request);
-
 	/*
 	 *	The exec failed for some internal reason.  We don't
 	 *	care about output, and we don't care about the programs exit status.
@@ -219,7 +172,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 		goto resume;
 	}
 
-	fr_assert(state->exec.pid == 0);
+	fr_assert(state->exec.pid < 0);
 
 	if (state->exec.status != 0) {
 		fr_assert(fr_dlist_empty(&state->box));
