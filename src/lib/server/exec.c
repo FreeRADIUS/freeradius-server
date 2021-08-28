@@ -938,10 +938,6 @@ static void exec_waitpid(fr_event_list_t *el, UNUSED pid_t pid, int status, void
 	 *	Reap the process.  This is needed so the processes
 	 *	don't stick around indefinitely.  libkqueue/kqueue
 	 *	does not do this for us!
-	 *
-	 *	We do _not_ pass WNOHANG, if we hang here something
-	 *	is very wrong as we were notified that the process
-	 *	was done.
 	 */
 	ret = waitpid(exec->pid, &wait_status, WNOHANG);
 	if (ret < 0) {
