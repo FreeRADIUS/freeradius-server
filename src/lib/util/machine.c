@@ -232,6 +232,7 @@ fr_machine_t *fr_machine_alloc(TALLOC_CTX *ctx, fr_machine_def_t const *def, voi
 	fr_assert(m->current->def);
 	fr_assert(!m->current->def->enter);
 	fr_assert(!m->current->def->exit);
+	fr_assert(m->current->def->process);
 
 	next = m->current->def->process(m, uctx);
 	fr_assert(next >= 0);
