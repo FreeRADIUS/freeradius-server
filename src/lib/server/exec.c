@@ -900,10 +900,6 @@ static void exec_cleanup(fr_exec_state_t *exec) {
 
 	if (exec->pid) DEBUG3("Cleaning up exec state for pid %u", exec->pid);
 
-	/*
-	 *	FIXME - Need to do something with stdin?
-	 */
-
 	if (exec->stdout_fd >= 0) {
 		if (fr_event_fd_delete(request->el, exec->stdout_fd, FR_EVENT_FILTER_IO) < 0){
 			RPERROR("Failed removing stdout handler");
@@ -1155,6 +1151,10 @@ static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void
 
 /** Call an child program, optionally reading it's output
  *
+ * @note If the caller set need_stdin = true, it is the caller's
+ *	 responsibility to close exec->std_in and remove it from any event loops
+ *	 if this function returns 0 (success).
+ *
  * @param[in] ctx		to allocate events in.
  * @param[in,out] exec		structure holding the state of the external call.
  * @param[in] request		currently being processed.
@@ -1195,6 +1195,14 @@ int fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *req
 			       stdout_fd, &exec->stderr_fd, request, cmd, exec->vps) < 0) {
 		RPEDEBUG("Failed executing program");
 	fail:
+		/*
+		 *	Not done in exec_cleanup as it's
+		 *	usually the caller's responsibility.
+		 */
+		if (exec->stdin_fd >= 0) {
+			close(exec->stdin_fd);
+			exec->stdin_fd = -1;
+		}
 		exec_cleanup(exec);
 		return -1;
 	}
