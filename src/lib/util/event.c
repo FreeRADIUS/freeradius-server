@@ -1571,9 +1571,9 @@ int fr_event_timer_delete(fr_event_timer_t const **ev_p)
 static int _event_pid_free(fr_event_pid_t *ev)
 {
 	struct kevent evset;
-	if (ev->parent) *ev->parent = NULL;
 
-	if (ev->pid == 0) return 0; /* already deleted from kevent */
+	if (ev->parent) *ev->parent = NULL;
+	if (ev->pid < 0) return 0; /* already deleted from kevent */
 
 	EV_SET(&evset, ev->pid, EVFILT_PROC, EV_DELETE, NOTE_EXIT, 0, ev);
 
@@ -1618,6 +1618,10 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 	ev->line = line;
 #endif
 
+	/*
+	 *	macOS only, on FreeBSD NOTE_EXIT always provides
+	 *	the status anyway.
+	 */
 #ifndef NOTE_EXITSTATUS
 #define NOTE_EXITSTATUS (0)
 #endif
@@ -2106,7 +2110,21 @@ void fr_event_service(fr_event_list_t *el)
 			uctx = pev->uctx;
 
 			pev->pid = 0; /* so we won't hit kevent again when it's freed */
-			talloc_free(pev); /* delete the event before calling it */
+
+			/*
+			 *	Delete the event before calling it.
+			 *
+			 *	This also sets the parent pointer
+			 *	to NULL, so the thing that started
+			 *	monitoring the process knows the
+			 *	handle is no longer valid.
+			 *
+			 *	EVFILT_PROC NOTE_EXIT events are always
+			 *	oneshot no matter what flags we pass,
+			 *	so we're just reflecting the state of
+			 *	the kqueue.
+			 */
+			talloc_free(pev);
 
 			if (callback) callback(el, pid, (int) el->events[i].data, uctx);
 		}
