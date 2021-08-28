@@ -742,7 +742,7 @@ int fr_exec_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pair_lis
 	 *	Ensure that we can clean up any child processes.  We
 	 *	don't want them left over as zombies.
 	 */
-	if (fr_event_pid_wait(request->el, request->el, NULL, pid, NULL, NULL) < 0) return -1;
+	if (fr_event_pid_reap(request->el, pid) < 0) return -1;
 
 	return 0;
 }
@@ -917,8 +917,10 @@ static void exec_cleanup(fr_exec_state_t *exec) {
 	}
 
 	if (exec->pid) {
-		(void) fr_event_pid_wait(request->el, request->el, NULL, exec->pid, NULL, NULL);
 		exec->pid = 0;
+		if (fr_event_pid_reap(request->el, exec->pid) < 0) {
+			RPERROR("Failed setting up async PID reaper, PID %u may now be a zombie", exec->pid);
+		}
 	}
 
 	if (exec->ev) fr_event_timer_delete(&exec->ev);
