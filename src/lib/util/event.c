@@ -1624,9 +1624,17 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 
 	EV_SET(&evset, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT | NOTE_EXITSTATUS, 0, ev);
 
+	/*
+	 *	This deals with the race where the process exited
+	 *	before we could add it to the kqueue.
+	 *
+	 *	Unless our caller is broken, the process should
+	 *	still be available for reaping, so we check
+	 *	waitid to see if there is a pending process and
+	 *	then call the callback as kqueue would have done.
+	 */
 	if (unlikely(kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0)) {
-		pid_t child;
-		int status;
+    		siginfo_t	info;
 
 		talloc_free(ev);
 
@@ -1634,11 +1642,21 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 		 *	If the child exited before kevent() was
 		 *	called, we need to get its status via
 		 *	waitpid().
+		 *
+		 *	We don't reap the process here to emulate
+		 *	what kqueue does (notify but not reap).
 		 */
-		child = waitpid(pid, &status, WNOHANG);
-		if (child == pid) {
-			if (callback) callback(el, pid, status, uctx);
-			return 0;
+		if (waitid(P_PID, pid, &info, WEXITED | WNOHANG | WNOWAIT) < 0) {
+			switch (info.si_code) {
+			case CLD_EXITED:
+			case CLD_KILLED:
+			case CLD_DUMPED:
+				if (callback) callback(el, pid, info.si_status, uctx);
+				return 0;
+
+			default:
+				break;
+			}
 		}
 
 		/*
