@@ -1679,6 +1679,32 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 	return 0;
 }
 
+/** Does the actual reaping of PIDs
+ *
+ */
+static void _fr_event_pid_reap_cb(UNUSED fr_event_list_t *el, pid_t pid, int status, UNUSED void *uctx)
+{
+	waitpid(pid, &status, WNOHANG);	/* Don't block the process if there's a logic error somewhere */
+}
+
+/** Asynchronously wait for a PID to exit, then reap it
+ *
+ * This is intended to be used when we no longer care about a process
+ * exiting, but we still want to clean up its state so we don't have
+ * zombie processes sticking around.
+ *
+ * @param[in] el	to use to reap the process.
+ * @param[in] pid	to reap.
+ * @return
+ *	- -1 if we couldn't find the process or it has already exited/been reaped.
+ *      - 0 on success (we setup a process handler).
+ */
+int _fr_event_pid_reap(NDEBUG_LOCATION_ARGS fr_event_list_t *el, pid_t pid)
+{
+	return _fr_event_pid_wait(NDEBUG_LOCATION_VALS NULL, el, NULL, pid, _fr_event_pid_reap_cb, NULL);
+}
+
+
 /** Add a user callback to the event list.
  *
  * @param[in] el	Containing the timer events.
