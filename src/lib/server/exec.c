@@ -1213,13 +1213,30 @@ int fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *req
 	if (fr_event_pid_wait(ctx, request->el, &exec->ev_pid, exec->pid, exec_waitpid, exec) < 0) {
 		exec->pid = 0;
 		RPEDEBUG("Failed adding watcher for child process");
+
+	fail_and_close:
+		/*
+		 *	Avoid spurious errors in exec_cleanup
+		 *	when it tries to remove FDs from the
+		 *	event loop that were never added.
+		 */
+		if (exec->stdout_fd >= 0) {
+			close(exec->stdout_fd);
+			exec->stdout_fd = -1;
+		}
+
+		if (exec->stderr_fd >= 0) {
+			close(exec->stderr_fd);
+			exec->stderr_fd = -1;
+		}
+
 		goto fail;
 	}
 
 	/*
 	 *	Setup event to kill the child process after a period of time.
 	 */
-	if (fr_event_timer_in(ctx, request->el, &exec->ev, timeout, exec_timeout, exec) < 0) goto fail;
+	if (fr_event_timer_in(ctx, request->el, &exec->ev, timeout, exec_timeout, exec) < 0) goto fail_and_close;
 
 	/*
 	 *	If we need to parse stdout, insert a special IO handler that
@@ -1232,7 +1249,7 @@ int fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *req
 		fr_sbuff_init_talloc(exec->stdout_ctx, &exec->stdout_buff, &exec->stdout_tctx, 128, 32 * 1024);
 		if (fr_event_fd_insert(ctx, request->el, exec->stdout_fd, exec_stdout_read, NULL, NULL, exec) < 0) {
 			RPEDEBUG("Failed adding event listening to stdout");
-			goto fail;
+			goto fail_and_close;
 		}
 
 	/*
@@ -1251,7 +1268,7 @@ int fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *req
 		if (fr_event_fd_insert(ctx, request->el, exec->stdout_fd, log_request_fd_event,
 				       NULL, NULL, &exec->stdout_uctx) < 0){
 			RPEDEBUG("Failed adding event listening to stdout");
-			goto fail;
+			goto fail_and_close;
 		}
 	}
 
@@ -1269,6 +1286,8 @@ int fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *req
 	if (fr_event_fd_insert(ctx, request->el, exec->stderr_fd, log_request_fd_event,
 			       NULL, NULL, &exec->stderr_uctx) < 0) {
 		RPEDEBUG("Failed adding event listening to stderr");
+		close(exec->stderr_fd);
+		exec->stderr_fd = -1;
 		goto fail;
 	}
 
