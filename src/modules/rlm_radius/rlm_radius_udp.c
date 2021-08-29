@@ -1686,7 +1686,7 @@ static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 /** Handle retries when a request is being sent asynchronously
  *
  */
-static void request_retry(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
+static void request_retry(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_trunk_request_t	*treq = talloc_get_type_abort(uctx, fr_trunk_request_t);
 	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
