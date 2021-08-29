@@ -977,18 +977,18 @@ static void exec_waitpid(fr_event_list_t *el, UNUSED pid_t pid, int status, void
 		RWDEBUG("Something reaped PID %d before us!", exec->pid);
 	}
 
-	if (WIFEXITED(status)) {
-		RDEBUG("Program exited with status code %d", WEXITSTATUS(status));
-		exec->status = WEXITSTATUS(status);
+	if (WIFEXITED(wait_status)) {
+		RDEBUG("Program exited with status code %d", WEXITSTATUS(wait_status));
+		exec->status = WEXITSTATUS(wait_status);
 
 		if (exec->status != status) RWDEBUG("Exit status from waitpid (%d) and kevent (%d) disagree",
 						    wait_status, status);
-	} else if (WIFSIGNALED(status)) {
-		RDEBUG("Program exited due to signal with status code %d", WTERMSIG(status));
-		exec->status = -WTERMSIG(status);
+	} else if (WIFSIGNALED(wait_status)) {
+		RDEBUG("Program exited due to signal with status code %d", WTERMSIG(wait_status));
+		exec->status = -WTERMSIG(wait_status);
 	} else {
-		RDEBUG("Program exited due to unknown status %d", exec->status);
-		exec->status = -status;
+		RDEBUG("Program exited due to unknown status %d", wait_status);
+		exec->status = -wait_status;
 	}
 	exec->pid = -1;	/* pid_t is signed */
 
