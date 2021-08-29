@@ -44,7 +44,7 @@ struct fr_machine_state_s {
 	fr_machine_process_t	process;		//!< run this to process the current state
 	fr_machine_func_t	exit;			//!< run this when exiting the state
 	fr_machine_signal_t	signal;			//!< to send async signals to the state machine
-	bool			allowed[];		//!< allow outbound transitions
+	bool			*allowed;		//!< allow outbound transitions
 };
 
 #define ALLOW(_x) .allowed[_x] = true
