@@ -245,6 +245,18 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 		}
 		break;
 
+	case T_BARE_WORD:
+		/*
+		 *	Foo = %{...}
+		 *
+		 *	Not allowed!
+		 */
+		if ((attr[0] == '%') && (attr[1] == '{')) {
+			cf_log_err_cp(cp, "Bare expansions are not permitted.  They must be in a double-quoted string.");
+			goto error;
+		}
+		/* FALL-THROUGH */
+
 	default:
 		slen = tmpl_afrom_attr_str(ctx, &map->lhs, attr, dst_request_def, dst_list_def, true, true);
 		if (slen <= 0) {
