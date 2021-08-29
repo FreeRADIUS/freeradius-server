@@ -982,7 +982,7 @@ static void exec_waitpid(fr_event_list_t *el, UNUSED pid_t pid, int status, void
 		exec->status = WEXITSTATUS(wait_status);
 
 		if (exec->status != status) RWDEBUG("Exit status from waitpid (%d) and kevent (%d) disagree",
-						    wait_status, status);
+						    exec->status, status);
 	} else if (WIFSIGNALED(wait_status)) {
 		RDEBUG("Program exited due to signal with status code %d", WTERMSIG(wait_status));
 		exec->status = -WTERMSIG(wait_status);
