@@ -68,7 +68,17 @@ typedef struct {
 	void				*rctx;			//!< for resume / signal
 	unlang_module_resume_t		resume;			//!< resumption handler
 	unlang_module_signal_t		signal;			//!< for signal handlers
+
 	/** @} */
+
+	/** @name Retry handlers.
+	 * @{
+	 */
+	fr_event_timer_t const		*ev;		//!< retry timer just for this module.
+	fr_retry_t			retry;		//!< retry timers, etc.
+
+	/** @} */
+
 } unlang_frame_state_module_t;
 
 static inline unlang_module_t *unlang_generic_to_module(unlang_t const *p)

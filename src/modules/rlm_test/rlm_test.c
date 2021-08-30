@@ -350,6 +350,71 @@ static unlang_action_t CC_HINT(nonnull) mod_return(rlm_rcode_t *p_result, UNUSED
 	RETURN_MODULE_OK;
 }
 
+static void mod_retry_signal(module_ctx_t const *mctx, request_t *request, void *rctx, fr_state_signal_t action);
+
+/** Continue after marked runnable
+ *
+ */
+static unlang_action_t mod_retry_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request, UNUSED void *ctx)
+{
+	RDEBUG("Test called main retry handler - that's a failure");
+
+	RETURN_MODULE_FAIL;
+}
+
+/** Continue after FR_SIGNAL_RETRY
+ *
+ */
+static unlang_action_t mod_retry_resume_retry(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request, UNUSED void *ctx)
+{
+	RDEBUG("Test retry");
+
+	return unlang_module_yield(request, mod_retry_resume, mod_retry_signal, NULL);
+}
+
+/** Continue after FR_SIGNAL_TIMEOUT
+ *
+ */
+static unlang_action_t mod_retry_resume_timeout(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request, UNUSED void *ctx)
+{
+	RDEBUG("Test timed out as expected");
+
+	RETURN_MODULE_OK;
+}
+
+static void mod_retry_signal(UNUSED module_ctx_t const *mctx, request_t *request, UNUSED void *rctx, fr_state_signal_t action)
+{
+	switch (action) {
+	case FR_SIGNAL_RETRY:
+		RDEBUG("Test retry");
+		unlang_module_set_resume(request, mod_retry_resume_retry);
+		unlang_interpret_mark_runnable(request);
+		break;
+
+	case FR_SIGNAL_TIMEOUT:
+		RDEBUG("Test timeout");
+		unlang_module_set_resume(request, mod_retry_resume_timeout);
+		unlang_interpret_mark_runnable(request);
+		break;
+
+	/*
+	 *	Ignore all other signals.
+	 */
+	default:
+		break;
+	}
+
+}
+
+
+/*
+ *	Test retries
+ */
+static unlang_action_t CC_HINT(nonnull) mod_retry(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request)
+{
+	return unlang_module_yield(request, mod_retry_resume, mod_retry_signal, NULL);
+}
+
 static int mod_detach(UNUSED void *instance)
 {
 	/* free things here */
@@ -387,6 +452,7 @@ module_t rlm_test = {
 		{ .name1 = "recv",		.name2 = "Access-Challenge",	.method = mod_return },
 		{ .name1 = "name1_null",	.name2 = NULL,			.method = mod_return },
 		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_return },
+		{ .name1 = "retry",		.name2 = NULL,			.method = mod_retry },
 
 		MODULE_NAME_TERMINATOR
 	}

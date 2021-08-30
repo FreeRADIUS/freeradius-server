@@ -834,12 +834,75 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	return ua;
 }
 
+/** Call the callback registered for a retry event
+ *
+ * @param[in] el	the event timer was inserted into.
+ * @param[in] now	The current time, as held by the event_list.
+ * @param[in] ctx	the stack frame
+ *
+ */
+static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_time_t now, void *ctx)
+{
+	request_t			*request = talloc_get_type_abort(ctx, request_t);
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
+
+	/*
+	 *	The module will get either a RETRY signal, or a
+	 *	TIMEOUT signal (also for max count).
+	 *
+	 *	The signal handler should generally change the resume
+	 *	function, and mark the request as runnable.  We
+	 *	probably don't want the module to do tons of work in
+	 *	the signal handler, as it's called from the event
+	 *	loop.  And doing so could affect the other event
+	 *	timers.
+	 *
+	 *	Note also that we call frame->signal(), and not
+	 *	unlang_interpret_signal().  That is because we want to
+	 *	signal only the module.  We know that the other frames
+	 *	on the stack can't handle this particular signal.  So
+	 *	there's no point in calling them.  Or, if sections
+	 *	have their own retry handlers, then we don't want to
+	 *	signal those _other_ retry handles with _our_ signal.
+	 */
+	switch (fr_retry_next(&state->retry, now)) {
+	case FR_RETRY_CONTINUE:
+		frame->signal(request, frame, FR_SIGNAL_RETRY);
+
+		/*
+		 *	Reset the timer.
+		 */
+		if (fr_event_timer_at(request, request->el, &state->ev, state->retry.next,
+				      unlang_module_event_retry_handler, request) < 0) {
+			RPEDEBUG("Failed inserting event");
+			unlang_interpret_mark_runnable(request); /* and let the caller figure out what's up */
+		}
+		return;
+
+	case FR_RETRY_MRD:
+		REDEBUG("Reached max_rtx_duration (%pVs > %pVs)",
+			fr_box_time_delta(now - state->retry.start), fr_box_time_delta(state->retry.config->mrd));
+		break;
+
+	case FR_RETRY_MRC:
+		REDEBUG("Reached max_rtx_count (%u > %u)",
+		        state->retry.count, state->retry.config->mrc);
+		break;
+	}
+
+	frame->signal(request, frame, FR_SIGNAL_TIMEOUT);
+}
+
+
 static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_module_t			*mc;
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 	char const 			*caller;
 	unlang_action_t			ua;
+	fr_time_t			now;
 
 	*p_result = state->rcode = RLM_MODULE_NOOP;
 	state->set_rcode = true;
@@ -883,6 +946,12 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	 */
 	state->thread->total_calls++;
 
+	/*
+	 *	If we're doing retries, remember when we started
+	 *	running the module.
+	 */
+	if (frame->instruction->actions.retry.irt) now = fr_time();
+
 	caller = request->module;
 	request->module = mc->instance->name;
 	safe_lock(mc->instance);	/* Noop unless instance->mutex set */
@@ -922,6 +991,20 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		} else {
 			frame_repeat(frame, unlang_module_resume);
 		}
+
+		/*
+		 *	If we have retry timers, then start the retries.
+		 */
+		if (frame->instruction->actions.retry.irt) {
+			(void) fr_retry_init(&state->retry, now, &frame->instruction->actions.retry); /* can't fail */
+
+			if (fr_event_timer_at(request, request->el, &state->ev, state->retry.next,
+					      unlang_module_event_retry_handler, request) < 0) {
+				RPEDEBUG("Failed inserting event");
+				goto fail;
+			}
+		}
+
 		return UNLANG_ACTION_YIELD;
 
 	/*
@@ -966,6 +1049,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		break;
 
 	case UNLANG_ACTION_FAIL:
+	fail:
 		*p_result = RLM_MODULE_FAIL;
 		break;
 

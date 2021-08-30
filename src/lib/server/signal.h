@@ -40,7 +40,9 @@ typedef enum fr_state_signal_t {	/* server action */
 					///< with this, the module should stop processing
 					///< the request and cleanup anything it's done.
 	FR_SIGNAL_DUP,			//!< A duplicate request was received.
-	FR_SIGNAL_DETACH		//!< Request is being detached from its parent.
+	FR_SIGNAL_DETACH,		//!< Request is being detached from its parent.
+	FR_SIGNAL_RETRY,		//!< a retry timer has hit
+	FR_SIGNAL_TIMEOUT		//!< a retry timeout or max count has hit
 } fr_state_signal_t;
 
 #ifdef __cplusplus
