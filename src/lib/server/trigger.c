@@ -365,7 +365,7 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 	}
 
 	/*
-	 *	radius_exec_program_legacy always needs a request.
+	 *	Allocate a request to run asynchronously in the interpreter.
 	 */
 	child = request_alloc_internal(NULL, (&(request_init_args_t){ .parent = request, .detachable = true }));
 
