@@ -53,7 +53,9 @@ typedef struct {
 	fr_dlist_head_t		vlm_head;			//!< Head of list of VP List Mod.
 
 	fr_value_box_list_t	lhs_result;			//!< Result of expanding the LHS
+	int			lhs_exec_status;		//!< status of program on LHS.
 	fr_value_box_list_t	rhs_result;			//!< Result of expanding the RHS.
+	int			rhs_exec_status;		//!< status of program on RHS.
 
 	unlang_update_state_t	state;				//!< What we're currently doing.
 } unlang_frame_state_update_t;
@@ -146,7 +148,8 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 
 			case TMPL_TYPE_EXEC:
 				if (unlang_tmpl_push(update_state, &update_state->lhs_result,
-						     request, map->lhs, NULL, NULL) < 0) {
+						     request, map->lhs,
+						     NULL) < 0) {
 					*p_result = RLM_MODULE_FAIL;
 					return UNLANG_ACTION_STOP_PROCESSING;
 				}
@@ -189,7 +192,7 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 
 			case TMPL_TYPE_EXEC:
 				if (unlang_tmpl_push(update_state, &update_state->rhs_result,
-						     request, map->rhs, NULL, NULL) < 0) {
+						     request, map->rhs, NULL) < 0) {
 					*p_result = RLM_MODULE_FAIL;
 					return UNLANG_ACTION_STOP_PROCESSING;
 				}
@@ -343,7 +346,7 @@ static unlang_action_t unlang_map_state_init(rlm_rcode_t *p_result, request_t *r
 	}
 	case TMPL_TYPE_EXEC:
 		if (unlang_tmpl_push(map_proc_state, &map_proc_state->src_result,
-				     request, inst->src, NULL, NULL) < 0) {
+				     request, inst->src, NULL) < 0) {
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}

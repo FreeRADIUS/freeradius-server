@@ -70,7 +70,6 @@ typedef struct {
 	bool				failed;		//!< due to exec timeout or buffer overflow
 
 	int				status;		//!< return code of the program
-	int				*status_p;	//!< where we write the return status of the program
 
 	fr_pair_list_t			*vps;		//!< input VPs
 
@@ -99,7 +98,8 @@ int	fr_exec_wait_start(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_
 
 int	fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 			      fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs,
-			      bool need_stdin, bool store_stdout, TALLOC_CTX *stdout_ctx,
+			      bool need_stdin,
+			      bool store_stdout, TALLOC_CTX *stdout_ctx,
 			      fr_time_delta_t timeout);
 #ifdef __cplusplus
 }

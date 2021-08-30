@@ -140,7 +140,8 @@ static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out, reques
 	MEM(exec = talloc_zero(request, fr_exec_state_t)); /* Fixme - Should be frame ctx */
 
 	if (fr_exec_wait_start_io(exec, exec, request, in, input_pairs,
-				  false, inst->wait, ctx,
+				  false,
+				  inst->wait, ctx,
 				  inst->timeout) < 0) {
 		talloc_free(exec);
 		return XLAT_ACTION_FAIL;
@@ -373,24 +374,37 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 	int			status;
 	rlm_exec_ctx_t		*m = talloc_get_type_abort(rctx, rlm_exec_ctx_t);
 	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
+	rlm_rcode_t		rcode;
 
-	if (inst->output && !fr_dlist_empty(&m->box)) {
-		TALLOC_CTX *ctx;
-		fr_pair_list_t vps, *output_pairs;
-		fr_value_box_t *box = fr_dlist_head(&m->box);
+	/*
+	 *	Also prints stdout as an error if there was any...
+	 */
+	rcode = rlm_exec_status2rcode(request, fr_dlist_head(&m->box), m->status);
+	switch (rcode) {
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+		if (inst->output && !fr_dlist_empty(&m->box)) {
+			TALLOC_CTX *ctx;
+			fr_pair_list_t vps, *output_pairs;
+			fr_value_box_t *box = fr_dlist_head(&m->box);
 
-		RDEBUG("EXEC GOT -- %pM", &m->box);
+			RDEBUG("EXEC GOT -- %pM", &m->box);
 
-		fr_pair_list_init(&vps);
-		output_pairs = tmpl_list_head(request, inst->output_list);
-		fr_assert(output_pairs != NULL);
+			fr_pair_list_init(&vps);
+			output_pairs = tmpl_list_head(request, inst->output_list);
+			fr_assert(output_pairs != NULL);
 
-		ctx = tmpl_list_ctx(request, inst->output_list);
+			ctx = tmpl_list_ctx(request, inst->output_list);
 
-		fr_pair_list_afrom_box(ctx, &vps, request->dict, box);
-		if (!fr_pair_list_empty(&vps)) fr_pair_list_move(output_pairs, &vps, T_OP_ADD);
+			fr_pair_list_afrom_box(ctx, &vps, request->dict, box);
+			if (!fr_pair_list_empty(&vps)) fr_pair_list_move(output_pairs, &vps, T_OP_ADD);
 
-		fr_dlist_talloc_free(&m->box);	/* has been consumed */
+			fr_dlist_talloc_free(&m->box);	/* has been consumed */
+		}
+		break;
+
+	default:
+		break;
 	}
 
 	status = m->status;
@@ -404,7 +418,7 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 	 *	The status rcodes aren't quite the same as the rcode
 	 *	enumeration.
 	 */
-	RETURN_MODULE_RCODE(rlm_exec_status2rcode(request, fr_dlist_head(&m->box), status));
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /*
@@ -451,9 +465,13 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 		}
 	}
 
-	m = talloc_zero(ctx, rlm_exec_ctx_t);
+	MEM(m = talloc_zero(ctx, rlm_exec_ctx_t));
 	fr_value_box_list_init(&m->box);
-	return unlang_module_yield_to_tmpl(m, &m->box, &m->status, request, inst->tmpl, env_pairs, mod_exec_wait_resume, NULL, &m->box);
+	return unlang_module_yield_to_tmpl(m, &m->box,
+					   request, inst->tmpl,
+					   TMPL_ARGS_EXEC(env_pairs, 0, true, &m->status),
+					   mod_exec_wait_resume,
+					   NULL, &m->box);
 }
 
 

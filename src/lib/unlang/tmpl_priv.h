@@ -46,6 +46,9 @@ typedef struct {
 	union {
 		fr_exec_state_t		exec;
 	};
+
+	unlang_tmpl_args_t		args;		//!< Arguments that control how the
+							///< tmpl is evaluated.
 } unlang_frame_state_tmpl_t;
 
 #ifdef __cplusplus

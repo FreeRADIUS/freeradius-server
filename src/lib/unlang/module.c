@@ -471,19 +471,19 @@ unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_list_t
  *
  * @param[in] ctx		To allocate talloc value boxes and values in.
  * @param[out] out		Where to write the result of the expansion.
- * @param[out] status		exit status of the program
  * @param[in] request		The current request.
  * @param[in] vpt		the tmpl to expand
- * @param[in] vps		the input VPs.  May be NULL
+ * @param[in] args		Arguments which control how to evaluate the various
+ *				types of xlats.
  * @param[in] resume		function to call when the XLAT expansion is complete.
  * @param[in] signal		function to call if a signal is received.
  * @param[in] rctx		to pass to the resume() and signal() callbacks.
  * @return
  *	- UNLANG_ACTION_YIELD
  */
-unlang_action_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_list_t *out, int *status,
+unlang_action_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 					    request_t *request, tmpl_t const *vpt,
-					    fr_pair_list_t *vps,
+					    unlang_tmpl_args_t *args,
 					    unlang_module_resume_t resume,
 					    unlang_module_signal_t signal, void *rctx)
 {
@@ -496,7 +496,9 @@ unlang_action_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_list_t
 	/*
 	 *	Push the xlat function
 	 */
-	if (unlang_tmpl_push(ctx, out, request, vpt, vps, status) < 0) return UNLANG_ACTION_STOP_PROCESSING;
+	if (unlang_tmpl_push(ctx, out, request, vpt, args) < 0) {
+		return UNLANG_ACTION_STOP_PROCESSING;
+	}
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }

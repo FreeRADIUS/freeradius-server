@@ -69,72 +69,6 @@ static void unlang_tmpl_signal(request_t *request, unlang_stack_frame_t *frame, 
 	if (action == FR_SIGNAL_CANCEL) state->signal = NULL;
 }
 
-/** Push a tmpl onto the stack for evaluation
- *
- * @param[in] ctx		To allocate value boxes and values in.
- * @param[out] out		The value_box created from the tmpl.  May be NULL,
- *				in which case the result is discarded.
- * @param[in] request		The current request.
- * @param[in] tmpl		the tmpl to expand
- * @param[in] vps		the input VPs.  May be NULL.  Used only for #TMPL_TYPE_EXEC
- * @param[out] status		where the status of exited programs will be stored.
- */
-int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmpl_t const *tmpl, fr_pair_list_t *vps, int *status)
-{
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame;
-	unlang_frame_state_tmpl_t	*state;
-
-	unlang_tmpl_t			*ut;
-
-	static unlang_t tmpl_instruction = {
-		.type = UNLANG_TYPE_TMPL,
-		.name = "tmpl",
-		.debug_name = "tmpl",
-		.actions = {
-			.actions = {
-				[RLM_MODULE_REJECT]	= 0,
-				[RLM_MODULE_FAIL]	= 0,
-				[RLM_MODULE_OK]		= 0,
-				[RLM_MODULE_HANDLED]	= 0,
-				[RLM_MODULE_INVALID]	= 0,
-				[RLM_MODULE_DISALLOW]	= 0,
-				[RLM_MODULE_NOTFOUND]	= 0,
-				[RLM_MODULE_NOOP]	= 0,
-				[RLM_MODULE_UPDATED]	= 0
-			},
-			.retry = RETRY_INIT,
-		},
-	};
-
-	MEM(ut = talloc(stack, unlang_tmpl_t));
-	*ut = (unlang_tmpl_t){
-		.self = tmpl_instruction,
-		.tmpl = tmpl
-	};
-
-	/*
-	 *	Push a new tmpl frame onto the stack
-	 */
-	if (unlang_interpret_push(request, unlang_tmpl_to_generic(ut),
-				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, false) < 0) return -1;
-
-	frame = &stack->frame[stack->depth];
-	state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
-
-	*state = (unlang_frame_state_tmpl_t) {
-		.out = out,
-		.ctx = ctx,
-		.exec = {
-			.vps = vps,
-			.status_p = status,
-		}
-	};
-	fr_value_box_list_init(&state->box);
-
-	return 0;
-}
-
 /** Wrapper to call a resumption function after a tmpl has been expanded
  *
  *  If the resumption function returns YIELD, then this function is
@@ -172,9 +106,9 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 		goto resume;
 	}
 
-	fr_assert(state->exec.pid < 0);
+	fr_assert(state->exec.pid < 0);	/* Assert this has been cleaned up */
 
-	if (state->exec.status != 0) {
+	if (!state->args.exec.stdout_on_error && (state->exec.status != 0)) {
 		fr_assert(fr_dlist_empty(&state->box));
 		goto resume;
 	}
@@ -184,6 +118,10 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 	 *	and not care about the output.
 	 *
 	 *	If we do care about the output, it's unquoted, and tainted.
+	 *
+	 *	FIXME - It would be much more efficient to just reparent
+	 *	the string buffer into the context of the box... but we'd
+	 *	need to fix talloc first.
 	 */
 	if (state->out) {
 		fr_type_t type = FR_TYPE_STRING;
@@ -208,9 +146,9 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 
 resume:
 	/*
-	 *	Save the *mangled* exit status, not the raw one.
+	 *	Inform the caller of the status if it asked for it
 	 */
-	if (state->exec.status_p) *state->exec.status_p = state->exec.status;
+	if (state->args.exec.status_out) *state->args.exec.status_out = state->exec.status;
 
 	/*
 	 *	Ensure that the callers resume function is called.
@@ -228,13 +166,11 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 
-	/*
-	 *	@todo - make the timeout configurable
-	 */
-	if (fr_exec_wait_start_io(state->ctx, &state->exec, request, &state->box,
-				  state->exec.vps,
-				  false, (state->out != NULL), state,
-				  fr_time_delta_from_sec(EXEC_TIMEOUT)) < 0) {
+	if (fr_exec_wait_start_io(state->ctx, &state->exec, request,
+				  &state->box, state->args.exec.env,
+				  false,
+				  (state->out != NULL), state,
+				  state->args.exec.timeout) < 0) {
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -351,6 +287,76 @@ static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request, un
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
+/** Push a tmpl onto the stack for evaluation
+ *
+ * @param[in] ctx		To allocate value boxes and values in.
+ * @param[out] out		The value_box created from the tmpl.  May be NULL,
+ *				in which case the result is discarded.
+ * @param[in] request		The current request.
+ * @param[in] tmpl		the tmpl to expand
+ * @param[in] args		where the status of exited programs will be stored.
+ *				Used only for #TMPL_TYPE_EXEC.
+ */
+int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request,
+		     tmpl_t const *tmpl, unlang_tmpl_args_t *args)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame;
+	unlang_frame_state_tmpl_t	*state;
+
+	unlang_tmpl_t			*ut;
+
+	static unlang_t tmpl_instruction = {
+		.type = UNLANG_TYPE_TMPL,
+		.name = "tmpl",
+		.debug_name = "tmpl",
+		.actions = {
+			.actions = {
+				[RLM_MODULE_REJECT]	= 0,
+				[RLM_MODULE_FAIL]	= 0,
+				[RLM_MODULE_OK]		= 0,
+				[RLM_MODULE_HANDLED]	= 0,
+				[RLM_MODULE_INVALID]	= 0,
+				[RLM_MODULE_DISALLOW]	= 0,
+				[RLM_MODULE_NOTFOUND]	= 0,
+				[RLM_MODULE_NOOP]	= 0,
+				[RLM_MODULE_UPDATED]	= 0
+			},
+			.retry = RETRY_INIT,
+		},
+	};
+
+	MEM(ut = talloc(stack, unlang_tmpl_t));
+	*ut = (unlang_tmpl_t){
+		.self = tmpl_instruction,
+		.tmpl = tmpl
+	};
+
+	/*
+	 *	Push a new tmpl frame onto the stack
+	 */
+	if (unlang_interpret_push(request, unlang_tmpl_to_generic(ut),
+				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, false) < 0) return -1;
+
+	frame = &stack->frame[stack->depth];
+	state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
+
+	*state = (unlang_frame_state_tmpl_t) {
+		.out = out,
+		.ctx = ctx,
+	};
+	if (args) state->args = *args;	/* Copy these because they're usually ephemeral/initialised as compound literal */
+
+	/*
+	 *	Default to something sensible
+	 *	instead of locking the same indefinitely.
+	 */
+	if (!state->args.exec.timeout) state->args.exec.timeout = fr_time_delta_from_sec(EXEC_TIMEOUT);
+
+	fr_value_box_list_init(&state->box);
+
+	return 0;
+}
 
 void unlang_tmpl_init(void)
 {

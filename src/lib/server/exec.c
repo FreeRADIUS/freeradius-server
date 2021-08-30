@@ -951,12 +951,14 @@ void fr_exec_cleanup(fr_exec_state_t *exec, int signal)
 /*
  *	Callback when exec has completed.  Record the status and tidy up.
  */
-static void exec_waitpid(fr_event_list_t *el, UNUSED pid_t pid, int status, void *uctx)
+static void exec_waitpid(fr_event_list_t *el, pid_t pid, int status, void *uctx)
 {
 	fr_exec_state_t *exec = uctx;	/* may not be talloced */
 	request_t	*request = exec->request;
-	int		wait_status;
+	int		wait_status = 0;
 	int		ret;
+
+	if (!fr_cond_assert(pid == exec->pid)) RWDEBUG("Event PID %u and exec->pid %u do not match", pid, exec->pid);
 
 	/*
 	 *	Reap the process.  This is needed so the processes
@@ -975,14 +977,19 @@ static void exec_waitpid(fr_event_list_t *el, UNUSED pid_t pid, int status, void
 	 */
 	} else if (ret == 0) {
 		RWDEBUG("Something reaped PID %d before us!", exec->pid);
+		wait_status = status;
 	}
+
+	/*
+	 *	kevent should be returning an identical status value
+	 *	to waitpid.
+	 */
+	if (wait_status != status) RWDEBUG("Exit status from waitpid (%d) and kevent (%d) disagree",
+					   wait_status, status);
 
 	if (WIFEXITED(wait_status)) {
 		RDEBUG("Program exited with status code %d", WEXITSTATUS(wait_status));
 		exec->status = WEXITSTATUS(wait_status);
-
-		if (exec->status != status) RWDEBUG("Exit status from waitpid (%d) and kevent (%d) disagree",
-						    exec->status, status);
 	} else if (WIFSIGNALED(wait_status)) {
 		RDEBUG("Program exited due to signal with status code %d", WTERMSIG(wait_status));
 		exec->status = -WTERMSIG(wait_status);
@@ -1190,7 +1197,8 @@ static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void
  */
 int fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 			  fr_value_box_list_t *cmd, fr_pair_list_t *env_pairs,
-			  bool need_stdin, bool store_stdout, TALLOC_CTX *stdout_ctx,
+			  bool need_stdin,
+			  bool store_stdout, TALLOC_CTX *stdout_ctx,
 			  fr_time_delta_t timeout)
 {
 	int	*stdout_fd = (store_stdout || RDEBUG_ENABLED2) ? &exec->stdout_fd : NULL;
