@@ -71,7 +71,9 @@ typedef struct {
 
 	int				status;		//!< return code of the program
 
-	fr_pair_list_t			*vps;		//!< input VPs
+	fr_pair_list_t			*vps;		//!< input VPs.  These are inserted into
+							///< the environment of the child as
+							///< environmental variables.
 
 	request_t			*request;	//!< request this exec is related to
 
