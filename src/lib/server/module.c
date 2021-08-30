@@ -1571,6 +1571,15 @@ module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTIO
 		return NULL;
 	}
 
+	/*
+	 *	If the module isn't marked as "retry safe", then disallow retries.
+	 */
+	if (mi->actions.retry.irt && ((mi->module->type & RLM_TYPE_RETRY) != 0)) {
+		cf_log_err(cs, "Cannot do retries for module \"%s\" - it does not support them", mi->name);
+		talloc_free(mi);
+		return NULL;
+	}
+
 	return mi;
 }
 

@@ -47,6 +47,8 @@ typedef struct module_ctx_s			module_ctx_t;
 						//!< with mutex.
 #define RLM_TYPE_RESUMABLE     	(1 << 2) 	//!< does yield / resume
 
+#define RLM_TYPE_RETRY     	(1 << 3) 	//!< can handle retries
+
 /** Module section callback
  *
  * Is called when the module is listed in a particular section of a virtual

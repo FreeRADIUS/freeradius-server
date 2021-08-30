@@ -3613,6 +3613,20 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		}
 	}
 
+	/*
+	 *	If we're retrying this section, then all modules in
+	 *	the section have to be marked as retry-safe.
+	 *
+	 *	src/lib/server/module.c already checks if the default
+	 *	module actions are retry safe, so we don't need to
+	 *	check that here.
+	 */
+	if (unlang_ctx->actions->retry.irt && ((inst->module->type & RLM_TYPE_RETRY) != 0)) {
+		cf_log_err(ci, "Cannot do retries for module \"%s\" - it does not support them", inst->module->name);
+		talloc_free(c);
+		return NULL;
+	}
+
 	return c;
 }
 
