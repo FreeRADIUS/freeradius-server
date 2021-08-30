@@ -1483,6 +1483,7 @@ module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTIO
 	char			*inst_name = NULL;
 	module_instance_t	*mi;
 	char const		*name1 = cf_section_name1(cs);
+	CONF_SECTION		*actions;
 
 	module_instance_name(NULL, &inst_name, parent, cs);
 
@@ -1559,6 +1560,15 @@ module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTIO
 			talloc_free(mi);
 			return NULL;
 		}
+	}
+
+	/*
+	 *	Compile the default "actions" subsection, which includes retries.
+	 */
+	actions = cf_section_find(cs, "actions", NULL);
+	if (actions && !unlang_compile_actions(&mi->actions, actions)) {
+		talloc_free(mi);
+		return NULL;
 	}
 
 	return mi;

@@ -32,6 +32,7 @@ extern "C" {
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/unlang/action.h>
+#include <freeradius-devel/unlang/compile.h>
 #include <freeradius-devel/util/event.h>
 
 typedef struct module_s				module_t;
@@ -217,6 +218,9 @@ struct module_instance_s {
 
 	rlm_rcode_t			code;		//!< Code module will return when 'force' has
 							//!< has been set to true.
+
+	unlang_actions_t       		actions;	//!< default actions and retries.
+
 	/** @} */
 
 	/** @name Tree insertion tracking
