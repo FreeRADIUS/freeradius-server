@@ -509,7 +509,7 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	return 0;
 }
 
-static void *mod_track_create(UNUSED void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
+static void *mod_track_create(void const *instance, void *thread_instance, UNUSED RADCLIENT *client,
 			      fr_io_track_t *track, uint8_t const *packet, size_t packet_len)
 {
 	proto_radius_udp_t const *inst = talloc_get_type_abort_const(instance, proto_radius_udp_t);
