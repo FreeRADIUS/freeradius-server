@@ -902,7 +902,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 	char const 			*caller;
 	unlang_action_t			ua;
-	fr_time_t			now;
+	fr_time_t			now = 0;
 
 	*p_result = state->rcode = RLM_MODULE_NOOP;
 	state->set_rcode = true;
@@ -996,6 +996,8 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		 *	If we have retry timers, then start the retries.
 		 */
 		if (frame->instruction->actions.retry.irt) {
+			fr_assert(now != 0);
+
 			(void) fr_retry_init(&state->retry, now, &frame->instruction->actions.retry); /* can't fail */
 
 			if (fr_event_timer_at(request, request->el, &state->ev, state->retry.next,
