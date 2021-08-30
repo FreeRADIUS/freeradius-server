@@ -202,7 +202,7 @@ static unlang_action_t trigger_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 	 *      continuing. This blocks the executing thread.
 	 */
 	if (trigger->synchronous) {
-		if (fr_exec_wait_start(&trigger->pid, NULL, NULL, NULL, request, &trigger->args, NULL) < 0) {
+		if (fr_exec_fork_wait(&trigger->pid, NULL, NULL, NULL, request, &trigger->args, NULL) < 0) {
 			RPERROR("Failed running trigger %s", trigger->name);
 			RETURN_MODULE_FAIL;
 		}
@@ -216,7 +216,7 @@ static unlang_action_t trigger_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 	 *	Execute the program without waiting for the result.
 	 */
 	} else {
-		if (fr_exec_nowait(request, &trigger->args, NULL) < 0) {
+		if (fr_exec_fork_nowait(request, &trigger->args, NULL) < 0) {
 			RPERROR("Failed running trigger %s", trigger->name);
 			RETURN_MODULE_FAIL;
 		}
@@ -365,7 +365,7 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 	}
 
 	/*
-	 *	radius_exec_program always needs a request.
+	 *	radius_exec_program_legacy always needs a request.
 	 */
 	child = request_alloc_internal(NULL, (&(request_init_args_t){ .parent = request, .detachable = true }));
 

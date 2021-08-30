@@ -77,30 +77,18 @@ typedef struct {
 
 } fr_exec_state_t;
 
-
-pid_t	radius_start_program(int *stdin_fd, int *stdout_fd, int *stderr_fd,
-			     char const *cmd, request_t *request, bool exec_wait,
-			     fr_pair_list_t *input_pairs, bool shell_escape);
-
-int	radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
-				char *answer, int left);
-
-int	radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_list_t *output_pairs,
-			    request_t *request, char const *cmd, fr_pair_list_t *input_pairs,
-			    bool exec_wait, bool shell_escape, fr_time_delta_t timeout) CC_HINT(nonnull (5, 6));
-
 void	fr_exec_cleanup(fr_exec_state_t *exec, int signal);
 
-int	fr_exec_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs);
+int	fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs);
 
-int	fr_exec_wait_start(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_fd,
+int	fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_fd,
 			   request_t *request, fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs);
 
-int	fr_exec_wait_start_io(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
-			      fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs,
-			      bool need_stdin,
-			      bool store_stdout, TALLOC_CTX *stdout_ctx,
-			      fr_time_delta_t timeout);
+int	fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
+		      fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs,
+		      bool need_stdin,
+		      bool store_stdout, TALLOC_CTX *stdout_ctx,
+		      fr_time_delta_t timeout);
 #ifdef __cplusplus
 }
 #endif

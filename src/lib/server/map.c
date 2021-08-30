@@ -29,6 +29,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/exec.h>
+#include <freeradius-devel/server/exec_legacy.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/paircmp.h>
 #include <freeradius-devel/server/cond.h>
@@ -1036,7 +1037,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 	 *	if dst is an attribute, then we create an attribute of that type and then
 	 *	call fr_pair_value_from_str on the output of the script.
 	 */
-	result = radius_exec_program(ctx, answer, sizeof(answer),
+	result = radius_exec_program_legacy(ctx, answer, sizeof(answer),
 				     tmpl_is_list(map->lhs) ? &output_pairs : NULL,
 				     request, map->rhs->name, input_pairs ? input_pairs : NULL,
 				     true, true, fr_time_delta_from_sec(EXEC_TIMEOUT));

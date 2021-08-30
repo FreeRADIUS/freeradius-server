@@ -14,6 +14,7 @@ SOURCES	:= \
 	dependency.c \
 	dl_module.c \
 	exec.c \
+	exec_legacy.c \
 	exfile.c \
 	log.c \
 	main_config.c \

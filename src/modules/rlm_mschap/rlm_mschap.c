@@ -29,6 +29,7 @@ RCSID("$Id$")
 #define LOG_PREFIX_ARGS dl_module_instance_name_by_data(inst)
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/exec_legacy.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/password.h>
 #include <freeradius-devel/util/debug.h>
@@ -820,7 +821,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 		 * Start up ntlm_auth with a pipe on stdin and stdout
 		 */
 
-		pid = radius_start_program(&to_child, &from_child, NULL, inst->ntlm_cpw, request, true, NULL, false);
+		pid = radius_start_program_legacy(&to_child, &from_child, NULL, inst->ntlm_cpw, request, true, NULL, false);
 		if (pid < 0) {
 			REDEBUG("could not exec ntlm_auth cpw command");
 			return -1;
@@ -909,9 +910,9 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 		/*
 		 *  Read from the child
 		 */
-		len = radius_readfrom_program(from_child, pid, fr_time_delta_from_sec(10), buf, sizeof(buf));
+		len = radius_readfrom_program_legacy(from_child, pid, fr_time_delta_from_sec(10), buf, sizeof(buf));
 		if (len < 0) {
-			/* radius_readfrom_program will have closed from_child for us */
+			/* radius_readfrom_program_legacy will have closed from_child for us */
 			REDEBUG("Failure reading from child");
 			return -1;
 		}
@@ -1186,7 +1187,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5, 6)) do_mschap(rlm_mschap_t const *inst,
 		/*
 		 *	Run the program, and expect that we get 16
 		 */
-		result = radius_exec_program(request, buffer, sizeof(buffer), NULL, request, inst->ntlm_auth, NULL,
+		result = radius_exec_program_legacy(request, buffer, sizeof(buffer), NULL, request, inst->ntlm_auth, NULL,
 					     true, true, inst->ntlm_auth_timeout);
 		if (result != 0) {
 			char *p;
