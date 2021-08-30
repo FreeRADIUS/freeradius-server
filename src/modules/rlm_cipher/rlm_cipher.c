@@ -200,17 +200,17 @@ static const CONF_PARSER rsa_oaep_config[] = {
  *
  */
 static const CONF_PARSER rsa_config[] = {
-	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING | FR_TYPE_SECRET, cipher_rsa_t, private_key_password) },	/* Must come before private_key */
-	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, cipher_rsa_t, private_key_file), .func = cipher_rsa_private_key_file_load },
-	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, cipher_rsa_t, certificate_file), .func = cipher_rsa_certificate_file_load },
-
 	{ FR_CONF_OFFSET("verify_mode", FR_TYPE_VOID, cipher_rsa_t, verify_mode),
 			 .func = cf_table_parse_int,
 			 .uctx = &(cf_table_parse_ctx_t){
 			 	.table = cipher_cert_verify_mode_table,
 			 	.len = &cipher_cert_verify_mode_table_len
 			 },
-			 .dflt = "hard" },
+			 .dflt = "hard" }, /* Must come before certificate file */
+
+	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING | FR_TYPE_SECRET, cipher_rsa_t, private_key_password) },	/* Must come before private_key */
+	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, cipher_rsa_t, private_key_file), .func = cipher_rsa_private_key_file_load },
+	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, cipher_rsa_t, certificate_file), .func = cipher_rsa_certificate_file_load },
 
 	{ FR_CONF_OFFSET("random_file", FR_TYPE_STRING, cipher_rsa_t, random_file) },
 
@@ -521,8 +521,12 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, void *pa
 	 *	Certificate validity checks
 	 */
 	switch (fr_tls_cert_is_valid(&rsa_inst->not_before, &rsa_inst->not_after, cert)) {
-	case -1:
+	case 0:
+		cf_log_debug(ci, "Certificate validity starts at %pV and ends at %pV",
+			     fr_box_date(rsa_inst->not_before), fr_box_date(rsa_inst->not_after));
+		break;
 
+	case -1:
 		cf_log_perr(ci, "Malformed certificate");
 		return -1;
 
@@ -537,7 +541,11 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, void *pa
 			cf_log_perr(ci, "Certificate validation failed");
 			goto error;
 
-		default:
+		case CIPHER_CERT_VERIFY_NONE:
+			break;
+
+		case CIPHER_CERT_ATTR_UNKNOWN:
+			fr_assert(0);
 			break;
 		}
 	}
