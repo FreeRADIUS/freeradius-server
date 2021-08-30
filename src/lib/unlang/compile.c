@@ -1569,7 +1569,7 @@ static bool compile_retry_section(unlang_actions_t *actions, CONF_ITEM *ci)
 	return true;
 }
 
-bool unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *parent)
+bool unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *action_cs)
 {
 	CONF_ITEM *csi;
 	CONF_SECTION *cs;
@@ -1577,7 +1577,7 @@ bool unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *parent)
 	/*
 	 *	Over-ride the default return codes of the module.
 	 */
-	cs = cf_item_to_section(cf_section_to_item(parent));
+	cs = cf_item_to_section(cf_section_to_item(action_cs));
 	for (csi=cf_item_next(cs, NULL);
 	     csi != NULL;
 	     csi=cf_item_next(cs, csi)) {
@@ -1613,7 +1613,7 @@ bool unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *parent)
 			CONF_ITEM *subci;
 			char const *value = cf_pair_value(cp);
 
-			subci = cf_reference_item(cs, cf_root(cf_section_to_item(parent)), value);
+			subci = cf_reference_item(cs, cf_root(cf_section_to_item(action_cs)), value);
 			if (!subci) {
 				cf_log_err(csi, "Unknown reference '%s'", value ? value : "???");
 				return false;
