@@ -1102,6 +1102,13 @@ static void compile_action_defaults(unlang_t *c, unlang_compile_t *unlang_ctx)
 	int i;
 
 	/*
+	 *	Note that we do NOT copy over the default retries, as
+	 *	that would result in every subsection doing it's own
+	 *	retries.  That is not what we want.  Instead, we want
+	 *	the retries to apply only to the _current_ section.
+	 */
+
+	/*
 	 *	Children of "redundant" and "redundant-load-balance"
 	 *	have RETURN for all actions except fail.  But THEIR children are normal.
 	 */
@@ -1130,7 +1137,7 @@ static void compile_action_defaults(unlang_t *c, unlang_compile_t *unlang_ctx)
 	 */
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
 		if (!c->actions.actions[i]) {
-			c->actions.actions[i] = unlang_ctx->actions[0].actions[i];
+			c->actions.actions[i] = unlang_ctx->actions->actions[i];
 		}
 	}
 }
@@ -1562,6 +1569,16 @@ static bool compile_retry_section(unlang_actions_t *actions, CONF_ITEM *ci)
 			if (fr_time_delta_from_str(&actions->retry.mrd, value, FR_TIME_RES_SEC) < 0) goto error;
 		} else {
 			cf_log_err(csi, "Invalid item '%s' in 'retry' configuration.", name);
+			return false;
+		}
+
+		/*
+		 *	Sanity check the values.  If IRT is zero, then
+		 *	the rest MUST be zero.
+		 */
+		if (!actions->retry.irt &&
+		    (actions->retry.mrt || actions->retry.mrc || actions->retry.mrd)) {
+			cf_log_err(csi, "If 'initial_rtx_time' is zero, then the other fields MUST be zero");
 			return false;
 		}
 	}
@@ -3576,10 +3593,19 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	c->type = UNLANG_TYPE_MODULE;
 
 	/*
-	 *	Set the default actions, and then try to compile an action subsection.
+	 *	Set the default actions for this module.
+	 */
+	c->actions = inst->actions;
+
+	/*
+	 *	Add in the default actions for this section.
 	 */
 	compile_action_defaults(c, unlang_ctx);
 
+	/*
+	 *	If a module reference is a section, then the section
+	 *	should contain action over-rides.  We add those here.
+	 */
 	if (cf_item_is_section(ci)) {
 		if (!unlang_compile_actions(&c->actions, cf_item_to_section(ci))) {
 			talloc_free(c);
