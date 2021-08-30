@@ -52,6 +52,7 @@ RCSID("$Id$")
 #define UPDATE_CTX2  \
 	unlang_ctx2.component = component; \
 	unlang_ctx2.actions = unlang_ctx->actions; \
+	memset(&unlang_ctx2.actions.retry, 0, sizeof(unlang_ctx2.actions.retry)); \
 	unlang_ctx2.section_name1 = unlang_ctx->section_name1; \
 	unlang_ctx2.section_name2 = unlang_ctx->section_name2; \
 	unlang_ctx2.rules = unlang_ctx->rules
@@ -86,7 +87,7 @@ typedef struct {
 	rlm_components_t	component;
 	char const		*section_name1;
 	char const		*section_name2;
-	unlang_actions_t const	*actions;
+	unlang_actions_t	actions;
 	tmpl_rules_t const	*rules;
 } unlang_compile_t;
 
@@ -1137,7 +1138,7 @@ static void compile_action_defaults(unlang_t *c, unlang_compile_t *unlang_ctx)
 	 */
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
 		if (!c->actions.actions[i]) {
-			c->actions.actions[i] = unlang_ctx->actions->actions[i];
+			c->actions.actions[i] = unlang_ctx->actions.actions[i];
 		}
 	}
 }
@@ -1707,11 +1708,26 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 	}
 
 	/*
-	 *	Over-riding actions makes no sense in some situations.
-	 *	They just don't make sense for many group types.
+	 *	Over-riding the actions can be done in certain limited
+	 *	situations.  In other situations (e.g. "switch",
+	 *	"load-balance"), it doesn't make sense.
+	 *
+	 *	Note that this limitation also applies to "retry"
+	 *	timers.  We can do retries of a "group".  We cannot do
+	 *	retries of "load-balance", as the "load-balance"
+	 *	section already takes care of redundancy.
+	 *
+	 *	We may need to loosen that limitation in the future.
 	 */
-	if (!((c->type == UNLANG_TYPE_CASE) || (c->type == UNLANG_TYPE_IF) || (c->type == UNLANG_TYPE_ELSIF) ||
-	      (c->type == UNLANG_TYPE_GROUP) || (c->type == UNLANG_TYPE_ELSE))) {
+	switch (c->type) {
+	case UNLANG_TYPE_CASE:
+	case UNLANG_TYPE_IF:
+	case UNLANG_TYPE_ELSE:
+	case UNLANG_TYPE_ELSIF:
+	case UNLANG_TYPE_GROUP:
+		break;
+
+	default:
 		cf_log_err(ci, "'actions' MUST NOT be in a '%s' block", unlang_ops[c->type].name);
 		return false;
 	}
@@ -3621,7 +3637,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	module actions are retry safe, so we don't need to
 	 *	check that here.
 	 */
-	if (unlang_ctx->actions->retry.irt && ((inst->module->type & RLM_TYPE_RETRY) != 0)) {
+	if (unlang_ctx->actions.retry.irt && ((inst->module->type & RLM_TYPE_RETRY) != 0)) {
 		cf_log_err(ci, "Cannot do retries for module \"%s\" - it does not support them", inst->module->name);
 		talloc_free(c);
 		return NULL;
@@ -3900,7 +3916,7 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, tmpl_rules_t co
 				.component = component,
 				.section_name1 = cf_section_name1(cs),
 				.section_name2 = cf_section_name2(cs),
-				.actions = &default_actions[component],
+				.actions = default_actions[component],
 				.rules = rules
 			    },
 			    cs, &group_ext);
