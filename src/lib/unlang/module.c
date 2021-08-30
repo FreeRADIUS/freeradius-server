@@ -410,6 +410,36 @@ int unlang_module_push(rlm_rcode_t *p_result, request_t *request,
 	return 0;
 }
 
+/** Change the resume function of a module.
+ *
+ * @param[in] request		The current request.
+ * @param[in] resume		function to call when the XLAT expansion is complete.
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int unlang_module_set_resume(request_t *request, unlang_module_resume_t resume)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_module_t	*state;
+
+	/*
+	 *	Can't resume if it isn't yielded.
+	 */
+	if (!is_yielded(frame)) return -1;
+
+	/*
+	 *	It must be yielded in a module.
+	 */
+	if (frame->instruction->type != UNLANG_TYPE_MODULE) return -1;
+
+	state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
+	state->resume = resume;
+
+	return 0;
+}
+
 /** Push a pre-compiled xlat and resumption state onto the stack for evaluation
  *
  * In order to use the async unlang processor the calling module needs to establish
