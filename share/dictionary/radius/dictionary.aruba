@@ -87,6 +87,7 @@ VALUE	PoE-Priority			Low			2
 
 VALUE	Port-Auth-Mode			Infrastructure-Mode	1
 VALUE	Port-Auth-Mode			Client-Mode		2
+VALUE	Port-Auth-Mode			Multi-Domain-Mode	3
 
 VALUE	QoS-Trust-Mode			DSCP			0
 VALUE	QoS-Trust-Mode			QoS			1
