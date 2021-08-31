@@ -234,6 +234,13 @@ fr_machine_t *fr_machine_alloc(TALLOC_CTX *ctx, fr_machine_def_t const *def, voi
 	fr_assert(!m->current->def->exit);
 	fr_assert(m->current->def->process);
 
+#if defined(__clang_analyzer__)
+	if (!m->current || !m->current->def || !m->current->def->process) {
+		talloc_free(m);
+		return NULL;
+	}
+#endif
+
 	next = m->current->def->process(m, uctx);
 	fr_assert(next >= 0);
 
