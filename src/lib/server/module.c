@@ -939,10 +939,11 @@ module_instance_t *module_by_name_and_method(module_method_t *method, rlm_compon
 	if (!q) {
 		for (j = 0; mi->module->method_names[j].name1 != NULL; j++) {
 			methods = &mi->module->method_names[j];
+
 			/*
 			 *	If we do not have the second $method, then ignore it!
 			 */
-			if (methods->name2 != CF_IDENT_ANY) continue;
+			if (methods->name2 && (methods->name2 != CF_IDENT_ANY)) continue;
 
 			/*
 			 *	Wildcard match name1, we're
