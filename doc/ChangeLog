@@ -39,6 +39,7 @@ FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	* Fix sqlcounter wrong memory free. PR #4192 from Jorge Pereira
 	* Accept slow writes from proxies over TCP, which allows the
 	  server to make more progress when it receives partial packets.
+	* Add 'weeklycounter' for rlm_sqlcounter.
 
 FreeRADIUS 3.0.23 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	Feature improvements

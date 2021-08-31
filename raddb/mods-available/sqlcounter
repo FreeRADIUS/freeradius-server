@@ -58,6 +58,20 @@ sqlcounter dailycounter {
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
 }
 
+sqlcounter weeklycounter {
+	sql_module_instance = sql
+	dialect = ${modules.sql.dialect}
+
+	counter_name = Weekly-Session-Time
+	check_name = Max-Weekly-Session
+	reply_name = Session-Timeout
+
+	key = User-Name
+	reset = weekly
+
+	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
+}
+
 sqlcounter monthlycounter {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
