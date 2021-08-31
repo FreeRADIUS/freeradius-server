@@ -434,7 +434,7 @@ extern module_t rlm_test;
 module_t rlm_test = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "test",
-	.type			= RLM_TYPE_THREAD_SAFE,
+	.type			= RLM_TYPE_THREAD_SAFE | RLM_TYPE_RETRY,
 	.inst_size		= sizeof(rlm_test_t),
 	.thread_inst_size	= sizeof(rlm_test_thread_t),
 	.config			= module_config,
