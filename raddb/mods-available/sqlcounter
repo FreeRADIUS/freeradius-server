@@ -32,8 +32,9 @@
 #  the current Counter value from the database. There are 2
 #  parameters that can be used in the query:
 #
-#		%%b	unix time value of beginning of reset period
-#		%%e	unix time value of end of reset period
+#		%%b	unix time value of beginning of reset period.
+#		%%e	unix time value of end of reset period.
+#		%%k	value of 'key' parameter.
 #		%%r	configured reset day.
 #
 #  The 'check_name' parameter is the name of the 'check'

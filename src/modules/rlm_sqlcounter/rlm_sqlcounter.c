@@ -276,13 +276,12 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
 
 
 /*
- *	Replace %<whatever> in a string.
+ *	Replace %%<whatever> in a string.
  *
- *	%b	last_reset
- *	%e	reset_time
- *	%r	reset_day
- *	%k	key_name
- *	%S	sqlmod_inst
+ *	%%b	last_reset
+ *	%%e	reset_time
+ *	%%r	reset_day
+ *	%%k	key_name
  *
  */
 
