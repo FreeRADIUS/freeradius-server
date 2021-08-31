@@ -45,18 +45,6 @@ RCSID("$Id$")
 
 #define UNLANG_IGNORE ((unlang_t *) -1)
 
-/*
- *	When we switch to a new unlang ctx, we use the new component
- *	name and number, but we use the CURRENT actions.
- */
-#define UPDATE_CTX2  \
-	unlang_ctx2.component = component; \
-	unlang_ctx2.actions = unlang_ctx->actions; \
-	memset(&unlang_ctx2.actions.retry, 0, sizeof(unlang_ctx2.actions.retry)); \
-	unlang_ctx2.section_name1 = unlang_ctx->section_name1; \
-	unlang_ctx2.section_name2 = unlang_ctx->section_name2; \
-	unlang_ctx2.rules = unlang_ctx->rules
-
 /* Here's where we recognize all of our keywords: first the rcodes, then the
  * actions */
 fr_table_num_sorted_t const mod_rcode_table[] = {
@@ -90,6 +78,34 @@ typedef struct {
 	unlang_actions_t	actions;
 	tmpl_rules_t const	*rules;
 } unlang_compile_t;
+
+/*
+ *	When we switch to a new unlang ctx, we use the new component
+ *	name and number, but we use the CURRENT actions.
+ */
+static inline CC_HINT(always_inline)
+void compile_copy_context(unlang_compile_t *dst, unlang_compile_t const *src, rlm_components_t component)
+{
+	int i;
+
+	*dst = *src;
+
+	/*
+	 *	Over-ride the component.
+	 */
+	dst->component = component;
+
+	/*
+	 *	Ensure that none of the actions are RETRY.
+	 */
+	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+		if (dst->actions.actions[i] == MOD_ACTION_RETRY) dst->actions.actions[i] = 0;
+	}
+	memset(&dst->actions.retry, 0, sizeof(dst->actions.retry)); \
+}
+
+#define UPDATE_CTX2 compile_copy_context(&unlang_ctx2, unlang_ctx, component)
+
 
 static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs, unlang_ext_t const *ext);
 
@@ -3221,10 +3237,15 @@ get_packet_type:
 	t_rules.dict_def = dict;
 	t_rules.allow_foreign = false;
 
-	unlang_ctx2.actions = unlang_ctx->actions;
+	/*
+	 *	Copy over the compilation context.  This is mostly
+	 *	just to ensure that retry is handled correctly.
+	 *	i.e. reset.
+	 */
+	compile_copy_context(&unlang_ctx2, unlang_ctx, unlang_ctx->component);
 
 	/*
-	 *	Update the new compilation context.
+	 *	Then over-write the new compilation context.
 	 */
 	unlang_ctx2.section_name1 = "subrequest";
 	unlang_ctx2.section_name2 = name2;
