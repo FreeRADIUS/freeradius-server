@@ -3587,6 +3587,11 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 			cf_log_err(ci, "The \"%s\" module does not have a '%s %s' method.",
 				   inst->module->name,
 				   unlang_ctx->section_name1, unlang_ctx->section_name2);
+
+		} else if (!unlang_ctx->section_name1) {
+			cf_log_err(ci, "The \"%s\" module cannot be called as '%s'.",
+				   inst->module->name, realname);
+
 		} else {
 			cf_log_err(ci, "The \"%s\" module does not have a '%s' method.",
 				   inst->module->name,
