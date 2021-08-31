@@ -189,6 +189,8 @@ int unlang_interpret_push(request_t *request, unlang_t const *instruction,
 	return 0;
 }
 
+static void instruction_timeout_handler(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ctx);
+
 /** Update the current result after each instruction, and after popping each stack frame
  *
  * @param[in] request		The current request.
@@ -249,6 +251,86 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 		return UNLANG_FRAME_ACTION_POP;
 	}
 
+	/*
+	 *	The instruction says it should be retried from the beginning.
+	 */
+	if (instruction->actions.actions[*result] == MOD_ACTION_RETRY) {
+		unlang_retry_t *retry = frame->retry;
+
+		RDEBUG4("** [%i] %s - action says to retry with",
+			stack->depth, __FUNCTION__);
+
+		if (*priority < 0) *priority = 0;
+
+		/*
+		 *	If this is the first time doing the retry,
+		 *	then allocate the structure and set the timer.
+		 */
+		if (!retry) {
+			frame->retry = retry = talloc_zero(stack, unlang_retry_t);
+			if (!frame->retry) goto fail;
+
+			retry->request = request;
+			retry->depth = stack->depth;
+			retry->state = FR_RETRY_CONTINUE;
+			retry->count = 1;
+
+			/*
+			 *	Set a timer which automatically fires
+			 *	if there's a timeout.  And parent it
+			 *	from the retry structure, so that the
+			 *	timer is automatically freed when the
+			 *	frame is cleaned up.
+			 */
+			if (instruction->actions.retry.mrd) {
+				retry->timeout = fr_time() + instruction->actions.retry.mrd;
+
+				if (fr_event_timer_at(retry, request->el, &retry->ev, retry->timeout,
+						      instruction_timeout_handler, request) < 0) {
+					RPEDEBUG("Failed inserting event");
+					goto fail;
+				}
+			}
+
+		} else {
+			/*
+			 *	We've been told to stop doing retries,
+			 *	probably from a timeout.
+			 */
+			if (retry->state != FR_RETRY_CONTINUE) goto fail;
+
+			/*
+			 *	Clamp it at the maximum count.
+			 */
+			if (instruction->actions.retry.mrc > 0) {
+				if (retry->count >= instruction->actions.retry.mrc) {
+					retry->state = FR_RETRY_MRC;
+
+					REDEBUG("Retries hit max_rtx_count (%d) - returning 'fail'", instruction->actions.retry.mrc);
+
+				fail:
+					*result = RLM_MODULE_FAIL;
+					goto finalize;
+				}
+
+				retry->count++;
+			}
+		}
+
+		RINDENT();
+		if (instruction->actions.retry.mrc) {
+			RDEBUG("... retrying (%d/%d)", retry->count, instruction->actions.retry.mrc);
+		} else {
+			RDEBUG("... retrying");
+		}
+		REXDENT();
+
+		talloc_free(frame->state);
+		frame_state_init(stack, frame);
+		return UNLANG_FRAME_ACTION_RETRY;
+	}
+
+finalize:
 	/*
 	 *	The array holds a default priority for this return
 	 *	code.  Grab it in preference to any unset priority.
@@ -338,6 +420,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 	while (frame->instruction) {
 		unlang_t const		*instruction = frame->instruction;
 		unlang_action_t		ua = UNLANG_ACTION_UNWIND;
+		unlang_frame_action_t	fa;
 
 		DUMP_STACK;
 
@@ -481,9 +564,22 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 			 */
 			if (*result != RLM_MODULE_NOT_SET) *priority = instruction->actions.actions[*result];
 
-			if (result_calculate(request, frame, result, priority) == UNLANG_FRAME_ACTION_POP) {
+			fa = result_calculate(request, frame, result, priority);
+			switch (fa) {
+			case UNLANG_FRAME_ACTION_POP:
 				return UNLANG_FRAME_ACTION_POP;
+
+			case UNLANG_FRAME_ACTION_RETRY:
+				if (unlang_ops[instruction->type].debug_braces) {
+					REXDENT();
+					RDEBUG2("} # retrying the same section");
+				}
+				continue; /* with the current frame */
+
+			default:
+				break;
 			}
+
 			FALL_THROUGH;
 
 		/*
@@ -630,6 +726,7 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request)
 					fr_table_str_by_value(mod_rcode_table, stack->result, "<invalid>"),
 					stack->priority);
 				frame_next(stack, frame);
+
 			/*
 			 *	Else if we're really done with this frame
 			 *	print some helpful debug...
@@ -646,6 +743,10 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request)
 			RDEBUG4("** [%i] %s - interpret yielding", stack->depth, __FUNCTION__);
 			intp->funcs.yield(request, intp->uctx);
 			return stack->result;
+
+		case UNLANG_FRAME_ACTION_RETRY:	/* retry the current frame */
+			fa = UNLANG_FRAME_ACTION_NEXT;
+			continue;
 		}
 		break;
 	}
@@ -957,6 +1058,22 @@ void unlang_interpret_signal(request_t *request, fr_state_signal_t action)
 	default:
 		break;
 	}
+}
+
+static void instruction_timeout_handler(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *ctx)
+{
+	unlang_retry_t			*retry = talloc_get_type_abort(ctx, unlang_retry_t);
+	request_t			*request = talloc_get_type_abort(retry->request, request_t);
+
+	RDEBUG("retry timeout reached, signalling interpreter to cancel.");
+
+	/*
+	 *	Signal all lower frames to exit.
+	 */
+	frame_signal(request, FR_SIGNAL_CANCEL, retry->depth);
+
+	retry->state = FR_RETRY_MRD;
+	unlang_interpret_mark_runnable(request);
 }
 
 /** Return the depth of the request's stack

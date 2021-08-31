@@ -89,6 +89,7 @@ typedef enum {
 typedef enum {
 	UNLANG_FRAME_ACTION_POP = 1,		//!< Pop the current frame, and check the next one further
 						///< up in the stack for what to do next.
+	UNLANG_FRAME_ACTION_RETRY,		//!< retry the current frame
 	UNLANG_FRAME_ACTION_NEXT,		//!< Process the next instruction at this level.
 	UNLANG_FRAME_ACTION_YIELD		//!< Temporarily return control back to the caller on the C
 						///< stack.
@@ -217,6 +218,15 @@ typedef struct {
 	size_t			frame_state_pool_size;		//!< The total size of the pool to alloc.
 } unlang_op_t;
 
+typedef struct {
+	request_t		*request;
+	int			depth;				//!< of this retry structure
+	fr_retry_state_t	state;
+	fr_time_t		timeout;
+	uint32_t       		count;
+	fr_event_timer_t const	*ev;
+} unlang_retry_t;
+
 /** Our interpreter stack, as distinct from the C stack
  *
  * We don't call the modules recursively.  Instead we iterate over a list of #unlang_t and
@@ -246,6 +256,8 @@ struct unlang_stack_frame_s {
 	 * instruction->type.
 	 */
 	void			*state;
+
+	unlang_retry_t		*retry;				//!< if the frame is being retried.
 
 	rlm_rcode_t 		result;				//!< The result from executing the instruction.
 	int			priority;			//!< Result priority.  When we pop this stack frame
@@ -375,6 +387,10 @@ static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t 
 	} else if (op->frame_state_size) {
 		MEM(frame->state = _talloc_zero(stack, op->frame_state_size, name));
 	}
+
+	/*
+	 *	Don't change frame->retry, it may be left over from a previous retry.
+	 */
 }
 
 /** Cleanup any lingering frame state
@@ -418,6 +434,15 @@ static inline void frame_pop(unlang_stack_t *stack)
 	fr_assert(stack->depth > 1);
 
 	frame = &stack->frame[stack->depth];
+
+	/*
+	 *	We clean up the retries when we pop the frame, not
+	 *	when we do a frame_cleanup().  That's because
+	 *	frame_cleanup() is called from the signal handler, and
+	 *	we need to keep frame->retry around to ensure that we
+	 *	know how to _stop_ the retries after they've hit a timeout.
+	 */
+	talloc_free(frame->retry);
 
 	frame_cleanup(frame);
 
