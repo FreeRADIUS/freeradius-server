@@ -1,5 +1,7 @@
 FreeRADIUS 3.2.0 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	Feature improvements
+	* Add 'reset_day' and '%%r' parameter for rlm_sqlcounter to specify which
+	  day of the month the counter should be reset.
 	* Add dictionary.mellanox
 
 	Bug fixes

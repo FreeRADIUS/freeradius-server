@@ -68,6 +68,7 @@ typedef struct rlm_sqlcounter_t {
 					//!< session time.
 	char const	*reset;  	//!< Daily, weekly, monthly,
 					//!< never or user defined.
+	uint32_t	reset_day;  	//!< Reset day.
 	time_t		reset_time;
 	time_t		last_reset;
 	DICT_ATTR const	*key_attr;	//!< Attribute number for key field.
@@ -92,6 +93,8 @@ static const CONF_PARSER module_config[] = {
 	{ "query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_REQUIRED, rlm_sqlcounter_t, query), NULL },
 	{ "reset", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_sqlcounter_t, reset), NULL },
 
+	{ "reset_day", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sqlcounter_t, reset_day), "1" },
+
 	{ "counter-name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlcounter_t, counter_name), NULL },
 	{ "counter_name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_sqlcounter_t, counter_name), NULL },
 
@@ -111,6 +114,7 @@ static int find_next_reset(rlm_sqlcounter_t *inst, REQUEST *request, time_t time
 	char last = '\0';
 	struct tm *tm, s_tm;
 	char sCurrentTime[40], sNextTime[40];
+	bool is_monthly = false;
 
 	tm = localtime_r(&timeval, &s_tm);
 	tm->tm_sec = tm->tm_min = 0;
@@ -147,7 +151,6 @@ static int find_next_reset(rlm_sqlcounter_t *inst, REQUEST *request, time_t time
 		tm->tm_hour = 0;
 		tm->tm_mday += num;
 		inst->reset_time = mktime(tm);
-
 	} else if (strcmp(inst->reset, "weekly") == 0 || last == 'w') {
 		/*
 		 *  Round up to the next nearest week.
@@ -158,10 +161,10 @@ static int find_next_reset(rlm_sqlcounter_t *inst, REQUEST *request, time_t time
 
 	} else if (strcmp(inst->reset, "monthly") == 0 || last == 'm') {
 		tm->tm_hour = 0;
-		tm->tm_mday = 1;
+		tm->tm_mday = inst->reset_day;
 		tm->tm_mon += num;
 		inst->reset_time = mktime(tm);
-
+		is_monthly = true;
 	} else if (strcmp(inst->reset, "never") == 0) {
 		inst->reset_time = 0;
 
@@ -176,9 +179,14 @@ static int find_next_reset(rlm_sqlcounter_t *inst, REQUEST *request, time_t time
 
 	len = strftime(sNextTime, sizeof(sNextTime),"%Y-%m-%d %H:%M:%S",tm);
 	if (len == 0) *sNextTime = '\0';
-	RDEBUG2("rlm_sqlcounter: Current Time: %" PRId64 " [%s], Next reset %" PRId64 " [%s]",
-		(int64_t) timeval, sCurrentTime, (int64_t) inst->reset_time, sNextTime);
 
+	if (is_monthly) {
+		DEBUG("rlm_sqlcounter: Current Time: %" PRId64 " [%s], Next reset %" PRId64 " [%s], Reset day [%d]",
+			(int64_t) timeval, sCurrentTime, (int64_t) inst->reset_time, sNextTime, inst->reset_day);
+	} else {
+		DEBUG("rlm_sqlcounter: Current Time: %" PRId64 " [%s], Next reset %" PRId64 " [%s]",
+			(int64_t) timeval, sCurrentTime, (int64_t) inst->reset_time, sNextTime);
+	}
 	return ret;
 }
 
@@ -195,6 +203,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
 	char last = '\0';
 	struct tm *tm, s_tm;
 	char sCurrentTime[40], sPrevTime[40];
+	bool is_monthly = false;
 
 	tm = localtime_r(&timeval, &s_tm);
 	len = strftime(sCurrentTime, sizeof(sCurrentTime), "%Y-%m-%d %H:%M:%S", tm);
@@ -213,6 +222,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
 		num = atoi(inst->reset);
 		DEBUG("rlm_sqlcounter: num=%d, last=%c",num,last);
 	}
+
 	if (strcmp(inst->reset, "hourly") == 0 || last == 'h') {
 		/*
 		 *  Round down to the prev nearest hour.
@@ -238,9 +248,10 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
 
 	} else if (strcmp(inst->reset, "monthly") == 0 || last == 'm') {
 		tm->tm_hour = 0;
-		tm->tm_mday = 1;
+		tm->tm_mday = inst->reset_day;
 		tm->tm_mon -= num - 1;
 		inst->last_reset = mktime(tm);
+		is_monthly = true;
 
 	} else if (strcmp(inst->reset, "never") == 0) {
 		inst->reset_time = 0;
@@ -248,10 +259,17 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
 	} else {
 		return -1;
 	}
+
 	len = strftime(sPrevTime, sizeof(sPrevTime), "%Y-%m-%d %H:%M:%S", tm);
 	if (len == 0) *sPrevTime = '\0';
-	DEBUG2("rlm_sqlcounter: Current Time: %" PRId64 " [%s], Prev reset %" PRId64 " [%s]",
-	       (int64_t) timeval, sCurrentTime, (int64_t) inst->last_reset, sPrevTime);
+
+	if (is_monthly) {
+		DEBUG2("rlm_sqlcounter: Current Time: %" PRId64 " [%s], Prev reset %" PRId64 " [%s], Reset day [%d]",
+		       (int64_t) timeval, sCurrentTime, (int64_t) inst->last_reset, sPrevTime, inst->reset_day);
+	} else {
+		DEBUG2("rlm_sqlcounter: Current Time: %" PRId64 " [%s], Prev reset %" PRId64 " [%s]",
+		       (int64_t) timeval, sCurrentTime, (int64_t) inst->last_reset, sPrevTime);
+	}
 
 	return ret;
 }
@@ -262,6 +280,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
  *
  *	%b	last_reset
  *	%e	reset_time
+ *	%r	reset_day
  *	%k	key_name
  *	%S	sqlmod_inst
  *
@@ -325,6 +344,12 @@ static size_t sqlcounter_expand(char *out, int outlen, char const *fmt, rlm_sqlc
 				break;
 			case 'e': /* reset_time */
 				snprintf(tmpdt, sizeof(tmpdt), "%" PRId64, (int64_t) inst->reset_time);
+				strlcpy(q, tmpdt, freespace);
+				q += strlen(q);
+				p++;
+				break;
+			case 'r': /* reset_day */
+				snprintf(tmpdt, sizeof(tmpdt), "%" PRId64, (int64_t) inst->reset_day);
 				strlcpy(q, tmpdt, freespace);
 				q += strlen(q);
 				p++;
@@ -481,6 +506,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	now = time(NULL);
 	inst->reset_time = 0;
+
+	if (!(inst->reset_day >= 1 && inst->reset_day <= 28)) {
+		cf_log_err_cs(conf, "Invalid reset_day '%d', It must be between 1 ... 28", inst->reset_day);
+		return -1;
+	}
 
 	if (find_next_reset(inst, NULL, now) < 0) {
 		cf_log_err_cs(conf, "Invalid reset '%s'", inst->reset);
