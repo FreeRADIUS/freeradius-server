@@ -2295,6 +2295,8 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 		return 0;
 	}
 
+	sock->packet = NULL;	/* we have no need for more partial reads */
+
 	/*
 	 *	FIXME: Client MIB updates?
 	 */
