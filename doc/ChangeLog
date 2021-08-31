@@ -19,6 +19,8 @@ FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	  See sites-available/tls, "proxy_protocol" and doc/antora/modules/howto/pages/protocols/proxy/
 	* Generate parse errors in more circumstances when we know that the
 	  configuration is wrong.
+	* Add 'reset_day' and '%%r' parameter for rlm_sqlcounter allowing specifie
+	  which month day should reset the counter.
 
 	Bug fixes
 	* Fix crash in trustrouter module (#4115). Patch from Alejandro Perez
