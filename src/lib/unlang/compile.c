@@ -1575,24 +1575,15 @@ static bool compile_retry_section(unlang_actions_t *actions, CONF_ITEM *ci)
 			cf_log_err(csi, "Invalid item '%s' in 'retry' configuration.", name);
 			return false;
 		}
-
-		/*
-		 *	Sanity check the values.  If IRT is zero, then
-		 *	the rest MUST be zero.
-		 */
-		if (!actions->retry.irt &&
-		    (actions->retry.mrt || actions->retry.mrc || actions->retry.mrd)) {
-			cf_log_err(csi, "If 'initial_rtx_time' is zero, then the other fields MUST be zero");
-			return false;
-		}
 	}
 
 	return true;
 }
 
-bool unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *action_cs)
+bool unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *action_cs, bool module_retry)
 {
 	int i;
+	bool disallow_retry_action = false;
 	CONF_ITEM *csi;
 	CONF_SECTION *cs;
 
@@ -1650,6 +1641,22 @@ bool unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *action_cs)
 		}
 	}
 
+	if (module_retry) {
+		if (!actions->retry.irt) {
+			cf_log_err(csi, "initial_rtx_time MUST be non-zero for modules which support retries.");
+			return false;
+		}
+	} else {
+		if (actions->retry.irt) {
+			cf_log_err(csi, "initial_rtx_time MUST be zero, as only max_rtx_count and max_rtx_duration are used.");
+			return false;
+		}
+
+		if (!actions->retry.mrc && !actions->retry.mrd) {
+			disallow_retry_action = true;
+		}
+	}
+
 	/*
 	 *	Sanity check that "fail = retry", we actually have a
 	 *	retry section.
@@ -1657,7 +1664,19 @@ bool unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *action_cs)
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
 		if (actions->actions[i] != MOD_ACTION_RETRY) continue;
 
-		if (!actions->retry.irt) {
+		if (module_retry) {
+			cf_log_err(csi, "Cannot use a '%s = retry' action for a module which has its own retries",
+				   fr_table_str_by_value(mod_rcode_table, i, "???"));
+			return false;
+		}
+
+		if (disallow_retry_action) {
+			cf_log_err(csi, "max_rtx_count and max_rtx_duration cannot both be zero when using '%s = retry'",
+				   fr_table_str_by_value(mod_rcode_table, i, "???"));
+			return false;
+		}
+
+		if (!actions->retry.irt && !actions->retry.mrc && !actions->retry.mrd) {
 			cf_log_err(csi, "Cannot use a '%s = retry' action without a 'retry { ... }' section.",
 				   fr_table_str_by_value(mod_rcode_table, i, "???"));
 			return false;
@@ -1750,7 +1769,7 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 		return false;
 	}
 
-	return unlang_compile_actions(&c->actions, subcs);
+	return unlang_compile_actions(&c->actions, subcs, false);
 }
 
 
@@ -3452,7 +3471,7 @@ static unlang_t *compile_function(unlang_t *parent, unlang_compile_t *unlang_ctx
 	 *	Else we have a reference to a policy, and that reference
 	 *	over-rides the return codes for the policy!
 	 */
-	if (!unlang_compile_actions(&c->actions, cf_item_to_section(ci))) {
+	if (!unlang_compile_actions(&c->actions, cf_item_to_section(ci), false)) {
 		talloc_free(c);
 		return NULL;
 	}
@@ -3645,25 +3664,11 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	If a module reference is a section, then the section
 	 *	should contain action over-rides.  We add those here.
 	 */
-	if (cf_item_is_section(ci)) {
-		if (!unlang_compile_actions(&c->actions, cf_item_to_section(ci))) {
-			talloc_free(c);
-			return NULL;
-		}
-	}
-
-	/*
-	 *	If we're retrying this section, then all modules in
-	 *	the section have to be marked as retry-safe.
-	 *
-	 *	src/lib/server/module.c already checks if the default
-	 *	module actions are retry safe, so we don't need to
-	 *	check that here.
-	 */
-	if (unlang_ctx->actions.retry.irt && ((inst->module->type & RLM_TYPE_RETRY) != 0)) {
-		cf_log_err(ci, "Cannot do retries for module \"%s\" - it does not support them", inst->module->name);
-		talloc_free(c);
-		return NULL;
+	if (cf_item_is_section(ci) &&
+	    !unlang_compile_actions(&c->actions, cf_item_to_section(ci),
+				    (inst->module->type & RLM_TYPE_RETRY) != 0)) {
+		    talloc_free(c);
+		    return NULL;
 	}
 
 	return c;
