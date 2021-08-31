@@ -410,7 +410,7 @@ static void mod_retry_signal(UNUSED module_ctx_t const *mctx, request_t *request
 /*
  *	Test retries
  */
-static unlang_action_t CC_HINT(nonnull) mod_retry(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_retry(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	return unlang_module_yield(request, mod_retry_resume, mod_retry_signal, NULL);
 }
