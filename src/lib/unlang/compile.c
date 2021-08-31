@@ -1475,6 +1475,9 @@ static int compile_action_pair(unlang_actions_t *actions, CONF_PAIR *cp)
 	else if (!strcasecmp(value, "reject"))
 		action = MOD_ACTION_REJECT;
 
+	else if (!strcasecmp(value, "retry"))
+		action = MOD_ACTION_RETRY;
+
 	else if (strspn(value, "0123456789")==strlen(value)) {
 		action = atoi(value);
 
@@ -1589,6 +1592,7 @@ static bool compile_retry_section(unlang_actions_t *actions, CONF_ITEM *ci)
 
 bool unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *action_cs)
 {
+	int i;
 	CONF_ITEM *csi;
 	CONF_SECTION *cs;
 
@@ -1642,6 +1646,20 @@ bool unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *action_cs)
 		}
 
 		if (!compile_action_pair(actions, cp)) {
+			return false;
+		}
+	}
+
+	/*
+	 *	Sanity check that "fail = retry", we actually have a
+	 *	retry section.
+	 */
+	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+		if (actions->actions[i] != MOD_ACTION_RETRY) continue;
+
+		if (!actions->retry.irt) {
+			cf_log_err(csi, "Cannot use a '%s = retry' action without a 'retry { ... }' section.",
+				   fr_table_str_by_value(mod_rcode_table, i, "???"));
 			return false;
 		}
 	}

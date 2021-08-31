@@ -44,6 +44,7 @@ extern "C" {
  * to cause an immediate reject. */
 #define MOD_ACTION_RETURN  (-1)
 #define MOD_ACTION_REJECT  (-2)
+#define MOD_ACTION_RETRY   (-3)
 #define MOD_PRIORITY_MAX   (64)
 
 /** Types of unlang_t nodes
