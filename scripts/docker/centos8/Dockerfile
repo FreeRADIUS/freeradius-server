@@ -42,7 +42,7 @@ RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 # EPEL repository for freetds and hiredis
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 
-RUN yum config-manager --enable PowerTools
+RUN yum config-manager --enable powertools
 # Currently needed for hiredis-devel
 RUN yum config-manager --enable epel-testing
 
