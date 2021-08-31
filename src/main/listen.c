@@ -2236,16 +2236,62 @@ static int proxy_socket_recv(rad_listen_t *listener)
  */
 static int proxy_socket_tcp_recv(rad_listen_t *listener)
 {
+	int rcode;
 	RADIUS_PACKET	*packet;
 	listen_socket_t	*sock = listener->data;
-	char		buffer[128];
+	char		buffer[256];
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
-	packet = fr_tcp_recv(listener->fd, 0);
-	if (!packet) {
+	if (!sock->packet) {
+		sock->packet = rad_alloc(sock, false);
+		if (!sock->packet) return 0;
+
+		sock->packet->sockfd = listener->fd;
+		sock->packet->src_ipaddr = sock->other_ipaddr;
+		sock->packet->src_port = sock->other_port;
+		sock->packet->dst_ipaddr = sock->my_ipaddr;
+		sock->packet->dst_port = sock->my_port;
+		sock->packet->proto = sock->proto;
+	}
+
+	packet = sock->packet;
+
+	rcode = fr_tcp_read_packet(packet, 0);
+
+	/*
+	 *	Still only a partial packet.  Put it back, and return,
+	 *	so that we'll read more data when it's ready.
+	 */
+	if (rcode == 0) {
+		return 0;
+	}
+
+	if (rcode == -1) {	/* error reading packet */
+		ERROR("Invalid packet from %s port %d, closing socket: %s",
+		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
+		       packet->src_port, fr_strerror());
+	}
+
+	if (rcode < 0) {	/* error or connection reset */
 		listener->status = RAD_LISTEN_STATUS_EOL;
+
+		/*
+		 *	Tell the event handler that an FD has disappeared.
+		 */
+		DEBUG("Home server %s port %d has closed connection",
+		      ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
+		      packet->src_port);
+
 		radius_update_listener(listener);
+
+		/*
+		 *	Do NOT free the listener here.  It's in use by
+		 *	a request, and will need to hang around until
+		 *	all of the requests are done.
+		 *
+		 *	It is instead free'd in remove_from_request_hash()
+		 */
 		return 0;
 	}
 
@@ -2276,10 +2322,6 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	packet->src_ipaddr = sock->other_ipaddr;
-	packet->src_port = sock->other_port;
-	packet->dst_ipaddr = sock->my_ipaddr;
-	packet->dst_port = sock->my_port;
 
 	/*
 	 *	FIXME: Have it return an indication of packets that
