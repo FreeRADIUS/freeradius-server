@@ -303,6 +303,8 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 			 *	Clamp it at the maximum count.
 			 */
 			if (instruction->actions.retry.mrc > 0) {
+				retry->count++;
+
 				if (retry->count >= instruction->actions.retry.mrc) {
 					retry->state = FR_RETRY_MRC;
 
@@ -312,8 +314,6 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 					*result = RLM_MODULE_FAIL;
 					goto finalize;
 				}
-
-				retry->count++;
 			}
 		}
 
