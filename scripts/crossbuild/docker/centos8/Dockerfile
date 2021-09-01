@@ -6,7 +6,7 @@ FROM centos:centos8
 #
 RUN yum update -y
 RUN yum install -y rpmdevtools openssl epel-release git yum-utils rsync dnf-plugins-core
-RUN dnf config-manager --set-enabled PowerTools
+RUN dnf config-manager --set-enabled powertools
 
 #
 #  Install GCC that has the requisite support for C11 keywords and atomics
