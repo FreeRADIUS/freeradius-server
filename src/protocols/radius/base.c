@@ -1157,17 +1157,17 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 		return false;
 	}
 
-	if (flags->subtype > FLAG_ENCRYPT_ASCEND_SECRET) {
-		fr_strerror_printf("Invalid flag value %u", flags->subtype);
-		return false;
-	}
-
 	/*
 	 *	No special flags, so we're OK.
 	 *
 	 *	If there is a subtype, it can only be of one kind.
 	 */
 	if (!flags->subtype) return true;
+
+	if (flags->subtype > FLAG_ENCRYPT_ASCEND_SECRET) {
+		fr_strerror_printf("Invalid flag value %u", flags->subtype);
+		return false;
+	}
 
 	if (flag_concat(flags)) {
 		if (!parent->flags.is_root) {
