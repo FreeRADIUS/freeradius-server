@@ -216,11 +216,11 @@ int fr_time_delta_from_time_zone(char const *tz, fr_time_delta_t *delta)
  */
 int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t hint)
 {
-	int	sec;
+	int64_t	sec;
 	char	*p, *end;
 	fr_time_delta_t delta;
 
-	sec = strtoul(in, &end, 10);
+	sec = strtoll(in, &end, 10);
 	if (in == end) {
 	failed:
 		fr_strerror_printf("Failed parsing \"%s\" as time_delta", in);
@@ -310,23 +310,8 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 			}
 
 		error:
-			fr_strerror_printf("Invalid time qualifier in \"%s\"", p);
+			fr_strerror_printf("Invalid time qualifier at \"%s\"", p);
 			return -1;
-		}
-
-		if ((p[0] == 'm') && !p[1]) {
-			delta *= 60;
-			goto done;
-		}
-
-		if ((p[0] == 'h') && !p[1]) {
-			delta *= 3600;
-			goto done;
-		}
-
-		if ((p[0] == 'd') && !p[1]) {
-			delta *= 86400;
-			goto done;
 		}
 
 		goto error;
@@ -365,7 +350,33 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		delta = minutes * 60 + sec;
 		delta *= NSEC;
 
-	} else if (!*end) {
+	} else if (*end) {
+		p = end;
+
+		/*
+		 *	minutes, hours, or days.
+		 *
+		 *	Fractional numbers are not allowed.
+		 */
+
+		if ((p[0] == 'm') && !p[1]) {
+			delta *= 60;
+			goto done;
+		}
+
+		if ((p[0] == 'h') && !p[1]) {
+			delta *= 3600;
+			goto done;
+		}
+
+		if ((p[0] == 'd') && !p[1]) {
+			delta *= 86400;
+			goto done;
+		}
+
+		goto error;
+
+	} else {
 	do_scale:
 		switch (hint) {
 		case FR_TIME_RES_SEC:
@@ -387,9 +398,6 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 			fr_strerror_printf("Invalid hint %d for time delta", hint);
 			return -1;
 		}
-
-	} else {
-		goto failed;
 	}
 
 done:
