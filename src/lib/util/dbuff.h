@@ -1783,6 +1783,43 @@ static inline ssize_t _fr_dbuff_out_uint64v(uint64_t *num, uint8_t **pos_p, fr_d
  */
 #define FR_DBUFF_OUT_UINT64V_RETURN(_num, _dbuff_or_marker, _len) FR_DBUFF_RETURN(fr_dbuff_out_uint64v, _num, _dbuff_or_marker, _len)
 
+/** Internal function - do not call directly
+ * @private
+ */
+static inline ssize_t _fr_dbuff_out_int64v(int64_t *num, uint8_t **pos_p, fr_dbuff_t *dbuff, size_t length)
+{
+	ssize_t		slen;
+
+	fr_assert(length > 0 && length <= sizeof(uint64_t));
+
+	*num = 0;
+	slen = _fr_dbuff_out_memcpy(((uint8_t *) num) + (8 - length), pos_p, dbuff, length);
+	if (slen <= 0) return slen;
+
+	*num = fr_net_to_int64((uint8_t const *)num);
+	return length;
+}
+
+/** Read bytes from a dbuff or marker and interpret them as a network order signed integer
+ * @param[in] _num		points to an int64_t to store the integer in
+ * @param[in] _dbuff_or_marker	data to copy bytes from
+ * @param[in] _len		number of bytes to read (must be positive and less than eight)
+ *
+ * @return
+ *	- 0	no data read.
+ *	- >0	the number of bytes read.
+ *	- <0	the number of bytes we would have needed
+ *		to complete the read operation.
+ */
+#define fr_dbuff_out_int64v(_num, _dbuff_or_marker, _len) \
+	_fr_dbuff_out_int64v(_num, _fr_dbuff_current_ptr(_dbuff_or_marker), fr_dbuff_ptr(_dbuff_or_marker), _len)
+
+/** Read bytes from a dbuff or marker and interpret them as a network order unsigned integer
+ *
+ * @copydetails fr_dbuff_out_int64v
+ */
+#define FR_DBUFF_OUT_INT64V_RETURN(_num, _dbuff_or_marker, _len) FR_DBUFF_RETURN(fr_dbuff_out_int64v, _num, _dbuff_or_marker, _len)
+
 /** @} */
 
 #ifdef __cplusplus

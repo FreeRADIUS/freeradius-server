@@ -1739,7 +1739,7 @@ ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
 	{
 		size_t length = 4;
 		fr_time_res_t precision = FR_TIME_RES_SEC;
-		uint64_t date;
+		int64_t date;
 
 		if (enumv) {
 			length = enumv->flags.length;
