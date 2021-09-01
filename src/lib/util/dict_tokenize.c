@@ -408,6 +408,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 
 				case FR_TYPE_INT16:
 					if (type == FR_TYPE_DATE) goto unknown_type;
+					flags->is_signed = true;
 					FALL_THROUGH;
 
 				case FR_TYPE_UINT16:
@@ -416,6 +417,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 
 				case FR_TYPE_INT32:
 					if (type == FR_TYPE_DATE) goto unknown_type;
+					flags->is_signed = true;
 					FALL_THROUGH;
 
 				case FR_TYPE_UINT32:
@@ -424,6 +426,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 
 				case FR_TYPE_INT64:
 					if (type == FR_TYPE_DATE) goto unknown_type;
+					flags->is_signed = true;
 					FALL_THROUGH;
 
 				case FR_TYPE_UINT64:

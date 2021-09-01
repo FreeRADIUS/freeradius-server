@@ -1407,7 +1407,7 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		if (!value->enumv) {
 			goto delta_seconds;
 
-		} else switch (value->enumv->flags.flag_time_res) {
+		} switch (value->enumv->flags.flag_time_res) {
 		delta_seconds:
 		case FR_TIME_RES_SEC:
 			date = fr_time_delta_to_sec(value->vb_time_delta);
@@ -1432,34 +1432,62 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		if (!value->enumv) {
 			goto delta_size4;
 
-		} else switch (value->enumv->flags.length) {
-		case 2:
-			if (date < INT16_MIN) {
-				date = INT16_MIN;
-			} else if (date > INT16_MAX) {
-				date = INT16_MAX;
+		} else if (value->enumv->flags.is_signed) {
+			switch (value->enumv->flags.length) {
+			case 2:
+				if (date < INT16_MIN) {
+					date = INT16_MIN;
+				} else if (date > INT16_MAX) {
+					date = INT16_MAX;
+				}
+				FR_DBUFF_IN_RETURN(&work_dbuff, (int16_t)date);
+				break;
+
+			delta_size4:
+			case 4:
+				if (date < INT32_MIN) {
+					date = INT32_MIN;
+				} else if (date > INT32_MAX) {
+					date = INT32_MAX;
+				}
+				FR_DBUFF_IN_RETURN(&work_dbuff, (int32_t)date);
+				break;
+
+			case 8:
+				FR_DBUFF_IN_RETURN(&work_dbuff, (int64_t)date);
+				break;
+
+			default:
+				goto unsupported;
 			}
-			FR_DBUFF_IN_RETURN(&work_dbuff, (int16_t)date);
-			break;
+		} else {	/* time delta is unsigned! */
+			switch (value->enumv->flags.length) {
+			case 2:
+				if (date < 0) {
+					date = 0;
+				} else if (date > UINT16_MAX) {
+					date = UINT16_MAX;
+				}
+				FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t)date);
+				break;
 
-		delta_size4:
-		case 4:
-			if (date < INT32_MIN) {
-				date = INT32_MIN;
-			} else if (date > INT32_MAX) {
-				date = INT32_MAX;
+			case 4:
+				if (date < 0) {
+					date = 0;
+				} else if (date > UINT32_MAX) {
+					date = UINT32_MAX;
+				}
+				FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t)date);
+				break;
+
+			case 8:
+				FR_DBUFF_IN_RETURN(&work_dbuff, (uint64_t)date);
+				break;
+
+			default:
+				goto unsupported;
 			}
-			FR_DBUFF_IN_RETURN(&work_dbuff, (int32_t)date);
-			break;
-
-		case 8:
-			FR_DBUFF_IN_RETURN(&work_dbuff, (int64_t)date);
-			break;
-
-		default:
-			goto unsupported;
 		}
-
 	}
 		break;
 
@@ -1754,7 +1782,22 @@ ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
 
 		dst->enumv = enumv;
 
-		FR_DBUFF_OUT_UINT64V_RETURN(&date, &work_dbuff, length);
+		if (enumv && enumv->flags.is_signed) {
+			FR_DBUFF_OUT_INT64V_RETURN(&date, &work_dbuff, length);
+		} else {
+			uint64_t tmp;
+
+			/*
+			 *	Else it's an unsigned time delta, but
+			 *	we do have to clamp it at the max
+			 *	value for a signed 64-bit integer.
+			 */
+			FR_DBUFF_OUT_UINT64V_RETURN(&tmp, &work_dbuff, length);
+
+			if (tmp > INT64_MAX) tmp = INT64_MAX;
+
+			date = tmp;
+		}
 
 		switch (precision) {
 		default:

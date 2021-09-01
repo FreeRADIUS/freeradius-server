@@ -91,6 +91,8 @@ typedef struct {
 
 	unsigned int		virtual : 1;			//!< for dynamic expansion
 
+	unsigned int		is_signed : 1;			//!< hackity hack for dates and time deltas
+
 	/*
 	 *	@todo - if we want to clean these fields up, make
 	 *	"subtype" and "type_size" both 4-bit bitfields.  That
