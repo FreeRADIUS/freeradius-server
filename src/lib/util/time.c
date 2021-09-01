@@ -217,8 +217,9 @@ int fr_time_delta_from_time_zone(char const *tz, fr_time_delta_t *delta)
 int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t hint)
 {
 	int64_t	sec;
+	uint64_t subsec = 0;
+	int	scale = 1;
 	char	*p, *end;
-	fr_time_delta_t delta;
 
 	sec = strtoll(in, &end, 10);
 	if (in == end) {
@@ -226,13 +227,6 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		fr_strerror_printf("Failed parsing \"%s\" as time_delta", in);
 		return -1;
 	}
-
-	/*
-	 *	Cast before multiplication to avoid integer overflow
-	 *	in 'int' seconds.
-	 */
-	delta = sec;
-	delta *= NSEC;
 
 	/*
 	 *	Allow "1ns", etc.
@@ -248,7 +242,7 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 	if (*end == '.') {
 		int len;
 
-		len = sec = 0;
+		len = subsec = 0;
 
 		end++;
 		p = end;
@@ -259,32 +253,36 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		while ((*p >= '0') && (*p <= '9')) {
 			if (len > 9) {
 				fr_strerror_const("Too much precision for time_delta");
+				return -1;
 			}
 
-			sec *= 10;
-			sec += *p - '0';
+			subsec *= 10;
+			subsec += *p - '0';
 			p++;
 			len++;
 		}
 
 		/*
-		 *	We've just parsed "0.1" as "1".  We need to
-		 *	shift it left to convert it to nanoseconds.
+		 *	We've just parsed the fractional part of "0.1"
+		 *	as "1".  We need to shift it left to convert
+		 *	it to nanoseconds.
 		 */
 		while (len < 9) {
-			sec *= 10;
+			subsec *= 10;
 			len++;
 		}
 
-		delta += sec;
-
 	parse_precision:
 		/*
-		 *	Nothing else, it defaults to whatever scale the caller passed.
+		 *	No precision qualifiers, it defaults to
+		 *	whatever scale the caller passed as a hint.
 		 */
 		if (!*p) goto do_scale;
 
-		if ((p[0] == 's') && !p[1]) goto done;
+		if ((p[0] == 's') && !p[1]) {
+			scale = NSEC;
+			goto done;
+		}
 
 		/*
 		 *	Everything else has "ms" or "us" or "ns".
@@ -295,26 +293,24 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		 */
 		if ((p[1] == 's') && (p[2] == '\0')) {
 			if (p[0] == 'm') {
-				delta /= 1000;
+				scale = 1000000; /* 1,000,000 nanoeconds in a millisecond */
 				goto done;
 			}
 
 			if (p[0] == 'u') {
-				delta /= 1000000;
+				scale = 1000; /* 1,000 msec on a used */
 				goto done;
 			}
 
 			if (p[0] == 'n') {
-				delta /= NSEC;
+				scale = 1;
 				goto done;
 			}
-
-		error:
-			fr_strerror_printf("Invalid time qualifier at \"%s\"", p);
-			return -1;
 		}
 
-		goto error;
+	error:
+		fr_strerror_printf("Invalid time qualifier at \"%s\"", p);
+		return -1;
 
 	} else if (*end == ':') {
 		/*
@@ -339,16 +335,13 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		}
 
 		/*
-		 *	@todo - do we want to allow decimals, as in
-		 *	"1:30.5"? Perhaps not for now.
-		 *
 		 *	@todo - support hours, maybe.  Even though
 		 *	pretty much nothing needs them right now.
 		 */
 		if (*end) goto failed;
 
-		delta = minutes * 60 + sec;
-		delta *= NSEC;
+		*out = (minutes * 60 + sec) * NSEC;
+		return 0;
 
 	} else if (*end) {
 		p = end;
@@ -357,21 +350,27 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		 *	minutes, hours, or days.
 		 *
 		 *	Fractional numbers are not allowed.
+		 *
+		 *	minutes / hours / days larger than 64K are disallowed.
 		 */
+		if (sec > 65535) {
+			fr_strerror_printf("Invalid value at \"%s\"", in);
+			return -1;
+		}
 
 		if ((p[0] == 'm') && !p[1]) {
-			delta *= 60;
-			goto done;
+			*out = sec * 60 * NSEC;
+			return 0;
 		}
 
 		if ((p[0] == 'h') && !p[1]) {
-			delta *= 3600;
-			goto done;
+			*out = sec * 3600 * NSEC;
+			return 0;
 		}
 
 		if ((p[0] == 'd') && !p[1]) {
-			delta *= 86400;
-			goto done;
+			*out = sec * 86400 * NSEC;
+			return 0;
 		}
 
 		goto error;
@@ -380,18 +379,19 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 	do_scale:
 		switch (hint) {
 		case FR_TIME_RES_SEC:
+			scale = NSEC;
 			break;
 
 		case FR_TIME_RES_MSEC:
-			delta /= 1000;
+			scale = 1000000;
 			break;
 
 		case FR_TIME_RES_USEC:
-			delta /= 1000000;
+			scale = 1000;
 			break;
 
 		case FR_TIME_RES_NSEC:
-			delta /= 1000000000;
+			scale = 1;
 			break;
 
 		default:
@@ -401,7 +401,38 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 	}
 
 done:
-	*out = delta;
+	/*
+	 *	Subseconds was parsed as if it was nanoseconds.  But
+	 *	instead it may be something else, so it should be
+	 *	truncated.
+	 *
+	 *	Note that this operation can't overflow.
+	 */
+	subsec *= scale;
+	subsec /= NSEC;
+
+	/*
+	 *	Now sec && subsec are in the same scale.
+	 */
+	if (sec < 0) {
+		if (sec <= (INT64_MIN / scale)) {
+			fr_strerror_const("Integer underflow in time_delta value.");
+			return -1;
+		}
+
+		sec *= scale;
+		sec -= subsec;
+	} else {
+		if (sec >= (INT64_MAX / scale)) {
+			fr_strerror_const("Integer overflow in time_delta value.");
+			return -1;
+		}
+
+		sec *= scale;
+		sec += subsec;
+	}
+
+	*out = sec;
 
 	return 0;
 }
