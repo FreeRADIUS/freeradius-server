@@ -188,6 +188,19 @@ static inline CC_HINT(always_inline, nonnull) bool has_children(minmax_heap_t *h
 #define OFFSET_SET(_heap, _idx) index_set(_heap, _heap->p[_idx], _idx);
 #define OFFSET_RESET(_heap, _idx) index_set(_heap, _heap->p[_idx], 0);
 
+/*
+ *	The minmax heap has the same basic idea as binary heaps:
+ *	1. To insert a value, put it at the bottom and push it up to where it should be.
+ * 	2. To remove a value, take it out; if it's not at the bottom, move what is at the
+ *	   bottom up to fill the hole, and push it down to where it should be.
+ *	The difference is how you push, and the invariants to preserve.
+ *
+ *	Since we store the index in the item (or zero if it's not in the heap), when we
+ *	move an item around, we have to set its index. The general principle is that we
+ *	set it when we put the item in the place it will ultimately be when the push_down()
+ *	or push_up() is finished.
+ */
+
 static fr_minmax_heap_index_t min_child_or_grandchild(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 {
 	fr_minmax_heap_index_t	min = HEAP_LEFT(idx);
@@ -222,6 +235,9 @@ static fr_minmax_heap_index_t max_child_or_grandchild(minmax_heap_t *h, fr_minma
 	return max;
 }
 
+/**
+ * precondition: idx is the index of an existing entry on a min level
+ */
 static void push_down_min(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 {
 	fr_minmax_heap_index_t	m;
@@ -229,10 +245,11 @@ static void push_down_min(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 	for (; has_children(h, idx); idx = m) {
 		m = min_child_or_grandchild(h, idx);
 		if (h->cmp(h->p[m], h->p[idx]) >= 0) break;
+
 		HEAP_SWAP(h->p[idx], h->p[m]);
 		OFFSET_SET(h, idx);
-		if (HEAP_PARENT(m) == idx) break;
-		if (h->cmp(h->p[m], h->p[HEAP_PARENT(m)]) > 0) {
+
+		if (HEAP_PARENT(m) != idx && h->cmp(h->p[m], h->p[HEAP_PARENT(m)]) > 0) {
 			HEAP_SWAP(h->p[HEAP_PARENT(m)], h->p[m]);
 			OFFSET_SET(h, HEAP_PARENT(m));
 		}
@@ -240,6 +257,9 @@ static void push_down_min(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 	OFFSET_SET(h, idx);
 }
 
+/**
+ * precondition: idx is the index of an existing entry on a max level
+ */
 static void push_down_max(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 {
 	fr_minmax_heap_index_t	m;
@@ -247,10 +267,11 @@ static void push_down_max(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 	for (; has_children(h, idx); idx = m) {
 		m = max_child_or_grandchild(h, idx);
 		if (h->cmp(h->p[m], h->p[idx]) <= 0) break;
+
 		HEAP_SWAP(h->p[idx], h->p[m]);
 		OFFSET_SET(h, idx);
-		if (HEAP_PARENT(m) == idx) break;
-		if (h->cmp(h->p[m], h->p[HEAP_PARENT(m)]) < 0) {
+
+		if (HEAP_PARENT(m) != idx && h->cmp(h->p[m], h->p[HEAP_PARENT(m)]) < 0) {
 			HEAP_SWAP(h->p[HEAP_PARENT(m)], h->p[m]);
 			OFFSET_SET(h, HEAP_PARENT(m));
 		}
@@ -295,25 +316,40 @@ static void push_up_max(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 
 static void push_up(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 {
-	if (idx != 1) {
-		fr_minmax_heap_index_t	parent = HEAP_PARENT(idx);
-		int8_t	order = h->cmp(h->p[idx], h->p[parent]);
-		if (is_min_level_index(idx)) {
-			if (order > 0) {
-				HEAP_SWAP(h->p[idx], h->p[parent]);
-				OFFSET_SET(h, idx);
-				push_up_max(h, parent);
-			} else {
-				push_up_min(h, idx);
-			}
+	fr_minmax_heap_index_t	parent;
+	int8_t			order;
+
+	/*
+	 *	First entry? No need to move; set its index and be done with it.
+	 */
+	if (idx == 1) {
+		OFFSET_SET(h, idx);
+		return;
+	}
+
+	/*
+	 *	Otherwise, move to the next level up if need be.
+	 *	Once it's positioned appropriately on an even or odd layer,
+	 *	it can percolate up two at a time.
+	 */
+	parent = HEAP_PARENT(idx);
+	order = h->cmp(h->p[idx], h->p[parent]);
+
+	if (is_min_level_index(idx)) {
+		if (order > 0) {
+			HEAP_SWAP(h->p[idx], h->p[parent]);
+			OFFSET_SET(h, idx);
+			push_up_max(h, parent);
 		} else {
-			if (order < 0) {
-				HEAP_SWAP(h->p[idx], h->p[parent]);
-				OFFSET_SET(h, idx);
-				push_up_min(h, parent);
-			} else {
-				push_up_max(h, idx);
-			}
+			push_up_min(h, idx);
+		}
+	} else {
+		if (order < 0) {
+			HEAP_SWAP(h->p[idx], h->p[parent]);
+			OFFSET_SET(h, idx);
+			push_up_min(h, parent);
+		} else {
+			push_up_max(h, idx);
 		}
 	}
 }
@@ -340,7 +376,6 @@ int fr_minmax_heap_insert(fr_minmax_heap_t *hp, void *data)
 	h->p[child] = data;
 	h->num_elements++;
 	push_up(h, child);
-	OFFSET_SET(h, child);
 	return 0;
 }
 
@@ -395,11 +430,21 @@ int fr_minmax_heap_extract(fr_minmax_heap_t *hp, void *data)
 	minmax_heap_t		*h = *hp;
 	fr_minmax_heap_index_t	idx = index_get(h, data);
 
-	if (h->num_elements < idx) return -1;
-	if (!fr_minmax_heap_entry_inserted(index_get(h, data)) || h->p[idx] != data) return -1;
+	if (h->num_elements < idx) {
+		fr_strerror_printf("data (index %u) exceeds heap size %u", idx, h->num_elements);
+		return -1;
+	}
+	if (!fr_minmax_heap_entry_inserted(index_get(h, data)) || h->p[idx] != data) {
+		fr_strerror_printf("data (index %u) not in heap", idx);
+		return -1;
+	}
 
 	OFFSET_RESET(h, idx);
 
+	/*
+	 *	Removing the last element can't break the minmax heap properties, so
+	 *	decrement the number of elements and be done with it.
+	 */
 	if (h->num_elements == idx) {
 		h->num_elements--;
 		return 0;
