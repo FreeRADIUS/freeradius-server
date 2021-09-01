@@ -25,6 +25,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/minmax_heap.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/misc.h>
 
 /*
  *	The internal representation of minmax heaps is that of plain
@@ -76,25 +77,33 @@ typedef struct fr_minmax_heap_s minmax_heap_t;
 #define HEAP_RIGHT(_x) (2 * (_x) + 1 )
 #define	HEAP_SWAP(_a, _b) { void *_tmp = _a; _a = _b; _b = _tmp; }
 
-#define is_power_of_2(_n)	((_n) && (((_n) & ((_n) - 1)) == 0))
-
-static bool is_min_level_index(fr_minmax_heap_index_t i)
+static inline uint8_t depth(fr_minmax_heap_index_t i)
 {
-	int8_t	depth = 0;
-
-	while ((1U << depth) < i) depth++;
-
-	/*
-	 *	That gives us ceil(log2(i)), but depth is floor(log2(i)), so...
-	 */
-	if (!is_power_of_2(i)) depth--;
-
-	/*
-	 *	min level nodes have even depth, so
-	 *	tsome call min and max levels "even" and "odd" respectively.
-	 */
-	return (depth & 1) == 0;
+	return fr_high_bit_pos(i) - 1;
 }
+
+static inline bool is_min_level_index(fr_minmax_heap_index_t i)
+{
+	return (depth(i) & 1) == 0;
+}
+
+static inline bool is_descendant(fr_minmax_heap_index_t candidate, fr_minmax_heap_index_t ancestor)
+{
+	fr_minmax_heap_index_t	level_min;
+	uint8_t			candidate_depth = depth(candidate);
+	uint8_t			ancestor_depth = depth(ancestor);
+
+	/*
+	 *	This will never happen given the its use by fr_minmax_heap_extract(),
+	 *	but it's here for safety and to make static analysis happy.
+	 */
+	if (unlikely(candidate_depth < ancestor_depth)) return false;
+
+	level_min = ((fr_minmax_heap_index_t) 1) << (candidate_depth - ancestor_depth);
+	return (candidate - level_min) < level_min;
+}
+
+#define is_max_level_index(_i)	(!(is_min_level_index(_i)))
 
 fr_minmax_heap_t *_fr_minmax_heap_alloc(TALLOC_CTX *ctx, fr_minmax_heap_cmp_t cmp, char const *type, size_t offset, unsigned int init)
 {
@@ -136,7 +145,7 @@ fr_minmax_heap_t *_fr_minmax_heap_alloc(TALLOC_CTX *ctx, fr_minmax_heap_cmp_t cm
 	return hp;
 }
 
-static int minmax_heap_expand(fr_minmax_heap_t *hp)
+static CC_HINT(nonnull) int minmax_heap_expand(fr_minmax_heap_t *hp)
 {
 	minmax_heap_t	*h = *hp;
 	unsigned int	n_size;
@@ -163,7 +172,7 @@ static int minmax_heap_expand(fr_minmax_heap_t *hp)
 		return -1;
 	}
 
-	talloc_set_type(h, heap_t);
+	talloc_set_type(h, minmax_heap_t);
 	h->size = n_size;
 	*hp = h;
 	return 0;
@@ -185,6 +194,11 @@ static inline CC_HINT(always_inline, nonnull) bool has_children(minmax_heap_t *h
 	return HEAP_LEFT(idx) <= h->num_elements;
 }
 
+static inline bool has_grandchildren(minmax_heap_t *h, fr_minmax_heap_index_t i)
+{
+	return HEAP_LEFT(HEAP_LEFT(i)) <= h->num_elements;
+}
+
 #define OFFSET_SET(_heap, _idx) index_set(_heap, _heap->p[_idx], _idx);
 #define OFFSET_RESET(_heap, _idx) index_set(_heap, _heap->p[_idx], 0);
 
@@ -201,36 +215,77 @@ static inline CC_HINT(always_inline, nonnull) bool has_children(minmax_heap_t *h
  *	or push_up() is finished.
  */
 
-static fr_minmax_heap_index_t min_child_or_grandchild(minmax_heap_t *h, fr_minmax_heap_index_t idx)
+/** Find the index of the minimum child or grandchild of the entry at a given index.
+ *	precondition: has_children(h, idx), i.e. there is stuff in the heap below
+ *	idx.
+ *
+ *	These functions are called by push_down_{min, max}() with idx the index of
+ *	an element moved into that position but which may or may not be where it
+ *	should ultimately go. The minmax heap property still holds for its (positional,
+ *	at least) descendants, though. That lets us cut down on the number of
+ *	comparisons over brute force iteration over every child and grandchild.
+ *
+ * 	In the case where the desired item must be a child, there are at most two,
+ *	so we just do it inlne; no loop needed.
+ */
+static CC_HINT(nonnull) fr_minmax_heap_index_t min_child_or_grandchild(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 {
-	fr_minmax_heap_index_t	min = HEAP_LEFT(idx);
-	fr_minmax_heap_index_t  others[] = {
-		HEAP_RIGHT(idx),
-		HEAP_LEFT(HEAP_LEFT(idx)),
-		HEAP_RIGHT(HEAP_LEFT(idx)),
-		HEAP_LEFT(HEAP_RIGHT(idx)),
-		HEAP_RIGHT(HEAP_RIGHT(idx))
-	};
+	fr_minmax_heap_index_t	lwb, upb, min;
 
-	for (size_t i = 0; i < NUM_ELEMENTS(others) && others[i] <= h->num_elements; i++) {
-		if (h->cmp(h->p[others[i]], h->p[min]) < 0) min = others[i];
+	if (is_max_level_index(idx) || !has_grandchildren(h, idx)) {
+		/* minimum must be a chld */
+		min = HEAP_LEFT(idx);
+		upb = HEAP_RIGHT(idx);
+		if (upb <= h->num_elements && h->cmp(h->p[upb], h->p[min]) < 0) min = upb;
+		return min;
+	}
+
+	/* minimum must be a grandchild, unless the right child is childless */
+	if (!has_children(h, HEAP_RIGHT(idx))) {
+		min = HEAP_RIGHT(idx);
+		lwb = HEAP_LEFT(HEAP_LEFT(idx));
+	} else {
+		min = HEAP_LEFT(HEAP_LEFT(idx));
+		lwb = min + 1;
+	}
+	upb = HEAP_RIGHT(HEAP_RIGHT(idx));
+
+	/* Some grandchildren may not exist. */
+	if (upb > h->num_elements) upb = h->num_elements;
+
+	for (fr_minmax_heap_index_t i = lwb; i <= upb; i++) {
+		if (h->cmp(h->p[i], h->p[min]) < 0) min = i;
 	}
 	return min;
 }
 
-static fr_minmax_heap_index_t max_child_or_grandchild(minmax_heap_t *h, fr_minmax_heap_index_t idx)
+static CC_HINT(nonnull) fr_minmax_heap_index_t max_child_or_grandchild(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 {
-	fr_minmax_heap_index_t	max = HEAP_LEFT(idx);
-	fr_minmax_heap_index_t  others[] = {
-		HEAP_RIGHT(idx),
-		HEAP_LEFT(HEAP_LEFT(idx)),
-		HEAP_RIGHT(HEAP_LEFT(idx)),
-		HEAP_LEFT(HEAP_RIGHT(idx)),
-		HEAP_RIGHT(HEAP_RIGHT(idx))
-	};
+	fr_minmax_heap_index_t	lwb, upb, max;
 
-	for (size_t i = 0; i < NUM_ELEMENTS(others) && others[i] <= h->num_elements; i++) {
-		if (h->cmp(h->p[others[i]], h->p[max]) > 0) max = others[i];
+	if (is_min_level_index(idx) || !has_grandchildren(h, idx)) {
+		/* maximum must be a chld */
+		max = HEAP_LEFT(idx);
+		upb = HEAP_RIGHT(idx);
+		if (upb <= h->num_elements && h->cmp(h->p[upb], h->p[max]) > 0) max = upb;
+		return max;
+	}
+
+	/* minimum must be a grandchild, unless the right child is childless */
+	if (!has_children(h, HEAP_RIGHT(idx))) {
+		max = HEAP_RIGHT(idx);
+		lwb = HEAP_LEFT(HEAP_LEFT(idx));
+	} else {
+		max = HEAP_LEFT(HEAP_LEFT(idx));
+		lwb = max + 1;
+	}
+	upb = HEAP_RIGHT(HEAP_RIGHT(idx));
+
+	/* Some grandchildren may not exist. */
+	if (upb > h->num_elements) upb = h->num_elements;
+
+	for (fr_minmax_heap_index_t i = lwb; i <= upb; i++) {
+		if (h->cmp(h->p[i], h->p[max]) > 0) max = i;
 	}
 	return max;
 }
@@ -238,43 +293,51 @@ static fr_minmax_heap_index_t max_child_or_grandchild(minmax_heap_t *h, fr_minma
 /**
  * precondition: idx is the index of an existing entry on a min level
  */
-static void push_down_min(minmax_heap_t *h, fr_minmax_heap_index_t idx)
+static inline CC_HINT(always_inline, nonnull) void push_down_min(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 {
-	fr_minmax_heap_index_t	m;
+	while (has_children(h, idx)) {
+		fr_minmax_heap_index_t	m =  min_child_or_grandchild(h, idx);
 
-	for (; has_children(h, idx); idx = m) {
-		m = min_child_or_grandchild(h, idx);
+		/*
+		 *	If p[m] doesn't precede p[idx], we're done.
+		 */
 		if (h->cmp(h->p[m], h->p[idx]) >= 0) break;
 
 		HEAP_SWAP(h->p[idx], h->p[m]);
 		OFFSET_SET(h, idx);
 
-		if (HEAP_PARENT(m) != idx && h->cmp(h->p[m], h->p[HEAP_PARENT(m)]) > 0) {
+		/*
+		 *	The entry now at m may belong where the parent is.
+		 */
+		if (HEAP_GRANDPARENT(m) == idx && h->cmp(h->p[m], h->p[HEAP_PARENT(m)]) > 0) {
 			HEAP_SWAP(h->p[HEAP_PARENT(m)], h->p[m]);
 			OFFSET_SET(h, HEAP_PARENT(m));
 		}
+		idx = m;
 	}
 	OFFSET_SET(h, idx);
 }
 
 /**
  * precondition: idx is the index of an existing entry on a max level
+ * (Just like push_down_min() save for reversal of ordering, so comments there apply,
+ * mutatis mutandis.)
  */
-static void push_down_max(minmax_heap_t *h, fr_minmax_heap_index_t idx)
+static CC_HINT(nonnull) void push_down_max(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 {
-	fr_minmax_heap_index_t	m;
+	while (has_children(h, idx)) {
+		fr_minmax_heap_index_t	m = max_child_or_grandchild(h, idx);
 
-	for (; has_children(h, idx); idx = m) {
-		m = max_child_or_grandchild(h, idx);
 		if (h->cmp(h->p[m], h->p[idx]) <= 0) break;
 
 		HEAP_SWAP(h->p[idx], h->p[m]);
 		OFFSET_SET(h, idx);
 
-		if (HEAP_PARENT(m) != idx && h->cmp(h->p[m], h->p[HEAP_PARENT(m)]) < 0) {
+		if (HEAP_GRANDPARENT(m) == idx && h->cmp(h->p[m], h->p[HEAP_PARENT(m)]) < 0) {
 			HEAP_SWAP(h->p[HEAP_PARENT(m)], h->p[m]);
 			OFFSET_SET(h, HEAP_PARENT(m));
 		}
+		idx = m;
 	}
 	OFFSET_SET(h, idx);
 }
@@ -292,8 +355,7 @@ static void push_up_min(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 {
 	fr_minmax_heap_index_t	grandparent;
 
-	while (fr_minmax_heap_entry_inserted(grandparent = HEAP_GRANDPARENT(idx)) &&
-		h->cmp(h->p[idx], h->p[grandparent]) < 0) {
+	while ((grandparent = HEAP_GRANDPARENT(idx)) > 0 && h->cmp(h->p[idx], h->p[grandparent]) < 0) {
 		HEAP_SWAP(h->p[idx], h->p[grandparent]);
 		OFFSET_SET(h, idx);
 		idx = grandparent;
@@ -305,8 +367,7 @@ static void push_up_max(minmax_heap_t *h, fr_minmax_heap_index_t idx)
 {
 	fr_minmax_heap_index_t	grandparent;
 
-	while (fr_minmax_heap_entry_inserted(grandparent = HEAP_GRANDPARENT(idx)) &&
-		h->cmp(h->p[idx], h->p[grandparent]) > 0) {
+	while ((grandparent = HEAP_GRANDPARENT(idx)) > 0 && h->cmp(h->p[idx], h->p[grandparent]) > 0) {
 		HEAP_SWAP(h->p[idx], h->p[grandparent]);
 		OFFSET_SET(h, idx);
 		idx = grandparent;
@@ -383,7 +444,7 @@ void *fr_minmax_heap_min_peek(fr_minmax_heap_t *hp)
 {
 	minmax_heap_t	*h = *hp;
 
-	if (h->num_elements == 0) return NULL;
+	if (unlikely(h->num_elements == 0)) return NULL;
 	return h->p[1];
 }
 
@@ -391,7 +452,7 @@ void *fr_minmax_heap_min_pop(fr_minmax_heap_t *hp)
 {
 	void	*data = fr_minmax_heap_min_peek(hp);
 
-	if (!data) return NULL;
+	if (unlikely(!data)) return NULL;
 	if (unlikely(fr_minmax_heap_extract(hp, data) < 0)) return NULL;
 	return data;
 }
@@ -399,28 +460,19 @@ void *fr_minmax_heap_min_pop(fr_minmax_heap_t *hp)
 void *fr_minmax_heap_max_peek(fr_minmax_heap_t *hp)
 {
 	minmax_heap_t		*h = *hp;
-	fr_minmax_heap_index_t	max_index;
 
-	switch (h->num_elements) {
-	case 0:
-		return NULL;
-	case 1:
-	case 2:
-		max_index = h->num_elements;
-		break;
-	default:
-		max_index = (h->cmp(h->p[2], h->p[3]) < 0) ? 3 : 2;
-		break;
-	}
+	if (unlikely(h->num_elements == 0)) return NULL;
 
-	return h->p[max_index];
+	if (h->num_elements < 3) return h->p[h->num_elements];
+
+	return h->p[2 + (h->cmp(h->p[2], h->p[3]) < 0)];
 }
 
 void *fr_minmax_heap_max_pop(fr_minmax_heap_t *hp)
 {
 	void	*data = fr_minmax_heap_max_peek(hp);
 
-	if (!data) return NULL;
+	if (unlikely(!data)) return NULL;
 	if (unlikely(fr_minmax_heap_extract(hp, data) < 0)) return NULL;
 	return data;
 }
@@ -430,11 +482,11 @@ int fr_minmax_heap_extract(fr_minmax_heap_t *hp, void *data)
 	minmax_heap_t		*h = *hp;
 	fr_minmax_heap_index_t	idx = index_get(h, data);
 
-	if (h->num_elements < idx) {
+	if (unlikely(h->num_elements < idx)) {
 		fr_strerror_printf("data (index %u) exceeds heap size %u", idx, h->num_elements);
 		return -1;
 	}
-	if (!fr_minmax_heap_entry_inserted(index_get(h, data)) || h->p[idx] != data) {
+	if (unlikely(!fr_minmax_heap_entry_inserted(index_get(h, data)) || h->p[idx] != data)) {
 		fr_strerror_printf("data (index %u) not in heap", idx);
 		return -1;
 	}
@@ -442,7 +494,7 @@ int fr_minmax_heap_extract(fr_minmax_heap_t *hp, void *data)
 	OFFSET_RESET(h, idx);
 
 	/*
-	 *	Removing the last element can't break the minmax heap properties, so
+	 *	Removing the last element can't break the minmax heap property, so
 	 *	decrement the number of elements and be done with it.
 	 */
 	if (h->num_elements == idx) {
@@ -452,10 +504,18 @@ int fr_minmax_heap_extract(fr_minmax_heap_t *hp, void *data)
 
 	/*
 	 *	Move the last element into the now-available position,
-	 *	and then move it down as needed.
+	 *	and then move it as needed.
 	 */
 	h->p[idx] = h->p[h->num_elements];
 	h->num_elements--;
+	/*
+	 * If the new position is the root, that's as far up as it gets.
+	 * If the old position is a descendant of the new position,
+	 * the entry itself remains a descendant of the new position's
+	 * parent, and hence by minmax heap property is in the proper
+	 * relation to the parent and doesn't need to move up.
+	 */
+	if (idx > 1 && !is_descendant(h->num_elements, idx)) push_up(h, idx);
 	push_down(h, idx);
 	return 0;
 }
@@ -470,3 +530,125 @@ unsigned int fr_minmax_heap_num_elements(fr_minmax_heap_t *hp)
 
 	return h->num_elements;
 }
+
+/** Iterate over entries in a minmax heap
+ *
+ * @note If the heap is modified the iterator should be considered invalidated.
+ *
+ * @param[in] hp	to iterate over.
+ * @param[in] iter	Pointer to an iterator struct, used to maintain
+ *			state between calls.
+ * @return
+ *	- User data.
+ *	- NULL if at the end of the list.
+ */
+void *fr_minmax_heap_iter_init(fr_minmax_heap_t *hp, fr_minmax_heap_iter_t *iter)
+{
+	minmax_heap_t *h = *hp;
+
+	*iter = 1;
+
+	if (h->num_elements == 0) return NULL;
+
+	return h->p[1];
+}
+
+/** Get the next entry in a minmax heap
+ *
+ * @note If the heap is modified the iterator should be considered invalidated.
+ *
+ * @param[in] hp	to iterate over.
+ * @param[in] iter	Pointer to an iterator struct, used to maintain
+ *			state between calls.
+ * @return
+ *	- User data.
+ *	- NULL if at the end of the list.
+ */
+void *fr_minmax_heap_iter_next(fr_minmax_heap_t *hp, fr_minmax_heap_iter_t *iter)
+{
+	minmax_heap_t *h = *hp;
+
+	if ((*iter + 1) > h->num_elements) return NULL;
+	*iter += 1;
+
+	return h->p[*iter];
+}
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+void fr_minmax_heap_verify(char const *file, int line, fr_minmax_heap_t const *hp)
+{
+	minmax_heap_t	*h;
+
+	/*
+	 *	The usual start...
+	 */
+	fr_fatal_assert_msg(hp, "CONSISTENCY CHECK FAILED %s[%i]: fr_minmax_heap_t pointer was NULL", file, line);
+	(void) talloc_get_type_abort(hp, fr_minmax_heap_t);
+
+	/*
+	 *	Allocating the heap structure and the array holding the heap as described in data structure
+	 *	texts together is a respectable savings, but it means adding a level of indirection so the
+	 *	fr_heap_t * isn't realloc()ed out from under the user, hence the following (and the use of h
+	 *	rather than hp to access anything in the heap structure).
+	 */
+	h = *hp;
+	fr_fatal_assert_msg(h, "CONSISTENCY CHECK FAILED %s[%i]: minmax_heap_t pointer was NULL", file, line);
+	(void) talloc_get_type_abort(h, minmax_heap_t);
+
+	fr_fatal_assert_msg(h->num_elements <= h->size,
+			    "CONSISTENCY CHECK FAILED %s[%i]: num_elements exceeds size", file, line);
+
+	fr_fatal_assert_msg(h->p[0] == (void *)UINTPTR_MAX,
+			    "CONSISTENCY CHECK FAILED %s[%i]: zeroeth element special value overwritten", file, line);
+
+	for (fr_minmax_heap_index_t i = 1; i <= h->num_elements; i++) {
+		void	*data = h->p[i];
+
+		fr_fatal_assert_msg(data, "CONSISTENCY CHECK FAILED %s[%i]: node %u was NULL", file, line, i);
+		if (h->type) (void)_talloc_get_type_abort(data, h->type, __location__);
+		fr_fatal_assert_msg(index_get(h, data) == i,
+				    "CONSISTENCY CHECK FAILED %s[%i]: node %u index != %u", file, line, i, i);
+	}
+
+	/*
+	 *	Verify minmax heap property, which is:
+	 *	A node in a min level precedes all its descendants;
+	 *	a node in a max level follows all its descencdants.
+	 *	(if equal keys are allowed, that should be "doesn't follow" and
+	 *	"doesn't precede" respectively)
+	 *
+	 *	We claim looking at one's children and grandchildren (if any)
+	 *	suffices. Why? Induction on floor(depth / 2):
+	 *
+	 *	Base case:
+	 *	   If the depth of the tree is <= 2, that *is* all the
+	 *	   descendants, so we're done.
+	 *	Induction step:
+	 *	   Suppose you're on a min level and the check passes.
+	 *	   If the test works on the next min level down, transitivity
+	 *	   of <= means the level you're on satisfies the property
+	 *	   two levels further down.
+	 *	   For max level, >= is transitive, too, so you're good.
+	 */
+
+	for (fr_minmax_heap_index_t i = 1; HEAP_LEFT(i) <= h->num_elements; i++) {
+		bool			on_min_level = is_min_level_index(i);
+		fr_minmax_heap_index_t  others[] = {
+			HEAP_LEFT(i),
+			HEAP_RIGHT(i),
+			HEAP_LEFT(HEAP_LEFT(i)),
+			HEAP_RIGHT(HEAP_LEFT(i)),
+			HEAP_LEFT(HEAP_RIGHT(i)),
+			HEAP_RIGHT(HEAP_RIGHT(i))
+		};
+
+		for (size_t j = 0; j < NUM_ELEMENTS(others) && others[j] <= h->num_elements; j++) {
+			int8_t	cmp_result = h->cmp(h->p[i], h->p[others[j]]);
+
+			fr_fatal_assert_msg(on_min_level ? (cmp_result <= 0) : (cmp_result >= 0),
+					"CONSISTENCY CHECK FAILED %s[%i]: node %u violates %s level condition",
+					file, line, i, on_min_level ? "min" : "max");
+		}
+	}
+}
+#endif

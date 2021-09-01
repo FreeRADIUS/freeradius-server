@@ -107,6 +107,35 @@ uint32_t	fr_minmax_heap_num_elements(fr_minmax_heap_t *hp) CC_HINT(nonnull);
 void		*fr_minmax_heap_iter_init(fr_minmax_heap_t *hp, fr_minmax_heap_iter_t *iter) CC_HINT(nonnull);
 void		*fr_minmax_heap_iter_next(fr_minmax_heap_t *hp, fr_minmax_heap_iter_t *iter) CC_HINT(nonnull);
 
+/** Iterate over the contents of a minmax_heap
+ *
+ * @note The initializer section of a for loop can't declare variables with distinct
+ *	 base types, so we require a containing block, and can't follow the standard
+ *	 do {...} while(0) dodge. The code to be run for each item in the heap should
+ *	 therefore start with 1 open braces and end with 2 close braces, and shouldn't
+ *	 be followed with a semicolon.
+ *	 This may fake out code formatting programs, including editors.
+ *
+ * @param[in] _hp		to iterate over.
+ * @param[in] _type		of item the heap contains.
+ * @param[in] _data		Name of variable holding a pointer to the heap element.
+ *				Will be declared in the scope of the loop.
+ */
+#define fr_minmax_heap_foreach(_hp, _type, _data) \
+{ \
+	fr_minmax_heap_iter_t _iter; \
+	for (_type *_data = fr_minmax_heap_iter_init(_hp, &_iter); _data; _data = fr_minmax_heap_iter_next(_hp, &_iter))
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+CC_HINT(nonnull(1)) void fr_minmax_heap_verify(char const *file, int line, fr_minmax_heap_t const *hp);
+#  define FR_MINMAX_HEAP_VERIFY(_hp) fr_minmax_heap_verify(__FILE__, __LINE__, _hp)
+#elif !defined(NDEBUG)
+#  define FR_MINMAX_HEAP_VERIFY(_hp) fr_assert(_hp)
+#else
+#  define FR_MINMAX_HEAP_VERIFY(_hp)
+#endif
+
+
 #ifdef __cplusplus
 }
 #endif
