@@ -386,10 +386,14 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			flags->length = 4;
 			flags->flag_time_res = FR_TIME_RES_SEC;
 
-			if (strncmp(key, "uint", 4) == 0) {
+			/*
+			 *	Allow the dictionary to specify the encoding format.
+			 */
+			if ((strncmp(key, "uint", 4) == 0)  ||
+			    (strncmp(key, "int", 3) == 0)) {
 				fr_type_t subtype;
 
-				subtype = fr_table_value_by_str(fr_value_box_type_table, name, FR_TYPE_NULL);
+				subtype = fr_table_value_by_str(fr_value_box_type_table, key, FR_TYPE_NULL);
 				if (fr_type_is_null(subtype)) {
 				unknown_type:
 					fr_strerror_printf("Unknown or unsupported %s type '%s'",
