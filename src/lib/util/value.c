@@ -1782,7 +1782,7 @@ ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
 
 		dst->enumv = enumv;
 
-		if (enumv && enumv->flags.is_signed) {
+		if (!enumv || enumv->flags.is_signed) {
 			FR_DBUFF_OUT_INT64V_RETURN(&date, &work_dbuff, length);
 		} else {
 			uint64_t tmp;
@@ -4993,26 +4993,33 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 	case FR_TYPE_TIME_DELTA:
 	{
 		char		*q;
-		uint64_t	lhs, rhs;
+		int64_t		lhs;
+		uint64_t	rhs;
 		fr_time_res_t	res = FR_TIME_RES_SEC;
 
 		if (data->enumv) res = data->enumv->flags.flag_time_res;
+
+/*
+ *	The % operator can return a _signed_ value.  This macro is
+ *	correct for both positive and negative inputs.
+ */
+#define MOD(a,b) ((((a)%(b))+(b))%(b))
 
 		switch (res) {
 		default:
 		case FR_TIME_RES_SEC:
 			lhs = data->datum.time_delta / NSEC;
-			rhs = data->datum.time_delta % NSEC;
+			rhs = MOD(data->datum.time_delta, NSEC);
 			break;
 
 		case FR_TIME_RES_MSEC:
 			lhs = data->datum.time_delta / 1000000;
-			rhs = data->datum.time_delta % 1000000;
+			rhs = MOD(data->datum.time_delta, 1000000);
 			break;
 
 		case FR_TIME_RES_USEC:
 			lhs = data->datum.time_delta / 1000;
-			rhs = data->datum.time_delta % 1000;
+			rhs = MOD(data->datum.time_delta, 1000);
 			break;
 
 		case FR_TIME_RES_NSEC:
@@ -5021,7 +5028,13 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 			break;
 		}
 
-		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRIu64 ".%09" PRIu64, lhs, rhs);
+		if (!data->enumv || data->enumv->flags.is_signed) {
+			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRIi64 ".%09" PRIu64, lhs, rhs);
+		} else {
+			if (lhs < 0) lhs = 0;
+
+			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRIu64 ".%09" PRIu64, lhs, rhs);
+		}
 		q = fr_sbuff_current(&our_out) - 1;
 
 		/*
