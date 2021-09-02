@@ -220,6 +220,9 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 	uint64_t subsec = 0;
 	int	scale = 1;
 	char	*p, *end;
+	bool	negative = false;
+
+	if (*in == '-') negative = true; /* catch the case of negative zero! */
 
 	sec = strtoll(in, &end, 10);
 	if (in == end) {
@@ -367,7 +370,11 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		 */
 		if (*end) goto failed;
 
-		*out = (minutes * 60 + sec) * NSEC;
+		if (negative) {
+			*out = (minutes * 60 - sec) * NSEC;
+		} else {
+			*out = (minutes * 60 + sec) * NSEC;
+		}
 		return 0;
 
 	} else if (*end) {
@@ -413,7 +420,7 @@ done:
 	/*
 	 *	Now sec && subsec are in the same scale.
 	 */
-	if (sec < 0) {
+	if (negative) {
 		if (sec <= (INT64_MIN / scale)) {
 			fr_strerror_const("Integer underflow in time_delta value.");
 			return -1;

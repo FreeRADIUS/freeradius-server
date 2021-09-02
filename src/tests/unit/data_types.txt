@@ -38,6 +38,44 @@ match 0.000000001
 value time_delta 1:30
 match 90
 
+value time_delta 1h
+match 3600
+
+#
+#  And negative numbers
+#
+value time_delta -1
+match -1
+
+value time_delta -2.4
+match -2.4
+
+value time_delta -0.001
+match -0.001
+
+value time_delta -1ms
+match -0.001
+
+value time_delta -1us
+match -0.000001
+
+value time_delta -1.5us
+match -0.0000015
+
+value time_delta -1ns
+match -0.000000001
+
+value time_delta -1:30
+match -90
+
+value time_delta -1h
+match -3600
+
+
+
+#
+#  uint8
+#
 value uint8 256
 match Value 256 is invalid for type uint8 (must be in range 0...255)
 
@@ -165,4 +203,4 @@ match Double dots '..' are forbidden
 
 
 count
-match 78
+match 98

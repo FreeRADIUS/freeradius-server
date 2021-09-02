@@ -1432,7 +1432,7 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		if (!value->enumv) {
 			goto delta_size4;
 
-		} else if (value->enumv->flags.is_signed) {
+		} else if (!value->enumv->flags.is_unsigned) {
 			switch (value->enumv->flags.length) {
 			case 2:
 				if (date < INT16_MIN) {
@@ -1782,7 +1782,7 @@ ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
 
 		dst->enumv = enumv;
 
-		if (!enumv || enumv->flags.is_signed) {
+		if (!enumv || !enumv->flags.is_unsigned) {
 			FR_DBUFF_OUT_INT64V_RETURN(&date, &work_dbuff, length);
 		} else {
 			uint64_t tmp;
@@ -5028,10 +5028,20 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 			break;
 		}
 
-		if (!data->enumv || data->enumv->flags.is_signed) {
+		if (!data->enumv || !data->enumv->flags.is_unsigned) {
+			/*
+			 *	0 is unsigned, but we want to print
+			 *	"-0.1" if necessary.
+			 */
+			if ((lhs == 0) && (data->datum.time_delta < 0)) {
+				FR_SBUFF_IN_CHAR_RETURN(&our_out, '-');
+			}
+
 			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRIi64 ".%09" PRIu64, lhs, rhs);
 		} else {
-			if (lhs < 0) lhs = 0;
+			if (data->datum.time_delta < 0) {
+				lhs = rhs = 0;
+			}
 
 			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRIu64 ".%09" PRIu64, lhs, rhs);
 		}

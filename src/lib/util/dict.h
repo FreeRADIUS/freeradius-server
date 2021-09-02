@@ -91,7 +91,7 @@ typedef struct {
 
 	unsigned int		virtual : 1;			//!< for dynamic expansion
 
-	unsigned int		is_signed : 1;			//!< hackity hack for dates and time deltas
+	unsigned int		is_unsigned : 1;       		//!< hackity hack for dates and time deltas
 
 	/*
 	 *	@todo - if we want to clean these fields up, make
