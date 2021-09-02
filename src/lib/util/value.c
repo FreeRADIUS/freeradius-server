@@ -5003,7 +5003,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
  *	The % operator can return a _signed_ value.  This macro is
  *	correct for both positive and negative inputs.
  */
-#define MOD(a,b) ((((a)%(b))+(b))%(b))
+#define MOD(a,b) (((a<0) ? (-a) : (a))%(b))
 
 		switch (res) {
 		default:
