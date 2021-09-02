@@ -2272,8 +2272,8 @@ static size_t command_value_box_normalise(command_result_t *result, UNUSED comma
 	 */
 	if (fr_value_box_cmp(box, box2) != 0) {
 		fr_strerror_const("ERROR value box reparsing failed.  Results not identical");
-		fr_strerror_printf_push("out: %pV", box2);
-		fr_strerror_printf_push("in: %pV", box);
+		fr_strerror_printf_push("out: %pV (as string %.*s)", box2, (int) slen, data);
+		fr_strerror_printf_push("in: %pV (from string %s)", box, p);
 		talloc_free(box2);
 		talloc_free(box);
 		RETURN_OK_WITH_ERROR();
