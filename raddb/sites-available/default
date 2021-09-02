@@ -1314,7 +1314,7 @@ recv Accounting-Request {
 	#
 	if (!&Event-Timestamp) {
 		update request {
-			&Event-Timestamp := "%l"
+			&Event-Timestamp := "%{expr:%l - &Acct-Delay-Time}"
 		}
 	}
 
