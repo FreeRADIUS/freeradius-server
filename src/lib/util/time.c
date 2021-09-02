@@ -308,6 +308,33 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 			}
 		}
 
+		/*
+		 *	minutes, hours, or days.
+		 *
+		 *	Fractional numbers are not allowed.
+		 *
+		 *	minutes / hours / days larger than 64K are disallowed.
+		 */
+		if (sec > 65535) {
+			fr_strerror_printf("Invalid value at \"%s\"", in);
+			return -1;
+		}
+
+		if ((p[0] == 'm') && !p[1]) {
+			*out = sec * 60 * NSEC;
+			return 0;
+		}
+
+		if ((p[0] == 'h') && !p[1]) {
+			*out = sec * 3600 * NSEC;
+			return 0;
+		}
+
+		if ((p[0] == 'd') && !p[1]) {
+			*out = sec * 86400 * NSEC;
+			return 0;
+		}
+
 	error:
 		fr_strerror_printf("Invalid time qualifier at \"%s\"", p);
 		return -1;
@@ -345,34 +372,6 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 
 	} else if (*end) {
 		p = end;
-
-		/*
-		 *	minutes, hours, or days.
-		 *
-		 *	Fractional numbers are not allowed.
-		 *
-		 *	minutes / hours / days larger than 64K are disallowed.
-		 */
-		if (sec > 65535) {
-			fr_strerror_printf("Invalid value at \"%s\"", in);
-			return -1;
-		}
-
-		if ((p[0] == 'm') && !p[1]) {
-			*out = sec * 60 * NSEC;
-			return 0;
-		}
-
-		if ((p[0] == 'h') && !p[1]) {
-			*out = sec * 3600 * NSEC;
-			return 0;
-		}
-
-		if ((p[0] == 'd') && !p[1]) {
-			*out = sec * 86400 * NSEC;
-			return 0;
-		}
-
 		goto error;
 
 	} else {
