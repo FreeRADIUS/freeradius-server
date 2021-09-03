@@ -16,7 +16,7 @@ processed.  These attributes are never sent in any packet.
 `session-state`:: Attributes which are maintained across multi-packet
 exchanges.
 
-There must be a colon `:` after the list name and before the attribute name.
+There must be a dot `.` after the list name and before the attribute name.
 This syntax helps the server to distinguish between list names and attribute
 names.
 
