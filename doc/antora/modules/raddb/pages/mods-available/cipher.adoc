@@ -16,6 +16,10 @@ Registers the following expansions:
 | `%{<inst>_decrypt:<ciphertext>...}`           | Decrypts ciphertext using `private_key_file`
 | `%{<inst>_sign:<plaintext>...}`               | Signs plaintext using `private_key_file`
 | `%{<inst>_verify:<signature> <plaintext>...}` | Validates a signature using `certificate_file`
+| `%(<inst>_certificate:serial)`                | Returns the serial of `certificate_file`
+| `%(<inst>_certificate:fingerprint <hash>)`    | Produces a fingerprint of `certificate_file` using the specified hash.
+| `%(<inst>_certificate:not_before)`            | Retrieves the notBefore time from `certificate_file`.
+| `%(<inst>_certificate:not_after)`             | Retrieves the notAfter time from `certificate_file`.
 |===
 
 NOTE: `<ciphertext>` and `<signature>` are ingested and excreted to in their raw form.
@@ -76,6 +80,25 @@ The PEM encoded certificate used for encrypting data and verifying signatures.
 
 
 
+verify_mode:: How we verify certificate_file on startup
+
+After reading the certificate file from disk and parsing it we can
+apply other checks to ensure it is valid.  Currently we check
+the `notBefore` and `notAfter` fields to ensure the certificate is
+temporally valid.  Key use checks may be added in future.
+
+[options="header,autowidth"]
+|===
+| Error | Description
+| hard  | Error out if the certificate is not yet valid or has expired.
+| soft  | Warn if the certificate is not yet valid or has expired.
+| none  | Stay silent if the certificate is not yet valid.
+|===
+
+The default is `hard`.
+
+
+
 oaep { ... }::
 
 Parameters for the OAEP RSA padding scheme.
@@ -114,6 +137,7 @@ cipher {
 		private_key_password = whatever
 		private_key_file = ${certdir}/rsa/server.pem
 		certificate_file = ${certdir}/rsa/server.pem
+#		verify_mode = "hard"
 		oaep {
 #			oaep_digest = "sha256"
 #			mgf1_digest = "sha256"

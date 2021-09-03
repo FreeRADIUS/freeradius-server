@@ -74,7 +74,7 @@ There are `2` parameters that can be used in the query:
 
 
 counter_name:: Name of the `check` attribute to use to access the counter in
-the `users` file or SQL `radcheck` or `radcheckgroup` tables.
+the `users` file or SQL `radcheck` or `radgroupcheck` tables.
 
 
 

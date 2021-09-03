@@ -333,7 +333,7 @@ mschap {
 #	require_encryption = yes
 #	require_strong = yes
 #	with_ntdomain_hack = no
-#	ntlm_auth = "/path/to/ntlm_auth --request-nt-key --username=%{%{Stripped-User-Name}:-%{%{User-Name}:-None}} --challenge=%{%(mschap:Challenge):-00} --nt-response=%{%(mschap:NT-Response):-00}"
+#	ntlm_auth = "/path/to/ntlm_auth --request-nt-key  --allow-mschapv2 --username=%{%{Stripped-User-Name}:-%{%{User-Name}:-None}} --challenge=%{%(mschap:Challenge):-00} --nt-response=%{%(mschap:NT-Response):-00}"
 #	ntlm_auth_timeout = 10
 	winbind {
 #		username = "%(mschap:User-Name)"

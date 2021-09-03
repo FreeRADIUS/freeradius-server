@@ -92,7 +92,6 @@ NOTE: The behavior in v3 is the same as `synchronous = yes`
 
 
 
-
 originate:: Whether or not we are creating the packet.
 
 Sometimes we are creating a request that is not for the purpose of
@@ -143,6 +142,11 @@ expansions, etc. in this section.  The contents are
 created when a connection is opened, and are not
 changeable after that.
 
+
+
+
+response_window: If we do not receive a reply within this time period, then
+start `zombie_period`
 
 
 
@@ -198,7 +202,7 @@ Useful range of values: 10 to 3600
 
 Each worker thread (see radiusd.conf, num_workers), has
 it's own set of connections.  These connections are grouped
-together into a "trunk".
+together into a "pool".
 
 Much of the configuration here is similar to the old
 connection "pool" configuration in v3.  However, there are
@@ -290,8 +294,9 @@ being opened.
 
 
 reconnect_delay:: If opening a connection
-fails, we wait `reconnect_delay` seconds
-before attempting to open another
+fails, or an open connection fails,
+we wait `reconnect_delay` seconds before
+attempting to open another
 connection.
 
 
@@ -448,9 +453,10 @@ radius {
 #			&Event-Timestamp = 0
 #		}
 	}
+	response_window = 15
 	zombie_period = 10
 	revive_interval = 3600
-	trunk {
+	pool {
 		start = 1
 		min = 1
 		max = 8
@@ -462,7 +468,7 @@ radius {
 		manage_interval = 0.2
 		connection {
 			connection_timeout = 3.0
-			reconnect_delay = 30
+			reconnect_delay = 5
 		}
 		requests {
 			per_connection_max = 255
@@ -492,7 +498,7 @@ radius {
 		max_rtx_count = 5
 		max_rtx_duration = 30
 	}
-	Coa-Request {
+	CoA-Request {
 		initial_rtx_time = 2
 		max_rtx_time = 16
 		max_rtx_count = 5
@@ -506,7 +512,7 @@ radius {
 	}
 	Status-Server {
 		initial_rtx_time = 2
-		max_rtx_time = 16
+		max_rtx_time = 5
 		max_rtx_count = 5
 		max_rtx_duration = 30
 	}
