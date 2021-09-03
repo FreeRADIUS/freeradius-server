@@ -76,9 +76,9 @@ policies are loaded by the server, and unused ones are ignored.
 
 === `sites-available/`
 
-The `sites-available/` directory contains virtual servers which
-process packets. They are similar in concept to the virtual servers
-used by Apache and Nginx.
+The xref:sites-available/index.adoc[sites-available/] directory
+contains virtual servers which process packets. They are similar in
+concept to the virtual servers used by Apache and Nginx.
 
 Each virtual server will begin with a `server` declaration, along with
 it’s name. e.g. `server default { ...`. The declaration is then

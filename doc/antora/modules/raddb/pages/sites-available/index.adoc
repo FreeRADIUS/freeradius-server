@@ -335,40 +335,40 @@ server.
 
 === List of provided virtual servers
 
-* <<abfab-tls.adoc,abfab tls>>
-* <<abfab-tr-idp.adoc,abfab tr idp>>
-* <<arp.adoc,arp>>
-* <<bfd.adoc,bfd>>
-* <<buffered-sql.adoc,buffered sql>>
-* <<challenge.adoc,challenge>>
-* <<channel_bindings.adoc,channel_bindings>>
-* <<check-eap-tls.adoc,check eap tls>>
-* <<coa.adoc,coa>>
-* <<control-socket.adoc,control socket>>
-* <<control-socket.orig.adoc,control socket orig>>
-* <<copy-acct-to-home-server.adoc,copy acct to home server>>
-* <<decoupled-accounting.adoc,decoupled accounting>>
-* <<default.adoc,default>>
-* <<default.orig.adoc,default orig>>
-* <<default.rej.adoc,default rej>>
-* <<detail.adoc,detail>>
-* <<detail-debugging.adoc,detail debugging>>
-* <<dhcp.adoc,dhcp>>
-* <<dhcp.orig.adoc,dhcp orig>>
-* <<dhcp.relay.adoc,dhcp relay>>
-* <<dynamic-clients.adoc,dynamic clients>>
-* <<example.adoc,example>>
-* <<inner-tunnel.adoc,inner tunnel>>
-* <<ldap_sync.adoc,ldap_sync>>
-* <<originate-coa.adoc,originate coa>>
-* <<proxy.adoc,proxy>>
-* <<proxy-inner-tunnel.adoc,proxy inner tunnel>>
-* <<radius-acct.adoc,radius acct>>
-* <<robust-proxy-accounting.adoc,robust proxy accounting>>
-* <<soh.adoc,soh>>
-* <<status.adoc,status>>
-* <<tacacs.adoc,tacacs>>
-* <<tls.adoc,tls>>
-* <<tls-cache.adoc,tls cache>>
-* <<virtual.example.com.adoc,virtual example com>>
-* <<vmps.adoc,vmps>>
+* xref:sites-available/abfab-tls.adoc[abfab tls]
+* xref:sites-available/abfab-tr-idp.adoc[abfab tr idp]
+* xref:sites-available/arp.adoc[arp]
+* xref:sites-available/bfd.adoc[bfd]
+* xref:sites-available/buffered-sql.adoc[buffered sql]
+* xref:sites-available/challenge.adoc[challenge]
+* xref:sites-available/channel_bindings.adoc[channel_bindings]
+* xref:sites-available/check-eap-tls.adoc[check eap tls]
+* xref:sites-available/coa.adoc[coa]
+* xref:sites-available/control-socket.adoc[control socket]
+* xref:sites-available/control-socket.orig.adoc[control socket orig]
+* xref:sites-available/copy-acct-to-home-server.adoc[copy acct to home server]
+* xref:sites-available/decoupled-accounting.adoc[decoupled accounting]
+* xref:sites-available/default.adoc[default]
+* xref:sites-available/default.orig.adoc[default orig]
+* xref:sites-available/default.rej.adoc[default rej]
+* xref:sites-available/detail.adoc[detail]
+* xref:sites-available/detail-debugging.adoc[detail debugging]
+* xref:sites-available/dhcp.adoc[dhcp]
+* xref:sites-available/dhcp.orig.adoc[dhcp orig]
+* xref:sites-available/dhcp.relay.adoc[dhcp relay]
+* xref:sites-available/dynamic-clients.adoc[dynamic clients]
+* xref:sites-available/example.adoc[example]
+* xref:sites-available/inner-tunnel.adoc[inner tunnel]
+* xref:sites-available/ldap_sync.adoc[ldap_sync]
+* xref:sites-available/originate-coa.adoc[originate coa]
+* xref:sites-available/proxy.adoc[proxy]
+* xref:sites-available/proxy-inner-tunnel.adoc[proxy inner tunnel]
+* xref:sites-available/radius-acct.adoc[radius acct]
+* xref:sites-available/robust-proxy-accounting.adoc[robust proxy accounting]
+* xref:sites-available/soh.adoc[soh]
+* xref:sites-available/status.adoc[status]
+* xref:sites-available/tacacs.adoc[tacacs]
+* xref:sites-available/tls.adoc[tls]
+* xref:sites-available/tls-cache.adoc[tls cache]
+* xref:sites-available/virtual.example.com.adoc[virtual example com]
+* xref:sites-available/vmps.adoc[vmps]
