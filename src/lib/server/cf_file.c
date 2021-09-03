@@ -1502,6 +1502,48 @@ alloc_section:
 	return cf_section_to_item(css);
 }
 
+static int add_section_pair(CONF_SECTION **parent, char const **attr, char const *p, char *buffer, size_t buffer_len, char const *filename, int lineno)
+{
+	CONF_SECTION *cs;
+	char const *name1 = *attr;
+
+	if (!p[1] || (p[1] == '.')) {
+		ERROR("%s[%d]: Invalid name", filename, lineno);
+		return -1;
+	}
+
+	if ((size_t) (p - name1) >= buffer_len) {
+		ERROR("%s[%d]: Name too long", filename, lineno);
+		return -1;
+	}
+
+	memcpy(buffer, name1, p - name1);
+	buffer[p - name1] = '\0';
+
+	/*
+	 *	Reference a subsection which already exists.  If not,
+	 *	create it.
+	 */
+	cs = cf_section_find(*parent, buffer, NULL);
+	if (!cs) {
+		cs = cf_section_alloc(*parent, *parent, buffer, NULL);
+		if (!cs) {
+			cf_log_err(*parent, "Failed allocating memory for section");
+			return -1;
+		}
+		cf_filename_set(cs, filename);
+		cf_lineno_set(cs, lineno);
+	}
+
+	*parent = cs;
+	*attr = p + 1;
+
+	p = strchr(p + 1, '.');
+	if (!p) return 0;
+
+	return add_section_pair(parent, attr, p, buffer, buffer_len, filename, lineno);
+}
+
 static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 		    fr_token_t name1_token, fr_token_t op_token, fr_token_t value_token,
 		    char *buff, char const *filename, int lineno)
@@ -1510,6 +1552,25 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 	CONF_PARSER *rule;
 	CONF_PAIR *cp;
 	bool pass2 = false;
+
+	/*
+	 *	For laziness, allow specifying paths for CONF_PAIRs
+	 *
+	 *		section.subsection.pair = value
+	 *
+	 *	Note that we do this ONLY for CONF_PAIRs which have
+	 *	values, so that we don't pick up module references /
+	 *	methods.  And we don't do this for things which begin
+	 *	with '&' (or %), so we don't pick up attribute
+	 *	references.
+	 */
+	if ((*attr >= 'A') && (name1_token == T_BARE_WORD) && value) {
+		char const *p = strchr(attr, '.');
+
+		if (p && (add_section_pair(&parent, &attr, p, buff, talloc_array_length(buff), filename, lineno) < 0)) {
+			return -1;
+		}
+	}
 
 	/*
 	 *	If we have the value, expand any configuration
