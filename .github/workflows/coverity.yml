@@ -57,6 +57,10 @@ jobs:
           ./configure -with-rlm-python-bin=/usr/bin/python2.7
           cov-build --dir cov-int make
 
+      - name: Display build result
+        run: |
+          cat /home/runner/work/freeradius-server/freeradius-server/cov-int/build-log.txt
+
       - name: Submit result
         run: |
           tar czf cov-int.tar.gz cov-int
