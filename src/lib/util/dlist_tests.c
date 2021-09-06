@@ -162,13 +162,36 @@ static void test_dlist_entry_move(void)
 	TEST_CHECK(a2.entry.prev == &a1.entry);
 }
 
+static void test_dlist_foreach_safe(void)
+{
+	dlist_test_item_t	a1 = { .id = "a1" };
+	dlist_test_item_t	a2 = { .id = "a2" };
+	dlist_test_item_t	a3 = { .id = "a3" };
+
+	fr_dlist_head_t		head;
+	unsigned int		count = 0;
+
+	fr_dlist_init(&head, dlist_test_item_t, entry);
+
+	fr_dlist_insert_tail(&head, &a1);
+	fr_dlist_insert_tail(&head, &a2);
+	fr_dlist_insert_tail(&head, &a3);
+
+	fr_dlist_foreach_safe(&head, dlist_test_item_t, i) {
+		fr_dlist_remove(&head, i);
+		count++;
+	}}
+
+	TEST_CHECK_RET((int)count, (int)3);
+}
+
 TEST_LIST = {
 	/*
 	 *	Allocation and management
 	 */
 	{ "fr_dlist_move",		test_dlist_move		},
 	{ "fr_dlist_entry_move",	test_dlist_entry_move	},
-
+	{ "fr_dlist_foreach_safe",	test_dlist_foreach_safe	},
 
 	{ NULL }
 };
