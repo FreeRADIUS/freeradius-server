@@ -31,11 +31,11 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "ubuntu-18.04", "OS": "ubuntu:18.04",    "DIST": "ubuntu", "CODENAME": "bionic",   "NR_EXTRAS": "1" },
-              { "NAME": "ubuntu-20.04", "OS": "ubuntu:20.04",    "DIST": "ubuntu", "CODENAME": "focal",    "NR_EXTRAS": "1" },
-              { "NAME": "debian-10",    "OS": "debian:buster",   "DIST": "debian", "CODENAME": "buster",   "NR_EXTRAS": "1" },
-              { "NAME": "debian-11",    "OS": "debian:bullseye", "DIST": "debian", "CODENAME": "bullseye", "NR_EXTRAS": "1" },
-              { "NAME": "debian-sid",   "OS": "debian:sid",      "DIST": "debian", "CODENAME": "sid",      "NR_EXTRAS": ""  }
+              { "NAME": "ubuntu-18.04", "OS": "ubuntu:18.04",    "NR_EXTRAS": "1" },
+              { "NAME": "ubuntu-20.04", "OS": "ubuntu:20.04",    "NR_EXTRAS": "1" },
+              { "NAME": "debian-10",    "OS": "debian:buster",   "NR_EXTRAS": "1" },
+              { "NAME": "debian-11",    "OS": "debian:bullseye", "NR_EXTRAS": "1" },
+              { "NAME": "debian-sid",   "OS": "debian:sid",      "NR_EXTRAS": ""  }
             ]
           }
         EOF
@@ -44,7 +44,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "debian-sid",   "OS": "debian:sid",     "DIST": "debian", "CODENAME": "sid",     "NR_EXTRAS": ""  }
+              { "NAME": "debian-sid",   "OS": "debian:sid",      "NR_EXTRAS": ""  }
             ]
           }
         EOF
@@ -96,13 +96,13 @@ jobs:
         apt-get install -y --no-install-recommends make gcc libc6-dev equivs file curl gnupg2
 
     - name: NetworkRADIUS signing key
-      run: curl -sS "https://packages.networkradius.com/pgp/packages%40networkradius.com" | apt-key add
+      run: curl -sS https://packages.networkradius.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -
 
     - name: Set up NetworkRADIUS extras repository
       if: ${{ matrix.env.NR_EXTRAS == '1' }}
       run: |
-        echo "deb http://packages.networkradius.com/extras/${{ matrix.env.DIST }}/${{ matrix.env.CODENAME }} ${{ matrix.env.CODENAME }} main" \
           > /etc/apt/sources.list.d/networkradius-extras.list
+        echo "deb http://packages.networkradius.com/extras/$(lsb_release -is | tr '[:upper:]' '[:lower:]')/$(lsb_release -cs) $(lsb_release -cs) main" \
 
     - name: Update apt repository lists
       run: apt-get update
@@ -212,14 +212,13 @@ jobs:
         apt-get install -y --no-install-recommends procps curl gnupg2 ca-certificates
 
     - name: NetworkRADIUS signing key
-      run: |
-        curl -sS "https://packages.networkradius.com/pgp/packages%40networkradius.com" | apt-key add
+      run: curl -sS https://packages.networkradius.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -
 
     - name: Set up NetworkRADIUS extras repository
       if: ${{ matrix.env.NR_EXTRAS == '1' }}
       run: |
-        echo "deb http://packages.networkradius.com/extras/${{ matrix.env.DIST }}/${{ matrix.env.CODENAME }} ${{ matrix.env.CODENAME }} main" \
           > /etc/apt/sources.list.d/networkradius-extras.list
+        echo "deb http://packages.networkradius.com/extras/$(lsb_release -is | tr '[:upper:]' '[:lower:]')/$(lsb_release -cs) $(lsb_release -cs) main" \
 
     - name: Update apt repository lists
       run: apt-get update

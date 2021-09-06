@@ -107,13 +107,15 @@ jobs:
     #  We don't need this on macOS as it has a native kqueue
     #  implementation.
     #
-    - name: NetworkRADIUS repo
-      uses: myci-actions/add-deb-repo@10
-      with:
-        repo: deb http://packages.networkradius.com/extras/${{ matrix.env.DIST }}/${{ matrix.env.CODENAME }} ${{ matrix.env.CODENAME }} main
-        repo-name: metworkradius-extras
-        keys-asc: https://packages.networkradius.com/pgp/packages%40networkradius.com
-        update: true
+    - name: NetworkRADIUS signing key
+      if: ${{ runner.os != 'macOS' }}
+      run: sudo /bin/sh -c "curl -sS https://packages.networkradius.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -"
+
+    - name: Set up NetworkRADIUS extras repository
+      if: ${{ runner.os != 'macOS' }}
+      run: |
+        sudo /bin/sh -c "echo \"deb http://packages.networkradius.com/extras/$(lsb_release -is | tr '[:upper:]' '[:lower:]')/$(lsb_release -cs) $(lsb_release -cs) main\" \
+          > /etc/apt/sources.list.d/networkradius-extras.list"
 
     - name: Install build dependencies based on Debian packages plus extra CI packages
       if: ${{ runner.os != 'macOS' }}
