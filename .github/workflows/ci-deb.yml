@@ -93,7 +93,7 @@ jobs:
 
     - name: Install build tools
       run: |
-        apt-get install -y --no-install-recommends make gcc libc6-dev equivs file curl gnupg2
+        apt-get install -y --no-install-recommends make gcc libc6-dev equivs file curl gnupg2 lsb-release
 
     - name: NetworkRADIUS signing key
       run: curl -sS https://packages.networkradius.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -
