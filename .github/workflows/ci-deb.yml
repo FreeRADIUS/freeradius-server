@@ -44,7 +44,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "debian-sid",   "OS": "debian:sid",      "NR_EXTRAS": ""  }
+              { "NAME": "debian-11",    "OS": "debian:bullseye", "NR_EXTRAS": "1" },
             ]
           }
         EOF
