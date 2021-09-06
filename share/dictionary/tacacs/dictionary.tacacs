@@ -24,7 +24,7 @@ MEMBER		Flags					uint8
 VALUE	Flags				None			0
 VALUE	Flags				Unencrypted		1
 VALUE	Flags				Single-Connect		4
-VALUE	Flags				Unencrypred-Single-Connect 5
+VALUE	Flags				Unencrypted-Single-Connect 5
 
 MEMBER		Session-Id				uint32
 MEMBER		Length					uint32
