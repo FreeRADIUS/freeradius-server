@@ -232,12 +232,14 @@ size_t fr_aka_sim_attr_len(fr_pair_t const *vp)
 	case FR_TYPE_VARIABLE_SIZE:
 		return vp->vp_length;
 
-	default:
-		return fr_aka_sim_attr_sizes[vp->vp_type][0];
-
 	case FR_TYPE_STRUCTURAL:
 		if (!fr_cond_assert(0)) return 0;
+
+	default:
+		break;
 	}
+
+	return fr_aka_sim_attr_sizes[vp->vp_type][0];
 }
 
 /** Return the number of bytes before the octets value
