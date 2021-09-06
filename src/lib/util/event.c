@@ -1580,14 +1580,17 @@ static int _event_pid_free(fr_event_pid_t *ev)
 {
 	struct kevent evset;
 
-	if (ev->parent) *ev->parent = NULL;
-	if (ev->pid < 0) return 0; /* already deleted from kevent */
-
 	/*
 	 *	Clear out the entry in the pid_to_reap
 	 *	list if the event was inserted.
 	 */
-	if (fr_dlist_entry_in_list(&ev->entry)) fr_dlist_remove(&ev->el->pid_to_reap, ev);
+	if (fr_dlist_entry_in_list(&ev->entry)) {
+		EVENT_DEBUG("%s - Removing entry from pid_to_reap %u - %p", __FUNCTION__, ev->pid, ev);
+		fr_dlist_remove(&ev->el->pid_to_reap, ev);
+	}
+
+	if (ev->parent) *ev->parent = NULL;
+	if (ev->pid < 0) return 0; /* already deleted from kevent */
 
 	EV_SET(&evset, ev->pid, EVFILT_PROC, EV_DELETE, NOTE_EXIT, 0, ev);
 
@@ -1622,15 +1625,21 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 	struct kevent evset;
 
 	ev = talloc(ctx, fr_event_pid_t);
-	ev->el = el;
-	ev->pid = pid;
-	ev->callback = callback;
-	ev->uctx = uctx;
-	ev->parent = ev_p;
+	if (!unlikely(ev)) {
+		fr_strerror_const("Out of memory");
+		return -1;
+	}
+	*ev = (fr_event_pid_t) {
+		.el = el,
+		.pid = pid,
+		.callback = callback,
+		.uctx = uctx,
+		.parent = ev_p,
 #ifndef NDEBUG
-	ev->file = file;
-	ev->line = line;
+		.file = file,
+		.line = line,
 #endif
+	};
 
 	/*
 	 *	macOS only, on FreeBSD NOTE_EXIT always provides
@@ -1700,9 +1709,11 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 /** Does the actual reaping of PIDs
  *
  */
-static void _fr_event_pid_reap_cb(UNUSED fr_event_list_t *el, pid_t pid, int status, UNUSED void *uctx)
+static void _fr_event_pid_reap_cb(UNUSED fr_event_list_t *el, pid_t pid, int status, void *uctx)
 {
 	waitpid(pid, &status, WNOHANG);	/* Don't block the process if there's a logic error somewhere */
+
+	EVENT_DEBUG("%s - Reaper reaped PID %u, status %u - %p", __FUNCTION__, pid, status, uctx);
 }
 
 /** Asynchronously wait for a PID to exit, then reap it
@@ -1726,8 +1737,11 @@ int _fr_event_pid_reap(NDEBUG_LOCATION_ARGS fr_event_list_t *el, pid_t pid)
 	ret = _fr_event_pid_wait(NDEBUG_LOCATION_VALS NULL, el, &pid_ev, pid, _fr_event_pid_reap_cb, NULL);
 	if (ret < 0) return ret;
 
+	EVENT_DEBUG("%s - Adding reaper for PID %u - %p", __FUNCTION__, pid, pid_ev);
+
 	pid_ev_m = UNCONST(fr_event_pid_t *, pid_ev);
 	pid_ev_m->parent = NULL;	/* Don't try and NULLify a stack variable on exit */
+	pid_ev_m->uctx = pid_ev_m;
 
 	/*
 	 *	Track these fr_event_pid_t so that
@@ -1741,6 +1755,123 @@ int _fr_event_pid_reap(NDEBUG_LOCATION_ARGS fr_event_list_t *el, pid_t pid)
 	return ret;
 }
 
+/** Send a signal to all the processes we have in our reap list, and reap them
+ *
+ * @param[in] el	containing the processes to reap.
+ * @param[in] timeout	how long to wait before we signal the processes.
+ * @param[in] signal	to send to processes.  Should be a fatal signal.
+ * @return The number of processes reaped.
+ */
+unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t timeout, int signal)
+{
+	unsigned int processed = fr_dlist_num_elements(&el->pid_to_reap);
+	fr_event_pid_t *pid_ev = NULL;
+
+	/*
+	 *	If we've got a timeout, our best option
+	 *	is to use a kqueue instance to monitor
+	 *	for process exit.
+	 */
+	if ((timeout > 0) && fr_dlist_num_elements(&el->pid_to_reap)) {
+		int		status;
+		struct kevent	evset;
+		int		waiting = 0;
+		int 		kq = kqueue();
+		fr_time_t	now, start = el->time(), end = start + timeout;
+
+		if (unlikely(kq < 0)) goto force;
+
+		fr_dlist_foreach_safe(&el->pid_to_reap, fr_event_pid_t, i) {
+			/*
+			 *	See if any processes have exited already
+			 */
+			if (waitpid(i->pid, &status, WNOHANG) == i->pid) { /* reap */
+				EVENT_DEBUG("%s - Reaper PID %u already exited - %p", __FUNCTION__, i->pid, i);
+				talloc_free(i);
+				continue;
+			}
+
+			/*
+			 *	Add the rest to a temporary event loop
+			 */
+			EV_SET(&evset, i->pid, EVFILT_PROC, EV_ADD, NOTE_EXIT, 0, i);
+			if (kevent(kq, &evset, 1, NULL, 0, NULL) < 0) {
+				EVENT_DEBUG("%s - Failed adding reaper PID %u to tmp event loop - %p",
+					    __FUNCTION__, pid_ev->pid, i);
+				talloc_free(i);
+				continue;
+			}
+			waiting++;
+		}}
+
+		/*
+		 *	Keep draining process exits as they come in...
+		 */
+		while ((waiting > 0) && (end > (now = el->time()))) {
+			struct kevent	kev;
+			int		ret;
+
+			ret = kevent(kq, NULL, 0, &kev, 1, &fr_time_delta_to_timespec(end - now));
+			switch (ret) {
+			default:
+				EVENT_DEBUG("%s - Reaper tmp loop error %s, forcing process reaping",
+					    __FUNCTION__, fr_syserror(errno));
+				close(kq);
+				goto force;
+
+			case 0:
+				EVENT_DEBUG("%s - Reaper timeout waiting for process exit, forcing process reaping",
+					    __FUNCTION__);
+				close(kq);
+				goto force;
+
+			case 1:
+				EVENT_DEBUG("%s - Reaper reaped PID %u, status %u - %p",
+					    __FUNCTION__, (unsigned int)kev.ident, (unsigned int)kev.data, kev.udata);
+				waitpid(kev.ident, &status, WNOHANG);	/* reap */
+				talloc_free(kev.udata);
+				break;
+			}
+			waiting--;
+		}
+
+		close(kq);
+	}
+
+force:
+	/*
+	 *	Deal with any lingering reap requests
+	 */
+	while ((pid_ev = fr_dlist_head(&el->pid_to_reap))) {
+		int status;
+
+		EVENT_DEBUG("%s - Reaper forcefully reaping PID %u - %p", __FUNCTION__, pid_ev->pid, pid_ev);
+
+		if (kill(pid_ev->pid, signal) < 0) {
+			/*
+			 *	Make sure we don't hang if the
+			 *	process has actually exited.
+			 *
+			 *	We could check for ESRCH but it's
+			 *	not clear if that'd be returned
+			 *	for a PID in the unreaped state
+			 *	or not...
+			 */
+			waitpid(pid_ev->pid, &status, WNOHANG);
+
+			talloc_free(pid_ev);
+			continue;
+		}
+
+		/*
+		 *	Wait until the child process exits
+		 */
+		waitpid(pid_ev->pid, &status, 0);
+		talloc_free(pid_ev);
+	}
+
+	return processed;
+}
 
 /** Add a user callback to the event list.
  *
@@ -2338,33 +2469,12 @@ CC_HINT(flatten) int fr_event_loop(fr_event_list_t *el)
 	}
 
 	/*
-	 *	Deal with any lingering reap requests
+	 *	Give processes five seconds to exit.
+	 *	This means any triggers that we may
+	 *	have issued when the server exited
+	 *	have a chance to complete.
 	 */
-	fr_dlist_foreach_safe(&el->pid_to_reap, fr_event_pid_t, pid_ev) {
-		int status;
-
-		if (kill(pid_ev->pid, SIGKILL) < 0) {
-			/*
-			 *	Make sure we don't hang if the
-			 *	process has actually exited.
-			 *
-			 *	We could check for ESRCH but it's
-			 *	not clear if that'd be returned
-			 *	for a PID in the unreaped state
-			 *	or not...
-			 */
-			waitpid(pid_ev->pid, &status, WNOHANG);
-
-			talloc_free(pid_ev);
-			continue;
-		}
-
-		/*
-		 *	Wait until the child process exits
-		 */
-		waitpid(pid_ev->pid, &status, 0);
-		talloc_free(pid_ev);
-	}}
+	fr_event_list_reap_signal(el, fr_time_delta_from_sec(5), SIGKILL);
 	el->dispatch = false;
 
 	return el->exit;
@@ -2381,6 +2491,8 @@ static int _event_list_free(fr_event_list_t *el)
 	fr_event_timer_t const *ev;
 
 	while ((ev = fr_lst_peek(el->times)) != NULL) fr_event_timer_delete(&ev);
+
+	fr_event_list_reap_signal(el, 0, SIGKILL);
 
 	talloc_free_children(el);
 
@@ -2417,8 +2529,6 @@ static void _event_build_indexes(void)
  */
 fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t status, void *status_uctx)
 {
-
-
 	fr_event_list_t		*el;
 	struct kevent		kev;
 

@@ -261,6 +261,8 @@ int		_fr_event_pid_reap(NDEBUG_LOCATION_ARGS fr_event_list_t *el, pid_t pid)
 				   CC_HINT(nonnull(NDEBUG_LOCATION_NONNULL(1)));
 #define		fr_event_pid_reap(...) _fr_event_pid_reap(NDEBUG_LOCATION_EXP __VA_ARGS__)
 
+unsigned int	fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t timeout, int signal);
+
 int		fr_event_timer_run(fr_event_list_t *el, fr_time_t *when);
 
 uintptr_t      	fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t user, void *uctx) CC_HINT(nonnull(1,2));

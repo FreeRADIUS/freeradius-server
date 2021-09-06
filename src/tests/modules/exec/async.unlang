@@ -22,3 +22,14 @@ if (ok) {
 if (&reply.Reply-Message == 'hello') {
 	test_fail
 }
+
+#
+#  Smoke test - Setup an async process that'll keep running after
+#  after the test exits.
+#
+update request {
+	&Tmp-String-0 := "%(exec_async:/bin/sh -c 'sleep 1')"
+}
+if (&Tmp-String-0 != '') {
+	test_fail
+}
