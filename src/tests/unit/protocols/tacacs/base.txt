@@ -52,10 +52,10 @@ match c0 02 02 00 e1 66 78 e6 00 00 00 13 02 59 f9 90 38 81 e1 bb 9d a6 13 93 fc
 #  Accounting - Request: (Client -> Server)
 #
 decode-proto c0 03 01 00 07 9b 35 d9 00 00 00 5b 7c 8a 99 d6 88 f9 32 3c ec 34 6d 23 89 71 72 dd 89 46 75 df 9c 00 a5 96 28 05 fc 57 88 02 0c 11 a3 60 9a 05 8b 71 6d 27 ca 83 b0 ab 2f 00 27 c8 da 58 d3 1a f1 3f 07 17 8d f6 35 c5 7b e2 07 be 29 86 d4 93 16 99 04 01 ef 03 6c 1c 2b ad 3a fb 5b 11 06 61 dc d9 09 1d 6a 08 1e
-match Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Accounting, Packet.Sequence-Number = 1, Packet.Flags = None, Packet.Session-Id = 127612377, Packet.Length = 91, Packet-Body-Type = Request, Accounting-Flags = Start, Authentication-Method = TACACSPLUS, Privilege-Level = Minimum, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "bob", Client-Port = "tapioca/0", Remote-Address = "localhost", Argument-List = "", Argument-List = "start_time=1596565644", Argument-List = "task_id=17558", Argument-List = "service=ppp", Argument-List = "protocol=ip"
+match Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type = Accounting, Packet.Sequence-Number = 1, Packet.Flags = None, Packet.Session-Id = 127612377, Packet.Length = 91, Packet-Body-Type = Request, Accounting-Flags = Start, Authentication-Method = TACACSPLUS, Privilege-Level = Minimum, Authentication-Type = PAP, Authentication-Service = PPP, User-Name = "bob", Client-Port = "tapioca/0", Remote-Address = "localhost", Argument-List = "start_time=1596565644", Argument-List = "task_id=17558", Argument-List = "service=ppp", Argument-List = "protocol=ip"
 
 encode-proto -
-match c0 03 01 00 07 9b 35 d9 00 00 00 5b 7c 8a 99 d6 88 f9 32 3c ec 34 6d 23 89 71 72 dd 89 46 75 df 9c 00 a5 96 28 05 fc 57 88 02 0c 11 a3 60 9a 05 8b 71 6d 27 ca 83 b0 ab 2f 00 27 c8 da 58 d3 1a f1 3f 07 17 8d f6 35 c5 7b e2 07 be 29 86 d4 93 16 99 04 01 ef 03 6c 1c 2b ad 3a fb 5b 11 06 61 dc d9 09 1d 6a 08 1e
+match c0 03 01 00 07 9b 35 d9 00 00 00 5a 7c 8a 99 d6 88 f9 32 3c ed 21 75 25 89 18 7f d0 9f 53 64 c6 9a 0c a7 d8 37 59 ff 5b 8a 0f 08 16 bf 67 9d 02 9e 62 6b 0c e1 9e b4 a3 77 0c 23 c4 d5 5b d0 19 f2 3d 07 57 98 e4 2d f1 4d ef 5e b2 2f 84 d4 9e 5d 8f 13 05 f0 09 6a 44 66 ad 3a fb 59 0c 1d 7a d0 d5 0a 4c 3e 11
 
 #
 #  Accounting - Response: (Client <- Server)

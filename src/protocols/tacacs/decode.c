@@ -73,7 +73,7 @@
 /**
  *	Decode a TACACS+ 'arg_N' fields.
  */
-static int tacacs_decode_args(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *da,
+static int tacacs_decode_args(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *parent,
 			      uint8_t arg_cnt, uint8_t const *arg_list, uint8_t const **data, uint8_t const *end)
 {
 	uint8_t i;
@@ -94,20 +94,81 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_att
 	 *	Then, do the dirty job...
 	 */
 	for (i = 0; i < arg_cnt; i++) {
-		if ((p + arg_list[i]) > end) {
+		uint8_t const *value, *name_end, *arg_end;
+		fr_dict_attr_t const *da;
+		uint8_t buffer[256];
+
+		if (arg_list[i] < 2) goto next; /* skip malformed */
+
+		if (p + arg_list[i] > end) {
 			fr_strerror_printf("'%s' argument %u length %u overflows the remaining data in the packet",
-					   da->name, i, arg_list[i]);
+					   parent->name, i, arg_list[i]);
 			return -1;
+		}
+
+		memcpy(buffer, p, arg_list[i]);
+		buffer[arg_list[i]] = '\0';
+
+		arg_end = buffer + arg_list[i];
+
+		for (value = buffer, name_end = NULL; value < arg_end; value++) {
+			/*
+			 *	RFC 8907 Section 3.7 says control
+			 *	characters MUST be excluded.
+			 */
+			if (*value < ' ') goto next;
+
+			if ((*value == '=') || (*value == '*')) {
+				name_end = value;
+				buffer[value - buffer] = '\0';
+				value++;
+				break;
+			}
+		}
+
+		/*
+		 *	Skip fields which aren't in "name=value" or "name*value" format.
+		 */
+		if (!name_end) goto next;
+
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_tacacs), (char *) buffer);
+		if (!da) {
+		raw:
+			/*
+			 *	Dupe the whole thing so that we have:
+			 *
+			 *	Argument-List += "name=value"
+			 */
+			da = parent;
+			value = p;
+			arg_end = p + arg_list[i];
 		}
 
 		vp = fr_pair_afrom_da(ctx, da);
 		if (!vp) {
 			fr_strerror_const("Out of Memory");
 			return -1;
+
 		}
 
-		fr_pair_value_bstrndup(vp, (char const *) p, arg_list[i], true);
+		/*
+		 *	Parse the string, and try to convert it to the
+		 *	underlying data type.  If it can't be
+		 *	converted as a data type, just convert it as
+		 *	Argument-List.
+		 *
+		 *	And if that fails, just ignore it completely.
+		 */
+		if (fr_pair_value_from_str(vp, (char const *) value, arg_end - value, 0, true) < 0) {
+			talloc_free(vp);
+			if (da != parent) goto raw;
+
+			goto next;
+		}
+
 		fr_dcursor_append(cursor, vp);
+
+	next:
 		p += arg_list[i];
 		*data  = p;
 	}
