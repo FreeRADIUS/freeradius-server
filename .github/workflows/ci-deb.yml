@@ -101,8 +101,10 @@ jobs:
     - name: Set up NetworkRADIUS extras repository
       if: ${{ matrix.env.NR_EXTRAS == '1' }}
       run: |
+        DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
+        RELEASE=$(lsb_release -cs)
+        echo "deb http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main" \
           > /etc/apt/sources.list.d/networkradius-extras.list
-        echo "deb http://packages.networkradius.com/extras/$(lsb_release -is | tr '[:upper:]' '[:lower:]')/$(lsb_release -cs) $(lsb_release -cs) main" \
 
     - name: Update apt repository lists
       run: apt-get update
@@ -217,8 +219,10 @@ jobs:
     - name: Set up NetworkRADIUS extras repository
       if: ${{ matrix.env.NR_EXTRAS == '1' }}
       run: |
+        DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
+        RELEASE=$(lsb_release -cs)
+        echo "deb http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main" \
           > /etc/apt/sources.list.d/networkradius-extras.list
-        echo "deb http://packages.networkradius.com/extras/$(lsb_release -is | tr '[:upper:]' '[:lower:]')/$(lsb_release -cs) $(lsb_release -cs) main" \
 
     - name: Update apt repository lists
       run: apt-get update

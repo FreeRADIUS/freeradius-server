@@ -114,7 +114,9 @@ jobs:
     - name: Set up NetworkRADIUS extras repository
       if: ${{ runner.os != 'macOS' }}
       run: |
-        sudo /bin/sh -c "echo \"deb http://packages.networkradius.com/extras/$(lsb_release -is | tr '[:upper:]' '[:lower:]')/$(lsb_release -cs) $(lsb_release -cs) main\" \
+        DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
+        RELEASE=$(lsb_release -cs)
+        sudo /bin/sh -c "echo \"deb http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main\" \
           > /etc/apt/sources.list.d/networkradius-extras.list"
 
     - name: Install build dependencies based on Debian packages plus extra CI packages
