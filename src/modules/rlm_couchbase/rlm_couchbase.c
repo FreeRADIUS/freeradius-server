@@ -468,7 +468,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 	char *user_name = NULL;                /* user name from accounting document */
 	char *session_id = NULL;               /* session id from accounting document */
 	char *cs_id = NULL;                    /* calling station id from accounting document */
-	uint32_t nas_addr = 0;                 /* nas address from accounting document */
+	fr_ipaddr_t nas_addr;                 /* nas address from accounting document */
 	uint32_t nas_port = 0;                 /* nas port from accounting document */
 	uint32_t framed_ip_addr = 0;           /* framed ip address from accounting document */
 	char framed_proto = 0;                 /* framed proto from accounting document */
@@ -689,7 +689,8 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 		if (mod_attribute_to_element("NAS-IP-Address", inst->map, &element) == 0) {
 			/* attempt to get and nas address element */
 			if (json_object_object_get_ex(cookie->jobj, element, &jval)){
-				nas_addr = inet_addr(json_object_get_string(jval));
+				nas_addr.af = AF_INET;
+				nas_addr.ipaddr.ip4addr.s_addr = inet_addr(json_object_get_string(jval));
 			}
 		}
 
@@ -702,7 +703,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 		}
 
 		/* check terminal server */
-		int check = rad_check_ts(nas_addr, nas_port, user_name, session_id);
+		int check = rad_check_ts(&nas_addr, nas_port, user_name, session_id);
 
 		/* take action based on check return */
 		if (check == 0) {
@@ -737,7 +738,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 				}
 
 				/* zap session */
-				session_zap(request, nas_addr, nas_port, user_name, session_id,
+				session_zap(request, &nas_addr, nas_port, user_name, session_id,
 					    framed_ip_addr, framed_proto, session_time);
 			}
 		} else if (check == 1) {
