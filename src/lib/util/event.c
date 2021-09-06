@@ -336,6 +336,11 @@ struct fr_event_pid {
 	fr_event_pid_cb_t	callback;		//!< callback to run when the child exits
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
 
+	fr_dlist_t		entry;		        //!< If the fr_event_pid is in the detached, reap state,
+							///< it's inserted into a list associated with the event.
+							//!< We then send SIGKILL, and forcefully reap the process
+							///< on exit.
+
 #ifndef NDEBUG
 	char const		*file;			//!< Source file this event was last updated in.
 	int			line;			//!< Line this event was last updated on.
@@ -394,6 +399,9 @@ struct fr_event_list {
 	fr_dlist_head_t		pre_callbacks;		//!< callbacks when we may be idle...
 	fr_dlist_head_t		user_callbacks;		//!< EVFILT_USER callbacks
 	fr_dlist_head_t		post_callbacks;		//!< post-processing callbacks
+
+	fr_dlist_head_t		pid_to_reap;		//!< A list of all orphaned child processes we're
+							///< waiting to reap.
 
 	struct kevent		events[FR_EV_BATCH_FDS]; /* so it doesn't go on the stack every time */
 
@@ -1575,6 +1583,12 @@ static int _event_pid_free(fr_event_pid_t *ev)
 	if (ev->parent) *ev->parent = NULL;
 	if (ev->pid < 0) return 0; /* already deleted from kevent */
 
+	/*
+	 *	Clear out the entry in the pid_to_reap
+	 *	list if the event was inserted.
+	 */
+	if (fr_dlist_entry_in_list(&ev->entry)) fr_dlist_remove(&ev->el->pid_to_reap, NULL);
+
 	EV_SET(&evset, ev->pid, EVFILT_PROC, EV_DELETE, NOTE_EXIT, 0, ev);
 
 	(void) kevent(ev->el->kq, &evset, 1, NULL, 0, NULL);
@@ -1705,7 +1719,22 @@ static void _fr_event_pid_reap_cb(UNUSED fr_event_list_t *el, pid_t pid, int sta
  */
 int _fr_event_pid_reap(NDEBUG_LOCATION_ARGS fr_event_list_t *el, pid_t pid)
 {
-	return _fr_event_pid_wait(NDEBUG_LOCATION_VALS NULL, el, NULL, pid, _fr_event_pid_reap_cb, NULL);
+	int			ret;
+	fr_event_pid_t const	*pid_ev;
+
+	ret = _fr_event_pid_wait(NDEBUG_LOCATION_VALS NULL, el, &pid_ev, pid, _fr_event_pid_reap_cb, NULL);
+	if (ret < 0) return ret;
+
+	/*
+	 *	Track these fr_event_pid_t so that
+	 *	we can free them explicitly if
+	 *	they're still around when we're exiting.
+	 *
+	 *	This is required so we don't trip LSAN.
+	 */
+	fr_dlist_insert_tail(&el->pid_to_reap, UNCONST(fr_event_pid_t *, pid_ev));
+
+	return ret;
 }
 
 
@@ -2303,6 +2332,35 @@ CC_HINT(flatten) int fr_event_loop(fr_event_list_t *el)
 		if (unlikely(fr_event_corral(el, el->time(), true)) < 0) break;
 		fr_event_service(el);
 	}
+
+	/*
+	 *	Deal with any lingering reap requests
+	 */
+	fr_dlist_foreach_safe(&el->pid_to_reap, fr_event_pid_t, pid_ev) {
+		int status;
+
+		if (kill(pid_ev->pid, SIGKILL) < 0) {
+			/*
+			 *	Make sure we don't hang if the
+			 *	process has actually exited.
+			 *
+			 *	We could check for ESRCH but it's
+			 *	not clear if that'd be returned
+			 *	for a PID in the unreaped state
+			 *	or not...
+			 */
+			waitpid(pid_ev->pid, &status, WNOHANG);
+
+			talloc_free(pid_ev);
+			continue;
+		}
+
+		/*
+		 *	Wait until the child process exits
+		 */
+		waitpid(pid_ev->pid, &status, 0);
+		talloc_free(pid_ev);
+	}}
 	el->dispatch = false;
 
 	return el->exit;
@@ -2399,6 +2457,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	fr_dlist_talloc_init(&el->post_callbacks, fr_event_post_t, entry);
 	fr_dlist_talloc_init(&el->user_callbacks, fr_event_user_t, entry);
 	fr_dlist_talloc_init(&el->ev_to_add, fr_event_timer_t, entry);
+	fr_dlist_talloc_init(&el->pid_to_reap, fr_event_pid_t, entry);
 	if (status) (void) fr_event_pre_insert(el, status, status_uctx);
 
 	/*

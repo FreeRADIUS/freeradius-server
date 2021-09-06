@@ -68,6 +68,29 @@ static_assert(sizeof(unsigned int) >= 4, "Unsigned integer too small on this pla
 #define fr_dlist_foreach(_list_head, _type, _iter) \
 	for (_type *_iter = fr_dlist_head(_list_head); _iter; _iter = fr_dlist_next(_list_head, _iter))
 
+/** Iterate over the contents of a list allowing for removals
+ *
+ * @note foreach block must end with double curlybrace `}}`.
+ *	 We need to use another scoping section as we can't declare variables of multiple
+ *	 types within the initialiser of a for loop.
+ *
+ * @param[in] _list_head	to iterate over.
+ * @param[in] _type		of item the list contains.
+ * @param[in] _iter		Name of iteration variable.
+ *				Will be declared in the scope of the loop.
+ * @param[in] _tmp		A fr_dlist_t to hold the iteration state.
+ */
+#define fr_dlist_foreach_safe(_list_head, _type, _iter) \
+{ \
+	_type *_iter; \
+	fr_dlist_t _tmp; \
+	for (_iter = fr_dlist_head(_list_head), \
+	     _tmp = fr_dlist_head(_list_head) ? *fr_dlist_item_to_entry(_list_head, (_list_head)->offset) : (fr_dlist_t){ .prev = NULL, .next = NULL }; \
+	     _iter; \
+	     _iter = _tmp.next ? fr_dlist_entry_to_item(_list_head, _tmp.next) : NULL, \
+	     _tmp = _tmp.next ? *_tmp.next : (fr_dlist_t){ .prev = NULL, .next = NULL })
+
+
 /** Find the dlist pointers within a list item
  *
  */
