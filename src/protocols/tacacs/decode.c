@@ -269,6 +269,8 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			talloc_free(decrypted);
 			return -1;
 		}
+
+		FR_PROTO_HEX_DUMP(decrypted, buffer_len, "fr_tacacs_packet_t (unencrypted)");
 	}
 
 	switch (pkt->hdr.type) {
