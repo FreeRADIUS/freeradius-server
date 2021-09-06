@@ -1502,29 +1502,50 @@ alloc_section:
 	return cf_section_to_item(css);
 }
 
-static int add_section_pair(CONF_SECTION **parent, char const **attr, char const *p, char *buffer, size_t buffer_len, char const *filename, int lineno)
+static int add_section_pair(CONF_SECTION **parent, char const **attr, char const *dot, char *buffer, size_t buffer_len, char const *filename, int lineno)
 {
 	CONF_SECTION *cs;
 	char const *name1 = *attr;
+	char *name2 = NULL;
+	char const *next;
+	char *p;
 
-	if (!p[1] || (p[1] == '.')) {
+	if (!dot[1] || (dot[1] == '.')) {
 		ERROR("%s[%d]: Invalid name", filename, lineno);
 		return -1;
 	}
 
-	if ((size_t) (p - name1) >= buffer_len) {
+	if ((size_t) (dot - name1) >= buffer_len) {
 		ERROR("%s[%d]: Name too long", filename, lineno);
 		return -1;
 	}
 
-	memcpy(buffer, name1, p - name1);
-	buffer[p - name1] = '\0';
+	memcpy(buffer, name1, dot - name1);
+	buffer[dot - name1] = '\0';
+	next = dot + 1;
+
+	/*
+	 *	Look for name1[name2]
+	 */
+	p = strchr(buffer, '[');
+	if (p) {
+		name2 = p;
+
+		p = strchr(p, ']');
+		if (!p || ((p[1] != '\0') && (p[1] != '.'))) {
+			cf_log_err(*parent, "Could not parse name2 in '%s', expected 'name1[name2]", name1);
+			return -1;
+		}
+
+		*p = '\0';
+		*(name2++) = '\0';
+	}
 
 	/*
 	 *	Reference a subsection which already exists.  If not,
 	 *	create it.
 	 */
-	cs = cf_section_find(*parent, buffer, NULL);
+	cs = cf_section_find(*parent, buffer, name2);
 	if (!cs) {
 		cs = cf_section_alloc(*parent, *parent, buffer, NULL);
 		if (!cs) {
@@ -1536,9 +1557,9 @@ static int add_section_pair(CONF_SECTION **parent, char const **attr, char const
 	}
 
 	*parent = cs;
-	*attr = p + 1;
+	*attr = next;
 
-	p = strchr(p + 1, '.');
+	p = strchr(next + 1, '.');
 	if (!p) return 0;
 
 	return add_section_pair(parent, attr, p, buffer, buffer_len, filename, lineno);
