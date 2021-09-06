@@ -126,5 +126,4 @@ VALUE	Accounting-Flags		Stop			4
 VALUE	Accounting-Flags		Watchdog		8
 VALUE	Accounting-Flags		Watchdog-Update		10
 
-ATTRIBUTE	ArgumentList				21	string array
-
+ATTRIBUTE	Argument-List				21	string
