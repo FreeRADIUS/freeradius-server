@@ -496,7 +496,6 @@ redo:
 					match = false;
 					break;
 				}
-				LIST_VERIFY(&tmp_list);
 
 				fr_pair_list_append(&list, &tmp_list);
 				break;
@@ -594,7 +593,7 @@ redo:
 					keylen--;
 					user_list = fr_trie_lookup_by_key(tree->store, key, keylen);
 					if (!user_list) continue;
-					
+
 					user_pl = fr_dlist_head(&user_list->head);
 					RDEBUG("Found matching shorter subnet %s at key length %ld", user_pl->name, keylen);
 					goto redo;

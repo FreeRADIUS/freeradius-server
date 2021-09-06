@@ -211,7 +211,7 @@ jobs:
     # procps for pkill, curl+gnupg2 for apt-key, ca-certificates for curl
     - name: Install system utilities
       run: |
-        apt-get install -y --no-install-recommends procps curl gnupg2 ca-certificates
+        apt-get install -y --no-install-recommends procps curl gnupg2 ca-certificates lsb-release
 
     - name: NetworkRADIUS signing key
       run: curl -sS https://packages.networkradius.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -
