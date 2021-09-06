@@ -1587,7 +1587,7 @@ static int _event_pid_free(fr_event_pid_t *ev)
 	 *	Clear out the entry in the pid_to_reap
 	 *	list if the event was inserted.
 	 */
-	if (fr_dlist_entry_in_list(&ev->entry)) fr_dlist_remove(&ev->el->pid_to_reap, NULL);
+	if (fr_dlist_entry_in_list(&ev->entry)) fr_dlist_remove(&ev->el->pid_to_reap, ev);
 
 	EV_SET(&evset, ev->pid, EVFILT_PROC, EV_DELETE, NOTE_EXIT, 0, ev);
 
@@ -1721,9 +1721,13 @@ int _fr_event_pid_reap(NDEBUG_LOCATION_ARGS fr_event_list_t *el, pid_t pid)
 {
 	int			ret;
 	fr_event_pid_t const	*pid_ev;
+	fr_event_pid_t		*pid_ev_m;
 
 	ret = _fr_event_pid_wait(NDEBUG_LOCATION_VALS NULL, el, &pid_ev, pid, _fr_event_pid_reap_cb, NULL);
 	if (ret < 0) return ret;
+
+	pid_ev_m = UNCONST(fr_event_pid_t *, pid_ev);
+	pid_ev_m->parent = NULL;	/* Don't try and NULLify a stack variable on exit */
 
 	/*
 	 *	Track these fr_event_pid_t so that
@@ -1732,7 +1736,7 @@ int _fr_event_pid_reap(NDEBUG_LOCATION_ARGS fr_event_list_t *el, pid_t pid)
 	 *
 	 *	This is required so we don't trip LSAN.
 	 */
-	fr_dlist_insert_tail(&el->pid_to_reap, UNCONST(fr_event_pid_t *, pid_ev));
+	fr_dlist_insert_tail(&el->pid_to_reap, pid_ev_m);
 
 	return ret;
 }
