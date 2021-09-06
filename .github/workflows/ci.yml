@@ -98,6 +98,29 @@ jobs:
         sudo dpkg-reconfigure man-db
         sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
 
+    #
+    #  NetworkRADIUS repo is needed for up-to-date versions
+    #  of libkqueue.  Although libkqueue is available via
+    #  debian, it's too old and the EVFILT_PROC filter is
+    #  disabled.
+    #
+    #  We don't need this on macOS as it has a native kqueue
+    #  implementation.
+    #
+    - name: NetworkRADIUS signing key
+      if: ${{ runner.os != 'macOS' }}
+      run: curl -sS "https://packages.networkradius.com/pgp/packages%40networkradius.com" | apt-key add
+
+    - name: Set up NetworkRADIUS extras repository
+      if: ${{ runner.os != 'macOS' }}
+      run: |
+        echo "deb http://packages.networkradius.com/extras/${{ matrix.env.DIST }}/${{ matrix.env.CODENAME }} ${{ matrix.env.CODENAME }} main" \
+          > /etc/apt/sources.list.d/networkradius-extras.list
+
+    - name: Update apt repository lists
+      if: ${{ runner.os != 'macOS' }}
+      run: apt-get update
+
     - name: Install build dependencies based on Debian packages plus extra CI packages
       if: ${{ runner.os != 'macOS' }}
       run: |
@@ -114,7 +137,7 @@ jobs:
       if: ${{ matrix.env.OS == 'ubuntu-18.04' }}
       run: sudo ./scripts/ci/cassandra-install.sh
 
-    - name: Install dependencies (MacOS)
+    - name: Install dependencies (macOS)
       if: ${{ runner.os == 'macOS' }}
       run: |
         brew install \
