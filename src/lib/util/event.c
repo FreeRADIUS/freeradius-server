@@ -1625,7 +1625,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 	struct kevent evset;
 
 	ev = talloc(ctx, fr_event_pid_t);
-	if (!unlikely(ev)) {
+	if (unlikely(ev == NULL)) {
 		fr_strerror_const("Out of memory");
 		return -1;
 	}
