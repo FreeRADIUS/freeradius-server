@@ -87,7 +87,7 @@ static_assert(sizeof(unsigned int) >= 4, "Unsigned integer too small on this pla
 	for (_iter = fr_dlist_head(_list_head), \
 	     _tmp = fr_dlist_head(_list_head) ? *fr_dlist_item_to_entry((_list_head)->offset, fr_dlist_head(_list_head)) : (fr_dlist_t){ .prev = NULL, .next = NULL }; \
 	     _iter; \
-	     _iter = _tmp.next ? fr_dlist_entry_to_item(_list_head, _tmp.next) : NULL, \
+	     _iter = _tmp.next ? fr_dlist_entry_to_item((_list_head)->offset, _tmp.next) : NULL, \
 	     _tmp = _tmp.next ? *_tmp.next : (fr_dlist_t){ .prev = NULL, .next = NULL })
 
 
