@@ -1709,7 +1709,11 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 /** Does the actual reaping of PIDs
  *
  */
-static void _fr_event_pid_reap_cb(UNUSED fr_event_list_t *el, pid_t pid, int status, void *uctx)
+static void _fr_event_pid_reap_cb(UNUSED fr_event_list_t *el, pid_t pid, int status,
+#ifndef EVENT_DEBUG
+				  UNUSED
+#endif
+				  void *uctx)
 {
 	waitpid(pid, &status, WNOHANG);	/* Don't block the process if there's a logic error somewhere */
 
