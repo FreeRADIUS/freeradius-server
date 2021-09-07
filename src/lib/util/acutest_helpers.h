@@ -35,6 +35,14 @@ do { \
 	TEST_MSG("Got length      : %zu", (size_t)_our_got); \
 } while(0)
 
+#define TEST_CHECK_SLEN(_got, _exp) \
+do { \
+	ssize_t _our_got = (_got); \
+	TEST_CHECK(_exp == _our_got); \
+	TEST_MSG("Expected length : %zd", (ssize_t)_exp); \
+	TEST_MSG("Got length      : %zd", (ssize_t)_our_got); \
+} while(0)
+
 #define TEST_CHECK_RET(_got, _exp) \
 do { \
 	int _our_got = (_got); \
