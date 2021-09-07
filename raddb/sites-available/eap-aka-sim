@@ -140,11 +140,6 @@ server eap-aka-sim {
 		#
 #		protected_success = no
 
-		#
-		#  virtual_server:: Same as for `TTLS`, `PEAP`, etc.
-		#
-#		virtual_server = ""
-
 		#  request_identity:: Send a AKA-Identity message to request
 		#  an additional identity to the one from the EAP-Identity-Response.
 		#
@@ -170,9 +165,6 @@ server eap-aka-sim {
 		#
 		#  ephemeral_id_length:: The length of any pseudonyms or
 		#  fastauth identities we generate (not including hint byte).
-		#
-		#  See sites-available/eap-aka-sim for details on how to trigger
-		#  the generation of pseudonym or fastauth identities.
 		#
 #		ephemeral_id_length = 14
 
@@ -796,7 +788,7 @@ server eap-aka-sim {
 	#  You should store the following attributes against the key
  	#  `&Next-Paeudonym-Id`:
  	#
- 	#  - `&session-State:Permanent-Identity`::The permanent identity of the user.
+ 	#  - `&session-state.Permanent-Identity`::The permanent identity of the user.
 	#
 	#  If a failure rcode is returned authentication continues but the
 	#  Next-Pseudonym-Id will not be sent to the supplicant.
@@ -822,7 +814,7 @@ server eap-aka-sim {
 	#  You should restore the contents of the following attributes using
 	#  `&Next-Pseudonym-Id` as a key:
 	#
- 	#  - `&session-State:Permanent-Identity`::The permanent identity of the user.
+ 	#  - `&session-state.Permanent-Identity`::The permanent identity of the user.
  	#
  	#  NOTE: If you're using 3GPP style encrypted pseudonyms, you should
  	#  decrypt the pseudonym here, and store the decrypted value in
@@ -856,7 +848,7 @@ server eap-aka-sim {
  	#  - `&session-state.Counter`::		How many times this session has
  	#					been resumed.
  	#  - `&session-state.Session-Data`::	The master session key.
- 	#  - `&session-State:Permanent-Identity`::(optionally) the permanent
+ 	#  - `&session-state.Permanent-Identity`::(optionally) the permanent
  	#					identity of the user.
 	#
 	#  If a failure rcode is returned, authentication continues but the
@@ -882,7 +874,7 @@ server eap-aka-sim {
  	#  - `&session-state.Counter`::		How many times this session has
  	#					been resumed.
  	#  - `&session-state.Session-Data`::	The master session key.
- 	#  - `&session-State:Permanent-Identity`::(optionally) the permanent
+ 	#  - `&session-state.Permanent-Identity`::(optionally) the permanent
  	#					identity of the user.
  	#
  	#  The following rcodes have special meanings in this section:

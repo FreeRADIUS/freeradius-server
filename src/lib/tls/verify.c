@@ -83,7 +83,7 @@ DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
  *	certificate chain.
  *
  * @note As a byproduct of validation, various OIDs will be extracted from the
- *	certificates, and inserted into the session-state: list as fr_pair_t.
+ *	certificates, and inserted into the session-state. list as fr_pair_t.
  *
  * @param ok		preverify ok.  1 if true, 0 if false.
  * @param x509_ctx	containing certs to verify.

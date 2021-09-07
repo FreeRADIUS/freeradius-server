@@ -1213,41 +1213,6 @@ eap {
 	#
 	#  ### EAP-SIM
 	#
-	#  Triplets can be provided using control attributes:
-	#
-	#  * `&control.EAP-SIM-KC`
-	#  * `&control.EAP-SIM-RAND`
-	#  * `&control.EAP-SIM-SRES`
-	#
-	#  NOTE: Three instances of each attribute must be provided.
-	#
-	#  Alternatively triplets can be generated locally using
-	#  control attributes:
-	#
-	#  * `&control.SIM-Ki`
-	#  * `&control.SIM-OPc`
-	#  * `&control.SIM-Algo-Version` (optional - see defaults below)
-	#
-	#  UMTS Milenage inputs (AMF, SQN) are ignored.
-	#
-	#  `&control.SIM-Algo-Version` selects the SIM algorithm used,
-	#  it must match the algorithm used by the SIM.
-	#
-	#  Accepted values for `SIM-Algo-Version` are:
-	#
-	#  * `Comp128v1`
-	#  * `Comp128v2`
-	#  * `Comp128v3` (default if no &control.SIM-OPc)
-	#  * `Comp128v4` (default if &control.SIM-OPc is available)
-	#
-	#  NOTE: In general operators will not provide the Ki (subscriber
-	#  key) for their `SIM cards`, as the Ki is considered highly
-	#  sensitive.
-	#
-	#  Local triplet generation is intended for testing and
-	#  research purposes where programmable or virtual SIM cards
-	#  are in use.
-	#
 	sim {
 		#
 		#  virtual_server:: EAP-SIM virtual server containing policy

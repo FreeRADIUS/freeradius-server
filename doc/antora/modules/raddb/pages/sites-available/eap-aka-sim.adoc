@@ -710,7 +710,7 @@ temporarily in `&Next-Pseudonym-Id` for use as a key.
 You should store the following attributes against the key
 `&Next-Paeudonym-Id`:
 
-- `&session-State:Permanent-Identity`::The permanent identity of the user.
+- `&session-state.Permanent-Identity`::The permanent identity of the user.
 
 If a failure rcode is returned authentication continues but the
 Next-Pseudonym-Id will not be sent to the supplicant.
@@ -733,7 +733,7 @@ This section will be called prior to entering the AKA-CHALLENGE state.
 You should restore the contents of the following attributes using
 `&Next-Pseudonym-Id` as a key:
 
-- `&session-State:Permanent-Identity`::The permanent identity of the user.
+- `&session-state.Permanent-Identity`::The permanent identity of the user.
 
 NOTE: If you're using 3GPP style encrypted pseudonyms, you should
 decrypt the pseudonym here, and store the decrypted value in
@@ -761,7 +761,7 @@ You should restore the contents of the following attributes using
 - `&session-state.Counter`::		How many times this session has
 			been resumed.
 - `&session-state.Session-Data`::	The master session key.
-- `&session-State:Permanent-Identity`::(optionally) the permanent
+- `&session-state.Permanent-Identity`::(optionally) the permanent
 			identity of the user.
 
 If a failure rcode is returned, authentication continues but the
@@ -784,7 +784,7 @@ You should restore the contents of the following attributes using
 - `&session-state.Counter`::		How many times this session has
 			been resumed.
 - `&session-state.Session-Data`::	The master session key.
-- `&session-State:Permanent-Identity`::(optionally) the permanent
+- `&session-state.Permanent-Identity`::(optionally) the permanent
 			identity of the user.
 
 The following rcodes have special meanings in this section:
