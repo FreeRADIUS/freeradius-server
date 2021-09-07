@@ -2831,9 +2831,15 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 	}
 
 	min = fr_value_box_integer_min[dst_type];
-	if ((min < 0) && SIGN_BIT_HIGH(tmp, len)) {
-		tmp = SIGN_PROMOTE(tmp, len);
-		if (((int64_t)tmp < min)) {
+
+	/*
+	 *	Sign promote the input if the source type is
+	 *	signed, and the high bit is set.
+	 */
+	if (fr_value_box_integer_min[src->type] < 0) {
+		if (SIGN_BIT_HIGH(tmp, len)) tmp = SIGN_PROMOTE(tmp, len);
+
+		if ((int64_t)tmp < min) {
 			fr_strerror_printf("Invalid cast from %s to %s.  %"PRId64" "
 					   "outside value range %"PRId64"-%"PRIu64,
 					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
