@@ -180,6 +180,15 @@ of the server, and let you decide if they satisfy your needs.
 Support for RFC and VSA Attributes Additional server configuration
 attributes Selecting a particular configuration Authentication methods
 
+%package snmp
+Summary: SNMP MIBs and SNMP utilities used by FreeRADIUS
+Requires: net-snmp-utils
+
+%description snmp
+This package install the FreeRADIUS custom MIBs in the default location
+used by net-snmp.  This package is required for the default triggers
+(which generate SNMP traps) to function.
+
 %package perl-util
 Group: System Environment/Daemons
 Summary: FreeRADIUS Perl utilities
@@ -728,7 +737,7 @@ fi
 %doc %{_mandir}/man8/radiusd.8.gz
 # dictionaries
 %dir %attr(755,root,root) /usr/share/freeradius
-/usr/share/freeradius/*
+%{_datadir}/freeradius/dictionary/*
 # logs
 %dir %attr(700,radiusd,radiusd) /var/log/radius/
 %dir %attr(700,radiusd,radiusd) /var/log/radius/radacct/
@@ -885,7 +894,6 @@ fi
 /usr/bin/radict
 /usr/bin/radlast
 /usr/bin/radsniff
-/usr/bin/radsnmp
 /usr/bin/radsqlrelay
 /usr/bin/radtest
 /usr/bin/radwho
@@ -900,6 +908,11 @@ fi
 %doc %{_mandir}/man1/radzap.1.gz
 %doc %{_mandir}/man8/radsniff.8.gz
 %doc %{_mandir}/man8/radsqlrelay.8.gz
+
+%files snmp
+%defattr(-,root,root)
+/usr/bin/radsnmp
+%{_datadir}/snmp/mibs/*
 
 %files perl-util
 %defattr(-,root,root)
