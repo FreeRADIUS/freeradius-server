@@ -16,6 +16,7 @@ docdir		= @docdir@
 mandir		= @mandir@
 datadir		= @datadir@
 dictdir		= @dictdir@
+mibdir		= @mibdir@
 logdir		= @logdir@
 includedir	= @includedir@
 

@@ -677,6 +677,30 @@ AC_ARG_WITH(dictdir,
 AC_SUBST(dictdir)
 AC_MSG_RESULT($dictdir)
 
+dnl #
+dnl #  extra argument: --with-mibdir
+dnl #
+mibdir='${datarootdir}/snmp/mibs'
+AC_MSG_CHECKING(mibdir)
+AC_ARG_WITH(mibdir,
+[  --with-mibdir=DIR      directory for dictionary files [DATAROOTDIR/snmp] ],
+[ case "$withval" in
+  no)
+    AC_MSG_ERROR([Need mibdir])
+    ;;
+  yes)
+    ;;
+  [[\\/$]]* | ?:[[\\/]]* )
+    mibdir="$withval"
+    ;;
+  *)
+    AC_MSG_ERROR([expected an absolute directory name for --with-mibdir: $withval])
+    ;;
+  esac ]
+)
+AC_SUBST(mibdir)
+AC_MSG_RESULT($mibdir)
+
 modconfdir='${raddbdir}/mods-config'
 AC_SUBST(modconfdir)
 

@@ -171,11 +171,18 @@ export DESTDIR := $(R)
 endif
 
 DICTIONARIES := $(wildcard $(addsuffix /dictionary*,$(addprefix share/dictionary/,$(PROTOCOLS))))
+MIBS = $(wildcard share/snmp/mibs/*.mib)
 
-install.share: $(addprefix $(R)$(dictdir)/,$(patsubst share/dictionary/%,%,$(DICTIONARIES)))
+install.share: \
+	$(addprefix $(R)$(dictdir)/,$(patsubst share/dictionary/%,%,$(DICTIONARIES))) \
+	$(addprefix $(R)$(mibdir)/,$(patsubst share/snmp/mibs/%,%,$(MIBS)))
 
 $(R)$(dictdir)/%: share/dictionary/%
 	@echo INSTALL $(patsubst share/dictionary/%,%,$<)
+	@$(INSTALL) -m 644 $< $@
+
+$(R)$(mibdir)/%: share/snmp/mibs/%
+	@echo INSTALL $(patsubst share/snmp/mibs/%,%,$<)
 	@$(INSTALL) -m 644 $< $@
 
 .PHONY: dictionary.format

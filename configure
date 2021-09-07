@@ -683,6 +683,7 @@ RUSERS
 SNMPWALK
 SNMPGET
 modconfdir
+mibdir
 dictdir
 raddbdir
 radacctdir
@@ -792,6 +793,7 @@ with_logdir
 with_radacctdir
 with_raddbdir
 with_dictdir
+with_mibdir
 with_cap
 with_cap_lib_dir
 with_cap_include_dir
@@ -1498,6 +1500,7 @@ Optional Packages:
   --with-radacctdir=DIR   directory for detail files LOGDIR/radacct
   --with-raddbdir=DIR     directory for config files SYSCONFDIR/raddb
   --with-dictdir=DIR      directory for dictionary files DATAROOTDIR/freeradius
+  --with-mibdir=DIR      directory for dictionary files DATAROOTDIR/snmp
   --with-cap              build with cap if available (default=yes)
   --with-cap-lib-dir=DIR  directory in which to look for cap library files
   --with-cap-include-dir=DIR
@@ -7094,6 +7097,33 @@ fi
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $dictdir" >&5
 printf "%s\n" "$dictdir" >&6; }
+
+mibdir='${datarootdir}/snmp/mibs'
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking mibdir" >&5
+printf %s "checking mibdir... " >&6; }
+
+# Check whether --with-mibdir was given.
+if test ${with_mibdir+y}
+then :
+  withval=$with_mibdir;  case "$withval" in
+  no)
+    as_fn_error $? "Need mibdir" "$LINENO" 5
+    ;;
+  yes)
+    ;;
+  [\\/$]* | ?:[\\/]* )
+    mibdir="$withval"
+    ;;
+  *)
+    as_fn_error $? "expected an absolute directory name for --with-mibdir: $withval" "$LINENO" 5
+    ;;
+  esac
+
+fi
+
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $mibdir" >&5
+printf "%s\n" "$mibdir" >&6; }
 
 modconfdir='${raddbdir}/mods-config'
 
