@@ -1570,6 +1570,76 @@ static ssize_t next_time_xlat(UNUSED void *instance, REQUEST *request,
 	return snprintf(out, outlen, "%" PRIu64, (uint64_t)(mktime(local) - now));
 }
 
+/** Calculate number of seconds until the previous n hour(s), day(s), week(s), year(s).
+ *
+ * For example, if it were 16:18 %{lasttime:1h} would expand to -2520.
+ */
+static ssize_t last_time_xlat(UNUSED void *instance, REQUEST *request,
+			      char const *fmt, char *out, size_t outlen)
+{
+	long		num;
+
+	char const 	*p;
+	char 		*q;
+	time_t		now;
+	struct tm	*local, local_buff;
+
+	now = time(NULL);
+	local = localtime_r(&now, &local_buff);
+
+	p = fmt;
+
+	num = strtoul(p, &q, 10);
+	if (!q || *q == '\0') {
+		REDEBUG("nexttime: <int> must be followed by period specifier (h|d|w|m|y)");
+		return -1;
+	}
+
+	if (p == q) {
+		num = 1;
+	} else {
+		p += q - p;
+	}
+
+	local->tm_sec = 0;
+	local->tm_min = 0;
+
+	switch (*p) {
+	case 'h':
+		local->tm_hour -= num;
+		break;
+
+	case 'd':
+		local->tm_hour = 0;
+		local->tm_mday -= num;
+		break;
+
+	case 'w':
+		local->tm_hour = 0;
+		local->tm_mday -= (7 - local->tm_wday) + (7 * (num-1));
+		break;
+
+	case 'm':
+		local->tm_hour = 0;
+		local->tm_mday = 1;
+		local->tm_mon -= num;
+		break;
+
+	case 'y':
+		local->tm_hour = 0;
+		local->tm_mday = 1;
+		local->tm_mon = 0;
+		local->tm_year -= num;
+		break;
+
+	default:
+		REDEBUG("lasttime: Invalid period specifier '%c', must be h|d|w|m|y", *p);
+		return -1;
+	}
+
+	return snprintf(out, outlen, "%" PRIu64, (uint64_t)(now - mktime(local)));
+}
+
 
 /*
  *	Parse the 3 arguments to lpad / rpad.
@@ -1778,6 +1848,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	xlat_register("explode", explode_xlat, NULL, inst);
 
 	xlat_register("nexttime", next_time_xlat, NULL, inst);
+	xlat_register("lasttime", last_time_xlat, NULL, inst);
 	xlat_register("lpad", lpad_xlat, NULL, inst);
 	xlat_register("rpad", rpad_xlat, NULL, inst);
 
