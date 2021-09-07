@@ -40,11 +40,10 @@
 /**
  *	Encode a TACACS+ 'arg_N' fields.
  */
-static uint8_t tacacs_encode_body_arg_n_len(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_dict_attr_t const *da)
+static uint8_t tacacs_encode_body_arg_cnt(fr_pair_list_t *vps, fr_dict_attr_t const *da)
 {
 	uint8_t     arg_cnt = 0;
 	fr_pair_t   *vp;
-	fr_dbuff_t  work_dbuff = FR_DBUFF(dbuff);
 
 	for (vp = fr_pair_list_head(vps);
 	     vp;
@@ -53,18 +52,13 @@ static uint8_t tacacs_encode_body_arg_n_len(fr_dbuff_t *dbuff, fr_pair_list_t *v
 
 		if ((vp->da != da) || (vp->vp_length > 0xff)) continue;
 
-		/* Append the <arg_N_len> fields length */
-		fr_dbuff_in(&work_dbuff, (uint8_t) vp->vp_length);
-
 		arg_cnt++;
 	}
-
-	fr_dbuff_set(dbuff, &work_dbuff);
 
 	return arg_cnt;
 }
 
-static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_dict_attr_t const *da)
+static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t *arg_cnt_p, fr_pair_list_t *vps, fr_dict_attr_t const *da)
 {
 	fr_pair_t   *vp;
 	uint8_t     arg_cnt = 0;
@@ -72,13 +66,19 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, fr_pair_list_t *vps, 
 
 	for (vp = fr_pair_list_head(vps);
 	     vp;
-	     vp = fr_pair_list_next(vps,vp), arg_cnt++) {
+	     vp = fr_pair_list_next(vps,vp)) {
 		if (arg_cnt == 255) break;
+		if (arg_cnt > *arg_cnt_p) break;
 
 		if (vp->da != da || vp->vp_length > 0xff) continue;
 
 		/* Append the <arg_N> field */
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_strvalue, vp->vp_length);
+
+		FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "argument");
+
+		arg_cnt_p[1 + arg_cnt] = vp->vp_length;
+		arg_cnt++;
 	}
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -100,6 +100,8 @@ static ssize_t tacacs_encode_field(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_di
 	} else {
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_octets, vp->vp_length);
 	}
+
+	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), da->name);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -402,7 +404,8 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			/*
 			 *	Encode 'arg_N' arguments (horrible format)
 			 */
-			packet->author.req.arg_cnt = tacacs_encode_body_arg_n_len(&work_dbuff, vps, attr_tacacs_argument_list);
+			packet->author.req.arg_cnt = tacacs_encode_body_arg_cnt(vps, attr_tacacs_argument_list);
+			if (packet->author.req.arg_cnt) FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, packet->author.req.arg_cnt);
 
 			/*
 			 *	Encode 3 mandatory fields.
@@ -411,11 +414,13 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			ENCODE_FIELD_STRING8(packet->author.req.port_len, attr_tacacs_client_port);
 			ENCODE_FIELD_STRING8(packet->author.req.rem_addr_len, attr_tacacs_remote_address);
 
+			fprintf(stderr, "ARG CNT %d at %d\n", packet->author.req.arg_cnt, __LINE__);
+
 			/*
 			 *	Append 'args_body' to the end of buffer
 			 */
 			if (packet->author.req.arg_cnt > 0) {
-				if (tacacs_encode_body_arg_n(&work_dbuff, vps, attr_tacacs_argument_list) < 0) goto error;
+				if (tacacs_encode_body_arg_n(&work_dbuff, &packet->author.req.arg_cnt, vps, attr_tacacs_argument_list) < 0) goto error;
 			}
 
 			goto check_request;
@@ -470,7 +475,8 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 */
 			if (!((packet->author.res.status == FR_AUTHORIZATION_STATUS_VALUE_ERROR) ||
 			      (packet->author.res.status == FR_AUTHORIZATION_STATUS_VALUE_FOLLOW))) {
-				packet->author.res.arg_cnt = tacacs_encode_body_arg_n_len(&work_dbuff, vps, attr_tacacs_argument_list);
+				packet->author.res.arg_cnt = tacacs_encode_body_arg_cnt(vps, attr_tacacs_argument_list);
+				if (packet->author.res.arg_cnt) FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, packet->author.res.arg_cnt);
 			} else {
 				packet->author.res.arg_cnt = 0;
 			}
@@ -481,11 +487,13 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			ENCODE_FIELD_STRING16(packet->author.res.server_msg_len, attr_tacacs_server_message);
 			ENCODE_FIELD_STRING16(packet->author.res.data_len, attr_tacacs_data);
 
+			fprintf(stderr, "ARG CNT %d at %d\n", packet->author.res.arg_cnt, __LINE__);
+
 			/*
 			 *	Append 'args_body' to the end of buffer
 			 */
 			if (packet->author.res.arg_cnt > 0) {
-				if (tacacs_encode_body_arg_n(&work_dbuff, vps, attr_tacacs_argument_list) < 0) goto error;
+				if (tacacs_encode_body_arg_n(&work_dbuff, &packet->author.res.arg_cnt, vps, attr_tacacs_argument_list) < 0) goto error;
 			}
 
 			goto check_reply;
@@ -541,7 +549,8 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			/*
 			 *	Encode 'arg_N' arguments (horrible format)
 			 */
-			packet->acct.req.arg_cnt = tacacs_encode_body_arg_n_len(&work_dbuff, vps, attr_tacacs_argument_list);
+			packet->acct.req.arg_cnt = tacacs_encode_body_arg_cnt(vps, attr_tacacs_argument_list);
+			if (packet->acct.req.arg_cnt) FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, packet->acct.req.arg_cnt);
 
 			/*
 			 *	Encode 3 mandatory fields.
@@ -550,11 +559,13 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			ENCODE_FIELD_STRING8(packet->acct.req.port_len, attr_tacacs_client_port);
 			ENCODE_FIELD_STRING8(packet->acct.req.rem_addr_len, attr_tacacs_remote_address);
 
+			fprintf(stderr, "ARG CNT %d at %d\n", packet->acct.req.arg_cnt, __LINE__);
+
 			/*
 			 *	Append 'args_body' to the end of buffer
 			 */
 			if (packet->acct.req.arg_cnt > 0) {
-				if (tacacs_encode_body_arg_n(&work_dbuff, vps, attr_tacacs_argument_list) < 0) goto error;
+				if (tacacs_encode_body_arg_n(&work_dbuff, &packet->acct.req.arg_cnt, vps, attr_tacacs_argument_list) < 0) goto error;
 			}
 
 		check_request:
