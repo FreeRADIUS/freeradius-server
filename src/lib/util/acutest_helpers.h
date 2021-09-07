@@ -31,8 +31,8 @@ extern "C" {
 do { \
 	size_t _our_got = (_got); \
 	TEST_CHECK(_exp == _our_got); \
-	TEST_MSG("Expected length : %zu", (ssize_t)_exp); \
-	TEST_MSG("Got length      : %zu", (ssize_t)_our_got); \
+	TEST_MSG("Expected length : %zu", (size_t)_exp); \
+	TEST_MSG("Got length      : %zu", (size_t)_our_got); \
 } while(0)
 
 #define TEST_CHECK_RET(_got, _exp) \
