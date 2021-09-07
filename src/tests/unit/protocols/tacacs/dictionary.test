@@ -1,0 +1,9 @@
+#
+#  The numbers here don't matter.  For now, just use 30000...40000
+#
+#  We will document that users can define their own attributes in the space
+#  1000...9999
+#
+#  @todo - define some magical *tacacs* format which doesn't use numbers?
+#
+ATTRIBUTE	addr	60000	ipv4addr

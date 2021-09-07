@@ -50,7 +50,23 @@ static uint8_t tacacs_encode_body_arg_cnt(fr_pair_list_t *vps, fr_dict_attr_t co
 	     vp = fr_pair_list_next(vps, vp)) {
 		if (arg_cnt == 255) break;
 
-		if ((vp->da != da) || (vp->vp_length > 0xff)) continue;
+		if (vp->da->flags.internal) continue;
+
+		/*
+		 *	Argument-List = "foo=bar"
+		 */
+		if (vp->da == da) {
+			if (vp->vp_length > 0xff) continue;
+			arg_cnt++;
+			continue;
+		}
+
+		/*
+		 *	Maybe it's still a TACACS+ attribute?
+		 */
+		if (fr_dict_by_da(vp->da) != dict_tacacs) continue;
+
+		if (!((vp->da->attr >= 1000) && (vp->da->attr <= 65000))) continue;
 
 		arg_cnt++;
 	}
@@ -67,17 +83,56 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t *arg_cnt_p, f
 	for (vp = fr_pair_list_head(vps);
 	     vp;
 	     vp = fr_pair_list_next(vps,vp)) {
+		int len;
+
 		if (arg_cnt == 255) break;
 		if (arg_cnt > *arg_cnt_p) break;
 
-		if (vp->da != da || vp->vp_length > 0xff) continue;
+		if (vp->da->flags.internal) continue;
 
-		/* Append the <arg_N> field */
-		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_strvalue, vp->vp_length);
+		/*
+		 *	Argument-List = "foo=bar"
+		 */
+		if (vp->da == da) {
+			if (vp->vp_length > 0xff) continue;
 
-		FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "argument");
+			/* Append the <arg_N> field */
+			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_strvalue, vp->vp_length);
 
-		arg_cnt_p[1 + arg_cnt] = vp->vp_length;
+			FR_PROTO_TRACE("arg[%d] = %s", arg_cnt, vp->vp_strvalue);
+			len = vp->vp_length;
+
+		} else if (fr_dict_by_da(vp->da) != dict_tacacs) {
+			continue;
+
+		} else if (!((vp->da->attr >= 1000) && (vp->da->attr <= 65000))) {
+			continue;
+
+		} else {
+			ssize_t slen;
+			fr_sbuff_t sbuff;
+			fr_dbuff_t arg_dbuff = FR_DBUFF_MAX(&work_dbuff, 255);
+			char buffer[256];
+
+			/*
+			 *	Print it as "name=value"
+			 */
+			FR_DBUFF_IN_MEMCPY_RETURN(&arg_dbuff, vp->da->name, strlen(vp->da->name));
+			FR_DBUFF_IN_BYTES_RETURN(&arg_dbuff, (uint8_t) '=');
+
+			sbuff = FR_SBUFF_OUT(buffer, sizeof(buffer));
+			slen = fr_pair_print_value_quoted(&sbuff, vp, 0);
+			if (slen <= 0) return -1;
+
+			FR_DBUFF_IN_MEMCPY_RETURN(&arg_dbuff, buffer, slen);
+
+			FR_PROTO_TRACE("arg[%d] = %s", arg_cnt, buffer);
+
+			len = fr_dbuff_used(&arg_dbuff);
+			fr_dbuff_set(&work_dbuff, &arg_dbuff);
+		}
+
+		arg_cnt_p[1 + arg_cnt] = len;
 		arg_cnt++;
 	}
 
@@ -414,8 +469,6 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			ENCODE_FIELD_STRING8(packet->author.req.port_len, attr_tacacs_client_port);
 			ENCODE_FIELD_STRING8(packet->author.req.rem_addr_len, attr_tacacs_remote_address);
 
-			fprintf(stderr, "ARG CNT %d at %d\n", packet->author.req.arg_cnt, __LINE__);
-
 			/*
 			 *	Append 'args_body' to the end of buffer
 			 */
@@ -486,8 +539,6 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			 */
 			ENCODE_FIELD_STRING16(packet->author.res.server_msg_len, attr_tacacs_server_message);
 			ENCODE_FIELD_STRING16(packet->author.res.data_len, attr_tacacs_data);
-
-			fprintf(stderr, "ARG CNT %d at %d\n", packet->author.res.arg_cnt, __LINE__);
 
 			/*
 			 *	Append 'args_body' to the end of buffer
