@@ -8,7 +8,7 @@
 # Version:	$Id$
 #
 
-PROTOCOL	TACACS		5
+PROTOCOL	TACACS		5	format=4
 BEGIN-PROTOCOL TACACS
 
 $INCLUDE dictionary.freeradius.internal
