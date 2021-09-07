@@ -1707,6 +1707,14 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 		}
 	}
 
+	/** Dynamic toggle for allowing disallowing client certs
+	 *
+	 * This is mainly used for testing in environments where we can't
+	 * get test credentials for the host.
+	 */
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_tls_session_require_client_cert, 0);
+	if (vp) client_cert = vp->vp_bool;
+
 	/*
 	 *	In Server mode we only accept.
 	 *

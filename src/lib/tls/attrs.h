@@ -57,6 +57,7 @@ extern fr_dict_attr_t const *attr_tls_ocsp_response;
 extern fr_dict_attr_t const *attr_tls_psk_identity;
 
 extern fr_dict_attr_t const *attr_tls_session_cert_file;
+extern fr_dict_attr_t const *attr_tls_session_require_client_cert;
 extern fr_dict_attr_t const *attr_tls_session_cipher_suite;
 extern fr_dict_attr_t const *attr_tls_session_version;
 

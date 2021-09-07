@@ -428,7 +428,8 @@ ATTRIBUTE	X509v3-Basic-Constraints		17	string
 END-TLV		TLS-Certificate
 
 ATTRIBUTE	TLS-PSK-Identity			1933	string
-ATTRIBUTE	TLS-Session-Cert-File			1934	string
+ATTRIBUTE	TLS-Session-Certificate-File		1934	string
+ATTRIBUTE	TLS-Session-Require-Client-Certificate	1935	bool
 
 # Set and retrieved by EAP-TLS code
 ATTRIBUTE	TLS-OCSP-Cert-Valid			1943	integer
