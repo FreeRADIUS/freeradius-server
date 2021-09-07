@@ -99,6 +99,12 @@ Recommends: libtemplate-perl, libdbi-perl, libyaml-libyaml-perl, libdbd-pg-perl,
 Description: FreeRADIUS Perl utilities
  This package contains utilities for managing IP pools in SQL databases
 
+Package: freeradius-snmp
+Architecture: any
+Depends: libsnmp-base
+Description: FreeRADIUS SNMP mibs and utilities
+ This package contains custom FreeRADIUS mibs, and SNMP integration utilities
+
 Package: libfreeradius4
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
