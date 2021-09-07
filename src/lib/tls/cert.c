@@ -73,7 +73,7 @@ int fr_tls_cert_is_valid(fr_unix_time_t *not_before_p, fr_unix_time_t *not_after
 	if (fr_time_from_sec(not_after) < now) {
 		fr_strerror_printf("Certificate has expired.  "
 				   "Validity period (notAfter) ends %pV, current time is %pV",
-				   fr_box_date(fr_unix_time_from_time(not_before)), fr_box_date(now));
+				   fr_box_date(fr_unix_time_from_time(not_before)), fr_box_date(fr_time_to_unix_time(now)));
 		return -2;
 	}
 
@@ -84,7 +84,7 @@ int fr_tls_cert_is_valid(fr_unix_time_t *not_before_p, fr_unix_time_t *not_after
 	if (fr_time_from_sec(not_before) > now) {
 		fr_strerror_printf("Certificate is not yet valid.  "
 				   "Validity period (notBefore) starts %pV, current time is %pV",
-				   fr_box_date(fr_unix_time_from_time(not_before)), fr_box_date(now));
+				   fr_box_date(fr_unix_time_from_time(not_before)), fr_box_date(fr_time_to_unix_time(now)));
 		return -3;
 	}
 
