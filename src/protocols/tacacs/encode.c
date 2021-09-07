@@ -99,7 +99,7 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t *arg_cnt_p, f
 			/* Append the <arg_N> field */
 			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_strvalue, vp->vp_length);
 
-			FR_PROTO_TRACE("arg[%d] = %s", arg_cnt, vp->vp_strvalue);
+			FR_PROTO_TRACE("arg[%d] --> %s", arg_cnt, vp->vp_strvalue);
 			len = vp->vp_length;
 
 		} else if (fr_dict_by_da(vp->da) != dict_tacacs) {
@@ -124,14 +124,16 @@ static ssize_t tacacs_encode_body_arg_n(fr_dbuff_t *dbuff, uint8_t *arg_cnt_p, f
 			slen = fr_pair_print_value_quoted(&sbuff, vp, 0);
 			if (slen <= 0) return -1;
 
-			FR_DBUFF_IN_MEMCPY_RETURN(&arg_dbuff, buffer, slen);
-
-			FR_PROTO_TRACE("arg[%d] = %s", arg_cnt, buffer);
+			FR_DBUFF_IN_MEMCPY_RETURN(&arg_dbuff, buffer, (size_t) slen);
 
 			len = fr_dbuff_used(&arg_dbuff);
+
+			FR_PROTO_TRACE("arg[%d] --> %.*s", arg_cnt, len, fr_dbuff_start(&arg_dbuff));
+
 			fr_dbuff_set(&work_dbuff, &arg_dbuff);
 		}
 
+		FR_PROTO_TRACE("len(arg[%d]) = %d", arg_cnt, len);
 		arg_cnt_p[1 + arg_cnt] = len;
 		arg_cnt++;
 	}
@@ -609,8 +611,6 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 			ENCODE_FIELD_STRING8(packet->acct.req.user_len, attr_tacacs_user_name);
 			ENCODE_FIELD_STRING8(packet->acct.req.port_len, attr_tacacs_client_port);
 			ENCODE_FIELD_STRING8(packet->acct.req.rem_addr_len, attr_tacacs_remote_address);
-
-			fprintf(stderr, "ARG CNT %d at %d\n", packet->acct.req.arg_cnt, __LINE__);
 
 			/*
 			 *	Append 'args_body' to the end of buffer
