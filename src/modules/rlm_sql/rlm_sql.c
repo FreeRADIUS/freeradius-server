@@ -1727,8 +1727,8 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 		}
 
 		if (row[3]) {
-			if (fr_pton(&nas_addr, row[3], -1, AF_INET, false) < 0) {
-				RDEBUG("Cannot parse '%s' as an IPv4 or an IPv6 address", row[3]);
+			if (fr_pton(&nas_addr, row[3], -1, AF_UNSPEC, false) < 0) {
+				RDEBUG("Cannot parse '%s' as an IPv4 or an IPv6 address - %s", row[3], fr_strerror());
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
