@@ -336,16 +336,26 @@ struct fr_event_pid {
 	fr_event_pid_cb_t	callback;		//!< callback to run when the child exits
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
 
-	fr_dlist_t		entry;		        //!< If the fr_event_pid is in the detached, reap state,
-							///< it's inserted into a list associated with the event.
-							//!< We then send SIGKILL, and forcefully reap the process
-							///< on exit.
-
 #ifndef NDEBUG
 	char const		*file;			//!< Source file this event was last updated in.
 	int			line;			//!< Line this event was last updated on.
 #endif
 };
+
+/** Hold additional information for automatically reaped PIDs
+ */
+typedef struct {
+	fr_event_list_t		*el;			//!< because talloc_parent() is O(N) in number of objects
+	fr_event_pid_t const	*pid_ev;		//!< pid_ev this reaper is bound to.
+
+	fr_dlist_t		entry;		        //!< If the fr_event_pid is in the detached, reap state,
+							///< it's inserted into a list associated with the event.
+							//!< We then send SIGKILL, and forcefully reap the process
+							///< on exit.
+
+	fr_event_pid_cb_t	callback;		//!< callback to run when the child exits
+	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
+} fr_event_pid_reap_t;
 
 /** Callbacks to perform when the event handler is about to check the events
  *
@@ -1580,15 +1590,6 @@ static int _event_pid_free(fr_event_pid_t *ev)
 {
 	struct kevent evset;
 
-	/*
-	 *	Clear out the entry in the pid_to_reap
-	 *	list if the event was inserted.
-	 */
-	if (fr_dlist_entry_in_list(&ev->entry)) {
-		EVENT_DEBUG("%s - Removing entry from pid_to_reap %u - %p", __FUNCTION__, ev->pid, ev);
-		fr_dlist_remove(&ev->el->pid_to_reap, ev);
-	}
-
 	if (ev->parent) *ev->parent = NULL;
 	if (ev->pid < 0) return 0; /* already deleted from kevent */
 
@@ -1706,18 +1707,40 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 	return 0;
 }
 
+/** Saves some boilerplate...
+ *
+ */
+static inline CC_HINT(always_inline) void event_list_reap_run_callback(fr_event_pid_reap_t *reap, pid_t pid, int status)
+{
+	if (reap->callback) reap->callback(reap->el, pid, status, reap->uctx);
+}
+
 /** Does the actual reaping of PIDs
  *
  */
-static void _fr_event_pid_reap_cb(UNUSED fr_event_list_t *el, pid_t pid, int status,
-#ifndef WITH_EVENT_DEBUG
-				  UNUSED
-#endif
-				  void *uctx)
+static void _fr_event_pid_reap_cb(UNUSED fr_event_list_t *el, pid_t pid, int status, void *uctx)
 {
+	fr_event_pid_reap_t	*reap = talloc_get_type_abort(uctx, fr_event_pid_reap_t);
+
 	waitpid(pid, &status, WNOHANG);	/* Don't block the process if there's a logic error somewhere */
 
-	EVENT_DEBUG("%s - Reaper reaped PID %u, status %u - %p", __FUNCTION__, pid, status, uctx);
+	EVENT_DEBUG("%s - Reaper reaped PID %u, status %u - %p", __FUNCTION__, pid, status, reap);
+
+	event_list_reap_run_callback(reap, pid, status);
+}
+
+static int _fr_event_reap_free(fr_event_pid_reap_t *reap)
+{
+	/*
+	 *	Clear out the entry in the pid_to_reap
+	 *	list if the event was inserted.
+	 */
+	if (fr_dlist_entry_in_list(&reap->entry)) {
+		EVENT_DEBUG("%s - Removing entry from pid_to_reap %u - %p", __FUNCTION__, ev->pid, ev);
+		fr_dlist_remove(&reap->el->pid_to_reap, reap);
+	}
+
+	return 0;
 }
 
 /** Asynchronously wait for a PID to exit, then reap it
@@ -1726,35 +1749,40 @@ static void _fr_event_pid_reap_cb(UNUSED fr_event_list_t *el, pid_t pid, int sta
  * exiting, but we still want to clean up its state so we don't have
  * zombie processes sticking around.
  *
- * @param[in] el	to use to reap the process.
- * @param[in] pid	to reap.
+ * @param[in] el		to use to reap the process.
+ * @param[in] pid		to reap.
+ * @param[in] callback		to call when the process is reaped.
+ *				May be NULL.
+ * @param[in] uctx		to pass to callback.
  * @return
  *	- -1 if we couldn't find the process or it has already exited/been reaped.
  *      - 0 on success (we setup a process handler).
  */
-int _fr_event_pid_reap(NDEBUG_LOCATION_ARGS fr_event_list_t *el, pid_t pid)
+int _fr_event_pid_reap(NDEBUG_LOCATION_ARGS fr_event_list_t *el, pid_t pid, fr_event_pid_cb_t callback, void *uctx)
 {
 	int			ret;
-	fr_event_pid_t const	*pid_ev;
-	fr_event_pid_t		*pid_ev_m;
+	fr_event_pid_reap_t	*reap;
 
-	ret = _fr_event_pid_wait(NDEBUG_LOCATION_VALS NULL, el, &pid_ev, pid, _fr_event_pid_reap_cb, NULL);
-	if (ret < 0) return ret;
+	reap = talloc_zero(NULL, fr_event_pid_reap_t);
+	if (unlikely(!reap)) {
+		fr_strerror_const("Out of memory");
+		return -1;
+	}
+	talloc_set_destructor(reap, _fr_event_reap_free);
 
-	EVENT_DEBUG("%s - Adding reaper for PID %u - %p", __FUNCTION__, pid, pid_ev);
+	ret = _fr_event_pid_wait(NDEBUG_LOCATION_VALS reap, el, &reap->pid_ev, pid, _fr_event_pid_reap_cb, reap);
+	if (ret < 0) {
+		talloc_free(reap);
+		return ret;
+	}
 
-	pid_ev_m = UNCONST(fr_event_pid_t *, pid_ev);
-	pid_ev_m->parent = NULL;	/* Don't try and NULLify a stack variable on exit */
-	pid_ev_m->uctx = pid_ev_m;
+	reap->el = el;
+	reap->callback = callback;
+	reap->uctx = uctx;
 
-	/*
-	 *	Track these fr_event_pid_t so that
-	 *	we can free them explicitly if
-	 *	they're still around when we're exiting.
-	 *
-	 *	This is required so we don't trip LSAN.
-	 */
-	fr_dlist_insert_tail(&el->pid_to_reap, pid_ev_m);
+	EVENT_DEBUG("%s - Adding reaper for PID %u - %p", __FUNCTION__, pid, reap);
+
+	fr_dlist_insert_tail(&el->pid_to_reap, reap);
 
 	return ret;
 }
@@ -1769,7 +1797,7 @@ int _fr_event_pid_reap(NDEBUG_LOCATION_ARGS fr_event_list_t *el, pid_t pid)
 unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t timeout, int signal)
 {
 	unsigned int processed = fr_dlist_num_elements(&el->pid_to_reap);
-	fr_event_pid_t *pid_ev = NULL;
+	fr_event_pid_reap_t *reap = NULL;
 
 	/*
 	 *	If we've got a timeout, our best option
@@ -1785,12 +1813,21 @@ unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 
 		if (unlikely(kq < 0)) goto force;
 
-		fr_dlist_foreach_safe(&el->pid_to_reap, fr_event_pid_t, i) {
+		fr_dlist_foreach_safe(&el->pid_to_reap, fr_event_pid_reap_t, i) {
+			if (!i->pid_ev) {
+				EVENT_DEBUG("%s - Reaper already called (logic error)... - %p",
+					    __FUNCTION__, i);
+
+				event_list_reap_run_callback(i, -1, SIGKILL);
+				talloc_free(i);
+				continue;
+			}
 			/*
 			 *	See if any processes have exited already
 			 */
-			if (waitpid(i->pid, &status, WNOHANG) == i->pid) { /* reap */
-				EVENT_DEBUG("%s - Reaper PID %u already exited - %p", __FUNCTION__, i->pid, i);
+			if (waitpid(i->pid_ev->pid, &status, WNOHANG) == i->pid_ev->pid) { /* reap */
+				EVENT_DEBUG("%s - Reaper PID %u already exited - %p", __FUNCTION__, i->pid_ev->pid, i);
+				event_list_reap_run_callback(i, i->pid_ev->pid, SIGKILL);
 				talloc_free(i);
 				continue;
 			}
@@ -1798,10 +1835,11 @@ unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 			/*
 			 *	Add the rest to a temporary event loop
 			 */
-			EV_SET(&evset, i->pid, EVFILT_PROC, EV_ADD, NOTE_EXIT, 0, i);
+			EV_SET(&evset, i->pid_ev->pid, EVFILT_PROC, EV_ADD, NOTE_EXIT, 0, i);
 			if (kevent(kq, &evset, 1, NULL, 0, NULL) < 0) {
 				EVENT_DEBUG("%s - Failed adding reaper PID %u to tmp event loop - %p",
-					    __FUNCTION__, pid_ev->pid, i);
+					    __FUNCTION__, i->pid_ev->pid, i);
+				event_list_reap_run_callback(i, i->pid_ev->pid, SIGKILL);
 				talloc_free(i);
 				continue;
 			}
@@ -1830,10 +1868,14 @@ unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 				goto force;
 
 			case 1:
+				reap = talloc_get_type_abort(kev.udata, fr_event_pid_reap_t);
+
 				EVENT_DEBUG("%s - Reaper reaped PID %u, status %u - %p",
-					    __FUNCTION__, (unsigned int)kev.ident, (unsigned int)kev.data, kev.udata);
-				waitpid(kev.ident, &status, WNOHANG);	/* reap */
-				talloc_free(kev.udata);
+					    __FUNCTION__, (unsigned int)kev.ident, (unsigned int)kev.data, reap);
+				waitpid(reap->pid_ev->pid, &status, WNOHANG);	/* reap */
+
+				event_list_reap_run_callback(reap, reap->pid_ev->pid, status);
+				talloc_free(reap);
 				break;
 			}
 			waiting--;
@@ -1846,12 +1888,12 @@ force:
 	/*
 	 *	Deal with any lingering reap requests
 	 */
-	while ((pid_ev = fr_dlist_head(&el->pid_to_reap))) {
+	while ((reap = fr_dlist_head(&el->pid_to_reap))) {
 		int status;
 
-		EVENT_DEBUG("%s - Reaper forcefully reaping PID %u - %p", __FUNCTION__, pid_ev->pid, pid_ev);
+		EVENT_DEBUG("%s - Reaper forcefully reaping PID %u - %p", __FUNCTION__, reap->pid_ev->pid, reap);
 
-		if (kill(pid_ev->pid, signal) < 0) {
+		if (kill(reap->pid_ev->pid, signal) < 0) {
 			/*
 			 *	Make sure we don't hang if the
 			 *	process has actually exited.
@@ -1861,17 +1903,18 @@ force:
 			 *	for a PID in the unreaped state
 			 *	or not...
 			 */
-			waitpid(pid_ev->pid, &status, WNOHANG);
-
-			talloc_free(pid_ev);
+			waitpid(reap->pid_ev->pid, &status, WNOHANG);
+			event_list_reap_run_callback(reap, reap->pid_ev->pid, status);
+			talloc_free(reap);
 			continue;
 		}
 
 		/*
 		 *	Wait until the child process exits
 		 */
-		waitpid(pid_ev->pid, &status, 0);
-		talloc_free(pid_ev);
+		waitpid(reap->pid_ev->pid, &status, 0);
+		event_list_reap_run_callback(reap, reap->pid_ev->pid, status);
+		talloc_free(reap);
 	}
 
 	return processed;
@@ -2575,7 +2618,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	fr_dlist_talloc_init(&el->post_callbacks, fr_event_post_t, entry);
 	fr_dlist_talloc_init(&el->user_callbacks, fr_event_user_t, entry);
 	fr_dlist_talloc_init(&el->ev_to_add, fr_event_timer_t, entry);
-	fr_dlist_talloc_init(&el->pid_to_reap, fr_event_pid_t, entry);
+	fr_dlist_talloc_init(&el->pid_to_reap, fr_event_pid_reap_t, entry);
 	if (status) (void) fr_event_pre_insert(el, status, status_uctx);
 
 	/*

@@ -257,7 +257,9 @@ int		_fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 				   CC_HINT(nonnull(NDEBUG_LOCATION_NONNULL(2)));
 #define		fr_event_pid_wait(...) _fr_event_pid_wait(NDEBUG_LOCATION_EXP __VA_ARGS__)
 
-int		_fr_event_pid_reap(NDEBUG_LOCATION_ARGS fr_event_list_t *el, pid_t pid)
+int		_fr_event_pid_reap(NDEBUG_LOCATION_ARGS
+				   fr_event_list_t *el, pid_t pid,
+				   fr_event_pid_cb_t wait_fn, void *uctx)
 				   CC_HINT(nonnull(NDEBUG_LOCATION_NONNULL(1)));
 #define		fr_event_pid_reap(...) _fr_event_pid_reap(NDEBUG_LOCATION_EXP __VA_ARGS__)
 
