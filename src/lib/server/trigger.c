@@ -463,7 +463,7 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 		 *	with something like the server
 		 *	shutting down.
 		 */
-		unlang_interpret_synchronous(unlang_interpret_event_list(request), child);
+		unlang_interpret_synchronous(NULL, child);
 		talloc_free(child);
 	}
 

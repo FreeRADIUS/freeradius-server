@@ -196,8 +196,12 @@ rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request
 	bool				dont_wait_for_event;
 	int				iterations = 0;
 
+	fr_event_list_t		        *our_el = NULL;
+
 	old_intp = unlang_interpret_get(request);
 	caller = request->module;
+
+	if (!el) el = our_el = fr_event_list_alloc(NULL, NULL, NULL);
 
 	intps = unlang_interpret_synchronous_alloc(request, el);
 	unlang_interpret_set(request, intps->intp);
@@ -277,6 +281,8 @@ rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request
 
 		DEBUG3("%u runnable, %u yielded", fr_heap_num_elements(intps->runnable), intps->yielded);
 	}
+
+	if (our_el) talloc_free(our_el);
 
 	talloc_free(intps);
 	unlang_interpret_set(request, old_intp);
