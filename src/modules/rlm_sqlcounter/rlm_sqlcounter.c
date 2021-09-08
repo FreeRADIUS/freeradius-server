@@ -485,7 +485,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 			RDEBUG2("Time remaining (%" PRIu64 "s) is greater than time to reset (%" PRIu64 "s).  "
 				"Adding %" PRIu64 "s to reply value", to_reset, res, to_reset);
-			res = to_reset + limit->vp_uint32;
+			res = to_reset + limit->vp_uint64;
 		}
 
 		/*
