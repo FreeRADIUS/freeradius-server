@@ -179,13 +179,13 @@ bool trigger_enabled(void)
 }
 
 typedef struct {
-	char			*name;
-	xlat_exp_t		*xlat;
-	fr_value_box_list_t	args;
-	bool			synchronous;
-	pid_t			pid;	//!< for synchronous execution.
-} fr_trigger_t;
+	char			*name;		//!< Name of the trigger.
+	xlat_exp_t		*xlat;		//!< xlat representation of the trigger args.
+	fr_value_box_list_t	args;		//!< Arguments to pass to the trigger exec.
 
+	fr_exec_state_t		exec;		//!< Used for asynchronous execution.
+	fr_time_delta_t		timeout;	//!< How long the trigger has to run.
+} fr_trigger_t;
 
 static unlang_action_t trigger_resume(rlm_rcode_t *p_result, UNUSED int *priority,
 				      request_t *request, void *rctx)
@@ -198,31 +198,15 @@ static unlang_action_t trigger_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 	}
 
 	/*
-	 *	Execute the program and wait for it to finish before
-	 *      continuing. This blocks the executing thread.
+	 *	fr_exec_start just calls request_resume when it's
+	 *	done.
 	 */
-	if (trigger->synchronous) {
-		if (fr_exec_fork_wait(&trigger->pid, NULL, NULL, NULL, request, &trigger->args, NULL) < 0) {
-			RPERROR("Failed running trigger %s", trigger->name);
-			RETURN_MODULE_FAIL;
-		}
-		/*
-		 *      Wait for the trigger to finish
-		 *
-		 *      FIXME - We really need to log stdout/stderr
-		 */
-		waitpid(trigger->pid, NULL, 0);
-	/*
-	 *	Execute the program without waiting for the result.
-	 */
-	} else {
-		if (fr_exec_fork_nowait(request, &trigger->args, NULL) < 0) {
-			RPERROR("Failed running trigger %s", trigger->name);
-			RETURN_MODULE_FAIL;
-		}
+	if (fr_exec_start(request, &trigger->exec, request,
+			  &trigger->args, NULL, false, false, NULL, trigger->timeout) < 0) {
+		RPERROR("Failed running trigger %s", trigger->name);
+		RETURN_MODULE_FAIL;
 	}
-
-	RETURN_MODULE_OK;
+	return UNLANG_ACTION_YIELD;
 }
 
 static unlang_action_t trigger_run(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
@@ -394,6 +378,7 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 	MEM(trigger = talloc_zero(child, fr_trigger_t));
 	fr_value_box_list_init(&trigger->args);
 	trigger->name = talloc_strdup(trigger, value);
+	trigger->timeout = fr_time_delta_from_sec(5);	/* FIXME - Should be configurable? */
 
 	/*
 	 *	Automatically populate the trigger's
@@ -435,7 +420,7 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 	}
 
 	if (unlang_function_push(child, trigger_run, trigger_resume,
-					   NULL, UNLANG_TOP_FRAME, trigger) < 0) goto error;
+				 NULL, UNLANG_TOP_FRAME, trigger) < 0) goto error;
 
 	if (!intp) {
 		/*
@@ -445,7 +430,6 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 		 *	with something like the server
 		 *	shutting down.
 		 */
-		trigger->synchronous = true;
 		unlang_interpret_synchronous(child);
 		talloc_free(child);
 	}
