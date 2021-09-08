@@ -949,7 +949,7 @@ cleanup:
 	/*
 	 *	Give processes a chance to exit
 	 */
-	fr_event_list_reap_signal(el, fr_time_delta_from_sec(5), SIGKILL);
+	if (el) fr_event_list_reap_signal(el, fr_time_delta_from_sec(5), SIGKILL);
 
 	/*
 	 *	Free the event list.
