@@ -118,11 +118,11 @@ static void main_loop_signal_process(int flag)
 	 *	Tell the even loop to stop processing.
 	 */
 	if ((flag & RADIUS_SIGNAL_SELF_HUP) != 0) {
-		time_t when;
-		static time_t last_hup = 0;
+		fr_time_t when;
+		static fr_time_t last_hup = 0;
 
-		when = time(NULL);
-		if (when - last_hup < (time_t) 5) {
+		when = fr_time();
+		if (when - last_hup <  fr_time_delta_from_sec(5)) {
 			INFO("Ignoring HUP (less than 5s since last one)");
 			return;
 		}
