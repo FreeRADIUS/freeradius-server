@@ -639,6 +639,7 @@ static void fr_event_fd_noop(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED i
  * @note The contents of active functions may be inconsistent if this function errors.  But the
  *	 only time that will occur is if the caller passed invalid arguments.
  *
+ * @param[in] el		we're building events for.
  * @param[out] out_kev		where to write the evset.
  * @param[in] outlen		length of output buffer.
  * @param[out] active		The set of function pointers with active filters.
@@ -649,7 +650,12 @@ static void fr_event_fd_noop(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED i
  *	- >= 0 the number of changes written to out.
  *	- < 0 an error ocurred.
  */
-static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_event_funcs_t *active,
+static ssize_t fr_event_build_evset(
+#ifndef WITH_EVENT_DEBUG
+				    UNUSED
+#endif
+				    fr_event_list_t *el,
+				    struct kevent out_kev[], size_t outlen, fr_event_funcs_t *active,
 				    fr_event_fd_t *ef,
 				    fr_event_funcs_t const *new, fr_event_funcs_t const *prev)
 {
@@ -658,7 +664,7 @@ static ssize_t fr_event_build_evset(struct kevent out_kev[], size_t outlen, fr_e
 	struct kevent			add[10], *add_p = add;
 	size_t				i;
 
-	EVENT_DEBUG("Building new evset for FD %i (new %p, prev %p)", ef->fd, new, prev);
+	EVENT_DEBUG("%p - Building new evset for FD %i (new %p, prev %p)", el, ef->fd, new, prev);
 
 	/*
 	 *	Iterate over the function map, setting/unsetting
@@ -853,7 +859,8 @@ static int _event_fd_delete(fr_event_fd_t *ef)
 		/*
 		 *	If this fails, it's a pretty catastrophic error.
 		 */
-		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active, ef, &funcs, &ef->active);
+		count = fr_event_build_evset(el, evset, sizeof(evset)/sizeof(*evset),
+					     &ef->active, ef, &funcs, &ef->active);
 		if (count > 0) {
 			int ret;
 
@@ -1015,7 +1022,7 @@ int _fr_event_filter_update(NDEBUG_LOCATION_ARGS
 		}
 	}
 
-	count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active,
+	count = fr_event_build_evset(el, evset, sizeof(evset)/sizeof(*evset), &ef->active,
 				     ef, &ef->active, &curr_active);
 	if (unlikely(count < 0)) {
 	error:
@@ -1128,7 +1135,8 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 		ef->map = &filter_maps[filter];
 		if (ef->map->idx_type == FR_EVENT_FUNC_IDX_NONE) goto not_supported;
 
-		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active, ef, funcs, &ef->active);
+		count = fr_event_build_evset(el, evset, sizeof(evset)/sizeof(*evset),
+					     &ef->active, ef, funcs, &ef->active);
 		if (count < 0) goto free;
 		if (count && (unlikely(kevent(el->kq, evset, count, NULL, 0, NULL) < 0))) {
 			fr_strerror_printf("Failed inserting filters for FD %i: %s", fd, fr_syserror(errno));
@@ -1155,7 +1163,8 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 
 		fr_assert((ef->armour == 0) || ef->active.io.read);
 
-		count = fr_event_build_evset(evset, sizeof(evset)/sizeof(*evset), &ef->active, ef, funcs, &ef->active);
+		count = fr_event_build_evset(el, evset, sizeof(evset)/sizeof(*evset),
+					     &ef->active, ef, funcs, &ef->active);
 		if (count < 0) {
 		error:
 			memcpy(&ef->active, &active, sizeof(ef->active));
@@ -1447,6 +1456,8 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 		ev = talloc_zero(el, fr_event_timer_t);
 		if (unlikely(!ev)) return -1;
 
+		EVENT_DEBUG("%p - %s[%i] Added new timer %p", el, file, line, ev);
+
 		/*
 		 *	Bind the lifetime of the event to the specified
 		 *	talloc ctx.  If the talloc ctx is freed, the
@@ -1458,9 +1469,9 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 		ev->lst_id = 0;
 
 	} else {
-		memcpy(&ev, ev_p, sizeof(ev));	/* Not const to us */
+		ev = UNCONST(fr_event_timer_t *, *ev_p);
 
-		fr_assert(*ev_p == ev);
+		EVENT_DEBUG("%p - %s[%i] Re-armed timer %p", el, file, line, ev);
 
 		/*
 		 *	We can't disarm the linking context due to
@@ -1577,7 +1588,7 @@ int fr_event_timer_delete(fr_event_timer_t const **ev_p)
 
 	if (unlikely(!*ev_p)) return 0;
 
-	memcpy(&ev, ev_p, sizeof(ev));
+	ev = UNCONST(fr_event_timer_t *, *ev_p);
 	return talloc_free(ev);
 }
 
@@ -1592,6 +1603,8 @@ static int _event_pid_free(fr_event_pid_t *ev)
 
 	if (ev->parent) *ev->parent = NULL;
 	if (ev->pid < 0) return 0; /* already deleted from kevent */
+
+	EVENT_DEBUG("%p - Disabling event for PID %u - %p was freed", ev->el, (unsigned int)ev->pid, ev);
 
 	EV_SET(&evset, ev->pid, EVFILT_PROC, EV_DELETE, NOTE_EXIT, 0, ev);
 
@@ -1650,6 +1663,8 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 #define NOTE_EXITSTATUS (0)
 #endif
 
+	EVENT_DEBUG("%p - Adding exit waiter for PID %u", el, (unsigned int)pid);
+
 	EV_SET(&evset, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT | NOTE_EXITSTATUS, 0, ev);
 
 	/*
@@ -1679,6 +1694,8 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 			case CLD_EXITED:
 			case CLD_KILLED:
 			case CLD_DUMPED:
+				EVENT_DEBUG("%p - PID %u early exit %i", el, (unsigned int)pid, info.si_code);
+
 				if (callback) callback(el, pid, info.si_status, uctx);
 				return 0;
 
@@ -1736,7 +1753,8 @@ static int _fr_event_reap_free(fr_event_pid_reap_t *reap)
 	 *	list if the event was inserted.
 	 */
 	if (fr_dlist_entry_in_list(&reap->entry)) {
-		EVENT_DEBUG("%s - Removing entry from pid_to_reap %u - %p", __FUNCTION__, ev->pid, ev);
+		EVENT_DEBUG("%s - Removing entry from pid_to_reap %i - %p", __FUNCTION__,
+			    reap->pid_ev ? reap->pid_ev->pid : -1, reap);
 		fr_dlist_remove(&reap->el->pid_to_reap, reap);
 	}
 
@@ -1815,8 +1833,8 @@ unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 
 		fr_dlist_foreach_safe(&el->pid_to_reap, fr_event_pid_reap_t, i) {
 			if (!i->pid_ev) {
-				EVENT_DEBUG("%s - Reaper already called (logic error)... - %p",
-					    __FUNCTION__, i);
+				EVENT_DEBUG("%p - %s - Reaper already called (logic error)... - %p",
+					    el, __FUNCTION__, i);
 
 				event_list_reap_run_callback(i, -1, SIGKILL);
 				talloc_free(i);
@@ -1826,7 +1844,8 @@ unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 			 *	See if any processes have exited already
 			 */
 			if (waitpid(i->pid_ev->pid, &status, WNOHANG) == i->pid_ev->pid) { /* reap */
-				EVENT_DEBUG("%s - Reaper PID %u already exited - %p", __FUNCTION__, i->pid_ev->pid, i);
+				EVENT_DEBUG("%p - %s - Reaper PID %u already exited - %p",
+					    el, __FUNCTION__, i->pid_ev->pid, i);
 				event_list_reap_run_callback(i, i->pid_ev->pid, SIGKILL);
 				talloc_free(i);
 				continue;
@@ -1837,8 +1856,8 @@ unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 			 */
 			EV_SET(&evset, i->pid_ev->pid, EVFILT_PROC, EV_ADD, NOTE_EXIT, 0, i);
 			if (kevent(kq, &evset, 1, NULL, 0, NULL) < 0) {
-				EVENT_DEBUG("%s - Failed adding reaper PID %u to tmp event loop - %p",
-					    __FUNCTION__, i->pid_ev->pid, i);
+				EVENT_DEBUG("%p - %s - Failed adding reaper PID %u to tmp event loop - %p",
+					    el, __FUNCTION__, i->pid_ev->pid, i);
 				event_list_reap_run_callback(i, i->pid_ev->pid, SIGKILL);
 				talloc_free(i);
 				continue;
@@ -1856,22 +1875,22 @@ unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 			ret = kevent(kq, NULL, 0, &kev, 1, &fr_time_delta_to_timespec(end - now));
 			switch (ret) {
 			default:
-				EVENT_DEBUG("%s - Reaper tmp loop error %s, forcing process reaping",
-					    __FUNCTION__, fr_syserror(errno));
+				EVENT_DEBUG("%p - %s - Reaper tmp loop error %s, forcing process reaping",
+					    el, __FUNCTION__, fr_syserror(errno));
 				close(kq);
 				goto force;
 
 			case 0:
-				EVENT_DEBUG("%s - Reaper timeout waiting for process exit, forcing process reaping",
-					    __FUNCTION__);
+				EVENT_DEBUG("%p - %s - Reaper timeout waiting for process exit, forcing process reaping",
+					    el, __FUNCTION__);
 				close(kq);
 				goto force;
 
 			case 1:
 				reap = talloc_get_type_abort(kev.udata, fr_event_pid_reap_t);
 
-				EVENT_DEBUG("%s - Reaper reaped PID %u, status %u - %p",
-					    __FUNCTION__, (unsigned int)kev.ident, (unsigned int)kev.data, reap);
+				EVENT_DEBUG("%p - %s - Reaper reaped PID %u, status %u - %p",
+					    el, __FUNCTION__, (unsigned int)kev.ident, (unsigned int)kev.data, reap);
 				waitpid(reap->pid_ev->pid, &status, WNOHANG);	/* reap */
 
 				event_list_reap_run_callback(reap, reap->pid_ev->pid, status);
@@ -2240,7 +2259,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 
 	el->num_fd_events = num_fd_events;
 
-	EVENT_DEBUG("%s - kevent returned %u FD events", __FUNCTION__, el->num_fd_events);
+	EVENT_DEBUG("%p - %s - kevent returned %u FD events", el, __FUNCTION__, el->num_fd_events);
 
 	/*
 	 *	If there are no FD events, we must have woken up from a timer
@@ -2273,7 +2292,7 @@ void fr_event_service(fr_event_list_t *el)
 
 	if (unlikely(el->exit)) return;
 
-	EVENT_DEBUG("%s - Servicing %u FD events", __FUNCTION__, el->num_fd_events);
+	EVENT_DEBUG("%p - %s - Servicing %u FD events", el, __FUNCTION__, el->num_fd_events);
 
 	/*
 	 *	Run all of the file descriptor events.
@@ -2310,6 +2329,9 @@ void fr_event_service(fr_event_list_t *el)
 			fr_event_pid_t *pev;
 			fr_event_pid_cb_t callback;
 			void *uctx;
+
+			EVENT_DEBUG("%p - PID %u exited with status %i",
+				    el, (unsigned int)el->events[i].ident, (unsigned int)el->events[i].data);
 
 			pev = talloc_get_type_abort((void *)el->events[i].udata, fr_event_pid_t);
 
@@ -2752,7 +2774,7 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 	}
 
 	pthread_mutex_lock(&print_lock);
-	EVENT_DEBUG("Event list %p", el);
+	EVENT_DEBUG("%p - Event list stats", el);
 	EVENT_DEBUG("    fd events            : %"PRIu64, fr_event_list_num_fds(el));
 	EVENT_DEBUG("    events last iter     : %u", el->num_fd_events);
 	EVENT_DEBUG("    num timer events     : %"PRIu64, fr_event_list_num_timers(el));
