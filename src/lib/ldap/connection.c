@@ -28,6 +28,23 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/ldap/base.h>
 #include <freeradius-devel/util/debug.h>
 
+/*
+ *	Lookup of libldap result message types to meaningful strings
+ */
+static char const *ldap_msg_types[UINT8_MAX] = {
+	[LDAP_RES_BIND]			= "bind response",
+	[LDAP_RES_SEARCH_ENTRY]		= "search entry",
+	[LDAP_RES_SEARCH_REFERENCE]	= "search reference",
+	[LDAP_RES_SEARCH_RESULT]	= "search result",
+	[LDAP_RES_MODIFY]		= "modify response",
+	[LDAP_RES_ADD]			= "add response",
+	[LDAP_RES_DELETE]		= "delete response",
+	[LDAP_RES_MODDN]		= "modify dn response",
+	[LDAP_RES_COMPARE]		= "compare response",
+	[LDAP_RES_EXTENDED]		= "extended response",
+	[LDAP_RES_INTERMEDIATE]		= "intermediate response"
+};
+
 #if LDAP_SET_REBIND_PROC_ARGS == 3
 /** Callback for OpenLDAP to rebind and chase referrals
  *
