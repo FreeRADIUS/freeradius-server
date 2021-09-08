@@ -246,7 +246,7 @@ struct fr_redis_cluster {
 	bool			remapping;		//!< True when cluster is being remapped.
 	bool			remap_needed;		//!< Set true if at least one cluster node is definitely
 							//!< unreachable. Set false on successful remap.
-	time_t			last_updated;		//!< Last time the cluster mappings were updated.
+	fr_time_t      		last_updated;		//!< Last time the cluster mappings were updated.
 	CONF_SECTION		*module;		//!< Module configuration.
 
 	fr_redis_conf_t		*conf;			//!< Base configuration data such as the database number
@@ -619,7 +619,7 @@ do { \
 			rcode = FR_REDIS_CLUSTER_RCODE_FAILED;
 		error:
 			cluster->remapping = false;
-			cluster->last_updated = time(NULL);
+			cluster->last_updated = fr_time();
 			/* Re-insert new nodes back into the free_nodes queue */
 			for (i = 0; i < r; i++) SET_INACTIVE(&cluster->node[rollback[i]]);
 			return rcode;
@@ -746,7 +746,7 @@ do { \
 	}
 
 	cluster->remapping = false;
-	cluster->last_updated = time(NULL);
+	cluster->last_updated = fr_time();
 
 	/*
 	 *	Sanity checks
@@ -994,7 +994,7 @@ static fr_redis_cluster_rcode_t cluster_map_get(redisReply **out, fr_redis_conn_
  */
 fr_redis_cluster_rcode_t fr_redis_cluster_remap(request_t *request, fr_redis_cluster_t *cluster, fr_redis_conn_t *conn)
 {
-	time_t		now;
+	fr_time_t	now;
 	redisReply	*map;
 	fr_redis_cluster_rcode_t	ret;
 	size_t		i, j;
@@ -1009,7 +1009,10 @@ fr_redis_cluster_rcode_t fr_redis_cluster_remap(request_t *request, fr_redis_clu
 		return FR_REDIS_CLUSTER_RCODE_IGNORED;
 	}
 
-	now = time(NULL);
+	/*
+	 *	The remap times are _our_ times, not the _request_ time.
+	 */
+	now = fr_time();
 	if (now == cluster->last_updated) {
 	too_soon:
 		ROPTIONAL(RWARN, WARN, "Cluster was updated less than a second ago, ignoring remap request");
