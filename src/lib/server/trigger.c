@@ -38,7 +38,7 @@ RCSID("$Id$")
  */
 static bool			triggers_init;
 static CONF_SECTION const	*trigger_exec_main, *trigger_exec_subcs;
-static fr_rb_tree_t			*trigger_last_fired_tree;
+static fr_rb_tree_t		*trigger_last_fired_tree;
 static pthread_mutex_t		*trigger_mutex;
 
 #define REQUEST_INDEX_TRIGGER_NAME	1
@@ -179,7 +179,7 @@ bool trigger_enabled(void)
 }
 
 typedef struct {
-	char			*name;		//!< Name of the trigger.
+	char			*command;	//!< Name of the trigger.
 	xlat_exp_t		*xlat;		//!< xlat representation of the trigger args.
 	fr_value_box_list_t	args;		//!< Arguments to pass to the trigger exec.
 
@@ -187,13 +187,28 @@ typedef struct {
 	fr_time_delta_t		timeout;	//!< How long the trigger has to run.
 } fr_trigger_t;
 
+static unlang_action_t trigger_done(rlm_rcode_t *p_result, UNUSED int *priority,
+				    request_t *request, void *rctx)
+{
+	fr_trigger_t	*trigger = talloc_get_type_abort(rctx, fr_trigger_t);
+
+	if (trigger->exec.status == 0) {
+		RDEBUG2("Trigger \"%s\" done", trigger->command);
+		RETURN_MODULE_OK;
+	}
+
+	RERROR("Trigger \"%s\" failed", trigger->command);
+
+	RETURN_MODULE_FAIL;
+}
+
 static unlang_action_t trigger_resume(rlm_rcode_t *p_result, UNUSED int *priority,
 				      request_t *request, void *rctx)
 {
 	fr_trigger_t	*trigger = talloc_get_type_abort(rctx, fr_trigger_t);
 
 	if (fr_dlist_empty(&trigger->args)) {
-		RERROR("Failed trigger %s - did not expand to anything", trigger->name);
+		RERROR("Failed trigger \"%s\" - did not expand to anything", trigger->command);
 		RETURN_MODULE_FAIL;
 	}
 
@@ -203,9 +218,22 @@ static unlang_action_t trigger_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 	 */
 	if (fr_exec_start(request, &trigger->exec, request,
 			  &trigger->args, NULL, false, false, NULL, trigger->timeout) < 0) {
-		RPERROR("Failed running trigger %s", trigger->name);
+	fail:
+		RPERROR("Failed running trigger \"%s\"", trigger->command);
 		RETURN_MODULE_FAIL;
 	}
+
+	/*
+	 *	Swap out the repeat function so that when we're
+	 *      resumed the code path in the interpreter pops
+	 *      the frame.  If we don't do this trigger_run just
+	 *	gets called repeatedly.
+	 */
+	if (unlang_function_repeat_set(request, trigger_done) < 0) {
+		fr_exec_cleanup(&trigger->exec, SIGKILL);
+		goto fail;
+	}
+
 	return UNLANG_ACTION_YIELD;
 }
 
@@ -213,7 +241,7 @@ static unlang_action_t trigger_run(rlm_rcode_t *p_result, UNUSED int *priority, 
 {
 	fr_trigger_t	*trigger = talloc_get_type_abort(uctx, fr_trigger_t);
 
-	RDEBUG("Running trigger %s", trigger->name);
+	RDEBUG("Running trigger \"%s\"", trigger->command);
 
 	if (unlang_xlat_push(request, &trigger->args, request,
 			     trigger->xlat, UNLANG_SUB_FRAME) < 0) RETURN_MODULE_FAIL;
@@ -377,7 +405,7 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 
 	MEM(trigger = talloc_zero(child, fr_trigger_t));
 	fr_value_box_list_init(&trigger->args);
-	trigger->name = talloc_strdup(trigger, value);
+	trigger->command = talloc_strdup(trigger, value);
 	trigger->timeout = fr_time_delta_from_sec(5);	/* FIXME - Should be configurable? */
 
 	/*
@@ -389,14 +417,14 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 	}
 
 	slen = xlat_tokenize_argv(trigger, &trigger->xlat, NULL,
-				  &FR_SBUFF_IN(trigger->name, talloc_array_length(trigger->name) - 1), NULL, NULL);
+				  &FR_SBUFF_IN(trigger->command, talloc_array_length(trigger->command) - 1), NULL, NULL);
 	if (slen <= 0) {
 		char *spaces, *text;
 
 		fr_canonicalize_error(trigger, &spaces, &text, slen, fr_strerror());
 
 		cf_log_err(cp, "Syntax error");
-		cf_log_err(cp, "%s", trigger->name);
+		cf_log_err(cp, "%s", trigger->command);
 		cf_log_err(cp, "%s^ %s", spaces, text);
 
 		talloc_free(child);

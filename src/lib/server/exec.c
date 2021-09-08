@@ -835,7 +835,7 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 	};
 
 	if (fr_exec_fork_wait(&exec->pid, exec->stdin_used ? &exec->stdin_fd : NULL,
-			       stdout_fd, &exec->stderr_fd, request, cmd, exec->vps) < 0) {
+			      stdout_fd, &exec->stderr_fd, request, cmd, exec->vps) < 0) {
 		RPEDEBUG("Failed executing program");
 	fail:
 		/*
