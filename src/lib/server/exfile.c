@@ -38,7 +38,7 @@
 typedef struct {
 	int			fd;			//!< File descriptor associated with an entry.
 	uint32_t		hash;			//!< Hash for cheap comparison.
-	time_t			last_used;		//!< Last time the entry was used.
+	fr_time_t	       	last_used;		//!< Last time the entry was used.
 	dev_t			st_dev;			//!< device inode
 	ino_t			st_ino;			//!< inode number
 	char			*filename;		//!< Filename.
@@ -48,7 +48,7 @@ typedef struct {
 struct exfile_s {
 	uint32_t		max_entries;		//!< How many file descriptors we keep track of.
 	uint32_t		max_idle;		//!< Maximum idle time for a descriptor.
-	time_t			last_cleaned;
+	fr_time_t      		last_cleaned;
 	pthread_mutex_t		mutex;
 	exfile_entry_t		*entries;
 	bool			locking;
@@ -284,7 +284,7 @@ int exfile_open(exfile_t *ef, request_t *request, char const *filename, mode_t p
 	int i, tries, unused = -1, found = -1, oldest = -1;
 	bool do_cleanup = false;
 	uint32_t hash;
-	time_t now;
+	fr_time_t now;
 	struct stat st;
 
 	if (!ef || !filename) return -1;
@@ -305,7 +305,7 @@ int exfile_open(exfile_t *ef, request_t *request, char const *filename, mode_t p
 	 *	full string comparisons.
 	 */
 	hash = fr_hash_string(filename);
-	now = time(NULL);
+	now = fr_time();
 	unused = -1;
 
 	pthread_mutex_lock(&ef->mutex);
