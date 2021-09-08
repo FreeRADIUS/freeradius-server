@@ -271,7 +271,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		keylen = len;
 	}
 
-	if (totp_cmp(time(NULL), key, keylen, password->vp_strvalue) != 0) RETURN_MODULE_FAIL;
+	if (totp_cmp(fr_time_to_sec(request->packet->timestamp), key, keylen, password->vp_strvalue) != 0) RETURN_MODULE_FAIL;
 
 	RETURN_MODULE_OK;
 }
