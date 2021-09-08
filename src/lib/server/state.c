@@ -653,29 +653,29 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 	entry = state_entry_find(state, &vp->data);
-	if (entry) {
-		(void)talloc_get_type_abort(entry, fr_state_entry_t);
-		if (entry->thawed) {
-			REDEBUG("State entry has already been thawed by a request %"PRIu64, entry->thawed->number);
-			PTHREAD_MUTEX_UNLOCK(&state->mutex);
-			return -2;
-		}
-		if (request->session_state_ctx) old_ctx = request->session_state_ctx;	/* Store for later freeing */
-
-		fr_assert(entry->ctx);
-
-		request->seq_start = entry->seq_start;
-		request->session_state_ctx = entry->ctx;
-		request_data_restore(request, &entry->data);
-
-		entry->ctx = NULL;
-		entry->thawed = request;
-		PTHREAD_MUTEX_UNLOCK(&state->mutex);
-	} else {
+	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		RDEBUG2("No state entry matching &request.%pP found", vp);
 		return 2;
 	}
+
+	(void)talloc_get_type_abort(entry, fr_state_entry_t);
+	if (entry->thawed) {
+		REDEBUG("State entry has already been thawed by a request %"PRIu64, entry->thawed->number);
+		PTHREAD_MUTEX_UNLOCK(&state->mutex);
+		return -2;
+	}
+	if (request->session_state_ctx) old_ctx = request->session_state_ctx;	/* Store for later freeing */
+
+	fr_assert(entry->ctx);
+
+	request->seq_start = entry->seq_start;
+	request->session_state_ctx = entry->ctx;
+	request_data_restore(request, &entry->data);
+
+	entry->ctx = NULL;
+	entry->thawed = request;
+	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	if (!fr_pair_list_empty(&request->session_state_pairs)) {
 		RDEBUG2("Restored &session-state");
