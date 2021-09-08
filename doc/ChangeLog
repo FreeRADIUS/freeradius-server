@@ -44,6 +44,8 @@ FreeRADIUS 3.0.24 Wed 29 Sep 2021 12:00:00 EDT urgency=medium
 	* The Simultaneous-Use code is now IPv6 aware, and can deal with
 	  NAS-IPv6-Address.
 	* Add dictionary.cambium
+	* Add new %{lasttime:...} allowing calculation of a number of
+	  hours/days/weeks/years in the past.
 
 	Bug fixes
 	* Fix crash in trustrouter module (#4115). Patch from Alejandro Perez
