@@ -99,11 +99,13 @@ fr_dict_autoload_t proto_radius_dict[] = {
 
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_user_name;
+static fr_dict_attr_t const *attr_state;
 
 extern fr_dict_attr_autoload_t proto_radius_dict_attr[];
 fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius},
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius},
+	{ .out = &attr_user_name, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ NULL }
 };
 
@@ -280,6 +282,19 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 			}
 		}
 	}
+
+	/*
+	 *	Set the sequence to be at least one.  This will
+	 *	prioritize replies to Access-Challenges over other
+	 *	packets. The sequence will be updated (if necessary)
+	 *	by the RADIUS state machine.  If the request yields,
+	 *	it will get re-inserted with an updated sequence
+	 *	number.
+	 */
+	if ((request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) &&
+	    fr_pair_find_by_da(&request->request_pairs, attr_state, 0)) {
+		request->async->sequence = 1;
+	}	
 
 	if (!inst->io.app_io->decode) return 0;
 
