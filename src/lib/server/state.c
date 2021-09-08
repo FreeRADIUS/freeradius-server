@@ -50,6 +50,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/state.h>
 
+#include <freeradius-devel/io/listen.h>
+
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/md5.h>
@@ -687,6 +689,10 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 
 	RDEBUG3("%s - restored", state->da->name);
 
+	/*
+	 *	Set sequence so that we can prioritize ongoing multi-packet sessions.
+	 */
+	request->async->sequence = entry->tries;
 	REQUEST_VERIFY(request);
 	return 0;
 }
