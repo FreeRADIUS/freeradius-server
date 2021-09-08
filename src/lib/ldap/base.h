@@ -510,6 +510,19 @@ static inline int8_t fr_ldap_trunk_cmp(void const *one, void const *two)
 	return CMP(strcmp(a->bind_dn, b->bind_dn), 0);
 }
 
+/** Compare two ldap query structures on msgid
+ *
+ * @param[in] one	first query to compare.
+ * @param[in] two	second query to compare.
+ * @return CMP(one,two)
+ */
+static inline int8_t fr_ldap_query_cmp(void const *one, void const *two)
+{
+	fr_ldap_query_t const	*a = one, *b = two;
+
+	return CMP(a->msgid, b->msgid);
+}
+
 /*
  *	ldap.c - Wrappers arounds OpenLDAP functions.
  */
