@@ -35,7 +35,7 @@ case "$1" in
           # Create links for default modules
           for mod in always attr_filter cache_eap chap client \
               delay detail detail.log dhcpv4 digest eap \
-              eap_inner echo exec expiration expr files linelog logintime \
+              eap_inner echo exec expr files linelog logintime \
               mschap ntlm_auth pap pam passwd radutmp \
               soh sradutmp stats unix unpack utf8 ; do
             if test ! -h /etc/freeradius/mods-enabled/$mod && \

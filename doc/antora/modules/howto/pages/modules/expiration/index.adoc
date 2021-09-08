@@ -1,15 +1,15 @@
 = Expiration
 
-Module to expire user accounts.
+Policy to expire user accounts.
 
-This module can be used to expire user accounts. Expired users receive
+This policy can be used to expire user accounts. Expired users receive
 an `Access-Reject` on every authentication attempt. Expiration is based on
 the Expiration attribute which should be present in the check item list
 for the user we wish to perform expiration checks.
 
 == Topics
 
-Expiration attribute format:
+Expiration attribute is of type `date`:
 
 You can use `Expiration := 23 Sep 2004` and the user will no longer be
 able to connect at 00:00 (midnight) on September 23rd, 2004. If you want
@@ -20,3 +20,7 @@ calculated to kick the user off when the Expiration time occurs.
 Example entry (users files):
 
 `user1   Expiration := "23 Sep 2004"`
+
+== Location
+
+The `expiration` policy is located in `policy.d/time`

@@ -635,6 +635,12 @@ Note that `%{expr:1 * &Attr-Name[*]}` does _not_ mean repeated
 multiplication. Instead, the sum of the attributes is taken as before,
 and then the result is multiplied by one.
 
+=== rlm_expiration
+
+The `expiration` module has been replaced with an `unlang` policy.
+The policy is located in `raddb/policy.d/time`.  The `Expiration`
+attribute should continue to work the same as with v3.
+
 === rlm_mschap
 
 The `winbind_*` configuration options are now in a `winbind`
