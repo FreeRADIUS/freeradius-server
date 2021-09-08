@@ -591,7 +591,7 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		break;
 
 	case FR_TYPE_UINT32:
-		CHECK(int32);
+		CHECK(uint32);
 		break;
 
 	case FR_TYPE_UINT64:
@@ -1099,11 +1099,15 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 		break;
 
 	case FR_TYPE_INT16:
-		dst->vb_uint16 = htons(src->vb_uint16);
+		dst->vb_int16 = htons(src->vb_int16);
 		break;
 
 	case FR_TYPE_INT32:
-		dst->vb_uint32 = htonl(src->vb_uint32);
+		dst->vb_int32 = htonl(src->vb_int32);
+		break;
+
+	case FR_TYPE_INT64:
+		dst->vb_int64 = htonll(src->vb_int64);
 		break;
 
 	case FR_TYPE_DATE:
@@ -1112,10 +1116,6 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 
 	case FR_TYPE_TIME_DELTA:
 		dst->vb_time_delta = htonll(src->vb_time_delta);
-		break;
-
-	case FR_TYPE_INT64:
-		dst->vb_uint64 = htonll(src->vb_uint64);
 		break;
 
 	case FR_TYPE_FLOAT32:
