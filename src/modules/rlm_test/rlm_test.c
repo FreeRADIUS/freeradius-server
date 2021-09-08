@@ -199,77 +199,6 @@ static int rlm_test_cmp(UNUSED void *instance, request_t *request, UNUSED fr_pai
 	return 1;
 }
 
-static int mod_thread_instantiate(UNUSED CONF_SECTION  const *cs, UNUSED void *instance, UNUSED fr_event_list_t *el,
-				  void *thread)
-{
-	rlm_test_thread_t *t = thread;
-
-	t->value = pthread_self();
-	INFO("Performing instantiation for thread %p (ctx %p)", (void *)t->value, t);
-
-	return 0;
-}
-
-static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
-{
-	rlm_test_thread_t *t = thread;
-
-	INFO("Performing detach for thread %p", (void *)t->value);
-
-	if (!fr_cond_assert(t->value == pthread_self())) return -1;
-
-	return 0;
-}
-
-/*
- *	Do any per-module bootstrapping that is separate to each
- *	configured instance of the module.  e.g. set up connections
- *	to external databases, read configuration files, set up
- *	dictionary entries, etc.
- *
- *	If configuration information is given in the config section
- *	that must be referenced in later calls, store a handle to it
- *	in *instance otherwise put a null pointer there.
- */
-static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
-{
-	rlm_test_t *inst = instance;
-
-	if (paircmp_register_by_name("Test-Paircmp", attr_user_name, false,
-					rlm_test_cmp, inst) < 0) {
-		PERROR("Failed registering \"Test-Paircmp\"");
-		return -1;
-	}
-
-	/*
-	 *	Log some messages
-	 */
-	INFO("Informational message");
-	WARN("Warning message");
-	ERROR("Error message");
-	DEBUG("Debug message");
-	DEBUG2("Debug2 message");
-	DEBUG3("Debug3 message");
-	DEBUG4("Debug4 message");
-
-	/*
-	 *	Output parsed tmpls
-	 */
-	if (inst->tmpl) {
-		INFO("%s", inst->tmpl->name);
-	} else {
-		INFO("inst->tmpl is NULL");
-	}
-
-	if (inst->tmpl_m) {
-		talloc_foreach(inst->tmpl_m,  item) INFO("%s", item->name);
-	} else {
-		INFO("inst->tmpl_m is NULL");
-	}
-
-	return 0;
-}
-
 /*
  *	Find the named user in this modules database.  Create the set
  *	of attribute-value pairs to check and reply with for this user
@@ -406,13 +335,119 @@ static void mod_retry_signal(UNUSED module_ctx_t const *mctx, request_t *request
 
 }
 
-
 /*
  *	Test retries
  */
 static unlang_action_t CC_HINT(nonnull) mod_retry(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	return unlang_module_yield(request, mod_retry_resume, mod_retry_signal, NULL);
+}
+
+
+static xlat_arg_parser_t const trigger_test_xlat_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+
+/** Run a trigger (useful for testing)
+ *
+ */
+static xlat_action_t trigger_test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				       UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				       fr_value_box_list_t *in)
+{
+	fr_value_box_t	*in_head = fr_dlist_head(in);
+	fr_value_box_t	*vb;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
+	fr_dcursor_append(out, vb);
+
+	if (trigger_exec(unlang_interpret_get(request), request, NULL, in_head->vb_strvalue, false, NULL) < 0) {
+		RPEDEBUG("Running trigger failed");
+		vb->vb_bool = false;
+		return XLAT_ACTION_FAIL;
+	}
+
+	vb->vb_bool = true;
+
+	return XLAT_ACTION_DONE;
+}
+
+
+static int mod_thread_instantiate(UNUSED CONF_SECTION  const *cs, UNUSED void *instance, UNUSED fr_event_list_t *el,
+				  void *thread)
+{
+	rlm_test_thread_t *t = thread;
+
+	t->value = pthread_self();
+	INFO("Performing instantiation for thread %p (ctx %p)", (void *)t->value, t);
+
+	return 0;
+}
+
+static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+{
+	rlm_test_thread_t *t = thread;
+
+	INFO("Performing detach for thread %p", (void *)t->value);
+
+	if (!fr_cond_assert(t->value == pthread_self())) return -1;
+
+	return 0;
+}
+
+/*
+ *	Do any per-module bootstrapping that is separate to each
+ *	configured instance of the module.  e.g. set up connections
+ *	to external databases, read configuration files, set up
+ *	dictionary entries, etc.
+ *
+ *	If configuration information is given in the config section
+ *	that must be referenced in later calls, store a handle to it
+ *	in *instance otherwise put a null pointer there.
+ */
+static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
+{
+	xlat_t *xlat;
+	rlm_test_t *inst = instance;
+
+	if (paircmp_register_by_name("Test-Paircmp", attr_user_name, false,
+					rlm_test_cmp, inst) < 0) {
+		PERROR("Failed registering \"Test-Paircmp\"");
+		return -1;
+	}
+
+	/*
+	 *	Log some messages
+	 */
+	INFO("Informational message");
+	WARN("Warning message");
+	ERROR("Error message");
+	DEBUG("Debug message");
+	DEBUG2("Debug2 message");
+	DEBUG3("Debug3 message");
+	DEBUG4("Debug4 message");
+
+	/*
+	 *	Output parsed tmpls
+	 */
+	if (inst->tmpl) {
+		INFO("%s", inst->tmpl->name);
+	} else {
+		INFO("inst->tmpl is NULL");
+	}
+
+	if (inst->tmpl_m) {
+		talloc_foreach(inst->tmpl_m,  item) INFO("%s", item->name);
+	} else {
+		INFO("inst->tmpl_m is NULL");
+	}
+
+	if (!(xlat = xlat_register(instance, "test_trigger", trigger_test_xlat, false))) return -1;
+	xlat_func_args(xlat, trigger_test_xlat_args);
+
+	return 0;
 }
 
 static int mod_detach(UNUSED void *instance)

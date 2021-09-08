@@ -3045,11 +3045,6 @@ static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_arg_parser_t const trigger_xlat_args[] = {
-	{ .required = true, .single = true, .type = FR_TYPE_STRING },
-	XLAT_ARG_PARSER_TERMINATOR
-};
-
 static xlat_arg_parser_t const protocol_decode_xlat_args[] = {
 	{ .single = true, .variadic = true, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR

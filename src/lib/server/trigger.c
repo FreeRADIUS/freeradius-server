@@ -53,6 +53,11 @@ typedef struct {
 	fr_time_t	last_fired;	//!< When this trigger last fired.
 } trigger_last_fired_t;
 
+xlat_arg_parser_t const trigger_xlat_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Retrieve attributes from a special trigger list
  *
  */
@@ -258,7 +263,7 @@ static unlang_action_t trigger_run(rlm_rcode_t *p_result, UNUSED int *priority, 
  *				trigger will be executed synchronously.
  *
  * @param[in] request		The current request.
- * @param[in] cs			to search for triggers in.
+ * @param[in] cs		to search for triggers in.
  *				If cs is not NULL, the portion after the last '.' in name is used for the trigger.
  *				If cs is NULL, the entire name is used to find the trigger in the global trigger
  *				section.

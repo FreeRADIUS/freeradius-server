@@ -1,0 +1,9 @@
+Packet-Type = Access-Request
+
+#
+#  Expected answer
+#
+#  There's not an Accounting-Failed packet type in RADIUS...
+#
+Packet-Type == Access-Accept
+
