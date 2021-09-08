@@ -140,9 +140,9 @@ static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out, reques
 	MEM(exec = talloc_zero(request, fr_exec_state_t)); /* Fixme - Should be frame ctx */
 
 	if (fr_exec_start(exec, exec, request, in, input_pairs,
-				  false,
-				  inst->wait, ctx,
-				  inst->timeout) < 0) {
+			  false,
+			  inst->wait, ctx,
+			  inst->timeout) < 0) {
 		talloc_free(exec);
 		return XLAT_ACTION_FAIL;
 	}
