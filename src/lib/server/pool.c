@@ -1111,7 +1111,7 @@ int fr_pool_start(fr_pool_t *pool)
 		 *	Call time() once for each spawn attempt as there
 		 *	could be a significant delay.
 		 */
-		this = connection_spawn(pool, NULL, time(NULL), false, true);
+		this = connection_spawn(pool, NULL, fr_time(), false, true);
 		if (!this) {
 			ERROR("Failed spawning initial connections");
 			return -1;
