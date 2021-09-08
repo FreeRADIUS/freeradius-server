@@ -110,7 +110,7 @@ int unlang_subrequest_lifetime_set(request_t *request)
 		ev_p = talloc_size(request, sizeof(*ev_p));
 		memset(ev_p, 0, sizeof(*ev_p));
 
-		if (fr_event_timer_in(request, request->el, ev_p, when,
+		if (fr_event_timer_in(request, unlang_interpret_event_list(request), ev_p, when,
 				      unlang_detached_max_request_time, request) < 0) {
 			talloc_free(ev_p);
 			return -1;

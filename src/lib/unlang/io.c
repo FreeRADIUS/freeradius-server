@@ -62,7 +62,6 @@ request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namesp
 	 *	Initialize some basic information for the child.
 	 */
 	child->number = parent->number;
-	child->el = parent->el;
 
 	/*
 	 *	Initialize all of the async fields.

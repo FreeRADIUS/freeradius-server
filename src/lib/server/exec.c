@@ -340,7 +340,7 @@ int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pai
 	 *	Ensure that we can clean up any child processes.  We
 	 *	don't want them left over as zombies.
 	 */
-	if (fr_event_pid_reap(request->el, pid, NULL, NULL) < 0) {
+	if (fr_event_pid_reap(unlang_interpret_event_list(request), pid, NULL, NULL) < 0) {
 		int status;
 
 		/*
@@ -517,6 +517,7 @@ int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_f
 void fr_exec_cleanup(fr_exec_state_t *exec, int signal)
 {
 	request_t	*request = exec->request;
+	fr_event_list_t	*el = unlang_interpret_event_list(request);
 
 	if (exec->pid) RDEBUG3("Cleaning up exec state for pid %u", exec->pid);
 
@@ -530,7 +531,7 @@ void fr_exec_cleanup(fr_exec_state_t *exec, int signal)
 	}
 
 	if (exec->stdout_fd >= 0) {
-		if (fr_event_fd_delete(request->el, exec->stdout_fd, FR_EVENT_FILTER_IO) < 0){
+		if (fr_event_fd_delete(el, exec->stdout_fd, FR_EVENT_FILTER_IO) < 0){
 			RPERROR("Failed removing stdout handler");
 		}
 		close(exec->stdout_fd);
@@ -538,7 +539,7 @@ void fr_exec_cleanup(fr_exec_state_t *exec, int signal)
 	}
 
 	if (exec->stderr_fd >= 0) {
-		if (fr_event_fd_delete(request->el, exec->stderr_fd, FR_EVENT_FILTER_IO) < 0) {
+		if (fr_event_fd_delete(el, exec->stderr_fd, FR_EVENT_FILTER_IO) < 0) {
 			RPERROR("Failed removing stderr handler");
 		}
 		close(exec->stderr_fd);
@@ -548,7 +549,7 @@ void fr_exec_cleanup(fr_exec_state_t *exec, int signal)
 	if (exec->pid >= 0) {
 		if (signal > 0) kill(exec->pid, signal);
 
-		if (unlikely(fr_event_pid_reap(request->el, exec->pid, NULL, NULL) < 0)) {
+		if (unlikely(fr_event_pid_reap(el, exec->pid, NULL, NULL) < 0)) {
 			int status;
 
 			RPERROR("Failed setting up async PID reaper, PID %u may now be a zombie", exec->pid);
@@ -766,7 +767,7 @@ static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void
 		 *	We've received EOF - so the process has finished writing
 		 *	Remove event and tidy up
 		 */
-		(void) fr_event_fd_delete(exec->request->el, fd, FR_EVENT_FILTER_IO);
+		(void) fr_event_fd_delete(unlang_interpret_event_list(exec->request), fd, FR_EVENT_FILTER_IO);
 		close(fd);
 		exec->stdout_fd = -1;
 
@@ -819,7 +820,8 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 		  bool store_stdout, TALLOC_CTX *stdout_ctx,
 		  fr_time_delta_t timeout)
 {
-	int	*stdout_fd = (store_stdout || RDEBUG_ENABLED2) ? &exec->stdout_fd : NULL;
+	int		*stdout_fd = (store_stdout || RDEBUG_ENABLED2) ? &exec->stdout_fd : NULL;
+	fr_event_list_t	*el = unlang_interpret_event_list(request);
 
 	*exec = (fr_exec_state_t){
 		.request = request,
@@ -853,7 +855,7 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 	/*
 	 *	Tell the event loop that it needs to wait for this PID
 	 */
-	if (fr_event_pid_wait(ctx, request->el, &exec->ev_pid, exec->pid, exec_reap, exec) < 0) {
+	if (fr_event_pid_wait(ctx, el, &exec->ev_pid, exec->pid, exec_reap, exec) < 0) {
 		exec->pid = -1;
 		RPEDEBUG("Failed adding watcher for child process");
 
@@ -879,7 +881,7 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 	/*
 	 *	Setup event to kill the child process after a period of time.
 	 */
-	if ((timeout > 0) && fr_event_timer_in(ctx, request->el, &exec->ev,
+	if ((timeout > 0) && fr_event_timer_in(ctx, el, &exec->ev,
 					       timeout, exec_timeout, exec) < 0) goto fail_and_close;
 
 	/*
@@ -891,7 +893,7 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 		 *	Accept a maximum of 32k of data from the process.
 		 */
 		fr_sbuff_init_talloc(exec->stdout_ctx, &exec->stdout_buff, &exec->stdout_tctx, 128, 32 * 1024);
-		if (fr_event_fd_insert(ctx, request->el, exec->stdout_fd, exec_stdout_read, NULL, NULL, exec) < 0) {
+		if (fr_event_fd_insert(ctx, el, exec->stdout_fd, exec_stdout_read, NULL, NULL, exec) < 0) {
 			RPEDEBUG("Failed adding event listening to stdout");
 			goto fail_and_close;
 		}
@@ -909,7 +911,7 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 			.prefix = exec->stdout_prefix
 		};
 
-		if (fr_event_fd_insert(ctx, request->el, exec->stdout_fd, log_request_fd_event,
+		if (fr_event_fd_insert(ctx, el, exec->stdout_fd, log_request_fd_event,
 				       NULL, NULL, &exec->stdout_uctx) < 0){
 			RPEDEBUG("Failed adding event listening to stdout");
 			goto fail_and_close;
@@ -927,7 +929,7 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 		.prefix = exec->stderr_prefix
 	};
 
-	if (fr_event_fd_insert(ctx, request->el, exec->stderr_fd, log_request_fd_event,
+	if (fr_event_fd_insert(ctx, el, exec->stderr_fd, log_request_fd_event,
 			       NULL, NULL, &exec->stderr_uctx) < 0) {
 		RPEDEBUG("Failed adding event listening to stderr");
 		close(exec->stderr_fd);

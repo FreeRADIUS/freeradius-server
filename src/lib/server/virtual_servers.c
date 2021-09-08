@@ -1279,7 +1279,7 @@ unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type, reque
 	if (unlang_interpret_push_section(request, subcs, RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) {
 		RETURN_MODULE_FAIL;
 	}
-	rcode = unlang_interpret_synchronous(request);
+	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
 
 	request->component = component;
 	request->module = module;

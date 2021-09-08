@@ -211,8 +211,6 @@ struct request_s {
 	fr_radius_packet_t	*packet;	//!< Incoming request.
 	fr_radius_packet_t	*reply;		//!< Outgoing response.
 
-	fr_event_list_t		*el;		//!< thread-specific event list.
-
 	RADCLIENT		*client;	//!< The client that originally sent us the request.
 
 	request_master_state_t	master_state;	//!< Set by the master thread to signal the child that's currently

@@ -183,9 +183,8 @@ static unlang_interpret_synchronous_t *unlang_interpret_synchronous_alloc(TALLOC
  * @param[in] request	The current request.
  * @return One of the RLM_MODULE_* macros.
  */
-rlm_rcode_t unlang_interpret_synchronous(request_t *request)
+rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request)
 {
-	fr_event_list_t			*old_el;
 	unlang_interpret_t 		*old_intp;
 	char const			*caller;
 
@@ -197,12 +196,10 @@ rlm_rcode_t unlang_interpret_synchronous(request_t *request)
 	bool				dont_wait_for_event;
 	int				iterations = 0;
 
-	old_el = request->el;
 	old_intp = unlang_interpret_get(request);
 	caller = request->module;
 
-	intps = unlang_interpret_synchronous_alloc(request, request->el);
-	request->el = intps->el;
+	intps = unlang_interpret_synchronous_alloc(request, el);
 	unlang_interpret_set(request, intps->intp);
 
 	rcode = unlang_interpret(request);
@@ -219,7 +216,7 @@ rlm_rcode_t unlang_interpret_synchronous(request_t *request)
 		 *	well.
 		 */
 		DEBUG3("Gathering events - %s", dont_wait_for_event ? "Will not wait" : "will wait");
-		num_events = fr_event_corral(request->el, fr_time(), !dont_wait_for_event);
+		num_events = fr_event_corral(el, fr_time(), !dont_wait_for_event);
 		if (num_events < 0) {
 			RPERROR("fr_event_corral");
 			break;
@@ -235,7 +232,7 @@ rlm_rcode_t unlang_interpret_synchronous(request_t *request)
 		 */
 		if (num_events > 0) {
 			DEBUG4("Servicing event(s)");
-			fr_event_service(request->el);
+			fr_event_service(el);
 		}
 
 		/*
@@ -280,7 +277,6 @@ rlm_rcode_t unlang_interpret_synchronous(request_t *request)
 
 	talloc_free(intps);
 	unlang_interpret_set(request, old_intp);
-	request->el = old_el;
 	request->module = caller;
 
 	return rcode;

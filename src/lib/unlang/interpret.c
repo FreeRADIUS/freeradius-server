@@ -285,7 +285,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 			if (instruction->actions.retry.mrd) {
 				retry->timeout = fr_time() + instruction->actions.retry.mrd;
 
-				if (fr_event_timer_at(retry, request->el, &retry->ev, retry->timeout,
+				if (fr_event_timer_at(retry, unlang_interpret_event_list(request), &retry->ev, retry->timeout,
 						      instruction_timeout_handler, request) < 0) {
 					RPEDEBUG("Failed inserting event");
 					goto fail;
@@ -1409,6 +1409,18 @@ unlang_interpret_t *unlang_interpret_get(request_t *request)
 	unlang_stack_t	*stack = request->stack;
 
 	return stack->intp;
+}
+
+/** Get the event list for the current interpreter
+ *
+ */
+fr_event_list_t *unlang_interpret_event_list(request_t *request)
+{
+	unlang_stack_t	*stack = request->stack;
+
+	if (!stack->intp) return NULL;
+
+	return stack->intp->el;
 }
 
 /** Set the default interpreter for this thread

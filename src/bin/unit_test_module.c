@@ -124,8 +124,7 @@ static RADCLIENT *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *name
 	return client;
 }
 
-static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client,
-				    CONF_SECTION *server_cs, fr_event_list_t *el)
+static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client, CONF_SECTION *server_cs)
 {
 	fr_pair_t	*vp;
 	request_t	*request;
@@ -165,7 +164,6 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client
 	request->client = client;
 	request->number = number++;
 	request->name = talloc_typed_asprintf(request, "%" PRIu64, request->number);
-	request->el = el;
 	request->master_state = REQUEST_ACTIVE;
 
 	/*
@@ -832,7 +830,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Grab the VPs from stdin, or from the file.
 	 */
-	request = request_from_file(autofree, fp, client, server_cs, el);
+	request = request_from_file(autofree, fp, client, server_cs);
 	if (!request) {
 		fr_perror("Failed reading input from %s", input_file);
 		EXIT_WITH_FAILURE;
@@ -886,7 +884,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (count == 1) {
-		unlang_interpret_synchronous(request);
+		unlang_interpret_synchronous(el, request);
 	} else {
 		int i;
 		request_t *old = request_clone(request);
@@ -894,7 +892,7 @@ int main(int argc, char *argv[])
 
 		for (i = 0; i < count; i++) {
 			request = request_clone(old);
-			unlang_interpret_synchronous(request);
+			unlang_interpret_synchronous(el, request);
 			talloc_free(request);
 		}
 	}

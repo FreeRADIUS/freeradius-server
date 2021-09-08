@@ -360,7 +360,9 @@ pid_t radius_start_program_legacy(int *stdin_fd, int *stdout_fd, int *stderr_fd,
 			close(stderr_pipe[1]);
 		}
 	} else {
-		(void) fr_event_pid_wait(request->el, request->el, NULL, pid, NULL, NULL);
+		fr_event_list_t *el = unlang_interpret_event_list(request);
+
+		(void) fr_event_pid_wait(el, el, NULL, pid, NULL, NULL);
 	}
 
 	return pid;

@@ -642,8 +642,6 @@ static char *itoa_internal(TALLOC_CTX *ctx, uint64_t number)
 static inline CC_HINT(always_inline)
 void worker_request_init(fr_worker_t *worker, request_t *request, fr_time_t now)
 {
-	request->el = worker->el;
-
 	/*
 	 *	For internal requests request->packet
 	 *	and request->reply are already populated.

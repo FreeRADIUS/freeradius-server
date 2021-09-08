@@ -135,13 +135,15 @@ void			unlang_interpret_set(request_t *request, unlang_interpret_t *intp);
 
 unlang_interpret_t	*unlang_interpret_get(request_t *request);
 
+fr_event_list_t		*unlang_interpret_event_list(request_t *request);
+
 void			unlang_interpret_set_thread_default(unlang_interpret_t *intp);
 
 unlang_interpret_t	*unlang_interpret_get_thread_default(void);
 
 rlm_rcode_t		unlang_interpret(request_t *request) CC_HINT(hot);
 
-rlm_rcode_t		unlang_interpret_synchronous(request_t *request);
+rlm_rcode_t		unlang_interpret_synchronous(fr_event_list_t *el, request_t *request);
 
 void			*unlang_interpret_stack_alloc(TALLOC_CTX *ctx);
 

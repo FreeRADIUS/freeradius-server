@@ -333,7 +333,7 @@ static void status_check_reset(udp_handle_t *h, udp_request_t *u)
  *	Status-Server checks.  Manually build the packet, and
  *	all of its associated glue.
  */
-static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_t *h)
+static void CC_HINT(nonnull) status_check_alloc(udp_handle_t *h)
 {
 	udp_request_t		*u;
 	request_t		*request;
@@ -364,7 +364,6 @@ static void CC_HINT(nonnull) status_check_alloc(fr_event_list_t *el, udp_handle_
 	talloc_const_free(request->name);
 	request->name = talloc_strdup(request, h->module_name);
 
-	request->el = el;
 	request->packet = fr_radius_packet_alloc(request, false);
 	request->reply = fr_radius_packet_alloc(request, false);
 
@@ -846,7 +845,7 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 	 *	status-check response.
 	 */
 	if (h->inst->parent->status_check) {
-		status_check_alloc(conn->el, h);
+		status_check_alloc(h);
 
 		/*
 		 *	Start status checking.

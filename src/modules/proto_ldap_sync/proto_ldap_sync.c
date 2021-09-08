@@ -421,7 +421,7 @@ static void request_running(request_t *request, fr_state_signal_t action)
 		FALL_THROUGH;
 
 	case REQUEST_RECV:
-		rcode = unlang_interpret_synchronous(request);
+		rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
 
 		if (request->master_state == REQUEST_STOP_PROCESSING) goto done;
 		FALL_THROUGH;
@@ -836,7 +836,7 @@ static int proto_ldap_cookie_load(TALLOC_CTX *ctx, uint8_t **cookie, rad_listen_
 		ret = -1;
 		goto finish;
 	}
-	rcode = unlang_interpret_synchronous(request);
+	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
 	switch (rcode) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:

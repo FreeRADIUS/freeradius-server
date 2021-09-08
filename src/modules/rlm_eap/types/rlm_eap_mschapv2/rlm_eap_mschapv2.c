@@ -433,7 +433,7 @@ static unlang_action_t mod_process_auth_type(rlm_rcode_t *p_result, module_ctx_t
 	rlm_rcode_t			rcode;
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 
-	rcode = unlang_interpret_synchronous(request);
+	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) return UNLANG_ACTION_STOP_PROCESSING;
 
@@ -753,7 +753,7 @@ packet_ready:
 		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_FAIL, UNLANG_TOP_FRAME) < 0) {
 			RETURN_MODULE_FAIL;
 		}
-		rcode = unlang_interpret_synchronous(request);
+		rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
 	}
 
 	return mschap_finalize(p_result, mctx, request, eap_session, rcode);

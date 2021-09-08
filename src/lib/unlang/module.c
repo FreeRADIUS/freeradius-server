@@ -93,9 +93,8 @@ static int _unlang_event_free(unlang_module_event_t *ev)
 	}
 
 	if (ev->fd >= 0) {
-		if (!ev->request || !ev->request->el) return 0;
-
-		(void) fr_event_fd_delete(ev->request->el, ev->fd, FR_EVENT_FILTER_IO);
+		if (!ev->request) return 0;
+		(void) fr_event_fd_delete(unlang_interpret_event_list(ev->request), ev->fd, FR_EVENT_FILTER_IO);
 	}
 
 	return 0;
@@ -162,7 +161,7 @@ int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callba
 		.ctx = ctx
 	};
 
-	if (fr_event_timer_at(request, request->el, &ev->ev,
+	if (fr_event_timer_at(request, unlang_interpret_event_list(request), &ev->ev,
 			      when, unlang_module_event_timeout_handler, ev) < 0) {
 		RPEDEBUG("Failed inserting event");
 		talloc_free(ev);
@@ -297,7 +296,7 @@ int unlang_module_fd_add(request_t *request,
 	/*
 	 *	Register for events on the file descriptor
 	 */
-	if (fr_event_fd_insert(request, request->el, fd,
+	if (fr_event_fd_insert(request, unlang_interpret_event_list(request), fd,
 			       ev->fd_read ? unlang_event_fd_read_handler : NULL,
 			       ev->fd_write ? unlang_event_fd_write_handler : NULL,
 			       ev->fd_error ? unlang_event_fd_error_handler: NULL,
@@ -874,7 +873,7 @@ static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_tim
 		/*
 		 *	Reset the timer.
 		 */
-		if (fr_event_timer_at(request, request->el, &state->ev, state->retry.next,
+		if (fr_event_timer_at(request, unlang_interpret_event_list(request), &state->ev, state->retry.next,
 				      unlang_module_event_retry_handler, request) < 0) {
 			RPEDEBUG("Failed inserting event");
 			unlang_interpret_mark_runnable(request); /* and let the caller figure out what's up */
@@ -1000,7 +999,8 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 
 			(void) fr_retry_init(&state->retry, now, &frame->instruction->actions.retry); /* can't fail */
 
-			if (fr_event_timer_at(request, request->el, &state->ev, state->retry.next,
+			if (fr_event_timer_at(request, unlang_interpret_event_list(request),
+					      &state->ev, state->retry.next,
 					      unlang_module_event_retry_handler, request) < 0) {
 				RPEDEBUG("Failed inserting event");
 				goto fail;

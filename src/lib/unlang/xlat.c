@@ -108,7 +108,7 @@ static int _unlang_xlat_event_free(unlang_xlat_event_t *ev)
 	}
 
 	if (ev->fd >= 0) {
-		(void) fr_event_fd_delete(ev->request->el, ev->fd, FR_EVENT_FILTER_IO);
+		(void) fr_event_fd_delete(unlang_interpret_event_list(ev->request), ev->fd, FR_EVENT_FILTER_IO);
 	}
 
 	return 0;
@@ -172,7 +172,8 @@ int unlang_xlat_event_timeout_add(request_t *request, fr_unlang_xlat_timeout_t c
 	ev->thread = xlat_thread_instance_find(state->exp);
 	ev->ctx = ctx;
 
-	if (fr_event_timer_at(request, request->el, &ev->ev, when, unlang_xlat_event_timeout_handler, ev) < 0) {
+	if (fr_event_timer_at(request, unlang_interpret_event_list(request),
+			      &ev->ev, when, unlang_xlat_event_timeout_handler, ev) < 0) {
 		RPEDEBUG("Failed inserting event");
 		talloc_free(ev);
 		return -1;
