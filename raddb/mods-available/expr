@@ -130,6 +130,9 @@
 #  nexttime	calculate number of seconds until next n hour(s), day(s), week(s), year(s)
 #		if it were 16:18, %{nexttime:1h} would expand to 2520
 #
+#  lasttime	calculate number of seconds until last n hour(s), day(s), week(s), year(s)
+#		if it were 16:18, %{lasttime:1h} would expand to 4680
+#
 #  lpad		left-pad a string
 #		if User-Name is "foo": "%{lpad:&User-Name 6 x}" == "xxxfoo"
 #
