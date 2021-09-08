@@ -1251,6 +1251,9 @@ static xlat_action_t xlat_func_next_time(TALLOC_CTX *ctx, fr_dcursor_t *out, req
 	fr_value_box_t	*in_head = fr_dlist_head(in);
 	fr_value_box_t	*vb;
 
+	/*
+	 *	We want to limit based on _now_, not on when they logged in.
+	 */
 	now = time(NULL);
 	local = localtime_r(&now, &local_buff);
 
