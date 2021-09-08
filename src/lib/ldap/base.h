@@ -173,6 +173,22 @@ typedef enum {
 	LDAP_REQUEST_MODIFY				//!< A modification to an LDAP entity
 } fr_ldap_request_type_t;
 
+/** LDAP query result codes
+ *
+ */
+typedef enum {
+	LDAP_RESULT_PENDING = 1,			//!< Result not yet returned
+	LDAP_RESULT_SUCCESS = 0,			//!< Successfully got LDAP results
+	LDAP_RESULT_ERROR = -1,				//!< A general error occurred
+	LDAP_RESULT_TIMEOUT = -2,			//!< The query timed out
+	LDAP_RESULT_BAD_DN = -3,			//!< The requested DN does not exist
+	LDAP_RESULT_NO_RESULT = -4,			//!< No results returned
+	LDAP_RESULT_REFERRAL_FAIL = -5,			//!< Initial results indicated a referral was needed
+							///< but the referral could not be followed
+	LDAP_RESULT_EXCESS_REFERRALS = -6,		//!< The referral chain took too many hops
+	LDAP_RESULT_MISSING_REFERRAL = -7,		//!< A referral was indicated but no URL was provided
+} fr_ldap_result_code_t;
+
 typedef struct {
 	char const		*vendor_str;		//!< As returned from the vendorName attribute in the
 							///< rootDSE.
