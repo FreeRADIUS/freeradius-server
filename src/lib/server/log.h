@@ -521,8 +521,8 @@ do {\
  *
  */
 typedef struct {
-	time_t		now;			//!< Current time - Here because it avoids repeated stack allocation.
-	time_t		last_complained;	//!< Last time we emitted a log message.
+	fr_time_t      	now;			//!< Current time - Here because it avoids repeated stack allocation.
+	fr_time_t	last_complained;	//!< Last time we emitted a log message.
 	unsigned int	repeated;		//!< Number of "skipped" messages.
 } fr_rate_limit_t;
 
@@ -545,7 +545,7 @@ typedef struct {
 #define RATE_LIMIT_LOCAL(_entry, _log, _fmt, ...) \
 do {\
 	if (fr_rate_limit_enabled()) {\
-		(_entry)->now = time(NULL);\
+		(_entry)->now = fr_time();\
 		if ((_entry)->now != (_entry)->last_complained) {\
 			(_entry)->last_complained = (_entry)->now;\
 			if (((_entry)->repeated > 0) && (((_entry)->now - (_entry)->last_complained) == 1)) { \
@@ -582,7 +582,7 @@ do {\
 #define RATE_LIMIT_LOCAL_ROPTIONAL(_entry, _l_request, _l_global, _fmt, ...) \
 do {\
 	if (fr_rate_limit_enabled()) {\
-		(_entry)->now = time(NULL);\
+		(_entry)->now = fr_time();\
 		if ((_entry)->now != (_entry)->last_complained) {\
 			(_entry)->last_complained = (_entry)->now;\
 			if (((_entry)->repeated > 0) && (((_entry)->now - (_entry)->last_complained) == 1)) { \
