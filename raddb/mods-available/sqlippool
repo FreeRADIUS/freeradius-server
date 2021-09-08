@@ -40,6 +40,11 @@ sqlippool {
 	lease_duration = 3600
 
 	#
+	#  pool_name: The attribute in the `control` list which contains the pool name.
+	#
+	pool_name = IP-Pool.Name
+
+	#
 	#  allocated_address_attr:: List and attribute where the allocated address is written to.
 	#
 	#  [NOTE]
