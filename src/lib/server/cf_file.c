@@ -421,7 +421,7 @@ char const *cf_expand_variables(char const *cf, int lineno,
 }
 
 /*
- *	Merge the template so everyting else "just works".
+ *	Merge the template so everything else "just works".
  */
 static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 {
@@ -1118,6 +1118,15 @@ static int process_template(cf_stack_t *stack)
 	if (parent->template) {
 		ERROR("%s[%d]: Section already has a template", frame->filename, frame->lineno);
 		return -1;
+	}
+
+	/*
+	 *	Allow in-line templates.
+	 */
+	templatecs = cf_section_find(cf_item_to_section(cf_parent(parent)), "template", stack->buff[2]);
+	if (templatecs) {
+		parent->template = templatecs;
+		return 0;
 	}
 
 	parent_cs = cf_root(parent);
@@ -2648,6 +2657,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 			*r = '\0';
 			*q = '\0';
 			next = cf_section_find(cs, p, r + 1);
+			if (!next && cs->template) next = cf_section_find(cs->template, p, r + 1);
 			*r = '[';
 			*q = ']';
 
@@ -2664,6 +2674,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parent_cs,
 		} else {
 			*q = '\0';
 			next = cf_section_find(cs, p, NULL);
+			if (!next && cs->template) next = cf_section_find(cs->template, p, NULL);
 			*q = '.';
 		}
 
@@ -2681,6 +2692,7 @@ retry:
 	 *	section.
 	 */
 	cp = cf_pair_find(cs, p);
+	if (!cp && cs->template) cp = cf_pair_find(cs->template, p);
 	if (cp) {
 		cp->referenced = true;	/* conf pairs which are referenced count as used */
 		return &(cp->item);

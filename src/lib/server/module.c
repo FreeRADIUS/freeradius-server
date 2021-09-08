@@ -1720,6 +1720,14 @@ int modules_bootstrap(CONF_SECTION *root)
 		name = cf_section_name1(subcs);
 		if (unlang_compile_is_keyword(name)) goto invalid_name;
 
+		/*
+		 *	Skip inline templates, and disallow "template { ... }"
+		 */
+		if (strcmp(name, "template") == 0) {
+			if (!cf_section_name2(subcs)) goto invalid_name;
+			continue;
+		}
+
 		instance = module_bootstrap(NULL, subcs);
 		if (!instance) return -1;
 
