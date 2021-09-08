@@ -1,0 +1,9 @@
+#
+#  PRE: update
+#
+template_test
+if (!ok) {
+	test_fail
+}
+
+success
