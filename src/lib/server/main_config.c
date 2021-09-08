@@ -1378,7 +1378,7 @@ void main_config_hup(main_config_t *config)
 	 *	Only check the config files every few seconds.
 	 */
 	when = fr_time();
-	if ((last_hup + 2) >= when) {
+	if ((last_hup + fr_time_delta_from_sec(2)) >= when) {
 		INFO("HUP - Last HUP was too recent.  Ignoring");
 		return;
 	}
