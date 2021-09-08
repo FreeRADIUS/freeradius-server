@@ -40,6 +40,11 @@ sqlippool {
 	lease_duration = 3600
 
 	#
+	#  offer_duration:: DHCP offer duration.
+	#
+	offer_duration = 60
+
+	#
 	#  pool_name: The attribute in the `control` list which contains the pool name.
 	#
 	pool_name = IP-Pool.Name
