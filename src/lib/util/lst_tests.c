@@ -253,7 +253,7 @@ static void lst_burn_in(void)
 	int		element_count = 0;
 
 	if (!done_init) {
-		srand((unsigned int) time(0));
+		srand((unsigned int) time(NULL));
 		done_init = true;
 	}
 
