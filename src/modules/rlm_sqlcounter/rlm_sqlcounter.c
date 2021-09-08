@@ -486,33 +486,64 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 			RDEBUG2("Time remaining (%" PRIu64 "s) is greater than time to reset (%" PRIu64 "s).  "
 				"Adding %" PRIu64 "s to reply value", to_reset, res, to_reset);
 			res = to_reset + limit->vp_uint64;
-		}
 
-		/*
-		 *	Limit the reply attribute to the minimum of the existing value, or this new one.
-		 */
-		ret = tmpl_find_or_add_vp(&reply_item, request, inst->reply_attr);
-		switch (ret) {
-		case 1:		/* new */
-			break;
+			/*
+			 *	Limit the reply attribute to the minimum of the existing value, or this new one.
+			 *
+			 *	Duplicate code because Session-Timeout is uint32, not uint64
+			 */
+			ret = tmpl_find_or_add_vp(&reply_item, request, inst->reply_attr);
+			switch (ret) {
+			case 1:		/* new */
+				break;
 
-		case 0:		/* found */
-			if (reply_item->vp_uint64 <= res) {
-				RDEBUG2("Leaving existing %s value of %" PRIu64, inst->reply_attr->name,
-					reply_item->vp_uint64);
+			case 0:		/* found */
+				if (reply_item->vp_uint32 <= res) {
+					RDEBUG2("Leaving existing %s value of %u", inst->reply_attr->name,
+						reply_item->vp_uint32);
+					RETURN_MODULE_OK;
+				}
+				break;
+
+			case -1:	/* alloc failed */
+				REDEBUG("Error allocating attribute %s", inst->reply_attr->name);
+				RETURN_MODULE_FAIL;
+
+			default:	/* request or list unavailable */
+				RDEBUG2("List or request context not available for %s, skipping...", inst->reply_attr->name);
 				RETURN_MODULE_OK;
 			}
-			break;
 
-		case -1:	/* alloc failed */
-			REDEBUG("Error allocating attribute %s", inst->reply_attr->name);
-			RETURN_MODULE_FAIL;
+			if (res > UINT32_MAX) res = UINT32_MAX;
+			reply_item->vp_uint32 = res;
 
-		default:	/* request or list unavailable */
-			RDEBUG2("List or request context not available for %s, skipping...", inst->reply_attr->name);
-			RETURN_MODULE_OK;
+		} else {
+			/*
+			 *	Limit the reply attribute to the minimum of the existing value, or this new one.
+			 */
+			ret = tmpl_find_or_add_vp(&reply_item, request, inst->reply_attr);
+			switch (ret) {
+			case 1:		/* new */
+				break;
+
+			case 0:		/* found */
+				if (reply_item->vp_uint64 <= res) {
+					RDEBUG2("Leaving existing %s value of %" PRIu64, inst->reply_attr->name,
+						reply_item->vp_uint64);
+					RETURN_MODULE_OK;
+				}
+				break;
+
+			case -1:	/* alloc failed */
+				REDEBUG("Error allocating attribute %s", inst->reply_attr->name);
+				RETURN_MODULE_FAIL;
+
+			default:	/* request or list unavailable */
+				RDEBUG2("List or request context not available for %s, skipping...", inst->reply_attr->name);
+				RETURN_MODULE_OK;
+			}
+			reply_item->vp_uint64 = res;
 		}
-		reply_item->vp_uint64 = res;
 		RDEBUG2("&%pP", reply_item);
 
 		RETURN_MODULE_UPDATED;
