@@ -28,11 +28,14 @@ the new configuration. Start the server after every change via
 `listen` sections, followed by the `server` sections.
 
 Take your time. It is better to make small incremental progress, than
-to make massive changes, and then to spend weeks debugging it.
+to make massive changes, and then to spend weeks debugging it.  Use a
+revision control system such as `git` to save and track your changes.
 
 All of the attribute names used in v3 have been changed in v4.  Please
 see the xref:attribute_names.adoc[attribute names] document for more
-information.
+information.  This change was necessary in order to support the new
+"grouped" attributes, which are required for DHCPv6 and other
+protocols.
 
 === Upgrading from v2
 
@@ -78,19 +81,25 @@ namespace = radius
 
 This tells the server what protocol is being used in that virtual
 server. This configuration was not necessary in v3, because each
-protocol was implemented (mostly) in the RADIUS state machine. In v4,
-each protocol is completely independent, and RADIUS is no longer welded
-into the server core.
+protocol was pretending to be RADIUS. That was simple to do and worked
+for some things, but it was not the best approach.
 
-Each example virtual server in the `sites-enabled/` directory contains
-a `namespace` parameter.
+In v4, each protocol is completely independent, and RADIUS is no
+longer welded into the server core.  i.e. The server core does
+modules, configuration files, policies, etc.  RADIUS has been
+relegated to just another plug-in protocol, with the same status as
+DHCPv4 and DHCPv6.
+
+Every example virtual server in the `sites-enabled/` directory
+contains a `namespace` parameter.  Please look at those files for
+examples of configuring and running each supported protocol.
 
 === Listen Sections
 
-The `listen` sections have changed. There is now a `type` entry,
-which lists the packet types (e.g._`Access-Request` instead of
-`auth`). To accept multiple kinds of packets, just list `type`
-multiple times:
+The `listen` sections have changed. There is now a `type` entry, which
+lists the packet type by their correct name (e.g._`Access-Request`
+instead of `auth`). To accept multiple kinds of packets, just list
+`type` multiple times:
 
 ```
 type = Access-Request
@@ -121,7 +130,7 @@ e.g. `ipaddr`, `port`, etc.
 The `listen` section then compiles each
 xref:index.adoc#_processing_sections[Processing Section] based on the named packet
 types. It has a `recv` section for receiving packets, and a `send`
-section for sending packets. e.g.
+section for sending packets, as seen in the following example:
 
 [source,unlang]
 ----
@@ -134,9 +143,10 @@ send Access-Accept {
 }
 ----
 
-This configuration is different from v3. The benefit is that it is much
-easier to understand. Instead of using things like
-`Post-Auth-Type Reject`, we now have just `send Access-Reject`.
+This configuration is different from v3. The benefit of the change is
+that it is much easier to understand. Instead of using confusing names
+such as `Post-Auth-Type Reject`, the server now just uses `send
+Access-Reject`.
 
 See also xref:index.adoc#_processing_sections[Processing Section] for how the
 `unlang` statements are parsed.
@@ -148,8 +158,8 @@ v3.
 
 Client can also be defined in a `client` subsection of a virtual
 server. Unlike `v3`, there is no need to have a `clients` section
-that contains a `client` definition. See `sites-available/default`
-for examples.
+which "wraps" one or more `client` definitions. See
+`sites-available/default` for examples.
 
 The server also supports dynamic clients. See
 `sites-available/dynamic_clients` for a worked example. There are many
@@ -208,10 +218,10 @@ examples and more information.
 == Proxying
 
 Proxying has undergone massive changes. The `proxy.conf` file no
-longer exists, along with everything in it. e.g. `realm`,
-`home_server`, `home_server_pool`. The old proxying functionality
-was welded into the server core, which made many useful features
-impossible to configure.
+longer exists, and everything in it has been removed. e.g. `realm`,
+`home_server`, `home_server_pool` no longer exist. The old proxying
+functionality was welded into the server core, which made many useful
+features impossible to configure.
 
 The `radius` module now handles basic proxying to home servers. We
 recommend creating one instance of the `radius` module per home
@@ -230,7 +240,7 @@ request will be proxied when processing reaches the module.
 For ease of management, we recommend naming the modules for the host
 name of the home server.
 
-It is often simplest to do proxying via an `authenticate proxy`
+It is often simplest to do proxying via an `authenticate proxy { ... }`
 section, though that section can have any name. e.g. setting
 `Auth-Type := proxy` will call the `authenticate proxy` section, and
 is similar to the previous setting `Proxy-To-Realm`.
@@ -245,6 +255,11 @@ authenticate proxy {
 For more detailed examples, see the Wiki page:
 https://wiki.freeradius.org/upgrading/version4/proxy. That page also
 describes how to upgrade a v3 configuration to the new v4 style.
+
+The benefit of this approach is that the "RADIUS proxy" functionality
+is just another module.  It is now possible to not just fail over from
+one home server to another, but also to proxy the same packet to
+multiple destinations.
 
 === home_server
 
@@ -325,7 +340,7 @@ part of the `load-balance` key.
 === Things which were impossible in v3
 
 In v3, it was impossible to proxy the same request to multiple
-destinations. This is now trivial. In any processing section, just do:
+destinations. This is now trivial. In any processing section, do:
 
 [source,unlang]
 ----
@@ -338,7 +353,7 @@ home_server_2
 When processing reaches that point, it will proxy the request to
 `home_server_1`, followed by `home_server_2`.
 
-This functionality can be used to `send Accounting-Request` packets to
+This functionality can be used to send `Accounting-Request` packets to
 multiple destinations.
 
 You can also catch _failed_ proxying, and do something else. In the
@@ -373,13 +388,14 @@ messages for people who create new dictionaries.
 
 Dictionaries are now split up by protocol.
 e.g._`share/freeradius/radius/dictionary*`.  All protocol-specific
-data types have been removed, and replaced with attribute flags.
+data types have been removed, and replaced with per-attribute flags.
 
 The old `abinary` data type has been removed.  Attributes needing this
 functionality should instead be marked with a flag, e.g._`string abinary`.
 
 The old `extended` data type has been removed. Attributes needing this
-functionality should instead be marked with a flag, e.g._`tlv extended`.
+functionality should instead be marked with a flag, e.g._`tlv
+extended`.
 
 === "Tagged" RADIUS attributes
 
@@ -408,18 +424,18 @@ Tag-1 = { Tunnel-Type = PPTP, Tunnel-Medium-Type = IPv4 }
 There are 31 such attributes, `Tag-1` through `Tag-31`.  There is no
 `Tag-0` attribute, as it is not needed.
 
-After much effort, it was unfortunately impossible to continue
-supporting the `:tag` syntax for attributes.  This change requires
-modifications to all configuration files and databases which use tags.
-This change means also that `detail` files from v3 may not be
-readable by v4.
+After much investigation, it was unfortunately impossible to continue
+supporting the `Attribute-Name:tag` syntax for tagged attributes.
+This change requires modifications to all configuration files and
+databases which use tags.  This change means also that `detail` files
+from v3 are not readable by v4.
 
 == Attribute references
 
 In previous versions of the user attributes could be referred to by
 their name only e.g. `if (User-Name == 'foo')`.
 
-To allow for more thorough error checking, it is not required to
+To allow for more thorough error checking, it is now required to
 prefix attribute references with `&`.  Using bare names will result in
 an error, and a suggestion to use `&`.
 
@@ -436,14 +452,19 @@ There is no plan to require prefixes here.
 As of v3, the preferred format for `unknown` attributes is
 `&Attr-oid.oid.oid`, e.g. `&Attr-26.11344.255`. However, v3 would
 still parse (but not generate) attributes of the form
-`Vendor-FreeRADIUS-Attr-255`. The `Vendor-` syntax has been removed
-in version 4. The server would never produce such names, and enabling
-them made attribute parsing significantly more complex.
+`Vendor-FreeRADIUS-Attr-255`. The `Vendor-` syntax has been removed in
+version 4. The server would never produce such names, and allowing
+them as input made attribute parsing significantly more complex.
 
 === List references
 
 The old-style `request:` and `reply:` syntax for lists has been
 deprecated.  Please use `request.` and `reply.` instead.
+
+Many lists have been removed.  e.g._`proxy`, `proxy-reply`, `coa`,
+`coa-reply`, `disconnect`, and `disconnect-reply`.  The underlying
+functionality still exists, but it has been moved to different
+keywords, such as `subrequest`.
 
 == Update sections
 
@@ -488,8 +509,8 @@ load-balance "%{Calling-Station-Id}" {
 ----
 
 If the key exists, it is hashed, and used to pick one of the
-subsections. This behavior allows for deterministic load-balancing,
-similar to the v3 proxy `keyed-balance` configuration.
+subsections. This behavior allows for deterministic load-balancing of
+modules, similar to the v3 proxy `keyed-balance` configuration.
 
 == Connection timeouts
 
@@ -754,7 +775,8 @@ more information.
 === rlm_unix
 
 The `unix` module uses `Unix-Group` instead of `Group` or
-`Group-Name`.  Please rename those references.
+`Group-Name`.  Please use the new names instead of the old names, as
+the old names will no longer work.
 
 == Deleted Modules
 
