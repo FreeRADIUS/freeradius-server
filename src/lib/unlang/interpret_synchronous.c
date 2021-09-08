@@ -268,7 +268,10 @@ rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request
 
 		if (sub_request == request) {
 			rcode = sub_rcode;
-		} else if (!sub_request->parent) {
+		/*
+		 *	Free detached, resumable requests
+		 */
+		} else if (!sub_request->parent && !unlang_interpret_is_resumable(sub_request)) {
 			talloc_free(sub_request);	/* Free detached requests */
 		}
 
