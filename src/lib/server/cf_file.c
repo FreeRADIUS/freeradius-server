@@ -1124,14 +1124,14 @@ static int process_template(cf_stack_t *stack)
 
 	templatecs = cf_section_find(parent_cs, "templates", NULL);
 	if (!templatecs) {
-		ERROR("%s[%d]: No \"templates\" section for reference \"%s\"",
+		ERROR("%s[%d]: Cannot find template \"%s\", as no 'templates' section exists.",
 		      frame->filename, frame->lineno, stack->buff[2]);
 		return -1;
 	}
 
 	ci = cf_reference_item(parent_cs, templatecs, stack->buff[2]);
 	if (!ci || (ci->type != CONF_ITEM_SECTION)) {
-		ERROR("%s[%d]: Reference \"%s\" not found",
+		ERROR("%s[%d]: No such template \"%s\" in the 'templates' section.",
 		      frame->filename, frame->lineno, stack->buff[2]);
 		return -1;
 	}
