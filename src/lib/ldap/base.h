@@ -12,6 +12,7 @@
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/server/map.h>
+#include <freeradius-devel/server/trunk.h>
 
 #define LDAP_DEPRECATED 0	/* Quiet warnings about LDAP_DEPRECATED not being defined */
 
@@ -277,6 +278,8 @@ typedef struct {
 	fr_time_delta_t		reconnection_delay;	//!< How long to wait before attempting to reconnect.
 } fr_ldap_config_t;
 
+typedef struct fr_ldap_thread_trunk_s fr_ldap_thread_trunk_t;
+
 /** Tracks the state of a libldap connection handle
  *
  */
@@ -337,10 +340,30 @@ typedef struct {
 	fr_rb_tree_t		*trunks;	//!< Tree of LDAP trunks used by this thread
 	rlm_ldap_t		*inst;		//!< Module instance data
 	fr_ldap_config_t	*config;	//!< Module instance config
+	fr_trunk_conf_t		*trunk_conf;	//!< Module trunk config
 	fr_event_list_t		*el;		//!< Thread event list for callbacks / timeouts
 	fr_connection_t		*conn;		//!< LDAP connection used for bind auths
 	fr_rb_tree_t		*binds;		//!< Tree of outstanding bind auths
 } fr_ldap_thread_t;
+
+/** Thread LDAP trunk structure
+ *
+ * One fr_ldap_thread_trunk_t will be allocated for each destination a thread needs
+ * to create an LDAP trunk connection to.
+ *
+ * Used to hold config regarding the LDAP connection and associate pending queries
+ * with the trunk they are running on.
+ */
+typedef struct fr_ldap_thread_trunk_s {
+	fr_rb_node_t		node;		//!< Entry in the tree of connections
+	char const		*uri;		//!< Server URI for this connection
+	char const		*bind_dn;	//!< DN connection is bound as
+	fr_ldap_config_t	config;		//!< Config used for this connection
+	fr_ldap_directory_t	*directory;	//!< The type of directory we're connected to.
+	fr_trunk_t		*trunk;		//!< Connection trunk
+	fr_ldap_thread_t	*t;		//!< Thread this connection is associated with
+	fr_event_timer_t const	*ev;		//!< Event to close the thread when it has been idle.
+} fr_ldap_thread_trunk_t;
 
 /** Codes returned by fr_ldap internal functions
  *
