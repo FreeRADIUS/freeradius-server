@@ -1224,7 +1224,7 @@ int fr_pool_reconnect(fr_pool_t *pool, request_t *request)
 {
 	uint32_t		i;
 	fr_pool_connection_t	*this;
-	time_t			now;
+	fr_time_t		now;
 
 	pthread_mutex_lock(&pool->mutex);
 
@@ -1282,7 +1282,7 @@ int fr_pool_reconnect(fr_pool_t *pool, request_t *request)
 	pthread_cond_broadcast(&pool->done_reconnecting);
 	pthread_mutex_unlock(&pool->mutex);
 
-	now = time(NULL);
+	now = fr_time();
 
 	/*
 	 *	Now attempt to spawn 'start' connections.
