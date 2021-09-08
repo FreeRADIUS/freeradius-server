@@ -50,7 +50,7 @@ static pthread_mutex_t		*trigger_mutex;
 typedef struct {
 	fr_rb_node_t	node;		//!< Entry in the trigger last fired tree.
 	CONF_ITEM	*ci;		//!< Config item this rate limit counter is associated with.
-	time_t		last_fired;	//!< When this trigger last fired.
+	fr_time_t	last_fired;	//!< When this trigger last fired.
 } trigger_last_fired_t;
 
 /** Retrieve attributes from a special trigger list
@@ -340,7 +340,7 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 	 */
 	if (rate_limit) {
 		trigger_last_fired_t	find, *found;
-		time_t			now = time(NULL);
+		fr_time_t		now = fr_time();
 
 		find.ci = ci;
 
