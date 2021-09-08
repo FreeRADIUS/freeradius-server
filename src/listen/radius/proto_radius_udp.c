@@ -543,7 +543,7 @@ static void *mod_track_create(void const *instance, void *thread_instance, UNUSE
 	return state;
 }
 
-static int mod_track_compare(void const *instance, UNUSED void *thread_instance, UNUSED RADCLIENT *client,
+static int mod_track_compare(void const *instance, UNUSED void *thread_instance, RADCLIENT *client,
 			     void const *one, void const *two)
 {
 	int ret;
@@ -555,7 +555,7 @@ static int mod_track_compare(void const *instance, UNUSED void *thread_instance,
 	/*
 	 *	Do a better job of deduping input packet.
 	 */
-	if (inst->dedup_authenticator) {
+	if (inst->dedup_authenticator || client->dedup_authenticator) {
 		ret = memcmp(a + 4, b + 4, RADIUS_AUTH_VECTOR_LENGTH);
 		if (ret != 0) return ret;
 	}

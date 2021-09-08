@@ -441,6 +441,8 @@ static const CONF_PARSER client_config[] = {
 
 	{ FR_CONF_OFFSET("require_message_authenticator", FR_TYPE_BOOL, RADCLIENT, message_authenticator), .dflt = "no" },
 
+	{ FR_CONF_OFFSET("dedup_authenticator", FR_TYPE_BOOL, RADCLIENT, dedup_authenticator), .dflt = "no" },
+
 	{ FR_CONF_OFFSET("secret", FR_TYPE_STRING | FR_TYPE_SECRET, RADCLIENT, secret) },
 	{ FR_CONF_OFFSET("shortname", FR_TYPE_STRING, RADCLIENT, shortname) },
 
