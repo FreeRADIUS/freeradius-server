@@ -170,7 +170,7 @@ static void eap_fast_send_pac_tunnel(request_t *request, fr_tls_session_t *tls_s
 
 	pac.info.lifetime.hdr.type = htons(attr_eap_fast_pac_info_pac_lifetime->attr);
 	pac.info.lifetime.hdr.length = htons(sizeof(pac.info.lifetime.data));
-	pac.info.lifetime.data = htonl(time(NULL) + t->pac_lifetime);
+	pac.info.lifetime.data = htonl(fr_time_to_sec(request->packet->timestamp) + t->pac_lifetime);
 
 	pac.info.a_id.hdr.type = htons(EAP_FAST_TLV_MANDATORY | attr_eap_fast_pac_a_id->attr);
 	pac.info.a_id.hdr.length = htons(sizeof(pac.info.a_id.data));
@@ -937,7 +937,7 @@ fr_radius_packet_code_t eap_fast_process(request_t *request, eap_session_t *eap_
 				t->mode = EAP_FAST_PROVISIONING_AUTH;
 			}
 
-			if (!t->pac.expires || t->pac.expired || t->pac.expires - time(NULL) < t->pac_lifetime * 0.6) {
+			if (!t->pac.expires || t->pac.expired || (t->pac.expires - fr_time_to_sec(request->packet->timestamp)) < (t->pac_lifetime * 6) / 10) {
 				t->pac.send = true;
 			}
 		}
