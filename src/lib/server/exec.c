@@ -320,7 +320,7 @@ int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pai
 	 *	The child never returns from calling exec_child();
 	 */
 	if (pid == 0) {
-		int unused[2];
+		int unused[2] = { -1, -1 };
 
 		exec_child(request, argv, envp, false, unused, unused, unused);
 	}
@@ -340,7 +340,18 @@ int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pai
 	 *	Ensure that we can clean up any child processes.  We
 	 *	don't want them left over as zombies.
 	 */
-	if (fr_event_pid_reap(request->el, pid) < 0) return -1;
+	if (fr_event_pid_reap(request->el, pid, NULL, NULL) < 0) {
+		int status;
+
+		/*
+		 *	Try and cleanup... really we have
+		 *	no idea what state things are in.
+		 */
+		kill(pid, SIGKILL);
+		waitpid(pid, &status, WNOHANG);
+
+		return -1;
+	}
 
 	return 0;
 }
@@ -537,8 +548,17 @@ void fr_exec_cleanup(fr_exec_state_t *exec, int signal)
 	if (exec->pid >= 0) {
 		if (signal > 0) kill(exec->pid, signal);
 
-		if (fr_event_pid_reap(request->el, exec->pid) < 0) {
+		if (unlikely(fr_event_pid_reap(request->el, exec->pid, NULL, NULL) < 0)) {
+			int status;
+
 			RPERROR("Failed setting up async PID reaper, PID %u may now be a zombie", exec->pid);
+
+			/*
+			 *	Try and cleanup... really we have
+			 *	no idea what state things are in.
+			 */
+			kill(exec->pid, SIGKILL);
+			waitpid(exec->pid, &status, WNOHANG);
 		}
 		exec->pid = -1;
 	}
