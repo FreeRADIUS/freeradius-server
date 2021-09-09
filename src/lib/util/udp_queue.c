@@ -121,6 +121,25 @@ fr_udp_queue_t *fr_udp_queue_alloc(TALLOC_CTX *ctx, fr_udp_queue_config_t const 
 	if (config->interface &&
 	    (fr_socket_bind(fd, &config->ipaddr, &port, config->interface) < 0)) goto error;
 
+	/*
+	 *	Set sendbuf
+	 */
+#ifdef SO_SNDBUF
+	/*
+	 *	Set SO_SNDBUF size, if configured to do so.
+	 */
+	if (config->send_buff_is_set) {
+		int opt;
+	
+		opt = config->send_buff;
+
+		if (opt < 65536) opt = 65536;
+		if (opt > (1 << 30)) opt = 1<<30;
+
+		(void) setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(int));
+	}
+#endif
+
 	uq = talloc_zero(ctx, fr_udp_queue_t);
 	if (!uq) {
 	error:
