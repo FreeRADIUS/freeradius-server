@@ -586,3 +586,20 @@ static void _ldap_trunk_idle_timeout(fr_event_list_t *el, UNUSED fr_time_t now, 
 				  _ldap_trunk_idle_timeout, ttrunk);
 	}
 }
+
+/** Allocate an LDAP trunk connection
+ *
+ * @param[in] tconn		Trunk handle.
+ * @param[in] el		Event list which will be used for I/O and timer events.
+ * @param[in] conn_conf		Configuration of the connnection.
+ * @param[in] log_prefix	What to prefix log messages with.
+ * @param[in] uctx		User context passed to fr_trunk_alloc.
+ */
+static fr_connection_t *ldap_trunk_connection_alloc(fr_trunk_connection_t *tconn, fr_event_list_t *el,
+						    UNUSED fr_connection_conf_t const *conn_conf,
+						    char const *log_prefix, void *uctx)
+{
+	fr_ldap_thread_trunk_t	*thread_trunk = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
+
+	return fr_ldap_connection_state_alloc(tconn, el, &thread_trunk->config, log_prefix);
+}
