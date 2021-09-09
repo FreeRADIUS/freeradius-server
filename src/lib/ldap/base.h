@@ -302,6 +302,8 @@ typedef struct {
 
 	fr_ldap_state_t		state;			//!< LDAP connection state machine.
 
+	int			fd;			//!< File descriptor for this connection.
+
 	void			*uctx;			//!< User data associated with the handle.
 } fr_ldap_connection_t;
 
