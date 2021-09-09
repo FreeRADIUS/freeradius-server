@@ -587,6 +587,59 @@ static void _ldap_trunk_idle_timeout(fr_event_list_t *el, UNUSED fr_time_t now, 
 	}
 }
 
+/** I/O read function
+ *
+ * Underlying FD is now readable - call the trunk to read any pending requests.
+ *
+ * @param[in] el	The event list signalling.
+ * @param[in] fd	that's now readable.
+ * @param[in] flags	describing the read event.
+ * @param[in] uctx	The trunk connection handle.
+ */
+static void ldap_conn_readable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+{
+	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+
+	fr_trunk_connection_signal_readable(tconn);
+}
+
+
+/** I/O write function
+ *
+ * Underlying FD is now writable - call the trunk to write any pending requests.
+ *
+ * @param[in] el	The event list signalling.
+ * @param[in] fd	that's now writable.
+ * @param[in] flags	describing the write event.
+ * @param[in] uctx	The trunk connection handle
+ */
+static void ldap_conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+{
+	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+
+	fr_trunk_connection_signal_writable(tconn);
+}
+
+
+/** I/O error function
+ *
+ * The event loop signalled that a fatal error occurec on this connection.
+ *
+ * @param[in] el	The event list signalling.
+ * @param[in] fd	that errored.
+ * @param[in] flags	EL flags.
+ * @param[in] fd_errno	The nature of the error.
+ * @param[in] uctx	The trunk connection handle
+ */
+static void ldap_conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
+{
+	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+
+	ERROR("rlm_ldap - Connection failed: %s", fr_syserror(fd_errno));
+
+	fr_connection_signal_reconnect(tconn->conn, FR_CONNECTION_FAILED);
+}
+
 /** Allocate an LDAP trunk connection
  *
  * @param[in] tconn		Trunk handle.
