@@ -65,6 +65,8 @@ static int _udp_queue_free(fr_udp_queue_t *uq)
 		talloc_free(entry);
 	}}
 
+	close(uq->fd);
+
 	return 0;
 }
 
@@ -94,7 +96,10 @@ fr_udp_queue_t *fr_udp_queue_alloc(TALLOC_CTX *ctx, fr_udp_queue_config_t *confi
 	if (fd < 0) return NULL;
 
 	uq = talloc_zero(ctx, fr_udp_queue_t);
-	if (!uq) return NULL;
+	if (!uq) {
+		close(fd);
+		return NULL;
+	}
 
 	*uq = (fr_udp_queue_t) {
 		.config = config,
