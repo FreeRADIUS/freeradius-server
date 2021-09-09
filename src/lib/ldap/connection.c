@@ -481,7 +481,10 @@ fr_connection_t	*fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_list_t
 				   	.reconnection_delay = config->reconnection_delay
 				   },
 				   log_prefix, config);
-	if (!conn) return NULL;
+	if (!conn) {
+		PERROR("Failed allocating state handler for new LDAP connection");
+		return NULL;
+	}
 
 	return conn;
 }
