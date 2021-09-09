@@ -53,7 +53,7 @@ typedef struct fr_udp_queue_s fr_udp_queue_t;
 typedef void (*fr_udp_queue_resume_t)(bool written, void *rctx);
 
 
-fr_udp_queue_t *fr_udp_queue_alloc(TALLOC_CTX *ctx, fr_udp_queue_config_t *config, fr_event_list_t *el,
+fr_udp_queue_t *fr_udp_queue_alloc(TALLOC_CTX *ctx, fr_udp_queue_config_t const *config, fr_event_list_t *el,
 				   fr_udp_queue_resume_t resume) CC_HINT(nonnull(2,3));
 
 int fr_udp_queue_write(TALLOC_CTX *ctx, fr_udp_queue_t *uq,
