@@ -725,6 +725,132 @@ static fr_connection_t *ldap_trunk_connection_alloc(fr_trunk_connection_t *tconn
 	return fr_ldap_connection_state_alloc(tconn, el, &thread_trunk->config, log_prefix);
 }
 
+#define POPULATE_LDAP_CONTROLS(_dest, _src) do { \
+	int i; \
+	for (i = 0; (_src[i].control) && (i < LDAP_MAX_CONTROLS); i++) { \
+		_dest[i] = _src[i].control; \
+	} \
+	_dest[i] = NULL; \
+} while (0)
+
+/** Take LDAP pending queries from the queue and send them.
+ *
+ * @param[in] el	Event list for timers.
+ * @param[in] tconn	Trunk handle.
+ * @param[in] conn	on which to send the queries
+ * @param[in] uctx	User context passed to fr_trunk_alloc
+ */
+static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn,
+				   fr_connection_t *conn, UNUSED void *uctx)
+{
+	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
+	fr_trunk_request_t	*treq;
+
+	LDAPURLDesc		*referral_url = NULL;
+
+	fr_ldap_query_t		*query = NULL;
+	fr_ldap_rcode_t		status = LDAP_PROC_ERROR;
+
+	while (fr_trunk_connection_pop_request(&treq, tconn) == 0) {
+
+		LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS + 1];
+		LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS + 1];
+
+		if (!treq) break;
+
+		query = talloc_get_type_abort(treq->preq, fr_ldap_query_t);
+
+		switch (query->type) {
+		case LDAP_REQUEST_SEARCH:
+			/*
+			 *	This query is a LDAP search
+			 */
+			if (query->referral) referral_url = query->referral->referral_url;
+
+			/*
+			 *	Queries can be from parsed URLs, if so point at the relevant
+			 *	parts of the parsed structure
+			 */
+			if (query->ldap_url) {
+				query->dn = query->ldap_url->lud_dn;
+				memcpy(&query->search.attrs, &query->ldap_url->lud_attrs, sizeof(query->search.attrs));
+				query->search.scope = query->ldap_url->lud_scope;
+				query->search.filter = query->ldap_url->lud_filter;
+
+				/*
+				 *	Parsing LDAP server extensions from the URL is only
+				 *	possible once we know which conneciton the query will be
+				 *	handled by as the conneciton handle is used by the parsing
+				 *	function.
+				 */
+				if (query->ldap_url->lud_exts) {
+					LDAPControl	*serverctrls[LDAP_MAX_CONTROLS];
+					int		i;
+
+					if (fr_ldap_parse_url_extensions(serverctrls, query->request,
+									 ldap_conn, query->ldap_url->lud_exts) < 0) {
+					error:
+						fr_trunk_request_signal_fail(query->treq);
+						return;
+					}
+					for (i = 0; i < LDAP_MAX_CONTROLS; i++) {
+						if (!serverctrls[i]) break;
+						query->serverctrls[i].control = serverctrls[i];
+						query->serverctrls[i].freeit = true;
+					}
+				}
+			}
+
+			POPULATE_LDAP_CONTROLS(our_serverctrls, query->serverctrls);
+			POPULATE_LDAP_CONTROLS(our_clientctrls, query->clientctrls);
+
+			/*
+			 *	If we are chasing a referral, referral_url will be populated and may
+			 *	have a base dn or scope to override the original query
+			 */
+			status = fr_ldap_search_async(&query->msgid, query->request, &ldap_conn,
+						      (referral_url && referral_url->lud_dn) ?
+						      	referral_url->lud_dn : query->dn,
+						      (referral_url && referral_url->lud_scope) ?
+					      		referral_url->lud_scope : query->search.scope,
+					      	      query->search.filter, query->search.attrs,
+						      our_serverctrls, our_clientctrls);
+			break;
+
+		case LDAP_REQUEST_MODIFY:
+			/*
+			 *	This query is an LDAP modification
+			 */
+			POPULATE_LDAP_CONTROLS(our_serverctrls, query->serverctrls);
+			POPULATE_LDAP_CONTROLS(our_clientctrls, query->clientctrls);
+
+			status = fr_ldap_modify_async(&query->msgid, query->request, &ldap_conn, query->dn, query->mods, our_serverctrls, our_clientctrls);
+			break;
+
+		default:
+			ERROR("Invalid LDAP query for trunk connection");
+			goto error;
+
+		}
+
+		if (status != LDAP_PROC_SUCCESS) goto error;
+
+		/*
+		 *	Record which connection was used for this query
+		 *	- results processing often needs access to an LDAP handle
+		 */
+		query->ldap_conn = ldap_conn;
+
+		/*
+		 *	Add the query to the tree of pending queries for this trunk
+		 */
+		fr_rb_insert(query->ldap_conn->queries, query);
+
+		fr_trunk_request_signal_sent(treq);
+	}
+
+}
+
 /** Lookup the state of a thread specific LDAP connection trunk for a specific URI / bind DN
  *
  * @param[in] thread		to which the connection belongs
