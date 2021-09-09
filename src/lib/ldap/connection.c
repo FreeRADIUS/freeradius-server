@@ -587,6 +587,30 @@ static void _ldap_trunk_idle_timeout(fr_event_list_t *el, UNUSED fr_time_t now, 
 	}
 }
 
+/** Callback to cancel LDAP queries
+ *
+ * Inform the remote LDAP server that we no longer want responses to specific queries.
+ *
+ * @param[in] tconn	The trunk connection handle
+ * @param[in] conn	The specific connection queries will be cancelled on
+ * @param[in] uctx	Context provided to fr_trunk_alloc
+ */
+static void ldap_request_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
+{
+	fr_trunk_request_t	*treq;
+	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
+	fr_ldap_query_t		*query;
+
+	while ((fr_trunk_connection_pop_cancellation(&treq, tconn)) == 0) {
+		query = treq->preq;
+		ldap_abandon_ext(ldap_conn->handle, query->msgid, NULL, NULL);
+		fr_rb_remove(ldap_conn->queries, query);
+
+		fr_trunk_request_signal_cancel_complete(treq);
+	}
+}
+
+
 /** I/O read function
  *
  * Underlying FD is now readable - call the trunk to read any pending requests.
