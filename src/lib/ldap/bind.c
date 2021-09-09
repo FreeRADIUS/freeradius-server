@@ -220,7 +220,7 @@ int fr_ldap_bind_async(fr_ldap_connection_t *c,
 
 	el = c->conn->el;
 
-	if (ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) == LDAP_SUCCESS) {
+	if ((ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) == LDAP_SUCCESS) && (fd >= 0)) {
 		int ret;
 
 		ret = fr_event_fd_insert(bind_ctx, el, fd,
