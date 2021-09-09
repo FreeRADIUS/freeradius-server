@@ -77,11 +77,11 @@ static void _ldap_bind_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 	 *	We're I/O driven, if there's no data someone lied to us
 	 */
 	status = fr_ldap_result(NULL, NULL, c, bind_ctx->msgid, LDAP_MSG_ALL, bind_ctx->bind_dn, 0);
-	talloc_free(bind_ctx);			/* Also removes fd events */
 
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
-		DEBUG("Bind successful");
+		DEBUG("Bind as \"%s\" to \"%s\" successful",
+		      *bind_ctx->bind_dn? bind_ctx->bind_dn : "(anonymous)", c->config->server);
 		fr_ldap_state_next(c);		/* onto the next operation */
 		break;
 
@@ -97,6 +97,7 @@ static void _ldap_bind_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 		fr_ldap_state_error(c);		/* Restart the connection state machine */
 		break;
 	}
+	talloc_free(bind_ctx);			/* Also removes fd events */
 }
 
 /** Send a bind request to a aserver
