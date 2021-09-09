@@ -640,6 +640,50 @@ static void ldap_conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED in
 	fr_connection_signal_reconnect(tconn->conn, FR_CONNECTION_FAILED);
 }
 
+/** Setup callbacks requested by LDAP trunk connections
+ *
+ * @param[in] tconn	Trunk handle.
+ * @param[in] conn	Individual connection callbacks are to be installed for.
+ * @param[in] el	The event list to install events in.
+ * @param[in] notify_on	The types of event the trunk wants to be notified on.
+ * @param[in] uctx	Context provided to fr_trunk_alloc.
+ */
+static void ldap_trunk_connection_notify(fr_trunk_connection_t *tconn, fr_connection_t *conn,
+					 fr_event_list_t *el,
+					 fr_trunk_connection_event_t notify_on, UNUSED void *uctx)
+{
+	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
+	fr_event_fd_cb_t	read_fn = NULL;
+	fr_event_fd_cb_t	write_fn = NULL;
+	switch (notify_on) {
+	case FR_TRUNK_CONN_EVENT_NONE:
+		fr_event_fd_delete(el, ldap_conn->fd, FR_EVENT_FILTER_IO);
+		return;
+
+	case FR_TRUNK_CONN_EVENT_READ:
+		read_fn = ldap_conn_readable;
+		break;
+
+	case FR_TRUNK_CONN_EVENT_WRITE:
+		write_fn = ldap_conn_writable;
+		break;
+
+	case FR_TRUNK_CONN_EVENT_BOTH:
+		read_fn = ldap_conn_readable;
+		write_fn = ldap_conn_writable;
+		break;
+	}
+
+	if (fr_event_fd_insert(ldap_conn, el, ldap_conn->fd,
+			       read_fn,
+			       write_fn,
+			       ldap_conn_error,
+			       tconn) < 0) {
+		PERROR("Failed inserting FD event");
+		fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+	}
+}
+
 /** Allocate an LDAP trunk connection
  *
  * @param[in] tconn		Trunk handle.
