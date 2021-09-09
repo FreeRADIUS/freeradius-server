@@ -151,7 +151,7 @@ static CONF_PARSER option_config[] = {
 
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
 	/* timeout on network activity */
-	{ FR_CONF_DEPRECATED("net_timeout", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.net_timeout), .dflt = "10" },
+	{ FR_CONF_OFFSET("net_timeout", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.net_timeout), .dflt = "10" },
 #endif
 
 #ifdef LDAP_OPT_X_KEEPALIVE_IDLE
