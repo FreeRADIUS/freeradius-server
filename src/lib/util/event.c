@@ -311,12 +311,11 @@ struct fr_event_fd {
 
 	bool			is_registered;		//!< Whether this fr_event_fd_t's FD has been registered with
 							///< kevent.  Mostly for debugging.
-	bool			in_fd_to_free;		//!< Whether this event is in the fd_to_free list.
 
 	void			*uctx;			//!< Context pointer to pass to each file descriptor callback.
 	TALLOC_CTX		*linked_ctx;		//!< talloc ctx this event was bound to.
 
-	fr_event_fd_t		*next;			//!< item in a list of fr_event_fd (to free).
+	fr_dlist_t		entry;			//!< Entry in free list.
 
 #ifndef NDEBUG
 	uintptr_t		armour;			//!< protection flag from being deleted.
@@ -418,7 +417,7 @@ struct fr_event_list {
 	bool			in_handler;		//!< Deletes should be deferred until after the
 							///< handlers complete.
 
-	fr_event_fd_t		*fd_to_free;		//!< File descriptor events pending deletion.
+	fr_dlist_head_t		fd_to_free;		//!< File descriptor events pending deletion.
 	fr_dlist_head_t		ev_to_add;		//!< dlist of events to add
 
 #ifdef WITH_EVENT_DEBUG
@@ -898,12 +897,10 @@ static int _event_fd_delete(fr_event_fd_t *ef)
 		 *	inserted into the free list multiple
 		 *	times.
 		 */
-		if (!ef->in_fd_to_free) {
-			ef->next = el->fd_to_free;	/* Link into the deferred free list */
-			el->fd_to_free = ef;
-			ef->in_fd_to_free = true;
-		}
+		if (!fr_dlist_entry_in_list(&ef->entry)) fr_dlist_insert_tail(&el->fd_to_free, ef);
 		return -1;				/* Will be freed later */
+	} else if (fr_dlist_entry_in_list(&ef->entry)) {
+		fr_dlist_remove(&el->fd_to_free, ef);
 	}
 
 	return 0;
@@ -2441,7 +2438,12 @@ void fr_event_service(fr_event_list_t *el)
 	 *	deferred to allow stale events to be
 	 *	skipped sans SEGV.
 	 */
-	talloc_list_free(&el->fd_to_free);
+	el->in_handler = false;	/* Allow events to be deleted */
+	{
+		fr_event_fd_t *ef;
+
+		while ((ef = fr_dlist_head(&el->fd_to_free))) talloc_free(ef);
+	}
 
 	/*
 	 *	We must call el->time() again here, else the event
@@ -2458,9 +2460,13 @@ void fr_event_service(fr_event_list_t *el)
 	 *	new timers!
 	 */
 	if (fr_lst_num_elements(el->times) > 0) {
+		el->in_handler = true;
+
 		do {
 			when = el->now;
 		} while (fr_event_timer_run(el, &when) == 1);
+
+		el->in_handler = false;
 	}
 
 	/*
@@ -2484,8 +2490,6 @@ void fr_event_service(fr_event_list_t *el)
 			fr_assert_msg(0, "failed inserting lst event: %s", fr_strerror());	/* Die in debug builds */
 		}
 	}
-
-	el->in_handler = false;
 	el->now = el->time();
 
 	/*
@@ -2641,6 +2645,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	fr_dlist_talloc_init(&el->user_callbacks, fr_event_user_t, entry);
 	fr_dlist_talloc_init(&el->ev_to_add, fr_event_timer_t, entry);
 	fr_dlist_talloc_init(&el->pid_to_reap, fr_event_pid_reap_t, entry);
+	fr_dlist_talloc_init(&el->fd_to_free, fr_event_fd_t, entry);
 	if (status) (void) fr_event_pre_insert(el, status, status_uctx);
 
 	/*
