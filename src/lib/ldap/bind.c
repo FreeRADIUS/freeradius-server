@@ -170,6 +170,10 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 		break;
 
 	case LDAP_SUCCESS:
+		if (fd < 0 ) {
+			ret = ldap_get_option(c->handle, LDAP_OPT_DESC, &fd);
+			if ((ret != LDAP_OPT_SUCCESS) || (fd < 0)) goto error;
+		}
 		ret = fr_event_fd_insert(bind_ctx, el, fd,
 					 _ldap_bind_io_read,
 					 NULL,
