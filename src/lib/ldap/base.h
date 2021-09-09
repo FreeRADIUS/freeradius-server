@@ -421,6 +421,21 @@ static inline void fr_ldap_berval_to_value_shallow(fr_value_box_t *value, struct
 	fr_value_box_memdup_shallow(value, NULL, (uint8_t *)berval->bv_val, berval->bv_len, true);
 }
 
+/** Compare two ldap trunk structures on connection URI / DN
+ *
+ * @param[in] one	first connection to compare.
+ * @param[in] two	second connection to compare.
+ * @return CMP(one, two)
+ */
+static inline int8_t fr_ldap_trunk_cmp(void const *one, void const *two)
+{
+	fr_ldap_thread_trunk_t const	*a = one, *b = two;
+	int8_t uricmp = CMP(strcmp(a->uri, b->uri), 0);
+
+	if (uricmp !=0) return uricmp;
+	return CMP(strcmp(a->bind_dn, b->bind_dn), 0);
+}
+
 /*
  *	ldap.c - Wrappers arounds OpenLDAP functions.
  */
