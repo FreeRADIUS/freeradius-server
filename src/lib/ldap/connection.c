@@ -851,6 +851,159 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
 
 }
 
+/** Read LDAP responses
+ *
+ * Responses from the LDAP server will cause the fd to become readable and trigger this
+ * callback.  Most LDAP search responses have multiple messages in their response - we
+ * only gather those which are complete before either following a referral or passing
+ * the head of the resulting chain of messages back.
+ *
+ * @param[in] tconn	Trunk connection associated with these results.
+ * @param[in] conn	Connection handle for these results.
+ * @param[in] uctx	Thread specific trunk structure - contains tree of pending queries.
+ */
+static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx)
+{
+	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
+	fr_ldap_thread_trunk_t	*t = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
+
+	int 			ret = 0, msgtype;
+	struct timeval		poll = { 0, 10 };
+	LDAPMessage		*result = NULL;
+	fr_ldap_rcode_t		rcode;
+	fr_ldap_query_t		find = { .msgid = -1 }, *query = NULL;
+	request_t		*request;
+
+	/*
+	 *  Reset the idle timeout event
+	 */
+	fr_event_timer_in(t->t, t->t->el, &t->ev, t->t->config->idle_timeout, _ldap_trunk_idle_timeout, t);
+
+	do {
+		/*
+		 *	Look for any results for which we have the complete result message
+		 *	ldap_result will return a pointer to a chain of messages.
+		 */
+		ret = ldap_result(ldap_conn->handle, LDAP_RES_ANY, LDAP_MSG_ALL, &poll, &result);
+
+		switch (ret) {
+		case 0:
+			return;
+
+		case -1:
+			rcode = fr_ldap_error_check(NULL, ldap_conn, NULL, NULL);
+			if (rcode == LDAP_PROC_BAD_CONN) ERROR("Bad LDAP connection");
+			return;
+
+		default:
+			break;
+		}
+
+		find.msgid = ldap_msgid(result);
+		query = fr_rb_find(ldap_conn->queries, &find);
+
+		if (!query) {
+			WARN("Ignoring msgid %i - doesn't match any outstanding queries (it may have been cancelled)",
+			      find.msgid);
+			continue;
+		}
+
+		msgtype = ldap_msgtype(result);
+
+		/*
+		 *	Request to reference in debug output
+		 */
+		request = query->request;
+
+		ROPTIONAL(RDEBUG2, DEBUG2, "Got LDAP response of type \"%s\" for message %d",
+			  ldap_msg_types[msgtype], query->msgid);
+		rcode = fr_ldap_error_check(NULL, ldap_conn, result, query->dn);
+
+		switch (rcode) {
+		case LDAP_PROC_SUCCESS:
+			query->ret = ((!query->mods) && (ldap_count_entries(ldap_conn->handle, result) == 0)) ?
+				     LDAP_RESULT_NO_RESULT : LDAP_RESULT_SUCCESS;
+			break;
+
+		case LDAP_PROC_REFERRAL:
+			if (!t->t->config->chase_referrals) {
+				ROPTIONAL(REDEBUG, ERROR,
+					  "LDAP referral received but 'chase_referrals' is set to 'no'");
+				query->ret = LDAP_RESULT_EXCESS_REFERRALS;
+				break;
+			}
+
+			if (query->referral_depth >= t->t->config->referral_depth) {
+				ROPTIONAL(REDEBUG, ERROR, "Maximum LDAP referral depth (%d) exceeded",
+					  t->t->config->referral_depth);
+				query->ret = LDAP_RESULT_EXCESS_REFERRALS;
+				break;
+			}
+
+			/*
+			 *	If we've come here as the result of an existing referral
+			 *	clear the previous list of URLs before getting the next list.
+			 */
+			if (query->referral_urls) ldap_memvfree((void **)query->referral_urls);
+
+			ldap_get_option(ldap_conn->handle, LDAP_OPT_REFERRAL_URLS, &query->referral_urls);
+			if (!(query->referral_urls) || (!(query->referral_urls[0]))) {
+				ROPTIONAL(REDEBUG, ERROR, "LDAP referral missing referral URL");
+				query->ret = LDAP_RESULT_MISSING_REFERRAL;
+				break;
+			}
+
+			query->referral_depth ++;
+
+			if (fr_ldap_referral_follow(query) == 0) {
+			next_follow:
+				ldap_msgfree(result);
+				continue;
+			}
+
+			ROPTIONAL(REDEBUG, ERROR, "Unable to follow any LDAP referral URLs");
+			query->ret = LDAP_RESULT_REFERRAL_FAIL;
+			break;
+
+		case LDAP_PROC_BAD_DN:
+			ROPTIONAL(RDEBUG2, DEBUG2, "DN %s does not exist", query->ldap_url->lud_dn);
+			query->ret = LDAP_RESULT_BAD_DN;
+			break;
+
+		default:
+			ROPTIONAL(RPERROR, PERROR, "LDAP server returned an error");
+
+			if (query->referral_depth > 0) {
+				/*
+				 *	We're processing a referral - see if there are any more to try
+				 */
+				fr_dlist_talloc_free_item(&query->referrals, query->referral);
+
+				if ((fr_dlist_num_elements(&query->referrals) > 0) &&
+				    (fr_ldap_referral_next(query) == 0)) goto next_follow;
+			}
+
+			query->ret = LDAP_RESULT_REFERRAL_FAIL;
+			break;
+		}
+
+		/*
+		 *	Remove the timeout event
+		 */
+		if (query->ev) fr_event_timer_delete(&query->ev);
+
+		query->result = result;
+
+		/*
+		 *	Remove the query from the outstanding list and tidy up
+		 */
+		fr_rb_remove(ldap_conn->queries, query);
+		fr_trunk_request_signal_complete(query->treq);
+		if (query->request) unlang_interpret_mark_runnable(query->request);
+
+	} while (1);
+}
+
 /** Lookup the state of a thread specific LDAP connection trunk for a specific URI / bind DN
  *
  * @param[in] thread		to which the connection belongs
