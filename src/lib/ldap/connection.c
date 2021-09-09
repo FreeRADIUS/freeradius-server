@@ -460,7 +460,7 @@ fr_ldap_connection_t *fr_ldap_connection_alloc(TALLOC_CTX *ctx)
  */
 static fr_connection_state_t _ldap_connection_init(void **h, fr_connection_t *conn, void *uctx)
 {
-	fr_ldap_config_t const	*config = talloc_get_type_abort(uctx, fr_ldap_config_t);
+	fr_ldap_config_t const	*config = uctx;
 	fr_ldap_connection_t	*c;
 	fr_ldap_state_t		state;
 
