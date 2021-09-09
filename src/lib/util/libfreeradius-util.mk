@@ -81,6 +81,7 @@ SOURCES		:= \
 		   types.c \
 		   udp.c \
 		   udpfromto.c \
+		   udp_queue.c \
 		   uri.c \
 		   value.c \
 		   version.c
