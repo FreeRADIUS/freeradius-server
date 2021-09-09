@@ -1004,6 +1004,78 @@ static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_con
 	} while (1);
 }
 
+/** Find a thread specific LDAP connection for a specific URI / bind DN
+ *
+ * If no existing connection exists for that combination then create a new one
+ *
+ * @param[in] thread		to which the connection belongs
+ * @param[in] uri		of the host to find / create a connection to
+ * @param[in] bind_dn		to make the connection as
+ * @param[in] bind_password	for making connection
+ * @param[in] request		currently being processed (only for debug messages)
+ * @return
+ *	- an existing or new connection matching the URI and bind DN
+ *	- NULL on failure
+ */
+fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char const *uri,
+						 char const *bind_dn, char const *bind_password,
+						 request_t *request, fr_ldap_config_t const *config)
+{
+	fr_ldap_thread_trunk_t	*found, find = {.uri = uri, .bind_dn = bind_dn};
+
+	ROPTIONAL(RDEBUG2, DEBUG2, "Looking for LDAP connection to %s bound as %s", uri, bind_dn);
+	found = fr_rb_find(thread->trunks, &find);
+
+	if (found) return found;
+
+	/*
+	 *	No existing connection matching the requirement - create a new one
+	 */
+	ROPTIONAL(RDEBUG2, DEBUG2, "No existing connection found - creating new one");
+	found = talloc_zero(thread, fr_ldap_thread_trunk_t);
+
+	/*
+	 *	Buld config for this connection - start with module settings and
+	 *	override server and bind details
+	 */
+	memcpy(&found->config, config, sizeof(fr_ldap_config_t));
+	found->config.server = talloc_strdup(found, uri);
+	found->config.admin_identity = talloc_strdup(found, bind_dn);
+	found->config.admin_password = talloc_strdup(found, bind_password);
+
+	found->uri = found->config.server;
+	found->bind_dn = found->config.admin_identity;
+
+	found->trunk = fr_trunk_alloc(found, thread->el,
+				      &(fr_trunk_io_funcs_t){
+					      .connection_alloc = ldap_trunk_connection_alloc,
+					      .connection_notify = ldap_trunk_connection_notify,
+					      .request_mux = ldap_trunk_request_mux,
+					      .request_demux = ldap_trunk_request_demux,
+					      .request_cancel_mux = ldap_request_cancel_mux
+					},
+				      thread->trunk_conf,
+				      "rlm_ldap", found, false);
+
+	if (!found->trunk) {
+		ROPTIONAL(REDEBUG, ERROR, "Unable to create LDAP connection");
+		talloc_free(found);
+		return NULL;
+	}
+
+	found->t = thread;
+
+	/*
+	 *  Insert event to close trunk if it becomes idle
+	 */
+	fr_event_timer_in(thread, thread->el, &found->ev, thread->config->idle_timeout,
+			  _ldap_trunk_idle_timeout, found);
+
+	fr_rb_insert(thread->trunks, found);
+
+	return found;
+}
+
 /** Lookup the state of a thread specific LDAP connection trunk for a specific URI / bind DN
  *
  * @param[in] thread		to which the connection belongs
