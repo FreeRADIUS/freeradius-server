@@ -499,7 +499,7 @@ fr_ldap_rcode_t	 fr_ldap_sasl_interactive(request_t *request,
 fr_ldap_connection_t *fr_ldap_connection_alloc(TALLOC_CTX *ctx);
 
 fr_connection_t	*fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-					        fr_ldap_config_t const *config, char *log_prefix);
+					        fr_ldap_config_t const *config, char const *log_prefix);
 
 int		fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const *config);
 
