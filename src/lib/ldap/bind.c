@@ -100,7 +100,7 @@ static void _ldap_bind_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 	talloc_free(bind_ctx);			/* Also removes fd events */
 }
 
-/** Send a bind request to a aserver
+/** Send a bind request to a server
  *
  * @param[in] el	the event occurred in.
  * @param[in] fd	the event occurred on.
