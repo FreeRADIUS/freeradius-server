@@ -112,7 +112,10 @@ fr_udp_queue_t *fr_udp_queue_alloc(TALLOC_CTX *ctx, fr_udp_queue_config_t const 
 	if (config->port != 0) {
 		int on = 1;
 
-		if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) goto error;
+		if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)) < 0) {
+			fr_strerror_printf("SO_REUSEPORT said %s", fr_syserror(errno));
+			goto error;
+		}
 	}
 
 	/*
