@@ -436,6 +436,7 @@ static fr_connection_state_t _ldap_connection_init(void **h, fr_connection_t *co
 	fr_ldap_state_t		state;
 
 	c = fr_ldap_connection_alloc(conn);
+	c->conn = conn;
 
 	/*
 	 *	Configure/allocate the libldap handle
