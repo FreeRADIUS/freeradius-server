@@ -744,6 +744,14 @@ do { \
 	fr_heap_insert((_tconn)->pub.trunk->active, (_tconn)); \
 } while (0)
 
+#define TRUNK_STATE_TRANSITION(_new) \
+do { \
+	DEBUG3("Trunk changed state %s -> %s", \
+	       fr_table_str_by_value(fr_trunk_states, trunk->pub.state, "<INVALID>"), \
+	       fr_table_str_by_value(fr_trunk_states, _new, "<INVALID>")); \
+	trunk->pub.state = _new; \
+} while (0);
+
 static void trunk_request_enter_backlog(fr_trunk_request_t *treq, bool new);
 static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_connection_t *tconn, bool new);
 static void trunk_request_enter_partial(fr_trunk_request_t *treq);
@@ -3856,6 +3864,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 	uint32_t		average = 0;
 	uint32_t		req_count;
 	uint16_t		conn_count;
+	fr_trunk_state_t	new_state;
 
 	DEBUG3("Managing trunk");
 
@@ -3881,6 +3890,24 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 	if (!trunk->in_handler) {
 		while ((tconn = fr_dlist_head(&trunk->to_free))) talloc_free(fr_dlist_remove(&trunk->to_free, tconn));
 	}
+
+	/*
+	 *	Update the state of the trunk
+	 */
+	if (fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_ACTIVE)) {
+		new_state = FR_TRUNK_STATE_ACTIVE;
+	} else {
+		/*
+		 *	INIT / CONNECTING / FULL mean connections will become active
+		 *	so the trunk is PENDING
+		 */
+		new_state = fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_INIT |
+							       FR_TRUNK_CONN_CONNECTING |
+							       FR_TRUNK_CONN_FULL) ?
+			     FR_TRUNK_STATE_PENDING : FR_TRUNK_STATE_IDLE;
+	}
+
+	if (new_state != trunk->pub.state) TRUNK_STATE_TRANSITION(new_state);
 
 	/*
 	 *	A trunk can be signalled to not proactively
