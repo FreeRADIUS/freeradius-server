@@ -674,6 +674,18 @@ typedef void (*fr_trunk_request_fail_t)(request_t *request, void *preq, void *rc
  */
 typedef void (*fr_trunk_request_free_t)(request_t *request, void *preq_to_free, void *uctx);
 
+/** Receive a notification when a trunk enters a particular state
+ *
+ * @param[in] trunk	Being watched.
+ * @param[in] prev	State we came from.
+ * @param[in] state	State that was entered (the current state)
+ * @param[in] uctx	that was passed to fr_trunk_add_watch_*.
+ */
+typedef void(*fr_trunk_watch_t)(fr_trunk_t *trunk,
+				fr_trunk_state_t prev, fr_trunk_state_t state, void *uctx);
+
+typedef struct fr_trunk_watch_entry_s fr_trunk_watch_entry_t;
+
 /** I/O functions to pass to fr_trunk_alloc
  *
  */

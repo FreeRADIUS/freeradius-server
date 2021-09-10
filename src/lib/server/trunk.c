@@ -171,6 +171,18 @@ struct fr_trunk_connection_s {
   	/** @} */
 };
 
+/** An entry in a trunk watch function list
+ *
+ */
+typedef struct fr_trunk_watch_entry_s {
+	fr_dlist_t		entry;			//!< List entry.
+	fr_trunk_watch_t	func;			//!< Function to call when a trunk enters
+							///< the state this list belongs to
+	bool			oneshot;		//!< Remove the function after it's called once.
+	bool			enabled;		//!< Whether the watch entry is enabled.
+	void			*uctx;			//!< User data to pass to the function.
+} fr_trunk_watch_entry_t;
+
 /** Main trunk management handle
  *
  */
