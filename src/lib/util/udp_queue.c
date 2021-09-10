@@ -27,6 +27,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/syserror.h>
 
 #include <freeradius-devel/util/socket.h>
 #include <freeradius-devel/util/udp_queue.h>
@@ -124,9 +125,6 @@ fr_udp_queue_t *fr_udp_queue_alloc(TALLOC_CTX *ctx, fr_udp_queue_config_t const 
 	if (config->interface &&
 	    (fr_socket_bind(fd, &config->ipaddr, &port, config->interface) < 0)) goto error;
 
-	/*
-	 *	Set sendbuf
-	 */
 #ifdef SO_SNDBUF
 	/*
 	 *	Set SO_SNDBUF size, if configured to do so.
@@ -140,6 +138,20 @@ fr_udp_queue_t *fr_udp_queue_alloc(TALLOC_CTX *ctx, fr_udp_queue_config_t const 
 		if (opt > (1 << 30)) opt = 1<<30;
 
 		(void) setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(int));
+	}
+#endif
+
+#ifdef SO_RCVBUF
+	/*
+	 *	Set SO_RECVBUFF to 4K, so that the kernel will quickly
+	 *	drop incoming packets.  We don't expect replies, and
+	 *	we never check the socket for readability, so this is
+	 *	fine.
+	 */
+	{
+		int opt = 4096;
+
+		(void) setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(int));
 	}
 #endif
 
@@ -174,14 +186,6 @@ static void udp_queue_writable(UNUSED fr_event_list_t *el, UNUSED int fd,
 {
 	fr_udp_queue_t	*uq = talloc_get_type_abort(uctx, fr_udp_queue_t);
 	fr_time_t	now = fr_time();
-	uint8_t		buffer[1];
-
-	/*
-	 *	Read and discard any inputs.
-	 */
-	while (read(uq->fd, buffer, sizeof(buffer)) > 0) {
-		/* do nothing */
-	}
 
 	fr_dlist_foreach_safe(&uq->queue, fr_udp_queue_entry_t, entry) {
 		ssize_t rcode;
@@ -266,14 +270,6 @@ int fr_udp_queue_write(TALLOC_CTX *ctx, fr_udp_queue_t *uq, uint8_t const *packe
 	if (!uq->blocked) {
 		int retries = 0;
 		ssize_t rcode;
-		char buffer[1];
-
-		/*
-		 *	Read and discard any inputs.
-		 */
-		while (read(uq->fd, buffer, sizeof(buffer)) > 0) {
-			/* do nothing */
-		}
 
 retry:
 		rcode = sendto(uq->fd, packet, packet_len, 0, (struct sockaddr *) &sockaddr, socklen);
