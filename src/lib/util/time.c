@@ -296,7 +296,7 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		 */
 		if ((p[1] == 's') && (p[2] == '\0')) {
 			if (p[0] == 'm') {
-				scale = 1000000; /* 1,000,000 nanoeconds in a millisecond */
+				scale = 1000000; /* 1,000,000 nanoseconds in a millisecond */
 				goto done;
 			}
 
@@ -599,4 +599,26 @@ fr_unix_time_t fr_unix_time_from_tm(struct tm *tm)
 	 *	(365.2425 * (4800 + 1970))
 	 */
 	return fr_unix_time_from_sec((days - 2472692) * 86400 + (tm->tm_hour * 3600) + (tm->tm_min * 60) + tm->tm_sec + tm->tm_gmtoff);
+}
+
+int64_t fr_time_delta_scale(fr_time_delta_t delta, fr_time_res_t hint)
+{
+	switch (hint) {
+	case FR_TIME_RES_SEC:
+		return delta / NSEC;
+
+	case FR_TIME_RES_MSEC:
+		return delta / 1000000;
+
+	case FR_TIME_RES_USEC:
+		return delta / 1000;
+
+	case FR_TIME_RES_NSEC:
+		return delta;
+
+	default:
+		break;
+	}
+
+	return 0;
 }

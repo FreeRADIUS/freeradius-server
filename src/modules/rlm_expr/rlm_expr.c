@@ -250,7 +250,51 @@ static bool get_number(request_t *request, char const **string, int64_t *answer)
 			int64_t		y;
 			fr_value_box_t	value;
 
-			if (vp->vp_type != FR_TYPE_UINT64) {
+			switch (vp->vp_type) {
+				case FR_TYPE_UINT64:
+					if (vp->vp_uint64 > INT64_MAX) {
+						/*
+						 *	So we can print out the correct value
+						 *	in the overflow error message.
+						 */
+						fr_value_box_copy(NULL, &value, &vp->data);
+						goto overflow;
+					}
+					y = (int64_t)vp->vp_uint64;
+					break;
+
+			case FR_TYPE_INT64:
+				y = vp->vp_int64;
+				break;
+
+				/*
+				 *	Scale the time_delta to whatever precision is defined by the
+				 *	attribute.  This is generally what the user expects.  i.e. if
+				 *	the attribute says it's in milliseconds, then print out an
+				 *	integer number of milliseconds
+				 */
+			case FR_TYPE_TIME_DELTA:
+				y = fr_time_delta_scale(vp->vp_time_delta, vp->data.enumv ? vp->data.enumv->flags.flag_time_res : FR_TIME_RES_SEC);
+				break;
+
+			case FR_TYPE_DATE:
+				/*
+				 *	This is wrong... we should really do scaling, but internally
+				 *	we have vp_date as fr_unix_time_t, and not as fr_time_t.
+				 *
+				 *	Perhaps a better solution is to simply have the dictionaries
+				 *	disallow any precision for the 'date' data type.
+				 */
+				y = fr_unix_time_to_sec(vp->vp_date);
+				break;
+
+			case FR_TYPE_STRUCTURAL:
+				REDEBUG("Cannot convert %s of type '%s' to integer",
+				       fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "?Unknown?"));
+				break;
+				break;
+
+			default:
 				if (fr_value_box_cast(vp, &value, FR_TYPE_UINT64, NULL, &vp->data) < 0) {
 					RPEDEBUG("Failed converting &%.*s to an integer value", (int) vpt->len,
 						 vpt->name);
@@ -270,16 +314,7 @@ static bool get_number(request_t *request, char const **string, int64_t *answer)
 				RINDENT();
 				RDEBUG3("&%.*s --> %" PRIu64, (int)vpt->len, vpt->name, y);
 				REXDENT();
-			} else {
-				if (vp->vp_uint64 > INT64_MAX) {
-					/*
-					 *	So we can print out the correct value
-					 *	in the overflow error message.
-					 */
-					fr_value_box_copy(NULL, &value, &vp->data);
-					goto overflow;
-				}
-				y = (int64_t)vp->vp_uint64;
+				break;
 			}
 
 			/*
