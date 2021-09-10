@@ -254,6 +254,8 @@ struct fr_trunk_s {
 	void			*uctx;			//!< Uctx data to pass to alloc.
 
 	fr_dlist_head_t		watch[FR_TRUNK_STATE_MAX];	//!< To be called when trunk changes state.
+
+	fr_trunk_watch_entry_t	*next_watcher;		//!< Watcher about to be run. Used to prevent nested watchers.
 	/** @} */
 
 	/** @name Timers
@@ -758,6 +760,41 @@ do { \
 	fr_heap_insert((_tconn)->pub.trunk->active, (_tconn)); \
 } while (0)
 
+/** Call a list of watch functions associated with a state
+ *
+ */
+static inline void trunk_watch_call(fr_trunk_t *trunk, fr_dlist_head_t *list, fr_trunk_state_t state)
+{
+	/*
+	 *	Nested watcher calls are not allowed
+	 *	and shouldn't be possible because of
+	 *	deferred signal processing.
+	 */
+	fr_assert(trunk->next_watcher == NULL);
+
+	while ((trunk->next_watcher = fr_dlist_next(list, trunk->next_watcher))) {
+		fr_trunk_watch_entry_t	*entry = trunk->next_watcher;
+		bool			oneshot = entry->oneshot;	/* Watcher could be freed, so store now */
+
+		if (!entry->enabled) continue;
+		if (oneshot) trunk->next_watcher = fr_dlist_remove(list, entry);
+
+		entry->func(trunk, trunk->pub.state, state, entry->uctx);
+
+		if (oneshot) talloc_free(entry);
+	}
+	trunk->next_watcher = NULL;
+}
+
+/** Call the state change watch functions
+ *
+ */
+#define CALL_WATCHERS(_trunk, _state) \
+do { \
+	if (fr_dlist_empty(&(_trunk)->watch[_state])) break; \
+	trunk_watch_call((_trunk), &(_trunk)->watch[_state], _state); \
+} while(0)
+
 /** Remove a watch function from a trunk state list
  *
  * @param[in] trunk	The trunk to remove the watcher from.
@@ -827,6 +864,7 @@ do { \
 	DEBUG3("Trunk changed state %s -> %s", \
 	       fr_table_str_by_value(fr_trunk_states, trunk->pub.state, "<INVALID>"), \
 	       fr_table_str_by_value(fr_trunk_states, _new, "<INVALID>")); \
+	CALL_WATCHERS(trunk, _new); \
 	trunk->pub.state = _new; \
 } while (0);
 
