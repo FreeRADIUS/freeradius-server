@@ -361,6 +361,13 @@ static fr_table_num_indexed_bit_pos_t const fr_trunk_conn_trigger_names[] = {
 };
 static size_t fr_trunk_conn_trigger_names_len = NUM_ELEMENTS(fr_trunk_conn_trigger_names);
 
+static fr_table_num_ordered_t const fr_trunk_states[] = {
+	{ L("IDLE"),					FR_TRUNK_STATE_IDLE			},
+	{ L("ACTIVE"),					FR_TRUNK_STATE_ACTIVE			},
+	{ L("PENDING"),					FR_TRUNK_STATE_PENDING			}
+};
+static size_t fr_trunk_states_len = NUM_ELEMENTS(fr_trunk_states);
+
 static fr_table_num_ordered_t const fr_trunk_connection_states[] = {
 	{ L("INIT"),					FR_TRUNK_CONN_INIT			},
 	{ L("HALTED"),					FR_TRUNK_CONN_HALTED			},
