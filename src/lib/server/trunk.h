@@ -59,6 +59,13 @@ typedef enum {
 	FR_TRUNK_CANCEL_REASON_REQUEUE			//!< A previously sent request is being requeued.
 } fr_trunk_cancel_reason_t;
 
+typedef enum {
+	FR_TRUNK_STATE_IDLE = 0,			//!< Trunk has no connections
+	FR_TRUNK_STATE_ACTIVE,				//!< Trunk has active connections
+	FR_TRUNK_STATE_PENDING,				//!< Trunk has connections, but none are active
+	FR_TRUNK_STATE_MAX
+} fr_trunk_state_t;
+
 /** What type of I/O events the trunk connection is currently interested in receiving
  *
  */
@@ -292,6 +299,8 @@ struct fr_trunk_pub_s {
 	/** @} */
 
 	bool _CONST		triggers;		//!< do we run the triggers?
+
+	fr_trunk_state_t _CONST	state;			//!< Current state of the trunk.
 };
 
 /** Public fields for the trunk request
