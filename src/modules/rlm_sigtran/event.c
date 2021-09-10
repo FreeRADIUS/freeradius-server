@@ -65,6 +65,7 @@
 #include <freeradius-devel/io/schedule.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <signal.h>
 
 #include <osmocom/core/logging.h>
 #include <osmocom/sccp/sccp_types.h>
@@ -523,12 +524,27 @@ static void *sigtran_event_loop(UNUSED void *instance)
  */
 int sigtran_event_start(void)
 {
+    	sigset_t sigmask;
+
+	sigemptyset(&sigmask);
+	sigaddset(&sigmask, SIGCHLD);
+
 	sem_init(&event_thread_running, 0, 0);
 
 	if (sigtran_sccp_global_init() < 0) {
 		ERROR("main thread - Failed initialising SCCP layer");
 		return -1;
 	}
+
+	/*
+	 *	Reset the signal mask some of the
+	 *	osmocom code seems to mess with it.
+	 *
+	 *	This is so that old Linux kernels
+	 *	and libkqueue posix/proc work
+	 *	correctly.
+	 */
+	pthread_sigmask(SIG_BLOCK, &sigmask, NULL);
 
 	if (fr_schedule_pthread_create(&event_thread, sigtran_event_loop, NULL) < 0) {
 		ERROR("main thread - Failed spawning thread for multiplexer event loop: %s", fr_syserror(errno));
