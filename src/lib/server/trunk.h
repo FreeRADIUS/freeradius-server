@@ -862,6 +862,15 @@ fr_trunk_t	*fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 				char const *log_prefix, void const *uctx, bool delay_start) CC_HINT(nonnull(2, 3, 4));
 /** @} */
 
+/** @name Watchers
+ * @{
+ */
+fr_trunk_watch_entry_t *fr_trunk_add_watch(fr_trunk_t *trunk, fr_trunk_state_t state,
+					   fr_trunk_watch_t watch, bool oneshot, void const *uctx) CC_HINT(nonnull(1));
+
+int		fr_trunk_del_watch(fr_trunk_t *trunk, fr_trunk_state_t state, fr_trunk_watch_t watch);
+/** @} */
+
 #undef _CONST
 
 #ifdef __cplusplus

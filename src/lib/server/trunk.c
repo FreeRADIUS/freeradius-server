@@ -758,6 +758,70 @@ do { \
 	fr_heap_insert((_tconn)->pub.trunk->active, (_tconn)); \
 } while (0)
 
+/** Remove a watch function from a trunk state list
+ *
+ * @param[in] trunk	The trunk to remove the watcher from.
+ * @param[in] state	to remove the watch from.
+ * @param[in] watch	Function to remove.
+ * @return
+ *	- 0 if the function was removed successfully.
+ *	- -1 if the function wasn't present in the watch list.
+ *	- -2 if an invalid state was passed.
+ */
+int fr_trunk_del_watch(fr_trunk_t *trunk, fr_trunk_state_t state, fr_trunk_watch_t watch)
+{
+	fr_trunk_watch_entry_t	*entry = NULL;
+	fr_dlist_head_t	        *list;
+
+	if (state >= FR_TRUNK_STATE_MAX) return -2;
+
+	list = &trunk->watch[state];
+	while ((entry = fr_dlist_next(list, entry))) {
+		if (entry->func == watch) {
+			if (trunk->next_watcher == entry) {
+				trunk->next_watcher = fr_dlist_remove(list, entry);
+			} else {
+				fr_dlist_remove(list, entry);
+			}
+			talloc_free(entry);
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+/** Add a watch entry to the trunk state list
+ *
+ * @param[in] trunk	The trunk to add the watcher to.
+ * @param[in] state	to watch for.
+ * @param[in] watch	Function to add.
+ * @param[in] oneshot	Should this watcher only be run once.
+ * @param[in] uctx	Context to pass to function.
+ * @return
+ *	- NULL if an invlaid state is passed.
+ *	- A new watch entry handle on success.
+ */
+fr_trunk_watch_entry_t *fr_trunk_add_watch(fr_trunk_t *trunk, fr_trunk_state_t state,
+					   fr_trunk_watch_t watch, bool oneshot, void const *uctx)
+{
+	fr_trunk_watch_entry_t	*entry;
+	fr_dlist_head_t		*list;
+
+	if (state >= FR_TRUNK_STATE_MAX) return NULL;
+
+	list = &trunk->watch[state];
+	MEM(entry = talloc_zero(trunk, fr_trunk_watch_entry_t));
+
+	entry->func = watch;
+	entry->oneshot = oneshot;
+	entry->enabled = true;
+	memcpy(&entry->uctx, &uctx, sizeof(entry->uctx));
+	fr_dlist_insert_tail(list, entry);
+
+	return entry;
+}
+
 #define TRUNK_STATE_TRANSITION(_new) \
 do { \
 	DEBUG3("Trunk changed state %s -> %s", \
