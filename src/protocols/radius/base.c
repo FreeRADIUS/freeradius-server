@@ -111,8 +111,8 @@ size_t const fr_radius_attr_sizes[FR_TYPE_MAX + 1][2] = {
 	[FR_TYPE_INT32]			= {4, 4},
 	[FR_TYPE_INT64]			= {8, 8},
 
-	[FR_TYPE_DATE]			= {4, 4},
-	[FR_TYPE_TIME_DELTA]   		= {4, 4},
+	[FR_TYPE_DATE]			= {2, 8},
+	[FR_TYPE_TIME_DELTA]   		= {2, 8},
 
 	[FR_TYPE_TLV]			= {2, ~0},
 	[FR_TYPE_STRUCT]		= {1, ~0},
