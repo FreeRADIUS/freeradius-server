@@ -252,6 +252,8 @@ struct fr_trunk_s {
 	void			*in_handler;		//!< Which handler we're inside.
 
 	void			*uctx;			//!< Uctx data to pass to alloc.
+
+	fr_dlist_head_t		watch[FR_TRUNK_STATE_MAX];	//!< To be called when trunk changes state.
 	/** @} */
 
 	/** @name Timers
@@ -4516,6 +4518,8 @@ static int _trunk_free(fr_trunk_t *trunk)
 {
 	fr_trunk_connection_t	*tconn;
 	fr_trunk_request_t	*treq;
+	fr_trunk_watch_entry_t	*watch;
+	size_t			i;
 
 	DEBUG4("Trunk free %p", trunk);
 
@@ -4558,6 +4562,13 @@ static int _trunk_free(fr_trunk_t *trunk)
 	 */
 	while ((treq = fr_dlist_head(&trunk->free_requests))) talloc_free(treq);
 
+	/*
+	 *	Free any entries in the watch lists
+	 */
+	for (i = 0; i < NUM_ELEMENTS(trunk->watch); i++) {
+		while ((watch = fr_dlist_pop_head(&trunk->watch[i]))) talloc_free(watch);
+	}
+
 	return 0;
 }
 
@@ -4592,6 +4603,7 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 			   char const *log_prefix, void const *uctx, bool delay_start)
 {
 	fr_trunk_t	*trunk;
+	size_t		i;
 
 	/*
 	 *	Check we have the functions we need
@@ -4638,6 +4650,13 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	fr_dlist_talloc_init(&trunk->draining, fr_trunk_connection_t, entry);
 	fr_dlist_talloc_init(&trunk->draining_to_free, fr_trunk_connection_t, entry);
 	fr_dlist_talloc_init(&trunk->to_free, fr_trunk_connection_t, entry);
+
+	/*
+	 *	Watch lists
+	 */
+	for (i = 0; i < NUM_ELEMENTS(trunk->watch); i++) {
+		fr_dlist_talloc_init(&trunk->watch[i], fr_trunk_watch_entry_t, entry);
+	}
 
 	DEBUG4("Trunk allocated %p", trunk);
 
