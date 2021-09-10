@@ -288,6 +288,14 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 
 	if (ref) *ref = NULL;
 
+	/*
+	 *	Set these as default, so that we can set one (or both) separately as flags.
+	 */
+	if ((type == FR_TYPE_DATE) || (type == FR_TYPE_TIME_DELTA)) {
+		flags->length = 4;
+		flags->flag_time_res = FR_TIME_RES_SEC;
+	}
+
 	for (p = name; p && *p != '\0' ; p = next) {
 		char *key, *value;
 
@@ -383,9 +391,6 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			flags->subtype = FLAG_LENGTH_UINT16;
 
 		} else if ((type == FR_TYPE_DATE) || (type == FR_TYPE_TIME_DELTA)) {
-			flags->length = 4;
-			flags->flag_time_res = FR_TIME_RES_SEC;
-
 			/*
 			 *	Allow the dictionary to specify the encoding format.
 			 */
