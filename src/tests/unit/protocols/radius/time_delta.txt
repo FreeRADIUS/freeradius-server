@@ -1,0 +1,52 @@
+#
+#  time deltas, which don't require setting TZ=UTC
+#
+proto radius
+proto-dictionary radius
+
+#
+#  Time delta in milliseconds.
+#
+attribute Unit-TLV.Delta-MSec = 5
+match Unit-TLV.Delta-MSec = 5
+
+encode-pair -
+match fe 08 02 06 00 00 00 05
+
+decode-pair -
+match Unit-TLV = { Delta-MSec = 5 }
+
+#
+#  @todo - not yet converted to make nested TLVs!
+#
+attribute Unit-TLV.Delta-Sec = 10
+match Unit-TLV.Delta-Sec = 10
+
+encode-pair -
+match fe 08 03 06 00 00 00 0a
+
+decode-pair -
+match Unit-TLV = { Delta-Sec = 10 }
+
+#
+#  Allow encoding as nested VPs
+#
+encode-pair Unit-TLV.Milliseconds = 1
+match fe 08 01 06 00 00 00 01
+
+encode-pair Unit-TLV = { Milliseconds = 1 }
+match fe 08 01 06 00 00 00 01
+
+#
+#  Various data types and time resolutions
+#
+encode-pair Unit-TLV.Delta-MSec-uint16 = 65ms
+match fe 06 04 04 00 41
+
+# The attribute is milliseconds, so we print it as
+# milliseconds by default.
+decode-pair -
+match Unit-TLV = { Delta-MSec-uint16 = 65 }
+
+count
+match 22
