@@ -674,6 +674,8 @@ int		fr_ldap_connection_timeout_set(fr_ldap_connection_t const *conn, fr_time_de
 
 int		fr_ldap_connection_timeout_reset(fr_ldap_connection_t const *conn);
 
+fr_trunk_state_t fr_thread_ldap_trunk_state(fr_ldap_thread_t *thread, char const *uri, char const *bind_dn);
+
 /*
  *	state.c - Connection state machine
  */

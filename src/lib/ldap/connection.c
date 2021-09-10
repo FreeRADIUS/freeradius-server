@@ -724,3 +724,21 @@ static fr_connection_t *ldap_trunk_connection_alloc(fr_trunk_connection_t *tconn
 
 	return fr_ldap_connection_state_alloc(tconn, el, &thread_trunk->config, log_prefix);
 }
+
+/** Lookup the state of a thread specific LDAP connection trunk for a specific URI / bind DN
+ *
+ * @param[in] thread		to which the connection belongs
+ * @param[in] uri		of the host to find / create a connection to
+ * @param[in] bind_dn		to make the connection as
+ * @return
+ *	- State of a trunk matching the URI and bind DN
+ *	- FR_TRUNK_STATE_MAX if no matching trunk
+ */
+fr_trunk_state_t fr_thread_ldap_trunk_state(fr_ldap_thread_t *thread, char const *uri, char const *bind_dn)
+{
+	fr_ldap_thread_trunk_t	*found, find = {.uri = uri, .bind_dn = bind_dn};
+
+	found = fr_rb_find(thread->trunks, &find);
+
+	return (found) ? found->trunk->state : FR_TRUNK_STATE_MAX;
+}
