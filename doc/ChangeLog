@@ -19,6 +19,9 @@ FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	  See sites-available/tls, "proxy_protocol" and doc/antora/modules/howto/pages/protocols/proxy/
 	* Generate parse errors in more circumstances when we know that the
 	  configuration is wrong.
+	* add "weeklycounter" to sample sqlcounter configuration
+	* The Simultaneous-Use code is now IPv6 aware, and can deal with
+	  NAS-IPv6-Address.
 
 	Bug fixes
 	* Fix crash in trustrouter module (#4115). Patch from Alejandro Perez
@@ -40,6 +43,8 @@ FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	* Accept slow writes from proxies over TCP, which allows the
 	  server to make more progress when it receives partial packets.
 	* Add 'weeklycounter' for rlm_sqlcounter.
+	* Outbound proxying over TCP / TLS is better able to deal with
+	  partial TCP reads, and has fewer issues with slow networks.
 
 FreeRADIUS 3.0.23 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	Feature improvements
