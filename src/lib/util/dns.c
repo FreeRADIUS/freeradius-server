@@ -48,9 +48,6 @@ static bool labelcmp(uint8_t const *a, uint8_t const *b, size_t len)
 		 *	If one or the other isn't a letter, we can't
 		 *	do case insensitive comparisons of them, so
 		 *	they can't match.
-		 *
-		 *	@todo - allow for '_' at the beginning of a
-		 *	label.
 		 */
 		if (!(((*a >= 'a') && (*a <= 'z')) || ((*a >= 'A') && (*a <= 'Z')))) return false;
 		if (!(((*b >= 'a') && (*b <= 'z')) || ((*b >= 'A') && (*b <= 'Z')))) return false;
@@ -536,6 +533,7 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	uint8_t const *end = buf + buf_len;
 	uint8_t const *q, *strend, *last;
 	uint8_t *data;
+	bool underscore = true;
 
 	if (!buf || !buf_len || !where || !value) {
 		fr_strerror_const("Invalid input");
@@ -588,10 +586,18 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 	}
 
 	/*
-	 *	@todo - allow for '_' at the beginning of a
-	 *	label.
+	 *	Convert it piece by piece.
 	 */
 	while (q < strend) {
+		/*
+		 *	Allow underscore at the start of a label.
+		 */
+		if (underscore) {
+			underscore = false;
+
+			if (*q == '_') goto next;
+		}
+
 		if (*q == '.') {
 			/*
 			 *	Don't count final dot as an
@@ -609,12 +615,19 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 			}
 			last = q;
 
+			/*
+			 *	We had a dot, allow underscore as the
+			 *	first character of the next label.
+			 */
+			underscore = true;
+
 		} else if (!((*q == '-') || ((*q >= '0') && (*q <= '9')) ||
 			     ((*q >= 'A') && (*q <= 'Z')) || ((*q >= 'a') && (*q <= 'z')))) {
-			fr_strerror_printf("Invalid character %02x in label", *q);
+			fr_strerror_printf("Invalid character 0x%02x in label", *q);
 			return -1;
 		}
 
+	next:
 		q++;
 
 		if ((q - last) > 63) {
@@ -708,7 +721,7 @@ done:
  */
 ssize_t fr_dns_label_uncompressed_length(uint8_t const *buf, size_t buf_len, uint8_t const **next)
 {
-	uint8_t const *p, *q, *end;
+	uint8_t const *p, *q, *end, *label_end;
 	uint8_t const *current, *start;
 	size_t length;
 	bool at_first_label, already_set_next;
@@ -882,19 +895,26 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *buf, size_t buf_len, uin
 			return -(p - buf);
 		}
 
+		q = p + 1;
+		label_end = q + *p;
+
+		/*
+		 *	Allow for underscore at the beginning of a
+		 *	label.
+		 */
+		if (*q == '_') q++;
+
 		/*
 		 *	Verify that the contents of the label are OK.
 		 */
-		for (q = p + 1; q < p + *p + 1; q++) {
-			/*
-			 *	@todo - allow for '_' at the beginning of a
-			 *	label.
-			 */
+		while (q < label_end) {
 			if (!((*q == '-') || ((*q >= '0') && (*q <= '9')) ||
 			      ((*q >= 'A') && (*q <= 'Z')) || ((*q >= 'a') && (*q <= 'z')))) {
-				fr_strerror_printf("Invalid character %02x in label", *q);
+				fr_strerror_printf("Invalid character 0x%02x in label", *q);
 				return -(q - buf);
 			}
+
+			q++;
 		}
 
 		p += *p + 1;

@@ -182,6 +182,15 @@ decode-dns-label -
 match www.example.com,ftp.example.com,www.example.org,ftp.example.org,ns.example.org
 
 #
+#  Underscores are allowed as the first character of a label.
+#
+encode-dns-label _foo.com
+match 04 5f 66 6f 6f 03 63 6f 6d 00
+
+decode-dns-label -
+match _foo.com
+
+#
 #  Error cases
 #
 encode-dns-label www.it-is-a-long-crazy-domain-name-just-to-get-63-chars-and-yes-1234.com
@@ -201,6 +210,9 @@ match Empty labels are invalid
 encode-dns-label www..foo.com
 match Double dots '..' are forbidden
 
+#  underscore as non-first character is illegal
+encode-dns-label www_foo.com
+match Invalid character 0x5f in label
 
 count
-match 98
+match 104
