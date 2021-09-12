@@ -48,10 +48,12 @@ static bool labelcmp(uint8_t const *a, uint8_t const *b, size_t len)
 		 *	If one or the other isn't a letter, we can't
 		 *	do case insensitive comparisons of them, so
 		 *	they can't match.
+		 *
+		 *	@todo - allow for '_' at the beginning of a
+		 *	label.
 		 */
-		if ((*a < 'A') || (*b < 'A')) {
-			return false;
-		}
+		if (!(((*a >= 'a') && (*a <= 'z')) || ((*a >= 'A') && (*a <= 'Z')))) return false;
+		if (!(((*b >= 'a') && (*b <= 'z')) || ((*b >= 'A') && (*b <= 'Z')))) return false;
 
 		/*
 		 *	If they're equal but different case, then the
@@ -585,6 +587,10 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 		return -1;
 	}
 
+	/*
+	 *	@todo - allow for '_' at the beginning of a
+	 *	label.
+	 */
 	while (q < strend) {
 		if (*q == '.') {
 			/*
@@ -705,7 +711,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *buf, size_t buf_len, uin
 	uint8_t const *p, *q, *end;
 	uint8_t const *current, *start;
 	size_t length;
-	bool at_first_label, set_next;
+	bool at_first_label, already_set_next;
 
 	if (!buf || (buf_len == 0) || !next) return 0;
 
@@ -720,7 +726,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *buf, size_t buf_len, uin
 	p = current = start;
 	length = 0;
 	at_first_label = true;
-	set_next = false;
+	already_set_next = false;
 
 	/*
 	 *	We silently accept labels *without* a trailing 0x00,
@@ -745,7 +751,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *buf, size_t buf_len, uin
 			 */
 			if (current == start) {
 				*next = p;
-				set_next = true;
+				already_set_next = true;
 			}
 
 			break;
@@ -777,9 +783,27 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *buf, size_t buf_len, uin
 			/*
 			 *	Forward references are forbidden,
 			 *	including self-references.
+			 *
+			 *	This requirement follows RFC 1035
+			 *	Section 4.1.4, which says:
+			 *
+			 *	... an entire domain name or a list of
+			 *	labels at the end of a domain name is
+			 *	replaced with a pointer to a prior
+			 *	occurance of the same name.
+			 *	...
+			 *
+			 *	Note the key word PRIOR.  If we
+			 *	enforce that the pointer is backwards,
+			 *	and do various other enforcements,
+			 *	then it is very difficult for
+			 *	attackers to create malicious DNS
+			 *	packets which will cause the decoder
+			 *	to do bad things.
 			 */
 			if (offset >= (p - buf)) {
-				fr_strerror_printf("Pointer %04x is an invalid forward reference", offset);
+				fr_strerror_printf("Pointer %04x at offset %04x is an invalid forward reference",
+						   offset, (int) (p - buf));
 				return -(p - buf);
 			}
 
@@ -791,24 +815,34 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *buf, size_t buf_len, uin
 			 *	within the label we're parsing.  If
 			 *	that happens, we have a loop.
 			 *
-			 *	i.e. the pointer must be backwards to
-			 *	*before* our current label.  When that
-			 *	limitation is enforced, pointer loops
-			 *	are impossible.
+			 *	i.e. the pointer must point backwards
+			 *	to *before* our current label.  When
+			 *	that limitation is enforced, pointer
+			 *	loops are impossible.
 			 */
 			if (q >= current) {
-				fr_strerror_printf("Pointer %04x creates a loop within a label", offset);
+				fr_strerror_printf("Pointer %04x at offset %04x creates a loop within a label",
+						   offset, (int) (p - buf));
 				return -(p - buf);
 			}
 
-
 			/*
 			 *	The pointer MUST point to a valid
-			 *	label length, and not to another
+			 *	length field, and not to another
 			 *	pointer.
 			 */
 			if (*q > 63) {
-				fr_strerror_printf("Pointer %04x does not point to the start of a label", offset);
+				fr_strerror_printf("Pointer %04x at offset %04x does not point to the start of a label",
+						   offset, (int) (p - buf));
+				return -(p - buf);
+			}
+
+			/*
+			 *	The pointer MUST NOT point to an end of label field.
+			 */
+			if (!*q) {
+				fr_strerror_printf("Pointer %04x at offset %04x refers to an invalid field", offset,
+						   (int) (p - buf));
 				return -(p - buf);
 			}
 
@@ -820,7 +854,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *buf, size_t buf_len, uin
 			 */
 			if (current == start) {
 				*next = p + 2;
-				set_next = true;
+				already_set_next = true;
 			}
 
 			p = current = q;
@@ -852,6 +886,10 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *buf, size_t buf_len, uin
 		 *	Verify that the contents of the label are OK.
 		 */
 		for (q = p + 1; q < p + *p + 1; q++) {
+			/*
+			 *	@todo - allow for '_' at the beginning of a
+			 *	label.
+			 */
 			if (!((*q == '-') || ((*q >= '0') && (*q <= '9')) ||
 			      ((*q >= 'A') && (*q <= 'Z')) || ((*q >= 'a') && (*q <= 'z')))) {
 				fr_strerror_printf("Invalid character %02x in label", *q);
@@ -865,7 +903,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *buf, size_t buf_len, uin
 	/*
 	 *	Return the length of this label.
 	 */
-	if (!set_next) *next = p; /* should be 'end'< */
+	if (!already_set_next) *next = p; /* should be <='end' */
 
 	return length;
 }
