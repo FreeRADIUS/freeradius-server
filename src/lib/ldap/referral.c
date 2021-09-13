@@ -258,3 +258,83 @@ int fr_ldap_referral_follow(fr_ldap_query_t *query)
 	return 0;
 }
 
+/** Follow an alternative LDAP referral
+ *
+ * If an initial chase of an LDAP referral results in an error being returned
+ * this function can be used to attempt one of the other referral URLs given
+ * in the initial query results.
+ *
+ * The initial use of fr_ldap_referral_follow may have launched trunks for
+ * any referral URLs which parsed successfully, so this starts by looking
+ * for the first which has an active state and sends the query that way.
+ *
+ * If no active trunks match the remaining servers listed in referrals then
+ * new trunks are launched with watchers to send the query on the first
+ * active trunk.
+ *
+ * @param query whose referrals are being chased
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
+ */
+int fr_ldap_referral_next(fr_ldap_query_t *query)
+{
+        request_t		*request = query->request;
+	fr_ldap_config_t	*handle_config = query->ttrunk->t->config;
+	fr_ldap_thread_t	*thread = query->ttrunk->t;
+	fr_ldap_referral_t	*referral = NULL;
+	fr_ldap_thread_trunk_t	*ttrunk;
+
+	while ((referral = fr_dlist_next(&query->referrals, referral))) {
+		if (fr_thread_ldap_trunk_state(thread, referral->host_uri,
+					       referral->identity) != FR_TRUNK_STATE_ACTIVE) {
+			RDEBUG3("No active LDAP trunk for URI %s, bind DN %s", referral->host_uri, referral->identity);
+			continue;
+		}
+
+		ttrunk = fr_thread_ldap_trunk_get(thread, referral->host_uri, referral->identity,
+						  referral->password, request, handle_config);
+
+		if (!ttrunk) {
+			RERROR("Unable to connect to LDAP referral URL");
+			fr_dlist_talloc_free_item(&query->referrals, referral);
+		        continue;
+		}
+
+		/*
+		 *	We have an active trunk enqueue the request
+		 */
+		query->ttrunk = ttrunk;
+		query->referral = referral;
+		query->treq = fr_trunk_request_alloc(ttrunk->trunk, request);
+		fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL);
+		return 0;
+	}
+
+	/*
+	 *	None of the referrals parsed successfully
+	 */
+	if (fr_dlist_num_elements(&query->referrals) == 0) {
+		RERROR("No valid LDAP referrals to follow");
+		return -1;
+	}
+
+	/*
+	 *	None of the remaining referrals have an active trunk.
+	 *	Launch new trunks with callbacks so the first to become active will run the query.
+	 */
+	referral = NULL;
+	while ((referral = fr_dlist_next(&query->referrals, referral))) {
+		ttrunk = fr_thread_ldap_trunk_get(thread, referral->host_uri, referral->identity,
+						  referral->password, request, handle_config);
+		if (!ttrunk) {
+			fr_dlist_talloc_free_item(&query->referrals, referral);
+			continue;
+		}
+		referral->ttrunk = ttrunk;
+		fr_trunk_add_watch(ttrunk->trunk, FR_TRUNK_STATE_ACTIVE, _ldap_referral_send, true, referral);
+		RDEBUG4("Watch inserted to send referral query on active trunk.");
+	}
+
+	return 0;
+}
