@@ -58,3 +58,30 @@ fr_ldap_referral_t *fr_ldap_referral_alloc(TALLOC_CTX *ctx)
 	return referral;
 }
 
+/** Callback to send LDAP referral queries when a trunk becomes active
+ *
+ */
+static void _ldap_referral_send (UNUSED fr_trunk_t *trunk, UNUSED fr_trunk_state_t prev,
+			        UNUSED fr_trunk_state_t state, void *uctx)
+{
+	fr_ldap_referral_t	*referral = talloc_get_type_abort(uctx, fr_ldap_referral_t);
+	fr_ldap_query_t		*query = referral->query;
+	request_t		*request = query->request;
+
+	/*
+	 *	If referral is set, then another LDAP trunk has gone active first and sent the referral
+	 */
+	if (query->referral) return;
+
+	/*
+	 *	Enqueue referral query on active trunk connection
+	 */
+	query->referral = referral;
+	query->ttrunk = referral->ttrunk;
+	query->treq = fr_trunk_request_alloc(query->ttrunk->trunk, query->request);
+	fr_trunk_request_enqueue(&query->treq, query->ttrunk->trunk, query->request, query, NULL);
+
+	RDEBUG4("Pending LDAP referral query queued on active trunk");
+}
+
+
