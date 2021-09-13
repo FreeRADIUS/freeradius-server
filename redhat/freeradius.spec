@@ -715,7 +715,7 @@ fi
 %endif
 
 %dir %attr(755,radiusd,radiusd) %{_sharedstatedir}/radiusd/
-%dir %attr(755,radiusd,radiusd) %{_rundir}/radiusd/
+%dir %attr(755,radiusd,radiusd) /var/run/radiusd/
 # binaries
 %defattr(-,root,root)
 /usr/sbin/checkrad
