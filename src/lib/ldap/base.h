@@ -389,6 +389,8 @@ typedef struct fr_ldap_thread_trunk_s {
 	fr_event_timer_t const	*ev;		//!< Event to close the thread when it has been idle.
 } fr_ldap_thread_trunk_t;
 
+typedef struct fr_ldap_referral_s fr_ldap_referral_t;
+
 /** LDAP query structure
  *
  * Used to hold the elements of an LDAP query and track its progress.
@@ -438,6 +440,23 @@ typedef struct fr_ldap_query_s {
 
 	fr_ldap_result_code_t	ret;		//!< Result code
 } fr_ldap_query_t;
+
+/** Parsed LDAP referral structure
+ *
+ * When LDAP servers respond with a referral, it is parsed into one or more fr_ldap_referral_t
+ * and kept until the referral has been followed.
+ * Avoids repeated parsing of the referrals as provided by libldap.
+ */
+typedef struct fr_ldap_referral_s {
+	fr_dlist_t		entry;		//!< Entry in list of possible referrals
+	fr_ldap_query_t		*query;		//!< Query this referral relates to
+	LDAPURLDesc		*referral_url;	//!< URL for the referral
+	char			*host_uri;	//!< Host URI used for referral conneciton
+	char const		*identity;	//!< Bind identity for referral connection
+	char const		*password;	//!< Bind password for referral connecition
+	fr_ldap_thread_trunk_t	*ttrunk;	//!< Trunk this referral should use
+} fr_ldap_referral_t;
+
 
 /** Codes returned by fr_ldap internal functions
  *
