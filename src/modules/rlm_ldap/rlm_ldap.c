@@ -1703,6 +1703,7 @@ static int mod_thread_instatiate(UNUSED CONF_SECTION const *conf, void *instance
 
 	this_thread->inst = inst;
 	this_thread->config = &inst->handle_config;
+	this_thread->trunk_conf = &inst->trunk_conf;
 	this_thread->el = el;
 
 	return 0;
