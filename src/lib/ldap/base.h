@@ -730,3 +730,5 @@ int		fr_ldap_parse_url_extensions(LDAPControl **sss, request_t *request,
  *	referral.c - Handle LDAP referrals
  */
 fr_ldap_referral_t	*fr_ldap_referral_alloc(TALLOC_CTX *ctx);
+
+int 		fr_ldap_referral_follow(fr_ldap_query_t *query);
