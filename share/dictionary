@@ -243,6 +243,7 @@ $INCLUDE dictionary.localweb
 $INCLUDE dictionary.lucent
 $INCLUDE dictionary.manzara
 $INCLUDE dictionary.meinberg
+$INCLUDE dictionary.mellanox
 $INCLUDE dictionary.meraki
 $INCLUDE dictionary.merit
 $INCLUDE dictionary.meru
