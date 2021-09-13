@@ -215,7 +215,7 @@ static int tls_verror_log(REQUEST *request, char const *msg, va_list ap)
 		 *	Print the error we were given, irrespective
 		 *	of whether there were any OpenSSL errors.
 		 */
-		ROPTIONAL(RERROR, ERROR, "%s", p);
+		ROPTIONAL(RERROR, ERROR, "(TLS) %s", p);
 		talloc_free(p);
 	}
 
@@ -227,9 +227,9 @@ static int tls_verror_log(REQUEST *request, char const *msg, va_list ap)
 		ERR_error_string_n(error, buffer, sizeof(buffer));
 		/* Extra verbose */
 		if ((request && RDEBUG_ENABLED3) || DEBUG_ENABLED3) {
-			ROPTIONAL(REDEBUG, ERROR, "%s[%i]:%s", file, line, buffer);
+			ROPTIONAL(REDEBUG, ERROR, "(TLS) %s[%i]:%s", file, line, buffer);
 		} else {
-			ROPTIONAL(REDEBUG, ERROR, "%s", buffer);
+			ROPTIONAL(REDEBUG, ERROR, "(TLS) %s", buffer);
 		}
 		in_stack++;
 	} while ((error = ERR_get_error_line(&file, &line)));
@@ -386,7 +386,7 @@ static unsigned int psk_server_callback(SSL *ssl, const char *identity,
 		 *	The passed identity is weird.  Deny it.
 		 */
 		if (!identity_is_safe(identity)) {
-			RWDEBUG("Invalid characters in PSK identity %s", identity);
+			RWDEBUG("(TLS) Invalid characters in PSK identity %s", identity);
 			return 0;
 		}
 
@@ -396,7 +396,7 @@ static unsigned int psk_server_callback(SSL *ssl, const char *identity,
 		hex_len = radius_xlat(buffer, sizeof(buffer), request, conf->psk_query,
 				      NULL, NULL);
 		if (!hex_len) {
-			RWDEBUG("PSK expansion returned an empty string.");
+			RWDEBUG("(TLS) PSK expansion returned an empty string.");
 			return 0;
 		}
 
@@ -406,7 +406,7 @@ static unsigned int psk_server_callback(SSL *ssl, const char *identity,
 		 *	the truncation, and complain about it.
 		 */
 		if (hex_len > (2 * max_psk_len)) {
-			RWDEBUG("Returned PSK is too long (%u > %u)",
+			RWDEBUG("(TLS) Returned PSK is too long (%u > %u)",
 				(unsigned int) hex_len, 2 * max_psk_len);
 			return 0;
 		}
@@ -429,7 +429,7 @@ static unsigned int psk_server_callback(SSL *ssl, const char *identity,
 	 *	static identity.
 	 */
 	if (strcmp(identity, conf->psk_identity) != 0) {
-		ERROR("Supplied PSK identity %s does not match configuration.  Rejecting.",
+		ERROR("(TKS) Supplied PSK identity %s does not match configuration.  Rejecting.",
 		      identity);
 		return 0;
 	}
@@ -616,7 +616,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 			RDEBUG2("Flushing X509 store to re-read data from ca_path dir");
 
 			if ((new_cert_store = fr_init_x509_store(conf)) == NULL) {
-				RERROR("Error replacing X509 store, out of memory (?)");
+				RERROR("(TLS) Error replacing X509 store, out of memory (?)");
 			} else {
 				if (conf->old_x509_store) X509_STORE_free(conf->old_x509_store);
 				/*
@@ -678,7 +678,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	SSL_set_app_data(new_tls, NULL);
 
 	if ((state = talloc_zero(ctx, tls_session_t)) == NULL) {
-		RERROR("Error allocating memory for SSL state");
+		RERROR("(TLS) Error allocating memory for SSL state");
 		return NULL;
 	}
 	session_init(state);
@@ -1777,7 +1777,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 	if (!conf) {
-		RWDEBUG("Failed to find TLS configuration in session");
+		RWDEBUG("(TLS) Failed to find TLS configuration in session");
 		return 0;
 	}
 
@@ -1794,7 +1794,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 		blob_len = i2d_SSL_SESSION(sess, NULL);
 		if (blob_len < 1) {
 			/* something went wrong */
-			if (request) RWDEBUG("Session serialisation failed, couldn't determine required buffer length");
+			if (request) RWDEBUG("(TLS) Session serialisation failed, could not determine required buffer length");
 			return 0;
 		}
 
@@ -1802,14 +1802,14 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 		/* alloc and convert to ASN.1 */
 		sess_blob = malloc(blob_len);
 		if (!sess_blob) {
-			RWDEBUG("Session serialisation failed, couldn't allocate buffer (%d bytes)", blob_len);
+			RWDEBUG("(TLS) Session serialisation failed, couldn't allocate buffer (%d bytes)", blob_len);
 			return 0;
 		}
 		/* openssl mutates &p */
 		p = sess_blob;
 		rv = i2d_SSL_SESSION(sess, &p);
 		if (rv != blob_len) {
-			if (request) RWDEBUG("Session serialisation failed");
+			if (request) RWDEBUG("(TLS) Session serialisation failed");
 			goto error;
 		}
 
@@ -1818,7 +1818,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 			 conf->session_cache_path, FR_DIR_SEP, buffer);
 		fd = open(filename, O_RDWR|O_CREAT|O_EXCL, S_IWUSR);
 		if (fd < 0) {
-			if (request) RERROR("Session serialisation failed, failed opening session file %s: %s",
+			if (request) RERROR("(TLS) Session serialisation failed, failed opening session file %s: %s",
 					    filename, fr_syserror(errno));
 			goto error;
 		}
@@ -1841,7 +1841,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 		while (todo > 0) {
 			rv = write(fd, p, todo);
 			if (rv < 1) {
-				if (request) RWDEBUG("Failed writing session: %s", fr_syserror(errno));
+				if (request) RWDEBUG("(TLS) Failed writing session: %s", fr_syserror(errno));
 				close(fd);
 				goto error;
 			}
@@ -1849,7 +1849,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 			todo -= rv;
 		}
 		close(fd);
-		if (request) RWDEBUG("Wrote session %s to %s (%d bytes)", buffer, filename, blob_len);
+		if (request) RWDEBUG("(TLS) Wrote session %s to %s (%d bytes)", buffer, filename, blob_len);
 	}
 
 error:
@@ -1950,7 +1950,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 	if (!conf) {
-		RWDEBUG("Failed to find TLS configuration in session");
+		RWDEBUG("(TLS) Failed to find TLS configuration in session");
 		return NULL;
 	}
 
@@ -1972,20 +1972,20 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 		snprintf(filename, sizeof(filename), "%s%c%s.asn1", conf->session_cache_path, FR_DIR_SEP, buffer);
 		fd = open(filename, O_RDONLY);
 		if (fd < 0) {
-			RWDEBUG("No persisted session file %s: %s", filename, fr_syserror(errno));
+			RWDEBUG("(TLS) No persisted session file %s: %s", filename, fr_syserror(errno));
 			goto error;
 		}
 
 		rv = fstat(fd, &st);
 		if (rv < 0) {
-			RWDEBUG("Failed stating persisted session file %s: %s", filename, fr_syserror(errno));
+			RWDEBUG("(TLS) Failed stating persisted session file %s: %s", filename, fr_syserror(errno));
 			close(fd);
 			goto error;
 		}
 
 		sess_data = talloc_array(NULL, unsigned char, st.st_size);
 		if (!sess_data) {
-			RWDEBUG("Failed allocating buffer for persisted session (%d bytes)", (int) st.st_size);
+			RWDEBUG("(TLS) Failed allocating buffer for persisted session (%d bytes)", (int) st.st_size);
 			close(fd);
 			goto error;
 		}
@@ -1995,7 +1995,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 		while (todo > 0) {
 			rv = read(fd, q, todo);
 			if (rv < 1) {
-				RWDEBUG("Failed reading persisted session: %s", fr_syserror(errno));
+				RWDEBUG("(TLS) Failed reading persisted session: %s", fr_syserror(errno));
 				close(fd);
 				goto error;
 			}
@@ -2019,7 +2019,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 		memcpy(&o, &p, sizeof(o));
 		sess = d2i_SSL_SESSION(NULL, o, st.st_size);
 		if (!sess) {
-			RWDEBUG("Failed loading persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
+			RWDEBUG("(TLS) Failed loading persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
 			goto error;
 		}
 
@@ -2029,7 +2029,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 		rv = pairlist_read(talloc_ctx, filename, &pairlist, 1);
 		if (rv < 0) {
 			/* not safe to un-persist a session w/o VPs */
-			RWDEBUG("Failed loading persisted VPs for session %s", buffer);
+			RWDEBUG("(TLS) Failed loading persisted VPs for session %s", buffer);
 			SSL_SESSION_free(sess);
 			sess = NULL;
 			goto error;
@@ -2063,7 +2063,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, const unsigned char *data, int l
 			if (vp) {
 				if ((request->timestamp + vp->vp_integer) > expires) {
 					vp->vp_integer = expires - request->timestamp;
-					RWDEBUG2("Updating Session-Timeout to %u, due to impending certificate expiration",
+					RWDEBUG2("(TLS) Updating Session-Timeout to %u, due to impending certificate expiration",
 						 vp->vp_integer);
 				}
 			}
@@ -2394,7 +2394,7 @@ static SSL_SESSION *cbtls_cache_load(SSL *ssl, const unsigned char *data, int le
 		if (vp) {
 			if ((request->timestamp + vp->vp_integer) > expires) {
 				vp->vp_integer = expires - request->timestamp;
-				RWDEBUG2("Updating Session-Timeout to %u, due to impending certificate expiration",
+				RWDEBUG2("(TLS) Updating Session-Timeout to %u, due to impending certificate expiration",
 					 vp->vp_integer);
 			}
 		}
@@ -2405,7 +2405,7 @@ static SSL_SESSION *cbtls_cache_load(SSL *ssl, const unsigned char *data, int le
 	 */
 	vp = fr_pair_find_by_num(fake->state, PW_TLS_SESSION_DATA, 0, TAG_ANY);
 	if (!vp) {
-		RWDEBUG("Failed to find TLS-Session-Data in 'session-state' list for session %s", buffer);
+		RWDEBUG("(TLS) Failed to find TLS-Session-Data in 'session-state' list for session %s", buffer);
 		goto error;
 	}
 
@@ -2422,7 +2422,7 @@ static SSL_SESSION *cbtls_cache_load(SSL *ssl, const unsigned char *data, int le
 	p = vp->vp_octets;
 	sess = d2i_SSL_SESSION(NULL, &p, vp->vp_length);
 	if (!sess) {
-		RWDEBUG("Failed loading persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
+		RWDEBUG("(TLS) Failed loading persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
 		goto error;
 	}
 
@@ -2525,7 +2525,7 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 	VALUE_PAIR	*vp;
 
 	if (issuer_cert == NULL) {
-		RWDEBUG("Could not get issuer certificate");
+		RWDEBUG("(TLS) Could not get issuer certificate");
 		goto skipped;
 	}
 
@@ -2550,7 +2550,7 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 		/* Reading the libssl src, they do a strdup on the URL, so it could of been const *sigh* */
 		OCSP_parse_url(url, &host, &port, &path, &use_ssl);
 		if (!host || !port || !path) {
-			RWDEBUG("ocsp: Host or port or path missing from configured URL \"%s\".  Not doing OCSP", url);
+			RWDEBUG("(TLS) ocsp: Host or port or path missing from configured URL \"%s\".  Not doing OCSP", url);
 			goto skipped;
 		}
 	} else {
@@ -2559,15 +2559,15 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 		ret = ocsp_parse_cert_url(client_cert, &host, &port, &path, &use_ssl);
 		switch (ret) {
 		case -1:
-			RWDEBUG("ocsp: Invalid URL in certificate.  Not doing OCSP");
+			RWDEBUG("(TLS) ocsp: Invalid URL in certificate.  Not doing OCSP");
 			break;
 
 		case 0:
 			if (conf->ocsp_url) {
-				RWDEBUG("ocsp: No OCSP URL in certificate, falling back to configured URL");
+				RWDEBUG("(TLS) ocsp: No OCSP URL in certificate, falling back to configured URL");
 				goto use_ocsp_url;
 			}
-			RWDEBUG("ocsp: No OCSP URL in certificate.  Not doing OCSP");
+			RWDEBUG("(TLS) ocsp: No OCSP URL in certificate.  Not doing OCSP");
 			goto skipped;
 
 		case 1:
@@ -2579,7 +2579,7 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 
 	/* Check host and port length are sane, then create Host: HTTP header */
 	if ((strlen(host) + strlen(port) + 2) > sizeof(hostheader)) {
-		RWDEBUG("ocsp: Host and port too long");
+		RWDEBUG("(TLS) ocsp: Host and port too long");
 		goto skipped;
 	}
 	snprintf(hostheader, sizeof(hostheader), "%s:%s", host, port);
@@ -2752,15 +2752,15 @@ ocsp_end:
 		vp = pair_make_request("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
 		vp->vp_integer = 2;	/* skipped */
 		if (conf->ocsp_softfail) {
-			RWDEBUG("ocsp: Unable to check certificate, assuming it's valid");
-			RWDEBUG("ocsp: This may be insecure");
+			RWDEBUG("(TLS) ocsp: Unable to check certificate, assuming it's valid");
+			RWDEBUG("(TLS) ocsp: This may be insecure");
 
 			/* Remove OpenSSL errors from queue or handshake will fail */
 			while (ERR_get_error());
 
 			ocsp_status = OCSP_STATUS_SKIPPED;
 		} else {
-			REDEBUG("ocsp: Unable to check certificate, failing");
+			REDEBUG("(TLS) ocsp: Unable to check certificate, failing");
 			ocsp_status = OCSP_STATUS_FAILED;
 		}
 		break;
@@ -2768,7 +2768,7 @@ ocsp_end:
 	default:
 		vp = pair_make_request("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
 		vp->vp_integer = 0;	/* no */
-		REDEBUG("ocsp: Certificate has been expired/revoked");
+		REDEBUG("(TLS) ocsp: Certificate has been expired/revoked");
 		break;
 	}
 
@@ -3046,7 +3046,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	if (!my_ok) {
 		char const *p = X509_verify_cert_error_string(err);
-		RERROR("SSL says error %d : %s", err, p);
+		RERROR("(TLS) OpenSSL says error %d : %s", err, p);
 		REXDENT();
 		return my_ok;
 	}
@@ -3163,20 +3163,28 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	switch (X509_STORE_CTX_get_error(ctx)) {
 	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
-		RERROR("issuer=%s", issuer);
+		RERROR("(TLS) unable to get issuer certificate for issuer=%s", issuer);
 		break;
 
 	case X509_V_ERR_CERT_NOT_YET_VALID:
+		RERROR("(TLS) Failed with certificate not yet valid.");
+		break;
+
 	case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
-		RERROR("notBefore=");
+		RERROR("(TLS) Failed with error in certificate 'not before' field.");
 #if 0
 		ASN1_TIME_print(bio_err, X509_get_notBefore(ctx->current_cert));
 #endif
 		break;
 
 	case X509_V_ERR_CERT_HAS_EXPIRED:
+		RERROR("(TLS) Failed with certificate has expired.");
+		break;
+
 	case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
-		RERROR("notAfter=");
+		RERROR("(TLS) Failed with err in certificate 'no after' field..");
+		break;
+
 #if 0
 		ASN1_TIME_print(bio_err, X509_get_notAfter(ctx->current_cert));
 #endif
@@ -3362,14 +3370,14 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	}
 
 	if (RDEBUG_ENABLED3) {
-		RDEBUG3("chain-depth   : %d", depth);
-		RDEBUG3("error         : %d", err);
+		RDEBUG3("(TLS) chain-depth   : %d", depth);
+		RDEBUG3("(TLS) error         : %d", err);
 
 		if (identity) RDEBUG3("identity      : %s", *identity);
-		RDEBUG3("common name   : %s", common_name);
-		RDEBUG3("subject       : %s", subject);
-		RDEBUG3("issuer        : %s", issuer);
-		RDEBUG3("verify return : %d", my_ok);
+		RDEBUG3("(TLS) common name   : %s", common_name);
+		RDEBUG3("(TLS) subject       : %s", subject);
+		RDEBUG3("(TLS) issuer        : %s", issuer);
+		RDEBUG3("(TLS) verify return : %d", my_ok);
 	}
 
 	return (my_ok != 0);
@@ -3490,7 +3498,7 @@ int tls_global_init(bool spawn_flag, bool check)
 	 *	and we don't want to have tls.c depend on globals.
 	 */
 	if (spawn_flag && !check && (tls_mutexes_init() < 0)) {
-		ERROR("FATAL: Failed to set up SSL mutexes");
+		ERROR("(TLS) FATAL: Failed to set up SSL mutexes");
 		return -1;
 	}
 
@@ -4846,7 +4854,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 				if (vp) {
 					if ((request->timestamp + vp->vp_integer) > expires) {
 						vp->vp_integer = expires - request->timestamp;
-						RWDEBUG2("Updating Session-Timeout to %u, due to impending certificate expiration",
+						RWDEBUG2("(TLS) Updating Session-Timeout to %u, due to impending certificate expiration",
 							 vp->vp_integer);
 					}
 				}
@@ -4868,7 +4876,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 					 FR_DIR_SEP, buffer);
 				vp_file = fopen(filename, "w");
 				if (vp_file == NULL) {
-					RWDEBUG("Could not write session VPs to persistent cache: %s",
+					RWDEBUG("(TLS) Could not write session VPs to persistent cache: %s",
 						fr_syserror(errno));
 				} else {
 					VALUE_PAIR *prev = NULL;
