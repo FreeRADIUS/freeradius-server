@@ -244,6 +244,9 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_POINTER("global", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) global_config },
 
 	{ FR_CONF_OFFSET("tls", FR_TYPE_SUBSECTION, rlm_ldap_t, handle_config), .subcs = (void const *) tls_config },
+
+	{ FR_CONF_OFFSET("pool", FR_TYPE_SUBSECTION, rlm_ldap_t, trunk_conf), .subcs = (void const *) fr_trunk_config },
+
 	CONF_PARSER_TERMINATOR
 };
 
