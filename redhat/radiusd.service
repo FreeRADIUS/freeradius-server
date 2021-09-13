@@ -17,6 +17,11 @@ EnvironmentFile=-/etc/sysconfig/radiusd
 # We provide HOSTNAME here for convenience.
 Environment=HOSTNAME=%H
 
+# Not needed/used unless the freeradius-snmp package is installed.
+# Used by snmptrap and friends to determine where to stored persistent
+# configuration files.
+Environment=SNMP_PERSISTENT_DIR=/var/lib/radiusd/snmp
+
 # Limit memory to 2G this is fine for %99.99 of deployments.  FreeRADIUS
 # is not memory hungry, if it's using more than this, then there's probably
 # a leak somewhere.
@@ -63,6 +68,12 @@ ReadOnlyDirectories=/etc/raddb/
 
 # We can read and write to the log directory.
 ReadWriteDirectories=/var/log/radius/
+
+# We can read and write to our run dir
+ReadWriteDirectories=/var/run/radiusd/
+
+# We can read and write to our persistent dir
+ReadWriteDirectories=/var/lib/radiusd/
 
 [Install]
 WantedBy=multi-user.target

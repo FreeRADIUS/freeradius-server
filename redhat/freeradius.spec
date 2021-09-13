@@ -714,8 +714,8 @@ fi
 %{initddir}/radiusd
 %endif
 
-%dir %attr(755,radiusd,radiusd) /var/lib/radiusd
-%dir %attr(755,radiusd,radiusd) /var/run/radiusd/
+%dir %attr(755,radiusd,radiusd) %{_sharedstatedir}/radiusd/
+%dir %attr(755,radiusd,radiusd) %{_rundir}/radiusd/
 # binaries
 %defattr(-,root,root)
 /usr/sbin/checkrad
@@ -913,6 +913,7 @@ fi
 %defattr(-,root,root)
 /usr/bin/radsnmp
 %{_datadir}/snmp/mibs/*
+%dir %attr(750,radiusd,radiusd) %{_sharedstatedir}/radiusd/snmp
 
 %files perl-util
 %defattr(-,root,root)

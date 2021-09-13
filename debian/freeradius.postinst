@@ -17,6 +17,11 @@ case "$1" in
             dpkg-statoverride --add --update freerad freerad 0755 /var/run/freeradius
           fi
 
+          if ! dpkg-statoverride --list | grep -q /var/lib/freeradius$; then
+            mkdir -p /var/lib/freeradius
+            dpkg-statoverride --add --update freerad freerad 0755 /var/lib/freeradius
+          fi
+
           if ! dpkg-statoverride --list | grep -q /var/log/freeradius$; then
             mkdir -p /var/log/freeradius
             dpkg-statoverride --add --update freerad freerad 0750 /var/log/freeradius
