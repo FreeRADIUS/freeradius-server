@@ -63,11 +63,10 @@ struct exfile_s {
 /** Send an exfile trigger.
  *
  * @param[in] ef to send trigger for.
- * @param[in] request The current request.
  * @param[in] entry for the file that the event occurred on.
  * @param[in] name_suffix trigger name suffix.
  */
-static inline void exfile_trigger_exec(exfile_t *ef, request_t *request, exfile_entry_t *entry, char const *name_suffix)
+static inline void exfile_trigger_exec(exfile_t *ef, exfile_entry_t *entry, char const *name_suffix)
 {
 	char			name[128];
 	fr_pair_t		*vp;
@@ -83,11 +82,11 @@ static inline void exfile_trigger_exec(exfile_t *ef, request_t *request, exfile_
 
 	da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_EXFILE_NAME);
 	if (!da) {
-		ROPTIONAL(RERROR, ERROR, "Incomplete internal dictionary: Missing definition for \"Exfile-Name\"");
+	        ERROR("Incomplete internal dictionary: Missing definition for \"Exfile-Name\"");
 		return;
 	}
 
-	fr_pair_list_copy(request ? request->request_ctx : NULL, &args, &ef->trigger_args);
+	fr_pair_list_copy(NULL, &args, &ef->trigger_args);
 	fr_dcursor_init(&cursor, &args);
 
 	MEM(vp = fr_pair_afrom_da(NULL, da));
@@ -96,13 +95,13 @@ static inline void exfile_trigger_exec(exfile_t *ef, request_t *request, exfile_
 	fr_dcursor_prepend(&cursor, vp);
 
 	snprintf(name, sizeof(name), "%s.%s", ef->trigger_prefix, name_suffix);
-	trigger_exec(unlang_interpret_get_thread_default(), request, ef->conf, name, false, &args);
+	trigger_exec(unlang_interpret_get_thread_default(), ef->conf, name, false, &args);
 
 	fr_pair_list_free(&args);
 }
 
 
-static void exfile_cleanup_entry(exfile_t *ef, request_t *request, exfile_entry_t *entry)
+static void exfile_cleanup_entry(exfile_t *ef, exfile_entry_t *entry)
 {
 	if (entry->fd >= 0) close(entry->fd);
 
@@ -112,7 +111,7 @@ static void exfile_cleanup_entry(exfile_t *ef, request_t *request, exfile_entry_
 	/*
 	 *	Issue close trigger *after* we've closed the fd
 	 */
-	exfile_trigger_exec(ef, request, entry, "close");
+	exfile_trigger_exec(ef, entry, "close");
 
 	/*
 	 *	Trigger still needs access to filename to populate Exfile-Name
@@ -130,7 +129,7 @@ static int _exfile_free(exfile_t *ef)
 	for (i = 0; i < ef->max_entries; i++) {
 		if (!ef->entries[i].filename) continue;
 
-		exfile_cleanup_entry(ef, NULL, &ef->entries[i]);
+		exfile_cleanup_entry(ef, &ef->entries[i]);
 	}
 
 	pthread_mutex_unlock(&ef->mutex);
@@ -272,14 +271,13 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
  * sure that no other thread is writing to the file.
  *
  * @param ef The logfile context returned from exfile_init().
- * @param request The current request.
  * @param filename the file to open.
  * @param permissions to use.
  * @return
  *	- FD used to write to the file.
  *	- -1 on failure.
  */
-int exfile_open(exfile_t *ef, request_t *request, char const *filename, mode_t permissions)
+int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
 {
 	int i, tries, unused = -1, found = -1, oldest = -1;
 	bool do_cleanup = false;
@@ -356,7 +354,7 @@ int exfile_open(exfile_t *ef, request_t *request, char const *filename, mode_t p
 		} else if (do_cleanup) {
 			if ((ef->entries[i].last_used + ef->max_idle) >= now) continue;
 
-			exfile_cleanup_entry(ef, request, &ef->entries[i]);
+			exfile_cleanup_entry(ef, &ef->entries[i]);
 		}
 	}
 
@@ -390,7 +388,7 @@ int exfile_open(exfile_t *ef, request_t *request, char const *filename, mode_t p
 	 *	There are no unused entries, free the oldest one.
 	 */
 	if (unused < 0) {
-		exfile_cleanup_entry(ef, request, &ef->entries[oldest]);
+		exfile_cleanup_entry(ef, &ef->entries[oldest]);
 		unused = oldest;
 	}
 
@@ -407,7 +405,7 @@ reopen:
 	ef->entries[i].fd = exfile_open_mkdir(ef, filename, permissions);
 	if (ef->entries[i].fd < 0) goto error;
 
-	exfile_trigger_exec(ef, request, &ef->entries[i], "open");
+	exfile_trigger_exec(ef, &ef->entries[i], "open");
 
 try_lock:
 	/*
@@ -417,7 +415,7 @@ try_lock:
 		fr_strerror_printf("Failed to seek in file %s: %s", filename, fr_syserror(errno));
 
 	error:
-		exfile_cleanup_entry(ef, request, &ef->entries[i]);
+		exfile_cleanup_entry(ef, &ef->entries[i]);
 		pthread_mutex_unlock(&(ef->mutex));
 		return -1;
 	}
@@ -508,7 +506,7 @@ try_lock:
 	 */
 	ef->entries[i].last_used = now;
 
-	exfile_trigger_exec(ef, request, &ef->entries[i], "reserve");
+	exfile_trigger_exec(ef, &ef->entries[i], "reserve");
 
 	/* coverity[missing_unlock] */
 	return ef->entries[i].fd;
@@ -521,13 +519,12 @@ try_lock:
  * the file.
  *
  * @param ef The logfile context returned from #exfile_init.
- * @param request The current request.
  * @param fd the FD to close (i.e. return to the pool).
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int exfile_close(exfile_t *ef, request_t *request, int fd)
+int exfile_close(exfile_t *ef, int fd)
 {
 	uint32_t i;
 
@@ -549,7 +546,7 @@ int exfile_close(exfile_t *ef, request_t *request, int fd)
 		(void) rad_unlockfd(ef->entries[i].fd, 0);
 		pthread_mutex_unlock(&(ef->mutex));
 
-		exfile_trigger_exec(ef, request, &ef->entries[i], "release");
+		exfile_trigger_exec(ef, &ef->entries[i], "release");
 		return 0;
 	}
 

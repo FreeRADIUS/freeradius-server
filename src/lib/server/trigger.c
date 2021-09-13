@@ -261,8 +261,6 @@ static unlang_action_t trigger_run(rlm_rcode_t *p_result, UNUSED int *priority, 
  *
  * @param[in] intp		Interpreter to run the trigger with.  If this is NULL the
  *				trigger will be executed synchronously.
- *
- * @param[in] request		The current request.
  * @param[in] cs		to search for triggers in.
  *				If cs is not NULL, the portion after the last '.' in name is used for the trigger.
  *				If cs is NULL, the entire name is used to find the trigger in the global trigger
@@ -275,7 +273,7 @@ static unlang_action_t trigger_run(rlm_rcode_t *p_result, UNUSED int *priority, 
  *	- 0 on success.
  *	- -1 on failure.
  */
-int trigger_exec(unlang_interpret_t *intp, request_t *request,
+int trigger_exec(unlang_interpret_t *intp,
 		 CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_list_t *args)
 {
 	CONF_SECTION const	*subcs;
@@ -286,7 +284,7 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 	char const		*attr;
 	char const		*value;
 
-	request_t		*child;
+	request_t		*request;
 	fr_trigger_t		*trigger;
 	ssize_t			slen;
 
@@ -327,12 +325,12 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 
 	ci = cf_reference_item(subcs, trigger_exec_main, attr);
 	if (!ci) {
-		ROPTIONAL(RDEBUG2, DEBUG2, "No trigger configured for: %s", attr);
+		DEBUG2("No trigger configured for: %s", attr);
 		return -1;
 	}
 
 	if (!cf_item_is_pair(ci)) {
-		ROPTIONAL(RERROR, ERROR, "Trigger is not a configuration variable: %s", attr);
+		ERROR("Trigger is not a configuration variable: %s", attr);
 		return -1;
 	}
 
@@ -341,7 +339,7 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 
 	value = cf_pair_value(cp);
 	if (!value) {
-		ROPTIONAL(RERROR, ERROR, "Trigger has no value: %s", name);
+		ERROR("Trigger has no value: %s", name);
 		return -1;
 	}
 
@@ -384,15 +382,15 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 	/*
 	 *	Allocate a request to run asynchronously in the interpreter.
 	 */
-	child = request_alloc_internal(NULL, (&(request_init_args_t){ .parent = request, .detachable = true }));
+	request = request_alloc_internal(NULL, (&(request_init_args_t){ .detachable = true }));
 
 	/*
 	 *	Add the args to the request data, so they can be picked up by the
 	 *	trigger_xlat function.
 	 */
-	if (args && (request_data_add(child, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS, args,
+	if (args && (request_data_add(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS, args,
 				      false, false, false) < 0)) {
-		talloc_free(child);
+		talloc_free(request);
 		return -1;
 	}
 
@@ -401,25 +399,17 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 
 		memcpy(&name_tmp, &name, sizeof(name_tmp));
 
-		if (request_data_add(child, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME,
+		if (request_data_add(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME,
 				     name_tmp, false, false, false) < 0) {
-			talloc_free(child);
+			talloc_free(request);
 			return -1;
 		}
 	}
 
-	MEM(trigger = talloc_zero(child, fr_trigger_t));
+	MEM(trigger = talloc_zero(request, fr_trigger_t));
 	fr_value_box_list_init(&trigger->args);
 	trigger->command = talloc_strdup(trigger, value);
 	trigger->timeout = fr_time_delta_from_sec(5);	/* FIXME - Should be configurable? */
-
-	/*
-	 *	Automatically populate the trigger's
-	 *	request list from the parent's.
-	 */
-	if (request && !fr_pair_list_empty(&request->request_pairs)) {
-		(void) fr_pair_list_copy(child->request_ctx, &child->request_pairs, &request->request_pairs);
-	}
 
 	slen = xlat_tokenize_argv(trigger, &trigger->xlat, NULL,
 				  &FR_SBUFF_IN(trigger->command, talloc_array_length(trigger->command) - 1), NULL, NULL);
@@ -432,7 +422,7 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 		cf_log_err(cp, "%s", trigger->command);
 		cf_log_err(cp, "%s^ %s", spaces, text);
 
-		talloc_free(child);
+		talloc_free(request);
 		talloc_free(spaces);
 		talloc_free(text);
 		return -1;
@@ -443,32 +433,32 @@ int trigger_exec(unlang_interpret_t *intp, request_t *request,
 	 *	interpreter for the thread.
 	 */
 	if (intp) {
-		unlang_interpret_set(child, intp);
-		if (unlang_subrequest_child_push_and_detach(child) < 0) {
+		unlang_interpret_set(request, intp);
+		if (unlang_subrequest_child_push_and_detach(request) < 0) {
 		error:
-			ROPTIONAL(RPEDEBUG, PERROR, "Running trigger failed");
-			talloc_free(child);
+			PERROR("Running trigger failed");
+			talloc_free(request);
 			return -1;
 		}
 	}
 
-	if (unlang_function_push(child, trigger_run, trigger_resume,
+	if (unlang_function_push(request, trigger_run, trigger_resume,
 				 NULL, UNLANG_TOP_FRAME, trigger) < 0) goto error;
 
 	if (!intp) {
 		/*
 		 *	Wait for the exec to finish too,
 		 *	so where there are global events
-		 *	the child processes don't race
+		 *	the request processes don't race
 		 *	with something like the server
 		 *	shutting down.
 		 */
-		unlang_interpret_synchronous(NULL, child);
-		talloc_free(child);
+		unlang_interpret_synchronous(NULL, request);
+		talloc_free(request);
 	}
 
 	/*
-	 *	Otherwise the worker cleans up the child request.
+	 *	Otherwise the worker cleans up the request request.
 	 */
 	return 0;
 }

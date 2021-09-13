@@ -363,7 +363,7 @@ static xlat_action_t trigger_test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, reque
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
 	fr_dcursor_append(out, vb);
 
-	if (trigger_exec(unlang_interpret_get(request), request, NULL, in_head->vb_strvalue, false, NULL) < 0) {
+	if (trigger_exec(unlang_interpret_get(request), NULL, in_head->vb_strvalue, false, NULL) < 0) {
 		RPEDEBUG("Running trigger failed");
 		vb->vb_bool = false;
 		return XLAT_ACTION_FAIL;

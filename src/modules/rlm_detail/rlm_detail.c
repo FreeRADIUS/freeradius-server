@@ -388,7 +388,7 @@ static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_
 
 	RDEBUG2("%s expands to %s", inst->filename, buffer);
 
-	outfd = exfile_open(inst->ef, request, buffer, inst->perm);
+	outfd = exfile_open(inst->ef, buffer, inst->perm);
 	if (outfd < 0) {
 		RPERROR("Couldn't open file %s", buffer);
 		/* coverity[missing_unlock] */
@@ -424,7 +424,7 @@ skip_group:
 		RERROR("Couldn't open file %s: %s", buffer, fr_syserror(errno));
 	fail:
 		if (outfp) fclose(outfp);
-		exfile_close(inst->ef, request, outfd);
+		exfile_close(inst->ef, outfd);
 		RETURN_MODULE_FAIL;
 	}
 
@@ -434,7 +434,7 @@ skip_group:
 	 *	Flush everything
 	 */
 	fclose(outfp);
-	exfile_close(inst->ef, request, outfd);
+	exfile_close(inst->ef, outfd);
 
 	/*
 	 *	And everything is fine.

@@ -243,10 +243,9 @@ static void connection_link_head(fr_pool_t *pool, fr_pool_connection_t *this)
 /** Send a connection pool trigger.
  *
  * @param[in] pool	to send trigger for.
- * @param[in] request	The current request (may be NULL).
  * @param[in] event	trigger name suffix.
  */
-static inline void fr_pool_trigger_exec(fr_pool_t *pool, request_t *request, char const *event)
+static inline void fr_pool_trigger_exec(fr_pool_t *pool, char const *event)
 {
 	char	name[128];
 
@@ -256,7 +255,7 @@ static inline void fr_pool_trigger_exec(fr_pool_t *pool, request_t *request, cha
 	if (!pool->triggers_enabled) return;
 
 	snprintf(name, sizeof(name), "%s.%s", pool->trigger_prefix, event);
-	trigger_exec(unlang_interpret_get_thread_default(), request, pool->cs, name, true, &pool->trigger_args);
+	trigger_exec(unlang_interpret_get_thread_default(), pool->cs, name, true, &pool->trigger_args);
 }
 
 /** Find a connection handle in the connection list
@@ -442,7 +441,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 		 *	Must be done inside the mutex, reconnect callback
 		 *	may modify args.
 		 */
-		fr_pool_trigger_exec(pool, request, "fail");
+		fr_pool_trigger_exec(pool, "fail");
 		pthread_cond_broadcast(&pool->done_spawn);
 		pthread_mutex_unlock(&pool->mutex);
 
@@ -512,7 +511,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	 *	Must be done inside the mutex, reconnect callback
 	 *	may modify args.
 	 */
-	fr_pool_trigger_exec(pool, request, "open");
+	fr_pool_trigger_exec(pool, "open");
 
 	pthread_cond_broadcast(&pool->done_spawn);
 	if (unlock) pthread_mutex_unlock(&pool->mutex);
@@ -530,10 +529,9 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
  * @note Must be called with the mutex held.
  *
  * @param[in] pool	to modify.
- * @param[in] request	The current request.
  * @param[in] this	Connection to delete.
  */
-static void connection_close_internal(fr_pool_t *pool, request_t *request, fr_pool_connection_t *this)
+static void connection_close_internal(fr_pool_t *pool, fr_pool_connection_t *this)
 {
 	/*
 	 *	If it's in use, release it.
@@ -556,7 +554,7 @@ static void connection_close_internal(fr_pool_t *pool, request_t *request, fr_po
 		fr_heap_extract(pool->heap, this);
 	}
 
-	fr_pool_trigger_exec(pool, request, "close");
+	fr_pool_trigger_exec(pool, "close");
 
 	connection_unlink(pool, this);
 
@@ -598,7 +596,7 @@ static int connection_manage(fr_pool_t *pool, request_t *request, fr_pool_connec
 		if (pool->state.num <= pool->min) {
 			ROPTIONAL(RDEBUG2, DEBUG2, "You probably need to lower \"min\"");
 		}
-		connection_close_internal(pool, request, this);
+		connection_close_internal(pool, this);
 		return 0;
 	}
 
@@ -742,7 +740,7 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 
 		ROPTIONAL(RDEBUG2, DEBUG2, "Closing connection (%" PRIu64 ") as we have too many unused connections",
 			  found->number);
-		connection_close_internal(pool, request, found);
+		connection_close_internal(pool, found);
 
 		/*
 		 *	Decrease the delay for the next time we clean
@@ -863,7 +861,7 @@ static void *connection_get_internal(fr_pool_t *pool, request_t *request, bool s
 			 *	Must be done inside the mutex, reconnect callback
 			 *	may modify args.
 			 */
-			fr_pool_trigger_exec(pool, request, "none");
+			fr_pool_trigger_exec(pool, "none");
 		}
 
 		return NULL;
@@ -1118,7 +1116,7 @@ int fr_pool_start(fr_pool_t *pool)
 		}
 	}
 
-	fr_pool_trigger_exec(pool, NULL, "start");
+	fr_pool_trigger_exec(pool, "start");
 
 	return 0;
 }
@@ -1252,7 +1250,7 @@ int fr_pool_reconnect(fr_pool_t *pool, request_t *request)
 		this = fr_heap_peek(pool->heap);
 		if (!this) break;	/* There wasn't 'start' connections available */
 
-		connection_close_internal(pool, request, this);
+		connection_close_internal(pool, this);
 	}
 
 	/*
@@ -1272,7 +1270,7 @@ int fr_pool_reconnect(fr_pool_t *pool, request_t *request)
 	 *	Must be done inside the mutex, reconnect callback
 	 *	may modify args.
 	 */
-	fr_pool_trigger_exec(pool, request, "reconnect");
+	fr_pool_trigger_exec(pool, "reconnect");
 
 	/*
 	 *	Allow new spawn attempts, and wakeup any threads
@@ -1331,10 +1329,10 @@ void fr_pool_free(fr_pool_t *pool)
 	while ((this = pool->head) != NULL) {
 		INFO("Closing connection (%" PRIu64 ")", this->number);
 
-		connection_close_internal(pool, NULL, this);
+		connection_close_internal(pool, this);
 	}
 
-	fr_pool_trigger_exec(pool, NULL, "stop");
+	fr_pool_trigger_exec(pool, "stop");
 
 	fr_assert(pool->head == NULL);
 	fr_assert(pool->tail == NULL);
@@ -1446,8 +1444,8 @@ void fr_pool_connection_release(fr_pool_t *pool, request_t *request, void *conn)
 	 */
 	connection_check(pool, request);
 
-	if (trigger_min) fr_pool_trigger_exec(pool, request, "min");
-	if (trigger_max) fr_pool_trigger_exec(pool, request, "max");
+	if (trigger_min) fr_pool_trigger_exec(pool, "min");
+	if (trigger_max) fr_pool_trigger_exec(pool, "max");
 }
 
 /** Reconnect a suspected inviable connection
@@ -1489,7 +1487,7 @@ void *fr_pool_connection_reconnect(fr_pool_t *pool, request_t *request, void *co
 
 	ROPTIONAL(RINFO, INFO, "Deleting inviable connection (%" PRIu64 ")", this->number);
 
-	connection_close_internal(pool, request, this);
+	connection_close_internal(pool, this);
 	connection_check(pool, request);			/* Whilst we still have the lock (will release the lock) */
 
 	/*
@@ -1526,7 +1524,7 @@ int fr_pool_connection_close(fr_pool_t *pool, request_t *request, void *conn)
 
 	ROPTIONAL(RINFO, INFO, "Deleting connection (%" PRIu64 ")", this->number);
 
-	connection_close_internal(pool, request, this);
+	connection_close_internal(pool, this);
 	connection_check(pool, request);
 	return 1;
 }
