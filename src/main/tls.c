@@ -3048,6 +3048,12 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		char const *p = X509_verify_cert_error_string(err);
 		RERROR("(TLS) OpenSSL says error %d : %s", err, p);
 		REXDENT();
+
+		/*
+		 *	Copy certs even on failure so that they can be logged.
+		 */
+		if (certs && request) fr_pair_add(&request->packet->vps, fr_pair_list_copy(request->packet, *certs));
+
 		return my_ok;
 	}
 
@@ -3365,6 +3371,10 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		ssn->client_cert_ok = (my_ok == 1);
 	} /* depth == 0 */
 
+	/*
+	 *	Copy certs to request even on failure, so that the
+	 *	user can log them.
+	 */
 	if (certs && request && !my_ok) {
 		fr_pair_add(&request->packet->vps, fr_pair_list_copy(request->packet, *certs));
 	}
