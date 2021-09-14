@@ -1789,14 +1789,19 @@ static inline ssize_t _fr_dbuff_out_uint64v(uint64_t *num, uint8_t **pos_p, fr_d
 static inline ssize_t _fr_dbuff_out_int64v(int64_t *num, uint8_t **pos_p, fr_dbuff_t *dbuff, size_t length)
 {
 	ssize_t		slen;
+	bool		negative;
 
 	fr_assert(length > 0 && length <= sizeof(uint64_t));
+
+	negative = *fr_dbuff_current(dbuff) & 0x80;
 
 	*num = 0;
 	slen = _fr_dbuff_out_memcpy(((uint8_t *) num) + (8 - length), pos_p, dbuff, length);
 	if (slen <= 0) return slen;
 
 	*num = fr_net_to_int64((uint8_t const *)num);
+	if (negative) *num = -*num;
+
 	return length;
 }
 
