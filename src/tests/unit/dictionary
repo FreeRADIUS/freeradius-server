@@ -34,6 +34,11 @@ ATTRIBUTE	Delta-Sec-uint16	254.5		time_delta seconds,uint16
 ATTRIBUTE	Delta-MSec-int16	254.6		time_delta milliseconds,int16
 ATTRIBUTE	Delta-Sec-int16		254.7		time_delta seconds,int16
 
+ATTRIBUTE	Delta-MSec-uint32	254.8		time_delta milliseconds,uint32
+ATTRIBUTE	Delta-Sec-uint32	254.9		time_delta seconds,uint32
+ATTRIBUTE	Delta-MSec-int32	254.10		time_delta milliseconds,int32
+ATTRIBUTE	Delta-Sec-int32		254.11		time_delta seconds,int32
+
 #
 #  Copied here for simplicity
 #
