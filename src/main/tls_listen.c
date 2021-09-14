@@ -81,7 +81,7 @@ static void tls_socket_close(rad_listen_t *listener)
 	/*
 	 *	Tell the event handler that an FD has disappeared.
 	 */
-	DEBUG("Client has closed connection");
+	DEBUG("(TLS) Client has closed connection");
 	radius_update_listener(listener);
 
 	/*
@@ -102,11 +102,11 @@ static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener, REQUEST *re
 	p = sock->ssn->dirty_out.data;
 
 	while (p < (sock->ssn->dirty_out.data + sock->ssn->dirty_out.used)) {
-		RDEBUG3("Writing to socket %d", listener->fd);
+		RDEBUG3("(TLS) Writing to socket %d", listener->fd);
 		rcode = write(listener->fd, p,
 			      (sock->ssn->dirty_out.data + sock->ssn->dirty_out.used) - p);
 		if (rcode <= 0) {
-			RDEBUG("Error writing to TLS socket: %s", fr_syserror(errno));
+			RDEBUG("(TLS) Error writing to socket: %s", fr_syserror(errno));
 
 			tls_socket_close(listener);
 			return 0;
@@ -142,12 +142,12 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 		     sizeof(sock->ssn->dirty_in.data) - sock->ssn->dirty_in.used);
 	if (rcode < 0) {
 		if (errno == EINTR) return 0;
-		RDEBUG("Closing TLS PROXY socket from client port %u due to read error - %s", sock->other_port, fr_syserror(errno));
+		RDEBUG("(TLS) Closing PROXY socket from client port %u due to read error - %s", sock->other_port, fr_syserror(errno));
 		return -1;
 	}
 
 	if (rcode == 0) {
-		RDEBUG("Closing TLS PROXY socket from client port %u - other end closed connection", sock->other_port);
+		DEBUG("(TLS) Closing PROXY socket from client port %u - other end closed connection", sock->other_port);
 		return -1;
 	}
 
@@ -185,7 +185,7 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 		 */
 		if ((*p < ' ') || (*p >= 0x80)) {
 		invalid_data:
-			DEBUG("Closing TLS PROXY socket from client port %u - received invalid data", sock->other_port);
+			DEBUG("(TLS) Closing PROXY socket from client port %u - received invalid data", sock->other_port);
 			return -1;
 		}
 
@@ -402,7 +402,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	if (listener->proxy_protocol) {
 		rcode = proxy_protocol_check(listener, request);
 		if (rcode < 0) {
-			DEBUG("Closing PROXY TLS socket from client port %u", sock->other_port);
+			RDEBUG("(TLS) Closing PROXY TLS socket from client port %u", sock->other_port);
 			tls_socket_close(listener);
 			return 0;
 		}
@@ -417,7 +417,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	}
 
 	if (sock->state == LISTEN_TLS_SETUP) {
-		RDEBUG3("Setting connection state to RUNNING");
+		RDEBUG3("(TLS) Setting connection state to RUNNING");
 		sock->state = LISTEN_TLS_RUNNING;
 
 		if (sock->ssn->clean_out.used < 20) {
@@ -427,7 +427,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		goto read_application_data;
 	}
 
-	RDEBUG3("Reading from socket %d", request->packet->sockfd);
+	RDEBUG3("(TLS) Reading from socket %d", request->packet->sockfd);
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
 
 	/*
@@ -436,7 +436,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	 *	the socket.
 	 */
 	if (SSL_pending(sock->ssn->ssl)) {
-		RDEBUG3("Reading pending buffered data");
+		RDEBUG3("(TLS) Reading pending buffered data");
 		sock->ssn->dirty_in.used = 0;
 		goto check_for_setup;
 	}
@@ -447,14 +447,14 @@ static int tls_socket_recv(rad_listen_t *listener)
 			     sizeof(sock->ssn->dirty_in.data));
 		if ((rcode < 0) && (errno == ECONNRESET)) {
 		do_close:
-			DEBUG("Closing TLS socket from client port %u", sock->other_port);
+			DEBUG("(TLS) Closing socket from client port %u", sock->other_port);
 			tls_socket_close(listener);
 			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 			return 0;
 		}
 
 		if (rcode < 0) {
-			RDEBUG("Error reading TLS socket: %s", fr_syserror(errno));
+			RDEBUG("(TLS) Error reading socket: %s", fr_syserror(errno));
 			goto do_close;
 		}
 
@@ -472,7 +472,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	 *	Catch attempts to use non-SSL.
 	 */
 	if (doing_init && (sock->ssn->dirty_in.data[0] != handshake)) {
-		RDEBUG("Non-TLS data sent to TLS socket: closing");
+		RDEBUG("(TLS) Non-TLS data sent to TLS socket: closing");
 		goto do_close;
 	}
 
@@ -507,7 +507,7 @@ check_for_setup:
 	 */
 	if (sock->state == LISTEN_TLS_INIT) {
 		if (!SSL_is_init_finished(sock->ssn->ssl)) {
-			RDEBUG("FAILED in TLS handshake receive");
+			RDEBUG("(TLS) FAILED in TLS handshake receive");
 			goto do_close;
 		}
 
@@ -546,7 +546,7 @@ check_for_setup:
 	 */
 get_application_data:
 	status = tls_application_data(sock->ssn, request);
-	RDEBUG3("Application data status %d", status);
+	RDEBUG3("(TLS) Application data status %d", status);
 
 	if (status == FR_TLS_MORE_FRAGMENTS) {
 		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
@@ -563,7 +563,7 @@ get_application_data:
 	 *	state.
 	 */
 	if (sock->state != LISTEN_TLS_RUNNING) {
-		RDEBUG3("Holding application data until setup is complete");
+		RDEBUG3("(TLS) Holding application data until setup is complete");
 		return 0;
 	}
 
@@ -579,7 +579,7 @@ read_application_data:
 	 */
 	if ((sock->ssn->clean_out.used < 20) ||
 	    (((sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3]) != (int) sock->ssn->clean_out.used)) {
-		RDEBUG("Received bad packet: Length %zd contents %d",
+		RDEBUG("(TLS) Received bad packet: Length %zd contents %d",
 		       sock->ssn->clean_out.used,
 		       (sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3]);
 		goto do_close;
@@ -594,7 +594,7 @@ read_application_data:
 
 	if (!rad_packet_ok(packet, 0, NULL)) {
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
-		DEBUG("Closing TLS socket from client");
+		DEBUG("(TLS) Closing TLS socket from client");
 		PTHREAD_MUTEX_LOCK(&sock->mutex);
 		tls_socket_close(listener);
 		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
@@ -608,7 +608,7 @@ read_application_data:
 		char host_ipaddr[128];
 
 		if (is_radius_code(packet->code)) {
-			RDEBUG("tls_recv: %s packet from host %s port %d, id=%d, length=%d",
+			RDEBUG("(TLS): %s packet from host %s port %d, id=%d, length=%d",
 			       fr_packet_codes[packet->code],
 			       inet_ntop(packet->src_ipaddr.af,
 					 &packet->src_ipaddr.ipaddr,
@@ -616,7 +616,7 @@ read_application_data:
 			       packet->src_port,
 			       packet->id, (int) packet->data_len);
 		} else {
-			RDEBUG("tls_recv: Packet from host %s port %d code=%d, id=%d, length=%d",
+			RDEBUG("(TLS): Packet from host %s port %d code=%d, id=%d, length=%d",
 			       inet_ntop(packet->src_ipaddr.af,
 					 &packet->src_ipaddr.ipaddr,
 					 host_ipaddr, sizeof(host_ipaddr)),
@@ -728,7 +728,7 @@ redo:
 	bad_packet:
 		FR_STATS_INC(auth, total_unknown_types);
 
-		DEBUG("Invalid packet code %d sent from client %s port %d : IGNORED",
+		DEBUG("(TLS) Invalid packet code %d sent from client %s port %d : IGNORED",
 		      packet->code, client->shortname, packet->src_port);
 		rad_free(&packet);
 		return 0;
@@ -764,7 +764,7 @@ redo:
 		int peek = SSL_peek(sock->ssn->ssl, buf, 1);
 
 		if (peek > 0) {
-			DEBUG("more TLS records after dual_tls_recv");
+			DEBUG("(TLS) more TLS records after dual_tls_recv");
 			goto redo;
 		}
 	}
