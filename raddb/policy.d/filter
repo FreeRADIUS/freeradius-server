@@ -104,6 +104,7 @@ filter_password {
 		update request {
 			&Tmp-String-0 := "%{string:User-Password}"
 			&User-Password := "%{string:Tmp-String-0}"
+			&Tmp-String-0 !* ""
 		}
 	 }
 }
