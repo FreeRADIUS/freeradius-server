@@ -240,7 +240,7 @@ int fr_network_listen_add(fr_network_t *nr, fr_listen_t *li)
  * @param nr		the network
  * @param li		the listener
  */
-int fr_network_socket_delete(fr_network_t *nr, fr_listen_t *li)
+int fr_network_listen_delete(fr_network_t *nr, fr_listen_t *li)
 {
 	fr_network_socket_t *s;
 
