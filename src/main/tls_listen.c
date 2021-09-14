@@ -507,7 +507,7 @@ check_for_setup:
 	 */
 	if (sock->state == LISTEN_TLS_INIT) {
 		if (!SSL_is_init_finished(sock->ssn->ssl)) {
-			RDEBUG("(TLS) FAILED in TLS handshake receive");
+			RDEBUG("(TLS) OpenSSL says that the TLS session is still negotiating, but there's no more data to send!");
 			goto do_close;
 		}
 
