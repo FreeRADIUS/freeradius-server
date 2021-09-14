@@ -57,5 +57,49 @@ match Unit-TLV = { Delta-MSec-int16 = -32768 }
 attribute Unit-TLV.Delta-MSec-int16 = -32768
 match Unit-TLV.Delta-MSec-int16 = -32768
 
+#
+#	Min/Max values & overflows
+#
+
+# Internal format is int64_t
+attribute Unit-TLV.Delta-MSec-uint16 = 9223372036853
+match Unit-TLV.Delta-MSec-uint16 = 9223372036853
+
+attribute Unit-TLV.Delta-MSec-uint32 = 9223372036853
+match Unit-TLV.Delta-MSec-uint32 = 9223372036853
+
+# therefore, the encode should limit to the data type.
+encode-pair Unit-TLV.Delta-MSec-uint16 = 9223372036853
+match fe 06 04 04 ff ff
+
+encode-pair Unit-TLV.Delta-MSec-uint32 = 9223372036853
+match fe 08 08 06 ff ff ff ff
+
+# lets see encode/decode based on the data type for unsigned
+encode-pair Unit-TLV.Delta-MSec-uint16 = 65535
+match fe 06 04 04 ff ff
+
+decode-pair -
+match Unit-TLV = { Delta-MSec-uint16 = 65535 }
+
+encode-pair Unit-TLV.Delta-MSec-uint32 = 4294967295
+match fe 08 08 06 ff ff ff ff
+
+decode-pair -
+match Unit-TLV = { Delta-MSec-uint32 = 4294967295 }
+
+# ... and signed
+encode-pair Unit-TLV.Delta-MSec-int16 = 32767
+match fe 06 06 04 7f ff
+
+decode-pair -
+match Unit-TLV = { Delta-MSec-int16 = 32767 }
+
+encode-pair Unit-TLV.Delta-MSec-int32 = 2147483647
+match fe 08 0a 06 7f ff ff ff
+
+decode-pair -
+match Unit-TLV = { Delta-MSec-int32 = 2147483647 }
+
 count
-match 28
+match 52
