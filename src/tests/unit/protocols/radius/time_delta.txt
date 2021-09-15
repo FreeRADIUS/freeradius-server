@@ -57,6 +57,16 @@ match Unit-TLV = { Delta-MSec-int16 = -32768 }
 attribute Unit-TLV.Delta-MSec-int16 = -32768
 match Unit-TLV.Delta-MSec-int16 = -32768
 
+# Regression test for broken signed promotion
+encode-pair Unit-TLV.Delta-MSec-int32 = -32768
+match fe 08 0a 06 ff ff 80 00
+
+decode-pair -
+match Unit-TLV = { Delta-MSec-int32 = -32768 }
+
+attribute Unit-TLV.Delta-MSec-int32 = -32768
+match Unit-TLV.Delta-MSec-int32 = -32768
+
 #
 #	Min/Max values & overflows
 #
