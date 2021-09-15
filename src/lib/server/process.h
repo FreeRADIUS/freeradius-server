@@ -129,13 +129,25 @@ static fr_process_state_t const process_state[];
  */
 #define CALL_RESUME(_x) resume_ ## _x(p_result, mctx, request, rctx)
 
-/** Set the current reply code, and call the send function for that state
- */
-#define CALL_SEND_TYPE(_x) process_state[(request->reply->code = _x)].send(p_result, mctx, request, rctx)
-
 /** Call the send function for the current state
  */
 #define CALL_SEND_STATE(_state) state->send(p_result, mctx, request, rctx)
+
+/** Set the current reply code, and call the send function for that state
+ */
+#define CALL_SEND_TYPE(_x) call_send_type(process_state[(request->reply->code = _x)].send, p_result, mctx, request, rctx)
+
+static inline unlang_action_t call_send_type(unlang_module_resume_t send, \
+					     rlm_rcode_t *p_result, module_ctx_t const *mctx,
+					     request_t *request, void *rctx)
+{
+	/*
+	 *	Stupid hack to stop this being honoured
+	 *	by send_generic.
+	 */
+	pair_delete_reply(attr_packet_type);
+	return send(p_result, mctx, request, rctx);
+}
 
 RECV(generic)
 {
