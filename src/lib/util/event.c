@@ -1741,6 +1741,8 @@ static void _fr_event_pid_reap_cb(UNUSED fr_event_list_t *el, pid_t pid, int sta
 	EVENT_DEBUG("%s - Reaper reaped PID %u, status %u - %p", __FUNCTION__, pid, status, reap);
 
 	event_list_reap_run_callback(reap, pid, status);
+
+	talloc_free(reap);
 }
 
 static int _fr_event_reap_free(fr_event_pid_reap_t *reap)
@@ -1837,6 +1839,7 @@ unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 				talloc_free(i);
 				continue;
 			}
+
 			/*
 			 *	See if any processes have exited already
 			 */
