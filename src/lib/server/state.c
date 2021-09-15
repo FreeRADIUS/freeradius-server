@@ -103,7 +103,14 @@ typedef struct {
 
 	uint64_t		seq_start;			//!< Number of first request in this sequence.
 	fr_time_t		cleanup;			//!< When this entry should be cleaned up.
-	fr_dlist_t		list;				//!< Entry in the list of things to expire.
+
+	/*
+	 *	Should only even be in one at a time
+	 */
+	union {
+		fr_dlist_t		expire_entry;		//!< Entry in the list of things to expire.
+		fr_dlist_t		free_entry;		//!< Entry in the list of things to free.
+	};
 
 	int			tries;
 
@@ -238,7 +245,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 		return NULL;
 	}
 
-	fr_dlist_talloc_init(&state->to_expire, fr_state_entry_t, list);
+	fr_dlist_talloc_init(&state->to_expire, fr_state_entry_t, free_entry);
 
 	/*
 	 *	We need to do controlled freeing of the
@@ -337,15 +344,22 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	bool			too_many = false;
 	fr_dlist_head_t		to_free;
 
-	fr_dlist_init(&to_free, fr_state_entry_t, list);
+	/*
+	 *	Shouldn't be in any lists if it's being reused
+	 */
+	fr_assert(!old ||
+		  (!fr_dlist_entry_in_list(&old->expire_entry) &&
+		   !fr_rb_node_inline_in_tree(&old->node)));
+
+	fr_dlist_init(&to_free, fr_state_entry_t, free_entry);
 
 	/*
-	 *	Clean up old entries.
+	 *	Clean up expired entries
 	 */
 	for (entry = fr_dlist_head(&state->to_expire);
 	     entry != NULL;
 	     entry = next) {
-		(void)talloc_get_type_abort(entry, fr_state_entry_t);	/* Allow examination */
+ 		(void)talloc_get_type_abort(entry, fr_state_entry_t);	/* Allow examination */
 		next = fr_dlist_next(&state->to_expire, entry);		/* Advance *before* potential unlinking */
 
 		if (entry == old) continue;
@@ -584,10 +598,9 @@ static fr_state_entry_t *state_entry_find_and_unlink(fr_state_tree_t *state, fr_
 	my_entry.state_comp.context_id ^= state->context_id;
 
 	entry = fr_rb_remove(state->tree, &my_entry);
-
 	if (entry) {
 		(void) talloc_get_type_abort(entry, fr_state_entry_t);
-		fr_rb_delete(state->tree, entry);
+		fr_dlist_remove(&state->to_expire, entry);
 	}
 
 	return entry;
