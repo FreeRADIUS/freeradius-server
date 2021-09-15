@@ -364,14 +364,8 @@ RECV(access_request)
 	 *	for us, and we're just proxying upstream.
 	 */
 	if (fr_state_to_request(inst->auth.state_tree, request) < 0) {
-		fr_process_state_t const	*state;
-		CONF_SECTION			*cs;
-
 		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
-		UPDATE_STATE_CS(reply);
-		return unlang_module_yield_to_section(p_result, request,
-						      cs, state->rcode, state->send,
-						      NULL, NULL);
+		return CALL_SEND(generic);
 	}
 
 	return CALL_RECV(generic);
