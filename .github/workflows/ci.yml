@@ -15,6 +15,7 @@ env:
   ANALYZE_C_DUMP: 1
   FR_GLOBAL_POOL: 4M
   TEST_CERTS: yes
+  NO_PERFORMANCE_TESTS: yes
   DO_BUILD: yes
   HOSTAPD_BUILD_DIR: eapol_test.ci
   HOSTAPD_GIT_TAG: hostap_2_8
