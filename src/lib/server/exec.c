@@ -201,7 +201,6 @@ static int exec_pair_to_env(char **env_p, size_t env_len, fr_sbuff_t *env_sbuff,
 	 */
 	for (j = 0; j < i; j++) {
 		env_p[j] = fr_sbuff_current(&env_m[j]);
-		REDEBUG3("export %s", env_p[j]);
 	}
 	if (request) {
 		da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_EXEC_EXPORT);
@@ -209,11 +208,8 @@ static int exec_pair_to_env(char **env_p, size_t env_len, fr_sbuff_t *env_sbuff,
 			for (vp = fr_dcursor_iter_by_da_init(&cursor, &request->control_pairs, da);
 			     vp && (i < (env_len - 1));
 			     vp = fr_dcursor_next(&cursor)) {
-				REDEBUG3("export %pV", &vp->data);
 				env_p[i++] = UNCONST(char *, vp->vp_strvalue);
 			}
-
-
 		}
 	}
 
@@ -339,7 +335,7 @@ static NEVER_RETURNS void exec_child(request_t *request, char **argv, char **env
  *
  * @param[in] request		the request
  * @param[in] args		as returned by xlat_frame_eval()
- * @param[in] env_pairs		VPs to put into into the environment.  May be NULL.
+ * @param[in] env_pairs		env_pairs to put into into the environment.  May be NULL.
  * @param[in] env_inherit	Inherit the environment from the current process.
  *				This will be merged with any variables from env_pairs.
  * @return
@@ -398,10 +394,12 @@ int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *args,
 	argc = exec_value_box_list_to_argv(request, &argv, args);
 	if (argc < 0) return -1;
 
-	if (DEBUG_ENABLED3) {
+	if (RDEBUG_ENABLED3) {
 		int i;
+		char **env_p = env;
 
 		for (i = 0; i < argc; i++) RDEBUG3("arg[%d] %s", i, argv[i]);
+		while (*env_p) RDEBUG3("export %s", *env_p++);
 	}
 
 	pid = fork();
@@ -453,7 +451,7 @@ int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *args,
  * @param[out] stderr_fd 	The stderr FD of the child.
  * @param[in] request		the request
  * @param[in] args		as returned by xlat_frame_eval()
- * @param[in] env_pairs		VPs to put into into the environment.  May be NULL.
+ * @param[in] env_pairs		env_pairs to put into into the environment.  May be NULL.
  * @param[in] env_inherit	Inherit the environment from the current process.
  *				This will be merged with any variables from env_pairs.
  * @return
@@ -519,8 +517,10 @@ int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_f
 
 	if (DEBUG_ENABLED3) {
 		int i;
+		char **env_p = env;
 
 		for (i = 0; i < argc; i++) RDEBUG3("arg[%d] %s", i, argv[i]);
+		while (*env_p) RDEBUG3("export %s", *env_p++);
 	}
 
 	if (stdin_fd) {
@@ -923,7 +923,7 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 
 	*exec = (fr_exec_state_t){
 		.request = request,
-		.vps = env_pairs,
+		.env_pairs = env_pairs,
 		.pid = -1,
 		.stdout_fd = -1,
 		.stderr_fd = -1,
@@ -935,7 +935,7 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 	};
 
 	if (fr_exec_fork_wait(&exec->pid, exec->stdin_used ? &exec->stdin_fd : NULL,
-			      stdout_fd, &exec->stderr_fd, request, args, exec->vps, env_inherit) < 0) {
+			      stdout_fd, &exec->stderr_fd, request, args, exec->env_pairs, env_inherit) < 0) {
 		RPEDEBUG("Failed executing program");
 	fail:
 		/*

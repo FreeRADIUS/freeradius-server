@@ -190,7 +190,7 @@ static unlang_action_t unlang_tmpl_exec_nowait_resume(rlm_rcode_t *p_result, req
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 
-	if (fr_exec_fork_nowait(request, &state->box, state->exec.vps, false) < 0) {
+	if (fr_exec_fork_nowait(request, &state->box, state->exec.env_pairs, false) < 0) {
 		RPEDEBUG("Failed executing program");
 		*p_result = RLM_MODULE_FAIL;
 
