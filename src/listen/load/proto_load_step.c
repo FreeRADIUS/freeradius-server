@@ -111,12 +111,13 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	take over the load generation.
 	 */
 	if (!thread->suspended) {
-		static fr_event_update_t pause_read[] = {
+		static fr_event_update_t pause[] = {
 			FR_EVENT_SUSPEND(fr_event_io_func_t, read),
+			FR_EVENT_SUSPEND(fr_event_io_func_t, write),
 			{ 0 }
 		};
 
-		if (fr_event_filter_update(thread->el, li->fd, FR_EVENT_FILTER_IO, pause_read) < 0) {
+		if (fr_event_filter_update(thread->el, li->fd, FR_EVENT_FILTER_IO, pause) < 0) {
 			fr_assert(0);
 		}
 
