@@ -111,16 +111,18 @@ static int exec_value_box_list_to_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value
  *				a '\0'.
  * @param[in] request		Will look for &control.Exec-Export items to convert to
  *      			env vars.
- * @param[in] input_pairs	Other items to convert to environmental variables.
+ * @param[in] env_pairs		Other items to convert to environmental variables.
  *				The dictionary attribute name will be converted to
  *				uppercase, and all '-' converted to '_' and will form
  *				the variable name.
+ * @param[in] env_escape	Wrap string values in double quotes, and apply doublequote
+ *				escaping to all environmental variable values.
  * @return
  *      - The number of environmental variables created.
  *	- -1 on failure.
  */
 static int exec_pair_to_env(char **env_p, size_t env_len, fr_sbuff_t *env_sbuff,
-			    request_t *request, fr_pair_list_t *input_pairs)
+			    request_t *request, fr_pair_list_t *env_pairs, bool env_escape)
 {
 	char			*p;
 	size_t			i, j;
@@ -135,9 +137,9 @@ static int exec_pair_to_env(char **env_p, size_t env_len, fr_sbuff_t *env_sbuff,
 	 *	hold mutexes.  They might be locked when we fork,
 	 *	and will remain locked in the child.
 	 */
-	for (vp = fr_pair_list_head(input_pairs), i = 0;
+	for (vp = fr_pair_list_head(env_pairs), i = 0;
 	     vp && (i < env_len - 1);
-	     vp = fr_pair_list_next(input_pairs, vp), i++) {
+	     vp = fr_pair_list_next(env_pairs, vp), i++) {
 		fr_sbuff_marker(&env_m[i], &sbuff);
 
 	     	if (fr_sbuff_in_strcpy(&sbuff, vp->da->name) <= 0) {
@@ -165,29 +167,35 @@ static int exec_pair_to_env(char **env_p, size_t env_len, fr_sbuff_t *env_sbuff,
 			return -1;
 		}
 
-		/*
-		 *	This can be zero length for empty strings
-		 *
-		 *	Note we don't do double quote escaping here,
-		 *	we just escape unprintable chars.
-		 *
-		 *	Environmental variable values are not
-		 *	restricted we likely wouldn't need to do
-		 *	any escaping if we weren't dealing with C
-		 *	strings.
-		 *
-		 *	If we end up passing binary data through
-		 *	then the user can unescape the octal
-		 *	sequences on the other side.
-		 *
-		 *	We unfortunately still need to escape '\'
-		 *	because of this.
-		 */
-		if (fr_value_box_print(&sbuff, &vp->data, &fr_value_escape_unprintables) < 0) {
-			RPEDEBUG("Out of buffer space adding attribute value for %pV", &vp->data);
-			return -1;
+		if (env_escape) {
+			if (fr_value_box_print_quoted(&sbuff, &vp->data, T_DOUBLE_QUOTED_STRING) < 0) {
+				RPEDEBUG("Out of buffer space adding attribute value for %pV", &vp->data);
+				return -1;
+			}
+		} else {
+			/*
+			 *	This can be zero length for empty strings
+			 *
+			 *	Note we don't do double quote escaping here,
+			 *	we just escape unprintable chars.
+			 *
+			 *	Environmental variable values are not
+			 *	restricted we likely wouldn't need to do
+			 *	any escaping if we weren't dealing with C
+			 *	strings.
+			 *
+			 *	If we end up passing binary data through
+			 *	then the user can unescape the octal
+			 *	sequences on the other side.
+			 *
+			 *	We unfortunately still need to escape '\'
+			 *	because of this.
+			 */
+			if (fr_value_box_print(&sbuff, &vp->data, &fr_value_escape_unprintables) < 0) {
+				RPEDEBUG("Out of buffer space adding attribute value for %pV", &vp->data);
+				return -1;
+			}
 		}
-
 		if (fr_sbuff_in_char(&sbuff, '\0') <= 0) {
 			REDEBUG("Out of buffer space");
 			return -1;
@@ -336,6 +344,8 @@ static NEVER_RETURNS void exec_child(request_t *request, char **argv, char **env
  * @param[in] request		the request
  * @param[in] args		as returned by xlat_frame_eval()
  * @param[in] env_pairs		env_pairs to put into into the environment.  May be NULL.
+ * @param[in] env_escape	Wrap string values in double quotes, and apply doublequote
+ *				escaping to all environmental variable values.
  * @param[in] env_inherit	Inherit the environment from the current process.
  *				This will be merged with any variables from env_pairs.
  * @return
@@ -347,7 +357,7 @@ static NEVER_RETURNS void exec_child(request_t *request, char **argv, char **env
  *  the environment.
  */
 int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *args,
-			fr_pair_list_t *env_pairs, bool env_inherit)
+			fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit)
 {
 
 	int			argc;
@@ -381,7 +391,7 @@ int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *args,
 
 		if (exec_pair_to_env(env_p, env_end - env_p,
 				     &FR_SBUFF_OUT(env_buff, sizeof(env_buff)),
-				     request, env_pairs) < 0) return -1;
+				     request, env_pairs, env_escape) < 0) return -1;
 
 		env = env_arr;
 	} else if (env_inherit) {
@@ -452,6 +462,8 @@ int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *args,
  * @param[in] request		the request
  * @param[in] args		as returned by xlat_frame_eval()
  * @param[in] env_pairs		env_pairs to put into into the environment.  May be NULL.
+ * @param[in] env_escape	Wrap string values in double quotes, and apply doublequote
+ *				escaping to all environmental variable values.
  * @param[in] env_inherit	Inherit the environment from the current process.
  *				This will be merged with any variables from env_pairs.
  * @return
@@ -464,7 +476,7 @@ int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *args,
  */
 int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_fd,
 		      request_t *request, fr_value_box_list_t *args,
-		      fr_pair_list_t *env_pairs, bool env_inherit)
+		      fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit)
 {
 	int		argc;
 	char		**env;
@@ -500,7 +512,7 @@ int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_f
 
 		if (exec_pair_to_env(env_p, env_end - env_p,
 				     &FR_SBUFF_OUT(env_buff, sizeof(env_buff)),
-				     request, env_pairs) < 0) return -1;
+				     request, env_pairs, env_escape) < 0) return -1;
 		env = env_arr;
 	} else if (env_inherit) {
 		env = environ;		/* Our current environment */
@@ -899,6 +911,8 @@ static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void
  *      			be the first box and arguments in the subsequent boxes.
  * @param[in] env_pairs		list of pairs to be presented as evironment variables
  *				to the child.
+ * @param[in] env_escape	Wrap string values in double quotes, and apply doublequote
+ *				escaping to all environmental variable values.
  * @param[in] env_inherit	Inherit the environment from the current process.
  *				This will be merged with any variables from env_pairs.
  * @param[in] need_stdin	If true, allocate a pipe that will allow us to send data to the
@@ -913,7 +927,7 @@ static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void
  */
 int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 		  fr_value_box_list_t *args,
-		  fr_pair_list_t *env_pairs, bool env_inherit,
+		  fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit,
 		  bool need_stdin,
 		  bool store_stdout, TALLOC_CTX *stdout_ctx,
 		  fr_time_delta_t timeout)
@@ -935,7 +949,8 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 	};
 
 	if (fr_exec_fork_wait(&exec->pid, exec->stdin_used ? &exec->stdin_fd : NULL,
-			      stdout_fd, &exec->stderr_fd, request, args, exec->env_pairs, env_inherit) < 0) {
+			      stdout_fd, &exec->stderr_fd, request, args,
+			      exec->env_pairs, env_escape, env_inherit) < 0) {
 		RPEDEBUG("Failed executing program");
 	fail:
 		/*

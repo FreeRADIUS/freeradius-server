@@ -223,7 +223,7 @@ static unlang_action_t trigger_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 	 */
 	if (fr_exec_start(request, &trigger->exec, request,
 	                  &trigger->args,
-	                  NULL, true,
+	                  NULL, false, true,
 	                  false,
 	                  false, NULL, trigger->timeout) < 0) {
 	fail:

@@ -44,6 +44,7 @@ typedef struct {
 	tmpl_pair_list_t	input_list;
 	tmpl_pair_list_t	output_list;
 	bool			shell_escape;
+	bool			env_inherit;
 	fr_time_delta_t		timeout;
 	bool			timeout_is_set;
 
@@ -56,6 +57,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("input_pairs", FR_TYPE_STRING, rlm_exec_t, input) },
 	{ FR_CONF_OFFSET("output_pairs", FR_TYPE_STRING, rlm_exec_t, output) },
 	{ FR_CONF_OFFSET("shell_escape", FR_TYPE_BOOL, rlm_exec_t, shell_escape), .dflt = "yes" },
+	{ FR_CONF_OFFSET("env_inherit", FR_TYPE_BOOL, rlm_exec_t, env_inherit), .dflt = "no" },
 	{ FR_CONF_OFFSET_IS_SET("timeout", FR_TYPE_TIME_DELTA, rlm_exec_t, timeout) },
 	CONF_PARSER_TERMINATOR
 };
@@ -114,14 +116,9 @@ static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out, reques
 			       void const *xlat_inst, UNUSED void *xlat_thread_inst,
 			       fr_value_box_list_t *in)
 {
-	rlm_exec_t const	*inst;
-	void			*instance;
+	rlm_exec_t const	*inst = talloc_get_type_abort_const(*UNCONST(void **, xlat_inst), rlm_exec_t);
 	fr_pair_list_t		*env_pairs = NULL;
 	fr_exec_state_t		*exec;
-
-	memcpy(&instance, xlat_inst, sizeof(instance));
-
-	inst = talloc_get_type_abort(instance, rlm_exec_t);
 
 	if (inst->input_list) {
 		env_pairs = tmpl_list_head(request, inst->input_list);
@@ -133,7 +130,7 @@ static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out, reques
 
 	if (!inst->wait) {
 		/* Not waiting for the response */
-		fr_exec_fork_nowait(request, in, env_pairs, false);
+		fr_exec_fork_nowait(request, in, env_pairs, inst->shell_escape, false);
 		return XLAT_ACTION_DONE;
 	}
 
@@ -141,7 +138,7 @@ static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out, reques
 
 	if (fr_exec_start(exec, exec, request,
 			  in,
-			  env_pairs, false,
+			  env_pairs, inst->shell_escape, inst->env_inherit,
 			  false,
 			  inst->wait, ctx,
 			  inst->timeout) < 0) {
@@ -299,7 +296,7 @@ static unlang_action_t mod_exec_nowait_resume(rlm_rcode_t *p_result, module_ctx_
 		}
 	}
 
-	if (fr_exec_fork_nowait(request, box, env_pairs, false) < 0) {
+	if (fr_exec_fork_nowait(request, box, env_pairs, inst->shell_escape, inst->env_inherit) < 0) {
 		RPEDEBUG("Failed executing program");
 		RETURN_MODULE_FAIL;
 	}
