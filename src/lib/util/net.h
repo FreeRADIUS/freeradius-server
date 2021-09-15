@@ -319,6 +319,23 @@ static inline uint64_t fr_net_to_uint64v(uint8_t const *data, size_t data_len)
 	return ntohll(num);
 }
 
+static inline uint64_t fr_net_to_int64v(uint8_t const *data, size_t data_len)
+{
+	int64_t num = 0;
+
+	if (unlikely(data_len > sizeof(uint64_t))) return 0;
+
+	/*
+	 *	Copy at an offset into memory
+	 *	allocated for the uin64_t
+	 */
+	memcpy(((uint8_t *)&num) + (sizeof(uint64_t) - data_len), data, data_len);	/* aligned */
+
+	if (*data & 0x80) memset(((uint8_t *)&num) + data_len, 0xff, sizeof(num) - data_len);
+
+	return ntohll(num);
+}
+
 /** Convert bits (as in prefix length) to bytes, rounding up.
  *
  * @param bits number of bits in the prefix
