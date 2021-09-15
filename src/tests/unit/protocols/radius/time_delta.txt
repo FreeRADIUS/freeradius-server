@@ -48,6 +48,15 @@ match fe 06 04 04 00 41
 decode-pair -
 match Unit-TLV = { Delta-MSec-uint16 = 65 }
 
+encode-pair Unit-TLV.Delta-MSec-int32 = -32768
+match fe 08 0a 06 ff ff 80 00
+
+decode-pair -
+match Unit-TLV = { Delta-MSec-int32 = -32768 }
+
+attribute Unit-TLV.Delta-MSec-int32 = -32768
+match Unit-TLV.Delta-MSec-int32 = -32768
+
 encode-pair Unit-TLV.Delta-MSec-int16 = -32768
 match fe 06 06 04 80 00
 
@@ -112,4 +121,4 @@ decode-pair -
 match Unit-TLV = { Delta-MSec-int32 = 2147483647 }
 
 count
-match 52
+match 64
