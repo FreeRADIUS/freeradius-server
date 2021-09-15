@@ -604,8 +604,6 @@ RESUME_NO_RCTX(access_reject)
 
 RESUME(access_challenge)
 {
-	CONF_SECTION			*cs;
-	fr_process_state_t const	*state;
 	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
 
 	PROCESS_TRACE;
@@ -617,10 +615,7 @@ RESUME(access_challenge)
 	 */
 	if (fr_request_to_state(inst->auth.state_tree, request) < 0) {
 		request->reply->code = FR_RADIUS_CODE_DO_NOT_RESPOND;
-		UPDATE_STATE_CS(reply);
-		return unlang_module_yield_to_section(p_result, request,
-						      cs, state->rcode, state->send,
-						      NULL, rctx);
+		return CALL_SEND(generic);
 	}
 
 	fr_assert(request->reply->code == FR_RADIUS_CODE_ACCESS_CHALLENGE);
