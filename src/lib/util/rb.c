@@ -690,7 +690,8 @@ int fr_rb_replace(void **old, fr_rb_tree_t *tree, void const *data)
  */
 void *fr_rb_remove(fr_rb_tree_t *tree, void const *data)
 {
-	fr_rb_node_t *node;
+	fr_rb_node_t	*node;
+	void		*node_data;
 
 	if (unlikely(tree->being_freed)) return false;
 	node = find_node(tree, data);
@@ -698,9 +699,9 @@ void *fr_rb_remove(fr_rb_tree_t *tree, void const *data)
 
 	if (unlikely(node->being_freed)) return node->data;
 
-	delete_internal(tree, node, false);
-
-	return node->data;
+	node_data = node->data;
+	delete_internal(tree, node, false);	/* nullified node->data */
+	return node_data;
 }
 
 /** Remove node and free data (if a free function was specified)

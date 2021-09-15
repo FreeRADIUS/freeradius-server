@@ -112,6 +112,8 @@ typedef struct {
 	fr_dlist_head_t		data;				//!< Persistable request data, also parented by ctx.
 
 	request_t		*thawed;			//!< The request that thawed this entry.
+
+	fr_state_tree_t		*state_tree;			//!< Tree this entry belongs to.
 } fr_state_entry_t;
 
 /** A child of a fr_state_entry_t
@@ -138,6 +140,7 @@ struct fr_state_tree_s {
 	uint64_t		timed_out;			//!< Number of states that were cleaned up due to
 								//!< timeout.
 	uint32_t		max_sessions;			//!< Maximum number of sessions we track.
+	uint32_t		used_sessions;			//!< How many sessions are currently in progress.
 	fr_rb_tree_t		*tree;				//!< rbtree used to lookup state value.
 	fr_dlist_head_t		to_expire;			//!< Linked list of entries to free.
 
@@ -261,7 +264,8 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 /** Unlink an entry and remove if from the tree
  *
  */
-static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry)
+static inline CC_HINT(always_inline)
+void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry)
 {
 	/*
 	 *	Check the memory is still valid
@@ -269,7 +273,6 @@ static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry)
 	(void) talloc_get_type_abort(entry, fr_state_entry_t);
 
 	fr_dlist_remove(&state->to_expire, entry);
-
 	fr_rb_delete(state->tree, entry);
 
 	DEBUG4("State ID %" PRIu64 " unlinked", entry->id);
@@ -309,6 +312,8 @@ static int _state_entry_free(fr_state_entry_t *entry)
 	if (entry->ctx) TALLOC_FREE(entry->ctx);
 
 	DEBUG4("State ID %" PRIu64 " freed", entry->id);
+
+	entry->state_tree->used_sessions--;
 
 	return 0;
 }
@@ -360,7 +365,10 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 
 	state->timed_out += timed_out;
 
-	if (!old && (fr_rb_num_elements(state->tree) >= (uint32_t) state->max_sessions)) too_many = true;
+	if (!old) {
+		too_many = (state->used_sessions == (uint32_t) state->max_sessions);
+		if (!too_many) state->used_sessions++;	/* preemptively increment whilst we hold the mutex */
+	}
 
 	/*
 	 *	Record the information from the old state, we may base the
@@ -371,17 +379,9 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	 */
 	if (old) {
 		old_tries = old->tries;
-
 		memcpy(old_state, old->state, sizeof(old_state));
-
-		/*
-		 *	The old one isn't used any more, so we can free it.
-		 */
-		if (fr_dlist_empty(&old->data)) {
-			state_entry_unlink(state, old);
-			fr_dlist_insert_tail(&to_free, old);
-		}
 	}
+
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	if (timed_out > 0) RWDEBUG("Cleaning up %"PRIu64" timed out state entries", timed_out);
@@ -417,10 +417,25 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	 *	Allocation doesn't need to occur inside the critical region
 	 *	and would add significantly to contention.
 	 */
-	MEM(entry = talloc_zero(NULL, fr_state_entry_t));
+	if (!old) {
+		MEM(entry = talloc_zero(NULL, fr_state_entry_t));
+		talloc_set_destructor(entry, _state_entry_free);
+		/* tree->used_sessions incremented above */
+	/*
+	 *	Reuse the old state entry cleaning up any memory associated
+	 *	with it.
+	 */
+	} else {
+		_state_entry_free(old);
+		talloc_free_children(old);
+		memset(old, 0, sizeof(*old));
+		entry = old;
+	}
+
+	entry->state_tree = state;
 
 	request_data_list_init(&entry->data);
-	talloc_set_destructor(entry, _state_entry_free);
+
 	entry->id = state->id++;
 
 	/*
@@ -534,10 +549,10 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	return entry;
 }
 
-/** Find the entry, based on the State attribute
+/** Find the entry based on the State attribute and remove it from the state tree
  *
  */
-static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, fr_value_box_t const *vb)
+static fr_state_entry_t *state_entry_find_and_unlink(fr_state_tree_t *state, fr_value_box_t const *vb)
 {
 	fr_state_entry_t *entry, my_entry;
 
@@ -568,9 +583,12 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, fr_value_box_t
 	 */
 	my_entry.state_comp.context_id ^= state->context_id;
 
-	entry = fr_rb_find(state->tree, &my_entry);
+	entry = fr_rb_remove(state->tree, &my_entry);
 
-	if (entry) (void) talloc_get_type_abort(entry, fr_state_entry_t);
+	if (entry) {
+		(void) talloc_get_type_abort(entry, fr_state_entry_t);
+		fr_rb_delete(state->tree, entry);
+	}
 
 	return entry;
 }
@@ -587,12 +605,11 @@ void fr_state_discard(fr_state_tree_t *state, request_t *request)
 	if (!vp) return;
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = state_entry_find(state, &vp->data);
+	entry = state_entry_find_and_unlink(state, &vp->data);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		return;
 	}
-	state_entry_unlink(state, entry);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	/*
@@ -652,16 +669,17 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 	}
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = state_entry_find(state, &vp->data);
+	entry = state_entry_find_and_unlink(state, &vp->data);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		RDEBUG2("No state entry matching &request.%pP found", vp);
 		return 2;
 	}
+   	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
-	(void)talloc_get_type_abort(entry, fr_state_entry_t);
-	if (entry->thawed) {
-		REDEBUG("State entry has already been thawed by a request %"PRIu64, entry->thawed->number);
+	/* Probably impossible in the current code */
+	if (unlikely(entry->thawed)) {
+		RERROR("State entry has already been thawed by a request %"PRIu64, entry->thawed->number);
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		return -2;
 	}
@@ -671,11 +689,21 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 
 	request->seq_start = entry->seq_start;
 	request->session_state_ctx = entry->ctx;
+
+	/*
+	 *	Associate old state with the request
+	 *
+	 *	If the request is freed, it's freed immediately.
+	 *
+	 *	Otherwise, if there's another round, we re-use
+	 *	the state entry and insert it back into the
+	 *	tree.
+	 */
+	request_data_add(request, state, 0, entry, true, true, false);
 	request_data_restore(request, &entry->data);
 
 	entry->ctx = NULL;
 	entry->thawed = request;
-	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	if (!fr_pair_list_empty(&request->session_state_pairs)) {
 		RDEBUG2("Restored &session-state");
@@ -707,10 +735,10 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
  */
 int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 {
-	fr_state_entry_t	*entry, *old = NULL;
+	fr_state_entry_t	*entry, *old;
 	fr_dlist_head_t		data;
-	fr_pair_t		*vp;
 
+	old = request_data_get(request, state, 0);
 	request_data_list_init(&data);
 	request_data_by_persistance(&data, request, true);
 
@@ -721,11 +749,11 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, "&session-state.");
 	}
 
-	vp = fr_pair_find_by_da(&request->request_pairs, state->da, 0);
-
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	if (vp) old = state_entry_find(state, &vp->data);
 
+	/*
+	 *	Reuses old if possible
+	 */
 	entry = state_entry_create(state, request, &request->reply_pairs, old);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
@@ -740,7 +768,6 @@ int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 	entry->seq_start = request->seq_start;
 	entry->ctx = request->session_state_ctx;
 	fr_dlist_move(&entry->data, &data);
-
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	MEM(request->session_state_ctx = fr_pair_afrom_da(NULL, request_attr_state));	/* fixme - should use a pool */
