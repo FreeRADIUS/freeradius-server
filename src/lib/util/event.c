@@ -1685,8 +1685,15 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 		 *
 		 *	We don't reap the process here to emulate
 		 *	what kqueue does (notify but not reap).
+		 *
+		 *	waitid returns >0 on success, 0 if the
+		 *	process is still running, and -1 on failure.
+		 *
+		 *	If we get a 0, then that's extremely strange
+		 *	as adding the kevent failed for a reason
+		 *	other than the process already having exited.
 		 */
-		if (waitid(P_PID, pid, &info, WEXITED | WNOHANG | WNOWAIT) < 0) {
+		if (waitid(P_PID, pid, &info, WEXITED | WNOHANG | WNOWAIT) > 0) {
 			switch (info.si_code) {
 			case CLD_EXITED:
 			case CLD_KILLED:
