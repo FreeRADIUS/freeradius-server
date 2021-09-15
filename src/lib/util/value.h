@@ -84,6 +84,8 @@ extern fr_sbuff_escape_rules_t fr_value_escape_solidus;
 extern fr_sbuff_escape_rules_t fr_value_escape_backtick;
 extern fr_sbuff_escape_rules_t *fr_value_escape_by_quote[T_TOKEN_LAST];
 
+extern fr_sbuff_escape_rules_t fr_value_escape_unprintables;
+
 /** Lists of value boxes
  *
  * Specifically define a type for lists of value_box_t to aid type checking

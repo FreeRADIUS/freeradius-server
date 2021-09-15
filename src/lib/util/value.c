@@ -483,6 +483,20 @@ fr_sbuff_escape_rules_t *fr_value_escape_by_quote[T_TOKEN_LAST] = {
 	[T_BACK_QUOTED_STRING]		= &fr_value_escape_backtick,
 };
 
+fr_sbuff_escape_rules_t fr_value_escape_unprintables = {
+	.name = "unprintables",
+	.chr = '\\',
+	.subs = {
+		['\\'] = '\\',
+	},
+	.esc = {
+		SBUFF_CHAR_UNPRINTABLES_LOW,
+		SBUFF_CHAR_UNPRINTABLES_EXTENDED
+	},
+	.do_utf8 = true,
+	.do_oct = true
+};
+
 /** Copy flags and type data from one value box to another
  *
  * @param[in] dst to copy flags to

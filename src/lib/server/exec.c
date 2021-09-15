@@ -44,6 +44,12 @@ RCSID("$Id$")
 #include <ctype.h>
 #include <signal.h>
 
+#ifdef __APPLE__
+extern char **environ;
+#else
+#  include <unistd.h>
+#endif
+
 #ifdef HAVE_SYS_WAIT_H
 #  include <sys/wait.h>
 #endif
@@ -54,7 +60,11 @@ RCSID("$Id$")
 #  define WIFEXITED(stat_val) (((stat_val) & 0x7f) == 0)
 #endif
 
-#define MAX_ENVP (1024)
+#define MAX_ENVP 1024
+
+static _Thread_local char *env_arr[MAX_ENVP];				/* Avoid allocing 8k on the stack */
+static _Thread_local char env_buff[NUM_ELEMENTS(env_arr) * 128];	/* Avoid allocing 128k on the stack */
+static _Thread_local fr_sbuff_marker_t env_m[NUM_ELEMENTS(env_arr)];
 
 /** Flatten a list into individual "char *" argv-style array
  *
@@ -92,15 +102,32 @@ static int exec_value_box_list_to_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value
 	return argc;
 }
 
-static void exec_pair_to_env(request_t *request, fr_pair_list_t *input_pairs, char **envp,
-			     size_t envlen, bool shell_escape)
+/** Convert pairs from a request and a list of pairs into environmental variables
+ *
+ * @param[out] env_p		Where to write an array of \0 terminated strings.
+ * @param[in] env_len		Length of env_p.
+ * @param[out] env_sbuff	To write environmental variables too. Each variable
+ *				will be written to the buffer, and separated with
+ *				a '\0'.
+ * @param[in] request		Will look for &control.Exec-Export items to convert to
+ *      			env vars.
+ * @param[in] input_pairs	Other items to convert to environmental variables.
+ *				The dictionary attribute name will be converted to
+ *				uppercase, and all '-' converted to '_' and will form
+ *				the variable name.
+ * @return
+ *      - The number of environmental variables created.
+ *	- -1 on failure.
+ */
+static int exec_pair_to_env(char **env_p, size_t env_len, fr_sbuff_t *env_sbuff,
+			    request_t *request, fr_pair_list_t *input_pairs)
 {
 	char			*p;
-	size_t			i;
+	size_t			i, j;
 	fr_dcursor_t		cursor;
 	fr_dict_attr_t const	*da;
 	fr_pair_t		*vp;
-	char			buffer[1024];
+	fr_sbuff_t		sbuff = FR_SBUFF_COPY(env_sbuff);
 
 	/*
 	 *	Set up the environment variables in the
@@ -109,50 +136,98 @@ static void exec_pair_to_env(request_t *request, fr_pair_list_t *input_pairs, ch
 	 *	and will remain locked in the child.
 	 */
 	for (vp = fr_pair_list_head(input_pairs), i = 0;
-	     vp && (i < envlen - 1);
-	     vp = fr_pair_list_next(input_pairs, vp)) {
-		size_t n;
+	     vp && (i < env_len - 1);
+	     vp = fr_pair_list_next(input_pairs, vp), i++) {
+		fr_sbuff_marker(&env_m[i], &sbuff);
+
+	     	if (fr_sbuff_in_strcpy(&sbuff, vp->da->name) <= 0) {
+	     		REDEBUG("Out of buffer space adding attribute name");
+	     		return -1;
+	     	}
 
 		/*
-		 *	Hmm... maybe we shouldn't pass the
-		 *	user's password in an environment
-		 *	variable...
+		 *	POSIX only allows names to contain
+		 *	uppercase chars, digits, and
+		 *	underscores.  Digits are not allowed
+		 *	for the first char.
 		 */
-		snprintf(buffer, sizeof(buffer), "%s=", vp->da->name);
-		if (shell_escape) {
-			for (p = buffer; *p != '='; p++) {
-				if (*p == '-') {
-					*p = '_';
-				} else if (isalpha((int) *p)) {
-					*p = toupper(*p);
-				}
-			}
+		p = fr_sbuff_current(&env_m[i]);
+		if (isdigit((int)*p)) *p = '_';
+		while (p++ < fr_sbuff_current(&sbuff)) {
+			if (isalpha((int)*p)) *p = toupper(*p);
+			else if (*p == '-') *p = '_';
+			else if (isdigit((int)*p)) continue;
+			else *p = '_';
 		}
 
-		n = strlen(buffer);
-		fr_pair_print_value_quoted(&FR_SBUFF_OUT(buffer + n, sizeof(buffer) - n), vp,
-					   shell_escape ? T_DOUBLE_QUOTED_STRING : T_BARE_WORD);
+		if (fr_sbuff_in_char(&sbuff, '=') <= 0) {
+			REDEBUG("Out of buffer space");
+			return -1;
+		}
 
-		DEBUG3("export %s", buffer);
-		envp[i++] = talloc_typed_strdup(envp, buffer);
+		/*
+		 *	This can be zero length for empty strings
+		 *
+		 *	Note we don't do double quote escaping here,
+		 *	we just escape unprintable chars.
+		 *
+		 *	Environmental variable values are not
+		 *	restricted we likely wouldn't need to do
+		 *	any escaping if we weren't dealing with C
+		 *	strings.
+		 *
+		 *	If we end up passing binary data through
+		 *	then the user can unescape the octal
+		 *	sequences on the other side.
+		 *
+		 *	We unfortunately still need to escape '\'
+		 *	because of this.
+		 */
+		if (fr_value_box_print(&sbuff, &vp->data, &fr_value_escape_unprintables) < 0) {
+			RPEDEBUG("Out of buffer space adding attribute value for %pV", &vp->data);
+			return -1;
+		}
+
+		if (fr_sbuff_in_char(&sbuff, '\0') <= 0) {
+			REDEBUG("Out of buffer space");
+			return -1;
+		}
 	}
 
+	/*
+	 *	Do this as a separate step so that if env_sbuff
+	 *	is extended at any point during the conversion
+	 *	the sbuff we use is the final one.
+	 */
+	for (j = 0; j < i; j++) {
+		env_p[j] = fr_sbuff_current(&env_m[j]);
+		REDEBUG3("export %s", env_p[j]);
+	}
 	if (request) {
 		da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_EXEC_EXPORT);
 		if (da) {
 			for (vp = fr_dcursor_iter_by_da_init(&cursor, &request->control_pairs, da);
-			     vp && (i < (envlen - 1));
+			     vp && (i < (env_len - 1));
 			     vp = fr_dcursor_next(&cursor)) {
-				DEBUG3("export %pV", &vp->data);
-				memcpy(&envp[i++], &vp->vp_strvalue, sizeof(*envp));
+				REDEBUG3("export %pV", &vp->data);
+				env_p[i++] = UNCONST(char *, vp->vp_strvalue);
 			}
 
-			/*
-			 *	NULL terminate for execve
-			 */
-			envp[i] = NULL;
+
 		}
 	}
+
+	if (unlikely(i == (env_len - 1))) {
+		REDEBUG("Out of space for environmental variables");
+		return -1;
+	}
+
+	/*
+	 *	NULL terminate for execve
+	 */
+	env_p[i] = NULL;
+
+	return i;
 }
 
 /*
@@ -262,9 +337,11 @@ static NEVER_RETURNS void exec_child(request_t *request, char **argv, char **env
 
 /** Execute a program without waiting for the program to finish.
  *
- * @param request	the request
- * @param vb_list	as returned by xlat_frame_eval()
- * @param env_pairs	VPs to put into into the environment.  May be NULL.
+ * @param[in] request		the request
+ * @param[in] args		as returned by xlat_frame_eval()
+ * @param[in] env_pairs		VPs to put into into the environment.  May be NULL.
+ * @param[in] env_inherit	Inherit the environment from the current process.
+ *				This will be merged with any variables from env_pairs.
  * @return
  *	- <0 on error
  *	- 0 on success
@@ -273,21 +350,23 @@ static NEVER_RETURNS void exec_child(request_t *request, char **argv, char **env
  *  would allow finer-grained control over the attributes to put into
  *  the environment.
  */
-int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs)
+int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *args,
+			fr_pair_list_t *env_pairs, bool env_inherit)
 {
-	int		argc;
-	char		**envp;
-	char		**argv;
-	pid_t		pid;
-	fr_value_box_t	*first;
+
+	int			argc;
+	char			**env;
+	char			**argv;
+	pid_t			pid;
+	fr_value_box_t		*first;
 
 	/*
 	 *	Ensure that we don't do anything stupid.
 	 */
-	first =  fr_dlist_head(vb_list);
+	first =  fr_dlist_head(args);
 	if (first->type == FR_TYPE_GROUP) first = fr_dlist_head(&first->vb_group);
 	if (first->tainted) {
-		fr_strerror_printf("Program to run comes from tainted source - %pV", first);
+		REDEBUG("Program to run comes from tainted source - %pV", first);
 		return -1;
 	}
 
@@ -295,18 +374,29 @@ int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pai
 	 *	Get the environment variables.
 	 */
 	if (env_pairs && !fr_pair_list_empty(env_pairs)) {
-		MEM(envp = talloc_zero_array(request, char *, MAX_ENVP));
-		exec_pair_to_env(request, env_pairs, envp, MAX_ENVP, true);
+		char **env_p, **env_end, **env_in;
+
+		env_p = env_arr;
+		env_end = env_p + NUM_ELEMENTS(env_arr);
+
+		if (env_inherit) {
+			for (env_in = environ; (env_p < env_end) && *env_in; env_in++, env_p++) *env_p = *env_in;
+		}
+
+		if (exec_pair_to_env(env_p, env_end - env_p,
+				     &FR_SBUFF_OUT(env_buff, sizeof(env_buff)),
+				     request, env_pairs) < 0) return -1;
+
+		env = env_arr;
+	} else if (env_inherit) {
+		env = environ;		/* Our current environment */
 	} else {
-		MEM(envp = talloc_zero_array(request, char *, 1));
-		envp[0] = NULL;
+		env = env_arr;
+		env_arr[0] = NULL;
 	}
 
-	argc = exec_value_box_list_to_argv(request, &argv, vb_list);
-	if (argc < 0) {
-		talloc_free(envp);
-		return -1;
-	}
+	argc = exec_value_box_list_to_argv(request, &argv, args);
+	if (argc < 0) return -1;
 
 	if (DEBUG_ENABLED3) {
 		int i;
@@ -322,17 +412,11 @@ int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pai
 	if (pid == 0) {
 		int unused[2] = { -1, -1 };
 
-		exec_child(request, argv, envp, false, unused, unused, unused);
+		exec_child(request, argv, env, false, unused, unused, unused);
 	}
 
-	/*
-	 *	Parent process.  Do all necessary cleanups.
-	 */
-	talloc_free(envp);
-
 	if (pid < 0) {
-		ERROR("Couldn't fork %s: %s", argv[0], fr_syserror(errno));
-		talloc_free(argv);
+		RPEDEBUG("Couldn't fork %s", argv[0]);
 		return -1;
 	}
 
@@ -368,8 +452,10 @@ int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pai
  * @param[out] stdout_fd 	The stdout FD of the child.
  * @param[out] stderr_fd 	The stderr FD of the child.
  * @param[in] request		the request
- * @param[in] vb_list		as returned by xlat_frame_eval()
+ * @param[in] args		as returned by xlat_frame_eval()
  * @param[in] env_pairs		VPs to put into into the environment.  May be NULL.
+ * @param[in] env_inherit	Inherit the environment from the current process.
+ *				This will be merged with any variables from env_pairs.
  * @return
  *	- <0 on error
  *	- 0 on success
@@ -379,10 +465,11 @@ int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *vb_list, fr_pai
  *  the environment.
  */
 int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_fd,
-		      request_t *request, fr_value_box_list_t *vb_list, fr_pair_list_t *env_pairs)
+		      request_t *request, fr_value_box_list_t *args,
+		      fr_pair_list_t *env_pairs, bool env_inherit)
 {
 	int		argc;
-	char		**envp;
+	char		**env;
 	char		**argv;
 	pid_t		pid;
 	fr_value_box_t	*first;
@@ -393,7 +480,7 @@ int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_f
 	/*
 	 *	Ensure that we don't do anything stupid.
 	 */
-	first =  fr_dlist_head(vb_list);
+	first =  fr_dlist_head(args);
 	if (first->type == FR_TYPE_GROUP) first = fr_dlist_head(&first->vb_group);
 	if (first->tainted) {
 		fr_strerror_printf("Program to run comes from tainted source - %pV", first);
@@ -403,18 +490,30 @@ int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_f
 	/*
 	 *	Get the environment variables.
 	 */
-	if (env_pairs) {
-		MEM(envp = talloc_zero_array(request, char *, MAX_ENVP));
-		exec_pair_to_env(request, env_pairs, envp, MAX_ENVP, true);
+	if (env_pairs && !fr_pair_list_empty(env_pairs)) {
+		char **env_p, **env_end, **env_in;
+
+		env_p = env_arr;
+		env_end = env_p + NUM_ELEMENTS(env_arr);
+
+		if (env_inherit) {
+			for (env_in = environ; (env_p < env_end) && *env_in; env_in++, env_p++) *env_p = *env_in;
+		}
+
+		if (exec_pair_to_env(env_p, env_end - env_p,
+				     &FR_SBUFF_OUT(env_buff, sizeof(env_buff)),
+				     request, env_pairs) < 0) return -1;
+		env = env_arr;
+	} else if (env_inherit) {
+		env = environ;		/* Our current environment */
 	} else {
-		MEM(envp = talloc_zero_array(request, char *, 1));
-		envp[0] = NULL;
+		env = env_arr;
+		env[0] = NULL;
 	}
 
-	argc = exec_value_box_list_to_argv(request, &argv, vb_list);
+	argc = exec_value_box_list_to_argv(request, &argv, args);
 	if (argc < 0) {
 	error:
-		talloc_free(envp);
 		return -1;
 	}
 
@@ -458,15 +557,10 @@ int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_f
 	/*
 	 *	The child never returns from calling exec_child();
 	 */
-	if (pid == 0) exec_child(request, argv, envp, true, stdin_pipe, stdout_pipe, stderr_pipe);
-
-	/*
-	 *	Parent process.  Do all necessary cleanups.
-	 */
-	talloc_free(envp);
+	if (pid == 0) exec_child(request, argv, env, true, stdin_pipe, stdout_pipe, stderr_pipe);
 
 	if (pid < 0) {
-		ERROR("Couldn't fork %s: %s", argv[0], fr_syserror(errno));
+		PERROR("Couldn't fork %s", argv[0]);
 		close(stdin_pipe[0]);
 		close(stdin_pipe[1]);
 		close(stdout_pipe[0]);
@@ -801,9 +895,12 @@ static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void
  * @param[in] ctx		to allocate events in.
  * @param[in,out] exec		structure holding the state of the external call.
  * @param[in] request		currently being processed.
- * @param[in] cmd		to call as a fr_value_boc_list_t.  Program will be the first box
- * 				and arguments in the subsequent boxes.
- * @param[in] env_pairs		list of pairs to be presented as evironment variables to the child.
+ * @param[in] args		to call as a fr_value_boc_list_t.  Program will
+ *      			be the first box and arguments in the subsequent boxes.
+ * @param[in] env_pairs		list of pairs to be presented as evironment variables
+ *				to the child.
+ * @param[in] env_inherit	Inherit the environment from the current process.
+ *				This will be merged with any variables from env_pairs.
  * @param[in] need_stdin	If true, allocate a pipe that will allow us to send data to the
  *      			process.
  * @param[in] store_stdout	if true keep a copy of stdout in addition to logging
@@ -815,7 +912,8 @@ static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void
  *	- -1 on failure
  */
 int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
-		  fr_value_box_list_t *cmd, fr_pair_list_t *env_pairs,
+		  fr_value_box_list_t *args,
+		  fr_pair_list_t *env_pairs, bool env_inherit,
 		  bool need_stdin,
 		  bool store_stdout, TALLOC_CTX *stdout_ctx,
 		  fr_time_delta_t timeout)
@@ -837,7 +935,7 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 	};
 
 	if (fr_exec_fork_wait(&exec->pid, exec->stdin_used ? &exec->stdin_fd : NULL,
-			      stdout_fd, &exec->stderr_fd, request, cmd, exec->vps) < 0) {
+			      stdout_fd, &exec->stderr_fd, request, args, exec->vps, env_inherit) < 0) {
 		RPEDEBUG("Failed executing program");
 	fail:
 		/*

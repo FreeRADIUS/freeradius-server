@@ -222,7 +222,10 @@ static unlang_action_t trigger_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 	 *	done.
 	 */
 	if (fr_exec_start(request, &trigger->exec, request,
-			  &trigger->args, NULL, false, false, NULL, trigger->timeout) < 0) {
+	                  &trigger->args,
+	                  NULL, true,
+	                  false,
+	                  false, NULL, trigger->timeout) < 0) {
 	fail:
 		RPERROR("Failed running trigger \"%s\"", trigger->command);
 		RETURN_MODULE_FAIL;

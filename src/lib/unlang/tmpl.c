@@ -167,7 +167,8 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 
 	if (fr_exec_start(state->ctx, &state->exec, request,
-			  &state->box, state->args.exec.env,
+			  &state->box,
+			  state->args.exec.env, false,
 			  false,
 			  (state->out != NULL), state,
 			  state->args.exec.timeout) < 0) {
@@ -189,7 +190,7 @@ static unlang_action_t unlang_tmpl_exec_nowait_resume(rlm_rcode_t *p_result, req
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 
-	if (fr_exec_fork_nowait(request, &state->box, state->exec.vps) < 0) {
+	if (fr_exec_fork_nowait(request, &state->box, state->exec.vps, false) < 0) {
 		RPEDEBUG("Failed executing program");
 		*p_result = RLM_MODULE_FAIL;
 

@@ -116,7 +116,7 @@ static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out, reques
 {
 	rlm_exec_t const	*inst;
 	void			*instance;
-	fr_pair_list_t		*input_pairs = NULL;
+	fr_pair_list_t		*env_pairs = NULL;
 	fr_exec_state_t		*exec;
 
 	memcpy(&instance, xlat_inst, sizeof(instance));
@@ -124,8 +124,8 @@ static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out, reques
 	inst = talloc_get_type_abort(instance, rlm_exec_t);
 
 	if (inst->input_list) {
-		input_pairs = tmpl_list_head(request, inst->input_list);
-		if (!input_pairs) {
+		env_pairs = tmpl_list_head(request, inst->input_list);
+		if (!env_pairs) {
 			REDEBUG("Failed to find input pairs for xlat");
 			return XLAT_ACTION_FAIL;
 		}
@@ -133,13 +133,15 @@ static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out, reques
 
 	if (!inst->wait) {
 		/* Not waiting for the response */
-		fr_exec_fork_nowait(request, in, input_pairs);
+		fr_exec_fork_nowait(request, in, env_pairs, false);
 		return XLAT_ACTION_DONE;
 	}
 
 	MEM(exec = talloc_zero(request, fr_exec_state_t)); /* Fixme - Should be frame ctx */
 
-	if (fr_exec_start(exec, exec, request, in, input_pairs,
+	if (fr_exec_start(exec, exec, request,
+			  in,
+			  env_pairs, false,
 			  false,
 			  inst->wait, ctx,
 			  inst->timeout) < 0) {
@@ -297,7 +299,7 @@ static unlang_action_t mod_exec_nowait_resume(rlm_rcode_t *p_result, module_ctx_
 		}
 	}
 
-	if (fr_exec_fork_nowait(request, box, env_pairs) < 0) {
+	if (fr_exec_fork_nowait(request, box, env_pairs, false) < 0) {
 		RPEDEBUG("Failed executing program");
 		RETURN_MODULE_FAIL;
 	}
@@ -387,8 +389,6 @@ static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t 
 			TALLOC_CTX *ctx;
 			fr_pair_list_t vps, *output_pairs;
 			fr_value_box_t *box = fr_dlist_head(&m->box);
-
-			RDEBUG("EXEC GOT -- %pM", &m->box);
 
 			fr_pair_list_init(&vps);
 			output_pairs = tmpl_list_head(request, inst->output_list);
