@@ -82,7 +82,7 @@ static int _eap_session_free(eap_session_t *eap_session)
 		fr_assert(!in_request || (eap_session == in_request));
 	}
 #else
-	(void) request_data_get((request, NULL, REQUEST_DATA_EAP_SESSION);
+	(void) request_data_get(request, NULL, REQUEST_DATA_EAP_SESSION);
 #endif
 
 	return 0;
