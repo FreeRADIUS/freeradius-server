@@ -117,10 +117,25 @@ static fr_process_state_t const process_state[];
 #define RESUME_NO_RCTX(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
 #define RESUME_NO_MCTX(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
 
-
+/** Call a named recv function directly
+ */
 #define CALL_RECV(_x) recv_ ## _x(p_result, mctx, request);
+
+/** Call a named send function directly
+ */
 #define CALL_SEND(_x) send_ ## _x(p_result, mctx, request, rctx)
+
+/** Call a named resume function directly
+ */
 #define CALL_RESUME(_x) resume_ ## _x(p_result, mctx, request, rctx)
+
+/** Set the current reply code, and call the send function for that state
+ */
+#define CALL_SEND_TYPE(_x) process_state[(request->reply->code = _x)].send(p_result, mctx, request, rctx)
+
+/** Call the send function for the current state
+ */
+#define CALL_SEND_STATE(_state) state->send(p_result, mctx, request, rctx)
 
 RECV(generic)
 {

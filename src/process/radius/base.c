@@ -357,6 +357,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(process_radius_auth_t co
 RECV(access_request)
 {
 	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	void				*rctx = NULL;
 
 	/*
 	 *	Only reject if the state has already been thawed.
@@ -364,8 +365,7 @@ RECV(access_request)
 	 *	for us, and we're just proxying upstream.
 	 */
 	if (fr_state_to_request(inst->auth.state_tree, request) < 0) {
-		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
-		return CALL_SEND(generic);
+		return CALL_SEND_TYPE(FR_RADIUS_CODE_ACCESS_REJECT);
 	}
 
 	return CALL_RECV(generic);
@@ -399,9 +399,7 @@ RESUME(access_request)
 
 	send_reply:
 		fr_assert(state->send != NULL);
-		return unlang_module_yield_to_section(p_result, request,
-						      cs, state->rcode, state->send,
-						      NULL, NULL);
+		return CALL_SEND_STATE(state);
 	}
 
 	/*
@@ -608,8 +606,7 @@ RESUME(access_challenge)
 	 *	If this fails, don't respond to the request.
 	 */
 	if (fr_request_to_state(inst->auth.state_tree, request) < 0) {
-		request->reply->code = FR_RADIUS_CODE_DO_NOT_RESPOND;
-		return CALL_SEND(generic);
+		return CALL_SEND_TYPE(FR_RADIUS_CODE_DO_NOT_RESPOND);
 	}
 
 	fr_assert(request->reply->code == FR_RADIUS_CODE_ACCESS_CHALLENGE);
@@ -679,9 +676,7 @@ RESUME(accounting_request)
 
 	send_reply:
 		fr_assert(state->send != NULL);
-		return unlang_module_yield_to_section(p_result, request,
-						      cs, state->rcode, state->send,
-						      NULL, rctx);
+		return CALL_SEND_STATE(state);
 	}
 
 	/*
