@@ -130,7 +130,7 @@ size_t fr_ldap_unescape_func(UNUSED request_t *request, char *out, size_t outlen
 		p++;
 
 		/* It's an escaped special, just remove the slash */
-		if (memchr(specials, *in, sizeof(specials) - 1)) {
+		if (memchr(specials, *p, sizeof(specials) - 1)) {
 			*out++ = *p++;
 			continue;
 		}
