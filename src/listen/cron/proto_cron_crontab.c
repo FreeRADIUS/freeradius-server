@@ -394,7 +394,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 
 
 static ssize_t mod_write(UNUSED fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
-			 UNUSED uint8_t *buffer, UNUSED size_t buffer_len, UNUSED size_t written)
+			 UNUSED uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
 {
 	return buffer_len;
 }
@@ -584,7 +584,7 @@ set:
 	 *	Now that we've set the timer, tell the network side to
 	 *	call our read routine.
 	 */
-//	fr_network_listen_read(thread->nr, thread->parent);
+	fr_network_listen_read(thread->nr, thread->parent);
 }
 
 /** Set the event list for a new socket
