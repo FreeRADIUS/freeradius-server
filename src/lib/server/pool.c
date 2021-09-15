@@ -349,7 +349,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	if ((pool->state.num + pool->state.pending) >= pool->max) {
 		pthread_mutex_unlock(&pool->mutex);
 
-		ROPTIONAL(RERROR, ERROR, "Cannot open new connection, already at max");
+		ERROR("Cannot open new connection, already at max");
 		return NULL;
 	}
 
@@ -369,8 +369,8 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 		pthread_mutex_unlock(&pool->mutex);
 
 		if (!fr_rate_limit_enabled() || complain) {
-			ROPTIONAL(RERROR, ERROR, "Last connection attempt failed, waiting %pV seconds before retrying",
-				  fr_box_time_delta(pool->state.last_failed + pool->retry_delay - now));
+			ERROR("Last connection attempt failed, waiting %pV seconds before retrying",
+			      fr_box_time_delta(pool->state.last_failed + pool->retry_delay - now));
 		}
 
 		return NULL;
@@ -430,7 +430,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	 */
 	conn = pool->create(ctx, pool->opaque, pool->connect_timeout);
 	if (!conn) {
-		ROPTIONAL(RERROR, ERROR, "Opening connection failed (%" PRIu64 ")", number);
+		ERROR("Opening connection failed (%" PRIu64 ")", number);
 
 		pool->state.last_failed = now;
 		pthread_mutex_lock(&pool->mutex);
@@ -856,7 +856,7 @@ static void *connection_get_internal(fr_pool_t *pool, request_t *request, bool s
 
 		pthread_mutex_unlock(&pool->mutex);
 		if (!fr_rate_limit_enabled() || complain) {
-			ROPTIONAL(RERROR, ERROR, "No connections available and at max connection limit");
+			ERROR("No connections available and at max connection limit");
 			/*
 			 *	Must be done inside the mutex, reconnect callback
 			 *	may modify args.
