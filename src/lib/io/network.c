@@ -957,8 +957,6 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 					fr_message_t *lm;
 
 					lm = fr_message_localize(s, &cd->m, sizeof(*cd));
-					fr_message_done(&cd->m);
-
 					if (!lm) {
 						ERROR("Failed saving pending packet");
 						goto dead;
