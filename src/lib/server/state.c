@@ -382,16 +382,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	if (!old) {
 		too_many = (state->used_sessions == (uint32_t) state->max_sessions);
 		if (!too_many) state->used_sessions++;	/* preemptively increment whilst we hold the mutex */
-	}
-
-	/*
-	 *	Record the information from the old state, we may base the
-	 *	new state off the old one.
-	 *
-	 *	Once we release the mutex, the state of old becomes indeterminate
-	 *	so we have to grab the values now.
-	 */
-	if (old) {
+	} else {
 		old_tries = old->tries;
 		memcpy(old_state, old->state, sizeof(old_state));
 	}
