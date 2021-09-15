@@ -678,7 +678,7 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
    	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	/* Probably impossible in the current code */
-	if (unlikely(entry->thawed)) {
+	if (unlikely(entry->thawed != NULL)) {
 		RERROR("State entry has already been thawed by a request %"PRIu64, entry->thawed->number);
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		return -2;
