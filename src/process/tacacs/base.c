@@ -320,9 +320,7 @@ RESUME(recv_tacacs)
 
 	fr_assert(state->send != NULL);
 
-	return unlang_module_yield_to_section(p_result, request,
-					      cs, state->rcode, state->send,
-					      NULL, rctx);
+	return CALL_SEND_STATE(state);
 }
 
 RESUME(send_tacacs)

@@ -380,9 +380,7 @@ RESUME(access_request)
 
 	send_reply:
 		fr_assert(state->send != NULL);
-		return unlang_module_yield_to_section(p_result, request,
-						      cs, state->rcode, state->send,
-						      NULL, NULL);
+		return CALL_SEND_STATE(state);
 	}
 
 	/*
@@ -593,9 +591,7 @@ RESUME(access_challenge)
 	if (fr_request_to_state(inst->auth.state_tree, request) < 0) {
 		request->reply->code = FR_RADIUS_CODE_DO_NOT_RESPOND;
 		UPDATE_STATE_CS(reply);
-		return unlang_module_yield_to_section(p_result, request,
-						      cs, state->rcode, state->send,
-						      NULL, rctx);
+		return CALL_SEND_STATE(state);
 	}
 
 	fr_assert(request->reply->code == FR_RADIUS_CODE_ACCESS_CHALLENGE);
