@@ -1355,6 +1355,7 @@ static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *us
 		 */
 		RINDENT();
 		if (*p == ' ') {
+			p++;
 			q = memchr(p, '\r', (end - p));
 			if (!q) goto malformed;
 			RDEBUG2("Status : %i (%pV)", ctx->code, fr_box_strvalue_len(p, q - p));
