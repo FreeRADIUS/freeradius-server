@@ -915,7 +915,7 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 
 		default:
 			REDEBUG("Error in fragmentation logic");
-			fr_tls_log_io_error(request, tls_session, ret, "Failed in SSL_read");
+			fr_tls_log_io_error(request, tls_session, ret, "Failed in SSL_read (%s)", __FUNCTION__);
 			goto error;
 		}
 
@@ -1355,7 +1355,7 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 		 *	Returns -1 if we encountered a fatal error.
 		 */
 		if (fr_tls_log_io_error(request, tls_session,
-					tls_session->last_ret, "Failed in SSL_read") < 0) goto error;
+					tls_session->last_ret, "Failed in SSL_read (%s)", __FUNCTION__) < 0) goto error;
 		return tls_session_async_handshake_done_round(p_result, priority, request, uctx);
 	}
 }
