@@ -284,8 +284,6 @@ static size_t time_names_len = NUM_ELEMENTS(time_names);
  * @return
  *	- 0 on success.
  *	- -1 on failure.
- *
- *	https://github.com/staticlibs/ccronexpr/blob/master/ccronexpr.c
  */
 static int time_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
