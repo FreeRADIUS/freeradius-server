@@ -416,7 +416,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 
 		fp = fopen(inst->filename, "r");
 		if (!fp) {
-			cf_log_err(cs, "Failed reading %s - %s",
+			cf_log_err(cs, "Failed opening %s - %s",
 				   inst->filename, fr_syserror(errno));
 			return -1;
 		}
