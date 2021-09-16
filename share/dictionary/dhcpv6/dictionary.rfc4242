@@ -11,4 +11,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Information-Refresh-Time		32	uint32
+ATTRIBUTE	Information-Refresh-Time		32	time_delta uint32

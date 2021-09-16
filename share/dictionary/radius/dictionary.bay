@@ -49,9 +49,9 @@ ATTRIBUTE	Annex-Secondary-DNS-Server		55	ipaddr
 ATTRIBUTE	Annex-Primary-NBNS-Server		56	ipaddr
 ATTRIBUTE	Annex-Secondary-NBNS-Server		57	ipaddr
 ATTRIBUTE	Annex-Syslog-Tap			58	integer
-ATTRIBUTE	Annex-Keypress-Timeout			59	integer
-ATTRIBUTE	Annex-Unauthenticated-Time		60	integer
-ATTRIBUTE	Annex-Re-CHAP-Timeout			61	integer
+ATTRIBUTE	Annex-Keypress-Timeout			59	time_delta
+ATTRIBUTE	Annex-Unauthenticated-Time		60	time_delta
+ATTRIBUTE	Annex-Re-CHAP-Timeout			61	time_delta
 ATTRIBUTE	Annex-MRRU				62	integer
 ATTRIBUTE	Annex-EDO				63	string
 # Annex R18.0 software

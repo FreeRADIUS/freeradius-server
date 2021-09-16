@@ -18,7 +18,7 @@ ATTRIBUTE	Yubikey-Key				1	octets
 ATTRIBUTE	Yubikey-Public-ID			2	string
 ATTRIBUTE	Yubikey-Private-ID			3	octets
 ATTRIBUTE	Yubikey-Counter				4	integer
-ATTRIBUTE	Yubikey-Timestamp			5	integer
+ATTRIBUTE	Yubikey-Timestamp			5	time_delta
 ATTRIBUTE	Yubikey-Random				6	integer
 ATTRIBUTE	Yubikey-OTP				7	string
 

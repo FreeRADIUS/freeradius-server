@@ -14,6 +14,6 @@ ATTRIBUTE	NetworkPolicy				6	integer
 ATTRIBUTE	BytesDown				7	integer
 ATTRIBUTE	BytesUp					8	integer
 ATTRIBUTE	Expiration				9	string
-ATTRIBUTE	SessionTimeout				10	integer
+ATTRIBUTE	SessionTimeout				10	time_delta
 ATTRIBUTE	Wan-Interface				11	string
 END-VENDOR fdXtended

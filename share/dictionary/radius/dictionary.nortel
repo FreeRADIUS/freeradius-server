@@ -25,7 +25,7 @@ ATTRIBUTE	Passport-Customer-Identifier		202	integer
 ATTRIBUTE	Passport-Allowed-Access			203	integer
 ATTRIBUTE	Passport-AllowedOut-Access		204	integer
 ATTRIBUTE	Passport-Login-Directory		205	string
-ATTRIBUTE	Passport-Timeout-Protocol		206	integer
+ATTRIBUTE	Passport-Timeout-Protocol		206	time_delta
 ATTRIBUTE	Passport-Role				207	string
 
 VALUE	Privilege-Level			VoiceMailAdmin		0

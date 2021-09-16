@@ -187,18 +187,18 @@ ATTRIBUTE	PAC					.11	tlv
 ATTRIBUTE	Key					.11.1	octets
 ATTRIBUTE	Opaque-TLV				.11.2	tlv
 ATTRIBUTE	Opaque-Key				.11.2.1	octets
-ATTRIBUTE	Opaque-Lifetime				.11.2.3	integer
+ATTRIBUTE	Opaque-Lifetime				.11.2.3	time_delta
 ATTRIBUTE	Opaque-I-ID				.11.2.5	octets
 ATTRIBUTE	Opaque-Type				.11.2.10	short
 
-ATTRIBUTE	Lifetime				.11.3	integer
+ATTRIBUTE	Lifetime				.11.3	time_delta
 ATTRIBUTE	A-ID					.11.4	octets
 ATTRIBUTE	I-ID					.11.5	octets
 ATTRIBUTE	A-ID-Info				.11.7	octets
 ATTRIBUTE	Acknowledge				.11.8	short
 ATTRIBUTE	Info					.11.9	tlv
 
-ATTRIBUTE	PAC-Lifetime				.11.9.3	integer
+ATTRIBUTE	PAC-Lifetime				.11.9.3	time_delta
 ATTRIBUTE	A-ID					.11.9.4	octets
 ATTRIBUTE	I-ID					.11.9.5	octets
 ATTRIBUTE	A-ID-Info				.11.9.7	octets

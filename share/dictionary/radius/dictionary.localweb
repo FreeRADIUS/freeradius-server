@@ -18,7 +18,7 @@ ATTRIBUTE	Border-Router				193	string
 ATTRIBUTE	Tx-Limit				200	integer
 ATTRIBUTE	Rx-Limit				201	integer
 
-ATTRIBUTE	Acct-Time				210	integer
+ATTRIBUTE	Acct-Time				210	date
 ATTRIBUTE	Acct-Duration				211	integer
 ATTRIBUTE	Acct-Interim-Tx-Bytes			212	integer
 ATTRIBUTE	Acct-Interim-Rx-Bytes			213	integer

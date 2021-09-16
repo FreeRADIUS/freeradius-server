@@ -25,8 +25,8 @@ ATTRIBUTE	IPSec-Deny-Action			10	integer
 ATTRIBUTE	IPSec-Active-Profile			11	string
 ATTRIBUTE	IPSec-Outsource-Profile			12	string
 ATTRIBUTE	IPSec-Passive-Profile			13	string
-ATTRIBUTE	NAT-TCP-Session-Timeout			14	integer
-ATTRIBUTE	NAT-Other-Session-Timeout		15	integer
+ATTRIBUTE	NAT-TCP-Session-Timeout			14	time_delta
+ATTRIBUTE	NAT-Other-Session-Timeout		15	time_delta
 ATTRIBUTE	NAT-Log-Options				16	integer
 ATTRIBUTE	NAT-Sess-Dir-Fail-Action		17	integer
 ATTRIBUTE	NAT-Inmap				18	string

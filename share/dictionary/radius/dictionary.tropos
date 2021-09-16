@@ -30,7 +30,7 @@ ATTRIBUTE	Retries-Sent				16	integer
 ATTRIBUTE	Retry-Bits				17	integer
 ATTRIBUTE	Rates-Sent				18	octets
 ATTRIBUTE	Rates-Received				19	octets
-ATTRIBUTE	Routed-Time				21	integer
+ATTRIBUTE	Routed-Time				21	time_delta
 ATTRIBUTE	Routless-Since				22	integer
 ATTRIBUTE	Capability-Info				23	octets
 ATTRIBUTE	Input-Cap				24	integer

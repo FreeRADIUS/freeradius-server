@@ -28,7 +28,7 @@ MEMBER		Lease-Query-Options			group
 #  Client-Last-Transaction-Time, among others.
 #
 ATTRIBUTE	Client-Data				45	group
-ATTRIBUTE	Client-Last-Transaction-Time		46	uint32
+ATTRIBUTE	Client-Last-Transaction-Time		46	time_delta
 ATTRIBUTE	Lease-Query-Relay-Data			47	struct
 MEMBER		Relay-Address				ipv6addr
 MEMBER		Relay-Message				octets	# an entire Relay Message :(

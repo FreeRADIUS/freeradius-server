@@ -50,8 +50,8 @@ ATTRIBUTE	Qos-Profile-Name			31	string
 ATTRIBUTE	SIP-Server				32	string
 ATTRIBUTE	User-Password				33	string
 ATTRIBUTE	Command-Mode				34	string
-ATTRIBUTE	Renewal-Time				35	integer
-ATTRIBUTE	Rebinding-Time				36	integer
+ATTRIBUTE	Renewal-Time				35	date
+ATTRIBUTE	Rebinding-Time				36	date
 ATTRIBUTE	IGMP-Enable				37	integer
 ATTRIBUTE	Destnation-IP-Addr			39	string
 ATTRIBUTE	Destnation-Volume			40	string
@@ -67,7 +67,7 @@ ATTRIBUTE	PPP-NCP-Type				70	integer
 ATTRIBUTE	VSI-Name				71	string
 ATTRIBUTE	Subnet-Mask				72	ipaddr
 ATTRIBUTE	Gateway-Address				73	ipaddr
-ATTRIBUTE	Lease-Time				74	integer
+ATTRIBUTE	Lease-Time				74	time_delta
 ATTRIBUTE	Primary-WINS				75	ipaddr
 ATTRIBUTE	Secondary-WINS				76	ipaddr
 ATTRIBUTE	Input-Peak-Burst-Size			77	integer
@@ -108,7 +108,7 @@ ATTRIBUTE	Acct-Packet-Type			106	integer
 ATTRIBUTE	Call-Reference				107	integer
 ATTRIBUTE	PSTN-Port				108	integer
 ATTRIBUTE	Voip-Service-Type			109	integer
-ATTRIBUTE	Acct-Connection-Time			110	integer
+ATTRIBUTE	Acct-Connection-Time			110	date
 ATTRIBUTE	Error-Reason				112	integer
 ATTRIBUTE	Remain-Monney				113	integer
 ATTRIBUTE	Org-GK-ipaddr				123	ipaddr
@@ -116,7 +116,7 @@ ATTRIBUTE	Org-GW-ipaddr				124	ipaddr
 ATTRIBUTE	Dst-GK-ipaddr				125	ipaddr
 ATTRIBUTE	Dst-GW-ipaddr				126	ipaddr
 ATTRIBUTE	Access-Num				127	string
-ATTRIBUTE	Remain-Time				128	integer
+ATTRIBUTE	Remain-Time				128	time_delta
 ATTRIBUTE	Codec-Type				131	integer
 ATTRIBUTE	Transfer-Num				132	string
 ATTRIBUTE	New-User-Name				133	string

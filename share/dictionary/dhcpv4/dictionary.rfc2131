@@ -26,7 +26,7 @@
 #ATTRIBUTE	Pad				0	octets
 ATTRIBUTE	Subnet-Mask				1	ipaddr
 # Time Offset in twos-complement notation.
-ATTRIBUTE	Time-Offset				2	integer
+ATTRIBUTE	Time-Offset				2	time_delta
 ATTRIBUTE	Router-Address				3	ipaddr array
 ATTRIBUTE	Time-Server				4	ipaddr array
 ATTRIBUTE	IEN-116-Name-Server			5	ipaddr array
@@ -54,7 +54,7 @@ ATTRIBUTE	Source-Route-Enable			20	byte
 ATTRIBUTE	Policy-Filter				21	octets
 ATTRIBUTE	Max-Datagram-Reassembly-Size		22	short
 ATTRIBUTE	Default-IP-TTL				23	octets
-ATTRIBUTE	Path-MTU-Aging-Timeout			24	integer
+ATTRIBUTE	Path-MTU-Aging-Timeout			24	time_delta
 ATTRIBUTE	Path-MTU-Plateau-Table			25	short array
 ATTRIBUTE	Interface-MTU-Size			26	short
 ATTRIBUTE	All-Subnets-Are-Local			27	byte
@@ -66,7 +66,7 @@ ATTRIBUTE	Router-Solicitation-Address		32	ipaddr
 # first is destination address, second is router.
 ATTRIBUTE	Static-Routes				33	ipaddr array
 ATTRIBUTE	Trailer-Encapsulation			34	byte
-ATTRIBUTE	ARP-Cache-Timeout			35	integer
+ATTRIBUTE	ARP-Cache-Timeout			35	time_delta
 ATTRIBUTE	Ethernet-Encapsulation			36	byte
 ATTRIBUTE	Default-TCP-TTL				37	byte
 ATTRIBUTE	Keep-Alive-Interval			38	integer
@@ -84,7 +84,7 @@ ATTRIBUTE	NETBIOS					47	octets
 ATTRIBUTE	X-Window-Font-Server			48	ipaddr array
 ATTRIBUTE	X-Window-Display-Mgr			49	ipaddr array
 ATTRIBUTE	Requested-IP-Address			50	ipaddr
-ATTRIBUTE	IP-Address-Lease-Time			51	integer
+ATTRIBUTE	IP-Address-Lease-Time			51	time_delta
 # Overload "sname" or "file"
 ATTRIBUTE	Overload				52	byte
 ATTRIBUTE	Message-Type				53	byte
@@ -112,8 +112,8 @@ ATTRIBUTE	Server-Identifier			54	ipaddr
 ATTRIBUTE	Parameter-Request-List			55	byte array
 ATTRIBUTE	Error-Message				56	string
 ATTRIBUTE	Maximum-Msg-Size			57	short
-ATTRIBUTE	Renewal-Time				58	integer
-ATTRIBUTE	Rebinding-Time				59	integer
+ATTRIBUTE	Renewal-Time				58	date
+ATTRIBUTE	Rebinding-Time				59	date
 ATTRIBUTE	Vendor-Class-Identifier			60	octets
 
 # Client Identifier
@@ -188,7 +188,7 @@ ATTRIBUTE	BCMS-Server-IPv4-Address		89	ipaddr array
 # Authentication
 ATTRIBUTE	Authentication				90	octets
 
-ATTRIBUTE	Client-Last-Transaction-Time		91	integer # seconds on the past
+ATTRIBUTE	Client-Last-Transaction-Time		91	time_delta # seconds on the past
 
 ATTRIBUTE	associated-ip				92	ipaddr array
 
@@ -290,7 +290,7 @@ ATTRIBUTE	TFTP-Server-IPv4-Address		150	ipaddr array
 # RFC 6926 - Bulk Lease Query
 ATTRIBUTE	Query-Status-Code			151	octets
 ATTRIBUTE	Query-Server-Base-Time			152	date
-ATTRIBUTE	Query-Start-Time-Of-State		153	integer
+ATTRIBUTE	Query-Start-Time-Of-State		153	time_delta
 ATTRIBUTE	Query-Start-Time			154	date
 ATTRIBUTE	Query-End-Time				155	date
 ATTRIBUTE	State					156	byte

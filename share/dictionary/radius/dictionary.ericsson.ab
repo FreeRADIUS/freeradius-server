@@ -49,7 +49,7 @@ VALUE	Tunnel-Session-Auth		CHAP-PAP		3
 
 ATTRIBUTE	Tunnel-Window				24	integer
 ATTRIBUTE	Tunnel-Retransmit			25	integer
-ATTRIBUTE	Tunnel-Cmd-Timeout			26	integer
+ATTRIBUTE	Tunnel-Cmd-Timeout			26	time_delta
 ATTRIBUTE	PPPOE-URL				27	string
 ATTRIBUTE	PPPOE-MOTM				28	string
 ATTRIBUTE	Tunnel-Group				29	integer
@@ -64,7 +64,7 @@ VALUE	Tunnel-Algorithm		First			1
 VALUE	Tunnel-Algorithm		Load-Balance		2
 VALUE	Tunnel-Algorithm		WRR			3
 
-ATTRIBUTE	Tunnel-Deadtime				32	integer
+ATTRIBUTE	Tunnel-Deadtime				32	time_delta
 ATTRIBUTE	Mcast-Send				33	integer
 
 VALUE	Mcast-Send			NO-SEND			1
@@ -421,7 +421,7 @@ ATTRIBUTE	Deactivate-Service-Name			194	string has_tag
 ATTRIBUTE	Qos-Profile-Overhead			195	string
 ATTRIBUTE	Dynamic-QoS-Param			196	string
 ATTRIBUTE	Acct-Alt-Session-ID			197	string
-ATTRIBUTE	Idle-Timeout-Threshold			198	integer
+ATTRIBUTE	Idle-Timeout-Threshold			198	time_delta
 ATTRIBUTE	Double-Authentication			199	integer
 ATTRIBUTE	SBC-Adjacency				200	string
 ATTRIBUTE	DHCP-Field				201	octets

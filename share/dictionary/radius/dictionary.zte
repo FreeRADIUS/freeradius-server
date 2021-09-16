@@ -20,11 +20,11 @@ ATTRIBUTE	Tunnel-Max-Sessions			21	integer
 ATTRIBUTE	Tunnel-Max-Tunnels			22	integer
 ATTRIBUTE	Tunnel-Window				24	integer
 ATTRIBUTE	Tunnel-Retransmit			25	integer
-ATTRIBUTE	Tunnel-Cmd-Timeout			26	integer
+ATTRIBUTE	Tunnel-Cmd-Timeout			26	time_delta
 ATTRIBUTE	PPPOE-URL				27	string
 ATTRIBUTE	PPPOE-MOTM				28	string
 ATTRIBUTE	Tunnel-Algorithm			31	integer
-ATTRIBUTE	Tunnel-Deadtime				32	integer
+ATTRIBUTE	Tunnel-Deadtime				32	time_delta
 ATTRIBUTE	Mcast-Send				33	integer
 ATTRIBUTE	Mcast-Receive				34	integer
 ATTRIBUTE	Mcast-MaxGroups				35	integer

@@ -9,12 +9,12 @@
 #	$Id$
 #
 ATTRIBUTE	Acct-Status-Type			40	integer
-ATTRIBUTE	Acct-Delay-Time				41	integer
+ATTRIBUTE	Acct-Delay-Time				41	time_delta
 ATTRIBUTE	Acct-Input-Octets			42	integer
 ATTRIBUTE	Acct-Output-Octets			43	integer
 ATTRIBUTE	Acct-Session-Id				44	string
 ATTRIBUTE	Acct-Authentic				45	integer
-ATTRIBUTE	Acct-Session-Time			46	integer
+ATTRIBUTE	Acct-Session-Time			46	time_delta
 ATTRIBUTE	Acct-Input-Packets			47	integer
 ATTRIBUTE	Acct-Output-Packets			48	integer
 ATTRIBUTE	Acct-Terminate-Cause			49	integer

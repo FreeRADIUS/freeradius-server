@@ -131,7 +131,7 @@ VENDOR		Ascend				529
 BEGIN-VENDOR	Ascend
 ATTRIBUTE	Max-Shared-Users			2	integer
 ATTRIBUTE	UU-Info					7	string
-ATTRIBUTE	CIR-Timer				9	integer
+ATTRIBUTE	CIR-Timer				9	time_delta
 ATTRIBUTE	FR-08-Mode				10	integer
 ATTRIBUTE	Destination-Nas-Port			11	integer
 ATTRIBUTE	FR-SVC-Addr				12	string
@@ -145,7 +145,7 @@ ATTRIBUTE	H323-Gatekeeper				19	ipaddr
 ATTRIBUTE	Global-Call-Id				20	string
 ATTRIBUTE	H323-Conference-Id			21	integer
 ATTRIBUTE	H323-Fegw-Address			22	ipaddr
-ATTRIBUTE	H323-Dialed-Time			23	integer
+ATTRIBUTE	H323-Dialed-Time			23	time_delta
 ATTRIBUTE	Dialed-Number				24	string
 ATTRIBUTE	Inter-Arrival-Jitter			25	integer
 ATTRIBUTE	Dropped-Octets				26	integer
@@ -179,7 +179,7 @@ ATTRIBUTE	Access-Intercept-Log			53	string
 ATTRIBUTE	Private-Route-Table-ID			54	string
 ATTRIBUTE	Private-Route-Required			55	integer
 ATTRIBUTE	Cache-Refresh				56	integer
-ATTRIBUTE	Cache-Time				57	integer
+ATTRIBUTE	Cache-Time				57	time_delta
 ATTRIBUTE	Egress-Enabled				58	integer
 ATTRIBUTE	QOS-Upstream				59	string
 ATTRIBUTE	QOS-Downstream				60	string
@@ -265,7 +265,7 @@ ATTRIBUTE	User-Acct-Host				139	ipaddr
 ATTRIBUTE	User-Acct-Port				140	integer
 ATTRIBUTE	User-Acct-Key				141	string
 ATTRIBUTE	User-Acct-Base				142	integer
-ATTRIBUTE	User-Acct-Time				143	integer
+ATTRIBUTE	User-Acct-Time				143	time_delta
 ATTRIBUTE	Assign-IP-Client			144	ipaddr
 ATTRIBUTE	Assign-IP-Server			145	ipaddr
 ATTRIBUTE	Assign-IP-Global-Pool			146	string
@@ -316,11 +316,11 @@ ATTRIBUTE	Pre-Input-Octets			190	integer
 ATTRIBUTE	Pre-Output-Octets			191	integer
 ATTRIBUTE	Pre-Input-Packets			192	integer
 ATTRIBUTE	Pre-Output-Packets			193	integer
-ATTRIBUTE	Maximum-Time				194	integer
+ATTRIBUTE	Maximum-Time				194	time_delta
 ATTRIBUTE	Disconnect-Cause			195	integer
 ATTRIBUTE	Connect-Progress			196	integer
 ATTRIBUTE	Data-Rate				197	integer
-ATTRIBUTE	PreSession-Time				198	integer
+ATTRIBUTE	PreSession-Time				198	time_delta
 ATTRIBUTE	Token-Idle				199	integer
 ATTRIBUTE	Token-Immediate				200	integer
 ATTRIBUTE	Require-Auth				201	integer
@@ -329,8 +329,8 @@ ATTRIBUTE	Authen-Alias				203	string
 ATTRIBUTE	Token-Expiry				204	integer
 ATTRIBUTE	Menu-Selector				205	string
 ATTRIBUTE	Menu-Item				206	string
-ATTRIBUTE	PW-Warntime				207	integer
-ATTRIBUTE	PW-Lifetime				208	integer
+ATTRIBUTE	PW-Warntime				207	time_delta
+ATTRIBUTE	PW-Lifetime				208	time_delta
 ATTRIBUTE	IP-Direct				209	ipaddr
 ATTRIBUTE	PPP-VJ-Slot-Comp			210	integer
 ATTRIBUTE	PPP-VJ-1172				211	integer
@@ -345,7 +345,7 @@ ATTRIBUTE	FR-Direct				219	integer
 ATTRIBUTE	FR-Direct-Profile			220	string
 ATTRIBUTE	FR-Direct-DLCI				221	integer
 ATTRIBUTE	Handle-IPX				222	integer
-ATTRIBUTE	Netware-timeout				223	integer
+ATTRIBUTE	Netware-timeout				223	time_delta
 ATTRIBUTE	IPX-Alias				224	integer
 ATTRIBUTE	Metric					225	integer
 ATTRIBUTE	PRI-Number-Type				226	integer

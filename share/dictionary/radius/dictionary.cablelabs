@@ -88,8 +88,8 @@ ATTRIBUTE	Policy-Deleted-Reason			68	integer
 ATTRIBUTE	Policy-Update-Reason			69	integer
 ATTRIBUTE	Policy-Decision-Status			70	integer
 ATTRIBUTE	Application-Manager-ID			71	integer
-ATTRIBUTE	Time-Usage-Limit			72	integer
-ATTRIBUTE	Gate-Time-Info				73	integer
+ATTRIBUTE	Time-Usage-Limit			72	time_delta
+ATTRIBUTE	Gate-Time-Info				73	time_delta
 ATTRIBUTE	Account-Code				80	string
 ATTRIBUTE	Authorization-Code			81	string
 

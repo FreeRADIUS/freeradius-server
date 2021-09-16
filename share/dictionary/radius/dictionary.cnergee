@@ -32,7 +32,7 @@ ATTRIBUTE	OTHERS-Speed				19	integer
 ATTRIBUTE	REDIFF-Speed				20	integer
 ATTRIBUTE	TORRENT-Speed				21	integer
 ATTRIBUTE	BELCACHE-Speed				22	integer
-ATTRIBUTE	DHCP-Lease-Time				23	integer
+ATTRIBUTE	DHCP-Lease-Time				23	time_delta
 
 VALUE	redirect-Pool			Deleted			1
 VALUE	redirect-Pool			Disabled		2

@@ -146,7 +146,7 @@ ATTRIBUTE	ERX-Mobile-IP-SPI			85	integer
 ATTRIBUTE	ERX-Mobile-IP-Key			86	string
 ATTRIBUTE	ERX-Mobile-IP-Replay			87	integer
 ATTRIBUTE	ERX-Mobile-IP-Access-Control		88	string
-ATTRIBUTE	ERX-Mobile-IP-Lifetime			89	integer
+ATTRIBUTE	ERX-Mobile-IP-Lifetime			89	time_delta
 
 ATTRIBUTE	ERX-L2TP-Resynch-Method			90	integer
 
@@ -158,10 +158,10 @@ ATTRIBUTE	ERX-L2c-Down-Stream-Data		93	string
 ATTRIBUTE	ERX-Tunnel-Tx-Speed-Method		94	integer
 
 ATTRIBUTE	ERX-IGMP-Query-Interval			95	integer
-ATTRIBUTE	ERX-IGMP-Max-Resp-Time			96	integer
+ATTRIBUTE	ERX-IGMP-Max-Resp-Time			96	time_delta
 ATTRIBUTE	ERX-IGMP-Immediate-Leave		97	integer
 ATTRIBUTE	ERX-MLD-Query-Interval			98	integer
-ATTRIBUTE	ERX-MLD-Max-Resp-Time			99	integer
+ATTRIBUTE	ERX-MLD-Max-Resp-Time			99	time_delta
 ATTRIBUTE	ERX-MLD-Immediate-Leave			100	integer
 ATTRIBUTE	ERX-IP-Block-Multicast			101	integer
 

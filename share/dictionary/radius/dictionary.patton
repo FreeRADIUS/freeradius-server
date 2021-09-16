@@ -43,7 +43,7 @@ ATTRIBUTE	Called-Remote-Udp-Port			74	integer
 ATTRIBUTE	Called-Local-Udp-Port			75	integer
 ATTRIBUTE	Called-Qos				76	integer
 ATTRIBUTE	Called-MOS				77	integer
-ATTRIBUTE	Called-Round-Trip-Time			78	integer
+ATTRIBUTE	Called-Round-Trip-Time			78	time_delta
 ATTRIBUTE	Calling-Unique-Id			80	string
 ATTRIBUTE	Calling-IP-Address			81	ipaddr
 ATTRIBUTE	Calling-Numbering-Plan			82	string
@@ -66,7 +66,7 @@ ATTRIBUTE	Calling-Remote-Udp-Port			106	integer
 ATTRIBUTE	Calling-Local-Udp-Port			107	integer
 ATTRIBUTE	Calling-Qos				108	integer
 ATTRIBUTE	Calling-MOS				109	integer
-ATTRIBUTE	Calling-Round-Trip-Time			110	integer
+ATTRIBUTE	Calling-Round-Trip-Time			110	time_delta
 
 VALUE	Disconnect-Cause		Valid-cause-code-not-yet-received 0x00
 VALUE	Disconnect-Cause		Unallocated-runassigned-number 0x01

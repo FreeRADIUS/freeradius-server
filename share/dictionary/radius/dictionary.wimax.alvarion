@@ -76,7 +76,7 @@ ATTRIBUTE	HA-RK-Key				15	octets encrypt=2
 # SPI-CMIP4
 ATTRIBUTE	HA-RK-SPI				16	integer
 
-ATTRIBUTE	HA-RK-Lifetime				17	integer
+ATTRIBUTE	HA-RK-Lifetime				17	time_delta
 
 #  The same as MN-HA-CMIP4, etc.  But in different packets.
 ATTRIBUTE	RRQ-HA-IP				18	combo-ip
@@ -297,12 +297,12 @@ ATTRIBUTE	Prepaid-Tariff-Switching		38	tlv
 ATTRIBUTE	Prepaid-Quota-Identifier		.1	string
 ATTRIBUTE	Volume-Used-After			.2	integer #1k
 ATTRIBUTE	Tariff-Switch-Interval			.3	integer #s
-ATTRIBUTE	Time-Interval-After			.4	integer #s
+ATTRIBUTE	Time-Interval-After			.4	time_delta #s
 
-ATTRIBUTE	Active-Time-Duration			39	integer
+ATTRIBUTE	Active-Time-Duration			39	time_delta
 ATTRIBUTE	DHCP-RK					40	octets encrypt=2
 ATTRIBUTE	DHCP-RK-Key-Id				41	integer
-ATTRIBUTE	DHCP-RK-Lifetime			42	integer
+ATTRIBUTE	DHCP-RK-Lifetime			42	time_delta
 ATTRIBUTE	DHCP-Msg-Server-IP			43	ipaddr
 ATTRIBUTE	Idle-Mode-Transition			44	byte
 ATTRIBUTE	NAP-Id					45	octets
@@ -328,7 +328,7 @@ ATTRIBUTE	HTTP-Redirection-Rule			54	string
 
 # Formatted as per IP Filter rule specification.
 ATTRIBUTE	IP-Redirection-Rule			55	string
-ATTRIBUTE	Hotline-Session-Timer			56	integer
+ATTRIBUTE	Hotline-Session-Timer			56	time_delta
 
 # 3 octets
 ATTRIBUTE	NSP-Id					57	octets
@@ -365,7 +365,7 @@ ATTRIBUTE	vHA-IP-MIP6				65	ipv6addr
 ATTRIBUTE	vHA-MIP4-Key				66	octets encrypt=2
 ATTRIBUTE	vHA-RK-Key				67	octets encrypt=2
 ATTRIBUTE	vHA-RK-SPI				68	integer
-ATTRIBUTE	vHA-RK-Lifetime				69	integer
+ATTRIBUTE	vHA-RK-Lifetime				69	time_delta
 
 ATTRIBUTE	MN-vHA-MIP6-Key				70	octets encrypt=2
 ATTRIBUTE	MN-vHA-MIP4-SPI				71	integer
@@ -374,7 +374,7 @@ ATTRIBUTE	vDHCPv4-Server				73	ipaddr
 ATTRIBUTE	vDHCPv6-Server				74	ipv6addr
 ATTRIBUTE	vDHCP-RK				75	octets encrypt=2
 ATTRIBUTE	vDHCP-RK-Key-ID				76	integer
-ATTRIBUTE	vDHCP-RK-Lifetime			77	integer
+ATTRIBUTE	vDHCP-RK-Lifetime			77	time_delta
 
 ATTRIBUTE	PMIP-Authenticated-Network-Identity	78	string
 ATTRIBUTE	Visited-Framed-IP-Address		79	ipaddr
@@ -477,14 +477,14 @@ ATTRIBUTE	hDHCP-DHCPv4-Address			.1	ipaddr
 ATTRIBUTE	hDHCP-DHCPv6-Address			.2	ipv6addr
 ATTRIBUTE	hDHCP-DHCP-RK				.3	string encrypt=2
 ATTRIBUTE	hDHCP-DHCP-RK-Key-Id			.4	integer
-ATTRIBUTE	hDHCP-DHCP-RK-Lifetime			.5	integer
+ATTRIBUTE	hDHCP-DHCP-RK-Lifetime			.5	time_delta
 
 ATTRIBUTE	vDHCP-Server-Parameters			87	tlv
 ATTRIBUTE	vDHCP-DHCPv4-Address			.1	ipaddr
 ATTRIBUTE	vDHCP-DHCPv6-Address			.2	ipv6addr
 ATTRIBUTE	vDHCP-DHCP-RK				.3	string encrypt=2
 ATTRIBUTE	vDHCP-DHCP-RK-Key-Id			.4	integer
-ATTRIBUTE	vDHCP-DHCP-RK-Lifetime			.5	integer
+ATTRIBUTE	vDHCP-DHCP-RK-Lifetime			.5	time_delta
 
 ATTRIBUTE	BS-Location				88	octets
 ATTRIBUTE	Visited-IPv4-HoA-PMIP6			89	byte

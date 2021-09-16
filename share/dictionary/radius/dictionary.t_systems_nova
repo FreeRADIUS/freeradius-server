@@ -21,7 +21,7 @@ ATTRIBUTE	Bandwidth-Min-Up			5	integer
 ATTRIBUTE	Bandwidth-Min-Down			6	integer
 ATTRIBUTE	Bandwidth-Max-Up			7	integer
 ATTRIBUTE	Bandwidth-Max-Down			8	integer
-ATTRIBUTE	Session-Terminate-Time			9	integer
+ATTRIBUTE	Session-Terminate-Time			9	time_delta
 
 #ATTRIBUTE	Session-Terminate-End-Of-Day 	10 integer
 ATTRIBUTE	Session-Terminate-EoD			10	integer

@@ -37,7 +37,7 @@ ATTRIBUTE	CHAP-Challenge				11	octets
 ATTRIBUTE	CHAP-MPPE-Keys				12	octets[24]  encrypt=1
 ATTRIBUTE	BAP-Usage				13	integer
 ATTRIBUTE	Link-Utilization-Threshold		14	integer # values are 1-100
-ATTRIBUTE	Link-Drop-Time-Limit			15	integer
+ATTRIBUTE	Link-Drop-Time-Limit			15	time_delta
 ATTRIBUTE	MPPE-Send-Key				16	octets	encrypt=2
 ATTRIBUTE	MPPE-Recv-Key				17	octets	encrypt=2
 ATTRIBUTE	RAS-Version				18	string
@@ -67,13 +67,13 @@ ATTRIBUTE	Secondary-NBNS-Server			31	ipaddr
 ATTRIBUTE	RAS-Client-Name				34	string
 ATTRIBUTE	RAS-Client-Version			35	string
 ATTRIBUTE	Quarantine-IPFilter			36	octets
-ATTRIBUTE	Quarantine-Session-Timeout		37	integer
+ATTRIBUTE	Quarantine-Session-Timeout		37	time_delta
 ATTRIBUTE	User-Security-Identity			40	string
 ATTRIBUTE	Identity-Type				41	integer
 ATTRIBUTE	Service-Class				42	string
 ATTRIBUTE	Quarantine-User-Class			44	string
 ATTRIBUTE	Quarantine-State			45	integer
-ATTRIBUTE	Quarantine-Grace-Time			46	integer
+ATTRIBUTE	Quarantine-Grace-Time			46	time_delta
 ATTRIBUTE	Network-Access-Server-Type		47	integer
 ATTRIBUTE	AFW-Zone				48	integer
 

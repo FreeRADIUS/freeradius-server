@@ -44,7 +44,7 @@ ATTRIBUTE	X-Ascend-User-Acct-Host			139	ipaddr
 ATTRIBUTE	X-Ascend-User-Acct-Port			140	integer
 ATTRIBUTE	X-Ascend-User-Acct-Key			141	string
 ATTRIBUTE	X-Ascend-User-Acct-Base			142	integer
-ATTRIBUTE	X-Ascend-User-Acct-Time			143	integer
+ATTRIBUTE	X-Ascend-User-Acct-Time			143	time_delta
 ATTRIBUTE	X-Ascend-Assign-IP-Client		144	ipaddr
 ATTRIBUTE	X-Ascend-Assign-IP-Server		145	ipaddr
 ATTRIBUTE	X-Ascend-Assign-IP-Global-Pool		146	string
@@ -95,11 +95,11 @@ ATTRIBUTE	X-Ascend-Pre-Input-Octets		190	integer
 ATTRIBUTE	X-Ascend-Pre-Output-Octets		191	integer
 ATTRIBUTE	X-Ascend-Pre-Input-Packets		192	integer
 ATTRIBUTE	X-Ascend-Pre-Output-Packets		193	integer
-ATTRIBUTE	X-Ascend-Maximum-Time			194	integer
+ATTRIBUTE	X-Ascend-Maximum-Time			194	time_delta
 ATTRIBUTE	X-Ascend-Disconnect-Cause		195	integer
 ATTRIBUTE	X-Ascend-Connect-Progress		196	integer
 ATTRIBUTE	X-Ascend-Data-Rate			197	integer
-ATTRIBUTE	X-Ascend-PreSession-Time		198	integer
+ATTRIBUTE	X-Ascend-PreSession-Time		198	time_delta
 ATTRIBUTE	X-Ascend-Token-Idle			199	integer
 ATTRIBUTE	X-Ascend-Token-Immediate		200	integer
 ATTRIBUTE	X-Ascend-Require-Auth			201	integer
@@ -112,9 +112,9 @@ ATTRIBUTE	X-Ascend-Menu-Selector			205	string
 #  These next two attributes conflict with the Digest attributes!
 #
 ATTRIBUTE	X-Ascend-Menu-Item			206	string
-ATTRIBUTE	X-Ascend-PW-Warntime			207	integer
+ATTRIBUTE	X-Ascend-PW-Warntime			207	time_delta
 
-ATTRIBUTE	X-Ascend-PW-Lifetime			208	integer
+ATTRIBUTE	X-Ascend-PW-Lifetime			208	time_delta
 ATTRIBUTE	X-Ascend-IP-Direct			209	ipaddr
 ATTRIBUTE	X-Ascend-PPP-VJ-Slot-Comp		210	integer
 ATTRIBUTE	X-Ascend-PPP-VJ-1172			211	integer
@@ -129,7 +129,7 @@ ATTRIBUTE	X-Ascend-FR-Direct			219	integer
 ATTRIBUTE	X-Ascend-FR-Direct-Profile		220	string
 ATTRIBUTE	X-Ascend-FR-Direct-DLCI			221	integer
 ATTRIBUTE	X-Ascend-Handle-IPX			222	integer
-ATTRIBUTE	X-Ascend-Netware-timeout		223	integer
+ATTRIBUTE	X-Ascend-Netware-timeout		223	time_delta
 ATTRIBUTE	X-Ascend-IPX-Alias			224	integer
 ATTRIBUTE	X-Ascend-Metric				225	integer
 ATTRIBUTE	X-Ascend-PRI-Number-Type		226	integer

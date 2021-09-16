@@ -159,10 +159,10 @@ ATTRIBUTE	FlowMediaType_FS1_F			142	string
 ATTRIBUTE	FlowMediaType_FS1_R			143	string
 ATTRIBUTE	FlowMediaType_FS2_F			144	string
 ATTRIBUTE	FlowMediaType_FS2_R			145	string
-ATTRIBUTE	Flow-PTime_FS1_F			146	integer
-ATTRIBUTE	Flow-PTime_FS1_R			147	integer
-ATTRIBUTE	Flow-PTime_FS2_F			148	integer
-ATTRIBUTE	Flow-PTime_FS2_R			149	integer
+ATTRIBUTE	Flow-PTime_FS1_F			146	time_delta
+ATTRIBUTE	Flow-PTime_FS1_R			147	time_delta
+ATTRIBUTE	Flow-PTime_FS2_F			148	time_delta
+ATTRIBUTE	Flow-PTime_FS2_R			149	time_delta
 ATTRIBUTE	Session-Media-Process			150	string
 
 # QoS measurement attributes

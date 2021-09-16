@@ -21,7 +21,7 @@ ATTRIBUTE	PPP-Circuit				5	integer
 ATTRIBUTE	PPP-Circuit-Name			6	string
 ATTRIBUTE	UU-Info					7	string
 ATTRIBUTE	User-Priority				8	integer
-ATTRIBUTE	CIR-Timer				9	integer
+ATTRIBUTE	CIR-Timer				9	time_delta
 ATTRIBUTE	FR-08-Mode				10	integer
 ATTRIBUTE	Destination-NAS-Port			11	integer
 ATTRIBUTE	FR-SVC-Addr				12	string
@@ -35,7 +35,7 @@ ATTRIBUTE	H323-Gatekeeper				19	ipaddr
 ATTRIBUTE	Global-Call-Id				20	string
 ATTRIBUTE	H323-Conference-Id			21	integer
 ATTRIBUTE	H323-Destination-NAS-ID			22	ipaddr
-ATTRIBUTE	H323-Dialed-Time			23	integer
+ATTRIBUTE	H323-Dialed-Time			23	time_delta
 ATTRIBUTE	Dialed-Number				24	string
 ATTRIBUTE	Inter-Arrival-Jitter			25	integer
 ATTRIBUTE	Dropped-Octets				26	integer
@@ -69,7 +69,7 @@ ATTRIBUTE	Access-Intercept-Log			53	string
 ATTRIBUTE	Private-Route-Table-ID			54	string
 ATTRIBUTE	Private-Route-Required			55	integer
 ATTRIBUTE	Cache-Refresh				56	integer
-ATTRIBUTE	Cache-Time				57	integer
+ATTRIBUTE	Cache-Time				57	time_delta
 ATTRIBUTE	Egress-Enabled				58	integer
 ATTRIBUTE	QOS-Upstream				59	string
 ATTRIBUTE	QOS-Downstream				60	string
@@ -155,7 +155,7 @@ ATTRIBUTE	User-Acct-Host				139	ipaddr
 ATTRIBUTE	User-Acct-Port				140	integer
 ATTRIBUTE	User-Acct-Key				141	string
 ATTRIBUTE	User-Acct-Base				142	integer
-ATTRIBUTE	User-Acct-Time				143	integer
+ATTRIBUTE	User-Acct-Time				143	time_delta
 ATTRIBUTE	Assign-IP-Client			144	ipaddr
 ATTRIBUTE	Assign-IP-Server			145	ipaddr
 ATTRIBUTE	Assign-IP-Global-Pool			146	string
@@ -206,11 +206,11 @@ ATTRIBUTE	Pre-Input-Octets			190	integer
 ATTRIBUTE	Pre-Output-Octets			191	integer
 ATTRIBUTE	Pre-Input-Packets			192	integer
 ATTRIBUTE	Pre-Output-Packets			193	integer
-ATTRIBUTE	Maximum-Time				194	integer
+ATTRIBUTE	Maximum-Time				194	time_delta
 ATTRIBUTE	Disconnect-Cause			195	integer
 ATTRIBUTE	Connect-Progress			196	integer
 ATTRIBUTE	Data-Rate				197	integer
-ATTRIBUTE	PreSession-Time				198	integer
+ATTRIBUTE	PreSession-Time				198	time_delta
 ATTRIBUTE	Token-Idle				199	integer
 ATTRIBUTE	Token-Immediate				200	integer
 ATTRIBUTE	Require-Auth				201	integer
@@ -219,8 +219,8 @@ ATTRIBUTE	Authen-Alias				203	string
 ATTRIBUTE	Token-Expiry				204	integer
 ATTRIBUTE	Menu-Selector				205	string
 ATTRIBUTE	Menu-Item				206	string
-ATTRIBUTE	PW-Warntime				207	integer
-ATTRIBUTE	PW-Lifetime				208	integer
+ATTRIBUTE	PW-Warntime				207	time_delta
+ATTRIBUTE	PW-Lifetime				208	time_delta
 ATTRIBUTE	IP-Direct				209	ipaddr
 ATTRIBUTE	PPP-VJ-Slot-Comp			210	integer
 ATTRIBUTE	PPP-VJ-1172				211	integer
@@ -235,7 +235,7 @@ ATTRIBUTE	FR-Direct				219	integer
 ATTRIBUTE	FR-Direct-Profile			220	string
 ATTRIBUTE	FR-Direct-DLCI				221	integer
 ATTRIBUTE	Handle-IPX				222	integer
-ATTRIBUTE	Netware-timeout				223	integer
+ATTRIBUTE	Netware-timeout				223	time_delta
 ATTRIBUTE	IPX-Alias				224	integer
 ATTRIBUTE	Metric					225	integer
 ATTRIBUTE	PRI-Number-Type				226	integer
@@ -273,7 +273,7 @@ ATTRIBUTE	Fr05-Vpi				257	integer
 ATTRIBUTE	Fr05-Vci				258	integer
 ATTRIBUTE	Fr05-Enabled				259	integer
 ATTRIBUTE	Tunnel-Auth-Type			260	octets # tag?
-ATTRIBUTE	MOH-Timeout				261	integer
+ATTRIBUTE	MOH-Timeout				261	time_delta
 ATTRIBUTE	ATM-Circuit-Name			262	string
 ATTRIBUTE	Priority-For-PPP			263	integer
 ATTRIBUTE	Max-RTP-Delay				264	integer
@@ -316,7 +316,7 @@ ATTRIBUTE	L2TP-Peer-Disconnect-Cause		300	integer
 ATTRIBUTE	L2TP-Peer-Connect-Progress		301	integer
 ATTRIBUTE	QuickConnect-Attempted			302	integer
 ATTRIBUTE	Num-Moh-Sessions			303	integer
-ATTRIBUTE	Cumulative-Hold-Time			304	integer
+ATTRIBUTE	Cumulative-Hold-Time			304	time_delta
 ATTRIBUTE	Modem-Modulation			305	integer
 ATTRIBUTE	User-Acct-Expiration			306	date
 ATTRIBUTE	User-Login-Level			307	integer
@@ -362,7 +362,7 @@ ATTRIBUTE	Dsl-Atuc-Curr-Snr-Mgn-D			10028	integer
 ATTRIBUTE	Dsl-Related-Slot			10029	integer
 ATTRIBUTE	Dsl-Related-Port			10030	integer
 ATTRIBUTE	Dsl-Sparing-Role			10031	integer
-ATTRIBUTE	Absolute-Time				10032	integer
+ATTRIBUTE	Absolute-Time				10032	time_delta
 ATTRIBUTE	Configured-Rate-Up-Min			10033	integer
 ATTRIBUTE	Configured-Rate-Up-Max			10034	integer
 ATTRIBUTE	Configured-Rate-Dn-Min			10035	integer
@@ -447,7 +447,7 @@ ATTRIBUTE	Min-SNR					20113	integer
 ATTRIBUTE	Max-SNR					20114	integer
 ATTRIBUTE	Local-Retrain-Requested			20115	integer
 ATTRIBUTE	Remote-Retrain-Requested		20116	integer
-ATTRIBUTE	Connection-Time				20117	integer
+ATTRIBUTE	Connection-Time				20117	date
 ATTRIBUTE	Modem-Disconnect-Reason			20118	integer
 ATTRIBUTE	Retrain-Reason				20119	integer
 

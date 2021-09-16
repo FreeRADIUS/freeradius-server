@@ -31,7 +31,7 @@ ATTRIBUTE	Bwd-Flow-Out-Src-Port			28	integer
 ATTRIBUTE	Bwd-Flow-Out-Dst-Addr			29	string
 ATTRIBUTE	Bwd-Flow-Out-Dst-Port			30	integer
 ATTRIBUTE	Fwd-Flow-Media-Type			31	string
-ATTRIBUTE	Fwd-Flow-PTime				32	integer
+ATTRIBUTE	Fwd-Flow-PTime				32	time_delta
 ATTRIBUTE	Fwd-Octets				33	integer
 ATTRIBUTE	Fwd-Packets				34	integer
 ATTRIBUTE	Fwd-RTCP-Packets-Lost			35	integer  #  future

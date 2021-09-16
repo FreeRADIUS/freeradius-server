@@ -39,9 +39,9 @@ ATTRIBUTE	Discover-Action				32	integer
 ATTRIBUTE	Release-Action				33	integer
 ATTRIBUTE	Fixed-Ip-Address			34	string
 ATTRIBUTE	Node-Fixed-Ip-Address			35	string
-ATTRIBUTE	Lease-Time				36	integer
+ATTRIBUTE	Lease-Time				36	time_delta
 ATTRIBUTE	Protocol-Type				40	integer
-ATTRIBUTE	Service-Timeout				50	integer
+ATTRIBUTE	Service-Timeout				50	time_delta
 ATTRIBUTE	Next-Service-Name			51	string
 ATTRIBUTE	Auto-Service-Name			52	string
 ATTRIBUTE	Auth-Source				53	integer
@@ -90,7 +90,7 @@ ATTRIBUTE	Wimax-Acl-Maximum-Latency		115	string
 ATTRIBUTE	Wimax-Acl-Unsolicited-Grant-Int		116	string
 ATTRIBUTE	Wimax-Acl-Sdu-Size			117	string
 ATTRIBUTE	Wimax-Acl-Unsolicited-Polling-Int	118	string
-ATTRIBUTE	Wimax-MSK-Lifetime			119	integer
+ATTRIBUTE	Wimax-MSK-Lifetime			119	time_delta
 ATTRIBUTE	Wimax-DM-Action-Code			120	integer
 ATTRIBUTE	Wimax-Acl-ARQ-Enable			121	string
 ATTRIBUTE	Wimax-Bsid-Next-Hop			122	ipaddr

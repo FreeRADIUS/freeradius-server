@@ -83,9 +83,9 @@ ATTRIBUTE	Redirecting-num-TON			77	integer
 ATTRIBUTE	Redirecting-num-NP			78	integer
 ATTRIBUTE	Redirecting-num-PI			79	integer
 ATTRIBUTE	Redirecting-num-RFD			80	integer
-ATTRIBUTE	Time-stamp-UTC				81	integer
-ATTRIBUTE	Time-stamp-TZ				82	integer
-ATTRIBUTE	Time-stamp-DST				83	integer
+ATTRIBUTE	Time-stamp-UTC				81	date
+ATTRIBUTE	Time-stamp-TZ				82	date
+ATTRIBUTE	Time-stamp-DST				83	date
 ATTRIBUTE	Session-routing-duration		84	integer
 ATTRIBUTE	Session-ringing-duration		85	integer
 ATTRIBUTE	Access-type				86	integer
@@ -128,7 +128,7 @@ ATTRIBUTE	Service-Description			122	string
 ATTRIBUTE	Service-Specific-Info			123	string
 ATTRIBUTE	Proxy-IP-Address			124	ipaddr
 ATTRIBUTE	Auth-DataRequest			125	integer
-ATTRIBUTE	IPT-Time-Stamp				126	integer
+ATTRIBUTE	IPT-Time-Stamp				126	date
 ATTRIBUTE	User-Name-Info				127	integer
 
 END-VENDOR	Ericsson

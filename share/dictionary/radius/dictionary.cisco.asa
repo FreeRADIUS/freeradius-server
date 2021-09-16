@@ -48,7 +48,7 @@ ATTRIBUTE	Required-Client-Firewall-Product-Code	46	integer
 ATTRIBUTE	Required-Client-Firewall-Description	47	string
 ATTRIBUTE	Require-HW-Client-Auth			48	integer
 ATTRIBUTE	Required-Individual-User-Auth		49	integer
-ATTRIBUTE	Authenticated-User-Idle-Timeout		50	integer
+ATTRIBUTE	Authenticated-User-Idle-Timeout		50	time_delta
 ATTRIBUTE	Cisco-IP-Phone-Bypass			51	integer
 ATTRIBUTE	IPsec-Split-Tunneling-Policy		55	integer
 ATTRIBUTE	IPsec-Required-Client-Firewall-Capability 56	integer
@@ -86,8 +86,8 @@ ATTRIBUTE	Access-List-Inbound			86	string
 ATTRIBUTE	Access-List-Outbound			87	string
 ATTRIBUTE	Perfect-Forward-Secrecy-Enable		88	integer
 ATTRIBUTE	NAC-Enable				89	integer
-ATTRIBUTE	NAC-Status-Query-Timer			90	integer
-ATTRIBUTE	NAC-Revalidation-Timer			91	integer
+ATTRIBUTE	NAC-Status-Query-Timer			90	time_delta
+ATTRIBUTE	NAC-Revalidation-Timer			91	time_delta
 ATTRIBUTE	NAC-Default-ACL				92	string
 ATTRIBUTE	WebVPN-URL-Entry-Enable			93	integer
 ATTRIBUTE	WebVPN-File-Access-Enable		94	integer
@@ -108,6 +108,7 @@ ATTRIBUTE	WebVPN-SVC-Client-DPD-Frequency		108	integer
 ATTRIBUTE	SVC-DPD-Interval-Gateway		109	integer
 ATTRIBUTE	WebVPN-SVC-Gateway-DPD-Frequency	109	integer
 ATTRIBUTE	SVC-Rekey-Time				110	integer
+# TODO: It must be "time_delta uint32,minutes"
 ATTRIBUTE	WebVPN-SVC-Rekey-Time			110	integer
 ATTRIBUTE	WebVPN-SVC-Rekey-Method			111	integer
 ATTRIBUTE	WebVPN-SVC-Compression			112	integer
@@ -126,7 +127,7 @@ ATTRIBUTE	WebVPN-Hidden-Shares			126	integer
 ATTRIBUTE	SVC-Modules				127	string
 ATTRIBUTE	SVC-Profiles				128	string
 ATTRIBUTE	SVC-Ask					131	integer
-ATTRIBUTE	SVC-Ask-Timeout				132	integer
+ATTRIBUTE	SVC-Ask-Timeout				132	time_delta
 ATTRIBUTE	IE-Proxy-PAC-URL			133	string
 ATTRIBUTE	Strip-Realm				135	integer
 ATTRIBUTE	Smart-Tunnel				136	string
@@ -140,8 +141,8 @@ ATTRIBUTE	VLAN					140	integer
 ATTRIBUTE	NAC-Settings				141	string
 ATTRIBUTE	Member-Of				145	string
 ATTRIBUTE	TunnelGroupName				146	string
-ATTRIBUTE	WebVPN-Idle-Timeout-Alert-Interval	148	integer
-ATTRIBUTE	WebVPN-Session-Timeout-Alert-Interval	149	integer
+ATTRIBUTE	WebVPN-Idle-Timeout-Alert-Interval	148	time_delta
+ATTRIBUTE	WebVPN-Session-Timeout-Alert-Interval	149	time_delta
 ATTRIBUTE	ClientType				150	integer
 ATTRIBUTE	SessionType				151	integer
 ATTRIBUTE	SessionSubtype				152	integer

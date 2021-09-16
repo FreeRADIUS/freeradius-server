@@ -46,7 +46,7 @@ ATTRIBUTE	Multicast-Rate-Limit			152	integer
 ATTRIBUTE	Multicast-Client			155	integer
 ATTRIBUTE	Disconnect-Cause			195	integer
 ATTRIBUTE	Data-Rate				197	integer
-ATTRIBUTE	PreSession-Time				198	integer
+ATTRIBUTE	PreSession-Time				198	time_delta
 ATTRIBUTE	Assign-IP-Pool				218	integer
 ATTRIBUTE	Maximum-Channels			235	integer
 ATTRIBUTE	Data-Filter				242	string

@@ -61,7 +61,7 @@ ATTRIBUTE	Reqrd-Client-Fw-Product-Code		46	integer
 ATTRIBUTE	Reqrd-Client-Fw-Description		47	string
 ATTRIBUTE	Require-HW-Client-Auth			48	integer
 ATTRIBUTE	Require-Individual-User-Auth		49	integer
-ATTRIBUTE	Authd-User-Idle-Timeout			50	integer
+ATTRIBUTE	Authd-User-Idle-Timeout			50	time_delta
 ATTRIBUTE	Cisco-IP-Phone-Bypass			51	integer
 ATTRIBUTE	User-Auth-Server-Name			52	string
 ATTRIBUTE	User-Auth-Server-Port			53	integer
@@ -96,8 +96,8 @@ ATTRIBUTE	Cisco-VPN3000-Access-List-Inbound	86	string
 ATTRIBUTE	Cisco-VPN3000-Access-List-Outbound	87	string
 ATTRIBUTE	Cisco-VPN3000-Perfect-Forward-Secrecy-Enable 88	integer
 ATTRIBUTE	Cisco-VPN3000-NAC-Enable		89	integer
-ATTRIBUTE	Cisco-VPN3000-NAC-Status-Query-Timer	90	integer
-ATTRIBUTE	Cisco-VPN3000-NAC-Revalidation-Timer	91	integer
+ATTRIBUTE	Cisco-VPN3000-NAC-Status-Query-Timer	90	time_delta
+ATTRIBUTE	Cisco-VPN3000-NAC-Revalidation-Timer	91	time_delta
 ATTRIBUTE	Cisco-VPN3000-NAC-Default-ACL		92	integer
 ATTRIBUTE	Cisco-VPN3000-WebVPN-URL-Entry-Enable	93	integer
 ATTRIBUTE	Cisco-VPN3000-WebVPN-File-Access-Enable	94	integer

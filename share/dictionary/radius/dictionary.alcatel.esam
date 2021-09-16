@@ -74,7 +74,7 @@ ATTRIBUTE	A-AL-Security				0x0717	integer
 ATTRIBUTE	A-AL-Cluster				0x0718	integer
 
 ATTRIBUTE	A-AL-Prompt				0x0719	string
-ATTRIBUTE	A-AL-Pwd-Timeout			0x071A	integer
+ATTRIBUTE	A-AL-Pwd-Timeout			0x071A	time_delta
 ATTRIBUTE	A-AL-Description			0x071B	string
 ATTRIBUTE	A-AL-SLOT-NUMBERING			0x071C	integer
 

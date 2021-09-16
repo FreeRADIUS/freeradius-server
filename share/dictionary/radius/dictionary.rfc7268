@@ -13,7 +13,7 @@ ATTRIBUTE	Allowed-Called-Station-Id		174	string
 ATTRIBUTE	EAP-Peer-Id				175	octets
 ATTRIBUTE	EAP-Server-Id				176	octets
 ATTRIBUTE	Mobility-Domain-Id			177	integer
-ATTRIBUTE	Preauth-Timeout				178	integer
+ATTRIBUTE	Preauth-Timeout				178	time_delta
 ATTRIBUTE	Network-Id-Name				179	octets
 
 # TLVs in the format defined in Figure 11-8 of Section 11.12 of

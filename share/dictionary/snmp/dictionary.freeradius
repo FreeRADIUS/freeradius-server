@@ -57,8 +57,8 @@ ATTRIBUTE	Radius-Auth-Serv			.1.1.1.1	tlv
 
 BEGIN-TLV	67.1.1.1.Radius-Auth-Serv
 ATTRIBUTE	Radius-Auth-Serv-Ident			1	string
-ATTRIBUTE	Radius-Auth-Serv-Up-Time		2	integer
-ATTRIBUTE	Radius-Auth-Serv-Reset-Time		3	integer
+ATTRIBUTE	Radius-Auth-Serv-Up-Time		2	time_delta
+ATTRIBUTE	Radius-Auth-Serv-Reset-Time		3	time_delta
 ATTRIBUTE	Radius-Auth-Serv-Config-Reset		4	integer
 
 VALUE	Radius-Auth-Serv-Config-Reset	other			1
