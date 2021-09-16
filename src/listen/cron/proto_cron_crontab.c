@@ -89,7 +89,7 @@ static const CONF_PARSER crontab_listen_config[] = {
 
 	{ FR_CONF_OFFSET("timespec", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY | FR_TYPE_REQUIRED, proto_cron_crontab_t, spec),
 	  		.func = time_parse },
-	
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -317,7 +317,7 @@ static int time_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 	if (parse_field(ci, &p, "day of month", &inst->tab[2], 1, 31, offsetof(struct tm, tm_mday)) < 0) return -1;
 	if (parse_field(ci, &p, "month",	&inst->tab[3], 1,12, offsetof(struct tm, tm_mon)) < 0) return -1;
 	if (parse_field(ci, &p, "day of week",	&inst->tab[4], 0, 6, offsetof(struct tm, tm_wday)) < 0) return -1;
-	
+
 	fr_skip_whitespace(p);
 
 	if (*p) {
@@ -515,7 +515,7 @@ static bool get_next(struct tm *tm, cron_tab_t const *tab)
 		return false;
 	}
 
-done:	
+done:
 	*(int *) (((uint8_t *) tm) + tab->offset) = num;
 	return true;
 }
