@@ -69,7 +69,7 @@ size_t fr_hw_cache_line_size(void)
 
 uint32_t fr_hw_num_cores_active(void)
 {
-       uint32_t lcores = 0, tsibs = 0;
+	uint32_t lcores = 0, tsibs = 0;
 
 	char buff[32];
 	char path[64];
@@ -90,13 +90,6 @@ uint32_t fr_hw_num_cores_active(void)
 		fclose(cpu);
 	}
 
-#ifdef __clang_analyzer__
-	/*
-	 *	Prevent clang scanner from warning about divide by zero
-	 */
-	if ((tsibs / lcores) == 0) return 1;
-#endif
-
 	/*
 	 *	Catch Linux weirdness.
 	 *
@@ -104,6 +97,13 @@ uint32_t fr_hw_num_cores_active(void)
 	 *	but it's not.
 	 */
 	if (unlikely((tsibs == 0) || (lcores == 0) || (lcores > tsibs))) return 1;
+
+#ifdef __clang_analyzer__
+	/*
+	 *	Prevent clang scanner from warning about divide by zero
+	 */
+	if ((tsibs / lcores) == 0) return 1;
+#endif
 
 	return lcores / (tsibs / lcores);
 }
