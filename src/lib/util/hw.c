@@ -71,30 +71,31 @@ uint32_t fr_hw_num_cores_active(void)
 {
        uint32_t lcores = 0, tsibs = 0;
 
-        char buff[32];
-        char path[64];
+	char buff[32];
+	char path[64];
 
-        for (lcores = 0;;lcores++) {
-                FILE *cpu;
+	for (lcores = 0;;lcores++) {
+		FILE *cpu;
 
-                snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%u/topology/thread_siblings_list", lcores);
+		snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%u/topology/thread_siblings_list", lcores);
 
-                cpu = fopen(path, "r");
-                if (!cpu) break;
+		cpu = fopen(path, "r");
+		if (!cpu) break;
 
-                while (fscanf(cpu, "%[0-9]", buff)) {
-                        tsibs++;
-                        if (fgetc(cpu) != ',') break;
-                }
+		while (fscanf(cpu, "%[0-9]", buff)) {
+			tsibs++;
+			if (fgetc(cpu) != ',') break;
+		}
 
-                fclose(cpu);
-        }
+		fclose(cpu);
+	}
+
+	if (!tsibs || !lcores) return 1;
 
 	/*
 	 *	Prevent clang scanner from warning about divide by zero
 	 */
-	tsibs = tsibs / (lcores ? lcores : 1);
-	return lcores / (tsibs ? tsibs : 1);
+	return lcores / (tsibs / lcores);
 }
 #else
 size_t fr_hw_cache_line_size(void)
