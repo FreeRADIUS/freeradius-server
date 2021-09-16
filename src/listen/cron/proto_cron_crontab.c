@@ -343,13 +343,12 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	timers do their work.
 	 */
 	if (!thread->suspended) {
-		static fr_event_update_t pause[] = {
+		static fr_event_update_t const pause_read[] = {
 			FR_EVENT_SUSPEND(fr_event_io_func_t, read),
-			FR_EVENT_SUSPEND(fr_event_io_func_t, write),
 			{ 0 }
 		};
 
-		if (fr_event_filter_update(thread->el, li->fd, FR_EVENT_FILTER_IO, pause) < 0) {
+		if (fr_event_filter_update(thread->el, li->fd, FR_EVENT_FILTER_IO, pause_read) < 0) {
 			fr_assert(0);
 		}
 
@@ -403,7 +402,7 @@ static ssize_t mod_write(UNUSED fr_listen_t *li, UNUSED void *packet_ctx, UNUSED
  */
 static int mod_open(fr_listen_t *li)
 {
-	proto_cron_crontab_t const		*inst = talloc_get_type_abort_const(li->app_io_instance, proto_cron_crontab_t);
+	proto_cron_crontab_t const	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_cron_crontab_t);
 	proto_cron_crontab_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_cron_crontab_thread_t);
 
 	fr_ipaddr_t			ipaddr;
