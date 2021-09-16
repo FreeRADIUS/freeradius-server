@@ -463,6 +463,7 @@ do { \
 		  treq->id, \
 		  fr_table_str_by_value(fr_trunk_request_states, treq->pub.state, "<INVALID>"), \
 		  fr_table_str_by_value(fr_trunk_request_states, _new, "<INVALID>")); \
+	treq->pub.state = _new; \
 } while (0)
 #define REQUEST_BAD_STATE_TRANSITION(_new) \
 do { \
