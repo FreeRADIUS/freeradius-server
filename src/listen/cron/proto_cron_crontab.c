@@ -571,6 +571,21 @@ static void do_cron(fr_event_list_t *el, fr_time_t now, void *uctx)
 		time_t w_time;
 
 		/*
+		 *	No more days this week.  Go to the
+		 *	start of the next week.
+		 */
+		if (!w_day) {
+			w_tm = tm;
+			w_tm.tm_mday += (6 - tm_wday);
+
+			(void) mktime(&w_tm); /* normalize it */
+
+			tm_day = w_tm.tm_day;
+			w_day = get_next(&w_tm, &thread->inst->tab[4]);
+			fr_assert(w_day);
+		}
+
+		/*
 		 *	Next weekday is ignored by mktime(), so we
 		 *	have to update the day of the month with the
 		 *	new value.
@@ -580,21 +595,8 @@ static void do_cron(fr_event_list_t *el, fr_time_t now, void *uctx)
 		 *	of the month, and mktime() will normalize that
 		 *	to the correct day for the next month.
 		 */
-		if (w_day) {
-			fr_assert(tm.tm_wday > tm_wday);
-			w_tm.tm_mday += tm.tm_wday - tm_wday;
-		} else {
-			/*
-			 *	No more days this week.  Go to the
-			 *	start of the next week.
-			 */
-			w_tm = tm;
-			w_tm.tm_mday += (6 - tm_wday);
-
-			(void) mktime(&w_tm); /* normalize it */
-			w_day = get_next(&w_tm, &thread->inst->tab[4]);
-			fr_assert(w_day);
-		}
+		fr_assert(tm.tm_wday > tm_wday);
+		w_tm.tm_mday += tm.tm_wday - tm_wday;
 
 		/*
 		 *	No more days this month, go to the next month,
