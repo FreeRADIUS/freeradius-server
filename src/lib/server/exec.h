@@ -90,7 +90,7 @@ int	fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_f
 
 int	fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 		      fr_value_box_list_t *args,
-		      fr_pair_list_t *env_pairs, bool env_inherit, bool env_escape,
+		      fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit,
 		      bool need_stdin,
 		      bool store_stdout, TALLOC_CTX *stdout_ctx,
 		      fr_time_delta_t timeout);
