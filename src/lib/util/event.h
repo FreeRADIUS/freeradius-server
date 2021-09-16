@@ -215,7 +215,7 @@ int		_fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 
 int		_fr_event_filter_update(NDEBUG_LOCATION_ARGS
 					fr_event_list_t *el, int fd, fr_event_filter_t filter,
-					fr_event_update_t updates[]);
+					fr_event_update_t const updates[]);
 #define		fr_event_filter_update(...) _fr_event_filter_update(NDEBUG_LOCATION_EXP __VA_ARGS__)
 
 int		_fr_event_fd_insert(NDEBUG_LOCATION_ARGS

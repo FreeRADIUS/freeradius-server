@@ -972,7 +972,7 @@ int _fr_event_fd_move(NDEBUG_LOCATION_ARGS
  *			the callback function.
  */
 int _fr_event_filter_update(NDEBUG_LOCATION_ARGS
-			    fr_event_list_t *el, int fd, fr_event_filter_t filter, fr_event_update_t updates[])
+			    fr_event_list_t *el, int fd, fr_event_filter_t filter, fr_event_update_t const updates[])
 {
 	fr_event_fd_t		*ef;
 	size_t			i;
