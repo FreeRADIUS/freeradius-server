@@ -90,7 +90,11 @@ uint32_t fr_hw_num_cores_active(void)
                 fclose(cpu);
         }
 
-	return lcores / (tsibs / lcores);
+	/*
+	 *	Prevent clang scanner from warning about divide by zero
+	 */
+	tsibs = tsibs / (lcores ? lcores : 1);
+	return lcores / (tsibs ? tsibs : 1);
 }
 #else
 size_t fr_hw_cache_line_size(void)
