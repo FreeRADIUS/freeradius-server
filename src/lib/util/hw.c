@@ -90,10 +90,20 @@ uint32_t fr_hw_num_cores_active(void)
 		fclose(cpu);
 	}
 
+#ifdef __clang_analyzer__
 	/*
 	 *	Prevent clang scanner from warning about divide by zero
 	 */
-	if ((tsibs == 0) || (lcores == 0)) return 1;
+	if ((tsibs / lcores) == 0) return 1;
+#neidf
+
+	/*
+	 *	Catch Linux weirdness.
+	 *
+	 *	You'd think this'd be enough to quite clang scan,
+	 *	but it's not.
+	 */
+	if (unlikely((tsibs == 0) || (lcores == 0) || (lcores > tsibs))) return 1;
 
 	return lcores / (tsibs / lcores);
 }
