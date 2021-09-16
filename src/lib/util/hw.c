@@ -95,7 +95,7 @@ uint32_t fr_hw_num_cores_active(void)
 	 *	Prevent clang scanner from warning about divide by zero
 	 */
 	if ((tsibs / lcores) == 0) return 1;
-#neidf
+#endif
 
 	/*
 	 *	Catch Linux weirdness.
