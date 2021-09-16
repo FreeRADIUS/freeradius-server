@@ -87,7 +87,7 @@ static int time_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 static const CONF_PARSER crontab_listen_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, proto_cron_crontab_t, filename) },
 
-	{ FR_CONF_OFFSET("when", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY | FR_TYPE_REQUIRED, proto_cron_crontab_t, spec),
+	{ FR_CONF_OFFSET("timespec", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY | FR_TYPE_REQUIRED, proto_cron_crontab_t, spec),
 	  		.func = time_parse },
 	
 	CONF_PARSER_TERMINATOR
@@ -267,8 +267,6 @@ static fr_table_ptr_sorted_t time_names[] = {
 	{ L("midnight"),	"0 0 * * *" },
 	{ L("monthly"),		"0 0 1 * *" },
 //	{ L("reboot"),		"+" },
-//	{ L("shutdown"),	"-" },
-//	{ L("startup"),		"+" },
 	{ L("weekly"),		"0 0 * * 0" },
 	{ L("yearly"),		"0 0 1 1 *" },
 };
@@ -545,18 +543,87 @@ static void do_cron(fr_event_list_t *el, fr_time_t now, void *uctx)
 	tm.tm_sec = 0;
 	if (get_next(&tm, &thread->inst->tab[0])) goto set; /* minutes */
 	if (get_next(&tm, &thread->inst->tab[1])) goto set; /* hours */
-	if (get_next(&tm, &thread->inst->tab[2])) goto set; /* days */
-	if (get_next(&tm, &thread->inst->tab[3])) goto set; /* month */
 
 	/*
-	 *	We ran out of months, so we have to go to the next year.
+	 *	If we're running it every day of the week, just pay
+	 *	attention to the day of the month.
 	 */
-	tm.tm_year++;
+	if (thread->inst->tab[4].wildcard) {
+		if (get_next(&tm, &thread->inst->tab[2])) goto set; /* days */
+
+		if (get_next(&tm, &thread->inst->tab[3])) goto set; /* month */
+
+		/*
+		 *	We ran out of months, so we have to go to the next year.
+		 */
+		tm.tm_year++;
+
+	} else {
+		/*
+		 *	Pick the earliest of "day of month" and "day of week".
+		 */
+		struct tm m_tm = tm;
+		struct tm w_tm = tm;
+		int tm_wday = tm.tm_wday;
+		bool m_day = get_next(&m_tm, &thread->inst->tab[2]);
+		bool w_day = get_next(&w_tm, &thread->inst->tab[4]);
+		time_t m_time;
+		time_t w_time;
+
+		/*
+		 *	Next weekday is ignored by mktime(), so we
+		 *	have to update the day of the month with the
+		 *	new value.
+		 *
+		 *	Note that mktime() will also normalize the
+		 *	values, so we can just add "28 + 5" for a day
+		 *	of the month, and mktime() will normalize that
+		 *	to the correct day for the next month.
+		 */
+		if (w_day) {
+			fr_assert(tm.tm_wday > tm_wday);
+			w_tm.tm_mday += tm.tm_wday - tm_wday;
+		} else {
+			/*
+			 *	No more days this week.  Go to the
+			 *	start of the next week.
+			 */
+			w_tm = tm;
+			w_tm.tm_mday += (6 - tm_wday);
+
+			(void) mktime(&w_tm); /* normalize it */
+			w_day = get_next(&w_tm, &thread->inst->tab[4]);
+			fr_assert(w_day);
+		}
+
+		/*
+		 *	No more days this month, go to the next month,
+		 *	and potentially the next year.
+		 */
+		if (!m_day && !get_next(&m_tm, &thread->inst->tab[3])) m_tm.tm_year++;
+
+		/*
+		 *	We now have 2 times, one for "day of month"
+		 *	and another for "day of week".  Pick the
+		 *	earliest one.
+		 */
+		m_time = mktime(&m_tm);
+		w_time = mktime(&w_tm);
+
+		if (m_time < w_time) {
+			end = m_time;
+		} else {
+			end = w_time;
+		}
+
+		goto use_time;
+	}
 
 set:
 	end = mktime(&tm);
 	fr_assert(end >= start);
 
+use_time:
 	if (DEBUG_ENABLED2) {
 		char buffer[256];
 
