@@ -581,8 +581,12 @@ static void do_cron(fr_event_list_t *el, fr_time_t now, void *uctx)
 			(void) mktime(&w_tm); /* normalize it */
 
 			tm_wday = w_tm.tm_wday;
+#ifndef NDEBUG
 			w_day = get_next(&w_tm, &thread->inst->tab[4]);
 			fr_assert(w_day);
+#else
+			(void) get_next(&w_tm, &thread->inst->tab[4]);
+#endif
 		}
 
 		/*
