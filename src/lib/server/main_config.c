@@ -40,12 +40,17 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/file.h>
+#include <freeradius-devel/util/hw.h>
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/sem.h>
 
 #include <sys/stat.h>
 #include <pwd.h>
 #include <grp.h>
+
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/sysctl.h>
 
 #ifdef HAVE_SYSLOG_H
 #  include <syslog.h>
@@ -164,7 +169,7 @@ static const CONF_PARSER resources[] = {
 static const CONF_PARSER thread_config[] = {
 	{ FR_CONF_OFFSET("num_networks", FR_TYPE_UINT32, main_config_t, max_networks), .dflt = STRINGIFY(1),
 	  .func = num_networks_parse },
-	{ FR_CONF_OFFSET("num_workers", FR_TYPE_UINT32, main_config_t, max_workers), .dflt = STRINGIFY(4),
+	{ FR_CONF_OFFSET("num_workers", FR_TYPE_UINT32, main_config_t, max_workers), .dflt = STRINGIFY(0),
 	  .func = num_workers_parse },
 
 	{ FR_CONF_OFFSET("stats_interval", FR_TYPE_TIME_DELTA | FR_TYPE_HIDDEN, main_config_t, stats_interval), },
@@ -433,13 +438,43 @@ static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent,
 {
 	int		ret;
 	uint32_t	value;
+	main_config_t	*conf = parent;
 
 	if ((ret = cf_pair_parse_value(ctx, out, parent, ci, rule)) < 0) return ret;
 
 	memcpy(&value, out, sizeof(value));
 
-	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, >=, 1);
-	FR_INTEGER_BOUND_CHECK("thread.num_workers", value, <=, 64);
+	/*
+	 *	If no value is specified, try and
+	 *	discover it automatically.
+	 */
+	if (value == 0) {
+		value = fr_hw_num_cores_active();
+
+		/*
+		 *	If we've got more than four times
+		 *	the number of cores as we have
+		 *	networks, then set the number of
+		 *	workers to the number of cores
+		 *	minus networks.
+		 *
+		 *	This ensures at a least a 4:1
+		 *	ratio of workers to networks,
+		 *      which seems like a sensible ratio.
+		 */
+		if ((conf->max_networks * 4) < value) {
+			value -= conf->max_networks;
+		}
+
+		/*
+		 *	Otherwise just create as many
+		 *	workers as we have cores.
+		 */
+		cf_log_info(ci, "Setting thread.workers = %u", value);
+	} else {
+		FR_INTEGER_BOUND_CHECK("thread.num_workers", value, >=, 1);
+		FR_INTEGER_BOUND_CHECK("thread.num_workers", value, <=, 128);
+	}
 
 	memcpy(out, &value, sizeof(value));
 

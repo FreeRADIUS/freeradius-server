@@ -22,6 +22,7 @@
  */
 
 #define CACHE_LINE_DEFAULT	128
+#define CORES_DEFAULT		1
 
 #include <freeradius-devel/util/hw.h>
 
@@ -37,8 +38,19 @@ size_t fr_hw_cache_line_size(void)
 	return cache_line_size;
 }
 
+uint32_t fr_hw_num_cores_active(void)
+{
+	uint32_t num_cores		= CORES_DEFAULT;
+	size_t num_cores_len		= sizeof(num_cores);
+
+	sysctlbyname("hw.physicalcpu", &num_cores, &num_cores_len, 0, 0);
+
+	return num_cores;
+}
+
 #elif defined(__linux__)
 #include <stdio.h>
+#include <unistd.h>
 size_t fr_hw_cache_line_size(void)
 {
 	FILE *file			= NULL;
@@ -55,9 +67,39 @@ size_t fr_hw_cache_line_size(void)
 	return cache_line_size;
 }
 
+uint32_t fr_hw_num_cores_active(void)
+{
+       uint32_t lcores = 0, tsibs = 0;
+
+        char buff[32];
+        char path[64];
+
+        for (lcores = 0;;lcores++) {
+                FILE *cpu;
+
+                snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%u/topology/thread_siblings_list", lcores);
+
+                cpu = fopen(path, "r");
+                if (!cpu) break;
+
+                while (fscanf(cpu, "%[0-9]", buff)) {
+                        tsibs++;
+                        if (fgetc(cpu) != ',') break;
+                }
+
+                fclose(cpu);
+        }
+
+	return lcores / (tsibs / lcores);
+}
 #else
 size_t fr_hw_cache_line_size(void)
 {
 	return CACHE_LINE_DEFAULT;
+}
+
+uint32_t fr_hw_num_cores_active(void)
+{
+	return CORES_DEFAULT;
 }
 #endif

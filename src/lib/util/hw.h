@@ -28,8 +28,11 @@ RCSIDH(hw_h, "$Id$")
 extern "C" {
 #endif
 #include <stddef.h>
+#include <stdint.h>
 
-size_t	fr_hw_cache_line_size(void);
+size_t		fr_hw_cache_line_size(void);
+
+uint32_t	fr_hw_num_cores_active(void);
 
 #ifdef __cplusplus
 }
