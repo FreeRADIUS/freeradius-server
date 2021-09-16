@@ -2429,6 +2429,10 @@ void fr_event_service(fr_event_list_t *el)
 			}
 
 		service:
+#ifndef NDEBUG
+			EVENT_DEBUG("Running event for fd %d, from %s[%d]", ef->fd, ef->file, ef->line);
+#endif
+
 			/*
 			 *	Service the event_fd events
 			 */
