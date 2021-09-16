@@ -899,6 +899,17 @@ static void fr_network_error(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 }
 
 
+static fr_event_update_t const pause_write[] = {
+	FR_EVENT_SUSPEND(fr_event_io_func_t, write),
+	{ 0 }
+};
+
+static fr_event_update_t const resume_write[] = {
+	FR_EVENT_RESUME(fr_event_io_func_t, write),
+	{ 0 }
+};
+
+
 /** Write packets to the network.
  *
  * @param el the event list
@@ -966,11 +977,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 				}
 
 				if (!s->blocked) {
-					if (fr_event_fd_insert(nr, nr->el, s->listen->fd,
-							       fr_network_read,
-							       fr_network_write,
-							       fr_network_error,
-							       s) < 0) {
+					if (fr_event_filter_update(nr->el, s->listen->fd, FR_EVENT_FILTER_IO, resume_write) < 0) {
 						PERROR("Failed adding write callback to event loop");
 						goto dead;
 					}
@@ -1027,11 +1034,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 	 *	We've successfully written all of the packets.  Remove
 	 *	the write callback.
 	 */
-	if (fr_event_fd_insert(nr, nr->el, s->listen->fd,
-			       fr_network_read,
-			       NULL,
-			       fr_network_error,
-			       s) < 0) {
+	if (fr_event_filter_update(nr->el, s->listen->fd, FR_EVENT_FILTER_IO, pause_write) < 0) {
 		PERROR("Failed removing write callback from event loop");
 		fr_network_socket_dead(nr, s);
 	}
@@ -1131,13 +1134,20 @@ static void fr_network_listen_callback(void *ctx, void const *data, size_t data_
 
 	if (fr_event_fd_insert(nr, nr->el, s->listen->fd,
 			       fr_network_read,
-			       NULL,
+			       fr_network_write,
 			       fr_network_error,
 			       s) < 0) {
 		PERROR("Failed adding new socket to network event loop");
 		talloc_free(s);
 		return;
 	}
+
+	/*
+	 *	Start of with write updates being paused.  We don't
+	 *	care about being able to write if there's nothing to
+	 *	write.
+	 */
+	(void) fr_event_filter_update(nr->el, s->listen->fd, FR_EVENT_FILTER_IO, pause_write);
 
 	/*
 	 *	Add the listener before calling the app_io, so that
