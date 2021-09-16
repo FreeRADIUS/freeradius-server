@@ -50,7 +50,6 @@ RCSID("$Id$")
 
 #include <unistd.h>
 #include <sys/types.h>
-#include <sys/sysctl.h>
 
 #ifdef HAVE_SYSLOG_H
 #  include <syslog.h>
