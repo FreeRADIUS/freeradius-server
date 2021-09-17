@@ -333,8 +333,8 @@ error:
 			break;
 		case PAC_INFO_PAC_LIFETIME:
 			rad_assert(t->pac.expires == 0);
-			t->pac.expires = vp->vp_integer;
-			t->pac.expired = (vp->vp_integer <= time(NULL));
+			t->pac.expires = vp->vp_integer + time(NULL);
+			t->pac.expired = false;
 			break;
 		case PAC_INFO_PAC_KEY:
 			rad_assert(t->pac.key == NULL);

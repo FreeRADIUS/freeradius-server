@@ -1220,7 +1220,10 @@ PW_CODE eap_fast_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 				t->mode = EAP_FAST_PROVISIONING_AUTH;
 			}
 
-			if (!t->pac.expires || t->pac.expired || t->pac.expires - time(NULL) < t->pac_lifetime * 0.6)
+			/*
+			 *	Send a new pac at ~0.6 times the lifetime.
+			 */
+			if (!t->pac.expires || t->pac.expired || t->pac.expires < (time(NULL) + (t->pac_lifetime >> 1) + (t->pac_lifetime >> 3))) {
 				t->pac.send = true;
 		}
 
