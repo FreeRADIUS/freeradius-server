@@ -25,12 +25,18 @@ ATTRIBUTE	Diffserv-Class-Option			5	integer
 ATTRIBUTE	Accounting-Container			6	octets
 ATTRIBUTE	Home-Agent-IP-Address			7	ipaddr
 
-# A number formed from the concatenation of the home RADIUS IP address,
-# the FA IP address, and a 32-bit Unix timestamp, all encoded as 8 ASCII
+#  A number formed from the concatenation of the home RADIUS IP address,
+#  the FA IP address, and a 32-bit Unix timestamp, all encoded as 8 ASCII
 #  hex characters.
 ATTRIBUTE	KeyID					8	string # 22 octets
 
 ATTRIBUTE	PCF-IP-Address				9	ipaddr
+
+#  A number formed from the concatenation of SID (4 octets)+ NID (4
+#  octets)+ Cell Identifier (type 2) (4 octets). In the Cell
+#  Identifier the 12 upper bits are the Cell Id and the lower 4 bits
+#  are the Sector. Each item is encoded using hexadecimal uppercase
+#  ASCII characters
 ATTRIBUTE	BSID					10	string
 ATTRIBUTE	User-Id					11	integer
 ATTRIBUTE	Forward-FCH-Mux-Option			12	integer
@@ -168,7 +174,7 @@ ATTRIBUTE	Volume-Used-ATS-Overflow		.3	short
 ATTRIBUTE	Tariff-Switch-Interval			.4	integer
 ATTRIBUTE	Time-Interval-After-Tariff-Switch-Update .5	integer
 
-ATTRIBUTE	MEID					116	octets	# sub tlvs?
+ATTRIBUTE	MEID					116	string
 
 ATTRIBUTE	DNS-Server				117	tlv
 ATTRIBUTE	Primary-IP-Address			.1	ipaddr
