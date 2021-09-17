@@ -425,7 +425,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 			port_seen = true;
 
 		} else if (vp->da == attr_acct_delay_time) {
-			delay = vp->vp_ipv4addr;
+			delay = vp->vp_uint32;
 		}
 	}
 
