@@ -55,7 +55,7 @@ static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *
 {
 	unlang_group_t			*g;
 	unlang_call_t			*gext;
-	fr_dict_enum_t const		*type_enum;
+	fr_dict_enum_value_t const		*type_enum;
 	fr_pair_t			*packet_type_vp = NULL;
 
 	/*

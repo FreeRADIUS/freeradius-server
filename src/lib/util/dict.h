@@ -203,7 +203,7 @@ typedef struct {
 	uint8_t			ext[FR_DICT_ENUM_EXT_MAX];	//!< Extensions to the dictionary attribute.
 
 	fr_dict_attr_t const	*child_struct[];		//!< for key fields
-} fr_dict_enum_t CC_HINT(aligned(FR_EXT_ALIGNMENT));
+} fr_dict_enum_value_t CC_HINT(aligned(FR_EXT_ALIGNMENT));
 
 /** Private enterprise
  *
@@ -551,11 +551,11 @@ fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr
 
 fr_dict_attr_t const	*fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
 
-fr_dict_enum_t		*fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value);
+fr_dict_enum_value_t		*fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value);
 
 char const		*fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value);
 
-fr_dict_enum_t		*fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name, ssize_t len);
+fr_dict_enum_value_t		*fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name, ssize_t len);
 /** @} */
 
 /** @name Dictionary and protocol loading

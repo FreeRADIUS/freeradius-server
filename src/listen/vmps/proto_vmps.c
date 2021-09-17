@@ -109,7 +109,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 		      CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	proto_vmps_t		*inst = talloc_get_type_abort(parent, proto_vmps_t);
-	fr_dict_enum_t		*dv;
+	fr_dict_enum_value_t		*dv;
 	CONF_PAIR		*cp;
 	char const		*value;
 

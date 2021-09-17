@@ -2175,7 +2175,7 @@ int fr_pair_value_mem_append_buffer(fr_pair_t *vp, uint8_t *src, bool tainted)
 char const *fr_pair_value_enum(fr_pair_t const *vp, char buff[20])
 {
 	char const		*str;
-	fr_dict_enum_t const	*enumv = NULL;
+	fr_dict_enum_value_t const	*enumv = NULL;
 
 	if (!fr_box_is_numeric(&vp->data)) {
 		fr_strerror_printf("Pair %s is not numeric", vp->da->name);
@@ -2213,7 +2213,7 @@ char const *fr_pair_value_enum(fr_pair_t const *vp, char buff[20])
  */
 int fr_pair_value_enum_box(fr_value_box_t const **out, fr_pair_t *vp)
 {
-	fr_dict_enum_t const	*dv;
+	fr_dict_enum_value_t const	*dv;
 
 	if (!out || !vp ) return -1;
 

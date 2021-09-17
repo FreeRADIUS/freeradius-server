@@ -39,7 +39,7 @@
  */
 typedef struct {
 	char const 		*name;			//!< Instance name.
-	fr_dict_enum_t		*auth_type;		//!< Our Auth-Type.
+	fr_dict_enum_value_t		*auth_type;		//!< Our Auth-Type.
 	unsigned int		id_len;			//!< The length of the Public ID portion of the OTP string.
 	bool			split;			//!< Split password string into components.
 	bool			decrypt;		//!< Decrypt the OTP string using the yubikey library.

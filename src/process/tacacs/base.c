@@ -274,7 +274,7 @@ RESUME(recv_tacacs)
 		 */
 		if (state->attr_process) {
 			fr_pair_t *vp;
-			fr_dict_enum_t const *dv;
+			fr_dict_enum_value_t const *dv;
 			CONF_SECTION *subcs;
 
 			vp = fr_pair_find_by_da(&request->request_pairs, *state->attr_process, 0);

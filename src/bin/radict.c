@@ -141,7 +141,7 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 	char 			oid_str[512];
 	char			flags[256];
 	fr_hash_iter_t		iter;
-	fr_dict_enum_t		*enumv;
+	fr_dict_enum_value_t		*enumv;
 
 	(void)fr_dict_attr_oid_print(&FR_SBUFF_OUT(oid_str, sizeof(oid_str)), NULL, da, false);
 

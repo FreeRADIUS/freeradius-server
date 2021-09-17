@@ -684,7 +684,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			char		*value;
 			char		type_str[64];
 			char		*p;
-			fr_dict_enum_t	*type;
+			fr_dict_enum_value_t	*type;
 
 			NEXT_LINE(line, buffer);	/* Should be the OID */
 			NEXT_LINE(value, value_buff);	/* Should be the value */

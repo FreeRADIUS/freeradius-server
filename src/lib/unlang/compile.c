@@ -3053,7 +3053,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 
 	fr_dict_t const			*dict;
 	fr_dict_attr_t const		*da = NULL;
-	fr_dict_enum_t const		*type_enum = NULL;
+	fr_dict_enum_value_t const		*type_enum = NULL;
 
 	char const			*packet_name = NULL;
 	char				*p, *namespace = NULL;

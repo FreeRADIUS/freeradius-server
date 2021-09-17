@@ -117,7 +117,7 @@ fr_dict_attr_autoload_t proto_detail_dict_attr[] = {
 static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
 	proto_detail_t		*inst = talloc_get_type_abort(parent, proto_detail_t);
-	fr_dict_enum_t const	*type_enum;
+	fr_dict_enum_value_t const	*type_enum;
 	CONF_PAIR		*cp = cf_item_to_pair(ci);
 	char const		*value = cf_pair_value(cp);
 

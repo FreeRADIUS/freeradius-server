@@ -292,7 +292,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 	 */
 	if (key_vp) {
 		ssize_t slen;
-		fr_dict_enum_t const *enumv;
+		fr_dict_enum_value_t const *enumv;
 		child = NULL;
 
 		FR_PROTO_HEX_DUMP(p, (end - p), "fr_struct_from_network - substruct");

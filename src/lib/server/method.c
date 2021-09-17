@@ -56,7 +56,7 @@ fr_dict_attr_autoload_t module_method_attr[] = {
  */
 module_method_id_t module_method_define(module_method_id_t *id_out, char const *name)
 {
-	fr_dict_enum_t	*enumv;
+	fr_dict_enum_value_t	*enumv;
 
 	fr_assert_msg(attr_module_method, "module method global init must be called first");
 
@@ -85,7 +85,7 @@ done:
  */
 char const *module_method_name_by_id(module_method_id_t id)
 {
-	fr_dict_enum_t *enumv = fr_dict_enum_by_value(attr_module_method, fr_box_uint32(id));
+	fr_dict_enum_value_t *enumv = fr_dict_enum_by_value(attr_module_method, fr_box_uint32(id));
 
 	if (!enumv) return NULL;
 
@@ -101,7 +101,7 @@ char const *module_method_name_by_id(module_method_id_t id)
  */
 char const *module_method_name_by_entry(module_method_entry_t const *entry)
 {
-	fr_dict_enum_t *enumv = fr_dict_enum_by_value(attr_module_method, fr_box_uint32(entry->id));
+	fr_dict_enum_value_t *enumv = fr_dict_enum_by_value(attr_module_method, fr_box_uint32(entry->id));
 
 	if (!enumv) return NULL;
 

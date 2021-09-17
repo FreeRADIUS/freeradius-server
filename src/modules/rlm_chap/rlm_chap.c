@@ -33,7 +33,7 @@ RCSID("$Id$")
 
 typedef struct {
 	char const		*name;		//!< Auth-Type value for this module instance.
-	fr_dict_enum_t		*auth_type;
+	fr_dict_enum_value_t		*auth_type;
 } rlm_chap_t;
 
 static fr_dict_t const *dict_freeradius;

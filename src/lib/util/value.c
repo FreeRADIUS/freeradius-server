@@ -4474,7 +4474,7 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		char		*tmp = NULL;
 		char		*name;
 		size_t		name_len;
-		fr_dict_enum_t	*enumv;
+		fr_dict_enum_value_t	*enumv;
 
 		if (len > (sizeof(buffer) - 1)) {
 			name_len = fr_value_str_aunescape(NULL, &tmp,

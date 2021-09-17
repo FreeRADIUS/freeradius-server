@@ -163,7 +163,7 @@ static int dict_attr_debug(fr_dict_attr_t const *da, void *uctx)
 {
 	fr_dict_attr_debug_t 		*our_uctx = uctx;
 	fr_hash_iter_t			iter;
-	fr_dict_enum_t const		*enumv;
+	fr_dict_enum_value_t const		*enumv;
 	fr_dict_attr_ext_enumv_t 	*ext;
 
 	fr_dict_attr_flags_print(&FR_SBUFF_OUT(our_uctx->flags, sizeof(our_uctx->flags)),

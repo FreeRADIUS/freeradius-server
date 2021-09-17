@@ -51,7 +51,7 @@ extern fr_dict_attr_t const *attr_ms_chap2_cpw;
 
 typedef struct {
 	char const		*name;
-	fr_dict_enum_t		*auth_type;
+	fr_dict_enum_value_t		*auth_type;
 
 	bool			normify;
 

@@ -300,7 +300,7 @@ module_method_t	module_state_str_to_method(module_state_func_table_t const *tabl
 char const	*module_state_method_to_str(module_state_func_table_t const *table,
 					    module_method_t method, char const *def);
 
-bool		module_section_type_set(request_t *request, fr_dict_attr_t const *type_da, fr_dict_enum_t const *enumv);
+bool		module_section_type_set(request_t *request, fr_dict_attr_t const *type_da, fr_dict_enum_value_t const *enumv);
 /** @} */
 
 /** @name Module and module thread lookup

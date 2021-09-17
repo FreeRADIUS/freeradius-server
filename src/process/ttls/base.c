@@ -359,7 +359,7 @@ RESUME(access_request)
 	rlm_rcode_t			rcode = request->rcode;
 	fr_pair_t			*vp;
 	CONF_SECTION			*cs;
-	fr_dict_enum_t const		*dv;
+	fr_dict_enum_value_t const		*dv;
 	fr_process_state_t const	*state;
 	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_ttls_t);
 

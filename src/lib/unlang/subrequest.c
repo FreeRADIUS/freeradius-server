@@ -162,7 +162,7 @@ static unlang_action_t unlang_subrequest_parent_init(rlm_rcode_t *p_result, requ
 	if (gext->type_enum) {
 		child->packet->code = vp->vp_uint32 = gext->type_enum->value->vb_uint32;
 	} else {
-		fr_dict_enum_t const	*type_enum;
+		fr_dict_enum_value_t const	*type_enum;
 		fr_pair_t		*attr;
 
 		if (tmpl_find_vp(&attr, request, gext->vpt) < 0) {

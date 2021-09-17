@@ -41,7 +41,7 @@ typedef struct {
 
 	fr_dict_t const		*dict;			//!< Dictionary of the subrequest protocol.
 	fr_dict_attr_t const	*attr_packet_type;	//!< Packet-type attribute in the subrequest protocol.
-	fr_dict_enum_t const	*type_enum;		//!< Static enumeration value for attr_packet_type
+	fr_dict_enum_value_t const	*type_enum;		//!< Static enumeration value for attr_packet_type
 							///< if the packet-type is static.
 } unlang_subrequest_t;
 

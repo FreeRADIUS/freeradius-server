@@ -68,7 +68,7 @@ static pthread_mutex_t fr_crypt_mutex = PTHREAD_MUTEX_INITIALIZER;
  */
 typedef struct {
 	char const		*name;
-	fr_dict_enum_t		*auth_type;
+	fr_dict_enum_value_t		*auth_type;
 	bool			normify;
 } rlm_pap_t;
 

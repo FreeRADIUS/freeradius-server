@@ -560,7 +560,7 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 
 	while ((subcs = cf_section_find_next(server_cs, subcs, subcs_name, CF_IDENT_ANY))) {
 		char const	*name2;
-		fr_dict_enum_t	*dv;
+		fr_dict_enum_value_t	*dv;
 
 		name2 = cf_section_name2(subcs);
 		if (!name2) {
@@ -1236,7 +1236,7 @@ unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type, reque
 	char const	*module;
 	char const	*component;
 	fr_dict_attr_t const *da;
-	fr_dict_enum_t const *dv;
+	fr_dict_enum_value_t const *dv;
 	CONF_SECTION	*subcs;
 	fr_dict_t const	*dict_internal;
 

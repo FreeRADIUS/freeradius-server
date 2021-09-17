@@ -68,7 +68,7 @@ static int fr_dict_attr_ext_enumv_copy(UNUSED int ext,
 	fr_dict_attr_t			*da_dst = talloc_get_type_abort(chunk_dst, fr_dict_attr_t);
 	fr_dict_attr_ext_enumv_t	*src_ext = src_ext_ptr;
 	fr_hash_iter_t			iter;
-	fr_dict_enum_t			*enumv;
+	fr_dict_enum_value_t			*enumv;
 	bool				has_child = fr_dict_attr_is_key_field(da_src);
 
 	if (!src_ext->value_by_name) return 0;
@@ -222,7 +222,7 @@ void fr_dict_attr_ext_debug(fr_dict_attr_t const *da)
  *
  */
 fr_ext_t const fr_dict_enum_ext_def = {
-	.offset_of_exts = offsetof(fr_dict_enum_t, ext),
+	.offset_of_exts = offsetof(fr_dict_enum_value_t, ext),
 	.name_table	= dict_enum_ext_table,
 	.name_table_len	= &dict_enum_ext_table_len,
 	.max		= FR_DICT_ENUM_EXT_MAX,

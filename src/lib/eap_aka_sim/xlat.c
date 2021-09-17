@@ -371,7 +371,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 	 *	Check for the optional type argument
 	 */
 	if (!fr_type_is_null(type_vb->type)) {
-		fr_dict_enum_t const		*type_enum;
+		fr_dict_enum_value_t const		*type_enum;
 
 		type_enum = fr_dict_enum_by_name(attr_eap_aka_sim_identity_type,
 						 type_vb->vb_strvalue, type_vb->vb_length);

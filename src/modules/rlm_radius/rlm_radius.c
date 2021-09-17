@@ -175,7 +175,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 {
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*cs = cf_item_to_section(cf_parent(ci));
-	fr_dict_enum_t const	*type_enum;
+	fr_dict_enum_value_t const	*type_enum;
 	uint32_t		code;
 
 	/*
@@ -269,7 +269,7 @@ static int status_check_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED voi
 {
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*cs = cf_item_to_section(cf_parent(ci));
-	fr_dict_enum_t const	*type_enum;
+	fr_dict_enum_value_t const	*type_enum;
 	uint32_t		code;
 
 	/*

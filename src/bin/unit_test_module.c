@@ -297,7 +297,7 @@ static void print_packet(FILE *fp, fr_radius_packet_t *packet, fr_pair_list_t *l
 {
 	fr_pair_t *vp;
 	fr_dcursor_t cursor;
-	fr_dict_enum_t *dv;
+	fr_dict_enum_value_t *dv;
 
 	if (fr_pair_list_empty(list)) {
 		fprintf(fp, "\n");

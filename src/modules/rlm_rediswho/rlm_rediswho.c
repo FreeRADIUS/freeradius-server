@@ -201,7 +201,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	rlm_rediswho_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_rediswho_t);
 	rlm_rcode_t		rcode;
 	fr_pair_t		*vp;
-	fr_dict_enum_t		*dv;
+	fr_dict_enum_value_t		*dv;
 	CONF_SECTION		*cs;
 	char const		*insert, *trim, *expire;
 

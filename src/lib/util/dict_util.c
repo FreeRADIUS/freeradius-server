@@ -239,7 +239,7 @@ static int8_t dict_vendor_pen_cmp(void const *one, void const *two)
  */
 static uint32_t dict_enum_name_hash(void const *data)
 {
-	fr_dict_enum_t const *enumv = data;
+	fr_dict_enum_value_t const *enumv = data;
 
 	return dict_hash_name((void const *)enumv->name, enumv->name_len);
 }
@@ -249,8 +249,8 @@ static uint32_t dict_enum_name_hash(void const *data)
  */
 static int8_t dict_enum_name_cmp(void const *one, void const *two)
 {
-	fr_dict_enum_t const *a = one;
-	fr_dict_enum_t const *b = two;
+	fr_dict_enum_value_t const *a = one;
+	fr_dict_enum_value_t const *b = two;
 	int ret;
 
 	ret = strcasecmp(a->name, b->name);
@@ -262,7 +262,7 @@ static int8_t dict_enum_name_cmp(void const *one, void const *two)
  */
 static uint32_t dict_enum_value_hash(void const *data)
 {
-	fr_dict_enum_t const *enumv = data;
+	fr_dict_enum_value_t const *enumv = data;
 
 	return fr_value_box_hash(enumv->value);
 }
@@ -272,8 +272,8 @@ static uint32_t dict_enum_value_hash(void const *data)
  */
 static int8_t dict_enum_value_cmp(void const *one, void const *two)
 {
-	fr_dict_enum_t const *a = one;
-	fr_dict_enum_t const *b = two;
+	fr_dict_enum_value_t const *a = one;
+	fr_dict_enum_value_t const *b = two;
 	int ret;
 
 	ret = fr_value_box_cmp(a->value, b->value); /* not yet int8_t! */
@@ -879,7 +879,7 @@ int dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
  *  There is no other place for the sub-structures to go.  In the
  *  future, we may extend the functionality of the `key` field, by
  *  allowing non-integer data types.  That would require storing keys
- *  as #fr_dict_enum_t, and then placing the child (i.e. sub)
+ *  as #fr_dict_enum_value_t, and then placing the child (i.e. sub)
  *  structures there.  But that would involve adding children to
  *  enums, which is currently not supported.
  *
@@ -1217,7 +1217,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 			    fr_dict_attr_t const *child_struct)
 {
 	size_t				len;
-	fr_dict_enum_t			*enumv = NULL;
+	fr_dict_enum_value_t			*enumv = NULL;
 	fr_value_box_t			*enum_value = NULL;
 	fr_dict_attr_ext_enumv_t	*ext;
 
@@ -1256,14 +1256,14 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	 *	Initialise enumv hash tables
 	 */
 	if (!ext->value_by_name || !ext->name_by_value) {
-		ext->value_by_name = fr_hash_table_talloc_alloc(da, fr_dict_enum_t, dict_enum_name_hash,
+		ext->value_by_name = fr_hash_table_talloc_alloc(da, fr_dict_enum_value_t, dict_enum_name_hash,
 								dict_enum_name_cmp, hash_pool_free);
 		if (!ext->value_by_name) {
 			fr_strerror_printf("Failed allocating \"value_by_name\" table");
 			return -1;
 		}
 
-		ext->name_by_value = fr_hash_table_talloc_alloc(da, fr_dict_enum_t, dict_enum_value_hash,
+		ext->name_by_value = fr_hash_table_talloc_alloc(da, fr_dict_enum_value_t, dict_enum_value_hash,
 								dict_enum_value_cmp, NULL);
 		if (!ext->name_by_value) {
 			fr_strerror_printf("Failed allocating \"name_by_value\" table");
@@ -1275,13 +1275,13 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	 *	Allocate a structure to map between
 	 *	the name and value.
 	 */
-	enumv = talloc_zero_size(da, sizeof(fr_dict_enum_t) + sizeof(enumv->child_struct[0]) * fr_dict_attr_is_key_field(da));
+	enumv = talloc_zero_size(da, sizeof(fr_dict_enum_value_t) + sizeof(enumv->child_struct[0]) * fr_dict_attr_is_key_field(da));
 	if (!enumv) {
 	oom:
 		fr_strerror_printf("%s: Out of memory", __FUNCTION__);
 		return -1;
 	}
-	talloc_set_type(enumv, fr_dict_enum_t);
+	talloc_set_type(enumv, fr_dict_enum_value_t);
 
 	enumv->name = talloc_typed_strdup(enumv, name);
 	enumv->name_len = strlen(name);
@@ -1324,7 +1324,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 		memcpy(&tmp, &enumv, sizeof(tmp));
 
 		if (!fr_hash_table_insert(ext->value_by_name, tmp)) {
-			fr_dict_enum_t *old;
+			fr_dict_enum_value_t *old;
 
 			/*
 			 *	Suppress duplicates with the same
@@ -2743,10 +2743,10 @@ fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, un
  * @param[in] da		to search in.
  * @param[in] value		to search for.
  * @return
- * 	- Matching #fr_dict_enum_t.
- * 	- NULL if no matching #fr_dict_enum_t could be found.
+ * 	- Matching #fr_dict_enum_value_t.
+ * 	- NULL if no matching #fr_dict_enum_value_t could be found.
  */
-fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value)
+fr_dict_enum_value_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value)
 {
 	fr_dict_attr_ext_enumv_t	*ext;
 
@@ -2768,7 +2768,7 @@ fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t c
 	 */
 	if (value->type != da->type) return NULL;
 
-	return fr_hash_table_find(ext->name_by_value, &(fr_dict_enum_t){ .value = value });
+	return fr_hash_table_find(ext->name_by_value, &(fr_dict_enum_value_t){ .value = value });
 }
 
 /** Lookup the name of an enum value in a #fr_dict_attr_t
@@ -2781,7 +2781,7 @@ fr_dict_enum_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_box_t c
  */
 char const *fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value)
 {
-	fr_dict_enum_t	*dv;
+	fr_dict_enum_value_t	*dv;
 
 	dv = fr_dict_enum_by_value(da, value);
 	if (!dv) return NULL;
@@ -2792,7 +2792,7 @@ char const *fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t 
 /*
  *	Get a value by its name, keyed off of an attribute.
  */
-fr_dict_enum_t *fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name, ssize_t len)
+fr_dict_enum_value_t *fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name, ssize_t len)
 {
 	fr_dict_attr_ext_enumv_t	*ext;
 
@@ -2812,7 +2812,7 @@ fr_dict_enum_t *fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name,
 
 	if (len < 0) len = strlen(name);
 
-	return fr_hash_table_find(ext->value_by_name, &(fr_dict_enum_t){ .name = name, .name_len = len});
+	return fr_hash_table_find(ext->value_by_name, &(fr_dict_enum_value_t){ .name = name, .name_len = len});
 }
 
 int dict_dlopen(fr_dict_t *dict, char const *name)
@@ -3173,7 +3173,7 @@ int fr_dict_free(fr_dict_t **dict, char const *dependent)
 int fr_dict_enum_autoload(fr_dict_enum_autoload_t const *to_load)
 {
 	fr_dict_enum_autoload_t const	*p = to_load;
-	fr_dict_enum_t const		*enumv;
+	fr_dict_enum_value_t const		*enumv;
 
 	for (p = to_load; p->out; p++) {
 		if (unlikely(!p->attr)) {
