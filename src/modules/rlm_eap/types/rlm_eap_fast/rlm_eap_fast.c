@@ -334,8 +334,8 @@ error:
 			t->pac.type = vp->vp_uint32;
 		} else if (vp->da == attr_eap_fast_pac_info_pac_lifetime) {
 			fr_assert(t->pac.expires == 0);
-			t->pac.expires = vp->vp_uint32;
-			t->pac.expired = (vp->vp_uint32 <= fr_time_to_sec(request->packet->timestamp));
+			t->pac.expires = request->packet->timestamp + fr_time_delta_from_sec(vp->vp_uint32);
+			t->pac.expired = false;
 		/*
 		 *	Not sure if this is the correct attr
 		 *	The original enum didn't match a specific TLV nesting level

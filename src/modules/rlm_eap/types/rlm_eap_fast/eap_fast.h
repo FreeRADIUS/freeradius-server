@@ -191,7 +191,7 @@ typedef struct {
 	struct {
 		uint8_t			*key;
 		eap_fast_pac_type_t	type;
-		uint32_t		expires;
+		fr_time_t		expires;
 		bool			expired;
 		bool			send;
 	}			pac;
