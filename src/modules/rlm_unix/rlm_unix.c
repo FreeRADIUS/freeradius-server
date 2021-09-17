@@ -446,7 +446,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 			break;
 
 		case PW_ACCT_DELAY_TIME:
-			delay = vp->vp_ipaddr;
+			delay = vp->vp_integer;
 			break;
 		}
 	}
