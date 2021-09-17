@@ -11,5 +11,5 @@
 ##############################################################################
 
 ATTRIBUTE	Lease-Query-Base-Time			100	date
-ATTRIBUTE	Lease-Query-Start-Time			101	uint32
-ATTRIBUTE	Lease-Query-End-Time			102	uint32
+ATTRIBUTE	Lease-Query-Start-Time			101	date
+ATTRIBUTE	Lease-Query-End-Time			102	date
