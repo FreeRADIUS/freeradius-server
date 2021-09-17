@@ -45,7 +45,7 @@ ATTRIBUTE	NAT-Port-End				29	integer
 ATTRIBUTE	Keep-Alive-Timeout			30	integer
 ATTRIBUTE	TLS-Auth-Type				31	integer
 ATTRIBUTE	TLS-Pre-Shared-Key			32	string
-ATTRIBUTE	CAPWAP-Timestamp			33	integer
+ATTRIBUTE	CAPWAP-Timestamp			33	integer # should probably be date?
 ATTRIBUTE	CAPWAP-WVersion				34	string
 ATTRIBUTE	CAPWAP-Session-Id			35	octets
 ATTRIBUTE	CAPWAP-Radio-Id				36	integer
@@ -67,7 +67,7 @@ ATTRIBUTE	CAPWAP-GPS-Latitude			51	string
 ATTRIBUTE	CAPWAP-GPS-Longitude			52	string
 ATTRIBUTE	CAPWAP-GPS-Altitude			53	string
 ATTRIBUTE	CAPWAP-GPS-Hdop				54	string
-ATTRIBUTE	CAPWAP-GPS-Timestamp			55	string
+ATTRIBUTE	CAPWAP-GPS-Timestamp			55	string # should probably be date?
 ATTRIBUTE	CAPWAP-Hardware-Version			56	string
 ATTRIBUTE	CAPWAP-Software-Version			57	string
 ATTRIBUTE	CAPWAP-Boot-Version			58	string

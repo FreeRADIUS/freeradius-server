@@ -47,7 +47,7 @@ VALUE	Exec-Privilege			Manage			3
 ATTRIBUTE	NAT-IP-Address				32	ipaddr
 ATTRIBUTE	NAT-Start-Port				33	integer
 ATTRIBUTE	NAT-End-Port				34	integer
-ATTRIBUTE	NAS-Startup-Timestamp			59	integer
+ATTRIBUTE	NAS-Startup-Timestamp			59	date
 ATTRIBUTE	Ip-Host-Addr				60	string
 ATTRIBUTE	User-Notify				61	string
 ATTRIBUTE	User-HeartBeat				62	string

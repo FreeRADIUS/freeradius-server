@@ -50,7 +50,7 @@ ATTRIBUTE	End-Date				7	string
 ATTRIBUTE	URL					8	string
 
 ATTRIBUTE	Connect_Id				26	integer
-ATTRIBUTE	NAS-Startup-Timestamp			59	integer
+ATTRIBUTE	NAS-Startup-Timestamp			59	date
 ATTRIBUTE	Ip-Host-Addr				60	string
 ATTRIBUTE	Product-ID				255	string
 

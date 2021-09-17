@@ -422,7 +422,7 @@ ATTRIBUTE	Policy-Type				0x9884	integer
 ATTRIBUTE	Mobile-Session-ID			0x9885	integer
 ATTRIBUTE	Mobile-Accounting-Type			0x9886	integer
 ATTRIBUTE	Mobile-Service-Option			0x9887	integer
-ATTRIBUTE	Wallclock-Timestamp			0x9888	integer
+ATTRIBUTE	Wallclock-Timestamp			0x9888	integer # should probably be date?
 ATTRIBUTE	Dvmrp-Initial-Flooding			0x988a	integer
 ATTRIBUTE	Telnet-Options				0x988c	integer
 ATTRIBUTE	CDMA-PktData-Network-ID			0x988d	integer

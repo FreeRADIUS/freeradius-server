@@ -50,7 +50,7 @@ ATTRIBUTE	LAT-Port				43	string
 ATTRIBUTE	Max-VCs					44	integer
 ATTRIBUTE	DHCP-Leasetime				45	integer
 ATTRIBUTE	LAT-Groups				46	string
-ATTRIBUTE	RTC-Timestamp				60	integer
+ATTRIBUTE	RTC-Timestamp				60	integer # should probably be date?
 ATTRIBUTE	Circuit-Type				61	integer
 ATTRIBUTE	Called-Number				90	string
 ATTRIBUTE	Calling-Number				91	string

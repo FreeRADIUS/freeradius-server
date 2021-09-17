@@ -120,7 +120,7 @@ ATTRIBUTE	DNS-Update-Required			75	integer
 # 77 ?
 #ATTRIBUTE	Always-On				78	integer
 ATTRIBUTE	Foreign-Agent-Address			79	ipaddr
-ATTRIBUTE	Last-User-Activity-Time			80	integer
+ATTRIBUTE	Last-User-Activity-Time			80	date
 ATTRIBUTE	MN-AAA-Removal-Indication		81	integer
 ATTRIBUTE	RN-Packet-Data-Inactivity-Timer		82	integer
 ATTRIBUTE	Forward-PDCH-RC				83	integer

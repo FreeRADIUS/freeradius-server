@@ -223,8 +223,8 @@ ATTRIBUTE	Called-Asserted-Identity		208	string
 ATTRIBUTE	Called-Asserted-Pres-Indicator		209	string
 ATTRIBUTE	SDP					210	string
 ATTRIBUTE	Media-Initiator-Flag			211	string
-ATTRIBUTE	SDP-Offer-Timestamp			212	string
-ATTRIBUTE	SDP-Answer-Timestamp			213	string
+ATTRIBUTE	SDP-Offer-Timestamp			212	string # should probably be date?
+ATTRIBUTE	SDP-Answer-Timestamp			213	string # should probably be date?
 ATTRIBUTE	Early-Media-SDP				214	string
 ATTRIBUTE	Early-Media-Initiator-Flag		215	string
 ATTRIBUTE	Body-Content-Type			216	string
