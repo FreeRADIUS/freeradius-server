@@ -341,7 +341,6 @@ size_t fr_json_from_pair(char *out, size_t outlen, fr_pair_t const *vp)
 
 	if (vp->vp_type == FR_TYPE_STRING) {
 		char *tmp = fr_json_from_string(NULL, vp->vp_strvalue, true);
-
 		/* Indicate truncation */
 		if (!tmp) return outlen + 1;
 		slen = strlen(tmp);
@@ -439,30 +438,30 @@ static int json_afrom_value_box(TALLOC_CTX *ctx, json_object **out,
 }
 
 
-/** Add prefix to attribute name
+/** Get attribute name with optional prefix
  *
  * If the format "attr.prefix" string is set then prepend this
- * to the given attribute name, otherwise return name unchanged.
+ * to the given attribute name, otherwise just return name alone.
  *
- * @param[out] buf where to write the new name, if set
- * @param[in] buf_len length of buf
- * @param[in] name original attribute name
+ * @param[out] out sbuff to write the new name
+ * @param[in] da dictionary attribute to get name of
  * @param[in] format json format structure
- * @return pointer to name, or buf if the prefix was added
+ * @return length of attribute name
  */
-static inline char const *attr_name_with_prefix(char *buf, size_t buf_len, const char *name, fr_json_format_t const *format)
+static inline ssize_t attr_name_with_prefix(fr_sbuff_t *out, fr_dict_attr_t const *da, fr_json_format_t const *format)
 {
-	int len;
+	fr_sbuff_t our_out = FR_SBUFF_NO_ADVANCE(out);
 
-	if (!format->attr.prefix) return name;
+	if (!out) return 0;
 
-	len = snprintf(buf, buf_len, "%s:%s", format->attr.prefix, name);
-
-	if (len == (int)strlen(buf)) {
-		return buf;
+	if (format->attr.prefix) {
+		FR_SBUFF_IN_STRCPY_RETURN(&our_out, format->attr.prefix);
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, ':');
 	}
 
-	return name;
+	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, NULL, da, false);
+
+	return fr_sbuff_set(out, &our_out);
 }
 
 
@@ -551,13 +550,16 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 	for (vp = fr_pair_list_head(vps);
 	     vp;
 	     vp = fr_pair_list_next(vps, vp)) {
-		char const		*attr_name;
+		fr_sbuff_t		attr_name;
 		struct json_object	*vp_object, *values, *value, *type_name;
 
 		/*
 		 *	Get attribute name and value.
 		 */
-		attr_name = attr_name_with_prefix(buf, sizeof(buf), vp->da->name, format);
+		fr_sbuff_init(&attr_name, buf, sizeof(buf));
+		if (attr_name_with_prefix(&attr_name, vp->da, format) < 0) {
+			return NULL;
+		}
 
 		if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
 			fr_strerror_const("Failed to convert attribute value to JSON object");
@@ -571,12 +573,12 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 		 *	Look in the table to see if we already have
 		 *	a key for the attribute we're working on.
 		 */
-		if (!json_object_object_get_ex(obj, attr_name, &vp_object)) {
+		if (!json_object_object_get_ex(obj, fr_sbuff_start(&attr_name), &vp_object)) {
 			/*
 			 *	Wasn't there, so create a new object for this attribute.
 			 */
 			MEM(vp_object = json_object_new_object());
-			json_object_object_add(obj, attr_name, vp_object);
+			json_object_object_add(obj, fr_sbuff_start(&attr_name), vp_object);
 
 			/*
 			 *	Add "type" to newly created keys.
@@ -672,7 +674,7 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 	for (vp = fr_pair_list_head(vps);
 	     vp;
 	     vp = fr_pair_list_next(vps, vp)) {
-		char const		*attr_name;
+		fr_sbuff_t		attr_name;
 		struct json_object	*vp_object, *value;
 		struct json_object	*values = NULL;
 		bool			add_single = false;
@@ -680,7 +682,10 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 		/*
 		 *	Get attribute name and value.
 		 */
-		attr_name = attr_name_with_prefix(buf, sizeof(buf), vp->da->name, format);
+		fr_sbuff_init(&attr_name, buf, sizeof(buf));
+		if (attr_name_with_prefix(&attr_name, vp->da, format) < 0) {
+			return NULL;
+		}
 
 		if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
 			fr_strerror_const("Failed to convert attribute value to JSON object");
@@ -693,14 +698,14 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 		 *	See if we already have a key in the table we're working on,
 		 *	if not then create a new one.
 		 */
-		if (!json_object_object_get_ex(obj, attr_name, &vp_object)) {
+		if (!json_object_object_get_ex(obj, fr_sbuff_start(&attr_name), &vp_object)) {
 			if (format->value.value_as_array) {
 				/*
 				 *	We have been asked to ensure /all/ values are lists,
 				 *	even if there's only one attribute.
 				 */
 				MEM(values = json_object_new_array());
-				json_object_object_add(obj, attr_name, values);
+				json_object_object_add(obj, fr_sbuff_start(&attr_name), values);
 			} else {
 				/*
 				 *	Deal with it later on.
@@ -727,7 +732,7 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 				 *	Existing key will have refcount decremented
 				 *	and will be freed if thise drops to zero.
 				 */
-				json_object_object_add(obj, attr_name, values);
+				json_object_object_add(obj, fr_sbuff_start(&attr_name), values);
 			}
 		}
 
@@ -736,7 +741,7 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 			 *	Only ever used the first time adding a new
 			 *	attribute when "value_as_array" is not set.
 			 */
-			json_object_object_add(obj, attr_name, value);
+			json_object_object_add(obj, fr_sbuff_start(&attr_name), value);
 		} else {
 			/*
 			 *	Otherwise we're always appending to a JSON array.
@@ -788,7 +793,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 	for (vp = fr_pair_list_head(vps);
 	     vp;
 	     vp = fr_pair_list_next(vps, vp)) {
-		char const		*attr_name;
+		fr_sbuff_t		attr_name;
 		struct json_object	*name, *value, *type_name;
 		struct json_object	*values = NULL;
 		struct json_object	*attrobj = NULL;
@@ -797,7 +802,10 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 		/*
 		 *	Get attribute name and value.
 		 */
-		attr_name = attr_name_with_prefix(buf, sizeof(buf), vp->da->name, format);
+		fr_sbuff_init(&attr_name, buf, sizeof(buf));
+		if (attr_name_with_prefix(&attr_name, vp->da, format) < 0) {
+			return NULL;
+		}
 
 		if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
 			fr_strerror_const("Failed to convert attribute value to JSON object");
@@ -810,7 +818,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 			 *	Try and find this attribute in the "seen_attributes" object. If it is
 			 *	there then get the "values" array to add this attribute value to.
 			 */
-			already_seen = json_object_object_get_ex(seen_attributes, attr_name, &values);
+			already_seen = json_object_object_get_ex(seen_attributes, fr_sbuff_start(&attr_name), &values);
 		}
 
 		/*
@@ -828,7 +836,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 			/*
 			 * Add the attribute name in the "name" key and the type in the "type" key
 			 */
-			MEM(name = json_object_new_string(attr_name));
+			MEM(name = json_object_new_string(fr_sbuff_start(&attr_name)));
 			json_object_object_add_ex(attrobj, "name", name, JSON_C_OBJECT_KEY_IS_CONSTANT);
 
 			MEM(type_name = json_object_new_string(fr_table_str_by_value(fr_value_box_type_table,
@@ -851,7 +859,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 				/*
 				 * Also add to "seen_attributes" to check later
 				 */
-				json_object_object_add(seen_attributes, attr_name, json_object_get(values));
+				json_object_object_add(seen_attributes, fr_sbuff_start(&attr_name), json_object_get(values));
 			}
 
 			/*
@@ -961,11 +969,15 @@ static struct json_object *json_attr_array_afrom_pair_list(UNUSED TALLOC_CTX *ct
 	for (vp = fr_pair_list_head(vps);
 	     vp;
 	     vp = fr_pair_list_next(vps, vp)) {
-		char const		*attr_name;
+		fr_sbuff_t		attr_name;
 		struct json_object	*value;
 
-		attr_name = attr_name_with_prefix(buf, sizeof(buf), vp->da->name, format);
-		value = json_object_new_string(attr_name);
+		fr_sbuff_init(&attr_name, buf, sizeof(buf));
+		if (attr_name_with_prefix(&attr_name, vp->da, format) < 0) {
+			return NULL;
+		}
+
+		value = json_object_new_string(fr_sbuff_start(&attr_name));
 
 		json_object_array_add(obj, value);
 	}
