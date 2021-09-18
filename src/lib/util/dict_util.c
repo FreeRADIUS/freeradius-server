@@ -1138,11 +1138,14 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	fr_dict_attr_t		*n;
 	fr_dict_attr_t const	*old;
 	fr_dict_attr_flags_t	our_flags = *flags;
+	bool			self_allocated = false;
 
 	if (unlikely(dict->read_only)) {
 		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root(dict)->name);
 		return -1;
 	}
+
+	self_allocated = (attr < 0);
 
 	/*
 	 *	Check that the definition is valid.
@@ -1161,7 +1164,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		 */
 		if ((old->parent == parent) && (old->type == type) &&
 		    FLAGS_EQUAL(array) && FLAGS_EQUAL(subtype)  &&
-		    ((old->attr == (unsigned int) attr) || ((attr < 0) && old->flags.internal))) {
+		    ((old->attr == (unsigned int) attr) || self_allocated)) {
 			return 0;
 		}
 
