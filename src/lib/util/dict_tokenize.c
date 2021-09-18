@@ -485,6 +485,31 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			 */
 			*ref = talloc_strdup(ctx->fixup.pool, value);
 
+		} else if (strcmp(key, "enum") == 0) {
+			/*
+			 *	Allow enum=... as a synonym for
+			 *	"clone".  We check the sources and not
+			 *	the targets, because that's easier.
+			 *
+			 *	Plus, ENUMs are really just normal attributes
+			 *	in disguise.
+			 */
+			if (!value) {
+				fr_strerror_const("Missing ENUM name for 'enum=...'");
+				return -1;
+			}
+
+			switch (type) {
+			case FR_TYPE_LEAF:
+				break;
+
+			default:
+				fr_strerror_const("ENUM references be used for structural types");
+				return -1;
+			}
+
+			*ref = talloc_strdup(ctx->fixup.pool, value);
+
 		} else if (ctx->dict->subtype_table) {
 			int subtype;
 
@@ -908,6 +933,100 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	return 0;
 }
 
+
+/*
+ *	Process the ENUM command
+ */
+static int dict_read_process_enum(dict_tokenize_ctx_t *ctx, char **argv, int argc,
+				  fr_dict_attr_flags_t *base_flags)
+{
+	int			attr = -1;
+	fr_type_t      		type;
+	fr_dict_attr_flags_t	flags;
+	fr_dict_attr_t const	*parent, *da;
+
+	if (argc != 2) {
+		fr_strerror_const("Invalid ENUM syntax");
+		return -1;
+	}
+
+	/*
+	 *	Dictionaries need to have real names, not shitty ones.
+	 */
+	if (strncmp(argv[0], "Attr-", 5) == 0) {
+		fr_strerror_const("Invalid ENUM name");
+		return -1;
+	}
+
+	flags = *base_flags;
+
+	if (dict_process_type_field(ctx, argv[1], &type, &flags) < 0) return -1;
+
+	if (flags.extra && (flags.subtype == FLAG_BIT_FIELD)) {
+		fr_strerror_const("Bit fields can only be defined as a MEMBER of a STRUCT");
+		return -1;
+	}
+
+	switch (type) {
+	case FR_TYPE_LEAF:
+		break;
+
+	default:
+		fr_strerror_printf("ENUMs can only be a leaf type, not %s",
+				   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"));
+		break;
+	}
+
+	parent = ctx->stack[ctx->stack_depth].da;
+	if (!parent) {
+		fr_strerror_const("Invalid location for ENUM");
+		return -1;
+	}
+
+	/*
+	 *	ENUMs cannot have a flag field, so we don't parse that.
+	 *
+	 *	Maybe we do want a flag field for named time deltas?
+	 */
+
+#ifdef __clang_analyzer__
+	if (!ctx->dict) return -1;
+#endif
+
+	/*
+	 *	We have to call this first in order to allocate a
+	 *	number for the attribute.
+	 */
+	if (!dict_attr_fields_valid(ctx->dict, parent, argv[0], &attr, type, &flags)) return -1;
+
+	/*
+	 *	Add in an attribute
+	 */
+	if (fr_dict_attr_add(ctx->dict, parent, argv[0], attr, type, &flags) < 0) return -1;
+
+	/*
+	 *	If we need to set the previous attribute, we have to
+	 *	look it up by number.  This lets us set the
+	 *	*canonical* previous attribute, and not any potential
+	 *	duplicate which was just added.
+	 */
+	da = dict_attr_child_by_num(parent, attr);
+	if (!da) {
+		fr_strerror_printf("Failed to find attribute '%s' we just added.", argv[0]);
+		return -1;
+	}
+
+#ifndef NDEBUG
+	if (!dict_attr_by_name(NULL, parent, argv[0])) {
+		fr_strerror_printf("Failed to find attribute '%s' we just added.", argv[0]);
+		return -1;
+	}
+#endif
+
+	memcpy(&ctx->value_attr, &da, sizeof(da));
+
+	return 0;
+}
 
 /*
  *	Process the MEMBER command
@@ -1818,6 +1937,16 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 		 */
 		if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
 			if (dict_read_process_attribute(ctx,
+							argv + 1, argc - 1,
+							&base_flags) == -1) goto error;
+			continue;
+		}
+
+		/*
+		 *	Perhaps this is an enum.
+		 */
+		if (strcasecmp(argv[0], "ENUM") == 0) {
+			if (dict_read_process_enum(ctx,
 							argv + 1, argc - 1,
 							&base_flags) == -1) goto error;
 			continue;
