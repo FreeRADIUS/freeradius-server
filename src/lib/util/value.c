@@ -4792,9 +4792,9 @@ parse:
 		break;
 
 	case FR_TYPE_BOOL:
-		if ((strcmp(in, "yes") == 0) || strcmp(in, "true") == 0) {
+		if ((strcmp(in, "yes") == 0) || (strcmp(in, "true") == 0) || (strcmp(in, "1") == 0)) {
 			dst->datum.boolean = true;
-		} else if ((strcmp(in, "no") == 0) || (strcmp(in, "false") == 0)) {
+		} else if ((strcmp(in, "no") == 0) || (strcmp(in, "false") == 0) || (strcmp(in, "0") == 0)) {
 			dst->datum.boolean = false;
 		} else {
 			fr_strerror_printf("\"%s\" is not a valid boolean value", in);
