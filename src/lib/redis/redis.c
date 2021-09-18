@@ -184,19 +184,27 @@ void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *reques
  * @note Any unsupported types will trigger an assert. You must check the
  *	reply type prior to calling this function.
  *
- * @param[in,out] ctx to allocate any buffers in.
- * @param[out] out Where to write the cast type.
- * @param[in] reply to process.
- * @param[in] dst_type to convert to.
- * @param[in] dst_enumv Used to convert string types to integers for attributes
- *	with enumerated values.
+ * @param[in,out] ctx		to allocate any buffers in.
+ * @param[out] out		Where to write the cast type.
+ * @param[in] reply		to process.
+ * @param[in] dst_type		to convert to. May be FR_TYPE_NULL
+ *      			to infer type.
+ * @param[in] dst_enumv		Used to convert string types to
+ *				integers for attribute with enumerated
+ *				values.
+ * @param[in] box_error		If true then REDIS_REPLY_ERROR will be
+ *				copied to a box, otherwise we'll return
+ *				and error with the contents of the error
+ *				available on the thread local error stack.
+ * @param[in] shallow		If true, we shallow copy strings.
  * @return
- *	- 1 if we received a NIL reply. Out will remain uninitialized.
+ *	- 1 if we received a NIL reply.
  *	- 0 on success.
  *	- -1 on cast or parse failure.
  */
 int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply *reply,
-				 fr_type_t dst_type, fr_dict_attr_t const *dst_enumv)
+				fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+				bool box_error, bool shallow)
 {
 	fr_value_box_t	in;
 
@@ -204,6 +212,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 
 	switch (reply->type) {
 	case REDIS_REPLY_NIL:
+		fr_value_box_init(out, FR_TYPE_NULL, NULL, false);
 		return 1;
 
 	/*
@@ -238,17 +247,94 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 		}
 		break;
 
-	case REDIS_REPLY_STRING:
-	case REDIS_REPLY_STATUS:
-	case REDIS_REPLY_ERROR:
-		fr_value_box_bstrndup_shallow(&in, NULL, reply->str, reply->len, true);
+#if HIREDIS_MAJOR >= 1
+	case REDIS_REPLY_DOUBLE:
+		fr_value_box_shallow(&in, strtod(reply->str, NULL), true);
 		break;
 
+	case REDIS_REPLY_BOOL:
+		fr_value_box_shallow(&in, (bool)reply->integer, true);
+		break;
+#endif
+
+	case REDIS_REPLY_ERROR:
+		if (!box_error) {
+			fr_strerror_printf("Redis error: %pV",
+					   fr_box_strvalue_len(reply->str, reply->len));
+			return -1;
+		}
+		FALL_THROUGH;
+
+#if HIREDIS_MAJOR >= 1
+	case REDIS_REPLY_BIGNUM:	/* FIXME - Could try and conver to integer ? */
+#endif
+
+
+	case REDIS_REPLY_STRING:
+	case REDIS_REPLY_STATUS:
+		if (shallow) {
+			fr_value_box_bstrndup_shallow(out, NULL, reply->str, reply->len, true);
+		} else {
+			if (fr_value_box_bstrndup(ctx, out, NULL, reply->str, reply->len, true) < 0) return -1;
+		}
+		break;
+
+#if HIREDIS_MAJOR >= 1
+	case REDIS_REPLY_VERB:
+	{
+		fr_value_box_t *verb, *vtype;
+
+		fr_value_box_init(out, FR_TYPE_GROUP, NULL, true);
+
+		verb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, true);
+		if (unlikely(!verb)) {
+			fr_strerror_const("Out of memory");
+			return -1;
+		}
+		if (fr_value_box_bstrndup(ctx, verb, NULL, reply->str, reply->len, true) < 0) return -1;
+		fr_dlist_insert_head(&out->vb_group, verb);
+
+		vtype = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, true);
+		if (unlikely(!vtype)) {
+			fr_strerror_const("Out of memory");
+			talloc_free(verb);
+			return -1;
+		}
+		if (fr_value_box_strdup(ctx, vtype, NULL, reply->vtype, true) < 0) return -1;
+		fr_dlist_insert_head(&out->vb_group, vtype);
+
+	}
+		break;
+#endif
+
+#if HIREDIS_MAJOR >= 1
+	case REDIS_REPLY_SET:
+	case REDIS_REPLY_MAP:
+	case REDIS_REPLY_PUSH:
+#endif
 	case REDIS_REPLY_ARRAY:
-		fr_assert(0);
+	{
+		fr_value_box_t *vb;
+		size_t i;
+
+		fr_value_box_init(out, FR_TYPE_GROUP, NULL, true);
+
+		for (i = 0; i < reply->elements; i++) {
+			vb = fr_value_box_alloc_null(ctx);
+			if (unlikely(!vb)) {
+			array_error:
+				fr_dlist_talloc_free(&out->vb_group);
+				return -1;
+			}
+			fr_dlist_insert_tail(&out->vb_group, vb);
+
+			if (fr_redis_reply_to_value_box(vb, vb, reply->element[i],
+							FR_TYPE_NULL, NULL, box_error, shallow) < 0) goto array_error;
+		}
+	}
 	}
 
-	if (fr_value_box_cast(ctx, out, dst_type, dst_enumv, &in) < 0) return -1;
+	if ((dst_type != FR_TYPE_NULL) && (fr_value_box_cast(ctx, out, dst_type, dst_enumv, &in) < 0)) return -1;
 
 	return 0;
 }
@@ -312,7 +398,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, fr_map_list_t *out, request_t *reques
 
 		/* Logs own errors */
 		if (fr_redis_reply_to_value_box(map, &vpt, value,
-						 tmpl_da(map->lhs)->type, tmpl_da(map->lhs)) < 0) {
+						tmpl_da(map->lhs)->type, tmpl_da(map->lhs), false, false) < 0) {
 			RPEDEBUG("Failed converting Redis data");
 			goto error;
 		}

@@ -141,7 +141,8 @@ fr_redis_rcode_t	fr_redis_command_status(fr_redis_conn_t *conn, redisReply *repl
 void			fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *request, int idx);
 
 int			fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply *reply,
-						    fr_type_t dst_type, fr_dict_attr_t const *dst_enumv);
+						    fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+						    bool box_error, bool shallow);
 
 int			fr_redis_reply_to_map(TALLOC_CTX *ctx, fr_map_list_t *out,
 					      request_t *request, redisReply *key, redisReply *op, redisReply *value);
