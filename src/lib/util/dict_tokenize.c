@@ -282,6 +282,9 @@ static int dict_process_type_field(dict_tokenize_ctx_t *ctx, char const *name, f
 }
 
 static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type_t type, fr_dict_attr_flags_t *flags,
+				   char **ref) CC_HINT(nonnull);
+
+static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type_t type, fr_dict_attr_flags_t *flags,
 				   char **ref)
 {
 	char *p, *next = NULL;
