@@ -289,7 +289,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 {
 	char *p, *next = NULL;
 
-	if (ref) *ref = NULL;
+	*ref = NULL;
 
 	/*
 	 *	Set these as default, so that we can set one (or both) separately as flags.
