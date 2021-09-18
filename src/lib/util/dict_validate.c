@@ -578,8 +578,12 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	/******************** sanity check attribute number ********************/
 
 	if (parent->flags.is_root) {
-		static unsigned int max_attr = UINT8_MAX + 1;
-
+		/*
+		 *	The value -1 is the special flag for "self
+		 *	allocated" numbers.  i.e. we want an
+		 *	attribute, but we don't care what the number
+		 *	is.
+		 */
 		if (*attr == -1) {
 			flags->internal = 1;
 
@@ -596,14 +600,14 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 				fr_strerror_printf("Conflicting definition for attribute %s", name);
 				return false;
 			}
-			*attr = ++max_attr;
+			*attr = ++dict->self_allocated;
 
 		} else if (*attr <= 0) {
 			fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", *attr);
 			return false;
 
-		} else if ((unsigned int) *attr > max_attr) {
-			max_attr = *attr;
+		} else if ((unsigned int) *attr > dict->self_allocated) {
+			dict->self_allocated = *attr;
 		}
 
 		/*

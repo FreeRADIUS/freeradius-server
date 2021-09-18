@@ -3102,6 +3102,7 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	 */
 	dict->default_type_size = 1;
 	dict->default_type_length = 1;
+	dict->self_allocated = (1 << 24);
 
 	return dict;
 }
