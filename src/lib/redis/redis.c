@@ -187,7 +187,7 @@ void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *reques
  * @param[in,out] ctx		to allocate any buffers in.
  * @param[out] out		Where to write the cast type.
  * @param[in] reply		to process.
- * @param[in] dst_type		to convert to. May be FR_TYPE_NULL
+ * @param[in] dst_type		to convert to. May be FR_TYPE_VOID
  *      			to infer type.
  * @param[in] dst_enumv		Used to convert string types to
  *				integers for attribute with enumerated
@@ -249,6 +249,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 
 #if HIREDIS_MAJOR >= 1
 	case REDIS_REPLY_DOUBLE:
+		/* reply->str is \0 terminated in this case */
 		fr_value_box_shallow(&in, strtod(reply->str, NULL), true);
 		break;
 
@@ -268,8 +269,6 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 #if HIREDIS_MAJOR >= 1
 	case REDIS_REPLY_BIGNUM:	/* FIXME - Could try and conver to integer ? */
 #endif
-
-
 	case REDIS_REPLY_STRING:
 	case REDIS_REPLY_STATUS:
 		if (shallow) {
@@ -329,12 +328,12 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 			fr_dlist_insert_tail(&out->vb_group, vb);
 
 			if (fr_redis_reply_to_value_box(vb, vb, reply->element[i],
-							FR_TYPE_NULL, NULL, box_error, shallow) < 0) goto array_error;
+							FR_TYPE_VOID, NULL, box_error, shallow) < 0) goto array_error;
 		}
 	}
 	}
 
-	if ((dst_type != FR_TYPE_NULL) && (fr_value_box_cast(ctx, out, dst_type, dst_enumv, &in) < 0)) return -1;
+	if ((dst_type != FR_TYPE_VOID) && (fr_value_box_cast(ctx, out, dst_type, dst_enumv, &in) < 0)) return -1;
 
 	return 0;
 }

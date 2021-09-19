@@ -449,7 +449,7 @@ static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 reply_parse:
 	MEM(vb_out = fr_value_box_alloc_null(ctx));
-	if (fr_redis_reply_to_value_box(ctx, vb_out, reply, FR_TYPE_NULL, NULL, false, false) < 0) {
+	if (fr_redis_reply_to_value_box(ctx, vb_out, reply, FR_TYPE_VOID, NULL, false, false) < 0) {
 		RPERROR("Failed processing reply");
 		return XLAT_ACTION_FAIL;
 	}
