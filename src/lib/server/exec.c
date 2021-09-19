@@ -44,7 +44,7 @@ RCSID("$Id$")
 #include <ctype.h>
 #include <signal.h>
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__FreeBSD__)
 extern char **environ;
 #else
 #  include <unistd.h>
