@@ -489,6 +489,8 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			*ref = talloc_strdup(ctx->fixup.pool, value);
 
 		} else if (strcmp(key, "enum") == 0) {
+			fr_dict_attr_t const *da;
+
 			/*
 			 *	Allow enum=... as a synonym for
 			 *	"clone".  We check the sources and not
@@ -512,6 +514,34 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			}
 
 			*ref = talloc_strdup(ctx->fixup.pool, value);
+
+			/*
+			 *	If the ref exists, check that it's
+			 *	also of FR_TYPE_LEAF, and that it has
+			 *	values.
+			 *
+			 *	Since most of the ENUMs will point to
+			 *	pre-existing attributes, this check
+			 *	catches most errors.
+			 *
+			 *	If the ref points to an attribute
+			 *	which is defined later, the "fixup
+			 *	clone" code also complain on any
+			 *	errors.  However, that code will
+			 *	complain about "clone" and not "enum",
+			 *	so we add a little bit of code here in
+			 *	order to have better error messages.
+			 */
+			da = fr_dict_attr_by_oid(NULL, fr_dict_root(ctx->dict), value);
+			if (da) {
+				fr_dict_attr_ext_enumv_t	*ext;
+
+				ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+				if (!ext || !ext->value_by_name) {
+					fr_strerror_const("Invalid reference in 'enum=...', target has no VALUEs");
+					return -1;
+				}
+			}
 
 		} else if (ctx->dict->subtype_table) {
 			int subtype;
