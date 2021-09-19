@@ -493,15 +493,17 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 	/*
 	 *	Copy children of the DA we're cloning.
 	 */
-	if (dict_attr_acopy_children(dict, cloned, da) < 0) {
-		fr_strerror_printf("Failed cloning attribute '%s' from children of %s", da->name, fixup->ref);
-		return -1;
-	}
+	if (dict_attr_children(da)) {
+		if (dict_attr_acopy_children(dict, cloned, da) < 0) {
+			fr_strerror_printf("Failed cloning attribute '%s' from children of %s", da->name, fixup->ref);
+			return -1;
+		}
 
-	if (dict_attr_child_add(fr_dict_attr_unconst(fixup->parent), cloned) < 0) {
-		fr_strerror_printf("Failed adding cloned attribute %s", da->name);
-		talloc_free(cloned);
-		return -1;
+		if (dict_attr_child_add(fr_dict_attr_unconst(fixup->parent), cloned) < 0) {
+			fr_strerror_printf("Failed adding cloned attribute %s", da->name);
+			talloc_free(cloned);
+			return -1;
+		}
 	}
 
 	if (dict_attr_add_to_namespace(fixup->parent, cloned) < 0) return -1;

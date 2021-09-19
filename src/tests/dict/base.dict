@@ -26,9 +26,18 @@ ATTRIBUTE	Base-TLV				15	tlv
 
 # Ignore extended and evs
 
-ATTRIBUTE	Base-Integer64				19	integer64
+#
+#  Define an ENUM
+#
+ENUM base-enum-uint64	uint64
+VALUE base-enum-uint64 one	1
+VALUE base-enum-uint64 two	2
+VALUE base-enum-uint64 three	3
+
+ATTRIBUTE	Base-Integer64				19	uint64 enum=base-enum-uint64
 ATTRIBUTE	Base-IPv4-Prefix			20	ipv4prefix
 
 # Ignore VSA, VENDOR, timeval, boolean, combo-ip-prefix, decimal... for now
+
 
 END-PROTOCOL TEST
