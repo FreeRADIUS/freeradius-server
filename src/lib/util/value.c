@@ -5151,6 +5151,179 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
 	return fr_sbuff_set(out, &our_out);
 }
 
+/** Concatenate a list of value boxes together
+ *
+ * All boxes will be removed from the list.
+ *
+ * @param[out] tainted		If nonnull, will be set to true if any input boxes are tainted.
+ *				bool pointed to must be initialised.
+ * @param[out] sbuff		to write the result of the concatenation to.
+ * @param[in] list		to concatenate.
+ * @param[in] sep		Insert a separator between the values.
+ * @param[in] sep_len		Length of the separator.
+ * @param[in] e_rules		To apply to FR_TYPE_STRING types.
+ *				Is not currently applied to any other box type.
+ * @param[in] proc_action	What to do with the boxes in the list once
+ *				they've been processed.
+ * @param[in] flatten		If true and we encounter a #FR_TYPE_GROUP,
+ *				we concat the contents of its children together.
+ *      			If false, the contents will be cast to #type.
+ * @return
+ *      - >=0 the number of bytes written to the sbuff.
+ *	- <0 how many additional bytes we would have needed to
+ *	  concat the next box.
+ */
+ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
+					   char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
+					   fr_value_box_list_action_t proc_action, bool flatten)
+{
+	fr_sbuff_t our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
+	ssize_t slen;
+
+	if (fr_dlist_empty(list)) return 0;
+
+	fr_dlist_foreach(list, fr_value_box_t, vb) {
+		switch (vb->type) {
+		case FR_TYPE_GROUP:
+			if (!flatten) goto cast;
+			slen = fr_value_box_list_concat_as_string(tainted, &our_sbuff, &vb->vb_group,
+								  sep, sep_len, e_rules,
+								  proc_action, flatten);
+			break;
+
+		case FR_TYPE_OCTETS:
+			slen = fr_sbuff_in_bstrncpy(&our_sbuff, (char const *)vb->vb_strvalue, vb->vb_length);
+			break;
+
+		case FR_TYPE_STRING:
+			slen = fr_sbuff_in_bstrncpy(&our_sbuff, vb->vb_strvalue, vb->vb_length);
+			break;
+
+		default:
+		cast:
+			slen = fr_value_box_print(&our_sbuff, vb, e_rules);
+			break;
+		}
+		if (slen < 0) {
+		error:
+			return slen;
+		}
+
+		if (sep && fr_dlist_next(list, vb)) {
+			slen = fr_sbuff_in_bstrncpy(&our_sbuff, sep, sep_len);
+			if (slen < 0) goto error;
+		}
+	}
+
+	/*
+	 *	Free the boxes last so if there's
+	 *	an issue concating them, everything
+	 *	is still in a known state.
+	 */
+	fr_dlist_foreach_safe(list, fr_value_box_t, vb) {
+		if (tainted && vb->tainted) *tainted = true;
+
+		if (vb_should_remove(proc_action)) fr_dlist_remove(list, vb);
+		if (vb_should_free_value(proc_action)) fr_value_box_clear(vb);
+		if (vb_should_free(proc_action)) talloc_free(vb);
+	}}
+
+	return fr_sbuff_set(sbuff, &our_sbuff);
+}
+
+/** Concatenate a list of value boxes together
+ *
+ * All boxes will be removed from the list.
+ *
+ * @param[out] tainted		If nonnull, will be set to true if any input boxes are tainted.
+ *				bool pointed to must be initialised.
+ * @param[out] dbuff		to write the result of the concatenation to.
+ * @param[in] list		to concatenate.
+ * @param[in] sep		Insert a separator between the values.
+ * @param[in] sep_len		Length of the separator.
+ * @param[in] proc_action	What to do with the boxes in the list once
+ *				they've been processed.
+ * @param[in] flatten		If true and we encounter a #FR_TYPE_GROUP,
+ *				we concat the contents of its children together.
+ *      			If false, the contents will be cast to #type.
+ * @return
+ *      - >=0 the number of bytes written to the sbuff.
+ *	- <0 how many additional bytes we would have needed to
+ *	  concat the next box.
+ */
+ssize_t fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
+					   uint8_t const *sep, size_t sep_len,
+					   fr_value_box_list_action_t proc_action, bool flatten)
+{
+	fr_dbuff_t 	our_dbuff = FR_DBUFF(dbuff);
+	TALLOC_CTX	*tmp_ctx = NULL;
+	ssize_t		slen;
+
+	if (fr_dlist_empty(list)) return 0;
+
+	fr_dlist_foreach(list, fr_value_box_t, vb) {
+		switch (vb->type) {
+		case FR_TYPE_GROUP:
+			if (!flatten) goto cast;
+			slen = fr_value_box_list_concat_as_octets(tainted, &our_dbuff, &vb->vb_group,
+								  sep, sep_len,
+								  proc_action, flatten);
+			break;
+
+		case FR_TYPE_OCTETS:
+			slen = fr_dbuff_in_memcpy(&our_dbuff, vb->vb_octets, vb->vb_length);
+			break;
+
+		case FR_TYPE_STRING:
+			slen = fr_dbuff_in_memcpy(&our_dbuff, (uint8_t const *)vb->vb_strvalue, vb->vb_length);
+			break;
+
+		default:
+		cast:
+			if (!tmp_ctx) tmp_ctx = talloc_pool(NULL, 1024);
+			fr_value_box_t tmp_vb;
+
+			/*
+			 *	Not equivalent to fr_value_box_to_network
+			 */
+			if (fr_value_box_cast_to_octets(tmp_ctx, &tmp_vb, FR_TYPE_OCTETS, NULL, vb) < 0) {
+				slen = -1;
+				goto error;
+			}
+
+	 		slen = fr_dbuff_in_memcpy(&our_dbuff, tmp_vb.vb_octets, tmp_vb.vb_length);
+	 		fr_value_box_clear_value(&tmp_vb);
+	 		break;
+		}
+
+		if (slen < 0) {
+		error:
+			talloc_free(tmp_ctx);
+			return slen;
+		}
+
+		if (sep && fr_dlist_next(list, vb)) {
+			slen = fr_dbuff_in_memcpy(&our_dbuff, sep, sep_len);
+			if (slen < 0) goto error;
+		}
+	}
+
+	/*
+	 *	Free the boxes last so if there's
+	 *	an issue concating them, everything
+	 *	is still in a known state.
+	 */
+	fr_dlist_foreach_safe(list, fr_value_box_t, vb) {
+		if (tainted && vb->tainted) *tainted = true;
+
+		if (vb_should_remove(proc_action)) fr_dlist_remove(list, vb);
+		if (vb_should_free_value(proc_action)) fr_value_box_clear(vb);
+		if (vb_should_free(proc_action)) talloc_free(vb);
+	}}
+
+	return fr_dbuff_set(dbuff, &our_dbuff);
+}
+
 /** Concatenate a list of value boxes
  *
  * @note Will automatically cast all #fr_value_box_t to type specified.
@@ -5160,18 +5333,31 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
  * @param[in] list		to concatenate together.
  * @param[in] type		May be #FR_TYPE_STRING or #FR_TYPE_OCTETS, no other types are
  *				supported.
- * @param[in] free_input	If true, free the input boxes.
+ * @param[in] proc_action	What to do with the boxes in the list once
+ *				they've been processed.
+ * @param[in] flatten		If true and we encounter a #FR_TYPE_GROUP,
+ *				we concat the contents of its children together.
+ *      			If false, the contents will be cast to #type.
+ * @param[in] max_size		of the value.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_list_concat(TALLOC_CTX *ctx,
-			     fr_value_box_t *out, fr_value_box_list_t *list, fr_type_t type, bool free_input)
+int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
+				      fr_value_box_t *out, fr_value_box_list_t *list, fr_type_t type,
+				      fr_value_box_list_action_t proc_action, bool flatten,
+				      size_t max_size)
 {
-	TALLOC_CTX		*pool;
-	fr_dcursor_t		cursor;
-	fr_value_box_t const	*vb;
-	fr_value_box_t		*head_vb;
+	fr_dbuff_t		dbuff;		/* FR_TYPE_OCTETS */
+	fr_dbuff_uctx_talloc_t	dbuff_tctx;
+
+	fr_sbuff_t		sbuff;		/* FR_TYPE_STRING */
+	fr_sbuff_uctx_talloc_t	sbuff_tctx;
+
+	fr_value_box_t		*head_vb = fr_dlist_head(list);
+	bool			tainted = false;
+
+	fr_dlist_t		entry;
 
 	if (!list || fr_dlist_empty(list)) {
 		fr_strerror_const("Invalid arguments.  List was NULL");
@@ -5180,7 +5366,11 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 
 	switch (type) {
 	case FR_TYPE_STRING:
+		if (unlikely(!fr_sbuff_init_talloc(ctx, &sbuff, &sbuff_tctx, 256, max_size))) return -1;
+		break;
+
 	case FR_TYPE_OCTETS:
+		if (unlikely(!fr_dbuff_init_talloc(ctx, &dbuff, &dbuff_tctx, 256, max_size))) return -1;
 		break;
 
 	default:
@@ -5189,88 +5379,115 @@ int fr_value_box_list_concat(TALLOC_CTX *ctx,
 		return -1;
 	}
 
-	head_vb = fr_dlist_head(list);
-	fr_dcursor_init(&cursor, list);
-
 	/*
-	 *	Allow concatenating in place
+	 *	Merge all siblings into list head.
+	 *
+	 *	This is where the first element in the
+	 *	list is the output box.
+	 *
+	 *	i.e. we want to merge all its siblings
+	 *	into it.
 	 */
-	if (out == head_vb) {
-		if (head_vb->type != type) {
-			fr_value_box_t from_cast;
-			fr_dlist_t entry = {
-				.next = out->entry.next,
-				.prev = out->entry.prev
-			};
+	if (!out || (out == head_vb)) {
+		out = head_vb;	/* sync up out and head_vb */
 
+		switch (type) {
+		case FR_TYPE_STRING:
 			/*
-			 *	Two phase, as the casting code doesn't
-			 *	allow 'cast-in-place'.
+			 *	Head gets dealt with specially as we don't
+			 *	want to free it, and we don't want to free
+			 *	the buffer associated with it (just yet).
 			 */
-			if (fr_value_box_cast(ctx, &from_cast, type, NULL, out) < 0) return -1;
-			if (fr_value_box_copy(ctx, out, &from_cast) < 0) return -1;
-
-			out->entry.next = entry.next;		/* Restore the list pointers */
-			out->entry.prev = entry.prev;
-
-		}
-		fr_dcursor_next(&cursor);
-	} else {
-		if (fr_value_box_cast(ctx, out, type, NULL, head_vb) < 0) return -1;	/* Decomposes to copy */
-
-		if (free_input) {
-			fr_dcursor_free_item(&cursor);		/* Advances cursor */
-		} else {
-			fr_dcursor_next(&cursor);
-		}
-	}
-
-	/*
-	 *	Imploding a one element list.
-	 */
-	if (!fr_dcursor_current(&cursor)) return 0;
-
-	pool = talloc_pool(NULL, 255);	/* To absorb the temporary strings */
-
-	/*
-	 *	Join the remaining values
-	 */
-	while ((vb = fr_dcursor_current(&cursor))) {
-	     	fr_value_box_t from_cast;
-	     	fr_value_box_t const *n;
-
-		if (vb->type != type) {
-			talloc_free_children(pool);		/* Clear out previous buffers */
-			memset(&from_cast, 0, sizeof(from_cast));
-
-			if (fr_value_box_cast(pool, &from_cast, type, NULL, vb) < 0) {
+			if (fr_value_box_list_concat_as_string(&tainted, &sbuff, list,
+							       NULL, 0, NULL,
+							       FR_VALUE_BOX_LIST_REMOVE, flatten) < 0) {
+				fr_strerror_printf("Concatenation exceeded max_size (%zu)", max_size);
 			error:
-				talloc_free(pool);
+				switch (type) {
+				case FR_TYPE_STRING:
+					talloc_free(fr_sbuff_buff(&sbuff));
+					break;
+
+				case FR_TYPE_OCTETS:
+					talloc_free(fr_dbuff_buff(&dbuff));
+					break;
+
+				default:
+					break;
+				}
 				return -1;
 			}
 
-			n = &from_cast;
-		} else {
-			n = vb;
-		}
+			/*
+			 *	Concat the rest of the children...
+			 */
+			if (fr_value_box_list_concat_as_string(&tainted, &sbuff, list,
+							       NULL, 0, NULL,
+							       proc_action, flatten) < 0) {
+				fr_dlist_insert_head(list, head_vb);
+				goto error;
+			}
+			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
+			if (vb_should_free_value(proc_action)) fr_value_box_clear_value(out);
+			fr_value_box_bstrndup_shallow(out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), tainted);
+			break;
 
-		/*
-		 *	Append the next value
-		 */
-		if (type == FR_TYPE_STRING) {
-			if (fr_value_box_bstrn_append(ctx, out, n->vb_strvalue, n->vb_length, n->tainted) < 0) goto error;
-		} else {
-			if (fr_value_box_mem_append(ctx, out, n->vb_octets, n->vb_length, n->tainted) < 0) goto error;
-		}
+		case FR_TYPE_OCTETS:
+			if (fr_value_box_list_concat_as_octets(&tainted, &dbuff, list,
+							       NULL, 0,
+							       FR_VALUE_BOX_LIST_REMOVE, flatten) < 0) goto error;
 
-		if (free_input) {
-			fr_dcursor_free_item(&cursor);		/* Advances cursor */
-		} else {
-			fr_dcursor_next(&cursor);
+			if (fr_value_box_list_concat_as_octets(&tainted, &dbuff, list,
+							       NULL, 0,
+							       proc_action, flatten) < 0) {
+				fr_dlist_insert_head(list, head_vb);
+				goto error;
+			}
+			(void)fr_dbuff_trim_talloc(&dbuff, SIZE_MAX);
+			if (vb_should_free_value(proc_action)) fr_value_box_clear_value(out);
+			fr_value_box_memdup_shallow(out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), tainted);
+			break;
+
+		default:
+			break;
+		}
+		fr_dlist_insert_head(list, out);
+	/*
+	 *	Merge all the boxes in the list into
+	 *	a single contiguous buffer.
+	 *
+	 *	This deals with an unrelated out and list
+	 *	and also where list is the children of
+	 *      out.
+	 */
+	} else {
+		switch (type) {
+		case FR_TYPE_STRING:
+			if (fr_value_box_list_concat_as_string(&tainted, &sbuff, list,
+							       NULL, 0, NULL,
+							       proc_action, flatten) < 0) goto error;
+			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
+
+			entry = out->entry;
+			fr_value_box_bstrndup_shallow(out, NULL, fr_sbuff_buff(&sbuff), fr_sbuff_used(&sbuff), tainted);
+			out->entry = entry;
+			break;
+
+		case FR_TYPE_OCTETS:
+			if (fr_value_box_list_concat_as_octets(&tainted, &dbuff, list,
+							       NULL, 0,
+							       proc_action, flatten) < 0) goto error;
+			(void)fr_dbuff_trim_talloc(&dbuff, SIZE_MAX);
+
+			entry = out->entry;
+			fr_value_box_memdup_shallow(out, NULL, fr_dbuff_buff(&dbuff), fr_dbuff_used(&dbuff), tainted);
+			out->entry = entry;
+			break;
+
+		default:
+			break;
 		}
 	}
-
-	talloc_free(pool);
 
 	return 0;
 }

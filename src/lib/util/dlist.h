@@ -78,7 +78,6 @@ static_assert(sizeof(unsigned int) >= 4, "Unsigned integer too small on this pla
  * @param[in] _type		of item the list contains.
  * @param[in] _iter		Name of iteration variable.
  *				Will be declared in the scope of the loop.
- * @param[in] _tmp		A fr_dlist_t to hold the iteration state.
  */
 #define fr_dlist_foreach_safe(_list_head, _type, _iter) \
 { \

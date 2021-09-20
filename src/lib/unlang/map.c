@@ -223,8 +223,10 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 			 *	Concat the top level results together
 			 */
 			if (!fr_dlist_empty(&update_state->rhs_result) &&
-			    (fr_value_box_list_concat(update_state, fr_dlist_head(&update_state->rhs_result), &update_state->rhs_result,
-						      FR_TYPE_STRING, true) < 0)) {
+			    (fr_value_box_list_concat_in_place(update_state,
+			    				       fr_dlist_head(&update_state->rhs_result), &update_state->rhs_result, FR_TYPE_STRING,
+			    				       FR_VALUE_BOX_LIST_FREE, true,
+			    				       SIZE_MAX) < 0)) {
 				RPEDEBUG("Failed concatenating RHS expansion results");
 				goto error;
 			}

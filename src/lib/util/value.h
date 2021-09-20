@@ -158,6 +158,22 @@ struct value_box_s {
 	fr_dlist_t			entry;			//!< Doubly linked list entry.
 };
 
+/** Actions to perform when we process a box in a list
+ *
+ */
+typedef enum {
+	FR_VALUE_BOX_LIST_NONE			= 0x00,			//!< Do nothing to processed boxes.
+	FR_VALUE_BOX_LIST_REMOVE		= 0x01,			//!< Remove the box from the input list.
+	FR_VALUE_BOX_LIST_FREE_BOX		= (0x02 | FR_VALUE_BOX_LIST_REMOVE), //!< Free each processed box.
+	FR_VALUE_BOX_LIST_FREE_BOX_VALUE	= 0x04,			//!< Explicitly free any value buffers associated
+									///< with a box.
+	FR_VALUE_BOX_LIST_FREE			= (FR_VALUE_BOX_LIST_FREE_BOX | FR_VALUE_BOX_LIST_FREE_BOX_VALUE)
+} fr_value_box_list_action_t;
+
+#define vb_should_free(_action)		((_action & FR_VALUE_BOX_LIST_FREE_BOX) == FR_VALUE_BOX_LIST_FREE_BOX)
+#define vb_should_free_value(_action)	((_action & FR_VALUE_BOX_LIST_FREE_BOX_VALUE) == FR_VALUE_BOX_LIST_FREE_BOX_VALUE)
+#define vb_should_remove(_action)	((_action & FR_VALUE_BOX_LIST_REMOVE) == FR_VALUE_BOX_LIST_REMOVE)
+
 /** @name Field accessors for #fr_value_box_t
  *
  * Use these instead of accessing fields directly to make refactoring
@@ -782,9 +798,18 @@ int		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
  *
  * @{
  */
-int		fr_value_box_list_concat(TALLOC_CTX *ctx,
-					 fr_value_box_t *out, fr_value_box_list_t *list,
-					 fr_type_t type, bool free_input);
+ssize_t		fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
+						   char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
+						   fr_value_box_list_action_t proc_action, bool flatten);
+
+ssize_t		fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
+						   uint8_t const *sep, size_t sep_len,
+						   fr_value_box_list_action_t proc_action, bool flatten);
+
+int		fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
+						  fr_value_box_t *out, fr_value_box_list_t *list, fr_type_t type,
+						  fr_value_box_list_action_t proc_action, bool flatten,
+						  size_t max_size);
 
 char		*fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list, char const *delim,
 					 fr_sbuff_escape_rules_t const *e_rules);

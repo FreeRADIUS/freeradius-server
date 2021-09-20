@@ -508,7 +508,10 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 		return RLM_MODULE_FAIL;
 	}
 
-	if (fr_value_box_list_concat(request, url_head, url, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat_in_place(request,
+					      url_head, url, FR_TYPE_STRING,
+					      FR_VALUE_BOX_LIST_FREE, true,
+					      SIZE_MAX) < 0) {
 		REDEBUG("Failed concatenating input");
 		return RLM_MODULE_FAIL;
 	}

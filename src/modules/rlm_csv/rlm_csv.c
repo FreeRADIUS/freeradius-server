@@ -984,7 +984,10 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 	}
 
 	if ((inst->key_data_type == FR_TYPE_OCTETS) || (inst->key_data_type == FR_TYPE_STRING)) {
-		if (fr_value_box_list_concat(request, key_head, key, inst->key_data_type, true) < 0) {
+		if (fr_value_box_list_concat_in_place(request,
+						      key_head, key, inst->key_data_type,
+						      FR_VALUE_BOX_LIST_FREE, true,
+						      SIZE_MAX) < 0) {
 			REDEBUG("Failed parsing key");
 			return RLM_MODULE_FAIL;
 		}

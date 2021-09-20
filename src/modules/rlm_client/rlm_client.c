@@ -131,7 +131,10 @@ static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst
 		 *	Concat don't asprint, as this becomes a noop
 		 *	in the vast majority of cases.
 		 */
-		if (fr_value_box_list_concat(request, client_override_head, client_override, FR_TYPE_STRING, true) < 0) {
+		if (fr_value_box_list_concat_in_place(request,
+						      client_override_head, client_override, FR_TYPE_STRING,
+						      FR_VALUE_BOX_LIST_FREE, true,
+						      SIZE_MAX) < 0) {
 			REDEBUG("Failed concatenating input data");
 			return RLM_MODULE_FAIL;
 		}

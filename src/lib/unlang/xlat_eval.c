@@ -285,10 +285,14 @@ do { \
 			vb = fr_dlist_head(list);	/* Reset */
 		}
 
-		if (fr_value_box_list_concat(ctx, vb, list, arg->type, true) < 0) {
-			RPEDEBUG("Failed concatenating argument %u", arg_num);
+		if (fr_value_box_list_concat_in_place(ctx,
+						      vb, list, arg->type,
+						      FR_VALUE_BOX_LIST_FREE, true,
+						      SIZE_MAX) < 0) {
+			RPEDEBUG("Failed concatenating arguments");
 			return XLAT_ACTION_FAIL;
 		}
+		fr_assert(fr_dlist_num_elements(list) <= 1);
 
 		return XLAT_ACTION_DONE;
 	}

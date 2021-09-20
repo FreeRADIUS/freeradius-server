@@ -826,7 +826,10 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Concat (...) args to get message data
 	 */
 	args = fr_dlist_head(in);
-	if (fr_value_box_list_concat(ctx, args, in, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat_in_place(ctx,
+					      args, in, FR_TYPE_STRING,
+					      FR_VALUE_BOX_LIST_FREE, true,
+					      SIZE_MAX) < 0) {
 		REDEBUG("Failed concatenating arguments to form plaintext");
 		return XLAT_ACTION_FAIL;
 	}

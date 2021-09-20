@@ -397,7 +397,10 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 */
 	if  ((fr_dlist_head(in))) {
 		uri_vb = fr_dlist_head(&in_vb->vb_group);
-		if (fr_value_box_list_concat(uri_vb, uri_vb, &in_vb->vb_group, FR_TYPE_STRING, true) < 0) {
+		if (fr_value_box_list_concat_in_place(uri_vb,
+						      uri_vb, &in_vb->vb_group, FR_TYPE_STRING,
+						      FR_VALUE_BOX_LIST_FREE, true,
+						      SIZE_MAX) < 0) {
 			REDEBUG("Failed concatenating argument");
 			return XLAT_ACTION_FAIL;
 		}
@@ -450,7 +453,10 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	}
 
 	uri_vb = fr_dlist_head(&in_vb->vb_group);
-	if (fr_value_box_list_concat(uri_vb, uri_vb, &in_vb->vb_group, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat_in_place(uri_vb,
+					      uri_vb, &in_vb->vb_group, FR_TYPE_STRING,
+					      FR_VALUE_BOX_LIST_FREE, true,
+					      SIZE_MAX) < 0) {
 		REDEBUG("Concatenating URI");
 		goto error;
 	}
@@ -459,7 +465,10 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *	Any additional arguments are freeform data
 	 */
 	if ((in_vb = fr_dlist_head(in))) {
-		if (fr_value_box_list_concat(in_vb, in_vb, in, FR_TYPE_STRING, true) < 0) {
+		if (fr_value_box_list_concat_in_place(in_vb,
+						      in_vb, in, FR_TYPE_STRING,
+						      FR_VALUE_BOX_LIST_FREE, true,
+						      SIZE_MAX) < 0) {
 			REDEBUG("Failed to concatenate freeform data");
 			goto error;
 		}

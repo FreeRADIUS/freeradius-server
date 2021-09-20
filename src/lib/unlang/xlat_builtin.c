@@ -2440,7 +2440,10 @@ static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		/*
 		 *	Concatenate all input
 		 */
-		if (fr_value_box_list_concat(ctx, in_head, in, FR_TYPE_STRING, true) < 0) {
+		if (fr_value_box_list_concat_in_place(ctx,
+						      in_head, in, FR_TYPE_STRING,
+						      FR_VALUE_BOX_LIST_FREE, true,
+						      SIZE_MAX) < 0) {
 			RPEDEBUG("Failed concatenating input");
 			return XLAT_ACTION_FAIL;
 		}

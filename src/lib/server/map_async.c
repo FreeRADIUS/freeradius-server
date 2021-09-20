@@ -318,7 +318,10 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		 *	This should always be a noop, but included
 		 *	here for robustness.
 		 */
-		if (fr_value_box_list_concat(lhs_result_head, lhs_result_head, lhs_result, FR_TYPE_STRING, true) < 0) {
+		if (fr_value_box_list_concat_in_place(lhs_result_head,
+						      lhs_result_head, lhs_result, FR_TYPE_STRING,
+						      FR_VALUE_BOX_LIST_FREE, true,
+						      SIZE_MAX) < 0) {
 			RPEDEBUG("Left side expansion failed");
 			fr_dlist_talloc_free(lhs_result);
 			goto error;
@@ -703,7 +706,10 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		 *	This should always be a noop, but included
 		 *	here for robustness.
 		 */
-		if (fr_value_box_list_concat(rhs_result_head, rhs_result_head, rhs_result, FR_TYPE_STRING, true) < 0) {
+		if (fr_value_box_list_concat_in_place(rhs_result_head,
+						      rhs_result_head, rhs_result, FR_TYPE_STRING,
+						      FR_VALUE_BOX_LIST_FREE, true,
+						      SIZE_MAX) < 0) {
 			RPEDEBUG("Right side expansion failed");
 			fr_dlist_talloc_free(rhs_result);
 			goto error;
