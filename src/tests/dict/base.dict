@@ -37,6 +37,9 @@ VALUE base-enum-uint64 three	3
 ATTRIBUTE	Base-Integer64				19	uint64 enum=base-enum-uint64
 ATTRIBUTE	Base-IPv4-Prefix			20	ipv4prefix
 
+#  and this casting should work
+ATTRIBUTE	Base-Integer32				21	uint32	enum=base-enum-uint64
+
 # Ignore VSA, VENDOR, timeval, boolean, combo-ip-prefix, decimal... for now
 
 

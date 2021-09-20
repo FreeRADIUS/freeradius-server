@@ -383,21 +383,13 @@ int dict_fixup_clone(dict_fixup_ctx_t *fctx, char const *filename, int line,
 		     char const *ref, size_t ref_len)
 {
 	dict_fixup_clone_t *fixup;
-	fr_dict_attr_t const *target;
 
 	/*
-	 *	As a quick check, see if the types are compatible.
+	 *	Delay type checks until we've loaded all of the
+	 *	dictionaries.  This means that errors are produced
+	 *	later, but that shouldn't matter for the default
+	 *	dictionaries.  They're supposed to work.
 	 */
-	target= fr_dict_attr_by_oid(NULL, fr_dict_root(da->dict), ref);
-	if (target) {
-		if (target->type != da->type) {
-			fr_strerror_printf("Clone reference MUST be to an attribute of type '%s' at [%s:%d]",
-					   fr_table_str_by_value(fr_value_box_type_table, target->type, "<UNKNOWN>"),
-					   filename, line);
-			return -1;
-		}
-	}
-
 	fixup = talloc(fctx->pool, dict_fixup_clone_t);
 	if (!fixup) {
 		fr_strerror_const("Out of memory");
@@ -440,7 +432,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 
 			for (parent = fixup->da->parent; !parent->flags.is_root; parent = parent->parent) {
 				if (parent == da) {
-					fr_strerror_printf("Clone references MUST NOT refer to a parent attribute %s at %s[%d]",
+					fr_strerror_printf("References MUST NOT refer to a parent attribute %s at %s[%d]",
 							   parent->name, fr_cwd_strip(fixup->common.filename), fixup->common.line);
 					return -1;
 				}
@@ -451,20 +443,63 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 		if (!da) return -1;
 	}
 
-	/*
-	 *	We can only clone attributes of the same data type.
-	 */
-	if (da->type != fixup->da->type) {
-		fr_strerror_printf("Clone reference MUST be to an attribute of type '%s' at %s[%d]",
-				   fr_table_str_by_value(fr_value_box_type_table, fixup->da->type, "<UNKNOWN>"),
+	if (fr_dict_attr_ref(da)) {
+		fr_strerror_printf("References MUST NOT refer to an ATTRIBUTE which itself has a 'ref=...' at %s[%d]",
 				   fr_cwd_strip(fixup->common.filename), fixup->common.line);
 		return -1;
 	}
 
-	if (fr_dict_attr_ref(da)) {
-		fr_strerror_printf("Clone references MUST NOT refer to an ATTRIBUTE which has 'ref=...' at %s[%d]",
-				   fr_cwd_strip(fixup->common.filename), fixup->common.line);
-		return -1;
+	/*
+	 *	We can only clone attributes of the same data type.
+	 *
+	 *	@todo - for ENUMs, we have to _manually_ clone the
+	 *	values if the types are different.  This means looping
+	 *	over the ref da, and _casting_ the values to the new
+	 *	data type.  If the cast succeeds, we add the value.
+	 *	Otherwise we don't.
+	 */
+	if (da->type != fixup->da->type) {
+		int copied;
+
+		/*
+		 *	Structural types cannot be the source or destination of clones.
+		 *
+		 *	Leaf types can be cloned, even if they're
+		 *	different types.  But only if they don't have
+		 *	children (i.e. key fields).
+		 */
+		if (fr_type_is_non_leaf(da->type) || fr_type_is_non_leaf(fixup->da->type) ||
+		    dict_attr_children(da) || dict_attr_children(fixup->da)) {
+			fr_strerror_printf("Reference MUST be to a simple data type of type '%s' at %s[%d]",
+					   fr_table_str_by_value(fr_value_box_type_table, fixup->da->type, "<UNKNOWN>"),
+					   fr_cwd_strip(fixup->common.filename), fixup->common.line);
+			return -1;
+		}
+
+		/*
+		 *	We copy all of the VALUEs over from the source
+		 *	da by hand, by casting them.
+		 *
+		 *	We have to do this work manually because we
+		 *	can't call dict_attr_acopy(), as that function
+		 *	copies the VALUE with the *source* data type,
+		 *	where we need the *destination* data type.
+		 */
+		copied = dict_attr_acopy_enumv(fixup->da, da);
+		if (copied < 0) return -1;
+
+		if (!copied) {
+			fr_strerror_printf("Reference copied no VALUEs from type type '%s' at %s[%d]",
+					   fr_table_str_by_value(fr_value_box_type_table, fixup->da->type, "<UNKNOWN>"),
+					   fr_cwd_strip(fixup->common.filename), fixup->common.line);
+			return -1;
+		}
+
+		/*
+		 *	We don't need to copy any children, so leave
+		 *	fixup->da in the dictionary.
+		 */
+		return 0;
 	}
 
 	/*
@@ -473,19 +508,20 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 	 */
 	cloned = dict_attr_acopy(dict->pool, da, fixup->da->name);
 	if (!cloned) {
-		fr_strerror_printf("Failed cloning attribute '%s' to %s", da->name, fixup->ref);
+		fr_strerror_printf("Failed copying attribute '%s' to %s", da->name, fixup->ref);
 		return -1;
 	}
 
 	cloned->attr = fixup->da->attr;
 	cloned->parent = fixup->parent; /* we need to re-parent this attribute */
+	cloned->depth = cloned->parent->depth + 1;
 
 	/*
 	 *	Copy any pre-existing children over.
 	 */
 	if (dict_attr_children(fixup->da)) {
 		if (dict_attr_acopy_children(dict, cloned, fixup->da) < 0) {
-			fr_strerror_printf("Failed cloning attribute '%s' from children of %s", da->name, fixup->ref);
+			fr_strerror_printf("Failed copying attribute '%s' from children of %s", da->name, fixup->ref);
 			return -1;
 		}
 	}
@@ -495,12 +531,12 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 	 */
 	if (dict_attr_children(da)) {
 		if (dict_attr_acopy_children(dict, cloned, da) < 0) {
-			fr_strerror_printf("Failed cloning attribute '%s' from children of %s", da->name, fixup->ref);
+			fr_strerror_printf("Failed copying attribute '%s' from children of %s", da->name, fixup->ref);
 			return -1;
 		}
 
 		if (dict_attr_child_add(fr_dict_attr_unconst(fixup->parent), cloned) < 0) {
-			fr_strerror_printf("Failed adding cloned attribute %s", da->name);
+			fr_strerror_printf("Failed adding attribute %s", da->name);
 			talloc_free(cloned);
 			return -1;
 		}

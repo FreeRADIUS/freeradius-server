@@ -173,6 +173,8 @@ fr_dict_attr_t		*dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char
 
 int			dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_t const *src);
 
+int			dict_attr_acopy_enumv(fr_dict_attr_t *dst, fr_dict_attr_t const *src);
+
 int			dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child);
 
 int			dict_protocol_add(fr_dict_t *dict);

@@ -746,6 +746,62 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
 	return 0;
 }
 
+/** Copy the VALUEs of an existing attribute, by casting them
+ *
+ * @param[in] dst		where to cast the VALUEs to
+ * @param[in] src		where to cast the VALUEs from
+ * @return
+ *	- 0 on success (but copied no values)
+ *	- 1 on success (but copied at least one value)
+ *	- <0 on error
+ */
+int dict_attr_acopy_enumv(fr_dict_attr_t *dst, fr_dict_attr_t const *src)
+{
+	fr_dict_enum_value_t const	*enumv;
+	fr_dict_attr_ext_enumv_t	*ext;
+	fr_hash_iter_t  		iter;
+	int				copied = 0;
+
+	fr_assert(!fr_type_is_non_leaf(dst->type));
+	fr_assert(!fr_type_is_non_leaf(src->type));
+
+	fr_assert(!fr_dict_attr_is_key_field(dst));
+	fr_assert(!fr_dict_attr_is_key_field(src));
+
+	fr_assert(fr_dict_attr_has_ext(dst, FR_DICT_ATTR_EXT_ENUMV));
+	fr_assert(fr_dict_attr_has_ext(src, FR_DICT_ATTR_EXT_ENUMV));
+
+	ext = fr_dict_attr_ext(src, FR_DICT_ATTR_EXT_ENUMV);
+	if (!ext) {
+		fr_assert(0);
+		return -1;
+	}
+
+	if (!ext->name_by_value) {
+		fr_strerror_printf("Reference enum %s does not have any VALUEs to copy", src->name);
+		return -1;
+	}
+
+	/*
+	 *	Loop over the VALUEs, adding names from the old
+	 *	attribute to the new one.
+	 *
+	 *	If a value can't be cast, then just ignore it.
+	 */
+	for (enumv = fr_hash_table_iter_init(ext->name_by_value, &iter);
+	     enumv;
+	     enumv = fr_hash_table_iter_next(ext->name_by_value, &iter)) {
+		if (dict_attr_enum_add_name(dst, enumv->name, enumv->value, true,
+					    false, NULL) < 0) {
+			continue;
+		}
+
+		copied++;
+	}
+
+	return copied;
+}
+
 /** Add a protocol to the global protocol table
  *
  * Inserts a protocol into the global protocol table.  Uses the root attributes

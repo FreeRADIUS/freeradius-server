@@ -13,6 +13,15 @@ BEGIN-PROTOCOL	RADIUS
 #  of the standard RADIUS dictionary.
 #
 
+#
+#  Define an ENUM
+#
+ENUM base-enum-uint64	uint64
+VALUE base-enum-uint64 one	1
+VALUE base-enum-uint64 two	2
+VALUE base-enum-uint64 three	3
+
+
 ATTRIBUTE	Unit-String		248		string
 ATTRIBUTE	Unit-Enumv		249		integer
 
@@ -38,6 +47,11 @@ ATTRIBUTE	Delta-MSec-uint32	254.8		time_delta milliseconds,uint32
 ATTRIBUTE	Delta-Sec-uint32	254.9		time_delta seconds,uint32
 ATTRIBUTE	Delta-MSec-int32	254.10		time_delta milliseconds,int32
 ATTRIBUTE	Delta-Sec-int32		254.11		time_delta seconds,int32
+
+ATTRIBUTE	Test-Enum-Integer64	254.12		uint64 enum=base-enum-uint64
+
+#  and this casting should work
+ATTRIBUTE	Test-Enum-Integer32	254.13		uint32	enum=base-enum-uint64
 
 #
 #  Copied here for simplicity
