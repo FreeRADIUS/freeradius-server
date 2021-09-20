@@ -59,6 +59,13 @@ typedef enum {
 	FR_TRUNK_CANCEL_REASON_REQUEUE			//!< A previously sent request is being requeued.
 } fr_trunk_cancel_reason_t;
 
+typedef enum {
+	FR_TRUNK_STATE_IDLE = 0,			//!< Trunk has no connections
+	FR_TRUNK_STATE_ACTIVE,				//!< Trunk has active connections
+	FR_TRUNK_STATE_PENDING,				//!< Trunk has connections, but none are active
+	FR_TRUNK_STATE_MAX
+} fr_trunk_state_t;
+
 /** What type of I/O events the trunk connection is currently interested in receiving
  *
  */
@@ -292,6 +299,8 @@ struct fr_trunk_pub_s {
 	/** @} */
 
 	bool _CONST		triggers;		//!< do we run the triggers?
+
+	fr_trunk_state_t _CONST	state;			//!< Current state of the trunk.
 };
 
 /** Public fields for the trunk request
@@ -665,6 +674,18 @@ typedef void (*fr_trunk_request_fail_t)(request_t *request, void *preq, void *rc
  */
 typedef void (*fr_trunk_request_free_t)(request_t *request, void *preq_to_free, void *uctx);
 
+/** Receive a notification when a trunk enters a particular state
+ *
+ * @param[in] trunk	Being watched.
+ * @param[in] prev	State we came from.
+ * @param[in] state	State that was entered (the current state)
+ * @param[in] uctx	that was passed to fr_trunk_add_watch_*.
+ */
+typedef void(*fr_trunk_watch_t)(fr_trunk_t *trunk,
+				fr_trunk_state_t prev, fr_trunk_state_t state, void *uctx);
+
+typedef struct fr_trunk_watch_entry_s fr_trunk_watch_entry_t;
+
 /** I/O functions to pass to fr_trunk_alloc
  *
  */
@@ -839,6 +860,15 @@ int		fr_trunk_connection_manage_schedule(fr_trunk_t *trunk) CC_HINT(nonnull);
 fr_trunk_t	*fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 				fr_trunk_io_funcs_t const *funcs, fr_trunk_conf_t const *conf,
 				char const *log_prefix, void const *uctx, bool delay_start) CC_HINT(nonnull(2, 3, 4));
+/** @} */
+
+/** @name Watchers
+ * @{
+ */
+fr_trunk_watch_entry_t *fr_trunk_add_watch(fr_trunk_t *trunk, fr_trunk_state_t state,
+					   fr_trunk_watch_t watch, bool oneshot, void const *uctx) CC_HINT(nonnull(1));
+
+int		fr_trunk_del_watch(fr_trunk_t *trunk, fr_trunk_state_t state, fr_trunk_watch_t watch);
 /** @} */
 
 #undef _CONST
