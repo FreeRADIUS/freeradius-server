@@ -5244,6 +5244,8 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_
 		}
 	}
 
+	talloc_free(tmp_ctx);
+
 	/*
 	 *	Free the boxes last so if there's
 	 *	an issue concating them, everything
