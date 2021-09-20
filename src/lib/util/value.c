@@ -3332,13 +3332,15 @@ void fr_value_box_clear(fr_value_box_t *data)
  */
 int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src)
 {
-	if (!fr_cond_assert(src->type != FR_TYPE_NULL)) return -1;
-
 	switch (src->type) {
 	default:
 		memcpy(((uint8_t *)dst) + fr_value_box_offsets[src->type],
 		       ((uint8_t const *)src) + fr_value_box_offsets[src->type],
 		       fr_value_box_field_sizes[src->type]);
+		fr_value_box_copy_meta(dst, src);
+		break;
+
+	case FR_TYPE_NULL:
 		fr_value_box_copy_meta(dst, src);
 		break;
 
