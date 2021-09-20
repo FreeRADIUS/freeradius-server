@@ -37,13 +37,13 @@ update request {
 	&Tmp-Date-0 := "%l"
 }
 
-if ("%{expr:%{redis:ZSCORE '{%{control.IP-Pool.Name}%}:pool' '%{reply.Framed-IP-Address}'} - %(integer:%{Tmp-Date-0})}" > 20) {
+if ("%{expr:%(redis:ZSCORE "{%{control.IP-Pool.Name}}:pool" %{reply.Framed-IP-Address}) - %(integer:%{Tmp-Date-0})}" > 20) {
 	test_pass
 } else {
 	test_fail
 }
 
-if ("%{expr:%{redis:ZSCORE '{%{control.IP-Pool.Name}%}:pool' '%{reply.Framed-IP-Address}'} - %(integer:%{Tmp-Date-0})}" < 40) {
+if ("%{expr:%(redis:ZSCORE "{%{control.IP-Pool.Name}}:pool" %{reply.Framed-IP-Address}) - %(integer:%{Tmp-Date-0})}" < 40) {
 	test_pass
 } else {
 	test_fail
@@ -52,19 +52,19 @@ if ("%{expr:%{redis:ZSCORE '{%{control.IP-Pool.Name}%}:pool' '%{reply.Framed-IP-
 #
 #  Verify the IP hash has been set
 #
-if ("%{redis:HGET '{%{control.IP-Pool.Name}%}:ip:%{reply.Framed-IP-Address}' 'device'}" == '00:11:22:33:44:55') {
+if ("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} 'device')" == '00:11:22:33:44:55') {
 	test_pass
 } else {
 	test_fail
 }
 
-if ("%{redis:HGET {%{control.IP-Pool.Name}%}:ip:%{reply.Framed-IP-Address} gateway}" == '127.0.0.1') {
+if ("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} gateway)" == '127.0.0.1') {
 	test_pass
 } else {
 	test_fail
 }
 
-if ("%{redis:HGET {%{control.IP-Pool.Name}%}:ip:%{reply.Framed-IP-Address} range}" == '192.168.0.0') {
+if ("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} range)" == '192.168.0.0') {
 	test_pass
 } else {
 	test_fail
@@ -79,7 +79,7 @@ if (&reply.IP-Pool.Range == '192.168.0.0') {
 #
 #  Verify the lease has been associated with the device
 #
-if (&reply.Framed-IP-Address == "%{redis:GET '{%{control.IP-Pool.Name}%}:device:%{Calling-Station-ID}'}") {
+if (&reply.Framed-IP-Address == "%(redis:GET {%{control.IP-Pool.Name}}:device:%{Calling-Station-ID})") {
 	test_pass
 } else {
 	test_fail

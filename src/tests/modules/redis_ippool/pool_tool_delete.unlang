@@ -42,7 +42,7 @@ update request {
 #
 #  Verify the association with the device has been removed
 #
-if ("%{redis:EXISTS '{%{control.IP-Pool.Name}%}:device:%{Calling-Station-ID}'}" == '0') {
+if ("%(redis:EXISTS {%{control.IP-Pool.Name}}:device:%{Calling-Station-ID})" == '0') {
 	test_pass
 } else {
 	test_fail
@@ -51,14 +51,14 @@ if ("%{redis:EXISTS '{%{control.IP-Pool.Name}%}:device:%{Calling-Station-ID}'}" 
 #
 #  Verify the hash information is removed
 #
-if ("%{redis:EXISTS '{%{control.IP-Pool.Name}%}:ip:%{reply.Framed-IP-Address}'}" == '0') {
+if ("%(redis:EXISTS {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address})" == '0') {
 	test_pass
 } else {
 	test_fail
 }
 
 # Check the ZSCORE
-if ("%{redis:ZCOUNT '{%{control.IP-Pool.Name}%}:pool' -inf +inf}" == 0) {
+if ("%(redis:ZCOUNT {%{control.IP-Pool.Name}%}:pool -inf +inf)" == 0) {
 	test_pass
 } else {
 	test_fail

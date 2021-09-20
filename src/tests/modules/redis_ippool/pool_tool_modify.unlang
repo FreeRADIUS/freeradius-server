@@ -17,7 +17,7 @@ update request {
 #
 #  Verify the range was set OK
 #
-if ("%{redis:HGET {%{control.IP-Pool.Name}%}:ip:192.168.0.1 range}" == '192.168.0.0') {
+if ("%(redis:HGET {%{control.IP-Pool.Name}}:ip:192.168.0.1 range)" == '192.168.0.0') {
 	test_pass
 } else {
 	test_fail
@@ -33,7 +33,7 @@ update request {
 #
 #  Check it was updated
 #
-if ("%{redis:HGET {%{control.IP-Pool.Name}%}:ip:192.168.0.1 range}" == '10.0.0.0') {
+if ("%(redis:HGET {%{control.IP-Pool.Name}}:ip:192.168.0.1 range)" == '10.0.0.0') {
 	test_pass
 } else {
 	test_fail

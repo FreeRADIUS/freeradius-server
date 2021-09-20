@@ -40,7 +40,7 @@ if (&reply.Session-Timeout == 60) {
 }
 
 # 4. Verify the gateway was set
-if ("%{redis:HGET {%{control.IP-Pool.Name}%}:ip:%{reply.Framed-IP-Address} gateway}" == '127.0.0.1') {
+if ("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} gateway)" == '127.0.0.1') {
 	test_pass
 } else {
 	test_fail
