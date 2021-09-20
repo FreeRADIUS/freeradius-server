@@ -753,8 +753,6 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
 
 		cloned = dict_attr_acopy_enumv(dst, src);
 		if (cloned < 0) return -1;
-
-		if (cloned) fprintf(stderr, "%s has %d values", dst->name, cloned);
 	}
 
 	return 0;
