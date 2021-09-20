@@ -189,6 +189,35 @@ static void heap_test_order(void)
 	free(array);
 }
 
+#define	HEAP_ITER_SIZE	20
+
+static void heap_iter(void)
+{
+	fr_heap_t	*hp;
+	heap_thing	*array;
+	unsigned int	data_set;
+
+	hp = fr_heap_alloc(NULL, heap_cmp, heap_thing, heap, 0);
+	TEST_CHECK(hp != NULL);
+
+	array = calloc(HEAP_ITER_SIZE, sizeof(heap_thing));
+
+	for (size_t i = 0; i < HEAP_ITER_SIZE; i++) {
+		array[i].data = i;
+		TEST_CHECK(fr_heap_insert(hp, &array[i])  >= 0);
+	}
+
+	data_set = 0;
+	fr_heap_foreach(hp, heap_thing, item) {
+		TEST_CHECK((data_set & (1U << item->data)) == 0);
+		data_set |= (1U << item->data);
+	}}
+	TEST_CHECK(data_set == ((1U << HEAP_ITER_SIZE) - 1U));
+
+	talloc_free(hp);
+	free(array);
+}
+
 static void heap_cycle(void)
 {
 	fr_heap_t	*hp;
@@ -287,6 +316,7 @@ TEST_LIST = {
 	{ "heap_test_skip_2",		heap_test_skip_2	},
 	{ "heap_test_skip_10",		heap_test_skip_10	},
 	{ "heap_test_order",		heap_test_order		},
+	{ "heap_iter",			heap_iter		},
 	{ "heap_cycle",			heap_cycle		},
 	{ NULL }
 };
