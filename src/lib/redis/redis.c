@@ -207,8 +207,14 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 				bool box_error, bool shallow)
 {
 	fr_value_box_t	in;
+	fr_value_box_t	*to_cast;
 
-	memset(&in, 0, sizeof(in));
+	if (dst_type != FR_TYPE_VOID) {
+		memset(&in, 0, sizeof(in));
+		to_cast = &in;
+	} else {
+		to_cast = out;
+	}
 
 	switch (reply->type) {
 	case REDIS_REPLY_NIL:
@@ -222,39 +228,39 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 	 */
 	case REDIS_REPLY_INTEGER:
 		if (reply->integer < INT32_MIN) {	/* 64bit signed */
-			fr_value_box_shallow(&in, (int64_t) reply->integer, true);
+			fr_value_box_shallow(to_cast, (int64_t) reply->integer, true);
 		}
 		else if (reply->integer < INT16_MIN) {	/* 32bit signed */
-			fr_value_box_shallow(&in, (int32_t) reply->integer, true);
+			fr_value_box_shallow(to_cast, (int32_t) reply->integer, true);
 		}
 		else if (reply->integer < INT8_MIN) {	/* 16bit signed */
-			fr_value_box_shallow(&in, (int16_t) reply->integer, true);
+			fr_value_box_shallow(to_cast, (int16_t) reply->integer, true);
 		}
 		else if (reply->integer < 0) {	/* 8bit signed */
-			fr_value_box_shallow(&in, (int8_t) reply->integer, true);
+			fr_value_box_shallow(to_cast, (int8_t) reply->integer, true);
 		}
 		else if (reply->integer > UINT32_MAX) {	/* 64bit unsigned */
-			fr_value_box_shallow(&in, (uint64_t) reply->integer, true);
+			fr_value_box_shallow(to_cast, (uint64_t) reply->integer, true);
 		}
 		else if (reply->integer > UINT16_MAX) {	/* 32bit unsigned */
-			fr_value_box_shallow(&in, (uint32_t) reply->integer, true);
+			fr_value_box_shallow(to_cast, (uint32_t) reply->integer, true);
 		}
 		else if (reply->integer > UINT8_MAX) {	/* 16bit unsigned */
-			fr_value_box_shallow(&in, (uint16_t) reply->integer, true);
+			fr_value_box_shallow(to_cast, (uint16_t) reply->integer, true);
 		}
 		else {					/* 8bit unsigned */
-			fr_value_box_shallow(&in, (uint8_t) reply->integer, true);
+			fr_value_box_shallow(to_cast, (uint8_t) reply->integer, true);
 		}
 		break;
 
 #if HIREDIS_MAJOR >= 1
 	case REDIS_REPLY_DOUBLE:
 		/* reply->str is \0 terminated in this case */
-		fr_value_box_shallow(&in, strtod(reply->str, NULL), true);
+		fr_value_box_shallow(to_cast, strtod(reply->str, NULL), true);
 		break;
 
 	case REDIS_REPLY_BOOL:
-		fr_value_box_shallow(&in, (bool)reply->integer, true);
+		fr_value_box_shallow(to_cast, (bool)reply->integer, true);
 		break;
 #endif
 
@@ -333,7 +339,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 	}
 	}
 
-	if ((dst_type != FR_TYPE_VOID) && (fr_value_box_cast(ctx, out, dst_type, dst_enumv, &in) < 0)) return -1;
+	if ((dst_type != FR_TYPE_VOID) && (fr_value_box_cast(ctx, out, dst_type, dst_enumv, to_cast) < 0)) return -1;
 
 	return 0;
 }
