@@ -716,8 +716,9 @@ fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char 
  */
 int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_t const *src)
 {
-	fr_dict_attr_t const *child = NULL;
-	fr_dict_attr_t *copy;
+	fr_dict_attr_t const		*child = NULL;
+	fr_dict_attr_t			*copy;
+	fr_dict_attr_ext_enumv_t	*ext;
 
 	fr_assert(fr_dict_attr_has_ext(dst, FR_DICT_ATTR_EXT_CHILDREN));
 	fr_assert(dst->type == src->type);
@@ -743,6 +744,19 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
 		if (dict_attr_acopy_children(dict, copy, child) < 0) return -1;
 	}
 
+	/*
+	 *	Copy VALUEs, too.
+	 */
+	ext = fr_dict_attr_ext(src, FR_DICT_ATTR_EXT_ENUMV);
+	if (ext && ext->name_by_value) {
+		int cloned;
+
+		cloned = dict_attr_acopy_enumv(dst, src);
+		if (cloned < 0) return -1;
+
+		if (cloned) fprintf(stderr, "%s has %d values", dst->name, cloned);
+	}
+
 	return 0;
 }
 
@@ -764,9 +778,6 @@ int dict_attr_acopy_enumv(fr_dict_attr_t *dst, fr_dict_attr_t const *src)
 
 	fr_assert(!fr_type_is_non_leaf(dst->type));
 	fr_assert(!fr_type_is_non_leaf(src->type));
-
-	fr_assert(!fr_dict_attr_is_key_field(dst));
-	fr_assert(!fr_dict_attr_is_key_field(src));
 
 	fr_assert(fr_dict_attr_has_ext(dst, FR_DICT_ATTR_EXT_ENUMV));
 	fr_assert(fr_dict_attr_has_ext(src, FR_DICT_ATTR_EXT_ENUMV));
