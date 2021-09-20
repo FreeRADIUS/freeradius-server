@@ -4784,8 +4784,6 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 
 	char		buf[1024];	/* Interim buffer to use with poorly behaved printing functions */
 
-	if (!fr_cond_assert(data->type != FR_TYPE_NULL)) return 0;
-
 	if (data->enumv && data->enumv->name) {
 		char const *name;
 
