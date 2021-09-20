@@ -5087,21 +5087,17 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		break;
 
 	case FR_TYPE_GROUP:
-	{
-		fr_value_box_t	*child = NULL;
-		ssize_t		slen;
-
+		/*
+		 *	Represent groups as:
+		 *
+		 *	{ <value0>, <value1>, { <sub-value0>, <sub-value1>, <sub-valueN> }}
+		 */
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '{');
-
-		while ((child = fr_dlist_next(&data->vb_group, child))) {
-			slen = fr_value_box_print(&our_out, child, e_rules);
-			if (slen < 0) return slen;
-
-			if (fr_dlist_next(&data->vb_group, child)) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ", ");
-		}
-
+		FR_SBUFF_RETURN(fr_value_box_list_concat_as_string,
+				NULL, &our_out, UNCONST(fr_value_box_list_t *, &data->vb_group),
+				", ", (sizeof(", ") - 1), e_rules,
+				0, false);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '}');
-	}
 		break;
 
 	/*
