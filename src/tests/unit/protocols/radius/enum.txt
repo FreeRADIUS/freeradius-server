@@ -14,7 +14,7 @@ match fe 0c 0c 0a 00 00 00 00 00 00 00 01
 #  @todo - find out why this isn't an enum lookup :(
 #
 decode-pair -
-match Unit-TLV = { Test-Enum-Integer64 = 1 }
+match Unit-TLV = { Test-Enum-Integer64 = one }
 
 #
 #  Same enum names, different attribute.

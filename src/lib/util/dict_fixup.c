@@ -450,15 +450,18 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 	}
 
 	/*
-	 *	We can only clone attributes of the same data type.
-	 *
-	 *	@todo - for ENUMs, we have to _manually_ clone the
-	 *	values if the types are different.  This means looping
+	 *	If the attributes are of different types, then we have
+	 *	to _manually_ clone the values.  This means looping
 	 *	over the ref da, and _casting_ the values to the new
 	 *	data type.  If the cast succeeds, we add the value.
-	 *	Otherwise we don't.
+	 *	Otherwise we don't
+	 *
+	 *	We do this if the source type is a leaf node, AND the
+	 *	types are different, or the destination has no
+	 *	children.
 	 */
-	if (da->type != fixup->da->type) {
+	if (!fr_type_is_non_leaf(fixup->da->type) &&
+	    ((da->type != fixup->da->type) || !dict_attr_children(da))) {
 		int copied;
 
 		/*
@@ -500,6 +503,14 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 		 *	fixup->da in the dictionary.
 		 */
 		return 0;
+	}
+
+	/*
+	 *	Can't clone KEY fields directly, you MUST clone the parent struct.
+	 */
+	if (!fr_type_is_non_leaf(da->type) || fr_dict_attr_is_key_field(da) || fr_dict_attr_is_key_field(fixup->da)) {
+		fr_strerror_printf("Invalid reference from '%s' to %s", fixup->ref, da->name);
+		return -1;
 	}
 
 	/*
