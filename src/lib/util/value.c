@@ -1996,43 +1996,11 @@ static inline int fr_value_box_cast_to_strvalue(TALLOC_CTX *ctx, fr_value_box_t 
 					     (char const *)src->vb_octets, src->vb_length, src->tainted);
 
 	case FR_TYPE_GROUP:
-	{
-		fr_value_box_t *vb = NULL;
-
-		/*
-		 *	Initialise an empty buffer we can
-		 *	append to.
-		 */
-		if (fr_value_box_bstrndup(ctx, dst, dst_enumv, NULL, 0, src->tainted) < 0) return -1;
-
-		while ((vb = fr_dlist_next(&src->vb_group, vb))) {
-			/*
-			 *	Attempt to cast to a string so
-			 *	we can append.
-			 */
-			if (vb->type != FR_TYPE_STRING) {
-				fr_value_box_t	tmp;
-				int		ret;
-
-				if (fr_value_box_cast(ctx, &tmp, FR_TYPE_STRING, NULL, vb) < 0) return -1;
-
-				/*
-				 *	Append and continue
-				 */
-				ret = fr_value_box_bstr_append_buffer(ctx, dst, tmp.vb_strvalue, tmp.tainted);
-				fr_value_box_clear(&tmp);
-				if (ret < 0) {
-				error:
-					fr_value_box_clear(dst);
-					return -1;
-				}
-				continue;
-			}
-
-			if (fr_value_box_bstr_append_buffer(ctx, dst, vb->vb_strvalue, vb->tainted) < 0) goto error;
-		}
-	}
-		return 0;
+		return fr_value_box_list_concat_in_place(ctx,
+							 dst, UNCONST(fr_value_box_list_t *, &src->vb_group),
+							 FR_TYPE_STRING,
+							 FR_VALUE_BOX_LIST_NONE, false,
+							 SIZE_MAX);
 
 	/*
 	 *	Get the presentation format
@@ -2077,44 +2045,11 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 		return 0;
 
 	case FR_TYPE_GROUP:
-	{
-		fr_value_box_t *vb = NULL;
-
-		/*
-		 *	Initialise an empty buffer we can
-		 *	append to.
-		 */
-		if (fr_value_box_memdup(ctx, dst, dst_enumv, NULL, 0, src->tainted) < 0) return -1;
-
-		while ((vb = fr_dlist_next(&src->vb_group, vb))) {
-			/*
-			 *	Attempt to cast to octets so
-			 *	we can append;
-			 */
-			if (vb->type != FR_TYPE_OCTETS) {
-				fr_value_box_t	tmp;
-				int		ret;
-
-				if (fr_value_box_cast(ctx, &tmp, FR_TYPE_OCTETS, NULL, vb) < 0) return -1;
-
-				/*
-				 *	Append and continue
-				 */
-				ret = fr_value_box_mem_append_buffer(ctx, dst, tmp.vb_octets, tmp.tainted);
-				fr_value_box_clear(&tmp);
-				if (ret < 0) {
-				error:
-					fr_value_box_clear(dst);
-					return -1;
-				}
-				continue;
-			}
-
-			if (fr_value_box_mem_append_buffer(ctx, dst, vb->vb_octets, vb->tainted) < 0) goto error;
-		}
-		return 0;
-	}
-
+		return fr_value_box_list_concat_in_place(ctx,
+							 dst, UNCONST(fr_value_box_list_t *, &src->vb_group),
+							 FR_TYPE_OCTETS,
+							 FR_VALUE_BOX_LIST_NONE, false,
+							 SIZE_MAX);
 	/*
 	 *	<4 bytes address>
 	 */
