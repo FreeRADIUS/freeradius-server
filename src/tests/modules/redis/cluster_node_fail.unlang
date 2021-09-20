@@ -36,7 +36,7 @@ if ("%(redis:GET b)" == 'boom') {
 }
 
 #  Kill that one too
-if ("%(redis:@%(redis_node:b 1) DEBUG SEGFAULT)" != '') {
+if ("%(redis:@%(redis_node:b) DEBUG SEGFAULT)" != '') {
 	test_fail
 } else {
 	test_pass
