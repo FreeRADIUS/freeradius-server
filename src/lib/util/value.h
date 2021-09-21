@@ -667,12 +667,10 @@ int		fr_value_box_to_key(uint8_t **out, size_t *outlen, fr_value_box_t const *va
 /** Special value to ensure other encoding/decoding errors don't overlap
  */
 #define FR_VALUE_BOX_NET_MAX	(FR_VALUE_BOX_NET_OOM + 1)
+
 ssize_t		fr_value_box_from_network(TALLOC_CTX *ctx,
 					  fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
-				  	  uint8_t const *src, size_t len, bool tainted);
-ssize_t		fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
-						fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
-						fr_dbuff_t *dbuff, size_t len, bool tainted);
+					  fr_dbuff_t *dbuff, size_t len, bool tainted);
 
 int		fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
@@ -812,7 +810,7 @@ int		fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 						  size_t max_size);
 
 char		*fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list, char const *delim,
-					 fr_sbuff_escape_rules_t const *e_rules);
+					  fr_sbuff_escape_rules_t const *e_rules);
 
 int		fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value_box_list_t const *in);
 

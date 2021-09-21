@@ -1682,7 +1682,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_di
 
 	default:
 	decode:
-		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, p, data_len, true) < 0) {
+		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
+					      &FR_DBUFF_TMP(p, data_len), data_len, true) < 0) {
 			/*
 			 *	Paranoid loop prevention
 			 */

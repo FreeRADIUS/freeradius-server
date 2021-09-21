@@ -224,7 +224,8 @@ int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_dcu
 		 *
 		 *	@todo - if the attribute is malformed, create a "raw" one.
 		 */
-		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, ptr, attr_len, true) < 0) {
+		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
+					      &FR_DBUFF_TMP(ptr, attr_len), attr_len, true) < 0) {
 			talloc_free(vp);
 			return -1;
 		}

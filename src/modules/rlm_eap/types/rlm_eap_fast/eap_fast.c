@@ -457,7 +457,8 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_
 			MEM(vp = fr_pair_afrom_da(ctx, da));
 		}
 
-		ret = fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da, p, len, true);
+		ret = fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
+						&FR_DBUFF_TMP(p, (size_t)len), len, true);
 		if (ret != len) {
 			fr_pair_to_unknown(vp);
 			fr_pair_value_memdup(vp, p, len, true);

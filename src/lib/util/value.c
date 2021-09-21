@@ -1538,7 +1538,7 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
  * @param[out] dst	value_box to write the result to.
  * @param[in] type	to decode data to.
  * @param[in] enumv	Aliases for values.
- * @param[in] src	Binary data to decode.
+ * @param[in] dbuff	Binary data to decode.
  * @param[in] len	Length of data to decode.  For fixed length types we only
  *			decode complete values.
  * @param[in] tainted	Whether the value came from a trusted source.
@@ -1549,16 +1549,8 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
  */
 ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 				  fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
-				  uint8_t const *src, size_t len,
+				  fr_dbuff_t *dbuff, size_t len,
 				  bool tainted)
-{
-	return fr_value_box_from_network_dbuff(ctx, dst, type, enumv, &FR_DBUFF_TMP(src, len), len, tainted);
-}
-
-ssize_t fr_value_box_from_network_dbuff(TALLOC_CTX *ctx,
-					fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
-					fr_dbuff_t *dbuff, size_t len,
-					bool tainted)
 {
 	size_t		min, max;
 	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);

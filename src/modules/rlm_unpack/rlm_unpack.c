@@ -129,7 +129,9 @@ static xlat_action_t unpack_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *
 	 *	Call the generic routines to get data from the
 	 *	"network" buffer.
 	 */
-	if (fr_value_box_from_network(ctx, vb, type, NULL, input + offset, input_len - offset, data_vb->tainted) < 0) {
+	if (fr_value_box_from_network(ctx, vb, type, NULL,
+				      &FR_DBUFF_TMP(input + offset, input_len - offset),
+				      input_len - offset, data_vb->tainted) < 0) {
 		RPEDEBUG("Failed decoding %s", type_vb->vb_strvalue);
 		talloc_free(vb);
 		return XLAT_ACTION_FAIL;

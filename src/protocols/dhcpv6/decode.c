@@ -85,7 +85,8 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_dcursor_t *cursor, UNUSED fr_dict_
 	vp = fr_pair_afrom_da(ctx, unknown);
 	if (!vp) return PAIR_DECODE_OOM;
 
-	slen = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true);
+	slen = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
+					 &FR_DBUFF_TMP(data, data_len), data_len, true);
 	if (slen < 0) {
 		talloc_free(vp);
 		da = unknown;
@@ -223,7 +224,8 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t con
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
 
-		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {
+		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
+					      &FR_DBUFF_TMP(data, data_len), data_len, true) < 0) {
 			talloc_free(vp);
 			goto raw;
 		}
@@ -267,7 +269,8 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t con
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
 
-		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da, data, data_len, true) < 0) {
+		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
+					      &FR_DBUFF_TMP(data, data_len), data_len, true) < 0) {
 			talloc_free(vp);
 			goto raw;
 		}

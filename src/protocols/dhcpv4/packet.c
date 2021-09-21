@@ -185,7 +185,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_d
 
 		default:
 			if (fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
-						      p, dhcp_header_sizes[i], true) < 0) goto error;
+						      &FR_DBUFF_TMP(p, (size_t)dhcp_header_sizes[i]),
+						      dhcp_header_sizes[i], true) < 0) goto error;
 			break;
 		}
 		p += dhcp_header_sizes[i];
@@ -351,14 +352,16 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_d
 		/*
 		 *	Gateway address is set - use that one
 		 */
-		fr_value_box_from_network(vp, &box, FR_TYPE_IPV4_ADDR, NULL, data + 24, 4, true);
+		fr_value_box_from_network(vp, &box, FR_TYPE_IPV4_ADDR, NULL,
+					  &FR_DBUFF_TMP(data + 24, 4), 4, true);
 		fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &box);
 
 	} else {
 		/*
 		 *	else, store client address whatever it is
 		 */
-		fr_value_box_from_network(vp, &box, FR_TYPE_IPV4_ADDR, NULL, data + 12, 4, true);
+		fr_value_box_from_network(vp, &box, FR_TYPE_IPV4_ADDR, NULL,
+					  &FR_DBUFF_TMP(data + 12, 4), 4, true);
 		fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &box);
 	}
 

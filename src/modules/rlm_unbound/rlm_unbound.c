@@ -203,7 +203,7 @@ static void xlat_unbound_callback(void *mydata, int rcode, void *packet, int pac
 		case FR_TYPE_IPV6_ADDR:
 		case FR_TYPE_OCTETS:
 			if (fr_value_box_from_network(ur->out_ctx, vb, ur->return_type, NULL,
-						      (uint8_t *)fr_dbuff_current(&dbuff), rdlength, true) < 0) {
+						      &dbuff, rdlength, true) < 0) {
 			error:
 				talloc_free(vb);
 				fr_dlist_talloc_free(&ur->list);
@@ -226,7 +226,7 @@ static void xlat_unbound_callback(void *mydata, int rcode, void *packet, int pac
 				}
 				priority_vb = fr_value_box_alloc_null(ur->out_ctx);
 				if (fr_value_box_from_network(ur->out_ctx, priority_vb, FR_TYPE_UINT16, NULL,
-							      (uint8_t *)fr_dbuff_current(&dbuff), 2, true) < 0) {
+							      &dbuff, 2, true) < 0) {
 					talloc_free(priority_vb);
 					goto error;
 				}

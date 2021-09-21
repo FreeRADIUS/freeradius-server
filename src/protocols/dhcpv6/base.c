@@ -680,21 +680,24 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 		 */
 		vp = fr_pair_afrom_da(ctx, attr_hop_count);
 		if (!vp) goto fail;
-		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, NULL, packet + 1, 1, true) < 0) {
+		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, NULL,
+					      &FR_DBUFF_TMP(packet + 1, 1), 1, true) < 0) {
 			goto fail;
 		}
 		fr_dcursor_append(cursor, vp);
 
 		vp = fr_pair_afrom_da(ctx, attr_relay_link_address);
 		if (!vp) goto fail;
-		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, NULL, packet + 2, 16, true) < 0) {
+		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, NULL,
+					      &FR_DBUFF_TMP(packet + 2, 16), 16, true) < 0) {
 			goto fail;
 		}
 		fr_dcursor_append(cursor, vp);
 
 		vp = fr_pair_afrom_da(ctx, attr_relay_peer_address);
 		if (!vp) goto fail;
-		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, NULL, packet + 2 + 16, 16, true) < 0) {
+		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, NULL,
+					      &FR_DBUFF_TMP(packet + 2 + 16, 16), 16, true) < 0) {
 			goto fail;
 		}
 

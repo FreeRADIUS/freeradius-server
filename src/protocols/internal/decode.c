@@ -55,8 +55,8 @@ static ssize_t internal_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *head,
 	/*
 	 *	Zero length is fine here
 	 */
-	slen = fr_value_box_from_network_dbuff(vp, &vp->data, vp->da->type, vp->da,
-					       &work_dbuff, fr_dbuff_len(&work_dbuff), tainted);
+	slen = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
+					 &work_dbuff, fr_dbuff_len(&work_dbuff), tainted);
 	if (slen < 0) {
 		talloc_free(vp);
 		return slen;

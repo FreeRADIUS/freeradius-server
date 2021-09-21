@@ -178,7 +178,8 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_d
 	{
 		ssize_t ret;
 
-		ret = fr_value_box_from_network(vp, &vp->data, vp->da->type, da, p, end - p, true);
+		ret = fr_value_box_from_network(vp, &vp->data, vp->da->type, da,
+						&FR_DBUFF_TMP(p, end - p), end - p, true);
 		if (ret < 0) {
 		raw:
 			FR_PROTO_TRACE("decoding as unknown type");
