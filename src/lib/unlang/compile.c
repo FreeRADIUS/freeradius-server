@@ -45,7 +45,7 @@ RCSID("$Id$")
 
 #define UNLANG_IGNORE ((unlang_t *) -1)
 
-static unsigned int unlang_number = 0;
+static unsigned int unlang_number = 1;
 
 /*
  *	For simplicity, this is just array[unlang_number].  Once we
