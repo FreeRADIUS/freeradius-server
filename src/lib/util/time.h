@@ -42,6 +42,20 @@ RCSIDH(time_h, "$Id$")
 extern "C" {
 #endif
 
+/** Limits of specified-width time types:
+ *
+ *   These #defines specify the minimum and maximum limits
+ *   of each time types declared above.
+ */
+#define FR_TIME_MAX         INT64_MAX
+#define FR_TIME_MIN         INT64_MIN
+
+#define FR_UNIX_TIME_MAX    UINT64_MAX
+#define FR_UNIX_TIME_MIN    0
+
+#define FR_TIME_DELTA_MAX   INT64_MAX
+#define FR_TIME_DELTA_MIN   INT64_MIN
+
 /** "server local" time.  This is the time in nanoseconds since the application started.
  *
  *  This time is our *private* view of time.  It should only be used
