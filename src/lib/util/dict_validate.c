@@ -436,7 +436,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			    (flags->flag_time_res != FR_TIME_RES_USEC) &&
 			    (flags->flag_time_res != FR_TIME_RES_MSEC) &&
 			    (flags->flag_time_res != FR_TIME_RES_NSEC)) {
-				fr_strerror_printf("Invalid precision specifier %d for attribute of type 'date'",
+				fr_strerror_printf("Invalid precision specifier %d for attribute of type 'date' or 'time_delta'",
 					flags->flag_time_res);
 				return false;
 			}
