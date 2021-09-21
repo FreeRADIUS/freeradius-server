@@ -155,7 +155,7 @@ ATTRIBUTE	Lucent-User-Acct-Host			139	ipaddr
 ATTRIBUTE	Lucent-User-Acct-Port			140	integer
 ATTRIBUTE	Lucent-User-Acct-Key			141	string
 ATTRIBUTE	Lucent-User-Acct-Base			142	integer
-ATTRIBUTE	Lucent-User-Acct-Time			143	integer
+ATTRIBUTE	Lucent-User-Acct-Time			143	date
 ATTRIBUTE	Lucent-Assign-IP-Client			144	ipaddr
 ATTRIBUTE	Lucent-Assign-IP-Server			145	ipaddr
 ATTRIBUTE	Lucent-Assign-IP-Global-Pool		146	string
@@ -447,7 +447,7 @@ ATTRIBUTE	Lucent-Min-SNR				20113	integer
 ATTRIBUTE	Lucent-Max-SNR				20114	integer
 ATTRIBUTE	Lucent-Local-Retrain-Requested		20115	integer
 ATTRIBUTE	Lucent-Remote-Retrain-Requested		20116	integer
-ATTRIBUTE	Lucent-Connection-Time			20117	integer
+ATTRIBUTE	Lucent-Connection-Time			20117	date
 ATTRIBUTE	Lucent-Modem-Disconnect-Reason		20118	integer
 ATTRIBUTE	Lucent-Retrain-Reason			20119	integer
 

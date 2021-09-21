@@ -50,8 +50,8 @@ ATTRIBUTE	Huawei-Qos-Profile-Name			31	string
 ATTRIBUTE	Huawei-SIP-Server			32	string
 ATTRIBUTE	Huawei-User-Password			33	string
 ATTRIBUTE	Huawei-Command-Mode			34	string
-ATTRIBUTE	Huawei-Renewal-Time			35	integer
-ATTRIBUTE	Huawei-Rebinding-Time			36	integer
+ATTRIBUTE	Huawei-Renewal-Time			35	date
+ATTRIBUTE	Huawei-Rebinding-Time			36	date
 ATTRIBUTE	Huawei-IGMP-Enable			37	integer
 ATTRIBUTE	Huawei-Destnation-IP-Addr		39	string
 ATTRIBUTE	Huawei-Destnation-Volume		40	string
@@ -108,7 +108,7 @@ ATTRIBUTE	Huawei-Acct-Packet-Type			106	integer
 ATTRIBUTE	Huawei-Call-Reference			107	integer
 ATTRIBUTE	Huawei-PSTN-Port			108	integer
 ATTRIBUTE	Huawei-Voip-Service-Type		109	integer
-ATTRIBUTE	Huawei-Acct-Connection-Time		110	integer
+ATTRIBUTE	Huawei-Acct-Connection-Time		110	date
 ATTRIBUTE	Huawei-Error-Reason			112	integer
 ATTRIBUTE	Huawei-Remain-Monney			113	integer
 ATTRIBUTE	Huawei-Org-GK-ipaddr			123	ipaddr

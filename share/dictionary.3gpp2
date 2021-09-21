@@ -120,7 +120,7 @@ ATTRIBUTE	3GPP2-DNS-Update-Required		75	integer
 # 77 ?
 #ATTRIBUTE	3GPP2-Always-On			78	integer
 ATTRIBUTE	3GPP2-Foreign-Agent-Address		79	ipaddr
-ATTRIBUTE	3GPP2-Last-User-Activity-Time		80	integer
+ATTRIBUTE	3GPP2-Last-User-Activity-Time		80	date
 ATTRIBUTE	3GPP2-MN-AAA-Removal-Indication		81	integer
 ATTRIBUTE	3GPP2-RN-Packet-Data-Inactivity-Timer	82	integer
 ATTRIBUTE	3GPP2-Forward-PDCH-RC			83	integer

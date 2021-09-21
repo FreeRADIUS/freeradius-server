@@ -128,7 +128,7 @@ ATTRIBUTE	Ericsson-ViG-Service-Description	122	string
 ATTRIBUTE	Ericsson-ViG-Service-Specific-Info	123	string
 ATTRIBUTE	Ericsson-ViG-Proxy-IP-Address		124	ipaddr
 ATTRIBUTE	Ericsson-ViG-Auth-DataRequest		125	integer
-ATTRIBUTE	Ericsson-ViG-IPT-Time-Stamp		126	integer
+ATTRIBUTE	Ericsson-ViG-IPT-Time-Stamp		126	date
 ATTRIBUTE	Ericsson-ViG-User-Name-Info		127	integer
 
 END-VENDOR	Ericsson

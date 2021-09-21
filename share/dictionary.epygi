@@ -58,9 +58,9 @@ ATTRIBUTE	Epygi-OrigIpPort			179	integer
 ATTRIBUTE	Epygi-DestIpPort			180	integer
 ATTRIBUTE	Epygi-CallingPartyNumber		181	string
 ATTRIBUTE	Epygi-CalledPartyNumber			182	string
-ATTRIBUTE	Epygi-DateTimeOrigination		183	integer
-ATTRIBUTE	Epygi-DateTimeConnect			184	integer
-ATTRIBUTE	Epygi-DateTimeDisconnect		185	integer
+ATTRIBUTE	Epygi-DateTimeOrigination		183	date
+ATTRIBUTE	Epygi-DateTimeConnect			184	date
+ATTRIBUTE	Epygi-DateTimeDisconnect		185	date
 ATTRIBUTE	Epygi-Duration				186	integer
 ATTRIBUTE	Epygi-OutSourceRTP_IP			187	integer
 ATTRIBUTE	Epygi-OutDestRTP_IP			188	integer

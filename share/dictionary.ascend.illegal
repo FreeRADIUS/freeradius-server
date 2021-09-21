@@ -44,7 +44,7 @@ ATTRIBUTE	X-Ascend-User-Acct-Host			139	ipaddr
 ATTRIBUTE	X-Ascend-User-Acct-Port			140	integer
 ATTRIBUTE	X-Ascend-User-Acct-Key			141	string
 ATTRIBUTE	X-Ascend-User-Acct-Base			142	integer
-ATTRIBUTE	X-Ascend-User-Acct-Time			143	integer
+ATTRIBUTE	X-Ascend-User-Acct-Time			143	date
 ATTRIBUTE	X-Ascend-Assign-IP-Client		144	ipaddr
 ATTRIBUTE	X-Ascend-Assign-IP-Server		145	ipaddr
 ATTRIBUTE	X-Ascend-Assign-IP-Global-Pool		146	string

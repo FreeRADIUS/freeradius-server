@@ -47,7 +47,7 @@ VALUE	H3C-Exec-Privilege		Manage			3
 ATTRIBUTE	H3C-NAT-IP-Address			32	ipaddr
 ATTRIBUTE	H3C-NAT-Start-Port			33	integer
 ATTRIBUTE	H3C-NAT-End-Port			34	integer
-ATTRIBUTE	H3C-NAS-Startup-Timestamp		59	integer
+ATTRIBUTE	H3C-NAS-Startup-Timestamp		59	date
 ATTRIBUTE	H3C-Ip-Host-Addr			60	string
 ATTRIBUTE	H3C-User-Notify				61	string
 ATTRIBUTE	H3C-User-HeartBeat			62	string

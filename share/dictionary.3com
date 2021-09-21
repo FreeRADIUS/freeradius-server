@@ -47,7 +47,7 @@ ATTRIBUTE	3Com-End-Date				7	string
 ATTRIBUTE	3Com-URL				8	string
 
 ATTRIBUTE	3Com-Connect_Id				26	integer
-ATTRIBUTE	3Com-NAS-Startup-Timestamp		59	integer
+ATTRIBUTE	3Com-NAS-Startup-Timestamp		59	date
 ATTRIBUTE	3Com-Ip-Host-Addr			60	string
 ATTRIBUTE	3Com-Product-ID				255	string
 

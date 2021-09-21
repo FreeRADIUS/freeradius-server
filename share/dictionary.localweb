@@ -18,7 +18,7 @@ ATTRIBUTE	Local-Web-Border-Router			193	string
 ATTRIBUTE	Local-Web-Tx-Limit			200	integer
 ATTRIBUTE	Local-Web-Rx-Limit			201	integer
 
-ATTRIBUTE	Local-Web-Acct-Time			210	integer
+ATTRIBUTE	Local-Web-Acct-Time			210	date
 ATTRIBUTE	Local-Web-Acct-Duration			211	integer
 ATTRIBUTE	Local-Web-Acct-Interim-Tx-Bytes		212	integer
 ATTRIBUTE	Local-Web-Acct-Interim-Rx-Bytes		213	integer

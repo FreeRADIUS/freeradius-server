@@ -46,6 +46,7 @@ FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	* Outbound proxying over TCP / TLS is better able to deal with
 	  partial TCP reads, and has fewer issues with slow networks.
 	* Fix wrong data-type of Acct-Delay-Time in rlm_unix.
+	* Fix several attributes updating the data-type from integer to date.
 
 FreeRADIUS 3.0.23 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	Feature improvements

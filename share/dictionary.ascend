@@ -265,7 +265,7 @@ ATTRIBUTE	Ascend-User-Acct-Host			139	ipaddr
 ATTRIBUTE	Ascend-User-Acct-Port			140	integer
 ATTRIBUTE	Ascend-User-Acct-Key			141	string
 ATTRIBUTE	Ascend-User-Acct-Base			142	integer
-ATTRIBUTE	Ascend-User-Acct-Time			143	integer
+ATTRIBUTE	Ascend-User-Acct-Time			143	date
 ATTRIBUTE	Ascend-Assign-IP-Client			144	ipaddr
 ATTRIBUTE	Ascend-Assign-IP-Server			145	ipaddr
 ATTRIBUTE	Ascend-Assign-IP-Global-Pool		146	string
