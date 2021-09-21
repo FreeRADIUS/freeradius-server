@@ -57,6 +57,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/message.h>
 #include <freeradius-devel/io/time_tracking.h>
 #include <freeradius-devel/io/worker.h>
+#include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/dlist.h>
@@ -1213,6 +1214,8 @@ nomem:
 	}
 
 	worker->name = talloc_strdup(worker, name); /* thread locality */
+
+	unlang_thread_instantiate(worker);
 
 	if (config) worker->config = *config;
 

@@ -122,6 +122,7 @@ struct unlang_s {
 	char const 		*debug_name;	//!< Printed in log messages when the node is executed.
 	unlang_type_t		type;		//!< The specialisation of this node.
 	bool			closed;		//!< whether or not this section is closed to new statements
+	unsigned int		number;		//!< unique node number
 	unlang_actions_t	actions;	//!< Priorities, etc. for the various return codes.
 };
 
@@ -192,6 +193,8 @@ typedef void (*unlang_signal_t)(request_t *request,
  */
 typedef void (*unlang_dump_t)(request_t *request, unlang_stack_frame_t *frame);
 
+typedef int (*unlang_thread_instantiate_t)(unlang_t const *instruction, void *thread_inst);
+
 /** An unlang operation
  *
  * These are like the opcodes in other interpreters.  Each operation, when executed
@@ -206,6 +209,11 @@ typedef struct {
 
 	unlang_dump_t		dump;				//!< Dump additional information about the frame state.
 
+	unlang_thread_instantiate_t thread_instantiate;		//!< per-thread instantiation function
+	size_t			thread_inst_size;
+	char const		*thread_inst_type;
+
+
 	bool			debug_braces;			//!< Whether the operation needs to print braces
 								///< in debug mode.
 
@@ -217,6 +225,14 @@ typedef struct {
 
 	size_t			frame_state_pool_size;		//!< The total size of the pool to alloc.
 } unlang_op_t;
+
+typedef struct {
+	unlang_t const		*instruction;			//!< instruction which we're executing
+	void			*thread_inst;			//!< thread-specific instance data
+	/*
+	 *	And various other stats
+	 */
+} unlang_thread_t;
 
 typedef struct {
 	request_t		*request;
@@ -504,6 +520,7 @@ int		unlang_interpret_push(request_t *request, unlang_t const *instruction,
 int		unlang_op_init(void);
 
 void		unlang_op_free(void);
+
 /** @} */
 
 /** @name io shims

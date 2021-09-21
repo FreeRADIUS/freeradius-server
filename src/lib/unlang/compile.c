@@ -45,6 +45,17 @@ RCSID("$Id$")
 
 #define UNLANG_IGNORE ((unlang_t *) -1)
 
+static unsigned int unlang_number = 0;
+
+/*
+ *	For simplicity, this is just array[unlang_number].  Once we
+ *	call unlang_thread_instantiate(), the "unlang_number" above MUST
+ *	NOT change.
+ */
+static _Thread_local unlang_thread_t *unlang_thread_array;
+
+static fr_rb_tree_t *unlang_instruction_tree = NULL;
+
 /* Here's where we recognize all of our keywords: first the rcodes, then the
  * actions */
 fr_table_num_sorted_t const mod_rcode_table[] = {
@@ -3727,7 +3738,7 @@ static int unlang_pair_keywords_len = NUM_ELEMENTS(unlang_pair_keywords);
 
 
 /*
- *	Compile one entry of a module call.
+ *	Compile one unlang instruction
  */
 static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci)
 {
@@ -3740,13 +3751,22 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	module_method_t		method;
 	bool			policy;
 	unlang_op_compile_t	compile;
+	unlang_t		*c;
 
 	if (cf_item_is_section(ci)) {
 		cs = cf_item_to_section(ci);
 		name = cf_section_name1(cs);
 
 		compile = (unlang_op_compile_t) fr_table_value_by_str(unlang_section_keywords, name, NULL);
-		if (compile) return compile(parent, unlang_ctx, ci);
+		if (compile) {
+			c = compile(parent, unlang_ctx, ci);
+		allocate_number:
+			if (!c) return NULL;
+			if (c == UNLANG_IGNORE) return UNLANG_IGNORE;
+
+			c->number = unlang_number++;
+			return c;
+		}
 
 		/*
 		 *	Forbid pair keywords as section names, e.g. "break { ... }"
@@ -3785,11 +3805,15 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 */
 		if (((name[0] == '%') && ((name[1] == '{') || (name[1] == '('))) ||
 		    (cf_pair_attr_quote(cp) == T_BACK_QUOTED_STRING)) {
-			return compile_tmpl(parent, unlang_ctx, cp);
+			c = compile_tmpl(parent, unlang_ctx, cp);
+			goto allocate_number;
 		}
 
 		compile = (unlang_op_compile_t)fr_table_value_by_str(unlang_pair_keywords, name, NULL);	/* Cast for -Wpedantic */
-		if (compile) return compile(parent, unlang_ctx, ci);
+		if (compile) {
+			c = compile(parent, unlang_ctx, ci);
+			goto allocate_number;
+		}
 
 		/*
 		 *	Forbid section keywords as pair names, e.g. bare "update"
@@ -3865,7 +3889,10 @@ check_for_module:
 	 *	named redundant / load-balance subsection defined in
 	 *	"instantiate".
 	 */
-	if (subcs) return compile_function(parent, unlang_ctx, ci, subcs, component, policy);
+	if (subcs) {
+		c = compile_function(parent, unlang_ctx, ci, subcs, component, policy);
+		goto allocate_number;
+	}
 
 	/*
 	 *	Not a function.  It must be a real module.
@@ -3891,7 +3918,8 @@ check_for_module:
 					 &unlang_ctx2.section_name1, &unlang_ctx2.section_name2,
 					 realname);
 	if (inst) {
-		return compile_module(parent, &unlang_ctx2, ci, inst, method, realname);
+		c = compile_module(parent, &unlang_ctx2, ci, inst, method, realname);
+		goto allocate_number;
 	}
 
 	/*
@@ -3934,7 +3962,8 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, tmpl_rules_t co
 						.type = UNLANG_TYPE_GROUP,
 						.len = sizeof(unlang_group_t),
 						.type_name = "unlang_group_t",
-					};
+	};
+
 	/*
 	 *	Don't compile it twice, and don't print out debug
 	 *	messages twice.
@@ -3999,4 +4028,69 @@ bool unlang_compile_is_keyword(const char *name)
 	if (fr_table_value_by_str(unlang_section_keywords, name, NULL) != NULL) return true;
 
 	return (fr_table_value_by_str(unlang_pair_keywords, name, NULL) != NULL);
+}
+
+static int8_t instruction_cmp(void const *one, void const *two)
+{
+	unlang_t const *a = one;
+	unlang_t const *b = two;
+
+	return CMP(a->number, b->number);
+}
+
+
+void unlang_compile_init()
+{
+	unlang_instruction_tree = fr_rb_talloc_alloc(NULL, unlang_t, instruction_cmp, NULL);
+}
+
+void unlang_compile_free()
+{
+	TALLOC_FREE(unlang_instruction_tree);
+}
+
+
+/** Create thread-specific data structures for unlang
+ *
+ */
+int unlang_thread_instantiate(TALLOC_CTX *ctx)
+{
+	fr_rb_iter_inorder_t	iter;
+	unlang_t		*instruction;
+
+	if (unlang_thread_array) {
+		fr_strerror_const("already initialized");
+		return -1;
+	}
+
+	MEM(unlang_thread_array = talloc_zero_array(ctx, unlang_thread_t, unlang_number + 1));
+//	talloc_set_destructor(unlang_thread_array, _unlang_thread_array_free);
+
+	/*
+	 *	Instantiate each instruction with thread-specific data.
+	 */
+	for (instruction = fr_rb_iter_init_inorder(&iter, unlang_instruction_tree);
+	     instruction;
+	     instruction = fr_rb_iter_next_inorder(&iter)) {
+		unlang_op_t *op;
+
+		unlang_thread_array[instruction->number].instruction = instruction;
+
+		op = &unlang_ops[instruction->type];
+		if (!op->thread_instantiate) continue;
+
+		/*
+		 *	Allocate any thread-specific instance data.
+		 */
+		if (op->thread_inst_size) {
+			MEM(unlang_thread_array[instruction->number].thread_inst = talloc_zero_array(unlang_thread_array, uint8_t, op->thread_inst_size));
+			talloc_set_name_const(unlang_thread_array[instruction->number].thread_inst, op->thread_inst_type);
+		}
+
+		if (op->thread_instantiate(instruction, unlang_thread_array[instruction->number].thread_inst) < 0) {
+			return -1;
+		}
+	}
+
+	return 0;
 }

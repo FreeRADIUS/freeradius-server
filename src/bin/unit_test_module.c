@@ -728,6 +728,8 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
+	unlang_thread_instantiate(autofree);
+
 	/*
 	 *	Ensure that we load the correct virtual server for the
 	 *	protocol, if necessary.

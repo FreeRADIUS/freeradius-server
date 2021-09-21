@@ -40,6 +40,7 @@ int			unlang_init_global(void);
 
 void			unlang_free_global(void);
 
+int			unlang_thread_instantiate(TALLOC_CTX *ctx) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

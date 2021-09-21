@@ -86,6 +86,7 @@ int unlang_init_global(void)
 	unlang_interpret_init_global();
 
 	/* Register operations for the default keywords */
+	unlang_compile_init();
 	unlang_condition_init();
 	unlang_foreach_init();
 	unlang_function_init();
@@ -111,6 +112,7 @@ void unlang_free_global(void)
 {
 	if (--instance_count > 0) return;
 
+	unlang_compile_free();
 	unlang_foreach_free();
 	unlang_subrequest_op_free();
 	xlat_free();

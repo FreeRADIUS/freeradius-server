@@ -3181,6 +3181,8 @@ int main(int argc, char *argv[])
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
 	}
+	
+	unlang_thread_instantiate(autofree);
 
 	if (!xlat_register(NULL, "test", xlat_test, false)) {
 		ERROR("Failed registering xlat");
