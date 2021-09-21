@@ -4158,7 +4158,7 @@ static void unlang_perf_dump(fr_log_t *log, unlang_t const *instruction, int dep
 
 	t = &unlang_thread_array[instruction->number];
 
-	fr_log(log, L_DBG, file, line, "count=%llu cpu_time=%llu\n", t->use_count, t->cpu_time);
+	fr_log(log, L_DBG, file, line, "count=%" PRIu64 " cpu_time=%" PRIu64 "\n", t->use_count, t->cpu_time);
 
 	if (g->children) {
 		unlang_t *child;
