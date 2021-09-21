@@ -208,7 +208,7 @@ static fr_dict_attr_t const *attr_packet_type;
 
 extern fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[];
 fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
-	{ .out = &attr_acct_delay_time, .name = "Acct-Delay-Time", .type = FR_TYPE_UINT32, .dict = &dict_radius},
+	{ .out = &attr_acct_delay_time, .name = "Acct-Delay-Time", .type = FR_TYPE_TIME_DELTA, .dict = &dict_radius},
 	{ .out = &attr_error_cause, .name = "Error-Cause", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_event_timestamp, .name = "Event-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_radius},
 	{ .out = &attr_extended_attribute_1, .name = "Extended-Attribute-1", .type = FR_TYPE_TLV, .dict = &dict_radius},

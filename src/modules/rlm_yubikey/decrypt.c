@@ -67,6 +67,9 @@ unlang_action_t rlm_yubikey_decrypt(rlm_rcode_t *p_result, rlm_yubikey_t const *
 
 	/*
 	 *	Token timestamp
+	 *
+	 *	The docs https://developers.yubico.com/OTP/OTPs_Explained.html says that the timestamp is a 24 bit incrementing field,
+	 *	so it's not an actual clock.
 	 */
 	MEM(pair_update_request(&vp, attr_yubikey_timestamp) >= 0);
 	vp->vp_uint32 = timestamp;

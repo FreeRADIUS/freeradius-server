@@ -643,7 +643,7 @@ int mod_ensure_start_timestamp(json_object *json, fr_pair_list_t *vps)
 	/* get elapsed session time */
 	if ((vp = fr_pair_find_by_da(vps, attr_acct_session_time, 0)) != NULL) {
 		/* calculate diff */
-		ts = (ts - vp->vp_uint32);
+		ts = (ts - fr_time_delta_to_sec(vp->vp_time_delta));
 		/* calculate start time */
 		size_t length = strftime(value, sizeof(value), "%b %e %Y %H:%M:%S %Z", localtime_r(&ts, &tm));
 		/* check length */

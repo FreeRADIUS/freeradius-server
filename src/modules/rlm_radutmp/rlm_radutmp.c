@@ -88,9 +88,9 @@ static fr_dict_attr_t const *attr_nas_port_type;
 
 extern fr_dict_attr_autoload_t rlm_radutmp_dict_attr[];
 fr_dict_attr_autoload_t rlm_radutmp_dict_attr[] = {
-	{ .out = &attr_acct_delay_time, .name = "Acct-Delay-Time", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_acct_delay_time, .name = "Acct-Delay-Time", .type = FR_TYPE_TIME_DELTA, .dict = &dict_radius },
 	{ .out = &attr_acct_session_id, .name = "Acct-Session-Id", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_acct_session_time, .name = "Acct-Session-Time", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_acct_session_time, .name = "Acct-Session-Time", .type = FR_TYPE_TIME_DELTA, .dict = &dict_radius },
 	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_calling_station_id, .name = "Calling-Station-Id", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_framed_ip_address, .name = "Framed-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
@@ -231,7 +231,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 		int check2 = 0;
 
 		if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_session_time, 0))
-		     == NULL || vp->vp_uint32 == 0)
+		     == NULL || vp->vp_time_delta == 0)
 			check1 = 1;
 		if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_session_id, 0))
 		     != NULL && vp->vp_length == 8 &&
@@ -267,7 +267,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 			ut.nas_port = vp->vp_uint32;
 			port_seen = true;
 		} else if (vp->da == attr_acct_delay_time) {
-			ut.delay = vp->vp_uint32;
+			ut.delay = fr_time_delta_to_sec(vp->vp_time_delta);
 		} else if (vp->da == attr_acct_session_id) {
 			/*
 			 *	If length > 8, only store the

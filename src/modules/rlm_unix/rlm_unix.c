@@ -94,7 +94,7 @@ fr_dict_attr_autoload_t rlm_unix_dict_attr[] = {
 	{ .out = &attr_nas_ip_address, .name = "NAS-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
 	{ .out = &attr_nas_port, .name = "NAS-Port", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_acct_delay_time, .name = "Acct-Delay-Time", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_acct_delay_time, .name = "Acct-Delay-Time", .type = FR_TYPE_TIME_DELTA, .dict = &dict_radius },
 	{ NULL }
 };
 
@@ -425,7 +425,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 			port_seen = true;
 
 		} else if (vp->da == attr_acct_delay_time) {
-			delay = vp->vp_uint32;
+			delay = fr_time_delta_to_sec(vp->vp_time_delta);
 		}
 	}
 

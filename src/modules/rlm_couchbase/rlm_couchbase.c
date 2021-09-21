@@ -82,7 +82,7 @@ fr_dict_attr_t const *attr_event_timestamp;
 extern fr_dict_attr_autoload_t rlm_couchbase_dict_attr[];
 fr_dict_attr_autoload_t rlm_couchbase_dict_attr[] = {
 	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
-	{ .out = &attr_acct_session_time, .name = "Acct-Session-Time", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_acct_session_time, .name = "Acct-Session-Time", .type = FR_TYPE_TIME_DELTA, .dict = &dict_radius },
 	{ .out = &attr_event_timestamp, .name = "Event-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_radius },
 	{ NULL }
 };

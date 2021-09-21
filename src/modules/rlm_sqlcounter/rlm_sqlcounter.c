@@ -107,7 +107,7 @@ static fr_dict_attr_t const *attr_session_timeout;
 extern fr_dict_attr_autoload_t rlm_sqlcounter_dict_attr[];
 fr_dict_attr_autoload_t rlm_sqlcounter_dict_attr[] = {
 	{ .out = &attr_reply_message, .name = "Reply-Message", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_session_timeout, .name = "Session-Timeout", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_session_timeout, .name = "Session-Timeout", .type = FR_TYPE_TIME_DELTA, .dict = &dict_radius },
 	{ NULL }
 };
 
@@ -498,9 +498,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 				break;
 
 			case 0:		/* found */
-				if (reply_item->vp_uint32 <= res) {
-					RDEBUG2("Leaving existing %s value of %u", inst->reply_attr->name,
-						reply_item->vp_uint32);
+				if (reply_item->vp_time_delta <= (fr_time_delta_t)res) {
+					RDEBUG2("Leaving existing %s value of %"PRId64"", inst->reply_attr->name,
+						reply_item->vp_time_delta);
 					RETURN_MODULE_OK;
 				}
 				break;
@@ -514,8 +514,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 				RETURN_MODULE_OK;
 			}
 
-			if (res > UINT32_MAX) res = UINT32_MAX;
-			reply_item->vp_uint32 = res;
+			if (res > FR_TIME_DELTA_MAX) res = FR_TIME_DELTA_MAX;
+			reply_item->vp_time_delta = res;
 
 		} else {
 			/*
