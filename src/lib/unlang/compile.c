@@ -4094,3 +4094,135 @@ int unlang_thread_instantiate(TALLOC_CTX *ctx)
 
 	return 0;
 }
+
+#ifdef WITH_PERF
+void unlang_frame_perf_init(unlang_t const *instruction)
+{
+	unlang_thread_t *t;
+
+	if (!instruction->number) return;
+
+	t = &unlang_thread_array[instruction->number];
+
+	t->use_count++;
+
+	t->enter = fr_time();
+
+}
+
+void unlang_frame_perf_cleanup(unlang_t const *instruction)
+{
+	unlang_thread_t *t;
+
+	if (!instruction->number) return;
+
+	t = &unlang_thread_array[instruction->number];
+
+	t->cpu_time += (fr_time() - t->enter);
+}
+
+
+static void unlang_perf_dump(fr_log_t *log, unlang_t const *instruction, int depth)
+{
+	unlang_group_t const *g;
+	unlang_thread_t *t;
+	char const *file;
+	int line;
+
+	if (!instruction || !instruction->number) return;
+
+	/*
+	 *	These are generally pushed onto the stack, and therefore ignored.
+	 */
+	if (instruction->type == UNLANG_TYPE_TMPL) return;
+
+	/*
+	 *	Everything else is an unlang_group_t;
+	 */
+	g = unlang_generic_to_group(instruction);
+
+	if (!g->cs) return;
+
+	file = cf_filename(g->cs);
+	line = cf_lineno(g->cs);
+
+	if (depth) {
+		fr_log(log, L_DBG, file, line, "%.*s", depth, unlang_spaces);
+	}
+
+	if (unlang_ops[instruction->type].debug_braces) {
+		fr_log(log, L_DBG, file, line, "%s { #", instruction->debug_name);
+	} else {
+		fr_log(log, L_DBG, file, line, "%s #", instruction->debug_name);
+	}
+
+	t = &unlang_thread_array[instruction->number];
+
+	fr_log(log, L_DBG, file, line, "count=%llu cpu_time=%llu\n", t->use_count, t->cpu_time);
+
+	if (g->children) {
+		unlang_t *child;
+
+		for (child = g->children; child != NULL; child = child->next) {
+			unlang_perf_dump(log, child, depth + 1);
+		}
+	}
+
+	if (unlang_ops[instruction->type].debug_braces) {
+		if (depth) {
+			fr_log(log, L_DBG, file, line, "%.*s", depth, unlang_spaces);
+		}
+
+		fr_log(log, L_DBG, file, line, "}\n");
+	}
+}
+
+void unlang_perf_virtual_server(fr_log_t *log, char const *name)
+{
+	CONF_SECTION *cs = virtual_server_find(name);
+	CONF_ITEM *ci;
+	char const *file;
+	int line;
+
+	if (!cs) return;
+
+	file = cf_filename(cs);
+	line = cf_lineno(cs);
+
+	fr_log(log, L_DBG, file, line, " server %s {\n", name);
+
+	/*
+	 *	Loop over the children of the virtual server, checking for unlang_t;
+	 */
+	for (ci = cf_item_next(cs, NULL);
+	     ci != NULL;
+	     ci = cf_item_next(cs, ci)) {
+		char const *name1, *name2;
+		unlang_t *instruction;
+		CONF_SECTION *subcs;
+
+		if (!cf_item_is_section(ci)) continue;
+
+		instruction = (unlang_t *)cf_data_value(cf_data_find(ci, unlang_group_t, NULL));
+		if (!instruction) continue;
+
+		subcs = cf_item_to_section(ci);
+		name1 = cf_section_name1(subcs);
+		name2 = cf_section_name2(subcs);
+		file = cf_filename(ci);
+		line = cf_lineno(ci);
+
+		if (!name2) {
+			fr_log(log, L_DBG, file, line, " %s {\n", name1);
+		} else {
+			fr_log(log, L_DBG, file, line, " %s %s {\n", name1, name2);
+		}
+
+		unlang_perf_dump(log, instruction, 2);
+
+		fr_log(log, L_DBG, file, line, " }\n");
+	}
+
+	fr_log(log, L_DBG, file, line, "}\n");
+}
+#endif

@@ -22,3 +22,10 @@
 #    endif
 #  endif
 #endif
+
+/*
+ *	Unlang performance stats
+ */
+#ifndef WITHOUT_PERF
+#define WITH_PERF
+#endif

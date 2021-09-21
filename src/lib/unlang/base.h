@@ -42,6 +42,10 @@ void			unlang_free_global(void);
 
 int			unlang_thread_instantiate(TALLOC_CTX *ctx) CC_HINT(nonnull);
 
+#ifdef WITH_PERF
+void			unlang_perf_virtual_server(fr_log_t *log, char const *name);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
