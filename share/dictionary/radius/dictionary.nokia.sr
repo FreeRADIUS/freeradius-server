@@ -515,10 +515,14 @@ ATTRIBUTE	SLAAC-IPv6-Pool				181	string
 
 ATTRIBUTE	ToServer-Dhcp6-Options			191	octets
 ATTRIBUTE	ToClient-Dhcp6-Options			192	octets
-ATTRIBUTE	v6-Preferred-Lifetime			200	integer
-ATTRIBUTE	v6-Valid-Lifetime			201	integer
-ATTRIBUTE	Dhcp6-Renew-Time			202	integer
-ATTRIBUTE	Dhcp6-Rebind-Time			203	integer
+
+#
+#  MUST have renew time <= rebind time <= preferred lifetime <= valid lifetime
+#
+ATTRIBUTE	v6-Preferred-Lifetime			200	time_delta
+ATTRIBUTE	v6-Valid-Lifetime			201	time_delta
+ATTRIBUTE	Dhcp6-Renew-Time			202	time_delta
+ATTRIBUTE	Dhcp6-Rebind-Time			203	time_delta
 
 # The VLAN is transparently taken from the UE's Ethernet layer and can be reflected
 # in both authentication and accounting
