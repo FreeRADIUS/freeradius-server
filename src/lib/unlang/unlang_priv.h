@@ -384,7 +384,7 @@ static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t 
 	unlang_op_t	*op;
 	char const	*name;
 
-//	unlang_frame_perf_init(frame->instruction);
+	unlang_frame_perf_init(instruction);
 
 	op = &unlang_ops[instruction->type];
 	name = op->frame_state_name ? op->frame_state_name : __location__;
@@ -437,7 +437,7 @@ static inline void frame_cleanup(unlang_stack_frame_t *frame)
 		TALLOC_FREE(frame->state);
 	}
 
-//	unlang_frame_perf_cleanup(frame->instruction);
+	unlang_frame_perf_cleanup(frame->instruction);
 }
 
 /** Advance to the next sibling instruction

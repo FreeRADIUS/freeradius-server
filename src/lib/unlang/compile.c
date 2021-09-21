@@ -4100,21 +4100,24 @@ void unlang_frame_perf_init(unlang_t const *instruction)
 {
 	unlang_thread_t *t;
 
-	if (!instruction->number) return;
+	if (!instruction->number || !unlang_thread_array) return;
+
+	fr_assert(instruction->number <= unlang_number);
 
 	t = &unlang_thread_array[instruction->number];
 
 	t->use_count++;
 
 	t->enter = fr_time();
-
 }
 
 void unlang_frame_perf_cleanup(unlang_t const *instruction)
 {
 	unlang_thread_t *t;
 
-	if (!instruction->number) return;
+	if (!instruction || !instruction->number || !unlang_thread_array) return;
+
+	fr_assert(instruction->number <= unlang_number);
 
 	t = &unlang_thread_array[instruction->number];
 

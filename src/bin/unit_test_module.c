@@ -728,8 +728,6 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	unlang_thread_instantiate(autofree);
-
 	/*
 	 *	Ensure that we load the correct virtual server for the
 	 *	protocol, if necessary.
@@ -791,6 +789,7 @@ int main(int argc, char *argv[])
 	 */
 	if (modules_thread_instantiate(thread_ctx, el) < 0) EXIT_WITH_FAILURE;
 	if (xlat_thread_instantiate(thread_ctx) < 0) EXIT_WITH_FAILURE;
+	unlang_thread_instantiate(thread_ctx);
 
 	/*
 	 *  Set the panic action (if required)
