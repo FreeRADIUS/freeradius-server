@@ -210,7 +210,6 @@ static void xlat_unbound_callback(void *mydata, int rcode, void *packet, int pac
 				ur->done = -32;
 				goto resume;
 			}
-			fr_dbuff_advance(&dbuff, rdlength);
 			break;
 
 		case FR_TYPE_STRING:
@@ -231,7 +230,6 @@ static void xlat_unbound_callback(void *mydata, int rcode, void *packet, int pac
 					goto error;
 				}
 				fr_dlist_insert_tail(&ur->list, priority_vb);
-				fr_dbuff_advance(&dbuff, 2);
 			}
 
 			/*	String types require decoding of dns format labels */
