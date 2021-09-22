@@ -173,7 +173,7 @@ void fr_ldap_timeout_debug(request_t *request, fr_ldap_connection_t const *conn,
 char const *fr_ldap_error_str(fr_ldap_connection_t const *conn)
 {
 	int lib_errno;
-	ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
+	ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &lib_errno);
 	if (lib_errno == LDAP_SUCCESS) {
 		return "unknown";
 	}
@@ -208,7 +208,7 @@ fr_ldap_rcode_t fr_ldap_error_check(LDAPControl ***ctrls, fr_ldap_connection_t c
 	if (ctrls) *ctrls = NULL;
 
 	if (!msg) {
-		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
+		ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &lib_errno);
 		if (lib_errno != LDAP_SUCCESS) goto process_error;
 
 		fr_strerror_const("No result available");
@@ -255,7 +255,7 @@ fr_ldap_rcode_t fr_ldap_error_check(LDAPControl ***ctrls, fr_ldap_connection_t c
 	 */
 	if (lib_errno != LDAP_SUCCESS) {
 		fr_assert(!ctrls || !*ctrls);
-		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
+		ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &lib_errno);
 	}
 
 process_error:
@@ -420,7 +420,7 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 	/*
 	 *	Check if there was an error sending the request
 	 */
-	ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
+	ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &lib_errno);
 	if (lib_errno != LDAP_SUCCESS) return fr_ldap_error_check(NULL, conn, NULL, dn);
 
 	if (!fr_time_delta_ispos(timeout)) our_timeout = conn->config->res_timeout;
@@ -771,7 +771,7 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 			    0, our_serverctrls, our_clientctrls, NULL, 0, msgid) != LDAP_SUCCESS) {
 		int ldap_errno;
 
-		ldap_get_option((*pconn)->handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 		ERROR("Failed performing search: %s", ldap_err2string(ldap_errno));
 
 		return LDAP_PROC_ERROR;
@@ -1022,7 +1022,7 @@ int fr_ldap_global_config(int debug_level, char const *tls_random_file)
 #define do_ldap_global_option(_option, _name, _value) \
 	if (ldap_set_option(NULL, _option, _value) != LDAP_OPT_SUCCESS) { \
 		int _ldap_errno; \
-		ldap_get_option(NULL, LDAP_OPT_ERROR_NUMBER, &_ldap_errno); \
+		ldap_get_option(NULL, LDAP_OPT_RESULT_CODE, &_ldap_errno); \
 		ERROR("Failed setting global option %s: %s", _name, \
 			 (_ldap_errno != LDAP_SUCCESS) ? ldap_err2string(_ldap_errno) : "Unknown error"); \
 		return -1;\
