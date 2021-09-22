@@ -542,6 +542,8 @@ static inline int8_t fr_ldap_query_cmp(void const *one, void const *two)
 	return CMP(a->msgid, b->msgid);
 }
 
+fr_ldap_query_t *fr_ldap_query_alloc(TALLOC_CTX *ctx);
+
 /*
  *	ldap.c - Wrappers arounds OpenLDAP functions.
  */

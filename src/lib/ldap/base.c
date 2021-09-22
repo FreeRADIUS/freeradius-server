@@ -924,6 +924,21 @@ static int _ldap_query_free(fr_ldap_query_t *query)
 	return 0;
 }
 
+/** Allocate an fr_ldap_query_t, setting the talloc destructor
+ *
+ */
+fr_ldap_query_t *fr_ldap_query_alloc(TALLOC_CTX *ctx)
+{
+	fr_ldap_query_t	*query;
+
+	MEM(query = talloc_zero(ctx, fr_ldap_query_t));
+	talloc_set_destructor(query, _ldap_query_free);
+
+	query->ret = LDAP_RESULT_PENDING;
+
+	return query;
+}
+
 /** Initialise libldap and check library versions
  *
  * @return
