@@ -108,7 +108,7 @@ static const CONF_PARSER module_config[] = {
 	/*
 	 *	This only works for a few drivers.
 	 */
-	{ FR_CONF_OFFSET("query_timeout", FR_TYPE_UINT32, rlm_sql_config_t, query_timeout) },
+	{ FR_CONF_OFFSET("query_timeout", FR_TYPE_TIME_DELTA, rlm_sql_config_t, query_timeout) },
 
 	{ FR_CONF_POINTER("accounting", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) acct_config },
 

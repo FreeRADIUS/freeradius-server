@@ -759,7 +759,7 @@ do {\
 	DO_CASS_OPTION("sql_server", cass_cluster_set_contact_points(cluster, config->sql_server));
 	if (config->sql_port) DO_CASS_OPTION("sql_port", cass_cluster_set_port(cluster, config->sql_port));
 	/* Can't fail */
-	if (config->query_timeout) cass_cluster_set_request_timeout(cluster, config->query_timeout * 1000);
+	if (config->query_timeout) cass_cluster_set_request_timeout(cluster, fr_time_delta_to_msec(config->query_timeout));
 	/* Can't fail */
 	if (config->sql_login && config->sql_password) cass_cluster_set_credentials(cluster, config->sql_login,
 										    config->sql_password);

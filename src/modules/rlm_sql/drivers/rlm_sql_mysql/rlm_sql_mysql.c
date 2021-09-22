@@ -288,22 +288,22 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	mysql_options(&(conn->db), MYSQL_OPT_CONNECT_TIMEOUT, &connect_timeout);
 
 	if (config->query_timeout) {
-		unsigned int read_timeout = config->query_timeout;
-		unsigned int write_timeout = config->query_timeout;
+		unsigned int read_timeout = fr_time_delta_to_sec(config->query_timeout);
+		unsigned int write_timeout = fr_time_delta_to_sec(config->query_timeout);
 
 		/*
 		 *	The timeout in seconds for each attempt to read from the server.
 		 *	There are retries if necessary, so the total effective timeout
 		 *	value is three times the option value.
 		 */
-		if (config->query_timeout >= 3) read_timeout /= 3;
+		if (read_timeout >= 3) read_timeout /= 3;
 
 		/*
 		 *	The timeout in seconds for each attempt to write to the server.
 		 *	There is a retry if necessary, so the total effective timeout
 		 *	value is two times the option value.
 		 */
-		if (config->query_timeout >= 2) write_timeout /= 2;
+		if (write_timeout >= 2) write_timeout /= 2;
 
 		/*
 		 *	Connect timeout is actually connect timeout (according to the
