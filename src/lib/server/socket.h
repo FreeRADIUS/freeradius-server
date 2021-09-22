@@ -34,8 +34,8 @@ typedef struct {
 	uint32_t	num_connections;
 	uint32_t	max_requests;
 	uint32_t	num_requests;
-	uint32_t	lifetime;
-	uint32_t	idle_timeout;
+	fr_time_delta_t	lifetime;
+	fr_time_delta_t	idle_timeout;
 } fr_socket_limit_t;
 
 #ifdef __cplusplus
