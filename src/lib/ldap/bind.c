@@ -219,6 +219,10 @@ int fr_ldap_bind_async(fr_ldap_connection_t *c,
 
 	el = c->conn->el;
 
+	/*
+	 *	ldap_get_option can return a LDAP_SUCCESS even if the fd is not yet available
+	 *	- hence the test for fd >= 0
+	 */
 	if ((ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) == LDAP_SUCCESS) && (fd >= 0)) {
 		int ret;
 
