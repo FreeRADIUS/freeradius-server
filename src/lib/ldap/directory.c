@@ -35,7 +35,7 @@ USES_APPLE_DEPRECATED_API
 
 static fr_table_num_sorted_t const fr_ldap_directory_type_table[] = {
 	{ L("Active Directory"),		FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY		},
-	{ L("IBM"),			FR_LDAP_DIRECTORY_IBM				},
+	{ L("IBM"),				FR_LDAP_DIRECTORY_IBM				},
 	{ L("NetScape"),			FR_LDAP_DIRECTORY_NETSCAPE			},
 	{ L("OpenLDAP"),			FR_LDAP_DIRECTORY_OPENLDAP			},
 	{ L("Oracle Internet Directory"),	FR_LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY 	},
@@ -44,7 +44,7 @@ static fr_table_num_sorted_t const fr_ldap_directory_type_table[] = {
 	{ L("Siemens AG"),			FR_LDAP_DIRECTORY_SIEMENS_AG			},
 	{ L("Sun One Directory"),		FR_LDAP_DIRECTORY_SUN_ONE_DIRECTORY		},
 	{ L("Unbound ID"),			FR_LDAP_DIRECTORY_UNBOUND_ID			},
-	{ L("Unknown"),			FR_LDAP_DIRECTORY_UNKNOWN			},
+	{ L("Unknown"),				FR_LDAP_DIRECTORY_UNKNOWN			},
 	{ L("eDirectory"),			FR_LDAP_DIRECTORY_EDIRECTORY			}
 };
 static size_t fr_ldap_directory_type_table_len = NUM_ELEMENTS(fr_ldap_directory_type_table);
