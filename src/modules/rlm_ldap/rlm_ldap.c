@@ -1695,6 +1695,7 @@ static int mod_thread_instatiate(UNUSED CONF_SECTION const *conf, void *instance
 {
 	rlm_ldap_t		*inst = instance;
 	fr_ldap_thread_t	*this_thread = thread;
+	fr_ldap_thread_trunk_t	*ttrunk;
 
 	/*
 	 *	Initialise tree for connection trunks used by this thread
@@ -1705,6 +1706,16 @@ static int mod_thread_instatiate(UNUSED CONF_SECTION const *conf, void *instance
 	this_thread->config = &inst->handle_config;
 	this_thread->trunk_conf = &inst->trunk_conf;
 	this_thread->el = el;
+
+	/*
+	 *	Launch trunk for module default connection
+	 */
+	ttrunk = fr_thread_ldap_trunk_get(this_thread, inst->handle_config.server, inst->handle_config.admin_identity,
+					  inst->handle_config.admin_password, NULL, &inst->handle_config);
+	if (!ttrunk) {
+		ERROR("Unable to launch LDAP trunk");
+		return -1;
+	}
 
 	return 0;
 }
