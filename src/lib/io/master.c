@@ -477,18 +477,20 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 *	called when the instance data is freed.
 	 */
 	if (!nak) {
-		if (inst->max_connections) {
+		if (inst->max_connections || client->radclient->limit.max_connections) {
+			uint32_t max_connections = inst->max_connections ? inst->max_connections : client->radclient->limit.max_connections;
+
 			/*
 			 *	We've hit the connection limit.  Walk
 			 *	over all clients with connections, and
 			 *	count the number of connections used.
 			 */
-			if (thread->num_connections >= inst->max_connections) {
+			if (thread->num_connections >= max_connections) {
 				thread->num_connections = 0;
 
 				(void) fr_trie_walk(thread->trie, &thread->num_connections, count_connections);
 
-				if ((thread->num_connections + 1) >= inst->max_connections) {
+				if ((thread->num_connections + 1) >= max_connections) {
 					DEBUG("Too many open connections.  Ignoring dynamic client %s.  Discarding packet.", client->radclient->shortname);
 					return NULL;
 				}
@@ -1898,11 +1900,13 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		switch (client->state) {
 		case PR_CLIENT_CONNECTED:
 			fr_assert(connection != NULL);
-			delay = inst->idle_timeout;
-			break;
+			FALL_THROUGH;
 
 		case PR_CLIENT_DYNAMIC:
 			delay = inst->idle_timeout;
+			if (client->radclient->limit.idle_timeout && (client->radclient->limit.idle_timeout < inst->idle_timeout)) {
+				delay = client->radclient->limit.idle_timeout;
+			}
 			break;
 
 		case PR_CLIENT_NAK:
