@@ -331,7 +331,7 @@ error:
 	     vp = fr_pair_list_next(&fast_vps, vp)) {
 		if (vp->da == attr_eap_fast_pac_info_pac_type) {
 			fr_assert(t->pac.type == 0);
-			t->pac.type = vp->vp_uint32;
+			t->pac.type = vp->vp_uint16;
 		} else if (vp->da == attr_eap_fast_pac_info_pac_lifetime) {
 			fr_assert(t->pac.expires == 0);
 			t->pac.expires = request->packet->timestamp + fr_time_delta_from_sec(vp->vp_uint32);
