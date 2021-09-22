@@ -884,6 +884,46 @@ int fr_ldap_global_config(int debug_level, char const *tls_random_file)
 	return 0;
 }
 
+/** Free any libldap structures when an fr_ldap_query_t is freed
+ *
+ */
+static int _ldap_query_free(fr_ldap_query_t *query)
+{
+	int 	i;
+
+	/*
+	 *	Free any results which were retrieved
+	 */
+	if (query->result) ldap_msgfree(query->result);
+
+	/*
+	 *	Free any server and client controls that need freeing
+	 */
+	for (i = 0; i < LDAP_MAX_CONTROLS; i++) {
+		if (!query->serverctrls[i].control) break;
+		if (query->serverctrls[i].freeit) ldap_control_free(query->serverctrls[i].control);
+	}
+
+	for (i = 0; i < LDAP_MAX_CONTROLS; i++) {
+		if (!query->clientctrls[i].control) break;
+		if (query->clientctrls[i].freeit) ldap_control_free(query->clientctrls[i].control);
+	}
+
+	/*
+	 *	If a URL was parsed, free it.
+	 */
+	if (query->ldap_url) ldap_free_urldesc(query->ldap_url);
+
+	/*
+	 *	If any referrals were followed, the parsed referral URLS should be freed
+	 */
+	if (query->referral_urls) ldap_memvfree((void **)query->referral_urls);
+
+	fr_dlist_talloc_free(&query->referrals);
+
+	return 0;
+}
+
 /** Initialise libldap and check library versions
  *
  * @return
