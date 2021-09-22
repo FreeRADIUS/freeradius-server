@@ -1005,6 +1005,11 @@ static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_con
 		query->result = result;
 
 		/*
+		 *	If we have a specific parser to handle the result, call it
+		 */
+		if (query->parser) query->parser(query, result);
+
+		/*
 		 *	Remove the query from the outstanding list and tidy up
 		 */
 		fr_rb_remove(ldap_conn->queries, query);

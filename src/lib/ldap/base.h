@@ -397,6 +397,10 @@ typedef struct fr_ldap_thread_trunk_s {
 
 typedef struct fr_ldap_referral_s fr_ldap_referral_t;
 
+typedef struct fr_ldap_query_s fr_ldap_query_t;
+
+typedef void (*fr_ldap_result_parser_t)(fr_ldap_query_t *query, LDAPMessage *head);
+
 /** LDAP query structure
  *
  * Used to hold the elements of an LDAP query and track its progress.
@@ -441,6 +445,8 @@ typedef struct fr_ldap_query_s {
 	fr_dlist_head_t		referrals;	//!< List of parsed referrals
 	uint16_t		referral_depth;	//!< How many referrals we have followed
 	fr_ldap_referral_t	*referral;	//!< Referral actually being followed
+
+	fr_ldap_result_parser_t	parser;		//!< Custom results parser.
 
 	LDAPMessage		*result;	//!< Head of LDAP results list.
 
