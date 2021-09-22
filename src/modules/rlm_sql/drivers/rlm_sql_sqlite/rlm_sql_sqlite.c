@@ -57,13 +57,13 @@ typedef struct {
 
 typedef struct {
 	char const	*filename;
-	uint32_t	busy_timeout;
+	fr_time_t	busy_timeout;
 	bool		bootstrap;
 } rlm_sql_sqlite_t;
 
 static const CONF_PARSER driver_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_REQUIRED, rlm_sql_sqlite_t, filename) },
-	{ FR_CONF_OFFSET("busy_timeout", FR_TYPE_UINT32, rlm_sql_sqlite_t, busy_timeout), .dflt = "200" },
+	{ FR_CONF_OFFSET("busy_timeout", FR_TYPE_TIME_DELTA, rlm_sql_sqlite_t, busy_timeout), .dflt = "200s" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -437,7 +437,7 @@ static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_co
 #endif
 		return RLM_SQL_ERROR;
 	}
-	status = sqlite3_busy_timeout(conn->db, inst->busy_timeout);
+	status = sqlite3_busy_timeout(conn->db, fr_time_delta_to_sec(inst->busy_timeout));
 	if (sql_check_error(conn->db, status) != RLM_SQL_OK) {
 		sql_print_error(conn->db, status, "Error setting busy timeout");
 		return RLM_SQL_ERROR;
