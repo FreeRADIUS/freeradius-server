@@ -1073,6 +1073,7 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 				      "rlm_ldap", found, false);
 
 	if (!found->trunk) {
+	error:
 		ROPTIONAL(REDEBUG, ERROR, "Unable to create LDAP connection");
 		talloc_free(found);
 		return NULL;
@@ -1085,6 +1086,11 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 	 */
 	fr_event_timer_in(thread, thread->el, &found->ev, thread->config->idle_timeout,
 			  _ldap_trunk_idle_timeout, found);
+
+	/*
+	 *	Attempt to discover what type directory we are talking to
+	 */
+	if (fr_ldap_trunk_directory_alloc_async(found, found) < 0) goto error;
 
 	fr_rb_insert(thread->trunks, found);
 
