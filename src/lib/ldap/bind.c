@@ -236,6 +236,11 @@ int fr_ldap_bind_async(fr_ldap_connection_t *c,
 			return -1;
 		}
 	} else {
+	/*
+	 *	Connections initialised with ldap_init() do not have a fd until
+	 *	the first request (usually bind) occurs - so this code path
+	 *	starts the bind process to open the connection.
+	 */
 		_ldap_bind_io_write(el, -1, 0, bind_ctx);
 	}
 
