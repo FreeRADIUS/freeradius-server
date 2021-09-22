@@ -1179,7 +1179,7 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 		/*
 		 *	Controls the validity period of the stateful cache.
 		 */
-		SSL_CTX_set_timeout(ctx, cache_conf->lifetime);
+		SSL_CTX_set_timeout(ctx, fr_time_delta_to_sec(cache_conf->lifetime));
 
 		/*
 		 *	Disables stateless session tickets for TLS 1.3.
