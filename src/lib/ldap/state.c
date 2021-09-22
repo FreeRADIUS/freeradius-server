@@ -109,12 +109,7 @@ again:
 	 */
 	case FR_LDAP_STATE_BIND:
 		STATE_TRANSITION(FR_LDAP_STATE_RUN);
-	/*
-		if (fr_ldap_mux_async(c) < 0) {
-			STATE_TRANSITION(FR_LDAP_STATE_ERROR);
-			goto again;
-		}
-	 */
+		fr_connection_signal_connected(c->conn);
 		break;
 
 	/*
