@@ -98,7 +98,7 @@ typedef struct {
 	tmpl_t		*id_name;			//!< Context ID to allow multiple sessions stores to be defined.
 	char		context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
 
-	uint32_t	lifetime;			//!< The maximum period a session can be resumed after.
+	fr_time_delta_t	lifetime;			//!< The maximum period a session can be resumed after.
 
 	bool		require_extms;			//!< Only allow session resumption if the client/server
 							//!< supports the extended master session key.  This protects
