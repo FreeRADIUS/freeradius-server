@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <ctype.h>
 
 /* timestr.c */
-int		timestr_match(char const *, fr_time_t);
+fr_time_delta_t	timestr_match(char const *, fr_time_t);
 
 /*
  *	Define a structure for our module configuration.
@@ -40,11 +40,11 @@ int		timestr_match(char const *, fr_time_t);
  *	be used as the instance handle.
  */
 typedef struct {
-	uint32_t	min_time;
+	fr_time_delta_t	min_time;
 } rlm_logintime_t;
 
 static const CONF_PARSER module_config[] = {
-  { FR_CONF_OFFSET("minimum_timeout", FR_TYPE_UINT32, rlm_logintime_t, min_time), .dflt = "60" },
+  { FR_CONF_OFFSET("minimum_timeout", FR_TYPE_TIME_DELTA, rlm_logintime_t, min_time), .dflt = "60s" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -153,7 +153,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 {
 	rlm_logintime_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_logintime_t);
 	fr_pair_t		*ends, *vp;
-	int32_t			left;
+	fr_time_delta_t		left;
 
 	ends = fr_pair_find_by_da(&request->control_pairs, attr_login_time, 0);
 	if (!ends) RETURN_MODULE_NOOP;
@@ -180,9 +180,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *
 	 *	We don't know were going to get another chance to lock out the user, so we need to do it now.
 	 */
-	if ((uint32_t)left < inst->min_time) {
+	if (left < inst->min_time) {
 		REDEBUG("Login outside of allowed time-slot (session end %s, with lockout %i seconds before)",
-			ends->vp_strvalue, inst->min_time);
+			ends->vp_strvalue, (int) fr_time_delta_to_sec(inst->min_time));
 
 		RETURN_MODULE_DISALLOW;
 	}
@@ -193,19 +193,19 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	There's time left in the users session, inform the NAS by including a Session-vp
 	 *	attribute in the reply, or modifying the existing one.
 	 */
-	RDEBUG2("Login within allowed time-slot, %d seconds left in this session", left);
+	RDEBUG2("Login within allowed time-slot, %d seconds left in this session", (int) fr_time_delta_to_sec(left));
 
 	switch (pair_update_reply(&vp, attr_session_timeout)) {
 	case 1:
 		/* just update... */
-		if (vp->vp_uint32 > (uint32_t)left) {
-			vp->vp_uint32 = (uint32_t)left;
+		if (vp->vp_uint32 > fr_time_delta_to_sec(left)) {
+			vp->vp_uint32 = fr_time_delta_to_sec(left);
 			RDEBUG2("&reply.Session-Timeout := %pV", &vp->data);
 		}
 		break;
 
 	case 0:	/* no pre-existing */
-		vp->vp_uint32 = (uint32_t)left;
+		vp->vp_uint32 = fr_time_delta_to_sec(left);
 		RDEBUG2("&reply.Session-Timeout := %pV", &vp->data);
 		break;
 

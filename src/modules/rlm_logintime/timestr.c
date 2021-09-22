@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-int		timestr_match(char const *, fr_time_t);
+fr_time_delta_t	timestr_match(char const *, fr_time_t);
 
 static char const *days[] =
 	{ "su", "mo", "tu", "we", "th", "fr", "sa", "wk", "any", "al" };
@@ -193,10 +193,10 @@ static int week_fill(char *bitmap, char const *tm)
 }
 
 /*
- *	Match a timestring and return seconds left.
+ *	Match a timestring and return time left.
  *	-1 for no match, 0 for unlimited.
  */
-int timestr_match(char const *tmstr, fr_time_t when)
+fr_time_delta_t timestr_match(char const *tmstr, fr_time_t when)
 {
 	struct tm *tm, s_tm;
 	char bitmap[WEEKMIN / 8];
@@ -245,24 +245,25 @@ int timestr_match(char const *tmstr, fr_time_t when)
 			break;
 	}
 
-	if (tot == 0)
-		return -1;
+	if (!tot) return -1;
 
-	return (i == now) ? 0 : tot;
+	if (i == now) return 0;
+
+	return fr_time_delta_from_sec(tot);
 }
 
 #ifdef STANDALONE
 
 int main(int argc, char **argv)
 {
-	int l;
+	fr_time_delta_t l;
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: test timestring\n");
 		fr_exit_now(EXIT_FAILURE);
 	}
-	l = timestr_match(argv[1], time(NULL));
-	printf ("%s: %d seconds left\n", argv[1], l);
+	l = timestr_match(argv[1], fr_time());
+	printf ("%s: %d seconds left\n", argv[1], fr_time_delta_to_sec(l));
 	return 0;
 }
 
