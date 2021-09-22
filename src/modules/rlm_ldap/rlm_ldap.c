@@ -150,7 +150,11 @@ static CONF_PARSER option_config[] = {
 	{ FR_CONF_OFFSET("sasl_secprops", FR_TYPE_STRING, rlm_ldap_t, handle_config.sasl_secprops) },
 
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
-	/* timeout on network activity */
+	/*
+	 *	We use this config option to populate libldap's LDAP_OPT_NETWORK_TIMEOUT -
+	 *	timeout on network activity - specifically libldap's initial call to "connect"
+	 *	Must be non-zero for async connections to start correctly.
+	 */
 	{ FR_CONF_OFFSET("net_timeout", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.net_timeout), .dflt = "10" },
 #endif
 
