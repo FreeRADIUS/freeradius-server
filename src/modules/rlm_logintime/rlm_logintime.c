@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <ctype.h>
 
 /* timestr.c */
-int		timestr_match(char const *, time_t);
+int		timestr_match(char const *, fr_time_t);
 
 /*
  *	Define a structure for our module configuration.
@@ -78,12 +78,12 @@ fr_dict_attr_autoload_t rlm_logintime_dict_attr[] = {
 /*
  *      Compare the current time to a range.
  */
-static int timecmp(UNUSED void *instance, request_t *req, UNUSED fr_pair_list_t *request_list, fr_pair_t const *check)
+static int timecmp(UNUSED void *instance, request_t *request, UNUSED fr_pair_list_t *request_list, fr_pair_t const *check)
 {
 	/*
 	 *      If there's a request, use that timestamp.
 	 */
-	if (timestr_match(check->vp_strvalue, req ? fr_time_to_sec(req->packet->timestamp) : time(NULL)) >= 0) return 0;
+	if (timestr_match(check->vp_strvalue, request->packet->timestamp) >= 0) return 0;
 
 	return -1;
 }
@@ -166,7 +166,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	/*
 	 *	Compare the time the request was received with the current Login-Time value
 	 */
-	left = timestr_match(ends->vp_strvalue, fr_time_to_sec(request->packet->timestamp));
+	left = timestr_match(ends->vp_strvalue, request->packet->timestamp);
 	if (left < 0) RETURN_MODULE_DISALLOW; /* outside of the allowed time */
 
 	/*
