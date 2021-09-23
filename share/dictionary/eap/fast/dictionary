@@ -1,0 +1,14 @@
+# -*- text -*-
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	Protocol dictionary for EAP-FAST
+#
+#
+PROTOCOL	EAP-FAST	103
+BEGIN-PROTOCOL	EAP-FAST
+
+$INCLUDE dictionary.freeradius
+
+END-PROTOCOL	EAP-FAST

@@ -810,7 +810,7 @@ static fr_radius_packet_code_t eap_fast_process_tlvs(request_t *request, eap_ses
 	     vp;
 	     vp = fr_pair_list_next(fast_vps, vp)) {
 		fr_radius_packet_code_t code = FR_RADIUS_CODE_ACCESS_REJECT;
-		if (vp->da->parent == attr_eap_fast_tlv) {
+		if (vp->da->parent == fr_dict_root(dict_eap_fast)) {
 			if (vp->da == attr_eap_fast_eap_payload) {
 				code = eap_fast_eap_payload(request, eap_session, tls_session, vp);
 				if (code == FR_RADIUS_CODE_ACCESS_ACCEPT) t->stage = EAP_FAST_CRYPTOBIND_CHECK;
@@ -960,7 +960,7 @@ fr_radius_packet_code_t eap_fast_process(request_t *request, eap_session_t *eap_
 		return FR_RADIUS_CODE_ACCESS_CHALLENGE;
 	}
 
-	if (eap_fast_decode_pair(request, &fast_vps, attr_eap_fast_tlv,
+	if (eap_fast_decode_pair(request, &fast_vps, fr_dict_root(dict_eap_fast),
 				 data, data_len, NULL) < 0) return FR_RADIUS_CODE_ACCESS_REJECT;
 
 	RDEBUG2("Got Tunneled FAST TLVs");
