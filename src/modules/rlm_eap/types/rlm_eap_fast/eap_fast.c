@@ -930,6 +930,8 @@ fr_radius_packet_code_t eap_fast_process(request_t *request, eap_session_t *eap_
 			t->mode = EAP_FAST_PROVISIONING_ANON;
 			t->pac.send = true;
 		} else {
+			fr_time_t renew;
+
 			if (SSL_session_reused(tls_session->ssl)) {
 				RDEBUG2("Session Resumed from PAC");
 				t->mode = EAP_FAST_NORMAL_AUTH;
@@ -939,11 +941,13 @@ fr_radius_packet_code_t eap_fast_process(request_t *request, eap_session_t *eap_
 			}
 
 			/*
-			 *	Send a new pac at ~0.6 times the lifetime.
+			 *	Send a new pac at 60% of the lifetime,
+			 *	or if the PAC has expired, or if no lifetime was set.
 			 */
-			if (fr_time_eq(t->pac.expires, fr_time_wrap(0)) || t->pac.expired ||
-			    fr_time_lteq(t->pac.expires,
-					 fr_time_add(request->packet->timestamp, t->pac_lifetime))) {
+			renew = fr_time_add(request->packet->timestamp, ((t->pac_lifetime * 3) / 5));
+
+			if (t->pac.expired || fr_time_eq(t->pac.expires, fr_time_wrap(0)) ||
+			     fr_time_lteq(t->pac.expires, renew)) {
 				t->pac.send = true;
 			}
 		}
