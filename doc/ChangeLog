@@ -50,9 +50,6 @@ FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	* Fix wrong data-type of Acct-Delay-Time in rlm_unix.
 	* Fix EAP-FAST PAC lifetime calculation.
 	* Print correct encoded packet length when debugging
-	* Move EAP-Fast attributes from the FreeRADIUS vendor specific
-	  dictionary to the internal one.  There is no reason to send
-	  the individual EAP-FAST fields as VSAs in a RADIUS packet.
 
 FreeRADIUS 3.0.23 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	Feature improvements
