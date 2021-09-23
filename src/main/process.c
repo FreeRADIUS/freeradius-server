@@ -1287,6 +1287,7 @@ static void request_response_delay(REQUEST *request, int action)
 		} /* else it's time to send the reject */
 
 		RDEBUG2("Sending delayed response");
+		request->listener->encode(request->listener, request);
 		debug_packet(request, request->reply, false);
 		request->listener->send(request->listener, request);
 
@@ -1566,6 +1567,7 @@ static void request_finish(REQUEST *request, int action)
 				}
 			}
 
+			request->listener->encode(request->listener, request);
 			debug_packet(request, request->reply, false);
 			request->listener->send(request->listener, request);
 		}
@@ -3940,6 +3942,7 @@ static void ping_home_server(void *ctx)
 	home->num_sent_pings++;
 
 	rad_assert(request->proxy_listener != NULL);
+	request->proxy_listener->encode(request->proxy_listener, request);
 	debug_packet(request, request->proxy, false);
 	request->proxy_listener->send(request->proxy_listener,
 				      request);

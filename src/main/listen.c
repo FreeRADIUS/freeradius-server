@@ -2357,6 +2357,8 @@ static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 
 	if (!request->reply->code) return 0;
 
+	if (request->reply->data) return 0; /* already encoded */
+
 	if (rad_encode(request->reply, request->packet, request->client->secret) < 0) {
 		RERROR("Failed encoding packet: %s", fr_strerror());
 
