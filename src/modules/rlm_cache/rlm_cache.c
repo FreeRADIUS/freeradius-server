@@ -718,7 +718,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, modu
 
 		fr_assert(c);
 
-		c->expires = fr_time_to_unix_time(request->packet->timestamp) + fr_unix_time_from_sec(ttl);
+		c->expires = fr_time_to_unix_time(request->packet->timestamp) + ttl;
 
 		cache_set_ttl(&tmp, inst, request, &handle, c);
 		switch (tmp) {
