@@ -49,7 +49,9 @@ extern "C" {
  *  plays with the local clock.
  */
 typedef struct fr_time_s {
-	int64_t	value;
+	int64_t value;		//!< Signed because we need times before the server started
+				///< for things like certificate validity checks and cache
+				///< entries.
 } fr_time_t;
 
 /** "Unix" time.  This is the time in nanoseconds since midnight January 1, 1970
@@ -72,6 +74,7 @@ typedef uint64_t fr_unix_time_t;
  */
 typedef int64_t fr_time_delta_t;
 
+#define fr_time_max() (fr_time_t){ .value = INT64_MAX }
 #define fr_time_wrap(_time) (fr_time_t){ .value = (_time) }
 #define fr_time_unwrap(_time) (_time).value
 

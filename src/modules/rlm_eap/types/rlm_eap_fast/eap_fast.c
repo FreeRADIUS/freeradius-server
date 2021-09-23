@@ -857,7 +857,7 @@ static fr_radius_packet_code_t eap_fast_process_tlvs(request_t *request, eap_ses
 			if (vp->da == attr_eap_fast_pac_acknowledge) {
 				if (vp->vp_uint32 == EAP_FAST_TLV_RESULT_SUCCESS) {
 					code = FR_RADIUS_CODE_ACCESS_ACCEPT;
-					t->pac.expires = fr_time_wrap(~fr_time_unwrap(fr_time_wrap(0)));
+					t->pac.expires = fr_time_max();
 					t->pac.expired = false;
 					t->stage = EAP_FAST_COMPLETE;
 				}
