@@ -580,7 +580,7 @@ static void proto_ldap_sync_reinit(fr_event_list_t *el, fr_time_t now, void *use
 	 *	We want the time from when we were called
 	 */
 	if (fr_event_timer_at(inst, el, &inst->sync_retry_ev,
-			      now + inst->sync_retry_interval,
+			      fr_time_add(now, inst->sync_retry_interval),
 			      proto_ldap_sync_reinit, user_ctx) < 0) {
 		FATAL("Failed inserting event: %s", fr_strerror());
 	}
