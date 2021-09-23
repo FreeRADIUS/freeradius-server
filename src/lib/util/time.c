@@ -505,12 +505,12 @@ DIAG_ON(format-nonliteral)
 
 void fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end)
 {
-	fr_time_t delay;
+	fr_time_delta_t delay;
 
-	if (start >= end) {
+	if (fr_time_gteq(start, end)) {
 		delay = 0;
 	} else {
-		delay = end - start;
+		delay = fr_time_sub(end, start);
 	}
 
 	if (delay < 1000) { /* microseconds */
@@ -528,10 +528,10 @@ void fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time
 	} else if (delay < 10000000) {
 		elapsed->array[4]++;
 
-	} else if (delay < (fr_time_t) 100000000) {
+	} else if (delay < (fr_time_delta_t) 100000000) {
 		elapsed->array[5]++;
 
-	} else if (delay < (fr_time_t) 1000000000) { /* seconds */
+	} else if (delay < (fr_time_delta_t) 1000000000) { /* seconds */
 		elapsed->array[6]++;
 
 	} else {		/* tens of seconds or more */

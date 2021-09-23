@@ -39,7 +39,7 @@ extern module_t rlm_cache;
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("driver", FR_TYPE_STRING, rlm_cache_config_t, driver_name), .dflt = "rlm_cache_rbtree" },
 	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_cache_config_t, key) },
-	{ FR_CONF_OFFSET("ttl", FR_TYPE_UINT32, rlm_cache_config_t, ttl), .dflt = "500" },
+	{ FR_CONF_OFFSET("ttl", FR_TYPE_TIME_DELTA, rlm_cache_config_t, ttl), .dflt = "500s" },
 	{ FR_CONF_OFFSET("max_entries", FR_TYPE_UINT32, rlm_cache_config_t, max_entries), .dflt = "0" },
 
 	/* Should be a type which matches time_t, @fixme before 2038 */
@@ -238,10 +238,9 @@ static unlang_action_t cache_find(rlm_rcode_t *p_result, rlm_cache_entry_t **out
 	 */
 	if ((c->expires < fr_time_to_unix_time(request->packet->timestamp)) ||
 	    (c->created < fr_unix_time_from_sec(inst->config.epoch))) {
-		RDEBUG2("Found entry for \"%pV\", but it expired %pV seconds ago.  Removing it",
+		RDEBUG2("Found entry for \"%pV\", but it expired %pV ago.  Removing it",
 			fr_box_strvalue_len((char const *)key, key_len),
-			fr_box_date(fr_time_to_unix_time(request->packet->timestamp -
-							 fr_time_delta_from_sec(c->expires))));
+			fr_box_time_delta(fr_time_to_unix_time(request->packet->timestamp) - c->expires));
 
 		inst->driver->expire(&inst->config, inst->driver_inst->dl_inst->data, request, handle, c->key, c->key_len);
 		cache_free(inst, &c);
@@ -294,7 +293,7 @@ static unlang_action_t cache_expire(rlm_rcode_t *p_result,
  */
 static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 				    rlm_cache_t const *inst, request_t *request, rlm_cache_handle_t **handle,
-				    uint8_t const *key, size_t key_len, int ttl)
+				    uint8_t const *key, size_t key_len, fr_time_delta_t ttl)
 {
 	map_t			const *map = NULL;
 	map_t			*c_map;
@@ -323,7 +322,7 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 	 *	All in NSEC resolution
 	 */
 	c->created = c->expires = fr_time_to_unix_time(request->packet->timestamp);
-	c->expires += fr_time_delta_from_sec(ttl);
+	c->expires += ttl;
 
 	RDEBUG2("Creating new cache entry");
 
@@ -444,7 +443,7 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 			RETURN_MODULE_FAIL;
 
 		case CACHE_OK:
-			RDEBUG2("Committed entry, TTL %d seconds", ttl);
+			RDEBUG2("Committed entry, TTL %pV seconds", fr_box_time_delta(ttl));
 			cache_free(inst, &c);
 			RETURN_MODULE_RCODE(merge ? RLM_MODULE_UPDATED : RLM_MODULE_OK);
 
@@ -551,7 +550,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, modu
 	ssize_t			key_len;
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 
-	int			ttl = inst->config.ttl;
+	fr_time_delta_t		ttl = inst->config.ttl;
 
 	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
 			      request, inst->config.key, NULL, NULL);
@@ -602,11 +601,11 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, modu
 			expire = true;
 		} else if (vp->vp_int32 < 0) {
 			expire = true;
-			ttl = -(vp->vp_int32);
+			ttl = fr_time_delta_from_sec(-(vp->vp_int32));
 		/* Updating the TTL */
 		} else {
 			set_ttl = true;
-			ttl = vp->vp_int32;
+			ttl = fr_time_delta_from_sec(vp->vp_int32);
 		}
 	}
 
@@ -614,7 +613,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, modu
 	RDEBUG3("merge  : %s", merge ? "yes" : "no");
 	RDEBUG3("insert : %s", insert ? "yes" : "no");
 	RDEBUG3("expire : %s", expire ? "yes" : "no");
-	RDEBUG3("ttl    : %i", ttl);
+	RDEBUG3("ttl    : %pV", fr_box_time_delta(ttl));
 	REXDENT();
 	if (cache_acquire(&handle, inst, request) < 0) {
 		RETURN_MODULE_FAIL;

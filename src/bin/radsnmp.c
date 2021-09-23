@@ -90,7 +90,7 @@ typedef struct {
 	uint16_t		server_port;		//!< Port to send requests to.
 
 	unsigned int		retries;		//!< Number of retries.
-	fr_time_t		timeout;
+	fr_time_delta_t		timeout;
 	char			*secret;		//!< Shared secret.
 } radsnmp_conf_t;
 

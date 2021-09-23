@@ -870,7 +870,7 @@ static int send_one_packet(rc_request_t *request)
 		request->resend++;
 
 	} else {		/* request->packet->id >= 0 */
-		fr_time_delta_t now = fr_time();
+		fr_time_t now = fr_time();
 
 		/*
 		 *	FIXME: Accounting packets are never retried!
@@ -882,15 +882,15 @@ static int send_one_packet(rc_request_t *request)
 		/*
 		 *	Not time for a retry, do so.
 		 */
-		if ((now - request->timestamp) < timeout) {
+		if (fr_time_sub(now, request->timestamp) < timeout) {
 			/*
 			 *	When we walk over the tree sending
 			 *	packets, we update the minimum time
 			 *	required to sleep.
 			 */
 			if ((sleep_time == -1) ||
-			    (sleep_time > (now - request->timestamp))) {
-				sleep_time = now - request->timestamp;
+			    (sleep_time > fr_time_sub(now, request->timestamp))) {
+				sleep_time = fr_time_sub(now, request->timestamp);
 			}
 			return 0;
 		}
@@ -947,7 +947,7 @@ static int send_one_packet(rc_request_t *request)
 /*
  *	Receive one packet, maybe.
  */
-static int recv_one_packet(fr_time_t wait_time)
+static int recv_one_packet(fr_time_delta_t wait_time)
 {
 	fd_set			set;
 	fr_time_delta_t		our_wait_time;
@@ -961,7 +961,7 @@ static int recv_one_packet(fr_time_t wait_time)
 	max_fd = fr_packet_list_fd_set(packet_list, &set);
 	if (max_fd < 0) fr_exit_now(1); /* no sockets to listen on! */
 
-	our_wait_time = (wait_time <= 0) ? 0 : wait_time;
+	our_wait_time = wait_time <= 0 ? fr_time_delta_from_sec(0) : wait_time;
 
 	/*
 	 *	No packet was received.

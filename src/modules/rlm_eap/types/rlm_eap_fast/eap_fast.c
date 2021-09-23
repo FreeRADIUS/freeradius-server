@@ -857,7 +857,7 @@ static fr_radius_packet_code_t eap_fast_process_tlvs(request_t *request, eap_ses
 			if (vp->da == attr_eap_fast_pac_acknowledge) {
 				if (vp->vp_uint32 == EAP_FAST_TLV_RESULT_SUCCESS) {
 					code = FR_RADIUS_CODE_ACCESS_ACCEPT;
-					t->pac.expires = ~((fr_time_t) 0);
+					t->pac.expires = fr_time_wrap(~fr_time_unwrap(fr_time_wrap(0)));
 					t->pac.expired = false;
 					t->stage = EAP_FAST_COMPLETE;
 				}
@@ -941,8 +941,9 @@ fr_radius_packet_code_t eap_fast_process(request_t *request, eap_session_t *eap_
 			/*
 			 *	Send a new pac at ~0.6 times the lifetime.
 			 */
-			if (!t->pac.expires || t->pac.expired ||
-			    t->pac.expires <= (request->packet->timestamp + fr_time_delta_from_sec((t->pac_lifetime >> 1) + (t->pac_lifetime >> 3)))) {
+			if (fr_time_eq(t->pac.expires, fr_time_wrap(0)) || t->pac.expired ||
+			    fr_time_lteq(t->pac.expires,
+					 fr_time_add(request->packet->timestamp, t->pac_lifetime))) {
 				t->pac.send = true;
 			}
 		}

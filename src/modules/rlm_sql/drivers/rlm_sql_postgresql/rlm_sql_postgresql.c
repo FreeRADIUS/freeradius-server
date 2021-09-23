@@ -296,7 +296,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 		FD_SET(sockfd, &read_fd);
 
 		if (config->query_timeout) {
-			elapsed = fr_time() - start;
+			elapsed = fr_time_sub(fr_time(), start);
 			if (elapsed >= timeout) goto too_long;
 		}
 

@@ -1163,7 +1163,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 				inst->driver->sql_escape_func :
 				sql_escape_func;
 
-	inst->ef = module_exfile_init(inst, conf, 256, 30, true, NULL, NULL);
+	inst->ef = module_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
 	if (!inst->ef) {
 		cf_log_err(conf, "Failed creating log file context");
 		return -1;

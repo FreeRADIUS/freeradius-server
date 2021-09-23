@@ -584,7 +584,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	fr_assert(thread->fd >= 0);
 
 	if (!buffer[0]) {
-		if (track->retry.start == 0) {
+		if (fr_time_eq(track->retry.start, fr_time_wrap(0))) {
 			fr_retry_init(&track->retry, fr_time(), &inst->retry_config);
 		} else {
 			fr_retry_state_t state;

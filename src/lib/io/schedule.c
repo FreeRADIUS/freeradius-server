@@ -277,7 +277,7 @@ static void stats_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	fr_network_stats_log(sn->nr, sn->sc->log);
 
-	(void) fr_event_timer_at(sn, el, &sn->ev, now + sn->sc->config->stats_interval, stats_timer, sn);
+	(void) fr_event_timer_at(sn, el, &sn->ev, fr_time_add(now, sn->sc->config->stats_interval), stats_timer, sn);
 }
 
 /** Initialize and run the network thread.

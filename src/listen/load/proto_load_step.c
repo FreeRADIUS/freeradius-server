@@ -88,7 +88,7 @@ static const CONF_PARSER load_listen_config[] = {
 
 	{ FR_CONF_OFFSET("start_pps", FR_TYPE_UINT32, proto_load_step_t, load.start_pps) },
 	{ FR_CONF_OFFSET("max_pps", FR_TYPE_UINT32, proto_load_step_t, load.max_pps) },
-	{ FR_CONF_OFFSET("duration", FR_TYPE_UINT32, proto_load_step_t, load.duration) },
+	{ FR_CONF_OFFSET("duration", FR_TYPE_TIME_DELTA, proto_load_step_t, load.duration) },
 	{ FR_CONF_OFFSET("step", FR_TYPE_UINT32, proto_load_step_t, load.step) },
 	{ FR_CONF_OFFSET("max_backlog", FR_TYPE_UINT32, proto_load_step_t, load.milliseconds) },
 	{ FR_CONF_OFFSET("parallel", FR_TYPE_UINT32, proto_load_step_t, load.parallel) },
@@ -372,8 +372,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	if (inst->load.max_pps > 0) FR_INTEGER_BOUND_CHECK("max_pps", inst->load.max_pps, >, inst->load.start_pps);
 	FR_INTEGER_BOUND_CHECK("max_pps", inst->load.max_pps, <, 100000);
 
-	FR_INTEGER_BOUND_CHECK("duration", inst->load.duration, >=, 1);
-	FR_INTEGER_BOUND_CHECK("duration", inst->load.duration, <, 10000);
+	FR_TIME_DELTA_BOUND_CHECK("duration", inst->load.duration, >=, fr_time_delta_from_sec(1));
+	FR_TIME_DELTA_BOUND_CHECK("duration", inst->load.duration, <, fr_time_delta_from_sec(10000));
 
 
 	FR_INTEGER_BOUND_CHECK("parallel", inst->load.parallel, >=, 1);

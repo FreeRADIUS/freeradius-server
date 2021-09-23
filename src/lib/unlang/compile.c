@@ -4121,7 +4121,7 @@ void unlang_frame_perf_cleanup(unlang_t const *instruction)
 
 	t = &unlang_thread_array[instruction->number];
 
-	t->cpu_time += (fr_time() - t->enter);
+	t->cpu_time += fr_time_sub(fr_time(), t->enter);
 }
 
 

@@ -947,11 +947,11 @@ static int bfd_start_packets(bfd_state_t *session)
 
 static void bfd_set_timeout(bfd_state_t *session, fr_time_t when)
 {
-	fr_time_t now = when;
+	fr_time_t now;
 
 	fr_event_timer_delete(&session->ev_timeout);
 
-	now += fr_time_delta_from_usec(session->detection_time);
+	now = fr_time_add(when, fr_time_delta_from_usec(session->detection_time));
 
 	if (session->detect_multi >= 2) {
 		uint32_t delay;
@@ -960,7 +960,7 @@ static void bfd_set_timeout(bfd_state_t *session, fr_time_t when)
 		delay = session->detection_time / session->detect_multi;
 		delay += delay / 2;
 
-		session->next_recv += fr_time_delta_from_usec(delay);
+		session->next_recv = fr_time_add(session->next_recv, fr_time_delta_from_usec(delay));
 	}
 
 	if (fr_event_timer_at(session, session->el, &session->ev_timeout,
@@ -1323,7 +1323,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 	 *	We've received a packet, but missed the previous one.
 	 *	Warn about it.
 	 */
-	if ((session->detect_multi >= 2) && (session->last_recv > session->next_recv)) {
+	if ((session->detect_multi >= 2) && (fr_time_gt(session->last_recv, session->next_recv))) {
 		fr_radius_packet_t packet;
 		request_t request;
 

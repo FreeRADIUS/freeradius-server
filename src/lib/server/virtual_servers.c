@@ -496,7 +496,7 @@ unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs,
 	mi->module = (module_t *)server->process_module;
 	mi->number = 0;	/* Hacky hack hack */
 
-	if (unlikely(track && track->dynamic && server->dynamic_client_module)) {
+	if (unlikely(track && fr_time_gt(track->dynamic, fr_time_wrap(0)) && server->dynamic_client_module)) {
 		process = (fr_process_module_t const *) server->dynamic_client_module->module->common;
 		mi->dl_inst = server->dynamic_client_module;
 

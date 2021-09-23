@@ -247,7 +247,7 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	 *	"detail.work" exists, try to lock it.
 	 */
 	if (rad_lockfd_nonblock(fd, 0) < 0) {
-		fr_time_t delay;
+		fr_time_delta_t delay;
 
 		DEBUG3("proto_detail (%s): Failed locking %s: %s",
 		       thread->name, inst->filename_work, fr_syserror(errno));

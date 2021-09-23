@@ -409,9 +409,8 @@ static void worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t
 
 		REQUEST_VERIFY(request);
 
-		cleanup = request->async->recv_time;
-		cleanup += worker->config.max_request_time;
-		if (cleanup > now) break;
+		cleanup = fr_time_add(request->async->recv_time, worker->config.max_request_time);
+		if (fr_time_gt(cleanup, now)) break;
 
 		/*
 		 *	Waiting too long, delete it.
@@ -442,8 +441,7 @@ static void worker_max_request_timer(fr_worker_t *worker)
 	request = fr_heap_peek_tail(worker->time_order);
 	if (!request) return;
 
-	cleanup = request->async->recv_time;
-	cleanup += worker->config.max_request_time;
+	cleanup = fr_time_add(request->async->recv_time, worker->config.max_request_time);
 
 	DEBUG2("Resetting cleanup timer to +%pV", fr_box_time_delta(worker->config.max_request_time));
 	if (fr_event_timer_at(worker, worker->el, &worker->ev_cleanup,
@@ -581,7 +579,7 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, size_t si
 	/*
 	 *	Update the various timers.
 	 */
-	fr_time_elapsed_update(&worker->cpu_time, now, now + reply->reply.processing_time);
+	fr_time_elapsed_update(&worker->cpu_time, now, fr_time_add(now, reply->reply.processing_time));
 	fr_time_elapsed_update(&worker->wall_clock, reply->reply.request_time, now);
 
 	RDEBUG("Finished request");
@@ -779,7 +777,7 @@ nak:
 		 *	@todo - fix the channel code to do queue
 		 *	depth, and not sequence / ack.
 		 */
-		if (old->async->recv_time == request->async->recv_time) {
+		if (fr_time_eq(old->async->recv_time, request->async->recv_time)) {
 			RWARN("Discarding duplicate of request (%"PRIu64")", old->number);
 
 			fr_channel_null_reply(request->async->channel);
@@ -831,7 +829,7 @@ static int8_t worker_runnable_cmp(void const *one, void const *two)
 	ret = CMP(a->async->sequence, b->async->sequence);
 	if (ret != 0) return ret;
 
-	return CMP(a->async->recv_time, b->async->recv_time);
+	return fr_time_cmp(a->async->recv_time, b->async->recv_time);
 }
 
 /**
@@ -841,7 +839,7 @@ static int8_t worker_time_order_cmp(void const *one, void const *two)
 {
 	request_t const *a = one, *b = two;
 
-	return CMP(a->async->recv_time, b->async->recv_time);
+	return fr_time_cmp(a->async->recv_time, b->async->recv_time);
 }
 
 /**
@@ -1168,7 +1166,7 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
 	 *	event loop fewer times per second, instead of after
 	 *	every request.
 	 */
-	while (((now - start) < (NSEC / 100000)) &&
+	while ((fr_time_sub(now, start) < (NSEC / 100000)) &&
 	       ((request = fr_heap_pop(worker->runnable)) != NULL)) {
 
 		REQUEST_VERIFY(request);
@@ -1370,7 +1368,7 @@ void fr_worker(fr_worker_t *worker)
  *
  *	This should be run ONLY in single-threaded mode!
  */
-int fr_worker_pre_event(UNUSED fr_time_t wake, void *uctx)
+int fr_worker_pre_event(UNUSED fr_time_t now, UNUSED fr_time_delta_t wake, void *uctx)
 {
 	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
 	request_t *request;
@@ -1507,7 +1505,7 @@ int fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats)
 static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
 {
 	fr_worker_t const *worker = ctx;
-	fr_time_t when;
+	fr_time_delta_t when;
 
 	if ((info->argc == 0) || (strcmp(info->argv[0], "count") == 0)) {
 		fprintf(fp, "count.in\t\t\t%" PRIu64 "\n", worker->stats.in);

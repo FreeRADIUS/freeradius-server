@@ -418,7 +418,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 /** radmin functions, tables, and callbacks
  *
  */
-static fr_time_delta_t start_time;
+static fr_time_t start_time;
 
 static int cmd_exit(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
@@ -458,7 +458,7 @@ static int cmd_uptime(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr
 {
 	fr_time_delta_t uptime;
 
-	uptime = fr_time() - start_time;
+	uptime = fr_time_sub(fr_time(), start_time);
 
 	fr_fprintf(fp, "Uptime: %pVs seconds\n", fr_box_time_delta(uptime));
 

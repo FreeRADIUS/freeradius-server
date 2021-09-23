@@ -266,6 +266,8 @@ typedef enum {
 
 #define fr_box_date(_val)			_fr_box(FR_TYPE_DATE, .vb_date, _val)
 
+#define fr_box_time(_val)			_fr_box(FR_TYPE_DATE, .vb_date, fr_time_to_unix_time(_val))
+
 #define fr_box_size(_val)			_fr_box(FR_TYPE_SIZE, .vb_size, _val)
 
 #define _fr_box_with_da(_type, _field, _val, _da) (&(fr_value_box_t){ .type = _type, _field = (_val), .enumv = (_da) })

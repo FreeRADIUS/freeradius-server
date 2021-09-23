@@ -108,14 +108,14 @@ static void fr_load_generator_send(fr_load_t *l, fr_time_t now, int count)
 	 *	it more likely that the next timer fires on time.
 	 */
 	for (i = 0; i < count; i++) {
-		l->callback(now + i, l->uctx);
+		l->callback(fr_time_add(now, fr_time_delta_from_nsec(i)), l->uctx);
 	}
 }
 
 static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_load_t *l = uctx;
-	fr_time_t delta;
+	fr_time_delta_t delta;
 	int count;
 
 	/*
@@ -128,14 +128,14 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	If we're done this step, go to the next one.
 	 */
-	if (l->next >= l->step_end) {
+	if (fr_time_gteq(l->next, l->step_end)) {
 		l->step_start = l->next;
-		l->step_end = l->next + ((uint64_t) l->config->duration) * NSEC;
+		l->step_end = fr_time_add(l->next, l->config->duration);
 		l->step_received = l->stats.received;
 		l->pps += l->config->step;
 		l->stats.pps = l->pps;
 		l->stats.skipped = 0;
-		l->delta = (NSEC * ((uint64_t) l->config->parallel)) / l->pps;
+		l->delta = fr_time_delta_from_sec(l->config->parallel) / l->pps;
 
 		/*
 		 *	Stop at max PPS, if it's set.  Otherwise
@@ -189,14 +189,14 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	Skip timers if we're too busy.
 	 */
-	l->next += l->delta;
-	if (l->next < now) {
-		while ((l->next + l->delta) < now) {
+	l->next = fr_time_add(l->next, l->delta);
+	if (fr_time_lt(l->next, now)) {
+		while (fr_time_lt(fr_time_add(l->next, l->delta), now)) {
 //			l->stats.skipped += l->count;
-			l->next += l->delta;
+			l->next = fr_time_add(l->next, l->delta);
 		}
 	}
-	delta = l->next - now;
+	delta = fr_time_sub(l->next, now);
 
 	/*
 	 *	Set the timer for the next packet.
@@ -217,14 +217,14 @@ int fr_load_generator_start(fr_load_t *l)
 {
 	l->stats.start = fr_time();
 	l->step_start = l->stats.start;
-	l->step_end = l->step_start + ((uint64_t) l->config->duration) * NSEC;
+	l->step_end = fr_time_add(l->step_start, l->config->duration);
 
 	l->pps = l->config->start_pps;
 	l->stats.pps = l->pps;
 	l->count = l->config->parallel;
 
 	l->delta = (NSEC * ((uint64_t) l->config->parallel)) / l->pps;
-	l->next = l->step_start + l->delta;
+	l->next = fr_time_add(l->step_start, l->delta);
 
 	load_timer(l->el, l->step_start, l);
 	return 0;
@@ -257,7 +257,7 @@ fr_load_reply_t fr_load_generator_have_reply(fr_load_t *l, fr_time_t request_tim
 	 *	for any kind of timing.
 	 */
 	now = fr_time();
-	t = now - request_time;
+	t = fr_time_sub(now, request_time);
 
 	l->stats.rttvar = RTTVAR(l->stats.rtt, l->stats.rttvar, t);
 	l->stats.rtt = RTT(l->stats.rtt, t);
@@ -334,10 +334,10 @@ size_t fr_load_generator_stats_sprint(fr_load_t *l, fr_time_t now, char *buffer,
 	}
 
 
-	now_f = now - l->stats.start;
+	now_f = fr_time_sub(now, l->stats.start);
 	now_f /= NSEC;
 
-	last_send_f = l->stats.last_send - l->stats.start;
+	last_send_f = fr_time_sub(l->stats.last_send, l->stats.start);
 	last_send_f /= NSEC;
 
 	/*
@@ -346,8 +346,8 @@ size_t fr_load_generator_stats_sprint(fr_load_t *l, fr_time_t now, char *buffer,
 	 *	is 1B, the calculations have to be done via 64-bit
 	 *	numbers, and then converted to a final 32-bit counter.
 	 */
-	if (now > l->step_start) {
-		l->stats.pps_accepted = (((uint64_t) (l->stats.received - l->step_received)) * NSEC) / (now - l->step_start);
+	if (fr_time_gt(now, l->step_start)) {
+		l->stats.pps_accepted = fr_time_delta_from_sec(l->stats.received - l->step_received) / fr_time_sub(now, l->step_start);
 	}
 
 	return snprintf(buffer, buflen,

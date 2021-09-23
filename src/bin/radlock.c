@@ -287,12 +287,12 @@ int main(int argc, char *argv[])
 		INFO("\tUser          : %s (%u)", uid_str, info.sem_perm.uid);
 		INFO("\tGroup         : %s (%u)", gid_str, info.sem_perm.gid);
 		INFO("\tTime          : %s",
-		     fr_asprintf(autofree, "%pV", fr_box_date(fr_time_from_sec(info.sem_otime))));
+		     fr_asprintf(autofree, "%pV", fr_box_time(fr_time_from_sec(info.sem_otime))));
 		INFO("Created:");
 		INFO("\tUser          : %s (%u)", cuid_str, info.sem_perm.cuid);
 		INFO("\tGroup         : %s (%u)", cgid_str, info.sem_perm.cgid);
 		INFO("\tTime          : %s",
-		     fr_asprintf(autofree, "%pV", fr_box_date(fr_time_from_sec(info.sem_ctime))));
+		     fr_asprintf(autofree, "%pV", fr_box_time(fr_time_from_sec(info.sem_ctime))));
 	}
 		EXIT_WITH_SUCCESS;
 

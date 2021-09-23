@@ -119,12 +119,12 @@ static int snmp_value_uptime_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *out, ND
 	fr_assert(map->da->type == FR_TYPE_UINT32);
 
 	now = fr_time();
-	delta = now - start_time;
+	delta = fr_time_sub(now, start_time);
 
 	/*
 	 *	ticks are in 1/100's of seconds.
 	 */
-	out->vb_uint32 += delta / 10000000;
+	out->vb_uint32 += fr_time_delta_to_csec(delta);
 
 	return 0;
 }
@@ -138,12 +138,12 @@ static int snmp_config_reset_time_get(UNUSED TALLOC_CTX *ctx, fr_value_box_t *ou
 	fr_assert(map->da->type == FR_TYPE_UINT32);
 
 	now = fr_time();
-	delta = now - reset_time;
+	delta = fr_time_sub(now, reset_time);
 
 	/*
 	 *	ticks are in 1/100's of seconds.
 	 */
-	out->vb_uint32 += delta / 10000000;
+	out->vb_uint32 += fr_time_delta_to_csec(delta);
 
 	return 0;
 }

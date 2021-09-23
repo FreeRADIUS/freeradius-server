@@ -117,9 +117,10 @@ typedef	void (*fr_event_timer_cb_t)(fr_event_list_t *el, fr_time_t now, void *uc
  * Called before calling kqueue to put the thread in a sleeping state.
  *
  * @param[in] now	The current time.
+ * @param[in] wake	When we'll next need to wake up to service an event.
  * @param[in] uctx	User ctx passed to #fr_event_list_alloc.
  */
-typedef	int (*fr_event_status_cb_t)(fr_time_t now, void *uctx);
+typedef	int (*fr_event_status_cb_t)(fr_time_t now, fr_time_delta_t wake, void *uctx);
 
 /** Called when an IO event occurs on a file descriptor
  *

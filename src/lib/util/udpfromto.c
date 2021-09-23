@@ -300,7 +300,7 @@ int recvfromto(int fd, void *buf, size_t len, int flags,
 	if (from_len) *from_len = msgh.msg_namelen;
 
 	if (ifindex) *ifindex = 0;
-	if (when) *when = 0;
+	if (when) *when = fr_time_wrap(0);
 
 	/* Process auxiliary received data in msgh */
 	for (cmsg = CMSG_FIRSTHDR(&msgh);
@@ -355,7 +355,7 @@ int recvfromto(int fd, void *buf, size_t len, int flags,
 #endif
 	}
 
-	if (when && !*when) *when = fr_time();
+	if (when && fr_time_eq(*when, fr_time_wrap(0))) *when = fr_time();
 
 	return ret;
 }

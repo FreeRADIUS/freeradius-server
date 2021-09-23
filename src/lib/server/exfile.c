@@ -47,7 +47,7 @@ typedef struct {
 
 struct exfile_s {
 	uint32_t		max_entries;		//!< How many file descriptors we keep track of.
-	uint32_t		max_idle;		//!< Maximum idle time for a descriptor.
+	fr_time_delta_t		max_idle;		//!< Maximum idle time for a descriptor.
 	fr_time_t      		last_cleaned;
 	pthread_mutex_t		mutex;
 	exfile_entry_t		*entries;
@@ -148,7 +148,7 @@ static int _exfile_free(exfile_t *ef)
  *	- new context.
  *	- NULL on error.
  */
-exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, bool locking)
+exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, fr_time_delta_t max_idle, bool locking)
 {
 	exfile_t *ef;
 
@@ -308,7 +308,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
 
 	pthread_mutex_lock(&ef->mutex);
 
-	if (now > (ef->last_cleaned + 1)) do_cleanup = true;
+	if (fr_time_gt(now, fr_time_add(ef->last_cleaned, fr_time_delta_from_sec(1)))) do_cleanup = true;
 
 	/*
 	 *	Find the matching entry, or an unused one.
@@ -323,7 +323,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
 		}
 
 		if ((oldest < 0) ||
-		    (ef->entries[i].last_used < ef->entries[oldest].last_used)) {
+		    (fr_time_lt(ef->entries[i].last_used, ef->entries[oldest].last_used))) {
 			oldest = i;
 		}
 
@@ -352,7 +352,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
 			 *	do so now.
 			 */
 		} else if (do_cleanup) {
-			if ((ef->entries[i].last_used + ef->max_idle) >= now) continue;
+			if (fr_time_gteq(fr_time_add(ef->entries[i].last_used, ef->max_idle), now)) continue;
 
 			exfile_cleanup_entry(ef, &ef->entries[i]);
 		}

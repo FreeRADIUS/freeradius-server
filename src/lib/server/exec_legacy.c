@@ -406,7 +406,7 @@ int radius_readfrom_program_legacy(int fd, pid_t pid, fr_time_delta_t timeout, c
 		FD_ZERO(&fds);
 		FD_SET(fd, &fds);
 
-		elapsed = fr_time() - start;
+		elapsed = fr_time_sub(fr_time(), start);
 		if (elapsed >= timeout) goto too_long;
 
 		rcode = select(fd + 1, &fds, NULL, NULL, &fr_time_delta_to_timeval(timeout - elapsed));

@@ -142,8 +142,8 @@ typedef struct fr_channel_s fr_channel_t;
  * and an atomic queue in each direction to allow for bidirectional communication.
  */
 struct fr_channel_s {
-	fr_time_t		cpu_time;	//!< Total time used by the responder for this channel.
-	fr_time_t		processing_time; //!< Time spent by the responder processing requests.
+	fr_time_delta_t		cpu_time;	//!< Total time used by the responder for this channel.
+	fr_time_delta_t		processing_time; //!< Time spent by the responder processing requests.
 
 	bool			same_thread;	//!< are both ends in the same thread?
 
@@ -152,12 +152,12 @@ struct fr_channel_s {
 
 fr_table_num_sorted_t const channel_signals[] = {
 	{ L("error"),			FR_CHANNEL_ERROR			},
-	{ L("data-to-responder"),		FR_CHANNEL_SIGNAL_DATA_TO_RESPONDER	},
-	{ L("data-to-requestor"),		FR_CHANNEL_DATA_READY_REQUESTOR		},
+	{ L("data-to-responder"),	FR_CHANNEL_SIGNAL_DATA_TO_RESPONDER	},
+	{ L("data-to-requestor"),	FR_CHANNEL_DATA_READY_REQUESTOR		},
 	{ L("open"),			FR_CHANNEL_OPEN				},
 	{ L("close"),			FR_CHANNEL_CLOSE			},
 	{ L("data-done-responder"),	FR_CHANNEL_SIGNAL_DATA_DONE_RESPONDER	},
-	{ L("responder-sleeping"),		FR_CHANNEL_SIGNAL_RESPONDER_SLEEPING	},
+	{ L("responder-sleeping"),	FR_CHANNEL_SIGNAL_RESPONDER_SLEEPING	},
 };
 size_t channel_signals_len = NUM_ELEMENTS(channel_signals);
 
@@ -306,7 +306,8 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
 int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 {
 	uint64_t sequence;
-	fr_time_t when, message_interval;
+	fr_time_t when;
+	fr_time_delta_t message_interval;
 	fr_channel_end_t *requestor;
 
 	if (!fr_cond_assert_msg(atomic_load(&ch->end[TO_RESPONDER].active), "Channel not active")) return -1;
@@ -338,7 +339,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 	}
 
 	requestor->sequence = sequence;
-	message_interval = when - requestor->stats.last_write;
+	message_interval = fr_time_sub(when, requestor->stats.last_write);
 
 	if (!requestor->stats.message_interval) {
 		requestor->stats.message_interval = message_interval;
@@ -346,9 +347,9 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 		requestor->stats.message_interval = RTT(requestor->stats.message_interval, message_interval);
 	}
 
-	fr_assert_msg(requestor->stats.last_write <= when,
+	fr_assert_msg(fr_time_lteq(requestor->stats.last_write, when),
 		      "Channel data timestamp (%" PRId64") older than last channel data sent (%" PRId64 ")",
-		      when, requestor->stats.last_write);
+		      fr_time_unwrap(when), fr_time_unwrap(requestor->stats.last_write));
 	requestor->stats.last_write = when;
 
 	requestor->stats.outstanding++;
@@ -452,7 +453,7 @@ bool fr_channel_recv_reply(fr_channel_t *ch)
 	requestor->ack = cd->live.sequence;
 	requestor->their_view_of_my_sequence = cd->live.ack;
 
-	fr_assert(requestor->stats.last_read_other <= cd->m.when);
+	fr_assert(fr_time_lteq(requestor->stats.last_read_other, cd->m.when));
 	requestor->stats.last_read_other = cd->m.when;
 
 	ch->end[TO_RESPONDER].recv(ch->end[TO_RESPONDER].recv_uctx, ch, cd);
@@ -489,7 +490,7 @@ bool fr_channel_recv_request(fr_channel_t *ch)
 	responder->ack = cd->live.sequence;
 	responder->their_view_of_my_sequence = cd->live.ack;
 
-	fr_assert(responder->stats.last_read_other <= cd->m.when);
+	fr_assert(fr_time_lteq(responder->stats.last_read_other, cd->m.when));
 	responder->stats.last_read_other = cd->m.when;
 
 	ch->end[TO_REQUESTOR].recv(ch->end[TO_REQUESTOR].recv_uctx, ch, cd);
@@ -510,7 +511,8 @@ bool fr_channel_recv_request(fr_channel_t *ch)
 int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 {
 	uint64_t		sequence;
-	fr_time_t		when, message_interval;
+	fr_time_t		when;
+	fr_time_delta_t		message_interval;
 	fr_channel_end_t	*responder;
 
 	if (!fr_cond_assert_msg(atomic_load(&ch->end[TO_REQUESTOR].active), "Channel not active")) return -1;
@@ -545,12 +547,12 @@ int fr_channel_send_reply(fr_channel_t *ch, fr_channel_data_t *cd)
 	MPRINT("\tRESPONDER replies %"PRIu64", num_outstanding %"PRIu64"\n", responder->stats.packets, responder->stats.outstanding);
 
 	responder->sequence = sequence;
-	message_interval = when - responder->stats.last_write;
+	message_interval = fr_time_sub(when, responder->stats.last_write);
 	responder->stats.message_interval = RTT(responder->stats.message_interval, message_interval);
 
-	fr_assert_msg(responder->stats.last_write <= when,
+	fr_assert_msg(fr_time_lteq(responder->stats.last_write, when),
 		      "Channel data timestamp (%" PRId64") older than last channel data sent (%" PRId64 ")",
-		      when, responder->stats.last_write);
+		      fr_time_unwrap(when), fr_time_unwrap(responder->stats.last_write));
 	responder->stats.last_write = when;
 
 	/*
@@ -967,16 +969,16 @@ void fr_channel_stats_log(fr_channel_t const *ch, fr_log_t const *log, char cons
 	fr_log(log, L_INFO, file, line, "\toutstanding = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.outstanding);
 	fr_log(log, L_INFO, file, line, "\tpackets processed = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.packets);
 	fr_log(log, L_INFO, file, line, "\tmessage interval (RTT) = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.message_interval);
-	fr_log(log, L_INFO, file, line, "\tlast write = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.last_read_other);
-	fr_log(log, L_INFO, file, line, "\tlast read other end = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.last_read_other);
-	fr_log(log, L_INFO, file, line, "\tlast signal other = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.last_sent_signal);
+	fr_log(log, L_INFO, file, line, "\tlast write = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_RESPONDER].stats.last_read_other));
+	fr_log(log, L_INFO, file, line, "\tlast read other end = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_RESPONDER].stats.last_read_other));
+	fr_log(log, L_INFO, file, line, "\tlast signal other = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_RESPONDER].stats.last_sent_signal));
 
 	fr_log(log, L_INFO, file, line, "responder\n");
 	fr_log(log, L_INFO, file, line, "\tsignals sent = %" PRIu64"\n", ch->end[TO_REQUESTOR].stats.signals);
 	fr_log(log, L_INFO, file, line, "\tkevents checked = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.kevents);
 	fr_log(log, L_INFO, file, line, "\tpackets processed = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.packets);
 	fr_log(log, L_INFO, file, line, "\tmessage interval (RTT) = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.message_interval);
-	fr_log(log, L_INFO, file, line, "\tlast write = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.last_read_other);
-	fr_log(log, L_INFO, file, line, "\tlast read other end = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.last_read_other);
-	fr_log(log, L_INFO, file, line, "\tlast signal other = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.last_sent_signal);
+	fr_log(log, L_INFO, file, line, "\tlast write = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_read_other));
+	fr_log(log, L_INFO, file, line, "\tlast read other end = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_read_other));
+	fr_log(log, L_INFO, file, line, "\tlast signal other = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_sent_signal));
 }

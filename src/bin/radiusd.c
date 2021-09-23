@@ -175,7 +175,7 @@ static void fr_exit_after(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	fr_time_delta_t	exit_after = *(fr_time_delta_t *)uctx;
 
-	if (now == 0) {
+	if (fr_time_eq(now, fr_time_wrap(0))) {
 		if (fr_event_timer_in(el, el, &ev, exit_after, fr_exit_after, uctx) < 0) {
 			PERROR("Failed inserting exit event");
 		}
@@ -921,7 +921,7 @@ int main(int argc, char *argv[])
 
 	fr_time_sync_event(main_loop_event_list(), fr_time(), NULL);
 #ifndef NDEBUG
-	if (exit_after > 0) fr_exit_after(main_loop_event_list(), 0, &exit_after);
+	if (exit_after > 0) fr_exit_after(main_loop_event_list(), fr_time_wrap(0), &exit_after);
 #endif
 	/*
 	 *  Process requests until HUP or exit.

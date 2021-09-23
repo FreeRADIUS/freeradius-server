@@ -229,7 +229,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t con
 			talloc_free(vp);
 			goto raw;
 		}
-		vp->vp_date += ((fr_time_t) DHCPV6_DATE_OFFSET) * NSEC;
+		vp->vp_date += fr_time_delta_from_sec(DHCPV6_DATE_OFFSET);
 		break;
 
 	case FR_TYPE_STRUCT:

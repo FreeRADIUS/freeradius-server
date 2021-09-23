@@ -1563,13 +1563,8 @@ int _fr_event_timer_in(NDEBUG_LOCATION_ARGS
 		       TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev_p,
 		       fr_time_delta_t delta, fr_event_timer_cb_t callback, void const *uctx)
 {
-	fr_time_t now;
-
-	now = el->time();
-	now += delta;
-
 	return _fr_event_timer_at(NDEBUG_LOCATION_VALS
-				  ctx, el, ev_p, now, callback, uctx);
+				  ctx, el, ev_p, fr_time_add(el->time(), delta), callback, uctx);
 }
 
 /** Delete a timer event from the event list
@@ -1833,7 +1828,7 @@ unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 		struct kevent	evset;
 		int		waiting = 0;
 		int 		kq = kqueue();
-		fr_time_t	now, start = el->time(), end = start + timeout;
+		fr_time_t	now, start = el->time(), end = fr_time_add(start, timeout);
 
 		if (unlikely(kq < 0)) goto force;
 
@@ -1875,11 +1870,12 @@ unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 		/*
 		 *	Keep draining process exits as they come in...
 		 */
-		while ((waiting > 0) && (end > (now = el->time()))) {
+		while ((waiting > 0) && fr_time_gt(end, (now = el->time()))) {
 			struct kevent	kev;
 			int		ret;
 
-			ret = kevent(kq, NULL, 0, &kev, 1, &fr_time_delta_to_timespec(end - now));
+			ret = kevent(kq, NULL, 0, &kev, 1,
+				     &fr_time_delta_to_timespec(fr_time_sub(end, now)));
 			switch (ret) {
 			default:
 				EVENT_DEBUG("%p - %s - Reaper tmp loop error %s, forcing process reaping",
@@ -2123,20 +2119,20 @@ int fr_event_timer_run(fr_event_list_t *el, fr_time_t *when)
 	if (unlikely(!el)) return 0;
 
 	if (fr_lst_num_elements(el->times) == 0) {
-		*when = 0;
+		*when = fr_time_wrap(0);
 		return 0;
 	}
 
 	ev = fr_lst_peek(el->times);
 	if (!ev) {
-		*when = 0;
+		*when = fr_time_wrap(0);
 		return 0;
 	}
 
 	/*
 	 *	See if it's time to do this one.
 	 */
-	if (ev->when > *when) {
+	if (fr_time_gt(ev->when, *when)) {
 		*when = ev->when;
 		return 0;
 	}
@@ -2167,7 +2163,7 @@ int fr_event_timer_run(fr_event_list_t *el, fr_time_t *when)
  */
 int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 {
-	fr_time_t		when, *wake;
+	fr_time_delta_t		when, *wake;
 	struct timespec		ts_when, *ts_wake;
 	fr_event_pre_t		*pre;
 	int			num_fd_events;
@@ -2198,11 +2194,11 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	 */
 	ev = fr_lst_peek(el->times);
 	if (ev) {
-		if (ev->when <= el->now) {
+		if (fr_time_lteq(ev->when, el->now)) {
 			timer_event_ready = true;
 
 		} else if (wait) {
-			when = ev->when - el->now;
+			when = fr_time_sub(ev->when, el->now);
 
 		} /* else we're not waiting, leave "when == 0" */
 
@@ -2226,7 +2222,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 		for (pre = fr_dlist_head(&el->pre_callbacks);
 		     pre != NULL;
 		     pre = fr_dlist_next(&el->pre_callbacks, pre)) {
-			if (pre->callback(wake ? *wake : 0, pre->uctx) > 0) {
+			if (pre->callback(now, wake ? *wake : 0, pre->uctx) > 0) {
 				wake = &when;
 				when = 0;
 			}
@@ -2272,7 +2268,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	 *	If there are no FD events, we must have woken up from a timer
 	 */
 	if (!num_fd_events) {
-		el->now += when;
+		el->now = fr_time_add(el->now, when);
 		if (wait) timer_event_ready = true;
 	}
 	/*
@@ -2767,7 +2763,7 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 	for (ev = fr_lst_iter_init(el->times, &iter);
 	     ev != NULL;
 	     ev = fr_lst_iter_next(el->times, &iter)) {
-		fr_time_delta_t diff = ev->when - now;
+		fr_time_delta_t diff = fr_time_sub(ev->when, now);
 
 		for (i = 0; i < NUM_ELEMENTS(decades); i++) {
 			if ((diff <= decades[i]) || (i == NUM_ELEMENTS(decades) - 1)) {
@@ -2836,14 +2832,15 @@ void fr_event_timer_dump(fr_event_list_t *el)
 
 	now = el->time();
 
-	EVENT_DEBUG("Time is now %"PRId64"", now);
+	EVENT_DEBUG("Time is now %"PRId64"", fr_time_unwrap(now));
 
 	for (ev = fr_lst_iter_init(el->times, &iter);
 	     ev;
 	     ev = fr_lst_iter_next(el->times, &iter)) {
 		(void)talloc_get_type_abort(ev, fr_event_timer_t);
 		EVENT_DEBUG("%s[%u]: %p time=%" PRId64 " (%c), callback=%p",
-			    ev->file, ev->line, ev, ev->when, now > ev->when ? '<' : '>', ev->callback);
+			    ev->file, ev->line, ev, fr_time_unwrap(ev->when),
+			    fr_time_gt(now, ev->when) ? '<' : '>', ev->callback);
 	}
 }
 #endif

@@ -59,7 +59,7 @@ int fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config)
 	rt = uint128_to_64(uint128_rshift(delay, 32));
 
 	r->rt = rt;
-	r->next = now + rt;
+	r->next = fr_time_add(now, rt);
 
 	return 0;
 }
@@ -98,10 +98,8 @@ redo:
 	if (r->config->mrd) {
 		fr_time_t end;
 
-		end = r->start;
-		end += r->config->mrd;
-
-		if (now > end) {
+		end = fr_time_add(r->start, r->config->mrd);
+		if (fr_time_gt(now, end)) {
 			return FR_RETRY_MRD;
 		}
 	}
@@ -149,7 +147,7 @@ redo:
 	 *	the packet at "next + rt", and not "now + rt".  That
 	 *	way the timer won't drift.
 	 */
-	r->next += rt;
+	r->next = fr_time_add(r->next, rt);
 
 	/*
 	 *	The "next" retransmission time is in the past, AND
@@ -160,7 +158,7 @@ redo:
 	 *	i.e. if we weren't serviced for one event, just skip
 	 *	it, and go to the next one.
 	 */
-	if ((r->next + (rt / 2)) < now) goto redo;
+	if (fr_time_lt(fr_time_add(r->next, (rt / 2)), now)) goto redo;
 
 	return FR_RETRY_CONTINUE;
 }

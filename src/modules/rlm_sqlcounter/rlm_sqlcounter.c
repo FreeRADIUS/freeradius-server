@@ -111,19 +111,16 @@ fr_dict_attr_autoload_t rlm_sqlcounter_dict_attr[] = {
 	{ NULL }
 };
 
-static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)
+static int find_next_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 {
 	int		ret = 0;
 	size_t		len;
 	unsigned int	num = 1;
 	char		last = '\0';
 	struct tm	*tm, s_tm;
-	char		sCurrentTime[40], sNextTime[40];
-	time_t		date;
+	time_t		time_s = fr_time_to_sec(now);
 
-	tm = localtime_r(&timeval, &s_tm);
-	len = strftime(sCurrentTime, sizeof(sCurrentTime), "%Y-%m-%d %H:%M:%S", tm);
-	if (len == 0) *sCurrentTime = '\0';
+	tm = localtime_r(&time_s, &s_tm);
 	tm->tm_sec = tm->tm_min = 0;
 
 	fr_assert(inst->reset != NULL);
@@ -143,38 +140,33 @@ static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)
 		 *  Round up to the next nearest hour.
 		 */
 		tm->tm_hour += num;
-		date = mktime(tm);
+		inst->reset_time = fr_time_from_sec(mktime(tm));
 	} else if (strcmp(inst->reset, "daily") == 0 || last == 'd') {
 		/*
 		 *  Round up to the next nearest day.
 		 */
 		tm->tm_hour = 0;
 		tm->tm_mday += num;
-		date = mktime(tm);
+		inst->reset_time = fr_time_from_sec(mktime(tm));
 	} else if (strcmp(inst->reset, "weekly") == 0 || last == 'w') {
 		/*
 		 *  Round up to the next nearest week.
 		 */
 		tm->tm_hour = 0;
 		tm->tm_mday += (7 - tm->tm_wday) +(7*(num-1));
-		date = mktime(tm);
+		inst->reset_time = fr_time_from_sec(mktime(tm));
 	} else if (strcmp(inst->reset, "monthly") == 0 || last == 'm') {
 		tm->tm_hour = 0;
 		tm->tm_mday = 1;
 		tm->tm_mon += num;
-		date = mktime(tm);
+		inst->reset_time = fr_time_from_sec(mktime(tm));
 	} else if (strcmp(inst->reset, "never") == 0) {
-		date = 0;
+		inst->reset_time = fr_time_wrap(0);
 	} else {
 		return -1;
 	}
 
-	inst->reset_time = fr_time_from_sec(date);
-
-	len = strftime(sNextTime, sizeof(sNextTime),"%Y-%m-%d %H:%M:%S",tm);
-	if (len == 0) *sNextTime = '\0';
-	DEBUG2("Current Time: %" PRId64 " [%s], Next reset %" PRId64 " [%s]",
-	       (int64_t) timeval, sCurrentTime, (int64_t) date, sNextTime);
+	DEBUG2("Current Time: %pV, Next reset %pV", fr_box_time(now), fr_box_time(inst->reset_time));
 
 	return ret;
 }
@@ -183,18 +175,16 @@ static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)
 /*  I don't believe that this routine handles Daylight Saving Time adjustments
     properly.  Any suggestions?
 */
-static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
+static int find_prev_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 {
 	int		ret = 0;
 	size_t		len;
 	unsigned	int num = 1;
 	char		last = '\0';
 	struct		tm *tm, s_tm;
-	char		sCurrentTime[40], sPrevTime[40];
+	time_t		time_s = fr_time_to_sec(now);
 
-	tm = localtime_r(&timeval, &s_tm);
-	len = strftime(sCurrentTime, sizeof(sCurrentTime), "%Y-%m-%d %H:%M:%S", tm);
-	if (len == 0) *sCurrentTime = '\0';
+	tm = localtime_r(&time_s, &s_tm);
 	tm->tm_sec = tm->tm_min = 0;
 
 	fr_assert(inst->reset != NULL);
@@ -207,42 +197,40 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
 		if (!isalpha((int) last))
 			last = 'd';
 		num = atoi(inst->reset);
-		DEBUG("num=%d, last=%c",num,last);
+		DEBUG("num=%d, last=%c", num, last);
 	}
 	if (strcmp(inst->reset, "hourly") == 0 || last == 'h') {
 		/*
 		 *  Round down to the prev nearest hour.
 		 */
 		tm->tm_hour -= num - 1;
-		inst->last_reset = mktime(tm);
+		inst->last_reset = fr_time_from_sec(mktime(tm));
 	} else if (strcmp(inst->reset, "daily") == 0 || last == 'd') {
 		/*
 		 *  Round down to the prev nearest day.
 		 */
 		tm->tm_hour = 0;
 		tm->tm_mday -= num - 1;
-		inst->last_reset = mktime(tm);
+		inst->last_reset = fr_time_from_sec(mktime(tm));
 	} else if (strcmp(inst->reset, "weekly") == 0 || last == 'w') {
 		/*
 		 *  Round down to the prev nearest week.
 		 */
 		tm->tm_hour = 0;
 		tm->tm_mday -= tm->tm_wday +(7*(num-1));
-		inst->last_reset = mktime(tm);
+		inst->last_reset = fr_time_from_sec(mktime(tm));
 	} else if (strcmp(inst->reset, "monthly") == 0 || last == 'm') {
 		tm->tm_hour = 0;
 		tm->tm_mday = 1;
 		tm->tm_mon -= num - 1;
-		inst->last_reset = mktime(tm);
+		inst->last_reset = fr_time_from_sec(mktime(tm));
 	} else if (strcmp(inst->reset, "never") == 0) {
-		inst->reset_time = 0;
+		inst->reset_time = fr_time_wrap(0);
 	} else {
 		return -1;
 	}
-	len = strftime(sPrevTime, sizeof(sPrevTime), "%Y-%m-%d %H:%M:%S", tm);
-	if (len == 0) *sPrevTime = '\0';
-	DEBUG2("Current Time: %" PRId64 " [%s], Prev reset %" PRId64 " [%s]",
-	       (int64_t) timeval, sCurrentTime, (int64_t) inst->last_reset, sPrevTime);
+
+	DEBUG2("Current Time: %pV, Prev reset %pV", fr_box_time(now), fr_box_time(inst->last_reset));
 
 	return ret;
 }
@@ -307,13 +295,13 @@ static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *
 
 		switch (*p) {
 			case 'b': /* last_reset */
-				snprintf(tmpdt, sizeof(tmpdt), "%" PRId64, (int64_t) inst->last_reset);
+				snprintf(tmpdt, sizeof(tmpdt), "%" PRId64, fr_time_to_sec(inst->last_reset));
 				strlcpy(q, tmpdt, freespace);
 				q += strlen(q);
 				p++;
 				break;
 			case 'e': /* reset_time */
-				snprintf(tmpdt, sizeof(tmpdt), "%" PRId64, (int64_t) inst->reset_time);
+				snprintf(tmpdt, sizeof(tmpdt), "%" PRId64, fr_time_to_sec(inst->reset_time));
 				strlcpy(q, tmpdt, freespace);
 				q += strlen(q);
 				p++;
@@ -403,12 +391,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	Before doing anything else, see if we have to reset
 	 *	the counters.
 	 */
-	if (inst->reset_time && (inst->reset_time <= fr_time_to_sec(request->packet->timestamp))) {
+	if (fr_time_eq(inst->reset_time, fr_time_wrap(0)) &&
+	    (fr_time_lteq(inst->reset_time, request->packet->timestamp))) {
 		/*
 		 *	Re-set the next time and prev_time for this counters range
 		 */
 		inst->last_reset = inst->reset_time;
-		find_next_reset(inst, fr_time_to_sec(request->packet->timestamp));
+		find_next_reset(inst, request->packet->timestamp);
 	}
 
 	if (tmpl_find_vp(&limit, request, inst->limit_attr) < 0) {
@@ -446,7 +435,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	/*
 	 *	Check if check item > counter
 	 */
-	if (limit->vp_uint64 <= counter) {
+	if (limit->vp_uint64 <= (uint64_t)fr_time_delta_from_sec(counter)) {
 		fr_pair_t *vp;
 
 		/* User is denied access, send back a reply message */
@@ -479,13 +468,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		 *	again.  Do this only for Session-Timeout.
 		 */
 		if ((tmpl_da(inst->reply_attr) == attr_session_timeout) &&
-		    inst->reset_time &&
-		    (res >= (uint64_t)(inst->reset_time - fr_time_to_sec(request->packet->timestamp)))) {
-			uint64_t to_reset = inst->reset_time - fr_time_to_sec(request->packet->timestamp);
+		    fr_time_gt(inst->reset_time, fr_time_wrap(0)) &&
+		    ((int64_t)res >= fr_time_delta_to_sec(fr_time_sub(inst->reset_time, request->packet->timestamp)))) {
+			fr_time_delta_t to_reset = fr_time_sub(inst->reset_time, request->packet->timestamp);
 
-			RDEBUG2("Time remaining (%" PRIu64 "s) is greater than time to reset (%" PRIu64 "s).  "
-				"Adding %" PRIu64 "s to reply value", to_reset, res, to_reset);
-			res = to_reset + limit->vp_uint64;
+			RDEBUG2("Time remaining (%pV) is greater than time to reset (%" PRIu64 "s).  "
+				"Adding %pV to reply value",
+				fr_box_time_delta(to_reset), res, fr_box_time_delta(to_reset));
+			res = fr_time_delta_to_sec(to_reset) + limit->vp_uint64;
 
 			/*
 			 *	Limit the reply attribute to the minimum of the existing value, or this new one.
@@ -565,14 +555,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_sqlcounter_t	*inst = instance;
-	time_t			now;
 
 	fr_assert(inst->query && *inst->query);
 
-	now = time(NULL);
-	inst->reset_time = 0;
+	inst->reset_time = fr_time_wrap(0);
 
-	if (find_next_reset(inst, now) == -1) {
+	if (find_next_reset(inst, fr_time()) == -1) {
 		cf_log_err(conf, "Invalid reset '%s'", inst->reset);
 		return -1;
 	}
@@ -580,9 +568,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *  Discover the beginning of the current time period.
 	 */
-	inst->last_reset = 0;
+	inst->last_reset = fr_time_wrap(0);
 
-	if (find_prev_reset(inst, now) < 0) {
+	if (find_prev_reset(inst, fr_time()) < 0) {
 		cf_log_err(conf, "Invalid reset '%s'", inst->reset);
 		return -1;
 	}

@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/radius/radius.h>
 
+DIAG_OFF(compound-token-split-by-macro) /* Perl does horrible things with macros */
 #ifdef INADDR_ANY
 #  undef INADDR_ANY
 #endif

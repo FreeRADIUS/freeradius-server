@@ -62,7 +62,7 @@ static void _delay_done(UNUSED module_ctx_t const *mctx, request_t *request, voi
 	 *	timeout should never be *before* the scheduled time,
 	 *	if it is, something is very broken.
 	 */
-	if (!fr_cond_assert(fired >= *yielded)) REDEBUG("Unexpected resume time");
+	if (!fr_cond_assert(fr_time_gteq(fired, *yielded))) REDEBUG("Unexpected resume time");
 
 	unlang_interpret_mark_runnable(request);
 }
@@ -78,13 +78,13 @@ static void _xlat_delay_done(request_t *request,
 	 *	timeout should never be *before* the scheduled time,
 	 *	if it is, something is very broken.
 	 */
-	if (!fr_cond_assert(fired > *yielded)) REDEBUG("Unexpected resume time");
+	if (!fr_cond_assert(fr_time_gt(fired, *yielded))) REDEBUG("Unexpected resume time");
 
 	unlang_interpret_mark_runnable(request);
 }
 
 static int delay_add(request_t *request, fr_time_t *resume_at, fr_time_t now,
-		     fr_time_t delay, bool force_reschedule, bool relative)
+		     fr_time_delta_t delay, bool force_reschedule, bool relative)
 {
 	/*
 	 *	Delay is zero (and reschedule is not forced)
@@ -95,18 +95,18 @@ static int delay_add(request_t *request, fr_time_t *resume_at, fr_time_t now,
 	 *	Process the delay relative to the start of packet processing
 	 */
 	if (relative) {
-		*resume_at = request->packet->timestamp + delay;
+		*resume_at = fr_time_add(request->packet->timestamp, delay);
 	} else {
-		*resume_at = now + delay;
+		*resume_at = fr_time_add(now, delay);
 	}
 
 	/*
 	 *	If resume_at is in the past (and reschedule is not forced), just return noop
 	 */
-	if (!force_reschedule && (*resume_at <= now)) return 1;
+	if (!force_reschedule && fr_time_lteq(*resume_at, now)) return 1;
 
-	if (*resume_at > now) {
-		RDEBUG2("Delaying request by ~%pVs", fr_box_time_delta(*resume_at - now));
+	if (fr_time_gt(*resume_at, now)) {
+		RDEBUG2("Delaying request by ~%pVs", fr_box_time_delta(fr_time_sub(*resume_at, now)));
 	} else {
 		RDEBUG2("Rescheduling request");
 	}
@@ -125,7 +125,7 @@ static unlang_action_t mod_delay_return(rlm_rcode_t *p_result, UNUSED module_ctx
 	/*
 	 *	Print how long the delay *really* was.
 	 */
-	RDEBUG3("Request delayed by %pV", fr_box_time_delta(fr_time() - *yielded));
+	RDEBUG3("Request delayed by %pV", fr_box_time_delta(fr_time_sub(fr_time(), *yielded)));
 	talloc_free(yielded);
 
 	RETURN_MODULE_OK;
@@ -168,11 +168,8 @@ static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_
 		RETURN_MODULE_NOOP;
 	}
 
-	/*
-	 *	FIXME - Should print wallclock time
-	 */
 	RDEBUG3("Current time %pVs, resume time %pVs",
-		fr_box_time_delta(*yielded_at), fr_box_time_delta(resume_at));
+		fr_box_time(*yielded_at), fr_box_time(resume_at));
 
 	if (unlang_module_timeout_add(request, _delay_done, yielded_at, resume_at) < 0) {
 		RPEDEBUG("Adding event failed");
@@ -188,10 +185,10 @@ static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       UNUSED fr_value_box_list_t *in, void *rctx)
 {
 	fr_time_t	*yielded_at = talloc_get_type_abort(rctx, fr_time_t);
-	fr_time_t	delayed;
+	fr_time_delta_t	delayed;
 	fr_value_box_t	*vb;
 
-	delayed = fr_time() - *yielded_at;
+	delayed = fr_time_sub(fr_time(), *yielded_at);
 	talloc_free(yielded_at);
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL, false));
@@ -265,10 +262,7 @@ static xlat_action_t xlat_delay(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out
 	}
 
 yield:
-	/*
-	 *	FIXME - Should print wallclock time
-	 */
-	RDEBUG3("Current time %pVs, resume time %pVs", fr_box_time_delta(*yielded_at), fr_box_time_delta(resume_at));
+	RDEBUG3("Current time %pVs, resume time %pVs", fr_box_time(*yielded_at), fr_box_time(resume_at));
 
 	if (unlang_xlat_event_timeout_add(request, _xlat_delay_done, yielded_at, resume_at) < 0) {
 		RPEDEBUG("Adding event failed");

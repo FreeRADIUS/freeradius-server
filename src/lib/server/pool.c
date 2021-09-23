@@ -53,7 +53,7 @@ struct fr_pool_connection_s {
 	fr_pool_connection_t	*next;			//!< Next connection in list.
 	fr_heap_index_t	heap_id;			//!< For the next connection heap.
 
-	time_t		created;		//!< Time connection was created.
+	fr_time_t	created;		//!< Time connection was created.
 	fr_time_t	last_reserved;		//!< Last time the connection was reserved.
 
 	fr_time_t	last_released;  	//!< Time the connection was released.
@@ -338,7 +338,9 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	 *	opening connections, don't open multiple connections until
 	 *	we successfully open at least one.
 	 */
-	if ((pool->state.num == 0) && pool->state.pending && pool->state.last_failed) return NULL;
+	if ((pool->state.num == 0) &&
+	    pool->state.pending &&
+	    fr_time_gt(pool->state.last_failed, fr_time_wrap(0))) return NULL;
 
 	pthread_mutex_lock(&pool->mutex);
 	fr_assert(pool->state.num <= pool->max);
@@ -357,10 +359,11 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	 *	If the last attempt failed, wait a bit before
 	 *	retrying.
 	 */
-	if (pool->state.last_failed && ((pool->state.last_failed + pool->retry_delay) > now)) {
+	if (fr_time_gt(pool->state.last_failed, fr_time_wrap(0)) &&
+	    fr_time_gt(fr_time_add(pool->state.last_failed, pool->retry_delay), now)) {
 		bool complain = false;
 
-		if ((now - pool->state.last_throttled) >= NSEC) {
+		if (fr_time_sub(now, pool->state.last_throttled) >= fr_time_delta_from_sec(1)) {
 			complain = true;
 
 			pool->state.last_throttled = now;
@@ -370,7 +373,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 
 		if (!fr_rate_limit_enabled() || complain) {
 			ERROR("Last connection attempt failed, waiting %pV seconds before retrying",
-			      fr_box_time_delta(pool->state.last_failed + pool->retry_delay - now));
+			      fr_box_time_delta(fr_time_sub(fr_time_add(pool->state.last_failed, pool->retry_delay), now)));
 		}
 
 		return NULL;
@@ -505,7 +508,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	pool->state.last_spawned = fr_time();
 	pool->delay_interval = pool->cleanup_interval;
 	pool->state.next_delay = pool->cleanup_interval;
-	pool->state.last_failed = 0;
+	pool->state.last_failed = fr_time_wrap(0);
 
 	/*
 	 *	Must be done inside the mutex, reconnect callback
@@ -579,7 +582,7 @@ static void connection_close_internal(fr_pool_t *pool, fr_pool_connection_t *thi
  *	- 0 if connection was closed.
  *	- 1 if connection handle was left open.
  */
-static int connection_manage(fr_pool_t *pool, request_t *request, fr_pool_connection_t *this, time_t now)
+static int connection_manage(fr_pool_t *pool, request_t *request, fr_pool_connection_t *this, fr_time_t now)
 {
 	fr_assert(pool != NULL);
 	fr_assert(this != NULL);
@@ -608,16 +611,16 @@ static int connection_manage(fr_pool_t *pool, request_t *request, fr_pool_connec
 	}
 
 	if ((pool->lifetime > 0) &&
-	    ((this->created + pool->lifetime) < now)) {
+	    (fr_time_lt(fr_time_add(this->created, pool->lifetime), now))) {
 		ROPTIONAL(RDEBUG2, DEBUG2, "Closing expired connection (%" PRIu64 "): Hit lifetime limit",
 			  this->number);
 		goto do_delete;
 	}
 
 	if ((pool->idle_timeout > 0) &&
-	    ((this->last_released + pool->idle_timeout) < now)) {
+	    (fr_time_lt(fr_time_add(this->last_released, pool->idle_timeout), now))) {
 		ROPTIONAL(RINFO, INFO, "Closing connection (%" PRIu64 "): Hit idle_timeout, was idle for %pVs",
-		     	  this->number, fr_box_time_delta(now - this->last_released));
+		     	  this->number, fr_box_time_delta(fr_time_sub(now, this->last_released)));
 		goto do_delete;
 	}
 
@@ -645,7 +648,7 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 	fr_time_t		now = fr_time();
 	fr_pool_connection_t	*this, *next;
 
-	if ((now - pool->state.last_checked) < NSEC) {
+	if (fr_time_sub(now, pool->state.last_checked) < fr_time_delta_from_sec(1)) {
 		pthread_mutex_unlock(&pool->mutex);
 		return 1;
 	}
@@ -724,7 +727,7 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 		 *	Don't close connections too often, in order to
 		 *	prevent flapping.
 		 */
-		if (now < (pool->state.last_spawned + pool->delay_interval)) goto manage_connections;
+		if (fr_time_lt(now, fr_time_add(pool->state.last_spawned, pool->delay_interval))) goto manage_connections;
 
 		/*
 		 *	Find a connection to close.
@@ -733,7 +736,7 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 		for (this = pool->tail; this != NULL; this = this->prev) {
 			if (this->in_use) continue;
 
-			if (!found || (this->last_reserved < found->last_reserved)) found = this;
+			if (!found || (fr_time_lt(this->last_reserved, found->last_reserved))) found = this;
 		}
 
 		if (!fr_cond_assert(found)) goto done;
@@ -849,7 +852,7 @@ static void *connection_get_internal(fr_pool_t *pool, request_t *request, bool s
 		/*
 		 *	Rate-limit complaints.
 		 */
-		if ((now - pool->state.last_at_max) > NSEC) {
+		if (fr_time_sub(now, pool->state.last_at_max) > fr_time_delta_from_sec(1)) {
 			complain = true;
 			pool->state.last_at_max = now;
 		}
@@ -1401,7 +1404,7 @@ void fr_pool_connection_release(fr_pool_t *pool, request_t *request, void *conn)
 	 *	This is done inside the mutex to ensure
 	 *	updates are atomic.
 	 */
-	held = this->last_released - this->last_reserved;
+	held = fr_time_sub(this->last_released, this->last_reserved);
 
 	/*
 	 *	Check we've not exceeded out trigger limits
@@ -1410,14 +1413,14 @@ void fr_pool_connection_release(fr_pool_t *pool, request_t *request, void *conn)
 	 */
 	if (pool->held_trigger_min &&
 	    (held < pool->held_trigger_min) &&
-	    ((this->last_released - pool->state.last_held_min) >= NSEC)) {
+	    (fr_time_sub(this->last_released, pool->state.last_held_min) >= fr_time_delta_from_sec(1))) {
 	    	trigger_min = true;
 	    	pool->state.last_held_min = this->last_released;
 	}
 
 	if (pool->held_trigger_min &&
 	    (held > pool->held_trigger_max) &&
-	    ((this->last_released - pool->state.last_held_max) >= NSEC)) {
+	    (fr_time_sub(this->last_released, pool->state.last_held_max) >= fr_time_delta_from_sec(1))) {
 	    	trigger_max = true;
 	    	pool->state.last_held_max = this->last_released;
 	}

@@ -54,7 +54,7 @@ typedef struct {
 
 	int			stage;					//!< Processing stage.
 
-	uint32_t		pac_lifetime;				//!< seconds to add to current time to describe PAC lifetime
+	fr_time_delta_t		pac_lifetime;				//!< seconds to add to current time to describe PAC lifetime
 	char const		*authority_identity;			//!< The identity we present in the EAP-TLS
 	uint8_t			a_id[PAC_A_ID_LENGTH];			//!< The identity we present in the EAP-TLS
 	char const		*pac_opaque_key;			//!< The key used to encrypt PAC-Opaque
@@ -71,7 +71,7 @@ static CONF_PARSER submodule_config[] = {
 
 	{ FR_CONF_OFFSET("require_client_cert", FR_TYPE_BOOL, rlm_eap_fast_t, req_client_cert), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("pac_lifetime", FR_TYPE_UINT32, rlm_eap_fast_t, pac_lifetime), .dflt = "604800" },
+	{ FR_CONF_OFFSET("pac_lifetime", FR_TYPE_TIME_DELTA, rlm_eap_fast_t, pac_lifetime), .dflt = "604800" },
 	{ FR_CONF_OFFSET("authority_identity", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_eap_fast_t, authority_identity) },
 	{ FR_CONF_OFFSET("pac_opaque_key", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_eap_fast_t, pac_opaque_key) },
 
@@ -333,8 +333,8 @@ error:
 			fr_assert(t->pac.type == 0);
 			t->pac.type = vp->vp_uint16;
 		} else if (vp->da == attr_eap_fast_pac_info_pac_lifetime) {
-			fr_assert(t->pac.expires == 0);
-			t->pac.expires = request->packet->timestamp + fr_time_delta_from_sec(vp->vp_uint32);
+			fr_assert(fr_time_eq(t->pac.expires, fr_time_wrap(0)));
+			t->pac.expires = fr_time_add(request->packet->timestamp, fr_time_delta_from_sec(vp->vp_uint32));
 			t->pac.expired = false;
 		/*
 		 *	Not sure if this is the correct attr
@@ -365,7 +365,7 @@ error:
 		goto error;
 	}
 
-	if (!t->pac.expires) {
+	if (fr_time_eq(t->pac.expires, fr_time_wrap(0))) {
 		errmsg = "PAC missing lifetime TLV";
 		goto error;
 	}

@@ -157,7 +157,7 @@ ssize_t udp_recv(int sockfd, int flags,
 
 	if ((flags & UDP_FLAGS_PEEK) != 0) sock_flags |= MSG_PEEK;
 
-	if (when) *when = 0;
+	if (when) *when = fr_time_wrap(0);
 
 	/*
 	 *	Always initialise the output socket structure
@@ -209,7 +209,7 @@ done:
 	 *	We didn't get it from the kernel
 	 *	so use our own time source.
 	 */
-	if (when && !*when) *when = fr_time();
+	if (when && fr_time_eq(*when, fr_time_wrap(0))) *when = fr_time();
 
 	return slen;
 }

@@ -298,7 +298,7 @@ static int8_t module_instance_data_cmp(void const *one, void const *two)
 exfile_t *module_exfile_init(TALLOC_CTX *ctx,
 			     CONF_SECTION *module,
 			     uint32_t max_entries,
-			     uint32_t max_idle,
+			     fr_time_delta_t max_idle,
 			     bool locking,
 			     char const *trigger_prefix,
 			     fr_pair_list_t *trigger_args)

@@ -183,7 +183,7 @@ typedef struct {
 	int			default_method;
 	int			default_provisioning_method;
 
-	uint32_t		pac_lifetime;
+	fr_time_delta_t		pac_lifetime;
 	char const		*authority_identity;
 	uint8_t const 		*a_id;
 	uint8_t const 		*pac_opaque_key;

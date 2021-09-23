@@ -231,7 +231,8 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (unlang_xlat_event_timeout_add(request, _xlat_icmp_timeout, echo, fr_time() + inst->timeout) < 0) {
+	if (unlang_xlat_event_timeout_add(request, _xlat_icmp_timeout, echo,
+					  fr_time_add(fr_time(), inst->timeout)) < 0) {
 		RPEDEBUG("Failed adding timeout");
 		(void) fr_rb_delete(thread->t->tree, echo);
 		talloc_free(echo);

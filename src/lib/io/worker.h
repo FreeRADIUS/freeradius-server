@@ -77,7 +77,7 @@ void		fr_worker(fr_worker_t *worker) CC_HINT(nonnull);
 
 void		fr_worker_debug(fr_worker_t *worker, FILE *fp) CC_HINT(nonnull);
 
-int		fr_worker_pre_event(fr_time_t wake, void *uctx);
+int		fr_worker_pre_event(fr_time_t now, fr_time_delta_t wake, void *uctx);
 
 void		fr_worker_post_event(fr_event_list_t *el, fr_time_t now, void *uctx);
 

@@ -408,7 +408,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	fr_assert(tls_cache->store.sess);
 	fr_assert(tls_cache->store.state == FR_TLS_CACHE_STORE_REQUESTED);
 
-	if (expires <= now) {
+	if (fr_time_lteq(expires, now)) {
 		RWDEBUG("Session has already expired, not storing");
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -440,7 +440,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	How long the session has to live
 	 */
 	MEM(pair_update_request(&vp, attr_tls_session_ttl) >= 0);
-	vp->vp_time_delta = fr_time_delta_from_nsec(expires - now);
+	vp->vp_time_delta = fr_time_sub(expires, now);
 
 	/*
 	 *	Serialize the session

@@ -61,8 +61,8 @@ typedef struct {
  */
 typedef struct {
 	fr_heap_index_t		heap_id;		//!< workers are in a heap
-	fr_time_t		cpu_time;		//!< how much CPU time this worker has spent
-	fr_time_t		predicted;		//!< predicted processing time for one packet
+	fr_time_delta_t		cpu_time;		//!< how much CPU time this worker has spent
+	fr_time_delta_t		predicted;		//!< predicted processing time for one packet
 
 	bool			blocked;		//!< is this worker blocked?
 
@@ -148,7 +148,7 @@ struct fr_network_s {
 };
 
 static void fr_network_post_event(fr_event_list_t *el, fr_time_t now, void *uctx);
-static int fr_network_pre_event(fr_time_t wake, void *uctx);
+static int fr_network_pre_event(fr_time_t now, fr_time_delta_t wake, void *uctx);
 static void fr_network_socket_dead(fr_network_t *nr, fr_network_socket_t *s);
 static void fr_network_read(UNUSED fr_event_list_t *el, int sockfd, UNUSED int flags, void *ctx);
 
@@ -157,10 +157,10 @@ static int8_t reply_cmp(void const *one, void const *two)
 	fr_channel_data_t const *a = one, *b = two;
 	int ret;
 
-	ret = (a->priority > b->priority) - (a->priority < b->priority);
+	ret = CMP(a->priority, b->priority);
 	if (ret != 0) return ret;
 
-	return (a->m.when > b->m.when) - (a->m.when < b->m.when);
+	return fr_time_cmp(a->m.when, b->m.when);
 }
 
 static int8_t waiting_cmp(void const *one, void const *two)
@@ -168,10 +168,10 @@ static int8_t waiting_cmp(void const *one, void const *two)
 	fr_channel_data_t const *a = one, *b = two;
 	int ret;
 
-	ret = (a->priority > b->priority) - (a->priority < b->priority);
+	ret = CMP(a->priority, b->priority);
 	if (ret != 0) return ret;
 
-	return (a->reply.request_time > b->reply.request_time) - (a->reply.request_time < b->reply.request_time);
+	return fr_time_cmp(a->reply.request_time, b->reply.request_time);
 }
 
 static int8_t socket_listen_cmp(void const *one, void const *two)
@@ -448,7 +448,7 @@ static void fr_network_recv_reply(void *ctx, fr_channel_t *ch, fr_channel_data_t
 	worker = fr_channel_requestor_uctx_get(ch);
 	worker->stats.out++;
 	worker->cpu_time = cd->reply.cpu_time;
-	if (!worker->predicted) {
+	if (worker->predicted == 0) {
 		worker->predicted = cd->reply.processing_time;
 	} else {
 		worker->predicted = RTT(worker->predicted, cd->reply.processing_time);
@@ -581,7 +581,7 @@ retry:
 		}
 	} else {
 		int i;
-		fr_time_t cpu_time = ~((fr_time_t) 0);
+		fr_time_delta_t cpu_time = ~((fr_time_delta_t) 0);
 		fr_network_worker_t *found = NULL;
 
 		/*
@@ -823,7 +823,7 @@ next_message:
 	 *	Ensure this hasn't been somehow corrupted during
 	 *	ring buffer allocation.
 	 */
-	fr_assert(cd->m.when == now);
+	fr_assert(fr_time_eq(cd->m.when, now));
 
 	if (fr_network_send_request(nr, cd) < 0) {
 		talloc_free(cd->packet_ctx); /* not sure what else to do here */
@@ -1320,10 +1320,11 @@ static void fr_network_inject_callback(void *ctx, void const *data, size_t data_
  *  work, and tell the event code to return to the main loop if
  *  there's work to do.
  *
- * @param[in] wake the time when the event loop will wake up.
- * @param[in] uctx the network
+ * @param[in] now	the current time.
+ * @param[in] wake	the time when the event loop will wake up.
+ * @param[in] uctx	the network
  */
-static int fr_network_pre_event(UNUSED fr_time_t wake, void *uctx)
+static int fr_network_pre_event(UNUSED fr_time_t now, UNUSED fr_time_delta_t wake, void *uctx)
 {
 	fr_network_t *nr = talloc_get_type_abort(uctx, fr_network_t);
 
@@ -1497,7 +1498,7 @@ static void _signal_pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
 		return;
 	}
 
-	fr_assert(buff = 1);
+	fr_assert(buff == 1);
 
 	/*
 	 *	fr_network_stop() will signal the workers

@@ -324,7 +324,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			return -1;
 		}
 
-		inst->file.ef = module_exfile_init(inst, conf, 256, 30, true, NULL, NULL);
+		inst->file.ef = module_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
 		if (!inst->file.ef) {
 			cf_log_err(conf, "Failed creating log file context");
 			return -1;
