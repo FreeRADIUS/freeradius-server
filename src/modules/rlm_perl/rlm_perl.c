@@ -31,7 +31,10 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/radius/radius.h>
 
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(compound-token-split-by-macro) /* Perl does horrible things with macros */
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+
 #ifdef INADDR_ANY
 #  undef INADDR_ANY
 #endif
@@ -41,7 +44,7 @@ DIAG_OFF(compound-token-split-by-macro) /* Perl does horrible things with macros
 #include <dlfcn.h>
 #include <semaphore.h>
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__FreeBSD__)
 extern char **environ;
 #endif
 
