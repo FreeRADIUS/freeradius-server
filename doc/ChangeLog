@@ -20,6 +20,8 @@ FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	* Generate parse errors in more circumstances when we know that the
 	  configuration is wrong.
 	* add "weeklycounter" to sample sqlcounter configuration
+	* add certificate attributes to the request list, even if the certificates
+	  have expired.
 	* The Simultaneous-Use code is now IPv6 aware, and can deal with
 	  NAS-IPv6-Address.
 
@@ -46,6 +48,11 @@ FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	* Outbound proxying over TCP / TLS is better able to deal with
 	  partial TCP reads, and has fewer issues with slow networks.
 	* Fix wrong data-type of Acct-Delay-Time in rlm_unix.
+	* Fix EAP-FAST PAC lifetime calculation.
+	* Print correct encoded packet length when debugging
+	* Move EAP-Fast attributes from the FreeRADIUS vendor specific
+	  dictionary to the internal one.  There is no reason to send
+	  the individual EAP-FAST fields as VSAs in a RADIUS packet.
 
 FreeRADIUS 3.0.23 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	Feature improvements
