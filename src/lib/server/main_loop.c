@@ -208,7 +208,7 @@ int main_loop_start(void)
 	/*
 	 *	Start placating the watchdog (if told to do so).
 	 */
-	if (sd_watchdog_interval > 0) sd_watchdog_event(event_list, fr_time_wrap(0), NULL);
+	if (fr_time_delta_ispos(sd_watchdog_interval)) sd_watchdog_event(event_list, fr_time_wrap(0), NULL);
 #endif
 
 	ret = fr_event_loop(event_list);
