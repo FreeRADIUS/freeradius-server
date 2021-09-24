@@ -2245,15 +2245,15 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Check ntlm_auth_timeout is sane
 	 */
-	if (!inst->ntlm_auth_timeout) {
+	if (!fr_time_delta_ispos(inst->ntlm_auth_timeout)) {
 		inst->ntlm_auth_timeout = fr_time_delta_from_sec(EXEC_TIMEOUT);
 	}
-	if (inst->ntlm_auth_timeout < fr_time_delta_from_sec(1)) {
+	if (fr_time_delta_lt(inst->ntlm_auth_timeout, fr_time_delta_from_sec(1))) {
 		cf_log_err(conf, "ntml_auth_timeout '%pVs' is too small (minimum: 1s)",
 			   fr_box_time_delta(inst->ntlm_auth_timeout));
 		return -1;
 	}
-	if (inst->ntlm_auth_timeout > fr_time_delta_from_sec(10)) {
+	if (fr_time_delta_gt(inst->ntlm_auth_timeout, fr_time_delta_from_sec(10))) {
 		cf_log_err(conf, "ntlm_auth_timeout '%pVs' is too large (maximum: 10s)",
 			   fr_box_time_delta(inst->ntlm_auth_timeout));
 		return -1;

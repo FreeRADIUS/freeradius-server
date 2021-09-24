@@ -2243,7 +2243,7 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	/*
 	 *	No cleanup delay, means cleanup immediately
 	 */
-	if (trunk->conf.req_cleanup_delay == 0) {
+	if (!fr_time_delta_ispos(trunk->conf.req_cleanup_delay)) {
 		treq->pub.state = FR_TRUNK_REQUEST_STATE_INIT;
 
 #ifndef NDEBUG
@@ -3334,7 +3334,7 @@ static void _trunk_connection_on_connected(UNUSED fr_connection_t *conn,
 	 *	Insert a timer to reconnect the
 	 *	connection periodically.
 	 */
-	if (trunk->conf.lifetime > 0) {
+	if (fr_time_delta_ispos(trunk->conf.lifetime)) {
 		if (fr_event_timer_in(tconn, trunk->el, &tconn->lifetime_ev,
 				       trunk->conf.lifetime, _trunk_connection_lifetime_expire, tconn) < 0) {
 			PERROR("Failed inserting connection reconnection timer event, halting connection");
@@ -3413,7 +3413,7 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn,
 	/*
 	 *	Remove the reconnect event
 	 */
-	if (trunk->conf.lifetime > 0) fr_event_timer_delete(&tconn->lifetime_ev);
+	if (fr_time_delta_ispos(trunk->conf.lifetime)) fr_event_timer_delete(&tconn->lifetime_ev);
 
 	/*
 	 *	Remove the I/O events
@@ -4277,7 +4277,7 @@ static void _trunk_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	trunk_manage(trunk, now);
 
-	if (trunk->conf.manage_interval > 0) {
+	if (fr_time_delta_ispos(trunk->conf.manage_interval)) {
 		if (fr_event_timer_in(trunk, el, &trunk->manage_ev, trunk->conf.manage_interval,
 				      _trunk_timer, trunk) < 0) {
 			PERROR("Failed inserting trunk management event");
@@ -4549,7 +4549,7 @@ int fr_trunk_start(fr_trunk_t *trunk)
 		if (trunk_connection_spawn(trunk, fr_time()) != 0) return -1;
 	}
 
-	if (trunk->conf.manage_interval > 0) {
+	if (fr_time_delta_ispos(trunk->conf.manage_interval)) {
 		/*
 		 *	Insert the event timer to manage
 		 *	the interval between managing connections.
@@ -4594,7 +4594,7 @@ int fr_trunk_connection_manage_schedule(fr_trunk_t *trunk)
 {
 	if (!trunk->started || !trunk->managing_connections) return 0;
 
-	if (fr_event_timer_in(trunk, trunk->el, &trunk->manage_ev, 0, _trunk_timer, trunk) < 0) {
+	if (fr_event_timer_in(trunk, trunk->el, &trunk->manage_ev, fr_time_delta_wrap(0), _trunk_timer, trunk) < 0) {
 		PERROR("Failed inserting trunk management event");
 		return -1;
 	}

@@ -860,7 +860,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 	 *	A response_window of zero is OK, and means that it's
 	 *	ignored by the rest of the server timers.
 	 */
-	if (c->response_window) {
+	if (fr_time_delta_ispos(c->response_window)) {
 		FR_TIME_DELTA_BOUND_CHECK("response_window", c->response_window, >=, fr_time_delta_from_usec(1000));
 		FR_TIME_DELTA_BOUND_CHECK("response_window", c->response_window, <=, fr_time_delta_from_sec(60));
 		FR_TIME_DELTA_BOUND_CHECK("response_window", c->response_window, <=, main_config->max_request_time);
@@ -878,12 +878,12 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *serv
 #endif
 
 	if ((c->proto == IPPROTO_TCP) || (c->proto == IPPROTO_IP)) {
-		if ((c->limit.idle_timeout > 0) && (c->limit.idle_timeout < fr_time_delta_from_sec(5)))
+		if (fr_time_delta_ispos(c->limit.idle_timeout) && fr_time_delta_lt(c->limit.idle_timeout, fr_time_delta_from_sec(5)))
 			c->limit.idle_timeout = fr_time_delta_from_sec(5);
-		if ((c->limit.lifetime > 0) && (c->limit.lifetime < fr_time_delta_from_sec(5)))
+		if (fr_time_delta_ispos(c->limit.lifetime) && (fr_time_delta_lt(c->limit.lifetime, fr_time_delta_from_sec(5))))
 			c->limit.lifetime = fr_time_delta_from_sec(5);
-		if ((c->limit.lifetime > 0) && (c->limit.idle_timeout > c->limit.lifetime))
-			c->limit.idle_timeout = 0;
+		if (fr_time_delta_ispos(c->limit.lifetime) && (fr_time_delta_lt(c->limit.idle_timeout, c->limit.lifetime)))
+			c->limit.idle_timeout = fr_time_delta_wrap(0);
 	}
 
 	return c;

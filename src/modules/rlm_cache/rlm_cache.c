@@ -236,11 +236,11 @@ static unlang_action_t cache_find(rlm_rcode_t *p_result, rlm_cache_entry_t **out
 	 *	Yes, but it expired, OR the "forget all" epoch has
 	 *	passed.  Delete it, and pretend it doesn't exist.
 	 */
-	if ((c->expires < fr_time_to_unix_time(request->packet->timestamp)) ||
-	    (c->created < fr_unix_time_from_sec(inst->config.epoch))) {
+	if (fr_unix_time_lt(c->expires, fr_time_to_unix_time(request->packet->timestamp)) ||
+	    fr_unix_time_lt(c->created, fr_unix_time_from_sec(inst->config.epoch))) {
 		RDEBUG2("Found entry for \"%pV\", but it expired %pV ago.  Removing it",
 			fr_box_strvalue_len((char const *)key, key_len),
-			fr_box_time_delta(fr_time_to_unix_time(request->packet->timestamp) - c->expires));
+			fr_box_time_delta(fr_unix_time_sub(fr_time_to_unix_time(request->packet->timestamp), c->expires)));
 
 		inst->driver->expire(&inst->config, inst->driver_inst->dl_inst->data, request, handle, c->key, c->key_len);
 		cache_free(inst, &c);
@@ -322,7 +322,7 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 	 *	All in NSEC resolution
 	 */
 	c->created = c->expires = fr_time_to_unix_time(request->packet->timestamp);
-	c->expires += ttl;
+	c->expires = fr_unix_time_add(c->expires, ttl);
 
 	RDEBUG2("Creating new cache entry");
 
@@ -718,7 +718,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, modu
 
 		fr_assert(c);
 
-		c->expires = fr_time_to_unix_time(request->packet->timestamp) + ttl;
+		c->expires = fr_unix_time_add(fr_time_to_unix_time(request->packet->timestamp), ttl);
 
 		cache_set_ttl(&tmp, inst, request, &handle, c);
 		switch (tmp) {
@@ -993,7 +993,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	fr_assert(inst->config.key);
 
-	if (inst->config.ttl == 0) {
+	if (!fr_time_delta_ispos(inst->config.ttl)) {
 		cf_log_err(conf, "Must set 'ttl' to non-zero");
 		return -1;
 	}

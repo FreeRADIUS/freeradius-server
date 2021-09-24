@@ -269,12 +269,10 @@ static fr_radius_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 	our_timeout = timeout;
 
 	/* Loop waiting for DHCP replies until timer expires */
-	while (our_timeout) {
+	while (fr_time_delta_ispos(our_timeout)) {
 		if ((!found) || (reply)) { // only debug at start and each time we get a valid DHCP reply on raw socket
-			DEBUG("Waiting for %s DHCP replies for: %d.%06d",
-			      (nb_reply > 0) ? " additional ":" ",
-			      (int)(our_timeout / NSEC),
-			      (int)(our_timeout % NSEC));
+			DEBUG("Waiting for %s DHCP replies for: %.6f",
+			      (nb_reply > 0) ? " additional ":" ", fr_time_delta_unwrap(our_timeout) / (double)NSEC);
 		}
 
 		reply = NULL;
@@ -299,7 +297,7 @@ static fr_radius_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 #  endif
 #endif
 		} else {
-			our_timeout = 0;
+			our_timeout = fr_time_delta_wrap(0);
 		}
 
 		if (reply) {

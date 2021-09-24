@@ -1823,7 +1823,7 @@ unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 	 *	is to use a kqueue instance to monitor
 	 *	for process exit.
 	 */
-	if ((timeout > 0) && fr_dlist_num_elements(&el->pid_to_reap)) {
+	if (fr_time_delta_ispos(timeout) && fr_dlist_num_elements(&el->pid_to_reap)) {
 		int		status;
 		struct kevent	evset;
 		int		waiting = 0;
@@ -1874,8 +1874,7 @@ unsigned int fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t time
 			struct kevent	kev;
 			int		ret;
 
-			ret = kevent(kq, NULL, 0, &kev, 1,
-				     &fr_time_delta_to_timespec(fr_time_sub(end, now)));
+			ret = kevent(kq, NULL, 0, &kev, 1, &fr_time_delta_to_timespec(fr_time_sub(end, now)));
 			switch (ret) {
 			default:
 				EVENT_DEBUG("%p - %s - Reaper tmp loop error %s, forcing process reaping",
@@ -2183,7 +2182,7 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 	 *	By default we wait for 0ns, which means returning
 	 *	immediately from kevent().
 	 */
-	when = 0;
+	when = fr_time_delta_wrap(0);
 	wake = &when;
 	el->now = now;
 
@@ -2222,9 +2221,9 @@ int fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait)
 		for (pre = fr_dlist_head(&el->pre_callbacks);
 		     pre != NULL;
 		     pre = fr_dlist_next(&el->pre_callbacks, pre)) {
-			if (pre->callback(now, wake ? *wake : 0, pre->uctx) > 0) {
+			if (pre->callback(now, wake ? *wake : fr_time_delta_wrap(0), pre->uctx) > 0) {
 				wake = &when;
-				when = 0;
+				when = fr_time_delta_wrap(0);
 			}
 		}
 	}
@@ -2575,7 +2574,7 @@ static int _event_list_free(fr_event_list_t *el)
 
 	while ((ev = fr_lst_peek(el->times)) != NULL) fr_event_timer_delete(&ev);
 
-	fr_event_list_reap_signal(el, 0, SIGKILL);
+	fr_event_list_reap_signal(el, fr_time_delta_wrap(0), SIGKILL);
 
 	talloc_free_children(el);
 

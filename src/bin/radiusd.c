@@ -155,7 +155,7 @@ static fr_event_timer_t const *fr_time_sync_ev = NULL;
 
 static void fr_time_sync_event(fr_event_list_t *el, UNUSED fr_time_t now, UNUSED void *uctx)
 {
-	fr_time_delta_t when = NSEC;
+	fr_time_delta_t when = fr_time_delta_from_sec(1);
 
 	(void) fr_event_timer_in(el, el, &fr_time_sync_ev, when, fr_time_sync_event, NULL);
 	(void) fr_time_sync();
@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
 	dl_module_loader_t *dl_modules = NULL;
 
 #ifndef NDEBUG
-	fr_time_delta_t	exit_after = 0;
+	fr_time_delta_t	exit_after = fr_time_delta_wrap(0);
 #endif
 	/*
 	 *	Must be called first, so the handler is called last
@@ -346,7 +346,7 @@ int main(int argc, char *argv[])
 
 #ifndef NDEBUG
 		case 'e':
-			exit_after = (fr_time_delta_t)atoi(optarg) * NSEC;
+			exit_after = fr_time_delta_from_sec(atoi(optarg));
 			break;
 #endif
 
@@ -921,7 +921,7 @@ int main(int argc, char *argv[])
 
 	fr_time_sync_event(main_loop_event_list(), fr_time(), NULL);
 #ifndef NDEBUG
-	if (exit_after > 0) fr_exit_after(main_loop_event_list(), fr_time_wrap(0), &exit_after);
+	if (fr_time_delta_ispos(exit_after)) fr_exit_after(main_loop_event_list(), fr_time_wrap(0), &exit_after);
 #endif
 	/*
 	 *  Process requests until HUP or exit.

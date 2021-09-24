@@ -579,34 +579,35 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 {
 	int		i;
 	fr_unix_time_t	t;
+	int64_t		tmp;
 	struct tm	*tm, s_tm;
 	char		buf[64];
 	char		*p;
 	char		*f[4];
 	char		*tail = NULL;
-	fr_time_delta_t	gmtoff = 0;
+	fr_time_delta_t	gmtoff = fr_time_delta_wrap(0);
 
 	/*
 	 *	Test for unix timestamp, which is just a number and
 	 *	nothing else.
 	 */
-	t = strtoul(date_str, &tail, 10);
+	tmp = strtoul(date_str, &tail, 10);
 	if (*tail == '\0') {
 		switch (hint) {
 		case FR_TIME_RES_SEC:
-			t = fr_unix_time_from_sec(t);
+			t = fr_unix_time_from_sec(tmp);
 			break;
 
 		case FR_TIME_RES_MSEC:
-			t = fr_unix_time_from_msec(t);
+			t = fr_unix_time_from_msec(tmp);
 			break;
 
 		case FR_TIME_RES_USEC:
-			t = fr_unix_time_from_usec(t);
+			t = fr_unix_time_from_usec(tmp);
 			break;
 
 		case FR_TIME_RES_NSEC:
-			t = fr_unix_time_from_nsec(t);
+			t = fr_unix_time_from_nsec(tmp);
 			break;
 
 		default:
@@ -632,12 +633,12 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 	 *	Z | (+/-)%H:%M time zone offset
 	 *
 	 */
-	if ((t > 1900) && (t < 3000) && *tail == '-') {
+	if ((tmp > 1900) && (tmp < 3000) && *tail == '-') {
 		unsigned long subseconds;
 		int tz, tz_hour, tz_min;
 
 		p = tail + 1;
-		s_tm.tm_year = t - 1900; /* 'struct tm' starts years in 1900 */
+		s_tm.tm_year = tmp - 1900; /* 'struct tm' starts years in 1900 */
 
 		if (get_part(&p, &s_tm.tm_mon, 1, 13, '-', "month") < 0) return -1;
 		s_tm.tm_mon--;	/* ISO is 1..12, where 'struct tm' is 0..11 */
@@ -716,9 +717,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 
 	done:
 		tm->tm_gmtoff = tz;
-		*date = fr_unix_time_from_tm(tm);
-		*date += subseconds;
-
+		*date = fr_unix_time_add(fr_unix_time_from_tm(tm), fr_time_delta_wrap(subseconds));
 		return 0;
 	}
 
@@ -892,7 +891,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 		tm->tm_min = atoi(f[1]);
 	}
 
-	*date = fr_unix_time_from_tm(tm) + gmtoff;
+	*date = fr_unix_time_add(fr_unix_time_from_tm(tm), gmtoff);
 
 	return 0;
 }

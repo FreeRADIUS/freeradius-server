@@ -243,7 +243,7 @@ static void write_stats(fr_event_list_t *el, fr_time_t now, void *uctx)
 	size_t len;
 	char buffer[1024];
 
-	(void) fr_event_timer_in(thread, el, &thread->ev, NSEC, write_stats, thread);
+	(void) fr_event_timer_in(thread, el, &thread->ev, fr_time_delta_from_sec(1), write_stats, thread);
 
 	len = fr_load_generator_stats_sprint(thread->l, now, buffer, sizeof(buffer));
 	if (write(thread->fd, buffer, len) < 0) {
@@ -330,7 +330,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 		return;
 	}
 
-	(void) fr_event_timer_in(thread, thread->el, &thread->ev, NSEC, write_stats, thread);
+	(void) fr_event_timer_in(thread, thread->el, &thread->ev, fr_time_delta_from_sec(1), write_stats, thread);
 
 	len = fr_load_generator_stats_sprint(thread->l, fr_time(), buffer, sizeof(buffer));
 	if (write(thread->fd, buffer, len) < 0) {

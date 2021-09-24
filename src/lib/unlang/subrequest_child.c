@@ -89,22 +89,22 @@ int unlang_subrequest_lifetime_set(request_t *request)
 	 */
 	vp = fr_pair_find_by_da(&request->control_pairs, request_attr_request_lifetime, 0);
 	if (!vp || (vp->vp_uint32 > 0)) {
-		fr_time_delta_t when = 0;
+		fr_time_delta_t when = fr_time_delta_wrap(0);
 		const fr_event_timer_t **ev_p;
 
 		if (!vp) {
-			when += fr_time_delta_from_sec(30); /* default to 30s if not set */
+			when = fr_time_delta_add(when, fr_time_delta_from_sec(30)); /* default to 30s if not set */
 
 		} else if (vp->vp_uint32 > 3600) {
 			RWDEBUG("Request-Timeout can be no more than 3600 seconds");
-			when += fr_time_delta_from_sec(3600);
+			when = fr_time_delta_add(when, fr_time_delta_from_sec(3600));
 
 		} else if (vp->vp_uint32 < 5) {
 			RWDEBUG("Request-Timeout can be no less than 5 seconds");
-			when += fr_time_delta_from_sec(5);
+			when = fr_time_delta_add(when ,fr_time_delta_from_sec(5));
 
 		} else {
-			when += fr_time_delta_from_sec(vp->vp_uint32);
+			when = fr_time_delta_from_sec(vp->vp_uint32);
 		}
 
 		ev_p = talloc_size(request, sizeof(*ev_p));

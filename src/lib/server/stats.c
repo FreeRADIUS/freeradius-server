@@ -158,7 +158,7 @@ void radius_stats_init(int flag)
 
 void radius_stats_ema(fr_stats_ema_t *ema, fr_time_t start, fr_time_t end)
 {
-	fr_time_delta_t	tdiff;
+	int64_t	tdiff;
 #ifdef WITH_STATS_DEBUG
 	static int	n = 0;
 #endif
@@ -219,7 +219,7 @@ void fr_stats_bins(fr_stats_t *stats, fr_time_t start, fr_time_t end)
 	if (fr_time_lt(end, start)) return;	/* bad data */
 	diff = fr_time_sub(end, start);
 
-	if (diff >= fr_time_delta_from_sec(10)) {
+	if (fr_time_delta_gteq(diff, fr_time_delta_from_sec(10))) {
 		stats->elapsed[7]++;
 	} else {
 		int i;

@@ -122,7 +122,7 @@ static void main_loop_signal_process(int flag)
 		static fr_time_t last_hup = fr_time_wrap(0);
 
 		when = fr_time();
-		if (fr_time_sub(when, last_hup) <  fr_time_delta_from_sec(5)) {
+		if (fr_time_delta_lt(fr_time_sub(when, last_hup), fr_time_delta_from_sec(5))) {
 			INFO("Ignoring HUP (less than 5s since last one)");
 			return;
 		}
@@ -234,7 +234,7 @@ int main_loop_start(void)
 
 static int _loop_status(UNUSED fr_time_t now, fr_time_delta_t wake, UNUSED void *ctx)
 {
-	if (wake > (NSEC / 10)) DEBUG3("Main loop waking up in %pV seconds", fr_box_time_delta(wake));
+	if (fr_time_delta_unwrap(wake) > (NSEC / 10)) DEBUG3("Main loop waking up in %pV seconds", fr_box_time_delta(wake));
 
 	return 0;
 }

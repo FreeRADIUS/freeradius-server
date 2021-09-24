@@ -361,17 +361,11 @@ int paircmp_pairs(UNUSED request_t *request, fr_pair_t const *check, fr_pair_t *
 			break;
 
 		case FR_TYPE_INT32:
-			if (vp->vp_int32 < check->vp_int32) {
-				ret = -1;
-			} else if (vp->vp_int32 > check->vp_int32) {
-				ret = +1;
-			} else {
-				ret = 0;
-			}
+			ret = CMP(vp->vp_int32, check->vp_int32);
 			break;
 
 		case FR_TYPE_DATE:
-			ret = vp->vp_date - check->vp_date;
+			ret = fr_unix_time_cmp(vp->vp_date, check->vp_date);
 			break;
 
 		case FR_TYPE_IPV4_ADDR:

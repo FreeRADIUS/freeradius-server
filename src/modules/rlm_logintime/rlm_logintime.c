@@ -83,7 +83,7 @@ static int timecmp(UNUSED void *instance, request_t *request, UNUSED fr_pair_lis
 	/*
 	 *      If there's a request, use that timestamp.
 	 */
-	if (timestr_match(check->vp_strvalue, request->packet->timestamp) >= 0) return 0;
+	if (fr_time_delta_gteq(timestr_match(check->vp_strvalue, request->packet->timestamp), fr_time_delta_wrap(0))) return 0;
 
 	return -1;
 }
@@ -167,12 +167,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	Compare the time the request was received with the current Login-Time value
 	 */
 	left = timestr_match(ends->vp_strvalue, request->packet->timestamp);
-	if (left < 0) RETURN_MODULE_DISALLOW; /* outside of the allowed time */
+	if (fr_time_delta_isneg(left)) RETURN_MODULE_DISALLOW; /* outside of the allowed time */
 
 	/*
 	 *      Do nothing, login time is not controlled (unendsed).
 	 */
-	if (left == 0) RETURN_MODULE_OK;
+	if (fr_time_delta_eq(left, fr_time_delta_wrap(0))) RETURN_MODULE_OK;
 
 	/*
 	 *      The min_time setting is to deal with NAS that won't allow Session-vp values below a certain value
@@ -180,7 +180,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *
 	 *	We don't know were going to get another chance to lock out the user, so we need to do it now.
 	 */
-	if (left < inst->min_time) {
+	if (fr_time_delta_lt(left, inst->min_time)) {
 		REDEBUG("Login outside of allowed time-slot (session end %s, with lockout %i seconds before)",
 			ends->vp_strvalue, (int) fr_time_delta_to_sec(inst->min_time));
 
@@ -231,7 +231,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_logintime_t *inst = instance;
 
-	if (inst->min_time == 0) {
+	if (!fr_time_delta_ispos(inst->min_time)) {
 		cf_log_err(conf, "Invalid value '0' for minimum_timeout");
 		return -1;
 	}

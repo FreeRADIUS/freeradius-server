@@ -207,16 +207,16 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	if (!inst->timeout_is_set || !inst->timeout) {
+	if (!inst->timeout_is_set || !fr_time_delta_ispos(inst->timeout)) {
 		/*
 		 *	Pick the shorter one
 		 */
-		inst->timeout = main_config->max_request_time > fr_time_delta_from_sec(EXEC_TIMEOUT) ?
+		inst->timeout = fr_time_delta_gt(main_config->max_request_time, fr_time_delta_from_sec(EXEC_TIMEOUT)) ?
 			fr_time_delta_from_sec(EXEC_TIMEOUT):
 			main_config->max_request_time;
 	}
 	else {
-		if (inst->timeout < fr_time_delta_from_sec(1)) {
+		if (fr_time_delta_lt(inst->timeout, fr_time_delta_from_sec(1))) {
 			cf_log_err(conf, "Timeout '%pVs' is too small (minimum: 1s)", fr_box_time_delta(inst->timeout));
 			return -1;
 		}
@@ -224,7 +224,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		/*
 		 *	Blocking a request longer than max_request_time isn't going to help anyone.
 		 */
-		if (inst->timeout > main_config->max_request_time) {
+		if (fr_time_delta_gt(inst->timeout, main_config->max_request_time)) {
 			cf_log_err(conf, "Timeout '%pVs' is too large (maximum: %pVs)",
 				   fr_box_time_delta(inst->timeout), fr_box_time_delta(main_config->max_request_time));
 			return -1;
@@ -466,7 +466,7 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 	fr_value_box_list_init(&m->box);
 	return unlang_module_yield_to_tmpl(m, &m->box,
 					   request, inst->tmpl,
-					   TMPL_ARGS_EXEC(env_pairs, 0, true, &m->status),
+					   TMPL_ARGS_EXEC(env_pairs, fr_time_delta_wrap(0), true, &m->status),
 					   mod_exec_wait_resume,
 					   NULL, &m->box);
 }

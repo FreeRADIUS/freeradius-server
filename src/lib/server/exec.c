@@ -994,8 +994,8 @@ int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 	/*
 	 *	Setup event to kill the child process after a period of time.
 	 */
-	if ((timeout > 0) && fr_event_timer_in(ctx, el, &exec->ev,
-					       timeout, exec_timeout, exec) < 0) goto fail_and_close;
+	if (fr_time_delta_ispos(timeout) &&
+	    (fr_event_timer_in(ctx, el, &exec->ev, timeout, exec_timeout, exec) < 0)) goto fail_and_close;
 
 	/*
 	 *	If we need to parse stdout, insert a special IO handler that

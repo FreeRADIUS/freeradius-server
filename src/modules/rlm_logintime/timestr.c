@@ -245,9 +245,9 @@ fr_time_delta_t timestr_match(char const *tmstr, fr_time_t when)
 			break;
 	}
 
-	if (!tot) return -1;
+	if (!tot) return fr_time_delta_wrap(-1);
 
-	if (i == now) return 0;
+	if (i == now) return fr_time_delta_wrap(0);
 
 	return fr_time_delta_from_sec(tot);
 }

@@ -363,7 +363,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	    fr_time_gt(fr_time_add(pool->state.last_failed, pool->retry_delay), now)) {
 		bool complain = false;
 
-		if (fr_time_sub(now, pool->state.last_throttled) >= fr_time_delta_from_sec(1)) {
+		if (fr_time_delta_gteq(fr_time_sub(now, pool->state.last_throttled), fr_time_delta_from_sec(1))) {
 			complain = true;
 
 			pool->state.last_throttled = now;
@@ -610,14 +610,14 @@ static int connection_manage(fr_pool_t *pool, request_t *request, fr_pool_connec
 		goto do_delete;
 	}
 
-	if ((pool->lifetime > 0) &&
+	if (fr_time_delta_ispos(pool->lifetime) &&
 	    (fr_time_lt(fr_time_add(this->created, pool->lifetime), now))) {
 		ROPTIONAL(RDEBUG2, DEBUG2, "Closing expired connection (%" PRIu64 "): Hit lifetime limit",
 			  this->number);
 		goto do_delete;
 	}
 
-	if ((pool->idle_timeout > 0) &&
+	if (fr_time_delta_ispos(pool->idle_timeout) &&
 	    (fr_time_lt(fr_time_add(this->last_released, pool->idle_timeout), now))) {
 		ROPTIONAL(RINFO, INFO, "Closing connection (%" PRIu64 "): Hit idle_timeout, was idle for %pVs",
 		     	  this->number, fr_box_time_delta(fr_time_sub(now, this->last_released)));
@@ -648,7 +648,7 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 	fr_time_t		now = fr_time();
 	fr_pool_connection_t	*this, *next;
 
-	if (fr_time_sub(now, pool->state.last_checked) < fr_time_delta_from_sec(1)) {
+	if (fr_time_delta_lt(fr_time_sub(now, pool->state.last_checked), fr_time_delta_from_sec(1))) {
 		pthread_mutex_unlock(&pool->mutex);
 		return 1;
 	}
@@ -749,9 +749,9 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 		 *	Decrease the delay for the next time we clean
 		 *	up.
 		 */
-		pool->state.next_delay >>= 1;
-		if (pool->state.next_delay == 0) pool->state.next_delay = 1;
-		pool->delay_interval += pool->state.next_delay;
+		pool->state.next_delay = fr_time_delta_wrap(fr_time_delta_unwrap(pool->state.next_delay) >> 1);
+		if (!fr_time_delta_ispos(pool->state.next_delay)) pool->state.next_delay = fr_time_delta_wrap(1);
+		pool->delay_interval = fr_time_delta_add(pool->delay_interval, pool->state.next_delay);
 
 		goto manage_connections;
 	}
@@ -852,7 +852,7 @@ static void *connection_get_internal(fr_pool_t *pool, request_t *request, bool s
 		/*
 		 *	Rate-limit complaints.
 		 */
-		if (fr_time_sub(now, pool->state.last_at_max) > fr_time_delta_from_sec(1)) {
+		if (fr_time_delta_gt(fr_time_sub(now, pool->state.last_at_max), fr_time_delta_from_sec(1))) {
 			complain = true;
 			pool->state.last_at_max = now;
 		}
@@ -1064,12 +1064,12 @@ fr_pool_t *fr_pool_init(TALLOC_CTX *ctx,
 	FR_INTEGER_BOUND_CHECK("start", pool->start, <=, pool->max);
 	FR_INTEGER_BOUND_CHECK("spare", pool->spare, <=, (pool->max - pool->min));
 
-	if (pool->lifetime > 0) {
+	if (fr_time_delta_ispos(pool->lifetime)) {
 		FR_TIME_DELTA_COND_CHECK("idle_timeout", pool->idle_timeout,
-					 (pool->idle_timeout <= pool->lifetime), 0);
+					 fr_time_delta_lteq(pool->idle_timeout, pool->lifetime), fr_time_delta_wrap(0));
 	}
 
-	if (pool->idle_timeout > 0) {
+	if (fr_time_delta_ispos(pool->idle_timeout)) {
 		FR_TIME_DELTA_BOUND_CHECK("cleanup_interval", pool->cleanup_interval, <=, pool->idle_timeout);
 	}
 
@@ -1411,16 +1411,16 @@ void fr_pool_connection_release(fr_pool_t *pool, request_t *request, void *conn)
 	 *
 	 *      These should only fire once per second.
 	 */
-	if (pool->held_trigger_min &&
-	    (held < pool->held_trigger_min) &&
-	    (fr_time_sub(this->last_released, pool->state.last_held_min) >= fr_time_delta_from_sec(1))) {
+	if (fr_time_delta_ispos(pool->held_trigger_min) &&
+	    (fr_time_delta_lt(held, pool->held_trigger_min)) &&
+	    (fr_time_delta_gteq(fr_time_sub(this->last_released, pool->state.last_held_min), fr_time_delta_from_sec(1)))) {
 	    	trigger_min = true;
 	    	pool->state.last_held_min = this->last_released;
 	}
 
-	if (pool->held_trigger_min &&
-	    (held > pool->held_trigger_max) &&
-	    (fr_time_sub(this->last_released, pool->state.last_held_max) >= fr_time_delta_from_sec(1))) {
+	if (fr_time_delta_ispos(pool->held_trigger_min) &&
+	    (fr_time_delta_gt(held, pool->held_trigger_max)) &&
+	    (fr_time_delta_gteq(fr_time_sub(this->last_released, pool->state.last_held_max), fr_time_delta_from_sec(1)))) {
 	    	trigger_max = true;
 	    	pool->state.last_held_max = this->last_released;
 	}

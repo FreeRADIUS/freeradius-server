@@ -949,7 +949,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	 *	If we're doing retries, remember when we started
 	 *	running the module.
 	 */
-	if (frame->instruction->actions.retry.irt) now = fr_time();
+	if (fr_time_delta_ispos(frame->instruction->actions.retry.irt)) now = fr_time();
 
 	caller = request->module;
 	request->module = mc->instance->name;
@@ -994,7 +994,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		/*
 		 *	If we have retry timers, then start the retries.
 		 */
-		if (frame->instruction->actions.retry.irt) {
+		if (fr_time_delta_ispos(frame->instruction->actions.retry.irt)) {
 			fr_assert(fr_time_gt(now, fr_time_wrap(0)));
 
 			(void) fr_retry_init(&state->retry, now, &frame->instruction->actions.retry); /* can't fail */

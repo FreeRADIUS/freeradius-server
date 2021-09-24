@@ -1875,7 +1875,7 @@ static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *c
 	 *	event ourselves.
 	 */
 	now_real = fr_time();
-	if (fr_time_sub(now_real, last_sync) > fr_time_delta_from_sec(1)) {
+	if (fr_time_delta_gt(fr_time_sub(now_real, last_sync), fr_time_delta_from_sec(1))) {
 		fr_time_sync();
 		last_sync = now_real;
 	}

@@ -51,8 +51,8 @@ typedef struct request_s request_t;	/* to shut up warnings about mschap.h */
 #define reply_pairs	reply_list
 
 static int retries = 3;
-static fr_time_delta_t timeout = ((fr_time_delta_t) 5) * NSEC;
-static fr_time_delta_t sleep_time = -1;
+static fr_time_delta_t timeout = fr_time_delta_wrap(5 * NSEC);	/* 5 seconds */
+static fr_time_delta_t sleep_time = fr_time_delta_wrap(-1);
 static char *secret = NULL;
 static bool do_output = true;
 
@@ -769,7 +769,9 @@ static int send_one_packet(rc_request_t *request)
 	 *	Remember when we have to wake up, to re-send the
 	 *	request, of we didn't receive a reply.
 	 */
-	if ((sleep_time == -1) || (sleep_time > timeout)) sleep_time = timeout;
+	if ((fr_time_delta_eq(sleep_time, fr_time_delta_wrap(-1)) || (fr_time_delta_gt(sleep_time, timeout)))) {
+		sleep_time = timeout;
+	}
 
 	/*
 	 *	Haven't sent the packet yet.  Initialize it.
@@ -882,14 +884,14 @@ static int send_one_packet(rc_request_t *request)
 		/*
 		 *	Not time for a retry, do so.
 		 */
-		if (fr_time_sub(now, request->timestamp) < timeout) {
+		if (fr_time_delta_lt(fr_time_sub(now, request->timestamp), timeout)) {
 			/*
 			 *	When we walk over the tree sending
 			 *	packets, we update the minimum time
 			 *	required to sleep.
 			 */
-			if ((sleep_time == -1) ||
-			    (sleep_time > fr_time_sub(now, request->timestamp))) {
+			if (fr_time_delta_eq(sleep_time, fr_time_delta_wrap(-1)) ||
+			    fr_time_delta_gt(sleep_time, fr_time_sub(now, request->timestamp))) {
 				sleep_time = fr_time_sub(now, request->timestamp);
 			}
 			return 0;
@@ -961,7 +963,7 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 	max_fd = fr_packet_list_fd_set(packet_list, &set);
 	if (max_fd < 0) fr_exit_now(1); /* no sockets to listen on! */
 
-	our_wait_time = wait_time <= 0 ? fr_time_delta_from_sec(0) : wait_time;
+	our_wait_time = !fr_time_delta_ispos(wait_time) ? fr_time_delta_from_sec(0) : wait_time;
 
 	/*
 	 *	No packet was received.
@@ -1507,7 +1509,7 @@ int main(int argc, char **argv)
 		char const *filename = NULL;
 
 		done = true;
-		sleep_time = -1;
+		sleep_time = fr_time_delta_wrap(-1);
 
 		/*
 		 *	Walk over the packets, sending them.
@@ -1521,7 +1523,7 @@ int main(int argc, char **argv)
 			 *	receive it, but don't wait for a
 			 *	packet.
 			 */
-			recv_one_packet(0);
+			recv_one_packet(fr_time_delta_wrap(0));
 
 			/*
 			 *	This packet is done.  Delete it.
@@ -1563,12 +1565,12 @@ int main(int argc, char **argv)
 				if (persec) {
 					fr_time_delta_t psec;
 
-					psec = (persec == 1) ? fr_time_delta_from_sec(1) : (1000000 / persec);
+					psec = (persec == 1) ? fr_time_delta_from_sec(1) : fr_time_delta_wrap(1000000 / persec);
 
 					/*
 					 *	Don't sleep elsewhere.
 					 */
-					sleep_time = 0;
+					sleep_time = fr_time_delta_wrap(0);
 
 
 					/*
@@ -1591,7 +1593,7 @@ int main(int argc, char **argv)
 					int i;
 
 					done = false;
-					sleep_time = 0;
+					sleep_time = fr_time_delta_wrap(0);
 
 					for (i = 0; i < 4; i++) {
 						((uint32_t *) this->packet->vector)[i] = fr_rand();
@@ -1610,7 +1612,7 @@ int main(int argc, char **argv)
 		if (fr_packet_list_num_elements(packet_list) > 0) {
 			done = false;
 		} else {
-			sleep_time = 0;
+			sleep_time = fr_time_delta_wrap(0);
 		}
 
 		/*
@@ -1620,7 +1622,7 @@ int main(int argc, char **argv)
 		 *	sending more packets (if necessary), and updating
 		 *	the sleep time.
 		 */
-		if (!done && (sleep_time > 0)) {
+		if (!done && fr_time_delta_ispos(sleep_time)) {
 			recv_one_packet(sleep_time);
 		}
 	} while (!done);

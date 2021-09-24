@@ -89,7 +89,7 @@ static int delay_add(request_t *request, fr_time_t *resume_at, fr_time_t now,
 	/*
 	 *	Delay is zero (and reschedule is not forced)
 	 */
-	if (!force_reschedule && (delay == 0)) return 1;
+	if (!force_reschedule && !fr_time_delta_ispos(delay)) return 1;
 
 	/*
 	 *	Process the delay relative to the start of packet processing
@@ -151,7 +151,7 @@ static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_
 		if (tmpl_aexpand_type(request, &delay, FR_TYPE_TIME_DELTA,
 				      request, inst->delay, NULL, NULL) < 0) RETURN_MODULE_FAIL;
 	} else {
-		delay = 0;
+		delay = fr_time_delta_wrap(0);
 	}
 
 	/*
@@ -248,7 +248,7 @@ static xlat_action_t xlat_delay(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out
 	 *	This is very useful for testing.
 	 */
 	if (!delay) {
-		if (!fr_cond_assert(delay_add(request, &resume_at, *yielded_at, 0, true, true) == 0)) {
+		if (!fr_cond_assert(delay_add(request, &resume_at, *yielded_at, fr_time_delta_wrap(0), true, true) == 0)) {
 			return XLAT_ACTION_FAIL;
 		}
 		goto yield;

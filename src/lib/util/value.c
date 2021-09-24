@@ -593,7 +593,7 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		break;
 
 	case FR_TYPE_DATE:
-		CHECK(date);
+		compare = fr_unix_time_cmp(a->datum.date, b->datum.date);
 		break;
 
 	case FR_TYPE_UINT8:
@@ -633,7 +633,7 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		break;
 
 	case FR_TYPE_TIME_DELTA:
-		CHECK(time_delta);
+		compare = fr_time_delta_cmp(a->datum.time_delta, b->datum.time_delta);
 		break;
 
 	case FR_TYPE_FLOAT32:
@@ -1125,11 +1125,11 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 		break;
 
 	case FR_TYPE_DATE:
-		dst->vb_date = htonll(src->vb_date);
+		dst->vb_date = fr_unix_time_wrap(htonll(fr_unix_time_unwrap(src->vb_date)));
 		break;
 
 	case FR_TYPE_TIME_DELTA:
-		dst->vb_time_delta = htonll(src->vb_time_delta);
+		dst->vb_time_delta = fr_time_delta_wrap(htonll(fr_time_delta_unwrap(src->vb_time_delta)));
 		break;
 
 	case FR_TYPE_FLOAT32:
@@ -1361,7 +1361,7 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 	 */
 	case FR_TYPE_DATE:
 	{
-		uint64_t date;
+		uint64_t date = 0;
 
 		if (!value->enumv) {
 			goto date_seconds;
@@ -1370,6 +1370,10 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		date_seconds:
 		case FR_TIME_RES_SEC:
 			date = fr_unix_time_to_sec(value->vb_date);
+			break;
+
+		case FR_TIME_RES_CSEC:
+			date = fr_unix_time_to_csec(value->vb_date);
 			break;
 
 		case FR_TIME_RES_MSEC:
@@ -1383,9 +1387,6 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		case FR_TIME_RES_NSEC:
 			date = fr_unix_time_to_usec(value->vb_date);
 			break;
-
-		default:
-			goto unsupported;
 		}
 
 		if (!value->enumv) {
@@ -1416,7 +1417,7 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 
 	case FR_TYPE_TIME_DELTA:
 	{
-		int64_t date;	/* may be negative */
+		int64_t date = 0;	/* may be negative */
 
 		if (!value->enumv) {
 			goto delta_seconds;
@@ -1425,6 +1426,10 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		delta_seconds:
 		case FR_TIME_RES_SEC:
 			date = fr_time_delta_to_sec(value->vb_time_delta);
+			break;
+
+		case FR_TIME_RES_CSEC:
+			date = fr_time_delta_to_csec(value->vb_time_delta);
 			break;
 
 		case FR_TIME_RES_MSEC:
@@ -1436,11 +1441,8 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 			break;
 
 		case FR_TIME_RES_NSEC:
-			date = value->vb_time_delta;
+			date = fr_time_delta_unwrap(value->vb_time_delta);
 			break;
-
-		default:
-			goto unsupported;
 		}
 
 		if (!value->enumv) {
@@ -1748,9 +1750,12 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		FR_DBUFF_OUT_UINT64V_RETURN(&date, &work_dbuff, length);
 
 		switch (precision) {
-		default:
 		case FR_TIME_RES_SEC: /* external seconds, internal nanoseconds */
 			date *= NSEC;
+			break;
+
+		case FR_TIME_RES_CSEC:
+			date *= (NSEC / CSEC);
 			break;
 
 		case FR_TIME_RES_MSEC:
@@ -1765,7 +1770,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 			break;
 		}
 
-		dst->vb_date = date;
+		dst->vb_date = fr_unix_time_wrap(date);
 	}
 		break;
 
@@ -1806,9 +1811,12 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		}
 
 		switch (precision) {
-		default:
 		case FR_TIME_RES_SEC: /* external seconds, internal nanoseconds */
 			dst->vb_time_delta = fr_time_delta_from_sec(date);
+			break;
+
+		case FR_TIME_RES_CSEC:
+			dst->vb_time_delta = fr_time_delta_from_csec(date);
 			break;
 
 		case FR_TIME_RES_MSEC:
@@ -1820,7 +1828,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 			break;
 
 		case FR_TIME_RES_NSEC:
-			dst->vb_time_delta = date;
+			dst->vb_time_delta = fr_time_delta_wrap(date);
 			break;
 		}
 
@@ -2711,9 +2719,12 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 		if (dst->enumv) {
 			switch (dst->enumv->flags.flag_time_res) {
 			date_src_seconds:
-			default:
 			case FR_TIME_RES_SEC:
 				tmp = fr_unix_time_to_sec(src->vb_date);
+				break;
+
+			case FR_TIME_RES_CSEC:
+				tmp = fr_unix_time_to_csec(src->vb_date);
 				break;
 
 			case FR_TIME_RES_USEC:
@@ -2725,7 +2736,7 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 				break;
 
 			case FR_TIME_RES_NSEC:
-				tmp = src->vb_date;
+				tmp = fr_unix_time_unwrap(src->vb_date);
 				break;
 			}
 		} else goto date_src_seconds;
@@ -2741,9 +2752,12 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 		if (dst->enumv) {
 			switch (dst->enumv->flags.flag_time_res) {
 			delta_src_seconds:
-			default:
 			case FR_TIME_RES_SEC:
 				tmp = (uint64_t)fr_time_delta_to_sec(src->vb_time_delta);
+				break;
+
+			case FR_TIME_RES_CSEC:
+				tmp = (uint64_t)fr_time_delta_to_csec(src->vb_time_delta);
 				break;
 
 			case FR_TIME_RES_USEC:
@@ -2755,7 +2769,7 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 				break;
 
 			case FR_TIME_RES_NSEC:
-				tmp = (uint64_t)src->vb_time_delta;
+				tmp = (uint64_t)fr_time_delta_unwrap(src->vb_time_delta);
 				break;
 			}
 		} else goto delta_src_seconds;
@@ -2804,21 +2818,24 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 		if (dst->enumv) {
 			switch (dst->enumv->flags.flag_time_res) {
 			date_dst_seconds:
-			default:
 			case FR_TIME_RES_SEC:
-				dst->vb_date = fr_unix_time_from_sec((fr_unix_time_t)tmp);
+				dst->vb_date = fr_unix_time_from_sec(tmp);
+				break;
+
+			case FR_TIME_RES_CSEC:
+				dst->vb_date = fr_unix_time_from_csec(tmp);
 				break;
 
 			case FR_TIME_RES_USEC:
-				dst->vb_date = fr_unix_time_from_usec((fr_unix_time_t)tmp);
+				dst->vb_date = fr_unix_time_from_usec(tmp);
 				break;
 
 			case FR_TIME_RES_MSEC:
-				dst->vb_date = fr_unix_time_from_msec((fr_unix_time_t)tmp);
+				dst->vb_date = fr_unix_time_from_msec(tmp);
 				break;
 
 			case FR_TIME_RES_NSEC:
-				dst->vb_date = fr_unix_time_from_nsec((fr_unix_time_t)tmp);
+				dst->vb_date = fr_unix_time_from_nsec(tmp);
 				break;
 			}
 		} else goto date_dst_seconds;
@@ -2828,21 +2845,24 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 		if (dst->enumv) {
 			switch (dst->enumv->flags.flag_time_res) {
 			delta_dst_seconds:
-			default:
 			case FR_TIME_RES_SEC:
-				dst->vb_time_delta = fr_time_delta_from_sec((fr_time_delta_t)tmp);
+				dst->vb_time_delta = fr_time_delta_from_sec(tmp);
+				break;
+
+			case FR_TIME_RES_CSEC:
+				dst->vb_time_delta = fr_time_delta_from_csec(tmp);
 				break;
 
 			case FR_TIME_RES_USEC:
-				dst->vb_time_delta = fr_time_delta_from_usec((fr_time_delta_t)tmp);
+				dst->vb_time_delta = fr_time_delta_from_usec(tmp);
 				break;
 
 			case FR_TIME_RES_MSEC:
-				dst->vb_time_delta = fr_time_delta_from_msec((fr_time_delta_t)tmp);
+				dst->vb_time_delta = fr_time_delta_from_msec(tmp);
 				break;
 
 			case FR_TIME_RES_NSEC:
-				dst->vb_time_delta = fr_time_delta_from_nsec((fr_time_delta_t)tmp);
+				dst->vb_time_delta = fr_time_delta_from_nsec(tmp);
 				break;
 			}
 		 } else goto delta_dst_seconds;
@@ -4895,7 +4915,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 
 		len = strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &s_tm);
 		FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, buf, len);
-		subseconds = data->vb_date % NSEC;
+		subseconds = fr_unix_time_unwrap(data->vb_date) % NSEC;
 
 		/*
 		 *	Use RFC 3339 format, which is a
@@ -4904,7 +4924,12 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		 *	formats.  The RFC is much stricter.
 		 */
 		switch (data->enumv->flags.flag_time_res) {
-		default:
+		case FR_TIME_RES_SEC:
+			break;
+
+		case FR_TIME_RES_CSEC:
+			subseconds /= (NSEC / CSEC);
+			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, ".%02" PRIi64, subseconds);
 			break;
 
 		case FR_TIME_RES_MSEC:
@@ -4958,24 +4983,28 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 #define MOD(a,b) (((a<0) ? (-a) : (a))%(b))
 
 		switch (res) {
-		default:
 		case FR_TIME_RES_SEC:
-			lhs = data->datum.time_delta / NSEC;
-			rhs = MOD(data->datum.time_delta, NSEC);
+			lhs = fr_time_delta_to_sec(data->datum.time_delta);
+			rhs = MOD(fr_time_delta_unwrap(data->datum.time_delta), NSEC);
+			break;
+
+		case FR_TIME_RES_CSEC:
+			lhs = fr_time_delta_to_csec(data->datum.time_delta);
+			rhs = MOD(fr_time_delta_unwrap(data->datum.time_delta), (NSEC / CSEC));
 			break;
 
 		case FR_TIME_RES_MSEC:
-			lhs = data->datum.time_delta / 1000000;
-			rhs = MOD(data->datum.time_delta, 1000000);
+			lhs = fr_time_delta_to_msec(data->datum.time_delta);
+			rhs = MOD(fr_time_delta_unwrap(data->datum.time_delta), (NSEC / MSEC));
 			break;
 
 		case FR_TIME_RES_USEC:
-			lhs = data->datum.time_delta / 1000;
-			rhs = MOD(data->datum.time_delta, 1000);
+			lhs = fr_time_delta_to_usec(data->datum.time_delta);
+			rhs = MOD(fr_time_delta_unwrap(data->datum.time_delta), (NSEC / USEC));
 			break;
 
 		case FR_TIME_RES_NSEC:
-			lhs = data->datum.time_delta;
+			lhs = fr_time_delta_unwrap(data->datum.time_delta);
 			rhs = 0;
 			break;
 		}
@@ -4985,15 +5014,13 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 			 *	0 is unsigned, but we want to print
 			 *	"-0.1" if necessary.
 			 */
-			if ((lhs == 0) && (data->datum.time_delta < 0)) {
+			if ((lhs == 0) && fr_time_delta_isneg(data->datum.time_delta)) {
 				FR_SBUFF_IN_CHAR_RETURN(&our_out, '-');
 			}
 
 			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRIi64 ".%09" PRIu64, lhs, rhs);
 		} else {
-			if (data->datum.time_delta < 0) {
-				lhs = rhs = 0;
-			}
+			if (fr_time_delta_isneg(data->datum.time_delta)) lhs = rhs = 0;
 
 			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRIu64 ".%09" PRIu64, lhs, rhs);
 		}

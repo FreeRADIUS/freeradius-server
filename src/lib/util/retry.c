@@ -35,8 +35,9 @@ RCSID("$Id$")
  */
 int fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config)
 {
-	fr_time_delta_t scale, rt;
-	uint128_t	delay;
+	uint64_t		scale;
+	fr_time_delta_t		rt;
+	uint128_t		delay;
 
 	memset(r, 0, sizeof(*r));
 
@@ -52,11 +53,11 @@ int fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config)
 	 *	   = IRT * (1 + RAND)
 	 */
 	scale = fr_rand();
-	scale += ((fr_time_delta_t) 1) << 32; /* multiple it by 1 * 2^32 */
-	scale -= ((fr_time_delta_t) 1) << 31; /* scale it -2^31..+2^31 */
+	scale += ((uint64_t) 1) << 32; /* multiple it by 1 * 2^32 */
+	scale -= ((uint64_t) 1) << 31; /* scale it -2^31..+2^31 */
 
-	delay = uint128_mul64(scale, r->config->irt);
-	rt = uint128_to_64(uint128_rshift(delay, 32));
+	delay = uint128_mul64(scale, fr_time_delta_unwrap(r->config->irt));
+	rt = fr_time_delta_wrap(uint128_to_64(uint128_rshift(delay, 32)));
 
 	r->rt = rt;
 	r->next = fr_time_add(now, rt);
@@ -75,8 +76,9 @@ int fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config)
  */
 fr_retry_state_t fr_retry_next(fr_retry_t *r, fr_time_t now)
 {
-	fr_time_delta_t scale, rt;
-	uint128_t	delay;
+	uint64_t		scale;
+	fr_time_delta_t		rt;
+	uint128_t		delay;
 
 	/*
 	 *	Increment retransmission counter
@@ -95,7 +97,7 @@ redo:
 	/*
 	 *	Cap delay at MRD
 	 */
-	if (r->config->mrd) {
+	if (fr_time_delta_ispos(r->config->mrd)) {
 		fr_time_t end;
 
 		end = fr_time_add(r->start, r->config->mrd);
@@ -116,11 +118,11 @@ redo:
 	 *	   = RTprev * (2 + RAND)
 	 */
 	scale = fr_rand();
-	scale -= ((fr_time_delta_t) 1) << 31; /* scale it -2^31..+2^31 */
-	scale += ((fr_time_delta_t) 1) << 33; /* multiple it by 2 * 2^32 */
+	scale -= ((uint64_t) 1) << 31; /* scale it -2^31..+2^31 */
+	scale += ((uint64_t) 1) << 33; /* multiple it by 2 * 2^32 */
 
-	delay = uint128_mul64(scale, r->rt);
-	rt = uint128_to_64(uint128_rshift(delay, 32));
+	delay = uint128_mul64(scale, fr_time_delta_unwrap(r->rt));
+	rt = fr_time_delta_wrap(uint128_to_64(uint128_rshift(delay, 32)));
 
 	/*
 	 *	Cap delay at MRT.
@@ -128,13 +130,13 @@ redo:
 	 *	RT = MRT + RAND * MRT
 	 *	   = MRT * (1 + RAND)
 	 */
-	if (r->config->mrt && (rt > r->config->mrt)) {
+	if (fr_time_delta_ispos(r->config->mrt) && (fr_time_delta_gt(rt, r->config->mrt))) {
 		scale = fr_rand();
-		scale -= ((fr_time_delta_t) 1) << 31; /* scale it -2^31..+2^31 */
-		scale += ((fr_time_delta_t) 1) << 32; /* multiple it by 1 * 2^32 */
+		scale -= ((uint64_t) 1) << 31; /* scale it -2^31..+2^31 */
+		scale += ((uint64_t) 1) << 32; /* multiple it by 1 * 2^32 */
 
-		delay = uint128_mul64(scale, r->config->mrt);
-		rt = uint128_to_64(uint128_rshift(delay, 32));
+		delay = uint128_mul64(scale, fr_time_delta_unwrap(r->config->mrt));
+		rt = fr_time_delta_wrap(uint128_to_64(uint128_rshift(delay, 32)));
 	}
 
 	/*
@@ -158,7 +160,7 @@ redo:
 	 *	i.e. if we weren't serviced for one event, just skip
 	 *	it, and go to the next one.
 	 */
-	if (fr_time_lt(fr_time_add(r->next, (rt / 2)), now)) goto redo;
+	if (fr_time_lt(fr_time_add(r->next, fr_time_delta_wrap((fr_time_delta_unwrap(rt) / 2))), now)) goto redo;
 
 	return FR_RETRY_CONTINUE;
 }

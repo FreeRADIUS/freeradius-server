@@ -427,7 +427,7 @@ static void fr_network_unsuspend(fr_network_t *nr)
 }
 
 #define IALPHA (8)
-#define RTT(_old, _new) ((_new + ((IALPHA - 1) * _old)) / IALPHA)
+#define RTT(_old, _new) fr_time_delta_wrap((fr_time_delta_unwrap(_new) + (fr_time_delta_unwrap(_old) * (IALPHA - 1))) / IALPHA)
 
 /** Callback which handles a message being received on the network side.
  *
@@ -448,7 +448,7 @@ static void fr_network_recv_reply(void *ctx, fr_channel_t *ch, fr_channel_data_t
 	worker = fr_channel_requestor_uctx_get(ch);
 	worker->stats.out++;
 	worker->cpu_time = cd->reply.cpu_time;
-	if (worker->predicted == 0) {
+	if (!fr_time_delta_ispos(worker->predicted)) {
 		worker->predicted = cd->reply.processing_time;
 	} else {
 		worker->predicted = RTT(worker->predicted, cd->reply.processing_time);
@@ -574,14 +574,14 @@ retry:
 			two = fr_rand() % nr->num_workers;
 		} while (two == one);
 
-		if (nr->workers[one]->cpu_time < nr->workers[two]->cpu_time) {
+		if (fr_time_delta_lt(nr->workers[one]->cpu_time, nr->workers[two]->cpu_time)) {
 			worker = nr->workers[one];
 		} else {
 			worker = nr->workers[two];
 		}
 	} else {
 		int i;
-		fr_time_delta_t cpu_time = ~((fr_time_delta_t) 0);
+		fr_time_delta_t cpu_time = fr_time_delta_max();
 		fr_network_worker_t *found = NULL;
 
 		/*
@@ -592,7 +592,7 @@ retry:
 			worker = nr->workers[i];
 			if (worker->blocked) continue;
 
-			if (worker->cpu_time < cpu_time) {
+			if (fr_time_delta_lt(worker->cpu_time, cpu_time)) {
 				found = worker;
 			}
 		}
@@ -652,7 +652,7 @@ retry:
 	 *	updated with a more accurate number when we receive a
 	 *	reply from this channel.
 	 */
-	worker->cpu_time += worker->predicted;
+	worker->cpu_time = fr_time_delta_add(worker->cpu_time, worker->predicted);
 
 	return 0;
 }

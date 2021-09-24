@@ -435,7 +435,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	/*
 	 *	Check if check item > counter
 	 */
-	if (limit->vp_uint64 <= (uint64_t)fr_time_delta_from_sec(counter)) {
+	if (limit->vp_uint64 <= counter) {
 		fr_pair_t *vp;
 
 		/* User is denied access, send back a reply message */

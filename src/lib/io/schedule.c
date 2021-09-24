@@ -328,8 +328,9 @@ static void *fr_schedule_network_thread(void *arg)
 	/*
 	 *	Print out statistics for this network IO handler.
 	 */
-	if (sc->config->stats_interval) (void) fr_event_timer_in(sn, el, &sn->ev, sn->sc->config->stats_interval, stats_timer, sn);
-
+	if (fr_time_delta_ispos(sc->config->stats_interval)) {
+		(void) fr_event_timer_in(sn, el, &sn->ev, sn->sc->config->stats_interval, stats_timer, sn);
+	}
 	/*
 	 *	Call the main event processing loop of the network
 	 *	thread Will not return until the worker is about

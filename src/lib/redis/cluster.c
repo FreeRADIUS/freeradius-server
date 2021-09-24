@@ -1889,7 +1889,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 
 		if (!*conn) *conn = fr_pool_connection_get(state->node->pool, request);
 
-		if (cluster->conf->retry_delay) nanosleep(&fr_time_delta_to_timespec(cluster->conf->retry_delay), NULL);
+		if (fr_time_delta_ispos(cluster->conf->retry_delay)) nanosleep(&fr_time_delta_to_timespec(cluster->conf->retry_delay), NULL);
 		goto try_again;
 
 	/*

@@ -287,7 +287,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 #if (MYSQL_VERSION_ID >= 50000)
 	mysql_options(&(conn->db), MYSQL_OPT_CONNECT_TIMEOUT, &connect_timeout);
 
-	if (config->query_timeout) {
+	if (fr_time_delta_ispos(config->query_timeout)) {
 		unsigned int read_timeout = fr_time_delta_to_sec(config->query_timeout);
 		unsigned int write_timeout = fr_time_delta_to_sec(config->query_timeout);
 

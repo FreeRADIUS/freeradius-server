@@ -289,7 +289,7 @@ static int fr_channel_data_ready(fr_channel_t *ch, fr_time_t when, fr_channel_en
 }
 
 #define IALPHA (8)
-#define RTT(_old, _new) ((_new + ((IALPHA - 1) * _old)) / IALPHA)
+#define RTT(_old, _new) fr_time_delta_wrap((fr_time_delta_unwrap(_new) + (fr_time_delta_unwrap(_old) * (IALPHA - 1))) / IALPHA)
 
 /** Send a request message into the channel
  *
@@ -341,7 +341,7 @@ int fr_channel_send_request(fr_channel_t *ch, fr_channel_data_t *cd)
 	requestor->sequence = sequence;
 	message_interval = fr_time_sub(when, requestor->stats.last_write);
 
-	if (!requestor->stats.message_interval) {
+	if (fr_time_delta_ispos(requestor->stats.message_interval)) {
 		requestor->stats.message_interval = message_interval;
 	} else {
 		requestor->stats.message_interval = RTT(requestor->stats.message_interval, message_interval);
@@ -435,7 +435,7 @@ bool fr_channel_recv_reply(fr_channel_t *ch)
 	 *	NAKs have zero processing time, so we ignore them for
 	 *	the purpose of RTT.
 	 */
-	if (cd->reply.processing_time) {
+	if (fr_time_delta_ispos(cd->reply.processing_time)) {
 		ch->processing_time = RTT(ch->processing_time, cd->reply.processing_time);
 	}
 	ch->cpu_time = cd->reply.cpu_time;
@@ -968,7 +968,7 @@ void fr_channel_stats_log(fr_channel_t const *ch, fr_log_t const *log, char cons
 	fr_log(log, L_INFO, file, line, "\tkevents checked = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.kevents);
 	fr_log(log, L_INFO, file, line, "\toutstanding = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.outstanding);
 	fr_log(log, L_INFO, file, line, "\tpackets processed = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.packets);
-	fr_log(log, L_INFO, file, line, "\tmessage interval (RTT) = %" PRIu64 "\n", ch->end[TO_RESPONDER].stats.message_interval);
+	fr_log(log, L_INFO, file, line, "\tmessage interval (RTT) = %" PRIu64 "\n", fr_time_delta_unwrap(ch->end[TO_RESPONDER].stats.message_interval));
 	fr_log(log, L_INFO, file, line, "\tlast write = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_RESPONDER].stats.last_read_other));
 	fr_log(log, L_INFO, file, line, "\tlast read other end = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_RESPONDER].stats.last_read_other));
 	fr_log(log, L_INFO, file, line, "\tlast signal other = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_RESPONDER].stats.last_sent_signal));
@@ -977,7 +977,7 @@ void fr_channel_stats_log(fr_channel_t const *ch, fr_log_t const *log, char cons
 	fr_log(log, L_INFO, file, line, "\tsignals sent = %" PRIu64"\n", ch->end[TO_REQUESTOR].stats.signals);
 	fr_log(log, L_INFO, file, line, "\tkevents checked = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.kevents);
 	fr_log(log, L_INFO, file, line, "\tpackets processed = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.packets);
-	fr_log(log, L_INFO, file, line, "\tmessage interval (RTT) = %" PRIu64 "\n", ch->end[TO_REQUESTOR].stats.message_interval);
+	fr_log(log, L_INFO, file, line, "\tmessage interval (RTT) = %" PRIu64 "\n", fr_time_delta_unwrap(ch->end[TO_REQUESTOR].stats.message_interval));
 	fr_log(log, L_INFO, file, line, "\tlast write = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_read_other));
 	fr_log(log, L_INFO, file, line, "\tlast read other end = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_read_other));
 	fr_log(log, L_INFO, file, line, "\tlast signal other = %" PRIu64 "\n", fr_time_unwrap(ch->end[TO_REQUESTOR].stats.last_sent_signal));

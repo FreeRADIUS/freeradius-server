@@ -112,7 +112,7 @@ do { \
 	for (_parent = (_tt)->parent; _parent; _parent = _parent->parent) { \
 		_parent->_event = _now; \
 		_parent->last_changed = _now; \
-		_parent->running_total += _run_time; \
+		_parent->running_total = fr_time_delta_add(_parent->running_total, _run_time); \
 	} \
 } while (0)
 
@@ -125,7 +125,7 @@ do { \
 	for (_parent = (_tt)->parent; _parent; _parent = _parent->parent){ \
 		_parent->_event = _now; \
 		_parent->last_changed = _now; \
-		_parent->waiting_total += _wait_time; \
+		_parent->waiting_total = fr_time_delta_add(_parent->waiting_total, _wait_time); \
 	} \
 } while (0)
 
@@ -199,7 +199,7 @@ static inline CC_HINT(nonnull) void fr_time_tracking_pop(fr_time_tracking_t *tt,
 	run_time = fr_time_sub(now, tt->last_changed);
 	tt->last_changed = tt->parent->ended = now;
 
-	tt->running_total += run_time;
+	tt->running_total = fr_time_delta_add(tt->running_total, run_time);
 	UPDATE_PARENT_RUN_TIME(tt, run_time, last_changed, now);
 
 	tt->parent = tt->parent->parent;
@@ -221,7 +221,7 @@ static inline CC_HINT(nonnull) void fr_time_tracking_yield(fr_time_tracking_t *t
 	tt->last_yielded = tt->last_changed = now;
 
 	run_time = fr_time_sub(now, tt->last_resumed);
-	tt->running_total += run_time;
+	tt->running_total = fr_time_delta_add(tt->running_total, run_time);
 	UPDATE_PARENT_RUN_TIME(tt, run_time, last_yielded, now);
 }
 
@@ -241,12 +241,12 @@ static inline CC_HINT(nonnull) void fr_time_tracking_resume(fr_time_tracking_t *
 	tt->last_resumed = tt->last_changed = now;
 
 	wait_time = fr_time_sub(now, tt->last_yielded);
-	tt->waiting_total += wait_time;
+	tt->waiting_total = fr_time_delta_add(tt->waiting_total, wait_time);
 	UPDATE_PARENT_WAIT_TIME(tt, wait_time, last_resumed, now);
 }
 
 #define IALPHA (8)
-#define RTT(_old, _new) ((_new + ((IALPHA - 1) * _old)) / IALPHA)
+#define RTT(_old, _new) fr_time_delta_wrap((fr_time_delta_unwrap(_new) + (fr_time_delta_unwrap(_old) * (IALPHA - 1))) / IALPHA)
 
 /** End time tracking for this entity
  *
@@ -266,10 +266,13 @@ static inline void fr_time_tracking_end(fr_time_delta_t *predicted,
 	tt->ended = tt->last_changed = now;
 
 	run_time = fr_time_sub(now, tt->last_resumed);
-	tt->running_total += run_time;
+	tt->running_total = fr_time_delta_add(tt->running_total, run_time);
 	UPDATE_PARENT_RUN_TIME(tt, run_time, ended, now);
 
-	if (predicted) *predicted = !(*predicted) ? tt->running_total : RTT((*predicted), tt->running_total);
+	if (predicted) {
+		*predicted = !fr_time_delta_ispos(*predicted) ?
+			tt->running_total : RTT((*predicted), tt->running_total);
+	}
 
 	tt->parent = NULL;
 }
@@ -282,7 +285,7 @@ static inline void fr_time_tracking_end(fr_time_delta_t *predicted,
 static inline CC_HINT(nonnull) void fr_time_tracking_debug(fr_time_tracking_t *tt, FILE *fp)
 {
 #define DPRINT_TIME(_x) fprintf(fp, "\t" #_x " = %"PRIu64"\n", fr_time_unwrap(tt->_x));
-#define DPRINT(_x) fprintf(fp, "\t" #_x " = %"PRIu64"\n", tt->_x);
+#define DPRINT(_x) fprintf(fp, "\t" #_x " = %"PRIu64"\n", fr_time_delta_unwrap(tt->_x));
 
 	DPRINT_TIME(started);
 	DPRINT_TIME(ended);

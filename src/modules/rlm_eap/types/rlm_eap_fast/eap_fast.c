@@ -170,7 +170,7 @@ static void eap_fast_send_pac_tunnel(request_t *request, fr_tls_session_t *tls_s
 
 	pac.info.lifetime.hdr.type = htons(attr_eap_fast_pac_info_pac_lifetime->attr);
 	pac.info.lifetime.hdr.length = htons(sizeof(pac.info.lifetime.data));
-	pac.info.lifetime.data = htonl(fr_time_to_sec(request->packet->timestamp) + t->pac_lifetime);
+	pac.info.lifetime.data = htonl(fr_time_to_sec(fr_time_add(request->packet->timestamp, t->pac_lifetime)));
 
 	pac.info.a_id.hdr.type = htons(EAP_FAST_TLV_MANDATORY | attr_eap_fast_pac_a_id->attr);
 	pac.info.a_id.hdr.length = htons(sizeof(pac.info.a_id.data));
@@ -944,7 +944,8 @@ fr_radius_packet_code_t eap_fast_process(request_t *request, eap_session_t *eap_
 			 *	Send a new pac at 60% of the lifetime,
 			 *	or if the PAC has expired, or if no lifetime was set.
 			 */
-			renew = fr_time_add(request->packet->timestamp, ((t->pac_lifetime * 3) / 5));
+			renew = fr_time_add(request->packet->timestamp,
+					    fr_time_delta_wrap((fr_time_delta_unwrap(t->pac_lifetime) * 3) / 5));
 
 			if (t->pac.expired || fr_time_eq(t->pac.expires, fr_time_wrap(0)) ||
 			     fr_time_lteq(t->pac.expires, renew)) {

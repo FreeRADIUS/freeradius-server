@@ -1853,9 +1853,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	 *	No dynamic clients AND no packet cleanups?  We don't
 	 *	need timers.
 	 */
-	if (!inst->dynamic_clients && !inst->cleanup_delay) {
-		return;
-	}
+	if (inst->dynamic_clients && !fr_time_delta_ispos(inst->cleanup_delay)) return;
 
 	/*
 	 *	Set event list and network side for this socket.
@@ -1904,7 +1902,8 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 		case PR_CLIENT_DYNAMIC:
 			delay = inst->idle_timeout;
-			if (client->radclient->limit.idle_timeout && (client->radclient->limit.idle_timeout < inst->idle_timeout)) {
+			if (fr_time_delta_ispos(client->radclient->limit.idle_timeout) &&
+			    (fr_time_delta_lt(client->radclient->limit.idle_timeout, inst->idle_timeout))) {
 				delay = client->radclient->limit.idle_timeout;
 			}
 			break;
@@ -2084,7 +2083,7 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	On duplicates this also extends the expiry timer.
 	 */
 	if (fr_time_eq(now, fr_time_wrap(0)) && !track->discard && inst->app_io->track_duplicates) {
-		fr_assert(inst->cleanup_delay > 0);
+		fr_assert(fr_time_delta_ispos(inst->cleanup_delay));
 		fr_assert(track->do_not_respond || track->reply_len);
 
 		track->expires = fr_time_add(fr_time(), inst->cleanup_delay);
@@ -2096,8 +2095,8 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		 */
 		if (fr_event_timer_at(track, el, &track->ev,
 				      track->expires, packet_expiry_timer, track) == 0) {
-			DEBUG("proto_%s - cleaning up request in %d.%06ds", inst->app_io->name,
-			      (int) (inst->cleanup_delay / NSEC), (int) (inst->cleanup_delay % NSEC));
+			DEBUG("proto_%s - cleaning up request in %.6fs", inst->app_io->name,
+			      fr_time_delta_unwrap(inst->cleanup_delay) / (double)NSEC);
 			return;
 		}
 
@@ -2566,7 +2565,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	If we are tracking duplicates, then we must have a non-zero cleanup delay.
 	 */
 	if (!inst->app_io->track_duplicates) {
-		inst->cleanup_delay = 0;
+		inst->cleanup_delay = fr_time_delta_wrap(0);
 
 	} else {
 		FR_TIME_DELTA_BOUND_CHECK("cleanup_delay", inst->cleanup_delay, >=, fr_time_delta_from_sec(1));

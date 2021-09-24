@@ -667,7 +667,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		return -1;
 	}
 
-	if (!inst->pac_lifetime) {
+	if (!fr_time_delta_ispos(inst->pac_lifetime)) {
 		cf_log_err_by_child(cs, "pac_lifetime", "must be non-zero");
 		return -1;
 	}

@@ -50,7 +50,7 @@ static int _eap_session_free(eap_session_t *eap_session)
 	 *	retransmit which nukes our ID, and therefore our state.
 	 */
 	if (((request && RDEBUG_ENABLED) || (!request && DEBUG_ENABLED)) &&
-	    (eap_session->tls && !eap_session->finished && (fr_time_sub(fr_time(), eap_session->updated) > fr_time_delta_from_sec(3)))) {
+	    (eap_session->tls && !eap_session->finished && fr_time_delta_gt(fr_time_sub(fr_time(), eap_session->updated), fr_time_delta_from_sec(3)))) {
 		ROPTIONAL(RWDEBUG, WARN, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		ROPTIONAL(RWDEBUG, WARN, "!! EAP session %016" PRIxPTR " did not finish!                   !!",
 			  (uintptr_t)eap_session);
