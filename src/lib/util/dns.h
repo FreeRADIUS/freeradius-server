@@ -35,7 +35,7 @@ ssize_t		fr_dns_label_uncompressed_length(uint8_t const *buf, size_t buf_len, ui
 
 ssize_t		fr_dns_label_network_length(uint8_t const *buf, size_t buf_len);
 
-ssize_t		fr_dns_labels_network_verify(uint8_t const *buf, size_t buf_len);
+ssize_t		fr_dns_labels_network_verify(uint8_t const *buf, size_t buf_len, uint8_t const *start) CC_HINT(nonnull);
 
 ssize_t		fr_dns_label_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *dst,
 					    uint8_t const *src, size_t len, uint8_t const *label,

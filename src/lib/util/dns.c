@@ -932,17 +932,18 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *buf, size_t buf_len, uin
  *
  * @param[in] buf	buffer holding one or more DNS labels
  * @param[in] buf_len	total length of the buffer
+ * @param[in] start	where to start looking
  * @return
  *	- <=0 on error, where in the buffer the invalid label is located.
  *	- > 0 total size of the encoded label(s).  Will be <= buf_len
  */
-ssize_t fr_dns_labels_network_verify(uint8_t const *buf, size_t buf_len)
+ssize_t fr_dns_labels_network_verify(uint8_t const *buf, size_t buf_len, uint8_t const *start)
 {
 	ssize_t slen;
-	uint8_t const *label;
+	uint8_t const *label = start;
 	uint8_t const *end = buf + buf_len;
 
-	for (label = buf; label < end; /* nothing */) {
+	while (label < end) {
 		if (*label == 0x00) {
 			label++;
 			break;
@@ -992,7 +993,7 @@ static ssize_t dns_label_decode(uint8_t const *buf, uint8_t const **start, uint8
  *
  * The output type is always FR_TYPE_STRING
  *
- * Note that the caller MUST call fr_dns_labels_network_verify(src, len)
+ * Note that the caller MUST call fr_dns_labels_network_verify(src, len, start)
  * before calling this function.  Otherwise bad things will happen.
  *
  * @param[in] ctx	Where to allocate any talloc buffers required.

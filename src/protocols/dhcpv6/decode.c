@@ -393,7 +393,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_
 		 *	If any of the labels point outside of this
 		 *	area, OR they are otherwise invalid, then that's an error.
 		 */
-		slen = fr_dns_labels_network_verify(data, data_len);
+		slen = fr_dns_labels_network_verify(data, data_len, data);
 		if (slen < 0) {
 		raw:
 			return decode_raw(ctx, cursor, dict, parent, data, data_len, decode_ctx);
