@@ -250,17 +250,27 @@ DIAG_ON(unused-macros)
 	do_ldap_option(LDAP_OPT_PROTOCOL_VERSION, "ldap_version", &ldap_version);
 
 #ifdef LDAP_OPT_X_KEEPALIVE_IDLE
-	do_ldap_option(LDAP_OPT_X_KEEPALIVE_IDLE, "keepalive_idle",
-		       &fr_time_delta_to_timeval(config->keepalive_idle));
+	{
+		int keepalive = fr_time_delta_to_sec(config->keepalive_idle);
+
+		do_ldap_option(LDAP_OPT_X_KEEPALIVE_IDLE, "keepalive_idle", &keepalive);
+	}
 #endif
 
 #ifdef LDAP_OPT_X_KEEPALIVE_PROBES
-	do_ldap_option(LDAP_OPT_X_KEEPALIVE_PROBES, "keepalive_probes", config->keepalive_probes);
+	{
+		int probes = config->keepalive_probes;
+
+		do_ldap_option(LDAP_OPT_X_KEEPALIVE_PROBES, "keepalive_probes", &probes);
+	}
 #endif
 
 #ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
-	do_ldap_option(LDAP_OPT_X_KEEPALIVE_INTERVAL, "keepalive_interval",
-		       fr_time_delta_to_sec(config->keepalive_interval));
+	{
+		int keepalive = fr_time_delta_to_sec(config->keepalive_interval);
+
+		do_ldap_option(LDAP_OPT_X_KEEPALIVE_INTERVAL, "keepalive_interval", &keepalive);
+	}
 #endif
 
 #ifdef HAVE_LDAP_START_TLS_S
