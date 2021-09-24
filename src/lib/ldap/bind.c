@@ -76,7 +76,8 @@ static void _ldap_bind_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 	/*
 	 *	We're I/O driven, if there's no data someone lied to us
 	 */
-	status = fr_ldap_result(NULL, NULL, c, bind_ctx->msgid, LDAP_MSG_ALL, bind_ctx->bind_dn, 0);
+	status = fr_ldap_result(NULL, NULL, c, bind_ctx->msgid, LDAP_MSG_ALL,
+				bind_ctx->bind_dn, fr_time_delta_wrap(0));
 	talloc_free(bind_ctx);			/* Also removes fd events */
 
 	switch (status) {
@@ -126,7 +127,7 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 	 *	Set timeout to be 0.0, which is the magic
 	 *	non-blocking value.
 	 */
-	(void) ldap_set_option(c->handle, LDAP_OPT_NETWORK_TIMEOUT, &fr_time_delta_to_timeval(0));
+	(void) ldap_set_option(c->handle, LDAP_OPT_NETWORK_TIMEOUT, &fr_time_delta_to_timeval(fr_time_delta_wrap(0)));
 
 	if (bind_ctx->password) {
 		memcpy(&cred.bv_val, &bind_ctx->password, sizeof(cred.bv_val));

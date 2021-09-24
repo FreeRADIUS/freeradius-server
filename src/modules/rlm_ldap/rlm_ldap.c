@@ -896,7 +896,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 			      &conn,
 			      dn, password->vp_strvalue,
 			      inst->user_sasl.mech ? &sasl : NULL,
-			      0,
+			      fr_time_delta_wrap(0),
 			      NULL, NULL);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
@@ -1138,7 +1138,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 			 *	Bind as the user
 			 */
 			conn->rebound = true;
-			status = fr_ldap_bind(request, &conn, dn, vp->vp_strvalue, NULL, 0, NULL, NULL);
+			status = fr_ldap_bind(request, &conn, dn, vp->vp_strvalue, NULL,
+					      fr_time_delta_wrap(0), NULL, NULL);
 			switch (status) {
 			case LDAP_PROC_SUCCESS:
 				rcode = RLM_MODULE_OK;

@@ -1015,7 +1015,7 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 			      &inst->conn,
 			      inst->conn->config->admin_identity, inst->conn->config->admin_password,
 			      &(inst->conn->config->admin_sasl),
-			      0,
+			      fr_time_delta_wrap(0),
 			      NULL, NULL);
 	if (status != LDAP_PROC_SUCCESS) goto error;
 
