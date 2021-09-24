@@ -127,7 +127,8 @@ static void _ldap_sasl_bind_io_read(fr_event_list_t *el, int fd, UNUSED int flag
 	 *	If LDAP parse result indicates there was an error
 	 *	then we're done.
 	 */
-	status = fr_ldap_result(&sasl_ctx->result, NULL, c, sasl_ctx->msgid, LDAP_MSG_ALL, sasl_ctx->identity, 0);
+	status = fr_ldap_result(&sasl_ctx->result, NULL, c, sasl_ctx->msgid, LDAP_MSG_ALL,
+				sasl_ctx->identity, fr_time_delta_wrap(0));
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 	case LDAP_PROC_CONTINUE:
