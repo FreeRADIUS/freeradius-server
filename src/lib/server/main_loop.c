@@ -175,7 +175,7 @@ void main_loop_set_sd_watchdog_interval(void)
 		 *	and set the interval to be half what
 		 *	systemd uses as its timeout value.
 		 */
-		sd_watchdog_interval = ((interval_usec * 1000) / 2);
+		sd_watchdog_interval = fr_time_delta_wrap((interval_usec * 1000) / 2);
 
 		INFO("systemd watchdog interval is %pVs", fr_box_time_delta(sd_watchdog_interval));
 	} else {
