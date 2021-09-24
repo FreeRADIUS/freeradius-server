@@ -24,6 +24,8 @@
 **** xref:unlang/switch.adoc[switch]
 **** xref:unlang/update.adoc[update]
 
+*** xref:unlang/interpreter.adoc[Interpreter]
+
 *** xref:unlang/module.adoc[Modules]
 **** xref:unlang/module_method.adoc[Module Methods]
 **** xref:unlang/module_builtin.adoc[Built-in Modules]
