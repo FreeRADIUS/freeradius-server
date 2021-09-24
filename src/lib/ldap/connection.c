@@ -448,6 +448,7 @@ static fr_connection_state_t _ldap_connection_init(void **h, fr_connection_t *co
 	fr_ldap_state_t		state;
 
 	c = fr_ldap_connection_alloc(conn);
+	c->conn = conn;
 
 	/*
 	 *	Configure/allocate the libldap handle
@@ -478,7 +479,7 @@ static fr_connection_state_t _ldap_connection_init(void **h, fr_connection_t *co
  * @param[in] log_prefix	to prepend to connection state messages.
  */
 fr_connection_t	*fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-					        fr_ldap_config_t const *config, char *log_prefix)
+					        fr_ldap_config_t const *config, char const *log_prefix)
 {
 	fr_connection_t *conn;
 
@@ -492,7 +493,10 @@ fr_connection_t	*fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_list_t
 				   	.reconnection_delay = config->reconnection_delay
 				   },
 				   log_prefix, config);
-	if (!conn) return NULL;
+	if (!conn) {
+		PERROR("Failed allocating state handler for new LDAP connection");
+		return NULL;
+	}
 
 	return conn;
 }

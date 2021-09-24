@@ -76,13 +76,11 @@ static void _ldap_bind_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 	/*
 	 *	We're I/O driven, if there's no data someone lied to us
 	 */
-	status = fr_ldap_result(NULL, NULL, c, bind_ctx->msgid, LDAP_MSG_ALL,
-				bind_ctx->bind_dn, fr_time_delta_wrap(0));
-	talloc_free(bind_ctx);			/* Also removes fd events */
-
+	status = fr_ldap_result(NULL, NULL, c, bind_ctx->msgid, LDAP_MSG_ALL, bind_ctx->bind_dn, fr_time_delta_wrap(0));
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
-		DEBUG("Bind successful");
+		DEBUG("Bind as \"%s\" to \"%s\" successful",
+		      *bind_ctx->bind_dn? bind_ctx->bind_dn : "(anonymous)", c->config->server);
 		fr_ldap_state_next(c);		/* onto the next operation */
 		break;
 
@@ -98,9 +96,10 @@ static void _ldap_bind_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 		fr_ldap_state_error(c);		/* Restart the connection state machine */
 		break;
 	}
+	talloc_free(bind_ctx);			/* Also removes fd events */
 }
 
-/** Send a bind request to a aserver
+/** Send a bind request to a server
  *
  * @param[in] el	the event occurred in.
  * @param[in] fd	the event occurred on.
@@ -122,12 +121,6 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 			      NUM_ELEMENTS(our_serverctrls),
 			      NUM_ELEMENTS(our_clientctrls),
 			      c, bind_ctx->serverctrls, bind_ctx->clientctrls);
-
-	/*
-	 *	Set timeout to be 0.0, which is the magic
-	 *	non-blocking value.
-	 */
-	(void) ldap_set_option(c->handle, LDAP_OPT_NETWORK_TIMEOUT, &fr_time_delta_to_timeval(fr_time_delta_wrap(0)));
 
 	if (bind_ctx->password) {
 		memcpy(&cred.bv_val, &bind_ctx->password, sizeof(cred.bv_val));
@@ -170,6 +163,11 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 		break;
 
 	case LDAP_SUCCESS:
+		if (fd < 0 ) {
+			ret = ldap_get_option(c->handle, LDAP_OPT_DESC, &fd);
+			if ((ret != LDAP_OPT_SUCCESS) || (fd < 0)) goto error;
+		}
+		c->fd = fd;
 		ret = fr_event_fd_insert(bind_ctx, el, fd,
 					 _ldap_bind_io_read,
 					 NULL,
@@ -220,7 +218,11 @@ int fr_ldap_bind_async(fr_ldap_connection_t *c,
 
 	el = c->conn->el;
 
-	if (ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) == LDAP_SUCCESS) {
+	/*
+	 *	ldap_get_option can return a LDAP_SUCCESS even if the fd is not yet available
+	 *	- hence the test for fd >= 0
+	 */
+	if ((ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) == LDAP_SUCCESS) && (fd >= 0)) {
 		int ret;
 
 		ret = fr_event_fd_insert(bind_ctx, el, fd,
@@ -233,6 +235,11 @@ int fr_ldap_bind_async(fr_ldap_connection_t *c,
 			return -1;
 		}
 	} else {
+	/*
+	 *	Connections initialised with ldap_init() do not have a fd until
+	 *	the first request (usually bind) occurs - so this code path
+	 *	starts the bind process to open the connection.
+	 */
 		_ldap_bind_io_write(el, -1, 0, bind_ctx);
 	}
 
