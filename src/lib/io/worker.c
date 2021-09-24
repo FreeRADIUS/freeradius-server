@@ -338,7 +338,7 @@ static void worker_nak(fr_worker_t *worker, fr_channel_data_t *cd, fr_time_t now
 	 */
 	reply->m.when = now;
 	reply->reply.cpu_time = worker->tracking.running_total;
-	reply->reply.processing_time = 10; /* @todo - set to something better? */
+	reply->reply.processing_time = fr_time_delta_from_sec(10); /* @todo - set to something better? */
 	reply->reply.request_time = cd->request.recv_time;
 
 	reply->listen = cd->listen;
@@ -409,9 +409,8 @@ static void worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t
 
 		REQUEST_VERIFY(request);
 
-		cleanup = request->async->recv_time;
-		cleanup += worker->config.max_request_time;
-		if (cleanup > now) break;
+		cleanup = fr_time_add(request->async->recv_time, worker->config.max_request_time);
+		if (fr_time_gt(cleanup, now)) break;
 
 		/*
 		 *	Waiting too long, delete it.
@@ -442,8 +441,7 @@ static void worker_max_request_timer(fr_worker_t *worker)
 	request = fr_heap_peek_tail(worker->time_order);
 	if (!request) return;
 
-	cleanup = request->async->recv_time;
-	cleanup += worker->config.max_request_time;
+	cleanup = fr_time_add(request->async->recv_time, worker->config.max_request_time);
 
 	DEBUG2("Resetting cleanup timer to +%pV", fr_box_time_delta(worker->config.max_request_time));
 	if (fr_event_timer_at(worker, worker->el, &worker->ev_cleanup,
@@ -581,7 +579,7 @@ static void worker_send_reply(fr_worker_t *worker, request_t *request, size_t si
 	/*
 	 *	Update the various timers.
 	 */
-	fr_time_elapsed_update(&worker->cpu_time, now, now + reply->reply.processing_time);
+	fr_time_elapsed_update(&worker->cpu_time, now, fr_time_add(now, reply->reply.processing_time));
 	fr_time_elapsed_update(&worker->wall_clock, reply->reply.request_time, now);
 
 	RDEBUG("Finished request");
@@ -779,7 +777,7 @@ nak:
 		 *	@todo - fix the channel code to do queue
 		 *	depth, and not sequence / ack.
 		 */
-		if (old->async->recv_time == request->async->recv_time) {
+		if (fr_time_eq(old->async->recv_time, request->async->recv_time)) {
 			RWARN("Discarding duplicate of request (%"PRIu64")", old->number);
 
 			fr_channel_null_reply(request->async->channel);
@@ -831,7 +829,7 @@ static int8_t worker_runnable_cmp(void const *one, void const *two)
 	ret = CMP(a->async->sequence, b->async->sequence);
 	if (ret != 0) return ret;
 
-	return CMP(a->async->recv_time, b->async->recv_time);
+	return fr_time_cmp(a->async->recv_time, b->async->recv_time);
 }
 
 /**
@@ -841,7 +839,7 @@ static int8_t worker_time_order_cmp(void const *one, void const *two)
 {
 	request_t const *a = one, *b = two;
 
-	return CMP(a->async->recv_time, b->async->recv_time);
+	return fr_time_cmp(a->async->recv_time, b->async->recv_time);
 }
 
 /**
@@ -1168,7 +1166,7 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
 	 *	event loop fewer times per second, instead of after
 	 *	every request.
 	 */
-	while (((now - start) < (NSEC / 100000)) &&
+	while (fr_time_delta_lt(fr_time_sub(now, start), fr_time_delta_wrap(NSEC / 100000)) &&
 	       ((request = fr_heap_pop(worker->runnable)) != NULL)) {
 
 		REQUEST_VERIFY(request);
@@ -1225,12 +1223,18 @@ nomem:
 		if (worker->config._x > _max) worker->config._x = _max; \
        } while (0)
 
+#define CHECK_CONFIG_TIME_DELTA(_x, _min, _max) do { \
+		if (fr_time_delta_ispos(worker->config._x)) worker->config._x = _min; \
+		if (fr_time_delta_lt(worker->config._x, _min)) worker->config._x = _min; \
+		if (fr_time_delta_gt(worker->config._x, _max)) worker->config._x = _max; \
+       } while (0)
+
 	CHECK_CONFIG(max_requests,1024,(1 << 30));
 	CHECK_CONFIG(max_channels, 64, 1024);
 	CHECK_CONFIG(talloc_pool_size, 4096, 65536);
 	CHECK_CONFIG(message_set_size, 1024, 8192);
 	CHECK_CONFIG(ring_buffer_size, (1 << 17), (1 << 20));
-	CHECK_CONFIG(max_request_time, fr_time_delta_from_sec(30), fr_time_delta_from_sec(60));
+	CHECK_CONFIG_TIME_DELTA(max_request_time, fr_time_delta_from_sec(30), fr_time_delta_from_sec(60));
 
 	worker->channel = talloc_zero_array(worker, fr_channel_t *, worker->config.max_channels);
 	if (!worker->channel) {
@@ -1370,7 +1374,7 @@ void fr_worker(fr_worker_t *worker)
  *
  *	This should be run ONLY in single-threaded mode!
  */
-int fr_worker_pre_event(UNUSED fr_time_t wake, void *uctx)
+int fr_worker_pre_event(UNUSED fr_time_t now, UNUSED fr_time_delta_t wake, void *uctx)
 {
 	fr_worker_t *worker = talloc_get_type_abort(uctx, fr_worker_t);
 	request_t *request;
@@ -1411,9 +1415,9 @@ void fr_worker_debug(fr_worker_t *worker, FILE *fp)
 	fprintf(fp, "\tstats.in = %" PRIu64 "\n", worker->stats.in);
 
 	fprintf(fp, "\tcalculated (predicted) total CPU time = %" PRIu64 "\n",
-		worker->predicted * worker->stats.in);
+		fr_time_delta_unwrap(worker->predicted) * worker->stats.in);
 	fprintf(fp, "\tcalculated (counted) per request time = %" PRIu64 "\n",
-		worker->tracking.running_total / worker->stats.in);
+		fr_time_delta_unwrap(worker->tracking.running_total) / worker->stats.in);
 
 	fr_time_tracking_debug(&worker->tracking, fp);
 
@@ -1507,7 +1511,7 @@ int fr_worker_stats(fr_worker_t const *worker, int num, uint64_t *stats)
 static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
 {
 	fr_worker_t const *worker = ctx;
-	fr_time_t when;
+	fr_time_delta_t when;
 
 	if ((info->argc == 0) || (strcmp(info->argv[0], "count") == 0)) {
 		fprintf(fp, "count.in\t\t\t%" PRIu64 "\n", worker->stats.in);
@@ -1521,17 +1525,17 @@ static int cmd_stats_worker(FILE *fp, UNUSED FILE *fp_err, void *ctx, fr_cmd_inf
 
 	if ((info->argc == 0) || (strcmp(info->argv[0], "cpu") == 0)) {
 		when = worker->predicted;
-		fprintf(fp, "cpu.request_time_rtt\t\t%u.%09" PRIu64 "\n", (unsigned int) (when / NSEC), when % NSEC);
+		fprintf(fp, "cpu.request_time_rtt\t\t%.9f\n", fr_time_delta_unwrap(when) / (double)NSEC);
 
 		when = worker->tracking.running_total;
-		if (when > 0) when /= (worker->stats.in - worker->stats.dropped);
-		fprintf(fp, "cpu.average_request_time\t%u.%09" PRIu64 "\n", (unsigned int) (when / NSEC), when % NSEC);
+		if (fr_time_delta_ispos(when)) when = fr_time_delta_div(when, fr_time_delta_wrap(worker->stats.in - worker->stats.dropped));
+		fprintf(fp, "cpu.average_request_time\t%.9f\n", fr_time_delta_unwrap(when) / (double)NSEC);
 
 		when = worker->tracking.running_total;
-		fprintf(fp, "cpu.used\t\t\t%u.%06u\n", (unsigned int) (when / NSEC), (unsigned int) (when % NSEC) / 1000);
+		fprintf(fp, "cpu.used\t\t\t%.6f\n", fr_time_delta_unwrap(when) / (double)NSEC);
 
 		when = worker->tracking.waiting_total;
-		fprintf(fp, "cpu.waiting\t\t\t%u.%03u\n", (unsigned int) (when / NSEC), (unsigned int) (when % NSEC) / 1000000);
+		fprintf(fp, "cpu.waiting\t\t\t%.3f\n", fr_time_delta_unwrap(when) / (double)NSEC);
 
 		fr_time_elapsed_fprint(fp, &worker->cpu_time, "cpu.requests", 4);
 		fr_time_elapsed_fprint(fp, &worker->wall_clock, "time.requests", 4);

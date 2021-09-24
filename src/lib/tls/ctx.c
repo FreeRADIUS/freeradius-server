@@ -235,7 +235,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain)
 	 *      the chain will next need refreshing.
 	 */
 	{
-		fr_unix_time_t  expires_first = 0;
+		fr_unix_time_t  expires_first = fr_unix_time_wrap(0);
 		int		ret;
 
 		for (ret = SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_FIRST);
@@ -281,7 +281,8 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain)
 			 *	the chain expires so we can use it for
 			 *	runtime checks.
 			 */
-			if ((expires_first == 0) || (expires_first > not_after)) expires_first = not_after;
+			if (!fr_unix_time_ispos(expires_first) ||
+			    (fr_unix_time_gt(expires_first, not_after))) expires_first = not_after;
 		}
 
 		/*

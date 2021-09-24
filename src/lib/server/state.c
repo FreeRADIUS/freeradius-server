@@ -367,7 +367,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 		/*
 		 *	Too old, we can delete it.
 		 */
-		if (entry->cleanup < now) {
+		if (fr_time_lt(entry->cleanup, now)) {
 			state_entry_unlink(state, entry);
 			fr_dlist_insert_tail(&to_free, entry);
 			timed_out++;
@@ -449,7 +449,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	 *	isn't perfect, but it's reasonable, and it's one less
 	 *	thing for an administrator to configure.
 	 */
-	entry->cleanup = now + state->timeout;
+	entry->cleanup = fr_time_add(now, state->timeout);
 
 	/*
 	 *	Some modules create their own magic
@@ -525,8 +525,9 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 		fr_pair_append(reply_list, vp);
 	}
 
-	DEBUG4("State ID %" PRIu64 " created, value 0x%pH, expires %" PRIu64 "s",
-	       entry->id, fr_box_octets(entry->state, sizeof(entry->state)), (uint64_t)entry->cleanup - now);
+	DEBUG4("State ID %" PRIu64 " created, value 0x%pH, expires %pV",
+	       entry->id, fr_box_octets(entry->state, sizeof(entry->state)),
+	       fr_box_time_delta(fr_time_sub(entry->cleanup, now)));
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 

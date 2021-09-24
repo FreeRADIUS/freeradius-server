@@ -266,6 +266,8 @@ typedef enum {
 
 #define fr_box_date(_val)			_fr_box(FR_TYPE_DATE, .vb_date, _val)
 
+#define fr_box_time(_val)			_fr_box(FR_TYPE_DATE, .vb_date, fr_time_to_unix_time(_val))
+
 #define fr_box_size(_val)			_fr_box(FR_TYPE_SIZE, .vb_size, _val)
 
 #define _fr_box_with_da(_type, _field, _val, _da) (&(fr_value_box_t){ .type = _type, _field = (_val), .enumv = (_da) })
@@ -514,7 +516,7 @@ DEF_BOXING_FUNC(int64_t, int64, FR_TYPE_INT64)
 DEF_BOXING_FUNC(float, float32, FR_TYPE_FLOAT32)
 DEF_BOXING_FUNC(double, float64, FR_TYPE_FLOAT64)
 
-DEF_BOXING_FUNC(uint64_t, date, FR_TYPE_DATE)
+DEF_BOXING_FUNC(fr_unix_time_t, date, FR_TYPE_DATE)
 
 /** Automagically fill in a box, determining the value type from the type of the C variable
  *
@@ -604,7 +606,7 @@ DEF_UNBOXING_FUNC(int64_t, int64, FR_TYPE_INT64)
 DEF_UNBOXING_FUNC(float, float32, FR_TYPE_FLOAT32)
 DEF_UNBOXING_FUNC(double, float64, FR_TYPE_FLOAT64)
 
-DEF_UNBOXING_FUNC(uint64_t, date, FR_TYPE_DATE)
+DEF_UNBOXING_FUNC(fr_unix_time_t, date, FR_TYPE_DATE)
 
 /** Unbox simple types peforming type checks
  *

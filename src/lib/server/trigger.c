@@ -368,7 +368,7 @@ int trigger_exec(unlang_interpret_t *intp,
 		if (!found) {
 			MEM(found = talloc(NULL, trigger_last_fired_t));
 			found->ci = ci;
-			found->last_fired = 0;
+			found->last_fired = fr_time_wrap(0);
 
 			fr_rb_insert(trigger_last_fired_tree, found);
 		}
@@ -378,7 +378,7 @@ int trigger_exec(unlang_interpret_t *intp,
 		/*
 		 *	Send the rate_limited traps at most once per second.
 		 */
-		if (found->last_fired == now) return -1;
+		if (fr_time_to_sec(found->last_fired) == fr_time_to_sec(now)) return -1;
 		found->last_fired = now;
 	}
 

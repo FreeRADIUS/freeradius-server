@@ -76,8 +76,7 @@ static void _ldap_bind_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 	/*
 	 *	We're I/O driven, if there's no data someone lied to us
 	 */
-	status = fr_ldap_result(NULL, NULL, c, bind_ctx->msgid, LDAP_MSG_ALL, bind_ctx->bind_dn, 0);
-
+	status = fr_ldap_result(NULL, NULL, c, bind_ctx->msgid, LDAP_MSG_ALL, bind_ctx->bind_dn, fr_time_delta_wrap(0));
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		DEBUG("Bind as \"%s\" to \"%s\" successful",

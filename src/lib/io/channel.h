@@ -132,9 +132,9 @@ typedef struct {
 		} request;
 
 		struct {
-			fr_time_delta_t		cpu_time;	//!<  total CPU time, including predicted work, (only worker -> network)
-			fr_time_delta_t		processing_time;  //!< actual processing time for this packet (only worker -> network)
-			fr_time_t		request_time;	//!< timestamp of the request packet
+			fr_time_delta_t		cpu_time;		//!< Total CPU time, including predicted work, (only worker -> network).
+			fr_time_delta_t		processing_time; 	//!< Actual processing time for this packet (only worker -> network).
+			fr_time_t		request_time;		//!< Timestamp of the request packet.
 	        } reply;
 	};
 

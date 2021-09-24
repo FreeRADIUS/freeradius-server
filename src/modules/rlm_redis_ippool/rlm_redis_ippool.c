@@ -466,7 +466,7 @@ static void ippool_action_print(request_t *request, ippool_action_t action,
  * @param[in] key_len		length of the key.
  * @param[in] wait_num		If > 0 wait until this many slaves have replicated the data
  *				from the last command.
- * @param[in] wait_timeout	How long to wait for slaves.
+ * @param[in] wait_timeout	How long to wait for slaves to replicate the data.
  * @param[in] digest		of script.
  * @param[in] script		to upload.
  * @param[in] cmd		EVALSHA command to execute.
@@ -535,7 +535,7 @@ static fr_redis_rcode_t ippool_script(redisReply **out, request_t *request, fr_r
 		redisAppendCommand(conn->handle, "EXEC");
 		pipelined = 4;
 		if (wait_num) {
-			redisAppendCommand(conn->handle, "WAIT %i %i", wait_num, wait_timeout);
+			redisAppendCommand(conn->handle, "WAIT %i %i", wait_num, fr_time_delta_to_msec(wait_timeout));
 			pipelined++;
 		}
 

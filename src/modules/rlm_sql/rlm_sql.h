@@ -120,7 +120,7 @@ typedef struct {
 								//!< NULL drivers.
 
 	char const		*allowed_chars;			//!< Chars which done need escaping..
-	uint32_t		query_timeout;			//!< How long to allow queries to run for.
+	fr_time_delta_t		query_timeout;			//!< How long to allow queries to run for.
 
 	char const		*connect_query;			//!< Query executed after establishing
 								//!< new connection.

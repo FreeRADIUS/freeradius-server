@@ -99,8 +99,8 @@ int fr_time_sync(void)
 		if (clock_gettime(CLOCK_MONOTONIC, &ts_monotime) < 0) return -1;
 
 		atomic_store_explicit(&our_realtime,
-				      fr_time_delta_from_timespec(&ts_realtime) -
-				      (fr_time_delta_from_timespec(&ts_monotime) - our_epoch),
+				      fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts_realtime)) -
+				      (fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts_monotime)) - our_epoch),
 				      memory_order_release);
 
 		now = ts_realtime.tv_sec;
@@ -117,7 +117,7 @@ int fr_time_sync(void)
 		monotime = mach_absolute_time();
 
 		atomic_store_explicit(&our_realtime,
-				      fr_time_delta_from_timeval(&tv_realtime) -
+				      fr_time_delta_unwrap(fr_time_delta_from_timeval(&tv_realtime)) -
 				      (monotime - our_mach_epoch) * (timebase.numer / timebase.denom,
 				      memory_order_release));
 
@@ -156,7 +156,7 @@ int fr_time_start(void)
 		struct timespec ts;
 
 		if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0) return -1;
-		our_epoch = fr_time_delta_from_timespec(&ts);
+		our_epoch = fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts));
 	}
 #else  /* __MACH__ is defined */
 	mach_timebase_info(&timebase);
@@ -182,7 +182,7 @@ int fr_time_start(void)
  */
 int fr_time_delta_from_time_zone(char const *tz, fr_time_delta_t *delta)
 {
-	*delta = 0;
+	*delta = fr_time_delta_wrap(0);
 
 	if ((strcmp(tz, "UTC") == 0) ||
 	    (strcmp(tz, "GMT") == 0)) {
@@ -193,12 +193,12 @@ int fr_time_delta_from_time_zone(char const *tz, fr_time_delta_t *delta)
 	 *	Our local time zone OR time zone with daylight savings.
 	 */
 	if (tz_names[0] && (strcmp(tz, tz_names[0]) == 0)) {
-		*delta = gmtoff[0];
+		*delta = fr_time_delta_wrap(gmtoff[0]);
 		return 0;
 	}
 
 	if (tz_names[1] && (strcmp(tz, tz_names[1]) == 0)) {
-		*delta = gmtoff[1];
+		*delta = fr_time_delta_wrap(gmtoff[1]);
 		return 0;
 	}
 
@@ -324,17 +324,17 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		}
 
 		if ((p[0] == 'm') && !p[1]) {
-			*out = sec * 60 * NSEC;
+			*out = fr_time_delta_from_sec(sec * 60);
 			return 0;
 		}
 
 		if ((p[0] == 'h') && !p[1]) {
-			*out = sec * 3600 * NSEC;
+			*out = fr_time_delta_from_sec(sec * 3600);
 			return 0;
 		}
 
 		if ((p[0] == 'd') && !p[1]) {
-			*out = sec * 86400 * NSEC;
+			*out = fr_time_delta_from_sec(sec * 86400);
 			return 0;
 		}
 
@@ -371,9 +371,9 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		if (*end) goto failed;
 
 		if (negative) {
-			*out = (minutes * 60 - sec) * NSEC;
+			*out = fr_time_delta_from_sec(minutes * 60 - sec);
 		} else {
-			*out = (minutes * 60 + sec) * NSEC;
+			*out = fr_time_delta_from_sec(minutes * 60 + sec);
 		}
 		return 0;
 
@@ -438,7 +438,7 @@ done:
 		sec += subsec;
 	}
 
-	*out = sec;
+	*out = fr_time_delta_wrap(sec);
 
 	return 0;
 }
@@ -505,33 +505,33 @@ DIAG_ON(format-nonliteral)
 
 void fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end)
 {
-	fr_time_t delay;
+	fr_time_delta_t delay;
 
-	if (start >= end) {
-		delay = 0;
+	if (fr_time_gteq(start, end)) {
+		delay = fr_time_delta_wrap(0);
 	} else {
-		delay = end - start;
+		delay = fr_time_sub(end, start);
 	}
 
-	if (delay < 1000) { /* microseconds */
+	if (fr_time_delta_lt(delay, fr_time_delta_wrap(1000))) { /* microseconds */
 		elapsed->array[0]++;
 
-	} else if (delay < 10000) {
+	} else if (fr_time_delta_lt(delay, fr_time_delta_wrap(10000))) {
 		elapsed->array[1]++;
 
-	} else if (delay < 100000) {
+	} else if (fr_time_delta_lt(delay, fr_time_delta_wrap(100000))) {
 		elapsed->array[2]++;
 
-	} else if (delay < 1000000) { /* milliseconds */
+	} else if (fr_time_delta_lt(delay, fr_time_delta_wrap(1000000))) { /* milliseconds */
 		elapsed->array[3]++;
 
-	} else if (delay < 10000000) {
+	} else if (fr_time_delta_lt(delay, fr_time_delta_wrap(10000000))) {
 		elapsed->array[4]++;
 
-	} else if (delay < (fr_time_t) 100000000) {
+	} else if (fr_time_delta_lt(delay, fr_time_delta_wrap(100000000))) {
 		elapsed->array[5]++;
 
-	} else if (delay < (fr_time_t) 1000000000) { /* seconds */
+	} else if (fr_time_delta_lt(delay, fr_time_delta_wrap(1000000000))) { /* seconds */
 		elapsed->array[6]++;
 
 	} else {		/* tens of seconds or more */
@@ -605,16 +605,19 @@ int64_t fr_time_delta_scale(fr_time_delta_t delta, fr_time_res_t hint)
 {
 	switch (hint) {
 	case FR_TIME_RES_SEC:
-		return delta / NSEC;
+		return fr_time_delta_to_sec(delta);
+
+	case FR_TIME_RES_CSEC:
+		return fr_time_delta_to_csec(delta);
 
 	case FR_TIME_RES_MSEC:
-		return delta / 1000000;
+		return fr_time_delta_to_msec(delta);
 
 	case FR_TIME_RES_USEC:
-		return delta / 1000;
+		return fr_time_delta_to_usec(delta);
 
 	case FR_TIME_RES_NSEC:
-		return delta;
+		return fr_time_delta_unwrap(delta);
 
 	default:
 		break;

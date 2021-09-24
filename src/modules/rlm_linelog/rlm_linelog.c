@@ -241,7 +241,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t ti
 	}
 
 	if (errno == EINPROGRESS) {
-		if (timeout) {
+		if (fr_time_delta_ispos(timeout)) {
 			DEBUG2("Waiting for connection to complete...");
 		} else {
 			DEBUG2("Blocking until connection complete...");
@@ -257,7 +257,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t ti
 	/*
 	 *	Set blocking operation as we have no timeout set
 	 */
-	if (!timeout && (fr_blocking(sockfd) < 0)) {
+	if (!fr_time_delta_ispos(timeout) && (fr_blocking(sockfd) < 0)) {
 		ERROR("Failed setting nonblock flag on fd");
 		close(sockfd);
 		return NULL;
@@ -324,7 +324,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			return -1;
 		}
 
-		inst->file.ef = module_exfile_init(inst, conf, 256, 30, true, NULL, NULL);
+		inst->file.ef = module_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
 		if (!inst->file.ef) {
 			cf_log_err(conf, "Failed creating log file context");
 			return -1;
@@ -451,7 +451,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 {
 	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_linelog_t);
 	linelog_conn_t			*conn;
-	fr_time_delta_t			timeout = 0;
+	fr_time_delta_t			timeout = fr_time_delta_wrap(0);
 	char				buff[4096];
 
 	char				*p = buff;
@@ -689,13 +689,13 @@ build_vector:
 		break;
 
 	case LINELOG_DST_UNIX:
-		if (inst->unix_sock.timeout) {
+		if (fr_time_delta_ispos(inst->unix_sock.timeout)) {
 			timeout = inst->unix_sock.timeout;
 		}
 		goto do_write;
 
 	case LINELOG_DST_UDP:
-		if (inst->udp.timeout) {
+		if (fr_time_delta_ispos(inst->udp.timeout)) {
 			timeout = inst->udp.timeout;
 		}
 		goto do_write;
@@ -703,7 +703,7 @@ build_vector:
 	case LINELOG_DST_TCP:
 	{
 		int i, num;
-		if (inst->tcp.timeout) {
+		if (fr_time_delta_ispos(inst->tcp.timeout)) {
 			timeout = inst->tcp.timeout;
 		}
 

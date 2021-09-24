@@ -197,7 +197,7 @@ static int8_t pending_packet_cmp(void const *one, void const *two)
 	 *	packets go in.  Since we'll never have two identical
 	 *	"recv_time" values, the code should never get here.
 	 */
-	return CMP_PREFER_SMALLER(a->recv_time, b->recv_time);
+	return CMP_PREFER_SMALLER(fr_time_unwrap(a->recv_time), fr_time_unwrap(b->recv_time));
 }
 
 /*
@@ -477,18 +477,20 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 *	called when the instance data is freed.
 	 */
 	if (!nak) {
-		if (inst->max_connections) {
+		if (inst->max_connections || client->radclient->limit.max_connections) {
+			uint32_t max_connections = inst->max_connections ? inst->max_connections : client->radclient->limit.max_connections;
+
 			/*
 			 *	We've hit the connection limit.  Walk
 			 *	over all clients with connections, and
 			 *	count the number of connections used.
 			 */
-			if (thread->num_connections >= inst->max_connections) {
+			if (thread->num_connections >= max_connections) {
 				thread->num_connections = 0;
 
 				(void) fr_trie_walk(thread->trie, &thread->num_connections, count_connections);
 
-				if ((thread->num_connections + 1) >= inst->max_connections) {
+				if ((thread->num_connections + 1) >= max_connections) {
 					DEBUG("Too many open connections.  Ignoring dynamic client %s.  Discarding packet.", client->radclient->shortname);
 					return NULL;
 				}
@@ -1100,17 +1102,17 @@ static int _client_live_free(fr_io_client_t *client)
 static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time_p,
 			uint8_t *buffer, size_t buffer_len, size_t *leftover, uint32_t *priority, bool *is_dup)
 {
-	fr_io_instance_t const *inst;
-	fr_io_thread_t *thread;
-	ssize_t packet_len = -1;
-	fr_time_t recv_time = 0;
-	fr_io_client_t *client;
-	fr_io_address_t address;
-	fr_io_connection_t my_connection, *connection;
-	fr_io_pending_packet_t *pending;
-	fr_io_track_t *track, *new_track;
-	fr_listen_t *child;
-	int value, accept_fd = -1;
+	fr_io_instance_t const	*inst;
+	fr_io_thread_t		*thread;
+	ssize_t			packet_len = -1;
+	fr_time_t		recv_time = fr_time_wrap(0);
+	fr_io_client_t		*client;
+	fr_io_address_t		address;
+	fr_io_connection_t	my_connection, *connection;
+	fr_io_pending_packet_t	*pending;
+	fr_io_track_t		*track, *new_track;
+	fr_listen_t		*child;
+	int			value, accept_fd = -1;
 
 	fr_assert(is_dup != NULL);
 	*is_dup = false;
@@ -1173,7 +1175,7 @@ redo:
 		 *	it's fast, but also that it's hard to look up
 		 *	random packets in the pending heap.
 		 */
-		if (pending->recv_time != track->timestamp) {
+		if (fr_time_neq(pending->recv_time, track->timestamp)) {
 			DEBUG3("Discarding old packet");
 			talloc_free(pending);
 			goto redo;
@@ -1851,9 +1853,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	 *	No dynamic clients AND no packet cleanups?  We don't
 	 *	need timers.
 	 */
-	if (!inst->dynamic_clients && !inst->cleanup_delay) {
-		return;
-	}
+	if (inst->dynamic_clients && !fr_time_delta_ispos(inst->cleanup_delay)) return;
 
 	/*
 	 *	Set event list and network side for this socket.
@@ -1894,15 +1894,18 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	Called from the read or write functions with
 	 *	now==0, to signal that we have to *set* the timer.
 	 */
-	if (!now) {
+	if (fr_time_eq(now, fr_time_wrap(0))) {
 		switch (client->state) {
 		case PR_CLIENT_CONNECTED:
 			fr_assert(connection != NULL);
-			delay = inst->idle_timeout;
-			break;
+			FALL_THROUGH;
 
 		case PR_CLIENT_DYNAMIC:
 			delay = inst->idle_timeout;
+			if (fr_time_delta_ispos(client->radclient->limit.idle_timeout) &&
+			    (fr_time_delta_lt(client->radclient->limit.idle_timeout, inst->idle_timeout))) {
+				delay = client->radclient->limit.idle_timeout;
+			}
 			break;
 
 		case PR_CLIENT_NAK:
@@ -2079,11 +2082,11 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *
 	 *	On duplicates this also extends the expiry timer.
 	 */
-	if (!now && !track->discard && inst->app_io->track_duplicates) {
-		fr_assert(inst->cleanup_delay > 0);
+	if (fr_time_eq(now, fr_time_wrap(0)) && !track->discard && inst->app_io->track_duplicates) {
+		fr_assert(fr_time_delta_ispos(inst->cleanup_delay));
 		fr_assert(track->do_not_respond || track->reply_len);
 
-		track->expires = fr_time() + inst->cleanup_delay;
+		track->expires = fr_time_add(fr_time(), inst->cleanup_delay);
 
 		/*
 		 *	if the timer succeeds, then "track"
@@ -2092,8 +2095,8 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		 */
 		if (fr_event_timer_at(track, el, &track->ev,
 				      track->expires, packet_expiry_timer, track) == 0) {
-			DEBUG("proto_%s - cleaning up request in %d.%06ds", inst->app_io->name,
-			      (int) (inst->cleanup_delay / NSEC), (int) (inst->cleanup_delay % NSEC));
+			DEBUG("proto_%s - cleaning up request in %.6fs", inst->app_io->name,
+			      fr_time_delta_unwrap(inst->cleanup_delay) / (double)NSEC);
 			return;
 		}
 
@@ -2105,7 +2108,7 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	So that all cleanup paths can come here, not just the
 	 *	timeout ones.
 	 */
-	if (now) {
+	if (fr_time_neq(now, fr_time_wrap(0))) {
 		DEBUG2("TIMER - proto_%s - cleanup delay", inst->app_io->name);
 	} else {
 		DEBUG2("proto_%s - cleaning up", inst->app_io->name);
@@ -2166,7 +2169,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	The request later received a conflicting
 		 *	packet, so we discard this one.
 		 */
-		if ((track->timestamp != request_time) || track->discard) {
+		if (fr_time_neq(track->timestamp, request_time) || track->discard) {
 			fr_assert(track->packets > 0);
 			track->packets--;
 
@@ -2195,7 +2198,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 						 buffer, buffer_len, written);
 		if (packet_len <= 0) {
 			track->discard = true;
-			packet_expiry_timer(el, 0, track);
+			packet_expiry_timer(el, fr_time_wrap(0), track);
 			return packet_len;
 		}
 
@@ -2231,7 +2234,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	On dedup this also extends the timer.
 		 */
 	setup_timer:
-		packet_expiry_timer(el, 0, track);
+		packet_expiry_timer(el, fr_time_wrap(0), track);
 		return buffer_len;
 	}
 
@@ -2279,7 +2282,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 */
 		if (connection && (inst->ipproto == IPPROTO_UDP)) {
 			connection = fr_io_connection_alloc(inst, thread, client, -1, connection->address, connection);
-			client_expiry_timer(el, 0, connection->client);
+			client_expiry_timer(el, fr_time_wrap(0), connection->client);
 
 			errno = ECONNREFUSED;
 			return -1;
@@ -2290,7 +2293,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		 *	expiry timer, which will close and free the
 		 *	connection.
 		 */
-		client_expiry_timer(el, 0, client);
+		client_expiry_timer(el, fr_time_wrap(0), client);
 		return buffer_len;
 	}
 
@@ -2486,7 +2489,7 @@ finish:
 	 *	timed out, so there's nothing more to do.  In that case, set up the expiry timers.
 	 */
 	if (client->packets == 0) {
-		client_expiry_timer(el, 0, client);
+		client_expiry_timer(el, fr_time_wrap(0), client);
 	}
 
 reread:
@@ -2562,7 +2565,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	If we are tracking duplicates, then we must have a non-zero cleanup delay.
 	 */
 	if (!inst->app_io->track_duplicates) {
-		inst->cleanup_delay = 0;
+		inst->cleanup_delay = fr_time_delta_wrap(0);
 
 	} else {
 		FR_TIME_DELTA_BOUND_CHECK("cleanup_delay", inst->cleanup_delay, >=, fr_time_delta_from_sec(1));

@@ -1397,7 +1397,7 @@ void main_config_hup(main_config_t *config)
 {
 	fr_time_t		when;
 
-	static fr_time_t	last_hup = 0;
+	static fr_time_t	last_hup = fr_time_wrap(0);
 
 	/*
 	 *	Re-open the log file.  If we can't, then keep logging
@@ -1412,7 +1412,7 @@ void main_config_hup(main_config_t *config)
 	 *	Only check the config files every few seconds.
 	 */
 	when = fr_time();
-	if ((last_hup + fr_time_delta_from_sec(2)) >= when) {
+	if (fr_time_gteq(fr_time_add(last_hup, fr_time_delta_from_sec(2)), when)) {
 		INFO("HUP - Last HUP was too recent.  Ignoring");
 		return;
 	}

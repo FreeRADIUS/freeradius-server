@@ -9,11 +9,7 @@
 sqlite {
 	# Path to the sqlite database
 	filename = "/tmp/freeradius.db"
-#
-	# How long to wait for write locks on the database to be
-	# released (in ms) before giving up.
-	busy_timeout = 200
-#
+
 	# If the file above does not exist and bootstrap is set
 	# a new database file will be created, and the SQL statements
 	# contained within the bootstrap file will be executed.

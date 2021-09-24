@@ -304,7 +304,8 @@ static void do_test_fr_pair_append(unsigned int len, unsigned int perc, unsigned
 	fr_pair_list_t  test_vps;
 	unsigned int	i, j;
 	fr_pair_t	*new_vp;
-	fr_time_t	start, end, used = 0;
+	fr_time_t	start, end;
+	fr_time_delta_t	used = fr_time_delta_wrap(0);
 	size_t		input_count = talloc_array_length(source_vps);
 
 	fr_pair_list_init(&test_vps);
@@ -325,7 +326,7 @@ static void do_test_fr_pair_append(unsigned int len, unsigned int perc, unsigned
 			start = fr_time();
 			fr_pair_append(&test_vps, new_vp);
 			end = fr_time();
-			used += (end - start);
+			used = fr_time_delta_add(used, fr_time_sub(end, start));
 		}
 		TEST_CHECK(fr_pair_list_len(&test_vps) == len);
 		fr_pair_list_free(&test_vps);
@@ -333,8 +334,8 @@ static void do_test_fr_pair_append(unsigned int len, unsigned int perc, unsigned
 	TEST_MSG_ALWAYS("repetitions=%d", reps);
 	TEST_MSG_ALWAYS("perc_rep=%d", perc);
 	TEST_MSG_ALWAYS("list_length=%d", len);
-	TEST_MSG_ALWAYS("used=%"PRId64, used);
-	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/((double)used / NSEC));
+	TEST_MSG_ALWAYS("used=%"PRId64, fr_time_delta_unwrap(used));
+	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/(fr_time_delta_unwrap(used) / (double)NSEC));
 }
 
 static void do_test_fr_pair_find_by_da(unsigned int len, unsigned int perc, unsigned int reps, fr_pair_t *source_vps[])
@@ -342,7 +343,8 @@ static void do_test_fr_pair_find_by_da(unsigned int len, unsigned int perc, unsi
 	fr_pair_list_t		test_vps;
 	unsigned int		i, j;
 	fr_pair_t		*new_vp;
-	fr_time_t		start, end, used = 0;
+	fr_time_t		start, end;
+	fr_time_delta_t		used = fr_time_delta_wrap(0);
 	fr_dict_attr_t const	*da;
 	size_t			input_count = talloc_array_length(source_vps);
 
@@ -368,15 +370,15 @@ static void do_test_fr_pair_find_by_da(unsigned int len, unsigned int perc, unsi
 			start = fr_time();
 			(void) fr_pair_find_by_da(&test_vps, da, 0);
 			end = fr_time();
-			used += (end - start);
+			used = fr_time_delta_add(used, fr_time_sub(end, start));
 		}
 	}
 	fr_pair_list_free(&test_vps);
 	TEST_MSG_ALWAYS("repetitions=%d", reps);
 	TEST_MSG_ALWAYS("perc_rep=%d", perc);
 	TEST_MSG_ALWAYS("list_length=%d", len);
-	TEST_MSG_ALWAYS("used=%"PRId64, used);
-	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/((double)used / NSEC));
+	TEST_MSG_ALWAYS("used=%"PRId64, fr_time_delta_unwrap(used));
+	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/(fr_time_delta_unwrap(used) / (double)NSEC));
 }
 
 static void do_test_find_nth(unsigned int len, unsigned int perc, unsigned int reps, fr_pair_t *source_vps[])
@@ -384,7 +386,8 @@ static void do_test_find_nth(unsigned int len, unsigned int perc, unsigned int r
 	fr_pair_list_t	  	test_vps;
 	unsigned int		i, j, nth_item;
 	fr_pair_t		*new_vp;
-	fr_time_t		start, end, used = 0;
+	fr_time_t		start, end;
+	fr_time_delta_t		used = fr_time_delta_wrap(0);
 	fr_dict_attr_t const	*da;
 	size_t			input_count = talloc_array_length(source_vps);
 
@@ -413,15 +416,15 @@ static void do_test_find_nth(unsigned int len, unsigned int perc, unsigned int r
 			start = fr_time();
 			(void) fr_pair_find_by_da(&test_vps, da, nth_item);
 			end = fr_time();
-			used += (end - start);
+			used = fr_time_delta_add(used, fr_time_sub(end, start));
 		}
 	}
 	fr_pair_list_free(&test_vps);
 	TEST_MSG_ALWAYS("repetitions=%d", reps);
 	TEST_MSG_ALWAYS("perc_rep=%d", perc);
 	TEST_MSG_ALWAYS("list_length=%d", len);
-	TEST_MSG_ALWAYS("used=%"PRId64, used);
-	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/((double)used / NSEC));
+	TEST_MSG_ALWAYS("used=%"PRId64, fr_time_delta_unwrap(used));
+	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/(fr_time_delta_unwrap(used) / (double)NSEC));
 }
 
 static void do_test_fr_pair_list_free(unsigned int len, unsigned int perc, unsigned int reps, fr_pair_t *source_vps[])
@@ -429,7 +432,8 @@ static void do_test_fr_pair_list_free(unsigned int len, unsigned int perc, unsig
 	fr_pair_list_t  test_vps;
 	unsigned int	i, j;
 	fr_pair_t	*new_vp;
-	fr_time_t	start, end, used = 0;
+	fr_time_t	start, end;
+	fr_time_delta_t	used = fr_time_delta_wrap(0);
 	size_t		input_count = talloc_array_length(source_vps);
 
 	fr_pair_list_init(&test_vps);
@@ -444,14 +448,14 @@ static void do_test_fr_pair_list_free(unsigned int len, unsigned int perc, unsig
 		start = fr_time();
 		fr_pair_list_free(&test_vps);
 		end = fr_time();
-		used += (end - start);
+		used = fr_time_delta_add(used, fr_time_sub(end, start));
 	}
 	fr_pair_list_free(&test_vps);
 	TEST_MSG_ALWAYS("repetitions=%d", reps);
 	TEST_MSG_ALWAYS("perc_rep=%d", perc);
 	TEST_MSG_ALWAYS("list_length=%d", len);
-	TEST_MSG_ALWAYS("used=%"PRId64, used);
-	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/((double)used / NSEC));
+	TEST_MSG_ALWAYS("used=%"PRId64, fr_time_delta_unwrap(used));
+	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/(fr_time_delta_unwrap(used) / (double)NSEC));
 }
 
 #define test_func(_func, _count, _perc, _source_vps) \

@@ -352,7 +352,7 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 	 *	Default to something sensible
 	 *	instead of locking the same indefinitely.
 	 */
-	if (!state->args.exec.timeout) state->args.exec.timeout = fr_time_delta_from_sec(EXEC_TIMEOUT);
+	if (!fr_time_delta_ispos(state->args.exec.timeout)) state->args.exec.timeout = fr_time_delta_from_sec(EXEC_TIMEOUT);
 
 	fr_value_box_list_init(&state->box);
 

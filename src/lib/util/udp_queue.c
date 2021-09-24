@@ -131,7 +131,7 @@ fr_udp_queue_t *fr_udp_queue_alloc(TALLOC_CTX *ctx, fr_udp_queue_config_t const 
 	 */
 	if (config->send_buff_is_set) {
 		int opt;
-	
+
 		opt = config->send_buff;
 
 		if (opt < 65536) opt = 65536;
@@ -195,7 +195,7 @@ static void udp_queue_writable(UNUSED fr_event_list_t *el, UNUSED int fd,
 		 *	If the entry is expired, tell the caller that
 		 *	it wasn't written to the socket.
 		 */
-		if (now >= entry->expires) {
+		if (fr_time_gteq(now, entry->expires)) {
 			void *rctx = entry->rctx;
 
 			talloc_free(entry);
@@ -316,7 +316,7 @@ retry:
 		.sockaddr = sockaddr,
 		.socklen = socklen,
 		.uq = uq,
-		.expires = fr_time() + uq->config->max_queued_time,
+		.expires = fr_time_add(fr_time(), uq->config->max_queued_time),
 		.rctx = rctx,
 		.packet_len = packet_len,
 	};

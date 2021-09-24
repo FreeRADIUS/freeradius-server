@@ -644,7 +644,7 @@ static void test_fr_pair_value_aprintf(void)
 	char      fmt_test[64];
 	fr_time_t now = fr_time();
 
-	snprintf(fmt_test, sizeof(fmt_test), "Now is %ld", (long)now);
+	snprintf(fmt_test, sizeof(fmt_test), "Now is %"PRId64, fr_time_unwrap(now));
 
 	TEST_CASE("Find 'Test-String'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
@@ -653,7 +653,7 @@ static void test_fr_pair_value_aprintf(void)
 	VP_VERIFY(vp);
 
 	TEST_CASE("Copy content of 'fmt_test' to attribute value using fr_pair_value_aprintf()");
-	TEST_CHECK(fr_pair_value_aprintf(vp, "Now is %ld", (long)now) == 0);
+	TEST_CHECK(fr_pair_value_aprintf(vp, "Now is %"PRId64, fr_time_unwrap(now)) == 0);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	VP_VERIFY(vp);

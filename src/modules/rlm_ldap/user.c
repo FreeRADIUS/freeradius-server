@@ -104,7 +104,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, request_t *request, fr_ld
 	if ((*pconn)->rebound) {
 		status = fr_ldap_bind(request, pconn, (*pconn)->config->admin_identity,
 				      (*pconn)->config->admin_password, &(*pconn)->config->admin_sasl,
-				      0, NULL, NULL);
+				      fr_time_delta_wrap(0), NULL, NULL);
 		if (status != LDAP_PROC_SUCCESS) {
 			*rcode = RLM_MODULE_FAIL;
 			return NULL;

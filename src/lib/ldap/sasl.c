@@ -127,7 +127,8 @@ static void _ldap_sasl_bind_io_read(fr_event_list_t *el, int fd, UNUSED int flag
 	 *	If LDAP parse result indicates there was an error
 	 *	then we're done.
 	 */
-	status = fr_ldap_result(&sasl_ctx->result, NULL, c, sasl_ctx->msgid, LDAP_MSG_ALL, sasl_ctx->identity, 0);
+	status = fr_ldap_result(&sasl_ctx->result, NULL, c, sasl_ctx->msgid, LDAP_MSG_ALL,
+				sasl_ctx->identity, fr_time_delta_wrap(0));
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 	case LDAP_PROC_CONTINUE:
@@ -205,7 +206,7 @@ static void _ldap_sasl_bind_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 	 *	Set timeout to be 0.0, which is the magic
 	 *	non-blocking value.
 	 */
-	(void) ldap_set_option(c->handle, LDAP_OPT_NETWORK_TIMEOUT, &fr_time_delta_to_timeval(0));
+	(void) ldap_set_option(c->handle, LDAP_OPT_NETWORK_TIMEOUT, &fr_time_delta_to_timeval(fr_time_delta_wrap(0)));
 	ret = ldap_sasl_interactive_bind(c->handle, NULL, sasl_ctx->mechs,
 					 our_serverctrls, our_clientctrls,
 					 LDAP_SASL_AUTOMATIC,

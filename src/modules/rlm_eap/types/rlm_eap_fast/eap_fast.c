@@ -170,7 +170,7 @@ static void eap_fast_send_pac_tunnel(request_t *request, fr_tls_session_t *tls_s
 
 	pac.info.lifetime.hdr.type = htons(attr_eap_fast_pac_info_pac_lifetime->attr);
 	pac.info.lifetime.hdr.length = htons(sizeof(pac.info.lifetime.data));
-	pac.info.lifetime.data = htonl(fr_time_to_sec(request->packet->timestamp) + t->pac_lifetime);
+	pac.info.lifetime.data = htonl(fr_time_to_sec(fr_time_add(request->packet->timestamp, t->pac_lifetime)));
 
 	pac.info.a_id.hdr.type = htons(EAP_FAST_TLV_MANDATORY | attr_eap_fast_pac_a_id->attr);
 	pac.info.a_id.hdr.length = htons(sizeof(pac.info.a_id.data));
@@ -810,7 +810,7 @@ static fr_radius_packet_code_t eap_fast_process_tlvs(request_t *request, eap_ses
 	     vp;
 	     vp = fr_pair_list_next(fast_vps, vp)) {
 		fr_radius_packet_code_t code = FR_RADIUS_CODE_ACCESS_REJECT;
-		if (vp->da->parent == attr_eap_fast_tlv) {
+		if (vp->da->parent == fr_dict_root(dict_eap_fast)) {
 			if (vp->da == attr_eap_fast_eap_payload) {
 				code = eap_fast_eap_payload(request, eap_session, tls_session, vp);
 				if (code == FR_RADIUS_CODE_ACCESS_ACCEPT) t->stage = EAP_FAST_CRYPTOBIND_CHECK;
@@ -857,7 +857,7 @@ static fr_radius_packet_code_t eap_fast_process_tlvs(request_t *request, eap_ses
 			if (vp->da == attr_eap_fast_pac_acknowledge) {
 				if (vp->vp_uint32 == EAP_FAST_TLV_RESULT_SUCCESS) {
 					code = FR_RADIUS_CODE_ACCESS_ACCEPT;
-					t->pac.expires = ~((fr_time_t) 0);
+					t->pac.expires = fr_time_max();
 					t->pac.expired = false;
 					t->stage = EAP_FAST_COMPLETE;
 				}
@@ -930,6 +930,8 @@ fr_radius_packet_code_t eap_fast_process(request_t *request, eap_session_t *eap_
 			t->mode = EAP_FAST_PROVISIONING_ANON;
 			t->pac.send = true;
 		} else {
+			fr_time_t renew;
+
 			if (SSL_session_reused(tls_session->ssl)) {
 				RDEBUG2("Session Resumed from PAC");
 				t->mode = EAP_FAST_NORMAL_AUTH;
@@ -939,10 +941,14 @@ fr_radius_packet_code_t eap_fast_process(request_t *request, eap_session_t *eap_
 			}
 
 			/*
-			 *	Send a new pac at ~0.6 times the lifetime.
+			 *	Send a new pac at 60% of the lifetime,
+			 *	or if the PAC has expired, or if no lifetime was set.
 			 */
-			if (!t->pac.expires || t->pac.expired ||
-			    t->pac.expires <= (request->packet->timestamp + fr_time_delta_from_sec((t->pac_lifetime >> 1) + (t->pac_lifetime >> 3)))) {
+			renew = fr_time_add(request->packet->timestamp,
+					    fr_time_delta_wrap((fr_time_delta_unwrap(t->pac_lifetime) * 3) / 5));
+
+			if (t->pac.expired || fr_time_eq(t->pac.expires, fr_time_wrap(0)) ||
+			     fr_time_lteq(t->pac.expires, renew)) {
 				t->pac.send = true;
 			}
 		}
@@ -955,7 +961,7 @@ fr_radius_packet_code_t eap_fast_process(request_t *request, eap_session_t *eap_
 		return FR_RADIUS_CODE_ACCESS_CHALLENGE;
 	}
 
-	if (eap_fast_decode_pair(request, &fast_vps, attr_eap_fast_tlv,
+	if (eap_fast_decode_pair(request, &fast_vps, fr_dict_root(dict_eap_fast),
 				 data, data_len, NULL) < 0) return FR_RADIUS_CODE_ACCESS_REJECT;
 
 	RDEBUG2("Got Tunneled FAST TLVs");

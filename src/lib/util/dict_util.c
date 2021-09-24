@@ -50,6 +50,9 @@ fr_table_num_ordered_t const date_precision_table[] = {
 	{ L("milliseconds"),	FR_TIME_RES_MSEC },
 	{ L("ms"),		FR_TIME_RES_MSEC },
 
+	{ L("centiseconds"),	FR_TIME_RES_CSEC },
+	{ L("cs"),		FR_TIME_RES_CSEC },
+
 	{ L("seconds"),		FR_TIME_RES_SEC },
 	{ L("s"),		FR_TIME_RES_SEC }
 

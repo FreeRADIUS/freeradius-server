@@ -247,7 +247,7 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	 *	"detail.work" exists, try to lock it.
 	 */
 	if (rad_lockfd_nonblock(fd, 0) < 0) {
-		fr_time_t delay;
+		fr_time_delta_t delay;
 
 		DEBUG3("proto_detail (%s): Failed locking %s: %s",
 		       thread->name, inst->filename_work, fr_syserror(errno));
@@ -260,11 +260,15 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 		 *	Set the next interval, and ensure that we
 		 *	don't do massive busy-polling.
 		 */
-		thread->lock_interval += thread->lock_interval / 2;
-		if (thread->lock_interval > ((fr_time_delta_t) 30) * NSEC) thread->lock_interval = ((fr_time_delta_t) 30) * NSEC;
+		thread->lock_interval = fr_time_delta_add(thread->lock_interval,
+							  fr_time_delta_div(thread->lock_interval,
+									    fr_time_delta_wrap(2)));
+		if (fr_time_delta_gt(thread->lock_interval, fr_time_delta_from_sec(30))) {
+			thread->lock_interval = fr_time_delta_from_sec(30);
+		}
 
-		DEBUG3("proto_detail (%s): Waiting %d.%06ds for lock on file %s",
-		       thread->name, (int) (delay / NSEC), (int) ((delay % NSEC) / 1000), inst->filename_work);
+		DEBUG3("proto_detail (%s): Waiting %.6fs for lock on file %s",
+		       thread->name, fr_time_delta_unwrap(delay) / (double)NSEC, inst->filename_work);
 
 		if (fr_event_timer_in(thread, thread->el, &thread->ev,
 				      delay, work_retry_timer, thread) < 0) {
@@ -519,7 +523,7 @@ delay:
 		return;
 	}
 
-	thread->lock_interval = NSEC / 10;
+	thread->lock_interval = fr_time_delta_from_msec(100);
 
 	/*
 	 *	It exists, go process it!

@@ -580,7 +580,7 @@ static void proto_ldap_sync_reinit(fr_event_list_t *el, fr_time_t now, void *use
 	 *	We want the time from when we were called
 	 */
 	if (fr_event_timer_at(inst, el, &inst->sync_retry_ev,
-			      now + inst->sync_retry_interval,
+			      fr_time_add(now, inst->sync_retry_interval),
 			      proto_ldap_sync_reinit, user_ctx) < 0) {
 		FATAL("Failed inserting event: %s", fr_strerror());
 	}
@@ -1015,7 +1015,7 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 			      &inst->conn,
 			      inst->conn->config->admin_identity, inst->conn->config->admin_password,
 			      &(inst->conn->config->admin_sasl),
-			      0,
+			      fr_time_delta_wrap(0),
 			      NULL, NULL);
 	if (status != LDAP_PROC_SUCCESS) goto error;
 

@@ -37,9 +37,23 @@ RCSID("$Id$")
 #define IBETA (4)
 #define IALPHA (8)
 
-#define DIFF(_rtt, _t) (_rtt < _t ? (_t - _rtt) : (_rtt - _t))
-#define RTTVAR(_rtt, _rttvar, _t) ((((IBETA - 1) * _rttvar) + DIFF(_rtt, _t)) / IBETA)
-#define RTT(_old, _new) ((_new + ((IALPHA - 1) * _old)) / IALPHA)
+#define DIFF(_rtt, _t) \
+	(\
+		fr_time_delta_lt(_rtt, _t) ? \
+			fr_time_delta_sub(_t, _rtt) : \
+			fr_time_delta_sub(_rtt, _t)\
+	)
+
+#define RTTVAR(_rtt, _rttvar, _t) \
+	fr_time_delta_div(\
+		fr_time_delta_add(\
+			fr_time_delta_mul(_rttvar, fr_time_delta_wrap(IBETA - 1)), \
+			DIFF(_rtt, _t)\
+		), \
+		fr_time_delta_wrap(IBETA)\
+	)
+
+#define RTT(_old, _new) fr_time_delta_wrap((fr_time_delta_unwrap(_new) + (fr_time_delta_unwrap(_old) * (IALPHA - 1))) / IALPHA)
 
 typedef enum {
 	FR_LOAD_STATE_INIT = 0,
@@ -108,14 +122,14 @@ static void fr_load_generator_send(fr_load_t *l, fr_time_t now, int count)
 	 *	it more likely that the next timer fires on time.
 	 */
 	for (i = 0; i < count; i++) {
-		l->callback(now + i, l->uctx);
+		l->callback(fr_time_add(now, fr_time_delta_from_nsec(i)), l->uctx);
 	}
 }
 
 static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	fr_load_t *l = uctx;
-	fr_time_t delta;
+	fr_time_delta_t delta;
 	int count;
 
 	/*
@@ -128,14 +142,14 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	If we're done this step, go to the next one.
 	 */
-	if (l->next >= l->step_end) {
+	if (fr_time_gteq(l->next, l->step_end)) {
 		l->step_start = l->next;
-		l->step_end = l->next + ((uint64_t) l->config->duration) * NSEC;
+		l->step_end = fr_time_add(l->next, l->config->duration);
 		l->step_received = l->stats.received;
 		l->pps += l->config->step;
 		l->stats.pps = l->pps;
 		l->stats.skipped = 0;
-		l->delta = (NSEC * ((uint64_t) l->config->parallel)) / l->pps;
+		l->delta = fr_time_delta_div(fr_time_delta_from_sec(l->config->parallel), fr_time_delta_wrap(l->pps));
 
 		/*
 		 *	Stop at max PPS, if it's set.  Otherwise
@@ -189,14 +203,14 @@ static void load_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	Skip timers if we're too busy.
 	 */
-	l->next += l->delta;
-	if (l->next < now) {
-		while ((l->next + l->delta) < now) {
+	l->next = fr_time_add(l->next, l->delta);
+	if (fr_time_lt(l->next, now)) {
+		while (fr_time_lt(fr_time_add(l->next, l->delta), now)) {
 //			l->stats.skipped += l->count;
-			l->next += l->delta;
+			l->next = fr_time_add(l->next, l->delta);
 		}
 	}
-	delta = l->next - now;
+	delta = fr_time_sub(l->next, now);
 
 	/*
 	 *	Set the timer for the next packet.
@@ -217,14 +231,14 @@ int fr_load_generator_start(fr_load_t *l)
 {
 	l->stats.start = fr_time();
 	l->step_start = l->stats.start;
-	l->step_end = l->step_start + ((uint64_t) l->config->duration) * NSEC;
+	l->step_end = fr_time_add(l->step_start, l->config->duration);
 
 	l->pps = l->config->start_pps;
 	l->stats.pps = l->pps;
 	l->count = l->config->parallel;
 
-	l->delta = (NSEC * ((uint64_t) l->config->parallel)) / l->pps;
-	l->next = l->step_start + l->delta;
+	l->delta = fr_time_delta_div(fr_time_delta_from_sec(l->config->parallel), fr_time_delta_wrap(l->pps));
+	l->next = fr_time_add(l->step_start, l->delta);
 
 	load_timer(l->el, l->step_start, l);
 	return 0;
@@ -257,7 +271,7 @@ fr_load_reply_t fr_load_generator_have_reply(fr_load_t *l, fr_time_t request_tim
 	 *	for any kind of timing.
 	 */
 	now = fr_time();
-	t = now - request_time;
+	t = fr_time_sub(now, request_time);
 
 	l->stats.rttvar = RTTVAR(l->stats.rtt, l->stats.rttvar, t);
 	l->stats.rtt = RTT(l->stats.rtt, t);
@@ -267,19 +281,19 @@ fr_load_reply_t fr_load_generator_have_reply(fr_load_t *l, fr_time_t request_tim
 	/*
 	 *	t is in nanoseconds.
 	 */
-	if (t < 1000) {
+	if (fr_time_delta_lt(t, fr_time_delta_wrap(1000))) {
 	       l->stats.times[0]++; /* < microseconds */
-	} else if (t < 10000) {
+	} else if (fr_time_delta_lt(t, fr_time_delta_wrap(10000))) {
 	       l->stats.times[1]++; /* microseconds */
-	} else if (t < 100000) {
+	} else if (fr_time_delta_lt(t, fr_time_delta_wrap(100000))) {
 	       l->stats.times[2]++; /* 10s of microseconds */
-	} else if (t < 1000000) {
-	       l->stats.times[3]++; /* 100s of microiseconds */
-	} else if (t < 10000000) {
+	} else if (fr_time_delta_lt(t, fr_time_delta_wrap(1000000))) {
+	       l->stats.times[3]++; /* 100s of microseconds */
+	} else if (fr_time_delta_lt(t, fr_time_delta_wrap(10000000))) {
 	       l->stats.times[4]++; /* milliseconds */
-	} else if (t < 100000000) {
+	} else if (fr_time_delta_lt(t, fr_time_delta_wrap(100000000))) {
 	       l->stats.times[5]++; /* 10s of milliseconds */
-	} else if (t < NSEC) {
+	} else if (fr_time_delta_lt(t, fr_time_delta_wrap(NSEC))) {
 	       l->stats.times[6]++; /* 100s of milliseconds */
 	} else {
 	       l->stats.times[7]++; /* seconds */
@@ -334,11 +348,9 @@ size_t fr_load_generator_stats_sprint(fr_load_t *l, fr_time_t now, char *buffer,
 	}
 
 
-	now_f = now - l->stats.start;
-	now_f /= NSEC;
+	now_f = fr_time_delta_unwrap(fr_time_sub(now, l->stats.start)) / (double)NSEC;
 
-	last_send_f = l->stats.last_send - l->stats.start;
-	last_send_f /= NSEC;
+	last_send_f = fr_time_delta_unwrap(fr_time_sub(l->stats.last_send, l->stats.start)) / (double)NSEC;
 
 	/*
 	 *	Track packets/s.  Since times are in nanoseconds, we
@@ -346,8 +358,12 @@ size_t fr_load_generator_stats_sprint(fr_load_t *l, fr_time_t now, char *buffer,
 	 *	is 1B, the calculations have to be done via 64-bit
 	 *	numbers, and then converted to a final 32-bit counter.
 	 */
-	if (now > l->step_start) {
-		l->stats.pps_accepted = (((uint64_t) (l->stats.received - l->step_received)) * NSEC) / (now - l->step_start);
+	if (fr_time_gt(now, l->step_start)) {
+		l->stats.pps_accepted =
+			fr_time_delta_unwrap(
+				fr_time_delta_div(fr_time_delta_from_sec(l->stats.received - l->step_received),
+					  	  fr_time_sub(now, l->step_start))
+			);
 	}
 
 	return snprintf(buffer, buflen,
@@ -359,7 +375,7 @@ size_t fr_load_generator_stats_sprint(fr_load_t *l, fr_time_t now, char *buffer,
 			"%d,%d,%d,%d,%d,%d,%d,%d,"
 			"%d\n",
 			now_f, last_send_f,
-			l->stats.rtt, l->stats.rttvar,
+			fr_time_delta_unwrap(l->stats.rtt), fr_time_delta_unwrap(l->stats.rttvar),
 			l->stats.pps, l->stats.pps_accepted,
 			l->stats.sent, l->stats.received,
 			l->stats.backlog, l->stats.max_backlog,

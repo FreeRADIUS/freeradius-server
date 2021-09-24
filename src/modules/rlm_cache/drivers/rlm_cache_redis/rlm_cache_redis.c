@@ -366,7 +366,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 		/*
 		 *	Start the transaction, as we need to set an expiry time too.
 		 */
-		if (c->expires > 0) {
+		if (fr_unix_time_ispos(c->expires)) {
 			RDEBUG3("MULTI");
 			if (redisAppendCommand(conn->handle, "MULTI") != REDIS_OK) {
 			append_error:
@@ -397,7 +397,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 		/*
 		 *	Set the expiry time and close out the transaction.
 		 */
-		if (c->expires > 0) {
+		if (fr_unix_time_ispos(c->expires)) {
 			RDEBUG3("EXPIREAT \"%pV\" %" PRIu64,
 				fr_box_strvalue_len((char const *)c->key, c->key_len),
 				fr_unix_time_to_sec(c->expires));

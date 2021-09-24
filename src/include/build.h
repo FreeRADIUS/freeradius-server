@@ -114,6 +114,13 @@ do { \
  */
 #define UNCONST(_type, _ptr)		((_type)((uintptr_t)(_ptr)))
 
+/** Typeof field
+ *
+ * @param[in] _type	struct type containing the field.
+ * @param[in] _field	to return the type of.
+ */
+#define typeof_field(_type, _field)	__typeof__(((_type *)NULL)->_field)
+
 /** HEX concatenation macros
  *
  */

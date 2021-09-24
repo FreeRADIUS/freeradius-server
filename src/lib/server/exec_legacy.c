@@ -391,7 +391,7 @@ int radius_readfrom_program_legacy(int fd, pid_t pid, fr_time_delta_t timeout, c
 	/*
 	 *	Minimum timeout period is one section
 	 */
-	if (timeout < NSEC) timeout = fr_time_delta_from_sec(1);
+	if (fr_time_delta_unwrap(timeout) < NSEC) timeout = fr_time_delta_from_sec(1);
 
 	/*
 	 *	Read from the pipe until we doesn't get any more or
@@ -406,10 +406,10 @@ int radius_readfrom_program_legacy(int fd, pid_t pid, fr_time_delta_t timeout, c
 		FD_ZERO(&fds);
 		FD_SET(fd, &fds);
 
-		elapsed = fr_time() - start;
-		if (elapsed >= timeout) goto too_long;
+		elapsed = fr_time_sub(fr_time(), start);
+		if (fr_time_delta_gteq(elapsed, timeout)) goto too_long;
 
-		rcode = select(fd + 1, &fds, NULL, NULL, &fr_time_delta_to_timeval(timeout - elapsed));
+		rcode = select(fd + 1, &fds, NULL, NULL, &fr_time_delta_to_timeval(fr_time_delta_sub(timeout, elapsed)));
 		if (rcode == 0) {
 		too_long:
 			DEBUG("Child PID %u is taking too much time: forcing failure and killing child.", pid);

@@ -41,6 +41,18 @@ load-balance {
 }
 ----
 
+== Interpreter
+
+The xref:unlang/interpreter.adoc[Interpreter] processes an input
+"request" packet, by running policies which contain
+xref:unlang/keywords.adoc[Keywords].  The result of the interpretation
+is usually an output "reply" packet.
+
+While the interpreter allows some fairly complex policies to be made,
+it is not a general purpose programming language.  The purpose of the
+language is to receive packets, process their contents, and send
+replies.  A secondary goal is to do that as quickly as possible.
+
 == Conditional Expressions
 
 xref:condition/index.adoc[Conditional expressions], which are used to check

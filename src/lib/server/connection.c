@@ -736,7 +736,7 @@ static void connection_state_enter_shutdown(fr_connection_t *conn)
 	 *	if it doesn't shutdown within the
 	 *	timeout period.
 	 */
-	if (conn->connection_timeout) {
+	if (fr_time_delta_ispos(conn->connection_timeout)) {
 		if (fr_event_timer_in(conn, conn->pub.el, &conn->ev,
 				      conn->connection_timeout, _connection_timeout, conn) < 0) {
 			/*
@@ -846,7 +846,7 @@ static void connection_state_enter_failed(fr_connection_t *conn)
 	case FR_CONNECTION_STATE_CONNECTED:			/* Failed after connecting */
 	case FR_CONNECTION_STATE_CONNECTING:			/* Failed during connecting */
 	case FR_CONNECTION_STATE_SHUTDOWN:			/* Failed during shutdown */
-		if (conn->reconnection_delay) {
+		if (fr_time_delta_ispos(conn->reconnection_delay)) {
 			DEBUG2("Delaying reconnection by %pVs", fr_box_time_delta(conn->reconnection_delay));
 			if (fr_event_timer_in(conn, conn->pub.el, &conn->ev,
 					      conn->reconnection_delay, _reconnect_delay_done, conn) < 0) {
@@ -1005,7 +1005,7 @@ static void connection_state_enter_connecting(fr_connection_t *conn)
 	 *	If there's a connection timeout,
 	 *	set, then add the timer.
 	 */
-	if (conn->connection_timeout) {
+	if (fr_time_delta_ispos(conn->connection_timeout)) {
 		if (fr_event_timer_in(conn, conn->pub.el, &conn->ev,
 				      conn->connection_timeout, _connection_timeout, conn) < 0) {
 			PERROR("Failed setting connection_timeout event, failing connection");

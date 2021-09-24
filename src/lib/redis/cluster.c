@@ -1013,7 +1013,7 @@ fr_redis_cluster_rcode_t fr_redis_cluster_remap(request_t *request, fr_redis_clu
 	 *	The remap times are _our_ times, not the _request_ time.
 	 */
 	now = fr_time();
-	if (now == cluster->last_updated) {
+	if (fr_time_eq(now, cluster->last_updated)) {
 	too_soon:
 		ROPTIONAL(RWARN, WARN, "Cluster was updated less than a second ago, ignoring remap request");
 		return FR_REDIS_CLUSTER_RCODE_IGNORED;
@@ -1074,7 +1074,7 @@ fr_redis_cluster_rcode_t fr_redis_cluster_remap(request_t *request, fr_redis_clu
 		fr_redis_reply_free(&map);	/* Free the map */
 		goto in_progress;
 	}
-	if (now == cluster->last_updated) {
+	if (fr_time_eq(now, cluster->last_updated)) {
 		pthread_mutex_unlock(&cluster->mutex);
 		fr_redis_reply_free(&map);	/* Free the map */
 		goto too_soon;
@@ -1197,22 +1197,22 @@ static int cluster_node_pool_health(fr_time_t now, fr_pool_state_t const *state)
 	/*
 	 *	Failed spawn recently, probably bad
 	 */
-	if (fr_time_delta_to_msec(now - state->last_failed) < FAILED_PERIOD) return FAILED_WEIGHT;
+	if (fr_time_delta_to_msec(fr_time_sub(now, state->last_failed)) < FAILED_PERIOD) return FAILED_WEIGHT;
 
 	/*
 	 *	Closed recently, probably bad
 	 */
-	if (fr_time_delta_to_msec(now - state->last_closed) < CLOSED_PERIOD) return CLOSED_WEIGHT;
+	if (fr_time_delta_to_msec(fr_time_sub(now, state->last_closed)) < CLOSED_PERIOD) return CLOSED_WEIGHT;
 
 	/*
 	 *	Released too long ago, don't know
 	 */
-	if (fr_time_delta_to_msec(now - state->last_released) > RELEASED_PERIOD) return RELEASED_MIN_WEIGHT;
+	if (fr_time_delta_to_msec(fr_time_sub(now, state->last_released)) > RELEASED_PERIOD) return RELEASED_MIN_WEIGHT;
 
 	/*
 	 *	Released not long ago, might be ok.
 	 */
-	return RELEASED_MIN_WEIGHT + (RELEASED_PERIOD - fr_time_delta_to_msec(now - state->last_released));
+	return RELEASED_MIN_WEIGHT + (RELEASED_PERIOD - fr_time_delta_to_msec(fr_time_sub(now, state->last_released)));
 }
 
 /** Issue a ping request against a cluster node
@@ -1453,7 +1453,7 @@ static int _cluster_conn_free(fr_redis_conn_t *conn)
  */
 void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
-	fr_redis_cluster_node_t		*node = instance;
+	fr_redis_cluster_node_t	*node = instance;
 	fr_redis_conn_t		*conn = NULL;
 	redisContext		*handle;
 	redisReply		*reply = NULL;
@@ -1889,7 +1889,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 
 		if (!*conn) *conn = fr_pool_connection_get(state->node->pool, request);
 
-		if (cluster->conf->retry_delay) nanosleep(&fr_time_delta_to_timespec(cluster->conf->retry_delay), NULL);
+		if (fr_time_delta_ispos(cluster->conf->retry_delay)) nanosleep(&fr_time_delta_to_timespec(cluster->conf->retry_delay), NULL);
 		goto try_again;
 
 	/*

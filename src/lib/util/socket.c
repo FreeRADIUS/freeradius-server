@@ -611,7 +611,7 @@ int fr_socket_wait_for_connect(int sockfd, fr_time_delta_t timeout)
 		return 0;
 
 	case 0: /* timeout */
-		if (!fr_cond_assert(timeout)) return -1;
+		if (!fr_cond_assert(fr_time_delta_ispos(timeout))) return -1;
 		fr_strerror_printf("Connection timed out after %pVs", fr_box_time_delta(timeout));
 		return -2;
 

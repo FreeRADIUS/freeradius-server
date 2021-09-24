@@ -352,7 +352,7 @@ do {\
 
 #define FR_TIME_DELTA_BOUND_CHECK(_name, _var, _op, _bound)\
 do {\
-	if (!(_var _op _bound)) { \
+	if (!fr_time_delta_cond(_var, _op, _bound)) { \
 		WARN("Ignoring \"" _name " = %pV\", forcing to \"" _name " = %pV\"",\
 		     fr_box_time_delta(_var),\
 		     fr_box_time_delta(_bound));\

@@ -638,7 +638,8 @@ use_time:
 		      cf_section_name2(thread->inst->parent->server_cs), buffer, end - start);
 	}
 
-	if (fr_event_timer_at(thread, el, &thread->ev, now + fr_time_delta_from_sec(end - start), do_cron, thread) < 0) {
+	if (fr_event_timer_at(thread, el, &thread->ev, fr_time_add(now, fr_time_delta_from_sec(end - start)),
+			      do_cron, thread) < 0) {
 		fr_assert(0);
 	}
 

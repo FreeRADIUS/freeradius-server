@@ -126,7 +126,7 @@ void fr_ldap_timeout_debug(request_t *request, fr_ldap_connection_t const *conn,
 
 	ROPTIONAL(RDEBUG4, DEBUG4, "%s: Timeout settings", prefix);
 
-	if (timeout) {
+	if (fr_time_delta_ispos(timeout)) {
 		ROPTIONAL(RDEBUG4, DEBUG4, "Client side result timeout (ovr): %pVs",
 			  fr_box_time_delta(timeout));
 	} else {
@@ -412,7 +412,7 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 	ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
 	if (lib_errno != LDAP_SUCCESS) return fr_ldap_error_check(NULL, conn, NULL, dn);
 
-	if (!timeout) our_timeout = conn->config->res_timeout;
+	if (!fr_time_delta_ispos(timeout)) our_timeout = conn->config->res_timeout;
 
 	/*
 	 *	Now retrieve the result and check for errors
@@ -524,7 +524,7 @@ fr_ldap_rcode_t fr_ldap_bind(request_t *request,
 		/* We got a valid message ID */
 		if ((ret == 0) && (msgid >= 0)) ROPTIONAL(RDEBUG2, DEBUG2, "Waiting for bind result...");
 
-		status = fr_ldap_result(NULL, NULL, *pconn, msgid, 0, dn, 0);
+		status = fr_ldap_result(NULL, NULL, *pconn, msgid, 0, dn, fr_time_delta_wrap(0));
 	}
 
 	switch (status) {
@@ -591,7 +591,7 @@ fr_ldap_rcode_t fr_ldap_search(LDAPMessage **result, request_t *request,
 	fr_assert(*pconn && (*pconn)->handle);
 
 	if (DEBUG_ENABLED4 || (request && RDEBUG_ENABLED4)) {
-		fr_ldap_timeout_debug(request, *pconn, 0, __FUNCTION__);
+		fr_ldap_timeout_debug(request, *pconn, fr_time_delta_wrap(0), __FUNCTION__);
 	}
 
 	/*
@@ -607,7 +607,7 @@ fr_ldap_rcode_t fr_ldap_search(LDAPMessage **result, request_t *request,
 	if ((*pconn)->rebound) {
 		status = fr_ldap_bind(request, pconn,
 				      (*pconn)->config->admin_identity, (*pconn)->config->admin_password,
-				      &(*pconn)->config->admin_sasl, 0,
+				      &(*pconn)->config->admin_sasl, fr_time_delta_wrap(0),
 				      NULL, NULL);
 		if (status != LDAP_PROC_SUCCESS) return LDAP_PROC_ERROR;
 
@@ -634,7 +634,7 @@ fr_ldap_rcode_t fr_ldap_search(LDAPMessage **result, request_t *request,
 			       0, our_serverctrls, our_clientctrls, NULL, 0, &msgid);
 
 	ROPTIONAL(RDEBUG2, DEBUG2, "Waiting for search result...");
-	status = fr_ldap_result(&our_result, NULL, *pconn, msgid, 1, dn, 0);
+	status = fr_ldap_result(&our_result, NULL, *pconn, msgid, 1, dn, fr_time_delta_wrap(0));
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;
@@ -716,7 +716,9 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 
 	fr_assert(*pconn && (*pconn)->handle);
 
-	if (DEBUG_ENABLED4 || (request && RDEBUG_ENABLED4)) fr_ldap_timeout_debug(request, *pconn, 0, __FUNCTION__);
+	if (DEBUG_ENABLED4 || (request && RDEBUG_ENABLED4)) {
+		fr_ldap_timeout_debug(request, *pconn, fr_time_delta_wrap(0), __FUNCTION__);
+	}
 
 	/*
 	 *	OpenLDAP library doesn't declare attrs array as const, but
@@ -731,7 +733,7 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 	if ((*pconn)->rebound) {
 		status = fr_ldap_bind(request, pconn,
 				      (*pconn)->config->admin_identity, (*pconn)->config->admin_password,
-				      &(*pconn)->config->admin_sasl, 0,
+				      &(*pconn)->config->admin_sasl, fr_time_delta_wrap(0),
 				      NULL, NULL);
 		if (status != LDAP_PROC_SUCCESS) return LDAP_PROC_ERROR;
 
@@ -797,7 +799,7 @@ fr_ldap_rcode_t fr_ldap_modify(request_t *request, fr_ldap_connection_t **pconn,
 
 	fr_assert(*pconn && (*pconn)->handle);
 
-	if (RDEBUG_ENABLED4) fr_ldap_timeout_debug(request, *pconn, 0, __FUNCTION__);
+	if (RDEBUG_ENABLED4) fr_ldap_timeout_debug(request, *pconn, fr_time_delta_wrap(0), __FUNCTION__);
 
 	/*
 	 *	Perform all modifications as the admin user.
@@ -806,7 +808,7 @@ fr_ldap_rcode_t fr_ldap_modify(request_t *request, fr_ldap_connection_t **pconn,
 		status = fr_ldap_bind(request, pconn,
 				      (*pconn)->config->admin_identity, (*pconn)->config->admin_password,
 				      &(*pconn)->config->admin_sasl,
-				      0, NULL, NULL);
+				      fr_time_delta_wrap(0), NULL, NULL);
 		if (status != LDAP_PROC_SUCCESS) {
 			return LDAP_PROC_ERROR;
 		}
@@ -820,7 +822,7 @@ fr_ldap_rcode_t fr_ldap_modify(request_t *request, fr_ldap_connection_t **pconn,
 	(void) ldap_modify_ext((*pconn)->handle, dn, mods, our_serverctrls, our_clientctrls, &msgid);
 
 	RDEBUG2("Waiting for modify result...");
-	status = fr_ldap_result(NULL, NULL, *pconn, msgid, 0, dn, 0);
+	status = fr_ldap_result(NULL, NULL, *pconn, msgid, 0, dn, fr_time_delta_wrap(0));
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;

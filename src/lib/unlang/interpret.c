@@ -282,8 +282,8 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 			 *	timer is automatically freed when the
 			 *	frame is cleaned up.
 			 */
-			if (instruction->actions.retry.mrd) {
-				retry->timeout = fr_time() + instruction->actions.retry.mrd;
+			if (fr_time_delta_ispos(instruction->actions.retry.mrd)) {
+				retry->timeout = fr_time_add(fr_time(), instruction->actions.retry.mrd);
 
 				if (fr_event_timer_at(retry, unlang_interpret_event_list(request), &retry->ev, retry->timeout,
 						      instruction_timeout_handler, request) < 0) {

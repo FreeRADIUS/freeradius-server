@@ -456,7 +456,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	}
 
 	if ((request->packet->code >= FR_RADIUS_CODE_MAX) ||
-	    !inst->retry[request->packet->code].irt) { /* can't be zero */
+	    !fr_time_delta_ispos(inst->retry[request->packet->code].irt)) { /* can't be zero */
 		REDEBUG("Invalid packet code %d", request->packet->code);
 		RETURN_MODULE_FAIL;
 	}

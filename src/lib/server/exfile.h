@@ -35,7 +35,7 @@ extern "C" {
  */
 typedef struct exfile_s exfile_t;
 
-exfile_t	*exfile_init(TALLOC_CTX *ctx, uint32_t entries, uint32_t idle, bool locking);
+exfile_t	*exfile_init(TALLOC_CTX *ctx, uint32_t entries, fr_time_delta_t idle, bool locking);
 
 void		exfile_enable_triggers(exfile_t *ef, CONF_SECTION *cs, char const *trigger_prefix,
 				       fr_pair_list_t *trigger_args);

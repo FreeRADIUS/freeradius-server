@@ -88,7 +88,7 @@ static const CONF_PARSER load_listen_config[] = {
 
 	{ FR_CONF_OFFSET("start_pps", FR_TYPE_UINT32, proto_load_step_t, load.start_pps) },
 	{ FR_CONF_OFFSET("max_pps", FR_TYPE_UINT32, proto_load_step_t, load.max_pps) },
-	{ FR_CONF_OFFSET("duration", FR_TYPE_UINT32, proto_load_step_t, load.duration) },
+	{ FR_CONF_OFFSET("duration", FR_TYPE_TIME_DELTA, proto_load_step_t, load.duration) },
 	{ FR_CONF_OFFSET("step", FR_TYPE_UINT32, proto_load_step_t, load.step) },
 	{ FR_CONF_OFFSET("max_backlog", FR_TYPE_UINT32, proto_load_step_t, load.milliseconds) },
 	{ FR_CONF_OFFSET("parallel", FR_TYPE_UINT32, proto_load_step_t, load.parallel) },
@@ -243,7 +243,7 @@ static void write_stats(fr_event_list_t *el, fr_time_t now, void *uctx)
 	size_t len;
 	char buffer[1024];
 
-	(void) fr_event_timer_in(thread, el, &thread->ev, NSEC, write_stats, thread);
+	(void) fr_event_timer_in(thread, el, &thread->ev, fr_time_delta_from_sec(1), write_stats, thread);
 
 	len = fr_load_generator_stats_sprint(thread->l, now, buffer, sizeof(buffer));
 	if (write(thread->fd, buffer, len) < 0) {
@@ -330,7 +330,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 		return;
 	}
 
-	(void) fr_event_timer_in(thread, thread->el, &thread->ev, NSEC, write_stats, thread);
+	(void) fr_event_timer_in(thread, thread->el, &thread->ev, fr_time_delta_from_sec(1), write_stats, thread);
 
 	len = fr_load_generator_stats_sprint(thread->l, fr_time(), buffer, sizeof(buffer));
 	if (write(thread->fd, buffer, len) < 0) {
@@ -372,8 +372,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	if (inst->load.max_pps > 0) FR_INTEGER_BOUND_CHECK("max_pps", inst->load.max_pps, >, inst->load.start_pps);
 	FR_INTEGER_BOUND_CHECK("max_pps", inst->load.max_pps, <, 100000);
 
-	FR_INTEGER_BOUND_CHECK("duration", inst->load.duration, >=, 1);
-	FR_INTEGER_BOUND_CHECK("duration", inst->load.duration, <, 10000);
+	FR_TIME_DELTA_BOUND_CHECK("duration", inst->load.duration, >=, fr_time_delta_from_sec(1));
+	FR_TIME_DELTA_BOUND_CHECK("duration", inst->load.duration, <, fr_time_delta_from_sec(10000));
 
 
 	FR_INTEGER_BOUND_CHECK("parallel", inst->load.parallel, >=, 1);

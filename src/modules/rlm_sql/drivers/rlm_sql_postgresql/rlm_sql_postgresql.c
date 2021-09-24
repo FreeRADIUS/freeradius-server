@@ -259,7 +259,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 {
 	rlm_sql_postgres_conn_t	*conn = handle->conn;
 	rlm_sql_postgres_t	*inst = config->driver;
-	fr_time_delta_t		timeout = fr_time_delta_from_sec(config->query_timeout);
+	fr_time_delta_t		timeout = config->query_timeout;
 	fr_time_t		start;
 	int			sockfd;
 	PGresult		*tmp_result;
@@ -290,20 +290,21 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	while (PQisBusy(conn->db)) {
 		int		r;
 		fd_set		read_fd;
-		fr_time_delta_t	elapsed = 0;
+		fr_time_delta_t	elapsed = fr_time_delta_wrap(0);
 
 		FD_ZERO(&read_fd);
 		FD_SET(sockfd, &read_fd);
 
-		if (config->query_timeout) {
-			elapsed = fr_time() - start;
-			if (elapsed >= timeout) goto too_long;
+		if (fr_time_delta_ispos(config->query_timeout)) {
+			elapsed = fr_time_sub(fr_time(), start);
+			if (fr_time_delta_gteq(elapsed, timeout)) goto too_long;
 		}
 
-		r = select(sockfd + 1, &read_fd, NULL, NULL, config->query_timeout ? &fr_time_delta_to_timeval(timeout - elapsed) : NULL);
+		r = select(sockfd + 1, &read_fd, NULL, NULL, fr_time_delta_ispos(config->query_timeout) ?
+			   &fr_time_delta_to_timeval(fr_time_delta_sub(timeout, elapsed)) : NULL);
 		if (r == 0) {
 		too_long:
-			ERROR("Socket read timeout after %d seconds", config->query_timeout);
+			ERROR("Socket read timeout after %d seconds", (int) fr_time_delta_to_sec(config->query_timeout));
 			return RLM_SQL_RECONNECT;
 		}
 		if (r < 0) {
@@ -578,8 +579,8 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 			db_string = talloc_asprintf_append(db_string, " password='%s'", config->sql_password);
 		}
 
-		if (config->query_timeout) {
-			db_string = talloc_asprintf_append(db_string, " connect_timeout=%d", config->query_timeout);
+		if (fr_time_delta_ispos(config->query_timeout)) {
+			db_string = talloc_asprintf_append(db_string, " connect_timeout=%d", (int) fr_time_delta_to_sec(config->query_timeout));
 		}
 
 		if (inst->send_application_name) {
@@ -610,8 +611,8 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 			db_string = talloc_asprintf_append(db_string, " password='%s'", config->sql_password);
 		}
 
-		if ((config->query_timeout) && !strstr(db_string, "connect_timeout=")) {
-			db_string = talloc_asprintf_append(db_string, " connect_timeout=%d", config->query_timeout);
+		if (fr_time_delta_ispos(config->query_timeout) && !strstr(db_string, "connect_timeout=")) {
+			db_string = talloc_asprintf_append(db_string, " connect_timeout=%d", (int) fr_time_delta_to_sec(config->query_timeout));
 		}
 
 		if (inst->send_application_name && !strstr(db_string, "application_name=")) {

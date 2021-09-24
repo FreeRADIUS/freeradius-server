@@ -119,10 +119,10 @@ static void main_loop_signal_process(int flag)
 	 */
 	if ((flag & RADIUS_SIGNAL_SELF_HUP) != 0) {
 		fr_time_t when;
-		static fr_time_t last_hup = 0;
+		static fr_time_t last_hup = fr_time_wrap(0);
 
 		when = fr_time();
-		if (when - last_hup <  fr_time_delta_from_sec(5)) {
+		if (fr_time_delta_lt(fr_time_sub(when, last_hup), fr_time_delta_from_sec(5))) {
 			INFO("Ignoring HUP (less than 5s since last one)");
 			return;
 		}
@@ -175,7 +175,7 @@ void main_loop_set_sd_watchdog_interval(void)
 		 *	and set the interval to be half what
 		 *	systemd uses as its timeout value.
 		 */
-		sd_watchdog_interval = ((interval_usec * 1000) / 2);
+		sd_watchdog_interval = fr_time_delta_wrap((interval_usec * 1000) / 2);
 
 		INFO("systemd watchdog interval is %pVs", fr_box_time_delta(sd_watchdog_interval));
 	} else {
@@ -208,7 +208,7 @@ int main_loop_start(void)
 	/*
 	 *	Start placating the watchdog (if told to do so).
 	 */
-	if (sd_watchdog_interval > 0) sd_watchdog_event(event_list, 0, NULL);
+	if (fr_time_delta_ispos(sd_watchdog_interval)) sd_watchdog_event(event_list, fr_time_wrap(0), NULL);
 #endif
 
 	ret = fr_event_loop(event_list);
@@ -232,9 +232,9 @@ int main_loop_start(void)
 	return ret;
 }
 
-static int _loop_status(fr_time_t wake, UNUSED void *ctx)
+static int _loop_status(UNUSED fr_time_t now, fr_time_delta_t wake, UNUSED void *ctx)
 {
-	if (wake > (NSEC / 10)) DEBUG3("Main loop waking up in %pV seconds", fr_box_time_delta(wake));
+	if (fr_time_delta_unwrap(wake) > (NSEC / 10)) DEBUG3("Main loop waking up in %pV seconds", fr_box_time_delta(wake));
 
 	return 0;
 }

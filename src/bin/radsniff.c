@@ -1775,7 +1775,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	It's a linked response
 	 */
 	if (original && original->linked) {
-		latency = fr_time_delta_to_timeval(packet->timestamp - original->packet->timestamp);
+		latency = fr_time_delta_to_timeval(fr_time_sub(packet->timestamp, original->packet->timestamp));
 
 		/*
 		 *	Update stats for both the request and response types.
@@ -1858,7 +1858,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
 {
 	static uint64_t		count = 0;	/* Packets seen */
-	static fr_time_t	last_sync = 0;
+	static fr_time_t	last_sync = fr_time_wrap(0);
 	fr_time_t		now_real;
 	rs_event_t		*event = talloc_get_type(ctx, rs_event_t);
 	pcap_t			*handle = event->in->handle;
@@ -1875,7 +1875,7 @@ static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *c
 	 *	event ourselves.
 	 */
 	now_real = fr_time();
-	if ((now_real - last_sync) > fr_time_delta_from_sec(1)) {
+	if (fr_time_delta_gt(fr_time_sub(now_real, last_sync), fr_time_delta_from_sec(1))) {
 		fr_time_sync();
 		last_sync = now_real;
 	}
@@ -1948,7 +1948,7 @@ static void rs_got_packet(fr_event_list_t *el, int fd, UNUSED int flags, void *c
 	}
 }
 
-static int  _rs_event_status(fr_time_delta_t wake_t, UNUSED void *uctx)
+static int  _rs_event_status(UNUSED fr_time_t now, fr_time_delta_t wake_t, UNUSED void *uctx)
 {
 	struct timeval wake;
 
@@ -2126,7 +2126,8 @@ static void rs_collectd_reopen(fr_event_list_t *el, fr_time_t now, UNUSED void *
 	ERROR("Will attempt to re-establish connection in %i ms", RS_SOCKET_REOPEN_DELAY);
 
 	if (fr_event_timer_at(NULL, el, &event,
-			      now + fr_time_delta_from_msec(RS_SOCKET_REOPEN_DELAY), rs_collectd_reopen, el) < 0) {
+			      fr_time_add(now, fr_time_delta_from_msec(RS_SOCKET_REOPEN_DELAY)),
+			      rs_collectd_reopen, el) < 0) {
 		ERROR("Failed inserting re-open event");
 		RS_ASSERT(0);
 	}

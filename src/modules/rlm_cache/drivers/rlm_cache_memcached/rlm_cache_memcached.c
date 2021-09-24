@@ -225,7 +225,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 
 	ret = memcached_set(mandle->handle, (char const *)c->key, c->key_len,
 		            to_store ? to_store : "",
-		            to_store ? talloc_array_length(to_store) - 1 : 0, c->expires, 0);
+		            to_store ? talloc_array_length(to_store) - 1 : 0, fr_unix_time_to_sec(c->expires), 0);
 	talloc_free(pool);
 	if (ret != MEMCACHED_SUCCESS) {
 		RERROR("Failed storing entry: %s: %s", memcached_strerror(mandle->handle, ret),

@@ -158,13 +158,13 @@ void radius_stats_init(int flag)
 
 void radius_stats_ema(fr_stats_ema_t *ema, fr_time_t start, fr_time_t end)
 {
-	uint64_t	tdiff;
+	int64_t	tdiff;
 #ifdef WITH_STATS_DEBUG
 	static int	n = 0;
 #endif
 	if (ema->window == 0) return;
 
-	fr_assert(start <= end);
+	fr_assert(fr_time_lteq(start, end));
 
 	/*
 	 *	Initialize it.
@@ -176,8 +176,7 @@ void radius_stats_ema(fr_stats_ema_t *ema, fr_time_t start, fr_time_t end)
 		ema->f10 = (2 * F_EMA_SCALE) / ((10 * ema->window) + 1);
 	}
 
-	tdiff = fr_time_delta_to_usec(start);
-	tdiff -= fr_time_delta_to_usec(end);
+	tdiff = fr_time_delta_to_usec(fr_time_sub(start, end));
 	tdiff *= EMA_SCALE;
 
 	if (ema->ema1 == 0) {
@@ -214,13 +213,13 @@ void radius_stats_ema(fr_stats_ema_t *ema, fr_time_t start, fr_time_t end)
  */
 void fr_stats_bins(fr_stats_t *stats, fr_time_t start, fr_time_t end)
 {
-	fr_time_t	diff;
+	fr_time_delta_t	diff;
 	uint32_t	delay;
 
-	if (end < start) return;	/* bad data */
-	diff = end - start;
+	if (fr_time_lt(end, start)) return;	/* bad data */
+	diff = fr_time_sub(end, start);
 
-	if (diff >= fr_time_delta_from_sec(10)) {
+	if (fr_time_delta_gteq(diff, fr_time_delta_from_sec(10))) {
 		stats->elapsed[7]++;
 	} else {
 		int i;

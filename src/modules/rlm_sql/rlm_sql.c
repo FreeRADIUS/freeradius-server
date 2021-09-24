@@ -108,7 +108,7 @@ static const CONF_PARSER module_config[] = {
 	/*
 	 *	This only works for a few drivers.
 	 */
-	{ FR_CONF_OFFSET("query_timeout", FR_TYPE_UINT32, rlm_sql_config_t, query_timeout) },
+	{ FR_CONF_OFFSET("query_timeout", FR_TYPE_TIME_DELTA, rlm_sql_config_t, query_timeout) },
 
 	{ FR_CONF_POINTER("accounting", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) acct_config },
 
@@ -1163,7 +1163,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 				inst->driver->sql_escape_func :
 				sql_escape_func;
 
-	inst->ef = module_exfile_init(inst, conf, 256, 30, true, NULL, NULL);
+	inst->ef = module_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
 	if (!inst->ef) {
 		cf_log_err(conf, "Failed creating log file context");
 		return -1;

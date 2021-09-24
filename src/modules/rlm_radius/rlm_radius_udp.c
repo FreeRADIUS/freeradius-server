@@ -322,7 +322,7 @@ static void status_check_reset(udp_handle_t *h, udp_request_t *u)
 
 	h->status_checking = false;
 	u->num_replies = 0;	/* Reset */
-	u->retry.start = 0;
+	u->retry.start = fr_time_wrap(0);
 
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
@@ -485,7 +485,8 @@ static void conn_status_check_timeout(fr_event_list_t *el, fr_time_t now, void *
 	switch (fr_retry_next(&u->retry, now)) {
 	case FR_RETRY_MRD:
 		DEBUG("%s - Reached maximum_retransmit_duration (%pVs > %pVs), failing status checks",
-		      h->module_name, fr_box_time_delta(now - u->retry.start), fr_box_time_delta(u->retry.config->mrd));
+		      h->module_name, fr_box_time_delta(fr_time_sub(now, u->retry.start)),
+		      fr_box_time_delta(u->retry.config->mrd));
 		goto fail;
 
 	case FR_RETRY_MRC:
@@ -592,7 +593,7 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	 *	Last trunk event was a failure, be more careful about
 	 *	bringing up the connection (require multiple responses).
 	 */
-	if ((trunk->last_failed && (trunk->last_failed > trunk->last_connected)) &&
+	if ((fr_time_gt(trunk->last_failed, fr_time_wrap(0)) && (fr_time_gt(trunk->last_failed, trunk->last_connected))) &&
 	    (u->num_replies < inst->num_answers_to_alive)) {
 		/*
 		 *	Leave the timer in place.  This timer is BOTH when we
@@ -602,7 +603,7 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 		DEBUG("%s - Received %u / %u replies for status check, on connection - %s",
 		      h->module_name, u->num_replies, inst->num_answers_to_alive, h->name);
 		DEBUG("%s - Next status check packet will be in %pVs",
-		      h->module_name, fr_box_time_delta(u->retry.next - fr_time()));
+		      h->module_name, fr_box_time_delta(fr_time_sub(u->retry.next, fr_time())));
 
 		/*
 		 *	Set the timer for the next retransmit.
@@ -633,7 +634,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	udp_request_t		*u = h->status_u;
 	ssize_t			slen;
 
-	if (!u->retry.start) {
+	if (fr_time_eq(u->retry.start, fr_time_wrap(0))) {
 		u->id = fr_rand() & 0xff;	/* We don't care what the value is here */
 		h->status_checking = true;	/* Ensure this is valid */
 		(void) fr_retry_init(&u->retry, fr_time(), &h->inst->parent->retry[u->code]);
@@ -1151,13 +1152,13 @@ static int8_t request_prioritise(void const *one, void const *two)
 	/*
 	 *	Larger priority is more important.
 	 */
-	ret = (a->priority < b->priority) - (a->priority > b->priority);
+	ret = CMP(a->priority, b->priority);
 	if (ret != 0) return ret;
 
 	/*
 	 *	Smaller timestamp (i.e. earlier) is more important.
 	 */
-	return (a->recv_time > b->recv_time) - (a->recv_time < b->recv_time);
+	return CMP_PREFER_SMALLER(fr_time_unwrap(a->recv_time), fr_time_unwrap(b->recv_time));
 }
 
 /** Decode response packet data, extracting relevant information and validating the packet
@@ -1262,7 +1263,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	/*
 	 *	Fixup retry times
 	 */
-	if (u->retry.start > h->mrs_time) h->mrs_time = u->retry.start;
+	if (fr_time_gt(u->retry.start, h->mrs_time)) h->mrs_time = u->retry.start;
 
 	return DECODE_FAIL_NONE;
 }
@@ -1491,7 +1492,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 			 */
 			memcpy(&delay, attr + 2, 4);
 			delay = ntohl(delay);
-			delay += fr_time_delta_to_sec(now - u->recv_time);
+			delay += fr_time_delta_to_sec(fr_time_sub(now, u->recv_time));
 			delay = htonl(delay);
 			memcpy(attr + 2, &delay, 4);
 			break;
@@ -1570,7 +1571,8 @@ static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	/*
 	 *	Revive the connection after a time.
 	 */
-	if (fr_event_timer_at(h, el, &h->zombie_ev, now + h->inst->parent->revive_interval, revive_timeout, h) < 0) {
+	if (fr_event_timer_at(h, el, &h->zombie_ev,
+			      fr_time_add(now, h->inst->parent->revive_interval), revive_timeout, h) < 0) {
 		ERROR("Failed inserting revive timeout for connection");
 		fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 	}
@@ -1616,17 +1618,18 @@ static bool check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 	 */
 	if (h->status_checking || h->zombie_ev) return true;
 
-	if (now == 0) now = fr_time();
+	if (fr_time_eq(now, fr_time_wrap(0))) now = fr_time();
 
 	/*
 	 *	We received a reply since this packet was sent, the connection isn't zombie.
 	 */
-	if (h->last_reply >= last_sent) return false;
+	if (fr_time_gteq(h->last_reply, last_sent)) return false;
 
 	/*
 	 *	If we've seen ANY response in the allowed window, then the connection is still alive.
 	 */
-	if (h->inst->parent->synchronous && last_sent && ((last_sent + h->inst->parent->response_window) < now)) return false;
+	if (h->inst->parent->synchronous && fr_time_gt(last_sent, fr_time_wrap(0)) &&
+	    (fr_time_lt(fr_time_add(last_sent, h->inst->parent->response_window), now))) return false;
 
 	/*
 	 *	Mark the connection as inactive, but keep sending
@@ -1642,7 +1645,7 @@ static bool check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 		 *	Queue up the status check packet.  It will be sent
 		 *	when the connection is writable.
 		 */
-		h->status_u->retry.start = 0;
+		h->status_u->retry.start = fr_time_wrap(0);
 		h->status_r->treq = NULL;
 
 		if (fr_trunk_request_enqueue_on_conn(&h->status_r->treq, tconn, h->status_request,
@@ -1650,7 +1653,8 @@ static bool check_for_zombie(fr_event_list_t *el, fr_trunk_connection_t *tconn, 
 			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 		}
 	} else {
-		if (fr_event_timer_at(h, el, &h->zombie_ev, now + h->inst->parent->zombie_period, zombie_timeout, h) < 0) {
+		if (fr_event_timer_at(h, el, &h->zombie_ev, fr_time_add(now, h->inst->parent->zombie_period),
+				      zombie_timeout, h) < 0) {
 			ERROR("Failed inserting zombie timeout for connection");
 			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 		}
@@ -1715,7 +1719,7 @@ static void request_retry(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	case FR_RETRY_MRD:
 		REDEBUG("Reached maximum_retransmit_duration (%pVs > %pVs), failing request",
-			fr_box_time_delta(now - u->retry.start), fr_box_time_delta(u->retry.config->mrd));
+			fr_box_time_delta(fr_time_sub(now, u->retry.start)), fr_box_time_delta(u->retry.config->mrd));
 		break;
 
 	case FR_RETRY_MRC:
@@ -1763,7 +1767,7 @@ static void status_check_retry(UNUSED fr_event_list_t *el, fr_time_t now, void *
 
 	case FR_RETRY_MRD:
 		REDEBUG("Reached maximum_retransmit_duration (%pVs > %pVs), failing request",
-			fr_box_time_delta(now - u->retry.start), fr_box_time_delta(u->retry.config->mrd));
+			fr_box_time_delta(fr_time_sub(now, u->retry.start)), fr_box_time_delta(u->retry.config->mrd));
 		break;
 
 	case FR_RETRY_MRC:
@@ -1798,7 +1802,7 @@ static void request_mux(fr_event_list_t *el,
 	 *	If the connection is zombie, then don't try to enqueue
 	 *	things on it!
 	 */
-	if (check_for_zombie(el, tconn, 0, h->last_sent)) return;
+	if (check_for_zombie(el, tconn, fr_time_wrap(0), h->last_sent)) return;
 
 	/*
 	 *	Encode multiple packets in preparation
@@ -1825,10 +1829,10 @@ static void request_mux(fr_event_list_t *el,
 		/*
 		 *	Start retransmissions from when the socket is writable.
 		 */
-		if (!u->retry.start) {
+		if (fr_time_eq(u->retry.start, fr_time_wrap(0))) {
 			(void) fr_retry_init(&u->retry, fr_time(), &h->inst->parent->retry[u->code]);
-			fr_assert(u->retry.rt > 0);
-			fr_assert(u->retry.next > 0);
+			fr_assert(fr_time_delta_ispos(u->retry.rt));
+			fr_assert(fr_time_gt(u->retry.next, fr_time_wrap(0)));
 		}
 
 		/*
@@ -1995,7 +1999,7 @@ static void request_mux(fr_event_list_t *el,
 		if (u->retry.count == 1) {
 			action = inst->parent->originate ? "Originated" : "Proxied";
 			h->last_sent = u->retry.start;
-			if (h->first_sent <= h->last_idle) h->first_sent = h->last_sent;
+			if (fr_time_lteq(h->first_sent, h->last_idle)) h->first_sent = h->last_sent;
 
 		} else {
 			action = "Retransmitted";
@@ -2022,7 +2026,9 @@ static void request_mux(fr_event_list_t *el,
 			}
 
 		} else if (u->retry.count == 1) {
-			if (fr_event_timer_at(u, el, &u->ev, u->retry.start + h->inst->parent->response_window, request_timeout, treq) < 0) {
+			if (fr_event_timer_at(u, el, &u->ev,
+					      fr_time_add(u->retry.start, h->inst->parent->response_window),
+					      request_timeout, treq) < 0) {
 				RERROR("Failed inserting timeout for connection");
 				fr_trunk_request_signal_fail(treq);
 				continue;
@@ -2326,7 +2332,7 @@ static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 	if (u->num_replies < inst->num_answers_to_alive) {
 		DEBUG("Received %d / %u replies for status check, on connection - %s",
 		      u->num_replies, inst->num_answers_to_alive, h->name);
-		DEBUG("Next status check packet will be in %pVs", fr_box_time_delta(u->retry.next - now));
+		DEBUG("Next status check packet will be in %pVs", fr_box_time_delta(fr_time_sub(u->retry.next, now)));
 
 		/*
 		 *	If we're retransmitting, leave the ID,

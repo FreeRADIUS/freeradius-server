@@ -1669,17 +1669,17 @@ bool unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *action_cs, 
 	}
 
 	if (module_retry) {
-		if (!actions->retry.irt) {
+		if (!fr_time_delta_ispos(actions->retry.irt)) {
 			cf_log_err(csi, "initial_rtx_time MUST be non-zero for modules which support retries.");
 			return false;
 		}
 	} else {
-		if (actions->retry.irt) {
+		if (fr_time_delta_ispos(actions->retry.irt)) {
 			cf_log_err(csi, "initial_rtx_time MUST be zero, as only max_rtx_count and max_rtx_duration are used.");
 			return false;
 		}
 
-		if (!actions->retry.mrc && !actions->retry.mrd) {
+		if (!actions->retry.mrc && !fr_time_delta_ispos(actions->retry.mrd)) {
 			disallow_retry_action = true;
 		}
 	}
@@ -1703,7 +1703,9 @@ bool unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *action_cs, 
 			return false;
 		}
 
-		if (!actions->retry.irt && !actions->retry.mrc && !actions->retry.mrd) {
+		if (!fr_time_delta_ispos(actions->retry.irt) &&
+		    !actions->retry.mrc &&
+		    !fr_time_delta_ispos(actions->retry.mrd)) {
 			cf_log_err(csi, "Cannot use a '%s = retry' action without a 'retry { ... }' section.",
 				   fr_table_str_by_value(mod_rcode_table, i, "???"));
 			return false;
@@ -4121,7 +4123,7 @@ void unlang_frame_perf_cleanup(unlang_t const *instruction)
 
 	t = &unlang_thread_array[instruction->number];
 
-	t->cpu_time += (fr_time() - t->enter);
+	t->cpu_time = fr_time_add(t->cpu_time, fr_time_sub(fr_time(), t->enter));
 }
 
 
@@ -4161,7 +4163,8 @@ static void unlang_perf_dump(fr_log_t *log, unlang_t const *instruction, int dep
 
 	t = &unlang_thread_array[instruction->number];
 
-	fr_log(log, L_DBG, file, line, "count=%" PRIu64 " cpu_time=%" PRIu64 "\n", t->use_count, t->cpu_time);
+	fr_log(log, L_DBG, file, line, "count=%" PRIu64 " cpu_time=%" PRIu64,
+	       t->use_count, fr_time_delta_unwrap(t->cpu_time));
 
 	if (g->children) {
 		unlang_t *child;
@@ -4176,7 +4179,7 @@ static void unlang_perf_dump(fr_log_t *log, unlang_t const *instruction, int dep
 			fr_log(log, L_DBG, file, line, "%.*s", depth, unlang_spaces);
 		}
 
-		fr_log(log, L_DBG, file, line, "}\n");
+		fr_log(log, L_DBG, file, line, "}");
 	}
 }
 

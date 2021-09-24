@@ -882,7 +882,7 @@ static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_tim
 
 	case FR_RETRY_MRD:
 		REDEBUG("Reached max_rtx_duration (%pVs > %pVs) - sending timeout signal",
-			fr_box_time_delta(now - state->retry.start), fr_box_time_delta(state->retry.config->mrd));
+			fr_box_time_delta(fr_time_sub(now, state->retry.start)), fr_box_time_delta(state->retry.config->mrd));
 		break;
 
 	case FR_RETRY_MRC:
@@ -901,7 +901,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 	char const 			*caller;
 	unlang_action_t			ua;
-	fr_time_t			now = 0;
+	fr_time_t			now = fr_time_wrap(0);
 
 	*p_result = state->rcode = RLM_MODULE_NOOP;
 	state->set_rcode = true;
@@ -949,7 +949,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	 *	If we're doing retries, remember when we started
 	 *	running the module.
 	 */
-	if (frame->instruction->actions.retry.irt) now = fr_time();
+	if (fr_time_delta_ispos(frame->instruction->actions.retry.irt)) now = fr_time();
 
 	caller = request->module;
 	request->module = mc->instance->name;
@@ -994,8 +994,8 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		/*
 		 *	If we have retry timers, then start the retries.
 		 */
-		if (frame->instruction->actions.retry.irt) {
-			fr_assert(now != 0);
+		if (fr_time_delta_ispos(frame->instruction->actions.retry.irt)) {
+			fr_assert(fr_time_gt(now, fr_time_wrap(0)));
 
 			(void) fr_retry_init(&state->retry, now, &frame->instruction->actions.retry); /* can't fail */
 

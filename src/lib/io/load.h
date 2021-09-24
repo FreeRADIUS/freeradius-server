@@ -72,7 +72,7 @@ RCSIDH(load_h, "$Id$")
 typedef struct {
 	uint32_t       	start_pps;	//!< start PPS
 	uint32_t       	max_pps;	//!< max PPS, 0 for "no limit".
-	uint32_t       	duration;	//!< duration of each step
+	fr_time_delta_t	duration;	//!< duration of each step
 	uint32_t	step;		//!< how much to increase each load test by
 	uint32_t	parallel;	//!< how many packets in parallel to send
 	uint32_t	milliseconds;	//!< how many milliseconds of backlog to top out at

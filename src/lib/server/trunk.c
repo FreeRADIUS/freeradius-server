@@ -53,7 +53,7 @@ typedef struct fr_trunk_s fr_trunk_t;
 static atomic_uint_fast64_t request_counter = ATOMIC_VAR_INIT(1);
 
 #ifdef TESTING_TRUNK
-static fr_time_t test_time_base = 1;
+static fr_time_t test_time_base = fr_time_wrap(1);
 
 static fr_time_t test_time(void)
 {
@@ -1536,7 +1536,8 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 	 *	one or more connections comes online.
 	 */
 	if (!trunk->conf.backlog_on_failed_conn &&
-	    trunk->pub.last_failed && (trunk->pub.last_connected < trunk->pub.last_failed)) {
+	    fr_time_gt(trunk->pub.last_failed, fr_time_wrap(0)) &&
+	    fr_time_lt(trunk->pub.last_connected, trunk->pub.last_failed)) {
 	    	RATE_LIMIT_LOCAL_ROPTIONAL(&trunk->limit_last_failure_log,
 					   RWARN, WARN, "Refusing to enqueue requests - "
 					   "No active connections and last event was a connection failure");
@@ -2242,7 +2243,7 @@ void fr_trunk_request_free(fr_trunk_request_t **treq_to_free)
 	/*
 	 *	No cleanup delay, means cleanup immediately
 	 */
-	if (trunk->conf.req_cleanup_delay == 0) {
+	if (!fr_time_delta_ispos(trunk->conf.req_cleanup_delay)) {
 		treq->pub.state = FR_TRUNK_REQUEST_STATE_INIT;
 
 #ifndef NDEBUG
@@ -2374,7 +2375,7 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, request_t *request
 		fr_assert(treq->pub.trunk == trunk);
 		fr_assert(treq->pub.tconn == NULL);
 		fr_assert(treq->cancel_reason == FR_TRUNK_CANCEL_REASON_NONE);
-		fr_assert(treq->last_freed > 0);
+		fr_assert(fr_time_gt(treq->last_freed, fr_time_wrap(0)));
 		trunk->pub.req_alloc_reused++;
 	} else {
 		MEM(treq = talloc_pooled_object(trunk, fr_trunk_request_t,
@@ -3333,7 +3334,7 @@ static void _trunk_connection_on_connected(UNUSED fr_connection_t *conn,
 	 *	Insert a timer to reconnect the
 	 *	connection periodically.
 	 */
-	if (trunk->conf.lifetime > 0) {
+	if (fr_time_delta_ispos(trunk->conf.lifetime)) {
 		if (fr_event_timer_in(tconn, trunk->el, &tconn->lifetime_ev,
 				       trunk->conf.lifetime, _trunk_connection_lifetime_expire, tconn) < 0) {
 			PERROR("Failed inserting connection reconnection timer event, halting connection");
@@ -3412,7 +3413,7 @@ static void _trunk_connection_on_closed(UNUSED fr_connection_t *conn,
 	/*
 	 *	Remove the reconnect event
 	 */
-	if (trunk->conf.lifetime > 0) fr_event_timer_delete(&tconn->lifetime_ev);
+	if (fr_time_delta_ispos(trunk->conf.lifetime)) fr_event_timer_delete(&tconn->lifetime_ev);
 
 	/*
 	 *	Remove the I/O events
@@ -3990,7 +3991,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 	 *	have been idle for too long.
 	 */
 	while ((treq = fr_dlist_tail(&trunk->free_requests)) &&
-	       ((treq->last_freed + trunk->conf.req_cleanup_delay) <= now)) talloc_free(treq);
+	       fr_time_lteq(fr_time_add(treq->last_freed, trunk->conf.req_cleanup_delay), now)) talloc_free(treq);
 
 	/*
 	 *	Free any connections which have drained
@@ -4042,7 +4043,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 	 *	We're above the target requests per connection
 	 *	spawn more connections!
 	 */
-	if ((trunk->pub.last_above_target >= trunk->pub.last_below_target)) {
+	if (fr_time_gteq(trunk->pub.last_above_target, trunk->pub.last_below_target)) {
 		/*
 		 *	If connecting is provided, check we
 		 *	wouldn't have too many connections in
@@ -4066,10 +4067,10 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 *	Only apply hysteresis if we have at least
 		 *	one available connection.
 		 */
-		if (conn_count && ((trunk->pub.last_above_target + trunk->conf.open_delay) > now)) {
+		if (conn_count && fr_time_gt(fr_time_add(trunk->pub.last_above_target, trunk->conf.open_delay), now)) {
 			DEBUG3("Not opening connection - Need to be above target for %pVs.  It's been %pVs",
 			       fr_box_time_delta(trunk->conf.open_delay),
-			       fr_box_time_delta(now - trunk->pub.last_above_target));
+			       fr_box_time_delta(fr_time_sub(now, trunk->pub.last_above_target)));
 			return;	/* too soon */
 		}
 
@@ -4133,11 +4134,11 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 *	Implement delay if there's no connections that
 		 *	could be immediately re-activated.
 		 */
-		if ((trunk->pub.last_open + trunk->conf.open_delay) > now) {
+		if (fr_time_gt(fr_time_add(trunk->pub.last_open, trunk->conf.open_delay), now)) {
 			DEBUG3("Not opening connection - Need to wait %pVs before opening another connection.  "
 			       "It's been %pVs",
 			       fr_box_time_delta(trunk->conf.open_delay),
-			       fr_box_time_delta(now - trunk->pub.last_open));
+			       fr_box_time_delta(fr_time_sub(now, trunk->pub.last_open)));
 			return;
 		}
 
@@ -4151,11 +4152,11 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 	 *	We're below the target requests per connection.
 	 *	Free some connections...
 	 */
-	else if (trunk->pub.last_below_target > trunk->pub.last_above_target) {
-		if ((trunk->pub.last_below_target + trunk->conf.close_delay) > now) {
+	else if (fr_time_gt(trunk->pub.last_below_target, trunk->pub.last_above_target)) {
+		if (fr_time_gt(fr_time_add(trunk->pub.last_below_target, trunk->conf.close_delay), now)) {
 			DEBUG3("Not closing connection - Need to be below target for %pVs. It's been %pVs",
 			       fr_box_time_delta(trunk->conf.close_delay),
-			       fr_box_time_delta(now - trunk->pub.last_below_target));
+			       fr_box_time_delta(fr_time_sub(now, trunk->pub.last_below_target)));
 			return;	/* too soon */
 		}
 
@@ -4206,11 +4207,11 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		       ROUND_UP_DIV(req_count, conn_count), trunk->conf.target_req_per_conn);
 
 	close:
-		if ((trunk->pub.last_closed + trunk->conf.close_delay) > now) {
+		if (fr_time_gt(fr_time_add(trunk->pub.last_closed, trunk->conf.close_delay), now)) {
 			DEBUG3("Not closing connection - Need to wait %pVs before closing another connection.  "
 			       "It's been %pVs",
 			       fr_box_time_delta(trunk->conf.close_delay),
-			       fr_box_time_delta(now - trunk->pub.last_closed));
+			       fr_box_time_delta(fr_time_sub(now, trunk->pub.last_closed)));
 			return;
 		}
 
@@ -4276,7 +4277,7 @@ static void _trunk_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	trunk_manage(trunk, now);
 
-	if (trunk->conf.manage_interval > 0) {
+	if (fr_time_delta_ispos(trunk->conf.manage_interval)) {
 		if (fr_event_timer_in(trunk, el, &trunk->manage_ev, trunk->conf.manage_interval,
 				      _trunk_timer, trunk) < 0) {
 			PERROR("Failed inserting trunk management event");
@@ -4349,7 +4350,7 @@ static uint64_t trunk_requests_per_connection(uint16_t *conn_count_out, uint32_t
 	uint16_t conn_count = 0;
 	uint64_t req_per_conn = 0;
 
-	fr_assert(now > 0);
+	fr_assert(fr_time_gt(now, fr_time_wrap(0)));
 
 	/*
 	 *	No need to update these as the trunk is being freed
@@ -4411,7 +4412,7 @@ static uint64_t trunk_requests_per_connection(uint16_t *conn_count_out, uint32_t
 		 *
 		 *	The equality check is correct here as both values start at 0.
 		 */
-		if (trunk->pub.last_above_target <= trunk->pub.last_below_target) trunk->pub.last_above_target = now;
+		if (fr_time_lteq(trunk->pub.last_above_target, trunk->pub.last_below_target)) trunk->pub.last_above_target = now;
 	} else if (req_per_conn < trunk->conf.target_req_per_conn) {
 	below_target:
 		/*
@@ -4419,7 +4420,7 @@ static uint64_t trunk_requests_per_connection(uint16_t *conn_count_out, uint32_t
 		 *
 		 *	The equality check is correct here as both values start at 0.
 		 */
-		if (trunk->pub.last_below_target <= trunk->pub.last_above_target) trunk->pub.last_below_target = now;
+		if (fr_time_lteq(trunk->pub.last_below_target, trunk->pub.last_above_target)) trunk->pub.last_below_target = now;
 	}
 
 done:
@@ -4548,7 +4549,7 @@ int fr_trunk_start(fr_trunk_t *trunk)
 		if (trunk_connection_spawn(trunk, fr_time()) != 0) return -1;
 	}
 
-	if (trunk->conf.manage_interval > 0) {
+	if (fr_time_delta_ispos(trunk->conf.manage_interval)) {
 		/*
 		 *	Insert the event timer to manage
 		 *	the interval between managing connections.
@@ -4593,7 +4594,7 @@ int fr_trunk_connection_manage_schedule(fr_trunk_t *trunk)
 {
 	if (!trunk->started || !trunk->managing_connections) return 0;
 
-	if (fr_event_timer_in(trunk, trunk->el, &trunk->manage_ev, 0, _trunk_timer, trunk) < 0) {
+	if (fr_event_timer_in(trunk, trunk->el, &trunk->manage_ev, fr_time_delta_wrap(0), _trunk_timer, trunk) < 0) {
 		PERROR("Failed inserting trunk management event");
 		return -1;
 	}
