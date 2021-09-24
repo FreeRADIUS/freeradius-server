@@ -51,7 +51,7 @@ typedef struct request_s request_t;	/* to shut up warnings about mschap.h */
 #define reply_pairs	reply_list
 
 static int retries = 3;
-static fr_time_delta_t timeout = fr_time_delta_wrap(5 * NSEC);	/* 5 seconds */
+static fr_time_delta_t timeout = fr_time_delta_wrap((int64_t)5 * NSEC);	/* 5 seconds */
 static fr_time_delta_t sleep_time = fr_time_delta_wrap(-1);
 static char *secret = NULL;
 static bool do_output = true;
