@@ -1373,7 +1373,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	char				*key_attr = argv[1];
 	char			        *name = argv[0];
 
-	if (argc != 3) {
+	if ((argc < 3) || (argc > 4)) {
 		fr_strerror_const("Invalid STRUCT syntax");
 		return -1;
 	}
@@ -1415,14 +1415,27 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	 */
 	if (!fr_cond_assert(parent->parent->type == FR_TYPE_STRUCT)) return -1;
 
-	memset(&flags, 0, sizeof(flags));
-
 	/*
 	 *	Parse the value.
 	 */
 	if (fr_value_box_from_str(NULL, &value, parent->type, NULL, argv[2], -1, '\0', false) < 0) {
 		fr_strerror_printf_push("Invalid value for STRUCT \"%s\"", argv[2]);
 		return -1;
+	}
+
+	/*
+	 *	Only a few flags are allowed for STRUCT.
+	 */
+	memset(&flags, 0, sizeof(flags));
+
+	if (argc == 4) {
+		if (strcmp(argv[3], "length=uint16") != 0) {
+			fr_strerror_printf("Unknown option '%s'", argv[3]);
+			return -1;
+		}
+
+		flags.extra = 1;
+		flags.subtype = FLAG_LENGTH_UINT16;
 	}
 
 	/*
