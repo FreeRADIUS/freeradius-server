@@ -4970,8 +4970,8 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 	case FR_TYPE_TIME_DELTA:
 	{
 		char		*q;
-		int64_t		lhs;
-		uint64_t	rhs;
+		int64_t		lhs = 0;
+		uint64_t	rhs = 0;
 		fr_time_res_t	res = FR_TIME_RES_SEC;
 
 		if (data->enumv) res = data->enumv->flags.flag_time_res;
