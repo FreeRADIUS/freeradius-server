@@ -65,7 +65,7 @@ static void _ldap_start_tls_io_error(UNUSED fr_event_list_t *el, UNUSED int fd, 
  *   - calls ldap_pvt_tls_inplace to check is the Sockbuf for defconn has TLS installed
  *     - If it does (it shouldn't), returns LDAP_LOCAL_ERROR (and we fail).
  *   - calls ldap_int_tls_start.
- *     - calls_tls_init (to initialise ssl library - only done once per implementation).
+ *     - calls tls_init (to initialise ssl library - only done once per implementation).
  *     - if net timeout is >= 0, then set the FD to nonblocking mode.
  *     - calls ldap_int_tls_connect
  *       - either gets existing session or
