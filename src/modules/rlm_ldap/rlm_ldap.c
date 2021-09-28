@@ -2332,13 +2332,6 @@ if (inst->handle_config.tls_min_version_str) {
 	 */
 	if (fr_ldap_init() < 0) goto error;
 
-	/*
-	 *	Initialize the socket pool.
-	 */
-	inst->pool = module_connection_pool_init(inst->cs, &inst->handle_config,
-						 ldap_mod_conn_create, NULL, NULL, NULL, NULL);
-	if (!inst->pool) goto error;
-
 	fr_ldap_global_config(inst->ldap_debug, inst->tls_random_file);
 
 	return 0;
