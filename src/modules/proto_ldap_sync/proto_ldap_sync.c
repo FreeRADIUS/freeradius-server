@@ -754,7 +754,7 @@ static int _proto_ldap_entry(fr_ldap_connection_t *conn, sync_config_t const *co
 		talloc_free(request);
 		return -1;
 	}
-	if (fr_ldap_map_do(request, conn, NULL, &expanded, msg) < 0) goto error;
+	if (fr_ldap_map_do(request, conn->handle, NULL, &expanded, msg) < 0) goto error;
 
 //	request_enqueue(request);
 
