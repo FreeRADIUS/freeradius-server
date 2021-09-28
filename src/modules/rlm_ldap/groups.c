@@ -44,7 +44,7 @@ USES_APPLE_DEPRECATED_API
  * @param[out] p_result		The result of trying to resolve a group name to a dn.
  * @param[in] inst		rlm_ldap configuration.
  * @param[in] request		Current request.
- * @param[in,out] pconn		to use. May change as this function calls functions which auto re-connect.
+ * @param[in] ttrunk		to use.
  * @param[in] names		to convert to DNs (NULL terminated).
  * @param[out] out		Where to write the DNs. DNs must be freed with
  *				ldap_memfree(). Will be NULL terminated.
@@ -52,18 +52,18 @@ USES_APPLE_DEPRECATED_API
  * @return One of the RLM_MODULE_* values.
  */
 static unlang_action_t rlm_ldap_group_name2dn(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
-					      fr_ldap_connection_t **pconn,
+					      fr_ldap_thread_trunk_t *ttrunk,
 					      char **names, char **out, size_t outlen)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
-	fr_ldap_rcode_t status;
 	int ldap_errno;
 
 	unsigned int name_cnt = 0;
 	unsigned int entry_cnt;
 	char const *attrs[] = { NULL };
 
-	LDAPMessage *result = NULL, *entry;
+	LDAPMessage *entry;
+	fr_ldap_query_t	*query = NULL;
 
 	char **name = names;
 	char **dn = out;
@@ -110,13 +110,18 @@ static unlang_action_t rlm_ldap_group_name2dn(rlm_rcode_t *p_result, rlm_ldap_t 
 		RETURN_MODULE_INVALID;
 	}
 
-	status = fr_ldap_search(&result, request, pconn, base_dn, inst->groupobj_scope,
-				filter, attrs, NULL, NULL);
-	switch (status) {
-	case LDAP_PROC_SUCCESS:
+	if (fr_ldap_trunk_search(unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, base_dn,
+				 inst->groupobj_scope, filter, attrs, NULL, NULL) < 0 ) {
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
+	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
+
+	switch (rcode) {
+	case RLM_MODULE_OK:
 		break;
 
-	case LDAP_PROC_NO_RESULT:
+	case RLM_MODULE_NOTFOUND:
 		RDEBUG2("Tried to resolve group name(s) to DNs but got no results");
 		goto finish;
 
@@ -125,7 +130,7 @@ static unlang_action_t rlm_ldap_group_name2dn(rlm_rcode_t *p_result, rlm_ldap_t 
 		goto finish;
 	}
 
-	entry_cnt = ldap_count_entries((*pconn)->handle, result);
+	entry_cnt = ldap_count_entries(query->ldap_conn->handle, query->result);
 	if (entry_cnt > name_cnt) {
 		REDEBUG("Number of DNs exceeds number of names, group and/or dn should be more restrictive");
 		rcode = RLM_MODULE_INVALID;
@@ -145,9 +150,9 @@ static unlang_action_t rlm_ldap_group_name2dn(rlm_rcode_t *p_result, rlm_ldap_t 
 			name_cnt, entry_cnt);
 	}
 
-	entry = ldap_first_entry((*pconn)->handle, result);
+	entry = ldap_first_entry(query->ldap_conn->handle, query->result);
 	if (!entry) {
-		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+		ldap_get_option(query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 
 		rcode = RLM_MODULE_FAIL;
@@ -155,9 +160,9 @@ static unlang_action_t rlm_ldap_group_name2dn(rlm_rcode_t *p_result, rlm_ldap_t 
 	}
 
 	do {
-		*dn = ldap_get_dn((*pconn)->handle, entry);
+		*dn = ldap_get_dn(query->ldap_conn->handle, entry);
 		if (!*dn) {
-			ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+			ldap_get_option(query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 			REDEBUG("Retrieving object DN from entry failed: %s", ldap_err2string(ldap_errno));
 
 			rcode = RLM_MODULE_FAIL;
@@ -167,13 +172,12 @@ static unlang_action_t rlm_ldap_group_name2dn(rlm_rcode_t *p_result, rlm_ldap_t 
 
 		RDEBUG2("Got group DN \"%s\"", *dn);
 		dn++;
-	} while((entry = ldap_next_entry((*pconn)->handle, entry)));
+	} while((entry = ldap_next_entry(query->ldap_conn->handle, entry)));
 
 	*dn = NULL;
 
 finish:
 	talloc_free(filter);
-	if (result) ldap_msgfree(result);
 
 	/*
 	 *	Be nice and cleanup the output array if we error out.
