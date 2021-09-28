@@ -353,6 +353,9 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 
 static int listen_bind(rad_listen_t *this);
 
+#ifdef WITH_COA_TUNNEL
+static void listener_coa_update(rad_listen_t *this, VALUE_PAIR *vps);
+#endif
 
 /*
  *	Process and reply to a server-status request.
@@ -417,6 +420,10 @@ int rad_status_server(REQUEST *request)
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
 			request->reply->code = PW_CODE_ACCESS_ACCEPT;
+
+#ifdef WITH_COA_TUNNEL
+			if (request->listener->send_coa) listener_coa_update(request->listener, request->packet->vps);
+#endif
 			break;
 
 		case RLM_MODULE_FAIL:
@@ -444,6 +451,10 @@ int rad_status_server(REQUEST *request)
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
 			request->reply->code = PW_CODE_ACCOUNTING_RESPONSE;
+
+#ifdef WITH_COA_TUNNEL
+			if (request->listener->send_coa) listener_coa_update(request->listener, request->packet->vps);
+#endif
 			break;
 
 		default:
@@ -4108,5 +4119,77 @@ int listen_coa_find(REQUEST *request, char const *key)
 	sock = found->data;
 	request->home_server = sock->home;
 	return 0;
+}
+
+/*
+ *	Check for an active listener by key.
+ */
+static bool listen_coa_exists(rad_listen_t *this, char const *key)
+{
+	coa_key_t my_key, *coa_key;
+	coa_entry_t my_entry, *entry;
+
+	/*
+	 *	Find the key.  If we can't find it, then error out.
+	 */
+	memcpy(&my_key.key, &key, sizeof(key)); /* const issues */
+	coa_key = rbtree_finddata(coa_tree, &my_key);
+	if (!coa_key) return false;
+
+	my_entry.listener = this;
+	pthread_mutex_lock(&coa_key->mutex);
+	entry = fr_hash_table_finddata(coa_key->ht, &my_entry);
+	pthread_mutex_unlock(&coa_key->mutex);
+
+	return (entry != NULL);
+}
+
+/*
+ *	Delete a listener entry.
+ */
+static void listen_coa_delete(rad_listen_t *this, char const *key)
+{
+	coa_key_t my_key, *coa_key;
+	coa_entry_t my_entry;
+
+	/*
+	 *	Find the key.  If we can't find it, then error out.
+	 */
+	memcpy(&my_key.key, &key, sizeof(key)); /* const issues */
+	coa_key = rbtree_finddata(coa_tree, &my_key);
+	if (!coa_key) return;
+
+	my_entry.listener = this;
+	pthread_mutex_lock(&coa_key->mutex);
+	(void) fr_hash_table_delete(coa_key->ht, &my_entry);
+	pthread_mutex_unlock(&coa_key->mutex);
+}
+
+
+static void listener_coa_update(rad_listen_t *this, VALUE_PAIR *vps)
+{
+	VALUE_PAIR *vp;
+	vp_cursor_t cursor;
+
+	fr_cursor_init(&cursor, &vps);
+
+	/*
+	 *	Add or delete Operator-Name realms
+	 */
+	while ((vp = fr_cursor_next_by_num(&cursor, PW_OPERATOR_NAME, 0, TAG_ANY)) != NULL) {
+		if (vp->vp_length <= 1) continue;
+
+		if (vp->vp_strvalue[0] == '+') {
+			if (listen_coa_exists(this, vp->vp_strvalue)) continue;
+
+			listen_coa_add(this, vp->vp_strvalue);
+			continue;
+		}
+
+		if (vp->vp_strvalue[0] == '-') {
+			listen_coa_delete(this, vp->vp_strvalue);
+			continue;
+		}
+	}
 }
 #endif
