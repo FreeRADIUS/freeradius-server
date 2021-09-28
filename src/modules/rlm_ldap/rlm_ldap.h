@@ -167,8 +167,7 @@ extern fr_dict_attr_t const *attr_user_name;
 char const *rlm_ldap_find_user(rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *tconn,
 			       char const *attrs[], bool force, LDAPMessage **result, LDAP **handle, rlm_rcode_t *rcode);
 
-rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request,
-				  fr_ldap_connection_t const *conn, LDAPMessage *entry);
+rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request, LDAP *handle, LDAPMessage *entry);
 
 void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t const *conn);
 

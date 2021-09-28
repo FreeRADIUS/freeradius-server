@@ -191,19 +191,18 @@ finish:
  *
  * @param[in] inst rlm_ldap configuration.
  * @param[in] request Current request.
- * @param[in] conn used to retrieve access attributes.
+ * @param[in] handle used to retrieve access attributes.
  * @param[in] entry retrieved by rlm_ldap_find_user or fr_ldap_search.
  * @return
  *	- #RLM_MODULE_DISALLOW if the user was denied access.
  *	- #RLM_MODULE_OK otherwise.
  */
-rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request,
-				  fr_ldap_connection_t const *conn, LDAPMessage *entry)
+rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request, LDAP *handle, LDAPMessage *entry)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 	struct berval **values = NULL;
 
-	values = ldap_get_values_len(conn->handle, entry, inst->userobj_access_attr);
+	values = ldap_get_values_len(handle, entry, inst->userobj_access_attr);
 	if (values) {
 		if (inst->access_positive) {
 			if ((values[0]->bv_len >= 5) && (strncasecmp(values[0]->bv_val, "false", 5) == 0)) {
