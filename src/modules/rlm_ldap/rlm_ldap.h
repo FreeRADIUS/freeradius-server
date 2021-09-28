@@ -186,7 +186,7 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result,
 						fr_pair_t const *check);
 
 unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result,
-					       rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn,
+					       rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 					       char const *dn, fr_pair_t const *check);
 
 unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
