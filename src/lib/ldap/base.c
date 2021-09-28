@@ -779,6 +779,55 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 	return LDAP_PROC_SUCCESS;
 }
 
+/** Submit an LDAP query to be handled by a trunk conneciton
+ *
+ */
+static unlang_action_t ldap_trunk_query_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+{
+	fr_ldap_query_t	*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
+
+	fr_trunk_request_enqueue(&query->treq, query->ttrunk->trunk, request, query, NULL);
+
+	return UNLANG_ACTION_YIELD;
+}
+
+/** Handle the return code from parsed LDAP results to set the module rcode
+ *
+ */
+static unlang_action_t ldap_trunk_query_results(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+{
+	fr_ldap_query_t		*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
+
+	switch (query->ret) {
+	case LDAP_RESULT_PENDING:
+		/* The query we want hasn't returned yet */
+		return UNLANG_ACTION_YIELD;
+
+	case LDAP_RESULT_SUCCESS:
+		RETURN_MODULE_OK;
+
+	case LDAP_RESULT_BAD_DN:
+	case LDAP_RESULT_NO_RESULT:
+		RETURN_MODULE_NOTFOUND;
+
+	default:
+		RETURN_MODULE_FAIL;
+	}
+}
+
+/** Signal an LDAP query running on a trunk connection to cancel
+ *
+ */
+static void ldap_trunk_query_cancel(UNUSED request_t *request, fr_state_signal_t action, void *uctx)
+{
+	fr_ldap_query_t	*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
+
+	if (action != FR_SIGNAL_CANCEL) return;
+
+	fr_trunk_request_signal_cancel(query->treq);
+
+}
+
 /** Modify something in the LDAP directory
  *
  * Binds as the administrative user and attempts to modify an LDAP object.
