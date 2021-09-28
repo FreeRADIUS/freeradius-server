@@ -3001,10 +3001,6 @@ static int _listener_free(rad_listen_t *this)
 #endif
 		}
 #endif	/* WITH_TLS */
-
-#ifdef WITH_COA_TUNNEL
-		if (this->coa_key) listen_coa_delete(this);
-#endif
 	}
 #endif				/* WITH_TCP */
 
@@ -3870,12 +3866,21 @@ rad_listen_t *listener_find_byipaddr(fr_ipaddr_t const *ipaddr, uint16_t port, i
 
 static rbtree_t *coa_tree = NULL;
 
+/*
+ *	We have an RB tree of keys, and within each key, a hash table
+ *	of one or more listeners associated with that key.
+ */
 typedef struct {
 	char const     	*key;
-	rad_listen_t	*first;
+	fr_hash_table_t	*ht;
 
 	pthread_mutex_t	mutex;		/* per key, to lower contention */
 } coa_key_t;
+
+typedef struct {
+	coa_key_t	*coa_key;
+	rad_listen_t	*listener;
+} coa_entry_t;
 
 static int coa_key_cmp(void const *one, void const *two)
 {
@@ -3889,9 +3894,41 @@ static void coa_key_free(void *data)
 {
 	coa_key_t *coa_key = data;
 
-	rad_assert(coa_key->first == NULL);
 	pthread_mutex_destroy(&coa_key->mutex);
+	fr_hash_table_free(coa_key->ht);
 	talloc_free(coa_key);
+}
+
+static uint32_t coa_entry_hash(void const *data)
+{
+	coa_entry_t const *a = (coa_entry_t const *) data;
+
+	return fr_hash(&a->listener, sizeof(a->listener));
+}
+
+static int coa_entry_cmp(void const *one, void const *two)
+{
+	coa_entry_t const *a = one;
+	coa_entry_t const *b = two;
+
+	return memcmp(&a->listener, &b->listener, sizeof(a->listener));
+}
+
+/*
+ *	Delete the entry, without holding the parents lock.
+ */
+static void coa_entry_free(void *data)
+{
+	talloc_free(data);
+}
+
+static int coa_entry_destructor(coa_entry_t *entry)
+{
+	pthread_mutex_lock(&entry->coa_key->mutex);
+	fr_hash_table_delete(entry->coa_key->ht, entry);
+	pthread_mutex_unlock(&entry->coa_key->mutex);
+
+	return 0;
 }
 
 static int listen_coa_init(void)
@@ -3917,7 +3954,6 @@ void listen_coa_free(void)
 	 *	must have been freed first.
 	 */
 	rad_assert(rbtree_num_elements(coa_tree) == 0);
-
 	rbtree_free(coa_tree);
 	coa_tree = NULL;
 }
@@ -3929,6 +3965,7 @@ void listen_coa_add(rad_listen_t *this, char const *key)
 {
 	int tries = 0;
 	coa_key_t my_key, *coa_key;
+	coa_entry_t *entry;
 
 	rad_assert(this->send_coa);
 	rad_assert(this->parent);
@@ -3946,9 +3983,16 @@ retry:
 		if (!coa_key) return;
 		coa_key->key = talloc_strdup(coa_key, key);
 		if (!coa_key->key) {
+		fail:
 			talloc_free(coa_key);
 			return;
 		}
+
+		/*
+		 *	Create the hash table of listeners.
+		 */
+		coa_key->ht = fr_hash_table_create(coa_entry_hash, coa_entry_cmp, coa_entry_free);
+		if (!coa_key->ht) goto fail;
 
 		if (!rbtree_insert(coa_tree, coa_key)) {
 			talloc_free(coa_key);
@@ -3968,54 +4012,25 @@ retry:
 		(void) pthread_mutex_init(&coa_key->mutex, NULL);
 	}
 
-	this->key = coa_key->key; /* no reason to duplicate the key */
-	this->coa_key = coa_key;
+	/*
+	 *	No need to strdup() this, coa_key will only be removed
+	 *	after the listener has been removed.
+	 */
+	if (!this->key) this->key = coa_key->key;
+
+	entry = talloc_zero(this, coa_entry_t);
+	if (!entry) return;
+	talloc_set_destructor(entry, coa_entry_destructor);
+
+	entry->coa_key = coa_key;
+	entry->listener = this;
 
 	/*
-	 *	We have a linked list of listeners for this key.  It
-	 *	typically won't be large.
+	 *	Insert the entry into the hash table.
 	 */
 	pthread_mutex_lock(&coa_key->mutex);
-	this->next_key = coa_key->first;
-	coa_key->first = this;
+	fr_hash_table_insert(coa_key->ht, entry);
 	pthread_mutex_unlock(&coa_key->mutex);
-}
-
-/*
- *	Delete a listener from the hash of listeners.
- *
- *	Note that all requests using this MUST be removed from the
- *	listener, and MUST NOT point to the listener any more.
- */
-void listen_coa_delete(rad_listen_t *this)
-{
-	coa_key_t *coa_key;
-	rad_listen_t **last;
-
-	rad_assert(this->send_coa);
-	rad_assert(this->parent);
-	rad_assert(this->key);
-	rad_assert(this->coa_key);
-
-	coa_key = this->coa_key;
-	last = &coa_key->first;
-
-	pthread_mutex_lock(&coa_key->mutex);
-	while (*last) {
-		if (*last == this) {
-			*last = this->next_key;
-			break;
-		}
-		last = &((*last)->next_key);
-	}
-	pthread_mutex_unlock(&coa_key->mutex);
-
-	/*
-	 *	No longer used for anything
-	 */
-	this->key = NULL;
-	this->coa_key = NULL;
-	this->next_key = NULL;
 }
 
 /*
@@ -4029,6 +4044,7 @@ int listen_coa_find(REQUEST *request, char const *key)
 	coa_key_t my_key, *coa_key;
 	rad_listen_t *this, *found;
 	listen_socket_t *sock;
+	fr_hash_iter_t iter;
 
 	/*
 	 *	Find the key.  If we can't find it, then error out.
@@ -4044,9 +4060,11 @@ int listen_coa_find(REQUEST *request, char const *key)
 	 */
 	found = NULL;
 	pthread_mutex_lock(&coa_key->mutex);
-	for (this = coa_key->first;
+	for (this = fr_hash_table_iter_init(coa_key->ht, &iter);
 	     this != NULL;
-	     this = this->next_key) {
+	     this = fr_hash_table_iter_next(coa_key->ht, &iter)) {
+		if (this->dead) continue;
+
 		if (!found) {
 			if (this->num_ids_used < 256) {
 				found = this;
@@ -4069,6 +4087,10 @@ int listen_coa_find(REQUEST *request, char const *key)
 
 		/*
 		 *	If they are equal, pick one at random.
+		 *
+		 *	@todo - pick one with equal probability from
+		 *	among the ones with the same IDs used.  This
+		 *	algorithm prefers the first one.
 		 */
 		if (found->num_ids_used == this->num_ids_used) {
 			if ((fr_rand() & 0x01) == 0) {

@@ -5662,9 +5662,7 @@ static void event_new_fd(rad_listen_t *this)
 			 *	so that it won't be used while the
 			 *	cleanup timers are being run.
 			 */
-			if (this->key) {
-				listen_coa_delete(this);
-			}
+			if (this->tls) this->dead = true;
 #endif
 		}
 

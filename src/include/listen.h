@@ -87,8 +87,9 @@ struct rad_listen {
 	bool		check_client_connections;
 
 #ifdef WITH_COA_TUNNEL
+	char const	*key;		/* Originating-Realm-Key */
 	bool		send_coa;	/* to the NAS */
-	char const	*key;		/* TCP-Session-Key */
+	bool		dead;
 
 	uint32_t	coa_irt;
 	uint32_t	coa_mrc;
@@ -96,9 +97,6 @@ struct rad_listen {
 	uint32_t	coa_mrd;
 
 	int		num_ids_used;	/* for proxying CoA packets */
-
-	void		*coa_key;	/* parent, to avoid more mutexes */
-	rad_listen_t	*next_key;	/* for lists of listeners with the same key */
 #endif
 #endif
 

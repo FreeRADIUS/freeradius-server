@@ -612,7 +612,6 @@ int proxy_tls_send_reply(rad_listen_t *listener, REQUEST *request);
 int dual_tls_send_coa_request(rad_listen_t *listener, REQUEST *request);
 void listen_coa_free(void);
 void listen_coa_add(rad_listen_t *listener, char const *key);
-void listen_coa_delete(rad_listen_t *listener);
 int listen_coa_find(REQUEST *request, char const *key);
 #endif
 #endif
