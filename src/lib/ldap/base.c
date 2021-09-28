@@ -94,6 +94,11 @@ fr_table_num_sorted_t const fr_ldap_dereference[] = {
 };
 size_t fr_ldap_dereference_len = NUM_ELEMENTS(fr_ldap_dereference);
 
+typedef struct {
+	fr_ldap_query_t	*query;
+	LDAPMessage	**result;
+} sync_ldap_query_t;
+
 /** Prints information to the debug log on the current timeout settings
  *
  * There are so many different timers in LDAP it's often hard to debug
