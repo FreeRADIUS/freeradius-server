@@ -870,6 +870,33 @@ int fr_ldap_trunk_search(TALLOC_CTX *ctx, fr_ldap_query_t **query, request_t *re
 	return unlang_function_push(request, ldap_trunk_query_start, ldap_trunk_query_results, ldap_trunk_query_cancel, UNLANG_TOP_FRAME, *query);
 }
 
+/** Run an async modification LDAP query on a trunk connection
+ *
+ * @param[in] ctx		to allocate the query in.
+ * @param[out] query		that has been allocated.
+ * @param[in] request		this query relates to.
+ * @param[in] ttrunk		to submit the query to.
+ * @param[in] dn		of the object being modified.
+ * @param[in] mods		to be performed.
+ * @param[in] serverctrls	specific to this query.
+ * @param[in] clientctrls	specific to this query.
+ */
+int fr_ldap_trunk_modify(TALLOC_CTX *ctx, fr_ldap_query_t **query, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+			 char const *dn, LDAPMod *mods[], LDAPControl **serverctrls, LDAPControl **clientctrls)
+{
+	*query = fr_ldap_query_alloc(ctx);
+
+	(*query)->type = LDAP_REQUEST_MODIFY;
+	(*query)->request = request;
+	(*query)->ttrunk = ttrunk;
+	(*query)->dn = dn;
+	(*query)->mods = mods;
+	SET_LDAP_CTRLS((*query)->serverctrls, serverctrls);
+	SET_LDAP_CTRLS((*query)->clientctrls, clientctrls);
+
+	return unlang_function_push(request, ldap_trunk_query_start, ldap_trunk_query_results, ldap_trunk_query_cancel, UNLANG_TOP_FRAME, *query);
+}
+
 /** Modify something in the LDAP directory
  *
  * Binds as the administrative user and attempts to modify an LDAP object.
