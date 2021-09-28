@@ -878,12 +878,13 @@ free_urldesc:
 static int rlm_ldap_groupcmp(void *instance, request_t *request, UNUSED fr_pair_list_t *request_list, fr_pair_t const *check)
 {
 	rlm_ldap_t const	*inst = talloc_get_type_abort_const(instance, rlm_ldap_t);
+	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread_by_data(inst)->data, fr_ldap_thread_t);
 	rlm_rcode_t		rcode;
 
 	bool			found = false;
 	bool			check_is_dn;
 
-	fr_ldap_connection_t	*conn = NULL;
+	fr_ldap_thread_trunk_t	*ttrunk = NULL;
 	char const		*user_dn;
 	fr_pair_t		*check_p = NULL;
 
@@ -941,19 +942,15 @@ static int rlm_ldap_groupcmp(void *instance, request_t *request, UNUSED fr_pair_
 		}
 	}
 
-	conn = mod_conn_get(inst, request);
-	if (!conn) goto cleanup;
+	ttrunk =  fr_thread_ldap_trunk_get(thread, inst->handle_config.server, inst->handle_config.admin_identity,
+					   inst->handle_config.admin_password, request, &inst->handle_config);
+	if (!ttrunk) goto cleanup;
 
 	/*
 	 *	This is used in the default membership filter.
 	 */
-	user_dn = rlm_ldap_find_user(inst, request, &conn, NULL, false, NULL, &rcode);
-	if (!user_dn) {
-		ldap_mod_conn_release(inst, request, conn);
-		goto cleanup;
-	}
-
-	fr_assert(conn);
+	user_dn = rlm_ldap_find_user(inst, request, ttrunk, NULL, false, NULL, NULL, &rcode);
+	if (!user_dn) goto cleanup;
 
 	/*
 	 *	Check groupobj user membership
@@ -961,7 +958,7 @@ static int rlm_ldap_groupcmp(void *instance, request_t *request, UNUSED fr_pair_
 	if (inst->groupobj_membership_filter) {
 		rlm_rcode_t our_rcode;
 
-		rlm_ldap_check_groupobj_dynamic(&our_rcode, inst, request, &conn, check);
+		rlm_ldap_check_groupobj_dynamic(&our_rcode, inst, request, ttrunk, check);
 		switch (our_rcode) {
 		case RLM_MODULE_NOTFOUND:
 			break;
@@ -974,8 +971,6 @@ static int rlm_ldap_groupcmp(void *instance, request_t *request, UNUSED fr_pair_
 			goto finish;
 		}
 	}
-
-	fr_assert(conn);
 
 	/*
 	 *	Check userobj group membership
@@ -983,7 +978,7 @@ static int rlm_ldap_groupcmp(void *instance, request_t *request, UNUSED fr_pair_
 	if (inst->userobj_membership_attr) {
 		rlm_rcode_t our_rcode;
 
-		rlm_ldap_check_userobj_dynamic(&our_rcode, inst, request, &conn, user_dn, check);
+		rlm_ldap_check_userobj_dynamic(&our_rcode, inst, request, ttrunk, user_dn, check);
 		switch (our_rcode) {
 		case RLM_MODULE_NOTFOUND:
 			break;
@@ -997,11 +992,7 @@ static int rlm_ldap_groupcmp(void *instance, request_t *request, UNUSED fr_pair_
 		}
 	}
 
-	fr_assert(conn);
-
 finish:
-	if (conn) ldap_mod_conn_release(inst, request, conn);
-
 	if (found) {
 		talloc_free(check_p);
 		return 0;
