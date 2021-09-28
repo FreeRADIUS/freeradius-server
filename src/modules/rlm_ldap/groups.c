@@ -199,21 +199,21 @@ finish:
  * @param[out] p_result		The result of trying to resolve a dn to a group name.
  * @param[in] inst		rlm_ldap configuration.
  * @param[in] request		Current request.
- * @param[in,out]		pconn to use. May change as this function calls functions which auto re-connect.
+ * @param[in] ttrunk		to use.
  * @param[in] dn		to resolve.
  * @param[out] out		Where to write group name (must be freed with talloc_free).
  * @return One of the RLM_MODULE_* values.
  */
 static unlang_action_t rlm_ldap_group_dn2name(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
-					      fr_ldap_connection_t **pconn, char const *dn, char **out)
+					      fr_ldap_thread_trunk_t *ttrunk, char const *dn, char **out)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
-	fr_ldap_rcode_t status;
 	int ldap_errno;
 
 	struct berval **values = NULL;
 	char const *attrs[] = { inst->groupobj_name_attr, NULL };
-	LDAPMessage *result = NULL, *entry;
+	LDAPMessage	*entry;
+	fr_ldap_query_t	*query = NULL;
 
 	*out = NULL;
 
@@ -225,12 +225,17 @@ static unlang_action_t rlm_ldap_group_dn2name(rlm_rcode_t *p_result, rlm_ldap_t 
 
 	RDEBUG2("Resolving group DN \"%s\" to group name", dn);
 
-	status = fr_ldap_search(&result, request, pconn, dn, LDAP_SCOPE_BASE, NULL, attrs, NULL, NULL);
-	switch (status) {
-	case LDAP_PROC_SUCCESS:
+	if (fr_ldap_trunk_search(unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, dn,
+				 LDAP_SCOPE_BASE, NULL, attrs, NULL, NULL) < 0) {
+		RETURN_MODULE_FAIL;
+	}
+	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
+
+	switch (rcode) {
+	case RLM_MODULE_OK:
 		break;
 
-	case LDAP_PROC_NO_RESULT:
+	case RLM_MODULE_NOTFOUND:
 		REDEBUG("Group DN \"%s\" did not resolve to an object", dn);
 		RETURN_MODULE_RCODE(inst->allow_dangling_group_refs ? RLM_MODULE_NOOP : RLM_MODULE_INVALID);
 
@@ -238,16 +243,16 @@ static unlang_action_t rlm_ldap_group_dn2name(rlm_rcode_t *p_result, rlm_ldap_t 
 		RETURN_MODULE_FAIL;
 	}
 
-	entry = ldap_first_entry((*pconn)->handle, result);
+	entry = ldap_first_entry(query->ldap_conn->handle, query->result);
 	if (!entry) {
-		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+		ldap_get_option(query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 
 		rcode = RLM_MODULE_INVALID;
 		goto finish;
 	}
 
-	values = ldap_get_values_len((*pconn)->handle, entry, inst->groupobj_name_attr);
+	values = ldap_get_values_len(query->ldap_conn->handle, entry, inst->groupobj_name_attr);
 	if (!values) {
 		REDEBUG("No %s attributes found in object", inst->groupobj_name_attr);
 
@@ -260,7 +265,6 @@ static unlang_action_t rlm_ldap_group_dn2name(rlm_rcode_t *p_result, rlm_ldap_t 
 	RDEBUG2("Group DN \"%s\" resolves to name \"%s\"", dn, *out);
 
 finish:
-	if (result) ldap_msgfree(result);
 	if (values) ldap_value_free_len(values);
 
 	RETURN_MODULE_RCODE(rcode);
