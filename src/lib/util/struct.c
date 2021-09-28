@@ -470,7 +470,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	 *	Some structs are prefixed by a 16-bit length.
 	 */
 	if (da_is_length_field(parent)) {
-		FR_DBUFF_ADVANCE_RETURN(dbuff, 2);
+		FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 2);
 		do_length = true;
 	}
 
