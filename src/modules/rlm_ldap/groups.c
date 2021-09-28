@@ -205,11 +205,11 @@ finish:
 static unlang_action_t rlm_ldap_group_dn2name(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
 					      fr_ldap_thread_trunk_t *ttrunk, char const *dn, char **out)
 {
-	rlm_rcode_t rcode = RLM_MODULE_OK;
-	int ldap_errno;
+	rlm_rcode_t	rcode = RLM_MODULE_OK;
+	int		ldap_errno;
 
-	struct berval **values = NULL;
-	char const *attrs[] = { inst->groupobj_name_attr, NULL };
+	struct berval	**values = NULL;
+	char const	*attrs[] = { inst->groupobj_name_attr, NULL };
 	LDAPMessage	*entry;
 	fr_ldap_query_t	*query = NULL;
 
