@@ -231,21 +231,10 @@ DIAG_ON(unused-macros)
 	if (config->dereference_str) do_ldap_option(LDAP_OPT_DEREF, "dereference", &(config->dereference));
 
 	/*
-	 *	Leave "chase_referrals" unset to use the OpenLDAP default.
+	 *	We handle our own referral chasing as there is no way to
+	 *	get the fd for a referred query.
 	 */
-	if (!config->chase_referrals_unset) {
-		if (config->chase_referrals) {
-			do_ldap_option(LDAP_OPT_REFERRALS, "chase_referrals", LDAP_OPT_ON);
-
-			if (config->rebind == true) {
-#if LDAP_SET_REBIND_PROC_ARGS == 3
-				ldap_set_rebind_proc(c->handle, fr_ldap_rebind, c);
-#endif
-			}
-		} else {
-			do_ldap_option(LDAP_OPT_REFERRALS, "chase_referrals", LDAP_OPT_OFF);
-		}
-	}
+	do_ldap_option(LDAP_OPT_REFERRALS, "chase_referrals", LDAP_OPT_OFF);
 
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
 	/*
