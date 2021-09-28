@@ -843,6 +843,45 @@ finish:
 	return status;
 }
 
+/** Modify something in the LDAP directory
+ *
+ * @param[in] request		Current request.
+ * @param[in,out] pconn		to use. May change as this function calls functions which auto re-connect.
+ * @param[in] dn		of the object to modify.
+ * @param[in] mods		to make, see 'man ldap_modify' for more information.
+ * @param[in] serverctrls	Search controls to pass to the server.  May be NULL.
+ * @param[in] clientctrls	Search controls for ldap_modify.  May be NULL.
+ * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
+ */
+fr_ldap_rcode_t fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_connection_t **pconn,
+			       char const *dn, LDAPMod *mods[],
+			       LDAPControl **serverctrls, LDAPControl **clientctrls)
+{
+	LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
+	LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
+
+	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
+			      NUM_ELEMENTS(our_serverctrls),
+			      NUM_ELEMENTS(our_clientctrls),
+			      *pconn, serverctrls, clientctrls);
+
+	fr_assert(*pconn && (*pconn)->handle);
+
+	if (RDEBUG_ENABLED4) fr_ldap_timeout_debug(request, *pconn, fr_time_delta_wrap(0), __FUNCTION__);
+
+	RDEBUG2("Modifying object with DN \"%s\"", dn);
+	if(ldap_modify_ext((*pconn)->handle, dn, mods, our_serverctrls, our_clientctrls, msgid) != LDAP_SUCCESS) {
+		int ldap_errno;
+
+		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+		ROPTIONAL(RPEDEBUG, RPERROR, "Failed modifying object %s", ldap_err2string(ldap_errno));
+
+		return LDAP_PROC_ERROR;
+	}
+
+	return LDAP_PROC_SUCCESS;
+}
+
 /** Change settings global to libldap
  *
  * May only be called once.  Subsequent calls will be ignored.
