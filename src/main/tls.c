@@ -3439,7 +3439,7 @@ static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve, bool disable_sin
 
 	if (!ecdh_curve || !*ecdh_curve) return 0;
 
-#if OPENSSL_VERSION_NUMBER >= 0x0100200fL
+#if OPENSSL_VERSION_NUMBER >= 0x0100020fL
 	if (strchr(ecdh_curve, ':') != 0) {
 		char *list = strdup(ecdh_curve);
 
