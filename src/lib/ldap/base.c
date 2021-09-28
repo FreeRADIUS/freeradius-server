@@ -711,8 +711,6 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 				     char const *dn, int scope, char const *filter, char const * const *attrs,
 				     LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
-	fr_ldap_rcode_t			status = LDAP_PROC_ERROR;
-
 	fr_ldap_config_t const	*handle_config = (*pconn)->config;
 
 	struct timeval			tv;		// Holds timeout values.
@@ -737,21 +735,6 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 	 */
 	char **search_attrs;
 	memcpy(&search_attrs, &attrs, sizeof(attrs));
-
-	/*
-	 *	Do all searches as the admin user.
-	 */
-	if ((*pconn)->rebound) {
-		status = fr_ldap_bind(request, pconn,
-				      (*pconn)->config->admin_identity, (*pconn)->config->admin_password,
-				      &(*pconn)->config->admin_sasl, fr_time_delta_wrap(0),
-				      NULL, NULL);
-		if (status != LDAP_PROC_SUCCESS) return LDAP_PROC_ERROR;
-
-		fr_assert(*pconn);
-
-		(*pconn)->rebound = false;
-	}
 
 	if (filter) {
 		ROPTIONAL(RDEBUG2, DEBUG2, "Performing search in \"%s\" with filter \"%s\", scope \"%s\"", dn, filter,
