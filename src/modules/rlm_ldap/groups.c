@@ -551,13 +551,14 @@ finish:
  * @param[out] p_result		Result of calling the module.
  * @param[in] inst		rlm_ldap configuration.
  * @param[in] request		Current request.
- * @param[in,out] pconn		to use. May change as this function calls functions which auto re-connect.
+ * @param[in] ttrunk		to use.
  * @param[in] check		vp containing the group value (name or dn).
  */
 unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
-						fr_ldap_connection_t **pconn, fr_pair_t const *check)
+						fr_ldap_thread_trunk_t *ttrunk, fr_pair_t const *check)
 {
-	fr_ldap_rcode_t	status;
+	rlm_rcode_t	rcode;
+	fr_ldap_query_t	*query = NULL;
 
 	char const	*base_dn;
 	char		base_dn_buff[LDAP_MAX_DN_STR_LEN + 1];
@@ -629,14 +630,19 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, rlm_ldap_
 	}
 
 	RINDENT();
-	status = fr_ldap_search(NULL, request, pconn, base_dn, inst->groupobj_scope, filter, NULL, NULL, NULL);
+	if (fr_ldap_trunk_search(unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, base_dn,
+				 inst->groupobj_scope, filter, NULL, NULL, NULL) < 0) {
+		REXDENT();
+		RETURN_MODULE_FAIL;
+	}
+	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
 	REXDENT();
-	switch (status) {
-	case LDAP_PROC_SUCCESS:
+	switch (rcode) {
+	case RLM_MODULE_OK:
 		RDEBUG2("User found in group object \"%s\"", base_dn);
 		break;
 
-	case LDAP_PROC_NO_RESULT:
+	case RLM_MODULE_NOTFOUND:
 		RETURN_MODULE_NOTFOUND;
 
 	default:
