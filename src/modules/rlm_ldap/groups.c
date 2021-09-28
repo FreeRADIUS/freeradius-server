@@ -434,22 +434,22 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, rlm_ldap_t const *inst,
 					    request_t *request, fr_ldap_thread_trunk_t *ttrunk)
 {
-	rlm_rcode_t rcode = RLM_MODULE_OK;
-	int ldap_errno;
+	rlm_rcode_t	rcode = RLM_MODULE_OK;
+	int		ldap_errno;
 
-	LDAPMessage *entry;
+	LDAPMessage	*entry;
 	fr_ldap_query_t	*query;
 
-	char const *base_dn;
-	char base_dn_buff[LDAP_MAX_DN_STR_LEN];
+	char const	*base_dn;
+	char		base_dn_buff[LDAP_MAX_DN_STR_LEN];
 
-	char const *filters[] = { inst->groupobj_filter, inst->groupobj_membership_filter };
-	char filter[LDAP_MAX_FILTER_STR_LEN + 1];
+	char const	*filters[] = { inst->groupobj_filter, inst->groupobj_membership_filter };
+	char		filter[LDAP_MAX_FILTER_STR_LEN + 1];
 
-	char const *attrs[] = { inst->groupobj_name_attr, NULL };
+	char const	*attrs[] = { inst->groupobj_name_attr, NULL };
 
-	fr_pair_t *vp;
-	char *dn;
+	fr_pair_t	*vp;
+	char		*dn;
 
 	fr_assert(inst->groupobj_base_dn);
 
