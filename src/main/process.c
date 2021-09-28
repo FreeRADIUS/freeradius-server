@@ -2367,12 +2367,26 @@ static int insert_into_proxy_hash(REQUEST *request)
 		 *	listener by key.
 		 */
 		if (reverse_coa) {
-			rad_assert(request->proxy_listener != NULL);
+			int rcode;
+			VALUE_PAIR *vp;
 
+			/*
+			 *	Find the Originating-Realm key, which
+			 *	might not be the same as
+			 *	proxy_listener->key.
+			 */
+			vp = fr_pair_find_by_num(request->config, PW_PROXY_TO_ORIGINATING_REALM, 0, TAG_ANY);
+			if (!vp) break;
+
+			/*
+			 *	We don't want to hold multiple mutexes
+			 *	at the same time.
+			 */
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-			if (listen_coa_find(request, request->proxy_listener->key) < 0) break;
+			rcode = listen_coa_find(request, vp->vp_strvalue);
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
-			continue;
+			if (rcode < 0) continue;
+			break;
 		}
 #endif
 
