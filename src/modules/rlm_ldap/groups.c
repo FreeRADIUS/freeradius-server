@@ -431,18 +431,17 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
  * @param[out] p_result		The result of trying to resolve a dn to a group name.
  * @param[in] inst		rlm_ldap configuration.
  * @param[in] request		Current request.
- * @param[in,out] pconn		to use. May change as this function calls functions which auto re-connect.
+ * @param[in] ttrunk		to use.
  * @return One of the RLM_MODULE_* values.
  */
 unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, rlm_ldap_t const *inst,
-					    request_t *request, fr_ldap_connection_t **pconn)
+					    request_t *request, fr_ldap_thread_trunk_t *ttrunk)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
-	fr_ldap_rcode_t status;
 	int ldap_errno;
 
-	LDAPMessage *result = NULL;
 	LDAPMessage *entry;
+	fr_ldap_query_t	*query;
 
 	char const *base_dn;
 	char base_dn_buff[LDAP_MAX_DN_STR_LEN];
@@ -476,13 +475,18 @@ unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, rlm_ldap_t co
 		RETURN_MODULE_INVALID;
 	}
 
-	status = fr_ldap_search(&result, request, pconn, base_dn,
-				inst->groupobj_scope, filter, attrs, NULL, NULL);
-	switch (status) {
-	case LDAP_PROC_SUCCESS:
+	if (fr_ldap_trunk_search(unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, base_dn,
+				 inst->groupobj_scope, filter, attrs, NULL, NULL) < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
+	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
+
+	switch (rcode) {
+	case RLM_MODULE_OK:
 		break;
 
-	case LDAP_PROC_NO_RESULT:
+	case RLM_MODULE_NOTFOUND:
 		RDEBUG2("No cacheable group memberships found in group objects");
 		goto finish;
 
@@ -491,9 +495,9 @@ unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, rlm_ldap_t co
 		goto finish;
 	}
 
-	entry = ldap_first_entry((*pconn)->handle, result);
+	entry = ldap_first_entry(query->ldap_conn->handle, query->result);
 	if (!entry) {
-		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+		ldap_get_option(query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 
 		goto finish;
@@ -502,9 +506,9 @@ unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, rlm_ldap_t co
 	RDEBUG2("Adding cacheable group object memberships");
 	do {
 		if (inst->cacheable_group_dn) {
-			dn = ldap_get_dn((*pconn)->handle, entry);
+			dn = ldap_get_dn(query->ldap_conn->handle, entry);
 			if (!dn) {
-				ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+				ldap_get_option(query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 				REDEBUG("Retrieving object DN from entry failed: %s", ldap_err2string(ldap_errno));
 
 				goto finish;
@@ -523,7 +527,7 @@ unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, rlm_ldap_t co
 		if (inst->cacheable_group_name) {
 			struct berval **values;
 
-			values = ldap_get_values_len((*pconn)->handle, entry, inst->groupobj_name_attr);
+			values = ldap_get_values_len(query->ldap_conn->handle, entry, inst->groupobj_name_attr);
 			if (!values) continue;
 
 			MEM(pair_append_control(&vp, inst->cache_da) == 0);
@@ -535,10 +539,9 @@ unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, rlm_ldap_t co
 
 			ldap_value_free_len(values);
 		}
-	} while ((entry = ldap_next_entry((*pconn)->handle, entry)));
+	} while ((entry = ldap_next_entry(query->ldap_conn->handle, entry)));
 
 finish:
-	if (result) ldap_msgfree(result);
 
 	RETURN_MODULE_RCODE(rcode);
 }
