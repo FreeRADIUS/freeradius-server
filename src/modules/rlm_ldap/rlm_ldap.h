@@ -175,8 +175,8 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_th
  *	groups.c - Group membership functions.
  */
 unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t const *inst,
-					   request_t *request, fr_ldap_connection_t **pconn,
-					   LDAPMessage *entry, char const *attr);
+					   request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+					   LDAPMessage *entry, LDAP *handle, char const *attr);
 
 unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result,
 					    rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn);

@@ -275,14 +275,15 @@ finish:
  * @param[out] p_result		The result of trying to resolve a dn to a group name.
  * @param[in] inst		rlm_ldap configuration.
  * @param[in] request		Current request.
- * @param[in,out] pconn		to use. May change as this function calls functions which auto re-connect.
+ * @param[in] ttrunk		to use.
  * @param[in] entry		retrieved by rlm_ldap_find_user or fr_ldap_search.
+ * @param[in] handle		on which original object was found.
  * @param[in] attr		membership attribute to look for in the entry.
  * @return One of the RLM_MODULE_* values.
  */
 unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t const *inst,
-					   request_t *request, fr_ldap_connection_t **pconn,
-					   LDAPMessage *entry, char const *attr)
+					   request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+					   LDAPMessage *entry, LDAP *handle, char const *attr)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 
@@ -308,7 +309,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 	/*
 	 *	Parse the membership information we got in the initial user query.
 	 */
-	values = ldap_get_values_len((*pconn)->handle, entry, attr);
+	values = ldap_get_values_len(handle, entry, attr);
 	if (!values) {
 		RDEBUG2("No cacheable group memberships found in user object");
 
@@ -371,7 +372,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 				char *dn;
 
 				dn = fr_ldap_berval_to_string(value_ctx, values[i]);
-				rlm_ldap_group_dn2name(&rcode, inst, request, pconn, dn, &name);
+				rlm_ldap_group_dn2name(&rcode, inst, request, ttrunk, dn, &name);
 				talloc_free(dn);
 
 				if (rcode == RLM_MODULE_NOOP) continue;
@@ -393,7 +394,7 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t con
 	}
 	*name_p = NULL;
 
-	rlm_ldap_group_name2dn(&rcode, inst, request, pconn, group_name, group_dn, sizeof(group_dn));
+	rlm_ldap_group_name2dn(&rcode, inst, request, ttrunk, group_name, group_dn, sizeof(group_dn));
 
 	ldap_value_free_len(values);
 	talloc_free(value_ctx);
