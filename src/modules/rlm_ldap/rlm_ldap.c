@@ -709,18 +709,17 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_ldap_t		*inst = talloc_get_type_abort(mod_inst, rlm_ldap_t);
-	fr_ldap_rcode_t		status;
+	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread_by_data(inst)->data, fr_ldap_thread_t);
 
 	LDAPURLDesc		*ldap_url;
 
-	LDAPMessage		*result = NULL;
 	LDAPMessage		*entry = NULL;
 	map_t const		*map;
 	char const 		*url_str;
 
-	fr_ldap_connection_t		*conn;
-
-	LDAPControl		*server_ctrls[] = { NULL, NULL };
+	char			*host_url;
+	fr_ldap_query_t		*query;
+	fr_ldap_thread_trunk_t	*ttrunk;
 
 	fr_ldap_map_exp_t	expanded; /* faster than allocing every time */
 	fr_value_box_t		*url_head = fr_dlist_head(url);
@@ -760,43 +759,47 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 		goto free_urldesc;
 	}
 
-	conn = mod_conn_get(inst, request);
-	if (!conn) goto free_expanded;
+	/*
+	 *	If the URL is <scheme>:/// the parsed host will be NULL - use config default
+	 */
+	if (!ldap_url->lud_host) {
+		host_url = inst->handle_config.server;
+	} else {
+		host_url = talloc_asprintf(unlang_interpret_frame_talloc_ctx(request), "%s://%s:%d",
+					   ldap_url->lud_scheme, ldap_url->lud_host, ldap_url->lud_port);
+	}
 
-	if (fr_ldap_parse_url_extensions(&server_ctrls[0], request, conn, ldap_url->lud_exts) < 0) goto free_socket;
+	ttrunk =  fr_thread_ldap_trunk_get(thread, host_url, inst->handle_config.admin_identity,
+					   inst->handle_config.admin_password, request, &inst->handle_config);
+	if (!ttrunk) goto free_expanded;
 
-	status = fr_ldap_search(&result, request, &conn, ldap_url->lud_dn, ldap_url->lud_scope,
-				ldap_url->lud_filter, expanded.attrs, server_ctrls, NULL);
+	fr_ldap_trunk_search(unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, ldap_url->lud_dn,
+			     ldap_url->lud_scope, ldap_url->lud_filter, expanded.attrs, NULL, NULL);
 
-#ifdef HAVE_LDAP_CREATE_SORT_CONTROL
-	if (server_ctrls[0]) ldap_control_free(server_ctrls[0]);
-#endif
+	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
 
-	switch (status) {
-	case LDAP_PROC_SUCCESS:
+	switch (rcode) {
+	case RLM_MODULE_OK:
+		rcode = RLM_MODULE_UPDATED;
 		break;
 
-	case LDAP_PROC_NO_RESULT:
-		rcode = RLM_MODULE_NOOP;
-		goto free_socket;
+	case RLM_MODULE_NOTFOUND:
+		goto free_expanded;
 
 	default:
 		rcode = RLM_MODULE_FAIL;
-		goto free_socket;
+		goto free_expanded;
 	}
 
-	fr_assert(conn);
-	fr_assert(result);
-
-	for (entry = ldap_first_entry(conn->handle, result);
+	for (entry = ldap_first_entry(query->ldap_conn->handle, query->result);
 	     entry;
-	     entry = ldap_next_entry(conn->handle, entry)) {
+	     entry = ldap_next_entry(query->ldap_conn->handle, entry)) {
 		char	*dn = NULL;
 		int	i;
 
 
 		if (RDEBUG_ENABLED2) {
-			dn = ldap_get_dn(conn->handle, entry);
+			dn = ldap_get_dn(query->ldap_conn->handle, entry);
 			RDEBUG2("Processing \"%s\"", dn);
 		}
 
@@ -807,7 +810,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 			int			ret;
 			fr_ldap_result_t	attr;
 
-			attr.values = ldap_get_values_len(conn->handle, entry, expanded.attrs[i]);
+			attr.values = ldap_get_values_len(query->ldap_conn->handle, entry, expanded.attrs[i]);
 			if (!attr.values) {
 				/*
 				 *	Many LDAP directories don't expose the DN of
@@ -818,7 +821,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 					struct berval value;
 					struct berval *values[2] = { &value, NULL };
 
-					if (!dn) dn = ldap_get_dn(conn->handle, entry);
+					if (!dn) dn = ldap_get_dn(query->ldap_conn->handle, entry);
 					value.bv_val = dn;
 					value.bv_len = strlen(dn);
 
@@ -829,7 +832,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 					if (ret == -1) {
 						rcode = RLM_MODULE_FAIL;
 						ldap_memfree(dn);
-						goto free_result;
+						goto free_expanded;
 					}
 					continue;
 				}
@@ -845,17 +848,13 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 			if (ret == -1) {
 				rcode = RLM_MODULE_FAIL;
 				ldap_memfree(dn);
-				goto free_result;
+				goto free_expanded;
 			}
 		}
 		ldap_memfree(dn);
 		REXDENT();
 	}
 
-free_result:
-	ldap_msgfree(result);
-free_socket:
-	ldap_mod_conn_release(inst, request, conn);
 free_expanded:
 	talloc_free(expanded.ctx);
 free_urldesc:
