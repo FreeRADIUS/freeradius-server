@@ -1151,7 +1151,7 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
  *
  * This is the length of the NETWORK presentation
  */
-size_t fr_value_box_network_length(fr_value_box_t *value)
+size_t fr_value_box_network_length(fr_value_box_t const *value)
 {
 	switch (value->type) {
 	case FR_TYPE_VARIABLE_SIZE:
