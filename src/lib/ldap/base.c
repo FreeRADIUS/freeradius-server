@@ -35,6 +35,7 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/ldap/base.h>
+#include <freeradius-devel/unlang/function.h>
 
 LDAP *ldap_global_handle;			//!< Hack for OpenLDAP libldap global initialisation.
 
@@ -837,6 +838,37 @@ do { \
 		_dest[i].control = _src[i]; \
 	} \
 } while (0)
+
+/** Run an async search LDAP query on a trunk connection
+ *
+ * @param[in] ctx		to allocate the query in.
+ * @param[out] query		that has been allocated.
+ * @param[in] request		this query relates to.
+ * @param[in] ttrunk		to submit the query to.
+ * @param[in] base_dn		for the search.
+ * @param[in] scope		of the search.
+ * @param[in] filter		for the search.
+ * @param[in] attrs		to be returned.
+ * @param[in] serverctrls	specific to this query.
+ * @param[in] clientctrls	specific to this query.
+ */
+int fr_ldap_trunk_search(TALLOC_CTX *ctx, fr_ldap_query_t **query, request_t *request, fr_ldap_thread_trunk_t *ttrunk, char const *base_dn,
+			 int scope, char const *filter, char const * const *attrs, LDAPControl **serverctrls, LDAPControl **clientctrls )
+{
+	*query = fr_ldap_query_alloc(ctx);
+
+	(*query)->type = LDAP_REQUEST_SEARCH;
+	(*query)->request = request;
+	(*query)->ttrunk = ttrunk;
+	(*query)->dn = base_dn;
+	(*query)->search.scope = scope;
+	(*query)->search.filter = filter;
+	memcpy(&(*query)->search.attrs,  &attrs, sizeof((*query)->search.attrs));
+	SET_LDAP_CTRLS((*query)->serverctrls, serverctrls);
+	SET_LDAP_CTRLS((*query)->clientctrls, clientctrls);
+
+	return unlang_function_push(request, ldap_trunk_query_start, ldap_trunk_query_results, ldap_trunk_query_cancel, UNLANG_TOP_FRAME, *query);
+}
 
 /** Modify something in the LDAP directory
  *
