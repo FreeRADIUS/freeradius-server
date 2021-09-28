@@ -1159,23 +1159,23 @@ finish:
  * @param[out] p_result		the result of applying the profile.
  * @param[in] inst		rlm_ldap configuration.
  * @param[in] request		Current request.
- * @param[in,out] pconn		to use. May change as this function calls functions which auto re-connect.
+ * @param[in] ttrunk		to use.
  * @param[in] dn		of profile object to apply.
  * @param[in] expanded		Structure containing a list of xlat
  *				expanded attribute names and mapping information.
  * @return One of the RLM_MODULE_* values.
  */
 static unlang_action_t rlm_ldap_map_profile(rlm_rcode_t *p_result, rlm_ldap_t const *inst,
-					    request_t *request, fr_ldap_connection_t **pconn,
+					    request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 					    char const *dn, fr_ldap_map_exp_t const *expanded)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
-	fr_ldap_rcode_t	status;
-	LDAPMessage	*result = NULL, *entry = NULL;
+	LDAPMessage	*entry = NULL;
 	int		ldap_errno;
-	LDAP		*handle = (*pconn)->handle;
+	LDAP		*handle;
 	char const	*filter;
 	char		filter_buff[LDAP_MAX_FILTER_STR_LEN];
+	fr_ldap_query_t	*query;
 
 	fr_assert(inst->profile_filter); 	/* We always have a default filter set */
 
@@ -1188,14 +1188,16 @@ static unlang_action_t rlm_ldap_map_profile(rlm_rcode_t *p_result, rlm_ldap_t co
 		RETURN_MODULE_INVALID;
 	}
 
-	status = fr_ldap_search(&result, request, pconn, dn,
-				LDAP_SCOPE_BASE, filter, expanded->attrs, NULL, NULL);
-	switch (status) {
-	case LDAP_PROC_SUCCESS:
+	if (fr_ldap_trunk_search(unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, dn,
+				 LDAP_SCOPE_BASE, filter, expanded->attrs, NULL, NULL) < 0) RETURN_MODULE_FAIL;
+
+	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
+
+	switch (rcode) {
+	case RLM_MODULE_OK:
 		break;
 
-	case LDAP_PROC_BAD_DN:
-	case LDAP_PROC_NO_RESULT:
+	case RLM_MODULE_NOTFOUND:
 		RDEBUG2("Profile object \"%s\" not found", dn);
 		RETURN_MODULE_NOTFOUND;
 
@@ -1203,26 +1205,21 @@ static unlang_action_t rlm_ldap_map_profile(rlm_rcode_t *p_result, rlm_ldap_t co
 		RETURN_MODULE_FAIL;
 	}
 
-	fr_assert(*pconn);
-	fr_assert(result);
+	fr_assert(query->result);
+	handle = query->ldap_conn->handle;
 
-	entry = ldap_first_entry(handle, result);
+	entry = ldap_first_entry(handle, query->result);
 	if (!entry) {
 		ldap_get_option(handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 
-		rcode = RLM_MODULE_NOTFOUND;
-
-		goto free_result;
+		RETURN_MODULE_RCODE(RLM_MODULE_NOTFOUND);
 	}
 
 	RDEBUG2("Processing profile attributes");
 	RINDENT();
-	if (fr_ldap_map_do(request, *pconn, inst->valuepair_attr, expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
+	if (fr_ldap_map_do(request, query->ldap_conn->handle, inst->valuepair_attr, expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
 	REXDENT();
-
-free_result:
-	ldap_msgfree(result);
 
 	RETURN_MODULE_RCODE(rcode);
 }
