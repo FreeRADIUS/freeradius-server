@@ -1478,9 +1478,10 @@ static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst
 				   request_t *request, ldap_acct_section_t *section)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
-	fr_ldap_rcode_t	status;
+	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread_by_data(inst)->data, fr_ldap_thread_t);
 
-	fr_ldap_connection_t	*conn = NULL;
+	fr_ldap_thread_trunk_t	*ttrunk = NULL;
+	fr_ldap_query_t		*query = NULL;
 
 	LDAPMod		*mod_p[LDAP_MAX_ATTRMAP + 1], mod_s[LDAP_MAX_ATTRMAP];
 	LDAPMod		**modify = mod_p;
@@ -1660,22 +1661,28 @@ static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst
 
 	mod_p[total] = NULL;
 
-	conn = mod_conn_get(inst, request);
-	if (!conn) RETURN_MODULE_FAIL;
+	ttrunk = fr_thread_ldap_trunk_get(thread, inst->handle_config.server, inst->handle_config.admin_identity,
+					  inst->handle_config.admin_password, request, &inst->handle_config);
 
 
-	dn = rlm_ldap_find_user(inst, request, &conn, NULL, false, NULL, &rcode);
+	dn = rlm_ldap_find_user(inst, request, ttrunk, NULL, false, NULL, NULL, &rcode);
 	if (!dn || (rcode != RLM_MODULE_OK)) {
 		goto error;
 	}
 
-	status = fr_ldap_modify(request, &conn, dn, modify, NULL, NULL);
-	switch (status) {
-	case LDAP_PROC_SUCCESS:
+	if (fr_ldap_trunk_modify(unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, dn,
+				 modify, NULL, NULL) < 0 ){
+		rcode = RLM_MODULE_FAIL;
+		goto error;
+	}
+
+	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
+
+	switch (rcode) {
+	case RLM_MODULE_OK:
 		break;
 
-	case LDAP_PROC_REJECT:
-	case LDAP_PROC_BAD_DN:
+	case RLM_MODULE_NOTFOUND:
 		rcode = RLM_MODULE_INVALID;
 		break;
 
@@ -1690,8 +1697,6 @@ error:
 	 *	Free up any buffers we allocated for xlat expansion
 	 */
 	for (i = 0; i < last_exp; i++) talloc_free(expanded[i]);
-
-	ldap_mod_conn_release(inst, request, conn);
 
 	RETURN_MODULE_RCODE(rcode);
 }
