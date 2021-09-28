@@ -169,7 +169,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, request_t *request, fr_ld
 
 rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request, LDAP *handle, LDAPMessage *entry);
 
-void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t const *conn);
+void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t const *ttrunk);
 
 /*
  *	groups.c - Group membership functions.

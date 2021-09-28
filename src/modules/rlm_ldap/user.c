@@ -230,9 +230,9 @@ rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request, LD
  *
  * @param inst rlm_ldap configuration.
  * @param request Current request.
- * @param conn the connection handle
+ * @param ttrunk the connection thread trunk.
  */
-void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t const *conn)
+void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t const *ttrunk)
 {
        /*
 	*	More warning messages for people who can't be bothered to read the documentation.
@@ -247,7 +247,7 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_co
 	    !fr_pair_find_by_da(&request->control_pairs, attr_user_password, 0) &&
 	    !fr_pair_find_by_da(&request->control_pairs, attr_password_with_header, 0) &&
 	    !fr_pair_find_by_da(&request->control_pairs, attr_crypt_password, 0)) {
-		switch (conn->directory->type) {
+		switch (ttrunk->directory->type) {
 		case FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY:
 			RWDEBUG2("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
 			RWDEBUG2("!!! Active Directory does not allow passwords to be read via LDAP");
@@ -278,13 +278,13 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_co
 			break;
 
 		default:
-			if (!conn->config->admin_identity) {
+			if (!ttrunk->config.admin_identity) {
 				RWDEBUG2("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
 				RWDEBUG2("!!! but no password attribute found in search result");
 				RWDEBUG2("!!! Either:");
 				RWDEBUG2("!!!  - Ensure the user object contains a password attribute, and that");
 				RWDEBUG2("!!!    \"%s\" has permission to read that password attribute (recommended)",
-					 conn->config->admin_identity);
+					 ttrunk->config.admin_identity);
 				RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
 					 inst->name);
 				RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
