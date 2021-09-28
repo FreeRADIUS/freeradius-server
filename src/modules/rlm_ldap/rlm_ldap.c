@@ -1227,11 +1227,14 @@ static unlang_action_t rlm_ldap_map_profile(rlm_rcode_t *p_result, rlm_ldap_t co
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_ldap_t);
+	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread_by_data(inst)->data, fr_ldap_thread_t);
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	int			ldap_errno;
 	int			i;
 	struct berval		**values;
 	fr_ldap_connection_t	*conn;
+	fr_ldap_thread_trunk_t	*ttrunk;
+	LDAP			*handle;
 	LDAPMessage		*result, *entry;
 	char const 		*dn = NULL;
 	fr_ldap_map_exp_t	expanded; /* faster than allocing every time */
@@ -1247,8 +1250,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (fr_ldap_map_expand(&expanded, request, &inst->user_map) < 0) RETURN_MODULE_FAIL;
 
-	conn = mod_conn_get(inst, request);
-	if (!conn) RETURN_MODULE_FAIL;
+	ttrunk =  fr_thread_ldap_trunk_get(thread, inst->handle_config.server, inst->handle_config.admin_identity,
+					   inst->handle_config.admin_password, request, &inst->handle_config);
+	if (!ttrunk) RETURN_MODULE_FAIL;
 
 	/*
 	 *	Add any additional attributes we need for checking access, memberships, and profiles
@@ -1271,14 +1275,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	expanded.attrs[expanded.count] = NULL;
 
-	dn = rlm_ldap_find_user(inst, request, &conn, expanded.attrs, true, &result, &rcode);
+	dn = rlm_ldap_find_user(inst, request, ttrunk, expanded.attrs, true, &result, &handle, &rcode);
 	if (!dn) {
 		goto finish;
 	}
 
-	entry = ldap_first_entry(conn->handle, result);
+	entry = ldap_first_entry(handle, result);
 	if (!entry) {
-		ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+		ldap_get_option(handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 
 		goto finish;
@@ -1288,7 +1292,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	Check for access.
 	 */
 	if (inst->userobj_access_attr) {
-		rcode = rlm_ldap_check_access(inst, request, conn, entry);
+		rcode = rlm_ldap_check_access(inst, request, handle, entry);
 		if (rcode != RLM_MODULE_OK) {
 			goto finish;
 		}
@@ -1299,13 +1303,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 */
 	if (inst->cacheable_group_dn || inst->cacheable_group_name) {
 		if (inst->userobj_membership_attr) {
-			rlm_ldap_cacheable_userobj(&rcode, inst, request, &conn, entry, inst->userobj_membership_attr);
+			rlm_ldap_cacheable_userobj(&rcode, inst, request, ttrunk, entry, handle, inst->userobj_membership_attr);
 			if (rcode != RLM_MODULE_OK) {
 				goto finish;
 			}
 		}
 
-		rlm_ldap_cacheable_groupobj(&rcode, inst, request, &conn);
+		rlm_ldap_cacheable_groupobj(&rcode, inst, request, ttrunk);
 		if (rcode != RLM_MODULE_OK) {
 			goto finish;
 		}
@@ -1405,7 +1409,7 @@ skip_edir:
 			goto finish;
 		}
 
-		rlm_ldap_map_profile(&ret, inst, request, &conn, profile, &expanded);
+		rlm_ldap_map_profile(&ret, inst, request, ttrunk, profile, &expanded);
 		switch (ret) {
 		case RLM_MODULE_INVALID:
 			rcode = RLM_MODULE_INVALID;
@@ -1427,14 +1431,14 @@ skip_edir:
 	 *	Apply a SET of user profiles.
 	 */
 	if (inst->profile_attr) {
-		values = ldap_get_values_len(conn->handle, entry, inst->profile_attr);
+		values = ldap_get_values_len(handle, entry, inst->profile_attr);
 		if (values != NULL) {
 			for (i = 0; values[i] != NULL; i++) {
 				rlm_rcode_t ret;
 				char *value;
 
 				value = fr_ldap_berval_to_string(request, values[i]);
-				rlm_ldap_map_profile(&ret, inst, request, &conn, value, &expanded);
+				rlm_ldap_map_profile(&ret, inst, request, ttrunk, value, &expanded);
 				talloc_free(value);
 				if (ret == RLM_MODULE_FAIL) {
 					ldap_value_free_len(values);
@@ -1450,16 +1454,15 @@ skip_edir:
 	if (!fr_dlist_empty(&inst->user_map) || inst->valuepair_attr) {
 		RDEBUG2("Processing user attributes");
 		RINDENT();
-		if (fr_ldap_map_do(request, conn, inst->valuepair_attr,
+		if (fr_ldap_map_do(request, handle, inst->valuepair_attr,
 				   &expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
 		REXDENT();
-		rlm_ldap_check_reply(inst, request, conn);
+		rlm_ldap_check_reply(inst, request, ttrunk);
 	}
 
 finish:
 	talloc_free(expanded.ctx);
-	if (result) ldap_msgfree(result);
-	ldap_mod_conn_release(inst, request, conn);
+//	ldap_mod_conn_release(inst, request, conn);
 
 	RETURN_MODULE_RCODE(rcode);
 }
