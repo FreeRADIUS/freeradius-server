@@ -335,6 +335,8 @@ typedef struct {
 
 	int			fd;			//!< File descriptor for this connection.
 
+	fr_rb_tree_t		*queries;		//!< Outstanding queries on this connection
+
 	void			*uctx;			//!< User data associated with the handle.
 } fr_ldap_connection_t;
 
