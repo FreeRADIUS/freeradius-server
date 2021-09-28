@@ -58,6 +58,16 @@ int		fr_hash_table_walk(fr_hash_table_t *ht,
 				     fr_hash_table_walk_t callback,
 				     void *ctx);
 
+typedef struct fr_hash_entry_s fr_hash_entry_t;
+
+typedef struct fr_hash_iter_s {
+	uint32_t		bucket;
+	fr_hash_entry_t		*node;
+} fr_hash_iter_t;
+
+void		*fr_hash_table_iter_init(fr_hash_table_t *ht, fr_hash_iter_t *iter);
+void		*fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter);
+
 #ifdef __cplusplus
 }
 #endif
