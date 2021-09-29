@@ -1,3 +1,8 @@
+FreeRADIUS 3.0.25 Wed 29 Sep 2021 12:00:00 EDT urgency=low
+	Feature improvements
+
+	Bug fixes
+
 FreeRADIUS 3.0.24 Wed 29 Sep 2021 12:00:00 EDT urgency=medium
 	Feature improvements
 	* Add sanitizer options to configure script.
