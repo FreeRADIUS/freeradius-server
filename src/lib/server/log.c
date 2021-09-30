@@ -210,21 +210,17 @@ fr_dict_attr_autoload_t log_dict_attr[] = {
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ...	Substitution arguments.
  */
-static int log_always(fr_log_t const *log, fr_log_type_t type,
-		      char const *file, int line,
-		      char const *fmt, ...) CC_HINT(format (printf, 5, 6));
-static int log_always(fr_log_t const *log, fr_log_type_t type,
-		      char const *file, int line,
-		      char const *fmt, ...)
+
+static CC_HINT(format (printf, 5, 6))
+void log_always(fr_log_t const *log, fr_log_type_t type,
+		char const *file, int line,
+		char const *fmt, ...)
 {
 	va_list ap;
-	int r;
 
 	va_start(ap, fmt);
-	r = fr_vlog(log, type, file, line, fmt, ap);
+	fr_vlog(log, type, file, line, fmt, ap);
 	va_end(ap);
-
-	return r;
 }
 
 /** Whether a request specific debug message should be logged

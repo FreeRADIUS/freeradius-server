@@ -150,17 +150,17 @@ int	fr_log_init_legacy(fr_log_t *log, bool daemonize);
 
 void	fr_log_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx);
 
-int	fr_vlog(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line, char const *fmt, va_list ap)
+void	fr_vlog(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line, char const *fmt, va_list ap)
 	CC_HINT(format (printf, 5, 0)) CC_HINT(nonnull (1,3));
 
-int	fr_log(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line, char const *fmt, ...)
+void	fr_log(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line, char const *fmt, ...)
 	CC_HINT(format (printf, 5, 6)) CC_HINT(nonnull (1,3));
 
-int	fr_vlog_perror(fr_log_t const *log, fr_log_type_t type,
+void	fr_vlog_perror(fr_log_t const *log, fr_log_type_t type,
 		       char const *file, int line, fr_log_perror_format_t const *rules, char const *fmt, va_list ap)
 	CC_HINT(format (printf, 6, 0)) CC_HINT(nonnull (1));
 
-int	fr_log_perror(fr_log_t const *log, fr_log_type_t type,
+void	fr_log_perror(fr_log_t const *log, fr_log_type_t type,
 		      char const *file, int line, fr_log_perror_format_t const *rules, char const *fmt, ...)
 	CC_HINT(format (printf, 6, 7)) CC_HINT(nonnull (1));
 

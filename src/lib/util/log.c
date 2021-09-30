@@ -341,7 +341,7 @@ TALLOC_CTX *fr_log_pool_init(void)
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ap	Substitution arguments.
  */
-int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, va_list ap)
+void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, va_list ap)
 {
 	int		colourise = log->colourise;
 	char		*buffer;
@@ -362,7 +362,7 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 	 *	If we don't want any messages, then
 	 *	throw them away.
 	 */
-	if (log->dst == L_DST_NULL) return 0;
+	if (log->dst == L_DST_NULL) return;
 
 	thread_log_pool = fr_log_pool_init();
 	pool = talloc_new(thread_log_pool);	/* Track our local allocations */
@@ -586,7 +586,7 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
 
 	talloc_free(pool);	/* clears all temporary allocations */
 
-	return ret;
+	return;
 }
 
 /** Send a server log message to its destination
@@ -598,21 +598,18 @@ int fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
  * @param fmt	with printf style substitution tokens.
  * @param ...	Substitution arguments.
  */
-int fr_log(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, ...)
+void fr_log(fr_log_t const *log, fr_log_type_t type, char const *file, int line, char const *fmt, ...)
 {
 	va_list ap;
-	int ret = 0;
 
 	/*
 	 *	Non-debug message, or debugging is enabled.  Log it.
 	 */
-	if (!(((type & L_DBG) == 0) || (fr_debug_lvl > 0))) return 0;
+	if (!(((type & L_DBG) == 0) || (fr_debug_lvl > 0))) return;
 
 	va_start(ap, fmt);
-	ret = fr_vlog(log, type, file, line, fmt, ap);
+	fr_vlog(log, type, file, line, fmt, ap);
 	va_end(ap);
-
-	return ret;
 }
 
 /** Drain any outstanding messages from the fr_strerror buffers
@@ -632,11 +629,10 @@ int fr_log(fr_log_t const *log, fr_log_type_t type, char const *file, int line, 
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ap	Substitution arguments.
  */
-int fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
-		   fr_log_perror_format_t const *f_rules, char const *fmt, va_list ap)
+void fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+		    fr_log_perror_format_t const *f_rules, char const *fmt, va_list ap)
 {
 	char const				*error;
-	int					ret;
 	static fr_log_perror_format_t		default_f_rules;
 
 	TALLOC_CTX			        *thread_log_pool;
@@ -648,7 +644,7 @@ int fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, in
 	/*
 	 *	Non-debug message, or debugging is enabled.  Log it.
 	 */
-	if (!(((type & L_DBG) == 0) || (fr_debug_lvl > 0))) return 0;
+	if (!(((type & L_DBG) == 0) || (fr_debug_lvl > 0))) return;
 
 	if (!f_rules) f_rules = &default_f_rules;
 
@@ -688,7 +684,7 @@ int fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, in
 	} else {
 		va_list aq;
 
-		if (!fmt) return 0;	/* NOOP */
+		if (!fmt) return;	/* NOOP */
 
 		va_copy(aq, ap);
 		fr_sbuff_in_vsprintf(&sbuff, fmt, ap);
@@ -700,12 +696,7 @@ int fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, in
 	/*
 	 *	Log the first line
 	 */
-	ret = fr_log(log, type, file, line, "%s", error);
-	if (ret < 0) {
-	error:
-		talloc_free(sbuff.buff);
-		return ret;
-	}
+	fr_log(log, type, file, line, "%s", error);
 
 	fr_sbuff_set_to_start(&sbuff);
 	if (f_rules->subsq_prefix) {
@@ -723,13 +714,10 @@ int fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, in
 			error = fr_sbuff_start(&sbuff);
 		}
 
-		ret = fr_log(log, type, file, line, "%s", error);
-		if (ret < 0) goto error;
+		fr_log(log, type, file, line, "%s", error);
 	}
 
 	talloc_free(sbuff.buff);
-
-	return 0;
 }
 
 /** Drain any outstanding messages from the fr_strerror buffers
@@ -745,17 +733,14 @@ int fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, in
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ...	Substitution arguments.
  */
-int fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
-		  fr_log_perror_format_t const *rules, char const *fmt, ...)
+void fr_log_perror(fr_log_t const *log, fr_log_type_t type, char const *file, int line,
+		   fr_log_perror_format_t const *rules, char const *fmt, ...)
 {
-	int	ret;
 	va_list ap;
 
 	va_start(ap, fmt);
-	ret = fr_vlog_perror(log, type, file, line, rules, fmt, ap);
+	fr_vlog_perror(log, type, file, line, rules, fmt, ap);
 	va_end(ap);
-
-	return ret;
 }
 
 DIAG_OFF(format-nonliteral)
