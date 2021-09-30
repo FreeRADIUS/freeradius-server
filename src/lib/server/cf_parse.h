@@ -504,6 +504,11 @@ int		cf_table_parse_uint32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 int		cf_table_parse_int32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 				     CONF_ITEM *ci, CONF_PARSER const *rule);
 
+int		cf_parse_uid(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			     CONF_ITEM *ci, CONF_PARSER const *rule);
+
+int		cf_parse_gid(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			     CONF_ITEM *ci, CONF_PARSER const *rule);
 
 #ifdef __cplusplus
 }

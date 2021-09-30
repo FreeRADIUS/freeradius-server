@@ -92,11 +92,6 @@ static int max_request_time_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF
 
 static int name_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
-#ifdef HAVE_SETUID
-static int uid_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int gid_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
-#endif
-
 /*
  *	Log destinations
  */
@@ -230,8 +225,8 @@ static const CONF_PARSER server_config[] = {
  **********************************************************************/
 static const CONF_PARSER security_config[] = {
 #ifdef HAVE_SETUID
-	{ FR_CONF_OFFSET_IS_SET("user", FR_TYPE_VOID, main_config_t, uid), .func = uid_parse },
-	{ FR_CONF_OFFSET_IS_SET("group", FR_TYPE_VOID, main_config_t, gid), .func = gid_parse },
+	{ FR_CONF_OFFSET_IS_SET("user", FR_TYPE_VOID, main_config_t, uid), .func = cf_parse_uid },
+	{ FR_CONF_OFFSET_IS_SET("group", FR_TYPE_VOID, main_config_t, gid), .func = cf_parse_gid },
 #endif
 	{ FR_CONF_OFFSET("chroot", FR_TYPE_STRING, main_config_t, chroot_dir) },
 	{ FR_CONF_OFFSET("allow_core_dumps", FR_TYPE_BOOL, main_config_t, allow_core_dumps), .dflt = "no" },
@@ -372,48 +367,6 @@ static int name_parse(TALLOC_CTX *ctx, void *out, void *parent,
 
 	return cf_pair_parse_value(ctx, out, parent, ci, rule);		/* Set new value */
 }
-
-#ifdef HAVE_SETUID
-static int uid_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-		     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
-{
-	struct passwd	*user;
-	char const	*uid_name;
-
-	uid_name = cf_pair_value(cf_item_to_pair(ci));
-
-	if (fr_perm_getpwnam(ctx, &user, uid_name) < 0) {
-		cf_log_perr(ci, "Cannot get passwd entry for user \"%s\"", uid_name);
-		return 0;
-	}
-
-	memcpy(out, &user->pw_uid, sizeof(user->pw_uid));
-
-	talloc_free(user);
-
-	return 0;
-}
-
-static int gid_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-		     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
-{
-	struct group	*group;
-	char const	*gid_name;
-
-	gid_name = cf_pair_value(cf_item_to_pair(ci));
-
-	if (fr_perm_getgrnam(ctx, &group, gid_name) < 0) {
-		cf_log_perr(ci, "Cannot resolve group name \"%s\"", gid_name);
-		return 0;
-	}
-
-	memcpy(out, &group->gr_gid, sizeof(group->gr_gid));
-
-	talloc_free(group);
-
-	return 0;
-}
-#endif
 
 static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent,
 			      CONF_ITEM *ci, CONF_PARSER const *rule)

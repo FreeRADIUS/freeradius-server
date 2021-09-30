@@ -37,6 +37,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/types.h>
 
 static CONF_PARSER conf_term = CONF_PARSER_TERMINATOR;
@@ -1715,6 +1716,36 @@ int cf_table_parse_uint32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent
 		return -1;
 	}
 	*((uint32_t *)out) = (uint32_t)num;
+
+	return 0;
+}
+
+/** Generic function for resolving UID strings to uid_t values
+ *
+ * Type should be FR_TYPE_VOID, struct field should be a uid_t.
+ */
+int cf_parse_uid(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+		 CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	if (fr_perm_uid_from_str(ctx, (uid_t *)out, cf_pair_value(cf_item_to_pair(ci))) < 0) {
+		cf_log_perr(ci, "Failed resolving UID");
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Generic function for resolving GID strings to uid_t values
+ *
+ * Type should be FR_TYPE_VOID, struct field should be a gid_t.
+ */
+int cf_parse_gid(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+		 CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	if (fr_perm_gid_from_str(ctx, (gid_t *)out, cf_pair_value(cf_item_to_pair(ci))) < 0) {
+		cf_log_perr(ci, "Failed resolving GID");
+		return -1;
+	}
 
 	return 0;
 }
