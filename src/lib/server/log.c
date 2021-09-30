@@ -324,7 +324,7 @@ void vlog_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 			break;
 
 #if defined(HAVE_FOPENCOOKIE) || defined (HAVE_FUNOPEN)
-		case L_DST_EXTRA:
+		case L_DST_FUNC:
 		{
 #  ifdef HAVE_FOPENCOOKIE
 			cookie_io_functions_t io;

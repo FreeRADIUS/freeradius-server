@@ -79,7 +79,7 @@ typedef enum {
 	L_DST_FILES,				//!< Log to a file on disk.
 	L_DST_SYSLOG,				//!< Log to syslog.
 	L_DST_STDERR,				//!< Log to stderr.
-	L_DST_EXTRA,				//!< Send log messages to a FILE*, via fopencookie()
+	L_DST_FUNC,				//!< Send log messages to a FILE*, via fopencookie()
 	L_DST_NULL,				//!< Discard log messages.
 	L_DST_NUM_DEST
 } fr_log_dst_t;
