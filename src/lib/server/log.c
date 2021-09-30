@@ -174,14 +174,14 @@ fr_table_num_sorted_t const syslog_severity_table[] = {
 };
 size_t syslog_severity_table_len = NUM_ELEMENTS(syslog_severity_table);
 
-fr_table_num_sorted_t const log_str2dst[] = {
+fr_table_num_sorted_t const log_destination_table[] = {
 	{ L("files"),		L_DST_FILES	},
 	{ L("null"),		L_DST_NULL	},
 	{ L("stderr"),		L_DST_STDERR	},
 	{ L("stdout"),		L_DST_STDOUT	},
 	{ L("syslog"),		L_DST_SYSLOG	},
 };
-size_t log_str2dst_len = NUM_ELEMENTS(log_str2dst);
+size_t log_destination_table_len = NUM_ELEMENTS(log_destination_table);
 
 static char const spaces[] = "                                                                                                                        ";
 

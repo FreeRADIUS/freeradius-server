@@ -92,8 +92,8 @@ extern fr_table_num_sorted_t const syslog_facility_table[];
 extern size_t syslog_facility_table_len;
 extern fr_table_num_sorted_t const syslog_severity_table[];
 extern size_t syslog_severity_table_len;
-extern fr_table_num_sorted_t const log_str2dst[];
-extern size_t log_str2dst_len;
+extern fr_table_num_sorted_t const log_destination_table[];
+extern size_t log_destination_table_len;
 
 #define debug_enabled(_type, _lvl) (((_type & L_DBG) != 0) && (_lvl <= fr_debug_lvl))
 
