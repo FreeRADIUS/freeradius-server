@@ -109,8 +109,10 @@ typedef struct {
 	char const		*file;		//!< Path to log file.
 
 	void			*cookie;	//!< for fopencookie()
+	FILE			*handle;	//!< Path to log file.
 
 	ssize_t			(*cookie_write)(void *, char const *, size_t);	//!< write function
+	void			*uctx;		//!< User data associated with the fr_log_t.
 } fr_log_t;
 
 typedef struct {
@@ -134,7 +136,6 @@ typedef struct {
 extern fr_log_t default_log;
 extern bool fr_log_rate_limit;
 
-
 /** Whether rate limiting is enabled
  *
  */
@@ -145,9 +146,9 @@ static inline bool fr_rate_limit_enabled(void)
 	return false;
 }
 
-int	fr_log_init(fr_log_t *log, bool daemonize);
+int	fr_log_init_legacy(fr_log_t *log, bool daemonize);
 
-TALLOC_CTX	*fr_log_pool_init(void);
+void	fr_log_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx);
 
 int	fr_vlog(fr_log_t const *log, fr_log_type_t lvl, char const *file, int line, char const *fmt, va_list ap)
 	CC_HINT(format (printf, 5, 0)) CC_HINT(nonnull (1,3));
@@ -177,7 +178,22 @@ void	fr_log_hex_marker(fr_log_t const *log, fr_log_type_t type, char const *file
 			  ssize_t marker_idx, char const *marker, char const *line_prefix_fmt, ...)
 			  CC_HINT(format (printf, 9, 10)) CC_HINT(nonnull (1, 3, 5, 8));
 
-void	fr_log_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx);
+int	fr_log_init_std(fr_log_t *log, fr_log_dst_t dst_type) CC_HINT(nonnull);
+
+int	fr_log_init_file(fr_log_t *log, char const *file) CC_HINT(nonnull);
+
+int	fr_log_init_syslog(fr_log_t *log) CC_HINT(nonnull);
+
+int	fr_log_init_func(fr_log_t *log, cookie_write_function_t write, cookie_close_function_t close, void *uctx)
+	CC_HINT(nonnull(1,3));
+
+int	fr_log_close(fr_log_t *log) CC_HINT(nonnull);
+
+TALLOC_CTX *fr_log_pool_init(void);
+
+int	fr_log_global_init(fr_event_list_t *el, bool daemonize)	CC_HINT(nonnull);
+
+void	fr_log_global_free(void);
 
 #ifdef __cplusplus
 }

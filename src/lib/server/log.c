@@ -1053,7 +1053,7 @@ int log_global_init(fr_log_t *log, bool daemonize)
 {
 	int ret;
 
-	ret = fr_log_init(log, daemonize);
+	ret = fr_log_init_legacy(log, daemonize);
 	if (ret < 0) return ret;
 
 	if (fr_dict_autoload(log_dict) < 0) {

@@ -483,7 +483,7 @@ int main(int argc, char *argv[])
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-	fr_log_init(&default_log, false);
+	fr_log_init_legacy(&default_log, false);
 
 	while ((c = getopt(argc, argv, "c:hm:o:qtw:x")) != -1) switch (c) {
 		case 'x':

@@ -48,6 +48,23 @@ int	fr_debug_lvl = 0;
 static _Thread_local TALLOC_CTX *fr_log_pool;
 
 static uint32_t location_indent = 30;
+static fr_event_list_t *log_el;			//!< Event loop we use for process logging data.
+
+static int stderr_fd = -1;			//!< The original unmolested stderr file descriptor
+static int stdout_fd = -1;			//!< The original unmolested stdout file descriptor
+
+static fr_log_fd_event_ctx_t stdout_ctx;	//!< Logging ctx for stdout.
+static fr_log_fd_event_ctx_t stderr_ctx;	//!< Logging ctx for stderr.
+
+static int stdout_pipe[2];			//!< Pipe we use to transport stdout data.
+static int stderr_pipe[2];			//!< Pipe we use to transport stderr data.
+
+static FILE *devnull;				//!< File handle for /dev/null
+
+bool fr_log_rate_limit = true;			//!< Whether repeated log entries should be rate limited
+
+static _Thread_local fr_log_type_t log_msg_type;//!< The type of the last message logged.
+						///< Mainly uses for syslog.
 
 /** Canonicalize error strings, removing tabs, and generate spaces for error marker
  *
@@ -149,6 +166,81 @@ void fr_canonicalize_error(TALLOC_CTX *ctx, char **sp, char **text, ssize_t slen
 
 	*sp = spaces;
 	*text = value;
+}
+
+/** Function to provide as the readable callback to the event loop
+ *
+ * Writes any data read from a file descriptor to the request log,
+ * tries very hard not to chop lines in the middle, but will split
+ * at 1024 byte boundaries if forced to.
+ *
+ * @param[in] el	UNUSED
+ * @param[in] fd	UNUSED
+ * @param[in] flags	UNUSED
+ * @param[in] uctx	Pointer to a log_fd_event_ctx_t
+ */
+void fr_log_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
+{
+	char			buffer[1024];
+	fr_log_fd_event_ctx_t	*log_info = uctx;
+	fr_sbuff_t		sbuff;
+	fr_sbuff_marker_t	m_start, m_end;
+
+	fr_sbuff_term_t const 	line_endings = FR_SBUFF_TERMS(L("\n"), L("\r"));
+
+	if (log_info->lvl < fr_debug_lvl) {
+		while (read(fd, buffer, sizeof(buffer) > 0));
+		return;
+	}
+
+	fr_sbuff_init(&sbuff, buffer, sizeof(buffer));
+	fr_sbuff_marker(&m_start, &sbuff);
+	fr_sbuff_marker(&m_end, &sbuff);
+
+#ifndef NDEBUG
+	memset(buffer, 0x42, sizeof(buffer));
+#endif
+
+	for (;;) {
+		ssize_t		slen;
+
+		slen = read(fd, fr_sbuff_current(&m_end), fr_sbuff_remaining(&m_end));
+		if ((slen < 0) && (errno == EINTR)) continue;
+
+		if (slen > 0) fr_sbuff_advance(&m_end, slen);
+
+		while (fr_sbuff_ahead(&m_end) > 0) {
+			fr_sbuff_adv_until(&sbuff, fr_sbuff_ahead(&m_end), &line_endings, '\0');
+
+			/*
+			 *	Incomplete line, try and read the rest.
+			 */
+			if ((slen > 0) && (fr_sbuff_used(&m_start) > 0) &&
+			    !fr_sbuff_is_terminal(&sbuff, &line_endings)) {
+				break;
+			}
+
+			fr_log(log_info->dst, log_info->type,
+			       __FILE__, __LINE__,
+			       "%s%s%pV",
+			       log_info->prefix ? log_info->prefix : "",
+			       log_info->prefix ? " - " : "",
+			       fr_box_strvalue_len(fr_sbuff_current(&m_start), fr_sbuff_behind(&m_start)));
+
+			fr_sbuff_advance(&sbuff, 1);	/* Skip the whitespace */
+			fr_sbuff_set(&m_start, &sbuff);
+		}
+
+		/*
+		 *	Error or done
+		 */
+		if (slen <= 0) break;
+
+		/*
+		 *	Clear out the existing data
+		 */
+		fr_sbuff_shift(&sbuff, fr_sbuff_used(&m_start));
+	};
 }
 
 /** Maps log categories to message prefixes
@@ -831,101 +923,15 @@ void fr_log_hex_marker(fr_log_t const *log, fr_log_type_t type, char const *file
 	if (line_prefix_fmt) talloc_free(line_prefix);
 }
 DIAG_ON(format-nonliteral)
-
-/** Function to provide as the readable callback to the event loop
- *
- * Writes any data read from a file descriptor to the request log,
- * tries very hard not to chop lines in the middle, but will split
- * at 1024 byte boundaries if forced to.
- *
- * @param[in] el	UNUSED
- * @param[in] fd	UNUSED
- * @param[in] flags	UNUSED
- * @param[in] uctx	Pointer to a log_fd_event_ctx_t
- */
-void fr_log_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
-{
-	char			buffer[1024];
-	fr_log_fd_event_ctx_t	*log_info = uctx;
-	fr_sbuff_t		sbuff;
-	fr_sbuff_marker_t	m_start, m_end;
-
-	fr_sbuff_term_t const 	line_endings = FR_SBUFF_TERMS(L("\n"), L("\r"));
-
-	if (log_info->lvl < fr_debug_lvl) {
-		while (read(fd, buffer, sizeof(buffer) > 0));
-		return;
-	}
-
-	fr_sbuff_init(&sbuff, buffer, sizeof(buffer));
-	fr_sbuff_marker(&m_start, &sbuff);
-	fr_sbuff_marker(&m_end, &sbuff);
-
-#ifndef NDEBUG
-	memset(buffer, 0x42, sizeof(buffer));
-#endif
-
-	for (;;) {
-		ssize_t		slen;
-
-		slen = read(fd, fr_sbuff_current(&m_end), fr_sbuff_remaining(&m_end));
-		if ((slen < 0) && (errno == EINTR)) continue;
-
-		if (slen > 0) fr_sbuff_advance(&m_end, slen);
-
-		while (fr_sbuff_ahead(&m_end) > 0) {
-			fr_sbuff_adv_until(&sbuff, fr_sbuff_ahead(&m_end), &line_endings, '\0');
-
-			/*
-			 *	Incomplete line, try and read the rest.
-			 */
-			if ((slen > 0) && (fr_sbuff_used(&m_start) > 0) &&
-			    !fr_sbuff_is_terminal(&sbuff, &line_endings)) {
-				break;
-			}
-
-			fr_log(log_info->dst, log_info->type,
-			       __FILE__, __LINE__,
-			       "%s%s%pV",
-			       log_info->prefix ? log_info->prefix : "",
-			       log_info->prefix ? " - " : "",
-			       fr_box_strvalue_len(fr_sbuff_current(&m_start), fr_sbuff_behind(&m_start)));
-
-			fr_sbuff_advance(&sbuff, 1);	/* Skip the whitespace */
-			fr_sbuff_set(&m_start, &sbuff);
-		}
-
-		/*
-		 *	Error or done
-		 */
-		if (slen <= 0) break;
-
-		/*
-		 *	Clear out the existing data
-		 */
-		fr_sbuff_shift(&sbuff, fr_sbuff_used(&m_start));
-	};
-}
-
-static int stderr_fd = -1;		//!< The original unmolested stderr file descriptor
-static int stdout_fd = -1;		//!< The original unmolested stdout file descriptor
-bool fr_log_rate_limit = true;		//!< Whether repeated log entries should be rate limited
-
 /** On fault, reset STDOUT and STDERR to something useful
  *
  * @return 0
  */
-static int _restore_std(UNUSED int sig)
+static int _restore_std_legacy(UNUSED int sig)
 {
 	if ((stderr_fd > 0) && (stdout_fd > 0)) {
 		dup2(stderr_fd, STDOUT_FILENO);
 		dup2(stdout_fd, STDERR_FILENO);
-		return 0;
-	}
-
-	if (default_log.fd > 0) {
-		dup2(default_log.fd, STDOUT_FILENO);
-		dup2(default_log.fd, STDERR_FILENO);
 		return 0;
 	}
 
@@ -940,9 +946,9 @@ static int _restore_std(UNUSED int sig)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_log_init(fr_log_t *log, bool daemonize)
+int fr_log_init_legacy(fr_log_t *log, bool daemonize)
 {
-	int devnull;
+	int devnull_legacy;
 
 	fr_log_rate_limit = daemonize;
 
@@ -959,14 +965,14 @@ int fr_log_init(fr_log_t *log, bool daemonize)
 	 *	to STDOUT / STDERR.
 	 */
 	if (!daemonize) {
-		fr_fault_set_cb(_restore_std);
+		fr_fault_set_cb(_restore_std_legacy);
 
 		stdout_fd = dup(STDOUT_FILENO);
 		stderr_fd = dup(STDERR_FILENO);
 	}
 
-	devnull = open("/dev/null", O_RDWR);
-	if (devnull < 0) {
+	devnull_legacy = open("/dev/null", O_RDWR);
+	if (devnull_legacy < 0) {
 		fr_strerror_printf("Error opening /dev/null: %s", fr_syserror(errno));
 		return -1;
 	}
@@ -993,7 +999,7 @@ int fr_log_init(fr_log_t *log, bool daemonize)
 		if (fr_debug_lvl || !daemonize) {
 			dup2(STDOUT_FILENO, STDERR_FILENO);
 		} else {
-			dup2(devnull, STDERR_FILENO);
+			dup2(devnull_legacy, STDERR_FILENO);
 		}
 
 	} else if (log->dst == L_DST_STDERR) {
@@ -1011,7 +1017,7 @@ int fr_log_init(fr_log_t *log, bool daemonize)
 		if (fr_debug_lvl || !daemonize) {
 			dup2(STDERR_FILENO, STDOUT_FILENO);
 		} else {
-			dup2(devnull, STDOUT_FILENO);
+			dup2(devnull_legacy, STDOUT_FILENO);
 		}
 
 	} else if (log->dst == L_DST_SYSLOG) {
@@ -1020,8 +1026,8 @@ int fr_log_init(fr_log_t *log, bool daemonize)
 		 *	status of debugging.  Syslog isn't a file
 		 *	descriptor, so we can't use it.
 		 */
-		dup2(devnull, STDOUT_FILENO);
-		dup2(devnull, STDERR_FILENO);
+		dup2(devnull_legacy, STDOUT_FILENO);
+		dup2(devnull_legacy, STDERR_FILENO);
 		log->print_level = false;
 
 	} else if (fr_debug_lvl) {
@@ -1040,13 +1046,346 @@ int fr_log_init(fr_log_t *log, bool daemonize)
 		 *	exit, and the output from executed programs
 		 *	doesn't pollute STDOUT / STDERR.
 		 */
-		dup2(devnull, STDOUT_FILENO);
-		dup2(devnull, STDERR_FILENO);
+		dup2(devnull_legacy, STDOUT_FILENO);
+		dup2(devnull_legacy, STDERR_FILENO);
 	}
 
-	close(devnull);
+	close(devnull_legacy);
 
 	fr_fault_set_log_fd(log->fd);
 
 	return 0;
+}
+
+DIAG_ON(format-nonliteral)
+
+/** Initialise log dst for stdout, stderr or /dev/null
+ *
+ * @param[out] log	Destination to initialise.
+ * @param[in] dst_type	The specific type of log destination to initialise.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_log_init_std(fr_log_t *log, fr_log_dst_t dst_type)
+{
+	memset(log, 0, sizeof(*log));
+
+	log->dst = dst_type;
+	switch (log->dst) {
+	case L_DST_STDOUT:
+		log->handle = stdout;
+		break;
+
+	case L_DST_STDERR:
+		log->handle = stderr;
+		break;
+
+	case L_DST_NULL:
+		log->handle = devnull;
+		break;
+
+	default:
+		fr_strerror_const("Invalid dst type for FD log destination");
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Initialise a file logging destination
+ *
+ * @param[out] log	Destination to initialise.
+ * @param[in] file	to open handle for.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_log_init_file(fr_log_t *log, char const *file)
+{
+	memset(log, 0, sizeof(*log));
+
+	log->dst = L_DST_FILES;
+
+	if (unlikely((log->handle = fopen(file, "a")) == NULL)) {
+		fr_strerror_printf("Failed opening log file \"%s\": %s", file, fr_syserror(errno));
+		return -1;
+	}
+
+	if (unlikely(setlinebuf(log->handle) < 0)) {
+		fr_strerror_printf("Failed setting linebuf on file \"%s\": %s", file, fr_syserror(errno));
+		fclose(log->handle);
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Write complete lines to syslog
+ *
+ */
+static ssize_t _syslog_write(UNUSED void *cookie, const char *buf, size_t size)
+{
+	static int syslog_priority_table[] = {
+		[L_DBG] = LOG_DEBUG,
+
+		[L_INFO] = LOG_INFO,
+		[L_DBG_INFO] = LOG_INFO,
+
+		[L_ERR] = LOG_ERR,
+		[L_DBG_ERR] = LOG_ERR,
+		[L_DBG_ERR_REQ] = LOG_ERR,
+
+		[L_WARN] = LOG_WARNING,
+		[L_DBG_WARN] = LOG_WARNING,
+		[L_DBG_WARN_REQ] = LOG_WARNING,
+
+		[L_AUTH] = LOG_AUTH | LOG_INFO
+	};
+
+	syslog(syslog_priority_table[log_msg_type], "%.*s", (int)size, buf);
+
+	return size;
+}
+
+/** Initialise a syslog logging destination
+ *
+ * @param[out] log	Destination to initialise.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_log_init_syslog(fr_log_t *log)
+{
+	memset(log, 0, sizeof(*log));
+
+	log->dst = L_DST_SYSLOG;
+	if (unlikely(log->handle = fopencookie(log, "w",
+					       (cookie_io_functions_t){
+					       		.write = _syslog_write,
+					       }) == NULL)) {
+		fr_strerror_printf("Failed opening syslog transpor: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	if (unlikely(setlinebuf(log->handle) < 0)) {
+		fr_strerror_printf("Failed setting linebuf on syslog transport: %s", fr_syserror(errno));
+		fclose(log->handle);
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Initialise a function based logging destination
+ *
+ * @note Cookie functions receive the fr_log_t which contains the uctx, not the uctx directly.
+ *
+ * @param[out] log	Destination to initialise.
+ * @param[in] write	Called when a complete log line is ready for writing.
+ * @param[in] close	May be NULL.  Called when the logging destination has been closed.
+ * @param[in] uctx	for the write and close functions.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_log_init_func(fr_log_t *log, cookie_write_function_t write, cookie_close_function_t close, void *uctx)
+{
+	memset(log, 0, sizeof(*log));
+
+	log->dst = L_DST_FUNC;
+
+	if (unlikely(log->handle = fopencookie(log, "w",
+					       (cookie_io_functions_t){
+					       		.write = write,
+					       		.close = close
+					       }) == NULL)) {
+		fr_strerror_printf("Failed opening func transport: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	if (unlikely(setlinebuf(log->handle) < 0)) {
+		fr_strerror_printf("Failed setting linebuf on func transport: %s", fr_syserror(errno));
+		fclose(log->handle);
+		return -1;
+	}
+	log->uctx = uctx;
+
+	return 0;
+}
+
+/** Universal close function for all logging destinations
+ *
+ */
+int fr_log_close(fr_log_t *log)
+{
+	switch (log->dst) {
+	case L_DST_STDOUT:
+	case L_DST_STDERR:
+	case L_DST_NULL:
+		return 0;
+
+	/*
+	 *	Other log dsts
+	 */
+	case L_DST_FILES:
+	case L_DST_FUNC:
+	case L_DST_SYSLOG:
+		if (log->handle && (fclose(log->handle) < 0)) {
+			fr_strerror_printf("Failed closing file handle: %s", fr_syserror(errno));
+			return -1;
+		}
+		FALL_THROUGH;
+
+	case L_DST_NUM_DEST:
+		break;
+	}
+
+	fr_strerror_printf("Failed closing invalid log dst %i", log->dst);
+	return -1;
+}
+
+/** Manipulate stderr and stdout so that was capture all data send to it from libraries
+ *
+ * @param[in] el	The event list we use to process logging data.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_log_global_init(fr_event_list_t *el, bool daemonize)
+{
+	log_el = el;
+
+	fr_log_rate_limit = daemonize;
+
+	/*
+	 *	dup the current stdout/stderr FDs and close
+	 *      the FDs in the STDOUT/STDERR slots to get
+	 *	the reference count back to one.
+	 */
+	stdout_fd = dup(STDOUT_FILENO);
+	if (unlikely(stdout_fd < 0)) {
+		fr_strerror_printf("Failed cloning stdout FD: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	/*
+	 *	Create two unidirection pipes, duping one end
+	 *      to the stdout/stderr slots and inserting the
+	 *	other into our event loop
+	 */
+	if (unlikely(pipe(stdout_pipe) < 0)) {
+		fr_strerror_printf("Failed creating logging pipes: %s", fr_syserror(errno));
+	error_0:
+		log_el = NULL;
+		close(stdout_fd);
+		return -1;
+	}
+
+	/*
+	 *	This closes the other ref to the stdout FD.
+	 */
+	if (unlikely(dup2(stdout_pipe[0], STDOUT_FILENO) < 0)) {
+		fr_strerror_printf("Failed copying pipe end over stdout: %s", fr_syserror(errno));
+	error_1:
+		close(stdout_pipe[0]);
+		stdout_pipe[0] = -1;
+		close(stdout_pipe[1]);
+		stdout_pipe[1] = -1;
+		goto error_0;
+	}
+
+	stdout_ctx.dst = &default_log;
+	stdout_ctx.prefix = "(stdout)";
+	stdout_ctx.type = L_DBG;
+	stdout_ctx.lvl = L_DBG_LVL_2;
+
+	/*
+	 *	Now do stderr...
+	 */
+	if (unlikely(fr_event_fd_insert(NULL, el, stdout_pipe[1], fr_log_fd_event, NULL, NULL, &stdout_ctx) < 0)) {
+		fr_strerror_const_push("Failed adding stdout handler to event loop");
+	error_2:
+		dup2(STDOUT_FILENO, stdout_fd);	/* Copy back the stdout FD */
+		goto error_1;
+	}
+
+	stderr_fd = dup(STDERR_FILENO);
+	if (unlikely(stderr_fd < 0)) {
+		fr_strerror_printf("Failed cloning stderr FD: %s", fr_syserror(errno));
+
+	error_3:
+		fr_event_fd_delete(el, stdout_pipe[1], FR_EVENT_FILTER_IO);
+		goto error_2;
+	}
+
+	if (unlikely(pipe(stderr_pipe) < 0)) {
+		fr_strerror_printf("Failed creating logging pipes: %s", fr_syserror(errno));
+	error_4:
+		close(stderr_fd);
+		goto error_3;
+	}
+
+	if (unlikely(dup2(stderr_pipe[0], STDOUT_FILENO) < 0)) {
+		fr_strerror_printf("Failed copying pipe end over stderr: %s", fr_syserror(errno));
+	error_5:
+		close(stderr_pipe[0]);
+		stderr_pipe[0] = -1;
+		close(stderr_pipe[1]);
+		stderr_pipe[1] = -1;
+		goto error_4;
+	}
+
+	stdout_ctx.dst = &default_log;
+	stdout_ctx.prefix = "(stderr)";
+	stdout_ctx.type = L_ERR;
+	stdout_ctx.lvl = L_DBG_LVL_OFF;	/* Log at all debug levels */
+
+	if (unlikely(fr_event_fd_insert(NULL, el, stderr_pipe[1], fr_log_fd_event, NULL, NULL, &stderr_ctx) < 0)) {
+		fr_strerror_const_push("Failed adding stdout handler to event loop");
+	error_6:
+		dup2(STDERR_FILENO, stderr_fd);	/* Copy back the stderr FD */
+		goto error_5;
+	}
+
+	fr_fault_set_log_fd(STDERR_FILENO);
+	fr_fault_set_cb(_restore_std_legacy);		/* Restore the original file descriptors if we experience a fault */
+
+	/*
+	 *	Setup our standard file *s
+	 */
+	setlinebuf(stdout);
+	setlinebuf(stderr);
+
+	devnull = fopen("/dev/null", "w");
+	if (unlikely(!devnull)) {
+		fr_strerror_printf("Error opening /dev/null: %s", fr_syserror(errno));
+		goto error_6;
+	}
+
+	fr_log_init_std(&default_log, L_DST_STDOUT);
+
+	return 0;
+}
+
+/** Restores the original stdout and stderr FDs, closes the pipes and removes them from the event loop
+ *
+ */
+void fr_log_global_free(void)
+{
+	if (!log_el) return;
+
+	fr_event_fd_delete(log_el, stdout_pipe[1], FR_EVENT_FILTER_IO);
+	close(stdout_pipe[1]);
+	stdout_pipe[1] = -1;
+	fr_event_fd_delete(log_el, stderr_pipe[1], FR_EVENT_FILTER_IO);
+	close(stderr_pipe[1]);
+	stderr_pipe[1] = -1;
+
+	_restore_std_legacy(0);	/* Will close stdout_pipe[0] and stderr_pipe[0] with dup2 */
+
+	stdout_pipe[0] = -1;
+	stderr_pipe[0] = -1;
+
+	fclose(devnull);
 }

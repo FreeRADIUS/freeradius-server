@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 
 	fr_time_start();
 
-	fr_log_init(&default_log, false);
+	fr_log_init_legacy(&default_log, false);
 
 	while ((c = getopt(argc, argv, "n:w:x")) != -1) switch (c) {
 		case 'n':

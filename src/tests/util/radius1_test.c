@@ -527,7 +527,7 @@ int main(int argc, char *argv[])
 
 	fr_time_start();
 
-	fr_log_init(&default_log, false);
+	fr_log_init_legacy(&default_log, false);
 
 	memset(&my_ipaddr, 0, sizeof(my_ipaddr));
 	my_ipaddr.af = AF_INET;
