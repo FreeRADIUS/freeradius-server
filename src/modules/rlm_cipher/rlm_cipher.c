@@ -95,7 +95,9 @@ static fr_table_num_sorted_t const cipher_rsa_padding[] = {
 	{ L("none"),	RSA_NO_PADDING		},
 	{ L("oaep"),	RSA_PKCS1_OAEP_PADDING	},		/* PKCS OAEP padding */
 	{ L("pkcs"),	RSA_PKCS1_PADDING	},		/* PKCS 1.5 */
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	{ L("ssl"),	RSA_SSLV23_PADDING	},
+#endif
 	{ L("x931"),	RSA_X931_PADDING	}
 };
 static size_t cipher_rsa_padding_len = NUM_ELEMENTS(cipher_rsa_padding);
@@ -1063,7 +1065,9 @@ static int cipher_rsa_padding_params_set(EVP_PKEY_CTX *evp_pkey_ctx, cipher_rsa_
 	switch (rsa_inst->padding) {
 	case RSA_NO_PADDING:
 	case RSA_X931_PADDING:
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	case RSA_SSLV23_PADDING:
+#endif
 	case RSA_PKCS1_PADDING:
 		return 0;
 
