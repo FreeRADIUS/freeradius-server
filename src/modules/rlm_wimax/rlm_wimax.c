@@ -165,8 +165,9 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	rlm_wimax_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_wimax_t);
 	fr_pair_t		*msk, *emsk, *vp;
 	fr_pair_t		*mn_nai, *ip, *fa_rk;
-	HMAC_CTX		*hmac;
-	unsigned int		rk1_len, rk2_len, rk_len;
+	EVP_MD_CTX		*hmac_ctx;
+	EVP_PKEY		*hmac_pkey;
+	size_t			rk1_len, rk2_len, rk_len;
 	uint32_t		mip_spi;
 	uint8_t			usage_data[24];
 	uint8_t			mip_rk_1[EVP_MAX_MD_SIZE], mip_rk_2[EVP_MAX_MD_SIZE];
@@ -202,20 +203,22 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	/*
 	 *	MIP-RK-1 = HMAC-SSHA256(EMSK, usage-data | 0x01)
 	 */
-	hmac = HMAC_CTX_new();
-	HMAC_Init_ex(hmac, emsk->vp_octets, emsk->vp_length, EVP_sha256(), NULL);
+	MEM(hmac_ctx = EVP_MD_CTX_new());
+	MEM(hmac_pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, emsk->vp_octets, emsk->vp_length));
+	EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha256(), NULL, hmac_pkey);
 
-	HMAC_Update(hmac, &usage_data[0], sizeof(usage_data));
-	HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
+	EVP_DigestSignUpdate(hmac_ctx, &usage_data[0], sizeof(usage_data));
+	EVP_DigestSignFinal(hmac_ctx, &mip_rk_1[0], &rk1_len);
 
 	/*
 	 *	MIP-RK-2 = HMAC-SSHA256(EMSK, MIP-RK-1 | usage-data | 0x01)
 	 */
-	HMAC_Init_ex(hmac, emsk->vp_octets, emsk->vp_length, EVP_sha256(), NULL);
+	EVP_MD_CTX_reset(hmac_ctx);
+	EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha256(), NULL, hmac_pkey);
 
-	HMAC_Update(hmac, (uint8_t const *) &mip_rk_1, rk1_len);
-	HMAC_Update(hmac, &usage_data[0], sizeof(usage_data));
-	HMAC_Final(hmac, &mip_rk_2[0], &rk2_len);
+	EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *) &mip_rk_1, rk1_len);
+	EVP_DigestSignUpdate(hmac_ctx, &usage_data[0], sizeof(usage_data));
+	EVP_DigestSignFinal(hmac_ctx, &mip_rk_2[0], &rk2_len);
 
 	memcpy(mip_rk, mip_rk_1, rk1_len);
 	memcpy(mip_rk + rk1_len, mip_rk_2, rk2_len);
@@ -224,10 +227,13 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	/*
 	 *	MIP-SPI = HMAC-SSHA256(MIP-RK, "SPI CMIP PMIP");
 	 */
-	HMAC_Init_ex(hmac, mip_rk, rk_len, EVP_sha256(), NULL);
+	EVP_MD_CTX_reset(hmac_ctx);
+	EVP_PKEY_free(hmac_pkey); /* No way to reset ? */
+	MEM(hmac_pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, mip_rk, rk_len));
+	EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha256(), NULL, hmac_pkey);
 
-	HMAC_Update(hmac, (uint8_t const *) "SPI CMIP PMIP", 12);
-	HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
+	EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *) "SPI CMIP PMIP", 12);
+	EVP_DigestSignFinal(hmac_ctx, &mip_rk_1[0], &rk1_len);
 
 	/*
 	 *	Take the 4 most significant octets.
@@ -279,12 +285,13 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 		 *	MN-HA-PMIP4 =
 		 *	   H(MIP-RK, "PMIP4 MN HA" | HA-IPv4 | MN-NAI);
 		 */
-		HMAC_Init_ex(hmac, mip_rk, rk_len, EVP_sha1(), NULL);
+		EVP_MD_CTX_reset(hmac_ctx);
+		EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha1(), NULL, hmac_pkey);
 
-		HMAC_Update(hmac, (uint8_t const *) "PMIP4 MN HA", 11);
-		HMAC_Update(hmac, (uint8_t const *) &ip->vp_ipv4addr, 4);
-		HMAC_Update(hmac, (uint8_t const *) &mn_nai->vp_strvalue, mn_nai->vp_length);
-		HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *) "PMIP4 MN HA", 11);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *) &ip->vp_ipv4addr, 4);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *) &mn_nai->vp_strvalue, mn_nai->vp_length);
+		EVP_DigestSignFinal(hmac_ctx, &mip_rk_1[0], &rk1_len);
 
 		/*
 		 *	Put MN-HA-PMIP4 into WiMAX-MN-hHA-MIP4-Key
@@ -313,12 +320,13 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 		 *	MN-HA-CMIP4 =
 		 *	   H(MIP-RK, "CMIP4 MN HA" | HA-IPv4 | MN-NAI);
 		 */
-		HMAC_Init_ex(hmac, mip_rk, rk_len, EVP_sha1(), NULL);
+		EVP_MD_CTX_reset(hmac_ctx);
+		EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha1(), NULL, hmac_pkey);
 
-		HMAC_Update(hmac, (uint8_t const *) "CMIP4 MN HA", 11);
-		HMAC_Update(hmac, (uint8_t const *) &ip->vp_ipv4addr, 4);
-		HMAC_Update(hmac, (uint8_t const *) &mn_nai->vp_strvalue, mn_nai->vp_length);
-		HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *) "CMIP4 MN HA", 11);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *) &ip->vp_ipv4addr, 4);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *) &mn_nai->vp_strvalue, mn_nai->vp_length);
+		EVP_DigestSignFinal(hmac_ctx, &mip_rk_1[0], &rk1_len);
 
 		/*
 		 *	Put MN-HA-CMIP4 into WiMAX-MN-hHA-MIP4-Key
@@ -347,12 +355,13 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 		 *	MN-HA-CMIP6 =
 		 *	   H(MIP-RK, "CMIP6 MN HA" | HA-IPv6 | MN-NAI);
 		 */
-		HMAC_Init_ex(hmac, mip_rk, rk_len, EVP_sha1(), NULL);
+		EVP_MD_CTX_reset(hmac_ctx);
+		EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha1(), NULL, hmac_pkey);
 
-		HMAC_Update(hmac, (uint8_t const *) "CMIP6 MN HA", 11);
-		HMAC_Update(hmac, (uint8_t const *) &ip->vp_ipv6addr, 16);
-		HMAC_Update(hmac, (uint8_t const *) &mn_nai->vp_strvalue, mn_nai->vp_length);
-		HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *) "CMIP6 MN HA", 11);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *) &ip->vp_ipv6addr, 16);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *) &mn_nai->vp_strvalue, mn_nai->vp_length);
+		EVP_DigestSignFinal(hmac_ctx, &mip_rk_1[0], &rk1_len);
 
 		/*
 		 *	Put MN-HA-CMIP6 into WiMAX-MN-hHA-MIP6-Key
@@ -378,11 +387,12 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	 */
 	fa_rk = fr_pair_find_by_da(&request->reply_pairs, attr_wimax_fa_rk_key, 0);
 	if (fa_rk && (fa_rk->vp_length <= 1)) {
-		HMAC_Init_ex(hmac, mip_rk, rk_len, EVP_sha1(), NULL);
+		EVP_MD_CTX_reset(hmac_ctx);
+		EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha1(), NULL, hmac_pkey);
 
-		HMAC_Update(hmac, (uint8_t const *) "FA-RK", 5);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *) "FA-RK", 5);
 
-		HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
+		EVP_DigestSignFinal(hmac_ctx, &mip_rk_1[0], &rk1_len);
 
 		fr_pair_value_memdup(fa_rk, &mip_rk_1[0], rk1_len, false);
 	}
@@ -427,7 +437,8 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	/*
 	 *	Wipe the context of all sensitive information.
 	 */
-	HMAC_CTX_free(hmac);
+	EVP_MD_CTX_free(hmac_ctx);
+	EVP_PKEY_free(hmac_pkey);
 
 	RETURN_MODULE_UPDATED;
 }
