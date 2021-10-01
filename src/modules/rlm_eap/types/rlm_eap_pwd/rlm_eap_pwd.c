@@ -354,7 +354,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 		/*
 		 *	Element is a point, get both coordinates: x and y
 		 */
-		if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->my_element, x, y, inst->bnctx)) {
+		if (!EC_POINT_get_affine_coordinates(session->group, session->my_element, x, y, inst->bnctx)) {
 			REDEBUG("Server point assignment failed");
 			BN_clear_free(x);
 			BN_clear_free(y);

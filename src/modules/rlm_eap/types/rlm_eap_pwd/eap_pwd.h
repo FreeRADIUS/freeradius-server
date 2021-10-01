@@ -40,6 +40,11 @@ RCSIDH(eap_pwd_h, "$Id$")
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
+#if OPENSSL_VERSION_NUMBER < 0x10101000L
+#  define EC_POINT_get_affine_coordinates EC_POINT_get_affine_coordinates_GFp
+#  define EC_POINT_set_affine_coordinates EC_POINT_set_affine_coordinates_GFp
+#endif
+
 typedef struct {
     uint8_t lm_exchange;
 #define EAP_PWD_EXCH_ID		1

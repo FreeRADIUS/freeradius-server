@@ -280,13 +280,13 @@ static void prime_field_tests(void)
 	if (!EC_GROUP_set_curve_GFp(group, p, a, b, ctx)) ABORT;
 
 	if (!BN_hex2bn(&x, "6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296")) ABORT;
-	if (!EC_POINT_set_compressed_coordinates_GFp(group, P, x, 1, ctx)) ABORT;
+	if (!EC_POINT_set_compressed_coordinates(group, P, x, 1, ctx)) ABORT;
 	if (!EC_POINT_is_on_curve(group, P, ctx)) ABORT;
 	if (!BN_hex2bn(&z, "FFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E"
 		"84F3B9CAC2FC632551")) ABORT;
 	if (!EC_GROUP_set_generator(group, P, z, BN_value_one())) ABORT;
 
-	if (!EC_POINT_get_affine_coordinates_GFp(group, P, x, y, ctx)) ABORT;
+	if (!EC_POINT_get_affine_coordinates(group, P, x, y, ctx)) ABORT;
 	fprintf(stdout, "\nNIST curve P-256 -- Generator:\n     x = 0x");
 	BN_print_fp(stdout, x);
 	fprintf(stdout, "\n     y = 0x");
@@ -319,13 +319,13 @@ static void prime_field_tests(void)
 
 	if (!BN_hex2bn(&x, "AA87CA22BE8B05378EB1C71EF320AD746E1D3B628BA79B"
 		"9859F741E082542A385502F25DBF55296C3A545E3872760AB7")) ABORT;
-	if (!EC_POINT_set_compressed_coordinates_GFp(group, P, x, 1, ctx)) ABORT;
+	if (!EC_POINT_set_compressed_coordinates(group, P, x, 1, ctx)) ABORT;
 	if (!EC_POINT_is_on_curve(group, P, ctx)) ABORT;
 	if (!BN_hex2bn(&z, "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
 		"FFC7634D81F4372DDF581A0DB248B0A77AECEC196ACCC52973")) ABORT;
 	if (!EC_GROUP_set_generator(group, P, z, BN_value_one())) ABORT;
 
-	if (!EC_POINT_get_affine_coordinates_GFp(group, P, x, y, ctx)) ABORT;
+	if (!EC_POINT_get_affine_coordinates(group, P, x, y, ctx)) ABORT;
 	fprintf(stdout, "\nNIST curve P-384 -- Generator:\n     x = 0x");
 	BN_print_fp(stdout, x);
 	fprintf(stdout, "\n     y = 0x");
@@ -363,14 +363,14 @@ static void prime_field_tests(void)
 	if (!BN_hex2bn(&x, "C6858E06B70404E9CD9E3ECB662395B4429C648139053F"
 		"B521F828AF606B4D3DBAA14B5E77EFE75928FE1DC127A2FFA8DE3348B"
 		"3C1856A429BF97E7E31C2E5BD66")) ABORT;
-	if (!EC_POINT_set_compressed_coordinates_GFp(group, P, x, 0, ctx)) ABORT;
+	if (!EC_POINT_set_compressed_coordinates(group, P, x, 0, ctx)) ABORT;
 	if (!EC_POINT_is_on_curve(group, P, ctx)) ABORT;
 	if (!BN_hex2bn(&z, "1FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
 		"FFFFFFFFFFFFFFFFFFFFA51868783BF2F966B7FCC0148F709A5D03BB5"
 		"C9B8899C47AEBB6FB71E91386409")) ABORT;
 	if (!EC_GROUP_set_generator(group, P, z, BN_value_one())) ABORT;
 
-	if (!EC_POINT_get_affine_coordinates_GFp(group, P, x, y, ctx)) ABORT;
+	if (!EC_POINT_get_affine_coordinates(group, P, x, y, ctx)) ABORT;
 	fprintf(stdout, "\nNIST curve P-521 -- Generator:\n     x = 0x");
 	BN_print_fp(stdout, x);
 	fprintf(stdout, "\n     y = 0x");
@@ -611,10 +611,10 @@ void nistp_single_test(const struct nistp_test_params *test)
 	Q_CHECK = EC_POINT_new(NISTP);
 	if(!BN_hex2bn(&x, test->Qx)) ABORT;
 	if(!BN_hex2bn(&y, test->Qy)) ABORT;
-	if(!EC_POINT_set_affine_coordinates_GFp(NISTP, Q_CHECK, x, y, ctx)) ABORT;
+	if(!EC_POINT_set_affine_coordinates(NISTP, Q_CHECK, x, y, ctx)) ABORT;
 	if (!BN_hex2bn(&x, test->Gx)) ABORT;
 	if (!BN_hex2bn(&y, test->Gy)) ABORT;
-	if (!EC_POINT_set_affine_coordinates_GFp(NISTP, G, x, y, ctx)) ABORT;
+	if (!EC_POINT_set_affine_coordinates(NISTP, G, x, y, ctx)) ABORT;
 	if (!BN_hex2bn(&order, test->order)) ABORT;
 	if (!EC_GROUP_set_generator(NISTP, G, order, BN_value_one())) ABORT;
 

@@ -44,45 +44,49 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 static uint8_t allzero[SHA256_DIGEST_LENGTH] = { 0x00 };
 
 /* The random function H(x) = HMAC-SHA256(0^32, x) */
-static void pwd_hmac_final(HMAC_CTX *hmac_ctx, uint8_t *digest)
+static void pwd_hmac_final(EVP_MD_CTX *hmac_ctx, uint8_t digest[static SHA256_DIGEST_LENGTH])
 {
-	unsigned int mdlen = SHA256_DIGEST_LENGTH;
-	HMAC_Final(hmac_ctx, digest, &mdlen);
-	HMAC_CTX_reset(hmac_ctx);
+	size_t mdlen = SHA256_DIGEST_LENGTH;
+
+	EVP_DigestSignFinal(hmac_ctx, digest, &mdlen);
+	EVP_MD_CTX_reset(hmac_ctx);
 }
 
 /* a counter-based KDF based on NIST SP800-108 */
 static void eap_pwd_kdf(uint8_t *key, int keylen, char const *label,
 			int label_len, uint8_t *result, int result_bit_len)
 {
-	HMAC_CTX	*hmac_ctx;
+	EVP_MD_CTX	*hmac_ctx;
+	EVP_PKEY	*hmac_pkey;
 	uint8_t		digest[SHA256_DIGEST_LENGTH];
 	uint16_t	i, ctr, L;
 	int		result_byte_len, len = 0;
-	unsigned int	mdlen = SHA256_DIGEST_LENGTH;
+	size_t		mdlen = SHA256_DIGEST_LENGTH;
 	uint8_t		mask = 0xff;
 
-	MEM(hmac_ctx = HMAC_CTX_new());
 	result_byte_len = (result_bit_len + 7) / 8;
 
 	ctr = 0;
 	L = htons(result_bit_len);
+
+	MEM(hmac_ctx = EVP_MD_CTX_new());
+	MEM(hmac_pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, keylen));
 	while (len < result_byte_len) {
 		ctr++; i = htons(ctr);
 
-		HMAC_Init_ex(hmac_ctx, key, keylen, EVP_sha256(), NULL);
-		if (ctr > 1) HMAC_Update(hmac_ctx, digest, mdlen);
-		HMAC_Update(hmac_ctx, (uint8_t *) &i, sizeof(uint16_t));
-		HMAC_Update(hmac_ctx, (uint8_t const *)label, label_len);
-		HMAC_Update(hmac_ctx, (uint8_t *) &L, sizeof(uint16_t));
-		HMAC_Final(hmac_ctx, digest, &mdlen);
+		EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha256(), NULL, hmac_pkey);
+		if (ctr > 1) EVP_DigestSignUpdate(hmac_ctx, digest, mdlen);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t *) &i, sizeof(uint16_t));
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *)label, label_len);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t *) &L, sizeof(uint16_t));
+		EVP_DigestSignFinal(hmac_ctx, digest, &mdlen);
 		if ((len + (int) mdlen) > result_byte_len) {
 			memcpy(result + len, digest, result_byte_len - len);
 		} else {
 			memcpy(result + len, digest, mdlen);
 		}
 		len += mdlen;
-		HMAC_CTX_reset(hmac_ctx);
+		EVP_MD_CTX_reset(hmac_ctx);
 	}
 
 	/* since we're expanding to a bit length, mask off the excess */
@@ -91,7 +95,8 @@ static void eap_pwd_kdf(uint8_t *key, int keylen, char const *label,
 		result[result_byte_len - 1] &= mask;
 	}
 
-	HMAC_CTX_free(hmac_ctx);
+	EVP_MD_CTX_free(hmac_ctx);
+	EVP_PKEY_free(hmac_pkey);
 }
 
 static BIGNUM *consttime_BN (void)
@@ -144,7 +149,7 @@ static void do_equation(EC_GROUP *group, BIGNUM *y2, BIGNUM *x, BN_CTX *bnctx)
 	p = BN_new();
 	a = BN_new();
 	b = BN_new();
-	EC_GROUP_get_curve_GFp(group, p, a, b, bnctx);
+	EC_GROUP_get_curve(group, p, a, b, bnctx);
 
 	BN_sub(pm1, p, BN_value_one());
 
@@ -251,18 +256,16 @@ int compute_password_element (request_t *request, pwd_session_t *session, uint16
 			      char const *id_peer, int id_peer_len,
 			      uint32_t *token, BN_CTX *bnctx)
 {
-	BIGNUM *x_candidate = NULL, *rnd = NULL, *y_sqrd = NULL, *qr = NULL, *qnr = NULL;
-	HMAC_CTX *ctx = NULL;
-	uint8_t pwe_digest[SHA256_DIGEST_LENGTH], *prfbuf = NULL, *xbuf = NULL, *pm1buf = NULL, ctr;
-	int nid, is_odd, primebitlen, primebytelen, ret = 0, found = 0, mask;
-	int save, i, rbits, qr_or_qnr, save_is_odd = 0, cmp;
-	unsigned int skip;
+	BIGNUM		*x_candidate = NULL, *rnd = NULL, *y_sqrd = NULL, *qr = NULL, *qnr = NULL;
+	EVP_MD_CTX	*hmac_ctx;
+	EVP_PKEY	*hmac_pkey;
+	uint8_t		pwe_digest[SHA256_DIGEST_LENGTH], *prfbuf = NULL, *xbuf = NULL, *pm1buf = NULL, ctr;
+	int		nid, is_odd, primebitlen, primebytelen, ret = 0, found = 0, mask;
+	int		save, i, rbits, qr_or_qnr, save_is_odd = 0, cmp;
+	unsigned int	skip;
 
-	ctx = HMAC_CTX_new();
-	if (ctx == NULL) {
-		DEBUG("failed allocating HMAC context");
-		goto fail;
-	}
+	MEM(hmac_ctx = EVP_MD_CTX_new());
+	MEM(hmac_pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, allzero, sizeof(allzero)));
 
 	switch (grp_num) { /* from IANA registry for IKE D-H groups */
 	case 19:
@@ -311,7 +314,7 @@ int compute_password_element (request_t *request, pwd_session_t *session, uint16
 		goto fail;
 	}
 
-	if (!EC_GROUP_get_curve_GFp(session->group, session->prime, NULL, NULL, NULL)) {
+	if (!EC_GROUP_get_curve(session->group, session->prime, NULL, NULL, NULL)) {
 		DEBUG("unable to get prime for GFp curve");
 		goto fail;
 	}
@@ -364,13 +367,13 @@ int compute_password_element (request_t *request, pwd_session_t *session, uint16
 		 *	pwd-seed = H(token | peer-id | server-id | password |
 		 *		     counter)
 		 */
-		HMAC_Init_ex(ctx, allzero, SHA256_DIGEST_LENGTH, EVP_sha256(),NULL);
-		HMAC_Update(ctx, (uint8_t *)token, sizeof(*token));
-		HMAC_Update(ctx, (uint8_t const *)id_peer, id_peer_len);
-		HMAC_Update(ctx, (uint8_t const *)id_server, id_server_len);
-		HMAC_Update(ctx, (uint8_t const *)password, password_len);
-		HMAC_Update(ctx, (uint8_t *)&ctr, sizeof(ctr));
-		pwd_hmac_final(ctx, pwe_digest);
+		EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha256(), NULL, hmac_pkey);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t *)token, sizeof(*token));
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *)id_peer, id_peer_len);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *)id_server, id_server_len);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *)password, password_len);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t *)&ctr, sizeof(ctr));
+		pwd_hmac_final(hmac_ctx, pwe_digest);
 
 		BN_bin2bn(pwe_digest, SHA256_DIGEST_LENGTH, rnd);
 		eap_pwd_kdf(pwe_digest, SHA256_DIGEST_LENGTH, "EAP-pwd Hunting And Pecking",
@@ -447,8 +450,8 @@ int compute_password_element (request_t *request, pwd_session_t *session, uint16
 	* now we can savely construct PWE
 	*/
 	BN_bin2bn(xbuf, primebytelen, x_candidate);
-	if (!EC_POINT_set_compressed_coordinates_GFp(session->group, session->pwe,
-						     x_candidate, save_is_odd, NULL)) {
+	if (!EC_POINT_set_compressed_coordinates(session->group, session->pwe,
+						 x_candidate, save_is_odd, NULL)) {
 		goto fail;
 	}
 
@@ -469,7 +472,8 @@ int compute_password_element (request_t *request, pwd_session_t *session, uint16
 	if (xbuf) talloc_free(xbuf);
 	if (pm1buf) talloc_free(pm1buf);
 
-	HMAC_CTX_free(ctx);
+	EVP_MD_CTX_free(hmac_ctx);
+	EVP_PKEY_free(hmac_pkey);
 
 	return ret;
 }
@@ -565,7 +569,7 @@ int process_peer_commit(request_t *request, pwd_session_t *session, uint8_t *in,
 		goto finish;
 	}
 
-	if (!EC_POINT_set_affine_coordinates_GFp(session->group, session->peer_element, x, y, bn_ctx)) {
+	if (!EC_POINT_set_affine_coordinates(session->group, session->peer_element, x, y, bn_ctx)) {
 		REDEBUG("Unable to get coordinates of peer's element");
 		goto finish;
 	}
@@ -624,7 +628,7 @@ int process_peer_commit(request_t *request, pwd_session_t *session, uint8_t *in,
 		goto finish;
 	}
 
-	if (!EC_POINT_get_affine_coordinates_GFp(session->group, K, session->k, NULL, bn_ctx)) {
+	if (!EC_POINT_get_affine_coordinates(session->group, K, session->k, NULL, bn_ctx)) {
 		REDEBUG("Unable to get shared secret from K");
 		goto finish;
 	}
@@ -643,7 +647,8 @@ finish:
 int compute_server_confirm(request_t *request, pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 {
 	BIGNUM		*x = NULL, *y = NULL;
-	HMAC_CTX	*hmac_ctx = NULL;
+	EVP_MD_CTX	*hmac_ctx;
+	EVP_PKEY	*hmac_pkey;
 	uint8_t		*cruft = NULL;
 	int		offset, req = -1;
 
@@ -658,8 +663,9 @@ int compute_server_confirm(request_t *request, pwd_session_t *session, uint8_t *
 	 * commit is H(k | server_element | server_scalar | peer_element |
 	 *	       peer_scalar | ciphersuite)
 	 */
-	MEM(hmac_ctx = HMAC_CTX_new());
-	HMAC_Init_ex(hmac_ctx, allzero, SHA256_DIGEST_LENGTH, EVP_sha256(), NULL);
+	MEM(hmac_ctx = EVP_MD_CTX_new());
+	MEM(hmac_pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, allzero, sizeof(allzero)));
+	EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha256(), NULL, hmac_pkey);
 
 	/*
 	 * Zero the memory each time because this is mod prime math and some
@@ -669,24 +675,24 @@ int compute_server_confirm(request_t *request, pwd_session_t *session, uint8_t *
 	 */
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(session->k);
 	BN_bn2bin(session->k, cruft + offset);
-	HMAC_Update(hmac_ctx, cruft, BN_num_bytes(session->prime));
+	EVP_DigestSignUpdate(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
 	/*
 	 * next is server element: x, y
 	 */
-	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->my_element, x, y, bn_ctx)) {
+	if (!EC_POINT_get_affine_coordinates(session->group, session->my_element, x, y, bn_ctx)) {
 		REDEBUG("Unable to get coordinates of server element");
 		goto finish;
 	}
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(x);
 	BN_bn2bin(x, cruft + offset);
-	HMAC_Update(hmac_ctx, cruft, BN_num_bytes(session->prime));
+	EVP_DigestSignUpdate(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(y);
 	BN_bn2bin(y, cruft + offset);
-	HMAC_Update(hmac_ctx, cruft, BN_num_bytes(session->prime));
+	EVP_DigestSignUpdate(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
 	/*
 	 * and server scalar
@@ -694,12 +700,12 @@ int compute_server_confirm(request_t *request, pwd_session_t *session, uint8_t *
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->order) - BN_num_bytes(session->my_scalar);
 	BN_bn2bin(session->my_scalar, cruft + offset);
-	HMAC_Update(hmac_ctx, cruft, BN_num_bytes(session->order));
+	EVP_DigestSignUpdate(hmac_ctx, cruft, BN_num_bytes(session->order));
 
 	/*
 	 * next is peer element: x, y
 	 */
-	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->peer_element, x, y, bn_ctx)) {
+	if (!EC_POINT_get_affine_coordinates(session->group, session->peer_element, x, y, bn_ctx)) {
 		REDEBUG("Unable to get coordinates of peer's element");
 		goto finish;
 	}
@@ -707,12 +713,12 @@ int compute_server_confirm(request_t *request, pwd_session_t *session, uint8_t *
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(x);
 	BN_bn2bin(x, cruft + offset);
-	HMAC_Update(hmac_ctx, cruft, BN_num_bytes(session->prime));
+	EVP_DigestSignUpdate(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(y);
 	BN_bn2bin(y, cruft + offset);
-	HMAC_Update(hmac_ctx, cruft, BN_num_bytes(session->prime));
+	EVP_DigestSignUpdate(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
 	/*
 	 * and peer scalar
@@ -720,19 +726,20 @@ int compute_server_confirm(request_t *request, pwd_session_t *session, uint8_t *
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->order) - BN_num_bytes(session->peer_scalar);
 	BN_bn2bin(session->peer_scalar, cruft + offset);
-	HMAC_Update(hmac_ctx, cruft, BN_num_bytes(session->order));
+	EVP_DigestSignUpdate(hmac_ctx, cruft, BN_num_bytes(session->order));
 
 	/*
 	 * finally, ciphersuite
 	 */
-	HMAC_Update(hmac_ctx, (uint8_t *)&session->ciphersuite, sizeof(session->ciphersuite));
+	EVP_DigestSignUpdate(hmac_ctx, (uint8_t *)&session->ciphersuite, sizeof(session->ciphersuite));
 
 	pwd_hmac_final(hmac_ctx, out);
 
 	req = 0;
 
 finish:
-	HMAC_CTX_free(hmac_ctx);
+	EVP_MD_CTX_free(hmac_ctx);
+	EVP_PKEY_free(hmac_pkey);
 	talloc_free(cruft);
 	BN_free(x);
 	BN_free(y);
@@ -743,7 +750,8 @@ finish:
 int compute_peer_confirm(request_t *request, pwd_session_t *session, uint8_t *out, BN_CTX *bn_ctx)
 {
 	BIGNUM		*x = NULL, *y = NULL;
-	HMAC_CTX	*hmac_ctx = NULL;
+	EVP_MD_CTX	*hmac_ctx;
+	EVP_PKEY	*hmac_pkey;
 	uint8_t		*cruft = NULL;
 	int		offset, req = -1;
 
@@ -758,8 +766,9 @@ int compute_peer_confirm(request_t *request, pwd_session_t *session, uint8_t *ou
 	 * commit is H(k | server_element | server_scalar | peer_element |
 	 *	       peer_scalar | ciphersuite)
 	 */
-	MEM(hmac_ctx = HMAC_CTX_new());
-	HMAC_Init_ex(hmac_ctx, allzero, SHA256_DIGEST_LENGTH, EVP_sha256(), NULL);
+	MEM(hmac_ctx = EVP_MD_CTX_new());
+	MEM(hmac_pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, allzero, sizeof(allzero)));
+	EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha256(), NULL, hmac_pkey);
 
 	/*
 	 * Zero the memory each time because this is mod prime math and some
@@ -769,12 +778,12 @@ int compute_peer_confirm(request_t *request, pwd_session_t *session, uint8_t *ou
 	 */
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(session->k);
 	BN_bn2bin(session->k, cruft + offset);
-	HMAC_Update(hmac_ctx, cruft, BN_num_bytes(session->prime));
+	EVP_DigestSignUpdate(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
 	/*
 	* then peer element: x, y
 	*/
-	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->peer_element, x, y, bn_ctx)) {
+	if (!EC_POINT_get_affine_coordinates(session->group, session->peer_element, x, y, bn_ctx)) {
 		REDEBUG("Unable to get coordinates of peer's element");
 		goto finish;
 	}
@@ -782,12 +791,12 @@ int compute_peer_confirm(request_t *request, pwd_session_t *session, uint8_t *ou
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(x);
 	BN_bn2bin(x, cruft + offset);
-	HMAC_Update(hmac_ctx, cruft, BN_num_bytes(session->prime));
+	EVP_DigestSignUpdate(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(y);
 	BN_bn2bin(y, cruft + offset);
-	HMAC_Update(hmac_ctx, cruft, BN_num_bytes(session->prime));
+	EVP_DigestSignUpdate(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
 	/*
 	 * and peer scalar
@@ -795,24 +804,24 @@ int compute_peer_confirm(request_t *request, pwd_session_t *session, uint8_t *ou
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->order) - BN_num_bytes(session->peer_scalar);
 	BN_bn2bin(session->peer_scalar, cruft + offset);
-	HMAC_Update(hmac_ctx, cruft, BN_num_bytes(session->order));
+	EVP_DigestSignUpdate(hmac_ctx, cruft, BN_num_bytes(session->order));
 
 	/*
 	 * then server element: x, y
 	 */
-	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->my_element, x, y, bn_ctx)) {
+	if (!EC_POINT_get_affine_coordinates(session->group, session->my_element, x, y, bn_ctx)) {
 		REDEBUG("Unable to get coordinates of server element");
 		goto finish;
 	}
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(x);
 	BN_bn2bin(x, cruft + offset);
-	HMAC_Update(hmac_ctx, cruft, BN_num_bytes(session->prime));
+	EVP_DigestSignUpdate(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(y);
 	BN_bn2bin(y, cruft + offset);
-	HMAC_Update(hmac_ctx, cruft, BN_num_bytes(session->prime));
+	EVP_DigestSignUpdate(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
 	/*
 	 * and server scalar
@@ -820,18 +829,19 @@ int compute_peer_confirm(request_t *request, pwd_session_t *session, uint8_t *ou
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->order) - BN_num_bytes(session->my_scalar);
 	BN_bn2bin(session->my_scalar, cruft + offset);
-	HMAC_Update(hmac_ctx, cruft, BN_num_bytes(session->order));
+	EVP_DigestSignUpdate(hmac_ctx, cruft, BN_num_bytes(session->order));
 
 	/*
 	 * finally, ciphersuite
 	 */
-	HMAC_Update(hmac_ctx, (uint8_t *)&session->ciphersuite, sizeof(session->ciphersuite));
+	EVP_DigestSignUpdate(hmac_ctx, (uint8_t *)&session->ciphersuite, sizeof(session->ciphersuite));
 
 	pwd_hmac_final(hmac_ctx, out);
 
 	req = 0;
 finish:
-	HMAC_CTX_free(hmac_ctx);
+	EVP_MD_CTX_free(hmac_ctx);
+	EVP_PKEY_free(hmac_pkey);
 	talloc_free(cruft);
 	BN_free(x);
 	BN_free(y);
@@ -841,43 +851,45 @@ finish:
 
 int compute_keys(UNUSED request_t *request, pwd_session_t *session, uint8_t *peer_confirm, uint8_t *msk, uint8_t *emsk)
 {
-	HMAC_CTX	*hmac_ctx;
+	EVP_MD_CTX	*hmac_ctx;
+	EVP_PKEY	*hmac_pkey;
 	uint8_t		mk[SHA256_DIGEST_LENGTH], *cruft;
 	uint8_t		session_id[SHA256_DIGEST_LENGTH + 1];
 	uint8_t		msk_emsk[128];		/* 64 each */
 	int	 	offset;
 
 	MEM(cruft = talloc_array(session, uint8_t, BN_num_bytes(session->prime)));
-	MEM(hmac_ctx = HMAC_CTX_new());
+	MEM(hmac_ctx = EVP_MD_CTX_new());
+	MEM(hmac_pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, allzero, sizeof(allzero)));
 
 	/*
 	 * first compute the session-id = TypeCode | H(ciphersuite | scal_p |
 	 *	scal_s)
 	 */
 	session_id[0] = FR_EAP_METHOD_PWD;
-	HMAC_Init_ex(hmac_ctx, allzero, SHA256_DIGEST_LENGTH, EVP_sha256(), NULL);
-	HMAC_Update(hmac_ctx, (uint8_t *)&session->ciphersuite, sizeof(session->ciphersuite));
+	EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha256(), NULL, hmac_pkey);
+	EVP_DigestSignUpdate(hmac_ctx, (uint8_t *)&session->ciphersuite, sizeof(session->ciphersuite));
 	offset = BN_num_bytes(session->order) - BN_num_bytes(session->peer_scalar);
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	BN_bn2bin(session->peer_scalar, cruft + offset);
-	HMAC_Update(hmac_ctx, cruft, BN_num_bytes(session->order));
+	EVP_DigestSignUpdate(hmac_ctx, cruft, BN_num_bytes(session->order));
 	offset = BN_num_bytes(session->order) - BN_num_bytes(session->my_scalar);
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	BN_bn2bin(session->my_scalar, cruft + offset);
-	HMAC_Update(hmac_ctx, cruft, BN_num_bytes(session->order));
+	EVP_DigestSignUpdate(hmac_ctx, cruft, BN_num_bytes(session->order));
 	pwd_hmac_final(hmac_ctx, (uint8_t *)&session_id[1]);
 
 	/* then compute MK = H(k | commit-peer | commit-server) */
-	HMAC_Init_ex(hmac_ctx, allzero, SHA256_DIGEST_LENGTH, EVP_sha256(), NULL);
+	EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha256(), NULL, hmac_pkey);
 
 	memset(cruft, 0, BN_num_bytes(session->prime));
 	offset = BN_num_bytes(session->prime) - BN_num_bytes(session->k);
 	BN_bn2bin(session->k, cruft + offset);
-	HMAC_Update(hmac_ctx, cruft, BN_num_bytes(session->prime));
+	EVP_DigestSignUpdate(hmac_ctx, cruft, BN_num_bytes(session->prime));
 
-	HMAC_Update(hmac_ctx, peer_confirm, SHA256_DIGEST_LENGTH);
+	EVP_DigestSignUpdate(hmac_ctx, peer_confirm, SHA256_DIGEST_LENGTH);
 
-	HMAC_Update(hmac_ctx, session->my_confirm, SHA256_DIGEST_LENGTH);
+	EVP_DigestSignUpdate(hmac_ctx, session->my_confirm, SHA256_DIGEST_LENGTH);
 
 	pwd_hmac_final(hmac_ctx, mk);
 
@@ -888,7 +900,8 @@ int compute_keys(UNUSED request_t *request, pwd_session_t *session, uint8_t *pee
 	memcpy(msk, msk_emsk, 64);
 	memcpy(emsk, msk_emsk + 64, 64);
 
-	HMAC_CTX_free(hmac_ctx);
+	EVP_MD_CTX_free(hmac_ctx);
+	EVP_PKEY_free(hmac_pkey);
 	talloc_free(cruft);
 	return 0;
 }
