@@ -3046,7 +3046,10 @@ static int request_will_proxy(REQUEST *request)
 
 	VERIFY_REQUEST(request);
 
-	if (!request->root->proxy_requests) return 0;
+	if (!request->root->proxy_requests) {
+		REDEBUG3("Cannot proxy packets unless 'proxy_requests = yes'");
+		return 0;
+	}
 	if (request->packet->dst_port == 0) return 0;
 	if (request->packet->code == PW_CODE_STATUS_SERVER) return 0;
 	if (request->in_proxy_hash) return 0;
@@ -4434,7 +4437,7 @@ static void request_coa_originate(REQUEST *request)
 
 	if (!main_config.proxy_requests) {
 		RWDEBUG("Cannot originate CoA packets unless 'proxy_requests = yes'");
-			TALLOC_FREE(request->coa);
+		TALLOC_FREE(request->coa);
 		return;
 	}
 
@@ -5950,7 +5953,10 @@ static void check_proxy(rad_listen_t *head)
 	rad_listen_t	*this;
 
 	if (check_config) return;
-	if (!main_config.proxy_requests) return;
+	if (!main_config.proxy_requests) {
+		DEBUG3("Cannot proxy packets unless 'proxy_requests = yes'");
+		return;
+	}
 	if (!head) return;
 #ifdef WITH_TCP
 	if (!home_servers_udp) return;
