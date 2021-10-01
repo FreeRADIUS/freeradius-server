@@ -393,7 +393,9 @@ void fr_openssl_free(void)
 {
 	if (--instance_count > 0) return;
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	fr_tls_engine_free_all();
+#endif
 
 	OPENSSL_cleanup();
 
@@ -458,7 +460,9 @@ int fr_openssl_init(void)
 	 *	FIXME - This should be done _after_
 	 *	running any engine controls.
 	 */
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	fr_tls_engine_load_builtin();
+#endif
 
 	fr_tls_log_init();
 

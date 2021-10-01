@@ -37,6 +37,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/value.h>
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 #include <openssl/engine.h>
 
 /** Our wrapper around an OpenSSL engine
@@ -490,4 +491,5 @@ void fr_tls_engine_free_all(void)
 #endif
 }
 
+#endif
 #endif

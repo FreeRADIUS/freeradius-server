@@ -70,6 +70,10 @@ RCSID("$Id$")
 #  include <systemd/sd-daemon.h>
 #endif
 
+#if defined(HAVE_OPENSSL_CRYPTO_H) && OPENSSL_VERSION_NUMBER >= 0x30000000L
+#  include <openssl/provider.h>
+#endif
+
 char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("FreeRADIUS");
 static pid_t radius_pid;
 
