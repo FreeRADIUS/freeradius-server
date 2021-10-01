@@ -26,8 +26,14 @@ static _Thread_local fr_md4_ctx_t *md4_ctx;
  *	be operating in FIPS mode where MD4 digest functions are unavailable.
  */
 #ifdef HAVE_OPENSSL_EVP_H
+
 #  include <openssl/evp.h>
 #  include <openssl/crypto.h>
+#  include <openssl/err.h>
+
+#  if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#    include <openssl/provider.h>
+#  endif
 
 static int have_openssl_md4 = -1;
 
@@ -74,7 +80,18 @@ static fr_md4_ctx_t *fr_md4_openssl_ctx_alloc(bool thread_local)
 				return NULL;
 			}
 			fr_atexit_thread_local(md4_ctx, _md4_ctx_openssl_free_on_exit, md_ctx);
-			EVP_DigestInit_ex(md_ctx, EVP_md4(), NULL);
+			if (unlikely(EVP_DigestInit_ex(md_ctx, EVP_md4(), NULL) != 1)) {
+				char buffer[256];
+			error:
+
+				ERR_error_string_n(ERR_get_error(), buffer, sizeof(buffer));
+
+				fr_strerror_printf("Failed initialising MD4 ctx: %s", buffer);
+				EVP_MD_CTX_free(md_ctx);
+				md_ctx = NULL;
+
+				return NULL;
+			}
 		} else {
 			md_ctx = md4_ctx;
 		}
@@ -86,7 +103,7 @@ static fr_md4_ctx_t *fr_md4_openssl_ctx_alloc(bool thread_local)
 	} else {
 		md_ctx = EVP_MD_CTX_new();
 		if (unlikely(!md_ctx)) goto oom;
-		EVP_DigestInit_ex(md_ctx, EVP_md4(), NULL);
+		if (EVP_DigestInit_ex(md_ctx, EVP_md4(), NULL) != 1) goto error;
 	}
 
 	return md_ctx;
@@ -339,7 +356,11 @@ static fr_md4_ctx_t *fr_md4_local_ctx_alloc(bool thread_local)
 		 *	md4 functions, and call the OpenSSL init
 		 *	function.
 		 */
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		if (!EVP_default_properties_is_fips_enabled(NULL)) {
+#else
 		if (FIPS_mode() == 0) {
+#endif
 			have_openssl_md4 = 1;
 
 			/*

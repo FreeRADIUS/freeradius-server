@@ -35,10 +35,15 @@ typedef struct {
 	bool		used;
 	fr_md5_ctx_t	*md_ctx;
 } fr_md5_free_list_t;
-static _Thread_local fr_md5_free_list_t * md5_array;
+static _Thread_local fr_md5_free_list_t *md5_array;
 
 #  include <openssl/evp.h>
 #  include <openssl/crypto.h>
+#  include <openssl/err.h>
+
+#  if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#    include <openssl/provider.h>
+#  endif
 
 static int have_openssl_md5 = -1;
 
@@ -96,7 +101,18 @@ static fr_md5_ctx_t *fr_md5_openssl_ctx_alloc(bool thread_local)
 			fr_strerror_const("Out of memory");
 			return NULL;
 		}
-		EVP_DigestInit_ex(md_ctx, EVP_md5(), NULL);
+		if (unlikely(EVP_DigestInit_ex(md_ctx, EVP_md5(), NULL) != 1)) {
+			char buffer[256];
+		error:
+
+			ERR_error_string_n(ERR_get_error(), buffer, sizeof(buffer));
+
+			fr_strerror_printf("Failed initialising MD5 ctx: %s", buffer);
+			EVP_MD_CTX_free(md_ctx);
+			md_ctx = NULL;
+
+			return NULL;
+		}
 		return md_ctx;
 	}
 
@@ -110,9 +126,11 @@ static fr_md5_ctx_t *fr_md5_openssl_ctx_alloc(bool thread_local)
 		 *	Initialize all MD5 contexts
 		 */
 		for (i = 0; i < ARRAY_SIZE; i++) {
-			free_list[i].md_ctx = EVP_MD_CTX_new();
-			if (!free_list[i].md_ctx ) goto oom;
-			EVP_DigestInit_ex(free_list[i].md_ctx, EVP_md5(), NULL);
+			md_ctx = EVP_MD_CTX_new();
+			if (unlikely(md_ctx == NULL)) goto oom;
+
+			if (unlikely(EVP_DigestInit_ex(md_ctx, EVP_md5(), NULL) != 1)) goto error;
+			free_list[i].md_ctx = md_ctx;
 		}
 	} else {
 		free_list = md5_array;
@@ -378,7 +396,11 @@ static fr_md5_ctx_t *fr_md5_local_ctx_alloc(bool thread_local)
 		 *	md5 functions, and call the OpenSSL init
 		 *	function.
 		 */
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		if (!EVP_default_properties_is_fips_enabled(NULL)) {
+#else
 		if (FIPS_mode() == 0) {
+#endif
 			have_openssl_md5 = 1;
 
 			/*

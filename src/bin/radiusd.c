@@ -457,7 +457,6 @@ int main(int argc, char *argv[])
 
 	if (rad_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) EXIT_WITH_FAILURE;
 
-
 #ifdef HAVE_OPENSSL_CRYPTO_H
 	/*
 	 *  Mismatch between build time OpenSSL and linked SSL, better to die
@@ -607,15 +606,10 @@ int main(int argc, char *argv[])
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
 	/*
-	 *  Toggle OpenSSL FIPS mode
+	 *  Toggle FIPS mode
 	 */
-	if (config->openssl_fips_mode_is_set) {
-		if (FIPS_mode_set(config->openssl_fips_mode ? 1 : 0) == 0) {
-			fr_tls_log_error(NULL, "Failed %s OpenSSL FIPS mode",
-				      config->openssl_fips_mode ? "enabling" : "disabling");
-			EXIT_WITH_FAILURE;
-		}
-	}
+	if (config->openssl_fips_mode_is_set &&
+	    (fr_openssl_fips_mode(config->openssl_fips_mode) < 0)) EXIT_WITH_FAILURE;
 #endif
 
 	/*

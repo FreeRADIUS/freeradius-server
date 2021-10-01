@@ -38,6 +38,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <openssl/rand.h>
 #include <openssl/dh.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#  include <openssl/provider.h>
+#endif
 
 #include "base.h"
 #include "utils.h"
@@ -89,7 +92,11 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 	 * Change suggested by @t8m
 	 */
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#  if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (EVP_default_properties_is_fips_enabled(NULL)) {
+#  else
 	if (FIPS_mode() > 0) {
+#endif
 		WARN(LOG_PREFIX ": Ignoring user-selected DH parameters in FIPS mode. Using defaults.");
 		return 0;
 	}

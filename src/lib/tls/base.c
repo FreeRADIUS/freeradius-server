@@ -31,6 +31,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define LOG_PREFIX "tls - "
 
 #include <openssl/conf.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#  include <openssl/provider.h>
+#endif
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/tls/attrs.h>
@@ -422,14 +425,34 @@ int fr_openssl_init(void)
 		return -1;
 	}
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	/*
+	 *	Load the default provider for most algorithms
+	 */
+	if (!OSSL_PROVIDER_load(NULL, "default")) {
+		fr_tls_log_error(NULL, "Failed loading default provider");
+		return -1;
+	}
+
+	/*
+	 *	Needed for MD4
+	 *
+	 *	https://www.openssl.org/docs/man3.0/man7/migration_guide.html#Legacy-Algorithms
+	 */
+	if (!OSSL_PROVIDER_load(NULL, "legacy")) {
+		fr_tls_log_error(NULL, "Failed loading legacy provider");
+		return -1;
+	}
+#endif
+
+	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CONFIG, NULL);
+
 	/*
 	 *	SHA256 is in all versions of OpenSSL, but isn't
 	 *	initialized by default.  It's needed for WiMAX
 	 *	certificates.
 	 */
 	EVP_add_digest(EVP_sha256());
-
-	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CONFIG, NULL);
 
 	/*
 	 *	FIXME - This should be done _after_
@@ -442,6 +465,30 @@ int fr_openssl_init(void)
 	fr_tls_bio_init();
 
 	instance_count++;
+
+	return 0;
+}
+
+/** Enable or disable fips mode
+ *
+ * @param[in] enabled		If true enable fips mode if false disable fips mode.
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure
+ */
+int fr_openssl_fips_mode(bool enabled)
+{
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (!EVP_set_default_properties(NULL, enabled ? "fips=yes" : "fips=no")) {
+		fr_tls_log_error(NULL, "Failed %s OpenSSL FIPS mode", enabled ? "enabling" : "disabling");
+		return -1;
+	}
+#else
+	if (!FIPS_mode_set(enabled ? 1 : 0)) {
+		fr_tls_log_error(NULL, "Failed %s OpenSSL FIPS mode", enabled ? "enabling" : "disabling");
+		return -1;
+	}
+#endif
 
 	return 0;
 }

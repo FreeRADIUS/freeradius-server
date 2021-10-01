@@ -57,8 +57,8 @@ USES_APPLE_DEPRECATED_API
 
 /* hmacsha1.c */
 
-void fr_hmac_sha1(uint8_t digest[static SHA1_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
-		  uint8_t const *key, size_t key_len);
+int fr_hmac_sha1(uint8_t digest[static SHA1_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
+		 uint8_t const *key, size_t key_len);
 
 #ifdef __cplusplus
 }

@@ -178,6 +178,8 @@ int		fr_openssl_thread_init(size_t async_pool_size_init, size_t async_pool_size_
 
 int		fr_openssl_init(void);
 
+int		fr_openssl_fips_mode(bool enabled);
+
 void		fr_openssl_free(void);
 
 int		fr_tls_dict_init(void);
