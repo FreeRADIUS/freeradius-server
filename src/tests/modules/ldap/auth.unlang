@@ -37,6 +37,9 @@ if ("%(pairs:reply.)" == "") {
         test_fail
 }
 
+# Attempt a bind authentication
+ldap.authenticate
+
 ldap.post-auth
 
 update {
