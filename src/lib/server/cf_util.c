@@ -1234,7 +1234,9 @@ int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
 	/*
 	 *	Add the new CONF_PAIR
 	 */
-	MEM(new_cp = cf_pair_alloc(cs, cp->attr, value, cp->op, cp->lhs_quote, cp->rhs_quote));
+	MEM(new_cp = cf_pair_dup(cs, cp));
+	talloc_const_free(cp->value);
+	MEM(cp->value = talloc_typed_strdup(cp, value));
 
 	return 0;
 }
