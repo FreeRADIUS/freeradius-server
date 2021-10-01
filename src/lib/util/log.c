@@ -346,7 +346,6 @@ void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line
 	int		colourise = log->colourise;
 	char		*buffer;
 	TALLOC_CTX	*pool, *thread_log_pool;
-	int		ret = 0;
 	char const	*fmt_colour = "";
 	char const	*fmt_location = "";
 	char		fmt_time[50];
@@ -575,7 +574,7 @@ void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line
 
 		len = talloc_array_length(buffer) - 1;
 		wrote = write(log->fd, buffer, len);
-		if (wrote < len) ret = -1;
+		if (wrote < len) return;
 	}
 		break;
 
@@ -1097,11 +1096,7 @@ int fr_log_init_file(fr_log_t *log, char const *file)
 		return -1;
 	}
 
-	if (unlikely(setlinebuf(log->handle) < 0)) {
-		fr_strerror_printf("Failed setting linebuf on file \"%s\": %s", file, fr_syserror(errno));
-		fclose(log->handle);
-		return -1;
-	}
+	setlinebuf(log->handle);
 
 	return 0;
 }
@@ -1145,19 +1140,15 @@ int fr_log_init_syslog(fr_log_t *log)
 	memset(log, 0, sizeof(*log));
 
 	log->dst = L_DST_SYSLOG;
-	if (unlikely(log->handle = fopencookie(log, "w",
-					       (cookie_io_functions_t){
+	if (unlikely((log->handle = fopencookie(log, "w",
+					        (cookie_io_functions_t){
 					       		.write = _syslog_write,
-					       }) == NULL)) {
+					        })) == NULL)) {
 		fr_strerror_printf("Failed opening syslog transpor: %s", fr_syserror(errno));
 		return -1;
 	}
 
-	if (unlikely(setlinebuf(log->handle) < 0)) {
-		fr_strerror_printf("Failed setting linebuf on syslog transport: %s", fr_syserror(errno));
-		fclose(log->handle);
-		return -1;
-	}
+	setlinebuf(log->handle);
 
 	return 0;
 }
@@ -1180,20 +1171,16 @@ int fr_log_init_func(fr_log_t *log, cookie_write_function_t write, cookie_close_
 
 	log->dst = L_DST_FUNC;
 
-	if (unlikely(log->handle = fopencookie(log, "w",
-					       (cookie_io_functions_t){
+	if (unlikely((log->handle = fopencookie(log, "w",
+					        (cookie_io_functions_t){
 					       		.write = write,
 					       		.close = close
-					       }) == NULL)) {
+					        })) == NULL)) {
 		fr_strerror_printf("Failed opening func transport: %s", fr_syserror(errno));
 		return -1;
 	}
 
-	if (unlikely(setlinebuf(log->handle) < 0)) {
-		fr_strerror_printf("Failed setting linebuf on func transport: %s", fr_syserror(errno));
-		fclose(log->handle);
-		return -1;
-	}
+	setlinebuf(log->handle);
 	log->uctx = uctx;
 
 	return 0;
