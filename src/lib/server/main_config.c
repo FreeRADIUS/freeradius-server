@@ -401,6 +401,8 @@ static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent,
 	 *	discover it automatically.
 	 */
 	if (value == 0) {
+		char *strvalue;
+
 		value = fr_hw_num_cores_active();
 
 		/*
@@ -417,6 +419,10 @@ static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent,
 		if ((conf->max_networks * 4) < value) {
 			value -= conf->max_networks;
 		}
+
+		strvalue = talloc_asprintf(ci, "%u", value);
+		(void) cf_pair_replace(cf_item_to_section(cf_parent(ci)), cf_item_to_pair(ci), strvalue);
+		talloc_free(strvalue);
 
 		/*
 		 *	Otherwise just create as many
