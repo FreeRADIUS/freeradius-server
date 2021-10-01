@@ -1160,7 +1160,8 @@ case "$target" in
     CFLAGS="$CFLAGS -D_ALL_SOURCE"
     ;;
   *-darwin*)
-    CFLAGS="$CFLAGS -DDARWIN"
+    CFLAGS="$CFLAGS -DDARWIN -mmacosx-version-min=$(sw_vers -productVersion)"
+    LDFLAGS="$LDFLAGS -mmacosx-version-min=$(sw_vers -productVersion)"
     LIBS="-framework DirectoryService $LIBS"
     AC_DEFINE([__APPLE_USE_RFC_3542], 1, [Force OSX >= 10.7 Lion to use RFC2292 IPv6 socket options])
     ;;
