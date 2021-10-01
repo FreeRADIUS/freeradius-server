@@ -842,6 +842,8 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 		if (deprecated) goto deprecated;
 
+		cp->parsed = true;
+
 		if (rule->func) {
 			cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
 			cp->printed = true;
@@ -850,7 +852,6 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 		ret = func(ctx, out, base, cf_pair_to_item(cp), rule);
 		if (ret < 0) return -1;
-		cp->parsed = true;
 	}
 
 	return 0;
