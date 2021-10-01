@@ -33,6 +33,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/sha1.h>
 #include <freeradius-devel/util/atexit.h>
+#include <freeradius-devel/util/strerror.h>
 
 #ifdef HMAC_SHA1_DATA_PROBLEMS
 unsigned int sha1_data_problems = 0;
@@ -41,11 +42,11 @@ unsigned int sha1_data_problems = 0;
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <openssl/hmac.h>
 
-static _Thread_local HMAC_CTX *sha1_hmac_ctx;
+static _Thread_local EVP_MD_CTX *sha1_hmac_ctx;
 
 static void _hmac_sha1_ctx_free_on_exit(void *arg)
 {
-	HMAC_CTX_free(arg);
+	EVP_MD_CTX_free(arg);
 }
 
 /** Calculate HMAC using OpenSSL's SHA1 implementation
@@ -55,25 +56,56 @@ static void _hmac_sha1_ctx_free_on_exit(void *arg)
  * @param inlen length of data stream.
  * @param key Pointer to authentication key.
  * @param key_len Length of authentication key.
-
+ * @return
+ *	- 0 on success.
+ *      - -1 on error.
  */
-void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
-		  uint8_t const *key, size_t key_len)
+int fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
+		uint8_t const *key, size_t key_len)
 {
-	HMAC_CTX *ctx;
+	EVP_MD_CTX	*ctx;
+ 	EVP_PKEY	*pkey;
 
 	if (unlikely(!sha1_hmac_ctx)) {
-		ctx = HMAC_CTX_new();
-		if (unlikely(!ctx)) return;
+		ctx = EVP_MD_CTX_new();
+		if (unlikely(!ctx)) {
+			fr_strerror_const("Failed allocating EVP_MD_CTX for HMAC-SHA1");
+			return -1;
+		}
+		EVP_MD_CTX_set_flags(ctx, EVP_MD_CTX_FLAG_ONESHOT);
 		fr_atexit_thread_local(sha1_hmac_ctx, _hmac_sha1_ctx_free_on_exit, ctx);
 	} else {
 		ctx = sha1_hmac_ctx;
 	}
 
-	HMAC_Init_ex(ctx, key, key_len, EVP_sha1(), NULL);
-	HMAC_Update(ctx, in, inlen);
-	HMAC_Final(ctx, digest, NULL);
-	HMAC_CTX_reset(ctx);
+	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, key_len);
+	if (unlikely(pkey == NULL)) {
+		fr_strerror_const("Failed allocating pkey for HMAC-SHA1");
+		return -1;
+	}
+
+	if (unlikely(EVP_DigestSignInit(ctx, NULL, EVP_sha1(), NULL, pkey) != 1)) {
+		fr_strerror_const("Failed initialising EVP_MD_CTX for HMAC-SHA1");
+	error:
+		EVP_PKEY_free(pkey);
+		return -1;
+	}
+	if (unlikely(EVP_DigestSignUpdate(ctx, in, inlen) != 1)) {
+		fr_strerror_const("Failed ingesting data for HMAC-SHA1");
+		goto error;
+	}
+	/*
+	 *	OpenSSL <= 1.1.1 requires a non-null pointer for len
+	 */
+	if (unlikely(EVP_DigestSignFinal(ctx, digest, &(size_t){ 0 }) != 1)) {
+		fr_strerror_const("Failed finalising HMAC-SHA1");
+		goto error;
+	}
+
+	EVP_PKEY_free(pkey);
+	EVP_MD_CTX_reset(ctx);
+
+	return 0;
 }
 #else
 /** Calculate HMAC using internal SHA1 implementation
@@ -83,9 +115,12 @@ void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *in, size_t 
  * @param inlen length of data stream.
  * @param key Pointer to authentication key.
  * @param key_len Length of authentication key.
+ * @return
+ *	- 0 on success.
+ *      - -1 on error.
  */
-void fr_hmac_sha1(uint8_t digest[static SHA1_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
-		  uint8_t const *key, size_t key_len)
+int fr_hmac_sha1(uint8_t digest[static SHA1_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
+		 uint8_t const *key, size_t key_len)
 {
 	fr_sha1_ctx ctx;
 	uint8_t k_ipad[65];    /* inner padding - key XORd with ipad */
@@ -200,58 +235,6 @@ void fr_hmac_sha1(uint8_t digest[static SHA1_DIGEST_LENGTH], uint8_t const *in, 
 		printf("\n");
 	}
 #endif
-}
-#endif /* HAVE_OPENSSL_EVP_H */
-
-/*
-Test Vectors (Trailing '\0' of a character string not included in test):
-
-  key =	 "Jefe"
-  data =	"what do ya want for nothing?"
-  data_len =    28 bytes
-  digest =	effcdf6ae5eb2fa2d27416d5f184df9c259a7c79
-
-  key =	 0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-
-  key_len       16 bytes
-  data =	0xDDDDDDDDDDDDDDDDDDDD...
-		..DDDDDDDDDDDDDDDDDDDD...
-		..DDDDDDDDDDDDDDDDDDDD...
-		..DDDDDDDDDDDDDDDDDDDD...
-		..DDDDDDDDDDDDDDDDDDDD
-  data_len =    50 bytes
-  digest =      0x56be34521d144c88dbb8c733f0e8b3f6
-*/
-
-#ifdef TESTING
-/*
- *  cc -DTESTING -I ../include/ hmac.c sha1.c -o hmac
- *
- *  ./hmac Jefe "what do ya want for nothing?"
- */
-int main(int argc, char **argv)
-{
-	uint8_t digest[20];
-	char *key;
-	int key_len;
-	char *text;
-	int text_len;
-	int i;
-
-	key = argv[1];
-	key_len = strlen(key);
-
-	text = argv[2];
-	text_len = strlen(text);
-
-	fr_hmac_sha1(digest, text, text_len, key, key_len);
-
-	for (i = 0; i < 20; i++) {
-		printf("%02x", digest[i]);
-	}
-	printf("\n");
-
 	return 0;
 }
-
-#endif
+#endif /* HAVE_OPENSSL_EVP_H */

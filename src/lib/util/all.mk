@@ -5,6 +5,7 @@ SUBMAKEFILES := \
 	dcursor_tests.mk \
 	dlist_tests.mk \
 	heap_tests.mk \
+	hmac_tests.mk \
 	libfreeradius-util.mk \
 	lst_tests.mk \
 	pair_legacy_tests.mk \
