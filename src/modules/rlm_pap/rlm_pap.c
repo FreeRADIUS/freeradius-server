@@ -30,6 +30,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/password.h>
 #include <freeradius-devel/tls/base.h>
+#include <freeradius-devel/tls/log.h>
 
 #include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/debug.h>
@@ -462,7 +463,7 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 	int			digest_type;
 	size_t			digest_len;
 
-	uint32_t		iterations = 0;
+	uint32_t		iterations = 1;
 
 	uint8_t			*salt = NULL;
 	size_t			salt_len;
@@ -588,6 +589,11 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 
 		iterations = ntohl(iterations);
 
+		/*
+		 *	0 iterations is invalid (we need at least one)
+		 */
+		if (iterations == 0) iterations = 1;
+
 		p = q + 1;
 	}
 
@@ -645,7 +651,7 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 			      (int)iterations,
 			      evp_md,
 			      (int)digest_len, (unsigned char *)digest) == 0) {
-		REDEBUG("PBKDF2 digest failure");
+		fr_tls_log_error(request, "PBKDF2 digest failure");
 		goto finish;
 	}
 
