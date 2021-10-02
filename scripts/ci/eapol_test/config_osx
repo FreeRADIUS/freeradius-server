@@ -10,8 +10,10 @@
 # to override previous values of the variables.
 
 CFLAGS += -g3 -O0 -Wno-unknown-warning-option -Wno-error=deprecated-declarations -Wno-error=void-pointer-to-enum-cast
-CFLAGS += -I /usr/local/opt/openssl/include -I/usr/local/include/openssl
-LIBS += -L/usr/local/opt/openssl/lib -L/usr/local/lib
+
+# Use OpenSSL 1.1 for now as eapol_test doesn't support 3.0.0 (as of master HEAD 2/10/2021)
+CFLAGS += -I/usr/local/opt/openssl@1.1/include -I/usr/local/include/openssl
+LIBS += -L/usr/local/opt/openssl@1.1/lib -L/usr/local/lib
 
 # Some Red Hat versions seem to include kerberos header files from OpenSSL, but
 # the kerberos files are not in the default include path. Following line can be
