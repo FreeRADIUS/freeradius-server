@@ -1292,6 +1292,48 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
+#if OPENSSL_VERSION_NUMBER == 0x30000000L
+	/*
+	 *	Bug in OpenSSL 3.0 - Normal handshaking behaviour
+	 *	results in spurious "BIO_R_UNSUPPORTED_METHOD"
+	 *	errors.
+	 *
+	 *	SSL_get_error apparently returns SSL_ERROR_SSL if
+	 *	there are any errors in the stack.  This masks
+	 *	SSL_ERROR_WANT_ASYNC and causes the handshake to
+	 *	fail.
+	 *
+	 *	This was fixed in:
+	 *	https://github.com/openssl/openssl/commit/398ae8231650c4bd8ddff0e5efd38233c23b1ca0
+	 *
+	 *	So this code is only needed for OpenSSL 3.0.0
+	 *	and not later versions.
+	 *
+	 *	Note: We may want some version of this code
+	 *	included for all OpenSSL versions.
+	 *
+	 *	It would call ERR_GET_FATAL() on each of the errors
+	 *	in the stack to drain non-fatal errors and prevent
+	 *	the other (more useful) return codes of
+	 *	SSL_get_error from being masked.  I guess we'll see
+	 *	if this occurs in other scenarios.
+	 */
+	if (SSL_get_error(tls_session->ssl, tls_session->last_ret) == SSL_ERROR_SSL) {
+		unsigned long ssl_err;
+
+		/*
+		 *	Some weird OpenSSL thing marking ERR_GET_REASON
+		 *	as "unused".  Unclear why this is done as it's
+		 *	not deprecated.
+		 */
+DIAG_OFF(used-but-marked-unused)
+		while ((ssl_err = ERR_peek_error()) && (ERR_GET_REASON(ssl_err) == BIO_R_UNSUPPORTED_METHOD)) {
+			(void) ERR_get_error();
+		}
+DIAG_ON(used-but-marked-unused)
+	}
+#endif
+
 	/*
 	 *	Deal with asynchronous requests from OpenSSL.
 	 *      These aren't actually errors, they're the
