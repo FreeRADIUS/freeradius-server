@@ -214,27 +214,35 @@ DIAG_ON(format-nonliteral)
  *   - SSL_write
  *
  * @param request	The current request (may be NULL).
- * @param session	The current tls_session.
- * @param ret		from the I/O operation.
- * @param msg		Error message describing the operation being attempted.
+ * @param err		returned from SSL_get_error().
+ * @param fmt		Error message describing the operation being attempted.
  * @param ...		Arguments for msg.
  * @return
  *	- 0 TLS session may still be viable.
  *	- -1 TLS session cannot continue.
  */
-int fr_tls_log_io_error(request_t *request, fr_tls_session_t *session, int ret, char const *msg, ...)
+int fr_tls_log_io_error(request_t *request, int err, char const *fmt, ...)
 {
-	int	error;
-	va_list	ap;
+	static fr_table_num_ordered_t const ssl_io_error_table[] = {
+		{ L("SSL_ERROR_NONE"),			SSL_ERROR_NONE			},
+		{ L("SSL_ERROR_ZERO_RETURN"),		SSL_ERROR_ZERO_RETURN		},
+		{ L("SSL_ERROR_WANT_READ"),		SSL_ERROR_WANT_READ		},
+		{ L("SSL_ERROR_WANT_WRITE"),		SSL_ERROR_WANT_WRITE		},
+		{ L("SSL_ERROR_WANT_CONNECT"),		SSL_ERROR_WANT_CONNECT		},
+		{ L("SSL_ERROR_WANT_ACCEPT"),		SSL_ERROR_WANT_ACCEPT		},
+		{ L("SSL_ERROR_WANT_X509_LOOKUP"),	SSL_ERROR_WANT_X509_LOOKUP	},
+		{ L("SSL_ERROR_WANT_ASYNC"),		SSL_ERROR_WANT_ASYNC		},
+		{ L("SSL_ERROR_WANT_ASYNC_JOB"),	SSL_ERROR_WANT_ASYNC_JOB	},
+		{ L("SSL_ERROR_WANT_CLIENT_HELLO_CB"),	SSL_ERROR_WANT_CLIENT_HELLO_CB	},
+		{ L("SSL_ERROR_SYSCALL"),		SSL_ERROR_SYSCALL		},
+		{ L("SSL_ERROR_SSL"),			SSL_ERROR_SSL			}
+	};
+	static size_t ssl_io_error_table_len = NUM_ELEMENTS(ssl_io_error_table);
 
-	if (ERR_peek_error()) {
-		va_start(ap, msg);
-		fr_tls_log_error_va(request, msg, ap);
-		va_end(ap);
-	}
+	va_list ap;
+	char *msg = NULL;
 
-	error = SSL_get_error(session->ssl, ret);
-	switch (error) {
+	switch (err) {
 	/*
 	 *	These seem to be harmless and already "dealt
 	 *	with" by our non-blocking environment. NB:
@@ -252,6 +260,15 @@ int fr_tls_log_io_error(request_t *request, fr_tls_session_t *session, int ret, 
 	case SSL_ERROR_WANT_WRITE:
 	case SSL_ERROR_WANT_X509_LOOKUP:
 	case SSL_ERROR_ZERO_RETURN:
+		if (DEBUG_ENABLED2 || RDEBUG_ENABLED2) {
+			va_start(ap, fmt);
+			msg = fr_vasprintf(NULL, fmt, ap);
+			va_end(ap);
+
+			ROPTIONAL(RDEBUG2, DEBUG2, "%s - %s (%i)",
+				  msg, fr_table_str_by_value(ssl_io_error_table, err, "<UNKNOWN>"), err);
+			talloc_free(msg);
+		}
 		break;
 
 	/*
@@ -260,11 +277,24 @@ int fr_tls_log_io_error(request_t *request, fr_tls_session_t *session, int ret, 
 	 *	being regarded as "dead".
 	 */
 	case SSL_ERROR_SYSCALL:
-		ROPTIONAL(REDEBUG, ERROR, "System call (I/O) error (%i)", ret);
+		va_start(ap, fmt);
+		msg = fr_vasprintf(NULL, fmt, ap);
+		va_end(ap);
+
+		ROPTIONAL(REDEBUG, ERROR, "%s - System call (I/O) error - %s (%i)",
+			  msg, fr_table_str_by_value(ssl_io_error_table, err, "<UNKNOWN>"), err);
+
+		talloc_free(msg);
 		return -1;
 
+	/*
+	 *	Docs say a more verbose error is available
+	 *	in the normal error stack.
+	 */
 	case SSL_ERROR_SSL:
-		ROPTIONAL(REDEBUG, ERROR, "TLS protocol error (%i)", ret);
+		va_start(ap, fmt);
+		fr_tls_log_error_va(request, fmt, ap);
+		va_end(ap);
 		return -1;
 
 	/*
@@ -274,7 +304,15 @@ int fr_tls_log_io_error(request_t *request, fr_tls_session_t *session, int ret, 
 	 *	the code needs updating here.
 	 */
 	default:
-		ROPTIONAL(REDEBUG, ERROR, "TLS session error %i (%i)", error, ret);
+		va_start(ap, fmt);
+		msg = fr_vasprintf(NULL, fmt, ap);
+		va_end(ap);
+
+		ROPTIONAL(REDEBUG, ERROR, "%s - TLS session error - %s (%i)",
+			  msg, fr_table_str_by_value(ssl_io_error_table, err, "<UNKNOWN>"), err);
+
+		talloc_free(msg);
+
 		return -1;
 	}
 

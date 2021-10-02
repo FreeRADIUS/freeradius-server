@@ -39,8 +39,8 @@ RCSIDH(tls_log_h, "$Id$")
 void		_fr_tls_log_certificate_chain(char const *file, int line,
 					      request_t *request, fr_log_type_t log_type, STACK_OF(X509) *chain, X509 *cert);
 
-int		fr_tls_log_io_error(request_t *request, fr_tls_session_t *session, int ret, char const *msg, ...)
-				    CC_HINT(format (printf, 4, 5));
+int		fr_tls_log_io_error(request_t *request, int err, char const *msg, ...)
+				    CC_HINT(format (printf, 3, 4));
 
 int		fr_tls_log_error(request_t *request, char const *msg, ...) CC_HINT(format (printf, 2, 3));
 

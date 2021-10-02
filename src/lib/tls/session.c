@@ -915,7 +915,7 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 
 		default:
 			REDEBUG("Error in fragmentation logic");
-			fr_tls_log_io_error(request, tls_session, ret, "Failed in SSL_read (%s)", __FUNCTION__);
+			fr_tls_log_io_error(request, code, "SSL_read (%s)", __FUNCTION__);
 			goto error;
 		}
 
@@ -991,7 +991,8 @@ int fr_tls_session_send(request_t *request, fr_tls_session_t *tls_session)
 			tls_session->dirty_out.used = ret;
 			ret = 0;
 		} else {
-			if (fr_tls_log_io_error(request, tls_session, ret, "Failed in SSL_write") < 0) ret = -1;
+			if (fr_tls_log_io_error(request, SSL_get_error(tls_session->ssl, ret),
+						"SSL_write (%s)", __FUNCTION__) < 0) ret = -1;
 		}
 	}
 
@@ -1252,6 +1253,7 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 							request_t *request, void *uctx)
 {
 	fr_tls_session_t	*tls_session = talloc_get_type_abort(uctx, fr_tls_session_t);
+	int			err;
 
 	RDEBUG3("(re-)entered state %s", __FUNCTION__);
 
@@ -1297,7 +1299,7 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 	 *	it'd like to perform the operation
 	 *	asynchronously.
 	 */
-	switch (SSL_get_error(tls_session->ssl, tls_session->last_ret)) {
+	switch (err = SSL_get_error(tls_session->ssl, tls_session->last_ret)) {
 	case SSL_ERROR_WANT_ASYNC:	/* Certification validation or cache loads */
 	{
 		unlang_action_t ua;
@@ -1354,8 +1356,8 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 		 *	Returns 0 if we can continue processing the handshake
 		 *	Returns -1 if we encountered a fatal error.
 		 */
-		if (fr_tls_log_io_error(request, tls_session,
-					tls_session->last_ret, "Failed in SSL_read (%s)", __FUNCTION__) < 0) goto error;
+		if (fr_tls_log_io_error(request,
+					err, "SSL_read (%s)", __FUNCTION__) < 0) goto error;
 		return tls_session_async_handshake_done_round(p_result, priority, request, uctx);
 	}
 }
@@ -1537,7 +1539,7 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
 
 	ret = SSL_connect(tls_session->ssl);
 	if (ret <= 0) {
-		fr_tls_log_io_error(NULL, tls_session, ret, "Failed in SSL_connect");
+		fr_tls_log_io_error(NULL, SSL_get_error(tls_session->ssl, ret), "SSL_connect (%s)", __FUNCTION__);
 		fr_tls_session_request_unbind(tls_session->ssl);
 		talloc_free(tls_session);
 
