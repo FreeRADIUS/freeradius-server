@@ -150,7 +150,7 @@ jobs:
           mariadb \
           make \
           mruby \
-          openssl@1.1 \
+          openssl \
           talloc
         ln -s `brew --prefix`/opt/make/bin/gmake /usr/local/bin/make
         echo "#! /bin/sh"               >> /usr/local/bin/nproc
