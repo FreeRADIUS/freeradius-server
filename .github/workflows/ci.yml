@@ -18,7 +18,7 @@ env:
   NO_PERFORMANCE_TESTS: yes
   DO_BUILD: yes
   HOSTAPD_BUILD_DIR: eapol_test.ci
-  HOSTAPD_GIT_TAG: hostap_2_8
+  HOSTAPD_GIT_TAG: hostap_2_9
   DEBIAN_FRONTEND: noninteractive
   CI: 1
   GH_ACTIONS: 1
@@ -52,7 +52,7 @@ jobs:
           - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang-O2-g3   }
           - { CC: clang, BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang-ndebug  }
           - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: yes, TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang-altlibs }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: macos,    OS: macos-10.15,  NAME: macos-clang         }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: macos,    OS: macos-11,  NAME: macos-clang         }
           - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fuzzing,  OS: ubuntu-20.04, NAME: linux-fuzzer        }
 
     env: ${{ matrix.env }}
