@@ -584,6 +584,19 @@ static inline int8_t fr_ldap_query_cmp(void const *one, void const *two)
 
 fr_ldap_query_t *fr_ldap_query_alloc(TALLOC_CTX *ctx);
 
+/** Compare two ldap bind auth structures on msgid
+ *
+ * @param[in] one	first bind request to compare.
+ * @param[in] two	second bind request to compare.
+ * @return CMP(one,two)
+ */
+static inline int8_t fr_ldap_bind_auth_cmp(void const *one, void const *two)
+{
+	fr_ldap_bind_auth_ctx_t const	*a = one, *b = two;
+
+	return CMP(a->msgid, b->msgid);
+}
+
 int fr_ldap_trunk_search(TALLOC_CTX *ctx, fr_ldap_query_t **query, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 			 char const *base_dn, int scope, char const *filter, char const * const *attrs,
 			 LDAPControl **serverctrls, LDAPControl **clientctrls);
