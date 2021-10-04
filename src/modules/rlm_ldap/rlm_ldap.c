@@ -583,6 +583,80 @@ static int ldap_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void 
 	return 0;
 }
 
+/** Error reading from or writing to the file descriptor
+ *
+ * @param[in] el	the event occurred in.
+ * @param[in] fd	the event occurred on.
+ * @param[in] flags	from kevent.
+ * @param[in] fd_errno	The error that ocurred.
+ * @param[in] uctx	LDAP thread the connection that faulted relates to.
+ */
+static void _ldap_bind_auth_io_error(UNUSED fr_event_list_t *el, UNUSED int fd,
+				     UNUSED int flags, UNUSED int fd_errno, void *uctx)
+{
+	fr_ldap_thread_t	*thread = talloc_get_type_abort(uctx, fr_ldap_thread_t);
+	fr_ldap_connection_t	*c = talloc_get_type_abort(thread->conn->h, fr_ldap_connection_t);
+
+	fr_ldap_state_error(c);		/* Restart the connection state machine */
+}
+
+/** Callback used to process LDAP bind auth results
+ *
+ * @param[in] el	the read event occurred in.
+ * @param[in] fd	the read event occurred on.
+ * @param[in] flags	from kevent.
+ * @param[in] uctx	LDAP thread associated with the event.
+ */
+static void _ldap_bind_auth_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+{
+	fr_ldap_thread_t	*thread = talloc_get_type_abort(uctx, fr_ldap_thread_t);
+	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(thread->conn->h, fr_ldap_connection_t);
+	fr_ldap_bind_auth_ctx_t	find = { .msgid = -1 }, *bind_auth_ctx;
+	LDAPMessage		*result = NULL;
+
+	int			ret;
+
+next_result:
+	/*
+	 *	Fetch the next LDAP result which has been fully received
+	 */
+	ret = fr_ldap_result(&result, NULL, ldap_conn, LDAP_RES_ANY, LDAP_MSG_ALL, NULL, fr_time_delta_wrap(10));
+
+	/*
+	 *	Timeout in this case really means no results to read - we've
+	 *	handled everything that was available
+	 */
+	if (ret == LDAP_PROC_TIMEOUT) return;
+
+	find.msgid = ldap_msgid(result);
+	bind_auth_ctx = fr_rb_find(thread->binds, &find);
+
+	if (!bind_auth_ctx) {
+		WARN("Ignoring bind result msgid %i - doesn't match any outstanidng binds", find.msgid);
+		goto next_result;
+	}
+
+	/*
+	 *	Remove from the list of pending bind requests
+	 */
+	fr_rb_remove(bind_auth_ctx->thread->binds, bind_auth_ctx);
+
+	bind_auth_ctx->ret = ret;
+
+	switch (ret) {
+	case LDAP_PROC_SUCCESS:
+	case LDAP_PROC_NOT_PERMITTED:
+		break;
+
+	default:
+		fr_ldap_state_error(bind_auth_ctx->bind_ctx->c);	/* Restart the connection state machine */
+		break;
+	}
+	unlang_interpret_mark_runnable(bind_auth_ctx->request);
+
+	goto next_result;
+}
+
 /** Perform a search and map the result of the search to server attributes
  *
  * Unlike LDAP xlat, this can be used to process attributes from multiple entries.
