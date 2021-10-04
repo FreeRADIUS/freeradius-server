@@ -232,3 +232,82 @@ int fr_ldap_bind_async(fr_ldap_connection_t *c,
 
 	return 0;
 }
+
+/** Submit an async LDAP auth bind
+ *
+ */
+static unlang_action_t ldap_async_auth_bind_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+{
+	fr_ldap_bind_auth_ctx_t	*bind_auth_ctx = talloc_get_type_abort(uctx, fr_ldap_bind_auth_ctx_t);
+	fr_ldap_bind_ctx_t	*bind_ctx = bind_auth_ctx->bind_ctx;
+
+	int			ret;
+	struct berval		cred;
+
+	RDEBUG2("Starting bind auth operation as %s", bind_ctx->bind_dn);
+
+	if (bind_ctx->password) {
+		memcpy(&cred.bv_val, &bind_ctx->password, sizeof(cred.bv_val));
+		cred.bv_len = talloc_array_length(bind_ctx->password) - 1;
+	} else {
+		cred.bv_val = NULL;
+		cred.bv_len = 0;
+	}
+
+	ret = ldap_sasl_bind(bind_auth_ctx->bind_ctx->c->handle, bind_ctx->bind_dn, LDAP_SASL_SIMPLE,
+			     &cred, NULL, NULL, &bind_auth_ctx->msgid);
+
+	switch (ret) {
+	case LDAP_SUCCESS:
+		fr_rb_insert(bind_auth_ctx->thread->binds, bind_auth_ctx);
+		return UNLANG_ACTION_YIELD;
+
+	default:
+		return UNLANG_ACTION_FAIL;
+	}
+}
+
+/** Handle the return code from parsed LDAP results to set the module rcode
+ *
+ */
+static unlang_action_t ldap_async_auth_bind_results(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+{
+	fr_ldap_bind_auth_ctx_t	*bind_auth_ctx = talloc_get_type_abort(uctx, fr_ldap_bind_auth_ctx_t);
+	fr_ldap_bind_ctx_t	*bind_ctx = bind_auth_ctx->bind_ctx;
+
+	switch (bind_auth_ctx->ret) {
+	case LDAP_PROC_SUCCESS:
+		RDEBUG2("Bind as user \"%s\" was successful", bind_ctx->bind_dn);
+		RETURN_MODULE_OK;
+
+	case LDAP_PROC_NOT_PERMITTED:
+		RDEBUG2("Bind as user \"%s\" not permitted", bind_ctx->bind_dn);
+		RETURN_MODULE_DISALLOW;
+
+	case LDAP_PROC_REJECT:
+		RETURN_MODULE_REJECT;
+
+	case LDAP_PROC_BAD_DN:
+		RETURN_MODULE_INVALID;
+
+	case LDAP_PROC_NO_RESULT:
+		RETURN_MODULE_NOTFOUND;
+
+	default:
+		RETURN_MODULE_FAIL;
+
+	}
+}
+
+/** Signal an outstanding LDAP bind request to cancel
+ *
+ */
+static void ldap_async_auth_bind_cancel(UNUSED request_t *request, fr_state_signal_t action, void *uctx)
+{
+	fr_ldap_bind_auth_ctx_t	*bind_auth_ctx = talloc_get_type_abort(uctx, fr_ldap_bind_auth_ctx_t);
+
+	if (action != FR_SIGNAL_CANCEL) return;
+
+	ldap_abandon_ext(bind_auth_ctx->bind_ctx->c->handle, bind_auth_ctx->msgid, NULL, NULL);
+	fr_rb_remove(bind_auth_ctx->thread->binds, bind_auth_ctx);
+}
