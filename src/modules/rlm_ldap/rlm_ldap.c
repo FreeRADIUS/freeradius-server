@@ -657,6 +657,36 @@ next_result:
 	goto next_result;
 }
 
+/** Watch callback to add fd read callback to LDAP connection
+ *
+ * To add "bind" specific callbacks to LDAP conneciton being used
+ * for bind auths, when the connection becomes connected.
+ *
+ * @param[in] conn	to watch.
+ * @param[in] prev	connection state.
+ * @param[in] state	the connection is now in.
+ * @param[in] uctx	LDAP thread this connection relates to.
+ */
+static void _ldap_async_bind_auth_watch(fr_connection_t *conn, UNUSED fr_connection_state_t prev,
+					UNUSED fr_connection_state_t state, void *uctx)
+{
+	fr_ldap_thread_t	*thread = talloc_get_type_abort(uctx, fr_ldap_thread_t);
+	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
+
+	if (ldap_conn->fd < 0) {
+	connection_failed:
+		fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
+		return;
+	}
+	if (fr_event_fd_insert(conn, conn->el, ldap_conn->fd,
+					 _ldap_bind_auth_io_read,
+					 NULL,
+					 _ldap_bind_auth_io_error,
+					 thread) < 0) {
+		goto connection_failed;
+	};
+}
+
 /** Perform a search and map the result of the search to server attributes
  *
  * Unlike LDAP xlat, this can be used to process attributes from multiple entries.
