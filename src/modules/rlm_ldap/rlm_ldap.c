@@ -1010,9 +1010,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_ldap_t);
 	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread_by_data(inst)->data, fr_ldap_thread_t);
 	rlm_rcode_t		rcode;
-	fr_ldap_rcode_t		status;
 	char const		*dn;
-	fr_ldap_connection_t	*conn;
 	fr_ldap_thread_trunk_t	*ttrunk = NULL;
 
 	char			sasl_mech_buff[LDAP_MAX_DN_STR_LEN];
@@ -1062,8 +1060,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		RDEBUG2("Login attempt with password");
 	}
 
-	conn = mod_conn_get(inst, request);
-	if (!conn) RETURN_MODULE_FAIL;
 	ttrunk =  fr_thread_ldap_trunk_get(thread, inst->handle_config.server, inst->handle_config.admin_identity,
 					   inst->handle_config.admin_password, request, &inst->handle_config);
 	if (!ttrunk) RETURN_MODULE_FAIL;
@@ -1106,47 +1102,16 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	Get the DN by doing a search.
 	 */
 	dn = rlm_ldap_find_user(inst, request, ttrunk, NULL, false, NULL, NULL, &rcode);
-	if (!dn) {
-		ldap_mod_conn_release(inst, request, conn);
+	if (!dn) RETURN_MODULE_RCODE(rcode);
 
-		RETURN_MODULE_RCODE(rcode);
-	}
-	conn->rebound = true;
-	status = fr_ldap_bind(request,
-			      &conn,
-			      dn, password->vp_strvalue,
-			      inst->user_sasl.mech ? &sasl : NULL,
-			      fr_time_delta_wrap(0),
-			      NULL, NULL);
-	switch (status) {
-	case LDAP_PROC_SUCCESS:
-		rcode = RLM_MODULE_OK;
-		RDEBUG2("Bind as user \"%s\" was successful", dn);
-		break;
+	/*
+	 *	Attempt a bind using the thread specific connection for bind auths
+	 */
+	if (fr_ldap_bind_auth_async(request, thread, dn, password->vp_strvalue) < 0) RETURN_MODULE_FAIL;
 
-	case LDAP_PROC_NOT_PERMITTED:
-		rcode = RLM_MODULE_DISALLOW;
-		break;
-
-	case LDAP_PROC_REJECT:
-		rcode = RLM_MODULE_REJECT;
-		break;
-
-	case LDAP_PROC_BAD_DN:
-		rcode = RLM_MODULE_INVALID;
-		break;
-
-	case LDAP_PROC_NO_RESULT:
-		rcode = RLM_MODULE_NOTFOUND;
-		break;
-
-	default:
-		rcode = RLM_MODULE_FAIL;
-		break;
-	};
+	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
 
 finish:
-	ldap_mod_conn_release(inst, request, conn);
 
 	RETURN_MODULE_RCODE(rcode);
 }
