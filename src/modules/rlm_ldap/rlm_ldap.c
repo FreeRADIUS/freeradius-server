@@ -1197,15 +1197,11 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	int			ldap_errno;
 	int			i;
 	struct berval		**values;
-	fr_ldap_connection_t	*conn;
 	fr_ldap_thread_trunk_t	*ttrunk;
 	LDAP			*handle;
 	LDAPMessage		*result, *entry;
 	char const 		*dn = NULL;
 	fr_ldap_map_exp_t	expanded; /* faster than allocing every time */
-#ifdef WITH_EDIR
-	fr_ldap_rcode_t		status;
-#endif
 
 	/*
 	 *	Don't be tempted to add a check for User-Name or
@@ -1298,7 +1294,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		/*
 		 *	Retrive universal password
 		 */
-		res = fr_ldap_edir_get_password(conn->handle, dn, password, &pass_size);
+		res = fr_ldap_edir_get_password(handle, dn, password, &pass_size);
 		if (res != 0) {
 			REDEBUG("Failed to retrieve eDirectory password: (%i) %s", res, fr_ldap_edir_errstr(res));
 			rcode = RLM_MODULE_FAIL;
@@ -1323,35 +1319,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 			/*
 			 *	Bind as the user
 			 */
-			conn->rebound = true;
-			status = fr_ldap_bind(request, &conn, dn, vp->vp_strvalue, NULL,
-					      fr_time_delta_wrap(0), NULL, NULL);
-			switch (status) {
-			case LDAP_PROC_SUCCESS:
-				rcode = RLM_MODULE_OK;
-				RDEBUG2("Bind as user '%s' was successful", dn);
-				break;
-
-			case LDAP_PROC_NOT_PERMITTED:
-				rcode = RLM_MODULE_DISALLOW;
-				goto finish;
-
-			case LDAP_PROC_REJECT:
-				rcode = RLM_MODULE_REJECT;
-				goto finish;
-
-			case LDAP_PROC_BAD_DN:
-				rcode = RLM_MODULE_INVALID;
-				goto finish;
-
-			case LDAP_PROC_NO_RESULT:
-				rcode = RLM_MODULE_NOTFOUND;
-				goto finish;
-
-			default:
+			if (fr_ldap_bind_auth_async(request, thread, dn, vp->vp_strvalue) < 0) {
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
-			};
+			}
+
+			rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
+
+			if (rcode != RLM_MODULE_OK) goto finish;
 		}
 	}
 
@@ -1427,7 +1402,6 @@ skip_edir:
 
 finish:
 	talloc_free(expanded.ctx);
-//	ldap_mod_conn_release(inst, request, conn);
 
 	RETURN_MODULE_RCODE(rcode);
 }
