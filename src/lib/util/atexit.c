@@ -194,6 +194,17 @@ int fr_atexit_global_setup(void)
 	return 0;
 }
 
+/** Add a free function to be called when the process exits
+ *
+ */
+int _atexit_global(NDEBUG_LOCATION_ARGS
+		  fr_atexit_t func, void const *uctx)
+{
+	if (unlikely(atexit_entry_alloc(NDEBUG_LOCATION_VALS fr_atexit_global, func, uctx) == NULL)) return -1;
+
+	return 0;
+}
+
 /** Add a new destructor
  *
  * @return

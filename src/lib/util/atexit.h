@@ -43,7 +43,20 @@ extern "C" {
  */
 typedef void(*fr_atexit_t)(void *uctx);
 
-int	fr_atexit_global_setup(void);
+int fr_atexit_global_setup(void);
+
+int _atexit_global(NDEBUG_LOCATION_ARGS fr_atexit_t func, void const *uctx);
+
+/** Add a free function to the global free list
+ *
+ * @param[in] func to call.
+ * @param[in] uctx to pass to func.
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure.
+ */
+#define fr_atexit_global(_func, _uctx) \
+	_atexit_global(NDEBUG_LOCATION_EXP _func, _uctx)
 
 /** Setup pair of global init/free functions
  *
@@ -55,9 +68,10 @@ int	fr_atexit_global_setup(void);
  *
  * Will not share init status outside of the function.
  *
- * @param[in] _init function to call. Will be called once during the process
- *		    lifetime.
- * @param[in] _free function to call. Will be called once at exit.
+ * @param[in] _init		function to call. Will be called once
+ *				during the process lifetime.
+ * @param[in] _free		function to call. Will be called once
+ *				at exit.
  */
 #define fr_atexit_global_once(_init, _free) \
 { \
