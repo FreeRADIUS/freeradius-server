@@ -483,6 +483,20 @@ typedef struct {
 } fr_ldap_bind_ctx_t;
 
 
+/** Holds arguments for async bind auth requests
+ *
+ * Used when LDAP binds are being used to authenticate users, rather than admin binds.
+ * Allows tracking of multiple bind requests on a single connection.
+ */
+typedef struct {
+	fr_rb_node_t		node;		//!< Entry in the tree of outstanding bind requests.
+	fr_ldap_thread_t	*thread;	//!< This bind is being run by.
+	int			msgid;		//!< libldap msgid for this bind.
+	request_t		*request;	//!< this bind relates to.
+	fr_ldap_bind_ctx_t	*bind_ctx;	//!< Data relating to the user being bound.
+	fr_ldap_result_code_t	ret;		//!< Return code of bind operation.
+} fr_ldap_bind_auth_ctx_t;
+
 /** Codes returned by fr_ldap internal functions
  *
  */
