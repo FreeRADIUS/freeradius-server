@@ -24,13 +24,8 @@ map ldap "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=notARealObject
 	&Tmp-String-1 += 'entryDN'
 }
 
-#
-#  Uncomment when map return codes work properly
-#
-#if (notfound) {
-#	test_pass
-#} else {
-#	test_fail
-#}
+if (!notfound) {
+	test_fail
+}
 
 test_pass
