@@ -267,7 +267,7 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
  * @note the valuepair list should probably be freed.
  *
  * @param[in] ctx	for talloc
- * @param[in] parent	parent to start referencing from
+ * @param[in] root	root DA to start referencing from
  * @param[in] buffer	to read valuepairs from.
  * @param[in] end	end of the buffer
  * @param[in] list	where the parsed fr_pair_ts will be appended.
@@ -278,14 +278,15 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *buffer, char const *end,
-					 fr_pair_list_t *list, fr_token_t *token, int depth, fr_pair_t **relative_vp)
+static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *root, char const *buffer, char const *end,
+					 fr_pair_list_t *list, fr_token_t *token, unsigned int depth, fr_pair_t **relative_vp)
 {
 	fr_pair_list_t		tmp_list;
 	fr_pair_t		*vp = NULL;
 	fr_pair_t		*my_relative_vp;
 	char const		*p, *q, *next;
 	fr_token_t		quote, last_token = T_INVALID;
+	fr_dict_attr_t const   	*parent = root;
 	fr_pair_t_RAW		raw;
 	fr_dict_attr_t const	*internal = NULL;
 	fr_pair_list_t		*my_list;
@@ -452,6 +453,11 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			p++;
 
 			/*
+			 *	Reset to the correct parent
+			 */
+			parent = root;
+
+			/*
 			 *	Cache which VP is now the one for
 			 *	relative references.
 			 */
@@ -567,10 +573,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			break;
 		}
 
-		/*
-		 *	Check for nested groups.
-		 */
-		if ((depth > 0) && (p[0] == ' ') && (p[1] == '}')) p++;
+		fr_skip_whitespace(p);
 
 		/*
 		 *	Stop at '}', too, if we're inside of a group.
