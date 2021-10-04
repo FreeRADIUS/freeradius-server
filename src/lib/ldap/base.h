@@ -165,6 +165,14 @@ typedef enum {
 	FR_LDAP_STATE_ERROR				//!< Connection is in an error state.
 } fr_ldap_state_t;
 
+/** Types of LDAP requests
+ *
+ */
+typedef enum {
+	LDAP_REQUEST_SEARCH = 1,			//!< A lookup in an LDAP directory
+	LDAP_REQUEST_MODIFY				//!< A modification to an LDAP entity
+} fr_ldap_request_type_t;
+
 typedef struct {
 	char const		*vendor_str;		//!< As returned from the vendorName attribute in the
 							///< rootDSE.
