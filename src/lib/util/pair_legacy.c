@@ -278,7 +278,7 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *root, char const *buffer, char const *end,
+static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *buffer, char const *end,
 					 fr_pair_list_t *list, fr_token_t *token, unsigned int depth, fr_pair_t **relative_vp)
 {
 	fr_pair_list_t		tmp_list;
@@ -286,7 +286,6 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 	fr_pair_t		*my_relative_vp;
 	char const		*p, *q, *next;
 	fr_token_t		quote, last_token = T_INVALID;
-	fr_dict_attr_t const   	*parent = root;
 	fr_pair_t_RAW		raw;
 	fr_dict_attr_t const	*internal = NULL;
 	fr_pair_list_t		*my_list;
@@ -423,12 +422,6 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			if (!vp) goto error;
 
 			/*
-			 *	Find the new root attribute to start encoding from.
-			 */
-			parent = fr_dict_attr_ref(da);
-			if (!parent) parent = da;
-
-			/*
 			 *	Parse nested attributes, but the
 			 *	attributes here are relative to each
 			 *	other, and not to our parent relative VP.
@@ -451,11 +444,6 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			fr_skip_whitespace(p);
 			if (*p != '}') goto failed_group;
 			p++;
-
-			/*
-			 *	Reset to the correct parent
-			 */
-			parent = root;
 
 			/*
 			 *	Cache which VP is now the one for
