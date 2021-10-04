@@ -643,7 +643,7 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
  */
 static int fr_connection_pool_check(fr_connection_pool_t *pool)
 {
-	uint32_t spawn, idle, extra;
+	uint32_t num, spare;
 	time_t now = time(NULL);
 	fr_connection_t *this, *next;
 
@@ -653,108 +653,84 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	}
 
 	/*
-	 *	Some idle connections are OK, if they're within the
-	 *	configured "spare" range.  Any extra connections
-	 *	outside of that range can be closed.
+	 *	Get "real" number of connections, and count pending
+	 *	connections as spare.
 	 */
-	idle = pool->num - pool->active;
-	if (idle <= pool->spare) {
-		extra = 0;
-	} else {
-		extra = idle - pool->spare;
-	}
+	num = pool->num + pool->pending;
+	spare = pool->pending + (pool->num - pool->active);
 
 	/*
 	 *	The other end can close connections.  If so, we'll
 	 *	have fewer than "min".  When that happens, open more
 	 *	connections to enforce "min".
-	 */
-	if ((pool->num + pool->pending) < pool->min) {
-		spawn = pool->min - (pool->num + pool->pending);
-		extra = 0;
-
-		INFO("Need %i more connections to reach min connections (%i)", spawn, pool->min);
-
-	/*
-	 *	If we're about to create more than "max",
-	 *	don't create more.
-	 */
-	} else if ((pool->num + pool->pending) >= pool->max) {
-		/*
-		 *	Ensure we don't spawn more connections.  If
-		 *	there are extra idle connections, we can
-		 *	delete all of them.
-		 */
-		spawn = 0;
-		/* leave extra alone from above */
-
-	/*
-	 *	min < num < max
 	 *
-	 *	AND we don't have enough idle connections.
-	 *	Open some more.
+	 *	The code for spawning connections enforces that
+	 *	num + pending <= max.
 	 */
-	} else if (idle < pool->spare) {
-		/*
-		 *	Not enough spare connections.  Spawn a few.
-		 *	But cap the pool size at "max"
-		 */
-		spawn = pool->spare - idle;
-		extra = 0;
-
-		if ((pool->num + pool->pending + spawn) > pool->max) {
-			spawn = pool->max - (pool->num + pool->pending);
-		}
-
-		INFO("Need %i more connections to reach %i spares", spawn, pool->spare);
-
-	/*
-	 *	min < num < max
-	 *
-	 *	We have more than enough idle connections, AND
-	 *	some are pending.  Don't open or close any.
-	 */
-	} else if (pool->pending) {
-		spawn = 0;
-		extra = 0;
-
-	/*
-	 *	We have too many idle connections, but closing
-	 *	some would take us below "min", so we only
-	 *	close enough to take us to "min".
-	 */
-	} else if ((pool->min + extra) >= pool->num) {
-		spawn = 0;
-		extra = pool->num - pool->min;
-
-	} else {
-		/*
-		 *	Closing the "extra" connections won't take us
-		 *	below "min".  It's therefore safe to close
-		 *	them all.
-		 */
-		spawn = 0;
-		/* leave extra alone from above */
+	if (num < pool->min) {
+		INFO("Need %u more connections to reach min connections (%i)", pool->min - num, pool->min);
+		goto add_connection;
 	}
 
 	/*
-	 *	Only try to open spares if we're not already attempting to open
-	 *	a connection. Avoids spurious log messages.
+	 *	On the odd chance that we've opened too many
+	 *	connections, take care of that.
 	 */
-	if (spawn) {
-		pthread_mutex_unlock(&pool->mutex);
-		fr_connection_spawn(pool, now, false); /* ignore return code */
-		pthread_mutex_lock(&pool->mutex);
+	if (num > pool->max) {
+		/*
+		 *	Pending connections don't get closed as "spare".
+		 */
+		if (pool->pending > 0) goto manage_connections;
+
+		/*
+		 *	Otherwise close one of the connections to
+		 *	bring us down to "max".
+		 */
+		goto close_connection;
 	}
 
 	/*
-	 *	We haven't spawned connections in a while, and there
-	 *	are too many spare ones.  Close the one which has been
-	 *	unused for the longest.
+	 *	Now that we've enforced min/max connections, try to
+	 *	keep the "spare" connections at the correct number.
 	 */
-	if (extra && (now >= (pool->last_spawned + pool->delay_interval))) {
+
+	/*
+	 *	Nothing to do?  Go check all of the connections for
+	 *	timeouts, etc.
+	 */
+	if (spare == pool->spare) goto manage_connections;
+
+	/*
+	 *	Too many spare connections, delete some.
+	 */
+	if (spare > pool->spare) {
 		fr_connection_t *found;
 
+		/*
+		 *	Pending connections don't get closed as "spare".
+		 */
+		if (pool->pending > 0) goto manage_connections;
+
+		/*
+		 *	Don't close too many connections, even they
+		 *	are spare.
+		 */
+		if (num <= pool->min) goto manage_connections;
+
+		/*
+		 *	Too many spares, go close one.
+		 */
+
+	close_connection:
+		/*
+		 *	Don't close connections too often, in order to
+		 *	prevent flapping.
+		 */
+		if (now < (pool->last_spawned + pool->delay_interval)) goto manage_connections;
+
+		/*
+		 *	Find a connection to close.
+		 */
 		found = NULL;
 		for (this = pool->tail; this != NULL; this = this->prev) {
 			if (this->in_use) continue;
@@ -776,12 +752,47 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 		pool->next_delay >>= 1;
 		if (pool->next_delay == 0) pool->next_delay = 1;
 		pool->delay_interval += pool->next_delay;
+
+		goto manage_connections;
+	}
+
+	/*
+	 *	Too few connections, open some more.
+	 */
+	if (spare < pool->spare) {
+		/*
+		 *	Don't open too many pending connections.
+		 */
+		if (pool->pending >= pool->max_pending) goto manage_connections;
+
+		/*
+		 *	Don't open too many connections, even if we
+		 *	need more spares.
+		 */
+		if (num >= pool->max) goto manage_connections;
+
+		/*
+		 *	Too few spares, go add one.
+		 */
+
+	add_connection:
+		INFO("Need more connections to reach %i spares", pool->spare);
+
+		/*
+		 *	Only try to open spares if we're not already attempting to open
+		 *	a connection. Avoids spurious log messages.
+		 */
+		pthread_mutex_unlock(&pool->mutex);
+		fr_connection_spawn(pool, now, false); /* ignore return code */
+		pthread_mutex_lock(&pool->mutex);
+		goto manage_connections;
 	}
 
 	/*
 	 *	Pass over all of the connections in the pool, limiting
 	 *	lifetime, idle time, max requests, etc.
 	 */
+manage_connections:
 	for (this = pool->head; this != NULL; this = next) {
 		next = this->next;
 		fr_connection_manage(pool, this, now, false);

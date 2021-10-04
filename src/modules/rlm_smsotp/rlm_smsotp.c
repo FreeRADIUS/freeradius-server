@@ -199,8 +199,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 	/* Get greeting */
 	bufsize = read_all(fdp, buffer, sizeof(buffer));
-	if (bufsize <= 0) {
-		REDEBUG("Failed reading from socket");
+	if (bufsize == 0) {
+		REDEBUG("No data available from socket - other end closed the connection");
+		goto done;
+	}
+	if (bufsize < 0) {
+		REDEBUG("Failed reading from socket: %s", fr_syserror(errno));
 		goto done;
 	}
 

@@ -21,6 +21,7 @@
 -- 		'%{control:${pool_name}}', \
 -- 		'%{User-Name}', \
 -- 		'%{Calling-Station-Id}', \
+--		'%{Called-Station-Id}', \
 -- 		'%{NAS-IP-Address}', \
 -- 		'${pool_key}', \
 -- 		${lease_duration} \
@@ -38,12 +39,20 @@ CREATE PROCEDURE fr_allocate_previous_or_new_framedipaddress (
         IN v_pool_name VARCHAR(64),
         IN v_username VARCHAR(64),
         IN v_callingstationid VARCHAR(64),
+        IN v_calledstationid VARCHAR(64),
         IN v_nasipaddress VARCHAR(15),
         IN v_pool_key VARCHAR(64),
         IN v_lease_duration INT
 )
+SQL SECURITY INVOKER
 proc:BEGIN
         DECLARE r_address VARCHAR(15);
+
+        DECLARE EXIT HANDLER FOR SQLEXCEPTION
+        BEGIN
+            ROLLBACK;
+            RESIGNAL;
+        END;
 
         SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
 
@@ -115,6 +124,7 @@ proc:BEGIN
                 nasipaddress = v_nasipaddress,
                 pool_key = v_pool_key,
                 callingstationid = v_callingstationid,
+                calledstationid = v_calledstationid,
                 username = v_username,
                 expiry_time = NOW() + INTERVAL v_lease_duration SECOND
         WHERE framedipaddress = r_address;

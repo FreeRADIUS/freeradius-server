@@ -110,6 +110,8 @@ int rlm_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 		for (i = 0; i < self->count; i++) {
 			if (!self->values[i]->bv_len) continue;
 
+			RDEBUG3("Parsing %s = %s", map->lhs->name, self->values[i]->bv_val);
+
 			vp = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 			rad_assert(vp);
 

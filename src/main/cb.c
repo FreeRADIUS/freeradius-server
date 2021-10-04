@@ -220,12 +220,19 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 }
 
 int cbtls_password(char *buf,
-		   int num UNUSED,
+		   int num,
 		   int rwflag UNUSED,
 		   void *userdata)
 {
-	strcpy(buf, (char *)userdata);
-	return(strlen((char *)userdata));
+	size_t len;
+
+	len = strlcpy(buf, (char *)userdata, num);
+	if (len >= (size_t) num) {
+		ERROR("Password too long.  Maximum length is %i bytes", num - 1);
+		return 0;
+	}
+
+	return len;
 }
 
 #endif

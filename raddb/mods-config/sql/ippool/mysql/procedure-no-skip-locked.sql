@@ -54,6 +54,7 @@ CREATE PROCEDURE fr_allocate_previous_or_new_framedipaddress (
         IN v_pool_key VARCHAR(64),
         IN v_lease_duration INT
 )
+SQL SECURITY INVOKER
 proc:BEGIN
         DECLARE r_address VARCHAR(15);
 

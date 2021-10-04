@@ -1,0 +1,181 @@
+== Configuring FreeRADIUS as a RadSec test client
+
+Unfortunately, the `radclient` program does not support RadSec.  We
+must therefore configure an instance of FreeRADIUS as a "transport
+converter" which proxies UDP-based RADIUS requests to a RadSec
+destination of our choice.
+
+The following steps should be performed on a client system, which we
+will call `radseccli`.  This system should be a new system, with a
+different IP address.  That is, you shoudl not edit the configuration
+on the `radsecsvr` host.  Doing so will break the RadSec configuration.
+
+Install FreeRADIUS using the NetworkRADIUS packages by following the
+instructions provided here:
+
+<https://networkradius.com/packages/>
+
+Before making any configuration changes, you should stop the radiusd
+service:
+
+[source,shell]
+----
+ service radiusd stop
+----
+
+Add a new `tls` home server definition, which will point to the RadSec
+server.  We do this by creating a file
+`/etc/raddb/sites-enabled/radsec-homeserver` with the following
+contents:
+
+.Example homeserver, pool and realm definitions for the RadSec service
+====
+
+ home_server tls {
+         ipaddr = 172.23.0.3    # IP address of our RadSec server
+         port = 2083
+         type = auth+acct
+         proto = tcp
+         tls {
+             private_key_password = whatever
+             private_key_file = ${certdir}/client.pem
+             certificate_file = ${certdir}/client.pem
+             ca_file = ${cadir}/ca.pem
+          }
+ }
+ home_server_pool tls {
+         type = fail-over
+         home_server = tls
+ }
+ realm tls {
+         auth_pool = tls
+         acct_pool = tls
+ }
+
+====
+
+[TIP]
+====
+Complete descriptions of each of the above configuration items can be found in the
+`[raddb]/sites-available/tls` example configuration file.  For simple tests, however,
+we can omit all of the comments from the file.
+====
+
+To use this `tls` home server, we change the `default` virtual server to proxy
+all authentication and accounting requests to it.
+
+Edit the `/etc/raddb/sites-enabled/default` file so that the beginning of
+the `authorize` and `preacct` sections looks as follows:
+
+.Example default virtual server modification to proxy requests to a RadSec proxy server
+====
+
+ authorize {
+     update control {
+         &Proxy-To-Realm := tls
+     }
+     handled
+     ...
+ }
+ ...
+ preacct {
+     update control {
+         &Proxy-To-Realm := tls
+     }
+     handled
+     ...
+ }
+
+====
+
+These changes make the `tls` virtual server always proxy packets.
+These changes are only for testing, and should never be used in
+production.
+
+We must now copy the example CA certificate as well as the client
+certificate and key files which are on the `radsecsrv` host to this
+test client.
+
+Replace the following files on `radseccli` with the equivalent files from
+`radsecsrv`:
+
+[cols="1,1,1"]
+|===
+|File|Corresponding configuration item|Purpose
+
+|/etc/raddb/certs/ca.pem
+|`ca_file`
+|CA certificate which is used to authenticate the server certificate presented by the RadSec server to the client.
+
+|/etc/raddb/certs/client.pem
+|`certificate_file`
+|Client certificate (signed by the CA certificate) that is presented by the test client to the RadSec server.
+
+|/etc/raddb/certs/client.pem
+|`private_key_file` and `private_key_password`
+|Private key corresponding to the client certificate
+|===
+
+Note that the client certificate and key are typically bundled into a single file.
+
+[CAUTION]
+====
+If you do not correctly replace the CA, client certificate, and key
+material on the test client then the RadSec client and RadSec server
+will fail to mutually authenticate each other as they do not share a
+trusted CA.  If you see messages like `unknown CA`, then you know that
+the certificates have not been set up correctly.
+====
+
+Start the FreeRADIUS service in debug mode:
+
+[source,shell]
+----
+radiusd -X
+----
+
+
+=== Testing RadSec connectivity
+
+At this stage you should be able to cause the test client to send RadSec
+requests directly to the RadSec server.
+
+Run the following to send a RADUS (UDP) Access-Request to the local FreeRADIUS
+instance.  It  should then proxy the request over RadSec connection to
+the remote RadSec server:
+
+[source,shell]
+----
+ echo "User-Name = bob" | radclient 127.0.0.1 auth testing123
+----
+
+If the test client is able to successfully establish the RadSec
+connection, and the RadSec server replies with an Access-Accept
+response, then the output will be as follows:
+
+.Expected output from radclient
+===============================
+
+ Sent Access-Request Id 252 from 0.0.0.0:50118 to 127.0.0.1:1812 length 27
+ Received Access-Accept Id 252 from 127.0.0.1:1812 to 127.0.0.1:50118 length 39
+
+===============================
+
+Lack of response or an Access-Reject response indicates that the RadSec
+connection is not being established successfully.
+
+There may be serveral reasons for broken connectivity including:
+
+  * The client not accepting the certificate presented by the server.
+  * The server not accepting the certificate presented by the client.
+
+Look at the debug output generated by both the test client and the RadSec
+server. In many cases it will tell you exactly what the problem is.
+
+Do not proceed with any further steps until direct connections between the
+RadSec client and Radsec Server are working properly.
+
+Once things are working we are ready to
+xref:protocols/proxy/radsec_with_haproxy.adoc[configure HAproxy to proxy RadSec
+connections] or to xref:protocols/proxy/radsec_with_traefik.adoc[configure
+Traefik to proxy RadSec connections].

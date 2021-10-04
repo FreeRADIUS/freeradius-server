@@ -378,8 +378,8 @@ int		rad_accounting(REQUEST *);
 int		rad_coa_recv(REQUEST *request);
 
 /* session.c */
-int		rad_check_ts(uint32_t nasaddr, uint32_t nas_port, char const *user, char const *sessionid);
-int		session_zap(REQUEST *request, uint32_t nasaddr,
+int		rad_check_ts(fr_ipaddr_t const *nas_addr, uint32_t nas_port, char const *user, char const *sessionid);
+int		session_zap(REQUEST *request, fr_ipaddr_t const *nas_addr,
 			    uint32_t nas_port, char const *user,
 			    char const *sessionid, uint32_t cliaddr,
 			    char proto, int session_time);
@@ -607,6 +607,13 @@ int dual_tls_recv(rad_listen_t *listener);
 int dual_tls_send(rad_listen_t *listener, REQUEST *request);
 int proxy_tls_recv(rad_listen_t *listener);
 int proxy_tls_send(rad_listen_t *listener, REQUEST *request);
+#ifdef WITH_COA_TUNNEL
+int proxy_tls_send_reply(rad_listen_t *listener, REQUEST *request);
+int dual_tls_send_coa_request(rad_listen_t *listener, REQUEST *request);
+void listen_coa_free(void);
+void listen_coa_add(rad_listen_t *listener, char const *key);
+int listen_coa_find(REQUEST *request, char const *key);
+#endif
 #endif
 
 /*

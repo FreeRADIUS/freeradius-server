@@ -116,6 +116,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -i input_file   Read commands from 'input_file'.\n");
 	fprintf(output, "  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
 	fprintf(output, "  -q              Quiet mode.\n");
+	fprintf(output, "  -v              Show program version information.\n");
 
 	exit(status);
 }
@@ -367,7 +368,7 @@ int main(int argc, char **argv)
 		progname++;
 	}
 
-	while ((argval = getopt(argc, argv, "d:D:hi:e:Ef:n:qs:S")) != EOF) {
+	while ((argval = getopt(argc, argv, "d:D:hi:e:Ef:n:qs:vS")) != EOF) {
 		switch (argval) {
 		case 'd':
 			if (file) {
@@ -439,6 +440,11 @@ int main(int argc, char **argv)
 
 		case 'S':
 			secret = NULL;
+			break;
+
+		case 'v':
+			printf("%s\n", radmin_version);
+			exit(EXIT_SUCCESS);
 			break;
 		}
 	}

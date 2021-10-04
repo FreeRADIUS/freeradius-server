@@ -18,26 +18,62 @@ listen {
 
 server challenge {
 authorize {
+	#
+	#  OTP requires a password.
+	#
+	if (!User-Password) {
+		reject
+	}
 
 	#
-	#  If ther's no State attribute, then this is the request from
-	#  the user.
+	#  If there's no State attribute, then this is the first
+	#  request from the user.
 	#
 	if (!State) {
+		#
+		#  Set the authentication to use step 1.
 		update control {
 			Auth-Type := Step1
+
+			#
+			#  For testing we will just set the password to "hello".
+			#
+			#  Normally the password comes from "ldap" or "sql".
+			#
 			Cleartext-Password := "hello"
+
+#			ldap
+#			sql
+#			...
 		}
 	}
 	else {
 		#
-		#  Do authentication for step 2.
+		#  Check that the password looks like an OTP
+		#
+		if (User-Password !~ /[0-9]{6}/) {
+			reject
+		}
+
+		#
+		#  Set the authentication to use step 2.
 		#  Set the "known good" password to the number
 		#  saved in the session-state list.
 		#
 		update control {
 			Auth-Type := Step2
+
+			#
+			#  For testing, ensure that the user enters the same password.
+			#
+			#  Normally this section should look up a TOTP-Secret, and
+			#
 			Cleartext-Password := &session-state:Tmp-Integer-0
+
+			#
+			#  Normally this section should also set &control:TOTP-Secret, too.
+			#
+			TOTP-Password := &User-Password
 		}
 	}
 }
@@ -49,13 +85,19 @@ authenticate {
 		pap
 
 		#
-		#  Set the random number to save.
+		#  For testing, just use a 6 digit random OTP.
 		#
 		update session-state {
-			Tmp-Integer-0 := "%{randstr:n}"
+			Tmp-Integer-0 := "%{randstr:nnnnnn}"
 		}
+
+		#
+		#  For testing, tell the user what OTP to enter.
+		#
+		#  Don't do this in production...
+		#
 		update reply {
-			Reply-Message := &session-state:Tmp-Integer-0
+			Reply-Message := "Please enter OTP %{session-state:Tmp-Integer-0}"
 		}
 
 		#
@@ -68,9 +110,14 @@ authenticate {
 
 	Auth-Type Step2 {
 		#
-		#  Do PAP authentication with the password.
+		#  For testing, do PAP authentication with the password.
 		#
 		pap
+
+		#
+		#  Normally you'd do TOTP checks via the TOTP module.
+		#
+#		totp
 	}
 }
 }

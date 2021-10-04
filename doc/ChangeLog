@@ -1,4 +1,9 @@
-FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
+FreeRADIUS 3.0.25 Wed 29 Sep 2021 12:00:00 EDT urgency=low
+	Feature improvements
+
+	Bug fixes
+
+FreeRADIUS 3.0.24 Wed 29 Sep 2021 12:00:00 EDT urgency=medium
 	Feature improvements
 	* Add sanitizer options to configure script.
 	* Log information needed by Wireshark to decode TLS sessions.
@@ -7,7 +12,24 @@ FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	* Add new Acct-Status-Type Subsystem-On and Subsystem-Off.
 	  See dictionary.iana and
 	  https://freeradius.org/rfc/acct_status_type_subsystem.html
-	* add reject_unknown_intermediate_ca.  See mods-available/eap
+	* Add reject_unknown_intermediate_ca.  See mods-available/eap
+	* Add dynamic loading of certificates via TLS-Session-Cert-File.
+	  See raddb/certs/realms/README.md
+	* Add Server Name Indication (SNI) for outbound RadSec connections.
+	  See raddb/sites-available/tls, and the home server tls configuration.
+	* Support SNI for inbound RadSec connections.  Certificates will
+	  be loaded from "realm_dir" in the "tls" section.  SNI will be
+	  cached in the TLS-Server-Name-Indication attribute.
+	* Preliminary support for haproxy "PROXY" protocol.
+	  See sites-available/tls, "proxy_protocol" and doc/antora/modules/howto/pages/protocols/proxy/
+	* Generate parse errors in more circumstances when we know that the
+	  configuration is wrong.
+	* Add "weeklycounter" to sample sqlcounter configuration
+	* Add certificate attributes to the request list, even if the certificates
+	  have expired.
+	* The Simultaneous-Use code is now IPv6 aware, and can deal with
+	  NAS-IPv6-Address.
+	* Add dictionary.cambium
 
 	Bug fixes
 	* Fix crash in trustrouter module (#4115). Patch from Alejandro Perez
@@ -16,9 +38,24 @@ FreeRADIUS 3.0.24 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	* EAP-FAST will print errors and continue, rather than exiting
 	  when OpenSSL fails various internal sanity checks.
 	* Allow admin to manually change core limits, even when core limits
-	  are disabled.
+	  are disabled. Patch from Antonio Torres.
 	* Fix chunked rlm_rest HTTP body.  Closes #4131.
 	  Patch from Nathan Ward.
+	* Many fixes around the SQL ippool queries.conf and schema.
+	  Patches from Jorge Periera.
+	* Fix MySQL stored procedures.  PR #4170 from Terry Burton.
+	* Rework connection pool management for corner cases.
+	  Fixes #4161, #4162, #4163.
+	* Final fix for double free in #3188.
+	* Fix sqlcounter wrong memory free. PR #4192 from Jorge Pereira
+	* Accept slow writes from proxies over TCP, which allows the
+	  server to make more progress when it receives partial packets.
+	* Add 'weeklycounter' for rlm_sqlcounter.
+	* Outbound proxying over TCP / TLS is better able to deal with
+	  partial TCP reads, and has fewer issues with slow networks.
+	* Fix wrong data-type of Acct-Delay-Time in rlm_unix.
+	* Fix EAP-FAST PAC lifetime calculation.
+	* Print correct encoded packet length when debugging
 
 FreeRADIUS 3.0.23 Thu 10 Jun 2021 12:00:00 EDT urgency=low
 	Feature improvements

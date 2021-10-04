@@ -568,8 +568,7 @@ security {
 	#  rejects will be sent at 'cleanup_delay' time, when the request
 	#  is deleted from the internal cache of requests.
 	#
-	#  As of Version 3.0.5, "reject_delay" has sub-second resolution.
-	#  e.g. "reject_delay =  1.4" seconds is possible.
+	#  This number can be a decimal, e.g. 3.4
 	#
 	#  Useful ranges: 1 to 5
 	reject_delay = 1
@@ -784,19 +783,19 @@ modules {
 	#  directory from start to finish.  Which means that the
 	#  modules are read off of disk randomly.
 	#
-	#  As of 3.0.18, you can list individual modules *before* the
-	#  directory inclusion.  Those modules will be loaded first.
-	#  Then, when the directory is read, those modules will be
-	#  skipped and not read twice.
+	#  You can list individual modules *before* the directory
+	#  inclusion.  Those modules will be loaded first.  Then, when
+	#  the directory is read, those modules will be skipped and
+	#  not read twice.
 	#
 #	$INCLUDE mods-enabled/sql
 
 	#
-	#  As of 3.0, modules are in mods-enabled/.  Files matching
-	#  the regex /[a-zA-Z0-9_.]+/ are loaded.  The modules are
-	#  initialized ONLY if they are referenced in a processing
-	#  section, such as authorize, authenticate, accounting,
-	#  pre/post-proxy, etc.
+	#  All modules are in ther mods-enabled/ directory.  Files
+	#  matching the regex /[a-zA-Z0-9_.]+/ are read.  The
+	#  modules are initialized ONLY if they are referenced in a
+	#  processing section, such as authorize, authenticate,
+	#  accounting, pre/post-proxy, etc.
 	#
 	$INCLUDE mods-enabled/
 }

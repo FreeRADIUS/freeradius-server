@@ -329,7 +329,7 @@ ATTRIBUTE	Alc-Nas-Filter-Rule-Shared		158	string
 
 # They represent a per host customization of a generic filter policy: only
 # traffic to/from the subscriber host will match against these entries
-ATTRIBUTE	Alc-Ascend-Data-Filter-Host-Spec	159	string
+ATTRIBUTE	Alc-Ascend-Data-Filter-Host-Spec	159	abinary
 
 # Relative Session-Timeout
 ATTRIBUTE	Alc-Relative-Session-Timeout		160	integer

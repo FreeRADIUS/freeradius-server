@@ -40,7 +40,7 @@ RCSID("$Id$")
  * @return The amount of data we wrote to the buffer or -1 if output buffer
  *	was too small.
  */
-size_t fr_base64_encode(char *out, size_t outlen, uint8_t const *in, size_t inlen)
+ssize_t fr_base64_encode(char *out, size_t outlen, uint8_t const *in, size_t inlen)
 {
 	static char const b64str[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 

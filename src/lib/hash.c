@@ -40,12 +40,12 @@ RCSID("$Id$")
  */
 #define FR_HASH_NUM_BUCKETS (64)
 
-typedef struct fr_hash_entry_t {
-	struct fr_hash_entry_t *next;
+struct fr_hash_entry_s {
+	fr_hash_entry_t *next;
 	uint32_t	reversed;
 	uint32_t	key;
 	void const 	*data;
-} fr_hash_entry_t;
+};
 
 
 struct fr_hash_table_t {
@@ -618,6 +618,81 @@ int fr_hash_table_walk(fr_hash_table_t *ht,
 	}
 
 	return 0;
+}
+
+/** Iterate over entries in a hash table
+ *
+ * @note If the hash table is modified the iterator should be considered invalidated.
+ *
+ * @param[in] ht	to iterate over.
+ * @param[in] iter	Pointer to an iterator struct, used to maintain
+ *			state between calls.
+ * @return
+ *	- User data.
+ *	- NULL if at the end of the list.
+ */
+void *fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter)
+{
+	fr_hash_entry_t *node;
+	uint32_t	i;
+	void		*out;
+
+	/*
+	 *	Return the next element in the bucket
+	 */
+	if (iter->node != &ht->null) {
+		node = iter->node;
+		iter->node = node->next;
+
+		memcpy(&out, &node->data, sizeof(out)); /* const issues */
+		return out;
+	}
+
+	if (iter->bucket == 0) return NULL;
+
+	/*
+	 *	We might have to go through multiple empty
+	 *	buckets to find one that contains something
+	 *	we should return
+	 */
+	i = iter->bucket - 1;
+	for (;;) {
+		if (!ht->buckets[i]) fr_hash_table_fixup(ht, i);
+
+		node = ht->buckets[i];
+		if (node == &ht->null) {
+			if (i == 0) break;
+			i--;
+			continue;	/* This bucket was empty too... */
+		}
+
+		iter->node = node->next;		/* Store the next one to examine */
+		iter->bucket = i;
+
+		memcpy(&out, &node->data, sizeof(out)); /* const issues */
+		return out;
+	}
+	iter->bucket = i;
+
+	return NULL;
+}
+
+/** Initialise an iterator
+ *
+ * @note If the hash table is modified the iterator should be considered invalidated.
+ *
+ * @param[in] ht	to iterate over.
+ * @param[out] iter	to initialise.
+ * @return
+ *	- The first entry in the hash table.
+ *	- NULL if the hash table is empty.
+ */
+void *fr_hash_table_iter_init(fr_hash_table_t *ht, fr_hash_iter_t *iter)
+{
+	iter->bucket = ht->num_buckets;
+	iter->node = &ht->null;
+
+	return fr_hash_table_iter_next(ht, iter);
 }
 
 

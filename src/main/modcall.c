@@ -1812,6 +1812,14 @@ static modcallable *do_compile_modswitch (modcallable *parent, rlm_components_t 
 		return NULL;
 	}
 
+	/*
+	 *	Warn about confusing things.
+	 */
+	if ((vpt->type == TMPL_TYPE_ATTR) && (*name2 != '&')) {
+		WARN("%s[%d]: Please change \"switch %s\" to \"switch &%s\"",
+		     cf_section_filename(cs), cf_section_lineno(cs),
+		     name2, name2);
+	}
 
 	/*
 	 *	Walk through the children of the switch section,

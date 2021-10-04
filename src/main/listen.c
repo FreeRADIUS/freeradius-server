@@ -77,6 +77,10 @@ static int command_write_magic(int newfd, listen_socket_t *sock);
 #endif
 #endif
 
+#ifdef WITH_COA_TUNNEL
+static int listen_coa_init(void);
+#endif
+
 static fr_protocol_t master_listen[];
 
 #ifdef WITH_DYNAMIC_CLIENTS
@@ -349,6 +353,9 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 
 static int listen_bind(rad_listen_t *this);
 
+#ifdef WITH_COA_TUNNEL
+static void listener_coa_update(rad_listen_t *this, VALUE_PAIR *vps);
+#endif
 
 /*
  *	Process and reply to a server-status request.
@@ -413,6 +420,10 @@ int rad_status_server(REQUEST *request)
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
 			request->reply->code = PW_CODE_ACCESS_ACCEPT;
+
+#ifdef WITH_COA_TUNNEL
+			if (request->listener->send_coa) listener_coa_update(request->listener, request->packet->vps);
+#endif
 			break;
 
 		case RLM_MODULE_FAIL:
@@ -440,6 +451,10 @@ int rad_status_server(REQUEST *request)
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
 			request->reply->code = PW_CODE_ACCOUNTING_RESPONSE;
+
+#ifdef WITH_COA_TUNNEL
+			if (request->listener->send_coa) listener_coa_update(request->listener, request->packet->vps);
+#endif
 			break;
 
 		default:
@@ -611,6 +626,79 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	return 1;
 }
 
+#ifdef WITH_TLS
+typedef struct {
+	char const	*name;
+	SSL_CTX		*ctx;
+} fr_realm_ctx_t;		/* hack from tls. */
+
+static int tls_sni_callback(SSL *ssl, UNUSED int *al, void *arg)
+{
+	fr_tls_server_conf_t *conf = arg;
+	char const *name, *p;
+	int type;
+	fr_realm_ctx_t my_r, *r;
+	REQUEST *request;
+	char buffer[PATH_MAX];
+
+	/*
+	 *	No SNI, that's fine.
+	 */
+	type = SSL_get_servername_type(ssl);
+	if (type < 0) return SSL_TLSEXT_ERR_OK;
+
+	/*
+	 *	No realms configured, just use the default context.
+	 */
+	if (!conf->realms) return SSL_TLSEXT_ERR_OK;
+
+	name = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+	if (!name) return SSL_TLSEXT_ERR_OK;
+
+	/*
+	 *	RFC Section 6066 Section 3 says that the names are
+	 *	ASCII, without a trailing dot.  i.e. punycode.
+	 */
+	for (p = name; *p != '\0'; p++) {
+		if (*p == '-') continue;
+		if (*p == '.') continue;
+		if ((*p >= 'A') && (*p <= 'Z')) continue;
+		if ((*p >= 'a') && (*p <= 'z')) continue;
+		if ((*p >= '0') && (*p <= '9')) continue;
+
+		/*
+		 *	Anything else, fail.
+		 */
+		return SSL_TLSEXT_ERR_ALERT_FATAL;
+	}
+
+	/*
+	 *	Too long, fail.
+	 */
+	if ((p - name) > 255) return SSL_TLSEXT_ERR_ALERT_FATAL;
+
+	snprintf(buffer, sizeof(buffer), "%s/%s.pem", conf->realm_dir, name);
+
+	my_r.name = buffer;
+	r = fr_hash_table_finddata(conf->realms, &my_r);
+
+	/*
+	 *	If found, switch certs.  Otherwise use the default
+	 *	one.
+	 */
+	if (r) (void) SSL_set_SSL_CTX(ssl, r->ctx);
+		
+	/*
+	 *	Set an attribute saying which server has been selected.
+	 */
+	request = (REQUEST *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+	if (request) {
+		(void) pair_make_config("TLS-Server-Name-Indication", name, T_OP_SET);
+	}
+
+	return SSL_TLSEXT_ERR_OK;
+}
+#endif
 
 static int dual_tcp_accept(rad_listen_t *listener)
 {
@@ -766,11 +854,52 @@ static int dual_tcp_accept(rad_listen_t *listener)
 
 #ifdef WITH_TLS
 		if (this->tls) {
+			/*
+			 *	Set up SNI callback.  We don't do it
+			 *	in the main TLS code, because EAP
+			 *	doesn't need or use SNI.
+			 */
+			SSL_CTX_set_tlsext_servername_callback(this->tls->ctx, tls_sni_callback);
+			SSL_CTX_set_tlsext_servername_arg(this->tls->ctx, this->tls);
+
 			this->recv = dual_tls_recv;
 			this->send = dual_tls_send;
 		}
 #endif
 	}
+
+#ifdef WITH_COA_TUNNEL
+	/*
+	 *	Originate CoA requests to a NAS.
+	 */
+	if (this->send_coa) {
+		home_server_t *home;
+
+		rad_assert(this->type != RAD_LISTEN_PROXY);
+
+		this->proxy_send = dual_tls_send_coa_request;
+		this->proxy_encode = master_listen[RAD_LISTEN_PROXY].encode;
+		this->proxy_decode = master_listen[RAD_LISTEN_PROXY].decode;
+
+		/*
+		 *	Automatically create a home server for this
+		 *	client.  There MAY be one already one for that
+		 *	IP in the configuration files, but it will not
+		 *	have this particular port.
+		 */
+		sock->home = home = talloc_zero(this, home_server_t);
+		home->ipaddr = sock->other_ipaddr;
+		home->port = sock->other_port;
+		home->proto = sock->proto;
+		home->secret = sock->client->secret;
+
+		home->coa_irt = this->coa_irt;
+		home->coa_mrt = this->coa_mrt;
+		home->coa_mrc = this->coa_mrc;
+		home->coa_mrd = this->coa_mrd;
+		home->recv_coa_server = this->server;
+	}
+#endif
 
 	/*
 	 *	FIXME: set O_NONBLOCK on the accept'd fd.
@@ -831,6 +960,12 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 #ifdef WITH_TCP
 	if (this->dual) {
 		ADDSTRING("+acct");
+	}
+#endif
+
+#ifdef WITH_COA_TUNNEL
+	if (this->send_coa) {
+		ADDSTRING("+coa");
 	}
 #endif
 
@@ -969,6 +1104,15 @@ static CONF_PARSER limit_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+#ifdef WITH_COA_TUNNEL
+static CONF_PARSER coa_config[] = {
+	{ "irt",  FR_CONF_OFFSET(PW_TYPE_INTEGER, rad_listen_t, coa_irt), STRINGIFY(2) },
+	{ "mrt",  FR_CONF_OFFSET(PW_TYPE_INTEGER, rad_listen_t, coa_mrt), STRINGIFY(16) },
+	{ "mrc",  FR_CONF_OFFSET(PW_TYPE_INTEGER, rad_listen_t, coa_mrc), STRINGIFY(5) },
+	{ "mrd",  FR_CONF_OFFSET(PW_TYPE_INTEGER, rad_listen_t, coa_mrd), STRINGIFY(30) },
+	CONF_PARSER_TERMINATOR
+};
+#endif
 
 #ifdef WITH_TCP
 /*
@@ -1055,6 +1199,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 		} else if (strcmp(proto, "tcp") == 0) {
 			sock->proto = IPPROTO_TCP;
+
 		} else {
 			cf_log_err_cs(cs,
 				   "Unknown proto name \"%s\"", proto);
@@ -1088,6 +1233,12 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			}
 
 			/*
+			 *	Add support for http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
+			 */
+			rcode = cf_item_parse(cs, "proxy_protocol", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &this->proxy_protocol), NULL);
+			if (rcode < 0) return -1;
+
+			/*
 			 *	If unset, set to default.
 			 */
 			if (listen_port == 0) listen_port = PW_RADIUS_TLS_PORT;
@@ -1108,7 +1259,6 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 			rcode = cf_item_parse(cs, "check_client_connections", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &this->check_client_connections), "no");
 			if (rcode < 0) return -1;
-
 		}
 #else  /* WITH_TLS */
 		/*
@@ -1353,6 +1503,11 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		 */
 		this->recv = dual_tcp_accept;
 
+		/*
+		 *	@todo - add a free function?  Though this only
+		 *	matters when we're tearing down the server, so
+		 *	perhaps it's less relevant.
+		 */
 		this->children = rbtree_create(this, listener_cmp, NULL, 0);
 		if (!this->children) {
 			cf_log_err_cs(cs, "Failed to create child list for TCP socket.");
@@ -1445,7 +1600,7 @@ static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
 static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 {
 	rad_assert(request->proxy_listener == listener);
-	rad_assert(listener->send == proxy_socket_send);
+	rad_assert(listener->proxy_send == proxy_socket_send);
 
 	if (rad_send(request->proxy, NULL,
 		     request->home_server->secret) < 0) {
@@ -1769,6 +1924,10 @@ static int do_proxy(REQUEST *request)
 	vp = fr_pair_find_by_num(request->config, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY);
 	if (!vp) vp = fr_pair_find_by_num(request->config, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY);
 
+#ifdef WITH_COA_TUNNEL
+	if (!vp) vp = fr_pair_find_by_num(request->config, PW_PROXY_TO_ORIGINATING_REALM, 0, TAG_ANY);
+#endif
+
 	if (!vp) return 0;
 
 	return 1;
@@ -2088,18 +2247,66 @@ static int proxy_socket_recv(rad_listen_t *listener)
  */
 static int proxy_socket_tcp_recv(rad_listen_t *listener)
 {
+	int rcode;
 	RADIUS_PACKET	*packet;
 	listen_socket_t	*sock = listener->data;
-	char		buffer[128];
+	char		buffer[256];
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
-	packet = fr_tcp_recv(listener->fd, 0);
-	if (!packet) {
-		listener->status = RAD_LISTEN_STATUS_EOL;
-		radius_update_listener(listener);
+	if (!sock->packet) {
+		sock->packet = rad_alloc(sock, false);
+		if (!sock->packet) return 0;
+
+		sock->packet->sockfd = listener->fd;
+		sock->packet->src_ipaddr = sock->other_ipaddr;
+		sock->packet->src_port = sock->other_port;
+		sock->packet->dst_ipaddr = sock->my_ipaddr;
+		sock->packet->dst_port = sock->my_port;
+		sock->packet->proto = sock->proto;
+	}
+
+	packet = sock->packet;
+
+	rcode = fr_tcp_read_packet(packet, 0);
+
+	/*
+	 *	Still only a partial packet.  Put it back, and return,
+	 *	so that we'll read more data when it's ready.
+	 */
+	if (rcode == 0) {
 		return 0;
 	}
+
+	if (rcode == -1) {	/* error reading packet */
+		ERROR("Invalid packet from %s port %d, closing socket: %s",
+		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
+		       packet->src_port, fr_strerror());
+	}
+
+	if (rcode < 0) {	/* error or connection reset */
+		listener->status = RAD_LISTEN_STATUS_EOL;
+
+		/*
+		 *	Tell the event handler that an FD has disappeared.
+		 */
+		DEBUG("Home server %s port %d has closed connection",
+		      ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
+		      packet->src_port);
+
+		radius_update_listener(listener);
+
+		/*
+		 *	Do NOT free the listener here.  It's in use by
+		 *	a request, and will need to hang around until
+		 *	all of the requests are done.
+		 *
+		 *	It is instead free'd in remove_from_request_hash()
+		 */
+		return 0;
+	}
+
+	sock->packet = NULL;	/* we have no need for more partial reads */
 
 	/*
 	 *	FIXME: Client MIB updates?
@@ -2128,10 +2335,6 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	packet->src_ipaddr = sock->other_ipaddr;
-	packet->src_port = sock->other_port;
-	packet->dst_ipaddr = sock->my_ipaddr;
-	packet->dst_port = sock->my_port;
 
 	/*
 	 *	FIXME: Have it return an indication of packets that
@@ -2164,6 +2367,8 @@ static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 #endif
 
 	if (!request->reply->code) return 0;
+
+	if (request->reply->data) return 0; /* already encoded */
 
 	if (rad_encode(request->reply, request->packet, request->client->secret) < 0) {
 		RERROR("Failed encoding packet: %s", fr_strerror());
@@ -2827,8 +3032,15 @@ static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type)
 	this->recv = master_listen[this->type].recv;
 	this->send = master_listen[this->type].send;
 	this->print = master_listen[this->type].print;
-	this->encode = master_listen[this->type].encode;
-	this->decode = master_listen[this->type].decode;
+
+	if (type != RAD_LISTEN_PROXY) {
+		this->encode = master_listen[this->type].encode;
+		this->decode = master_listen[this->type].decode;
+	} else {
+		this->proxy_send = master_listen[this->type].send;
+		this->proxy_encode = master_listen[this->type].encode;
+		this->proxy_decode = master_listen[this->type].decode;
+	}
 
 	talloc_set_destructor(this, _listener_free);
 
@@ -2853,7 +3065,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 
 	if (!home) return NULL;
 
-	rad_assert(home->server == NULL); /* we only open real sockets */
+	rad_assert(home->virtual_server == NULL); /* we only open real sockets */
 
 	if ((home->limit.max_connections > 0) &&
 	    (home->limit.num_connections >= home->limit.max_connections)) {
@@ -2916,17 +3128,71 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 #ifdef WITH_TCP
 #ifdef WITH_TLS
 	if ((home->proto == IPPROTO_TCP) && home->tls) {
-		DEBUG("Trying SSL to port %d\n", home->port);
+		DEBUG("(TLS) Trying new outgoing proxy connection to %s", buffer);
+
+		/*
+		 *	Set SNI, if configured.
+		 *
+		 *	The OpenSSL API says the filename is "char
+		 *	const *", but some versions have it as "void
+		 *	*", without the "const".  So we un-const it
+		 *	here through various C magic.
+		 */
+		if (home->tls->client_hostname) {
+			(void) SSL_set_tlsext_host_name(sock->ssn->ssl, (void *) (uintptr_t) "home->tls->client_hostname");
+		}
+
+		/*
+		 *	This is blocking.  :(
+		 */
 		sock->ssn = tls_new_client_session(sock, home->tls, this->fd, &sock->certs);
 		if (!sock->ssn) {
-			ERROR("Failed starting SSL to new proxy socket '%s'", buffer);
+			ERROR("(TLS) Failed opening connection on proxy socket '%s'", buffer);
 			home->last_failed_open = now;
 			listen_free(&this);
 			return NULL;
 		}
 
 		this->recv = proxy_tls_recv;
-		this->send = proxy_tls_send;
+		this->proxy_send = proxy_tls_send;
+
+#ifdef WITH_COA_TUNNEL
+		if (home->recv_coa) {
+			RADCLIENT *client;
+
+			this->send_coa = true;
+
+			/*
+			 *	Don't set this->send_coa, as we are
+			 *	not sending CoA-Request packets to
+			 *	this home server.  Instead, we are
+			 *	receiving CoA packets from this home
+			 *	server.
+			 */
+			this->send = proxy_tls_send_reply;
+			this->encode = master_listen[RAD_LISTEN_AUTH].encode;
+			this->decode = master_listen[RAD_LISTEN_AUTH].decode;
+
+			/*
+			 *	Automatically create a client for this
+			 *	home server.  There MAY be one already
+			 *	one for that IP in the configuration
+			 *	files, but there's no guarantee that
+			 *	it exists.
+			 *
+			 *	The only real reason to use an
+			 *	existing client is to track various
+			 *	statistics.
+			 */
+			sock->client = client = talloc_zero(sock, RADCLIENT);
+			client->ipaddr = sock->other_ipaddr;
+			client->src_ipaddr = sock->my_ipaddr;
+			client->longname = client->shortname = talloc_typed_strdup(client, home->name);
+			client->secret = talloc_typed_strdup(client, home->secret);
+			client->nas_type = "none";
+			client->server = talloc_typed_strdup(client, home->recv_coa_server);
+		}
+#endif
 	}
 #endif
 #endif
@@ -2973,9 +3239,15 @@ static const FR_NAME_NUMBER listen_compare[] = {
 	{ "status",	RAD_LISTEN_NONE },
 #endif
 	{ "auth",	RAD_LISTEN_AUTH },
+#ifdef WITH_COA_TUNNEL
+	{ "auth+coa",	RAD_LISTEN_AUTH },
+#endif
 #ifdef WITH_ACCOUNTING
 	{ "acct",	RAD_LISTEN_ACCT },
 	{ "auth+acct",	RAD_LISTEN_AUTH },
+#ifdef WITH_COA_TUNNEL
+	{ "auth+acct+coa",	RAD_LISTEN_AUTH },
+#endif
 #endif
 #ifdef WITH_DETAIL
 	{ "detail",	RAD_LISTEN_DETAIL },
@@ -3013,6 +3285,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	char const	*value;
 	fr_dlhandle	handle;
 	CONF_SECTION	*server_cs;
+	char const	*p;
 	char		buffer[32];
 
 	cp = cf_pair_find(cs, "type");
@@ -3123,10 +3396,20 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 
 #ifdef WITH_TCP
 	/*
-	 *	Special-case '+' for "auth+acct".
+	 *	Add special flags '+' for "auth+acct".
 	 */
-	if (strchr(listen_type, '+') != NULL) {
-		this->dual = true;
+	p = strchr(listen_type, '+');
+	if (p) {
+		if (strncmp(p + 1, "acct", 4) == 0) {
+			this->dual = true;
+#ifdef WITH_COA_TUNNEL
+			p += 5;
+		}
+
+		if (strcmp(p, "+coa") == 0) {
+			this->send_coa = true;
+#endif
+		}
 	}
 #endif
 
@@ -3145,6 +3428,44 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 		listen_free(&this);
 		return NULL;
 	}
+
+#ifdef WITH_COA_TUNNEL
+	if (this->send_coa) {
+		CONF_SECTION	*coa;
+
+		if (!this->tls) {
+			cf_log_err_cs(cs, "TLS is required in order to use \"+coa\"");
+			listen_free(&this);
+			return NULL;
+		}
+
+		/*
+		 *	Parse the configuration if it exists.
+		 */
+		coa = cf_section_sub_find(cs, "coa");
+		if (coa) {
+			rcode = cf_section_parse(cs, this, coa_config);
+			if (rcode < 0) {
+				listen_free(&this);
+				return NULL;
+			}
+		}
+
+		/*
+		 *	Use the same boundary checks as for home
+		 *	server. See realm_home_server_sanitize().
+		 */
+		FR_INTEGER_BOUND_CHECK("coa_irt", this->coa_irt, >=, 1);
+		FR_INTEGER_BOUND_CHECK("coa_irt", this->coa_irt, <=, 5);
+
+		FR_INTEGER_BOUND_CHECK("coa_mrc", this->coa_mrc, <=, 20);
+
+		FR_INTEGER_BOUND_CHECK("coa_mrt", this->coa_mrt, <=, 30);
+
+		FR_INTEGER_BOUND_CHECK("coa_mrd", this->coa_mrd, >=, 5);
+		FR_INTEGER_BOUND_CHECK("coa_mrd", this->coa_mrd, <=, 60);
+	}
+#endif	/* WITH_COA_TUNNEL */
 
 	cf_log_info(cs, "}");
 
@@ -3452,6 +3773,10 @@ add_sockets:
 	 */
 	if (!*head) return -1;
 
+#ifdef WITH_COA_TUNNEL
+	if (listen_coa_init() < 0) return -1;
+#endif
+
 	return 0;
 }
 
@@ -3537,3 +3862,334 @@ rad_listen_t *listener_find_byipaddr(fr_ipaddr_t const *ipaddr, uint16_t port, i
 
 	return NULL;
 }
+
+#ifdef WITH_COA_TUNNEL
+/*
+ *	This is easier than putting ifdef's everywhere.  And
+ *	realistically, there aren't many systems which have OpenSSL,
+ *	but not pthreads.
+ */
+#ifndef HAVE_PTHREAD_H
+#error CoA tunnels require pthreads
+#endif
+
+#include <pthread.h>
+
+static rbtree_t *coa_tree = NULL;
+
+/*
+ *	We have an RB tree of keys, and within each key, a hash table
+ *	of one or more listeners associated with that key.
+ */
+typedef struct {
+	char const     	*key;
+	fr_hash_table_t	*ht;
+
+	pthread_mutex_t	mutex;		/* per key, to lower contention */
+} coa_key_t;
+
+typedef struct {
+	coa_key_t	*coa_key;
+	rad_listen_t	*listener;
+} coa_entry_t;
+
+static int coa_key_cmp(void const *one, void const *two)
+{
+	coa_key_t const *a = one;
+	coa_key_t const *b = two;
+
+	return strcmp(a->key, b->key);
+}
+
+static void coa_key_free(void *data)
+{
+	coa_key_t *coa_key = data;
+
+	pthread_mutex_destroy(&coa_key->mutex);
+	fr_hash_table_free(coa_key->ht);
+	talloc_free(coa_key);
+}
+
+static uint32_t coa_entry_hash(void const *data)
+{
+	coa_entry_t const *a = (coa_entry_t const *) data;
+
+	return fr_hash(&a->listener, sizeof(a->listener));
+}
+
+static int coa_entry_cmp(void const *one, void const *two)
+{
+	coa_entry_t const *a = one;
+	coa_entry_t const *b = two;
+
+	return memcmp(&a->listener, &b->listener, sizeof(a->listener));
+}
+
+/*
+ *	Delete the entry, without holding the parents lock.
+ */
+static void coa_entry_free(void *data)
+{
+	talloc_free(data);
+}
+
+static int coa_entry_destructor(coa_entry_t *entry)
+{
+	pthread_mutex_lock(&entry->coa_key->mutex);
+	fr_hash_table_delete(entry->coa_key->ht, entry);
+	pthread_mutex_unlock(&entry->coa_key->mutex);
+
+	return 0;
+}
+
+static int listen_coa_init(void)
+{
+	/*
+	 *	We will be looking up listeners by key.  Each key
+	 *	points us to a list of listeners.  Each key has it's
+	 *	own mutex, so that it's thread-safe.
+	 */
+	coa_tree = rbtree_create(NULL, coa_key_cmp, coa_key_free, RBTREE_FLAG_LOCK);
+	if (!coa_tree) {
+		ERROR("Failed creating internal tracking tree for Originating-Realm-Key");
+		return -1;
+	}
+
+	return 0;
+}
+
+void listen_coa_free(void)
+{
+	/*
+	 *	If we are freeing the tree, then all of the listeners
+	 *	must have been freed first.
+	 */
+	rad_assert(rbtree_num_elements(coa_tree) == 0);
+	rbtree_free(coa_tree);
+	coa_tree = NULL;
+}
+
+/*
+ *	Adds a listener to the hash of listeners, based on key.
+ */
+void listen_coa_add(rad_listen_t *this, char const *key)
+{
+	int tries = 0;
+	coa_key_t my_key, *coa_key;
+	coa_entry_t *entry;
+
+	rad_assert(this->send_coa);
+	rad_assert(this->parent);
+	rad_assert(!this->key);
+
+	/*
+	 *	Find the key.  If we can't find it, then create it.
+	 */
+	my_key.key = key;
+
+retry:
+	coa_key = rbtree_finddata(coa_tree, &my_key);
+	if (!coa_key) {
+		coa_key = talloc_zero(NULL, coa_key_t);
+		if (!coa_key) return;
+		coa_key->key = talloc_strdup(coa_key, key);
+		if (!coa_key->key) {
+		fail:
+			talloc_free(coa_key);
+			return;
+		}
+
+		/*
+		 *	Create the hash table of listeners.
+		 */
+		coa_key->ht = fr_hash_table_create(coa_entry_hash, coa_entry_cmp, coa_entry_free);
+		if (!coa_key->ht) goto fail;
+
+		if (!rbtree_insert(coa_tree, coa_key)) {
+			talloc_free(coa_key);
+
+			/*
+			 *	The lookups are mutex protected, but
+			 *	if there's time between the lookup and
+			 *	the insert, another thread may have
+			 *	created the node.  In which case we
+			 *	try again.
+			 */
+			if (tries < 3) goto retry;
+			tries++;
+			return;
+		}
+
+		(void) pthread_mutex_init(&coa_key->mutex, NULL);
+	}
+
+	/*
+	 *	No need to strdup() this, coa_key will only be removed
+	 *	after the listener has been removed.
+	 */
+	if (!this->key) this->key = coa_key->key;
+
+	entry = talloc_zero(this, coa_entry_t);
+	if (!entry) return;
+	talloc_set_destructor(entry, coa_entry_destructor);
+
+	entry->coa_key = coa_key;
+	entry->listener = this;
+
+	/*
+	 *	Insert the entry into the hash table.
+	 */
+	pthread_mutex_lock(&coa_key->mutex);
+	fr_hash_table_insert(coa_key->ht, entry);
+	pthread_mutex_unlock(&coa_key->mutex);
+}
+
+/*
+ *	Find an active listener by key.
+ *
+ *	This function will update request->home_server, and
+ *	request->proxy_listener.
+ */
+int listen_coa_find(REQUEST *request, char const *key)
+{
+	coa_key_t my_key, *coa_key;
+	rad_listen_t *this, *found;
+	listen_socket_t *sock;
+	fr_hash_iter_t iter;
+
+	/*
+	 *	Find the key.  If we can't find it, then error out.
+	 */
+	memcpy(&my_key.key, &key, sizeof(key)); /* const issues */
+	coa_key = rbtree_finddata(coa_tree, &my_key);
+	if (!coa_key) return -1;
+
+	/*
+	 *	We've found it.  Now find a listener which has free
+	 *	IDs.  i.e. where the number of used IDs is less tahn
+	 *	256.
+	 */
+	found = NULL;
+	pthread_mutex_lock(&coa_key->mutex);
+	for (this = fr_hash_table_iter_init(coa_key->ht, &iter);
+	     this != NULL;
+	     this = fr_hash_table_iter_next(coa_key->ht, &iter)) {
+		if (this->dead) continue;
+
+		if (!found) {
+			if (this->num_ids_used < 256) {
+				found = this;
+			}
+
+			/*
+			 *	Skip listeners which have all used IDs.
+			 */
+			continue;
+		}
+
+		/*
+		 *	Try to spread the load across all available
+		 *	sockets.
+		 */
+		if (found->num_ids_used > this->num_ids_used) {
+			found = this;
+			continue;
+		}
+
+		/*
+		 *	If they are equal, pick one at random.
+		 *
+		 *	@todo - pick one with equal probability from
+		 *	among the ones with the same IDs used.  This
+		 *	algorithm prefers the first one.
+		 */
+		if (found->num_ids_used == this->num_ids_used) {
+			if ((fr_rand() & 0x01) == 0) {
+				found = this;
+				continue;
+			}
+		}
+	}
+
+	pthread_mutex_unlock(&coa_key->mutex);
+	if (!found) return -1;
+
+	request->proxy_listener = found;
+
+	sock = found->data;
+	request->home_server = sock->home;
+	return 0;
+}
+
+/*
+ *	Check for an active listener by key.
+ */
+static bool listen_coa_exists(rad_listen_t *this, char const *key)
+{
+	coa_key_t my_key, *coa_key;
+	coa_entry_t my_entry, *entry;
+
+	/*
+	 *	Find the key.  If we can't find it, then error out.
+	 */
+	memcpy(&my_key.key, &key, sizeof(key)); /* const issues */
+	coa_key = rbtree_finddata(coa_tree, &my_key);
+	if (!coa_key) return false;
+
+	my_entry.listener = this;
+	pthread_mutex_lock(&coa_key->mutex);
+	entry = fr_hash_table_finddata(coa_key->ht, &my_entry);
+	pthread_mutex_unlock(&coa_key->mutex);
+
+	return (entry != NULL);
+}
+
+/*
+ *	Delete a listener entry.
+ */
+static void listen_coa_delete(rad_listen_t *this, char const *key)
+{
+	coa_key_t my_key, *coa_key;
+	coa_entry_t my_entry;
+
+	/*
+	 *	Find the key.  If we can't find it, then error out.
+	 */
+	memcpy(&my_key.key, &key, sizeof(key)); /* const issues */
+	coa_key = rbtree_finddata(coa_tree, &my_key);
+	if (!coa_key) return;
+
+	my_entry.listener = this;
+	pthread_mutex_lock(&coa_key->mutex);
+	(void) fr_hash_table_delete(coa_key->ht, &my_entry);
+	pthread_mutex_unlock(&coa_key->mutex);
+}
+
+
+static void listener_coa_update(rad_listen_t *this, VALUE_PAIR *vps)
+{
+	VALUE_PAIR *vp;
+	vp_cursor_t cursor;
+
+	fr_cursor_init(&cursor, &vps);
+
+	/*
+	 *	Add or delete Operator-Name realms
+	 */
+	while ((vp = fr_cursor_next_by_num(&cursor, PW_OPERATOR_NAME, 0, TAG_ANY)) != NULL) {
+		if (vp->vp_length <= 1) continue;
+
+		if (vp->vp_strvalue[0] == '+') {
+			if (listen_coa_exists(this, vp->vp_strvalue)) continue;
+
+			listen_coa_add(this, vp->vp_strvalue);
+			continue;
+		}
+
+		if (vp->vp_strvalue[0] == '-') {
+			listen_coa_delete(this, vp->vp_strvalue);
+			continue;
+		}
+	}
+}
+#endif

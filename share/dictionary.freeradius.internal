@@ -286,6 +286,8 @@ ATTRIBUTE	SSHA3-512-Password			1185	octets
 
 ATTRIBUTE	MS-CHAP-Peer-Challenge			1192	octets
 ATTRIBUTE	Home-Server-Name			1193	string
+ATTRIBUTE	Originating-Realm-Key			1194	string
+ATTRIBUTE	Proxy-To-Originating-Realm		1195	string
 
 ATTRIBUTE	TOTP-Secret				1194	string # base32 encoded
 ATTRIBUTE	TOTP-Key				1195	octets # raw key
@@ -577,7 +579,7 @@ VALUE	TLS-Cache-Method		refresh			4
 
 # 1939: reserved for future cert attributes
 
-# 1940 - 1949: reserved for TLS session caching, mostly in 4.0
+# 1940 - 1959: reserved for TLS session caching, mostly in 4.0
 
 ATTRIBUTE	TLS-Session-ID				1940	octets
 ATTRIBUTE	TLS-Session-Data			1942	octets
@@ -594,8 +596,13 @@ ATTRIBUTE	TLS-Cache-Filename			1946	string
 ATTRIBUTE	TLS-Session-Version			1947	string
 ATTRIBUTE	TLS-Session-Cipher-Suite		1948	string
 
+ATTRIBUTE	TLS-Session-Cert-File			1949	string
+ATTRIBUTE	TLS-Session-Cert-Private-Key-File	1950	string
+
+ATTRIBUTE	TLS-Server-Name-Indication		1951	string
+
 #
-#	Range:	1950-2099
+#	Range:	1960-2099
 #		Free
 #
 #	Range:	2100-2199

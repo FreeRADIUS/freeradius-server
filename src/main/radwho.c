@@ -56,6 +56,15 @@ char const *radacct_dir = NULL;
 
 bool log_stripped_names;
 
+static char const *radwho_version = "radwho version " RADIUSD_VERSION_STRING
+#ifdef RADIUSD_VERSION_COMMIT
+" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
+#endif
+#ifndef ENABLE_REPRODUCIBLE_BUILDS
+", built on " __DATE__ " at " __TIME__
+#endif
+;
+
 /*
  *	Global, for log.c to use.
  */
@@ -182,6 +191,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -S                   Hide shell users from radius.\n");
 	fprintf(output, "  -u <user>            Show entries matching the given user.\n");
 	fprintf(output, "  -U <user>            Like -u, but case-sensitive.\n");
+	fprintf(output, "  -v                   Show program version information.\n");
 	fprintf(output, "  -Z                   Include accounting stop information in radius output.  Requires -R.\n");
 	exit(status);
 }
@@ -224,7 +234,7 @@ int main(int argc, char **argv)
 
 	talloc_set_log_stderr();
 
-	while((c = getopt(argc, argv, "d:D:fF:nN:sSipP:crRu:U:Z")) != EOF) switch (c) {
+	while((c = getopt(argc, argv, "d:D:fF:nN:sSipP:crRu:U:vZ")) != EOF) switch (c) {
 		case 'd':
 			raddb_dir = optarg;
 			break;
@@ -279,6 +289,9 @@ int main(int argc, char **argv)
 			user = optarg;
 			user_cmp = 1;
 			break;
+		case 'v':
+			printf("%s\n", radwho_version);
+			exit(EXIT_SUCCESS);
 		case 'Z':
 			zap = 1;
 			break;

@@ -797,7 +797,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 	/*
 	 *	Who knows what happened...
 	 */
-	REDEBUG("T(LS) Cannot continue, as the peer is misbehaving.");
+	REDEBUG("(TLS) Cannot continue, as the peer is misbehaving.");
 	return FR_TLS_FAIL;
 }
 

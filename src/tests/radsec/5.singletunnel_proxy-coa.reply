@@ -1,0 +1,6 @@
+# We don't need delay since proxy flow will be finished
+# just after final CoA home server will return response.
+#delay 2.5
+Received CoA-ACK
+Acct-Session-Id = "default:pre-proxy"  "coa_tls:recv-coa"  "proxy-originate-coa-relay:pre-proxy"  "coa:recv-coa"  "coa:send-coa"  "proxy-originate-coa-relay:post-proxy-coa-ack"  "coa_tls:send-coa"  "default:post-proxy-coa-ack"$
+

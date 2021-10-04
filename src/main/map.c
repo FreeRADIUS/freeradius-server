@@ -245,6 +245,18 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 		}
 		break;
 
+	case T_BARE_WORD:
+		/*
+		 *	Foo = %{...}
+		 *
+		 *	Not allowed!
+		 */
+		if ((attr[0] == '%') && (attr[1] == '{')) {
+			cf_log_err_cp(cp, "Bare expansions are not permitted.  They must be in a double-quoted string.");
+			goto error;
+		}
+		/* FALL-THROUGH */
+
 	default:
 		slen = tmpl_afrom_attr_str(ctx, &map->lhs, attr, dst_request_def, dst_list_def, true, true);
 		if (slen <= 0) {
@@ -285,14 +297,20 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 		goto error;
 	}
 
-	/*
-	 *	We cannot assign a count to an attribute.  That must
-	 *	be done in an xlat.
-	 */
-	if ((map->rhs->type == TMPL_TYPE_ATTR) &&
-	    (map->rhs->tmpl_num == NUM_COUNT)) {
-		cf_log_err_cp(cp, "Cannot assign from a count");
-		goto error;
+	if (map->rhs->type == TMPL_TYPE_ATTR) {
+		/*
+		 *	We cannot assign a count to an attribute.  That must
+		 *	be done in an xlat.
+		 */
+		if (map->rhs->tmpl_num == NUM_COUNT) {
+			cf_log_err_cp(cp, "Cannot assign from a count");
+			goto error;
+		}
+
+		if (map->rhs->tmpl_da->flags.virtual) {
+			cf_log_err_cp(cp, "Virtual attributes must be in an expansion such as \"%%{%s}\".", map->rhs->tmpl_da->name);
+			goto error;
+		}
 	}
 
 	VERIFY_MAP(map);
@@ -1091,6 +1109,12 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	 */
 	if (((map->lhs->tmpl_list == PAIR_LIST_COA) ||
 	     (map->lhs->tmpl_list == PAIR_LIST_DM)) && !request->coa) {
+		if ((request->packet->code == PW_CODE_COA_REQUEST) ||
+		    (request->packet->code == PW_CODE_DISCONNECT_REQUEST)) {
+			REDEBUG("You cannot do 'update coa' when processing a CoA / Disconnect request.  Use 'update request' instead.");
+			return -2;
+		}
+
 		if (!request_alloc_coa(context)) {
 			REDEBUG("Failed to create a CoA/Disconnect Request message");
 			return -2;

@@ -95,9 +95,9 @@ typedef struct radclient {
 
 #ifdef WITH_COA
 	char const		*coa_name;		//!< Name of the CoA home server or pool.
-	home_server_t		*coa_server;		//!< The CoA home_server_t the client is associated with.
+	home_server_t		*coa_home_server;	//!< The CoA home_server_t the client is associated with.
 							//!< Must be used exclusively from coa_pool.
-	home_pool_t		*coa_pool;		//!< The CoA home_pool_t the client is associated with.
+	home_pool_t		*coa_home_pool;		//!< The CoA home_pool_t the client is associated with.
 							//!< Must be used exclusively from coa_server.
 	bool			defines_coa_server;	//!< Client also defines a home_server.
 #endif

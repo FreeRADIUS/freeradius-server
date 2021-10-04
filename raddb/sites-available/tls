@@ -65,6 +65,29 @@ listen {
 	clients = radsec
 
 	#
+	#  Use the haproxy "PROXY protocol".
+	#
+	#  This configuration allows for many FreeRADIUS servers to be
+	#  behind a haproxy server.  The "PROXY protocol" allows
+	#  haproxy to send the actual client IP to FreeRADIUS.
+	#
+	#  This will work ONLY for RadSec (TLS).  Both the haproxy AND
+	#  the RadSec client MUST be listed as allowed RADIUS clients.
+	#
+	#  haproxy needs to have "send-proxy" configured for this server.
+	#  Health checks should be turned off, as haproxy does not
+	#  support RADIUS health checks.
+	#
+	#  The main use of this feature is for scalability.  There is no
+	#  longer any need to have a RADIUS proxy as a load balancer.
+	#  haproxy is fast, stable, and supports dynamic reloads!
+	#
+	#  The only problem is that many RADIUS clients do not support
+	#  RadSec.  That situation will hopefully change over time.
+	#
+#	proxy_protocol = no
+
+	#
 	#  When this is set to "yes", new TLS connections
 	#  are processed through a section called
 	#
@@ -475,6 +498,27 @@ home_server tls {
 	status_check = none
 
 	tls {
+		#
+		#  Similarly to HTTP, the client can use Server Name
+		#  Indication to inform the RadSec server of which
+		#  domain it is requesting.  This selection allows
+		#  multiple sites to exist at the same IP address.
+		#
+		#  For example, and identity provider could host
+		#  multiple sites, but present itself with one public
+		#  IP address.
+		#
+		#  SNI also permits the use of a load balancer such as
+		#  haproxy.  That load balancer can terminate the TLS
+		#  connection, and then use SNI to route the
+		#  underlying RADIUS TCP traffic to a particular host.
+		#
+		#  Note that "hostname" here is only for SNI, and is NOT
+		#  the hostname or IP address we connect to.  For that,
+		#  see "ipaddr", above.
+		#
+	#	hostname = "example.com"
+
 		private_key_password = whatever
 		private_key_file = ${certdir}/client.pem
 

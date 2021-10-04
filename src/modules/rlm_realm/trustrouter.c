@@ -359,7 +359,7 @@ static fr_tls_server_conf_t *construct_tls(TIDC_INSTANCE *inst,
 
 	tls->cipher_list = talloc_strdup(tls, "aPSK");
 	tls->fragment_size = 4200;
-	tls->ctx = tls_init_ctx(tls, 1);
+	tls->ctx = tls_init_ctx(tls, 1, NULL, NULL);
 	if (!tls->ctx) goto error;
 
 	memset(key_buf, 0, keylen);

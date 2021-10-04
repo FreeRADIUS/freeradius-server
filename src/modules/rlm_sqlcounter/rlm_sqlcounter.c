@@ -510,7 +510,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 {
 	rlm_sqlcounter_t *inst = instance;
 	int rcode = RLM_MODULE_NOOP;
-	uint64_t counter, res;
+	uint64_t counter, unused;
 	DICT_ATTR const *da;
 	VALUE_PAIR *key_vp, *limit;
 	VALUE_PAIR *reply_item;
@@ -534,8 +534,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	}
 
 	/*
-	 *      Look for the key.  User-Name is special.  It means
-	 *      The REAL username, after stripping.
+	 *	Look for the key.  User-Name is special.  It means
+	 *	The REAL username, after stripping.
 	 */
 	if ((inst->key_attr->vendor == 0) && (inst->key_attr->attr == PW_USER_NAME)) {
 		key_vp = request->username;
@@ -548,7 +548,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	}
 
 	/*
-	 *      Look for the check item
+	 *	Look for the check item
 	 */
 	if ((da = dict_attrbyname(inst->limit_name)) == NULL) {
 		return rcode;
@@ -580,13 +580,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	if (radius_axlat(&expanded, request, query, NULL, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
-	talloc_free(expanded);
 
 	if (sscanf(expanded, "%" PRIu64, &counter) != 1) {
 		RDEBUG2("No integer found in result string \"%s\".  May be first session, setting counter to 0",
 			expanded);
 		counter = 0;
 	}
+
+	talloc_free(expanded);
 
 	/*
 	 *	Check if check item > counter
@@ -603,7 +604,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		return RLM_MODULE_REJECT;
 	}
 
-	res = limit->vp_integer64 - counter;
+	unused = limit->vp_integer64 - counter;
 	RDEBUG2("Allowing user, &control:%s value (%" PRIu64 ") is greater than counter value (%" PRIu64 ")",
 		inst->limit_name, limit->vp_integer64, counter);
 	/*
@@ -619,12 +620,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	again.  Do this only for Session-Timeout.
 	 */
 	if (((inst->reply_attr->vendor == 0) && (inst->reply_attr->attr == PW_SESSION_TIMEOUT)) &&
-	    inst->reset_time && (res >= (uint64_t)(inst->reset_time - request->timestamp))) {
-	    	uint64_t to_reset = inst->reset_time - request->timestamp;
+	    inst->reset_time && (unused >= (uint64_t)(inst->reset_time - request->timestamp))) {
+		uint64_t next_reset = inst->reset_time - request->timestamp;
 
-		RDEBUG2("Time remaining (%" PRIu64 "s) is greater than time to reset (%" PRIu64 "s).  "
-			"Adding %" PRIu64 "s to reply value", to_reset, res, to_reset);
-		res = to_reset + limit->vp_integer;
+		RDEBUG2("Time (%" PRIu64 "s) to next reset is smaller than time remaining this reset (%" PRIu64 "s).  "
+			"Extending limit to end of next reset time (^" PRIu64 "s).",
+			next_reset, unused, next_reset + limit->vp_integer);
+
+		unused = next_reset + limit->vp_integer;
 	}
 
 	/*
@@ -632,7 +635,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 */
 	reply_item = fr_pair_find_by_da(request->reply->vps, inst->reply_attr, TAG_ANY);
 	if (reply_item) {
-		if (reply_item->vp_integer64 <= res) {
+		if (reply_item->vp_integer64 <= unused) {
 			RDEBUG2("Leaving existing &reply:%s value of %" PRIu64, inst->reply_attr->name,
 				reply_item->vp_integer64);
 
@@ -642,7 +645,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		reply_item = radius_pair_create(request->reply, &request->reply->vps, inst->reply_attr->attr,
 					       inst->reply_attr->vendor);
 	}
-	reply_item->vp_integer64 = res;
+	reply_item->vp_integer64 = unused;
 
 	RDEBUG2("Setting &reply:%s value to %" PRIu64, inst->reply_name, reply_item->vp_integer64);
 

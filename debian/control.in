@@ -2,7 +2,7 @@ Source: freeradius
 Build-Depends: @BUILDDEPS@ debhelper (>= 9),
  quilt,
  dpkg-dev (>= 1.13.19),
- dh-systemd (>= 1.5),
+ dh-systemd (>= 1.5) | debhelper (>= 13.3.0),
  autotools-dev,
  libcurl4-openssl-dev | libcurl4-gnutls-dev,
  libcap-dev,
@@ -28,7 +28,6 @@ Build-Depends: @BUILDDEPS@ debhelper (>= 9),
  libmemcached-dev,
  libhiredis-dev,
  python-dev,
- dh-systemd,
  samba-dev | samba4-dev
 Section: net
 Priority: optional

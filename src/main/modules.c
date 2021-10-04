@@ -1360,7 +1360,7 @@ static int load_byserver(CONF_SECTION *cs)
 #if defined(WITH_VMPS) || defined(WITH_DHCP)
 		CONF_SECTION *subcs;
 #endif
-#ifdef WITH_DHCP
+#if defined(WITH_DHCP) || defined(WITH_TLS)
 		DICT_ATTR const *da;
 #endif
 

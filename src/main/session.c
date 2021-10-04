@@ -34,7 +34,7 @@ RCSID("$Id$")
 /*
  *	End a session by faking a Stop packet to all accounting modules.
  */
-int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
+int session_zap(REQUEST *request, fr_ipaddr_t const *nasaddr, uint32_t nas_port,
 		char const *user,
 		char const *sessionid, uint32_t cliaddr, char proto,
 		int session_time)
@@ -64,6 +64,8 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
 
 #define IPPAIR(n,v) PAIR(n,v,vp_ipaddr)
 
+#define IPV6PAIR(n,v) PAIR(n,v,vp_ipv6addr)
+
 #define STRINGPAIR(n,v) do { \
 	  if(!(vp = fr_pair_afrom_num(stopreq->packet,n, 0))) {	\
 		talloc_free(stopreq); \
@@ -75,7 +77,12 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
 	} while(0)
 
 	INTPAIR(PW_ACCT_STATUS_TYPE, PW_STATUS_STOP);
-	IPPAIR(PW_NAS_IP_ADDRESS, nasaddr);
+
+	if (nasaddr->af == AF_INET) {
+		IPPAIR(PW_NAS_IP_ADDRESS, nasaddr->ipaddr.ip4addr.s_addr);
+	} else {
+		IPV6PAIR(PW_NAS_IPV6_ADDRESS, nasaddr->ipaddr.ip6addr);
+	}
 
 	INTPAIR(PW_EVENT_TIMESTAMP, 0);
 	vp->vp_date = time(NULL);
@@ -127,29 +134,25 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
  *		1 The user is logged in.
  *		2 Some error occured.
  */
-int rad_check_ts(uint32_t nasaddr, uint32_t nas_port, char const *user,
+int rad_check_ts(fr_ipaddr_t const *nasaddr, uint32_t nas_port, char const *user,
 		 char const *session_id)
 {
 	pid_t	pid, child_pid;
 	int	status;
-	char	address[16];
+	char	address[64];
 	char	port[11];
 	RADCLIENT *cl;
-	fr_ipaddr_t ipaddr;
-
-	ipaddr.af = AF_INET;
-	ipaddr.ipaddr.ip4addr.s_addr = nasaddr;
 
 	/*
 	 *	Find NAS type.
 	 */
-	cl = client_find_old(&ipaddr);
+	cl = client_find_old(nasaddr);
 	if (!cl) {
 		/*
 		 *  Unknown NAS, so trusting radutmp.
 		 */
 		DEBUG2("checkrad: Unknown NAS %s, not checking",
-		       ip_ntoa(address, nasaddr));
+		       inet_ntop(nasaddr->af, &(nasaddr->ipaddr), address, sizeof(address)));
 		return 1;
 	}
 
@@ -202,8 +205,8 @@ int rad_check_ts(uint32_t nasaddr, uint32_t nas_port, char const *user,
 	 */
 	closefrom(3);
 
-	ip_ntoa(address, nasaddr);
-	snprintf(port, 11, "%u", nas_port);
+	inet_ntop(nasaddr->af, &(nasaddr->ipaddr), address, sizeof(address));
+	snprintf(port, sizeof(port), "%u", nas_port);
 
 #ifdef __EMX__
 	/* OS/2 can't directly execute scripts then we call the command
@@ -223,7 +226,7 @@ int rad_check_ts(uint32_t nasaddr, uint32_t nas_port, char const *user,
 	exit(2);
 }
 #else
-int rad_check_ts(UNUSED uint32_t nasaddr, UNUSED unsigned int nas_port,
+int rad_check_ts(fr_ipaddr_t const *nasaddr, UNUSED unsigned int nas_port,
 		 UNUSED char const *user, UNUSED char const *session_id)
 {
 	ERROR("Simultaneous-Use is not supported");
@@ -234,7 +237,7 @@ int rad_check_ts(UNUSED uint32_t nasaddr, UNUSED unsigned int nas_port,
 #else
 /* WITH_SESSION_MGMT */
 
-int session_zap(UNUSED REQUEST *request, UNUSED uint32_t nasaddr, UNUSED uint32_t nas_port,
+int session_zap(UNUSED REQUEST *request, fr_ipaddr_t const *nasaddr, UNUSED uint32_t nas_port,
 		UNUSED char const *user,
 		UNUSED char const *sessionid, UNUSED uint32_t cliaddr, UNUSED char proto,
 		UNUSED int session_time)
@@ -242,7 +245,7 @@ int session_zap(UNUSED REQUEST *request, UNUSED uint32_t nasaddr, UNUSED uint32_
 	return RLM_MODULE_FAIL;
 }
 
-int rad_check_ts(UNUSED uint32_t nasaddr, UNUSED unsigned int nas_port,
+int rad_check_ts(fr_ipaddr_t const *nasaddr, UNUSED unsigned int nas_port,
 		 UNUSED char const *user, UNUSED char const *session_id)
 {
 	ERROR("Simultaneous-Use is not supported");

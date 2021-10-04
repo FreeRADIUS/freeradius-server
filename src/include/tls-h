@@ -320,7 +320,7 @@ tls_session_t	*tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
 fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs);
 fr_tls_server_conf_t *tls_server_conf_alloc(TALLOC_CTX *ctx);
-SSL_CTX		*tls_init_ctx(fr_tls_server_conf_t *conf, int client);
+SSL_CTX		*tls_init_ctx(fr_tls_server_conf_t *conf, int client, char const *chain_file, char const *private_key_file);
 int 		tls_handshake_recv(REQUEST *, tls_session_t *ssn);
 int 		tls_handshake_send(REQUEST *, tls_session_t *ssn);
 void 		tls_session_information(tls_session_t *ssn);
@@ -432,6 +432,10 @@ struct fr_tls_server_conf_t {
 	char const	*psk_query;
 #endif
 
+	char const	*realm_dir;
+	fr_hash_table_t	*realms;
+
+	char const	*client_hostname;
 };
 
 #ifdef __cplusplus
