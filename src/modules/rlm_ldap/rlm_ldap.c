@@ -1821,6 +1821,15 @@ static int mod_thread_instatiate(UNUSED CONF_SECTION const *conf, void *instance
 		return -1;
 	}
 
+	/*
+	 *	Set up a per-thread LDAP connection to use for bind auths
+	 */
+	this_thread->conn = fr_ldap_connection_state_alloc(this_thread, el, this_thread->config, inst->name);
+	fr_connection_add_watch_post(this_thread->conn, FR_CONNECTION_STATE_CONNECTED, _ldap_async_bind_auth_watch, false, this_thread);
+	fr_connection_signal_init(this_thread->conn);
+
+	MEM(this_thread->binds = fr_rb_inline_talloc_alloc(this_thread, fr_ldap_bind_auth_ctx_t, node, fr_ldap_bind_auth_cmp, NULL));
+
 	return 0;
 }
 
