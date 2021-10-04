@@ -442,6 +442,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 
 		fr_pair_list_sort(&sorted->vp_group, pair_sort_increasing);
 		fr_dcursor_init(&child_cursor, &sorted->vp_group);
+
 		/*
 		 *	Build the da_stack for the new structure.
 		 */
@@ -579,7 +580,6 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 				if (!vp || !vp->da->flags.internal) break;
 			} while (vp != NULL);
 			goto next;
-
 		}
 
 		/* Not a bit field; insist that no buffered bits remain. */
@@ -644,6 +644,26 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		 *	If our parent is a struct, AND its parent is
 		 *	the key_da, then we have a keyed struct for
 		 *	the child.  Go encode it.
+		 *
+		 *	This check is really for "nested" VPs.
+		 */
+		if ((vp->da->parent == key_da) &&
+		    (vp->da->type == FR_TYPE_STRUCT)) {
+			ssize_t	len;
+			fr_proto_da_stack_build(da_stack, vp->da);
+
+			len = fr_struct_to_network(&work_dbuff, da_stack, depth + 2, /* note + 2 !!! */
+						   cursor, encode_ctx, encode_value, encode_tlv);
+			if (len < 0) return len;
+			goto done;
+		}
+
+		/*
+		 *	If our parent is a struct, AND its parent is
+		 *	the key_da, then we have a keyed struct for
+		 *	the child.  Go encode it.
+		 *
+		 *	This check is really for "flat" VPs.
 		 */
 		if ((vp->da->parent->parent == key_da) &&
 		    (vp->da->parent->type == FR_TYPE_STRUCT)) {
