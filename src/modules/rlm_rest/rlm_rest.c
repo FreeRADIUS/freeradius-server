@@ -79,9 +79,9 @@ static int rest_proxy_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 	char const *value = cf_pair_value(cf_item_to_pair(ci));
 
 	if (fr_table_value_by_str(disable_proxy_table, value, 0) == 1) {
-		*((char *)out) = rest_no_proxy;
+		*((char const *)out) = rest_no_proxy;
 	} else {
-		*((char *)out) = value;
+		*((char const *)out) = value;
 	}
 	return 0;
 }
