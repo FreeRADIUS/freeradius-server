@@ -62,9 +62,33 @@ static fr_table_num_sorted_t const http_negotiation_table[] = {
 };
 static size_t http_negotiation_table_len = NUM_ELEMENTS(http_negotiation_table);
 
+/** Unique pointer used to determine if we should explicitly disable proxying
+ *
+ */
+char const *rest_no_proxy = "*";
+
+static int rest_proxy_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			    CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	static fr_table_num_sorted_t const disable_proxy_table[] = {
+		{ L("no"), 	1 },
+		{ L("false"),	1 },
+		{ L("none"),	1 }
+	};
+	static size_t disable_proxy_table_len = NUM_ELEMENTS(disable_proxy_table);
+	char const *value = cf_pair_value(cf_item_to_pair(ci));
+
+	if (fr_table_value_by_str(disable_proxy_table, value, 0) == 1) {
+		*((char *)out) = rest_no_proxy;
+	} else {
+		*((char *)out) = value;
+	}
+	return 0;
+}
+
 static const CONF_PARSER section_config[] = {
 	{ FR_CONF_OFFSET("uri", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, uri), .dflt = "" },
-	{ FR_CONF_OFFSET("proxy", FR_TYPE_STRING, rlm_rest_section_t, proxy) },
+	{ FR_CONF_OFFSET("proxy", FR_TYPE_STRING, rlm_rest_section_t, proxy), .func = rest_proxy_parse },
 	{ FR_CONF_OFFSET("method", FR_TYPE_STRING, rlm_rest_section_t, method_str), .dflt = "GET" },
 	{ FR_CONF_OFFSET("body", FR_TYPE_STRING, rlm_rest_section_t, body_str), .dflt = "none" },
 	{ FR_CONF_OFFSET("data", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, data) },
@@ -88,7 +112,7 @@ static const CONF_PARSER section_config[] = {
 };
 
 static const CONF_PARSER xlat_config[] = {
-	{ FR_CONF_OFFSET("proxy", FR_TYPE_STRING, rlm_rest_section_t, proxy) },
+	{ FR_CONF_OFFSET("proxy", FR_TYPE_STRING, rlm_rest_section_t, proxy), .func = rest_proxy_parse },
 
 	/* User authentication */
 	{ FR_CONF_OFFSET_IS_SET("auth", FR_TYPE_VOID, rlm_rest_section_t, auth),
@@ -108,7 +132,7 @@ static const CONF_PARSER xlat_config[] = {
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_DEPRECATED("connect_timeout", FR_TYPE_TIME_DELTA, rlm_rest_t, connect_timeout) },
-	{ FR_CONF_OFFSET("connect_proxy", FR_TYPE_STRING, rlm_rest_t, connect_proxy) },
+	{ FR_CONF_OFFSET("connect_proxy", FR_TYPE_STRING, rlm_rest_t, connect_proxy), .func = rest_proxy_parse },
 	{ FR_CONF_OFFSET("http_negotiation", FR_TYPE_VOID, rlm_rest_t, http_negotiation),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_negotiation_table, .len = &http_negotiation_table_len }, .dflt = "default" },
 

@@ -193,7 +193,7 @@ fr_table_num_sorted_t const http_content_type_table[] = {
 	{ L("application/yaml"),			REST_HTTP_BODY_YAML		},
 	{ L("text/html"),				REST_HTTP_BODY_HTML		},
 	{ L("text/plain"),				REST_HTTP_BODY_PLAIN		},
-	{ L("text/x-yaml"),			REST_HTTP_BODY_YAML		},
+	{ L("text/x-yaml"),				REST_HTTP_BODY_YAML		},
 	{ L("text/xml"),				REST_HTTP_BODY_XML		},
 	{ L("text/yaml"),				REST_HTTP_BODY_YAML		}
 };
@@ -1751,7 +1751,13 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	 */
 	FR_CURL_SET_OPTION(CURLOPT_URL, uri);
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
-	if (section->proxy) FR_CURL_SET_OPTION(CURLOPT_PROXY, section->proxy);
+	if (section->proxy) {
+		if (section->proxy == rest_no_proxy) {
+			FR_CURL_SET_OPTION(CURLOPT_NOPROXY, "*");
+		} else {
+			FR_CURL_SET_OPTION(CURLOPT_PROXY, section->proxy);
+		}
+	}
 	FR_CURL_SET_OPTION(CURLOPT_NOSIGNAL, 1L);
 	FR_CURL_SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);
 

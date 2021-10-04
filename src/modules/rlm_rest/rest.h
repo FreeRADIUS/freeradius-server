@@ -82,6 +82,10 @@ typedef enum {
 	REST_HTTP_AUTH_NUM_ENTRIES
 } http_auth_type_t;
 
+/** Magic pointer value for determining if we should disable proxying
+ */
+extern char const *rest_no_proxy;
+
 /*
  *	Must be updated (in rest.c) if additional values are added to
  *	http_body_type_t

@@ -196,7 +196,9 @@ rest {
 	#  |===
 	#  | Option         | Description
 	#  | `uri`          | To send the request to.
-	#  | `proxy`        | Rhe request via this server, supports `socks/http/https` uri and `:port`.
+	#  | `proxy`        | The request via this server, supports `socks/http/https` uri and `:port`.
+	#                     May be set to "none" to disable proxying, overriding any environmental
+	#		      variables set like http_proxy.
 	#  | `method`       | HTTP method to use, one of 'get', 'post', 'put', 'patch',
 	#                     'delete' or any custom HTTP method.
 	#  | `body`         | The format of the HTTP body sent to the remote server.
