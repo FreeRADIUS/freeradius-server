@@ -28,19 +28,6 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/ldap/base.h>
 #include <freeradius-devel/util/debug.h>
 
-/** Holds arguments for the bind operation
- *
- */
-typedef struct {
-	fr_ldap_connection_t	*c;			//!< to bind.
-	char const		*bind_dn;		//!< of the user, may be NULL to bind anonymously.
-	char const		*password;		//!< of the user, may be NULL if no password is specified.
-	LDAPControl		**serverctrls;		//!< Controls to pass to the server.
-	LDAPControl		**clientctrls;		//!< Controls to pass to the client (library).
-
-	int			msgid;
-} fr_ldap_bind_ctx_t;
-
 /** Error reading from or writing to the file descriptor
  *
  * @param[in] el	the event occurred in.

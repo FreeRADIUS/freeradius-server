@@ -469,6 +469,19 @@ typedef struct fr_ldap_referral_s {
 	fr_ldap_thread_trunk_t	*ttrunk;	//!< Trunk this referral should use
 } fr_ldap_referral_t;
 
+/** Holds arguments for the async bind operation
+ *
+ */
+typedef struct {
+	fr_ldap_connection_t	*c;			//!< to bind.
+	char const		*bind_dn;		//!< of the user, may be NULL to bind anonymously.
+	char const		*password;		//!< of the user, may be NULL if no password is specified.
+	LDAPControl		**serverctrls;		//!< Controls to pass to the server.
+	LDAPControl		**clientctrls;		//!< Controls to pass to the client (library).
+
+	int			msgid;
+} fr_ldap_bind_ctx_t;
+
 
 /** Codes returned by fr_ldap internal functions
  *
