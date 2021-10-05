@@ -185,63 +185,6 @@ found:
 	return 0;
 }
 
-/** Extract useful information from the rootDSE of the LDAP server
- *
- * @param[in] ctx	to allocate fr_ldap_directory_t in.
- * @param[out] out	where to write pointer to new fr_ldap_directory_t struct.
- * @param[in,out] pconn	connection for querying the directory.
- * @return
- *	- 0 on success.
- *	- 1 if we failed identifying the directory server.
- *	- -1 on error.
- */
-int fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_connection_t **pconn)
-{
-	static char const	*attrs[] = { "vendorname",
-					     "vendorversion",
-					     "isGlobalCatalogReady",
-					     "objectClass",
-					     "orcldirectoryversion",
-					     NULL };
-	fr_ldap_rcode_t		status;
-	int			rcode = 0;
-	fr_ldap_directory_t	*directory;
-	char const		*name = (*pconn)->config->name;
-
-	LDAPMessage *result = NULL;
-
-	*out = NULL;
-
-	directory = talloc_zero(ctx, fr_ldap_directory_t);
-	if (!directory) return -2;
-	*out = directory;
-
-	directory->type = FR_LDAP_DIRECTORY_UNKNOWN;
-
-	status = fr_ldap_search(&result, NULL, pconn, "", LDAP_SCOPE_BASE, "(objectclass=*)",
-				attrs, NULL, NULL);
-	switch (status) {
-	case LDAP_PROC_SUCCESS:
-		break;
-
-	case LDAP_PROC_NO_RESULT:
-		WARN("Capability check failed: Can't access rootDSE");
-		rcode = 1;
-		goto finish;
-
-	default:
-		rcode = 1;
-		goto finish;
-	}
-
-	rcode = ldap_directory_result_parse(directory, (*pconn)->handle, result, name);
-
-finish:
-	if (result) ldap_msgfree(result);
-
-	return rcode;
-}
-
 /** Parse results of search on rootDSE to gather data on LDAP server
  *
  * @param[in] query	which requested the rootDSE.

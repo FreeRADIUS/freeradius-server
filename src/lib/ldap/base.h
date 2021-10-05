@@ -689,8 +689,6 @@ int		fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t 
 /*
  *	directory.c - Get directory capabilities from the remote server
  */
-int		fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_connection_t **pconn);
-
 int		fr_ldap_trunk_directory_alloc_async(TALLOC_CTX *ctx, fr_ldap_thread_trunk_t *ttrunk);
 
 /*
