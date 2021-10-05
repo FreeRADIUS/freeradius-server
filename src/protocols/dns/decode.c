@@ -481,7 +481,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 
 	slen = decode_record(ctx, cursor, attr_dns_ar, p, end - p, packet_ctx, packet + 10);
 	if (slen < 0) goto fail;
-	p += slen;
+//	p += slen;
 
 	return packet_len;
 }
