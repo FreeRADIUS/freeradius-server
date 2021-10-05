@@ -113,7 +113,6 @@ if test x$with_[]modname_useropt != xno; then
 			ldap_unbind_ext_s \
 			ldap_start_tls_s \
 			ldap_initialize \
-			ldap_set_rebind_proc \
 			ldap_create_sort_control \
 			ldap_create_sort_keylist \
 			ldap_free_sort_keylist \
@@ -124,13 +123,6 @@ if test x$with_[]modname_useropt != xno; then
 		)
 
 		AC_CHECK_DECLS([ldap_create_session_tracking_control], [], [], [[#include <ldap.h>]])
-		AC_CACHE_CHECK(whether ldap_set_rebind_proc takes 3 arguments, ac_cv_ldap_set_rebind_proc, [
-			AC_TRY_COMPILE([
-				#include <lber.h>
-				#include <ldap.h>], [ldap_set_rebind_proc(0, 0, 0);],
-				[ac_cv_ldap_set_rebind_proc=3],
-				[ac_cv_ldap_set_rebind_proc=2])
-		])
 	fi
 
 	dnl ############################################################
@@ -167,7 +159,6 @@ if test x"$fail" != x""; then
 fi
 
 AC_DEFINE(WITH_EDIR, 1, [Build the server with support for Novell eDir Universal Password])
-AC_DEFINE_UNQUOTED(LDAP_SET_REBIND_PROC_ARGS, ${ac_cv_ldap_set_rebind_proc}, [Number of arguments the rebind procedure takes])
 
 mod_ldflags=$SMART_LIBS
 mod_cflags="$SMART_CPPFLAGS"

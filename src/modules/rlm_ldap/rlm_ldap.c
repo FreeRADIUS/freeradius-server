@@ -2229,19 +2229,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		}
 	}
 
-#if !defined (LDAP_SET_REBIND_PROC_ARGS) || LDAP_SET_REBIND_PROC_ARGS != 3
-	/*
-	 *	The 2-argument rebind doesn't take an instance variable.  Our rebind function needs the instance
-	 *	variable for the username, password, etc.
-	 */
-	if (inst->handle_config.rebind == true) {
-		cf_log_err(conf, "Cannot use 'rebind' configuration item as this version of libldap "
-			      "does not support the API that we need");
-
-		goto error;
-	}
-#endif
-
 	/*
 	 *	Convert scope strings to enumerated constants
 	 */

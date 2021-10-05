@@ -29,9 +29,6 @@
 /* Define to 1 if you have the `ldap_sasl_interactive_bind' function. */
 #undef HAVE_LDAP_SASL_INTERACTIVE_BIND
 
-/* Define to 1 if you have the `ldap_set_rebind_proc' function. */
-#undef HAVE_LDAP_SET_REBIND_PROC
-
 /* Define to 1 if you have the `ldap_start_tls_s' function. */
 #undef HAVE_LDAP_START_TLS_S
 
@@ -67,9 +64,6 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
-
-/* Number of arguments the rebind procedure takes */
-#undef LDAP_SET_REBIND_PROC_ARGS
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
