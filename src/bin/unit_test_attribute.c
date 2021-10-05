@@ -1525,7 +1525,7 @@ static size_t command_encode_dns_label(command_result_t *result, command_file_ct
 		}
 
 		ret = fr_dns_label_from_value_box(&need,
-						  cc->buffer_start, cc->buffer_end - cc->buffer_start, enc_p, true, box);
+						  cc->buffer_start, cc->buffer_end - cc->buffer_start, enc_p, true, box, NULL);
 		talloc_free(box);
 
 		if (ret < 0) RETURN_OK_WITH_ERROR();
@@ -1564,7 +1564,7 @@ static size_t command_decode_dns_label(command_result_t *result, command_file_ct
 	end = data + COMMAND_OUTPUT_MAX;
 
 	for (i = 0; i < total; i += slen) {
-		slen = fr_dns_label_to_value_box(box, box, cc->buffer_start, total, cc->buffer_start + i, false);
+		slen = fr_dns_label_to_value_box(box, box, cc->buffer_start, total, cc->buffer_start + i, false, NULL);
 		if (slen <= 0) {
 		error:
 			talloc_free(box);

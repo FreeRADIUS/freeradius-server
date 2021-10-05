@@ -1,0 +1,17 @@
+# -*- text -*-
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	The FreeRADIUS dictionary for ARP
+#
+# Version:	$Id$
+#
+
+PROTOCOL	DNS		11	format=2
+BEGIN-PROTOCOL	DNS
+
+$INCLUDE dictionary.freeradius.internal
+$INCLUDE dictionary.rfc1034
+
+END-PROTOCOL	DNS

@@ -234,7 +234,7 @@ static void xlat_unbound_callback(void *mydata, int rcode, void *packet, int pac
 
 			/*	String types require decoding of dns format labels */
 			used = fr_dns_label_to_value_box(ur->out_ctx, vb, (uint8_t const *)packet, packet_len,
-							 (uint8_t const *)fr_dbuff_current(&dbuff), true);
+							 (uint8_t const *)fr_dbuff_current(&dbuff), true, NULL);
 			if (used < 0) goto error;
 			fr_dbuff_advance(&dbuff, (size_t)used);
 			break;

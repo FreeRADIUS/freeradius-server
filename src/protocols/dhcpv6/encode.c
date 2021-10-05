@@ -178,7 +178,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 			fr_dbuff_marker(&last_byte, &work_dbuff);
 			fr_dbuff_marker(&src, &work_dbuff);
-			slen = fr_dns_label_from_value_box_dbuff(&work_dbuff, false, &vp->data);
+			slen = fr_dns_label_from_value_box_dbuff(&work_dbuff, false, &vp->data, NULL);
 			if (slen < 0) return slen;
 
 			/*
@@ -421,7 +421,7 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 			 *
 			 *	https://tools.ietf.org/html/rfc8415#section-10
 			 */
-			slen = fr_dns_label_from_value_box_dbuff(&work_dbuff, false, &vp->data);
+			slen = fr_dns_label_from_value_box_dbuff(&work_dbuff, false, &vp->data, NULL);
 			if (slen <= 0) return PAIR_ENCODE_FATAL_ERROR;
 
 			vp = fr_dcursor_next(cursor);

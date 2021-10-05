@@ -261,7 +261,7 @@ ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 	 */
 	fr_pair_list_init(list);
 	fr_dcursor_init(&cursor, list);
-	return fr_struct_from_network(ctx, &cursor, attr_arp_packet, packet, FR_ARP_PACKET_SIZE,
+	return fr_struct_from_network(ctx, &cursor, attr_arp_packet, packet, FR_ARP_PACKET_SIZE, false,
 				      NULL, NULL, NULL);
 }
 

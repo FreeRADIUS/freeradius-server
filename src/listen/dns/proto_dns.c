@@ -16,70 +16,53 @@
 
 /**
  * $Id$
- * @file proto_dhcpv6.c
+ * @file proto_dns.c
  * @brief DHCPV6 master protocol handler.
  *
  * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
  */
-#define LOG_PREFIX "proto_dhcpv6 - "
+#define LOG_PREFIX "proto_dns - "
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/debug.h>
-#include "proto_dhcpv6.h"
+#include "proto_dns.h"
 
-extern fr_app_t proto_dhcpv6;
+extern fr_app_t proto_dns;
 static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 
 static const CONF_PARSER priority_config[] = {
-	{ FR_CONF_OFFSET("Solicit", FR_TYPE_VOID, proto_dhcpv6_t, priorities[FR_DHCPV6_SOLICIT]),
-	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Request", FR_TYPE_VOID, proto_dhcpv6_t, priorities[FR_DHCPV6_REQUEST]),
-	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Renew", FR_TYPE_VOID, proto_dhcpv6_t, priorities[FR_DHCPV6_RENEW]),
-	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Rebind", FR_TYPE_VOID, proto_dhcpv6_t, priorities[FR_DHCPV6_REBIND]),
-	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Release", FR_TYPE_VOID, proto_dhcpv6_t, priorities[FR_DHCPV6_RELEASE]),
-	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Decline", FR_TYPE_VOID, proto_dhcpv6_t, priorities[FR_DHCPV6_DECLINE]),
-	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Information-Request", FR_TYPE_VOID, proto_dhcpv6_t, priorities[FR_DHCPV6_INFORMATION_REQUEST]),
-	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Relay-Forward", FR_TYPE_VOID, proto_dhcpv6_t, priorities[FR_DHCPV6_RELAY_FORWARD]),
+	{ FR_CONF_OFFSET("query", FR_TYPE_VOID, proto_dns_t, priorities[FR_DNS_QUERY]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER const limit_config[] = {
-	{ FR_CONF_OFFSET("cleanup_delay", FR_TYPE_TIME_DELTA, proto_dhcpv6_t, io.cleanup_delay), .dflt = "5.0" } ,
-	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, proto_dhcpv6_t, io.idle_timeout), .dflt = "30.0" } ,
-	{ FR_CONF_OFFSET("nak_lifetime", FR_TYPE_TIME_DELTA, proto_dhcpv6_t, io.nak_lifetime), .dflt = "30.0" } ,
 
-	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, proto_dhcpv6_t, io.max_connections), .dflt = "1024" } ,
-	{ FR_CONF_OFFSET("max_clients", FR_TYPE_UINT32, proto_dhcpv6_t, io.max_clients), .dflt = "256" } ,
-	{ FR_CONF_OFFSET("max_pending_packets", FR_TYPE_UINT32, proto_dhcpv6_t, io.max_pending_packets), .dflt = "256" } ,
+static CONF_PARSER const limit_config[] = {
+	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, proto_dns_t, io.idle_timeout), .dflt = "30.0" } ,
+
+	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, proto_dns_t, io.max_connections), .dflt = "1024" } ,
 
 	/*
 	 *	For performance tweaking.  NOT for normal humans.
 	 */
-	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_dhcpv6_t, max_packet_size) } ,
-	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, proto_dhcpv6_t, num_messages) } ,
+	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_dns_t, max_packet_size) } ,
+	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, proto_dns_t, num_messages) } ,
 	{ FR_CONF_POINTER("priority", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) priority_config },
 
 	CONF_PARSER_TERMINATOR
 };
 
-/** How to parse a DHCPV6 listen section
+/** How to parse a DNS listen section
  *
  */
-static CONF_PARSER const proto_dhcpv6_config[] = {
-	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_dhcpv6_t,
+static CONF_PARSER const proto_dns_config[] = {
+	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_dns_t,
 			  allowed_types), .func = type_parse },
-	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_dhcpv6_t, io.submodule),
+	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_dns_t, io.submodule),
 	  .func = transport_parse },
 
 	{ FR_CONF_POINTER("limit", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
@@ -87,27 +70,25 @@ static CONF_PARSER const proto_dhcpv6_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_dict_t const *dict_dhcpv6;
+static fr_dict_t const *dict_dns;
 
-extern fr_dict_autoload_t proto_dhcpv6_dict[];
-fr_dict_autoload_t proto_dhcpv6_dict[] = {
-	{ .out = &dict_dhcpv6, .proto = "dhcpv6" },
+extern fr_dict_autoload_t proto_dns_dict[];
+fr_dict_autoload_t proto_dns_dict[] = {
+	{ .out = &dict_dns, .proto = "dns" },
 	{ NULL }
 };
 
 static fr_dict_attr_t const *attr_packet_type;
-static fr_dict_attr_t const *attr_client_id;
 
-extern fr_dict_attr_autoload_t proto_dhcpv6_dict_attr[];
-fr_dict_attr_autoload_t proto_dhcpv6_dict_attr[] = {
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6},
-	{ .out = &attr_client_id, .name = "Client-Id", .type = FR_TYPE_STRUCT, .dict = &dict_dhcpv6},
+extern fr_dict_attr_autoload_t proto_dns_dict_attr[];
+fr_dict_attr_autoload_t proto_dns_dict_attr[] = {
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dns},
 	{ NULL }
 };
 
 /** Wrapper around dl_instance which translates the packet-type into a submodule name
  *
- * @param[in] ctx	to allocate data in (instance of proto_dhcpv6).
+ * @param[in] ctx	to allocate data in (instance of proto_dns).
  * @param[out] out	Where to write a dl_module_inst_t containing the module handle and instance.
  * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
@@ -119,7 +100,7 @@ fr_dict_attr_autoload_t proto_dhcpv6_dict_attr[] = {
 static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 		      CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	proto_dhcpv6_t		*inst = talloc_get_type_abort(parent, proto_dhcpv6_t);
+	proto_dns_t		*inst = talloc_get_type_abort(parent, proto_dns_t);
 	fr_dict_enum_value_t		*dv;
 	CONF_PAIR		*cp;
 	char const		*value;
@@ -128,8 +109,8 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 	value = cf_pair_value(cp);
 
 	dv = fr_dict_enum_by_name(attr_packet_type, value, -1);
-	if (!dv || (dv->value->vb_uint32 >= FR_DHCPV6_CODE_MAX)) {
-		cf_log_err(ci, "Unknown DHCPv6 packet type '%s'", value);
+	if (!dv || (dv->value->vb_uint32 >= FR_DNS_CODE_MAX)) {
+		cf_log_err(ci, "Unknown DNS packet type '%s'", value);
 		return -1;
 	}
 
@@ -141,7 +122,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 
 /** Wrapper around dl_instance
  *
- * @param[in] ctx	to allocate data in (instance of proto_dhcpv6).
+ * @param[in] ctx	to allocate data in (instance of proto_dns).
  * @param[out] out	Where to write a dl_module_inst_t containing the module handle and instance.
  * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
@@ -155,7 +136,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 {
 	char const	*name = cf_pair_value(cf_item_to_pair(ci));
 	dl_module_inst_t	*parent_inst;
-	proto_dhcpv6_t	*inst;
+	proto_dns_t	*inst;
 	CONF_SECTION	*listen_cs = cf_item_to_section(cf_parent(ci));
 	CONF_SECTION	*transport_cs;
 
@@ -167,14 +148,14 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	 */
 	if (!transport_cs) transport_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
 
-	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_dhcpv6"));
+	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_dns"));
 	fr_assert(parent_inst);
 
 	/*
 	 *	Set the allowed codes so that we can compile them as
 	 *	necessary.
 	 */
-	inst = talloc_get_type_abort(parent_inst->data, proto_dhcpv6_t);
+	inst = talloc_get_type_abort(parent_inst->data, proto_dns_t);
 	inst->io.transport = name;
 
 	return dl_module_instance(ctx, out, transport_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE);
@@ -185,44 +166,55 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
  */
 static int mod_decode(void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
-	proto_dhcpv6_t const	*inst = talloc_get_type_abort_const(instance, proto_dhcpv6_t);
+	proto_dns_t const	*inst = talloc_get_type_abort_const(instance, proto_dns_t);
 	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const	*address = track->address;
 	RADCLIENT const		*client;
-	fr_radius_packet_t	*packet = request->packet;
+	fr_dns_packet_t	const	*packet = (fr_dns_packet_t const *) data;
 	fr_dcursor_t		cursor;
+	fr_dns_ctx_t	packet_ctx;
 
 	/*
 	 *	Set the request dictionary so that we can do
 	 *	generic->protocol attribute conversions as
 	 *	the request runs through the server.
 	 */
-	request->dict = dict_dhcpv6;
+	request->dict = dict_dns;
 
-	RHEXDUMP3(data, data_len, "proto_dhcpv6 decode packet");
+	RHEXDUMP3(data, data_len, "proto_dns decode packet");
 
 	client = address->radclient;
 
 	/*
-	 *	Hacks for now until we have a lower-level decode routine.
+	 *	@todo - 
 	 */
-	request->packet->code = data[0];
-	request->packet->id = (data[1] << 16) | (data[2] << 8) | data[3];
+	request->packet->code = packet->opcode;
+	request->packet->id = (data[0] << 8) | data[1];
 	request->reply->id = request->packet->id;
 
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
 	request->packet->data_len = data_len;
 
+	packet_ctx.tmp_ctx = talloc(request, uint8_t);
+	packet_ctx.packet = request->packet->data;
+	packet_ctx.packet_len = data_len;
+
+	packet_ctx.lb = fr_dns_labels_init(packet_ctx.tmp_ctx, packet_ctx.packet, 256);
+	fr_assert(packet_ctx.lb != NULL);
+
+
 	/*
 	 *	Note that we don't set a limit on max_attributes here.
 	 *	That MUST be set and checked in the underlying
-	 *	transport, via a call to fr_dhcpv6_ok().
+	 *	transport, via a call to fr_dns_ok().
 	 */
 	fr_dcursor_init(&cursor, &request->request_pairs);
-	if (fr_dhcpv6_decode(request->request_ctx, packet->data, packet->data_len, &cursor) < 0) {
+	if (fr_dns_decode(request->request_ctx, request->packet->data, request->packet->data_len, &cursor, &packet_ctx) < 0) {
+		talloc_free(packet_ctx.tmp_ctx);
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
+	talloc_free(packet_ctx.tmp_ctx);
 
 	/*
 	 *	Set the rest of the fields.
@@ -244,63 +236,32 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 
 static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
-	proto_dhcpv6_t const	*inst = talloc_get_type_abort_const(instance, proto_dhcpv6_t);
+	proto_dns_t const	*inst = talloc_get_type_abort_const(instance, proto_dns_t);
 	fr_io_track_t		*track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const	*address = track->address;
-	fr_dhcpv6_packet_t	*reply = (fr_dhcpv6_packet_t *) buffer;
-	fr_dhcpv6_packet_t	*original = (fr_dhcpv6_packet_t *) request->packet->data;
+	fr_dns_packet_t		*reply = (fr_dns_packet_t *) buffer;
+	fr_dns_packet_t		*original = (fr_dns_packet_t *) request->packet->data;
 	ssize_t			data_len;
 	RADCLIENT const		*client;
+	fr_dns_ctx_t	packet_ctx;
 
 	/*
 	 *	Process layer NAK, never respond, or "Do not respond".
 	 */
 	if ((buffer_len == 1) ||
-	    (request->reply->code == FR_DHCPV6_DO_NOT_RESPOND) ||
-	    (request->reply->code == 0) || (request->reply->code >= FR_DHCPV6_CODE_MAX)) {
-		track->do_not_respond = true;
+	    (request->reply->code == FR_DNS_DO_NOT_RESPOND) ||
+	    (request->reply->code >= FR_DNS_CODE_MAX)) {
+//		track->do_not_respond = true;
 		return 1;
 	}
 
 	client = address->radclient;
 	fr_assert(client);
 
-	/*
-	 *	Dynamic client stuff
-	 */
-	if (client->dynamic && !client->active) {
-		RADCLIENT *new_client;
-
-		fr_assert(buffer_len >= sizeof(client));
-
-		/*
-		 *	Allocate the client.  If that fails, send back a NAK.
-		 *
-		 *	@todo - deal with NUMA zones?  Or just deal with this
-		 *	client being in different memory.
-		 *
-		 *	Maybe we should create a CONF_SECTION from the client,
-		 *	and pass *that* back to mod_write(), which can then
-		 *	parse it to create the actual client....
-		 */
-		new_client = client_afrom_request(NULL, request);
-		if (!new_client) {
-			PERROR("Failed creating new client");
-			buffer[0] = true;
-			return 1;
-		}
-
-		memcpy(buffer, &new_client, sizeof(new_client));
-		return sizeof(new_client);
-	}
-
-	if (buffer_len < 4) {
-		REDEBUG("Output buffer is too small to hold a DHCPv6 packet.");
+	if (buffer_len < DNS_HDR_LEN) {
+		REDEBUG("Output buffer is too small to hold a DNS packet.");
 		return -1;
 	}
-
-	memset(buffer, 0, buffer_len);
-	memcpy(&reply->transaction_id, &original->transaction_id, sizeof(reply->transaction_id));
 
 	/*
 	 *	If the app_io encodes the packet, then we don't need
@@ -311,49 +272,44 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		if (data_len > 0) return data_len;
 	}
 
-	data_len = fr_dhcpv6_encode(&FR_DBUFF_TMP(buffer, buffer_len),
-				    request->packet->data, request->packet->data_len,
-				    request->reply->code, &request->reply_pairs);
+	packet_ctx.tmp_ctx = talloc(request, uint8_t);
+	packet_ctx.packet = buffer;
+	packet_ctx.packet_len = buffer_len;
+
+	packet_ctx.lb = fr_dns_labels_init(packet_ctx.tmp_ctx, buffer, 256);
+	fr_assert(packet_ctx.lb != NULL);
+
+	data_len = fr_dns_encode(&FR_DBUFF_TMP(buffer, buffer_len), &request->reply_pairs, &packet_ctx);
+	talloc_free(packet_ctx.tmp_ctx);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding DHCPv6 reply");
 		return -1;
 	}
 
-	/*
-	 *	ACK the client ID.
-	 */
-	if (!fr_dhcpv6_option_find(buffer + 4, buffer + data_len, attr_client_id->attr)) {
-		uint8_t const *client_id;
+	reply->id = original->id;
 
-		client_id = fr_dhcpv6_option_find(request->packet->data + 4, request->packet->data + request->packet->data_len, attr_client_id->attr);
-		if (client_id) {
-			size_t len = (client_id[2] << 8) | client_id[3];
-			if ((data_len + 4 + len) <= buffer_len) {
-				memcpy(buffer + data_len, client_id, 4 + len);
-				data_len += 4 + len;
-			}
-		}
-	}
-
-	RHEXDUMP3(buffer, data_len, "proto_dhcpv6 encode packet");
+	RHEXDUMP3(buffer, data_len, "proto_dns encode packet");
 
 	request->reply->data_len = data_len;
 	return data_len;
 }
 
-static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED size_t buflen)
+static int mod_priority_set(void const *instance, uint8_t const *buffer, size_t buflen)
 {
-	proto_dhcpv6_t const *inst = talloc_get_type_abort_const(instance, proto_dhcpv6_t);
+	int opcode;
+	fr_dns_packet_t const	*packet = (fr_dns_packet_t const *) buffer;
+	proto_dns_t const	*inst = talloc_get_type_abort(instance, proto_dns_t);
 
-	fr_assert(buffer[0] > 0);
-	fr_assert(buffer[0] < FR_DHCPV6_CODE_MAX);
+	fr_assert(buflen >= DNS_HDR_LEN);
+
+	opcode = packet->opcode;
 
 	/*
 	 *	Disallowed packet
 	 */
-	if (!inst->priorities[buffer[0]]) return 0;
+	if (!inst->priorities[opcode]) return 0;
 
-	if (!inst->allowed[buffer[0]]) return -1;
+	if (!inst->allowed[opcode]) return -1;
 
 	/*
 	 *	@todo - if we cared, we could also return -1 for "this
@@ -365,7 +321,8 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED 
 	/*
 	 *	Return the configured priority.
 	 */
-	return inst->priorities[buffer[0]];
+	return inst->priorities[opcode];
+
 }
 
 /** Open listen sockets/connect to external event source
@@ -379,9 +336,9 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, UNUSED 
  */
 static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf)
 {
-	proto_dhcpv6_t 	*inst = talloc_get_type_abort(instance, proto_dhcpv6_t);
+	proto_dns_t 	*inst = talloc_get_type_abort(instance, proto_dns_t);
 
-	inst->io.app = &proto_dhcpv6;
+	inst->io.app = &proto_dns;
 	inst->io.app_instance = instance;
 
 	return fr_master_io_listen(inst, &inst->io, sc,
@@ -400,7 +357,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
  */
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
-	proto_dhcpv6_t		*inst = talloc_get_type_abort(instance, proto_dhcpv6_t);
+	proto_dns_t		*inst = talloc_get_type_abort(instance, proto_dns_t);
 
 	/*
 	 *	No IO module, it's an empty listener.
@@ -418,7 +375,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, >=, 32);
 	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, <=, 65535);
 
-	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 1024);
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 64);
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
 
 	/*
@@ -439,14 +396,14 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  */
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	proto_dhcpv6_t 		*inst = talloc_get_type_abort(instance, proto_dhcpv6_t);
+	proto_dns_t 		*inst = talloc_get_type_abort(instance, proto_dns_t);
 
 	/*
 	 *	Ensure that the server CONF_SECTION is always set.
 	 */
 	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
 
-	fr_assert(dict_dhcpv6 != NULL);
+	fr_assert(dict_dns != NULL);
 	fr_assert(attr_packet_type != NULL);
 
 	/*
@@ -460,16 +417,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	FR_TIME_DELTA_BOUND_CHECK("idle_timeout", inst->io.idle_timeout, >=, fr_time_delta_from_sec(1));
 	FR_TIME_DELTA_BOUND_CHECK("idle_timeout", inst->io.idle_timeout, <=, fr_time_delta_from_sec(600));
 
-	FR_TIME_DELTA_BOUND_CHECK("nak_lifetime", inst->io.nak_lifetime, >=, fr_time_delta_from_sec(1));
-	FR_TIME_DELTA_BOUND_CHECK("nak_lifetime", inst->io.nak_lifetime, <=, fr_time_delta_from_sec(600));
-
-	FR_TIME_DELTA_BOUND_CHECK("cleanup_delay", inst->io.cleanup_delay, <=, fr_time_delta_from_sec(30));
-	FR_TIME_DELTA_BOUND_CHECK("cleanup_delay", inst->io.cleanup_delay, >, fr_time_delta_from_sec(0));
-
 	/*
 	 *	Tell the master handler about the main protocol instance.
 	 */
-	inst->io.app = &proto_dhcpv6;
+	inst->io.app = &proto_dns;
 	inst->io.app_instance = inst;
 
 	/*
@@ -486,7 +437,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 static int mod_load(void)
 {
-	if (fr_dhcpv6_global_init() < 0) {
+	if (fr_dns_global_init() < 0) {
 		PERROR("Failed initialising protocol library");
 		return -1;
 	}
@@ -496,15 +447,15 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	fr_dhcpv6_global_free();
+	fr_dns_global_free();
 }
 
-fr_app_t proto_dhcpv6 = {
+fr_app_t proto_dns = {
 	.magic			= RLM_MODULE_INIT,
-	.name			= "dhcpv6",
-	.config			= proto_dhcpv6_config,
-	.inst_size		= sizeof(proto_dhcpv6_t),
-	.dict			= &dict_dhcpv6,
+	.name			= "dns",
+	.config			= proto_dns_config,
+	.inst_size		= sizeof(proto_dns_t),
+	.dict			= &dict_dns,
 
 	.onload			= mod_load,
 	.unload			= mod_unload,

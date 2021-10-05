@@ -65,7 +65,7 @@ fr_pair_t *fr_raw_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, ui
  */
 ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 			       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
-			       void *decode_ctx,
+			       bool nested, void *decode_ctx,
 			       fr_decode_value_t decode_value, fr_decode_value_t decode_tlv)
 {
 	unsigned int		child_num;
@@ -73,18 +73,30 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 	fr_dict_attr_t const	*child;
 	fr_pair_list_t		head;
 	fr_dcursor_t		child_cursor;
-	fr_pair_t		*vp, *key_vp;
+	fr_pair_t		*vp, *key_vp, *struct_vp = NULL;
 	unsigned int		offset = 0;
+	TALLOC_CTX		*child_ctx;
 
-	fr_pair_list_init(&head);
 	if (data_len < 1) return -1; /* at least one byte of data */
 
 	FR_PROTO_HEX_DUMP(data, data_len, "fr_struct_from_network");
 
 	/*
-	 *	Record where we were in the list when this function was called
+	 *	Start a child list.
 	 */
-	fr_dcursor_init(&child_cursor, &head);
+	if (!nested) {
+		fr_pair_list_init(&head);
+		fr_dcursor_init(&child_cursor, &head);
+		child_ctx = ctx;
+	} else {
+		fr_assert(parent->type == FR_TYPE_STRUCT);
+
+		struct_vp = fr_pair_afrom_da(ctx, parent);
+		if (!struct_vp) return -1;
+
+		fr_dcursor_init(&child_cursor, &struct_vp->vp_group);
+		child_ctx = struct_vp;
+	}
 	child_num = 1;
 	key_vp = NULL;
 
@@ -95,7 +107,10 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 		size_t struct_len;
 
 		struct_len = (p[0] << 8) | p[1];
-		if ((struct_len + 2) > data_len) goto unknown;
+		if ((struct_len + 2) > data_len) {
+			FR_PROTO_TRACE("too much data?");
+			goto unknown;
+		}
 
 		data_len = struct_len + 2;
 		end = data + data_len;
@@ -122,7 +137,10 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 			uint64_t value;
 
 			num_bits = offset + child->flags.length;
-			if ((end - p) < fr_bytes_from_bits(num_bits)) goto unknown;
+			if ((end - p) < fr_bytes_from_bits(num_bits)) {
+				FR_PROTO_TRACE("not enough data for bit decoder?");
+				goto unknown;
+			}
 
 			memset(array, 0, sizeof(array));
 			memcpy(&array[0], p, fr_bytes_from_bits(num_bits));
@@ -134,7 +152,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 			value >>= (8 - offset); /* move it to the lower bits */
 			value >>= (56 - child->flags.length);
 
-			vp = fr_pair_afrom_da(ctx, child);
+			vp = fr_pair_afrom_da(child_ctx, child);
 			if (!vp) {
 				FR_PROTO_TRACE("fr_struct_from_network - failed allocating child VP");
 				goto unknown;
@@ -162,6 +180,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 					break;
 
 				default:
+					FR_PROTO_TRACE("Can't decode unknown type?");
 					goto unknown;
 			}
 
@@ -192,8 +211,11 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 			 *	Decode EVERYTHING as a TLV.
 			 */
 			while (p < end) {
-				slen = decode_tlv(ctx, &child_cursor, fr_dict_by_da(child), child, p, end - p, decode_ctx);
-				if (slen < 0) goto unknown;
+				slen = decode_tlv(child_ctx, &child_cursor, fr_dict_by_da(child), child, p, end - p, decode_ctx);
+				if (slen < 0) {
+					FR_PROTO_TRACE("failed decoding TLV?");
+					goto unknown;
+				}
 				p += slen;
 			}
 
@@ -222,8 +244,11 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 		if (decode_value) {
 			ssize_t slen;
 
-			slen = decode_value(ctx, &child_cursor, fr_dict_by_da(child), child, p, child_length, decode_ctx);
-			if (slen < 0) return slen - (p - data);
+			slen = decode_value(child_ctx, &child_cursor, fr_dict_by_da(child), child, p, child_length, decode_ctx);
+			if (slen < 0) {
+				FR_PROTO_TRACE("Failed decoding value");
+				return slen - (p - data);
+			}
 
 			p += slen;   	/* not always the same as child->flags.length */
 			child_num++;	/* go to the next child */
@@ -244,7 +269,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 			break;
 		}
 
-		vp = fr_pair_afrom_da(ctx, child);
+		vp = fr_pair_afrom_da(child_ctx, child);
 		if (!vp) {
 			FR_PROTO_TRACE("fr_struct_from_network - failed allocating child VP");
 			goto unknown;
@@ -263,7 +288,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 		unknown:
 			fr_pair_list_free(&head);
 
-			vp = fr_raw_from_network(ctx, parent, data, data_len);
+			vp = fr_raw_from_network(child_ctx, parent, data, data_len);
 			if (!vp) return -1;
 
 			/*
@@ -302,7 +327,10 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 		/*
 		 *	Nothing more to decode, don't decode it.
 		 */
-		if (p >= end) goto done;
+		if (p >= end) {
+			FR_PROTO_TRACE("Expected substruct, but there is none. We're done decoding this structure");
+			goto done;
+		}
 
 		enumv = fr_dict_enum_by_value(key_vp->da, &key_vp->data);
 		if (enumv) child = enumv->child_struct[0];
@@ -315,12 +343,16 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 			 *	have to look up, or keep track of, the
 			 *	number of children of the key field.
 			 */
-			child = fr_dict_unknown_afrom_fields(ctx, key_vp->da,
+			child = fr_dict_unknown_afrom_fields(child_ctx, key_vp->da,
 							     fr_dict_vendor_num_by_da(key_vp->da), 0);
-			if (!child) goto unknown;
+			if (!child) {
+				FR_PROTO_TRACE("failed allocating unknown child?");
+				goto unknown;
+			}
 
-			vp = fr_raw_from_network(ctx, child, p, end - p);
+			vp = fr_raw_from_network(child_ctx, child, p, end - p);
 			if (!vp) {
+				FR_PROTO_TRACE("Failed creating raw VP from malformed or unknown substruct");
 				fr_dict_unknown_free(&child);
 				return -(p - data);
 			}
@@ -330,31 +362,36 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 		} else {
 			fr_assert(child->type == FR_TYPE_STRUCT);
 
-			slen = fr_struct_from_network(ctx, &child_cursor, child, p, end - p,
+			slen = fr_struct_from_network(child_ctx, &child_cursor, child, p, end - p, nested,
 						      decode_ctx, decode_value, decode_tlv);
-			if (slen <= 0) goto unknown_child;
+			if (slen <= 0) {
+				FR_PROTO_TRACE("substruct %s decoding failed", child->name);
+				goto unknown_child;
+			}
 			p += slen;
 		}
 
 		fr_dict_unknown_free(&child);
 
-		fr_dcursor_head(&child_cursor);
-		fr_dcursor_tail(cursor);
-		fr_dcursor_merge(cursor, &child_cursor);	/* Wind to the end of the new pairs */
-
 		/*
 		 *	Else return whatever we decoded.  Note that if
-		 *	the substruct ends in a TLV, we decode only
-		 *	the fixed-length portion of the structure.
+		 *	the substruct ends in a TLV, we decode only as
+		 *	many TLVs as the various "length" fields say.
 		 */
-		return p - data;
+		data_len = p - data;
 	}
 
 done:
-	fr_dcursor_head(&child_cursor);
-	fr_dcursor_tail(cursor);
-	fr_dcursor_merge(cursor, &child_cursor);	/* Wind to the end of the new pairs */
+	if (!nested) {
+		fr_dcursor_head(&child_cursor);
+		fr_dcursor_tail(cursor);
+		fr_dcursor_merge(cursor, &child_cursor);	/* Wind to the end of the new pairs */
+	} else {
+		fr_assert(struct_vp != NULL);
+		fr_dcursor_append(cursor, struct_vp);
+	}
 
+	FR_PROTO_TRACE("used %zd bytes", data_len);
 	return data_len;
 }
 
