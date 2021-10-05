@@ -404,13 +404,43 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_
 	return labels_len;
 }
 
+static ssize_t decode_record(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *attr,
+			     uint8_t const *packet, size_t packet_len,
+			     fr_dns_ctx_t *packet_ctx, uint8_t const *counter)
+{
+	int i, count;
+	uint8_t const *p, *end;
+
+	p = packet;
+	end = packet + packet_len;
+
+	count = fr_net_to_uint16(counter);
+	FR_PROTO_TRACE("Decoding %u of %s", count, attr->name);
+	for (i = 0; i < count; i++) {
+		ssize_t slen;
+
+		FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - %s %d/%d", attr->name, i, count);
+
+		if (p >= end) {
+			FR_PROTO_TRACE("%s overflows packet at %d", attr->name, i);
+			return -(p - packet);
+		}
+
+		slen = fr_struct_from_network(ctx, cursor, attr, p, end - p, true,
+					      packet_ctx, decode_value_trampoline, NULL);
+		if (slen < 0) return slen;
+		p += slen;
+	}
+
+	return p - packet;
+}
+
 /** Decode a DNS packet
  *
  */
 ssize_t	fr_dns_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, fr_dcursor_t *cursor, fr_dns_ctx_t *packet_ctx)
 {
 	ssize_t			slen;
-	int			i, count;
 	uint8_t const		*p, *end;
 
 	FR_PROTO_TRACE("HERE %d", __LINE__);
@@ -437,85 +467,21 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 	p = packet + DNS_HDR_LEN;
 	end = packet + packet_len;
 
-	/*
-	 *	Decode questions.
-	 */
-	count = fr_net_to_uint16(packet + 4);
-	FR_PROTO_TRACE("Decoding %u questions", count);
-	for (i = 0; i < count; i++) {
-		FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - question %d/%d", i, count);
-	
-		if (p >= end) {
-			FR_PROTO_TRACE("question overflows packet at %d", i);
-			goto fail;
-		}
+	slen = decode_record(ctx, cursor, attr_dns_question, p, end - p, packet_ctx, packet + 4);
+	if (slen < 0) goto fail;
+	p += slen;
 
-		slen = fr_struct_from_network(ctx, cursor, attr_dns_question, p, end - p, true,
-					      packet_ctx, decode_value_trampoline, NULL);
-		if (slen < 0) goto fail;
-		p += slen;
-	}
+	slen = decode_record(ctx, cursor, attr_dns_rr, p, end - p, packet_ctx, packet + 6);
+	if (slen < 0) goto fail;
+	p += slen;
 
-	/*
-	 *	Decode answers
-	 */
-	count = fr_net_to_uint16(packet + 6);
-	FR_PROTO_TRACE("Decoding %u answers", count);
-	for (i = 0; i < count; i++) {
-		FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - answer %d/%d", i, count);
+	slen = decode_record(ctx, cursor, attr_dns_ns, p, end - p, packet_ctx, packet + 8);
+	if (slen < 0) goto fail;
+	p += slen;
 
-		if (p >= end) {
-			FR_PROTO_TRACE("answer overflows packet at %d", i);
-			goto fail;
-		}
-
-		slen = fr_struct_from_network(ctx, cursor, attr_dns_rr, p, end - p, true,
-					      packet_ctx, decode_value_trampoline, NULL);
-		if (slen < 0) goto fail;
-		p += slen;
-	}
-
-	/*
-	 *	Decode NS
-	 */
-	count = fr_net_to_uint16(packet + 8);
-	FR_PROTO_TRACE("Decoding %u NS records", count);
-	for (i = 0; i < count; i++) {
-		FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - NS %d/%d", i, count);
-
-		if (p >= end) {
-			FR_PROTO_TRACE("answer overflows packet at %d", i);
-			goto fail;
-		}
-
-		slen = fr_struct_from_network(ctx, cursor, attr_dns_ns, p, end - p, true,
-					      packet_ctx, decode_value_trampoline, NULL);
-		if (slen < 0) goto fail;
-		p += slen;
-	}
-
-	/*
-	 *	Decode answers
-	 */
-	count = fr_net_to_uint16(packet + 10);
-	FR_PROTO_TRACE("Decoding %u additional records", count);
-	for (i = 0; i < count; i++) {
-		FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - additional %d/%d", i, count);
-
-		if (p >= end) {
-			FR_PROTO_TRACE("answer overflows packet at %d", i);
-			goto fail;
-		}
-
-		/*
-		 *	@todo - allow for decoding TLVs here, for the OPT RR (41).
-		 *	That should only exist within the AR set.
-		 */
-		slen = fr_struct_from_network(ctx, cursor, attr_dns_ar, p, end - p, true,
-					      packet_ctx, decode_value_trampoline, NULL);
-		if (slen < 0) goto fail;
-		p += slen;
-	}
+	slen = decode_record(ctx, cursor, attr_dns_ar, p, end - p, packet_ctx, packet + 10);
+	if (slen < 0) goto fail;
+	p += slen;
 
 	return packet_len;
 }
@@ -617,9 +583,7 @@ static ssize_t fr_dns_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_
 	packet_ctx->lb = fr_dns_labels_init(packet_ctx, data, 256);
 	fr_assert(packet_ctx->lb != NULL);
 
-	if (fr_dns_decode(ctx, data, data_len, &cursor, proto_ctx) < 0) return -1;
-
-	return data_len;
+	return fr_dns_decode(ctx, data, data_len, &cursor, packet_ctx);
 }
 
 /*
