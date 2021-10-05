@@ -9,7 +9,7 @@ ifneq "${TARGETNAME}" ""
   TARGET	:= $(TARGETNAME).a
 endif
 
-SOURCES		:= $(TARGETNAME).c conn.c groups.c user.c
+SOURCES		:= $(TARGETNAME).c groups.c user.c
 
 SRC_CFLAGS	+= -I$(top_builddir)/src/modules/rlm_ldap
 TGT_PREREQS	:= libfreeradius-ldap.a
