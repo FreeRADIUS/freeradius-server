@@ -72,3 +72,11 @@ test.fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-c
 		-max_total_time=$(FUZZER_TIMEOUT) \
 		-D share/dictionary \
 		src/tests/fuzzer-corpus/$(PROTOCOL)
+
+test.fuzzer.$(PROTOCOL).crash: $(wildcard $(BUILD_DIR)/fuzzer/$(PROTOCOL)/crash-*) $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
+	$(TEST_BIN)/fuzzer_$(PROTOCOL) \
+		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)/" \
+		-max_len=512 $(FUZZER_ARGUMENTS) \
+		-max_total_time=$(FUZZER_TIMEOUT) \
+		-D share/dictionary \
+		$<
