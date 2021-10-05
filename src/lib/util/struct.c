@@ -94,6 +94,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 		struct_vp = fr_pair_afrom_da(ctx, parent);
 		if (!struct_vp) return -1;
 
+		fr_pair_list_init(&head); /* still used elsewhere */
 		fr_dcursor_init(&child_cursor, &struct_vp->vp_group);
 		child_ctx = struct_vp;
 	}
@@ -286,9 +287,13 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 			FR_PROTO_TRACE("fr_struct_from_network - failed decoding child VP");
 			talloc_free(vp);
 		unknown:
-			fr_pair_list_free(&head);
+			if (nested) {
+				TALLOC_FREE(struct_vp);
+			} else {
+				fr_pair_list_free(&head);
+			}
 
-			vp = fr_raw_from_network(child_ctx, parent, data, data_len);
+			vp = fr_raw_from_network(ctx, parent, data, data_len);
 			if (!vp) return -1;
 
 			/*
