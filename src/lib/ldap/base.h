@@ -312,8 +312,6 @@ typedef struct fr_ldap_thread_trunk_s fr_ldap_thread_trunk_t;
 typedef struct {
 	LDAP			*handle;		//!< libldap handle.
 
-	bool			rebound;		//!< Whether the connection has been rebound to something
-							///< other than the admin user.
 	bool			referred;		//!< Whether the connection is now established a server
 							///< other than the configured one.
 
