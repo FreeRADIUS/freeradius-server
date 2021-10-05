@@ -647,10 +647,6 @@ fr_ldap_rcode_t	fr_ldap_search_async(int *msgid, request_t *request,
 				     char const *dn, int scope, char const *filter, char const * const *attrs,
 				     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-fr_ldap_rcode_t	fr_ldap_modify(request_t *request, fr_ldap_connection_t **pconn,
-			       char const *dn, LDAPMod *mods[],
-			       LDAPControl **serverctrls, LDAPControl **clientctrls);
-
 fr_ldap_rcode_t	fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_connection_t **pconn,
 			       char const *dn, LDAPMod *mods[],
 			       LDAPControl **serverctrls, LDAPControl **clientctrls);
