@@ -237,8 +237,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
 	proto_dns_t const	*inst = talloc_get_type_abort_const(instance, proto_dns_t);
-	fr_io_track_t		*track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
-	fr_io_address_t const	*address = track->address;
+//	fr_io_track_t		*track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
 	fr_dns_packet_t		*reply = (fr_dns_packet_t *) buffer;
 	fr_dns_packet_t		*original = (fr_dns_packet_t *) request->packet->data;
 	ssize_t			data_len;
