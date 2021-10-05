@@ -242,7 +242,6 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	fr_dns_packet_t		*reply = (fr_dns_packet_t *) buffer;
 	fr_dns_packet_t		*original = (fr_dns_packet_t *) request->packet->data;
 	ssize_t			data_len;
-	RADCLIENT const		*client;
 	fr_dns_ctx_t	packet_ctx;
 
 	/*
@@ -254,9 +253,6 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 //		track->do_not_respond = true;
 		return 1;
 	}
-
-	client = address->radclient;
-	fr_assert(client);
 
 	if (buffer_len < DNS_HDR_LEN) {
 		REDEBUG("Output buffer is too small to hold a DNS packet.");
@@ -300,7 +296,7 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, size_t 
 	fr_dns_packet_t const	*packet = (fr_dns_packet_t const *) buffer;
 	proto_dns_t const	*inst = talloc_get_type_abort(instance, proto_dns_t);
 
-	fr_assert(buflen >= DNS_HDR_LEN);
+	if (buflen < DNS_HDR_LEN) return -1;
 
 	opcode = packet->opcode;
 
