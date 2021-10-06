@@ -267,7 +267,7 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
  * @note the valuepair list should probably be freed.
  *
  * @param[in] ctx	for talloc
- * @param[in] root	root DA to start referencing from
+ * @param[in] parent	parent DA to start referencing from
  * @param[in] buffer	to read valuepairs from.
  * @param[in] end	end of the buffer
  * @param[in] list	where the parsed fr_pair_ts will be appended.
