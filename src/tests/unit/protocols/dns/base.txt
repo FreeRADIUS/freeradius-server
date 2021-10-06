@@ -1,5 +1,5 @@
 #
-#  Test vectors for DHCP attributes
+#  Test vectors for DNS
 #
 proto dns
 proto-dictionary dns
