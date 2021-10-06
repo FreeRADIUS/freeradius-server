@@ -293,7 +293,7 @@ static int mod_priority_set(void const *instance, uint8_t const *buffer, size_t 
 {
 	int opcode;
 	fr_dns_packet_t const	*packet = (fr_dns_packet_t const *) buffer;
-	proto_dns_t const	*inst = talloc_get_type_abort(instance, proto_dns_t);
+	proto_dns_t const	*inst = talloc_get_type_abort_const(instance, proto_dns_t);
 
 	if (buflen < DNS_HDR_LEN) return -1;
 
