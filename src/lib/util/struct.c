@@ -114,6 +114,11 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 	if (da_is_length_field(parent)) {
 		size_t struct_len;
 
+		if ((end - p) < 2) {
+			FR_PROTO_TRACE("Insufficient room for length header");
+			goto unknown;
+		}
+
 		struct_len = (p[0] << 8) | p[1];
 		if ((p + struct_len + 2) > end) {
 			FR_PROTO_TRACE("Length header is larger than remaining data");
