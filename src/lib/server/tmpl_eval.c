@@ -1021,7 +1021,7 @@ static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
 				list_head = &vp->vp_group;
 				_tmpl_pair_cursor_init(vp, list_head, ar, cc);
 				curr = fr_pair_list_head(list_head);
-				list = &list_head->head;
+				list = &list_head->order;
 				continue;
 			}
 
@@ -1501,7 +1501,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 
 		list_ctx = ns->list_ctx;
 		ar = ns->ar;
-		curr = _tmpl_cursor_eval(&list_head->head, curr, &cc);
+		curr = _tmpl_cursor_eval(&list_head->order, curr, &cc);
 		if (!curr) {
 			/*
 			 *	References extend beyond current

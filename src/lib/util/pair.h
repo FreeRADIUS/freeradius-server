@@ -63,7 +63,7 @@ typedef enum value_type {
 typedef struct value_pair_s fr_pair_t;
 
 typedef struct {
-        fr_dlist_head_t head;
+        fr_dlist_head_t		order;				//!< Maintains the relative order of pairs in a list.
 } fr_pair_list_t;
 
 /** Stores an attribute, a value and various bits of other data
@@ -74,18 +74,13 @@ typedef struct {
  */
 struct value_pair_s {
 	fr_dict_attr_t const	*da;				//!< Dictionary attribute defines the attribute
-								//!< number, vendor and type of the attribute.
+								//!< number, vendor and type of the pair.
 
-	fr_dlist_t		entry;				//!< dlist entry pointers
+	fr_dlist_t		order_entry;			//!< Entry to maintain relative order within a list
+								///< of pairs.  This ensures pairs within the list
+								///< are encoded in the same order as they were
+								///< received or inserted.
 
-	/*
-	 *	Legacy stuff that needs to die.
-	 */
-	struct {
-		fr_token_t		op;			//!< Operator to use when moving or inserting
-								//!< valuepair into a list.
-		char const 		*xlat;			//!< Source string for xlat expansion.
-	};
 
 	value_type_t		type;				//!< Type of pointer in value union.
 
@@ -95,6 +90,15 @@ struct value_pair_s {
 	union {
 		fr_value_box_t		data;			//!< The value of this pair.
 		fr_pair_list_t		children;		//!< Nested attributes of this pair.
+	};
+
+	/*
+	 *	Legacy stuff that needs to die.
+	 */
+	struct {
+		fr_token_t		op;			//!< Operator to use when moving or inserting
+								//!< valuepair into a list.
+		char const 		*xlat;			//!< Source string for xlat expansion.
 	};
 };
 
@@ -162,7 +166,7 @@ void fr_pair_list_init(fr_pair_list_t *head);
  */
 #define fr_pair_list_set_head(_list, _vp) (_list = &_vp)
 
-#define fr_pair_list_from_dcursor(_cursor) (fr_pair_list_t *) (((uint8_t *) (_cursor->dlist)) - offsetof(fr_pair_list_t, head))
+#define fr_pair_list_from_dcursor(_cursor) (fr_pair_list_t *) (((uint8_t *) (_cursor->dlist)) - offsetof(fr_pair_list_t, order))
 
 /* Allocation and management */
 fr_pair_t	*fr_pair_alloc_null(TALLOC_CTX *ctx) CC_HINT(warn_unused_result);
@@ -211,7 +215,7 @@ bool		fr_pair_matches_da(void const *item, void const *uctx);
 static inline fr_pair_t *fr_dcursor_iter_by_da_init(fr_dcursor_t *cursor,
 						    fr_pair_list_t *list, fr_dict_attr_t const *da)
 {
-	return fr_dcursor_talloc_iter_init(cursor, &list->head, fr_pair_iter_next_by_da, da, fr_pair_t);
+	return fr_dcursor_talloc_iter_init(cursor, &list->order, fr_pair_iter_next_by_da, da, fr_pair_t);
 }
 
 /** Initialise a cursor that will return only attributes descended from the specified #fr_dict_attr_t
@@ -226,7 +230,7 @@ static inline fr_pair_t *fr_dcursor_iter_by_da_init(fr_dcursor_t *cursor,
 static inline fr_pair_t *fr_dcursor_iter_by_ancestor_init(fr_dcursor_t *cursor,
 							  fr_pair_list_t *list, fr_dict_attr_t const *da)
 {
-	return fr_dcursor_talloc_iter_init(cursor, &list->head, fr_pair_iter_next_by_ancestor, da, fr_pair_t);
+	return fr_dcursor_talloc_iter_init(cursor, &list->order, fr_pair_iter_next_by_ancestor, da, fr_pair_t);
 }
 
 /** @hidecallergraph */

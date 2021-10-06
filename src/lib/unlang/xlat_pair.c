@@ -135,7 +135,7 @@ int fr_pair_decode_value_box_list(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		}
 	}
 
-	decoded = fr_dlist_num_elements(&head.head);
+	decoded = fr_pair_list_len(&head);
 
 	fr_dcursor_init(&cursor, &head);
 	fr_dcursor_merge(out, &cursor);
