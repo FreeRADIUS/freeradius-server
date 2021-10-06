@@ -108,14 +108,18 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 		size_t struct_len;
 
 		struct_len = (p[0] << 8) | p[1];
-		if ((struct_len + 2) > data_len) {
-			FR_PROTO_TRACE("too much data?");
+		if ((p + struct_len + 2) > end) {
+			FR_PROTO_TRACE("Length header is larger than remaining data");
 			goto unknown;
 		}
 
-		data_len = struct_len + 2;
-		end = data + data_len;
+		/*
+		 *	Skip the "length" field, and tell the decoder
+		 *	to stop at the end of the length field.
+		 */
 		p += 2;
+		end = p + struct_len;
+		data_len = struct_len + 2;
 	}
 
 	while (p < end) {
