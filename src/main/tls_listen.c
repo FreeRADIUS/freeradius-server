@@ -1230,8 +1230,8 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	 *	if there's no packet, encode it here.
 	 */
 	if (!request->proxy->data) {
-		request->proxy_listener->encode(request->proxy_listener,
-						request);
+		request->proxy_listener->proxy_encode(request->proxy_listener,
+						      request);
 	}
 
 	if (!sock->ssn->connected) {
