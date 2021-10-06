@@ -405,14 +405,11 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_
 }
 
 static ssize_t decode_record(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *attr,
-			     uint8_t const *packet, size_t packet_len,
+			     uint8_t const *rr, uint8_t const *end,
 			     fr_dns_ctx_t *packet_ctx, uint8_t const *counter)
 {
 	int i, count;
-	uint8_t const *p, *end;
-
-	p = packet;
-	end = packet + packet_len;
+	uint8_t const *p = rr;
 
 	count = fr_net_to_uint16(counter);
 	FR_PROTO_TRACE("Decoding %u of %s", count, attr->name);
@@ -422,17 +419,18 @@ static ssize_t decode_record(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr
 		FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - %s %d/%d", attr->name, i, count);
 
 		if (p >= end) {
-			FR_PROTO_TRACE("%s overflows packet at %d", attr->name, i);
-			return -(p - packet);
+			fr_strerror_printf("%s structure at count %d/%d overflows the packet", attr->name, i, count);
+			return -(p - rr);
 		}
 
 		slen = fr_struct_from_network(ctx, cursor, attr, p, end - p, true,
 					      packet_ctx, decode_value_trampoline, NULL);
 		if (slen < 0) return slen;
+		if (!slen) break;
 		p += slen;
 	}
 
-	return p - packet;
+	return p - rr;
 }
 
 /** Decode a DNS packet
@@ -442,8 +440,6 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 {
 	ssize_t			slen;
 	uint8_t const		*p, *end;
-
-	FR_PROTO_TRACE("HERE %d", __LINE__);
 
 	if (packet_len < DNS_HDR_LEN) return 0;
 
@@ -459,28 +455,46 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 	slen = fr_struct_from_network(ctx, cursor, attr_dns_packet, packet, DNS_HDR_LEN, true,
 				      packet_ctx, decode_value_trampoline, NULL);
 	if (slen < 0) {
-	fail:
-		fr_strerror_const("Failed decoding DNS packet");
+		fr_strerror_printf("Failed decoding DNS header - %s", fr_strerror());
 		return slen;
 	}
+	fr_assert(slen == DNS_HDR_LEN);
 
 	p = packet + DNS_HDR_LEN;
 	end = packet + packet_len;
+	FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - after header");
 
-	slen = decode_record(ctx, cursor, attr_dns_question, p, end - p, packet_ctx, packet + 4);
-	if (slen < 0) goto fail;
+	slen = decode_record(ctx, cursor, attr_dns_question, p, end, packet_ctx, packet + 4);
+	if (slen < 0) {
+		fr_strerror_printf("Failed decoding questions - %s", fr_strerror());
+		return slen;
+	}
 	p += slen;
+	FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - after %zd bytes of questions", slen);
 
-	slen = decode_record(ctx, cursor, attr_dns_rr, p, end - p, packet_ctx, packet + 6);
-	if (slen < 0) goto fail;
+	slen = decode_record(ctx, cursor, attr_dns_rr, p, end, packet_ctx, packet + 6);
+	if (slen < 0) {
+		fr_strerror_printf("Failed decoding RRs - %s", fr_strerror());
+		return slen - (p - packet);
+	}
 	p += slen;
+	FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - after %zd bytes of RRs", slen);
 
-	slen = decode_record(ctx, cursor, attr_dns_ns, p, end - p, packet_ctx, packet + 8);
-	if (slen < 0) goto fail;
+	slen = decode_record(ctx, cursor, attr_dns_ns, p, end, packet_ctx, packet + 8);
+	if (slen < 0) {
+		fr_strerror_printf("Failed decoding NS - %s", fr_strerror());
+		return slen - (p - packet);
+	}
 	p += slen;
+	FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - after %zd bytes of NS", slen);
 
-	slen = decode_record(ctx, cursor, attr_dns_ar, p, end - p, packet_ctx, packet + 10);
-	if (slen < 0) goto fail;
+	slen = decode_record(ctx, cursor, attr_dns_ar, p, end, packet_ctx, packet + 10);
+	if (slen < 0) {
+		fr_strerror_printf("Failed decoding additional records - %s", fr_strerror());
+		return slen - (p - packet);
+	}
+	FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - after %zd bytes of additional records", slen);
+
 //	p += slen;
 
 	return packet_len;
