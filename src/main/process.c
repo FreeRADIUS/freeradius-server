@@ -3251,7 +3251,7 @@ static int request_will_proxy(REQUEST *request)
 			vp_cursor_t cursor;
 
 			(void) fr_cursor_init(&cursor, &request->config); /* already checked it above */
-			
+
 			while ((vp = fr_cursor_next(&cursor)) != NULL) {
 				if (listen_coa_find(request, vp->vp_strvalue) == 0) break;
 			}
@@ -3267,9 +3267,9 @@ static int request_will_proxy(REQUEST *request)
 		 */
 		home_server_update_request(request->home_server, request);
 		goto add_proxy_state;
-
-	} else {
 #endif
+	} else {
+
 		return 0;
 	}
 
