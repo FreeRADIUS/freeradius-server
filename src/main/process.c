@@ -3956,7 +3956,7 @@ static void ping_home_server(void *ctx)
 	home->num_sent_pings++;
 
 	rad_assert(request->proxy_listener != NULL);
-	request->proxy_listener->encode(request->proxy_listener, request);
+	request->proxy_listener->proxy_encode(request->proxy_listener, request);
 	debug_packet(request, request->proxy, false);
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
