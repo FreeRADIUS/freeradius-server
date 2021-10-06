@@ -1571,6 +1571,17 @@ static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_s
 	return 0;
 }
 
+static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread_inst,
+				       UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	rlm_ldap_t		*inst = talloc_get_type_abort(uctx, rlm_ldap_t);
+	ldap_xlat_thread_inst_t	*xt = xlat_thread_inst;
+
+	xt->t = talloc_get_type_abort(module_thread_by_data(inst)->data, fr_ldap_thread_t);
+
+	return 0;
+}
+
 /** Initialise thread specific data structure
  *
  */
