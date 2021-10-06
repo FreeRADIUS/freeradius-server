@@ -1,0 +1,19 @@
+#
+#  Test vectors for DHCP attributes
+#
+proto dns
+proto-dictionary dns
+
+# 0x6000 questions
+decode-proto 44 81 9a 97 00 00 00 00 60 00 00 00 00 00 01 00 2d 00 00 dc dc 23
+match Failed decoding NS - ns structure at count 1/24576 overflows the packet
+
+#                                                 256 bytes of data
+decode-proto 44 81 9a 97 00 00 00 00 00 01 00 00  01 00 00 00 2d 00 00 dc dc 23
+match packet = { id = 17537, query = response, opcode = 3, authoritative = no, truncated-response = yes, recursion-desired = no, recursion-available = yes, reserved = no, authentic-data = no, checking-disabled = yes, rcode = yx-rr-set, qdcount = 0, ancount = 0, nscount = 1, arcount = 0 }, ns = { raw.name = 0x010000002d0000dcdc23 }
+
+decode-proto 20 20 20 20 20 20 20 20 20 20 20 20 ff
+match Failed decoding questions - question structure at count 1/8224 overflows the packet
+
+count
+match 8
