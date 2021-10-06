@@ -1,7 +1,12 @@
-FreeRADIUS 3.0.25 Wed 29 Sep 2021 12:00:00 EDT urgency=low
+FreeRADIUS 3.0.25 Wed 06 Oct 2021 12:00:00 EDT urgency=medium
 	Feature improvements
+	* None
 
 	Bug fixes
+	* Add `correct_escapes` back into default configuration
+	* Fix undeclared variable with some compile options
+	* Quiet erroneous debug output
+	* Use correct encode function for proxied packets
 
 FreeRADIUS 3.0.24 Wed 29 Sep 2021 12:00:00 EDT urgency=medium
 	Feature improvements
