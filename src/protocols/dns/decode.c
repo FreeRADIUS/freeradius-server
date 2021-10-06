@@ -351,7 +351,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_
 		/*
 		 *	Decode starting at "NEXT", but allowing decodes from the start of the packet.
 		 */
-		slen = fr_dns_label_uncompressed_length(packet_ctx->packet, data, data + data_len - packet_ctx->packet, &next, packet_ctx->lb);
+		slen = fr_dns_label_uncompressed_length(packet_ctx->packet, data, data_len, &next, packet_ctx->lb);
 		if (slen <= 0) {
 			FR_PROTO_TRACE("length failed at %zd - %s", slen, fr_strerror());
 			goto raw;
@@ -366,7 +366,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_
 		 *	If any of the labels point outside of this
 		 *	area, OR they are otherwise invalid, then that's an error.
 		 */
-		slen = fr_dns_labels_network_verify(packet_ctx->packet, data, data + data_len - packet_ctx->packet, data, packet_ctx->lb);
+		slen = fr_dns_labels_network_verify(packet_ctx->packet, data, data_len, data, packet_ctx->lb);
 		if (slen < 0) {
 			FR_PROTO_TRACE("verify failed");
 		raw:
