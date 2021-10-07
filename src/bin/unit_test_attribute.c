@@ -2785,7 +2785,7 @@ static int process_file(bool *exit_now, TALLOC_CTX *ctx, command_config_t const 
 
 		if (!p) {
 			if (!feof(fp)) {
-				ERROR("Line %d too long in %s", cc->lineno, cc->path);
+				ERROR("Line %d too long in %s/%s", cc->lineno, cc->path, cc->filename);
 				ret = -1;
 				goto finish;
 			}
