@@ -78,6 +78,20 @@ if test x$with_[]modname != xno; then
 		  [
 		    AC_MSG_RESULT(no)
 		  ])
+
+		AC_MSG_CHECKING([for PGRES_PIPELINE_SYNC])
+		AC_COMPILE_IFELSE(
+		  [AC_LANG_PROGRAM([#include <libpq-fe.h>], [[
+		    if (PGRES_PIPELINE_SYNC) return 0;
+		    return 1;
+		  ]])],
+		  [
+		    AC_DEFINE([HAVE_PGRES_PIPELINE_SYNC], [1], [Whether the PGRES_PIPELINE_SYNC constant is defined])
+		    AC_MSG_RESULT(yes)
+		  ],
+		  [
+		    AC_MSG_RESULT(no)
+		  ])
 	fi
 
 	smart_try_dir="$rlm_sql_postgresql_lib_dir /usr/lib /usr/local/pgsql/lib"
