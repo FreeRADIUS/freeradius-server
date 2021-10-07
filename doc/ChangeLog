@@ -1,3 +1,8 @@
+FreeRADIUS 3.2.0 Thu 07 Oct 2021 12:00:00 EDT urgency=low
+	Feature improvements
+
+	Bug fixes
+
 FreeRADIUS 3.0.25 Thu 07 Oct 2021 12:00:00 EDT urgency=medium
 	Feature improvements
 	* Better debug output when proxying is disabled
