@@ -371,7 +371,7 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp, boo
 		print_int:
 			/* add a raw value to our json output - i.e. do not try resolve enum.
 			   skip this if raw_value is false, and we have a value in the dictionary */
-			if (!raw_value && !vp->da->has_value) break;
+			if (!raw_value && !vp->da->flags.has_value) break;
 #ifdef HAVE_JSON_OBJECT_NEW_INT64
 			/* debug */
 			RDEBUG3("creating new int64 for unsigned 32 bit int/byte/short '%s'", vp->da->name);
