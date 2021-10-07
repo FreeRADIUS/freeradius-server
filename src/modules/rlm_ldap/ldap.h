@@ -311,8 +311,6 @@ typedef struct ldap_handle {
 	LDAP		*handle;			//!< libldap handle.
 	bool		rebound;			//!< Whether the connection has been rebound to something
 							//!< other than the admin user.
-	bool		referred;			//!< Whether the connection is now established a server
-							//!< other than the configured one.
 	rlm_ldap_t	*inst;				//!< rlm_ldap configuration.
 } ldap_handle_t;
 
