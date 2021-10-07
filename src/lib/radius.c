@@ -2989,7 +2989,8 @@ static ssize_t data2vp_nas_filter_rule(TALLOC_CTX *ctx,
 				       DICT_ATTR const *da, uint8_t const *start,
 				       size_t const packetlen, VALUE_PAIR **pvp)
 {
-	uint8_t const *p, *attr = start;
+	uint8_t const *p = start;
+	uint8_t const *attr = start;
 	uint8_t const *end = start + packetlen;
 	uint8_t const *attr_end;
 	uint8_t *q;
