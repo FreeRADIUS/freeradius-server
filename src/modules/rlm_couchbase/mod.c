@@ -550,6 +550,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	json_object *jrows = NULL;                               /* json object to hold view rows */
 	CONF_SECTION *client;                                    /* freeradius config section */
 	RADCLIENT *c;                                            /* freeradius client */
+	int slen;
 
 	/* get handle */
 	handle = fr_connection_get(inst->pool);
@@ -564,7 +565,13 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	cookie_t *cookie = handle->cookie;
 
 	/* build view path */
-	snprintf(vpath, sizeof(vpath), "%s?stale=false", inst->client_view);
+	slen = snprintf(vpath, sizeof(vpath), "%s?stale=false", inst->client_view);
+	if (slen >= (int) sizeof(vpath) || slen < 0) {
+		ERROR("rlm_couchbase: view path too long");
+		retval=-1;
+		goto free_and_return;
+	}
+
 
 	/* query view for document */
 	cb_error = couchbase_query_view(cb_inst, cookie, vpath, NULL);

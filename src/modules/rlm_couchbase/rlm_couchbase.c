@@ -474,6 +474,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 	uint32_t framed_ip_addr = 0;           /* framed ip address from accounting document */
 	char framed_proto = 0;                 /* framed proto from accounting document */
 	int session_time = 0;                  /* session time from accounting document */
+	int slen;
 
 	/* do nothing if this is not enabled */
 	if (inst->check_simul != true) {
@@ -508,8 +509,12 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 	cookie_t *cookie = handle->cookie;
 
 	/* build view path */
-	snprintf(vpath, sizeof(vpath), "%s?key=\"%s\"&stale=update_after",
-		 inst->simul_view, vkey);
+	slen = snprintf(vpath, sizeof(vpath), "%s?key=\"%s\"&stale=update_after",
+			inst->simul_view, vkey);
+	if (slen >= (int) sizeof(vpath) || slen < 0) {
+		RERROR("view path is too long");
+		return RLM_MODULE_FAIL;
+	}
 
 	/* query view for document */
 	cb_error = couchbase_query_view(cb_inst, cookie, vpath, NULL);
