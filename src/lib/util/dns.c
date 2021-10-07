@@ -1135,11 +1135,13 @@ ssize_t fr_dns_labels_network_verify(uint8_t const *packet, uint8_t const *buf, 
 	return label - buf;
 }
 
-static ssize_t dns_label_decode(uint8_t const *buf, uint8_t const **start, uint8_t const **next)
+static ssize_t dns_label_decode(uint8_t const *packet, uint8_t const *end, uint8_t const **start, uint8_t const **next)
 {
-	uint8_t const *p;
+	uint8_t const *p, *q;
 
 	p = *start;
+
+	if (end == packet) return 0;
 
 	if (*p == 0x00) {
 		*next = p + 1;
@@ -1147,16 +1149,41 @@ static ssize_t dns_label_decode(uint8_t const *buf, uint8_t const **start, uint8
 	}
 
 	/*
-	 *	Pointer, which MUST point to a valid label, but we don't
-	 *	check.
+	 *	Pointer, which points somewhere in the packet.
 	 */
 	if (*p > 63) {
 		uint16_t offset;
 
+		if ((end - packet) < 2) {
+			return -(p - packet);
+		}
+
 		offset = p[1];
 		offset += ((*p & ~0xc0) << 8);
 
-		p = buf + offset;
+		q = packet + offset;
+		if (q >= p) {
+			return -(p - packet);
+		}
+		p = q;
+	}
+
+	/*
+	 *	Note that the label can point to anywhere in the
+	 *	packet, including things we haven't checked yet.
+	 *	While the caller checks against the dns_labels_t
+	 *	buffer, it only checks that the pointer points within
+	 *	the correct offset.  It doesn't check that the pointer
+	 *	points to the start of a label string.  It could
+	 *	instead point to the 'e' of 'example.com'.
+	 *
+	 *	As a result, we have to re-validate everything here,
+	 *	too.
+	 */
+	if (*p >= 0xc0) return -(p - packet);
+
+	if ((p + *p + 1) > end) {
+		return -(p - packet);
 	}
 
 	/*
@@ -1194,6 +1221,7 @@ ssize_t fr_dns_label_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	uint8_t const *after = label;
 	uint8_t const *current, *next;
 	uint8_t const *packet = src;
+	uint8_t const *end = packet + len;
 	uint8_t *p;
 	char *q;
 
@@ -1234,12 +1262,9 @@ ssize_t fr_dns_label_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		/*
 		 *	Get how many bytes this label has, and where
 		 *	we will go to obtain the next label.
-		 *
-		 *	Note that slen > 0 here, as dns_label_decode()
-		 *	only returns 0 when the current byte is 0x00,
-		 *	which it can't be.
 		 */
-		slen = dns_label_decode(packet, &current, &next);
+		slen = dns_label_decode(packet, end, &current, &next);
+		if (slen < 0) return slen;
 
 		/*
 		 *	As a sanity check, ensure we don't have a
