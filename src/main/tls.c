@@ -3233,8 +3233,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			}
 
 			if (conf->disallow_untrusted) {
-				AUTH(LOG_PREFIX ": There are untrusted certificates in the certificate chain.  Rejecting.",
-				     issuer, conf->check_cert_issuer);
+				AUTH(LOG_PREFIX ": There are untrusted certificates in the certificate chain.  Rejecting.");
 				my_ok = 0;
 			}
 		}
