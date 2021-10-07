@@ -371,6 +371,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain)
 			return -1;
 		}
 
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 		for (i = sk_X509_num(our_chain); i > 0 ; i--) {
 			/*
@@ -383,7 +384,7 @@ DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 							chain->verify_mode) < 0) return -1;
 		}
 DIAG_ON(used-but-marked-unused)	/* fix spurious warnings for sk macros */
-
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 		/*
 		 *	Record this as a unix timestamp as
 		 *	internal time might not progress at
