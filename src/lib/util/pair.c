@@ -786,29 +786,6 @@ void fr_pair_replace(fr_pair_list_t *list, fr_pair_t *replace)
 	fr_pair_append(list, replace);
 }
 
-/** Delete matching pairs
- *
- * Delete matching pairs from the attribute list.
- *
- * @param[in,out] list	VP in list.
- * @param[in] parent	to match.
- * @param[in] attr	to match.
- */
-void fr_pair_delete_by_child_num(fr_pair_list_t *list, fr_dict_attr_t const *parent, unsigned int attr)
-{
-	fr_pair_t		*i, *next;
-	fr_dict_attr_t const	*da;
-
-	da = fr_dict_attr_child_by_num(parent, attr);
-	if (!da) return;
-
-	for (i = fr_pair_list_head(list); i; i = next) {
-		next = fr_pair_list_next(list, i);
-		VP_VERIFY(i);
-		if (i->da == da) {
-			fr_pair_delete(list, i);
-		}
-	}
 }
 
 /** Alloc a new fr_pair_t (and append)
@@ -927,6 +904,26 @@ int fr_pair_delete_by_da(fr_pair_list_t *list, fr_dict_attr_t const *da)
 	}
 
 	return cnt;
+}
+
+/** Delete matching pairs from the specified list
+ *
+ * @param[in] list	to delete attributes from.
+ * @param[in] parent	to match.
+ * @param[in] attr	to match.
+ * @return
+ *	- >0 the number of pairs deleted.
+ *	- 0 if no pairs were delete.
+ *	- -1 if we couldn't resolve the attribute number.
+ */
+int fr_pair_delete_by_child_num(fr_pair_list_t *list, fr_dict_attr_t const *parent, unsigned int attr)
+{
+	fr_dict_attr_t const	*da;
+
+	da = fr_dict_attr_child_by_num(parent, attr);
+	if (!da) return -1;
+
+	return fr_pair_delete_by_da(list, da);
 }
 
 /** Remove fr_pair_t from a list without freeing
