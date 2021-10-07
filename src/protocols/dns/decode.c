@@ -331,7 +331,7 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t con
 }
 
 
-static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
+static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_dcursor_t *cursor, UNUSED fr_dict_t const *dict,
 				 fr_dict_attr_t const *parent,
 				 uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
@@ -354,7 +354,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_
 		slen = fr_dns_label_uncompressed_length(packet_ctx->packet, data, data_len, &next, packet_ctx->lb);
 		if (slen <= 0) {
 			FR_PROTO_TRACE("length failed at %zd - %s", slen, fr_strerror());
-			goto raw;
+			return slen;
 		}
 
 		labels_len = next - data; /* decode only what we've found */
@@ -367,10 +367,9 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_
 		 *	area, OR they are otherwise invalid, then that's an error.
 		 */
 		slen = fr_dns_labels_network_verify(packet_ctx->packet, data, data_len, data, packet_ctx->lb);
-		if (slen < 0) {
+		if (slen <= 0) {
 			FR_PROTO_TRACE("verify failed");
-		raw:
-			return decode_raw(ctx, cursor, dict, parent, data, data_len, decode_ctx);
+			return slen;
 		}
 
 		labels_len = slen;
@@ -379,6 +378,11 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_
 	/*
 	 *	Loop over the input buffer, decoding the labels one by
 	 *	one.
+	 *
+	 *	@todo - put the labels into a child cursor, and then
+	 *	merge them only if it succeeds.  That doesn't seem to
+	 *	work for some reason, and I don't have time to debug
+	 *	it right now.  So... let's leave it.
 	 */
 	for (total = 0; total < labels_len; total += slen) {
 		vp = fr_pair_afrom_da(ctx, parent);
@@ -393,7 +397,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_
 		if (slen <= 0) {
 			FR_PROTO_TRACE("Failed decoding label at %zd", slen);
 			talloc_free(vp);
-			goto raw;
+			return -1;
 		}
 
 		vp->type = VT_DATA;
