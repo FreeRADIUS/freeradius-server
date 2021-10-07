@@ -312,9 +312,6 @@ typedef struct fr_ldap_thread_trunk_s fr_ldap_thread_trunk_t;
 typedef struct {
 	LDAP			*handle;		//!< libldap handle.
 
-	bool			referred;		//!< Whether the connection is now established a server
-							///< other than the configured one.
-
 	fr_ldap_control_t	serverctrls[LDAP_MAX_CONTROLS + 1];	//!< Server controls to use for all operations
 									///< with this handle.
 	fr_ldap_control_t	clientctrls[LDAP_MAX_CONTROLS + 1];	//!< Client controls to use for all operations

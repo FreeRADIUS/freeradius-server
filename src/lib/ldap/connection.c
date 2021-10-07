@@ -91,7 +91,6 @@ int fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const
 
 	c->config = config;
 	c->handle = handle;
-	c->referred = false;
 
 	/*
 	 *	We now have a connection structure, but no actual connection.
