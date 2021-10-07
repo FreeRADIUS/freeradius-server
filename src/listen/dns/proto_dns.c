@@ -171,8 +171,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_io_address_t const	*address = track->address;
 	RADCLIENT const		*client;
 	fr_dns_packet_t	const	*packet = (fr_dns_packet_t const *) data;
-	fr_dcursor_t		cursor;
-	fr_dns_ctx_t	packet_ctx;
+	fr_dns_ctx_t		packet_ctx;
 
 	/*
 	 *	Set the request dictionary so that we can do
@@ -186,7 +185,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	client = address->radclient;
 
 	/*
-	 *	@todo - 
+	 *	@todo -
 	 */
 	request->packet->code = packet->opcode;
 	request->packet->id = (data[0] << 8) | data[1];
@@ -208,8 +207,8 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	 *	That MUST be set and checked in the underlying
 	 *	transport, via a call to fr_dns_ok().
 	 */
-	fr_dcursor_init(&cursor, &request->request_pairs);
-	if (fr_dns_decode(request->request_ctx, request->packet->data, request->packet->data_len, &cursor, &packet_ctx) < 0) {
+	if (fr_dns_decode(request->request_ctx, &request->request_pairs,
+			  request->packet->data, request->packet->data_len, &packet_ctx) < 0) {
 		talloc_free(packet_ctx.tmp_ctx);
 		RPEDEBUG("Failed decoding packet");
 		return -1;

@@ -73,7 +73,7 @@ RCSID("$Id$")
  *  2. Host B sends a "DATA" (with block number= 1) to host  A  with
  *     source= B's TID, destination= A's TID.
  */
-int fr_tftp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_dcursor_t *cursor)
+int fr_tftp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, size_t data_len)
 {
 	uint8_t const  	*q, *p, *end;
 	uint16_t 	opcode;
@@ -96,7 +96,7 @@ int fr_tftp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_dcu
 	if (!vp) goto error;
 
 	vp->vp_uint16 = opcode;
-	fr_dcursor_append(cursor, vp);
+	fr_pair_append(out, vp);
 	p += 2;
 
 	switch (opcode) {
@@ -131,7 +131,7 @@ int fr_tftp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_dcu
 		if (!vp) goto error;
 
 		fr_pair_value_bstrndup(vp, (char const *)p, (q - p), true);
-		fr_dcursor_append(cursor, vp);
+		fr_pair_append(out, vp);
 		p += (q - p) + 1 /* \0 */;
 
 		/* <mode> */
@@ -156,7 +156,7 @@ int fr_tftp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_dcu
 			goto error;
 		}
 
-		fr_dcursor_append(cursor, vp);
+		fr_pair_append(out, vp);
 		p += 1 /* \0 */;
 
 		if (p >= end) goto done;
@@ -186,7 +186,7 @@ int fr_tftp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_dcu
 			}
 
 			vp->vp_uint16 = (uint16_t)blksize;
-			fr_dcursor_append(cursor, vp);
+			fr_pair_append(out, vp);
 		}
 
 		break;
@@ -206,7 +206,7 @@ int fr_tftp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_dcu
 
 		vp->vp_uint16 = fr_net_to_uint16(p);
 
-		fr_dcursor_append(cursor, vp);
+		fr_pair_append(out, vp);
 
 		/*
 		 *	From that point...
@@ -227,7 +227,7 @@ int fr_tftp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_dcu
 		if (!vp) goto error;
 
 		fr_pair_value_memdup(vp, p, (end - p), true);
-		fr_dcursor_append(cursor, vp);
+		fr_pair_append(out, vp);
 
 		break;
 
@@ -248,7 +248,7 @@ int fr_tftp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_dcu
 
 		vp->vp_uint16 = fr_net_to_uint16(p);
 
-		fr_dcursor_append(cursor, vp);
+		fr_pair_append(out, vp);
 
 		p  += 2; /* <ErrorCode> */
 		q   = memchr(p, '\0', (end - p));
@@ -258,7 +258,7 @@ int fr_tftp_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_dcu
 		if (!vp) goto error;
 
 		fr_pair_value_bstrndup(vp, (char const *)p, (q - p), true);
-		fr_dcursor_append(cursor, vp);
+		fr_pair_append(out, vp);
 
 		break;
 
@@ -442,14 +442,10 @@ typedef struct {
 /*
  *	Test points for protocol decode
  */
-static ssize_t fr_tftp_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_tftp_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
+				    uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
-	fr_dcursor_t cursor;
-
-	fr_pair_list_init(list);
-	fr_dcursor_init(&cursor, list);
-
-	return fr_tftp_decode(ctx, data, data_len, &cursor);
+	return fr_tftp_decode(ctx, out, data, data_len);
 }
 
 static int _decode_test_ctx(UNUSED fr_tftp_ctx_t *proto_ctx)

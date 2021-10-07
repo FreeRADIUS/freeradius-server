@@ -827,7 +827,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 						talloc_free(packet);
 						continue;
 					}
-					if (fr_radius_packet_decode(reply, &reply_vps, packet,
+					if (fr_radius_packet_decode(reply, &reply_vps, reply, packet,
 								    RADIUS_MAX_ATTRIBUTES, false, conf->secret) < 0) {
 						fr_perror("Failed decoding reply");
 						goto recv_error;

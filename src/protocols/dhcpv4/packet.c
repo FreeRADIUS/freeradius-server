@@ -102,19 +102,17 @@ uint8_t const *fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 	return NULL;
 }
 
-int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_dcursor_t *cursor, unsigned int *code)
+int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, size_t data_len, unsigned int *code)
 {
 	size_t		i;
 	uint8_t const  	*p = data;
 	uint32_t	giaddr;
-	fr_pair_list_t	head;
+	fr_pair_list_t	tmp;
 	fr_pair_t	*vp;
 	fr_pair_t	*maxms, *mtu, *netaddr;
 	fr_value_box_t	box;
-	fr_dcursor_t	our_cursor;
 
-	fr_pair_list_init(&head);
-	fr_dcursor_init(&our_cursor, &head);
+	fr_pair_list_init(&tmp);
 
 	if (data[1] > 1) {
 		fr_strerror_printf("Packet is not Ethernet: %u",
@@ -133,8 +131,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_d
 			fr_strerror_const_push("Cannot decode packet due to internal error");
 		error:
 			talloc_free(vp);
-			fr_dcursor_head(&our_cursor);
-			fr_dcursor_free_list(&our_cursor);
+			fr_pair_list_free(&tmp);
 			return -1;
 		}
 
@@ -193,14 +190,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_d
 
 		if (!vp) continue;
 
-		fr_dcursor_append(&our_cursor, vp);
+		fr_pair_append(&tmp, vp);
 	}
-
-	/*
-	 *	Loop over the options.
-	 */
-
-	fr_dcursor_head(&our_cursor);
 
 	/*
 	 * 	Nothing uses tail after this call, if it does in the future
@@ -219,17 +210,16 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_d
 		while (p < end) {
 			if (p[0] == 0) break; /* padding */
 
-			len = fr_dhcpv4_decode_option(ctx, &our_cursor, dict_dhcpv4, p, (end - p), NULL);
+			len = fr_dhcpv4_decode_option(ctx, &tmp, dict_dhcpv4, p, (end - p), NULL);
 			if (len <= 0) {
-				fr_dcursor_head(&our_cursor);
-				fr_dcursor_free_list(&our_cursor);
+				fr_pair_list_free(&tmp);
 				return len;
 			}
 			p += len;
 		}
 
 		if (code) {
-			vp = fr_pair_find_by_da(&head, attr_dhcp_message_type, 0);
+			vp = fr_pair_find_by_da(&tmp, attr_dhcp_message_type, 0);
 			if (vp) {
 				*code = vp->vp_uint8;
 			}
@@ -239,7 +229,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_d
 		 *	If option Overload is present in the 'options' field, then fields 'file' and/or 'sname'
 		 *	are used to hold more options. They are partitioned and must be interpreted in sequence.
 		 */
-		vp = fr_pair_find_by_da(&head, attr_dhcp_overload, 0);
+		vp = fr_pair_find_by_da(&tmp, attr_dhcp_overload, 0);
 		if (vp) {
 			if ((vp->vp_uint8 & 1) == 1) {
 				/*
@@ -251,16 +241,15 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_d
 				while (p < end) {
 					if (p[0] == 0) break; /* padding */
 
-					len = fr_dhcpv4_decode_option(ctx, &our_cursor, dict_dhcpv4,
+					len = fr_dhcpv4_decode_option(ctx, &tmp, dict_dhcpv4,
 								      p, end - p, NULL);
 					if (len <= 0) {
-						fr_dcursor_head(&our_cursor);
-						fr_dcursor_free_list(&our_cursor);
+						fr_pair_list_free(&tmp);
 						return len;
 					}
 					p += len;
 				}
-				fr_pair_delete_by_da(&head, attr_dhcp_boot_filename);
+				fr_pair_delete_by_da(&tmp, attr_dhcp_boot_filename);
 			}
 			if ((vp->vp_uint8 & 2) == 2) {
 				/*
@@ -271,16 +260,15 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_d
 				while (p < end) {
 					if (p[0] == 0) break; /* padding */
 
-					len = fr_dhcpv4_decode_option(ctx, cursor, dict_dhcpv4,
+					len = fr_dhcpv4_decode_option(ctx, &tmp, dict_dhcpv4,
 								      p, end - p, NULL);
 					if (len <= 0) {
-						fr_dcursor_head(&our_cursor);
-						fr_dcursor_free_list(&our_cursor);
+						fr_pair_list_free(&tmp);
 						return len;
 					}
 					p += len;
 				}
-				fr_pair_delete_by_da(&head, attr_dhcp_server_host_name);
+				fr_pair_delete_by_da(&tmp, attr_dhcp_server_host_name);
 			}
 		}
 	}
@@ -298,14 +286,14 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_d
 		/*
 		 *	DHCP Opcode is request
 		 */
-		vp = fr_pair_find_by_da(&head, attr_dhcp_opcode, 0);
+		vp = fr_pair_find_by_da(&tmp, attr_dhcp_opcode, 0);
 		if (vp && vp->vp_uint8 == 1) {
 			/*
 			 *	Vendor is "MSFT 98"
 			 */
-			vp = fr_pair_find_by_da(&head, attr_dhcp_vendor_class_identifier, 0);
+			vp = fr_pair_find_by_da(&tmp, attr_dhcp_vendor_class_identifier, 0);
 			if (vp && (vp->vp_length == 7) && (memcmp(vp->vp_strvalue, "MSFT 98", 7) == 0)) {
-				vp = fr_pair_find_by_da(&head, attr_dhcp_flags, 0);
+				vp = fr_pair_find_by_da(&tmp, attr_dhcp_flags, 0);
 
 				/*
 				 *	Reply should be broadcast.
@@ -332,12 +320,12 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_d
 	/*
 	 *	First look for Relay-Link-Selection
 	 */
-	netaddr = fr_pair_find_by_da(&head, attr_dhcp_relay_link_selection, 0);
+	netaddr = fr_pair_find_by_da(&tmp, attr_dhcp_relay_link_selection, 0);
 	if (!netaddr) {
 		/*
 		 *	Next try Subnet-Selection-Option
 		 */
-		netaddr = fr_pair_find_by_da(&head, attr_dhcp_subnet_selection_option, 0);
+		netaddr = fr_pair_find_by_da(&tmp, attr_dhcp_subnet_selection_option, 0);
 	}
 
 	if (netaddr) {
@@ -365,14 +353,14 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_d
 		fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &box);
 	}
 
-	fr_dcursor_append(&our_cursor, vp);
+	fr_pair_append(&tmp, vp);
 
 	/*
 	 *	Client can request a LARGER size, but not a smaller
 	 *	one.  They also cannot request a size larger than MTU.
 	 */
-	maxms = fr_pair_find_by_da(&head, attr_dhcp_dhcp_maximum_msg_size, 0);
-	mtu = fr_pair_find_by_da(&head, attr_dhcp_interface_mtu_size, 0);
+	maxms = fr_pair_find_by_da(&tmp, attr_dhcp_dhcp_maximum_msg_size, 0);
+	mtu = fr_pair_find_by_da(&tmp, attr_dhcp_interface_mtu_size, 0);
 
 	if (mtu && (mtu->vp_uint16 < DEFAULT_PACKET_SIZE)) {
 		fr_strerror_const("Client says MTU is smaller than minimum permitted by the specification");
@@ -394,7 +382,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_d
 	 *	FIXME: Nuke attributes that aren't used in the normal
 	 *	header for discover/requests.
 	 */
-	fr_dcursor_merge(cursor, &our_cursor);
+	fr_pair_list_append(out, &tmp);
 
 	return 0;
 }

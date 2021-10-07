@@ -1023,8 +1023,9 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 /** Decode a raw RADIUS packet into VPs.
  *
  */
-ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, uint8_t const *original,
-			 char const *secret, UNUSED size_t secret_len, fr_dcursor_t *cursor)
+ssize_t fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
+			 uint8_t const *packet, size_t packet_len, uint8_t const *original,
+			 char const *secret, UNUSED size_t secret_len)
 {
 	ssize_t			slen;
 	uint8_t const		*attr, *end;
@@ -1043,7 +1044,7 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_l
 	 *	he doesn't, all hell breaks loose.
 	 */
 	while (attr < end) {
-		slen = fr_radius_decode_pair(ctx, cursor, dict_radius, attr, (end - attr), &packet_ctx);
+		slen = fr_radius_decode_pair(ctx, out, dict_radius, attr, (end - attr), &packet_ctx);
 		if (slen < 0) {
 		fail:
 			talloc_free(packet_ctx.tmp_ctx);

@@ -63,7 +63,7 @@ fr_pair_t *fr_raw_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, ui
 /** Convert a STRUCT to one or more VPs
  *
  */
-ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
+ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
 			       bool nested, void *decode_ctx,
 			       fr_decode_value_t decode_value, fr_decode_value_t decode_tlv)
@@ -71,8 +71,8 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 	unsigned int		child_num;
 	uint8_t const		*p = data, *end = data + data_len;
 	fr_dict_attr_t const	*child;
-	fr_pair_list_t		head;
-	fr_dcursor_t		child_cursor;
+	fr_pair_list_t		child_list_head;
+	fr_pair_list_t		*child_list;
 	fr_pair_t		*vp, *key_vp, *struct_vp = NULL;
 	unsigned int		offset = 0;
 	TALLOC_CTX		*child_ctx;
@@ -88,8 +88,8 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 	 *	Start a child list.
 	 */
 	if (!nested) {
-		fr_pair_list_init(&head);
-		fr_dcursor_init(&child_cursor, &head);
+		fr_pair_list_init(&child_list_head);
+		child_list = &child_list_head;
 		child_ctx = ctx;
 	} else {
 		fr_assert(parent->type == FR_TYPE_STRUCT);
@@ -101,8 +101,8 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 			return -1;
 		}
 
-		fr_pair_list_init(&head); /* still used elsewhere */
-		fr_dcursor_init(&child_cursor, &struct_vp->vp_group);
+		fr_pair_list_init(&child_list_head); /* still used elsewhere */
+		child_list = &struct_vp->vp_group;
 		child_ctx = struct_vp;
 	}
 	child_num = 1;
@@ -203,7 +203,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 
 			vp->type = VT_DATA;
 			vp->vp_tainted = true;
-			fr_dcursor_append(&child_cursor, vp);
+			fr_pair_append(child_list, vp);
 			p += (num_bits >> 3); /* go to the LAST bit, not the byte AFTER the last bit */
 			offset = num_bits & 0x07;
 			child_num++;
@@ -228,7 +228,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 			 *	Decode EVERYTHING as a TLV.
 			 */
 			while (p < end) {
-				slen = decode_tlv(child_ctx, &child_cursor, fr_dict_by_da(child), child, p, end - p, decode_ctx);
+				slen = decode_tlv(child_ctx, child_list, fr_dict_by_da(child), child, p, end - p, decode_ctx);
 				if (slen < 0) {
 					FR_PROTO_TRACE("failed decoding TLV?");
 					goto unknown;
@@ -261,7 +261,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 		if (decode_value) {
 			ssize_t slen;
 
-			slen = decode_value(child_ctx, &child_cursor, fr_dict_by_da(child), child, p, child_length, decode_ctx);
+			slen = decode_value(child_ctx, child_list, fr_dict_by_da(child), child, p, child_length, decode_ctx);
 			if (slen < 0) {
 				FR_PROTO_TRACE("Failed decoding value");
 				goto unknown;
@@ -269,7 +269,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 
 			p += slen;   	/* not always the same as child->flags.length */
 			child_num++;	/* go to the next child */
-			if (fr_dict_attr_is_key_field(child)) key_vp = fr_dcursor_tail(&child_cursor);
+			if (fr_dict_attr_is_key_field(child)) key_vp = fr_pair_list_tail(child_list);
 			continue;
 		}
 
@@ -306,7 +306,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 			if (nested) {
 				TALLOC_FREE(struct_vp);
 			} else {
-				fr_pair_list_free(&head);
+				fr_pair_list_free(child_list);
 			}
 
 			vp = fr_raw_from_network(ctx, parent, data, data_len);
@@ -315,13 +315,13 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 			/*
 			 *	And append this one VP to the output cursor.
 			 */
-			fr_dcursor_append(cursor, vp);
+			fr_pair_append(out, vp);
 			return data_len;
 		}
 
 		vp->type = VT_DATA;
 		vp->vp_tainted = true;
-		fr_dcursor_append(&child_cursor, vp);
+		fr_pair_append(child_list, vp);
 
 		if (fr_dict_attr_is_key_field(vp->da)) key_vp = vp;
 
@@ -378,12 +378,12 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 				goto oom;
 			}
 
-			fr_dcursor_append(&child_cursor, vp);
+			fr_pair_append(child_list, vp);
 			p = end;
 		} else {
 			fr_assert(child->type == FR_TYPE_STRUCT);
 
-			slen = fr_struct_from_network(child_ctx, &child_cursor, child, p, end - p, nested,
+			slen = fr_struct_from_network(child_ctx, child_list, child, p, end - p, nested,
 						      decode_ctx, decode_value, decode_tlv);
 			if (slen <= 0) {
 				FR_PROTO_TRACE("substruct %s decoding failed", child->name);
@@ -404,12 +404,11 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 
 done:
 	if (!nested) {
-		fr_dcursor_head(&child_cursor);
-		fr_dcursor_tail(cursor);
-		fr_dcursor_merge(cursor, &child_cursor);	/* Wind to the end of the new pairs */
+		fr_pair_list_head(child_list);
+		fr_pair_list_append(out, child_list);	/* Wind to the end of the new pairs */
 	} else {
 		fr_assert(struct_vp != NULL);
-		fr_dcursor_append(cursor, struct_vp);
+		fr_pair_append(out, struct_vp);
 	}
 
 	FR_PROTO_TRACE("used %zd bytes", data_len);

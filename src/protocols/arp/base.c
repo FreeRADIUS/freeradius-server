@@ -174,7 +174,7 @@ ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_list_t
 		fr_strerror_const("No ARP attributes in the attribute list");
 		return -1;
 	}
-	     
+
 	fr_proto_da_stack_build(&da_stack, attr_arp_packet);
 	FR_PROTO_STACK_PRINT(&da_stack, 0);
 
@@ -222,10 +222,9 @@ ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_list_t
 /** Decode a raw ARP packet into VPs
  *
  */
-ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, fr_pair_list_t *list)
+ssize_t fr_arp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packet, size_t packet_len)
 {
 	fr_arp_packet_t const *arp;
-	fr_dcursor_t cursor;
 
 	if (packet_len < FR_ARP_PACKET_SIZE) {
 		fr_strerror_printf("Packet is too small (%d) to be ARP", (int) packet_len);
@@ -259,9 +258,7 @@ ssize_t fr_arp_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 	/*
 	 *	If the packet is too long, we discard any extra data.
 	 */
-	fr_pair_list_init(list);
-	fr_dcursor_init(&cursor, list);
-	return fr_struct_from_network(ctx, &cursor, attr_arp_packet, packet, FR_ARP_PACKET_SIZE, false,
+	return fr_struct_from_network(ctx, out, attr_arp_packet, packet, FR_ARP_PACKET_SIZE, false,
 				      NULL, NULL, NULL);
 }
 
@@ -343,9 +340,10 @@ fr_test_point_proto_encode_t arp_tp_encode_proto = {
 	.func		= fr_arp_encode_proto
 };
 
-static ssize_t fr_arp_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_arp_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
+				   uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
-	return fr_arp_decode(ctx, data, data_len, list);
+	return fr_arp_decode(ctx, out, data, data_len);
 }
 
 extern fr_test_point_proto_decode_t arp_tp_decode_proto;

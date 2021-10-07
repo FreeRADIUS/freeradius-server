@@ -39,7 +39,7 @@
 #include "dns.h"
 #include "attrs.h"
 
-static ssize_t decode_raw(TALLOC_CTX *ctx, fr_dcursor_t *cursor, UNUSED fr_dict_t const *dict,
+static ssize_t decode_raw(TALLOC_CTX *ctx, fr_pair_list_t *out, UNUSED fr_dict_t const *dict,
 			  fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
@@ -81,40 +81,40 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_dcursor_t *cursor, UNUSED fr_dict_
 
 	vp->type = VT_DATA;
 	vp->vp_tainted = true;
-	fr_dcursor_append(cursor, vp);
+	fr_pair_append(out, vp);
 	return data_len;
 }
 
 
-static ssize_t decode_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
+static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t const data_len, void *decode_ctx);
-static ssize_t decode_array(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
+static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t const data_len, void *decode_ctx);
-static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
+static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
 				 fr_dict_attr_t const *parent,
 				 uint8_t const *data, size_t const data_len, void *decode_ctx);
 
 /** Handle arrays of DNS labels for fr_struct_from_network()
  *
  */
-static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
+static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
 				       fr_dict_attr_t const *parent,
 				       uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
 	if ((parent->type == FR_TYPE_STRING) && !parent->flags.extra && parent->flags.subtype) {
 		FR_PROTO_TRACE("decode DNS labels");
-		return decode_dns_labels(ctx, cursor, dict, parent, data, data_len, decode_ctx);
+		return decode_dns_labels(ctx, out, dict, parent, data, data_len, decode_ctx);
 	}
 
-	if (parent->flags.array) return decode_array(ctx, cursor, dict, parent, data, data_len, decode_ctx);
+	if (parent->flags.array) return decode_array(ctx, out, dict, parent, data, data_len, decode_ctx);
 
-	return decode_value(ctx, cursor, dict, parent, data, data_len, decode_ctx);
+	return decode_value(ctx, out, dict, parent, data, data_len, decode_ctx);
 }
 
 
-static ssize_t decode_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
+static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
@@ -131,7 +131,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t con
 	case FR_TYPE_IPV6_PREFIX:
 		if ((data_len == 0) || (data_len > (1 + sizeof(vp->vp_ipv6addr)))) {
 		raw:
-			return decode_raw(ctx, cursor, dict, parent, data, data_len, decode_ctx);
+			return decode_raw(ctx, out, dict, parent, data, data_len, decode_ctx);
 
 		};
 
@@ -198,7 +198,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t con
 		break;
 
 	case FR_TYPE_STRUCT:
-		slen = fr_struct_from_network(ctx, cursor, parent, data, data_len, true,
+		slen = fr_struct_from_network(ctx, out, parent, data, data_len, true,
 					      decode_ctx, decode_value_trampoline, NULL);
 		if (slen < 0) return slen;
 		return data_len;
@@ -208,7 +208,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t con
 
 #if 0
 	{
-		fr_dcursor_t child_cursor;
+		fr_pair_list_t child_cursor;
 		fr_pair_list_t head;
 		fr_pair_list_init(&head);
 
@@ -223,8 +223,8 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t con
 		 *	header, as we're just decoding the values
 		 *	here.
 		 */
-		fr_dcursor_init(&child_cursor, &head);
-		slen = decode_tlvs(vp, &child_cursor, dict, fr_dict_root(dict_dns), data, data_len, decode_ctx, false);
+		fr_dcursor_init(&child_out, &head);
+		slen = decode_tlvs(vp, &child_out, dict, fr_dict_root(dict_dns), data, data_len, decode_ctx, false);
 		if (slen < 0) {
 			talloc_free(vp);
 			goto raw;
@@ -249,12 +249,12 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t con
 
 	vp->type = VT_DATA;
 	vp->vp_tainted = true;
-	fr_dcursor_append(cursor, vp);
+	fr_pair_append(out, vp);
 	return data_len;
 }
 
 
-static ssize_t decode_array(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
+static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
@@ -280,12 +280,12 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t con
 			 *	decode the last bit as raw data.
 			 */
 			if ((size_t) (end - p) < element_len) {
-				slen = decode_raw(ctx, cursor, dict, parent, p, end - p , decode_ctx);
+				slen = decode_raw(ctx, out, dict, parent, p, end - p , decode_ctx);
 				if (slen < 0) return slen;
 				break;
 			}
 
-			slen = decode_value(ctx, cursor, dict, parent, p, element_len, decode_ctx);
+			slen = decode_value(ctx, out, dict, parent, p, element_len, decode_ctx);
 			if (slen < 0) return slen;
 			if (!fr_cond_assert((size_t) slen == element_len)) return -(p - data);
 
@@ -311,7 +311,7 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t con
 	while (p < end) {
 		if ((end - p) < 2) {
 		raw:
-			slen = decode_raw(ctx, cursor, dict, parent, p, end - p , decode_ctx);
+			slen = decode_raw(ctx, out, dict, parent, p, end - p , decode_ctx);
 			if (slen < 0) return slen;
 			break;
 		}
@@ -322,7 +322,7 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t con
 		}
 
 		p += 2;
-		slen = decode_value(ctx, cursor, dict, parent, p, element_len, decode_ctx);
+		slen = decode_value(ctx, out, dict, parent, p, element_len, decode_ctx);
 		if (slen < 0) return slen;
 		p += slen;
 	}
@@ -330,8 +330,7 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t con
 	return data_len;
 }
 
-
-static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_dcursor_t *cursor, UNUSED fr_dict_t const *dict,
+static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,UNUSED fr_dict_t const *dict,
 				 fr_dict_attr_t const *parent,
 				 uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
@@ -401,14 +400,14 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_dcursor_t *cursor, UNUSED f
 		}
 
 		vp->type = VT_DATA;
-		fr_dcursor_append(cursor, vp);
+		fr_pair_append(out, vp);
 	}
 
 	FR_PROTO_TRACE("decode_dns_labels - %zu", labels_len);
 	return labels_len;
 }
 
-static ssize_t decode_record(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *attr,
+static ssize_t decode_record(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *attr,
 			     uint8_t const *rr, uint8_t const *end,
 			     fr_dns_ctx_t *packet_ctx, uint8_t const *counter)
 {
@@ -427,7 +426,7 @@ static ssize_t decode_record(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr
 			return -(p - rr);
 		}
 
-		slen = fr_struct_from_network(ctx, cursor, attr, p, end - p, true,
+		slen = fr_struct_from_network(ctx, out, attr, p, end - p, true,
 					      packet_ctx, decode_value_trampoline, NULL);
 		if (slen < 0) return slen;
 		if (!slen) break;
@@ -440,7 +439,7 @@ static ssize_t decode_record(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr
 /** Decode a DNS packet
  *
  */
-ssize_t	fr_dns_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, fr_dcursor_t *cursor, fr_dns_ctx_t *packet_ctx)
+ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packet, size_t packet_len, fr_dns_ctx_t *packet_ctx)
 {
 	ssize_t			slen;
 	uint8_t const		*p, *end;
@@ -456,7 +455,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 	/*
 	 *	Decode the header.
 	 */
-	slen = fr_struct_from_network(ctx, cursor, attr_dns_packet, packet, DNS_HDR_LEN, true,
+	slen = fr_struct_from_network(ctx, out, attr_dns_packet, packet, DNS_HDR_LEN, true,
 				      packet_ctx, decode_value_trampoline, NULL);
 	if (slen < 0) {
 		fr_strerror_printf("Failed decoding DNS header - %s", fr_strerror());
@@ -468,7 +467,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 	end = packet + packet_len;
 	FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - after header");
 
-	slen = decode_record(ctx, cursor, attr_dns_question, p, end, packet_ctx, packet + 4);
+	slen = decode_record(ctx, out, attr_dns_question, p, end, packet_ctx, packet + 4);
 	if (slen < 0) {
 		fr_strerror_printf("Failed decoding questions - %s", fr_strerror());
 		return slen;
@@ -476,7 +475,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 	p += slen;
 	FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - after %zd bytes of questions", slen);
 
-	slen = decode_record(ctx, cursor, attr_dns_rr, p, end, packet_ctx, packet + 6);
+	slen = decode_record(ctx, out, attr_dns_rr, p, end, packet_ctx, packet + 6);
 	if (slen < 0) {
 		fr_strerror_printf("Failed decoding RRs - %s", fr_strerror());
 		return slen - (p - packet);
@@ -484,7 +483,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 	p += slen;
 	FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - after %zd bytes of RRs", slen);
 
-	slen = decode_record(ctx, cursor, attr_dns_ns, p, end, packet_ctx, packet + 8);
+	slen = decode_record(ctx, out, attr_dns_ns, p, end, packet_ctx, packet + 8);
 	if (slen < 0) {
 		fr_strerror_printf("Failed decoding NS - %s", fr_strerror());
 		return slen - (p - packet);
@@ -492,7 +491,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 	p += slen;
 	FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - after %zd bytes of NS", slen);
 
-	slen = decode_record(ctx, cursor, attr_dns_ar, p, end, packet_ctx, packet + 10);
+	slen = decode_record(ctx, out, attr_dns_ar, p, end, packet_ctx, packet + 10);
 	if (slen < 0) {
 		fr_strerror_printf("Failed decoding additional records - %s", fr_strerror());
 		return slen - (p - packet);
@@ -507,13 +506,13 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
 /** Decode DNS RR
  *
  * @param[in] ctx context	to alloc new attributes in.
- * @param[in,out] cursor	Where to write the decoded options.
+ * @param[in,out] out		Where to write the decoded options.
  * @param[in] dict		to lookup attributes in.
  * @param[in] data		to parse.
  * @param[in] data_len		of data to parse.
  * @param[in] decode_ctx	Unused.
  */
-static ssize_t fr_dns_decode_rr(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
+static ssize_t fr_dns_decode_rr(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				UNUSED fr_dict_t const *dict, uint8_t const *data, size_t data_len, void *decode_ctx)
 {
 	ssize_t			slen;
@@ -539,7 +538,7 @@ static ssize_t fr_dns_decode_rr(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 		return -1;
 	}
 
-	slen = fr_struct_from_network(ctx, cursor, attr_dns_rr, data, data_len, true,
+	slen = fr_struct_from_network(ctx, out, attr_dns_rr, data, data_len, true,
 				      decode_ctx, decode_value_trampoline, NULL);
 	if (slen < 0) return slen;
 
@@ -572,9 +571,8 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
-static ssize_t fr_dns_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_t const *data, size_t data_len, void *proto_ctx)
+static ssize_t fr_dns_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, size_t data_len, void *proto_ctx)
 {
-	fr_dcursor_t	cursor;
 	fr_dns_ctx_t *packet_ctx = proto_ctx;
 
 	if (data_len > 65535) return -1; /* packet is too big */
@@ -593,9 +591,6 @@ static ssize_t fr_dns_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_
 		FR_PROTO_TRACE("FAIL %d", __LINE__);
 	}
 #endif
-
-	fr_pair_list_init(list);
-	fr_dcursor_init(&cursor, list);
 
 	packet_ctx->packet = data;
 	packet_ctx->packet_len = data_len;
@@ -616,7 +611,7 @@ static ssize_t fr_dns_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_
 		fr_assert(packet_ctx->lb != NULL);
 	}
 
-	return fr_dns_decode(ctx, data, data_len, &cursor, packet_ctx);
+	return fr_dns_decode(ctx, out, data, data_len,  packet_ctx);
 }
 
 /*

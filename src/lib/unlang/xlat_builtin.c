@@ -3070,8 +3070,6 @@ static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 {
 	int		decoded;
 	fr_value_box_t	*vb;
-	fr_pair_list_t	head;
-	fr_dcursor_t	cursor;
 	void		*decode_ctx = NULL;
 	fr_test_point_pair_decode_t const *tp_decode;
 
@@ -3083,20 +3081,13 @@ static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		}
 	}
 
-	fr_pair_list_init(&head);
-	fr_dcursor_init(&cursor, &head);
-
-	decoded = fr_pair_decode_value_box_list(request->request_ctx, &cursor, request, decode_ctx, tp_decode->func, in);
+	decoded = fr_pair_decode_value_box_list(request->request_ctx, &request->request_pairs,
+						request, decode_ctx, tp_decode->func, in);
 	if (decoded <= 0) {
 		talloc_free(decode_ctx);
 		RPERROR("Protocol decoding failed");
 		return XLAT_ACTION_FAIL;
 	}
-
-	/*
-	 *	Append the decoded options to the request list.
-	 */
-	fr_pair_list_append(&request->request_pairs, &head);
 
 	/*
 	 *	Create a value box to hold the decoded count, and add

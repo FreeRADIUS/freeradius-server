@@ -123,7 +123,7 @@ typedef ssize_t (*fr_pair_encode_t)(fr_dbuff_t *out, fr_dcursor_t *cursor, void 
  * If this top level fr_pair_t is a TLV, multiple child attributes may also be decoded.
  *
  * @param[in] ctx		to allocate new pairs in.
- * @param[in] cursor		to insert new pairs into.
+ * @param[in] out		to insert new pairs into.
  * @param[in] dict		to use to lookup attributes.
  * @param[in] data		to decode.
  * @param[in] data_len		The length of the incoming data.
@@ -132,9 +132,9 @@ typedef ssize_t (*fr_pair_encode_t)(fr_dbuff_t *out, fr_dcursor_t *cursor, void 
  *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
  *	- > 0 on success.  How many bytes were decoded.
  */
-typedef ssize_t (*fr_pair_decode_t)(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
+typedef ssize_t (*fr_pair_decode_t)(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
 				    uint8_t const *data, size_t data_len, void *decode_ctx);
 
-int fr_pair_decode_value_box_list(TALLOC_CTX *ctx, fr_dcursor_t *out,
+int fr_pair_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				  request_t *request, void *decode_ctx, fr_pair_decode_t decode,
 				  fr_value_box_list_t *in);

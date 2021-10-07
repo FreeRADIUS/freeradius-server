@@ -146,7 +146,7 @@ bool fr_vmps_ok(uint8_t const *packet, size_t *packet_len)
 }
 
 
-int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_dcursor_t *cursor, unsigned int *code)
+int fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, size_t data_len, unsigned int *code)
 {
 	uint8_t const  	*ptr, *end;
 	int		attr;
@@ -165,14 +165,14 @@ int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_dcu
 	if (code) *code = data[1];
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
-	fr_dcursor_append(cursor, vp);
+	fr_pair_append(out, vp);
 
 	vp = fr_pair_afrom_da(ctx, attr_error_code);
 	if (!vp) goto oom;
 	vp->vp_uint32 = data[2];
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
-	fr_dcursor_append(cursor, vp);
+	fr_pair_append(out, vp);
 
 	vp = fr_pair_afrom_da(ctx, attr_sequence_number);
 	if (!vp) goto oom;
@@ -181,7 +181,7 @@ int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_dcu
 	vp->vp_uint32 = ntohl(vp->vp_uint32);
 	vp->vp_tainted = true;
 	DEBUG2("&%pP", vp);
-	fr_dcursor_append(cursor, vp);
+	fr_pair_append(out, vp);
 
 	ptr = data + FR_VQP_HDR_LEN;
 	end = data + data_len;
@@ -233,7 +233,7 @@ int fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_dcu
 		ptr += attr_len;
 		vp->vp_tainted = true;
 		DEBUG2("&%pP", vp);
-		fr_dcursor_append(cursor, vp);
+		fr_pair_append(out, vp);
 	}
 
 	/*
@@ -537,14 +537,10 @@ void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 /*
  *	Test points for protocol decode
  */
-static ssize_t fr_vmps_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_vmps_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
+				    uint8_t const *data, size_t data_len, void *proto_ctx)
 {
-	fr_dcursor_t cursor;
-
-	fr_pair_list_init(list);
-	fr_dcursor_init(&cursor, list);
-
-	return fr_vmps_decode(ctx, data, data_len, &cursor, NULL);
+	return fr_vmps_decode(ctx, out, data, data_len, proto_ctx);
 }
 
 static int _decode_test_ctx(UNUSED fr_vmps_ctx_t *proto_ctx)

@@ -39,20 +39,18 @@ RCSID("$Id$")
  *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
  *	- > 0 on success.  How many bytes were decoded.
  */
-static ssize_t fr_pair_decode_multi(TALLOC_CTX *ctx, fr_dcursor_t *out, fr_dict_t const *dict,
+static ssize_t fr_pair_decode_multi(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
 				    uint8_t const *data, size_t data_len, void *decode_ctx, fr_pair_decode_t decode)
 {
 	uint8_t const *p, *end;
-	fr_pair_list_t head;
-	fr_dcursor_t cursor;
+	fr_pair_list_t tmp;
 
 	/*
 	 *	Catch idiocies.
 	 */
 	if (data_len == 0) return 0;
 
-	fr_pair_list_init(&head);
-	fr_dcursor_init(&cursor, &head);
+	fr_pair_list_init(&tmp);
 
 	p = data;
 	end = data + data_len;
@@ -60,9 +58,9 @@ static ssize_t fr_pair_decode_multi(TALLOC_CTX *ctx, fr_dcursor_t *out, fr_dict_
 	while (p < end) {
 		ssize_t len;
 
-		len = decode(ctx, &cursor, dict, p, end - p, decode_ctx);
+		len = decode(ctx, &tmp, dict, p, end - p, decode_ctx);
 		if (len <= 0) {
-			fr_pair_list_free(&head);
+			fr_pair_list_free(&tmp);
 			return len - (p - data);
 		}
 		p += len;
@@ -71,8 +69,7 @@ static ssize_t fr_pair_decode_multi(TALLOC_CTX *ctx, fr_dcursor_t *out, fr_dict_
 	/*
 	 *	Add the pairs to the cursor
 	 */
-	fr_dcursor_head(&cursor);
-	fr_dcursor_merge(out, &cursor);
+	fr_pair_list_append(out, &tmp);
 
 	return data_len;
 }
@@ -90,7 +87,7 @@ static ssize_t fr_pair_decode_multi(TALLOC_CTX *ctx, fr_dcursor_t *out, fr_dict_
  *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
  *	- > 0 on success.  How many value boxes were decoded
  */
-int fr_pair_decode_value_box_list(TALLOC_CTX *ctx, fr_dcursor_t *out,
+int fr_pair_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				  request_t *request, void *decode_ctx, fr_pair_decode_t decode,
 				  fr_value_box_list_t *in)
 {
@@ -98,13 +95,11 @@ int fr_pair_decode_value_box_list(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*vb = NULL;
 	fr_pair_t	*vp = NULL;
 	fr_pair_list_t	head;
-	fr_dcursor_t	cursor;
 
 	fr_pair_list_init(&head);
 
 	while ((vb = fr_dlist_next(in, vb))) {
 		ssize_t		len;
-		fr_pair_list_t	vps;
 
 		if (vb->type != FR_TYPE_OCTETS) {
 			RWDEBUG("Skipping value \"%pV\", expected value of type %s, got type %s",
@@ -114,16 +109,12 @@ int fr_pair_decode_value_box_list(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			continue;
 		}
 
-		fr_pair_list_init(&vps);
-		fr_dcursor_init(&cursor, &vps);
-
-		len = fr_pair_decode_multi(ctx, &cursor, request->dict,
+		len = fr_pair_decode_multi(ctx, &head, request->dict,
 					   vb->vb_octets, vb->vb_length, decode_ctx, decode);
 		if (len <= 0) {
 			fr_pair_list_free(&head);
 			return -decoded;
 		}
-		fr_pair_list_append(&head, &vps);
 		decoded++;	/* one more VB, but there may be many pairs in the decoded vps. */
 	}
 
@@ -137,8 +128,7 @@ int fr_pair_decode_value_box_list(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	decoded = fr_pair_list_len(&head);
 
-	fr_dcursor_init(&cursor, &head);
-	fr_dcursor_merge(out, &cursor);
+	fr_pair_list_append(out, &head);
 
 	return decoded;
 }

@@ -1260,7 +1260,6 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 				  char *data, size_t data_used, char *in, size_t inlen)
 {
 	fr_test_point_pair_decode_t	*tp = NULL;
-	fr_dcursor_t 	cursor;
 	void		*decode_ctx = NULL;
 	char		*p, *end;
 	uint8_t		*to_dec;
@@ -1313,9 +1312,8 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	 *	Run the input data through the test
 	 *	point to produce fr_pair_ts.
 	 */
-	fr_dcursor_init(&cursor, &head);
 	while (to_dec < to_dec_end) {
-		slen = tp->func(cc->tmp_ctx, &cursor, cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict,
+		slen = tp->func(cc->tmp_ctx, &head, cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict,
 				(uint8_t *)to_dec, (to_dec_end - to_dec), decode_ctx);
 		cc->last_ret = slen;
 		if (slen <= 0) {

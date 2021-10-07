@@ -158,8 +158,7 @@ bool		fr_dhcpv6_verify(uint8_t const *packet, size_t packet_len, fr_dhcpv6_decod
 ssize_t		fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t length,
 				 int msg_type, fr_pair_list_t *vps);
 
-ssize_t		fr_dhcpv6_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len,
-				 fr_dcursor_t *cursor);
+ssize_t		fr_dhcpv6_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packet, size_t packet_len);
 
 void		fr_dhcpv6_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
 
@@ -175,5 +174,5 @@ ssize_t		fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *
 /*
  *	decode.c
  */
-ssize_t		fr_dhcpv6_decode_option(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
+ssize_t		fr_dhcpv6_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
 					uint8_t const *data, size_t data_len, void *decode_ctx);

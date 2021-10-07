@@ -115,7 +115,8 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query);
 
 size_t fr_dns_value_len(fr_pair_t const *vp);
 
-ssize_t	fr_dns_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, fr_dcursor_t *cursor, fr_dns_ctx_t *packet_ctx);
+ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
+		      uint8_t const *packet, size_t packet_len, fr_dns_ctx_t *packet_ctx);
 
 ssize_t fr_dns_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, void *encode_ctx);
 

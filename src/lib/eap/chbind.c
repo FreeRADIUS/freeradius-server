@@ -204,15 +204,12 @@ fr_radius_packet_code_t chbind_process(request_t *request, CHBIND_REQ *chbind)
 	/* Add the channel binding attributes to the fake packet */
 	data_len = chbind_get_data(chbind->request, CHBIND_NSID_RADIUS, &attr_data);
 	if (data_len) {
-		fr_dcursor_t cursor;
-
 		fr_assert(data_len <= talloc_array_length((uint8_t const *) chbind->request));
 
-		fr_dcursor_init(&cursor, &fake->request_pairs);
 		while (data_len > 0) {
 			ssize_t attr_len;
 
-			attr_len = fr_radius_decode_pair(fake->request_ctx, &cursor, dict_radius,
+			attr_len = fr_radius_decode_pair(fake->request_ctx, &fake->request_pairs, dict_radius,
 							 attr_data, data_len, &packet_ctx);
 			if (attr_len <= 0) {
 				/*

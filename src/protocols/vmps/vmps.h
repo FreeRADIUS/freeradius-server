@@ -36,7 +36,7 @@ extern "C" {
 
 bool fr_vmps_ok(uint8_t const *packet, size_t *packet_len);
 
-int	fr_vmps_decode(TALLOC_CTX *ctx, uint8_t const *data, size_t data_len, fr_dcursor_t *cursor, unsigned int *code);
+int	fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, size_t data_len, unsigned int *code);
 
 ssize_t fr_vmps_packet_size(uint8_t const *data, size_t data_len);
 

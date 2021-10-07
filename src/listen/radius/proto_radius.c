@@ -197,7 +197,6 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
 	RADCLIENT const		*client;
-	fr_dcursor_t		cursor;
 
 	fr_assert(data[0] < FR_RADIUS_CODE_MAX);
 
@@ -226,10 +225,9 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	 *	That MUST be set and checked in the underlying
 	 *	transport, via a call to fr_radius_ok().
 	 */
-	fr_dcursor_init(&cursor, &request->request_pairs);
-	if (fr_radius_decode(request->request_ctx, request->packet->data, request->packet->data_len,
-			     NULL, client->secret, talloc_array_length(client->secret) - 1,
-			     &cursor) < 0) {
+	if (fr_radius_decode(request->request_ctx, &request->request_pairs,
+			     request->packet->data, request->packet->data_len, NULL,
+			     client->secret, talloc_array_length(client->secret) - 1) < 0) {
 		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
@@ -294,7 +292,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	if ((request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) &&
 	    fr_pair_find_by_da(&request->request_pairs, attr_state, 0)) {
 		request->async->sequence = 1;
-	}	
+	}
 
 	if (!inst->io.app_io->decode) return 0;
 

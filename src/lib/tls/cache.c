@@ -169,7 +169,6 @@ static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess)
 	size_t			data_len;
 	fr_dbuff_t		dbuff;
 	fr_pair_list_t		tmp;
-	fr_dcursor_t		cursor;
 
 	/*
 	 *	Extract the session-state list from the ticket.
@@ -180,7 +179,6 @@ static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess)
 	}
 
 	fr_pair_list_init(&tmp);
-	fr_dcursor_init(&cursor, &tmp);
 	fr_dbuff_init(&dbuff, data, data_len);
 
 	RHEXDUMP4(fr_dbuff_start(&dbuff), fr_dbuff_len(&dbuff), "session application data");
@@ -192,7 +190,7 @@ static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess)
 	 *	or disallow session resumption.
 	 */
 	while (fr_dbuff_remaining(&dbuff) > 0) {
-		if (fr_internal_decode_pair_dbuff(request->session_state_ctx, &cursor,
+		if (fr_internal_decode_pair_dbuff(request->session_state_ctx, &tmp,
 					    	  request->dict, &dbuff, NULL) < 0) {
 			fr_pair_list_free(&tmp);
 			RPEDEBUG("Failed decoding session-state");

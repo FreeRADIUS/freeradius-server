@@ -128,8 +128,9 @@ ssize_t		fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *ori
 ssize_t		fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 				 char const *secret, UNUSED size_t secret_len, int code, int id, fr_pair_list_t *vps);
 
-ssize_t		fr_radius_decode(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, uint8_t const *original,
-				 char const *secret, UNUSED size_t secret_len, fr_dcursor_t *cursor) CC_HINT(nonnull(1,2,5,7));
+ssize_t		fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
+				 uint8_t const *packet, size_t packet_len, uint8_t const *original,
+				 char const *secret, UNUSED size_t secret_len) CC_HINT(nonnull(1,2,3,6));
 
 int		fr_radius_init(void);
 
@@ -141,10 +142,10 @@ void		fr_radius_free(void);
 ssize_t		fr_radius_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 					fr_radius_packet_t const *original,
 					char const *secret) CC_HINT(nonnull (1,2,4));
-int		fr_radius_packet_decode(fr_radius_packet_t *packet, fr_pair_list_t *list,
-					fr_radius_packet_t *original,
+int		fr_radius_packet_decode(TALLOC_CTX *ctx, fr_pair_list_t *list,
+					fr_radius_packet_t *packet, fr_radius_packet_t *original,
 					uint32_t max_attributes, bool tunnel_password_zeros,
-					char const *secret) CC_HINT(nonnull (1,2,6));
+					char const *secret) CC_HINT(nonnull (1,2,3,7));
 
 bool		fr_radius_packet_ok(fr_radius_packet_t *packet, uint32_t max_attributes, bool require_ma,
 				    decode_fail_t *reason) CC_HINT(nonnull (1));
@@ -206,15 +207,15 @@ ssize_t		fr_radius_decode_password(char *encpw, size_t len, char const *secret, 
 ssize_t		fr_radius_decode_tunnel_password(uint8_t *encpw, size_t *len, char const *secret,
 						 uint8_t const *vector, bool tunnel_password_zeros);
 
-ssize_t		fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
+ssize_t		fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dict_t const *dict,
 					    fr_dict_attr_t const *parent,
 					    uint8_t const *data, size_t const attr_len, size_t const packet_len,
 					    fr_radius_ctx_t *packet_ctx) CC_HINT(nonnull);
 
-ssize_t		fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
+ssize_t		fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dict_t const *dict,
 				     fr_dict_attr_t const *parent,
 				     uint8_t const *data, size_t data_len,
 				     fr_radius_ctx_t *packet_ctx) CC_HINT(nonnull);
 
-ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_t const *dict,
+ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dict_t const *dict,
 				      uint8_t const *data, size_t data_len, fr_radius_ctx_t *packet_ctx) CC_HINT(nonnull);

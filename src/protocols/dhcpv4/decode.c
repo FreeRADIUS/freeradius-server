@@ -36,10 +36,10 @@
 #include "dhcpv4.h"
 #include "attrs.h"
 
-static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *parent,
+static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t data_len);
 
-static ssize_t decode_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
+static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			    fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len);
 
 /** Returns the number of array members for arrays with fixed element sizes
@@ -73,7 +73,7 @@ static int fr_dhcpv4_array_members(size_t *out, size_t len, fr_dict_attr_t const
 /*
  *	Decode ONE value into a VP
  */
-static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *da,
+static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *da,
 				     uint8_t const *data, size_t data_len)
 {
 	fr_pair_t *vp;
@@ -137,7 +137,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_d
 
 			/* Need another VP for the next round */
 			if (p < end) {
-				fr_dcursor_append(cursor, vp);
+				fr_pair_append(out, vp);
 
 				vp = fr_pair_afrom_da(ctx, da);
 				if (!vp) return -1;
@@ -193,12 +193,12 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_d
 
 finish:
 	FR_PROTO_TRACE("decoding value complete, adding new pair and returning %zu byte(s)", p - data);
-	fr_dcursor_append(cursor, vp);
+	fr_pair_append(out, vp);
 
 	return p - data;
 }
 
-static ssize_t decode_raw(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *parent, uint8_t attr,
+static ssize_t decode_raw(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent, uint8_t attr,
 			  uint8_t const *data, size_t data_len)
 {
 	ssize_t slen;
@@ -220,7 +220,7 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t 
 		       fr_table_str_by_value(fr_value_box_type_table, parent->type, "<invalid>"), parent->name,
 		       fr_table_str_by_value(fr_value_box_type_table, child->type, "<invalid>"), child->name);
 
-	slen = decode_value(ctx, cursor, child, data, data_len);
+	slen = decode_value(ctx, out, child, data, data_len);
 	if (slen < 0) fr_dict_unknown_free(&child);
 
 	return slen;
@@ -256,16 +256,16 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t 
 
 /** Decode DHCP suboptions
  *
- * @param[in] ctx context to alloc new attributes in.
- * @param[in,out] cursor Where to write the decoded options.
- * @param[in] parent of sub TLVs.
- * @param[in] data to parse.
- * @param[in] data_len of the data to parse
+ * @param[in] ctx		context to alloc new attributes in.
+ * @param[out] out		Where to write the decoded options.
+ * @param[in] parent		of sub TLVs.
+ * @param[in] data		to parse.
+ * @param[in] data_len		of the data to parse
  * @return
  *	<= 0 on error
  *	data_len on success.
  */
-static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *parent,
+static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t data_len)
 {
 	uint8_t const		*p = data;
@@ -281,7 +281,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t 
 
 		vp = fr_raw_from_network(ctx, parent, data, data_len);
 		if (!vp) return -1;
-		fr_dcursor_append(cursor, vp);
+		fr_pair_append(out, vp);
 		return data_len;
 	}
 
@@ -311,7 +311,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t 
 			 *	options" option.  Return it as random crap.
 			 */
 		raw:
-			tlv_len = decode_raw(ctx, cursor, parent, p[0], p, end - p);
+			tlv_len = decode_raw(ctx, out, parent, p[0], p, end - p);
 			if (tlv_len < 0) return tlv_len;
 
 			return data_len;
@@ -341,7 +341,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t 
 			       fr_table_str_by_value(fr_value_box_type_table, parent->type, "<invalid>"), parent->name,
 			       fr_table_str_by_value(fr_value_box_type_table, child->type, "<invalid>"), child->name);
 
-		tlv_len = decode_value(ctx, cursor, child, p + 2, p[1]);
+		tlv_len = decode_value(ctx, out, child, p + 2, p[1]);
 		if (tlv_len < 0) {
 			fr_dict_unknown_free(&child);
 			return tlv_len;
@@ -355,7 +355,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t 
 	return data_len;
 }
 
-static ssize_t decode_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
+static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			    fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
 {
 	unsigned int	values, i;		/* How many values we need to decode */
@@ -369,7 +369,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 	/*
 	 *	TLVs can't be coalesced as they're variable length
 	 */
-	if (parent->type == FR_TYPE_TLV) return decode_tlv(ctx, cursor, parent, data, data_len);
+	if (parent->type == FR_TYPE_TLV) return decode_tlv(ctx, out, parent, data, data_len);
 
 	/*
 	 *	Values with a fixed length may be coalesced into a single option
@@ -385,7 +385,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 	raw:
 		vp = fr_raw_from_network(ctx, parent, p, (data + data_len) - p);
 		if (!vp) return -1;
-		fr_dcursor_append(cursor, vp);
+		fr_pair_append(out, vp);
 		return data_len;
 	}
 
@@ -395,7 +395,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 	 */
 	for (i = 0, p = data; i < values; i++) {
 		fr_assert((p + value_len) <= (data + data_len));
-		len = decode_value_internal(ctx, cursor, parent, p, value_len);
+		len = decode_value_internal(ctx, out, parent, p, value_len);
 		if (len <= 0) return len;
 		if (len != (ssize_t)value_len) goto raw;
 		p += len;
@@ -428,7 +428,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
  *  ~            ...                ~   V
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ ----
  */
-static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *parent,
+static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t const data_len)
 {
 	ssize_t			len;
@@ -451,7 +451,7 @@ next:
 	 *	attributes.
 	 */
 	if ((size_t)(end - p) < (sizeof(uint32_t) + 1 + 1)) {
-		len = decode_raw(ctx, cursor, parent->parent, parent->attr, p, end - p);
+		len = decode_raw(ctx, out, parent->parent, parent->attr, p, end - p);
 		if (len < 0) return len;
 
 		return data_len + 2; /* decoded the whole thing */
@@ -481,14 +481,14 @@ next:
 
 	option_len = p[0];
 	if ((p + 1 + option_len) > end) {
-		len = decode_raw(ctx, cursor, vendor, p[1], p, end - p);
+		len = decode_raw(ctx, out, vendor, p[1], p, end - p);
 		if (len < 0) return len;
 
 		return data_len + 2; /* decoded the whole thing */
 	}
 	p++;
 
-	len = decode_tlv(ctx, cursor, vendor, p, option_len);
+	len = decode_tlv(ctx, out, vendor, p, option_len);
 	if (len <= 0) return len;
 
 	p += len;
@@ -503,13 +503,13 @@ next:
 /** Decode DHCP option
  *
  * @param[in] ctx context	to alloc new attributes in.
- * @param[in,out] cursor	Where to write the decoded options.
+ * @param[out] out		Where to write the decoded options.
  * @param[in] dict		to lookup attributes in.
  * @param[in] data		to parse.
  * @param[in] data_len		of data to parse.
  * @param[in] decode_ctx	Unused.
  */
-ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
+ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			        fr_dict_t const *dict, uint8_t const *data, size_t data_len, UNUSED void *decode_ctx)
 {
 	ssize_t			ret;
@@ -552,9 +552,9 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 		       fr_table_str_by_value(fr_value_box_type_table, parent->type, "<invalid>"), parent->name,
 		       fr_table_str_by_value(fr_value_box_type_table, da->type, "<invalid>"), da->name);
 
-	if (da->type == FR_TYPE_VSA) return decode_vsa(ctx, cursor, da, data + 2, data[1]);
+	if (da->type == FR_TYPE_VSA) return decode_vsa(ctx, out, da, data + 2, data[1]);
 
-	ret = decode_value(ctx, cursor, da, data + 2, data[1]);
+	ret = decode_value(ctx, out, da, data + 2, data[1]);
 	if (ret < 0) {
 		fr_dict_unknown_free(&da);
 		return ret;
@@ -586,17 +586,14 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 }
 
 
-static ssize_t fr_dhcpv4_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t fr_dhcpv4_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
+				      uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
 {
 	unsigned int	code;
-	fr_dcursor_t	cursor;
 
 	if (!fr_dhcpv4_ok(data, data_len, NULL, NULL)) return -1;
 
-	fr_pair_list_init(list);
-	fr_dcursor_init(&cursor, list);
-
-	if (fr_dhcpv4_decode(ctx, data, data_len, &cursor, &code) < 0) return -1;
+	if (fr_dhcpv4_decode(ctx, out, data, data_len, &code) < 0) return -1;
 
 	return data_len;
 }

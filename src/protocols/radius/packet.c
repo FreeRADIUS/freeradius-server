@@ -103,8 +103,9 @@ ssize_t fr_radius_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list
 
 /** Calculate/check digest, and decode radius attributes
  *
+ * @param[in] ctx			to allocate pairs in.
+ * @param[out] out			to add pairs to.
  * @param[in] packet			to decode.
- * @param[in] list			to add pairs to.
  * @param[in] original			packet, if this is a reply.
  * @param[in] max_attributes		to decode.
  * @param[in] tunnel_password_zeros	set random elements of the tunnel password
@@ -115,22 +116,19 @@ ssize_t fr_radius_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list
  *	- 0 on success
  *	- -1 on decoding error.
  */
-int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_pair_list_t *list,
-			    fr_radius_packet_t *original,
+int fr_radius_packet_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
+			    fr_radius_packet_t *packet, fr_radius_packet_t *original,
 			    uint32_t max_attributes, bool tunnel_password_zeros, char const *secret)
 {
 	int			packet_length;
-	uint32_t		num_attributes;
 	uint8_t			*ptr;
 	radius_packet_t		*hdr;
-	fr_pair_list_t		head;
-	fr_dcursor_t		cursor, out;
+	fr_pair_list_t		tmp_list;
 	fr_radius_ctx_t		packet_ctx = {
 					.secret = secret,
 					.tunnel_password_zeros = tunnel_password_zeros
 				};
 
-	fr_pair_list_init(&head);
 #ifndef NDEBUG
 	if (fr_debug_lvl >= L_DBG_LVL_4) fr_radius_packet_log_hex(&default_log, packet);
 #endif
@@ -180,9 +178,8 @@ int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 	hdr = (radius_packet_t *)packet->data;
 	ptr = hdr->data;
 	packet_length = packet->data_len - RADIUS_HEADER_LENGTH;
-	num_attributes = 0;
 
-	fr_dcursor_init(&cursor, &head);
+	fr_pair_list_init(&tmp_list);
 
 	/*
 	 *	Loop over the attributes, decoding them into VPs.
@@ -194,11 +191,11 @@ int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 		 *	This may return many VPs
 		 */
 		fr_assert(ptr != NULL);
-		my_len = fr_radius_decode_pair(packet, &cursor, dict_radius, ptr, packet_length, &packet_ctx);
+		my_len = fr_radius_decode_pair(ctx, &tmp_list, dict_radius, ptr, packet_length, &packet_ctx);
 		if (my_len < 0) {
 		fail:
 			talloc_free(packet_ctx.tmp_ctx);
-			fr_pair_list_free(&head);
+			fr_pair_list_free(&tmp_list);
 			return -1;
 		}
 
@@ -208,25 +205,20 @@ int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 		if (my_len == 0) break;
 
 		/*
-		 *	Count the ones which were just added
-		 */
-		while (fr_dcursor_next(&cursor)) num_attributes++;
-
-		/*
 		 *	VSA's may not have been counted properly in
 		 *	fr_radius_packet_ok() above, as it is hard to count
 		 *	then without using the dictionary.  We
 		 *	therefore enforce the limits here, too.
 		 */
-		if ((max_attributes > 0) && (num_attributes > max_attributes)) {
+		if ((max_attributes > 0) && (fr_pair_list_len(out) > max_attributes)) {
 			char host_ipaddr[INET6_ADDRSTRLEN];
 
 			fr_strerror_printf("Possible DoS attack from host %s: Too many attributes in request "
-					   "(received %d, max %d are allowed)",
+					   "(received %zu, max %d are allowed)",
 					   inet_ntop(packet->socket.inet.src_ipaddr.af,
 						     &packet->socket.inet.src_ipaddr.addr,
 						     host_ipaddr, sizeof(host_ipaddr)),
-					   num_attributes, max_attributes);
+					   fr_pair_list_len(out), max_attributes);
 			goto fail;
 		}
 
@@ -235,10 +227,7 @@ int fr_radius_packet_decode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 		talloc_free_children(packet_ctx.tmp_ctx);
 	}
 
-	fr_dcursor_init(&out, list);
-	fr_dcursor_tail(&out);		/* Move insertion point to the end of the list */
-	fr_dcursor_head(&cursor);
-	fr_dcursor_merge(&out, &cursor);
+	fr_pair_list_append(out, &tmp_list);
 
 	/*
 	 *	Merge information from the outside world into our

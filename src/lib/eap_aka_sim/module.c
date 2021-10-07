@@ -313,8 +313,8 @@ unlang_action_t eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *m
 		decode_ctx.hmac_extra_len = mod_session->response_hmac_extra_len;
 		decode_ctx.eap_packet = eap_session->this_round->response;
 
-		ret = fr_aka_sim_decode(request,
-					&cursor,
+		ret = fr_aka_sim_decode(request->request_ctx,
+					&request->request_pairs,
 					dict_eap_aka_sim,
 					eap_session->this_round->response->type.data,
 					eap_session->this_round->response->type.length,

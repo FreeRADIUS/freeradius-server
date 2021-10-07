@@ -1431,7 +1431,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			FILE *log_fp = fr_log_fp;
 
 			fr_log_fp = NULL;
-			ret = fr_radius_packet_decode(packet, &decoded, original ? original->expect : NULL,
+			ret = fr_radius_packet_decode(packet, &decoded, packet, original ? original->expect : NULL,
 						      RADIUS_MAX_ATTRIBUTES, false, conf->radius_secret);
 			fr_log_fp = log_fp;
 			if (ret != 0) {
@@ -1565,7 +1565,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			FILE *log_fp = fr_log_fp;
 
 			fr_log_fp = NULL;
-			ret = fr_radius_packet_decode(packet, &decoded, NULL,
+			ret = fr_radius_packet_decode(packet, &decoded, packet, NULL,
 						      RADIUS_MAX_ATTRIBUTES, false, conf->radius_secret);
 			fr_log_fp = log_fp;
 

@@ -55,16 +55,16 @@
 	vp = fr_pair_afrom_da(ctx, _da); \
 	if (!vp) goto fail; \
 	vp->vp_uint8 = _field; \
-	fr_dcursor_append(cursor, vp); \
+	fr_pair_append(out, vp); \
 } while (0)
 
 #define DECODE_FIELD_STRING8(_da, _field) do { \
-	if (tacacs_decode_field(ctx, cursor, _da, &p, \
+	if (tacacs_decode_field(ctx, out, _da, &p, \
 	    _field, end) < 0) goto fail; \
 } while (0)
 
 #define DECODE_FIELD_STRING16(_da, _field) do { \
-	if (tacacs_decode_field(ctx, cursor, _da, &p, \
+	if (tacacs_decode_field(ctx, out, _da, &p, \
 	    ntohs(_field), end) < 0) goto fail; \
 } while (0)
 
@@ -73,7 +73,7 @@
 /**
  *	Decode a TACACS+ 'arg_N' fields.
  */
-static int tacacs_decode_args(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *parent,
+static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 			      uint8_t arg_cnt, uint8_t const *arg_list, uint8_t const **data, uint8_t const *end)
 {
 	uint8_t i;
@@ -174,7 +174,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_att
 			goto next;
 		}
 
-		fr_dcursor_append(cursor, vp);
+		fr_pair_append(out, vp);
 
 	next:
 		p += arg_list[i];
@@ -187,7 +187,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_att
 /**
  *	Decode a TACACS+ field.
  */
-static int tacacs_decode_field(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_attr_t const *da,
+static int tacacs_decode_field(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *da,
 				uint8_t const **field_data, uint16_t field_len, uint8_t const *end)
 {
 	uint8_t const *p = *field_data;
@@ -217,7 +217,7 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_at
 		*field_data = p;
 	}
 
-	fr_dcursor_append(cursor, vp);
+	fr_pair_append(out, vp);
 
 	return 0;
 }
@@ -225,7 +225,8 @@ static int tacacs_decode_field(TALLOC_CTX *ctx, fr_dcursor_t *cursor, fr_dict_at
 /**
  *	Decode a TACACS+ packet
  */
-ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_len, UNUSED const uint8_t *original, char const * const secret, size_t secret_len, fr_dcursor_t *cursor)
+ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *buffer, size_t buffer_len,
+			 UNUSED const uint8_t *original, char const * const secret, size_t secret_len)
 {
 	fr_tacacs_packet_t const *pkt;
 	fr_pair_t		*vp;
@@ -301,7 +302,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 	/*
 	 *	Call the struct encoder to do the actual work.
 	 */
-	if (fr_struct_from_network(ctx, cursor, attr_tacacs_packet, buffer, buffer_len, false, NULL, NULL, NULL) < 0) {
+	if (fr_struct_from_network(ctx, out, attr_tacacs_packet, buffer, buffer_len, false, NULL, NULL, NULL) < 0) {
 		fr_strerror_printf("Problems to decode %s using fr_struct_from_network()", attr_tacacs_packet->name);
 		return -1;
 	}
@@ -574,7 +575,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
-			if (tacacs_decode_args(ctx, cursor, attr_tacacs_argument_list,
+			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
 					       pkt->author.req.arg_cnt, BODY(author.req), &p, end) < 0) goto fail;
 
 		} else if (packet_is_author_response(pkt)) {
@@ -625,7 +626,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
-			if (tacacs_decode_args(ctx, cursor, attr_tacacs_argument_list,
+			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
 					pkt->author.res.arg_cnt, BODY(author.res), &p, end) < 0) goto fail;
 
 		} else {
@@ -688,7 +689,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 			/*
 			 *	Decode 'arg_N' arguments (horrible format)
 			 */
-			if (tacacs_decode_args(ctx, cursor, attr_tacacs_argument_list,
+			if (tacacs_decode_args(ctx, out, attr_tacacs_argument_list,
 					pkt->acct.req.arg_cnt, BODY(acct.req), &p, end) < 0) goto fail;
 
 		} else if (packet_is_acct_reply(pkt)) {
@@ -738,15 +739,12 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, uint8_t const *buffer, size_t buffer_l
 /*
  *	Test points for protocol decode
  */
-static ssize_t fr_tacacs_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_t const *data, size_t data_len, void *proto_ctx)
+static ssize_t fr_tacacs_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, size_t data_len, void *proto_ctx)
 {
 	fr_tacacs_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_tacacs_ctx_t);
-	fr_dcursor_t cursor;
 
-	fr_pair_list_init(list);
-	fr_dcursor_init(&cursor, list);
-
-	return fr_tacacs_decode(ctx, data, data_len, NULL, test_ctx->secret, (talloc_array_length(test_ctx->secret)-1), &cursor);
+	return fr_tacacs_decode(ctx, out, data, data_len, NULL,
+				test_ctx->secret, (talloc_array_length(test_ctx->secret)-1));
 }
 
 static int _encode_test_ctx(fr_tacacs_ctx_t *proto_ctx)
