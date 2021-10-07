@@ -612,17 +612,14 @@ fr_pair_t *fr_pair_find_by_child_num(fr_pair_list_t *list, fr_dict_attr_t const 
 	return NULL;
 }
 
-static inline CC_HINT(always_inline) fr_pair_list_t *pair_children(fr_pair_t *vp)
+/** Return a pointer to the pair list
+ *
+ */
+static inline CC_HINT(always_inline) CC_HINT(nonnull) fr_pair_list_t *pair_children(fr_pair_t *vp)
 {
-	if (!vp) return NULL;
+	if (fr_type_is_structural(vp->da->type)) return &vp->vp_group;
 
-	switch (vp->da->type) {
-	case FR_TYPE_STRUCTURAL:
-		return &vp->vp_group;
-
-	default:
-		return NULL;
-	}
+	return NULL;
 }
 
 /** Get the child list of a group
