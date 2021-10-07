@@ -60,6 +60,8 @@ static fr_cmd_table_t cmd_module_table[];
 
 static int _module_instantiate(void *instance);
 
+static int virtual_module_instantiate(CONF_SECTION *vm_cs);
+
 /*
  *	Ordered by component
  */
@@ -1328,13 +1330,16 @@ static int _module_instantiate(void *instance)
  * Allows the module to initialise connection pools, and complete any registrations that depend on
  * attributes created during the bootstrap phase.
  *
+ * @param[in] root of the server configuration.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int modules_instantiate(void)
+int modules_instantiate(CONF_SECTION *root)
 {
-	void				*instance;
+	void			*instance;
+	CONF_ITEM		*ci;
+	CONF_SECTION		*modules;
 	fr_rb_iter_inorder_t	iter;
 
 	DEBUG2("#### Instantiating modules ####");
@@ -1345,6 +1350,32 @@ int modules_instantiate(void)
 		if (_module_instantiate(instance) < 0) {
 			return -1;
 		}
+	}
+
+	modules = cf_section_find(root, "modules", NULL);
+	if (!modules) return 0;
+
+	/*
+	 *	Instantiate the virtual modules.
+	 */
+	for (ci = cf_item_next(modules, NULL);
+	     ci != NULL;
+	     ci = cf_item_next(modules, ci)) {
+		char const *name;
+		CONF_SECTION *subcs;
+
+		if (!cf_item_is_section(ci)) continue;
+
+		subcs = cf_item_to_section(ci);
+
+		/*
+		 *	If it's not an unlang keyword, then skip it.
+		 *	It must be a module we already checked.
+		 */
+		name = cf_section_name1(subcs);
+		if (!unlang_compile_is_keyword(name)) continue;
+
+		if (virtual_module_instantiate(subcs) < 0) return -1;
 	}
 
 	return 0;
@@ -1575,23 +1606,23 @@ module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTIO
 	return mi;
 }
 
-/** Bootstrap a virtual module from an instantiate section
+/** Instantiate a virtual module from an instantiate section
  *
- * @param[in] vm_cs	that defines the virtual module.
+ * @param[in] cs	that defines the virtual module.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int virtual_module_bootstrap(CONF_SECTION *vm_cs)
+static int virtual_module_instantiate(CONF_SECTION *cs)
 {
 	char const		*name;
 	bool			all_same = true;
 	module_t const 	*last = NULL;
 	CONF_ITEM 		*sub_ci = NULL;
 	CONF_PAIR		*cp;
-	module_instance_t	*instance;
+	module_instance_t	*mi;
 
-	name = cf_section_name1(vm_cs);
+	name = cf_section_name1(cs);
 
 	/*
 	 *	Groups, etc. must have a name.
@@ -1600,29 +1631,43 @@ static int virtual_module_bootstrap(CONF_SECTION *vm_cs)
 	    (strcmp(name, "redundant") == 0) ||
 	    (strcmp(name, "redundant-load-balance") == 0) ||
 	    (strcmp(name, "load-balance") == 0)) {
-		name = cf_section_name2(vm_cs);
+		name = cf_section_name2(cs);
 		if (!name) {
-			cf_log_err(vm_cs, "Subsection must have a name");
+			cf_log_err(cs, "Keyword module must have a second name");
 			return -1;
 		}
 
-		if (unlang_compile_is_keyword(name)) {
-		is_reserved:
-			cf_log_err(vm_cs, "Virtual modules cannot overload unlang keywords");
-			return -1;
-		}
+		/*
+		 *	name2 was already checked in modules_bootstrap()
+		 */
+		fr_assert(!unlang_compile_is_keyword(name));
 	} else {
-		goto is_reserved;
+		cf_log_err(cs, "Module names cannot be unlang keywords '%s'", name);
+		return -1;
+	}
+
+	/*
+	 *	Ensure that the module doesn't exist.
+	 */
+	mi = module_by_name(NULL, name);
+	if (mi) {
+		ERROR("Duplicate module \"%s\" in file %s[%d] and file %s[%d]",
+		      name,
+		      cf_filename(cs),
+		      cf_lineno(cs),
+		      cf_filename(mi->dl_inst->conf),
+		      cf_lineno(mi->dl_inst->conf));
+		return -1;
 	}
 
 	/*
 	 *	Ensure that the modules we reference here exist.
 	 */
-	while ((sub_ci = cf_item_next(vm_cs, sub_ci))) {
+	while ((sub_ci = cf_item_next(cs, sub_ci))) {
 		if (cf_item_is_pair(sub_ci)) {
 			cp = cf_item_to_pair(sub_ci);
 			if (cf_pair_value(cp)) {
-				cf_log_err(sub_ci, "Cannot set return codes in a %s block", cf_section_name1(vm_cs));
+				cf_log_err(sub_ci, "Cannot set return codes in a %s block", cf_section_name1(cs));
 				return -1;
 			}
 
@@ -1631,17 +1676,17 @@ static int virtual_module_bootstrap(CONF_SECTION *vm_cs)
 			 *
 			 *	Note that we don't care what the method is, just that it exists.
 			 */
-			instance = module_by_name_and_method(NULL, NULL, NULL, NULL, cf_pair_attr(cp));
-			if (!instance) {
+			mi = module_by_name_and_method(NULL, NULL, NULL, NULL, cf_pair_attr(cp));
+			if (!mi) {
 				cf_log_err(sub_ci, "Module instance \"%s\" referenced in %s block, does not exist",
-					   cf_pair_attr(cp), cf_section_name1(vm_cs));
+					   cf_pair_attr(cp), cf_section_name1(cs));
 				return -1;
 			}
 
 			if (all_same) {
 				if (!last) {
-					last = instance->module;
-				} else if (last != instance->module) {
+					last = mi->module;
+				} else if (last != mi->module) {
 					last = NULL;
 					all_same = false;
 				}
@@ -1658,7 +1703,7 @@ static int virtual_module_bootstrap(CONF_SECTION *vm_cs)
 	/*
 	 *	Register a redundant xlat
 	 */
-	if (all_same && (xlat_register_legacy_redundant(vm_cs) < 0)) return -1;
+	if (all_same && (xlat_register_legacy_redundant(cs) < 0)) return -1;
 
 	return 0;
 }
@@ -1675,7 +1720,7 @@ static int virtual_module_bootstrap(CONF_SECTION *vm_cs)
  */
 int modules_bootstrap(CONF_SECTION *root)
 {
-	CONF_ITEM *ci, *next;
+	CONF_ITEM *ci;
 	CONF_SECTION *cs, *modules;
 
 	/*
@@ -1699,17 +1744,18 @@ int modules_bootstrap(CONF_SECTION *root)
 	 */
 	for (ci = cf_item_next(modules, NULL);
 	     ci != NULL;
-	     ci = next) {
+	     ci = cf_item_next(modules, ci)) {
 		char const *name;
 		CONF_SECTION *subcs;
 		module_instance_t *instance;
-
-		next = cf_item_next(modules, ci);
 
 		if (!cf_item_is_section(ci)) continue;
 
 		subcs = cf_item_to_section(ci);
 
+		/*
+		 *	name2 can't be a keyword
+		 */
 		name = cf_section_name2(subcs);
 		if (name && unlang_compile_is_keyword(name)) {
 		invalid_name:
@@ -1718,7 +1764,17 @@ int modules_bootstrap(CONF_SECTION *root)
 		}
 
 		name = cf_section_name1(subcs);
-		if (unlang_compile_is_keyword(name)) goto invalid_name;
+
+		/*
+		 *	For now, ignore name1 which is a keyword.
+		 */
+		if (unlang_compile_is_keyword(name)) {
+			if (!cf_section_name2(subcs)) {
+				cf_log_err(subcs, "Missing second name at '%s'", name);
+				return -1;
+			}
+			continue;
+		}
 
 		/*
 		 *	Skip inline templates, and disallow "template { ... }"
@@ -1730,56 +1786,6 @@ int modules_bootstrap(CONF_SECTION *root)
 
 		instance = module_bootstrap(NULL, subcs);
 		if (!instance) return -1;
-
-		if (!next || !cf_item_is_section(next)) continue;
-	}
-
-	/*
-	 *	Look for the 'instantiate' section, which tells us
-	 *	the instantiation order of the modules, and also allows
-	 *	us to load modules with no authorize/authenticate/etc.
-	 *	sections.
-	 */
-	cs = cf_section_find(root, "instantiate", NULL);
-	if (cs) {
-		cf_log_debug(cs, "  instantiate {");
-		ci = NULL;
-
-		/*
-		 *  Loop over the items in the 'instantiate' section.
-		 */
-		while ((ci = cf_item_next(cs, ci))) {
-			CONF_SECTION *vm_cs;
-
-			/*
-			 *	Skip sections and "other" stuff.
-			 *	Sections will be handled later, if
-			 *	they're referenced at all...
-			 */
-			if (cf_item_is_pair(ci)) {
-				cf_log_warn(ci, "Only virtual modules can be instantiated "
-					    "with the instantiate section");
-				continue;
-			}
-
-			/*
-			 *	Skip section
-			 */
-			if (!cf_item_is_section(ci)) continue;
-
-			vm_cs = cf_item_to_section(ci);
-			cf_log_debug(ci, "Instantiating virtual module \"%s %s\"",
-				     cf_section_name1(vm_cs), cf_section_name2(vm_cs));
-
-			/*
-			 *	Can only be "redundant" or
-			 *	"load-balance" or
-			 *	"redundant-load-balance"
-			 */
-			if (virtual_module_bootstrap(cf_item_to_section(ci)) < 0) return -1;
-		}
-
-		cf_log_debug(cs, "  }");
 	}
 
 	cf_log_debug(modules, " } # modules");

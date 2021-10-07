@@ -477,9 +477,32 @@ num_networks:: Only one network thread is supported for now.
 
 
 num_workers:: The worker threads can be varied.  It should be
-at least one, and no more than 32.  Since each request is
+at least one, and no more than 128.  Since each request is
 non-blocking, there is no reason to run hundreds of threads
 as in v3.
+
+When set to 0 the number of workers will be set from the number
+of cores available on the system.
+
+
+
+openssl_async_pool_init:: Controls the initial number of async
+contexts that are allocated when a worker thread is created.
+One async context is required for every TLS session (every
+RADSEC connection, every TLS based method still in progress).
+
+
+
+openssl_async_pool_max:: Controls the maximum number of async
+contexts which are allocated to a worker thread.
+If the maximum is reached, then no more TLS sessions can be
+created.
+
+Note: Setting this to 0 will mean unlimited async contexts
+will be created.  But as of 3.0.0, OpenSSL has no mechanism
+to shrink the async pool.  This means if there's a
+significant traffic spike the process will continue to use
+large amounts of memory until it's restarted.
 
 
 
@@ -714,8 +737,10 @@ security {
 }
 $INCLUDE clients.conf
 thread pool {
-	num_networks = 1
-	num_workers = 4
+#	num_networks = 1
+	num_workers = 0
+#	openssl_async_pool_init = 64
+#	openssl_async_pool_max = 1024
 }
 #$INCLUDE trigger.conf
 modules {
