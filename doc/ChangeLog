@@ -1,12 +1,15 @@
 FreeRADIUS 3.0.25 Wed 06 Oct 2021 12:00:00 EDT urgency=medium
 	Feature improvements
-	* None
+	* Better debug output when proxying is disabled
+	* Updates to support PostgreSQL 14 (#4251)
 
 	Bug fixes
 	* Add `correct_escapes` back into default configuration
-	* Fix undeclared variable with some compile options
+	* Fix undeclared variable with some compile options (#4246)
 	* Quiet erroneous debug output
-	* Use correct encode function for proxied packets
+	* Fix segfault when proxying to zombie home server
+	* Fix resolving values to enum strings in rlm_rest (#4167)
+	* Fix printing raw values rather than enum strings in rlm_couchbase (#4167)
 
 FreeRADIUS 3.0.24 Wed 29 Sep 2021 12:00:00 EDT urgency=medium
 	Feature improvements
