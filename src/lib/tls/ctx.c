@@ -244,6 +244,7 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain)
 	{
 		fr_unix_time_t  expires_first = fr_unix_time_wrap(0);
 		int		ret;
+		X509		*self_signed = NULL;
 
 		for (ret = SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_FIRST);
 		     ret == 1;
@@ -281,6 +282,65 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain)
 					break;
 				}
 
+			}
+
+			/*
+			 *	Check for self-signed certs
+			 */
+			switch (chain->verify_mode) {
+			case FR_TLS_CHAIN_VERIFY_SOFT:
+			case FR_TLS_CHAIN_VERIFY_HARD:
+				/*
+				 *	There can be only one... self signed
+				 *	cert in a chain.
+				 *
+				 *	We have to do this check manually
+				 *	because the OpenSSL functions will
+				 *	only check to see if it can build
+				 *	a chain, not that all certificates
+				 *	in the chain are used.
+				 *
+				 *	Having multiple self-signed certificates
+				 *	usually indicates someone has copied
+				 *	the wrong certificates into the
+				 *	server.pem file.
+				 */
+				if (X509_name_cmp(X509_get_subject_name(our_cert),
+						  X509_get_issuer_name(our_cert)) == 0) {
+					if (self_signed) {
+						switch (chain->verify_mode) {
+						case FR_TLS_CHAIN_VERIFY_SOFT:
+							WARN("Found multiple self-signed certificates in chain");
+							WARN("First certificate was:");
+							fr_tls_log_certificate_chain(NULL, L_WARN,
+										     our_chain, self_signed);
+
+							WARN("Second certificate was:");
+							fr_tls_log_certificate_chain(NULL, L_WARN,
+										     our_chain, our_cert);
+							break;
+
+						case FR_TLS_CHAIN_VERIFY_HARD:
+							ERROR("Found multiple self-signed certificates in chain");
+							ERROR("First certificate was:");
+							fr_tls_log_certificate_chain(NULL, L_ERR,
+										     our_chain, self_signed);
+
+							ERROR("Second certificate was:");
+							fr_tls_log_certificate_chain(NULL, L_ERR,
+										     our_chain, our_cert);
+							return -1;
+
+						default:
+							break;
+						}
+					}
+					self_signed = our_cert;
+				}
+				break;
+
+			default:
+				break;
 			}
 
 			/*
