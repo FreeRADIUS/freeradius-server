@@ -444,6 +444,13 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 	case PGRES_NONFATAL_ERROR:
 	case PGRES_FATAL_ERROR:
 		return sql_classify_error(conn->result);
+
+#ifdef HAVE_PGRES_PIPELINE_SYNC
+	case PGRES_PIPELINE_SYNC:
+	case PGRES_PIPELINE_ABORTED:
+		ERROR("rlm_sql_postgresql: Pipeline flagged as aborted");
+		return RLM_SQL_ERROR;
+#endif
 	}
 
 	return RLM_SQL_ERROR;
