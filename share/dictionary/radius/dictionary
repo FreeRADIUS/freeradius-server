@@ -164,6 +164,7 @@ $INCLUDE dictionary.bskyb
 $INCLUDE dictionary.bt
 $INCLUDE dictionary.cablelabs
 $INCLUDE dictionary.cabletron
+$INCLUDE dictionary.cambium
 $INCLUDE dictionary.camiant
 $INCLUDE dictionary.centec
 $INCLUDE dictionary.checkpoint
