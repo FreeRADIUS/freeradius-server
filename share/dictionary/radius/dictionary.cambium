@@ -1,0 +1,78 @@
+# -*- text -*-
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+##############################################################################
+#
+#	Cambium VSA's
+#
+#	$Id$
+#
+#	Derived from:
+#	https://community.cambiumnetworks.com/t/40501
+#	https://community.cambiumnetworks.com/t/40752
+#	https://community.cambiumnetworks.com/t/50024
+#
+##############################################################################
+
+VENDOR		Cambium				17713
+
+BEGIN-VENDOR	Cambium
+
+ATTRIBUTE	Auth-Role				1	integer
+
+VALUE	Auth-Role	Invalid			0
+VALUE	Auth-Role	Read-Only		1
+VALUE	Auth-Role	System-Admin		2
+VALUE	Auth-Role	Security-Officer	3
+VALUE	Auth-Role	Deliberately-Bad	4
+
+ATTRIBUTE	ePMP-Data-VLAN-Id			21	integer
+ATTRIBUTE	ePMP-Management-VLAN-Id			22	integer
+
+ATTRIBUTE	ePMP-Max-Burst-Uplink-Rate		26	integer
+ATTRIBUTE	ePMP-Max-Burst-Downlink-Rate		27	integer
+
+ATTRIBUTE	ePMP-UserLevel				50	integer
+
+VALUE	ePMP-UserLevel		Install		2
+VALUE	ePMP-UserLevel		Admin		3
+VALUE	ePMP-UserLevel		User		4
+VALUE	ePMP-UserLevel		Read-Only	5
+
+ATTRIBUTE	ePMP-SM-Priority			51	integer
+
+VALUE	ePMP-SM-Priority	Normal		0
+VALUE	ePMP-SM-Priority	High		1
+VALUE	ePMP-SM-Priority	Low		2
+
+ATTRIBUTE	ePMP-VLAN-Membersip-Set			52	integer
+ATTRIBUTE	ePMP-Management-VLAN-Priority		53	integer
+ATTRIBUTE	ePMP-Data-VLAN-Priority			54	integer
+ATTRIBUTE	ePMP-Separate-Management-VLAN-Id	55	integer
+ATTRIBUTE	ePMP-Separate-Management-VLAN-Priority 	56	integer
+ATTRIBUTE	ePMP-Multicast-VLAN-Id			57	integer
+ATTRIBUTE	ePMP-VLAN-Mapping			58	integer
+
+ATTRIBUTE	Traffic-Quota-Limit-Up			151	integer
+ATTRIBUTE	Traffic-Quota-Limit-Down		152	integer
+ATTRIBUTE	Traffic-Quota-Limit-Up-Gigwords		153	integer
+ATTRIBUTE	Traffic-Quota-Limit-Down-Gigwords	154	integer
+ATTRIBUTE	Traffic-Quota-Limit-Total		155	integer
+ATTRIBUTE	Traffic-Quota-Limit-Total-Gigwords	156	integer
+ATTRIBUTE	VLAN-Pool-Id				157	string
+
+ATTRIBUTE	Authorize-Classes			158	tlv
+ATTRIBUTE	Name					.1	string
+ATTRIBUTE	Bytes-Left				.2	integer64
+
+ATTRIBUTE	Traffic-Classes-Acct			159	tlv
+ATTRIBUTE	Name					.1	string
+ATTRIBUTE	Input-Octets				.2	integer
+ATTRIBUTE	Output-Octets				.3	integer
+ATTRIBUTE	Input-Packets				.4	integer
+ATTRIBUTE	Output-Packets				.5	integer
+
+ATTRIBUTE	Walled-Garden-State			160	integer
+
+END-VENDOR	Cambium
