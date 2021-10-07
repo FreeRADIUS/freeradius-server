@@ -183,6 +183,12 @@ fr_pair_t *fr_pair_root_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	}
 #endif
 
+	/*
+	 *	Legacy cruft
+	 */
+	vp->op = T_OP_EQ;
+	vp->type = VT_NONE;
+
 	return vp;
 }
 
