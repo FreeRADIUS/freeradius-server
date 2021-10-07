@@ -2261,19 +2261,19 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 
 		if (!talloc_get_type(vp->vp_ptr, uint8_t)) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" data buffer type should be "
-					     "uint8_t but is %s\n", file, line, vp->da->name, talloc_get_name(vp->vp_ptr));
+					     "uint8_t but is %s", file, line, vp->da->name, talloc_get_name(vp->vp_ptr));
 		}
 
 		len = talloc_array_length(vp->vp_octets);
 		if (vp->vp_length > len) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" length %zu is greater than "
-					     "uint8_t data buffer length %zu\n", file, line, vp->da->name, vp->vp_length, len);
+					     "uint8_t data buffer length %zu", file, line, vp->da->name, vp->vp_length, len);
 		}
 
 		parent = talloc_parent(vp->vp_ptr);
 		if (parent != vp) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" char buffer is not "
-					     "parented by fr_pair_t %p, instead parented by %p (%s)\n",
+					     "parented by fr_pair_t %p, instead parented by %p (%s)",
 					     file, line, vp->da->name,
 					     vp, parent, parent ? talloc_get_name(parent) : "NULL");
 		}
