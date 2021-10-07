@@ -2329,8 +2329,9 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 	fr_dict_attr_verify(file, line, vp->da);
 
 	/*
-	 *	Each pair should be in one state, either inserted
-	 *	into a list or not...
+	 *	Each pair should be inserted into both the order
+	 *	list and the attr-type list or inserted list into
+	 *	neither.
 	 */
 	if (fr_dlist_entry_in_list(&vp->order_entry)) {
 		fr_dlist_t const	*p = &vp->attr_entry;
