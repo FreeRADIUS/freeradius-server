@@ -261,6 +261,8 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 		break;
 	}
 
+	VP_VERIFY(vp);
+
 	return vp;
 }
 
@@ -2325,7 +2327,7 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 	}
 
 	fr_dict_attr_verify(file, line, vp->da);
-	if (vp->data.enumv) fr_dict_attr_verify(file, line, vp->data.enumv);
+
 	/*
 	 *	Each pair should be in one state, either inserted
 	 *	into a list or not...
@@ -2424,6 +2426,16 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 		}
 		return;
 	}
+
+	/*
+	 *	Only perform this check when we're sure
+	 *	that this attribute isn't structural.
+	 *
+	 *	If it's a structural type then the
+	 *	space used by the fr_value_box_t gets
+	 *	used by the pair list.
+	 */
+	if (vp->data.enumv) fr_dict_attr_verify(file, line, vp->data.enumv);
 
 	if (vp->vp_ptr) switch (vp->vp_type) {
 	case FR_TYPE_OCTETS:
