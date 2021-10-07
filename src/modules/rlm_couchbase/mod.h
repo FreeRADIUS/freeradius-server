@@ -65,6 +65,7 @@ typedef struct rlm_couchbase_t {
 	bool			verify_simul;		//!< Toggle to enable user login state verification.
 	const char		*simul_vkey;		//!< The query key to be used with simul_view.
 	bool			delete_stale_sessions;	//!< Toggle to trigger zapping of stale sessions.
+	bool			raw_value;			//!< Print raw values rather than resolving enums
 
 	json_object		*map;           	//!< Json object to hold user defined attribute map.
 	fr_connection_pool_t	*pool;			//!< Connection pool.
@@ -89,7 +90,7 @@ int mod_attribute_to_element(const char *name, json_object *map, void *buf);
 
 void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQUEST *request);
 
-json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp);
+json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp, bool raw_value);
 
 int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps);
 

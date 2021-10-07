@@ -61,7 +61,7 @@ static const CONF_PARSER section_config[] = {
 	{ "method", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, method_str), "GET" },
 	{ "body", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, body_str), "none" },
 	{ "attr_num", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_rest_section_t, attr_num), "no" },
-	{ "raw_value", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_rest_section_t, raw_value), "no" },
+	{ "raw_value", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_rest_section_t, raw_value), "yes" },
 	{ "data", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, data), NULL },
 	{ "force_to", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, force_to_str), NULL },
 
