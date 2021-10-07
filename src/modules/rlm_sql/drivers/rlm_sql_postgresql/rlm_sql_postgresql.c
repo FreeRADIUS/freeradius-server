@@ -178,6 +178,13 @@ static sql_rcode_t sql_classify_error(rlm_sql_postgres_t *inst, ExecStatusType s
 			error_code = "42000";
 			break;
 
+	#ifdef HAVE_PGRES_PIPELINE_SYNC
+		case PGRES_PIPELINE_SYNC:
+		case PGRES_PIPELINE_ABORTED:
+			ERROR("libpq reported aborted pipeline");
+			return RLM_SQL_ERROR;
+	#endif
+
 		case PGRES_BAD_RESPONSE:
 		case PGRES_NONFATAL_ERROR:
 		case PGRES_FATAL_ERROR:
@@ -383,6 +390,10 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	case PGRES_BAD_RESPONSE:	/* The server's response was not understood */
 	case PGRES_NONFATAL_ERROR:
 	case PGRES_FATAL_ERROR:
+#ifdef HAVE_PGRES_PIPELINE_SYNC
+	case PGRES_PIPELINE_SYNC:
+	case PGRES_PIPELINE_ABORTED:
+#endif
 		break;
 	}
 

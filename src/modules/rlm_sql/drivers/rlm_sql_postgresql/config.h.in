@@ -6,6 +6,9 @@
 /* Whether the PGRES_SINGLE_TUPLE constant is defined */
 #undef HAVE_PGRES_SINGLE_TUPLE
 
+/* Whether the PGRES_PIPELINE_SYNC constant is defined */
+#undef HAVE_PGRES_PIPELINE_SYNC
+
 /* Define to 1 if you have the `PQinitOpenSSL' function. */
 #undef HAVE_PQINITOPENSSL
 
