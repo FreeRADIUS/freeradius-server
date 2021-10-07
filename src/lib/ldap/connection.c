@@ -549,3 +549,23 @@ int fr_ldap_connection_timeout_reset(fr_ldap_connection_t const *c)
 error:
 	return -1;
 }
+
+/** Callback for closing idle LDAP trunk
+ *
+ */
+static void _ldap_trunk_idle_timeout(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	fr_ldap_thread_trunk_t	*ttrunk = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
+
+	if (ttrunk->trunk->req_alloc == 0) {
+		DEBUG2("Removing idle LDAP trunk to %s", ttrunk->uri);
+		talloc_free(ttrunk->trunk);
+		talloc_free(ttrunk);
+	} else {
+		/*
+		 *	There are still pending queries - insert a new event
+		 */
+		fr_event_timer_in(ttrunk->t, el, &ttrunk->ev, ttrunk->t->config->idle_timeout,
+				  _ldap_trunk_idle_timeout, ttrunk);
+	}
+}
