@@ -248,7 +248,7 @@ int		fr_pair_prepend(fr_pair_list_t *list, fr_pair_t *vp);
 
 void		fr_pair_replace(fr_pair_list_t *list, fr_pair_t *add);
 
-void		fr_pair_delete_by_child_num(fr_pair_list_t *list, fr_dict_attr_t const *parent, unsigned int attr);
+int		fr_pair_delete_by_child_num(fr_pair_list_t *list, fr_dict_attr_t const *parent, unsigned int attr);
 
 int		fr_pair_append_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list, fr_dict_attr_t const *da);
 

@@ -786,8 +786,6 @@ void fr_pair_replace(fr_pair_list_t *list, fr_pair_t *replace)
 	fr_pair_append(list, replace);
 }
 
-}
-
 /** Alloc a new fr_pair_t (and append)
  *
  * @param[in] ctx	to allocate new #fr_pair_t in.
@@ -1499,7 +1497,6 @@ int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
 int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 				  fr_pair_list_t *from, fr_dict_attr_t const *parent_da, unsigned int count)
 {
-	fr_pair_list_t	tmp_list;
 	fr_pair_t	*vp, *new_vp;
 	unsigned int	cnt = 0;
 
@@ -1510,8 +1507,6 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 		return -1;
 	}
 
-	fr_pair_list_init(&tmp_list);
-
 	for (vp = fr_pair_list_head(from);
 	     vp && (cnt < count);
 	     vp = fr_pair_list_next(from, vp)) {
@@ -1520,14 +1515,9 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 
 		VP_VERIFY(vp);
 		new_vp = fr_pair_copy(ctx, vp);
-		if (!new_vp) {
-			fr_pair_list_free(&tmp_list);
-			return -1;
-		}
-		fr_pair_append(&tmp_list, new_vp);
+		if (unlikely(!new_vp)) return -1;
+		fr_pair_append(to, new_vp);
 	}
-
-	fr_dlist_move(&to->order, &tmp_list.order);
 
 	return cnt;
 }
@@ -1547,25 +1537,17 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
  */
 int fr_pair_sublist_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const *from, fr_pair_t *item)
 {
-	fr_pair_list_t	tmp_list;
 	fr_pair_t	*vp, *new_vp;
 	int		cnt = 0;
-
-	fr_pair_list_init(&tmp_list);
 
 	for (vp = item;
 	     vp;
 	     vp = fr_pair_list_next(from, vp), cnt++) {
 		VP_VERIFY(vp);
 		new_vp = fr_pair_copy(ctx, vp);
-		if (!new_vp) {
-			fr_pair_list_free(&tmp_list);
-			return -1;
-		}
-		fr_pair_append(&tmp_list, new_vp);
+		if (unlikely(!new_vp)) return -1;
+		fr_pair_append(to, new_vp);
 	}
-
-	fr_dlist_move(&to->order, &tmp_list.order);
 
 	return cnt;
 }
