@@ -273,7 +273,7 @@ jobs:
         sudo systemctl stop dovecot exim4 slapd openresty
         sudo aa-complain /usr/sbin/slapd
 
-        export PG_VER=13
+        export PG_VER=14
         sudo sh -c "echo host  all all 127.0.0.1/32 trust >  /etc/postgresql/$PG_VER/main/pg_hba.conf"
         sudo sh -c "echo local all all              trust >> /etc/postgresql/$PG_VER/main/pg_hba.conf"
 
