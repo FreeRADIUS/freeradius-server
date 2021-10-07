@@ -573,6 +573,8 @@ static ssize_t fr_dns_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *list, uint8_
 	fr_dcursor_t	cursor;
 	fr_dns_ctx_t *packet_ctx = proto_ctx;
 
+	if (data_len > 65535) return -1; /* packet is too big */
+
 	/*
 	 *	Allow queries or answers
 	 */
