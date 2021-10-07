@@ -125,6 +125,121 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 	return 0;
 }
 
+static int tls_ctx_verify_chain_member(fr_unix_time_t *expires_first, X509 **self_signed,
+				       SSL_CTX *ctx, X509 *to_verify,
+				       fr_tls_chain_verify_mode_t verify_mode)
+{
+	fr_unix_time_t	not_after;
+
+	STACK_OF(X509)	*chain;
+	X509		*leaf;
+
+	leaf = SSL_CTX_get0_certificate(ctx);
+	if (!leaf) {
+		ERROR("Chain does not contain a valid leaf certificate");
+		return -1;
+	}
+
+	if (!SSL_CTX_get0_chain_certs(ctx, &chain)) {
+		fr_tls_log_error(NULL, "Failed retrieving chain certificates");
+		return -1;
+	}
+
+	switch (fr_tls_cert_is_valid(NULL, &not_after, to_verify)) {
+	case -1:
+		fr_tls_log_certificate_chain_marker(NULL, L_ERR, chain, leaf, to_verify);
+		PERROR("Malformed certificate");
+		return -1;
+
+	case -2:
+	case -3:
+		switch (verify_mode) {
+		case FR_TLS_CHAIN_VERIFY_SOFT:
+			fr_tls_log_certificate_chain_marker(NULL, L_WARN, chain, leaf, to_verify);
+			PWARN("Certificate validation failed");
+			break;
+
+		case FR_TLS_CHAIN_VERIFY_HARD:
+			fr_tls_log_certificate_chain_marker(NULL, L_ERR, chain, leaf, to_verify);
+			PERROR("Certificate validation failed");
+			return -1;
+
+		default:
+			break;
+		}
+
+	}
+
+	/*
+	 *	Check for self-signed certs
+	 */
+	switch (verify_mode) {
+	case FR_TLS_CHAIN_VERIFY_SOFT:
+	case FR_TLS_CHAIN_VERIFY_HARD:
+		/*
+		 *	There can be only one... self signed
+		 *	cert in a chain.
+		 *
+		 *	We have to do this check manually
+		 *	because the OpenSSL functions will
+		 *	only check to see if it can build
+		 *	a chain, not that all certificates
+		 *	in the chain are used.
+		 *
+		 *	Having multiple self-signed certificates
+		 *	usually indicates someone has copied
+		 *	the wrong certificates into the
+		 *	server.pem file.
+		 */
+		if (X509_name_cmp(X509_get_subject_name(to_verify),
+				  X509_get_issuer_name(to_verify)) == 0) {
+			if (*self_signed) {
+				switch (verify_mode) {
+				case FR_TLS_CHAIN_VERIFY_SOFT:
+					WARN("Found multiple self-signed certificates in chain");
+					WARN("First certificate was:");
+					fr_tls_log_certificate_chain_marker(NULL, L_WARN,
+									    chain, leaf, *self_signed);
+
+					WARN("Second certificate was:");
+					fr_tls_log_certificate_chain_marker(NULL, L_WARN,
+									    chain, leaf, to_verify);
+					break;
+
+				case FR_TLS_CHAIN_VERIFY_HARD:
+					ERROR("Found multiple self-signed certificates in chain");
+					ERROR("First certificate was:");
+					fr_tls_log_certificate_chain_marker(NULL, L_ERR,
+									    chain, leaf, *self_signed);
+
+					ERROR("Second certificate was:");
+					fr_tls_log_certificate_chain_marker(NULL, L_WARN,
+									    chain, leaf, to_verify);
+					return -1;
+
+				default:
+					break;
+				}
+			}
+			*self_signed = to_verify;
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Record the time the first certificate in
+	 *	the chain expires so we can use it for
+	 *	runtime checks.
+	 */
+	if (!fr_unix_time_ispos(*expires_first) ||
+	    (fr_unix_time_gt(*expires_first, not_after))) *expires_first = not_after;
+
+	 return 0;
+}
+
 static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain)
 {
 	char		*password;
@@ -243,114 +358,31 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain)
 	 */
 	{
 		fr_unix_time_t  expires_first = fr_unix_time_wrap(0);
-		int		ret;
 		X509		*self_signed = NULL;
+		STACK_OF(X509)	*our_chain;
+		int		i;
 
-		for (ret = SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_FIRST);
-		     ret == 1;
-		     ret = SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_NEXT)) {
-			fr_unix_time_t	not_after;
-			STACK_OF(X509)	*our_chain;
-			X509		*our_cert;
+		if (tls_ctx_verify_chain_member(&expires_first, &self_signed,
+						ctx, SSL_CTX_get0_certificate(ctx),
+						chain->verify_mode) < 0) return -1;
 
-			our_cert = SSL_CTX_get0_certificate(ctx);
-			if (!SSL_CTX_get0_chain_certs(ctx, &our_chain)) {
-				fr_tls_log_error(NULL, "Failed retrieving chain certificates");
-				return -1;
-			}
-
-			switch (fr_tls_cert_is_valid(NULL, &not_after, our_cert)) {
-			case -1:
-				fr_tls_log_certificate_chain(NULL, L_ERR, our_chain, our_cert);
-				PERROR("Malformed certificate");
-				return -1;
-
-			case -2:
-			case -3:
-				switch (chain->verify_mode) {
-				case FR_TLS_CHAIN_VERIFY_SOFT:
-					fr_tls_log_certificate_chain(NULL, L_WARN, our_chain, our_cert);
-					PWARN("Certificate validation failed");
-					break;
-
-				case FR_TLS_CHAIN_VERIFY_HARD:
-					fr_tls_log_certificate_chain(NULL, L_ERR, our_chain, our_cert);
-					PERROR("Certificate validation failed");
-					return -1;
-
-				default:
-					break;
-				}
-
-			}
-
-			/*
-			 *	Check for self-signed certs
-			 */
-			switch (chain->verify_mode) {
-			case FR_TLS_CHAIN_VERIFY_SOFT:
-			case FR_TLS_CHAIN_VERIFY_HARD:
-				/*
-				 *	There can be only one... self signed
-				 *	cert in a chain.
-				 *
-				 *	We have to do this check manually
-				 *	because the OpenSSL functions will
-				 *	only check to see if it can build
-				 *	a chain, not that all certificates
-				 *	in the chain are used.
-				 *
-				 *	Having multiple self-signed certificates
-				 *	usually indicates someone has copied
-				 *	the wrong certificates into the
-				 *	server.pem file.
-				 */
-				if (X509_name_cmp(X509_get_subject_name(our_cert),
-						  X509_get_issuer_name(our_cert)) == 0) {
-					if (self_signed) {
-						switch (chain->verify_mode) {
-						case FR_TLS_CHAIN_VERIFY_SOFT:
-							WARN("Found multiple self-signed certificates in chain");
-							WARN("First certificate was:");
-							fr_tls_log_certificate_chain(NULL, L_WARN,
-										     our_chain, self_signed);
-
-							WARN("Second certificate was:");
-							fr_tls_log_certificate_chain(NULL, L_WARN,
-										     our_chain, our_cert);
-							break;
-
-						case FR_TLS_CHAIN_VERIFY_HARD:
-							ERROR("Found multiple self-signed certificates in chain");
-							ERROR("First certificate was:");
-							fr_tls_log_certificate_chain(NULL, L_ERR,
-										     our_chain, self_signed);
-
-							ERROR("Second certificate was:");
-							fr_tls_log_certificate_chain(NULL, L_ERR,
-										     our_chain, our_cert);
-							return -1;
-
-						default:
-							break;
-						}
-					}
-					self_signed = our_cert;
-				}
-				break;
-
-			default:
-				break;
-			}
-
-			/*
-			 *	Record the time the first certificate in
-			 *	the chain expires so we can use it for
-			 *	runtime checks.
-			 */
-			if (!fr_unix_time_ispos(expires_first) ||
-			    (fr_unix_time_gt(expires_first, not_after))) expires_first = not_after;
+		if (!SSL_CTX_get0_chain_certs(ctx, &our_chain)) {
+			fr_tls_log_error(NULL, "Failed retrieving chain certificates");
+			return -1;
 		}
+
+DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
+		for (i = sk_X509_num(our_chain); i > 0 ; i--) {
+			/*
+			 *	SSL_CTX_use_certificate_chain_file set the
+			 *	current cert to be the one loaded from
+			 *	that pem file.
+			 */
+			if (tls_ctx_verify_chain_member(&expires_first, &self_signed,
+							ctx, sk_X509_value(our_chain, i - 1),
+							chain->verify_mode) < 0) return -1;
+		}
+DIAG_ON(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 
 		/*
 		 *	Record this as a unix timestamp as

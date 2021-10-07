@@ -92,6 +92,27 @@ static void _tls_ctx_print_cert_line(char const *file, int line,
 	}
 }
 
+
+static void _tls_ctx_print_cert_line_marker(char const *file, int line,
+					    request_t *request, fr_log_type_t log_type, int idx,
+					    X509 *cert, bool marker)
+{
+	char		subject[1024];
+
+	X509_NAME_oneline(X509_get_subject_name(cert), subject, sizeof(subject));
+	subject[sizeof(subject) - 1] = '\0';
+
+	if (request) {
+		log_request(log_type, fr_debug_lvl, request, file, line,
+			    "%s [%i] %s %s", marker ? ">" : " ",
+			    idx, fr_tls_utils_x509_pkey_type(cert), subject);
+	} else {
+		fr_log(LOG_DST, log_type, file, line,
+		       "%s [%i] %s %s", marker ? ">" : " ",
+		       idx, fr_tls_utils_x509_pkey_type(cert), subject);
+	}
+}
+
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 /** Print out the current stack of certs
@@ -112,6 +133,29 @@ void _fr_tls_log_certificate_chain(char const *file, int line,
 		_tls_ctx_print_cert_line(file, line, request, log_type, i, sk_X509_value(chain, i - 1));
 	}
 	_tls_ctx_print_cert_line(file, line, request, log_type, i, cert);
+}
+
+/** Print out the current stack of certs
+ *
+ * @param[in] file	File where this function is being called.
+ * @param[in] line	Line where this function is being called.
+ * @param[in] request	Current request, may be NULL.
+ * @param[in] log_type	The type of log message to produce L_INFO, L_ERR, L_DBG etc...
+ * @param[in] chain	The certificate chain.
+ * @param[in] cert	The leaf certificate.
+ * @param[in] marker	The certificate we want to mark.
+ */
+void _fr_tls_log_certificate_chain_marker(char const *file, int line,
+					  request_t *request, fr_log_type_t log_type,
+					  STACK_OF(X509) *chain, X509 *cert, X509 *marker)
+{
+	int i;
+
+	for (i = sk_X509_num(chain); i > 0 ; i--) {
+		X509 *selected = sk_X509_value(chain, i - 1);
+		_tls_ctx_print_cert_line_marker(file, line, request, log_type, i, selected, (selected == marker));
+	}
+	_tls_ctx_print_cert_line_marker(file, line, request, log_type, i, cert, (cert == marker));
 }
 DIAG_ON(used-but-marked-unused)
 DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
