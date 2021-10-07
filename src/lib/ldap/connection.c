@@ -483,6 +483,11 @@ static fr_connection_state_t _ldap_connection_init(void **h, fr_connection_t *co
 	state = fr_ldap_state_next(c);
 	if (state == FR_LDAP_STATE_ERROR) goto error;
 
+	/*
+	 *	Initialise tree for outstanding queries handled by this connection
+	 */
+	MEM(c->queries = fr_rb_inline_talloc_alloc(c, fr_ldap_query_t, node, fr_ldap_query_cmp, NULL));
+
 	*h = c;	/* Set the handle */
 
 	return FR_CONNECTION_STATE_CONNECTING;
@@ -607,6 +612,11 @@ static void ldap_request_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_
 		fr_rb_remove(ldap_conn->queries, query);
 
 		fr_trunk_request_signal_cancel_complete(treq);
+
+		/*
+		 *	Ensure any query resouces are cleared straight away
+		 */
+		talloc_free(query);
 	}
 }
 

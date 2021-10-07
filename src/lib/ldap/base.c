@@ -35,6 +35,7 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/ldap/base.h>
+#include <freeradius-devel/unlang/function.h>
 
 LDAP *ldap_global_handle;			//!< Hack for OpenLDAP libldap global initialisation.
 
@@ -57,8 +58,8 @@ fr_table_num_sorted_t const fr_ldap_connection_states[] = {
 size_t fr_ldap_connection_states_len = NUM_ELEMENTS(fr_ldap_connection_states);
 
 fr_table_num_sorted_t const fr_ldap_supported_extensions[] = {
-	{ L("bindname"),	LDAP_DEREF_NEVER	},
-	{ L("x-bindpw"),	LDAP_DEREF_SEARCHING	}
+	{ L("bindname"),	LDAP_EXT_BINDNAME	},
+	{ L("x-bindpw"),	LDAP_EXT_BINDPW		}
 };
 size_t fr_ldap_supported_extensions_len = NUM_ELEMENTS(fr_ldap_supported_extensions);
 
@@ -93,6 +94,11 @@ fr_table_num_sorted_t const fr_ldap_dereference[] = {
 	{ L("searching"),	LDAP_DEREF_SEARCHING	}
 };
 size_t fr_ldap_dereference_len = NUM_ELEMENTS(fr_ldap_dereference);
+
+typedef struct {
+	fr_ldap_query_t	*query;
+	LDAPMessage	**result;
+} sync_ldap_query_t;
 
 /** Prints information to the debug log on the current timeout settings
  *
@@ -772,6 +778,123 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 	}
 
 	return LDAP_PROC_SUCCESS;
+}
+
+/** Submit an LDAP query to be handled by a trunk conneciton
+ *
+ */
+static unlang_action_t ldap_trunk_query_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+{
+	fr_ldap_query_t	*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
+
+	fr_trunk_request_enqueue(&query->treq, query->ttrunk->trunk, request, query, NULL);
+
+	return UNLANG_ACTION_YIELD;
+}
+
+/** Handle the return code from parsed LDAP results to set the module rcode
+ *
+ */
+static unlang_action_t ldap_trunk_query_results(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+{
+	fr_ldap_query_t		*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
+
+	switch (query->ret) {
+	case LDAP_RESULT_PENDING:
+		/* The query we want hasn't returned yet */
+		return UNLANG_ACTION_YIELD;
+
+	case LDAP_RESULT_SUCCESS:
+		RETURN_MODULE_OK;
+
+	case LDAP_RESULT_BAD_DN:
+	case LDAP_RESULT_NO_RESULT:
+		RETURN_MODULE_NOTFOUND;
+
+	default:
+		RETURN_MODULE_FAIL;
+	}
+}
+
+/** Signal an LDAP query running on a trunk connection to cancel
+ *
+ */
+static void ldap_trunk_query_cancel(UNUSED request_t *request, fr_state_signal_t action, void *uctx)
+{
+	fr_ldap_query_t	*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
+
+	if (action != FR_SIGNAL_CANCEL) return;
+
+	fr_trunk_request_signal_cancel(query->treq);
+
+}
+
+#define SET_LDAP_CTRLS(_dest, _src) \
+do { \
+	if (!_src) break; \
+	int	i; \
+	for (i = 0; i < LDAP_MAX_CONTROLS; i++) { \
+		if (!(_src[i])) break; \
+		_dest[i].control = _src[i]; \
+	} \
+} while (0)
+
+/** Run an async search LDAP query on a trunk connection
+ *
+ * @param[in] ctx		to allocate the query in.
+ * @param[out] query		that has been allocated.
+ * @param[in] request		this query relates to.
+ * @param[in] ttrunk		to submit the query to.
+ * @param[in] base_dn		for the search.
+ * @param[in] scope		of the search.
+ * @param[in] filter		for the search.
+ * @param[in] attrs		to be returned.
+ * @param[in] serverctrls	specific to this query.
+ * @param[in] clientctrls	specific to this query.
+ */
+int fr_ldap_trunk_search(TALLOC_CTX *ctx, fr_ldap_query_t **query, request_t *request, fr_ldap_thread_trunk_t *ttrunk, char const *base_dn,
+			 int scope, char const *filter, char const * const *attrs, LDAPControl **serverctrls, LDAPControl **clientctrls )
+{
+	*query = fr_ldap_query_alloc(ctx);
+
+	(*query)->type = LDAP_REQUEST_SEARCH;
+	(*query)->request = request;
+	(*query)->ttrunk = ttrunk;
+	(*query)->dn = base_dn;
+	(*query)->search.scope = scope;
+	(*query)->search.filter = filter;
+	memcpy(&(*query)->search.attrs,  &attrs, sizeof((*query)->search.attrs));
+	SET_LDAP_CTRLS((*query)->serverctrls, serverctrls);
+	SET_LDAP_CTRLS((*query)->clientctrls, clientctrls);
+
+	return unlang_function_push(request, ldap_trunk_query_start, ldap_trunk_query_results, ldap_trunk_query_cancel, UNLANG_TOP_FRAME, *query);
+}
+
+/** Run an async modification LDAP query on a trunk connection
+ *
+ * @param[in] ctx		to allocate the query in.
+ * @param[out] query		that has been allocated.
+ * @param[in] request		this query relates to.
+ * @param[in] ttrunk		to submit the query to.
+ * @param[in] dn		of the object being modified.
+ * @param[in] mods		to be performed.
+ * @param[in] serverctrls	specific to this query.
+ * @param[in] clientctrls	specific to this query.
+ */
+int fr_ldap_trunk_modify(TALLOC_CTX *ctx, fr_ldap_query_t **query, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+			 char const *dn, LDAPMod *mods[], LDAPControl **serverctrls, LDAPControl **clientctrls)
+{
+	*query = fr_ldap_query_alloc(ctx);
+
+	(*query)->type = LDAP_REQUEST_MODIFY;
+	(*query)->request = request;
+	(*query)->ttrunk = ttrunk;
+	(*query)->dn = dn;
+	(*query)->mods = mods;
+	SET_LDAP_CTRLS((*query)->serverctrls, serverctrls);
+	SET_LDAP_CTRLS((*query)->clientctrls, clientctrls);
+
+	return unlang_function_push(request, ldap_trunk_query_start, ldap_trunk_query_results, ldap_trunk_query_cancel, UNLANG_TOP_FRAME, *query);
 }
 
 /** Modify something in the LDAP directory

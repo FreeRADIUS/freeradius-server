@@ -551,6 +551,13 @@ static inline int8_t fr_ldap_query_cmp(void const *one, void const *two)
 
 fr_ldap_query_t *fr_ldap_query_alloc(TALLOC_CTX *ctx);
 
+int fr_ldap_trunk_search(TALLOC_CTX *ctx, fr_ldap_query_t **query, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+			 char const *base_dn, int scope, char const *filter, char const * const *attrs,
+			 LDAPControl **serverctrls, LDAPControl **clientctrls);
+
+int fr_ldap_trunk_modify(TALLOC_CTX *ctx, fr_ldap_query_t **query, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+			 char const *dn, LDAPMod *mods[], LDAPControl **serverctrls, LDAPControl **clientctrls);
+
 /*
  *	ldap.c - Wrappers arounds OpenLDAP functions.
  */
