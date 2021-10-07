@@ -264,7 +264,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_dcursor_t *cursor,
 			slen = decode_value(child_ctx, &child_cursor, fr_dict_by_da(child), child, p, child_length, decode_ctx);
 			if (slen < 0) {
 				FR_PROTO_TRACE("Failed decoding value");
-				return slen - (p - data);
+				goto unknown;
 			}
 
 			p += slen;   	/* not always the same as child->flags.length */
