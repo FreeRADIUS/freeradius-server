@@ -388,7 +388,7 @@ static void lst_iter(void)
 	fr_lst_t	*lst;
 	fr_lst_iter_t	iter;
 	lst_thing	values[NVALUES], *data;
-
+	unsigned int	total;
 
 	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 0);
 	TEST_CHECK(lst != NULL);
@@ -407,6 +407,13 @@ static void lst_iter(void)
 	}
 
 	TEST_CHECK(data == NULL);
+
+	total = 0;
+	fr_lst_foreach(lst, lst_thing, item) {
+		total += item->data;
+	}}
+	TEST_CHECK(total = 190);
+
 	talloc_free(lst);
 }
 

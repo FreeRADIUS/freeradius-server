@@ -114,6 +114,26 @@ void		*fr_lst_iter_init(fr_lst_t *lst, fr_lst_iter_t *iter) CC_HINT(nonnull);
 
 void		*fr_lst_iter_next(fr_lst_t *lst, fr_lst_iter_t *iter) CC_HINT(nonnull);
 
+/** Iterate over the contents of an LST
+ *
+ * @note The initializer section of a for loop can't declare variables with distinct
+ *	 base types, so we require a containing block, and can't follow the standard
+ *	 do {...} while(0) dodge. The code to be run for each item in the LST should
+ *	 thus start with one open brace and end with two close braces, and shouldn't
+ *	 be followed with a semicolon.
+ *	 This may fake out code formatting programs and code-aware editors.
+ *
+ * @param[in] _lst		to iterate over.
+ * @param[in] _type		of item the heap contains.
+ * @param[in] _data		Name of variable holding a pointer to the LST element.
+ *				Will be declared in the scope of the loop.
+ */
+#define fr_lst_foreach(_lst, _type, _data) \
+{ \
+	fr_lst_iter_t _iter; \
+	for (_type *_data = fr_lst_iter_init(_lst, &_iter); _data; _data = fr_lst_iter_next(_lst, &_iter))
+
+
 #ifdef __cplusplus
 }
 #endif
