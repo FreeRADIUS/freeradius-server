@@ -264,6 +264,11 @@ process_error:
 		fr_strerror_const("Success");
 		break;
 
+	case LDAP_REFERRAL:
+		fr_strerror_const("Referral");
+		status = LDAP_PROC_REFERRAL;
+		break;
+
 	case LDAP_SASL_BIND_IN_PROGRESS:
 		fr_strerror_const("Continuing");
 		status = LDAP_PROC_CONTINUE;
@@ -838,6 +843,45 @@ finish:
 	return status;
 }
 
+/** Modify something in the LDAP directory
+ *
+ * @param[in] request		Current request.
+ * @param[in,out] pconn		to use. May change as this function calls functions which auto re-connect.
+ * @param[in] dn		of the object to modify.
+ * @param[in] mods		to make, see 'man ldap_modify' for more information.
+ * @param[in] serverctrls	Search controls to pass to the server.  May be NULL.
+ * @param[in] clientctrls	Search controls for ldap_modify.  May be NULL.
+ * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
+ */
+fr_ldap_rcode_t fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_connection_t **pconn,
+			       char const *dn, LDAPMod *mods[],
+			       LDAPControl **serverctrls, LDAPControl **clientctrls)
+{
+	LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
+	LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
+
+	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
+			      NUM_ELEMENTS(our_serverctrls),
+			      NUM_ELEMENTS(our_clientctrls),
+			      *pconn, serverctrls, clientctrls);
+
+	fr_assert(*pconn && (*pconn)->handle);
+
+	if (RDEBUG_ENABLED4) fr_ldap_timeout_debug(request, *pconn, fr_time_delta_wrap(0), __FUNCTION__);
+
+	RDEBUG2("Modifying object with DN \"%s\"", dn);
+	if(ldap_modify_ext((*pconn)->handle, dn, mods, our_serverctrls, our_clientctrls, msgid) != LDAP_SUCCESS) {
+		int ldap_errno;
+
+		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+		ROPTIONAL(RPEDEBUG, RPERROR, "Failed modifying object %s", ldap_err2string(ldap_errno));
+
+		return LDAP_PROC_ERROR;
+	}
+
+	return LDAP_PROC_SUCCESS;
+}
+
 /** Change settings global to libldap
  *
  * May only be called once.  Subsequent calls will be ignored.
@@ -882,6 +926,61 @@ int fr_ldap_global_config(int debug_level, char const *tls_random_file)
 	done_config = true;
 
 	return 0;
+}
+
+/** Free any libldap structures when an fr_ldap_query_t is freed
+ *
+ */
+static int _ldap_query_free(fr_ldap_query_t *query)
+{
+	int 	i;
+
+	/*
+	 *	Free any results which were retrieved
+	 */
+	if (query->result) ldap_msgfree(query->result);
+
+	/*
+	 *	Free any server and client controls that need freeing
+	 */
+	for (i = 0; i < LDAP_MAX_CONTROLS; i++) {
+		if (!query->serverctrls[i].control) break;
+		if (query->serverctrls[i].freeit) ldap_control_free(query->serverctrls[i].control);
+	}
+
+	for (i = 0; i < LDAP_MAX_CONTROLS; i++) {
+		if (!query->clientctrls[i].control) break;
+		if (query->clientctrls[i].freeit) ldap_control_free(query->clientctrls[i].control);
+	}
+
+	/*
+	 *	If a URL was parsed, free it.
+	 */
+	if (query->ldap_url) ldap_free_urldesc(query->ldap_url);
+
+	/*
+	 *	If any referrals were followed, the parsed referral URLS should be freed
+	 */
+	if (query->referral_urls) ldap_memvfree((void **)query->referral_urls);
+
+	fr_dlist_talloc_free(&query->referrals);
+
+	return 0;
+}
+
+/** Allocate an fr_ldap_query_t, setting the talloc destructor
+ *
+ */
+fr_ldap_query_t *fr_ldap_query_alloc(TALLOC_CTX *ctx)
+{
+	fr_ldap_query_t	*query;
+
+	MEM(query = talloc_zero(ctx, fr_ldap_query_t));
+	talloc_set_destructor(query, _ldap_query_free);
+
+	query->ret = LDAP_RESULT_PENDING;
+
+	return query;
 }
 
 /** Initialise libldap and check library versions

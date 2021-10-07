@@ -12,6 +12,7 @@
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/server/map.h>
+#include <freeradius-devel/server/trunk.h>
 
 #define LDAP_DEPRECATED 0	/* Quiet warnings about LDAP_DEPRECATED not being defined */
 
@@ -164,6 +165,30 @@ typedef enum {
 	FR_LDAP_STATE_ERROR				//!< Connection is in an error state.
 } fr_ldap_state_t;
 
+/** Types of LDAP requests
+ *
+ */
+typedef enum {
+	LDAP_REQUEST_SEARCH = 1,			//!< A lookup in an LDAP directory
+	LDAP_REQUEST_MODIFY				//!< A modification to an LDAP entity
+} fr_ldap_request_type_t;
+
+/** LDAP query result codes
+ *
+ */
+typedef enum {
+	LDAP_RESULT_PENDING = 1,			//!< Result not yet returned
+	LDAP_RESULT_SUCCESS = 0,			//!< Successfully got LDAP results
+	LDAP_RESULT_ERROR = -1,				//!< A general error occurred
+	LDAP_RESULT_TIMEOUT = -2,			//!< The query timed out
+	LDAP_RESULT_BAD_DN = -3,			//!< The requested DN does not exist
+	LDAP_RESULT_NO_RESULT = -4,			//!< No results returned
+	LDAP_RESULT_REFERRAL_FAIL = -5,			//!< Initial results indicated a referral was needed
+							///< but the referral could not be followed
+	LDAP_RESULT_EXCESS_REFERRALS = -6,		//!< The referral chain took too many hops
+	LDAP_RESULT_MISSING_REFERRAL = -7,		//!< A referral was indicated but no URL was provided
+} fr_ldap_result_code_t;
+
 typedef struct {
 	char const		*vendor_str;		//!< As returned from the vendorName attribute in the
 							///< rootDSE.
@@ -205,6 +230,8 @@ typedef struct {
 	bool			chase_referrals_unset;	//!< If true, use the OpenLDAP defaults for chase_referrals.
 
 	bool			use_referral_credentials;	//!< If true use credentials from the referral URL.
+
+	uint16_t		referral_depth;		//!< How many referrals to chase
 
 	bool			rebind;			//!< Controls whether we set an ldad_rebind_proc function
 							///< and so determines if we can bind to other servers whilst
@@ -275,7 +302,11 @@ typedef struct {
 	fr_time_delta_t		tls_handshake_timeout;	//!< How long we wait for the TLS handshake to complete.
 
 	fr_time_delta_t		reconnection_delay;	//!< How long to wait before attempting to reconnect.
+
+	fr_time_delta_t		idle_timeout;		//!< How long to wait before closing unused connections.
 } fr_ldap_config_t;
+
+typedef struct fr_ldap_thread_trunk_s fr_ldap_thread_trunk_t;
 
 /** Tracks the state of a libldap connection handle
  *
@@ -304,6 +335,8 @@ typedef struct {
 
 	int			fd;			//!< File descriptor for this connection.
 
+	fr_rb_tree_t		*queries;		//!< Outstanding queries on this connection
+
 	void			*uctx;			//!< User data associated with the handle.
 } fr_ldap_connection_t;
 
@@ -328,10 +361,114 @@ typedef struct {
 	int		count;				//!< Index on next free element.
 } fr_ldap_map_exp_t;
 
+typedef struct ldap_inst_s rlm_ldap_t;
+
+/** Thread specific structure to manage LDAP trunk connections.
+ *
+ */
+typedef struct {
+	fr_rb_tree_t		*trunks;	//!< Tree of LDAP trunks used by this thread
+	rlm_ldap_t		*inst;		//!< Module instance data
+	fr_ldap_config_t	*config;	//!< Module instance config
+	fr_trunk_conf_t		*trunk_conf;	//!< Module trunk config
+	fr_event_list_t		*el;		//!< Thread event list for callbacks / timeouts
+	fr_connection_t		*conn;		//!< LDAP connection used for bind auths
+	fr_rb_tree_t		*binds;		//!< Tree of outstanding bind auths
+} fr_ldap_thread_t;
+
+/** Thread LDAP trunk structure
+ *
+ * One fr_ldap_thread_trunk_t will be allocated for each destination a thread needs
+ * to create an LDAP trunk connection to.
+ *
+ * Used to hold config regarding the LDAP connection and associate pending queries
+ * with the trunk they are running on.
+ */
+typedef struct fr_ldap_thread_trunk_s {
+	fr_rb_node_t		node;		//!< Entry in the tree of connections
+	char const		*uri;		//!< Server URI for this connection
+	char const		*bind_dn;	//!< DN connection is bound as
+	fr_ldap_config_t	config;		//!< Config used for this connection
+	fr_ldap_directory_t	*directory;	//!< The type of directory we're connected to.
+	fr_trunk_t		*trunk;		//!< Connection trunk
+	fr_ldap_thread_t	*t;		//!< Thread this connection is associated with
+	fr_event_timer_t const	*ev;		//!< Event to close the thread when it has been idle.
+} fr_ldap_thread_trunk_t;
+
+typedef struct fr_ldap_referral_s fr_ldap_referral_t;
+
+/** LDAP query structure
+ *
+ * Used to hold the elements of an LDAP query and track its progress.
+ * libldap structures will be freed by the talloc destructor.
+ * The same structure is used both for search queries and modifications
+ */
+typedef struct fr_ldap_query_s {
+	fr_rb_node_t		node;		//!< Entry in the tree of outstanding queries.
+
+	LDAPURLDesc		*ldap_url;	//!< parsed URL for current query if the source
+						///< of the query was a URL.
+
+	char const		*dn;		//!< Base DN for searches, DN for modifications.
+
+	union {
+		struct {
+			char const	**attrs;	//!< Attributes being requested in a search.
+			int		scope;		//!< Search scope.
+			char const	*filter;	//!< Filter for search.
+		} search;
+		LDAPMod			**mods;		//!< Changes to be applied if this query is a modification.
+	};
+
+	fr_ldap_request_type_t	type;			//!< What type of query this is.
+
+	fr_ldap_control_t	serverctrls[LDAP_MAX_CONTROLS];	//!< Server controls specific to this query.
+	fr_ldap_control_t	clientctrls[LDAP_MAX_CONTROLS];	//!< Client controls specific to this query.
+
+
+	int			msgid;		//!< The unique identifier for this query.
+						///< Uniqueness is only per connection.
+
+	fr_ldap_thread_trunk_t	*ttrunk;	//!< Trunk this query is running on
+	fr_trunk_request_t	*treq;		//!< Trunk request this query is associated with
+	fr_ldap_connection_t	*ldap_conn;	//!< LDAP connection this query is running on.
+
+	request_t		*request;	//!< The request this query relates to
+
+	fr_event_timer_t const	*ev;		//!< Event for timing out the query
+
+	char			**referral_urls;	//!< Referral results to follow
+	fr_dlist_head_t		referrals;	//!< List of parsed referrals
+	uint16_t		referral_depth;	//!< How many referrals we have followed
+	fr_ldap_referral_t	*referral;	//!< Referral actually being followed
+
+	LDAPMessage		*result;	//!< Head of LDAP results list.
+
+	fr_ldap_result_code_t	ret;		//!< Result code
+} fr_ldap_query_t;
+
+/** Parsed LDAP referral structure
+ *
+ * When LDAP servers respond with a referral, it is parsed into one or more fr_ldap_referral_t
+ * and kept until the referral has been followed.
+ * Avoids repeated parsing of the referrals as provided by libldap.
+ */
+typedef struct fr_ldap_referral_s {
+	fr_dlist_t		entry;		//!< Entry in list of possible referrals
+	fr_ldap_query_t		*query;		//!< Query this referral relates to
+	LDAPURLDesc		*referral_url;	//!< URL for the referral
+	char			*host_uri;	//!< Host URI used for referral conneciton
+	char const		*identity;	//!< Bind identity for referral connection
+	char const		*password;	//!< Bind password for referral connecition
+	fr_ldap_thread_trunk_t	*ttrunk;	//!< Trunk this referral should use
+} fr_ldap_referral_t;
+
+
 /** Codes returned by fr_ldap internal functions
  *
  */
 typedef enum {
+	LDAP_PROC_REFERRAL = 2,				//!< LDAP server returned referral URLs.
 	LDAP_PROC_CONTINUE = 1,				//!< Operation is in progress.
 	LDAP_PROC_SUCCESS = 0,				//!< Operation was successfull.
 
@@ -384,6 +521,36 @@ static inline void fr_ldap_berval_to_value_shallow(fr_value_box_t *value, struct
 	fr_value_box_memdup_shallow(value, NULL, (uint8_t *)berval->bv_val, berval->bv_len, true);
 }
 
+/** Compare two ldap trunk structures on connection URI / DN
+ *
+ * @param[in] one	first connection to compare.
+ * @param[in] two	second connection to compare.
+ * @return CMP(one, two)
+ */
+static inline int8_t fr_ldap_trunk_cmp(void const *one, void const *two)
+{
+	fr_ldap_thread_trunk_t const	*a = one, *b = two;
+	int8_t uricmp = CMP(strcmp(a->uri, b->uri), 0);
+
+	if (uricmp !=0) return uricmp;
+	return CMP(strcmp(a->bind_dn, b->bind_dn), 0);
+}
+
+/** Compare two ldap query structures on msgid
+ *
+ * @param[in] one	first query to compare.
+ * @param[in] two	second query to compare.
+ * @return CMP(one,two)
+ */
+static inline int8_t fr_ldap_query_cmp(void const *one, void const *two)
+{
+	fr_ldap_query_t const	*a = one, *b = two;
+
+	return CMP(a->msgid, b->msgid);
+}
+
+fr_ldap_query_t *fr_ldap_query_alloc(TALLOC_CTX *ctx);
+
 /*
  *	ldap.c - Wrappers arounds OpenLDAP functions.
  */
@@ -420,6 +587,10 @@ fr_ldap_rcode_t	fr_ldap_search_async(int *msgid, request_t *request,
 				     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 fr_ldap_rcode_t	fr_ldap_modify(request_t *request, fr_ldap_connection_t **pconn,
+			       char const *dn, LDAPMod *mods[],
+			       LDAPControl **serverctrls, LDAPControl **clientctrls);
+
+fr_ldap_rcode_t	fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_connection_t **pconn,
 			       char const *dn, LDAPMod *mods[],
 			       LDAPControl **serverctrls, LDAPControl **clientctrls);
 
@@ -507,6 +678,12 @@ int		fr_ldap_connection_timeout_set(fr_ldap_connection_t const *conn, fr_time_de
 
 int		fr_ldap_connection_timeout_reset(fr_ldap_connection_t const *conn);
 
+fr_ldap_thread_trunk_t	*fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char const *uri,
+					       char const *bind_dn, char const *bind_password,
+					       request_t *request, fr_ldap_config_t const *config);
+
+fr_trunk_state_t fr_thread_ldap_trunk_state(fr_ldap_thread_t *thread, char const *uri, char const *bind_dn);
+
 /*
  *	state.c - Connection state machine
  */
@@ -556,3 +733,12 @@ uint8_t		*fr_ldap_berval_to_bin(TALLOC_CTX *ctx, struct berval const *in);
 
 int		fr_ldap_parse_url_extensions(LDAPControl **sss, request_t *request,
 					     fr_ldap_connection_t *conn, char **extensions);
+
+/*
+ *	referral.c - Handle LDAP referrals
+ */
+fr_ldap_referral_t	*fr_ldap_referral_alloc(TALLOC_CTX *ctx);
+
+int 		fr_ldap_referral_follow(fr_ldap_query_t *query);
+
+int		fr_ldap_referral_next(fr_ldap_query_t *query);
