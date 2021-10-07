@@ -2,6 +2,7 @@ FreeRADIUS 3.0.28 Tue 09 Jul 2024 12:00:00 UTC urgency=low
 	Configuration changes
 
 	Feature improvements
+	* Add dictionary.mellanox
 
 	Bug fixes
 	* Ignore home server "ping" packets for statistics
