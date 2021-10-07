@@ -213,7 +213,7 @@ static int tls_ctx_verify_chain_member(fr_unix_time_t *expires_first, X509 **sel
 									    chain, leaf, *self_signed);
 
 					ERROR("Second certificate was:");
-					fr_tls_log_certificate_chain_marker(NULL, L_WARN,
+					fr_tls_log_certificate_chain_marker(NULL, L_ERR,
 									    chain, leaf, to_verify);
 					return -1;
 
