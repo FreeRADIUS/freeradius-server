@@ -65,5 +65,8 @@ match Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packet-Type 
 encode-proto -
 match c0 03 02 00 07 9b 35 d9 00 00 00 05 49 d8 e5 4a 73
 
+decode-proto c002 20ff 2020 2020 0000 0043 2009 0000 0009 000a 2120 2020 2020 2020 2020 20ff ff20 2020 2020 2020 ffff ffff 2020 4441 5461 2a30 7820 2020 2020 2020 2020 2020 2020 2020 20ff ffff 20ff ff20 2020 20
+match 'Argument-List' argument 3 length 32 overflows the remaining data (0) in the packet
+
 count
-match 26
+match 28
