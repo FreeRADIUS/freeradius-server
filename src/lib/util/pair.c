@@ -34,6 +34,19 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+/** Internal da comparator used by the attr idx tree
+ *
+ * fr_pair_cmp_by_da attempts to validate the pairs, which may not be
+ * in an valid state when we're manipulating the tree.
+ */
+static int8_t _pair_cmp_by_da(void const *a, void const *b)
+{
+	fr_pair_t const *my_a = a;
+	fr_pair_t const *my_b = b;
+
+	return CMP(my_a->da, my_b->da);
+}
+
 /** Initialise a pair list header
  *
  * @param[in,out] list to initialise
@@ -47,6 +60,15 @@ void fr_pair_list_init(fr_pair_list_t *list)
 	 *	all of them.
 	 */
 	fr_dlist_talloc_init(&list->order, fr_pair_t, order_entry);
+
+	/*
+	 *	Initialises the rb tree that we allocated
+	 *	as part of the fr_pair_list_t.
+	 *
+	 *	This is used to lookup the first instance
+	 *	of a given attribute in the pair list.
+	 */
+	fr_rb_inline_talloc_init(&list->attr_idx, fr_pair_t, attr_node, _pair_cmp_by_da, NULL);
 }
 
 /** Free a fr_pair_t
@@ -125,6 +147,7 @@ fr_pair_t *fr_pair_alloc_null(TALLOC_CTX *ctx)
 	}
 
 	fr_dlist_entry_init(&vp->order_entry);
+	fr_dlist_entry_init(&vp->attr_entry);
 
 	talloc_set_destructor(vp, _fr_pair_free);
 
@@ -534,6 +557,8 @@ unsigned int fr_pair_count_by_da(fr_pair_list_t const *list, fr_dict_attr_t cons
 
 /** Find a pair with a matching da
  *
+ * @note This is O(log(n) + m), where n are unique attributes, and m is the attribute idx.
+ *
  * @param[in] list	to search in.
  * @param[in] da	to look for in the list.
  * @param[in] n		Instance of the attribute to return.
@@ -545,7 +570,8 @@ unsigned int fr_pair_count_by_da(fr_pair_list_t const *list, fr_dict_attr_t cons
  */
 fr_pair_t *fr_pair_find_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *da, unsigned int n)
 {
-	fr_pair_t	*vp = NULL;
+	fr_pair_t	*type_head;
+	fr_dlist_t	*attr_entry;
 
 	if (fr_dlist_empty(&list->order)) return NULL;
 
@@ -553,16 +579,30 @@ fr_pair_t *fr_pair_find_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *
 
 	if (!da) return NULL;
 
-	while ((vp = fr_pair_list_next(list, vp))) {
-		if (da == vp->da) {
-			if (n == 0) return vp;
-			n--;
-		}
+	/*
+	 *	Search using the attribute idx
+	 *	to find the first instance of
+	 *	the attribute.
+	 */
+	type_head = fr_rb_find(&list->attr_idx, &(fr_pair_t){ .da = da });
+	if (!type_head || (n == 0)) return type_head;	/* fast path */
+
+	/*
+	 *	Hunt for a specific instance
+	 *	of this attribute.
+	 */
+	for (n--, attr_entry = type_head->attr_entry.next;
+	     attr_entry;
+	     n--, attr_entry = attr_entry->next) {
+		if (n == 0) return fr_dlist_entry_to_item(offsetof(fr_pair_t, attr_entry), attr_entry);
 	}
+
 	return NULL;
 }
 
 /** Find a pair which has the specified ancestor
+ *
+ * @note This is O(n)
  *
  * @param[in] list	to search in.
  * @param[in] ancestor	to look for in the list.
@@ -597,7 +637,6 @@ fr_pair_t *fr_pair_find_by_ancestor(fr_pair_list_t const *list, fr_dict_attr_t c
 fr_pair_t *fr_pair_find_by_child_num(fr_pair_list_t *list, fr_dict_attr_t const *parent, unsigned int attr)
 {
 	fr_dict_attr_t const	*da;
-	fr_pair_t		*vp;
 
 	/* List head may be NULL if it contains no VPs */
 	if (fr_dlist_empty(&list->order)) return NULL;
@@ -607,9 +646,12 @@ fr_pair_t *fr_pair_find_by_child_num(fr_pair_list_t *list, fr_dict_attr_t const 
 	da = fr_dict_attr_child_by_num(parent, attr);
 	if (!da) return NULL;
 
-	for (vp = fr_pair_list_head(list); vp != NULL; vp = fr_pair_list_next(list, vp)) if (da == vp->da) return vp;
-
-	return NULL;
+	/*
+	 *	Search using the attribute idx
+	 *	to find the first instance of
+	 *	the attribute.
+	 */
+	return fr_rb_find(&list->attr_idx, &(fr_pair_t){ .da = da });
 }
 
 /** Return a pointer to the pair list
@@ -701,12 +743,24 @@ void *fr_pair_list_tail(fr_pair_list_t const *list)
  */
 int fr_pair_prepend(fr_pair_list_t *list, fr_pair_t *to_add)
 {
+	fr_pair_t *first;
+
 	VP_VERIFY(to_add);
 
 	if (fr_dlist_entry_in_list(&to_add->order_entry)) {
 		fr_strerror_printf("Pair %pV already inserted into list", to_add);
 		return -1;
 	}
+
+	/*
+	 *	Do we already have pairs of this type?
+	 */
+	if (fr_rb_replace((void **)&first, &list->attr_idx, to_add) < 0) return -1;
+
+	/*
+	 *	If yes, link this pair into that sublist
+	 */
+	if (first) fr_dlist_entry_link_after(&to_add->attr_entry, &first->attr_entry);
 
 	fr_dlist_insert_head(&list->order, to_add);
 
@@ -725,6 +779,8 @@ int fr_pair_prepend(fr_pair_list_t *list, fr_pair_t *to_add)
  */
 int fr_pair_append(fr_pair_list_t *list, fr_pair_t *to_add)
 {
+	fr_pair_t *first;
+
 	VP_VERIFY(to_add);
 
 	if (fr_dlist_entry_in_list(&to_add->order_entry)) {
@@ -732,58 +788,63 @@ int fr_pair_append(fr_pair_list_t *list, fr_pair_t *to_add)
 		return -1;
 	}
 
+	/*
+	 *	Do we already have pairs of this type?
+	 */
+	if (fr_rb_find_or_insert((void **)&first, &list->attr_idx, to_add) < 0) return -1;
+
+	/*
+	 *	If yes, link this pair into that sublist
+	 */
+	if (first) fr_dlist_entry_link_before(&first->attr_entry, &to_add->attr_entry); /* tail insert */
+
 	fr_dlist_insert_tail(&list->order, to_add);
 
 	return 0;
 }
 
-/** Replace first matching VP
+/** Replace one pair with another
  *
- * Walks over 'list', and replaces the first VP that matches 'replace'.
- * If no match is found the replacement VP is appended to the list.
+ * If to_replace and replacement are the same type then order will be maintained
+ * if to_replace and replacement are NOT the same type, replacement will be appended
+ * to the list.
  *
- * @note Memory used by the VP being replaced will be freed.
+ * @note to_replace will be freed on success.
  * @note Will not work with unknown attributes.
  *
- * @param[in,out] list VP in linked list. Will search and replace in this list.
- * @param[in] replace VP to replace.
+ * @param[in] list		To replace pair in.
+ * @param[in] to_replace	Member of list to replace.  Will be freed.
+ * @param[in] replacement	Will be used to replace the first instance
+ *				of an attribute with the same da, or will
+ *				be inserted if no attribute exists.
+ * @return
+ *	- 0 on success.
+ *	- -1 on error.
  */
-void fr_pair_replace(fr_pair_list_t *list, fr_pair_t *replace)
+int fr_pair_replace(fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *replacement)
 {
-	fr_pair_t *i;
-
-	VP_VERIFY(replace);
-
-	if (fr_dlist_empty(&list->order)) {
-		fr_pair_append(list, replace);
-		return;
-	}
+	VP_VERIFY(replacement);
+	VP_VERIFY(to_replace);
 
 	/*
-	 *	Not an empty list, so find item if it is there, and
-	 *	replace it. Note, we always replace the head one, and
-	 *	we ignore any others that might exist.
+	 *	to_replace and replacement are the same type
+	 *	this is O(1).
 	 */
-	for(i = fr_pair_list_head(list); i; i = fr_pair_list_next(list, i)) {
-		VP_VERIFY(i);
-
-		/*
-		 *	Found the head attribute, replace it,
-		 *	and return.
-		 */
-		if (i->da == replace->da) {
-			i = fr_dlist_replace(&list->order, i, replace);
-			talloc_free(i);
-			return;
+	if (to_replace->da == replacement->da) {
+		if (fr_rb_node_inline_in_tree(&to_replace->attr_node)) {
+			if (!fr_rb_node_inline_replace(&list->attr_idx,
+						       &to_replace->attr_node,
+						       &replacement->attr_node)) return -1;
 		}
+		fr_dlist_entry_replace(&to_replace->attr_entry, &replacement->attr_entry);
+		fr_dlist_entry_replace(&to_replace->order_entry, &replacement->order_entry);
+		talloc_free(to_replace);
 
+		return 0;
 	}
 
-	/*
-	 *	If we got here, we didn't find anything to replace, so
-	 *	we just append.
-	 */
-	fr_pair_append(list, replace);
+	fr_pair_delete(list, to_replace);
+	return fr_pair_append(list, to_replace);
 }
 
 /** Alloc a new fr_pair_t (and append)
@@ -890,15 +951,28 @@ int fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list,
  */
 int fr_pair_delete_by_da(fr_pair_list_t *list, fr_dict_attr_t const *da)
 {
-	fr_pair_t	*vp, *next;
+	fr_pair_t	*type_head;
+	fr_dlist_t	*attr_entry;
 	int		cnt = 0;
 
-	for (vp = fr_pair_list_head(list); vp; vp = next) {
-		next = fr_pair_list_next(list, vp);
-		if (da == vp->da) {
-			cnt++;
-			fr_pair_delete(list, vp);
-		}
+	/*
+	 *	No matching pairs...
+	 */
+	type_head = fr_rb_remove(&list->attr_idx, &(fr_pair_t){ .da = da });
+	if (!type_head) return 0;
+
+	/*
+	 *	Iterate over the type list, removing the
+	 *	pairs from the global list, and freeing
+	 *	them.
+	 */
+	for (attr_entry = &type_head->attr_entry;
+	     attr_entry; attr_entry = attr_entry->next) {
+		fr_pair_t *to_delete = fr_dlist_entry_to_item(offsetof(fr_pair_t, attr_entry), attr_entry);
+
+		fr_dlist_remove(&list->order, to_delete);
+		talloc_free(to_delete);
+		cnt++;
 	}
 
 	return cnt;
@@ -932,12 +1006,31 @@ int fr_pair_delete_by_child_num(fr_pair_list_t *list, fr_dict_attr_t const *pare
  */
 fr_pair_t *fr_pair_remove(fr_pair_list_t *list, fr_pair_t *vp)
 {
-	fr_pair_t *prev;
+	/*
+	 *	This is really "does this list contain
+	 *	more than one element?".
+	 */
+	if (fr_dlist_entry_in_list(&vp->attr_entry)) {
+		/*
+		 *	Check to see if it's the head of its attr list
+		 */
+		if (fr_rb_node_inline_in_tree(&vp->attr_node)) {
+			fr_rb_replace(NULL,
+				      &list->attr_idx,
+				      fr_dlist_entry_to_item(offsetof(fr_pair_t, attr_entry), vp->attr_entry.next));
+		}
+		fr_dlist_entry_unlink(&vp->attr_entry);
+	/*
+	 *	Could still be in the attr tree.
+	 */
+	} else if (fr_rb_node_inline_in_tree(&vp->attr_node)) {
+		fr_rb_remove(&list->attr_idx, vp);
+	}
 
-	prev = fr_pair_list_prev(list, vp);
-	fr_dlist_remove(&list->order, vp);
-
-	return prev;
+	/*
+	 *	Unlink from the order list
+	 */
+	return fr_dlist_remove(&list->order, vp);
 }
 
 /** Remove fr_pair_t from a list and free
@@ -950,8 +1043,7 @@ fr_pair_t *fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp)
 {
 	fr_pair_t *prev;
 
-	prev = fr_pair_list_prev(list, vp);
-	fr_dlist_remove(&list->order, vp);
+	prev = fr_pair_remove(list, vp);
 	talloc_free(vp);
 
 	return prev;
@@ -1188,10 +1280,10 @@ int fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b)
  */
 void fr_pair_list_sort(fr_pair_list_t *list, fr_cmp_t cmp)
 {
-	fr_dlist_sort(&list->order, cmp);
+	fr_dlist_sort(&list->order, cmp);	/* FIXME - Needs to fix the type list order too */
 }
 
-/** Write an error to the library errorbuff detailing the mismatch
+/** Write an error to the library error buff detailing the mismatch
  *
  * Retrieve output with fr_strerror();
  *
@@ -2234,6 +2326,104 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 
 	fr_dict_attr_verify(file, line, vp->da);
 	if (vp->data.enumv) fr_dict_attr_verify(file, line, vp->data.enumv);
+	/*
+	 *	Each pair should be in one state, either inserted
+	 *	into a list or not...
+	 */
+	if (fr_dlist_entry_in_list(&vp->order_entry)) {
+		fr_dlist_t const	*p = &vp->attr_entry;
+		bool			attr_idx_found = false;
+
+		fr_assert_msg(fr_dlist_entry_in_list(&vp->attr_entry),
+			      "CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" is in order list, but not attr list ",
+			      file, line, vp->da->name);
+
+		do {
+			if (fr_rb_node_inline_in_tree(&((fr_pair_t *)fr_dlist_entry_to_item(offsetof(fr_pair_t, attr_entry), p))->attr_node)) {
+				fr_assert_msg(!attr_idx_found,
+					      "CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" attr has multiple "
+					      "entries in the attr idx tree (some are likely stale?) ",
+					      file, line, vp->da->name);
+				attr_idx_found = true;
+			}
+		} while (p->next != &vp->attr_entry);
+
+		fr_assert_msg(attr_idx_found,
+			      "CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" attr is "
+			      "missing entry in the attr idx tree",
+			      file, line, vp->da->name);
+	} else {
+		fr_assert_msg(!fr_dlist_entry_in_list(&vp->attr_entry),
+			      "CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" is not in order list, but is in "
+			      "attr list ", file, line, vp->da->name);
+
+		fr_assert_msg(!fr_rb_node_inline_in_tree(&vp->attr_node),
+			      "CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" is not in order list, but is in "
+			      "attr idx tree ", file, line, vp->da->name);
+	}
+
+	if (vp->da->flags.is_unknown || vp->da->flags.is_raw) {
+		(void) talloc_get_type_abort_const(vp->da, fr_dict_attr_t);
+	} else {
+		fr_dict_attr_t const *da;
+
+		da = vp->da;
+		if (da != vp->da) {
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t "
+					     "dictionary pointer %p \"%s\" (%s) "
+					     "and global dictionary pointer %p \"%s\" (%s) differ",
+					     file, line, vp->da, vp->da->name,
+					     fr_table_str_by_value(fr_value_box_type_table, vp->da->type, "<INVALID>"),
+					     da, da->name,
+					     fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+		}
+	}
+
+	if (vp->da->flags.is_raw || vp->da->flags.is_unknown) {
+		if ((vp->da->parent->type != FR_TYPE_VSA) && (vp->data.type != FR_TYPE_VSA) && (vp->data.type != FR_TYPE_OCTETS)) {
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t (raw/unknown) attribute %p \"%s\" "
+					     "data type incorrect.  Expected %s, got %s",
+					     file, line, vp->da, vp->da->name,
+					     fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_OCTETS, "<INVALID>"),
+					     fr_table_str_by_value(fr_value_box_type_table, vp->data.type, "<INVALID>"));
+		}
+	} else if (!fr_type_is_structural(vp->da->type) && (vp->da->type != vp->data.type)) {
+		char data_type_int[10], da_type_int[10];
+
+		snprintf(data_type_int, sizeof(data_type_int), "%i", vp->data.type);
+		snprintf(da_type_int, sizeof(da_type_int), "%i", vp->da->type);
+
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t attribute %p \"%s\" "
+				     "data type (%s) does not match da type (%s)",
+				     file, line, vp->da, vp->da->name,
+				     fr_table_str_by_value(fr_value_box_type_table, vp->data.type, data_type_int),
+				     fr_table_str_by_value(fr_value_box_type_table, vp->da->type, da_type_int));
+	}
+
+	/*
+	 *	Structural tests are separate, because we don't
+	 *	use the data portion of the vp
+	 */
+	if (fr_type_is_structural(vp->da->type)) {
+		fr_pair_t	*child;
+
+		for (child = fr_pair_list_head(&vp->vp_group);
+		     child;
+		     child = fr_pair_list_next(&vp->vp_group, child)) {
+			TALLOC_CTX *parent = talloc_parent(child);
+
+			fr_fatal_assert_msg(parent == vp,
+					    "CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" should be parented "
+					    "by fr_pair_t \"%s\".  Expected talloc parent %p (%s) got %p (%s)",
+					    file, line,
+					    child->da->name, vp->da->name,
+					    vp, talloc_get_name(vp),
+					    parent, talloc_get_name(parent));
+
+			fr_pair_verify(file, line, child);
+		}
+		return;
+	}
 
 	if (vp->vp_ptr) switch (vp->vp_type) {
 	case FR_TYPE_OCTETS:
@@ -2324,68 +2514,8 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 		}
 		break;
 
-       case FR_TYPE_STRUCTURAL:
-       {
-		fr_pair_t	*child;
-
-		for (child = fr_pair_list_head(&vp->vp_group);
-		     child;
-		     child = fr_pair_list_next(&vp->vp_group, child)) {
-			TALLOC_CTX *parent = talloc_parent(child);
-
-			fr_fatal_assert_msg(parent == vp,
-					    "CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t \"%s\" should be parented "
-					    "by fr_pair_t \"%s\".  Expected talloc parent %p (%s) got %p (%s)",
-					    file, line,
-					    child->da->name, vp->da->name,
-					    vp, talloc_get_name(vp),
-					    parent, talloc_get_name(parent));
-
-			fr_pair_verify(file, line, child);
-		}
-	}
-	       break;
-
 	default:
 		break;
-	}
-
-	if (vp->da->flags.is_unknown || vp->da->flags.is_raw) {
-		(void) talloc_get_type_abort_const(vp->da, fr_dict_attr_t);
-	} else {
-		fr_dict_attr_t const *da;
-
-		da = vp->da;
-		if (da != vp->da) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t "
-					     "dictionary pointer %p \"%s\" (%s) "
-					     "and global dictionary pointer %p \"%s\" (%s) differ",
-					     file, line, vp->da, vp->da->name,
-					     fr_table_str_by_value(fr_value_box_type_table, vp->da->type, "<INVALID>"),
-					     da, da->name,
-					     fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
-		}
-	}
-
-	if (vp->da->flags.is_raw || vp->da->flags.is_unknown) {
-		if ((vp->da->parent->type != FR_TYPE_VSA) && (vp->data.type != FR_TYPE_VSA) && (vp->data.type != FR_TYPE_OCTETS)) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t (raw/unknown) attribute %p \"%s\" "
-					     "data type incorrect.  Expected %s, got %s",
-					     file, line, vp->da, vp->da->name,
-					     fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_OCTETS, "<INVALID>"),
-					     fr_table_str_by_value(fr_value_box_type_table, vp->data.type, "<INVALID>"));
-		}
-	} else if (!fr_type_is_structural(vp->da->type) && (vp->da->type != vp->data.type)) {
-		char data_type_int[10], da_type_int[10];
-
-		snprintf(data_type_int, sizeof(data_type_int), "%i", vp->data.type);
-		snprintf(da_type_int, sizeof(da_type_int), "%i", vp->da->type);
-
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t attribute %p \"%s\" "
-				     "data type (%s) does not match da type (%s)",
-				     file, line, vp->da, vp->da->name,
-				     fr_table_str_by_value(fr_value_box_type_table, vp->data.type, data_type_int),
-				     fr_table_str_by_value(fr_value_box_type_table, vp->da->type, da_type_int));
 	}
 }
 
@@ -2537,7 +2667,30 @@ void fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
  */
 void fr_pair_list_append(fr_pair_list_t *dst, fr_pair_list_t *src)
 {
-	fr_dlist_move(&dst->order, &src->order);
+	fr_rb_iter_inorder_t	iter;
+	fr_pair_t		*src_attr_head, *dst_attr_head;
+
+	fr_dlist_move(&dst->order, &src->order);	/* Fixing up the order list is simple... */
+
+	/*
+	 *	For the attr lists, we need to iterate
+	 *	over the src attr_idx, checking to see
+	 *	if an equivalent entry exists in the
+	 *	dst attr_idx.  Then we either create a
+	 *	new one or merge the attr lists.
+	 */
+	for (src_attr_head = fr_rb_iter_init_inorder(&iter, &src->attr_idx);
+	     src_attr_head;
+	     src_attr_head = fr_rb_iter_next_inorder(&iter)) {
+	     	fr_rb_iter_delete_inorder(&iter);
+
+		if (unlikely(fr_rb_find_or_insert((void **)&dst_attr_head, &dst->attr_idx, src_attr_head) < 0)) return;
+
+		/*
+		 *	Merge the type lists, putting src after dst
+		 */
+		if (dst_attr_head) fr_dlist_entry_move(&dst_attr_head->attr_entry, &src_attr_head->attr_entry);
+	}
 }
 
 /** Move a list of fr_pair_t from a temporary list to the head of a destination list

@@ -62,8 +62,13 @@ typedef enum value_type {
 
 typedef struct value_pair_s fr_pair_t;
 
+/** A list of fr_pair_t
+ *
+ */
 typedef struct {
         fr_dlist_head_t		order;				//!< Maintains the relative order of pairs in a list.
+        fr_rb_tree_t		attr_idx;			//!< An tree containing the first instance of a given
+        							//!< attribute in the list.
 } fr_pair_list_t;
 
 /** Stores an attribute, a value and various bits of other data
@@ -81,6 +86,14 @@ struct value_pair_s {
 								///< are encoded in the same order as they were
 								///< received or inserted.
 
+	fr_dlist_t		attr_entry;			//!< Entry to maintain the relative order of pairs
+								///< of the same type.  This allows us relatively
+								///< efficient lookup of the n'th instance of a given
+								///< attribute pair.
+
+	fr_rb_node_t		attr_node;			//!< Entry in the fr_pair_list_t idx tree.
+								///< This should only be populated for the first
+								///< pair of a given attribute.
 
 	value_type_t		type;				//!< Type of pointer in value union.
 
@@ -246,7 +259,7 @@ int		fr_pair_append(fr_pair_list_t *list, fr_pair_t *vp);
 
 int		fr_pair_prepend(fr_pair_list_t *list, fr_pair_t *vp);
 
-void		fr_pair_replace(fr_pair_list_t *list, fr_pair_t *add);
+int		fr_pair_replace(fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *replacement);
 
 int		fr_pair_delete_by_child_num(fr_pair_list_t *list, fr_dict_attr_t const *parent, unsigned int attr);
 
