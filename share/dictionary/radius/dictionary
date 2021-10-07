@@ -151,8 +151,8 @@ $INCLUDE dictionary.aptilo
 $INCLUDE dictionary.arbor
 $INCLUDE dictionary.arista
 $INCLUDE dictionary.aruba
-$INCLUDE dictionary.azaire
 $INCLUDE dictionary.ascend
+$INCLUDE dictionary.azaire
 $INCLUDE dictionary.bay
 $INCLUDE dictionary.bigswitch
 $INCLUDE dictionary.bintec
@@ -177,8 +177,8 @@ $INCLUDE dictionary.cisco.asa
 #   Note : the altiga dictionary, not listed here, also uses the same Vendor ID
 #
 #$INCLUDE dictionary.cisco.vpn3000
-$INCLUDE dictionary.cisco.vpn5000
 $INCLUDE dictionary.cisco.bbsm
+$INCLUDE dictionary.cisco.vpn5000
 $INCLUDE dictionary.citrix
 $INCLUDE dictionary.clavister
 $INCLUDE dictionary.cnergee
@@ -187,8 +187,8 @@ $INCLUDE dictionary.compatible
 $INCLUDE dictionary.cosine
 $INCLUDE dictionary.dante
 $INCLUDE dictionary.dellemc
-$INCLUDE dictionary.dlink
 $INCLUDE dictionary.digium
+$INCLUDE dictionary.dlink
 $INCLUDE dictionary.dragonwave
 $INCLUDE dictionary.efficientip
 $INCLUDE dictionary.eltex
@@ -200,12 +200,12 @@ $INCLUDE dictionary.ericsson.packet.core.networks
 $INCLUDE dictionary.extreme
 $INCLUDE dictionary.f5
 $INCLUDE dictionary.fdxtended
-$INCLUDE dictionary.freeradius
-$INCLUDE dictionary.freeradius.internal
-$INCLUDE dictionary.freeswitch
 $INCLUDE dictionary.force10
 $INCLUDE dictionary.fortinet
 $INCLUDE dictionary.foundry
+$INCLUDE dictionary.freeradius
+$INCLUDE dictionary.freeradius.internal
+$INCLUDE dictionary.freeswitch
 $INCLUDE dictionary.gandalf
 $INCLUDE dictionary.gemtek
 $INCLUDE dictionary.h3c
@@ -217,9 +217,9 @@ $INCLUDE dictionary.iea
 $INCLUDE dictionary.iec
 $INCLUDE dictionary.infinera
 $INCLUDE dictionary.infonet
+$INCLUDE dictionary.ipunplugged
 $INCLUDE dictionary.issanni
 $INCLUDE dictionary.itk
-$INCLUDE dictionary.ipunplugged
 $INCLUDE dictionary.juniper
 $INCLUDE dictionary.karlnet
 $INCLUDE dictionary.kineto
@@ -230,6 +230,7 @@ $INCLUDE dictionary.localweb
 $INCLUDE dictionary.lucent
 $INCLUDE dictionary.manzara
 $INCLUDE dictionary.meinberg
+$INCLUDE dictionary.mellanox
 $INCLUDE dictionary.meraki
 $INCLUDE dictionary.merit
 $INCLUDE dictionary.meru
@@ -248,9 +249,9 @@ $INCLUDE dictionary.net
 $INCLUDE dictionary.netscreen
 $INCLUDE dictionary.networkphysics
 $INCLUDE dictionary.nexans
-$INCLUDE dictionary.ntua
 $INCLUDE dictionary.nokia
 $INCLUDE dictionary.nokia.sr
+$INCLUDE dictionary.ntua
 
 #
 #  Commented out because of attribute conflicts.
@@ -279,12 +280,12 @@ $INCLUDE dictionary.redcreek
 $INCLUDE dictionary.riverbed
 $INCLUDE dictionary.riverstone
 $INCLUDE dictionary.roaringpenguin
-$INCLUDE dictionary.ruggedcom
 $INCLUDE dictionary.ruckus
+$INCLUDE dictionary.ruggedcom
 $INCLUDE dictionary.sandy
 $INCLUDE dictionary.sangoma
-$INCLUDE dictionary.shasta
 $INCLUDE dictionary.sg
+$INCLUDE dictionary.shasta
 $INCLUDE dictionary.shiva
 $INCLUDE dictionary.siemens
 $INCLUDE dictionary.slipstream
@@ -293,6 +294,7 @@ $INCLUDE dictionary.springtide
 $INCLUDE dictionary.starent
 $INCLUDE dictionary.surfnet
 $INCLUDE dictionary.symbol
+$INCLUDE dictionary.t_systems_nova
 $INCLUDE dictionary.telebit
 $INCLUDE dictionary.telrad
 $INCLUDE dictionary.terena
@@ -300,7 +302,6 @@ $INCLUDE dictionary.trapeze
 $INCLUDE dictionary.travelping
 $INCLUDE dictionary.tripplite
 $INCLUDE dictionary.tropos
-$INCLUDE dictionary.t_systems_nova
 $INCLUDE dictionary.ukerna
 $INCLUDE dictionary.unisphere
 $INCLUDE dictionary.unix
@@ -309,8 +310,8 @@ $INCLUDE dictionary.utstarcom
 $INCLUDE dictionary.valemount
 $INCLUDE dictionary.vasexperts
 $INCLUDE dictionary.versanet
-$INCLUDE dictionary.waverider
 $INCLUDE dictionary.walabi
+$INCLUDE dictionary.waverider
 $INCLUDE dictionary.wichorus
 $INCLUDE dictionary.wifialliance
 $INCLUDE dictionary.wimax
