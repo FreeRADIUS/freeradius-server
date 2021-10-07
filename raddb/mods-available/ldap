@@ -508,6 +508,11 @@ ldap {
 		#  If you set these to 'no', then searches will likely return
 		#  'operations error', instead of a useful result.
 		#
+		#  'rebind' causes any connections being established to follow
+		#  referrals to be bound using the admin credentials defined
+		#  for this module.  If it is set to 'no' libldap will bind
+		#  to those connections anonymously.
+		#
 		chase_referrals = yes
 		rebind = yes
 
