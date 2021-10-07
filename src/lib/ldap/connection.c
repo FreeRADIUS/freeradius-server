@@ -607,6 +607,11 @@ static void ldap_request_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_
 		fr_rb_remove(ldap_conn->queries, query);
 
 		fr_trunk_request_signal_cancel_complete(treq);
+
+		/*
+		 *	Ensure any query resouces are cleared straight away
+		 */
+		talloc_free(query);
 	}
 }
 
