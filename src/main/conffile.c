@@ -2516,6 +2516,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				 */
 				while ((dp = readdir(dir)) != NULL) {
 					char const *p;
+					int slen;
 
 					if (dp->d_name[0] == '.') continue;
 
@@ -2532,8 +2533,12 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					}
 					if (*p != '\0') continue;
 
-					snprintf(buf2, sizeof(buf2), "%s%s",
-						 value, dp->d_name);
+					slen = snprintf(buf2, sizeof(buf2), "%s%s",
+							value, dp->d_name);
+					if (slen >= (int) sizeof(buf2) || slen < 0) {
+						ERROR("%s: Full file path is too long.", dp->d_name);
+						return -1;
+					}
 					if ((stat(buf2, &stat_buf) != 0) ||
 					    S_ISDIR(stat_buf.st_mode)) continue;
 
