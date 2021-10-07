@@ -622,17 +622,6 @@ size_t		fr_ldap_unescape_func(UNUSED request_t *request, char *out, size_t outle
 
 ssize_t		fr_ldap_xlat_filter(request_t *request, char const **sub, size_t sublen, char *out, size_t outlen);
 
-fr_ldap_rcode_t	fr_ldap_bind(request_t *request,
-			     fr_ldap_connection_t **pconn,
-			     char const *dn, char const *password,
-#ifdef WITH_SASL
-			     fr_ldap_sasl_t const *sasl,
-#else
-			     NDEBUG_UNUSED fr_ldap_sasl_t const *sasl,
-#endif
-			     fr_time_delta_t timeout,
-			     LDAPControl **serverctrls, LDAPControl **clientctrls);
-
 char const	*fr_ldap_error_str(fr_ldap_connection_t const *conn);
 
 fr_ldap_rcode_t	fr_ldap_search_async(int *msgid, request_t *request,
