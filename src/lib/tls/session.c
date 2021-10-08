@@ -1346,7 +1346,7 @@ DIAG_ON(used-but-marked-unused)
 	{
 		unlang_action_t ua;
 
-		RDEBUG3("Performing async action for OpenSSL");
+		RDEBUG3("Performing async action for libssl");
 
 		/*
 		 *	Call this function again once we're done

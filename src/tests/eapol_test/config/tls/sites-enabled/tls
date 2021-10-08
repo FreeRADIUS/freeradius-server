@@ -29,7 +29,7 @@ server eap-tls-test {
 		#
 		#  Ensure we have access to the certificate attributes
 		#
-		if (!&parent.session-state.TLS-Certificate[0].Issuer) {
+		if (!&parent.session-state.TLS-Certificate[0]) {
 			reject
 		}
 	}
