@@ -304,6 +304,7 @@ skip_alt:
 					 "Add a dictionary definition if you want to access it",
 					 fr_box_strvalue_len((char *)fr_dbuff_current(out),
 					  		     fr_dbuff_remaining(out)));
+				fr_strerror_clear();	/* Don't leave spurious errors from failed resolution */
 				goto again;
 			}
 
