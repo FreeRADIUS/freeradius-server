@@ -59,9 +59,18 @@ int fr_uri_escape(fr_value_box_list_t *uri, fr_uri_part_t const *uri_parts, void
 		 *	Tainted boxes can only belong to a single part of the URI
 		 */
 		if (uri_vb->tainted) {
-			if ((uri_part->func) && (uri_part->func(uri_vb, uctx) < 0)) {
-				fr_strerror_printf_push("Unable to escape tainted input %pV", uri_vb);
-				return -1;
+			if (uri_part->func) {
+				/*
+				 *	Escaping often ends up breaking the vb's list pointers
+				 *	so remove it from the list and re-insert after the escaping
+				 *	has been done
+				 */
+				fr_value_box_t	*prev = fr_dlist_remove(uri, uri_vb);
+				if (uri_part->func(uri_vb, uctx) < 0) {
+					fr_strerror_printf_push("Unable to escape tainted input %pV", uri_vb);
+					return -1;
+				}
+				fr_dlist_insert_after(uri, prev, uri_vb);
 			}
 			continue;
 		}

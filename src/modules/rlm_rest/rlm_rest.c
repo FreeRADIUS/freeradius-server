@@ -330,7 +330,6 @@ static int uri_part_escape(fr_value_box_t *vb, void *uctx)
 {
 	char			*escaped;
 	fr_curl_io_request_t	*randle = talloc_get_type_abort(uctx, fr_curl_io_request_t);
-	fr_dlist_t		entry;
 	request_t		*request = randle->request;
 
 	escaped = curl_easy_escape(randle->candle, vb->vb_strvalue, vb->length);
@@ -346,16 +345,9 @@ static int uri_part_escape(fr_value_box_t *vb, void *uctx)
 	}
 
 	RDEBUG4("Tainted value %pV escaped to %s", vb, escaped);
-	/*
-	 *	Store list pointers to restore later - fr_value_box_clear() clears them
-	 */
-	entry = vb->entry;
 
-	fr_value_box_clear(vb);
-
+	fr_value_box_clear_value(vb);
 	fr_value_box_strdup(vb, vb, NULL, escaped, vb->tainted);
-	vb->entry.next = entry.next;
-	vb->entry.prev = entry.prev;
 
 	curl_free(escaped);
 
