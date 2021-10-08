@@ -352,7 +352,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,UNUSED fr_
 		 */
 		slen = fr_dns_label_uncompressed_length(packet_ctx->packet, data, data_len, &next, packet_ctx->lb);
 		if (slen <= 0) {
-			FR_PROTO_TRACE("length failed at %zd - %s", slen, fr_strerror());
+			FR_PROTO_TRACE("length failed at %zd - %s", -slen, fr_strerror());
 			return slen;
 		}
 
