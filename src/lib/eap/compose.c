@@ -228,8 +228,8 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	eap_packet = (eap_packet_raw_t *)reply->packet;
 
 	MEM(pair_append_reply(&vp, attr_eap_message) >= 0);
-	vp->vp_length = eap_packet->length[0] * 256 + eap_packet->length[1];
-	vp->vp_octets = talloc_steal(vp, reply->packet);
+	fr_pair_value_memdup_shallow(vp, talloc_steal(vp, reply->packet),
+				     eap_packet->length[0] * 256 + eap_packet->length[1], false);
 	reply->packet = NULL;
 
 	/*
