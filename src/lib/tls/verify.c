@@ -209,7 +209,7 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		}
 	}
 
-	if (verify_applies(conf->verify.pair_mode, depth, untrusted) &&
+	if (verify_applies(conf->verify.attribute_mode, depth, untrusted) &&
 	    (!(container = fr_pair_find_by_da(&request->session_state_pairs, attr_tls_certificate, depth)) ||
 	     fr_pair_list_empty(&container->vp_group))) {
 	     	if (!container) {
@@ -261,7 +261,7 @@ done:
 	 *	and we're meant to verify this cert
 	 *	then call the virtual server.
 	 */
-	if (my_ok && verify_applies(conf->verify.pair_mode, depth, untrusted)) {
+	if (my_ok && verify_applies(conf->verify.attribute_mode, depth, untrusted)) {
 		if (conf->virtual_server && tls_session->verify_client_cert) {
 			RDEBUG2("Requesting certificate validation");
 

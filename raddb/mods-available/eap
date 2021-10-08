@@ -569,9 +569,36 @@ eap {
 		#
 		ecdh_curve = prime256v1
 
+		#
+		#  verify:: Parameters for controlling client cert chain
+		#  verification.
+		#
+		#  Certificate verification is performed in two phases.
+		#  The first is handled by the SSL library which checks
+		#  whether a trusted chain of certificates can be built
+		#  between the certificates loaded from `ca_file` or
+		#  found in `ca_path`.
+		#
+		#  The second (optional) phase is performed using the
+		#  `verify * { ... }` sections of the tls
+		#  `virtual_server`.
+		#
 		verify {
 			#
-			#  mode:: Which client certificates should be verified
+			#  mode:: Which certificates in the verification chain
+			#  should be checked.
+			#
+			#  Certificate verification is performed in two phases.
+			#  The first is handled by the SSL library which checks
+			#  whether a trusted chain of certificates can be built
+			#  between the certificates loaded from `ca_file` or
+			#  found in `ca_path`.
+			#
+			#  The SSL library also checks that the the correct usage
+			#  OIDs are present in the presented client certificate
+			#  and that none of the certificates have expired.
+			#
+
 			#
 			#  [options="header,autowidth"]
 			#  |===
@@ -598,15 +625,6 @@ eap {
 			#
 			#  It is recommended to leave mode as `all` except
 			#  when debugging, or in an emergency situation.
-			#
-			#  [NOTE]
-			#  ====
-			#  This verification is only applied during a full
-			#  handshake, and with stateful session resumption.
-			#  Verification for stateless session resumption
-			#  should be performed using the `verify [*] { ... }`
-			#  section(s) of the specified `virtual_server`.
-			#  ====
 			#
 #			mode = all
 
@@ -642,8 +660,8 @@ eap {
 			#  | `client-and-issuer`
 			#  | Create attributes for the client certificate
 			#    and its issuer.
-			#  | `client`
 			#
+			#  | `client`
 			#  | Only create attributes for the client
 			#    certificate.
 			#  |===
@@ -660,7 +678,7 @@ eap {
 			#  stateless session-resumption.
 			#  ====
 			#
-#			attribute_mode = client-and-issuer
+#			attribute_mode = untrusted
 
 			#
 			#  check_crl:: Check the Certificate Revocation List.

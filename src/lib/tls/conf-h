@@ -117,7 +117,7 @@ typedef struct {
 	fr_tls_verify_mode_t mode;			//!< What certificates we apply OpenSSL's pre-validation
 							///< mode to.
 
-	fr_tls_verify_mode_t pair_mode;			//!< What set of certificates we're going to convert to
+	fr_tls_verify_mode_t attribute_mode;			//!< What set of certificates we're going to convert to
 							///< pairs for verification.
 
 	bool		check_crl;			//!< Check certificate revocation lists.

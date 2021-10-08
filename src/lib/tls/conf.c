@@ -137,7 +137,7 @@ static CONF_PARSER tls_verify_config[] = {
 			 	.len = &verify_mode_table_len
 			 },
 			 .dflt = "all" },
-	{ FR_CONF_OFFSET("pair_mode", FR_TYPE_VOID, fr_tls_verify_conf_t, pair_mode),
+	{ FR_CONF_OFFSET("attribute_mode", FR_TYPE_VOID, fr_tls_verify_conf_t, attribute_mode),
 			 .func = cf_table_parse_int,
 			 .uctx = &(cf_table_parse_ctx_t){
 			 	.table = verify_mode_table,
