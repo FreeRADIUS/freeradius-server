@@ -320,6 +320,7 @@ skip_alt:
 				talloc_free(vp);
 				goto again;
 			}
+			fr_tls_bio_dbuff_reset(bd);	/* 'free' any data used */
 
 			fr_pair_append(pair_list, vp);
 		}
