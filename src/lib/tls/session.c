@@ -1378,7 +1378,7 @@ DIAG_ON(used-but-marked-unused)
 		 *	Next service any pending certificate
 		 *	validation actions.
 		 */
-		ua = fr_tls_verify_client_cert_pending_push(request, tls_session);
+		ua = fr_tls_verify_cert_pending_push(request, tls_session);
 		switch (ua) {
 		case UNLANG_ACTION_FAIL:
 			if (unlang_function_clear(request) < 0) goto error;

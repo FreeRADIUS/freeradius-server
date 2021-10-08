@@ -83,7 +83,7 @@ DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
  *	certificate chain.
  *
  * @note As a byproduct of validation, various OIDs will be extracted from the
- *	certificates, and inserted into the session-state. list as fr_pair_t.
+ *	certificates, and inserted into the session-state list as fr_pair_t.
  *
  * @param ok		preverify ok.  1 if true, 0 if false.
  * @param x509_ctx	containing certs to verify.
@@ -215,10 +215,11 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	}
 done:
 	/*
-	 *	This is a client cert, call our
-	 *	virtual server here.
+	 *	If verification hasn't already failed
+	 *	and we're meant to verify this cert
+	 *	then call the virtual server.
 	 */
-	if (depth == 0) {
+	if (my_ok && verify_applies(conf->verify.pair_mode, depth, untrusted)) {
 		if (conf->virtual_server && tls_session->verify_client_cert) {
 			RDEBUG2("Requesting certificate validation");
 
@@ -230,7 +231,7 @@ done:
 			 *	the code there knows what job it needs to push onto
 			 *	the unlang stack.
 			 */
-			fr_tls_verify_client_cert_request(tls_session, SSL_session_reused(tls_session->ssl));
+			fr_tls_verify_cert_request(tls_session, SSL_session_reused(tls_session->ssl));
 
 			ASYNC_pause_job();	/* Jumps back to SSL_read() in session.c */
 
@@ -239,25 +240,25 @@ done:
 			 */
 			if (unlang_request_is_cancelled(request)) {
 				X509_STORE_CTX_set_error(x509_ctx, 0);
-				fr_tls_verify_client_cert_reset(tls_session);
+				fr_tls_verify_cert_reset(tls_session);
 				return 1;
 			}
 
 
 			/*
-			 *	If we couldn't validate the client certificate
+			 *	If we couldn't validate the certificate
 			 *	then validation overall fails.
 			 */
-			if (!fr_tls_verify_client_cert_result(tls_session)) {
+			if (!fr_tls_verify_cert_result(tls_session)) {
 				REDEBUG("Certificate validation failed");
 				my_ok = 0;
 				X509_STORE_CTX_set_error(x509_ctx, X509_V_ERR_APPLICATION_VERIFICATION);
 			}
 		}
-
-		tls_session->client_cert_ok = (my_ok > 0);
-		RDEBUG2("[verify] = %s", my_ok ? "ok" : "invalid");
 	}
+
+	tls_session->client_cert_ok = (my_ok > 0);
+	RDEBUG2("[verify] = %s", my_ok ? "ok" : "invalid");
 
 	return my_ok;
 }
@@ -276,7 +277,7 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
  *	- 1 if the chain could be validated.
  *	- 0 if the chain failed validation.
  */
-int fr_tls_verify_client_cert_chain(request_t *request, SSL *ssl)
+int fr_tls_verify_cert_chain(request_t *request, SSL *ssl)
 {
 	int		err;
 	int		verify;
@@ -405,7 +406,7 @@ static unlang_action_t tls_verify_client_cert_push(request_t *request, fr_tls_se
  *	- true if the certificate chain was validated.
  *	- false if the certificate chain failed validation.
  */
-bool fr_tls_verify_client_cert_result(fr_tls_session_t *tls_session)
+bool fr_tls_verify_cert_result(fr_tls_session_t *tls_session)
 {
 	bool result;
 
@@ -422,7 +423,7 @@ bool fr_tls_verify_client_cert_result(fr_tls_session_t *tls_session)
 /** Reset the verification state
  *
  */
-void fr_tls_verify_client_cert_reset(fr_tls_session_t *tls_session)
+void fr_tls_verify_cert_reset(fr_tls_session_t *tls_session)
 {
 	tls_session->validate.state = FR_TLS_VALIDATION_INIT;
 	tls_session->validate.resumed  = false;
@@ -431,7 +432,7 @@ void fr_tls_verify_client_cert_reset(fr_tls_session_t *tls_session)
 /** Setup a verification request
  *
  */
-void fr_tls_verify_client_cert_request(fr_tls_session_t *tls_session, bool session_resumed)
+void fr_tls_verify_cert_request(fr_tls_session_t *tls_session, bool session_resumed)
 {
 	fr_assert(tls_session->validate.state == FR_TLS_VALIDATION_INIT);
 
@@ -447,7 +448,7 @@ void fr_tls_verify_client_cert_request(fr_tls_session_t *tls_session, bool sessi
  *	- UNLANG_ACTION_CALCULATE_RESULT	- No pending actions
  *	- UNLANG_ACTION_PUSHED_CHILD		- Pending operations to evaluate.
  */
-unlang_action_t fr_tls_verify_client_cert_pending_push(request_t *request, fr_tls_session_t *tls_session)
+unlang_action_t fr_tls_verify_cert_pending_push(request_t *request, fr_tls_session_t *tls_session)
 {
 	if (tls_session->validate.state == FR_TLS_VALIDATION_REQUESTED) {
 		return tls_verify_client_cert_push(request, tls_session);

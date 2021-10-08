@@ -76,15 +76,15 @@ extern "C" {
 
 int		fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *ctx);
 
-int		fr_tls_verify_client_cert_chain(request_t *request, SSL *ssl);
+int		fr_tls_verify_cert_chain(request_t *request, SSL *ssl);
 
-bool		fr_tls_verify_client_cert_result(fr_tls_session_t *tls_session);
+bool		fr_tls_verify_cert_result(fr_tls_session_t *tls_session);
 
-void		fr_tls_verify_client_cert_reset(fr_tls_session_t *tls_session);
+void		fr_tls_verify_cert_reset(fr_tls_session_t *tls_session);
 
-void		fr_tls_verify_client_cert_request(fr_tls_session_t *tls_session, bool resumed);
+void		fr_tls_verify_cert_request(fr_tls_session_t *tls_session, bool resumed);
 
-unlang_action_t fr_tls_verify_client_cert_pending_push(request_t *request, fr_tls_session_t *tls_session);
+unlang_action_t fr_tls_verify_cert_pending_push(request_t *request, fr_tls_session_t *tls_session);
 
 #ifdef __cplusplus
 }

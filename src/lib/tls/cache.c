@@ -763,7 +763,7 @@ again:
 		 *	the code there knows what job it needs to push onto
 		 *	the unlang stack.
 		 */
-		fr_tls_verify_client_cert_request(tls_session, true);
+		fr_tls_verify_cert_request(tls_session, true);
 
 		ASYNC_pause_job();	/* Jumps back to SSL_read() in session.c */
 
@@ -775,7 +775,7 @@ again:
 		 */
 		if (unlang_request_is_cancelled(request)) {
 			tls_cache_load_state_reset(tls_cache);	/* Clears any loaded session data */
-			fr_tls_verify_client_cert_reset(tls_session);
+			fr_tls_verify_cert_reset(tls_session);
 			return NULL;
 
 		}
@@ -784,7 +784,7 @@ again:
 		 *	If we couldn't validate the client certificate
 		 *	then validation overall fails.
 		 */
-		if (!fr_tls_verify_client_cert_result(tls_session)) {
+		if (!fr_tls_verify_cert_result(tls_session)) {
 			RDEBUG2("Certificate re-validation failed, denying session resumption via session-id");
 			goto verify_error;
 		}
@@ -1113,7 +1113,7 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 		 *	the code there knows what job it needs to push onto
 		 *	the unlang stack.
 		 */
-		fr_tls_verify_client_cert_request(tls_session, true);
+		fr_tls_verify_cert_request(tls_session, true);
 
 		ASYNC_pause_job();	/* Jumps back to SSL_read() in session.c */
 
@@ -1122,7 +1122,7 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 		 *	a known state.
 		 */
 		if (unlang_request_is_cancelled(request)) {
-			fr_tls_verify_client_cert_reset(tls_session);
+			fr_tls_verify_cert_reset(tls_session);
 			return SSL_TICKET_RETURN_ABORT;
 		}
 
@@ -1131,7 +1131,7 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 		 *	give the client the opportunity to send a new
 		 *	one, but _don't_ allow session resumption.
 		 */
-		if (!fr_tls_verify_client_cert_result(tls_session)) {
+		if (!fr_tls_verify_cert_result(tls_session)) {
 			RDEBUG2("Certificate re-validation failed, denying session resumption via session-ticket");
 			return SSL_TICKET_RETURN_IGNORE_RENEW;
 		}
