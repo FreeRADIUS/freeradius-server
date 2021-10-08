@@ -260,8 +260,13 @@ done:
 	 *	If verification hasn't already failed
 	 *	and we're meant to verify this cert
 	 *	then call the virtual server.
+	 *
+	 *	We only call the virtual server for
+	 *      the certificate at depth 0 as all
+	 *      other certificate attributes should
+	 *	have been added by this point.
 	 */
-	if (my_ok && verify_applies(conf->verify.attribute_mode, depth, untrusted)) {
+	if (my_ok && (depth == 0)) {
 		if (conf->virtual_server && tls_session->verify_client_cert) {
 			RDEBUG2("Requesting certificate validation");
 
