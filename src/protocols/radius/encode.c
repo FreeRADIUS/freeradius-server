@@ -1329,7 +1329,7 @@ static ssize_t encode_nas_filter_rule(fr_dbuff_t *dbuff,
 
 	vp = fr_dcursor_current(cursor);
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
-		
+
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
