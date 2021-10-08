@@ -114,6 +114,15 @@ void		*fr_lst_iter_init(fr_lst_t *lst, fr_lst_iter_t *iter) CC_HINT(nonnull);
 
 void		*fr_lst_iter_next(fr_lst_t *lst, fr_lst_iter_t *iter) CC_HINT(nonnull);
 
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+void fr_lst_verify(char const *file, int line, fr_lst_t const *lst);
+#define FR_LST_VERIFY(_lst) fr_lst_verify(__FILE__, __LINE__, _lst);
+#elif !defined(NDEBUG)
+#define FR_LST_VERIFY(_lst) fr_assert(_lst)
+#else
+#define FR_LST_VERIFY(_lst)
+#endif
+
 /** Iterate over the contents of an LST
  *
  * @note The initializer section of a for loop can't declare variables with distinct
@@ -132,7 +141,6 @@ void		*fr_lst_iter_next(fr_lst_t *lst, fr_lst_iter_t *iter) CC_HINT(nonnull);
 { \
 	fr_lst_iter_t _iter; \
 	for (_type *_data = fr_lst_iter_init(_lst, &_iter); _data; _data = fr_lst_iter_next(_lst, &_iter))
-
 
 #ifdef __cplusplus
 }

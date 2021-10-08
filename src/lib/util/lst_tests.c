@@ -117,6 +117,7 @@ static void lst_test(int skip)
 
 	TEST_CASE("insertions");
 	for (i = 0; i < LST_TEST_SIZE; i++) {
+		FR_LST_VERIFY(lst);
 		TEST_CHECK((ret = fr_lst_insert(lst, &values[i])) >= 0);
 		TEST_MSG("insert failed, returned %i - %s", ret, fr_strerror());
 
@@ -126,6 +127,7 @@ static void lst_test(int skip)
 
 	TEST_CASE("deletions");
 	for (int entry = 0; entry < LST_TEST_SIZE; entry += skip) {
+		FR_LST_VERIFY(lst);
 		TEST_CHECK(values[entry].idx != 0);
 		TEST_MSG("element %i removed out of order", entry);
 
@@ -141,6 +143,7 @@ static void lst_test(int skip)
 
 	left = fr_lst_num_elements(lst);
 	for (i = 0; i < left; i++) {
+		FR_LST_VERIFY(lst);
 		TEST_CHECK(fr_lst_pop(lst) != NULL);
 		TEST_MSG("expected %i elements remaining in the lst", left - i);
 		TEST_MSG("failed extracting %i", i);
@@ -575,137 +578,6 @@ static void queue_cmp_1000(void)
 {
 	queue_cmp(1000);
 }
-
-#if 0
-static void lst_validate(fr_lst_t *lst)
-{
-	fr_lst_index_t	fake_pivot_index, reduced_fake_pivot_index, reduced_end;
-	stack_index_t	depth = stack_depth(&(lst->s));
-	int		bucket_size_sum;
-	bool		pivots_in_order = true;
-	bool		pivot_indices_in_order = true;
-
-	/*
-	 * There has to be at least the fictitious pivot.
-	 */
-	if (depth < 1) {
-		TEST_MSG_ALWAYS("LST pivot stack empty");
-		return;
-	}
-
-	/*
-	 * Modulo circularity, idx + the number of elements should be the index
-	 * of the fictitious pivot.
-	 */
-	fake_pivot_index = stack_item(&(lst->s), 0);
-	reduced_fake_pivot_index = index_reduce(lst, fake_pivot_index);
-	reduced_end = index_reduce(lst, lst->idx + lst->num_elements);
-	if (reduced_fake_pivot_index != reduced_end) {
-		TEST_MSG_ALWAYS("fictitious pivot inconsistent with idx and number of elements");
-	}
-
-	/*
-	 * Bucket sizes must make sense.
-	 */
-	if (lst->num_elements) {
-		bucket_size_sum = 0;
-
-		for (stack_index_t stack_index = 0; stack_index < depth; stack_index++)  {
-			fr_lst_index_t bucket_size = bucket_upb(lst, stack_index) - bucket_lwb(lst, stack_index) + 1;
-			if (bucket_size > lst->num_elements) {
-				TEST_MSG_ALWAYS("bucket %d size %d is invalid\n", stack_index, bucket_size);
-			}
-			bucket_size_sum += bucket_size;
-		}
-
-		if (bucket_size_sum + depth - 1 != lst->num_elements) {
-			TEST_MSG_ALWAYS("total bucket size inconsistent with number of elements");
-		}
-	}
-
-	/*d
-	 * No elements should be NULL.
-	 */
-	for (fr_lst_index_t i = 0; i < lst->num_elements; i++) {
-		if (!item(lst, lst->idx + i)) TEST_MSG_ALWAYS("null element at %d\n", lst->idx + i);
-	}
-
-	/*
-	 * There's nothing more to check for a one-bucket tree.
-	 */
-	if (is_bucket(lst, 0)) return;
-
-	/*
-	 * Otherwise, first, pivots from left to right (aside from the fictitious
-	 * one) should be in ascending order.
-	 */
-	for (stack_index_t stack_index = 1; stack_index + 1 < depth; stack_index++) {
-		lst_thing	*current_pivot = pivot_item(lst, stack_index);
-		lst_thing	*next_pivot = pivot_item(lst, stack_index + 1);
-
-		if (current_pivot && next_pivot && lst->cmp(current_pivot, next_pivot) < 0) pivots_in_order = false;
-	}
-	if (!pivots_in_order) TEST_MSG_ALWAYS("pivots not in ascending order");
-
-	/*
-	 * Next, all non-fictitious pivots must correspond to non-null elements of the array.
-	 */
-	for (stack_index_t stack_index = 1; stack_index < depth; stack_index++) {
-		if (!pivot_item(lst, stack_index)) TEST_MSG_ALWAYS("pivot #%d refers to NULL", stack_index);
-	}
-
-	/*
-	 * Next, the stacked pivot indices should decrease as you ascend from
-	 * the bottom of the pivot stack. Here we *do* include the fictitious
-	 * pivot; we're just comparing indices.
-	 */
-	for (stack_index_t stack_index = 0; stack_index + 1 < depth; stack_index++) {
-		fr_lst_index_t current_pivot_index = stack_item(&(lst->s), stack_index);
-		fr_lst_index_t previous_pivot_index = stack_item(&(lst->s), stack_index + 1);
-
-
-		if (previous_pivot_index >= current_pivot_index) pivot_indices_in_order = false;
-	}
-
-	if (!pivot_indices_in_order) TEST_MSG_ALWAYS("pivot indices not in order");
-
-	/*
-	 * Finally...
-	 * values in buckets shouldn't "follow" the pivot to the immediate right (if it exists)
-	 * and shouldn't "precede" the pivot to the immediate left (if it exists)
-	 *
-	 * todo: this will find pivot ordering issues as well; get rid of that ultimately,
-	 * since pivot-pivot ordering errors are caught above.
-	 */
-	for (stack_index_t stack_index = 0; stack_index < depth; stack_index++) {
-		fr_lst_index_t	lwb, upb, pivot_index;
-		void		*pivot_item, *element;
-
-		if (stack_index > 0) {
-			lwb = (stack_index + 1 == depth) ? lst->idx : stack_item(&(lst->s), stack_index + 1);
-			pivot_index = upb = stack_item(&(lst->s), stack_index);
-			pivot_item = item(lst, pivot_index);
-			for (fr_lst_index_t index = lwb; index < upb; index++) {
-				element = item(lst, index);
-				if (element && pivot_item && lst->cmp(element, pivot_item) > 0) {
-					TEST_MSG_ALWAYS("element at %d > pivot at %d", index, pivot_index);
-				}
-			}
-		}
-		if (stack_index + 1 < depth) {
-			upb = stack_item(&(lst->s), stack_index);
-			lwb = pivot_index = stack_item(&(lst->s), stack_index + 1);
-			pivot_item = item(lst, pivot_index);
-			for (fr_lst_index_t index = lwb; index < upb; index++) {
-				element = item(lst, index);
-				if (element && pivot_item && lst->cmp(pivot_item, element) > 0) {
-					TEST_MSG_ALWAYS( "element at %d < pivot at %d", index, pivot_index);
-				}
-			}
-		}
-	}
-}
-#endif
 
 TEST_LIST = {
 	/*
