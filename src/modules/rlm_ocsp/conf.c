@@ -90,7 +90,7 @@ static int _conf_server_free(
 
 /* Session init */
 #ifdef HAVE_OPENSSL_OCSP_H
-	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_STORE, (void *)tls_conf->ocsp.store);
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_OCSP_STORE, (void *)tls_conf->ocsp.store);
 #endif
 
 /* Validation checks */

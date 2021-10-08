@@ -34,17 +34,22 @@ RCSIDH(tls_log_h, "$Id$")
 
 #include "base.h"
 
-#define		fr_tls_log_certificate_chain(_request, _log_type, _chain, _leaf) \
-			_fr_tls_log_certificate_chain( __FILE__, __LINE__, _request, _log_type, _chain, _leaf)
+#define		fr_tls_log_certificate_chain(...) \
+			_fr_tls_log_certificate_chain( __FILE__, __LINE__, ## __VA_ARGS__)
 void		_fr_tls_log_certificate_chain(char const *file, int line,
 					      request_t *request, fr_log_type_t log_type, STACK_OF(X509) *chain, X509 *leaf);
 
+#define		fr_tls_log_certificate_chain_marker(...) \
+			_fr_tls_log_certificate_chain_marker( __FILE__, __LINE__, ## __VA_ARGS__)
 void		_fr_tls_log_certificate_chain_marker(char const *file, int line,
 						     request_t *request, fr_log_type_t log_type, STACK_OF(X509) *chain,
 						     X509 *leaf, X509 *marker);
 
-#define		fr_tls_log_certificate_chain_marker(_request, _log_type, _chain, _leaf, _marker) \
-			_fr_tls_log_certificate_chain_marker( __FILE__, __LINE__, _request, _log_type, _chain, _leaf, _marker)
+#define		fr_tls_log_x509_objects(...) \
+			_fr_tls_log_x509_objects( __FILE__, __LINE__, ## __VA_ARGS__)
+void		_fr_tls_log_x509_objects(char const *file, int line,
+					 request_t *request, fr_log_type_t log_type,
+					 STACK_OF(X509_OBJECT) *objects);
 
 int		fr_tls_log_io_error(request_t *request, int err, char const *msg, ...)
 				    CC_HINT(format (printf, 3, 4));

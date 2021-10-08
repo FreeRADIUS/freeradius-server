@@ -38,6 +38,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <openssl/rand.h>
 #include <openssl/dh.h>
+#include <openssl/x509v3.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 #  include <openssl/provider.h>
 #endif
@@ -240,7 +241,7 @@ static int tls_ctx_verify_chain_member(fr_unix_time_t *expires_first, X509 **sel
 	 return 0;
 }
 
-static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain)
+static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain, bool allow_multi_self_signed)
 {
 	char		*password;
 
@@ -371,6 +372,8 @@ static int tls_ctx_load_cert_chain(SSL_CTX *ctx, fr_tls_chain_conf_t *chain)
 			return -1;
 		}
 
+		if (allow_multi_self_signed) self_signed = NULL;
+
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 		for (i = sk_X509_num(our_chain); i > 0 ; i--) {
@@ -382,6 +385,8 @@ DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 			if (tls_ctx_verify_chain_member(&expires_first, &self_signed,
 							ctx, sk_X509_value(our_chain, i - 1),
 							chain->verify_mode) < 0) return -1;
+
+			if (allow_multi_self_signed) self_signed = NULL;
 		}
 DIAG_ON(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
@@ -591,16 +596,10 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 {
 	SSL_CTX		*ctx;
 	X509_STORE	*cert_vpstore;
-	X509_STORE	*chain_store;
-	X509_STORE 	*verify_store;
+	X509_STORE	*verify_store;
 	int		verify_mode = SSL_VERIFY_NONE;
 	int		ctx_options = 0;
 
-	/*
-	 *	This addresses memory leaks in OpenSSL 1.0.2
-	 *	at the cost of the server occasionally
-	 *	crashing on exit.
-	 */
 	ctx = SSL_CTX_new(SSLv23_method());
 	if (!ctx) {
 		fr_tls_log_error(NULL, "Failed creating TLS context");
@@ -732,35 +731,54 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 	}
 
 	/*
-	 *	If we're using a sufficiently new version of
-	 *	OpenSSL, initialise different stores for creating
-	 *	the certificate chains we present, and for
-	 *	holding certificates to verify the chain presented
-	 *	by the peer.
+	 *	Initialise a separate store for verifying user
+	 *      certificates.
 	 *
-	 *	If we don't do this, a single store is used for
-	 *	both functions, which is confusing and annoying.
-	 *
-	 *	We use the set0 variant so that the stores are
-	 *	freed at the same time as the SSL_CTX.
+	 *      This makes the configuration cleaner as there's
+	 *	no mixing of chain certs and user certs.
 	 */
-	if (!conf->auto_chain) {
-		MEM(chain_store = X509_STORE_new());
-		SSL_CTX_set0_chain_cert_store(ctx, chain_store);
+	MEM(verify_store = X509_STORE_new());
 
-		MEM(verify_store = X509_STORE_new());
-		SSL_CTX_set0_verify_cert_store(ctx, verify_store);
-	}
+	/* Sets OpenSSL's (CERT *)->verify_store, overring (SSL_CTX *)->cert_store */
+	SSL_CTX_set0_verify_cert_store(ctx, verify_store);
+
+	/* This isn't accessible to use later, i.e. there's no SSL_CTX_get0_verify_cert_store */
+	SSL_CTX_set_ex_data(ctx, FR_TLS_EX_CTX_INDEX_VERIFY_STORE, verify_store);
 
 	/*
 	 *	Load the CAs we trust
 	 */
 	if (conf->ca_file || conf->ca_path) {
-		if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
+		/*
+		 *	This adds all the certificates to the store for conf->ca_file
+		 *      and adds a dynamic lookup for conf->ca_path.
+		 *
+		 *      It's also possible to add extra virtual server lookups
+		 */
+		if (!X509_STORE_load_locations(verify_store, conf->ca_file, conf->ca_path)) {
 			fr_tls_log_error(NULL, "Failed reading Trusted root CA list \"%s\"",
 				      conf->ca_file);
 			goto error;
 		}
+
+		/*
+		 *	These set the default parameters of the store when the
+		 *      store is involved in building chains.
+		 *
+		 *	- X509_PURPOSE_SSL_CLIENT ensure the purpose of the
+		 *	  client certificate is for peer authentication as
+		 *	  a client.
+		 */
+		X509_STORE_set_purpose(verify_store, X509_PURPOSE_SSL_CLIENT);
+
+		/*
+		 *	Sets the list of CAs we send to the peer if we're
+		 *	requesting a certificate.
+		 *
+		 *	This does not change the trusted certificate authorities,
+		 *	those are set above with SSL_CTX_load_verify_locations.
+		 */
+		if (conf->ca_file) SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
 	}
 
 	/*
@@ -782,7 +800,7 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 			size_t i;
 
 			for (i = 0; i < chains_conf; i++) {
-				if (tls_ctx_load_cert_chain(ctx, conf->chains[i]) < 0) goto error;
+				if (tls_ctx_load_cert_chain(ctx, conf->chains[i], false) < 0) goto error;
 			}
 		}
 
@@ -842,15 +860,6 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 			(void)SSL_CTX_set_current_cert(ctx, SSL_CERT_SET_FIRST);	/* Reset */
 		}
 	}
-
-	/*
-	 *	Sets the list of CAs we send to the peer if we're
-	 *	requesting a certificate.
-	 *
-	 *	This does not change the trusted certificate authorities,
-	 *	those are set above with SSL_CTX_load_verify_locations.
-	 */
-	if (conf->ca_file && *conf->ca_file) SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
 
 #ifdef PSK_MAX_IDENTITY_LEN
 post_ca:

@@ -92,7 +92,6 @@ static void _tls_ctx_print_cert_line(char const *file, int line,
 	}
 }
 
-
 static void _tls_ctx_print_cert_line_marker(char const *file, int line,
 					    request_t *request, fr_log_type_t log_type, int idx,
 					    X509 *cert, bool marker)
@@ -110,6 +109,23 @@ static void _tls_ctx_print_cert_line_marker(char const *file, int line,
 		fr_log(LOG_DST, log_type, file, line,
 		       "%s [%i] %s %s", marker ? ">" : " ",
 		       idx, fr_tls_utils_x509_pkey_type(cert), subject);
+	}
+}
+
+static void _tls_ctx_print_cert_line_no_idx(char const *file, int line,
+					    request_t *request, fr_log_type_t log_type, X509 *cert)
+{
+	char		subject[1024];
+
+	X509_NAME_oneline(X509_get_subject_name(cert), subject, sizeof(subject));
+	subject[sizeof(subject) - 1] = '\0';
+
+	if (request) {
+		log_request(log_type, fr_debug_lvl, request, file, line,
+			    "%s %s", fr_tls_utils_x509_pkey_type(cert), subject);
+	} else {
+		fr_log(LOG_DST, log_type, file, line,
+		       "%s %s", fr_tls_utils_x509_pkey_type(cert), subject);
 	}
 }
 
@@ -132,7 +148,7 @@ void _fr_tls_log_certificate_chain(char const *file, int line,
 	for (i = sk_X509_num(chain); i > 0 ; i--) {
 		_tls_ctx_print_cert_line(file, line, request, log_type, i, sk_X509_value(chain, i - 1));
 	}
-	_tls_ctx_print_cert_line(file, line, request, log_type, i, cert);
+	if (cert) _tls_ctx_print_cert_line(file, line, request, log_type, i, cert);
 }
 
 /** Print out the current stack of certs
@@ -155,7 +171,38 @@ void _fr_tls_log_certificate_chain_marker(char const *file, int line,
 		X509 *selected = sk_X509_value(chain, i - 1);
 		_tls_ctx_print_cert_line_marker(file, line, request, log_type, i, selected, (selected == marker));
 	}
-	_tls_ctx_print_cert_line_marker(file, line, request, log_type, i, cert, (cert == marker));
+	if (cert) _tls_ctx_print_cert_line_marker(file, line, request, log_type, i, cert, (cert == marker));
+}
+
+/** Print out the current stack of X509 objects (certificates only)
+ *
+ * @param[in] file		File where this function is being called.
+ * @param[in] line		Line where this function is being called.
+ * @param[in] request		Current request, may be NULL.
+ * @param[in] log_type		The type of log message to produce L_INFO, L_ERR, L_DBG etc...
+ * @param[in] objects		A stack of X509 objects
+ */
+void _fr_tls_log_x509_objects(char const *file, int line,
+			      request_t *request, fr_log_type_t log_type,
+			      STACK_OF(X509_OBJECT) *objects)
+{
+	int i;
+
+	for (i = sk_X509_OBJECT_num(objects); i > 0 ; i--) {
+		X509_OBJECT *obj = sk_X509_OBJECT_value(objects, i - 1);
+
+		switch (X509_OBJECT_get_type(obj)) {
+		case X509_LU_X509:	/* X509 certificate */
+			_tls_ctx_print_cert_line_no_idx(file, line, request, log_type, X509_OBJECT_get0_X509(obj));
+			break;
+
+		case X509_LU_CRL:	/* Certificate revocation list */
+			continue;
+
+		default:
+			continue;
+		}
+	}
 }
 DIAG_ON(used-but-marked-unused)
 DIAG_ON(DIAG_UNKNOWN_PRAGMAS)

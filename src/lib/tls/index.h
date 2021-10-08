@@ -29,14 +29,15 @@ RCSIDH(index_h, "$Id$")
 extern "C" {
 #endif
 
-#define FR_TLS_EX_INDEX_EAP_SESSION 	(10)
-#define FR_TLS_EX_INDEX_CONF		(11)
-#define FR_TLS_EX_INDEX_REQUEST		(12)
-#define FR_TLS_EX_INDEX_IDENTITY	(13)
-#define FR_TLS_EX_INDEX_STORE		(14)
-#define FR_TLS_EX_INDEX_TLS_SESSION	(15)
-#define FR_TLS_EX_INDEX_TALLOC		(16)
+#define FR_TLS_EX_INDEX_EAP_SESSION 		(10)
+#define FR_TLS_EX_INDEX_CONF			(11)
+#define FR_TLS_EX_INDEX_REQUEST			(12)
+#define FR_TLS_EX_INDEX_IDENTITY		(13)
+#define FR_TLS_EX_INDEX_OCSP_STORE		(14)
+#define FR_TLS_EX_INDEX_TLS_SESSION		(16)
+#define FR_TLS_EX_INDEX_TALLOC			(17)
 
+#define FR_TLS_EX_CTX_INDEX_VERIFY_STORE	(20)
 #ifdef __cplusplus
 }
 #endif

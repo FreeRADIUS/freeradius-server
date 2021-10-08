@@ -30,6 +30,7 @@
 
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/pair.h>
+#include <freeradius-devel/tls/log.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/subrequest.h>
@@ -65,6 +66,41 @@ bool verify_applies(fr_tls_verify_mode_t mode, int depth, int untrusted)
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
+
+/** Print verbose humanly readable messages about why certificate validation failed
+ *
+ */
+static void tls_verify_error_detail(request_t *request, SSL_CTX *ctx, int err)
+{
+	X509_STORE	*store = SSL_CTX_get_ex_data(ctx, FR_TLS_EX_CTX_INDEX_VERIFY_STORE);
+
+	switch (err) {
+	/*
+	 *	We linked the provided cert to at least one
+	 *	other in a chain, but the chain doesn't terminate
+	 *	in a root CA.
+	 */
+	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
+		FALL_THROUGH;
+
+	/*
+	 *	We failed to link the provided cert to any
+	 *	other local certificates in the chain.
+	 */
+	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
+		RDEBUG2("Static certificates in verification store are");
+		if (RDEBUG_ENABLED2) {
+			RINDENT();
+			fr_tls_log_x509_objects(request, L_DBG, X509_STORE_get0_objects(store));
+			REXDENT();
+		}
+		break;
+
+	default:
+		break;
+	}
+}
+
 /** Validates a certificate using custom logic
  *
  * Before trusting a certificate, we make sure that the certificate is
@@ -94,6 +130,8 @@ DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 {
 	X509			*cert;
+
+	SSL_CTX			*ssl_ctx;
 	SSL			*ssl;
 	fr_tls_session_t	*tls_session;
 	int			err, depth;
@@ -114,6 +152,7 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	 *	and the application specific data stored into the SSL object.
 	 */
 	ssl = X509_STORE_CTX_get_ex_data(x509_ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
+	ssl_ctx = SSL_get_SSL_CTX(ssl);
 	conf = fr_tls_session_conf(ssl);
 	tls_session = talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
 	request = fr_tls_session_request(tls_session->ssl);
@@ -159,10 +198,13 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		if (!verify_applies(conf->verify.mode, depth, untrusted) ||
 		    ((conf->verify.allow_expired_crl) && (err == X509_V_ERR_CRL_HAS_EXPIRED))) {
 			RDEBUG2("Ignoring verification error - %s (%i)", p, err);
+			tls_verify_error_detail(request, ssl_ctx, err);
+
 			my_ok = 1;
 			X509_STORE_CTX_set_error(x509_ctx, 0);
 		} else {
 			RERROR("Verification error - %s (%i)", p, err);
+			tls_verify_error_detail(request, ssl_ctx, err);
 			goto done;
 		}
 	}
@@ -283,6 +325,7 @@ int fr_tls_verify_cert_chain(request_t *request, SSL *ssl)
 	int		verify;
 	int		ret = 1;
 
+	SSL_CTX 	*ssl_ctx;
 	STACK_OF(X509)	*chain;
 	X509		*cert;
 	X509_STORE	*store;
@@ -298,10 +341,27 @@ int fr_tls_verify_cert_chain(request_t *request, SSL *ssl)
 #endif
 	if (!cert) return 1;
 
+	ssl_ctx = SSL_get_SSL_CTX(ssl);
 	store_ctx = X509_STORE_CTX_new();
 	chain = SSL_get_peer_cert_chain(ssl);			/* Does not increase ref count */
-	store = SSL_CTX_get_cert_store(SSL_get_SSL_CTX(ssl));	/* Does not increase ref count */
+	store = SSL_CTX_get_ex_data(ssl_ctx, FR_TLS_EX_CTX_INDEX_VERIFY_STORE);	/* Gets the verification store */
 
+	/*
+	 *	This sets up a store_ctx for doing peer certificate verification.
+	 *
+	 *	store_ctx	- Is the ctx to initialise
+	 *	store		- Is an X509_STORE of implicitly
+	 *			  trusted certificates.  Here we're using
+	 *			  the verify store that was created when we
+	 *			  allocated the SSL_CTX.
+	 *	cert		- Is the certificate to validate.
+	 *	chain		- Is any other certificates the peer provided
+	 *			  us in order to build a chain from a trusted
+	 *      		  root or intermediary to its leaf (cert).
+	 *
+	 *	Note: SSL_CTX_get_cert_store() returns the ctx->cert_store, which
+	 *      is not the same as the verification cert store.
+	 */
 	X509_STORE_CTX_init(store_ctx, store, cert, chain);
 	X509_STORE_CTX_set_ex_data(store_ctx, SSL_get_ex_data_X509_STORE_CTX_idx(), ssl);
 	X509_STORE_CTX_set_verify_cb(store_ctx, fr_tls_verify_cert_cb);
