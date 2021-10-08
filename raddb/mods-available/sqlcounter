@@ -22,20 +22,20 @@
 #  	reset = 10h (reset every 10 hours)
 #  	reset = 12  (reset every 12 days)
 #
-#  The 'reset_day' parameter defines which month day should
-#  reset the 'monthly' counter.
+#  The 'reset_day' parameter defines which day of the month the
+#  'monthly' counter should be reset; valid values are 1 to 28.
 #
 #  The 'key' parameter specifies the unique identifier for the
 #  counter records (usually 'User-Name').
 #
 #  The 'query' parameter specifies the SQL query used to get
-#  the current Counter value from the database. There are 2
+#  the current Counter value from the database. There are four
 #  parameters that can be used in the query:
 #
-#		%%b	unix time value of beginning of reset period.
-#		%%e	unix time value of end of reset period.
-#		%%k	value of 'key' parameter.
-#		%%r	configured reset day.
+#	%%b	unix time value of beginning of reset period.
+#	%%e	unix time value of end of reset period.
+#	%%k	value of 'key' parameter.
+#	%%r	day of month the counter should be reset.
 #
 #  The 'check_name' parameter is the name of the 'check'
 #  attribute to use to access the counter in the 'users' file
@@ -87,6 +87,7 @@ sqlcounter monthlycounter {
 	reply_name = Session-Timeout
 	key = User-Name
 	reset = monthly
+	reset_day = 1
 
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
 }

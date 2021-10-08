@@ -507,7 +507,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->reset_time = 0;
 
 	if (!(inst->reset_day >= 1 && inst->reset_day <= 28)) {
-		cf_log_err_cs(conf, "Invalid reset_day '%d', It must be between 1 ... 28", inst->reset_day);
+		cf_log_err_cs(conf, "Invalid reset_day '%d', valid range is from 1 to 28", inst->reset_day);
 		return -1;
 	}
 
