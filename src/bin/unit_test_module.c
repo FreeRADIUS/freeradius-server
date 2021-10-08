@@ -224,7 +224,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client
 		 *	but we don't support that here.
 		 */
 		if (vp->type == VT_XLAT) {
-			vp->vp_strvalue = vp->xlat;
+			fr_pair_value_bstrdup_buffer_shallow(vp, vp->xlat, false);
 			vp->xlat = NULL;
 			vp->type = VT_DATA;
 		}
