@@ -995,7 +995,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	/*
 	 *	Loop over the reply attributes for the packet.
 	 */
-	fr_dcursor_talloc_iter_init(&cursor, vps, fr_radius_next_encodable, dict_radius, fr_pair_t);
+	fr_dcursor_talloc_iter_init(&cursor, fr_pair_list_order(vps), fr_radius_next_encodable, dict_radius, fr_pair_t);
 	while ((vp = fr_dcursor_current(&cursor))) {
 		VP_VERIFY(vp);
 

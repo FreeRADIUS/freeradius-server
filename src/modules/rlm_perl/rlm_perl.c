@@ -710,7 +710,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, request_t *request, fr_pair_l
 
 	RINDENT();
 	fr_pair_list_sort(vps, fr_pair_cmp_by_da);
-	for (vp = fr_dcursor_init(&cursor, vps);
+	for (vp = fr_dcursor_init(&cursor, fr_pair_list_order(vps));
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
 		fr_pair_t *next;

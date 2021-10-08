@@ -270,7 +270,7 @@ static void test_fr_pair_append(void)
 	fr_pair_append(&local_pairs, fr_pair_afrom_da(autofree, fr_dict_attr_test_tlv));
 
 	/* lets' count */
-	for (vp = fr_dcursor_init(&cursor, &local_pairs);
+	for (vp = fr_dcursor_init(&cursor, fr_pair_list_order(&local_pairs));
 		 vp;
 		 vp = fr_dcursor_next(&cursor)) count++;
 
@@ -305,7 +305,7 @@ static void test_fr_pair_prepend_by_da(void)
 	TEST_CHECK(fr_pair_prepend_by_da(ctx, NULL, &local_pairs, fr_dict_attr_test_string) == 0);
 
 	/* lets' count */
-	for (vp = fr_dcursor_init(&cursor, &local_pairs);
+	for (vp = fr_dcursor_init(&cursor, fr_pair_list_order(&local_pairs));
 		 vp;
 		 vp = fr_dcursor_next(&cursor)) {
 		TEST_CASE("Expected (vp->da == fr_dict_attr_test_string)");
@@ -433,7 +433,7 @@ static void test_fr_pair_list_copy_by_da(void)
 	TEST_CHECK(fr_pair_list_copy_by_da(autofree, &local_pairs, &test_pairs, fr_dict_attr_test_string, 0) > 0);
 
 	TEST_CASE("The 'local_pairs' should have only fr_dict_attr_test_string");
-	for (vp = fr_dcursor_init(&cursor, &local_pairs);
+	for (vp = fr_dcursor_init(&cursor, fr_pair_list_order(&local_pairs));
 		 vp;
 		 vp = fr_dcursor_next(&cursor)) {
 		TEST_CASE("Validating VP_VERIFY()");
@@ -458,7 +458,7 @@ static void test_fr_pair_list_copy_by_ancestor(void)
 	TEST_CHECK(fr_pair_list_copy_by_ancestor(autofree, &local_pairs, &test_pairs, fr_dict_attr_test_tlv, 0) > 0);
 
 	TEST_CASE("The 'local_pairs' should have only fr_dict_attr_test_tlv_string (ancestor of 'Test-TLV-Root'");
-	for (vp = fr_dcursor_init(&cursor, &local_pairs);
+	for (vp = fr_dcursor_init(&cursor, fr_pair_list_order(&local_pairs));
 		 vp;
 		 vp = fr_dcursor_next(&cursor)) {
 		TEST_CASE("Validating VP_VERIFY()");
@@ -504,7 +504,7 @@ static void test_fr_pair_list_sort(void)
 	fr_pair_list_sort(&local_pairs, fr_pair_cmp_by_da);
 
 	TEST_CASE("1st (da == fr_dict_attr_test_string)");
-	TEST_CHECK((vp = fr_dcursor_init(&cursor, &local_pairs)) != NULL);
+	TEST_CHECK((vp = fr_dcursor_init(&cursor, fr_pair_list_order(&local_pairs))) != NULL);
 	TEST_CHECK(vp && vp->da == fr_dict_attr_test_string);
 
 	TEST_CASE("2nd (da == fr_dict_attr_test_octets)");

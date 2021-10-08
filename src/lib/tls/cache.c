@@ -136,7 +136,7 @@ static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess)
 	 *	Encode the session-state contents and
 	 *	add it to the ticket.
 	 */
-	for (vp = fr_dcursor_init(&dcursor, &request->session_state_pairs);
+	for (vp = fr_dcursor_init(&dcursor, fr_pair_list_order(&request->session_state_pairs));
 	     vp;
 	     vp = fr_dcursor_current(&dcursor)) {
 		slen = fr_internal_encode_pair(&dbuff, &dcursor, NULL);

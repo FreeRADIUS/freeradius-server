@@ -170,7 +170,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 	foreach->request = request;
 	foreach->depth = foreach_depth;
 	fr_pair_list_append(&foreach->vps, &vps);
-	fr_dcursor_talloc_init(&foreach->cursor, &foreach->vps, fr_pair_t);
+	fr_dcursor_talloc_init(&foreach->cursor, fr_pair_list_order(&foreach->vps), fr_pair_t);
 #ifndef NDEBUG
 	foreach->indent = request->log.unlang_indent;
 #endif

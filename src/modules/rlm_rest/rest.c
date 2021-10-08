@@ -2031,7 +2031,7 @@ do {\
 
 	case REST_HTTP_BODY_POST:
 		rest_request_init(section, request, &ctx->request);
-		fr_dcursor_init(&(ctx->request.cursor), &request->request_pairs);
+		fr_dcursor_init(&(ctx->request.cursor), fr_pair_list_order(&request->request_pairs));
 
 		if (rest_request_config_body(inst, section, request, randle, rest_encode_post) < 0) return -1;
 

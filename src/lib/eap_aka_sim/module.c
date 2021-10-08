@@ -306,7 +306,7 @@ unlang_action_t eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *m
 	case FR_EAP_METHOD_SIM:
 	case FR_EAP_METHOD_AKA:
 	case FR_EAP_METHOD_AKA_PRIME:
-		fr_dcursor_init(&cursor, &request->request_pairs);
+		fr_dcursor_init(&cursor, fr_pair_list_order(&request->request_pairs));
 
 		decode_ctx = mod_session->ctx;
 		decode_ctx.hmac_extra = mod_session->response_hmac_extra;

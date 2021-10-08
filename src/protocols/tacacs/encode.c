@@ -258,7 +258,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 	/*
 	 *	Find the first attribute which is parented by TACACS-Packet.
 	 */
-	for (vp = fr_dcursor_init(&cursor, vps);
+	for (vp = fr_dcursor_init(&cursor, fr_pair_list_order(vps));
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
 		if (vp->da->parent == attr_tacacs_packet) break;

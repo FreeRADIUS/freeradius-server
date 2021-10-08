@@ -89,7 +89,7 @@ static bool chbind_build_response(request_t *request, CHBIND_REQ *chbind)
 	ptr += 4;
 	end = ptr + total;
 
-	fr_dcursor_init(&cursor, &request->reply_pairs);
+	fr_dcursor_init(&cursor, fr_pair_list_order(&request->reply_pairs));
 	while ((vp = fr_dcursor_current(&cursor)) && (ptr < end)) {
 		/*
 		 *	Skip things which shouldn't be in channel bindings.

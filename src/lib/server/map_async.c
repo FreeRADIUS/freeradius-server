@@ -730,7 +730,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			return 0;	/* No pairs returned */
 		}
 
-		(void)fr_dcursor_init(&from, &vp_head);
+		(void)fr_dcursor_init(&from, fr_pair_list_order(&vp_head));
 		while ((vp = fr_dcursor_remove(&from))) {
 			map_t *mod;
 			tmpl_rules_t rules;
@@ -1052,9 +1052,9 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 			map_list_mod_to_vps(parent, &vp_from, vlm);
 			if (fr_pair_list_empty(&vp_from)) goto finish;
 
-			fr_dcursor_init(&from, &vp_from);
-			fr_dcursor_init(&to_insert, &vp_to_insert);
-			fr_dcursor_init(&to, vp_list);
+			fr_dcursor_init(&from, fr_pair_list_order(&vp_from));
+			fr_dcursor_init(&to_insert, fr_pair_list_order(&vp_to_insert));
+			fr_dcursor_init(&to, fr_pair_list_order(vp_list));
 
 			while ((vp = fr_dcursor_remove(&from))) {
 				for (vp_to = fr_dcursor_head(&to);
@@ -1260,7 +1260,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 			map_list_mod_to_vps(parent, &vp_from, vlm);
 			if (fr_pair_list_empty(&vp_from)) goto finish;
 
-			fr_dcursor_init(&from, &vp_from);
+			fr_dcursor_init(&from, fr_pair_list_order(&vp_from));
 
 			fr_dcursor_merge(&list, &from);	/* Merge first (insert after current attribute) */
 			fr_dcursor_free_item(&list);	/* Then free the current attribute */

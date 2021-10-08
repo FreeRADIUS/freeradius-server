@@ -78,6 +78,11 @@ typedef struct {
         fr_dlist_head_t		order;				//!< Maintains the relative order of pairs in a list.
 } fr_pair_list_t;
 
+static inline fr_dlist_head_t _CONST *fr_pair_list_order(fr_pair_list_t _CONST *list)
+{
+	return &list->order;
+}
+
 /** Stores an attribute, a value and various bits of other data
  *
  * fr_pair_ts are the main data structure used in the server

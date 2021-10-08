@@ -1280,7 +1280,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		 */
 		if (tmpl_copy_pairs(ctx, &found, request, map->rhs) < 0) return 0;
 
-		vp = fr_dcursor_init(&from, &found);
+		vp = fr_dcursor_init(&from, fr_pair_list_order(&found));
 
 		/*
 		 *  Src/Dst attributes don't match, convert src attributes

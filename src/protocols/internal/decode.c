@@ -98,7 +98,7 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 	 *	we need to do an intermediary TLV
 	 *	VP to retain the nesting structure.
 	 */
-	if (fr_dcursor_init(&cursor, &children) && fr_dcursor_next(&cursor)) {
+	if (fr_dcursor_init(&cursor, fr_pair_list_order(&children)) && fr_dcursor_next(&cursor)) {
 		fr_pair_t	*tlv;
 
 		tlv = fr_pair_afrom_da(ctx, parent_da);

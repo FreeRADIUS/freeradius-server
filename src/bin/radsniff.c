@@ -945,7 +945,7 @@ static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *vp
 
 	last_match = fr_pair_list_head(vps);
 
-	fr_dcursor_init(&list_cursor, vps);
+	fr_dcursor_init(&list_cursor, fr_pair_list_order(vps));
 	for (i = 0; i < num; i++) {
 		match = fr_dcursor_filter_next(&list_cursor, fr_pair_matches_da, da[i]);
 		if (!match) {

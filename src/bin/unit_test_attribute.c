@@ -1672,7 +1672,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 #endif
 		}
 
-		for (vp = fr_dcursor_talloc_iter_init(&cursor, &head,
+		for (vp = fr_dcursor_talloc_iter_init(&cursor, fr_pair_list_order(&head),
 						     tp->next_encodable ? tp->next_encodable : fr_proto_next_encodable,
 						     cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict, fr_pair_t);
 		     vp;
@@ -2021,7 +2021,7 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 	ctx.ctx = cc->tmp_ctx;
 	ctx.parent = fr_dict_root(cc->tmpl_rules.dict_def);
 	ctx.cursor = &cursor;
-	fr_dcursor_init(&cursor, &head);
+	fr_dcursor_init(&cursor, fr_pair_list_order(&head));
 
 	p = in;
 	end = in + inlen;

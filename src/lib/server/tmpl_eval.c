@@ -823,7 +823,7 @@ void _tmpl_cursor_child_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_at
 		.func = _tmpl_cursor_child_eval,
 		.list_ctx = list_ctx
 	};
-	fr_dcursor_init(&ns->group.cursor, list);
+	fr_dcursor_init(&ns->group.cursor, fr_pair_list_order(list));
 	fr_dlist_insert_tail(&cc->nested, ns);
 }
 
@@ -1020,7 +1020,7 @@ static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
 				list_head = &vp->vp_group;
 				_tmpl_pair_cursor_init(vp, list_head, ar, cc);
 				curr = fr_pair_list_head(list_head);
-				list = &list_head->order;
+				list = UNCONST(fr_dlist_head_t *, fr_pair_list_order(list_head));
 				continue;
 			}
 
@@ -1149,7 +1149,7 @@ fr_pair_t *tmpl_pair_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_pair_cursor_ctx
 	/*
 	 *	Get the first entry from the tmpl
 	 */
-	vp = fr_dcursor_talloc_iter_init(cursor, list_head, _tmpl_cursor_next, cc, fr_pair_t);
+	vp = fr_dcursor_talloc_iter_init(cursor, fr_pair_list_order(list_head), _tmpl_cursor_next, cc, fr_pair_t);
 	if (!vp) {
 		if (err) {
 			*err = -1;

@@ -862,7 +862,7 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 	packet_ctx.original = original;
 	packet_ctx.original_length = length;
 
-	fr_dcursor_talloc_iter_init(&cursor, vps, fr_dhcpv6_next_encodable, dict_dhcpv6, fr_pair_t);
+	fr_dcursor_talloc_iter_init(&cursor, fr_pair_list_order(vps), fr_dhcpv6_next_encodable, dict_dhcpv6, fr_pair_t);
 	while ((fr_dbuff_extend(&frame_dbuff) > 0) && (fr_dcursor_current(&cursor) != NULL)) {
 		slen = fr_dhcpv6_encode_option(&frame_dbuff, &cursor, &packet_ctx);
 		switch (slen) {

@@ -645,7 +645,7 @@ fr_radius_packet_code_t eap_ttls_process(request_t *request, eap_session_t *eap_
 	/*
 	 *	Add the tunneled attributes to the request request.
 	 */
-	fr_dcursor_init(&cursor, &request->request_pairs);
+	fr_dcursor_init(&cursor, fr_pair_list_order(&request->request_pairs));
 	if (eap_ttls_decode_pair(request, request->request_ctx, &cursor, fr_dict_root(fr_dict_internal()),
 				 data, data_len, tls_session->ssl) < 0) {
 		RPEDEBUG("Decoding TTLS TLVs failed");

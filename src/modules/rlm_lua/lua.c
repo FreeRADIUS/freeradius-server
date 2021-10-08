@@ -506,7 +506,7 @@ static int _lua_list_iterator_init(lua_State *L)
 		REDEBUG("Failed allocating user data to hold cursor");
 		return -1;
 	}
-	fr_dcursor_init(cursor, &request->request_pairs);	/* @FIXME: Shouldn't use list head */
+	fr_dcursor_init(cursor, fr_pair_list_order(&request->request_pairs));	/* @FIXME: Shouldn't use list head */
 
 	lua_pushlightuserdata(L, cursor);
 	lua_pushcclosure(L, _lua_list_iterator, 1);
@@ -719,7 +719,7 @@ static void _lua_fr_request_register(lua_State *L, request_t *request)
 
 		/* Attribute list table */
 		fr_pair_list_sort(&request->request_pairs, fr_pair_cmp_by_da);
-		fr_dcursor_init(&cursor, &request->request_pairs);
+		fr_dcursor_init(&cursor, fr_pair_list_order(&request->request_pairs));
 
 		/*
 		 *	Setup the environment

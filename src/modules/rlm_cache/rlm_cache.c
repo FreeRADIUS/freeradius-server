@@ -774,7 +774,7 @@ finish:
 	/*
 	 *	Clear control attributes
 	 */
-	for (vp = fr_dcursor_init(&cursor, &request->control_pairs);
+	for (vp = fr_dcursor_init(&cursor, fr_pair_list_order(&request->control_pairs));
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
 	     again:

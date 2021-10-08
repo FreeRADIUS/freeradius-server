@@ -299,7 +299,7 @@ static int _state_entry_free(fr_state_entry_t *entry)
 	 *	by the state context.
 	 */
 	if (entry->ctx) {
-		for (vp = fr_dcursor_init(&cursor, &entry->ctx->children);
+		for (vp = fr_dcursor_init(&cursor, fr_pair_list_order(&entry->ctx->children));
 		     vp;
 		     vp = fr_dcursor_next(&cursor)) {
 			fr_assert(entry->ctx == talloc_parent(vp));
