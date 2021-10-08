@@ -106,9 +106,9 @@ struct value_box_s {
 		 */
 		struct {
 			union {
-				char const	*strvalue;	//!< Pointer to UTF-8 string.
-				uint8_t const	*octets;	//!< Pointer to binary string.
-				void		*ptr;		//!< generic pointer.
+				char const 	* _CONST strvalue;	//!< Pointer to UTF-8 string.
+				uint8_t const 	* _CONST octets;	//!< Pointer to binary string.
+				void 		* _CONST ptr;		//!< generic pointer.
 			};
 		};
 
