@@ -152,8 +152,6 @@ static CONF_PARSER tls_verify_config[] = {
 CONF_PARSER fr_tls_server_config[] = {
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_VOID, fr_tls_conf_t, virtual_server), .func = virtual_server_cf_parse },
 
-	{ FR_CONF_OFFSET("auto_chain", FR_TYPE_BOOL, fr_tls_conf_t, auto_chain), .dflt = "yes" },
-
 	{ FR_CONF_OFFSET("chain", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, fr_tls_conf_t, chains),
 	  .subcs_size = sizeof(fr_tls_chain_conf_t), .subcs_type = "fr_tls_chain_conf_t",
 	  .subcs = tls_chain_config, .ident2 = CF_IDENT_ANY },

@@ -143,10 +143,6 @@ struct fr_tls_conf_s {
 	uint32_t	verify_depth;			//!< Maximum number of certificates we can traverse
 							//!< when attempting to reach the presented certificate
 							//!< from our Root CA.
-	bool		auto_chain;			//!< Allow OpenSSL to build certificate chains
-							//!< from all certificates it has available.
-							//!< If false, the complete chain must be provided in
-							//!< certificate file.
 	bool		disable_single_dh_use;
 
 	float		tls_max_version;		//!< Maximum TLS version allowed.

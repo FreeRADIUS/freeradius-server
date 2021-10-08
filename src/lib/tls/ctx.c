@@ -719,8 +719,11 @@ SSL_CTX *fr_tls_ctx_alloc(fr_tls_conf_t const *conf, bool client)
 		 *	unless we tell it to not do that.  The problem is that
 		 *	it sometimes gets the chains right from a certificate
 		 *	signature view, but wrong from the clients view.
+		 *
+		 *	It's better just to have users specify the complete
+		 *	chains.
 		 */
-		if (!conf->auto_chain) mode |= SSL_MODE_NO_AUTO_CHAIN;
+		mode |= SSL_MODE_NO_AUTO_CHAIN;
 
 		if (client) {
 			mode |= SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER;
