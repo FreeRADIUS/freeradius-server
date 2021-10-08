@@ -101,8 +101,6 @@ struct value_pair_s {
 								///< received or inserted.
 
 
-	value_type_t		type;				//!< Type of pointer in value union.
-
 	/*
 	 *	Pairs can have children or data but not both.
 	 */
@@ -118,6 +116,8 @@ struct value_pair_s {
 		fr_token_t		op;			//!< Operator to use when moving or inserting
 								//!< valuepair into a list.
 		char const 		*xlat;			//!< Source string for xlat expansion.
+
+		value_type_t		type;			//!< Type of pointer in value union.
 	};
 };
 
