@@ -1151,7 +1151,7 @@ static ssize_t dns_label_decode(uint8_t const *packet, uint8_t const *end, uint8
 	/*
 	 *	Pointer, which points somewhere in the packet.
 	 */
-	if (*p > 63) {
+	if (*p >= 0xc0) {
 		uint16_t offset;
 
 		if ((end - packet) < 2) {
@@ -1169,18 +1169,9 @@ static ssize_t dns_label_decode(uint8_t const *packet, uint8_t const *end, uint8
 	}
 
 	/*
-	 *	Note that the label can point to anywhere in the
-	 *	packet, including things we haven't checked yet.
-	 *	While the caller checks against the dns_labels_t
-	 *	buffer, it only checks that the pointer points within
-	 *	the correct offset.  It doesn't check that the pointer
-	 *	points to the start of a label string.  It could
-	 *	instead point to the 'e' of 'example.com'.
-	 *
-	 *	As a result, we have to re-validate everything here,
-	 *	too.
+	 *	0b10 and 0b10 are forbidden, and pointers can't point to other pointers.
 	 */
-	if (*p >= 0xc0) return -(p - packet);
+	if (*p > 63) return -(p - packet);
 
 	if ((p + *p + 1) > end) {
 		return -(p - packet);
