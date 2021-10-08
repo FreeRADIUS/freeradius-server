@@ -127,7 +127,7 @@ typedef struct cf_file_t {
 } cf_file_t;
 
 CONF_SECTION *root_config = NULL;
-bool cf_new_escape = false;
+bool cf_new_escape = true;
 
 
 static int		cf_data_add_internal(CONF_SECTION *cs, char const *name, void *data,
@@ -2894,17 +2894,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			cpn->item.lineno = *lineno;
 			cpn->pass2 = pass2;
 			cf_item_add(this, &(cpn->item));
-
-			/*
-			 *	Hacks for escaping
-			 */
-			if (!cf_new_escape && !this->item.parent && value &&
-			    (strcmp(buf1, "correct_escapes") == 0) &&
-			    ((strcmp(value, "true") == 0) ||
-			     (strcmp(value, "yes") == 0) ||
-			     (strcmp(value, "1") == 0))) {
-				cf_new_escape = true;
-			}
 
 			/*
 			 *	Require a comma, unless there's a comment.
