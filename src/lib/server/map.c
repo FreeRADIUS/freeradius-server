@@ -1315,7 +1315,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		 *   and operators
 		 */
 		for (; vp; vp = fr_dcursor_next(&from)) {
-			vp->da = tmpl_da(map->lhs);
+			fr_pair_reinit_from_da(&found, vp, tmpl_da(map->lhs));
 			vp->op = map->op;
 		}
 		fr_pair_list_append(out, &found);

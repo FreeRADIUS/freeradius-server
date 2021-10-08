@@ -151,6 +151,7 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 	SSL			*ssl = decode_ctx;
 	fr_dict_t const		*dict_radius;
 	fr_dict_attr_t const   	*attr_radius;
+	fr_dict_attr_t const	*da;
 
 	dict_radius = fr_dict_by_protocol_name("radius");
 	fr_assert(dict_radius != NULL);
@@ -218,7 +219,11 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 					goto error;
 				}
 
-				MEM(vp->da = fr_dict_unknown_afrom_fields(vp, attr_vendor_specific, vendor, attr));
+				MEM(da = fr_dict_unknown_afrom_fields(vp, attr_vendor_specific, vendor, attr));
+				if (fr_pair_reinit_from_da(NULL, vp, da) < 0) {
+					talloc_free(vp);
+					goto error;
+				}
 				goto do_value;
 			}
 		} else {
@@ -228,14 +233,23 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 		/*
 		 *	Is the attribute known?
 		 */
-		vp->da = fr_dict_attr_child_by_num(our_parent, attr);
-		if (!vp->da) {
+		da = fr_dict_attr_child_by_num(our_parent, attr);
+		if (da) {
+			if (fr_pair_reinit_from_da(NULL, vp, da) < 0) {
+				talloc_free(vp);
+				goto error;
+			}
+		} else {
 			if (flags & FR_DIAMETER_AVP_FLAG_MANDATORY) {
 				fr_strerror_printf("Mandatory bit set and no attribute %u defined for parent %s", attr, parent->name);
 				talloc_free(vp);
 				goto error;
 			}
-			MEM(vp->da = fr_dict_unknown_attr_afrom_num(vp, parent, attr));
+			MEM(da = fr_dict_unknown_attr_afrom_num(vp, parent, attr));
+			if (fr_pair_reinit_from_da(NULL, vp, da) < 0) {
+				talloc_free(vp);
+				goto error;
+			}
 		}
 
 do_value:

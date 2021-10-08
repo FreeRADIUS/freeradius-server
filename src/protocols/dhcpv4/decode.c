@@ -109,7 +109,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 	 *	caller to clean up the unknown da.
 	 */
 	if (da->flags.is_unknown) {
-		vp->da = fr_dict_unknown_attr_afrom_da(vp, da);
+		fr_pair_reinit_from_da(NULL, vp, fr_dict_unknown_attr_afrom_da(vp, da));
 		da = vp->da;
 	}
 

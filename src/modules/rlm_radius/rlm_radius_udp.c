@@ -2771,13 +2771,14 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, void 
 	talloc_set_destructor(r, _udp_result_free);
 #endif
 
-	MEM(u = talloc(treq, udp_request_t));
-	*u = (udp_request_t){
-		.code = request->packet->code,
-		.synchronous = inst->parent->synchronous,
-		.priority = request->async->priority,
-		.recv_time = request->async->recv_time
-	};
+	/*
+	 *	Can't use compound literal - const issues.
+	 */
+	MEM(u = talloc_zero(treq, udp_request_t));
+	u->code = request->packet->code;
+	u->synchronous = inst->parent->synchronous;
+	u->priority = request->async->priority;
+	u->recv_time = request->async->recv_time;
 	fr_pair_list_init(&u->extra);
 
 	r->rcode = RLM_MODULE_FAIL;

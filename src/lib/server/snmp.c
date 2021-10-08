@@ -967,18 +967,12 @@ int fr_snmp_process(request_t *request)
 		/*
 		 *	Clear out any junk values
 		 */
-		if (da->type == FR_TYPE_TLV) {
-			switch (vp->vp_type) {
-			case FR_TYPE_OCTETS:
-			case FR_TYPE_STRING:
-				talloc_free(vp->data.datum.ptr);
+		if (da->type == FR_TYPE_TLV) fr_value_box_clear(&vp->data);
 
-			FALL_THROUGH;
-			default:
-				memset(&vp->data, 0, sizeof(vp->data));
-			}
+		if (fr_pair_reinit_from_da(&request->request_pairs, vp, da) < 0) {
+			RPWARN("Failed converting unknown attribute to known attribute");
+			continue;
 		}
-		vp->da = da;
 	}
 
 	for (vp = fr_dcursor_iter_by_ancestor_init(&request_cursor, &request->request_pairs, attr_snmp_root);

@@ -90,10 +90,12 @@ static inline fr_dlist_head_t _CONST *fr_pair_list_order(fr_pair_list_t _CONST *
  * They also specify what behaviour should be used when the attribute is merged into a new list/tree.
  */
 struct value_pair_s {
-	fr_dict_attr_t const	*da;				//!< Dictionary attribute defines the attribute
+	fr_dict_attr_t const * _CONST da;			//!< Dictionary attribute defines the attribute
 								//!< number, vendor and type of the pair.
+								///< Note: This should not be modified outside
+								///< of pair.c except via #fr_pair_reinit_from_da.
 
-	fr_dlist_t		order_entry;			//!< Entry to maintain relative order within a list
+	fr_dlist_t _CONST	order_entry;			//!< Entry to maintain relative order within a list
 								///< of pairs.  This ensures pairs within the list
 								///< are encoded in the same order as they were
 								///< received or inserted.
@@ -194,6 +196,9 @@ fr_pair_t	*fr_pair_root_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da) CC_H
 
 /** @hidecallergraph */
 fr_pair_t	*fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da) CC_HINT(warn_unused_result) CC_HINT(nonnull(2));
+
+int		fr_pair_reinit_from_da(fr_pair_list_t *list, fr_pair_t *vp, fr_dict_attr_t const *da)
+		CC_HINT(nonnull(2, 3));
 
 fr_pair_t	*fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int attr) CC_HINT(warn_unused_result);
 

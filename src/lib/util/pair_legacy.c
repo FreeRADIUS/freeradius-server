@@ -119,10 +119,11 @@ static fr_pair_t *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
 
 	if ((fr_dict_unknown_afrom_oid_substr(vp, NULL, &n, fr_dict_root(dict), &sbuff, NULL) <= 0) ||
 					      fr_sbuff_remaining(&sbuff)) {
+	error:
 		talloc_free(vp);
 		return NULL;
 	}
-	vp->da = n;
+	if (fr_pair_reinit_from_da(NULL, vp, n) < 0) goto error;
 
 	/*
 	 *	No value, but ensure that we still set up vp->data properly.
@@ -136,14 +137,10 @@ static fr_pair_t *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		 */
 		fr_strerror_printf("Unknown attribute \"%s\" requires a hex "
 				   "string, not \"%s\"", attribute, value);
-		talloc_free(vp);
-		return NULL;
+		goto error;
 	}
 
-	if (fr_pair_value_from_str(vp, value, -1, '"', false) < 0) {
-		talloc_free(vp);
-		return NULL;
-	}
+	if (fr_pair_value_from_str(vp, value, -1, '"', false) < 0) goto error;
 
 	vp->op = (op == 0) ? T_OP_EQ : op;
 	return vp;
