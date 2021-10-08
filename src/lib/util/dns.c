@@ -940,7 +940,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 		 */
 		if ((*p > 63) && (*p < 0xc0)) {
 			fr_strerror_const("Data with invalid high bits");
-			return -(p - buf);
+			return -(p - packet);
 		}
 
 		/*
@@ -952,7 +952,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 			if ((p + 2) > end) {
 			overflow:
 				fr_strerror_const("Label overflows buffer");
-				return -(p - buf);
+				return -(p - packet);
 			}
 
 			offset = p[1];
@@ -981,8 +981,8 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 			 */
 			if (offset >= (p - packet)) {
 				fr_strerror_printf("Pointer %04x at offset %04x is an invalid forward reference",
-						   offset, (int) (p - buf));
-				return -(p - buf);
+						   offset, (int) (p - packet));
+				return -(p - packet);
 			}
 
 			/*
@@ -991,8 +991,8 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 			 */
 			if (!dns_pointer_valid(lb, offset)) {
 				fr_strerror_printf("Pointer %04x at offset %04x does not point to a DNS label",
-						   offset, (int) (p - buf));
-				return -(p - buf);
+						   offset, (int) (p - packet));
+				return -(p - packet);
 			}
 
 			q = packet + offset;
@@ -1010,8 +1010,8 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 			 */
 			if (q >= current) {
 				fr_strerror_printf("Pointer %04x at offset %04x creates a loop within a label",
-						   offset, (int) (p - buf));
-				return -(p - buf);
+						   offset, (int) (p - packet));
+				return -(p - packet);
 			}
 
 			/*
@@ -1021,8 +1021,8 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 			 */
 			if (*q > 63) {
 				fr_strerror_printf("Pointer %04x at offset %04x does not point to the start of a label",
-						   offset, (int) (p - buf));
-				return -(p - buf);
+						   offset, (int) (p - packet));
+				return -(p - packet);
 			}
 
 			/*
@@ -1030,8 +1030,8 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 			 */
 			if (!*q) {
 				fr_strerror_printf("Pointer %04x at offset %04x refers to an invalid field", offset,
-						   (int) (p - buf));
-				return -(p - buf);
+						   (int) (p - packet));
+				return -(p - packet);
 			}
 
 			/*
@@ -1067,7 +1067,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 		 */
 		if (length > 255) {
 			fr_strerror_const("Total length of labels is > 255");
-			return -(p - buf);
+			return -(p - packet);
 		}
 
 		q = p + 1;
@@ -1086,7 +1086,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 			if (!((*q == '-') || ((*q >= '0') && (*q <= '9')) ||
 			      ((*q >= 'A') && (*q <= 'Z')) || ((*q >= 'a') && (*q <= 'z')))) {
 				fr_strerror_printf("Invalid character 0x%02x in label", *q);
-				return -(q - buf);
+				return -(q - packet);
 			}
 
 			q++;
