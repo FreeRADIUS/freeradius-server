@@ -2100,15 +2100,13 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_token_t op = vp->op;
 		char *buff;
 
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+		MEM(vb = fr_value_box_alloc_null(ctx));
 
 		vp->op = T_OP_EQ;
 		fr_pair_aprint(vb, &buff, NULL, vp);
 		vp->op = op;
 
-		vb->vb_strvalue = buff;
-		vb->vb_length = talloc_array_length(buff) - 1;
-
+		fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, buff, false);
 		fr_dcursor_append(out, vb);
 	}
 	tmpl_pair_cursor_clear(&cc);
