@@ -601,13 +601,13 @@ ldap {
 #		tls_min_version = "1.2"
 	}
 
-	#  As of version 3.0, the 'pool' section has replaced the
-	#  following configuration items:
+	#  As of v3, the 'pool' section has replaced the
+	#  following v2 configuration items:
 	#
 	#  ldap_connections_number
 
-	#  The connection pool is new for 3.0, and will be used in many
-	#  modules, for all kinds of connection-related activity.
+	#
+	#  The connection pool is used to pool outgoing connections.
 	#
 	#  When the server is not threaded, the connection pool
 	#  limits are ignored, and only one connection is used.

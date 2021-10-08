@@ -108,7 +108,7 @@ eap {
 	#  We do not recommend using LEAP in new deployments.  See:
 	#  http://www.securiteam.com/tools/5TP012ACKE.html
 	#
-	#  As of 3.0.22, LEAP has been removed from the server.
+	#  LEAP is not supported.
 	#  It is insecure, and no one should be using it.
 	#
 
@@ -238,10 +238,9 @@ eap {
 	#	auto_chain = yes
 
 		#  If OpenSSL supports TLS-PSK, then we can use a
-		#  fixed PSK identity and (hex) password.  As of
-		#  3.0.18, these can be used at the same time as the
-		#  certificate configuration, but only for TLS 1.0
-		#  through 1.2.
+		#  fixed PSK identity and (hex) password.  These can
+		#  be used at the same time as the certificate
+		#  configuration, but only for TLS 1.0 through 1.2.
 		#
 		#  If PSK and certificates are configured at the same
 		#  time for TLS 1.3, then the server will warn you,
@@ -595,7 +594,7 @@ eap {
 		#	persist_dir = "${logdir}/tlscache"
 
 			#
-			#  As of 3.0.20, it is possible to partially
+			#  It is possible to partially
 			#  control which attributes exist in the
 			#  session cache.  This subsection lists
 			#  attributes which are taken from the reply,

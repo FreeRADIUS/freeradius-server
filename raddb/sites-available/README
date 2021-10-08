@@ -1,11 +1,9 @@
 1.  Virtual Servers.
 
-  FreeRADIUS 3.0 supports virtual servers.  This is probably the
-single largest change that is NOT backwards compatible with 1.x.
-
-  The virtual servers do NOT have to be set up with the
-"sites-available" and "sites-enabled" directories.  You can still have
-one "radiusd.conf" file, and put the server configuration there:
+  FreeRADIUS supports virtual servers. The virtual servers do NOT have
+to be set up with the "sites-available" and "sites-enabled"
+directories.  You can still have one "radiusd.conf" file, and put the
+server configuration there:
 
 	...
 	server {

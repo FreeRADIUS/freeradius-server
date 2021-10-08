@@ -24,10 +24,6 @@
 #  Operator precedence follows the normal rules.
 #  Division by zero means that the entire expression is invalid.
 #
-#  Note that in versions before 3.0.5, the expression
-#  was parsed strictly left to right, and ignored operator
-#  precedence.
-#
 #  It also allows unary negation:	-1
 #  And twos complement:			~1
 #

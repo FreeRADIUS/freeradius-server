@@ -1,13 +1,13 @@
-Upgrading to Version 3.0
+Upgrading to Version 3.2
 ========================
 
 .. contents:: Sections
    :depth: 2
 
 .. important:: 
-   The configuration for 3.0 is *largely* compatible with the 2.x.x
-   configuration.  However, it is NOT possible to simply use the 2.x.x
-   configuration as-is.  Instead, you should re-create it.
+   The configuration for 3.2 is compatible with 3.0.  The only change
+   is that the `correct_escapes` configuration has been removed, and
+   is not the default.
 
 Security
 --------
@@ -32,7 +32,7 @@ Naming
 ------
 
 Many names used by configuration items were inconsistent in earlier
-versions of the server.  These names have been unified in version 3.0.
+versions of the server.  These names have been unified in version 3.
 
 If a file is being referenced or created the config item ``filename``
 is used.
@@ -64,7 +64,7 @@ messages.
 Modules Directory
 -----------------
 
-As of version 3.0, the ``modules/`` directory no longer exists.
+As of version 3, the ``modules/`` directory no longer exists.
 
 Instead, all "example" modules have been put into the
 ``mods-available/`` directory.  Modules which can be loaded by the
@@ -176,7 +176,7 @@ SQL queries.  Previously, the mapping was fixed.  Any "new" accounting
 type was ignored by the module.  Now, support for any accounting type
 can be added by just adding a new target, as below.
 
-Queries from v2.x.x may be manually copied to the new v3.0
+Queries from v2 may be manually copied to the new v3
 ``dialup.conf`` file (``raddb/mods-config/sql/main/<dialect>/queries.conf``).
 When doing this you may also need to update references to the
 accounting tables, as their definitions will now be outside of
@@ -193,8 +193,8 @@ The mapping from old "fixed" query to new "dynamic" query is as follows::
   accounting_stop_query_alt		+> accounting.type.stop.query
   postauth_query			-> post-auth.query
 
-Alternatively a 2.x.x config may be patched to work with the
-3.0 module by adding the following::
+Alternatively a v2 config may be patched to work with the
+v3 module by adding the following::
 
   accounting {
 	reference = "%{tolower:type.%{Acct-Status-Type}.query}"
@@ -256,15 +256,15 @@ You will need to read your old LDAP configuration, and migrate it
 manually to the new configuration.  Simply copying the old
 configuration WILL NOT WORK.
 
-Users upgrading from 2.x.x who used to call the ldap module in
+Users upgrading from v2 who used to call the ldap module in
 ``post-auth`` should now set ``edir_autz = yes``, and remove the ``ldap``
 module from the ``post-auth`` section.
 
 rlm_ldap and LDAP-Group
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-In 2.x.x the registration of the ``LDAP-Group`` pair comparison was done
-by the last instance of rlm_ldap to be instantiated. In 3.0 this has
+In v2 the registration of the ``LDAP-Group`` pair comparison was done
+by the last instance of rlm_ldap to be instantiated. In v3 this has
 changed so that only the default ``ldap {}`` instance registers
 ``LDAP-Group``.
 
@@ -274,7 +274,7 @@ no changes will be needed.
 rlm_ldap authentication
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-In 2.x.x the LDAP module had a ``set_auth_type`` configuration item,
+In v2 the LDAP module had a ``set_auth_type`` configuration item,
 which forced ``Auth-Type := ldap``. This was removed in 3.x.x as it
 often did not work, and was not consistent with the rest of the
 server.  We generally recommend that LDAP should be used as a
@@ -351,7 +351,7 @@ passwords into a database, instead of relying on ``/etc/passwd``.
 rlm_preprocess
 ~~~~~~~~~~~~~~
 
-In 2.x.x ``huntroups`` and ``users`` files were loaded from default locations
+In v2 ``huntroups`` and ``users`` files were loaded from default locations
 without being configured explicitly. Since 3.x.x you need to set
 ``huntgroups`` and ``users`` configuration item(s) in module section in order
 to get them being processed.
@@ -522,7 +522,7 @@ lifted in a future version of the server.
 PAP and User-Password
 ~~~~~~~~~~~~~~~~~~~~~
 
-From version 3.0 onwards the server no longer supports authenticating
+From version 3 onwards the server no longer supports authenticating
 against a cleartext password in the 'User-Password' attribute. Any
 occurences of this (for instance, in the users file) should now be changed
 to 'Cleartext-Password' instead.

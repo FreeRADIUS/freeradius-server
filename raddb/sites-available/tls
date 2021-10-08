@@ -333,13 +333,13 @@ listen {
 		#  when using fast session resumption.
 		#
 		cache {
-		      #
-		      #  Enable it.  The default is "no".
-		      #  Deleting the entire "cache" subsection
-		      #  Also disables caching.
-		      #
 			#
-			#  As of version 3.0.14, the session cache requires the use
+			#  Enable it.  The default is "no".
+			#  Deleting the entire "cache" subsection
+			#	  Also disables caching.
+			#
+			#
+			#  The session cache requires the use
 			#  of the "name" and "persist_dir" configuration items, below.
 			#
 			#  The internal OpenSSL session cache has been permanently

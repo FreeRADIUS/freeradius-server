@@ -227,8 +227,7 @@ rest {
 	}
 
 	#
-	#  The connection pool is new for 3.0, and will be used in many
-	#  modules, for all kinds of connection-related activity.
+	#  The connection pool is used to pool outgoing connections.
 	#
 	pool {
 		#  Connections to create during module instantiation.
