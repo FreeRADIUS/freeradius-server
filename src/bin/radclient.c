@@ -207,16 +207,18 @@ static int mschapv1_encode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 	MEM(challenge = fr_pair_afrom_da(packet, attr_ms_chap_challenge));
 
 	fr_pair_append(list, challenge);
-	challenge->vp_length = 8;
-	challenge->vp_octets = p = talloc_array(challenge, uint8_t, challenge->vp_length);
+
+	MEM(p = talloc_array(challenge, uint8_t, 8));
+	fr_pair_value_memdup_buffer_shallow(challenge, p, false);
+
 	for (i = 0; i < challenge->vp_length; i++) {
 		p[i] = fr_rand();
 	}
 
 	MEM(reply = fr_pair_afrom_da(packet, attr_ms_chap_response));
 	fr_pair_append(list, reply);
-	reply->vp_length = 50;
-	reply->vp_octets = p = talloc_array(reply, uint8_t, reply->vp_length);
+	p = talloc_array(reply, uint8_t, 50);
+	fr_pair_value_memdup_buffer_shallow(reply, p, false);
 	memset(p, 0, reply->vp_length);
 
 	p[1] = 0x01; /* NT hash */
