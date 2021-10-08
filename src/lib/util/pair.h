@@ -32,6 +32,18 @@ RCSIDH(dpair_h, "$Id$")
 extern "C" {
 #endif
 
+/*
+ *	Allow public and private versions of the same structures
+ */
+#ifdef _CONST
+#  error _CONST can only be defined in the local header
+#endif
+#ifndef _PAIR_PRIVATE
+#  define _CONST const
+#else
+#  define _CONST
+#endif
+
 #ifdef WITH_VERIFY_PTR
 #  define VP_VERIFY(_x)		fr_pair_verify(__FILE__, __LINE__, _x)
 #  define LIST_VERIFY(_x)	fr_pair_list_verify(__FILE__, __LINE__, NULL, _x)
@@ -423,6 +435,7 @@ typedef struct {
 ssize_t		fr_pair_ctx_afrom_str(fr_pair_ctx_t *pair_ctx, char const *in, size_t inlen);
 void		fr_pair_ctx_reset(fr_pair_ctx_t *pair_ctx, fr_dict_t const *dict);
 
+#undef _CONST
 #ifdef __cplusplus
 }
 #endif
