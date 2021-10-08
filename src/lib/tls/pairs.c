@@ -300,7 +300,7 @@ skip_alt:
 			fr_dbuff_set(in, fr_dbuff_current(in) - 1);	/* Ensure the \0 isn't counted in remaining */
 
 			if (!da) {
-				RWDEBUG3("Skipping attribute %pV: "
+				RWDEBUG3("Skipping attribute \"%pV\": "
 					 "Add a dictionary definition if you want to access it",
 					 fr_box_strvalue_len((char *)fr_dbuff_current(out),
 					  		     fr_dbuff_remaining(out)));
@@ -315,7 +315,7 @@ skip_alt:
 			MEM(vp = fr_pair_afrom_da(ctx, da));
 			if (fr_pair_value_from_str(vp, (char *)fr_dbuff_current(out), fr_dbuff_remaining(out),
 						   '\0', true) < 0) {
-				RPWDEBUG3("Skipping: %s += '%pV'",
+				RPWDEBUG3("Skipping: %s += \"%pV\"",
 					  da->name, fr_box_strvalue_len((char *)fr_dbuff_current(out),
 					  				fr_dbuff_remaining(out)));
 				talloc_free(vp);
