@@ -1357,7 +1357,7 @@ static int load_byserver(CONF_SECTION *cs)
 	 *	This is a bit of a hack...
 	 */
 	if (!found) do {
-#if defined(WITH_VMPS) || defined(WITH_DHCP)
+#if defined(WITH_VMPS) || defined(WITH_DHCP) || defined(WITH_TLS)
 		CONF_SECTION *subcs;
 #endif
 #if defined(WITH_DHCP) || defined(WITH_TLS)
