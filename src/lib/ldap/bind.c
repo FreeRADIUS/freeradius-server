@@ -27,6 +27,7 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/ldap/base.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/unlang/function.h>
 
 /** Error reading from or writing to the file descriptor
  *
@@ -310,4 +311,39 @@ static void ldap_async_auth_bind_cancel(UNUSED request_t *request, fr_state_sign
 
 	ldap_abandon_ext(bind_auth_ctx->bind_ctx->c->handle, bind_auth_ctx->msgid, NULL, NULL);
 	fr_rb_remove(bind_auth_ctx->thread->binds, bind_auth_ctx);
+}
+
+/** Initiate an async LDAP bind for authentication
+ *
+ * @param[in] request		this bind relates to.
+ * @param[in] thread		whose connection the bind should be performed on.
+ * @param[in] bind_dn		Identity to bind with.
+ * @param[in] password		Password to bind with.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *thread, char const *bind_dn, char const *password)
+{
+	fr_ldap_bind_auth_ctx_t	*bind_auth_ctx;
+	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(thread->conn->h, fr_ldap_connection_t);
+
+	if (ldap_conn->state != FR_LDAP_STATE_RUN) {
+	connection_fault:
+		fr_connection_signal_reconnect(ldap_conn->conn, FR_CONNECTION_FAILED);
+		return -1;
+	}
+
+	if (ldap_conn->fd < 0) goto connection_fault;
+
+	MEM(bind_auth_ctx = talloc_zero(request, fr_ldap_bind_auth_ctx_t));
+	MEM(bind_auth_ctx->bind_ctx = talloc_zero(bind_auth_ctx, fr_ldap_bind_ctx_t));
+	bind_auth_ctx->bind_ctx->c = ldap_conn;
+	bind_auth_ctx->bind_ctx->bind_dn = bind_dn;
+	bind_auth_ctx->bind_ctx->password = password;
+	bind_auth_ctx->request = request;
+	bind_auth_ctx->thread = thread;
+	bind_auth_ctx->ret = LDAP_RESULT_PENDING;
+
+	return unlang_function_push(request, ldap_async_auth_bind_start, ldap_async_auth_bind_results, ldap_async_auth_bind_cancel, UNLANG_TOP_FRAME, bind_auth_ctx);
 }
