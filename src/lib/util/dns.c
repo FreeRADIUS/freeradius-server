@@ -1210,7 +1210,7 @@ ssize_t fr_dns_label_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *dst,
 {
 	ssize_t slen;
 	uint8_t const *after = label;
-	uint8_t const *current, *next;
+	uint8_t const *current, *next = NULL;
 	uint8_t const *packet = src;
 	uint8_t const *end = packet + len;
 	uint8_t *p;
