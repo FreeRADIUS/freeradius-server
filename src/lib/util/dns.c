@@ -52,6 +52,8 @@ fr_dns_labels_t *fr_dns_labels_init(TALLOC_CTX *ctx, uint8_t const *packet, int 
 	return lb;
 }
 
+#define MAX_OFFSET (1 << 14)
+
 static int dns_label_add(fr_dns_labels_t *lb, uint8_t const *start, uint8_t const *end)
 {
 	size_t offset, size = end - start;
@@ -67,15 +69,15 @@ static int dns_label_add(fr_dns_labels_t *lb, uint8_t const *start, uint8_t cons
 	fr_assert(end >= start);
 
 	offset = start - lb->start;
-	fr_assert(offset < 65536);
-	fr_assert(size < 65535);
-	fr_assert((offset + size) < 65535);
+
+	/*
+	 *	DNS packets can be up to 64K in size, but the
+	 *	compressed pointers can only be up to 2^14 in size.
+	 *	So we just ignore offsets which are greater than 2^14.
+	 */
+	if ((offset + size) >= MAX_OFFSET) return 0;
 
 	FR_PROTO_TRACE("adding label at offset %zu", offset);
-
-	if (offset > 65535) return -1;
-	if (size > 65535) return -1;
-	if ((offset + size) > 65535) return -1;
 
 	/*
 	 *	We add blocks append-only.  No adding new blocks in
