@@ -95,6 +95,16 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
 				 fr_dict_attr_t const *parent,
 				 uint8_t const *data, size_t const data_len, void *decode_ctx);
+static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+			   fr_dict_attr_t const *parent,
+			   uint8_t const *data, size_t const data_len, void *decode_ctx, bool do_raw);
+
+static ssize_t decode_tlv_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+				     fr_dict_attr_t const *parent,
+				     uint8_t const *data, size_t const data_len, void *decode_ctx)
+{
+	return decode_tlvs(ctx, out, dict, parent, data, data_len, decode_ctx, true);
+}
 
 /** Handle arrays of DNS labels for fr_struct_from_network()
  *
@@ -205,34 +215,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 
 	case FR_TYPE_GROUP:
 		return PAIR_DECODE_FATAL_ERROR; /* not supported */
-
-#if 0
-	{
-		fr_pair_list_t child_cursor;
-		fr_pair_list_t head;
-		fr_pair_list_init(&head);
-
-		vp = fr_pair_afrom_da(ctx, parent);
-		if (!vp) return PAIR_DECODE_OOM;
-
-		/*
-		 *	Child VPs go into the child group, not in the
-		 *	main parent list.  We start decoding
-		 *	attributes from the dictionary root, not from
-		 *	this parent.  We also don't decode an option
-		 *	header, as we're just decoding the values
-		 *	here.
-		 */
-		fr_dcursor_init(&child_out, &head);
-		slen = decode_tlvs(vp, &child_out, dict, fr_dict_root(dict_dns), data, data_len, decode_ctx, false);
-		if (slen < 0) {
-			talloc_free(vp);
-			goto raw;
-		}
-		fr_pair_list_append(&vp->vp_group, &head);
-		break;
-	}
-#endif
 
 	default:
 		vp = fr_pair_afrom_da(ctx, parent);
@@ -407,6 +389,109 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,UNUSED fr_
 	return labels_len;
 }
 
+
+#define DNS_GET_OPTION_NUM(_x)	fr_net_to_uint16(_x)
+#define DNS_GET_OPTION_LEN(_x)	fr_net_to_uint16((_x) + 2)
+
+static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+			      fr_dict_attr_t const *parent,
+			      uint8_t const *data, size_t const data_len, void *decode_ctx)
+{
+	unsigned int   		option;
+	size_t			len;
+	ssize_t			slen;
+	fr_dict_attr_t const	*da;
+	fr_dns_ctx_t		*packet_ctx = decode_ctx;
+
+#ifdef __clang_analyzer__
+	if (!packet_ctx || !packet_ctx->tmp_ctx) return PAIR_DECODE_FATAL_ERROR;
+#endif
+
+	/*
+	 *	Must have at least an option header.
+	 */
+	if (data_len < 4) {
+		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
+		return -(data_len);
+	}
+
+	option = DNS_GET_OPTION_NUM(data);
+	len = DNS_GET_OPTION_LEN(data);
+	if (len > (data_len - 4)) {
+		fr_strerror_printf("%s: Option overflows input.  "
+				   "Optional length must be less than %zu bytes, got %zu bytes",
+				   __FUNCTION__, data_len - 4, len);
+		return PAIR_DECODE_FATAL_ERROR;
+	}
+
+	FR_PROTO_HEX_DUMP(data, len + 4, "decode_option");
+
+	da = fr_dict_attr_child_by_num(parent, option);
+	if (!da) {
+		da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, option);
+		if (!da) return PAIR_DECODE_FATAL_ERROR;
+	}
+	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
+
+	if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype) {
+		slen = decode_dns_labels(ctx, out, dict, da, data + 4, len, decode_ctx);
+		if (slen < 0) return slen;
+
+		/*
+		 *	The DNS labels may only partially fill the
+		 *	option.  If so, that's an error.  Point to the
+		 *	byte which caused the error, accounting for
+		 *	the option header.
+		 */
+		if ((size_t) slen != len) return -(4 + slen);
+
+	} else if (da->flags.array) {
+		slen = decode_array(ctx, out, dict, da, data + 4, len, decode_ctx);
+
+	} else {
+		slen = decode_value(ctx, out, dict, da, data + 4, len, decode_ctx);
+	}
+
+	if (slen < 0) return slen;
+
+	return len + 4;
+}
+
+/** Only for OPT 41
+ *
+ */
+static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+			   fr_dict_attr_t const *parent,
+			   uint8_t const *data, size_t const data_len, void *decode_ctx, bool do_raw)
+{
+	uint8_t const *p, *end;
+
+	FR_PROTO_HEX_DUMP(data, data_len, "decode_tlvs");
+
+	if (!fr_cond_assert_msg((parent->type == FR_TYPE_TLV || (parent->type == FR_TYPE_VENDOR)),
+				"%s: Internal sanity check failed, attribute \"%s\" is not of type 'tlv'",
+				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
+	p = data;
+	end = data + data_len;
+
+	while (p < end) {
+		ssize_t slen;
+
+		slen = decode_option(ctx, out, dict, parent, p, (end - p), decode_ctx);
+		if (slen <= 0) {
+			if (!do_raw) return slen;
+
+			slen = decode_raw(ctx, out, dict, parent, p, (end - p), decode_ctx);
+			if (slen <= 0) return slen;
+			break;
+		}
+
+		p += slen;
+	}
+
+	return data_len;
+}
+
 static ssize_t decode_record(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *attr,
 			     uint8_t const *rr, uint8_t const *end,
 			     fr_dns_ctx_t *packet_ctx, uint8_t const *counter)
@@ -427,7 +512,7 @@ static ssize_t decode_record(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_
 		}
 
 		slen = fr_struct_from_network(ctx, out, attr, p, end - p, true,
-					      packet_ctx, decode_value_trampoline, NULL);
+					      packet_ctx, decode_value_trampoline, decode_tlv_trampoline);
 		if (slen < 0) return slen;
 		if (!slen) break;
 		p += slen;
@@ -456,7 +541,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
 	 *	Decode the header.
 	 */
 	slen = fr_struct_from_network(ctx, out, attr_dns_packet, packet, DNS_HDR_LEN, true,
-				      packet_ctx, decode_value_trampoline, NULL);
+				      packet_ctx, decode_value_trampoline, NULL); /* no TLVs in the header */
 	if (slen < 0) {
 		fr_strerror_printf("Failed decoding DNS header - %s", fr_strerror());
 		return slen;
@@ -539,7 +624,7 @@ static ssize_t fr_dns_decode_rr(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	}
 
 	slen = fr_struct_from_network(ctx, out, attr_dns_rr, data, data_len, true,
-				      decode_ctx, decode_value_trampoline, NULL);
+				      decode_ctx, decode_value_trampoline, decode_tlv_trampoline);
 	if (slen < 0) return slen;
 
 	FR_PROTO_TRACE("decoding option complete, returning %zd byte(s)", slen);
