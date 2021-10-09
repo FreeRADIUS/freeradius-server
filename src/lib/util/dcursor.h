@@ -82,6 +82,7 @@ typedef struct {
 	fr_dcursor_iter_t	iter;		//!< Iterator function.
 	fr_dcursor_insert_t	insert;		//!< Callback function on insert.
 	fr_dcursor_delete_t	delete;		//!< Callback function on delete.
+	bool			is_const;	//!< The list we're iterating over is immutable.
 	void			*uctx;		//!< to pass to iterator function.
 } fr_dcursor_t;
 
@@ -613,7 +614,16 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
  *	- The first item returned by the iterator.
  */
 #define fr_dcursor_talloc_iter_init(_cursor, _head, _iter, _uctx, _type) \
-	_fr_dcursor_init(_cursor, (fr_dlist_head_t const *)_head, _iter, NULL, NULL, _uctx)
+	_fr_dcursor_init(_cursor, \
+			 _head, \
+			 _iter, \
+			 NULL, \
+			 NULL, \
+			 _Generic((_head), \
+				fr_dlist_head_t *	: false, \
+				fr_dlist_head_t const *	: true \
+			 ), \
+			 _uctx)
 
 /** Initialise a cursor with a custom iterator
  *
@@ -627,7 +637,16 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
  *	- The first item returned by the iterator.
  */
 #define fr_dcursor_iter_init(_cursor, _head, _iter, _uctx) \
-	_fr_dcursor_init(_cursor, (fr_dlist_head_t *)_head, _iter, NULL, NULL, _uctx)
+	_fr_dcursor_init(_cursor, \
+			 _head, \
+			 _iter, \
+			 NULL, \
+			 NULL, \
+			 _Generic((_head), \
+				fr_dlist_head_t *	: false, \
+				fr_dlist_head_t const *	: true \
+			 ), \
+			 _uctx)
 
 /** Initialise a cursor with runtime talloc type safety checks
  *
@@ -639,7 +658,16 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
  *	- The first item in the list.
  */
 #define fr_dcursor_talloc_init(_cursor, _head, _type) \
-	_fr_dcursor_init(_cursor, (fr_dlist_head_t const *)_head, NULL, NULL, NULL, NULL)
+	_fr_dcursor_init(_cursor, \
+			 _head, \
+			 NULL, \
+			 NULL, \
+			 NULL, \
+			 _Generic((_head), \
+				fr_dlist_head_t *	: false, \
+				fr_dlist_head_t const *	: true \
+			 ), \
+			 NULL)
 
 /** Initialise a cursor
  *
@@ -650,7 +678,16 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
  *	- The first item in the list.
  */
 #define fr_dcursor_init(_cursor, _head) \
-	_fr_dcursor_init(_cursor, (fr_dlist_head_t const *)_head, NULL, NULL, NULL, NULL)
+	_fr_dcursor_init(_cursor, \
+			 _head, \
+			 NULL, \
+			 NULL, \
+			 NULL, \
+			 _Generic((_head), \
+				fr_dlist_head_t *	: false, \
+				fr_dlist_head_t const *	: true \
+			 ), \
+			 NULL)
 
 /** Setup a cursor to iterate over attribute items in dlists
  *
@@ -659,6 +696,7 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
  * @param[in] iter	Iterator callback.
  * @param[in] insert	Callback for inserts.
  * @param[in] delete	Callback for removals.
+ * @param[in] is_const	Don't allow modification of the underlying list.
  * @param[in] uctx	to pass to iterator function.
  * @return the attribute pointed to by v.
  *
@@ -666,19 +704,16 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
  */
 static inline void * CC_HINT(hot) _fr_dcursor_init(fr_dcursor_t *cursor, fr_dlist_head_t const *head,
 				     fr_dcursor_iter_t iter, fr_dcursor_insert_t insert,
-				     fr_dcursor_delete_t delete, void const *uctx)
+				     fr_dcursor_delete_t delete, bool is_const, void const *uctx)
 {
-	fr_dlist_head_t *v;
-
-	memcpy(&v, &head, sizeof(v));			/* stupid const hacks */
 	*cursor = (fr_dcursor_t){
-		.dlist = v,
+		.dlist = UNCONST(fr_dlist_head_t *, head),
 		.iter = iter,
 		.insert = insert,
 		.delete = delete,
-		.prev = NULL
+		.uctx = UNCONST(void *, uctx),
+		.is_const = is_const
 	};
-	memcpy(&cursor->uctx, &uctx, sizeof(cursor->uctx));
 	if (!fr_dlist_empty(cursor->dlist)) return fr_dcursor_next(cursor);	/* Initialise current */
 
 	return NULL;
