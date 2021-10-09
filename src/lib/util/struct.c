@@ -393,13 +393,6 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		}
 
 		fr_dict_unknown_free(&child);
-
-		/*
-		 *	Else return whatever we decoded.  Note that if
-		 *	the substruct ends in a TLV, we decode only as
-		 *	many TLVs as the various "length" fields say.
-		 */
-		data_len = p - data;
 	}
 
 done:
@@ -412,7 +405,7 @@ done:
 	}
 
 	FR_PROTO_TRACE("used %zd bytes", data_len);
-	return data_len;
+	return p - data;
 }
 
 
