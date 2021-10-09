@@ -160,6 +160,10 @@ MEMBER		client					octets[8]
 # pseudo-random-function(client ip, client cookie, server secret), at least 64 bits
 MEMBER		server					octets
 
+ATTRIBUTE	edns0-tcp-keepalive			.11	uint16 # time_delta in units of 100 milliseconds
+
+ATTRIBUTE	padding					.12	octets
+
 #  Name server RR
 ATTRIBUTE	ns					4	struct	clone=rr
 
