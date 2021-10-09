@@ -1160,6 +1160,7 @@ void tls_session_information(tls_session_t *tls_session)
 {
 	char const *str_write_p, *str_version, *str_content_type = "";
 	char const *str_details1 = "", *str_details2= "";
+	char const *details = NULL;
 	REQUEST *request;
 	VALUE_PAIR *vp;
 	char content_type[16], alert_buf[16];
@@ -1181,6 +1182,8 @@ void tls_session_information(tls_session_t *tls_session)
 	if (!request) return;
 
 	str_write_p = tls_session->info.origin ? "(TLS) send" : "(TLS) recv";
+
+#define FROM_CLIENT (tls_session->info.origin == 0)
 
 	switch (tls_session->info.version) {
 	case SSL2_VERSION:
@@ -1253,9 +1256,12 @@ void tls_session_information(tls_session_t *tls_session)
 				}
 
 				str_details2 = " ???";
+				details = "there is a failure inside the TLS protocol exchange";
+
 				switch (tls_session->info.alert_description) {
 				case SSL3_AD_CLOSE_NOTIFY:
 					str_details2 = " close_notify";
+					details = "the connection has been closed, and no further TLS exchanges will take place";
 					break;
 
 				case SSL3_AD_UNEXPECTED_MESSAGE:
@@ -1284,26 +1290,32 @@ void tls_session_information(tls_session_t *tls_session)
 
 				case SSL3_AD_NO_CERTIFICATE:
 					str_details2 = " no_certificate";
+					details = "the server did not present a certificate to the client";
 					break;
 
 				case SSL3_AD_BAD_CERTIFICATE:
 					str_details2 = " bad_certificate";
+					details = "it believes the server certificate is invalid or malformed";
 					break;
 
 				case SSL3_AD_UNSUPPORTED_CERTIFICATE:
 					str_details2 = " unsupported_certificate";
+					details = "it does not understand the certificate presented by the server";
 					break;
 
 				case SSL3_AD_CERTIFICATE_REVOKED:
 					str_details2 = " certificate_revoked";
+					details = "it believes that the server certificate has been revoked";
 					break;
 
 				case SSL3_AD_CERTIFICATE_EXPIRED:
 					str_details2 = " certificate_expired";
+					details = "it believes that the server certificate has expired.  Either renew the server certificate, or check the time on the client";
 					break;
 
 				case SSL3_AD_CERTIFICATE_UNKNOWN:
 					str_details2 = " certificate_unknown";
+					details = "it does not recognize the server certificate";
 					break;
 
 				case SSL3_AD_ILLEGAL_PARAMETER:
@@ -1312,6 +1324,7 @@ void tls_session_information(tls_session_t *tls_session)
 
 				case TLS1_AD_UNKNOWN_CA:
 					str_details2 = " unknown_ca";
+					details = "it does not recognize the CA used to issue the server certificate.  Please update the client so that it knows about the CA";
 					break;
 
 				case TLS1_AD_ACCESS_DENIED:
@@ -1332,6 +1345,7 @@ void tls_session_information(tls_session_t *tls_session)
 
 				case TLS1_AD_PROTOCOL_VERSION:
 					str_details2 = " protocol_version";
+					details = "the client does not accept the version of TLS negotiated by the server";
 
 #ifdef TLS1_3_VERSION
 					/*
@@ -1364,18 +1378,21 @@ void tls_session_information(tls_session_t *tls_session)
 #ifdef TLS13_AD_MISSING_EXTENSIONS
 				case TLS13_AD_MISSING_EXTENSIONS:
 					str_details2 = " missing_extensions";
+					details = "the server did not present a TLS extension which the client expected to be present.  Please check the TLS libraries on the client and server for compatibility";
 					break;
 #endif
 
 #ifdef TLS13_AD_CERTIFICATE_REQUIRED
 				case TLS13_AD_CERTIFICATE_REQUIRED:
 					str_details2 = " certificate_required";
+					details = "the server did not present a certificate";
 					break;
 #endif
 
 #ifdef TLS1_AD_UNSUPPORTED_EXTENSION
 				case TLS1_AD_UNSUPPORTED_EXTENSION:
 					str_details2 = " unsupported_extension";
+					details = "the server has sent a TLS message which the client does not recognize.  Please check the TLS libraries on the client and server for compatibility";
 					break;
 #endif
 
@@ -1506,6 +1523,8 @@ void tls_session_information(tls_session_t *tls_session)
 	}
 
 	RDEBUG2("%s", tls_session->info.info_description);
+
+	if (FROM_CLIENT && details) RDEBUG2("(TLS) The client is informing us that %s.", details);
 }
 
 static CONF_PARSER cache_config[] = {
