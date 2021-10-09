@@ -35,7 +35,7 @@ static void test_init_null_item(void)
 
 	test_list_init(&list);
 
-	item_p = fr_dcursor_iter_init(&cursor, &list, test_iter, &cursor);
+	item_p = fr_dcursor_iter_init(&cursor, &list.head, test_iter, &cursor);
 	TEST_CHECK(!item_p);
 	TEST_CHECK((cursor.dlist) == &list.head);
 	TEST_CHECK(!fr_dcursor_current(&cursor));
@@ -54,7 +54,7 @@ static void test_init_1i_start(void)
 	test_list_init(&list);
 	fr_dlist_insert_tail(&list.head, &item1);
 
-	item_p = fr_dcursor_init(&cursor, &list);
+	item_p = fr_dcursor_init(&cursor, &list.head);
 	TEST_CHECK(item_p == &item1);
 	TEST_CHECK((cursor.dlist) == &list.head);
 	TEST_CHECK(fr_dcursor_current(&cursor) == &item1);
@@ -73,7 +73,7 @@ static void test_init_2i_start(void)
 	fr_dlist_insert_tail(&list.head, &item1);
 	fr_dlist_insert_tail(&list.head, &item2);
 
-	item_p = fr_dcursor_init(&cursor, &list);
+	item_p = fr_dcursor_init(&cursor, &list.head);
 	TEST_CHECK(item_p == &item1);
 	TEST_CHECK(fr_dcursor_current(&cursor) == &item1);
 	TEST_CHECK(!fr_dcursor_list_prev_peek(&cursor));
@@ -90,8 +90,8 @@ static void test_next(void)
 	test_list_init(&list);
 	fr_dlist_insert_tail(&list.head, &item1);
 	fr_dlist_insert_tail(&list.head, &item2);
-	
-	fr_dcursor_init(&cursor, &list);
+
+	fr_dcursor_init(&cursor, &list.head);
 	TEST_CHECK(fr_dcursor_next_peek(&cursor) == &item2);
 
 	item_p = fr_dcursor_next(&cursor);
@@ -112,8 +112,8 @@ static void test_next_wrap(void)
 	test_list_init(&list);
 	fr_dlist_insert_tail(&list.head, &item1);
 	fr_dlist_insert_tail(&list.head, &item2);
-	
-	fr_dcursor_init(&cursor, &list);
+
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_next(&cursor);
 	item_p = fr_dcursor_next(&cursor);
 	TEST_CHECK(!item_p);
@@ -135,7 +135,7 @@ static void test_dcursor_head_tail_null(void)
 
 	test_list_init(&list);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	TEST_CHECK(!fr_dcursor_current(&cursor));
 	TEST_CHECK(!fr_dcursor_head(&cursor));
 	TEST_CHECK(!fr_dcursor_tail(&cursor));
@@ -155,7 +155,7 @@ static void test_dcursor_head(void)
 	fr_dlist_insert_tail(&list.head, &item2);
 	fr_dlist_insert_tail(&list.head, &item3);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	item_p = fr_dcursor_head(&cursor);
 	TEST_CHECK(item_p == &item1);
 	TEST_CHECK(!fr_dcursor_list_prev_peek(&cursor));
@@ -175,7 +175,7 @@ static void test_dcursor_head_after_next(void)
 	fr_dlist_insert_tail(&list.head, &item2);
 	fr_dlist_insert_tail(&list.head, &item3);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_next(&cursor);
 	item_p = fr_dcursor_head(&cursor);
 	TEST_CHECK(item_p == &item1);
@@ -196,7 +196,7 @@ static void test_dcursor_tail(void)
 	fr_dlist_insert_tail(&list.head, &item2);
 	fr_dlist_insert_tail(&list.head, &item3);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_next(&cursor);
 	item_p = fr_dcursor_tail(&cursor);
 	TEST_CHECK(item_p == &item3);
@@ -217,7 +217,7 @@ static void test_dcursor_head_after_tail(void)
 	fr_dlist_insert_tail(&list.head, &item2);
 	fr_dlist_insert_tail(&list.head, &item3);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_tail(&cursor);
 	item_p = fr_dcursor_head(&cursor);
 	TEST_CHECK(item_p == &item1);
@@ -238,7 +238,7 @@ static void test_dcursor_wrap_after_tail(void)
 	fr_dlist_insert_tail(&list.head, &item2);
 	fr_dlist_insert_tail(&list.head, &item3);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_tail(&cursor);
 	item_p = fr_dcursor_next(&cursor);
 	TEST_CHECK(!item_p);
@@ -258,7 +258,7 @@ static void test_dcursor_append_empty(void)
 
 	test_list_init(&list);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_append(&cursor, &item1);
 
 	item_p = fr_dcursor_current(&cursor);
@@ -278,7 +278,7 @@ static void test_dcursor_append_empty_3(void)
 
 	test_list_init(&list);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_append(&cursor, &item1);
 	fr_dcursor_append(&cursor, &item2);
 	fr_dcursor_append(&cursor, &item3);
@@ -299,7 +299,7 @@ static void test_dcursor_prepend_empty(void)
 
 	test_list_init(&list);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_prepend(&cursor, &item1);
 
 	item_p = fr_dcursor_current(&cursor);
@@ -317,7 +317,7 @@ static void test_dcursor_insert_into_empty(void)
 
 	test_list_init(&list);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_insert(&cursor, &item1);
 
 	item_p = fr_dcursor_current(&cursor);
@@ -337,7 +337,7 @@ static void test_dcursor_insert_into_empty_3(void)
 
 	test_list_init(&list);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_insert(&cursor, &item1);
 	fr_dcursor_insert(&cursor, &item2);
 	fr_dcursor_insert(&cursor, &item3);
@@ -357,8 +357,8 @@ static void test_dcursor_replace_in_empty(void)
 	test_item_list_t	list;
 
 	test_list_init(&list);
-	
-	fr_dcursor_init(&cursor, &list);
+
+	fr_dcursor_init(&cursor, &list.head);
 	TEST_CHECK(!fr_dcursor_replace(&cursor, &item1));
 
 	item_p = fr_dcursor_current(&cursor);
@@ -378,7 +378,7 @@ static void test_dcursor_prepend_1i_start(void)
 	test_list_init(&list);
 	fr_dlist_insert_tail(&list.head, &item1);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_prepend(&cursor, &item2);
 
 	TEST_CHECK(fr_dcursor_current(&cursor) == &item1);
@@ -407,7 +407,7 @@ static void test_dcursor_append_1i_start(void)
 	test_list_init(&list);
 	fr_dlist_insert_tail(&list.head, &item1);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_append(&cursor, &item2);
 
 	TEST_CHECK(fr_dcursor_current(&cursor) == &item1);
@@ -436,7 +436,7 @@ static void test_dcursor_insert_1i_start(void)
 	test_list_init(&list);
 	fr_dlist_insert_tail(&list.head, &item1);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_insert(&cursor, &item2);
 
 	TEST_CHECK(fr_dcursor_current(&cursor) == &item1);
@@ -465,7 +465,7 @@ static void test_dcursor_replace_1i_start(void)
 	test_list_init(&list);
 	fr_dlist_insert_tail(&list.head, &item1);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	item_p = fr_dcursor_replace(&cursor, &item2);
 	TEST_CHECK(item_p == &item1);
 
@@ -494,7 +494,7 @@ static void test_dcursor_prepend_2i_start(void)
 	fr_dlist_insert_tail(&list.head, &item1);
 	fr_dlist_insert_tail(&list.head, &item2);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_prepend(&cursor, &item3);
 
 	TEST_CHECK(fr_dcursor_current(&cursor) == &item1);
@@ -529,7 +529,7 @@ static void test_dcursor_append_2i_start(void)
 	fr_dlist_insert_tail(&list.head, &item1);
 	fr_dlist_insert_tail(&list.head, &item2);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_append(&cursor, &item3);
 
 	TEST_CHECK(fr_dcursor_current(&cursor) == &item1);
@@ -560,7 +560,7 @@ static void test_dcursor_insert_2i_start(void)
 	fr_dlist_insert_tail(&list.head, &item1);
 	fr_dlist_insert_tail(&list.head, &item2);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_insert(&cursor, &item3);
 
 	/*
@@ -608,7 +608,7 @@ static void test_dcursor_replace_2i_start(void)
 	 *	item3 -	HEAD
 	 *	item2 - TAIL
 	 */
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	item_p = fr_dcursor_replace(&cursor, &item3);
 	TEST_CHECK(item_p == &item1);
 
@@ -639,7 +639,7 @@ static void test_dcursor_prepend_3i_mid(void)
 	fr_dlist_insert_tail(&list.head, &item2);
 	fr_dlist_insert_tail(&list.head, &item3);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_next(&cursor);
 	fr_dcursor_prepend(&cursor, &item4);
 
@@ -677,7 +677,7 @@ static void test_dcursor_append_3i_mid(void)
 	fr_dlist_insert_tail(&list.head, &item2);
 	fr_dlist_insert_tail(&list.head, &item3);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_next(&cursor);
 	fr_dcursor_append(&cursor, &item4);
 
@@ -711,7 +711,7 @@ static void test_dcursor_insert_3i_mid(void)
 	fr_dlist_insert_tail(&list.head, &item2);
 	fr_dlist_insert_tail(&list.head, &item3);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_next(&cursor);
 	fr_dcursor_insert(&cursor, &item4);
 
@@ -749,7 +749,7 @@ static void test_dcursor_replace_3i_mid(void)
 	fr_dlist_insert_tail(&list.head, &item2);
 	fr_dlist_insert_tail(&list.head, &item3);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_next(&cursor);
 	item_p = fr_dcursor_replace(&cursor, &item4);
 	TEST_CHECK(item_p == &item2);
@@ -782,7 +782,7 @@ static void test_dcursor_prepend_3i_end(void)
 	fr_dlist_insert_tail(&list.head, &item2);
 	fr_dlist_insert_tail(&list.head, &item3);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_next(&cursor);
 	fr_dcursor_next(&cursor);
 	fr_dcursor_prepend(&cursor, &item4);
@@ -817,7 +817,7 @@ static void test_dcursor_append_3i_end(void)
 	fr_dlist_insert_tail(&list.head, &item2);
 	fr_dlist_insert_tail(&list.head, &item3);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_next(&cursor);
 	fr_dcursor_next(&cursor);
 	fr_dcursor_append(&cursor, &item4);
@@ -852,7 +852,7 @@ static void test_dcursor_insert_3i_end(void)
 	fr_dlist_insert_tail(&list.head, &item2);
 	fr_dlist_insert_tail(&list.head, &item3);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_next(&cursor);
 	fr_dcursor_next(&cursor);
 	fr_dcursor_insert(&cursor, &item4);
@@ -891,7 +891,7 @@ static void test_dcursor_replace_3i_end(void)
 	fr_dlist_insert_tail(&list.head, &item2);
 	fr_dlist_insert_tail(&list.head, &item3);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_next(&cursor);
 	fr_dcursor_next(&cursor);
 	item_p = fr_dcursor_replace(&cursor, &item4);
@@ -917,7 +917,7 @@ static void test_dcursor_remove_empty(void)
 
 	test_list_init(&list);
 
-	_fr_dcursor_init(&cursor, (fr_dlist_head_t *)&list, test_iter, NULL, NULL, NULL);
+	_fr_dcursor_init(&cursor, (fr_dlist_head_t *)&list, test_iter, NULL, NULL, false, NULL);
 	TEST_CHECK(!fr_dcursor_remove(&cursor));
 }
 
@@ -931,7 +931,7 @@ static void test_dcursor_remove_1i(void)
 	test_list_init(&list);
 	fr_dlist_insert_tail(&list.head, &item1);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 
 	item_p = fr_dcursor_remove(&cursor);
 	TEST_CHECK(item_p == &item1);
@@ -955,7 +955,7 @@ static void test_dcursor_remove_2i(void)
 	fr_dlist_insert_tail(&list.head, &item1);
 	fr_dlist_insert_tail(&list.head, &item2);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	item_p = fr_dcursor_remove(&cursor);
 
 	TEST_CHECK(item_p == &item1);
@@ -989,7 +989,7 @@ static void test_dcursor_remove_3i_start(void)
 	fr_dlist_insert_tail(&list.head, &item2);
 	fr_dlist_insert_tail(&list.head, &item3);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	item_p = fr_dcursor_remove(&cursor);
 	TEST_CHECK(item_p == &item1);
 	TEST_CHECK(fr_dcursor_current(&cursor) == &item2);
@@ -1023,7 +1023,7 @@ static void test_dcursor_remove_3i_mid(void)
 	fr_dlist_insert_tail(&list.head, &item2);
 	fr_dlist_insert_tail(&list.head, &item3);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_next(&cursor);
 
 	item_p = fr_dcursor_remove(&cursor);
@@ -1066,7 +1066,7 @@ static void test_dcursor_remove_3i_end(void)
 	fr_dlist_insert_tail(&list.head, &item2);
 	fr_dlist_insert_tail(&list.head, &item3);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_tail(&cursor);
 
 	item_p = fr_dcursor_remove(&cursor);
@@ -1102,14 +1102,14 @@ static void test_dcursor_merge_start_a_b(void)
 	fr_dlist_insert_tail(&list_a.head, &item1a);
 	fr_dlist_insert_tail(&list_a.head, &item2a);
 	fr_dlist_insert_tail(&list_a.head, &item3a);
-	
+
 	test_list_init(&list_b);
 	fr_dlist_insert_tail(&list_b.head, &item1b);
 	fr_dlist_insert_tail(&list_b.head, &item2b);
 	fr_dlist_insert_tail(&list_b.head, &item3b);
 
-	fr_dcursor_init(&cursor_a, &list_a);
-	fr_dcursor_init(&cursor_b, &list_b);
+	fr_dcursor_init(&cursor_a, &list_a.head);
+	fr_dcursor_init(&cursor_b, &list_b.head);
 	fr_dcursor_merge(&cursor_a, &cursor_b);
 
 	/*
@@ -1170,14 +1170,14 @@ static void test_dcursor_merge_mid_a(void)
 	fr_dlist_insert_tail(&list_a.head, &item1a);
 	fr_dlist_insert_tail(&list_a.head, &item2a);
 	fr_dlist_insert_tail(&list_a.head, &item3a);
-	
+
 	test_list_init(&list_b);
 	fr_dlist_insert_tail(&list_b.head, &item1b);
 	fr_dlist_insert_tail(&list_b.head, &item2b);
 	fr_dlist_insert_tail(&list_b.head, &item3b);
 
-	fr_dcursor_init(&cursor_a, &list_a);
-	fr_dcursor_init(&cursor_b, &list_b);
+	fr_dcursor_init(&cursor_a, &list_a.head);
+	fr_dcursor_init(&cursor_b, &list_b.head);
 	fr_dcursor_next(&cursor_a);
 	fr_dcursor_merge(&cursor_a, &cursor_b);
 
@@ -1233,14 +1233,14 @@ static void test_dcursor_merge_end_a(void)
 	fr_dlist_insert_tail(&list_a.head, &item1a);
 	fr_dlist_insert_tail(&list_a.head, &item2a);
 	fr_dlist_insert_tail(&list_a.head, &item3a);
-	
+
 	test_list_init(&list_b);
 	fr_dlist_insert_tail(&list_b.head, &item1b);
 	fr_dlist_insert_tail(&list_b.head, &item2b);
 	fr_dlist_insert_tail(&list_b.head, &item3b);
 
-	fr_dcursor_init(&cursor_a, &list_a);
-	fr_dcursor_init(&cursor_b, &list_b);
+	fr_dcursor_init(&cursor_a, &list_a.head);
+	fr_dcursor_init(&cursor_b, &list_b.head);
 	fr_dcursor_tail(&cursor_a);
 	fr_dcursor_merge(&cursor_a, &cursor_b);
 
@@ -1292,14 +1292,14 @@ static void test_dcursor_merge_mid_b(void)
 	fr_dlist_insert_tail(&list_a.head, &item1a);
 	fr_dlist_insert_tail(&list_a.head, &item2a);
 	fr_dlist_insert_tail(&list_a.head, &item3a);
-	
+
 	test_list_init(&list_b);
 	fr_dlist_insert_tail(&list_b.head, &item1b);
 	fr_dlist_insert_tail(&list_b.head, &item2b);
 	fr_dlist_insert_tail(&list_b.head, &item3b);
 
-	fr_dcursor_init(&cursor_a, &list_a);
-	fr_dcursor_init(&cursor_b, &list_b);
+	fr_dcursor_init(&cursor_a, &list_a.head);
+	fr_dcursor_init(&cursor_b, &list_b.head);
 	fr_dcursor_next(&cursor_b);
 	fr_dcursor_merge(&cursor_a, &cursor_b);
 
@@ -1358,14 +1358,14 @@ static void test_dcursor_merge_end_b(void)
 	fr_dlist_insert_tail(&list_a.head, &item1a);
 	fr_dlist_insert_tail(&list_a.head, &item2a);
 	fr_dlist_insert_tail(&list_a.head, &item3a);
-	
+
 	test_list_init(&list_b);
 	fr_dlist_insert_tail(&list_b.head, &item1b);
 	fr_dlist_insert_tail(&list_b.head, &item2b);
 	fr_dlist_insert_tail(&list_b.head, &item3b);
 
-	fr_dcursor_init(&cursor_a, &list_a);
-	fr_dcursor_init(&cursor_b, &list_b);
+	fr_dcursor_init(&cursor_a, &list_a.head);
+	fr_dcursor_init(&cursor_b, &list_b.head);
 	fr_dcursor_next(&cursor_b);
 	fr_dcursor_next(&cursor_b);
 	fr_dcursor_merge(&cursor_a, &cursor_b);
@@ -1419,9 +1419,9 @@ static void test_dcursor_merge_with_empty(void)
 	fr_dlist_insert_tail(&list_b.head, &item1b);
 	fr_dlist_insert_tail(&list_b.head, &item2b);
 	fr_dlist_insert_tail(&list_b.head, &item3b);
-	
-	fr_dcursor_init(&cursor_a, &list_a);
-	fr_dcursor_init(&cursor_b, &list_b);
+
+	fr_dcursor_init(&cursor_a, &list_a.head);
+	fr_dcursor_init(&cursor_b, &list_b.head);
 	fr_dcursor_merge(&cursor_a, &cursor_b);
 
 	TEST_CHECK(fr_dcursor_head(&cursor_a) == &item1b);
@@ -1450,8 +1450,8 @@ static void test_dcursor_merge_empty(void)
 	fr_dlist_insert_tail(&list_a.head, &item3a);
 	test_list_init(&list_b);
 
-	fr_dcursor_init(&cursor_a, &list_a);
-	fr_dcursor_init(&cursor_b, &list_b);
+	fr_dcursor_init(&cursor_a, &list_a.head);
+	fr_dcursor_init(&cursor_b, &list_b.head);
 	fr_dcursor_merge(&cursor_a, &cursor_b);
 
 	TEST_CHECK(fr_dcursor_head(&cursor_a) == &item1a);
@@ -1474,7 +1474,7 @@ static void test_dcursor_copy(void)
 	fr_dlist_insert_tail(&list.head, &item2);
 	fr_dlist_insert_tail(&list.head, &item3);
 
-	fr_dcursor_init(&cursor_a, &list);
+	fr_dcursor_init(&cursor_a, &list.head);
 	fr_dcursor_copy(&cursor_b, &cursor_a);
 
 	TEST_CHECK(fr_dcursor_head(&cursor_b) == &item1);
@@ -1495,7 +1495,7 @@ static void test_dcursor_free(void)
 	item2 = talloc_zero(NULL, test_item_t);
 	item3 = talloc_zero(NULL, test_item_t);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 	fr_dcursor_append(&cursor, item1);
 	fr_dcursor_append(&cursor, item2);
 	fr_dcursor_append(&cursor, item3);
@@ -1544,9 +1544,9 @@ static void test_intersect_differing_lists(void)
 	fr_dlist_insert_tail(&list_a.head, &item1);
 	test_list_init(&list_b);
 	fr_dlist_insert_tail(&list_b.head, &item2);
-	
-	fr_dcursor_init(&cursor_a, &list_a);
-	fr_dcursor_init(&cursor_b, &list_b);
+
+	fr_dcursor_init(&cursor_a, &list_a.head);
+	fr_dcursor_init(&cursor_b, &list_b.head);
 
 	TEST_CHECK(fr_dcursor_intersect_head(&cursor_a, &cursor_b) == NULL);
 }
@@ -1566,8 +1566,8 @@ static void test_intersect_no_iterators(void)
 	fr_dlist_insert_tail(&list.head, &item2);
 	fr_dlist_insert_tail(&list.head, &item3);
 
-	fr_dcursor_init(&cursor_a, &list);
-	fr_dcursor_init(&cursor_b, &list);
+	fr_dcursor_init(&cursor_a, &list.head);
+	fr_dcursor_init(&cursor_b, &list.head);
 
 	item4 = fr_dcursor_intersect_head(&cursor_a, &cursor_b);
 	TEST_CHECK(item4 == &item1);
@@ -1594,8 +1594,8 @@ static void test_intersect_iterator_a(void)
 	fr_dlist_insert_tail(&list.head, &item3);
 	fr_dlist_insert_tail(&list.head, &item4);
 
-	fr_dcursor_iter_init(&cursor_a, &list, iter_name_check, &filter_a);
-	fr_dcursor_init(&cursor_b, &list);
+	fr_dcursor_iter_init(&cursor_a, &list.head, iter_name_check, &filter_a);
+	fr_dcursor_init(&cursor_b, &list.head);
 
 	TEST_CHECK(fr_dcursor_intersect_head(&cursor_a, &cursor_b) == &item1);
 	TEST_CHECK(fr_dcursor_intersect_next(&cursor_a, &cursor_b) == &item2);
@@ -1620,8 +1620,8 @@ static void test_intersect_iterator_b(void)
 	fr_dlist_insert_tail(&list.head, &item3);
 	fr_dlist_insert_tail(&list.head, &item4);
 
-	fr_dcursor_init(&cursor_a, &list);
-	fr_dcursor_iter_init(&cursor_b, &list, iter_name_check, &filter_b);
+	fr_dcursor_init(&cursor_a, &list.head);
+	fr_dcursor_iter_init(&cursor_b, &list.head, iter_name_check, &filter_b);
 
 	TEST_CHECK(fr_dcursor_intersect_head(&cursor_a, &cursor_b) == &item1);
 	TEST_CHECK(fr_dcursor_intersect_next(&cursor_a, &cursor_b) == &item3);
@@ -1648,8 +1648,8 @@ static void test_intersect_iterator_ab(void)
 	fr_dlist_insert_tail(&list.head, &item4);
 	fr_dlist_insert_tail(&list.head, &item5);
 
-	fr_dcursor_iter_init(&cursor_a, &list, iter_name_check, &filter_a);
-	fr_dcursor_iter_init(&cursor_b, &list, iter_name_check, &filter_b);
+	fr_dcursor_iter_init(&cursor_a, &list.head, iter_name_check, &filter_a);
+	fr_dcursor_iter_init(&cursor_b, &list.head, iter_name_check, &filter_b);
 
 	TEST_CHECK(fr_dcursor_intersect_head(&cursor_a, &cursor_b) == &item1);
 	TEST_CHECK(fr_dcursor_intersect_next(&cursor_a, &cursor_b) == &item3);
@@ -1678,8 +1678,8 @@ static void test_intersect_iterator_disjoint(void)
 	fr_dlist_insert_tail(&list.head, &item4);
 	fr_dlist_insert_tail(&list.head, &item5);
 
-	fr_dcursor_iter_init(&cursor_a, &list, iter_name_check, &filter_a);
-	fr_dcursor_iter_init(&cursor_b, &list, iter_name_check, &filter_b);
+	fr_dcursor_iter_init(&cursor_a, &list.head, iter_name_check, &filter_a);
+	fr_dcursor_iter_init(&cursor_b, &list.head, iter_name_check, &filter_b);
 
 	TEST_CHECK(fr_dcursor_intersect_head(&cursor_a, &cursor_b) == NULL);
 }
@@ -1712,7 +1712,7 @@ static void test_filter_head_next(void)
 	fr_dlist_insert_tail(&list.head, &item5);
 	fr_dlist_insert_tail(&list.head, &item6);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 
 	TEST_CHECK(fr_dcursor_filter_head(&cursor, eval_eq, "yes") == &item1);
 	TEST_CHECK(fr_dcursor_filter_next(&cursor, eval_eq, "yes") == &item3);
@@ -1740,7 +1740,7 @@ static void test_filter_current(void)
 	fr_dlist_insert_tail(&list.head, &item5);
 	fr_dlist_insert_tail(&list.head, &item6);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 
 	TEST_CHECK(fr_dcursor_filter_current(&cursor, eval_eq, "yes") == &item1);
 	fr_dcursor_next(&cursor);
@@ -1771,7 +1771,7 @@ static void test_filter_no_match(void)
 	fr_dlist_insert_tail(&list.head, &item5);
 	fr_dlist_insert_tail(&list.head, &item6);
 
-	fr_dcursor_init(&cursor, &list);
+	fr_dcursor_init(&cursor, &list.head);
 
 	TEST_CHECK(fr_dcursor_filter_current(&cursor, eval_eq, "maybe") == NULL);
 }
