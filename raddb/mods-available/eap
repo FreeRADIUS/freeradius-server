@@ -598,8 +598,6 @@ eap {
 			#  OIDs are present in the presented client certificate
 			#  and that none of the certificates have expired.
 			#
-
-			#
 			#  [options="header,autowidth"]
 			#  |===
 			#  | Value | Description
@@ -678,7 +676,7 @@ eap {
 			#  stateless session-resumption.
 			#  ====
 			#
-#			attribute_mode = untrusted
+#			attribute_mode = client-and-issuer
 
 			#
 			#  check_crl:: Check the Certificate Revocation List.
