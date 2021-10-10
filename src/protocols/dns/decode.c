@@ -465,6 +465,7 @@ static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const
 			   uint8_t const *data, size_t const data_len, void *decode_ctx, bool do_raw)
 {
 	uint8_t const *p, *end;
+	fr_pair_t *vp;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_tlvs");
 
@@ -474,14 +475,17 @@ static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const
 	p = data;
 	end = data + data_len;
 
+	vp = fr_pair_afrom_da(ctx, parent);
+	if (!vp) return PAIR_DECODE_OOM;
+
 	while (p < end) {
 		ssize_t slen;
 
-		slen = decode_option(ctx, out, dict, parent, p, (end - p), decode_ctx);
+		slen = decode_option(vp, &vp->vp_group, dict, parent, p, (end - p), decode_ctx);
 		if (slen <= 0) {
 			if (!do_raw) return slen;
 
-			slen = decode_raw(ctx, out, dict, parent, p, (end - p), decode_ctx);
+			slen = decode_raw(vp, &vp->vp_group, dict, parent, p, (end - p), decode_ctx);
 			if (slen <= 0) return slen;
 			break;
 		}
@@ -489,6 +493,7 @@ static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const
 		p += slen;
 	}
 
+	fr_pair_append(out, vp);
 	return data_len;
 }
 

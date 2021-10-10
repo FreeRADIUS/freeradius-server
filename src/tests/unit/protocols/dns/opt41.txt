@@ -5,13 +5,10 @@ proto dns
 proto-dictionary dns
 
 decode-proto f6 ab 01 20 00 01 00 00 00 00 00 01 00 00 06 00 01 00 00 29 10 00 00 00 00 00 00 0c 00 0a 00 08 36 bf 11 1f ef 2e 01 09
-match packet = { id = 63147, query = query, opcode = query, authoritative = no, truncated-response = no, recursion-desired = yes, recursion-available = no, reserved = no, authentic-data = yes, checking-disabled = no, rcode = no-error, qdcount = 1, ancount = 0, nscount = 0, arcount = 1 }, question = { qname = ".", qtype = 6, qclass = internet }, ar = { name = ".", type = opt, class = 4096, ttl = 0, type.opt = { options.padding = 0x000836bf111fef2e0109 } }
+match packet = { id = 63147, query = query, opcode = query, authoritative = no, truncated-response = no, recursion-desired = yes, recursion-available = no, reserved = no, authentic-data = yes, checking-disabled = no, rcode = no-error, qdcount = 1, ancount = 0, nscount = 0, arcount = 1 }, question = { qname = ".", qtype = 6, qclass = internet }, ar = { name = ".", type = opt, class = 4096, ttl = 0, type.opt = { options = { padding = 0x000836bf111fef2e0109 } } }
 
-#
-#  Doesn't quite work yet.  Maybe the struct decoding isn't quite correct.
-#
-#encode-proto -
-#match f6 ab 01 20 00 01 00 00 00 00 00 01 00 00 06 00 01 00 00 29 10 00 00 00 00 00 00 0c 00 0a 00 08 36 bf 11 1f ef 2e 01 09
+encode-proto -
+match f6 ab 01 20 00 01 00 00 00 00 00 01 00 00 06 00 01 00 00 29 10 00 00 00 00 00 00 0c 00 0a 00 08 36 bf 11 1f ef 2e 01 09
 
 count
-match 4
+match 6
