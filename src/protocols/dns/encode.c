@@ -557,12 +557,12 @@ static ssize_t fr_dns_encode_rr(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 
 		fr_dcursor_init(&child_cursor, fr_pair_list_order(&vp->vp_group));
 
-		slen = fr_struct_to_network(&work_dbuff, &da_stack, 0, &child_cursor, encode_ctx, encode_value_trampoline, NULL);
+		slen = fr_struct_to_network(&work_dbuff, &da_stack, 0, &child_cursor, encode_ctx, encode_value_trampoline, encode_tlv);
 		if (slen <= 0) return slen;
 		(void) fr_dcursor_next(cursor);
 
 	} else {
-		slen = fr_struct_to_network(&work_dbuff, &da_stack, 0, cursor, encode_ctx, encode_value_trampoline, NULL);
+		slen = fr_struct_to_network(&work_dbuff, &da_stack, 0, cursor, encode_ctx, encode_value_trampoline, encode_tlv);
 		if (slen <= 0) return slen;
 	}
 
@@ -594,7 +594,7 @@ static ssize_t encode_record(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, fr_pair
 		fr_dcursor_t child_cursor;
 
 		fr_dcursor_init(&child_cursor, fr_pair_list_order(&vp->vp_group));
-		slen = fr_struct_to_network(&work_dbuff, da_stack, 0, &child_cursor, packet_ctx, encode_value_trampoline, NULL);
+		slen = fr_struct_to_network(&work_dbuff, da_stack, 0, &child_cursor, packet_ctx, encode_value_trampoline, encode_tlv);
 		if (slen <= 0) return slen;
 
 		count++;
