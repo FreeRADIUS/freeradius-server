@@ -234,7 +234,7 @@ static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *d
 			 *  itteration to maintain the percentage of attribute repeats
 			 */
 			vp = fr_pair_list_head(&dups);
-			fr_pair_sublist_copy(ctx, &full_list, &dups, vp);
+			fr_pair_sublist_copy(ctx, &full_list, &dups, vp, 0);
 
 			/*
 			 *  Walk past equivalent pairs in new source list
@@ -245,7 +245,7 @@ static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *d
 			/*
 			 *  Append copy remaining pairs from source list to destination
 			 */
-			fr_pair_sublist_copy(ctx, &full_list, &list, vp);
+			fr_pair_sublist_copy(ctx, &full_list, &list, vp, 0);
 
 			/*
 			 *  We copied pairs rather than moving, free the source

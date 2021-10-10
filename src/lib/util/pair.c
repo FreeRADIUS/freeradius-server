@@ -1560,22 +1560,28 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
  *
  * Copy all pairs from 'from' regardless of tag, attribute or vendor, starting at 'item'.
  *
- * @param[in] ctx	for new #fr_pair_t (s) to be allocated in.
- * @param[in] to	where to copy attributes to.
- * @param[in] from	whence to copy #fr_pair_t (s).
- * @param[in] item	to start copying at
+ * @param[in] ctx		for new #fr_pair_t (s) to be allocated in.
+ * @param[in] to		where to copy attributes to.
+ * @param[in] from		whence to copy #fr_pair_t (s).
+ * @param[in] start		first pair to start copying from.
+ * @param[in] count		How many instances to copy.
+ *				Use 0 for all attributes.
  * @return
  *	- >0 the number of attributes copied.
  *	- 0 if no attributes copied.
  *	- -1 on error.
  */
-int fr_pair_sublist_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const *from, fr_pair_t *item)
+int fr_pair_sublist_copy(TALLOC_CTX *ctx, fr_pair_list_t *to,
+			 fr_pair_list_t const *from, fr_pair_t const *start, unsigned int count)
 {
-	fr_pair_t	*vp, *new_vp;
-	int		cnt = 0;
+	fr_pair_t const	*vp;
+	fr_pair_t	*new_vp;
+	unsigned int	cnt = 0;
 
-	for (vp = item;
-	     vp;
+	if (!start) start = fr_pair_list_head(from);
+
+	for (vp = start;
+	     vp && ((count == 0) || (cnt < count));
 	     vp = fr_pair_list_next(from, vp), cnt++) {
 		VP_VERIFY(vp);
 		new_vp = fr_pair_copy(ctx, vp);
@@ -2494,6 +2500,52 @@ void fr_pair_list_tainted(fr_pair_list_t *list)
 	}
 }
 
+/** Appends a list of fr_pair_t from a temporary list to a destination list
+ *
+ * @param dst list to move pairs into
+ * @param src list from which to take pairs
+ */
+void fr_pair_list_append(fr_pair_list_t *dst, fr_pair_list_t *src)
+{
+	fr_dlist_move(&dst->order, &src->order);
+}
+
+/** Move a list of fr_pair_t from a temporary list to the head of a destination list
+ *
+ * @param dst list to move pairs into
+ * @param src from which to take pairs
+ */
+void fr_pair_list_prepend(fr_pair_list_t *dst, fr_pair_list_t *src)
+{
+	fr_dlist_move_head(&dst->order, &src->order);
+}
+
+/** Evaluation function for matching if vp matches a given da
+ *
+ * Can be used as a filter function for fr_dcursor_filter_next()
+ *
+ * @param item	pointer to a fr_pair_t
+ * @param uctx	da to match
+ *
+ * @return true if the pair matches the da
+ */
+bool fr_pair_matches_da(void const *item, void const *uctx)
+{
+	fr_pair_t const		*vp = item;
+	fr_dict_attr_t const	*da = uctx;
+	return da == vp->da;
+}
+
+/** Get the length of a list of fr_pair_t
+ *
+ * @param[in] list to return the length of
+ *
+ * @return number of entries in the list
+ */
+size_t fr_pair_list_len(fr_pair_list_t const *list)
+{
+	return fr_dlist_num_elements(&list->order);
+}
 
 /** Parse a list of VPs from a value box.
  *
@@ -2563,51 +2615,4 @@ void fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 	 *	Mark the attributes as tainted.
 	 */
 	fr_pair_list_tainted(out);
-}
-
-/** Appends a list of fr_pair_t from a temporary list to a destination list
- *
- * @param dst list to move pairs into
- * @param src list from which to take pairs
- */
-void fr_pair_list_append(fr_pair_list_t *dst, fr_pair_list_t *src)
-{
-	fr_dlist_move(&dst->order, &src->order);
-}
-
-/** Move a list of fr_pair_t from a temporary list to the head of a destination list
- *
- * @param dst list to move pairs into
- * @param src from which to take pairs
- */
-void fr_pair_list_prepend(fr_pair_list_t *dst, fr_pair_list_t *src)
-{
-	fr_dlist_move_head(&dst->order, &src->order);
-}
-
-/** Evaluation function for matching if vp matches a given da
- *
- * Can be used as a filter function for fr_dcursor_filter_next()
- *
- * @param item	pointer to a fr_pair_t
- * @param uctx	da to match
- *
- * @return true if the pair matches the da
- */
-bool fr_pair_matches_da(void const *item, void const *uctx)
-{
-	fr_pair_t const		*vp = item;
-	fr_dict_attr_t const	*da = uctx;
-	return da == vp->da;
-}
-
-/** Get the length of a list of fr_pair_t
- *
- * @param[in] list to return the length of
- *
- * @return number of entries in the list
- */
-size_t fr_pair_list_len(fr_pair_list_t const *list)
-{
-	return fr_dlist_num_elements(&list->order);
 }
