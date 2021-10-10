@@ -509,9 +509,15 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	 *	given parent, then allow encoding of that struct, too.
 	 *	This allows us to encode structures automatically,
 	 *	even if key fields are omitted.
+	 *
+	 *	Note that this check catches TLVs which are "flat" and
+	 *	not nested.  We could fix that by adding a special
+	 *	case, but it's better to just fix everything to handle
+	 *	nested attributes.
 	 */
 	if (vp && (vp->da->parent != parent)) {
-		fr_strerror_printf("%s: struct encoding is missing previous attributes", __FUNCTION__);
+		fr_strerror_printf("%s: struct encoding is missing previous attributes (parent %s, expecting %s)",
+				   __FUNCTION__, vp->da->parent->name, parent->name);
 		return -1;
 	}
 
@@ -745,6 +751,12 @@ done:
 	vp = fr_dcursor_current(cursor);
 	if (tlv) {
 		ssize_t slen;
+
+		if (!encode_tlv) {
+			fr_strerror_printf("Asked to encode TLV %s, but not passed an encoding function",
+					   tlv->name);
+			return -1;
+		}
 
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
