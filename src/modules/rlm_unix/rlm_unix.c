@@ -299,7 +299,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 		RETURN_MODULE_NOOP;
 
 	MEM(pair_update_control(&vp, attr_crypt_password) >= 0);
-	fr_pair_value_strdup(vp, encrypted_pass);
+	fr_pair_value_strdup(vp, encrypted_pass, false);
 
 	RETURN_MODULE_UPDATED;
 }

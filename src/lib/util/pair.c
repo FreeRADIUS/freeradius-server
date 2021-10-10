@@ -1681,20 +1681,21 @@ int fr_pair_value_from_str(fr_pair_t *vp, char const *value, ssize_t inlen, char
  *
  * @note vp->da must be of type FR_TYPE_STRING.
  *
- * @param[in,out] vp to update
- * @param[in] src data to copy
+ * @param[in,out] vp	to update
+ * @param[in] src	data to copy
+ * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_pair_value_strdup(fr_pair_t *vp, char const *src)
+int fr_pair_value_strdup(fr_pair_t *vp, char const *src, bool tainted)
 {
 	int ret;
 
 	if (!fr_cond_assert(vp->da->type == FR_TYPE_STRING)) return -1;
 
 	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
-	ret = fr_value_box_strdup(vp, &vp->data, vp->da, src, false);
+	ret = fr_value_box_strdup(vp, &vp->data, vp->da, src, tainted);
 	if (ret == 0) {
 		vp->type = VT_DATA;
 		VP_VERIFY(vp);

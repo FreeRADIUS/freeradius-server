@@ -837,7 +837,7 @@ static int send_one_packet(rc_request_t *request)
 			fr_pair_t *vp;
 
 			if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_user_password, 0)) != NULL) {
-				fr_pair_value_strdup(vp, request->password->vp_strvalue);
+				fr_pair_value_strdup(vp, request->password->vp_strvalue, false);
 
 			} else if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_chap_password, 0)) != NULL) {
 				uint8_t		buffer[17];

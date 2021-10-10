@@ -495,7 +495,7 @@ void trigger_args_afrom_server(TALLOC_CTX *ctx, fr_pair_list_t *list, char const
 	}
 
 	MEM(vp = fr_pair_afrom_da(ctx, server_da));
-	fr_pair_value_strdup(vp, server);
+	fr_pair_value_strdup(vp, server, false);
 	fr_pair_append(list, vp);
 
 	MEM(vp = fr_pair_afrom_da(ctx, port_da));

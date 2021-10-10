@@ -167,7 +167,7 @@ static void message_failed(request_t *request, PROCESS_INST *inst, fr_process_st
 	 */
 	if (!fr_pair_find_by_da(&request->reply_pairs, attr_tacacs_server_message, 0)) {
 		MEM(pair_update_reply(&vp, attr_tacacs_server_message) >= 0);
-		fr_pair_value_strdup(vp, msg);
+		fr_pair_value_strdup(vp, msg, false);
 	}
 
 	/*

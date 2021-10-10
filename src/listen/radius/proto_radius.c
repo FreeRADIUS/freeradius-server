@@ -274,7 +274,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 					break;
 
 				case FR_TYPE_STRING:
-					fr_pair_value_strdup(vp, "");
+					fr_pair_value_strdup(vp, "", true);
 					break;
 				}
 			}

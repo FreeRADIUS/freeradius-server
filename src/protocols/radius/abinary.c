@@ -1536,7 +1536,7 @@ ssize_t fr_radius_decode_abinary(fr_pair_t *vp, uint8_t const *data, size_t data
 	/*
 	 *	Copy the finished string to the output VP.
 	 */
-	if (fr_pair_value_strdup(vp, string) < 0) return -1;
+	if (fr_pair_value_strdup(vp, string, true) < 0) return -1;
 
 	return 0;
 }

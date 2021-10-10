@@ -535,7 +535,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 	if (*buffer) {
 		MEM(pair_update_reply(&vp, attr_reply_message) >= 0);
-		fr_pair_value_strdup(vp, buffer);
+		fr_pair_value_strdup(vp, buffer, false);
 	}
 	RETURN_MODULE_RCODE(rcode);
 }

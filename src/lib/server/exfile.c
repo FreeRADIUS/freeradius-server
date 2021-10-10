@@ -90,7 +90,7 @@ static inline void exfile_trigger_exec(exfile_t *ef, exfile_entry_t *entry, char
 	fr_dcursor_init(&cursor, fr_pair_list_order(&args));
 
 	MEM(vp = fr_pair_afrom_da(NULL, da));
-	fr_pair_value_strdup(vp, entry->filename);
+	fr_pair_value_strdup(vp, entry->filename, false);
 
 	fr_dcursor_prepend(&cursor, vp);
 

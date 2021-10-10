@@ -855,7 +855,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 	do {
 	next:
 		fr_assert(entry != NULL);
-		fr_pair_value_strdup(sql_group, entry->name);
+		fr_pair_value_strdup(sql_group, entry->name, true);
 
 		if (inst->config->authorize_group_check_query) {
 			fr_pair_t	*vp;

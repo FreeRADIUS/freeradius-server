@@ -335,7 +335,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		 *	portion.
 		 */
 		MEM(pair_update_request(&vp, attr_yubikey_otp) >= 0);
-		fr_pair_value_strdup(vp, otp);
+		fr_pair_value_strdup(vp, otp, password->vp_tainted);
 
 		/*
 		 *	Replace the existing string buffer for the password

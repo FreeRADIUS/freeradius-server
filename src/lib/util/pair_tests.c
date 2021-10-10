@@ -580,7 +580,7 @@ static void test_fr_pair_value_strdup(void)
 	VP_VERIFY(vp);
 
 	TEST_CASE("Copy content of 'test_string' to attribute value using fr_pair_value_strdup()");
-	TEST_CHECK(fr_pair_value_strdup(vp, test_string) == 0);
+	TEST_CHECK(fr_pair_value_strdup(vp, test_string, false) == 0);
 
 	TEST_CASE("Validating VP_VERIFY()");
 	VP_VERIFY(vp);
@@ -626,7 +626,7 @@ static void test_fr_pair_value_strtrim(void)
 	VP_VERIFY(vp);
 
 	TEST_CASE("Copy content of 'test_string' to attribute value using fr_pair_value_strdup_shallow()");
-	TEST_CHECK(fr_pair_value_strdup(vp, test_string) == 0);
+	TEST_CHECK(fr_pair_value_strdup(vp, test_string, false) == 0);
 
 	TEST_CASE("Trim the length of the string buffer using fr_pair_value_strtrim()");
 	TEST_CHECK(fr_pair_value_strtrim(vp) == 0);

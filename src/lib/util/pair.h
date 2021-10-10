@@ -342,7 +342,7 @@ int		fr_pair_value_copy(fr_pair_t *dst, fr_pair_t *src);
  */
 int		fr_pair_value_from_str(fr_pair_t *vp, char const *value, ssize_t len, char quote, bool tainted);
 
-int		fr_pair_value_strdup(fr_pair_t *vp, char const *src);
+int		fr_pair_value_strdup(fr_pair_t *vp, char const *src, bool tainted) CC_HINT(nonnull);
 
 int		fr_pair_value_strdup_shallow(fr_pair_t *vp, char const *src, bool tainted);
 

@@ -118,7 +118,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 
 		OBJ_obj2txt(buff, sizeof(buff), alg->algorithm, 0);
 		MEM(fr_pair_append_by_da(ctx, &vp, pair_list, attr_tls_certificate_signature_algorithm) == 0);
-		fr_pair_value_strdup(vp, buff);
+		fr_pair_value_strdup(vp, buff, false);
 	}
 
 	/*
