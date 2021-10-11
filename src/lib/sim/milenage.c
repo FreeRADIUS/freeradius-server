@@ -56,7 +56,7 @@ static inline int aes_128_encrypt_block(EVP_CIPHER_CTX *evp_ctx,
 		return -1;
 	}
 
-	EVP_CIPHER_CTX_clean(evp_ctx);
+	EVP_CIPHER_CTX_reset(evp_ctx);
 
 	return 0;
 }
