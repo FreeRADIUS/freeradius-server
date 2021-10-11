@@ -65,7 +65,7 @@ typedef int (*fr_dcursor_insert_t)(fr_dlist_head_t *list, void *to_insert, void 
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*fr_dcursor_delete_t)(fr_dlist_head_t *list, void *to_delete, void *uctx);
+typedef int (*fr_dcursor_remove_t)(fr_dlist_head_t *list, void *to_delete, void *uctx);
 /** Type of evaluation functions to pass to the fr_dcursor_filter_*() functions.
  *
  * @param[in] item	the item to be evaluated
@@ -81,7 +81,7 @@ typedef struct {
 	void			*prev;		//!< The previous item in the dlist.
 	fr_dcursor_iter_t	iter;		//!< Iterator function.
 	fr_dcursor_insert_t	insert;		//!< Callback function on insert.
-	fr_dcursor_delete_t	delete;		//!< Callback function on delete.
+	fr_dcursor_remove_t	remove;		//!< Callback function on delete.
 	bool			is_const;	//!< The list we're iterating over is immutable.
 	void			*uctx;		//!< to pass to iterator function.
 } fr_dcursor_t;
@@ -307,6 +307,11 @@ static inline void * fr_dcursor_set_current(fr_dcursor_t *cursor, void *item)
 	if (fr_dlist_empty(cursor->dlist)) return NULL;
 	if (!item) return NULL;
 
+	/*
+	 *	Item must be in the dlist
+	 */
+	if (!fr_dlist_in_list(cursor->dlist, item)) return NULL;
+
 	cursor->current = item;
 	cursor->prev = fr_dlist_prev(cursor->dlist, item);
 
@@ -325,13 +330,17 @@ static inline void * fr_dcursor_set_current(fr_dcursor_t *cursor, void *item)
  *
  * @hidecallergraph
  */
-static inline void fr_dcursor_prepend(fr_dcursor_t *cursor, void *v)
+static inline int fr_dcursor_prepend(fr_dcursor_t *cursor, void *v)
 {
-	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return;
+	int ret;
+
+	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return -1;
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (cursor->dlist->type) _talloc_get_type_abort(v, cursor->dlist->type, __location__);
 #endif
+
+	if (cursor->insert) if ((ret = cursor->insert(cursor->dlist, v, cursor->uctx)) < 0) return ret;
 
 	/*
 	 *	Insert at the head of the list
@@ -346,6 +355,8 @@ static inline void fr_dcursor_prepend(fr_dcursor_t *cursor, void *v)
 	if (cursor->current && !cursor->prev) {
 		cursor->prev = v;
 	}
+
+	return 0;
 }
 
 /** Insert a single item at the end of the list
@@ -354,18 +365,27 @@ static inline void fr_dcursor_prepend(fr_dcursor_t *cursor, void *v)
  *
  * @param[in] cursor to operate on.
  * @param[in] v to insert.
+ * @return
+ *	- 0 on success.
+ *	- -1 if the insert callback failed or a modification was attempted on a const'd list.
  *
  * @hidecallergraph
  */
-static inline void fr_dcursor_append(fr_dcursor_t *cursor, void *v)
+static inline int fr_dcursor_append(fr_dcursor_t *cursor, void *v)
 {
-	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return;
+	int ret;
+
+	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return -1;
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (cursor->dlist->type) _talloc_get_type_abort(v, cursor->dlist->type, __location__);
 #endif
 
+	if (cursor->insert) if ((ret = cursor->insert(cursor->dlist, v, cursor->uctx)) < 0) return ret;
+
 	fr_dlist_insert_tail(cursor->dlist, v);
+
+	return 0;
 }
 
 /** Insert directly after the current item
@@ -374,22 +394,32 @@ static inline void fr_dcursor_append(fr_dcursor_t *cursor, void *v)
  *
  * @param[in] cursor	to operate on.
  * @param[in] v		Item to insert.
+ * @return
+ *	- 0 on success.
+ *	- -1 if the insert callback failed or a modification was attempted on a const'd list.
  *
  * @hidecallergraph
  */
-static inline void fr_dcursor_insert(fr_dcursor_t *cursor, void *v)
+static inline int fr_dcursor_insert(fr_dcursor_t *cursor, void *v)
 {
-	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return;
+	int ret;
+
+	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return -1;
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (cursor->dlist->type) _talloc_get_type_abort(v, cursor->dlist->type, __location__);
 #endif
 
 	if (!cursor->current) {
-		fr_dcursor_append(cursor, v);
-		return;
+		if (fr_dcursor_append(cursor, v) < 0) return -1;
+		return 0;
 	}
+
+	if (cursor->insert) if ((ret = cursor->insert(cursor->dlist, v, cursor->uctx)) < 0) return ret;
+
 	fr_dlist_insert_after(cursor->dlist, cursor->current, v);
+
+	return 0;
 }
 
 /** Remove the current item
@@ -419,6 +449,7 @@ static inline void fr_dcursor_insert(fr_dcursor_t *cursor, void *v)
  */
 static inline void * fr_dcursor_remove(fr_dcursor_t *cursor)
 {
+	int ret;
 	void *v, *p;
 
 	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return NULL;
@@ -426,6 +457,9 @@ static inline void * fr_dcursor_remove(fr_dcursor_t *cursor)
 	if (!cursor->current) return NULL;			/* don't do anything fancy, it's just a noop */
 
 	v = cursor->current;
+
+	if (cursor->remove) if ((ret = cursor->remove(cursor->dlist, v, cursor->uctx)) < 0) return ret;
+
 	p = fr_dcursor_list_prev_peek(cursor);
 	fr_dlist_remove(cursor->dlist, v);
 
@@ -553,6 +587,7 @@ void *fr_dcursor_intersect_next(fr_dcursor_t *a, fr_dcursor_t *b) CC_HINT(nonnul
  */
 static inline void * fr_dcursor_replace(fr_dcursor_t *cursor, void *r)
 {
+	int ret;
 	void *v, *p;
 
 	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return NULL;
@@ -576,6 +611,8 @@ static inline void * fr_dcursor_replace(fr_dcursor_t *cursor, void *r)
 		return NULL;
 	}
 	p = fr_dcursor_list_prev_peek(cursor);
+
+	if (cursor->remove) if ((ret = cursor->remove(cursor->dlist, v, cursor->uctx)) < 0) return ret;
 
 	fr_dlist_replace(cursor->dlist, cursor->current, r);
 
@@ -711,7 +748,7 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
  * @param[in] head	of dlist.
  * @param[in] iter	Iterator callback.
  * @param[in] insert	Callback for inserts.
- * @param[in] delete	Callback for removals.
+ * @param[in] remove	Callback for removals.
  * @param[in] is_const	Don't allow modification of the underlying list.
  * @param[in] uctx	to pass to iterator function.
  * @return the attribute pointed to by v.
@@ -721,13 +758,13 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
 static inline CC_HINT(nonnull(1,2))
 void *_fr_dcursor_init(fr_dcursor_t *cursor, fr_dlist_head_t const *head,
 		       fr_dcursor_iter_t iter, fr_dcursor_insert_t insert,
-		       fr_dcursor_delete_t delete, bool is_const, void const *uctx)
+		       fr_dcursor_remove_t remove, bool is_const, void const *uctx)
 {
 	*cursor = (fr_dcursor_t){
 		.dlist = UNCONST(fr_dlist_head_t *, head),
 		.iter = iter,
 		.insert = insert,
-		.delete = delete,
+		.remove = remove,
 		.uctx = UNCONST(void *, uctx),
 		.is_const = is_const
 	};

@@ -279,6 +279,23 @@ static inline void fr_dlist_clear(fr_dlist_head_t *list_head)
 		return -1; \
 	}
 
+/** Check if a list entry is part of a list
+ *
+ * This works because the fr_dlist_head_t has an entry in the list.
+ * So if next and prev both point to the entry for the object being
+ * passed in, then it can't be part of a list with a fr_dlist_head_t.
+ *
+ * @return
+ *	- True if in a list.
+ *	- False otherwise.
+ */
+static inline CC_HINT(nonnull) bool fr_dlist_in_list(fr_dlist_head_t *list_head, void *ptr)
+{
+	fr_dlist_t *entry = fr_dlist_item_to_entry(list_head->offset, ptr);
+
+	return fr_dlist_entry_in_list(entry);
+}
+
 /** Insert an item into the head of a list
  *
  * @note If #fr_dlist_talloc_init was used to initialise #fr_dlist_head_t
