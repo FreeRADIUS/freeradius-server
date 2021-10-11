@@ -852,7 +852,7 @@ static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_con
 			break;
 
 		case LDAP_PROC_BAD_DN:
-			ROPTIONAL(RDEBUG2, DEBUG2, "DN %s does not exist", query->ldap_url->lud_dn);
+			ROPTIONAL(RDEBUG2, DEBUG2, "DN %s does not exist", query->dn);
 			query->ret = LDAP_RESULT_BAD_DN;
 			break;
 
