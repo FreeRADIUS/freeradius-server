@@ -1309,7 +1309,6 @@ ssize_t fr_dns_label_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		 */
 		p += slen;
 		current = next;
-		fr_assert(current != NULL);
 	}
 
 	/*
