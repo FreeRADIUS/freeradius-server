@@ -585,8 +585,6 @@ fr_pair_t *fr_pair_find_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *
 
 	LIST_VERIFY(list);
 
-	if (!da) return NULL;
-
 	while ((vp = fr_pair_list_next(list, vp))) {
 		if (da == vp->da) {
 			if (n == 0) return vp;
@@ -798,7 +796,7 @@ void fr_pair_replace(fr_pair_list_t *list, fr_pair_t *replace)
 	 *	replace it. Note, we always replace the head one, and
 	 *	we ignore any others that might exist.
 	 */
-	for(i = fr_pair_list_head(list); i; i = fr_pair_list_next(list, i)) {
+	for (i = fr_pair_list_head(list); i; i = fr_pair_list_next(list, i)) {
 		VP_VERIFY(i);
 
 		/*
@@ -1529,17 +1527,12 @@ int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
  *	- -1 on error.
  */
 int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
-				  fr_pair_list_t *from, fr_dict_attr_t const *parent_da, unsigned int count)
+				  fr_pair_list_t const *from, fr_dict_attr_t const *parent_da, unsigned int count)
 {
 	fr_pair_t	*vp, *new_vp;
 	unsigned int	cnt = 0;
 
 	if (count == 0) count = UINT_MAX;
-
-	if (unlikely(!parent_da)) {
-		fr_strerror_printf("No search attribute provided");
-		return -1;
-	}
 
 	for (vp = fr_pair_list_head(from);
 	     vp && (cnt < count);

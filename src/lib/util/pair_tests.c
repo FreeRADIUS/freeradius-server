@@ -91,6 +91,9 @@ static void test_fr_pair_afrom_da(void)
 	TEST_CASE("Allocation using fr_pair_afrom_da");
 	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string)) != NULL);
 
+	TEST_CHECK(vp);
+	if (!vp) return;
+
 	TEST_CHECK(fr_pair_value_from_str(vp, test_string, strlen(test_string), '"', false) == 0);
 
 	TEST_CASE("Validating VP_VERIFY()");
@@ -196,7 +199,9 @@ static void test_fr_dcursor_iter_by_da_init(void)
 	}
 
 	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(needle);
+
+	TEST_CHECK(needle);
+	if (needle) VP_VERIFY(needle);
 
 	TEST_CASE("Expected (needle->da == fr_dict_attr_test_uint32)");
 	TEST_CHECK(needle && needle->da == fr_dict_attr_test_uint32);
@@ -219,8 +224,10 @@ static void test_fr_dcursor_iter_by_ancestor_init(void)
 		}
 	}
 
+	TEST_CHECK(needle);
+
 	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(needle);
+	if (needle) VP_VERIFY(needle);
 
 	TEST_CASE("Expected (needle->da == fr_dict_attr_test_tlv_string)");
 	TEST_CHECK(needle && needle->da == fr_dict_attr_test_tlv_string);
@@ -471,7 +478,9 @@ static void test_fr_pair_list_copy_by_ancestor(void)
 	}
 
 	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(needle);
+
+	TEST_CHECK(needle);
+	if (needle) VP_VERIFY(needle);
 
 	TEST_CASE("Expected (needle->da == fr_dict_attr_test_tlv_string)");
 	TEST_CHECK(needle && needle->da == fr_dict_attr_test_tlv_string);

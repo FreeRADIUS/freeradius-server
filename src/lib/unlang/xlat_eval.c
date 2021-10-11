@@ -91,8 +91,8 @@ fr_table_num_sorted_t const xlat_action_table[] = {
 };
 size_t xlat_action_table_len = NUM_ELEMENTS(xlat_action_table);
 
-static size_t xlat_process(TALLOC_CTX *ctx, char **out, request_t *request, xlat_exp_t const * const head,
-			   xlat_escape_legacy_t escape, void  const *escape_ctx);
+static ssize_t xlat_process(TALLOC_CTX *ctx, char **out, request_t *request, xlat_exp_t const * const head,
+			    xlat_escape_legacy_t escape, void  const *escape_ctx);
 
 /** Reconstruct the original expansion string from an xlat tree
  *
@@ -1740,8 +1740,8 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 }
 
 
-static size_t xlat_process(TALLOC_CTX *ctx, char **out, request_t *request, xlat_exp_t const * const head,
-			   xlat_escape_legacy_t escape, void const *escape_ctx)
+static ssize_t xlat_process(TALLOC_CTX *ctx, char **out, request_t *request, xlat_exp_t const * const head,
+			    xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	int i, j, list;
 	size_t total;
@@ -1851,18 +1851,18 @@ static ssize_t _xlat_eval_compiled(TALLOC_CTX *ctx, char **out, size_t outlen, r
 				   xlat_exp_t const *node, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	char *buff;
-	ssize_t len;
+	ssize_t slen;
 
 	fr_assert(node != NULL);
 
-	len = xlat_process(ctx, &buff, request, node, escape, escape_ctx);
-	if ((len < 0) || !buff) {
+	slen = xlat_process(ctx, &buff, request, node, escape, escape_ctx);
+	if (slen < 0) {
 		fr_assert(buff == NULL);
 		if (*out) **out = '\0';
-		return len;
+		return slen;
 	}
 
-	len = strlen(buff);
+	slen = strlen(buff);
 
 	/*
 	 *	If out doesn't point to an existing buffer
@@ -1870,7 +1870,7 @@ static ssize_t _xlat_eval_compiled(TALLOC_CTX *ctx, char **out, size_t outlen, r
 	 */
 	if (!*out) {
 		*out = buff;
-		return len;
+		return slen;
 	}
 
 	/*
@@ -1878,7 +1878,7 @@ static ssize_t _xlat_eval_compiled(TALLOC_CTX *ctx, char **out, size_t outlen, r
 	 */
 	strlcpy(*out, buff, outlen);
 	talloc_free(buff);
-	return len;
+	return slen;
 }
 
 static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *request, char const *fmt,

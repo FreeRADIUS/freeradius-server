@@ -864,6 +864,7 @@ static void map_list_mod_to_vps(TALLOC_CTX *ctx, fr_pair_list_t *list, vp_list_m
 			vp = map_list_mod_to_vp(ctx, mod->lhs, tmpl_value(mod->rhs));
 			if (!vp) {
 				fr_pair_list_free(list);
+				return;
 			}
 			fr_pair_append(list, vp);
 //		}

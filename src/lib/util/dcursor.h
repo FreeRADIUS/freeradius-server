@@ -702,9 +702,10 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
  *
  * @hidecallergraph
  */
-static inline void * CC_HINT(hot) _fr_dcursor_init(fr_dcursor_t *cursor, fr_dlist_head_t const *head,
-				     fr_dcursor_iter_t iter, fr_dcursor_insert_t insert,
-				     fr_dcursor_delete_t delete, bool is_const, void const *uctx)
+static inline CC_HINT(nonnull(1,2))
+void *_fr_dcursor_init(fr_dcursor_t *cursor, fr_dlist_head_t const *head,
+		       fr_dcursor_iter_t iter, fr_dcursor_insert_t insert,
+		       fr_dcursor_delete_t delete, bool is_const, void const *uctx)
 {
 	*cursor = (fr_dcursor_t){
 		.dlist = UNCONST(fr_dlist_head_t *, head),

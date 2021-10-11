@@ -337,24 +337,24 @@ int		fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
 					fr_pair_list_t *from, fr_dict_attr_t const *da, unsigned int count);
 
 int		fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
-					      fr_pair_list_t *from, fr_dict_attr_t const *parent_da, unsigned int count)
-		CC_HINT(nonnull);
+					      fr_pair_list_t const *from,
+					      fr_dict_attr_t const *parent_da, unsigned int count) CC_HINT(nonnull);
 
 int		fr_pair_sublist_copy(TALLOC_CTX *ctx, fr_pair_list_t *to,
-				     fr_pair_list_t const *from, fr_pair_t const *start, unsigned int count)
-		CC_HINT(nonnull);
+				     fr_pair_list_t const *from,
+				     fr_pair_t const *start, unsigned int count) CC_HINT(nonnull(2,3));
 
-void		fr_pair_list_append(fr_pair_list_t *dst, fr_pair_list_t *src);
+void		fr_pair_list_append(fr_pair_list_t *dst, fr_pair_list_t *src) CC_HINT(nonnull);
 
-void		fr_pair_list_prepend(fr_pair_list_t *dst, fr_pair_list_t *src);
+void		fr_pair_list_prepend(fr_pair_list_t *dst, fr_pair_list_t *src) CC_HINT(nonnull);
 
 /** @hidecallergraph */
 void		*fr_pair_list_head(fr_pair_list_t const *list) CC_HINT(nonnull);
 
 /** @hidecallergraph */
-void		*fr_pair_list_next(fr_pair_list_t const *list, fr_pair_t const *item) CC_HINT(nonnull);
+void		*fr_pair_list_next(fr_pair_list_t const *list, fr_pair_t const *item) CC_HINT(nonnull(1));
 
-void		*fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const *item) CC_HINT(nonnull);
+void		*fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const *item) CC_HINT(nonnull(1));
 
 void		*fr_pair_list_tail(fr_pair_list_t const *list) CC_HINT(nonnull);
 
@@ -423,57 +423,56 @@ int		fr_pair_value_memdup_buffer_shallow(fr_pair_t *vp, uint8_t const *src, bool
 
 int		fr_pair_value_mem_append(fr_pair_t *vp, uint8_t *src, size_t len, bool tainted) CC_HINT(nonnull(1));
 
-int		fr_pair_value_mem_append_buffer(fr_pair_t *vp, uint8_t *src, bool tainted) CC_HINT(nonnull(1));
+int		fr_pair_value_mem_append_buffer(fr_pair_t *vp, uint8_t *src, bool tainted) CC_HINT(nonnull);
  /** @} */
 
 /** @name Enum functions
  *
  * @{
  */
-char const		*fr_pair_value_enum(fr_pair_t const *vp, char buff[static 20]) CC_HINT(nonnull);
+char const	*fr_pair_value_enum(fr_pair_t const *vp, char buff[static 20]) CC_HINT(nonnull);
 
-int			fr_pair_value_enum_box(fr_value_box_t const **out, fr_pair_t *vp) CC_HINT(nonnull);
+int		fr_pair_value_enum_box(fr_value_box_t const **out, fr_pair_t *vp) CC_HINT(nonnull);
 /** @} */
 
 /** @name Printing functions
  *
  * @{
  */
-ssize_t   		fr_pair_print_value_quoted(fr_sbuff_t *out,
-						   fr_pair_t const *vp, fr_token_t quote) CC_HINT(nonnull);
+ssize_t   	fr_pair_print_value_quoted(fr_sbuff_t *out,
+					   fr_pair_t const *vp, fr_token_t quote) CC_HINT(nonnull);
 
 static inline size_t CC_HINT(nonnull(2,3))
-			fr_pair_aprint_value_quoted(TALLOC_CTX *ctx, char **out,
-						    fr_pair_t const *vp, fr_token_t quote)
+		fr_pair_aprint_value_quoted(TALLOC_CTX *ctx, char **out,
+					    fr_pair_t const *vp, fr_token_t quote)
 {
-			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_pair_print_value_quoted, vp, quote)
+		SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_pair_print_value_quoted, vp, quote)
 }
 
-ssize_t			fr_pair_print(fr_sbuff_t *out, fr_pair_t const *parent,
-				      fr_pair_t const *vp) CC_HINT(nonnull(1,3));
+ssize_t		fr_pair_print(fr_sbuff_t *out, fr_pair_t const *parent,
+			      fr_pair_t const *vp) CC_HINT(nonnull(1,3));
 
 static inline size_t CC_HINT(nonnull(2,4))
-			fr_pair_aprint(TALLOC_CTX *ctx, char **out, fr_pair_t const *parent, fr_pair_t const *vp)
+		fr_pair_aprint(TALLOC_CTX *ctx, char **out, fr_pair_t const *parent, fr_pair_t const *vp)
 {
-			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_pair_print, parent, vp)
+		SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_pair_print, parent, vp)
 }
 
-void			fr_pair_fprint(FILE *, fr_pair_t const *vp) CC_HINT(nonnull);
+void		fr_pair_fprint(FILE *, fr_pair_t const *vp) CC_HINT(nonnull);
 
-#define			fr_pair_list_log(_log, _list) _fr_pair_list_log(_log, 4, NULL, _list, __FILE__, __LINE__);
-void			_fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t *parent,
-					  fr_pair_list_t const *list, char const *file, int line)
-			 CC_HINT(nonnull(1,4));
+#define		fr_pair_list_log(_log, _list) _fr_pair_list_log(_log, 4, NULL, _list, __FILE__, __LINE__);
+void		_fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t *parent,
+				  fr_pair_list_t const *list, char const *file, int line) CC_HINT(nonnull(1,4));
 
-void			fr_pair_list_debug(fr_pair_list_t const *list) CC_HINT(nonnull);
-void			fr_pair_debug(fr_pair_t const *pair) CC_HINT(nonnull);
+void		fr_pair_list_debug(fr_pair_list_t const *list) CC_HINT(nonnull);
+void		fr_pair_debug(fr_pair_t const *pair) CC_HINT(nonnull);
 
 /** @} */
 
-void			fr_pair_list_tainted(fr_pair_list_t *vps) CC_HINT(nonnull);
+void		fr_pair_list_tainted(fr_pair_list_t *vps) CC_HINT(nonnull);
 
-void			fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_pair_list_t *out,
-					       fr_dict_t const *dict, fr_value_box_t *box) CC_HINT(nonnull(1,2,3));
+void		fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_pair_list_t *out,
+				       fr_dict_t const *dict, fr_value_box_t *box) CC_HINT(nonnull(1,2,3));
 
 /* Tokenization */
 typedef struct {
@@ -482,8 +481,8 @@ typedef struct {
 	fr_dcursor_t		*cursor;		//!< of VPs to add
 } fr_pair_ctx_t;
 
-ssize_t		fr_pair_ctx_afrom_str(fr_pair_ctx_t *pair_ctx, char const *in, size_t inlen);
-void		fr_pair_ctx_reset(fr_pair_ctx_t *pair_ctx, fr_dict_t const *dict);
+ssize_t		fr_pair_ctx_afrom_str(fr_pair_ctx_t *pair_ctx, char const *in, size_t inlen) CC_HINT(nonnull);
+void		fr_pair_ctx_reset(fr_pair_ctx_t *pair_ctx, fr_dict_t const *dict) CC_HINT(nonnull);
 
 #undef _CONST
 #ifdef __cplusplus
