@@ -397,6 +397,10 @@ typedef struct fr_ldap_thread_trunk_s {
 
 typedef struct fr_ldap_referral_s fr_ldap_referral_t;
 
+typedef struct fr_ldap_query_s fr_ldap_query_t;
+
+typedef void (*fr_ldap_result_parser_t)(fr_ldap_query_t *query, LDAPMessage *head);
+
 /** LDAP query structure
  *
  * Used to hold the elements of an LDAP query and track its progress.
@@ -442,6 +446,8 @@ typedef struct fr_ldap_query_s {
 	uint16_t		referral_depth;	//!< How many referrals we have followed
 	fr_ldap_referral_t	*referral;	//!< Referral actually being followed
 
+	fr_ldap_result_parser_t	parser;		//!< Custom results parser.
+
 	LDAPMessage		*result;	//!< Head of LDAP results list.
 
 	fr_ldap_result_code_t	ret;		//!< Result code
@@ -463,6 +469,33 @@ typedef struct fr_ldap_referral_s {
 	fr_ldap_thread_trunk_t	*ttrunk;	//!< Trunk this referral should use
 } fr_ldap_referral_t;
 
+/** Holds arguments for the async bind operation
+ *
+ */
+typedef struct {
+	fr_ldap_connection_t	*c;			//!< to bind.
+	char const		*bind_dn;		//!< of the user, may be NULL to bind anonymously.
+	char const		*password;		//!< of the user, may be NULL if no password is specified.
+	LDAPControl		**serverctrls;		//!< Controls to pass to the server.
+	LDAPControl		**clientctrls;		//!< Controls to pass to the client (library).
+
+	int			msgid;
+} fr_ldap_bind_ctx_t;
+
+
+/** Holds arguments for async bind auth requests
+ *
+ * Used when LDAP binds are being used to authenticate users, rather than admin binds.
+ * Allows tracking of multiple bind requests on a single connection.
+ */
+typedef struct {
+	fr_rb_node_t		node;		//!< Entry in the tree of outstanding bind requests.
+	fr_ldap_thread_t	*thread;	//!< This bind is being run by.
+	int			msgid;		//!< libldap msgid for this bind.
+	request_t		*request;	//!< this bind relates to.
+	fr_ldap_bind_ctx_t	*bind_ctx;	//!< Data relating to the user being bound.
+	fr_ldap_result_code_t	ret;		//!< Return code of bind operation.
+} fr_ldap_bind_auth_ctx_t;
 
 /** Codes returned by fr_ldap internal functions
  *
@@ -550,6 +583,19 @@ static inline int8_t fr_ldap_query_cmp(void const *one, void const *two)
 }
 
 fr_ldap_query_t *fr_ldap_query_alloc(TALLOC_CTX *ctx);
+
+/** Compare two ldap bind auth structures on msgid
+ *
+ * @param[in] one	first bind request to compare.
+ * @param[in] two	second bind request to compare.
+ * @return CMP(one,two)
+ */
+static inline int8_t fr_ldap_bind_auth_cmp(void const *one, void const *two)
+{
+	fr_ldap_bind_auth_ctx_t const	*a = one, *b = two;
+
+	return CMP(a->msgid, b->msgid);
+}
 
 int fr_ldap_trunk_search(TALLOC_CTX *ctx, fr_ldap_query_t **query, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 			 char const *base_dn, int scope, char const *filter, char const * const *attrs,
@@ -639,6 +685,8 @@ int		fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t 
  */
 int		fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_connection_t **pconn);
 
+int		fr_ldap_trunk_directory_alloc_async(TALLOC_CTX *ctx, fr_ldap_thread_trunk_t *ttrunk);
+
 /*
  *	edir.c - Edirectory integrations
  */
@@ -724,6 +772,8 @@ int		fr_ldap_bind_async(fr_ldap_connection_t *c,
 				   char const *bind_dn, char const *password,
 				   LDAPControl **serverctrls, LDAPControl **clientctrls);
 
+int		fr_ldap_bind_auth_async(request_t *request, fr_ldap_thread_t *thread,
+					char const *bind_dn, char const *password);
 
 /*
  *	uti.c - Utility functions

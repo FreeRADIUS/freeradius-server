@@ -45,119 +45,6 @@ static char const *ldap_msg_types[UINT8_MAX] = {
 	[LDAP_RES_INTERMEDIATE]		= "intermediate response"
 };
 
-#if LDAP_SET_REBIND_PROC_ARGS == 3
-/** Callback for OpenLDAP to rebind and chase referrals
- *
- * Called by OpenLDAP when it receives a referral and has to rebind.
- *
- * @param handle to rebind.
- * @param url to bind to.
- * @param request that triggered the rebind.
- * @param msgid that triggered the rebind.
- * @param ctx fr_ldap configuration.
- */
-static int fr_ldap_rebind(LDAP *handle, LDAP_CONST char *url,
-			  UNUSED ber_tag_t request, UNUSED ber_int_t msgid, void *ctx)
-{
-	fr_ldap_rcode_t			status;
-	fr_ldap_connection_t			*conn = talloc_get_type_abort(ctx, fr_ldap_connection_t);
-	fr_ldap_config_t const	*handle_config = conn->config;
-
-	char const			*admin_identity = NULL;
-	char const			*admin_password = NULL;
-
-	int				ldap_errno;
-
-	conn->referred = true;
-	conn->rebound = true;	/* not really, but oh well... */
-	fr_assert(handle == conn->handle);
-
-	DEBUG("Rebinding to URL %s", url);
-
-#  ifdef HAVE_LDAP_URL_PARSE
-	/*
-	 *	Use bindname and x-bindpw extensions to get the bind credentials
-	 *	SASL mech is inherited from the module that defined the connection
-	 *	pool.
-	 */
-	if (handle_config->use_referral_credentials) {
-		LDAPURLDesc	*ldap_url;
-		int		ret;
-		char		**ext;
-
-		ret = ldap_url_parse(url, &ldap_url);
-		if (ret != LDAP_SUCCESS) {
-			ERROR("Failed parsing LDAP URL \"%s\": %s", url, ldap_err2string(ret));
-			return -1;
-		}
-
-		/*
-		 *	If there are no extensions, OpenLDAP doesn't
-		 *	bother allocating an array.
-		 */
-		for (ext = ldap_url->lud_exts; ext && *ext; ext++) {
-			char const *p;
-			bool critical = false;
-
-			p = *ext;
-
-			if (*p == '!') {
-				critical = true;
-				p++;
-			}
-
-			/*
-			 *	LDAP Parse URL unescapes the extensions for us
-			 */
-			switch (fr_table_value_by_substr(fr_ldap_supported_extensions, p, -1, LDAP_EXT_UNSUPPORTED)) {
-			case LDAP_EXT_BINDNAME:
-				p = strchr(p, '=');
-				if (!p) {
-				bad_ext:
-					ERROR("Failed parsing extension \"%s\": "
-					      "No attribute/value delimiter '='", *ext);
-					ldap_free_urldesc(ldap_url);
-					return LDAP_OTHER;
-				}
-				admin_identity = p + 1;
-				break;
-
-			case LDAP_EXT_BINDPW:
-				p = strchr(p, '=');
-				if (!p) goto bad_ext;
-				admin_password = p + 1;
-				break;
-
-			default:
-				if (critical) {
-					ERROR("Failed parsing critical extension \"%s\": "
-					      "Not supported by FreeRADIUS", *ext);
-					ldap_free_urldesc(ldap_url);
-					return LDAP_OTHER;
-				}
-				DEBUG2("Skipping unsupported extension \"%s\"", *ext);
-				continue;
-			}
-		}
-		ldap_free_urldesc(ldap_url);
-	} else
-#  endif
-	{
-		admin_identity = handle_config->admin_identity;
-		admin_password = handle_config->admin_password;
-	}
-
-	status = fr_ldap_bind(NULL, &conn, admin_identity, admin_password,
-			      &conn->config->admin_sasl, fr_time_delta_wrap(0), NULL, NULL);
-	if (status != LDAP_PROC_SUCCESS) {
-		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-
-		return ldap_errno;
-	}
-
-	return LDAP_SUCCESS;
-}
-#endif
 
 /** Allocate and configure a new connection
  *
@@ -231,21 +118,10 @@ DIAG_ON(unused-macros)
 	if (config->dereference_str) do_ldap_option(LDAP_OPT_DEREF, "dereference", &(config->dereference));
 
 	/*
-	 *	Leave "chase_referrals" unset to use the OpenLDAP default.
+	 *	We handle our own referral chasing as there is no way to
+	 *	get the fd for a referred query.
 	 */
-	if (!config->chase_referrals_unset) {
-		if (config->chase_referrals) {
-			do_ldap_option(LDAP_OPT_REFERRALS, "chase_referrals", LDAP_OPT_ON);
-
-			if (config->rebind == true) {
-#if LDAP_SET_REBIND_PROC_ARGS == 3
-				ldap_set_rebind_proc(c->handle, fr_ldap_rebind, c);
-#endif
-			}
-		} else {
-			do_ldap_option(LDAP_OPT_REFERRALS, "chase_referrals", LDAP_OPT_OFF);
-		}
-	}
+	do_ldap_option(LDAP_OPT_REFERRALS, "chase_referrals", LDAP_OPT_OFF);
 
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
 	/*
@@ -1005,6 +881,11 @@ static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_con
 		query->result = result;
 
 		/*
+		 *	If we have a specific parser to handle the result, call it
+		 */
+		if (query->parser) query->parser(query, result);
+
+		/*
 		 *	Remove the query from the outstanding list and tidy up
 		 */
 		fr_rb_remove(ldap_conn->queries, query);
@@ -1068,6 +949,7 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 				      "rlm_ldap", found, false);
 
 	if (!found->trunk) {
+	error:
 		ROPTIONAL(REDEBUG, ERROR, "Unable to create LDAP connection");
 		talloc_free(found);
 		return NULL;
@@ -1080,6 +962,11 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 	 */
 	fr_event_timer_in(thread, thread->el, &found->ev, thread->config->idle_timeout,
 			  _ldap_trunk_idle_timeout, found);
+
+	/*
+	 *	Attempt to discover what type directory we are talking to
+	 */
+	if (fr_ldap_trunk_directory_alloc_async(found, found) < 0) goto error;
 
 	fr_rb_insert(thread->trunks, found);
 
