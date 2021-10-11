@@ -183,9 +183,14 @@ DIAG_OFF(nonnull-compare)
  * This function wraps the assert but has nonnull-compare disabled
  * meaning a warning won't be emitted.
  */
-static inline fr_pair_nonnull_assert(fr_pair_t const *vp)
+static inline void fr_pair_nonnull_assert(fr_pair_t const *vp)
 {
-	fr_cond_assert(vp)
+	fr_cond_assert(vp);
+}
+
+static inline void fr_pair_list_nonnull_assert(fr_pair_list_t const *pair_list)
+{
+	fr_cond_assert(pair_list);
 }
 DIAG_ON(nonull-compare)
 
@@ -195,7 +200,7 @@ DIAG_ON(nonull-compare)
  *	so we can add some sneaky soft asserts.
  */
 #  define VP_VERIFY(_x)		fr_pair_nonnull_assert(_x)
-#  define LIST_VERIFY(_x)	fr_pair_nonnull_assert(_x)
+#  define LIST_VERIFY(_x)	fr_pair_list_nonnull_assert(_x)
 #endif
 
 /* Initialisation */
