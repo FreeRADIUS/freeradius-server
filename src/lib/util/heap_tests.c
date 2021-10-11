@@ -73,6 +73,7 @@ static void heap_test(int skip)
 
 	TEST_CASE("insertions");
 	for (i = 0; i < HEAP_TEST_SIZE; i++) {
+		FR_HEAP_VERIFY(hp);
 		TEST_CHECK((ret = fr_heap_insert(hp, &array[i])) >= 0);
 		TEST_MSG("insert failed, returned %i - %s", ret, fr_strerror());
 
@@ -87,6 +88,7 @@ static void heap_test(int skip)
 		for (i = 0; i < HEAP_TEST_SIZE / skip; i++) {
 			entry = i * skip;
 
+			FR_HEAP_VERIFY(hp);
 			TEST_CHECK(array[entry].heap != 0);
 			TEST_MSG("element %i removed out of order", entry);
 
@@ -105,6 +107,7 @@ static void heap_test(int skip)
 	for (i = 0; i < left; i++) {
 		heap_thing *t;
 
+		FR_HEAP_VERIFY(hp);
 		TEST_CHECK((t = fr_heap_peek(hp)) != NULL);
 		TEST_MSG("expected %i elements remaining in the heap", left - i);
 

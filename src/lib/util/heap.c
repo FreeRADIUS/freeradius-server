@@ -58,7 +58,7 @@ typedef struct fr_heap_s heap_t;
  */
 #define HEAP_PARENT(_x)	((_x) >> 1)
 #define HEAP_LEFT(_x)	(2 * (_x))
-/* #define HEAP_RIGHT(_x) (2 * (_x) + 1 ) */
+#define HEAP_RIGHT(_x) (2 * (_x) + 1 )
 #define	HEAP_SWAP(_a, _b) { void *_tmp = _a; _a = _b; _b = _tmp; }
 
 static void fr_heap_bubble(heap_t *h, fr_heap_index_t child);
@@ -386,3 +386,46 @@ void *fr_heap_iter_next(fr_heap_t *hp, fr_heap_iter_t *iter)
 
 	return h->p[*iter];
 }
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+void fr_heap_verify(char const *file, int line, fr_heap_t *hp)
+{
+	heap_t	*h;
+
+	fr_fatal_assert_msg(hp, "CONSISTENCY CHECK FAILED %s[%i]: fr_heap_t pointer was NULL", file, line);
+	(void) talloc_get_type_abort(hp, fr_heap_t);
+
+	/*
+	 *	Allocating the heap structure and the array holding the heap as described in data structure
+	 *	texts together is a respectable savings, but it means adding a level of indirection so the
+	 *	fr_heap_t * isn't realloc()ed out from under the user, hence the following (and the use of h
+	 *	rather than hp to access anything in the heap structure).
+	 */
+	h = *hp;
+	fr_fatal_assert_msg(h, "CONSISTENCY CHECK FAILED %s[%i]: heap_t pointer was NULL", file, line);
+	(void) talloc_get_type_abort(h, heap_t);
+
+	fr_fatal_assert_msg(h->num_elements <= h->size,
+			    "CONSISTENCY CHECK FAILED %s[%i]: num_elements exceeds size", file, line);
+
+	fr_fatal_assert_msg(h->p[0] == (void *)UINTPTR_MAX,
+			    "CONSISTENCY CHECK FAILED %s[%i]: zeroeth element special value overwritten", file, line);
+
+	for (unsigned int i = 1; i <= h->num_elements; i++) {
+		void	*data = h->p[i];
+
+		fr_fatal_assert_msg(data, "CONSISTENCY CHECK FAILED %s[%i]: node %u was NULL", file, line, i);
+		if (h->type) (void)_talloc_get_type_abort(data, h->type, __location__);
+		fr_fatal_assert_msg(index_get(h, data) == i,
+				    "CONSISTENCY CHECK FAILED %s[%i]: node %u index != %u", file, line, i, i);
+	}
+	for (unsigned int i = 1; ; i++) {
+		if (HEAP_LEFT(i) > h->num_elements) break;
+		fr_fatal_assert_msg(h->cmp(h->p[i], h->p[HEAP_LEFT(i)]) <= 0,
+				    "CONSISTENCY_CHECK_FAILED %s[%i]: node %u > left child", file, line, i);
+		if (HEAP_RIGHT(i) > h->num_elements) break;
+		fr_fatal_assert_msg(h->cmp(h->p[i], h->p[HEAP_RIGHT(i)]) <= 0,
+				    "CONSISTENCY_CHECK_FAILED %s[%i]: node %u > right child", file, line, i);
+	}
+}
+#endif
