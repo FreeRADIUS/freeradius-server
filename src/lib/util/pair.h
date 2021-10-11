@@ -354,7 +354,7 @@ bool 		fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filt
 int		fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const *from);
 
 int		fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
-					fr_pair_list_t *from, fr_dict_attr_t const *da, unsigned int count);
+					fr_pair_list_t const *from, fr_dict_attr_t const *da, unsigned int count);
 
 int		fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 					      fr_pair_list_t const *from,

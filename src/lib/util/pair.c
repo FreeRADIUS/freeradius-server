@@ -1469,7 +1469,7 @@ int fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const 
  *	- -1 on error.
  */
 int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
-			    fr_pair_list_t *from, fr_dict_attr_t const *da, unsigned int count)
+			    fr_pair_list_t const *from, fr_dict_attr_t const *da, unsigned int count)
 {
 	fr_pair_list_t	tmp_list;
 	fr_pair_t	*vp, *new_vp;
