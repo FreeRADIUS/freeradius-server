@@ -44,38 +44,6 @@ extern "C" {
 #  define _CONST
 #endif
 
-
-#ifdef WITH_VERIFY_PTR
-#  define VP_VERIFY(_x)		fr_pair_verify(__FILE__, __LINE__, _x)
-#  define LIST_VERIFY(_x)	fr_pair_list_verify(__FILE__, __LINE__, NULL, _x)
-#else
-DIAG_OFF(nonnull-compare)
-/** Wrapper function to defeat nonnull checks
- *
- * We may sprinkle VP_VERIFY and LIST_VERIFY in functions which
- * have their pair argument marked up as nonnull.
- *
- * This would usually generate errors when WITH_VERIFY_PTR is not
- * defined, as the assert macros check for an arguments NULLness.
- *
- * This function wraps the assert but has nonnull-compare disabled
- * meaning a warning won't be emitted.
- */
-static inline fr_pair_nonnull_assert(fr_pair_t *vp)
-{
-	fr_cond_assert(vp)
-}
-DIAG_ON(nonull-compare)
-
-/*
- *	Even if were building without WITH_VERIFY_PTR
- *	the pointer must not be NULL when these various macros are used
- *	so we can add some sneaky soft asserts.
- */
-#  define VP_VERIFY(_x)		fr_pair_nonnull_assert(_x)
-#  define LIST_VERIFY(_x)	fr_pair_nonnull_assert(_x)
-#endif
-
 /** The type of value a fr_pair_t contains
  *
  * This is used to add structure to nested fr_pair_ts and specifies what type of node it is (set, list, data).
@@ -191,11 +159,44 @@ typedef struct {
 
 #define ATTRIBUTE_EQ(_x, _y) ((_x && _y) && (_x->da == _y->da))
 
-#  ifdef WITH_VERIFY_PTR
+/** If WITH_VERIFY_PTR is defined, we perform runtime checks to ensure the fr_pair_t are sane
+ *
+ */
+#ifdef WITH_VERIFY_PTR
 void		fr_pair_verify(char const *file, int line, fr_pair_t const *vp) CC_HINT(nonnull(3));
+
 void		fr_pair_list_verify(char const *file, int line,
 				    TALLOC_CTX const *expected, fr_pair_list_t const *list) CC_HINT(nonnull(4));
-#  endif
+
+#  define VP_VERIFY(_x)		fr_pair_verify(__FILE__, __LINE__, _x)
+#  define LIST_VERIFY(_x)	fr_pair_list_verify(__FILE__, __LINE__, NULL, _x)
+#else
+DIAG_OFF(nonnull-compare)
+/** Wrapper function to defeat nonnull checks
+ *
+ * We may sprinkle VP_VERIFY and LIST_VERIFY in functions which
+ * have their pair argument marked up as nonnull.
+ *
+ * This would usually generate errors when WITH_VERIFY_PTR is not
+ * defined, as the assert macros check for an arguments NULLness.
+ *
+ * This function wraps the assert but has nonnull-compare disabled
+ * meaning a warning won't be emitted.
+ */
+static inline fr_pair_nonnull_assert(fr_pair_t *vp)
+{
+	fr_cond_assert(vp)
+}
+DIAG_ON(nonull-compare)
+
+/*
+ *	Even if were building without WITH_VERIFY_PTR
+ *	the pointer must not be NULL when these various macros are used
+ *	so we can add some sneaky soft asserts.
+ */
+#  define VP_VERIFY(_x)		fr_pair_nonnull_assert(_x)
+#  define LIST_VERIFY(_x)	fr_pair_nonnull_assert(_x)
+#endif
 
 /* Initialisation */
 void fr_pair_list_init(fr_pair_list_t *head) CC_HINT(nonnull);
