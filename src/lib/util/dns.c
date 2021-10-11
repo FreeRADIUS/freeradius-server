@@ -938,6 +938,13 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 		}
 
 		/*
+		 *	If there's only one byte in the packet, then
+		 *	it MUST be 0x00.  If it's not, then the label
+		 *	overflows the buffer.
+		 */
+		if ((p + 1) >= end) goto overflow;
+
+		/*
 		 *	0b10 and 0b10 are forbidden
 		 */
 		if ((*p > 63) && (*p < 0xc0)) {
@@ -1218,6 +1225,18 @@ ssize_t fr_dns_label_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	uint8_t *p;
 	char *q;
 
+	if (!len) return -1;
+
+	/*
+	 *	The label must be within the current buffer we're
+	 *	passed.
+	 */
+	if ((label < src) || (label >= end)) return -1;
+
+	/*
+	 *	The actual packet might start earlier than the buffer,
+	 *	so reset it if necessary.
+	 */
 	if (lb) packet = lb->start;
 
 	/*
