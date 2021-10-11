@@ -616,13 +616,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 
 	case TMPL_TYPE_DATA:
 	{
-		/*
-		 *	Commented out lines below are due to fr_value_box_t
-		 *	now being in a dlist - so value box entries in a fr_tmpl_t
-		 *	can no-longer be treated as the head of a list
-		 */
 		fr_value_box_t	*vb, *n_vb;
-//		fr_value_box_t	*vb_head;
 
 		fr_assert(fr_dlist_empty(rhs_result));
 		fr_assert(tmpl_da(mutated->lhs));
@@ -633,38 +627,36 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 
 		vb = tmpl_value(mutated->rhs);
 
-//		while ((vb = fr_dlist_next(vb_head, vb))) {
-			n_vb = fr_value_box_alloc_null(fr_map_list_head(&n->mod)->rhs);
-			if (!n_vb) {
-			data_error:
-				fr_dcursor_head(&values);
-				fr_dcursor_free_list(&values);
-				goto error;
+		n_vb = fr_value_box_alloc_null(fr_map_list_head(&n->mod)->rhs);
+		if (!n_vb) {
+		data_error:
+			fr_dcursor_head(&values);
+			fr_dcursor_free_list(&values);
+			goto error;
+		}
+		/*
+		 *	This should be optimised away by the map
+		 *	parser, but in case we're applying runtime
+		 *	maps we still need to check if we need to
+		 *	cast.
+		 */
+		if (tmpl_da(mutated->lhs)->type != tmpl_value_type(mutated->rhs)) {
+			if (fr_value_box_cast(n_vb, n_vb,
+					      mutated->cast ? mutated->cast : tmpl_da(mutated->lhs)->type,
+					      tmpl_da(mutated->lhs), vb) < 0) {
+				RPEDEBUG("Assigning value to \"%s\" failed", tmpl_da(mutated->lhs)->name);
+				goto data_error;
 			}
+		} else {
 			/*
-			 *	This should be optimised away by the map
-			 *	parser, but in case we're applying runtime
-			 *	maps we still need to check if we need to
-			 *	cast.
+			 *	We need to do a full copy, as shallow
+			 *	copy would increase the reference count
+			 *	on the static/global buffers and possibly
+			 *	lead to threading issues.
 			 */
-			if (tmpl_da(mutated->lhs)->type != tmpl_value_type(mutated->rhs)) {
-				if (fr_value_box_cast(n_vb, n_vb,
-						      mutated->cast ? mutated->cast : tmpl_da(mutated->lhs)->type,
-						      tmpl_da(mutated->lhs), vb) < 0) {
-					RPEDEBUG("Assigning value to \"%s\" failed", tmpl_da(mutated->lhs)->name);
-					goto data_error;
-				}
-			} else {
-				/*
-				 *	We need to do a full copy, as shallow
-				 *	copy would increase the reference count
-				 *	on the static/global buffers and possibly
-				 *	lead to threading issues.
-				 */
-				if (fr_value_box_copy(n_vb, n_vb, vb) < 0) goto data_error;
-			}
-			fr_dcursor_append(&values, n_vb);
-//		}
+			if (fr_value_box_copy(n_vb, n_vb, vb) < 0) goto data_error;
+		}
+		fr_dcursor_append(&values, n_vb);
 	}
 		break;
 
@@ -851,23 +843,14 @@ static void map_list_mod_to_vps(TALLOC_CTX *ctx, fr_pair_list_t *list, vp_list_m
 	for (;
 	     mod;
 	     mod = fr_dlist_next(&vlm->mod, mod)) {
-		/*
-		 *	Commented out lines due to fr_value_box_t lists now
-		 *	being dlists
-		 */
-//		fr_value_box_t	*vb;
 		fr_pair_t	*vp;
 
-//		for (vb = tmpl_value(mod->rhs);
-//	     	     vb;
-//	     	     vb = vb->next) {
-			vp = map_list_mod_to_vp(ctx, mod->lhs, tmpl_value(mod->rhs));
-			if (!vp) {
-				fr_pair_list_free(list);
-				return;
-			}
-			fr_pair_append(list, vp);
-//		}
+		vp = map_list_mod_to_vp(ctx, mod->lhs, tmpl_value(mod->rhs));
+		if (!vp) {
+			fr_pair_list_free(list);
+			return;
+		}
+		fr_pair_append(list, vp);
 	}
 }
 
@@ -993,15 +976,8 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		 */
 		if (RDEBUG_ENABLED2) {
 			vb = tmpl_value(mod->rhs);
-		/*
-		 *	Commented out lines due to fr_value_box_t lists now
-		 *	being dlists
-		 */
-//			for (vb = tmpl_value(mod->rhs);
-//			     vb;
-//			     vb = vb->next) {
-				map_list_mod_debug(request, map, mod, vb->type != FR_TYPE_NULL ? vb : NULL);
-//			}
+
+			map_list_mod_debug(request, map, mod, vb->type != FR_TYPE_NULL ? vb : NULL);
 		}
 	}
 	mod = fr_dlist_head(&vlm->mod);	/* Reset */
@@ -1170,16 +1146,12 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		 */
 		if (tmpl_num(map->lhs) != NUM_ALL) {
 			fr_value_box_t	*vb = tmpl_value(fr_map_list_head(&vlm->mod)->rhs);
-			/*
-			 *	Commented out loop due to fr_value_box_t now being
-			 *	in dlists
-			 */
-//			do {
-				if (fr_value_box_cmp(vb, &found->data) == 0) {
-					fr_dcursor_free_item(&list);
-					goto finish;
-				}
-//			} while ((vb = vb->next));
+
+			if (fr_value_box_cmp(vb, &found->data) == 0) {
+				fr_dcursor_free_item(&list);
+				goto finish;
+			}
+
 			goto finish;	/* Wasn't found */
 		}
 
@@ -1191,16 +1163,11 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		 */
 		do {
 		     	fr_value_box_t	*vb = tmpl_value(fr_map_list_head(&vlm->mod)->rhs);
-			/*
-			 *	Commented out loop due to fr_value_box_t now being
-			 *	in dlists
-			 */
-//		     	do {
-				if (fr_value_box_cmp(vb, &found->data) == 0) {
-					fr_dcursor_free_item(&list);
-					break;
-				}
-//		     	} while ((vb = vb->next));
+
+			if (fr_value_box_cmp(vb, &found->data) == 0) {
+				fr_dcursor_free_item(&list);
+				break;
+			}
 		} while ((found = fr_dcursor_next(&list)));
 	}
 		goto finish;
@@ -1293,13 +1260,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 			fr_value_box_t	*vb = tmpl_value(mod->rhs);
 			bool		remove = true;
 
-			/*
-			 *	Commented out loop due to fr_value_box_t now being
-			 *	in dlists
-			 */
-//			do {
-				if (fr_value_box_cmp_op(mod->op, &found->data, vb) == 1) remove = false;
-//			} while ((vb = vb->next));
+			if (fr_value_box_cmp_op(mod->op, &found->data, vb) == 1) remove = false;
 
 			if (remove) fr_dcursor_free_item(&list);
 			goto finish;
@@ -1312,13 +1273,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 			fr_value_box_t	*vb = tmpl_value(mod->rhs);
 			bool		remove = true;
 
-			/*
-			 *	Commented out loop due to fr_value_box_t now being
-			 *	in dlists
-			 */
-//			do {
-				if (fr_value_box_cmp_op(mod->op, &found->data, vb) == 1) remove = false;
-//			} while ((vb = vb->next));
+			if (fr_value_box_cmp_op(mod->op, &found->data, vb) == 1) remove = false;
 
 			if (remove) {
 				fr_dcursor_free_item(&list);
