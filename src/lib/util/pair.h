@@ -192,7 +192,7 @@ static inline void fr_pair_list_nonnull_assert(fr_pair_list_t const *pair_list)
 {
 	fr_cond_assert(pair_list);
 }
-DIAG_ON(nonull-compare)
+DIAG_ON(nonnull-compare)
 
 /*
  *	Even if were building without WITH_VERIFY_PTR
