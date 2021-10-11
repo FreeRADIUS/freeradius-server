@@ -127,6 +127,7 @@ static inline void *dcursor_next(fr_dcursor_t *cursor, void *current)
 	 *	Pre-advance current
 	 */
 	next = fr_dlist_next(cursor->dlist, current);
+	if (!next) return NULL;
 
 	/*
 	 *	The iterator can just return what it was passed for curr
