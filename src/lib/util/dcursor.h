@@ -206,7 +206,7 @@ static inline void *fr_dcursor_tail(fr_dcursor_t *cursor)
  *
  * @hidecallergraph
  */
-static inline void * CC_HINT(hot) fr_dcursor_next(fr_dcursor_t *cursor)
+static inline void * fr_dcursor_next(fr_dcursor_t *cursor)
 {
 	if (!cursor || fr_dlist_empty(cursor->dlist)) return NULL;
 	cursor->current = dcursor_next(cursor, cursor->current);
@@ -283,7 +283,7 @@ static inline void *fr_dcursor_list_prev_peek(fr_dcursor_t *cursor)
  *
  * @hidecallergraph
  */
-static inline void * CC_HINT(hot) fr_dcursor_current(fr_dcursor_t *cursor)
+static inline void * fr_dcursor_current(fr_dcursor_t *cursor)
 {
 	if (unlikely(!cursor)) return NULL;
 
@@ -300,9 +300,11 @@ static inline void * CC_HINT(hot) fr_dcursor_current(fr_dcursor_t *cursor)
  *
  * @hidecallergraph
  */
-static inline void * CC_HINT(hot) fr_dcursor_set_current(fr_dcursor_t *cursor, void *item)
+static inline void * fr_dcursor_set_current(fr_dcursor_t *cursor, void *item)
 {
-	if (!cursor || fr_dlist_empty(cursor->dlist)) return NULL;
+	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return NULL;
+
+	if (fr_dlist_empty(cursor->dlist)) return NULL;
 	if (!item) return NULL;
 
 	cursor->current = item;
@@ -323,8 +325,10 @@ static inline void * CC_HINT(hot) fr_dcursor_set_current(fr_dcursor_t *cursor, v
  *
  * @hidecallergraph
  */
-static inline void CC_HINT(hot) fr_dcursor_prepend(fr_dcursor_t *cursor, void *v)
+static inline void fr_dcursor_prepend(fr_dcursor_t *cursor, void *v)
 {
+	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return;
+
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (cursor->dlist->type) _talloc_get_type_abort(v, cursor->dlist->type, __location__);
 #endif
@@ -353,8 +357,10 @@ static inline void CC_HINT(hot) fr_dcursor_prepend(fr_dcursor_t *cursor, void *v
  *
  * @hidecallergraph
  */
-static inline void CC_HINT(hot) fr_dcursor_append(fr_dcursor_t *cursor, void *v)
+static inline void fr_dcursor_append(fr_dcursor_t *cursor, void *v)
 {
+	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return;
+
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (cursor->dlist->type) _talloc_get_type_abort(v, cursor->dlist->type, __location__);
 #endif
@@ -373,6 +379,8 @@ static inline void CC_HINT(hot) fr_dcursor_append(fr_dcursor_t *cursor, void *v)
  */
 static inline void fr_dcursor_insert(fr_dcursor_t *cursor, void *v)
 {
+	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return;
+
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
 	if (cursor->dlist->type) _talloc_get_type_abort(v, cursor->dlist->type, __location__);
 #endif
@@ -409,9 +417,11 @@ static inline void fr_dcursor_insert(fr_dcursor_t *cursor, void *v)
  *
  * @hidecallergraph
  */
-static inline void * CC_HINT(hot) fr_dcursor_remove(fr_dcursor_t *cursor)
+static inline void * fr_dcursor_remove(fr_dcursor_t *cursor)
 {
 	void *v, *p;
+
+	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return NULL;
 
 	if (!cursor->current) return NULL;			/* don't do anything fancy, it's just a noop */
 
@@ -451,6 +461,9 @@ static inline void * CC_HINT(hot) fr_dcursor_remove(fr_dcursor_t *cursor)
 static inline void fr_dcursor_merge(fr_dcursor_t *cursor, fr_dcursor_t *to_append)
 {
 	void		*v, *p;
+
+	if (!fr_cond_assert_msg(!cursor->is_const, "dst list in merge is const")) return;
+	if (!fr_cond_assert_msg(!to_append->is_const, "src list in merge is const")) return;
 
 	p = cursor->current;
 	while ((v = fr_dcursor_remove(to_append))) {
@@ -538,9 +551,11 @@ void *fr_dcursor_intersect_next(fr_dcursor_t *a, fr_dcursor_t *b) CC_HINT(nonnul
  *
  * @hidecallergraph
  */
-static inline void * CC_HINT(hot) fr_dcursor_replace(fr_dcursor_t *cursor, void *r)
+static inline void * fr_dcursor_replace(fr_dcursor_t *cursor, void *r)
 {
 	void *v, *p;
+
+	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return NULL;
 
 	/*
 	 *	Correct behaviour here is debatable

@@ -2015,13 +2015,11 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 	fr_pair_t *vp;
 	fr_pair_list_t head;
 	char *p, *end;
-	fr_dcursor_t cursor;
 
 	fr_pair_list_init(&head);
 	ctx.ctx = cc->tmp_ctx;
 	ctx.parent = fr_dict_root(cc->tmpl_rules.dict_def);
-	ctx.cursor = &cursor;
-	fr_dcursor_init(&cursor, fr_pair_list_order(&head));
+	ctx.list = &head;
 
 	p = in;
 	end = in + inlen;

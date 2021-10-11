@@ -506,7 +506,7 @@ void		fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_pair_list_t *out,
 typedef struct {
 	TALLOC_CTX		*ctx;			//!< to allocate VPs in
 	fr_dict_attr_t	const	*parent;	       	//!< current attribute to allocate VPs in
-	fr_dcursor_t		*cursor;		//!< of VPs to add
+	fr_pair_list_t		*list;			//!< of VPs to add
 } fr_pair_ctx_t;
 
 ssize_t		fr_pair_ctx_afrom_str(fr_pair_ctx_t *pair_ctx, char const *in, size_t inlen) CC_HINT(nonnull);
