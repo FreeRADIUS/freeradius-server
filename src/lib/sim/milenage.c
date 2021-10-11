@@ -32,7 +32,7 @@
 static inline int aes_128_encrypt_block(EVP_CIPHER_CTX *evp_ctx,
 					uint8_t const key[16], uint8_t const in[16], uint8_t out[16])
 {
-	size_t len;
+	size_t len = 0;
 
 	if (unlikely(EVP_EncryptInit_ex(evp_ctx, EVP_aes_128_ecb(), NULL, key, NULL) != 1)) {
 		fr_tls_log_strerror_printf("Failed initialising AES-128-ECB context");
@@ -55,6 +55,8 @@ static inline int aes_128_encrypt_block(EVP_CIPHER_CTX *evp_ctx,
 		fr_tls_log_strerror_printf("Failed encrypting data");
 		return -1;
 	}
+
+	EVP_CIPHER_CTX_clean(evp_ctx);
 
 	return 0;
 }
