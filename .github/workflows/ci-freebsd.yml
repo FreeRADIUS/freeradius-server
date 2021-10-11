@@ -62,7 +62,7 @@ jobs:
             luajit               \
             mysql80-client       \
             net-snmp             \
-            openldap-client      \
+            openldap25-client    \
             python3              \
             py38-pip             \
             postgresql12-client  \
