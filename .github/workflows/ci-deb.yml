@@ -31,11 +31,11 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "ubuntu-18.04", "OS": "ubuntu:18.04",    "NR_EXTRAS": "1" },
-              { "NAME": "ubuntu-20.04", "OS": "ubuntu:20.04",    "NR_EXTRAS": "1" },
-              { "NAME": "debian-10",    "OS": "debian:buster",   "NR_EXTRAS": "1" },
-              { "NAME": "debian-11",    "OS": "debian:bullseye", "NR_EXTRAS": "1" },
-              { "NAME": "debian-sid",   "OS": "debian:sid",      "NR_EXTRAS": ""  }
+              { "NAME": "ubuntu-18.04", "OS": "ubuntu:18.04"    },
+              { "NAME": "ubuntu-20.04", "OS": "ubuntu:20.04"    },
+              { "NAME": "debian-10",    "OS": "debian:buster"   },
+              { "NAME": "debian-11",    "OS": "debian:bullseye" },
+              { "NAME": "debian-sid",   "OS": "debian:sid"      }
             ]
           }
         EOF
@@ -44,7 +44,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "debian-11",    "OS": "debian:bullseye", "NR_EXTRAS": "1" },
+              { "NAME": "debian-11",    "OS": "debian:bullseye" }
             ]
           }
         EOF
@@ -99,7 +99,6 @@ jobs:
       run: curl -sS https://packages.networkradius.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -
 
     - name: Set up NetworkRADIUS extras repository
-      if: ${{ matrix.env.NR_EXTRAS == '1' }}
       run: |
         DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
         RELEASE=$(lsb_release -cs)
@@ -217,7 +216,6 @@ jobs:
       run: curl -sS https://packages.networkradius.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -
 
     - name: Set up NetworkRADIUS extras repository
-      if: ${{ matrix.env.NR_EXTRAS == '1' }}
       run: |
         DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
         RELEASE=$(lsb_release -cs)
