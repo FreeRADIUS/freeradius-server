@@ -103,10 +103,6 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t const 
 	fr_sbuff_t		our_out = FR_SBUFF_NO_ADVANCE(out);
 	fr_dict_attr_t const	*parent_da = NULL;
 
-	if (!out) return 0;
-
-	if (!vp || !vp->da) return 0;
-
 	VP_VERIFY(vp);
 
 	if ((vp->op > T_INVALID) && (vp->op < T_TOKEN_LAST)) {
@@ -144,7 +140,6 @@ void fr_pair_fprint(FILE *fp, fr_pair_t const *vp)
 	char		buff[1024];
 	fr_sbuff_t	sbuff = FR_SBUFF_OUT(buff, sizeof(buff));
 
-	if (!fp) return;
 	VP_VERIFY(vp);
 
 	fr_sbuff_in_char(&sbuff, '\t');

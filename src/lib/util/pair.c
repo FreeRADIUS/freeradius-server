@@ -332,8 +332,6 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 {
 	fr_pair_t *n;
 
-	if (!vp) return NULL;
-
 	VP_VERIFY(vp);
 
 	n = fr_pair_afrom_da(ctx, vp->da);
@@ -511,8 +509,6 @@ void *fr_pair_iter_next_by_da(fr_dlist_head_t *list, void *to_eval, void *uctx)
 	fr_pair_t	*c;
 	fr_dict_attr_t	*da = uctx;
 
-	if (!to_eval) return NULL;
-
 	for (c = to_eval; c; c = fr_dlist_next(list, c)) {
 		VP_VERIFY(c);
 		if (c->da == da) break;
@@ -535,8 +531,6 @@ void *fr_pair_iter_next_by_ancestor(fr_dlist_head_t *list, void *to_eval, void *
 {
 	fr_pair_t	*c;
 	fr_dict_attr_t	*da = uctx;
-
-	if (!to_eval) return NULL;
 
 	for (c = to_eval; c; c = fr_dlist_next(list, c)) {
 		VP_VERIFY(c);
@@ -1645,8 +1639,6 @@ int fr_pair_value_copy(fr_pair_t *dst, fr_pair_t *src)
  */
 int fr_pair_value_from_str(fr_pair_t *vp, char const *value, ssize_t inlen, char quote, bool tainted)
 {
-	if (!value) return -1;
-
 	/*
 	 *	This is not yet supported because the rest of the APIs
 	 *	to parse pair names, etc. don't yet enforce "inlen".
@@ -2238,8 +2230,6 @@ int fr_pair_value_enum_box(fr_value_box_t const **out, fr_pair_t *vp)
 {
 	fr_dict_enum_value_t const	*dv;
 
-	if (!out || !vp ) return -1;
-
 	if (vp->da && vp->da->flags.has_value &&
 	    (dv = fr_dict_enum_by_value(vp->da, &vp->data))) {
 		*out = dv->value;
@@ -2256,10 +2246,6 @@ int fr_pair_value_enum_box(fr_value_box_t const **out, fr_pair_t *vp)
  */
 void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 {
-	if (!vp) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t pointer was NULL", file, line);
-	}
-
 	(void) talloc_get_type_abort_const(vp, fr_pair_t);
 
 	if (!vp->da) {
