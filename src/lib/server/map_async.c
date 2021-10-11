@@ -1020,7 +1020,6 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		case T_OP_EQ:
 		{
 			bool		exists = false;
-			fr_dcursor_t	from, to, to_insert;
 			fr_pair_list_t	vp_from, vp_to_insert;
 			fr_pair_t	*vp, *vp_to = NULL;
 
@@ -1029,14 +1028,10 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 			map_list_mod_to_vps(parent, &vp_from, vlm);
 			if (fr_pair_list_empty(&vp_from)) goto finish;
 
-			fr_dcursor_init(&from, fr_pair_list_order(&vp_from));
-			fr_dcursor_init(&to_insert, fr_pair_list_order(&vp_to_insert));
-			fr_dcursor_init(&to, fr_pair_list_order(vp_list));
-
-			while ((vp = fr_dcursor_remove(&from))) {
-				for (vp_to = fr_dcursor_head(&to);
+			while ((vp = fr_pair_remove(&vp_from, fr_pair_list_head(&vp_from)))) {
+				for (vp_to = fr_pair_list_head(vp_list);
 				     vp_to;
-				     vp_to = fr_dcursor_next(&to)) {
+				     vp_to = fr_pair_list_head(vp_list)) {
 					if (fr_pair_cmp_by_da(vp_to, vp) == 0) {
 						exists = true;
 						break;
@@ -1046,12 +1041,11 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 				if (exists) {
 					talloc_free(vp);	/* Don't overwrite */
 				} else {
-					fr_dcursor_insert(&to_insert, vp);
+					fr_pair_append(&vp_to_insert, vp);
 				}
 			}
 
-			fr_dcursor_tail(&to);
-			fr_dcursor_merge(&to, &to_insert);	/* Do this last so we don't expand the 'to' set */
+			fr_pair_list_append(vp_list, &vp_to_insert);	/* Do this last so we don't expand the 'to' set */
 		}
 			goto finish;
 
