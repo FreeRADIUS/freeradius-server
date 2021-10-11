@@ -807,7 +807,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, 
 		if (fr_pair_value_from_str(vp, val, len, '\0', false) < 0) goto fail;
 	}
 
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 
 	RDEBUG2("&%s.%s %s $%s{'%s'} -> '%s'", list_name, key, fr_table_str_by_value(fr_tokens_table, op, "<INVALID>"),
 	        hash_name, key, val);
@@ -838,7 +838,7 @@ static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pai
 		} else ret = pairadd_sv(ctx, request, vps, key, res_sv, T_OP_EQ, hash_name, list_name) + ret;
 	}
 
-	if (!fr_pair_list_empty(vps)) LIST_VERIFY(vps);
+	if (!fr_pair_list_empty(vps)) PAIR_LIST_VERIFY(vps);
 
 	return ret;
 }

@@ -96,8 +96,8 @@ static void test_fr_pair_afrom_da(void)
 
 	TEST_CHECK(fr_pair_value_from_str(vp, test_string, strlen(test_string), '"', false) == 0);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CHECK(vp && strcmp(vp->vp_strvalue, test_string) == 0);
 	TEST_MSG("Expected vp->vp_strvalue == test_string");
@@ -113,8 +113,8 @@ static void test_fr_pair_afrom_child_num(void)
 	TEST_CASE("Allocation using fr_pair_afrom_child_num");
 	TEST_CHECK((vp = fr_pair_afrom_child_num(autofree, fr_dict_root(test_dict), attr)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CHECK(vp && vp->da->attr == FR_TEST_ATTR_STRING);
 	TEST_MSG("Expected attr(%d) == vp->da->attr(%d)", attr, vp->da->attr);
@@ -129,13 +129,13 @@ static void test_fr_pair_copy(void)
 	TEST_CASE("Allocation using fr_pair_copy");
 	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_uint32)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	copy = fr_pair_copy(autofree, vp);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(copy);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(copy);
 
 	vp->op = T_OP_CMP_EQ;
 
@@ -154,8 +154,8 @@ static void test_fr_pair_steal(void)
 	TEST_CASE("Allocate a new attribute fr_pair_afrom_da");
 	TEST_CHECK((vp = fr_pair_afrom_da(ctx, fr_dict_attr_test_uint32)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Stealing 'vp' pair using fr_pair_steal()");
 	fr_pair_steal(autofree, vp); /* It should exit without memory-leaks */
@@ -171,8 +171,8 @@ static void test_fr_pair_to_unknown(void)
 	TEST_CASE("Allocate a new attribute fr_pair_afrom_da");
 	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_octets)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Converting regular 'vp' as unkown");
 	TEST_CHECK(fr_pair_to_unknown(vp) == 0);
@@ -198,10 +198,10 @@ static void test_fr_dcursor_iter_by_da_init(void)
 		TEST_CHECK(1 == 1); /* this never will be reached */
 	}
 
-	TEST_CASE("Validating VP_VERIFY()");
+	TEST_CASE("Validating PAIR_VERIFY()");
 
 	TEST_CHECK(needle != NULL);
-	if (needle) VP_VERIFY(needle);
+	if (needle) PAIR_VERIFY(needle);
 
 	TEST_CASE("Expected (needle->da == fr_dict_attr_test_uint32)");
 	TEST_CHECK(needle && needle->da == fr_dict_attr_test_uint32);
@@ -226,8 +226,8 @@ static void test_fr_dcursor_iter_by_ancestor_init(void)
 
 	TEST_CHECK(needle != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	if (needle) VP_VERIFY(needle);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	if (needle) PAIR_VERIFY(needle);
 
 	TEST_CASE("Expected (needle->da == fr_dict_attr_test_tlv_string)");
 	TEST_CHECK(needle && needle->da == fr_dict_attr_test_tlv_string);
@@ -240,8 +240,8 @@ static void test_fr_pair_find_by_da(void)
 	TEST_CASE("Search for fr_dict_attr_test_tlv_string using fr_pair_find_by_da()");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_tlv_string, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Expected (vp->da == fr_dict_attr_test_tlv_string)");
 	TEST_CHECK(vp && vp->da == fr_dict_attr_test_tlv_string);
@@ -254,8 +254,8 @@ static void test_fr_pair_find_by_child_num(void)
 	TEST_CASE("Search for FR_TEST_ATTR_STRING using fr_pair_find_by_child_num()");
 	TEST_CHECK((vp = fr_pair_find_by_child_num(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Expected (vp->da == fr_dict_attr_test_string)");
 	TEST_CHECK(vp && vp->da == fr_dict_attr_test_string);
@@ -333,8 +333,8 @@ static void test_fr_pair_update_by_da(void)
 	TEST_CASE("Expected fr_dict_attr_test_uint32 (vp->vp_uint32 == 54321)");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_uint32, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Expected (vp == 54321)");
 	TEST_CHECK(vp && vp->vp_uint32 == 54321);
@@ -374,8 +374,8 @@ static void test_fr_pair_cmp(void)
 	TEST_CASE("Create the vp1 'Test-Integer = 123'");
 	TEST_CHECK((vp1 = fr_pair_afrom_da(autofree, fr_dict_attr_test_uint32)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp1);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp1);
 
 	vp1->op = T_OP_EQ;
 	vp1->vp_uint32 = 123;
@@ -383,8 +383,8 @@ static void test_fr_pair_cmp(void)
 	TEST_CASE("Create the vp2 'Test-Integer = 321'");
 	TEST_CHECK((vp2 = fr_pair_afrom_da(autofree, fr_dict_attr_test_uint32)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp2);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp2);
 
 	vp2->op = T_OP_CMP_EQ;
 	vp2->vp_uint32 = 321;
@@ -443,8 +443,8 @@ static void test_fr_pair_list_copy_by_da(void)
 	for (vp = fr_dcursor_init(&cursor, fr_pair_list_order(&local_pairs));
 		 vp;
 		 vp = fr_dcursor_next(&cursor)) {
-		TEST_CASE("Validating VP_VERIFY()");
-		VP_VERIFY(vp);
+		TEST_CASE("Validating PAIR_VERIFY()");
+		PAIR_VERIFY(vp);
 
 		TEST_CASE("Expected (vp->da == fr_dict_attr_test_string)");
 		TEST_CHECK(vp->da == fr_dict_attr_test_string);
@@ -468,8 +468,8 @@ static void test_fr_pair_list_copy_by_ancestor(void)
 	for (vp = fr_dcursor_init(&cursor, fr_pair_list_order(&local_pairs));
 		 vp;
 		 vp = fr_dcursor_next(&cursor)) {
-		TEST_CASE("Validating VP_VERIFY()");
-		VP_VERIFY(vp);
+		TEST_CASE("Validating PAIR_VERIFY()");
+		PAIR_VERIFY(vp);
 
 		if (vp->da == fr_dict_attr_test_tlv_string) {
 			needle = vp;
@@ -477,10 +477,10 @@ static void test_fr_pair_list_copy_by_ancestor(void)
 		}
 	}
 
-	TEST_CASE("Validating VP_VERIFY()");
+	TEST_CASE("Validating PAIR_VERIFY()");
 
 	TEST_CHECK(needle != NULL);
-	if (needle) VP_VERIFY(needle);
+	if (needle) PAIR_VERIFY(needle);
 
 	TEST_CASE("Expected (needle->da == fr_dict_attr_test_tlv_string)");
 	TEST_CHECK(needle && needle->da == fr_dict_attr_test_tlv_string);
@@ -546,8 +546,8 @@ static void test_fr_pair_value_copy(void)
 	TEST_CASE("Create 'vp1' with Test-Integer = 123");
 	TEST_CHECK((vp1 = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_uint32, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp1);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp1);
 
 	vp1->vp_uint32 = 123;
 
@@ -565,14 +565,14 @@ static void test_fr_pair_value_from_str(void)
 	TEST_CASE("Find 'Test-String'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Convert 'test_string' value to attribute value using fr_pair_value_from_str()");
 	TEST_CHECK(fr_pair_value_from_str(vp, test_string, strlen(test_string), '"', false) == 0);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Check (vp->vp_string == test_string)");
 	TEST_CHECK(vp && strcmp(vp->vp_strvalue, test_string) == 0);
@@ -585,14 +585,14 @@ static void test_fr_pair_value_strdup(void)
 	TEST_CASE("Find 'Test-String'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Copy content of 'test_string' to attribute value using fr_pair_value_strdup()");
 	TEST_CHECK(fr_pair_value_strdup(vp, test_string, false) == 0);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Check (vp->vp_string == test_string)");
 	TEST_CHECK(vp && strcmp(vp->vp_strvalue, test_string) == 0);
@@ -606,8 +606,8 @@ static void test_fr_pair_value_strdup_shallow(void)
 	TEST_CASE("Find 'Test-String'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
  	copy_test_string = talloc_strdup(vp, test_string);
 	talloc_set_type(copy_test_string, char);
@@ -615,8 +615,8 @@ static void test_fr_pair_value_strdup_shallow(void)
 	TEST_CASE("Copy content of 'test_string' to attribute value using fr_pair_value_strdup_shallow()");
 	TEST_CHECK(fr_pair_value_strdup_shallow(vp, copy_test_string, true) == 0);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Check (vp->vp_string == copy_test_string)");
 	TEST_CHECK(vp && strncmp(vp->vp_strvalue, test_string, strlen(copy_test_string)) == 0);
@@ -631,8 +631,8 @@ static void test_fr_pair_value_strtrim(void)
 	TEST_CASE("Find 'Test-String'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Copy content of 'test_string' to attribute value using fr_pair_value_strdup_shallow()");
 	TEST_CHECK(fr_pair_value_strdup(vp, test_string, false) == 0);
@@ -640,8 +640,8 @@ static void test_fr_pair_value_strtrim(void)
 	TEST_CASE("Trim the length of the string buffer using fr_pair_value_strtrim()");
 	TEST_CHECK(fr_pair_value_strtrim(vp) == 0);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Check (vp->vp_string == test_string)");
 	TEST_CHECK(vp && strcmp(vp->vp_strvalue, test_string) == 0);
@@ -658,14 +658,14 @@ static void test_fr_pair_value_aprintf(void)
 	TEST_CASE("Find 'Test-String'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Copy content of 'fmt_test' to attribute value using fr_pair_value_aprintf()");
 	TEST_CHECK(fr_pair_value_aprintf(vp, "Now is %"PRId64, fr_time_unwrap(now)) == 0);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Check (vp->vp_string == fmt_test)");
 	TEST_CHECK(vp && strcmp(vp->vp_strvalue, fmt_test) == 0);
@@ -679,14 +679,14 @@ static void test_fr_pair_value_bstr_alloc(void)
 	TEST_CASE("Find 'Test-String'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Pre-allocate a memory buffer using fr_pair_value_bstr_alloc()");
 	TEST_CHECK(fr_pair_value_bstr_alloc(vp, &out, test_string_len, false) == 0);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Copy 'test_string' to the pre-allocated pointer");
 	TEST_CHECK(strlcpy(out, test_string, test_string_len) == test_string_len);
@@ -706,8 +706,8 @@ static void test_fr_pair_value_bstr_realloc(void)
 	TEST_CASE("Find 'Test-String'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Pre-allocate 1 byte of memory buffer using fr_pair_value_bstr_alloc()");
 	TEST_CHECK(fr_pair_value_bstr_alloc(vp, &out, 1, false) == 0);
@@ -715,8 +715,8 @@ static void test_fr_pair_value_bstr_realloc(void)
 	TEST_CASE("Re-allocate (test_string_len-1) byte of memory buffer using fr_pair_value_bstr_realloc()");
 	TEST_CHECK(fr_pair_value_bstr_realloc(vp, &out, (test_string_len - 1)) == 0);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Copy 'test_string' to the pre-allocated pointer");
 	TEST_CHECK(strlcpy(out, test_string, test_string_len) == test_string_len);
@@ -735,8 +735,8 @@ static void test_fr_pair_value_bstrndup(void)
 	TEST_CASE("Find 'Test-String'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Copy content of 'test_string' to attribute value using fr_pair_value_bstrndup()");
 	TEST_CHECK(fr_pair_value_bstrndup(vp, test_string, test_string_len-1, false) == 0);
@@ -753,8 +753,8 @@ static void test_fr_pair_value_bstrdup_buffer(void)
 	TEST_CASE("Find 'Test-String'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	copy_test_string = talloc_strdup(vp, test_string);
 	talloc_set_type(copy_test_string, char);
@@ -776,8 +776,8 @@ static void test_fr_pair_value_bstrndup_shallow(void)
 	TEST_CASE("Find 'Test-String'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	copy_test_string = talloc_strdup(vp, test_string);
 	talloc_set_type(copy_test_string, char);
@@ -799,8 +799,8 @@ static void test_fr_pair_value_bstrdup_buffer_shallow(void)
 	TEST_CASE("Find 'Test-String'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
  	copy_test_string = talloc_strdup(vp, test_string);
 	talloc_set_type(copy_test_string, char);
@@ -822,8 +822,8 @@ static void test_fr_pair_value_bstrn_append(void)
 	TEST_CASE("Find 'Test-String'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
  	copy_test_string = talloc_strdup(vp, test_string);
 	talloc_set_type(copy_test_string, char);
@@ -852,8 +852,8 @@ static void test_fr_pair_value_bstr_append_buffer(void)
 	TEST_CASE("Find 'Test-String'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
  	copy_test_string = talloc_strdup(vp, test_string);
 	talloc_set_type(copy_test_string, char);
@@ -864,8 +864,8 @@ static void test_fr_pair_value_bstr_append_buffer(void)
 	TEST_CASE("Append the 'copy_test_string' value using fr_pair_value_bstr_append_buffer()");
 	TEST_CHECK(fr_pair_value_bstr_append_buffer(vp, copy_test_string, true) == 0);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	// awful hack, just verify the first part of buffer and then the second part. yep, just appended twice.
 	TEST_CASE("Check 1. part (vp->vp_string == test_string)");
@@ -885,8 +885,8 @@ static void test_fr_pair_value_mem_alloc(void)
 	TEST_CASE("Find 'Test-Octets'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Pre-allocate a memory buffer using fr_pair_value_bstr_alloc()");
 	TEST_CHECK(fr_pair_value_mem_alloc(vp, &out, NUM_ELEMENTS(test_octets), false) == 0);
@@ -909,8 +909,8 @@ static void test_fr_pair_value_mem_realloc(void)
 	TEST_CASE("Find 'Test-Octets'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Pre-allocate a memory buffer using fr_pair_value_bstr_alloc()");
 	TEST_CHECK(fr_pair_value_mem_alloc(vp, &out, NUM_ELEMENTS(test_octets), false) == 0);
@@ -946,8 +946,8 @@ static void test_fr_pair_value_memdup(void)
 	TEST_CASE("Find 'Test-Octets'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Copy content of 'test_octets' to attribute value using fr_pair_value_memdup()");
 	TEST_CHECK(fr_pair_value_memdup(vp, test_octets, NUM_ELEMENTS(test_octets), false) == 0);
@@ -964,8 +964,8 @@ static void test_fr_pair_value_memdup_buffer(void)
 	TEST_CASE("Find 'Test-Octets'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	copy_test_octets = talloc_memdup(vp, test_octets, NUM_ELEMENTS(test_octets));
 	talloc_set_type(copy_test_octets, uint8_t);
@@ -987,8 +987,8 @@ static void test_fr_pair_value_memdup_shallow(void)
 	TEST_CASE("Find 'Test-Octets'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	copy_test_octets = talloc_memdup(vp, test_octets, NUM_ELEMENTS(test_octets));
 	talloc_set_type(copy_test_octets, uint8_t);
@@ -1010,8 +1010,8 @@ static void test_fr_pair_value_memdup_buffer_shallow(void)
 	TEST_CASE("Find 'Test-Octets'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	copy_test_octets = talloc_memdup(vp, test_octets, NUM_ELEMENTS(test_octets));
 	talloc_set_type(copy_test_octets, uint8_t);
@@ -1032,8 +1032,8 @@ static void test_fr_pair_value_mem_append(void)
 	TEST_CASE("Find 'Test-Octets'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CASE("Copy content of 'test_octets' to attribute value using fr_pair_value_memdup()");
 	TEST_CHECK(fr_pair_value_memdup(vp, test_octets, NUM_ELEMENTS(test_octets), false) == 0);
@@ -1057,8 +1057,8 @@ static void test_fr_pair_value_mem_append_buffer(void)
 	TEST_CASE("Find 'Test-Octets'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	copy_test_octets = talloc_memdup(vp, test_octets, NUM_ELEMENTS(test_octets));
 	talloc_set_type(copy_test_octets, uint8_t);
@@ -1088,8 +1088,8 @@ static void test_fr_pair_value_enum(void)
 	TEST_CASE("Find 'Test-Values'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_enum, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	vp->vp_uint32 = 123;
 
@@ -1110,8 +1110,8 @@ static void test_fr_pair_value_enum_box(void)
 	TEST_CASE("Find 'Test-Values'");
 	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_enum, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	vp->vp_uint32 = 123;
 

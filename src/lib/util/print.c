@@ -796,7 +796,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 					goto do_splice;
 				}
 
-				VP_VERIFY(in);
+				PAIR_VERIFY(in);
 				fr_pair_aprint(NULL, &subst, NULL, in);
 			}
 				goto do_splice;

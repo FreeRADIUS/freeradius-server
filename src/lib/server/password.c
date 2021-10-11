@@ -631,7 +631,7 @@ static fr_pair_t *password_process_header(TALLOC_CTX *ctx, request_t *request, f
 	fr_pair_t			*new;
 	fr_dict_attr_t const		*def = attr_cleartext;
 
-	VP_VERIFY(known_good);
+	PAIR_VERIFY(known_good);
 
 	/*
 	 *	Ensure this is only ever called with a

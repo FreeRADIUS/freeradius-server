@@ -332,7 +332,7 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 {
 	fr_pair_t *n;
 
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 
 	n = fr_pair_afrom_da(ctx, vp->da);
 	if (!n) return NULL;
@@ -478,7 +478,7 @@ int fr_pair_to_unknown(fr_pair_t *vp)
 {
 	fr_dict_attr_t *unknown;
 
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 
 	if (vp->da->flags.is_unknown) return 0;
 
@@ -510,7 +510,7 @@ void *fr_pair_iter_next_by_da(fr_dlist_head_t *list, void *to_eval, void *uctx)
 	fr_dict_attr_t	*da = uctx;
 
 	for (c = to_eval; c; c = fr_dlist_next(list, c)) {
-		VP_VERIFY(c);
+		PAIR_VERIFY(c);
 		if (c->da == da) break;
 	}
 
@@ -533,7 +533,7 @@ void *fr_pair_iter_next_by_ancestor(fr_dlist_head_t *list, void *to_eval, void *
 	fr_dict_attr_t	*da = uctx;
 
 	for (c = to_eval; c; c = fr_dlist_next(list, c)) {
-		VP_VERIFY(c);
+		PAIR_VERIFY(c);
 		if (fr_dict_attr_common_parent(da, c->da, true)) break;
 	}
 
@@ -577,7 +577,7 @@ fr_pair_t *fr_pair_find_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *
 
 	if (fr_dlist_empty(&list->order)) return NULL;
 
-	LIST_VERIFY(list);
+	PAIR_LIST_VERIFY(list);
 
 	while ((vp = fr_pair_list_next(list, vp))) {
 		if (da == vp->da) {
@@ -628,7 +628,7 @@ fr_pair_t *fr_pair_find_by_child_num(fr_pair_list_t *list, fr_dict_attr_t const 
 	/* List head may be NULL if it contains no VPs */
 	if (fr_dlist_empty(&list->order)) return NULL;
 
-	LIST_VERIFY(list);
+	PAIR_LIST_VERIFY(list);
 
 	da = fr_dict_attr_child_by_num(parent, attr);
 	if (!da) return NULL;
@@ -727,7 +727,7 @@ void *fr_pair_list_tail(fr_pair_list_t const *list)
  */
 int fr_pair_prepend(fr_pair_list_t *list, fr_pair_t *to_add)
 {
-	VP_VERIFY(to_add);
+	PAIR_VERIFY(to_add);
 
 	if (fr_dlist_entry_in_list(&to_add->order_entry)) {
 		fr_strerror_printf("Pair %pV already inserted into list", to_add);
@@ -751,7 +751,7 @@ int fr_pair_prepend(fr_pair_list_t *list, fr_pair_t *to_add)
  */
 int fr_pair_append(fr_pair_list_t *list, fr_pair_t *to_add)
 {
-	VP_VERIFY(to_add);
+	PAIR_VERIFY(to_add);
 
 	if (fr_dlist_entry_in_list(&to_add->order_entry)) {
 		fr_strerror_printf("Pair %pV already inserted into list", to_add);
@@ -778,7 +778,7 @@ void fr_pair_replace(fr_pair_list_t *list, fr_pair_t *replace)
 {
 	fr_pair_t *i;
 
-	VP_VERIFY(replace);
+	PAIR_VERIFY(replace);
 
 	if (fr_dlist_empty(&list->order)) {
 		fr_pair_append(list, replace);
@@ -791,7 +791,7 @@ void fr_pair_replace(fr_pair_list_t *list, fr_pair_t *replace)
 	 *	we ignore any others that might exist.
 	 */
 	for (i = fr_pair_list_head(list); i; i = fr_pair_list_next(list, i)) {
-		VP_VERIFY(i);
+		PAIR_VERIFY(i);
 
 		/*
 		 *	Found the head attribute, replace it,
@@ -889,7 +889,7 @@ int fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list,
 
 	vp = fr_pair_find_by_da(list, da, n);
 	if (vp) {
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 		if (out) *out = vp;
 		return 1;
 	}
@@ -1000,8 +1000,8 @@ int8_t fr_pair_cmp_by_da(void const *a, void const *b)
 	fr_pair_t const *my_a = a;
 	fr_pair_t const *my_b = b;
 
-	VP_VERIFY(my_a);
-	VP_VERIFY(my_b);
+	PAIR_VERIFY(my_a);
+	PAIR_VERIFY(my_b);
 
 	return CMP(my_a->da, my_b->da);
 }
@@ -1020,8 +1020,8 @@ static inline int8_t pair_cmp_by_num(void const *a, void const *b)
 	fr_pair_t const *my_a = a;
 	fr_pair_t const *my_b = b;
 
-	VP_VERIFY(my_a);
-	VP_VERIFY(my_b);
+	PAIR_VERIFY(my_a);
+	PAIR_VERIFY(my_b);
 
 	return CMP(my_a->da->attr, my_b->da->attr);
 }
@@ -1090,8 +1090,8 @@ int fr_pair_cmp(fr_pair_t const *a, fr_pair_t const *b)
 {
 	if (!a) return -1;
 
-	VP_VERIFY(a);
-	if (b) VP_VERIFY(b);
+	PAIR_VERIFY(a);
+	if (b) PAIR_VERIFY(b);
 
 	switch (a->op) {
 	case T_OP_CMP_TRUE:
@@ -1439,7 +1439,7 @@ int fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const 
 	for (vp = fr_pair_list_head(from);
 	     vp;
 	     vp = fr_pair_list_next(from, vp), cnt++) {
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 		new_vp = fr_pair_copy(ctx, vp);
 		if (!new_vp) {
 			fr_pair_list_free(&tmp_list);
@@ -1489,7 +1489,7 @@ int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
 	     vp = fr_pair_list_next(from, vp)) {
 		if (!fr_pair_matches_da(vp, da)) continue;
 		cnt++;
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 		new_vp = fr_pair_copy(ctx, vp);
 		if (!new_vp) {
 			fr_pair_list_free(&tmp_list);
@@ -1534,7 +1534,7 @@ int fr_pair_list_copy_by_ancestor(TALLOC_CTX *ctx, fr_pair_list_t *to,
 		if (!fr_dict_attr_common_parent(parent_da, vp->da, true)) continue;
 		cnt++;
 
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 		new_vp = fr_pair_copy(ctx, vp);
 		if (unlikely(!new_vp)) return -1;
 		fr_pair_append(to, new_vp);
@@ -1570,7 +1570,7 @@ int fr_pair_sublist_copy(TALLOC_CTX *ctx, fr_pair_list_t *to,
 	for (vp = start;
 	     vp && ((count == 0) || (cnt < count));
 	     vp = fr_pair_list_next(from, vp), cnt++) {
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 		new_vp = fr_pair_copy(ctx, vp);
 		if (unlikely(!new_vp)) return -1;
 		fr_pair_append(to, new_vp);
@@ -1663,7 +1663,7 @@ int fr_pair_value_from_str(fr_pair_t *vp, char const *value, ssize_t inlen, char
 	if (fr_value_box_from_str(vp, &vp->data, vp->da->type, vp->da, value, inlen, quote, tainted) < 0) return -1;
 	vp->type = VT_DATA;
 
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 
 	return 0;
 }
@@ -1689,7 +1689,7 @@ int fr_pair_value_strdup(fr_pair_t *vp, char const *src, bool tainted)
 	ret = fr_value_box_strdup(vp, &vp->data, vp->da, src, tainted);
 	if (ret == 0) {
 		vp->type = VT_DATA;
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 	}
 
 	return ret;
@@ -1712,7 +1712,7 @@ int fr_pair_value_strdup_shallow(fr_pair_t *vp, char const *src, bool tainted)
 	fr_value_box_strdup_shallow(&vp->data, vp->da, src, tainted);
 
 	vp->type = VT_DATA;
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 
 	return 0;
 }
@@ -1733,7 +1733,7 @@ int fr_pair_value_strtrim(fr_pair_t *vp)
 	ret = fr_value_box_strtrim(vp, &vp->data);
 	if (ret == 0) {
 		vp->type = VT_DATA;
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 	}
 
 	return ret;
@@ -1760,7 +1760,7 @@ int fr_pair_value_aprintf(fr_pair_t *vp, char const *fmt, ...)
 
 	if (ret == 0) {
 		vp->type = VT_DATA;
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 		return 0;
 	}
 
@@ -1790,7 +1790,7 @@ int fr_pair_value_bstr_alloc(fr_pair_t *vp, char **out, size_t size, bool tainte
 	ret = fr_value_box_bstr_alloc(vp, out, &vp->data, vp->da, size, tainted);
 	if (ret == 0) {
 		vp->type = VT_DATA;
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 	}
 
 	return ret;
@@ -1815,7 +1815,7 @@ int fr_pair_value_bstr_realloc(fr_pair_t *vp, char **out, size_t size)
 	ret = fr_value_box_bstr_realloc(vp, out, &vp->data, size);
 	if (ret == 0) {
 		vp->type = VT_DATA;
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 	}
 
 	return ret;
@@ -1846,7 +1846,7 @@ int fr_pair_value_bstrndup(fr_pair_t *vp, char const *src, size_t len, bool tain
 	ret = fr_value_box_bstrndup(vp, &vp->data, vp->da, src, len, tainted);
 	if (ret == 0) {
 		vp->type = VT_DATA;
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 	}
 
 	return ret;
@@ -1873,7 +1873,7 @@ int fr_pair_value_bstrdup_buffer(fr_pair_t *vp, char const *src, bool tainted)
 	ret = fr_value_box_bstrdup_buffer(vp, &vp->data, vp->da, src, tainted);
 	if (ret == 0) {
 		vp->type = VT_DATA;
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 	}
 
 	return ret;
@@ -1896,7 +1896,7 @@ int fr_pair_value_bstrndup_shallow(fr_pair_t *vp, char const *src, size_t len, b
 	fr_value_box_clear(&vp->data);
 	fr_value_box_bstrndup_shallow(&vp->data, vp->da, src, len, tainted);
 	vp->type = VT_DATA;
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 
 	return 0;
 }
@@ -1920,7 +1920,7 @@ int fr_pair_value_bstrdup_buffer_shallow(fr_pair_t *vp, char const *src, bool ta
 	ret = fr_value_box_bstrdup_buffer_shallow(NULL, &vp->data, vp->da, src, tainted);
 	if (ret == 0) {
 		vp->type = VT_DATA;
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 	}
 
 	return ret;
@@ -1945,7 +1945,7 @@ int fr_pair_value_bstrn_append(fr_pair_t *vp, char const *src, size_t len, bool 
 	ret = fr_value_box_bstrn_append(vp, &vp->data, src, len, tainted);
 	if (ret == 0) {
 		vp->type = VT_DATA;
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 	}
 
 	return ret;
@@ -1969,7 +1969,7 @@ int fr_pair_value_bstr_append_buffer(fr_pair_t *vp, char const *src, bool tainte
 	ret = fr_value_box_bstr_append_buffer(vp, &vp->data, src, tainted);
 	if (ret == 0) {
 		vp->type = VT_DATA;
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 	}
 
 	return ret;
@@ -1998,7 +1998,7 @@ int fr_pair_value_mem_alloc(fr_pair_t *vp, uint8_t **out, size_t size, bool tain
 	ret = fr_value_box_mem_alloc(vp, out, &vp->data, vp->da, size, tainted);
 	if (ret == 0) {
 		vp->type = VT_DATA;
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 	}
 
 	return ret;
@@ -2023,7 +2023,7 @@ int fr_pair_value_mem_realloc(fr_pair_t *vp, uint8_t **out, size_t size)
 	ret = fr_value_box_mem_realloc(vp, out, &vp->data, size);
 	if (ret == 0) {
 		vp->type = VT_DATA;
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 	}
 
 	return ret;
@@ -2051,7 +2051,7 @@ int fr_pair_value_memdup(fr_pair_t *vp, uint8_t const *src, size_t size, bool ta
 	ret = fr_value_box_memdup(vp, &vp->data, vp->da, src, size, tainted);
 	if (ret == 0) {
 		vp->type = VT_DATA;
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 	}
 
 	return ret;
@@ -2078,7 +2078,7 @@ int fr_pair_value_memdup_buffer(fr_pair_t *vp, uint8_t const *src, bool tainted)
 	ret = fr_value_box_memdup_buffer(vp, &vp->data, vp->da, src, tainted);
 	if (ret == 0) {
 		vp->type = VT_DATA;
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 	}
 
 	return ret;
@@ -2101,7 +2101,7 @@ int fr_pair_value_memdup_shallow(fr_pair_t *vp, uint8_t const *src, size_t len, 
 	fr_value_box_clear(&vp->data);
 	fr_value_box_memdup_shallow(&vp->data, vp->da, src, len, tainted);
 	vp->type = VT_DATA;
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 
 	return 0;
 }
@@ -2122,7 +2122,7 @@ int fr_pair_value_memdup_buffer_shallow(fr_pair_t *vp, uint8_t const *src, bool 
 	fr_value_box_clear(&vp->data);
 	fr_value_box_memdup_buffer_shallow(NULL, &vp->data, vp->da, src, tainted);
 	vp->type = VT_DATA;
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 
 	return 0;
 }
@@ -2147,7 +2147,7 @@ int fr_pair_value_mem_append(fr_pair_t *vp, uint8_t *src, size_t len, bool taint
 	ret = fr_value_box_mem_append(vp, &vp->data, src, len, tainted);
 	if (ret == 0) {
 		vp->type = VT_DATA;
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 	}
 
 	return ret;
@@ -2171,7 +2171,7 @@ int fr_pair_value_mem_append_buffer(fr_pair_t *vp, uint8_t *src, bool tainted)
 	ret = fr_value_box_mem_append_buffer(vp, &vp->data, src, tainted);
 	if (ret == 0) {
 		vp->type = VT_DATA;
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 	}
 
 	return ret;
@@ -2426,7 +2426,7 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 	for (slow = fr_pair_list_head(list), fast = fr_pair_list_head(list);
 	     slow && fast;
 	     slow = fr_pair_list_next(list, slow), fast = fr_pair_list_next(list, fast)) {
-		VP_VERIFY(slow);
+		PAIR_VERIFY(slow);
 
 		/*
 		 *	Advances twice as fast as slow...
@@ -2464,7 +2464,7 @@ void fr_pair_list_tainted(fr_pair_list_t *list)
 	for (vp = fr_pair_list_head(list);
 	     vp;
 	     vp = fr_pair_list_next(list, vp)) {
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 
 		switch (vp->da->type) {
 		case FR_TYPE_STRUCTURAL:

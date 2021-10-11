@@ -820,7 +820,7 @@ static inline fr_pair_t *map_list_mod_to_vp(TALLOC_CTX *ctx, tmpl_t const *attr,
 		talloc_free(vp);
 		return NULL;
 	}
-	VP_VERIFY(vp);		/* Check we created something sane */
+	PAIR_VERIFY(vp);		/* Check we created something sane */
 
 	return vp;
 }

@@ -110,7 +110,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_dns_ctx_t	*packet_ctx = encode_ctx;
 
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	/*
@@ -494,7 +494,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	ssize_t			len;
 
 	fr_dbuff_marker(&hdr, &work_dbuff);
-	VP_VERIFY(fr_dcursor_current(cursor));
+	PAIR_VERIFY(fr_dcursor_current(cursor));
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	if (da_stack->da[depth]->type != FR_TYPE_TLV) {

@@ -105,7 +105,7 @@ void *fr_proto_next_encodable(fr_dlist_head_t *list, void *to_eval, void *uctx)
 	if (!to_eval) return NULL;
 
 	for (c = to_eval; c; c = fr_dlist_next(list, c)) {
-		VP_VERIFY(c);
+		PAIR_VERIFY(c);
 		if ((c->da->dict == dict) && (!c->da->flags.internal)) break;
 	}
 

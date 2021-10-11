@@ -168,13 +168,13 @@ void		fr_pair_verify(char const *file, int line, fr_pair_t const *vp) CC_HINT(no
 void		fr_pair_list_verify(char const *file, int line,
 				    TALLOC_CTX const *expected, fr_pair_list_t const *list) CC_HINT(nonnull(4));
 
-#  define VP_VERIFY(_x)		fr_pair_verify(__FILE__, __LINE__, _x)
-#  define LIST_VERIFY(_x)	fr_pair_list_verify(__FILE__, __LINE__, NULL, _x)
+#  define PAIR_VERIFY(_x)		fr_pair_verify(__FILE__, __LINE__, _x)
+#  define PAIR_LIST_VERIFY(_x)	fr_pair_list_verify(__FILE__, __LINE__, NULL, _x)
 #else
 DIAG_OFF(nonnull-compare)
 /** Wrapper function to defeat nonnull checks
  *
- * We may sprinkle VP_VERIFY and LIST_VERIFY in functions which
+ * We may sprinkle PAIR_VERIFY and PAIR_LIST_VERIFY in functions which
  * have their pair argument marked up as nonnull.
  *
  * This would usually generate errors when WITH_VERIFY_PTR is not
@@ -199,8 +199,8 @@ DIAG_ON(nonnull-compare)
  *	the pointer must not be NULL when these various macros are used
  *	so we can add some sneaky soft asserts.
  */
-#  define VP_VERIFY(_x)		fr_pair_nonnull_assert(_x)
-#  define LIST_VERIFY(_x)	fr_pair_list_nonnull_assert(_x)
+#  define PAIR_VERIFY(_x)		fr_pair_nonnull_assert(_x)
+#  define PAIR_LIST_VERIFY(_x)	fr_pair_list_nonnull_assert(_x)
 #endif
 
 /* Initialisation */

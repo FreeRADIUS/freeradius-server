@@ -316,7 +316,7 @@ static ssize_t encode_tags(fr_dbuff_t *dbuff, fr_pair_list_t const *vps, void *e
 	fr_dcursor_talloc_iter_init(&cursor, fr_pair_list_order(vps),
 				    fr_proto_next_encodable, dict_radius, fr_pair_t);
 	while ((vp = fr_dcursor_current(&cursor))) {
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 
 		/*
 		 *	Encode an individual VP
@@ -356,7 +356,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	fr_dbuff_marker_t	value_start, src, dest;
 	bool			encrypted = false;
 
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	/*
@@ -757,7 +757,7 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
 	fr_dbuff_t		work_dbuff;
 
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	extra = flag_long_extended(&da_stack->da[0]->flags);
@@ -1037,7 +1037,7 @@ static ssize_t encode_wimax(fr_dbuff_t *dbuff,
 
 	fr_dbuff_marker(&hdr, &work_dbuff);
 
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	dv = da_stack->da[depth++];
@@ -1351,7 +1351,7 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned i
 	/*
 	 *	Sanity checks
 	 */
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	switch (da_stack->da[depth]->type) {
@@ -1448,7 +1448,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 	vp = fr_dcursor_current(cursor);
 	if (!vp) return 0;
 
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 
 	if (vp->da->depth > FR_DICT_MAX_TLV_STACK) {
 		fr_strerror_printf("%s: Attribute depth %i exceeds maximum nesting depth %i",

@@ -298,7 +298,7 @@ int restore_field(request_t *request, fr_pair_t **to_restore)
 {
 	fr_pair_t			*vp;
 
-	VP_VERIFY(*to_restore);
+	PAIR_VERIFY(*to_restore);
 
 	vp = fr_pair_find_by_da(&request->reply_pairs, (*to_restore)->da, 0);
 	if (vp) {

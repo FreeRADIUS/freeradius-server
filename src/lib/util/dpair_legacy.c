@@ -672,7 +672,7 @@ void fr_pair_list_move(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t op)
 	for (i = fr_pair_list_head(from); i; ) {
 		fr_pair_t *j;
 
-		VP_VERIFY(i);
+		PAIR_VERIFY(i);
 
 		/*
 		 *	We never move Fall-Through.

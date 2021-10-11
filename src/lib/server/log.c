@@ -764,7 +764,7 @@ void log_request_pair(fr_log_lvl_t lvl, request_t *request,
 
 	if (!log_rdebug_enabled(lvl, request)) return;
 
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 
 	oid_buff = log_request_oid_buff();
 
@@ -817,7 +817,7 @@ void log_request_pair_list(fr_log_lvl_t lvl, request_t *request,
 	for (vp = fr_pair_list_head(m_vp);
 	     vp;
 	     vp = fr_pair_list_next(m_vp, vp)) {
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 
 		log_request_pair(lvl, request, parent, vp, prefix);
 	}
@@ -845,7 +845,7 @@ void log_request_proto_pair_list(fr_log_lvl_t lvl, request_t *request,
 	for (vp = fr_pair_list_head(vps);
 	     vp;
 	     vp = fr_pair_list_next(vps, vp)) {
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 
 		if (!fr_dict_attr_common_parent(fr_dict_root(request->dict), vp->da, true)) continue;
 

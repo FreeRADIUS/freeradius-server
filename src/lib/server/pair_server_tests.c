@@ -117,9 +117,9 @@ static void test_pair_append_request(void)
 	TEST_CASE("Add 'Test-Integer' in 'request_pairs' using pair_append_request()");
 	TEST_CHECK(pair_append_request(&local_vp, fr_dict_attr_test_uint32) == 0);
 
-	TEST_CASE("Validating VP_VERIFY()");
+	TEST_CASE("Validating PAIR_VERIFY()");
 	TEST_CHECK((vp = fr_pair_list_head(&request->request_pairs)) != NULL);
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 
 	TEST_MSG("Set vp = 12345");
 	vp->vp_uint32 = 12345;
@@ -138,9 +138,9 @@ static void test_pair_append_reply(void)
 	TEST_CASE("Add 'Test-Integer' in 'reply_pairs' using pair_append_reply()");
 	TEST_CHECK(pair_append_reply(&local_vp, fr_dict_attr_test_uint32) == 0);
 
-	TEST_CASE("Validating VP_VERIFY()");
+	TEST_CASE("Validating PAIR_VERIFY()");
 	TEST_CHECK((vp = fr_pair_list_head(&request->reply_pairs)) != NULL);
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 
 	TEST_MSG("Set vp = 12345");
 	vp->vp_uint32 = 12345;
@@ -160,9 +160,9 @@ static void test_pair_append_control(void)
 	TEST_CASE("Add 'Test-Integer' in 'control_pairs' using pair_append_control()");
 	TEST_CHECK(pair_append_control(&local_vp, fr_dict_attr_test_uint32) == 0);
 
-	TEST_CASE("Validating VP_VERIFY()");
+	TEST_CASE("Validating PAIR_VERIFY()");
 	TEST_CHECK((vp = fr_pair_list_head(&request->control_pairs)) != NULL);
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 
 	TEST_MSG("Set vp = 12345");
 	vp->vp_uint32 = 12345;
@@ -182,9 +182,9 @@ static void test_pair_append_session_state(void)
 	TEST_CASE("Add 'Test-Integer' in 'control_pairs' using pair_append_session_state()");
 	TEST_CHECK(pair_append_session_state(&local_vp, fr_dict_attr_test_uint32) == 0);
 
-	TEST_CASE("Validating VP_VERIFY()");
+	TEST_CASE("Validating PAIR_VERIFY()");
 	TEST_CHECK((vp = fr_pair_list_head(&request->session_state_pairs)) != NULL);
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 
 	TEST_MSG("Set vp = 12345");
 	vp->vp_uint32 = 12345;
@@ -203,8 +203,8 @@ static void test_pair_update_request(void)
 	TEST_CASE("Update 'Test-Integer' in 'request_pairs' using pair_update_request()");
 	TEST_CHECK(pair_update_request(&vp, fr_dict_attr_test_uint32) == 0);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_MSG("Set vp = 112233");
 	vp->vp_uint32 = 112233;
@@ -212,8 +212,8 @@ static void test_pair_update_request(void)
 	TEST_CASE("Expected fr_dict_attr_test_uint32 (vp->vp_uint32 == 112233)");
 	TEST_CHECK((vp = fr_pair_find_by_da(&request->request_pairs, fr_dict_attr_test_uint32, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_MSG("Checking if vp == 12345");
 	/*
@@ -232,8 +232,8 @@ static void test_pair_update_reply(void)
 	TEST_CASE("Update 'Test-Integer' in 'reply_pairs' using pair_update_request()");
 	TEST_CHECK(pair_update_reply(&vp, fr_dict_attr_test_uint32) == 0);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_MSG("Set vp = 3333");
 	vp->vp_uint32 = 3333;
@@ -241,8 +241,8 @@ static void test_pair_update_reply(void)
 	TEST_CASE("Expected fr_dict_attr_test_uint32 (vp->vp_uint32 == 3333)");
 	TEST_CHECK((vp = fr_pair_find_by_da(&request->reply_pairs, fr_dict_attr_test_uint32, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CHECK(vp && vp->vp_uint32 == 3333);
 
@@ -257,8 +257,8 @@ static void test_pair_update_control(void)
 	TEST_CASE("Update 'Test-Integer' in 'control_pairs' using pair_update_control()");
 	TEST_CHECK(pair_update_control(&vp, fr_dict_attr_test_uint32) == 0);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_MSG("Set vp = 44444");
 	vp->vp_uint32 = 44444;
@@ -266,8 +266,8 @@ static void test_pair_update_control(void)
 	TEST_CASE("Expected fr_dict_attr_test_uint32 (vp->vp_uint32 == 44444)");
 	TEST_CHECK((vp = fr_pair_find_by_da(&request->control_pairs, fr_dict_attr_test_uint32, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CHECK(vp && vp->vp_uint32 == 44444);
 
@@ -282,8 +282,8 @@ static void test_pair_update_session_state(void)
 	TEST_CASE("Update 'Test-Integer' in 'state' using pair_update_session_state()");
 	TEST_CHECK(pair_update_session_state(&vp, fr_dict_attr_test_uint32) == 0);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_MSG("Set vp = 7890");
 	vp->vp_uint32 = 7890;
@@ -291,8 +291,8 @@ static void test_pair_update_session_state(void)
 	TEST_CASE("Expected fr_dict_attr_test_uint32 (vp->vp_uint32 == 7890)");
 	TEST_CHECK((vp = fr_pair_find_by_da(&request->session_state_pairs, fr_dict_attr_test_uint32, 0)) != NULL);
 
-	TEST_CASE("Validating VP_VERIFY()");
-	VP_VERIFY(vp);
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp);
 
 	TEST_CHECK(vp && vp->vp_uint32 == 7890);
 

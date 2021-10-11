@@ -276,7 +276,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	fr_dict_attr_t const	*da = da_stack->da[depth];
 	fr_aka_sim_ctx_t	*packet_ctx = encode_ctx;
 
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	if (unlikely(da_stack->da[depth + 1] != NULL)) {
@@ -732,7 +732,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	fr_dbuff_t		tl_dbuff;
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 
-	VP_VERIFY(fr_dcursor_current(cursor));
+	PAIR_VERIFY(fr_dcursor_current(cursor));
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	if (da_stack->da[depth]->type != FR_TYPE_TLV) {
@@ -794,7 +794,7 @@ ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *en
 	vp = fr_dcursor_filter_current(cursor, is_eap_aka_encodable, encode_ctx);
 	if (!vp) return 0;
 
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 
 	if (vp->da->depth > FR_DICT_MAX_TLV_STACK) {
 		fr_strerror_printf("%s: Attribute depth %i exceeds maximum nesting depth %i",

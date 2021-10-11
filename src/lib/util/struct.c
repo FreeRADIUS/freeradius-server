@@ -475,7 +475,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		return -1;
 	}
 
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 	parent = da_stack->da[depth];
 
 	if (parent->type != FR_TYPE_STRUCT) {

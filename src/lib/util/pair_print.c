@@ -41,7 +41,7 @@ ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_toke
 	fr_pair_t	*child;
 	fr_dcursor_t	cursor;
 
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 
 	/*
 	 *	Legacy crap that needs to be removed
@@ -103,7 +103,7 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t const 
 	fr_sbuff_t		our_out = FR_SBUFF_NO_ADVANCE(out);
 	fr_dict_attr_t const	*parent_da = NULL;
 
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 
 	if ((vp->op > T_INVALID) && (vp->op < T_TOKEN_LAST)) {
 		token = fr_tokens[vp->op];
@@ -140,7 +140,7 @@ void fr_pair_fprint(FILE *fp, fr_pair_t const *vp)
 	char		buff[1024];
 	fr_sbuff_t	sbuff = FR_SBUFF_OUT(buff, sizeof(buff));
 
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 
 	fr_sbuff_in_char(&sbuff, '\t');
 	fr_pair_print(&sbuff, NULL, vp);
@@ -156,7 +156,7 @@ static void fr_pair_list_log_sbuff(fr_log_t const *log, int lvl, fr_pair_t *pare
 	fr_dict_attr_t const *parent_da = NULL;
 
 	for (vp = fr_pair_list_head(list); vp; vp = fr_pair_list_next(list, vp)) {
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 
 		fr_sbuff_set_to_start(sbuff);
 

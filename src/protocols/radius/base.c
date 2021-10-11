@@ -884,7 +884,7 @@ void *fr_radius_next_encodable(fr_dlist_head_t *list, void *to_eval, void *uctx)
 	if (!to_eval) return NULL;
 
 	for (c = to_eval; c; c = fr_dlist_next(list, c)) {
-		VP_VERIFY(c);
+		PAIR_VERIFY(c);
 		if ((c->da->dict == dict) &&
 		    (!c->da->flags.internal || ((c->da->attr > FR_TAG_BASE) && (c->da->attr < (FR_TAG_BASE + 0x20))))) {
 			break;
@@ -997,7 +997,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	 */
 	fr_dcursor_talloc_iter_init(&cursor, fr_pair_list_order(vps), fr_radius_next_encodable, dict_radius, fr_pair_t);
 	while ((vp = fr_dcursor_current(&cursor))) {
-		VP_VERIFY(vp);
+		PAIR_VERIFY(vp);
 
 		/*
 		 *	Encode an individual VP

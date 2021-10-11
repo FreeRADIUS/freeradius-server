@@ -108,7 +108,7 @@ static int packet_cmp(UNUSED void *instance,
 		      UNUSED fr_pair_list_t *request_list,
 		      fr_pair_t const *check_item)
 {
-	VP_VERIFY(check_item);
+	PAIR_VERIFY(check_item);
 
 	if (request->packet->code == check_item->vp_uint32) return 0;
 
@@ -123,7 +123,7 @@ static int generic_cmp(UNUSED void *instance,
 		       UNUSED fr_pair_list_t *request_list,
 		       fr_pair_t const *check_item)
 {
-	VP_VERIFY(check_item);
+	PAIR_VERIFY(check_item);
 
 	if ((check_item->op != T_OP_REG_EQ) && (check_item->op != T_OP_REG_NE)) {
 		int rcode;
@@ -426,7 +426,7 @@ static int paircmp_func(request_t *request,
 {
 	paircmp_t *c;
 
-	VP_VERIFY(check_item);
+	PAIR_VERIFY(check_item);
 
 	/*
 	 *      Check for =* and !* and return appropriately

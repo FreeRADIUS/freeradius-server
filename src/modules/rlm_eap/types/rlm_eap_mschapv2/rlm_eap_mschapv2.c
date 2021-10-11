@@ -380,7 +380,7 @@ static unlang_action_t mschap_finalize(rlm_rcode_t *p_result, module_ctx_t const
 			char buf[34];
 			fr_pair_t *vp = fr_pair_list_head(&response);
 
-			VP_VERIFY(vp);
+			PAIR_VERIFY(vp);
 
 			RDEBUG2("MSCHAP-Error: %pV", &vp->data);
 

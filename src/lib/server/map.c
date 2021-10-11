@@ -1547,7 +1547,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		for (vp = fr_pair_list_head(&src_list);
 		     vp;
 		     vp = fr_pair_list_next(&src_list, vp)) {
-			VP_VERIFY(vp);
+			PAIR_VERIFY(vp);
 
 			if (RDEBUG_ENABLED) map_debug_log(request, map, vp);
 		}

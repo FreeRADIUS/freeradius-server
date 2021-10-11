@@ -169,8 +169,8 @@ int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 	fr_pair_t const *my_a = a, *my_b = b;
 	fr_dict_attr_t const *a_82, *b_82;
 
-	VP_VERIFY(my_a);
-	VP_VERIFY(my_b);
+	PAIR_VERIFY(my_a);
+	PAIR_VERIFY(my_b);
 
 	/*
 	 *	We can only use attribute numbers if we know they're
@@ -285,7 +285,7 @@ bool fr_dhcpv4_is_encodable(void const *item, UNUSED void const *uctx)
 {
 	fr_pair_t const *vp = item;
 
-	VP_VERIFY(vp);
+	PAIR_VERIFY(vp);
 	return (vp->da->dict == dict_dhcpv4) && (!vp->da->flags.internal);
 }
 
