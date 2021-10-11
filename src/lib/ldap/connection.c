@@ -807,7 +807,8 @@ static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_con
 
 		switch (rcode) {
 		case LDAP_PROC_SUCCESS:
-			query->ret = ((!query->mods) && (ldap_count_entries(ldap_conn->handle, result) == 0)) ?
+			query->ret = ((query->type == LDAP_REQUEST_SEARCH) &&
+				      (ldap_count_entries(ldap_conn->handle, result) == 0)) ?
 				     LDAP_RESULT_NO_RESULT : LDAP_RESULT_SUCCESS;
 			break;
 
