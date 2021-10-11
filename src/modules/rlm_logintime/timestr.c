@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-fr_time_delta_t	timestr_match(char const *, fr_time_t);
+int timestr_match(fr_time_delta_t *out, char const *tmstr, fr_time_t when);
 
 static char const *days[] =
 	{ "su", "mo", "tu", "we", "th", "fr", "sa", "wk", "any", "al" };
@@ -193,14 +193,14 @@ static int week_fill(char *bitmap, char const *tm)
 }
 
 /*
- *	Match a timestring and return time left.
- *	-1 for no match, 0 for unlimited.
+ *	Match a time string, and return time left in `out`.
+ *	-1 for no match
  */
-fr_time_delta_t timestr_match(char const *tmstr, fr_time_t when)
+int timestr_match(fr_time_delta_t *out, char const *tmstr, fr_time_t when)
 {
 	struct tm *tm, s_tm;
 	char bitmap[WEEKMIN / 8];
-	int now, tot, i;
+	int64_t now, tot, i;
 	int byte, bit;
 #ifdef do_timestr_debug
 	int y;
@@ -245,11 +245,15 @@ fr_time_delta_t timestr_match(char const *tmstr, fr_time_t when)
 			break;
 	}
 
-	if (!tot) return fr_time_delta_wrap(-1);
+	if (!tot) return -1;
 
-	if (i == now) return fr_time_delta_wrap(0);
+	if (i == now) {
+		*out = fr_time_delta_wrap(0);
+		return 0;
+	}
 
-	return fr_time_delta_from_sec(tot);
+	*out = fr_time_delta_wrap(tot);
+	return 0;
 }
 
 #ifdef STANDALONE

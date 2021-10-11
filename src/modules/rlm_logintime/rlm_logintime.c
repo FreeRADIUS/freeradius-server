@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <ctype.h>
 
 /* timestr.c */
-fr_time_delta_t	timestr_match(char const *, fr_time_t);
+int timestr_match(fr_time_delta_t *out, char const *tmstr, fr_time_t when);
 
 /*
  *	Define a structure for our module configuration.
@@ -80,10 +80,14 @@ fr_dict_attr_autoload_t rlm_logintime_dict_attr[] = {
  */
 static int timecmp(UNUSED void *instance, request_t *request, UNUSED fr_pair_list_t *request_list, fr_pair_t const *check)
 {
+	fr_time_delta_t left;
+
+	if (timestr_match(&left, check->vp_strvalue, request->packet->timestamp) < 0) return -1;
+
 	/*
-	 *      If there's a request, use that timestamp.
+	 *	0 is a special case meaning "allowed".
 	 */
-	if (fr_time_delta_gteq(timestr_match(check->vp_strvalue, request->packet->timestamp), fr_time_delta_wrap(0))) return 0;
+	if (fr_time_delta_gteq(left, fr_time_delta_wrap(0))) return 0;
 
 	return -1;
 }
@@ -166,11 +170,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	/*
 	 *	Compare the time the request was received with the current Login-Time value
 	 */
-	left = timestr_match(ends->vp_strvalue, request->packet->timestamp);
-	if (fr_time_delta_isneg(left)) RETURN_MODULE_DISALLOW; /* outside of the allowed time */
+	if (timestr_match(&left, ends->vp_strvalue, request->packet->timestamp) < 0) {
+		RETURN_MODULE_DISALLOW; /* outside of the allowed time */
+	}
 
 	/*
-	 *      Do nothing, login time is not controlled (unendsed).
+	 *      Do nothing, login time is not controlled (unended).
 	 */
 	if (fr_time_delta_eq(left, fr_time_delta_wrap(0))) RETURN_MODULE_OK;
 
@@ -190,7 +195,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	/* else left > inst->min_time */
 
 	/*
-	 *	There's time left in the users session, inform the NAS by including a Session-vp
+	 *	There's time left in the users session, inform the NAS by including a Session-Timeout
 	 *	attribute in the reply, or modifying the existing one.
 	 */
 	RDEBUG2("Login within allowed time-slot, %d seconds left in this session", (int) fr_time_delta_to_sec(left));
