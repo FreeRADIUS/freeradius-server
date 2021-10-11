@@ -877,6 +877,28 @@ fr_trunk_watch_entry_t *fr_trunk_add_watch(fr_trunk_t *trunk, fr_trunk_state_t s
 int		fr_trunk_del_watch(fr_trunk_t *trunk, fr_trunk_state_t state, fr_trunk_watch_t watch);
 /** @} */
 
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+void CC_HINT(nonnull(1))	fr_trunk_verify(char const *file, int line, fr_trunk_t *trunk);
+void CC_HINT(nonnull(1))	fr_trunk_connection_verify(char const *file, int line, fr_trunk_connection_t *tconn);
+void CC_HINT(nonnull(1))	fr_trunk_request_verify(char const *file, int line, fr_trunk_request_t *treq);
+
+#  define FR_TRUNK_VERIFY(_trunk)		fr_trunk_verify(__FILE__, __LINE__, _trunk)
+#  define FR_TRUNK_CONNECTION_VERIFY(_tconn)	fr_trunk_connection_verify(__FILE__, __LINE__, _tconn)
+#  define FR_TRUNK_REQUEST_VERIFY(_treq)	fr_trunk_request_verify(__FILE__, __LINE__, _treq)
+#elif !defined(NDEBUG)
+#  define FR_TRUNK_VERIFY(_trunk)		fr_assert(_trunk)
+#  define FR_TRUNK_CONNECTION_VERIFY(_tconn)	fr_assert(_tconn)
+#  define FR_TRUNK_REQUEST_VERIFY(_treq)	fr_assert(_treq)
+#else
+#  define FR_TRUNK_VERIFY(_trunk)
+#  define FR_TRUNK_CONNECTION_VERIFY(_tconn)
+#  define FR_TRUNK_REQUEST_VERIFY(_treq)
+#endif
+
+bool fr_trunk_search(fr_trunk_t *trunk, void *ptr);
+bool fr_trunk_connection_search(fr_trunk_connection_t *tconn, void *ptr);
+bool fr_trunk_request_search(fr_trunk_request_t *treq, void *ptr);
+
 #undef _CONST
 
 #ifdef __cplusplus

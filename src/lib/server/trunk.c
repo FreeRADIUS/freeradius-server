@@ -4778,3 +4778,253 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 	return trunk;
 }
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+/** Verify a trunk
+ *
+ * A trunk has some number of connections, which each have some number of requests. The connections and
+ * requests are in differing kinds of containers depending on their state and how they are used, and may
+ * have fields that can only be validated by comparison with a parent.  We had planned on passing a "context"
+ * down with the ancestral values, but that breaks the foo_verify() API. Each foo_verify() will only verify the
+ * foo's children.
+ */
+void fr_trunk_verify(char const *file, int line, fr_trunk_t *trunk)
+{
+	fr_fatal_assert_msg(trunk, "CONSISTENCY CHECK FAILED %s[%i]: fr_trunk_t pointer was NULL", file, line);
+	(void) talloc_get_type_abort(trunk, fr_trunk_t);
+
+	for (size_t i = 0; i < NUM_ELEMENTS(trunk->watch); i++) {
+		fr_dlist_verify(file, line, &trunk->watch[i]);
+	}
+
+#define IO_FUNC_VERIFY(_func) \
+	fr_fatal_assert_msg(trunk->funcs._func, "CONSISTENCY_CHECK_FAILED %s[%i}: " #_func " was NULL", file, line)
+
+	/*
+	 *	Only a few of the function pointers *must* be non-NULL..
+	 */
+	IO_FUNC_VERIFY(connection_alloc);
+	IO_FUNC_VERIFY(connection_prioritise);
+	IO_FUNC_VERIFY(request_prioritise);
+
+#define TRUNK_TCONN_CHECKS(_tconn, _state) \
+do { \
+	fr_fatal_assert_msg(trunk == _tconn->pub.trunk, \
+			    "CONSISTENCY_CHECK_FAILED %s[%i}: connection-trunk mismatch", file, line); \
+	fr_fatal_assert_msg(_state == _tconn->pub.state, \
+			    "CONSISTENCY_CHECK_FAILED %s[%i}: connection-state mismatch", file, line); \
+} while (0)
+
+#define TCONN_DLIST_VERIFY(_dlist, _state) \
+do { \
+	fr_dlist_verify(file, line, &(trunk->_dlist)); \
+	fr_dlist_foreach(&(trunk->_dlist), fr_trunk_connection_t, tconn)  { \
+		fr_trunk_connection_verify(file, line, tconn); \
+		TRUNK_TCONN_CHECKS(tconn, _state); \
+	} \
+} while (0)
+
+#define TCONN_MINMAX_HEAP_VERIFY(_heap, _state) \
+do {\
+	fr_minmax_heap_verify(file, line, trunk->_heap); \
+	fr_minmax_heap_foreach(trunk->_heap, fr_trunk_connection_t, tconn) { \
+		fr_trunk_connection_verify(file, line, tconn); \
+		TRUNK_TCONN_CHECKS(tconn, _state); \
+	}} \
+} while (0)
+
+	FR_DLIST_VERIFY(&(trunk->free_requests));
+	FR_HEAP_VERIFY(trunk->backlog);
+
+	TCONN_DLIST_VERIFY(init, FR_TRUNK_CONN_INIT);
+	TCONN_DLIST_VERIFY(connecting, FR_TRUNK_CONN_CONNECTING);
+	TCONN_MINMAX_HEAP_VERIFY(active, FR_TRUNK_CONN_ACTIVE);
+	TCONN_DLIST_VERIFY(full, FR_TRUNK_CONN_FULL);
+	TCONN_DLIST_VERIFY(inactive, FR_TRUNK_CONN_INACTIVE);
+	TCONN_DLIST_VERIFY(inactive_draining, FR_TRUNK_CONN_INACTIVE_DRAINING);
+	/* TCONN_DLIST_VERIFY(failed, ???); */
+	TCONN_DLIST_VERIFY(closed, FR_TRUNK_CONN_CLOSED);
+	TCONN_DLIST_VERIFY(draining, FR_TRUNK_CONN_DRAINING);
+	TCONN_DLIST_VERIFY(draining_to_free, FR_TRUNK_CONN_DRAINING_TO_FREE);
+	TCONN_DLIST_VERIFY(to_free, FR_TRUNK_CONN_HALTED);
+}
+
+void fr_trunk_connection_verify(char const *file, int line, fr_trunk_connection_t *tconn)
+{
+	fr_fatal_assert_msg(tconn, "CONSISTENCY CHECK FAILED %s[%i]: fr_trunk_connection_t pointer was NULL", file, line);
+	(void) talloc_get_type_abort(tconn, fr_trunk_connection_t);
+
+	(void) talloc_get_type_abort(tconn->pub.trunk, fr_trunk_t);
+
+	/*
+	 *	shouldn't be both in heap and on list--but it doesn't look like moves
+	 *	to active heap wipe the dlist pointers.
+	 */
+
+#define TCONN_TREQ_CHECKS(_treq, _state) \
+do { \
+	fr_fatal_assert_msg(tconn == _treq->pub.tconn, \
+			    "CONSISTENCY_CHECK_FAILED %s[%i}: trunk request-tconn mismatch", file, line); \
+	fr_fatal_assert_msg(tconn->pub.trunk == _treq->pub.trunk, \
+			    "CONSISTENCY_CHECK_FAILED %s[%i}: trunk request-trunk mismatch", file, line); \
+	fr_fatal_assert_msg(_state == _treq->pub.state, \
+			    "CONSISTENCY_CHECK_FAILED %s[%i}: trunk request-state mismatch", file, line); \
+} while (0);
+
+#define TREQ_DLIST_VERIFY(_dlist, _state) \
+do { \
+	fr_dlist_verify(file, line, &(tconn->_dlist)); \
+	fr_dlist_foreach(&(tconn->_dlist), fr_trunk_request_t, treq)  { \
+		fr_trunk_request_verify(file, line, treq); \
+		TCONN_TREQ_CHECKS(treq, _state); \
+	} \
+} while (0);
+
+#define TREQ_HEAP_VERIFY(_heap, _state) \
+do { \
+	fr_heap_iter_t _iter; \
+	fr_heap_verify(file, line, tconn->_heap); \
+	for (fr_trunk_request_t *treq = fr_heap_iter_init(tconn->_heap, &_iter); \
+	     treq; \
+	     treq = fr_heap_iter_next(tconn->_heap, &_iter)) { \
+		fr_trunk_request_verify(file, line, treq); \
+		TCONN_TREQ_CHECKS(treq, _state); \
+	} \
+} while (0);
+
+#define TREQ_OPTION_VERIFY(_option, _state) \
+do { \
+	if (tconn->_option) { \
+		fr_trunk_request_verify(file, line, tconn->_option); \
+		TCONN_TREQ_CHECKS(tconn->_option, _state); \
+	} \
+} while (0);
+
+	/* verify associated requests */
+	TREQ_HEAP_VERIFY(pending, FR_TRUNK_REQUEST_STATE_PENDING);
+	TREQ_DLIST_VERIFY(sent, FR_TRUNK_REQUEST_STATE_SENT);
+	TREQ_DLIST_VERIFY(cancel, FR_TRUNK_REQUEST_STATE_CANCEL);
+	TREQ_DLIST_VERIFY(cancel_sent, FR_TRUNK_REQUEST_STATE_CANCEL_SENT);
+	TREQ_OPTION_VERIFY(partial, FR_TRUNK_REQUEST_STATE_PARTIAL);
+	TREQ_OPTION_VERIFY(cancel_partial, FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL);
+}
+
+void fr_trunk_request_verify(char const *file, int line, fr_trunk_request_t *treq)
+{
+	fr_fatal_assert_msg(treq, "CONSISTENCY CHECK FAILED %s[%i]: fr_trunk_request_t pointer was NULL", file, line);
+	(void) talloc_get_type_abort(treq, fr_trunk_request_t);
+
+#ifdef WITH_VERIFY_PTR
+	if (treq->pub.request) request_verify(file, line, treq->pub.request);
+#endif
+}
+
+
+bool fr_trunk_search(fr_trunk_t *trunk, void *ptr)
+{
+#define TCONN_DLIST_SEARCH(_dlist) \
+do { \
+	fr_dlist_foreach(&(trunk->_dlist), fr_trunk_connection_t, tconn)  { \
+		if (ptr == tconn) { \
+			fr_fprintf(stderr, "fr_trunk_search: tconn %p on " #_dlist "\n", ptr); \
+			return true; \
+		} \
+		if (fr_trunk_connection_search(tconn, ptr)) { \
+			fr_fprintf(stderr, " in tconn %p on " #_dlist "\n", tconn); \
+			return true; \
+		} \
+	} \
+} while (0)
+
+#define TCONN_MINMAX_HEAP_SEARCH(_heap) \
+do { \
+	fr_minmax_heap_foreach(trunk->_heap, fr_trunk_connection_t, tconn) { \
+		if (ptr == tconn) { \
+			fr_fprintf(stderr, "fr_trunk_search: tconn %p on " #_heap "\n", ptr); \
+			return true; \
+		} \
+		if (fr_trunk_connection_search(tconn, ptr)) { \
+			fr_fprintf(stderr, " on tconn %p on " #_heap "\n", tconn); \
+			return true; \
+		} \
+	}}\
+} while (0)
+
+	TCONN_DLIST_SEARCH(init);
+	TCONN_DLIST_SEARCH(connecting);
+	TCONN_MINMAX_HEAP_SEARCH(active);
+	TCONN_DLIST_SEARCH(full);
+	TCONN_DLIST_SEARCH(inactive);
+	TCONN_DLIST_SEARCH(inactive_draining);
+	TCONN_DLIST_SEARCH(failed);
+	TCONN_DLIST_SEARCH(closed);
+	TCONN_DLIST_SEARCH(draining);
+	TCONN_DLIST_SEARCH(draining_to_free);
+	TCONN_DLIST_SEARCH(to_free);
+
+	return false;
+}
+
+bool fr_trunk_connection_search(fr_trunk_connection_t *tconn, void *ptr)
+{
+#define TREQ_DLIST_SEARCH(_dlist) \
+do { \
+	fr_dlist_foreach(&(tconn->_dlist), fr_trunk_request_t, treq)  { \
+		if (ptr == treq) { \
+			fr_fprintf(stderr, "fr_trunk_search: treq %p on " #_dlist "\n", ptr); \
+			return true; \
+		} \
+		if (fr_trunk_request_search(treq, ptr)) { \
+			fr_fprintf(stderr, "fr_trunk_search: preq %p found on " #_dlist, ptr); \
+			return true; \
+		} \
+	} \
+} while (0);
+
+#define TREQ_HEAP_SEARCH(_heap) \
+do { \
+	fr_heap_iter_t _iter; \
+	for (fr_trunk_request_t *treq = fr_heap_iter_init(tconn->_heap, &_iter); \
+	     treq; \
+	     treq = fr_heap_iter_next(tconn->_heap, &_iter)) { \
+		if (ptr == treq) { \
+			fr_fprintf(stderr, "fr_trunk_search: treq %p in " #_heap "\n", ptr); \
+			return true; \
+		} \
+		if (fr_trunk_request_search(treq, ptr)) { \
+			fr_fprintf(stderr, "fr_trunk_search: preq %p found in " #_heap, ptr); \
+			return true; \
+		} \
+	} \
+} while (0);
+
+#define TREQ_OPTION_SEARCH(_option) \
+do { \
+	if (tconn->_option) { \
+		if (ptr == tconn->_option) { \
+			fr_fprintf(stderr, "fr_trunk_search: treq %p is " #_option "\n", ptr); \
+			return true; \
+		} \
+		if (fr_trunk_request_search(tconn->_option, ptr)) { \
+			fr_fprintf(stderr, "fr_trunk_search: preq %p found in " #_option, ptr); \
+			return true; \
+		} \
+	} \
+} while (0);
+
+	/* search associated requests */
+	TREQ_HEAP_SEARCH(pending);
+	TREQ_DLIST_SEARCH(sent);
+	TREQ_DLIST_SEARCH(cancel);
+	TREQ_DLIST_SEARCH(cancel_sent);
+	TREQ_OPTION_SEARCH(partial);
+	TREQ_OPTION_SEARCH(cancel_partial);
+
+	return false;
+}
+
+bool fr_trunk_request_search(fr_trunk_request_t *treq, void *ptr)
+{
+	return treq->pub.preq == ptr;
+}
+#endif
