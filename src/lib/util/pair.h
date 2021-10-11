@@ -223,6 +223,9 @@ fr_pair_t	*fr_pair_root_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da) CC_H
 /** @hidecallergraph */
 fr_pair_t	*fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da) CC_HINT(warn_unused_result) CC_HINT(nonnull(2));
 
+fr_pair_t	*fr_pair_afrom_da_with_pool(TALLOC_CTX *ctx, fr_dict_attr_t const *da, size_t value_len)
+		CC_HINT(warn_unused_result) CC_HINT(nonnull(2));
+
 int		fr_pair_reinit_from_da(fr_pair_list_t *list, fr_pair_t *vp, fr_dict_attr_t const *da)
 		CC_HINT(nonnull(2, 3));
 

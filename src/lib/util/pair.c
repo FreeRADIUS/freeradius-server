@@ -103,6 +103,21 @@ fr_pair_list_t *fr_pair_list_alloc(TALLOC_CTX *ctx)
 	return pl;
 }
 
+/** Initialise fields in an fr_pair_t without assigning a da
+ *
+ * @note Internal use by the allocation functions only.
+ */
+static inline CC_HINT(always_inline) void pair_init_null(fr_pair_t *vp)
+{
+	fr_dlist_entry_init(&vp->order_entry);
+
+	/*
+	 *	Legacy cruft
+	 */
+	vp->op = T_OP_EQ;
+	vp->type = VT_NONE;
+}
+
 /** Dynamically allocate a new attribute with no #fr_dict_attr_t assigned
  *
  * This is not the function you're looking for (unless you're binding
@@ -125,16 +140,9 @@ fr_pair_t *fr_pair_alloc_null(TALLOC_CTX *ctx)
 		fr_strerror_printf("Out of memory");
 		return NULL;
 	}
-
-	fr_dlist_entry_init(&vp->order_entry);
-
 	talloc_set_destructor(vp, _fr_pair_free);
 
-	/*
-	 *	Legacy cruft
-	 */
-	vp->op = T_OP_EQ;
-	vp->type = VT_NONE;
+	pair_init_null(vp);
 
 	return vp;
 }
@@ -144,7 +152,9 @@ fr_pair_t *fr_pair_alloc_null(TALLOC_CTX *ctx)
  * This is intended to allocate root attributes for requests.
  * These roots are special in that they do not necessarily own
  * the child attributes and _MUST NOT_ free them when they
- * themselves are freed.
+ * themselves are freed.  The children are allocated in special
+ * ctxs which may be moved between session state entries and
+ * requests, or may belong to a parent request.
  *
  * @param[in] ctx	to allocate the pair root in.
  * @param[in] da	The root attribute.
@@ -185,36 +195,15 @@ fr_pair_t *fr_pair_root_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	}
 #endif
 
-	/*
-	 *	Legacy cruft
-	 */
-	vp->op = T_OP_EQ;
-	vp->type = VT_NONE;
-
 	return vp;
 }
 
-/** Dynamically allocate a new attribute and assign a #fr_dict_attr_t
+/** Continue initialising an fr_pair_t assigning a da
  *
- * @note Will duplicate any unknown attributes passed as the da.
- *
- * @param[in] ctx	for allocated memory, usually a pointer to a #fr_radius_packet_t
- * @param[in] da	Specifies the dictionary attribute to build the #fr_pair_t from.
- * @return
- *	- A new #fr_pair_t.
- *	- NULL if an error occurred.
- * @hidecallergraph
+ * @note Internal use by the pair allocation functions only.
  */
-fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
+static inline CC_HINT(always_inline) void pair_init_from_da(fr_pair_t *vp, fr_dict_attr_t const *da)
 {
-	fr_pair_t *vp;
-
-	vp = fr_pair_alloc_null(ctx);
-	if (!vp) {
-		fr_strerror_printf("Out of memory");
-		return NULL;
-	}
-
 	/*
 	 *	If we get passed an unknown da, we need to ensure that
 	 *	it's parented by "vp".
@@ -239,6 +228,87 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	default:
 		break;
 	}
+}
+
+/** Dynamically allocate a new attribute and assign a #fr_dict_attr_t
+ *
+ * @note Will duplicate any unknown attributes passed as the da.
+ *
+ * @param[in] ctx	for allocated memory, usually a pointer to a #fr_radius_packet_t
+ * @param[in] da	Specifies the dictionary attribute to build the #fr_pair_t from.
+ *			If unknown, will be duplicated, with the memory being bound to
+ *      		the pair.
+ * @return
+ *	- A new #fr_pair_t.
+ *	- NULL if an error occurred.
+ * @hidecallergraph
+ */
+fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
+{
+	fr_pair_t *vp;
+
+	vp = fr_pair_alloc_null(ctx);
+	if (!vp) {
+		fr_strerror_printf("Out of memory");
+		return NULL;
+	}
+
+	pair_init_from_da(vp, da);
+
+	return vp;
+}
+
+/** Allocate a pooled object that can hold a fr_pair_t any unknown attributes and value buffer
+ *
+ * @param[in] ctx		to allocate the pooled object in.
+ * @param[in] da		If unknown, will be duplicated.
+ * @param[in] value_len		The expected length of the buffer.  +1 will be added if this
+ *				if a FR_TYPE_STRING attribute.
+ */
+fr_pair_t *fr_pair_afrom_da_with_pool(TALLOC_CTX *ctx, fr_dict_attr_t const *da, size_t value_len)
+{
+	fr_pair_t *vp;
+
+	unsigned int headers = 1;
+
+	/*
+	 *	Dict attributes allocate extensions
+	 *      contiguously, so we only need one
+	 *	header even though there's a variable
+	 *	length name buff.
+	 */
+	if (da->flags.is_unknown) {
+		headers++;
+		value_len += talloc_array_length(da);	/* accounts for all extensions */
+	}
+
+	switch (da->type) {
+	case FR_TYPE_OCTETS:
+		headers++;
+		break;
+
+	case FR_TYPE_STRING:
+		headers++;
+		value_len++;
+		break;
+
+	default:
+		fr_strerror_printf("Pooled fr_pair_t can only be allocated for "
+				   "'string' and 'octets' types not '%s'",
+				   fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+		return NULL;
+
+	}
+
+	vp = talloc_zero_pooled_object(ctx, fr_pair_t, headers, value_len);
+	if (unlikely(!vp)) {
+		fr_strerror_printf("Out of memory");
+		return NULL;
+	}
+	talloc_set_destructor(vp, _fr_pair_free);
+
+	pair_init_null(vp);
+	pair_init_from_da(vp, da);
 
 	return vp;
 }
