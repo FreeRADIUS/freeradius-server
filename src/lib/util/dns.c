@@ -1270,7 +1270,7 @@ ssize_t fr_dns_label_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	p = (uint8_t *) q;
 	q += slen;
 
-	while ((current < after) && (*current != 0x00)) {
+	while (current && (current < after) && (*current != 0x00)) {
 		/*
 		 *	Get how many bytes this label has, and where
 		 *	we will go to obtain the next label.
