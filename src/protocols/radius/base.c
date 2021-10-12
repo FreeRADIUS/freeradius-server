@@ -767,13 +767,15 @@ finish:
  * @param original the raw original request (if this is a response)
  * @param secret the shared secret
  * @param secret_len the length of the secret
+ * @param[in] require_ma	whether we require Message-Authenticator.
  * @return
  *	- <0 on error
  *	- 0 on success
  */
 int fr_radius_verify(uint8_t *packet, uint8_t const *original,
-		     uint8_t const *secret, size_t secret_len)
+		     uint8_t const *secret, size_t secret_len, bool require_ma)
 {
+	bool found_ma;
 	int rcode;
 	uint8_t *msg, *end;
 	size_t packet_len = (packet[2] << 8) | packet[3];
@@ -794,6 +796,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	 */
 	msg = packet + RADIUS_HEADER_LENGTH;
 	end = packet + packet_len;
+	found_ma = false;
 
 	while (msg < end) {
 		if ((end - msg) < 2) goto invalid_attribute;
@@ -819,7 +822,14 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 		 *	Found it, save a copy.
 		 */
 		memcpy(message_authenticator, msg + 2, sizeof(message_authenticator));
+		found_ma = true;
 		break;
+	}
+
+	if ((packet[0] == FR_RADIUS_CODE_ACCESS_REQUEST) &&
+	    require_ma && !found_ma) {
+		fr_strerror_const("Access-Request is missing the required Message-Authenticator attribute");
+		return -1;
 	}
 
 	/*

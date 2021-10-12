@@ -1204,7 +1204,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	memcpy(original + RADIUS_AUTH_VECTOR_OFFSET, request_authenticator, RADIUS_AUTH_VECTOR_LENGTH);
 
 	if (fr_radius_verify(data, original,
-			     (uint8_t const *) inst->secret, talloc_array_length(inst->secret) - 1) < 0) {
+			     (uint8_t const *) inst->secret, talloc_array_length(inst->secret) - 1, false) < 0) {
 		RPWDEBUG("Ignoring response with invalid signature");
 		return DECODE_FAIL_MA_INVALID;
 	}
