@@ -118,6 +118,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 		buffer[arg_list[i]] = '\0';
 
 		arg_end = buffer + arg_list[i];
+		if (arg_end > end) return -1;
 
 		for (value = buffer, name_end = NULL; value < arg_end; value++) {
 			/*
