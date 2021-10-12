@@ -705,7 +705,7 @@ static ssize_t fr_dns_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, 
 	packet_ctx->packet = data;
 	packet_ctx->packet_len = data_len;
 
-	packet_ctx->lb = fr_dns_labels_init(packet_ctx, data, 256);
+	packet_ctx->lb = fr_dns_labels_init(packet_ctx, data, data_len, 256);
 	fr_assert(packet_ctx->lb != NULL);
 
 	slen = fr_dns_encode(&FR_DBUFF_TMP(data, data_len), vps, packet_ctx);

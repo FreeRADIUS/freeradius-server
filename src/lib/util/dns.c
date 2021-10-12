@@ -30,9 +30,11 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dns.h>
 #include <freeradius-devel/util/proto.h>
 
-fr_dns_labels_t *fr_dns_labels_init(TALLOC_CTX *ctx, uint8_t const *packet, int max_labels)
+fr_dns_labels_t *fr_dns_labels_init(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, int max_labels)
 {
 	fr_dns_labels_t *lb;
+
+	if (max_labels <= 0) max_labels = 0;
 
 	lb = (fr_dns_labels_t *) talloc_zero_array(ctx, uint8_t, sizeof(fr_dns_labels_t) + sizeof(lb->blocks[0]) * max_labels);
 	if (!lb) return NULL;
@@ -40,6 +42,7 @@ fr_dns_labels_t *fr_dns_labels_init(TALLOC_CTX *ctx, uint8_t const *packet, int 
 	talloc_set_name_const(lb, "fr_dns_labels_t");
 
 	lb->start = packet;
+	lb->end = packet + packet_len;
 	lb->max = max_labels;
 
 	/*
@@ -76,6 +79,11 @@ static int dns_label_add(fr_dns_labels_t *lb, uint8_t const *start, uint8_t cons
 	 *	So we just ignore offsets which are greater than 2^14.
 	 */
 	if ((offset + size) >= MAX_OFFSET) return 0;
+
+	/*
+	 *	We're not tracking labels, so don't do anything.
+	 */
+	if (lb->max == 1) return 0;
 
 	FR_PROTO_TRACE("adding label at offset %zu", offset);
 
@@ -132,6 +140,9 @@ static bool dns_pointer_valid(fr_dns_labels_t *lb, uint16_t offset)
 
 	if (lb->mark) return (lb->mark[offset] != 0);
 
+	/*
+	 *	Brute-force searching.
+	 */
 	for (i = 0; i < lb->num; i++) {
 		FR_PROTO_TRACE("Checking block %d %u..%u against %u",
 			       i, lb->blocks[i].start, lb->blocks[i].end, offset);
@@ -1076,6 +1087,9 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 		 */
 		if ((p + *p + 1) > end) goto overflow;
 
+		/*
+		 *	It's a valid label.  Mark it as such.
+		 */
 		dns_label_mark(lb, p);
 
 		/*
@@ -1124,7 +1138,10 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 	 */
 	if (!already_set_next) *next = p; /* should be <='end' */
 
-	(void) dns_label_add(lb, start, *next);
+	/*
+	 *	Add the label, only if we're not using the markup field.
+	 */
+	if (lb && !lb->mark) (void) dns_label_add(lb, start, *next);
 
 	return length;
 }
