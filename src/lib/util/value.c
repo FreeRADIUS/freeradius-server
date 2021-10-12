@@ -4412,6 +4412,12 @@ int fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	len = (inlen < 0) ? strlen(in) : (size_t)inlen;
 
 	/*
+	 *	If the data is tainted, then the data should never be
+	 *	quoted.
+	 */
+	fr_assert(!tainted || (quote == 0));
+
+	/*
 	 *	Set size for all fixed length attributes.
 	 */
 	ret = network_max_size(dst_type);

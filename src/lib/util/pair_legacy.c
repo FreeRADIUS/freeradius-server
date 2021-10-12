@@ -247,7 +247,7 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
 	 *	We probably want to fix fr_pair_value_from_str to accept
 	 *	octets as values for any attribute.
 	 */
-	if (value && (fr_pair_value_from_str(vp, value, -1, '\"', true) < 0)) {
+	if (value && (fr_pair_value_from_str(vp, value, -1, '\"', false) < 0)) {
 		talloc_free(vp);
 		return NULL;
 	}
@@ -525,7 +525,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 				 *	don't know.  So just mark it
 				 *	as such to be safe.
 				 */
-			} else if (fr_pair_value_from_str(vp, raw.r_opand, -1, '"', true) < 0) {
+			} else if (fr_pair_value_from_str(vp, raw.r_opand, -1, '"', false) < 0) {
 				talloc_free(vp);
 				goto error;
 			}
