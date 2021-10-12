@@ -934,10 +934,10 @@ int fr_snmp_process(request_t *request)
 	fr_pair_t		*op;
 
 	fr_pair_list_init(&head);
-	fr_dcursor_init(&request_cursor, fr_pair_list_order(&request->request_pairs));
-	fr_dcursor_iter_by_da_init(&op_cursor, &request->request_pairs, attr_snmp_operation);
-	fr_dcursor_init(&reply_cursor, fr_pair_list_order(&request->reply_pairs));
-	fr_dcursor_init(&out_cursor, fr_pair_list_order(&head));
+	fr_pair_dcursor_init(&request_cursor, &request->request_pairs);
+	fr_pair_dcursor_by_da_init(&op_cursor, &request->request_pairs, attr_snmp_operation);
+	fr_pair_dcursor_init(&reply_cursor, &request->reply_pairs);
+	fr_pair_dcursor_init(&out_cursor, &head);
 
 	RDEBUG2("Processing SNMP stats request");
 
@@ -975,7 +975,7 @@ int fr_snmp_process(request_t *request)
 		}
 	}
 
-	for (vp = fr_dcursor_iter_by_ancestor_init(&request_cursor, &request->request_pairs, attr_snmp_root);
+	for (vp = fr_pair_dcursor_by_ancestor_init(&request_cursor, &request->request_pairs, attr_snmp_root);
 	     vp;
 	     vp = fr_dcursor_next(&request_cursor)) {
 		fr_proto_da_stack_build(&da_stack, vp->da);

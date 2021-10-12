@@ -63,7 +63,7 @@ ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_toke
 		 */
 		our_out = FR_SBUFF_NO_ADVANCE(out);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '{', ' ');
-		for (child = fr_dcursor_init(&cursor, fr_pair_list_order(&vp->vp_group));
+		for (child = fr_pair_dcursor_init(&cursor, &vp->vp_group);
 		     child != NULL;
 		     child = fr_dcursor_next(&cursor)) {
 			FR_SBUFF_RETURN(fr_pair_print, &our_out, vp, child);

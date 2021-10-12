@@ -482,7 +482,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	 *  operates correctly. This changes the order of the list, but never mind...
 	 */
 	fr_pair_list_sort(vps, fr_dhcpv4_attr_cmp);
-	fr_dcursor_talloc_iter_init(&cursor, fr_pair_list_order(vps), fr_proto_next_encodable, dict_dhcpv4, fr_pair_t);
+	fr_pair_dcursor_iter_init(&cursor, vps, fr_proto_next_encodable, dict_dhcpv4);
 
 	/*
 	 *  Each call to fr_dhcpv4_encode_option will encode one complete DHCP option,

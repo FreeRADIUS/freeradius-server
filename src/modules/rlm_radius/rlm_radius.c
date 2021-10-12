@@ -406,7 +406,7 @@ static void radius_fixups(rlm_radius_t const *inst, request_t *request)
 	if (RDEBUG_ENABLED) {
 		fr_dcursor_t cursor;
 
-		for (vp = fr_dcursor_iter_by_da_init(&cursor, &request->request_pairs, attr_proxy_state);
+		for (vp = fr_pair_dcursor_by_da_init(&cursor, &request->request_pairs, attr_proxy_state);
 		     vp;
 		     vp = fr_dcursor_next(&cursor)) {
 			if (vp->vp_length != 4) continue;

@@ -1404,7 +1404,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 		 *	sure that it's a loop.
 		 */
 		if (DEBUG_ENABLED) {
-			for (vp = fr_dcursor_iter_by_da_init(&cursor, &request->request_pairs, attr_proxy_state);
+			for (vp = fr_pair_dcursor_by_da_init(&cursor, &request->request_pairs, attr_proxy_state);
 			     vp;
 			     vp = fr_dcursor_next(&cursor)) {
 				if ((vp->vp_length == 5) && (memcmp(vp->vp_octets, &inst->parent->proxy_state, 4) == 0)) {

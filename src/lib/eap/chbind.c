@@ -89,7 +89,7 @@ static bool chbind_build_response(request_t *request, CHBIND_REQ *chbind)
 	ptr += 4;
 	end = ptr + total;
 
-	fr_dcursor_init(&cursor, fr_pair_list_order(&request->reply_pairs));
+	fr_pair_dcursor_init(&cursor, &request->reply_pairs);
 	while ((vp = fr_dcursor_current(&cursor)) && (ptr < end)) {
 		/*
 		 *	Skip things which shouldn't be in channel bindings.
@@ -272,7 +272,7 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, fr_pair_list_t *vps)
 	chbind_packet_t		*packet;
 	fr_dcursor_t		cursor;
 
-	if (!fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_channel_binding_message)) return NULL;
+	if (!fr_pair_dcursor_by_da_init(&cursor, vps, attr_eap_channel_binding_message)) return NULL;
 
 	/*
 	 *	Compute the total length of the channel binding data.

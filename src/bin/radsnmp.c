@@ -426,7 +426,7 @@ static int radsnmp_get_response(int fd,
 	 *	attribute grouping to coalesce all related index
 	 *	attributes under a single request OID.
 	 */
-	 for (vp = fr_dcursor_init(&cursor, fr_pair_list_order(head));
+	 for (vp = fr_pair_dcursor_init(&cursor, head);
 	      vp;
 	      vp = fr_dcursor_next(&cursor)) {
 	      	fr_dict_attr_t const *common;
@@ -661,7 +661,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			return EXIT_FAILURE;
 		}
 		fr_pair_list_init(&request_vps);
-		fr_dcursor_init(&cursor, fr_pair_list_order(&request_vps));
+		fr_pair_dcursor_init(&cursor, &request_vps);
 
 		NEXT_LINE(line, buffer);
 

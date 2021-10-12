@@ -105,7 +105,7 @@ static void exec_pair_to_env_legacy(request_t *request, fr_pair_list_t *input_pa
 	if (request) {
 		da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_EXEC_EXPORT);
 		if (da) {
-			for (vp = fr_dcursor_iter_by_da_init(&cursor, &request->control_pairs, da);
+			for (vp = fr_pair_dcursor_by_da_init(&cursor, &request->control_pairs, da);
 			     vp && (i < (envlen - 1));
 			     vp = fr_dcursor_next(&cursor)) {
 				DEBUG3("export %pV", &vp->data);

@@ -80,10 +80,11 @@ typedef struct {
 	void			*current;	//!< The current item in the dlist.
 	void			*prev;		//!< The previous item in the dlist.
 	fr_dcursor_iter_t	iter;		//!< Iterator function.
+	void			*iter_uctx;	//!< to pass to iterator function.
 	fr_dcursor_insert_t	insert;		//!< Callback function on insert.
 	fr_dcursor_remove_t	remove;		//!< Callback function on delete.
+	void			*mod_uctx;	//!< to pass to modification functions.
 	bool			is_const;	//!< The list we're iterating over is immutable.
-	void			*uctx;		//!< to pass to iterator function.
 } fr_dcursor_t;
 
 typedef struct {
@@ -112,7 +113,7 @@ static inline void *dcursor_next(fr_dcursor_t *cursor, void *current)
 		if (!cursor->iter) return (fr_dlist_head(cursor->dlist));	/* Fast path without custom iter */
 
 		current = fr_dlist_head(cursor->dlist);
-		return cursor->iter(cursor->dlist, current, cursor->uctx);
+		return cursor->iter(cursor->dlist, current, cursor->iter_uctx);
 	}
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
@@ -133,7 +134,7 @@ static inline void *dcursor_next(fr_dcursor_t *cursor, void *current)
 	 *	The iterator can just return what it was passed for curr
 	 *	if it just wants to advance by one.
 	 */
-	return cursor->iter(cursor->dlist, next, cursor->uctx);
+	return cursor->iter(cursor->dlist, next, cursor->iter_uctx);
 }
 
 /** Copy cursor parameters and state.
@@ -340,7 +341,7 @@ static inline int fr_dcursor_prepend(fr_dcursor_t *cursor, void *v)
 	if (cursor->dlist->type) _talloc_get_type_abort(v, cursor->dlist->type, __location__);
 #endif
 
-	if (cursor->insert) if ((ret = cursor->insert(cursor->dlist, v, cursor->uctx)) < 0) return ret;
+	if (cursor->insert) if ((ret = cursor->insert(cursor->dlist, v, cursor->mod_uctx)) < 0) return ret;
 
 	/*
 	 *	Insert at the head of the list
@@ -381,7 +382,7 @@ static inline int fr_dcursor_append(fr_dcursor_t *cursor, void *v)
 	if (cursor->dlist->type) _talloc_get_type_abort(v, cursor->dlist->type, __location__);
 #endif
 
-	if (cursor->insert) if ((ret = cursor->insert(cursor->dlist, v, cursor->uctx)) < 0) return ret;
+	if (cursor->insert) if ((ret = cursor->insert(cursor->dlist, v, cursor->mod_uctx)) < 0) return ret;
 
 	fr_dlist_insert_tail(cursor->dlist, v);
 
@@ -415,7 +416,7 @@ static inline int fr_dcursor_insert(fr_dcursor_t *cursor, void *v)
 		return 0;
 	}
 
-	if (cursor->insert) if ((ret = cursor->insert(cursor->dlist, v, cursor->uctx)) < 0) return ret;
+	if (cursor->insert) if ((ret = cursor->insert(cursor->dlist, v, cursor->mod_uctx)) < 0) return ret;
 
 	fr_dlist_insert_after(cursor->dlist, cursor->current, v);
 
@@ -458,7 +459,7 @@ static inline void * fr_dcursor_remove(fr_dcursor_t *cursor)
 
 	v = cursor->current;
 
-	if (cursor->remove) if ((ret = cursor->remove(cursor->dlist, v, cursor->uctx)) < 0) return ret;
+	if (cursor->remove) if ((ret = cursor->remove(cursor->dlist, v, cursor->mod_uctx)) < 0) return ret;
 
 	p = fr_dcursor_list_prev_peek(cursor);
 	fr_dlist_remove(cursor->dlist, v);
@@ -612,7 +613,7 @@ static inline void * fr_dcursor_replace(fr_dcursor_t *cursor, void *r)
 	}
 	p = fr_dcursor_list_prev_peek(cursor);
 
-	if (cursor->remove) if ((ret = cursor->remove(cursor->dlist, v, cursor->uctx)) < 0) return ret;
+	if (cursor->remove) if ((ret = cursor->remove(cursor->dlist, v, cursor->mod_uctx)) < 0) return ret;
 
 	fr_dlist_replace(cursor->dlist, cursor->current, r);
 
@@ -654,29 +655,29 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
 	} while (v);
 }
 
-/** Initialise a cursor with runtime talloc type safety checks and a custom iterator
+/** Initialise a cursor with a custom iterator
  *
  * @param[in] _cursor	to initialise.
  * @param[in] _head	of item list.
  * @param[in] _iter	function.
  * @param[in] _uctx	_iter function _uctx.
- * @param[in] _type	Talloc type i.e. fr_pair_t or fr_value_box_t.
  * @return
  *	- NULL if _head does not point to any items, or the iterator matches no items
  *	  in the current list.
  *	- The first item returned by the iterator.
  */
-#define fr_dcursor_talloc_iter_init(_cursor, _head, _iter, _uctx, _type) \
+#define fr_dcursor_iter_mod_init(_cursor, _head, _iter, _iter_uctx, _insert, _remove, _mod_uctx) \
 	_fr_dcursor_init(_cursor, \
 			 _head, \
 			 _iter, \
-			 NULL, \
-			 NULL, \
+			 _iter_uctx, \
+			 _insert, \
+			 _remove, \
+			 _mod_uctx, \
 			 _Generic((_head), \
 				fr_dlist_head_t *	: false, \
 				fr_dlist_head_t const *	: true \
-			 ), \
-			 _uctx)
+			 ))
 
 /** Initialise a cursor with a custom iterator
  *
@@ -693,34 +694,14 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
 	_fr_dcursor_init(_cursor, \
 			 _head, \
 			 _iter, \
-			 NULL, \
-			 NULL, \
-			 _Generic((_head), \
-				fr_dlist_head_t *	: false, \
-				fr_dlist_head_t const *	: true \
-			 ), \
-			 _uctx)
-
-/** Initialise a cursor with runtime talloc type safety checks
- *
- * @param[in] _cursor	to initialise.
- * @param[in] _head	of item list.
- * @param[in] _type	Talloc type i.e. fr_pair_t or fr_value_box_t.
- * @return
- *	- NULL if _head does not point to any items.
- *	- The first item in the list.
- */
-#define fr_dcursor_talloc_init(_cursor, _head, _type) \
-	_fr_dcursor_init(_cursor, \
-			 _head, \
+			 _uctx, \
 			 NULL, \
 			 NULL, \
 			 NULL, \
 			 _Generic((_head), \
 				fr_dlist_head_t *	: false, \
 				fr_dlist_head_t const *	: true \
-			 ), \
-			 NULL)
+			 ))
 
 /** Initialise a cursor
  *
@@ -736,36 +717,39 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
 			 NULL, \
 			 NULL, \
 			 NULL, \
+			 NULL, \
+			 NULL, \
 			 _Generic((_head), \
 				fr_dlist_head_t *	: false, \
 				fr_dlist_head_t const *	: true \
-			 ), \
-			 NULL)
+			 ))
 
 /** Setup a cursor to iterate over attribute items in dlists
  *
  * @param[in] cursor	Where to initialise the cursor (uses existing structure).
  * @param[in] head	of dlist.
  * @param[in] iter	Iterator callback.
+ * @param[in] iter_uctx	to pass to iterator function.
  * @param[in] insert	Callback for inserts.
  * @param[in] remove	Callback for removals.
+ * @param[in] mod_uctx	to pass to modification functions.
  * @param[in] is_const	Don't allow modification of the underlying list.
- * @param[in] uctx	to pass to iterator function.
  * @return the attribute pointed to by v.
  *
  * @hidecallergraph
  */
 static inline CC_HINT(nonnull(1,2))
 void *_fr_dcursor_init(fr_dcursor_t *cursor, fr_dlist_head_t const *head,
-		       fr_dcursor_iter_t iter, fr_dcursor_insert_t insert,
-		       fr_dcursor_remove_t remove, bool is_const, void const *uctx)
+		       fr_dcursor_iter_t iter, void const *iter_uctx,
+		       fr_dcursor_insert_t insert, fr_dcursor_remove_t remove, void const *mod_uctx, bool is_const)
 {
 	*cursor = (fr_dcursor_t){
 		.dlist = UNCONST(fr_dlist_head_t *, head),
 		.iter = iter,
+		.iter_uctx = UNCONST(void *, iter_uctx),
 		.insert = insert,
 		.remove = remove,
-		.uctx = UNCONST(void *, uctx),
+		.mod_uctx = UNCONST(void *, mod_uctx),
 		.is_const = is_const
 	};
 	if (!fr_dlist_empty(cursor->dlist)) return fr_dcursor_next(cursor);	/* Initialise current */

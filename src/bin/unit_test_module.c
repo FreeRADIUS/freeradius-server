@@ -216,7 +216,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client
 		}
 	};
 
-	for (vp = fr_dcursor_init(&cursor, fr_pair_list_order(&request->request_pairs));
+	for (vp = fr_pair_dcursor_init(&cursor, &request->request_pairs);
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
 		/*
@@ -245,7 +245,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client
 	} /* loop over the VP's we read in */
 
 	if (fr_debug_lvl) {
-		for (vp = fr_dcursor_init(&cursor, fr_pair_list_order(&request->request_pairs));
+		for (vp = fr_pair_dcursor_init(&cursor, &request->request_pairs);
 		     vp;
 		     vp = fr_dcursor_next(&cursor)) {
 			/*
@@ -307,7 +307,7 @@ static void print_packet(FILE *fp, fr_radius_packet_t *packet, fr_pair_list_t *l
 	dv = fr_dict_enum_by_value(attr_packet_type, fr_box_uint32(packet->code));
 	if (dv) fprintf(fp, "%s\n", dv->name);
 
-	for (vp = fr_dcursor_init(&cursor, fr_pair_list_order(list));
+	for (vp = fr_pair_dcursor_init(&cursor, list);
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
 		/*

@@ -316,7 +316,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *	Encode the child options.
 		 */
 		if (!fr_pair_list_empty(&vp->vp_group)) {
-			(void) fr_dcursor_init(&child_cursor, fr_pair_list_order(&vp->vp_group));
+			(void) fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
 
 			while (fr_dcursor_current(&child_cursor) != NULL) {
 				slen = fr_dhcpv6_encode_option(&work_dbuff, &child_cursor, encode_ctx);
@@ -532,7 +532,7 @@ static ssize_t encode_option_data(fr_dbuff_t *dbuff,
 	}
 
 do_child:
-	fr_dcursor_init(&child_cursor, fr_pair_list_order(&vp->vp_group));
+	fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
 	work_dbuff = FR_DBUFF(dbuff);
 
 	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {

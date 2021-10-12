@@ -303,7 +303,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		request->reply->socket.inet.src_ipaddr = client->src_ipaddr;
 	}
 
-	fr_dcursor_talloc_iter_init(&cursor, fr_pair_list_order(&request->reply_pairs), fr_proto_next_encodable, dict_vmps, fr_pair_t);
+	fr_pair_dcursor_iter_init(&cursor, &request->reply_pairs, fr_proto_next_encodable, dict_vmps);
 
 	data_len = fr_vmps_encode(&FR_DBUFF_TMP(buffer, buffer_len), request->packet->data,
 				  request->reply->code, request->reply->id, &cursor);

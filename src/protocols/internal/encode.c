@@ -167,7 +167,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 			fr_dcursor_t	children;
 			fr_pair_t	*child;
 
-			for (child = fr_dcursor_talloc_init(&children, fr_pair_list_order(&vp->vp_group), fr_pair_t);
+			for (child = fr_pair_dcursor_init(&children, &vp->vp_group);
 			     child;
 			     child = fr_dcursor_current(&children)) {
 
@@ -202,7 +202,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	{
 		fr_dcursor_t	children;
 
-		for (vp = fr_dcursor_talloc_init(&children, fr_pair_list_order(&vp->vp_group), fr_pair_t);
+		for (vp = fr_pair_dcursor_init(&children, &vp->vp_group);
 		     vp;
 		     vp = fr_dcursor_current(&children)) {
 		     	FR_PROTO_TRACE("encode ctx changed %s -> %s", da->name, vp->da->name);

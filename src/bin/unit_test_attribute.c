@@ -1672,9 +1672,9 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 #endif
 		}
 
-		for (vp = fr_dcursor_talloc_iter_init(&cursor, fr_pair_list_order(&head),
-						     tp->next_encodable ? tp->next_encodable : fr_proto_next_encodable,
-						     cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict, fr_pair_t);
+		for (vp = fr_pair_dcursor_iter_init(&cursor, &head,
+						    tp->next_encodable ? tp->next_encodable : fr_proto_next_encodable,
+						    cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict);
 		     vp;
 		     vp = fr_dcursor_current(&cursor)) {
 			slen = tp->func(&FR_DBUFF_TMP(enc_p, enc_end), &cursor, encode_ctx);

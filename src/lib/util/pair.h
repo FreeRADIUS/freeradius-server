@@ -258,38 +258,6 @@ void		*fr_pair_iter_next_by_ancestor(fr_dlist_head_t *list,
 
 bool		fr_pair_matches_da(void const *item, void const *uctx) CC_HINT(nonnull);
 
-/** Initialise a cursor that will return only attributes matching the specified #fr_dict_attr_t
- *
- * @param[in] cursor	to initialise.
- * @param[in] list	to iterate over.
- * @param[in] da	to search for.
- * @return
- *	- The first matching pair.
- *	- NULL if no pairs match.
- */
-static inline CC_HINT(nonnull)
-fr_pair_t *fr_dcursor_iter_by_da_init(fr_dcursor_t *cursor,
-				      fr_pair_list_t *list, fr_dict_attr_t const *da)
-{
-	return fr_dcursor_talloc_iter_init(cursor, &list->order, fr_pair_iter_next_by_da, da, fr_pair_t);
-}
-
-/** Initialise a cursor that will return only attributes descended from the specified #fr_dict_attr_t
- *
- * @param[in] cursor	to initialise.
- * @param[in] list	to iterate over.
- * @param[in] da	who's decentness to search for.
- * @return
- *	- The first matching pair.
- *	- NULL if no pairs match.
- */
-static inline CC_HINT(nonnull)
-fr_pair_t *fr_dcursor_iter_by_ancestor_init(fr_dcursor_t *cursor,
-					    fr_pair_list_t *list, fr_dict_attr_t const *da)
-{
-	return fr_dcursor_talloc_iter_init(cursor, &list->order, fr_pair_iter_next_by_ancestor, da, fr_pair_t);
-}
-
 /** @hidecallergraph */
 unsigned int	fr_pair_count_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *da)
 				    CC_HINT(nonnull);
@@ -329,6 +297,97 @@ fr_pair_t	*fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull);
 
 /* functions for FR_TYPE_STRUCTURAL */
 fr_pair_list_t	*fr_pair_children(fr_pair_t *head) CC_HINT(nonnull);
+
+/** Initialises a special dcursor with callbacks that will maintain the attr sublists correctly
+ *
+ * Filters can be applied later with fr_dcursor_filter_set.
+ *
+ * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
+ *
+ * @param[out] cursor	to initialise.
+ * @param[in] list	to iterate over.
+ * @param[in] iter	Iterator to use when filtering pairs.
+ * @param[in] uctx	To pass to iterator.
+ * @return
+ *	- NULL if src does not point to any items.
+ *	- The first pair in the list.
+ */
+#define		fr_pair_dcursor_iter_init(_cursor, _list, _iter, _uctx) \
+		_fr_pair_dcursor_iter_init(_cursor, \
+					   _list, \
+					   _iter, \
+					   _uctx, \
+					   _Generic((_list), \
+						fr_pair_list_t *	: false, \
+						fr_pair_list_t const *	: true \
+					   ))
+fr_pair_t	*_fr_pair_dcursor_iter_init(fr_dcursor_t *cursor, fr_pair_list_t const *list,
+					    fr_dcursor_iter_t iter, void const *uctx,
+					    bool is_const) CC_HINT(nonnull);
+
+/** Initialises a special dcursor with callbacks that will maintain the attr sublists correctly
+ *
+ * Filters can be applied later with fr_dcursor_filter_set.
+ *
+ * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
+ *
+ * @param[out] cursor	to initialise.
+ * @param[in] list	to iterate over.
+ * @return
+ *	- NULL if src does not point to any items.
+ *	- The first pair in the list.
+ */
+#define		fr_pair_dcursor_init(_cursor, _list) \
+		_fr_pair_dcursor_init(_cursor, \
+				      _list, \
+				      _Generic((_list), \
+					fr_pair_list_t *	: false, \
+					fr_pair_list_t const *	: true \
+				      ))
+fr_pair_t	*_fr_pair_dcursor_init(fr_dcursor_t *cursor, fr_pair_list_t const *list,
+				       bool is_const) CC_HINT(nonnull);
+
+/** Initialise a cursor that will return only attributes matching the specified #fr_dict_attr_t
+ *
+ * @param[in] cursor	to initialise.
+ * @param[in] list	to iterate over.
+ * @param[in] da	to search for.
+ * @return
+ *	- The first matching pair.
+ *	- NULL if no pairs match.
+ */
+#define		fr_pair_dcursor_by_da_init(_cursor, _list, _da) \
+		_fr_pair_dcursor_by_da_init(_cursor, \
+					    _list, \
+					    _da, \
+					    _Generic((_list), \
+						fr_pair_list_t *	: false, \
+						fr_pair_list_t const *	: true \
+					    ))
+fr_pair_t	*_fr_pair_dcursor_by_da_init(fr_dcursor_t *cursor,
+					     fr_pair_list_t const *list, fr_dict_attr_t const *da,
+					     bool is_const) CC_HINT(nonnull);
+
+/** Initialise a cursor that will return only attributes descended from the specified #fr_dict_attr_t
+ *
+ * @param[in] cursor	to initialise.
+ * @param[in] list	to iterate over.
+ * @param[in] da	who's decentness to search for.
+ * @return
+ *	- The first matching pair.
+ *	- NULL if no pairs match.
+ */
+#define		fr_pair_dcursor_by_ancestor_init(_cursor, _list, _da) \
+		_fr_pair_dcursor_by_ancestor_init(_cursor, \
+						  _list, \
+						  _da, \
+						  _Generic((_list), \
+							fr_pair_list_t *	: false, \
+							fr_pair_list_t const *	: true \
+						  ))
+fr_pair_t	*_fr_pair_dcursor_by_ancestor_init(fr_dcursor_t *cursor,
+						   fr_pair_list_t const *list, fr_dict_attr_t const *da,
+						   bool is_const) CC_HINT(nonnull);
 
 /** Compare two attributes using and operator.
  *

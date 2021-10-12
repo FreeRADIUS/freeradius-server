@@ -841,7 +841,7 @@ unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
 	 *	We return RLM_MODULE_INVALID here as an indication
 	 *	the caller should try a dynamic group lookup instead.
 	 */
-	vp =  fr_dcursor_iter_by_da_init(&cursor, &request->control_pairs, inst->cache_da);
+	vp =  fr_pair_dcursor_by_da_init(&cursor, &request->control_pairs, inst->cache_da);
 	if (!vp) RETURN_MODULE_INVALID;
 
 	for (vp = fr_dcursor_current(&cursor);

@@ -213,7 +213,7 @@ static int exec_pair_to_env(char **env_p, size_t env_len, fr_sbuff_t *env_sbuff,
 	if (request) {
 		da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_EXEC_EXPORT);
 		if (da) {
-			for (vp = fr_dcursor_iter_by_da_init(&cursor, &request->control_pairs, da);
+			for (vp = fr_pair_dcursor_by_da_init(&cursor, &request->control_pairs, da);
 			     vp && (i < (env_len - 1));
 			     vp = fr_dcursor_next(&cursor)) {
 				env_p[i++] = UNCONST(char *, vp->vp_strvalue);

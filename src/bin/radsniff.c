@@ -945,7 +945,7 @@ static int rs_get_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_pair_list_t *vp
 
 	last_match = fr_pair_list_head(vps);
 
-	fr_dcursor_init(&list_cursor, fr_pair_list_order(vps));
+	fr_pair_dcursor_init(&list_cursor, vps);
 	for (i = 0; i < num; i++) {
 		match = fr_dcursor_filter_next(&list_cursor, fr_pair_matches_da, da[i]);
 		if (!match) {
@@ -2672,7 +2672,7 @@ int main(int argc, char *argv[])
 
 		if (rs_build_filter(&conf->filter_request_vps, conf->filter_request) < 0) usage(64);
 
-		type = fr_dcursor_iter_by_da_init(&cursor, &conf->filter_request_vps, attr_packet_type);
+		type = fr_pair_dcursor_by_da_init(&cursor, &conf->filter_request_vps, attr_packet_type);
 		if (type) {
 			fr_dcursor_remove(&cursor);
 			conf->filter_request_code = type->vp_uint32;
@@ -2686,7 +2686,7 @@ int main(int argc, char *argv[])
 
 		if (rs_build_filter(&conf->filter_response_vps, conf->filter_response) < 0) usage(64);
 
-		type = fr_dcursor_iter_by_da_init(&cursor, &conf->filter_response_vps, attr_packet_type);
+		type = fr_pair_dcursor_by_da_init(&cursor, &conf->filter_response_vps, attr_packet_type);
 		if (type) {
 			fr_dcursor_remove(&cursor);
 			conf->filter_response_code = type->vp_uint32;

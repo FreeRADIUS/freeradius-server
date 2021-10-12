@@ -731,6 +731,116 @@ fr_pair_list_t *fr_pair_children(fr_pair_t *vp)
 	return pair_children(vp);
 }
 
+/** Keep attr tree and sublists synced on cursor insert
+ *
+ * @param[in] list	Underlying order list from the fr_pair_list_t.
+ * @param[in] to_insert	fr_pair_t being inserted.
+ * @param[in] uctx	fr_pair_list_t containing the order list.
+ * @return
+ *	- 0 on success.
+ */
+static int _pair_list_dcursor_insert(UNUSED fr_dlist_head_t *list, UNUSED void *to_insert, UNUSED void *uctx)
+{
+	return 0;
+}
+
+/** Keep attr tree and sublists synced on cursor insert
+ *
+ * @param[in] list	Underlying order list from the fr_pair_list_t.
+ * @param[in] to_remove	fr_pair_t being removed.
+ * @param[in] uctx	fr_pair_list_t containing the order list.
+ * @return
+ *	- 0 on success.
+ */
+static int _pair_list_dcursor_remove(UNUSED fr_dlist_head_t *list, UNUSED void *to_remove, UNUSED void *uctx)
+{
+	return 0;
+}
+
+/** Initialises a special dcursor with callbacks that will maintain the attr sublists correctly
+ *
+ * Filters can be applied later with fr_dcursor_filter_set.
+ *
+ * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
+ *
+ * @param[out] cursor	to initialise.
+ * @param[in] list	to iterate over.
+ * @param[in] iter	Iterator to use when filtering pairs.
+ * @param[in] uctx	To pass to iterator.
+ * @param[in] is_const	whether the fr_pair_list_t is const.
+ * @return
+ *	- NULL if src does not point to any items.
+ *	- The first pair in the list.
+ */
+fr_pair_t *_fr_pair_dcursor_iter_init(fr_dcursor_t *cursor, fr_pair_list_t const *list,
+				      fr_dcursor_iter_t iter, void const *uctx,
+				      bool is_const)
+{
+	return _fr_dcursor_init(cursor, &list->order,
+				iter, uctx,
+				_pair_list_dcursor_insert, _pair_list_dcursor_remove, list, is_const);
+}
+
+/** Initialises a special dcursor with callbacks that will maintain the attr sublists correctly
+ *
+ * Filters can be applied later with fr_dcursor_filter_set.
+ *
+ * @note This is the only way to use a dcursor in non-const mode with fr_pair_list_t.
+ *
+ * @param[out] cursor	to initialise.
+ * @param[in] list	to iterate over.
+ * @param[in] is_const	whether the fr_pair_list_t is const.
+ * @return
+ *	- NULL if src does not point to any items.
+ *	- The first pair in the list.
+ */
+fr_pair_t *_fr_pair_dcursor_init(fr_dcursor_t *cursor, fr_pair_list_t const *list,
+				 bool is_const)
+{
+	return _fr_dcursor_init(cursor, &list->order,
+				NULL, NULL,
+				_pair_list_dcursor_insert, _pair_list_dcursor_remove, list, is_const);
+}
+
+
+/** Initialise a cursor that will return only attributes matching the specified #fr_dict_attr_t
+ *
+ * @param[in] cursor	to initialise.
+ * @param[in] list	to iterate over.
+ * @param[in] da	to search for.
+ * @param[in] is_const	whether the fr_pair_list_t is const.
+ * @return
+ *	- The first matching pair.
+ *	- NULL if no pairs match.
+ */
+fr_pair_t *_fr_pair_dcursor_by_da_init(fr_dcursor_t *cursor,
+				        fr_pair_list_t const *list, fr_dict_attr_t const *da,
+				        bool is_const)
+{
+	return _fr_dcursor_init(cursor, &list->order,
+				fr_pair_iter_next_by_da, da,
+				_pair_list_dcursor_insert, _pair_list_dcursor_remove, list, is_const);
+}
+
+/** Initialise a cursor that will return only attributes descended from the specified #fr_dict_attr_t
+ *
+ * @param[in] cursor	to initialise.
+ * @param[in] list	to iterate over.
+ * @param[in] da	who's decentness to search for.
+ * @param[in] is_const	whether the fr_pair_list_t is const.
+ * @return
+ *	- The first matching pair.
+ *	- NULL if no pairs match.
+ */
+fr_pair_t *_fr_pair_dcursor_by_ancestor_init(fr_dcursor_t *cursor,
+					     fr_pair_list_t const *list, fr_dict_attr_t const *da,
+					     bool is_const)
+{
+	return _fr_dcursor_init(cursor, &list->order,
+				fr_pair_iter_next_by_ancestor, da,
+				_pair_list_dcursor_insert, _pair_list_dcursor_remove, list, is_const);
+}
+
 /** Get the head of a valuepair list
  *
  * @param[in] list	to return the head of

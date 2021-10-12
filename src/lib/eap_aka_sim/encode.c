@@ -893,7 +893,7 @@ ssize_t fr_aka_sim_encode(request_t *request, fr_pair_list_t *to_encode, void *e
 	 *	Group attributes with similar lineages together
 	 */
 	fr_pair_list_sort(to_encode, fr_pair_cmp_by_parent_num);
-	if (fr_dcursor_init(&cursor, fr_pair_list_order(to_encode)) == vp) {
+	if (fr_pair_dcursor_init(&cursor, to_encode) == vp) {
 		fr_dcursor_next(&cursor);	/* Skip subtype if it came out first */
 	}
 

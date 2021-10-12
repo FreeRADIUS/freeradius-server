@@ -549,7 +549,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 		 *	Copy the EAP-Message back to the tunnel.
 		 */
 
-		for (vp = fr_dcursor_iter_by_da_init(&cursor, reply_list, attr_eap_message);
+		for (vp = fr_pair_dcursor_by_da_init(&cursor, reply_list, attr_eap_message);
 		     vp;
 		     vp = fr_dcursor_next(&cursor)) {
 			eap_fast_tlv_append(tls_session, attr_eap_fast_eap_payload, true, vp->vp_length, vp->vp_octets);

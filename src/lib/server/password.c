@@ -867,7 +867,7 @@ int password_normalise_and_replace(request_t *request, bool normify)
 	int		replaced = 0;
 	fr_pair_t	*known_good, *new;
 
-	for (known_good = fr_dcursor_iter_by_ancestor_init(&cursor, &request->control_pairs, attr_root);
+	for (known_good = fr_pair_dcursor_by_ancestor_init(&cursor, &request->control_pairs, attr_root);
 	     known_good;
 	     known_good = fr_dcursor_next(&cursor)) {
 		if (!fr_cond_assert(known_good->da->attr < NUM_ELEMENTS(password_info))) return -1;
@@ -963,7 +963,7 @@ fr_pair_t *password_find(bool *ephemeral, TALLOC_CTX *ctx, request_t *request,
 	fr_dcursor_t	cursor;
 	fr_pair_t	*known_good;
 
-	for (known_good = fr_dcursor_iter_by_ancestor_init(&cursor, &request->control_pairs, attr_root);
+	for (known_good = fr_pair_dcursor_by_ancestor_init(&cursor, &request->control_pairs, attr_root);
 	     known_good;
 	     known_good = fr_dcursor_next(&cursor)) {
 		password_info_t		*info;

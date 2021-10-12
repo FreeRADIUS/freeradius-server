@@ -180,7 +180,7 @@ static int vector_gsm_from_triplets(request_t *request, fr_pair_list_t *vps,
 	fr_dcursor_t	cursor;
 	int		i;
 
-	for (i = 0, (kc = fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_kc));
+	for (i = 0, (kc = fr_pair_dcursor_by_da_init(&cursor, vps, attr_eap_aka_sim_kc));
 	     (i < idx) && (kc = fr_dcursor_next(&cursor));
 	     i++);
 	if (!kc) {
@@ -194,7 +194,7 @@ static int vector_gsm_from_triplets(request_t *request, fr_pair_list_t *vps,
 		return -1;
 	}
 
-	for (i = 0, (rand = fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_rand));
+	for (i = 0, (rand = fr_pair_dcursor_by_da_init(&cursor, vps, attr_eap_aka_sim_rand));
 	     (i < idx) && (rand = fr_dcursor_next(&cursor));
 	     i++);
 	if (!rand) {
@@ -208,7 +208,7 @@ static int vector_gsm_from_triplets(request_t *request, fr_pair_list_t *vps,
 		return -1;
 	}
 
-	for (i = 0, (sres = fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_sres));
+	for (i = 0, (sres = fr_pair_dcursor_by_da_init(&cursor, vps, attr_eap_aka_sim_sres));
 	     (i < idx) && (sres = fr_dcursor_next(&cursor));
 	     i++);
 	if (!sres) {
@@ -245,7 +245,7 @@ static int vector_gsm_from_quintuplets(request_t *request, fr_pair_list_t *vps,
 	/*
 	 *	Fetch CK
 	 */
-	for (i = 0, (ck = fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_ck));
+	for (i = 0, (ck = fr_pair_dcursor_by_da_init(&cursor, vps, attr_eap_aka_sim_ck));
 	     (i < idx) && (ck = fr_dcursor_next(&cursor));
 	     i++);
 	if (!ck) {
@@ -257,7 +257,7 @@ static int vector_gsm_from_quintuplets(request_t *request, fr_pair_list_t *vps,
 	/*
 	 *	Fetch IK
 	 */
-	for (i = 0, (ik = fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_ik));
+	for (i = 0, (ik = fr_pair_dcursor_by_da_init(&cursor, vps, attr_eap_aka_sim_ik));
 	     (i < idx) && (ik = fr_dcursor_next(&cursor));
 	     i++);
 	if (!ik) {
@@ -269,7 +269,7 @@ static int vector_gsm_from_quintuplets(request_t *request, fr_pair_list_t *vps,
 	/*
 	 *	Fetch RAND
 	 */
-	for (i = 0, (rand = fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_rand));
+	for (i = 0, (rand = fr_pair_dcursor_by_da_init(&cursor, vps, attr_eap_aka_sim_rand));
 	     (i < idx) && (rand = fr_dcursor_next(&cursor));
 	     i++);
 	if (!rand) {
@@ -288,7 +288,7 @@ static int vector_gsm_from_quintuplets(request_t *request, fr_pair_list_t *vps,
 	/*
 	 *	Fetch XRES
 	 */
-	for (i = 0, (xres = fr_dcursor_iter_by_da_init(&cursor, vps, attr_eap_aka_sim_xres));
+	for (i = 0, (xres = fr_pair_dcursor_by_da_init(&cursor, vps, attr_eap_aka_sim_xres));
 	     (i < idx) && (xres = fr_dcursor_next(&cursor));
 	     i++);
 	if (!xres) {

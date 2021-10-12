@@ -89,7 +89,7 @@ void *fr_dcursor_intersect_next(fr_dcursor_t *a, fr_dcursor_t *b)
 	 *	Both have iterators...
 	 */
 	b_iter = b->iter;
-	b_uctx = b->uctx;
+	b_uctx = b->iter_uctx;
 
 	/*
 	 *	Deal with the case where the two iterators
@@ -141,7 +141,7 @@ void *fr_dcursor_intersect_next(fr_dcursor_t *a, fr_dcursor_t *b)
 		 */
 		fr_dcursor_copy(b, a);
 		b->iter = b_iter;
-		b->uctx = b_uctx;
+		b->iter_uctx = b_uctx;
 	} while ((a->current = dcursor_next(a, a->current)));
 
 	return NULL;

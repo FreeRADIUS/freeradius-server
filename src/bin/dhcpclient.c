@@ -305,7 +305,7 @@ static fr_radius_packet_t *fr_dhcpv4_recv_raw_loop(int lsockfd,
 
 			if (fr_debug_lvl > 1) fr_dhcpv4_print_hex(stdout, reply->data, reply->data_len);
 
-			fr_dcursor_init(&cursor, fr_pair_list_order(&reply_vps));
+			fr_pair_dcursor_init(&cursor, &reply_vps);
 			if (fr_dhcpv4_decode(reply, &reply_vps, reply->data, reply->data_len, &reply->code) < 0) {
 				ERROR("Failed decoding reply");
 				return NULL;

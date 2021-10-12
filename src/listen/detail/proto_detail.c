@@ -229,7 +229,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	}
 
 	lineno = 1;
-	fr_dcursor_init(&cursor, fr_pair_list_order(&request->request_pairs));
+	fr_pair_dcursor_init(&cursor, &request->request_pairs);
 	fr_dcursor_tail(&cursor);	/* Ensure we only free what we add on error */
 	fr_pair_list_init(&tmp_list);
 

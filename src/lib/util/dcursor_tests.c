@@ -41,7 +41,7 @@ static void test_init_null_item(void)
 	TEST_CHECK(!fr_dcursor_current(&cursor));
 	TEST_CHECK(!fr_dcursor_list_prev_peek(&cursor));
 	TEST_CHECK(!fr_dcursor_list_next_peek(&cursor));
-	TEST_CHECK(cursor.uctx == &cursor);
+	TEST_CHECK(cursor.iter_uctx == &cursor);
 }
 
 static void test_init_1i_start(void)
@@ -917,7 +917,7 @@ static void test_dcursor_remove_empty(void)
 
 	test_list_init(&list);
 
-	_fr_dcursor_init(&cursor, (fr_dlist_head_t *)&list, test_iter, NULL, NULL, false, NULL);
+	_fr_dcursor_init(&cursor, (fr_dlist_head_t *)&list, test_iter, NULL, NULL, NULL, NULL, false);
 	TEST_CHECK(!fr_dcursor_remove(&cursor));
 }
 

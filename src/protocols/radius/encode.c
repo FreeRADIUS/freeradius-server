@@ -263,7 +263,7 @@ static ssize_t encode_tlv_children(fr_dbuff_t *dbuff,
 				return PAIR_ENCODE_SKIPPED;
 			}
 
-			fr_dcursor_init(&child_cursor, fr_pair_list_order(&vp->vp_group));
+			fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
 			vp = fr_dcursor_current(&child_cursor);
 			fr_proto_da_stack_build(da_stack, vp->da);
 
@@ -313,8 +313,7 @@ static ssize_t encode_tags(fr_dbuff_t *dbuff, fr_pair_list_t const *vps, void *e
 	/*
 	 *	Note that we skip tags inside of tags!
 	 */
-	fr_dcursor_talloc_iter_init(&cursor, fr_pair_list_order(vps),
-				    fr_proto_next_encodable, dict_radius, fr_pair_t);
+	fr_pair_dcursor_iter_init(&cursor, vps, fr_proto_next_encodable, dict_radius);
 	while ((vp = fr_dcursor_current(&cursor))) {
 		PAIR_VERIFY(vp);
 
@@ -1142,7 +1141,7 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 	fr_assert(vp->da == da);
 	work_dbuff = FR_DBUFF(dbuff);
 
-	fr_dcursor_init(&child_cursor, fr_pair_list_order(&vp->vp_group));
+	fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
 	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
 		fr_proto_da_stack_build(da_stack, vp->da);
 
@@ -1204,7 +1203,7 @@ static ssize_t encode_vsa(fr_dbuff_t *dbuff,
 	 *	Loop over the children of this Vendor-Specific
 	 *	attribute.
 	 */
-	fr_dcursor_init(&child_cursor, fr_pair_list_order(&vp->vp_group));
+	fr_pair_dcursor_init(&child_cursor, &vp->vp_group);
 	while ((vp = fr_dcursor_current(&child_cursor)) != NULL) {
 		fr_proto_da_stack_build(da_stack, vp->da);
 

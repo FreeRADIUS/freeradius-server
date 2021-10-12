@@ -1802,7 +1802,7 @@ int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_s
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
-	for (header =  fr_dcursor_iter_by_da_init(&headers, &request->control_pairs, attr_rest_http_header);
+	for (header =  fr_pair_dcursor_by_da_init(&headers, &request->control_pairs, attr_rest_http_header);
 	     header;
 	     header = fr_dcursor_next(&headers)) {
 		header = fr_dcursor_remove(&headers);
@@ -2031,7 +2031,7 @@ do {\
 
 	case REST_HTTP_BODY_POST:
 		rest_request_init(section, request, &ctx->request);
-		fr_dcursor_init(&(ctx->request.cursor), fr_pair_list_order(&request->request_pairs));
+		fr_pair_dcursor_init(&(ctx->request.cursor), &request->request_pairs);
 
 		if (rest_request_config_body(inst, section, request, randle, rest_encode_post) < 0) return -1;
 

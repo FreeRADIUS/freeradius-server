@@ -1440,7 +1440,7 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 	fr_dcursor_t		cursor;
 
 	fr_value_box_list_init(&head);
-	fr_dcursor_talloc_init(&cursor, &head, fr_value_box_t);
+	fr_dcursor_init(&cursor, &head);
 
 	XLAT_DEBUG("%.*sxlat aprint %d %s", lvl, xlat_spaces, node->type, node->fmt);
 

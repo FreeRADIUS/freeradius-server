@@ -580,7 +580,7 @@ static ssize_t fr_vmps_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps,
 {
 	fr_dcursor_t cursor;
 
-	fr_dcursor_talloc_iter_init(&cursor, fr_pair_list_order(vps), fr_proto_next_encodable, dict_vmps, fr_pair_t);
+	fr_pair_dcursor_iter_init(&cursor, vps, fr_proto_next_encodable, dict_vmps);
 
 	return fr_vmps_encode(&FR_DBUFF_TMP(data, data_len), NULL, -1, -1, &cursor);
 }
