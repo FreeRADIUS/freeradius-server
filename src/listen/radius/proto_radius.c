@@ -209,6 +209,12 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 
 	client = address->radclient;
 
+	if (fr_radius_verify(data, NULL, (uint8_t const *) client->secret, talloc_array_length(client->secret) - 1,
+			     client->message_authenticator) < 0) {
+		RPEDEBUG("Failed verifying packet signature.");
+		return -1;
+	}
+
 	/*
 	 *	Hacks for now until we have a lower-level decode routine.
 	 */
