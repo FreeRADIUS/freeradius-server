@@ -34,6 +34,8 @@ typedef struct {
 
 typedef struct {
 	uint8_t const	*start;		//!< start of packet
+	uint8_t const	*end;		//!< end of the packet
+	uint8_t		*mark;		//!< markup buffer
 	int		num;		//!< number of used labels
 	int		max;		//! maximum number of labels
 	fr_dns_block_t	blocks[];	//!< array holding "max" labels

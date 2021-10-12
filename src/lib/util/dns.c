@@ -113,11 +113,24 @@ static int dns_label_add(fr_dns_labels_t *lb, uint8_t const *start, uint8_t cons
 	return 0;
 }
 
+static void dns_label_mark(fr_dns_labels_t *lb, uint8_t const *p)
+{
+	if (!lb || !lb->mark) return;
+
+	fr_assert(p >= (lb->start + 12)); /* can't point to the packet header */
+	fr_assert(!lb->end || (p < lb->end));
+
+	lb->mark[p - lb->start] = 1;
+}
+
+
 static bool dns_pointer_valid(fr_dns_labels_t *lb, uint16_t offset)
 {
 	int i;
 
 	if (!lb) return true;	/* we have no idea, so allow it */
+
+	if (lb->mark) return (lb->mark[offset] != 0);
 
 	for (i = 0; i < lb->num; i++) {
 		FR_PROTO_TRACE("Checking block %d %u..%u against %u",
@@ -1062,6 +1075,8 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 		 *	Else it's an uncompressed label
 		 */
 		if ((p + *p + 1) > end) goto overflow;
+
+		dns_label_mark(lb, p);
 
 		/*
 		 *	Account for the '.' on every label after the
