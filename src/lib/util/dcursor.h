@@ -450,7 +450,6 @@ static inline int fr_dcursor_insert(fr_dcursor_t *cursor, void *v)
  */
 static inline void * fr_dcursor_remove(fr_dcursor_t *cursor)
 {
-	int ret;
 	void *v, *p;
 
 	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return NULL;
@@ -459,7 +458,7 @@ static inline void * fr_dcursor_remove(fr_dcursor_t *cursor)
 
 	v = cursor->current;
 
-	if (cursor->remove) if ((ret = cursor->remove(cursor->dlist, v, cursor->mod_uctx)) < 0) return ret;
+	if (cursor->remove) if (cursor->remove(cursor->dlist, v, cursor->mod_uctx) < 0) return NULL;
 
 	p = fr_dcursor_list_prev_peek(cursor);
 	fr_dlist_remove(cursor->dlist, v);
@@ -586,9 +585,8 @@ void *fr_dcursor_intersect_next(fr_dcursor_t *a, fr_dcursor_t *b) CC_HINT(nonnul
  *
  * @hidecallergraph
  */
-static inline void * fr_dcursor_replace(fr_dcursor_t *cursor, void *r)
+static inline void *fr_dcursor_replace(fr_dcursor_t *cursor, void *r)
 {
-	int ret;
 	void *v, *p;
 
 	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return NULL;
@@ -613,7 +611,7 @@ static inline void * fr_dcursor_replace(fr_dcursor_t *cursor, void *r)
 	}
 	p = fr_dcursor_list_prev_peek(cursor);
 
-	if (cursor->remove) if ((ret = cursor->remove(cursor->dlist, v, cursor->mod_uctx)) < 0) return ret;
+	if (cursor->remove) if (cursor->remove(cursor->dlist, v, cursor->mod_uctx) < 0) return NULL;
 
 	fr_dlist_replace(cursor->dlist, cursor->current, r);
 
