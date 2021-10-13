@@ -814,6 +814,18 @@ static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_con
 		if (!query) {
 			WARN("Ignoring msgid %i - doesn't match any outstanding queries (it may have been cancelled)",
 			      find.msgid);
+			ldap_msgfree(result);
+			continue;
+		}
+
+		/*
+		 *	This really shouldn't happen - as we only retrieve complete sets of results -
+		 *	but as the query data structure will last until its results are fully handled
+		 *	better to have this safety check here.
+		 */
+		if (query->ret != LDAP_RESULT_PENDING) {
+			WARN("Received results for msgid %i which has already been handled - ignoring", find.msgid);
+			ldap_msgfree(result);
 			continue;
 		}
 
