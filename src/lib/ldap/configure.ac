@@ -82,7 +82,7 @@ if test x$with_[]modname_useropt != xno; then
 	dnl #  exports OpenLDAP specific functions to managing async
 	dnl #  I/O.
 	dnl # 
-	smart_try_dir=$libfreeradius_ldap_lib_dir
+	smart_try_dir="$libfreeradius_ldap_lib_dir /usr/local/opt/openldap/lib"
 	FR_SMART_CHECK_LIB(ldap, ldap_install_tls)
 	if test "x$ac_cv_lib_ldap_ldap_install_tls" != "xyes"; then
 		fail="$fail libldap (with async support)"
@@ -97,7 +97,7 @@ if test x$with_[]modname_useropt != xno; then
 	dnl # Check for header files
 	dnl ############################################################
 
-	smart_try_dir=$libfreeradius_ldap_include_dir
+	smart_try_dir="$libfreeradius_ldap_include_dir /usr/local/opt/openldap/include"
 	FR_SMART_CHECK_INCLUDE(ldap.h)
 	if test "$ac_cv_header_ldap_h" != "yes"; then
 	  fail="$fail ldap.h"
