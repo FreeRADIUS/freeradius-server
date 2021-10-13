@@ -450,7 +450,7 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 		if (status != LDAP_PROC_SUCCESS) break;
 	}
 
-	if (*result_p && ((status < 0) || !result)) {
+	if (*result_p && (!result)) {
 		ldap_msgfree(*result_p);
 		*result_p = NULL;
 	}
@@ -1036,10 +1036,17 @@ int fr_ldap_global_config(int debug_level, char const *tls_random_file)
 
 /** Free any libldap structures when an fr_ldap_query_t is freed
  *
+ * It is also possible that the connection used for this query is now closed,
+ * in that instance we free it here.
  */
 static int _ldap_query_free(fr_ldap_query_t *query)
 {
 	int 	i;
+
+	/*
+	 *	Remove the query from the tree of outstanding queries
+	 */
+	if (query->ldap_conn) fr_rb_remove(query->ldap_conn->queries, query);
 
 	/*
 	 *	Free any results which were retrieved
@@ -1070,6 +1077,15 @@ static int _ldap_query_free(fr_ldap_query_t *query)
 	if (query->referral_urls) ldap_memvfree((void **)query->referral_urls);
 
 	fr_dlist_talloc_free(&query->referrals);
+
+	/*
+	 *	If the connection this query was using has no pending queries and
+	 * 	is no-longer associated with a fr_connection_t then free it
+	 */
+	if ((query->ldap_conn) && (query->ldap_conn->conn == NULL) &&
+	    (fr_rb_num_elements(query->ldap_conn->queries) == 0)) {
+		talloc_free(query->ldap_conn);
+	}
 
 	return 0;
 }

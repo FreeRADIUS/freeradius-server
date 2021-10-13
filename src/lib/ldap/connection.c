@@ -239,6 +239,11 @@ static void _ldap_connection_close(UNUSED fr_event_list_t *el, void *h, UNUSED v
  */
 static int _ldap_connection_free(fr_ldap_connection_t *c)
 {
+	/*
+	 *	If there are any pending queries, don't free
+	 */
+	if ((c->queries) && (fr_rb_num_elements(c->queries) > 0)) return -1;
+
 	talloc_free_children(c);	/* Force inverted free order */
 
 	fr_ldap_control_clear(c);
@@ -288,6 +293,23 @@ fr_ldap_connection_t *fr_ldap_connection_alloc(TALLOC_CTX *ctx)
 	talloc_set_destructor(c, _ldap_connection_free);
 
 	return c;
+}
+
+/** Watcher for LDAP connections being closed
+ *
+ * If there are any outstanding queries on the connection then
+ * re-parent the connection to the NULL ctx so that it remains
+ * until all the queries have been dealt with.
+ */
+static void _ldap_connection_close_watch(fr_connection_t *conn, UNUSED fr_connection_state_t prev,
+					 UNUSED fr_connection_state_t state, void *uctx)
+{
+	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(uctx, fr_ldap_connection_t);
+
+	if (fr_rb_num_elements(ldap_conn->queries) == 0) return;
+
+	talloc_reparent(conn, NULL, ldap_conn);
+	ldap_conn->conn = NULL;
 }
 
 /** (Re-)Initialises the libldap side of the connection handle
@@ -342,6 +364,8 @@ static fr_connection_state_t _ldap_connection_init(void **h, fr_connection_t *co
 
 	c = fr_ldap_connection_alloc(conn);
 	c->conn = conn;
+
+	fr_connection_add_watch_pre(conn, FR_CONNECTION_STATE_CLOSED, _ldap_connection_close_watch, false, c);
 
 	/*
 	 *	Configure/allocate the libldap handle
@@ -485,7 +509,6 @@ static void ldap_request_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_
 	while ((fr_trunk_connection_pop_cancellation(&treq, tconn)) == 0) {
 		query = treq->preq;
 		ldap_abandon_ext(ldap_conn->handle, query->msgid, NULL, NULL);
-		fr_rb_remove(ldap_conn->queries, query);
 
 		fr_trunk_request_signal_cancel_complete(treq);
 
@@ -791,6 +814,18 @@ static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_con
 		if (!query) {
 			WARN("Ignoring msgid %i - doesn't match any outstanding queries (it may have been cancelled)",
 			      find.msgid);
+			ldap_msgfree(result);
+			continue;
+		}
+
+		/*
+		 *	This really shouldn't happen - as we only retrieve complete sets of results -
+		 *	but as the query data structure will last until its results are fully handled
+		 *	better to have this safety check here.
+		 */
+		if (query->ret != LDAP_RESULT_PENDING) {
+			WARN("Received results for msgid %i which has already been handled - ignoring", find.msgid);
+			ldap_msgfree(result);
 			continue;
 		}
 
@@ -807,7 +842,8 @@ static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_con
 
 		switch (rcode) {
 		case LDAP_PROC_SUCCESS:
-			query->ret = ((!query->mods) && (ldap_count_entries(ldap_conn->handle, result) == 0)) ?
+			query->ret = ((query->type == LDAP_REQUEST_SEARCH) &&
+				      (ldap_count_entries(ldap_conn->handle, result) == 0)) ?
 				     LDAP_RESULT_NO_RESULT : LDAP_RESULT_SUCCESS;
 			break;
 
@@ -852,7 +888,7 @@ static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_con
 			break;
 
 		case LDAP_PROC_BAD_DN:
-			ROPTIONAL(RDEBUG2, DEBUG2, "DN %s does not exist", query->ldap_url->lud_dn);
+			ROPTIONAL(RDEBUG2, DEBUG2, "DN %s does not exist", query->dn);
 			query->ret = LDAP_RESULT_BAD_DN;
 			break;
 
@@ -886,9 +922,8 @@ static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_con
 		if (query->parser) query->parser(query, result);
 
 		/*
-		 *	Remove the query from the outstanding list and tidy up
+		 *	Mark the trunk request as complete and set the request as runnable
 		 */
-		fr_rb_remove(ldap_conn->queries, query);
 		fr_trunk_request_signal_complete(query->treq);
 		if (query->request) unlang_interpret_mark_runnable(query->request);
 

@@ -616,45 +616,61 @@ static void _ldap_bind_auth_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, U
 
 	int			ret;
 
-next_result:
-	/*
-	 *	Fetch the next LDAP result which has been fully received
-	 */
-	ret = fr_ldap_result(&result, NULL, ldap_conn, LDAP_RES_ANY, LDAP_MSG_ALL, NULL, fr_time_delta_wrap(10));
+	do {
+		/*
+		 *	Fetch the next LDAP result which has been fully received
+		 */
+		ret = fr_ldap_result(&result, NULL, ldap_conn, LDAP_RES_ANY, LDAP_MSG_ALL, NULL, fr_time_delta_wrap(10));
 
-	/*
-	 *	Timeout in this case really means no results to read - we've
-	 *	handled everything that was available
-	 */
-	if (ret == LDAP_PROC_TIMEOUT) return;
+		/*
+		 *	Timeout in this case really means no results to read - we've
+		 *	handled everything that was available
+		 */
+		if (ret == LDAP_PROC_TIMEOUT) return;
 
-	find.msgid = ldap_msgid(result);
-	bind_auth_ctx = fr_rb_find(thread->binds, &find);
+		/*
+		 *	If there is no result don't try to process one
+		 */
+		if (!result) return;
 
-	if (!bind_auth_ctx) {
-		WARN("Ignoring bind result msgid %i - doesn't match any outstanidng binds", find.msgid);
-		goto next_result;
-	}
+		find.msgid = ldap_msgid(result);
+		bind_auth_ctx = fr_rb_find(thread->binds, &find);
 
-	/*
-	 *	Remove from the list of pending bind requests
-	 */
-	fr_rb_remove(bind_auth_ctx->thread->binds, bind_auth_ctx);
+		if (!bind_auth_ctx) {
+			WARN("Ignoring bind result msgid %i - doesn't match any outstanidng binds", find.msgid);
+			ldap_msgfree(result);
+			continue;
+		}
 
-	bind_auth_ctx->ret = ret;
+		/*
+		 *	Remove from the list of pending bind requests
+		 */
+		fr_rb_remove(bind_auth_ctx->thread->binds, bind_auth_ctx);
 
-	switch (ret) {
-	case LDAP_PROC_SUCCESS:
-	case LDAP_PROC_NOT_PERMITTED:
-		break;
+		bind_auth_ctx->ret = ret;
 
-	default:
-		fr_ldap_state_error(bind_auth_ctx->bind_ctx->c);	/* Restart the connection state machine */
-		break;
-	}
-	unlang_interpret_mark_runnable(bind_auth_ctx->request);
+		switch (ret) {
+		/*
+		 *	Accept or reject will be SUCCESS, NOT_PERMITTED or REJECT
+		 */
+		case LDAP_PROC_SUCCESS:
+		case LDAP_PROC_NOT_PERMITTED:
+		case LDAP_PROC_REJECT:
+			break;
 
-	goto next_result;
+		default:
+			ERROR("LDAP connection returned an error - restarting the connection");
+			fr_ldap_state_error(bind_auth_ctx->bind_ctx->c);	/* Restart the connection state machine */
+			break;
+		}
+		unlang_interpret_mark_runnable(bind_auth_ctx->request);
+
+		/*
+		 *	Clear up the libldap results
+		 */
+		ldap_msgfree(result);
+
+	} while (1);
 }
 
 /** Watch callback to add fd read callback to LDAP connection
