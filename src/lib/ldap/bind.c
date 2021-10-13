@@ -286,6 +286,7 @@ static unlang_action_t ldap_async_auth_bind_results(rlm_rcode_t *p_result, UNUSE
 		RETURN_MODULE_DISALLOW;
 
 	case LDAP_PROC_REJECT:
+		RDEBUG2("Bind as user \"%s\" rejected", bind_ctx->bind_dn);
 		RETURN_MODULE_REJECT;
 
 	case LDAP_PROC_BAD_DN:
