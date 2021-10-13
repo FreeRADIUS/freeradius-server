@@ -299,6 +299,8 @@ static unlang_action_t ldap_async_auth_bind_results(rlm_rcode_t *p_result, UNUSE
 		RETURN_MODULE_FAIL;
 
 	}
+
+	talloc_free(bind_auth_ctx);
 }
 
 /** Signal an outstanding LDAP bind request to cancel
@@ -312,6 +314,8 @@ static void ldap_async_auth_bind_cancel(UNUSED request_t *request, fr_state_sign
 
 	ldap_abandon_ext(bind_auth_ctx->bind_ctx->c->handle, bind_auth_ctx->msgid, NULL, NULL);
 	fr_rb_remove(bind_auth_ctx->thread->binds, bind_auth_ctx);
+
+	talloc_free(bind_auth_ctx);
 }
 
 /** Initiate an async LDAP bind for authentication
