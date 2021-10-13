@@ -507,7 +507,7 @@ static void ldap_request_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_
 	fr_ldap_query_t		*query;
 
 	while ((fr_trunk_connection_pop_cancellation(&treq, tconn)) == 0) {
-		query = treq->preq;
+		query = talloc_get_type_abort(treq->preq, fr_ldap_query_t);
 		ldap_abandon_ext(ldap_conn->handle, query->msgid, NULL, NULL);
 
 		fr_trunk_request_signal_cancel_complete(treq);
