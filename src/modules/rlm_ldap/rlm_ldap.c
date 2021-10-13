@@ -511,7 +511,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	if (fr_uri_escape(in, ldap_uri_parts, NULL) < 0) return XLAT_ACTION_FAIL;
 
 	in_vb = fr_dlist_head(in);
-	if(fr_value_box_list_concat_in_place(in_vb, in_vb, in, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE,
+	if (fr_value_box_list_concat_in_place(in_vb, in_vb, in, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE,
 					     true, SIZE_MAX) < 0) {
 		REDEBUG("Failed concattenating input");
 		return XLAT_ACTION_FAIL;
@@ -522,16 +522,13 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	query = fr_ldap_query_alloc(unlang_interpret_frame_talloc_ctx(request));
-
-	if (ldap_url_parse(in_vb->vb_strvalue, &query->ldap_url)){
+	if (ldap_url_parse(in_vb->vb_strvalue, &ldap_url)){
 		REDEBUG("Parsing LDAP URL failed");
-	free_query:
+	error:
+		ldap_free_urldesc(ldap_url);
 		talloc_free(query);
 		return XLAT_ACTION_FAIL;
 	}
-
-	ldap_url = query->ldap_url;
 
 	/*
 	 *	Nothing, empty string, "*" string, or got 2 things, die.
@@ -540,7 +537,27 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	    (strcmp(ldap_url->lud_attrs[0], "*") == 0) || ldap_url->lud_attrs[1]) {
 		REDEBUG("Bad attributes list in LDAP URL. URL must specify exactly one attribute to retrieve");
 
-		goto free_query;
+		goto error;
+	}
+
+	query = fr_ldap_search_alloc(unlang_interpret_frame_talloc_ctx(request),
+				     ldap_url->lud_dn, ldap_url->lud_scope, ldap_url->lud_filter,
+				     (char const * const*)ldap_url->lud_attrs, NULL, NULL);
+	if (ldap_url->lud_exts) {
+		LDAPControl	*serverctrls[LDAP_MAX_CONTROLS];
+		int		i;
+
+		if (fr_ldap_parse_url_extensions(serverctrls, NUM_ELEMENTS(serverctrls),
+						 query->ldap_url->lud_exts) < 0) {
+			RPERROR("Parsing URL extensions failed");
+			goto error;
+		}
+
+		for (i = 0; i < LDAP_MAX_CONTROLS; i++) {
+			if (!serverctrls[i]) break;
+			query->serverctrls[i].control = serverctrls[i];
+			query->serverctrls[i].freeit = true;
+		}
 	}
 
 	/*
@@ -557,11 +574,10 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 						 handle_config->admin_password, request, handle_config);
 	if (!query->ttrunk) {
 		REDEBUG("Unable to get LDAP query for xlat");
-		goto free_query;
+		goto error;
 	}
 
-	query->type = LDAP_REQUEST_SEARCH;
-	query->request = request;
+	query->ldap_url = ldap_url;	/* query destructor will free URL */
 
 	fr_trunk_request_enqueue(&query->treq, query->ttrunk->trunk, request, query, NULL);
 
