@@ -4,7 +4,7 @@
 #	AFTER the main dictionary files are loaded.
 #
 #	FreeRADIUS will automatically load the main dictionary files
-#	fromL
+#	from:
 #
 #		${prefix}/share/freeradius/dictionary
 #
