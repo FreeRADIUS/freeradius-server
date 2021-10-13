@@ -148,11 +148,33 @@ size_t fr_dns_value_len(fr_pair_t const *vp)
 	}
 }
 
+/** Cleanup the memory pool used by vlog_request
+ *
+ */
+static void _dns_labels_free(void *arg)
+{
+	talloc_free(arg);
+	fr_dns_labels = NULL;
+}
+
 fr_dns_labels_t *fr_dns_labels_get(uint8_t const *packet, size_t packet_len, bool init_mark)
 {
 	fr_dns_labels_t *lb = fr_dns_labels;
 
-	if (!lb) return NULL;
+	if (!lb) {
+		lb =  (fr_dns_labels_t *) talloc_zero_array(NULL, uint8_t, sizeof(*lb) + sizeof(lb->blocks[0]) * 256);
+		if (!lb) return NULL;
+
+		lb->max = 256;
+
+		lb->mark = talloc_array(lb, uint8_t, 65536);
+		if (!lb->mark) {
+			talloc_free(lb);
+			return NULL;
+		}
+
+		fr_atexit_thread_local(fr_dns_labels, _dns_labels_free, lb);
+	}
 
 	lb->start = packet;
 	lb->end = packet + packet_len;
@@ -166,16 +188,6 @@ fr_dns_labels_t *fr_dns_labels_get(uint8_t const *packet, size_t packet_len, boo
 	return lb;
 }
 
-/** Cleanup the memory pool used by vlog_request
- *
- */
-static void _dns_labels_free(void *arg)
-{
-	talloc_free(arg);
-	fr_dns_labels = NULL;
-}
-
-
 /** Resolve/cache attributes in the DNS dictionary
  *
  * @return
@@ -184,8 +196,6 @@ static void _dns_labels_free(void *arg)
  */
 int fr_dns_global_init(void)
 {
-	fr_dns_labels_t *lb;
-
 	if (instance_count > 0) {
 		instance_count++;
 		return 0;
@@ -193,23 +203,9 @@ int fr_dns_global_init(void)
 
 	if (fr_dict_autoload(dns_dict) < 0) return -1;
 	if (fr_dict_attr_autoload(dns_dict_attr) < 0) {
-	fail:
 		fr_dict_autofree(dns_dict);
 		return -1;
 	}
-
-	lb =  (fr_dns_labels_t *) talloc_zero_array(NULL, uint8_t, sizeof(*lb) + sizeof(lb->blocks[0]) * 256);
-	if (!lb) goto fail;
-
-	lb->max = 256;
-
-	lb->mark = talloc_array(lb, uint8_t, 65536);
-	if (!lb->mark) {
-		talloc_free(lb);
-		goto fail;
-	}
-
-	fr_atexit_thread_local(fr_dns_labels, _dns_labels_free, lb);
 
 	instance_count++;
 
