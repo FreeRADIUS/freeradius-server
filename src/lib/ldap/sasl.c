@@ -124,6 +124,14 @@ static void _ldap_sasl_bind_io_read(fr_event_list_t *el, int fd, UNUSED int flag
 	fr_ldap_rcode_t		status;
 
 	/*
+	 *	Free the old result (if there is one)
+	 */
+	if (sasl_ctx->result) {
+		ldap_msgfree(sasl_ctx->result);
+		sasl_ctx->result = NULL;
+	}
+
+	/*
 	 *	If LDAP parse result indicates there was an error
 	 *	then we're done.
 	 */
@@ -135,14 +143,6 @@ static void _ldap_sasl_bind_io_read(fr_event_list_t *el, int fd, UNUSED int flag
 	{
 		struct berval			*srv_cred;
 		int				ret;
-
-		/*
-		 *	Free the old result (if there is one)
-		 */
-		if (sasl_ctx->result) {
-			ldap_msgfree(sasl_ctx->result);
-			sasl_ctx->result = NULL;
-		}
 
 		ret = ldap_parse_sasl_bind_result(c->handle, sasl_ctx->result, &srv_cred, 0);
 		if (ret != LDAP_SUCCESS) {
