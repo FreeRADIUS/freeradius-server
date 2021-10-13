@@ -69,6 +69,14 @@ WORKDIR /usr/local/src/repositories
 
 
 #
+#  Set up NetworkRADIUS extras repository
+#
+RUN wget -O - "https://packages.networkradius.com/pgp/packages%40networkradius.com" | apt-key add && \
+    echo "deb http://packages.networkradius.com/extras/debian/${osname} ${osname} main" >> /etc/apt/sources.list.d/networkradius-extras.list && \
+    apt-get update
+
+
+#
 #  Shallow clone the FreeRADIUS source
 #
 WORKDIR /usr/local/src/repositories
