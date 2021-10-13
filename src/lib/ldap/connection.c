@@ -295,6 +295,23 @@ fr_ldap_connection_t *fr_ldap_connection_alloc(TALLOC_CTX *ctx)
 	return c;
 }
 
+/** Watcher for LDAP connections being closed
+ *
+ * If there are any outstanding queries on the connection then
+ * re-parent the connection to the NULL ctx so that it remains
+ * until all the queries have been dealt with.
+ */
+static void _ldap_connection_close_watch(fr_connection_t *conn, UNUSED fr_connection_state_t prev,
+					 UNUSED fr_connection_state_t state, void *uctx)
+{
+	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(uctx, fr_ldap_connection_t);
+
+	if (fr_rb_num_elements(ldap_conn->queries) == 0) return;
+
+	talloc_reparent(conn, NULL, ldap_conn);
+	ldap_conn->conn = NULL;
+}
+
 /** (Re-)Initialises the libldap side of the connection handle
  *
  *  The first ldap state transition is either:
@@ -347,6 +364,8 @@ static fr_connection_state_t _ldap_connection_init(void **h, fr_connection_t *co
 
 	c = fr_ldap_connection_alloc(conn);
 	c->conn = conn;
+
+	fr_connection_add_watch_pre(conn, FR_CONNECTION_STATE_CLOSED, _ldap_connection_close_watch, false, c);
 
 	/*
 	 *	Configure/allocate the libldap handle
