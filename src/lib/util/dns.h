@@ -53,8 +53,6 @@ ssize_t		fr_dns_label_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *dst,
 					    uint8_t const *src, size_t len, uint8_t const *label,
 					    bool tainted, fr_dns_labels_t *lb);
 
-fr_dns_labels_t *fr_dns_labels_init(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, int max_labels) CC_HINT(nonnull);
-
 #ifdef __cplusplus
 }
 #endif

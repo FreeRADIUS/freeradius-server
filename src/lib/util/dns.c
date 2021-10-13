@@ -30,31 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dns.h>
 #include <freeradius-devel/util/proto.h>
 
-fr_dns_labels_t *fr_dns_labels_init(TALLOC_CTX *ctx, uint8_t const *packet, size_t packet_len, int max_labels)
-{
-	fr_dns_labels_t *lb;
-
-	if (max_labels <= 0) max_labels = 0;
-
-	lb = (fr_dns_labels_t *) talloc_zero_array(ctx, uint8_t, sizeof(fr_dns_labels_t) + sizeof(lb->blocks[0]) * max_labels);
-	if (!lb) return NULL;
-
-	talloc_set_name_const(lb, "fr_dns_labels_t");
-
-	lb->start = packet;
-	lb->end = packet + packet_len;
-	lb->max = max_labels;
-
-	/*
-	 *	Always skip the DNS packet header.
-	 */
-	lb->blocks[0].start = 12;
-	lb->blocks[0].end = 12;
-	lb->num = 1;
-
-	return lb;
-}
-
 #define MAX_OFFSET (1 << 14)
 
 static int dns_label_add(fr_dns_labels_t *lb, uint8_t const *start, uint8_t const *end)
