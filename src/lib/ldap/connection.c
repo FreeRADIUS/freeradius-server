@@ -509,7 +509,6 @@ static void ldap_request_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_
 	while ((fr_trunk_connection_pop_cancellation(&treq, tconn)) == 0) {
 		query = treq->preq;
 		ldap_abandon_ext(ldap_conn->handle, query->msgid, NULL, NULL);
-		fr_rb_remove(ldap_conn->queries, query);
 
 		fr_trunk_request_signal_cancel_complete(treq);
 
@@ -911,9 +910,8 @@ static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_con
 		if (query->parser) query->parser(query, result);
 
 		/*
-		 *	Remove the query from the outstanding list and tidy up
+		 *	Mark the trunk request as complete and set the request as runnable
 		 */
-		fr_rb_remove(ldap_conn->queries, query);
 		fr_trunk_request_signal_complete(query->treq);
 		if (query->request) unlang_interpret_mark_runnable(query->request);
 
