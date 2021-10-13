@@ -117,6 +117,8 @@ static bool dns_pointer_valid(fr_dns_labels_t *lb, uint16_t offset)
 
 	/*
 	 *	Brute-force searching.
+	 *
+	 *	@todo - manually walk through the pointers for the block?
 	 */
 	for (i = 0; i < lb->num; i++) {
 		FR_PROTO_TRACE("Checking block %d %u..%u against %u",
@@ -993,16 +995,6 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 				return -(p - packet);
 			}
 
-			/*
-			 *	If we're tracking which labels are
-			 *	valid, then check the pointer, too.
-			 */
-			if (!dns_pointer_valid(lb, offset)) {
-				fr_strerror_printf("Pointer %04x at offset %04x does not point to a DNS label",
-						   offset, (int) (p - packet));
-				return -(p - packet);
-			}
-
 			q = packet + offset;
 
 			/*
@@ -1018,6 +1010,16 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 			 */
 			if (q >= current) {
 				fr_strerror_printf("Pointer %04x at offset %04x creates a loop within a label",
+						   offset, (int) (p - packet));
+				return -(p - packet);
+			}
+
+			/*
+			 *	If we're tracking which labels are
+			 *	valid, then check the pointer, too.
+			 */
+			if (!dns_pointer_valid(lb, offset)) {
+				fr_strerror_printf("Pointer %04x at offset %04x does not point to a DNS label",
 						   offset, (int) (p - packet));
 				return -(p - packet);
 			}
