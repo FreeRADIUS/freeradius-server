@@ -763,18 +763,6 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 	return LDAP_PROC_SUCCESS;
 }
 
-/** Submit an LDAP query to be handled by a trunk conneciton
- *
- */
-static unlang_action_t ldap_trunk_query_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
-{
-	fr_ldap_query_t	*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
-
-	fr_trunk_request_enqueue(&query->treq, query->ttrunk->trunk, request, query, NULL);
-
-	return UNLANG_ACTION_YIELD;
-}
-
 /** Handle the return code from parsed LDAP results to set the module rcode
  *
  */
@@ -822,6 +810,16 @@ do { \
 	} \
 } while (0)
 
+
+/** Hack to make code work with synchronous interpreter
+ *
+ */
+static unlang_action_t ldap_trunk_query_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+					      UNUSED request_t *request, UNUSED void *uctx)
+{
+	return UNLANG_ACTION_YIELD;
+}
+
 /** Run an async search LDAP query on a trunk connection
  *
  * @param[in] ctx		to allocate the query in.
@@ -834,23 +832,35 @@ do { \
  * @param[in] attrs		to be returned.
  * @param[in] serverctrls	specific to this query.
  * @param[in] clientctrls	specific to this query.
+ * @return
+ *	- UNLANG_ACTION_FAIL on error.
+ *	- UNLANG_ACTION_YIELD on success.
  */
-int fr_ldap_trunk_search(TALLOC_CTX *ctx, fr_ldap_query_t **query, request_t *request, fr_ldap_thread_trunk_t *ttrunk, char const *base_dn,
-			 int scope, char const *filter, char const * const *attrs, LDAPControl **serverctrls, LDAPControl **clientctrls )
+unlang_action_t fr_ldap_trunk_search(TALLOC_CTX *ctx,
+				     fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+				     char const *base_dn, int scope, char const *filter, char const * const *attrs,
+				     LDAPControl **serverctrls, LDAPControl **clientctrls,
+				     bool is_async)
 {
-	*query = fr_ldap_query_alloc(ctx);
+	unlang_action_t action;
+	fr_ldap_query_t *query;
 
-	(*query)->type = LDAP_REQUEST_SEARCH;
-	(*query)->request = request;
-	(*query)->ttrunk = ttrunk;
-	(*query)->dn = base_dn;
-	(*query)->search.scope = scope;
-	(*query)->search.filter = filter;
-	memcpy(&(*query)->search.attrs,  &attrs, sizeof((*query)->search.attrs));
-	SET_LDAP_CTRLS((*query)->serverctrls, serverctrls);
-	SET_LDAP_CTRLS((*query)->clientctrls, clientctrls);
+	query = fr_ldap_search_alloc(ctx, base_dn, scope, filter, attrs, serverctrls, clientctrls);
 
-	return unlang_function_push(request, ldap_trunk_query_start, ldap_trunk_query_results, ldap_trunk_query_cancel, UNLANG_TOP_FRAME, *query);
+	if (fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL) != FR_TRUNK_ENQUEUE_OK) {
+	error:
+		talloc_free(query);
+		return UNLANG_ACTION_FAIL;
+	}
+
+	action = unlang_function_push(request, is_async ? NULL : ldap_trunk_query_start, ldap_trunk_query_results,
+				      ldap_trunk_query_cancel, is_async ? UNLANG_SUB_FRAME : UNLANG_TOP_FRAME, query);
+
+	if (action == UNLANG_ACTION_FAIL) goto error;
+
+	*out = query;
+
+	return is_async ? action : UNLANG_ACTION_YIELD;
 }
 
 /** Run an async modification LDAP query on a trunk connection
@@ -863,21 +873,35 @@ int fr_ldap_trunk_search(TALLOC_CTX *ctx, fr_ldap_query_t **query, request_t *re
  * @param[in] mods		to be performed.
  * @param[in] serverctrls	specific to this query.
  * @param[in] clientctrls	specific to this query.
+ * @return
+ *	- UNLANG_ACTION_FAIL on error.
+ *	- UNLANG_ACTION_YIELD on success.
  */
-int fr_ldap_trunk_modify(TALLOC_CTX *ctx, fr_ldap_query_t **query, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
-			 char const *dn, LDAPMod *mods[], LDAPControl **serverctrls, LDAPControl **clientctrls)
+unlang_action_t fr_ldap_trunk_modify(TALLOC_CTX *ctx,
+				     fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+				     char const *dn, LDAPMod *mods[],
+				     LDAPControl **serverctrls, LDAPControl **clientctrls,
+				     bool is_async)
 {
-	*query = fr_ldap_query_alloc(ctx);
+	unlang_action_t action;
+	fr_ldap_query_t *query;
 
-	(*query)->type = LDAP_REQUEST_MODIFY;
-	(*query)->request = request;
-	(*query)->ttrunk = ttrunk;
-	(*query)->dn = dn;
-	(*query)->mods = mods;
-	SET_LDAP_CTRLS((*query)->serverctrls, serverctrls);
-	SET_LDAP_CTRLS((*query)->clientctrls, clientctrls);
+	query = fr_ldap_modify_alloc(ctx, dn, mods, serverctrls, clientctrls);
 
-	return unlang_function_push(request, ldap_trunk_query_start, ldap_trunk_query_results, ldap_trunk_query_cancel, UNLANG_TOP_FRAME, *query);
+	if (fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL) != FR_TRUNK_ENQUEUE_OK) {
+	error:
+		talloc_free(query);
+		return UNLANG_ACTION_FAIL;
+	}
+
+	action = unlang_function_push(request, is_async ? NULL : ldap_trunk_query_start, ldap_trunk_query_results,
+				      ldap_trunk_query_cancel, is_async ? UNLANG_SUB_FRAME : UNLANG_TOP_FRAME, query);
+
+	if (action == UNLANG_ACTION_FAIL) goto error;
+
+	*out = query;
+
+	return is_async ? action : UNLANG_ACTION_YIELD;
 }
 
 /** Modify something in the LDAP directory
@@ -988,52 +1012,6 @@ fr_ldap_rcode_t fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_con
 	return LDAP_PROC_SUCCESS;
 }
 
-/** Change settings global to libldap
- *
- * May only be called once.  Subsequent calls will be ignored.
- *
- * @param[in] debug_level	to enable in libldap.
- * @param[in] tls_random_file	Where OpenSSL gets its randomness.
- */
-int fr_ldap_global_config(int debug_level, char const *tls_random_file)
-{
-	static bool		done_config;
-	fr_ldap_config_t	*handle_config = &ldap_global_handle_config;
-
-	if (done_config) return 0;
-
-#define do_ldap_global_option(_option, _name, _value) \
-	if (ldap_set_option(NULL, _option, _value) != LDAP_OPT_SUCCESS) { \
-		int _ldap_errno; \
-		ldap_get_option(NULL, LDAP_OPT_RESULT_CODE, &_ldap_errno); \
-		ERROR("Failed setting global option %s: %s", _name, \
-			 (_ldap_errno != LDAP_SUCCESS) ? ldap_err2string(_ldap_errno) : "Unknown error"); \
-		return -1;\
-	}
-
-#define maybe_ldap_global_option(_option, _name, _value) \
-	if (_value) do_ldap_global_option(_option, _name, _value)
-
-#ifdef LDAP_OPT_DEBUG_LEVEL
-	if (debug_level) do_ldap_global_option(LDAP_OPT_DEBUG_LEVEL, "ldap_debug", &debug_level);
-#else
-	if (debug_level) WARN("ldap_debug not honoured as LDAP_OPT_DEBUG_LEVEL is not available");
-#endif
-
-#ifdef LDAP_OPT_X_TLS_RANDOM_FILE
-	/*
-	 *	OpenLDAP will error out if we attempt to set
-	 *	this on a handle. Presumably it's global in
-	 *	OpenSSL too.
-	 */
-	maybe_ldap_global_option(LDAP_OPT_X_TLS_RANDOM_FILE, "random_file", tls_random_file);
-#endif
-
-	done_config = true;
-
-	return 0;
-}
-
 /** Free any libldap structures when an fr_ldap_query_t is freed
  *
  * It is also possible that the connection used for this query is now closed,
@@ -1093,7 +1071,8 @@ static int _ldap_query_free(fr_ldap_query_t *query)
 /** Allocate an fr_ldap_query_t, setting the talloc destructor
  *
  */
-fr_ldap_query_t *fr_ldap_query_alloc(TALLOC_CTX *ctx)
+static inline CC_HINT(always_inline)
+fr_ldap_query_t *ldap_query_alloc(TALLOC_CTX *ctx, fr_ldap_request_type_t type)
 {
 	fr_ldap_query_t	*query;
 
@@ -1101,8 +1080,90 @@ fr_ldap_query_t *fr_ldap_query_alloc(TALLOC_CTX *ctx)
 	talloc_set_destructor(query, _ldap_query_free);
 
 	query->ret = LDAP_RESULT_PENDING;
+	query->type = type;
 
 	return query;
+}
+
+/** Allocate a new search object
+ *
+ * @param[in] ctx	to allocate query in.
+ */
+fr_ldap_query_t *fr_ldap_search_alloc(TALLOC_CTX *ctx,
+				      char const *base_dn, int scope, char const *filter, char const * const * attrs,
+				      LDAPControl **serverctrls, LDAPControl **clientctrls)
+{
+	fr_ldap_query_t *query;
+
+	query = ldap_query_alloc(ctx, LDAP_REQUEST_SEARCH);
+	query->dn = base_dn;
+	query->search.scope = scope;
+	query->search.filter = filter;
+	query->search.attrs = UNCONST(char const **, attrs);
+	SET_LDAP_CTRLS(query->serverctrls, serverctrls);
+	SET_LDAP_CTRLS(query->clientctrls, clientctrls);
+
+	return query;
+}
+
+fr_ldap_query_t *fr_ldap_modify_alloc(TALLOC_CTX *ctx, char const *dn,
+				      LDAPMod *mods[], LDAPControl **serverctrls, LDAPControl **clientctrls)
+{
+	fr_ldap_query_t *query;
+
+	query = ldap_query_alloc(ctx, LDAP_REQUEST_MODIFY);
+	query->dn = dn;
+	query->mods = mods;
+	SET_LDAP_CTRLS(query->serverctrls, serverctrls);
+	SET_LDAP_CTRLS(query->clientctrls, clientctrls);
+
+	return query;
+}
+
+/** Change settings global to libldap
+ *
+ * May only be called once.  Subsequent calls will be ignored.
+ *
+ * @param[in] debug_level	to enable in libldap.
+ * @param[in] tls_random_file	Where OpenSSL gets its randomness.
+ */
+int fr_ldap_global_config(int debug_level, char const *tls_random_file)
+{
+	static bool		done_config;
+	fr_ldap_config_t	*handle_config = &ldap_global_handle_config;
+
+	if (done_config) return 0;
+
+#define do_ldap_global_option(_option, _name, _value) \
+	if (ldap_set_option(NULL, _option, _value) != LDAP_OPT_SUCCESS) { \
+		int _ldap_errno; \
+		ldap_get_option(NULL, LDAP_OPT_RESULT_CODE, &_ldap_errno); \
+		ERROR("Failed setting global option %s: %s", _name, \
+			 (_ldap_errno != LDAP_SUCCESS) ? ldap_err2string(_ldap_errno) : "Unknown error"); \
+		return -1;\
+	}
+
+#define maybe_ldap_global_option(_option, _name, _value) \
+	if (_value) do_ldap_global_option(_option, _name, _value)
+
+#ifdef LDAP_OPT_DEBUG_LEVEL
+	if (debug_level) do_ldap_global_option(LDAP_OPT_DEBUG_LEVEL, "ldap_debug", &debug_level);
+#else
+	if (debug_level) WARN("ldap_debug not honoured as LDAP_OPT_DEBUG_LEVEL is not available");
+#endif
+
+#ifdef LDAP_OPT_X_TLS_RANDOM_FILE
+	/*
+	 *	OpenLDAP will error out if we attempt to set
+	 *	this on a handle. Presumably it's global in
+	 *	OpenSSL too.
+	 */
+	maybe_ldap_global_option(LDAP_OPT_X_TLS_RANDOM_FILE, "random_file", tls_random_file);
+#endif
+
+	done_config = true;
+
+	return 0;
 }
 
 /** Initialise libldap and check library versions
