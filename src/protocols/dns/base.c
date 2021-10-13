@@ -39,7 +39,9 @@ typedef struct {
 
 fr_dict_t const *dict_dns;
 
-static _Thread_local fr_dns_labels_t *fr_dns_labels;
+static _Thread_local fr_dns_labels_t	fr_dns_labels;
+static _Thread_local fr_dns_block_t	fr_dns_blocks[256];
+static _Thread_local uint8_t		fr_dns_marker[65536];
 
 extern fr_dict_autoload_t dns_dict[];
 fr_dict_autoload_t dns_dict[] = {
@@ -148,33 +150,14 @@ size_t fr_dns_value_len(fr_pair_t const *vp)
 	}
 }
 
-/** Cleanup the memory pool used by vlog_request
- *
- */
-static void _dns_labels_free(void *arg)
-{
-	talloc_free(arg);
-	fr_dns_labels = NULL;
-}
 
 fr_dns_labels_t *fr_dns_labels_get(uint8_t const *packet, size_t packet_len, bool init_mark)
 {
-	fr_dns_labels_t *lb = fr_dns_labels;
+	fr_dns_labels_t *lb = &fr_dns_labels;
 
-	if (!lb) {
-		lb =  (fr_dns_labels_t *) talloc_zero_array(NULL, uint8_t, sizeof(*lb) + sizeof(lb->blocks[0]) * 256);
-		if (!lb) return NULL;
-
-		lb->max = 256;
-
-		lb->mark = talloc_array(lb, uint8_t, 65536);
-		if (!lb->mark) {
-			talloc_free(lb);
-			return NULL;
-		}
-
-		fr_atexit_thread_local(fr_dns_labels, _dns_labels_free, lb);
-	}
+	lb->max = 256;
+	lb->mark = fr_dns_marker;
+	lb->blocks = fr_dns_blocks;
 
 	lb->start = packet;
 	lb->end = packet + packet_len;
