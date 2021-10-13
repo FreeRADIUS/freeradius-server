@@ -238,6 +238,11 @@ static void _ldap_sasl_bind_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 	 *	Want to read more SASL stuff...
 	 */
 	case LDAP_SASL_BIND_IN_PROGRESS:
+		if (fd < 0) {
+			ret = ldap_get_option(c->handle, LDAP_OPT_DESC, &fd);
+			if ((ret != LDAP_OPT_SUCCESS) || (fd < 0)) goto error;
+		}
+		c->fd = fd;
 		ret = fr_event_fd_insert(sasl_ctx, el, fd,
 					 _ldap_sasl_bind_io_read,
 					 NULL,
@@ -314,7 +319,11 @@ int fr_ldap_sasl_bind_async(fr_ldap_connection_t *c,
 
 	el = c->conn->el;
 
-	if (ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) == LDAP_SUCCESS) {
+	/*
+	 *	ldap_get_option can return LDAP_SUCCESS even if the fd is not yet available
+	 *	- hence the test for fd >= 0
+	 */
+	if ((ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) == LDAP_SUCCESS) && (fd >= 0)){
 		int ret;
 
 		ret = fr_event_fd_insert(sasl_ctx, el, fd,

@@ -188,6 +188,11 @@ static void _ldap_start_tls_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 		break;
 
 	case LDAP_SUCCESS:
+		if (fd < 0) {
+			ret = ldap_get_option(c->handle, LDAP_OPT_DESC, &fd);
+			if ((ret != LDAP_OPT_SUCCESS) || (fd < 0)) goto error;
+		}
+		c->fd = fd;
 		ret = fr_event_fd_insert(tls_ctx, el, fd,
 					 _ldap_start_tls_io_read,
 					 NULL,
@@ -229,7 +234,11 @@ int fr_ldap_start_tls_async(fr_ldap_connection_t *c, LDAPControl **serverctrls, 
 
 	el = c->conn->el;
 
-	if (ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) == LDAP_SUCCESS) {
+	/*
+	 *	ldap_get_option can return LDAP_SUCCESS even if the fd is not yet available
+	 *	- hence the test for fd >= 0
+	 */
+	if ((ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) == LDAP_SUCCESS) && (fd >= 0)) {
 		int ret;
 
 		ret = fr_event_fd_insert(tls_ctx, el, fd,
