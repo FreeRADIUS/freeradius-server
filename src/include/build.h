@@ -176,6 +176,32 @@ do { \
 #  define NDEBUG_LOCATION_NONNULL(_num)		(_num)
 #endif
 
+/** Check if a given variable is the _const or not
+ *
+ * @param[in] _type	The base type of the variable (should not be marked const)
+ * @param[in] _var	to check.
+ */
+#define IS_CONST(_type, _var) \
+	_Generic((_var), \
+		 _type: false, \
+		 const _type: true \
+	)
+
+/** Check if a given variable is the const or unconst version of a type
+ *
+ * Expands to _var if _var matches type, otherwise throws a compiler error.
+ *
+ * Useful for creating typesafe wrapper macros around functions which take
+ * void *s.
+ *
+ * @param[in] _type	The base type of the variable (should not be marked const)
+ * @param[in] _var	to check.
+ */
+#define IS_TYPE(_type, _var) \
+	_Generic((_var), \
+		 _type: _var, \
+		 const _type: _var \
+	)
 /*
  *	Mark variables as unused
  */

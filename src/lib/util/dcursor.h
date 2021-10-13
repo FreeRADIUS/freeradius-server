@@ -664,18 +664,15 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
  *	  in the current list.
  *	- The first item returned by the iterator.
  */
-#define fr_dcursor_iter_mod_init(_cursor, _head, _iter, _iter_uctx, _insert, _remove, _mod_uctx) \
+#define fr_dcursor_iter_mod_init(_cursor, _list, _iter, _iter_uctx, _insert, _remove, _mod_uctx) \
 	_fr_dcursor_init(_cursor, \
-			 _head, \
+			 _list, \
 			 _iter, \
 			 _iter_uctx, \
 			 _insert, \
 			 _remove, \
 			 _mod_uctx, \
-			 _Generic((_head), \
-				fr_dlist_head_t *	: false, \
-				fr_dlist_head_t const *	: true \
-			 ))
+			 IS_CONST(fr_dlist_head_t *, _head))
 
 /** Initialise a cursor with a custom iterator
  *
@@ -696,10 +693,7 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
 			 NULL, \
 			 NULL, \
 			 NULL, \
-			 _Generic((_head), \
-				fr_dlist_head_t *	: false, \
-				fr_dlist_head_t const *	: true \
-			 ))
+			 IS_CONST(fr_dlist_head_t *, _head))
 
 /** Initialise a cursor
  *
@@ -717,10 +711,7 @@ static inline void fr_dcursor_free_list(fr_dcursor_t *cursor)
 			 NULL, \
 			 NULL, \
 			 NULL, \
-			 _Generic((_head), \
-				fr_dlist_head_t *	: false, \
-				fr_dlist_head_t const *	: true \
-			 ))
+			 IS_CONST(fr_dlist_head_t *, _head))
 
 /** Setup a cursor to iterate over attribute items in dlists
  *

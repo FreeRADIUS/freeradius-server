@@ -317,10 +317,7 @@ fr_pair_list_t	*fr_pair_children(fr_pair_t *head) CC_HINT(nonnull);
 					   _list, \
 					   _iter, \
 					   _uctx, \
-					   _Generic((_list), \
-						fr_pair_list_t *	: false, \
-						fr_pair_list_t const *	: true \
-					   ))
+					   IS_CONST(fr_pair_list_t *, _list))
 fr_pair_t	*_fr_pair_dcursor_iter_init(fr_dcursor_t *cursor, fr_pair_list_t const *list,
 					    fr_dcursor_iter_t iter, void const *uctx,
 					    bool is_const) CC_HINT(nonnull);
@@ -340,10 +337,7 @@ fr_pair_t	*_fr_pair_dcursor_iter_init(fr_dcursor_t *cursor, fr_pair_list_t const
 #define		fr_pair_dcursor_init(_cursor, _list) \
 		_fr_pair_dcursor_init(_cursor, \
 				      _list, \
-				      _Generic((_list), \
-					fr_pair_list_t *	: false, \
-					fr_pair_list_t const *	: true \
-				      ))
+				      IS_CONST(fr_pair_list_t *, _list))
 fr_pair_t	*_fr_pair_dcursor_init(fr_dcursor_t *cursor, fr_pair_list_t const *list,
 				       bool is_const) CC_HINT(nonnull);
 
@@ -360,10 +354,7 @@ fr_pair_t	*_fr_pair_dcursor_init(fr_dcursor_t *cursor, fr_pair_list_t const *lis
 		_fr_pair_dcursor_by_da_init(_cursor, \
 					    _list, \
 					    _da, \
-					    _Generic((_list), \
-						fr_pair_list_t *	: false, \
-						fr_pair_list_t const *	: true \
-					    ))
+					    IS_CONST(fr_pair_list_t *, _list))
 fr_pair_t	*_fr_pair_dcursor_by_da_init(fr_dcursor_t *cursor,
 					     fr_pair_list_t const *list, fr_dict_attr_t const *da,
 					     bool is_const) CC_HINT(nonnull);
@@ -381,10 +372,7 @@ fr_pair_t	*_fr_pair_dcursor_by_da_init(fr_dcursor_t *cursor,
 		_fr_pair_dcursor_by_ancestor_init(_cursor, \
 						  _list, \
 						  _da, \
-						  _Generic((_list), \
-							fr_pair_list_t *	: false, \
-							fr_pair_list_t const *	: true \
-						  ))
+						  IS_CONST(fr_pair_list_t *, _list))
 fr_pair_t	*_fr_pair_dcursor_by_ancestor_init(fr_dcursor_t *cursor,
 						   fr_pair_list_t const *list, fr_dict_attr_t const *da,
 						   bool is_const) CC_HINT(nonnull);

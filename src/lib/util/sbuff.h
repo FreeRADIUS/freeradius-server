@@ -450,10 +450,7 @@ _Generic((_sbuff_or_marker), \
 				char const *	: (char const *)(_len_or_end) \
 			), \
 	.p_i		= _start, \
-	.is_const	= _Generic((_start), \
-				char *		: false, \
-				char const *	: true \
-	       		) \
+	.is_const	= IS_CONST(char *, _start) \
 })
 
 /** Creates a compound literal to pass into functions which accept a sbuff
@@ -477,10 +474,7 @@ _Generic((_sbuff_or_marker), \
 				char const *	: (char const *)(_len_or_end) \
 			), \
 	.p_i		= _start, \
-	.is_const	= _Generic((_start), \
-				char *		: false, \
-				char const *	: true \
-	       		) \
+	.is_const	= IS_CONST(char *, _start) \
 })
 
 
@@ -530,10 +524,7 @@ _Generic((_len_or_end), \
 	char *		: (char const *)(_len_or_end), \
 	char const *	: (char const *)(_len_or_end) \
 ), \
-_Generic((_start), \
-	char *		: false, \
-	char const *	: true \
-))
+IS_CONST(char *, _start))
 
 /** Initialise a special sbuff which automatically reads in more data as the buffer is exhausted
  *
