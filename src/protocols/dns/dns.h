@@ -113,6 +113,8 @@ extern char const *fr_dns_packet_codes[FR_DNS_CODE_MAX];
 
 bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query);
 
+fr_dns_labels_t *fr_dns_labels_get(uint8_t const *packet, size_t packet_len, bool init_mark);
+
 size_t fr_dns_value_len(fr_pair_t const *vp);
 
 ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,

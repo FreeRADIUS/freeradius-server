@@ -197,10 +197,8 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	packet_ctx.tmp_ctx = talloc(request, uint8_t);
 	packet_ctx.packet = request->packet->data;
 	packet_ctx.packet_len = data_len;
-
-	packet_ctx.lb = fr_dns_labels_init(packet_ctx.tmp_ctx, packet_ctx.packet, data_len, 0);
+	packet_ctx.lb = fr_dns_labels_get(request->packet->data, data_len, true);
 	fr_assert(packet_ctx.lb != NULL);
-	packet_ctx.lb->mark = talloc_zero_array(packet_ctx.lb, uint8_t, data_len);
 
 	/*
 	 *	Note that we don't set a limit on max_attributes here.
@@ -270,9 +268,8 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 	packet_ctx.packet = buffer;
 	packet_ctx.packet_len = buffer_len;
 
-	packet_ctx.lb = fr_dns_labels_init(packet_ctx.tmp_ctx, buffer, buffer_len, 256);
+	packet_ctx.lb = fr_dns_labels_get(buffer, buffer_len, false);
 	fr_assert(packet_ctx.lb != NULL);
-	/* no need to set "mark" here, as that field is only used for decoding */
 
 	data_len = fr_dns_encode(&FR_DBUFF_TMP(buffer, buffer_len), &request->reply_pairs, &packet_ctx);
 	talloc_free(packet_ctx.tmp_ctx);

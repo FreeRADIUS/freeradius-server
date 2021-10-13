@@ -684,28 +684,8 @@ static ssize_t fr_dns_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t
 
 	packet_ctx->packet = data;
 	packet_ctx->packet_len = data_len;
-
-	if (packet_ctx->lb) {
-		fr_dns_labels_t *lb = packet_ctx->lb;
-
-		lb->start = data;
-		lb->end = data + data_len;
-
-		/*
-		 *	Always skip the DNS packet header.
-		 */
-		lb->blocks[0].start = 12;
-		lb->blocks[0].end = 12;
-		lb->num = 1;
-
-		memset(packet_ctx->lb->mark, 0, talloc_array_length(packet_ctx->lb->mark));
-	} else {
-		packet_ctx->lb = fr_dns_labels_init(packet_ctx, data, data_len, 256);
-		fr_assert(packet_ctx->lb != NULL);
-
-		packet_ctx->lb->end = data + data_len;
-		packet_ctx->lb->mark = talloc_zero_array(packet_ctx->lb, uint8_t, 65535);
-	}
+	packet_ctx->lb = fr_dns_labels_get(data, data_len, true);
+	fr_assert(packet_ctx->lb != NULL);
 
 	return fr_dns_decode(ctx, out, data, data_len,  packet_ctx);
 }
