@@ -164,30 +164,29 @@ extern fr_dict_attr_t const *attr_user_name;
 /*
  *	user.c - User lookup functions
  */
-char const *rlm_ldap_find_user(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn,
-			       char const *attrs[], bool force, LDAPMessage **result, rlm_rcode_t *rcode);
+char const *rlm_ldap_find_user(rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *tconn,
+			       char const *attrs[], bool force, LDAPMessage **result, LDAP **handle, rlm_rcode_t *rcode);
 
-rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request,
-				  fr_ldap_connection_t const *conn, LDAPMessage *entry);
+rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request, LDAP *handle, LDAPMessage *entry);
 
-void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t const *conn);
+void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t const *ttrunk);
 
 /*
  *	groups.c - Group membership functions.
  */
 unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t const *inst,
-					   request_t *request, fr_ldap_connection_t **pconn,
-					   LDAPMessage *entry, char const *attr);
+					   request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+					   LDAPMessage *entry, LDAP *handle, char const *attr);
 
 unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result,
-					    rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn);
+					    rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *ttrunk);
 
 unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result,
-						rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn,
+						rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 						fr_pair_t const *check);
 
 unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result,
-					       rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t **pconn,
+					       rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 					       char const *dn, fr_pair_t const *check);
 
 unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,

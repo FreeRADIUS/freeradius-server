@@ -296,7 +296,7 @@ int fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, request_t *request, fr_map_l
  * This is *NOT* atomic, but there's no condition for which we should error out...
  *
  * @param[in] request		Current request.
- * @param[in] conn		associated with entry.
+ * @param[in] handle		associated with entry.
  * @param[in] valuepair_attr	Treat attribute with this name as holding complete AVP definitions.
  * @param[in] expanded		attributes (rhs of map).
  * @param[in] entry		to retrieve attributes from.
@@ -304,7 +304,7 @@ int fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, request_t *request, fr_map_l
  *	- Number of maps successfully applied.
  *	- -1 on failure.
  */
-int fr_ldap_map_do(request_t *request, fr_ldap_connection_t *conn,
+int fr_ldap_map_do(request_t *request, LDAP *handle,
 		   char const *valuepair_attr, fr_ldap_map_exp_t const *expanded, LDAPMessage *entry)
 {
 	map_t const		*map = NULL;
@@ -322,7 +322,7 @@ int fr_ldap_map_do(request_t *request, fr_ldap_connection_t *conn,
 		/*
 		 *	Binary safe
 		 */
-		result.values = ldap_get_values_len(conn->handle, entry, name);
+		result.values = ldap_get_values_len(handle, entry, name);
 		if (!result.values) {
 			RDEBUG3("Attribute \"%s\" not found in LDAP object", name);
 
@@ -361,7 +361,7 @@ int fr_ldap_map_do(request_t *request, fr_ldap_connection_t *conn,
 		struct berval	**values;
 		int		count, i;
 
-		values = ldap_get_values_len(conn->handle, entry, valuepair_attr);
+		values = ldap_get_values_len(handle, entry, valuepair_attr);
 		count = ldap_count_values_len(values);
 
 		for (i = 0; i < count; i++) {
