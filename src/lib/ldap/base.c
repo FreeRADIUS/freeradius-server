@@ -450,7 +450,7 @@ fr_ldap_rcode_t fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 		if (status != LDAP_PROC_SUCCESS) break;
 	}
 
-	if (*result_p && ((status < 0) || !result)) {
+	if (*result_p && (!result)) {
 		ldap_msgfree(*result_p);
 		*result_p = NULL;
 	}
