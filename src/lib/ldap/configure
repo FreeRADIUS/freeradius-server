@@ -3320,7 +3320,7 @@ fi
 				CFLAGS="-DLDAP_DEPRECATED=1 ${CFLAGS}"
 
 
-						smart_try_dir=$libfreeradius_ldap_lib_dir
+						smart_try_dir="$libfreeradius_ldap_lib_dir /usr/local/opt/openldap/lib"
 
 
 
@@ -3685,7 +3685,7 @@ fi
 	fi
 
 
-	smart_try_dir=$libfreeradius_ldap_include_dir
+	smart_try_dir="$libfreeradius_ldap_include_dir /usr/local/opt/openldap/include"
 
 
 ac_safe=`echo "ldap.h" | sed 'y%./+-%__pm%'`
