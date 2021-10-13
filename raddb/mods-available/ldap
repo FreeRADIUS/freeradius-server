@@ -612,7 +612,7 @@ ldap {
 		#  connections during instantiation it will exit.
 		#  Set to 0 to allow the server to start without the
 		#  directory being available.
-		start = ${thread[pool].start_servers}
+		start = 0
 
 		#  Minimum number of connections to keep open
 		min = ${thread[pool].min_spare_servers}
