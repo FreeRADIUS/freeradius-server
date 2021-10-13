@@ -1,0 +1,41 @@
+#
+#  Run the "ldapssl" module - an instance of ldap using an ssl conneciton
+#
+
+ldaptls
+
+if (&control.NAS-IP-Address != 1.2.3.4) {
+        test_fail
+}
+
+# Cmp operator means Framed-IP-Address is ignored
+if (&control.Framed-IP-Address) {
+        test_fail
+}
+
+if (&reply.Idle-Timeout != 3600) {
+        test_fail
+}
+
+if (&reply.Session-Timeout != 7200) {
+        test_fail
+}
+
+if ("%(pairs:reply.)" == "") {
+        test_fail
+}
+
+# Attempt a bind authentication
+ldaptls.authenticate
+
+ldaptls.post-auth
+
+update {
+        &Tmp-String-0 := "%{ldaptls:ldap:///uid=fred,ou=people,dc=subdept,dc=example,dc=com?description}"
+}
+
+if (&Tmp-String-0 != "User %{User-Name} authenticated") {
+	test_fail
+}
+
+test_pass
