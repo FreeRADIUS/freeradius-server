@@ -239,6 +239,11 @@ static void _ldap_connection_close(UNUSED fr_event_list_t *el, void *h, UNUSED v
  */
 static int _ldap_connection_free(fr_ldap_connection_t *c)
 {
+	/*
+	 *	If there are any pending queries, don't free
+	 */
+	if ((c->queries) && (fr_rb_num_elements(c->queries) > 0)) return -1;
+
 	talloc_free_children(c);	/* Force inverted free order */
 
 	fr_ldap_control_clear(c);
