@@ -260,6 +260,19 @@ do { \
 #define PRAGMA(_x) _Pragma(#_x)
 
 /*
+ *	Handle acquire/release macros
+ */
+#ifdef __clang__
+#  define CC_ACQUIRE_HANDLE(_tag) CC_HINT(acquire_handle(_tag))
+#  define CC_USE_HANDLE(_tag) CC_HINT(use_handle(_tag))
+#  define CC_RELEASE_HANDLE(_tag) CC_HINT(release_handle(_tag))
+#else
+#  define CC_ACQUIRE_HANDLE(_tag)
+#  define CC_USE_HANDLE(_tag)
+#  define CC_RELEASE_HANDLE(_tag)
+#endif
+
+/*
  *	Macros for controlling warnings in GCC >= 4.2 and clang >= 2.8
  */
 #if defined(__clang__) && ((__clang_major__ * 100) + __clang_minor__ >= 208)

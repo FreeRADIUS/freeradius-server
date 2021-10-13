@@ -167,17 +167,17 @@ void	fr_pool_free(fr_pool_t *pool);
 /*
  *	Connection lifecycle
  */
-CC_HINT(acquire_handle("conn_pool_handle"))
+CC_ACQUIRE_HANDLE("conn_pool_handle")
 void	*fr_pool_connection_get(fr_pool_t *pool, request_t *request);
 
 void	fr_pool_connection_release(fr_pool_t *pool, request_t *request,
-				   CC_HINT(release_handle("conn_pool_handle")) void *conn);
+				   CC_RELEASE_HANDLE("conn_pool_handle") void *conn);
 
 void	*fr_pool_connection_reconnect(fr_pool_t *pool, request_t *request,
-				      CC_HINT(use_handle("conn_pool_handle")) void *conn);
+				      CC_RELEASE_HANDLE("conn_pool_handle") void *conn);
 
 int	fr_pool_connection_close(fr_pool_t *pool,
-				 request_t *request, CC_HINT(release_handle("conn_pool_handle")) void *conn);
+				 request_t *request, CC_RELEASE_HANDLE("conn_pool_handle") void *conn);
 
 #ifdef __cplusplus
 }
