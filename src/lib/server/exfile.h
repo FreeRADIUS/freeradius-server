@@ -40,9 +40,10 @@ exfile_t	*exfile_init(TALLOC_CTX *ctx, uint32_t entries, fr_time_delta_t idle, b
 void		exfile_enable_triggers(exfile_t *ef, CONF_SECTION *cs, char const *trigger_prefix,
 				       fr_pair_list_t *trigger_args);
 
+CC_HINT(acquire_handle("exfile_fd"))
 int		exfile_open(exfile_t *lf, char const *filename, mode_t permissions);
 
-int		exfile_close(exfile_t *lf, int fd);
+int		exfile_close(exfile_t *lf, CC_HINT(release_handle("exfile_fd")) int fd);
 
 #ifdef __cplusplus
 }
