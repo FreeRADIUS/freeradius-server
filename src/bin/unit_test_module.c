@@ -173,6 +173,13 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client
 		goto error;
 	}
 
+	/*
+	 *	Pretend that the attributes came in "over the wire".
+	 *
+	 *	@todo - do this only for protocol attributes, and not internal ones?
+	 */
+	fr_pair_list_tainted(&request->request_pairs);
+
 	vp = fr_pair_find_by_da(&request->request_pairs, attr_packet_type, 0);
 	if (!vp) {
 		fr_strerror_printf("Input packet does not specify a Packet-Type");
