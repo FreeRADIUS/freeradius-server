@@ -407,7 +407,7 @@ typedef void (*fr_ldap_result_parser_t)(fr_ldap_query_t *query, LDAPMessage *hea
  * libldap structures will be freed by the talloc destructor.
  * The same structure is used both for search queries and modifications
  */
-typedef struct fr_ldap_query_s {
+struct fr_ldap_query_s {
 	fr_rb_node_t		node;		//!< Entry in the tree of outstanding queries.
 
 	LDAPURLDesc		*ldap_url;	//!< parsed URL for current query if the source
@@ -451,7 +451,7 @@ typedef struct fr_ldap_query_s {
 	LDAPMessage		*result;	//!< Head of LDAP results list.
 
 	fr_ldap_result_code_t	ret;		//!< Result code
-} fr_ldap_query_t;
+};
 
 /** Parsed LDAP referral structure
  *
