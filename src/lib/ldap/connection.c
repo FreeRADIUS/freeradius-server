@@ -224,8 +224,21 @@ DIAG_ON(unused-macros)
  * @param[in] h		to close.
  * @param[in] uctx	Connection config and handle.
  */
-static void _ldap_connection_close(UNUSED fr_event_list_t *el, void *h, UNUSED void *uctx)
+static void _ldap_connection_close(fr_event_list_t *el, void *h, UNUSED void *uctx)
 {
+	fr_ldap_connection_t *c = talloc_get_type_abort(h, fr_ldap_connection_t);
+
+	/*
+	 *	Explicitly remove the file descriptor
+	 *
+	 *	Event if the fr_ldap_connection_t has outstanding
+	 *	queries, we still don't want its fd in the event loop.
+	 */
+	if (c->fd >= 0) {
+		fr_event_fd_delete(el, c->fd, FR_EVENT_FILTER_IO);
+		c->fd = -1;
+	}
+
 	talloc_free(h);
 }
 
@@ -588,6 +601,7 @@ static void ldap_trunk_connection_notify(fr_trunk_connection_t *tconn, fr_connec
 	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
 	fr_event_fd_cb_t	read_fn = NULL;
 	fr_event_fd_cb_t	write_fn = NULL;
+
 	switch (notify_on) {
 	case FR_TRUNK_CONN_EVENT_NONE:
 		fr_event_fd_delete(el, ldap_conn->fd, FR_EVENT_FILTER_IO);
