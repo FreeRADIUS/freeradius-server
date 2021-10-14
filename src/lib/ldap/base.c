@@ -39,6 +39,9 @@ USES_APPLE_DEPRECATED_API
 
 LDAP *ldap_global_handle;			//!< Hack for OpenLDAP libldap global initialisation.
 
+static _Thread_local LDAP *ldap_thread_local_handle;	//!< Hack for functions which require an ldap handle
+						///< but don't actually use it for anything.
+
 static uint32_t instance_count = 0;
 
 /** Used to set the global log prefix for functions which don't operate on connections
@@ -1118,6 +1121,41 @@ fr_ldap_query_t *fr_ldap_modify_alloc(TALLOC_CTX *ctx, char const *dn,
 	SET_LDAP_CTRLS(query->clientctrls, clientctrls);
 
 	return query;
+}
+
+static void _ldap_handle_thread_local_free(void *handle)
+{
+#ifdef HAVE_LDAP_UNBIND_EXT_S
+	ldap_unbind_ext_s(handle, NULL, NULL);
+#else
+	ldap_unbind_s(handle);
+#endif
+}
+
+/** Get a thread local dummy LDAP handle
+ *
+ * Many functions in the OpenLDAP API don't actually use the handle
+ * for anything other than writing out error codes.
+ *
+ * This is true for most of the LDAP extensions API functions.
+ *
+ * This gives us a reusable handle that was can pass to those
+ * functions when we don't already have one available.
+ */
+LDAP *fr_ldap_handle_thread_local(void)
+{
+	if (!ldap_thread_local_handle) {
+		LDAP *handle;
+
+#ifdef HAVE_LDAP_INITIALIZE
+		ldap_initialize(&handle, "");
+#else
+		handle = ldap_init("", 0);
+#endif
+		fr_atexit_thread_local(ldap_thread_local_handle, _ldap_handle_thread_local_free, handle);
+	}
+
+	return ldap_thread_local_handle;
 }
 
 /** Change settings global to libldap

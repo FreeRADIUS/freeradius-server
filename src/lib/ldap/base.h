@@ -656,6 +656,8 @@ fr_ldap_rcode_t	fr_ldap_result(LDAPMessage **result, LDAPControl ***ctrls,
 			       char const *dn,
 			       fr_time_delta_t timeout);
 
+LDAP		*fr_ldap_handle_thread_local(void);
+
 int		fr_ldap_global_config(int debug_level, char const *tls_random_file);
 
 int		fr_ldap_init(void);
