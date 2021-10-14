@@ -69,10 +69,10 @@ struct fr_lst_s {
 	fr_lst_cmp_t	cmp;		//!< Comparator function.
 };
 
-static inline fr_lst_index_t stack_item(pivot_stack_t *s, stack_index_t idx) CC_HINT(always_inline, nonnull);
-static inline stack_index_t lst_length(fr_lst_t *lst, stack_index_t stack_index) CC_HINT(always_inline, nonnull);
+static inline fr_lst_index_t stack_item(pivot_stack_t const *s, stack_index_t idx) CC_HINT(always_inline, nonnull);
+static inline stack_index_t lst_length(fr_lst_t const *lst, stack_index_t stack_index) CC_HINT(always_inline, nonnull);
 
-static inline CC_HINT(always_inline, nonnull) void *index_addr(fr_lst_t *lst, void *data)
+static inline CC_HINT(always_inline, nonnull) void *index_addr(fr_lst_t const *lst, void *data)
 {
 	return ((uint8_t *)data) + (lst)->offset;
 }
@@ -88,12 +88,12 @@ static inline CC_HINT(always_inline, nonnull) void *index_addr(fr_lst_t *lst, vo
  *
  * fr_item_insert() needs to see the value actually stored, hence raw_item_index().
  */
-static inline CC_HINT(always_inline, nonnull) fr_lst_index_t raw_item_index(fr_lst_t *lst, void *data)
+static inline CC_HINT(always_inline, nonnull) fr_lst_index_t raw_item_index(fr_lst_t const *lst, void *data)
 {
 	return *(fr_lst_index_t *)index_addr(lst, data);
 }
 
-static inline CC_HINT(always_inline, nonnull) fr_lst_index_t item_index(fr_lst_t *lst, void *data)
+static inline CC_HINT(always_inline, nonnull) fr_lst_index_t item_index(fr_lst_t const *lst, void *data)
 {
 	return  raw_item_index(lst, data) - 1;
 }
@@ -103,13 +103,13 @@ static inline CC_HINT(always_inline, nonnull) void item_index_set(fr_lst_t *lst,
 	(*(fr_lst_index_t *)index_addr(lst, data)) = idx + 1;
 }
 
-static inline CC_HINT(always_inline, nonnull) fr_lst_index_t index_reduce(fr_lst_t *lst, fr_lst_index_t idx)
+static inline CC_HINT(always_inline, nonnull) fr_lst_index_t index_reduce(fr_lst_t const *lst, fr_lst_index_t idx)
 {
 	return idx & ((lst)->capacity - 1);
 }
 
 static inline CC_HINT(always_inline, nonnull)
-bool is_equivalent(fr_lst_t *lst, fr_lst_index_t idx1, fr_lst_index_t idx2)
+bool is_equivalent(fr_lst_t const *lst, fr_lst_index_t idx1, fr_lst_index_t idx2)
 {
 	return (index_reduce(lst, idx1 - idx2) == 0);
 }
@@ -119,12 +119,12 @@ static inline CC_HINT(always_inline, nonnull) void item_set(fr_lst_t *lst, fr_ls
 	lst->p[index_reduce(lst, idx)] = data;
 }
 
-static inline CC_HINT(always_inline, nonnull) void *item(fr_lst_t *lst, fr_lst_index_t idx)
+static inline CC_HINT(always_inline, nonnull) void *item(fr_lst_t const *lst, fr_lst_index_t idx)
 {
 	return (lst->p[index_reduce(lst, idx)]);
 }
 
-static inline CC_HINT(always_inline, nonnull) void *pivot_item(fr_lst_t *lst, stack_index_t idx)
+static inline CC_HINT(always_inline, nonnull) void *pivot_item(fr_lst_t const *lst, stack_index_t idx)
 {
 	return item(lst, stack_item(&lst->s, idx));
 }
@@ -149,7 +149,7 @@ static inline CC_HINT(always_inline, nonnull) void *pivot_item(fr_lst_t *lst, st
  * The index is visible for the size and length functions, since they need
  * to know the subtree they're working on.
  */
-static inline CC_HINT(always_inline, nonnull) bool is_bucket(fr_lst_t *lst, stack_index_t idx)
+static inline CC_HINT(always_inline, nonnull) bool is_bucket(fr_lst_t const *lst, stack_index_t idx)
 {
 	return lst_length(lst, idx) == 1;
 }
@@ -203,12 +203,12 @@ static inline CC_HINT(always_inline, nonnull) void stack_pop(pivot_stack_t *s, u
 	s->depth -= n;
 }
 
-static inline CC_HINT(always_inline, nonnull) stack_index_t stack_depth(pivot_stack_t *s)
+static inline CC_HINT(always_inline, nonnull) stack_index_t stack_depth(pivot_stack_t const *s)
 {
 	return s->depth;
 }
 
-static inline fr_lst_index_t stack_item(pivot_stack_t *s, stack_index_t idx)
+static inline fr_lst_index_t stack_item(pivot_stack_t const *s, stack_index_t idx)
 {
 	return s->data[idx];
 }
@@ -284,7 +284,7 @@ fr_lst_t *_fr_lst_alloc(TALLOC_CTX *ctx, fr_lst_cmp_t cmp, char const *type, siz
 /** The length function for LSTs (how many buckets it contains)
  *
  */
-static inline stack_index_t lst_length(fr_lst_t *lst, stack_index_t stack_index)
+static inline stack_index_t lst_length(fr_lst_t const *lst, stack_index_t stack_index)
 {
 	return stack_depth(&lst->s) - stack_index;
 }
@@ -438,7 +438,7 @@ static bool lst_expand(fr_lst_t *lst)
 	return true;
 }
 
-static inline CC_HINT(always_inline, nonnull) fr_lst_index_t bucket_lwb(fr_lst_t *lst, stack_index_t stack_index)
+static inline CC_HINT(always_inline, nonnull) fr_lst_index_t bucket_lwb(fr_lst_t const *lst, stack_index_t stack_index)
 {
 	if (is_bucket(lst, stack_index)) return lst->idx;
 
@@ -448,7 +448,7 @@ static inline CC_HINT(always_inline, nonnull) fr_lst_index_t bucket_lwb(fr_lst_t
 /*
  * Note: buckets can be empty,
  */
-static inline CC_HINT(always_inline, nonnull) fr_lst_index_t bucket_upb(fr_lst_t *lst, stack_index_t stack_index)
+static inline CC_HINT(always_inline, nonnull) fr_lst_index_t bucket_upb(fr_lst_t const *lst, stack_index_t stack_index)
 {
 	return stack_item(&lst->s, stack_index) - 1;
 }
@@ -789,3 +789,132 @@ void *fr_lst_iter_next(fr_lst_t *lst, fr_lst_iter_t *iter)
 
 	return item(lst, *iter);
 }
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+void fr_lst_verify(char const *file, int line, fr_lst_t const *lst)
+{
+	fr_lst_index_t	fake_pivot_index, reduced_fake_pivot_index, reduced_end;
+	stack_index_t	depth = stack_depth(&(lst->s));
+	int		bucket_size_sum;
+	bool		pivots_in_order = true;
+	bool		pivot_indices_in_order = true;
+
+	fr_fatal_assert_msg(lst, "CONSISTENCY CHECK FAILED %s[%i]: LST pointer NULL", file, line);
+	talloc_get_type_abort(lst, fr_lst_t);
+
+	/*
+	 *	There must be at least the fictitious pivot.
+	 */
+	fr_fatal_assert_msg(depth >= 1, "CONSISTENCY CHECK FAILED %s[%i]: LST pivot stack empty", file, line);
+
+	/*
+	 *	Modulo circularity, idx + the number of elements should be the index
+	 *	of the fictitious pivot.
+	 */
+	fake_pivot_index = stack_item(&(lst->s), 0);
+	reduced_fake_pivot_index = index_reduce(lst, fake_pivot_index);
+	reduced_end = index_reduce(lst, lst->idx + lst->num_elements);
+	fr_fatal_assert_msg(reduced_fake_pivot_index == reduced_end,
+			    "CONSISTENCY CHECK FAILED %s[%i]: fictitious pivot doesn't point past last element",
+			    file, line);
+
+	/*
+	 *	Bucket sizes must make sense.
+	 */
+	if (lst->num_elements) {
+		bucket_size_sum = 0;
+
+		for (stack_index_t stack_index = 0; stack_index < depth; stack_index++)  {
+			fr_lst_index_t bucket_size = bucket_upb(lst, stack_index) - bucket_lwb(lst, stack_index) + 1;
+			fr_fatal_assert_msg(bucket_size <= lst->num_elements,
+					    "CONSISTENCY CHECK FAILED %s[%i]: bucket %u size %u is invalid",
+					    file, line, stack_index, bucket_size);
+			bucket_size_sum += bucket_size;
+		}
+
+		fr_fatal_assert_msg(bucket_size_sum + depth - 1 == lst->num_elements,
+				    "CONSISTENCY CHECK FAILED %s[%i]: buckets inconsistent with number of elements",
+				    file, line);
+	}
+
+	/*
+	 *	No elements should be NULL;
+	 *	they should have the correct index stored,
+	 *	and if a type is specified, they should point at something of that type,
+	 */
+	for (fr_lst_index_t i = 0; i < lst->num_elements; i++) {
+		void	*element = item(lst, lst->idx + i);
+
+		fr_fatal_assert_msg(element, "CONSISTENCY CHECK FAILED %s[%i]: null element pointer at %u",
+				    file, line, lst->idx + i);
+		fr_fatal_assert_msg(is_equivalent(lst, lst->idx + i, item_index(lst, element)),
+				    "CONSISTENCY CHECK FAILED %s[%i]: element %u index mismatch", file, line, i);
+		if (lst->type)  (void) _talloc_get_type_abort(element, lst->type, __location__);
+	}
+
+	/*
+	 * There's nothing more to check for a one-bucket tree.
+	 */
+	if (is_bucket(lst, 0)) return;
+
+	/*
+	 * Otherwise, first, pivots from left to right (aside from the fictitious
+	 * one) should be in ascending order.
+	 */
+	for (stack_index_t stack_index = 1; stack_index + 1 < depth; stack_index++) {
+		void	*current_pivot = pivot_item(lst, stack_index);
+		void	*next_pivot = pivot_item(lst, stack_index + 1);
+
+		if (current_pivot && next_pivot && lst->cmp(current_pivot, next_pivot) < 0) pivots_in_order = false;
+	}
+	fr_fatal_assert_msg(pivots_in_order, "CONSISTENCY CHECK FAILED %s[%i]: pivots not in ascending order",
+			    file, line);
+
+	/*
+	 * Next, the stacked pivot indices should decrease as you ascend from
+	 * the bottom of the pivot stack. Here we *do* include the fictitious
+	 * pivot; we're just comparing indices.
+	 */
+	for (stack_index_t stack_index = 0; stack_index + 1 < depth; stack_index++) {
+		fr_lst_index_t current_pivot_index = stack_item(&(lst->s), stack_index);
+		fr_lst_index_t previous_pivot_index = stack_item(&(lst->s), stack_index + 1);
+
+		if (previous_pivot_index >= current_pivot_index) pivot_indices_in_order = false;
+	}
+	fr_fatal_assert_msg(pivot_indices_in_order, "CONSISTENCY CHECK FAILED %s[%i]: pivots indices not in order",
+			    file, line);
+
+	/*
+	 * Finally...
+	 * values in buckets shouldn't "follow" the pivot to the immediate right (if it exists)
+	 * and shouldn't "precede" the pivot to the immediate left (if it exists)
+	 */
+	for (stack_index_t stack_index = 0; stack_index < depth; stack_index++) {
+		fr_lst_index_t	lwb, upb, pivot_index;
+		void		*pivot_item, *element;
+
+		if (stack_index > 0) {
+			lwb = (stack_index + 1 == depth) ? lst->idx : stack_item(&(lst->s), stack_index + 1);
+			pivot_index = upb = stack_item(&(lst->s), stack_index);
+			pivot_item = item(lst, pivot_index);
+			for (fr_lst_index_t index = lwb; index < upb; index++) {
+				element = item(lst, index);
+				fr_fatal_assert_msg(!element || !pivot_item || lst->cmp(element, pivot_item) <= 0,
+						    "CONSISTENCY CHECK FAILED %s[%i]: element at %u > pivot at %u",
+						    file, line, index, pivot_index);
+			}
+		}
+		if (stack_index + 1 < depth) {
+			upb = stack_item(&(lst->s), stack_index);
+			lwb = pivot_index = stack_item(&(lst->s), stack_index + 1);
+			pivot_item = item(lst, pivot_index);
+			for (fr_lst_index_t index = lwb; index < upb; index++) {
+				element = item(lst, index);
+				fr_fatal_assert_msg(!element || !pivot_item || lst->cmp(pivot_item, element) <= 0,
+						    "CONSISTENCY CHECK FAILED %s[%i]: element at %u < pivot at %u",
+						    file, line, index, pivot_index);
+			}
+		}
+	}
+}
+#endif
