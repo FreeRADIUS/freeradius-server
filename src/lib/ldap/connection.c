@@ -843,7 +843,7 @@ static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_con
 
 			query->referral_depth ++;
 
-			if (fr_ldap_referral_follow(query) == 0) {
+			if (fr_ldap_referral_follow(ttrunk->t, request, query) == 0) {
 			next_follow:
 				ldap_msgfree(result);
 				continue;
@@ -868,7 +868,7 @@ static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_con
 				fr_dlist_talloc_free_item(&query->referrals, query->referral);
 
 				if ((fr_dlist_num_elements(&query->referrals) > 0) &&
-				    (fr_ldap_referral_next(query) == 0)) goto next_follow;
+				    (fr_ldap_referral_next(ttrunk->t, request, query) == 0)) goto next_follow;
 			}
 
 			query->ret = LDAP_RESULT_REFERRAL_FAIL;
