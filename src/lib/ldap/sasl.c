@@ -88,18 +88,22 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *uctx
 		switch (cb_p->id) {
 		case SASL_CB_AUTHNAME:
 			cb_p->result = sasl_ctx->identity;
+			cb_p->len = strlen(sasl_ctx->identity);
 			break;
 
 		case SASL_CB_PASS:
 			cb_p->result = sasl_ctx->password;
+			cb_p->len = strlen(sasl_ctx->password);
 			break;
 
 		case SASL_CB_USER:
 			cb_p->result = sasl_ctx->proxy ? sasl_ctx->proxy : sasl_ctx->identity;
+			cb_p->len = sasl_ctx->proxy ? strlen(sasl_ctx->proxy) : strlen(sasl_ctx->identity);
 			break;
 
 		case SASL_CB_GETREALM:
 			cb_p->result = sasl_ctx->realm;
+			cb_p->len = strlen(sasl_ctx->realm);
 			break;
 
 		default:
