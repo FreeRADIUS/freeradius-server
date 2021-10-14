@@ -86,6 +86,13 @@ SOURCES		:= \
 		   value.c \
 		   version.c
 
+#
+#  Add the fuzzer only if everything was built with the fuzzing flags.
+#
+ifneq "$(findstring fuzzer,${CFLAGS})" ""
+SOURCES		+= fuzzer.c
+endif
+
 HEADERS		:= $(subst src/lib/,,$(wildcard src/lib/util/*.h))
 
 SRC_CFLAGS	:= -D_LIBRADIUS -DNO_ASSERT -I$(top_builddir)/src
