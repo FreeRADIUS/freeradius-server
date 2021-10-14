@@ -87,7 +87,7 @@ int fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const
 	}
 #endif
 
-	DEBUG3("New libldap handle %p", handle);
+	DEBUG3("New connection %p libldap handle %p", c, handle);
 
 	c->config = config;
 	c->handle = handle;
@@ -259,10 +259,10 @@ static int _ldap_connection_free(fr_ldap_connection_t *c)
 			      NUM_ELEMENTS(our_clientctrls),
 			      c, NULL, NULL);
 
-	DEBUG3("Closing libldap handle %p", c->handle);
+	DEBUG3("Closing connection %p libldap handle %p", c->handle, c);
 	ldap_unbind_ext(c->handle, our_serverctrls, our_clientctrls);	/* Same code as ldap_unbind_ext_s */
 #else
-	DEBUG3("Closing libldap handle %p", c->handle);
+	DEBUG3("Closing connection %p libldap handle %p", c->handle, c);
 	ldap_unbind(c->handle);						/* Same code as ldap_unbind_s */
 #endif
 	c->handle = NULL;
@@ -365,7 +365,7 @@ static fr_connection_state_t _ldap_connection_init(void **h, fr_connection_t *co
 	c = fr_ldap_connection_alloc(conn);
 	c->conn = conn;
 
-	fr_connection_add_watch_pre(conn, FR_CONNECTION_STATE_CLOSED, _ldap_connection_close_watch, false, c);
+	fr_connection_add_watch_pre(conn, FR_CONNECTION_STATE_CLOSED, _ldap_connection_close_watch, true, c);
 
 	/*
 	 *	Configure/allocate the libldap handle
