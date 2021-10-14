@@ -61,12 +61,11 @@ fr_ldap_referral_t *fr_ldap_referral_alloc(TALLOC_CTX *ctx)
 /** Callback to send LDAP referral queries when a trunk becomes active
  *
  */
-static void _ldap_referral_send (UNUSED fr_trunk_t *trunk, UNUSED fr_trunk_state_t prev,
+static void _ldap_referral_send(UNUSED fr_trunk_t *trunk, UNUSED fr_trunk_state_t prev,
 			        UNUSED fr_trunk_state_t state, void *uctx)
 {
 	fr_ldap_referral_t	*referral = talloc_get_type_abort(uctx, fr_ldap_referral_t);
 	fr_ldap_query_t		*query = referral->query;
-	request_t		*request = query->request;
 
 	/*
 	 *	If referral is set, then another LDAP trunk has gone active first and sent the referral
@@ -77,11 +76,10 @@ static void _ldap_referral_send (UNUSED fr_trunk_t *trunk, UNUSED fr_trunk_state
 	 *	Enqueue referral query on active trunk connection
 	 */
 	query->referral = referral;
-	query->ttrunk = referral->ttrunk;
-	query->treq = fr_trunk_request_alloc(query->ttrunk->trunk, query->request);
-	fr_trunk_request_enqueue(&query->treq, query->ttrunk->trunk, query->request, query, NULL);
+	query->treq = fr_trunk_request_alloc(referral->ttrunk->trunk, NULL);
+	fr_trunk_request_enqueue(&query->treq, referral->ttrunk->trunk, NULL, query, NULL);
 
-	RDEBUG4("Pending LDAP referral query queued on active trunk");
+	DEBUG3("Pending LDAP referral query queued on active trunk");
 }
 
 
@@ -96,11 +94,9 @@ static void _ldap_referral_send (UNUSED fr_trunk_t *trunk, UNUSED fr_trunk_state
  * 	- 0 on success.
  * 	- < 0 on failure.
  */
-int fr_ldap_referral_follow(fr_ldap_query_t *query)
+int fr_ldap_referral_follow(fr_ldap_thread_t *t, request_t *request, fr_ldap_query_t *query)
 {
-	request_t		*request = query->request;
-	fr_ldap_config_t	*handle_config = query->ttrunk->t->config;
-	fr_ldap_thread_t	*thread = query->ttrunk->t;
+	fr_ldap_config_t	*config = t->config;
 	fr_ldap_thread_trunk_t	*ttrunk = NULL;
 	int			referral_no = -1;
 	fr_ldap_referral_t	*referral;
@@ -129,7 +125,8 @@ int fr_ldap_referral_follow(fr_ldap_query_t *query)
 
 	while (query->referral_urls[++referral_no]) {
 		if (!ldap_is_ldap_url(query->referral_urls[referral_no])) {
-			RERROR("Referral %s does not look like an LDAP URL", query->referral_urls[referral_no]);
+			ROPTIONAL(RERROR, ERROR, "Referral %s does not look like an LDAP URL",
+				  query->referral_urls[referral_no]);
 			continue;
 		}
 
@@ -139,7 +136,8 @@ int fr_ldap_referral_follow(fr_ldap_query_t *query)
 		referral->query = query;
 
 		if (ldap_url_parse(query->referral_urls[referral_no], &referral->referral_url)) {
-			RERROR("Failed parsing referral LDAP URL %s", query->referral_urls[referral_no]);
+			ROPTIONAL(RERROR, ERROR,
+				  "Failed parsing referral LDAP URL %s", query->referral_urls[referral_no]);
 		free_referral:
 			talloc_free(referral);
 			continue;
@@ -148,7 +146,7 @@ int fr_ldap_referral_follow(fr_ldap_query_t *query)
 		referral->host_uri = talloc_asprintf(referral, "%s://%s:%d", referral->referral_url->lud_scheme,
 						     referral->referral_url->lud_host, referral->referral_url->lud_port);
 
-		if (handle_config->use_referral_credentials) {
+		if (config->use_referral_credentials) {
 			char	**ext;
 
 			/*
@@ -174,8 +172,9 @@ int fr_ldap_referral_follow(fr_ldap_query_t *query)
 					p = strchr(p, '=');
 					if (!p) {
 					bad_ext:
-						RERROR("Failed parsing extension \"%s\": "
-						       "No attribute/value delimiter '='", *ext);
+						ROPTIONAL(RERROR, ERROR,
+							  "Failed parsing extension \"%s\": "
+							  "No attribute/value delimiter '='", *ext);
 						goto free_referral;
 					}
 					referral->identity = p + 1;
@@ -189,33 +188,36 @@ int fr_ldap_referral_follow(fr_ldap_query_t *query)
 
 				default:
 					if (critical) {
-						RERROR("Failed parsing critical extension \"%s\": "
-						       "Not supported by FreeRADIUS", *ext);
+						ROPTIONAL(RERROR, ERROR,
+							  "Failed parsing critical extension \"%s\": "
+							  "Not supported by FreeRADIUS", *ext);
 						goto free_referral;
 					}
-					DEBUG2("Skipping unsupported extension \"%s\"", *ext);
+					ROPTIONAL(RDEBUG2, DEBUG2, "Skipping unsupported extension \"%s\"", *ext);
 					continue;
 				}
 			}
 		} else {
-			if (handle_config->rebind) {
-				referral->identity = handle_config->admin_identity;
-				referral->password = handle_config->admin_password;
+			if (config->rebind) {
+				referral->identity = config->admin_identity;
+				referral->password = config->admin_password;
 			}
 		}
 
 		fr_dlist_insert_tail(&query->referrals, referral);
-		if (fr_thread_ldap_trunk_state(thread, referral->host_uri,
+		if (fr_thread_ldap_trunk_state(t, referral->host_uri,
 					       referral->identity) != FR_TRUNK_STATE_ACTIVE) {
-			RDEBUG3("No active LDAP trunk for URI %s, bind DN %s", referral->host_uri, referral->identity);
+			ROPTIONAL(RDEBUG3, DEBUG3,
+				  "No active LDAP trunk for URI %s, bind DN %s",
+				  referral->host_uri, referral->identity);
 			continue;
 		}
 
-		ttrunk = fr_thread_ldap_trunk_get(thread, referral->host_uri, referral->identity,
-						  referral->password, request, handle_config);
+		ttrunk = fr_thread_ldap_trunk_get(t, referral->host_uri, referral->identity,
+						  referral->password, request, config);
 
 		if (!ttrunk) {
-			RERROR("Unable to connect to LDAP referral URL");
+			ROPTIONAL(RERROR, ERROR, "Unable to connect to LDAP referral URL");
 			fr_dlist_talloc_free_item(&query->referrals, referral);
 			continue;
 		}
@@ -223,7 +225,6 @@ int fr_ldap_referral_follow(fr_ldap_query_t *query)
 		/*
 		 *	We have an active trunk enqueue the request
 		 */
-		query->ttrunk = ttrunk;
 		query->referral = referral;
 		query->treq = fr_trunk_request_alloc(ttrunk->trunk, request);
 		fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL);
@@ -234,7 +235,7 @@ int fr_ldap_referral_follow(fr_ldap_query_t *query)
 	 *	None of the referrals parsed successfully
 	 */
 	if (fr_dlist_num_elements(&query->referrals) == 0) {
-		RERROR("No valid LDAP referrals to follow");
+		ROPTIONAL(RERROR, ERROR, "No valid LDAP referrals to follow");
 		return -1;
 	}
 
@@ -244,15 +245,15 @@ int fr_ldap_referral_follow(fr_ldap_query_t *query)
 	 */
 	referral = NULL;
 	while ((referral = fr_dlist_next(&query->referrals, referral))) {
-		ttrunk = fr_thread_ldap_trunk_get(thread, referral->host_uri, referral->identity,
-						 referral->password, request, handle_config);
+		ttrunk = fr_thread_ldap_trunk_get(t, referral->host_uri, referral->identity,
+						  referral->password, request, config);
 		if (!ttrunk) {
 			fr_dlist_talloc_free_item(&query->referrals, referral);
 			continue;
 		}
 		referral->ttrunk = ttrunk;
 		fr_trunk_add_watch(ttrunk->trunk, FR_TRUNK_STATE_ACTIVE, _ldap_referral_send, true, referral);
-		RDEBUG4("Watch inserted to send referral query on active trunk.");
+		ROPTIONAL(RDEBUG4, DEBUG4, "Watch inserted to send referral query on active trunk");
 	}
 
 	return 0;
@@ -277,26 +278,25 @@ int fr_ldap_referral_follow(fr_ldap_query_t *query)
  *	- 0 on success.
  *	- < 0 on failure.
  */
-int fr_ldap_referral_next(fr_ldap_query_t *query)
+int fr_ldap_referral_next(fr_ldap_thread_t *t, request_t *request, fr_ldap_query_t *query)
 {
-        request_t		*request = query->request;
-	fr_ldap_config_t	*handle_config = query->ttrunk->t->config;
-	fr_ldap_thread_t	*thread = query->ttrunk->t;
+	fr_ldap_config_t	*config = t->config;
 	fr_ldap_referral_t	*referral = NULL;
 	fr_ldap_thread_trunk_t	*ttrunk;
 
 	while ((referral = fr_dlist_next(&query->referrals, referral))) {
-		if (fr_thread_ldap_trunk_state(thread, referral->host_uri,
+		if (fr_thread_ldap_trunk_state(t, referral->host_uri,
 					       referral->identity) != FR_TRUNK_STATE_ACTIVE) {
-			RDEBUG3("No active LDAP trunk for URI %s, bind DN %s", referral->host_uri, referral->identity);
+			ROPTIONAL(RDEBUG3, DEBUG3, "No active LDAP trunk for URI %s, bind DN %s",
+				  referral->host_uri, referral->identity);
 			continue;
 		}
 
-		ttrunk = fr_thread_ldap_trunk_get(thread, referral->host_uri, referral->identity,
-						  referral->password, request, handle_config);
+		ttrunk = fr_thread_ldap_trunk_get(t, referral->host_uri, referral->identity,
+						  referral->password, request, config);
 
 		if (!ttrunk) {
-			RERROR("Unable to connect to LDAP referral URL");
+			ROPTIONAL(RERROR, ERROR, "Unable to connect to LDAP referral URL");
 			fr_dlist_talloc_free_item(&query->referrals, referral);
 		        continue;
 		}
@@ -304,7 +304,6 @@ int fr_ldap_referral_next(fr_ldap_query_t *query)
 		/*
 		 *	We have an active trunk enqueue the request
 		 */
-		query->ttrunk = ttrunk;
 		query->referral = referral;
 		query->treq = fr_trunk_request_alloc(ttrunk->trunk, request);
 		fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL);
@@ -315,7 +314,7 @@ int fr_ldap_referral_next(fr_ldap_query_t *query)
 	 *	None of the referrals parsed successfully
 	 */
 	if (fr_dlist_num_elements(&query->referrals) == 0) {
-		RERROR("No valid LDAP referrals to follow");
+		ROPTIONAL(RERROR, ERROR, "No valid LDAP referrals to follow");
 		return -1;
 	}
 
@@ -325,15 +324,15 @@ int fr_ldap_referral_next(fr_ldap_query_t *query)
 	 */
 	referral = NULL;
 	while ((referral = fr_dlist_next(&query->referrals, referral))) {
-		ttrunk = fr_thread_ldap_trunk_get(thread, referral->host_uri, referral->identity,
-						  referral->password, request, handle_config);
+		ttrunk = fr_thread_ldap_trunk_get(t, referral->host_uri, referral->identity,
+						  referral->password, request, config);
 		if (!ttrunk) {
 			fr_dlist_talloc_free_item(&query->referrals, referral);
 			continue;
 		}
 		referral->ttrunk = ttrunk;
 		fr_trunk_add_watch(ttrunk->trunk, FR_TRUNK_STATE_ACTIVE, _ldap_referral_send, true, referral);
-		RDEBUG4("Watch inserted to send referral query on active trunk.");
+		ROPTIONAL(RDEBUG4, DEBUG4, "Watch inserted to send referral query on active trunk");
 	}
 
 	return 0;
