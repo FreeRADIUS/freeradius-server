@@ -396,10 +396,11 @@ static int uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
  */
 static void ldap_query_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
-	fr_ldap_query_t		*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
-	request_t		*request = query->request;
+	fr_trunk_request_t	*treq = talloc_get_type_abort(uctx, fr_trunk_request_t);
+	fr_ldap_query_t		*query = talloc_get_type_abort(treq->preq, fr_ldap_query_t);
+	request_t		*request = treq->request;
 
-	RERROR("Timeout waiting for LDAP query");
+	ROPTIONAL(RERROR, ERROR, "Timeout waiting for LDAP query");
 	if (query->msgid) {
 		fr_trunk_request_signal_cancel(query->treq);
 	}
@@ -582,7 +583,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	fr_trunk_request_enqueue(&query->treq, query->ttrunk->trunk, request, query, NULL);
 
 	fr_event_timer_in(query, unlang_interpret_event_list(request), &query->ev, handle_config->res_timeout,
-			  ldap_query_timeout, query);
+			  ldap_query_timeout, query->treq);
 
 	return unlang_xlat_yield(request, ldap_xlat_resume, ldap_xlat_signal, query);
 }
