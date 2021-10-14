@@ -477,7 +477,7 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	memset(out, 0, sizeof(*out));
 
 	end = value + inlen;
-	while (isspace((int) *value) && (value < end)) value++;
+	while ((value < end) && isspace((int) *value)) value++;
 	if (value == end) {
 		fr_strerror_const("Empty IPv4 address string is invalid");
 		return -1;
@@ -614,7 +614,7 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	memset(out, 0, sizeof(*out));
 
 	end = value + inlen;
-	while (isspace((int) *value) && (value < end)) value++;
+	while ((value < end) && isspace((int) *value)) value++;
 	if (value == end) {
 		fr_strerror_const("Empty IPv4 address string is invalid");
 		return -1;
@@ -730,7 +730,7 @@ int fr_inet_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, boo
 	char const *end;
 
 	end = value + inlen;
-	while (isspace((int) *value) && (value < end)) value++;
+	while ((value < end) && isspace((int) *value)) value++;
 	if (value == end) {
 		fr_strerror_const("Empty IPv4 address string is invalid");
 		return -1;
