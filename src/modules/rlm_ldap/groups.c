@@ -110,13 +110,11 @@ static unlang_action_t rlm_ldap_group_name2dn(rlm_rcode_t *p_result, rlm_ldap_t 
 		RETURN_MODULE_INVALID;
 	}
 
-	if (fr_ldap_trunk_search(unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, base_dn,
-				 inst->groupobj_scope, filter, attrs, NULL, NULL) < 0 ) {
-		rcode = RLM_MODULE_FAIL;
+	if (fr_ldap_trunk_search(&rcode,
+				 unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, base_dn,
+				 inst->groupobj_scope, filter, attrs, NULL, NULL, false) < 0 ) {
 		goto finish;
 	}
-	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
-
 	switch (rcode) {
 	case RLM_MODULE_OK:
 		break;
@@ -225,12 +223,11 @@ static unlang_action_t rlm_ldap_group_dn2name(rlm_rcode_t *p_result, rlm_ldap_t 
 
 	RDEBUG2("Resolving group DN \"%s\" to group name", dn);
 
-	if (fr_ldap_trunk_search(unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, dn,
-				 LDAP_SCOPE_BASE, NULL, attrs, NULL, NULL) < 0) {
+	if (fr_ldap_trunk_search(&rcode,
+				 unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, dn,
+				 LDAP_SCOPE_BASE, NULL, attrs, NULL, NULL, false) < 0) {
 		RETURN_MODULE_FAIL;
 	}
-	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
-
 	switch (rcode) {
 	case RLM_MODULE_OK:
 		break;
@@ -475,13 +472,12 @@ unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, rlm_ldap_t co
 		RETURN_MODULE_INVALID;
 	}
 
-	if (fr_ldap_trunk_search(unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, base_dn,
-				 inst->groupobj_scope, filter, attrs, NULL, NULL) < 0) {
+	if (fr_ldap_trunk_search(&rcode,
+				 unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, base_dn,
+				 inst->groupobj_scope, filter, attrs, NULL, NULL, false) < 0) {
 		rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
-	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
-
 	switch (rcode) {
 	case RLM_MODULE_OK:
 		break;
@@ -630,12 +626,12 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, rlm_ldap_
 	}
 
 	RINDENT();
-	if (fr_ldap_trunk_search(unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, base_dn,
-				 inst->groupobj_scope, filter, NULL, NULL, NULL) < 0) {
+	if (fr_ldap_trunk_search(&rcode,
+				 unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, base_dn,
+				 inst->groupobj_scope, filter, NULL, NULL, NULL, false) < 0) {
 		REXDENT();
 		RETURN_MODULE_FAIL;
 	}
-	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
 	REXDENT();
 	switch (rcode) {
 	case RLM_MODULE_OK:
@@ -677,12 +673,12 @@ unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result, rlm_ldap_t
 
 	RDEBUG2("Checking user object's %s attributes", inst->userobj_membership_attr);
 	RINDENT();
-	if (fr_ldap_trunk_search(unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, dn,
-				 LDAP_SCOPE_BASE, NULL, attrs, NULL, NULL) < 0) {
+	if (fr_ldap_trunk_search(&rcode,
+				 unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, dn,
+				 LDAP_SCOPE_BASE, NULL, attrs, NULL, NULL, false) < 0) {
 		REXDENT();
 		goto finish;
 	}
-	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
 	REXDENT();
 	switch (rcode) {
 	case RLM_MODULE_OK:

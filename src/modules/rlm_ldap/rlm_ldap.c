@@ -504,7 +504,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	ldap_xlat_thread_inst_t	*xt = talloc_get_type_abort(xlat_thread_inst, ldap_xlat_thread_inst_t);
 	char			*host_url;
 	fr_ldap_config_t const	*handle_config = &xt->t->inst->handle_config;
-
+	fr_ldap_thread_trunk_t	*ttrunk;
 	fr_ldap_query_t		*query = NULL;
 
 	LDAPURLDesc		*ldap_url;
@@ -571,16 +571,16 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	                        	   ldap_url->lud_host, ldap_url->lud_port);
 	}
 
-	query->ttrunk = fr_thread_ldap_trunk_get(xt->t, host_url, handle_config->admin_identity,
-						 handle_config->admin_password, request, handle_config);
-	if (!query->ttrunk) {
+	ttrunk = fr_thread_ldap_trunk_get(xt->t, host_url, handle_config->admin_identity,
+					  handle_config->admin_password, request, handle_config);
+	if (!ttrunk) {
 		REDEBUG("Unable to get LDAP query for xlat");
 		goto error;
 	}
 
 	query->ldap_url = ldap_url;	/* query destructor will free URL */
 
-	fr_trunk_request_enqueue(&query->treq, query->ttrunk->trunk, request, query, NULL);
+	fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL);
 
 	fr_event_timer_in(query, unlang_interpret_event_list(request), &query->ev, handle_config->res_timeout,
 			  ldap_query_timeout, query->treq);
@@ -809,11 +809,11 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 					   inst->handle_config.admin_password, request, &inst->handle_config);
 	if (!ttrunk) goto free_expanded;
 
-	fr_ldap_trunk_search(unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, ldap_url->lud_dn,
-			     ldap_url->lud_scope, ldap_url->lud_filter, expanded.attrs, NULL, NULL);
-
-	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
-
+	if (fr_ldap_trunk_search(&rcode,
+			    	 unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, ldap_url->lud_dn,
+				 ldap_url->lud_scope, ldap_url->lud_filter, expanded.attrs, NULL, NULL, false) < 0) {
+		goto free_expanded;
+	}
 	switch (rcode) {
 	case RLM_MODULE_OK:
 		rcode = RLM_MODULE_UPDATED;
@@ -1189,11 +1189,9 @@ static unlang_action_t rlm_ldap_map_profile(rlm_rcode_t *p_result, rlm_ldap_t co
 		RETURN_MODULE_INVALID;
 	}
 
-	if (fr_ldap_trunk_search(unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, dn,
-				 LDAP_SCOPE_BASE, filter, expanded->attrs, NULL, NULL) < 0) RETURN_MODULE_FAIL;
-
-	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
-
+	if (fr_ldap_trunk_search(&rcode,
+				 unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, dn,
+				 LDAP_SCOPE_BASE, filter, expanded->attrs, NULL, NULL, false) < 0) RETURN_MODULE_FAIL;
 	switch (rcode) {
 	case RLM_MODULE_OK:
 		break;
@@ -1648,14 +1646,12 @@ static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst
 		goto error;
 	}
 
-	if (fr_ldap_trunk_modify(unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, dn,
-				 modify, NULL, NULL) < 0 ){
+	if (fr_ldap_trunk_modify(&rcode, unlang_interpret_frame_talloc_ctx(request),
+				 &query, request, ttrunk,
+				 dn, modify, NULL, NULL, false) < 0 ){
 		rcode = RLM_MODULE_FAIL;
 		goto error;
 	}
-
-	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
-
 	switch (rcode) {
 	case RLM_MODULE_OK:
 		break;
