@@ -433,11 +433,8 @@ struct fr_ldap_query_s {
 	int			msgid;		//!< The unique identifier for this query.
 						///< Uniqueness is only per connection.
 
-	fr_ldap_thread_trunk_t	*ttrunk;	//!< Trunk this query is running on
 	fr_trunk_request_t	*treq;		//!< Trunk request this query is associated with
 	fr_ldap_connection_t	*ldap_conn;	//!< LDAP connection this query is running on.
-
-	request_t		*request;	//!< The request this query relates to
 
 	fr_event_timer_t const	*ev;		//!< Event for timing out the query
 
