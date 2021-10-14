@@ -769,7 +769,8 @@ fr_ldap_rcode_t fr_ldap_search_async(int *msgid, request_t *request,
 /** Handle the return code from parsed LDAP results to set the module rcode
  *
  */
-static unlang_action_t ldap_trunk_query_results(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static unlang_action_t ldap_trunk_query_results(rlm_rcode_t *p_result, UNUSED int *priority,
+						UNUSED request_t *request, void *uctx)
 {
 	fr_ldap_query_t		*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
 
@@ -823,10 +824,11 @@ static unlang_action_t ldap_trunk_query_start(UNUSED rlm_rcode_t *p_result, UNUS
 	return UNLANG_ACTION_YIELD;
 }
 
-/** Run an async search LDAP query on a trunk connection
+/** Run an async or sync search LDAP query on a trunk connection
  *
+ * @param[out] p_result		from synchronous evaluation.
  * @param[in] ctx		to allocate the query in.
- * @param[out] query		that has been allocated.
+ * @param[out] out		that has been allocated.
  * @param[in] request		this query relates to.
  * @param[in] ttrunk		to submit the query to.
  * @param[in] base_dn		for the search.
@@ -835,11 +837,18 @@ static unlang_action_t ldap_trunk_query_start(UNUSED rlm_rcode_t *p_result, UNUS
  * @param[in] attrs		to be returned.
  * @param[in] serverctrls	specific to this query.
  * @param[in] clientctrls	specific to this query.
+ * @param[in] is_async		If true, will return UNLANG_ACTION_YIELD
+ *				and push a search onto the unlang stack
+ *				for the current request.
+ *				If false, will perform a synchronous search
+ *				and provide the result in p_result.
  * @return
  *	- UNLANG_ACTION_FAIL on error.
  *	- UNLANG_ACTION_YIELD on success.
+ *	- UNLANG_ACTION_CALCULATE_RESULT if the query was run synchronously.
  */
-unlang_action_t fr_ldap_trunk_search(TALLOC_CTX *ctx,
+unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
+				     TALLOC_CTX *ctx,
 				     fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				     char const *base_dn, int scope, char const *filter, char const * const *attrs,
 				     LDAPControl **serverctrls, LDAPControl **clientctrls,
@@ -852,6 +861,7 @@ unlang_action_t fr_ldap_trunk_search(TALLOC_CTX *ctx,
 
 	if (fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL) != FR_TRUNK_ENQUEUE_OK) {
 	error:
+		*p_result = RLM_MODULE_FAIL;
 		talloc_free(query);
 		return UNLANG_ACTION_FAIL;
 	}
@@ -863,24 +873,40 @@ unlang_action_t fr_ldap_trunk_search(TALLOC_CTX *ctx,
 
 	*out = query;
 
-	return is_async ? action : UNLANG_ACTION_YIELD;
+	/*
+	 *	Hack until everything is async
+	 */
+	if (!is_async) {
+		*p_result = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	return UNLANG_ACTION_YIELD;
 }
 
-/** Run an async modification LDAP query on a trunk connection
+/** Run an async or sync modification LDAP query on a trunk connection
  *
+ * @param[out] p_result		from synchronous evaluation.
  * @param[in] ctx		to allocate the query in.
- * @param[out] query		that has been allocated.
+ * @param[out] out		that has been allocated.
  * @param[in] request		this query relates to.
  * @param[in] ttrunk		to submit the query to.
  * @param[in] dn		of the object being modified.
  * @param[in] mods		to be performed.
  * @param[in] serverctrls	specific to this query.
  * @param[in] clientctrls	specific to this query.
+ * @param[in] is_async		If true, will return UNLANG_ACTION_YIELD
+ *				and push a modify onto the unlang stack
+ *				for the current request.
+ *				If false, will perform a synchronous search
+ *				and provide the result in p_result.
  * @return
  *	- UNLANG_ACTION_FAIL on error.
  *	- UNLANG_ACTION_YIELD on success.
+ *	- UNLANG_ACTION_CALCULATE_RESULT if the query was run synchronously.
  */
-unlang_action_t fr_ldap_trunk_modify(TALLOC_CTX *ctx,
+unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
+				     TALLOC_CTX *ctx,
 				     fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
 				     char const *dn, LDAPMod *mods[],
 				     LDAPControl **serverctrls, LDAPControl **clientctrls,
@@ -893,6 +919,7 @@ unlang_action_t fr_ldap_trunk_modify(TALLOC_CTX *ctx,
 
 	if (fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL) != FR_TRUNK_ENQUEUE_OK) {
 	error:
+		*p_result = RLM_MODULE_FAIL;
 		talloc_free(query);
 		return UNLANG_ACTION_FAIL;
 	}
@@ -904,7 +931,15 @@ unlang_action_t fr_ldap_trunk_modify(TALLOC_CTX *ctx,
 
 	*out = query;
 
-	return is_async ? action : UNLANG_ACTION_YIELD;
+	/*
+	 *	Hack until everything is async
+	 */
+	if (!is_async) {
+		*p_result = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	return UNLANG_ACTION_YIELD;
 }
 
 /** Modify something in the LDAP directory
@@ -987,8 +1022,8 @@ finish:
  * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
  */
 fr_ldap_rcode_t fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_connection_t **pconn,
-			       char const *dn, LDAPMod *mods[],
-			       LDAPControl **serverctrls, LDAPControl **clientctrls)
+				     char const *dn, LDAPMod *mods[],
+				     LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
 	LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
 	LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];

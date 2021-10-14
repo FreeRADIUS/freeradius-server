@@ -116,12 +116,12 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, request_t *request, fr_ld
 		return NULL;
 	}
 
-	if (fr_ldap_trunk_search(unlang_interpret_frame_talloc_ctx(request), &query ,request, ttrunk, base_dn,
-				inst->userobj_scope, filter, attrs, serverctrls, NULL) < 0) {
+	if (fr_ldap_trunk_search(rcode,
+				 unlang_interpret_frame_talloc_ctx(request), &query ,request, ttrunk, base_dn,
+				 inst->userobj_scope, filter, attrs, serverctrls, NULL, false) < 0) {
 		*rcode = RLM_MODULE_FAIL;
 		return NULL;
 	}
-	*rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
 
 	if (*rcode != RLM_MODULE_OK) return NULL;
 

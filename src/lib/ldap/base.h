@@ -602,8 +602,19 @@ fr_ldap_query_t *fr_ldap_search_alloc(TALLOC_CTX *ctx,
 fr_ldap_query_t *fr_ldap_modify_alloc(TALLOC_CTX *ctx, char const *dn,
 				      LDAPMod *mods[], LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-int fr_ldap_trunk_modify(TALLOC_CTX *ctx, fr_ldap_query_t **query, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
-			 char const *dn, LDAPMod *mods[], LDAPControl **serverctrls, LDAPControl **clientctrls);
+unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
+				     TALLOC_CTX *ctx,
+				     fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+				     char const *base_dn, int scope, char const *filter, char const * const *attrs,
+				     LDAPControl **serverctrls, LDAPControl **clientctrls,
+				     bool is_async);
+
+unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
+				     TALLOC_CTX *ctx,
+				     fr_ldap_query_t **out, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+				     char const *dn, LDAPMod *mods[],
+				     LDAPControl **serverctrls, LDAPControl **clientctrls,
+				     bool is_async);
 
 /*
  *	ldap.c - Wrappers arounds OpenLDAP functions.
