@@ -910,9 +910,9 @@ static void ldap_trunk_request_demux(fr_trunk_connection_t *tconn, fr_connection
 		/*
 		 *	Mark the trunk request as complete and set the request as runnable
 		 */
-		fr_trunk_request_signal_complete(query->treq);
 		if (query->treq->request) unlang_interpret_mark_runnable(query->treq->request);
-
+		fr_trunk_request_signal_complete(query->treq);
+		query->treq = NULL;
 	} while (1);
 }
 
