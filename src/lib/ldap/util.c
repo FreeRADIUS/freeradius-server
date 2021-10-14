@@ -261,26 +261,23 @@ bool fr_ldap_util_is_dn(char const *in, size_t inlen)
 
 /** Parse a subset (just server side sort for now) of LDAP URL extensions
  *
- * @param[out] sss		Where to write a pointer to the server side sort control
- *				we created.
- * @param[in] request		The current request.
- * @param[in] conn		Handle to allocate controls under.
+ * @param[out] sss		Array of LDAPControl * pointers to add controls to.
+ * @param[in] sss_len		How many elements remain in the sss array.
  * @param[in] extensions	A NULL terminated array of extensions.
  * @return
- *	- 0 on success.
+ *	- >0 the number of controls added.
+ *	- 0 if no controls added.
  *	- -1 on failure.
  */
-int fr_ldap_parse_url_extensions(LDAPControl **sss, request_t *request,
-#ifndef HAVE_LDAP_CREATE_SORT_CONTROL
-				 UNUSED
-#endif
-				 fr_ldap_connection_t *conn, char **extensions)
+int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extensions[])
 {
+	LDAPControl **sss_p = sss, **sss_end = sss_p + sss_len;
 	int i;
 
-	*sss = NULL;
-
-	if (!extensions) return 0;
+	if (!extensions) {
+		*sss_p = NULL;
+		return 0;
+	}
 
 	/*
 	 *	Parse extensions in the LDAP URL
@@ -306,34 +303,41 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, request_t *request,
 			p += 3;
 			p = strchr(p, '=');
 			if (!p) {
-				REDEBUG("Server side sort extension must be in the format \"[!]sss=<key>[,key]\"");
+				fr_strerror_const("Server side sort extension must be "
+						  "in the format \"[!]sss=<key>[,key]\"");
 				return -1;
 			}
 			p++;
 
 			ret = ldap_create_sort_keylist(&keys, p);
 			if (ret != LDAP_SUCCESS) {
-				REDEBUG("Invalid server side sort value \"%s\": %s", p, ldap_err2string(ret));
+				fr_strerror_printf("Invalid server side sort value \"%s\": %s",
+						   p, ldap_err2string(ret));
 				return -1;
 			}
 
-			if (*sss) ldap_control_free(*sss);
+			if (*sss_p) ldap_control_free(*sss_p);
 
-			ret = ldap_create_sort_control(conn->handle, keys, is_critical ? 1 : 0, sss);
+			ret = ldap_create_sort_control(fr_ldap_handle_thread_local(), keys, is_critical ? 1 : 0, sss_p);
 			ldap_free_sort_keylist(keys);
 			if (ret != LDAP_SUCCESS) {
-				ERROR("Failed creating server sort control: %s", ldap_err2string(ret));
+				fr_strerror_printf("Failed creating server sort control: %s",
+						   ldap_err2string(ret));
 				return -1;
 			}
+			sss_p++;
 
 			continue;
 		}
 #endif
 
-		RWDEBUG("URL extension \"%s\" ignored", p);
+		fr_strerror_printf("URL extension \"%s\" not supported", p);
+		return -1;
 	}
 
-	return 0;
+	*sss_p = NULL;	/* Terminate */
+
+	return (sss_end - sss_p);
 }
 
 /** Convert a berval to a talloced string
