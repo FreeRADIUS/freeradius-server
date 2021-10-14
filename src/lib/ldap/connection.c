@@ -740,7 +740,7 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
  * @param[in] conn	Connection handle for these results.
  * @param[in] uctx	Thread specific trunk structure - contains tree of pending queries.
  */
-static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx)
+static void ldap_trunk_request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx)
 {
 	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
 	fr_ldap_thread_trunk_t	*ttrunk = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
@@ -771,7 +771,10 @@ static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_con
 
 		case -1:
 			rcode = fr_ldap_error_check(NULL, ldap_conn, NULL, NULL);
-			if (rcode == LDAP_PROC_BAD_CONN) ERROR("Bad LDAP connection");
+			if (rcode == LDAP_PROC_BAD_CONN) {
+				ERROR("Bad LDAP connection");
+				fr_connection_signal_reconnect(tconn->conn, FR_CONNECTION_FAILED);
+			}
 			return;
 
 		default:
