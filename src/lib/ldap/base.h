@@ -399,7 +399,7 @@ typedef struct fr_ldap_referral_s fr_ldap_referral_t;
 
 typedef struct fr_ldap_query_s fr_ldap_query_t;
 
-typedef void (*fr_ldap_result_parser_t)(fr_ldap_query_t *query, LDAPMessage *head);
+typedef void (*fr_ldap_result_parser_t)(LDAP *handle, fr_ldap_query_t *query, LDAPMessage *head, void *rctx);
 
 /** LDAP query structure
  *

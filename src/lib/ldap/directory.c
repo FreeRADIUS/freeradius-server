@@ -247,12 +247,12 @@ finish:
  * @param[in] query	which requested the rootDSE.
  * @param[in] result	head of LDAP results message chain.
  */
-static void ldap_trunk_directory_alloc_read(fr_ldap_query_t *query, LDAPMessage *result)
+static void ldap_trunk_directory_alloc_read(LDAP *handle, fr_ldap_query_t *query, LDAPMessage *result, void *rctx)
 {
-	fr_ldap_thread_trunk_t	*ttrunk = query->ttrunk;
 	fr_ldap_config_t const	*config = query->ldap_conn->config;
+	fr_ldap_directory_t	*directory = talloc_get_type_abort(rctx, fr_ldap_directory_t);
 
-	(void)ldap_directory_result_parse(ttrunk->directory, query->ldap_conn->handle, result, config->name);
+	(void)ldap_directory_result_parse(directory, handle, result, config->name);
 }
 
 /** Async extract useful information from the rootDSE of the LDAP server
@@ -267,6 +267,12 @@ static void ldap_trunk_directory_alloc_read(fr_ldap_query_t *query, LDAPMessage 
  */
 int fr_ldap_trunk_directory_alloc_async(TALLOC_CTX *ctx, fr_ldap_thread_trunk_t *ttrunk)
 {
+	static char const	*attrs[] = { "vendorname",
+					     "vendorversion",
+					     "isGlobalCatalogReady",
+					     "objectClass",
+					     "orcldirectoryversion",
+					     NULL };
 	fr_ldap_query_t		*query;
 
 	ttrunk->directory = talloc_zero(ctx, fr_ldap_directory_t);
@@ -274,14 +280,10 @@ int fr_ldap_trunk_directory_alloc_async(TALLOC_CTX *ctx, fr_ldap_thread_trunk_t 
 
 	ttrunk->directory->type = FR_LDAP_DIRECTORY_UNKNOWN;
 
-	query = fr_ldap_query_alloc(ctx);
-	query->type = LDAP_REQUEST_SEARCH;
-	query->ttrunk = ttrunk;
+	query = fr_ldap_search_alloc(ctx, "", LDAP_SCOPE_BASE, "(objectclass=*)", attrs, NULL, NULL);
 	query->parser = ldap_trunk_directory_alloc_read;
-	ldap_url_parse("ldap:///?vendorname,vendorversion,isGlobalCatalogReady,objectClass,orcldirectoryversion"
-		       "?base?(objectClass=*)", &query->ldap_url);
 
-	fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, NULL, query, NULL);
+	fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, NULL, query, ttrunk->directory);
 
 	return 0;
 }

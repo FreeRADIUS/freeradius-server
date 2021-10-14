@@ -919,13 +919,13 @@ static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_con
 		/*
 		 *	If we have a specific parser to handle the result, call it
 		 */
-		if (query->parser) query->parser(query, result);
+		if (query->parser) query->parser(ldap_conn->handle, query, result, query->treq->rctx);
 
 		/*
 		 *	Mark the trunk request as complete and set the request as runnable
 		 */
 		fr_trunk_request_signal_complete(query->treq);
-		if (query->request) unlang_interpret_mark_runnable(query->request);
+		if (query->treq->request) unlang_interpret_mark_runnable(query->treq->request);
 
 	} while (1);
 }
