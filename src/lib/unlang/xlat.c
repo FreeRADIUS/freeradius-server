@@ -456,6 +456,6 @@ void unlang_xlat_init(void)
 				.signal = unlang_xlat_signal,
 				.debug_braces = false,
 				.frame_state_size = sizeof(unlang_frame_state_xlat_t),
-				.frame_state_name = "unlang_frame_state_xlat_t",
+				.frame_state_type = "unlang_frame_state_xlat_t",
 			   });
 }

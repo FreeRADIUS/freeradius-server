@@ -219,7 +219,7 @@ typedef struct {
 
 	size_t			frame_state_size;       	//!< size of instance data in the stack frame
 
-	char const		*frame_state_name;		//!< talloc name of the frame instance data
+	char const		*frame_state_type;		//!< talloc name of the frame instance data
 
 	size_t			frame_state_pool_objects;	//!< How many sub-allocations we expect.
 
@@ -387,7 +387,7 @@ static inline void frame_state_init(unlang_stack_t *stack, unlang_stack_frame_t 
 	unlang_frame_perf_init(instruction);
 
 	op = &unlang_ops[instruction->type];
-	name = op->frame_state_name ? op->frame_state_name : __location__;
+	name = op->frame_state_type ? op->frame_state_type : __location__;
 
 	frame->process = op->interpret;
 	frame->signal = op->signal;

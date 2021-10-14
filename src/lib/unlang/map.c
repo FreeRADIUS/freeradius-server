@@ -399,6 +399,6 @@ void unlang_map_init(void)
 				.name = "map",
 				.interpret = unlang_map_state_init,
 				.frame_state_size = sizeof(unlang_frame_state_map_proc_t),
-				.frame_state_name = "unlang_frame_state_map_proc_t",
+				.frame_state_type = "unlang_frame_state_map_proc_t",
 			   });
 }

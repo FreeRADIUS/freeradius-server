@@ -254,7 +254,7 @@ void unlang_load_balance_init(void)
 				.interpret = unlang_load_balance,
 				.debug_braces = true,
 			        .frame_state_size = sizeof(unlang_frame_state_redundant_t),
-				.frame_state_name = "unlang_frame_state_redundant_t",
+				.frame_state_type = "unlang_frame_state_redundant_t",
 			   });
 
 	unlang_register(UNLANG_TYPE_REDUNDANT_LOAD_BALANCE,
@@ -263,6 +263,6 @@ void unlang_load_balance_init(void)
 				.interpret = unlang_redundant_load_balance,
 				.debug_braces = true,
 			        .frame_state_size = sizeof(unlang_frame_state_redundant_t),
-				.frame_state_name = "unlang_frame_state_redundant_t",
+				.frame_state_type = "unlang_frame_state_redundant_t",
 			   });
 }

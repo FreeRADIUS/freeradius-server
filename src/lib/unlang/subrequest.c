@@ -285,7 +285,7 @@ int unlang_subrequest_op_init(void)
 				.signal = unlang_subrequest_parent_signal,
 				.debug_braces = true,
 				.frame_state_size = sizeof(unlang_frame_state_subrequest_t),
-				.frame_state_name = "unlang_frame_state_subrequest_t",
+				.frame_state_type = "unlang_frame_state_subrequest_t",
 			});
 
 	if (unlang_subrequest_child_op_init() < 0) return -1;

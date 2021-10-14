@@ -1074,6 +1074,6 @@ void unlang_module_init(void)
 				.interpret = unlang_module,
 				.signal = unlang_module_signal,
 				.frame_state_size = sizeof(unlang_frame_state_module_t),
-				.frame_state_name = "unlang_frame_state_module_t",
+				.frame_state_type = "unlang_frame_state_module_t",
 			   });
 }

@@ -367,6 +367,6 @@ void unlang_tmpl_init(void)
 				.interpret = unlang_tmpl,
 				.signal = unlang_tmpl_signal,
 				.frame_state_size = sizeof(unlang_frame_state_tmpl_t),
-				.frame_state_name = "unlang_frame_state_tmpl_t",
+				.frame_state_type = "unlang_frame_state_tmpl_t",
 			   });
 }

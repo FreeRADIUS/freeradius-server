@@ -338,7 +338,7 @@ void unlang_function_init(void)
 				.dump = unlang_function_dump,
 				.debug_braces = false,
 			        .frame_state_size = sizeof(unlang_frame_state_func_t),
-				.frame_state_name = "unlang_frame_state_func_t",
+				.frame_state_type = "unlang_frame_state_func_t",
 			   });
 
 }
