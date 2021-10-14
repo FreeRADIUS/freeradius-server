@@ -859,9 +859,15 @@ unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
 
 	query = fr_ldap_search_alloc(ctx, base_dn, scope, filter, attrs, serverctrls, clientctrls);
 
-	if (fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL) != FR_TRUNK_ENQUEUE_OK) {
+	switch (fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL)) {
+	case FR_TRUNK_ENQUEUE_OK:
+	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
+		break;
+
+	default:
 	error:
 		*p_result = RLM_MODULE_FAIL;
+		*out = NULL;
 		talloc_free(query);
 		return UNLANG_ACTION_FAIL;
 	}
@@ -917,8 +923,14 @@ unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
 
 	query = fr_ldap_modify_alloc(ctx, dn, mods, serverctrls, clientctrls);
 
-	if (fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL) != FR_TRUNK_ENQUEUE_OK) {
+	switch (fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL)) {
+	case FR_TRUNK_ENQUEUE_OK:
+	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
+		break;
+
+	default:
 	error:
+		*out = NULL;
 		*p_result = RLM_MODULE_FAIL;
 		talloc_free(query);
 		return UNLANG_ACTION_FAIL;
