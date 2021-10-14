@@ -41,6 +41,7 @@ static ssize_t util_decode_proto(TALLOC_CTX *ctx, UNUSED fr_pair_list_t *out, ui
 	ssize_t rcode;
 	fr_type_t type;
 	fr_value_box_t *box;
+	uint8_t *copy;
 
 	if (data_len == 1) return data_len;
 
@@ -57,12 +58,22 @@ static ssize_t util_decode_proto(TALLOC_CTX *ctx, UNUSED fr_pair_list_t *out, ui
 	if (!box) return -1;
 
 	/*
-	 *	Some things in value_box_from_str() don't yet respect
-	 *	data_len.  This means that we _know_ there will be
-	 *	buffer over-runs, so some issues will have to be
-	 *	ignored for now.  :(
+	 *	Copy the input, and ensure that it's zero terminated.
 	 */
-	rcode = fr_value_box_from_str(box, box, type, NULL, (char const *) data + 1, data_len - 1, 0, true);
+	copy = talloc_zero_array(box, uint8_t, data_len);
+	if (!copy) {
+		talloc_free(box);
+		return -1;
+	}
+	memcpy(copy, data + 1, data_len - 1);
+
+
+	/*
+	 *	Some things in value_box_from_str() don't yet respect
+	 *	data_len.  This means that if there's no zero
+	 *	termination, we _know_ there will be buffer over-runs.
+	 */
+	rcode = fr_value_box_from_str(box, box, type, NULL, (char const *) copy, data_len - 1, 0, true);
 	talloc_free(box);
 	return rcode;
 }
