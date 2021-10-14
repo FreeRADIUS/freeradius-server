@@ -175,8 +175,8 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-	if (tp->test_ctx(&decode_ctx, NULL) < 0) {
-		fr_perror("fuzzer: Failed finding test point %s", buffer);
+	if (tp->test_ctx && (tp->test_ctx(&decode_ctx, NULL) < 0)) {
+		fr_perror("fuzzer: Failed initializing test point %s", buffer);
 		fr_exit_now(EXIT_FAILURE);
 	}
 
