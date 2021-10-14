@@ -661,7 +661,6 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
 	fr_ldap_rcode_t		status = LDAP_PROC_ERROR;
 
 	while (fr_trunk_connection_pop_request(&treq, tconn) == 0) {
-
 		LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS + 1];
 		LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS + 1];
 
@@ -740,7 +739,7 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
 static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx)
 {
 	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
-	fr_ldap_thread_trunk_t	*t = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
+	fr_ldap_thread_trunk_t	*ttrunk = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
 
 	int 			ret = 0, msgtype;
 	struct timeval		poll = { 0, 10 };
@@ -752,7 +751,8 @@ static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_con
 	/*
 	 *  Reset the idle timeout event
 	 */
-	fr_event_timer_in(t->t, t->t->el, &t->ev, t->t->config->idle_timeout, _ldap_trunk_idle_timeout, t);
+	fr_event_timer_in(ttrunk->t, ttrunk->t->el, &ttrunk->ev,
+			  ttrunk->t->config->idle_timeout, _ldap_trunk_idle_timeout, ttrunk);
 
 	do {
 		/*
@@ -800,7 +800,7 @@ static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_con
 		/*
 		 *	Request to reference in debug output
 		 */
-		request = query->request;
+		request = query->treq->request;
 
 		ROPTIONAL(RDEBUG2, DEBUG2, "Got LDAP response of type \"%s\" for message %d",
 			  ldap_msg_types[msgtype], query->msgid);
@@ -814,16 +814,16 @@ static void ldap_trunk_request_demux(UNUSED fr_trunk_connection_t *tconn, fr_con
 			break;
 
 		case LDAP_PROC_REFERRAL:
-			if (!t->t->config->chase_referrals) {
+			if (!ttrunk->t->config->chase_referrals) {
 				ROPTIONAL(REDEBUG, ERROR,
 					  "LDAP referral received but 'chase_referrals' is set to 'no'");
 				query->ret = LDAP_RESULT_EXCESS_REFERRALS;
 				break;
 			}
 
-			if (query->referral_depth >= t->t->config->referral_depth) {
+			if (query->referral_depth >= ttrunk->t->config->referral_depth) {
 				ROPTIONAL(REDEBUG, ERROR, "Maximum LDAP referral depth (%d) exceeded",
-					  t->t->config->referral_depth);
+					  ttrunk->t->config->referral_depth);
 				query->ret = LDAP_RESULT_EXCESS_REFERRALS;
 				break;
 			}
