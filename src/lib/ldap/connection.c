@@ -751,6 +751,7 @@ static void ldap_trunk_request_demux(fr_trunk_connection_t *tconn, fr_connection
 	fr_ldap_rcode_t		rcode;
 	fr_ldap_query_t		find = { .msgid = -1 }, *query = NULL;
 	request_t		*request;
+	bool			really_no_result = false;
 
 	/*
 	 *  Reset the idle timeout event
@@ -762,12 +763,20 @@ static void ldap_trunk_request_demux(fr_trunk_connection_t *tconn, fr_connection
 		/*
 		 *	Look for any results for which we have the complete result message
 		 *	ldap_result will return a pointer to a chain of messages.
+		 *
+		 *	The first time ldap_result is called when there's pending network
+		 *	data, it may read the data, but not return any results.
+		 *
+		 *	In order to fix the spurious debugging messages and overhead,
+		 *	if this is the first iteration through the loop and ldap_result
+		 *	returns no result (0), we call it again.
 		 */
 		ret = ldap_result(ldap_conn->handle, LDAP_RES_ANY, LDAP_MSG_ALL, &poll, &result);
-
 		switch (ret) {
 		case 0:
-			return;
+			if (really_no_result) return;
+			really_no_result = true;
+			continue;
 
 		case -1:
 			rcode = fr_ldap_error_check(NULL, ldap_conn, NULL, NULL);
@@ -778,6 +787,10 @@ static void ldap_trunk_request_demux(fr_trunk_connection_t *tconn, fr_connection
 			return;
 
 		default:
+			/*
+			 *	We only retry ldap_result the first time through the loop.
+			 */
+			really_no_result = true;
 			break;
 		}
 
