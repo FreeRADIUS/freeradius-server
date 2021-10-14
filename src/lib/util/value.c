@@ -1810,28 +1810,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 			date = tmp;
 		}
 
-		switch (precision) {
-		case FR_TIME_RES_SEC: /* external seconds, internal nanoseconds */
-			dst->vb_time_delta = fr_time_delta_from_sec(date);
-			break;
-
-		case FR_TIME_RES_CSEC:
-			dst->vb_time_delta = fr_time_delta_from_csec(date);
-			break;
-
-		case FR_TIME_RES_MSEC:
-			dst->vb_time_delta = fr_time_delta_from_msec(date);
-			break;
-
-		case FR_TIME_RES_USEC:
-			dst->vb_time_delta = fr_time_delta_from_usec(date);
-			break;
-
-		case FR_TIME_RES_NSEC:
-			dst->vb_time_delta = fr_time_delta_wrap(date);
-			break;
-		}
-
+		dst->vb_time_delta = fr_time_delta_wrap(fr_time_scale(date, precision));
 	}
 		break;
 

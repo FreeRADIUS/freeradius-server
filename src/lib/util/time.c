@@ -240,6 +240,14 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 	}
 
 	/*
+	 *	The input is just a number.  Scale and clamp it as appropriate.
+	 */
+	if (!*end) {
+		*out = fr_time_delta_from_nsec(fr_time_scale(sec, hint));
+		return 0;
+	}
+
+	/*
 	 *	Decimal number
 	 */
 	if (*end == '.') {
@@ -624,4 +632,52 @@ int64_t fr_time_delta_scale(fr_time_delta_t delta, fr_time_res_t hint)
 	}
 
 	return 0;
+}
+
+/** Scale an input time to NSEC, clamping it at max / min.
+ *
+ * @param t	input time / time delta
+ * @param hint	time resolution hint
+ * @return
+ *	- INT64_MIN on underflow
+ *	- 0 on invalid hint
+ *	- INT64_MAX on overflow
+ *	- otherwise a valid number, multiplied by the relevant scale,
+ *	  so that the result is in nanoseconds.
+ */
+int64_t	fr_time_scale(int64_t t, fr_time_res_t hint)
+{
+	int64_t scale;
+
+	switch (hint) {
+	case FR_TIME_RES_SEC:
+		scale = NSEC;
+		break;
+
+	case FR_TIME_RES_MSEC:
+		scale = 1000000;
+		break;
+
+	case FR_TIME_RES_USEC:
+		scale = 1000;
+		break;
+
+	case FR_TIME_RES_NSEC:
+		return t;
+
+	default:
+		return 0;
+	}
+
+	if (t < 0) {
+		if (t < (INT64_MIN / scale)) {
+			return INT64_MIN;
+		}
+	} else if (t > 0) {
+		if (t > (INT64_MAX / scale)) {
+			return INT64_MAX;
+		}
+	}
+
+	return t * scale;
 }

@@ -578,7 +578,6 @@ static int get_part(char **str, int *date, int min, int max, char term, char con
 int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_res_t hint)
 {
 	int		i;
-	fr_unix_time_t	t;
 	int64_t		tmp;
 	struct tm	*tm, s_tm;
 	char		buf[64];
@@ -593,29 +592,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 	 */
 	tmp = strtoul(date_str, &tail, 10);
 	if (*tail == '\0') {
-		switch (hint) {
-		case FR_TIME_RES_SEC:
-			t = fr_unix_time_from_sec(tmp);
-			break;
-
-		case FR_TIME_RES_MSEC:
-			t = fr_unix_time_from_msec(tmp);
-			break;
-
-		case FR_TIME_RES_USEC:
-			t = fr_unix_time_from_usec(tmp);
-			break;
-
-		case FR_TIME_RES_NSEC:
-			t = fr_unix_time_from_nsec(tmp);
-			break;
-
-		default:
-			fr_strerror_printf("Invalid hint %d for time delta", hint);
-			return -1;
-		}
-
-		*date = t;
+		*date = fr_unix_time_from_nsec(fr_time_scale(tmp, hint));
 		return 0;
 	}
 
