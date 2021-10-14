@@ -166,7 +166,10 @@ fr_dns_labels_t *fr_dns_labels_get(uint8_t const *packet, size_t packet_len, boo
 	lb->blocks[0].start = DNS_HDR_LEN;
 	lb->blocks[0].end = DNS_HDR_LEN;
 
-	if (init_mark) memset(lb->mark, 0, sizeof(fr_dns_marker));
+	if (init_mark) {
+		fr_assert(packet_len <= 65535);
+		memset(lb->mark, 0, packet_len);
+	}
 
 	return lb;
 }
