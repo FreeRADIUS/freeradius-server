@@ -809,7 +809,7 @@ static void ldap_trunk_request_demux(fr_trunk_connection_t *tconn, fr_connection
 		 */
 		request = query->treq->request;
 
-		ROPTIONAL(RDEBUG2, DEBUG2, "Got LDAP response of type \"%s\" for message %d",
+		ROPTIONAL(RDEBUG2, DEBUG2, "Got %s response for message %d",
 			  ldap_msg_types[msgtype], query->msgid);
 		rcode = fr_ldap_error_check(NULL, ldap_conn, result, query->dn);
 
