@@ -204,7 +204,7 @@ static void _ldap_sasl_bind_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 			      NUM_ELEMENTS(our_clientctrls),
 			      c, sasl_ctx->serverctrls, sasl_ctx->clientctrls);
 
-	DEBUG2("Starting SASL mech(s): %s", sasl_ctx->mechs);
+	DEBUG2("%s SASL mech(s): %s", (sasl_ctx->result == NULL ? "Starting" : "Continuing"), sasl_ctx->mechs);
 
 	ret = ldap_sasl_interactive_bind(c->handle, NULL, sasl_ctx->mechs,
 					 our_serverctrls, our_clientctrls,
