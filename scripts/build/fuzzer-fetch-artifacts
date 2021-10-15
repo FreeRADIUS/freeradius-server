@@ -8,6 +8,10 @@
 
 set -e
 
+#
+#  Run from the project top-level directory
+#
+cd $(dirname $0/)/../..
 
 REPRODUCER_DIR=build/fuzzer
 
@@ -17,23 +21,45 @@ usage() {
  cat <<EOF
 Usage:
 
-  export GITHUB_TOKEN=<...>
   $0 [ <git-repo> | <download-uri> | <artifact-zip> ]
+
+  Arguments are either:
 
   git-repo     - Either the name of a git remote (default "origin"), or a repo
                  slug such as "FreeRADIUS/freeradius-server".
+
                  This mode will list the download-uris of the available fuzzer
                  artifacts for the repo.
 
   download-uri - "https://api.github.com/..."
+
                  This mode will download the specified artifact and extract the
-                 reproducers that it contains.
+                 reproducers that it contains. (The list of available fuzzer
+                 artifacts is ouput by the preceeding mode.)
 
   artifact-zip - "path/to/downloaded/artifact/fuzzer-radius-701e5be.zip"
-                 This mode will extract the reproducers from a manually
-                 downloaded artifact ZIP file.
 
-  Fuzzer artifacts are identified by their name which starts "fuzzer-"
+                 This mode will extract the reproducers from a manually
+                 downloaded artifact ZIP file. The ZIP can for located in the
+                 summary web page for the run within GitHub Actions.
+
+  Note: A PAT is required to access the GitHub API. Export this in the
+  GITHUB_TOKEN environment variable.
+
+  Note: Fuzzer artifacts are identified by their name "clang-fuzzer"
+
+  Typical workflow is as follows:
+
+      $ export GITHUB_TOKEN=<...>    # PAT that has the "repo:public" permission
+
+      # Show artifact list for the given repo or slug (default "origin")
+      $0 FreeRADIUS/freeradius-server
+
+      # Download and extract an fuzzer artifact ZIP file (output of the above command)
+      $0 https://api.github.com/repos/FreeRADIUS/freeradius-server/actions/artifacts/103258361/zip
+
+      # Run a reproducer (output of the above command)
+      scripts/build/fuzzer build/fuzzer/util/crash-ca2b3f7c2d2e2fe36bc6480d71cf6601cbdb6c62
 
   Reproducers are extracted to $REPRODUCER_DIR
 
@@ -104,11 +130,11 @@ list_artifacts() {
     exit 1
   fi
 
-  echo "List of fuzzer artifacts from $ACTIONS_API:"
+  echo "List of fuzzer artifacts from $ACTIONS_API/artifacts:"
   echo
   RESULT=$(
     echo "$RESULT" | sed '$d' | \
-    jq ".artifacts[]|select((.name|startswith(\"fuzzer-\")) and (.expired==false)) | \"$0 \(.archive_download_url)  # \(.created_at) \(.name)\"" --raw-output
+    jq ".artifacts[]|select((.name|startswith(\"clang-fuzzer\")) and (.expired==false)) | \"$0 \(.archive_download_url)  # \(.created_at) \(.name)\"" --raw-output
   )
 
   if [ -z "$RESULT" ]; then
@@ -206,7 +232,7 @@ extract_artifact() {
   echo "Extracting reproducers from $ARTIFACT_ZIP to $REPRODUCER_DIR..."
 
   TMPDIR=$(mktemp -d /tmp/fuzzer.XXXXXX)
-  if ! unzip -q "$ARTIFACT_ZIP" -d "$TMPDIR" -x 'fuzz-*.log'; then
+  if ! unzip -q "$ARTIFACT_ZIP" -d "$TMPDIR" -x '*.log'; then
     echo "Failed to extract $ARTIFACT_ZIP" >&2
     exit 1
   fi
