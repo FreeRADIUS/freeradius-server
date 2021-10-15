@@ -464,6 +464,7 @@ typedef struct fr_ldap_referral_s {
 	char const		*identity;	//!< Bind identity for referral connection
 	char const		*password;	//!< Bind password for referral connecition
 	fr_ldap_thread_trunk_t	*ttrunk;	//!< Trunk this referral should use
+	request_t		*request;	//!< Request this referral relates to
 } fr_ldap_referral_t;
 
 /** Holds arguments for the async bind operation
@@ -804,7 +805,7 @@ int		fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *exten
 /*
  *	referral.c - Handle LDAP referrals
  */
-fr_ldap_referral_t	*fr_ldap_referral_alloc(TALLOC_CTX *ctx);
+fr_ldap_referral_t	*fr_ldap_referral_alloc(TALLOC_CTX *ctx, request_t *request);
 
 int 		fr_ldap_referral_follow(fr_ldap_thread_t *thread, request_t *request, fr_ldap_query_t *query);
 

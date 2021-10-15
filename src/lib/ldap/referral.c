@@ -44,7 +44,7 @@ static int _fr_ldap_referral_free(fr_ldap_referral_t *referral)
  *	- a new referral structure on success
  *	- NULL on failure
  */
-fr_ldap_referral_t *fr_ldap_referral_alloc(TALLOC_CTX *ctx)
+fr_ldap_referral_t *fr_ldap_referral_alloc(TALLOC_CTX *ctx, request_t *request)
 {
 	fr_ldap_referral_t	*referral;
 
@@ -53,6 +53,7 @@ fr_ldap_referral_t *fr_ldap_referral_alloc(TALLOC_CTX *ctx)
 		PERROR("Failed to allocate LDAP referral container");
 		return NULL;
 	}
+	referral->request = request;
 	talloc_set_destructor(referral, _fr_ldap_referral_free);
 
 	return referral;
@@ -76,7 +77,7 @@ static void _ldap_referral_send(UNUSED fr_trunk_t *trunk, UNUSED fr_trunk_state_
 	 *	Enqueue referral query on active trunk connection
 	 */
 	query->referral = referral;
-	query->treq = fr_trunk_request_alloc(referral->ttrunk->trunk, NULL);
+	query->treq = fr_trunk_request_alloc(referral->ttrunk->trunk, referral->request);
 	fr_trunk_request_enqueue(&query->treq, referral->ttrunk->trunk, NULL, query, NULL);
 
 	DEBUG3("Pending LDAP referral query queued on active trunk");
@@ -130,7 +131,7 @@ int fr_ldap_referral_follow(fr_ldap_thread_t *t, request_t *request, fr_ldap_que
 			continue;
 		}
 
-		referral = fr_ldap_referral_alloc(query);
+		referral = fr_ldap_referral_alloc(query, request);
 		if (!referral) continue;
 
 		referral->query = query;
