@@ -127,6 +127,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	size_t				packet_len;
 	uint32_t			xid;
 	fr_dns_packet_t			*packet;
+	fr_dns_decode_fail_t		reason;
 
 	*leftover = 0;		/* always for UDP */
 
@@ -161,8 +162,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 */
 	packet = (fr_dns_packet_t *) buffer;
 
-	if (!fr_dns_packet_ok(buffer, packet_len, true)) {
-		RATE_LIMIT_GLOBAL(WARN, "Invalid DNS packet - ignoring");
+	if (!fr_dns_packet_ok(buffer, packet_len, true, &reason)) {
+		RATE_LIMIT_GLOBAL(WARN, "Invalid DNS packet failed with reason %d - ignoring", reason);
 		return 0;
 	}
 

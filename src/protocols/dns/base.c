@@ -75,9 +75,17 @@ fr_dict_attr_autoload_t dns_dict_attr[] = {
 	[FR_DNS_STATEFUL_OP] = "stateful-operations",
 };
 
-bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query)
+#define DECODE_FAIL(_reason) if (reason) *reason = DECODE_FAIL_ ## _reason
+
+bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_dns_decode_fail_t *reason)
 {
+#if 0
+	uint8_t const *p, *end;
+	int count, expected;
+#endif
+
 	if (packet_len <= DNS_HDR_LEN) {
+		DECODE_FAIL(MIN_LENGTH_PACKET);
 		return false;
 	}
 
@@ -85,6 +93,7 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query)
 	 *	query=0, response=1
 	 */
 	if (((packet[2] & 0x80) == 0) != query) {
+		DECODE_FAIL(UNEXPECTED);
 		return false;
 	}
 
@@ -93,16 +102,19 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query)
 		 *	There should be at least one query, and no replies in the query!
 		 */
 		if (fr_net_to_uint16(packet + 4) == 0) {
+			DECODE_FAIL(NO_QUESTIONS);
 			return false;
 		}
 		if (fr_net_to_uint16(packet + 6) != 0) {
+			DECODE_FAIL(NS_IN_QUESTION);
 			return false;
 		}
 		if (fr_net_to_uint16(packet + 8) != 0) {
+			DECODE_FAIL(ANSWERS_IN_QUESTION);
 			return false;
 		}
-
 		// additional records can exist!
+
 	} else {
 		/*
 		 *	Replies _usually_ copy the query.  But not
@@ -110,6 +122,52 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query)
 		 */
 	}
 
+#if 0
+	expected = fr_net_to_uint16(packet + 4) + fr_net_to_uint16(packet + 6) + fr_net_to_uint16(packet + 8) + fr_net_to_uint16(packet + 10);
+	count = 0;
+
+	p = packet + DNS_HDR_LEN;
+	end = packet + packet_len;
+
+	/*
+	 *	Check that lengths of RRs match.
+	 */
+	while (p < end) {
+		uint16_t len;
+
+		/*
+		 *	@todo - get DNS label, followed by 2 octets of
+		 *	type, 2 of class, 4 of TTL.  Then check the RR.
+		 */
+
+		if ((p + 2) >= end) {
+			DECODE_FAIL(MISSING_RRLEN);
+			return false;
+		}
+
+		len = fr_net_to_uint16(p);
+		p += 2;
+		if ((p + len) > end) {
+			DECODE_FAIL(RR_OVERFLOWS_PACKET);
+			return false;
+		}
+
+		p+= len;
+		count++;
+
+		if (count > expected) {
+			DECODE_FAIL(TOO_MANY_RRS);
+			return false;
+		}
+	}
+
+	if (count != expected) {
+		DECODE_FAIL(TOO_FEW_RRS);
+		return false;
+	}
+#endif
+
+	DECODE_FAIL(NONE);
 	return true;
 }
 

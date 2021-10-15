@@ -105,13 +105,27 @@ typedef enum {
 	FR_DNS_DO_NOT_RESPOND = 256,
 } fr_dns_packet_code_t;
 
+typedef enum {
+	DECODE_FAIL_NONE = 0,
+	DECODE_FAIL_MIN_LENGTH_PACKET,
+	DECODE_FAIL_UNEXPECTED,
+	DECODE_FAIL_NO_QUESTIONS,
+	DECODE_FAIL_ANSWERS_IN_QUESTION,
+	DECODE_FAIL_NS_IN_QUESTION,
+	DECODE_FAIL_MISSING_RRLEN,
+	DECODE_FAIL_RR_OVERFLOWS_PACKET,
+	DECODE_FAIL_TOO_MANY_RRS,
+	DECODE_FAIL_TOO_FEW_RRS,
+	DECODE_FAIL_MAX
+} fr_dns_decode_fail_t;
+
 #define FR_DNS_PACKET_CODE_VALID(_code) (((_code) < FR_DNS_CODE_MAX) || (((_code & 0x10) != 0) && ((_code & ~0x10) < FR_DNS_CODE_MAX)))
 
 #define DNS_HDR_LEN (12)
 
 extern char const *fr_dns_packet_codes[FR_DNS_CODE_MAX];
 
-bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query);
+bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_dns_decode_fail_t *reason);
 
 fr_dns_labels_t *fr_dns_labels_get(uint8_t const *packet, size_t packet_len, bool init_mark);
 

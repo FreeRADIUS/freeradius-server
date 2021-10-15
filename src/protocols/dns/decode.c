@@ -661,26 +661,40 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
+static fr_table_num_ordered_t reason_fail_table[] = {
+	{ L("none"),						DECODE_FAIL_NONE		},
+	{ L("packet is smaller than DNS header"),		DECODE_FAIL_MIN_LENGTH_PACKET	},
+	{ L("expected query / answer, got answer / query"),	DECODE_FAIL_UNEXPECTED		},
+	{ L("no 'questions' in query packet"),			DECODE_FAIL_NO_QUESTIONS	},
+	{ L("unexprected answers in query packet"),		DECODE_FAIL_ANSWERS_IN_QUESTION	},
+	{ L("unexpected NS records in query packet"),		DECODE_FAIL_NS_IN_QUESTION	},
+	{ L("missing resource record length field"),		DECODE_FAIL_MISSING_RRLEN	},
+	{ L("resource record length overflows the packet"),	DECODE_FAIL_RR_OVERFLOWS_PACKET	},
+	{ L("more resource records than indicated in header"),	DECODE_FAIL_TOO_MANY_RRS	},
+	{ L("fewer resource records than indicated in header"),	DECODE_FAIL_TOO_FEW_RRS		},
+};
+static size_t reason_fail_table_len = NUM_ELEMENTS(reason_fail_table);
+
 static ssize_t fr_dns_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, size_t data_len, void *proto_ctx)
 {
 	fr_dns_ctx_t *packet_ctx = proto_ctx;
+	fr_dns_decode_fail_t reason;
 
 	if (data_len > 65535) return -1; /* packet is too big */
 
 	/*
 	 *	Allow queries or answers
 	 */
-#if 0
-	if (!fr_dns_packet_ok(data, data_len, true)) {
-		FR_PROTO_TRACE("FAIL %d", __LINE__);
-		if (!fr_dns_packet_ok(data, data_len, false)) {
-			FR_PROTO_TRACE("FAIL %d", __LINE__);
+	if (!fr_dns_packet_ok(data, data_len, true, &reason)) {
+		if (reason != DECODE_FAIL_UNEXPECTED) goto fail;
+
+		if (!fr_dns_packet_ok(data, data_len, false, &reason)) {
+		fail:
+			fr_strerror_printf("DNS packet malformed - %s",
+					   fr_table_str_by_value(reason_fail_table, reason, "???"));
 			return -1;
 		}
-
-		FR_PROTO_TRACE("FAIL %d", __LINE__);
 	}
-#endif
 
 	packet_ctx->packet = data;
 	packet_ctx->packet_len = data_len;

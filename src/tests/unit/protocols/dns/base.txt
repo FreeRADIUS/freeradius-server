@@ -14,12 +14,12 @@ proto-dictionary dns
 #  A record of '.', class Internet, TTL 16
 #  length 4, with 127.0.0.1 as the IP address
 
-#                                                 Z  type   class  ttl
-decode-proto 00 00 00 00 00 00 00 01 00 00 00 00  00 00 01  00 01  00 00 00 10  00 04 7f 00 00 01
-match packet = { id = 0, query = query, opcode = query, authoritative = no, truncated-response = no, recursion-desired = no, recursion-available = no, reserved = no, authentic-data = no, checking-disabled = no, rcode = no-error, qdcount = 0, ancount = 1, nscount = 0, arcount = 0 }, rr = { name = ".", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }
+#                                                 Z  type   class   ttl
+decode-proto 00 00 80 00 00 00 00 01 00 00 00 00  00 00 01   00 01  00 00 00 10  00 04 7f 00 00 01
+match packet = { id = 0, query = response, opcode = query, authoritative = no, truncated-response = no, recursion-desired = no, recursion-available = no, reserved = no, authentic-data = no, checking-disabled = no, rcode = no-error, qdcount = 0, ancount = 1, nscount = 0, arcount = 0 }, rr = { name = ".", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }
 
 encode-proto -
-match  00 00 00 00 00 00 00 01 00 00 00 00 00 00 01 00 01 00 00 00 10 00 04 7f 00 00 01
+match  00 00 80 00 00 00 00 01 00 00 00 00 00 00 01 00 01 00 00 00 10 00 04 7f 00 00 01
 
 #  Really "decode RR".
 #           Z  type   class  ttl          length  IPaddr
@@ -32,24 +32,24 @@ match 00 00 01 00 01 00 00 00 10 00 04 7f 00 00 01
 #
 #  And a complex label
 #
-encode-proto packet = { id = 0, query = query, opcode = query, authoritative = no, truncated-response = no, recursion-desired = no, recursion-available = no, reserved = no, authentic-data = no, checking-disabled = no, rcode = no-error, qdcount = 0, ancount = 1, nscount = 0, arcount = 0 }, rr = { name = "www.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }
-match 00 00 00 00 00 00 00 01 00 00 00 00 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 00 01 00 01 00 00 00 10 00 04 7f 00 00 01
+encode-proto packet = { id = 0, query = response, opcode = query, authoritative = no, truncated-response = no, recursion-desired = no, recursion-available = no, reserved = no, authentic-data = no, checking-disabled = no, rcode = no-error, qdcount = 0, ancount = 1, nscount = 0, arcount = 0 }, rr = { name = "www.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }
+match 00 00 80 00 00 00 00 01 00 00 00 00 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 00 01 00 01 00 00 00 10 00 04 7f 00 00 01
 
 decode-proto -
-match packet = { id = 0, query = query, opcode = query, authoritative = no, truncated-response = no, recursion-desired = no, recursion-available = no, reserved = no, authentic-data = no, checking-disabled = no, rcode = no-error, qdcount = 0, ancount = 1, nscount = 0, arcount = 0 }, rr = { name = "www.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }
+match packet = { id = 0, query = response, opcode = query, authoritative = no, truncated-response = no, recursion-desired = no, recursion-available = no, reserved = no, authentic-data = no, checking-disabled = no, rcode = no-error, qdcount = 0, ancount = 1, nscount = 0, arcount = 0 }, rr = { name = "www.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }
 
 #
 #  multiple labels (2)
 #
-encode-proto packet = { id = 0, query = query, opcode = query, authoritative = no, truncated-response = no, recursion-desired = no, recursion-available = no, reserved = no, authentic-data = no, checking-disabled = no, rcode = no-error, qdcount = 0, ancount = 2, nscount = 0, arcount = 0 }, rr = { name = "www.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }, rr = { name = "ftp.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }
-match 00 00 00 00 00 00 00 02 00 00 00 00 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 00 01 00 01 00 00 00 10 00 04 7f 00 00 01 03 66 74 70 c0 10 00 01 00 01 00 00 00 10 00 04 7f 00 00 01
+encode-proto packet = { id = 0, query = response, opcode = query, authoritative = no, truncated-response = no, recursion-desired = no, recursion-available = no, reserved = no, authentic-data = no, checking-disabled = no, rcode = no-error, qdcount = 0, ancount = 2, nscount = 0, arcount = 0 }, rr = { name = "www.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }, rr = { name = "ftp.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }
+match 00 00 80 00 00 00 00 02 00 00 00 00 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 00 01 00 01 00 00 00 10 00 04 7f 00 00 01 03 66 74 70 c0 10 00 01 00 01 00 00 00 10 00 04 7f 00 00 01
 
 #
 #  We encode "www.example.com"
 #  and then "ftp" with a pointer c010 to "example.com"
 #
 decode-proto -
-match packet = { id = 0, query = query, opcode = query, authoritative = no, truncated-response = no, recursion-desired = no, recursion-available = no, reserved = no, authentic-data = no, checking-disabled = no, rcode = no-error, qdcount = 0, ancount = 2, nscount = 0, arcount = 0 }, rr = { name = "www.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }, rr = { name = "ftp.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }
+match packet = { id = 0, query = response, opcode = query, authoritative = no, truncated-response = no, recursion-desired = no, recursion-available = no, reserved = no, authentic-data = no, checking-disabled = no, rcode = no-error, qdcount = 0, ancount = 2, nscount = 0, arcount = 0 }, rr = { name = "www.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }, rr = { name = "ftp.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }
 
 #
 #  multiple labels (3), but with all counts removed.  The counts will
@@ -60,15 +60,15 @@ match packet = { id = 0, query = query, opcode = query, authoritative = no, trun
 #  about every bit of RFC correctness here, we just care to test the
 #  encoders and decoders for formatting.
 #
-encode-proto packet = { id = 0, query = query, opcode = query, authoritative = no, truncated-response = no, recursion-desired = no, recursion-available = no, reserved = no, authentic-data = no, checking-disabled = no, rcode = no-error, qdcount = 0, ancount = 3, nscount = 0, arcount = 0 }, rr = { name = "www.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }, rr = { name = "ftp.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }, rr = { name = "ns.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }
-match 00 00 00 00 00 00 00 03 00 00 00 00 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 00 01 00 01 00 00 00 10 00 04 7f 00 00 01 03 66 74 70 c0 10 00 01 00 01 00 00 00 10 00 04 7f 00 00 01 02 6e 73 c0 10 00 01 00 01 00 00 00 10 00 04 7f 00 00 01
+encode-proto packet = { id = 0, query = response, opcode = query, authoritative = no, truncated-response = no, recursion-desired = no, recursion-available = no, reserved = no, authentic-data = no, checking-disabled = no, rcode = no-error, qdcount = 0, ancount = 3, nscount = 0, arcount = 0 }, rr = { name = "www.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }, rr = { name = "ftp.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }, rr = { name = "ns.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }
+match 00 00 80 00 00 00 00 03 00 00 00 00 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 00 01 00 01 00 00 00 10 00 04 7f 00 00 01 03 66 74 70 c0 10 00 01 00 01 00 00 00 10 00 04 7f 00 00 01 02 6e 73 c0 10 00 01 00 01 00 00 00 10 00 04 7f 00 00 01
 
 #
 #  We encode "www.example.com"
 #  and then "ftp" with a pointer c010 to "example.com"
 #
 decode-proto -
-match packet = { id = 0, query = query, opcode = query, authoritative = no, truncated-response = no, recursion-desired = no, recursion-available = no, reserved = no, authentic-data = no, checking-disabled = no, rcode = no-error, qdcount = 0, ancount = 3, nscount = 0, arcount = 0 }, rr = { name = "www.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }, rr = { name = "ftp.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }, rr = { name = "ns.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }
+match packet = { id = 0, query = response, opcode = query, authoritative = no, truncated-response = no, recursion-desired = no, recursion-available = no, reserved = no, authentic-data = no, checking-disabled = no, rcode = no-error, qdcount = 0, ancount = 3, nscount = 0, arcount = 0 }, rr = { name = "www.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }, rr = { name = "ftp.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }, rr = { name = "ns.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }
 
 count
 match 22
