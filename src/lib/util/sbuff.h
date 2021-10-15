@@ -366,68 +366,90 @@ do { \
  * @{
  */
 
-/** Prevent an sbuff being advanced as it's passed into a printing or parsing function
+/** @cond */
+
+/** Copy another fr_sbuff_t, modifying it.
+ *
+ * @private
+ */
+#define _FR_SBUFF(_sbuff_or_marker, _start, _end, _adv_parent) \
+((fr_sbuff_t){ \
+	.buff		= fr_sbuff_buff(_sbuff_or_marker), \
+	.start		= (_start), \
+	.end		= (_end), \
+	.p		= fr_sbuff_current(_sbuff_or_marker), \
+	.is_const 	= fr_sbuff_ptr(_sbuff_or_marker)->is_const, \
+	.adv_parent 	= (_adv_parent), \
+	.shifted	= fr_sbuff_ptr(_sbuff_or_marker)->shifted, \
+	.extend		= fr_sbuff_ptr(_sbuff_or_marker)->extend, \
+	.uctx		= fr_sbuff_ptr(_sbuff_or_marker)->uctx, \
+	.parent 	= fr_sbuff_ptr(_sbuff_or_marker) \
+})
+/* @endcond */
+
+/** Create a new sbuff pointing to the same underlying buffer
+ *
+ * - Parent will _NOT_ be advanced by operations on its child.
+ * - Child will have its `start` pointer set to the `p` pointer of the parent.
  *
  * @param[in] _sbuff_or_marker	to make an ephemeral copy of.
  */
-#define FR_SBUFF(_sbuff_or_marker) \
-_Generic((_sbuff_or_marker), \
-	fr_sbuff_t *		: ((fr_sbuff_t){ \
-					.buff		= ((fr_sbuff_t *)(_sbuff_or_marker))->buff, \
-					.start		= ((fr_sbuff_t *)(_sbuff_or_marker))->p, \
-					.end		= ((fr_sbuff_t *)(_sbuff_or_marker))->end, \
-					.p		= ((fr_sbuff_t *)(_sbuff_or_marker))->p, \
-					.is_const	= ((fr_sbuff_t *)(_sbuff_or_marker))->is_const, \
-					.extend		= ((fr_sbuff_t *)(_sbuff_or_marker))->extend, \
-					.shifted	= ((fr_sbuff_t *)(_sbuff_or_marker))->shifted, \
-					.uctx		= ((fr_sbuff_t *)(_sbuff_or_marker))->uctx, \
-					.parent		= ((fr_sbuff_t *)(_sbuff_or_marker)) \
-			 	  }), \
-	fr_sbuff_marker_t *	: ((fr_sbuff_t){ \
-					.buff		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->buff, \
-					.start		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->p, \
-					.end		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->end, \
-					.p		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->p, \
-					.is_const	= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->is_const, \
-					.extend		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->extend, \
-					.shifted	= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->shifted, \
-					.uctx		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->uctx, \
-					.parent		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent \
-				  }) \
-)
+#define FR_SBUFF(_sbuff_or_marker) _FR_SBUFF(_sbuff_or_marker, \
+					     fr_sbuff_current(_sbuff_or_marker), \
+					     fr_sbuff_end(_sbuff_or_marker), \
+					     0x00)
 
-
-/** Copy all fields in an sbuff
+/** Create a new sbuff pointing to the same underlying buffer
  *
- * @param[in] _sbuff	to make an ephemeral copy of.
+ * - Parent will _NOT_ be advanced by operations on its child.
+ * - Child will have its `start` pointer set to the `start` pointer of the parent.
+ *
+ * @param[in] _sbuff_or_marker	to make an ephemeral copy of.
  */
-#define FR_SBUFF_BIND_CURRENT(_sbuff_or_marker) \
-_Generic((_sbuff_or_marker), \
-	fr_sbuff_t *		: ((fr_sbuff_t){ \
-					.buff		= ((fr_sbuff_t *)(_sbuff_or_marker))->buff, \
-					.start		= ((fr_sbuff_t *)(_sbuff_or_marker))->p, \
-					.end		= ((fr_sbuff_t *)(_sbuff_or_marker))->end, \
-					.p		= ((fr_sbuff_t *)(_sbuff_or_marker))->p, \
-					.is_const	= ((fr_sbuff_t *)(_sbuff_or_marker))->is_const, \
-					.adv_parent	= 1, \
-					.extend		= ((fr_sbuff_t *)(_sbuff_or_marker))->extend, \
-					.shifted	= ((fr_sbuff_t *)(_sbuff_or_marker))->shifted, \
-					.uctx		= ((fr_sbuff_t *)(_sbuff_or_marker))->uctx, \
-					.parent		= ((fr_sbuff_t *)(_sbuff_or_marker)) \
-			 	  }), \
-	fr_sbuff_marker_t *	: ((fr_sbuff_t){ \
-					.buff		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->buff, \
-					.start		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->p, \
-					.end		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->end, \
-					.p		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->p, \
-					.is_const	= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->is_const, \
-					.adv_parent	= 1, \
-					.extend		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->extend, \
-					.shifted	= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->shifted, \
-					.uctx		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent->uctx, \
-					.parent		= ((fr_sbuff_marker_t *)(_sbuff_or_marker))->parent \
-				  }) \
-)
+#define FR_SBUFF_ABS(_sbuff_or_marker) _FR_SBUFF(_sbuff_or_marker, \
+						 fr_sbuff_start(_sbuff_or_marker), \
+						 fr_sbuff_end(_sbuff_or_marker), \
+						 0x00)
+
+/** Create a new sbuff pointing to the same underlying buffer
+ *
+ * The intent of this sbuff type is to allow parsing operations to be performed
+ * on a subset of the buffer data.
+ *
+ * - Parent will _NOT_ be advanced by operations on its child.
+ * - Child will have its `start` pointer set to the `start` pointer of the parent.
+ * - Child will have its `end` pointer set to the `p` pointer of the parent.
+ *
+ * @param[in] _sbuff_or_marker	to make an ephemeral copy of.
+ */
+#define FR_SBUFF_REPARSE(_sbuff_or_marker) _FR_SBUFF(_sbuff_or_marker, \
+						     fr_sbuff_start(_sbuff_or_marker), \
+						     fr_sbuff_current(_sbuff_or_marker), \
+						     0x00)
+
+/** Create a new sbuff pointing to the same underlying buffer
+ *
+ * - Parent `p` pointer will be advanced with child's `p` pointer.
+ * - Child will have its `start` pointer set to the `p` pointer of the parent.
+ *
+ * @param[in] _sbuff_or_marker	to make an ephemeral copy of.
+ */
+#define FR_SBUFF_BIND_CURRENT(_sbuff_or_marker) _FR_SBUFF(_sbuff_or_marker, \
+							  fr_sbuff_current(_sbuff_or_marker), \
+							  fr_sbuff_end(_sbuff_or_marker), \
+							  0x01)
+
+/** Create a new sbuff pointing to the same underlying buffer
+ *
+ * - Parent `p` pointer will be advanced with child's `p` pointer.
+ * - Child will have its `start` pointer set to the `start` pointer of the parent.
+ *
+ * @param[in] _sbuff_or_marker	to make an ephemeral copy of.
+ */
+#define FR_SBUFF_BIND_CURRENT_ABS(_sbuff_or_marker) FR_SBUFF_ABS(_sbuff_or_marker, \
+								 fr_sbuff_start(_sbuff_or_marker), \
+								 fr_sbuff_end(_sbuff_or_marker), \
+								 0x01)
 
 /** Creates a compound literal to pass into functions which accept a sbuff
  *
