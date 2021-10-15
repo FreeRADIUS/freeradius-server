@@ -28,8 +28,9 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "centos-7", "OS": "centos:7", "DIST": "centos"             },
-              { "NAME": "centos-8", "OS": "centos:8", "DIST": "centos"             }
+              { "NAME": "centos-7", "OS": "centos:7", "DIST": "centos"              },
+              { "NAME": "centos-8", "OS": "centos:8", "DIST": "centos"              },
+              { "NAME": "rocky-8", "OS": "rockylinux/rockylinux:8", "DIST": "rocky" }
             ]
           }
         EOF
@@ -107,8 +108,8 @@ jobs:
       with:
         path: freeradius
 
-    - name: Extra repos for CentOS
-      if: ${{ startsWith(matrix.env.NAME, 'centos-') }}
+    - name: Extra repos for CentOS and Rocky Linux
+      if: ${{ startsWith(matrix.env.NAME, 'centos-') || startsWith(matrix.env.NAME, 'rocky-') }}
       run: |
         echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
         echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
@@ -120,7 +121,7 @@ jobs:
         yum install -y epel-release
 
     - name: Enable PowerTools on CentOS 8
-      if: ${{ matrix.env.NAME == 'centos-8' }}
+      if: ${{ matrix.env.NAME == 'centos-8' || matrix.env.NAME == 'rocky-8' }}
       run: |
         yum config-manager --enable PowerTools || :
         yum config-manager --enable powertools || :
@@ -225,8 +226,8 @@ jobs:
         rpm --import https://packages.networkradius.com/pgp/packages@networkradius.com
 
 
-    - name: Extra repos for CentOS
-      if: ${{ startsWith(matrix.env.NAME, 'centos-') }}
+    - name: Extra repos for CentOS and Rocky Linux
+      if: ${{ startsWith(matrix.env.NAME, 'centos-') || startsWith(matrix.env.NAME, 'rocky-') }}
       run: |
         echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
         echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
@@ -237,8 +238,8 @@ jobs:
         rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
         yum install -y epel-release
 
-    - name: Enable PowerTools on CentOS 8
-      if: ${{ matrix.env.NAME == 'centos-8' }}
+    - name: Enable PowerTools on CentOS 8 and Rocky 8
+      if: ${{ matrix.env.NAME == 'centos-8' || matrix.env.NAME == 'rocky-8' }}
       run: |
         yum install -y yum-utils
         yum config-manager --enable PowerTools || :
