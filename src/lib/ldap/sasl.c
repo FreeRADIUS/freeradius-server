@@ -158,7 +158,7 @@ static void _ldap_sasl_bind_io_read(fr_event_list_t *el, int fd, UNUSED int flag
 		}
 
 		DEBUG3("SASL response  : %pV", fr_box_strvalue_len(srv_cred->bv_val, srv_cred->bv_len));
-		ldap_memfree(srv_cred);
+		ber_bvfree(srv_cred);
 
 		/*
 		 *	If we need to continue, wait until the
