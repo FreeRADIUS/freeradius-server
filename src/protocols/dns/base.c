@@ -79,10 +79,8 @@ fr_dict_attr_autoload_t dns_dict_attr[] = {
 
 bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_dns_decode_fail_t *reason)
 {
-#if 0
 	uint8_t const *p, *end;
-	int count, expected;
-#endif
+	int qdcount, count, expected;
 
 	if (packet_len <= DNS_HDR_LEN) {
 		DECODE_FAIL(MIN_LENGTH_PACKET);
@@ -97,11 +95,13 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 		return false;
 	}
 
+	qdcount = fr_net_to_uint16(packet + 4);
+
 	if (query) {
 		/*
 		 *	There should be at least one query, and no replies in the query!
 		 */
-		if (fr_net_to_uint16(packet + 4) == 0) {
+		if (!qdcount) {
 			DECODE_FAIL(NO_QUESTIONS);
 			return false;
 		}
@@ -122,7 +122,6 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 		 */
 	}
 
-#if 0
 	expected = fr_net_to_uint16(packet + 4) + fr_net_to_uint16(packet + 6) + fr_net_to_uint16(packet + 8) + fr_net_to_uint16(packet + 10);
 	count = 0;
 
@@ -130,18 +129,143 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 	end = packet + packet_len;
 
 	/*
+	 *	Check for wildly fake packets, by making rough
+	 *	estimations.  This way we don't actually have to walk
+	 *	the packet.
+	 */
+	if (p + (qdcount * 5) > end) {
+		DECODE_FAIL(TOO_MANY_RRS);
+		return false;
+	}
+	p += (qdcount * 5);
+
+	if ((p + ((expected - qdcount) * (1 + 8 + 2))) > end) {
+		DECODE_FAIL(TOO_MANY_RRS);
+		return false;
+	}
+
+	/*
+	 *	The counts are at least vaguely OK, let's walk over the whole packet.
+	 */
+	p = packet + DNS_HDR_LEN;
+
+	/*
 	 *	Check that lengths of RRs match.
 	 */
 	while (p < end) {
-		uint16_t len;
+		uint16_t len = 0;
+		uint8_t const *start = p;
+
 
 		/*
-		 *	@todo - get DNS label, followed by 2 octets of
-		 *	type, 2 of class, 4 of TTL.  Then check the RR.
+		 *	Simple DNS label decoder
 		 */
+		while (p < end) {
+			/*
+			 *	0x00 is "end of label"
+			 */
+			if (!*p) {
+				p++;
+				break;
+			}
 
+			/*
+			 *	2 octets of 14-bit pointer, which must
+			 *	be at least somewhat sane.
+			 */
+			if (*p >= 0xc0) {
+				size_t offset;
+
+				if ((p + 2) >= end) {
+					DECODE_FAIL(INVALID_RR_LABEL);
+					return false;
+				}
+
+				offset = p[1];
+				offset += ((*p & ~0xc0) << 8);
+
+				/*
+				 *	Can't point to the header.
+				 */
+				if (offset < 12) {
+					DECODE_FAIL(INVALID_RR_LABEL);
+					return false;
+				}
+
+				/*
+				 *	Can't point to the current label.
+				 */
+				if ((packet + offset) >= start) {
+					DECODE_FAIL(INVALID_RR_LABEL);
+					return false;
+				}
+
+				/*
+				 *	A compressed pointer is the end of the current label.
+				 */
+				p += 2;
+				break;
+			}
+
+			/*
+			 *	0b10 and 0b10 are forbidden
+			 */
+			if (*p > 63) {
+				DECODE_FAIL(INVALID_RR_LABEL);
+				return false;
+			}
+
+			/*
+			 *	It must be a length byte, which doesn't cause overflow.
+			 */
+			if ((p + *p + 1) >= end) {
+				DECODE_FAIL(INVALID_RR_LABEL);
+				return false;
+			}
+
+			/*
+			 *	Total length of labels can't be too high.
+			 */
+			len += *p;
+			if (len >= 256) {
+				DECODE_FAIL(INVALID_RR_LABEL);
+				return false;
+			}
+
+			/*
+			 *	Go to the next label.
+			 */
+			p += *p + 1;
+		}
+
+		if (qdcount) {
+			/*
+			 *	qtype + qclass
+			 */
+			if ((p + 4) > end) {
+				DECODE_FAIL(MISSING_RR_HEADER);
+				return false;
+			}
+
+			p += 4;
+			qdcount--;
+			goto next;
+		}
+
+		/*
+		 *	type + class + TTL
+		 */
+		if ((p + 8) > end) {
+			DECODE_FAIL(MISSING_RR_HEADER);
+			return false;
+		}
+		p += 8;
+
+		/*
+		  *	rr_len
+		 */
 		if ((p + 2) >= end) {
-			DECODE_FAIL(MISSING_RRLEN);
+			DECODE_FAIL(MISSING_RR_LEN);
 			return false;
 		}
 
@@ -153,6 +277,8 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 		}
 
 		p+= len;
+
+next:
 		count++;
 
 		if (count > expected) {
@@ -165,7 +291,6 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 		DECODE_FAIL(TOO_FEW_RRS);
 		return false;
 	}
-#endif
 
 	DECODE_FAIL(NONE);
 	return true;
