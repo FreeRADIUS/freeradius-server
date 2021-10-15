@@ -64,6 +64,7 @@ fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus
 #
 #  tests add a 10s timeout.  This is so that we can see if the fuzzers run _at all_.
 #
+ifeq "$(CI)" ""
 test.fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
 	@echo TEST-FUZZER $(PROTOCOL) for $(FUZZER_TIMEOUT)s
 	${Q}$(TEST_BIN)/fuzzer_$(PROTOCOL) \
@@ -72,6 +73,21 @@ test.fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-c
 		-max_total_time=$(FUZZER_TIMEOUT) \
 		-D share/dictionary \
 		src/tests/fuzzer-corpus/$(PROTOCOL)
+else
+test.fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
+	@echo TEST-FUZZER $(PROTOCOL) for $(FUZZER_TIMEOUT)s
+	@mkdir -p $(BUILD_DIR)/fuzzer
+	${Q}if ! $(TEST_BIN)/fuzzer_$(PROTOCOL) \
+		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)/" \
+		-max_len=512 $(FUZZER_ARGUMENTS) \
+		-max_total_time=$(FUZZER_TIMEOUT) \
+		-D share/dictionary \
+		src/tests/fuzzer-corpus/$(PROTOCOL) > $(BUILD_DIR)/fuzzer/$(PROTOCOL).log 2>&1; then \
+		tail -20 $(BUILD_DIR)/fuzzer/$(PROTOCOL).log; \
+		echo FAILED; \
+		exit 1; \
+	fi
+endif
 
 test.fuzzer.$(PROTOCOL).crash: $(wildcard $(BUILD_DIR)/fuzzer/$(PROTOCOL)/crash-*) $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
 	$(TEST_BIN)/fuzzer_$(PROTOCOL) \
