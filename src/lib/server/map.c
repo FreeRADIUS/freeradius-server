@@ -324,7 +324,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	fr_token_t		token;
 	map_t			*map;
 	bool			is_child;
-	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t		our_in = FR_SBUFF(in);
 	fr_sbuff_marker_t	m_lhs, m_rhs, m_op;
 	fr_sbuff_term_t const	*tt = p_rules ? p_rules->terminals : NULL;
 	map_t			*parent, *new_parent;
@@ -1922,7 +1922,7 @@ finish:
  */
 ssize_t map_print(fr_sbuff_t *out, map_t const *map)
 {
-	fr_sbuff_t	our_out = FR_SBUFF_NO_ADVANCE(out);
+	fr_sbuff_t	our_out = FR_SBUFF(out);
 
 	MAP_VERIFY(map);
 

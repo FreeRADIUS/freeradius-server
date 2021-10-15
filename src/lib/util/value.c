@@ -4779,7 +4779,7 @@ finish:
  */
 ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff_escape_rules_t const *e_rules)
 {
-	fr_sbuff_t	our_out = FR_SBUFF_NO_ADVANCE(out);
+	fr_sbuff_t	our_out = FR_SBUFF(out);
 
 	char		buf[1024];	/* Interim buffer to use with poorly behaved printing functions */
 
@@ -5075,7 +5075,7 @@ done:
  */
 ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, fr_token_t quote)
 {
-	fr_sbuff_t	our_out = FR_SBUFF_NO_ADVANCE(out);
+	fr_sbuff_t	our_out = FR_SBUFF(out);
 
 	if (quote == T_BARE_WORD) return fr_value_box_print(out, data, NULL);
 
@@ -5119,7 +5119,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_
 					   char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
 					   fr_value_box_list_action_t proc_action, bool flatten)
 {
-	fr_sbuff_t our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
+	fr_sbuff_t our_sbuff = FR_SBUFF(sbuff);
 	ssize_t slen;
 
 	if (fr_dlist_empty(list)) return 0;

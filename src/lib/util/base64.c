@@ -327,7 +327,7 @@ uint8_t const fr_base64_url_alphabet_decode[UINT8_MAX] = {
 ssize_t fr_base64_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in,
 			      bool add_padding, char const alphabet[static UINT8_MAX])
 {
-	fr_sbuff_t		our_out = FR_SBUFF_NO_ADVANCE(out);
+	fr_sbuff_t		our_out = FR_SBUFF(out);
 	fr_dbuff_t		our_in = FR_DBUFF(in);
 
 	fr_strerror_const("Insufficient buffer space");
@@ -402,7 +402,7 @@ ssize_t fr_base64_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in,
 ssize_t	fr_base64_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
 			      bool expect_padding, bool no_trailing, uint8_t const alphabet[static UINT8_MAX])
 {
-	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t		our_in = FR_SBUFF(in);
 	fr_dbuff_t		our_out = FR_DBUFF(out);
 	fr_sbuff_marker_t	m_final;
 	uint8_t			pad;

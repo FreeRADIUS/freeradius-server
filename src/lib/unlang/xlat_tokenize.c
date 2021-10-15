@@ -1270,7 +1270,7 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 			        fr_sbuff_t *in,
 			        fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
-	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_flags_t	tmp_flags = {};
 
 	if (!flags) flags = &tmp_flags;
@@ -1321,7 +1321,7 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 			   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
-	fr_sbuff_t			our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t			our_in = FR_SBUFF(in);
 	ssize_t				slen;
 	fr_cursor_t			cursor;
 	fr_sbuff_marker_t		m;
@@ -1492,7 +1492,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 		      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
-	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_flags_t	tmp_flags = {};
 
 	if (!flags) flags = &tmp_flags;

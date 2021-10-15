@@ -1233,7 +1233,7 @@ static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_at
 	default:
 	{
 		fr_sbuff_parse_error_t	sberr = FR_SBUFF_PARSE_OK;
-		fr_sbuff_t tmp = FR_SBUFF_NO_ADVANCE(name);
+		fr_sbuff_t tmp = FR_SBUFF(name);
 
 		if (fr_sbuff_out(&sberr, &ar->num, &tmp) == 0) {
 			if (sberr == FR_SBUFF_PARSE_ERROR_NOT_FOUND) {
@@ -1937,7 +1937,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	int		ret;
 	size_t		list_len;
 	tmpl_t		*vpt;
-	fr_sbuff_t	our_name = FR_SBUFF_NO_ADVANCE(name);	/* Take a local copy in case we need to back track */
+	fr_sbuff_t	our_name = FR_SBUFF(name);	/* Take a local copy in case we need to back track */
 	bool		ref_prefix = false;
 	bool		is_raw = false;
 
@@ -2136,7 +2136,7 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 static ssize_t tmpl_afrom_bool_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 				      fr_sbuff_parse_rules_t const *p_rules)
 {
-	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t	our_in = FR_SBUFF(in);
 	bool		a_bool;
 	tmpl_t		*vpt;
 
@@ -2174,7 +2174,7 @@ static ssize_t tmpl_afrom_bool_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 static ssize_t tmpl_afrom_octets_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 					fr_sbuff_parse_rules_t const *p_rules)
 {
-	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t	our_in = FR_SBUFF(in);
 	tmpl_t		*vpt;
 	char		*hex;
 	size_t		binlen, len;
@@ -2234,7 +2234,7 @@ static ssize_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 				      fr_sbuff_parse_rules_t const *p_rules)
 {
 	tmpl_t		*vpt;
-	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t	our_in = FR_SBUFF(in);
 	uint8_t		octet;
 	fr_type_t	type;
 
@@ -2301,7 +2301,7 @@ static ssize_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 				      fr_sbuff_parse_rules_t const *p_rules)
 {
 	tmpl_t			*vpt;
-	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t		our_in = FR_SBUFF(in);
 	fr_sbuff_marker_t	m;
 	fr_type_t		type;
 	size_t			len;
@@ -2418,7 +2418,7 @@ static ssize_t tmpl_afrom_ether_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t
 				       fr_sbuff_parse_rules_t const *p_rules)
 {
 	tmpl_t			*vpt;
-	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t		our_in = FR_SBUFF(in);
 	uint8_t			buff[6];
 	fr_dbuff_t		dbuff;
 	fr_value_box_t		*vb;
@@ -2485,7 +2485,7 @@ static ssize_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 					 fr_sbuff_parse_rules_t const *p_rules)
 {
 	tmpl_t	*vpt;
-	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t	our_in = FR_SBUFF(in);
 	ssize_t		slen;
 	fr_value_box_t	*vb;
 
@@ -2589,7 +2589,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			  fr_sbuff_parse_rules_t const *p_rules,
 			  tmpl_rules_t const *t_rules)
 {
-	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t	our_in = FR_SBUFF(in);
 
 	ssize_t		slen;
 	char		*str;
@@ -2866,7 +2866,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
  */
 ssize_t tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in)
 {
-	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t		our_in = FR_SBUFF(in);
 	fr_sbuff_marker_t	m;
 	fr_type_t		cast = FR_TYPE_NULL;
 	ssize_t			slen;
@@ -3668,7 +3668,7 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 	tmpl_attr_t		*ar = NULL;
 	fr_da_stack_t		stack;
 	char			printed_rr = false;
-	fr_sbuff_t		our_out = FR_SBUFF_NO_ADVANCE(out);
+	fr_sbuff_t		our_out = FR_SBUFF(out);
 
 	if (unlikely(!vpt)) return 0;
 
@@ -3890,7 +3890,7 @@ ssize_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t a
 ssize_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 		   tmpl_attr_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules)
 {
-	fr_sbuff_t	our_out = FR_SBUFF_NO_ADVANCE(out);
+	fr_sbuff_t	our_out = FR_SBUFF(out);
 
 	if (unlikely(!vpt)) return 0;
 
@@ -3969,7 +3969,7 @@ ssize_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
  */
 ssize_t tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix)
 {
-	fr_sbuff_t our_out = FR_SBUFF_NO_ADVANCE(out);
+	fr_sbuff_t our_out = FR_SBUFF(out);
 
 	char quote = fr_token_quote[vpt->quote];
 

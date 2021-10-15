@@ -29,7 +29,7 @@ RCSID("$Id$")
 
 ssize_t fr_dict_attr_flags_print(fr_sbuff_t *out, fr_dict_t const *dict, fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
-	fr_sbuff_t	our_out = FR_SBUFF_NO_ADVANCE(out);
+	fr_sbuff_t	our_out = FR_SBUFF(out);
 
 #define FLAG_SET(_flag) if (flags->_flag) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, STRINGIFY(_flag)",")
 
@@ -113,7 +113,7 @@ ssize_t fr_dict_attr_oid_print(fr_sbuff_t *out,
 	int			i;
 	int			depth = 0;
 	fr_da_stack_t		da_stack;
-	fr_sbuff_t		our_out = FR_SBUFF_NO_ADVANCE(out);
+	fr_sbuff_t		our_out = FR_SBUFF(out);
 
 	/*
 	 *	If the ancestor and the DA match, there's

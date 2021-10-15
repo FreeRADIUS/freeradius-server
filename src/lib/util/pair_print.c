@@ -61,7 +61,7 @@ ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_toke
 		 *	Serialize all child VPs as full quoted
 		 *	<pair> = ["]<child>["]
 		 */
-		our_out = FR_SBUFF_NO_ADVANCE(out);
+		our_out = FR_SBUFF(out);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '{', ' ');
 		for (child = fr_pair_dcursor_init(&cursor, &vp->vp_group);
 		     child != NULL;
@@ -100,7 +100,7 @@ ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_toke
 ssize_t fr_pair_print(fr_sbuff_t *out, fr_pair_t const *parent, fr_pair_t const *vp)
 {
 	char const		*token = NULL;
-	fr_sbuff_t		our_out = FR_SBUFF_NO_ADVANCE(out);
+	fr_sbuff_t		our_out = FR_SBUFF(out);
 	fr_dict_attr_t const	*parent_da = NULL;
 
 	PAIR_VERIFY(vp);

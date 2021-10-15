@@ -1238,7 +1238,7 @@ fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
 ssize_t regex_flags_parse(int *err, fr_regex_flags_t *out, fr_sbuff_t *in,
 			  fr_sbuff_term_t const *terminals, bool err_on_dup)
 {
-	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t	our_in = FR_SBUFF(in);
 
 	if (err) *err = 0;
 
@@ -1284,7 +1284,7 @@ ssize_t regex_flags_parse(int *err, fr_regex_flags_t *out, fr_sbuff_t *in,
  */
 ssize_t regex_flags_print(fr_sbuff_t *sbuff, fr_regex_flags_t const flags[static REGEX_FLAG_BUFF_SIZE])
 {
-	fr_sbuff_t our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
+	fr_sbuff_t our_sbuff = FR_SBUFF(sbuff);
 
 #define DO_REGEX_FLAG(_f, _c) \
 	if (flags->_f) FR_SBUFF_IN_CHAR_RETURN(&our_sbuff, _c)

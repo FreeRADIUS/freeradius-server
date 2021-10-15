@@ -370,7 +370,7 @@ do { \
  *
  * @param[in] _sbuff_or_marker	to make an ephemeral copy of.
  */
-#define FR_SBUFF_NO_ADVANCE(_sbuff_or_marker) \
+#define FR_SBUFF(_sbuff_or_marker) \
 _Generic((_sbuff_or_marker), \
 	fr_sbuff_t *		: ((fr_sbuff_t){ \
 					.buff		= ((fr_sbuff_t *)(_sbuff_or_marker))->buff, \
@@ -401,7 +401,7 @@ _Generic((_sbuff_or_marker), \
  *
  * @param[in] _sbuff	to make an ephemeral copy of.
  */
-#define FR_SBUFF_COPY(_sbuff_or_marker) \
+#define FR_SBUFF_BIND_CURRENT(_sbuff_or_marker) \
 _Generic((_sbuff_or_marker), \
 	fr_sbuff_t *		: ((fr_sbuff_t){ \
 					.buff		= ((fr_sbuff_t *)(_sbuff_or_marker))->buff, \

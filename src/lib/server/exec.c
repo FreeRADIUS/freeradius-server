@@ -129,7 +129,7 @@ static int exec_pair_to_env(char **env_p, size_t env_len, fr_sbuff_t *env_sbuff,
 	fr_dcursor_t		cursor;
 	fr_dict_attr_t const	*da;
 	fr_pair_t		*vp;
-	fr_sbuff_t		sbuff = FR_SBUFF_COPY(env_sbuff);
+	fr_sbuff_t		sbuff = FR_SBUFF_BIND_CURRENT(env_sbuff);
 
 	/*
 	 *	Set up the environment variables in the

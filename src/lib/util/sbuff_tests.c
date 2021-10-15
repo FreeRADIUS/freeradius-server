@@ -741,7 +741,7 @@ static void test_no_advance(void)
 
 	TEST_CASE("Copy 5 bytes to out - no advance");
 	TEST_CHECK(sbuff.p == sbuff.start);
-	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &FR_SBUFF_NO_ADVANCE(&sbuff), 5);
+	slen = fr_sbuff_out_bstrncpy_exact(&FR_SBUFF_OUT(out, sizeof(out)), &FR_SBUFF(&sbuff), 5);
 	TEST_CHECK(slen == 5);
 	TEST_CHECK(strcmp(out, "i am ") == 0);
 	TEST_CHECK(sbuff.p == sbuff.start);
@@ -868,7 +868,7 @@ static void test_talloc_extend_multi_level(void)
 	TEST_SBUFF_USED(&sbuff_0, 0);
 	TEST_SBUFF_LEN(&sbuff_0, 1);
 
-	sbuff_1 = FR_SBUFF_COPY(&sbuff_0);
+	sbuff_1 = FR_SBUFF_BIND_CURRENT(&sbuff_0);
 	TEST_CASE("Check sbuff_1 has extend fields set");
 	TEST_CHECK(sbuff_0.extend == sbuff_1.extend);
 	TEST_CHECK(sbuff_0.uctx == sbuff_1.uctx);
@@ -919,7 +919,7 @@ static void test_talloc_extend_with_marker(void)
 	TEST_CHECK((marker_0.p - sbuff_0.start) == 1);
 
 	TEST_CASE("Print string - Copy sbuff");
-	sbuff_1 = FR_SBUFF_COPY(&sbuff_0);	/* Dup sbuff_0 */
+	sbuff_1 = FR_SBUFF_BIND_CURRENT(&sbuff_0);	/* Dup sbuff_0 */
 	TEST_CHECK(sbuff_0.p == sbuff_1.start);
 	fr_sbuff_marker(&marker_1, &sbuff_1);
 

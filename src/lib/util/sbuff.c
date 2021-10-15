@@ -628,7 +628,7 @@ fr_sbuff_term_t *fr_sbuff_terminals_amerge(TALLOC_CTX *ctx, fr_sbuff_term_t cons
  */
 size_t fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 {
-	fr_sbuff_t 	our_in = FR_SBUFF_COPY(in);
+	fr_sbuff_t 	our_in = FR_SBUFF_BIND_CURRENT(in);
 	size_t		remaining;
 
 	CHECK_SBUFF_INIT(in);
@@ -666,7 +666,7 @@ done:
  */
 ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 {
-	fr_sbuff_t 		our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t 		our_in = FR_SBUFF(in);
 	size_t			remaining;
 	fr_sbuff_marker_t	m;
 
@@ -718,7 +718,7 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				     bool const allowed[static UINT8_MAX + 1])
 {
-	fr_sbuff_t 	our_in = FR_SBUFF_COPY(in);
+	fr_sbuff_t 	our_in = FR_SBUFF_BIND_CURRENT(in);
 
 	CHECK_SBUFF_INIT(in);
 
@@ -765,7 +765,7 @@ size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 				   fr_sbuff_term_t const *tt,
 				   fr_sbuff_unescape_rules_t const *u_rules)
 {
-	fr_sbuff_t 	our_in = FR_SBUFF_COPY(in);
+	fr_sbuff_t 	our_in = FR_SBUFF_BIND_CURRENT(in);
 	bool		do_escape = false;		/* Track state across extensions */
 
 	uint8_t		idx[UINT8_MAX + 1];		/* Fast path index */
@@ -855,7 +855,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 
 	CHECK_SBUFF_INIT(in);
 
-	our_in = FR_SBUFF_NO_ADVANCE(in);
+	our_in = FR_SBUFF(in);
 
 	/*
 	 *	Chunk tracking...
@@ -1075,7 +1075,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 	char		*end, *a_end; \
 	size_t		len; \
 	long long	num; \
-	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in); \
+	fr_sbuff_t	our_in = FR_SBUFF(in); \
 	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char); \
 	if (len == 0) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
@@ -1130,7 +1130,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 	char			*end, *a_end; \
 	size_t			len; \
 	unsigned long long	num; \
-	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in); \
+	fr_sbuff_t		our_in = FR_SBUFF(in); \
 	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char); \
 	if (len == 0) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
@@ -1189,7 +1189,7 @@ size_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t 
 { \
 	char		buff[_max_char + 1]; \
 	char		*end; \
-	fr_sbuff_t	our_in = FR_SBUFF_NO_ADVANCE(in); \
+	fr_sbuff_t	our_in = FR_SBUFF(in); \
 	size_t		len; \
 	_type		res; \
 	len = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(buff, sizeof(buff)), &our_in, SIZE_MAX, sbuff_char_class_float); \
@@ -1482,7 +1482,7 @@ ssize_t fr_sbuff_in_escape(fr_sbuff_t *sbuff, char const *in, size_t inlen, fr_s
 
 	if (unlikely(sbuff->is_const)) return 0;
 
-	our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
+	our_sbuff = FR_SBUFF(sbuff);
 	while (p < end) {
 		size_t	clen;
 		uint8_t	c = (uint8_t)*p;
@@ -1725,7 +1725,7 @@ size_t fr_sbuff_adv_until(fr_sbuff_t *sbuff, size_t len, fr_sbuff_term_t const *
  */
 char *fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *sbuff, size_t len, char const *chr)
 {
-	fr_sbuff_t	our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
+	fr_sbuff_t	our_sbuff = FR_SBUFF(sbuff);
 	size_t		total = 0;
 	size_t		clen = strlen(chr);
 
@@ -1770,7 +1770,7 @@ char *fr_sbuff_adv_to_chr_utf8(fr_sbuff_t *sbuff, size_t len, char const *chr)
  */
 char *fr_sbuff_adv_to_chr(fr_sbuff_t *sbuff, size_t len, char c)
 {
-	fr_sbuff_t	our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
+	fr_sbuff_t	our_sbuff = FR_SBUFF(sbuff);
 	size_t		total = 0;
 
 	CHECK_SBUFF_INIT(sbuff);
@@ -1806,7 +1806,7 @@ char *fr_sbuff_adv_to_chr(fr_sbuff_t *sbuff, size_t len, char c)
  */
 char *fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, size_t len, char const *needle, size_t needle_len)
 {
-	fr_sbuff_t	our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
+	fr_sbuff_t	our_sbuff = FR_SBUFF(sbuff);
 	size_t		total = 0;
 
 	CHECK_SBUFF_INIT(sbuff);
@@ -1859,7 +1859,7 @@ char *fr_sbuff_adv_to_str(fr_sbuff_t *sbuff, size_t len, char const *needle, siz
  */
 char *fr_sbuff_adv_to_strcase(fr_sbuff_t *sbuff, size_t len, char const *needle, size_t needle_len)
 {
-	fr_sbuff_t	our_sbuff = FR_SBUFF_NO_ADVANCE(sbuff);
+	fr_sbuff_t	our_sbuff = FR_SBUFF(sbuff);
 	size_t		total = 0;
 
 	CHECK_SBUFF_INIT(sbuff);

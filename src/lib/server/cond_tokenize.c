@@ -80,7 +80,7 @@ size_t cond_cmp_op_table_len = NUM_ELEMENTS(cond_cmp_op_table);
  */
 ssize_t cond_print(fr_sbuff_t *out, fr_cond_t const *in)
 {
-	fr_sbuff_t		our_out = FR_SBUFF_NO_ADVANCE(out);
+	fr_sbuff_t		our_out = FR_SBUFF(out);
 	fr_cond_t const		*c = in;
 
 	while (c) {
@@ -968,7 +968,7 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 						L("||"),		/* Logical operator */
 					);
 
-	fr_sbuff_t			our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t			our_in = FR_SBUFF(in);
 	fr_sbuff_marker_t		m;
 	tmpl_t				*vpt;
 	fr_token_t			type;
@@ -1128,7 +1128,7 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 			     CONF_SECTION *cs, fr_sbuff_t *in, int brace,
 			     tmpl_rules_t const *t_rules)
 {
-	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t		our_in = FR_SBUFF(in);
 	ssize_t			slen;
 	fr_cond_t		*c;
 

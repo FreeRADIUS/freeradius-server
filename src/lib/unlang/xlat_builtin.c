@@ -1428,7 +1428,7 @@ static xlat_action_t xlat_func_lpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_sbuff_init(&sbuff, buff, pad_len + 1);
 		fr_sbuff_marker(&m_data, &sbuff);
 		fr_sbuff_advance(&m_data, pad_len - len);	/* Mark where we want the data to go */
-		fr_sbuff_move(&FR_SBUFF_NO_ADVANCE(&m_data), &FR_SBUFF_NO_ADVANCE(&sbuff), len); /* Shift the data */
+		fr_sbuff_move(&FR_SBUFF(&m_data), &FR_SBUFF(&sbuff), len); /* Shift the data */
 
 		if (fill_len == 1) {
 			memset(fr_sbuff_current(&sbuff), *fill_str, fr_sbuff_ahead(&m_data));

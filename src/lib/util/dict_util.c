@@ -1949,7 +1949,7 @@ ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 	fr_dict_t		*dict;
 	size_t			len;
 	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 1];	/* +1 \0 +1 for "too long" */
-	fr_sbuff_t		our_name = FR_SBUFF_NO_ADVANCE(name);
+	fr_sbuff_t		our_name = FR_SBUFF(name);
 
 	if (!dict_gctx || !name || !out) {
 		if (err) *err = FR_DICT_ATTR_EINVAL;
@@ -2282,7 +2282,7 @@ ssize_t dict_attr_search(fr_dict_attr_err_t *err, fr_dict_attr_t const **out,
 	fr_dict_t		*dict = NULL;
 
 	ssize_t			slen = 0;
-	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t		our_in = FR_SBUFF(in);
 
 	if (internal && !dict_gctx->internal) internal = false;
 
@@ -2379,7 +2379,7 @@ do { \
 	_in = _n; \
 } while (0)
 
-		our_in = FR_SBUFF_NO_ADVANCE(in);
+		our_in = FR_SBUFF(in);
 		fr_sbuff_marker(&start, &our_in);
 
 		list = talloc_strdup(NULL, "");
@@ -2426,7 +2426,7 @@ ssize_t dict_attr_search_qualified(fr_dict_attr_err_t *err, fr_dict_attr_t const
 				   bool internal, bool foreign,
 				   dict_attr_resolve_func_t func)
 {
-	fr_sbuff_t		our_in = FR_SBUFF_NO_ADVANCE(in);
+	fr_sbuff_t		our_in = FR_SBUFF(in);
 	fr_dict_attr_err_t	our_err;
 	fr_dict_t 		*initial;
 	ssize_t			slen;
@@ -2648,7 +2648,7 @@ ssize_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t cons
 	size_t			len;
 	fr_dict_attr_t const	*ref;
 	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 1];	/* +1 \0 +1 for "too long" */
-	fr_sbuff_t		our_name = FR_SBUFF_NO_ADVANCE(name);
+	fr_sbuff_t		our_name = FR_SBUFF(name);
 	fr_hash_table_t		*namespace;
 	*out = NULL;
 
