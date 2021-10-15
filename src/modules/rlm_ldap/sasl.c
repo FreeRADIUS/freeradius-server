@@ -183,7 +183,7 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 				MOD_ROPTIONAL(RDEBUG3, DEBUG3, "SASL response  : %s", escaped);
 
 				talloc_free(escaped);
-				ldap_memfree(srv_cred);
+				ber_bvfree(srv_cred);
 			}
 		}
 	}
