@@ -674,6 +674,13 @@ static fr_table_num_ordered_t reason_fail_table[] = {
 	{ L("resource record length overflows the packet"),	DECODE_FAIL_RR_OVERFLOWS_PACKET	},
 	{ L("more resource records than indicated in header"),	DECODE_FAIL_TOO_MANY_RRS	},
 	{ L("fewer resource records than indicated in header"),	DECODE_FAIL_TOO_FEW_RRS		},
+	{ L("pointer overflows packet"),			DECODE_FAIL_POINTER_OVERFLOWS_PACKET   	},
+	{ L("pointer points to packet header"),			DECODE_FAIL_POINTER_TO_HEADER		},
+	{ L("pointer creates a loop"),				DECODE_FAIL_POINTER_LOOPS		},
+	{ L("invalid pointer"),					DECODE_FAIL_INVALID_POINTER		},
+	{ L("label overflows the packet"),			DECODE_FAIL_LABEL_OVERFLOWS_PACKET     	},
+	{ L("too many characters in label"),			DECODE_FAIL_LABEL_TOO_LONG		},
+	{ L("query record header is missing"),			DECODE_FAIL_MISSING_QD_HEADER		},
 };
 static size_t reason_fail_table_len = NUM_ELEMENTS(reason_fail_table);
 

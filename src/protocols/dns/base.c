@@ -176,8 +176,8 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 			if (*p >= 0xc0) {
 				size_t offset;
 
-				if ((p + 2) >= end) {
-					DECODE_FAIL(INVALID_RR_LABEL);
+				if ((p + 2) > end) {
+					DECODE_FAIL(POINTER_OVERFLOWS_PACKET);
 					return false;
 				}
 
@@ -188,7 +188,7 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 				 *	Can't point to the header.
 				 */
 				if (offset < 12) {
-					DECODE_FAIL(INVALID_RR_LABEL);
+					DECODE_FAIL(POINTER_TO_HEADER);
 					return false;
 				}
 
@@ -196,7 +196,7 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 				 *	Can't point to the current label.
 				 */
 				if ((packet + offset) >= start) {
-					DECODE_FAIL(INVALID_RR_LABEL);
+					DECODE_FAIL(POINTER_LOOPS);
 					return false;
 				}
 
@@ -211,15 +211,15 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 			 *	0b10 and 0b10 are forbidden
 			 */
 			if (*p > 63) {
-				DECODE_FAIL(INVALID_RR_LABEL);
+				DECODE_FAIL(INVALID_POINTER);
 				return false;
 			}
 
 			/*
 			 *	It must be a length byte, which doesn't cause overflow.
 			 */
-			if ((p + *p + 1) >= end) {
-				DECODE_FAIL(INVALID_RR_LABEL);
+			if ((p + *p + 1) > end) {
+				DECODE_FAIL(LABEL_OVERFLOWS_PACKET);
 				return false;
 			}
 
@@ -228,7 +228,7 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 			 */
 			len += *p;
 			if (len >= 256) {
-				DECODE_FAIL(INVALID_RR_LABEL);
+				DECODE_FAIL(LABEL_TOO_LONG);
 				return false;
 			}
 
@@ -243,7 +243,7 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 			 *	qtype + qclass
 			 */
 			if ((p + 4) > end) {
-				DECODE_FAIL(MISSING_RR_HEADER);
+				DECODE_FAIL(MISSING_QD_HEADER);
 				return false;
 			}
 
