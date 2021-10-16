@@ -102,6 +102,7 @@ static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_float64) == 8,
 /** Map data types to names representing those types
  */
 fr_table_num_ordered_t const fr_value_box_type_table[] = {
+	{ L("null"),		FR_TYPE_NULL		},
 	{ L("string"),		FR_TYPE_STRING		},
 	{ L("octets"),		FR_TYPE_OCTETS		},
 

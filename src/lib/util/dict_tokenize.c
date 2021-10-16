@@ -2581,7 +2581,11 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir, char c
 		fr_dict_attr_t			*n;
 		fr_table_num_ordered_t const	*p = &fr_value_box_type_table[i];
 
-		if (p->value == FR_TYPE_VENDOR) continue;	/* These can't exist in the root */
+		switch (p->value) {
+		case FR_TYPE_NULL:	/* Can't cast to NULL */
+		case FR_TYPE_VENDOR:	/* Vendors can't exist in dictionaries as attributes */
+			continue;
+		}
 
 		type_name = talloc_typed_asprintf(NULL, "Tmp-Cast-%s", p->name.str);
 
