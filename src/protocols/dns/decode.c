@@ -664,6 +664,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 static fr_table_num_ordered_t reason_fail_table[] = {
 	{ L("none"),						DECODE_FAIL_NONE		},
 	{ L("packet is smaller than DNS header"),		DECODE_FAIL_MIN_LENGTH_PACKET	},
+	{ L("packet is larger than 65535"),			DECODE_FAIL_MAX_LENGTH_PACKET	},
 	{ L("expected query / answer, got answer / query"),	DECODE_FAIL_UNEXPECTED		},
 	{ L("no 'questions' in query packet"),			DECODE_FAIL_NO_QUESTIONS	},
 	{ L("unexprected answers in query packet"),		DECODE_FAIL_ANSWERS_IN_QUESTION	},
@@ -676,6 +677,7 @@ static fr_table_num_ordered_t reason_fail_table[] = {
 	{ L("fewer resource records than indicated in header"),	DECODE_FAIL_TOO_FEW_RRS		},
 	{ L("pointer overflows packet"),			DECODE_FAIL_POINTER_OVERFLOWS_PACKET   	},
 	{ L("pointer points to packet header"),			DECODE_FAIL_POINTER_TO_HEADER		},
+	{ L("pointer does not point to a label"),      		DECODE_FAIL_POINTER_TO_NON_LABEL       	},
 	{ L("pointer creates a loop"),				DECODE_FAIL_POINTER_LOOPS		},
 	{ L("invalid pointer"),					DECODE_FAIL_INVALID_POINTER		},
 	{ L("label overflows the packet"),			DECODE_FAIL_LABEL_OVERFLOWS_PACKET     	},

@@ -87,6 +87,11 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 		return false;
 	}
 
+	if (packet_len > 65535) {
+		DECODE_FAIL(MAX_LENGTH_PACKET);
+		return false;
+	}
+
 	/*
 	 *	query=0, response=1
 	 */
@@ -129,6 +134,18 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 	end = packet + packet_len;
 
 	/*
+	 *	We track valid label targets in a simple array (up to
+	 *	2^14 bits of compressed pointer).
+	 *
+	 *	Note that some labels might appear in the RRDATA
+	 *	field, and we don't verify those here.  However, this
+	 *	function will verify the most common packets.  As a
+	 *	result, any issues with overflow, etc. are more
+	 *	difficult to exploit.
+	 */
+	memset(fr_dns_marker, 0, packet_len < (1 << 14) ? packet_len : (1 << 14));
+
+	/*
 	 *	Check for wildly fake packets, by making rough
 	 *	estimations.  This way we don't actually have to walk
 	 *	the packet.
@@ -159,6 +176,15 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 
 		/*
 		 *	Simple DNS label decoder
+		 *
+		 *	@todo - use fr_dns_marker() to check for valid
+		 *	pointers, too.
+		 *
+		 *	@todo - move this to src/lib/util/dns.c,
+		 *	perhaps as fr_dns_label_verify(), and then
+		 *	have it also return a pointer to the next
+		 *	label?  fr_dns_label_uncompressed_length()
+		 *	does similar but slightly different things.
 		 */
 		while (p < end) {
 			/*
@@ -200,6 +226,11 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 					return false;
 				}
 
+				if (!fr_dns_marker[offset]) {
+					DECODE_FAIL(POINTER_TO_NON_LABEL);
+					return false;
+				}
+
 				/*
 				 *	A compressed pointer is the end of the current label.
 				 */
@@ -231,6 +262,12 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 				DECODE_FAIL(LABEL_TOO_LONG);
 				return false;
 			}
+
+			/*
+			 *	Remember that this is where we have a
+			 *	label.
+			 */
+			fr_dns_marker[p - packet] = 1;
 
 			/*
 			 *	Go to the next label.
