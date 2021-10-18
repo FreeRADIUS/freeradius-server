@@ -128,7 +128,7 @@ VALUE	digest-type-code		sha-256			1
 #  4 octets TTL - extended rcode and flags
 #  2 octets RDLEN
 #  RRDATA of 16 bits code, 16 bits length of data, data
-STRUCT	opt				type			41
+STRUCT	opt				type			41	length=uint16
 MEMBER		options					tlv
 
 ATTRIBUTE	llq					.1	struct
