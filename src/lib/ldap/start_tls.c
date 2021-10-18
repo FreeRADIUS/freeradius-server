@@ -161,11 +161,6 @@ static void _ldap_start_tls_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 			      NUM_ELEMENTS(our_clientctrls),
 			      c, tls_ctx->serverctrls, tls_ctx->clientctrls);
 
-	/*
-	 *	Set timeout to be 0.0, which is the magic
-	 *	non-blocking value.
-	 */
-	(void) ldap_set_option(c->handle, LDAP_OPT_NETWORK_TIMEOUT, &fr_time_delta_to_timeval(fr_time_delta_wrap(0)));
 	ret = ldap_start_tls(c->handle, our_serverctrls, our_clientctrls, &tls_ctx->msgid);
 	/*
 	 *	If the handle was not connected, this operation
@@ -193,6 +188,11 @@ static void _ldap_start_tls_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 		break;
 
 	case LDAP_SUCCESS:
+		if (fd < 0) {
+			ret = ldap_get_option(c->handle, LDAP_OPT_DESC, &fd);
+			if ((ret != LDAP_OPT_SUCCESS) || (fd < 0)) goto error;
+		}
+		c->fd = fd;
 		ret = fr_event_fd_insert(tls_ctx, el, fd,
 					 _ldap_start_tls_io_read,
 					 NULL,
@@ -234,7 +234,11 @@ int fr_ldap_start_tls_async(fr_ldap_connection_t *c, LDAPControl **serverctrls, 
 
 	el = c->conn->el;
 
-	if (ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) == LDAP_SUCCESS) {
+	/*
+	 *	ldap_get_option can return LDAP_SUCCESS even if the fd is not yet available
+	 *	- hence the test for fd >= 0
+	 */
+	if ((ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) == LDAP_SUCCESS) && (fd >= 0)) {
 		int ret;
 
 		ret = fr_event_fd_insert(tls_ctx, el, fd,

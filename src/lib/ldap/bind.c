@@ -76,13 +76,13 @@ static void _ldap_bind_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 		PERROR("Bind as \"%s\" to \"%s\" not permitted",
 		       *bind_ctx->bind_dn ? bind_ctx->bind_dn : "(anonymous)", c->config->server);
 		fr_ldap_state_error(c);		/* Restart the connection state machine */
-		break;
+		return;
 
 	default:
 		PERROR("Bind as \"%s\" to \"%s\" failed",
 		       *bind_ctx->bind_dn ? bind_ctx->bind_dn : "(anonymous)", c->config->server);
 		fr_ldap_state_error(c);		/* Restart the connection state machine */
-		break;
+		return;
 	}
 	talloc_free(bind_ctx);			/* Also removes fd events */
 }
