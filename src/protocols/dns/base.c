@@ -77,6 +77,28 @@ fr_dict_attr_autoload_t dns_dict_attr[] = {
 
 #define DECODE_FAIL(_reason) if (reason) *reason = DECODE_FAIL_ ## _reason
 
+static bool fr_dns_tlv_ok(uint8_t const *p, uint8_t const *end, fr_dns_decode_fail_t *reason)
+{
+	uint16_t len;
+
+	while (p < end) {
+		if ((p + 4) > end) {
+			DECODE_FAIL(MISSING_TLV_HEADER);
+			return false;
+		}
+
+		len = fr_net_to_uint16(p + 2);
+		if ((p + 4 + len) > end) {
+			DECODE_FAIL(TLV_OVERFLOWS_RR);
+			return false;
+		}
+
+		p += 4 + len;
+	}
+
+	return true;
+}
+
 bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_dns_decode_fail_t *reason)
 {
 	uint8_t const *p, *end;
@@ -104,7 +126,12 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 
 	if (query) {
 		/*
-		 *	There should be at least one query, and no replies in the query!
+		 *	There should be at least one query, and no
+		 *	replies in the query.
+		 *
+		 *	@todo - unless it's an IQUERY, in which case
+		 *	there should be no questions, and at least one
+		 *	answer.
 		 */
 		if (!qdcount) {
 			DECODE_FAIL(NO_QUESTIONS);
@@ -172,13 +199,10 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 	while (p < end) {
 		uint16_t len = 0;
 		uint8_t const *start = p;
-
+		bool is_opt = false;
 
 		/*
 		 *	Simple DNS label decoder
-		 *
-		 *	@todo - use fr_dns_marker() to check for valid
-		 *	pointers, too.
 		 *
 		 *	@todo - move this to src/lib/util/dns.c,
 		 *	perhaps as fr_dns_label_verify(), and then
@@ -296,6 +320,7 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 			DECODE_FAIL(MISSING_RR_HEADER);
 			return false;
 		}
+		is_opt = (p[0] == 0) && (p[1] == 41);
 		p += 8;
 
 		/*
@@ -307,13 +332,25 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 		}
 
 		len = fr_net_to_uint16(p);
+		if (len == 0) {
+			DECODE_FAIL(ZERO_RR_LEN);
+			return false;
+		}
+
 		p += 2;
 		if ((p + len) > end) {
 			DECODE_FAIL(RR_OVERFLOWS_PACKET);
 			return false;
 		}
 
-		p+= len;
+		/*
+		 *	Verify the TLVs, too.
+		 */
+		if (is_opt && !fr_dns_tlv_ok(p, p + len, reason)) {
+			return false;
+		}
+
+		p += len;
 
 next:
 		count++;

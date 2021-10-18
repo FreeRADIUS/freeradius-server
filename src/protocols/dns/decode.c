@@ -672,6 +672,7 @@ static fr_table_num_ordered_t reason_fail_table[] = {
 	{ L("invalid label for resource record"),	       	DECODE_FAIL_INVALID_RR_LABEL	},
 	{ L("missing resource record header"),			DECODE_FAIL_MISSING_RR_HEADER	},
 	{ L("missing resource record length field"),		DECODE_FAIL_MISSING_RR_LEN	},
+	{ L("resource record length field is zero"),		DECODE_FAIL_ZERO_RR_LEN	},
 	{ L("resource record length overflows the packet"),	DECODE_FAIL_RR_OVERFLOWS_PACKET	},
 	{ L("more resource records than indicated in header"),	DECODE_FAIL_TOO_MANY_RRS	},
 	{ L("fewer resource records than indicated in header"),	DECODE_FAIL_TOO_FEW_RRS		},
@@ -683,6 +684,8 @@ static fr_table_num_ordered_t reason_fail_table[] = {
 	{ L("label overflows the packet"),			DECODE_FAIL_LABEL_OVERFLOWS_PACKET     	},
 	{ L("too many characters in label"),			DECODE_FAIL_LABEL_TOO_LONG		},
 	{ L("query record header is missing"),			DECODE_FAIL_MISSING_QD_HEADER		},
+	{ L("missing TLV header in OPT RR"),			DECODE_FAIL_MISSING_TLV_HEADER		},
+	{ L("TLV overflows enclosing RR"),			DECODE_FAIL_TLV_OVERFLOWS_RR		},
 };
 static size_t reason_fail_table_len = NUM_ELEMENTS(reason_fail_table);
 
