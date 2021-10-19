@@ -100,6 +100,11 @@ def load_args():
         help="Perform the lookup adding the 'encode-proto attrs' and 'decode_proto -'",
         action="store_true",
     )
+    parser.add_argument(
+        "-s",
+        dest="source",
+        help="Source of .pcap file. just to comment.'"
+    )
     return parser.parse_args()
 
 
@@ -112,7 +117,10 @@ def _main():
 
         print("#  -*- text -*-")
         print("#  ATTENTION: It was generated automatically, be careful! :)")
-        print("#  Based on {}".format(os.path.basename(args.pcap_file)))
+        if args.source:
+            print("#  Based on {}".format(args.source))
+        else:
+            print("#  Based on {}".format(os.path.basename(args.pcap_file)))
         print("#")
         print("")
         print("proto {}".format(args.decode_proto))
@@ -145,7 +153,7 @@ def _main():
             # lookup the attrs from the payload
             attrs = unit_lookup_payload2attrs(args.decode_proto, payload)
             if not attrs:
-                raise Exception("Error", "Problems to convert the payload to attrs")
+                raise Exception("Error", "Problems to convert the payload to attrs for: -p {} -f {}".format(args.decode_proto, args.pcap_file))
 
             if args.both:
                 count_mat += 4
