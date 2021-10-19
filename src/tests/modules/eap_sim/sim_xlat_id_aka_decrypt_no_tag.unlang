@@ -1,0 +1,32 @@
+if ("%(aka_sim_id_method:%{User-Name})" != 'AKA') {
+	test_fail
+}
+
+if ("%(aka_sim_id_type:%{User-Name})" != 'permanent') {
+	test_fail
+}
+
+#
+#  1.1 - Encrypt the permanent ID
+#
+update control {
+	&Tmp-String-0 := '1420032219455259'
+}
+update control {
+	&User-Name := "%(3gpp_temporary_id_encrypt:%{User-Name} %{control.Tmp-String-0} 6)"
+}
+
+#
+#  1.2 - Get the original IMSI back again sans tag
+#
+update control {
+	&Tmp-String-1 := "%(3gpp_temporary_id_decrypt:%{control.User-Name} %{control.Tmp-String-0} false)"
+}
+
+if ("%{User-Name}" =~ /^0(.*)/) {
+	if (!&control.Tmp-String-1 || (&control.Tmp-String-1 == '') || (%{control.Tmp-String-1} != "%{1}")) {
+		test_fail
+	}
+}
+
+test_pass

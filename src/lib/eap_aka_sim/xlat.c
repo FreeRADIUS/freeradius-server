@@ -182,6 +182,8 @@ xlat_arg_parser_t aka_sim_3gpp_temporary_id_decrypt_xlat_args[] = {
 	  .func = NULL, .uctx = NULL },
 	{ .required = true, .concat = true, .single = false, .variadic = false, .type = FR_TYPE_OCTETS,
 	  .func = NULL, .uctx = NULL },
+	{ .required = false, .concat = false, .single = true, .variadic = false, .type = FR_TYPE_BOOL,
+	  .func = NULL, .uctx = NULL },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -224,7 +226,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_decrypt_xlat(TALLOC_CTX *ctx, fr_
 							    UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
 {
 	uint8_t		tag;
-	char		out_tag, *buff;
+	char		out_tag = '\0', *buff;
 
 	char		decrypted[AKA_SIM_IMSI_MAX_LEN + 1];
 
@@ -236,8 +238,13 @@ static xlat_action_t aka_sim_3gpp_temporary_id_decrypt_xlat(TALLOC_CTX *ctx, fr_
 	uint8_t const	*key = key_vb->vb_octets;
 	size_t		key_len = key_vb->vb_length;
 
+	fr_value_box_t	*tag_vb = fr_dlist_next(in, key_vb);
+	bool		include_tag = true;
+
 	fr_value_box_t	*vb;
 	fr_pair_t	*eap_type;
+
+	if (!fr_type_is_null(tag_vb->type)) include_tag = tag_vb->vb_bool;
 
 	if (id_len != (AKA_SIM_3GPP_PSEUDONYM_LEN)) {
 		REDEBUG2("3gpp pseudonym incorrect length, expected %i bytes, got %zu bytes",
@@ -251,42 +258,44 @@ static xlat_action_t aka_sim_3gpp_temporary_id_decrypt_xlat(TALLOC_CTX *ctx, fr_
 		goto error;
 	}
 
-	/*
-	 *	Figure out what tag we should add to the permanent id
-	 */
-	eap_type = fr_pair_find_by_da(&request->request_pairs, attr_eap_type, 0);
-	if (eap_type) {
-		if (eap_type->vp_uint32 == enum_eap_type_sim->vb_uint32) {
-			out_tag = ID_TAG_SIM_PERMANENT;
-		} else if (eap_type->vp_uint32 == enum_eap_type_aka->vb_uint32) {
-			out_tag = ID_TAG_AKA_PERMANENT;
-		} else if (eap_type->vp_uint32 == enum_eap_type_aka_prime->vb_uint32) {
-			out_tag = ID_TAG_AKA_PRIME_PERMANENT;
+	if (include_tag) {
+		/*
+		 *	Figure out what tag we should add to the permanent id
+		 */
+		eap_type = fr_pair_find_by_da(&request->request_pairs, attr_eap_type, 0);
+		if (eap_type) {
+			if (eap_type->vp_uint32 == enum_eap_type_sim->vb_uint32) {
+				out_tag = ID_TAG_SIM_PERMANENT;
+			} else if (eap_type->vp_uint32 == enum_eap_type_aka->vb_uint32) {
+				out_tag = ID_TAG_AKA_PERMANENT;
+			} else if (eap_type->vp_uint32 == enum_eap_type_aka_prime->vb_uint32) {
+				out_tag = ID_TAG_AKA_PRIME_PERMANENT;
+			} else {
+				goto use_existing_tag;
+			}
 		} else {
-			goto use_existing_tag;
-		}
-	} else {
-	use_existing_tag:
-		tag = fr_aka_sim_id_3gpp_pseudonym_tag(id);
-		switch (tag) {
-		case ID_TAG_SIM_PSEUDONYM_B64:
-		case ID_TAG_SIM_FASTAUTH_B64:
-			out_tag = ID_TAG_SIM_PERMANENT;
-			break;
+		use_existing_tag:
+			tag = fr_aka_sim_id_3gpp_pseudonym_tag(id);
+			switch (tag) {
+			case ID_TAG_SIM_PSEUDONYM_B64:
+			case ID_TAG_SIM_FASTAUTH_B64:
+				out_tag = ID_TAG_SIM_PERMANENT;
+				break;
 
-		case ID_TAG_AKA_PSEUDONYM_B64:
-		case ID_TAG_AKA_FASTAUTH_B64:
-			out_tag = ID_TAG_AKA_PERMANENT;
-			break;
+			case ID_TAG_AKA_PSEUDONYM_B64:
+			case ID_TAG_AKA_FASTAUTH_B64:
+				out_tag = ID_TAG_AKA_PERMANENT;
+				break;
 
-		case ID_TAG_AKA_PRIME_PSEUDONYM_B64:
-		case ID_TAG_AKA_PRIME_FASTAUTH_B64:
-			out_tag = ID_TAG_AKA_PRIME_PERMANENT;
-			break;
+			case ID_TAG_AKA_PRIME_PSEUDONYM_B64:
+			case ID_TAG_AKA_PRIME_FASTAUTH_B64:
+				out_tag = ID_TAG_AKA_PRIME_PERMANENT;
+				break;
 
-		default:
-			REDEBUG2("Unexpected tag value (%u) in AKA/SIM Id \"%pV\"", tag, fr_box_strvalue_len(id, id_len));
-			goto error;
+			default:
+				REDEBUG2("Unexpected tag value (%u) in AKA/SIM Id \"%pV\"", tag, fr_box_strvalue_len(id, id_len));
+				goto error;
+			}
 		}
 	}
 
@@ -300,9 +309,13 @@ static xlat_action_t aka_sim_3gpp_temporary_id_decrypt_xlat(TALLOC_CTX *ctx, fr_
 	 *	Recombine unencrypted IMSI with tag
 	 */
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	fr_value_box_bstr_alloc(vb, &buff, vb, NULL, AKA_SIM_IMSI_MAX_LEN + 1, false);
-	*buff = out_tag;
-	strncpy(buff + 1, decrypted, AKA_SIM_IMSI_MAX_LEN + 1);
+	if (include_tag) {
+		MEM(fr_value_box_bstr_alloc(vb, &buff, vb, NULL, AKA_SIM_IMSI_MAX_LEN + 1, false) == 0);
+		*buff = out_tag;
+		strncpy(buff + 1, decrypted, AKA_SIM_IMSI_MAX_LEN + 1);
+	} else {
+		MEM(fr_value_box_bstrndup(vb, vb, NULL, decrypted, AKA_SIM_IMSI_MAX_LEN, true) == 0);
+	}
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
