@@ -25,6 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/util/syserror.h>
 #include "tcp.h"
 
 fr_radius_packet_t *fr_tcp_recv(int sockfd, int flags)

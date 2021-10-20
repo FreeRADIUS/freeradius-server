@@ -25,7 +25,6 @@
  */
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/md5.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/struct.h>
 
 #include "tacacs.h"

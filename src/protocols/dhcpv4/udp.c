@@ -33,16 +33,6 @@
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
 
-#include <stdint.h>
-#include <stddef.h>
-
-#ifdef HAVE_SYS_SOCKET_H
-#  include <sys/socket.h>
-#endif
-#ifdef HAVE_SYS_TYPES_H
-#  include <sys/types.h>
-#endif
-
 /** Send DHCP packet using a connectionless UDP socket
  *
  * @param packet to send

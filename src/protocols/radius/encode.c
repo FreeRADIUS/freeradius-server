@@ -27,7 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/struct.h>
-#include <freeradius-devel/util/net.h>
 #include <freeradius-devel/io/test_point.h>
 #include <freeradius-devel/protocol/radius/freeradius.internal.h>
 #include "attrs.h"

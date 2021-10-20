@@ -34,8 +34,6 @@
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/types.h>
-#include <stddef.h>
-#include <stdint.h>
 
 #include "dhcpv6.h"
 #include "attrs.h"

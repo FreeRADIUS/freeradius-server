@@ -33,7 +33,6 @@ RCSID("$Id$")
 #include <freeradius-devel/io/pair.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/net.h>
-#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/protocol/radius/freeradius.internal.h>
 

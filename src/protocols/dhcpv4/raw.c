@@ -34,8 +34,6 @@
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/udpfromto.h>
 
-#include <stddef.h>
-#include <stdint.h>
 #include <sys/ioctl.h>
 
 #ifdef HAVE_SYS_SOCKET_H

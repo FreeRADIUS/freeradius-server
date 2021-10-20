@@ -25,11 +25,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/pair.h>
-#include <freeradius-devel/util/talloc.h>
 
 #include "radius.h"
-
-#include <ctype.h>
 
 /*
  * Two types of filters are supported, GENERIC and IP.  The identifiers
