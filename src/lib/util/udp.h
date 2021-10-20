@@ -30,6 +30,7 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/inet.h>
+#include <freeradius-devel/util/socket.h>
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/udpfromto.h>
 
