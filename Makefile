@@ -452,20 +452,6 @@ include scripts/docker/crossbuild/crossbuild.mk
 endif
 
 #
-#  The "coverage" target
-#
-ifneq "$(findstring coverage,$(MAKECMDGOALS))" ""
-include scripts/build/coverage.mk
-endif
-
-#
-#  The "coccinelle" target
-#
-ifneq "$(findstring coccinelle,$(MAKECMDGOALS))" ""
-include scripts/build/coccinelle.mk
-endif
-
-#
 #  Clean gcov files, too.
 #
 clean: clean.coverage

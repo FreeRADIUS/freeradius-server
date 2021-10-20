@@ -20,3 +20,17 @@ $(R)$(bindir)/radcrypt: scripts/util/cryptpasswd
 $(R)$(bindir)/rlm_sqlippool_tool: scripts/sql/rlm_sqlippool_tool
 	${Q}mkdir -p $(dir $@)
 	${Q}$(INSTALL) -m 755 $< $@
+
+#
+#  The "coverage" target
+#
+ifneq "$(findstring coverage,$(MAKECMDGOALS))" ""
+include scripts/build/coverage.mk
+endif
+
+#
+#  The "coccinelle" target
+#
+ifneq "$(findstring coccinelle,$(MAKECMDGOALS))" ""
+include scripts/build/coccinelle.mk
+endif
