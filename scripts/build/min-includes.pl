@@ -36,13 +36,16 @@
 
 use strict;
 use warnings;
+use Data::Dumper;
 
 my %processed;
 
 my $any_dups = 0;
 my $debug = 0;
 
+my %checked;
 my %refs;
+my %requested;
 my %include;
 my %maps;
 my %forward;
@@ -53,10 +56,14 @@ my %delete_line;
 #
 #  Find the #include's for one file.
 #
+#  Builds a hash keyed by filename.
+#
+#  The contents of the hash are the name of the file being included,
+#  and the line number in the source file where that file was
+#  included.
+#
 sub process {
     my $file = shift;
-
-    $file =~ s,//,/,g;
 
     return if ($processed{$file});
 
@@ -68,6 +75,9 @@ sub process {
     while (<$FILE>) {
         $line++;
 
+	#
+	#  Skip anything which isn't an include
+	#
         next if (!/^\s*\#\s*include\s+/);
 
         if (/^\s*\#\s*include\s+"(.+?)"/) {
@@ -79,6 +89,7 @@ sub process {
 
             $include{$1}++;
         } elsif (/^\s*\#\s*include\s+<(.+?)>/) {
+
             $refs{$file}{$1} = $line;
             $include{$1}++;
         }
@@ -104,43 +115,59 @@ if ($ARGV[0] eq "+n") {
 }
 
 #
-#  Bootstrap the basic C files.
+#  Bootstrap the input C files.
 #
 foreach my $file (@ARGV) {
+    $requested{$file}++;
     process($file);
 }
 
 
 #
 #  Process the include files referenced from the C files, to find out
-#  what they include Note that we create a temporary array, rather
-#  than walking over %include, because the process() function adds
-#  entries to the %include hash.
+#  what they include.
+#
+#  Note that we create a temporary array, rather than walking over
+#  %include, because the process() function adds entries to the
+#  %include hash.
 #
 my @work = sort keys %include;
 foreach my $inc (@work) {
 
+    $checked{$inc}++;
+
     foreach my $dir (@directories) {
-        my $path = $dir . "/" . $inc;
+        my $file = $dir . "/" . $inc;
 
         # normalize path
-        $path =~ s:/.*?/\.\.::;
-        $path =~ s:/.*?/\.\.::;
+        $file =~ s:/.*?/\.\.::;
+        $file =~ s:/.*?/\.\.::;
+	$file =~ s,//,/,g;
 
-        next if (! -e $path);
-	next if $reverse{$path};
+        next if (! -e $file);
 
-        process($path);
-        $forward{$inc} = $path;
-        $reverse{$path} = $inc;
+	#  Skip files we've already processed.
+	next if $reverse{$file};
+
+        process($file);
+
+        $forward{$inc} = $file;
+        $reverse{$file} = $inc;
 
         # ignore system include files
-        next if ((scalar keys %{$refs{$path}}) == 0);
+        next if ((scalar keys %{$refs{$file}}) == 0);
 
         #  Remember that X includes Y, and push Y onto the list
         #  of files to scan.
-        foreach my $inc2 (sort keys %{$refs{$path}}) {
+        foreach my $inc2 (sort keys %{$refs{$file}}) {
             $maps{$inc}{$inc2} = 0;
+
+	    #
+	    #  Don't push the same file multiple times.
+	    #
+	    next if $checked{$inc2};
+	    $checked{$inc2}++;
+
             push @work, $inc2;
         }
     }
@@ -169,7 +196,6 @@ foreach my $inc (sort keys %maps) {
 #  unnecessary.  Note that we process header files, too.
 #
 foreach my $file (sort keys %refs) {
-
     # print out some debugging information.
     if ($debug > 0) {
         if (defined $reverse{$file}) {
@@ -217,6 +243,8 @@ if ($debug > 0) {
 #
 if (!$do_it) {
     foreach my $file (sort keys %duplicate) {
+	next if !$requested{$file};
+
         print $file, "\n";
 
         foreach my $inc (sort keys %{$duplicate{$file}}) {
