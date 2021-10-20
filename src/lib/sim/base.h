@@ -26,6 +26,6 @@
 RCSIDH(sim_base_h, "$Id$")
 
 #include <freeradius-devel/sim/common.h>
-#include <freeradius-devel/sim/comp128.h
+#include <freeradius-devel/sim/comp128.h>
 #include <freeradius-devel/sim/milenage.h>
 #include <freeradius-devel/sim/ts_34_108.h>
