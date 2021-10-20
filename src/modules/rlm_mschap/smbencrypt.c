@@ -22,11 +22,12 @@
 
 RCSID("$Id$")
 
-#include	<freeradius-devel/util/base.h>
+#include	<freeradius-devel/util/misc.h>
 #include	<freeradius-devel/util/md4.h>
 #include	<freeradius-devel/util/md5.h>
 #include	<freeradius-devel/util/sha1.h>
 #include	<ctype.h>
+#include	<stdio.h>
 
 
 #include	"smbdes.h"

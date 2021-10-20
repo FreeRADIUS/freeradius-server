@@ -35,8 +35,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/pool.h>
 #include <freeradius-devel/unlang/call.h>
-#include <freeradius-devel/util/base.h>
-#include <freeradius-devel/util/debug.h>
 
 #include "rest.h"
 

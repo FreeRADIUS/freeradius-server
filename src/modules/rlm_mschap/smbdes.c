@@ -48,7 +48,8 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include <stdint.h>
+#include <string.h>
 #include <ctype.h>
 #include "smbdes.h"
 
