@@ -25,9 +25,6 @@
  * @copyright 2021 The FreeRADIUS server project
  * @copyright 2021 NetworkRADIUS SARL (legal@networkradius.com)
  */
-#include <stdint.h>
-#include <stddef.h>
-
 #include <freeradius-devel/io/test_point.h>
 #include <freeradius-devel/util/dns.h>
 #include <freeradius-devel/util/pair.h>

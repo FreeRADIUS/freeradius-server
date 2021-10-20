@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file lib/server/tcp.h
+ * @file protocols/radius/tcp.h
  * @brief RADIUS over TCP
  *
  * @copyright 2009 Dante http://dante.net

@@ -23,15 +23,10 @@
  * @copyright 2017 The FreeRADIUS server project
  * @copyright 2017 Network RADIUS SARL (legal@networkradius.com)
  */
-#include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/net.h>
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/struct.h>
-#include <freeradius-devel/protocol/tacacs/dictionary.h>
-#include <freeradius-devel/protocol/tacacs/freeradius.internal.h>
 
 #include "tacacs.h"
 #include "attrs.h"

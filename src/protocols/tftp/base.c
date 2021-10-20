@@ -26,7 +26,8 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/pair.h>
+
 #include "tftp.h"
 #include "attrs.h"
 

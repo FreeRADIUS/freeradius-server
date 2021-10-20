@@ -24,8 +24,6 @@
  * @copyright 2008 Alan DeKok (aland@deployingradius.com)
  * @copyright 2015,2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#include <stdint.h>
-#include <stddef.h>
 #include <freeradius-devel/io/test_point.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/proto.h>

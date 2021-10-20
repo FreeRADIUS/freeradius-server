@@ -26,13 +26,12 @@
 RCSID("$Id$")
 
 #include "radius.h"
+#include "tcp.h"
 #include "list.h"
 
 #include <fcntl.h>
-#include <freeradius-devel/server/request.h>
-#include <freeradius-devel/server/tcp.h>
-#include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/udp.h>
+#include <freeradius-devel/util/syserror.h>
 
 /*
  *	See if two packets are identical.

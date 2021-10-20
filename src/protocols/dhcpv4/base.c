@@ -25,10 +25,10 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/pcap.h>
+#include <freeradius-devel/util/proto.h>
 #include "attrs.h"
 
 static uint32_t instance_count = 0;

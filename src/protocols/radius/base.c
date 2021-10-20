@@ -28,11 +28,9 @@ RCSID("$Id$")
 #include <fcntl.h>
 #include <ctype.h>
 
-
 #include "attrs.h"
 
 #include <freeradius-devel/io/pair.h>
-#include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/talloc.h>

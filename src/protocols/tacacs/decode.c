@@ -26,9 +26,6 @@
 
 #include <freeradius-devel/io/test_point.h>
 #include <freeradius-devel/protocol/tacacs/tacacs.h>
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/log.h>
-#include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/struct.h>

@@ -24,8 +24,6 @@
  *
  * @copyright 2021 NetworkRADIUS SARL (legal@networkradius.com)
  */
-#include <stdint.h>
-#include <stddef.h>
 #include <freeradius-devel/io/test_point.h>
 #include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/dns.h>

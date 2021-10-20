@@ -25,8 +25,6 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
-
 #include "dns.h"
 #include "attrs.h"
 
