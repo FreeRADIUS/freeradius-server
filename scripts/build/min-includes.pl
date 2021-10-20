@@ -9,10 +9,10 @@
 #
 ######################################################################
 #
-#  Run as: ./min-includes.pl `find . -name "*.c" -print`
+#  Run as: ./min-includes.pl $(find . -name "*.c" -print)
 #		prints out duplicate includes from files.
 #
-#	   ./min-includes.pl +n `find . -name "*.c" -print`
+#	   ./min-includes.pl +n $(find . -name "*.c" -print)
 #		removes the duplicate includes from each file.
 #		Remember to check that it still builds!
 #
@@ -55,6 +55,8 @@ my %delete_line;
 #
 sub process {
     my $file = shift;
+
+    $file =~ s,//,/,g;
 
     return if ($processed{$file});
 
@@ -126,6 +128,8 @@ foreach my $inc (@work) {
         $path =~ s:/.*?/\.\.::;
 
         next if (! -e $path);
+	next if $reverse{$path};
+
         process($path);
         $forward{$inc} = $path;
         $reverse{$path} = $inc;
