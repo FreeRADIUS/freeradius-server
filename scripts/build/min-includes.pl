@@ -39,14 +39,17 @@ use Data::Dumper;
 #  @todo - use Getopt::Long, and allow -I for includes,
 #  which lets us search include directories.
 #
-our ($opt_d, $opt_e, $opt_i, $opt_r, $opt_x);
+our ($opt_d, $opt_e, $opt_i, $opt_r, $opt_x, $opt_X);
 use Getopt::Std;
-getopts('deirx');
-my $debug = $opt_x;
+getopts('deirxX');
+my $debug = 0;
 my $edit = $opt_e;
 my $dry_run = $opt_d;
 my $edit_includes = $opt_i;
 my $reorder = $opt_r;
+
+$debug = 1 if defined $opt_x;
+$debug = 2 if defined $opt_X;
 
 if ($edit_includes && $reorder) {
     die "Can't edit and reorder at the same time";
@@ -88,6 +91,8 @@ sub process {
     $file =~ s,//,/,g;			# canonicalize it
 
     $depth{$file} = 1;
+
+    print "... $file\n" if $debug > 1;
 
     open(my $FILE, "<", $file) or die "Failed to open $file: $!\n";
 
@@ -264,10 +269,11 @@ sub process_reorder {
 #  Read and process the input C files.
 #
 foreach my $file (@ARGV) {
+    $file =~ s,//,/,g;
+
     $requested{$file}++;
     process($file);
 }
-
 #
 #  Processing the C files resulted in a set of include files to
 #  process.  We need to read those in turn, in order to create a full
@@ -290,6 +296,12 @@ foreach my $file (keys %transitive) {
     }
 
     $depth{$file} = $mydepth;
+}
+
+if ($debug > 1) {
+    foreach my $file (sort {$depth{$a} <=> $depth{$b}} keys %depth) {
+	print $depth{$file}, "\t", $file, "\n";
+    }
 }
 
 #
