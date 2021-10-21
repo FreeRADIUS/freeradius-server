@@ -695,6 +695,11 @@ eap {
 			#  allow_expired_crl:: Accept an expired Certificate Revocation List.
 			#
 #			allow_expired_crl = no
+
+			#
+			#  allow_not_yet_valid_crl:: Accept a not-yet-valid Certificate Revocation List.
+			#
+#			allow_not_yet_valid_crl = no
 		}
 		#
 		#  ### TLS Session resumption

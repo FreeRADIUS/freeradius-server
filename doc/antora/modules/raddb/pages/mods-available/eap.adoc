@@ -617,6 +617,11 @@ Will check CRLs for all certificates in the certificate chain.
 allow_expired_crl:: Accept an expired Certificate Revocation List.
 
 
+
+allow_not_yet_valid_crl:: Accept a not-yet-valid Certificate Revocation List.
+
+
+
 ### TLS Session resumption
 
 Once authentication has completed the TLS client may be
@@ -1345,6 +1350,7 @@ eap {
 #			attribute_mode = client-and-issuer
 #			check_crl = yes
 #			allow_expired_crl = no
+#			allow_not_yet_valid_crl = no
 		}
 		cache {
 #			mode = auto

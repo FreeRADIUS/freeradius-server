@@ -144,6 +144,11 @@ eap inner-eap {
 		#  allow_expired_crl:: See the `eap` module for common configuration explanation.
 		#
 #		allow_expired_crl = no
+
+		#
+		#  allow_not_yet_valid_crl:: See the `eap` module for common configuration explanation.
+		#
+#		allow_not_yet_valid_crl = no
 	}
 
 	#
