@@ -39,18 +39,24 @@ use Data::Dumper;
 #  @todo - use Getopt::Long, and allow -I for includes,
 #  which lets us search include directories.
 #
-our ($opt_d, $opt_e, $opt_i, $opt_x);
+our ($opt_d, $opt_e, $opt_i, $opt_r, $opt_x);
 use Getopt::Std;
-getopts('deix');
+getopts('deirx');
 my $debug = $opt_x;
 my $edit = $opt_e;
 my $dry_run = $opt_d;
 my $edit_includes = $opt_i;
+my $reorder = $opt_r;
+
+if ($edit_includes && $reorder) {
+    die "Can't edit and reorder at the same time";
+}
 
 my %processed;
 
 my $any_dups = 0;
 
+my %contents;
 my %refs;
 my %incs;
 my %depth;
@@ -59,8 +65,8 @@ my %names;
 my %requested;
 my %reverse;
 my %delete_line;
-my %worked;
 my %transitive;
+my %worked;
 
 my @work;
 
@@ -89,6 +95,7 @@ sub process {
     while (<$FILE>) {
 	my $inc;
 	my $ref;
+	my $content = $_;
 
         $line++;
 
@@ -120,6 +127,8 @@ sub process {
 
 	next if defined $lines{$file}{$inc};	# ignore if we include the same file twice
 
+	$contents{$file}{$line} = $content;		# remember the original content at that line
+
 	$lines{$file}{$inc} = $line;		# FILE includes INC at line number
 	$names{$file}{$inc} = $ref;		# FILE includes REF which maps to INCLUDE
 	$refs{$file}{$ref} = $line;		# we don't muck with this one
@@ -143,6 +152,113 @@ sub process {
 
     close $FILE;
 }
+
+#
+#  Delete specific lines from the files.
+#
+sub process_edit {
+    foreach my $file (keys %delete_line) {
+	my $OUTPUT;
+
+	print "$file\n" if $dry_run;
+
+	open(my $FILE, "<", $file) or die "Failed to open $file: $!\n";
+
+	if (!$dry_run) {
+	    open($OUTPUT, ">", "$file.tmp") or die "Failed to create $file.tmp: $!\n";
+	}
+
+	my $line = 0;
+	while (<$FILE>) {
+	    $line++;
+
+	    if ($dry_run && defined $delete_line{$file}{$line}) {
+		print "\tdelete line $line already referenced in $delete_line{$file}{$line}\n";
+	    }
+
+	    # supposed to delete this line, don't print it to the output.
+	    next if (defined $delete_line{$file}{$line});
+
+	    if (!$dry_run) {
+		print $OUTPUT $_;
+	    }
+	}
+
+	if (!$dry_run) {
+	    close $OUTPUT;
+	}
+
+	close $FILE;
+
+	rename "$file.tmp", $file;
+    }
+}
+
+#
+#  Sort the includes by depth
+#
+#  Note that this doesn't quite work, because of things
+#  like value.c, which does:
+#
+#	#define _VALUE_PRIVATE
+#	#include <freeradius-devel/util/value.h>
+#	#undef _VALUE_PRIVATE
+#
+#  So order matters.  We don't really parse the C files, so
+#  we don't know that context matters here.
+#
+sub process_reorder {
+    my %sorted;
+
+    #
+    #  Loop over the input files, swapping includes around the lines
+    #
+    foreach my $file (keys %requested) {
+	my @lines = sort {$a <=> $b} keys %{$contents{$file}};
+
+	foreach my $ref (sort {$depth{$a} <=> $depth{$b}} keys %{$refs{$file}}) {
+	    $sorted{$file}{shift @lines} = $contents{$file}{$refs{$file}{$ref}};
+	}
+   }
+
+    return;
+
+    foreach my $file (keys %sorted) {
+	my $OUTPUT;
+
+	print "$file\n" if $dry_run;
+
+	open(my $FILE, "<", $file) or die "Failed to open $file: $!\n";
+
+	if (!$dry_run) {
+	    open($OUTPUT, ">", "$file.tmp") or die "Failed to create $file.tmp: $!\n";
+	}
+
+	my $line = 0;
+	while (<$FILE>) {
+	    $line++;
+
+	    #
+	    #  If we have a matching line, print the sorted version
+	    #  instead of the contents from the file.
+	    #
+	    if ($sorted{$file}{$line}) {
+		print $OUTPUT $sorted{$file}{$line};
+	    } else {
+		print $OUTPUT $_;
+	    }
+	}
+
+	if (!$dry_run) {
+	    close $OUTPUT;
+	}
+
+	close $FILE;
+
+	rename "$file.tmp", $file;
+    }
+}
+
 
 #
 #  Read and process the input C files.
@@ -261,44 +377,12 @@ foreach my $file (sort keys %refs) {
 #
 #  if we're not editing the files, exit with success when there's no duplicates.
 #
-if (!$edit) {
+if (!$edit && !$reorder) {
     exit ($any_dups != 0);
 }
 
-foreach my $file (keys %delete_line) {
-    my $OUTPUT;
+process_edit() if $edit;
 
-    print "$file\n" if $dry_run;
-
-    open(my $FILE, "<", $file) or die "Failed to open $file: $!\n";
-
-    if (!$dry_run) {
-	open($OUTPUT, ">", "$file.tmp") or die "Failed to create $file.tmp: $!\n";
-    }
-
-    my $line = 0;
-    while (<$FILE>) {
-	$line++;
-
-	if ($dry_run && defined $delete_line{$file}{$line}) {
-	    print "\tdelete line $line already referenced in $delete_line{$file}{$line}\n";
-	}
-
-	# supposed to delete this line, don't print it to the output.
-	next if (defined $delete_line{$file}{$line});
-
-	if (!$dry_run) {
-	    print $OUTPUT $_;
-	}
-    }
-
-    if (!$dry_run) {
-	close $OUTPUT;
-    }
-
-    close $FILE;
-
-    rename "$file.tmp", $file;
-}
+process_reorder() if $reorder;
 
 exit 0;
