@@ -44,7 +44,7 @@ update {
   	&Tmp-Octets-0 := 0xaa00bb00cc00dd00
 }
 
-cache_bin_key_octets
+cache_bin_key_octets.load
 if (!updated) {
 	test_fail
 }
@@ -66,7 +66,7 @@ update {
   	&Tmp-Octets-0 := 0xaa00bb00cc00ee00
 }
 
-cache_bin_key_octets
+cache_bin_key_octets.load
 if (!updated) {
 	test_fail
 }
@@ -83,7 +83,6 @@ update {
 	&Tmp-String-1 !* ANY
 }
 
-
 #
 #  We should also be able to use any fixed length data type as a key
 #  though there are no guarantees this will be portable.
@@ -93,8 +92,8 @@ update {
 	&Tmp-String-1 := "foo\000bar\000baz"
 }
 
-cache_bin_key_ipaddr
-if (!ok) {
+cache_bin_key_ipaddr.store
+if (!updated) {
 	test_fail
 }
 
@@ -105,8 +104,8 @@ update {
 	&Tmp-String-1 := "bar\000baz"
 }
 
-cache_bin_key_ipaddr
-if (!ok) {
+cache_bin_key_ipaddr.store
+if (!updated) {
 	test_fail
 }
 
@@ -119,7 +118,7 @@ update {
 	&Tmp-IP-Address-0 := 192.168.0.1
 }
 
-cache_bin_key_ipaddr
+cache_bin_key_ipaddr.load
 if (!updated) {
 	test_fail
 }
@@ -141,7 +140,7 @@ update {
 	&Tmp-IP-Address-0 := 192.168.0.2
 }
 
-cache_bin_key_ipaddr
+cache_bin_key_ipaddr.load
 if (!updated) {
 	test_fail
 }

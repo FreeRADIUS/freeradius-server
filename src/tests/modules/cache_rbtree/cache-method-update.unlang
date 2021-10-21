@@ -1,0 +1,83 @@
+#
+#  PRE: cache-logic
+#
+update {
+	&request.Tmp-String-0 := 'testkey'
+
+	# Reply attributes
+	&reply.Reply-Message := 'hello'
+	&reply.Reply-Message += 'goodbye'
+
+	# Request attributes
+	&Tmp-Integer-0 += 10
+	&Tmp-Integer-0 += 20
+	&Tmp-Integer-0 += 30
+}
+
+#
+#  Basic store and retrieve
+#
+update control {
+	&control.Tmp-String-1 := 'cache me'
+}
+
+cache_update.store
+if (!updated) {
+	test_fail
+}
+
+# Merge
+cache_update.store
+if (!updated) {
+	test_fail
+}
+
+# Load
+cache_update.load
+if (!updated) {
+	test_fail
+}
+
+# session-state should now contain all the reply attributes
+if ("%{session-state[#]}" != 2) {
+	test_fail
+}
+
+if (&session-state.Reply-Message[0] != 'hello') {
+	test_fail
+}
+
+if (&session-state.Reply-Message[1] != 'goodbye') {
+	test_fail
+}
+
+# Tmp-String-1 should hold the result of the exec
+if (&Tmp-String-1 != 'echo test') {
+	test_pass
+}
+
+# Literal values should be foo, rad, baz
+if ("%{Tmp-String-2[#]}" != 3) {
+	test_fail
+}
+
+if (&Tmp-String-2[0] != 'foo') {
+	test_fail
+}
+
+debug_request
+
+if (&Tmp-String-2[1] != 'rab') {
+	test_fail
+}
+
+if (&Tmp-String-2[2] != 'baz') {
+	test_fail
+}
+
+# Clear out the reply list
+update {
+    &reply !* ANY
+}
+
+test_pass
