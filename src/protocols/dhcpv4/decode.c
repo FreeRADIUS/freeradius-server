@@ -25,11 +25,8 @@
  * @copyright 2015,2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #include <freeradius-devel/io/test_point.h>
-#include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/struct.h>
-#include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/types.h>
 
 #include "dhcpv4.h"
 #include "attrs.h"

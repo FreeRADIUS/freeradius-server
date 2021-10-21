@@ -30,21 +30,16 @@
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/udpfromto.h>
 
 #include <sys/ioctl.h>
 
 #ifdef HAVE_SYS_SOCKET_H
-#  include <sys/socket.h>
 #endif
 #ifdef HAVE_SYS_TYPES_H
-#  include <sys/types.h>
 #endif
 
 #ifdef HAVE_LINUX_IF_PACKET_H
-#  include <linux/if_packet.h>
 #  include <linux/if_ether.h>
 #endif
 

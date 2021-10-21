@@ -29,11 +29,7 @@
 #include <freeradius-devel/internal/internal.h>
 #include <freeradius-devel/io/pair.h>
 #include <freeradius-devel/io/test_point.h>
-#include <freeradius-devel/util/dbuff.h>
-#include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/proto.h>
-#include <freeradius-devel/util/talloc.h>
 
 static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
 				    fr_dbuff_t *dbuff, void *decode_ctx);
