@@ -145,14 +145,6 @@ sub process {
 }
 
 #
-#  Be utterly lazy about argument parsing.
-#
-if ($ARGV[0] eq "+n") {
-    shift;
-    $edit = 1;
-}
-
-#
 #  Read and process the input C files.
 #
 foreach my $file (@ARGV) {
