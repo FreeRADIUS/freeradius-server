@@ -55,8 +55,8 @@ typedef struct {
 	char		*pool_name;	//!< The name of the session pool returned by OCISessionPoolCreate
 	ub4		pool_name_len;	//!< Length of pool_name in bytes.
 	
-	int		stmt_cache_size;	//!< Statement cache size for each of the sessions in a session pool
-	int		spool_timeout;	//!< The sessions idle time (in seconds) (0 disable).
+	uint32_t	stmt_cache_size;	//!< Statement cache size for each of the sessions in a session pool
+	uint32_t	spool_timeout;	//!< The sessions idle time (in seconds) (0 disable).
 	uint32_t	spool_min;	//!< Specifies the minimum number of sessions in the session pool.
 	uint32_t	spool_max;	//!< Specifies the maximum number of sessions that can be opened in the session pool
 	uint32_t	spool_inc;	//!< Specifies the increment for sessions to be started if the current number of sessions are less than sessMax
@@ -72,7 +72,7 @@ typedef struct {
 	int		col_count;	//!< Number of columns associated with the result set
 } rlm_sql_oracle_conn_t;
 
-static CONF_PARSER spool_config[] = {
+static const CONF_PARSER spool_config[] = {
 	{ FR_CONF_OFFSET("stmt_cache_size", FR_TYPE_UINT32, rlm_sql_oracle_t, stmt_cache_size), .dflt = "32" },
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, rlm_sql_oracle_t, spool_timeout), .dflt = "0" },
 	{ FR_CONF_OFFSET("min", FR_TYPE_UINT32, rlm_sql_oracle_t, spool_min), .dflt = "1" },
@@ -81,7 +81,7 @@ static CONF_PARSER spool_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER driver_config[] = {
+static const CONF_PARSER driver_config[] = {
 	{ FR_CONF_POINTER("spool", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) spool_config },
 	CONF_PARSER_TERMINATOR
 };
@@ -158,6 +158,8 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 	char  errbuff[512];
 	sb4 errcode = 0;	
 	rlm_sql_oracle_t	*inst = instance;
+	OraText *sql_password = NULL;
+	OraText *sql_login = NULL;
 
 	if (!cf_section_find(conf, "spool", NULL)) {
 		ERROR("Couldn't load configuration of session pool(\"spool\" section in driver config)");
@@ -194,12 +196,17 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 	 *	Create session pool
 	 */
 	DEBUG("OCISessionPoolCreate min=%d max=%d inc=%d", inst->spool_min, inst->spool_max, inst->spool_inc);
+
+	/* We need it to fix const issues between 'const char *' vs 'unsigned char *' */
+	memcpy(&sql_login, config->sql_login, sizeof(sql_login));
+	memcpy(&sql_password, config->sql_password, sizeof(sql_password));
+
 	if (OCISessionPoolCreate((dvoid *)inst->env, (dvoid *)inst->error, (dvoid *)inst->pool,
 			(OraText**)&inst->pool_name, (ub4*)&inst->pool_name_len,
-			(OraText *)config->sql_db, strlen(config->sql_db),
+			(CONST OraText *)config->sql_db, strlen(config->sql_db),
 			inst->spool_min, inst->spool_max, inst->spool_inc,
-			(OraText *)config->sql_login, strlen(config->sql_login),
-			(OraText *)config->sql_password, strlen(config->sql_password),
+			sql_login, strlen(config->sql_login),
+			sql_password, strlen(config->sql_password),
 			OCI_SPC_STMTCACHE | OCI_SPC_HOMOGENEOUS)) {
 
 		errbuff[0] = '\0';
@@ -350,7 +357,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 		return RLM_SQL_RECONNECT;
 	}
 
-	if (OCIStmtPrepare2(conn->ctx, &conn->query, conn->error, oracle_query, strlen(query),
+	if (OCIStmtPrepare2(conn->ctx, &conn->query, conn->error, (const OraText *)query, strlen(query),
 	           NULL, 0, OCI_NTV_SYNTAX, OCI_DEFAULT)) {
 		ERROR("prepare failed in sql_query");
 
@@ -386,9 +393,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 
 	rlm_sql_oracle_conn_t *conn = handle->conn;
 
-	memcpy(&oracle_query, &query, sizeof(oracle_query));
-
-	if (OCIStmtPrepare2(conn->ctx, &conn->query, conn->error, oracle_query, strlen(query), 
+	if (OCIStmtPrepare2(conn->ctx, &conn->query, conn->error, (const OraText *)query, strlen(query), 
 	           NULL, 0, OCI_NTV_SYNTAX, OCI_DEFAULT)) {
 		ERROR("prepare failed in sql_select_query");
 
