@@ -26,6 +26,7 @@
 
 #ifdef HAVE_COLLECTDC_H
 #include <collectd/client.h>
+#include <freeradius-devel/util/syserror.h>
 #include "radsniff.h"
 
 /** Copy a 64bit unsigned integer into a double
