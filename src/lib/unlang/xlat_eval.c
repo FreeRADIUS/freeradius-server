@@ -34,7 +34,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
-#include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/unlang/unlang_priv.h>	/* Remove when everything uses new xlat API */
 
 #include <ctype.h>

@@ -22,7 +22,6 @@
  * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
  */
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/dns/dns.h>
 #include <freeradius-devel/protocol/dns/rfc1034.h>

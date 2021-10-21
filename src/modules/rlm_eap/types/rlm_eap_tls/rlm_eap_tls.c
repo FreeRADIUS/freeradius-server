@@ -37,8 +37,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #  include <sys/stat.h>
 #endif
 
-#include <freeradius-devel/unlang/base.h>
-
 #include "rlm_eap_tls.h"
 
 typedef struct {

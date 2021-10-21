@@ -24,8 +24,6 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/unlang/base.h>
-
 #include "unlang_priv.h"
 
 static uint32_t instance_count;

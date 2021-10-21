@@ -30,7 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/request_data.h>
-#include <freeradius-devel/unlang/base.h>
 
 #include "module_priv.h"
 #include "subrequest_priv.h"

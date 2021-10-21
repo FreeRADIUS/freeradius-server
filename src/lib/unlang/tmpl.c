@@ -26,7 +26,6 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/util/syserror.h>

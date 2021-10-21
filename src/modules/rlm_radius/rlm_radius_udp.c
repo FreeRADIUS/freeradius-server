@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/io/pair.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/server/connection.h>
-#include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/udp.h>

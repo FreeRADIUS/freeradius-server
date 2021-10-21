@@ -28,7 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/tls/base.h>
-#include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/uri.h>

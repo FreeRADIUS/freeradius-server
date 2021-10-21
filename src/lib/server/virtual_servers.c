@@ -41,8 +41,6 @@ RCSID("$Id$")
 #include <freeradius-devel/io/master.h>
 #include <freeradius-devel/io/listen.h>
 
-#include <freeradius-devel/unlang/base.h>
-
 typedef struct {
 	dl_module_inst_t	*proto_module;		//!< The proto_* module for a listen section.
 	fr_app_t const		*app;			//!< Easy access to the exported struct.

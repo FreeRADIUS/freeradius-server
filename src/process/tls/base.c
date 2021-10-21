@@ -22,7 +22,6 @@
  * @copyright 2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/protocol/tls/freeradius.h>
 

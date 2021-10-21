@@ -29,7 +29,7 @@
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/state.h>
-#include <freeradius-devel/unlang/base.h>
+#include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/tacacs/tacacs.h>
