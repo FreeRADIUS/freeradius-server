@@ -122,6 +122,14 @@ void		*fr_heap_iter_next(fr_heap_t *hp, fr_heap_iter_t *iter) CC_HINT(nonnull);
 	fr_heap_iter_t _iter; \
 	for (_type *_data = fr_heap_iter_init(_heap, &_iter); _data; _data = fr_heap_iter_next(_heap, &_iter))
 
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+void fr_heap_verify(char const *file, int line, fr_heap_t *hp);
+#  define FR_HEAP_VERIFY(_heap) fr_heap_verify(__FILE__, __LINE__, _heap)
+#elif !defined(NDEBUG)
+#  define FR_HEAP_VERIFY(_heap) fr_assert(_heap)
+#else
+#  define FR_HEAP_VERIFY(_heap)
+#endif
 
 #ifdef __cplusplus
 }
