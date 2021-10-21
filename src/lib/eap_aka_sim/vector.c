@@ -33,6 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/sim/ts_34_108.h>
 #include <freeradius-devel/sim/comp128.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.sim.h>
+#include <freeradius-devel/util/rand.h>
 
 #include "base.h"
 #include "attrs.h"

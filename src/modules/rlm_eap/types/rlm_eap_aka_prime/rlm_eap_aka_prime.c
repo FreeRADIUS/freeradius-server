@@ -31,7 +31,9 @@ RCSID("$Id$")
 #include <freeradius-devel/eap_aka_sim/attrs.h>
 #include <freeradius-devel/eap_aka_sim/base.h>
 #include <freeradius-devel/eap_aka_sim/module.h>
+#include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/unlang/module.h>
+#include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/debug.h>
 
 static CONF_PARSER submodule_config[] = {

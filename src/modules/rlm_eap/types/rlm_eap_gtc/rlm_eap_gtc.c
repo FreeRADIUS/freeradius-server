@@ -27,7 +27,10 @@ RCSID("$Id$")
 
 #include <freeradius-devel/eap/base.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/server/virtual_servers.h>
+#include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/unlang/call.h>
+#include <freeradius-devel/unlang/interpret.h>
 
 static int auth_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);

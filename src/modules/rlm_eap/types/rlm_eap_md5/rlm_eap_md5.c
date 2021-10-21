@@ -23,8 +23,10 @@
 
 RCSID("$Id$")
 
+#include <freeradius-devel/server/password.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/rand.h>
 
 #include "eap_md5.h"
 

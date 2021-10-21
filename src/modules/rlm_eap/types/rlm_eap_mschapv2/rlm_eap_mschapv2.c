@@ -22,9 +22,13 @@
 
 RCSID("$Id$")
 
+#include <freeradius-devel/server/virtual_servers.h>
+#include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/unlang/call.h>
+#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
+#include <freeradius-devel/util/rand.h>
 
 #include "eap_mschapv2.h"
 
