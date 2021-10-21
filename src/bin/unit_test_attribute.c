@@ -25,11 +25,8 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
-
 typedef struct request_s request_t;
 
-#include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/io/test_point.h>
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/cf_util.h>
@@ -46,6 +43,12 @@ typedef struct request_s request_t;
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/log.h>
+#include <freeradius-devel/util/atexit.h>
+#include <freeradius-devel/util/file.h>
+#include <freeradius-devel/util/pair_legacy.h>
+#include <freeradius-devel/util/dns.h>
 
 #include <ctype.h>
 

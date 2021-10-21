@@ -25,10 +25,10 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/dict_priv.h>
-#include <freeradius-devel/autoconf.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <stdbool.h>

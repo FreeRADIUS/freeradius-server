@@ -28,7 +28,6 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <stdio.h>
-#include <freeradius-devel/util/base.h>
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/eap/tls.h>
 

@@ -34,9 +34,10 @@ typedef struct fr_connection_s fr_connection_t;
 #include <freeradius-devel/server/trigger.h>
 
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/log.h>
 
 #ifdef HAVE_STDATOMIC_H
 #  include <stdatomic.h>

@@ -31,9 +31,11 @@ RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/radius/list.h>
-#include <freeradius-devel/util/base.h>
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/event.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/atexit.h>
+#include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/pcap.h>
 #include <freeradius-devel/util/timeval.h>
