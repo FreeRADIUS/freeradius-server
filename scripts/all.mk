@@ -34,3 +34,10 @@ endif
 ifneq "$(findstring coccinelle,$(MAKECMDGOALS))" ""
 include scripts/build/coccinelle.mk
 endif
+
+#
+#  The "log_id" target
+#
+ifneq "$(findstring logid,$(MAKECMDGOALS))" ""
+include scripts/build/logid.mk
+endif

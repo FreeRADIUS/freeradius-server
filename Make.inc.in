@@ -166,6 +166,13 @@ $(error OPENSSL_LIBS must be define in order to use WITH_OPENSSL_*)
 endif
 endif
 
+#
+#  Definitions for the generic logging framework
+#
+LOG_ID_LIB := 0
+LOG_ID_SECTION := 0
+CFLAGS += -DLOG_ID_LIB=$(LOG_ID_LIB) -DLOG_ID_SECTION=$(LOG_ID_SECTION)
+
 # Path to clang, setting this enables the 'scan.*' build targets
 # which perform static analysis on various server components.
 ANALYZE.c       := @clang_path@

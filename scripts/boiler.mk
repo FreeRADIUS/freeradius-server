@@ -402,6 +402,7 @@ define INCLUDE_SUBMAKEFILE
     DIR_STACK := $$(call PUSH,$${DIR_STACK},$${DIR})
 
     include ${1}
+    ALL_MAKEFILES += ${1}
 
     # Initialize internal local variables.
     OBJS :=
@@ -661,6 +662,7 @@ DEFS :=
 DIR_STACK :=
 INCDIRS :=
 TGT_STACK :=
+ALL_MAKEFILES :=
 
 ifeq "${top_builddir}" ""
     top_builddir := .

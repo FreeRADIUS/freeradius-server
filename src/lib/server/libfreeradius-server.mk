@@ -58,3 +58,18 @@ TGT_PREREQS	+= libfreeradius-util.a
 ifneq ($(MAKECMDGOALS),scan)
 SRC_CFLAGS	+= -DBUILT_WITH_CPPFLAGS=\"$(CPPFLAGS)\" -DBUILT_WITH_CFLAGS=\"$(CFLAGS)\" -DBUILT_WITH_LDFLAGS=\"$(LDFLAGS)\" -DBUILT_WITH_LIBS=\"$(LIBS)\"
 endif
+
+# ID of this library
+LOG_ID_LIB	:= 1
+
+# different pieces of this library
+$(call DEFINE_LOG_ID_SECTION,config,	1,cf_file.c cf_parse.c cf_util.c)
+$(call DEFINE_LOG_ID_SECTION,conditions,2,conf_eval.c cond_tokenize.c)
+$(call DEFINE_LOG_ID_SECTION,exec,	3,exec.c exec_legacy.c)
+$(call DEFINE_LOG_ID_SECTION,modules,	4,dl_module.c module.c method.c)
+$(call DEFINE_LOG_ID_SECTION,map,	5,map.c map_proc.c map_async.c)
+$(call DEFINE_LOG_ID_SECTION,snmp,	6,snmp.c)
+$(call DEFINE_LOG_ID_SECTION,templates,	7,tmpl_eval.c tmpl_tokenize.c)
+$(call DEFINE_LOG_ID_SECTION,triggers,	8,trigger.c)
+$(call DEFINE_LOG_ID_SECTION,trunk,	9,trunk.c)
+$(call DEFINE_LOG_ID_SECTION,virtual_servers,10,virtual_servers.c)

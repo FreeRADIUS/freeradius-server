@@ -244,3 +244,10 @@ endef
 
 
 endif
+
+#
+#  $(call DEFINE_LOG_ID_SECTION,NAME,ID,foo.c bar.c baz.c)
+#
+define DEFINE_LOG_ID_SECTION
+$(eval $(addprefix ${BUILD_DIR}/objs/,$(addsuffix .${OBJ_EXT},$(basename $(call CANONICAL_PATH,$(call QUALIFY_PATH,${DIR},$(strip ${3})))))): LOG_SECTION_ID=$(strip ${2}))
+endef
