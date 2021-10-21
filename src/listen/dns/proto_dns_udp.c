@@ -23,7 +23,6 @@
  */
 #define LOG_PREFIX "proto_dns_udp - "
 
-#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/util/trie.h>

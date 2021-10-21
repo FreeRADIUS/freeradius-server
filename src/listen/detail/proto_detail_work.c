@@ -23,13 +23,14 @@
  * @copyright 2017 Alan DeKok (aland@deployingradius.com)
  */
 #include <netdb.h>
-#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/time.h>
+#include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/debug.h>
 #include "proto_detail.h"
 

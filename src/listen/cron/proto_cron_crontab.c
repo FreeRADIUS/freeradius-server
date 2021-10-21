@@ -23,7 +23,6 @@
  */
 #include <netdb.h>
 #include <fcntl.h>
-#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/application.h>

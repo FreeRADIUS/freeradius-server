@@ -22,7 +22,6 @@
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
-#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/util/debug.h>

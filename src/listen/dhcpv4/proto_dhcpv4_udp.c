@@ -25,7 +25,6 @@
 #define LOG_PREFIX "proto_dhcpv4_udp - "
 
 #include <netdb.h>
-#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/util/trie.h>

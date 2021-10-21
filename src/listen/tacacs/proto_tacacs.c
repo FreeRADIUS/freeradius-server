@@ -25,7 +25,6 @@
 
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/master.h>
-#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/state.h>
