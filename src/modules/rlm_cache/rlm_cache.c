@@ -914,7 +914,7 @@ static void cache_unref(request_t *request, rlm_cache_t const *inst, rlm_cache_e
 	/*
 	 *	Clear control attributes
 	 */
-	for (vp = fr_dcursor_init(&cursor, &request->control_pairs);
+	for (vp = fr_pair_dcursor_init(&cursor, &request->control_pairs);
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
 	     again:
@@ -1186,7 +1186,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(rlm_rcode_t *p_result, 
 	uint8_t			buffer[1024];
 	uint8_t const		*key;
 	ssize_t			key_len;
-	uint32_t		ttl = 0;
+	fr_time_delta_t		ttl = fr_time_delta_wrap(0);
 	bool 			expire = false;
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
@@ -1217,13 +1217,13 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(rlm_rcode_t *p_result, 
 		if (vp->vp_int32 == 0) {
 			expire = true;
 		} else if (vp->vp_int32 < 0) {
-			ttl = -(vp->vp_int32);
+			ttl = fr_time_delta_from_sec(-(vp->vp_int32));
 		/* Updating the TTL */
 		} else {
-			ttl = vp->vp_int32;
+			ttl = fr_time_delta_from_sec(vp->vp_int32);
 		}
 
-		DEBUG3("Overwriting the default TTL %d -> %d", inst->config.ttl, vp->vp_int32);
+		DEBUG3("Overwriting the default TTL %pV -> %d", fr_box_time_delta(ttl), vp->vp_int32);
 	}
 
 	/*
@@ -1235,9 +1235,9 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(rlm_rcode_t *p_result, 
 	if (rcode == RLM_MODULE_OK) {
 		fr_assert(entry != NULL);
 
-		DEBUG3("Updating the TTL -> %d", ttl);
+		DEBUG3("Updating the TTL -> %pV", fr_box_time_delta(ttl));
 
-		entry->expires = fr_time_to_sec(request->packet->timestamp) + ttl;
+		entry->expires = fr_unix_time_add(fr_time_to_unix_time(request->packet->timestamp), ttl);
 
 		cache_set_ttl(&rcode, inst, request, &handle, entry);
 		if (rcode == RLM_MODULE_FAIL) goto finish;
@@ -1338,7 +1338,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl(rlm_rcode_t *p_result, mo
 	uint8_t			buffer[1024];
 	uint8_t const		*key;
 	ssize_t			key_len;
-	uint32_t		ttl = 0;
+	fr_time_delta_t	ttl = fr_time_delta_wrap(0);
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
 	fr_pair_t		*vp;
@@ -1366,13 +1366,13 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl(rlm_rcode_t *p_result, mo
 	vp = fr_pair_find_by_da(&request->control_pairs, attr_cache_ttl, 0);
 	if (vp) {
 		if (vp->vp_int32 < 0) {
-			ttl = -(vp->vp_int32);
+			ttl = fr_time_delta_from_sec(-(vp->vp_int32));
 		/* Updating the TTL */
 		} else {
-			ttl = vp->vp_int32;
+			ttl = fr_time_delta_from_sec(vp->vp_int32);
 		}
 
-		DEBUG3("Overwriting the default TTL %d -> %d", inst->config.ttl, vp->vp_int32);
+		DEBUG3("Overwriting the default TTL %pV -> %d", fr_box_time_delta(inst->config.ttl), vp->vp_int32);
 	}
 
 	/*
@@ -1384,9 +1384,9 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl(rlm_rcode_t *p_result, mo
 	if (rcode == RLM_MODULE_OK) {
 		fr_assert(entry != NULL);
 
-		DEBUG3("Updating the TTL -> %d", ttl);
+		DEBUG3("Updating the TTL -> %pV", fr_box_time_delta(ttl));
 
-		entry->expires = fr_time_to_sec(request->packet->timestamp) + ttl;
+		entry->expires = fr_unix_time_add(fr_time_to_unix_time(request->packet->timestamp), ttl);
 
 		cache_set_ttl(&rcode, inst, request, &handle, entry);
 		if (rcode == RLM_MODULE_FAIL) goto finish;
