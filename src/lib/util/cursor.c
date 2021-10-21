@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <string.h>
 #include <stdint.h>
 #include <freeradius-devel/util/cursor.h>
-#include <freeradius-devel/util/talloc.h>
 
 #define NEXT_PTR(_v) ((void **)(((uint8_t *)(_v)) + cursor->offset))
 

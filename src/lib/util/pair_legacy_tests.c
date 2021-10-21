@@ -45,9 +45,7 @@ static void test_init(void);
 
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/util/dict_test.h>
 #include <freeradius-devel/util/pair_legacy.h>
-#include <freeradius-devel/util/talloc.h>
 
 #ifdef HAVE_GPERFTOOLS_PROFILER_H
 #  include <gperftools/profiler.h>

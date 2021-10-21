@@ -34,12 +34,8 @@
 #include <freeradius-devel/util/cap.h>
 
 #include <fcntl.h>
-#include <netdb.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 #ifndef SO_BINDTODEVICE
-#include <net/if.h>
 #endif
 
 #include <ifaddrs.h>

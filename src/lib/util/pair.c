@@ -29,12 +29,9 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/pair_legacy.h>
-#include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/regex.h>
-#include <freeradius-devel/util/talloc.h>
 
-#include <ctype.h>
 
 /** Initialise a pair list header
  *

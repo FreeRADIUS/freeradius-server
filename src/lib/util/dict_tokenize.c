@@ -25,14 +25,11 @@ RCSID("$Id$")
 #include <freeradius-devel/radius/defs.h>
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dict_fixup_priv.h>
-#include <freeradius-devel/util/dict_priv.h>
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/talloc.h>
 
 #include <sys/stat.h>
-#include <ctype.h>
 
 #define MAX_ARGV (16)
 

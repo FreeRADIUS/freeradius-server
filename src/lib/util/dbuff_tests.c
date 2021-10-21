@@ -1,6 +1,5 @@
 #include <freeradius-devel/util/acutest.h>
 #include <float.h>
-#include <unistd.h>
 
 #include "dbuff.h"
 

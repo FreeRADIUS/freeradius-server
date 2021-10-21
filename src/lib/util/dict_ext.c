@@ -24,7 +24,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/dict_priv.h>
-#include <freeradius-devel/util/dict_ext_priv.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/talloc.h>

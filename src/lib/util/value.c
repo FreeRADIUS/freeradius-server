@@ -50,15 +50,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/ascend.h>
 #include <freeradius-devel/util/dcursor.h>
-#include <freeradius-devel/util/dbuff.h>
-#include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/base16.h>
-#include <freeradius-devel/util/net.h>
-#include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/talloc.h>
 
-#include <assert.h>
-#include <ctype.h>
 
 /** Sanity checks
  *

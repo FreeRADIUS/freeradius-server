@@ -23,23 +23,14 @@
  */
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/hash.h>
-#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/talloc.h>
 
-#include <assert.h>
-#include <limits.h>
 #include <pthread.h>
-#include <signal.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-#include <unistd.h>
 
 #if defined(HAVE_MALLOPT) && defined(HAVE_MALLOC_H)
 #  include <malloc.h>
@@ -63,7 +54,6 @@
 
 #ifdef HAVE_SYS_PTRACE_H
 #  include <sys/ptrace.h>
-#  include <sys/types.h>
 #  if !defined(PT_ATTACH) && defined(PTRACE_ATTACH)
 #    define PT_ATTACH PTRACE_ATTACH
 #  endif

@@ -33,7 +33,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/hash.h>
-#include <freeradius-devel/util/talloc.h>
 
 /*
  *	A reasonable number of buckets to start off with.

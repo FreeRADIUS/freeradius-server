@@ -24,7 +24,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/struct.h>
-#include <freeradius-devel/util/proto.h>
 
 fr_pair_t *fr_raw_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
 {

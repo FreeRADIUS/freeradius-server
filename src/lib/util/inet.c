@@ -26,12 +26,7 @@
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/value.h>
 
-#include <ctype.h>
-#include <netdb.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
 #include <ifaddrs.h>
 
 #ifdef HAVE_LINUX_IF_PACKET_H

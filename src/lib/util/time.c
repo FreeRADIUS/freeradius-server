@@ -27,10 +27,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/util/dict.h>
-#include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/time.h>
 
 /*
  *	Avoid too many ifdef's later in the code.
@@ -51,7 +47,6 @@ USES_APPLE_DEPRECATED_API
 #  include <mach/mach_time.h>
 #endif
 
-#include <stdatomic.h>
 
 _Atomic int64_t			our_realtime;	//!< realtime at the start of the epoch in nanoseconds.
 static char const		*tz_names[2] = { NULL, NULL };	//!< normal, DST, from localtime_r(), tm_zone

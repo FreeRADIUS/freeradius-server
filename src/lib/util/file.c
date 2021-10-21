@@ -31,7 +31,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/value.h>
 
 static ssize_t _fr_mkdir(int *fd_out, char const *path, mode_t mode, fr_mkdir_func_t func, void *uctx)

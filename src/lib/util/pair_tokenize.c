@@ -24,15 +24,12 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/pair.h>
-#include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/regex.h>
-#include <freeradius-devel/util/talloc.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
-#include <ctype.h>
 
 static ssize_t op_to_token(fr_token_t *token, char const *op, size_t oplen)
 {

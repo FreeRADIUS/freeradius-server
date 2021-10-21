@@ -29,12 +29,10 @@ RCSID("$Id$")
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/debug.h>
 
-#include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/paths.h>
 #include <freeradius-devel/util/syserror.h>
 
 #include <ctype.h>
-#include <unistd.h>
 
 #ifdef HAVE_VALGRIND_H
 #  include <valgrind.h>

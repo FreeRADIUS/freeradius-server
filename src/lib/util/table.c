@@ -27,7 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 
 #include <string.h>
-#include <stdio.h>
 
 #define TABLE_IDX(_table, _idx, _element_size) (((uint8_t const *)(_table)) + ((_idx) * (_element_size)))
 #define ELEM_STR(_offset) (*((fr_table_elem_t const *)(_offset))).str

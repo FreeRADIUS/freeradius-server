@@ -23,7 +23,6 @@
 #include <freeradius-devel/util/acutest.h>
 #include <freeradius-devel/util/acutest_helpers.h>
 #include <freeradius-devel/util/rand.h>
-#include <stdlib.h>
 
 #include "rb.c"
 

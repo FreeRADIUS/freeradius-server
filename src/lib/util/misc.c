@@ -23,26 +23,15 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/dbuff.h>
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/time.h>
 
-#include <ctype.h>
 #include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
-#include <signal.h>
-#include <stdio.h>
-#include <string.h>
 #include <sys/file.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <sys/uio.h>
-#include <unistd.h>
 
 #define FR_PUT_LE16(a, val)\
 	do {\

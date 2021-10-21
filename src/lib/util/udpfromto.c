@@ -31,13 +31,7 @@ RCSID("$Id$")
 #  include <sys/uio.h>
 #endif
 
-#include <errno.h>
 #include <fcntl.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <time.h>
-#include <unistd.h>
 
 /*
  *	More portability idiocy

@@ -24,16 +24,10 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dict_fixup_priv.h>
-#include <freeradius-devel/util/dict_priv.h>
-#include <freeradius-devel/util/dl.h>
-#include <freeradius-devel/util/hash.h>
-#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/talloc.h>
 
-#include <ctype.h>
 #ifdef HAVE_SYS_STAT_H
 #  include <sys/stat.h>
 #endif

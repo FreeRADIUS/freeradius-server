@@ -25,11 +25,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/trie.h>
 
-#include <ctype.h>
-#include <string.h>
 
 /*
  *	This file implements path-compressed, level-compressed

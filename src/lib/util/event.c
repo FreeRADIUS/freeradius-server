@@ -32,13 +32,10 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/event.h>
 #include <freeradius-devel/util/lst.h>
-#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/table.h>
-#include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/token.h>
 #include <freeradius-devel/util/atexit.h>
 

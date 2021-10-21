@@ -23,17 +23,9 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/misc.h>
-#include <freeradius-devel/util/print.h>
-#include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/atexit.h>
 
-#include <ctype.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
 
 static _Thread_local char *sbuff_scratch;
 

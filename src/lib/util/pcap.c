@@ -26,17 +26,11 @@
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/pcap.h>
-#include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/talloc.h>
 
 #include <net/if.h>
 #include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/types.h>
 #include <sys/uio.h>
-#include <unistd.h>
 
 #ifndef SIOCGIFHWADDR
 #  include <ifaddrs.h>
