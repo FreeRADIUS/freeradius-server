@@ -3,30 +3,19 @@ map ldap "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)
 	&Tmp-String-1 += 'entryDN'
 }
 
-if (updated) {
-	test_pass
-} else {
+if (!updated) {
 	test_fail
 }
 
-if (&request.Tmp-String-0 == '255.255.255.0') {
-	test_pass
-}
-else {
+if (&request.Tmp-String-0 != '255.255.255.0') {
 	test_fail
 }
 
-if (&request.Tmp-String-1[0] == 'cn=radprofile,ou=profiles,dc=example,dc=com') {
-	test_pass
-}
-else {
+if (&request.Tmp-String-1[*] != 'cn=radprofile,ou=profiles,dc=example,dc=com') {
 	test_fail
 }
 
-if (&request.Tmp-String-1[1] == 'cn=profile1,ou=profiles,dc=example,dc=com') {
-	test_pass
-}
-else {
+if (&request.Tmp-String-1[*] != 'cn=profile1,ou=profiles,dc=example,dc=com') {
 	test_fail
 }
 
@@ -35,11 +24,8 @@ map ldap "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=notARealObject
 	&Tmp-String-1 += 'entryDN'
 }
 
-#
-#  Uncomment when map return codes work properly
-#
-#if (notfound) {
-#	test_pass
-#} else {
-#	test_fail
-#}
+if (!notfound) {
+	test_fail
+}
+
+test_pass
