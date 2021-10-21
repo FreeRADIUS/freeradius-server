@@ -2,9 +2,9 @@
 
 SMF is the Solaris version of upstart (or the reverse), it imports XML configuration file for services, and manages service dependencies. It will automatically restart daemons in they die, and provides a standard interface for checking the status of a service and administratively disabling/enabling it.
 
-# Installation/configuration
+## Installation/configuration
 
-## Solaris 10
+### Solaris 10
 Do the following as the root user ``sudo -s``.
 
 Copy the service management script ``svc-radius`` to ``/lib/srv/method/``:
@@ -21,7 +21,8 @@ Copy the ``radius.xml`` manifest to ``/var/svc/manifest/network/``, and import i
 cp ./radius.xml /var/svc/manifest/network/
 svccfg import /var/svc/manifest/network/radius.xml
 ```
-### Authorizing additional users
+
+#### Authorizing additional users
 
 First create an authorisation entry for the radius service:
 ```bash

@@ -1,4 +1,4 @@
-PROTOCOL RADIUS 1
+PROTOCOL RADIUS 1	verify=lib
 BEGIN-PROTOCOL	RADIUS
 
 #
@@ -13,6 +13,15 @@ BEGIN-PROTOCOL	RADIUS
 #  of the standard RADIUS dictionary.
 #
 
+#
+#  Define an ENUM
+#
+ENUM base-enum-uint64	uint64
+VALUE base-enum-uint64 one	1
+VALUE base-enum-uint64 two	2
+VALUE base-enum-uint64 three	3
+
+
 ATTRIBUTE	Unit-String		248		string
 ATTRIBUTE	Unit-Enumv		249		integer
 
@@ -24,14 +33,50 @@ ATTRIBUTE	Unit-Short		251		short
 ATTRIBUTE	Unit-Integer64		252		integer64
 ATTRIBUTE	Unit-Octets		253		octets
 
+ATTRIBUTE	Unit-TLV		254		tlv
+ATTRIBUTE	Milliseconds		254.1		date milliseconds
+ATTRIBUTE	Delta-MSec		254.2		time_delta milliseconds
+ATTRIBUTE	Delta-Sec		254.3		time_delta seconds
+
+ATTRIBUTE	Delta-MSec-uint16	254.4		time_delta milliseconds,uint16
+ATTRIBUTE	Delta-Sec-uint16	254.5		time_delta seconds,uint16
+ATTRIBUTE	Delta-MSec-int16	254.6		time_delta milliseconds,int16
+ATTRIBUTE	Delta-Sec-int16		254.7		time_delta seconds,int16
+
+ATTRIBUTE	Delta-MSec-uint32	254.8		time_delta milliseconds,uint32
+ATTRIBUTE	Delta-Sec-uint32	254.9		time_delta seconds,uint32
+ATTRIBUTE	Delta-MSec-int32	254.10		time_delta milliseconds,int32
+ATTRIBUTE	Delta-Sec-int32		254.11		time_delta seconds,int32
+
+ATTRIBUTE	Test-Enum-Integer64	254.12		uint64 enum=base-enum-uint64
+
+#  and this casting should work
+ATTRIBUTE	Test-Enum-Integer32	254.13		uint32	enum=base-enum-uint64
+
 #
 #  Copied here for simplicity
 #
-ATTRIBUTE	Extended-Attribute-1			241	extended
-ATTRIBUTE	Extended-Attribute-2			242	extended
-ATTRIBUTE	Extended-Attribute-5			245	extended long
+ATTRIBUTE	Extended-Attribute-1			241	tlv extended
+ATTRIBUTE	Extended-Attribute-2			242	tlv extended
+ATTRIBUTE	Extended-Attribute-5			245	tlv long-extended
 ATTRIBUTE	Extended-Vendor-Specific-2		242.26	vsa
+
+VENDOR FreeRADIUS 11344
+BEGIN-Vendor FreeRADIUS parent=.Extended-Attribute-2.Extended-Vendor-Specific-2
+
+ATTRIBUTE	Unit-EVS-Integer 1 integer
+ATTRIBUTE	Unit-EVS-Octets	 2 octets
+
+END-Vendor FreeRADIUS
+
 ATTRIBUTE	Extended-Vendor-Specific-5		245.26	vsa
+
+BEGIN-Vendor FreeRADIUS parent=.Extended-Attribute-5.Extended-Vendor-Specific-5
+
+ATTRIBUTE	Unit-EVS-5-Integer	1 integer
+ATTRIBUTE	Unit-EVS-5-Octets	2 octets
+
+END-Vendor FreeRADIUS
 
 ATTRIBUTE	Unit-Ext-241-Integer	241.241		integer
 ATTRIBUTE	Unit-Ext-241-Octets	241.242		octets
@@ -66,25 +111,17 @@ MEMBER		Unit-Struct4-Int1		integer
 MEMBER		Unit-Struct4-Int2		integer
 MEMBER		Unit-Struct4-Short		uint16
 
-
 ATTRIBUTE	Unit-TLV-Integer	241.243.1	integer
 
 ATTRIBUTE	Unit-Root-247		247		tlv
 ATTRIBUTE	Unit-Long-Octets	247.241		octets
 
-VENDOR FreeRADIUS 11344
-BEGIN-Vendor FreeRADIUS format=Extended-Vendor-Specific-2
+ATTRIBUTE      Test-Struct     255 struct
+MEMBER         Key-Field       uint8  key
+MEMBER         Filler          uint32
 
-ATTRIBUTE	Unit-EVS-Integer 1 integer
-ATTRIBUTE	Unit-EVS-Octets	 2 octets
-
-END-Vendor FreeRADIUS
-
-BEGIN-Vendor FreeRADIUS format=Extended-Vendor-Specific-5
-
-ATTRIBUTE	Unit-EVS-5-Integer	1 integer
-ATTRIBUTE	Unit-EVS-5-Octets	2 octets
-
-END-Vendor FreeRADIUS
+STRUCT Sub-Struct Key-Field 1
+MEMBER	Nested-Sub1 uint8
+MEMBER	Nested-Sub2 uint8
 
 END-PROTOCOL RADIUS

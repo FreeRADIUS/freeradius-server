@@ -132,7 +132,7 @@ sub radius_stats_get {
 
     }else {
         warn "no answer, $!\n";
-        return undef;
+        return;
     }
 
 }

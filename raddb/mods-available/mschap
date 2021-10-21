@@ -9,22 +9,60 @@
 #
 #  The `mschap` module performs `MS-CHAP` and `MS-CHAPv2` authentication.
 #
-#  The module also enforces the `SMB-Account-Ctrl` attribute.
+#  MS-CHAP authentication requires access to either the
+#  Password.Cleartext or Password.NT attribute for the user.  Due to
+#  the limitations of MS-CHAP, no other password "encryption" methods
+#  are possible.
 #
+#  This module validates a user with `MS-CHAP` or `MS-CHAPv2` authentication.
+#  If called in `recv Access-Request`, it will look for `MS-CHAP` Challenge/Response
+#  attributes in the `request` list and adds an `Auth-Type` attribute set to
+#  `mschap` in the Config-Items list unless Auth-Type has already set.
+#
+#  The module also enforces the `SMB-Account-Ctrl` attribute. See the
+#  Samba documentation for the meaning of SMB account control. The
+#  module does not read Samba password files. Instead, the rlm_passwd
+#  module can be used to read a Samba password file, and then supply
+#  an `Password.NT` attribute which this module can use.
+#
+#  The `mschap` module registers a few `xlat` functions.
+#
+#  [options="header,autowidth"]
+#  |===
+#  | Function          | Description
+#  | `Challenge`       | The MS-CHAP challenge.
+#  | `Domain-Name`     | The full domain name, taken from the `User-Name` attribute
+#  | `NT-Domain`       | The NT domain portion of the domain name, taken from the `User-Name` attribute
+#  | `NT-Hash`         | Take the NT-Hash of the string passed into the xlat
+#  | `NT-Response`     | The MS-CHAP response.
+#  | `User-Name`       | The MS-CHAP username portion of the `User-Name` attribute.
+#  |===
+#
+#  [NOTE]
+#  ====
 #  For more documentation on integrating FreeRADIUS with Active Directory, please
 #  see the following web page:
+#  http://deployingradius.com/documents/configuration/active_directory.html
+#  ====
 #
-#	http://deployingradius.com/documents/configuration/active_directory.html
 
 #
-
-#
-#  ## Default instance
+#  ## Configuration Settings
 #
 #  NOTE: If you are using `/etc/smbpasswd`, see the `passwd` module
 #  for an example of how to use `/etc/smbpasswd`
 #
 mschap {
+	#
+	#  normalise::
+	#
+	#  By default the server will use heuristics to try and automatically
+	#  handle base64 or hex encoded passwords or hashes.
+	#  This behaviour can be disabled by setting the following to `no`.
+	#
+	#  The default is `yes`
+	#
+#	normalise = no
 
 	#
 	#  use_mppe::
@@ -56,6 +94,14 @@ mschap {
 #	require_strong = yes
 
 	#
+	#  with_ntdomain_hack:: Windows clients send `User-Name` in the form of "DOMAIN\User",
+	#  but send the challenge/response based only on the User portion.
+	#
+	#  Default is `yes`.
+	#
+#	with_ntdomain_hack = no
+
+	#
 	#  ntlm_auth:: Path and arguments to the `ntlm_auth` program.
 	#
 	#  The module can perform authentication itself, OR
@@ -78,7 +124,7 @@ mschap {
 	#
 	#  You can also try setting the user name as:
 	#
-	#  `... --username=%{mschap:User-Name} ...`
+	#  `... --username=%(mschap:User-Name) ...`
 	#
 	#  In that case, the `mschap` module will look at the `User-Name`
 	#  attribute, and do prefix/suffix checks in order to obtain the _best_
@@ -93,7 +139,7 @@ mschap {
 	#  WARNING: Be VERY careful when editing the following line!
 	#  Change the path, and ideally nothing else.
 	#
-#	ntlm_auth = "/path/to/ntlm_auth --request-nt-key --username=%{%{Stripped-User-Name}:-%{%{User-Name}:-None}} --challenge=%{%{mschap:Challenge}:-00} --nt-response=%{%{mschap:NT-Response}:-00}"
+#	ntlm_auth = "/path/to/ntlm_auth --request-nt-key  --allow-mschapv2 --username=%{%{Stripped-User-Name}:-%{%{User-Name}:-None}} --challenge=%{%(mschap:Challenge):-00} --nt-response=%{%(mschap:NT-Response):-00}"
 
 	#
 	#  ntlm_auth_timeout:: Time to wait for `ntlm_auth` to run.
@@ -130,8 +176,8 @@ mschap {
 		#  later to be installed. Make sure that `ntlm_auth` above is
 		#  commented out.
 		#
-#		username = "%{mschap:User-Name}"
-#		domain = "%{mschap:NT-Domain}"
+#		username = "%(mschap:User-Name)"
+#		domain = "%(mschap:NT-Domain)"
 
 		#
 		#  retry_with_normalised_username::
@@ -267,7 +313,7 @@ mschap {
 		#  ntlm_auth_domain:: The domain name for ntlm_auth password change.
 		#
 		#  This module support `MS-CHAPv2` (not v1) password
-		#  change requests.  See `doc/modules/mschap.rst` for
+		#  change requests.  See `doc/howto/modules/mschap.adoc` for
 		#  some IMPORTANT information.
 		#
 		#  Samba/ntlm_auth - if you are using `ntlm_auth` to validate
@@ -276,8 +322,8 @@ mschap {
 		#  Uncomment the three lines below, and change the path to `ntlm_auth.
 		#
 #		ntlm_auth = "/usr/bin/ntlm_auth --helper-protocol=ntlm-change-password-1"
-#		ntlm_auth_username = "username: %{mschap:User-Name}"
-#		ntlm_auth_domain = "nt-domain: %{mschap:NT-Domain}"
+#		ntlm_auth_username = "username: %(mschap:User-Name)"
+#		ntlm_auth_domain = "nt-domain: %(mschap:NT-Domain)"
 
 		#
 		#  local_cpw::
@@ -289,7 +335,7 @@ mschap {
 		#
 		#  TIP: We give both examples here, but *only one should be used*.
 		#
-#		local_cpw = "%{exec:/path/to/script %{mschap:User-Name} %{MS-CHAP-New-Cleartext-Password}}"
+#		local_cpw = "%(exec:/path/to/script %(mschap:User-Name) %{MS-CHAP-New-Password.Cleartext})"
 #		local_cpw = "%{sql:UPDATE radcheck set value='%{MS-CHAP-New-NT-Password}' where username='%{User-Name}' and attribute='NT-Password'}"
 	}
 

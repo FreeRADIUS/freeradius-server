@@ -2,6 +2,10 @@ AC_INIT(rlm_sql_postgresql.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_sql_postgresql])
 
+AC_ARG_WITH([]modname,
+[AS_HELP_STRING([--without-[]modname],[build without module])]
+)
+
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
@@ -69,6 +73,20 @@ if test x$with_[]modname != xno; then
 		  ]])],
 		  [
 		    AC_DEFINE([HAVE_PGRES_COPY_BOTH], [1], [Whether the PGRES_COPY_BOTH constant is defined])
+		    AC_MSG_RESULT(yes)
+		  ],
+		  [
+		    AC_MSG_RESULT(no)
+		  ])
+
+		AC_MSG_CHECKING([for PGRES_PIPELINE_SYNC])
+		AC_COMPILE_IFELSE(
+		  [AC_LANG_PROGRAM([#include <libpq-fe.h>], [[
+		    if (PGRES_PIPELINE_SYNC) return 0;
+		    return 1;
+		  ]])],
+		  [
+		    AC_DEFINE([HAVE_PGRES_PIPELINE_SYNC], [1], [Whether the PGRES_PIPELINE_SYNC constant is defined])
 		    AC_MSG_RESULT(yes)
 		  ],
 		  [

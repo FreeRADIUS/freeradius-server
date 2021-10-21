@@ -23,11 +23,11 @@
  */
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/heap.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include "../../rlm_cache.h"
 
 typedef struct {
-	rbtree_t		*cache;		//!< Tree for looking up cache keys.
+	fr_rb_tree_t		*cache;		//!< Tree for looking up cache keys.
 	fr_heap_t		*heap;		//!< For managing entry expiry.
 
 	pthread_mutex_t		mutex;		//!< Protect the tree from multiple readers/writers.
@@ -35,48 +35,32 @@ typedef struct {
 
 typedef struct {
 	rlm_cache_entry_t	fields;		//!< Entry data.
-	int32_t			heap_id;	//!< Offset used for heap.
-} rlm_cache_rbtree_entry_t;
+
+	fr_rb_node_t		node;		//!< Entry used for lookups.
+	fr_heap_index_t		heap_id;	//!< Offset used for expiry heap.
+} rlm_cache_rb_entry_t;
 
 /** Compare two entries by key
  *
  * There may only be one entry with the same key.
  */
-static int cache_entry_cmp(void const *one, void const *two)
+static int8_t cache_entry_cmp(void const *one, void const *two)
 {
 	rlm_cache_entry_t const *a = one, *b = two;
-	int ret;
 
-	ret = (a->key_len > b->key_len) - (a->key_len < b->key_len);
-	if (ret != 0) return ret;
-
-	return memcmp(a->key, b->key, a->key_len);
+	MEMCMP_RETURN(a, b, key, key_len);
+	return 0;
 }
 
 /** Compare two entries by expiry time
  *
  * There may be multiple entries with the same expiry time.
  */
-static int cache_heap_cmp(void const *one, void const *two)
+static int8_t cache_heap_cmp(void const *one, void const *two)
 {
 	rlm_cache_entry_t const *a = one, *b = two;
 
-	return (a->expires > b->expires) - (a->expires < b->expires);
-}
-
-/** Walk over the cache rbtree
- *
- * Used to free any entries left in the tree on detach.
- *
- * @param[in] data	to free.
- * @param[in] uctx	unused.
- * @return 2
- */
-static int _cache_entry_free(void *data, UNUSED void *uctx)
-{
-	talloc_free(data);
-
-	return 2;
+	return fr_unix_time_cmp(a->expires, b->expires);
 }
 
 /** Cleanup a cache_rbtree instance
@@ -87,8 +71,15 @@ static int mod_detach(void *instance)
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
 	if (driver->cache) {
-		rbtree_walk(driver->cache, RBTREE_DELETE_ORDER, _cache_entry_free, NULL);
-		talloc_free(driver->cache);
+		fr_rb_iter_inorder_t	iter;
+		void			*data;
+
+		for (data = fr_rb_iter_init_inorder(&iter, driver->cache);
+		     data;
+		     data = fr_rb_iter_next_inorder(&iter)) {
+			fr_rb_iter_delete_inorder(&iter);
+			talloc_free(data);
+		}
 	}
 
 	pthread_mutex_destroy(&driver->mutex);
@@ -113,17 +104,16 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 	/*
 	 *	The cache.
 	 */
-	driver->cache = rbtree_talloc_create(NULL, cache_entry_cmp, rlm_cache_rbtree_entry_t, NULL, 0);
+	driver->cache = fr_rb_inline_talloc_alloc(driver, rlm_cache_rb_entry_t, node, cache_entry_cmp, NULL);
 	if (!driver->cache) {
 		ERROR("Failed to create cache");
 		return -1;
 	}
-	talloc_link_ctx(driver, driver->cache);
 
 	/*
 	 *	The heap of entries to expire.
 	 */
-	driver->heap = fr_heap_talloc_create(driver, cache_heap_cmp, rlm_cache_rbtree_entry_t, heap_id);
+	driver->heap = fr_heap_talloc_alloc(driver, cache_heap_cmp, rlm_cache_rb_entry_t, heap_id, 0);
 	if (!driver->heap) {
 		ERROR("Failed to create heap for the cache");
 		return -1;
@@ -144,11 +134,11 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
  * @copydetails cache_entry_alloc_t
  */
 static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_config_t const *config, UNUSED void *instance,
-					    REQUEST *request)
+					    request_t *request)
 {
-	rlm_cache_rbtree_entry_t *c;
+	rlm_cache_rb_entry_t *c;
 
-	c = talloc_zero(NULL, rlm_cache_rbtree_entry_t);
+	c = talloc_zero(NULL, rlm_cache_rb_entry_t);
 	if (!c) {
 		RERROR("Failed allocating cache entry");
 		return NULL;
@@ -165,28 +155,28 @@ static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_config_t const *con
  */
 static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 				       UNUSED rlm_cache_config_t const *config, void *instance,
-				       REQUEST *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
+				       request_t *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
 	rlm_cache_entry_t *c;
 
-	rad_assert(driver->cache);
+	fr_assert(driver->cache);
 
 	/*
 	 *	Clear out old entries
 	 */
 	c = fr_heap_peek(driver->heap);
-	if (c && (c->expires < fr_time_to_sec(request->packet->timestamp))) {
+	if (c && (fr_unix_time_lt(c->expires, fr_time_to_unix_time(request->packet->timestamp)))) {
 		fr_heap_extract(driver->heap, c);
-		rbtree_deletebydata(driver->cache, c);
+		fr_rb_delete(driver->cache, c);
 		talloc_free(c);
 	}
 
 	/*
 	 *	Is there an entry for this key?
 	 */
-	c = rbtree_finddata(driver->cache, &(rlm_cache_entry_t){ .key = key, .key_len = key_len });
+	c = fr_rb_find(driver->cache, &(rlm_cache_entry_t){ .key = key, .key_len = key_len });
 	if (!c) {
 		*out = NULL;
 		return CACHE_MISS;
@@ -203,7 +193,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
  * @copydetails cache_entry_expire_t
  */
 static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *instance,
-					 REQUEST *request, UNUSED void *handle,
+					 request_t *request, UNUSED void *handle,
 					 uint8_t const *key, size_t key_len)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
@@ -211,11 +201,11 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 
 	if (!request) return CACHE_ERROR;
 
-	c = rbtree_finddata(driver->cache, &(rlm_cache_entry_t){ .key = key, .key_len = key_len });
+	c = fr_rb_find(driver->cache, &(rlm_cache_entry_t){ .key = key, .key_len = key_len });
 	if (!c) return CACHE_MISS;
 
 	fr_heap_extract(driver->heap, c);
-	rbtree_deletebydata(driver->cache, c);
+	fr_rb_delete(driver->cache, c);
 	talloc_free(c);
 
 	return CACHE_OK;
@@ -228,36 +218,33 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
  * @copydetails cache_entry_insert_t
  */
 static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void *instance,
-					 REQUEST *request, void *handle,
+					 request_t *request, void *handle,
 					 rlm_cache_entry_t const *c)
 {
 	cache_status_t status;
 
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
-	rlm_cache_entry_t *my_c;
 
-	rad_assert(handle == request);
+	fr_assert(handle == request);
 
 	if (!request) return CACHE_ERROR;
-
-	memcpy(&my_c, &c, sizeof(my_c));
 
 	/*
 	 *	Allow overwriting
 	 */
-	if (!rbtree_insert(driver->cache, my_c)) {
+	if (!fr_rb_insert(driver->cache, c)) {
 		status = cache_entry_expire(config, instance, request, handle, c->key, c->key_len);
 		if ((status != CACHE_OK) && !fr_cond_assert(0)) return CACHE_ERROR;
 
-		if (!rbtree_insert(driver->cache, my_c)) {
+		if (!fr_rb_insert(driver->cache, c)) {
 			RERROR("Failed adding entry");
 
 			return CACHE_ERROR;
 		}
 	}
 
-	if (fr_heap_insert(driver->heap, my_c) < 0) {
-		rbtree_deletebydata(driver->cache, my_c);
+	if (fr_heap_insert(driver->heap, UNCONST(rlm_cache_entry_t *, c)) < 0) {
+		fr_rb_delete(driver->cache, c);
 		RERROR("Failed adding entry to expiry heap");
 
 		return CACHE_ERROR;
@@ -273,7 +260,7 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
  * @copydetails cache_entry_set_ttl_t
  */
 static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *config, void *instance,
-					  REQUEST *request, UNUSED void *handle,
+					  request_t *request, UNUSED void *handle,
 					  rlm_cache_entry_t *c)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
@@ -288,7 +275,7 @@ static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *confi
 	}
 
 	if (fr_heap_insert(driver->heap, c) < 0) {
-		rbtree_deletebydata(driver->cache, c);	/* make sure we don't leak entries... */
+		fr_rb_delete(driver->cache, c);	/* make sure we don't leak entries... */
 		RERROR("Failed updating entry TTL.  Entry was forcefully expired");
 		return CACHE_ERROR;
 	}
@@ -301,14 +288,14 @@ static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *confi
  *
  * @copydetails cache_entry_count_t
  */
-static uint32_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void *instance,
-				  REQUEST *request, UNUSED void *handle)
+static uint64_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void *instance,
+				  request_t *request, UNUSED void *handle)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
 	if (!request) return CACHE_ERROR;
 
-	return rbtree_num_elements(driver->cache);
+	return fr_rb_num_elements(driver->cache);
 }
 
 /** Lock the rbtree
@@ -318,7 +305,7 @@ static uint32_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void 
  * @copydetails cache_acquire_t
  */
 static int cache_acquire(void **handle, UNUSED rlm_cache_config_t const *config, void *instance,
-			 REQUEST *request)
+			 request_t *request)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
 
@@ -337,7 +324,7 @@ static int cache_acquire(void **handle, UNUSED rlm_cache_config_t const *config,
  *
  * @copydetails cache_release_t
  */
-static void cache_release(UNUSED rlm_cache_config_t const *config, void *instance, REQUEST *request,
+static void cache_release(UNUSED rlm_cache_config_t const *config, void *instance, request_t *request,
 			  UNUSED rlm_cache_handle_t *handle)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
@@ -347,8 +334,8 @@ static void cache_release(UNUSED rlm_cache_config_t const *config, void *instanc
 	RDEBUG3("Mutex released");
 }
 
-extern cache_driver_t rlm_cache_rbtree;
-cache_driver_t rlm_cache_rbtree = {
+extern rlm_cache_driver_t rlm_cache_rbtree;
+rlm_cache_driver_t rlm_cache_rbtree = {
 	.name		= "rlm_cache_rbtree",
 	.magic		= RLM_MODULE_INIT,
 	.instantiate	= mod_instantiate,

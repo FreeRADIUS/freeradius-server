@@ -22,17 +22,16 @@
  */
 RCSID("$Id$")
 
-#include "print.h"
-
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
 
 #include <ctype.h>
 #include <string.h>
-#include <talloc.h>
 
 /** Checks for utf-8, taken from http://www.w3.org/International/questions/qa-forms-utf-8
  *
@@ -113,7 +112,7 @@ inline size_t fr_utf8_char(uint8_t const *str, ssize_t inlen)
 	}
 
 	if ((str[0] >= 0xf1) &&		/* 6 */
-	    (str[1] <= 0xf3) &&
+	    (str[0] <= 0xf3) &&
 	    (str[1] >= 0x80) &&
 	    (str[1] <= 0xbf) &&
 	    (str[2] >= 0x80) &&
@@ -172,33 +171,48 @@ ssize_t fr_utf8_str(uint8_t const *str, ssize_t inlen)
 
 /** Return a pointer to the first UTF8 char in a string.
  *
- * @param[out] chr_len Where to write the length of the multibyte char passed in chr (may be NULL).
- * @param[in] str Haystack.
- * @param[in] chr Multibyte needle.
+ * @param[out] out_chr_len	Where to write the length of the multibyte char passed in chr (may be NULL).
+ * @param[in] str		Haystack.
+ * @param[in] inlen		Length of string (in bytes).  Pass -1 to determine the length of the string.
+ * @param[in] chr		Multibyte needle.
  * @return
  *	- Position of chr in str.
  *	- NULL if not found.
  */
-char const *fr_utf8_strchr(int *chr_len, char const *str, char const *chr)
+char const *fr_utf8_strchr(int *out_chr_len, char const *str, ssize_t inlen, char const *chr)
 {
-	int cchr;
+	char const	*p = str, *end;
+	int		needle_len;
 
-	cchr = fr_utf8_char((uint8_t const *)chr, -1);
-	if (cchr == 0) cchr = 1;
-	if (chr_len) *chr_len = cchr;
+	if (inlen < 0) inlen = strlen(str);
 
-	while (*str) {
-		int schr;
+	end = str + inlen;
 
-		schr = fr_utf8_char((uint8_t const *) str, -1);
-		if (schr == 0) schr = 1;
-		if (schr != cchr) goto next;
+	/*
+	 *	Figure out how big the multibyte sequence
+	 *	we're looking for is.
+	 */
+	needle_len = fr_utf8_char((uint8_t const *)chr, -1);
+	if (needle_len == 0) needle_len = 1;	/* Invalid UTF8 sequence - ignore - needle is one byte */
+	if (out_chr_len) *out_chr_len = needle_len;
 
-		if (memcmp(str, chr, schr) == 0) {
-			return (char const *) str;
-		}
+	/*
+	 *	Loop over the input sequence, advancing
+	 *      UTF8 sequence by utf8 seqnce.
+	 */
+	while (p < end) {
+		int schr_len;
+
+		schr_len = fr_utf8_char((uint8_t const *)p, end - p);
+		if (schr_len == 0) schr_len = 1;	/* Invalid UTF8 sequence - ignore - advance by 1 */
+		if (schr_len != needle_len) goto next;
+
+		/*
+		 *	See if this matches out multibyte needle
+		 */
+		if (memcmp(p, chr, schr_len) == 0) return p;
 	next:
-		str += schr;
+		p += schr_len;
 	}
 
 	return NULL;
@@ -209,10 +223,10 @@ char const *fr_utf8_strchr(int *chr_len, char const *str, char const *chr)
  * @note Return value should be checked with is_truncated
  * @note Will always \0 terminate unless outlen == 0.
  *
- * @param[in] in	string to escape.
- * @param[in] inlen	length of string to escape (lets us deal with embedded NULs)
  * @param[out] out	where to write the escaped string.
  * @param[out] outlen	the length of the buffer pointed to by out.
+ * @param[in] in	string to escape.
+ * @param[in] inlen	length of string to escape (lets us deal with embedded NULs)
  * @param[in] quote	the quotation character
  * @return
  *	- The number of bytes written to the out buffer.
@@ -449,7 +463,7 @@ DIAG_OFF(format-nonliteral)
  * - %pV prints a value box as a string.
  * - %pM prints a list of value boxes, concatenating them.
  * - %pH prints a value box as a hex string.
- * - %pP prints a VALUE_PAIR.
+ * - %pP prints a fr_pair_t.
  *
  * This breaks strict compatibility with printf but allows us to continue using
  * the static format string and argument type validation.
@@ -539,7 +553,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 			char *r;
 
 			p++;
-			strtoul(p, &r, 10);
+			(void) strtoul(p, &r, 10);
 			p = r;
 		}
 
@@ -650,8 +664,12 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 			 */
 			switch (*(p + 1)) {
 			case 'V':
+			case 'R':
 			{
 				fr_value_box_t const *in = va_arg(ap_q, fr_value_box_t const *);
+				fr_sbuff_escape_rules_t const *e_rules = NULL;
+
+				if (*(p + 1) == 'V') e_rules = &fr_value_escape_double;
 
 				/*
 				 *	Allocations that are not part of the output
@@ -659,7 +677,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 				 *	any pool associated with it.
 				 */
 				if (in) {
-					subst = fr_value_box_asprint(NULL, in, '"');
+					fr_value_box_aprint(NULL, &subst, in, e_rules);
 					if (!subst) {
 						talloc_free(out);
 						va_end(ap_p);
@@ -684,7 +702,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 					talloc_free(sub_fmt);
 					if (!out_tmp) {
 					oom:
-						fr_strerror_printf("Out of memory");
+						fr_strerror_const("Out of memory");
 						talloc_free(out);
 						talloc_free(subst);
 						va_end(ap_p);
@@ -725,15 +743,15 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 
 				switch (in->type) {
 				case FR_TYPE_OCTETS:
-					subst = talloc_array(NULL, char, (in->vb_length * 2) + 1);
-					if (!subst) goto oom;
-					fr_bin2hex(subst, in->vb_octets, in->vb_length);
+					if (in->vb_octets) {
+						fr_base16_aencode(NULL, &subst, &FR_DBUFF_TMP(in->vb_octets, in->vb_length));
+					} else {
+						subst = talloc_strdup(NULL, "");
+					}
 					break;
 
 				case FR_TYPE_STRING:
-					subst = talloc_array(NULL, char, (in->vb_length * 2) + 1);
-					if (!subst) goto oom;
-					fr_bin2hex(subst, (uint8_t const *)in->vb_strvalue, in->vb_length);
+					fr_base16_aencode(NULL, &subst, &FR_DBUFF_TMP((uint8_t const *)in->vb_strvalue, in->vb_length));
 					break;
 
 				default:
@@ -748,10 +766,7 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 						if (!subst) goto oom;
 					}
 
-					subst = talloc_array(NULL, char, (dst.vb_length * 2) + 1);
-					if (!subst) goto oom;
-					fr_bin2hex(subst, dst.vb_octets, dst.vb_length);
-
+					fr_base16_aencode(NULL, &subst, &FR_DBUFF_TMP((uint8_t const *)dst.vb_octets, dst.vb_length));
 					fr_value_box_clear(&dst);
 					break;
 				}
@@ -761,28 +776,28 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 
 			case 'M':
 			{
-				fr_value_box_t const *in = va_arg(ap_q, fr_value_box_t const *);
+				fr_value_box_list_t const *in = va_arg(ap_q, fr_value_box_list_t const *);
 
 				if (!in) {
 					subst = talloc_strdup(NULL, "(null)");
 					goto do_splice;
 				}
 
-				subst = fr_value_box_list_asprint(NULL, in, NULL, '"');
+				subst = fr_value_box_list_aprint(NULL, in, NULL, &fr_value_escape_double);
 			}
 				goto do_splice;
 
 			case 'P':
 			{
-				VALUE_PAIR const *in = va_arg(ap_q, VALUE_PAIR const *);
+				fr_pair_t const *in = va_arg(ap_q, fr_pair_t const *);
 
 				if (!in) {
 					subst = talloc_strdup(NULL, "(null)");
 					goto do_splice;
 				}
 
-				VP_VERIFY(in);
-				subst = fr_pair_asprint(NULL, in, '"');
+				PAIR_VERIFY(in);
+				fr_pair_aprint(NULL, &subst, NULL, in);
 			}
 				goto do_splice;
 
@@ -812,6 +827,13 @@ char *fr_vasprintf(TALLOC_CTX *ctx, char const *fmt, va_list ap)
 
 	va_end(ap_p);
 	va_end(ap_q);
+
+	/*
+	 *	One of the above talloc calls sets the type to
+	 *	be the string.  We correct this here so we
+	 *	don't trigger talloc_aborts later...
+	 */
+	talloc_set_type(out, char);
 
 	return out;
 }
@@ -854,11 +876,10 @@ ssize_t fr_fprintf(FILE *fp, char const *fmt, ...)
 {
 	va_list ap;
 	char *buf;
-	int ret, fd;
+	int ret;
 
-	fd = fileno(fp);
-	if (fd < 0) {
-		fr_strerror_printf("Invalid 'fp'");
+	if (!fp) {
+		fr_strerror_const("Invalid 'fp'");
 		return -1;
 	}
 
@@ -866,7 +887,7 @@ ssize_t fr_fprintf(FILE *fp, char const *fmt, ...)
 	buf = fr_vasprintf(NULL, fmt, ap);
 	va_end(ap);
 
-	ret = write(fd, buf, strlen(buf));
+	ret = fputs(buf, fp);
 
 	TALLOC_FREE(buf);
 

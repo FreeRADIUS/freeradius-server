@@ -23,27 +23,26 @@
  */
 RCSID("$Id$")
 
-#include "syserror.h"
-
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/atexit.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <talloc.h>
 
 #define FR_SYSERROR_BUFSIZE (2048)
 
-fr_thread_local_setup(char *, fr_syserror_buffer)		/* macro */
+static _Thread_local char *fr_syserror_buffer;
 static _Thread_local bool logging_stop;	//!< Due to ordering issues we may get errors being
 					///< logged from within other thread local destructors
 					///< which cause a crash on exit if the logging buffer
 					///< has already been freed.
 
-#define HAVE_DEFINITION(_errno) ((_errno) < (int)(sizeof(fr_syserror_macro_names) / sizeof(*fr_syserror_macro_names)))
+#define HAVE_DEFINITION(_errno) ((_errno) < (int)(NUM_ELEMENTS(fr_syserror_macro_names)))
 
 /*
  *	Explicitly cleanup the memory allocated to the error buffer,
@@ -167,6 +166,8 @@ static char const *fr_syserror_macro_names[] = {
  *
  * @param num errno as returned by function or from global errno.
  * @return local specific error string relating to errno.
+ *
+ * @hidecallergraph
  */
 char const *fr_syserror(int num)
 {
@@ -188,7 +189,7 @@ char const *fr_syserror(int num)
 			fr_perror("Failed allocating memory for system error buffer");
 			return NULL;
 		}
- 		fr_thread_local_set_destructor(fr_syserror_buffer, _fr_logging_free, buffer);
+ 		fr_atexit_thread_local(fr_syserror_buffer, _fr_logging_free, buffer);
 	}
 
 	if (num == 0) return "No additional error information";
@@ -260,12 +261,3 @@ char const *fr_syserror(int num)
 	}
 #endif
 }
-
-/** Explicitly cleanup the thread specific buffer used
- *
- */
-void fr_syserror_free(void)
-{
-	_fr_logging_free(NULL);
-}
-

@@ -28,6 +28,7 @@
 RCSIDH(eap_fast_h, "$Id$")
 
 #include <freeradius-devel/eap/tls.h>
+#include <freeradius-devel/radius/radius.h>
 
 #define EAP_FAST_VERSION			1
 
@@ -162,7 +163,7 @@ typedef struct {
 } CC_HINT(__packed__) eap_fast_keyblock_t;
 
 typedef struct {
-	VALUE_PAIR		*username;
+	fr_pair_t		*username;
 
 	bool			authenticated;
 
@@ -182,7 +183,7 @@ typedef struct {
 	int			default_method;
 	int			default_provisioning_method;
 
-	uint32_t		pac_lifetime;
+	fr_time_delta_t		pac_lifetime;
 	char const		*authority_identity;
 	uint8_t const 		*a_id;
 	uint8_t const 		*pac_opaque_key;
@@ -190,7 +191,7 @@ typedef struct {
 	struct {
 		uint8_t			*key;
 		eap_fast_pac_type_t	type;
-		uint32_t		expires;
+		fr_time_t		expires;
 		bool			expired;
 		bool			send;
 	}			pac;
@@ -244,19 +245,19 @@ extern fr_dict_attr_t const *attr_eap_fast_pac_opaque_tlv;
 extern fr_dict_attr_t const *attr_eap_fast_pac_tlv;
 extern fr_dict_attr_t const *attr_eap_fast_pac_type;
 extern fr_dict_attr_t const *attr_eap_fast_result;
-extern fr_dict_attr_t const *attr_eap_fast_tlv;
 extern fr_dict_attr_t const *attr_eap_fast_vendor_specific;
+extern fr_dict_t const *dict_eap_fast;
 
 /*
  *	Process the FAST portion of an EAP-FAST request.
  */
-void eap_fast_tlv_append(tls_session_t *tls_session, fr_dict_attr_t const *da, bool mandatory,
+void eap_fast_tlv_append(fr_tls_session_t *tls_session, fr_dict_attr_t const *da, bool mandatory,
 			 int length, const void *data) CC_HINT(nonnull);
-FR_CODE eap_fast_process(eap_session_t *eap_session, tls_session_t *tls_session) CC_HINT(nonnull);
+fr_radius_packet_code_t eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session) CC_HINT(nonnull);
 
 /*
  *	A bunch of EAP-FAST helper functions.
  */
-ssize_t		eap_fast_decode_pair(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_attr_t const *parent,
+ssize_t		eap_fast_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 			     	     uint8_t const *data, size_t data_len,
-			     	     UNUSED void *decoder_ctx);
+			     	     UNUSED void *decode_ctx);

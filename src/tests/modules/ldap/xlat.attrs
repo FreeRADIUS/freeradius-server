@@ -1,0 +1,13 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "john"
+User-Password = "password"
+NAS-IP-Address = 1.2.3.5
+Tmp-String-9 = "(manager)"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept

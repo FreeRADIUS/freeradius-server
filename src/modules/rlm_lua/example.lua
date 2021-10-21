@@ -1,8 +1,8 @@
-function tprint (tbl, indent)
+local function tprint (tbl, indent)
   if not indent then indent = 0 end
 
   for k, v in tbl.pairs() do
-    formatting = string.rep("  ", indent) .. k .. ": "
+    local formatting = string.rep("  ", indent) .. k .. ": "
     if type(v) == "table" then
       print(formatting)
       tprint(v, indent+1)
@@ -24,6 +24,11 @@ end
 
 function post_auth()
   print("example.lua/post_auth()")
+  return fr.ok
+end
+
+function instantiate()
+  print("example.lua/instantiate()")
   return fr.ok
 end
 
@@ -58,7 +63,7 @@ function authorize()
 
   print("example.lua/authorize()")
   print("Request list contents:")
-  tprint(request, 2)
+  tprint(fr.request, 2)
 
   return fr.ok
 end

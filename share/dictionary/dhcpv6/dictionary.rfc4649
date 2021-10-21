@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -11,4 +11,6 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Relay-Agent-Remote-ID			37	octets		# Complex struct see RFC 4649
+ATTRIBUTE	Relay-Agent-Remote-ID			37	struct
+MEMBER		Vendor					uint32
+MEMBER		Value					octets

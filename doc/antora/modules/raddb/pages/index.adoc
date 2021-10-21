@@ -1,0 +1,161 @@
+= Configuration Files
+
+This section documents the format and content of the configuration
+files.
+
+== Format and Layout
+
+The configuration files are in a simple text-based
+xref:format.adoc[format].  They are loaded once when the server
+starts, and then are static for the duration of the server.  Changes
+to the configuration file are picked up only when the server restarts.
+
+The configuration files are organized into groups, generally by
+directory, as discussed below.
+
+=== radiusd.conf
+
+The xref:radiusd.conf.adoc[radiusd.conf] file is the main server
+configuration file.  When the server starts, it reads this file.  This
+file then loads all of the other configuration files.
+
+=== dictionary
+
+Site-local dictionary entries are placed in the
+xref:dictionary.adoc[dictionary] file.
+
+=== `mods-available/`
+
+The xref:mods-available/index.adoc[mods-available/] directory contains
+configuration for all of the available modules. Each module
+configuration is different. Each file contains documentation that
+describes what the module is, and how it works.
+
+The directory contains almost 100 modules. Most configurations will
+only use a few modules. The remaining module configurations exist in
+order to serve as documentation and worked examples.
+
+=== `mods-enabled/`
+
+The `mods-enabled/` directory contains the _enabled_ modules. The
+files here should generally be soft links back to the
+`mods-available/` directory.
+
+For example, the following commands would enable the `ldap` module:
+
+```
+cd mods-enabled/
+ln -s ../mods-available/ldap
+```
+
+Note that the `ldap` module must still be configured for the local systems.
+
+=== `mods-config/`
+
+This directory contains complex configuration files for modules loaded
+from `mods-enabled/`.
+
+For example, the `sql` module can connect to multiple types of SQL
+databases. Each SQL database has it’s own schema, along with default
+queries for RADIUS, IP pools, DHCP, etc. If these files were placed into
+the ’mods-available/` directory, that directory would get compled and
+difficult to manage.
+
+Instead, the files are placed into a separate directory.
+
+Note that only a few modules require this extra configuration.
+
+=== `policy.d`
+
+The `policy.d/` directory contains sample policies that are used when
+processing packets. These policies implement complex logic which often
+uses multiple modules.
+
+There is no need to have `available` or `enabled` policies. All
+policies are loaded by the server, and unused ones are ignored.
+
+=== `sites-available/`
+
+The xref:sites-available/index.adoc[sites-available/] directory
+contains virtual servers which process packets. They are similar in
+concept to the virtual servers used by Apache and Nginx.
+
+Each virtual server will begin with a `server` declaration, along with
+it’s name. e.g. `server default { ...`. The declaration is then
+followed by a `namespace =` parameter, which describes which
+application protocol is being used in that virtual server.
+e.g. `namespace = radius`.
+
+The virtual server will then contain zero or more `listen`
+subsections. Each `listen` subsection defines a network socket which
+is used to receive packets.
+
+The virtual server will then contain multiple `recv { ... }` and `send { ... }`
+subsections. These subsections are used to process packets.
+
+Note that unlike v3, there are no longer any `authorize`,
+`authenticate`, etc. sections. All of the `processing sections` have
+been renamed. This change was necessary in order to simplify the
+operation of the server, and to better support multiple protocols.
+
+Please see the xref:installation:upgrade.adoc[upgrade] file for more
+information about these changes.
+
+The `sites-available/` directory contains many files. Each file is a
+worked example of how to achieve a particular goal using FreeRADIUS. We
+recommend reading these files in order to see how complex goals can be
+achieved.
+
+=== `sites-enabled/`
+
+The `sites-enabled/` directory contains the _enabled_ virtual servers.
+The files here should generally be soft links back to the `sites-available/` directory.
+
+For example, to enable the `default` virtual server, you can run these commands:
+
+```
+cd sites-enabled/
+ln -s ../sites-available/default
+```
+
+The standard installation of FreeRADIUS enables only a few virtual servers.
+
+=== `certs/`
+
+This directory contains certificates and configuration for EAP and
+RADIUS over TLS (i.e. RadSec).
+
+== Additional Configuration Files
+
+* xref:clients.conf.adoc[clients.conf]
+* xref:debug.conf.adoc[debug.conf]
+* xref:experimental.conf.adoc[experimental.conf]
+* xref:panic.gdb.adoc[panic.gdb]
+* xref:radrelay.conf.adoc[radrelay.conf]
+* xref:templates.conf.adoc[templates.conf]
+* xref:trigger.conf.adoc[trigger.conf]
+
+== Changing the Configuration
+
+When configuring the server, please start with the default
+configuration. It is intended to work in the widest possible
+circumstances, with minimal site-local changes. Most sites can just
+configure a few modules such as `ldap` and `sql`, and the server
+will do everything you need. More complex configurations require more
+effort, of course.
+
+For more complex configurations, the best approach is to make a series
+of small changes. Start the server after every change via
+`radiusd -XC` to see if the configuration is OK. Use `radclient` to
+send the server test packets. Read the debug output (`radiusd -X`) to
+verify that the server is doing what you expect.
+
+For complex policies, it is best to write down what you want in plain
+English. Be specific. Write down what the server receives in a packet,
+which databases are used, and what the database should return. The more
+detailed these explanations, the easier it will be to create a working
+configuration.
+
+Take your time. It is better to make small incrementatal progress, than
+to make massive changes, and then to spend weeks debugging it.
+

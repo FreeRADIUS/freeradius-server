@@ -25,7 +25,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/util/debug.h>
 
 /*
  *	The instance data for rlm_sometimes is the list of fake values we are
@@ -34,16 +35,14 @@ RCSID("$Id$")
 typedef struct {
 	char const	*rcode_str;
 	rlm_rcode_t	rcode;
-	uint32_t	start;
-	uint32_t	end;
-	vp_tmpl_t	*key;
+	float		percentage;
+	tmpl_t	*key;
 } rlm_sometimes_t;
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("rcode", FR_TYPE_STRING, rlm_sometimes_t, rcode_str), .dflt = "fail" },
 	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_sometimes_t, key), .dflt = "&User-Name", .quote = T_BARE_WORD },
-	{ FR_CONF_OFFSET("start", FR_TYPE_UINT32, rlm_sometimes_t, start), .dflt = "0" },
-	{ FR_CONF_OFFSET("end", FR_TYPE_UINT32, rlm_sometimes_t, end), .dflt = "127" },
+	{ FR_CONF_OFFSET("percentage", FR_TYPE_FLOAT32, rlm_sometimes_t, percentage), .dflt = "0" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -54,9 +53,14 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Convert the rcode string to an int, and get rid of it
 	 */
-	inst->rcode = fr_str2int(mod_rcode_table, inst->rcode_str, RLM_MODULE_UNKNOWN);
-	if (inst->rcode == RLM_MODULE_UNKNOWN) {
+	inst->rcode = fr_table_value_by_str(rcode_table, inst->rcode_str, RLM_MODULE_NOT_SET);
+	if (inst->rcode == RLM_MODULE_NOT_SET) {
 		cf_log_err(conf, "Unknown module return code '%s'", inst->rcode_str);
+		return -1;
+	}
+
+	if ((inst->percentage < 0) || (inst->percentage > 100)) {
+		cf_log_err(conf, "Invalid value for 'percentage'.  It must be 0..100 inclusive");
 		return -1;
 	}
 
@@ -66,23 +70,24 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 /*
  *	A lie!  It always returns!
  */
-static rlm_rcode_t sometimes_return(void const *instance, REQUEST *request, RADIUS_PACKET *packet, RADIUS_PACKET *reply)
+static unlang_action_t sometimes_return(rlm_rcode_t *p_result, void const *instance, request_t *request,
+					fr_radius_packet_t *packet, fr_radius_packet_t *reply)
 {
 	uint32_t		hash;
-	uint32_t		value;
-	rlm_sometimes_t const	*inst = instance;
-	VALUE_PAIR		*vp;
+	rlm_sometimes_t const	*inst = talloc_get_type_abort_const(instance, rlm_sometimes_t);
+	fr_pair_t		*vp;
+	float			value;
 
 	/*
 	 *	Set it to NOOP and the module will always do nothing
 	 */
-	if (inst->rcode == RLM_MODULE_NOOP) return inst->rcode;
+	if (inst->rcode == RLM_MODULE_NOOP) RETURN_MODULE_RCODE(inst->rcode);
 
 	/*
 	 *	Hash based on the given key.  Usually User-Name.
 	 */
 	tmpl_find_vp(&vp, request, inst->key);
-	if (!vp) return RLM_MODULE_NOOP;
+	if (!vp) RETURN_MODULE_NOOP;
 
 	switch (vp->vp_type) {
 	case FR_TYPE_OCTETS:
@@ -90,48 +95,43 @@ static rlm_rcode_t sometimes_return(void const *instance, REQUEST *request, RADI
 		hash = fr_hash(vp->data.datum.ptr, vp->vp_length);
 		break;
 
-	case FR_TYPE_ABINARY:
-		hash = fr_hash(vp->vp_filter, vp->vp_length);
-		break;
-
 	case FR_TYPE_STRUCTURAL:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 
 	default:
 		hash = fr_hash(&vp->data.datum, fr_value_box_field_sizes[vp->vp_type]);
 		break;
 	}
-	hash &= 0xff;		/* ensure it's 0..255 */
-	value = hash;
 
-	/*
-	 *	Ranges are INCLUSIVE.
-	 *	[start,end] returns "rcode"
-	 *	Everything else returns "noop"
-	 */
-	if (value < inst->start) return RLM_MODULE_NOOP;
-	if (value > inst->end) return RLM_MODULE_NOOP;
+	hash &= 0xffff;		/* all we need are 2^16 bits of precision */
+	value = hash;
+	value /= (1 << 16);
+	value *= 100;
+
+	if (value > inst->percentage) RETURN_MODULE_NOOP;
 
 	/*
 	 *	If we're returning "handled", then set the packet
 	 *	code in the reply, so that the server responds.
+	 *
+	 *	@todo - MULTI_PROTOCOL - make this protocol agnostic
 	 */
 	if ((inst->rcode == RLM_MODULE_HANDLED) && reply) {
 		switch (packet->code) {
-		case FR_CODE_ACCESS_REQUEST:
-			reply->code = FR_CODE_ACCESS_ACCEPT;
+		case FR_RADIUS_CODE_ACCESS_REQUEST:
+			reply->code = FR_RADIUS_CODE_ACCESS_ACCEPT;
 			break;
 
-		case FR_CODE_ACCOUNTING_REQUEST:
-			reply->code = FR_CODE_ACCOUNTING_RESPONSE;
+		case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
+			reply->code = FR_RADIUS_CODE_ACCOUNTING_RESPONSE;
 			break;
 
-		case FR_CODE_COA_REQUEST:
-			reply->code = FR_CODE_COA_ACK;
+		case FR_RADIUS_CODE_COA_REQUEST:
+			reply->code = FR_RADIUS_CODE_COA_ACK;
 			break;
 
-		case FR_CODE_DISCONNECT_REQUEST:
-			reply->code = FR_CODE_DISCONNECT_ACK;
+		case FR_RADIUS_CODE_DISCONNECT_REQUEST:
+			reply->code = FR_RADIUS_CODE_DISCONNECT_ACK;
 			break;
 
 		default:
@@ -139,17 +139,17 @@ static rlm_rcode_t sometimes_return(void const *instance, REQUEST *request, RADI
 		}
 	}
 
-	return inst->rcode;
+	RETURN_MODULE_RCODE(inst->rcode);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_packet(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_sometimes_packet(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	return sometimes_return(instance, request, request->packet, request->reply);
+	return sometimes_return(p_result, mctx->instance, request, request->packet, request->reply);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_reply(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_sometimes_reply(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	return sometimes_return(instance, request, request->reply, NULL);
+	return sometimes_return(p_result, mctx->instance, request, request->reply, NULL);
 }
 
 extern module_t rlm_sometimes;
@@ -165,9 +165,5 @@ module_t rlm_sometimes = {
 		[MOD_PREACCT]		= mod_sometimes_packet,
 		[MOD_ACCOUNTING]	= mod_sometimes_packet,
 		[MOD_POST_AUTH]		= mod_sometimes_reply,
-#ifdef WITH_COA
-		[MOD_RECV_COA]		= mod_sometimes_packet,
-		[MOD_SEND_COA]		= mod_sometimes_reply,
-#endif
 	},
 };

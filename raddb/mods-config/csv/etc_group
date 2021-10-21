@@ -1,0 +1,3 @@
+sysadmin:x:502:bob,doug,harry
+wheel:x:503:bob
+nobody:x:503:

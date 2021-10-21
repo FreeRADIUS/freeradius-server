@@ -190,9 +190,10 @@ pidfile = ${run_dir}/${name}.pid
 max_request_time = 30
 
 #
-#  max_requests:: The maximum number of requests which the server keeps
-#  track of.  This should be `256` multiplied by the number of clients.
-#  e.g. With `4` clients, this number should be `1024`.
+#  max_requests:: The maximum number of requests which the server
+#  keeps track of.  This should be at least `256` multiplied by the
+#  number of clients.  e.g. With `4` clients, this number should be
+#  `1024`.
 #
 #  If this number is too low, then when the server becomes busy,
 #  it will not respond to any new requests, until the 'cleanup_delay'
@@ -204,6 +205,9 @@ max_request_time = 30
 #  If you aren't sure what it should be set to, it's better to set it
 #  too high than too low.  Setting it to `1000` per client is probably
 #  the highest it should be.
+#
+#  Unlike v3, this setting is per worker thread, and is not global to
+#  the server.
 #
 #  Useful range of values: `256` to `infinity`
 #
@@ -284,7 +288,7 @@ log {
 	#
 	#  NOTE: Is overridden by the `-T` command line option.
 	#
-#  timestamp = no
+#	timestamp = no
 
 	#
 	#  file:: The logging messages for the server are appended to the
@@ -330,12 +334,12 @@ ENV {
 	#  NOTE: Note that you MUST use '='.  You CANNOT use '+=' to append
 	#  values.
 	#
-#  FOO = '/bar/baz'
+#	FOO = '/bar/baz'
 
 	#
 	#  Delete environment variable `BAR`.
 	#
-#  BAR
+#	BAR
 
 	#
 	#  `LD_PRELOAD` is special.  It is normally set before the
@@ -354,12 +358,30 @@ ENV {
 	#  `LD_PRELOAD` entries.
 	#
 	#
-#  LD_PRELOAD = /path/to/library1.so
-#  LD_PRELOAD = /path/to/library2.so
+#	LD_PRELOAD = /path/to/library1.so
+#	LD_PRELOAD = /path/to/library2.so
 }
 
 #
-#  .SECURITY CONFIGURATION
+#  .Templates
+#
+#  Template files hold common definitions that can be used in other
+#  server sections.  When a template is referenced, the configuration
+#  items within the referenced template are copied to the referencing
+#  section.
+#
+#  Using templates reduces repetition of common configuration items,
+#  which in turn makes the server configuration easier to maintain.
+#
+#  See template.d/default for examples of using templates, and the
+#  referencing syntax.
+#
+templates {
+	$INCLUDE template.d/
+}
+
+#
+#  .Security Configuration
 #
 #  There may be multiple methods of attacking on the server.  This
 #  section holds the configuration items which minimize the impact
@@ -395,11 +417,11 @@ security {
 	#  then the `raddb` directory has to be inside of the `chroot`
 	#  directory, too.
 	#
-#  chroot = /path/to/chroot/directory
+#	chroot = /path/to/chroot/directory
 
 	#
 	#  user::
-	#  group:: 
+	#  group::
 	#
 	#  The name (or `#number`) of the `user`/`group` to run `radiusd` as.
 	#
@@ -429,8 +451,8 @@ security {
 	#  member.  This can allow for some finer-grained access
 	#  controls.
 	#
-#  user = radius
-#  group = radius
+#	user = radius
+#	group = radius
 
 	#
 	#  allow_core_dumps:: Core dumps are a bad thing.
@@ -465,11 +487,11 @@ security {
 	#
 	#  This disables non-FIPS compliant digests and algorithms
 	#
-#  openssl_fips_mode = no
+#	openssl_fips_mode = no
 }
 
 #
-#  .CLIENTS CONFIGURATION
+#  .Clients Configuration
 #
 #  Client configuration is defined in `clients.conf`.
 #
@@ -487,7 +509,7 @@ security {
 $INCLUDE clients.conf
 
 #
-#  .THREAD POOL CONFIGURATION
+#  .Thread Pool Configuration
 #
 #  In v4, the thread pool does not change size dynamically.  Instead,
 #  there are a small number of threads which read from the network,
@@ -497,15 +519,40 @@ thread pool {
 	#
 	#  num_networks:: Only one network thread is supported for now.
 	#
-	num_networks = 1
+#	num_networks = 1
 
 	#
 	#  num_workers:: The worker threads can be varied.  It should be
-	#  at least one, and no more than 32.  Since each request is
+	#  at least one, and no more than 128.  Since each request is
 	#  non-blocking, there is no reason to run hundreds of threads
 	#  as in v3.
 	#
-	num_workers = 4
+	#  When set to 0 the number of workers will be set from the number
+	#  of cores available on the system.
+	#
+	num_workers = 0
+
+	#
+	#  openssl_async_pool_init:: Controls the initial number of async
+	#  contexts that are allocated when a worker thread is created.
+	#  One async context is required for every TLS session (every
+	#  RADSEC connection, every TLS based method still in progress).
+	#
+#	openssl_async_pool_init = 64
+
+	#
+	#  openssl_async_pool_max:: Controls the maximum number of async
+	#  contexts which are allocated to a worker thread.
+	#  If the maximum is reached, then no more TLS sessions can be
+	#  created.
+	#
+	#  Note: Setting this to 0 will mean unlimited async contexts
+	#  will be created.  But as of 3.0.0, OpenSSL has no mechanism
+	#  to shrink the async pool.  This means if there's a
+	#  significant traffic spike the process will continue to use
+	#  large amounts of memory until it's restarted.
+	#
+#	openssl_async_pool_max = 1024
 }
 
 #
@@ -518,7 +565,7 @@ thread pool {
 #$INCLUDE trigger.conf
 
 #
-#  .MODULE CONFIGURATION
+#  .Module Configuration
 #
 #  The names and configuration of each module is located in this section.
 #
@@ -565,7 +612,7 @@ modules {
 	#  Then, when the directory is read, those modules will be
 	#  skipped and not read twice.
 	#
-#  $INCLUDE mods-enabled/sql
+#	$INCLUDE mods-enabled/sql
 
 	#
 	#  Modules are in mods-enabled/.  Files matching
@@ -575,82 +622,6 @@ modules {
 	#  pre/post-proxy, etc.
 	#
 	$INCLUDE mods-enabled/
-}
-
-#
-#  ## Instantiation
-#
-#  This section orders the loading of the modules.  Modules
-#  listed here will get loaded BEFORE the later sections like
-#  authorize, authenticate, etc. get examined.
-#
-#  This section is not strictly needed.  When a section like
-#  authorize refers to a module, it's automatically loaded and
-#  initialized.  However, some modules may not be listed in any
-#  of the following sections, so they can be listed here.
-#
-#  Also, listing modules here ensures that you have control over
-#  the order in which they are initialized.  If one module needs
-#  something defined by another module, you can list them in order
-#  here, and ensure that the configuration will be OK.
-#
-#  After the modules listed here have been loaded, all of the modules
-#  in the "mods-enabled" directory will be loaded.  Loading the
-#  "mods-enabled" directory means that unlike Version 2, you usually
-#  don't need to list modules here.
-#
-instantiate {
-	#
-	#  We list the counter module here so that it registers
-	#  the check_name attribute before any module which sets
-	#  it.
-	#
-#  daily
-
-	#
-	#  subsections here can be thought of as `virtual` modules.
-	#
-	#  e.g. If you have two redundant SQL servers, and you want to
-	#  use them in the authorize and accounting sections, you could
-	#  place a `redundant` block in each section, containing the
-	#  exact same text.  Or, you could uncomment the following
-	#  lines, and list `redundant_sql` in the authorize and
-	#  accounting sections.
-	#
-	#  The `virtual` module defined here can also be used with
-	#  dynamic expansions, under a few conditions:
-	#
-	#  * The section is `redundant`, or `load-balance`, or
-	#    `redundant-load-balance`
-	#  * The section contains modules ONLY, and no sub-sections
-	#  * All modules in the section are using the same rlm_
-	#    driver, e.g. They are all sql, or all ldap, etc.
-	#
-	#  When those conditions are satisfied, the server will
-	#  automatically register a dynamic expansion, using the
-	#  name of the `virtual` module.  In the example below,
-	#  it will be `redundant_sql`.  You can then use this expansion
-	#  just like any other:
-	#
-	#  	update reply {
-	#  		Filter-Id := "%{redundant_sql: ... }"
-	#  	}
-	#
-	#  In this example, the expansion is done via module `sql1`,
-	#  and if that expansion fails, using module `sql2`.
-	#
-	#  For best results, configure the `pool` subsection of the
-	#  module so that `retry_delay` is non-zero.  That will allow
-	#  the redundant block to quickly ignore all "down" SQL
-	#  databases.  If instead we have `retry_delay = 0`, then
-	#  every time the redundant block is used, the server will try
-	#  to open a connection to every `down` database, causing
-	#  problems.
-	#
-#  redundant redundant_sql {
-#  	sql1
-#  	sql2
-#  }
 }
 
 ######################################################################
@@ -699,6 +670,6 @@ policy {
 #
 #  For more documentation on virtual servers, see:
 #
-#  `doc/raddb/sites-available/README.md`
+#  `doc/raddb/sites-available/index.adoc`
 #
 $INCLUDE sites-enabled/

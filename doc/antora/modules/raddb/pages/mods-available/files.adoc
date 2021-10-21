@@ -1,0 +1,51 @@
+
+
+
+
+= Files Module
+
+The `users` file as located in `raddb/mods-config/files/authorize`. (Livingston-style format).
+
+See "man 1 users" for more information.
+
+
+
+## Configuration Settings
+
+
+moddir:: Search for files in a subdirectory of mods-config which
+matches this instance of the files module.
+
+
+
+key:: The default key attribute to use for matches.
+
+The content of this attribute is used to match the `name` of the entry.
+
+
+
+filename:: The old `users` style file is now located here.
+
+
+
+usersfile:: This is accepted for backwards compatibility
+It will be removed in a future release.
+
+
+
+WARNING: These are accepted for backwards compatibility.
+They will be renamed in a future release.
+
+
+== Default Configuration
+
+```
+files {
+	moddir = ${modconfdir}/${.:instance}
+#	key = "%{%{Stripped-User-Name}:-%{User-Name}}"
+	filename = ${moddir}/authorize
+#	usersfile = ${moddir}/authorize
+	acctusersfile = ${moddir}/accounting
+	preproxy_usersfile = ${moddir}/pre-proxy
+}
+```

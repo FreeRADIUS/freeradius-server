@@ -3,7 +3,7 @@ if (&User-Name == 'test') {
 		&User-Password := "%{randstr:bbbbbbbbbbbbbbbb}"
 	}
 	update control {
-		&Cleartext-Password := "%{User-Password}"
+		&Password.Cleartext := "%{User-Password}"
 	}
 	pap.authorize
 	pap.authenticate

@@ -1,5 +1,6 @@
 usr/lib/freeradius/rlm*.so
 usr/lib/freeradius/proto*.so
+usr/lib/freeradius/process*.so
 usr/sbin/checkrad
 usr/sbin/freeradius
 usr/sbin/raddebug

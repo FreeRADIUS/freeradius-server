@@ -20,15 +20,17 @@
  * @brief Platform independent time functions
  * @file lib/util/time.c
  *
- * @copyright 2016 Alan DeKok (aland@freeradius.org)
+ * @copyright 2016-2019 Alan DeKok (aland@freeradius.org)
+ * @copyright 2019-2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
-#include <freeradius-devel/util/time.h>
-#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/time.h>
 
 /*
  *	Avoid too many ifdef's later in the code.
@@ -51,13 +53,16 @@ USES_APPLE_DEPRECATED_API
 
 #include <stdatomic.h>
 
-static _Atomic int64_t			our_realtime;	//!< realtime at the start of the epoch in nanoseconds.
+_Atomic int64_t			our_realtime;	//!< realtime at the start of the epoch in nanoseconds.
+static char const		*tz_names[2] = { NULL, NULL };	//!< normal, DST, from localtime_r(), tm_zone
+static long			gmtoff[2] = {0, 0};	       	//!< from localtime_r(), tm_gmtoff
+static int			isdst = 0;			//!< from localtime_r(), tm_is_dst
 
 #ifdef HAVE_CLOCK_GETTIME
-static int64_t				our_epoch;
+int64_t				our_epoch;
 #else  /* __MACH__ */
-static mach_timebase_info_data_t	timebase;
-static uint64_t				our_mach_epoch;
+mach_timebase_info_data_t	timebase;
+uint64_t			our_mach_epoch;
 #endif
 
 /** Get a new our_realtime value
@@ -68,8 +73,11 @@ static uint64_t				our_mach_epoch;
  *	- 0 on success.
  *	- -1 on failure.
  */
-static inline int fr_time_sync(void)
+int fr_time_sync(void)
 {
+	struct tm tm;
+	time_t now;
+
 	/*
 	 *	our_realtime represents system time
 	 *	at the start of our epoch.
@@ -90,9 +98,12 @@ static inline int fr_time_sync(void)
 		if (clock_gettime(CLOCK_REALTIME, &ts_realtime) < 0) return -1;
 		if (clock_gettime(CLOCK_MONOTONIC, &ts_monotime) < 0) return -1;
 
-		our_realtime = fr_time_delta_from_timespec(&ts_realtime) -
-			       (fr_time_delta_from_timespec(&ts_monotime) - our_epoch);
-		return 0;
+		atomic_store_explicit(&our_realtime,
+				      fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts_realtime)) -
+				      (fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts_monotime)) - our_epoch),
+				      memory_order_release);
+
+		now = ts_realtime.tv_sec;
 	}
 #else
 	{
@@ -105,11 +116,26 @@ static inline int fr_time_sync(void)
 		(void) gettimeofday(&tv_realtime, NULL);
 		monotime = mach_absolute_time();
 
-		our_realtime = fr_time_delta_from_timeval(&tv_realtime) -
-			       (monotime - our_mach_epoch) * (timebase.numer / timebase.denom);
-		return 0;
+		atomic_store_explicit(&our_realtime,
+				      fr_time_delta_unwrap(fr_time_delta_from_timeval(&tv_realtime)) -
+				      (monotime - our_mach_epoch) * (timebase.numer / timebase.denom,
+				      memory_order_release));
+
+		now = tv_realtime.tv_sec;
 	}
 #endif
+
+	/*
+	 *	Get local time zone name, daylight savings, and GMT
+	 *	offsets.
+	 */
+	(void) localtime_r(&now, &tm);
+
+	isdst = (tm.tm_isdst != 0);
+	tz_names[isdst] = tm.tm_zone;
+	gmtoff[isdst] = tm.tm_gmtoff * NSEC; /* they store seconds, we store nanoseconds */
+
+	return 0;
 }
 
 /** Initialize the local time.
@@ -130,7 +156,7 @@ int fr_time_start(void)
 		struct timespec ts;
 
 		if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0) return -1;
-		our_epoch = fr_time_delta_from_timespec(&ts);
+		our_epoch = fr_time_delta_unwrap(fr_time_delta_from_timespec(&ts));
 	}
 #else  /* __MACH__ is defined */
 	mach_timebase_info(&timebase);
@@ -140,85 +166,43 @@ int fr_time_start(void)
 	return fr_time_sync();
 }
 
-/** Return a relative time since the server our_epoch
+/** Return time delta from the time zone.
  *
- *  This time is useful for doing time comparisons, deltas, etc.
- *  Human (i.e. printable) time is something else.
+ * Returns the delta between UTC and the timezone specified by tz
  *
- * @returns fr_time_t time in nanoseconds since the server our_epoch.
- */
-fr_time_t fr_time(void)
-{
-#ifdef HAVE_CLOCK_GETTIME
-	struct timespec ts;
-	(void) clock_gettime(CLOCK_MONOTONIC, &ts);
-	return fr_time_delta_from_timespec(&ts) - our_epoch;
-#else  /* __MACH__ is defined */
-	uint64_t when;
-
-	when = mach_absolute_time();
-	when -= our_mach_epoch;
-
-	return when * (timebase.numer / timebase.denom);
-#endif
-}
-
-/** Nanoseconds since the Unix Epoch at the start of the Server Epoch
- *
- */
-int64_t fr_time_wallclock_at_server_epoch(void)
-{
-	return our_realtime;
-}
-
-/** Convert an fr_time_t to number of usec since the unix epoch
- *
- */
-int64_t fr_time_to_usec(fr_time_t when)
-{
-	return ((when + our_realtime) / 1000);
-}
-
-/** Convert an fr_time_t to number of msec since the unix epoch
- *
- */
-int64_t fr_time_to_msec(fr_time_t when)
-{
-	return ((when + our_realtime) / 1000000);
-}
-
-/** Convert an fr_time_t to number of sec since the unix epoch
- *
- */
-int64_t fr_time_to_sec(fr_time_t when)
-{
-	return ((when + our_realtime) / NSEC);
-}
-
-/** Convert a timeval to a fr_time_t
- *
- * @param[in] when_tv	The timestamp to convert.
+ * @param[in] tz	time zone name
+ * @param[out] delta	the time delta
  * @return
- *	- >0 number of nanoseconds since the server started.
- *	- 0 when the server started.
- *	- <0 number of nanoseconds before the server started.
- */
-fr_time_t fr_time_from_timeval(struct timeval const *when_tv)
-{
-	return fr_time_delta_from_timeval(when_tv) - our_realtime;
-}
-
-/** Convert a timespec to a fr_time_t
+ *	- 0 converted OK
+ *	- <0 on error
  *
- * @param[in] when_ts	The timestamp to convert.
- * @return
- *	- >0 number of nanoseconds since the server started.
- *	- 0 when the server started.
- *	- 0 if when_tv occurred before the server started.
+ *  @note This function ONLY handles a limited number of time
+ *  zones: local and gmt.  It is impossible in general to parse
+ *  arbitrary time zone strings, as there are duplicates.
  */
-fr_time_t fr_time_from_timespec(struct timespec const *when_ts)
+int fr_time_delta_from_time_zone(char const *tz, fr_time_delta_t *delta)
 {
-	return fr_time_delta_from_timespec(when_ts) - our_realtime;
+	*delta = fr_time_delta_wrap(0);
+
+	if ((strcmp(tz, "UTC") == 0) ||
+	    (strcmp(tz, "GMT") == 0)) {
+		return 0;
+	}
+
+	/*
+	 *	Our local time zone OR time zone with daylight savings.
+	 */
+	if (tz_names[0] && (strcmp(tz, tz_names[0]) == 0)) {
+		*delta = fr_time_delta_wrap(gmtoff[0]);
+		return 0;
+	}
+
+	if (tz_names[1] && (strcmp(tz, tz_names[1]) == 0)) {
+		*delta = fr_time_delta_wrap(gmtoff[1]);
+		return 0;
+	}
+
+	return -1;
 }
 
 /** Create fr_time_delta_t from a string
@@ -232,23 +216,20 @@ fr_time_t fr_time_from_timespec(struct timespec const *when_ts)
  */
 int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t hint)
 {
-	int	sec;
+	int64_t	sec;
+	uint64_t subsec = 0;
+	int	scale = 1;
 	char	*p, *end;
-	fr_time_delta_t delta;
+	bool	negative = false;
 
-	sec = strtoul(in, &end, 10);
+	if (*in == '-') negative = true; /* catch the case of negative zero! */
+
+	sec = strtoll(in, &end, 10);
 	if (in == end) {
 	failed:
 		fr_strerror_printf("Failed parsing \"%s\" as time_delta", in);
 		return -1;
 	}
-
-	/*
-	 *	Cast before multiplication to avoid integer overflow
-	 *	in 'int' seconds.
-	 */
-	delta = sec;
-	delta *= NSEC;
 
 	/*
 	 *	Allow "1ns", etc.
@@ -259,12 +240,20 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 	}
 
 	/*
+	 *	The input is just a number.  Scale and clamp it as appropriate.
+	 */
+	if (!*end) {
+		*out = fr_time_delta_from_nsec(fr_time_scale(sec, hint));
+		return 0;
+	}
+
+	/*
 	 *	Decimal number
 	 */
 	if (*end == '.') {
 		int len;
 
-		len = sec = 0;
+		len = subsec = 0;
 
 		end++;
 		p = end;
@@ -274,33 +263,37 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		 */
 		while ((*p >= '0') && (*p <= '9')) {
 			if (len > 9) {
-				fr_strerror_printf("Too much precision for time_delta");
+				fr_strerror_const("Too much precision for time_delta");
+				return -1;
 			}
 
-			sec *= 10;
-			sec += *p - '0';
+			subsec *= 10;
+			subsec += *p - '0';
 			p++;
 			len++;
 		}
 
 		/*
-		 *	We've just parsed "0.1" as "1".  We need to
-		 *	shift it left to convert it to nanoseconds.
+		 *	We've just parsed the fractional part of "0.1"
+		 *	as "1".  We need to shift it left to convert
+		 *	it to nanoseconds.
 		 */
 		while (len < 9) {
-			sec *= 10;
+			subsec *= 10;
 			len++;
 		}
 
-		delta += sec;
-
 	parse_precision:
 		/*
-		 *	Nothing else, it defaults to whatever scale the caller passed.
+		 *	No precision qualifiers, it defaults to
+		 *	whatever scale the caller passed as a hint.
 		 */
 		if (!*p) goto do_scale;
 
-		if ((p[0] == 's') && !p[1]) goto done;
+		if ((p[0] == 's') && !p[1]) {
+			scale = NSEC;
+			goto done;
+		}
 
 		/*
 		 *	Everything else has "ms" or "us" or "ns".
@@ -311,41 +304,51 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		 */
 		if ((p[1] == 's') && (p[2] == '\0')) {
 			if (p[0] == 'm') {
-				delta /= 1000;
+				scale = 1000000; /* 1,000,000 nanoseconds in a millisecond */
 				goto done;
 			}
 
 			if (p[0] == 'u') {
-				delta /= 1000000;
+				scale = 1000; /* 1,000 msec on a used */
 				goto done;
 			}
 
 			if (p[0] == 'n') {
-				delta /= NSEC;
+				scale = 1;
 				goto done;
 			}
+		}
 
-		error:
-			fr_strerror_printf("Invalid time qualifier in \"%s\"", p);
+		/*
+		 *	minutes, hours, or days.
+		 *
+		 *	Fractional numbers are not allowed.
+		 *
+		 *	minutes / hours / days larger than 64K are disallowed.
+		 */
+		if (sec > 65535) {
+			fr_strerror_printf("Invalid value at \"%s\"", in);
 			return -1;
 		}
 
 		if ((p[0] == 'm') && !p[1]) {
-			delta *= 60;
-			goto done;
+			*out = fr_time_delta_from_sec(sec * 60);
+			return 0;
 		}
 
 		if ((p[0] == 'h') && !p[1]) {
-			delta *= 3600;
-			goto done;
+			*out = fr_time_delta_from_sec(sec * 3600);
+			return 0;
 		}
 
 		if ((p[0] == 'd') && !p[1]) {
-			delta *= 86400;
-			goto done;
+			*out = fr_time_delta_from_sec(sec * 86400);
+			return 0;
 		}
 
-		goto error;
+	error:
+		fr_strerror_printf("Invalid time qualifier at \"%s\"", p);
+		return -1;
 
 	} else if (*end == ':') {
 		/*
@@ -370,201 +373,173 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		}
 
 		/*
-		 *	@todo - do we want to allow decimals, as in
-		 *	"1:30.5"? Perhaps not for now.
-		 *
 		 *	@todo - support hours, maybe.  Even though
 		 *	pretty much nothing needs them right now.
 		 */
 		if (*end) goto failed;
 
-		delta = minutes * 60 + sec;
-		delta *= NSEC;
+		if (negative) {
+			*out = fr_time_delta_from_sec(minutes * 60 - sec);
+		} else {
+			*out = fr_time_delta_from_sec(minutes * 60 + sec);
+		}
+		return 0;
 
-	} else if (!*end) {
+	} else if (*end) {
+		p = end;
+		goto error;
+
+	} else {
 	do_scale:
 		switch (hint) {
 		case FR_TIME_RES_SEC:
+			scale = NSEC;
 			break;
 
 		case FR_TIME_RES_MSEC:
-			delta /= 1000;
+			scale = 1000000;
 			break;
 
 		case FR_TIME_RES_USEC:
-			delta /= 1000000;
+			scale = 1000;
 			break;
 
 		case FR_TIME_RES_NSEC:
-			delta /= 1000000000;
+			scale = 1;
 			break;
 
 		default:
 			fr_strerror_printf("Invalid hint %d for time delta", hint);
 			return -1;
 		}
-
-	} else {
-		goto failed;
 	}
 
 done:
-	*out = delta;
+	/*
+	 *	Subseconds was parsed as if it was nanoseconds.  But
+	 *	instead it may be something else, so it should be
+	 *	truncated.
+	 *
+	 *	Note that this operation can't overflow.
+	 */
+	subsec *= scale;
+	subsec /= NSEC;
+
+	/*
+	 *	Now sec && subsec are in the same scale.
+	 */
+	if (negative) {
+		if (sec <= (INT64_MIN / scale)) {
+			fr_strerror_const("Integer underflow in time_delta value.");
+			return -1;
+		}
+
+		sec *= scale;
+		sec -= subsec;
+	} else {
+		if (sec >= (INT64_MAX / scale)) {
+			fr_strerror_const("Integer overflow in time_delta value.");
+			return -1;
+		}
+
+		sec *= scale;
+		sec += subsec;
+	}
+
+	*out = fr_time_delta_wrap(sec);
 
 	return 0;
 }
 
-/** Start time tracking for a request.
+DIAG_OFF(format-nonliteral)
+/** Copy a time string (local timezone) to an sbuff
  *
- * @param[in] tt the time tracking structure.
- * @param[in] when the event happened
- * @param[out] worker time tracking for the worker thread
+ * @note This function will attempt to extend the sbuff by double the length of
+ *	 the fmt string.  It is recommended to either pre-extend the sbuff before
+ *	 calling this function, or avoid using format specifiers that expand to
+ *	 character strings longer than 4 bytes.
+ *
+ * @param[in] out	Where to write the formatted time string.
+ * @param[in] time	Internal server time to convert to wallclock
+ *			time and copy out as formatted string.
+ * @param[in] fmt	Time format string.
+ * @return
+ *	- >0 the number of bytes written to the sbuff.
+ *	- 0 if there's insufficient space in the sbuff.
  */
-void fr_time_tracking_start(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker)
+size_t fr_time_strftime_local(fr_sbuff_t *out, fr_time_t time, char const *fmt)
 {
-	memset(tt, 0, sizeof(*tt));
+	struct tm	tm;
+	time_t		utime = fr_time_to_sec(time);
+	size_t		len;
 
-	tt->when = when;
-	tt->start = when;
-	tt->resumed = when;
+	localtime_r(&utime, &tm);
 
-	fr_dlist_init(&(worker->list), fr_time_tracking_t, list.entry);
-	fr_dlist_entry_init(&tt->list.entry);
+	len = strftime(fr_sbuff_current(out), fr_sbuff_extend_lowat(NULL, out, strlen(fmt) * 2), fmt, &tm);
+	if (len == 0) return 0;
+
+	return fr_sbuff_advance(out, len);
 }
 
-
-#define IALPHA (8)
-#define RTT(_old, _new) ((_new + ((IALPHA - 1) * _old)) / IALPHA)
-
-/** End time tracking for this request.
+/** Copy a time string (UTC) to an sbuff
  *
- * After this call, all request processing should be finished.
+ * @note This function will attempt to extend the sbuff by double the length of
+ *	 the fmt string.  It is recommended to either pre-extend the sbuff before
+ *	 calling this function, or avoid using format specifiers that expand to
+ *	 character strings longer than 4 bytes.
  *
- * @param[in] tt the time tracking structure.
- * @param[in] when the event happened
- * @param[out] worker time tracking for the worker thread
+ * @param[in] out	Where to write the formatted time string.
+ * @param[in] time	Internal server time to convert to wallclock
+ *			time and copy out as formatted string.
+ * @param[in] fmt	Time format string.
+ * @return
+ *	- >0 the number of bytes written to the sbuff.
+ *	- 0 if there's insufficient space in the sbuff.
  */
-void fr_time_tracking_end(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker)
+size_t fr_time_strftime_utc(fr_sbuff_t *out, fr_time_t time, char const *fmt)
 {
-	tt->when = when;
-	tt->end = when;
-	tt->running += (tt->end - tt->resumed);
+	struct tm	tm;
+	time_t		utime = fr_time_to_sec(time);
+	size_t		len;
 
-	/*
-	 *	This request cannot be in any list.
-	 */
-	rad_assert(tt->list.entry.prev == &(tt->list.entry));
-	rad_assert(tt->list.entry.next == &(tt->list.entry));
+	gmtime_r(&utime, &tm);
 
-	/*
-	 *	Update the time that the worker spent processing the request.
-	 */
-	worker->running += tt->running;
-	worker->waiting += tt->waiting;
+	len = strftime(fr_sbuff_current(out), fr_sbuff_extend_lowat(NULL, out, strlen(fmt) * 2), fmt, &tm);
+	if (len == 0) return 0;
 
-	if (!worker->predicted) {
-		worker->predicted = tt->running;
-	} else {
-		worker->predicted = RTT(worker->predicted, tt->running);
-	}
+	return fr_sbuff_advance(out, len);
 }
-
-
-/** Track that a request yielded.
- *
- * @param[in] tt the time tracking structure.
- * @param[in] when the event happened
- * @param[out] worker time tracking for the worker thread
- */
-void fr_time_tracking_yield(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker)
-{
-	tt->when = when;
-	tt->yielded = when;
-
-	rad_assert(tt->resumed <= tt->yielded);
-	tt->running += (tt->yielded - tt->resumed);
-
-	/*
-	 *	Insert this request into the TAIL of the worker's list
-	 *	of waiting requests.
-	 */
-	fr_dlist_insert_head(&worker->list, tt);
-}
-
-
-/** Track that a request resumed.
- *
- * @param[in] tt the time tracking structure.
- * @param[in] when the event happened
- * @param[out] worker time tracking for the worker thread
- */
-void fr_time_tracking_resume(fr_time_tracking_t *tt, fr_time_t when, fr_time_tracking_t *worker)
-{
-	tt->when = when;
-	tt->resumed = when;
-
-	rad_assert(tt->resumed >= tt->yielded);
-
-	tt->waiting += (tt->resumed - tt->yielded);
-
-	/*
-	 *	Remove this request into the workers list of waiting
-	 *	requests.
-	 */
-	fr_dlist_remove(&worker->list, tt);
-}
-
-
-/** Print debug information about the time tracking structure
- *
- * @param[in] tt the time tracking structure
- * @param[in] fp the file where the debug output is printed.
- */
-void fr_time_tracking_debug(fr_time_tracking_t *tt, FILE *fp)
-{
-#define DPRINT(_x) fprintf(fp, "\t" #_x " = %"PRIu64"\n", tt->_x);
-
-	DPRINT(start);
-	DPRINT(end);
-	DPRINT(when);
-
-	DPRINT(yielded);
-	DPRINT(resumed);
-
-	DPRINT(predicted);
-	DPRINT(running);
-	DPRINT(waiting);
-}
+DIAG_ON(format-nonliteral)
 
 void fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end)
 {
-	fr_time_t delay;
+	fr_time_delta_t delay;
 
-	if (start >= end) {
-		delay = 0;
+	if (fr_time_gteq(start, end)) {
+		delay = fr_time_delta_wrap(0);
 	} else {
-		delay = end - start;
+		delay = fr_time_sub(end, start);
 	}
 
-	if (delay < 1000) { /* microseconds */
+	if (fr_time_delta_lt(delay, fr_time_delta_wrap(1000))) { /* microseconds */
 		elapsed->array[0]++;
 
-	} else if (delay < 10000) {
+	} else if (fr_time_delta_lt(delay, fr_time_delta_wrap(10000))) {
 		elapsed->array[1]++;
 
-	} else if (delay < 100000) {
+	} else if (fr_time_delta_lt(delay, fr_time_delta_wrap(100000))) {
 		elapsed->array[2]++;
 
-	} else if (delay < 1000000) { /* milliseconds */
+	} else if (fr_time_delta_lt(delay, fr_time_delta_wrap(1000000))) { /* milliseconds */
 		elapsed->array[3]++;
 
-	} else if (delay < 10000000) {
+	} else if (fr_time_delta_lt(delay, fr_time_delta_wrap(10000000))) {
 		elapsed->array[4]++;
 
-	} else if (delay < (fr_time_t) 100000000) {
+	} else if (fr_time_delta_lt(delay, fr_time_delta_wrap(100000000))) {
 		elapsed->array[5]++;
 
-	} else if (delay < (fr_time_t) 1000000000) { /* seconds */
+	} else if (fr_time_delta_lt(delay, fr_time_delta_wrap(1000000000))) { /* seconds */
 		elapsed->array[6]++;
 
 	} else {		/* tens of seconds or more */
@@ -581,16 +556,128 @@ static const char *names[8] = {
 
 static char const *tab_string = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
 
-void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char const *prefix, int tabs)
+void fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char const *prefix, int tab_offset)
 {
 	int i;
+	size_t prefix_len;
 
 	if (!prefix) prefix = "elapsed";
 
+	prefix_len = strlen(prefix);
+
 	for (i = 0; i < 8; i++) {
+		size_t len;
+
 		if (!elapsed->array[i]) continue;
 
-		fprintf(fp, "%s.%s\t%.*s%" PRIu64 "\n",
-			prefix, names[i], tabs, tab_string, elapsed->array[i]);
+		len = prefix_len + strlen(names[i]);
+
+		if (len >= (size_t) (tab_offset * 8)) {
+			fprintf(fp, "%s.%s %" PRIu64 "\n",
+				prefix, names[i], elapsed->array[i]);
+
+		} else {
+			int tabs;
+
+			tabs = ((tab_offset * 8) - len);
+			if ((tabs & 0x07) != 0) tabs += 7;
+			tabs >>= 3;
+
+			fprintf(fp, "%s.%s%.*s%" PRIu64 "\n",
+				prefix, names[i], tabs, tab_string, elapsed->array[i]);
+		}
 	}
+}
+
+/*
+ *	Based on https://blog.reverberate.org/2020/05/12/optimizing-date-algorithms.html
+ */
+fr_unix_time_t fr_unix_time_from_tm(struct tm *tm)
+{
+	static const uint16_t month_yday[12] = {0,   31,  59,  90,  120, 151,
+						181, 212, 243, 273, 304, 334};
+
+	uint32_t year_adj = tm->tm_year + 4800 + 1900;  /* Ensure positive year, multiple of 400. */
+	uint32_t febs = year_adj - (tm->tm_mon <= 2 ? 1 : 0);  /* Februaries since base. */
+	uint32_t leap_days = 1 + (febs / 4) - (febs / 100) + (febs / 400);
+	uint32_t days = 365 * year_adj + leap_days + month_yday[tm->tm_mon] + tm->tm_mday - 1;
+
+	/*
+	 *	2472692 adjusts the days for Unix epoch.  It is calculated as
+	 *	(365.2425 * (4800 + 1970))
+	 */
+	return fr_unix_time_from_sec((days - 2472692) * 86400 + (tm->tm_hour * 3600) + (tm->tm_min * 60) + tm->tm_sec + tm->tm_gmtoff);
+}
+
+int64_t fr_time_delta_scale(fr_time_delta_t delta, fr_time_res_t hint)
+{
+	switch (hint) {
+	case FR_TIME_RES_SEC:
+		return fr_time_delta_to_sec(delta);
+
+	case FR_TIME_RES_CSEC:
+		return fr_time_delta_to_csec(delta);
+
+	case FR_TIME_RES_MSEC:
+		return fr_time_delta_to_msec(delta);
+
+	case FR_TIME_RES_USEC:
+		return fr_time_delta_to_usec(delta);
+
+	case FR_TIME_RES_NSEC:
+		return fr_time_delta_unwrap(delta);
+
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+/** Scale an input time to NSEC, clamping it at max / min.
+ *
+ * @param t	input time / time delta
+ * @param hint	time resolution hint
+ * @return
+ *	- INT64_MIN on underflow
+ *	- 0 on invalid hint
+ *	- INT64_MAX on overflow
+ *	- otherwise a valid number, multiplied by the relevant scale,
+ *	  so that the result is in nanoseconds.
+ */
+int64_t	fr_time_scale(int64_t t, fr_time_res_t hint)
+{
+	int64_t scale;
+
+	switch (hint) {
+	case FR_TIME_RES_SEC:
+		scale = NSEC;
+		break;
+
+	case FR_TIME_RES_MSEC:
+		scale = 1000000;
+		break;
+
+	case FR_TIME_RES_USEC:
+		scale = 1000;
+		break;
+
+	case FR_TIME_RES_NSEC:
+		return t;
+
+	default:
+		return 0;
+	}
+
+	if (t < 0) {
+		if (t < (INT64_MIN / scale)) {
+			return INT64_MIN;
+		}
+	} else if (t > 0) {
+		if (t > (INT64_MAX / scale)) {
+			return INT64_MAX;
+		}
+	}
+
+	return t * scale;
 }

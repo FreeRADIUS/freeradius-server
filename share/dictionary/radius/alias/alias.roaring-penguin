@@ -1,0 +1,5 @@
+ALIAS	RP-Upstream-Speed-Limit                 	26.10055.1
+ALIAS	RP-Downstream-Speed-Limit               	26.10055.2
+ALIAS	RP-HURL                                 	26.10055.3
+ALIAS	RP-MOTM                                 	26.10055.4
+ALIAS	RP-Max-Sessions-Per-User                	26.10055.5

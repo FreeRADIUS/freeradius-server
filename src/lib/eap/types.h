@@ -1,6 +1,6 @@
 #pragma once
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -41,7 +41,7 @@ typedef enum eap_code {
 	FR_EAP_CODE_MAX
 } eap_code_t;
 
-typedef enum eap_method {
+typedef enum eap_type {
 	FR_EAP_METHOD_INVALID = 0,		/* 0 */
 	FR_EAP_METHOD_IDENTITY,			/* 1 */
 	FR_EAP_METHOD_NOTIFICATION,		/* 2 */

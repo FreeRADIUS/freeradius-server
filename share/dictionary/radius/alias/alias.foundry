@@ -1,0 +1,13 @@
+ALIAS	Foundry-Privilege-Level                 	26.1991.1
+ALIAS	Foundry-Command-String                  	26.1991.2
+ALIAS	Foundry-Command-Exception-Flag          	26.1991.3
+ALIAS	Foundry-INM-Privilege                   	26.1991.4
+ALIAS	Foundry-Access-List                     	26.1991.5
+ALIAS	Foundry-MAC-Authent-needs-802.1x        	26.1991.6
+ALIAS	Foundry-802.1x-Valid-Lookup             	26.1991.7
+ALIAS	Foundry-MAC-Based-Vlan-QoS              	26.1991.8
+ALIAS	Foundry-INM-Role-Aor-List               	26.1991.9
+ALIAS	Foundry-COA-Command                     	26.1991.10
+ALIAS	Foundry-SI-Context-Role                 	26.1991.10
+ALIAS	Foundry-SI-Role-Template                	26.1991.11
+ALIAS	Foundry-Voice-Phone-Config              	26.1991.11

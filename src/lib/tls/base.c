@@ -31,13 +31,21 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define LOG_PREFIX "tls - "
 
 #include <openssl/conf.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#  include <openssl/provider.h>
+#endif
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
-#include "base.h"
-#include "attrs.h"
+#include <freeradius-devel/tls/attrs.h>
+#include <freeradius-devel/tls/base.h>
+#include <freeradius-devel/tls/engine.h>
+#include <freeradius-devel/util/atexit.h>
+#include <freeradius-devel/util/debug.h>
 
-static int instance_count = 0;
+#include "log.h"
+#include "bio.h"
+
+static uint32_t instance_count = 0;
 
 /** The context which holds any memory OpenSSL allocates
  *
@@ -45,83 +53,139 @@ static int instance_count = 0;
  */
 _Thread_local TALLOC_CTX 	*ssl_talloc_ctx;
 
-fr_dict_t			*dict_freeradius;
-fr_dict_t			*dict_radius;
+/** Used to control freeing of thread local OpenSSL resources
+ *
+ */
+static _Thread_local bool	*async_pool_init;
+
+fr_dict_t const *dict_freeradius;
+fr_dict_t const *dict_radius;
+fr_dict_t const *dict_tls;
 
 extern fr_dict_autoload_t tls_dict[];
 fr_dict_autoload_t tls_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
+	{ .out = &dict_tls, .proto = "tls" },
 	{ NULL }
 };
 
 fr_dict_attr_t const *attr_allow_session_resumption;
-fr_dict_attr_t const *attr_eap_session_resumed;
+fr_dict_attr_t const *attr_session_resumed;
 
-fr_dict_attr_t const *attr_tls_cert_common_name;
-fr_dict_attr_t const *attr_tls_cert_expiration;
-fr_dict_attr_t const *attr_tls_cert_issuer;
-fr_dict_attr_t const *attr_tls_cert_serial;
-fr_dict_attr_t const *attr_tls_cert_subject;
-fr_dict_attr_t const *attr_tls_cert_subject_alt_name_dns;
-fr_dict_attr_t const *attr_tls_cert_subject_alt_name_email;
-fr_dict_attr_t const *attr_tls_cert_subject_alt_name_upn;
+/*
+ *	Certificate decoding attributes
+ */
+fr_dict_attr_t const *attr_tls_certificate;
+fr_dict_attr_t const *attr_tls_certificate_serial;
+fr_dict_attr_t const *attr_tls_certificate_signature;
+fr_dict_attr_t const *attr_tls_certificate_signature_algorithm;
+fr_dict_attr_t const *attr_tls_certificate_issuer;
+fr_dict_attr_t const *attr_tls_certificate_not_before;
+fr_dict_attr_t const *attr_tls_certificate_not_after;
+fr_dict_attr_t const *attr_tls_certificate_subject;
+fr_dict_attr_t const *attr_tls_certificate_common_name;
+fr_dict_attr_t const *attr_tls_certificate_subject_alt_name_dns;
+fr_dict_attr_t const *attr_tls_certificate_subject_alt_name_email;
+fr_dict_attr_t const *attr_tls_certificate_subject_alt_name_upn;
+fr_dict_attr_t const *attr_tls_certificate_x509v3_extended_key_usage;
+fr_dict_attr_t const *attr_tls_certificate_x509v3_subject_key_identifier;
+fr_dict_attr_t const *attr_tls_certificate_x509v3_authority_key_identifier;
+fr_dict_attr_t const *attr_tls_certificate_x509v3_basic_constraints;
 
-fr_dict_attr_t const *attr_tls_client_cert_common_name;
-fr_dict_attr_t const *attr_tls_client_cert_expiration;
-fr_dict_attr_t const *attr_tls_client_cert_issuer;
-fr_dict_attr_t const *attr_tls_client_cert_serial;
-fr_dict_attr_t const *attr_tls_client_cert_subject;
-fr_dict_attr_t const *attr_tls_client_cert_subject_alt_name_dns;
-fr_dict_attr_t const *attr_tls_client_cert_subject_alt_name_email;
-fr_dict_attr_t const *attr_tls_client_cert_subject_alt_name_upn;
-
-fr_dict_attr_t const *attr_tls_client_cert_filename;
 fr_dict_attr_t const *attr_tls_client_error_code;
 fr_dict_attr_t const *attr_tls_ocsp_cert_valid;
 fr_dict_attr_t const *attr_tls_ocsp_next_update;
 fr_dict_attr_t const *attr_tls_ocsp_response;
 fr_dict_attr_t const *attr_tls_psk_identity;
+
 fr_dict_attr_t const *attr_tls_session_cert_file;
-fr_dict_attr_t const *attr_tls_session_data;
-fr_dict_attr_t const *attr_tls_session_id;
+fr_dict_attr_t const *attr_tls_session_require_client_cert;
+fr_dict_attr_t const *attr_tls_session_cipher_suite;
+fr_dict_attr_t const *attr_tls_session_version;
 
 fr_dict_attr_t const *attr_framed_mtu;
+
+fr_dict_attr_t const *attr_tls_packet_type;
+fr_dict_attr_t const *attr_tls_session_data;
+fr_dict_attr_t const *attr_tls_session_id;
+fr_dict_attr_t const *attr_tls_session_resumed;
+fr_dict_attr_t const *attr_tls_session_ttl;
 
 extern fr_dict_attr_autoload_t tls_dict_attr[];
 fr_dict_attr_autoload_t tls_dict_attr[] = {
 	{ .out = &attr_allow_session_resumption, .name = "Allow-Session-Resumption", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
-	{ .out = &attr_eap_session_resumed, .name = "EAP-Session-Resumed", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_session_resumed, .name = "EAP-Session-Resumed", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 
-	{ .out = &attr_tls_cert_common_name, .name = "TLS-Cert-Common-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_expiration, .name = "TLS-Cert-Expiration", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_issuer, .name = "TLS-Cert-Issuer", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_serial, .name = "TLS-Cert-Serial", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_subject, .name = "TLS-Cert-Subject", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_subject_alt_name_dns, .name = "TLS-Cert-Subject-Alt-Name-Dns", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_subject_alt_name_email, .name = "TLS-Cert-Subject-Alt-Name-Email", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_cert_subject_alt_name_upn, .name = "TLS-Cert-Subject-Alt-Name-Upn", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	/*
+	 *	Certificate decoding attributes
+	 */
+	{ .out = &attr_tls_certificate, .name = "TLS-Certificate", .type = FR_TYPE_TLV, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_serial, .name = "TLS-Certificate.Serial", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_signature, .name = "TLS-Certificate.Signature", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_signature_algorithm, .name = "TLS-Certificate.Signature-Algorithm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_issuer, .name = "TLS-Certificate.Issuer", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_not_before, .name = "TLS-Certificate.Not-Before", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_not_after, .name = "TLS-Certificate.Not-After", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_subject, .name = "TLS-Certificate.Subject", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_common_name, .name = "TLS-Certificate.Common-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_subject_alt_name_dns, .name = "TLS-Certificate.Subject-Alt-Name-Dns", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_subject_alt_name_email, .name = "TLS-Certificate.Subject-Alt-Name-Email", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_subject_alt_name_upn, .name = "TLS-Certificate.Subject-Alt-Name-Upn", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_x509v3_extended_key_usage, .name = "TLS-Certificate.X509v3-Extended-Key-Usage", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_x509v3_subject_key_identifier, .name = "TLS-Certificate.X509v3-Subject-Key-Identifier", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_x509v3_authority_key_identifier, .name = "TLS-Certificate.X509v3-Authority-Key-Identifier", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_certificate_x509v3_basic_constraints, .name = "TLS-Certificate.X509v3-Basic-Constraints", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
-	{ .out = &attr_tls_client_cert_common_name, .name = "TLS-Client-Cert-Common-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_client_cert_expiration, .name = "TLS-Client-Cert-Expiration", .type = FR_TYPE_DATE, .dict = &dict_freeradius },
-	{ .out = &attr_tls_client_cert_issuer, .name = "TLS-Client-Cert-Issuer", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_client_cert_serial, .name = "TLS-Client-Cert-Serial", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_client_cert_subject, .name = "TLS-Client-Cert-Subject", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_client_cert_subject_alt_name_dns, .name = "TLS-Client-Cert-Subject-Alt-Name-Dns", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_client_cert_subject_alt_name_email, .name = "TLS-Client-Cert-Subject-Alt-Name-Email", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_client_cert_subject_alt_name_upn, .name = "TLS-Client-Cert-Subject-Alt-Name-Upn", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-
-	{ .out = &attr_tls_client_cert_filename, .name = "TLS-Client-Cert-Filename", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_tls_client_error_code, .name = "TLS-Client-Error-Code", .type = FR_TYPE_UINT8, .dict = &dict_freeradius },
 	{ .out = &attr_tls_ocsp_cert_valid, .name = "TLS-OCSP-Cert-Valid", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_tls_ocsp_next_update, .name = "TLS-OCSP-Next-Update", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_tls_ocsp_response, .name = "TLS-OCSP-Response", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_tls_psk_identity, .name = "TLS-PSK-Identity", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_session_cert_file, .name = "TLS-Session-Cert-File", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_tls_session_data, .name = "TLS-Session-Data", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_tls_session_id, .name = "TLS-Session-Id", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+
+	{ .out = &attr_tls_session_cert_file, .name = "TLS-Session-Certificate-File", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_session_require_client_cert, .name = "TLS-Session-Require-Client-Certificate", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_tls_session_cipher_suite, .name = "TLS-Session-Cipher-Suite", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_session_version, .name = "TLS-Session-Version", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_framed_mtu, .name = "Framed-MTU", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+
+	/*
+	 *	Eventually all TLS attributes will be in the TLS dictionary
+	 */
+	{ .out = &attr_tls_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_tls },
+	{ .out = &attr_tls_session_data, .name = "Session-Data", .type = FR_TYPE_OCTETS, .dict = &dict_tls },
+	{ .out = &attr_tls_session_id, .name = "Session-Id", .type = FR_TYPE_OCTETS, .dict = &dict_tls },
+	{ .out = &attr_tls_session_resumed, .name = "Session-Resumed", .type = FR_TYPE_BOOL, .dict = &dict_tls },
+	{ .out = &attr_tls_session_ttl, .name = "Session-TTL", .type = FR_TYPE_TIME_DELTA, .dict = &dict_tls },
+	{ NULL }
+};
+
+/*
+ *	request types
+ */
+fr_value_box_t const	*enum_tls_packet_type_load_session;
+fr_value_box_t const	*enum_tls_packet_type_store_session;
+fr_value_box_t const	*enum_tls_packet_type_clear_session;
+fr_value_box_t const	*enum_tls_packet_type_verify_certificate;
+
+/*
+ *	response types
+ */
+fr_value_box_t const	*enum_tls_packet_type_success;
+fr_value_box_t const	*enum_tls_packet_type_failure;
+fr_value_box_t const	*enum_tls_packet_type_notfound;
+
+extern fr_dict_enum_autoload_t tls_dict_enum[];
+fr_dict_enum_autoload_t tls_dict_enum[] = {
+	{ .out = &enum_tls_packet_type_load_session, .name = "Load-Session", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_store_session, .name = "Store-Session", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_clear_session, .name = "Clear-Session", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_verify_certificate, .name = "Verify-Certificate", .attr = &attr_tls_packet_type },
+
+	{ .out = &enum_tls_packet_type_success, .name = "Success", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_failure, .name = "Failure", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_notfound, .name = "Notfound", .attr = &attr_tls_packet_type },
 	{ NULL }
 };
 
@@ -138,7 +202,7 @@ typedef struct {
 	char const	*id;		//!< CVE (or other ID)
 	char const	*name;		//!< As known in the media...
 	char const	*comment;	//!< Where to get more information.
-} libssl_defect_t;
+} fr_openssl_defect_t;
 
 #undef VM
 #undef Vm
@@ -146,7 +210,7 @@ typedef struct {
 #define Vm(_a,_b,_c,_d) (((((_a) << 24) | ((_b) << 16) | ((_c) << 8) | ((_d) - 'a' + 1)) << 4) | 0x0f)
 
 /* Record critical defects in libssl here, new versions of OpenSSL to older versions of OpenSSL.  */
-static libssl_defect_t libssl_defects[] =
+static fr_openssl_defect_t fr_openssl_defects[] =
 {
 	{
 		.low		= Vm(1,1,0,'a'),		/* 1.1.0a */
@@ -161,177 +225,9 @@ static libssl_defect_t libssl_defects[] =
 		.id		= "CVE-2016-6304",
 		.name		= "OCSP status request extension",
 		.comment	= "For more information see https://www.openssl.org/news/secadv/20160922.txt"
-	},
-	{
-		.low		= Vm(1,0,2,'i'),		/* 1.0.2i */
-		.high		= Vm(1,0,2,'i'),		/* 1.0.2i */
-		.id		= "CVE-2016-7052",
-		.name		= "OCSP status request extension",
-		.comment	= "For more information see https://www.openssl.org/news/secadv/20160926.txt"
-	},
-	{
-		.low		= VM(1,0,2),			/* 1.0.2  */
-		.high		= Vm(1,0,2,'h'),		/* 1.0.2h */
-		.id		= "CVE-2016-6304",
-		.name		= "OCSP status request extension",
-		.comment	= "For more information see https://www.openssl.org/news/secadv/20160922.txt"
-	},
+	}
 };
 #endif /* ENABLE_OPENSSL_VERSION_CHECK */
-
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-/*
- *	If we're linking against OpenSSL, then it is the
- *	duty of the application, if it is multithreaded,
- *	to provide OpenSSL with appropriate thread id
- *	and mutex locking functions
- *
- *	Note: this only implements static callbacks.
- *	OpenSSL does not use dynamic locking callbacks
- *	right now, but may in the future, so we will have
- *	to add them at some point.
- */
-static pthread_mutex_t *global_mutexes = NULL;
-
-static unsigned long _thread_id(void)
-{
-	unsigned long ret;
-	pthread_t thread = pthread_self();
-
-	if (sizeof(ret) >= sizeof(thread)) {
-		memcpy(&ret, &thread, sizeof(thread));
-	} else {
-		memcpy(&ret, &thread, sizeof(ret));
-	}
-
-	return ret;
-}
-
-/*
- *	Use preprocessor magic to get the right function and argument
- *	to use.  This avoids ifdef's through the rest of the code.
- */
-static void ssl_id_function(CRYPTO_THREADID *id)
-{
-	CRYPTO_THREADID_set_numeric(id, _thread_id());
-}
-#define set_id_callback CRYPTO_THREADID_set_callback
-
-
-static void _global_mutex(int mode, int n, UNUSED char const *file, UNUSED int line)
-{
-	if (mode & CRYPTO_LOCK) {
-		pthread_mutex_lock(&(global_mutexes[n]));
-	} else {
-		pthread_mutex_unlock(&(global_mutexes[n]));
-	}
-}
-
-/** Free the static mutexes we allocated for OpenSSL
- *
- */
-static int _global_mutexes_free(pthread_mutex_t *mutexes)
-{
-	size_t i;
-
-	/*
-	 *	Ensure OpenSSL doesn't use the locks
-	 */
-	CRYPTO_set_id_callback(NULL);
-	CRYPTO_set_locking_callback(NULL);
-
-	/*
-	 *	Destroy all the mutexes
-	 */
-	for (i = 0; i < talloc_array_length(mutexes); i++) pthread_mutex_destroy(&(mutexes[i]));
-
-	return 0;
-}
-
-/** OpenSSL uses static mutexes which we need to initialise
- *
- * @note Yes, these really are global.
- *
- * @param ctx to alloc mutexes/array in.
- * @return array of mutexes.
- */
-static pthread_mutex_t *global_mutexes_init(TALLOC_CTX *ctx)
-{
-	int i = 0;
-	pthread_mutex_t *mutexes;
-
-#define SETUP_CRYPTO_LOCK if (i < CRYPTO_num_locks()) pthread_mutex_init(&(mutexes[i++]), NULL)
-
-	mutexes = talloc_array(ctx, pthread_mutex_t, CRYPTO_num_locks());
-	if (!mutexes) {
-		ERROR("Error allocating memory for OpenSSL mutexes!");
-		return NULL;
-	}
-
-	talloc_set_destructor(mutexes, _global_mutexes_free);
-
-	/*
-	 *	Some profiling tools only give us the line the mutex
-	 *	was initialised on.  In that case this allows us to
-	 *	see which of the mutexes in the profiling tool relates
-	 *	to which OpenSSL mutex.
-	 *
-	 *	OpenSSL locks are usually indexed from 1, but just to
-	 *	be sure we initialise index 0 too.
-	 */
-	SETUP_CRYPTO_LOCK; /* UNUSED */
-	SETUP_CRYPTO_LOCK; /* 1  - CRYPTO_LOCK_ERR */
-	SETUP_CRYPTO_LOCK; /* 2  - CRYPTO_LOCK_EX_DATA */
-	SETUP_CRYPTO_LOCK; /* 3  - CRYPTO_LOCK_X509 */
-	SETUP_CRYPTO_LOCK; /* 4  - CRYPTO_LOCK_X509_INFO */
-	SETUP_CRYPTO_LOCK; /* 5  - CRYPTO_LOCK_X509_PKEY */
-	SETUP_CRYPTO_LOCK; /* 6  - CRYPTO_LOCK_X509_CRL */
-	SETUP_CRYPTO_LOCK; /* 7  - CRYPTO_LOCK_X509_REQ */
-	SETUP_CRYPTO_LOCK; /* 8  - CRYPTO_LOCK_DSA */
-	SETUP_CRYPTO_LOCK; /* 9  - CRYPTO_LOCK_RSA */
-	SETUP_CRYPTO_LOCK; /* 10 - CRYPTO_LOCK_EVP_PKEY */
-	SETUP_CRYPTO_LOCK; /* 11 - CRYPTO_LOCK_X509_STORE */
-	SETUP_CRYPTO_LOCK; /* 12 - CRYPTO_LOCK_SSL_CTX */
-	SETUP_CRYPTO_LOCK; /* 13 - CRYPTO_LOCK_SSL_CERT */
-	SETUP_CRYPTO_LOCK; /* 14 - CRYPTO_LOCK_SSL_SESSION */
-	SETUP_CRYPTO_LOCK; /* 15 - CRYPTO_LOCK_SSL_SESS_CERT */
-	SETUP_CRYPTO_LOCK; /* 16 - CRYPTO_LOCK_SSL */
-	SETUP_CRYPTO_LOCK; /* 17 - CRYPTO_LOCK_SSL_METHOD */
-	SETUP_CRYPTO_LOCK; /* 18 - CRYPTO_LOCK_RAND */
-	SETUP_CRYPTO_LOCK; /* 19 - CRYPTO_LOCK_RAND2 */
-	SETUP_CRYPTO_LOCK; /* 20 - CRYPTO_LOCK_MALLOC */
-	SETUP_CRYPTO_LOCK; /* 21 - CRYPTO_LOCK_BIO  */
-	SETUP_CRYPTO_LOCK; /* 22 - CRYPTO_LOCK_GETHOSTBYNAME */
-	SETUP_CRYPTO_LOCK; /* 23 - CRYPTO_LOCK_GETSERVBYNAME */
-	SETUP_CRYPTO_LOCK; /* 24 - CRYPTO_LOCK_READDIR */
-	SETUP_CRYPTO_LOCK; /* 25 - CRYPTO_LOCRYPTO_LOCK_RSA_BLINDING */
-	SETUP_CRYPTO_LOCK; /* 26 - CRYPTO_LOCK_DH */
-	SETUP_CRYPTO_LOCK; /* 27 - CRYPTO_LOCK_MALLOC2  */
-	SETUP_CRYPTO_LOCK; /* 28 - CRYPTO_LOCK_DSO */
-	SETUP_CRYPTO_LOCK; /* 29 - CRYPTO_LOCK_DYNLOCK */
-	SETUP_CRYPTO_LOCK; /* 30 - CRYPTO_LOCK_ENGINE */
-	SETUP_CRYPTO_LOCK; /* 31 - CRYPTO_LOCK_UI */
-	SETUP_CRYPTO_LOCK; /* 32 - CRYPTO_LOCK_ECDSA */
-	SETUP_CRYPTO_LOCK; /* 33 - CRYPTO_LOCK_EC */
-	SETUP_CRYPTO_LOCK; /* 34 - CRYPTO_LOCK_ECDH */
-	SETUP_CRYPTO_LOCK; /* 35 - CRYPTO_LOCK_BN */
-	SETUP_CRYPTO_LOCK; /* 36 - CRYPTO_LOCK_EC_PRE_COMP */
-	SETUP_CRYPTO_LOCK; /* 37 - CRYPTO_LOCK_STORE */
-	SETUP_CRYPTO_LOCK; /* 38 - CRYPTO_LOCK_COMP */
-	SETUP_CRYPTO_LOCK; /* 39 - CRYPTO_LOCK_FIPS  */
-	SETUP_CRYPTO_LOCK; /* 40 - CRYPTO_LOCK_FIPS2 */
-
-	/*
-	 *	Incase more are added *sigh*
-	 */
-	while (i < CRYPTO_num_locks()) SETUP_CRYPTO_LOCK;
-
-	set_id_callback(ssl_id_function);
-	CRYPTO_set_locking_callback(_global_mutex);
-
-	return mutexes;
-}
-#endif
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 /** Check for vulnerable versions of libssl
@@ -340,7 +236,7 @@ static pthread_mutex_t *global_mutexes_init(TALLOC_CTX *ctx)
  *	libssl.
  * @return 0 if the CVE specified by the user matches the most recent CVE we have, else -1.
  */
-int tls_version_check(char const *acknowledged)
+int fr_openssl_version_check(char const *acknowledged)
 {
 	uint64_t v;
 	bool bad = false;
@@ -359,8 +255,8 @@ int tls_version_check(char const *acknowledged)
 	/* Check for bad versions */
 	v = (uint64_t) SSLeay();
 
-	for (i = 0; i < (sizeof(libssl_defects) / sizeof(*libssl_defects)); i++) {
-		libssl_defect_t *defect = &libssl_defects[i];
+	for (i = 0; i < (NUM_ELEMENTS(fr_openssl_defects)); i++) {
+		fr_openssl_defect_t *defect = &fr_openssl_defects[i];
 
 		if ((v >= defect->low) && (v <= defect->high)) {
 			/*
@@ -395,13 +291,15 @@ int tls_version_check(char const *acknowledged)
  * @param len to alloc.
  * @return realloc.
  */
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-static void *openssl_talloc(size_t len, UNUSED char const *file, UNUSED int line)
-#else
-static void *openssl_talloc(size_t len)
-#endif
+static void *fr_openssl_talloc(size_t len, NDEBUG_UNUSED char const *file, NDEBUG_UNUSED int line)
 {
-	return talloc_array(ssl_talloc_ctx, uint8_t, len);
+	void *chunk;
+
+	chunk = talloc_array(ssl_talloc_ctx, uint8_t, len);
+#ifndef NDEBUG
+	talloc_set_name(chunk, "%s:%u", file, line);
+#endif
+	return chunk;
 }
 
 /** Reallocate memory for OpenSSL in the NULL context
@@ -410,77 +308,111 @@ static void *openssl_talloc(size_t len)
  * @param len to extend to.
  * @return realloced memory.
  */
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-static void *openssl_realloc(void *old, size_t len, UNUSED char const *file, UNUSED int line)
-#else
-static void *openssl_realloc(void *old, size_t len)
-#endif
+static void *fr_openssl_talloc_realloc(void *old, size_t len, NDEBUG_UNUSED char const *file, NDEBUG_UNUSED int line)
 {
-	return talloc_realloc_size(ssl_talloc_ctx, old, len);
+	void *chunk;
+
+	chunk = talloc_realloc_size(ssl_talloc_ctx, old, len);
+#ifndef NDEBUG
+	talloc_set_name(chunk, "%s:%u", file, line);
+#endif
+	return chunk;
 }
 
 /** Free memory allocated by OpenSSL
  *
  * @param to_free memory to free.
  */
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-static void openssl_free(void *to_free, char const *file, int line)
+#ifdef NDEBUG
+/*
+ *	If we're not debugging, use only the filename.  Otherwise the
+ *	cost of snprintf() is too large.
+ */
+static void fr_openssl_talloc_free(void *to_free, char const *file, UNUSED int line)
+{
+	(void)_talloc_free(to_free, file);
+}
+#else
+static void fr_openssl_talloc_free(void *to_free, char const *file, int line)
 {
 	char buffer[256];
 
 	snprintf(buffer, sizeof(buffer), "%s:%i", file, line);
-
 	(void)_talloc_free(to_free, buffer);
-}
-#else
-static void openssl_free(void *to_free)
-{
-	(void)talloc_free(to_free);
 }
 #endif
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+/** Cleanup async pools if the thread exits
+ *
+ */
+static void _openssl_thread_free(void *init)
+{
+	ASYNC_cleanup_thread();
+	talloc_free(init);
+}
+
+/** Perform thread-specific initialisation for OpenSSL
+ *
+ * Async contexts are what OpenSSL uses to track
+ *
+ * @param[in] async_pool_size_init	The initial number of async contexts
+ *					we keep in the pool.
+ * @param[in] async_pool_size_max	The maximum number of async contexts
+ *					we keep in the thread-local pool.
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure.
+ */
+int fr_openssl_thread_init(size_t async_pool_size_init, size_t async_pool_size_max)
+{
+	/*
+	 *	Hack to use thread local destructor code
+	 */
+	if (!async_pool_init) {
+		bool *init = talloc_zero(NULL, bool);
+
+		if (ASYNC_init_thread(async_pool_size_max, async_pool_size_init) != 1) {
+			fr_tls_log_error(NULL, "Failed initialising OpenSSL async context pool");
+			return -1;
+		}
+
+		fr_atexit_thread_local(async_pool_init, _openssl_thread_free, init);
+	}
+
+	return 0;
+}
+
 /** Free any memory alloced by libssl
  *
  * OpenSSL >= 1.1.0 uses an atexit handler to automatically free
- * memory. However, we need to call it manually because some of
- * the SSL ctx is parented to the main config which will get freed
- * before the atexit handler, causing a segfault on exit.
+ * memory. However, we need to call OPENSSL_cleanup manually because
+ * some of the SSL ctx is parented to the main config which will get
+ * freed before the atexit handler, causing a segfault on exit.
  */
-void tls_free(void)
+void fr_openssl_free(void)
 {
 	if (--instance_count > 0) return;
 
-	FR_TLS_REMOVE_THREAD_STATE();
-	ENGINE_cleanup();
-	CONF_modules_unload(1);
-	ERR_free_strings();
-	EVP_cleanup();
-	CRYPTO_cleanup_all_ex_data();
-
-	TALLOC_FREE(global_mutexes);
-
-	fr_dict_autofree(tls_dict);
-}
-#else
-void tls_free(void)
-{
-	OPENSSL_cleanup();
-	fr_dict_autofree(tls_dict);
-}
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	fr_tls_engine_free_all();
 #endif
 
+	OPENSSL_cleanup();
 
+	fr_dict_autofree(tls_dict);
+
+	fr_tls_log_free();
+
+	fr_tls_bio_free();
+}
 
 /** Add all the default ciphers and message digests to our context.
  *
  * This should be called exactly once from main, before reading the main config
  * or initialising any modules.
  */
-int tls_init(void)
+int fr_openssl_init(void)
 {
-	ENGINE *rand_engine;
-
 	if (instance_count > 0) {
 		instance_count++;
 		return 0;
@@ -490,73 +422,109 @@ int tls_init(void)
 	 *	This will only fail if memory has already been allocated
 	 *	by OpenSSL.
 	 */
-	if (CRYPTO_set_mem_functions(openssl_talloc, openssl_realloc, openssl_free) != 1) {
-		tls_log_error(NULL, "Failed to set OpenSSL memory allocation functions.  tls_init() called too late");
+	if (CRYPTO_set_mem_functions(fr_openssl_talloc, fr_openssl_talloc_realloc, fr_openssl_talloc_free) != 1) {
+		fr_tls_log_error(NULL, "Failed to set OpenSSL memory allocation functions.  fr_openssl_init() called too late");
 		return -1;
 	}
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-	SSL_load_error_strings();	/* Readable error messages (examples show call before library_init) */
-	SSL_library_init();		/* Initialize library */
-	OpenSSL_add_all_algorithms();	/* Required for SHA2 in OpenSSL < 0.9.8o and 1.0.0.a */
-	ENGINE_load_builtin_engines();	/* Needed to load AES-NI engine (also loads rdrand, boo) */
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	/*
+	 *	Load the default provider for most algorithms
+	 */
+	if (!OSSL_PROVIDER_load(NULL, "default")) {
+		fr_tls_log_error(NULL, "Failed loading default provider");
+		return -1;
+	}
 
-#  ifdef HAVE_OPENSSL_EVP_SHA256
+	/*
+	 *	Needed for MD4
+	 *
+	 *	https://www.openssl.org/docs/man3.0/man7/migration_guide.html#Legacy-Algorithms
+	 */
+	if (!OSSL_PROVIDER_load(NULL, "legacy")) {
+		fr_tls_log_error(NULL, "Failed loading legacy provider");
+		return -1;
+	}
+#endif
+
+	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CONFIG, NULL);
+
 	/*
 	 *	SHA256 is in all versions of OpenSSL, but isn't
 	 *	initialized by default.  It's needed for WiMAX
 	 *	certificates.
 	 */
 	EVP_add_digest(EVP_sha256());
-#  endif
-	/*
-	 *	If we're linking with OpenSSL too, then we need
-	 *	to set up the mutexes and enable the thread callbacks.
-	 */
-	global_mutexes = global_mutexes_init(NULL);
-	if (!global_mutexes) {
-		ERROR("Failed to set up SSL mutexes");
-		tls_free();
-		return -1;
-	}
 
-	OPENSSL_config(NULL);
-#else
-	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_ENGINE_ALL_BUILTIN, NULL);
+	/*
+	 *	FIXME - This should be done _after_
+	 *	running any engine controls.
+	 */
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	fr_tls_engine_load_builtin();
 #endif
 
-	/*
-	 *	Mirror the paranoia found elsewhere on the net,
-	 *	and disable rdrand as the default random number
-	 *	generator.
-	 */
-	rand_engine = ENGINE_get_default_RAND();
-	if (rand_engine && (strcmp(ENGINE_get_id(rand_engine), "rdrand") == 0)) ENGINE_unregister_RAND(rand_engine);
-	ENGINE_register_all_complete();
+	fr_tls_log_init();
+
+	fr_tls_bio_init();
 
 	instance_count++;
 
 	return 0;
 }
 
+/** Enable or disable fips mode
+ *
+ * @param[in] enabled		If true enable fips mode if false disable fips mode.
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure
+ */
+int fr_openssl_fips_mode(bool enabled)
+{
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (!EVP_set_default_properties(NULL, enabled ? "fips=yes" : "fips=no")) {
+		fr_tls_log_error(NULL, "Failed %s OpenSSL FIPS mode", enabled ? "enabling" : "disabling");
+		return -1;
+	}
+#else
+	if (!FIPS_mode_set(enabled ? 1 : 0)) {
+		fr_tls_log_error(NULL, "Failed %s OpenSSL FIPS mode", enabled ? "enabling" : "disabling");
+		return -1;
+	}
+#endif
+
+	return 0;
+}
+
 /** Load dictionary attributes
  *
+ * This is a separate function because of ordering issues.
+ * OpenSSL may need to be initialised before anything else
+ * including the dictionary loader.
+ *
+ * fr_openssl_free will unload both the dictionary and the
+ * OpenSSL library.
  */
-int tls_dict_init(void)
+int fr_tls_dict_init(void)
 {
 	if (fr_dict_autoload(tls_dict) < 0) {
 		PERROR("Failed initialising protocol library");
-		tls_free();
+		fr_openssl_free();
 		return -1;
 	}
 
 	if (fr_dict_attr_autoload(tls_dict_attr) < 0) {
 		PERROR("Failed resolving attributes");
-		tls_free();
+		fr_openssl_free();
 		return -1;
 	}
 
+	if (fr_dict_enum_autoload(tls_dict_enum) < 0) {
+		PERROR("Failed resolving enums");
+		fr_openssl_free();
+		return -1;
+	}
 	return 0;
 }
-
 #endif /* WITH_TLS */

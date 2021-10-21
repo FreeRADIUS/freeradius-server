@@ -40,6 +40,11 @@ RCSIDH(eap_pwd_h, "$Id$")
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
+#if OPENSSL_VERSION_NUMBER < 0x10101000L
+#  define EC_POINT_get_affine_coordinates EC_POINT_get_affine_coordinates_GFp
+#  define EC_POINT_set_affine_coordinates EC_POINT_set_affine_coordinates_GFp
+#endif
+
 typedef struct {
     uint8_t lm_exchange;
 #define EAP_PWD_EXCH_ID		1
@@ -100,16 +105,16 @@ typedef struct {
     uint8_t	my_confirm[SHA256_DIGEST_LENGTH];
 } pwd_session_t;
 
-int compute_password_element(REQUEST *request, pwd_session_t *sess, uint16_t grp_num,
+int compute_password_element(request_t *request, pwd_session_t *sess, uint16_t grp_num,
 			     char const *password, int password_len,
 			     char const *id_server, int id_server_len,
 			     char const *id_peer, int id_peer_len,
 			     uint32_t *token, BN_CTX *bnctx);
-int compute_scalar_element(REQUEST *request, pwd_session_t *sess, BN_CTX *bnctx);
-int process_peer_commit(REQUEST *request, pwd_session_t *sess, uint8_t *in, size_t in_len, BN_CTX *bnctx);
-int compute_server_confirm(REQUEST *request, pwd_session_t *sess, uint8_t *out, BN_CTX *bnctx);
-int compute_peer_confirm(REQUEST *request, pwd_session_t *sess, uint8_t *out, BN_CTX *bnctx);
-int compute_keys(REQUEST *request, pwd_session_t *sess, uint8_t *peer_confirm,
+int compute_scalar_element(request_t *request, pwd_session_t *sess, BN_CTX *bnctx);
+int process_peer_commit(request_t *request, pwd_session_t *sess, uint8_t *in, size_t in_len, BN_CTX *bnctx);
+int compute_server_confirm(request_t *request, pwd_session_t *sess, uint8_t *out, BN_CTX *bnctx);
+int compute_peer_confirm(request_t *request, pwd_session_t *sess, uint8_t *out, BN_CTX *bnctx);
+int compute_keys(request_t *request, pwd_session_t *sess, uint8_t *peer_confirm,
 		 uint8_t *msk, uint8_t *emsk);
 #ifdef PRINTBUF
 void print_buf(char *str, uint8_t *buf, int len);

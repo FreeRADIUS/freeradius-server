@@ -10,7 +10,7 @@
 #  The `radius` module in v4, can be used to implement proxying and request
 #  fan-out, as well as synchronous and asynchronous `CoA` and `DM`.
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 #  Any proxied packet (including `Accounting-Request`) can
 #  receive a `Protocol-Error` response packet.  This packet
@@ -37,7 +37,7 @@
 #  | handled     | the module received an `Access-Challenge`
 #  | fail        | there was no response to the proxied request
 #  | reject      | the module received a `nak` (`Access-Reject`, `CoA-NAK`, etc.)
-#  | noop        | the module saw it's own `Proxy-State` attribute,
+#  | noop        | the module saw its own `Proxy-State` attribute,
 #                  and is will not proxy the request.  This behavior
 #                  prevents proxy loops.
 #  |===
@@ -47,6 +47,13 @@ radius {
 	#  transport:: Only UDP transport is allowed.
 	#
 	transport = udp
+
+	#
+	#  max_attributes:: Maximum number of attributes to decode in response.
+	#
+	#  Default is 255.
+	#
+#	max_attributes = 255
 
 	#
 	#  type:: List of allowed packet types.
@@ -73,11 +80,11 @@ radius {
 	#  synchronous::
 	#
 	#  In many cases, the module should do retransmissions of
-	#  proxied request on it's own.  See the various
-	#  configurations for `initial_retransmission_time`,
+	#  proxied request on its own.  See the various
+	#  configurations for `initial_rtx_time`,
 	#  etc. below.  This means setting `synchronous = no`.
 	#
-	#  However, in some cases, it is useful to retranmsit only
+	#  However, in some cases, it is useful to retransmit only
 	#  when the server receives a retransmission from the NAS.
 	#  This is done by setting `synchronous = yes`
 	#
@@ -88,19 +95,30 @@ radius {
 	#
 	#  If the server is receiving packets from another proxy
 	#  server, you should set `synchronous = yes`.  This allows
-	#  the other proxy server to do retranmsissions correctly.
+	#  the other proxy server to do retransmissions correctly.
 	#
 	#  NOTE: The behavior in v3 is the same as `synchronous = yes`
 	#
 #	synchronous = no
 
 	#
-	#  status_checks { ... }:: For "are you alive?" queries.
+	#  originate:: Whether or not we are creating the packet.
+	#
+	#  Sometimes we are creating a request that is not for the purpose of
+	#  proxying another request, in which case we do not want to add a
+	#  Proxy-State attribute.
+	#
+	#  In some cases, such as originating a CoA or Disconnect request,
+	#  including Proxy-State may confuse the receiving NAS.
+#	originate = no
+
+	#
+	#  status_check { ... }:: For "are you alive?" queries.
 	#
 	#  If the home server does not respond to proxied packets, the
 	#  module starts pinging the home server with these packets.
 	#
-	status_checks {
+	status_check {
 		#
 		#  type:: You can specify any type of packet here, though
 		#  Status-Server is recommended.
@@ -135,7 +153,7 @@ radius {
 		#  WARNING: Do NOT do SQL queries, LDAP queries, dynamic
 		#  expansions, etc. in this section.  The contents are
 		#  created when a connection is opened, and are not
-		#  changable after that.
+		#  changeable after that.
 		#
 #		update request {
 #			&User-Name := "test-user"
@@ -147,66 +165,256 @@ radius {
 	}
 
 	#
+	#  response_window: If we do not receive a reply within this time period, then
+	#  start `zombie_period`
+	#
+	response_window = 15
+
+	#
+	#  zombie_period:: If the home server does not reply to a packet, the
+	#  `zombie_period` starts.
+	#
+	#  The connection is marked `zombie`, and isn't used to send new packets.
+	#  If there are no responses within `zombie_period`, the server either
+	#  closes the connection (no `status_check` subsection), or starts pinging the
+	#  home server (`status_check.type = Status-Server`).
+	#
+	zombie_period = 10
+
+	#
+	#  revive_interval:: If there are no status checks, mark the
+	#  home server alive after `revive_interval` timeout.
+	#
+	#  Some home servers do not support status checks via the
+	#  `Status-Server` packet.  Others may not have a "test" user
+	#  configured that can be used to query the server, to see if
+	#  it is alive.  For those servers, we have NO WAY of knowing
+	#  when it becomes alive again.  Therefore, after the server
+	#  has been marked dead, we wait a period of time, and mark
+	#  it alive again, in the hope that it has come back to
+	#  life.
+	#
+	#  If it has NOT come back to life, then the module will wait
+	#  for `zombie_period` before marking it dead again.  During
+	#  the `zombie_period`, ALL AUTHENTICATIONS WILL FAIL, because
+	#  the home server is still dead.  There is NOTHING that can
+	#  be done about this, other than to enable the status checks,
+	#  as documented above.
+	#
+	#  e.g. if `zombie_period` is 40 seconds, and `revive_interval`
+	#  is 300 seconds, the for 40 seconds out of every 340, or about
+	#  10% of the time, all authentications will fail.
+	#
+	#  If the `zombie_period` and `revive_interval` configurations
+	#  are set smaller, than it is possible for up to 50% of
+	#  authentications to fail.
+	#
+	#  As a result, we recommend enabling status checks, and
+	#  we do NOT recommend using `revive_interval`.
+	#
+	#  The `revive_interval` configuration is used ONLY if the
+	#  `status_check` subsection is not used.  Otherwise,
+	#  `revive_interval` is not necessary, and should be deleted.
+	#
+	#  Useful range of values: 10 to 3600
+	#
+	revive_interval = 3600
+
+	#
+	#  ## Connection trunking
+	#
+	#  Each worker thread (see radiusd.conf, num_workers), has
+	#  it's own set of connections.  These connections are grouped
+	#  together into a "pool".
+	#
+	#  Much of the configuration here is similar to the old
+	#  connection "pool" configuration in v3.  However, there are
+	#  more configuration parameters, and therefore more control
+	#  over the behavior.
+	#
+	pool {
+		#
+		#  start:: Connections to create during module instantiation.
+		#
+		#  If the server cannot create specified number of connections during instantiation
+		#  it will exit.
+		#
+		#  Set to `0` to allow the server to start without the database being available.
+		#
+		start = 1
+
+		#
+		#  min:: Minimum number of connections to keep open.
+		#
+		min = 1
+
+		#
+		#  max:: Maximum number of connections.
+		#
+		#  If these connections are all in use and a new one is requested, the request
+		#  will NOT get a connection.
+		#
+		max = 8
+
+		#
+		#  connecting:: Maximum number of sockets to have in the "connecting" state.
+		#
+		#  If a home server goes down, the module will close
+		#  old / broken connections, and try to open new ones.
+		#  In order to avoid flooding the home server with
+		#  connection attempts, set the `connecting` value to
+		#  a small number.
+		#
+		connecting = 1
+
+		#
+		#  uses:: number of packets which will use the connection.
+		#
+		#  After `uses` packets have been sent the connection
+		#  will be closed, and a new one opened.  For no
+		#  limits, set `uses = 0`.
+		#
+		uses = 0
+
+		#
+		#  lifetime:: lifetime of a connection, in seconds.
+		#
+		#  After `lifetime` seconds have passed, no new
+		#  packets will be sent on the connection.  When all
+		#  replies have been received, the connection will be
+		#  closed.
+		#
+		#  For no limits, set `lifetime = 0`.
+		#
+		#  It is possible to use precise times, such as
+		#  `lifetime = 1.023`, or even qualifiers such as
+		#  `lifetime = 400ms`.
+		#
+		lifetime = 0
+
+		#
+		#  open_delay:: How long (in seconds) a connection
+		#  must be above `per_connection_target` before a new
+		#  connection is opened.
+		#
+		#  Parsing of this field is the same as for
+		#  `lifetime`.
+		#
+		open_delay = 0.2
+
+		#
+		#  close_delay:: How long (in seconds) a connection
+		#  must be below `per_connection_target` before a
+		#  connection is closed.
+		#
+		close_delay = 1.0
+
+		#
+		#  manage_interval:: How often (in seconds) the
+		#  connections are checked for limits, in order to
+		#  open / close connections.
+		#
+		manage_interval = 0.2
+
+		#
+		#  connection { ... }:: Per-connection configuration.
+		#
+		connection {
+			#
+			#  connection_timeout:: How long to wait
+			#  before giving up on a connection which is
+			#  being opened.
+			#
+			connection_timeout = 3.0
+
+			#
+			#  reconnect_delay:: If opening a connection
+			#  fails, or an open connection fails,
+			#  we wait `reconnect_delay` seconds before
+			#  attempting to open another
+			#  connection.
+			#
+			reconnect_delay = 5
+		}
+
+		#
+		#  requests { ... }:: Per-request configuration.
+		#
+		requests {
+			#
+			#  per_connection_max:: The maximum number of requests
+			#  which are "live" on a particular connection.
+			#
+			per_connection_max = 255
+
+			#
+			#  per_connection_target:: The target number
+			#  of requests which are "live" on a
+			#  particular connection.
+			#
+			#  There can be a balance between overloading
+			#  a connection, and under-utilizing it.  The
+			#  default is to fill each connection before
+			#  opening a new one.
+			#
+			per_connection_target = 255
+
+			#
+			#  free_delay:: How long to wait before
+			#  freeing internal resources associated with
+			#  the connection.
+			#
+			free_delay = 10
+		}
+
+	}
+
+	#
+	#  ## Protocols
+	#
+	#  For now, only UDP is supported.
+	#
 	#  udp { ... }:: UDP is configured here.
 	#
 	udp {
 		ipaddr = 127.0.0.1
 		port = 1812
 		secret = testing123
-	}
-
-	#
-	#  max_connections:: Limit the number of connections to the home server.
-	#
-	#  Recommended values are `4..1024`.
-	#
-	#  Default is `32`.
-	#
-#	max_connections = 32
-
-	#
-	#  connection { ... }:: Per-connection configurations.
-	#
-	connection {
-		#
-		#  connect_timeout:: Timeout on the initial connection attempt.
-		#
-		#  If the connection isn't open after this time, it is marked dead.
-		#
-		connect_timeout = 5
 
 		#
-		#  reconnect_delay:: Timeout on subsequent reconnection attempts.
+		#  NOTE: Don't change anything if you are not sure.
 		#
-		#  i.e. if there is an error writing packets to the socket,
-		#  it is closed, and the module tries to connect the socket.
-		#
-		reconnect_delay = 5
 
 		#
-		#  idle_timeout:: If the socket is idle for this length of time,
-		#  it is closed.
+		#  interface:: Interface to bind to.
 		#
-		#  Use `0` for `no timeout`.
-		#
-		idle_timeout = 5
+#		interface = eth0
 
 		#
-		#  zombie_period:: If the home server does not reply to a packet, the
-		#  `zombie_period` starts.
+		#  max_packet_size:: Our max packet size. may be different from the parent.
 		#
-		#  The connection is marked `zombie`, and isn't used to send new packets.
-		#  If there are no responses within `zombie_period`, the server either
-		#  closes the connection (no `status_check`), or starts pinging the
-		#  home server (`status_check = Status-Server`).
+#		max_packet_size = 4096
+
 		#
-		zombie_period = 10
+		#  recv_buff:: How big the kernel's receive buffer should be.
+		#
+#		recv_buff = 1048576
+
+		#
+		#  send_buff:: How big the kernel's send buffer should be.
+		#
+#		send_buff = 1048576
+
+		#
+		#  src_ipaddr:: IP we open our socket on.
+		#
+#		src_ipaddr = ""
 	}
 
 	#
 	#  ## Packets
 	#
-	#  Each packet can have it's own retransmission timers.
+	#  Each packet can have its own retransmission timers.
 	#
 	#  The sections are named for each packet type. The contents
 	#  are the same for all packet types.  Only the relevant ones
@@ -218,19 +426,19 @@ radius {
 	#
 	Access-Request {
 		#
-		#  initial_retransmission_time::  If there is no response within this time,
+		#  initial_rtx_time::  If there is no response within this time,
 		#  the module will retransmit the packet.
 		#
 		#  Value should be `1..5`.
 		#
-		initial_retransmission_time = 2
+		initial_rtx_time = 2
 
 		#
-		#  maximum_retransmission_time:: The maximum time between retransmissions.
+		#  max_rtx_time:: The maximum time between retransmissions.
 		#
 		#  Value should be `5..30`
 		#
-		maximum_retransmission_time = 16
+		max_rtx_time = 16
 
 		#
 		#  [NOTE]
@@ -242,55 +450,55 @@ radius {
 		#
 
 		#
-		#  maximum_retransmission_count:: How many times the module will send the packet
+		#  max_rtx_count:: How many times the module will send the packet
 		#  before giving up.
 		#
 		#  Value should be `1..20` _(0 == retransmit forever)_
 		#
-		maximum_retransmission_count = 2
+		max_rtx_count = 2
 
 		#
-		#  maximum_retransmission_duration:: The total length of time the module will
-		#  try to retransit the packet.
+		#  max_rtx_duration:: The total length of time the module will
+		#  try to retransmit the packet.
 		#
 		#  Value should be `5..60`
 		#
-		maximum_retransmission_duration = 30
+		max_rtx_duration = 30
 	}
 
 	#
-	#  ### Accouting Packets
+	#  ### Accounting Packets
 	#
 	#  i.e. If you want `retransmit forever`, you should set:
 	#
-	#    maximum_retransmission_time = 0
-	#    maximum_retransmission_count = 0
+	#    max_rtx_time = 0
+	#    max_rtx_count = 0
 	#
 	Accounting-Request {
-		initial_retransmission_time = 2
-		maximum_retransmission_time = 16
-		maximum_retransmission_count = 5
-		maximum_retransmission_duration = 30
+		initial_rtx_time = 2
+		max_rtx_time = 16
+		max_rtx_count = 5
+		max_rtx_duration = 30
 	}
 
 	#
 	#  ### CoA Packets
 	#
-	Coa-Request {
-		initial_retransmission_time = 2
-		maximum_retransmission_time = 16
-		maximum_retransmission_count = 5
-		maximum_retransmission_duration = 30
+	CoA-Request {
+		initial_rtx_time = 2
+		max_rtx_time = 16
+		max_rtx_count = 5
+		max_rtx_duration = 30
 	}
 
 	#
 	#  ### Disconnect packets
 	#
 	Disconnect-Request {
-		initial_retransmission_time = 2
-		maximum_retransmission_time = 16
-		maximum_retransmission_count = 5
-		maximum_retransmission_duration = 30
+		initial_rtx_time = 2
+		max_rtx_time = 16
+		max_rtx_count = 5
+		max_rtx_duration = 30
 	}
 
 	#
@@ -302,9 +510,9 @@ radius {
 	#  WARNING: The `Status-Server` packets CANNOT be proxied.
 	#
 	Status-Server {
-		initial_retransmission_time = 2
-		maximum_retransmission_time = 16
-		maximum_retransmission_count = 5
-		maximum_retransmission_duration = 30
+		initial_rtx_time = 2
+		max_rtx_time = 5
+		max_rtx_count = 5
+		max_rtx_duration = 30
 	}
 }

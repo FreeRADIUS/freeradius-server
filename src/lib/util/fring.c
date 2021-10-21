@@ -26,7 +26,7 @@
  */
 RCSID("$Id$")
 
-#include "fring.h"
+#include <freeradius-devel/util/fring.h>
 
 #include <pthread.h>
 

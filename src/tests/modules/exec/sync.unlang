@@ -1,25 +1,78 @@
 #
-#  Sync calls should always return a zero length string
-#  because we don't wait for the response.
+#  Sync calls return the response
 #
 update request {
-	&Tmp-String-0 := "%{exec_sync:/bin/bash -c 'echo hello'}"
+	&Tmp-String-0 := "%(exec_sync:/bin/sh -c 'echo hello')"
 }
 if (&Tmp-String-0 != 'hello') {
 	test_fail
-} else {
-	test_pass
 }
 
 #
-#  Sync calls should have their output added to the request
+#  Call something which will take longer than the timeout
 #
 update request {
-	&Tmp-String-0 := "%{exec_sync:/bin/bash -c 'echo \"reply:Reply-Message = \'hello\'\"'}"
+	&Tmp-String-0 := "%(exec_sync:/bin/sleep 10)"
 }
 
-if (&reply:Reply-Message != 'hello') {
+if (&Module-Failure-Message[*] != "Timeout running program - killing it and failing the request") {
 	test_fail
-} else {
-	test_pass
 }
+
+if (&Tmp-String-0 != "") {
+	test_fail
+}
+
+update request {
+	&Tmp-String-0 := "%(exec_sync:/bin/sh $ENV{MODULE_TEST_DIR}/fail.sh)"
+}
+
+if (&Tmp-String-0 != "") {
+	test_fail
+}
+
+if (&request.Module-Failure-Message != "Execution of external program returned 7") {
+	test_fail
+}
+
+#
+#  Sync calls as modules should have their output added to the request
+#
+exec_sync_mod
+
+if ((!&control.Tmp-String-0) || (&control.Tmp-String-0 != 'welcome')) {
+	test_fail
+}
+
+#
+#  The script called by this test reads input from both an expanded
+#  attribute on the command line and from the environment variables set.
+#  It then sets two attributes as two lines of output.
+#
+exec_sync_attrs
+
+if ((!&control.Tmp-String-1) || (&control.Tmp-String-1 != 'tony')) {
+	test_fail
+}
+
+if ((!&control.Tmp-String-2) || (&control.Tmp-String-2 != 'aabbccddeeff')) {
+	test_fail
+}
+
+#
+#  Call a module which returns status code 7 - mapped to module exit
+#  code "notfound".  Attributes in its output should be ignored.
+#
+exec_sync_fail
+
+if (notfound) {
+	ok
+} else {
+	test_fail
+}
+
+if (&control.Tmp-String-3 == "Failure") {
+	test_fail
+}
+
+test_pass

@@ -4,10 +4,7 @@
 #
 ldap.accounting {
 }
-if (ok) {
-        test_pass
-}
-else {
+if (!ok) {
         test_fail
 }
 
@@ -18,6 +15,5 @@ update {
 if (&Tmp-String-0 != "User john is online") {
         test_fail
 }
-else {
-        test_pass
-}
+
+test_pass

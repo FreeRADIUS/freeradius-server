@@ -21,14 +21,14 @@
  *
  * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  *
- * @copyright 2013 Network RADIUS SARL (info@networkradius.com)
+ * @copyright 2013 Network RADIUS SARL (legal@networkradius.com)
  * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
 RCSID("$Id$")
 
 USES_APPLE_DEPRECATED_API
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <ctype.h>
 
 #define LOG_PREFIX "rlm_ldap (%s) - "
@@ -41,26 +41,29 @@ USES_APPLE_DEPRECATED_API
  * Given an array of group names, builds a filter matching all names, then retrieves all group objects
  * and stores the DN associated with each group object.
  *
- * @param[in] inst rlm_ldap configuration.
- * @param[in] request Current request.
- * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
- * @param[in] names to convert to DNs (NULL terminated).
- * @param[out] out Where to write the DNs. DNs must be freed with ldap_memfree(). Will be NULL terminated.
- * @param[in] outlen Size of out.
+ * @param[out] p_result		The result of trying to resolve a group name to a dn.
+ * @param[in] inst		rlm_ldap configuration.
+ * @param[in] request		Current request.
+ * @param[in] ttrunk		to use.
+ * @param[in] names		to convert to DNs (NULL terminated).
+ * @param[out] out		Where to write the DNs. DNs must be freed with
+ *				ldap_memfree(). Will be NULL terminated.
+ * @param[in] outlen		Size of out.
  * @return One of the RLM_MODULE_* values.
  */
-static rlm_rcode_t rlm_ldap_group_name2dn(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
-					  char **names, char **out, size_t outlen)
+static unlang_action_t rlm_ldap_group_name2dn(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
+					      fr_ldap_thread_trunk_t *ttrunk,
+					      char **names, char **out, size_t outlen)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
-	fr_ldap_rcode_t status;
 	int ldap_errno;
 
 	unsigned int name_cnt = 0;
 	unsigned int entry_cnt;
 	char const *attrs[] = { NULL };
 
-	LDAPMessage *result = NULL, *entry;
+	LDAPMessage *entry;
+	fr_ldap_query_t	*query = NULL;
 
 	char **name = names;
 	char **dn = out;
@@ -72,12 +75,12 @@ static rlm_rcode_t rlm_ldap_group_name2dn(rlm_ldap_t const *inst, REQUEST *reque
 
 	*dn = NULL;
 
-	if (!*names) return RLM_MODULE_OK;
+	if (!*names) RETURN_MODULE_OK;
 
 	if (!inst->groupobj_name_attr) {
 		REDEBUG("Told to convert group names to DNs but missing 'group.name_attribute' directive");
 
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	RDEBUG2("Converting group name(s) to group DN(s)");
@@ -104,16 +107,19 @@ static rlm_rcode_t rlm_ldap_group_name2dn(rlm_ldap_t const *inst, REQUEST *reque
 			inst->groupobj_base_dn, fr_ldap_escape_func, NULL) < 0) {
 		REDEBUG("Failed creating base_dn");
 
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
-	status = fr_ldap_search(&result, request, pconn, base_dn, inst->groupobj_scope,
-				filter, attrs, NULL, NULL);
-	switch (status) {
-	case LDAP_PROC_SUCCESS:
+	if (fr_ldap_trunk_search(&rcode,
+				 unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, base_dn,
+				 inst->groupobj_scope, filter, attrs, NULL, NULL, false) < 0 ) {
+		goto finish;
+	}
+	switch (rcode) {
+	case RLM_MODULE_OK:
 		break;
 
-	case LDAP_PROC_NO_RESULT:
+	case RLM_MODULE_NOTFOUND:
 		RDEBUG2("Tried to resolve group name(s) to DNs but got no results");
 		goto finish;
 
@@ -122,7 +128,7 @@ static rlm_rcode_t rlm_ldap_group_name2dn(rlm_ldap_t const *inst, REQUEST *reque
 		goto finish;
 	}
 
-	entry_cnt = ldap_count_entries((*pconn)->handle, result);
+	entry_cnt = ldap_count_entries(query->ldap_conn->handle, query->result);
 	if (entry_cnt > name_cnt) {
 		REDEBUG("Number of DNs exceeds number of names, group and/or dn should be more restrictive");
 		rcode = RLM_MODULE_INVALID;
@@ -142,9 +148,9 @@ static rlm_rcode_t rlm_ldap_group_name2dn(rlm_ldap_t const *inst, REQUEST *reque
 			name_cnt, entry_cnt);
 	}
 
-	entry = ldap_first_entry((*pconn)->handle, result);
+	entry = ldap_first_entry(query->ldap_conn->handle, query->result);
 	if (!entry) {
-		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+		ldap_get_option(query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 
 		rcode = RLM_MODULE_FAIL;
@@ -152,9 +158,9 @@ static rlm_rcode_t rlm_ldap_group_name2dn(rlm_ldap_t const *inst, REQUEST *reque
 	}
 
 	do {
-		*dn = ldap_get_dn((*pconn)->handle, entry);
+		*dn = ldap_get_dn(query->ldap_conn->handle, entry);
 		if (!*dn) {
-			ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+			ldap_get_option(query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 			REDEBUG("Retrieving object DN from entry failed: %s", ldap_err2string(ldap_errno));
 
 			rcode = RLM_MODULE_FAIL;
@@ -164,13 +170,12 @@ static rlm_rcode_t rlm_ldap_group_name2dn(rlm_ldap_t const *inst, REQUEST *reque
 
 		RDEBUG2("Got group DN \"%s\"", *dn);
 		dn++;
-	} while((entry = ldap_next_entry((*pconn)->handle, entry)));
+	} while((entry = ldap_next_entry(query->ldap_conn->handle, entry)));
 
 	*dn = NULL;
 
 finish:
 	talloc_free(filter);
-	if (result) ldap_msgfree(result);
 
 	/*
 	 *	Be nice and cleanup the output array if we error out.
@@ -181,7 +186,7 @@ finish:
 		*dn = NULL;
 	}
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /** Convert a single group name into a DN
@@ -189,57 +194,62 @@ finish:
  * Unlike the inverse conversion of a name to a DN, most LDAP directories don't allow filtering by DN,
  * so we need to search for each DN individually.
  *
- * @param[in] inst rlm_ldap configuration.
- * @param[in] request Current request.
- * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
- * @param[in] dn to resolve.
- * @param[out] out Where to write group name (must be freed with talloc_free).
+ * @param[out] p_result		The result of trying to resolve a dn to a group name.
+ * @param[in] inst		rlm_ldap configuration.
+ * @param[in] request		Current request.
+ * @param[in] ttrunk		to use.
+ * @param[in] dn		to resolve.
+ * @param[out] out		Where to write group name (must be freed with talloc_free).
  * @return One of the RLM_MODULE_* values.
  */
-static rlm_rcode_t rlm_ldap_group_dn2name(rlm_ldap_t const *inst, REQUEST *request,
-					  fr_ldap_connection_t **pconn, char const *dn, char **out)
+static unlang_action_t rlm_ldap_group_dn2name(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
+					      fr_ldap_thread_trunk_t *ttrunk, char const *dn, char **out)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
-	fr_ldap_rcode_t status;
 	int ldap_errno;
 
 	struct berval **values = NULL;
 	char const *attrs[] = { inst->groupobj_name_attr, NULL };
-	LDAPMessage *result = NULL, *entry;
+	LDAPMessage	*entry;
+	fr_ldap_query_t	*query = NULL;
 
 	*out = NULL;
 
 	if (!inst->groupobj_name_attr) {
 		REDEBUG("Told to resolve group DN to name but missing 'group.name_attribute' directive");
 
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	RDEBUG2("Resolving group DN \"%s\" to group name", dn);
 
-	status = fr_ldap_search(&result, request, pconn, dn, LDAP_SCOPE_BASE, NULL, attrs, NULL, NULL);
-	switch (status) {
-	case LDAP_PROC_SUCCESS:
+	if (fr_ldap_trunk_search(&rcode,
+				 unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, dn,
+				 LDAP_SCOPE_BASE, NULL, attrs, NULL, NULL, false) < 0) {
+		RETURN_MODULE_FAIL;
+	}
+	switch (rcode) {
+	case RLM_MODULE_OK:
 		break;
 
-	case LDAP_PROC_NO_RESULT:
+	case RLM_MODULE_NOTFOUND:
 		REDEBUG("Group DN \"%s\" did not resolve to an object", dn);
-		return inst->allow_dangling_group_refs ? RLM_MODULE_NOOP : RLM_MODULE_INVALID;
+		RETURN_MODULE_RCODE(inst->allow_dangling_group_refs ? RLM_MODULE_NOOP : RLM_MODULE_INVALID);
 
 	default:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	entry = ldap_first_entry((*pconn)->handle, result);
+	entry = ldap_first_entry(query->ldap_conn->handle, query->result);
 	if (!entry) {
-		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+		ldap_get_option(query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 
 		rcode = RLM_MODULE_INVALID;
 		goto finish;
 	}
 
-	values = ldap_get_values_len((*pconn)->handle, entry, inst->groupobj_name_attr);
+	values = ldap_get_values_len(query->ldap_conn->handle, entry, inst->groupobj_name_attr);
 	if (!values) {
 		REDEBUG("No %s attributes found in object", inst->groupobj_name_attr);
 
@@ -252,23 +262,25 @@ static rlm_rcode_t rlm_ldap_group_dn2name(rlm_ldap_t const *inst, REQUEST *reque
 	RDEBUG2("Group DN \"%s\" resolves to name \"%s\"", dn, *out);
 
 finish:
-	if (result) ldap_msgfree(result);
 	if (values) ldap_value_free_len(values);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /** Convert group membership information into attributes
  *
- * @param[in] inst rlm_ldap configuration.
- * @param[in] request Current request.
- * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
- * @param[in] entry retrieved by rlm_ldap_find_user or fr_ldap_search.
- * @param[in] attr membership attribute to look for in the entry.
+ * @param[out] p_result		The result of trying to resolve a dn to a group name.
+ * @param[in] inst		rlm_ldap configuration.
+ * @param[in] request		Current request.
+ * @param[in] ttrunk		to use.
+ * @param[in] entry		retrieved by rlm_ldap_find_user or fr_ldap_search.
+ * @param[in] handle		on which original object was found.
+ * @param[in] attr		membership attribute to look for in the entry.
  * @return One of the RLM_MODULE_* values.
  */
-rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
-				       LDAPMessage *entry, char const *attr)
+unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t const *inst,
+					   request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+					   LDAPMessage *entry, LDAP *handle, char const *attr)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 
@@ -282,30 +294,30 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 
 	char *name;
 
-	VALUE_PAIR *vp, **list, *groups = NULL;
+	fr_pair_t *vp;
+	fr_pair_list_t *list, groups;
 	TALLOC_CTX *list_ctx, *value_ctx;
-	fr_cursor_t list_cursor, groups_cursor;
 
 	int is_dn, i, count;
 
-	rad_assert(entry);
-	rad_assert(attr);
+	fr_assert(entry);
+	fr_assert(attr);
 
 	/*
 	 *	Parse the membership information we got in the initial user query.
 	 */
-	values = ldap_get_values_len((*pconn)->handle, entry, attr);
+	values = ldap_get_values_len(handle, entry, attr);
 	if (!values) {
 		RDEBUG2("No cacheable group memberships found in user object");
 
-		return RLM_MODULE_OK;
+		RETURN_MODULE_OK;
 	}
 	count = ldap_count_values_len(values);
 
-	list = radius_list(request, PAIR_LIST_CONTROL);
-	list_ctx = radius_list_ctx(request, PAIR_LIST_CONTROL);
-	rad_assert(list != NULL);
-	rad_assert(list_ctx != NULL);
+	list = tmpl_list_head(request, PAIR_LIST_CONTROL);
+	list_ctx = tmpl_list_ctx(request, PAIR_LIST_CONTROL);
+	fr_assert(list != NULL);
+	fr_assert(list_ctx != NULL);
 
 	/*
 	 *	Simplifies freeing temporary values
@@ -317,7 +329,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 	 *	once all group info has been gathered/resolved
 	 *	successfully.
 	 */
-	fr_cursor_init(&groups_cursor, &groups);
+	fr_pair_list_init(&groups);
 
 	for (i = 0; (i < LDAP_MAX_CACHEABLE) && (i < count); i++) {
 		is_dn = fr_ldap_util_is_dn(values[i]->bv_val, values[i]->bv_len);
@@ -328,8 +340,8 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 			 */
 			if (is_dn) {
 				MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
-				fr_pair_value_bstrncpy(vp, values[i]->bv_val, values[i]->bv_len);
-				fr_cursor_append(&groups_cursor, vp);
+				fr_pair_value_bstrndup(vp, values[i]->bv_val, values[i]->bv_len, true);
+				fr_pair_append(&groups, vp);
 			/*
 			 *	We were told to cache DNs but we got a name, we now need to resolve
 			 *	this to a DN. Store all the group names in an array so we can do one query.
@@ -345,8 +357,8 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 			 */
 			if (!is_dn) {
 				MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
-				fr_pair_value_bstrncpy(vp, values[i]->bv_val, values[i]->bv_len);
-				fr_cursor_append(&groups_cursor, vp);
+				fr_pair_value_bstrndup(vp, values[i]->bv_val, values[i]->bv_len, true);
+				fr_pair_append(&groups, vp);
 			/*
 			 *	We were told to cache names but we got a DN, we now need to resolve
 			 *	this to a name.
@@ -357,7 +369,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 				char *dn;
 
 				dn = fr_ldap_berval_to_string(value_ctx, values[i]);
-				rcode = rlm_ldap_group_dn2name(inst, request, pconn, dn, &name);
+				rlm_ldap_group_dn2name(&rcode, inst, request, ttrunk, dn, &name);
 				talloc_free(dn);
 
 				if (rcode == RLM_MODULE_NOOP) continue;
@@ -367,68 +379,66 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 					talloc_free(value_ctx);
 					fr_pair_list_free(&groups);
 
-					return rcode;
+					RETURN_MODULE_RCODE(rcode);
 				}
 
 				MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
-				fr_pair_value_bstrncpy(vp, name, talloc_array_length(name) - 1);
-				fr_cursor_append(&groups_cursor, vp);
+				fr_pair_value_bstrdup_buffer(vp, name, true);
+				fr_pair_append(&groups, vp);
 				talloc_free(name);
 			}
 		}
 	}
 	*name_p = NULL;
 
-	rcode = rlm_ldap_group_name2dn(inst, request, pconn, group_name, group_dn, sizeof(group_dn));
+	rlm_ldap_group_name2dn(&rcode, inst, request, ttrunk, group_name, group_dn, sizeof(group_dn));
 
 	ldap_value_free_len(values);
 	talloc_free(value_ctx);
 
-	if (rcode != RLM_MODULE_OK) return rcode;
-
-	fr_cursor_init(&list_cursor, list);
+	if (rcode != RLM_MODULE_OK) RETURN_MODULE_RCODE(rcode);
 
 	RDEBUG2("Adding cacheable user object memberships");
 	RINDENT();
 	if (RDEBUG_ENABLED) {
-		for (vp = fr_cursor_head(&groups_cursor);
+		for (vp = fr_pair_list_head(&groups);
 		     vp;
-		     vp = fr_cursor_next(&groups_cursor)) {
-			RDEBUG2("&control:%s += \"%pV\"", inst->cache_da->name, &vp->data);
+		     vp = fr_pair_list_next(&groups, vp)) {
+			RDEBUG2("&control.%s += \"%pV\"", inst->cache_da->name, &vp->data);
 		}
 	}
 
-	fr_cursor_head(&groups_cursor);
-	fr_cursor_merge(&list_cursor, &groups_cursor);
+	fr_pair_list_append(list, &groups);
 
 	for (dn_p = group_dn; *dn_p; dn_p++) {
 		MEM(vp = fr_pair_afrom_da(list_ctx, inst->cache_da));
-		fr_pair_value_strcpy(vp, *dn_p);
-		fr_cursor_append(&list_cursor, vp);
+		fr_pair_value_strdup(vp, *dn_p, false);
+		fr_pair_append(list, vp);
 
-		RDEBUG2("&control:%s += \"%pV\"", inst->cache_da->name, &vp->data);
+		RDEBUG2("&control.%s += \"%pV\"", inst->cache_da->name, &vp->data);
 		ldap_memfree(*dn_p);
 	}
 	REXDENT();
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /** Convert group membership information into attributes
  *
- * @param[in] inst rlm_ldap configuration.
- * @param[in] request Current request.
- * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
+ * @param[out] p_result		The result of trying to resolve a dn to a group name.
+ * @param[in] inst		rlm_ldap configuration.
+ * @param[in] request		Current request.
+ * @param[in] ttrunk		to use.
  * @return One of the RLM_MODULE_* values.
  */
-rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn)
+unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, rlm_ldap_t const *inst,
+					    request_t *request, fr_ldap_thread_trunk_t *ttrunk)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
-	fr_ldap_rcode_t status;
 	int ldap_errno;
 
-	LDAPMessage *result = NULL;
 	LDAPMessage *entry;
+	fr_ldap_query_t	*query;
 
 	char const *base_dn;
 	char base_dn_buff[LDAP_MAX_DN_STR_LEN];
@@ -438,37 +448,41 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request
 
 	char const *attrs[] = { inst->groupobj_name_attr, NULL };
 
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	char *dn;
 
-	rad_assert(inst->groupobj_base_dn);
+	fr_assert(inst->groupobj_base_dn);
 
 	if (!inst->groupobj_membership_filter) {
 		RDEBUG2("Skipping caching group objects as directive 'group.membership_filter' is not set");
 
-		return RLM_MODULE_OK;
+		RETURN_MODULE_OK;
 	}
 
 	if (fr_ldap_xlat_filter(request,
-				 filters, sizeof(filters) / sizeof(*filters),
+				 filters, NUM_ELEMENTS(filters),
 				 filter, sizeof(filter)) < 0) {
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (tmpl_expand(&base_dn, base_dn_buff, sizeof(base_dn_buff), request,
 			inst->groupobj_base_dn, fr_ldap_escape_func, NULL) < 0) {
 		REDEBUG("Failed creating base_dn");
 
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
-	status = fr_ldap_search(&result, request, pconn, base_dn,
-				inst->groupobj_scope, filter, attrs, NULL, NULL);
-	switch (status) {
-	case LDAP_PROC_SUCCESS:
+	if (fr_ldap_trunk_search(&rcode,
+				 unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, base_dn,
+				 inst->groupobj_scope, filter, attrs, NULL, NULL, false) < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
+	switch (rcode) {
+	case RLM_MODULE_OK:
 		break;
 
-	case LDAP_PROC_NO_RESULT:
+	case RLM_MODULE_NOTFOUND:
 		RDEBUG2("No cacheable group memberships found in group objects");
 		goto finish;
 
@@ -477,9 +491,9 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request
 		goto finish;
 	}
 
-	entry = ldap_first_entry((*pconn)->handle, result);
+	entry = ldap_first_entry(query->ldap_conn->handle, query->result);
 	if (!entry) {
-		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+		ldap_get_option(query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 
 		goto finish;
@@ -488,20 +502,20 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request
 	RDEBUG2("Adding cacheable group object memberships");
 	do {
 		if (inst->cacheable_group_dn) {
-			dn = ldap_get_dn((*pconn)->handle, entry);
+			dn = ldap_get_dn(query->ldap_conn->handle, entry);
 			if (!dn) {
-				ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+				ldap_get_option(query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 				REDEBUG("Retrieving object DN from entry failed: %s", ldap_err2string(ldap_errno));
 
 				goto finish;
 			}
 			fr_ldap_util_normalise_dn(dn, dn);
 
-			MEM(pair_add_control(&vp, inst->cache_da) == 0);
-			fr_pair_value_strcpy(vp, dn);
+			MEM(pair_append_control(&vp, inst->cache_da) == 0);
+			fr_pair_value_strdup(vp, dn, false);
 
 			RINDENT();
-			RDEBUG2("&control:%pP", vp);
+			RDEBUG2("&control.%pP", vp);
 			REXDENT();
 			ldap_memfree(dn);
 		}
@@ -509,46 +523,45 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request
 		if (inst->cacheable_group_name) {
 			struct berval **values;
 
-			values = ldap_get_values_len((*pconn)->handle, entry, inst->groupobj_name_attr);
+			values = ldap_get_values_len(query->ldap_conn->handle, entry, inst->groupobj_name_attr);
 			if (!values) continue;
 
-			MEM(pair_add_control(&vp, inst->cache_da) == 0);
-			fr_pair_value_bstrncpy(vp, values[0]->bv_val, values[0]->bv_len);
+			MEM(pair_append_control(&vp, inst->cache_da) == 0);
+			fr_pair_value_bstrndup(vp, values[0]->bv_val, values[0]->bv_len, true);
 
 			RINDENT();
-			RDEBUG2("&control:%pP", vp);
+			RDEBUG2("&control.%pP", vp);
 			REXDENT();
 
 			ldap_value_free_len(values);
 		}
-	} while ((entry = ldap_next_entry((*pconn)->handle, entry)));
+	} while ((entry = ldap_next_entry(query->ldap_conn->handle, entry)));
 
 finish:
-	if (result) ldap_msgfree(result);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /** Query the LDAP directory to check if a group object includes a user object as a member
  *
- * @param[in] inst rlm_ldap configuration.
- * @param[in] request Current request.
- * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
- * @param[in] check vp containing the group value (name or dn).
- * @return One of the RLM_MODULE_* values.
+ * @param[out] p_result		Result of calling the module.
+ * @param[in] inst		rlm_ldap configuration.
+ * @param[in] request		Current request.
+ * @param[in] ttrunk		to use.
+ * @param[in] check		vp containing the group value (name or dn).
  */
-rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
-					    VALUE_PAIR *check)
-
+unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
+						fr_ldap_thread_trunk_t *ttrunk, fr_pair_t const *check)
 {
-	fr_ldap_rcode_t	status;
+	rlm_rcode_t	rcode;
+	fr_ldap_query_t	*query = NULL;
 
 	char const	*base_dn;
 	char		base_dn_buff[LDAP_MAX_DN_STR_LEN + 1];
 	char 		filter[LDAP_MAX_FILTER_STR_LEN + 1];
 	int		ret;
 
-	rad_assert(inst->groupobj_base_dn);
+	fr_assert(inst->groupobj_base_dn);
 
 	switch (check->op) {
 	case T_OP_CMP_EQ:
@@ -560,7 +573,7 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *req
 
 	default:
 		REDEBUG("Operator \"%s\" not allowed for LDAP group comparisons",
-			fr_int2str(fr_tokens_table, check->op, "<INVALID>"));
+			fr_table_str_by_value(fr_tokens_table, check->op, "<INVALID>"));
 		return 1;
 	}
 
@@ -571,11 +584,11 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *req
 
 		RINDENT();
 		ret = fr_ldap_xlat_filter(request,
-					   filters, sizeof(filters) / sizeof(*filters),
+					   filters, NUM_ELEMENTS(filters),
 					   filter, sizeof(filter));
 		REXDENT();
 
-		if (ret < 0) return RLM_MODULE_INVALID;
+		if (ret < 0) RETURN_MODULE_INVALID;
 
 		base_dn = check->vp_strvalue;
 	} else {
@@ -586,16 +599,16 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *req
 			REDEBUG("Told to search for group by name, but missing 'group.name_attribute' "
 				"directive");
 
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 		}
 
 		snprintf(name_filter, sizeof(name_filter), "(%s=%s)", inst->groupobj_name_attr, check->vp_strvalue);
 		RINDENT();
 		ret = fr_ldap_xlat_filter(request,
-					   filters, sizeof(filters) / sizeof(*filters),
+					   filters, NUM_ELEMENTS(filters),
 					   filter, sizeof(filter));
 		REXDENT();
-		if (ret < 0) return RLM_MODULE_INVALID;
+		if (ret < 0) RETURN_MODULE_INVALID;
 
 
 		/*
@@ -608,45 +621,50 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *req
 		if (ret < 0) {
 			REDEBUG("Failed creating base_dn");
 
-			return RLM_MODULE_INVALID;
+			RETURN_MODULE_INVALID;
 		}
 	}
 
 	RINDENT();
-	status = fr_ldap_search(NULL, request, pconn, base_dn, inst->groupobj_scope, filter, NULL, NULL, NULL);
+	if (fr_ldap_trunk_search(&rcode,
+				 unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, base_dn,
+				 inst->groupobj_scope, filter, NULL, NULL, NULL, false) < 0) {
+		REXDENT();
+		RETURN_MODULE_FAIL;
+	}
 	REXDENT();
-	switch (status) {
-	case LDAP_PROC_SUCCESS:
+	switch (rcode) {
+	case RLM_MODULE_OK:
 		RDEBUG2("User found in group object \"%s\"", base_dn);
 		break;
 
-	case LDAP_PROC_NO_RESULT:
-		return RLM_MODULE_NOTFOUND;
+	case RLM_MODULE_NOTFOUND:
+		RETURN_MODULE_NOTFOUND;
 
 	default:
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /** Query the LDAP directory to check if a user object is a member of a group
  *
- * @param[in] inst rlm_ldap configuration.
- * @param[in] request Current request.
- * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
- * @param[in] dn of user object.
- * @param[in] check vp containing the group value (name or dn).
- * @return One of the RLM_MODULE_* values.
+ * @param[out] p_result		Result of calling the module.
+ * @param[in] inst		rlm_ldap configuration.
+ * @param[in] request		Current request.
+ * @param[in] ttrunk		to use.
+ * @param[in] dn		of user object.
+ * @param[in] check		vp containing the group value (name or dn).
  */
-rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
-					   char const *dn, VALUE_PAIR *check)
+unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result, rlm_ldap_t const *inst, request_t *request,
+					       fr_ldap_thread_trunk_t *ttrunk,
+					       char const *dn, fr_pair_t const *check)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_NOTFOUND, ret;
-	fr_ldap_rcode_t	status;
 	bool		name_is_dn = false, value_is_dn = false;
+	fr_ldap_query_t	*query;
 
-	LDAPMessage     *result = NULL;
 	LDAPMessage     *entry = NULL;
 	struct berval	**values = NULL;
 
@@ -655,25 +673,28 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *requ
 
 	RDEBUG2("Checking user object's %s attributes", inst->userobj_membership_attr);
 	RINDENT();
-	status = fr_ldap_search(&result, request, pconn, dn, LDAP_SCOPE_BASE, NULL, attrs, NULL, NULL);
+	if (fr_ldap_trunk_search(&rcode,
+				 unlang_interpret_frame_talloc_ctx(request), &query, request, ttrunk, dn,
+				 LDAP_SCOPE_BASE, NULL, attrs, NULL, NULL, false) < 0) {
+		REXDENT();
+		goto finish;
+	}
 	REXDENT();
-	switch (status) {
-	case LDAP_PROC_SUCCESS:
+	switch (rcode) {
+	case RLM_MODULE_OK:
 		break;
 
-	case LDAP_PROC_NO_RESULT:
+	case RLM_MODULE_NOTFOUND:
 		RDEBUG2("Can't check membership attributes, user object not found");
 
-		rcode = RLM_MODULE_NOTFOUND;
-
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 	default:
 		goto finish;
 	}
 
-	entry = ldap_first_entry((*pconn)->handle, result);
+	entry = ldap_first_entry(query->ldap_conn->handle, query->result);
 	if (!entry) {
-		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+		ldap_get_option(query->ldap_conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 
 		rcode = RLM_MODULE_FAIL;
@@ -681,7 +702,7 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *requ
 		goto finish;
 	}
 
-	values = ldap_get_values_len((*pconn)->handle, entry, inst->userobj_membership_attr);
+	values = ldap_get_values_len(query->ldap_conn->handle, entry, inst->userobj_membership_attr);
 	if (!values) {
 		RDEBUG2("No group membership attribute(s) found in user object");
 
@@ -748,7 +769,7 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *requ
 			bool eq = false;
 
 			RINDENT();
-			ret = rlm_ldap_group_dn2name(inst, request, pconn, check->vp_strvalue, &resolved);
+			rlm_ldap_group_dn2name(&ret, inst, request, ttrunk, check->vp_strvalue, &resolved);
 			REXDENT();
 
 			if (ret == RLM_MODULE_NOOP) continue;
@@ -784,7 +805,7 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *requ
 
 			value = fr_ldap_berval_to_string(request, values[i]);
 			RINDENT();
-			ret = rlm_ldap_group_dn2name(inst, request, pconn, value, &resolved);
+			rlm_ldap_group_dn2name(&ret, inst, request, ttrunk, value, &resolved);
 			REXDENT();
 			talloc_free(value);
 
@@ -799,8 +820,8 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *requ
 			    (memcmp(check->vp_strvalue, resolved, check->vp_length) == 0)) eq = true;
 			talloc_free(resolved);
 			if (eq) {
-				RDEBUG2("User found in group \"%s\". Comparison between membership: name "
-				       "(resolved from DN \"%s\"), check: name", check->vp_strvalue, value);
+				RDEBUG2("User found in group \"%pV\". Comparison between membership: name "
+				       "(resolved from DN \"%s\"), check: name", &check->data, value);
 				rcode = RLM_MODULE_OK;
 
 				goto finish;
@@ -808,50 +829,49 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *requ
 
 			continue;
 		}
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 finish:
 	if (values) ldap_value_free_len(values);
-	if (result) ldap_msgfree(result);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /** Check group membership attributes to see if a user is a member.
  *
- * @param[in] inst	rlm_ldap configuration.
- * @param[in] request	Current request.
- * @param[in] check	vp containing the group value (name or dn).
- *
- * @return One of the RLM_MODULE_* values.
+ * @param[out] p_result		Result of calling the module.
+ * @param[in] inst		rlm_ldap configuration.
+ * @param[in] request		Current request.
+ * @param[in] check		vp containing the group value (name or dn).
  */
-rlm_rcode_t rlm_ldap_check_cached(rlm_ldap_t const *inst, REQUEST *request, VALUE_PAIR *check)
+unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
+				      rlm_ldap_t const *inst, request_t *request, fr_pair_t const *check)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	int		ret;
-	fr_cursor_t	cursor;
+	fr_dcursor_t	cursor;
 
 	/*
 	 *	We return RLM_MODULE_INVALID here as an indication
 	 *	the caller should try a dynamic group lookup instead.
 	 */
-	vp =  fr_cursor_iter_by_da_init(&cursor, &request->control, inst->cache_da);
-	if (!vp) return RLM_MODULE_INVALID;
+	vp =  fr_pair_dcursor_by_da_init(&cursor, &request->control_pairs, inst->cache_da);
+	if (!vp) RETURN_MODULE_INVALID;
 
-	for (vp = fr_cursor_current(&cursor);
+	for (vp = fr_dcursor_current(&cursor);
 	     vp;
-	     vp = fr_cursor_next(&cursor)) {
+	     vp = fr_dcursor_next(&cursor)) {
 		ret = fr_pair_cmp_op(T_OP_CMP_EQ, vp, check);
 		if (ret == 1) {
 			RDEBUG2("User found. Matched cached membership");
-			return RLM_MODULE_OK;
+			RETURN_MODULE_OK;
 		}
 
-		if (ret < -1) return RLM_MODULE_FAIL;
+		if (ret < -1) RETURN_MODULE_FAIL;
 	}
 
 	RDEBUG2("Cached membership not found");
 
-	return RLM_MODULE_NOTFOUND;
+	RETURN_MODULE_NOTFOUND;
 }

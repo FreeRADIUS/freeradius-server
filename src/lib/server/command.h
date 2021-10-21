@@ -33,7 +33,7 @@ extern "C" {
 
 #define CMD_MAX_ARGV (32)
 
-typedef struct fr_cmd_t fr_cmd_t;
+typedef struct fr_cmd_s fr_cmd_t;
 
 typedef struct {
 	int		argc;				//!< current argument count

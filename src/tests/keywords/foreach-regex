@@ -7,7 +7,7 @@ update request {
 }
 
 # Expanded regex
-foreach &Cisco-AVPair {
+foreach &Vendor-Specific.Cisco.AVPair {
 	if ("%{Foreach-Variable-0}"  =~ /^%{Tmp-String-0}=(.*)$/i) {
 		update reply {
 			&Called-Station-Id += "%{1}"
@@ -16,7 +16,7 @@ foreach &Cisco-AVPair {
 }
 
 # Compiled regex
-foreach &Cisco-AVPair {
+foreach &Vendor-Specific.Cisco.AVPair {
 	if ("%{Foreach-Variable-0}"  =~ /^stupid=(.*)$/i) {
 		update reply {
 			&Called-Station-Id += "%{1}"

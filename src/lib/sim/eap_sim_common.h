@@ -1,6 +1,6 @@
 #pragma once
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -35,7 +35,7 @@
 #define EAP_AKA_AUTH_SIZE		16
 #define EAP_AKA_PRIME_AUTH_SIZE		32
 
-typedef enum eap_sim_subtype {
+typedef enum {
 	EAP_SIM_START			= 10,	//!< Start packet used for version negotiation.
 	EAP_SIM_CHALLENGE		= 11,	//!< Challenge packet for distributing NONCE and RAND values.
 	EAP_SIM_NOTIFICATION		= 12,	//!< Notification packet.

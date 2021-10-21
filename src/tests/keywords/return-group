@@ -1,7 +1,8 @@
-# PRE: return
+#
+#  PRE: update if return
 #
 update {
-	&control:Auth-Type = 'Accept'
+	&control.Auth-Type = 'Accept'
 }
 
 group {
@@ -12,11 +13,11 @@ group {
 
 	# This entry should never be reached
 	update {
-		&reply:Reply-Message := 'fail'
+		&reply.Reply-Message := 'fail'
 	}
 }
 
 # We should continue processing after the previous group.
 update {
-	&reply:Reply-Message += 'pass'
+	&reply.Reply-Message += 'pass'
 }

@@ -10,29 +10,29 @@ TRIE_FILES := $(subst $(DIR)/,,$(wildcard $(DIR)/*.txt))
 $(BUILD_DIR)/tests/trie:
 	${Q}mkdir -p $@
 
-$(BUILD_DIR)/tests/trie/trie-%: $(DIR)/% $(TESTBINDIR)/trie | $(BUILD_DIR)/tests/trie
+$(BUILD_DIR)/tests/trie/trie-%: $(DIR)/% $(TEST_BIN_DIR)/trie | $(BUILD_DIR)/tests/trie
 	@echo TRIE-TEST $(notdir $@)
-	@$(TESTBIN)/trie $^ > $@
+	@$(TEST_BIN)/trie $^ > $@
 
-$(BUILD_DIR)/tests/trie/nopc-%: $(DIR)/% $(TESTBINDIR)/nopc | $(BUILD_DIR)/tests/trie
+$(BUILD_DIR)/tests/trie/nopc-%: $(DIR)/% $(TEST_BIN_DIR)/nopc | $(BUILD_DIR)/tests/trie
 	@echo TRIE-NO-PC-TEST $(notdir $@)
-	@$(TESTBIN)/nopc $^ > $@
+	@$(TEST_BIN)/nopc $^ > $@
 
 #
 #  Get all of the unit test output files
 #
-TESTS.TRIE_FILES := $(addprefix $(BUILD_DIR)/tests/trie/trie-,$(TRIE_FILES))
-#TESTS.TRIE_FILES += $(addprefix $(BUILD_DIR)/tests/trie/nopc-,$(TRIE_FILES))
+TEST.TRIE_FILES := $(addprefix $(BUILD_DIR)/tests/trie/trie-,$(TRIE_FILES))
+#TEST.TRIE_FILES += $(addprefix $(BUILD_DIR)/tests/trie/nopc-,$(TRIE_FILES))
 
 #
 #  Depend on the output files, and create the directory first.
 #
-tests.trie: $(TESTS.TRIE_FILES)
+test.trie: $(TEST.TRIE_FILES)
 
-$(TESTS.TRIE_FILES): $(TESTS.UNIT_FILES)
+$(TEST.TRIE_FILES): $(TEST.UNIT_FILES)
 
-.PHONY: clean.tests.trie
-clean.tests.trie:
+.PHONY: clean.test.trie
+clean.test.trie:
 	${Q}rm -rf $(BUILD_DIR)/tests/trie/
 
-clean.test: clean.tests.trie
+clean.test: clean.test.trie

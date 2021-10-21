@@ -1,11 +1,6 @@
 #
 # PRE: update
 #
-#  Remove all attributes in a list
-#
-update {
-	&control:Cleartext-Password := 'hello'
-}
 
 update request {
 	&Tmp-IP-Address-0 := 192.0.2.1
@@ -29,7 +24,7 @@ if ("%{Tmp-IP-Address-0[*]}" != '192.0.2.1,192.0.2.2') {
 update request {
 	&Tmp-IP-Address-1 += "%{Tmp-IP-Address-0[1]}"
 	&Tmp-IP-Address-1 += "%{Tmp-IP-Address-0[0]}"
-	&Tmp-String-0 = "%{concat:,%{Tmp-IP-Address-0[*]}}"
+	&Tmp-String-0 = "%(concat:%{Tmp-IP-Address-0[*]} ,)"
 	&Tmp-Integer-0 = "%{Tmp-IP-Address-0[#]}"
 }
 

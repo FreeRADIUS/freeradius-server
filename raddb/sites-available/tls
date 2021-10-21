@@ -133,6 +133,10 @@ server radsec {
 			#
 		#	allow_expired_crl = no
 
+			#  Accept a not-yet-valid Certificate Revocation List
+			#
+		#	allow_not_yet_valid_crl = no
+
 			#
 			#  If check_cert_issuer is set, the value will
 			#  be checked against the DN of the issuer in

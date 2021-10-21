@@ -1,0 +1,482 @@
+name: CI
+
+on:
+  push:
+    branches-ignore:
+      - coverity_scan
+  pull_request:
+
+env:
+  ASAN_OPTIONS: symbolize=1 detect_leaks=1 detect_stack_use_after_return=1
+  LSAN_OPTIONS: fast_unwind_on_malloc=0:malloc_context_size=50
+  KQUEUE_DEBUG: yes
+  M_PERTURB: "0x42"
+  PANIC_ACTION: "gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
+  ANALYZE_C_DUMP: 1
+  FR_GLOBAL_POOL: 4M
+  TEST_CERTS: yes
+  NO_PERFORMANCE_TESTS: yes
+  DO_BUILD: yes
+  HOSTAPD_BUILD_DIR: eapol_test.ci
+  HOSTAPD_GIT_TAG: hostap_2_9
+  DEBIAN_FRONTEND: noninteractive
+  CI: 1
+  GH_ACTIONS: 1
+
+jobs:
+  pre-ci:
+    runs-on: ubuntu-latest
+    # Map a step output to a job output
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@master
+
+  ci:
+    needs: pre-ci
+    if: ${{ needs.pre-ci.outputs.should_skip != 'true' }}
+
+    runs-on: ${{ matrix.env.OS }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        env:
+          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-gcc-lean      }
+          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-gcc           }
+          - { CC: gcc,   BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-gcc-O2-g3     }
+          - { CC: gcc,   BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-gcc-ndebug    }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang-lean    }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang         }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang-O2-g3   }
+          - { CC: clang, BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang-ndebug  }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: yes, TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang-altlibs }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: macos,    OS: macos-11,  NAME: macos-clang         }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fuzzing,  OS: ubuntu-20.04, NAME: linux-fuzzer        }
+
+    env: ${{ matrix.env }}
+
+    #  If branch protection is in place with status checks enabled, ensure
+    #  names are updated if new matrix entries are added or the name format
+    #  changes.
+    name: "master-${{ matrix.env.NAME }}"
+
+    steps:
+
+    # Checkout, but defer pulling LFS objects until we've restored the cache
+    - uses: actions/checkout@v2
+      with:
+        lfs: false
+
+    - name: Create LFS file list as cache key
+      run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+
+    - name: Restore LFS cache
+      uses: actions/cache@v2
+      id: lfs-cache
+      with:
+        path: .git/lfs
+        key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}-v1
+
+    # Now the LFS pull will be local if we hit the cache, or remote otherwise
+    - name: Git LFS pull
+      run: git lfs pull
+
+    - name: Restore eapol_test build directory from cache
+      uses: actions/cache@v2
+      id: hostapd-cache
+      with:
+        path: ${{ env.HOSTAPD_BUILD_DIR }}
+        key: hostapd-${{ runner.os }}-${{ env.HOSTAPD_GIT_TAG }}-v4
+      if: ${{ matrix.env.TEST_TYPE != 'fuzzing' }}
+
+    - name: Package manager performance improvements
+      if: ${{ runner.os != 'macOS' }}
+      run: |
+        sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
+        echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
+        sudo dpkg-reconfigure man-db
+        sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
+
+    #
+    #  NetworkRADIUS repo is needed for up-to-date versions
+    #  of libkqueue.  Although libkqueue is available via
+    #  debian, it's too old and the EVFILT_PROC filter is
+    #  disabled.
+    #
+    #  We don't need this on macOS as it has a native kqueue
+    #  implementation.
+    #
+    - name: NetworkRADIUS signing key
+      if: ${{ runner.os != 'macOS' }}
+      run: sudo /bin/sh -c "curl -sS https://packages.networkradius.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -"
+
+    - name: Set up NetworkRADIUS extras repository
+      if: ${{ runner.os != 'macOS' }}
+      run: |
+        DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
+        RELEASE=$(lsb_release -cs)
+        sudo /bin/sh -c "echo \"deb http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main\" \
+          > /etc/apt/sources.list.d/networkradius-extras.list"
+
+    - name: Install build dependencies based on Debian packages plus extra CI packages
+      if: ${{ runner.os != 'macOS' }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends build-essential devscripts equivs quilt
+        debian/rules debian/control
+        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
+        sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
+
+    - uses: actions/setup-ruby@v1
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
+
+    - name: Install cassandra driver (not yet available on 20.04)
+      if: ${{ matrix.env.OS == 'ubuntu-18.04' }}
+      run: sudo ./scripts/ci/cassandra-install.sh
+
+    - name: Install dependencies (macOS)
+      if: ${{ runner.os == 'macOS' }}
+      run: |
+        brew install \
+          cassandra-cpp-driver \
+          gperftools \
+          hiredis \
+          json-c \
+          libidn \
+          libmemcached \
+          luajit \
+          mariadb \
+          make \
+          mruby \
+          openssl@1.1 \
+          openssl \
+          talloc
+        ln -s `brew --prefix`/opt/make/bin/gmake /usr/local/bin/make
+        echo "#! /bin/sh"               >> /usr/local/bin/nproc
+        echo "sysctl -n hw.physicalcpu" >> /usr/local/bin/nproc
+        chmod +x /usr/local/bin/nproc
+      env:
+        HOMEBREW_NO_AUTO_UPDATE: 1
+        HOMEBREW_NO_INSTALL_CLEANUP: 1
+        HOMEBREW_CLEANUP_PERIODIC_FULL_DAYS: 3650
+
+    - name: Install tacacs_plus
+      run: |
+        pip3 install tacacs_plus
+
+    - name: Install LLVM 10
+      if: ${{ matrix.env.CC == 'clang' && runner.os != 'macOS' }}
+      run: |
+        sudo apt-get install -y --no-install-recommends clang-10 llvm-10 gdb
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10
+        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10
+
+    - name: Set compiler to GCC 10
+      if: ${{ matrix.env.CC == 'gcc' }}
+      run: |
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 60 && sudo update-alternatives --set gcc /usr/bin/gcc-10
+
+    #
+    #  Build using some alternative libraries
+    #
+    #    PCRE 2       -> PCRE 1
+    #    MIT Kerberos -> HEIMDAL Kerberos
+    #
+    - name: Use alternative libraries
+      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+      run: |
+        sudo apt-get install -y --no-install-recommends libpcre3-dev  # "PCRE 1"
+        sudo apt-get purge -y libpcre2-dev  # Remove default PCRE 2, leaving only PCRE 1
+        sudo apt-get install -y --no-install-recommends heimdal-dev
+
+    - name: Show versions
+      run: |
+        $CC --version
+        make --version
+        krb5-config --all || :
+        pcre-config --libs-posix --version 2>/dev/null || :
+        pcre2-config --libs-posix --version 2>/dev/null || :
+
+    - name: Configure
+      run: |
+        if $CC -v 2>&1 | grep clang > /dev/null; then
+            echo "Enabling sanitizers"
+            enable_sanitizers="--enable-address-sanitizer --enable-undefined-behaviour-sanitizer"
+            if [ "`uname`" != "Darwin" ]; then
+                enable_sanitizers="$enable_sanitizers --enable-leak-sanitizer"
+            fi
+            if [ "$TEST_TYPE" = "fuzzing" ]; then
+                enable_sanitizers="$enable_sanitizers --enable-fuzzer"
+            fi
+        else
+            enable_sanitizers=""
+        fi
+        if [ "`uname`" = "Darwin" ]; then
+            build_paths="--with-libfreeradius-ldap-lib-dir=`brew --prefix`/opt/openldap/lib --with-libfreeradius-ldap-include-dir=`brew --prefix`/opt/openldap/include --with-openssl-lib-dir=`brew --prefix`/opt/openssl/lib --with-openssl-include-dir=`brew --prefix`/opt/openssl/include --with-unixodbc-lib-dir=`brew --prefix`/opt/unixodbc/lib --with-unixodbc-include-dir=`brew --prefix`/opt/unixodbc/include"
+        else
+            build_paths=""
+        fi
+        CFLAGS="${BUILD_CFLAGS}" ./configure -C \
+            --enable-werror \
+            $enable_sanitizers \
+            $build_paths \
+            --prefix=$HOME/freeradius \
+            --with-threads=$LIBS_OPTIONAL \
+            --with-udpfromto=$LIBS_OPTIONAL \
+            --with-openssl=$LIBS_OPTIONAL \
+            --with-pcre=$LIBS_OPTIONAL \
+        || cat ./config.log
+        echo "Contents of src/include/autoconf.h"
+        cat "./src/include/autoconf.h"
+
+    - name: Make
+      run: |
+        make -j `nproc`
+      if: ${{ matrix.env.TEST_TYPE != 'fuzzing' }}
+
+    # Disabled on MacOS and when fuzzing to reduce the runtime
+    - name: Clang Static Analyzer
+      if: ${{ matrix.env.CC == 'clang' && runner.os != 'macOS' && matrix.env.TEST_TYPE != 'fuzzing' }}
+      run: |
+        make -j `nproc` scan && [ "$(find build/plist/ -name *.html)" = '' ];
+
+    - name: "Clang Static Analyzer: Store assets on failure"
+      uses: actions/upload-artifact@v2
+      with:
+        name: clang-scan.tgz
+        path: build/plist/**/*.html
+        retention-days: 30
+      if: ${{ matrix.env.CC == 'clang' && failure() }}
+
+    - name: Install and setup fixtures then run full CI tests
+      if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
+      run: |
+        # Temporarily replace ucf (for config merge) with cp since it's
+        # terribly slow!
+        sudo mv /usr/bin/ucf /usr/bin/ucf.disabled
+        sudo sh -c 'echo "#!/bin/sh"          >  /usr/bin/ucf'
+        sudo sh -c 'echo "shift && cp -v \$@" >> /usr/bin/ucf'
+        sudo chmod +x /usr/bin/ucf
+        wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
+        echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          apparmor-utils \
+          dovecot-imapd \
+          exim4 \
+          openresty \
+          redis-server redis-tools \
+          slapd ldap-utils
+        sudo mv -f /usr/bin/ucf.disabled /usr/bin/ucf
+        sudo systemctl stop dovecot exim4 slapd openresty
+        sudo aa-complain /usr/sbin/slapd
+
+        export PG_VER=14
+        sudo sh -c "echo host  all all 127.0.0.1/32 trust >  /etc/postgresql/$PG_VER/main/pg_hba.conf"
+        sudo sh -c "echo local all all              trust >> /etc/postgresql/$PG_VER/main/pg_hba.conf"
+
+        sudo systemctl start mysql postgresql redis-server
+
+        mysql -h 127.0.0.1 -uroot -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '';";
+
+        for i in \
+            postgresql-setup.sh \
+            imap-setup.sh \
+            exim-setup.sh \
+            mysql-setup.sh \
+            openresty-setup.sh \
+            ldap-setup.sh \
+            ldap2-setup.sh \
+            redis-setup.sh; do
+
+            script="./scripts/ci/$i"
+            echo "Calling $i"
+            $script
+        done
+
+        make ci-test
+
+      env:
+        SQL_MYSQL_TEST_SERVER: 127.0.0.1
+        SQL_POSTGRESQL_TEST_SERVER: 127.0.0.1
+        LDAP_TEST_SERVER: 127.0.0.1
+        LDAP_TEST_SERVER_PORT: 3890
+        LDAP_TEST_SERVER_SSL_PORT: 6360
+        REST_TEST_SERVER: 127.0.0.1
+        REST_TEST_SERVER_PORT: 8080
+        REST_TEST_SERVER_SSL_PORT: 8443
+#       SMTP_TEST_SERVER: 127.0.0.1
+#       SMTP_TEST_SERVER_PORT: 2525
+        REDIS_TEST_SERVER: 127.0.0.1
+        REDIS_IPPOOL_TEST_SERVER: 127.0.0.1
+#       IMAP_TEST_SERVER: 127.0.0.1
+#       IMAP_TEST_SERVER_PORT: 1430
+#       IMAP_TEST_SERVER_SSL_PORT: 1431
+
+    # Includes hack to disable trunk tests on MacOS which are currently broken
+    # Also, no detect_leaks support for ASAN
+    - name: Run basic tests (MacOS)
+      if: ${{ matrix.env.TEST_TYPE == 'macos' }}
+      run: |
+        : > src/lib/server/trunk_tests.mk
+        make test
+      env:
+        ASAN_OPTIONS: symbolize=1 detect_stack_use_after_return=1
+
+    # Fuzz in parallel, aiming to keep to overall runtime of this job in line
+    # with other jobs in the CI workflow
+    - name: Run fuzzer tests
+      if: ${{ matrix.env.TEST_TYPE == 'fuzzing' }}
+      run: |
+        # For fuzzing we won't be needing eapol_test
+        mkdir -p build/tests/eapol_test
+        : > build/tests/eapol_test/eapol_test.mk
+        make -j 5 test.fuzzer FUZZER_TIMEOUT=720
+        find build/fuzzer -type f | grep . && exit 1 || :
+
+    - name: "Clang libFuzzer: Store assets on failure"
+      uses: actions/upload-artifact@v2
+      with:
+        name: clang-fuzzer
+        path: build/fuzzer
+        retention-days: 30
+      if: ${{ matrix.env.TEST_TYPE == 'fuzzing' && failure() }}
+
+    #
+    #  If the CI has failed and the branch is ci-debug then we start a tmate
+    #  session to provide interactive shell access to the session.
+    #
+    #  The SSH rendezvous point will be emited continuously in the job output,
+    #  which will look something like:
+    #
+    #      SSH: ssh VfuX8SrNuU5pGPMyZcz7TpJTa@sfo2.tmate.io
+    #
+    #  For example:
+    #
+    #      git push origin ci-debug --force
+    #
+    #  Look at the job output in: https://github.com/FreeRADIUS/freeradius-server/actions
+    #
+    #      ssh VfuX8SrNuU5pGPMyZcz7TpJTa@sfo2.tmate.io
+    #
+    #  Access requires that you have the private key corresponding to the
+    #  public key of the GitHub user that initiated the job.
+    #
+    - name: "Debug: Start tmate"
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+
+##########################################################################################
+#                            FREERADIUS CORE DEVELOPERS ONLY
+##########################################################################################
+#
+#  Direct push access to the main freeradius-server repo will be disabled in an attempt
+#  to keep CI passing reliably.
+#
+#  If the above CI checks pass then we auto-merge into the same upstream branch
+#  (only on push) if a PERSONAL_ACCESS_TOKEN secret is defined, i.e. when
+#  the actor claims to be a FreeRADIUS developer with push access.
+#
+#  Personal access tokens can be generated via the GitHub website:
+#
+#  - Click on the Profile menu (top right)
+#    > Settings
+#    > Developer settings
+#    > Personal access tokens
+#    > Generate New Token
+#  - Next, add the following settings and scopes:
+#    Note: FreeRADIUS CI Push
+#    repo (checked)
+#    workflow (checked)
+#
+#  This will allow any git operations using this PERSONAL_ACCESS_TOKEN to commit code to any
+#  public repository you have access to.
+#
+#  As this PERSONAL_ACCESS_TOKEN will only ever be accessible from GitHub actions when they are
+#  running from your fork of the FreeRADIUS repo, this shouldn't be a security issue.
+#
+#  After generating your PERSONAL_ACCESS_TOKEN you will need to add it as a secret to your
+#  repository.
+#
+#  - Copy your new token
+#  - Click on the Profile menu (top right)
+#    > Your repositories
+#  - Search for freeradius-server
+#    > Click freeradius-server
+#  - Click settings in the tabs on the left
+#  - Click secrets in the menu items on the left
+#  - Click New repository secret
+#  - Name: PERSONAL_ACCESS_TOKEN
+#    Value: <value you copied>
+#  - Click Add secret
+#
+#  You may also wish to set a different pushurl for your local repository to make integration
+#  more seamless:
+#
+#  git config remote.origin.pushurl git@github.com:<github_user>/freeradius-server.git
+#
+#  git pull will then pull from the upstream repo, whilst git push will be directed to your fork.
+#
+
+  #
+  #  Needed because secrets are not available for evaluation in if conditions
+  #  at the job level, so we evaluate the existence of the PERSONAL_ACCESS_TOKEN secret
+  #  within a step and export the result instead. We also extract the short
+  #  branch name here because it's convenient to do so.
+  #
+  merge-preflight:
+    needs:
+      - ci
+    if: ( github.event_name == 'push' ) && ( github.repository_owner != 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' || github.ref == 'refs/heads/v3.0.x' )
+    name: "Merge preflight"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Report whether PERSONAL_ACCESS_TOKEN secret exists"
+        id: merge-preflight
+        run: |
+          if [ -n "$PERSONAL_ACCESS_TOKEN" ]; then echo "::set-output name=PERSONAL_ACCESS_TOKEN_EXISTS::1"; fi
+        env:
+          PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+    outputs:
+      PERSONAL_ACCESS_TOKEN_EXISTS: ${{ steps.merge-preflight.outputs.PERSONAL_ACCESS_TOKEN_EXISTS }}
+
+  merge-upstream:
+    needs:
+      - ci
+      - merge-preflight
+    if: needs.merge-preflight.outputs.PERSONAL_ACCESS_TOKEN_EXISTS == '1'
+    runs-on: ubuntu-latest
+    name: "Merge into upstream"
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        lfs: false
+        persist-credentials: false
+    #  Note: This also opportunistically updates the developer's branch with commits from
+    #  the main repository.
+    #  This update may fail if the developer has pushed additional commits since the
+    #  workflow started.  This is normal, and we ignore the failure.
+    #
+    #  We fixup the origin URL as the default remote fails on push with:
+    #    fatal: could not read Username for 'https://github.com': No such device or address
+    - name: "Merge into upstream dev branch and update local branch"
+      run: |
+        BRANCH=${GITHUB_REF#refs/heads/}
+        git config --local user.name "github-actions[bot]"
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git remote add upstream https://$USERNAME:$REPO_KEY@github.com/FreeRADIUS/freeradius-server.git
+        git remote set-url origin https://$USERNAME:$REPO_KEY@github.com/$REPO_NAME
+        git fetch --no-recurse-submodules upstream +refs/heads/*:refs/remotes/upstream/* +refs/tags/*:refs/tags/upstream/*
+        git checkout --progress --force -B upstream-branch "refs/remotes/upstream/$BRANCH"
+        git merge "$BRANCH" --ff-only
+        git push upstream "upstream-branch:$BRANCH"
+        git push origin "upstream-branch:$BRANCH" || true
+      env:
+        USERNAME: ${{ github.repository_owner }}
+        REPO_NAME: ${{ github.repository }}
+        REPO_KEY: ${{ secrets.PERSONAL_ACCESS_TOKEN }}

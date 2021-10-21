@@ -1,0 +1,15 @@
+#
+#  PRE: retry-section
+#
+
+#
+#  We can't really check anything here, but this should at least parse and work.
+#
+noop {
+	noop = retry
+	retry {
+		max_rtx_count = 2
+	}
+}
+
+success

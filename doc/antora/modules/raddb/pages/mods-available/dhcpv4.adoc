@@ -1,0 +1,61 @@
+
+
+
+
+= DHCPv4 Module
+
+
+
+## Configuration Settings
+
+The DHCPv4 module is used as a relay.
+
+For reach request, you should set &request.Packet-Dst-IP-Address to
+the address of the DHCPv4 server (or next relay).
+
+Packets MUST also have a Gateway-IP-Address option, otherwise they
+will be dropped.  This module does not (yet) support receiving
+replies from the DHCPv4 server.  Any packets sent to the socket
+IP/port will be dropped.
+
+
+ipaddr: The IP address we use for sending packets.
+
+This MUST be an IPv4 address.  IPv6 addresses are not
+supported for DHCPv4.
+
+
+
+port:: The port we use for sending packets.
+
+The default DHCPv4 client port is 68.  It should be changed
+from this only for testing.
+
+
+
+interface:: Interface to bind to.
+
+
+
+max_packet_size:: The maximum packet size.
+
+Packets which are larger than this will not be sent.
+
+Useful range: 300..1500 or so.
+
+
+
+send_buff:: How big the kernel's send buffer should be.
+
+
+== Default Configuration
+
+```
+dhcpv4 {
+	ipaddr = 127.0.0.1
+#	port = 68
+#	interface = eth0
+#	max_packet_size = 576
+#	send_buff = 1048576
+}
+```

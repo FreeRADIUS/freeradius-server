@@ -28,14 +28,14 @@
  * of the authentication attempt.
  *
  * When a request is complete, #fr_request_to_state is called to transfer
- * ownership of the state VALUE_PAIRs and state_ctx (which the VALUE_PAIRs
+ * ownership of the state fr_pair_ts and state_ctx (which the fr_pair_ts
  * are allocated in) to a #fr_state_entry_t.  This #fr_state_entry_t holds the
  * value of the State attribute, that will be send out in the response.
  *
  * When the next request is received, #fr_state_to_request is called to transfer
- * the VALUE_PAIRs and state ctx to the new request.
+ * the fr_pair_ts and state ctx to the new request.
  *
- * The ownership of the state_ctx and state VALUE_PAIRs is transferred as below:
+ * The ownership of the state_ctx and state fr_pair_ts is transferred as below:
  *
  * @verbatim
    request -> state_entry -> request -> state_entry -> request -> free()
@@ -47,19 +47,23 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/state.h>
-#include <freeradius-devel/server/rad_assert.h>
 
+#include <freeradius-devel/io/listen.h>
+
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
 
-/** Holds a state value, and associated VALUE_PAIRs and data
+/** Holds a state value, and associated fr_pair_ts and data
  *
  */
 typedef struct {
-	uint64_t		id;				//!< State number within state tree.
+	uint64_t		id;				//!< State number within state heap.
+	fr_rb_node_t		node;				//!< Entry in the state rbtree.
 	union {
 		/** Server ID components
 		 *
@@ -73,7 +77,7 @@ typedef struct {
 								//!< to locate authentication sessions originating
 								//!< from a particular backend authentication server.
 
-			uint32_t	server_hash;		//!< Hash of the current virtual server, xor'd with
+			uint32_t	context_id;		//!< Hash of the current virtual server, xor'd with
 								//!< r1, r2, r3, r4 after the original state value
 								//!< is sent, but before the state entry is inserted
 								//!< into the tree.  The receiving virtual server
@@ -98,34 +102,63 @@ typedef struct {
 	};
 
 	uint64_t		seq_start;			//!< Number of first request in this sequence.
-	time_t			cleanup;			//!< When this entry should be cleaned up.
-	fr_dlist_t		list;				//!< Entry in the list of things to expire.
+	fr_time_t		cleanup;			//!< When this entry should be cleaned up.
+
+	/*
+	 *	Should only even be in one at a time
+	 */
+	union {
+		fr_dlist_t		expire_entry;		//!< Entry in the list of things to expire.
+		fr_dlist_t		free_entry;		//!< Entry in the list of things to free.
+	};
 
 	int			tries;
 
-	TALLOC_CTX		*ctx;				//!< ctx to parent any data that needs to be
-								//!< tied to the lifetime of the request progression.
-	VALUE_PAIR		*vps;				//!< session-state VALUE_PAIRs, parented by ctx.
+	fr_pair_t		*ctx;				//!< for all session specific data.
 
 	fr_dlist_head_t		data;				//!< Persistable request data, also parented by ctx.
 
-	REQUEST			*thawed;			//!< The request that thawed this entry.
+	request_t		*thawed;			//!< The request that thawed this entry.
+
+	fr_state_tree_t		*state_tree;			//!< Tree this entry belongs to.
 } fr_state_entry_t;
 
-struct fr_state_tree_t {
+/** A child of a fr_state_entry_t
+ *
+ * Children are tracked using the request data of parents.
+ *
+ * request data is added with identifiers that uniquely identify the
+ * subrequest it should be restored to.
+ *
+ * In this way a top level fr_state_entry_t can hold the session
+ * information for multiple children, and the children may hold
+ * state_child_entry_ts for grandchildren.
+ */
+typedef struct {
+	fr_pair_t		*ctx;				//!< for all session specific data.
+
+	fr_dlist_head_t		data;				//!< Persistable request data, also parented by ctx.
+
+	request_t		*thawed;			//!< The request that thawed this entry.
+} state_child_entry_t;
+
+struct fr_state_tree_s {
 	uint64_t		id;				//!< Next ID to assign.
 	uint64_t		timed_out;			//!< Number of states that were cleaned up due to
 								//!< timeout.
 	uint32_t		max_sessions;			//!< Maximum number of sessions we track.
-	rbtree_t		*tree;				//!< rbtree used to lookup state value.
+	uint32_t		used_sessions;			//!< How many sessions are currently in progress.
+	fr_rb_tree_t		*tree;				//!< rbtree used to lookup state value.
 	fr_dlist_head_t		to_expire;			//!< Linked list of entries to free.
 
-	uint32_t		timeout;			//!< How long to wait before cleaning up state entires.
+	fr_time_delta_t		timeout;			//!< How long to wait before cleaning up state entires.
 
 	bool			thread_safe;			//!< Whether we lock the tree whilst modifying it.
 	pthread_mutex_t		mutex;				//!< Synchronisation mutex.
 
 	uint8_t			server_id;			//!< ID to use for load balancing.
+	uint32_t		context_id;			//!< ID binding state values to a context such
+								///< as a virtual server.
 
 	fr_dict_attr_t const	*da;				//!< State attribute used.
 };
@@ -138,11 +171,13 @@ static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry);
 /** Compare two fr_state_entry_t based on their state value i.e. the value of the attribute
  *
  */
-static int state_entry_cmp(void const *one, void const *two)
+static int8_t state_entry_cmp(void const *one, void const *two)
 {
 	fr_state_entry_t const *a = one, *b = two;
+	int ret;
 
-	return memcmp(a->state, b->state, sizeof(a->state));
+	ret = memcmp(a->state, b->state, sizeof(a->state));
+	return CMP(ret, 0);
 }
 
 /** Free the state tree
@@ -178,12 +213,15 @@ static int _state_tree_free(fr_state_tree_t *state)
  * @param[in] max_sessions	we track state for.
  * @param[in] timeout		How long to wait before cleaning up entries.
  * @param[in] server_id		ID byte to use in load-balancing operations.
+ * @param[in] context_id	Specifies a unique ctx id to prevent states being
+ *				used in contexts for which they weren't intended.
  * @return
  *	- A new state tree.
  *	- NULL on failure.
  */
 fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, bool thread_safe,
-				    uint32_t max_sessions, uint32_t timeout, uint8_t server_id)
+				    uint32_t max_sessions, fr_time_delta_t timeout,
+				    uint8_t server_id, uint32_t context_id)
 {
 	fr_state_tree_t *state;
 
@@ -207,7 +245,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 		return NULL;
 	}
 
-	fr_dlist_talloc_init(&state->to_expire, fr_state_entry_t, list);
+	fr_dlist_talloc_init(&state->to_expire, fr_state_entry_t, free_entry);
 
 	/*
 	 *	We need to do controlled freeing of the
@@ -215,7 +253,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 	 *	are freed before it's destroyed.  Hence
 	 *	it being parented from the NULL ctx.
 	 */
-	state->tree = rbtree_talloc_create(NULL, state_entry_cmp, fr_state_entry_t, NULL, 0);
+	state->tree = fr_rb_inline_talloc_alloc(NULL, fr_state_entry_t, node, state_entry_cmp, NULL);
 	if (!state->tree) {
 		talloc_free(state);
 		return NULL;
@@ -224,6 +262,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 
 	state->da = da;		/* Remember which attribute we use to load/store state */
 	state->server_id = server_id;
+	state->context_id = context_id;
 	state->thread_safe = thread_safe;
 
 	return state;
@@ -232,7 +271,8 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, fr_dict_attr_t const *da, b
 /** Unlink an entry and remove if from the tree
  *
  */
-static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry)
+static inline CC_HINT(always_inline)
+void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry)
 {
 	/*
 	 *	Check the memory is still valid
@@ -240,8 +280,7 @@ static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry)
 	(void) talloc_get_type_abort(entry, fr_state_entry_t);
 
 	fr_dlist_remove(&state->to_expire, entry);
-
-	rbtree_deletebydata(state->tree, entry);
+	fr_rb_delete(state->tree, entry);
 
 	DEBUG4("State ID %" PRIu64 " unlinked", entry->id);
 }
@@ -252,18 +291,18 @@ static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry)
 static int _state_entry_free(fr_state_entry_t *entry)
 {
 #ifdef WITH_VERIFY_PTR
-	fr_cursor_t cursor;
-	VALUE_PAIR *vp;
+	fr_dcursor_t cursor;
+	fr_pair_t *vp;
 
 	/*
 	 *	Verify all state attributes are parented
 	 *	by the state context.
 	 */
 	if (entry->ctx) {
-		for (vp = fr_cursor_init(&cursor, &entry->vps);
+		for (vp = fr_pair_dcursor_init(&cursor, &entry->ctx->children);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			rad_assert(entry->ctx == talloc_parent(vp));
+		     vp = fr_dcursor_next(&cursor)) {
+			fr_assert(entry->ctx == talloc_parent(vp));
 		}
 	}
 
@@ -281,6 +320,8 @@ static int _state_entry_free(fr_state_entry_t *entry)
 
 	DEBUG4("State ID %" PRIu64 " freed", entry->id);
 
+	entry->state_tree->used_sessions--;
+
 	return 0;
 }
 
@@ -288,13 +329,13 @@ static int _state_entry_free(fr_state_entry_t *entry)
  *
  * @note Called with the mutex held.
  */
-static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *request,
-					    RADIUS_PACKET *packet, fr_state_entry_t *old)
+static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *request,
+					    fr_pair_list_t *reply_list, fr_state_entry_t *old)
 {
 	size_t			i;
 	uint32_t		x;
-	time_t			now = time(NULL);
-	VALUE_PAIR		*vp;
+	fr_time_t		now = fr_time();
+	fr_pair_t		*vp;
 	fr_state_entry_t	*entry, *next;
 
 	uint8_t			old_state[sizeof(old->state)];
@@ -303,15 +344,22 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	bool			too_many = false;
 	fr_dlist_head_t		to_free;
 
-	fr_dlist_init(&to_free, fr_state_entry_t, list);
+	/*
+	 *	Shouldn't be in any lists if it's being reused
+	 */
+	fr_assert(!old ||
+		  (!fr_dlist_entry_in_list(&old->expire_entry) &&
+		   !fr_rb_node_inline_in_tree(&old->node)));
+
+	fr_dlist_init(&to_free, fr_state_entry_t, free_entry);
 
 	/*
-	 *	Clean up old entries.
+	 *	Clean up expired entries
 	 */
 	for (entry = fr_dlist_head(&state->to_expire);
 	     entry != NULL;
 	     entry = next) {
-		(void)talloc_get_type_abort(entry, fr_state_entry_t);	/* Allow examination */
+ 		(void)talloc_get_type_abort(entry, fr_state_entry_t);	/* Allow examination */
 		next = fr_dlist_next(&state->to_expire, entry);		/* Advance *before* potential unlinking */
 
 		if (entry == old) continue;
@@ -319,7 +367,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		/*
 		 *	Too old, we can delete it.
 		 */
-		if (entry->cleanup < now) {
+		if (fr_time_lt(entry->cleanup, now)) {
 			state_entry_unlink(state, entry);
 			fr_dlist_insert_tail(&to_free, entry);
 			timed_out++;
@@ -331,28 +379,14 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 
 	state->timed_out += timed_out;
 
-	if (!old && (rbtree_num_elements(state->tree) >= (uint32_t) state->max_sessions)) too_many = true;
-
-	/*
-	 *	Record the information from the old state, we may base the
-	 *	new state off the old one.
-	 *
-	 *	Once we release the mutex, the state of old becomes indeterminate
-	 *	so we have to grab the values now.
-	 */
-	if (old) {
+	if (!old) {
+		too_many = (state->used_sessions == (uint32_t) state->max_sessions);
+		if (!too_many) state->used_sessions++;	/* preemptively increment whilst we hold the mutex */
+	} else {
 		old_tries = old->tries;
-
 		memcpy(old_state, old->state, sizeof(old_state));
-
-		/*
-		 *	The old one isn't used any more, so we can free it.
-		 */
-		if (fr_dlist_empty(&old->data)) {
-			state_entry_unlink(state, old);
-			fr_dlist_insert_tail(&to_free, old);
-		}
 	}
+
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	if (timed_out > 0) RWDEBUG("Cleaning up %"PRIu64" timed out state entries", timed_out);
@@ -388,14 +422,25 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	 *	Allocation doesn't need to occur inside the critical region
 	 *	and would add significantly to contention.
 	 */
-	entry = talloc_zero(NULL, fr_state_entry_t);
-	if (!entry) {
-		PTHREAD_MUTEX_LOCK(&state->mutex);	/* Caller expects this to be locked */
-		return NULL;
+	if (!old) {
+		MEM(entry = talloc_zero(NULL, fr_state_entry_t));
+		talloc_set_destructor(entry, _state_entry_free);
+		/* tree->used_sessions incremented above */
+	/*
+	 *	Reuse the old state entry cleaning up any memory associated
+	 *	with it.
+	 */
+	} else {
+		_state_entry_free(old);
+		talloc_free_children(old);
+		memset(old, 0, sizeof(*old));
+		entry = old;
 	}
 
+	entry->state_tree = state;
+
 	request_data_list_init(&entry->data);
-	talloc_set_destructor(entry, _state_entry_free);
+
 	entry->id = state->id++;
 
 	/*
@@ -404,7 +449,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	 *	isn't perfect, but it's reasonable, and it's one less
 	 *	thing for an administrator to configure.
 	 */
-	entry->cleanup = now + state->timeout;
+	entry->cleanup = fr_time_add(now, state->timeout);
 
 	/*
 	 *	Some modules create their own magic
@@ -412,7 +457,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	 *	int the reply, we use that in preference to the
 	 *	old state.
 	 */
-	vp = fr_pair_find_by_da(packet->vps, state->da, TAG_ANY);
+	vp = fr_pair_find_by_da(reply_list, state->da, 0);
 	if (vp) {
 		if (DEBUG_ENABLED && (vp->vp_length > sizeof(entry->state))) {
 			WARN("State too long, will be truncated.  Expected <= %zd bytes, got %zu bytes",
@@ -475,13 +520,14 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 		 */
 		entry->state_comp.server_id = state->server_id;
 
-		vp = fr_pair_afrom_da(packet, state->da);
-		fr_pair_value_memcpy(vp, entry->state, sizeof(entry->state), false);
-		fr_pair_add(&packet->vps, vp);
+		MEM(vp = fr_pair_afrom_da(request->reply_ctx, state->da));
+		fr_pair_value_memdup(vp, entry->state, sizeof(entry->state), false);
+		fr_pair_append(reply_list, vp);
 	}
 
-	DEBUG4("State ID %" PRIu64 " created, value 0x%pH, expires %" PRIu64 "s",
-	       entry->id, fr_box_octets(entry->state, sizeof(entry->state)), (uint64_t)entry->cleanup - now);
+	DEBUG4("State ID %" PRIu64 " created, value 0x%pH, expires %pV",
+	       entry->id, fr_box_octets(entry->state, sizeof(entry->state)),
+	       fr_box_time_delta(fr_time_sub(entry->cleanup, now)));
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
@@ -491,11 +537,11 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	 *	only succeed in the virtual server that created the state
 	 *	value.
 	 */
-	*((uint32_t *)(&entry->state_comp.server_hash)) ^= fr_hash_string(cf_section_name2(request->server_cs));
+	*((uint32_t *)(&entry->state_comp.context_id)) ^= state->context_id;
 
-	if (!rbtree_insert(state->tree, entry)) {
+	if (!fr_rb_insert(state->tree, entry)) {
 		RERROR("Failed inserting state entry - Insertion into state tree failed");
-		fr_pair_delete_by_da(&packet->vps, state->da);
+		fr_pair_delete_by_da(reply_list, state->da);
 		talloc_free(entry);
 		return NULL;
 	}
@@ -509,10 +555,10 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, REQUEST *req
 	return entry;
 }
 
-/** Find the entry, based on the State attribute
+/** Find the entry based on the State attribute and remove it from the state tree
  *
  */
-static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, REQUEST *request, fr_value_box_t const *vb)
+static fr_state_entry_t *state_entry_find_and_unlink(fr_state_tree_t *state, fr_value_box_t const *vb)
 {
 	fr_state_entry_t *entry, my_entry;
 
@@ -541,11 +587,13 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, REQUEST *reque
 	/*
 	 *	Make it unique for different virtual servers handling the same request
 	 */
-	my_entry.state_comp.server_hash ^= fr_hash_string(cf_section_name2(request->server_cs));
+	my_entry.state_comp.context_id ^= state->context_id;
 
-	entry = rbtree_finddata(state->tree, &my_entry);
-
-	if (entry) (void) talloc_get_type_abort(entry, fr_state_entry_t);
+	entry = fr_rb_remove(state->tree, &my_entry);
+	if (entry) {
+		(void) talloc_get_type_abort(entry, fr_state_entry_t);
+		fr_dlist_remove(&state->to_expire, entry);
+	}
 
 	return entry;
 }
@@ -553,21 +601,20 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, REQUEST *reque
 /** Called when sending an Access-Accept/Access-Reject to discard state information
  *
  */
-void fr_state_discard(fr_state_tree_t *state, REQUEST *request)
+void fr_state_discard(fr_state_tree_t *state, request_t *request)
 {
 	fr_state_entry_t	*entry;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
 
-	vp = fr_pair_find_by_da(request->packet->vps, state->da, TAG_ANY);
+	vp = fr_pair_find_by_da(&request->request_pairs, state->da, 0);
 	if (!vp) return;
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = state_entry_find(state, request, &vp->data);
+	entry = state_entry_find_and_unlink(state, &vp->data);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		return;
 	}
-	state_entry_unlink(state, entry);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	/*
@@ -586,68 +633,86 @@ void fr_state_discard(fr_state_tree_t *state, REQUEST *request)
 	 *	stupid like add additional session-state attributes
 	 *	in  one of the later sections.
 	 */
-	TALLOC_FREE(request->state_ctx);
-	request->state = NULL;
+	TALLOC_FREE(request->session_state_ctx);
 
-	MEM(request->state_ctx = talloc_init("session-state"));
+	MEM(request->session_state_ctx = fr_pair_afrom_da(NULL, request_attr_state));
 
-	RDEBUG3("RADIUS State - discarded");
+	RDEBUG3("%s - discarded", state->da->name);
 
 	return;
 }
 
-/** Copy a pointer to the head of the list of state VALUE_PAIRs (and their ctx) into the request
+/** Copy a pointer to the head of the list of state fr_pair_ts (and their ctx) into the request
  *
- * @note Does not copy the actual VALUE_PAIRs.  The VALUE_PAIRs and their context
+ * @note Does not copy the actual fr_pair_ts.  The fr_pair_ts and their context
  *	are transferred between state entries as the conversation progresses.
  *
  * @note Called with the mutex free.
+ *
+ * @param[in] state	tree to lookup state in.
+ * @param[in] request	to restore state for.
+ * @return
+ *	- 2 if the state attribute didn't match any known states.
+ *	- 1 if no state attribute existed.
+ *	- 0 on success (state restored)
+ *	- -1 if a state entry has already been thawed by a another request.
  */
-void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
+int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 {
 	fr_state_entry_t	*entry;
 	TALLOC_CTX		*old_ctx = NULL;
-	VALUE_PAIR		*vp;
-
-	rad_assert(request->state == NULL);
+	fr_pair_t		*vp;
 
 	/*
 	 *	No State, don't do anything.
 	 */
-	vp = fr_pair_find_by_da(request->packet->vps, state->da, TAG_ANY);
+	vp = fr_pair_find_by_da(&request->request_pairs, state->da, 0);
 	if (!vp) {
-		RDEBUG3("No &request:State attribute, can't restore &session-state");
+		RDEBUG3("No &request.%s attribute, can't restore &session-state", state->da->name);
 		if (request->seq_start == 0) request->seq_start = request->number;	/* Need check for fake requests */
-		return;
+		return 1;
 	}
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = state_entry_find(state, request, &vp->data);
-	if (entry) {
-		(void)talloc_get_type_abort(entry, fr_state_entry_t);
-		if (entry->thawed) {
-			REDEBUG("State entry has already been thawed by a request %"PRIu64, entry->thawed->number);
-			PTHREAD_MUTEX_UNLOCK(&state->mutex);
-			return;
-		}
-		if (request->state_ctx) old_ctx = request->state_ctx;	/* Store for later freeing */
-
-		rad_assert(entry->ctx);
-
-		request->seq_start = entry->seq_start;
-		request->state_ctx = entry->ctx;
-		request->state = entry->vps;
-		request_data_restore(request, &entry->data);
-
-		entry->ctx = NULL;
-		entry->vps = NULL;
-		entry->thawed = request;
+	entry = state_entry_find_and_unlink(state, &vp->data);
+	if (!entry) {
+		PTHREAD_MUTEX_UNLOCK(&state->mutex);
+		RDEBUG2("No state entry matching &request.%pP found", vp);
+		return 2;
 	}
-	PTHREAD_MUTEX_UNLOCK(&state->mutex);
+   	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
-	if (request->state) {
+	/* Probably impossible in the current code */
+	if (unlikely(entry->thawed != NULL)) {
+		RERROR("State entry has already been thawed by a request %"PRIu64, entry->thawed->number);
+		PTHREAD_MUTEX_UNLOCK(&state->mutex);
+		return -2;
+	}
+	if (request->session_state_ctx) old_ctx = request->session_state_ctx;	/* Store for later freeing */
+
+	fr_assert(entry->ctx);
+
+	request->seq_start = entry->seq_start;
+	request->session_state_ctx = entry->ctx;
+
+	/*
+	 *	Associate old state with the request
+	 *
+	 *	If the request is freed, it's freed immediately.
+	 *
+	 *	Otherwise, if there's another round, we re-use
+	 *	the state entry and insert it back into the
+	 *	tree.
+	 */
+	request_data_add(request, state, 0, entry, true, true, false);
+	request_data_restore(request, &entry->data);
+
+	entry->ctx = NULL;
+	entry->thawed = request;
+
+	if (!fr_pair_list_empty(&request->session_state_pairs)) {
 		RDEBUG2("Restored &session-state");
-		log_request_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, "&session-state.");
 	}
 
 	/*
@@ -655,42 +720,46 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request)
 	 */
 	if (old_ctx) talloc_free(old_ctx);
 
-	RDEBUG3("RADIUS State - restored");
+	RDEBUG3("%s - restored", state->da->name);
 
+	/*
+	 *	Set sequence so that we can prioritize ongoing multi-packet sessions.
+	 */
+	request->async->sequence = entry->tries;
 	REQUEST_VERIFY(request);
-	return;
+	return 0;
 }
 
 
-/** Transfer ownership of the state VALUE_PAIRs and ctx, back to a state entry
+/** Transfer ownership of the state fr_pair_ts and ctx, back to a state entry
  *
- * Put request->state into the State attribute.  Put the State attribute
+ * Put request->session_state_pairs into the State attribute.  Put the State attribute
  * into the vps list.  Delete the original entry, if it exists
  *
  * Also creates a new state entry.
  */
-int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
+int fr_request_to_state(fr_state_tree_t *state, request_t *request)
 {
-	fr_state_entry_t	*entry, *old = NULL;
+	fr_state_entry_t	*entry, *old;
 	fr_dlist_head_t		data;
-	VALUE_PAIR		*vp;
 
+	old = request_data_get(request, state, 0);
 	request_data_list_init(&data);
 	request_data_by_persistance(&data, request, true);
 
-	if (!request->state && fr_dlist_empty(&data)) return 0;
+	if (fr_pair_list_empty(&request->session_state_pairs) && fr_dlist_empty(&data)) return 0;
 
-	if (request->state) {
+	if (!fr_pair_list_empty(&request->session_state_pairs)) {
 		RDEBUG2("Saving &session-state");
-		log_request_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->session_state_pairs, "&session-state.");
 	}
 
-	vp = fr_pair_find_by_da(request->packet->vps, state->da, TAG_ANY);
-
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	if (vp) old = state_entry_find(state, request, &vp->data);
 
-	entry = state_entry_create(state, request, request->reply, old);
+	/*
+	 *	Reuses old if possible
+	 */
+	entry = state_entry_create(state, request, &request->reply_pairs, old);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		RERROR("Creating state entry failed");
@@ -698,125 +767,158 @@ int fr_request_to_state(fr_state_tree_t *state, REQUEST *request)
 		return -1;
 	}
 
-	rad_assert(entry->ctx == NULL);
-	rad_assert(request->state_ctx);
+	fr_assert(entry->ctx == NULL);
+	fr_assert(request->session_state_ctx);
 
 	entry->seq_start = request->seq_start;
-	entry->ctx = request->state_ctx;
-	entry->vps = request->state;
+	entry->ctx = request->session_state_ctx;
 	fr_dlist_move(&entry->data, &data);
-
-	request->state_ctx = NULL;
-	request->state = NULL;
-
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
-	RDEBUG3("RADIUS State - saved");
+	MEM(request->session_state_ctx = fr_pair_afrom_da(NULL, request_attr_state));	/* fixme - should use a pool */
+
+	RDEBUG3("%s - saved", state->da->name);
 	REQUEST_VERIFY(request);
+
+	return 0;
+}
+
+/** Free any subrequest request data if the dlist head is freed
+ *
+ */
+static int _free_child_data(state_child_entry_t *child_entry)
+{
+	fr_dlist_talloc_free(&child_entry->data);
+	talloc_free(child_entry->ctx);		/* Free the child's session_state_ctx if we own it */
 
 	return 0;
 }
 
 /** Store subrequest's session-state list and persistable request data in its parent
  *
- * @param[in] request		The child request to retrieve state from.
+ * @param[in] child		The child request to retrieve state from.
  * @param[in] unique_ptr	A parent may have multiple subrequests spawned
  *				by different modules.  This identifies the module
  *      			or other facility that spawned the subrequest.
  * @param[in] unique_int	Further identification.
  */
-void fr_state_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int)
+void fr_state_store_in_parent(request_t *child, void const *unique_ptr, int unique_int)
 {
-	if (unlikely(request->parent == NULL)) return;
+	state_child_entry_t	*child_entry;
+	request_t		*request = child; /* Stupid logging */
 
-	RDEBUG3("Subrequest state - saved to %s", request->parent->name);
+	if (!fr_cond_assert_msg(child->parent,
+				"Child request must have request->parent set when storing state")) return;
 
-	/*
-	 *	Shove this into the child to make
-	 *	it easier to store/restore the
-	 *	whole lot...
-	 */
-	request_data_add(request, (void *)fr_state_store_in_parent, 0, request->state, true, false, true);
-	request->state = NULL;
+	RDEBUG3("Storing subrequest state in request %s", child->parent->name);
 
-	request_data_store_in_parent(request, unique_ptr, unique_int);
+	if ((request_data_by_persistance_count(request, true) > 0) ||
+		!fr_pair_list_empty(&request->session_state_pairs)) {
+		MEM(child_entry = talloc_zero(request->parent->session_state_ctx, state_child_entry_t));
+		request_data_list_init(&child_entry->data);
+		talloc_set_destructor(child_entry, _free_child_data);
+
+		child_entry->ctx = child->session_state_ctx;
+
+		/*
+		 *	Pull everything out of the child,
+		 *	add it to our temporary list head...
+		 *
+		 *	request_data_add allocs persistable
+		 *	request dta in the session_state_ctx
+		 *	which is why we don't need to copy or
+		 *	reparent any of this.
+		 */
+		request_data_by_persistance(&child_entry->data, request, true);
+
+		/*
+		 *	...and add the request_data from
+		 *	the child back into the parent.
+		 */
+		request_data_talloc_add(request->parent, unique_ptr, unique_int,
+					state_child_entry_t, child_entry, true, false, true);
+
+		/*
+		 *	Ensure fr_state_restore_to_child
+		 *	can be called again if it's actually
+		 *	needed, by giving the child it's own
+		 * 	unique state_ctx again.
+		 */
+		MEM(request->session_state_ctx = fr_pair_afrom_da(NULL, request_attr_state));
+	}
 }
 
 /** Restore subrequest data from a parent request
  *
- * @param[in] request		The child request to restore state to.
+ * @param[in] child		The child request to restore state to.
  * @param[in] unique_ptr	A parent may have multiple subrequests spawned
  *				by different modules.  This identifies the module
  *      			or other facility that spawned the subrequest.
  * @param[in] unique_int	Further identification.
  */
-void fr_state_restore_to_child(REQUEST *request, void *unique_ptr, int unique_int)
+void fr_state_restore_to_child(request_t *child, void const *unique_ptr, int unique_int)
 {
-	if (unlikely(request->parent == NULL)) return;
+	state_child_entry_t	*child_entry;
+	request_t		*request = child; /* Stupid logging */
 
-	RDEBUG3("Subrequest state - restored from %s", request->parent->name);
+	if (!fr_cond_assert_msg(child->parent,
+				"Child request must have request->parent set when restoring state")) return;
 
-	request_data_restore_to_child(request, unique_ptr, unique_int);
 
-	/*
-	 *	Get the state vps back
-	 */
-	request->state = request_data_get(request, (void *)fr_state_store_in_parent, 0);
-}
-
-/** Move all request data and session-state VPs into a new state_ctx
- *
- * If we don't do this on detach, session-state VPs and persistable
- * request data will be freed when the parent's state_ctx is freed.
- * If the parent was freed before the child, we'd get all kinds of
- * use after free nastiness.
- *
- * @param[in] request		to detach.
- * @param[in] will_free		Caller super pinky swears to free
- *				the request ASAP, and that it wont
- *				touch persistable request data,
- *				request->state_ctx or request->state.
- */
-void fr_state_detach(REQUEST *request, bool will_free)
-{
-	VALUE_PAIR	*new_state = NULL;
-	TALLOC_CTX	*new_state_ctx;
-
-	if (unlikely(request->parent == NULL)) return;
-
-	if (will_free) {
-		fr_pair_list_free(&request->state);
-
-		/*
-		 *	The non-persistable stuff is
-		 *	prented directly by the request
-		 */
-		request_data_persistable_free(request);
-
-		/*
-		 *	Parent will take care of freeing
-		 *	honestly this should probably
-		 *	be an assert.
-		 */
-		if (request->state_ctx == request->parent->state_ctx) request->state_ctx = NULL;
+	child_entry = request_data_get(child->parent, unique_ptr, unique_int);
+	if (!child_entry) {
+		RDEBUG3("No child state found in parent %s", child->parent->name);
 		return;
 	}
 
-	MEM(new_state_ctx = talloc_init("session-state"));
-	request_data_ctx_change(new_state_ctx, request);
+	/*
+	 *	Shouldn't really be possible unless
+	 *	there's a logic bug in this API.
+	 */
+	if (!fr_cond_assert_msg(!child_entry->thawed,
+				"Child state entry already thawed by %s - %p",
+				child_entry->thawed->name, child_entry->thawed)) return;
 
-	(void) fr_pair_list_copy(new_state_ctx, &new_state, request->state);
-	fr_pair_list_free(&request->state);
-
-	request->state = new_state;
+	RDEBUG3("Restoring subrequest state from request %s", child->parent->name);
 
 	/*
-	 *	...again, should probably
-	 *	not happen and should probably
-	 *	be an assert.
+	 *	If we can restore from the parent, do so
 	 */
-	if (request->state_ctx != request->parent->state_ctx) talloc_free(request->state_ctx);
-	request->state_ctx = new_state;
+	TALLOC_FREE(child->session_state_ctx);
+	fr_assert_msg(child_entry->ctx, "session child entry missing ctx");
+	child->session_state_ctx = child_entry->ctx;
+	child_entry->ctx = NULL;				/* No longer owns the ctx */
+	child_entry->thawed = child;
+
+	request_data_restore(child, &child_entry->data);	/* Put all the request data back */
+
+	talloc_free(child_entry);
+}
+
+/** Remove state from a child
+ *
+ * This is useful for modules like EAP, where we keep a persistent eap_session
+ * but may call multiple EAP method modules during negotiation, and need to
+ * discard the state between each module call.
+ *
+ * @param[in] parent		Holding the child's state.
+ * @param[in] unique_ptr	A parent may have multiple subrequests spawned
+ *				by different modules.  This identifies the module
+ *      			or other facility that spawned the subrequest.
+ * @param[in] unique_int	Further identification.
+ */
+void fr_state_discard_child(request_t *parent, void const *unique_ptr, int unique_int)
+{
+	state_child_entry_t	*child_entry;
+	request_t		*request = parent; /* Stupid logging */
+
+	child_entry = request_data_get(parent, unique_ptr, unique_int);
+	if (!child_entry) {
+		RDEBUG3("No child state found in parent %s", parent->name);
+		return;
+	}
+
+	talloc_free(child_entry);
 }
 
 /** Return number of entries created
@@ -838,7 +940,7 @@ uint64_t fr_state_entries_timeout(fr_state_tree_t *state)
 /** Return number of entries we're currently tracking
  *
  */
-uint32_t fr_state_entries_tracked(fr_state_tree_t *state)
+uint64_t fr_state_entries_tracked(fr_state_tree_t *state)
 {
-	return (uint32_t)rbtree_num_elements(state->tree);
+	return fr_rb_num_elements(state->tree);
 }

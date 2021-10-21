@@ -12,7 +12,9 @@ server detail {
 	#  In v4, all "server" sections MUST start with a "namespace"
 	#  parameter.  This tells the server which protocol is being used.
 	#
-	namespace = detail
+	#  RADIUS, or DHCPv4, or any other protocol supported by the server.
+	#
+	namespace = radius
 
 	#
 	#  This virtual server will read detail files from the
@@ -20,29 +22,22 @@ server detail {
 	#
 	directory = ${radacctdir}/detail
 
-	listen {
-		#
-		#  This has to be listed first, sorry.
-		#
-		#  The value given here must match the `namespace` of
-		#  the virtual server which originally created the
-		#  detail files.
-		#
-		dictionary = radius
-
+	#
+	#  The "listen" section MUST have a second name here, which
+	#  says "load the detail file processor, and not the typical
+	#  RADIUS UDP / TCP socket IO.
+	#
+	listen detail {
 		#
 		#  Types of packets we are reading.
 		#
 		type = Accounting-Request
 
 		#
-		#  What transports are being used to read detail
-		#  files.  For now, only "file" is supported.
+		#  There is no need to specify a transport.
+		#  The default is `file`, which is the only
+		#  one supported.
 		#
-		#  Future releases will allow reading "detail"
-		#  style information from sockets or streams.
-		#
-		transport = file
 
 		#
 		#  Unlike v3, there is no "load_factor" configuration.
@@ -53,7 +48,7 @@ server detail {
 		#  listener reads a second entry.
 		#
 		#  Packets from the detail listener are low priority,
-		#  so they are procesed only when there is nothing
+		#  so they are processed only when there is nothing
 		#  else to do.  i.e. if the server receives many
 		#  Access-Request or Accounting-Request packets from
 		#  the network, they will be processed *before* any
@@ -150,7 +145,7 @@ server detail {
 
 			#
 			#  Track progress through the detail file.  When the detail
-			#  file is large, and the server is re-started, it will
+			#  file is large, and the server is restarted, it will
 			#  read from the START of the file.
 			#
 			#  Setting `track = yes` means it will skip packets which
@@ -184,7 +179,7 @@ server detail {
 				#  into the server core.
 				#
 				#  Useful values: 1..256
-				maximum_outstanding = 1
+				max_outstanding = 1
 
 				#
 				#  Initial retransmit time: 1..60
@@ -192,14 +187,14 @@ server detail {
 				#  If there is no response within this time,
 				#  the module will retransmit the packet.
 				#
-				initial_retransmission_time = 1
+				initial_rtx_time = 1
 
 				#
 				#  Maximum Retransmit Time: 5..30
 				#
 				#  The maximum time between retransmissions.
 				#
-				maximum_retransmission_time = 30
+				max_rtx_time = 30
 
 				#
 				#  The following are maximums that *all* apply.
@@ -215,28 +210,27 @@ server detail {
 				#
 				#  A special value of "0" means "retransmit forever".
 				#
-				maximum_retransmission_count = 6
+				max_rtx_count = 6
 
 				#
 				#  Maximum Retransmit Duration: 0..600
 				#
 				#  The total length of time the module will try to
-				#  retransit the packet
+				#  retransmit the packet
 				#
 				#  A special value of "0" means "retransmit forever".
 				#
-				maximum_retransmission_duration = 40
+				max_rtx_duration = 40
 			}
 		}
 	}
 
 #
-#  All packets read by the detail listener are processed through the
-#  'recv' section.  Note that there is no second name to the section.
+#  The detail file reader runs the normal RADIUS / DHCP / etc. processing sections.
 #
-recv {
+recv Accounting-Request {
 	update request {
-		&Acct-Delay-Time := "%{expr:%{%{Acct-Delay-Time}:-0} + %c - %{%{integer:Event-Timestamp}:-%{integer:Packet-Original-Timestamp}}}"
+		&Acct-Delay-Time := "%{expr:%{%{Acct-Delay-Time}:-0} + %c - %(integer:%{%{Event-Timestamp}:-%{Packet-Original-Timestamp}})}"
 	}
 
 	#
@@ -254,34 +248,25 @@ recv {
 }
 
 #
-#  All successful packets sent by the detail listener are processed through the
-#  'send ok' section.  Note that the name is the same for all packet types.
-#
 #  If the listener is configured with 'track = yes', then the entry in
 #  the detail file is marked up as being "done".  Subsequent re-reads
-#  of the same detail file (e.g. on server re-start) will skip the
+#  of the same detail file (e.g. on server restart) will skip the
 #  "done" entries.
 #
-send ok {
+send Accounting-Response {
 	ok
 }
 
 #
-#  All failed packets sent by the detail listener are processed through the
-#  'send fail' section.  Note that the name is the same for all packet types.
+#  All failed packets sent by the detail listener should be processed
+#  through the 'send Do-Not-Respond' section.
 #
 #  If the listener is configured with 'track = yes', then the packet
 #  will be retransmitted by the detail file reader, until the packet
 #  returns "success".  See the "limit" subsection above for retransmission
 #  configuration.
 #
-send fail {
+send Do-Not-Respond {
 	ok
 }
-
-#
-#  Note that unlike other listeners, there is no "send Do-Not-Respond"
-#  section.  You should just return "fail" instead.
-#
-
 } # virtual server "detail"

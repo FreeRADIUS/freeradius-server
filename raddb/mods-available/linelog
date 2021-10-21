@@ -18,7 +18,7 @@
 #
 
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 linelog {
 	#
@@ -66,7 +66,7 @@ linelog {
 	#
 	#  May be an attribute reference, e.g. `&User-Name`, or `xlat`, `literal` or `exec`.
 	#
-	reference = "messages.%{%{reply:Packet-Type}:-default}"
+	reference = "messages.%{%{reply.Packet-Type}:-default}"
 
 	#
 	#  messages { ... }::
@@ -100,7 +100,7 @@ linelog {
 	#  | unix   | Write to a UNIX socket.
 	#  |===
 	#
-	destination = 'file'
+	destination = file
 
 	#
 	#  .File as the destination for log messages.
@@ -138,7 +138,7 @@ linelog {
 		#
 		#  escape_filenames::
 		#
-		#  Most file systems can handly nearly the full range
+		#  Most file systems can handle nearly the full range
 		#  of UTF-8 characters.  Ones that can only deal with
 		#  a limited range should set this to `yes`.
 		#
@@ -235,7 +235,7 @@ linelog {
 	#
 #	unix {
 		#
-		#  filename:: Fullpath to the `unix socket` file.
+		#  filename:: Full path to the `unix socket` file.
 		#
 #		filename = /path/to/unix.socket
 

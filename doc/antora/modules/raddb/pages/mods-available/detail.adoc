@@ -1,0 +1,130 @@
+
+
+
+
+= Detail Module
+
+Write a detailed log of all accounting records received.
+
+It is primarily used for storing accounting information, but can be
+used in other sections to write packet details as well.
+
+NOTE: we do NOT use `link:https://freeradius.org/rfc/rfc2865.html#NAS-IP-Address[NAS-IP-Address]` here, as that attribute MAY BE
+from the originating NAS, and NOT from the proxy which actually
+sent us the request.
+
+## Configuration Settings
+
+
+filename:: The filename used when creating `detail` files.
+
+The default configuration creates a new `detail` file for
+every radius client (by IP address or hostname). In
+addition, a new detail file is created every day, so that
+the `detail` file doesn't have to go through a 'log
+rotation'.
+
+If your detail files are large, you may also want to
+add a `:%H` (see `doc/unlang/xlat_character.adoc`) to
+the end of it, to create a new detail file every hour.
+
+e.g.:
+
+    ..../detail-%Y-%m-%dT%H:00:00
+
+This will create a new `detail` file for every hour.
+
+If you are reading detail files via the `listen { ... }` section
+(e.g. as in `raddb/sites-available/robust-proxy-accounting`),
+you MUST use a unique directory for each combination of a `detail`
+file writer, and reader.
+
+That is, only *one* `listen { ... }` section can read
+detail files from a particular directory.
+
+
+
+NOTE: If you are using `radrelay`, delete the above line for `file`,
+and use this one instead:
+
+
+
+escape_filenames:: Whether or not to escape "special"
+characters in filenames.
+
+Most file systems can handle nearly the full range of UTF-8
+characters. Ones that can deal with a limited range should
+set this to `yes`.
+
+
+
+permissions:: The Unix permissions on the `detail` file.
+
+NOTE: The detail file often contains secret or private
+information about users.  The file permissions should be
+restrictive, so that unwanted people are prevented from
+seeing any secret information.
+
+
+
+group:: The Unix group of the log file.
+
+NOTE: The user that the server runs as must be in the
+specified system group otherwise the server will not have
+permission to change the group ownership of the file.
+
+
+
+header:: The header of a `detail` file entry.
+
+Every entry in the detail file has a header which is a
+timestamp.
+By default, we use the ctime format (see `man 3 ctime` for details).
+
+The header can be customised by editing this string.
+See `doc/unlang/xlat.adoc` for a description
+of what can be put here.
+
+
+
+locking:: Whether or not we should lock the detail file
+before writing to it.
+
+Mainly used if the detail file reader is to be reading this file.
+
+
+
+log_packet_header::: Log the Packet src/dst IP/port.
+
+This is disabled by default, as that information isn't used
+by many people.
+
+
+
+suppress { ... }:: Suppress "secret" information from appearing in the `detail` file.
+
+Certain attributes such as `link:https://freeradius.org/rfc/rfc2865.html#User-Password[User-Password]` may be
+"sensitive", so they should not be printed in the detail
+file. This section lists the attributes that should be
+suppressed.
+
+NOTE: The attributes should be listed one to a line.
+
+
+== Default Configuration
+
+```
+detail {
+	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/detail-%Y-%m-%d
+#	filename = ${radacctdir}/detail
+	escape_filenames = no
+	permissions = 0600
+#	group = ${security.group}
+	header = "%t"
+#	locking = yes
+#	log_packet_header = yes
+#	suppress {
+#		User-Password
+#	}
+}
+```

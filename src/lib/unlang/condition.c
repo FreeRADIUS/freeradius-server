@@ -24,22 +24,19 @@
  */
 RCSID("$Id$")
 
-#include "unlang_priv.h"
+#include "condition_priv.h"
 #include "group_priv.h"
+#include "unlang_priv.h"
 
-static unlang_action_t unlang_if(REQUEST *request,
-				 rlm_rcode_t *presult, int *priority)
+static unlang_action_t unlang_if(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	int			condition;
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-	unlang_group_t		*g;
+	unlang_group_t		*g = unlang_generic_to_group(frame->instruction);
+	unlang_cond_t		*gext = unlang_group_to_cond(g);
 
-	g = unlang_generic_to_group(instruction);
-	rad_assert(g->cond != NULL);
+	fr_assert(gext->cond != NULL);
 
-	condition = cond_eval(request, *presult, 0, g->cond);
+	condition = cond_eval(request, *p_result, gext->cond);
 	if (condition < 0) {
 		switch (condition) {
 		case -2:
@@ -49,7 +46,7 @@ static unlang_action_t unlang_if(REQUEST *request,
 		default:
 		case -1:
 			REDEBUG("Condition evaluation failed because the value of an operand "
-				"could not be determined");
+				"could not be determined - %s", fr_strerror());
 			break;
 		}
 		condition = 0;
@@ -60,9 +57,6 @@ static unlang_action_t unlang_if(REQUEST *request,
 	 */
 	if (!condition) {
 		RDEBUG2("...");
-
-		if (*presult != RLM_MODULE_UNKNOWN) *priority = instruction->actions[*presult];
-
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
@@ -79,7 +73,7 @@ static unlang_action_t unlang_if(REQUEST *request,
 	/*
 	 *	We took the "if".  Go recurse into its' children.
 	 */
-	return unlang_group(request, presult, priority);
+	return unlang_group(p_result, request, frame);
 }
 
 void unlang_condition_init(void)
@@ -87,21 +81,21 @@ void unlang_condition_init(void)
 	unlang_register(UNLANG_TYPE_IF,
 			   &(unlang_op_t){
 				.name = "if",
-				.func = unlang_if,
+				.interpret = unlang_if,
 				.debug_braces = true
 			   });
 
 	unlang_register(UNLANG_TYPE_ELSE,
 			   &(unlang_op_t){
 				.name = "else",
-				.func = unlang_group,
+				.interpret = unlang_group,
 				.debug_braces = true
 			   });
 
 	unlang_register(UNLANG_TYPE_ELSIF,
 			   &(unlang_op_t){
 				.name = "elseif",
-				.func = unlang_if,
+				.interpret = unlang_if,
 				.debug_braces = true
 			   });
 }

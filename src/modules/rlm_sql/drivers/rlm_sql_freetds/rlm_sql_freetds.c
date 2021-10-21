@@ -29,7 +29,7 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_sql_freetds - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <sys/stat.h>
 
@@ -315,9 +315,9 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_freetds_conn_t *conn = handle->conn;
-	int num = 0;
+	CS_INT num = 0;
 
-	if (ct_res_info(conn->command, CS_NUMDATA, (CS_INT *)&num, CS_UNUSED, NULL) != CS_SUCCEED) {
+	if (ct_res_info(conn->command, CS_NUMDATA, &num, CS_UNUSED, NULL) != CS_SUCCEED) {
 		ERROR("Error retrieving column count");
 
 		return RLM_SQL_ERROR;
@@ -393,8 +393,8 @@ static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UN
 {
 	rlm_sql_freetds_conn_t *conn = handle->conn;
 
-	rad_assert(conn && conn->db);
-	rad_assert(outlen > 0);
+	fr_assert(conn && conn->db);
+	fr_assert(outlen > 0);
 
 	if (!conn->error) return 0;
 
@@ -750,20 +750,17 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 *	Set User and Password properties for the db
 	 */
 	{
-		CS_VOID *login, *password;
-		CS_CHAR *server;
 		char database[128];
 
-		memcpy(&login, &config->sql_login, sizeof(login));
-		if (ct_con_props(conn->db, CS_SET, CS_USERNAME, login, strlen(config->sql_login), NULL) != CS_SUCCEED) {
+		if (ct_con_props(conn->db, CS_SET, CS_USERNAME,
+				 UNCONST(CS_VOID *, config->sql_login), strlen(config->sql_login), NULL) != CS_SUCCEED) {
 			ERROR("unable to set username for db");
 
 			goto error;
 		}
 
-		memcpy(&password, &config->sql_password, sizeof(password));
 		if (ct_con_props(conn->db, CS_SET, CS_PASSWORD,
-				 password, strlen(config->sql_password), NULL) != CS_SUCCEED) {
+				 UNCONST(CS_VOID *, config->sql_password), strlen(config->sql_password), NULL) != CS_SUCCEED) {
 			ERROR("unable to set password for db");
 
 			goto error;
@@ -772,8 +769,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		/*
 		 *	Connect to the database
 		 */
-		memcpy(&server, &config->sql_server, sizeof(server));
-		if (ct_connect(conn->db, server, strlen(config->sql_server)) != CS_SUCCEED) {
+		if (ct_connect(conn->db, UNCONST(CS_CHAR *, config->sql_server), strlen(config->sql_server)) != CS_SUCCEED) {
 			ERROR("unable to establish db to symbolic servername %s",
 			      config->sql_server);
 

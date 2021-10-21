@@ -10,7 +10,7 @@
  *
  * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2015 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
- * @copyright 2013 Network RADIUS SARL (info@networkradius.com)
+ * @copyright 2013 Network RADIUS SARL (legal@networkradius.com)
  * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
 #include <freeradius-devel/server/base.h>
@@ -20,9 +20,9 @@
 typedef struct ldap_inst_s rlm_ldap_t;
 
 typedef struct {
-	vp_tmpl_t	*mech;				//!< SASL mech(s) to try.
-	vp_tmpl_t	*proxy;				//!< Identity to proxy.
-	vp_tmpl_t	*realm;				//!< Kerberos realm.
+	tmpl_t	*mech;				//!< SASL mech(s) to try.
+	tmpl_t	*proxy;				//!< Identity to proxy.
+	tmpl_t	*realm;				//!< Kerberos realm.
 } fr_ldap_sasl_t_dynamic_t;
 
 typedef struct {
@@ -42,7 +42,7 @@ struct ldap_inst_s {
 	/*
 	 *	RADIUS attribute to LDAP attribute maps
 	 */
-	vp_map_t	*user_map; 			//!< Attribute map applied to users and profiles.
+	fr_map_list_t	user_map; 			//!< Attribute map applied to users and profiles.
 
 	/*
 	 *	Options
@@ -56,8 +56,8 @@ struct ldap_inst_s {
 	/*
 	 *	User object attributes and filters
 	 */
-	vp_tmpl_t	*userobj_filter;		//!< Filter to retrieve only user objects.
-	vp_tmpl_t	*userobj_base_dn;		//!< DN to search for users under.
+	tmpl_t	*userobj_filter;		//!< Filter to retrieve only user objects.
+	tmpl_t	*userobj_base_dn;		//!< DN to search for users under.
 	char const	*userobj_scope_str;		//!< Scope (sub, one, base).
 	char const	*userobj_sort_by;		//!< List of attributes to sort by.
 	LDAPControl	*userobj_sort_ctrl;		//!< Server side sort control.
@@ -79,7 +79,7 @@ struct ldap_inst_s {
 	 *	Group object attributes and filters
 	 */
 	char const	*groupobj_filter;		//!< Filter to retrieve only group objects.
-	vp_tmpl_t	*groupobj_base_dn;		//!< DN to search for users under.
+	tmpl_t	*groupobj_base_dn;		//!< DN to search for users under.
 	char const	*groupobj_scope_str;		//!< Scope (sub, one, base).
 	int		groupobj_scope;			//!< Search scope.
 
@@ -115,13 +115,13 @@ struct ldap_inst_s {
 	/*
 	 *	Profiles
 	 */
-	vp_tmpl_t	*default_profile;		//!< If this is set, we will search for a profile object
+	tmpl_t	*default_profile;		//!< If this is set, we will search for a profile object
 							//!< with this name, and map any attributes it contains.
 							//!< No value should be set if profiles are not being used
 							//!< as there is an associated performance penalty.
 	char const	*profile_attr;			//!< Attribute that identifies profiles to apply. May appear
 							//!< in userobj or groupobj.
-	vp_tmpl_t	*profile_filter;		//!< Filter to retrieve only retrieve group objects.
+	tmpl_t	*profile_filter;		//!< Filter to retrieve only retrieve group objects.
 
 	/*
 	 *	Accounting
@@ -141,6 +141,7 @@ struct ldap_inst_s {
 
 	fr_pool_t	*pool;				//!< Connection pool instance.
 	fr_ldap_config_t handle_config;			//!< Connection configuration instance.
+	fr_trunk_conf_t	trunk_conf;			//!< Trunk configuration
 
 	/*
 	 *	Global config
@@ -163,35 +164,39 @@ extern fr_dict_attr_t const *attr_user_name;
 /*
  *	user.c - User lookup functions
  */
-char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
-			       char const *attrs[], bool force, LDAPMessage **result, rlm_rcode_t *rcode);
+char const *rlm_ldap_find_user(rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *tconn,
+			       char const *attrs[], bool force, LDAPMessage **result, LDAP **handle, rlm_rcode_t *rcode);
 
-rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, REQUEST *request,
-				  fr_ldap_connection_t const *conn, LDAPMessage *entry);
+rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request, LDAP *handle, LDAPMessage *entry);
 
-void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t const *conn);
+void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t const *ttrunk);
 
 /*
  *	groups.c - Group membership functions.
  */
-rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
-				       LDAPMessage *entry, char const *attr);
+unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, rlm_ldap_t const *inst,
+					   request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+					   LDAPMessage *entry, LDAP *handle, char const *attr);
 
-rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn);
+unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result,
+					    rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *ttrunk);
 
-rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
-					    VALUE_PAIR *check);
+unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result,
+						rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+						fr_pair_t const *check);
 
-rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t **pconn,
-					   char const *dn, VALUE_PAIR *check);
+unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result,
+					       rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t *ttrunk,
+					       char const *dn, fr_pair_t const *check);
 
-rlm_rcode_t rlm_ldap_check_cached(rlm_ldap_t const *inst, REQUEST *request, VALUE_PAIR *check);
+unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
+				      rlm_ldap_t const *inst, request_t *request, fr_pair_t const *check);
 
 /*
  *	conn.c - Connection wrappers.
  */
-fr_ldap_connection_t	*mod_conn_get(rlm_ldap_t const *inst, REQUEST *request);
+fr_ldap_connection_t	*mod_conn_get(rlm_ldap_t const *inst, request_t *request);
 
-void		mod_conn_release(rlm_ldap_t const *inst, REQUEST *request, fr_ldap_connection_t *conn);
+void		ldap_mod_conn_release(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t *conn);
 
-void		*mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);
+void		*ldap_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);

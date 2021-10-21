@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -12,4 +12,4 @@
 ##############################################################################
 
 ATTRIBUTE	DNS-Servers				23	ipv6addr array
-ATTRIBUTE	Domain-List				24	octets		# Domain name list (DNS encoding)
+ATTRIBUTE	Domain-List				24	string array,dns_label	# Domain name list (DNS encoding)

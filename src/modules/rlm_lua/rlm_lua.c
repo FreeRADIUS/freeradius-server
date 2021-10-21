@@ -29,7 +29,7 @@ RCSID("$Id$")
 #define LOG_PREFIX_ARGS inst->xlat_name
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/module.h>
 
 #include "lua.h"
@@ -48,10 +48,8 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("func_detach", FR_TYPE_STRING, rlm_lua_t, func_detach), NULL},
 	{ FR_CONF_OFFSET("func_authorize", FR_TYPE_STRING, rlm_lua_t, func_authorize), NULL},
 	{ FR_CONF_OFFSET("func_authenticate", FR_TYPE_STRING, rlm_lua_t, func_authenticate), NULL},
-#ifdef WITH_ACCOUNTING
 	{ FR_CONF_OFFSET("func_accounting", FR_TYPE_STRING, rlm_lua_t, func_accounting), NULL},
 	{ FR_CONF_OFFSET("func_preacct", FR_TYPE_STRING, rlm_lua_t, func_preacct), NULL},
-#endif
 	{ FR_CONF_OFFSET("func_xlat", FR_TYPE_STRING, rlm_lua_t, func_xlat), NULL},
 	{ FR_CONF_OFFSET("func_post_auth", FR_TYPE_STRING, rlm_lua_t, func_post_auth), NULL},
 
@@ -59,11 +57,11 @@ static const CONF_PARSER module_config[] = {
 };
 
 #define DO_LUA(_s)\
-static rlm_rcode_t mod_##_s(void *instance, void *thread, REQUEST *request) \
+static unlang_action_t mod_##_s(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 {\
-	rlm_lua_t const *inst = instance;\
-	if (!inst->func_##_s) return RLM_MODULE_NOOP;\
-	return fr_lua_run(inst, thread, request, inst->func_##_s);\
+	rlm_lua_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_lua_t);\
+	if (!inst->func_##_s) RETURN_MODULE_NOOP;\
+	return fr_lua_run(p_result, mctx, request, inst->func_##_s);\
 }
 
 DO_LUA(authorize)
@@ -114,18 +112,31 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 static int mod_detach(void *instance)
 {
 	rlm_lua_t *inst = instance;
+	rlm_rcode_t ret = 0;
 
 	/*
 	 *	May be NULL if fr_lua_init failed
 	 */
-	if (inst->interpreter) lua_close(inst->interpreter);
+	if (inst->interpreter) {
+		if (inst->func_detach) {
+			fr_lua_run(&ret, &(module_ctx_t){
+						.instance = inst,
+						.thread = &(rlm_lua_thread_t){
+							.interpreter = inst->interpreter
+						}
+					},
+					NULL, inst->func_detach);
+		}
+		lua_close(inst->interpreter);
+	}
 
-	return 0;
+	return ret;
 }
 
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_lua_t *inst = instance;
+	rlm_rcode_t rcode;
 
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
@@ -138,6 +149,16 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	if (!inst->jit) WARN("Using standard Lua interpreter, performance will be suboptimal");
 
 	DEBUG("Using %s interpreter", fr_lua_version(inst->interpreter));
+
+	if (inst->func_instantiate) {
+		fr_lua_run(&rcode, &(module_ctx_t){
+					.instance = inst,
+					.thread = &(rlm_lua_thread_t){
+				   		.interpreter = inst->interpreter
+					}
+				    },
+			  NULL, inst->func_instantiate);
+	}
 
 	return 0;
 }

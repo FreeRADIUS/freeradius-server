@@ -2,6 +2,10 @@ AC_INIT(rlm_mruby.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_mruby])
 
+AC_ARG_WITH([]modname,
+[AS_HELP_STRING([--without-[]modname],[build without module])]
+)
+
 if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
@@ -25,7 +29,7 @@ if test x$with_[]modname != xno; then
 				mruby_include_dir="$withval"
 				;;
 		esac])
-	
+
 	dnl extra argument: --with-mruby-lib-dir=DIR
 	mruby_lib_dir=
 	AC_ARG_WITH(mruby-lib-dir,
@@ -100,7 +104,7 @@ if test x$with_[]modname != xno; then
 		AC_MSG_WARN([m library not found.])
 		fail="$fail libm"
 	fi
-	
+
 	targetname=modname
 else
 	targetname=

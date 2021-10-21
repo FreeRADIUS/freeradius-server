@@ -1,7 +1,8 @@
-ARG from=freeradius/debian9-deps
-FROM ${from}
+FROM freeradius/debian9-deps
 
-ARG osname=stretch
+SHELL ["/usr/bin/nice", "-n", "5", "/usr/bin/ionice", "-c", "3", "/bin/sh", "-x", "-c"]
+
+ARG APT_OPTS="-y --option=Dpkg::options::=--force-unsafe-io --no-install-recommends"
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -9,10 +10,11 @@ ARG DEBIAN_FRONTEND=noninteractive
 #  This is necessary for the jenkins server to talk to the docker instance
 #
 RUN apt-get update && \
-    apt-get install -y openjdk-8-jre-headless \
-                       openssh-server \
-                       sudo && \
-    apt-get -y upgrade
+    apt-get upgrade $APT_OPTS --option=Dpkg::Options::=--force-confdef --option=Dpkg::Options::=--force-confold && \
+    apt-get install $APT_OPTS \
+        default-jre-headless \
+        openssh-server \
+        sudo
 
 RUN useradd -m jenkins
 RUN echo "jenkins:jenkins1" | chpasswd

@@ -27,7 +27,7 @@ RCSIDH(dhcpv4_attrs_h, "$Id$")
 
 #include <freeradius-devel/util/dict.h>
 
-extern fr_dict_t *dict_dhcpv4;
+extern fr_dict_t const *dict_dhcpv4;
 
 extern fr_dict_attr_t const *attr_dhcp_boot_filename;
 extern fr_dict_attr_t const *attr_dhcp_client_hardware_address;
@@ -49,3 +49,6 @@ extern fr_dict_attr_t const *attr_dhcp_message_type;
 extern fr_dict_attr_t const *attr_dhcp_parameter_request_list;
 extern fr_dict_attr_t const *attr_dhcp_overload;
 extern fr_dict_attr_t const *attr_dhcp_vendor_class_identifier;
+extern fr_dict_attr_t const *attr_dhcp_relay_link_selection;
+extern fr_dict_attr_t const *attr_dhcp_subnet_selection_option;
+extern fr_dict_attr_t const *attr_dhcp_network_subnet;

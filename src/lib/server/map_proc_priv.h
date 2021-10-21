@@ -27,7 +27,7 @@
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/map_proc.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,6 +36,7 @@ extern "C" {
 /** Map processor registration
  */
 struct map_proc {
+	fr_rb_node_t		node;			//!< Entry in the map processor tree.
 	void			*mod_inst;		//!< Module instance.
 	char			name[FR_MAX_STRING_LEN];	//!< Name of the map function.
 	int			length;			//!< Length of name.
@@ -49,8 +50,8 @@ struct map_proc {
  */
 struct map_proc_inst {
 	map_proc_t const	*proc;			//!< Map processor.
-	vp_tmpl_t const		*src;			//!< Evaluated to provide source value for map processor.
-	vp_map_t const		*maps;			//!< Head of the map list.
+	tmpl_t const		*src;			//!< Evaluated to provide source value for map processor.
+	fr_map_list_t const	*maps;			//!< Head of the map list.
 	void			*data;			//!< Instance data created by #map_proc_instantiate
 };
 

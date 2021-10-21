@@ -1,0 +1,15 @@
+ALIAS	Airespace-Wlan-Id                       	26.14179.1
+ALIAS	Airespace-QOS-Level                     	26.14179.2
+ALIAS	Airespace-DSCP                          	26.14179.3
+ALIAS	Airespace-8021p-Tag                     	26.14179.4
+ALIAS	Airespace-Interface-Name                	26.14179.5
+ALIAS	Airespace-ACL-Name                      	26.14179.6
+ALIAS	Airespace-Data-Bandwidth-Average-Contract	26.14179.7
+ALIAS	Airespace-Real-Time-Bandwidth-Average-Contract	26.14179.8
+ALIAS	Airespace-Data-Bandwidth-Burst-Contract 	26.14179.9
+ALIAS	Airespace-Real-Time-Bandwidth-Burst-Contract	26.14179.10
+ALIAS	Airespace-Guest-Role-Name               	26.14179.11
+ALIAS	Airespace-Data-Bandwidth-Average-Contract-Upstream	26.14179.13
+ALIAS	Airespace-Real-Time-Bandwidth-Average-Contract-Upstream	26.14179.14
+ALIAS	Airespace-Data-Bandwidth-Burst-Contract-Upstream	26.14179.15
+ALIAS	Airespace-Real-Time-Bandwidth-Burst-Contract-Upstream	26.14179.16

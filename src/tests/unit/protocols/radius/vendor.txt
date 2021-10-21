@@ -1,0 +1,112 @@
+proto radius
+proto-dictionary radius
+
+load-dictionary dictionary
+
+encode-pair Vendor-Specific = { Starent = { VPN-Name = "foo" } }
+match 1a 0d 00 00 1f e4 00 02 00 07 66 6f 6f
+
+encode-pair Vendor-Specific.Starent.VPN-Name = "foo"
+match 1a 0d 00 00 1f e4 00 02 00 07 66 6f 6f
+
+decode-pair -
+match Vendor-Specific.Starent.VPN-Name = "foo"
+
+encode-pair Vendor-Specific.USR.Event-Id = 1234
+match 1a 0e 00 00 01 ad 00 00 bf be 00 00 04 d2
+
+decode-pair -
+match Vendor-Specific.USR.Event-Id = 1234
+
+decode-pair 1a 15 00 00 4e 20 01 0f 6c 69 74 68 69 61 73 70 72 69 6e 67 73
+match Vendor-Specific.20000.1 = 0x6c6974686961737072696e6773
+
+encode-pair Vendor-Specific.3com.User-Access-Level = Visitor, Vendor-Specific.3com.Ip-Host-Addr = "155.4.12.100 00:00:00:00:00:00"
+match 1a 0c 00 00 00 2b 01 06 00 00 00 00 1a 26 00 00 00 2b 3c 20 31 35 35 2e 34 2e 31 32 2e 31 30 30 20 30 30 3a 30 30 3a 30 30 3a 30 30 3a 30 30 3a 30 30
+
+decode-pair -
+match Vendor-Specific.3com.User-Access-Level = Visitor, Vendor-Specific.3com.Ip-Host-Addr = "155.4.12.100 00:00:00:00:00:00"
+
+#
+#  The VSAs could also be packet into one Vendor-Specific
+#
+decode-pair 1a 2e 00 00 00 2b 1c 02 01 06 00 00 00 00 3c 20 31 35 35 2e 34 2e 31 32 2e 31 30 30 20 30 30 3a 30 30 3a 30 30 3a 30 30 3a 30 30 3a 30 30
+match Vendor-Specific.3com.User-Access-Level = Visitor, Vendor-Specific.3com.Ip-Host-Addr = "155.4.12.100 00:00:00:00:00:00"
+
+decode-pair 1a 2c 00 00 00 2b 01 06 00 00 00 00 3c 20 31 35 35 2e 34 2e 31 32 2e 31 30 30 20 30 30 3a 30 30 3a 30 30 3a 30 30 3a 30 30 3a 30 30
+match Vendor-Specific.3com.User-Access-Level = Visitor, Vendor-Specific.3com.Ip-Host-Addr = "155.4.12.100 00:00:00:00:00:00"
+
+#
+#  Vendor-Specific is of type "vsa", and therefore cannot be assigned values.
+#
+encode-pair raw.Vendor-Specific = 0xabcdef
+match 1a 05 ab cd ef
+
+encode-pair raw.26 = 0x00000009abcdef
+match 1a 09 00 00 00 09 ab cd ef
+
+decode-pair -
+match raw.Vendor-Specific = 0x00000009abcdef
+
+#
+#  Parse this as itself, nothing else.
+#
+attribute raw.26 = 0x00000009abcdef
+match raw.Vendor-Specific = 0x00000009abcdef
+
+# this untagged tunnel encrypted VSA is valid in both access accepts and CoA requests
+encode-pair Vendor-Specific.Unisphere.LI-Action = off
+match 1a 1a 00 00 13 0a 3a 14 8d 31 89 6e 2e 8a f5 fa 78 fb d5 90 d8 1a 15 91 c1 f1
+
+decode-pair -
+match Vendor-Specific.Unisphere.LI-Action = off
+
+#packet coa_request
+#original null
+#encode-pair LI-Action = off
+#decode-pair -
+#data LI-Action = off
+
+#
+#  Unknown vendors get decoded as TLVs with type=1,length=1
+#
+decode-pair 1a12000080000105abcdef02076161616161
+match Vendor-Specific.32768.1 = 0xabcdef, Vendor-Specific.32768.2 = 0x6161616161
+
+#
+#  This MUST be 50 octets of data
+#
+encode-pair Vendor-Specific.Microsoft.CHAP-Response = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxX"
+match 1a 3a 00 00 01 37 01 34 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 58
+
+decode-pair -
+match Vendor-Specific.Microsoft.CHAP-Response = 0x7878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787858
+
+#
+#  And now something which *isn't* 50 octets, but instead 49.
+#  Therefore it's an "invalid attribute", as defined in RFC 6929 Section 2.8.
+#
+decode-pair 1a 39 00 00 01 37 01 33 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78 78
+match raw.Vendor-Specific.Microsoft.CHAP-Response = 0x78787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878
+
+#
+#  And an ALIAS.  First we see how the VSA should be defined,
+#  and then encode an alias which should be exactly the same.
+#
+encode-pair Vendor-Specific.Cisco.AVPair = "foo"
+match 1a 0b 00 00 00 09 01 05 66 6f 6f
+
+encode-pair Cisco-AVPair = "foo"
+match 1a 0b 00 00 00 09 01 05 66 6f 6f
+
+#
+#  At some point we should be able to pack these VSAs both into one Vendor-Specific.
+#
+encode-pair Vendor-Specific.Cisco = { AVPair = "foo", AVPair = "bar" }
+match 1a 0b 00 00 00 09 01 05 66 6f 6f 1a 0b 00 00 00 09 01 05 62 61 72
+
+encode-pair Cisco-AVPair = "foo", Cisco-AVPair = "bar"
+match 1a 0b 00 00 00 09 01 05 66 6f 6f 1a 0b 00 00 00 09 01 05 62 61 72
+
+count
+match 51

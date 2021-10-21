@@ -14,6 +14,6 @@ DEFAULT
 	Message-Authenticator =* ANY,
 	Error-Cause =* ANY,
 	Reply-Message =* ANY,
-	MS-CHAP-Error =* ANY,
+	Vendor-Specific.Microsoft.CHAP-Error =* ANY,
 	Proxy-State =* ANY,
 	Error-Cause =* ANY

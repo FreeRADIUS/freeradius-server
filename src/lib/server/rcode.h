@@ -25,7 +25,8 @@
  */
 RCSIDH(rcode_h, "$Id$")
 
-#include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/table.h>
+#include <freeradius-devel/unlang/action.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,16 +43,28 @@ typedef enum {
 	RLM_MODULE_OK,					//!< The module is OK, continue.
 	RLM_MODULE_HANDLED,				//!< The module handled the request, so stop.
 	RLM_MODULE_INVALID,				//!< The module considers the request invalid.
-	RLM_MODULE_USERLOCK,				//!< Reject the request (user is locked out).
+	RLM_MODULE_DISALLOW,				//!< Reject the request (user is locked out).
 	RLM_MODULE_NOTFOUND,				//!< User not found.
 	RLM_MODULE_NOOP,				//!< Module succeeded without doing anything.
 	RLM_MODULE_UPDATED,				//!< OK (pairs modified).
 	RLM_MODULE_NUMCODES,				//!< How many valid return codes there are.
-	RLM_MODULE_YIELD,				//!< for unlang.
-	RLM_MODULE_UNKNOWN,				//!< Error resolving rcode (should not be
+	RLM_MODULE_NOT_SET,				//!< Error resolving rcode (should not be
 							//!< returned by modules).
 } rlm_rcode_t;
-extern const FR_NAME_NUMBER rcode_table[];
+
+#define RETURN_MODULE_REJECT		do { *p_result = RLM_MODULE_REJECT; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_FAIL		do { *p_result = RLM_MODULE_FAIL; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_OK		do { *p_result = RLM_MODULE_OK; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_HANDLED		do { *p_result = RLM_MODULE_HANDLED; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_INVALID		do { *p_result = RLM_MODULE_INVALID; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_DISALLOW		do { *p_result = RLM_MODULE_DISALLOW; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_NOTFOUND		do { *p_result = RLM_MODULE_NOTFOUND; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_NOOP		do { *p_result = RLM_MODULE_NOOP; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_UPDATED		do { *p_result = RLM_MODULE_UPDATED; return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+#define RETURN_MODULE_RCODE(_rcode)	do { *p_result = (_rcode); return UNLANG_ACTION_CALCULATE_RESULT; } while (0)
+
+extern fr_table_num_sorted_t const rcode_table[];
+extern size_t rcode_table_len;
 
 /** Rcodes that translate to a user configurable section failing overall
  *
@@ -60,7 +73,7 @@ extern const FR_NAME_NUMBER rcode_table[];
 	RLM_MODULE_REJECT:		\
 	case RLM_MODULE_FAIL:		\
 	case RLM_MODULE_INVALID:	\
-	case RLM_MODULE_USERLOCK
+	case RLM_MODULE_DISALLOW
 
 #ifdef __cplusplus
 }

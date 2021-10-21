@@ -9,7 +9,7 @@ switch &User-Name {
 		}
 	}
 
-	case {
+	default {
 		update reply {
 			&Filter-Id := "default"
 		}

@@ -33,21 +33,18 @@ RCSID("$Id$")
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/process.h>
+#include <freeradius-devel/server/virtual_servers.h>
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <freeradius-devel/io/application.h>
+#include <freeradius-devel/io/master.h>
 #include <freeradius-devel/io/listen.h>
 
 #include <freeradius-devel/unlang/base.h>
 
-#include "virtual_servers.h"
-
 typedef struct {
-	char const		*namespace;		//!< Namespace function is registered to.
-	fr_virtual_server_compile_t	func;		//!< Function to call to compile sections.
-} fr_virtual_namespace_t;
-
-typedef struct {
-	dl_module_inst_t		*proto_module;		//!< The proto_* module for a listen section.
+	dl_module_inst_t	*proto_module;		//!< The proto_* module for a listen section.
 	fr_app_t const		*app;			//!< Easy access to the exported struct.
 } fr_virtual_listen_t;
 
@@ -55,7 +52,26 @@ typedef struct {
 	CONF_SECTION		*server_cs;		//!< The server section.
 	char const		*namespace;		//!< Protocol namespace
 	fr_virtual_listen_t	**listener;		//!< Listeners in this virtual server.
+	dl_module_inst_t	*process_module;	//!< the process_* module for a virtual server
+	dl_module_inst_t	*dynamic_client_module;	//!< the process_* module for a dynamic client
 } fr_virtual_server_t;
+
+static fr_dict_t const *dict_freeradius;
+
+static fr_dict_attr_t const *attr_auth_type;
+
+extern fr_dict_autoload_t virtual_server_dict_autoload[];
+fr_dict_autoload_t virtual_server_dict_autoload[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+extern fr_dict_attr_autoload_t virtual_server_dict_attr_autoload[];
+fr_dict_attr_autoload_t virtual_server_dict_attr_autoload[] = {
+	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
+
+	{ NULL }
+};
 
 /** Top level structure holding all virtual servers
  *
@@ -69,28 +85,31 @@ static fr_virtual_server_t **virtual_servers;
  */
 static CONF_SECTION *virtual_server_root;
 
-static rbtree_t *listen_addr_root = NULL;
+static fr_rb_tree_t *listen_addr_root = NULL;
 
 /** Lookup allowed section names for modules
  */
-static rbtree_t *server_section_name_tree = NULL;
+static fr_rb_tree_t *server_section_name_tree = NULL;
 
-static int server_section_name_cmp(void const *one, void const *two);
-static int virtual_server_section_register(virtual_server_compile_t const *entry);
+static int8_t server_section_name_cmp(void const *one, void const *two);
 
-static int namespace_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
-			     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int namespace_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int listen_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int server_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
+static int namespace_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int server_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
-static const CONF_PARSER listen_on_read_config[] = {
-	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING | FR_TYPE_ON_READ,
-			 fr_virtual_server_t, listener), \
+static const CONF_PARSER server_on_read_config[] = {
+	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING | FR_TYPE_REQUIRED, fr_virtual_server_t, namespace),
+			.on_read = namespace_on_read },
+
+	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING,
+			 fr_virtual_server_t, listener),
+			 .ident2 = CF_IDENT_ANY,
 			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",
-			 .func = listen_on_read },
+			 .on_read = listen_on_read },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -100,26 +119,23 @@ const CONF_PARSER virtual_servers_on_read_config[] = {
 	 *	Not really ok if it's missing but we want to
 	 *	let logic elsewhere handle the issue.
 	 */
-	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING | FR_TYPE_ON_READ, &virtual_servers), \
+	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING, &virtual_servers),
 			  .subcs_size = sizeof(fr_virtual_server_t), .subcs_type = "fr_virtual_server_t",
-			  .subcs = (void const *) listen_on_read_config, .ident2 = CF_IDENT_ANY,
-			  .func = server_on_read },
+			  .subcs = (void const *) server_on_read_config, .ident2 = CF_IDENT_ANY,
+			  .on_read = server_on_read },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER server_config[] = {
+	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING | FR_TYPE_REQUIRED, fr_virtual_server_t, namespace),
+			 .func = namespace_parse },
+
 	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING,
-			 fr_virtual_server_t, listener),		\
+			 fr_virtual_server_t, listener),
+			 .ident2 = CF_IDENT_ANY,
 			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",
 			 .func = listen_parse },
-
-	CONF_PARSER_TERMINATOR
-};
-
-static const CONF_PARSER namespace_config[] = {
-	{ FR_CONF_OFFSET("namespace", FR_TYPE_STRING | FR_TYPE_ON_READ, fr_virtual_server_t, namespace),
-	  .func = namespace_on_read },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -129,13 +145,125 @@ const CONF_PARSER virtual_servers_config[] = {
 	 *	Not really ok if it's missing but we want to
 	 *	let logic elsewhere handle the issue.
 	 */
-	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING, &virtual_servers), \
+	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING, &virtual_servers),
 			  .subcs_size = sizeof(fr_virtual_server_t), .subcs_type = "fr_virtual_server_t",
 			  .subcs = (void const *) server_config, .ident2 = CF_IDENT_ANY,
 			  .func = server_parse },
 
 	CONF_PARSER_TERMINATOR
 };
+
+typedef struct {
+	fr_dict_t const		*dict;
+	char const		*server;
+} virtual_server_dict_t;
+
+/** Decrement references on dictionaries as the config sections are freed
+ *
+ */
+static int _virtual_server_dict_free(virtual_server_dict_t *cd)
+{
+	fr_dict_const_free(&cd->dict, cd->server);
+	return 0;
+}
+
+
+void virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *dict, bool reference)
+{
+	virtual_server_dict_t *p;
+	CONF_DATA const *cd;
+
+	cd = cf_data_find(server_cs, virtual_server_dict_t, "dictionary");
+	if (cd) {
+		p = (virtual_server_dict_t *) cf_data_value(cd);
+		if (p->dict == dict) return;
+
+		cf_log_warn(server_cs, "Attempt to add multiple different dictionaries %s and %s",
+			    fr_dict_root(p->dict)->name, fr_dict_root(dict)->name);
+		return;
+	}
+
+	p = talloc_zero(server_cs, virtual_server_dict_t);
+	p->dict = dict;
+	p->server = talloc_strdup(p, cf_section_name2(server_cs));
+	talloc_set_destructor(p, _virtual_server_dict_free);
+
+	if (reference) fr_dict_dependent_add(dict, p->server);
+
+	cf_data_add(server_cs, p, "dictionary", true);
+}
+
+fr_dict_t const *virtual_server_dict(CONF_SECTION *server_cs)
+{
+	virtual_server_dict_t *p;
+	CONF_DATA const *cd;
+
+	cd = cf_data_find(server_cs, virtual_server_dict_t, "dictionary");
+	if (cd) {
+		p = (virtual_server_dict_t *) cf_data_value(cd);
+		return p->dict;
+	}
+	return NULL;
+}
+
+/** Parse a "namespace" parameter.
+ *
+ * @param[in] ctx	to allocate data in.
+ * @param[out] out	always NULL
+ * @param[in] parent	Base structure address.
+ * @param[in] ci	#CONF_SECTION containing the listen section.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
+			     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	CONF_PAIR		*cp = cf_item_to_pair(ci);
+	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
+	char const		*namespace = cf_pair_value(cp);
+	dl_module_t const      	*module;
+	char			*module_name, *p, *end;
+
+	if (!namespace || !*namespace) {
+		cf_log_err(ci, "Missing value for 'namespace'");
+		return -1;
+	}
+
+	module_name = talloc_strdup(ctx, namespace);
+
+	/*
+	 *	Smush all hyphens to underscores for module names
+	 */
+	for (p = module_name, end = module_name + talloc_array_length(module_name) - 1;
+	     p < end;
+	     p++) if (*p == '-') *p = '_';
+
+	/*
+	 *	Pass server_cs, even though it's wrong.  We don't have
+	 *	anything else to pass, and the dl_module() function
+	 *	only uses the CONF_SECTION for printing.
+	 */
+	module = dl_module(server_cs, NULL, module_name, DL_MODULE_TYPE_PROCESS);
+	talloc_free(module_name);
+	if (module) {
+		fr_process_module_t const *process = (fr_process_module_t const *) module->common;
+
+		if (*process->dict) {
+			virtual_server_dict_set(server_cs, *process->dict, false);
+		}
+	}
+
+	if (!module) {
+		cf_log_perr(ci, "Failed loading process module");
+		return -1;
+	}
+
+	cf_data_add(server_cs, module, "process module", true);
+
+	return 0;
+}
 
 /** dl_open a proto_* module
  *
@@ -154,80 +282,73 @@ static int listen_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void 
 	CONF_SECTION		*listen_cs = cf_item_to_section(ci);
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
 	CONF_PAIR		*namespace = cf_pair_find(server_cs, "namespace");
+	char const		*value;
 	dl_module_t const	*module;
+	fr_app_t const		*app;
+	bool			set_dict;
 
 	if (!namespace) {
-		cf_log_err(listen_cs, "No 'namespace' set for virtual server");
-		cf_log_err(listen_cs, "Please add 'namespace = <protocol>' inside of the 'server %s { ... }' section",
+		cf_log_err(server_cs, "No 'namespace' set for virtual server");
+		cf_log_err(server_cs, "Please add 'namespace = <protocol>' inside of the 'server %s { ... }' section",
 			   cf_section_name2(server_cs));
 		return -1;
 	}
 
-	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading proto_%s", cf_pair_value(namespace));
+	value = cf_section_name2(listen_cs);
+	if (value) {
+		set_dict = false;
 
-	module = dl_module(listen_cs, NULL, cf_pair_value(namespace), DL_MODULE_TYPE_PROTO);
+
+	} else {
+		value = cf_pair_value(namespace);
+		fr_assert(value);
+		set_dict = true;
+
+	}
+
+	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading proto_%s", value);
+	module = dl_module(listen_cs, NULL, value, DL_MODULE_TYPE_PROTO);
 	if (!module) {
-		cf_log_err(listen_cs, "Failed loading proto_%s module", cf_pair_value(namespace));
+		cf_log_err(listen_cs, "Failed loading proto_%s module", value);
 		return -1;
 	}
 	cf_data_add(listen_cs, module, "proto module", true);
 
+	if (!set_dict) return 0;
+
+	app = (fr_app_t const *) module->common;
+	if (app->dict) virtual_server_dict_set(server_cs, *app->dict, true);
+
 	return 0;
 }
 
-/** Decrement references on dictionaries as the config sections are freed
+
+/** Callback when a "server" section is created.
  *
- */
-static int namespace_dict_free(fr_dict_t **dict)
-{
-	fr_dict_free(dict);
-	return 0;
-}
-
-/** Load a protocol dictionary matching the specified namespace
+ *  This callback exists only as a place-holder to ensure that the
+ *  listen_on_read function is called.  The conf file routines won't
+ *  recurse into every CONF_PARSER section to check if there's an
+ *  "on_read" callback.  So this place-holder is a signal.
  *
  * @param[in] ctx	to allocate data in.
- * @param[out] out	always NULL
+ * @param[out] out	Unused
  * @param[in] parent	Base structure address.
- * @param[in] ci	#CONF_SECTION containing the namespace pair.
+ * @param[in] ci	#CONF_SECTION containing the server section.
  * @param[in] rule	unused.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
-			     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int server_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
+			  UNUSED CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	CONF_PAIR		*namespace_cp = cf_item_to_pair(ci);
-	char const		*namespace = cf_pair_value(namespace_cp);
-	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
-	fr_dict_t		*dict = NULL;
-	fr_dict_t		**dict_p;
-
-	if (DEBUG_ENABLED4) cf_log_debug(ci, "Initialising namespace \"%s\"", namespace);
-
-	if (fr_dict_protocol_afrom_file(&dict, namespace, NULL) < 0) {
-#if 1
-		return 0;
-#else
-		cf_log_perr("Failed initialising namespace \"%s\" - %s", namespace, fr_strerror());
-		return -1;
-#endif
-	}
-
-	dict_p = talloc_zero(ctx, fr_dict_t *);
-	*dict_p = dict;
-	talloc_set_destructor(dict_p, namespace_dict_free);
-
-	cf_data_add(server_cs, dict_p, "dictionary", true);
-
 	return 0;
 }
 
-/** Callback to set up listen_on_read
+/** dl_open a process_* module
  *
  * @param[in] ctx	to allocate data in.
- * @param[out] out	Where to our listen configuration.  Is a #fr_virtual_server_t structure.
+ * @param[out] out	Where to our listen configuration.  Is a #fr_virtual_listen_t structure.
  * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_SECTION containing the listen section.
  * @param[in] rule	unused.
@@ -235,10 +356,50 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int server_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
-			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int namespace_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	return cf_section_rules_push(cf_item_to_section(ci), namespace_config);
+	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
+	CONF_SECTION		*process_cs;
+	char const		*namespace = cf_pair_value(cf_item_to_pair(ci));
+	char			*module_name = talloc_strdup(ctx, namespace);
+	char			*p, *end;
+	fr_virtual_server_t	*server = (fr_virtual_server_t *) (((uint8_t *) out) - offsetof(fr_virtual_server_t, namespace));
+	int			ret;
+
+	(void) talloc_get_type_abort(server, fr_virtual_server_t);
+	fr_assert(namespace != NULL);
+
+	server->namespace = namespace;
+
+	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading process %s into %p", namespace, out);
+
+	/*
+	 *	Enforce that the protocol process configuration is in
+	 *	a subsection named for the protocol.
+	 */
+	process_cs = cf_section_find(server_cs, namespace, NULL);
+	if (!process_cs) {
+		process_cs = cf_section_alloc(server_cs, server_cs, namespace, NULL);
+	}
+
+	/*
+	 *	Smush all hyphens to underscores for module names
+	 */
+	for (p = module_name, end = module_name + talloc_array_length(module_name) - 1;
+	     p < end;
+	     p++) if (*p == '-') *p = '_';
+
+	/*
+	 *	We now require a process module for everything.
+	 */
+	ret = dl_module_instance(ctx, &server->process_module, process_cs, NULL, module_name, DL_MODULE_TYPE_PROCESS);
+	talloc_free(module_name);
+	if (ret < 0) {
+		cf_log_warn(server_cs, "Failed loading process module");
+		return -1;
+	}
+
+	return 0;
 }
 
 /** dl_open a proto_* module
@@ -258,10 +419,14 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_IT
 	CONF_SECTION		*listen_cs = cf_item_to_section(ci);
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
 	CONF_PAIR		*namespace = cf_pair_find(server_cs, "namespace");
+	char const		*value;
 
-	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading %s listener into %p", cf_pair_value(namespace), out);
+	value = cf_section_name2(listen_cs);
+	if (!value) value = cf_pair_value(namespace);
 
-	if (dl_module_instance(ctx, &listen->proto_module, listen_cs, NULL, cf_pair_value(namespace), DL_MODULE_TYPE_PROTO) < 0) {
+	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading %s listener into %p", value, out);
+
+	if (dl_module_instance(ctx, &listen->proto_module, listen_cs, NULL, value, DL_MODULE_TYPE_PROTO) < 0) {
 		cf_log_err(listen_cs, "Failed loading proto module");
 		return -1;
 	}
@@ -295,11 +460,82 @@ static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	}
 
 	server->server_cs = server_cs;
+	server->namespace = cf_pair_value(namespace);
 
 	/*
 	 *	Now parse the listeners
 	 */
 	if (cf_section_parse(out, server, server_cs) < 0) return -1;
+
+	/*
+	 *	And cache this struct for later referencing.
+	 */
+	cf_data_add(server_cs, server, "vs", false);
+
+	return 0;
+}
+
+/** Set the request processing function.
+ *
+ *	Short-term hack
+ */
+unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs, bool top_frame)
+{
+	fr_virtual_server_t *server;
+	fr_process_module_t const *process;
+	fr_io_track_t *track = request->async->packet_ctx;
+	module_instance_t *mi = talloc_zero(request, module_instance_t);
+
+	server = cf_data_value(cf_data_find(server_cs, fr_virtual_server_t, "vs"));
+	if (!server) {
+		REDEBUG("server_cs does not contain virtual server data");
+		return UNLANG_ACTION_FAIL;
+	}
+
+	mi->name = server->process_module->name;
+	mi->module = (module_t *)server->process_module;
+	mi->number = 0;	/* Hacky hack hack */
+
+	if (unlikely(track && fr_time_gt(track->dynamic, fr_time_wrap(0)) && server->dynamic_client_module)) {
+		process = (fr_process_module_t const *) server->dynamic_client_module->module->common;
+		mi->dl_inst = server->dynamic_client_module;
+
+	} else {
+		process = (fr_process_module_t const *) server->process_module->module->common;
+		mi->dl_inst = server->process_module;
+	}
+
+	mi->instantiated = true;
+
+	/*
+	 *	Bootstrap the stack with a module instance.
+	 *
+	 *	@todo - src/lib/unlang/module.c calls module_thread(),
+	 *	which looks up mi->number in various data structures.
+	 *	It's probably best to initialize instance_num=1 in
+	 *	src/lib/server/module.c, that reserves 0 for "nothing
+	 *	is initialized".
+	 */
+	if (unlang_module_push(&request->rcode, request, mi, process->process, top_frame) < 0) return UNLANG_ACTION_FAIL;
+
+	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
+/** Allow dynamic clients in this virtual server.
+ *
+ *	Short-term hack
+*/
+int virtual_server_dynamic_clients_allow(CONF_SECTION *server_cs)
+{
+	fr_virtual_server_t *server;
+
+	server = cf_data_value(cf_data_find(server_cs, fr_virtual_server_t, "vs"));
+	if (server->dynamic_client_module) return 0;
+
+	if (dl_module_instance(server_cs, &server->dynamic_client_module, server_cs, NULL, "dynamic_client", DL_MODULE_TYPE_PROCESS) < 0) {
+		cf_log_err(server_cs, "Failed loading dynamic client module");
+		return -1;
+	}
 
 	return 0;
 }
@@ -320,11 +556,11 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 	int			rcode = 0;
 	CONF_SECTION		*subcs = NULL;
 
-	rad_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
+	fr_assert(strcmp(cf_section_name1(server_cs), "server") == 0);
 
 	while ((subcs = cf_section_find_next(server_cs, subcs, subcs_name, CF_IDENT_ANY))) {
 		char const	*name2;
-		fr_dict_enum_t	*dv;
+		fr_dict_enum_value_t	*dv;
 
 		name2 = cf_section_name2(subcs);
 		if (!name2) {
@@ -336,7 +572,7 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 		 *	If the value already exists, don't
 		 *	create it again.
 		 */
-		dv = fr_dict_enum_by_alias(da, name2, -1);
+		dv = fr_dict_enum_by_name(da, name2, -1);
 		if (dv) continue;
 
 		cf_log_debug(subcs, "Creating %s = %s", da->name, name2);
@@ -347,7 +583,7 @@ int virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const 
 		 *	this code, so it doesn't matter.  The only
 		 *	requirement is that it's unique.
 		 */
-		if (fr_dict_enum_add_alias_next(da, name2) < 0) {
+		if (fr_dict_enum_add_name_next(fr_dict_attr_unconst(da), name2) < 0) {
 			PERROR("Failed adding section value");
 			return -1;
 		}
@@ -397,12 +633,12 @@ static fr_cmd_table_t cmd_table[] = {
  *
  *  Only works for IP addresses, and will blow up on file names
  */
-static int listen_addr_cmp(void const *one, void const *two)
+static int8_t listen_addr_cmp(void const *one, void const *two)
 {
 	fr_listen_t const *a = one;
 	fr_listen_t const *b = two;
 	fr_ipaddr_t aip, bip;
-	int rcode;
+	int ret;
 
 	/*
 	 *	The caller must ensure that the address field is set.
@@ -414,14 +650,12 @@ static int listen_addr_cmp(void const *one, void const *two)
 	/*
 	 *	UDP vs TCP
 	 */
-	rcode = a->app_io_addr->proto - b->app_io_addr->proto;
-	if (rcode != 0) return rcode;
+	CMP_RETURN(a, b, app_io_addr->proto);
 
 	/*
 	 *	Check ports.
 	 */
-	rcode = a->app_io_addr->port - b->app_io_addr->port;
-	if (rcode != 0) return rcode;
+	CMP_RETURN(a, b, app_io_addr->inet.src_port);
 
 	/*
 	 *	Don't call fr_ipaddr_cmp(), as we need to do our own
@@ -432,31 +666,29 @@ static int listen_addr_cmp(void const *one, void const *two)
 	/*
 	 *	Different address families.
 	 */
-	rcode = a->app_io_addr->ipaddr.af - b->app_io_addr->ipaddr.af;
-	if (rcode != 0) return rcode;
+	CMP_RETURN(a, b, app_io_addr->inet.src_ipaddr.af);
 
 	/*
 	 *	If both are bound to interfaces, AND the interfaces
 	 *	are different, then there is no conflict.
 	 */
-	if (a->app_io_addr->ipaddr.scope_id && b->app_io_addr->ipaddr.scope_id) {
-		rcode = a->app_io_addr->ipaddr.scope_id - b->app_io_addr->ipaddr.scope_id;
-		if (rcode != 0) return rcode;
+	if (a->app_io_addr->inet.src_ipaddr.scope_id && b->app_io_addr->inet.src_ipaddr.scope_id) {
+		CMP_RETURN(a, b, app_io_addr->inet.src_ipaddr.scope_id);
 	}
 
-	rcode = a->app_io_addr->ipaddr.prefix - b->app_io_addr->ipaddr.prefix;
-	aip = a->app_io_addr->ipaddr;
-	bip = b->app_io_addr->ipaddr;
+	ret = a->app_io_addr->inet.src_ipaddr.prefix - b->app_io_addr->inet.src_ipaddr.prefix;
+	aip = a->app_io_addr->inet.src_ipaddr;
+	bip = b->app_io_addr->inet.src_ipaddr;
 
 	/*
 	 *	Mask out the longer prefix to match the shorter
 	 *	prefix.
 	 */
-	if (rcode < 0) {
-		fr_ipaddr_mask(&bip, a->app_io_addr->ipaddr.prefix);
+	if (ret < 0) {
+		fr_ipaddr_mask(&bip, a->app_io_addr->inet.src_ipaddr.prefix);
 
-	} else if (rcode > 0) {
-		fr_ipaddr_mask(&aip, b->app_io_addr->ipaddr.prefix);
+	} else if (ret > 0) {
+		fr_ipaddr_mask(&aip, b->app_io_addr->inet.src_ipaddr.prefix);
 
 	}
 
@@ -470,7 +702,7 @@ fr_listen_t *listen_find_any(fr_listen_t *li)
 {
 	if (!listen_addr_root) return false;
 
-	return rbtree_finddata(listen_addr_root, li);
+	return fr_rb_find(listen_addr_root, li);
 }
 
 
@@ -485,7 +717,36 @@ bool listen_record(fr_listen_t *li)
 
 	if (listen_find_any(li) != NULL) return false;
 
-	return rbtree_insert(listen_addr_root, li);
+	return fr_rb_insert(listen_addr_root, li);
+}
+
+static int process_instantiate(CONF_SECTION *server_cs, dl_module_inst_t *dl_inst, fr_dict_t const *dict)
+{
+	fr_process_module_t const *process = (fr_process_module_t const *) dl_inst->module->common;
+
+	if (process->instantiate &&
+	    (process->instantiate(dl_inst->data, dl_inst->conf) < 0)) {
+		cf_log_err(dl_inst->conf, "Instantiate failed");
+		return -1;
+	}
+
+	/*
+	 *	Compile the processing sections.
+	 */
+	if (process->compile_list) {
+		tmpl_rules_t		parse_rules;
+
+		memset(&parse_rules, 0, sizeof(parse_rules));
+		parse_rules.dict_def = dict;
+		fr_assert(parse_rules.dict_def != NULL);
+
+		if (virtual_server_compile_sections(server_cs, process->compile_list, &parse_rules,
+						    dl_inst->data) < 0) {
+			return -1;
+		}
+	}
+
+	return 0;
 }
 
 
@@ -498,15 +759,13 @@ bool listen_record(fr_listen_t *li)
 int virtual_servers_instantiate(void)
 {
 	size_t		i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
-	rbtree_t	*vns_tree = cf_data_value(cf_data_find(virtual_server_root, rbtree_t, "vns_tree"));
 
-	rad_assert(virtual_servers);
+	fr_assert(virtual_servers);
 
 	DEBUG2("#### Instantiating listeners ####");
 
 	if (fr_command_register_hook(NULL, NULL, virtual_server_root, cmd_table) < 0) {
-		ERROR("Failed registering radmin commands for virtual servers - %s",
-		      fr_strerror());
+		PERROR("Failed registering radmin commands for virtual servers");
 		return -1;
 	}
 
@@ -515,32 +774,28 @@ int virtual_servers_instantiate(void)
 		size_t			j, listen_cnt;
 		CONF_ITEM		*ci = NULL;
 		CONF_SECTION		*server_cs = virtual_servers[i]->server_cs;
+		CONF_DATA const		*cd;
+		virtual_server_dict_t	*dict = NULL;
+
+		cd = cf_data_find(server_cs, virtual_server_dict_t, "dictionary");
+		if (cd) {	/* only NULl for the control socket */
+			dict = (virtual_server_dict_t *) cf_data_value(cd);
+			fr_assert(dict != NULL);
+		}
 
  		listener = virtual_servers[i]->listener;
  		listen_cnt = talloc_array_length(listener);
 
 		DEBUG("Compiling policies in server %s { ... }", cf_section_name2(server_cs));
 
-		if (vns_tree) {
-			fr_virtual_namespace_t	find = { .namespace = cf_section_name2(server_cs) };
-			fr_virtual_namespace_t	*found;
-
-			found = rbtree_finddata(vns_tree, &find);
-			if (found && (found->func(server_cs) < 0)) return -1;
-		}
-
-		/*
-		 *	Not all virtual servers have listeners,
-		 *	some are just used to wrap unlang logic.
-		 */
-		if (listen_cnt == 0) continue;
+		fr_assert(virtual_servers[i]->namespace != NULL);
 
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
 
-			rad_assert(listen != NULL);
-			rad_assert(listen->proto_module != NULL);
-			rad_assert(listen->app != NULL);
+			fr_assert(listen != NULL);
+			fr_assert(listen->proto_module != NULL);
+			fr_assert(listen->app != NULL);
 
 			if (listen->app->instantiate &&
 			    listen->app->instantiate(listen->proto_module->data, listen->proto_module->conf) < 0) {
@@ -550,9 +805,24 @@ int virtual_servers_instantiate(void)
 			}
 		}
 
+		fr_assert(virtual_servers[i]->process_module);
+
+		if (!dict) {
+			cf_log_err(server_cs, "No dictionary for namespace %s", virtual_servers[i]->namespace);
+			return -1; /* should never happen */
+		}
+
+		if (process_instantiate(server_cs, virtual_servers[i]->process_module, dict->dict) < 0) return -1;
+
+		if (virtual_servers[i]->dynamic_client_module &&
+		    (process_instantiate(server_cs, virtual_servers[i]->dynamic_client_module, dict->dict) < 0)) return -1;
+
 		/*
 		 *	Print out warnings for unused "recv" and
 		 *	"send" sections.
+		 *
+		 *	@todo - check against the "compile_list"
+		 *	registered for this virtual server, instead of hard-coding stuff.
 		 */
 		while ((ci = cf_item_next(server_cs, ci))) {
 			char const	*name;
@@ -564,9 +834,9 @@ int virtual_servers_instantiate(void)
 			name = cf_section_name1(subcs);
 
 			/*
-			 *	Skip listen sections
+			 *	Skip known "other" sections
 			 */
-			if (strcmp(name, "listen") == 0) continue;
+			if ((strcmp(name, "listen") == 0) || (strcmp(name, "client") == 0)) continue;
 
 			/*
 			 *	For every other section, warn if it hasn't
@@ -584,6 +854,40 @@ int virtual_servers_instantiate(void)
 	}
 
 	return 0;
+}
+
+static int add_compile_list(CONF_SECTION *cs, virtual_server_compile_t const *compile_list, char const *name)
+{
+	int i;
+	virtual_server_compile_t const *list = compile_list;
+
+	if (!compile_list) return 0;
+
+	for (i = 0; list[i].name != NULL; i++) {
+		if (list[i].name == CF_IDENT_ANY) continue;
+
+		if (virtual_server_section_register(&list[i]) < 0) {
+			cf_log_err(cs, "Failed registering processing section name %s for %s",
+				   list[i].name, name);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static int process_bootstrap(dl_module_inst_t *dl_inst, char const *namespace)
+{
+	fr_process_module_t const *process = (fr_process_module_t const *) dl_inst->module->common;
+
+	if (process->bootstrap &&
+	    (process->bootstrap(dl_inst->data,
+				dl_inst->conf) < 0)) {
+		cf_log_err(dl_inst->conf, "Bootstrap failed");
+		return -1;
+	}
+
+	return add_compile_list(dl_inst->conf, process->compile_list, namespace);
 }
 
 /** Load protocol modules and call their bootstrap methods
@@ -615,10 +919,18 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	 */
 	while ((cs = cf_section_find_next(config, cs, "server", CF_IDENT_ANY))) {
 		char const *server_name;
+		CONF_SECTION *bad;
 
 		server_name = cf_section_name2(cs);
 		if (!server_name) {
 			cf_log_err(cs, "server sections must have a name");
+			return -1;
+		}
+
+		bad = cf_section_find_next(config, cs, "server", server_name);
+		if (bad) {
+			cf_log_err(bad, "Duplicate virtual servers are forbidden.");
+			cf_log_err(cs, "Previous definition occurs here.");
 			return -1;
 		}
 
@@ -641,7 +953,16 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		fr_virtual_listen_t	**listener;
 		size_t			j, listen_cnt;
 
-		if (!virtual_servers[i] || !virtual_servers[i]->listener) continue;
+		fr_assert(virtual_servers[i] != NULL);
+
+		/*
+		 *	The only listener which can't have a dictionary is "control".
+		 */
+		fr_assert((cf_data_find(virtual_servers[i]->server_cs, virtual_server_dict_t, "dictionary") != NULL) ||
+			  (virtual_servers[i]->listener &&
+			   (strcmp(((fr_virtual_listen_t *) virtual_servers[i]->listener[0])->proto_module->module->common->name, "control") == 0)));
+
+		if (!virtual_servers[i]->listener) goto bootstrap;
 
  		listener = talloc_get_type_abort(virtual_servers[i]->listener, fr_virtual_listen_t *);
  		listen_cnt = talloc_array_length(listener);
@@ -649,8 +970,8 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
 
-			rad_assert(listen != NULL);
-			rad_assert(listen->proto_module != NULL);
+			fr_assert(listen != NULL);
+			fr_assert(listen->proto_module != NULL);
 
 			(void) talloc_get_type_abort(listen, fr_virtual_listen_t);
 
@@ -663,6 +984,16 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 				return -1;
 			}
 		}
+
+	bootstrap:
+		fr_assert(virtual_servers[i]->process_module);
+
+		if (process_bootstrap(virtual_servers[i]->process_module,
+				      virtual_servers[i]->namespace) < 0) return -1;
+
+		if (virtual_servers[i]->dynamic_client_module &&
+		    (process_bootstrap(virtual_servers[i]->process_module,
+				       virtual_servers[i]->namespace) < 0)) return -1;
 	}
 
 	return 0;
@@ -679,9 +1010,10 @@ int virtual_servers_open(fr_schedule_t *sc)
 {
 	size_t i, server_cnt = virtual_servers ? talloc_array_length(virtual_servers) : 0;
 
-	rad_assert(virtual_servers);
+	fr_assert(virtual_servers);
 
 	DEBUG2("#### Opening listener interfaces ####");
+	fr_strerror_clear();
 
 	for (i = 0; i < server_cnt; i++) {
 		fr_virtual_listen_t	**listener;
@@ -693,9 +1025,9 @@ int virtual_servers_open(fr_schedule_t *sc)
 		for (j = 0; j < listen_cnt; j++) {
 			fr_virtual_listen_t *listen = listener[j];
 
-			rad_assert(listen != NULL);
-			rad_assert(listen->proto_module != NULL);
-			rad_assert(listen->app != NULL);
+			fr_assert(listen != NULL);
+			fr_assert(listen->proto_module != NULL);
+			fr_assert(listen->app != NULL);
 
 			/*
 			 *	The socket is opened with app_instance,
@@ -752,65 +1084,25 @@ CONF_SECTION *virtual_server_by_child(CONF_SECTION *section)
 	return cf_section_find_in_parent(section, "server", CF_IDENT_ANY);
 }
 
-/** Free a virtual namespace callback
+/** Wrapper for the config parser to allow pass1 resolution of virtual servers
  *
  */
-static void _virtual_namespace_free(void *data)
+int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			    CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	talloc_free(data);
-}
+	CONF_SECTION	*server_cs;
 
-/** Compare two virtual namespace callbacks
- *
- */
-static int _virtual_namespace_cmp(void const *a, void const *b)
-{
-	fr_virtual_namespace_t const *ns_a = a;
-	fr_virtual_namespace_t const *ns_b = b;
-
-	return strcmp(ns_a->namespace, ns_b->namespace);
-}
-
-/** Add a callback for a specific namespace
- *
- *  This allows modules to register unlang compilation functions for specific namespaces
- */
-int virtual_server_namespace_register(char const *namespace, fr_virtual_server_compile_t func)
-{
-	rbtree_t		*vns_tree;
-	fr_virtual_namespace_t	*vns;
-
-	rad_assert(virtual_server_root);	/* Virtual server bootstrap must be called first */
-
-	MEM(vns = talloc_zero(NULL, fr_virtual_namespace_t));
-	vns->namespace = namespace;
-	vns->func = func;
-
-	vns_tree = cf_data_value(cf_data_find(virtual_server_root, rbtree_t, "vns_tree"));
-	if (!vns_tree) {
-		/*
-		 *	Tree will be freed when the cf_data is freed
-		 *	so it shouldn't be parented from
-		 *	virtual_server_root.
-		 */
-		MEM(vns_tree = rbtree_talloc_create(NULL,
-						    _virtual_namespace_cmp, fr_virtual_namespace_t,
-						    _virtual_namespace_free, RBTREE_FLAG_REPLACE));
-
-		if (!cf_data_add(virtual_server_root, vns_tree, "vns_tree", true)) {
-			ERROR("Failed adding namespace tree data to config");
-			talloc_free(vns_tree);
-			return -1;
-		}
-	}
-
-	if (!rbtree_insert(vns_tree, vns)) {
-		ERROR("Failed inserting namespace into tree");
+	server_cs = virtual_server_find(cf_pair_value(cf_item_to_pair(ci)));
+	if (!server_cs) {
+		cf_log_err(ci, "virtual-server \"%s\" not found", cf_pair_value(cf_item_to_pair(ci)));
 		return -1;
 	}
 
+	*((CONF_SECTION **)out) = server_cs;
+
 	return 0;
 }
+
 
 /** Return the namespace for a given virtual server
  *
@@ -819,18 +1111,41 @@ int virtual_server_namespace_register(char const *namespace, fr_virtual_server_c
  *	- NULL on error.
  *	- Namespace on success.
  */
-fr_dict_t *virtual_server_namespace(char const *virtual_server)
+fr_dict_t const *virtual_server_namespace(char const *virtual_server)
 {
 	CONF_SECTION const *server_cs;
 	CONF_DATA const *cd;
+	virtual_server_dict_t *dict;
 
 	server_cs = virtual_server_find(virtual_server);
 	if (!server_cs) return NULL;
 
-	cd = cf_data_find(server_cs, fr_dict_t *, "dictionary");
+	cd = cf_data_find(server_cs, virtual_server_dict_t, "dictionary");
 	if (!cd) return NULL;
 
-	return *(fr_dict_t **) cf_data_value(cd);
+	dict = (virtual_server_dict_t *) cf_data_value(cd);
+
+	return dict->dict;
+}
+
+/** Return the namespace for a given virtual server specified by a CONF_ITEM within the virtual server
+ *
+ * @param[in] ci		to look for namespace in.
+ * @return
+ *	- NULL on error.
+ *	- Namespace on success.
+ */
+fr_dict_t const *virtual_server_namespace_by_ci(CONF_ITEM *ci)
+{
+	CONF_DATA const *cd;
+	virtual_server_dict_t *dict;
+
+	cd = cf_data_find_in_parent(ci, virtual_server_dict_t, "dictionary");
+	if (!cd) return NULL;
+
+	dict = (virtual_server_dict_t *) cf_data_value(cd);
+
+	return dict->dict;
 }
 
 /** Verify that a given virtual_server exists and is of a particular namespace
@@ -887,74 +1202,68 @@ int virtual_servers_init(CONF_SECTION *config)
 {
 	virtual_server_root = config;
 
-	MEM(listen_addr_root = rbtree_create(config, listen_addr_cmp, NULL, RBTREE_FLAG_NONE));
-	MEM(server_section_name_tree = rbtree_create(config, server_section_name_cmp, NULL, RBTREE_FLAG_NONE));
+	if (fr_dict_autoload(virtual_server_dict_autoload) < 0) {
+		PERROR("%s", __FUNCTION__);
+		return -1;
+	}
+	if (fr_dict_attr_autoload(virtual_server_dict_attr_autoload) < 0) {
+		PERROR("%s", __FUNCTION__);
+		fr_dict_autofree(virtual_server_dict_autoload);
+		return -1;
+	}
+
+	MEM(listen_addr_root = fr_rb_inline_alloc(NULL, fr_listen_t, virtual_server_node, listen_addr_cmp, NULL));
+	MEM(server_section_name_tree = fr_rb_alloc(NULL, server_section_name_cmp, NULL));
 
 	return 0;
 }
 
 int virtual_servers_free(void)
 {
+	TALLOC_FREE(listen_addr_root);
+	TALLOC_FREE(server_section_name_tree);
+
+	fr_dict_autofree(virtual_server_dict_autoload);
+
 	return 0;
 }
 
-
 /**
  */
-rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
+unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type, request_t *request, CONF_SECTION *server_cs)
 {
 	rlm_rcode_t	rcode;
-	CONF_SECTION	*cs, *server_cs;
 	char const	*module;
 	char const	*component;
 	fr_dict_attr_t const *da;
-	fr_dict_enum_t const *dv;
+	fr_dict_enum_value_t const *dv;
 	CONF_SECTION	*subcs;
-
-	rad_assert(request->server_cs != NULL);
-
-	/*
-	 *	Cache the old server_cs in case it was changed.
-	 *
-	 *	FIXME: request->server_cs should NOT be changed.
-	 *	Instead, we should always create a child REQUEST when
-	 *	we need to use a different virtual server.
-	 *
-	 *	This is mainly for things like proxying
-	 */
-	server_cs = request->server_cs;
-	cs = cf_section_find(request->server_cs, "authenticate", NULL);
-	if (!cs) {
-		RDEBUG2("Empty 'authenticate' section in virtual server \"%s\".  Using default return value (%s)",
-			cf_section_name2(request->server_cs),
-			fr_int2str(mod_rcode_table, RLM_MODULE_REJECT, "<invalid>"));
-		return RLM_MODULE_REJECT;
-	}
+	fr_dict_t const	*dict_internal;
 
 	/*
 	 *	Figure out which section to run.
 	 */
 	if (!auth_type) {
 		RERROR("An 'Auth-Type' MUST be specified");
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
-	da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_AUTH_TYPE);
-	if (!da) return RLM_MODULE_FAIL;
+	dict_internal = fr_dict_internal();
+	da = fr_dict_attr_child_by_num(fr_dict_root(dict_internal), FR_AUTH_TYPE);
+	if (!da) RETURN_MODULE_FAIL;
 
 	dv = fr_dict_enum_by_value(da, fr_box_uint32((uint32_t) auth_type));
-	if (!dv) return RLM_MODULE_FAIL;
+	if (!dv) RETURN_MODULE_FAIL;
 
-	subcs = cf_section_find(cs, da->name, dv->alias);
+	subcs = cf_section_find(server_cs, "authenticate", dv->name);
 	if (!subcs) {
 		RDEBUG2("%s %s sub-section not found.  Using default return values.",
-			da->name, dv->alias);
-		return RLM_MODULE_REJECT;
+			da->name, dv->name);
+		RETURN_MODULE_REJECT;
 	}
 
 	RDEBUG("Running %s %s from file %s",
-	       da->name, dv->alias, cf_filename(subcs));
-	cs = subcs;
+	       da->name, dv->name, cf_filename(subcs));
 
 	/*
 	 *	Cache and restore these, as they're re-set when
@@ -966,165 +1275,53 @@ rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
 	request->module = NULL;
 	request->component = "authenticate";
 
-	rcode = unlang_interpret(request, cs, RLM_MODULE_REJECT);
+
+	if (unlang_interpret_push_section(request, subcs, RLM_MODULE_REJECT, UNLANG_TOP_FRAME) < 0) {
+		RETURN_MODULE_FAIL;
+	}
+	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
 
 	request->component = component;
 	request->module = module;
-	request->server_cs = server_cs;
 
+	RETURN_MODULE_RCODE(rcode);
+}
+
+rlm_rcode_t virtual_server_process_auth(request_t *request, CONF_SECTION *virtual_server,
+					rlm_rcode_t default_rcode,
+					unlang_module_resume_t resume,
+					unlang_module_signal_t signal, void *rctx)
+{
+	fr_pair_t	*vp;
+	CONF_SECTION	*auth_cs = NULL;
+	char const	*auth_name;
+	rlm_rcode_t	rcode = RLM_MODULE_NOOP;
+
+	vp = fr_pair_find_by_da(&request->control_pairs, attr_auth_type, 0);
+	if (!vp) {
+		RDEBUG2("No &control.Auth-Type found");
+	fail:
+		request->rcode = RLM_MODULE_FAIL;
+		unlang_module_yield_to_section(&rcode, request, NULL, RLM_MODULE_FAIL, resume, signal, rctx);
+		return rcode;
+	}
+
+	auth_name = fr_dict_enum_name_by_value(attr_auth_type, &vp->data);
+	if (!auth_name) {
+		REDEBUG2("Invalid %pP value", vp);
+		goto fail;
+	}
+
+	auth_cs = cf_section_find(virtual_server, "authenticate", auth_name);
+	if (!auth_cs) {
+		REDEBUG2("No authenticate %s { ... } section found in virtual server \"%s\"",
+			 auth_name, cf_section_name2(virtual_server));
+		goto fail;
+	}
+
+	unlang_module_yield_to_section(&rcode, request, auth_cs, default_rcode, resume, signal, rctx);
 	return rcode;
 }
-
-/*
- *	Hack for unit_test_module.c
- */
-void fr_request_async_bootstrap(REQUEST *request, fr_event_list_t *el)
-{
-	size_t listen_cnt;
-	fr_virtual_listen_t	**listener;
-
-	if (!virtual_servers) return; /* let it crash! */
-
-	listener = virtual_servers[0]->listener;
-	listen_cnt = talloc_array_length(listener);
-
-	if (!listen_cnt) return;
-
-	/*
-	 *	New async listeners
-	 */
-	request->async = talloc_zero(request, fr_async_t);
-
-	request->async->channel = NULL;
-	request->async->original_recv_time = NULL;
-/*	request->async->recv_time = fr_time(); */
-	request->async->el = el;
-
-	request->async->listen = NULL;
-	request->async->packet_ctx = NULL;
-	listener[0]->app->entry_point_set(listener[0]->proto_module->data, request);
-}
-
-int fr_app_process_bootstrap(CONF_SECTION *server, dl_module_inst_t **type_submodule, CONF_SECTION *conf)
-{
-	int i = 0;
-	CONF_PAIR *cp = NULL;
-
-	/*
-	 *	Bootstrap the process modules
-	 */
-	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		char const		*value;
-		dl_module_t const	*module = talloc_get_type_abort_const(type_submodule[i]->module, dl_module_t);
-		fr_app_worker_t const	*app_process = (fr_app_worker_t const *)(module->common);
-
-		if (app_process->bootstrap && (app_process->bootstrap(type_submodule[i]->data,
-								      type_submodule[i]->conf) < 0)) {
-			cf_log_err(conf, "Bootstrap failed for \"%s\"", app_process->name);
-			return -1;
-		}
-
-		value = cf_pair_value(cp);
-
-		/*
-		 *	Save the process / instance data
-		 *
-		 *	This is so that when one virtual server wants
-		 *	to call another, it just looks up the data
-		 *	here by packet name, and doesn't need to root
-		 *	through all of the listeners.
-		 */
-		if (!cf_data_find(server, fr_io_process_t, value)) {
-			fr_io_process_t *process_p = talloc(server, fr_io_process_t);
-			*process_p = app_process->entry_point;
-
-			(void) cf_data_add(server, process_p, value, NULL);
-
-			if (type_submodule[i]->data) {
-				(void) cf_data_add(server, type_submodule[i]->data, value, NULL);
-			}
-		}
-
-		/*
-		 *	Register the processing sections with the
-		 *	module manager.
-		 */
-		if (app_process->compile_list) {
-			int j;
-			virtual_server_compile_t const *list = app_process->compile_list;
-
-			for (j = 0; list[j].name != NULL; j++) {
-				if (list[j].name == CF_IDENT_ANY) continue;
-
-				if (virtual_server_section_register(&list[j]) < 0) {
-					cf_log_err(conf, "Failed registering section name for %s",
-						app_process->name);
-					return -1;
-				}
-
-			}
-		}
-
-
-		i++;
-	}
-
-	return i;
-}
-
-
-int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_submodule, dl_module_inst_t **type_submodule_by_code, int code_max, CONF_SECTION *conf)
-{
-	int i;
-	CONF_PAIR *cp = NULL;
-	vp_tmpl_rules_t		parse_rules;
-
-	memset(&parse_rules, 0, sizeof(parse_rules));
-	parse_rules.dict_def = virtual_server_namespace(cf_section_name2(server));
-
-	/*
-	 *	Instantiate the process modules
-	 */
-	i = 0;
-	while ((cp = cf_pair_find_next(conf, cp, "type"))) {
-		fr_app_worker_t const	*app_process;
-		fr_dict_enum_t const	*enumv;
-		int			code;
-
-		app_process = (fr_app_worker_t const *)type_submodule[i]->module->common;
-		if (app_process->instantiate &&
-		    (app_process->instantiate(type_submodule[i]->data, type_submodule[i]->conf) < 0)) {
-			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
-			return -1;
-		}
-
-		/*
-		 *	Compile the processing sections.
-		 */
-		if (app_process->compile_list &&
-		    (virtual_server_compile_sections(server, app_process->compile_list, &parse_rules) < 0)) {
-			return -1;
-		}
-
-		/*
-		 *	We've already done bounds checking in the type_parse function
-		 */
-		enumv = cf_data_value(cf_data_find(cp, fr_dict_enum_t, NULL));
-		if (!fr_cond_assert(enumv)) return -1;
-
-		code = enumv->value->vb_uint32;
-		if (code >= code_max) {
-			cf_log_err(conf, "Invalid type code \"%s\" for \"%s\"", enumv->alias, app_process->name);
-			return -1;
-		}
-
-		type_submodule_by_code[code] = type_submodule[i];	/* Store the process function */
-		i++;
-	}
-
-	return 0;
-}
-
 
 /** Compile sections for a virtual server.
  *
@@ -1134,11 +1331,21 @@ int fr_app_process_instantiate(CONF_SECTION *server, dl_module_inst_t **type_sub
  *
  *  This function walks down the registration table, compiling each
  *  named section.
+ *
+ * @parma[in] server	to search for sections in.
+ * @param[in] list	of sections to compiler.
+ * @param[in] rules	to apply for pass1.
+ * @param[in] instance	module instance data.  The offset value in
+ *			the rules array will be added to this to
+ *			determine where to write pointers to the
+ *			various CONF_SECTIONs.
  */
-int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, vp_tmpl_rules_t const *rules)
+int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, tmpl_rules_t const *rules, void *instance)
 {
-	int i;
+	int i, found;
 	CONF_SECTION *subcs = NULL;
+
+	found = 0;
 
 	/*
 	 *	The sections are in trees, so this isn't as bad as it
@@ -1147,6 +1354,7 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 	 */
 	for (i = 0; list[i].name != NULL; i++) {
 		int rcode;
+		CONF_SECTION *bad;
 
 		/*
 		 *	We are looking for a specific subsection.
@@ -1154,17 +1362,57 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 		 *	found.
 		 */
 		if (list[i].name2 != CF_IDENT_ANY) {
+			void *instruction = NULL;
+
 			subcs = cf_section_find(server, list[i].name, list[i].name2);
 			if (!subcs) {
 				DEBUG3("Warning: Skipping %s %s { ... } as it was not found.",
 				       list[i].name, list[i].name2);
+				/*
+				 *	Initialise CONF_SECTION pointer for missing section
+				 */
+				if ((instance) && !list[i].dont_cache) {
+					*(CONF_SECTION **) (((uint8_t *) instance) + list[i].offset) = NULL;
+				}
 				continue;
 			}
 
-			rcode = unlang_compile_subsection(subcs, list[i].component, rules);
+			/*
+			 *	Duplicate sections are forbidden.
+			 */
+			bad = cf_section_find_next(server, subcs, list[i].name, list[i].name2);
+			if (bad) {
+			forbidden:
+				cf_log_err(bad, "Duplicate sections are forbidden.");
+				cf_log_err(subcs, "Previous definition occurs here.");
+				return -1;
+			}
+
+			rcode = unlang_compile(subcs, list[i].component, rules, &instruction);
 			if (rcode < 0) return -1;
+
+			/*
+			 *	Cache the CONF_SECTION which was found.
+			 */
+			if (instance) {
+				if (!list[i].dont_cache) {
+					*(CONF_SECTION **) (((uint8_t *) instance) + list[i].offset) = subcs;
+				}
+				if (list[i].instruction > 0) {
+					*(void **) (((uint8_t *) instance) + list[i].instruction) = instruction;
+				}
+			}
+
+			found++;
 			continue;
 		}
+
+		/*
+		 *	Reset this so that we start from the beginning
+		 *	again, instead of starting from the last "send
+		 *	foo" block.
+		 */
+		subcs = NULL;
 
 		/*
 		 *	Find all subsections with the given first name
@@ -1179,28 +1427,45 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 				return -1;
 			}
 
-			rcode = unlang_compile_subsection(subcs, list[i].component, rules);
+			/*
+			 *	Duplicate sections are forbidden.
+			 */
+			bad = cf_section_find_next(server, subcs, list[i].name, name2);
+			if (bad) goto forbidden;
+
+			rcode = unlang_compile(subcs, list[i].component, rules, NULL);
 			if (rcode < 0) return -1;
+
+			/*
+			 *	Note that we don't store the
+			 *	CONF_SECTION here, as it's a wildcard.
+			 *
+			 *	@todo - count number of subsections
+			 *	and store them in an array?
+			 */
+			found++;
 		}
 	}
 
-	return 0;
+	return found;
 }
 
-static int server_section_name_cmp(void const *one, void const *two)
+static int8_t server_section_name_cmp(void const *one, void const *two)
 {
-	int rcode;
 	virtual_server_compile_t const *a = one;
 	virtual_server_compile_t const *b = two;
+	int ret;
 
-	rcode = strcmp(a->name, b->name);
-	if (rcode != 0) return rcode;
+	ret = strcmp(a->name, b->name);
+	ret = CMP(ret, 0);
+	if (ret != 0) return ret;
 
 	if (a->name2 == b->name2) return 0;
 	if ((a->name2 == CF_IDENT_ANY) && (b->name2 != CF_IDENT_ANY)) return -1;
 	if ((a->name2 != CF_IDENT_ANY) && (b->name2 == CF_IDENT_ANY)) return +1;
 
-	return strcmp(a->name2, b->name2);
+	ret = strcmp(a->name2, b->name2);
+	return CMP(ret, 0);
 }
 
 /** Register name1 / name2 as allowed processing sections
@@ -1208,13 +1473,13 @@ static int server_section_name_cmp(void const *one, void const *two)
  *  This function is called from the virtual server bootstrap routine,
  *  which happens before module_bootstrap();
  */
-static int virtual_server_section_register(virtual_server_compile_t const *entry)
+int virtual_server_section_register(virtual_server_compile_t const *entry)
 {
 	virtual_server_compile_t *old;
 
-	rad_assert(server_section_name_tree != NULL);
+	fr_assert(server_section_name_tree != NULL);
 
-	old = rbtree_finddata(server_section_name_tree, entry);
+	old = fr_rb_find(server_section_name_tree, entry);
 	if (old) return 0;
 
 #ifndef NDEBUG
@@ -1244,68 +1509,29 @@ static int virtual_server_section_register(virtual_server_compile_t const *entry
 	}
 #endif
 
-	if (!rbtree_insert(server_section_name_tree, entry)) {
-		fr_strerror_printf("Failed inserting entry into internal tree");
+	if (!fr_rb_insert(server_section_name_tree, entry)) {
+		fr_strerror_const("Failed inserting entry into internal tree");
 		return -1;
 	}
 
 	return 0;
 }
 
-
 /** Find the component for a section
  *
  */
-int virtual_server_section_component(rlm_components_t *component, char const *name1, char const *name2)
+virtual_server_method_t const *virtual_server_section_methods(char const *name1, char const *name2)
 {
 	virtual_server_compile_t *entry;
 
-	rad_assert(server_section_name_tree != NULL);
+	fr_assert(server_section_name_tree != NULL);
 
 	/*
 	 *	Look up the specific name first.  That way we can
 	 *	define both "accounting on", and "accounting *".
 	 */
 	if (name2 != CF_IDENT_ANY) {
-		entry = rbtree_finddata(server_section_name_tree,
-					&(virtual_server_compile_t) {
-						.name = name1,
-						.name2 = name2,
-					});
-		if (entry) goto done;
-	}
-
-	/*
-	 *	Then look up the wildcard, if we didn't find any matching name2.
-	 */
-	entry = rbtree_finddata(server_section_name_tree,
-				&(virtual_server_compile_t) {
-					.name = name1,
-					.name2 = CF_IDENT_ANY,
-				});
-	if (!entry) return -1;
-
-done:
-	*component = entry->component;
-
-	return 0;
-}
-
-/** Find the component for a section
- *
- */
-virtual_server_method_t *virtual_server_section_methods(char const *name1, char const *name2)
-{
-	virtual_server_compile_t *entry;
-
-	rad_assert(server_section_name_tree != NULL);
-
-	/*
-	 *	Look up the specific name first.  That way we can
-	 *	define both "accounting on", and "accounting *".
-	 */
-	if (name2 != CF_IDENT_ANY) {
-		entry = rbtree_finddata(server_section_name_tree,
+		entry = fr_rb_find(server_section_name_tree,
 					&(virtual_server_compile_t) {
 						.name = name1,
 						.name2 = name2,
@@ -1316,7 +1542,7 @@ virtual_server_method_t *virtual_server_section_methods(char const *name1, char 
 	/*
 	 *	Then look up the wildcard, if we didn't find any matching name2.
 	 */
-	entry = rbtree_finddata(server_section_name_tree,
+	entry = fr_rb_find(server_section_name_tree,
 				&(virtual_server_compile_t) {
 					.name = name1,
 					.name2 = CF_IDENT_ANY,

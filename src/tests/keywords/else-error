@@ -5,7 +5,7 @@
 #
 if (1) {
 	update control {
-		&Cleartext-Password := "fail"
+		&Password.Cleartext := "fail"
 	}
 
 	else {	# ERROR

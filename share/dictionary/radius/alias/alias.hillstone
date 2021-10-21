@@ -1,0 +1,17 @@
+ALIAS	Hillstone-User-vsys-id                  	26.28557.1
+ALIAS	Hillstone-User-Type                     	26.28557.2
+ALIAS	Hillstone-User-Admin-Privilege          	26.28557.3
+ALIAS	Hillstone-User-Login-Type               	26.28557.4
+ALIAS	Hillstone-User-Mobile-Number            	26.28557.5
+ALIAS	Hillstone-User-Mobile-Operator          	26.28557.6
+ALIAS	Hillstone-User-Policy-dst-ip-begin      	26.28557.7
+ALIAS	Hillstone-User-Policy-dst-ip-end        	26.28557.8
+ALIAS	Hillstone-User-Role-Bame                	26.28557.9
+ALIAS	Hillstone-VPN-DHCP-Gateway              	26.28557.100
+ALIAS	Hillstone-VPN-DHCP-Mask                 	26.28557.101
+ALIAS	Hillstone-VPN-DHCP-Pool                 	26.28557.102
+ALIAS	Hillstone-VPN-WINS                      	26.28557.103
+ALIAS	Hillstone-VPN-DNS                       	26.28557.104
+ALIAS	Hillstone-VPN-Split-Route               	26.28557.105
+ALIAS	Hillstone-VPN-Tunnel-IP                 	26.28557.106
+ALIAS	Hillstone-VPN-SNAT                      	26.28557.107

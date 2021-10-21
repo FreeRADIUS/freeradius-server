@@ -28,7 +28,7 @@ redundant {
 	}
 }
 
-if (!&reply:Filter-Id) {
+if (!&reply.Result-Status) {
 	test_fail
 }
 

@@ -13,22 +13,6 @@
 #  See RFC 2616 for more details about HTTP.
 #
 
-#
-#  ## Default instance
-#
-#  If you want different instances of `rest`, just replicate the section
-#  and give a name.
-#
-#  e.g:
-#
-#  [source,unlang]
-#  ----
-#  rest backend_check {
-#  ...
-#  }
-#  ----
-#
-
 rest {
 	#
 	#  tls { ... }:: Configure the tls related items that control
@@ -36,13 +20,76 @@ rest {
 	#
 	tls {
 		#
-		#  .Set options about the certificate.
+		#  .Certificate validation options
 		#
-#		ca_file	             = ${certdir}/cacert.pem
-#		ca_path	             = ${certdir}
-#		certificate_file     = /path/to/radius.crt
+		#  Specifies how the certificate(s) presented by the HTTPS server being contacted
+		#  are validated, and which certificates (if any) to send to the HTTPS server.
+		#
+
+		#
+		#  ca_file:: PEM formatted file containing the chain to validate the HTTPS server's cert
+		#
+		#  Should usually contain a concatenation of one or more intermediary CA
+		#  files, shallowest (i.e. the one that signed the HTTPS server's cert) first, and
+		#  deepest (the root CA) last.
+		#
+		#  Providing a complete certificate chain here is the most common way of validating
+		#  the certificate presented by a HTTPS server.
+		#
+#		ca_file	             = "${certdir}/cacert.pem"
+
+		#
+		#  ca_issuer_file:: PEM formatted file containing the CA that signed the HTTPS server's cert
+		#
+		#  Specifies the certificate that directly signed the certificate presented by the
+		#  HTTPS server.
+		#
+		#  This configuration option can be used to prevent certificates passing validation that
+		#  were signed by other intermediary CAs or root CAs in the trusted certificate chain.
+		#
+#		ca_issuer_file     = "${certdir}/caissuer.pem"
+
+		#
+		#  ca_path:: A directory containing multiple root CA certs named by their hash
+		#
+		#  See the OpenSSL documentation for more details:
+		#  - https://www.openssl.org/docs/man1.1.0/man3/SSL_CTX_set_default_verify_paths.html
+		#  - https://www.openssl.org/docs/man1.1.1/man1/c_rehash.html
+		#
+		#  This configuration option should only be used when the HTTPS server being contacted
+		#  is not known ahead of time (using a URL from an external source), and/or the CA used
+		#  to sign the HTTPS server certificate is unknown.
+		#
+#		ca_path	             = "${certdir}"
+
+		#
+		#  certificate_file:: PEM formatted file containing the certificate we present to the HTTPS server
+		#
+		#  Specifies a certificate and any intermediary CAs we should send to the HTTPS server.
+		#
+		#  This file should usually contain the client certificate file first, then any
+		#  intermediary signing CAs, shallowest (direct signee of the certificate_file)
+		#  to deepest (signed directly by the root CA).
+		#
+#		certificate_file     = /path/to/radius.pem
+
+		#
+		#  private_key_file:: PEM formatted file containing the private key for the specified certificate_file
+		#
+		#  Must be specified if certificate_file is being used.
+		#
 #		private_key_file     = /path/to/radius.key
+
+		#
+		#  private_key_password:: Password used to decrypt the private key file.
+		#
+		#  Should only be specified in the private_key_file is encrypted.
+		#
 #		private_key_password = "supersecret"
+
+		#
+		#  random_file:: Source of random data used for various cryptographic functions.
+		#
 #		random_file          = /dev/urandom
 
 		#
@@ -53,8 +100,8 @@ rest {
 		#  [options="header,autowidth"]
 		#  |===
 		#  | Option | Description
-		#  | `no`   | Don't even bother trying.
-		#  | `yes`  | verify the cert was issued by one of the trusted CAs.
+		#  | `no`   | Server certificate can be signed by any CA or be self-signed.
+		#  | `yes`  | Server certificate must be issued by one of the trusted CAs.
 		#  |===
 		#
 		#  Default is `yes`
@@ -69,8 +116,8 @@ rest {
 		#  [options="header,autowidth"]
 		#  |===
 		#  | Option | Description
-		#  | `no`   | Don't even bother trying.
-		#  | `yes`  | verify the CN in the certificate matches the host in the URI.
+		#  | `no`   | Server certificate CN can be any value.
+		#  | `yes`  | Server certificate CN matches the host in the URI.
 		#  |===
 		#
 		#  Default is `yes`
@@ -130,12 +177,17 @@ rest {
 #	multiplex = yes
 
 	#
+	#  chunk:: Max chunk-size.
+	#
+#	chunk = 0
+
+	#
 	#  ## Sections
 	#
 	#  The following config items can be used in each of the sections.
 	#  The sections themselves reflect the sections in the server.
 	#
-	#  For example if you list `rest` in the `authorize` section of a `virtual server`,
+	#  For example, if you list `rest` in the `authorize` section of a `virtual server`,
 	#  the settings from the `authorize` section here will be used.
 	#
 	#  The following config items may be listed in any of the sections:
@@ -144,7 +196,9 @@ rest {
 	#  |===
 	#  | Option         | Description
 	#  | `uri`          | To send the request to.
-	#  | `proxy`        | Rhe request via this server, supports `socks/http/https` uri and `:port`.
+	#  | `proxy`        | The request via this server, supports `socks/http/https` uri and `:port`.
+	#                     May be set to "none" to disable proxying, overriding any environmental
+	#		      variables set like http_proxy.
 	#  | `method`       | HTTP method to use, one of 'get', 'post', 'put', 'patch',
 	#                     'delete' or any custom HTTP method.
 	#  | `body`         | The format of the HTTP body sent to the remote server.
@@ -154,7 +208,7 @@ rest {
 	#                     Values from expansion will not be escaped, this should be
 	#                     done using the appropriate `xlat` method e.g. `%{urlencode:<attr>}`
 	#  | `force_to`     | Force the response to be decoded with this decoder.
-	#                     May be 'plain' (creates reply:REST-HTTP-Body), 'post' or 'json'.
+	#                     May be 'plain' (creates reply.REST-HTTP-Body), 'post' or 'json'.
 	#  | `tls`          | TLS settings for HTTPS.
 	#  | `auth`         | HTTP auth method to use, one of 'none', 'srp', 'basic',
 	#                     'digest', 'digest-ie', 'gss-negotiate', 'ntlm',
@@ -166,14 +220,14 @@ rest {
 	#  | `max_body_in`  | Maximum size of incoming HTTP body, defaults to 16k.
 	#  |===
 	#
-	#  Additional HTTP headers may be specified with `control:REST-HTTP-Header`.
+	#  Additional HTTP headers may be specified with `control.REST-HTTP-Header`.
 	#
 	#  The values of those attributes should be in the format:
 	#
 	#    <attribute>: <value>
 	#
-	#  `control:REST-HTTP-Header` attributes will be consumed after each call
-	#  to the rest module, and each `%{rest:}` expansion.
+	#  `control.REST-HTTP-Header` attributes will be consumed after each call
+	#  to the rest module, and each `%(rest:)` expansion.
 	#
 
 	#
@@ -183,7 +237,7 @@ rest {
 	#
 	#  e.g:
 	#
-	#  `[outer.][<list>:]<attribute0>=<value0>&[outer.][<list>:]<attributeN>=<valueN>`
+	#  `[outer.][<list>.]<attribute0>=<value0>&[outer.][<list>.]<attributeN>=<valueN>`
 	#
 	#  JSON - All attributes and values are escaped according to the JSON specification.
 	#
@@ -225,7 +279,7 @@ rest {
 	#  [source,json]
 	#  ----
 	#  {
-	#      "[outer.][<list>:]<attribute0>":{
+	#      "[outer.][<list>.]<attribute0>":{
 	#          "is_json":<bool>,
 	#          "do_xlat":<bool>,
 	#          "op":"<operator>",
@@ -266,7 +320,7 @@ rest {
 	#  | Code | Meaning      | Process body? | Module code
 	#  | 404  | not found    | no            | notfound
 	#  | 410  | gone         | no            | notfound
-	#  | 403  | forbidden    | no            | userlock
+	#  | 403  | forbidden    | no            | disallow
 	#  | 401  | unauthorized | yes           | reject
 	#  | 204  | no content   | no            | ok
 	#  | 2xx  | successful   | yes           | ok/updated

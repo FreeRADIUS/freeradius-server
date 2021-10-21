@@ -1,0 +1,171 @@
+# -*- text -*-
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#  For encoding / decoding, just have an associated array which
+#  contains a series of uint16_t offsets into the packet.
+#  these offsets contain valid targets for compressed pointers.
+#
+ATTRIBUTE	packet					1	struct
+MEMBER		id					uint16
+MEMBER		query					bit[1]
+MEMBER		opcode					bit[4]
+MEMBER		authoritative				bit[1]
+MEMBER		truncated-response			bit[1]
+MEMBER		recursion-desired			bit[1]
+MEMBER		recursion-available			bit[1]
+MEMBER		reserved				bit[1]
+MEMBER		authentic-data				bit[1]
+MEMBER		checking-disabled			bit[1]
+MEMBER		rcode					bit[4]
+
+VALUE	query				query			0
+VALUE	query				response		1
+
+VALUE	opcode				query			0
+VALUE	opcode				iquery			1
+VALUE	opcode				status			2
+VALUE	opcode				notify			4
+VALUE	opcode				update			5
+VALUE	opcode				dns-stateful-operations	6
+
+VALUE	rcode				no-error		0
+VALUE	rcode				format-error		1
+VALUE	rcode				server-error		2
+VALUE	rcode				name-error		3
+VALUE	rcode				not-implemented		4
+VALUE	rcode				refused			5
+VALUE	rcode				yx-domain		6
+VALUE	rcode				yx-rr-set		7
+VALUE	rcode				nx-rr-set		8
+VALUE	rcode				not-auth		9
+VALUE	rcode				not-zone		10
+VALUE	rcode				dso-type-not-implemented 11
+VALUE	rcode				bad-signature		16
+VALUE	rcode				bad-key			17
+VALUE	rcode				bad-time		18
+VALUE	rcode				bad-mode		19
+VALUE	rcode				bad-name		20
+VALUE	rcode				bad-algorithm		21
+VALUE	rcode				bad-truncation		22
+VALUE	rcode				bad-cookie		23
+
+MEMBER		qdcount					uint16
+MEMBER		ancount					uint16
+MEMBER		nscount					uint16
+MEMBER		arcount					uint16
+
+ATTRIBUTE	question				2	struct
+MEMBER		qname					string	dns_label
+MEMBER		qtype					uint16  # from packet.type
+MEMBER		qclass					uint16
+
+VALUE	qclass				internet		1
+VALUE	qclass				chaos			3
+VALUE	qclass				hesiod			4
+VALUE	qclass				none			254
+VALUE	qclass				any			255
+
+ATTRIBUTE	rr					3	struct
+MEMBER		name					string	dns_label
+MEMBER		type					uint16	key
+MEMBER		class					uint16
+MEMBER		ttl					time_delta
+
+######################################################################
+#
+#  Now we have resource records
+#
+######################################################################
+STRUCT	a				type			1	length=uint16
+MEMBER		ip-address				ipaddr
+
+STRUCT	ns				type			2	length=uint16
+MEMBER		domain-name				string	dns_label
+
+STRUCT	cname				type			5	length=uint16
+MEMBER		domain-name				string	dns_label
+
+STRUCT	soa				type			6	length=uint16
+MEMBER		mname					string	dns_label
+MEMBER		rname					string	dns_label
+MEMBER		serial					uint32
+MEMBER		refresh					time_delta
+MEMBER		retry					time_delta
+MEMBER		expire					time_delta
+MEMBER		minimum					time_delta
+
+STRUCT	ptr				type			12	length=uint16
+MEMBER		domain-name				string	dns_label
+
+STRUCT	mx				type			15	length=uint16
+MEMBER		preference				uint32
+MEMBER		domain-name				string	dns_label
+
+STRUCT	txt				type			16	length=uint16
+MEMBER		data					string
+
+STRUCT	aaaa				type			28	length=uint16
+MEMBER		ipv6-address				ipv6addr
+
+STRUCT	dhcid				type			49	length=uint16
+MEMBER		identifier-type-code			uint16
+MEMBER		digest-type-code			uint8
+MEMBER		digest					octets
+
+VALUE	identifier-type-code		chaddr			0
+VALUE	identifier-type-code		dhcpv4-client-identifier 1
+VALUE	identifier-type-code		dhcpv6-client-duid	2
+
+VALUE	digest-type-code		sha-256			1
+
+#
+#  opt MUST have:
+#
+#  1 octet 0 - name is root
+#  2 octets class - requestors UDP payload size
+#  4 octets TTL - extended rcode and flags
+#  2 octets RDLEN
+#  RRDATA of 16 bits code, 16 bits length of data, data
+STRUCT	opt				type			41	length=uint16
+MEMBER		options					tlv
+
+ATTRIBUTE	llq					.1	struct
+MEMBER		version					uint16
+MEMBER		opcode					uint16
+MEMBER		error					uint16
+MEMBER		ID					uint64
+MEMBER		lease					time_delta
+
+#ATTRIBUTE	ul					.2
+ATTRIBUTE	nsid					.3	octets
+
+ATTRIBUTE	edns-client-subnet			.8	struct
+MEMBER		family					uint16
+MEMBER		source-prefix-length			uint8
+MEMBER		scope-prefix-length			uint8
+# MUST be truncated to bytes determined by source-prefix-length
+MEMBER		ip					combo-ip
+
+# existence signals EXPIRE
+ATTRIBUTE	expire					.9	bool
+
+# https://datatracker.ietf.org/doc/html/rfc7873
+ATTRIBUTE	cookie					.10	struct
+
+# pseudo-random-function(client ip, server ip, client secret)
+MEMBER		client					octets[8]
+
+# pseudo-random-function(client ip, client cookie, server secret), at least 64 bits
+MEMBER		server					octets
+
+ATTRIBUTE	edns0-tcp-keepalive			.11	uint16 # time_delta in units of 100 milliseconds
+
+ATTRIBUTE	padding					.12	octets
+
+#  Name server RR
+ATTRIBUTE	ns					4	struct	clone=rr
+
+#  additional "glue" RR, or OPT RR for peer signalling
+ATTRIBUTE	ar					4	struct	clone=rr

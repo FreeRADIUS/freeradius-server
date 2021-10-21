@@ -28,6 +28,12 @@ RCSID("$Id$")
 
 #include "unlang_priv.h"
 
+static uint32_t instance_count;
+
+/** Different operations the interpreter can execute
+ */
+unlang_op_t unlang_ops[UNLANG_TYPE_MAX];
+
 /** Return whether a section has unlang data associated with it
  *
  * @param[in] cs	to check.
@@ -37,12 +43,7 @@ RCSID("$Id$")
  */
 bool unlang_section(CONF_SECTION *cs)
 {
-	unlang_t	*instruction = NULL;
-
-	instruction = (unlang_t *)cf_data_value(cf_data_find(cs, unlang_group_t, NULL));
-	if (instruction) return true;
-
-	return false;
+	return (cf_data_find(cs, unlang_group_t, NULL) != NULL);
 }
 
 /** Register an operation with the interpreter
@@ -65,19 +66,27 @@ bool unlang_section(CONF_SECTION *cs)
  */
 void unlang_register(int type, unlang_op_t *op)
 {
-	rad_assert(type < UNLANG_TYPE_MAX);	/* Unlang max isn't a valid type */
+	fr_assert(type < UNLANG_TYPE_MAX);	/* Unlang max isn't a valid type */
 
 	memcpy(&unlang_ops[type], op, sizeof(unlang_ops[type]));
 }
 
-/** Initialize the unlang compiler / interpreter.
- *
- *  For now, just register the magic xlat function.
- */
-int unlang_init(void)
+int unlang_init_global(void)
 {
-	unlang_interpret_init();
+	if (instance_count > 0) {
+		instance_count++;
+		return 0;
+	}
+
+	/*
+	 *	Explicitly initialise the xlat tree, and perform dictionary lookups.
+	 */
+	if (xlat_init() < 0) return -1;
+
+	unlang_interpret_init_global();
+
 	/* Register operations for the default keywords */
+	unlang_compile_init();
 	unlang_condition_init();
 	unlang_foreach_init();
 	unlang_function_init();
@@ -88,12 +97,23 @@ int unlang_init(void)
 	unlang_parallel_init();
 	unlang_return_init();
 	if (unlang_subrequest_op_init() < 0) return -1;
+	unlang_detach_init();
 	unlang_switch_init();
+	unlang_call_init();
+	unlang_caller_init();
+	unlang_tmpl_init();
+
+	instance_count++;
 
 	return 0;
 }
 
-void unlang_free(void)
+void unlang_free_global(void)
 {
+	if (--instance_count > 0) return;
+
+	unlang_compile_free();
+	unlang_foreach_free();
 	unlang_subrequest_op_free();
+	xlat_free();
 }

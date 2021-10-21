@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -11,5 +11,5 @@
 ##############################################################################
 
 ATTRIBUTE	Lease-Query-Base-Time			100	date
-ATTRIBUTE	Lease-Query-Start-Time			101	uint32
-ATTRIBUTE	Lease-Query-End-Time			102	uint32
+ATTRIBUTE	Lease-Query-Start-Time			101	date
+ATTRIBUTE	Lease-Query-End-Time			102	date

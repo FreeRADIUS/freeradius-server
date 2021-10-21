@@ -1,5 +1,5 @@
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -115,20 +115,13 @@ typedef struct {
 	/*
 	 *	Per-session configuration
 	 */
-	bool				request_identity;		//!< Always send an identity request before a
+	uint32_t       			request_identity;		//!< Always send an identity request before a
 									///< challenge.
 	bool				send_result_ind;		//!< Say that we would like to use protected
 									///< result indications
 									///< (AKA-Notification-Success).
 	bool				send_at_bidding;		//!< Indicate that we prefer EAP-AKA' and
 									///< include an AT_BIDDING attribute.
-
-	EVP_MD const			*checkcode_md;			//!< Message digest we use to generate the
-									///< checkcode. EVP_sha1() for EAP-AKA,
-									///< EVP_sha256() for EAP-AKA'.
-	fr_sim_checkcode_t		*checkcode_state;		//!< Digest of all identity packets we've seen.
-	uint8_t				checkcode[32];			//!< Checkcode we calculated.
-	size_t				checkcode_len;			//!< 0, 20 or 32 bytes.
 
 	EVP_MD const			*mac_md;			//!< HMAC-MD we use to generate the MAC.
 									///< EVP_sha1() for EAP-AKA, EVP_sha256()
@@ -139,7 +132,7 @@ typedef struct {
 
 typedef struct {
 	char const			*network_name;			//!< Network ID as described by RFC 5448.
-	bool				request_identity;		//!< Whether we always request the identity of
+	request_identity       		request_identity;		//!< Whether we always request the identity of
 									///< the subscriber.
 	char const			*virtual_server;		//!< Virtual server for HLR integration.
 	bool				protected_success;

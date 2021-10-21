@@ -1,0 +1,112 @@
+#  -*- text -*-
+#
+#
+#  $Id$
+
+#######################################################################
+#
+#  = The Load Virtual Server
+#
+#  The `load` virtual server does load testing.
+#
+server load {
+	namespace = radius
+
+	#
+	#  Use `listen load { ... }` in any virtual server to do load
+	#  testing against that server.
+	#
+	listen load {
+		#
+		#  This is a valid Packet-Type for the current `namespace`
+		#
+		type = Access-Request
+
+		#
+		#  For now, only 'step' transport is available.
+		#
+		transport = step
+
+		#
+		#  Do load testing in increasing steps.
+		#
+		step {
+			#
+			#  Filename with input packet.  This is in the
+			#  same format as used by `radclient`.
+			#
+			filename = ${confdir}/load.txt
+
+			#
+			#  Where the statistics file goes, in CSV format.
+			#
+			csv = ${confdir}/stats.csv
+
+			#
+			#  How many packets/s to start with.
+			#
+			start_pps	= 100
+
+			#
+			#  How many packet/s to end up at.
+			#
+			#  When the load generator reaches this rate,
+			#  it prints the final statistics, and makes
+			#  the server exit.
+			#
+			max_pps		= 2000
+
+			#
+			#  How long we send packets for (in seconds) at each step.
+			#
+			duration	= 10
+
+			#
+			#  How big of a packet/s step to jump after running each test.
+			#
+			step		= 200
+
+			#
+			#  We don't want to overload the server.  If
+			#  the server cannot process packets quickly
+			#  enough, we will get a backlog of
+			#  unprocessed packets.  If the backlog gets
+			#  too high, then the load generator will
+			#  temporarily stop sending packets.  Once the
+			#  backlog is low enough, it will continue.
+			#
+			max_backlog	= 1000
+
+			#
+			#  How many packets to send immediately in
+			#  parallel, without waiting for a response.
+			#  When a reply is received, a new request may
+			#  be sent.
+			#
+			parallel	= 25
+		}
+	}
+}
+
+#
+#  The rest of the recv/send sections are protocol specific, and are
+#  taken from the `namespace`.
+#
+recv Access-Request {
+	accept
+}
+
+
+authenticate pap {
+	pap
+}
+
+send Access-Accept {
+	ok
+}
+
+send Access-Reject {
+	ok
+}
+
+}

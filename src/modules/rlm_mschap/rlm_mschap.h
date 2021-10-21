@@ -21,6 +21,7 @@ typedef enum {
 
 extern fr_dict_attr_t const *attr_auth_type;
 extern fr_dict_attr_t const *attr_cleartext_password;
+extern fr_dict_attr_t const *attr_eap_identity;
 extern fr_dict_attr_t const *attr_nt_password;
 extern fr_dict_attr_t const *attr_lm_password;
 extern fr_dict_attr_t const *attr_ms_chap_use_ntlm_auth;
@@ -34,7 +35,6 @@ extern fr_dict_attr_t const *attr_smb_account_ctrl;
 extern fr_dict_attr_t const *attr_smb_account_ctrl_text;
 
 extern fr_dict_attr_t const *attr_user_name;
-extern fr_dict_attr_t const *attr_user_password;
 extern fr_dict_attr_t const *attr_ms_chap_error;
 
 extern fr_dict_attr_t const *attr_ms_chap_challenge;
@@ -51,7 +51,9 @@ extern fr_dict_attr_t const *attr_ms_chap2_cpw;
 
 typedef struct {
 	char const		*name;
-	fr_dict_enum_t		*auth_type;
+	fr_dict_enum_value_t		*auth_type;
+
+	bool			normify;
 
 	bool			use_mppe;
 	bool			require_encryption;
@@ -68,8 +70,8 @@ typedef struct {
 	bool			allow_retry;
 	char const		*retry_msg;
 	MSCHAP_AUTH_METHOD	method;
-	vp_tmpl_t		*wb_username;
-	vp_tmpl_t		*wb_domain;
+	tmpl_t		*wb_username;
+	tmpl_t		*wb_domain;
 #ifdef WITH_AUTH_WINBIND
 	fr_pool_t		*wb_pool;
 	bool			wb_retry_with_normalised_username;

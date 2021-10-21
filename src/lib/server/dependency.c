@@ -32,6 +32,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 static uint64_t	libmagic = RADIUSD_MAGIC_NUMBER;
 char const	*radiusd_version_short = RADIUSD_VERSION_STRING;
 
+static CONF_SECTION *default_feature_cs;		//!< Default configuration section to add features to.
+static CONF_SECTION *default_version_cs;		//!< Default configuration section to add features to.
+
 #ifdef HAVE_OPENSSL_CRYPTO_H
 #  include <openssl/crypto.h>
 #  include <openssl/opensslv.h>
@@ -265,16 +268,21 @@ int rad_check_lib_magic(uint64_t magic)
  * This allows the user to create configurations that work with
  * across multiple environments.
  *
- * @param cs to add feature pair to.
- * @param name of feature.
- * @param enabled Whether the feature is present/enabled.
+ * @param[in] cs		to add feature pair to. May be NULL
+ *				in which case the cs passed to
+ *				dependency_feature_init() is used.
+ * @param[in] name		of feature.
+ * @param[in] enabled		Whether the feature is present/enabled.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
 int dependency_feature_add(CONF_SECTION *cs, char const *name, bool enabled)
 {
-	if (!cs) return -1;
+	if (!cs) cs = default_feature_cs;
+	if (!fr_cond_assert_msg(cs, "dependency_features_init() must be called before calling %s", __FUNCTION__)) {
+		return -1;
+	}
 
 	if (!cf_pair_find(cs, name)) {
 		CONF_PAIR *cp;
@@ -282,7 +290,6 @@ int dependency_feature_add(CONF_SECTION *cs, char const *name, bool enabled)
 		cp = cf_pair_alloc(cs, name, enabled ? "yes" : "no",
 				   T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
 		if (!cp) return -1;
-		cf_pair_add(cs, cp);
 	}
 
 	return 0;
@@ -300,9 +307,11 @@ int dependency_feature_add(CONF_SECTION *cs, char const *name, bool enabled)
  * The version pairs are there primarily to work around defects
  * in libraries or the server.
  *
- * @param cs to add feature pair to.
- * @param name of library or feature.
- * @param version Humanly readable version text.
+ * @param[in] cs		to add feature pair to. May be NULL
+ *				in which case the cs passed to
+ *				dependency_feature_init() is used.
+ * @param[in] name		of library or feature.
+ * @param[in] version Humanly	readable version text.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -311,7 +320,10 @@ int dependency_version_number_add(CONF_SECTION *cs, char const *name, char const
 {
 	CONF_PAIR *old;
 
-	if (!cs) return -1;
+	if (!cs) cs = default_version_cs;
+	if (!fr_cond_assert_msg(cs, "dependency_version_numbers_init() must be called before calling %s", __FUNCTION__)) {
+		return -1;
+	}
 
 	old = cf_pair_find(cs, name);
 	if (!old) {
@@ -320,7 +332,6 @@ int dependency_version_number_add(CONF_SECTION *cs, char const *name, char const
 		cp = cf_pair_alloc(cs, name, version, T_OP_EQ, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
 		if (!cp) return -1;
 
-		cf_pair_add(cs, cp);
 	} else {
 		WARN("Replacing user version.%s (%s) with %s", name, cf_pair_value(old), version);
 
@@ -338,68 +349,10 @@ int dependency_version_number_add(CONF_SECTION *cs, char const *name, char const
  */
 void dependency_features_init(CONF_SECTION *cs)
 {
-	dependency_feature_add(cs, "accounting",
-#ifdef WITH_ACCOUNTING
-				true
-#else
-				false
-#endif
-				);
+	default_feature_cs = cs;
 
-	dependency_feature_add(cs, "authentication", true);
-
-	dependency_feature_add(cs, "ascend-binary-attributes",
-#ifdef WITH_ASCEND_BINARY
-				true
-#else
-				false
-#endif
-				);
-
-	dependency_feature_add(cs, "coa",
-#ifdef WITH_COA
-				true
-#else
-				false
-#endif
-				);
-
-
-	dependency_feature_add(cs, "control-socket",
-#ifdef WITH_COMMAND_SOCKET
-				true
-#else
-				false
-#endif
-				);
-
-
-	dependency_feature_add(cs, "detail",
-#ifdef WITH_DETAIL
-				true
-#else
-				false
-#endif
-				);
-
-	dependency_feature_add(cs, "dhcp",
-#ifdef WITH_DHCP
-				true
-#else
-				false
-#endif
-				);
-
-	dependency_feature_add(cs, "dynamic-clients",
-#ifdef WITH_DYNAMIC_CLIENTS
-				true
-#else
-				false
-#endif
-				);
-
-	dependency_feature_add(cs, "proxy",
-#ifdef WITH_PROXY
+	dependency_feature_add(cs, "cap",
+#ifdef HAVE_CAPABILITY_H
 				true
 #else
 				false
@@ -436,6 +389,14 @@ void dependency_features_init(CONF_SECTION *cs)
 	dependency_feature_add(cs, "regex-posix-extended", false);
 #endif
 
+	dependency_feature_add(cs, "regex-binsafe",
+#if defined(HAVE_REGNEXEC) || defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
+				true
+#else
+				false
+#endif
+				);
+
 	dependency_feature_add(cs, "stats",
 #ifdef WITH_STATS
 				true
@@ -460,31 +421,6 @@ void dependency_features_init(CONF_SECTION *cs)
 #endif
 				);
 
-
-	dependency_feature_add(cs, "tls-key-agility",
-#ifdef WITH_TLS
-				true
-#else
-				false
-#endif
-				);
-
-	dependency_feature_add(cs, "unlang",
-#ifdef WITH_UNLANG
-				true
-#else
-				false
-#endif
-				);
-
-	dependency_feature_add(cs, "vmps",
-#ifdef WITH_VMPS
-				true
-#else
-				false
-#endif
-				);
-
 	dependency_feature_add(cs, "socket-timestamps",
 #ifdef SO_TIMESTAMP
 				true
@@ -500,18 +436,6 @@ void dependency_features_init(CONF_SECTION *cs)
 				false
 #endif
 				);
-
-/*
- *	GCC uses __SANITIZE_ADDRESS__, clang uses __has_feature, which
- *	GCC complains about.
- */
-#ifndef __SANITIZE_ADDRESS__
-#ifdef __has_feature
-#if __has_feature(address_sanitizer)
-#define __SANITIZE_ADDRESS__ (1)
-#endif
-#endif
-#endif
 
 	dependency_feature_add(cs, "address-sanitizer",
 #ifdef __SANITIZE_ADDRESS__
@@ -550,6 +474,8 @@ void dependency_version_numbers_init(CONF_SECTION *cs)
 {
 	char buffer[128];
 
+	default_version_cs = cs;
+
 	dependency_version_number_add(cs, "freeradius-server", radiusd_version_short);
 
 	snprintf(buffer, sizeof(buffer), "%i.%i.*", talloc_version_major(), talloc_version_minor());
@@ -564,6 +490,20 @@ void dependency_version_numbers_init(CONF_SECTION *cs)
 #  elif defined(HAVE_REGEX_PCRE)
 	dependency_version_number_add(cs, "pcre", pcre_version());
 #  endif
+#endif
+
+#ifdef LIBKQUEUE_VERSION_STRING
+	{
+		char const *libkqueue_version = LIBKQUEUE_VERSION_STRING
+#  ifdef LIBKQUEUE_VERSION_COMMIT
+		" (git #"LIBKQUEUE_VERSION_COMMIT")"
+#  endif
+#  ifdef LIBKQUEUE_VERSION_DATE
+		" ("LIBKQUEUE_VERSION_DATE") retrieved at build time"
+#  endif
+		;
+		dependency_version_number_add(cs, "libkqueue", libkqueue_version);
+	}
 #endif
 }
 
@@ -591,7 +531,7 @@ void dependency_version_print(void)
 		MEM(versions = cf_section_alloc(NULL, NULL, "version", NULL));
 		dependency_version_numbers_init(versions);
 
-		DEBUG2("Server was built with: ");
+		DEBUG2("Server was built with:");
 
 		for (ci = cf_item_next(features, NULL);
 		     ci;
@@ -680,7 +620,7 @@ void dependency_version_print(void)
 		DEBUG2("  ");
 	}
 	INFO("FreeRADIUS Version " RADIUSD_VERSION_STRING);
-	INFO("Copyright 1999-2019 The FreeRADIUS server project and contributors");
+	INFO("Copyright 1999-2021 The FreeRADIUS server project and contributors");
 	INFO("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
 	INFO("PARTICULAR PURPOSE");
 	INFO("You may redistribute copies of FreeRADIUS under the terms of the");

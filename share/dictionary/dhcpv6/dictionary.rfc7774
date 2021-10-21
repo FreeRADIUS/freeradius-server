@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -11,4 +11,20 @@
 #
 ##############################################################################
 
-ATTRIBUTE	MPL-Parameters				104	octets		# Complex struct see RFC 7774
+ATTRIBUTE	MPL-Parameters				104	struct
+
+MEMBER		Forwarding				uint8
+VALUE	Forwarding			True			0x80
+VALUE	Forwarding			False			0x00
+
+MEMBER		Tunit					uint8
+MEMBER		SE-Lifetime				uint16
+MEMBER		DM-K					uint8
+MEMBER		DM-IMin					uint16
+MEMBER		DM-IMax					uint8
+MEMBER		DM-T-Exp				uint16
+MEMBER		C-K					uint8
+MEMBER		C-IMin					uint16
+MEMBER		C-IMax					uint8
+MEMBER		C-T-Exp					uint16
+MEMBER		Domain-Address				ipv6addr	# optional, and can be omitted

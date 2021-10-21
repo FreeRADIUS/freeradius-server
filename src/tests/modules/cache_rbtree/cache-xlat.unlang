@@ -1,0 +1,33 @@
+#
+#  PRE: cache-logic
+#
+update {
+        &request.Tmp-String-0 := 'testkey'
+}
+
+update control {
+        &Tmp-String-1 := 'cache me'
+}
+
+cache
+if (!ok) {
+        test_fail
+}
+
+update request {
+        &Tmp-String-2 := "%(cache:request.Tmp-String-1)"
+}
+
+if (&Tmp-String-2 != &control.Tmp-String-1) {
+        test_fail
+}
+
+update request {
+        &Tmp-String-3 := "%(cache:request.Tmp-String-4)"
+}
+
+if (&Tmp-String-3 != "") {
+        test_fail
+}
+
+test_pass

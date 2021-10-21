@@ -17,19 +17,19 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * @copyright 2012 Network RADIUS SARL (info@networkradius.com)
+ * @copyright 2012 Network RADIUS SARL (legal@networkradius.com)
  */
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/unlang/base.h>
 
 #include <freeradius-devel/util/event.h>
+#include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/md5.h>
-#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/sha1.h>
 #include <freeradius-devel/util/socket.h>
@@ -68,8 +68,11 @@ typedef enum bfd_auth_type_t {
 #define BFD_AUTH_INVALID (BFD_AUTH_MET_KEYED_SHA1 + 1)
 
 typedef struct {
+	fr_rb_node_t	node;		//!< Entry in the tree of sessions.
+
 	int		number;
-	int		sockfd;
+
+	fr_socket_t socket;
 
 	fr_event_list_t *el;
 	CONF_SECTION	*server_cs;
@@ -82,11 +85,6 @@ typedef struct {
 	bfd_auth_type_t auth_type;
 	uint8_t		secret[BFD_MAX_SECRET_LENGTH];
 	size_t		secret_len;
-
-	fr_ipaddr_t	local_ipaddr;
-	fr_ipaddr_t	remote_ipaddr;
-	uint16_t	local_port;
-	uint16_t	remote_port;
 
 	/*
 	 *	To simplify sending the packets.
@@ -230,10 +228,10 @@ typedef struct {
 	uint8_t		secret[BFD_MAX_SECRET_LENGTH];
 	size_t		secret_len;
 
-	rbtree_t	*session_tree;
+	fr_rb_tree_t	*session_tree;
 } bfd_socket_t;
 
-static fr_dict_t *dict_bfd;
+static fr_dict_t const *dict_bfd;
 
 extern fr_dict_autoload_t proto_bfd_dict[];
 fr_dict_autoload_t proto_bfd_dict[] = {
@@ -372,7 +370,7 @@ static int bfd_pthread_create(bfd_state_t *session)
 	if (fr_schedule_pthread_create(&session->pthread_id, bfd_child_thread, session) < 0) {
 		talloc_free(session->el);
 		session->el = NULL;
-		ERROR("Thread create failed: %s", fr_strerror());
+		PERROR("Thread create failed");
 		goto close_pipes;
 	}
 	pthread_attr_destroy(&attr);
@@ -388,34 +386,28 @@ static const char *bfd_state[] = {
 };
 
 
-static void bfd_request(bfd_state_t *session, REQUEST *request,
-		   RADIUS_PACKET *packet)
+static void bfd_request(bfd_state_t *session, request_t *request, fr_radius_packet_t *packet)
 {
-	memset(request, 0, sizeof(*request));
 	memset(packet, 0, sizeof(*packet));
 
 	request->packet = packet;
-	request->server_cs = session->server_cs;
-	packet->src_ipaddr = session->local_ipaddr;
-	packet->src_port = session->local_port;
-	packet->dst_ipaddr = session->remote_ipaddr;
-	packet->dst_port = session->remote_port;
+	packet->socket = session->socket;
 	/*	request->heap_offset = -1; */
 }
 
 
 static void bfd_trigger(bfd_state_t *session)
 {
-	RADIUS_PACKET packet;
-	REQUEST request;
-	char buffer[256];
+	fr_radius_packet_t	packet;
+	request_t		*request = request_local_alloc_external(session, NULL);
+	char			buffer[256];
 
 	snprintf(buffer, sizeof(buffer), "server.bfd.%s",
 		 bfd_state[session->session_state]);
 
-	bfd_request(session, &request, &packet);
+	bfd_request(session, request, &packet);
 
-	trigger_exec(&request, NULL, buffer, false, NULL);
+	trigger_exec(unlang_interpret_get_thread_default(), NULL, buffer, false, NULL);
 }
 
 
@@ -456,7 +448,8 @@ static ssize_t bfd_parse_secret(CONF_SECTION *cs, uint8_t secret[BFD_MAX_SECRET_
 			return -1;
 		}
 
-		return fr_hex2bin(secret, BFD_MAX_SECRET_LENGTH, value + 2, (len - 2));
+		return fr_base16_decode(NULL, &FR_DBUFF_TMP(secret, BFD_MAX_SECRET_LENGTH),
+				  &FR_SBUFF_IN(value + 2, (len - 2)), false);
 	}
 
 	if (len >= 20) {
@@ -480,7 +473,6 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 {
 	int rcode;
 	bool flag;
-	uint32_t number;
 	bfd_state_t *session;
 
 	session = talloc_zero(sock, bfd_state_t);
@@ -489,7 +481,7 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 	 *	Initialize according to RFC.
 	 */
 	session->number = sock->number++;
-	session->sockfd = sockfd;
+	session->socket.fd = sockfd;
 	session->session_state = BFD_STATE_DOWN;
 	session->server_cs = sock->server_cs;
 	session->unlang = sock->unlang;
@@ -515,28 +507,46 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 		session->demand_mode = flag;
 	}
 
-	rcode = cf_pair_parse(NULL, cs, "min_transmit_interval", FR_ITEM_POINTER(FR_TYPE_UINT32, &number), NULL, T_INVALID);
-	if (rcode == 0) {
-		if (number < 100) number = 100;
-		if (number > 10000) number = 10000;
+	/*
+	 *	Number is moved out of scope to shut up lgtm
+	 *      static analysis, but really these should be
+	 *	moved into conf_parser callback functions.
+	 */
+	{
+		uint32_t number;
 
-		session->desired_min_tx_interval = number * 1000;
-	}
-	rcode = cf_pair_parse(NULL, cs, "min_receive_interval", FR_ITEM_POINTER(FR_TYPE_UINT32, &number), NULL, T_INVALID);
-	if (rcode == 0) {
-		if (number < 100) number = 100;
-		if (number > 10000) number = 10000;
+		rcode = cf_pair_parse(NULL, cs, "min_transmit_interval", FR_ITEM_POINTER(FR_TYPE_UINT32, &number), NULL, T_INVALID);
+		if (rcode == 0) {
+			if (number < 100) number = 100;
+			if (number > 10000) number = 10000;
 
-		session->required_min_rx_interval = number * 1000;
-	}
-	rcode = cf_pair_parse(NULL, cs, "max_timeouts", FR_ITEM_POINTER(FR_TYPE_UINT32, &number), NULL, T_INVALID);
-	if (rcode == 0) {
-		if (number == 0) number = 1;
-		if (number > 10) number = 10;
-
-		session->detect_multi = number;
+			session->desired_min_tx_interval = number * 1000;
+		}
 	}
 
+	{
+		uint32_t number;
+
+		rcode = cf_pair_parse(NULL, cs, "min_receive_interval", FR_ITEM_POINTER(FR_TYPE_UINT32, &number), NULL, T_INVALID);
+		if (rcode == 0) {
+			if (number < 100) number = 100;
+			if (number > 10000) number = 10000;
+
+			session->required_min_rx_interval = number * 1000;
+		}
+	}
+
+	{
+		uint32_t number;
+
+		rcode = cf_pair_parse(NULL, cs, "max_timeouts", FR_ITEM_POINTER(FR_TYPE_UINT32, &number), NULL, T_INVALID);
+		if (rcode == 0) {
+			if (number == 0) number = 1;
+			if (number > 10) number = 10;
+
+			session->detect_multi = number;
+		}
+	}
 	session->auth_type = sock->auth_type;
 
 	/*
@@ -568,16 +578,16 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 	/*
 	 *	And finally remember the session.
 	 */
-	session->remote_ipaddr = *ipaddr;
-	session->remote_port = port;
+	session->socket.inet.dst_ipaddr = *ipaddr;
+	session->socket.inet.dst_port = port;
 
-	session->local_ipaddr = sock->my_ipaddr;
-	session->local_port = sock->my_port;
+	session->socket.inet.src_ipaddr = sock->my_ipaddr;
+	session->socket.inet.src_port = sock->my_port;
 
-	fr_ipaddr_to_sockaddr(ipaddr, port,
-			   &session->remote_sockaddr, &session->salen);
+	fr_ipaddr_to_sockaddr(&session->remote_sockaddr, &session->salen,
+			      ipaddr, port);
 
-	if (!rbtree_insert(sock->session_tree, session)) {
+	if (!fr_rb_insert(sock->session_tree, session)) {
 		ERROR("FAILED creating new session!");
 		talloc_free(session);
 		return NULL;
@@ -597,7 +607,7 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 		session->pthread_id = pthread_self();
 	} else {
 		if (!bfd_pthread_create(session)) {
-			rbtree_deletebydata(sock->session_tree, session);
+			fr_rb_delete(sock->session_tree, session);
 			talloc_free(session);
 			return NULL;
 		}
@@ -638,8 +648,8 @@ static void bfd_calc_md5(bfd_state_t *session, bfd_packet_t *bfd)
 {
 	bfd_auth_md5_t *md5 = &bfd->auth.md5;
 
-	rad_assert(session->secret_len <= sizeof(md5->digest));
-	rad_assert(md5->auth_len == sizeof(*md5));
+	fr_assert(session->secret_len <= sizeof(md5->digest));
+	fr_assert(md5->auth_len == sizeof(*md5));
 
 	memset(md5->digest, 0, sizeof(md5->digest));
 	memcpy(md5->digest, session->secret, session->secret_len);
@@ -705,8 +715,8 @@ static void bfd_calc_sha1(bfd_state_t *session, bfd_packet_t *bfd)
 	fr_sha1_ctx ctx;
 	bfd_auth_sha1_t *sha1 = &bfd->auth.sha1;
 
-	rad_assert(session->secret_len <= sizeof(sha1->digest));
-	rad_assert(sha1->auth_len == sizeof(*sha1));
+	fr_assert(session->secret_len <= sizeof(sha1->digest));
+	fr_assert(sha1->auth_len == sizeof(*sha1));
 
 	memset(sha1->digest, 0, sizeof(sha1->digest));
 	memcpy(sha1->digest, session->secret, session->secret_len);
@@ -885,7 +895,7 @@ static void bfd_send_packet(UNUSED fr_event_list_t *eel, UNUSED fr_time_t now, v
 
 	DEBUG("BFD %d sending packet state %s",
 	      session->number, bfd_state[session->session_state]);
-	if (sendto(session->sockfd, &bfd, bfd.length, 0,
+	if (sendto(session->socket.fd, &bfd, bfd.length, 0,
 		   (struct sockaddr *) &session->remote_sockaddr,
 		   session->salen) < 0) {
 		ERROR("Failed sending packet: %s", fr_syserror(errno));
@@ -900,7 +910,7 @@ static int bfd_start_packets(bfd_state_t *session)
 	/*
 	 *	Reset the timers.
 	 */
-	fr_event_timer_delete(session->el, &session->ev_packet);
+	fr_event_timer_delete(&session->ev_packet);
 
 	session->last_sent = fr_time();
 
@@ -928,7 +938,7 @@ static int bfd_start_packets(bfd_state_t *session)
 	if (fr_event_timer_in(session, session->el, &session->ev_packet,
 			      fr_time_delta_from_usec(interval),
 			      bfd_send_packet, session) < 0) {
-		rad_assert("Failed to insert event" == NULL);
+		fr_assert("Failed to insert event" == NULL);
 	}
 
 	return 0;
@@ -937,11 +947,11 @@ static int bfd_start_packets(bfd_state_t *session)
 
 static void bfd_set_timeout(bfd_state_t *session, fr_time_t when)
 {
-	fr_time_t now = when;
+	fr_time_t now;
 
-	fr_event_timer_delete(session->el, &session->ev_timeout);
+	fr_event_timer_delete(&session->ev_timeout);
 
-	now += fr_time_delta_from_usec(session->detection_time);
+	now = fr_time_add(when, fr_time_delta_from_usec(session->detection_time));
 
 	if (session->detect_multi >= 2) {
 		uint32_t delay;
@@ -950,12 +960,12 @@ static void bfd_set_timeout(bfd_state_t *session, fr_time_t when)
 		delay = session->detection_time / session->detect_multi;
 		delay += delay / 2;
 
-		session->next_recv += fr_time_delta_from_usec(delay);
+		session->next_recv = fr_time_add(session->next_recv, fr_time_delta_from_usec(delay));
 	}
 
 	if (fr_event_timer_at(session, session->el, &session->ev_timeout,
 			      now, bfd_detection_timeout, session) < 0) {
-		rad_assert("Failed to insert event" == NULL);
+		fr_assert("Failed to insert event" == NULL);
 	}
 }
 
@@ -972,7 +982,7 @@ static int bfd_start_control(bfd_state_t *session)
 	    !session->doing_poll) {
 		DEBUG("BFD %d warning: asked to start UP / UP ?",
 		      session->number);
-		rad_assert(0 == 1);
+		fr_assert(0 == 1);
 		bfd_stop_control(session);
 		return 0;
 	}
@@ -986,8 +996,8 @@ static int bfd_start_control(bfd_state_t *session)
 
 static int bfd_stop_control(bfd_state_t *session)
 {
-	fr_event_timer_delete(session->el, &session->ev_timeout);
-	fr_event_timer_delete(session->el, &session->ev_packet);
+	fr_event_timer_delete(&session->ev_timeout);
+	fr_event_timer_delete(&session->ev_packet);
 	return 1;
 }
 
@@ -1032,8 +1042,8 @@ static int bfd_stop_poll(bfd_state_t *session)
 	 *	re-set the timers.
 	 */
 	if (!session->remote_demand_mode) {
-		rad_assert(session->ev_timeout != NULL);
-		rad_assert(session->ev_packet != NULL);
+		fr_assert(session->ev_timeout != NULL);
+		fr_assert(session->ev_packet != NULL);
 		session->doing_poll = 0;
 
 		bfd_stop_control(session);
@@ -1129,7 +1139,7 @@ static void bfd_poll_response(bfd_state_t *session)
 
 	bfd_sign(session, &bfd);
 
-	if (sendto(session->sockfd, &bfd, bfd.length, 0,
+	if (sendto(session->socket.fd, &bfd, bfd.length, 0,
 		   (struct sockaddr *) &session->remote_sockaddr,
 		   session->salen) < 0) {
 		ERROR("Failed sending poll response: %s", fr_syserror(errno));
@@ -1313,13 +1323,13 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 	 *	We've received a packet, but missed the previous one.
 	 *	Warn about it.
 	 */
-	if ((session->detect_multi >= 2) && (session->last_recv > session->next_recv)) {
-		RADIUS_PACKET packet;
-		REQUEST request;
+	if ((session->detect_multi >= 2) && (fr_time_gt(session->last_recv, session->next_recv))) {
+		fr_radius_packet_t packet;
+		request_t request;
 
 		bfd_request(session, &request, &packet);
 
-		trigger_exec(&request, NULL, "server.bfd.warn", false, NULL);
+		trigger_exec(unlang_interpret_get_thread_default(), NULL, "server.bfd.warn", false, NULL);
 	}
 
 
@@ -1330,39 +1340,39 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 	}
 
 	if (session->server_cs) {
-		REQUEST *request;
-		RADIUS_PACKET *packet, *reply;
+		request_t *request;
+		fr_radius_packet_t *packet, *reply;
 
-		request = request_alloc(session);
-		packet = fr_radius_alloc(request, 0);
-		reply = fr_radius_alloc(request, 0);
+		request = request_alloc_internal(session, NULL);
+		packet = fr_radius_packet_alloc(request, 0);
+		reply = fr_radius_packet_alloc(request, 0);
 
 		bfd_request(session, request, packet);
 
 		memset(reply, 0, sizeof(*reply));
 
 		request->reply = reply;
-		request->reply->src_ipaddr = session->remote_ipaddr;
-		request->reply->src_port = session->remote_port;
-		request->reply->dst_ipaddr = session->local_ipaddr;
-		request->reply->dst_port = session->local_port;
+		fr_socket_addr_swap(&request->reply->socket, &session->socket);
 
 		/*
 		 *	FIXME: add my state, remote state as VPs?
 		 */
-
-		if (rad_debug_lvl) {
+		if (fr_debug_lvl) {
 			request->log.dst = talloc_zero(request, log_dst_t);
 			request->log.dst->func = vlog_request;
 			request->log.dst->uctx = &default_log;
 
-			request->log.lvl = RAD_REQUEST_LVL_DEBUG2;
+			request->log.lvl = fr_debug_lvl;
 		}
 		request->component = NULL;
 		request->module = NULL;
 
-		DEBUG2("server %s {", cf_section_name2(request->server_cs));
-		unlang_interpret(request, session->unlang, RLM_MODULE_NOTFOUND);
+		DEBUG2("server %s {", cf_section_name2(unlang_call_current(request)));
+		if (unlang_interpret_push_section(request, session->unlang, RLM_MODULE_NOTFOUND, UNLANG_TOP_FRAME) < 0) {
+			talloc_free(request);
+			return 0;
+		}
+		unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
 		DEBUG("}");
 
 		/*
@@ -1475,11 +1485,10 @@ static int bfd_socket_recv(rad_listen_t *listener)
 	/*
 	 *	We SHOULD use "your_disc", but what the heck.
 	 */
-	fr_ipaddr_from_sockaddr(&src, sizeof_src,
-			   &my_session.remote_ipaddr,
-			   &my_session.remote_port);
+	fr_ipaddr_from_sockaddr(&my_session.socket.inet.dst_ipaddr,
+				&my_session.socket.inet.dst_port, &src, sizeof_src);
 
-	session = rbtree_finddata(sock->session_tree, &my_session);
+	session = fr_rb_find(sock->session_tree, &my_session);
 	if (!session) {
 		DEBUG("BFD unknown peer");
 		return 0;
@@ -1579,9 +1588,9 @@ static int bfd_init_sessions(CONF_SECTION *cs, bfd_socket_t *sock, int sockfd)
 		       return -1;
 	       }
 
-	       my_session.remote_ipaddr = ipaddr;
-	       my_session.remote_port = port;
-	       if (rbtree_finddata(sock->session_tree, &my_session) != NULL) {
+	       my_session.socket.inet.dst_ipaddr = ipaddr;
+	       my_session.socket.inet.dst_port = port;
+	       if (fr_rb_find(sock->session_tree, &my_session) != NULL) {
 		       cf_log_err(ci, "Peers must have unique IP addresses");
 		       return -1;
 	       }
@@ -1597,43 +1606,42 @@ static int bfd_init_sessions(CONF_SECTION *cs, bfd_socket_t *sock, int sockfd)
 /*
  *	None of these functions are used.
  */
-static int bfd_socket_send(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
+static int bfd_socket_send(UNUSED rad_listen_t *listener, UNUSED request_t *request)
 {
-	rad_assert(0 == 1);
+	fr_assert(0 == 1);
 	return 0;
 }
 
 
-static int bfd_socket_encode(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
+static int bfd_socket_encode(UNUSED rad_listen_t *listener, UNUSED request_t *request)
 {
-	rad_assert(0 == 1);
+	fr_assert(0 == 1);
 	return 0;
 }
 
 
-static int bfd_socket_decode(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
+static int bfd_socket_decode(UNUSED rad_listen_t *listener, UNUSED request_t *request)
 {
-	rad_assert(0 == 1);
+	fr_assert(0 == 1);
 	return 0;
 }
 
-static int bfd_session_cmp(const void *one, const void *two)
+static int8_t bfd_session_cmp(const void *one, const void *two)
 {
 	const bfd_state_t *a = one, *b = two;
 
-	return fr_ipaddr_cmp(&a->remote_ipaddr, &b->remote_ipaddr);
+	return fr_ipaddr_cmp(&a->socket.inet.dst_ipaddr, &b->socket.inet.dst_ipaddr);
 }
 
-static const FR_NAME_NUMBER auth_types[] = {
-	{ "none", BFD_AUTH_RESERVED },
-	{ "simple", BFD_AUTH_SIMPLE },
-	{ "keyed-md5", BFD_AUTH_KEYED_MD5 },
-	{ "met-keyed-md5", BFD_AUTH_MET_KEYED_MD5 },
-	{ "keyed-sha1", BFD_AUTH_KEYED_SHA1 },
-	{ "met-keyed-sha1", BFD_AUTH_MET_KEYED_SHA1 },
-
-	{ NULL, 0 }
+static fr_table_num_sorted_t const auth_types[] = {
+	{ L("keyed-md5"),		BFD_AUTH_KEYED_MD5	},
+	{ L("keyed-sha1"),		BFD_AUTH_KEYED_SHA1	},
+	{ L("met-keyed-md5"),	BFD_AUTH_MET_KEYED_MD5	},
+	{ L("met-keyed-sha1"),	BFD_AUTH_MET_KEYED_SHA1 },
+	{ L("none"),		BFD_AUTH_RESERVED	},
+	{ L("simple"),		BFD_AUTH_SIMPLE		}
 };
+static size_t auth_types_len = NUM_ELEMENTS(auth_types);
 
 static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
@@ -1642,7 +1650,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	uint16_t listen_port;
 	fr_ipaddr_t ipaddr;
 
-	rad_assert(sock != NULL);
+	fr_assert(sock != NULL);
 
 	if (bfd_parse_ip_port(cs, &ipaddr, &listen_port) < 0) {
 		return -1;
@@ -1680,7 +1688,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (sock->max_timeouts == 0) sock->max_timeouts = 1;
 	if (sock->max_timeouts > 10) sock->max_timeouts = 10;
 
-	sock->auth_type = fr_str2int(auth_types, auth_type_str, BFD_AUTH_INVALID);
+	sock->auth_type = fr_table_value_by_str(auth_types, auth_type_str, BFD_AUTH_INVALID);
 	if (sock->auth_type == BFD_AUTH_INVALID) {
 		ERROR("Unknown auth_type '%s'", auth_type_str);
 		return -1;
@@ -1707,7 +1715,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		}
 	}
 
-	sock->session_tree = rbtree_talloc_create(sock, bfd_session_cmp, bfd_state_t, bfd_session_free, 0);
+	sock->session_tree = fr_rb_inline_talloc_alloc(sock, bfd_state_t, node, bfd_session_cmp, bfd_session_free);
 	if (!sock->session_tree) {
 		ERROR("Failed creating session tree!");
 		return -1;
@@ -1821,7 +1829,7 @@ static int bfd_socket_compile(CONF_SECTION *server_cs, UNUSED CONF_SECTION *list
 
 	cf_log_debug(cs, "Loading bfd {...}");
 
-	if (unlang_compile(cs, MOD_AUTHORIZE, NULL) < 0) {
+	if (unlang_compile(cs, MOD_AUTHORIZE, NULL, NULL) < 0) {
 		cf_log_err(cs, "Failed compiling 'bfd' section");
 		return -1;
 	}

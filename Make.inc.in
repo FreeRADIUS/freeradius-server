@@ -16,6 +16,7 @@ docdir		= @docdir@
 mandir		= @mandir@
 datadir		= @datadir@
 dictdir		= @dictdir@
+mibdir		= @mibdir@
 logdir		= @logdir@
 includedir	= @includedir@
 
@@ -56,6 +57,7 @@ INCLUDE		= -I. -Isrc \
 CFLAGS		= $(INCLUDE) -fno-strict-aliasing @CFLAGS@
 CPPFLAGS	= @CPPFLAGS@
 LIBPREFIX	= @LIBPREFIX@
+LIBRARY_EXT	= @LIBRARY_EXT@
 EXEEXT		= @EXEEXT@
 
 LIBTOOL		= JLIBTOOL
@@ -144,7 +146,7 @@ CPPFLAGS		:= $(OPENSSL_CPPFLAGS) $(CPPFLAGS)
 #
 #  Add optional dependency for libfreeradius-server if we're building with OpenSSL
 #
-LIBFREERADIUS_SERVER	:= libfreeradius-tls.a
+LIBFREERADIUS_SERVER	:= libfreeradius-internal.a libfreeradius-tls.a
 endif
 LIBFREERADIUS_SERVER	+= libfreeradius-server.a libfreeradius-unlang.a
 
@@ -171,8 +173,8 @@ ANALYZE.c       := @clang_path@
 #
 #  Have wrappers for the test tools, so that they run.
 #
-TESTBINDIR = ./$(BUILD_DIR)/bin/local
-TESTBIN    =  $(JLIBTOOL) --quiet --mode=execute $(TESTBINDIR)
+TEST_BIN_DIR = ./$(BUILD_DIR)/bin/local
+TEST_BIN    =  $(JLIBTOOL) --quiet --mode=execute $(TEST_BIN_DIR)
 
 #
 #  For creating documentation via doc/all.mk
@@ -182,3 +184,4 @@ PANDOC := @PANDOC@
 PANDOC_ENGINE := @PANDOC_ENGINE@
 DOXYGEN := @DOXYGEN@
 GRAPHVIZ_DOT := @GRAPHVIZ_DOT@
+ANTORA := @ANTORA@

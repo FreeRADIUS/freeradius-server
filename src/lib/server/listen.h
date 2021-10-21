@@ -25,6 +25,7 @@
  */
 RCSIDH(listen_h, "$Id$")
 
+#include <freeradius-devel/server/client.h>
 #include <freeradius-devel/server/socket.h>
 #include <freeradius-devel/server/stats.h>
 #include <freeradius-devel/util/event.h>
@@ -65,12 +66,12 @@ typedef struct rad_protocol_s rad_protocol_t;
 typedef struct rad_listen rad_listen_t;
 
 typedef int (*rad_listen_recv_t)(rad_listen_t *);
-typedef int (*rad_listen_send_t)(rad_listen_t *, REQUEST *);
+typedef int (*rad_listen_send_t)(rad_listen_t *, request_t *);
 typedef int (*rad_listen_error_t)(rad_listen_t *, int);
 typedef int (*rad_listen_print_t)(rad_listen_t const *, char *, size_t);
-typedef void (*rad_listen_debug_t)(REQUEST *, RADIUS_PACKET *, bool received);
-typedef int (*rad_listen_encode_t)(rad_listen_t *, REQUEST *);
-typedef int (*rad_listen_decode_t)(rad_listen_t *, REQUEST *);
+typedef void (*rad_listen_debug_t)(request_t *, fr_radius_packet_t *, fr_pair_list_t *, bool received);
+typedef int (*rad_listen_encode_t)(rad_listen_t *, request_t *);
+typedef int (*rad_listen_decode_t)(rad_listen_t *, request_t *);
 
 struct rad_listen {
 	rad_listen_t		*next; /* should be rbtree stuff */
@@ -88,7 +89,7 @@ struct rad_listen {
 
 	int			count;
 	bool			dual;
-	rbtree_t		*children;
+	fr_rb_tree_t		*children;
 	rad_listen_t		*parent;
 	bool			nodup;
 
@@ -102,75 +103,7 @@ struct rad_listen {
 
 	CONF_SECTION const	*cs;
 	void			*data;
-
-#ifdef WITH_STATS
-	fr_stats_t		stats;
-#endif
 };
-
-#ifdef HAVE_LIBPCAP
-typedef const char* (*rad_pcap_filter_builder)(rad_listen_t *);
-#endif
-
-/*
- *	This shouldn't really be exposed...
- */
-typedef struct {
-	/*
-	 *	For normal sockets.
-	 */
-	fr_ipaddr_t		my_ipaddr;
-	uint16_t		my_port;
-
-	char const		*interface;
-
-#ifdef HAVE_LIBPCAP
-	fr_pcap_t		*pcap;
-	fr_pcap_type_t		pcap_type;
-	rad_pcap_filter_builder	pcap_filter_builder;
-#endif
-
-	int			broadcast;
-	time_t			rate_time;
-	uint32_t		rate_pps_old;
-	uint32_t		rate_pps_now;
-	uint32_t		max_rate;
-
-	/* for outgoing sockets */
-	fr_ipaddr_t		other_ipaddr;
-	uint16_t		other_port;
-
-	int			proto;
-
-
-	uint32_t		recv_buff;	//!< Socket receive buffer size we only allow
-						//!< configuration of SO_RCVBUF, as SO_SNDBUF
-						//!< controls the maximum datagram size.
-
-	rbtree_t		*dup_tree;	//!< only for auth packets
-
-	/* for a proxy connecting to home servers */
-	time_t			last_packet;
-	time_t			opened;
-
-	fr_socket_limit_t	limit;
-	struct listen_socket_t	*parent;
-	RADCLIENT		*client;
-
-	RADIUS_PACKET  	 	*packet; /* for reading partial packets */
-
-#if 0
-	tls_session_t		*tls_session;
-	REQUEST			*request; /* horrible hacks */
-	VALUE_PAIR		*cert_vps;
-	pthread_mutex_t		mutex;
-	uint8_t			*data;
-	size_t			partial;
-#endif
-
-	RADCLIENT_LIST		*clients;
-} listen_socket_t;
-
 #ifdef __cplusplus
 }
 #endif

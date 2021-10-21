@@ -1,123 +1,63 @@
-= FreeRADIUS Documentation
+# Documentation
 
-This is the documentation for FreeRADIUS, version 4.  The
-documentation is available under the Creative Commons Non-Commercial
-license, as given in the `LICENSE` file in this directory.
+All of the documentation is now in Asciidoc format.  Please see the
+[introduction](introduction/index.adoc) file for full details.
 
-FreeRADIUS is a complex piece of software with many configuration
-options.  However, we have taken great care to make the default
-configuration work in most circumstances.  The result is that for most
-simple systems, it is trivial to install and configure the server.
-For those situations, this documentation will serve to answer basic
-questions about functionality, configuration, etc.
+We also suggest reading the [directory](introduction/directory.adoc)
+file, which describes the layout of this directory.
 
-For more complex requirements, FreeRADIUS can be extremely difficult
-to configure.  The reason for this difficulty is that the server can
-do almost anything, which means that there are a near-infinite number
-of ways to configure it.  The question for an administrator, then, is
-what piece of the configuration to change, and how to change it.
+Please run the top-level `configure` script in order to create HTML
+versions of the documentation.
 
-This documentation will answer those questions.  The FreeRADIUS team
-has put substantial effort into writing the documentation for this
-release.  Everything in the server is fully documented, and there are
-many "how-to" guides available.
+## Antora
 
-The documentation is split into sections by subject area, oganized by
-desired outcome.  At a high level, the subject areas describe:
+If the local system has [Antora
+installed](https://docs.antora.org/antora/latest/install/install-antora/),
+then you can run:
 
-* concepts and [introduction](introduction/) for newcomers,
-* the syntax of the [unlang](unlang/) processing language,
-* the [configuration files](raddb/),
-* various [how-to](howto/) guides,
-* [upgrading](upgrade/) from a previous version of FreeRADIUS,
-* and [developer documentation](source/)
+    make docsite
 
- This organization means that for example, the `ldap` module will have
- documention located in multiple places.  We feel that organizing the
- documentation by desired "goal" is better than the alternatives.
+The output HTML is placed in the following location:
 
-Within each section, the documentation is split into small pages,
-which are generally no more than a few screens worth of information.
-We feel that having multiple small pages with cross-links is more
-helpful than having a smaller number of enormous pages.  This division
-ensures that (for example) the "how-to" guides are split into a series
-of small steps, each of which can be performed quickly.
+    ./build/docsite/freeradius-server/latest/index.html
 
-We hope that this extended documentation will address any lingering
-concerns about the quality of the FreeRADIUS documentation.
+If Antora is not installed locally, it can usually be installed from
+`npm` (a command available once you install [Node.js](https://nodejs.org/)):
 
-## Getting Started
+    npm i -g @antora/cli@2.0 @antora/site-generator-default@2.0
 
-We recommend installing FreeRADIUS via the pre-built packages
-available from [Network RADIUS](http://packages.networkradius.com).
-Many Operating System distributions ship versions of FreeRADIUS which
-are years out of date.  That page contains recent FreeRADIUS packages
-for all common OS distributions.  For historical purposes, packages of
-older releases are also available from that site.
+## Basic HTML
 
-Administrators who are new to FreeRADIUS should read the
-[introduction](introduction/) documentation.  That section describes
-the concepts behind FreeRADIUS.  It is vital for newcomers to
-understand these concepts, as the rest of the documentation assumes
-familiarity with them.
+If the local system has Asciidoctor and Pandoc installed, then it is
+possible to create simple HTML output via the following command:
 
-Administrators who have version 3 and wish to upgrade to version 4
-should read the [upgrading](upgrade/) documentation.  That section
-explains the differences between the two versions, and how an existing
-configuration can be reproduced in the latest release.  We do _not_
-recommend using version 3 configuration files with version 4.  The
-server does not have compatible files across a major version upgrade.
+    make html
 
-A detailed [unlang](unlang/) reference guide is also available.  This
-section describes the syntax and functionality of the keywords, data
-types, etc. used in the "unlang" processing language.
+The build process will create one `html` file for every `adoc` file in
+this directory.  Note that Antora uses a different syntax for
+cross-links than plain Asciidoc.  As a result, the output will look
+OK, but links may be broken.
 
-All of the [configuration files](raddb/) are available in hypertext
-format.  In can often be easier to read the configuration files in a
-nicely formatted version, instead of as a fixed-width font in a text
-editor.
+The main reason to use `make html` is that it can be faster than
+Antora.  You can use this process to get a "quick look" at a rendered
+page, to see if it looks reasonable.
 
-For specific problem solving, we recommend the [how-to](howto/)
-guides.  These guides give instructions for reaching high-level goals,
-or for configuring and testing individual [modules](howto/modules/).
+The output HTML files are placed in the same directory as the input
+Asciidoc files, with the extension changed to `.html`.
 
-There is also [developer documentation](source/).  This section
-documents the APIs for developers.  Most people can ignore it.
+Note that the CSS for these HTML files is not in the `antora`
+directories.  If you look at the files there, they will be missing the
+CSS.  Instead, the `mods-available/always.adoc` file ends up being
+accessible _only_ via `doc/raddb/mods-available/always.html`
 
-## Debugging
+## Raddb and Module Documentation
 
-If you have ANY problems, concerns, or surprises when running the
-server, the the server should be run in debugging mode as root, from
-the command line:
+The documentation for each module syntax, configuration, etc. is
+auto-generated from the files in the `raddb` directory.  Each
+configuration file has some Asciidoc markup in the comments.  The file
+`scripts/asciidoc/conf2adoc` takes care of converting configuration
+files to Asciidoc.  See `all.mk` for specific commands.
 
-    # radiusd -X
-
-It will produce a large number of messages.  The answers to many
-questions, and the solution to many problems, can usually be found in
-these messages.  When run in a terminal window, error messages will be
-shown in red text, and warning messages will be shown in yellow text.
-
-For other use-cases, please look for `ERROR` or `WARNING` in the debug
-output.  In many cases, those messages describe exactly what is going
-wrong, and how to fix it.
-
-For further details, about the debug output see the
-[radiusd-X](http://wiki.freeradius.org/radiusd-X) page on the
-[wiki](http://wiki.freeradius.org).
-
-## Getting Help
-
-We also recommend joining the [mailing
-list](http://lists.freeradius.org/mailman/listinfo/freeradius-users)
-in order to ask questions and receive ansswers.  The developers are
-not on Stack Overflow, IRC, or other web sites.  While the FreeRADIUS
-source is available on
-[GitHub](https://github.com/FreeRADIUS/freeradius-server/), questions
-posted there will not be answered.
-
-WARNING: Posting questions to the mailing list *without* including the
-debug output is generally not acceptable.  Doing so will usually cause
-the developers to reply, saying "post the debug output".
-
-We simply cannot emphasize enough the importance of running the server
-in debugging mode, and _reading_ the output.
+When any documentation is built, the files in `raddb` are checked to
+see if they are "out of date" with respect to the output `.adoc`
+files.  If so, the `conf2adoc` script is run to refresh the Asciidoc files.

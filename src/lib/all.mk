@@ -18,8 +18,8 @@ define LIB_INCLUDE
 src/freeradius-devel: | src/include/${1}
 
 src/include/${1}:
-	$${Q}[ -e $$@ ] || ln -sf $${top_srcdir}/src/lib/${1} $$@
 	@echo LN-SF src/lib/${1} $$@
+	$${Q}[ -e $$@ ] || ln -sf $${top_srcdir}/src/lib/${1} $$@
 
 install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/,${1}/base.h)
 endef
@@ -28,8 +28,8 @@ define PROTO_INCLUDE
 src/freeradius-devel: | src/include/${1}
 
 src/include/${1}:
-	$${Q}[ -e $$@ ] || ln -sf $${top_srcdir}/src/protocols/${1} $$@
 	@echo LN-SF src/protocols/${1} $$@
+	$${Q}[ -e $$@ ] || ln -sf $${top_srcdir}/src/protocols/${1} $$@
 
 install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/${1}/,$(notdir $(wildcard src/protocols/${1}/*.h)))
 endef
@@ -37,7 +37,11 @@ endef
 #
 #  All lib go into subdirectories of the "lib" directory.
 #
-SUBMAKEFILES := $(wildcard ${top_srcdir}/src/lib/*/all.mk)
+#  Manually order the basic ones, because Make is order dependent.
+#  And then get the rest by wildcard, and ensure unsure that they're
+#  all unique.
+#
+SUBMAKEFILES := $(strip $(call uniq,$(patsubst %,${top_srcdir}/src/lib/%/all.mk,util tls eap eap_aka_sim server unlang io) $(wildcard ${top_srcdir}/src/lib/*/all.mk)))
 
 #
 #  Add library-specific rules to link include files, etc.

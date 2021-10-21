@@ -42,7 +42,7 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_sql_postgresql - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <sys/stat.h>
 
@@ -178,6 +178,13 @@ static sql_rcode_t sql_classify_error(rlm_sql_postgres_t *inst, ExecStatusType s
 			error_code = "42000";
 			break;
 
+	#ifdef HAVE_PGRES_PIPELINE_SYNC
+		case PGRES_PIPELINE_SYNC:
+		case PGRES_PIPELINE_ABORTED:
+			ERROR("libpq reported aborted pipeline");
+			return RLM_SQL_ERROR;
+	#endif
+
 		case PGRES_BAD_RESPONSE:
 		case PGRES_NONFATAL_ERROR:
 		case PGRES_FATAL_ERROR:
@@ -193,7 +200,7 @@ static sql_rcode_t sql_classify_error(rlm_sql_postgres_t *inst, ExecStatusType s
 	}
 
 	DEBUG2("sqlstate %s matched %s: %s (%s)", error_code,
-	       entry->sql_state, entry->meaning, fr_int2str(sql_rcode_table, entry->rcode, "<DEFAULT>"));
+	       entry->sql_state, entry->meaning, fr_table_str_by_value(sql_rcode_table, entry->rcode, "<DEFAULT>"));
 
 	/*
 	 *	WARNING error class.
@@ -259,9 +266,9 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 {
 	rlm_sql_postgres_conn_t	*conn = handle->conn;
 	rlm_sql_postgres_t	*inst = config->driver;
-	struct timeval		timeout = {config->query_timeout, 0};
-	int			sockfd, r;
-	fd_set			read_fd;
+	fr_time_delta_t		timeout = config->query_timeout;
+	fr_time_t		start;
+	int			sockfd;
 	PGresult		*tmp_result;
 	int			numfields = 0;
 	ExecStatusType		status;
@@ -286,12 +293,25 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	 *  We try to avoid blocking by waiting until the driver indicates that
 	 *  the result is ready or our timeout expires
 	 */
+	start = fr_time();
 	while (PQisBusy(conn->db)) {
+		int		r;
+		fd_set		read_fd;
+		fr_time_delta_t	elapsed = fr_time_delta_wrap(0);
+
 		FD_ZERO(&read_fd);
 		FD_SET(sockfd, &read_fd);
-		r = select(sockfd + 1, &read_fd, NULL, NULL, config->query_timeout ? &timeout : NULL);
+
+		if (fr_time_delta_ispos(config->query_timeout)) {
+			elapsed = fr_time_sub(fr_time(), start);
+			if (fr_time_delta_gteq(elapsed, timeout)) goto too_long;
+		}
+
+		r = select(sockfd + 1, &read_fd, NULL, NULL, fr_time_delta_ispos(config->query_timeout) ?
+			   &fr_time_delta_to_timeval(fr_time_delta_sub(timeout, elapsed)) : NULL);
 		if (r == 0) {
-			ERROR("Socket read timeout after %d seconds", config->query_timeout);
+		too_long:
+			ERROR("Socket read timeout after %d seconds", (int) fr_time_delta_to_sec(config->query_timeout));
 			return RLM_SQL_RECONNECT;
 		}
 		if (r < 0) {
@@ -370,6 +390,10 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	case PGRES_BAD_RESPONSE:	/* The server's response was not understood */
 	case PGRES_NONFATAL_ERROR:
 	case PGRES_FATAL_ERROR:
+#ifdef HAVE_PGRES_PIPELINE_SYNC
+	case PGRES_PIPELINE_SYNC:
+	case PGRES_PIPELINE_ABORTED:
+#endif
 		break;
 	}
 
@@ -473,7 +497,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	char const		*p, *q;
 	size_t			i = 0;
 
-	rad_assert(outlen > 0);
+	fr_assert(outlen > 0);
 
 	p = PQerrorMessage(conn->db);
 	while ((q = strchr(p, '\n'))) {
@@ -498,7 +522,7 @@ static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 	return conn->affected_rows;
 }
 
-static size_t sql_escape_func(REQUEST *request, char *out, size_t outlen, char const *in, void *arg)
+static size_t sql_escape_func(request_t *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	size_t			inlen, ret;
 	rlm_sql_handle_t	*handle = talloc_get_type_abort(arg, rlm_sql_handle_t);
@@ -566,8 +590,8 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 			db_string = talloc_asprintf_append(db_string, " password='%s'", config->sql_password);
 		}
 
-		if (config->query_timeout) {
-			db_string = talloc_asprintf_append(db_string, " connect_timeout=%d", config->query_timeout);
+		if (fr_time_delta_ispos(config->query_timeout)) {
+			db_string = talloc_asprintf_append(db_string, " connect_timeout=%d", (int) fr_time_delta_to_sec(config->query_timeout));
 		}
 
 		if (inst->send_application_name) {
@@ -598,8 +622,8 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 			db_string = talloc_asprintf_append(db_string, " password='%s'", config->sql_password);
 		}
 
-		if ((config->query_timeout) && !strstr(db_string, "connect_timeout=")) {
-			db_string = talloc_asprintf_append(db_string, " connect_timeout=%d", config->query_timeout);
+		if (fr_time_delta_ispos(config->query_timeout) && !strstr(db_string, "connect_timeout=")) {
+			db_string = talloc_asprintf_append(db_string, " connect_timeout=%d", (int) fr_time_delta_to_sec(config->query_timeout));
 		}
 
 		if (inst->send_application_name && !strstr(db_string, "application_name=")) {
@@ -622,7 +646,7 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 		CONF_SECTION *cs;
 
 		cs = cf_section_find(conf, "states", NULL);
-		if (cs && (sql_sate_entries_from_cs(inst->states, cs) < 0)) return -1;
+		if (cs && (sql_state_entries_from_cs(inst->states, cs) < 0)) return -1;
 	}
 
 	return 0;

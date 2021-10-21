@@ -1,0 +1,56 @@
+#  -*- text -*-
+#
+#
+#  $Id$
+
+#######################################################################
+#
+#  = The DNS Virtual Server
+#
+#  The `dns` virtual server is an example of using `dns` style functionality in FreeRADIUS.
+#
+#  ## The Virtual Server
+#
+#  This is the `dns` virtual server.
+#
+#  It is (for now) only a toy.  It only decodes nested attributes, which `unlang`
+#  cannot (yet) handle well.  It only handles a few types of RRs.  You have to manually
+#  do pretty much everything necessary to make DNS "work".  There's no DB integration.
+#
+#  It's not meant to be fast.  Don't use it as a root server, or as a server for an ISP
+#  with millions of users.  But it should be able to do thousands to tens of thousands
+#  of queries per second, without really trying hard.
+#
+#  It's meant to be a _flexible_ DNS server.  Want to give different answers to VoIP phones
+#  and desktops?  It can do that.
+#
+server dns {
+	#
+	#  namespace:: The protocol / dictionary to use.
+	#
+	namespace = dns
+
+	listen {
+		type = query
+
+		transport = udp
+
+		#
+		#  Dont use "port = 53" unless you want to break things
+		#
+		udp {
+			ipaddr = *
+			port = 5300
+		}
+	}
+
+
+recv query {
+	ok
+}
+
+send query.response {
+	ok
+}
+
+}

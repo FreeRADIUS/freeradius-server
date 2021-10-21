@@ -30,26 +30,31 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/server/cf_util.h>
+#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/talloc.h>
 
-#include <talloc.h>
+extern xlat_arg_parser_t const trigger_xlat_args[];
 
-ssize_t		trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-		     	     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			     REQUEST *request, char const *fmt);
+xlat_action_t	trigger_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+			     UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			     fr_value_box_list_t *in);
 
 int		trigger_exec_init(CONF_SECTION const *cs);
 
-int		trigger_exec(REQUEST *request, CONF_SECTION const *cs,
-			     char const *name, bool quench, VALUE_PAIR *args)
-			     CC_HINT(nonnull (3));
+int		trigger_exec(unlang_interpret_t *intp,
+			     CONF_SECTION const *cs, char const *name, bool quench, fr_pair_list_t *args)
+			     CC_HINT(nonnull(3));
 
 void		trigger_exec_free(void);
 
 bool		trigger_enabled(void);
 
-VALUE_PAIR	*trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port);
+void		trigger_args_afrom_server(TALLOC_CTX *ctx, fr_pair_list_t *list, char const *server, uint16_t port);
+
+typedef int (*fr_trigger_worker_t)(request_t *request, module_method_t process, void *ctx);
 
 #ifdef __cplusplus
 }

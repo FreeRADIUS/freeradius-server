@@ -35,7 +35,6 @@ RCSIDH(base_h, "$Id$")
 #include <freeradius-devel/server/components.h>
 #include <freeradius-devel/server/cond_eval.h>
 #include <freeradius-devel/server/connection.h>
-#include <freeradius-devel/server/crypt.h>
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/exec.h>
@@ -57,16 +56,18 @@ RCSIDH(base_h, "$Id$")
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/regex.h>
 #include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/server/request_data.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/stats.h>
 #include <freeradius-devel/server/sysutmp.h>
-#include <freeradius-devel/server/tcp.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/trigger.h>
-#include <freeradius-devel/server/users_file.h>
 #include <freeradius-devel/server/util.h>
 #include <freeradius-devel/server/virtual_servers.h>
-#include <freeradius-devel/server/xlat.h>
+#include <freeradius-devel/unlang/xlat.h>
 
 #include <freeradius-devel/util/base.h>
+
+int server_init(CONF_SECTION *cs);
+void server_free(void);

@@ -1,0 +1,69 @@
+= Directories
+
+The directories in the server source are laid out ad follows:
+
+== Documentation
+
+[width="100%",cols="50%,50%",options="header",]
+|===
+| Directory           | Description
+| `doc/`              | Various snippets of documentation.
+| `doc/introduction/` | Concepts and introduction to FreeRADIUS.
+| `doc/raddb/`        | HTML versions of the configuration files.
+| `doc/developers/`   | Developer documentation for internal APIs
+| `doc/unlang/`       | The unlang processing language.
+| `doc/upgrade/`      | How to upgrade from version 3 to version 4.
+| `doc/rfc/`          | Copies of the RFC’s. If you have Perl, do a `make` in
+                        that directory, and look at the HTML output.
+| `doc/antora/`       | Metadata and documentation source files to build
+                        an Antora based documentation site.
+| `doc/doxygen/`      | Files to build a Doxygen site from the source code.
+| `man/`              | Unix Manual pages for the server, configuration files,
+                        and associated utilities.
+|===
+
+== Utility
+
+[cols=",",options="header",]
+|===
+|Directory   | Description
+| `mibs/`    | SNMP Mibs for the server.
+| `scripts/` | Sample scripts for startup and maintenance.
+|===
+
+== Configuration
+
+[width="100%",cols="50%,50%",options="header",]
+|===
+| Directory               | Description
+| `raddb/`                | Sample configuration files for the server.
+| `raddb/mods-available`  | Module configuration files.
+| `raddb/mods-enabled`    | Directory containing symlinks to `raddb/mods-available`.
+                            Controls which modules are enabled.
+| `raddb/sites-available` | Virtual servers.
+| `raddb/sites-enabled`   | Directory containing symlinks to `raddb/sites-available`.
+                            Control which virtual servers are enabled.
+|===
+
+== Packaging
+
+[cols=",",options="header",]
+|===
+|Directory  | Description
+| `debian/` | Files to build a `freeradius` Debian Linux package.
+| `redhat/` | Additional files for a RedHat Linux system.
+| `suse/`   | Additional files for a SuSE (UnitedLinux) system.
+|===
+
+== Source
+
+[cols=",",options="header",]
+|===
+|Directory         | Description
+| `src/`           | Source code.
+| `src/bin/`       | Source code for the daemon and associated utilities.
+| `src/lib/`       | Source code for various utility libraries.
+| `src/include/`   | Header files.
+| `src/protocols/` | Dynamic frontend plug-in modules.
+| `src/modules/`   | Dynamic backend plug-in modules.
+|===

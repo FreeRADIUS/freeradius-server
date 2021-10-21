@@ -1,0 +1,46 @@
+= The case Statement
+
+.Syntax
+[source,unlang]
+----
+case [ <match> ] {
+    [ statements ]
+}
+----
+
+The `case` statement is used to match data inside of a
+xref:unlang/switch.adoc[switch] statement.  The `case` statement cannot be used
+outside of a xref:unlang/switch.adoc[switch] statement.
+
+The _<match>_ text *must* be static.  That is, the _<match>_ text
+cannot be an attribute expansion, or an `xlat`
+xref:type/string/index.adoc[string].
+
+The keyword `default` can be used to specify the default action to
+take inside of a xref:unlang/switch.adoc[switch] statement.
+
+If no _<match>_ text is given, it means that the `case` statement is
+the "default" and will match all which is not matched by another
+`case` statement inside of the same xref:unlang/switch.adoc[switch].
+This syntax is deprecated, and will be removed in a future release.
+
+.Example
+[source,unlang]
+----
+switch &User-Name {
+    case "bob" {
+        reject
+    }
+
+    case &Filter-Id {
+        reject
+    }
+
+    default {
+        ok
+    }
+}
+----
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.

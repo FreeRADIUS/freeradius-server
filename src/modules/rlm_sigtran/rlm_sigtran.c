@@ -44,7 +44,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "sigtran.h"
 #include "attrs.h"
@@ -64,12 +64,12 @@ static uint32_t	sigtran_instances = 0;
 
 unsigned int __hack_opc, __hack_dpc;
 
-static const FR_NAME_NUMBER m3ua_traffic_mode_table[] = {
-	{ "override",  1 },
-	{ "loadshare", 2 },
-	{ "broadcast", 3 },
-	{  NULL, 0 }
+static fr_table_num_sorted_t const m3ua_traffic_mode_table[] = {
+	{ L("broadcast"), 3 },
+	{ L("loadshare"), 2 },
+	{ L("override"),  1 }
 };
+static size_t m3ua_traffic_mode_table_len = NUM_ELEMENTS(m3ua_traffic_mode_table);
 
 static const CONF_PARSER sctp_config[] = {
 	{ FR_CONF_OFFSET("server", FR_TYPE_COMBO_IP_ADDR, rlm_sigtran_t, conn_conf.sctp_dst_ipaddr) },
@@ -156,23 +156,30 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-fr_dict_t *dict_eap_sim;
-fr_dict_t *dict_eap_aka;
+fr_dict_t const *dict_eap_aka_sim;
 
-fr_dict_attr_t const *attr_eap_aka_autn;
-fr_dict_attr_t const *attr_eap_aka_ck;
-fr_dict_attr_t const *attr_eap_aka_ik;
-fr_dict_attr_t const *attr_eap_aka_rand;
-fr_dict_attr_t const *attr_eap_aka_xres;
+/*
+ *	UMTS vector
+ */
+fr_dict_attr_t const *attr_eap_aka_sim_autn;
+fr_dict_attr_t const *attr_eap_aka_sim_ck;
+fr_dict_attr_t const *attr_eap_aka_sim_ik;
+fr_dict_attr_t const *attr_eap_aka_sim_xres;
 
-fr_dict_attr_t const *attr_eap_sim_kc;
-fr_dict_attr_t const *attr_eap_sim_sres;
-fr_dict_attr_t const *attr_eap_sim_rand;
+/*
+ *	GSM vector
+ */
+fr_dict_attr_t const *attr_eap_aka_sim_kc;
+fr_dict_attr_t const *attr_eap_aka_sim_sres;
+
+/*
+ *	Shared
+ */
+fr_dict_attr_t const *attr_eap_aka_sim_rand;
 
 extern fr_dict_autoload_t rlm_sigtran_dict[];
 fr_dict_autoload_t rlm_sigtran_dict[] = {
-	{ .out = &dict_eap_sim, .proto = "eap-sim" },
-	{ .out = &dict_eap_aka, .proto = "eap-aka" },
+	{ .out = &dict_eap_aka_sim, .base_dir = "eap/aka-sim", .proto = "eap-aka-sim" },
 	{ NULL }
 };
 
@@ -180,24 +187,23 @@ fr_dict_attr_t const *attr_auth_type;
 
 extern fr_dict_attr_autoload_t rlm_sigtran_dict_attr[];
 fr_dict_attr_autoload_t rlm_sigtran_dict_attr[] = {
-	{ .out = &attr_eap_aka_autn, .name = "EAP-AKA-AUTN", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
-	{ .out = &attr_eap_aka_ck, .name = "EAP-AKA-CK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
-	{ .out = &attr_eap_aka_ik, .name = "EAP-AKA-IK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
-	{ .out = &attr_eap_aka_rand, .name = "EAP-AKA-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
-	{ .out = &attr_eap_aka_xres, .name = "EAP-AKA-XRES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka },
-
-	{ .out = &attr_eap_sim_kc, .name = "EAP-SIM-KC", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
-	{ .out = &attr_eap_sim_rand, .name = "EAP-SIM-RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
-	{ .out = &attr_eap_sim_sres, .name = "EAP-SIM-SRES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_sim },
+	{ .out = &attr_eap_aka_sim_autn, .name = "AUTN", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_ck, .name = "CK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_ik, .name = "IK", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_kc, .name = "KC", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_rand, .name = "RAND", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_sres, .name = "SRES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
+	{ .out = &attr_eap_aka_sim_xres, .name = "XRES", .type = FR_TYPE_OCTETS, .dict = &dict_eap_aka_sim },
 
 	{ NULL }
 };
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_sigtran_t const	*inst = instance;
+	rlm_sigtran_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_sigtran_t);
+	rlm_sigtran_thread_t const	*t = talloc_get_type_abort_const(mctx->thread, rlm_sigtran_thread_t);
 
-	return sigtran_client_map_send_auth_info(inst, request, inst->conn, *(int *)thread);
+	return sigtran_client_map_send_auth_info(p_result, inst, request, inst->conn, t->fd);
 }
 
 /** Convert our sccp address config structure into sockaddr_sccp
@@ -300,11 +306,14 @@ static int sigtran_sccp_sockaddr_from_conf(TALLOC_CTX *ctx, rlm_sigtran_t *inst,
 	return 0;
 }
 
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, UNUSED void *instance,
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 				  fr_event_list_t *el, void *thread)
 {
-	rlm_sigtran_t	*inst = instance;
-	int		fd;
+	rlm_sigtran_t		*inst = instance;
+	rlm_sigtran_thread_t	*t = thread;
+	int			fd;
+
+	t->inst = instance;
 
 	fd = sigtran_client_thread_register(el);
 	if (fd < 0) {
@@ -312,14 +321,16 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, UNUSED void *in
 		return -1;
 	}
 
-	*((int *)thread) = fd;
+	t->fd = fd;
 
 	return 0;
 }
 
-static int mod_thread_detach(fr_event_list_t *el, UNUSED void *thread)
+static int mod_thread_detach(fr_event_list_t *el, void *thread)
 {
-	sigtran_client_thread_unregister(el, *(int *)thread);	/* Also closes our side */
+	rlm_sigtran_thread_t	*t = thread;
+
+	sigtran_client_thread_unregister(el, t->fd);	/* Also closes our side */
 
 	return 0;
 }
@@ -334,7 +345,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Translate traffic mode string to integer
 	 */
-	inst->conn_conf.m3ua_traffic_mode = fr_str2int(m3ua_traffic_mode_table,
+	inst->conn_conf.m3ua_traffic_mode = fr_table_value_by_str(m3ua_traffic_mode_table,
 						       inst->conn_conf.m3ua_traffic_mode_str, -1);
 	if (inst->conn_conf.m3ua_traffic_mode < 0) {
 		cf_log_err(conf, "Invalid 'm3ua_traffic_mode' value \"%s\", expected 'override', "
@@ -424,7 +435,7 @@ module_t rlm_sigtran = {
 	.name			= "sigtran",
 	.type			= RLM_TYPE_THREAD_SAFE | RLM_TYPE_RESUMABLE,
 	.inst_size		= sizeof(rlm_sigtran_t),
-	.thread_inst_size	= sizeof(int),
+	.thread_inst_size	= sizeof(rlm_sigtran_thread_t),
 	.config			= module_config,
 	.instantiate		= mod_instantiate,
 	.detach			= mod_detach,

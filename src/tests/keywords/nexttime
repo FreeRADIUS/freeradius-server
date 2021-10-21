@@ -1,0 +1,34 @@
+#
+#  PRE: update expr
+#
+
+#
+#  Calculations based on month and year are not consistent due to
+#  different numbers of days involved.  Check hour / day / week
+#
+
+update request {
+        &Tmp-Integer-0 := "%{expr:%(nexttime:2h) - %(nexttime:1h)}"
+}
+
+if (&Tmp-Integer-0 != 3600) {
+        test_fail
+}
+
+update request {
+        &Tmp-Integer-0 := "%{expr:%(nexttime:3d) - %(nexttime:1d)}"
+}
+
+if (&Tmp-Integer-0 != 172800) {
+        test_fail
+}
+
+update request {
+        &Tmp-Integer-0 := "%{expr:%(nexttime:4w) - %(nexttime:2w)}"
+}
+
+if (&Tmp-Integer-0 != 1209600) {
+        test_fail
+}
+
+success

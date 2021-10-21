@@ -1,0 +1,7 @@
+ALIAS	Yubikey-Key                             	26.41482.1
+ALIAS	Yubikey-Public-ID                       	26.41482.2
+ALIAS	Yubikey-Private-ID                      	26.41482.3
+ALIAS	Yubikey-Counter                         	26.41482.4
+ALIAS	Yubikey-Timestamp                       	26.41482.5
+ALIAS	Yubikey-Random                          	26.41482.6
+ALIAS	Yubikey-OTP                             	26.41482.7

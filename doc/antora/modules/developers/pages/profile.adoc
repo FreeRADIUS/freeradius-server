@@ -1,0 +1,41 @@
+= Profiling
+
+Build with gperftools, and ensure that it's built:
+
+[source,shell]
+----
+$ grep profile Make.inc
+GPERFTOOLS_LIBS	= -lprofiler
+----
+
+Run your test using the profiling tools.  One signal will start the
+profiling, another will stop it.
+
+[source,shell]
+----
+env CPUPROFILE=/tmp/freeradius.prof CPUPROFILESIGNAL=12 freeradius ...
+killall -12 freeradius
+  ... wait ...
+killall -12 freeradius
+----
+
+View the results
+
+[source,shell]
+----
+pprof --text /path/to/freeradius /tmp/freeradius.prof
+----
+
+or as a graph
+
+[source,shell]
+----
+pprof --gv /path/to/freeradius /tmp/freeradius.prof
+----
+
+or as cachgrind output
+
+[source,shell]
+----
+pprof --cachegrind /path/to/freeradius /tmp/freeradius.prof
+----

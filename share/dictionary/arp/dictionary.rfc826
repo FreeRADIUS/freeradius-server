@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 
@@ -11,43 +11,46 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Arp-Packet				1	struct
-MEMBER		Hardware-Format				short
-MEMBER		Protocol-Format				short
-MEMBER		Hardware-Address-Length			byte
-MEMBER		Protocol-Address-Length			byte
-MEMBER		ARP-Operation				short
-MEMBER		Sender-Hardware-Address			ether
-MEMBER		Sender-Protocol-Address			ipaddr
-MEMBER		Target-Hardware-Address			ether
-MEMBER		Target-Protocol-Address			ipaddr
+ATTRIBUTE	arp				1	struct
+MEMBER		hardware-format				uint16
 
-VALUE	Hardware-Format			Ethernet		1
+VALUE	hardware-format			Ethernet		1
 
-VALUE	Protocol-Format			IPv4			0x0800
+MEMBER		protocol-format				uint16
 
-VALUE	ARP-Operation			Request			1
-VALUE	ARP-Operation			Reply			2
-VALUE	ARP-Operation			Reverse-Request		3
-VALUE	ARP-Operation			Reverse-Reply		4
-VALUE	ARP-Operation			DRARP-Request		5
-VALUE	ARP-Operation			DRARP-Reply		6
-VALUE	ARP-Operation			DRARP-Error		7
-VALUE	ARP-Operation			InARP-Request		8
-VALUE	ARP-Operation			InARP-Reply		9
-VALUE	ARP-Operation			ARP-NAK			10
-VALUE	ARP-Operation			MARS-Request		11
-VALUE	ARP-Operation			MARS-Multi		12
-VALUE	ARP-Operation			MARS-MServ		13
-VALUE	ARP-Operation			MARS-Join		14
-VALUE	ARP-Operation			MARS-Leave		15
-VALUE	ARP-Operation			MARS-NAK		16
-VALUE	ARP-Operation			MARS-Unserv		17
-VALUE	ARP-Operation			MARS-SJoin		18
-VALUE	ARP-Operation			MARS-SLeave		19
-VALUE	ARP-Operation			MARS-Grouplist-Request	20
-VALUE	ARP-Operation			MARS-Grouplist-Reply	21
-VALUE	ARP-Operation			MARS-Redirect-MAP	22
-VALUE	ARP-Operation			MAPOS-UNARP		23
-VALUE	ARP-Operation			OP_EXP1			24
-VALUE	ARP-Operation			OP_EXP2			25
+VALUE	protocol-format			IPv4			0x0800
+
+MEMBER		hardware-address-length			uint8
+MEMBER		protocol-address-length			uint8
+MEMBER		packet-type				uint16
+
+VALUE	packet-type			Request			1
+VALUE	packet-type			Reply			2
+VALUE	packet-type			Reverse-Request		3
+VALUE	packet-type			Reverse-Reply		4
+VALUE	packet-type			DRARP-Request		5
+VALUE	packet-type			DRARP-Reply		6
+VALUE	packet-type			DRARP-Error		7
+VALUE	packet-type			InARP-Request		8
+VALUE	packet-type			InARP-Reply		9
+VALUE	packet-type			ARP-NAK			10
+VALUE	packet-type			MARS-Request		11
+VALUE	packet-type			MARS-Multi		12
+VALUE	packet-type			MARS-MServ		13
+VALUE	packet-type			MARS-Join		14
+VALUE	packet-type			MARS-Leave		15
+VALUE	packet-type			MARS-NAK		16
+VALUE	packet-type			MARS-Unserv		17
+VALUE	packet-type			MARS-SJoin		18
+VALUE	packet-type			MARS-SLeave		19
+VALUE	packet-type			MARS-Grouplist-Request	20
+VALUE	packet-type			MARS-Grouplist-Reply	21
+VALUE	packet-type			MARS-Redirect-MAP	22
+VALUE	packet-type			MAPOS-UNARP		23
+VALUE	packet-type			OP_EXP1			24
+VALUE	packet-type			OP_EXP2			25
+
+MEMBER		sender-hardware-address			ether
+MEMBER		sender-protocol-address			ipaddr
+MEMBER		target-hardware-address			ether
+MEMBER		target-protocol-address			ipaddr

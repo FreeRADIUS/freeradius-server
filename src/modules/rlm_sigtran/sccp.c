@@ -39,7 +39,7 @@
 #include <osmocom/core/talloc.h>
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/utils.h>
 
@@ -49,26 +49,23 @@
 
 #include "libosmo-m3ua/include/cellmgr_debug.h"
 #include "libosmo-m3ua/include/mtp_data.h"
+#include "libosmo-m3ua/include/sctp_m3ua.h"
 
 static uint32_t	last_txn_id = 0;	//!< Global transaction ID
-static rbtree_t *txn_tree = NULL;	//!< Global transaction tree... Should really be per module.
+static fr_rb_tree_t *txn_tree = NULL;	//!< Global transaction tree... Should really be per module.
 static uint32_t	txn_tree_inst = 0;
 
 /** Compare rounds of a transaction
  *
  */
-static int sigtran_txn_cmp(void const *a, void const *b)
+static int sigtran_txn_cmp(void const *one, void const *two)
 {
-	sigtran_transaction_t const *a_tx = a;	/* May be stack allocated */
-	sigtran_transaction_t const *b_tx = b;	/* May be stack allocated */
+	sigtran_transaction_t const *a = one;	/* May be stack allocated */
+	sigtran_transaction_t const *b = two;	/* May be stack allocated */
 
-	if (a_tx->ctx.otid > b_tx->ctx.otid) return +1;
-	if (a_tx->ctx.otid < b_tx->ctx.otid) return -1;
+	CMP_RETURN(a, b, ctx.otid);
 
-	if (a_tx->ctx.invoke_id > b_tx->ctx.invoke_id) return +1;
-	if (a_tx->ctx.invoke_id < b_tx->ctx.invoke_id) return -1;
-
-	return 0;
+	return CMP(a->ctx.invoke_id, b->ctx.invoke_id);
 }
 
 static void sigtran_tcap_timeout(void *data)
@@ -80,7 +77,7 @@ static void sigtran_tcap_timeout(void *data)
 	/*
 	 *	Remove the outstanding transaction
 	 */
-	if (!rbtree_deletebydata(txn_tree, txn)) ERROR("Transaction removed before timeout");
+	if (!fr_rb_delete(txn_tree, txn)) ERROR("Transaction removed before timeout");
 
 	txn->response.type = SIGTRAN_RESPONSE_FAIL;
 
@@ -132,7 +129,7 @@ int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transac
 	struct mtp_m3ua_client_link 	*m3ua_client = talloc_get_type_abort(conn->mtp3_link->data,
 									     struct mtp_m3ua_client_link);
 
-	rad_assert(req->imsi);
+	fr_assert(req->imsi);
 
 	if (!mtp_m3ua_link_is_up(m3ua_client)) {
 		ERROR("Link not yet active, dropping the request");
@@ -140,7 +137,7 @@ int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transac
 		return -1;
 	}
 
-	if (rbtree_num_elements(txn_tree) > UINT8_MAX) {
+	if (fr_rb_num_elements(txn_tree) > UINT8_MAX) {
 		ERROR("Too many outstanding requests, dropping the request");
 
 		return -1;
@@ -172,7 +169,8 @@ int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transac
 		break;
 
 	default:
-		if (!fr_cond_assert(0)) return -1;
+		fr_assert_fail(NULL);
+		return -1;
 	}
 
 	/*
@@ -184,7 +182,7 @@ int sigtran_tcap_outgoing(UNUSED struct msgb *msg_in, void *ctx, sigtran_transac
 	txn->ctx.invoke_id &= 0x7f;					/* Invoke ID is 7bits */
 	DEBUG2("Sending request with OTID %u Invoke ID %u", txn->ctx.otid, txn->ctx.invoke_id);
 
-	if (!rbtree_insert(txn_tree, txn)) {
+	if (!fr_rb_insert(txn_tree, txn)) {
 		ERROR("Failed inserting transaction, maybe at txn limit?");
 
 		msgb_free(msg);
@@ -246,7 +244,7 @@ static int sigtran_tcap_incoming(struct msgb *msg, UNUSED unsigned int length, U
 	/*
 	 *	Lookup the transaction in our tree of outstanding transactions
 	 */
-	found = rbtree_finddata(txn_tree, &find);
+	found = fr_rb_find(txn_tree, &find);
 	if (!found) {
 		/*
 		 *	Not an error, could be a retransmission
@@ -254,9 +252,9 @@ static int sigtran_tcap_incoming(struct msgb *msg, UNUSED unsigned int length, U
 		ERROR("No outstanding transaction with DTID %u Invoke ID %u", find.ctx.otid, find.ctx.invoke_id);
 		return 0;
 	}
-	if (!rbtree_deletebydata(txn_tree, found)) {		/* Remove the outstanding transaction */
+	if (!fr_rb_delete(txn_tree, found)) {		/* Remove the outstanding transaction */
 		ERROR("Failed removing transaction");
-		rad_assert(0);
+		fr_assert(0);
 	}
 
 	txn = talloc_get_type_abort(found, sigtran_transaction_t);
@@ -377,7 +375,7 @@ int sigtran_sccp_global_init(void)
 		return 0;
 	}
 
-	txn_tree = rbtree_talloc_create(NULL, sigtran_txn_cmp, sigtran_transaction_t, false, 0);
+	txn_tree = fr_rb_inline_talloc_alloc(NULL, sigtran_transaction_t, node, sigtran_txn_cmp, false);
 	if (!txn_tree) return -1;
 
 	txn_tree_inst++;

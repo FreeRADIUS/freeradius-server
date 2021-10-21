@@ -32,8 +32,7 @@
  */
 RCSID("$Id$")
 
-#include "hash.h"
-
+#include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/talloc.h>
 
 /*
@@ -43,25 +42,26 @@ RCSID("$Id$")
 #define FR_HASH_NUM_BUCKETS (64)
 
 struct fr_hash_entry_s {
-	fr_hash_entry_t *next;
-	uint32_t	reversed;
-	uint32_t	key;
-	void 		*data;
+	fr_hash_entry_t 	*next;
+	uint32_t		reversed;
+	uint32_t		key;
+	void 			*data;
 };
 
-struct fr_hash_table_t {
-	int			num_elements;
-	int			num_buckets; /* power of 2 */
-	int			next_grow;
-	int			mask;
+struct fr_hash_table_s {
+	uint32_t		num_elements;	//!< Number of elements in the hash table.
+	uint32_t		num_buckets;	//!< Number of buckets (how long the array is) - power of 2 */
+	uint32_t		next_grow;
+	uint32_t		mask;
 
-	fr_hash_table_free_t	free;
-	fr_hash_table_hash_t	hash;
-	fr_hash_table_cmp_t	cmp;
+	fr_free_t		free;		//!< Data free function.
+	fr_hash_t		hash;		//!< Hashing function.
+	fr_cmp_t		cmp;		//!< Comparison function.
+
+	char const		*type;		//!< Talloc type to check elements against.
 
 	fr_hash_entry_t		null;
-
-	fr_hash_entry_t		**buckets;
+	fr_hash_entry_t		**buckets;	//!< Array of hash buckets.
 };
 
 #ifdef TESTING
@@ -151,10 +151,17 @@ static uint8_t parent_byte[256] = {
  */
 static uint32_t reverse(uint32_t key)
 {
-	return ((reversed_byte[key & 0xff] << 24) |
-		(reversed_byte[(key >> 8) & 0xff] << 16) |
-		(reversed_byte[(key >> 16) & 0xff] << 8) |
-		(reversed_byte[(key >> 24) & 0xff]));
+	/*
+	 *	Cast to uint32_t is required because the
+	 *	default type of of the expression is an
+	 *	int and ubsan correctly complains that
+	 *	the result of 0xff << 24 won't fit in a
+	 *	signed 32bit integer.
+	 */
+	return (((uint32_t)reversed_byte[key & 0xff] << 24) |
+		((uint32_t)reversed_byte[(key >> 8) & 0xff] << 16) |
+		((uint32_t)reversed_byte[(key >> 16) & 0xff] << 8) |
+		((uint32_t)reversed_byte[(key >> 24) & 0xff]));
 }
 
 /*
@@ -176,9 +183,7 @@ static uint32_t parent_of(uint32_t key)
 
 
 static fr_hash_entry_t *list_find(fr_hash_table_t *ht,
-				    fr_hash_entry_t *head,
-				    uint32_t reversed,
-				    void const *data)
+				  fr_hash_entry_t *head, uint32_t reversed, void const *data)
 {
 	fr_hash_entry_t *cur;
 
@@ -201,8 +206,8 @@ static fr_hash_entry_t *list_find(fr_hash_table_t *ht,
 /*
  *	Inserts a new entry into the list, in order.
  */
-static int list_insert(fr_hash_table_t *ht,
-		       fr_hash_entry_t **head, fr_hash_entry_t *node)
+static bool list_insert(fr_hash_table_t *ht,
+		        fr_hash_entry_t **head, fr_hash_entry_t *node)
 {
 	fr_hash_entry_t **last, *cur;
 
@@ -214,26 +219,26 @@ static int list_insert(fr_hash_table_t *ht,
 
 		if (cur->reversed == node->reversed) {
 			if (ht->cmp) {
-				int cmp = ht->cmp(node->data, cur->data);
+				int8_t cmp = ht->cmp(node->data, cur->data);
 				if (cmp > 0) break;
 				if (cmp < 0) continue;
 			}
-			return 0;
+			return false;
 		}
 	}
 
 	node->next = *last;
 	*last = node;
 
-	return 1;
+	return true;
 }
 
 
 /*
  *	Delete an entry from the list.
  */
-static int list_delete(fr_hash_table_t *ht,
-		       fr_hash_entry_t **head, fr_hash_entry_t *node)
+static void list_delete(fr_hash_table_t *ht,
+			fr_hash_entry_t **head, fr_hash_entry_t *node)
 {
 	fr_hash_entry_t **last, *cur;
 
@@ -245,29 +250,25 @@ static int list_delete(fr_hash_table_t *ht,
 	}
 
 	*last = node->next;
-	return 1;
 }
-
 
 static int _fr_hash_table_free(fr_hash_table_t *ht)
 {
-	int i;
+	uint32_t i;
 	fr_hash_entry_t *node, *next;
 
-	/*
-	 *	Walk over the buckets, freeing them all.
-	 */
-	for (i = 0; i < ht->num_buckets; i++) {
-		if (ht->buckets[i]) for (node = ht->buckets[i];
-					 node != &ht->null;
-					 node = next) {
-			next = node->next;
-			if (!node->data) continue; /* dummy entry */
+	if (ht->free) {
+		for (i = 0; i < ht->num_buckets; i++) {
+			if (ht->buckets[i]) for (node = ht->buckets[i];
+						 node != &ht->null;
+						 node = next) {
+				next = node->next;
+				if (!node->data) continue; /* dummy entry */
 
-			talloc_free(node);
+				ht->free(node->data);
+			}
 		}
 	}
-	talloc_free(ht->buckets);
 
 	return 0;
 }
@@ -277,35 +278,35 @@ static int _fr_hash_table_free(fr_hash_table_t *ht)
  *
  *	Memory usage in bytes is (20/3) * number of entries.
  */
-fr_hash_table_t *fr_hash_table_create(TALLOC_CTX *ctx,
-				      fr_hash_table_hash_t hashNode,
-				      fr_hash_table_cmp_t cmpNode,
-				      fr_hash_table_free_t freeNode)
+fr_hash_table_t *_fr_hash_table_alloc(TALLOC_CTX *ctx,
+				      char const *type,
+				      fr_hash_t hash_func,
+				      fr_cmp_t cmp_func,
+				      fr_free_t free_func)
 {
 	fr_hash_table_t *ht;
 
-	if (!hashNode) return NULL;
-
-	ht = talloc_zero(NULL, fr_hash_table_t);
+	ht = talloc(ctx, fr_hash_table_t);
 	if (!ht) return NULL;
 	talloc_set_destructor(ht, _fr_hash_table_free);
-	talloc_link_ctx(ctx, ht);
 
-	ht->free = freeNode;
-	ht->hash = hashNode;
-	ht->cmp = cmpNode;
-	ht->num_buckets = FR_HASH_NUM_BUCKETS;
-	ht->mask = ht->num_buckets - 1;
+	*ht = (fr_hash_table_t){
+		.type = type,
+		.free = free_func,
+		.hash = hash_func,
+		.cmp = cmp_func,
+		.num_buckets = FR_HASH_NUM_BUCKETS,
+		.mask = FR_HASH_NUM_BUCKETS - 1,
 
-	/*
-	 *	Have a default load factor of 2.5.  In practice this
-	 *	means that the average load will hit 3 before the
-	 *	table grows.
-	 */
-	ht->next_grow = (ht->num_buckets << 1) + (ht->num_buckets >> 1);
-
-	ht->buckets = talloc_zero_array(NULL, fr_hash_entry_t *, ht->num_buckets);
-	if (!ht->buckets) {
+		/*
+		 *	Have a default load factor of 2.5.  In practice this
+		 *	means that the average load will hit 3 before the
+		 *	table grows.
+		 */
+		.next_grow = (FR_HASH_NUM_BUCKETS << 1) + (FR_HASH_NUM_BUCKETS >> 1),
+		.buckets = talloc_zero_array(ht, fr_hash_entry_t *, FR_HASH_NUM_BUCKETS)
+	};
+	if (unlikely(!ht->buckets)) {
 		talloc_free(ht);
 		return NULL;
 	}
@@ -382,12 +383,12 @@ static void fr_hash_table_fixup(fr_hash_table_t *ht, uint32_t entry)
 static void fr_hash_table_grow(fr_hash_table_t *ht)
 {
 	fr_hash_entry_t **buckets;
+	size_t existing = talloc_get_size(ht->buckets);
 
-	buckets = talloc_zero_array(NULL, fr_hash_entry_t *, GROW_FACTOR * ht->num_buckets);
+	buckets = talloc_realloc(ht, ht->buckets, fr_hash_entry_t *, GROW_FACTOR * ht->num_buckets);
 	if (!buckets) return;
 
-	memcpy(buckets, ht->buckets, sizeof(*buckets) * ht->num_buckets);
-	talloc_free(ht->buckets); /* Free the old buckets */
+	memset(((uint8_t *)buckets) + existing, 0, talloc_get_size(buckets) - existing);
 
 	ht->buckets = buckets;
 	ht->num_buckets *= GROW_FACTOR;
@@ -399,18 +400,80 @@ static void fr_hash_table_grow(fr_hash_table_t *ht)
 #endif
 }
 
-
 /*
- *	Insert data.
+ *	Internal find a node routine.
  */
-int fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
+static inline CC_HINT(always_inline) fr_hash_entry_t *hash_table_find(fr_hash_table_t *ht,
+									 uint32_t key, void const *data)
 {
-	uint32_t key;
 	uint32_t entry;
 	uint32_t reversed;
+
+	entry = key & ht->mask;
+	reversed = reverse(key);
+
+	if (!ht->buckets[entry]) fr_hash_table_fixup(ht, entry);
+
+	return list_find(ht, ht->buckets[entry], reversed, data);
+}
+
+/** Find data in a hash table
+ *
+ * @param[in] ht	to find data in.
+ * @param[in] data 	to find.  Will be passed to the
+ *      		hashing function.
+ * @return
+ *      - The user data we found.
+ *	- NULL if we couldn't find any matching data.
+ */
+void *fr_hash_table_find(fr_hash_table_t *ht, void const *data)
+{
 	fr_hash_entry_t *node;
 
-	if (!ht || !data) return 0;
+	node = hash_table_find(ht, ht->hash(data), data);
+	if (!node) return NULL;
+
+	return UNCONST(void *, node->data);
+}
+
+/** Hash table lookup with pre-computed key
+ *
+ * @param[in] ht	to find data in.
+ * @param[in] key	the precomputed key.
+ * @param[in] data	for list matching.
+ * @return
+ *      - The user data we found.
+ *	- NULL if we couldn't find any matching data.
+ */
+void *fr_hash_table_find_by_key(fr_hash_table_t *ht, uint32_t key, void const *data)
+{
+	fr_hash_entry_t *node;
+
+	node = hash_table_find(ht, key, data);
+	if (!node) return NULL;
+
+	return UNCONST(void *, node->data);
+}
+
+/** Insert data into a hash table
+ *
+ * @param[in] ht	to insert data into.
+ * @param[in] data 	to insert.  Will be passed to the
+ *      		hashing function.
+ * @return
+ *	- true if data was inserted.
+ *	- false if data already existed and was not inserted.
+ */
+bool fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
+{
+	uint32_t		key;
+	uint32_t		entry;
+	uint32_t		reversed;
+	fr_hash_entry_t		*node;
+
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+	if (ht->type) (void)_talloc_get_type_abort(data, ht->type, __location__);
+#endif
 
 	key = ht->hash(data);
 	entry = key & ht->mask;
@@ -422,18 +485,18 @@ int fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
 	 *	If we try to do our own memory allocation here, the
 	 *	speedup is only ~15% or so, which isn't worth it.
 	 */
-	node = talloc_zero(NULL, fr_hash_entry_t);
-	if (!node) return 0;
+	node = talloc_zero(ht, fr_hash_entry_t);
+	if (unlikely(!node)) return false;
 
 	node->next = &ht->null;
 	node->reversed = reversed;
 	node->key = key;
-	memcpy(&node->data, &data, sizeof(node->data));
+	node->data = UNCONST(void *, data);
 
 	/* already in the table, can't insert it */
 	if (!list_insert(ht, &ht->buckets[entry], node)) {
 		talloc_free(node);
-		return 0;
+		return false;
 	}
 
 	/*
@@ -443,81 +506,60 @@ int fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
 	ht->num_elements++;
 	if (ht->num_elements >= ht->next_grow) fr_hash_table_grow(ht);
 
-	return 1;
+	return true;
 }
 
-
-/*
- *	Internal find a node routine.
+/** Replace old data with new data, OR insert if there is no old
+ *
+ * @param[out] old	data that was replaced.  If this argument
+ *			is not NULL, then the old data will not
+ *			be freed, even if a free function is
+ *			configured.
+ * @param[in] ht	to insert data into.
+ * @param[in] data 	to replace.  Will be passed to the
+ *      		hashing function.
+ * @return
+ *      - 1 if data was replaced.
+ *	- 0 if data was inserted.
+ *      - -1 if we failed to replace data
  */
-static fr_hash_entry_t *fr_hash_table_find(fr_hash_table_t *ht, void const *data)
-{
-	uint32_t key;
-	uint32_t entry;
-	uint32_t reversed;
-
-	if (!ht) return NULL;
-
-	key = ht->hash(data);
-	entry = key & ht->mask;
-	reversed = reverse(key);
-
-	if (!ht->buckets[entry]) fr_hash_table_fixup(ht, entry);
-
-	return list_find(ht, ht->buckets[entry], reversed, data);
-}
-
-
-/*
- *	Replace old data with new data, OR insert if there is no old.
- */
-int fr_hash_table_replace(fr_hash_table_t *ht, void const *data)
+int fr_hash_table_replace(void **old, fr_hash_table_t *ht, void const *data)
 {
 	fr_hash_entry_t *node;
 
-	if (!ht || !data) return 0;
+	node = hash_table_find(ht, ht->hash(data), data);
+	if (!node) {
+		if (old) *old = NULL;
+		return fr_hash_table_insert(ht, data) ? 1 : -1;
+	}
 
-	node = fr_hash_table_find(ht, data);
-	if (!node) return fr_hash_table_insert(ht, data);
+	if (old) {
+		*old = node->data;
+	} else if (ht->free) {
+		ht->free(node->data);
+	}
 
-	if (ht->free) ht->free(node->data);
+	node->data = UNCONST(void *, data);
 
-	memcpy(&node->data, &data, sizeof(node->data));
-
-	return 1;
+	return 0;
 }
 
-
-/*
- *	Find data from a template
+/** Remove an entry from the hash table, without freeing the data
+ *
+ * @param[in] ht	to remove data from.
+ * @param[in] data 	to remove.  Will be passed to the
+ *      		hashing function.
+ * @return
+ *      - The user data we removed.
+ *	- NULL if we couldn't find any matching data.
  */
-void *fr_hash_table_finddata(fr_hash_table_t *ht, void const *data)
+void *fr_hash_table_remove(fr_hash_table_t *ht, void const *data)
 {
-	fr_hash_entry_t *node;
-	void *out;
-
-	node = fr_hash_table_find(ht, data);
-	if (!node) return NULL;
-
-	memcpy(&out, &node->data, sizeof(out));
-
-	return out;
-}
-
-
-
-/*
- *	Yank an entry from the hash table, without freeing the data.
- */
-void *fr_hash_table_yank(fr_hash_table_t *ht, void const *data)
-{
-	uint32_t key;
-	uint32_t entry;
-	uint32_t reversed;
-	void *old;
-	fr_hash_entry_t *node;
-
-	if (!ht) return NULL;
+	uint32_t		key;
+	uint32_t		entry;
+	uint32_t		reversed;
+	void			*old;
+	fr_hash_entry_t		*node;
 
 	key = ht->hash(data);
 	entry = key & ht->mask;
@@ -533,99 +575,36 @@ void *fr_hash_table_yank(fr_hash_table_t *ht, void const *data)
 
 	old = node->data;
 	talloc_free(node);
+
 	return old;
 }
 
-
-/*
- *	Delete a piece of data from the hash table.
+/** Remove and free data (if a free function was specified)
+ *
+ * @param[in] ht	to remove data from.
+ * @param[in] data 	to remove/free.
+ * @return
+ *	- true if we removed data.
+ *      - false if we couldn't find any matching data.
  */
-int fr_hash_table_delete(fr_hash_table_t *ht, void const *data)
+bool fr_hash_table_delete(fr_hash_table_t *ht, void const *data)
 {
 	void *old;
 
-	old = fr_hash_table_yank(ht, data);
-	if (!old) return 0;
+	old = fr_hash_table_remove(ht, data);
+	if (!old) return false;
 
 	if (ht->free) ht->free(old);
 
-	return 1;
+	return true;
 }
-
-
-/*
- *	Free a hash table
- */
-void fr_hash_table_free(fr_hash_table_t *ht)
-{
-	int i;
-	fr_hash_entry_t *node, *next;
-
-	if (!ht) return;
-
-	/*
-	 *	Walk over the buckets, freeing them all.
-	 */
-	if (ht->free) {
-		for (i = 0; i < ht->num_buckets; i++) {
-			if (ht->buckets[i]) for (node = ht->buckets[i];
-						 node != &ht->null;
-						 node = next) {
-				next = node->next;
-				if (!node->data) continue; /* dummy entry */
-
-				ht->free(node->data);
-			}
-		}
-	}
-
-	/*
-	 *	Also frees nodes and buckets
-	 */
-	talloc_free(ht);
-}
-
 
 /*
  *	Count number of elements
  */
-int fr_hash_table_num_elements(fr_hash_table_t *ht)
+uint32_t fr_hash_table_num_elements(fr_hash_table_t *ht)
 {
-	if (!ht) return 0;
-
 	return ht->num_elements;
-}
-
-
-/*
- *	Walk over the nodes, allowing deletes & inserts to happen.
- */
-int fr_hash_table_walk(fr_hash_table_t *ht,
-		       fr_hash_table_walk_t callback,
-		       void *context)
-{
-	int i, rcode;
-
-	if (!ht || !callback) return 0;
-
-	for (i = ht->num_buckets - 1; i >= 0; i--) {
-		fr_hash_entry_t *node, *next;
-
-		/*
-		 *	Ensure that the current bucket is filled.
-		 */
-		if (!ht->buckets[i]) fr_hash_table_fixup(ht, i);
-
-		for (node = ht->buckets[i]; node != &ht->null; node = next) {
-			next = node->next;
-
-			rcode = callback(context, node->data);
-
-			if (rcode != 0) return rcode;
-		}
-	}
-
-	return 0;
 }
 
 /** Iterate over entries in a hash table
@@ -642,8 +621,7 @@ int fr_hash_table_walk(fr_hash_table_t *ht,
 void *fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter)
 {
 	fr_hash_entry_t *node;
-
-	if (unlikely(!ht)) return NULL;
+	uint32_t	i;
 
 	/*
 	 *	Return the next element in the bucket
@@ -655,20 +633,29 @@ void *fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter)
 		return node->data;
 	}
 
+	if (iter->bucket == 0) return NULL;
+
 	/*
 	 *	We might have to go through multiple empty
 	 *	buckets to find one that contains something
 	 *	we should return
 	 */
-	while ((--iter->bucket) >= 0) {
-		if (!ht->buckets[iter->bucket]) fr_hash_table_fixup(ht, iter->bucket);
+	i = iter->bucket - 1;
+	for (;;) {
+		if (!ht->buckets[i]) fr_hash_table_fixup(ht, i);
 
-		node = ht->buckets[iter->bucket];
-		if (node == &ht->null) continue;	/* This bucket was empty too... */
+		node = ht->buckets[i];
+		if (node == &ht->null) {
+			if (i == 0) break;
+			i--;
+			continue;	/* This bucket was empty too... */
+		}
 
 		iter->node = node->next;		/* Store the next one to examine */
+		iter->bucket = i;
 		return node->data;
 	}
+	iter->bucket = i;
 
 	return NULL;
 }
@@ -678,19 +665,57 @@ void *fr_hash_table_iter_next(fr_hash_table_t *ht, fr_hash_iter_t *iter)
  * @note If the hash table is modified the iterator should be considered invalidated.
  *
  * @param[in] ht	to iterate over.
- * @param[in] iter	to initialise.
+ * @param[out] iter	to initialise.
  * @return
  *	- The first entry in the hash table.
  *	- NULL if the hash table is empty.
  */
 void *fr_hash_table_iter_init(fr_hash_table_t *ht, fr_hash_iter_t *iter)
 {
-	if (unlikely(!ht)) return NULL;
-
 	iter->bucket = ht->num_buckets;
 	iter->node = &ht->null;
 
 	return fr_hash_table_iter_next(ht, iter);
+}
+
+/** Copy all entries out of a hash table into an array
+ *
+ * @param[in] ctx	to allocate array in.
+ * @param[in] out	array of hash table entries.
+ * @param[in] ht	to flatter.
+ * @return
+ *	- 0 on success.
+ *      - -1 on failure.
+ */
+int fr_hash_table_flatten(TALLOC_CTX *ctx, void **out[], fr_hash_table_t *ht)
+{
+	uint64_t	num = fr_hash_table_num_elements(ht), i;
+	fr_hash_iter_t	iter;
+	void		*item, **list;
+
+	if (unlikely(!(list = talloc_array(ctx, void *, num)))) return -1;
+
+	for (item = fr_hash_table_iter_init(ht, &iter), i = 0;
+	     item;
+	     item = fr_hash_table_iter_next(ht, &iter), i++) list[i] = item;
+
+	*out = list;
+
+	return 0;
+}
+
+/** Ensure all buckets are filled
+ *
+ * This must be called if the table will be read by multiple threads without
+ * synchronisation.  Synchronisation is still required for updates.
+ *
+ * @param[in] ht	to fill.
+ */
+void fr_hash_table_fill(fr_hash_table_t *ht)
+{
+	int i;
+
+	for (i = ht->num_buckets - 1; i >= 0; i--) if (!ht->buckets[i]) fr_hash_table_fixup(ht, i);
 }
 
 #ifdef TESTING
@@ -816,15 +841,17 @@ uint32_t fr_hash(void const *data, size_t size)
 uint32_t fr_hash_update(void const *data, size_t size, uint32_t hash)
 {
 	uint8_t const *p = data;
-	uint8_t const *q = p + size;
+	uint8_t const *q;
 
-	while (p != q) {
+	if (size == 0) return hash;	/* Avoid ubsan issues with access NULL pointer */
+
+ 	q = p + size;
+	while (p < q) {
 		hash *= FNV_MAGIC_PRIME;
 		hash ^= (uint32_t) (*p++);
-    }
+	}
 
-    return hash;
-
+	return hash;
 }
 
 /*
@@ -857,6 +884,31 @@ uint32_t fr_hash_case_string(char const *p)
 	return hash;
 }
 
+/** Check hash table is sane
+ *
+ */
+void fr_hash_table_verify(fr_hash_table_t *ht)
+{
+	fr_hash_iter_t	iter;
+	void		*ptr;
+
+	(void)talloc_get_type_abort(ht, fr_hash_table_t);
+	(void)talloc_get_type_abort(ht->buckets, fr_hash_entry_t *);
+
+	fr_assert(talloc_array_length(ht->buckets) == ht->num_buckets);
+
+	/*
+	 *	Check talloc headers on all data
+	 */
+	if (ht->type) {
+		for (ptr = fr_hash_table_iter_init(ht, &iter);
+		     ptr;
+		     ptr = fr_hash_table_iter_next(ht, &iter)) {
+			(void)_talloc_get_type_abort(ptr, ht->type, __location__);
+		}
+	}
+}
+
 #ifdef TESTING
 /*
  *  cc -g -DTESTING -I ../include hash.c -o hash
@@ -875,7 +927,7 @@ int main(int argc, char **argv)
 	fr_hash_table_t *ht;
 	int *array;
 
-	ht = fr_hash_table_create(NULL, hash_int, NULL, NULL);
+	ht = fr_hash_table_alloc(NULL, hash_int, NULL, NULL);
 	if (!ht) {
 		fprintf(stderr, "Hash create failed\n");
 		fr_exit(1);
@@ -893,7 +945,7 @@ int main(int argc, char **argv)
 			fr_exit(1);
 		}
 #ifdef TEST_INSERT
-		q = fr_hash_table_finddata(ht, p);
+		q = fr_hash_table_find(ht, p);
 		if (q != p) {
 			fprintf(stderr, "Bad data %d\n", i);
 			fr_exit(1);
@@ -909,7 +961,7 @@ int main(int argc, char **argv)
 	 */
 	if (1) {
 		for (i = 0; i < MAX ; i++) {
-			q = fr_hash_table_finddata(ht, &i);
+			q = fr_hash_table_find(ht, &i);
 			if (!q || *q != i) {
 				fprintf(stderr, "Failed finding %d\n", i);
 				fr_exit(1);
@@ -920,7 +972,7 @@ int main(int argc, char **argv)
 				fprintf(stderr, "Failed deleting %d\n", i);
 				fr_exit(1);
 			}
-			q = fr_hash_table_finddata(ht, &i);
+			q = fr_hash_table_find(ht, &i);
 			if (q) {
 				fprintf(stderr, "Failed to delete %08x\n", i);
 				fr_exit(1);
@@ -934,6 +986,6 @@ int main(int argc, char **argv)
 	fr_hash_table_free(ht);
 	talloc_free(array);
 
-	fr_exit(0);
+	return EXIT_SUCCESS;
 }
 #endif

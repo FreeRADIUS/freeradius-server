@@ -1,0 +1,7 @@
+ALIAS	Microsemi-User-Full-Name                	26.40676.1
+ALIAS	Microsemi-User-Name                     	26.40676.2
+ALIAS	Microsemi-User-Initials                 	26.40676.3
+ALIAS	Microsemi-User-Email                    	26.40676.4
+ALIAS	Microsemi-User-Group                    	26.40676.5
+ALIAS	Microsemi-Fallback-User-Group           	26.40676.6
+ALIAS	Microsemi-Network-Element-Group         	26.40676.7

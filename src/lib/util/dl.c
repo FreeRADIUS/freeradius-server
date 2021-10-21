@@ -27,9 +27,10 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/log.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
-#include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/dl.h>
+#include <freeradius-devel/util/paths.h>
 #include <freeradius-devel/util/syserror.h>
 
 #include <ctype.h>
@@ -48,19 +49,18 @@ RCSID("$Id$")
 #  define RTLD_LOCAL (0)
 #endif
 
-#include "dl.h"
-
 /** Symbol dependent initialisation callback
  *
  * Call this function when the dl is loaded for the first time.
  */
 typedef struct dl_symbol_init_s dl_symbol_init_t;
 struct dl_symbol_init_s {
+	fr_dlist_t		entry;		//!< Entry into the list of 'init' symbol callbacks.
+
 	unsigned int		priority;	//!< Call priority
 	char const		*symbol;	//!< to search for.  May be NULL in which case func is always called.
 	dl_onload_t		func;		//!< to call when symbol is found in a dl's symbol table.
-	void			*ctx;		//!< User data to pass to func.
-	dl_symbol_init_t	*next;
+	void			*uctx;		//!< User data to pass to func.
 };
 
 /** Symbol dependent free callback
@@ -69,36 +69,37 @@ struct dl_symbol_init_s {
  */
 typedef struct dl_symbol_free_s dl_symbol_free_t;
 struct dl_symbol_free_s {
+	fr_dlist_t		entry;		//!< Entry into the list of 'free' symbol callbacks.
+
 	unsigned int		priority;	//!< Call priority
 	char const		*symbol;	//!< to search for.  May be NULL in which case func is always called.
 	dl_unload_t		func;		//!< to call when symbol is found in a dl's symbol table.
-	void			*ctx;		//!< User data to pass to func.
-	dl_symbol_free_t	*next;
+	void			*uctx;		//!< User data to pass to func.
 };
 
 /** A dynamic loader
  *
  */
 struct dl_loader_s {
-	char const		*lib_dir;	//!< Where the libraries live.
+	char			*lib_dir;	//!< Where the libraries live.
 
 	/** Linked list of symbol init callbacks
 	 *
 	 * @note Is linked list to retain insertion order.  We don't expect huge numbers
 	 *	of callbacks so there shouldn't be efficiency issues.
 	 */
-	dl_symbol_init_t	*sym_init;
+	fr_dlist_head_t		sym_init;
 
 	/** Linked list of symbol free callbacks
 	 *
 	 * @note Is linked list to retain insertion order.  We don't expect huge numbers
 	 *	of callbacks so there shouldn't be efficiency issues.
 	 */
-	dl_symbol_free_t	*sym_free;
+	fr_dlist_head_t		sym_free;
 
 	bool			do_dlclose;	//!< dlclose modules when we're done with them.
 
-	rbtree_t		*tree;		//!< Tree of shared objects loaded.
+	fr_rb_tree_t		*tree;		//!< Tree of shared objects loaded.
 
 	void			*uctx;		//!< dl private extension data.
 
@@ -107,12 +108,12 @@ struct dl_loader_s {
 	bool			defer_symbol_init;	//!< Do not call dl_symbol_init in dl_loader_init.
 };
 
-static int dl_symbol_init_cmp(void const *one, void const *two)
+static int8_t dl_symbol_init_cmp(void const *one, void const *two)
 {
 	dl_symbol_init_t const *a = one, *b = two;
 	int ret;
 
-	rad_assert(a && b);
+	fr_assert(a && b);
 
 	ret = ((void *)a->func > (void *)b->func) - ((void *)a->func < (void *)b->func);
 	if (ret != 0) return ret;
@@ -126,15 +127,16 @@ static int dl_symbol_init_cmp(void const *one, void const *two)
 	if (!fr_cond_assert(a->symbol && b->symbol)) return 0;	/* Bug in clang scan ? */
 #endif
 
-	return strcmp(a->symbol, b->symbol);
+	ret = strcmp(a->symbol, b->symbol);
+	return CMP(ret, 0);
 }
 
-static int dl_symbol_free_cmp(void const *one, void const *two)
+static int8_t dl_symbol_free_cmp(void const *one, void const *two)
 {
 	dl_symbol_free_t const *a = one, *b = two;
 	int ret;
 
-	rad_assert(a && b);
+	fr_assert(a && b);
 
 	ret = ((void *)a->func > (void *)b->func) - ((void *)a->func < (void *)b->func);
 	if (ret != 0) return ret;
@@ -148,15 +150,63 @@ static int dl_symbol_free_cmp(void const *one, void const *two)
 	if (!fr_cond_assert(a->symbol && b->symbol)) return 0;	/* Bug in clang scan ? */
 #endif
 
-	return strcmp(a->symbol, b->symbol);
+	ret = strcmp(a->symbol, b->symbol);
+	return CMP(ret, 0);
 }
 
 /** Compare the name of two dl_t
  *
  */
-static int dl_handle_cmp(void const *one, void const *two)
+static int8_t dl_handle_cmp(void const *one, void const *two)
 {
-	return strcmp(((dl_t const *)one)->name, ((dl_t const *)two)->name);
+	int ret;
+
+	ret = strcmp(((dl_t const *)one)->name, ((dl_t const *)two)->name);
+	return CMP(ret, 0);
+}
+
+/** Utility function to dlopen the library containing a particular symbol
+ *
+ * @note Not really part of our 'dl' API, just a convenience function.
+ *
+ * @param[in] sym_name	to resolve.
+ * @param[in] flags	to pass to dlopen.
+ * @return
+ *	- NULL on error.
+ *      - A new handle on success.
+ */
+void *dl_open_by_sym(char const *sym_name, int flags)
+{
+	Dl_info		info;
+	void		*sym;
+	void		*handle;
+
+	/*
+	 *	Resolve the test symbol in our own symbol space by
+	 *	iterating through all the libraries.
+	 *	This might be slow.  Don't do this at runtime!
+	 */
+	sym = dlsym(RTLD_DEFAULT, sym_name);
+	if (!sym) {
+		fr_strerror_printf("Can't resolve symbol %s", sym_name);
+		return NULL;
+	}
+
+	/*
+	 *	Lookup the library the symbol belongs to
+	 */
+	if (dladdr(sym, &info) == 0) {
+		fr_strerror_printf("Failed retrieving info for \"%s\" (%p)", sym_name, sym);
+		return NULL;
+	}
+
+	handle = dlopen(info.dli_fname, flags);
+	if (!handle) {
+		fr_strerror_printf("Failed loading \"%s\": %s", info.dli_fname, dlerror());
+		return NULL;
+	}
+
+	return handle;
 }
 
 /** Walk over the registered init callbacks, searching for the symbols they depend on
@@ -174,16 +224,24 @@ static int dl_handle_cmp(void const *one, void const *two)
  */
 int dl_symbol_init(dl_loader_t *dl_loader, dl_t const *dl)
 {
-	dl_symbol_init_t	*init;
-	fr_cursor_t		cursor;
+	dl_symbol_init_t	*init = NULL;
 	void			*sym = NULL;
 	char			buffer[256];
 
-	for (init = fr_cursor_init(&cursor, &dl_loader->sym_init);
-	     init;
-	     init = fr_cursor_next(&cursor)) {
+	while ((init = fr_dlist_next(&dl_loader->sym_init, init))) {
 		if (init->symbol) {
+			char *p;
+
 			snprintf(buffer, sizeof(buffer), "%s_%s", dl->name, init->symbol);
+
+			/*
+			 *	'-' is not a valid symbol character in
+			 *	C.  But "libfreeradius-radius" is a
+			 *	valid library name.  So we hash things together.
+			 */
+			for (p = buffer; *p != '\0'; p++) {
+				if (*p == '-') *p = '_';
+			}
 
 			sym = dlsym(dl->handle, buffer);
 			if (!sym) {
@@ -191,7 +249,7 @@ int dl_symbol_init(dl_loader_t *dl_loader, dl_t const *dl)
 			}
 		}
 
-		if (init->func(dl, sym, init->ctx) < 0) return -1;
+		if (init->func(dl, sym, init->uctx) < 0) return -1;
 	}
 
 	return 0;
@@ -207,27 +265,28 @@ int dl_symbol_init(dl_loader_t *dl_loader, dl_t const *dl)
  * @param[in] dl_loader	Tree of dynamically loaded libraries, and callbacks.
  * @param[in] dl	to search for symbols in.
  */
-static void dl_symbol_free(dl_loader_t *dl_loader, dl_t const *dl)
+static int dl_symbol_free(dl_loader_t *dl_loader, dl_t const *dl)
 {
-	dl_symbol_free_t	*free;
-	fr_cursor_t		cursor;
+	dl_symbol_free_t	*free = NULL;
 	void			*sym = NULL;
 
-	for (free = fr_cursor_init(&cursor, &dl_loader->sym_free);
-	     free;
-	     free = fr_cursor_next(&cursor)) {
+	while ((free = fr_dlist_next(&dl_loader->sym_free, free))) {
 		if (free->symbol) {
 			char *sym_name = NULL;
 
-			MEM(sym_name = talloc_typed_asprintf(NULL, "%s_%s", dl->name, free->symbol));
+			sym_name = talloc_typed_asprintf(NULL, "%s_%s", dl->name, free->symbol);
+			if (!sym_name) return -1;
+
 			sym = dlsym(dl->handle, sym_name);
 			talloc_free(sym_name);
 
 			if (!sym) continue;
 		}
 
-		free->func(dl, sym, free->ctx);
+		free->func(dl, sym, free->uctx);
 	}
+
+	return 0;
 }
 
 /** Register a callback to execute when a dl with a particular symbol is first loaded
@@ -243,29 +302,35 @@ static void dl_symbol_free(dl_loader_t *dl_loader, dl_t const *dl)
  *			space, so the symbols they export must be unique.
  *			May be NULL to always call the function.
  * @param[in] func	to register.  Called when dl is loaded.
- * @param[in] ctx	to pass to func.
+ * @param[in] uctx	to pass to func.
  * @return
  *	- 0 on success (or already registered).
  *	- -1 on failure.
  */
 int dl_symbol_init_cb_register(dl_loader_t *dl_loader, unsigned int priority,
-			       char const *symbol, dl_onload_t func, void *ctx)
+			       char const *symbol, dl_onload_t func, void *uctx)
 {
-	dl_symbol_init_t	*n, *p;
-	fr_cursor_t		cursor;
+	dl_symbol_init_t	*n;
 
 	dl_symbol_init_cb_unregister(dl_loader, symbol, func);
 
-	MEM(n = talloc(dl_loader, dl_symbol_init_t));
-	n->priority = priority;
-	n->symbol = symbol;
-	n->func = func;
-	n->ctx = ctx;
+	n = talloc(dl_loader, dl_symbol_init_t);
+	if (unlikely(!n)) return -1;
+	*n = (dl_symbol_init_t){
+		.priority = priority,
+		.symbol = symbol,
+		.func = func,
+		.uctx = uctx
+	};
 
-	for (p = fr_cursor_init(&cursor, &dl_loader->sym_init);
-	     p && (p->priority >= priority);
-	     fr_cursor_next(&cursor));
-	fr_cursor_insert(&cursor, n);
+	fr_dlist_foreach(&dl_loader->sym_init, dl_symbol_init_t, p) {
+		if (p->priority < priority) {
+			fr_dlist_insert_before(&dl_loader->sym_init, p, n);
+			n = NULL;
+			break;
+		}
+	}
+	if (n) fr_dlist_insert_tail(&dl_loader->sym_init, n);
 
 	return 0;
 }
@@ -278,14 +343,13 @@ int dl_symbol_init_cb_register(dl_loader_t *dl_loader, unsigned int priority,
  */
 void dl_symbol_init_cb_unregister(dl_loader_t *dl_loader, char const *symbol, dl_onload_t func)
 {
-	dl_symbol_init_t	*found, find = { .symbol = symbol, .func = func };
-	fr_cursor_t		cursor;
+	dl_symbol_init_t	*found = NULL, find = { .symbol = symbol, .func = func };
 
-	for (found = fr_cursor_init(&cursor, &dl_loader->sym_init);
-	     found && (dl_symbol_init_cmp(&find, found) != 0);
-	     found = fr_cursor_next(&cursor));
-
-	if (found) talloc_free(fr_cursor_remove(&cursor));
+	while ((found = fr_dlist_next(&dl_loader->sym_init, found)) && (dl_symbol_init_cmp(&find, found) != 0));
+	if (found) {
+		fr_dlist_remove(&dl_loader->sym_init, found);
+		talloc_free(found);
+	}
 }
 
 /** Register a callback to execute when a dl with a particular symbol is unloaded
@@ -301,27 +365,36 @@ void dl_symbol_init_cb_unregister(dl_loader_t *dl_loader, char const *symbol, dl
  *			space, so the symbols they export must be unique.
  *			May be NULL to always call the function.
  * @param[in] func	to register.  Called then dl is unloaded.
- * @param[in] ctx	to pass to func.
+ * @param[in] uctx	to pass to func.
  * @return
  *	- 0 on success (or already registered).
  *	- -1 on failure.
  */
 int dl_symbol_free_cb_register(dl_loader_t *dl_loader, unsigned int priority,
-			       char const *symbol, dl_unload_t func, void *ctx)
+			       char const *symbol, dl_unload_t func, void *uctx)
 {
-	dl_symbol_free_t	*n, *p;
-	fr_cursor_t		cursor;
+	dl_symbol_free_t	*n;
 
 	dl_symbol_free_cb_unregister(dl_loader, symbol, func);
 
-	MEM(n = talloc(dl_loader, dl_symbol_free_t));
-	n->priority = priority;
-	n->symbol = symbol;
-	n->func = func;
-	n->ctx = ctx;
+	n = talloc(dl_loader, dl_symbol_free_t);
+	if (!n) return -1;
 
-	for (p = fr_cursor_init(&cursor, &dl_loader->sym_free); p && (p->priority >= priority); fr_cursor_next(&cursor));
-	fr_cursor_insert(&cursor, n);
+	*n = (dl_symbol_free_t){
+		.priority = priority,
+		.symbol = symbol,
+		.func = func,
+		.uctx = uctx
+	};
+
+	fr_dlist_foreach(&dl_loader->sym_free, dl_symbol_free_t, p) {
+		if (p->priority < priority) {
+			fr_dlist_insert_before(&dl_loader->sym_free, p, n);
+			n = NULL;
+			break;
+		}
+	}
+	if (n) fr_dlist_insert_tail(&dl_loader->sym_free, n);
 
 	return 0;
 }
@@ -334,14 +407,13 @@ int dl_symbol_free_cb_register(dl_loader_t *dl_loader, unsigned int priority,
  */
 void dl_symbol_free_cb_unregister(dl_loader_t *dl_loader, char const *symbol, dl_unload_t func)
 {
-	dl_symbol_free_t	*found, find = { .symbol = symbol, .func = func };
-	fr_cursor_t		cursor;
+	dl_symbol_free_t	*found = NULL, find = { .symbol = symbol, .func = func };
 
-	for (found = fr_cursor_init(&cursor, &dl_loader->sym_free);
-	     found && (dl_symbol_free_cmp(&find, found) != 0);
-	     found = fr_cursor_next(&cursor));
-
-	if (found) talloc_free(fr_cursor_remove(&cursor));
+	while ((found = fr_dlist_next(&dl_loader->sym_free, found)) && (dl_symbol_free_cmp(&find, found) != 0));
+	if (found) {
+		fr_dlist_remove(&dl_loader->sym_free, found);
+		talloc_free(found);
+	}
 }
 
 /** Free a dl
@@ -365,7 +437,7 @@ static int _dl_free(dl_t *dl)
 
 	dl->handle = NULL;
 
-	if (dl->in_tree) rbtree_deletebydata(dl->loader->tree, dl);
+	if (dl->in_tree) fr_rb_delete(dl->loader->tree, dl);
 
 	return 0;
 }
@@ -377,7 +449,8 @@ static int _dl_free(dl_t *dl)
  * @param[in] dl_loader		Tree of dynamically loaded libraries, and callbacks.
  * @param[in] name		of library to load.  May be a relative path.
  * @param[in] uctx		Data to store within the dl_t.
- * @param[in] uctx_free		Free the uctx data if this dl_t is freed.
+ * @param[in] uctx_free		talloc_free the passed in uctx data if this
+ *				dl_t is freed.
  * @return
  *	- A new dl_t on success, or a pointer to an existing
  *	  one with the reference count increased.
@@ -394,17 +467,12 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 	 *	There's already something in the tree,
 	 *	just return that instead.
 	 */
-	dl = rbtree_finddata(dl_loader->tree, &(dl_t){ .name = name });
+	dl = fr_rb_find(dl_loader->tree, &(dl_t){ .name = name });
 	if (dl) {
 		talloc_increase_ref_count(dl);
 		return dl;
 	}
 
-#ifdef RTLD_GLOBAL
-	if (strcmp(name, "rlm_perl") == 0) {
-		flags |= RTLD_GLOBAL;
-	} else
-#endif
 	flags |= RTLD_LOCAL;
 
 	/*
@@ -414,12 +482,11 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 	 *
 	 *	May help resolve issues with symbol conflicts.
 	 */
-#ifdef RTLD_DEEPBIND
-	if (fr_get_lsan_state() != 1) {
-		flags |= RTLD_DEEPBIND;
-		fr_strerror();	/* clear error buffer */
-	}
+#if defined(RTLD_DEEPBIND) && !defined(__SANITIZE_ADDRESS__)
+	flags |= RTLD_DEEPBIND;
 #endif
+
+	fr_strerror_clear();	/* clear error buffer */
 
 	/*
 	 *	Bind all the symbols *NOW* so we don't hit errors later
@@ -435,7 +502,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 		char *ctx, *paths, *path;
 		char *p;
 
-		fr_strerror();
+		fr_strerror_clear();
 
 		ctx = paths = talloc_typed_strdup(NULL, search_path);
 		while ((path = strsep(&paths, ":")) != NULL) {
@@ -489,6 +556,7 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 		 *	the error from the last dlopen().
 		 */
 		if (!handle) {
+			talloc_free(ctx);
 			fr_strerror_printf("%s", dlerror());
 			return NULL;
 		}
@@ -515,20 +583,21 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 		}
 	}
 
-	dl = talloc_zero(dl_loader, dl_t);
-	if (!dl) {
-		if(handle) dlclose(handle);
+	dl = talloc(dl_loader, dl_t);
+	if (unlikely(!dl)) {
+		dlclose(handle);
 		return NULL;
 	}
-
-	dl->name = talloc_typed_strdup(dl, name);
-	dl->handle = handle;
-	dl->loader = dl_loader;
-	dl->uctx = uctx;
-	dl->uctx_free = uctx_free;
+	*dl = (dl_t){
+		.name = talloc_typed_strdup(dl, name),
+		.handle = handle,
+		.loader = dl_loader,
+		.uctx = uctx,
+		.uctx_free = uctx_free
+	};
 	talloc_set_destructor(dl, _dl_free);
 
-	dl->in_tree = rbtree_insert(dl_loader->tree, dl);
+	dl->in_tree = fr_rb_insert(dl_loader->tree, dl);
 	if (!dl->in_tree) {
 		talloc_free(dl);
 		return NULL;
@@ -539,16 +608,23 @@ dl_t *dl_by_name(dl_loader_t *dl_loader, char const *name, void *uctx, bool uctx
 	return dl;
 }
 
-#ifndef NDEBUG
-static int _dl_walk_print(void *data, UNUSED void *uctx)
+/** "free" a dl handle, possibly actually freeing it, and unloading the library
+ *
+ * This function should be used to explicitly free a dl.
+ *
+ * Because dls are reference counted, it may not actually free the memory
+ * or unload the library, but it will reduce the reference count.
+ *
+ * @return
+ *	- 0	if the dl was actually freed.
+ *	- >0	the number of remaining references.
+ */
+int dl_free(dl_t const *dl)
 {
-	dl_t *dl = talloc_get_type_abort(data, dl_t);
+	if (!dl) return 0;
 
-	fr_strerror_printf_push("  %s (%zu)", dl->name, talloc_reference_count(dl));
-
-	return 0;
+	return talloc_decrease_ref_count(talloc_get_type_abort_const(dl, dl_t));
 }
-#endif
 
 static int _dl_loader_free(dl_loader_t *dl_loader)
 {
@@ -564,16 +640,26 @@ static int _dl_loader_free(dl_loader_t *dl_loader)
 	 *	We do reference counting, we know exactly what
 	 *	should still be active.
 	 */
-	if (rbtree_num_elements(dl_loader->tree) > 0) {
-		ret = -1;
+	if (fr_rb_num_elements(dl_loader->tree) > 0) {
 #ifndef NDEBUG
+		fr_rb_iter_inorder_t	iter;
+		void				*data;
+
 		/*
 		 *	Yes, this is the correct call order
 		 */
-		rbtree_walk(dl_loader->tree, RBTREE_IN_ORDER, _dl_walk_print, NULL);
+		for (data = fr_rb_iter_init_inorder(&iter, dl_loader->tree);
+		     data;
+		     data = fr_rb_iter_next_inorder(&iter)) {
+			dl_t *dl = talloc_get_type_abort(data, dl_t);
+
+			fr_strerror_printf_push("  %s (%zu)", dl->name, talloc_reference_count(dl));
+		}
+
 		fr_strerror_printf_push("Refusing to cleanup dl loader, the following dynamically loaded "
 					"libraries are still in use:");
 #endif
+		ret = -1;
 		goto finish;
 	}
 
@@ -604,12 +690,82 @@ char const *dl_search_path(dl_loader_t *dl_loader)
 
 /** Set the current library path
  *
+ * @param[in] dl_loader		to add search path component for.
+ * @param[in] lib_dir		A ":" separated list of paths to search for libraries in.
  */
 int dl_search_path_set(dl_loader_t *dl_loader, char const *lib_dir)
 {
-	if (dl_loader->lib_dir) return -1;
+	char const *old;
 
-	dl_loader->lib_dir = lib_dir;
+	old = dl_loader->lib_dir;
+
+	dl_loader->lib_dir = talloc_strdup(dl_loader, lib_dir);
+	if (!dl_loader->lib_dir) {
+		fr_strerror_const("Failed allocating memory for dl search path");
+		return -1;
+	}
+
+	talloc_const_free(old);
+
+	return 0;
+}
+
+/** Append a new search path component to the library search path
+ *
+ * @param[in] dl_loader		to add search path component for.
+ * @param[in] lib_dir		to add.  Does not require a ":" prefix.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int dl_search_path_prepend(dl_loader_t *dl_loader, char const *lib_dir)
+{
+	char *new;
+
+	if (!dl_loader->lib_dir) {
+		dl_loader->lib_dir = talloc_strdup(dl_loader->lib_dir, lib_dir);
+		if (!dl_loader->lib_dir) {
+		oom:
+			fr_strerror_const("Failed allocating memory for dl search path");
+			return -1;
+		}
+		return 0;
+	}
+
+	new = talloc_asprintf(dl_loader->lib_dir, "%s:%s", lib_dir, dl_loader->lib_dir);
+	if (!new) goto oom;
+
+	dl_loader->lib_dir = new;
+
+	return 0;
+}
+
+/** Append a new search path component to the library search path
+ *
+ * @param[in] dl_loader		to add search path component for.
+ * @param[in] lib_dir		to add.  Does not require a ":" prefix.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int dl_search_path_append(dl_loader_t *dl_loader, char const *lib_dir)
+{
+	char *new;
+
+	if (!dl_loader->lib_dir) {
+		dl_loader->lib_dir = talloc_strdup(dl_loader->lib_dir, lib_dir);
+		if (!dl_loader->lib_dir) {
+		oom:
+			fr_strerror_const("Failed allocating memory for dl search path");
+			return -1;
+		}
+		return 0;
+	}
+
+	new = talloc_asprintf_append_buffer(dl_loader->lib_dir, ":%s", lib_dir);
+	if (!new) goto oom;
+
+	dl_loader->lib_dir = new;
 
 	return 0;
 }
@@ -625,7 +781,6 @@ void *dl_loader_uctx(dl_loader_t *dl_loader)
 /** Initialise structures needed by the dynamic linker
  *
  * @param[in] ctx		To bind lifetime of dl_loader_t too.
- * @param[in] lib_dir		Where to search for modules.
  * @param[in] uctx		API client opaque data to store in dl_loader_t.
  * @param[in] uctx_free		Call talloc_free() on uctx when the dl_loader_t
  *				is freed.
@@ -635,19 +790,19 @@ void *dl_loader_uctx(dl_loader_t *dl_loader)
  *				from executing until #dl_symbol_init is
  *				called explicitly.
  */
-dl_loader_t *dl_loader_init(TALLOC_CTX *ctx, char const *lib_dir, void *uctx, bool uctx_free, bool defer_symbol_init)
+dl_loader_t *dl_loader_init(TALLOC_CTX *ctx, void *uctx, bool uctx_free, bool defer_symbol_init)
 {
 	dl_loader_t *dl_loader;
 
 	dl_loader = talloc_zero(NULL, dl_loader_t);
 	if (!dl_loader) {
-		fr_strerror_printf("Failed allocating dl_loader");
+		fr_strerror_const("Failed allocating dl_loader");
 		return NULL;
 	}
 
-	dl_loader->tree = rbtree_talloc_create(dl_loader, dl_handle_cmp, dl_t, NULL, 0);
+	dl_loader->tree = fr_rb_inline_talloc_alloc(dl_loader, dl_t, node, dl_handle_cmp, NULL);
 	if (!dl_loader->tree) {
-		fr_strerror_printf("Failed initialising dl->tree");
+		fr_strerror_const("Failed initialising dl->tree");
 	error:
 		TALLOC_FREE(dl_loader);
 		return NULL;
@@ -655,12 +810,10 @@ dl_loader_t *dl_loader_init(TALLOC_CTX *ctx, char const *lib_dir, void *uctx, bo
 
 	talloc_link_ctx(ctx, dl_loader);
 
-	if (lib_dir) {
-		dl_loader->lib_dir = talloc_strdup(dl_loader, lib_dir);
-		if (!dl_loader->lib_dir) {
-			fr_strerror_printf("Failed recording lb dir");
-			goto error;
-		}
+	dl_loader->lib_dir = talloc_strdup(dl_loader, fr_path_default_lib_dir());
+	if (!dl_loader->lib_dir) {
+		fr_strerror_const("Failed allocating memory for dl search path");
+		goto error;
 	}
 
 	talloc_set_destructor(dl_loader, _dl_loader_free);
@@ -674,6 +827,35 @@ dl_loader_t *dl_loader_init(TALLOC_CTX *ctx, char const *lib_dir, void *uctx, bo
 	dl_loader->uctx = uctx;
 	dl_loader->uctx_free = uctx_free;
 	dl_loader->defer_symbol_init = defer_symbol_init;
+	fr_dlist_init(&dl_loader->sym_init, dl_symbol_init_t, entry);
+	fr_dlist_init(&dl_loader->sym_free, dl_symbol_free_t, entry);
 
 	return dl_loader;
+}
+
+/** Called from a debugger to print information about a dl_loader
+ *
+ */
+void dl_loader_debug(dl_loader_t *dl)
+{
+	FR_FAULT_LOG("dl_loader %p", dl);
+	FR_FAULT_LOG("lib_dir           : %s", dl->lib_dir);
+	FR_FAULT_LOG("do_dlclose        : %s", dl->do_dlclose ? "yes" : "no");
+	FR_FAULT_LOG("uctx              : %p", dl->uctx);
+	FR_FAULT_LOG("uctx_free         : %s", dl->do_dlclose ? "yes" : "no");
+	FR_FAULT_LOG("defer_symbol_init : %s", dl->defer_symbol_init ? "yes" : "no");
+
+	fr_dlist_foreach(&dl->sym_init, dl_symbol_init_t, sym) {
+		FR_FAULT_LOG("symbol_init %s", sym->symbol ? sym->symbol : "<base>");
+		FR_FAULT_LOG("\tpriority : %u", sym->priority);
+		FR_FAULT_LOG("\tfunc     : %p", sym->func);
+		FR_FAULT_LOG("\tuctx     : %p", sym->uctx);
+	}
+
+	fr_dlist_foreach(&dl->sym_free, dl_symbol_free_t, sym) {
+		FR_FAULT_LOG("symbol_free %s", sym->symbol ? sym->symbol : "<base>");
+		FR_FAULT_LOG("\tpriority : %u", sym->priority);
+		FR_FAULT_LOG("\tfunc     : %p", sym->func);
+		FR_FAULT_LOG("\tuctx     : %p", sym->uctx);
+	}
 }

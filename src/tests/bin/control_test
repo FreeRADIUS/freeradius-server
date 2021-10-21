@@ -2,5 +2,5 @@
 
 . src/tests/bin/lib.sh
 
-do_test $TESTBIN/control_test -h
-do_test $TESTBIN/control_test -m 40480
+do_test $TEST_BIN/control_test -h
+do_test $TEST_BIN/control_test -m 40480

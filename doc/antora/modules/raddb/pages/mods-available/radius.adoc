@@ -1,0 +1,520 @@
+
+
+
+
+= Radius Module
+
+The `radius` module in v4, can be used to implement proxying and request
+fan-out, as well as synchronous and asynchronous `CoA` and `DM`.
+
+## Configuration Settings
+
+Any proxied packet (including `link:https://freeradius.org/rfc/rfc2866.html#Accounting-Request[Accounting-Request]`) can
+receive a `Protocol-Error` response packet.  This packet
+is an explicit `NAK` that something went wrong processing
+the request.
+
+WARNING: For security reasons, the module ensures that all proxied
+`link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packets contain a `link:https://freeradius.org/rfc/rfc2869.html#Message-Authenticator[Message-Authenticator]` attribute.
+This behavior is *NOT* configurable, and *CANNOT* be changed.
+
+The module adds a Proxy-State attribute to all proxied packets.
+This `link:https://freeradius.org/rfc/rfc2865.html#Proxy-State[Proxy-State]` contains a 32-bit random number, which is unique
+to this module.  This unique number helps to detect proxy loops.
+
+The module has the following return codes:
+
+[options="header,autowidth"]
+|===
+| Code        | Description
+| invalid     | Something went wrong sending the request,
+                or the reply packet is invalid.
+| ok          | the module received an `ack` (`link:https://freeradius.org/rfc/rfc2865.html#Access-Accept[Access-Accept]`,
+                `link:https://freeradius.org/rfc/rfc2866.html#Accounting-Response[Accounting-Response]`, `CoA-ACK`, etc.)
+| handled     | the module received an `link:https://freeradius.org/rfc/rfc2865.html#Access-Challenge[Access-Challenge]`
+| fail        | there was no response to the proxied request
+| reject      | the module received a `nak` (`link:https://freeradius.org/rfc/rfc2865.html#Access-Reject[Access-Reject]`, `CoA-NAK`, etc.)
+| noop        | the module saw its own `link:https://freeradius.org/rfc/rfc2865.html#Proxy-State[Proxy-State]` attribute,
+                and is will not proxy the request.  This behavior
+                prevents proxy loops.
+|===
+
+
+transport:: Only UDP transport is allowed.
+
+
+
+max_attributes:: Maximum number of attributes to decode in response.
+
+Default is 255.
+
+
+
+type:: List of allowed packet types.
+
+There is currently no way to change the packet type in the
+request.  See `unlang` fork for that functionality.
+
+NOTE: `Status-Server` is reserved for `inter-server` signaling,
+and cannot be proxied.
+
+
+
+replicate:: Whether or not we are replicating packets.
+
+Replication is "send proxied request, and continue,
+without waiting for a response".  Any response received
+is discarded, and does not affect packet processing.
+
+
+
+synchronous::
+
+In many cases, the module should do retransmissions of
+proxied request on its own.  See the various
+configurations for `initial_rtx_time`,
+etc. below.  This means setting `synchronous = no`.
+
+However, in some cases, it is useful to retransmit only
+when the server receives a retransmission from the NAS.
+This is done by setting `synchronous = yes`
+
+In general, if the server is receiving packets directly
+from a NAS, you should set `synchronous = no`.  This is
+because the NAS retransmission behavior is horrible,
+inconsistent, and hard to configure.
+
+If the server is receiving packets from another proxy
+server, you should set `synchronous = yes`.  This allows
+the other proxy server to do retransmissions correctly.
+
+NOTE: The behavior in v3 is the same as `synchronous = yes`
+
+
+
+originate:: Whether or not we are creating the packet.
+
+Sometimes we are creating a request that is not for the purpose of
+proxying another request, in which case we do not want to add a
+Proxy-State attribute.
+
+In some cases, such as originating a CoA or Disconnect request,
+including Proxy-State may confuse the receiving NAS.
+
+
+status_check { ... }:: For "are you alive?" queries.
+
+If the home server does not respond to proxied packets, the
+module starts pinging the home server with these packets.
+
+
+type:: You can specify any type of packet here, though
+Status-Server is recommended.
+
+If you specify another type of packet, it MUST be listed
+as an allowed `type`, above.
+
+
+
+update request { ... }::
+
+`Status-Server` packet contents are fixed and cannot
+be edited.
+
+For other packet types, you can create the contents
+here.  The section MUST be "update request", and
+anything else will cause a parse error.
+
+We RECOMMEND that you use packet contents which
+lets the other end easily tell that they are not
+"real" packets from a NAS.
+
+The example here is for Access-Request.  The
+contents will vary by other packet types.
+
+The module will automatically update the contents
+of the Event-Timestamp attribute to be the time
+when the packet is sent.  The module will also
+automatically add a Proxy-State attribute.
+
+WARNING: Do NOT do SQL queries, LDAP queries, dynamic
+expansions, etc. in this section.  The contents are
+created when a connection is opened, and are not
+changeable after that.
+
+
+
+
+response_window: If we do not receive a reply within this time period, then
+start `zombie_period`
+
+
+
+zombie_period:: If the home server does not reply to a packet, the
+`zombie_period` starts.
+
+The connection is marked `zombie`, and isn't used to send new packets.
+If there are no responses within `zombie_period`, the server either
+closes the connection (no `status_check` subsection), or starts pinging the
+home server (`status_check.type = Status-Server`).
+
+
+
+revive_interval:: If there are no status checks, mark the
+home server alive after `revive_interval` timeout.
+
+Some home servers do not support status checks via the
+`Status-Server` packet.  Others may not have a "test" user
+configured that can be used to query the server, to see if
+it is alive.  For those servers, we have NO WAY of knowing
+when it becomes alive again.  Therefore, after the server
+has been marked dead, we wait a period of time, and mark
+it alive again, in the hope that it has come back to
+life.
+
+If it has NOT come back to life, then the module will wait
+for `zombie_period` before marking it dead again.  During
+the `zombie_period`, ALL AUTHENTICATIONS WILL FAIL, because
+the home server is still dead.  There is NOTHING that can
+be done about this, other than to enable the status checks,
+as documented above.
+
+e.g. if `zombie_period` is 40 seconds, and `revive_interval`
+is 300 seconds, the for 40 seconds out of every 340, or about
+10% of the time, all authentications will fail.
+
+If the `zombie_period` and `revive_interval` configurations
+are set smaller, than it is possible for up to 50% of
+authentications to fail.
+
+As a result, we recommend enabling status checks, and
+we do NOT recommend using `revive_interval`.
+
+The `revive_interval` configuration is used ONLY if the
+`status_check` subsection is not used.  Otherwise,
+`revive_interval` is not necessary, and should be deleted.
+
+Useful range of values: 10 to 3600
+
+
+
+## Connection trunking
+
+Each worker thread (see radiusd.conf, num_workers), has
+it's own set of connections.  These connections are grouped
+together into a "pool".
+
+Much of the configuration here is similar to the old
+connection "pool" configuration in v3.  However, there are
+more configuration parameters, and therefore more control
+over the behavior.
+
+
+start:: Connections to create during module instantiation.
+
+If the server cannot create specified number of connections during instantiation
+it will exit.
+
+Set to `0` to allow the server to start without the database being available.
+
+
+
+min:: Minimum number of connections to keep open.
+
+
+
+max:: Maximum number of connections.
+
+If these connections are all in use and a new one is requested, the request
+will NOT get a connection.
+
+
+
+connecting:: Maximum number of sockets to have in the "connecting" state.
+
+If a home server goes down, the module will close
+old / broken connections, and try to open new ones.
+In order to avoid flooding the home server with
+connection attempts, set the `connecting` value to
+a small number.
+
+
+
+uses:: number of packets which will use the connection.
+
+After `uses` packets have been sent the connection
+will be closed, and a new one opened.  For no
+limits, set `uses = 0`.
+
+
+
+lifetime:: lifetime of a connection, in seconds.
+
+After `lifetime` seconds have passed, no new
+packets will be sent on the connection.  When all
+replies have been received, the connection will be
+closed.
+
+For no limits, set `lifetime = 0`.
+
+It is possible to use precise times, such as
+`lifetime = 1.023`, or even qualifiers such as
+`lifetime = 400ms`.
+
+
+
+open_delay:: How long (in seconds) a connection
+must be above `per_connection_target` before a new
+connection is opened.
+
+Parsing of this field is the same as for
+`lifetime`.
+
+
+
+close_delay:: How long (in seconds) a connection
+must be below `per_connection_target` before a
+connection is closed.
+
+
+
+manage_interval:: How often (in seconds) the
+connections are checked for limits, in order to
+open / close connections.
+
+
+
+connection { ... }:: Per-connection configuration.
+
+
+connection_timeout:: How long to wait
+before giving up on a connection which is
+being opened.
+
+
+
+reconnect_delay:: If opening a connection
+fails, or an open connection fails,
+we wait `reconnect_delay` seconds before
+attempting to open another
+connection.
+
+
+
+requests { ... }:: Per-request configuration.
+
+
+per_connection_max:: The maximum number of requests
+which are "live" on a particular connection.
+
+
+
+per_connection_target:: The target number
+of requests which are "live" on a
+particular connection.
+
+There can be a balance between overloading
+a connection, and under-utilizing it.  The
+default is to fill each connection before
+opening a new one.
+
+
+
+free_delay:: How long to wait before
+freeing internal resources associated with
+the connection.
+
+
+
+
+## Protocols
+
+For now, only UDP is supported.
+
+udp { ... }:: UDP is configured here.
+
+
+
+NOTE: Don't change anything if you are not sure.
+
+
+
+interface:: Interface to bind to.
+
+
+
+max_packet_size:: Our max packet size. may be different from the parent.
+
+
+
+recv_buff:: How big the kernel's receive buffer should be.
+
+
+
+send_buff:: How big the kernel's send buffer should be.
+
+
+
+src_ipaddr:: IP we open our socket on.
+
+
+
+## Packets
+
+Each packet can have its own retransmission timers.
+
+The sections are named for each packet type. The contents
+are the same for all packet types.  Only the relevant ones
+are parsed (see `type` above).
+
+
+
+### Access requests packets
+
+
+initial_rtx_time::  If there is no response within this time,
+the module will retransmit the packet.
+
+Value should be `1..5`.
+
+
+
+max_rtx_time:: The maximum time between retransmissions.
+
+Value should be `5..30`
+
+
+
+[NOTE]
+====
+  * The following are maximums that *all* apply.
+
+i.e. if any one of the limits is hit, the retransmission stops.
+====
+
+
+
+max_rtx_count:: How many times the module will send the packet
+before giving up.
+
+Value should be `1..20` _(0 == retransmit forever)_
+
+
+
+max_rtx_duration:: The total length of time the module will
+try to retransmit the packet.
+
+Value should be `5..60`
+
+
+
+### Accounting Packets
+
+i.e. If you want `retransmit forever`, you should set:
+
+  max_rtx_time = 0
+  max_rtx_count = 0
+
+
+
+### CoA Packets
+
+
+
+### Disconnect packets
+
+
+
+### Status-Server packets
+
+The configuration here helps the module determine if a home
+server is alive and responding to requests.
+
+WARNING: The `Status-Server` packets CANNOT be proxied.
+
+
+== Default Configuration
+
+```
+radius {
+	transport = udp
+#	max_attributes = 255
+	type = Access-Request
+	type = Accounting-Request
+#	replicate = no
+#	synchronous = no
+#	originate = no
+	status_check {
+		type = Status-Server
+#		update request {
+#			&User-Name := "test-user"
+#			&User-Password := "this-is-not-a-real-password"
+#			&NAS-Identifier := "Status check.  Are you alive?"
+#			&Event-Timestamp = 0
+#		}
+	}
+	response_window = 15
+	zombie_period = 10
+	revive_interval = 3600
+	pool {
+		start = 1
+		min = 1
+		max = 8
+		connecting = 1
+		uses = 0
+		lifetime = 0
+		open_delay = 0.2
+		close_delay = 1.0
+		manage_interval = 0.2
+		connection {
+			connection_timeout = 3.0
+			reconnect_delay = 5
+		}
+		requests {
+			per_connection_max = 255
+			per_connection_target = 255
+			free_delay = 10
+		}
+	}
+	udp {
+		ipaddr = 127.0.0.1
+		port = 1812
+		secret = testing123
+#		interface = eth0
+#		max_packet_size = 4096
+#		recv_buff = 1048576
+#		send_buff = 1048576
+#		src_ipaddr = ""
+	}
+	Access-Request {
+		initial_rtx_time = 2
+		max_rtx_time = 16
+		max_rtx_count = 2
+		max_rtx_duration = 30
+	}
+	Accounting-Request {
+		initial_rtx_time = 2
+		max_rtx_time = 16
+		max_rtx_count = 5
+		max_rtx_duration = 30
+	}
+	CoA-Request {
+		initial_rtx_time = 2
+		max_rtx_time = 16
+		max_rtx_count = 5
+		max_rtx_duration = 30
+	}
+	Disconnect-Request {
+		initial_rtx_time = 2
+		max_rtx_time = 16
+		max_rtx_count = 5
+		max_rtx_duration = 30
+	}
+	Status-Server {
+		initial_rtx_time = 2
+		max_rtx_time = 5
+		max_rtx_count = 5
+		max_rtx_duration = 30
+	}
+}
+```

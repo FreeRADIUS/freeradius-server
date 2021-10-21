@@ -36,8 +36,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pairmove.h>
-#include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/table.h>
 
 #include <sys/stat.h>
 
@@ -108,7 +108,7 @@ static const CONF_PARSER module_config[] = {
 	/*
 	 *	This only works for a few drivers.
 	 */
-	{ FR_CONF_OFFSET("query_timeout", FR_TYPE_UINT32, rlm_sql_config_t, query_timeout) },
+	{ FR_CONF_OFFSET("query_timeout", FR_TYPE_TIME_DELTA, rlm_sql_config_t, query_timeout) },
 
 	{ FR_CONF_POINTER("accounting", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) acct_config },
 
@@ -116,8 +116,8 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_sql_dict[];
 fr_dict_autoload_t rlm_sql_dict[] = {
@@ -140,15 +140,15 @@ fr_dict_attr_autoload_t rlm_sql_dict_attr[] = {
 	{ NULL }
 };
 
-static size_t sql_escape_for_xlat_func(REQUEST *request, char *out, size_t outlen, char const *in, void *arg);
+static size_t sql_escape_for_xlat_func(request_t *request, char *out, size_t outlen, char const *in, void *arg);
 
 /*
  *	Fall-Through checking function from rlm_files.c
  */
-static sql_fall_through_t fall_through(VALUE_PAIR *vp)
+static sql_fall_through_t fall_through(fr_pair_list_t *vps)
 {
-	VALUE_PAIR *tmp;
-	tmp = fr_pair_find_by_da(vp, attr_fall_through, TAG_ANY);
+	fr_pair_t *tmp;
+	tmp = fr_pair_find_by_da(vps, attr_fall_through, 0);
 
 	return tmp ? tmp->vp_uint32 : FALL_THROUGH_DEFAULT;
 }
@@ -156,17 +156,23 @@ static sql_fall_through_t fall_through(VALUE_PAIR *vp)
 /*
  *	Yucky prototype.
  */
-static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
+static size_t sql_escape_func(request_t *, char *out, size_t outlen, char const *in, void *arg);
 
 /** Execute an arbitrary SQL query
  *
- *  For selects the first value of the first column will be returned,
- *  for inserts, updates and deletes the number of rows affected will be
- *  returned instead.
+ * For SELECTs, the first value of the first column will be returned.
+ * For INSERTS, UPDATEs and DELETEs, the number of rows affected will
+ * be returned instead.
+ *
+@verbatim
+%{sql:<sql statement>}
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
 static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
 			void const *mod_inst, UNUSED void const *xlat_inst,
-			REQUEST *request, char const *fmt)
+			request_t *request, char const *fmt)
 {
 	rlm_sql_handle_t	*handle = NULL;
 	rlm_sql_row_t		row;
@@ -180,10 +186,12 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 
 	rlm_sql_query_log(inst, request, NULL, fmt);
 
+	p = fmt;
+
 	/*
 	 *	Trim whitespace for the prefix check
 	 */
-	for (p = fmt; isspace(*p); p++);
+	fr_skip_whitespace(p);
 
 	/*
 	 *	If the query starts with any of the following prefixes,
@@ -197,7 +205,7 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 		rcode = rlm_sql_query(inst, request, &handle, fmt);
 		if (rcode != RLM_SQL_OK) {
 		query_error:
-			RERROR("SQL query failed: %s", fr_int2str(sql_rcode_description_table, rcode, "<INVALID>"));
+			RERROR("SQL query failed: %s", fr_table_str_by_value(sql_rcode_description_table, rcode, "<INVALID>"));
 
 			ret = -1;
 			goto finish;
@@ -256,10 +264,10 @@ finish:
 	return ret;
 }
 
-/** Converts a string value into a #VALUE_PAIR
+/** Converts a string value into a #fr_pair_t
  *
- * @param[in,out] ctx to allocate #VALUE_PAIR (s).
- * @param[out] out where to write the resulting #VALUE_PAIR.
+ * @param[in,out] ctx to allocate #fr_pair_t (s).
+ * @param[out] out where to write the resulting #fr_pair_t.
  * @param[in] request The current request.
  * @param[in] map to process.
  * @param[in] uctx The value to parse.
@@ -267,13 +275,13 @@ finish:
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int _sql_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out,
-				   REQUEST *request, vp_map_t const *map, void *uctx)
+static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
+				   request_t *request, map_t const *map, void *uctx)
 {
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 	char const	*value = uctx;
 
-	vp = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
+	vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs));
 	if (!vp) return -1;
 
 	/*
@@ -282,14 +290,14 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out,
 	 */
 	if (fr_pair_value_from_str(vp, value, -1, '\0', true) < 0) {
 		RPEDEBUG("Failed parsing value \"%pV\" for attribute %s",
-			 fr_box_strvalue_buffer(value), map->lhs->tmpl_da->name);
+			 fr_box_strvalue_buffer(value), tmpl_da(map->lhs)->name);
 		talloc_free(vp);
 
 		return -1;
 	}
 
 	vp->op = map->op;
-	*out = vp;
+	fr_pair_append(out, vp);
 
 	return 0;
 }
@@ -298,7 +306,7 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out,
  *	Verify the result of the map.
  */
 static int sql_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *proc_inst,
-			  vp_tmpl_t const *src, UNUSED vp_map_t const *maps)
+			  tmpl_t const *src, UNUSED fr_map_list_t const *maps)
 {
 	if (!src) {
 		cf_log_err(cs, "Missing SQL query");
@@ -318,11 +326,11 @@ static int sql_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *
  * @param maps Head of the map list.
  * @return
  *	- #RLM_MODULE_NOOP no rows were returned or columns matched.
- *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
+ *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
-static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
-				fr_value_box_t **query, vp_map_t const *maps)
+static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
+				fr_value_box_list_t *query, fr_map_list_t const *maps)
 {
 	rlm_sql_t		*inst = talloc_get_type_abort(mod_inst, rlm_sql_t);
 	rlm_sql_handle_t	*handle = NULL;
@@ -332,7 +340,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	sql_rcode_t		ret;
 
-	vp_map_t const		*map;
+	map_t const		*map;
 
 	rlm_sql_row_t		row;
 
@@ -342,24 +350,28 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	char			map_rhs_buff[128];
 
 	char const		*query_str = NULL;
+	fr_value_box_t		*query_head = fr_dlist_head(query);
 
 #define MAX_SQL_FIELD_INDEX (64)
 
 	int			field_index[MAX_SQL_FIELD_INDEX];
 	bool			found_field = false;	/* Did we find any matching fields in the result set ? */
 
-	rad_assert(inst->driver->sql_fields);		/* Should have been caught during validation... */
+	fr_assert(inst->driver->sql_fields);		/* Should have been caught during validation... */
 
-	if (!*query) {
+	if (!query_head) {
 		REDEBUG("Query cannot be (null)");
 		return RLM_MODULE_FAIL;
 	}
 
-	if (fr_value_box_list_concat(request, *query, query, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat_in_place(request,
+					      query_head, query, FR_TYPE_STRING,
+					      FR_VALUE_BOX_LIST_FREE, true,
+					      SIZE_MAX) < 0) {
 		RPEDEBUG("Failed concatenating input string");
 		return RLM_MODULE_FAIL;
 	}
-	query_str = (*query)->vb_strvalue;
+	query_str = query_head->vb_strvalue;
 
 	for (i = 0; i < MAX_SQL_FIELD_INDEX; i++) field_index[i] = -1;
 
@@ -380,7 +392,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 
 	ret = rlm_sql_select_query(inst, request, &handle, query_str);
 	if (ret != RLM_SQL_OK) {
-		RERROR("SQL query failed: %s", fr_int2str(sql_rcode_description_table, ret, "<INVALID>"));
+		RERROR("SQL query failed: %s", fr_table_str_by_value(sql_rcode_description_table, ret, "<INVALID>"));
 		rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
@@ -411,10 +423,10 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	 */
 	ret = (inst->driver->sql_fields)(&fields, handle, inst->config);
 	if (ret != RLM_SQL_OK) {
-		RERROR("Failed retrieving field names: %s", fr_int2str(sql_rcode_description_table, ret, "<INVALID>"));
+		RERROR("Failed retrieving field names: %s", fr_table_str_by_value(sql_rcode_description_table, ret, "<INVALID>"));
 		goto error;
 	}
-	rad_assert(fields);
+	fr_assert(fields);
 	field_cnt = talloc_array_length(fields);
 
 	if (RDEBUG_ENABLED3) for (j = 0; j < field_cnt; j++) RDEBUG3("Got field: %s", fields[j]);
@@ -424,9 +436,9 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	 *	faster than building a radix tree each time the
 	 *	map set is evaluated (map->rhs can be dynamic).
 	 */
-	for (map = maps, i = 0;
+	for (map = fr_dlist_head(maps), i = 0;
 	     map && (i < MAX_SQL_FIELD_INDEX);
-	     map = map->next, i++) {
+	     map = fr_dlist_next(maps, map), i++) {
 		/*
 		 *	Expand the RHS to get the name of the SQL field
 		 */
@@ -456,16 +468,16 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 
 	/*
 	 *	We've resolved all the maps to result indexes, now convert
-	 *	the values at those indexes into VALUE_PAIRs.
+	 *	the values at those indexes into fr_pair_ts.
 	 *
 	 *	Note: Not all SQL client libraries provide a row count,
 	 *	so we have to do the count here.
 	 */
 	while (((ret = rlm_sql_fetch_row(&row, inst, request, &handle)) == RLM_SQL_OK)) {
 		rows++;
-		for (map = maps, j = 0;
+		for (map = fr_dlist_head(maps), j = 0;
 		     map && (j < MAX_SQL_FIELD_INDEX);
-		     map = map->next, j++) {
+		     map = fr_dlist_next(maps, map), j++) {
 			if (field_index[j] < 0) continue;	/* We didn't find the map RHS in the field set */
 			if (map_to_request(request, map, _sql_map_proc_get_value, row[field_index[j]]) < 0) goto error;
 		}
@@ -491,7 +503,7 @@ finish:
 /** xlat escape function for drivers which do not provide their own
  *
  */
-static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, void *arg)
+static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	rlm_sql_handle_t	*handle = arg;
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(handle->inst, rlm_sql_t);
@@ -602,7 +614,7 @@ static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
  * The variant reserves a connection for the escape functions to use, and releases it after
  * escaping is complete.
  */
-static size_t sql_escape_for_xlat_func(REQUEST *request, char *out, size_t outlen, char const *in, void *arg)
+static size_t sql_escape_for_xlat_func(request_t *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	size_t			ret;
 	rlm_sql_t		*inst = talloc_get_type_abort(arg, rlm_sql_t);
@@ -627,14 +639,14 @@ static size_t sql_escape_for_xlat_func(REQUEST *request, char *out, size_t outle
  *	escape it twice. (it will make things wrong if we have an
  *	escape candidate character in the username)
  */
-int sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username)
+int sql_set_user(rlm_sql_t const *inst, request_t *request, char const *username)
 {
 	char *expanded = NULL;
-	VALUE_PAIR *vp = NULL;
+	fr_pair_t *vp = NULL;
 	char const *sqluser;
 	ssize_t len;
 
-	rad_assert(request->packet != NULL);
+	fr_assert(request->packet != NULL);
 
 	if (username != NULL) {
 		sqluser = username;
@@ -644,17 +656,19 @@ int sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username)
 		return 0;
 	}
 
-	len = xlat_aeval(request, &expanded, request, sqluser, NULL, NULL);
+	MEM(pair_update_request(&vp, inst->sql_user) >= 0);
+	len = xlat_aeval(vp, &expanded, request, sqluser, NULL, NULL);
 	if (len < 0) {
+		pair_delete_request(vp);
 		return -1;
 	}
 
 	/*
 	 *	Replace any existing SQL-User-Name with outs
 	 */
-	MEM(pair_update_request(&vp, inst->sql_user) >= 0);
-	fr_pair_value_strsteal(vp, expanded);
-	RDEBUG2("SQL-User-Name set to '%s'", vp->vp_strvalue);
+	fr_pair_value_bstrdup_buffer_shallow(vp, expanded, true);
+	MEM(fr_pair_value_bstr_realloc(vp, NULL, len) == 0);
+	RDEBUG2("SQL-User-Name set to '%pV'", &vp->data);
 
 	return 0;
 }
@@ -662,9 +676,9 @@ int sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username)
 /*
  *	Do a set/unset user, so it's a bit clearer what's going on.
  */
-#define sql_unset_user(_i, _r) fr_pair_delete_by_da(&_r->packet->vps, _i->sql_user)
+#define sql_unset_user(_i, _r) fr_pair_delete_by_da(&_r->request_pairs, _i->sql_user)
 
-static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, REQUEST *request,
+static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, request_t *request,
 			     rlm_sql_grouplist_t **phead)
 {
 	char			*expanded = NULL;
@@ -718,13 +732,11 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, R
  * The group membership query should only return one element which is the username. The returned
  * username will then be checked with the passed check string.
  */
-static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *request_vp,
-			VALUE_PAIR *check, UNUSED VALUE_PAIR *check_pairs,
-			UNUSED VALUE_PAIR **reply_pairs) CC_HINT(nonnull (1, 2, 4));
+static int sql_groupcmp(void *instance, request_t *request, UNUSED fr_pair_list_t *request_list,
+			fr_pair_t const *check) CC_HINT(nonnull (1, 2, 4));
 
-static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *request_vp,
-			VALUE_PAIR *check, UNUSED VALUE_PAIR *check_pairs,
-			UNUSED VALUE_PAIR **reply_pairs)
+static int sql_groupcmp(void *instance, request_t *request, UNUSED fr_pair_list_t *request_list,
+			fr_pair_t const *check)
 {
 	rlm_sql_handle_t	*handle;
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(instance, rlm_sql_t);
@@ -787,17 +799,21 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req
 	return 1;
 }
 
-static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle,
-					  sql_fall_through_t *do_fall_through)
+static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
+					      rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle,
+					      sql_fall_through_t *do_fall_through)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
-	VALUE_PAIR		*check_tmp = NULL, *reply_tmp = NULL, *sql_group = NULL;
+	fr_pair_list_t		check_tmp, reply_tmp;
+	fr_pair_t		*sql_group = NULL;
 	rlm_sql_grouplist_t	*head = NULL, *entry = NULL;
 
 	char			*expanded = NULL;
 	int			rows;
 
-	rad_assert(request->packet != NULL);
+	fr_assert(request->packet != NULL);
+	fr_pair_list_init(&check_tmp);
+	fr_pair_list_init(&reply_tmp);
 
 	if (!inst->config->groupmemb_query) {
 		RWARN("Cannot do check groups when group_membership_query is not set");
@@ -809,7 +825,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 		 *	Didn't add group attributes or allocate
 		 *	memory, so don't do anything else.
 		 */
-		return RLM_MODULE_NOTFOUND;
+		RETURN_MODULE_NOTFOUND;
 	}
 
 	/*
@@ -819,13 +835,13 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 	if (rows < 0) {
 		REDEBUG("Error retrieving group list");
 
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 	if (rows == 0) {
 		RDEBUG2("User not found in any groups");
 		goto do_nothing;
 	}
-	rad_assert(head);
+	fr_assert(head);
 
 	RDEBUG2("User found in the group table");
 
@@ -838,12 +854,11 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 	entry = head;
 	do {
 	next:
-		rad_assert(entry != NULL);
-		fr_pair_value_strcpy(sql_group, entry->name);
+		fr_assert(entry != NULL);
+		fr_pair_value_strdup(sql_group, entry->name, true);
 
 		if (inst->config->authorize_group_check_query) {
-			fr_cursor_t	cursor;
-			VALUE_PAIR	*vp;
+			fr_pair_t	*vp;
 
 			/*
 			 *	Expand the group query
@@ -855,7 +870,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 				goto finish;
 			}
 
-			rows = sql_getvpdata(request, inst, request, handle, &check_tmp, expanded);
+			rows = sql_getvpdata(request->control_ctx, inst, request, handle, &check_tmp, expanded);
 			TALLOC_FREE(expanded);
 			if (rows < 0) {
 				REDEBUG("Error retrieving check pairs for group %s", entry->name);
@@ -868,7 +883,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 			 *	process the reply rows
 			 */
 			if ((rows > 0) &&
-			    (paircmp(request, request->packet->vps, check_tmp, &request->reply->vps) != 0)) {
+			    (paircmp(request, &request->request_pairs, &check_tmp) != 0)) {
 				fr_pair_list_free(&check_tmp);
 				entry = entry->next;
 
@@ -882,21 +897,22 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 
 			RDEBUG2("Group \"%s\": Merging assignment check items", entry->name);
 			RINDENT();
-			for (vp = fr_cursor_init(&cursor, &check_tmp);
+			for (vp = fr_pair_list_head(&check_tmp);
 			     vp;
-			     vp = fr_cursor_next(&cursor)) {
+			     vp = fr_pair_list_next(&check_tmp, vp)) {
 			 	if (!fr_assignment_op[vp->op]) continue;
 
 				rcode = RLM_MODULE_UPDATED;
 			 	RDEBUG2("&%pP", vp);
 			}
 			REXDENT();
-			radius_pairmove(request, &request->control, check_tmp, true);
+			radius_pairmove(request, &request->control_pairs, &check_tmp, true);
 
-			check_tmp = NULL;
+			fr_pair_list_free(&check_tmp);
 		}
 
 		if (inst->config->authorize_group_reply_query) {
+
 			/*
 			 *	Now get the reply pairs since the paircmp matched
 			 */
@@ -907,7 +923,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 				goto finish;
 			}
 
-			rows = sql_getvpdata(request->reply, inst, request, handle, &reply_tmp, expanded);
+			rows = sql_getvpdata(request->reply_ctx, inst, request, handle, &reply_tmp, expanded);
 			TALLOC_FREE(expanded);
 			if (rows < 0) {
 				REDEBUG("Error retrieving reply pairs for group %s", entry->name);
@@ -920,16 +936,16 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t const *inst, REQUEST *reques
 				continue;
 			}
 
-			rad_assert(reply_tmp != NULL); /* coverity, among others */
-			*do_fall_through = fall_through(reply_tmp);
+			fr_assert(!fr_pair_list_empty(&reply_tmp)); /* coverity, among others */
+			*do_fall_through = fall_through(&reply_tmp);
 
 			RDEBUG2("Group \"%s\": Merging reply items", entry->name);
 			if (rcode == RLM_MODULE_NOOP) rcode = RLM_MODULE_UPDATED;
 
-			log_request_pair_list(L_DBG_LVL_2, request, reply_tmp, NULL);
+			log_request_pair_list(L_DBG_LVL_2, request, NULL, &reply_tmp, NULL);
 
-			radius_pairmove(request, &request->reply->vps, reply_tmp, true);
-			reply_tmp = NULL;
+			radius_pairmove(request, &request->reply_pairs, &reply_tmp, true);
+			fr_pair_list_free(&reply_tmp);
 		/*
 		 *	If there's no reply query configured, then we assume
 		 *	FALL_THROUGH_NO, which is the same as the users file if you
@@ -946,7 +962,7 @@ finish:
 	talloc_free(head);
 	pair_delete_request(inst->group_da);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 
@@ -1011,7 +1027,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 	inst->driver = (rlm_sql_driver_t const *)inst->driver_inst->module->common;
 
-	rad_assert(!inst->driver->inst_size || inst->driver_inst->data);
+	fr_assert(!inst->driver->inst_size || inst->driver_inst->data);
 
 	/*
 	 *	Call the driver's instantiate function (if set)
@@ -1023,9 +1039,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		TALLOC_FREE(inst->driver_inst);
 		return -1;
 	}
-#ifndef NDEBUG
-	module_instance_read_only(inst->driver_inst, inst->driver->name);
-#endif
 
 	/*
 	 *	@fixme Inst should be passed to all driver callbacks
@@ -1059,8 +1072,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			goto error;
 		}
 
-		if (fr_dict_attr_by_qualified_name(&inst->group_da, dict_freeradius,
-						   group_attribute, false) != FR_DICT_ATTR_OK) {
+		inst->group_da = fr_dict_attr_search_by_qualified_oid(NULL, dict_freeradius, group_attribute,
+								     false, false);
+		if (!inst->group_da) {
 			PERROR("Failed resolving group attribute");
 			goto error;
 		}
@@ -1069,7 +1083,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Register the SQL xlat function
 	 */
-	xlat_register(inst, inst->name, sql_xlat, sql_escape_for_xlat_func, NULL, 0, 0, false);
+	xlat_register_legacy(inst, inst->name, sql_xlat, sql_escape_for_xlat_func, NULL, 0, 0);
 
 	/*
 	 *	Register the SQL map processor function
@@ -1149,7 +1163,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 				inst->driver->sql_escape_func :
 				sql_escape_func;
 
-	inst->ef = module_exfile_init(inst, conf, 256, 30, true, NULL, NULL);
+	inst->ef = module_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
 	if (!inst->ef) {
 		cf_log_err(conf, "Failed creating log file context");
 		return -1;
@@ -1160,23 +1174,22 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 */
 	INFO("Attempting to connect to database \"%s\"", inst->config->sql_db);
 
-	inst->pool = module_connection_pool_init(inst->cs, inst, mod_conn_create, NULL, NULL, NULL, NULL);
+	inst->pool = module_connection_pool_init(inst->cs, inst, sql_mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) return -1;
 
-	return RLM_MODULE_OK;
+	return 0;
 }
 
-static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 
-	rlm_sql_t const		*inst = instance;
+	rlm_sql_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_sql_t);
 	rlm_sql_handle_t	*handle;
 
-	VALUE_PAIR		*check_tmp = NULL;
-	VALUE_PAIR		*reply_tmp = NULL;
-	VALUE_PAIR 		*user_profile = NULL;
+	fr_pair_list_t		check_tmp;
+	fr_pair_list_t		reply_tmp;
+	fr_pair_t 		*user_profile = NULL;
 
 	bool			user_found = false;
 
@@ -1186,20 +1199,22 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 
 	char			*expanded = NULL;
 
-	rad_assert(request->packet != NULL);
-	rad_assert(request->reply != NULL);
+	fr_pair_list_init(&check_tmp);
+	fr_pair_list_init(&reply_tmp);
+	fr_assert(request->packet != NULL);
+	fr_assert(request->reply != NULL);
 
 	if (!inst->config->authorize_check_query && !inst->config->authorize_reply_query &&
 	    !inst->config->read_groups && !inst->config->read_profiles) {
 		RWDEBUG("No authorization checks configured, returning noop");
 
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
 	 *	Set, escape, and check the user attr here
 	 */
-	if (sql_set_user(inst, request, NULL) < 0) return RLM_MODULE_FAIL;
+	if (sql_set_user(inst, request, NULL) < 0) RETURN_MODULE_FAIL;
 
 	/*
 	 *	Reserve a socket
@@ -1210,15 +1225,14 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 	handle = fr_pool_connection_get(inst->pool, request);
 	if (!handle) {
 		sql_unset_user(inst, request);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
 	 *	Query the check table to find any conditions associated with this user/realm/whatever...
 	 */
 	if (inst->config->authorize_check_query) {
-		fr_cursor_t	cursor;
-		VALUE_PAIR	*vp;
+		fr_pair_t	*vp;
 
 		if (xlat_aeval(request, &expanded, request, inst->config->authorize_check_query,
 				 inst->sql_escape_func, handle) < 0) {
@@ -1232,10 +1246,10 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 
 			fr_pool_connection_release(inst->pool, request, handle);
 
-			return rcode;
+			RETURN_MODULE_RCODE(rcode);
 		}
 
-		rows = sql_getvpdata(request, inst, request, &handle, &check_tmp, expanded);
+		rows = sql_getvpdata(request->control_ctx, inst, request, &handle, &check_tmp, expanded);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("Failed getting check attributes");
@@ -1250,28 +1264,28 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 		 */
 		RDEBUG2("User found in radcheck table");
 		user_found = true;
-		if (paircmp(request, request->packet->vps, check_tmp, &request->reply->vps) != 0) {
+		if (paircmp(request, &request->request_pairs, &check_tmp) != 0) {
 			fr_pair_list_free(&check_tmp);
-			check_tmp = NULL;
 			goto skip_reply;
 		}
 
 		RDEBUG2("Conditional check items matched, merging assignment check items");
 		RINDENT();
-		for (vp = fr_cursor_init(&cursor, &check_tmp);
+		for (vp = fr_pair_list_head(&check_tmp);
 		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		     vp = fr_pair_list_next(&check_tmp, vp)) {
 			if (!fr_assignment_op[vp->op]) continue;
 			RDEBUG2("&%pP", vp);
 		}
 		REXDENT();
-		radius_pairmove(request, &request->control, check_tmp, true);
+		radius_pairmove(request, &request->control_pairs, &check_tmp, true);
 
 		rcode = RLM_MODULE_OK;
-		check_tmp = NULL;
+		fr_pair_list_free(&check_tmp);
 	}
 
 	if (inst->config->authorize_reply_query) {
+
 		/*
 		 *	Now get the reply pairs since the paircmp matched
 		 */
@@ -1282,7 +1296,7 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 			goto error;
 		}
 
-		rows = sql_getvpdata(request->reply, inst, request, &handle, &reply_tmp, expanded);
+		rows = sql_getvpdata(request->reply_ctx, inst, request, &handle, &reply_tmp, expanded);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("SQL query error getting reply attributes");
@@ -1292,17 +1306,17 @@ static rlm_rcode_t mod_authorize(void *instance, UNUSED void *thread, REQUEST *r
 
 		if (rows == 0) goto skip_reply;
 
-		do_fall_through = fall_through(reply_tmp);
+		do_fall_through = fall_through(&reply_tmp);
 
 		RDEBUG2("User found in radreply table, merging reply items");
 		user_found = true;
 
-		log_request_pair_list(L_DBG_LVL_2, request, reply_tmp, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &reply_tmp, NULL);
 
-		radius_pairmove(request, &request->reply->vps, reply_tmp, true);
+		radius_pairmove(request, &request->reply_pairs, &reply_tmp, true);
 
 		rcode = RLM_MODULE_OK;
-		reply_tmp = NULL;
+		fr_pair_list_free(&reply_tmp);
 	}
 
 	/*
@@ -1317,18 +1331,20 @@ skip_reply:
 		rlm_rcode_t ret;
 
 		RDEBUG3("... falling-through to group processing");
-		ret = rlm_sql_process_groups(inst, request, &handle, &do_fall_through);
+		rlm_sql_process_groups(&ret, inst, request, &handle, &do_fall_through);
 		switch (ret) {
+
 		/*
 		 *	Nothing bad happened, continue...
 		 */
 		case RLM_MODULE_UPDATED:
 			rcode = RLM_MODULE_UPDATED;
-			/* FALL-THROUGH */
+			FALL_THROUGH;
+
 		case RLM_MODULE_OK:
 			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
+			FALL_THROUGH;
 
-			/* FALL-THROUGH */
 		case RLM_MODULE_NOOP:
 			user_found = true;
 			break;
@@ -1354,7 +1370,7 @@ skip_reply:
 		 *  Check for a default_profile or for a User-Profile.
 		 */
 		RDEBUG3("... falling-through to profile processing");
-		user_profile = fr_pair_find_by_da(request->control, attr_user_profile, TAG_ANY);
+		user_profile = fr_pair_find_by_da(&request->control_pairs, attr_user_profile, 0);
 
 		profile = user_profile ?
 				      user_profile->vp_strvalue :
@@ -1370,18 +1386,19 @@ skip_reply:
 			goto error;
 		}
 
-		ret = rlm_sql_process_groups(inst, request, &handle, &do_fall_through);
+		rlm_sql_process_groups(&ret, inst, request, &handle, &do_fall_through);
 		switch (ret) {
 		/*
 		 *	Nothing bad happened, continue...
 		 */
 		case RLM_MODULE_UPDATED:
 			rcode = RLM_MODULE_UPDATED;
-			/* FALL-THROUGH */
+			FALL_THROUGH;
+
 		case RLM_MODULE_OK:
 			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
+			FALL_THROUGH;
 
-			/* FALL-THROUGH */
 		case RLM_MODULE_NOOP:
 			user_found = true;
 			break;
@@ -1405,7 +1422,7 @@ release:
 	fr_pool_connection_release(inst->pool, request, handle);
 	sql_unset_user(inst, request);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /*
@@ -1418,7 +1435,7 @@ release:
  *	doesn't update any rows, the next matching config item is used.
  *
  */
-static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_section_t *section)
+static unlang_action_t acct_redundant(rlm_rcode_t *p_result, rlm_sql_t const *inst, request_t *request, sql_acct_section_t *section)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 
@@ -1435,7 +1452,7 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 	char			*p = path;
 	char			*expanded = NULL;
 
-	rad_assert(section);
+	fr_assert(section);
 
 	if (section->reference[0] != '.') *p++ = '.';
 
@@ -1503,7 +1520,7 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 
 		sql_ret = rlm_sql_query(inst, request, &handle, expanded);
 		TALLOC_FREE(expanded);
-		RDEBUG2("SQL query returned: %s", fr_int2str(sql_rcode_description_table, sql_ret, "<INVALID>"));
+		RDEBUG2("SQL query returned: %s", fr_table_str_by_value(sql_rcode_description_table, sql_ret, "<INVALID>"));
 
 		switch (sql_ret) {
 		/*
@@ -1540,7 +1557,7 @@ static int acct_redundant(rlm_sql_t const *inst, REQUEST *request, sql_acct_sect
 		case RLM_SQL_ALT_QUERY:
 			goto next;
 		}
-		rad_assert(handle);
+		fr_assert(handle);
 
 		/*
 		 *  We need to have updated something for the query to have been
@@ -1573,41 +1590,35 @@ finish:
 	fr_pool_connection_release(inst->pool, request, handle);
 	sql_unset_user(inst, request);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
-
-#ifdef WITH_ACCOUNTING
 
 /*
  *	Accounting: Insert or update session data in our sql table
  */
-static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_sql_t const *inst = instance;
+	rlm_sql_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_sql_t);
 
 	if (inst->config->accounting.reference_cp) {
-		return acct_redundant(inst, request, &inst->config->accounting);
+		return acct_redundant(p_result, inst, request, &inst->config->accounting);
 	}
 
-	return RLM_MODULE_NOOP;
+	RETURN_MODULE_NOOP;
 }
-
-#endif
 
 /*
  *	Postauth: Write a record of the authentication attempt
  */
-static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_sql_t const *inst = talloc_get_type_abort_const(instance, rlm_sql_t);
+	rlm_sql_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_sql_t);
 
 	if (inst->config->postauth.reference_cp) {
-		return acct_redundant(inst, request, &inst->config->postauth);
+		return acct_redundant(p_result, inst, request, &inst->config->postauth);
 	}
 
-	return RLM_MODULE_NOOP;
+	RETURN_MODULE_NOOP;
 }
 
 /*
@@ -1627,9 +1638,7 @@ module_t rlm_sql = {
 	.detach		= mod_detach,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
-#ifdef WITH_ACCOUNTING
 		[MOD_ACCOUNTING]	= mod_accounting,
-#endif
 		[MOD_POST_AUTH]		= mod_post_auth
 	},
 };

@@ -1,0 +1,44 @@
+
+
+
+
+= Login time Module
+
+The `logintime` module handles the `Login-Time`, `Current-Time`,
+and `Time-Of-Day` attributes.
+
+It should be included in the *end* of the `recv Access-Request`
+section in order to handle `Login-Time` checks.
+
+When the `Login-Time` attribute is set to some value, and the user
+has been permitted to log in, the `link:https://freeradius.org/rfc/rfc2865.html#Session-Timeout[Session-Timeout]` will be
+calculated based on the remaining time.  Note that this is a
+  *maximum* value.  If another module sets `link:https://freeradius.org/rfc/rfc2865.html#Session-Timeout[Session-Timeout]` to a
+lower value, the `logintime` module will not increase its value.
+
+
+
+## Configuration Settings
+
+
+minimum_timeout::
+
+The minimum timeout (in seconds) a user is allowed
+to have. If the calculated timeout is lower we don't
+allow the login.
+
+NOTE: Some NAS do not handle values lower than 60 seconds.
+They will either ignore the result, or set it to some
+larger value.
+
+Default is `60`.
+
+
+
+== Default Configuration
+
+```
+logintime {
+	minimum_timeout = 60
+}
+```

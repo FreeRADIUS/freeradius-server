@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/redis/cluster.h>
@@ -79,7 +79,7 @@ static CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_rediswho_dict[];
 fr_dict_autoload_t rlm_rediswho_dict[] = {
@@ -98,7 +98,7 @@ fr_dict_attr_autoload_t rlm_rediswho_dict_attr[] = {
 /*
  *	Query the database executing a command with no result rows
  */
-static int rediswho_command(rlm_rediswho_t const *inst, REQUEST *request, char const *fmt)
+static int rediswho_command(rlm_rediswho_t const *inst, request_t *request, char const *fmt)
 {
 	fr_redis_conn_t		*conn;
 
@@ -169,7 +169,7 @@ static int rediswho_command(rlm_rediswho_t const *inst, REQUEST *request, char c
 	 */
 	default:
 		REDEBUG("Expected type \"integer\" got type \"%s\"",
-			fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
+			fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 		break;
 	}
 	fr_redis_reply_free(&reply);
@@ -177,59 +177,57 @@ static int rediswho_command(rlm_rediswho_t const *inst, REQUEST *request, char c
 	return ret;
 }
 
-static rlm_rcode_t mod_accounting_all(rlm_rediswho_t const *inst, REQUEST *request,
-				      char const *insert,
-				      char const *trim,
-				      char const *expire)
+static unlang_action_t mod_accounting_all(rlm_rcode_t *p_result, rlm_rediswho_t const *inst, request_t *request,
+					  char const *insert,
+					  char const *trim,
+					  char const *expire)
 {
 	int ret;
 
 	ret = rediswho_command(inst, request, insert);
-	if (ret < 0) return RLM_MODULE_FAIL;
+	if (ret < 0) RETURN_MODULE_FAIL;
 
 	/* Only trim if necessary */
 	if ((inst->trim_count >= 0) && (ret > inst->trim_count)) {
-		if (rediswho_command(inst, request, trim) < 0) return RLM_MODULE_FAIL;
+		if (rediswho_command(inst, request, trim) < 0) RETURN_MODULE_FAIL;
 	}
 
-	if (rediswho_command(inst, request, expire) < 0) return RLM_MODULE_FAIL;
-	return RLM_MODULE_OK;
+	if (rediswho_command(inst, request, expire) < 0) RETURN_MODULE_FAIL;
+	RETURN_MODULE_OK;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rediswho_t const	*inst = instance;
+	rlm_rediswho_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_rediswho_t);
 	rlm_rcode_t		rcode;
-	VALUE_PAIR		*vp;
-	fr_dict_enum_t		*dv;
+	fr_pair_t		*vp;
+	fr_dict_enum_value_t		*dv;
 	CONF_SECTION		*cs;
 	char const		*insert, *trim, *expire;
 
-	vp = fr_pair_find_by_da(request->packet->vps, attr_acct_status_type, TAG_ANY);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_acct_status_type, 0);
 	if (!vp) {
 		RDEBUG2("Could not find account status type in packet");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	dv = fr_dict_enum_by_value(vp->da, &vp->data);
 	if (!dv) {
 		RDEBUG2("Unknown Acct-Status-Type %u", vp->vp_uint32);
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
-	cs = cf_section_find(inst->cs, dv->alias, NULL);
+	cs = cf_section_find(inst->cs, dv->name, NULL);
 	if (!cs) {
-		RDEBUG2("No subsection %s", dv->alias);
-		return RLM_MODULE_NOOP;
+		RDEBUG2("No subsection %s", dv->name);
+		RETURN_MODULE_NOOP;
 	}
 
 	insert = cf_pair_value(cf_pair_find(cs, "insert"));
 	trim = cf_pair_value(cf_pair_find(cs, "trim"));
 	expire = cf_pair_value(cf_pair_find(cs, "expire"));
 
-	rcode = mod_accounting_all(inst, request, insert, trim, expire);
-
-	return rcode;
+	return mod_accounting_all(&rcode, inst, request, insert, trim, expire);
 }
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)

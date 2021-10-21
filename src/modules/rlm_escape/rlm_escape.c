@@ -27,7 +27,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/server/base.h>
 
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <ctype.h>
 
@@ -46,110 +46,141 @@ static const CONF_PARSER module_config[] = {
 
 static char const hextab[] = "0123456789abcdef";
 
+static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	*((void **)xlat_inst) = talloc_get_type_abort(uctx, rlm_escape_t);
+	return 0;
+}
+
+static xlat_arg_parser_t const escape_xlat_arg = { .required = true, .concat = true, .type = FR_TYPE_STRING };
+
 /** Equivalent to the old safe_characters functionality in rlm_sql but with utf8 support
  *
- * @verbatim Example: "%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60/img=62" @endverbatim
+ * Example:
+@verbatim
+"%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60/img=62"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
-static ssize_t escape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   void const *mod_inst, UNUSED void const *xlat_inst,
-			   UNUSED REQUEST *request, char const *fmt)
+static xlat_action_t escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				 void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				 fr_value_box_list_t *in)
 {
-	rlm_escape_t const	*inst = mod_inst;
-	char const		*p = fmt;
-	char			*out_p = *out;
-	size_t			freespace = outlen;
+	rlm_escape_t const	*inst;
+	void			*instance;
+	fr_value_box_t		*arg = fr_dlist_head(in);
+	char const		*p = arg->vb_strvalue;
+	size_t			len;
+	fr_value_box_t		*vb;
+	fr_sbuff_t		sbuff;
+	fr_sbuff_uctx_talloc_t	sbuff_ctx;
+	int			i;
+
+	memcpy(&instance, xlat_inst, sizeof(instance));
+	inst = talloc_get_type_abort(instance, rlm_escape_t);
+	len = talloc_array_length(inst->allowed_chars) - 1;
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	/*
+	 *	We don't know how long the final escaped string
+	 *	will be - assign something twice as long as the input
+	 *	as a starting point.  The maximum length would be 12
+	 *	times the original if every character is 4 byte UTF8.
+	 */
+	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, arg->length * 2, arg->length * 12)) {
+	error:
+		RPEDEBUG("Failed to allocated buffer for escaped string");
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
 
 	while (p[0]) {
 		int chr_len = 1;
-		int ret = 1;	/* -Werror=uninitialized */
 
-		if (fr_utf8_strchr(&chr_len, inst->allowed_chars, p) == NULL) {
+		if (fr_utf8_strchr(&chr_len, inst->allowed_chars, len, p) == NULL) {
 			/*
 			 *	'=' 1 + ([hex]{2}) * chr_len)
 			 */
-			if (freespace <= (size_t)(1 + (chr_len * 3))) break;
-
-			switch (chr_len) {
-			case 4:
-				ret = snprintf(out_p, freespace, "=%02X=%02X=%02X=%02X",
-					       (uint8_t)p[0], (uint8_t)p[1], (uint8_t)p[2], (uint8_t)p[3]);
-				break;
-
-			case 3:
-				ret = snprintf(out_p, freespace, "=%02X=%02X=%02X",
-					       (uint8_t)p[0], (uint8_t)p[1], (uint8_t)p[2]);
-				break;
-
-			case 2:
-				ret = snprintf(out_p, freespace, "=%02X=%02X", (uint8_t)p[0], (uint8_t)p[1]);
-				break;
-
-			case 1:
-				ret = snprintf(out_p, freespace, "=%02X", (uint8_t)p[0]);
-				break;
+			for (i = 0; i < chr_len; i++) {
+				if (fr_sbuff_in_sprintf(&sbuff, "=%02X", (uint8_t)p[i]) < 0)
+					goto error;
 			}
 
 			p += chr_len;
-			out_p += ret;
-			freespace -= ret;
 			continue;
 		}
 
 		/*
-		 *	Only one byte left.
-		 */
-		if (freespace <= 1) break;
-
-		/*
 		 *	Allowed character (copy whole mb chars at once)
 		 */
-		memcpy(out_p, p, chr_len);
-		out_p += chr_len;
+		if (fr_sbuff_in_bstrncpy(&sbuff, p, chr_len) < 0)
+			goto error;
 		p += chr_len;
-		freespace -= chr_len;
 	}
-	*out_p = '\0';
 
-	return outlen - freespace;
+	fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
+	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), arg->tainted);
+
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
 }
+
+static xlat_arg_parser_t const unescape_xlat_arg = { .required = true, .concat = true, .type = FR_TYPE_STRING };
 
 /** Equivalent to the old safe_characters functionality in rlm_sql
  *
- * @verbatim Example: "%{unescape:=60img=62foo.jpg=60/img=62}" == "<img>foo.jpg</img>" @endverbatim
+ * Example:
+@verbatim
+"%{unescape:=60img=62foo.jpg=60/img=62}" == "<img>foo.jpg</img>"
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
-static ssize_t unescape_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			     UNUSED REQUEST *request, char const *fmt)
+static xlat_action_t unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				   fr_value_box_list_t *in)
 {
-	char const *p;
-	char *out_p = *out;
-	char *c1, *c2, c3;
-	size_t	freespace = outlen;
+	fr_value_box_t	*arg = fr_dlist_head(in);
+	char const	*p, *end;
+	char		*out_p;
+	char		*c1, *c2, c3;
+	fr_sbuff_t	sbuff;
+	fr_value_box_t	*vb;
 
-	if (outlen <= 1) return 0;
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	if (fr_value_box_bstr_alloc(ctx, &out_p, vb, NULL, arg->length, arg->tainted) < 0) {
+		talloc_free(vb);
+		RPEDEBUG("Failed allocating space for unescaped string");
+		return XLAT_ACTION_FAIL;
+	}
+	sbuff = FR_SBUFF_IN(out_p, arg->length);
 
-	p = fmt;
-	while (*p && (--freespace > 0)) {
+	p = arg->vb_strvalue;
+	end = p + arg->length;
+	while (*p) {
 		if (*p != '=') {
 		next:
 
-			*out_p++ = *p++;
+			fr_sbuff_in_char(&sbuff, *p++);
 			continue;
 		}
 
 		/* Is a = char */
 
-		if (!(c1 = memchr(hextab, tolower(*(p + 1)), 16)) ||
+		if (((end - p) < 2) ||
+		    !(c1 = memchr(hextab, tolower(*(p + 1)), 16)) ||
 		    !(c2 = memchr(hextab, tolower(*(p + 2)), 16))) goto next;
 		c3 = ((c1 - hextab) << 4) + (c2 - hextab);
 
-		*out_p++ = c3;
+		fr_sbuff_in_char(&sbuff, c3);
 		p += 3;
 	}
 
-	*out_p = '\0';
+	fr_value_box_strtrim(ctx, vb);
+	fr_dcursor_append(out, vb);
 
-	return outlen - freespace;
+	return XLAT_ACTION_DONE;
 }
 
 /*
@@ -166,6 +197,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_escape_t	*inst = instance;
 	char		*unescape;
+	xlat_t		*xlat;
 
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) {
@@ -173,8 +205,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 
 	MEM(unescape = talloc_asprintf(NULL, "un%s", inst->xlat_name));
-	xlat_register(inst, inst->xlat_name, escape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(inst, unescape, unescape_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat = xlat_register(NULL, inst->xlat_name, escape_xlat, false);
+	xlat_func_mono(xlat, &escape_xlat_arg);
+	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_escape_t *, NULL, inst);
+
+	xlat = xlat_register(NULL, unescape, unescape_xlat, false);
+	xlat_func_mono(xlat, &unescape_xlat_arg);
 	talloc_free(unescape);
 
 	return 0;

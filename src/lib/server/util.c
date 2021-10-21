@@ -23,11 +23,13 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
 #include <freeradius-devel/server/stats.h>
 #include <freeradius-devel/server/util.h>
 
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/perm.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -79,95 +81,6 @@ void (*reset_signal(int signo, void (*func)(int)))(int)
 #endif
 }
 
-/** Create possibly many directories.
- *
- * @note that the input directory name is NOT treated as a constant. This is so that
- *	 if an error is returned, the 'directory' ptr points to the name of the file
- *	 which caused the error.
- *
- * @param dir path to directory to create.
- * @param mode for new directories.
- * @param uid to set on new directories, may be -1 to use effective uid.
- * @param gid to set on new directories, may be -1 to use effective gid.
- * @return
- *	- 0 on success.
- *	- -1 on failure. Error available as errno.
- */
-int rad_mkdir(char *dir, mode_t mode, uid_t uid, gid_t gid)
-{
-	int rcode, fd;
-	char *p;
-
-	/*
-	 *	Try to make the dir.  If it exists, chmod it.
-	 *	If a path doesn't exist, that's OK.  Otherwise
-	 *	return with an error.
-	 *
-	 *	Directories permissions are initially set so
-	 *	that only we should have access. This prevents
-	 *	an attacker removing them and swapping them
-	 *	out for a link to somewhere else.
-	 *	We change them to the correct permissions later.
-	 */
-	rcode = mkdir(dir, 0700);
-	if (rcode < 0) {
-		switch (errno) {
-		case EEXIST:
-			return 0; /* don't change permissions */
-
-		case ENOENT:
-			break;
-
-		default:
-			return rcode;
-		}
-
-		/*
-		 *	A component in the dir path doesn't
-		 *	exist.  Look for the LAST dir name.  Try
-		 *	to create that.  If there's an error, we leave
-		 *	the dir path as the one at which the
-		 *	error occured.
-		 */
-		p = strrchr(dir, FR_DIR_SEP);
-		if (!p || (p == dir)) return -1;
-
-		*p = '\0';
-		rcode = rad_mkdir(dir, mode, uid, gid);
-		if (rcode < 0) return rcode;
-
-		/*
-		 *	Reset the dir path, and try again to
-		 *	make the dir.
-		 */
-		*p = FR_DIR_SEP;
-		rcode = mkdir(dir, 0700);
-		if (rcode < 0) return rcode;
-	} /* else we successfully created the dir */
-
-	/*
-	 *	Set the permissions on the directory we created
-	 *	this should never fail unless there's a race.
-	 */
-	fd = open(dir, O_DIRECTORY);
-	if (fd < 0) return -1;
-
-	rcode = fchmod(fd, mode);
-	if (rcode < 0) {
-		close(fd);
-		return rcode;
-	}
-
-	if ((uid != (uid_t)-1) || (gid != (gid_t)-1)) {
-		rad_suid_up();
-		rcode = fchown(fd, uid, gid);
-		rad_suid_down();
-	}
-	close(fd);
-
-	return rcode;
-}
-
 /** Ensures that a filename cannot walk up the directory structure
  *
  * Also sanitizes control chars.
@@ -178,7 +91,7 @@ int rad_mkdir(char *dir, mode_t mode, uid_t uid, gid_t gid)
  * @param in string to escape.
  * @param arg Context arguments (unused, should be NULL).
  */
-size_t rad_filename_make_safe(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+size_t rad_filename_make_safe(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	char const *q = in;
 	char *p = out;
@@ -273,7 +186,7 @@ size_t rad_filename_make_safe(UNUSED REQUEST *request, char *out, size_t outlen,
  * @param in string to escape.
  * @param arg Context arguments (unused, should be NULL).
  */
-size_t rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+size_t rad_filename_escape(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	size_t freespace = outlen;
 
@@ -339,7 +252,8 @@ size_t rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 		 *	Unsafe chars
 		 */
 		*out++ = '-';
-		fr_bin2hex(out, (uint8_t const *)in++, 1);
+		in++;
+		fr_base16_encode(&FR_SBUFF_OUT(out, freespace), &FR_DBUFF_TMP((uint8_t const *)in, 1));
 		out += 2;
 		freespace -= 3;
 	}
@@ -397,7 +311,9 @@ ssize_t rad_filename_unescape(char *out, size_t outlen, char const *in, size_t i
 			/*
 			 *	If hex2bin returns 0 the next two chars weren't hexits.
 			 */
-			if (fr_hex2bin((uint8_t *) out, 1, in, 1) == 0) return in - (p + 1);
+			if (fr_base16_decode(NULL,
+				       &FR_DBUFF_TMP((uint8_t *) out, 1),
+				       &FR_SBUFF_IN(in, 1), false) == 0) return in - (p + 1);
 			in += 2;
 			out++;
 			freespace--;
@@ -456,7 +372,7 @@ char *rad_ajoin(TALLOC_CTX *ctx, char const **argv, int argc, char c)
 /*
  *	Copy a quoted string.
  */
-int rad_copy_string(char *to, char const *from)
+static int rad_copy_string(char *to, char const *from)
 {
 	int length = 0;
 	char quote = *from;
@@ -484,7 +400,7 @@ int rad_copy_string(char *to, char const *from)
  *	returned is the number of chars written; the number of
  *	characters consumed is 2 more than this.
  */
-int rad_copy_string_bare(char *to, char const *from)
+static int rad_copy_string_bare(char *to, char const *from)
 {
 	int length = 0;
 	char quote = *from;
@@ -510,7 +426,7 @@ int rad_copy_string_bare(char *to, char const *from)
 /*
  *	Copy a %{} string.
  */
-int rad_copy_variable(char *to, char const *from)
+static int rad_copy_variable(char *to, char const *from)
 {
 	int length = 0;
 	int sublen;
@@ -554,7 +470,7 @@ int rad_copy_variable(char *to, char const *from)
 				break;
 			} /* else FIXME: catch %%{ ?*/
 
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 		default:
 			*(to++) = *(from++);
 			length++;
@@ -619,7 +535,7 @@ uint32_t rad_pps(uint32_t *past, uint32_t *present, time_t *then, struct timeval
  * @return argc or -1 on failure.
  */
 
-int rad_expand_xlat(REQUEST *request, char const *cmd,
+int rad_expand_xlat(request_t *request, char const *cmd,
 		    int max_argc, char const *argv[], bool can_fail,
 		    size_t argv_buflen, char *argv_buf)
 {
@@ -630,7 +546,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 	int left;
 
 	if (strlen(cmd) > (argv_buflen - 1)) {
-		fr_strerror_printf("Expansion string is too long for output buffer");
+		fr_strerror_const("Expansion string is too long for output buffer");
 		return -1;
 	}
 
@@ -638,7 +554,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 	 *	Check for bad escapes.
 	 */
 	if (cmd[strlen(cmd) - 1] == '\\') {
-		fr_strerror_printf("Expansion string ends with a trailing backslash - invalid escape sequence");
+		fr_strerror_const("Expansion string ends with a trailing backslash - invalid escape sequence");
 		return -1;
 	}
 
@@ -653,13 +569,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 	while (*from) {
 		int length;
 
-		/*
-		 *	Skip spaces.
-		 */
-		if ((*from == ' ') || (*from == '\t')) {
-			from++;
-			continue;
-		}
+		fr_skip_whitespace(from);
 
 		argv[argc] = to;
 		argc++;
@@ -671,7 +581,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 		 */
 		while (*from && (*from != ' ') && (*from != '\t')) {
 			if (to >= argv_buf + argv_buflen - 1) {
-				fr_strerror_printf("Expansion string is too long for output buffer");
+				fr_strerror_const("Expansion string is too long for output buffer");
 				return -1;
 			}
 
@@ -680,7 +590,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 			case '\'':
 				length = rad_copy_string_bare(to, from);
 				if (length < 0) {
-					fr_strerror_printf("Invalid quoted string in expansion");
+					fr_strerror_const("Invalid quoted string in expansion");
 					return -1;
 				}
 				from += length+2;
@@ -693,7 +603,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 
 					length = rad_copy_variable(to, from);
 					if (length < 0) {
-						fr_strerror_printf("Invalid variable in expansion");
+						fr_strerror_const("Invalid variable in expansion");
 						return -1;
 					}
 					from += length;
@@ -705,7 +615,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 
 			case '\\':
 				if (from[1] == ' ') from++;
-				/* FALL-THROUGH */
+				FALL_THROUGH;
 
 			default:
 				*(to++) = *(from++);
@@ -719,7 +629,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 	 *	We have to have SOMETHING, at least.
 	 */
 	if (argc <= 0) {
-		fr_strerror_printf("Expansion string is empty");
+		fr_strerror_const("Expansion string is empty");
 		return -1;
 	}
 
@@ -748,7 +658,7 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 				 */
 				sublen = 0;
 			} else {
-				fr_strerror_printf("Failed expanding substring");
+				fr_strerror_const("Failed expanding substring");
 				return -1;
 			}
 		}
@@ -760,438 +670,13 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 		left--;
 
 		if (left <= 0) {
-			fr_strerror_printf("Ran out of space while expanding arguments");
+			fr_strerror_const("Ran out of space while expanding arguments");
 			return -1;
 		}
 	}
 	argv[argc] = NULL;
 
 	return argc;
-}
-
-/** Return the default log dir
- *
- * This is set at build time from --prefix
- * @return the value of LOGDIR
- */
-char const *rad_default_log_dir(void)
-{
-	return LOGDIR;
-}
-
-/** Return the default lib dir
- *
- * This is set at build time from --prefix
- * @return the value of LIBDIR
- */
-char const *rad_default_lib_dir(void)
-{
-	return LIBDIR;
-}
-
-/** Return the default raddb dir
- *
- * This is set at build time from --prefix
- * @return the value of RADDBDIR
- */
-char const *rad_default_raddb_dir(void)
-{
-	return RADDBDIR;
-}
-
-/** Return the default run dir
- *
- * This is set at build time from --prefix
- * @return the value of RUNDIR
- */
-char const *rad_default_run_dir(void)
-{
-	return RUNDIR;
-}
-
-/** Return the default sbin dir
- *
- * This is set at build time from --prefix
- * @return the value of SBINDIR
- */
-char const *rad_default_sbin_dir(void)
-{
-	return SBINDIR;
-}
-
-/** Return the default radacct dir
- *
- * This is set at build time from --prefix
- * @return the value of RADIR
- */
-char const *rad_default_radacct_dir(void)
-{
-	return RADIR;
-}
-
-/** Convert mode_t into humanly readable permissions flags
- *
- * @author Jonathan Leffler.
- *
- * @param mode to convert.
- * @param out Where to write the string to, must be exactly 10 bytes long.
- */
-void rad_mode_to_str(char out[static 10], mode_t mode)
-{
-	static char const *rwx[] = {"---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"};
-
-	strcpy(&out[0], rwx[(mode >> 6) & 0x07]);
-	strcpy(&out[3], rwx[(mode >> 3) & 0x07]);
-	strcpy(&out[6], rwx[(mode & 7)]);
-	if (mode & S_ISUID) out[2] = (mode & 0100) ? 's' : 'S';
-	if (mode & S_ISGID) out[5] = (mode & 0010) ? 's' : 'l';
-	if (mode & S_ISVTX) out[8] = (mode & 0100) ? 't' : 'T';
-	out[9] = '\0';
-}
-
-void rad_mode_to_oct(char out[static 5], mode_t mode)
-{
-	out[0] = '0' + ((mode >> 9) & 0x07);
-	out[1] = '0' + ((mode >> 6) & 0x07);
-	out[2] = '0' + ((mode >> 3) & 0x07);
-	out[3] = '0' + (mode & 0x07);
-	out[4] = '\0';
-}
-
-/** Resolve a uid to a passwd entry
- *
- * Resolves a uid to a passwd entry. The memory to hold the
- * passwd entry is talloced under ctx, and must be freed when no
- * longer required.
- *
- * @param ctx to allocate passwd entry in.
- * @param out Where to write pointer to entry.
- * @param uid to resolve.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid)
-{
-	static size_t len;
-	uint8_t *buff;
-	int ret;
-
-	*out = NULL;
-
-	/*
-	 *	We assume this won't change between calls,
-	 *	and that the value is the same, so races don't
-	 *	matter.
-	 */
-	if (len == 0) {
-#ifdef _SC_GETPW_R_SIZE_MAX
-		long int sc_len;
-
-		sc_len = sysconf(_SC_GETPW_R_SIZE_MAX);
-		if (sc_len <= 0) sc_len = 1024;
-		len = (size_t)sc_len;
-#else
-		len = 1024;
-#endif
-	}
-
-	buff = talloc_array(ctx, uint8_t, sizeof(struct passwd) + len);
-	if (!buff) return -1;
-
-	/*
-	 *	In some cases we may need to dynamically
-	 *	grow the string buffer.
-	 */
-	while ((ret = getpwuid_r(uid, (struct passwd *)buff, (char *)(buff + sizeof(struct passwd)),
-				 talloc_array_length(buff) - sizeof(struct passwd), out)) == ERANGE) {
-		MEM(buff = talloc_realloc_size(ctx, buff, talloc_array_length(buff) * 2));
-	}
-
-	if ((ret != 0) || !*out) {
-		fr_strerror_printf("%s", (errno != 0) ? fr_syserror(ret) : "Non-existent user");
-		talloc_free(buff);
-		errno = ret;
-		return -1;
-	}
-
-	talloc_set_type(buff, struct passwd);
-	*out = (struct passwd *)buff;
-
-	return 0;
-}
-
-/** Resolve a username to a passwd entry
- *
- * Resolves a username to a passwd entry. The memory to hold the
- * passwd entry is talloced under ctx, and must be freed when no
- * longer required.
- *
- * @param ctx to allocate passwd entry in.
- * @param out Where to write pointer to entry.
- * @param name to resolve.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
-{
-	static size_t len;
-	uint8_t *buff;
-	int ret;
-
-	*out = NULL;
-
-	/*
-	 *	We assume this won't change between calls,
-	 *	and that the value is the same, so races don't
-	 *	matter.
-	 */
-	if (len == 0) {
-#ifdef _SC_GETPW_R_SIZE_MAX
-		long int sc_len;
-
-		sc_len = sysconf(_SC_GETPW_R_SIZE_MAX);
-		if (sc_len <= 0) sc_len = 1024;
-		len = (size_t)sc_len;
-#else
-		sc_len = 1024;
-#endif
-	}
-
-	buff = talloc_array(ctx, uint8_t, sizeof(struct passwd) + len);
-	if (!buff) return -1;
-
-	/*
-	 *	In some cases we may need to dynamically
-	 *	grow the string buffer.
-	 */
-	while ((ret = getpwnam_r(name, (struct passwd *)buff, (char *)(buff + sizeof(struct passwd)),
-				 talloc_array_length(buff) - sizeof(struct passwd), out)) == ERANGE) {
-		MEM(buff = talloc_realloc_size(ctx, buff, talloc_array_length(buff) * 2));
-	}
-
-	if ((ret != 0) || !*out) {
-		fr_strerror_printf("%s", (errno != 0) ? fr_syserror(ret) : "Non-existent user");
-		talloc_free(buff);
-		errno = ret;
-		return -1;
-	}
-
-	talloc_set_type(buff, struct passwd);
-	*out = (struct passwd *)buff;
-
-	return 0;
-}
-
-/** Resolve a gid to a group database entry
- *
- * Resolves a gid to a group database entry. The memory to hold the
- * group entry is talloced under ctx, and must be freed when no
- * longer required.
- *
- * @param ctx to allocate passwd entry in.
- * @param out Where to write pointer to entry.
- * @param gid to resolve.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
-{
-	static size_t len;
-	uint8_t *buff;
-	int ret;
-
-	*out = NULL;
-
-	/*
-	 *	We assume this won't change between calls,
-	 *	and that the value is the same, so races don't
-	 *	matter.
-	 */
-	if (len == 0) {
-#ifdef _SC_GETGR_R_SIZE_MAX
-		long int sc_len;
-
-		sc_len = sysconf(_SC_GETGR_R_SIZE_MAX);
-		if (sc_len <= 0) sc_len = 1024;
-		len = (size_t)sc_len;
-#else
-		sc_len = 1024;
-#endif
-	}
-
-	buff = talloc_array(ctx, uint8_t, sizeof(struct group) + len);
-	if (!buff) return -1;
-
-	/*
-	 *	In some cases we may need to dynamically
-	 *	grow the string buffer.
-	 */
-	while ((ret = getgrgid_r(gid, (struct group *)buff, (char *)(buff + sizeof(struct group)),
-				 talloc_array_length(buff) - sizeof(struct group), out)) == ERANGE) {
-		MEM(buff = talloc_realloc_size(ctx, buff, talloc_array_length(buff) * 2));
-	}
-
-	if ((ret != 0) || !*out) {
-		fr_strerror_printf("%s", (ret != 0) ? fr_syserror(ret) : "Non-existent group");
-		talloc_free(buff);
-		errno = ret;
-		return -1;
-	}
-
-	talloc_set_type(buff, struct group);
-	*out = (struct group *)buff;
-
-	return 0;
-}
-
-/** Resolve a group name to a group database entry
- *
- * Resolves a group name to a group database entry.
- * The memory to hold the group entry is talloced under ctx,
- * and must be freed when no longer required.
- *
- * @param ctx to allocate passwd entry in.
- * @param out Where to write pointer to entry.
- * @param name to resolve.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name)
-{
-	static size_t len;
-	uint8_t *buff;
-	int ret;
-
-	*out = NULL;
-
-	/*
-	 *	We assume this won't change between calls,
-	 *	and that the value is the same, so races don't
-	 *	matter.
-	 */
-	if (len == 0) {
-#ifdef _SC_GETGR_R_SIZE_MAX
-		long int sc_len;
-
-		sc_len = sysconf(_SC_GETGR_R_SIZE_MAX);
-		if (sc_len <= 0) sc_len = 1024;
-		len = (size_t)sc_len;
-#else
-		len = 1024;
-#endif
-	}
-
-	buff = talloc_array(ctx, uint8_t, sizeof(struct group) + len);
-	if (!buff) return -1;
-
-	/*
-	 *	In some cases we may need to dynamically
-	 *	grow the string buffer.
-	 */
-	while ((ret = getgrnam_r(name, (struct group *)buff, (char *)(buff + sizeof(struct group)),
-				 talloc_array_length(buff) - sizeof(struct group), out)) == ERANGE) {
-		MEM(buff = talloc_realloc_size(ctx, buff, talloc_array_length(buff) * 2));
-	}
-
-	if ((ret != 0) || !*out) {
-		fr_strerror_printf("%s", (ret != 0) ? fr_syserror(ret) : "Non-existent group");
-		talloc_free(buff);
-		errno = ret;
-		return -1;
-	}
-
-	talloc_set_type(buff, struct group);
-	*out = (struct group *)buff;
-
-	return 0;
-}
-
-/** Resolve a group name to a GID
- *
- * @param ctx TALLOC_CTX for temporary allocations.
- * @param name of group.
- * @param out where to write gid.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name)
-{
-	int ret;
-	struct group *result;
-
-	ret = rad_getgrnam(ctx, &result, name);
-	if (ret < 0) return -1;
-
-	*out = result->gr_gid;
-	talloc_free(result);
-	return 0;
-}
-
-/** Print uid to a string
- *
- * @param ctx TALLOC_CTX for temporary allocations.
- * @param uid to resolve.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-char *rad_asprint_uid(TALLOC_CTX *ctx, uid_t uid)
-{
-	struct passwd *result;
-	char *out;
-
-	if (rad_getpwuid(ctx, &result, uid) < 0) return NULL;
-	out = talloc_typed_strdup(ctx, result->pw_name);
-	talloc_free(result);
-
-	return out;
-}
-
-/** Print gid to a string
- *
- * @param ctx TALLOC_CTX for temporary allocations.
- * @param gid to resolve.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-char *rad_asprint_gid(TALLOC_CTX *ctx, uid_t gid){
-	struct group *result;
-	char *out;
-
-	if (rad_getgrgid(ctx, &result, gid) < 0) return NULL;
-	out = talloc_typed_strdup(ctx, result->gr_name);
-	talloc_free(result);
-
-	return out;
-}
-
-/** Write a file access error to the fr_strerror buffer, including euid/egid
- *
- * @note retrieve error with fr_strerror()
- *
- * @param num Usually errno, unless the error is returned by the function.
- */
-void rad_file_error(int num)
-{
-	char const	*error;
-	struct passwd	*user = NULL;
-	struct group	*group = NULL;
-
-	error = fr_syserror(num);
-
-	if (rad_getpwuid(NULL, &user, geteuid()) < 0) goto finish;
-	if (rad_getgrgid(NULL, &group, getegid()) < 0) goto finish;
-
-	fr_strerror_printf("Effective user/group - %s:%s: %s", user->pw_name, group->gr_name, error);
-finish:
-	talloc_free(user);
-	talloc_free(group);
 }
 
 #ifdef HAVE_SETUID
@@ -1217,17 +702,17 @@ void rad_suid_up(void)
 
 	if (getresuid(&ruid, &euid, &suid) < 0) {
 		ERROR("Failed getting saved UID's");
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (setresuid(-1, suid, -1) < 0) {
 		ERROR("Failed switching to privileged user");
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (geteuid() != suid) {
 		ERROR("Switched to unknown UID");
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 }
 
@@ -1239,15 +724,15 @@ void rad_suid_down(void)
 		struct passwd *passwd;
 		char const *name;
 
-		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown" : passwd->pw_name;
+		name = (fr_perm_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown" : passwd->pw_name;
 		ERROR("Failed switching to uid %s: %s", name, fr_syserror(errno));
 		talloc_free(passwd);
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (geteuid() != suid_down_uid) {
 		ERROR("Failed switching uid: UID is incorrect");
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	fr_reset_dumpable();
@@ -1261,15 +746,15 @@ void rad_suid_down_permanent(void)
 		struct passwd *passwd;
 		char const *name;
 
-		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown" : passwd->pw_name;
+		name = (fr_perm_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown" : passwd->pw_name;
 		ERROR("Failed in permanent switch to uid %s: %s", name, fr_syserror(errno));
 		talloc_free(passwd);
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (geteuid() != suid_down_uid) {
 		ERROR("Switched to unknown uid");
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	fr_reset_dumpable();
@@ -1286,7 +771,7 @@ void rad_suid_up(void)
 
 	if (seteuid(0) < 0) {
 		ERROR("Failed switching up to euid 0: %s", fr_syserror(errno));
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 }
@@ -1301,10 +786,10 @@ void rad_suid_down(void)
 		struct passwd *passwd;
 		char const *name;
 
-		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown": passwd->pw_name;
+		name = (fr_perm_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown": passwd->pw_name;
 		ERROR("Failed switching to euid %s: %s", name, fr_syserror(errno));
 		talloc_free(passwd);
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	fr_reset_dumpable();
@@ -1331,10 +816,10 @@ void rad_suid_down_permanent(void)
 		struct passwd *passwd;
 		char const *name;
 
-		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown": passwd->pw_name;
+		name = (fr_perm_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown": passwd->pw_name;
 		ERROR("Failed switching permanently to uid %s: %s", name, fr_syserror(errno));
 		talloc_free(passwd);
-		fr_exit_now(1);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	fr_reset_dumpable();
@@ -1383,10 +868,10 @@ bool rad_suid_is_down_permanent(void)
 int rad_seuid(uid_t uid)
 {
 	if (seteuid(uid) < 0) {
-		int sete_errno = errno;	/* errno sets overwritten by rad_getpwuid */
+		int sete_errno = errno;	/* errno sets overwritten by fr_perm_getpwuid */
 		struct passwd *passwd;
 
-		if (rad_getpwuid(NULL, &passwd, uid) < 0) return -1;
+		if (fr_perm_getpwuid(NULL, &passwd, uid) < 0) return -1;
 		fr_strerror_printf("%s", fr_syserror(sete_errno));
 		talloc_free(passwd);
 
@@ -1405,10 +890,10 @@ int rad_seuid(uid_t uid)
 int rad_segid(gid_t gid)
 {
 	if (setegid(gid) < 0) {
-		int sete_errno = errno;	/* errno sets overwritten by rad_getgrgid */
+		int sete_errno = errno;	/* errno sets overwritten by fr_perm_getgrgid */
 		struct group *group;
 
-		if (rad_getgrgid(NULL, &group, gid) < 0) return -1;
+		if (fr_perm_getgrgid(NULL, &group, gid) < 0) return -1;
 		fr_strerror_printf("%s", fr_syserror(sete_errno));
 		talloc_free(group);
 

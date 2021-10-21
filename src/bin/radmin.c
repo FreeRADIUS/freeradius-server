@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/radmin.h>
 
 #include <freeradius-devel/util/dict.h>
@@ -61,6 +61,10 @@ DIAG_OFF(strict-prototypes)
 #endif /* HAVE_LIBREADLINE */
 DIAG_ON(strict-prototypes)
 
+#ifdef HAVE_GPERFTOOLS_PROFILER_H
+#include <gperftools/profiler.h>
+#endif
+
 static pthread_t cli_pthread_id;
 static bool cli_started = false;
 static bool stop = false;
@@ -87,7 +91,7 @@ static char *readline(char const *prompt)
 	p = strchr(line, '\n');
 	if (!p) {
 		fprintf(stderr, "Input line too long\n");
-		fr_exit_now(EXIT_FAILURE);
+		return NULL;
 	}
 
 	*p = '\0';
@@ -188,10 +192,10 @@ radmin_completion(const char *text, int start, UNUSED int end)
 
 	rl_attempted_completion_over = 1;
 
-	rad_assert(radmin_buffer != NULL);
-	rad_assert(radmin_partial_line != NULL);
-	rad_assert(radmin_partial_line >= radmin_buffer);
-	rad_assert(radmin_partial_line < (radmin_buffer + 8192));
+	fr_assert(radmin_buffer != NULL);
+	fr_assert(radmin_partial_line != NULL);
+	fr_assert(radmin_partial_line >= radmin_buffer);
+	fr_assert(radmin_partial_line < (radmin_buffer + 8192));
 
 	offset = (radmin_partial_line - radmin_buffer);
 
@@ -235,7 +239,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	context = 0;
 	prompt = "radmin> ";
 
-	ctx = talloc_init("radmin");
+	ctx = talloc_init_const("radmin");
 
 	size = 8192;
 	radmin_buffer = talloc_zero_array(ctx, char, size);
@@ -257,8 +261,8 @@ static void *fr_radmin(UNUSED void *input_ctx)
 	while (true) {
 		char *line;
 
-		rad_assert(context >= 0);
-		rad_assert(context_offset[context] >= 0);
+		fr_assert(context >= 0);
+		fr_assert(context_offset[context] >= 0);
 		radmin_partial_line = radmin_buffer + context_offset[context];
 		line = readline(prompt);
 		if (stop) break;
@@ -320,7 +324,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 *	Parse error!  Oops..
 		 */
 		if (argc < 0) {
-			fprintf(stderr, "Failed parsing line: %s\n", fr_strerror());
+			fr_perror("Failed parsing line");
 			add_history(line); /* let them up-arrow and retype it */
 			goto next;
 		}
@@ -340,7 +344,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		if (!info->runnable) {
 			size_t len;
 
-			rad_assert(argc > 0);
+			fr_assert(argc > 0);
 			len = strlen(line);
 
 			/*
@@ -394,7 +398,7 @@ static void *fr_radmin(UNUSED void *input_ctx)
 		 *	Reset this to the current context.
 		 */
 		if (fr_command_clear(context, info) < 0) {
-			fprintf(stderr, "Failing clearing buffers: %s\n", fr_strerror());
+			fr_perror("Failing clearing buffers");
 			break;
 		}
 
@@ -414,11 +418,11 @@ static void *fr_radmin(UNUSED void *input_ctx)
 /** radmin functions, tables, and callbacks
  *
  */
-static fr_time_delta_t start_time;
+static fr_time_t start_time;
 
 static int cmd_exit(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
-	main_loop_signal_self(RADIUS_SIGNAL_SELF_TERM);
+	main_loop_signal_raise(RADIUS_SIGNAL_SELF_TERM);
 	stop = true;
 
 	return 0;
@@ -446,7 +450,7 @@ static int cmd_help(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, fr_cmd_info
 
 static int cmd_terminate(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
-	main_loop_signal_self(RADIUS_SIGNAL_SELF_TERM);
+	main_loop_signal_raise(RADIUS_SIGNAL_SELF_TERM);
 	return 0;
 }
 
@@ -454,7 +458,7 @@ static int cmd_uptime(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr
 {
 	fr_time_delta_t uptime;
 
-	uptime = fr_time() - start_time;
+	uptime = fr_time_sub(fr_time(), start_time);
 
 	fr_fprintf(fp, "Uptime: %pVs seconds\n", fr_box_time_delta(uptime));
 
@@ -463,6 +467,11 @@ static int cmd_uptime(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr
 
 static int cmd_stats_memory(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
+	if (!radmin_main_config->talloc_memory_report) {
+		fprintf(fp, "Statistics are only available when the server is started with '-M'.\n");
+		return -1;
+	}
+
 	if (strcmp(info->argv[0], "total") == 0) {
 		fprintf(fp, "%zd\n", talloc_total_size(NULL));
 		return 0;
@@ -492,20 +501,82 @@ static int cmd_set_debug_level(UNUSED FILE *fp, FILE *fp_err, UNUSED void *ctx, 
 	int level = atoi(info->argv[0]);
 
 	if ((level < 0) || level > 5) {
-		fprintf(fp_err, "Invalid debug level '%s'", info->argv[0]);
+		fprintf(fp_err, "Invalid debug level '%s'\n", info->argv[0]);
 		return -1;
 	}
 
-	rad_debug_lvl = req_debug_lvl = fr_debug_lvl = level;
+	fr_debug_lvl = level;
 	return 0;
 }
 
 static int cmd_show_debug_level(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
 {
-	fprintf(fp, "%d\n", rad_debug_lvl);
+	fprintf(fp, "%d\n", fr_debug_lvl);
 	return 0;
 }
 
+#ifdef HAVE_GPERFTOOLS_PROFILER_H
+static int cmd_set_profile_status(UNUSED FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
+{
+	fr_value_box_t box;
+	struct ProfilerState state;
+
+	if (fr_value_box_from_str(NULL, &box, FR_TYPE_BOOL, NULL, info->argv[0], strlen(info->argv[0]), '\0', false) < 0) {
+		fprintf(fp_err, "Failed setting profile status '%s' - %s\n", info->argv[0], fr_strerror());
+		return -1;
+	}
+
+	ProfilerGetCurrentState(&state);
+
+	if (box.vb_bool) {
+		char *filename;
+
+		if (state.enabled) {
+			fprintf(fp_err, "Profiling is already on, to file %s\n", state.profile_name);
+			return -1;
+		}
+
+		if (info->argc >= 2) {
+			filename = UNCONST(char *, info->argv[1]);
+		} else {
+			filename = getenv("FR_PROFILE_FILENAME");
+		}
+
+		if (filename) {
+			ProfilerStart(filename);
+		} else {
+			pid_t pid = getpid();
+			MEM(filename = talloc_asprintf(NULL, "/tmp/freeradius-profile.%u.prof", pid));
+			ProfilerStart(filename);
+			talloc_free(filename);
+		}
+
+	} else if (state.enabled) {
+		ProfilerFlush();
+		ProfilerStop();
+	}
+	/*
+	 *	Else profiling is already off, allow the admin to turn
+	 *	it off again without producing an error
+	 */
+
+	return 0;
+}
+
+static int cmd_show_profile_status(FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
+{
+	struct ProfilerState state;
+	ProfilerGetCurrentState(&state);
+
+	if (!state.enabled) {
+		fprintf(fp, "off\n");
+		return 0;
+	}
+
+	fprintf(fp, "on %s\n", state.profile_name);
+	return 0;
+}
+#endif
 
 static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_cmd_info_t *info, int max_expansions, char const **expansions,
 				   bool want_section)
@@ -631,7 +702,7 @@ static int cmd_show_config_section(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_
 {
 	CONF_ITEM *item;
 
-	rad_assert(info->argc > 0);
+	fr_assert(info->argc > 0);
 
 	item = cf_reference_item(radmin_main_config->root_cs, radmin_main_config->root_cs,
 				 info->box[0]->vb_strvalue);
@@ -658,11 +729,11 @@ static int tab_expand_config_item(TALLOC_CTX *talloc_ctx, void *ctx, fr_cmd_info
 
 static int cmd_show_config_item(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
-	FR_TOKEN token;
+	fr_token_t token;
 	CONF_ITEM *item;
 	CONF_PAIR *cp;
 
-	rad_assert(info->argc > 0);
+	fr_assert(info->argc > 0);
 
 	item = cf_reference_item(radmin_main_config->root_cs, radmin_main_config->root_cs,
 				 info->box[0]->vb_strvalue);
@@ -708,24 +779,45 @@ static int cmd_show_config_item(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd
 
 static int cmd_show_client(FILE *fp, FILE *fp_err, UNUSED void *ctx, fr_cmd_info_t const *info)
 {
-	int proto = IPPROTO_UDP;
 	RADCLIENT *client;
 
 	if (info->argc >= 2) {
+		int proto;
+
 		if (strcmp(info->argv[1], "tcp") == 0) {
 			proto = IPPROTO_TCP;
+
+		} else if (strcmp(info->argv[1], "udp") == 0) {
+			proto = IPPROTO_TCP;
+
+		} else {
+			fprintf(fp_err, "Unknown proto '%s'.\n", info->argv[1]);
+			return -1;
 		}
-		/* else it MUST be "udp" */
-	}
 
-	client = client_find(NULL, &info->box[0]->vb_ip, proto);
-	if (!client) {
-		fprintf(fp_err, "No such client.");
+		client = client_find(NULL, &info->box[0]->vb_ip, proto);
+		if (client) goto found;
+
+	not_found:
+		fprintf(fp_err, "No such client.\n");
 		return -1;
+	} else {
+		client = client_find(NULL, &info->box[0]->vb_ip, IPPROTO_IP); /* hack */
+		if (!client) goto not_found;
 	}
 
+found:
 	fprintf(fp, "shortname\t%s\n", client->shortname);
 	fprintf(fp, "secret\t\t%s\n", client->secret);
+
+	if (client->proto == IPPROTO_UDP) {
+		fprintf(fp, "proto\t\tudp\n");
+
+	} else if (client->proto == IPPROTO_TCP) {
+		fprintf(fp, "proto\t\ttcp\n");
+	} else {
+		fprintf(fp, "proto\t\t*\n");
+	}
 
 	return 0;
 }
@@ -931,12 +1023,45 @@ static fr_cmd_table_t cmd_table[] = {
 		.read_only = true,
 	},
 
+#ifdef HAVE_GPERFTOOLS_PROFILER_H
+	{
+		.parent = "set",
+		.name = "profile",
+		.help = "Change profiler settings.",
+		.read_only = false
+	},
+
+	{
+		.parent = "set profile",
+		.name = "status",
+		.syntax = "BOOL [STRING]",
+		.func = cmd_set_profile_status,
+		.help = "Change the profiler status on/off, and potentially the filename",
+		.read_only = false,
+	},
+
+	{
+		.parent = "show",
+		.name = "profile",
+		.help = "Show profile settings.",
+		.read_only = true
+	},
+
+	{
+		.parent = "show profile",
+		.name = "status",
+		.func = cmd_show_profile_status,
+		.help = "show profile status, including filename if profiling is on.",
+		.read_only = true,
+	},
+#endif
+
 	CMD_TABLE_END
 };
 
 int fr_radmin_start(main_config_t *config, bool cli)
 {
-	radmin_ctx = talloc_init("radmin");
+	radmin_ctx = talloc_init_const("radmin");
 	if (!radmin_ctx) return -1;
 
 	start_time = fr_time();
@@ -1007,7 +1132,7 @@ int fr_radmin_register(UNUSED TALLOC_CTX *talloc_ctx, char const *name, void *ct
  */
 int fr_radmin_run(fr_cmd_info_t *info, FILE *fp, FILE *fp_err, char *str, bool read_only)
 {
-	int argc, rcode;
+	int argc, ret;
 
 	argc = fr_command_str_to_argv(radmin_cmd, info, str);
 	if (argc < 0) {
@@ -1019,7 +1144,7 @@ int fr_radmin_run(fr_cmd_info_t *info, FILE *fp, FILE *fp_err, char *str, bool r
 		return 0;
 	}
 
-	rcode = fr_command_run(fp, fp_err, info, read_only);
+	ret = fr_command_run(fp, fp_err, info, read_only);
 	fflush(fp);
 	fflush(fp_err);
 
@@ -1028,7 +1153,7 @@ int fr_radmin_run(fr_cmd_info_t *info, FILE *fp, FILE *fp_err, char *str, bool r
 	 */
 	(void) fr_command_clear(0, info);
 
-	if (rcode < 0) return rcode;
+	if (ret < 0) return ret;
 
 	return 1;
 }

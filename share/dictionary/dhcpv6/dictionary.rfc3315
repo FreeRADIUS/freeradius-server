@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -10,22 +10,129 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Client-ID				1	octets
-ATTRIBUTE	Server-ID				2	octets
-ATTRIBUTE	IA-NA					3	octets		# Complex struct see RFC 3315
-ATTRIBUTE	IA-TA					4	octets		# Complex struct see RFC 3315
-ATTRIBUTE	IA-ADDR					5	octets		# Complex struct see RFC 3315
-ATTRIBUTE	Option-Request				6	octets		# Magic option listing requested options
+ATTRIBUTE	Client-ID				1	struct
+MEMBER		DUID					uint16 key
+
+STRUCT	LLT				DUID			1
+MEMBER		Hardware-Type				uint16 key
+MEMBER		Time					date
+
+#  Sub-struct of Client-ID.LLT.Hardware-Type
+STRUCT	Ethernet			Hardware-Type		1
+MEMBER		Address					ether
+
+#
+#  If the 'key' field has value OTHER than what is defined here,
+#  then the decoder will create an option of type 'octets' which
+#  contains the rest of the structure.
+#
+
+STRUCT	EN				DUID			2
+MEMBER		Enterprise-Number			uint32
+MEMBER		Identifier				octets
+
+STRUCT	LL				DUID			3
+MEMBER		Hardware-Type				uint16 key
+
+#  Sub-struct of Client-ID.LL.Hardware-Type
+STRUCT	Ethernet			Hardware-Type		1
+MEMBER		Address					ether
+
+#
+#  Server-ID is a clone of Client-ID
+#
+ATTRIBUTE	Server-ID				2	struct clone=Client-ID
+
+ATTRIBUTE	IA-NA					3	struct
+MEMBER		IAID					uint32
+MEMBER		T1					time_delta
+MEMBER		T2					time_delta
+MEMBER		Options					group
+
+ATTRIBUTE	IA-TA					4	struct
+MEMBER		IAID					uint32
+MEMBER		Options					group
+
+ATTRIBUTE	IA-Addr					5	struct
+MEMBER		IPv6-Address				ipv6addr
+MEMBER		Preferred-Lifetime			time_delta
+MEMBER		Valid-Lifetime				time_delta
+MEMBER		Options					group
+
+ATTRIBUTE	Option-Request				6	uint16 array	# Magic option listing requested options
+
 ATTRIBUTE	Preference				7	uint8
 ATTRIBUTE	Elapsed-Time				8	uint16
-ATTRIBUTE	Relay-Message				9	octets
-ATTRIBUTE	Auth					11	octets		# Complex struct see RFC 3315
+ATTRIBUTE	Relay-Message				9	group
+
+ATTRIBUTE	Auth					11	struct
+
+MEMBER		Protocol				uint8
+VALUE	Protocol			Configuration-Token	0
+VALUE	Protocol			Delayed-Authentication	1
+VALUE	Protocol			Obsolete		2
+VALUE	Protocol			Reconfigure-Key		3
+
+MEMBER		Algorithm				uint8
+VALUE	Algorithm			HMAC-MD5		1
+
+MEMBER		Replay-Detection-Method			uint8
+VALUE	Replay-Detection-Method		Monotonicly-Increasing-Value 0
+
+MEMBER		Replay-Detection			uint64
+MEMBER		Information				octets
+
+#STRUCT		Auth-RKAP		Auth-Protocol		3 # really P=3,A=1,RDM=0
+#MEMBER		Type						uint8
+#VALUE		Type			Reconfigure-Key	1
+#VALUE		Type			HMAC-MD5	2
+
+#MEMBER		Value						octets[16]
+
 ATTRIBUTE	Unicast					12	ipv6addr
-ATTRIBUTE	Status-Code				13	octets		# Complex struct see RFC 3315
+ATTRIBUTE	Status-Code				13	struct
+MEMBER		Value					uint16
+
+VALUE	Value				Success			0
+VALUE	Value				UnspecFail		1
+VALUE	Value				NoAddrsAvail		2
+VALUE	Value				NoBinding		3
+VALUE	Value				NotOnLink		4
+VALUE	Value				UseMulticast		5
+VALUE	Value				NoPrefixAvail		6
+VALUE	Value				UnknownQueryType	7
+VALUE	Value				MalformedQuery		8
+VALUE	Value				NotConfigured		9
+VALUE	Value				NotAllowed		10
+VALUE	Value				QueryTerminated		11
+VALUE	Value				DataMissing		12
+VALUE	Value				CatchUpComplete		13
+VALUE	Value				NotSupported		14
+VALUE	Value				TLSConnectionRefused	15
+VALUE	Value				AddressInUse		16
+VALUE	Value				ConfigurationConflict	17
+VALUE	Value				MissingBindingInformation 18
+VALUE	Value				OutdatedBindingInformation 19
+VALUE	Value				ServerShuttingDown	20
+VALUE	Value				DNSUpdateNotSupported	21
+VALUE	Value				ExcessiveTimeSkew	22
+
+# Unassigned	23-65535
+
+MEMBER		Message					string
+
 ATTRIBUTE	Rapid-Commit				14	bool
 ATTRIBUTE	User-Class				15	octets array
-ATTRIBUTE	Vendor-Class				16	octets		# Complex struct see RFC 3315
+ATTRIBUTE	Vendor-Class				16	struct
+MEMBER		PEN					uint32
+MEMBER		Data					octets array
+
 ATTRIBUTE	Vendor-Opts				17	vsa
 ATTRIBUTE	Interface-ID				18	octets
+
 ATTRIBUTE	Reconf-Msg				19	uint8
-ATTRIBUTE	Reconf-Accept				20	bool
+VALUE	Reconf-Msg			Renew			5
+VALUE	Reconf-Msg			Rebind			6
+VALUE	Reconf-Msg			InformationRequest	11
+
+ATTRIBUTE	Reconf-Accept				20	octets	# only used to signal. no values.

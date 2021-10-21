@@ -1,0 +1,19 @@
+# PRE: switch
+#
+switch &reply.Filter-Id {
+	case "filter" {
+	     ok
+	}
+
+	case "filter" {  # ERROR
+		ok
+	}
+
+	case "fail" {
+		test_fail
+	}
+
+	case {
+		success
+	}
+}

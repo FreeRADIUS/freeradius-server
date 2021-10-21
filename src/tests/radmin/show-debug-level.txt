@@ -1,0 +1,4 @@
+#
+#  PRE: set-debug-level
+#
+show debug level

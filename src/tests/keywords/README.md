@@ -31,7 +31,7 @@ The entire test suite consists of two files:
   This allows many tests to be simplified, as all they need is a
   little bit of "unlang".
 
-## How it works.
+## How it works
 
 The input packet is passed into the unit test framework, through the
 unlang snippet in `foo`, and filtered through the reply filter in

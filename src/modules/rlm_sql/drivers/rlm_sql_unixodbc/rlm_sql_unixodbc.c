@@ -24,7 +24,7 @@ USES_APPLE_DEPRECATED_API
 #define LOG_PREFIX "rlm_sql_unixodbc - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <sqltypes.h>
 #include "rlm_sql.h"
@@ -97,17 +97,10 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	SQLSetConnectAttr(conn->dbc, SQL_ATTR_LOGIN_TIMEOUT, &timeout_ms, SQL_IS_UINTEGER);
 
 	/* 3. Connect to the datasource */
-	{
-		SQLCHAR *odbc_server, *odbc_login, *odbc_password;
-
-		memcpy(&odbc_server, &config->sql_server, sizeof(odbc_server));
-		memcpy(&odbc_login, &config->sql_login, sizeof(odbc_login));
-		memcpy(&odbc_password, &config->sql_password, sizeof(odbc_password));
-		err_handle = SQLConnect(conn->dbc,
-					odbc_server, strlen(config->sql_server),
-					odbc_login, strlen(config->sql_login),
-					odbc_password, strlen(config->sql_password));
-	}
+	err_handle = SQLConnect(conn->dbc,
+				UNCONST(SQLCHAR *, config->sql_server), strlen(config->sql_server),
+				UNCONST(SQLCHAR *, config->sql_login), strlen(config->sql_login),
+				UNCONST(SQLCHAR *, config->sql_password), strlen(config->sql_password));
 
 	if (sql_check_error(err_handle, handle, config)) {
 		ERROR("Connection failed");
@@ -131,12 +124,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 	int state;
 
 	/* Executing query */
-	{
-		SQLCHAR *odbc_query;
-
-		memcpy(&odbc_query, &query, sizeof(odbc_query));
-		err_handle = SQLExecDirect(conn->stmt, odbc_query, strlen(query));
-	}
+	err_handle = SQLExecDirect(conn->stmt, UNCONST(SQLCHAR *, query), strlen(query));
 	if ((state = sql_check_error(err_handle, handle, config))) {
 		if(state == RLM_SQL_RECONNECT) {
 			DEBUG("rlm_sql will attempt to reconnect");
@@ -168,7 +156,8 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 	conn->row = talloc_zero_array(conn, char *, colcount + 1); /* Space for pointers */
 
 	for (i = 1; i <= colcount; i++) {
-		SQLColAttributes(conn->stmt, ((SQLUSMALLINT) i), SQL_COLUMN_LENGTH, NULL, 0, NULL, &len);
+		len = 0;
+		SQLColAttributes(conn->stmt, ((SQLUSMALLINT) i), SQL_DESC_LENGTH, NULL, 0, NULL, &len);
 		conn->row[i - 1] = talloc_array(conn->row, char, ++len);
 		SQLBindCol(conn->stmt, i, SQL_C_CHAR, (SQLCHAR *)conn->row[i - 1], len, NULL);
 	}
@@ -307,7 +296,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED si
 	SQLINTEGER			errnum = 0;
 	SQLSMALLINT			length = 255;
 
-	rad_assert(outlen > 0);
+	fr_assert(outlen > 0);
 
 	errbuff[0] = state[0] = '\0';
 	SQLError(conn->env, conn->dbc, conn->stmt, state, &errnum,
@@ -352,7 +341,7 @@ static sql_rcode_t sql_check_error(long error_handle, rlm_sql_handle_t *handle, 
 		/* SQLSTATE 01 class contains info and warning messages */
 		case '1':
 			INFO("%s %s", state, error);
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 		case '0':		/* SQLSTATE 00 class means success */
 			res = RLM_SQL_OK;
 			break;

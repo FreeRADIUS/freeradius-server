@@ -25,16 +25,20 @@
 
 RCSID("$Id$")
 
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cf_parse.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/unlang/function.h>
+#include <freeradius-devel/unlang/interpret.h>
+#include <freeradius-devel/util/debug.h>
+#include <sys/wait.h>
 
 /** Whether triggers are enabled globally
  *
  */
 static bool			triggers_init;
 static CONF_SECTION const	*trigger_exec_main, *trigger_exec_subcs;
-static rbtree_t			*trigger_last_fired_tree;
+static fr_rb_tree_t		*trigger_last_fired_tree;
 static pthread_mutex_t		*trigger_mutex;
 
 #define REQUEST_INDEX_TRIGGER_NAME	1
@@ -44,52 +48,57 @@ static pthread_mutex_t		*trigger_mutex;
  *
  */
 typedef struct {
+	fr_rb_node_t	node;		//!< Entry in the trigger last fired tree.
 	CONF_ITEM	*ci;		//!< Config item this rate limit counter is associated with.
-	time_t		last_fired;	//!< When this trigger last fired.
+	fr_time_t	last_fired;	//!< When this trigger last fired.
 } trigger_last_fired_t;
+
+xlat_arg_parser_t const trigger_xlat_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
 /** Retrieve attributes from a special trigger list
  *
  */
-ssize_t trigger_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-		     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-		     REQUEST *request, char const *fmt)
+xlat_action_t trigger_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+			   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			   fr_value_box_list_t *in)
 {
-	VALUE_PAIR		*head;
+	fr_pair_list_t		*head = NULL;
 	fr_dict_attr_t const	*da;
-	VALUE_PAIR		*vp;
+	fr_pair_t		*vp;
+	fr_value_box_t		*in_head = fr_dlist_head(in);
+	fr_value_box_t		*vb;
 
 	if (!triggers_init) {
 		ERROR("Triggers are not enabled");
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
 	if (!request_data_reference(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME)) {
 		ERROR("trigger xlat may only be used in a trigger command");
-		return -1;
+		return XLAT_ACTION_FAIL;
 	}
 
 	head = request_data_reference(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS);
 
-	/*
-	 *	No arguments available.
-	 */
-	if (!head) return -1;
-
-	da = fr_dict_attr_by_name(request->dict, fmt);
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), in_head->vb_strvalue);
 	if (!da) {
-		ERROR("Unknown attribute \"%s\"", fmt);
-		return -1;
+		ERROR("Unknown attribute \"%pV\"", in_head);
+		return XLAT_ACTION_FAIL;
 	}
 
-	vp = fr_pair_find_by_da(head, da, TAG_ANY);
+	vp = fr_pair_find_by_da(head, da, 0);
 	if (!vp) {
-		ERROR("Attribute \"%s\" is not valid for this trigger", fmt);
-		return -1;
+		ERROR("Attribute \"%pV\" is not valid for this trigger", in_head);
+		return XLAT_ACTION_FAIL;
 	}
-	*out = fr_pair_value_asprint(request, vp, '\0');
 
-	return talloc_array_length(*out) - 1;
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_copy(ctx, vb, &vp->data);
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
 }
 
 static int _mutex_free(pthread_mutex_t *mutex)
@@ -105,18 +114,15 @@ static void _trigger_last_fired_free(void *data)
 
 /** Compares two last fired structures
  *
- * @param a first pointer to compare.
- * @param b second pointer to compare.
- * @return
- *	- -1 if a < b.
- *	- +1 if b > a.
- *	- 0 if both equal.
+ * @param one first pointer to compare.
+ * @param two second pointer to compare.
+ * @return CMP(one, two)
  */
-static int _trigger_last_fired_cmp(void const *a, void const *b)
+static int8_t _trigger_last_fired_cmp(void const *one, void const *two)
 {
-	trigger_last_fired_t const *lf_a = a, *lf_b = b;
+	trigger_last_fired_t const *a = one, *b = two;
 
-	return (lf_a->ci < lf_b->ci) - (lf_a->ci > lf_b->ci);
+	return CMP(a->ci, b->ci);
 }
 
 /** Set the global trigger section trigger_exec will search in, and register xlats
@@ -128,7 +134,7 @@ static int _trigger_last_fired_cmp(void const *a, void const *b)
  * We don't register the trigger xlat here, as we may inadvertently initialise
  * the xlat code, which is annoying when this is called from a utility.
  *
- * @param cs	to use as global trigger section.
+ * @param[in] cs	to use as global trigger section.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -148,14 +154,13 @@ int trigger_exec_init(CONF_SECTION const *cs)
 		return 0;
 	}
 
-	MEM(trigger_last_fired_tree = rbtree_talloc_create(talloc_null_ctx(),
-							   _trigger_last_fired_cmp, trigger_last_fired_t,
-							   _trigger_last_fired_free, 0));
+	MEM(trigger_last_fired_tree = fr_rb_inline_talloc_alloc(talloc_null_ctx(),
+								trigger_last_fired_t, node,
+								_trigger_last_fired_cmp, _trigger_last_fired_free));
 
 	trigger_mutex = talloc(talloc_null_ctx(), pthread_mutex_t);
 	pthread_mutex_init(trigger_mutex, 0);
 	talloc_set_destructor(trigger_mutex, _mutex_free);
-
 	triggers_init = true;
 
 	return 0;
@@ -178,23 +183,101 @@ bool trigger_enabled(void)
 	return triggers_init;
 }
 
+typedef struct {
+	char			*command;	//!< Name of the trigger.
+	xlat_exp_t		*xlat;		//!< xlat representation of the trigger args.
+	fr_value_box_list_t	args;		//!< Arguments to pass to the trigger exec.
+
+	fr_exec_state_t		exec;		//!< Used for asynchronous execution.
+	fr_time_delta_t		timeout;	//!< How long the trigger has to run.
+} fr_trigger_t;
+
+static unlang_action_t trigger_done(rlm_rcode_t *p_result, UNUSED int *priority,
+				    request_t *request, void *rctx)
+{
+	fr_trigger_t	*trigger = talloc_get_type_abort(rctx, fr_trigger_t);
+
+	if (trigger->exec.status == 0) {
+		RDEBUG2("Trigger \"%s\" done", trigger->command);
+		RETURN_MODULE_OK;
+	}
+
+	RERROR("Trigger \"%s\" failed", trigger->command);
+
+	RETURN_MODULE_FAIL;
+}
+
+static unlang_action_t trigger_resume(rlm_rcode_t *p_result, UNUSED int *priority,
+				      request_t *request, void *rctx)
+{
+	fr_trigger_t	*trigger = talloc_get_type_abort(rctx, fr_trigger_t);
+
+	if (fr_dlist_empty(&trigger->args)) {
+		RERROR("Failed trigger \"%s\" - did not expand to anything", trigger->command);
+		RETURN_MODULE_FAIL;
+	}
+
+	/*
+	 *	fr_exec_start just calls request_resume when it's
+	 *	done.
+	 */
+	if (fr_exec_start(request, &trigger->exec, request,
+	                  &trigger->args,
+	                  NULL, false, true,
+	                  false,
+	                  false, NULL, trigger->timeout) < 0) {
+	fail:
+		RPERROR("Failed running trigger \"%s\"", trigger->command);
+		RETURN_MODULE_FAIL;
+	}
+
+	/*
+	 *	Swap out the repeat function so that when we're
+	 *      resumed the code path in the interpreter pops
+	 *      the frame.  If we don't do this trigger_run just
+	 *	gets called repeatedly.
+	 */
+	if (unlang_function_repeat_set(request, trigger_done) < 0) {
+		fr_exec_cleanup(&trigger->exec, SIGKILL);
+		goto fail;
+	}
+
+	return UNLANG_ACTION_YIELD;
+}
+
+static unlang_action_t trigger_run(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+{
+	fr_trigger_t	*trigger = talloc_get_type_abort(uctx, fr_trigger_t);
+
+	RDEBUG("Running trigger \"%s\"", trigger->command);
+
+	if (unlang_xlat_push(request, &trigger->args, request,
+			     trigger->xlat, UNLANG_SUB_FRAME) < 0) RETURN_MODULE_FAIL;
+
+	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
+
 /** Execute a trigger - call an executable to process an event
  *
  * @note Calls to this function will be ignored if #trigger_exec_init has not been called.
  *
- * @param request	The current request.
- * @param cs		to search for triggers in.
- *			If cs is not NULL, the portion after the last '.' in name is used for the trigger.
- *			If cs is NULL, the entire name is used to find the trigger in the global trigger
- *			section.
- * @param name		the path relative to the global trigger section ending in the trigger name
- *			e.g. module.ldap.pool.start.
- * @param rate_limit	whether to rate limit triggers.
- * @param args		to make available via the @verbatim %{trigger:<arg>} @endverbatim xlat.
- * @return 		- 0 on success.
- *			- -1 on failure.
+ * @param[in] intp		Interpreter to run the trigger with.  If this is NULL the
+ *				trigger will be executed synchronously.
+ * @param[in] cs		to search for triggers in.
+ *				If cs is not NULL, the portion after the last '.' in name is used for the trigger.
+ *				If cs is NULL, the entire name is used to find the trigger in the global trigger
+ *				section.
+ * @param[in] name		the path relative to the global trigger section ending in the trigger name
+ *				e.g. module.ldap.pool.start.
+ * @param[in] rate_limit	whether to rate limit triggers.
+ * @param[in] args		to make available via the @verbatim %(trigger:<arg>) @endverbatim xlat.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, bool rate_limit, VALUE_PAIR *args)
+int trigger_exec(unlang_interpret_t *intp,
+		 CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_list_t *args)
 {
 	CONF_SECTION const	*subcs;
 
@@ -204,10 +287,9 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 	char const		*attr;
 	char const		*value;
 
-	VALUE_PAIR		*vp;
-
-	REQUEST			*fake = NULL;
-	int			ret = 0;
+	request_t		*request;
+	fr_trigger_t		*trigger;
+	ssize_t			slen;
 
 	/*
 	 *	noop if trigger_exec_init was never called
@@ -246,12 +328,12 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 
 	ci = cf_reference_item(subcs, trigger_exec_main, attr);
 	if (!ci) {
-		ROPTIONAL(RDEBUG2, DEBUG2, "No trigger configured for: %s", attr);
+		DEBUG2("No trigger configured for: %s", attr);
 		return -1;
 	}
 
 	if (!cf_item_is_pair(ci)) {
-		ROPTIONAL(RERROR, ERROR, "Trigger is not a configuration variable: %s", attr);
+		ERROR("Trigger is not a configuration variable: %s", attr);
 		return -1;
 	}
 
@@ -260,34 +342,35 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 
 	value = cf_pair_value(cp);
 	if (!value) {
-		ROPTIONAL(RERROR, ERROR, "Trigger has no value: %s", name);
+		ERROR("Trigger has no value: %s", name);
 		return -1;
 	}
 
 	/*
-	 *	May be called for Status-Server packets.
+	 *	Don't do any real work if we're checking the
+	 *	configuration.  i.e. don't run "start" or "stop"
+	 *	triggers on "radiusd -XC".
 	 */
-	vp = NULL;
-	if (request && request->packet) vp = request->packet->vps;
+	if (check_config) return 0;
 
 	/*
 	 *	Perform periodic rate_limiting.
 	 */
 	if (rate_limit) {
 		trigger_last_fired_t	find, *found;
-		time_t			now = time(NULL);
+		fr_time_t		now = fr_time();
 
 		find.ci = ci;
 
 		pthread_mutex_lock(trigger_mutex);
 
-		found = rbtree_finddata(trigger_last_fired_tree, &find);
+		found = fr_rb_find(trigger_last_fired_tree, &find);
 		if (!found) {
 			MEM(found = talloc(NULL, trigger_last_fired_t));
 			found->ci = ci;
-			found->last_fired = 0;
+			found->last_fired = fr_time_wrap(0);
 
-			rbtree_insert(trigger_last_fired_tree, found);
+			fr_rb_insert(trigger_last_fired_tree, found);
 		}
 
 		pthread_mutex_unlock(trigger_mutex);
@@ -295,24 +378,22 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 		/*
 		 *	Send the rate_limited traps at most once per second.
 		 */
-		if (found->last_fired == now) return -1;
+		if (fr_time_to_sec(found->last_fired) == fr_time_to_sec(now)) return -1;
 		found->last_fired = now;
 	}
 
 	/*
-	 *	radius_exec_program always needs a request.
+	 *	Allocate a request to run asynchronously in the interpreter.
 	 */
-	if (!request) request = fake = request_alloc(NULL);
-
-	RDEBUG2("Trigger \"%s\": %s", name, value);
+	request = request_alloc_internal(NULL, (&(request_init_args_t){ .detachable = true }));
 
 	/*
 	 *	Add the args to the request data, so they can be picked up by the
-	 *	xlat_trigger function.
+	 *	trigger_xlat function.
 	 */
 	if (args && (request_data_add(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS, args,
 				      false, false, false) < 0)) {
-		RERROR("Failed adding trigger request data");
+		talloc_free(request);
 		return -1;
 	}
 
@@ -323,23 +404,66 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
 
 		if (request_data_add(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME,
 				     name_tmp, false, false, false) < 0) {
-			RERROR("Failed marking request as inside trigger");
+			talloc_free(request);
 			return -1;
 		}
 	}
 
+	MEM(trigger = talloc_zero(request, fr_trigger_t));
+	fr_value_box_list_init(&trigger->args);
+	trigger->command = talloc_strdup(trigger, value);
+	trigger->timeout = fr_time_delta_from_sec(5);	/* FIXME - Should be configurable? */
+
+	slen = xlat_tokenize_argv(trigger, &trigger->xlat, NULL,
+				  &FR_SBUFF_IN(trigger->command, talloc_array_length(trigger->command) - 1), NULL, NULL);
+	if (slen <= 0) {
+		char *spaces, *text;
+
+		fr_canonicalize_error(trigger, &spaces, &text, slen, fr_strerror());
+
+		cf_log_err(cp, "Syntax error");
+		cf_log_err(cp, "%s", trigger->command);
+		cf_log_err(cp, "%s^ %s", spaces, text);
+
+		talloc_free(request);
+		talloc_free(spaces);
+		talloc_free(text);
+		return -1;
+	}
+
 	/*
-	 *	Don't fire triggers if we're just testing
+	 *	If we're not running it locally use the default
+	 *	interpreter for the thread.
 	 */
-	if (!check_config) ret = radius_exec_program(request, NULL, 0, NULL,
-						     request, value, vp, false, true,
-						     fr_time_delta_from_sec(EXEC_TIMEOUT));
-	(void) request_data_get(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_NAME);
-	(void) request_data_get(request, &trigger_exec_main, REQUEST_INDEX_TRIGGER_ARGS);
+	if (intp) {
+		unlang_interpret_set(request, intp);
+		if (unlang_subrequest_child_push_and_detach(request) < 0) {
+		error:
+			PERROR("Running trigger failed");
+			talloc_free(request);
+			return -1;
+		}
+	}
 
-	if (fake) talloc_free(fake);
+	if (unlang_function_push(request, trigger_run, trigger_resume,
+				 NULL, UNLANG_TOP_FRAME, trigger) < 0) goto error;
 
-	return ret;
+	if (!intp) {
+		/*
+		 *	Wait for the exec to finish too,
+		 *	so where there are global events
+		 *	the request processes don't race
+		 *	with something like the server
+		 *	shutting down.
+		 */
+		unlang_interpret_synchronous(NULL, request);
+		talloc_free(request);
+	}
+
+	/*
+	 *	Otherwise the worker cleans up the request request.
+	 */
+	return 0;
 }
 
 /** Create trigger arguments to describe the server the pool connects to
@@ -347,41 +471,34 @@ int trigger_exec(REQUEST *request, CONF_SECTION const *cs, char const *name, boo
  * @note #trigger_exec_init must be called before calling this function,
  *	 else it will return NULL.
  *
- * @param[in] ctx	to allocate VALUE_PAIR s in.
+ * @param[in] ctx	to allocate fr_pair_t s in.
+ * @param[out] list	to append Pool-Server and Pool-Port pairs to
  * @param[in] server	we're connecting to.
  * @param[in] port	on that server.
- * @return
- *	- NULL on failure, or if triggers are not enabled.
- *	- list containing Pool-Server and Pool-Port
  */
-VALUE_PAIR *trigger_args_afrom_server(TALLOC_CTX *ctx, char const *server, uint16_t port)
+void trigger_args_afrom_server(TALLOC_CTX *ctx, fr_pair_list_t *list, char const *server, uint16_t port)
 {
 	fr_dict_attr_t const	*server_da;
 	fr_dict_attr_t const	*port_da;
-	VALUE_PAIR		*out = NULL, *vp;
-	fr_cursor_t		cursor;
+	fr_pair_t		*vp;
 
-	server_da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_CONNECTION_POOL_SERVER);
+	server_da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CONNECTION_POOL_SERVER);
 	if (!server_da) {
 		ERROR("Incomplete dictionary: Missing definition for \"Connection-Pool-Server\"");
-		return NULL;
+		return;
 	}
 
-	port_da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_CONNECTION_POOL_PORT);
+	port_da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CONNECTION_POOL_PORT);
 	if (!port_da) {
 		ERROR("Incomplete dictionary: Missing definition for \"Connection-Pool-Port\"");
-		return NULL;
+		return;
 	}
 
-	fr_cursor_init(&cursor, &out);
-
 	MEM(vp = fr_pair_afrom_da(ctx, server_da));
-	fr_pair_value_strcpy(vp, server);
-	fr_cursor_append(&cursor, vp);
+	fr_pair_value_strdup(vp, server, false);
+	fr_pair_append(list, vp);
 
 	MEM(vp = fr_pair_afrom_da(ctx, port_da));
 	vp->vp_uint16 = port;
-	fr_cursor_append(&cursor, vp);
-
-	return out;
+	fr_pair_append(list, vp);
 }

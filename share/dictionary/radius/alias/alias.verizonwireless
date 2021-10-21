@@ -1,0 +1,10 @@
+ALIAS	Acct-Interim-Record-Number              	26.12951.200
+ALIAS	UE-Info-Type                            	26.12951.201
+ALIAS	UE-Info-Value                           	26.12951.202
+ALIAS	Dynamic-Address-Flag                    	26.12951.203
+ALIAS	Local-Seq-Number                        	26.12951.204
+ALIAS	Time-First-Usage                        	26.12951.205
+ALIAS	Time-Last-Usage                         	26.12951.206
+ALIAS	Charging-Group-ID                       	26.12951.207
+ALIAS	Service-Data-Container-Bin              	26.12951.210
+ALIAS	Service-Data-Container                  	26.12951.211

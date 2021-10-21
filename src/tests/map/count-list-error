@@ -2,5 +2,5 @@
 #	Updating lists isn't allowed
 #
 update {
-	&request:Filter-Id := &Filter-Id[#]	# ERROR
+	&request.Filter-Id := &Filter-Id[#]	# ERROR
 }

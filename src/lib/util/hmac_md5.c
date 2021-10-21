@@ -30,18 +30,18 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/md5.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/strerror.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <openssl/hmac.h>
-#  include <freeradius-devel/tls/missing.h>
 
-fr_thread_local_setup(HMAC_CTX *, md5_hmac_ctx)
+static _Thread_local EVP_MD_CTX *md5_hmac_ctx;
 
 static void _hmac_md5_ctx_free_on_exit(void *arg)
 {
-	HMAC_CTX_free(arg);
+	EVP_MD_CTX_free(arg);
 }
 
 /** Calculate HMAC using OpenSSL's MD5 implementation
@@ -51,30 +51,56 @@ static void _hmac_md5_ctx_free_on_exit(void *arg)
  * @param inlen length of data stream.
  * @param key Pointer to authentication key.
  * @param key_len Length of authentication key.
- *
+ * @return
+ *	- 0 on success.
+ *      - -1 on error.
  */
-void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
-		 uint8_t const *key, size_t key_len)
+int fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
+		uint8_t const *key, size_t key_len)
 {
-	HMAC_CTX *ctx;
+	EVP_MD_CTX *ctx;
+ 	EVP_PKEY *pkey;
 
 	if (unlikely(!md5_hmac_ctx)) {
-		ctx = HMAC_CTX_new();
-		if (unlikely(!ctx)) return;
-		fr_thread_local_set_destructor(md5_hmac_ctx, _hmac_md5_ctx_free_on_exit, ctx);
+		ctx = EVP_MD_CTX_new();
+		if (unlikely(!ctx)) {
+			fr_strerror_const("Failed allocating EVP_MD_CTX for HMAC-MD5");
+			return -1;
+		}
+		EVP_MD_CTX_set_flags(ctx, EVP_MD_CTX_FLAG_ONESHOT);
+		fr_atexit_thread_local(md5_hmac_ctx, _hmac_md5_ctx_free_on_exit, ctx);
 	} else {
 		ctx = md5_hmac_ctx;
 	}
 
-#ifdef EVP_MD_CTX_FLAG_NON_FIPS_ALLOW
-	/* Since MD5 is not allowed by FIPS, explicitly allow it. */
-	HMAC_CTX_set_flags(ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
-#endif /* EVP_MD_CTX_FLAG_NON_FIPS_ALLOW */
+	pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, key, key_len);
+	if (unlikely(pkey == NULL)) {
+		fr_strerror_const("Failed allocating pkey for HMAC-MD5");
+		return -1;
+	}
 
-	HMAC_Init_ex(ctx, key, key_len, EVP_md5(), NULL);
-	HMAC_Update(ctx, in, inlen);
-	HMAC_Final(ctx, digest, NULL);
-	HMAC_CTX_reset(ctx);
+	if (unlikely(EVP_DigestSignInit(ctx, NULL, EVP_md5(), NULL, pkey) != 1)) {
+		fr_strerror_const("Failed initialising EVP_MD_CTX for HMAC-MD5");
+	error:
+		EVP_PKEY_free(pkey);
+		return -1;
+	}
+	if (unlikely(EVP_DigestSignUpdate(ctx, in, inlen) != 1)) {
+		fr_strerror_const("Failed ingesting data for HMAC-MD5");
+		goto error;
+	}
+	/*
+	 *	OpenSSL <= 1.1.1 requires a non-null pointer for len
+	 */
+	if (unlikely(EVP_DigestSignFinal(ctx, digest, &(size_t){ 0 }) != 1)) {
+		fr_strerror_const("Failed finalising HMAC-MD5");
+		goto error;
+	}
+
+	EVP_PKEY_free(pkey);
+	EVP_MD_CTX_reset(ctx);
+
+	return 0;
 }
 #else
 /** Calculate HMAC using internal MD5 implementation
@@ -84,10 +110,12 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *in, size_t in
  * @param inlen length of data stream.
  * @param key Pointer to authentication key.
  * @param key_len Length of authentication key.
- *
+ * @return
+ *	- 0 on success.
+ *      - -1 on error.
  */
-void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
-		 uint8_t const *key, size_t key_len)
+int fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
+		uint8_t const *key, size_t key_len)
 {
 	fr_md5_ctx_t	*ctx;
 	uint8_t		k_ipad[65];    /* inner padding - key XORd with ipad */
@@ -147,65 +175,7 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *in, size_t in
 	fr_md5_final(digest, ctx);		/* finish up 2nd pass */
 
 	fr_md5_ctx_free(&ctx);
-}
-#endif /* HAVE_OPENSSL_EVP_H */
 
-/*
-Test Vectors (Trailing '\0' of a character string not included in test):
-
-  key =	 0x0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b
-  key_len =     16 bytes
-  data =	"Hi There"
-  data_len =    8  bytes
-  digest =      0x9294727a3638bb1c13f48ef8158bfc9d
-
-  key =	 "Jefe"
-  data =	"what do ya want for nothing?"
-  data_len =    28 bytes
-  digest =      0x750c783e6ab0b503eaa86e310a5db738
-
-  key =	 0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-
-  key_len       16 bytes
-  data =	0xDDDDDDDDDDDDDDDDDDDD...
-		..DDDDDDDDDDDDDDDDDDDD...
-		..DDDDDDDDDDDDDDDDDDDD...
-		..DDDDDDDDDDDDDDDDDDDD...
-		..DDDDDDDDDDDDDDDDDDDD
-  data_len =    50 bytes
-  digest =      0x56be34521d144c88dbb8c733f0e8b3f6
-*/
-
-#ifdef TESTING
-/*
- *  cc -DTESTING -I ../include/ hmac.c md5.c -o hmac
- *
- *  ./hmac Jefe "what do ya want for nothing?"
- */
-int main(int argc, char **argv)
-{
-	uint8_t digest[16];
-	char *key;
-	int key_len;
-	char *text;
-	int text_len;
-	int i;
-
-	key = argv[1];
-	key_len = strlen(key);
-
-	text = argv[2];
-	text_len = strlen(text);
-
-	fr_hmac_md5(digest, text, text_len, key, key_len);
-
-	for (i = 0; i < 16; i++) {
-	printf("%02x", digest[i]);
-	}
-	printf("\n");
-
-	exit(0);
 	return 0;
 }
-
-#endif
+#endif /* HAVE_OPENSSL_EVP_H */

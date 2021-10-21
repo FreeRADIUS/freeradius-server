@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <ctype.h>
 
@@ -60,17 +60,17 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct {
-	vp_tmpl_t	*paircmp_attr;	//!< Daily-Session-Time.
-	vp_tmpl_t	*limit_attr;  	//!< Max-Daily-Session.
-	vp_tmpl_t	*reply_attr;  	//!< Session-Timeout.
-	vp_tmpl_t	*key;  		//!< User-Name
+	tmpl_t	*paircmp_attr;	//!< Daily-Session-Time.
+	tmpl_t	*limit_attr;  	//!< Max-Daily-Session.
+	tmpl_t	*reply_attr;  	//!< Session-Timeout.
+	tmpl_t	*key;  		//!< User-Name
 
 	char const	*sqlmod_inst;	//!< Instance of SQL module to use, usually just 'sql'.
 	char const	*query;		//!< SQL query to retrieve current session time.
 	char const	*reset;  	//!< Daily, weekly, monthly, never or user defined.
 
-	time_t		reset_time;
-	time_t		last_reset;
+	fr_time_t	reset_time;
+	fr_time_t	last_reset;
 } rlm_sqlcounter_t;
 
 static const CONF_PARSER module_config[] = {
@@ -91,8 +91,8 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_sqlcounter_dict[];
 fr_dict_autoload_t rlm_sqlcounter_dict[] = {
@@ -111,21 +111,19 @@ fr_dict_attr_autoload_t rlm_sqlcounter_dict_attr[] = {
 	{ NULL }
 };
 
-static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)
+static int find_next_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 {
 	int		ret = 0;
 	size_t		len;
 	unsigned int	num = 1;
 	char		last = '\0';
 	struct tm	*tm, s_tm;
-	char		sCurrentTime[40], sNextTime[40];
+	time_t		time_s = fr_time_to_sec(now);
 
-	tm = localtime_r(&timeval, &s_tm);
-	len = strftime(sCurrentTime, sizeof(sCurrentTime), "%Y-%m-%d %H:%M:%S", tm);
-	if (len == 0) *sCurrentTime = '\0';
+	tm = localtime_r(&time_s, &s_tm);
 	tm->tm_sec = tm->tm_min = 0;
 
-	rad_assert(inst->reset != NULL);
+	fr_assert(inst->reset != NULL);
 
 	if (isdigit((int) inst->reset[0])){
 		len = strlen(inst->reset);
@@ -142,36 +140,33 @@ static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)
 		 *  Round up to the next nearest hour.
 		 */
 		tm->tm_hour += num;
-		inst->reset_time = mktime(tm);
+		inst->reset_time = fr_time_from_sec(mktime(tm));
 	} else if (strcmp(inst->reset, "daily") == 0 || last == 'd') {
 		/*
 		 *  Round up to the next nearest day.
 		 */
 		tm->tm_hour = 0;
 		tm->tm_mday += num;
-		inst->reset_time = mktime(tm);
+		inst->reset_time = fr_time_from_sec(mktime(tm));
 	} else if (strcmp(inst->reset, "weekly") == 0 || last == 'w') {
 		/*
 		 *  Round up to the next nearest week.
 		 */
 		tm->tm_hour = 0;
 		tm->tm_mday += (7 - tm->tm_wday) +(7*(num-1));
-		inst->reset_time = mktime(tm);
+		inst->reset_time = fr_time_from_sec(mktime(tm));
 	} else if (strcmp(inst->reset, "monthly") == 0 || last == 'm') {
 		tm->tm_hour = 0;
 		tm->tm_mday = 1;
 		tm->tm_mon += num;
-		inst->reset_time = mktime(tm);
+		inst->reset_time = fr_time_from_sec(mktime(tm));
 	} else if (strcmp(inst->reset, "never") == 0) {
-		inst->reset_time = 0;
+		inst->reset_time = fr_time_wrap(0);
 	} else {
 		return -1;
 	}
 
-	len = strftime(sNextTime, sizeof(sNextTime),"%Y-%m-%d %H:%M:%S",tm);
-	if (len == 0) *sNextTime = '\0';
-	DEBUG2("Current Time: %" PRId64 " [%s], Next reset %" PRId64 " [%s]",
-	       (int64_t) timeval, sCurrentTime, (int64_t) inst->reset_time, sNextTime);
+	DEBUG2("Current Time: %pV, Next reset %pV", fr_box_time(now), fr_box_time(inst->reset_time));
 
 	return ret;
 }
@@ -180,21 +175,19 @@ static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)
 /*  I don't believe that this routine handles Daylight Saving Time adjustments
     properly.  Any suggestions?
 */
-static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
+static int find_prev_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 {
 	int		ret = 0;
 	size_t		len;
 	unsigned	int num = 1;
 	char		last = '\0';
 	struct		tm *tm, s_tm;
-	char		sCurrentTime[40], sPrevTime[40];
+	time_t		time_s = fr_time_to_sec(now);
 
-	tm = localtime_r(&timeval, &s_tm);
-	len = strftime(sCurrentTime, sizeof(sCurrentTime), "%Y-%m-%d %H:%M:%S", tm);
-	if (len == 0) *sCurrentTime = '\0';
+	tm = localtime_r(&time_s, &s_tm);
 	tm->tm_sec = tm->tm_min = 0;
 
-	rad_assert(inst->reset != NULL);
+	fr_assert(inst->reset != NULL);
 
 	if (isdigit((int) inst->reset[0])){
 		len = strlen(inst->reset);
@@ -204,42 +197,40 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
 		if (!isalpha((int) last))
 			last = 'd';
 		num = atoi(inst->reset);
-		DEBUG("num=%d, last=%c",num,last);
+		DEBUG("num=%d, last=%c", num, last);
 	}
 	if (strcmp(inst->reset, "hourly") == 0 || last == 'h') {
 		/*
 		 *  Round down to the prev nearest hour.
 		 */
 		tm->tm_hour -= num - 1;
-		inst->last_reset = mktime(tm);
+		inst->last_reset = fr_time_from_sec(mktime(tm));
 	} else if (strcmp(inst->reset, "daily") == 0 || last == 'd') {
 		/*
 		 *  Round down to the prev nearest day.
 		 */
 		tm->tm_hour = 0;
 		tm->tm_mday -= num - 1;
-		inst->last_reset = mktime(tm);
+		inst->last_reset = fr_time_from_sec(mktime(tm));
 	} else if (strcmp(inst->reset, "weekly") == 0 || last == 'w') {
 		/*
 		 *  Round down to the prev nearest week.
 		 */
 		tm->tm_hour = 0;
 		tm->tm_mday -= tm->tm_wday +(7*(num-1));
-		inst->last_reset = mktime(tm);
+		inst->last_reset = fr_time_from_sec(mktime(tm));
 	} else if (strcmp(inst->reset, "monthly") == 0 || last == 'm') {
 		tm->tm_hour = 0;
 		tm->tm_mday = 1;
 		tm->tm_mon -= num - 1;
-		inst->last_reset = mktime(tm);
+		inst->last_reset = fr_time_from_sec(mktime(tm));
 	} else if (strcmp(inst->reset, "never") == 0) {
-		inst->reset_time = 0;
+		inst->reset_time = fr_time_wrap(0);
 	} else {
 		return -1;
 	}
-	len = strftime(sPrevTime, sizeof(sPrevTime), "%Y-%m-%d %H:%M:%S", tm);
-	if (len == 0) *sPrevTime = '\0';
-	DEBUG2("Current Time: %" PRId64 " [%s], Prev reset %" PRId64 " [%s]",
-	       (int64_t) timeval, sCurrentTime, (int64_t) inst->last_reset, sPrevTime);
+
+	DEBUG2("Current Time: %pV, Prev reset %pV", fr_box_time(now), fr_box_time(inst->last_reset));
 
 	return ret;
 }
@@ -253,7 +244,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
  *	%S	sqlmod_inst
  *
  */
-static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *inst, UNUSED REQUEST *request, char const *fmt)
+static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *inst, UNUSED request_t *request, char const *fmt)
 {
 	int freespace;
 	char const *p;
@@ -304,13 +295,13 @@ static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *
 
 		switch (*p) {
 			case 'b': /* last_reset */
-				snprintf(tmpdt, sizeof(tmpdt), "%" PRId64, (int64_t) inst->last_reset);
+				snprintf(tmpdt, sizeof(tmpdt), "%" PRId64, fr_time_to_sec(inst->last_reset));
 				strlcpy(q, tmpdt, freespace);
 				q += strlen(q);
 				p++;
 				break;
 			case 'e': /* reset_time */
-				snprintf(tmpdt, sizeof(tmpdt), "%" PRId64, (int64_t) inst->reset_time);
+				snprintf(tmpdt, sizeof(tmpdt), "%" PRId64, fr_time_to_sec(inst->reset_time));
 				strlcpy(q, tmpdt, freespace);
 				q += strlen(q);
 				p++;
@@ -337,10 +328,9 @@ static ssize_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t const *
 /*
  *	See if the counter matches.
  */
-static int counter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req , VALUE_PAIR *check,
-		       UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+static int counter_cmp(void *instance, request_t *request, UNUSED fr_pair_list_t *request_list , fr_pair_t const *check)
 {
-	rlm_sqlcounter_t const *inst = instance;
+	rlm_sqlcounter_t const *inst = talloc_get_type_abort_const(instance, rlm_sqlcounter_t);
 	uint64_t counter;
 
 	char query[MAX_QUERY_LEN], subst[MAX_QUERY_LEN];
@@ -351,7 +341,7 @@ static int counter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req 
 	if (sqlcounter_expand(subst, sizeof(subst), inst, request, inst->query) <= 0) {
 		REDEBUG("Insufficient query buffer space");
 
-		return RLM_MODULE_FAIL;
+		return -1;
 	}
 
 	/* Then combine that with the name of the module were using to do the query */
@@ -359,12 +349,12 @@ static int counter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req 
 	if (len >= sizeof(query) - 1) {
 		REDEBUG("Insufficient query buffer space");
 
-		return RLM_MODULE_FAIL;
+		return -1;
 	}
 
 	/* Finally, xlat resulting SQL query */
 	if (xlat_aeval(request, &expanded, request, query, NULL, NULL) < 0) {
-		return RLM_MODULE_FAIL;
+		return -1;
 	}
 
 	if (sscanf(expanded, "%" PRIu64, &counter) != 1) {
@@ -383,12 +373,12 @@ static int counter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req 
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_sqlcounter_t	*inst = instance;
+	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->instance, rlm_sqlcounter_t);
 	uint64_t		counter, res;
-	VALUE_PAIR		*limit;
-	VALUE_PAIR		*reply_item;
+	fr_pair_t		*limit;
+	fr_pair_t		*reply_item;
 	char			msg[128];
 	int			ret;
 
@@ -401,24 +391,25 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 *	Before doing anything else, see if we have to reset
 	 *	the counters.
 	 */
-	if (inst->reset_time && (inst->reset_time <= fr_time_to_sec(request->packet->timestamp))) {
+	if (fr_time_eq(inst->reset_time, fr_time_wrap(0)) &&
+	    (fr_time_lteq(inst->reset_time, request->packet->timestamp))) {
 		/*
 		 *	Re-set the next time and prev_time for this counters range
 		 */
 		inst->last_reset = inst->reset_time;
-		find_next_reset(inst, fr_time_to_sec(request->packet->timestamp));
+		find_next_reset(inst, request->packet->timestamp);
 	}
 
 	if (tmpl_find_vp(&limit, request, inst->limit_attr) < 0) {
 		RWDEBUG2("Couldn't find limit attribute, %s, doing nothing...", inst->limit_attr->name);
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/* First, expand %k, %b and %e in query */
 	if (sqlcounter_expand(subst, sizeof(subst), inst, request, inst->query) <= 0) {
 		REDEBUG("Insufficient query buffer space");
 
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/* Then combine that with the name of the module were using to do the query */
@@ -426,12 +417,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	if (len >= (sizeof(query) - 1)) {
 		REDEBUG("Insufficient query buffer space");
 
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	/* Finally, xlat resulting SQL query */
 	if (xlat_aeval(request, &expanded, request, query, NULL, NULL) < 0) {
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 	talloc_free(expanded);
 
@@ -445,19 +436,19 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 *	Check if check item > counter
 	 */
 	if (limit->vp_uint64 <= counter) {
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
 
 		/* User is denied access, send back a reply message */
 		snprintf(msg, sizeof(msg), "Your maximum %s usage time has been reached", inst->reset);
 
 		MEM(pair_update_reply(&vp, attr_reply_message) >= 0);
-		fr_pair_value_strcpy(vp, msg);
+		fr_pair_value_strdup(vp, msg, false);
 
 		REDEBUG2("Maximum %s usage time reached", inst->reset);
 		REDEBUG2("Rejecting user, %s value (%" PRIu64 ") is less than counter value (%" PRIu64 ")",
 			 inst->limit_attr->name, limit->vp_uint64, counter);
 
-		return RLM_MODULE_REJECT;
+		RETURN_MODULE_REJECT;
 	}
 
 	res = limit->vp_uint64 - counter;
@@ -476,47 +467,79 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		 *	limit, so that the user will not need to login
 		 *	again.  Do this only for Session-Timeout.
 		 */
-		if ((inst->reply_attr->tmpl_da == attr_session_timeout) &&
-		    inst->reset_time &&
-		    (res >= (uint64_t)(inst->reset_time - fr_time_to_sec(request->packet->timestamp)))) {
-			uint64_t to_reset = inst->reset_time - fr_time_to_sec(request->packet->timestamp);
+		if ((tmpl_da(inst->reply_attr) == attr_session_timeout) &&
+		    fr_time_gt(inst->reset_time, fr_time_wrap(0)) &&
+		    ((int64_t)res >= fr_time_delta_to_sec(fr_time_sub(inst->reset_time, request->packet->timestamp)))) {
+			fr_time_delta_t to_reset = fr_time_sub(inst->reset_time, request->packet->timestamp);
 
-			RDEBUG2("Time remaining (%" PRIu64 "s) is greater than time to reset (%" PRIu64 "s).  "
-				"Adding %" PRIu64 "s to reply value", to_reset, res, to_reset);
-			res = to_reset + limit->vp_uint32;
-		}
+			RDEBUG2("Time remaining (%pV) is greater than time to reset (%" PRIu64 "s).  "
+				"Adding %pV to reply value",
+				fr_box_time_delta(to_reset), res, fr_box_time_delta(to_reset));
+			res = fr_time_delta_to_sec(to_reset) + limit->vp_uint64;
 
-		/*
-		 *	Limit the reply attribute to the minimum of the existing value, or this new one.
-		 */
-		ret = tmpl_find_or_add_vp(&reply_item, request, inst->reply_attr);
-		switch (ret) {
-		case 1:		/* new */
-			break;
+			/*
+			 *	Limit the reply attribute to the minimum of the existing value, or this new one.
+			 *
+			 *	Duplicate code because Session-Timeout is uint32, not uint64
+			 */
+			ret = tmpl_find_or_add_vp(&reply_item, request, inst->reply_attr);
+			switch (ret) {
+			case 1:		/* new */
+				break;
 
-		case 0:		/* found */
-			if (reply_item->vp_uint64 <= res) {
-				RDEBUG2("Leaving existing %s value of %" PRIu64, inst->reply_attr->name,
-					reply_item->vp_uint64);
-				return RLM_MODULE_OK;
+			case 0:		/* found */
+				if (reply_item->vp_uint32 <= res) {
+					RDEBUG2("Leaving existing %s value of %u", inst->reply_attr->name,
+						reply_item->vp_uint32);
+					RETURN_MODULE_OK;
+				}
+				break;
+
+			case -1:	/* alloc failed */
+				REDEBUG("Error allocating attribute %s", inst->reply_attr->name);
+				RETURN_MODULE_FAIL;
+
+			default:	/* request or list unavailable */
+				RDEBUG2("List or request context not available for %s, skipping...", inst->reply_attr->name);
+				RETURN_MODULE_OK;
 			}
-			break;
 
-		case -1:	/* alloc failed */
-			REDEBUG("Error allocating attribute %s", inst->reply_attr->name);
-			return RLM_MODULE_FAIL;
+			if (res > UINT32_MAX) res = UINT32_MAX;
+			reply_item->vp_uint32 = res;
 
-		default:	/* request or list unavailable */
-			RDEBUG2("List or request context not available for %s, skipping...", inst->reply_attr->name);
-			return RLM_MODULE_OK;
+		} else {
+			/*
+			 *	Limit the reply attribute to the minimum of the existing value, or this new one.
+			 */
+			ret = tmpl_find_or_add_vp(&reply_item, request, inst->reply_attr);
+			switch (ret) {
+			case 1:		/* new */
+				break;
+
+			case 0:		/* found */
+				if (reply_item->vp_uint64 <= res) {
+					RDEBUG2("Leaving existing %s value of %" PRIu64, inst->reply_attr->name,
+						reply_item->vp_uint64);
+					RETURN_MODULE_OK;
+				}
+				break;
+
+			case -1:	/* alloc failed */
+				REDEBUG("Error allocating attribute %s", inst->reply_attr->name);
+				RETURN_MODULE_FAIL;
+
+			default:	/* request or list unavailable */
+				RDEBUG2("List or request context not available for %s, skipping...", inst->reply_attr->name);
+				RETURN_MODULE_OK;
+			}
+			reply_item->vp_uint64 = res;
 		}
-		reply_item->vp_uint64 = res;
 		RDEBUG2("&%pP", reply_item);
 
-		return RLM_MODULE_UPDATED;
+		RETURN_MODULE_UPDATED;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
@@ -532,14 +555,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_sqlcounter_t	*inst = instance;
-	time_t			now;
 
-	rad_assert(inst->query && *inst->query);
+	fr_assert(inst->query && *inst->query);
 
-	now = time(NULL);
-	inst->reset_time = 0;
+	inst->reset_time = fr_time_wrap(0);
 
-	if (find_next_reset(inst, now) == -1) {
+	if (find_next_reset(inst, fr_time()) == -1) {
 		cf_log_err(conf, "Invalid reset '%s'", inst->reset);
 		return -1;
 	}
@@ -547,9 +568,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *  Discover the beginning of the current time period.
 	 */
-	inst->last_reset = 0;
+	inst->last_reset = fr_time_wrap(0);
 
-	if (find_prev_reset(inst, now) < 0) {
+	if (find_prev_reset(inst, fr_time()) < 0) {
 		cf_log_err(conf, "Invalid reset '%s'", inst->reset);
 		return -1;
 	}
@@ -565,33 +586,33 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Create a new attribute for the counter.
 	 */
-	rad_assert(inst->paircmp_attr);
-	rad_assert(inst->limit_attr);
+	fr_assert(inst->paircmp_attr);
+	fr_assert(inst->limit_attr);
 
 	memset(&flags, 0, sizeof(flags));
-	if (tmpl_define_undefined_attr(dict_freeradius, inst->paircmp_attr, FR_TYPE_UINT64, &flags) < 0) {
+	if (tmpl_attr_unresolved_add(fr_dict_unconst(dict_freeradius), inst->paircmp_attr, FR_TYPE_UINT64, &flags) < 0) {
 		cf_log_perr(conf, "Failed defining counter attribute");
 		return -1;
 	}
 
-	if (tmpl_define_undefined_attr(dict_freeradius, inst->limit_attr, FR_TYPE_UINT64, &flags) < 0) {
+	if (tmpl_attr_unresolved_add(fr_dict_unconst(dict_freeradius), inst->limit_attr, FR_TYPE_UINT64, &flags) < 0) {
 		cf_log_perr(conf, "Failed defining check attribute");
 		return -1;
 	}
 
-	if (inst->paircmp_attr->tmpl_da->type != FR_TYPE_UINT64) {
-		cf_log_err(conf, "Counter attribute %s MUST be uint64", inst->paircmp_attr->tmpl_da->name);
+	if (tmpl_da(inst->paircmp_attr)->type != FR_TYPE_UINT64) {
+		cf_log_err(conf, "Counter attribute %s MUST be uint64", tmpl_da(inst->paircmp_attr)->name);
 		return -1;
 	}
-	if (paircmp_register_by_name(inst->paircmp_attr->tmpl_da->name, NULL, true,
+	if (paircmp_register_by_name(tmpl_da(inst->paircmp_attr)->name, NULL, true,
 					counter_cmp, inst) < 0) {
 		cf_log_perr(conf, "Failed registering comparison function for counter attribute %s",
-			    inst->paircmp_attr->tmpl_da->name);
+			    tmpl_da(inst->paircmp_attr)->name);
 		return -1;
 	}
 
-	if (inst->limit_attr->tmpl_da->type != FR_TYPE_UINT64) {
-		cf_log_err(conf, "Check attribute %s MUST be uint64", inst->limit_attr->tmpl_da->name);
+	if (tmpl_da(inst->limit_attr)->type != FR_TYPE_UINT64) {
+		cf_log_err(conf, "Check attribute %s MUST be uint64", tmpl_da(inst->limit_attr)->name);
 		return -1;
 	}
 

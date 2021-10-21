@@ -29,36 +29,32 @@ RCSIDH(radius_h, "$Id$")
  *
  */
 typedef enum {
-	FR_CODE_UNDEFINED		= 0,	//!< Packet code has not been set
-	FR_CODE_ACCESS_REQUEST		= 1,	//!< RFC2865 - Access-Request
-	FR_CODE_ACCESS_ACCEPT		= 2,	//!< RFC2865 - Access-Accept
-	FR_CODE_ACCESS_REJECT		= 3,	//!< RFC2865 - Access-Reject
-	FR_CODE_ACCOUNTING_REQUEST	= 4,	//!< RFC2866 - Accounting-Request
-	FR_CODE_ACCOUNTING_RESPONSE	= 5,	//!< RFC2866 - Accounting-Response
-	FR_CODE_ACCOUNTING_STATUS	= 6,	//!< RFC3575 - Reserved
-	FR_CODE_PASSWORD_REQUEST	= 7,	//!< RFC3575 - Reserved
-	FR_CODE_PASSWORD_ACK		= 8,	//!< RFC3575 - Reserved
-	FR_CODE_PASSWORD_REJECT		= 9,	//!< RFC3575 - Reserved
-	FR_CODE_ACCOUNTING_MESSAGE	= 10,	//!< RFC3575 - Reserved
-	FR_CODE_ACCESS_CHALLENGE	= 11,	//!< RFC2865 - Access-Challenge
-	FR_CODE_STATUS_SERVER	 	= 12,	//!< RFC2865/RFC5997 - Status Server (request)
-	FR_CODE_STATUS_CLIENT		= 13,	//!< RFC2865/RFC5997 - Status Server (response)
-	FR_CODE_DISCONNECT_REQUEST	= 40,	//!< RFC3575/RFC5176 - Disconnect-Request
-	FR_CODE_DISCONNECT_ACK		= 41,	//!< RFC3575/RFC5176 - Disconnect-Ack (positive)
-	FR_CODE_DISCONNECT_NAK		= 42,	//!< RFC3575/RFC5176 - Disconnect-Nak (not willing to perform)
-	FR_CODE_COA_REQUEST		= 43,	//!< RFC3575/RFC5176 - CoA-Request
-	FR_CODE_COA_ACK			= 44,	//!< RFC3575/RFC5176 - CoA-Ack (positive)
-	FR_CODE_COA_NAK			= 45,	//!< RFC3575/RFC5176 - CoA-Nak (not willing to perform)
-	FR_CODE_PROTOCOL_ERROR		= 52,	//!< RFC7930 - Protocol-Error (generic NAK)
-	FR_CODE_RADIUS_MAX     		= 255,	//!< Maximum possible code
-} FR_CODE;
+	FR_RADIUS_CODE_UNDEFINED		= 0,	//!< Packet code has not been set
+	FR_RADIUS_CODE_ACCESS_REQUEST		= 1,	//!< RFC2865 - Access-Request
+	FR_RADIUS_CODE_ACCESS_ACCEPT		= 2,	//!< RFC2865 - Access-Accept
+	FR_RADIUS_CODE_ACCESS_REJECT		= 3,	//!< RFC2865 - Access-Reject
+	FR_RADIUS_CODE_ACCOUNTING_REQUEST	= 4,	//!< RFC2866 - Accounting-Request
+	FR_RADIUS_CODE_ACCOUNTING_RESPONSE	= 5,	//!< RFC2866 - Accounting-Response
+	FR_RADIUS_CODE_ACCOUNTING_STATUS	= 6,	//!< RFC3575 - Reserved
+	FR_RADIUS_CODE_PASSWORD_REQUEST		= 7,	//!< RFC3575 - Reserved
+	FR_RADIUS_CODE_PASSWORD_ACK		= 8,	//!< RFC3575 - Reserved
+	FR_RADIUS_CODE_PASSWORD_REJECT		= 9,	//!< RFC3575 - Reserved
+	FR_RADIUS_CODE_ACCOUNTING_MESSAGE	= 10,	//!< RFC3575 - Reserved
+	FR_RADIUS_CODE_ACCESS_CHALLENGE		= 11,	//!< RFC2865 - Access-Challenge
+	FR_RADIUS_CODE_STATUS_SERVER	 	= 12,	//!< RFC2865/RFC5997 - Status Server (request)
+	FR_RADIUS_CODE_STATUS_CLIENT		= 13,	//!< RFC2865/RFC5997 - Status Server (response)
+	FR_RADIUS_CODE_DISCONNECT_REQUEST	= 40,	//!< RFC3575/RFC5176 - Disconnect-Request
+	FR_RADIUS_CODE_DISCONNECT_ACK		= 41,	//!< RFC3575/RFC5176 - Disconnect-Ack (positive)
+	FR_RADIUS_CODE_DISCONNECT_NAK		= 42,	//!< RFC3575/RFC5176 - Disconnect-Nak (not willing to perform)
+	FR_RADIUS_CODE_COA_REQUEST		= 43,	//!< RFC3575/RFC5176 - CoA-Request
+	FR_RADIUS_CODE_COA_ACK			= 44,	//!< RFC3575/RFC5176 - CoA-Ack (positive)
+	FR_RADIUS_CODE_COA_NAK			= 45,	//!< RFC3575/RFC5176 - CoA-Nak (not willing to perform)
+	FR_RADIUS_CODE_PROTOCOL_ERROR		= 52,	//!< RFC7930 - Protocol-Error (generic NAK)
+	FR_RADIUS_CODE_MAX 	  		= 53,	//!< Maximum possible protocol code
+	FR_RADIUS_CODE_DO_NOT_RESPOND		= 256	//!< Special rcode to indicate we will not respond.
+} fr_radius_packet_code_t;
 
-/*
- *	Maximum code that we accept
- */
-#define	FR_RADIUS_MAX_PACKET_CODE	(53)
-
-#define FR_CODE_DO_NOT_RESPOND		(256)
+#define FR_RADIUS_PACKET_CODE_VALID(_code) (((_code) > 0) && ((_code) < FR_RADIUS_CODE_MAX))
 
 #define FR_AUTH_UDP_PORT		1812
 #define FR_AUTH_UDP_PORT_ALT		1645

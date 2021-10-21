@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -14,13 +14,13 @@ VENDOR		Xedia				838
 
 BEGIN-VENDOR	Xedia
 
-ATTRIBUTE	Xedia-DNS-Server			1	ipaddr
-ATTRIBUTE	Xedia-NetBios-Server			2	ipaddr
-ATTRIBUTE	Xedia-Address-Pool			3	string
-ATTRIBUTE	Xedia-PPP-Echo-Interval			4	integer
-ATTRIBUTE	Xedia-SSH-Privileges			5	integer
-ATTRIBUTE	Xedia-Client-Access-Network		6	string
-ATTRIBUTE	Xedia-Client-Firewall-Setting		7	integer
-ATTRIBUTE	Xedia-Save-Password			8	integer
+ATTRIBUTE	DNS-Server				1	ipaddr
+ATTRIBUTE	NetBios-Server				2	ipaddr
+ATTRIBUTE	Address-Pool				3	string
+ATTRIBUTE	PPP-Echo-Interval			4	integer
+ATTRIBUTE	SSH-Privileges				5	integer
+ATTRIBUTE	Client-Access-Network			6	string
+ATTRIBUTE	Client-Firewall-Setting			7	integer
+ATTRIBUTE	Save-Password				8	integer
 
 END-VENDOR	Xedia

@@ -1,0 +1,45 @@
+# test commands
+#
+#  There's not (yet) any way to delete the commands..
+#
+#  This also currently prints out all of the commands it adds, but oh well..
+#  That's for debugging.
+#
+
+command add :goo c
+command add :baz b
+command add :bar a
+
+command add foo :did have INTEGER
+
+#command tab f
+#data 1 - 'foo'
+
+#command tab foo d
+#data 1 - 'did'
+
+#command tab foo did ha
+#data 1 - 'have'
+
+#command tab foo did have 1
+#data 1 - 'INTEGER'
+
+#
+#  Alternate parameters
+#
+command add show module :sql (alive|dead)
+match ok
+
+command add show module :file (alive|(foo bar))
+match ok
+
+#
+#  Optional parameters
+#
+command add set home server :localhost IPADDR [INTEGER]
+match ok
+
+command add set home server :remote [state INTEGER]
+match ok
+
+count 0

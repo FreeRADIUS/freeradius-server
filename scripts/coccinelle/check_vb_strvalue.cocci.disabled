@@ -1,0 +1,25 @@
+// Copyright (C) 2019 Network RADIUS SAS.  Licenced under GPLv2.
+// Development of this scripts was sponsored by Network RADIUS SAS.
+// Author: Jorge Pereira (jpereira@freeradius.org)
+// Confidence: High
+// Comments: Fix use of vb_strvalue
+// Options: --no-includes
+
+// TODO: As discussed in https://systeme.lip6.fr/pipermail/cocci/2019-November/006669.html
+// the current Coccinelle can't handle format strings based on the data-type yet,
+// so, this is disabled for now.
+
+@r1@
+struct mydata *sp;
+struct mydata s;
+format F =~ "s";
+expression f;
+position p1;
+@@
+(
+-f("%@F@", sp->name);
++f("%m", sp);
+|
+-f("%@F@", s.name);
++f("%m", &s);
+)

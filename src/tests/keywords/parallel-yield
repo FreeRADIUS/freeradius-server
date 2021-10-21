@@ -5,7 +5,7 @@
 # Ensure if one module yields, the rest execute
 parallel {
 	reschedule
-	update request {
+	update parent.request {
 		&Tmp-String-0 := 'foo'
 	}
 }

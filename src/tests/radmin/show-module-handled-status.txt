@@ -1,0 +1,4 @@
+#
+#  PRE: set-module-handled-updated
+#
+show module handled status

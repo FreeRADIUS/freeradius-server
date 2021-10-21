@@ -31,34 +31,44 @@ RCSID("$Id$")
 #include <freeradius-devel/server/log.h>
 #include <fcntl.h>
 
-#ifdef HAVE_WDOCUMENTATION
-DIAG_OFF(documentation)
-#endif
-#include <unbound.h>
-#ifdef HAVE_WDOCUMENTATION
-DIAG_ON(documentation)
-#endif
+#include "io.h"
+#include "log.h"
 
 typedef struct {
-	struct ub_ctx	*ub;   /* This must come first.  Do not move */
-	fr_event_list_t	*el; /* This must come second.  Do not move. */
-
 	char const	*name;
-	char const	*xlat_a_name;
-	char const	*xlat_aaaa_name;
-	char const	*xlat_ptr_name;
 
 	uint32_t	timeout;
 
-	char const	*filename;
-
-	int		log_fd;
-	FILE		*log_stream;
-
-	int		log_pipe[2];
-	FILE		*log_pipe_stream[2];
-	bool		log_pipe_in_use;
+	char const	*filename;		//!< Unbound configuration file
+	char const	*resolvconf;		//!< resolv.conf file to use
+	char const	*hosts;			//!< hosts file to load
 } rlm_unbound_t;
+
+typedef struct {
+	unbound_io_event_base_t	*ev_b;		//!< Unbound event base
+	rlm_unbound_t		*inst;		//!< Instance data
+	unbound_log_t		*u_log;		//!< Unbound log structure
+} rlm_unbound_thread_t;
+
+typedef struct {
+	rlm_unbound_t		*inst;		//!< Instance data
+	rlm_unbound_thread_t	*t;		//!< Thread structure
+} unbound_xlat_thread_inst_t;
+
+typedef struct {
+	int			async_id;	//!< Id of async query
+	request_t		*request;	//!< Current request being processed
+	rlm_unbound_thread_t	*t;		//!< Thread running this request
+	int			done;		//!< Indicator that the callback has been called
+						///< Negative values indicate errors.
+	bool			timedout;	//!< Request timedout.
+	fr_type_t		return_type;	//!< Data type to parse results into
+	bool			has_priority;	//!< Does the returned data start with a priority field
+	uint16_t		count;		//!< Number of results to return
+	fr_value_box_list_t	list;		//!< Where to put the parsed results
+	TALLOC_CTX		*out_ctx;	//!< CTX to allocate parsed results in
+	fr_event_timer_t const	*ev;		//!< Event for timeout
+} unbound_request_t;
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -66,318 +76,423 @@ typedef struct {
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, rlm_unbound_t, filename), .dflt = "${modconfdir}/unbound/default.conf" },
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, rlm_unbound_t, timeout), .dflt = "3000" },
+	{ FR_CONF_OFFSET("resolvconf", FR_TYPE_FILE_INPUT, rlm_unbound_t, resolvconf) },
+	{ FR_CONF_OFFSET("hosts", FR_TYPE_FILE_INPUT, rlm_unbound_t, hosts) },
 	CONF_PARSER_TERMINATOR
 };
 
-/*
- *	Callback sent to libunbound for xlat functions.  Simply links the
- *	new ub_result via a pointer that has been allocated from the heap.
- *	This pointer has been pre-initialized to a magic value.
- */
-static void link_ubres(void *my_arg, int err, struct ub_result *result)
+static int _unbound_request_free(unbound_request_t *ur)
 {
-	struct ub_result **ubres = (struct ub_result **)my_arg;
-
 	/*
-	 *	Note that while result will be NULL on error, we are explicit
-	 *	here because that is actually a behavior that is suboptimal
-	 *	and only documented in the examples.  It could change.
+	 *	Cancel an outstanding async unbound call if the request is being freed
 	 */
-	if (err) {
-		ERROR("%s", ub_strerror(err));
-		*ubres = NULL;
-	} else {
-		*ubres = result;
-	}
+	if ((ur->async_id != 0) && (ur->done == 0)) ub_cancel(ur->t->ev_b->ub, ur->async_id);
+
+	return 0;
 }
 
-/*
- *	Convert labels as found in a DNS result to a NULL terminated string.
+/**	Callback called by unbound when resolution started with ub_resolve_event() completes
  *
- *	Result is written to memory pointed to by "out" but no result will
- *	be written unless it and its terminating NULL character fit in "left"
- *	bytes.  Returns the number of bytes written excluding the terminating
- *	NULL, or -1 if nothing was written because it would not fit or due
- *	to a violation in the labels format.
+ * @param mydata	the request tracking structure set up before ub_resolve_event() was called
+ * @param rcode		should be the rcode from the reply packet, but appears not to be
+ * @param packet	wire format reply packet
+ * @param packet_len	length of wire format packet
+ * @param sec		DNSSEC status code
+ * @param why_bogus	String describing DNSSEC issue if sec = 1
+ * @param rate_limited	Was the request rate limited due to unbound workload
  */
-static int rrlabels_tostr(char *out, char *rr, size_t left)
+static void xlat_unbound_callback(void *mydata, int rcode, void *packet, int packet_len, int sec,
+				  char* why_bogus, UNUSED int rate_limited)
 {
-	int offset = 0;
+	unbound_request_t	*ur = talloc_get_type_abort(mydata, unbound_request_t);
+	request_t		*request = ur->request;
+	fr_dbuff_t		dbuff;
+	uint16_t		qdcount = 0, ancount = 0, i, rdlength = 0;
+	uint8_t			pktrcode = 0, skip = 0;
+	ssize_t			used;
+	fr_value_box_t		*vb;
 
 	/*
-	 * TODO: verify that unbound results (will) always use this label
-	 * format, and review the specs on this label format for nuances.
+	 *	Request has completed remove timeout event and set
+	 *	async_id to 0 so ub_cancel() is not called when ur is freed
 	 */
+	if (ur->ev) (void)fr_event_timer_delete(&ur->ev);
+	ur->async_id = 0;
 
-	if (!left) {
-		return -1;
+	/*
+	 *	Bogus responses have the "sec" flag set to 1
+	 */
+	if (sec == 1) {
+		RERROR("%s", why_bogus);
+		ur->done = -16;
+		goto resume;
 	}
-	if (left > 253) {
-		left = 253; /* DNS length limit */
+
+	RHEXDUMP4((uint8_t const *)packet, packet_len, "Unbound callback called with packet [length %d]", packet_len);
+
+	fr_dbuff_init(&dbuff, (uint8_t const *)packet, (size_t)packet_len);
+
+	/*	Skip initial header entries */
+	fr_dbuff_advance(&dbuff, 3);
+
+	/*
+	 *	Extract rcode - it doesn't appear to be passed in as a
+	 *	parameter, contrary to the documentation...
+	 */
+	fr_dbuff_out(&pktrcode, &dbuff);
+	rcode = pktrcode & 0x0f;
+	if (rcode != 0) {
+		ur->done = 0 - rcode;
+		REDEBUG("DNS rcode is %d", rcode);
+		goto resume;
 	}
-	/* As a whole this should be "NULL terminated" by the 0-length label */
-	if (strnlen(rr, left) > left - 1) {
-		return -1;
+
+	fr_dbuff_out(&qdcount, &dbuff);
+	if (qdcount > 1) {
+		RERROR("DNS results packet with multiple questions");
+		ur->done = -32;
+		goto resume;
 	}
 
-	/* It will fit, but does it it look well formed? */
-	while (1) {
-		size_t count;
+	/*	How many answer records do we have? */
+	fr_dbuff_out(&ancount, &dbuff);
+	RDEBUG4("Unbound returned %d answers", ancount);
 
-		count = *((unsigned char *)(rr + offset));
-		if (!count) break;
+	/*	Skip remaining header entries */
+	fr_dbuff_advance(&dbuff, 4);
 
-		offset++;
-		if (count > 63 || strlen(rr + offset) < count) {
-			return -1;
+	/*	Skip the QNAME */
+	fr_dbuff_out(&skip, &dbuff);
+	while (skip > 0) {
+		if (skip > 63) {
+			/*
+			 *	This is a pointer to somewhere else in the the packet
+			 *	Pointers use two octets
+			 *	Just move past the pointer to the next label in the question
+			 */
+			fr_dbuff_advance(&dbuff, 1);
+		} else {
+			if (fr_dbuff_remaining(&dbuff) < skip) break;
+			fr_dbuff_advance(&dbuff, skip);
 		}
-		offset += count;
+		fr_dbuff_out(&skip, &dbuff);
 	}
 
-	/* Data is valid and fits.  Copy it. */
-	offset = 0;
-	while (1) {
-		int count;
+	/*	Skip QTYPE and QCLASS */
+	fr_dbuff_advance(&dbuff, 4);
 
-		count = *((unsigned char *)(rr));
-		if (!count) break;
+	/*	We only want a limited number of replies */
+	if (ancount > ur->count) ancount = ur->count;
 
-		if (offset) {
-			*(out + offset) = '.';
-			offset++;
-		}
+	fr_value_box_list_init(&ur->list);
 
-		rr++;
-		memcpy(out + offset, rr, count);
-		rr += count;
-		offset += count;
-	}
+	/*	Read the answer RRs */
+	for (i = 0; i < ancount; i++) {
+		fr_dbuff_out(&skip, &dbuff);
+		if (skip > 63) fr_dbuff_advance(&dbuff, 1);
 
-	*(out + offset) = '\0';
-	return offset;
-}
+		/*	Skip TYPE, CLASS and TTL */
+		fr_dbuff_advance(&dbuff, 8);
 
-static int ub_common_wait(rlm_unbound_t const *inst, REQUEST *request,
-			  char const *name, struct ub_result **ub, int async_id)
-{
-	useconds_t iv, waited;
+		fr_dbuff_out(&rdlength, &dbuff);
+		RDEBUG4("RDLENGTH is %d", rdlength);
 
-	iv = inst->timeout > 64 ? 64000 : inst->timeout * 1000;
-	ub_process(inst->ub);
-
-	for (waited = 0; (void const *)*ub == (void const *)inst; waited += iv, iv *= 2) {
-
-		if (waited + iv > (useconds_t)inst->timeout * 1000) {
-			usleep(inst->timeout * 1000 - waited);
-			ub_process(inst->ub);
+		vb = fr_value_box_alloc_null(ur->out_ctx);
+		switch (ur->return_type) {
+		case FR_TYPE_IPV4_ADDR:
+		case FR_TYPE_IPV6_ADDR:
+		case FR_TYPE_OCTETS:
+			if (fr_value_box_from_network(ur->out_ctx, vb, ur->return_type, NULL,
+						      &dbuff, rdlength, true) < 0) {
+			error:
+				talloc_free(vb);
+				fr_dlist_talloc_free(&ur->list);
+				ur->done = -32;
+				goto resume;
+			}
 			break;
-		}
 
-		usleep(iv);
+		case FR_TYPE_STRING:
+			if (ur->has_priority) {
+				/*
+				 *	This record type has a priority before the label
+				 *	add the priority first as a separate box
+				 */
+				fr_value_box_t	*priority_vb;
+				if (rdlength < 3) {
+					REDEBUG("%s - Invalid data returned", ur->t->inst->name);
+					goto error;
+				}
+				priority_vb = fr_value_box_alloc_null(ur->out_ctx);
+				if (fr_value_box_from_network(ur->out_ctx, priority_vb, FR_TYPE_UINT16, NULL,
+							      &dbuff, 2, true) < 0) {
+					talloc_free(priority_vb);
+					goto error;
+				}
+				fr_dlist_insert_tail(&ur->list, priority_vb);
+			}
 
-		/* Check if already handled by event loop */
-		if ((void const *)*ub != (void const *)inst) {
+			/*	String types require decoding of dns format labels */
+			used = fr_dns_label_to_value_box(ur->out_ctx, vb, (uint8_t const *)packet, packet_len,
+							 (uint8_t const *)fr_dbuff_current(&dbuff), true, NULL);
+			if (used < 0) goto error;
+			fr_dbuff_advance(&dbuff, (size_t)used);
 			break;
+
+		default:
+			RERROR("No meaningful output type set");
+			goto error;
 		}
 
-		/* In case we are running single threaded */
-		ub_process(inst->ub);
+		fr_dlist_insert_tail(&ur->list, vb);
+
 	}
 
-	if ((void const *)*ub == (void const *)inst) {
-		int res;
+	ur->done = 1;
 
-		REDEBUG2("%s - DNS took too long", name);
-
-		res = ub_cancel(inst->ub, async_id);
-		if (res) {
-			REDEBUG("%s - ub_cancel: %s", name, ub_strerror(res));
-		}
-		return -1;
-	}
-
-	return 0;
+resume:
+	unlang_interpret_mark_runnable(ur->request);
 }
 
-static int ub_common_fail(REQUEST *request, char const *name, struct ub_result *ub)
+/**	Callback from our timeout event to cancel a request
+ *
+ */
+static void xlat_unbound_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
-	if (ub->bogus) {
-		RWDEBUG("%s - Bogus DNS response", name);
-		return -1;
-	}
+	unbound_request_t	*ur = talloc_get_type_abort(uctx, unbound_request_t);
+	request_t		*request = ur->request;
 
-	if (ub->nxdomain) {
-		RDEBUG2("%s - NXDOMAIN", name);
-		return -1;
-	}
+	REDEBUG("Timeout waiting for DNS resolution");;
+	unlang_interpret_mark_runnable(request);
 
-	if (!ub->havedata) {
-		RDEBUG2("%s - Empty result", name);
-		return -1;
-	}
-
-	return 0;
-}
-
-static ssize_t xlat_a(TALLOC_CTX *ctx, char **out, size_t outlen,
-		      void const *mod_inst, UNUSED void const *xlat_inst,
-		      REQUEST *request, char const *fmt)
-{
-	rlm_unbound_t const *inst = mod_inst;
-	struct ub_result **ubres;
-	int async_id;
-	char *fmt2; /* For const warnings.  Keep till new libunbound ships. */
-
-	/* This has to be on the heap, because threads. */
-	ubres = talloc(inst, struct ub_result *);
-
-	/* Used and thus impossible value from heap to designate incomplete */
-	memcpy(ubres, &mod_inst, sizeof(*ubres));
-
-	fmt2 = talloc_typed_strdup(ctx, fmt);
-	ub_resolve_async(inst->ub, fmt2, 1, 1, ubres, link_ubres, &async_id);
-	talloc_free(fmt2);
-
-	if (ub_common_wait(inst, request, inst->xlat_a_name, ubres, async_id)) {
-		goto error0;
-	}
-
-	if (*ubres) {
-		if (ub_common_fail(request, inst->xlat_a_name, *ubres)) {
-			goto error1;
-		}
-
-		if (!inet_ntop(AF_INET, (*ubres)->data[0], *out, outlen)) {
-			goto error1;
-		};
-
-		ub_resolve_free(*ubres);
-		talloc_free(ubres);
-		return strlen(*out);
-	}
-
-	RWDEBUG("%s - No result", inst->xlat_a_name);
-
- error1:
-	ub_resolve_free(*ubres); /* Handles NULL gracefully */
-
- error0:
-	talloc_free(ubres);
-	return -1;
-}
-
-static ssize_t xlat_aaaa(TALLOC_CTX *ctx, char **out, size_t outlen,
-			 void const *mod_inst, UNUSED void const *xlat_inst,
-			 REQUEST *request, char const *fmt)
-{
-	rlm_unbound_t const *inst = mod_inst;
-	struct ub_result **ubres;
-	int async_id;
-	char *fmt2; /* For const warnings.  Keep till new libunbound ships. */
-
-	/* This has to be on the heap, because threads. */
-	ubres = talloc(inst, struct ub_result *);
-
-	/* Used and thus impossible value from heap to designate incomplete */
-	memcpy(ubres, &mod_inst, sizeof(*ubres));
-
-	fmt2 = talloc_typed_strdup(ctx, fmt);
-	ub_resolve_async(inst->ub, fmt2, 28, 1, ubres, link_ubres, &async_id);
-	talloc_free(fmt2);
-
-	if (ub_common_wait(inst, request, inst->xlat_aaaa_name, ubres, async_id)) {
-		goto error0;
-	}
-
-	if (*ubres) {
-		if (ub_common_fail(request, inst->xlat_aaaa_name, *ubres)) {
-			goto error1;
-		}
-		if (!inet_ntop(AF_INET6, (*ubres)->data[0], *out, outlen)) {
-			goto error1;
-		};
-		ub_resolve_free(*ubres);
-		talloc_free(ubres);
-		return strlen(*out);
-	}
-
-	RWDEBUG("%s - No result", inst->xlat_aaaa_name);
-
-error1:
-	ub_resolve_free(*ubres); /* Handles NULL gracefully */
-
-error0:
-	talloc_free(ubres);
-	return -1;
-}
-
-static ssize_t xlat_ptr(TALLOC_CTX *ctx, char **out, size_t outlen,
-			void const *mod_inst, UNUSED void const *xlat_inst,
-			REQUEST *request, char const *fmt)
-{
-	rlm_unbound_t const *inst = mod_inst;
-	struct ub_result **ubres;
-	int async_id;
-	char *fmt2; /* For const warnings.  Keep till new libunbound ships. */
-
-	/* This has to be on the heap, because threads. */
-	ubres = talloc(inst, struct ub_result *);
-
-	/* Used and thus impossible value from heap to designate incomplete */
-	memcpy(ubres, &mod_inst, sizeof(*ubres));
-
-	fmt2 = talloc_typed_strdup(ctx, fmt);
-	ub_resolve_async(inst->ub, fmt2, 12, 1, ubres, link_ubres, &async_id);
-	talloc_free(fmt2);
-
-	if (ub_common_wait(inst, request, inst->xlat_ptr_name,
-			   ubres, async_id)) {
-		goto error0;
-	}
-
-	if (*ubres) {
-		if (ub_common_fail(request, inst->xlat_ptr_name, *ubres)) {
-			goto error1;
-		}
-		if (rrlabels_tostr(*out, (*ubres)->data[0], outlen) < 0) {
-			goto error1;
-		}
-		ub_resolve_free(*ubres);
-		talloc_free(ubres);
-		return strlen(*out);
-	}
-
-	RWDEBUG("%s - No result", inst->xlat_ptr_name);
-
-error1:
-	ub_resolve_free(*ubres);  /* Handles NULL gracefully */
-
-error0:
-	talloc_free(ubres);
-	return -1;
+	ur->timedout = true;
 }
 
 /*
- *	Even when run in asyncronous mode, callbacks sent to libunbound still
- *	must be run in an application-side thread (via ub_process.)  This is
- *	probably to keep the API usage consistent across threaded and forked
- *	embedded client modes.  This callback function lets an event loop call
- *	ub_process when the instance's file descriptor becomes ready.
+ *	Xlat signal callback if an unbound request needs cancelling
  */
-static void ub_fd_handler(UNUSED fr_event_list_t *el, UNUSED int sock, UNUSED int flags, void *ctx)
+static void xlat_unbound_signal(request_t *request, UNUSED void *instance, UNUSED void *thread,
+				void *rctx, fr_state_signal_t action)
 {
-	rlm_unbound_t *inst = ctx;
-	int err;
+	unbound_request_t	*ur = talloc_get_type_abort(rctx, unbound_request_t);
 
-	err = ub_process(inst->ub);
-	if (err) {
-		ERROR("Async ub_process: %s", ub_strerror(err));
+	if (action != FR_SIGNAL_CANCEL) return;
+
+	if (ur->ev) (void)fr_event_timer_delete(&ur->ev);
+
+	RDEBUG2("Forcefully cancelling pending unbound request");
+}
+
+/*
+ *	Xlat resume callback after unbound has either returned or timed out
+ *	Move the parsed results to the xlat output cursor
+ */
+static xlat_action_t xlat_unbound_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+					 UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					 UNUSED fr_value_box_list_t *in, void *rctx)
+{
+	fr_value_box_t		*vb;
+	unbound_request_t	*ur = talloc_get_type_abort(rctx, unbound_request_t);
+
+	/*
+	 *	Request timed out
+	 */
+	if (ur->timedout) return XLAT_ACTION_FAIL;
+
+#define RCODEERROR(_code, _message) case _code: \
+	REDEBUG(_message, ur->t->inst->name); \
+	goto error
+
+	/*	Check for unbound errors */
+	switch (ur->done) {
+	case 1:
+		break;
+
+	default:
+		REDEBUG("%s - Unknown DNS error", ur->t->inst->name);
+	error:
+		talloc_free(ur);
+		return XLAT_ACTION_FAIL;
+
+	RCODEERROR(0, "%s - No result");
+	RCODEERROR(-1, "%s - Query format error");
+	RCODEERROR(-2, "%s - DNS server failure");
+	RCODEERROR(-3, "%s - Nonexistent domain name");
+	RCODEERROR(-4, "%s - DNS server does not support query type");
+	RCODEERROR(-5, "%s - DNS server refused query");
+	RCODEERROR(-16, "%s - Bogus DNS response");
+	RCODEERROR(-32, "%s - Error parsing DNS response");
 	}
+
+	/*
+	 *	Move parsed results into xlat cursor
+	 */
+	while ((vb = fr_dlist_pop_head(&ur->list))) {
+		fr_dcursor_append(out, vb);
+	}
+
+	talloc_free(ur);
+	return XLAT_ACTION_DONE;
+}
+
+
+static xlat_arg_parser_t const xlat_unbound_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .single = true, .type = FR_TYPE_UINT16 },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Perform a DNS lookup using libunbound
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_unbound(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				  UNUSED void const *xlat_inst, void *xlat_thread_inst,
+				  fr_value_box_list_t *in)
+{
+	fr_value_box_t			*host_vb = fr_dlist_head(in);
+	fr_value_box_t			*query_vb = fr_dlist_next(in, host_vb);
+	fr_value_box_t			*count_vb = fr_dlist_next(in, query_vb);
+	unbound_xlat_thread_inst_t	*xt = talloc_get_type_abort(xlat_thread_inst, unbound_xlat_thread_inst_t);
+	unbound_request_t		*ur;
+
+	if (host_vb->length == 0) {
+		REDEBUG("Can't resolve zero length host");
+		return XLAT_ACTION_FAIL;
+	}
+
+	MEM(ur = talloc_zero(unlang_interpret_frame_talloc_ctx(request), unbound_request_t));
+	talloc_set_destructor(ur, _unbound_request_free);
+
+	/*
+	 *	Set the maximum number of records we want to return
+	 */
+	if ((count_vb) && (count_vb->type == FR_TYPE_UINT16) && (count_vb->vb_uint16 > 0)) {
+		ur->count = count_vb->vb_uint16;
+	} else {
+		ur->count = UINT16_MAX;
+	}
+
+	ur->request = request;
+	ur->t = xt->t;
+	ur->out_ctx = ctx;
+
+#define UB_QUERY(_record, _rrvalue, _return, _hasprio) \
+	if (strcmp(query_vb->vb_strvalue, _record) == 0) { \
+		ur->return_type = _return; \
+		ur->has_priority = _hasprio; \
+		ub_resolve_event(xt->t->ev_b->ub, host_vb->vb_strvalue, _rrvalue, 1, ur, \
+				xlat_unbound_callback, &ur->async_id); \
+	}
+
+	UB_QUERY("A", 1, FR_TYPE_IPV4_ADDR, false)
+	else UB_QUERY("AAAA", 28, FR_TYPE_IPV6_ADDR, false)
+	else UB_QUERY("PTR", 12, FR_TYPE_STRING, false)
+	else UB_QUERY("MX", 15, FR_TYPE_STRING, true)
+	else UB_QUERY("SRV", 33, FR_TYPE_STRING, true)
+	else UB_QUERY("TXT", 16, FR_TYPE_STRING, false)
+	else UB_QUERY("CERT", 37, FR_TYPE_OCTETS, false)
+	else {
+		REDEBUG("Invalid / unsupported DNS query type");
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	unbound returned before we yielded - run the callback
+	 *	This is when serving results from local data
+	 */
+	if (ur->async_id == 0) return xlat_unbound_resume(NULL, out, request, NULL, NULL, NULL, ur);
+
+	if (fr_event_timer_in(ur, ur->t->ev_b->el, &ur->ev, fr_time_delta_from_msec(xt->inst->timeout),
+			      xlat_unbound_timeout, ur) < 0) {
+		REDEBUG("Unable to attach unbound timeout_envent");
+		ub_cancel(xt->t->ev_b->ub, ur->async_id);
+		return XLAT_ACTION_FAIL;
+	}
+
+	return unlang_xlat_yield(request, xlat_unbound_resume, xlat_unbound_signal, ur);
+}
+
+static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread_inst,
+				       UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	rlm_unbound_t			*inst = talloc_get_type_abort(uctx, rlm_unbound_t);
+	unbound_xlat_thread_inst_t	*xt = talloc_get_type_abort(xlat_thread_inst, unbound_xlat_thread_inst_t);
+
+	xt->inst = inst;
+	xt->t = talloc_get_type_abort(module_thread_by_data(inst)->data, rlm_unbound_thread_t);
+
+	return 0;
+}
+
+static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *thread)
+{
+	rlm_unbound_t		*inst = talloc_get_type_abort(instance, rlm_unbound_t);
+	rlm_unbound_thread_t	*t = talloc_get_type_abort(thread, rlm_unbound_thread_t);
+	int			res;
+
+	t->inst = inst;
+	if (unbound_io_init(t, &t->ev_b, el) < 0) {
+		PERROR("Unable to create unbound event base");
+		return -1;
+	}
+
+	/*
+	 *	Ensure unbound uses threads
+	 */
+	res = ub_ctx_async(t->ev_b->ub, 1);
+	if (res) {
+	error:
+		PERROR("%s", ub_strerror(res));
+		return -1;
+	}
+
+	/*
+	 *	Load settings from the unbound config file
+	 */
+	res = ub_ctx_config(t->ev_b->ub, UNCONST(char *, inst->filename));
+	if (res) goto error;
+
+	if (unbound_log_init(t, &t->u_log, t->ev_b->ub) < 0) {
+		PERROR("Failed to initialise unbound log");
+		return -1;
+	}
+
+	/*
+	 *	Load resolv.conf if specified
+	 */
+	if (inst->resolvconf) ub_ctx_resolvconf(t->ev_b->ub, inst->resolvconf);
+
+	/*
+	 *	Load hosts file if specified
+	 */
+	if (inst->hosts) ub_ctx_hosts(t->ev_b->ub, inst->hosts);
+
+	/*
+	 *	The unbound context needs to be "finalised" to fix its settings.
+	 *	The API does not expose a method to do this, rather it happens on first
+	 *	use.  A quick workround is to delete data which won't be present
+	 */
+	ub_ctx_data_remove(t->ev_b->ub, "notar33lsite.foo123.nottld A 127.0.0.1");
+
+	return 0;
+}
+
+static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+{
+	rlm_unbound_thread_t	*t = talloc_get_type_abort(thread, rlm_unbound_thread_t);
+
+	talloc_free(t->u_log);
+	talloc_free(t->ev_b);
+
+	return 0;
 }
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	rlm_unbound_t *inst = instance;
+	rlm_unbound_t	*inst = instance;
+	xlat_t		*xlat;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
@@ -387,334 +502,24 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	MEM(inst->xlat_a_name = talloc_typed_asprintf(inst, "%s-a", inst->name));
-	MEM(inst->xlat_aaaa_name = talloc_typed_asprintf(inst, "%s-aaaa", inst->name));
-	MEM(inst->xlat_ptr_name = talloc_typed_asprintf(inst, "%s-ptr", inst->name));
-
-	if (xlat_register(inst, inst->xlat_a_name, xlat_a, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false) ||
-	    xlat_register(inst, inst->xlat_aaaa_name, xlat_aaaa, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false) ||
-	    xlat_register(inst, inst->xlat_ptr_name, xlat_ptr, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, false)) {
-		cf_log_err(conf, "Failed registering xlats");
-		return -1;
-	}
-
-	return 0;
-}
-
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
-{
-	rlm_unbound_t *inst = instance;
-	int res;
-	char *optval;
-
-	fr_log_dst_t log_dst;
-	int log_level;
-	int log_fd = -1;
-
-	char k[64]; /* To silence const warns until newer unbound in distros */
-
-	/*
-	 *	@todo - move this to the thread-instantiate function
-	 */
-	inst->el = main_loop_event_list();
-	inst->log_pipe_stream[0] = NULL;
-	inst->log_pipe_stream[1] = NULL;
-	inst->log_fd = -1;
-	inst->log_pipe_in_use = false;
-
-	inst->ub = ub_ctx_create();
-	if (!inst->ub) {
-		cf_log_err(conf, "ub_ctx_create failed");
-		return -1;
-	}
-
-	/*
-	 *	Note unbound threads WILL happen with -s option, if it matters.
-	 *	We cannot tell from here whether that option is in effect.
-	 */
-	res = ub_ctx_async(inst->ub, 1);
-
-	if (res) goto error;
-
-	/*	Glean some default settings to match the main server.	*/
-	/*	TODO: debug_level can be changed at runtime. */
-	/*	TODO: log until fork when stdout or stderr and !rad_debug_lvl. */
-	log_level = 0;
-
-	if (rad_debug_lvl > 0) {
-		log_level = rad_debug_lvl;
-
-	} else if (main_config->debug_level > 0) {
-		log_level = main_config->debug_level;
-	}
-
-	switch (log_level) {
-	/* TODO: This will need some tweaking */
-	case 0:
-	case 1:
-		break;
-
-	case 2:
-		log_level = 1;
-		break;
-
-	case 3:
-	case 4:
-		log_level = 2; /* mid-to-heavy levels of output */
-		break;
-
-	case 5:
-	case 6:
-	case 7:
-	case 8:
-		log_level = 3; /* Pretty crazy amounts of output */
-		break;
-
-	default:
-		log_level = 4; /* Insane amounts of output including crypts */
-		break;
-	}
-
-	res = ub_ctx_debuglevel(inst->ub, log_level);
-	if (res) goto error;
-
-	switch (default_log.dst) {
-	case L_DST_STDOUT:
-		if (!rad_debug_lvl) {
-			log_dst = L_DST_NULL;
-			break;
-		}
-		log_dst = L_DST_STDOUT;
-		log_fd = dup(STDOUT_FILENO);
-		break;
-
-	case L_DST_STDERR:
-		if (!rad_debug_lvl) {
-			log_dst = L_DST_NULL;
-			break;
-		}
-		log_dst = L_DST_STDOUT;
-		log_fd = dup(STDERR_FILENO);
-		break;
-
-	case L_DST_FILES:
-		if (main_config->log_file) {
-			char *log_file;
-
-			strcpy(k, "logfile:");
-			/* 3rd argument isn't const'd in libunbounds API */
-			memcpy(&log_file, &main_config->log_file, sizeof(log_file));
-			res = ub_ctx_set_option(inst->ub, k, log_file);
-			if (res) {
-				goto error;
-			}
-			log_dst = L_DST_FILES;
-			break;
-		}
-		/* FALL-THROUGH */
-
-	case L_DST_NULL:
-		log_dst = L_DST_NULL;
-		break;
-
-	default:
-		log_dst = L_DST_SYSLOG;
-		break;
-	}
-
-	/* Now load the config file, which can override gleaned settings. */
-	{
-		char *file;
-
-		memcpy(&file, &inst->filename, sizeof(file));
-		res = ub_ctx_config(inst->ub, file);
-		if (res) goto error;
-	}
-
-	/*
-	 *	Check if the config file tried to use syslog.  Unbound
-	 *	does not share syslog gracefully.
-	 */
-	strcpy(k, "use-syslog");
-	res = ub_ctx_get_option(inst->ub, k, &optval);
-	if (res || !optval) goto error;
-
-	if (!strcmp(optval, "yes")) {
-		char v[3];
-
-		free(optval);
-
-		WARN("Overriding syslog settings");
-		strcpy(k, "use-syslog:");
-		strcpy(v, "no");
-		res = ub_ctx_set_option(inst->ub, k, v);
-		if (res) goto error;
-
-		if (log_dst == L_DST_FILES) {
-			char *log_file;
-
-			/* Reinstate the log file name JIC */
-			strcpy(k, "logfile:");
-			/* 3rd argument isn't const'd in libunbounds API */
-			memcpy(&log_file, &main_config->log_file, sizeof(log_file));
-			res = ub_ctx_set_option(inst->ub, k, log_file);
-			if (res) goto error;
-		}
-
-	} else {
-		if (optval) free(optval);
-		strcpy(k, "logfile");
-
-		res = ub_ctx_get_option(inst->ub, k, &optval);
-		if (res) goto error;
-
-		if (optval && strlen(optval)) {
-			log_dst = L_DST_FILES;
-
-			/*
-			 *	We open log_fd early in the process,
-			 *	so that libunbound doesn't close
-			 *	stdout / stderr on us (grrr, stupid
-			 *	software).  But if the config say to
-			 *	use files, we now have to close the
-			 *	dup'd FD.
-			 */
-			if (log_fd >= 0) {
-				close(log_fd);
-				log_fd = -1;
-			}
-
-		} else if (!rad_debug_lvl) {
-			log_dst = L_DST_NULL;
-		}
-
-		if (optval) free(optval);
-	}
-
-	switch (log_dst) {
-	case L_DST_STDOUT:
-		/*
-		 * We have an fd to log to.  And we've already attempted to
-		 * dup it so libunbound doesn't close it on us.
-		 */
-		if (log_fd == -1) {
-			cf_log_err(conf, "Could not dup fd");
-			goto error_nores;
-		}
-
-		inst->log_stream = fdopen(log_fd, "w");
-		if (!inst->log_stream) {
-			cf_log_err(conf, "error setting up log stream");
-			goto error_nores;
-		}
-
-		res = ub_ctx_debugout(inst->ub, inst->log_stream);
-		if (res) goto error;
-		break;
-
-	case L_DST_FILES:
-		/* We gave libunbound a filename.  It is on its own now. */
-		break;
-
-	case L_DST_NULL:
-		/* We tell libunbound not to log at all. */
-		res = ub_ctx_debugout(inst->ub, NULL);
-		if (res) goto error;
-		break;
-
-	case L_DST_SYSLOG:
-		/*
-		 *  Currently this wreaks havoc when running threaded, so just
-		 *  turn logging off until that gets figured out.
-		 */
-		res = ub_ctx_debugout(inst->ub, NULL);
-		if (res) goto error;
-		break;
-
-	default:
-		break;
-	}
-
-	/*
-	 *  Now we need to finalize the context.
-	 *
-	 *  There's no clean API to just finalize the context made public
-	 *  in libunbound.  But we can trick it by trying to delete data
-	 *  which as it happens fails quickly and quietly even though the
-	 *  data did not exist.
-	 */
-	strcpy(k, "notar33lsite.foo123.nottld A 127.0.0.1");
-	ub_ctx_data_remove(inst->ub, k);
-
-	inst->log_fd = ub_fd(inst->ub);
-	if (inst->log_fd >= 0) {
-		if (fr_event_fd_insert(inst, inst->el, inst->log_fd,
-				       ub_fd_handler,
-				       NULL,
-				       NULL,
-				       inst) < 0) {
-			cf_log_err(conf, "could not insert async fd");
-			inst->log_fd = -1;
-			goto error_nores;
-		}
-
-	}
-
-	return 0;
-
- error:
-	cf_log_err(conf, "%s", ub_strerror(res));
-
- error_nores:
-	if (log_fd > -1) close(log_fd);
-
-	return -1;
-}
-
-static int mod_detach(void *instance)
-{
-	rlm_unbound_t *inst = instance;
-
-	if (inst->log_fd >= 0) {
-		fr_event_fd_delete(inst->el, inst->log_fd, FR_EVENT_FILTER_IO);
-		if (inst->ub) {
-			ub_process(inst->ub);
-			/* This can hang/leave zombies currently
-			 * see upstream bug #519
-			 * ...so expect valgrind to complain with -m
-			 */
-#if 0
-			ub_ctx_delete(inst->ub);
-#endif
-		}
-	}
-
-	if (inst->log_pipe_stream[1]) {
-		fclose(inst->log_pipe_stream[1]);
-	}
-
-	if (inst->log_pipe_stream[0]) {
-		if (inst->log_pipe_in_use) {
-			fr_event_fd_delete(inst->el, inst->log_pipe[0], FR_EVENT_FILTER_IO);
-		}
-		fclose(inst->log_pipe_stream[0]);
-	}
-
-	if (inst->log_stream) {
-		fclose(inst->log_stream);
-	}
+	if(!(xlat = xlat_register(NULL, inst->name, xlat_unbound, true))) return -1;
+	xlat_func_args(xlat, xlat_unbound_args);
+	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, unbound_xlat_thread_inst_t, NULL, inst);
 
 	return 0;
 }
 
 extern module_t rlm_unbound;
 module_t rlm_unbound = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "unbound",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_unbound_t),
-	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach
+	.magic			= RLM_MODULE_INIT,
+	.name			= "unbound",
+	.type			= RLM_TYPE_THREAD_SAFE,
+	.inst_size		= sizeof(rlm_unbound_t),
+	.config			= module_config,
+	.bootstrap		= mod_bootstrap,
+
+	.thread_inst_size	= sizeof(rlm_unbound_thread_t),
+	.thread_inst_type	= "rlm_unbound_thread_t",
+	.thread_instantiate	= mod_thread_instantiate,
+	.thread_detach		= mod_thread_detach,
 };

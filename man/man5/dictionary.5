@@ -10,28 +10,28 @@
 .RE
 .sp
 ..
-.TH dictionary 5 "14 May 2019"
+.TH dictionary 5 "18 Sep 2021"
 .SH NAME
-dictionary \- RADIUS dictionary file
+dictionary \- FreeRADIUS dictionary file
 .SH DESCRIPTION
-The master RADIUS dictionary file resides in
-\fI/etc/raddb/dictionary\fP.  It references other \fIdictionary\fP
-files located in \fI/usr/local/share/freeradius/\fP.  Each dictionary
-file contains a list of RADIUS attributes and values, which the server
-uses to map between descriptive names and on-the-wire data.  The names
-have no meaning outside of the RADIUS server itself, and are never
-exchanged between server and clients.
+The local dictionary file resides in \fI/etc/raddb/dictionary\fP.  It
+references other \fIdictionary\fP files located in
+\fI/usr/local/share/freeradius/\fP.  Each dictionary file contains a
+list of protocol-specific attributes and values, which the server uses
+to map between descriptive names and on-the-wire data.  The names have
+no meaning outside of the server, and are never sent "on the wire"
+between server and clients.
 .PP
 That is, editing the dictionaries will have NO EFFECT on anything
 other than the server that is reading those files.  Adding new
-attributes to the dictionaries will have NO EFFECT on RADIUS clients,
-and will not make RADIUS clients magically understand those
-attributes.  The dictionaries are solely for local administrator
-convenience, and are specific to each version of FreeRADIUS.
+attributes to the dictionaries will have NO EFFECT on clients, and
+will not make clients magically understand those attributes.  The
+dictionaries are solely for local administrator convenience, and are
+specific to each version of FreeRADIUS.
 .PP
 The dictionaries in \fI/usr/local/share\fP SHOULD NOT be edited unless
 you know exactly what you are doing.  Changing them will most likely
-break your RADIUS deployment.
+break the FreeRADIUS system.
 .PP
 If you need to add new attributes, please edit the
 \fI/etc/raddb/dictionary\fP file.  It's sole purpose is to contain
@@ -44,14 +44,29 @@ is treated as comment and ignored.
 .PP
 Each line of the file can contain one of the following strings:
 .TP 0.5i
+.B ALIAS new-name  old-name
+Define an alias \fInew-name\fP which is equivalent to \fIold-name\fP.
+
+The ALIAS keyword is used to define additional names for compatibility
+reasons.  As there is no standard behind dictionary names, different
+products may use different names for the same attribute.  The ALIAS
+keyword allows you to add "site local" aliases, so that FreeRADIUS can
+read attributes from pre-existing configurations.
+
+These ALIASes are used when the server reads configuration files, or
+attributes from a database.  However, when the server prints attribute
+names, it always uses the ATTRIBUTE definition from the FreeRADIUS
+dictionary files/
+
+.TP 0.5i
 .B ATTRIBUTE name  oid  type [flags]
-Define a RADIUS attribute name to number mapping.
+Define an attribute name to number mapping.
 
 The \fIname\fP field is a printable field, taken from various
 specifications or vendor definitions.  It is most commonly used as a
 series of words, separated by hyphens.  e.g. "User-Name".
 Vendor-specific attributes (VSAs) are prefixed by the vendor name,
-e.g. "Cisco-AVPair".  The names should be globally unique, as they are
+e.g. "Vendor-Specific.Cisco.AVPair".  The names should be globally unique, as they are
 used as a key to look up the properties of the attribute.
 
 The \fIoid\fP field is taken from the relevant specification for that
@@ -59,28 +74,58 @@ name.  In most cases, it is a decimal number, such as "256".  For
 certain attributes, a "dotted number" notation is used, e.g. "1.2".
 The "dotted number" notation is used only for certain attributes.
 
-The \fItype\fP field can be one of the standard types:
+The \fItype\fP field can be one of the standard types, as defined in
+RFC 8044:
 
      string       UTF-8 printable text (the RFCs call this "text")
      octets       opaque binary data (the RFCs call this "string")
      ipaddr       IPv4 address
-     date         Seconds since January 1, 1970 (32-bits)
      integer      32-bit unsigned integer
+     ipv4prefix   IPv4 Prefix as given in RFC 6572.
      ipv6addr     IPv6 Address
      ipv6prefix   IPV6 prefix, with mask
      ifid         Interface Id (hex:hex:hex:hex)
-     integer64	  64-bit unsigned integer
 
 The \fItype\fP field can also be one of the following non-standard types:
 
+     bit[]	  Bit arrays, but are only allowed for MEMBERs
+     bool	  Boolean true / false value
+     combo=ip     Either IPv4 or IPv6 address, for WiMAX
+     combo=ipprefix   Either IPv4 or IPv6 prefix, for WiMAX
+     date         Seconds since January 1, 1970 (32-bits)
      ether        Ethernet MAC address
-     abinary      Ascend binary filter format
-     byte         8-bit unsigned integer
-     short        16-bit unsigned integer
-     signed       31-bit signed integer (packed into 32-bit field)
+     group        DHCPv6 or Diameter-style grouping
+     int8         8-bit signed integer
+     int16        16-bit signed integer
+     int32        32-bit signed integer
+     int64        64-bit signed integer
      struct       fixed-size structures
+     time_delta   a delta between two times
      tlv          Type-Length-Value (allows nested attributes)
-     ipv4prefix   IPv4 Prefix as given in RFC 6572.
+     uint8        8-bit unsigned integer
+     uint16       16-bit unsigned integer
+     uint32       32-bit unsigned integer
+     uint64       64-bit unsigned integer
+
+The following values for the \fItype\fP field are accepted, but are
+deprecated.
+
+     byte         use "int8" instead
+     integer      use "uint32" instead
+     integer64    use "uint64" instead
+     signed       use "int32" instead
+     short        use "int16" instead
+
+The following values for the \fItype\fP field are defined in RFC 8044,
+but are not accepted in FreeRADIUS.  The equivalent FreeRADIUS
+definition is, however, accepted:
+
+     concat       use "concat" as a flag instead
+     enum         use "uint32" instead
+     evs          use "vsa" instead
+     extended     use "extended" as a flag instead
+     long-extended use "long-extended" as a flag instead
+     time         use "date" instead
 
 The "struct" type is a compound type.  An attribute of data type
 "struct" can have multiple sub-attributes defined, just as with TLVs.
@@ -98,8 +143,9 @@ This usage is no longer allowed.
 
 The options are:
 
-     encrypt=#    set encryption type 1, 2, or 3.
+     encrypt=...  set encryption type 1, 2, or 3.
      has_tag      The attribute can have an RFC 2868 style tag
+     clone=...    copy another attribute subtree
 
 The "encrypt" flag marks the attribute as being encrypted with one of
 three possible methods.  "1" means that the attribute is encrypted
@@ -114,12 +160,26 @@ tag, as defined in \fIRFC2868\fP.  The purpose of the tag is to allow
 grouping of attributes for tunneled users.  See \fIRFC2868\fP for
 more details.
 
-When the server receives an encoded attribute in a RADIUS packet, it
-looks up that attribute by number in the dictionary, and uses the
-definition found there for printing diagnostic and log messages.  When
-the server sees an attribute name in a configuration file, it looks up
-that attribute by name in the dictionary, and uses the definition
-found there.
+When the server receives an encoded attribute in a packet, it looks up
+that attribute by number in the dictionary, and uses the definition
+found there for printing diagnostic and log messages.  When the server
+sees an attribute name in a configuration file, it looks up that
+attribute by name in the dictionary, and uses the definition found
+there.
+
+.TP 0.5i
+.B ENUM name  type
+Define an enumerated type, which can contain VALUEs.
+
+The \fIname\fP field has the same definition as for an ATTRIBUTE.
+
+
+The \fItype\fP field has the same definition as for an attribute.
+
+The purpose of ENUM is to define a common set of VALUEs, which can be
+re-used across multiple ATTRIBUTEs.  Each ATTRIBUTE which needs to
+refer to an ENUM should set the "clone" flag, which refers to the ENUM
+name.  For example. "ATTRIBUTE foo 1 uint16 enum=name_of_enum".
 
 .TP 0.5i
 .B MEMBER name  type [flags]
@@ -151,9 +211,15 @@ be any non-space text, but is usually taken from \fIRFC2865\fP, or
 other documents..  The \fInumber\fP field is also taken from the
 relevant documents, for that name.
 
-When the server receives an encoded value in a RADIUS packet, it looks
-up the value of that attribute by number in the dictionary, and uses
-the name found there for printing diagnostic and log messages.
+When the server receives an encoded value in a packet, it looks up the
+value of that attribute by number in the dictionary, and uses the name
+found there for printing diagnostic and log messages.
+
+FreeRADIUS will accept a VALUE definition for any "base" data type.
+For example, you can define VALUEs for IP addresses, Ethernet
+addresses, etc.  VALUEs cannot be defined for "structural" data types
+such as struct, tlv, vsa, group, etc.
+
 .TP 0.5i
 .B VENDOR vendor-name number [format=...]
 Define a Vendor Specific Attribute encapsulation for \fIvendor-name\fP
@@ -182,8 +248,8 @@ This practice is preferred to placing the vendor name at the end of an
 
 For VSAs in the RFC 6929 "Extended vendor-specific" space, a format
 can be specified following the "vendor-name".  The format should be
-"format=Extended-Vendor-Specific-1", through
-"format=Extended-Vendor-Specific-6".  The matching "END-VENDOR" should
+"parent=Extended-Vendor-Specific-1", through
+"parent=Extended-Vendor-Specific-6".  The matching "END-VENDOR" should
 just have the "vendor-name", without the format string.
 .TP 0.5i
 .B END-VENDOR vendor-name

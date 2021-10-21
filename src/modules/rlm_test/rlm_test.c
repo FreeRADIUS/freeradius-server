@@ -28,7 +28,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/util/debug.h>
 
 /*
  *	Define a structure for our module configuration.
@@ -38,8 +39,8 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct {
-	vp_tmpl_t	*tmpl;
-	vp_tmpl_t	**tmpl_m;
+	tmpl_t		*tmpl;
+	tmpl_t		**tmpl_m;
 	char const	*string;
 	char const	**string_m;
 
@@ -77,13 +78,25 @@ typedef struct {
 	uint8_t		*byte_m;
 
 	uint8_t		ifid[8];
-	uint8_t		*ifid_m[8];
-
+	/*
+	 *	clang correctly performs type compatibility checks between
+	 *	arrays with a specific length, but for pointers to pointers
+	 *	to arrays of specific length
+	 *	(which is what FR_TYPE_CONF_CHECK receives) the check doesn't
+	 *	seem to work.
+	 *
+	 *	So the "multi" variants of ethernet and ifid buffers, must
+	 *	be a **.
+	 */
+	uint8_t		**ifid_m;
 	uint16_t	shortint;
-	uint16_t	shortint_m;
+	uint16_t	*shortint_m;
 
 	uint8_t		ethernet[6];
-	uint8_t		ethernet_m[6];
+	/*
+	 *	See above...
+	 */
+	uint8_t		**ethernet_m;
 
 	int32_t		int32;
 	int32_t		*int32_m;
@@ -160,7 +173,7 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_test_dict[];
 fr_dict_autoload_t rlm_test_dict[] = {
@@ -176,71 +189,14 @@ fr_dict_attr_autoload_t rlm_test_dict_attr[] = {
 	{ NULL }
 };
 
-static int rlm_test_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, VALUE_PAIR *check,
-			UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+static int rlm_test_cmp(UNUSED void *instance, request_t *request, UNUSED fr_pair_list_t *request_list, fr_pair_t const *check)
 {
-	rad_assert(check->vp_type == FR_TYPE_STRING);
+	fr_assert(check->vp_type == FR_TYPE_STRING);
 
-	RINFO("test-Paircmp called with \"%s\"", check->vp_strvalue);
+	RINFO("Test-Paircmp called with \"%pV\"", &check->data);
 
 	if (strcmp(check->vp_strvalue, "yes") == 0) return 0;
 	return 1;
-}
-
-static int mod_thread_instantiate(UNUSED CONF_SECTION  const *cs, UNUSED void *instance, UNUSED fr_event_list_t *el,
-				  void *thread)
-{
-	rlm_test_thread_t *t = thread;
-
-	t->value = pthread_self();
-	INFO("Performing instantiation for thread %p (ctx %p)", (void *)t->value, t);
-
-	return 0;
-}
-
-static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
-{
-	rlm_test_thread_t *t = thread;
-
-	INFO("Performing detach for thread %p", (void *)t->value);
-
-	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
-
-	return 0;
-}
-
-/*
- *	Do any per-module initialization that is separate to each
- *	configured instance of the module.  e.g. set up connections
- *	to external databases, read configuration files, set up
- *	dictionary entries, etc.
- *
- *	If configuration information is given in the config section
- *	that must be referenced in later calls, store a handle to it
- *	in *instance otherwise put a null pointer there.
- */
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
-{
-	rlm_test_t *inst = instance;
-
-	if (paircmp_register_by_name("test-Paircmp", attr_user_name, false,
-					rlm_test_cmp, inst) < 0) {
-		PERROR("Failed registering \"test-Paircmp\"");
-		return -1;
-	}
-
-	/*
-	 *	Log some messages
-	 */
-	INFO("Informational message");
-	WARN("Warning message");
-	ERROR("Error message");
-	DEBUG("Debug message");
-	DEBUG2("Debug2 message");
-	DEBUG3("Debug3 message");
-	DEBUG4("Debug4 message");
-
-	return 0;
 }
 
 /*
@@ -249,9 +205,9 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_test_thread_t *t = thread;
+	rlm_test_thread_t *t = mctx->thread;
 
 	RINFO("RINFO message");
 	RDEBUG("RDEBUG message");
@@ -274,55 +230,224 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, void *t
 	REXDENT();
 	REDEBUG4("RDEBUG4 error message");
 
-	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, void *thread, UNUSED REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	rlm_test_thread_t *t = thread;
+	rlm_test_thread_t *t = mctx->thread;
 
-	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
-#ifdef WITH_ACCOUNTING
 /*
  *	Massage the request before recording it or proxying it
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_preacct(UNUSED void *instance, void *thread, UNUSED REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	rlm_test_thread_t *t = thread;
+	rlm_test_thread_t *t = mctx->thread;
 
-	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, void *thread, UNUSED REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	rlm_test_thread_t *t = thread;
+	rlm_test_thread_t *t = mctx->thread;
 
-	if (!fr_cond_assert(t->value == pthread_self())) return RLM_MODULE_FAIL;
+	if (!fr_cond_assert(t->value == pthread_self())) RETURN_MODULE_FAIL;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
-#endif
 
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_return(UNUSED void *instance, UNUSED void *thread, UNUSED REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_return(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
+}
+
+static void mod_retry_signal(module_ctx_t const *mctx, request_t *request, void *rctx, fr_state_signal_t action);
+
+/** Continue after marked runnable
+ *
+ */
+static unlang_action_t mod_retry_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request, UNUSED void *ctx)
+{
+	RDEBUG("Test called main retry handler - that's a failure");
+
+	RETURN_MODULE_FAIL;
+}
+
+/** Continue after FR_SIGNAL_RETRY
+ *
+ */
+static unlang_action_t mod_retry_resume_retry(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request, UNUSED void *ctx)
+{
+	RDEBUG("Test retry");
+
+	return unlang_module_yield(request, mod_retry_resume, mod_retry_signal, NULL);
+}
+
+/** Continue after FR_SIGNAL_TIMEOUT
+ *
+ */
+static unlang_action_t mod_retry_resume_timeout(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request, UNUSED void *ctx)
+{
+	RDEBUG("Test timed out as expected");
+
+	RETURN_MODULE_OK;
+}
+
+static void mod_retry_signal(UNUSED module_ctx_t const *mctx, request_t *request, UNUSED void *rctx, fr_state_signal_t action)
+{
+	switch (action) {
+	case FR_SIGNAL_RETRY:
+		RDEBUG("Test retry");
+		unlang_module_set_resume(request, mod_retry_resume_retry);
+		unlang_interpret_mark_runnable(request);
+		break;
+
+	case FR_SIGNAL_TIMEOUT:
+		RDEBUG("Test timeout");
+		unlang_module_set_resume(request, mod_retry_resume_timeout);
+		unlang_interpret_mark_runnable(request);
+		break;
+
+	/*
+	 *	Ignore all other signals.
+	 */
+	default:
+		break;
+	}
+
+}
+
+/*
+ *	Test retries
+ */
+static unlang_action_t CC_HINT(nonnull) mod_retry(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
+{
+	return unlang_module_yield(request, mod_retry_resume, mod_retry_signal, NULL);
+}
+
+
+static xlat_arg_parser_t const trigger_test_xlat_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+
+/** Run a trigger (useful for testing)
+ *
+ */
+static xlat_action_t trigger_test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				       UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				       fr_value_box_list_t *in)
+{
+	fr_value_box_t	*in_head = fr_dlist_head(in);
+	fr_value_box_t	*vb;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
+	fr_dcursor_append(out, vb);
+
+	if (trigger_exec(unlang_interpret_get(request), NULL, in_head->vb_strvalue, false, NULL) < 0) {
+		RPEDEBUG("Running trigger failed");
+		vb->vb_bool = false;
+		return XLAT_ACTION_FAIL;
+	}
+
+	vb->vb_bool = true;
+
+	return XLAT_ACTION_DONE;
+}
+
+
+static int mod_thread_instantiate(UNUSED CONF_SECTION  const *cs, UNUSED void *instance, UNUSED fr_event_list_t *el,
+				  void *thread)
+{
+	rlm_test_thread_t *t = thread;
+
+	t->value = pthread_self();
+	INFO("Performing instantiation for thread %p (ctx %p)", (void *)t->value, t);
+
+	return 0;
+}
+
+static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+{
+	rlm_test_thread_t *t = thread;
+
+	INFO("Performing detach for thread %p", (void *)t->value);
+
+	if (!fr_cond_assert(t->value == pthread_self())) return -1;
+
+	return 0;
+}
+
+/*
+ *	Do any per-module bootstrapping that is separate to each
+ *	configured instance of the module.  e.g. set up connections
+ *	to external databases, read configuration files, set up
+ *	dictionary entries, etc.
+ *
+ *	If configuration information is given in the config section
+ *	that must be referenced in later calls, store a handle to it
+ *	in *instance otherwise put a null pointer there.
+ */
+static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
+{
+	xlat_t *xlat;
+	rlm_test_t *inst = instance;
+
+	if (paircmp_register_by_name("Test-Paircmp", attr_user_name, false,
+					rlm_test_cmp, inst) < 0) {
+		PERROR("Failed registering \"Test-Paircmp\"");
+		return -1;
+	}
+
+	/*
+	 *	Log some messages
+	 */
+	INFO("Informational message");
+	WARN("Warning message");
+	ERROR("Error message");
+	DEBUG("Debug message");
+	DEBUG2("Debug2 message");
+	DEBUG3("Debug3 message");
+	DEBUG4("Debug4 message");
+
+	/*
+	 *	Output parsed tmpls
+	 */
+	if (inst->tmpl) {
+		INFO("%s", inst->tmpl->name);
+	} else {
+		INFO("inst->tmpl is NULL");
+	}
+
+	if (inst->tmpl_m) {
+		talloc_foreach(inst->tmpl_m,  item) INFO("%s", item->name);
+	} else {
+		INFO("inst->tmpl_m is NULL");
+	}
+
+	if (!(xlat = xlat_register(instance, "test_trigger", trigger_test_xlat, false))) return -1;
+	xlat_func_args(xlat, trigger_test_xlat_args);
+
+	return 0;
 }
 
 static int mod_detach(UNUSED void *instance)
@@ -344,28 +469,25 @@ extern module_t rlm_test;
 module_t rlm_test = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "test",
-	.type			= RLM_TYPE_THREAD_SAFE,
+	.type			= RLM_TYPE_THREAD_SAFE | RLM_TYPE_RETRY,
 	.inst_size		= sizeof(rlm_test_t),
 	.thread_inst_size	= sizeof(rlm_test_thread_t),
 	.config			= module_config,
-	.instantiate		= mod_instantiate,
+	.bootstrap		= mod_bootstrap,
 	.thread_instantiate	= mod_thread_instantiate,
 	.thread_detach		= mod_thread_detach,
 	.detach			= mod_detach,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
-#ifdef WITH_ACCOUNTING
 		[MOD_PREACCT]		= mod_preacct,
 		[MOD_ACCOUNTING]	= mod_accounting,
-#endif
 	},
 	.method_names = (module_method_names_t[]){
-		{ "recv",	"Access-Challenge", mod_return },
-		{ "recv",	CF_IDENT_ANY,	mod_return },
-		{ "name1_null",	NULL,		mod_return },
-		{ "send",	CF_IDENT_ANY,	mod_return },
-		{ CF_IDENT_ANY, CF_IDENT_ANY,	mod_return },
+		{ .name1 = "recv",		.name2 = "Access-Challenge",	.method = mod_return },
+		{ .name1 = "name1_null",	.name2 = NULL,			.method = mod_return },
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_return },
+		{ .name1 = "retry",		.name2 = NULL,			.method = mod_retry },
 
 		MODULE_NAME_TERMINATOR
 	}

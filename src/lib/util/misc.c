@@ -22,45 +22,27 @@
  */
 RCSID("$Id$")
 
-#include "misc.h"
-
+#include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/time.h>
 
 #include <ctype.h>
 #include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/uio.h>
-#include <sys/stat.h>
 #include <unistd.h>
-
-#ifdef HAVE_DIRENT_H
-#  include <dirent.h>
-/*
- *	Some versions of Linux don't have closefrom(), but they will
- *	have /proc.
- *
- *	BSD systems will generally have closefrom(), but not proc.
- *
- *	OSX doesn't have closefrom() or /proc/self/fd, but it does
- *	have /dev/fd
- */
-#  ifdef __linux__
-#    define CLOSEFROM_DIR "/proc/self/fd"
-#  elif defined(__APPLE__)
-#    define CLOSEFROM_DIR "/dev/fd"
-#  else
-#    undef HAVE_DIRENT_H
-#  endif
-#endif
-
 
 #define FR_PUT_LE16(a, val)\
 	do {\
@@ -179,86 +161,6 @@ int rad_unlockfd(int fd, int lock_len)
 	return rad_lock(fd, lock_len, F_SETLK, F_UNLCK);
 }
 
-static char const hextab[] = "0123456789abcdef";
-
-/** Convert hex strings to binary data
- *
- * @param bin Buffer to write output to.
- * @param outlen length of output buffer (or length of input string / 2).
- * @param hex input string.
- * @param inlen length of the input string
- * @return length of data written to buffer.
- */
-size_t fr_hex2bin(uint8_t *bin, size_t outlen, char const *hex, size_t inlen)
-{
-	size_t i;
-	size_t len;
-	char *c1, *c2;
-
-	/*
-	 *	Smartly truncate output, caller should check number of bytes
-	 *	written.
-	 */
-	len = inlen >> 1;
-	if (len > outlen) len = outlen;
-
-	for (i = 0; i < len; i++) {
-		if(!(c1 = memchr(hextab, tolower((int) hex[i << 1]), sizeof(hextab))) ||
-		   !(c2 = memchr(hextab, tolower((int) hex[(i << 1) + 1]), sizeof(hextab))))
-			break;
-		bin[i] = ((c1-hextab)<<4) + (c2-hextab);
-	}
-
-	return i;
-}
-
-/** Convert binary data to a hex string
- *
- * Ascii encoded hex string will not be prefixed with '0x'
- *
- * @warning If the output buffer isn't long enough, we have a buffer overflow.
- *
- * @param[out] hex Buffer to write hex output.
- * @param[in] bin input.
- * @param[in] inlen of bin input.
- * @return length of data written to buffer.
- */
-size_t fr_bin2hex(char *hex, uint8_t const *bin, size_t inlen)
-{
-	size_t i;
-
-	for (i = 0; i < inlen; i++) {
-		hex[0] = hextab[((*bin) >> 4) & 0x0f];
-		hex[1] = hextab[*bin & 0x0f];
-		hex += 2;
-		bin++;
-	}
-
-	*hex = '\0';
-	return inlen * 2;
-}
-
-/** Convert binary data to a hex string
- *
- * Ascii encoded hex string will not be prefixed with '0x'
- *
- * @param[in] ctx to alloc buffer in.
- * @param[in] bin input.
- * @param[in] inlen of bin input.
- * @return length of data written to buffer.
- */
-char *fr_abin2hex(TALLOC_CTX *ctx, uint8_t const *bin, size_t inlen)
-{
-	char *buff;
-
-	buff = talloc_array(ctx, char, (inlen << 2));
-	if (!buff) return NULL;
-
-	fr_bin2hex(buff, bin, inlen);
-
-	return buff;
-}
-
 /** Consume the integer (or hex) portion of a value string
  *
  * Allows integer or hex representations of integers (but not octal,
@@ -335,80 +237,6 @@ char *fr_trim(char const *str, size_t size)
 	return q;
 }
 
-/*
- *	So we don't have ifdef's in the rest of the code
- */
-#ifndef HAVE_CLOSEFROM
-int closefrom(int fd)
-{
-	int i;
-	int maxfd = 256;
-#ifdef HAVE_DIRENT_H
-	DIR *dir;
-#endif
-
-#ifdef F_CLOSEM
-	if (fcntl(fd, F_CLOSEM) == 0) {
-		return 0;
-	}
-#endif
-
-#ifdef F_MAXFD
-	maxfd = fcntl(fd, F_F_MAXFD);
-	if (maxfd >= 0) goto do_close;
-#endif
-
-#ifdef _SC_OPEN_MAX
-	maxfd = sysconf(_SC_OPEN_MAX);
-	if (maxfd < 0) {
-		maxfd = 256;
-	}
-#endif
-
-#ifdef HAVE_DIRENT_H
-	/*
-	 *	Use /proc/self/fd directory if it exists.
-	 */
-	dir = opendir(CLOSEFROM_DIR);
-	if (dir != NULL) {
-		long my_fd;
-		char *endp;
-		struct dirent *dp;
-
-		while ((dp = readdir(dir)) != NULL) {
-			my_fd = strtol(dp->d_name, &endp, 10);
-			if (my_fd <= 0) continue;
-
-			if (*endp) continue;
-
-			if (my_fd == dirfd(dir)) continue;
-
-			if ((my_fd >= fd) && (my_fd <= maxfd)) {
-				(void) close((int) my_fd);
-			}
-		}
-		(void) closedir(dir);
-		return 0;
-	}
-#endif
-
-#ifdef F_MAXFD
-do_close:
-#endif
-
-	if (fd > maxfd) return 0;
-
-	/*
-	 *	FIXME: return EINTR?
-	 */
-	for (i = fd; i < maxfd; i++) {
-		close(i);
-	}
-
-	return 0;
-}
-#endif
-
 #ifdef O_NONBLOCK
 /** Set O_NONBLOCK on a socket
  *
@@ -470,12 +298,12 @@ int fr_blocking(int fd)
 #else
 int fr_nonblock(UNUSED int fd)
 {
-	fr_strerror_printf("Non blocking sockets are not supported");
+	fr_strerror_const("Non blocking sockets are not supported");
 	return -1;
 }
 int fr_blocking(UNUSED int fd)
 {
-	fr_strerror_printf("Non blocking sockets are not supported");
+	fr_strerror_const("Non blocking sockets are not supported");
 	return -1;
 }
 #endif
@@ -552,7 +380,7 @@ ssize_t fr_writev(int fd, struct iovec vector[], int iovcnt, fr_time_delta_t tim
 
 			/* Select returned 0 which means it reached the timeout */
 			if (ret == 0) {
-				fr_strerror_printf("Write timed out");
+				fr_strerror_const("Write timed out");
 				return -1;
 			}
 
@@ -686,57 +514,233 @@ static char *mystrtok(char **ptr, char const *sep)
 {
 	char	*res;
 
-	if (**ptr == 0) {
-		return NULL;
-	}
+	if (**ptr == '\0') return NULL;
 
-	while (**ptr && strchr(sep, **ptr)) {
-		(*ptr)++;
-	}
-	if (**ptr == 0) {
-		return NULL;
-	}
+	while (**ptr && strchr(sep, **ptr)) (*ptr)++;
+
+	if (**ptr == '\0') return NULL;
 
 	res = *ptr;
-	while (**ptr && strchr(sep, **ptr) == NULL) {
-		(*ptr)++;
-	}
+	while (**ptr && strchr(sep, **ptr) == NULL) (*ptr)++;
 
-	if (**ptr != 0) {
-		*(*ptr)++ = 0;
-	}
+	if (**ptr != '\0') *(*ptr)++ = '\0';
+
 	return res;
 }
 
-/** Convert string in various formats to a time_t
+/*
+ *	Helper function to get a 2-digit date. With a maximum value,
+ *	and a terminating character.
+ */
+static int get_part(char **str, int *date, int min, int max, char term, char const *name)
+{
+	char *p = *str;
+
+	if (!isdigit((int) *p) || !isdigit((int) p[1])) return -1;
+	*date = (p[0] - '0') * 10  + (p[1] - '0');
+
+	if (*date < min) {
+		fr_strerror_printf("Invalid %s (too small)", name);
+		return -1;
+	}
+
+	if (*date > max) {
+		fr_strerror_printf("Invalid %s (too large)", name);
+		return -1;
+	}
+
+	p += 2;
+	if (!term) {
+		*str = p;
+		return 0;
+	}
+
+	if (*p != term) {
+		fr_strerror_printf("Expected '%c' after %s, got '%c'",
+				   term, name, *p);
+		return -1;
+	}
+	p++;
+
+	*str = p;
+	return 0;
+}
+
+/** Convert string in various formats to a fr_unix_time_t
  *
  * @param date_str input date string.
  * @param date time_t to write result to.
+ * @param[in] hint	scale for the parsing.  Default is "seconds"
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_time_from_str(time_t *date, char const *date_str)
+int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_res_t hint)
 {
 	int		i;
-	time_t		t;
+	int64_t		tmp;
 	struct tm	*tm, s_tm;
 	char		buf[64];
 	char		*p;
 	char		*f[4];
 	char		*tail = NULL;
+	fr_time_delta_t	gmtoff = fr_time_delta_wrap(0);
 
 	/*
-	 * Test for unix timestamp date
+	 *	Test for unix timestamp, which is just a number and
+	 *	nothing else.
 	 */
-	*date = strtoul(date_str, &tail, 10);
+	tmp = strtoul(date_str, &tail, 10);
 	if (*tail == '\0') {
+		*date = fr_unix_time_from_nsec(fr_time_scale(tmp, hint));
 		return 0;
 	}
 
 	tm = &s_tm;
 	memset(tm, 0, sizeof(*tm));
 	tm->tm_isdst = -1;	/* don't know, and don't care about DST */
+
+	/*
+	 *	Check for RFC 3339 dates.  Note that we only support
+	 *	dates in a ~1000 year period.  If the server is being
+	 *	used after 3000AD, someone can patch it then.
+	 *
+	 *	%Y-%m-%dT%H:%M:%S
+	 *	[.%d] sub-seconds
+	 *	Z | (+/-)%H:%M time zone offset
+	 *
+	 */
+	if ((tmp > 1900) && (tmp < 3000) && *tail == '-') {
+		unsigned long subseconds;
+		int tz, tz_hour, tz_min;
+
+		p = tail + 1;
+		s_tm.tm_year = tmp - 1900; /* 'struct tm' starts years in 1900 */
+
+		if (get_part(&p, &s_tm.tm_mon, 1, 13, '-', "month") < 0) return -1;
+		s_tm.tm_mon--;	/* ISO is 1..12, where 'struct tm' is 0..11 */
+
+		if (get_part(&p, &s_tm.tm_mday, 1, 31, 'T', "day") < 0) return -1;
+		if (get_part(&p, &s_tm.tm_hour, 0, 23, ':', "hour") < 0) return -1;
+		if (get_part(&p, &s_tm.tm_min, 0, 59, ':', "minute") < 0) return -1;
+		if (get_part(&p, &s_tm.tm_sec, 0, 60, '\0', "seconds") < 0) return -1;
+
+		if (*p == '.') {
+			p++;
+			subseconds = strtoul(p, &tail, 10);
+			if (subseconds > NSEC) {
+				fr_strerror_const("Invalid nanosecond specifier");
+				return -1;
+			}
+
+			/*
+			 *	Scale subseconds to nanoseconds by how
+			 *	many digits were parsed/
+			 */
+			if ((tail - p) < 9) {
+				for (i = 0; i < 9 - (tail -p); i++) {
+					subseconds *= 10;
+				}
+			}
+
+			p = tail;
+		} else {
+			subseconds = 0;
+		}
+
+		/*
+		 *	Time zone is GMT.  Leave well enough
+		 *	alone.
+		 */
+		if (*p == 'Z') {
+			if (p[1] != '\0') {
+				fr_strerror_printf("Unexpected text '%c' after time zone", p[1]);
+				return -1;
+			}
+			tz = 0;
+			goto done;
+		}
+
+		if ((*p != '+') && (*p != '-')) {
+			fr_strerror_printf("Invalid time zone specifier '%c'", *p);
+			return -1;
+		}
+		tail = p;	/* remember sign for later */
+		p++;
+
+		if (get_part(&p, &tz_hour, 0, 23, ':', "hour in time zone") < 0) return -1;
+		if (get_part(&p, &tz_min, 0, 59, '\0', "minute in time zone") < 0) return -1;
+
+		if (*p != '\0') {
+			fr_strerror_printf("Unexpected text '%c' after time zone", *p);
+			return -1;
+		}
+
+		/*
+		 *	We set the time zone, but the timegm()
+		 *	function ignores it.  Note also that mktime()
+		 *	ignores it too, and treats the time zone as
+		 *	local.
+		 *
+		 *	We can't store this value in s_tm.gtmoff,
+		 *	because the timegm() function helpfully zeros
+		 *	it out.
+		 *
+		 *	So insyead of using stupid C library
+		 *	functions, we just roll our own.
+		 */
+		tz = tz_hour * 3600 + tz_min;
+		if (*tail == '-') tz *= -1;
+
+	done:
+		tm->tm_gmtoff = tz;
+		*date = fr_unix_time_add(fr_unix_time_from_tm(tm), fr_time_delta_wrap(subseconds));
+		return 0;
+	}
+
+	/*
+	 *	Try to parse dates via locale-specific names,
+	 *	using the same format string as strftime().
+	 *
+	 *	If that fails, then we fall back to our parsing
+	 *	routine, which is much more forgiving.
+	 */
+
+#ifdef __APPLE__
+	/*
+	 *	OSX "man strptime" says it only accepts the local time zone, and GMT.
+	 *
+	 *	However, when printing dates via strftime(), it prints
+	 *	"UTC" instead of "GMT".  So... we have to fix it up
+	 *	for stupid nonsense.
+	 */
+	{
+		char const *tz = strstr(date_str, "UTC");
+		if (tz) {
+			char *my_str;
+
+			my_str = talloc_strdup(NULL, date_str);
+			if (my_str) {
+				p = my_str + (tz - date_str);
+				memcpy(p, "GMT", 3);
+
+				p = strptime(my_str, "%b %e %Y %H:%M:%S %Z", tm);
+				if (p && (*p == '\0')) {
+					talloc_free(my_str);
+					*date = fr_unix_time_from_tm(tm);
+					return 0;
+				}
+				talloc_free(my_str);
+			}
+		}
+	}
+#endif
+
+	p = strptime(date_str, "%b %e %Y %H:%M:%S %Z", tm);
+	if (p && (*p == '\0')) {
+		*date = fr_unix_time_from_tm(tm);
+		return 0;
+	}
 
 	strlcpy(buf, date_str, sizeof(buf));
 
@@ -745,7 +749,21 @@ int fr_time_from_str(time_t *date, char const *date_str)
 	f[1] = mystrtok(&p, " \t");
 	f[2] = mystrtok(&p, " \t");
 	f[3] = mystrtok(&p, " \t"); /* may, or may not, be present */
-	if (!f[0] || !f[1] || !f[2]) return -1;
+	if (!f[0] || !f[1] || !f[2]) {
+		fr_strerror_const("Too few fields");
+		return -1;
+	}
+
+	/*
+	 *	Try to parse the time zone.  If it's GMT / UTC or a
+	 *	local time zone we're OK.
+	 *
+	 *	Otherwise, ignore errors and assume GMT.
+	 */
+	if (*p != '\0') {
+		fr_skip_whitespace(p);
+		(void) fr_time_delta_from_time_zone(p, &gmtoff);
+	}
 
 	/*
 	 *	The time has a colon, where nothing else does.
@@ -787,7 +805,10 @@ int fr_time_from_str(time_t *date, char const *date_str)
 	}
 
 	/* month not found? */
-	if (tm->tm_mon == 12) return -1;
+	if (tm->tm_mon == 12) {
+		fr_strerror_const("No month found");
+		return -1;
+	}
 
 	/*
 	 *  The year may be in f[1], or in f[2]
@@ -803,7 +824,10 @@ int fr_time_from_str(time_t *date, char const *date_str)
 		 *  We can't use 2-digit years any more, they make it
 		 *  impossible to tell what's the day, and what's the year.
 		 */
-		if (tm->tm_mday < 1900) return -1;
+		if (tm->tm_mday < 1900) {
+			fr_strerror_const("Invalid year < 1900");
+			return -1;
+		}
 
 		/*
 		 *  Swap the year and the day.
@@ -817,6 +841,7 @@ int fr_time_from_str(time_t *date, char const *date_str)
 	 *  If the day is out of range, die.
 	 */
 	if ((tm->tm_mday < 1) || (tm->tm_mday > 31)) {
+		fr_strerror_const("Invalid day of month");
 		return -1;
 	}
 
@@ -826,27 +851,24 @@ int fr_time_from_str(time_t *date, char const *date_str)
 	if (f[3]) {
 		f[0] = f[3];	/* HH */
 		f[1] = strchr(f[0], ':'); /* find : separator */
-		if (!f[1]) return -1;
+		if (!f[1]) {
+			fr_strerror_const("No ':' after hour");
+			return -1;
+		}
 
 		*(f[1]++) = '\0'; /* nuke it, and point to MM:SS */
 
 		f[2] = strchr(f[1], ':'); /* find : separator */
 		if (f[2]) {
-		  *(f[2]++) = '\0';	/* nuke it, and point to SS */
-		  tm->tm_sec = atoi(f[2]);
+			*(f[2]++) = '\0';	/* nuke it, and point to SS */
+			tm->tm_sec = atoi(f[2]);
 		}			/* else leave it as zero */
 
 		tm->tm_hour = atoi(f[0]);
 		tm->tm_min = atoi(f[1]);
 	}
 
-	/*
-	 *  Returns -1 on failure.
-	 */
-	t = mktime(tm);
-	if (t == (time_t) -1) return -1;
-
-	*date = t;
+	*date = fr_unix_time_add(fr_unix_time_from_tm(tm), gmtoff);
 
 	return 0;
 }
@@ -862,7 +884,7 @@ int fr_size_from_str(size_t *out, char const *str)
 	switch (tolower(q[0])) {
 	case 'n':		/* nibble */
 		if (size & 0x01) {
-			fr_strerror_printf("Sizes specified in nibbles must be an even number");
+			fr_strerror_const("Sizes specified in nibbles must be an even number");
 			return -1;
 		}
 		size /= 2;
@@ -914,7 +936,9 @@ int fr_size_from_str(size_t *out, char const *str)
 	return 0;
 }
 
-/** Multiple checking for overflow
+/** Multiply, checking for overflow
+ *
+ * Multiplication will only occur if it would not overflow.
  *
  * @param[out] result	of multiplication.
  * @param[in] lhs	First operand.
@@ -926,9 +950,37 @@ int fr_size_from_str(size_t *out, char const *str)
  */
 bool fr_multiply(uint64_t *result, uint64_t lhs, uint64_t rhs)
 {
-        *result = lhs * rhs;
+	if (rhs > 0 && (UINT64_MAX / rhs) < lhs) return true;
 
-        return rhs > 0 && (UINT64_MAX / rhs) < lhs;
+	*result = lhs * rhs;	/* ubsan would flag this */
+
+	return false;
+}
+
+/** Multiply with modulo wrap
+ *
+ * Avoids multiplication overflow.
+ *
+ * @param[in] lhs	First operand.
+ * @param[in] rhs	Second operand.
+ * @param[in] mod	Modulo.
+ * @return
+ *	- Result.
+ */
+uint64_t fr_multiply_mod(uint64_t lhs, uint64_t rhs, uint64_t mod)
+{
+	uint64_t res = 0;
+
+	lhs %= mod;
+
+	while (rhs > 0) {
+		if (rhs & 0x01) res = (res + lhs) % mod;
+
+		lhs = (lhs * 2) % mod;
+		rhs /= 2;
+	}
+
+	return res % mod;
 }
 
 /** Compares two pointers
@@ -942,7 +994,7 @@ bool fr_multiply(uint64_t *result, uint64_t lhs, uint64_t rhs)
  */
 int8_t fr_pointer_cmp(void const *a, void const *b)
 {
-	return (a > b) - (a < b);
+	return CMP(a, b);
 }
 
 /** Quick sort an array of pointers using a comparator
@@ -1005,42 +1057,3 @@ int fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
 	return result;		/* 0 is OK, !0 is !OK, just like memcmp */
 }
 
-/** Create an empty file
- *
- * @param[in] filename path to file.
- * @param[in] mode Specifies the file mode bits be applied.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int fr_file_touch(char const *filename, mode_t mode) {
-	int fd;
-
-	fd = open(filename, O_WRONLY | O_CREAT, mode);
-	if (fd < 0) {
-		fr_strerror_printf("Failed creating file \"%s\": %s", filename, fr_syserror(errno));
-		return -1;
-	}
-
-	close(fd);
-
-	return 0;
-}
-
-/** Remove a regular file from the filesystem
- *
- * @param[in] filename path to file.
- * @return
- * 	- -1 On error.
- * 	- 0 if the file was removed.
- * 	- 1 if the file didn't exist.
- */
-int fr_file_unlink(char const *filename) {
-	if (unlink(filename) == 0) return 0;
-
-	if (errno == ENOENT) return 1;
-
-	fr_strerror_printf("Failed removing regular file \"%s\": %s", filename, fr_syserror(errno));
-
-	return -1;
-}

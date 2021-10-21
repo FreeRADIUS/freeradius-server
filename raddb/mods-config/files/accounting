@@ -6,7 +6,7 @@
 #
 
 #  Select between different accounting methods based for example on the
-#  Realm, the Huntgroup-Name or any combinaison of the attribute/value
+#  Realm, the Huntgroup-Name or any combination of the attribute/value
 #  pairs contained in an accounting packet.
 #
 #DEFAULT Realm == "foo.net", Acct-Type := sql_log.foo

@@ -75,6 +75,8 @@ typedef int (*client_value_cb_t)(char **out, CONF_PAIR const *cp, void *data);
  *
  */
 struct rad_client {
+	fr_rb_node_t		node;			//!< Entry in the client tree.
+
 	fr_ipaddr_t		ipaddr;			//!< IPv4/IPv6 address of the host.
 	fr_ipaddr_t		src_ipaddr;		//!< IPv4/IPv6 address to send responses
 							//!< from (family must match ipaddr).
@@ -88,6 +90,7 @@ struct rad_client {
 	bool			dynamic;		//!< Whether the client was dynamically defined.
 	bool			active;			//!< for dynamic clients
 	bool			use_connected;		//!< do we use connected sockets for this client
+	bool			dedup_authenticator;	//!< more RADIUS stuff
 
 #ifdef WITH_TLS
 	bool			tls_required;		//!< whether TLS encryption is required.
@@ -104,13 +107,7 @@ struct rad_client {
 
 #ifdef WITH_STATS
 	fr_stats_t		auth;			//!< Authentication stats.
-#  ifdef WITH_ACCOUNTING
 	fr_stats_t		acct;			//!< Accounting stats.
-#  endif
-#  ifdef WITH_COA
-	fr_stats_t		coa;			//!< Change of Authorization stats.
-	fr_stats_t		dsc;			//!< Disconnect-Request stats.
-#  endif
 #endif
 
 	fr_time_delta_t		response_window;	//!< How long the client has to respond.
@@ -129,11 +126,9 @@ void		client_free(RADCLIENT *client);
 
 bool		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
 
-#ifdef WITH_DYNAMIC_CLIENTS
 void		client_delete(RADCLIENT_LIST *clients, RADCLIENT *client);
 
-RADCLIENT	*client_afrom_request(TALLOC_CTX *ctx, REQUEST *request);
-#endif
+RADCLIENT	*client_afrom_request(TALLOC_CTX *ctx, request_t *request);
 
 int		client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_cb_t func, void *data);
 
@@ -149,6 +144,7 @@ RADCLIENT	*client_findbynumber(RADCLIENT_LIST const *clients, int number);
 
 RADCLIENT	*client_read(char const *filename, CONF_SECTION *server_cs, bool check_dns);
 
+RADCLIENT	*client_from_request(request_t *request);
 #ifdef __cplusplus
 }
 #endif

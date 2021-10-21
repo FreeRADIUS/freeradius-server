@@ -24,48 +24,49 @@
  */
 RCSID("$Id$")
 
-#include "token.h"
-
-#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/token.h>
 
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 
-const FR_NAME_NUMBER fr_tokens_table[] = {
-	{ "=~", T_OP_REG_EQ,	}, /* order is important! */
-	{ "!~", T_OP_REG_NE,	},
-	{ "{",	T_LCBRACE,	},
-	{ "}",	T_RCBRACE,	},
-	{ "(",	T_LBRACE,	},
-	{ ")",	T_RBRACE,	},
-	{ ",",	T_COMMA,	},
-	{ "++",	T_OP_INCRM,	},
-	{ "+=",	T_OP_ADD,	},
-	{ "-=",	T_OP_SUB,	},
-	{ ":=",	T_OP_SET,	},
-	{ "=*", T_OP_CMP_TRUE, },
-	{ "!*", T_OP_CMP_FALSE, },
-	{ "==",	T_OP_CMP_EQ,	},
-	{ "=",	T_OP_EQ,	},
-	{ "!=",	T_OP_NE,	},
-	{ ">=",	T_OP_GE,	},
-	{ ">",	T_OP_GT,	},
-	{ "<=",	T_OP_LE,	},
-	{ "<",	T_OP_LT,	},
-	{ "#",	T_HASH,		},
-	{ ";",	T_SEMICOLON,	},
-	{ NULL, 0,		},
+fr_table_num_ordered_t const fr_tokens_table[] = {
+	{ L("=~"), 	T_OP_REG_EQ	}, /* order is important! */
+	{ L("!~"),	 T_OP_REG_NE	},
+	{ L("{"),	T_LCBRACE	},
+	{ L("}"),	T_RCBRACE	},
+	{ L("("),	T_LBRACE	},
+	{ L(")"),	T_RBRACE	},
+	{ L(","),	T_COMMA		},
+	{ L("++"),	T_OP_INCRM	},
+	{ L("+="),	T_OP_ADD	},
+	{ L("-="),	T_OP_SUB	},
+	{ L(":="),	T_OP_SET	},
+	{ L("=*"), 	T_OP_CMP_TRUE	},
+	{ L("!*"), 	T_OP_CMP_FALSE	},
+	{ L("=="),	T_OP_CMP_EQ	},
+	{ L("^="),	T_OP_PREPEND	},
+	{ L("="),	T_OP_EQ		},
+	{ L("!="),	T_OP_NE		},
+	{ L(">="),	T_OP_GE		},
+	{ L(">"),	T_OP_GT		},
+	{ L("<="),	T_OP_LE		},
+	{ L("<"),	T_OP_LT		},
+	{ L("#"),	T_HASH		},
+	{ L(";"),	T_SEMICOLON	}
 };
+size_t fr_tokens_table_len = NUM_ELEMENTS(fr_tokens_table);
 
-const FR_NAME_NUMBER fr_token_quotes_table[] = {
-	{ "",	T_BARE_WORD		},
-	{ "'",	T_SINGLE_QUOTED_STRING	},
-	{ "\"", T_DOUBLE_QUOTED_STRING	},
-	{ "`",	T_BACK_QUOTED_STRING	},
-	{ NULL, 0			},
+fr_table_num_sorted_t const fr_token_quotes_table[] = {
+	{ L(""),	T_BARE_WORD		},
+	{ L("'"),	T_SINGLE_QUOTED_STRING	},
+	{ L("/"),	T_SOLIDUS_QUOTED_STRING	},
+	{ L("\""),	T_DOUBLE_QUOTED_STRING	},
+	{ L("`"),	T_BACK_QUOTED_STRING	}
 };
+size_t fr_token_quotes_table_len = NUM_ELEMENTS(fr_token_quotes_table);
 
 /*
  *  This is a hack, and has to be kept in sync with tokens.h
@@ -94,11 +95,13 @@ char const *fr_tokens[] = {
 	"=*",
 	"!*",
 	"==",
+	"^=",
 	"#",
 	"<BARE-WORD>",
 	"<\"STRING\">",
 	"<'STRING'>",
-	"<`STRING`>"
+	"<`STRING`>",
+	"</STRING/>"
 };
 
 
@@ -131,11 +134,13 @@ const char fr_token_quote[] = {
 	'?',		/* =* 		20 */
 	'?',		/* !* */
 	'?',		/* == */
-	'?',				/* # */
-	'\0',		/* bare word */
-	'"',		/* "foo" 	25 */
+	'?',		/* ^= */
+	'?',		/* # */
+	'\0',		/* bare word 	25 */
+	'"',		/* "foo" */
 	'\'',		/* 'foo' */
 	'`',		/* `foo` */
+	'/',		/* /foo/ */
 	'?'
 };
 
@@ -164,9 +169,10 @@ const bool fr_assignment_op[] = {
 	false,		/* =* 		20 */
 	false,		/* !* */
 	false,		/* == */
-	false,				/* # */
-	false,		/* bare word */
-	false,		/* "foo" 	25 */
+	true,		/* ^= */
+	false,		/* # */
+	false,		/* bare word 	25 */
+	false,		/* "foo" */
 	false,		/* 'foo' */
 	false,		/* `foo` */
 	false
@@ -197,9 +203,10 @@ const bool fr_equality_op[] = {
 	true,		/* =* 		20 */
 	true,		/* !* */
 	true,		/* == */
-	false,				/* # */
-	false,		/* bare word */
-	false,		/* "foo" 	25 */
+	false,		/* ^= */
+	false,		/* # */
+	false,		/* bare word 	25 */
+	false,		/* "foo" */
 	false,		/* 'foo' */
 	false,		/* `foo` */
 	false
@@ -230,9 +237,10 @@ const bool fr_str_tok[] = {
 	false,		/* =* 		20 */
 	false,		/* !* */
 	false,		/* == */
-	false,				/* # */
-	true,		/* bare word */
-	true,		/* "foo" 	25 */
+	false,		/* ^= */
+	false,		/* # */
+	true,		/* bare word 	25 */
+	true,		/* "foo" */
 	true,		/* 'foo' */
 	true,		/* `foo` */
 	false
@@ -253,22 +261,22 @@ const bool fr_str_tok[] = {
  *	At end-of-line, buf[0] is set to '\0'.
  *	Returns 0 or special token value.
  */
-static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
-			 FR_NAME_NUMBER const *tokenlist, bool unescape)
+static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
+			 fr_table_num_ordered_t const *tokenlist, size_t tokenlist_len, bool unescape)
 {
 	char			*s;
 	char const		*p;
 	char			quote;
 	unsigned int		x;
-	FR_NAME_NUMBER const	*t;
-	FR_TOKEN rcode;
+	size_t			i;
+	fr_token_t 		token;
 
 	buf[0] = '\0';
 
 	/* Skip whitespace */
 	p = *ptr;
 
-	fr_skip_spaces(p);
+	fr_skip_whitespace(p);
 
 	if (!*p) {
 		*ptr = p;
@@ -278,13 +286,15 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 	/*
 	 *	Might be a 1 or 2 character token.
 	 */
-	if (tok) for (t = tokenlist; t->name; t++) {
-		if (TOKEN_MATCH(p, t->name)) {
-			strcpy(buf, t->name);
-			p += strlen(t->name);
+	if (tok) {
+		for (i = 0; i < tokenlist_len; i++) {
+			if (TOKEN_MATCH(p, tokenlist[i].name.str)) {
+				strcpy(buf, tokenlist[i].name.str);
+				p += tokenlist[i].name.len;
 
-			rcode = t->number;
-			goto done;
+				token = tokenlist[i].value;
+				goto done;
+			}
 		}
 	}
 
@@ -292,23 +302,23 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 	quote = '\0';
 	switch (*p) {
 	default:
-		rcode = T_BARE_WORD;
+		token = T_BARE_WORD;
 		break;
 
 	case '\'':
-		rcode = T_SINGLE_QUOTED_STRING;
+		token = T_SINGLE_QUOTED_STRING;
 		break;
 
 	case '"':
-		rcode = T_DOUBLE_QUOTED_STRING;
+		token = T_DOUBLE_QUOTED_STRING;
 		break;
 
 	case '`':
-		rcode = T_BACK_QUOTED_STRING;
+		token = T_BACK_QUOTED_STRING;
 		break;
 	}
 
-	if (rcode != T_BARE_WORD) {
+	if (token != T_BARE_WORD) {
 		quote = *p;
 		p++;
 	}
@@ -325,8 +335,8 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 
 
 			if (tok) {
-				for (t = tokenlist; t->name; t++) {
-					if (TOKEN_MATCH(p, t->name)) {
+				for (i = 0; i < tokenlist_len; i++) {
+					if (TOKEN_MATCH(p, tokenlist[i].name.str)) {
 						*s++ = 0;
 						goto done;
 					}
@@ -362,7 +372,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 		 *	There's nothing after the backslash, it's an error.
 		 */
 		if (!p[1]) {
-			fr_strerror_printf("Unterminated string");
+			fr_strerror_const("Unterminated string");
 			return T_INVALID;
 		}
 
@@ -400,7 +410,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 				p++;
 			} else {
 				if (buflen < 2) {
-					fr_strerror_printf("Truncated input");
+					fr_strerror_const("Truncated input");
 					return T_INVALID;
 				}
 
@@ -413,17 +423,17 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
 	*s++ = 0;
 
 	if (quote) {
-		fr_strerror_printf("Unterminated string");
+		fr_strerror_const("Unterminated string");
 		return T_INVALID;
 	}
 
 done:
 	/* Skip whitespace again. */
-	fr_skip_spaces(p);
+	fr_skip_whitespace(p);
 
 	*ptr = p;
 
-	return rcode;
+	return token;
 }
 
 /*
@@ -432,38 +442,38 @@ done:
  */
 int getword(char const **ptr, char *buf, int buflen, bool unescape)
 {
-	return getthing(ptr, buf, buflen, false, fr_tokens_table, unescape) == T_EOL ? 0 : 1;
+	return getthing(ptr, buf, buflen, false, fr_tokens_table, fr_tokens_table_len, unescape) == T_EOL ? 0 : 1;
 }
 
 
 /*
  *	Read the next word, use tokens as delimiters.
  */
-FR_TOKEN gettoken(char const **ptr, char *buf, int buflen, bool unescape)
+fr_token_t gettoken(char const **ptr, char *buf, int buflen, bool unescape)
 {
-	return getthing(ptr, buf, buflen, true, fr_tokens_table, unescape);
+	return getthing(ptr, buf, buflen, true, fr_tokens_table, fr_tokens_table_len, unescape);
 }
 
 /*
  *	Expect an operator.
  */
-FR_TOKEN getop(char const **ptr)
+fr_token_t getop(char const **ptr)
 {
 	char op[3];
-	FR_TOKEN rcode;
+	fr_token_t token;
 
-	rcode = getthing(ptr, op, sizeof(op), true, fr_tokens_table, false);
-	if (!fr_assignment_op[rcode] && !fr_equality_op[rcode]) {
-		fr_strerror_printf("Expected operator");
+	token = getthing(ptr, op, sizeof(op), true, fr_tokens_table, fr_tokens_table_len, false);
+	if (!fr_assignment_op[token] && !fr_equality_op[token]) {
+		fr_strerror_const("Expected operator");
 		return T_INVALID;
 	}
-	return rcode;
+	return token;
 }
 
 /*
  *	Expect a string.
  */
-FR_TOKEN getstring(char const **ptr, char *buf, int buflen, bool unescape)
+fr_token_t getstring(char const **ptr, char *buf, int buflen, bool unescape)
 {
 	char const *p;
 
@@ -471,7 +481,7 @@ FR_TOKEN getstring(char const **ptr, char *buf, int buflen, bool unescape)
 
 	p = *ptr;
 
-	fr_skip_spaces(p);
+	fr_skip_whitespace(p);
 
 	*ptr = p;
 
@@ -479,82 +489,43 @@ FR_TOKEN getstring(char const **ptr, char *buf, int buflen, bool unescape)
 		return gettoken(ptr, buf, buflen, unescape);
 	}
 
-	return getthing(ptr, buf, buflen, false, fr_tokens_table, unescape);
-}
-
-/*
- *	Convert a string to an integer
- */
-int fr_str2int(FR_NAME_NUMBER const *table, char const *name, int def)
-{
-	FR_NAME_NUMBER const *this;
-
-	if (!name) {
-		return def;
-	}
-
-	for (this = table; this->name != NULL; this++) {
-		if (strcasecmp(this->name, name) == 0) {
-			return this->number;
-		}
-	}
-
-	return def;
-}
-
-/*
- *	Convert a string matching part of name to an integer.
- */
-int fr_substr2int(FR_NAME_NUMBER const *table, char const *name, int def, int len)
-{
-	FR_NAME_NUMBER const *this;
-	size_t max;
-
-	if (!name) {
-		return def;
-	}
-
-	for (this = table; this->name != NULL; this++) {
-		size_t tlen;
-
-		tlen = strlen(this->name);
-
-		/*
-		 *	Don't match "request" to user input "req".
-		 */
-		if ((len > 0) && (len < (int) tlen)) continue;
-
-		/*
-		 *	Match up to the length of the table entry if len is < 0.
-		 */
-		max = (len < 0) ? tlen : (unsigned)len;
-
-		if (strncasecmp(this->name, name, max) == 0) {
-			return this->number;
-		}
-	}
-
-	return def;
-}
-
-/*
- *	Convert an integer to a string.
- */
-char const *fr_int2str(FR_NAME_NUMBER const *table, int number,
-			 char const *def)
-{
-	FR_NAME_NUMBER const *this;
-
-	for (this = table; this->name != NULL; this++) {
-		if (this->number == number) {
-			return this->name;
-		}
-	}
-
-	return def;
+	return getthing(ptr, buf, buflen, false, fr_tokens_table, fr_tokens_table_len, unescape);
 }
 
 char const *fr_token_name(int token)
 {
-	return fr_int2str(fr_tokens_table, token, "???");
+	return fr_table_str_by_value(fr_tokens_table, token, "???");
+}
+
+
+ssize_t fr_skip_string(char const *start, char const *end)
+{
+	char const *p = start;
+	char quote;
+
+	quote = *(p++);
+
+	while (p < end) {
+		if (*p == quote) {
+			p++;
+			return p - start;
+		}
+
+		if (*p == '\\') {
+			if (((p + 1) >= end) || !p[1]) {
+				break;
+			}
+
+			p += 2;
+			continue;
+		}
+
+		p++;
+	}
+
+	/*
+	 *	Unexpected end of string.
+	 */
+	fr_strerror_const("Unexpected end of string");
+	return -(p - start);
 }

@@ -638,6 +638,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_perl
 with_perl
 '
       ac_precious_vars='build_alias
@@ -1256,6 +1257,8 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --without-rlm_perl      build without module
+
   --with-perl=[PATH]    absolute path to perl executable
 
 Some influential environment variables:
@@ -1822,6 +1825,13 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
+
+
+# Check whether --with-rlm_perl was given.
+if test "${with_rlm_perl+set}" = set; then :
+  withval=$with_rlm_perl;
+fi
 
 
 # ===========================================================================
@@ -2935,12 +2945,19 @@ fi
 
 								{ $as_echo "$as_me:${as_lineno-$LINENO}: Calling ExtUtils::Embed to get 'ccopts'" >&5
 $as_echo "$as_me: Calling ExtUtils::Embed to get 'ccopts'" >&6;}
-		mod_cflags=$($PERL -MExtUtils::Embed -e ccopts)
+		perl_cflags=$($PERL -MExtUtils::Embed -e ccopts)
 
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ccopts were \"${mod_cflags}\"" >&5
-$as_echo "$as_me: ExtUtil's ccopts were \"${mod_cflags}\"" >&6;}
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ccopts were \"${perl_cflags}\"" >&5
+$as_echo "$as_me: ExtUtil's ccopts were \"${perl_cflags}\"" >&6;}
 
-		mod_cflags=$(echo "$mod_cflags" | sed 's/-I[ ]*/-isystem /g' | sed 's/-arch [^ ]*//g;s/  / /g;s/^ *//;s/ *$//')
+		mod_cflags=`echo $perl_cflags | sed -e '\
+			s/-I */-isystem /g;\
+			s/-arch ^ *//g;\
+			s/  / /g;\
+			s/^ *//;\
+			s/ *$//;\
+			s/-fstack-clash-protection[[:blank:]]*//g; \
+			'`
 
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ccopts are \"${mod_cflags}\"" >&5
 $as_echo "$as_me: Sanitized ccopts are \"${mod_cflags}\"" >&6;}
@@ -2949,12 +2966,17 @@ $as_echo "$as_me: Sanitized ccopts are \"${mod_cflags}\"" >&6;}
 
 								{ $as_echo "$as_me:${as_lineno-$LINENO}: Calling ExtUtils::Embed to get 'ldflags'" >&5
 $as_echo "$as_me: Calling ExtUtils::Embed to get 'ldflags'" >&6;}
-		mod_ldflags=$($PERL -MExtUtils::Embed -e ldopts)
+		perl_ldflags=$($PERL -MExtUtils::Embed -e ldopts)
 
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ldopts were \"${mod_ldflags}\"" >&5
-$as_echo "$as_me: ExtUtil's ldopts were \"${mod_ldflags}\"" >&6;}
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ldopts were \"${perl_ldflags}\"" >&5
+$as_echo "$as_me: ExtUtil's ldopts were \"${perl_ldflags}\"" >&6;}
 
-		mod_ldflags=$(echo "$mod_ldflags" | sed 's/-arch [^ ]*//g;s/  / /g;s/^ *//;s/ *$//')
+		mod_ldflags=`echo $perl_ldflags | sed -e '\
+			s/-arch ^ *//g;\
+			s/  / /g;\
+			s/^ *//;\
+			s/ *$//;\
+			'`
 
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ldopts are \"${mod_ldflags}\"" >&5
 $as_echo "$as_me: Sanitized ldopts are \"${mod_ldflags}\"" >&6;}

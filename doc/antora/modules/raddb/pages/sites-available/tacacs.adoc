@@ -1,0 +1,244 @@
+
+
+
+
+
+namespace:: Needs to be "tacacs" for TACACS+ functionality.
+
+
+
+type:: The type of packet to accept.
+
+Multiple types can be accepted by using multiple
+lines of `type = ...`.
+
+As described in RFC https://tools.ietf.org/id/draft-ietf-opsawg-07.html#rfc.section.5,
+the packet types are:
+
+
+
+transport:: The transport protocol.
+
+Only `tcp` is allowed.  TACACS+ does not use UDP or TLS.
+
+
+
+## Protocols
+
+tcp { ... }:: TCP is configured here.
+
+
+NOTE: Don't change anything if you are not sure.
+
+
+
+port:: The port where we accept packets.
+
+The port should be 49 for a production network.
+
+
+
+ipaddr:: The IP address where we accept packets.
+
+
+
+interface:: Interface to bind to.
+
+
+
+max_packet_size:: Our max packet size. may be different from the parent.
+
+
+
+recv_buff:: How big the kernel's receive buffer should be.
+
+
+
+send_buff:: How big the kernel's send buffer should be.
+
+
+
+src_ipaddr:: IP we open our socket on.
+
+
+
+## Authentication-Start
+
+
+
+### Recv
+
+
+
+Set _our_ authentication method to the _requested_ one.
+
+
+
+
+
+
+
+Do challenge-response here.
+
+
+
+### Send
+
+
+
+## Authentication-Continue
+
+This should handle ASCII methods as PAP with challenge-response.
+
+
+
+### Recv
+
+
+https://tools.ietf.org/id/draft-ietf-opsawg-07.html#rfc.section.4.3
+
+
+
+### Send
+
+
+
+## Authorization
+
+
+
+### Recv
+
+
+
+### Send
+
+
+
+## Accounting
+
+
+
+### Recv
+
+
+Create a 'detail'ed log of the packets.
+
+
+First packet for a session
+
+Updates a previous start
+
+Updates a session
+
+Stops a session
+
+
+### Send
+
+
+
+NOTE: Proxying of TACACS+ requests is NOT supported.
+
+
+== Default Configuration
+
+```
+#	As of version 4.0.0, the server also supports the TACACS+
+#	protocol.
+server tacacs {
+	namespace = tacacs
+	listen {
+		type = Authentication-Start
+		type = Authentication-Continue
+		type = Authorization-Request
+		type = Accounting-Request
+		transport = tcp
+		tcp {
+			port = 49
+			ipaddr = *
+#			interface = eth0
+#			max_packet_size = 4096
+#			recv_buff = 1048576
+#			send_buff = 1048576
+#			src_ipaddr = ""
+		}
+	}
+ 	recv Authentication-Start {
+		-sql
+		update control {
+			&Auth-Type := &Authentication-Type
+		}
+	}
+	authenticate PAP {
+		tacacs_pap
+	}
+	authenticate CHAP {
+		tacacs_chap
+	}
+	authenticate MSCHAP {
+		tacacs_mschap
+	}
+	authenticate MSCHAPv2 {
+		tacacs_mschap
+	}
+	authenticate ASCII {
+		fail
+	}
+	send Authentication-Start-Reply {
+		if (&Authentication-Status == Pass) {
+			update reply {
+				&Server-Message := "Hello %{User-Name}"
+			}
+		}
+	}
+	recv Authentication-Continue {
+		"%{Authentication-Continue-Flags}"
+		"%{User-Message}"
+		"%{Data}"
+	}
+	send Authentication-Continue-Reply {
+		if (&Authentication-Status == Pass) {
+			update reply {
+				&Server-Message := "Hello %{User-Name}"
+			}
+		}
+	}
+	recv Authorization-Request {
+		"%{Authentication-Method}"
+		"%{Privilege-Level}"
+		"%{Authentication-Type}"
+		"%{Authentication-Service}"
+		"%{User-Name}"
+		"%{Client-Port}"
+		"%{Remote-Address}"
+		"%{ArgumentList}"
+	}
+	send Authorization-Reply {
+		update reply {
+			&Authorization-Status := Pass-Add
+			&Server-Message := "authorization-response-server"
+			&Data := "authorization-response-data"
+			&ArgumentList := "key1=var1"
+		}
+	}
+	recv Accounting-Request {
+		detail
+	}
+	accounting Start {
+	}
+	accounting Watchdog-Update {
+	}
+	accounting Watchdog {
+	}
+	accounting Stop {
+	}
+	send Accounting-Reply {
+		update reply {
+			&Accounting-Status := Success
+			&Server-Message := "Success"
+			&Data := 0x00
+		}
+	}
+}
+```

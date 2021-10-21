@@ -25,15 +25,15 @@
  */
 RCSIDH(queue_h, "$Id$")
 
-#include <talloc.h>
 #include <stdbool.h>
 #include <freeradius-devel/io/atomic_queue.h>
+#include <freeradius-devel/util/talloc.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct fr_queue_t fr_queue_t;
+typedef struct fr_queue_s fr_queue_t;
 
 fr_queue_t *fr_queue_create(TALLOC_CTX *ctx, int size);
 fr_queue_t *fr_queue_resize(fr_queue_t *fq, int size) CC_HINT(nonnull);

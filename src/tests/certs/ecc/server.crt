@@ -2,57 +2,72 @@ Certificate:
     Data:
         Version: 3 (0x2)
         Serial Number: 2 (0x2)
-    Signature Algorithm: ecdsa-with-SHA256
+        Signature Algorithm: ecdsa-with-SHA256
         Issuer: C=FR, ST=Radius, L=Somewhere, O=Example Inc/emailAddress=admin@example.org, CN=Example Certificate Authority
         Validity
-            Not Before: Mar 25 12:43:55 2019 GMT
-            Not After : Mar 24 12:43:55 2020 GMT
+            Not Before: May 26 15:40:51 2021 GMT
+            Not After : May 26 15:40:51 2022 GMT
         Subject: C=FR, ST=Radius, O=Example Inc, CN=Example Server Certificate/emailAddress=admin@example.org
         Subject Public Key Info:
             Public Key Algorithm: id-ecPublicKey
                 Public-Key: (256 bit)
                 pub:
-                    04:43:56:66:a5:0c:17:a1:8b:7d:54:14:46:ba:25:
-                    6f:a7:1e:bd:45:19:b4:c4:e0:ac:36:36:93:36:d0:
-                    3e:33:a6:32:18:32:03:3a:e2:01:fb:ef:20:59:36:
-                    9f:9f:54:26:ec:31:6c:e5:9e:88:24:8a:9e:64:d6:
-                    bb:91:b9:e4:16
+                    04:49:e5:e1:3a:c0:39:f9:1b:a9:e8:ac:6e:e2:c8:
+                    ab:d0:9e:2f:1c:fa:5b:f4:85:25:4f:ae:df:7b:02:
+                    83:66:0f:5e:ae:f4:f1:fa:fd:4a:04:83:17:b6:d8:
+                    83:3f:93:15:bc:fc:08:b1:23:f3:33:7d:22:e0:12:
+                    8b:61:60:f4:66
                 ASN1 OID: prime256v1
                 NIST CURVE: P-256
         X509v3 extensions:
-            X509v3 Basic Constraints:
+            X509v3 Subject Key Identifier: 
+                A9:0D:7E:7D:DF:B2:3D:51:A2:7A:29:27:67:96:A8:7F:DB:45:E7:6E
+            X509v3 Authority Key Identifier: 
+                keyid:60:68:7D:14:E7:33:B4:17:3B:E0:A1:69:A5:44:6B:A6:05:68:E7:76
+                DirName:/C=FR/ST=Radius/L=Somewhere/O=Example Inc/emailAddress=admin@example.org/CN=Example Certificate Authority
+                serial:1F:EC:DE:14:5C:22:F7:8B:05:78:CA:AA:76:13:68:8A:E0:C3:8C:62
+
+            X509v3 Basic Constraints: 
                 CA:FALSE
-            X509v3 Key Usage:
+            X509v3 Key Usage: 
                 Digital Signature, Non Repudiation, Key Encipherment
-            X509v3 Extended Key Usage:
-                TLS Web Server Authentication
-            X509v3 CRL Distribution Points:
+            X509v3 Extended Key Usage: 
+                TLS Web Server Authentication, 1.3.6.1.5.5.7.3.14
+            X509v3 CRL Distribution Points: 
 
                 Full Name:
                   URI:http://www.example.com/example_ca.crl
 
-            Authority Information Access:
+            Authority Information Access: 
                 OCSP - URI:http://www.example.org/ocsp
 
+            X509v3 Subject Alternative Name: 
+                DNS:radius.example.org, othername:<unsupported>
     Signature Algorithm: ecdsa-with-SHA256
-         30:44:02:20:15:1a:c7:dc:7a:77:cb:e1:d6:fe:1d:52:ac:3f:
-         92:45:30:e8:a1:8e:24:9b:ca:e2:c0:df:b0:6c:f6:bb:a1:7c:
-         02:20:05:b6:e4:05:b0:b9:ed:c4:13:11:a9:03:1e:6f:8e:3a:
-         0f:93:11:21:53:8f:b1:df:e2:b5:96:29:cc:a1:d7:da
+         30:46:02:21:00:c7:5d:fc:29:26:cf:1d:fc:56:13:9c:10:56:
+         a7:17:1d:77:ec:7b:c4:25:6c:71:e8:b2:65:c1:0e:a4:9d:88:
+         61:02:21:00:d4:6a:7b:0b:a6:6f:7e:0b:1d:ce:7d:5a:5a:a1:
+         d5:0e:a7:c1:b7:a3:90:e0:8d:39:67:e9:f7:5f:ab:97:52:43
 -----BEGIN CERTIFICATE-----
-MIICnjCCAkWgAwIBAgIBAjAKBggqhkjOPQQDAjCBkjELMAkGA1UEBhMCRlIxDzAN
+MIID3DCCA4GgAwIBAgIBAjAKBggqhkjOPQQDAjCBkjELMAkGA1UEBhMCRlIxDzAN
 BgNVBAgMBlJhZGl1czESMBAGA1UEBwwJU29tZXdoZXJlMRQwEgYDVQQKDAtFeGFt
 cGxlIEluYzEgMB4GCSqGSIb3DQEJARYRYWRtaW5AZXhhbXBsZS5vcmcxJjAkBgNV
-BAMMHUV4YW1wbGUgQ2VydGlmaWNhdGUgQXV0aG9yaXR5MB4XDTE5MDMyNTEyNDM1
-NVoXDTIwMDMyNDEyNDM1NVowezELMAkGA1UEBhMCRlIxDzANBgNVBAgMBlJhZGl1
+BAMMHUV4YW1wbGUgQ2VydGlmaWNhdGUgQXV0aG9yaXR5MB4XDTIxMDUyNjE1NDA1
+MVoXDTIyMDUyNjE1NDA1MVowezELMAkGA1UEBhMCRlIxDzANBgNVBAgMBlJhZGl1
 czEUMBIGA1UECgwLRXhhbXBsZSBJbmMxIzAhBgNVBAMMGkV4YW1wbGUgU2VydmVy
 IENlcnRpZmljYXRlMSAwHgYJKoZIhvcNAQkBFhFhZG1pbkBleGFtcGxlLm9yZzBZ
-MBMGByqGSM49AgEGCCqGSM49AwEHA0IABENWZqUMF6GLfVQURrolb6cevUUZtMTg
-rDY2kzbQPjOmMhgyAzriAfvvIFk2n59UJuwxbOWeiCSKnmTWu5G55BajgaEwgZ4w
-CQYDVR0TBAIwADALBgNVHQ8EBAMCBeAwEwYDVR0lBAwwCgYIKwYBBQUHAwEwNgYD
-VR0fBC8wLTAroCmgJ4YlaHR0cDovL3d3dy5leGFtcGxlLmNvbS9leGFtcGxlX2Nh
-LmNybDA3BggrBgEFBQcBAQQrMCkwJwYIKwYBBQUHMAGGG2h0dHA6Ly93d3cuZXhh
-bXBsZS5vcmcvb2NzcDAKBggqhkjOPQQDAgNHADBEAiAVGsfcenfL4db+HVKsP5JF
-MOihjiSbyuLA37Bs9ruhfAIgBbbkBbC57cQTEakDHm+OOg+TESFTj7Hf4rWWKcyh
-19o=
+MBMGByqGSM49AgEGCCqGSM49AwEHA0IABEnl4TrAOfkbqeisbuLIq9CeLxz6W/SF
+JU+u33sCg2YPXq708fr9SgSDF7bYgz+TFbz8CLEj8zN9IuASi2Fg9GajggHcMIIB
+2DAdBgNVHQ4EFgQUqQ1+fd+yPVGieiknZ5aof9tF524wgdIGA1UdIwSByjCBx4AU
+YGh9FOcztBc74KFppURrpgVo53ahgZikgZUwgZIxCzAJBgNVBAYTAkZSMQ8wDQYD
+VQQIDAZSYWRpdXMxEjAQBgNVBAcMCVNvbWV3aGVyZTEUMBIGA1UECgwLRXhhbXBs
+ZSBJbmMxIDAeBgkqhkiG9w0BCQEWEWFkbWluQGV4YW1wbGUub3JnMSYwJAYDVQQD
+DB1FeGFtcGxlIENlcnRpZmljYXRlIEF1dGhvcml0eYIUH+zeFFwi94sFeMqqdhNo
+iuDDjGIwCQYDVR0TBAIwADALBgNVHQ8EBAMCBeAwHQYDVR0lBBYwFAYIKwYBBQUH
+AwEGCCsGAQUFBwMOMDYGA1UdHwQvMC0wK6ApoCeGJWh0dHA6Ly93d3cuZXhhbXBs
+ZS5jb20vZXhhbXBsZV9jYS5jcmwwNwYIKwYBBQUHAQEEKzApMCcGCCsGAQUFBzAB
+hhtodHRwOi8vd3d3LmV4YW1wbGUub3JnL29jc3AwOgYDVR0RBDMwMYIScmFkaXVz
+LmV4YW1wbGUub3JnoBsGCCsGAQUFBwgIoA8MDSouZXhhbXBsZS5jb20wCgYIKoZI
+zj0EAwIDSQAwRgIhAMdd/Ckmzx38VhOcEFanFx137HvEJWxx6LJlwQ6knYhhAiEA
+1Gp7C6Zvfgsdzn1aWqHVDqfBt6OQ4I05Z+n3X6uXUkM=
 -----END CERTIFICATE-----

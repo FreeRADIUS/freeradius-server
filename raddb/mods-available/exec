@@ -9,22 +9,31 @@
 #
 #  The module `exec` is used for executing external programs.
 #
-#  This module is useful only for `xlat`.  To use it, put `exec` into
+#  This module provides an `xlat`.  To use it, put `exec` into
 #  the `instantiate` section.  You can then do dynamic translation of
 #  attributes like:
 #
-#    Attribute-Name = "%{exec:/path/to/program args}"
+#    Attribute-Name = "%(exec:/path/to/program args)"
 #
 #  The value of the attribute will be replaced with the output of the
 #  program which is executed.  Due to RADIUS protocol limitations,
 #  any output over `253` bytes will be ignored.
 #
-#  The RADIUS attributes from the user request will be placed
-#  into environment variables of the executed program, as
-#  described in `man unlang` and in `doc/configuration/variables.rst`
+#  The RADIUS attributes from the list referenced in the `input_pairs`
+#  configuraton item will be placed into environment variables of the executed
+#  program, as described in `man unlang` and in `doc/unlang/xlat.adoc`
 #
-#  The return value of the program run determines the result of the exec
-#  instance call as follows:
+#  Alternatively, by setting the `program` item of the module configuration,
+#  the module can be called as a module rather than as an xlat function.
+#  See the `echo` module for an example of this.
+#
+#  In this scenario, if the configuration item `output_pairs` is set,
+#  and the `wait` configuration item is set to "yes", the output of
+#  executing the program will be parsed for attribute pairs which
+#  will be added to the list referenced in `output_pairs`.
+#
+#  When called as a module, the return value of the program run determines
+#  the result of the exec instance call as follows:
 #
 #  [options="header,autowidth"]
 #  |===
@@ -36,7 +45,7 @@
 #  | = 3  | ok        | the module succeeded.
 #  | = 4  | handled   | the module has done everything to handle the request.
 #  | = 5  | invalid   | the user's configuration entry was invalid.
-#  | = 6  | userlock  | the user was locked out.
+#  | = 6  | disallow  | the user was locked out.
 #  | = 7  | notfound  | the user was not found.
 #  | = 8  | noop      | the module did nothing.
 #  | = 9  | updated   | the module updated information in the request.
@@ -45,7 +54,7 @@
 #
 
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 exec {
 	#
@@ -58,14 +67,12 @@ exec {
 
 	#
 	#  program:: The name of the program to execute, and it's
-	#  arguments.
+	#  arguments, when called as a module.
 	#
 	#  Dynamic translation is done on this field, so things like
 	#  the following example will work.
 	#
-	#  If 'program' is set to a value, then the module *cannot* be
-	#  used in an `xlat`.  See the `echo` module for examples of
-	#  how to use the module "in line".
+	#  See the `echo` module for examples of how to use the module "in line".
 	#
 #	program = "/bin/true %{User-Name}"
 
@@ -81,13 +88,8 @@ exec {
 	#  | request       | attributes from the request
 	#  | config        | attributes from the configuration items list
 	#  | reply         | attributes from the reply
-	#  | proxy-request | attributes from the proxy request
-	#  | proxy-reply   | attributes from the proxy reply
+	#  | session-state | attributes that persist over multiple request/response rounds.
 	#  |===
-	#
-	#  NOTE: Some attributes may not exist at some stages.
-	#  e.g. There may be no proxy-reply attributes if this module is used
-	#  in the `recv` section.
 	#
 	input_pairs = request
 
@@ -114,7 +116,18 @@ exec {
 	#
 	#    User-Name=BobUser => USER_NAME="BobUser"
 	#
+	#  Note that this escaping only applies to environmental variables
+	#  created from the request list.  For environmental variables inherited
+	#  from the main radiusd process no escaping is applied.
+	#
 	shell_escape = yes
+
+	#
+	#  env_inherit:: Inherit the environment of the current radiusd process.
+	#
+	#  Any `input_pairs` will be merged with these environmental variables.
+	#
+#	env_inherit = no
 
 	#
 	#  timeout:: Set a time wait for the program to finish.

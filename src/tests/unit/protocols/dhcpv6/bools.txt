@@ -1,0 +1,28 @@
+#  -*- text -*-
+#  Copyright (C) 2019 Network RADIUS SARL (legal@networkradius.com)
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+
+proto dhcpv6
+proto-dictionary dhcpv6
+
+#
+#  True values are encoded by using an empty attribute.
+#
+#  False values are encoded by nothing.
+#
+encode-pair Rapid-Commit = yes
+match 00 0e 00 00
+
+decode-pair -
+match Rapid-Commit = yes
+
+encode-pair Rapid-Commit = no
+match 
+
+# And we can't decode nothing...
+
+count
+match 8

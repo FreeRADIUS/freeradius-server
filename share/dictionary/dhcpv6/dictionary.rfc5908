@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -11,8 +11,6 @@
 ##############################################################################
 
 ATTRIBUTE	NTP-Server				56	tlv
-BEGIN-TLV	NTP-Server
-ATTRIBUTE	NTP-Server-Address			1	ipv6addr
-ATTRIBUTE	NTP-Server-Multicast-Address		2	ipv6addr
-ATTRIBUTE	NTP-Server-FQDN				3	octets		# Domain name
-END-TLV		NTP-Server
+ATTRIBUTE	Address					.1	ipv6addr
+ATTRIBUTE	Multicast-Address			.2	ipv6addr
+ATTRIBUTE	FQDN					.3	string dns_label

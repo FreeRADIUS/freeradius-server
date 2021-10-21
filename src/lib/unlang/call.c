@@ -24,138 +24,216 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/server/state.h>
+#include <freeradius-devel/server/pair.h>
+
+#include "call_priv.h"
+#include "module_priv.h"
 #include "unlang_priv.h"
 
-static unlang_action_t unlang_call(REQUEST *request,
-				   rlm_rcode_t *presult, UNUSED int *priority)
+static unlang_action_t unlang_call_resume(UNUSED rlm_rcode_t *p_result, request_t *request,
+					  unlang_stack_frame_t *frame)
 {
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-	unlang_group_t		*g;
-	int			indent;
-	fr_io_final_t		final;
-	unlang_stack_t		*current;
-	CONF_SECTION		*old_server_cs;
-	fr_io_process_t		*process_p, old_process;
-	void			*process_inst, *old_process_inst;
-	fr_dict_attr_t const	*da;
-	fr_dict_enum_t const	*type_enum;
-	char const		*server, *packet;
+	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
+	unlang_call_t			*gext = unlang_group_to_call(g);
+	fr_pair_t			*packet_type_vp = NULL;
 
-	g = unlang_generic_to_group(instruction);
-	rad_assert(g->children != NULL);
+	switch (pair_update_reply(&packet_type_vp, gext->attr_packet_type)) {
+	case 0:
+		packet_type_vp->vp_uint32 = request->reply->code;
+		break;
+
+	case 1:
+		break;	/* Don't change */
+	}
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *request,
+					      unlang_stack_frame_t *frame)
+{
+	unlang_group_t			*g;
+	unlang_call_t			*gext;
+	fr_dict_enum_value_t const		*type_enum;
+	fr_pair_t			*packet_type_vp = NULL;
 
 	/*
-	 *	@todo - allow for other process functions.  Mostly
-	 *	because we need to save and resume this function, and
-	 *	we haven't bothered to do that so far.
+	 *	Do not check for children here.
 	 *
-	 *	If we DO allow other functions, we need to replace
-	 *	request->async->listener, as we want to pretend this
-	 *	is a virtual request which didn't come in from the
-	 *	network.  i.e. the other virtual server shouldn't be
-	 *	able to access request->async->listener, and muck with
-	 *	it's statistics, see it's configuration, etc.
+	 *	Call shouldn't require children to execute as there
+	 *	can still be side effects from executing the virtual
+	 *	server.
 	 */
-	rad_assert(request->async->process == unlang_io_process_interpret);
+	g = unlang_generic_to_group(frame->instruction);
+	gext = unlang_group_to_call(g);
 
-	server = cf_section_name2(g->server_cs);
-	da = fr_dict_attr_by_name(virtual_server_namespace(server), "Packet-Type");
-	if (!da) {
-		REDEBUG("No such attribute 'Packet-Type' for server %s", server);
-		*presult = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-	type_enum = fr_dict_enum_by_value(da, fr_box_uint32(request->packet->code));
+	/*
+	 *	Work out the current request type.
+	 */
+	type_enum = fr_dict_enum_by_value(gext->attr_packet_type, fr_box_uint32(request->packet->code));
 	if (!type_enum) {
-		REDEBUG("No such value '%d' of attribute 'Packet-Type' for server %s", request->packet->code, server);
-		*presult = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-	packet = type_enum->alias;
+		packet_type_vp = fr_pair_find_by_da(&request->request_pairs, gext->attr_packet_type, 0);
+		if (!packet_type_vp) {
+		bad_packet_type:
+			REDEBUG("No such value '%d' of attribute 'Packet-Type' for server %s",
+				request->packet->code, cf_section_name2(gext->server_cs));
+		error:
+			*p_result = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
+		type_enum = fr_dict_enum_by_value(packet_type_vp->da, &packet_type_vp->data);
+		if (!type_enum) goto bad_packet_type;
 
-	process_p = (fr_io_process_t *) cf_data_value(cf_data_find(g->server_cs, fr_io_process_t, packet));
-	if (!process_p) {
-		REDEBUG("No such packet type '%s' in server '%s'",
-			packet, cf_section_name2(g->server_cs));
-		*presult = RLM_MODULE_FAIL;
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-	process_inst = cf_data_value(cf_data_find(g->server_cs, void, packet));
-
-	/*
-	 *	@todo - We probably want to just remove the 'stack'
-	 *	parameter from the interpreter function arguments.
-	 *	It's not needed there.
-	 */
-	rad_assert(stack == request->stack);
-
-	indent = request->log.unlang_indent;
-	request->log.unlang_indent = 0; /* the process function expects this */
-
-	current = request->stack;
-	request->stack = talloc_zero(request, unlang_stack_t);
-
-	old_server_cs = request->server_cs;
-	old_process = request->async->process;
-	old_process_inst = request->async->process_inst;
-
-	request->server_cs = g->server_cs;
-	request->async->process = *process_p;
-	request->async->process_inst = process_inst;
-
-	RDEBUG("server %s {", server);
-
-	/*
-	 *	@todo - we can't change packet types
-	 *	(e.g. Access-Request -> Accounting-Request) unless
-	 *	we're in a subrequest.
-	 */
-	final = request->async->process(request->async->process_inst, request);
-
-	RDEBUG("} # server %s", server);
-
-	/*
-	 *	All other return codes are semantically equivalent for
-	 *	our purposes.  "DONE" means "stopped without reply",
-	 *	and REPLY means "finished successfully".  Neither of
-	 *	those map well into module rcodes.  Instead, we rely
-	 *	on the caller to look at request->reply->code.
-	 */
-	if (final == FR_IO_YIELD) {
-		RDEBUG2("No yield for you!");
+		/*
+		 *	Sync up packet->code
+		 */
+		request->packet->code = packet_type_vp->vp_uint32;
 	}
 
 	/*
-	 *	@todo - save these in a resume state somewhere...
+	 *	Sync up packet codes and attributes
+	 *
+	 *	Fixme - packet->code needs to die...
 	 */
-	request->log.unlang_indent = indent;
-	talloc_free(request->stack);
-	request->stack = current;
+	if (!packet_type_vp) switch (pair_update_request(&packet_type_vp, gext->attr_packet_type)) {
+	case 0:
+		packet_type_vp->vp_uint32 = request->packet->code;
+		break;
 
-	request->server_cs = old_server_cs;
-	request->async->process = old_process;
-	request->async->process_inst = old_process_inst;
+	case 1:
+		request->packet->code = packet_type_vp->vp_uint32;
+		break;
 
-	RDEBUG("Continuing with contents of %s { ...", instruction->debug_name);
+	default:
+		goto error;
+	}
 
 	/*
-	 *	And then call the children to process the answer.
+	 *	Need to add reply.Packet-Type if it
+	 *	wasn't set by the virtual server...
+	 *
+	 *	AGAIN packet->code NEEDS TO DIE.
+	 *	DIE DIE DIE DIE DIE DIE DIE DIE DIE
+	 *	DIE DIE DIE DIE DIE DIE DIE DIE DIE.
 	 */
-	unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
+	frame_repeat(frame, unlang_call_resume);
+
+	if (virtual_server_push(request, gext->server_cs, UNLANG_SUB_FRAME) < 0) goto error;
+
 	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
+/** Push a call frame onto the stack
+ *
+ * This should be used instead of virtual_server_push in the majority of the code
+ */
+unlang_action_t unlang_call_push(request_t *request, CONF_SECTION *server_cs, bool top_frame)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_call_t			*c;
+	char const			*name;
+	fr_dict_t const			*dict;
+	fr_dict_attr_t const		*attr_packet_type;
+
+	/*
+	 *	Temporary hack until packet->code is removed
+	 */
+	dict = virtual_server_dict(server_cs);
+	if (!dict) {
+		REDEBUG("Virtual server \"%s\" not compiled", cf_section_name2(server_cs));
+		return UNLANG_ACTION_FAIL;
+	}
+
+	attr_packet_type = fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
+	if (!attr_packet_type) {
+		REDEBUG("No Packet-Type attribute available");
+		return UNLANG_ACTION_FAIL;
+	}
+
+	/*
+	 *	We need to have a unlang_module_t to push on the
+	 *	stack.  The only sane way to do it is to attach it to
+	 *	the frame state.
+	 */
+	name = cf_section_name2(server_cs);
+	MEM(c = talloc(stack, unlang_call_t));	/* Free at the same time as the state */
+	*c = (unlang_call_t){
+		.group = {
+			.self = {
+				.type = UNLANG_TYPE_CALL,
+				.name = name,
+				.debug_name = name,
+				.actions = {
+					.actions = {
+						[RLM_MODULE_REJECT]	= 0,
+						[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
+						[RLM_MODULE_OK]		= 0,
+						[RLM_MODULE_HANDLED]	= 0,
+						[RLM_MODULE_INVALID]	= 0,
+						[RLM_MODULE_DISALLOW]	= 0,
+						[RLM_MODULE_NOTFOUND]	= 0,
+						[RLM_MODULE_NOOP]	= 0,
+						[RLM_MODULE_UPDATED]	= 0
+					},
+					.retry = RETRY_INIT,
+				},
+			}
+		},
+		.server_cs = server_cs,
+		.attr_packet_type = attr_packet_type
+	};
+
+	/*
+	 *	Push a new call frame onto the stack
+	 */
+	if (unlang_interpret_push(request, unlang_call_to_generic(c),
+				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, top_frame) < 0) {
+		talloc_free(c);
+		return UNLANG_ACTION_FAIL;
+	}
+
+	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
+/** Return the last virtual server that was called
+ *
+ * @param[in] request	To return virtual server for.
+ * @return
+ *	- A virtual server CONF_SECTION on success.
+ *	- NULL on failure.
+ */
+CONF_SECTION *unlang_call_current(request_t *request)
+{
+	unlang_stack_t	*stack = request->stack;
+	unsigned int	depth;
+
+	/*
+	 *	Work back from the deepest frame
+	 *	looking for modules.
+	 */
+	for (depth = stack_depth_current(request); depth > 0; depth--) {
+		unlang_stack_frame_t	*frame = &stack->frame[depth];
+
+		/*
+		 *	Look at the module frames,
+		 *	trying to find one that represents
+		 *	a process state machine.
+		 */
+		if (frame->instruction->type != UNLANG_TYPE_CALL) continue;
+
+		return unlang_group_to_call(unlang_generic_to_group(frame->instruction))->server_cs;
+	}
+	return NULL;
 }
 
 void unlang_call_init(void)
 {
 	unlang_register(UNLANG_TYPE_CALL,
 			   &(unlang_op_t){
-				.name = "call",
-				.func = unlang_call,
-				.debug_braces = true
+				.name			= "call",
+				.interpret		= unlang_call_frame_init,
+				.debug_braces		= true,
 			   });
 }
 

@@ -29,7 +29,7 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_sql_mysql - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <sys/stat.h>
 
@@ -77,12 +77,12 @@ typedef enum {
 	SERVER_WARNINGS_NO
 } rlm_sql_mysql_warnings;
 
-static const FR_NAME_NUMBER server_warnings_table[] = {
-	{ "auto",	SERVER_WARNINGS_AUTO	},
-	{ "yes",	SERVER_WARNINGS_YES	},
-	{ "no",		SERVER_WARNINGS_NO	},
-	{ NULL, 0 }
+static fr_table_num_sorted_t const server_warnings_table[] = {
+	{ L("auto"),	SERVER_WARNINGS_AUTO	},
+	{ L("no"),		SERVER_WARNINGS_NO	},
+	{ L("yes"),	SERVER_WARNINGS_YES	}
 };
+static size_t server_warnings_table_len = NUM_ELEMENTS(server_warnings_table);
 
 typedef struct {
 	MYSQL		db;
@@ -172,7 +172,7 @@ static int mod_instantiate(UNUSED rlm_sql_config_t const *config, void *instance
 	rlm_sql_mysql_t		*inst = instance;
 	int			warnings;
 
-	warnings = fr_str2int(server_warnings_table, inst->warnings_str, -1);
+	warnings = fr_table_value_by_str(server_warnings_table, inst->warnings_str, -1);
 	if (warnings < 0) {
 		ERROR("Invalid warnings value \"%s\", must be yes, no, or auto", inst->warnings_str);
 		return -1;
@@ -287,23 +287,23 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 #if (MYSQL_VERSION_ID >= 50000)
 	mysql_options(&(conn->db), MYSQL_OPT_CONNECT_TIMEOUT, &connect_timeout);
 
-	if (config->query_timeout) {
-		unsigned int read_timeout = config->query_timeout;
-		unsigned int write_timeout = config->query_timeout;
+	if (fr_time_delta_ispos(config->query_timeout)) {
+		unsigned int read_timeout = fr_time_delta_to_sec(config->query_timeout);
+		unsigned int write_timeout = fr_time_delta_to_sec(config->query_timeout);
 
 		/*
 		 *	The timeout in seconds for each attempt to read from the server.
 		 *	There are retries if necessary, so the total effective timeout
 		 *	value is three times the option value.
 		 */
-		if (config->query_timeout >= 3) read_timeout /= 3;
+		if (read_timeout >= 3) read_timeout /= 3;
 
 		/*
 		 *	The timeout in seconds for each attempt to write to the server.
 		 *	There is a retry if necessary, so the total effective timeout
 		 *	value is two times the option value.
 		 */
-		if (config->query_timeout >= 2) write_timeout /= 2;
+		if (write_timeout >= 2) write_timeout /= 2;
 
 		/*
 		 *	Connect timeout is actually connect timeout (according to the
@@ -709,8 +709,8 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	char const		*error;
 	size_t			i = 0;
 
-	rad_assert(conn && conn->sock);
-	rad_assert(outlen > 0);
+	fr_assert(conn && conn->sock);
+	fr_assert(outlen > 0);
 
 	error = mysql_error(conn->sock);
 
@@ -741,7 +741,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 				break;
 			}
 
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 		case SERVER_WARNINGS_YES:
 			ret = sql_warnings(ctx, out, outlen - 1, handle, config);
 			if (ret > 0) i += ret;
@@ -751,7 +751,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 			break;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 		}
 	}
 
@@ -824,7 +824,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	return mysql_affected_rows(conn->sock);
 }
 
-static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, void *arg)
+static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	size_t			inlen;
 	rlm_sql_handle_t	*handle = talloc_get_type_abort(arg, rlm_sql_handle_t);

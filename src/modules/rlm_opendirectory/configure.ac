@@ -2,13 +2,17 @@ AC_INIT(rlm_opendirectory.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_opendirectory])
 
+AC_ARG_WITH([]modname,
+[AS_HELP_STRING([--without-[]modname],[build without module])]
+)
+
 if test x$with_[]modname != xno; then
 
 	AC_PROG_CC
 	AC_PROG_CPP
 
-	mod_ldflags="${mod_ldflags} -framework DirectoryService" 
-	
+	mod_ldflags="${mod_ldflags} -framework DirectoryService"
+
 	FR_SMART_CHECK_INCLUDE(membership.h)
 	if test "$ac_cv_header_membership_h" != "yes"; then
 	  fail="$fail membership.h"
@@ -31,7 +35,7 @@ if test x"$fail" != x""; then
 		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
 	else
 		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.])
 		targetname=""
 	fi
 fi

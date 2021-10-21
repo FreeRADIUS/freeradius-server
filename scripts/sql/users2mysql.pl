@@ -9,49 +9,49 @@
 # last change: Aug 8th, 2002.
 #
 
-
+use strict;
 
 #Modify to suit your db.
-$database="radius";
-$hostname="localhost";
-$user="radius";
-$password="passwd";
+my $db="radius";
+my $hostname="localhost";
+my $user="radius";
+my $password="passwd";
 
 
 #location of source users file:
-$users_file="/etc/raddb_cistron_backup/users";
+my $users_file="/etc/raddb_cistron_backup/users";
 
 
 #The following are defaults from freeradius 0.7
 #  ...shouldn't have to change.
-$groups_table="usergroup";
-$check_table="radcheck";
-$reply_table="radreply";
+my $groups_table="usergroup";
+my $check_table="radcheck";
+my $reply_table="radreply";
 
-$debug=3;
+my $debug=3;
 
 use DBD::mysql;
 
 #open the users file, and the db.
-open USERS, $users_file or die "ERROR: Unable to open $users_file $!\n";
-$database = DBI->connect("DBI:mysql:$database:$hostname",$user, $password) or die "ERROR: Unable to connect to $database on $hostname $!\n";
+open(my $USERS, '<', $users_file) or die "ERROR: Unable to open $users_file $!\n";
+my $database = DBI->connect("DBI:mysql:$db:$hostname",$user, $password) or die "ERROR: Unable to connect to $db on $hostname $!\n";
 
 sub check_attribs {
 
 	if (!defined($_[0]) or !defined($_[1])) {
 		print "undefined parameter!\n";
-		return undef;
+		return;
 	};
 
-	$attr = $_[0];
-	$val  =  $_[1];
+	my $attr = $_[0];
+	my $val  = $_[1];
 
 	if ($attr !~ /Password|Framed-IP-Address|Framed-IP-Netmask|Framed-IP-Routing|Framed-Routing|Framed-IP-Route|Password|Simultaneous-Use|Idle-Timeout|Auth-Type|Service-Type|Netmask|Framed-Protocol/ ) {
 		print "unrecognized attribute: $attr\n" if $debug>1;
-		return undef;
+		return;
 	};
 
-	return undef if ( 	(! defined($val) ) or
+	return if ( (! defined($val) ) or
 		( ($attr =~ /Simultaneous\-Use/i) && ( $val !~ /^[0-9]*$/ ) )
 		);
 	print "attribs ok!\n" if $debug>3;
@@ -71,14 +71,15 @@ sub cleanup {
 
 sub user_attribute {
 	#push values into db...
-	$dtable=$_[0];
-	$duser=$_[1];
-	$dattrib=$_[2];
-	$dval=$_[3];
+	my $dtable=$_[0];
+	my $duser=$_[1];
+	my $dattrib=$_[2];
+	my $dval=$_[3];
 
 	print "inserting \"$dattrib\", \"$dval\" for \"$duser\" in rad$dtable\n" if ( $dtable !~ /group/ and $debug>2);
 	print "inserting \"$duser\" into usergroup table as member of \"$dattrib\"\n" if ( $dtable =~ /group/ and $debug>2);
 
+	my $table;
 	if ( $dtable =~ /group/ ) {
 		$table = "usergroup";
 	} elsif ( $dtable =~ /check/ ) {
@@ -89,7 +90,7 @@ sub user_attribute {
 		die "argh! what table is $dtable?\n";
 	};
 
-
+	my $return;
 	if ( $table =~ /usergroup/ ) {
 		if ( $dattrib =~ /static/ ) {
 			#Delete the "dynamic" entry...
@@ -104,7 +105,7 @@ sub user_attribute {
 };
 
 
-while (<USERS>) {
+while (<$USERS>) {
 
 	chop;
 	#Skip comment lines and blank lines...
@@ -112,9 +113,10 @@ while (<USERS>) {
 	next if ( /^$/ );
 	next if ( /^\s*$/ );
 
+	my @attribs;
 	if ( /^[a-zA-Z0-9]+/ ) {
 		print "located a user entry: $_\n" if $debug>6;
-		($user,$rest) = split /\s/, $_, 2;
+		my ($user,$rest) = split /\s/, $_, 2;
 		#Put user into usergroup as dynamic, if the user's attributes
 		# include an IP address, the script will change that later...
 		user_attribute("group",$user,"dynamic","");
@@ -124,8 +126,8 @@ while (<USERS>) {
 		@attribs = $_;
 	};
 
-	foreach $attr (@attribs) {
-		($attrib,$value) = split /=/, $attr, 2;
+	foreach my $attr (@attribs) {
+		my ($attrib,$value) = split /=/, $attr, 2;
 		#TODO: insert sanity checks here!
 		$value  = cleanup($value)  if (defined($value));
 		$attrib = cleanup($attrib) if (defined($attrib));
@@ -137,7 +139,6 @@ while (<USERS>) {
 
 		if ( $attrib =~ /Framed-IP-Address/ ) {
 			#user is a static IP user...
-			$static{$user} = 1;
 			user_attribute("group",$user,"static","");
 		};
 
@@ -153,5 +154,5 @@ while (<USERS>) {
 
 };
 
-close USERS;
+close $USERS;
 exit($database->disconnect);

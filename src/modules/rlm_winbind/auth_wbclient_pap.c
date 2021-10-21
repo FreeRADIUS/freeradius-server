@@ -27,7 +27,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <wbclient.h>
 #include <core/ntstatus.h>
@@ -39,6 +39,7 @@ RCSID("$Id$")
  *
  * @param[in] inst Module instance
  * @param[in] request The current request
+ * @param[in] password the User-Password
  *
  * @return
  *	- 0	Success
@@ -46,9 +47,9 @@ RCSID("$Id$")
  *	- -648	Password expired
  *
  */
-int do_auth_wbclient_pap(rlm_winbind_t const *inst, REQUEST *request)
+int do_auth_wbclient_pap(rlm_winbind_t const *inst, request_t *request, fr_pair_t *password)
 {
-	int rcode = -1;
+	int ret = -1;
 	struct wbcContext *wb_ctx;
 	struct wbcAuthUserParams authparams;
 	wbcErr err;
@@ -68,7 +69,7 @@ int do_auth_wbclient_pap(rlm_winbind_t const *inst, REQUEST *request)
 	/*
 	 * wb_username must be set for this function to be called
 	 */
-	rad_assert(inst->wb_username);
+	fr_assert(inst->wb_username);
 
 	/*
 	 * Get the username and domain from the configuration
@@ -96,7 +97,7 @@ int do_auth_wbclient_pap(rlm_winbind_t const *inst, REQUEST *request)
 	 * Build the wbcAuthUserParams structure with what we know
 	 */
 	authparams.level = WBC_AUTH_USER_LEVEL_PLAIN;
-	authparams.password.plaintext = request->password->data.vb_strvalue;
+	authparams.password.plaintext = password->data.vb_strvalue;
 
 	/*
 	 * Parameters documented as part of the MSV1_0_SUBAUTH_LOGON structure
@@ -129,7 +130,7 @@ int do_auth_wbclient_pap(rlm_winbind_t const *inst, REQUEST *request)
 	 */
 	switch (err) {
 	case WBC_ERR_SUCCESS:
-		rcode = 0;
+		ret = 0;
 		RDEBUG2("Authenticated successfully");
 		break;
 
@@ -150,11 +151,11 @@ int do_auth_wbclient_pap(rlm_winbind_t const *inst, REQUEST *request)
 		}
 
 		/*
-		 * The password needs to be changed, set rcode appropriately.
+		 * The password needs to be changed, set ret appropriately.
 		 */
 		if (error->nt_status == NT_STATUS_PASSWORD_EXPIRED ||
 		    error->nt_status == NT_STATUS_PASSWORD_MUST_CHANGE) {
-			rcode = -648;
+			ret = -648;
 		}
 
 		/*
@@ -187,6 +188,6 @@ done:
 	if (info) wbcFreeMemory(info);
 	if (error) wbcFreeMemory(error);
 
-	return rcode;
+	return ret;
 }
 

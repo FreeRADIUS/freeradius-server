@@ -636,6 +636,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_sigtran
 with_sigtran_include_dir
 with_sigtran_dir
 '
@@ -1253,6 +1254,8 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --without-rlm_sigtran   build without module
+
   --with-sigtran-include-dir=DIR
                           Directory where osmocore and osmosccp may be found
   --with-sigtran-dir=DIR  Base directory where osmocore and osmosccp are
@@ -1783,6 +1786,13 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
+
+
+# Check whether --with-rlm_sigtran was given.
+if test "${with_rlm_sigtran+set}" = set; then :
+  withval=$with_rlm_sigtran;
+fi
 
 
 fail=

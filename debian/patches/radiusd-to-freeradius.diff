@@ -15,7 +15,7 @@ Index: freeradius-server/raddb/radiusd.conf.in
 ===================================================================
 --- freeradius-server.orig/raddb/radiusd.conf.in
 +++ freeradius-server/raddb/radiusd.conf.in
-@@ -68,7 +68,7 @@ radacctdir = @radacctdir@
+@@ -67,7 +67,7 @@ radacctdir = @radacctdir@
  #
  #  See also the `-n` command-line option.
  #
@@ -24,14 +24,14 @@ Index: freeradius-server/raddb/radiusd.conf.in
  
  #
  #  Location of config and logfiles.
-@@ -430,8 +430,8 @@ security {
+@@ -429,8 +429,8 @@ security {
  	#  member.  This can allow for some finer-grained access
  	#  controls.
  	#
--#  user = radius
--#  group = radius
-+  user = freerad
-+  group = freerad
+-#	user = radius
+-#	group = radius
++	user = freerad
++	group = freerad
  
  	#
  	#  allow_core_dumps:: Core dumps are a bad thing.
@@ -56,15 +56,15 @@ Index: freeradius-server/raddb/sites-available/control-socket
 ===================================================================
 --- freeradius-server.orig/raddb/sites-available/control-socket
 +++ freeradius-server/raddb/sites-available/control-socket
-@@ -72,12 +72,12 @@ server control {
+@@ -82,12 +82,12 @@ server control {
  			#
- 			#  Name of user who is allowed to connect to the control socket.
+ 			#  uid:: Name of user who is allowed to connect to the control socket.
  			#
 -#			uid = radius
 +#			uid = freerad
  
  			#
- 			#  Name of group that is allowed to connect to the control socket.
+ 			#  gid:: Name of group that is allowed to connect to the control socket.
  			#
 -#			gid = radius
 +#			gid = freerad
@@ -75,7 +75,7 @@ Index: freeradius-server/src/bin/radiusd.c
 ===================================================================
 --- freeradius-server.orig/src/bin/radiusd.c
 +++ freeradius-server/src/bin/radiusd.c
-@@ -227,14 +227,11 @@ int main(int argc, char *argv[])
+@@ -230,14 +230,11 @@ int main(int argc, char *argv[])
  	}
  
  	/*

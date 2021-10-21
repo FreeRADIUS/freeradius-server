@@ -31,9 +31,10 @@ RCSIDH(dl_module_h, "$Id$")
 #  include <dlfcn.h>
 #endif
 
-#include <freeradius-devel/util/version.h>
-#include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/util/dl.h>
+#include <freeradius-devel/util/rb.h>
+#include <freeradius-devel/util/version.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,6 +56,7 @@ extern "C" {
 typedef enum {
 	DL_MODULE_TYPE_MODULE = 0,	//!< Standard loadable module.
 	DL_MODULE_TYPE_PROTO,		//!< Protocol module.
+	DL_MODULE_TYPE_PROCESS,		//!< protocol processor.
 	DL_MODULE_TYPE_SUBMODULE	//!< Driver (or method in the case of EAP)
 } dl_module_type_t;
 
@@ -63,7 +65,8 @@ typedef enum {
  * The higher the priority, the earlier in callback gets called.
  */
 #define DL_PRIORITY_DICT	30		//!< Callback priority for dictionary autoloading
-#define DL_PRIORITY_DICT_ATTR	20		//!< Callback priority for attribute resolution
+#define DL_PRIORITY_DICT_ATTR	29		//!< Callback priority for attribute resolution
+#define DL_PRIORITY_DICT_ENUM	28		//!< Callback priority for enum resolution
 #define DL_PRIORITY_BOOTSTRAP	10		//!< Callback priority for bootstrap callback
 
 typedef struct dl_module_loader_s dl_module_loader_t;
@@ -149,18 +152,15 @@ struct dl_module_instance_s {
 	dl_module_inst_t const	*parent;		//!< Parent module's instance (if any).
 };
 
-/** Callback priorities
- *
- * The higher the priority, the earlier in callback gets called.
- */
-#define DL_PRIORITY_DICT	30			//!< Callback priority for dictionary autoloading
-#define DL_PRIORITY_DICT_ATTR	20			//!< Callback priority for attribute resolution
-#define DL_PRIORITY_BOOTSTRAP	10			//!< Callback priority for bootstrap callback
+extern fr_table_num_sorted_t const dl_module_type_prefix[];
+extern size_t dl_module_type_prefix_len;
 
 dl_module_t const	*dl_module(CONF_SECTION *conf, dl_module_t const *parent,
 				   char const *name, dl_module_type_t type);
 
 dl_module_inst_t const	*dl_module_instance_by_data(void const *data);
+
+char const		*dl_module_instance_name_by_data(void const *data);
 
 void			*dl_module_parent_data_by_child_data(void const *data);
 

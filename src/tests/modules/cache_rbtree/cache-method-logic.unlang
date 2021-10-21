@@ -1,0 +1,163 @@
+#
+#  PRE:
+#
+update {
+	&request.Tmp-String-0 := 'testkey'
+}
+
+#
+# 0.  Basic store and retrieve
+#
+update control {
+	&control.Tmp-String-1 := 'cache me'
+}
+
+cache.store
+if (!updated) {
+	test_fail
+}
+
+# 1. Check the module didn't perform a merge
+if (&request.Tmp-String-1) {
+	test_fail
+}
+
+# 2. Check status-only works correctly (should return ok and consume attribute)
+cache.status
+if (!ok) {
+	test_fail
+}
+
+# 3. Retrieve the entry (should be copied to request list)
+cache.load
+if (!updated) {
+	test_fail
+}
+
+# 4.
+if (&request.Tmp-String-1 != &control.Tmp-String-1) {
+	test_fail
+}
+
+# 5. Retrieving the entry should not expire it
+update request {
+	&Tmp-String-1 !* ANY
+}
+
+cache.load
+if (!updated) {
+	test_fail
+}
+
+# 6.
+if (&request.Tmp-String-1 != &control.Tmp-String-1) {
+	test_fail
+}
+
+# 8. Remove the entry
+cache.clear
+if (!ok) {
+	test_fail
+}
+
+# 8. Check status-only works correctly (should return notfound and consume attribute)
+cache.status
+if (!notfound) {
+	test_fail
+}
+
+# 14. This should still allow the creation of a new entry
+update control {
+	&Cache-TTL := -1
+}
+cache.store
+if (!updated) {
+	test_fail
+}
+
+# 12. We have nothing to do if it is ready added.
+cache.store
+if (!updated) {
+	test_fail
+}
+
+# 13.
+if (&Cache-TTL) {
+	test_fail
+}
+
+# 14.
+if (&request.Tmp-String-1 != &control.Tmp-String-1) {
+	test_fail
+}
+
+update control {
+	&Tmp-String-1 := 'cache me2'
+}
+
+# 18. Updating the Cache-TTL shouldn't make things go boom (we can't really check if it works)
+update control {
+	&Cache-TTL := 666
+}
+cache.ttl
+if (!updated) {
+	test_fail
+}
+
+# 19. Request Tmp-String-1 shouldn't have been updated yet
+if (&request.Tmp-String-1 == &control.Tmp-String-1) {
+	test_fail
+}
+
+# 20. Check that a new entry is created
+update control {
+	&Cache-TTL := -1
+}
+cache.store
+if (!updated) {
+	test_fail
+}
+
+# 21. Request Tmp-String-1 still shouldn't have been updated yet
+if (&request.Tmp-String-1 == &control.Tmp-String-1) {
+	test_fail
+}
+
+# 22.
+cache.load
+if (!updated) {
+	test_fail
+}
+
+# 23. Request Tmp-String-1 should now have been updated
+if (&request.Tmp-String-1 != &control.Tmp-String-1) {
+	test_fail
+}
+
+# 24. Check Cache-Merge = yes works as expected (should update current request)
+update control {
+	&Tmp-String-1 := 'cache me3'
+	&Cache-TTL := -1
+	&Cache-Merge-New := yes
+}
+cache.store
+if (!updated) {
+	test_fail
+}
+
+# 25. Request Tmp-String-1 should now have been updated
+if (&request.Tmp-String-1 != &control.Tmp-String-1) {
+	test_fail
+}
+
+# 26. Check Cache-Entry-Hits is updated as we expect
+if (&request.Cache-Entry-Hits != 0) {
+	test_fail
+}
+
+cache.load
+if (&request.Cache-Entry-Hits != 1) {
+	test_fail
+}
+
+test_pass

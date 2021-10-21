@@ -100,7 +100,7 @@ server abfab-idp {
 		#  an `Access-Reject` or `Access-Accept` is sent.
 		#
 		update {
-			&reply: += &session-state:
+			&reply += &session-state
 		}
 
 		#
@@ -110,7 +110,7 @@ server abfab-idp {
 #		cui
 
 		#
-		#  If you want to have a log of authentication replies, un-comment the
+		#  If you want to have a log of authentication replies, uncomment the
 		#  following line, and enable the `detail reply_log` module.
 		#
 #		reply_log
@@ -129,7 +129,7 @@ server abfab-idp {
 #		sql_log
 
 		#
-		#  Un-comment the following if you want to modify the user's object
+		#  Uncomment the following if you want to modify the user's object
 		#  in LDAP after a successful login.
 		#
 #		ldap
@@ -172,7 +172,7 @@ server abfab-idp {
 		#  we insert the failure all the time, but for ABFAB It's more desirable to preserve
 		#  `Reply-Message` when we can.
 		#
-		if (&reply:Eap-Message) {
+		if (&reply.Eap-Message) {
 			eap
 		}
 

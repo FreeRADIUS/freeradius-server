@@ -1,0 +1,60 @@
+= Design for redis coordination thread
+== Responsibilities
+Coordinator thread keeps track of every cluster in use in the server, and every node (node ID + IP + Port) used
+in any of those clusters.
+
+Its responsibilities are:
+* To keep active connections to all cluster nodes so that it can query any node.  Connections here are
+  are full trunked connections, as that allows us to cancel outstanding queries, and generally makes
+  operating a lot easier.
+* To process remap notifications from threads that either:
+** Report a cluster member is offline
+** Report they get redirected ASK or MOVED
+* To perform a remap if any of the coordinator connections go offline using other cluster members.
+* Given a set of IP addresses and ports from a thread, either map the cluster, or provide a cluster map.
+* Broadcast cluster changes to all worker threads so that they can open/close new connections as required.
+
+== Cluster IDs
+Contiguous, locally assigned 16bit unsigned integers.
+
+== Remapping
+When a remap request is received, the coordination thread sends:
+
+```
+MULTI
+CLUSTER INFO
+CLUSTER SLOTS
+EXEC
+```
+
+to all cluster members simultaneously.
+
+Maps are ordered by highest epoch then cluster_size. First map of a given value wins.
+
+The new map is returned asynchronously to the querier.  The querier should not wait for new map information.
+
+== None clustered redis
+
+Assigned a cluster ID and set as the master for the complete slot range.
+
+== Messages
+=== Requests to coordination thread
+- FIND CLUSTER ( <array of IPs and ports> ) - synchronous, returns CLUSTER-MAP
+- REMAP ( <internal cluster id>, [reason]) - asynchronous
+
+=== Requests to a worker thread
+- CLUSTER-MAP ( <internal cluster id>, <cluster type>, <cluster map as its currently known> ) -
+  Update known information for a given cluster
+- ERROR
+
+== Coordination clients
+Each thread has a read I/O event on the pipe used to communicate with the coordination thread.  When a CLUSTER-MAP
+is received the coordination client updates its map, and determines whether new connections need to be opened or
+closed.
+
+Each redis cluster trunk is then signalled to open or close connections.  This happens within the thread, with
+cluster trunks subscribing to notifications that a new connection should be opened ro closed.
+
+Cluster trunks should be shareable between module instances, so we get the maximum benefit from pipelining.
+
+

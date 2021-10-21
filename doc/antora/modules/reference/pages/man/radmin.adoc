@@ -1,0 +1,131 @@
+= radmin(8)
+Alan DeKok
+:doctype: manpage
+:release-version: 4.0.0
+:man manual: FreeRADIUS
+:man source: FreeRADIUS
+:page-layout: base
+:manvolnum: 8
+
+== NAME
+
+radmin - FreeRADIUS Administration tool
+
+== SYNOPSIS
+
+*radmin* [*-d* _config_directory_] [*-e* _command_] [*-E*] [*-f*
+_socket_file_] [*-h*] [*-i* _input_file_] [*-l* _log_file_] [*-n*
+_name_] [*-q*]
+
+== DESCRIPTION
+
+FreeRADIUS Server administration tool that connects to the control
+socket of a running server, and gives a command-line interface to it.
+
+At this time, only a few commands are supported. Please type `help` at
+the command prompt for detailed information about the supported
+commands.
+
+The `radmin` command supports full tab completion, inline help via `?`
+and `help`, and command history.
+
+== WARNING
+
+The security protections offered by this command are limited to the
+permissions on the Unix domain socket, and the server configuration. If
+someone can connect to the Unix domain socket, they have a substantial
+amount of control over the server.
+
+== OPTIONS
+
+The following command-line options are accepted by the program.
+
+*-d config_directory*:: 
+  Defaults to _/etc/raddb_. *radmin* looks here for the server
+  configuration files to find the "listen" section that defines the
+  control socket filename.
+
+*-e command*::
+  Run _command_ and exit.
+
+*-E*::
+  Echo commands as they are being executed.
+
+*-f socket_file*::
+  Specify the socket filename directly. The radiusd.conf file is not
+  read.
+
+*-h*::
+  Print usage help information.
+
+*-i input_file*::
+  Reads input from the specified file. If this option is not
+  specified, `stdin` is used.  This also sets `-q`.
+
+*-l log_file*::
+  Writes the commands which are executed to this log file. This
+  functionality is off by default.
+
+*-n name*::
+  Read `raddb/name.conf` instead of `raddb/radiusd.conf`.
+
+*-q*::
+  Quiet mode.
+
+== COMMANDS
+
+The commands implemented by the command-line interface are almost
+completely controlled by the server. There are a few commands
+interpreted locally by radmin:
+
+*exit*::
+  Exit from radmin.
+
+*quit*::
+  Exit from radmin.
+
+*reconnect*::
+  Reconnect to the server.
+
+
+The other commands are implemented by the server. Type `help` at the
+prompt for more information.
+
+== EXAMPLES
+
+*debug file /var/log/radius/bob.log*::
+
+  Set debug logs to `/var/log/radius/bob.log`. There is very little
+  checking of this filename. Rogue administrators may be able use this
+  command to over-write almost any file on the system.  However, if
+  the rogue administrators have write access to the main `radius.conf`
+  file, then they can do the same thing without `radmin`, too.
+
+*debug condition '(User-Name == "bob")'*::
+  Enable debugging output for all requests that match the condition. Any
+  `unlang` condition is valid here. The condition is parsed as a string,
+  so it must be enclosed in single or double quotes. Strings enclosed in
+  double-quotes must have back-slashes and the quotation marks escaped
+  inside of the string.
++
+Only one debug condition can be active at a time.
+
+*debug condition '((User-Name == ""bob"") || (Packet-Src-IP-Address == 192.0.2.22))'*::
+  A more complex condition that enables debugging output for requests
+  containing User-Name "bob", or requests that originate from source IP
+  address 192.0.2.22.
+
+*debug condition*::
+* Disable debug conditionals.
+
+== FULL LIST OF COMMANDS
+
+Connect to the server and type `help` for a full list of commands.
+
+== SEE ALSO
+
+unlang(5), radiusd.conf(5), raddb/sites-available/control-socket
+
+== AUTHOR
+
+Alan DeKok <aland@freeradius.org>

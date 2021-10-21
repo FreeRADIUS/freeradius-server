@@ -23,12 +23,12 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/md5.h>
 
 #include "eap_md5.h"
 
-static fr_dict_t *dict_freeradius;
+static fr_dict_t const *dict_freeradius;
 
 extern fr_dict_autoload_t rlm_eap_md5_dict[];
 fr_dict_autoload_t rlm_eap_md5_dict[] = {
@@ -40,45 +40,48 @@ static fr_dict_attr_t const *attr_cleartext_password;
 
 extern fr_dict_attr_autoload_t rlm_eap_md5_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_md5_dict_attr[] = {
-	{ .out = &attr_cleartext_password, .name = "Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_cleartext_password, .name = "Password.Cleartext", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ NULL }
 };
 
 /*
  *	Authenticate a previously sent challenge.
  */
-static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
-	eap_session_t	*eap_session = eap_session_get(request);
-	MD5_PACKET	*packet;
-	MD5_PACKET	*reply;
-	VALUE_PAIR	*password;
+	eap_session_t		*eap_session = eap_session_get(request->parent);
+	MD5_PACKET		*packet;
+	MD5_PACKET		*reply;
+	fr_pair_t		*known_good;
+	fr_dict_attr_t	const	*allowed_passwords[] = { attr_cleartext_password };
+	bool			ephemeral;
 
 	/*
-	 *	Get the Cleartext-Password for this user.
+	 *	Get the Password.Cleartext for this user.
 	 */
-	rad_assert(eap_session->request != NULL);
+	fr_assert(eap_session->request != NULL);
 
-	password = fr_pair_find_by_da(eap_session->request->control, attr_cleartext_password, TAG_ANY);
-	if (!password) {
-		REDEBUG2("Cleartext-Password is required for EAP-MD5 authentication");
-		return RLM_MODULE_REJECT;
+	known_good = password_find(&ephemeral, request, request->parent,
+				   allowed_passwords, NUM_ELEMENTS(allowed_passwords),
+				   false);
+	if (!known_good) {
+		REDEBUG("No \"known good\" password found for user");
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
 	 *	Extract the EAP-MD5 packet.
 	 */
 	packet = eap_md5_extract(eap_session->this_round);
-	if (!packet) return RLM_MODULE_INVALID;
+	if (!packet) {
+		if (ephemeral) TALLOC_FREE(known_good);
+		RETURN_MODULE_INVALID;
+	}
 
 	/*
 	 *	Create a reply, and initialize it.
 	 */
-	reply = talloc(packet, MD5_PACKET);
-	if (!reply) {
-		talloc_free(packet);
-		return RLM_MODULE_FAIL;
-	}
+	MEM(reply = talloc(packet, MD5_PACKET));
 	reply->id = eap_session->this_round->request->id;
 	reply->length = 0;
 
@@ -86,7 +89,7 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 	 *	Verify the received packet against the previous packet
 	 *	(i.e. challenge) which we sent out.
 	 */
-	if (eap_md5_verify(packet, password, eap_session->opaque)) {
+	if (eap_md5_verify(packet, known_good, eap_session->opaque)) {
 		reply->code = FR_MD5_SUCCESS;
 	} else {
 		reply->code = FR_MD5_FAILURE;
@@ -99,17 +102,21 @@ static rlm_rcode_t mod_process(UNUSED void *instance, UNUSED void *thread, REQUE
 	eap_md5_compose(eap_session->this_round, reply);
 	talloc_free(packet);
 
-	return RLM_MODULE_OK;
+	if (ephemeral) TALLOC_FREE(known_good);
+
+	RETURN_MODULE_OK;
 }
 
 /*
  *	Initiate the EAP-MD5 session by sending a challenge to the peer.
  */
-static rlm_rcode_t mod_session_init(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t mod_session_init(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
-	eap_session_t	*eap_session = eap_session_get(request);
+	eap_session_t	*eap_session = eap_session_get(request->parent);
 	MD5_PACKET	*reply;
 	int		i;
+
+	fr_assert(eap_session != NULL);
 
 	/*
 	 *	Allocate an EAP-MD5 packet.
@@ -154,7 +161,7 @@ static rlm_rcode_t mod_session_init(UNUSED void *instance, UNUSED void *thread, 
 	 */
 	eap_session->process = mod_process;
 
-	return RLM_MODULE_HANDLED;
+	RETURN_MODULE_HANDLED;
 }
 
 /*
@@ -168,5 +175,4 @@ rlm_eap_submodule_t rlm_eap_md5 = {
 	.provides	= { FR_EAP_METHOD_MD5 },
 	.magic		= RLM_MODULE_INIT,
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
-	.entry_point	= mod_process		/* Process next round of EAP method */
 };

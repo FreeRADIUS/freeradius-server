@@ -1,0 +1,52 @@
+name: Defect Report
+description: Used to report a defect in server source code, default configuration files, documentation, scripts etc...
+title: "[defect]: "
+labels: [defect]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: dropdown
+    id: defect_type
+    attributes:
+      label: What type of defect/bug is this?
+      options:
+        - Crash or memory corruption (segv, abort, etc...)
+        - Non compliance with a standards document
+        - incorrect 3rd party API usage
+        - Unexpected behaviour (obvious or verified by project member)
+    validations:
+      required: true
+  - type: textarea
+    id: how_to_reproduce
+    attributes:
+      label: How can the issue be reproduced?
+      description: A clear and concise list of steps describing how to reproduce the issue.
+      placeholder: Set configuration X to Y, start the server, send 1000 conflicting packets...
+    validations:
+      required: true
+  - type: textarea
+    id: log_output
+    attributes:
+      label: Log output from the FreeRADIUS daemon
+      description: Output of ``[radiusd|freeradius] -X`` showing issue occurring
+      placeholder: $ radiusd -X
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: log_output_client
+    attributes:
+      label: Relevant log output from client utilities
+      description: Output of `radclient`, `dhclient`, `eapol_test`, `wpa_supplicant` etc... Only include if relevent.
+  - type: textarea
+    id: backtrace
+    attributes:
+      label: Backtrace from LLDB or GDB
+      description: |
+        Provide a full backtrace from LLDB or GDB (if relevant). 
+        See [here](https://github.com/FreeRADIUS/freeradius-server/blob/master/doc/source/bugs.md) for debugging instructions and how to obtain backtraces.
+      placeholder: $ lldb -- radiusd -X
+      render: shell
+

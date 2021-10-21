@@ -1,5 +1,6 @@
+#pragma once
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -148,7 +149,7 @@ struct sync_config_s {
 	/*
 	 *	LDAP attribute to RADIUS map
 	 */
-	vp_map_t			*entry_map;		//!< How to convert attributes in entries
+	fr_map_list_t			entry_map;		//!< How to convert attributes in entries
 								//!< to FreeRADIUS attributes.
 
 	/*
@@ -171,10 +172,14 @@ struct sync_config_s {
 	void				*user_ctx;		//!< User ctx to pass to the callbacks.
 };
 
-extern FR_NAME_NUMBER sync_state_table[];
-extern FR_NAME_NUMBER sync_phase_table[];
-extern FR_NAME_NUMBER sync_protocol_op_table[];
-extern FR_NAME_NUMBER sync_info_tag_table[];
+extern fr_table_num_sorted_t sync_state_table[];
+extern size_t sync_state_table_len;
+extern fr_table_num_sorted_t sync_phase_table[];
+extern size_t sync_phase_table_len;
+extern fr_table_num_sorted_t sync_protocol_op_table[];
+extern size_t sync_protocol_op_table_len;
+extern fr_table_num_sorted_t sync_info_tag_table[];
+extern size_t sync_info_tag_table_len;
 
 int			sync_demux(int *sync_id, fr_ldap_connection_t *conn);
 

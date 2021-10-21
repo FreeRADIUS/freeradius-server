@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -10,4 +10,12 @@
 #
 ##############################################################################
 
-ATTRIBUTE	DNS-Recursive-Name-Server		74	octets		# Complex struct see RFC 6731
+ATTRIBUTE	RDNSS-Selection				74	struct
+MEMBER		DNS-Recursive-Name-Server		ipv6addr
+MEMBER		Preference				uint8
+VALUE	Preference			High			0x01
+VALUE	Preference			Medium			0x00
+VALUE	Preference			Low			0x03
+VALUE	Preference			Reserved		0x02
+
+MEMBER		FQDN					string dns_label,array

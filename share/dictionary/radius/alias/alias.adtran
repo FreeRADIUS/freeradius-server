@@ -1,0 +1,5 @@
+ALIAS	Adtran-AP-Name                          	26.664.100
+ALIAS	Adtran-AP-IP                            	26.664.101
+ALIAS	Adtran-AP-Template                      	26.664.102
+ALIAS	Adtran-SSID                             	26.664.103
+ALIAS	Adtran-Role                             	26.664.104

@@ -1,0 +1,135 @@
+
+
+
+
+= Exec Module
+
+The module `exec` is used for executing external programs.
+
+This module provides an `xlat`.  To use it, put `exec` into
+the `instantiate` section.  You can then do dynamic translation of
+attributes like:
+
+  Attribute-Name = "%(exec:/path/to/program args)"
+
+The value of the attribute will be replaced with the output of the
+program which is executed.  Due to RADIUS protocol limitations,
+any output over `253` bytes will be ignored.
+
+The RADIUS attributes from the list referenced in the `input_pairs`
+configuraton item will be placed into environment variables of the executed
+program, as described in `man unlang` and in `doc/unlang/xlat.adoc`
+
+Alternatively, by setting the `program` item of the module configuration,
+the module can be called as a module rather than as an xlat function.
+See the `echo` module for an example of this.
+
+In this scenario, if the configuration item `output_pairs` is set,
+and the `wait` configuration item is set to "yes", the output of
+executing the program will be parsed for attribute pairs which
+will be added to the list referenced in `output_pairs`.
+
+When called as a module, the return value of the program run determines
+the result of the exec instance call as follows:
+
+[options="header,autowidth"]
+|===
+| Code | Return    | Description
+| < 0  | fail      | the module failed.
+| = 0  | ok        | the module succeeded.
+| = 1  | reject    | the module rejected the user.
+| = 2  | fail      | the module failed.
+| = 3  | ok        | the module succeeded.
+| = 4  | handled   | the module has done everything to handle the request.
+| = 5  | invalid   | the user's configuration entry was invalid.
+| = 6  | disallow  | the user was locked out.
+| = 7  | notfound  | the user was not found.
+| = 8  | noop      | the module did nothing.
+| = 9  | updated   | the module updated information in the request.
+| > 9  | fail      | the module failed.
+|===
+
+
+
+## Configuration Settings
+
+
+wait:: Wait for the program to finish.
+
+If we do NOT wait, then the program is "fire and
+forget", and any output attributes from it are ignored.
+
+
+
+program:: The name of the program to execute, and it's
+arguments, when called as a module.
+
+Dynamic translation is done on this field, so things like
+the following example will work.
+
+See the `echo` module for examples of how to use the module "in line".
+
+
+
+input_pairs:: The attributes which are placed into the
+environment variables for the program.
+
+Allowed values are:
+
+[options="header,autowidth"]
+|===
+| Pairs         | Description
+| request       | attributes from the request
+| config        | attributes from the configuration items list
+| reply         | attributes from the reply
+| session-state | attributes that persist over multiple request/response rounds.
+|===
+
+
+
+output_pairs::: Where to place the output attributes (if any) from
+the executed program.
+
+The values allowed, and the restrictions as to availability, are the
+same as for the `input_pairs`.
+
+This configuration item is used only when the `program`
+configuration item is set, and when `wait = yes` is set.
+
+
+
+shell_escape:: Escape the environment variables.
+
+If this is set, all the RADIUS attributes are capitalised and dashes
+replaced with underscores. Also, RADIUS values are surrounded with
+double-quotes.
+
+That is to say:
+
+  User-Name=BobUser => USER_NAME="BobUser"
+
+
+
+timeout:: Set a time wait for the program to finish.
+
+Default is `10` seconds, which should be plenty for nearly
+anything. Range is `1` to `30` seconds.
+
+WARNING: You are strongly encouraged to NOT increase this
+value.  In fact, you are much better off decreasing it to a
+lower value.  Doing so will improve network stability and
+responsiveness.
+
+
+== Default Configuration
+
+```
+exec {
+	wait = yes
+#	program = "/bin/true %{User-Name}"
+	input_pairs = request
+#	output_pairs = reply
+	shell_escape = yes
+	timeout = 10
+}
+```

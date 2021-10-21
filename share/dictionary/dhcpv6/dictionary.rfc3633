@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -9,5 +9,16 @@
 #
 ##############################################################################
 
-ATTRIBUTE	IA-PD					25	octets		# Complex struct see RFC 3633
-ATTRIBUTE	IA-Prefix				26	octets		# Complex struct see RFC 3633
+ATTRIBUTE	IA-PD					25	struct
+MEMBER		IAID					uint32
+MEMBER		T1					time_delta # time delta from "now" in seconds
+MEMBER		T2					time_delta # time delta from "now" in seconds
+MEMBER		Options					group # of IA-PD and other options
+
+# An IA_PD Prefix option may appear only in an IA_PD option
+ATTRIBUTE	IA-PD-Prefix				26	struct
+MEMBER		Preferred-Lifetime			time_delta  # time delta from "now" in seconds
+MEMBER		Valid-Lifetime				time_delta  # time delta from "now" in seconds
+MEMBER		IPv6-Prefix				ipv6prefix
+MEMBER		Options					group 	# of other options associated with this prefix
+

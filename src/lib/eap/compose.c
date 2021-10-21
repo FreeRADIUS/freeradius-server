@@ -55,6 +55,7 @@
  */
 #define LOG_PREFIX "rlm_eap - "
 #include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/radius/radius.h>
 #include <ctype.h>
 
@@ -151,15 +152,15 @@ static int eap_wireformat(eap_packet_t *reply)
  */
 rlm_rcode_t eap_compose(eap_session_t *eap_session)
 {
-	VALUE_PAIR *vp;
+	fr_pair_t *vp;
 	eap_packet_raw_t *eap_packet;
-	REQUEST *request;
+	request_t *request;
 	eap_round_t *eap_round;
 	eap_packet_t *reply;
 	int rcode;
 
 	eap_session = talloc_get_type_abort(eap_session, eap_session_t);
-	request = talloc_get_type_abort(eap_session->request, REQUEST);
+	request = talloc_get_type_abort(eap_session->request, request_t);
 	eap_round = talloc_get_type_abort(eap_session->this_round, eap_round_t);
 	reply = talloc_get_type_abort(eap_round->request, eap_packet_t);
 
@@ -216,8 +217,8 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	if (((eap_round->request->code == FR_EAP_CODE_REQUEST) ||
 	     (eap_round->request->code == FR_EAP_CODE_RESPONSE)) &&
 	    (eap_round->request->type.num == 0)) {
-		rad_assert(eap_session->type >= FR_EAP_METHOD_MD5);
-		rad_assert(eap_session->type < FR_EAP_METHOD_MAX);
+		fr_assert(eap_session->type >= FR_EAP_METHOD_MD5);
+		fr_assert(eap_session->type < FR_EAP_METHOD_MAX);
 
 		eap_round->request->type.num = eap_session->type;
 	}
@@ -226,9 +227,9 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 
 	eap_packet = (eap_packet_raw_t *)reply->packet;
 
-	MEM(pair_add_reply(&vp, attr_eap_message) >= 0);
-	vp->vp_length = eap_packet->length[0] * 256 + eap_packet->length[1];
-	vp->vp_octets = talloc_steal(vp, reply->packet);
+	MEM(pair_append_reply(&vp, attr_eap_message) >= 0);
+	fr_pair_value_memdup_shallow(vp, talloc_steal(vp, reply->packet),
+				     eap_packet->length[0] * 256 + eap_packet->length[1], false);
 	reply->packet = NULL;
 
 	/*
@@ -238,34 +239,32 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	 *	Don't add a Message-Authenticator if
 	 *	it's already there.
 	 */
-	vp = fr_pair_find_by_da(request->reply->vps, attr_message_authenticator, TAG_ANY);
+	vp = fr_pair_find_by_da(&request->reply_pairs, attr_message_authenticator, 0);
 	if (!vp) {
 		static uint8_t auth_vector[RADIUS_AUTH_VECTOR_LENGTH] = { 0x00 };
 
-		MEM(pair_add_reply(&vp, attr_message_authenticator) >= 0);
-		fr_pair_value_memcpy(vp, auth_vector, sizeof(auth_vector), false);
+		MEM(pair_append_reply(&vp, attr_message_authenticator) >= 0);
+		fr_pair_value_memdup(vp, auth_vector, sizeof(auth_vector), false);
 	}
 
-	/* Set request reply code, but only if it's not already set. */
-	rcode = RLM_MODULE_OK;
-	if (!request->reply->code) switch (reply->code) {
+	switch (reply->code) {
 	case FR_EAP_CODE_RESPONSE:
-		request->reply->code = FR_CODE_ACCESS_ACCEPT;
+		request->reply->code = FR_RADIUS_CODE_ACCESS_ACCEPT;
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
 	case FR_EAP_CODE_SUCCESS:
-		request->reply->code = FR_CODE_ACCESS_ACCEPT;
+		request->reply->code = FR_RADIUS_CODE_ACCESS_ACCEPT;
 		rcode = RLM_MODULE_OK;
 		break;
 
 	case FR_EAP_CODE_FAILURE:
-		request->reply->code = FR_CODE_ACCESS_REJECT;
+		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
 		rcode = RLM_MODULE_REJECT;
 		break;
 
 	case FR_EAP_CODE_REQUEST:
-		request->reply->code = FR_CODE_ACCESS_CHALLENGE;
+		request->reply->code = FR_RADIUS_CODE_ACCESS_CHALLENGE;
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
@@ -279,7 +278,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 
 		/* Should never enter here */
 		REDEBUG("Reply code %d is unknown, rejecting the request", reply->code);
-		request->reply->code = FR_CODE_ACCESS_REJECT;
+		request->reply->code = FR_RADIUS_CODE_ACCESS_REJECT;
 		reply->code = FR_EAP_CODE_FAILURE;
 		rcode = RLM_MODULE_REJECT;
 		break;
@@ -296,12 +295,12 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
  * Radius criteria, EAP-Message is invalid without Message-Authenticator
  * For EAP_START, send Access-Challenge with EAP Identity request.
  */
-int eap_start(REQUEST *request, rlm_eap_method_t const methods[], bool ignore_unknown_types)
+rlm_rcode_t eap_start(request_t *request, rlm_eap_method_t const methods[], bool ignore_unknown_types)
 {
-	VALUE_PAIR *vp;
-	VALUE_PAIR *eap_msg;
+	fr_pair_t *vp;
+	fr_pair_t *eap_msg;
 
-	eap_msg = fr_pair_find_by_da(request->packet->vps, attr_eap_message, TAG_ANY);
+	eap_msg = fr_pair_find_by_da(&request->request_pairs, attr_eap_message, 0);
 	if (!eap_msg) {
 		RDEBUG2("No EAP-Message, not doing EAP");
 		return RLM_MODULE_NOOP;
@@ -311,7 +310,7 @@ int eap_start(REQUEST *request, rlm_eap_method_t const methods[], bool ignore_un
 	 *	Look for EAP-Type = None (FreeRADIUS specific attribute)
 	 *	this allows you to NOT do EAP for some users.
 	 */
-	vp = fr_pair_find_by_da(request->packet->vps, attr_eap_type, TAG_ANY);
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_eap_type, 0);
 	if (vp && vp->vp_uint32 == 0) {
 		RDEBUG2("Found EAP-Message, but EAP-Type = None, so we're not doing EAP");
 		return RLM_MODULE_NOOP;
@@ -337,18 +336,17 @@ int eap_start(REQUEST *request, rlm_eap_method_t const methods[], bool ignore_un
 
 		RDEBUG2("Got EAP_START message");
 
-		MEM(pair_add_reply(&vp, attr_eap_message) >= 0);
+		MEM(pair_append_reply(&vp, attr_eap_message) >= 0);
 
 		/*
 		 *	Manually create an EAP Identity request
 		 */
-		p = talloc_array(vp, uint8_t, 5);
+		MEM(fr_pair_value_mem_alloc(vp, &p, 5, false) == 0);
 		p[0] = FR_EAP_CODE_REQUEST;
 		p[1] = 0; /* ID */
 		p[2] = 0;
 		p[3] = 5; /* length */
 		p[4] = FR_EAP_METHOD_IDENTITY;
-		fr_pair_value_memsteal(vp, p, false);
 
 		return RLM_MODULE_HANDLED;
 	} /* end of handling EAP-Start */
@@ -378,7 +376,7 @@ int eap_start(REQUEST *request, rlm_eap_method_t const methods[], bool ignore_un
 	 *	Create an EAP-Type containing the EAP-type
 	 *	from the packet.
 	 */
-	MEM(pair_add_request(&vp, attr_eap_type) >= 0);
+	MEM(pair_append_request(&vp, attr_eap_type) >= 0);
 	vp->vp_uint32 = eap_msg->vp_octets[4];
 
 	/*
@@ -505,8 +503,8 @@ rlm_rcode_t eap_fail(eap_session_t *eap_session)
 	/*
 	 *	Delete any previous replies.
 	 */
-	fr_pair_delete_by_da(&eap_session->request->reply->vps, attr_eap_message);
-	fr_pair_delete_by_da(&eap_session->request->reply->vps, attr_state);
+	fr_pair_delete_by_da(&eap_session->request->reply_pairs, attr_eap_message);
+	fr_pair_delete_by_da(&eap_session->request->reply_pairs, attr_state);
 
 	talloc_free(eap_session->this_round->request);
 	eap_session->this_round->request = talloc_zero(eap_session->this_round, eap_packet_t);

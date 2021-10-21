@@ -61,10 +61,11 @@
 #include <osmocom/core/talloc.h>
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/io/schedule.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <signal.h>
 
 #include <osmocom/core/logging.h>
 #include <osmocom/sccp/sccp_types.h>
@@ -230,11 +231,11 @@ static int event_link_up(TALLOC_CTX *ctx, sigtran_conn_t **out, sigtran_conn_con
 	/*
 	 *	Setup SCTP src/dst address
 	 */
-	fr_ipaddr_to_sockaddr(&conf->sctp_dst_ipaddr, conf->sctp_dst_port,
-			      &m3ua_client->remote, &salen);
+	fr_ipaddr_to_sockaddr(&m3ua_client->remote, &salen,
+			      &conf->sctp_dst_ipaddr, conf->sctp_dst_port);
 	if (conf->sctp_src_ipaddr.af != AF_UNSPEC) {
-		fr_ipaddr_to_sockaddr(&conf->sctp_src_ipaddr, conf->sctp_src_port,
-				      &m3ua_client->local, &salen);
+		fr_ipaddr_to_sockaddr(&m3ua_client->local, &salen,
+				      &conf->sctp_src_ipaddr, conf->sctp_src_port);
 	}
 
 	/*
@@ -453,7 +454,7 @@ static int event_process_request(struct osmo_fd *ofd, unsigned int what)
 #endif
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		goto fatal_error;
 	}
 
@@ -468,9 +469,9 @@ static int event_process_request(struct osmo_fd *ofd, unsigned int what)
  */
 static void *sigtran_event_loop(UNUSED void *instance)
 {
-	TALLOC_CTX	*ctx = talloc_init("sigtran_event_ctx");
+	TALLOC_CTX	*ctx = talloc_init_const("sigtran_event_ctx");
 
-	rad_assert((ctrl_pipe[0] < 0) && (ctrl_pipe[1] < 0));	/* Ensure only one instance exists */
+	fr_assert((ctrl_pipe[0] < 0) && (ctrl_pipe[1] < 0));	/* Ensure only one instance exists */
 
 	/*
 	 *	Patch in libosmo's logging system to ours
@@ -523,12 +524,27 @@ static void *sigtran_event_loop(UNUSED void *instance)
  */
 int sigtran_event_start(void)
 {
+    	sigset_t sigmask;
+
+	sigemptyset(&sigmask);
+	sigaddset(&sigmask, SIGCHLD);
+
 	sem_init(&event_thread_running, 0, 0);
 
 	if (sigtran_sccp_global_init() < 0) {
 		ERROR("main thread - Failed initialising SCCP layer");
 		return -1;
 	}
+
+	/*
+	 *	Reset the signal mask some of the
+	 *	osmocom code seems to mess with it.
+	 *
+	 *	This is so that old Linux kernels
+	 *	and libkqueue posix/proc work
+	 *	correctly.
+	 */
+	pthread_sigmask(SIG_BLOCK, &sigmask, NULL);
 
 	if (fr_schedule_pthread_create(&event_thread, sigtran_event_loop, NULL) < 0) {
 		ERROR("main thread - Failed spawning thread for multiplexer event loop: %s", fr_syserror(errno));

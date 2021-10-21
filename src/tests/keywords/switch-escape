@@ -2,7 +2,7 @@ update request {
 	&Tmp-String-0 := 'foo'
 }
 
-switch "%{tolower:%{request:Tmp-String-0}}" {
+switch "%{tolower:%{Tmp-String-0}}" {
 	case 'foo' {
 		success
 	}
@@ -16,7 +16,7 @@ switch "%{tolower:%{request:Tmp-String-0}}" {
 	}
 }
 
-switch "%{request:Tmp-String-0}" {
+switch "%{Tmp-String-0}" {
 	case 'foo' {
 		success
 	}

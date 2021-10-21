@@ -31,42 +31,21 @@ extern "C" {
 
 #include <pwd.h>
 #include <grp.h>
-#include <talloc.h>
+#include <freeradius-devel/util/talloc.h>
 
 void (*reset_signal(int signo, void (*func)(int)))(int);
-int		rad_mkdir(char *directory, mode_t mode, uid_t uid, gid_t gid);
-size_t		rad_filename_make_safe(UNUSED REQUEST *request, char *out, size_t outlen,
+size_t		rad_filename_make_safe(UNUSED request_t *request, char *out, size_t outlen,
 				       char const *in, UNUSED void *arg);
-size_t		rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen,
+size_t		rad_filename_escape(UNUSED request_t *request, char *out, size_t outlen,
 				    char const *in, UNUSED void *arg);
 ssize_t		rad_filename_unescape(char *out, size_t outlen, char const *in, size_t inlen);
 char		*rad_ajoin(TALLOC_CTX *ctx, char const **argv, int argc, char c);
 
-int		rad_copy_string(char *dst, char const *src);
-int		rad_copy_string_bare(char *dst, char const *src);
-int		rad_copy_variable(char *dst, char const *from);
 uint32_t	rad_pps(uint32_t *past, uint32_t *present, time_t *then, struct timeval *now);
-int		rad_expand_xlat(REQUEST *request, char const *cmd,
+int		rad_expand_xlat(request_t *request, char const *cmd,
 				int max_argc, char const *argv[], bool can_fail,
 				size_t argv_buflen, char *argv_buf);
 
-char const	*rad_default_log_dir(void);
-char const	*rad_default_lib_dir(void);
-char const	*rad_default_raddb_dir(void);
-char const	*rad_default_run_dir(void);
-char const	*rad_default_sbin_dir(void);
-char const	*rad_default_radacct_dir(void);
-
-void		rad_mode_to_str(char out[static 10], mode_t mode);
-void		rad_mode_to_oct(char out[static 5], mode_t mode);
-int		rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid);
-int		rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name);
-int		rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid);
-int		rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name);
-int		rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name);
-char		*rad_asprint_uid(TALLOC_CTX *ctx, uid_t uid);
-char		*rad_asprint_gid(TALLOC_CTX *ctx, gid_t gid);
-void		rad_file_error(int num);
 int		rad_seuid(uid_t uid);
 int		rad_segid(gid_t gid);
 

@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -11,5 +11,5 @@
 #
 ##############################################################################
 
-ATTRIBUTE	BCMCS-Server-Domain-Name-List		33	octets		# Domain name list (DNS encoding)
+ATTRIBUTE	BCMCS-Server-Domain-Name-List		33	string dns_label,array
 ATTRIBUTE	BCMCS-Server-Address			34	ipv6addr array

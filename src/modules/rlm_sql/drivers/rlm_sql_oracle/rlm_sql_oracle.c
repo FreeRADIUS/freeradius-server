@@ -25,7 +25,7 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_sql_oracle - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <sys/stat.h>
 
@@ -103,7 +103,7 @@ static int sql_snprint_error(char *out, size_t outlen, rlm_sql_handle_t *handle,
 	sb4			errcode = 0;
 	rlm_sql_oracle_conn_t	*conn = handle->conn;
 
-	rad_assert(conn);
+	fr_assert(conn);
 
 	out[0] = '\0';
 
@@ -131,7 +131,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED si
 	char errbuff[512];
 	int ret;
 
-	rad_assert(outlen > 0);
+	fr_assert(outlen > 0);
 
 	ret = sql_snprint_error(errbuff, sizeof(errbuff), handle, config);
 	if (ret < 0) return 0;
@@ -341,12 +341,8 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_
 
 static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
 {
-	int status;
-	rlm_sql_oracle_conn_t *conn = handle->conn;
-
-	OraText *oracle_query;
-
-	memcpy(&oracle_query, &query, sizeof(oracle_query));
+	int			status;
+	rlm_sql_oracle_conn_t	*conn = handle->conn;
 
 	if (!conn->ctx) {
 		ERROR("Socket not connected");
@@ -387,8 +383,6 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 	ub2		dsize;
 
 	sb2		*ind;
-
-	OraText 	*oracle_query;
 
 	rlm_sql_oracle_conn_t *conn = handle->conn;
 

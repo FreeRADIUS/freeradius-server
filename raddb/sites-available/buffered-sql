@@ -11,12 +11,12 @@
 #  server core.  This virtual server gives an example of
 #  using `radrelay` functionality inside of the server.
 #
-#  In this example, the `detai` file is read, and the data
+#  In this example, the `detail` file is read, and the data
 #  is put into SQL.  This configuration is used when a RADIUS
 #  server on this machine is receiving accounting packets,
 #  and writing them to the detail file.
 #
-#  The purpose of this virtual server is to de-couple the storage
+#  The purpose of this virtual server is to decouple the storage
 #  of long-term accounting data in SQL from "live" information
 #  needed by the RADIUS server as it is running.
 #
@@ -114,7 +114,7 @@ server buffered-sql {
 		#
 		#  track:: Track progress through the detail file.
 		#
-		#  When the detail file is large, and the server is re-started, it will read from the START of
+		#  When the detail file is large, and the server is restarted, it will read from the START of
 		#  the file.
 		#
 		#  Setting `track = yes` means it will skip packets which have already been processed.

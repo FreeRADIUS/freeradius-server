@@ -40,7 +40,7 @@ if (&Tmp-String-9 != &Tmp-String-4) {
 }
 
 update request {
-	&Tmp-String-1 := "%{urlunquote:%{request:Tmp-String-0}}"
+	&Tmp-String-1 := "%{urlunquote:%{Tmp-String-0}}"
 	&Tmp-String-2 := "%{urlunquote:%%E,123}"
 }
 

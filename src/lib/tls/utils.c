@@ -24,29 +24,25 @@
  */
 
 #include <openssl/ssl.h>
-#include <freeradius-devel/server/base.h>
-
-#include "base.h"
-#include "missing.h"
+#include "utils.h"
 
 /** PKEY types (friendly names)
  *
  */
-static const FR_NAME_NUMBER pkey_types[] = {
-	{ "RSA",	EVP_PKEY_RSA		},
-	{ "DSA",	EVP_PKEY_DSA		},
-	{ "DH",		EVP_PKEY_DH		},
-	{ "EC",		EVP_PKEY_EC		},
-
-	{ NULL, 0				},
+static fr_table_num_sorted_t const pkey_types[] = {
+	{ L("DH"),	EVP_PKEY_DH	},
+	{ L("DSA"),	EVP_PKEY_DSA	},
+	{ L("EC"),	EVP_PKEY_EC	},
+	{ L("RSA"),	EVP_PKEY_RSA	}
 };
+static size_t pkey_types_len = NUM_ELEMENTS(pkey_types);
 
 /** Returns a friendly identifier for the public key type of a certificate
  *
  * @param[in] cert	The X509 cert to return the type of.
  * @return the type string.
  */
-char const *tls_utils_x509_pkey_type(X509 *cert)
+char const *fr_tls_utils_x509_pkey_type(X509 *cert)
 {
 	EVP_PKEY	*pkey;
 	int		pkey_type;
@@ -58,7 +54,7 @@ char const *tls_utils_x509_pkey_type(X509 *cert)
 	if (!pkey) return NULL;
 
 	pkey_type = EVP_PKEY_type(EVP_PKEY_id(pkey));
-	type_str = fr_int2str(pkey_types, pkey_type, OBJ_nid2sn(pkey_type));
+	type_str = fr_table_str_by_value(pkey_types, pkey_type, OBJ_nid2sn(pkey_type));
 	EVP_PKEY_free(pkey);
 
 	return type_str;
@@ -81,32 +77,10 @@ char const *tls_utils_x509_pkey_type(X509 *cert)
  *	- -1 problem with the session.
  *	- >=0 length of the block.
  */
-int tls_utils_keyblock_size_get(REQUEST *request, SSL *ssl)
+int fr_tls_utils_keyblock_size_get(request_t *request, SSL *ssl)
 {
 	const EVP_CIPHER *c;
 	const EVP_MD *h;
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-	int md_size;
-
-	if (ssl->enc_read_ctx == NULL || ssl->enc_read_ctx->cipher == NULL || ssl->read_hash == NULL)
-		return -1;
-
-	c = ssl->enc_read_ctx->cipher;
-	h = EVP_MD_CTX_md(ssl->read_hash);
-	if (h)
-		md_size = EVP_MD_size(h);
-	else if (ssl->s3)
-		md_size = ssl->s3->tmp.new_mac_secret_size;
-	else
-		return -1;
-
-	RDEBUG2("OpenSSL: keyblock size: key_len=%d MD_size=%d "
-		   "IV_len=%d", EVP_CIPHER_key_length(c), md_size,
-		   EVP_CIPHER_iv_length(c));
-	return 2 * (EVP_CIPHER_key_length(c) +
-		    md_size +
-		    EVP_CIPHER_iv_length(c));
-#else
 	const SSL_CIPHER *ssl_cipher;
 	int cipher, digest;
 
@@ -128,7 +102,6 @@ int tls_utils_keyblock_size_get(REQUEST *request, SSL *ssl)
 		   EVP_CIPHER_iv_length(c));
 	return 2 * (EVP_CIPHER_key_length(c) + EVP_MD_size(h) +
 		    EVP_CIPHER_iv_length(c));
-#endif
 }
 
 /** Convert OpenSSL's ASN1_TIME to an epoch time
@@ -139,7 +112,7 @@ int tls_utils_keyblock_size_get(REQUEST *request, SSL *ssl)
  *	- 0 success.
  *	- -1 on failure.
  */
-int tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1)
+int fr_tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1)
 {
 	struct		tm t;
 	char const	*p = (char const *)asn1->data, *end = p + strlen(p);
@@ -193,9 +166,9 @@ int tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1)
 	t.tm_sec = (*(p++) - '0') * 10;
 	t.tm_sec += (*(p++) - '0');
 
-	/* ASN1_TIME is UTC, but mktime will treat it as being in the local timezone */
+	/* ASN1_TIME is UTC, so get the UTC time */
 done:
-	*out = mktime(&t) + timezone;
+	*out = timegm(&t);
 
 	return 0;
 }

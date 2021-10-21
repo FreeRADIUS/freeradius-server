@@ -1,6 +1,7 @@
 #
 #  Input packet
 #
+Packet-Type = Access-Request
 User-Name = "caipirinha"
 User-Password = "gelo"
 Called-Station-Id = "aa:bb:cc:dd:ee:ff"
@@ -9,4 +10,4 @@ Framed-IPv6-Prefix = "11:22:33:44:55:66:77:88/128"
 #
 #  Expected answer
 #
-Response-Packet-Type == Access-Accept
+Packet-Type == Access-Accept

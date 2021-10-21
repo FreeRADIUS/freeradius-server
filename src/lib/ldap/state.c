@@ -30,8 +30,8 @@ USES_APPLE_DEPRECATED_API
 #define STATE_TRANSITION(_new) \
 do { \
 	DEBUG4("Changed state %s -> %s", \
-	       fr_int2str(fr_ldap_connection_states, c->state, "<INVALID>"), \
-	       fr_int2str(fr_ldap_connection_states, _new, "<INVALID>")); \
+	       fr_table_str_by_value(fr_ldap_connection_states, c->state, "<INVALID>"), \
+	       fr_table_str_by_value(fr_ldap_connection_states, _new, "<INVALID>")); \
 	c->state = _new; \
 } while (0)
 
@@ -62,7 +62,7 @@ again:
 			STATE_TRANSITION(FR_LDAP_STATE_START_TLS);
 			break;
 		}
-		/* FALL-THROUGH */
+		FALL_THROUGH;
 
 	/*
 	 *	If we're successful in negotiating TLS,
@@ -109,12 +109,7 @@ again:
 	 */
 	case FR_LDAP_STATE_BIND:
 		STATE_TRANSITION(FR_LDAP_STATE_RUN);
-	/*
-		if (fr_ldap_mux_async(c) < 0) {
-			STATE_TRANSITION(FR_LDAP_STATE_ERROR);
-			goto again;
-		}
-	 */
+		fr_connection_signal_connected(c->conn);
 		break;
 
 	/*
@@ -123,7 +118,7 @@ again:
 	case FR_LDAP_STATE_RUN:		/* There's no next state for run, so this an error */
 	case FR_LDAP_STATE_ERROR:
 		STATE_TRANSITION(FR_LDAP_STATE_INIT);
-		fr_connection_signal_reconnect(c->conn);
+		fr_connection_signal_reconnect(c->conn, FR_CONNECTION_FAILED);
 		break;
 	}
 

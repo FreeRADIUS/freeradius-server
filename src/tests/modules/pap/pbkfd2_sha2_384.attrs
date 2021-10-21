@@ -1,10 +1,11 @@
 #
 #  Input packet
 #
+Packet-Type = Access-Request
 User-Name = 'pbkdf2_sha2_384'
 User-Password = 'password'
 
 #
 #  Expected answer
 #
-Response-Packet-Type == Access-Accept
+Packet-Type == Access-Accept

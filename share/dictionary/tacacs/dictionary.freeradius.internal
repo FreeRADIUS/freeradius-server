@@ -1,0 +1,29 @@
+# -*- text -*-
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+# Internal FreeRADIUS TACACS+ dictionary.
+#
+# $Id$
+#
+##############################################################################
+
+#
+#  TACACS+ packet header fields
+#
+FLAGS	internal
+
+ATTRIBUTE	Packet-Type				65536	uint32
+VALUE	Packet-Type			Authentication-Start	1
+VALUE	Packet-Type			Authentication-Start-Reply	2
+VALUE	Packet-Type			Authentication-Continue	3
+VALUE	Packet-Type			Authentication-Continue-Reply	4
+VALUE	Packet-Type			Authorization-Request	5
+VALUE	Packet-Type			Authorization-Reply	6
+VALUE	Packet-Type			Accounting-Request	7
+VALUE	Packet-Type			Accounting-Reply	8
+VALUE	Packet-Type			Do-Not-Respond		9
+
+ATTRIBUTE	State				65537	octets

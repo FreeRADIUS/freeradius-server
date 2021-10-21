@@ -19,64 +19,76 @@
  * @file rlm_rest.c
  * @brief Integrate FreeRADIUS with RESTfull APIs
  *
- * @copyright 2012-2018 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2012-2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/curl/base.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pairmove.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/unlang/base.h>
-#include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/table.h>
+#include <freeradius-devel/util/uri.h>
 
 #include <ctype.h>
 #include "rest.h"
 
-static FR_NAME_NUMBER const http_negotiation_table[] = {
-	{ "default", 	CURL_HTTP_VERSION_NONE },		//!< We don't care about what version the library uses.
-								///< libcurl will use whatever it thinks fit.
-	{ "1.0", 	CURL_HTTP_VERSION_1_0 },		//!< Enforce HTTP 1.0 requests.
-	{ "1.1",	CURL_HTTP_VERSION_1_1 },		//!< Enforce HTTP 1.1 requests.
+static fr_table_num_sorted_t const http_negotiation_table[] = {
+
+	{ L("1.0"), 	CURL_HTTP_VERSION_1_0 },		//!< Enforce HTTP 1.0 requests.
+	{ L("1.1"),	CURL_HTTP_VERSION_1_1 },		//!< Enforce HTTP 1.1 requests.
 /*
  *	These are all enum values
  */
 #if CURL_AT_LEAST_VERSION(7,49,0)
-	{ "2.0", 	CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE },	//!< Enforce HTTP 2.0 requests.
+	{ L("2.0"), 	CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE },	//!< Enforce HTTP 2.0 requests.
 #endif
 #if CURL_AT_LEAST_VERSION(7,33,0)
-	{ "2.0+auto",	CURL_HTTP_VERSION_2_0 },		//!< Attempt HTTP 2 requests. libcurl will fall back
+	{ L("2.0+auto"),	CURL_HTTP_VERSION_2_0 },	//!< Attempt HTTP 2 requests. libcurl will fall back
 								///< to HTTP 1.1 if HTTP 2 can't be negotiated with the
 								///< server. (Added in 7.33.0)
 #endif
 #if CURL_AT_LEAST_VERSION(7,47,0)
-	{ "2.0+tls",	CURL_HTTP_VERSION_2TLS },		//!< Attempt HTTP 2 over TLS (HTTPS) only.
+	{ L("2.0+tls"),	CURL_HTTP_VERSION_2TLS },		//!< Attempt HTTP 2 over TLS (HTTPS) only.
 								///< libcurl will fall back to HTTP 1.1 if HTTP 2
 								///< can't be negotiated with the HTTPS server.
 								///< For clear text HTTP servers, libcurl will use 1.1.
 #endif
-	{  NULL , 	-1}
+	{ L("default"), 	CURL_HTTP_VERSION_NONE }		//!< We don't care about what version the library uses.
+								///< libcurl will use whatever it thinks fit.
 };
+static size_t http_negotiation_table_len = NUM_ELEMENTS(http_negotiation_table);
 
-/*
- *	TLS Configuration
+/** Unique pointer used to determine if we should explicitly disable proxying
+ *
  */
-static CONF_PARSER tls_config[] = {
-	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, rlm_rest_section_t, tls_ca_file) },
-	{ FR_CONF_OFFSET("ca_path", FR_TYPE_FILE_INPUT, rlm_rest_section_t, tls_ca_path) },
-	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT, rlm_rest_section_t, tls_certificate_file) },
-	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, rlm_rest_section_t, tls_private_key_file) },
-	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING | FR_TYPE_SECRET, rlm_rest_section_t, tls_private_key_password) },
-	{ FR_CONF_OFFSET("random_file", FR_TYPE_STRING, rlm_rest_section_t, tls_random_file) },
-	{ FR_CONF_OFFSET("check_cert", FR_TYPE_BOOL, rlm_rest_section_t, tls_check_cert), .dflt = "yes" },
-	{ FR_CONF_OFFSET("check_cert_cn", FR_TYPE_BOOL, rlm_rest_section_t, tls_check_cert_cn), .dflt = "yes" },
-	{ FR_CONF_OFFSET("extract_cert_attrs", FR_TYPE_BOOL, rlm_rest_section_t, tls_extract_cert_attrs), .dflt = "no" },
-	CONF_PARSER_TERMINATOR
-};
+char const *rest_no_proxy = "*";
+
+static int rest_proxy_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			    CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	static fr_table_num_sorted_t const disable_proxy_table[] = {
+		{ L("no"), 	1 },
+		{ L("false"),	1 },
+		{ L("none"),	1 }
+	};
+	static size_t disable_proxy_table_len = NUM_ELEMENTS(disable_proxy_table);
+	char const *value = cf_pair_value(cf_item_to_pair(ci));
+
+	if (fr_table_value_by_str(disable_proxy_table, value, 0) == 1) {
+		*((char const **)out) = rest_no_proxy;
+	} else {
+		*((char const **)out) = value;
+	}
+	return 0;
+}
 
 static const CONF_PARSER section_config[] = {
 	{ FR_CONF_OFFSET("uri", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, uri), .dflt = "" },
-	{ FR_CONF_OFFSET("proxy", FR_TYPE_STRING, rlm_rest_section_t, proxy) },
+	{ FR_CONF_OFFSET("proxy", FR_TYPE_STRING, rlm_rest_section_t, proxy), .func = rest_proxy_parse },
 	{ FR_CONF_OFFSET("method", FR_TYPE_STRING, rlm_rest_section_t, method_str), .dflt = "GET" },
 	{ FR_CONF_OFFSET("body", FR_TYPE_STRING, rlm_rest_section_t, body_str), .dflt = "none" },
 	{ FR_CONF_OFFSET("data", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, data) },
@@ -84,7 +96,7 @@ static const CONF_PARSER section_config[] = {
 
 	/* User authentication */
 	{ FR_CONF_OFFSET_IS_SET("auth", FR_TYPE_VOID, rlm_rest_section_t, auth),
-	  .func = cf_table_parse_int, .uctx = http_auth_table, .dflt = "none" },
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_auth_table, .len = &http_auth_table_len }, .dflt = "none" },
 	{ FR_CONF_OFFSET("username", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, username) },
 	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_SECRET | FR_TYPE_XLAT, rlm_rest_section_t, password) },
 	{ FR_CONF_OFFSET("require_auth", FR_TYPE_BOOL, rlm_rest_section_t, require_auth), .dflt = "no" },
@@ -95,34 +107,34 @@ static const CONF_PARSER section_config[] = {
 	{ FR_CONF_OFFSET("max_body_in", FR_TYPE_SIZE, rlm_rest_section_t, max_body_in), .dflt = "16k" },
 
 	/* TLS Parameters */
-	{ FR_CONF_POINTER("tls", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) tls_config },
+	{ FR_CONF_OFFSET("tls", FR_TYPE_SUBSECTION, rlm_rest_section_t, tls), .subcs = (void const *) fr_curl_tls_config },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER xlat_config[] = {
-	{ FR_CONF_OFFSET("proxy", FR_TYPE_STRING, rlm_rest_section_t, proxy) },
+	{ FR_CONF_OFFSET("proxy", FR_TYPE_STRING, rlm_rest_section_t, proxy), .func = rest_proxy_parse },
 
 	/* User authentication */
 	{ FR_CONF_OFFSET_IS_SET("auth", FR_TYPE_VOID, rlm_rest_section_t, auth),
-	  .func = cf_table_parse_int, .uctx = http_auth_table, .dflt = "none" },
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_auth_table, .len = &http_auth_table_len }, .dflt = "none" },
 	{ FR_CONF_OFFSET("username", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, username) },
 	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, password) },
 	{ FR_CONF_OFFSET("require_auth", FR_TYPE_BOOL, rlm_rest_section_t, require_auth), .dflt = "no" },
 
 	/* Transfer configuration */
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, rlm_rest_section_t, timeout), .dflt = "4.0" },
-	{ FR_CONF_OFFSET("chunk", FR_TYPE_SIZE, rlm_rest_section_t, chunk), .dflt = "0" },
+	{ FR_CONF_OFFSET("chunk", FR_TYPE_UINT32, rlm_rest_section_t, chunk), .dflt = "0" },
 
 	/* TLS Parameters */
-	{ FR_CONF_POINTER("tls", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) tls_config },
+	{ FR_CONF_OFFSET("tls", FR_TYPE_SUBSECTION, rlm_rest_section_t, tls), .subcs = (void const *) fr_curl_tls_config },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_DEPRECATED("connect_timeout", FR_TYPE_TIME_DELTA, rlm_rest_t, connect_timeout) },
-	{ FR_CONF_OFFSET("connect_proxy", FR_TYPE_STRING, rlm_rest_t, connect_proxy) },
+	{ FR_CONF_OFFSET("connect_proxy", FR_TYPE_STRING, rlm_rest_t, connect_proxy), .func = rest_proxy_parse },
 	{ FR_CONF_OFFSET("http_negotiation", FR_TYPE_VOID, rlm_rest_t, http_negotiation),
-	  .func = cf_table_parse_int, .uctx = http_negotiation_table, .dflt = "default" },
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_negotiation_table, .len = &http_negotiation_table_len }, .dflt = "default" },
 
 #ifdef CURLPIPE_MULTIPLEX
 	{ FR_CONF_OFFSET("multiplex", FR_TYPE_BOOL, rlm_rest_t, multiplex), .dflt = "yes" },
@@ -136,8 +148,8 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
+fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_rest_dict[];
 fr_dict_autoload_t rlm_rest_dict[] = {
@@ -170,29 +182,34 @@ fr_dict_attr_autoload_t rlm_rest_dict_attr[] = {
  *	- 0 if status was updated successfully.
  *	- -1 if status was not updated successfully.
  */
-static int rlm_rest_status_update(REQUEST *request, void *handle)
+static int rlm_rest_status_update(request_t *request, void *handle)
 {
 	int		code;
-	VALUE_PAIR	*vp;
+	fr_pair_t	*vp;
 
+	RDEBUG2("Updating result attribute(s)");
+
+	RINDENT();
 	code = rest_get_handle_code(handle);
 	if (!code) {
 		pair_delete_request(attr_rest_http_status_code);
-		RDEBUG2("&REST-HTTP-Status-Code !* ANY");
+		RDEBUG2("&request.REST-HTTP-Status-Code !* ANY");
+		REXDENT();
 		return -1;
 	}
 
-	RDEBUG2("&REST-HTTP-Status-Code := %i", code);
+	RDEBUG2("&request.REST-HTTP-Status-Code := %i", code);
 
 	MEM(pair_update_request(&vp, attr_rest_http_status_code) >= 0);
 	vp->vp_uint32 = code;
+	REXDENT();
 
 	return 0;
 }
 
-static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *thread,
-			    rlm_rest_section_t const *section, void *handle,
-			    REQUEST *request, char const *username, char const *password)
+static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *t,
+			    rlm_rest_section_t const *section, fr_curl_io_request_t *randle,
+			    request_t *request, char const *username, char const *password)
 {
 	ssize_t		uri_len;
 	char		*uri = NULL;
@@ -207,13 +224,13 @@ static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *threa
 	uri_len = rest_uri_build(&uri, instance, request, section->uri);
 	if (uri_len <= 0) return -1;
 
-	RDEBUG2("Sending HTTP %s to \"%s\"", fr_int2str(http_method_table, section->method, NULL), uri);
+	RDEBUG2("Sending HTTP %s to \"%s\"", fr_table_str_by_value(http_method_table, section->method, NULL), uri);
 
 	/*
 	 *  Configure various CURL options, and initialise the read/write
 	 *  context data.
 	 */
-	ret = rest_request_config(instance, thread, section, request, handle, section->method, section->body,
+	ret = rest_request_config(instance, t, section, request, randle, section->method, section->body,
 				  uri, username, password);
 	talloc_free(uri);
 	if (ret < 0) return -1;
@@ -222,15 +239,15 @@ static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *threa
 	 *  Send the CURL request, pre-parse headers, aggregate incoming
 	 *  HTTP body data into a single contiguous buffer.
 	 */
-	ret = rest_io_request_enqueue(thread, request, handle);
+	ret = fr_curl_io_request_enqueue(t->mhandle, request, randle);
 	if (ret < 0) return -1;
 
 	return 0;
 }
 
-static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
-				      REQUEST *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
-				      UNUSED fr_value_box_t **in, void *rctx)
+static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				      request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
+				      UNUSED fr_value_box_list_t *in, void *rctx)
 {
 	rest_xlat_thread_inst_t		*xti = talloc_get_type_abort(xlat_thread_inst, rest_xlat_thread_inst_t);
 	rlm_rest_t const		*mod_inst = xti->inst;
@@ -242,10 +259,10 @@ static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_cursor_t *out,
 	char const			*body;
 	xlat_action_t			xa = XLAT_ACTION_DONE;
 
-	rlm_rest_handle_t		*handle = talloc_get_type_abort(our_rctx->handle, rlm_rest_handle_t);
+	fr_curl_io_request_t		*handle = talloc_get_type_abort(our_rctx->handle, fr_curl_io_request_t);
 	rlm_rest_section_t		*section = &our_rctx->section;
 
-	if (section->tls_extract_cert_attrs) rest_response_certinfo(mod_inst, section, request, handle);
+	if (section->tls.extract_cert_attrs) fr_curl_response_certinfo(request, handle);
 
 	if (rlm_rest_status_update(request, handle) < 0) {
 		xa = XLAT_ACTION_FAIL;
@@ -288,7 +305,7 @@ error:
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
 		fr_value_box_bstrndup(vb, vb, NULL, body, len, true);
-		fr_cursor_insert(out, vb);
+		fr_dcursor_insert(out, vb);
 	}
 
 finish:
@@ -301,38 +318,85 @@ finish:
 	return xa;
 }
 
-/*
- *	Simple xlat to read text data from a URL
+/** URL escape a single box forming part of a URL
+ *
+ * @param[in] vb		to escape
+ * @param[in] uctx		context containing CURL handle
+ * @return
+ * 	- 0 on success
+ * 	- -1 on failure
  */
-static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
-			       REQUEST *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
-			       fr_value_box_t **in)
+static int uri_part_escape(fr_value_box_t *vb, void *uctx)
+{
+	char			*escaped;
+	fr_curl_io_request_t	*randle = talloc_get_type_abort(uctx, fr_curl_io_request_t);
+	request_t		*request = randle->request;
+
+	escaped = curl_easy_escape(randle->candle, vb->vb_strvalue, vb->length);
+	if (!escaped) return -1;
+
+	/*
+	 *	Returned string the same length - nothing changed
+	 */
+	if (strlen(escaped) == vb->length) {
+		RDEBUG4("Tainted value %pV needed no escaping", vb);
+		curl_free(escaped);
+		return 0;
+	}
+
+	RDEBUG4("Tainted value %pV escaped to %s", vb, escaped);
+
+	fr_value_box_clear_value(vb);
+	fr_value_box_strdup(vb, vb, NULL, escaped, vb->tainted);
+
+	curl_free(escaped);
+
+	return 0;
+}
+
+static fr_uri_part_t const rest_uri_parts[] = {
+	{ .name = "scheme", .terminals = &FR_SBUFF_TERMS(L(":")), .part_adv = { [':'] = 1 },
+	  .tainted_allowed = false, .extra_skip = 2 },
+	{ .name = "host", .terminals = &FR_SBUFF_TERMS(L(":"), L("/")), .part_adv = { [':'] = 1, ['/'] = 2 },
+	  .tainted_allowed = true, .func = uri_part_escape },
+	{ .name = "port", .terminals = &FR_SBUFF_TERMS(L("/")), .part_adv = { ['/'] = 1 },
+	  .tainted_allowed = false },
+	{ .name = "method", .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 },
+	  .tainted_allowed = true, .func = uri_part_escape },
+	{ .name = "param", .tainted_allowed = true, .func = uri_part_escape },
+	XLAT_URI_PART_TERMINATOR
+};
+
+static xlat_arg_parser_t const rest_xlat_args[] = {
+	{ .required = true, .variadic = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Simple xlat to read text data from a URL
+ *
+ * Example:
+@verbatim
+%(rest:http://example.com/)
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+			       request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
+			       fr_value_box_list_t *in)
 {
 	rest_xlat_thread_inst_t		*xti = talloc_get_type_abort(xlat_thread_inst, rest_xlat_thread_inst_t);
 	rlm_rest_t const		*mod_inst = xti->inst;
 	rlm_rest_thread_t		*t = xti->t;
 
-	rlm_rest_handle_t		*handle = NULL;
-	ssize_t				len;
+	fr_curl_io_request_t		*randle = NULL;
 	int				ret;
-	char				*uri = NULL;
-	char const			*p = NULL, *q;
 	http_method_t			method;
+	fr_value_box_t			*in_vb = fr_dlist_pop_head(in), *uri_vb = NULL;
 
 	/* There are no configurable parameters other than the URI */
 	rlm_rest_xlat_rctx_t		*rctx;
 	rlm_rest_section_t		*section;
-
-	if (!*in) {
-		REDEBUG("Got empty URL string");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
-		REDEBUG("Failed concatenating arguments into URL string");
-		return XLAT_ACTION_FAIL;
-	}
-	p = (*in)->vb_strvalue;
 
 	MEM(rctx = talloc(request, rlm_rest_xlat_rctx_t));
 	section = &rctx->section;
@@ -342,69 +406,96 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	 */
 	memcpy(&rctx->section, &mod_inst->xlat, sizeof(*section));
 
-	RDEBUG2("Expanding URI components");
+	fr_assert(in_vb->type == FR_TYPE_GROUP);
 
 	/*
-	 *  Extract the method from the start of the format string (if there is one)
+	 *	If we have more than 1 argument, then the first is the method
 	 */
-	method = fr_substr2int(http_method_table, p, REST_HTTP_METHOD_UNKNOWN, -1);
-	if (method != REST_HTTP_METHOD_UNKNOWN) {
-		section->method = method;
-		p += strlen(http_method_table[method].name);
-	/*
-	 *  If the method is unknown, it's either a URL or a verb
-	 */
-	} else {
-		for (q = p; (*q != ' ') && (*q != '\0') && isalpha(*q); q++);
-
-		/*
-		 *	If the first non-alpha char was a space,
-		 *	then assume this is a verb.
-		 */
-		if ((*q == ' ') && (q != p)) {
-			section->method = REST_HTTP_METHOD_CUSTOM;
-			MEM(section->method_str = talloc_bstrndup(rctx, p, q - p));
-			p = q;
-		} else {
-			section->method = REST_HTTP_METHOD_GET;
+	if  ((fr_dlist_head(in))) {
+		uri_vb = fr_dlist_head(&in_vb->vb_group);
+		if (fr_value_box_list_concat_in_place(uri_vb,
+						      uri_vb, &in_vb->vb_group, FR_TYPE_STRING,
+						      FR_VALUE_BOX_LIST_FREE, true,
+						      SIZE_MAX) < 0) {
+			REDEBUG("Failed concatenating argument");
+			return XLAT_ACTION_FAIL;
 		}
+		method = fr_table_value_by_substr(http_method_table, uri_vb->vb_strvalue, -1, REST_HTTP_METHOD_UNKNOWN);
+
+		if (method != REST_HTTP_METHOD_UNKNOWN) {
+			section->method = method;
+		/*
+	 	 *  If the method is unknown, it's a custom verb
+	 	 */
+		} else {
+			section->method = REST_HTTP_METHOD_CUSTOM;
+			MEM(section->method_str = talloc_bstrndup(rctx, in_vb->vb_strvalue, in_vb->vb_length));
+		}
+		/*
+		 *	Move to next argument
+		 */
+		in_vb = fr_dlist_pop_head(in);
+		uri_vb = NULL;
+	} else {
+		section->method = REST_HTTP_METHOD_GET;
 	}
 
 	/*
-	 *  Trim whitespace
+	 *	We get a connection from the pool here as the CURL object
+	 *	is needed to use curl_easy_escape() for escaping
 	 */
-	fr_skip_spaces(p);
-
-	handle = rctx->handle = fr_pool_connection_get(t->pool, request);
-	if (!handle) return XLAT_ACTION_FAIL;
+	randle = rctx->handle = fr_pool_connection_get(t->pool, request);
+	if (!randle) return XLAT_ACTION_FAIL;
 
 	/*
-	 *  Unescape parts of xlat'd URI, this allows REST servers to be specified by
-	 *  request attributes.
+	 *	Walk the incomming boxes, assessing where each is in the URI,
+	 *	escaping tainted ones where needed.  Following each space in the
+	 *	input a new VB group is started.
 	 */
-	len = rest_uri_host_unescape(&uri, mod_inst, request, handle, p);
-	if (len <= 0) {
+
+	fr_assert(in_vb->type == FR_TYPE_GROUP);
+
+	randle->request = request;	/* Populate the request pointer for escape callbacks */
+
+	if (fr_uri_escape(&in_vb->vb_group, rest_uri_parts, randle) < 0) {
+		RPEDEBUG("Failed escaping URI");
+
 	error:
-		rest_request_cleanup(mod_inst, handle);
-		fr_pool_connection_release(t->pool, request, handle);
+		rest_request_cleanup(mod_inst, randle);
+		fr_pool_connection_release(t->pool, request, randle);
 		talloc_free(section);
 
 		return XLAT_ACTION_FAIL;
 	}
 
-	/*
-	 *  Extract freeform body data (url can't contain spaces)
-	 */
-	q = strchr(p, ' ');
-	if (q && (*++q != '\0')) {
-		section->body = REST_HTTP_BODY_CUSTOM_LITERAL;
-		section->data = q;
+	uri_vb = fr_dlist_head(&in_vb->vb_group);
+	if (fr_value_box_list_concat_in_place(uri_vb,
+					      uri_vb, &in_vb->vb_group, FR_TYPE_STRING,
+					      FR_VALUE_BOX_LIST_FREE, true,
+					      SIZE_MAX) < 0) {
+		REDEBUG("Concatenating URI");
+		goto error;
 	}
 
-	RDEBUG2("Sending HTTP %s to \"%s\"",
+	/*
+	 *	Any additional arguments are freeform data
+	 */
+	if ((in_vb = fr_dlist_head(in))) {
+		if (fr_value_box_list_concat_in_place(in_vb,
+						      in_vb, in, FR_TYPE_STRING,
+						      FR_VALUE_BOX_LIST_FREE, true,
+						      SIZE_MAX) < 0) {
+			REDEBUG("Failed to concatenate freeform data");
+			goto error;
+		}
+		section->body = REST_HTTP_BODY_CUSTOM_LITERAL;
+		section->data = in_vb->vb_strvalue;
+	}
+
+	RDEBUG2("Sending HTTP %s to \"%pV\"",
 	       (section->method == REST_HTTP_METHOD_CUSTOM) ?
-	       	section->method_str : fr_int2str(http_method_table, section->method, NULL),
-	       uri);
+	       	section->method_str : fr_table_str_by_value(http_method_table, section->method, NULL),
+	       uri_vb);
 
 	/*
 	 *  Configure various CURL options, and initialise the read/write
@@ -412,9 +503,8 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	 *
 	 *  @todo We could extract the User-Name and password from the URL string.
 	 */
-	ret = rest_request_config(mod_inst, t, section, request,
-				  handle, section->method, section->body, uri, NULL, NULL);
-	talloc_free(uri);
+	ret = rest_request_config(mod_inst, t, section, request, randle, section->method,
+				  section->body, uri_vb->vb_strvalue, NULL, NULL);
 	if (ret < 0) goto error;
 
 	/*
@@ -423,24 +513,24 @@ static xlat_action_t rest_xlat(TALLOC_CTX *ctx, UNUSED fr_cursor_t *out,
 	 *
 	 * @fixme need to pass in thread to all xlat functions
 	 */
-	ret = rest_io_request_enqueue(t, request, handle);
+	ret = fr_curl_io_request_enqueue(t->mhandle, request, randle);
 	if (ret < 0) goto error;
 
-	return unlang_xlat_yield(request, rest_xlat_resume, rest_io_xlat_action, rctx);
+	return unlang_xlat_yield(request, rest_xlat_resume, rest_io_xlat_signal, rctx);
 }
 
-static rlm_rcode_t mod_authorize_result(void *instance, void *thread, REQUEST *request, void *ctx)
+static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, void *rctx)
 {
-	rlm_rest_t const		*inst = instance;
-	rlm_rest_thread_t		*t = thread;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
+	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
-	rlm_rest_handle_t		*handle = ctx;
+	fr_curl_io_request_t		*handle = talloc_get_type_abort(rctx, fr_curl_io_request_t);
 
 	int				hcode;
-	int				rcode = RLM_MODULE_OK;
+	rlm_rcode_t			rcode = RLM_MODULE_OK;
 	int				ret;
 
-	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
+	if (section->tls.extract_cert_attrs) fr_curl_response_certinfo(request, handle);
 
 	if (rlm_rest_status_update(request, handle) < 0) {
 		rcode = RLM_MODULE_FAIL;
@@ -455,7 +545,7 @@ static rlm_rcode_t mod_authorize_result(void *instance, void *thread, REQUEST *r
 		break;
 
 	case 403:
-		rcode = RLM_MODULE_USERLOCK;
+		rcode = RLM_MODULE_DISALLOW;
 		break;
 
 	case 401:
@@ -495,7 +585,7 @@ static rlm_rcode_t mod_authorize_result(void *instance, void *thread, REQUEST *r
 	switch (rcode) {
 	case RLM_MODULE_INVALID:
 	case RLM_MODULE_FAIL:
-	case RLM_MODULE_USERLOCK:
+	case RLM_MODULE_DISALLOW:
 		rest_response_error(request, handle);
 		break;
 
@@ -505,11 +595,11 @@ static rlm_rcode_t mod_authorize_result(void *instance, void *thread, REQUEST *r
 	}
 
 finish:
-	rest_request_cleanup(instance, handle);
+	rest_request_cleanup(inst, handle);
 
 	fr_pool_connection_release(t->pool, request, handle);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /*
@@ -518,43 +608,44 @@ finish:
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rest_t const		*inst = instance;
-	rlm_rest_thread_t		*t = thread;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
+	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const	*section = &inst->authorize;
 
 	void				*handle;
 	int				ret;
 
-	if (!section->name) return RLM_MODULE_NOOP;
+	if (!section->name) RETURN_MODULE_NOOP;
 
 	handle = fr_pool_connection_get(t->pool, request);
-	if (!handle) return RLM_MODULE_FAIL;
+	if (!handle) RETURN_MODULE_FAIL;
 
-	ret = rlm_rest_perform(instance, thread, section, handle, request, NULL, NULL);
+	ret = rlm_rest_perform(inst, t, section, handle, request, NULL, NULL);
 	if (ret < 0) {
-		rest_request_cleanup(instance, handle);
+		rest_request_cleanup(inst, handle);
 		fr_pool_connection_release(t->pool, request, handle);
 
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	return unlang_module_yield(request, mod_authorize_result, rest_io_module_action, handle);
 }
 
-static rlm_rcode_t mod_authenticate_result(void *instance, void *thread, REQUEST *request, void *rctx)
+static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result,
+					       module_ctx_t const *mctx, request_t *request, void *rctx)
 {
-	rlm_rest_t const		*inst = instance;
-	rlm_rest_thread_t		*t = thread;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
+	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
-	rlm_rest_handle_t		*handle = rctx;
+	fr_curl_io_request_t		*handle = talloc_get_type_abort(rctx, fr_curl_io_request_t);
 
 	int				hcode;
 	int				rcode = RLM_MODULE_OK;
 	int				ret;
 
-	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
+	if (section->tls.extract_cert_attrs) fr_curl_response_certinfo(request, handle);
 
 	if (rlm_rest_status_update(request, handle) < 0) {
 		rcode = RLM_MODULE_FAIL;
@@ -569,7 +660,7 @@ static rlm_rcode_t mod_authenticate_result(void *instance, void *thread, REQUEST
 		break;
 
 	case 403:
-		rcode = RLM_MODULE_USERLOCK;
+		rcode = RLM_MODULE_DISALLOW;
 		break;
 
 	case 401:
@@ -609,7 +700,7 @@ static rlm_rcode_t mod_authenticate_result(void *instance, void *thread, REQUEST
 	switch (rcode) {
 	case RLM_MODULE_INVALID:
 	case RLM_MODULE_FAIL:
-	case RLM_MODULE_USERLOCK:
+	case RLM_MODULE_DISALLOW:
 		rest_response_error(request, handle);
 		break;
 
@@ -619,32 +710,32 @@ static rlm_rcode_t mod_authenticate_result(void *instance, void *thread, REQUEST
 	}
 
 finish:
-	rest_request_cleanup(instance, handle);
+	rest_request_cleanup(inst, handle);
 
 	fr_pool_connection_release(t->pool, request, handle);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rest_t const		*inst = instance;
-	rlm_rest_thread_t		*t = thread;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
+	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const	*section = &inst->authenticate;
-	rlm_rest_handle_t		*handle;
+	fr_curl_io_request_t		*handle;
 
 	int				ret;
 
-	VALUE_PAIR const		*username;
-	VALUE_PAIR const		*password;
+	fr_pair_t const		*username;
+	fr_pair_t const		*password;
 
-	if (!section->name) return RLM_MODULE_NOOP;
+	if (!section->name) RETURN_MODULE_NOOP;
 
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
-	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password, 0);
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -652,12 +743,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, void *threa
 	 */
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (!password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -665,124 +756,46 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, void *threa
 	 */
 	if (password->vp_length == 0) {
 		REDEBUG("User-Password must not be empty");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
 	 *	Log the password
 	 */
 	if (RDEBUG_ENABLED3) {
-		REDEBUG("Login attempt with password \"%pV\"", &password->data);
+		RDEBUG("Login attempt with password \"%pV\"", &password->data);
 	} else {
-		REDEBUG2("Login attempt with password");
+		RDEBUG2("Login attempt with password");
 	}
 
 	handle = fr_pool_connection_get(t->pool, request);
-	if (!handle) return RLM_MODULE_FAIL;
+	if (!handle) RETURN_MODULE_FAIL;
 
-	ret = rlm_rest_perform(instance, thread, section,
+	ret = rlm_rest_perform(inst, t, section,
 			       handle, request, username->vp_strvalue, password->vp_strvalue);
 	if (ret < 0) {
-		rest_request_cleanup(instance, handle);
+		rest_request_cleanup(inst, handle);
 		fr_pool_connection_release(t->pool, request, handle);
 
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	return unlang_module_yield(request, mod_authenticate_result, NULL, handle);
 }
 
-static rlm_rcode_t mod_accounting_result(void *instance, void *thread, REQUEST *request, void *rctx)
+static unlang_action_t mod_accounting_result(rlm_rcode_t *p_result,
+					     module_ctx_t const *mctx, request_t *request, void *rctx)
 {
-	rlm_rest_t const		*inst = instance;
-	rlm_rest_thread_t		*t = thread;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
+	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
-	rlm_rest_handle_t		*handle = rctx;
+	fr_curl_io_request_t		*handle = rctx;
 
 	int				hcode;
 	int				rcode = RLM_MODULE_OK;
 	int				ret;
 
-	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
-
-	if (rlm_rest_status_update(request, handle) < 0) {
-		rcode = RLM_MODULE_FAIL;
-		goto finish;
-	}
-
-	hcode = rest_get_handle_code(handle);
-	if (hcode >= 500) {
-		rcode = RLM_MODULE_FAIL;
-	} else if (hcode == 204) {
-		rcode = RLM_MODULE_OK;
-	} else if ((hcode >= 200) && (hcode < 300)) {
-		ret = rest_response_decode(inst, section, request, handle);
-		if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
-		else if (ret == 0) rcode = RLM_MODULE_OK;
-		else		   rcode = RLM_MODULE_UPDATED;
-	} else {
-		rcode = RLM_MODULE_INVALID;
-	}
-
-	switch (rcode) {
-	case RLM_MODULE_INVALID:
-	case RLM_MODULE_FAIL:
-		rest_response_error(request, handle);
-		break;
-
-	default:
-		rest_response_debug(request, handle);
-		break;
-	}
-
-finish:
-	rest_request_cleanup(instance, handle);
-
-	fr_pool_connection_release(t->pool, request, handle);
-
-	return rcode;
-}
-
-/*
- *	Send accounting info to a REST API endpoint
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, void *thread, REQUEST *request)
-{
-	rlm_rest_t const		*inst = instance;
-	rlm_rest_thread_t		*t = thread;
-	rlm_rest_section_t const	*section = &inst->accounting;
-
-	void				*handle;
-	int				ret;
-
-	if (!section->name) return RLM_MODULE_NOOP;
-
-	handle = fr_pool_connection_get(t->pool, request);
-	if (!handle) return RLM_MODULE_FAIL;
-
-	ret = rlm_rest_perform(inst, thread, section, handle, request, NULL, NULL);
-	if (ret < 0) {
-		rest_request_cleanup(instance, handle);
-		fr_pool_connection_release(t->pool, request, handle);
-
-		return RLM_MODULE_FAIL;
-	}
-
-	return unlang_module_yield(request, mod_accounting_result, NULL, handle);
-}
-
-static rlm_rcode_t mod_post_auth_result(void *instance, void *thread, REQUEST *request, void *rctx)
-{
-	rlm_rest_t const		*inst = instance;
-	rlm_rest_thread_t		*t = thread;
-	rlm_rest_section_t const 	*section = &inst->authenticate;
-	rlm_rest_handle_t		*handle = rctx;
-
-	int				hcode;
-	int				rcode = RLM_MODULE_OK;
-	int				ret;
-
-	if (section->tls_extract_cert_attrs) rest_response_certinfo(instance, section, request, handle);
+	if (section->tls.extract_cert_attrs) fr_curl_response_certinfo(request, handle);
 
 	if (rlm_rest_status_update(request, handle) < 0) {
 		rcode = RLM_MODULE_FAIL;
@@ -819,33 +832,113 @@ finish:
 
 	fr_pool_connection_release(t->pool, request, handle);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
+}
+
+/*
+ *	Send accounting info to a REST API endpoint
+ */
+static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
+	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
+	rlm_rest_section_t const	*section = &inst->accounting;
+
+	void				*handle;
+	int				ret;
+
+	if (!section->name) RETURN_MODULE_NOOP;
+
+	handle = fr_pool_connection_get(t->pool, request);
+	if (!handle) RETURN_MODULE_FAIL;
+
+	ret = rlm_rest_perform(inst, t, section, handle, request, NULL, NULL);
+	if (ret < 0) {
+		rest_request_cleanup(inst, handle);
+		fr_pool_connection_release(t->pool, request, handle);
+
+		RETURN_MODULE_FAIL;
+	}
+
+	return unlang_module_yield(request, mod_accounting_result, NULL, handle);
+}
+
+static unlang_action_t mod_post_auth_result(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+					    request_t *request, void *rctx)
+{
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
+	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
+	rlm_rest_section_t const 	*section = &inst->authenticate;
+	fr_curl_io_request_t		*handle = rctx;
+
+	int				hcode;
+	int				rcode = RLM_MODULE_OK;
+	int				ret;
+
+	if (section->tls.extract_cert_attrs) fr_curl_response_certinfo(request, handle);
+
+	if (rlm_rest_status_update(request, handle) < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
+
+	hcode = rest_get_handle_code(handle);
+	if (hcode >= 500) {
+		rcode = RLM_MODULE_FAIL;
+	} else if (hcode == 204) {
+		rcode = RLM_MODULE_OK;
+	} else if ((hcode >= 200) && (hcode < 300)) {
+		ret = rest_response_decode(inst, section, request, handle);
+		if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
+		else if (ret == 0) rcode = RLM_MODULE_OK;
+		else		   rcode = RLM_MODULE_UPDATED;
+	} else {
+		rcode = RLM_MODULE_INVALID;
+	}
+
+	switch (rcode) {
+	case RLM_MODULE_INVALID:
+	case RLM_MODULE_FAIL:
+		rest_response_error(request, handle);
+		break;
+
+	default:
+		rest_response_debug(request, handle);
+		break;
+	}
+
+finish:
+	rest_request_cleanup(inst, handle);
+
+	fr_pool_connection_release(t->pool, request, handle);
+
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /*
  *	Send post-auth info to a REST API endpoint
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rest_t const		*inst = instance;
-	rlm_rest_thread_t		*t = thread;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
+	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const	*section = &inst->post_auth;
 
 	void				*handle;
 	int				ret;
 
-	if (!section->name) return RLM_MODULE_NOOP;
+	if (!section->name) RETURN_MODULE_NOOP;
 
 	handle = fr_pool_connection_get(t->pool, request);
-	if (!handle) return RLM_MODULE_FAIL;
+	if (!handle) RETURN_MODULE_FAIL;
 
-	ret = rlm_rest_perform(inst, thread, section, handle, request, NULL, NULL);
+	ret = rlm_rest_perform(inst, t, section, handle, request, NULL, NULL);
 	if (ret < 0) {
-		rest_request_cleanup(instance, handle);
+		rest_request_cleanup(inst, handle);
 
 		fr_pool_connection_release(t->pool, request, handle);
 
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	return unlang_module_yield(request, mod_post_auth_result, NULL, handle);
@@ -888,7 +981,7 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 	if ((config->auth != REST_HTTP_AUTH_NONE) && !http_curl_auth[config->auth]) {
 		cf_log_err(cs, "Unsupported HTTP auth type \"%s\", check libcurl version, OpenSSL build "
 			   "configuration, then recompile this module",
-			   fr_int2str(http_auth_table, config->auth, "<INVALID>"));
+			   fr_table_str_by_value(http_auth_table, config->auth, "<INVALID>"));
 
 		return -1;
 	}
@@ -900,7 +993,7 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 			     "was set");
 		config->auth = REST_HTTP_AUTH_BASIC;
 	}
-	config->method = fr_str2int(http_method_table, config->method_str, REST_HTTP_METHOD_CUSTOM);
+	config->method = fr_table_value_by_str(http_method_table, config->method_str, REST_HTTP_METHOD_CUSTOM);
 
 	/*
 	 *  We don't have any custom user data, so we need to select the right encoder based
@@ -910,9 +1003,9 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 	 *  and content_types.
 	 */
 	if (!config->data) {
-		config->body = fr_str2int(http_body_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
+		config->body = fr_table_value_by_str(http_body_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
 		if (config->body == REST_HTTP_BODY_UNKNOWN) {
-			config->body = fr_str2int(http_content_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
+			config->body = fr_table_value_by_str(http_content_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
 		}
 
 		if (config->body == REST_HTTP_BODY_UNKNOWN) {
@@ -949,16 +1042,16 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 
 		config->body = REST_HTTP_BODY_CUSTOM_XLAT;
 
-		body = fr_str2int(http_body_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
+		body = fr_table_value_by_str(http_body_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
 		if (body != REST_HTTP_BODY_UNKNOWN) {
-			config->body_str = fr_int2str(http_content_type_table, body, config->body_str);
+			config->body_str = fr_table_str_by_value(http_content_type_table, body, config->body_str);
 		}
 	}
 
 	if (config->force_to_str) {
-		config->force_to = fr_str2int(http_body_type_table, config->force_to_str, REST_HTTP_BODY_UNKNOWN);
+		config->force_to = fr_table_value_by_str(http_body_type_table, config->force_to_str, REST_HTTP_BODY_UNKNOWN);
 		if (config->force_to == REST_HTTP_BODY_UNKNOWN) {
-			config->force_to = fr_str2int(http_content_type_table, config->force_to_str, REST_HTTP_BODY_UNKNOWN);
+			config->force_to = fr_table_value_by_str(http_content_type_table, config->force_to_str, REST_HTTP_BODY_UNKNOWN);
 		}
 
 		if (config->force_to == REST_HTTP_BODY_UNKNOWN) {
@@ -998,7 +1091,7 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread_inst,
 				       UNUSED xlat_exp_t const *exp, void *uctx)
 {
-	rlm_rest_t			*inst = talloc_get_type_abort(uctx, rlm_rest_t);
+	rlm_rest_t		*inst = talloc_get_type_abort(uctx, rlm_rest_t);
 	rest_xlat_thread_inst_t	*xt = xlat_thread_inst;
 
 	xt->inst = inst;
@@ -1024,9 +1117,9 @@ static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_e
 {
 	rlm_rest_t		*inst = instance;
 	rlm_rest_thread_t	*t = thread;
+	fr_curl_handle_t	*mhandle;
 	CONF_SECTION		*my_conf;
 
-	t->el = el;
 	t->inst = instance;
 
 	/*
@@ -1034,7 +1127,7 @@ static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_e
 	 *	thread safe.
 	 */
 	my_conf = cf_section_dup(NULL, NULL, conf, cf_section_name1(conf), cf_section_name2(conf), true);
-	t->pool = fr_pool_init(NULL, my_conf, instance, mod_conn_create, NULL, inst->xlat_name);
+	t->pool = fr_pool_init(NULL, my_conf, instance, rest_mod_conn_create, NULL, inst->xlat_name);
 	talloc_free(my_conf);
 
 	if (!t->pool) {
@@ -1047,7 +1140,12 @@ static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_e
 		return -1;
 	}
 
-	return rest_io_init(t, inst->multiplex);
+	mhandle = fr_curl_io_init(t, el, inst->multiplex);
+	if (!mhandle) return -1;
+
+	t->mhandle = mhandle;
+
+	return 0;
 }
 
 /** Cleanup all outstanding requests associated with this thread
@@ -1063,7 +1161,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 {
 	rlm_rest_thread_t	*t = thread;
 
-	curl_multi_cleanup(t->mandle);
+	talloc_free(t->mhandle);	/* Ensure this is shutdown before the pool */
 	fr_pool_free(t->pool);
 
 	return 0;
@@ -1110,13 +1208,14 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	rlm_rest_t *inst = instance;
-	xlat_t const *xlat;
+	rlm_rest_t	*inst = instance;
+	xlat_t		*xlat;
 
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 
-	xlat = xlat_async_register(inst, inst->xlat_name, rest_xlat);
+	xlat = xlat_register(inst, inst->xlat_name, rest_xlat, true);
+	xlat_func_args(xlat, rest_xlat_args);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, rest_xlat_thread_inst_t, NULL, inst);
 
 	return 0;
@@ -1137,26 +1236,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  */
 static int mod_load(void)
 {
-	CURLcode ret;
-
-	curl_version_info_data *curlversion;
-
 	/* developer sanity */
-	rad_assert((sizeof(http_body_type_supported) / sizeof(*http_body_type_supported)) == REST_HTTP_BODY_NUM_ENTRIES);
+	fr_assert((NUM_ELEMENTS(http_body_type_supported)) == REST_HTTP_BODY_NUM_ENTRIES);
 
-	ret = curl_global_init(CURL_GLOBAL_ALL);
-	if (ret != CURLE_OK) {
-		ERROR("rlm_curl - CURL init returned error: %i - %s", ret, curl_easy_strerror(ret));
-		return -1;
-	}
-
-	curlversion = curl_version_info(CURLVERSION_NOW);
-	if (strcmp(LIBCURL_VERSION, curlversion->version) != 0) {
-		WARN("rlm_curl - libcurl version changed since the server was built");
-		WARN("rlm_curl - linked: %s built: %s", curlversion->version, LIBCURL_VERSION);
-	}
-
-	INFO("rlm_curl - libcurl version: %s", curl_version());
+	if (fr_curl_init() < 0) return -1;
 
 #ifdef HAVE_JSON
 	fr_json_version_print();
@@ -1171,7 +1254,7 @@ static int mod_load(void)
  */
 static void mod_unload(void)
 {
-	curl_global_cleanup();
+	fr_curl_free();
 }
 
 /*

@@ -1,12 +1,12 @@
 # The FreeRADIUS server
 
-[![Travis CI build status][BuildStatus]][BuildStatusLink] [![Coverity Status][CoverityStatus]][CoverityStatusLink]
+[![CI build status][BuildStatus]][BuildStatusLink] [![Coverity Status][CoverityStatus]][CoverityStatusLink] [![LGTM Status][LGTMStatus]][LGTMStatusLink]
 
 ## Introduction
 
 The FreeRADIUS Server Project is a high performance and highly
 configurable multi-protocol policy server, supporting RADIUS, DHCPv4
-and VMPS. It is available under the terms of the GNU GPLv2.
+DHCPv6, TACACS+ and VMPS. It is available under the terms of the GNU GPLv2.
 Using RADIUS allows authentication and authorization for a network
 to be centralized, and minimizes the number of changes that have to
 be done when adding or deleting new users to a network.
@@ -23,13 +23,13 @@ of people, in sites ranging from 10 to 10 million+ users.
 Please see the [documentation](doc/) directory, which has full
 documentation for version 4.
 
-Please also see https://freeradius.org and https://wiki.freeradius.org
+Please also see <https://freeradius.org> and <https://wiki.freeradius.org>
 for additional documentation.
 
 ## Installation
 
 To install the server, please see the [installation
-instructions](doc/howto/INSTALL.md) document.
+instructions](doc/antora/modules/installation/pages/index.adoc) document.
 
 ## Configuring the server
 
@@ -75,7 +75,7 @@ The debug output is explained in detail in the
 
 Many questions are answered on the Wiki:
 
-https://wiki.freeradius.org
+<https://wiki.freeradius.org>
 
 Read the configuration files.  Many parts of the server are
 documented only with extensive comments in the configuration files.
@@ -84,7 +84,7 @@ Search the mailing lists. For example, using Google, searching
 "site:lists.freeradius.org <search term>" will return results from
 the FreeRADIUS mailing lists.
 
-https://freeradius.org/support/
+<https://freeradius.org/support/>
 
 Instructions for what to post on the mailing list are [on the
 wiki](http://wiki.freeradius.org/list-help).  Please note that we DO
@@ -109,7 +109,8 @@ mailing lists first to determine whether it really is a defect or
 missing feature.
 
 Instructions for gathering data for defect reports can be found in
-`doc/source/bugs.md` or on the [wiki](https://wiki.freeradius.org/project/bug-reports).
+[here](doc/antora/modules/developers/pages/bugs.adoc) or on the
+[wiki](https://wiki.freeradius.org/project/bug-reports).
 
 Under no circumstances should the issue tracker be used for support
 requests, those questions belong on the user's mailing list.  If you
@@ -134,9 +135,11 @@ code, or documentation).
 
 Technical support, managed systems support, custom deployments,
 sponsored feature development and many other commercial services
-are available from [Network RADIUS](https://www.networkradius.com).
+are available from [Network RADIUS](https://networkradius.com).
 
 [CoverityStatus]: https://scan.coverity.com/projects/58/badge.svg?flat=1 "Coverity Status"
 [CoverityStatusLink]: https://scan.coverity.com/projects/58
-[BuildStatus]: https://travis-ci.org/FreeRADIUS/freeradius-server.png?branch=master "Travis CI status"
-[BuildStatusLink]: https://travis-ci.org/FreeRADIUS/freeradius-server
+[BuildStatus]: https://github.com/FreeRADIUS/freeradius-server/workflows/CI/badge.svg?branch=master "CI status"
+[BuildStatusLink]: https://github.com/FreeRADIUS/freeradius-server/actions?query=workflow%3ACI
+[LGTMStatus]: https://img.shields.io/lgtm/alerts/g/FreeRADIUS/freeradius-server.svg?logo=lgtm&logoWidth=18
+[LGTMStatusLink]: https://lgtm.com/projects/g/FreeRADIUS/freeradius-server/alerts/

@@ -33,7 +33,7 @@ server control {
 	#
 	listen {
 		#
-		#  transport:: Define which comunication channel.
+		#  transport:: Define which communication channel.
 		#
 		transport = unix
 
@@ -102,16 +102,5 @@ server control {
 		}
 
 		#  @todo - add "limit" section
-	}
-
-	#
-	#  These don't do anything for now
-	#
-	recv {
-		ok
-	}
-
-	send {
-		ok
 	}
 }

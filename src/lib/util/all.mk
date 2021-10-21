@@ -1,65 +1,17 @@
-#
-# Makefile
-#
-# Version:      $Id$
-#
-TARGET		:= libfreeradius-util.a
+SUBMAKEFILES := \
+	base_16_32_64_tests.mk \
+	cursor_tests.mk \
+	dbuff_tests.mk \
+	dcursor_tests.mk \
+	dlist_tests.mk \
+	heap_tests.mk \
+	hmac_tests.mk \
+	libfreeradius-util.mk \
+	lst_tests.mk \
+	pair_legacy_tests.mk \
+	pair_list_perf_test.mk \
+	pair_tests.mk \
+	rb_tests.mk \
+	sbuff_tests.mk \
+	strerror_tests.mk
 
-SOURCES		:= \
-		   ascend.c \
-		   base64.c \
-		   cursor.c \
-		   debug.c \
-		   dict.c \
-		   dl.c \
-		   event.c \
-		   fifo.c \
-		   fring.c \
-		   getaddrinfo.c \
-		   hash.c \
-		   heap.c \
-		   hmac_md5.c \
-		   hmac_sha1.c \
-		   inet.c \
-		   isaac.c \
-		   log.c \
-		   md4.c \
-		   md5.c \
-		   misc.c \
-		   missing.c \
-		   net.c \
-		   packet.c \
-		   pair_cursor.c \
-		   pair.c \
-		   pcap.c \
-		   print.c \
-		   proto.c \
-		   rand.c \
-		   rbtree.c \
-		   regex.c \
-		   sha1.c \
-		   snprintf.c \
-		   socket.c \
-		   strerror.c \
-		   strlcat.c \
-		   strlcpy.c \
-		   struct.c \
-		   syserror.c \
-		   talloc.c \
-		   token.c \
-		   time.c \
-		   timeval.c \
-		   trie.c \
-		   udp.c \
-		   udpfromto.c \
-		   value.c \
-		   version.c
-
-HEADERS		:= $(subst src/lib/,,$(wildcard src/lib/util/*.h))
-
-SRC_CFLAGS	:= -D_LIBRADIUS -I$(top_builddir)/src
-
-# System libraries discovered by our top level configure script, links things
-# like pthread and the regexp libraries.
-TGT_LDLIBS	:= $(LIBS) $(PCAP_LIBS)
-TGT_LDFLAGS	:= $(LDFLAGS) $(PCAP_LDFLAGS)

@@ -103,7 +103,7 @@ fr_trie_t *sql_state_trie_alloc(TALLOC_CTX *ctx)
 {
 	fr_trie_t *states;
 
-	MEM(states = fr_trie_alloc(ctx));
+	MEM(states = fr_trie_alloc(ctx, NULL, NULL));
 
 	if (sql_state_entries_from_table(states, sql_2011_classes) < 0) {
 		talloc_free(states);
@@ -129,10 +129,10 @@ int sql_state_entries_from_table(fr_trie_t *states, sql_state_entry_t const tabl
 		size_t	len = strlen(entry->sql_state) * 8;
 		int	ret;
 
-		fr_trie_remove(states, entry->sql_state, len);	/* Remove any old entries */
-		ret = fr_trie_insert(states, entry->sql_state, len, entry);
+		fr_trie_remove_by_key(states, entry->sql_state, len);	/* Remove any old entries */
+		ret = fr_trie_insert_by_key(states, entry->sql_state, len, entry);
 		if (ret < 0) {
-			DEBUG("Failed inserting state: %s", fr_strerror());
+			PERROR("Failed inserting state");
 		}
 		if (!fr_cond_assert(ret == 0)) return -1;
 	}
@@ -150,7 +150,7 @@ int sql_state_entries_from_table(fr_trie_t *states, sql_state_entry_t const tabl
  *	- 0 on success.
  *	- -1 on failure.
  */
-int sql_sate_entries_from_cs(fr_trie_t *states, CONF_SECTION *cs)
+int sql_state_entries_from_cs(fr_trie_t *states, CONF_SECTION *cs)
 {
 	CONF_PAIR *cp = NULL;
 
@@ -170,18 +170,18 @@ int sql_sate_entries_from_cs(fr_trie_t *states, CONF_SECTION *cs)
 		/*
 		 *	Resolve value to sql_rcode_t
 		 */
-		if (cf_pair_in_table((int32_t *)&rcode, sql_rcode_table, cp) < 0) return -1;/* Logs own error */
+		if (cf_pair_in_table((int32_t *)&rcode, sql_rcode_table, sql_rcode_table_len, cp) < 0) return -1;/* Logs own error */
 
 		/*
 		 *	No existing match, create a new entry
 		 */
-		entry = fr_trie_match(states, state, len );
+		entry = fr_trie_match_by_key(states, state, len );
 		if (!entry) {
 			MEM(entry = talloc(states, sql_state_entry_t));
 			entry->sql_state = talloc_strdup(entry, state);
 			entry->meaning = "USER DEFINED";
 			entry->rcode = rcode;
-			(void) fr_trie_insert(states, state, len, entry);
+			(void) fr_trie_insert_by_key(states, state, len, entry);
 		} else {
 			entry->rcode = rcode;	/* Override previous sql rcode */
 		}
@@ -202,5 +202,5 @@ int sql_sate_entries_from_cs(fr_trie_t *states, CONF_SECTION *cs)
  */
 sql_state_entry_t const *sql_state_entry_find(fr_trie_t const *states, char const *sql_state)
 {
-	return fr_trie_lookup(states, sql_state, strlen(sql_state) * 8);
+	return fr_trie_lookup_by_key(states, sql_state, strlen(sql_state) * 8);
 }

@@ -132,6 +132,10 @@ int strncasecmp(char *s1, char *s2, int n);
 int strcasecmp(char *s1, char *s2);
 #endif
 
+#ifndef HAVE_MEMRCHR
+void *memrchr(const void *s, int c, size_t n);
+#endif
+
 #ifndef HAVE_STRSEP
 char *strsep(char **stringp, char const *delim);
 #endif
@@ -148,9 +152,19 @@ char *ctime_r(time_t const *l_clock, char *l_buf);
 #ifndef HAVE_INET_PTON
 int		inet_pton(int af, char const *src, void *dst);
 #endif
+
 #ifndef HAVE_INET_NTOP
 char const	*inet_ntop(int af, void const *src, char *dst, size_t cnt);
 #endif
+
+#ifndef HAVE_SENDMMSG
+struct mmsghdr {
+	struct msghdr msg_hdr;  /* Message header */
+	unsigned int  msg_len;  /* Number of bytes transmitted */
+};
+int sendmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, int flags);
+#endif
+
 #ifndef HAVE_CLOSEFROM
 int		closefrom(int fd);
 #endif
@@ -435,7 +449,7 @@ int clock_gettime(int clk_id, struct timespec *t);
 #    define uint128_t __uint128_t
 #    define int128_t __int128_t
 #  else
-typedef struct uint128_t {
+typedef struct {
 	union {
 		uint8_t v[16];
 		struct {
@@ -449,7 +463,7 @@ typedef struct uint128_t {
 		};
 	};
 } uint128_t;
-typedef struct int128_t {
+typedef struct {
 	union {
 		uint8_t v[16];
 		struct {
@@ -472,7 +486,7 @@ typedef struct int128_t {
 #ifndef HAVE_HTONLL
 #  ifndef WORDS_BIGENDIAN
 #    ifdef HAVE_BUILTIN_BSWAP64
-#      define ntohll(x) __builtin_bswap64(x)
+#      define ntohll(x) ((uint64_t)__builtin_bswap64(x))
 #    else
 #      define ntohll(x) (((uint64_t)ntohl((uint32_t)(x >> 32))) | (((uint64_t)ntohl(((uint32_t) x)) << 32)))
 #    endif
@@ -487,7 +501,17 @@ typedef struct int128_t {
 #    ifdef HAVE_128BIT_INTEGERS
 #      define ntohlll(x) (((uint128_t)ntohll((uint64_t)(x >> 64))) | (((uint128_t)ntohll(((uint64_t) x)) << 64)))
 #    else
-uint128_t ntohlll(uint128_t num);
+static inline uint128_t ntohlll(uint128_t const num)
+{
+	uint64_t const *p = (uint64_t const *) &num;
+	uint64_t ret[2];
+
+	/* swapsies */
+	ret[1] = ntohll(p[0]);
+	ret[0] = ntohll(p[1]);
+
+	return *(uint128_t *)ret;
+}
 #    endif
 #  else
 #    define ntohlll(x) (x)

@@ -1,0 +1,40 @@
+
+Tiny virtual server for the new server processing sections.
+
+Proxying is not yet possible.
+
+Acct-Type { } is no longer supported.
+
+
+
+This is all the same as before
+
+
+
+
+"preacct"
+
+
+
+"accounting"
+
+
+
+== Default Configuration
+
+```
+server radius-acct {
+namespace = radius
+listen {
+	type = acct
+	ipaddr = *
+	port = 3000
+}
+recv Accounting-Request {
+	ok
+}
+send Accounting-Response {
+	ok
+}
+} # server radius-acct
+```

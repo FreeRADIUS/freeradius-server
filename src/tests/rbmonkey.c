@@ -2,59 +2,31 @@
 #include <stdio.h>
 #include <netdb.h>
 
-#include <freeradius-devel/util/base.h>
+#include <freeradius-devel/util/rb.c>
+#include <freeradius-devel/util/rand.h>
 
-/*
- *	We need knowlege of the internal structures.
- *	This needs to be kept in lockstep with rbtree.c
- */
+typedef struct {
+	uint32_t	num;
+	fr_rb_node_t	node;
+} fr_rb_tree_test_node_t;
 
-/* RED-BLACK tree description */
-typedef enum {
-	BLACK,
-	RED
-} node_colour_t;
-
-struct rbnode_t {
-    rbnode_t		*left;		//!< left child
-    rbnode_t		*right;		//!< right child
-    rbnode_t		*parent;	//!< Parent
-    node_colour_t	colour;		//!< Node colour (BLACK, RED)
-    void		*data;		//!< data stored in node
-};
-
-struct rbtree_t {
-#ifndef NDEBUG
-	uint32_t		magic;
-#endif
-	rbnode_t		*root;
-	int			num_elements;
-	rb_comparator_t		compare;
-	rb_free_t		free;
-	bool			replace;
-	bool			lock;
-	pthread_mutex_t		mutex;
-};
-
-/* Storage for the NIL pointer. */
-static rbnode_t *NIL;
-
-static int comp(void const *a, void const *b)
+static int8_t comp(void const *a, void const *b)
 {
-	if (*(uint32_t const *)a > *(uint32_t const *)b) {
-		return -1;
-	}
+	fr_rb_tree_test_node_t const *our_a = a, *our_b = b;
 
-	if (*(uint32_t const *)a < *(uint32_t const *)b) {
-		return 1;
-	}
-	return 0;
+	return CMP(our_a->num, our_b->num);
 }
+
+static int qsort_comp(void const *a, void const *b)
+{
+	return comp(a, b);
+}
+
 
 #if 0
 static int print_cb(void *i, UNUSED void *uctx)
 {
-	fprintf(stderr, "%i\n", *(int*)i);
+	fprintf(stderr, "%i\n", (fr_rb_tree_test_node_t *)i->num);
 	return 0;
 }
 #endif
@@ -62,19 +34,13 @@ static int print_cb(void *i, UNUSED void *uctx)
 #define MAXSIZE 1024
 
 static int cb_stored = 0;
-static uint32_t rvals[MAXSIZE];
-
-static int store_cb(void  *i, UNUSED void *uctx)
-{
-	rvals[cb_stored++] = *(int const *)i;
-	return 0;
-}
+static fr_rb_tree_test_node_t rvals[MAXSIZE];
 
 static uint32_t mask;
 
 static int filter_cb(void *i, void *uctx)
 {
-	if ((*(uint32_t *)i & mask) == (*(uint32_t *)uctx & mask)) {
+	if ((((fr_rb_tree_test_node_t *)i)->num & mask) == (((fr_rb_tree_test_node_t *)uctx)->num & mask)) {
 		return 2;
 	}
 	return 0;
@@ -84,9 +50,9 @@ static int filter_cb(void *i, void *uctx)
  * Returns the count of BLACK nodes from root to child leaves, or a
  * negative number indicating which RED-BLACK rule was broken.
  */
-static int rbcount(rbtree_t *t)
+static int rbcount(fr_rb_tree_t *t)
 {
-	rbnode_t *n;
+	fr_rb_node_t *n;
 	int count, count_expect;
 
 	count_expect = -1;
@@ -121,7 +87,7 @@ descend:
 		}
 		n = n->right;
 	}
-	if (n->left != NIL || n->right != NIL) {
+	if ((n->left != NIL) || (n->right != NIL)) {
 		goto descend;
 	}
 	if (count_expect < 0) {
@@ -134,7 +100,7 @@ descend:
 		}
 	}
 ascend:
-	if (!n->parent) return count_expect;
+	if (n->parent == NIL) return count_expect;
 	while (n->parent->right == n) {
 		n = n->parent;
 		if (!n->parent) return count_expect;
@@ -165,11 +131,15 @@ static void freenode(void *data)
 
 int main(UNUSED int argc, UNUSED char *argv[])
 {
-	rbtree_t *t;
-	int i, j;
-	uint32_t thresh;
-	int n, rep;
-	uint32_t vals[MAXSIZE];
+	fr_rb_tree_t		*t;
+	int			i, j;
+	fr_rb_tree_test_node_t	thresh = {};
+	int			n, rep;
+	fr_rb_tree_test_node_t	vals[MAXSIZE];
+	fr_rb_iter_inorder_t	iter;
+	fr_rb_tree_test_node_t const		*node;
+
+	memset(&vals, 0, sizeof(vals));
 
 	/* TODO: make starting seed and repetitions a CLI option */
 	rep = REPS;
@@ -177,55 +147,58 @@ int main(UNUSED int argc, UNUSED char *argv[])
 again:
 	if (!--rep) return 0;
 
-	thresh = fr_rand();
+	thresh.num = fr_rand();
 	mask = 0xff >> (fr_rand() & 7);
-	thresh &= mask;
+	thresh.num &= mask;
 	n = (fr_rand() % MAXSIZE) + 1;
 
-	fprintf(stderr, "filter = %x mask = %x n= %i\n",
-		thresh, mask, n);
+	fprintf(stderr, "filter = %x mask = %x n = %i\n", thresh.num, mask, n);
 
-	t = rbtree_create(NULL, comp, freenode, RBTREE_FLAG_LOCK);
-	/* Find out the value of the NIL node */
-	NIL = t->root->left;
-
+	t = fr_rb_inline_alloc(NULL, fr_rb_tree_test_node_t, node, comp, freenode);
 	for (i = 0; i < n; i++) {
-		int *p;
-		p = talloc(t, int);
-		*p = fr_rand();
-		vals[i] = *p;
-		rbtree_insert(t, p);
+		fr_rb_tree_test_node_t *p;
+
+		p = talloc(t, fr_rb_tree_test_node_t);	/* Do not use talloc_zero, rbcode should initialise fr_rb_node_t */
+		p->num = fr_rand();
+		vals[i].num = p->num;
+		fr_rb_insert(t, p);
 	}
 
 	i = rbcount(t);
-	fprintf(stderr,"After insert rbcount is %i.\n", i);
-	if (i < 0) { return i; }
+	fprintf(stderr,"After insert rbcount is %i\n", i);
+	if (i < 0) return i;
 
-	qsort(vals, n, sizeof(int), comp);
+	qsort(vals, n, sizeof(fr_rb_tree_test_node_t), qsort_comp);
 
 	/*
 	 * For testing deletebydata instead
 
 	 for (i = 0; i < n; i++) {
-	 if (filter_cb(&vals[i], &thresh) == 2) {
-	 rbtree_deletebydata(t, &vals[i]);
-	 }
+		if (filter_cb(&vals[i], &thresh) == 2) fr_rb_delete(t, &vals[i]);
 	 }
 
 	 *
 	 */
-	(void) rbtree_walk(t, RBTREE_DELETE_ORDER, filter_cb, &thresh);
+	for (node = fr_rb_iter_init_inorder(&iter, t);
+	     node;
+	     node = fr_rb_iter_next_inorder(&iter)) {
+		if ((node->num & mask) == (thresh.num & mask)) fr_rb_iter_delete_inorder(&iter);
+	}
 	i = rbcount(t);
-	fprintf(stderr,"After delete rbcount is %i.\n", i);
-	if (i < 0) { return i; }
+	fprintf(stderr,"After delete rbcount is %i\n", i);
+	if (i < 0) return i;
 
 	cb_stored = 0;
-	rbtree_walk(t, RBTREE_IN_ORDER, &store_cb, NULL);
+	for (node = fr_rb_iter_init_inorder(&iter, t);
+	     node;
+	     node = fr_rb_iter_next_inorder(&iter)) {
+		rvals[cb_stored++].num = node->num;
+	}
 
 	for (j = i = 0; i < n; i++) {
-		if (i && vals[i-1] == vals[i]) continue;
+		if (i && (vals[i-1].num == vals[i].num)) continue;
 		if (!filter_cb(&thresh, &vals[i])) {
-			if (vals[i] != rvals[j]) goto bad;
+			if (vals[i].num != rvals[j].num) goto bad;
 			j++;
 		}
 	}
@@ -235,14 +208,14 @@ again:
 
 bad:
 	for (j = i = 0; i < n; i++) {
-		if (i && vals[i-1] == vals[i]) continue;
+		if (i && vals[i-1].num == vals[i].num) continue;
 		if (!filter_cb(&thresh, &vals[i])) {
-			fprintf(stderr, "%i: %x %x\n", j, vals[i], rvals[j]);
+			fprintf(stderr, "%i: %x %x\n", j, vals[i].num, rvals[j].num);
 			j++;
 		} else {
-			fprintf(stderr, "skipped %x\n", vals[i]);
+			fprintf(stderr, "skipped %x\n", vals[i].num);
 		}
 	}
-	return -1;
+	return EXIT_FAILURE;
 }
 

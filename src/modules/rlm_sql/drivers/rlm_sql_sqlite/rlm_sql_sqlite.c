@@ -19,14 +19,14 @@
  * @file rlm_sql_sqlite.c
  * @brief SQLite driver.
  *
- * @copyright 2013 Network RADIUS SARL (info@networkradius.com)
+ * @copyright 2013 Network RADIUS SARL (legal@networkradius.com)
  * @copyright 2007 Apple Inc.
  */
 RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_sql_sqlite - "
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -57,12 +57,11 @@ typedef struct {
 
 typedef struct {
 	char const	*filename;
-	uint32_t	busy_timeout;
+	bool		bootstrap;
 } rlm_sql_sqlite_t;
 
 static const CONF_PARSER driver_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_REQUIRED, rlm_sql_sqlite_t, filename) },
-	{ FR_CONF_OFFSET("busy_timeout", FR_TYPE_UINT32, rlm_sql_sqlite_t, busy_timeout), .dflt = "200" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -95,6 +94,7 @@ static sql_rcode_t sql_error_to_rcode(int status)
 	case SQLITE_ERROR:	/* SQL error or missing database */
 	case SQLITE_FULL:
 	case SQLITE_MISMATCH:
+	case SQLITE_BUSY:	/* Can be caused by database locking */
 		return RLM_SQL_ERROR;
 
 	/*
@@ -428,9 +428,14 @@ static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_co
 
 	if (!conn->db || (sql_check_error(conn->db, status) != RLM_SQL_OK)) {
 		sql_print_error(conn->db, status, "Error opening SQLite database \"%s\"", inst->filename);
+#ifdef HAVE_SQLITE3_OPEN_V2
+		if (!inst->bootstrap) {
+			INFO("Use the sqlite driver 'bootstrap' option to automatically create the database file");
+		}
+#endif
 		return RLM_SQL_ERROR;
 	}
-	status = sqlite3_busy_timeout(conn->db, inst->busy_timeout);
+	status = sqlite3_busy_timeout(conn->db, fr_time_delta_to_sec(config->query_timeout));
 	if (sql_check_error(conn->db, status) != RLM_SQL_OK) {
 		sql_print_error(conn->db, status, "Error setting busy timeout");
 		return RLM_SQL_ERROR;
@@ -652,7 +657,7 @@ static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UN
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
 	char const *error;
 
-	rad_assert(outlen > 0);
+	fr_assert(outlen > 0);
 
 	error = sqlite3_errmsg(conn->db);
 	if (!error) return 0;
@@ -698,8 +703,12 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 		return -1;
 	}
 
-	if (cf_pair_find(cs, "bootstrap") && !exists) {
-#  ifdef HAVE_SQLITE3_OPEN_V2
+	if (cf_pair_find(cs, "bootstrap")) {
+		inst->bootstrap = true;
+	}
+
+	if (inst->bootstrap && !exists) {
+#ifdef HAVE_SQLITE3_OPEN_V2
 		int		status;
 		int		ret;
 		char const	*p;
@@ -719,7 +728,7 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 			MEM(buff = talloc_typed_strdup(cs, inst->filename));
 		}
 
-		ret = rad_mkdir(buff, 0700, -1, -1);
+		ret = fr_mkdir(NULL, buff, -1, 0700, NULL, NULL);
 		talloc_free(buff);
 		if (ret < 0) {
 			ERROR("Failed creating directory for SQLite database: %s", fr_syserror(errno));
@@ -729,13 +738,13 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 
 		status = sqlite3_open_v2(inst->filename, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
 		if (!db) {
-#    ifdef HAVE_SQLITE3_ERRSTR
+#  ifdef HAVE_SQLITE3_ERRSTR
 			ERROR("Failed creating opening/creating SQLite database: %s",
 			      sqlite3_errstr(status));
-#    else
+#  else
 			ERROR("Failed creating opening/creating SQLite database, got code (%i)",
 			      status);
-#    endif
+#  endif
 
 			goto unlink;
 		}

@@ -1,0 +1,4 @@
+ALIAS	Sip-Method                              	26.11862.0
+ALIAS	Sip-From                                	26.11862.1
+ALIAS	Sip-To                                  	26.11862.2
+ALIAS	Sip-Translated-Request-URI              	26.11862.4

@@ -1,0 +1,213 @@
+#  -*- text -*-
+#
+#  Based on https://github.com/the-tcpdump-group/tcpdump/tree/master/tests/dns-badcookie.pcap
+#  ATTENTION: It was converted from .pcap using ./scripts/util/pcap2decode-proto.py
+#
+
+proto dns
+proto-dictionary dns
+
+#
+#  1.
+#
+# [ DNS ]
+#   id        = 63147
+#   qr        = 0
+#   opcode    = QUERY
+#   aa        = 0
+#   tc        = 0
+#   rd        = 1
+#   ra        = 0
+#   z         = 0
+#   ad        = 1
+#   cd        = 0
+#   rcode     = ok
+#   qdcount   = 1
+#   ancount   = 0
+#   nscount   = 0
+#   arcount   = 1
+#   \qd        \
+#    |[ DNS Question Record ]
+#    |  qname     = '.'
+#    |  qtype     = SOA
+#    |  qclass    = IN
+#   an        = None
+#   ns        = None
+#   \ar        \
+#    |[ DNS OPT Resource Record ]
+#    |  rrname    = '.'
+#    |  type      = OPT
+#    |  rclass    = 4096
+#    |  extrcode  = 0
+#    |  version   = 0
+#    |  z         = 0
+#    |  rdlen     = None
+#    |  \rdata     \
+#    |   |[ DNS EDNS0 TLV ]
+#    |   |  optcode   = 10
+#    |   |  optlen    = 8
+#    |   |  optdata   = '6\xbf\x11\x1f\xef.\x01\t'
+#
+
+decode-proto f6 ab 01 20 00 01 00 00 00 00 00 01 00 00 06 00 01 00 00 29 10 00 00 00 00 00 00 0c 00 0a 00 08 36 bf 11 1f ef 2e 01 09
+match packet = { id = 63147, query = query, opcode = query, authoritative = no, truncated-response = no, recursion-desired = yes, recursion-available = no, reserved = no, authentic-data = yes, checking-disabled = no, rcode = no-error, qdcount = 1, ancount = 0, nscount = 0, arcount = 1 }, question = { qname = ".", qtype = 6, qclass = internet }, ar = { name = ".", type = opt, class = 4096, ttl = 0, type.opt = { options = { cookie = { client = 0x36bf111fef2e0109 } } } }
+
+encode-proto -
+match f6 ab 01 20 00 01 00 00 00 00 00 01 00 00 06 00 01 00 00 29 10 00 00 00 00 00 00 0c 00 0a 00 08 36 bf 11 1f ef 2e 01 09
+
+#
+#  2.
+#
+# [ DNS ]
+#   id        = 63147
+#   qr        = 1
+#   opcode    = QUERY
+#   aa        = 0
+#   tc        = 0
+#   rd        = 1
+#   ra        = 1
+#   z         = 0
+#   ad        = 0
+#   cd        = 0
+#   rcode     = 7
+#   qdcount   = 1
+#   ancount   = 0
+#   nscount   = 0
+#   arcount   = 1
+#   \qd        \
+#    |[ DNS Question Record ]
+#    |  qname     = '.'
+#    |  qtype     = SOA
+#    |  qclass    = IN
+#   an        = None
+#   ns        = None
+#   \ar        \
+#    |[ DNS OPT Resource Record ]
+#    |  rrname    = '.'
+#    |  type      = OPT
+#    |  rclass    = 4096
+#    |  extrcode  = 1
+#    |  version   = 0
+#    |  z         = 0
+#    |  rdlen     = None
+#    |  \rdata     \
+#    |   |[ DNS EDNS0 TLV ]
+#    |   |  optcode   = 10
+#    |   |  optlen    = 24
+#    |   |  optdata   = '6\xbf\x11\x1f\xef.\x01\t}\x8f\xfe\x06\\co\xfb\x14-vt\x94@zs'
+#
+decode-proto f6 ab 81 87 00 01 00 00 00 00 00 01  00 00 06 00 01  00 00 29 10 00 01 00 00 00  00 1c  00 0a 00 18 36 bf 11 1f ef 2e 01 09 7d 8f fe 06 5c 63 6f fb 14 2d 76 74 94 40 7a 73
+match packet = { id = 63147, query = response, opcode = query, authoritative = no, truncated-response = no, recursion-desired = yes, recursion-available = yes, reserved = no, authentic-data = no, checking-disabled = no, rcode = yx-rr-set, qdcount = 1, ancount = 0, nscount = 0, arcount = 1 }, question = { qname = ".", qtype = 6, qclass = internet }, ar = { name = ".", type = opt, class = 4096, ttl = 16777216, type.opt = { options = { cookie = { client = 0x36bf111fef2e0109, server = 0x7d8ffe065c636ffb142d767494407a73 } } } }
+
+encode-proto -
+match f6 ab 81 87 00 01 00 00 00 00 00 01 00 00 06 00 01 00 00 29 10 00 01 00 00 00 00 1c 00 0a 00 18 36 bf 11 1f ef 2e 01 09 7d 8f fe 06 5c 63 6f fb 14 2d 76 74 94 40 7a 73
+
+#
+#  3.
+#
+# [ DNS ]
+#   id        = 46131
+#   qr        = 0
+#   opcode    = QUERY
+#   aa        = 0
+#   tc        = 0
+#   rd        = 1
+#   ra        = 0
+#   z         = 0
+#   ad        = 1
+#   cd        = 0
+#   rcode     = ok
+#   qdcount   = 1
+#   ancount   = 0
+#   nscount   = 0
+#   arcount   = 1
+#   \qd        \
+#    |[ DNS Question Record ]
+#    |  qname     = '.'
+#    |  qtype     = SOA
+#    |  qclass    = IN
+#   an        = None
+#   ns        = None
+#   \ar        \
+#    |[ DNS OPT Resource Record ]
+#    |  rrname    = '.'
+#    |  type      = OPT
+#    |  rclass    = 4096
+#    |  extrcode  = 0
+#    |  version   = 0
+#    |  z         = 0
+#    |  rdlen     = None
+#    |  \rdata     \
+#    |   |[ DNS EDNS0 TLV ]
+#    |   |  optcode   = 10
+#    |   |  optlen    = 24
+#    |   |  optdata   = '6\xbf\x11\x1f\xef.\x01\t}\x8f\xfe\x06\\co\xfb\x14-vt\x94@zs'
+#
+decode-proto b4 33 01 20 00 01 00 00 00 00 00 01 00 00 06 00 01 00 00 29 10 00 00 00 00 00 00 1c 00 0a 00 18 36 bf 11 1f ef 2e 01 09 7d 8f fe 06 5c 63 6f fb 14 2d 76 74 94 40 7a 73
+match packet = { id = 46131, query = query, opcode = query, authoritative = no, truncated-response = no, recursion-desired = yes, recursion-available = no, reserved = no, authentic-data = yes, checking-disabled = no, rcode = no-error, qdcount = 1, ancount = 0, nscount = 0, arcount = 1 }, question = { qname = ".", qtype = 6, qclass = internet }, ar = { name = ".", type = opt, class = 4096, ttl = 0, type.opt = { options = { cookie = { client = 0x36bf111fef2e0109, server = 0x7d8ffe065c636ffb142d767494407a73 } } } }
+
+encode-proto -
+match b4 33 01 20 00 01 00 00 00 00 00 01 00 00 06 00 01 00 00 29 10 00 00 00 00 00 00 1c 00 0a 00 18 36 bf 11 1f ef 2e 01 09 7d 8f fe 06 5c 63 6f fb 14 2d 76 74 94 40 7a 73
+
+#
+#  4.
+#
+# [ DNS ]
+#   id        = 46131
+#   qr        = 1
+#   opcode    = QUERY
+#   aa        = 0
+#   tc        = 0
+#   rd        = 1
+#   ra        = 1
+#   z         = 0
+#   ad        = 1
+#   cd        = 0
+#   rcode     = ok
+#   qdcount   = 1
+#   ancount   = 1
+#   nscount   = 0
+#   arcount   = 1
+#   \qd        \
+#    |[ DNS Question Record ]
+#    |  qname     = '.'
+#    |  qtype     = SOA
+#    |  qclass    = IN
+#   \an        \
+#    |[ DNS SOA Resource Record ]
+#    |  rrname    = '.'
+#    |  type      = SOA
+#    |  rclass    = IN
+#    |  ttl       = 85758
+#    |  rdlen     = None
+#    |  mname     = 'a.root-servers.net.'
+#    |  rname     = 'nstld.verisign-grs.com.'
+#    |  serial    = 2019021202
+#    |  refresh   = 1800
+#    |  retry     = 900
+#    |  expire    = 604800
+#    |  minimum   = 86400
+#   ns        = None
+#   \ar        \
+#    |[ DNS OPT Resource Record ]
+#    |  rrname    = '.'
+#    |  type      = OPT
+#    |  rclass    = 4096
+#    |  extrcode  = 0
+#    |  version   = 0
+#    |  z         = 0
+#    |  rdlen     = None
+#    |  \rdata     \
+#    |   |[ DNS EDNS0 TLV ]
+#    |   |  optcode   = 10
+#    |   |  optlen    = 24
+#    |   |  optdata   = '6\xbf\x11\x1f\xef.\x01\t\n/\x9d\xa2\\co\xfbI\xc3[\xb1O\xa4(\xb4'
+#
+decode-proto b4 33 81 a0 00 01 00 01 00 00 00 01 00 00 06 00 01 00 00 06 00 01 00 01 4e fe 00 40 01 61 0c 72 6f 6f 74 2d 73 65 72 76 65 72 73 03 6e 65 74 00 05 6e 73 74 6c 64 0c 76 65 72 69 73 69 67 6e 2d 67 72 73 03 63 6f 6d 00 78 57 d1 92 00 00 07 08 00 00 03 84 00 09 3a 80 00 01 51 80 00 00 29 10 00 00 00 00 00 00 1c 00 0a 00 18 36 bf 11 1f ef 2e 01 09 0a 2f 9d a2 5c 63 6f fb 49 c3 5b b1 4f a4 28 b4
+match packet = { id = 46131, query = response, opcode = query, authoritative = no, truncated-response = no, recursion-desired = yes, recursion-available = yes, reserved = no, authentic-data = yes, checking-disabled = no, rcode = no-error, qdcount = 1, ancount = 1, nscount = 0, arcount = 1 }, question = { qname = ".", qtype = 6, qclass = internet }, rr = { name = ".", type = soa, class = 1, ttl = 85758, type.soa = { mname = "a.root-servers.net", rname = "nstld.verisign-grs.com", serial = 2019021202, refresh = 1800, retry = 900, expire = 604800, minimum = 86400 } }, ar = { name = ".", type = opt, class = 4096, ttl = 0, type.opt = { options = { cookie = { client = 0x36bf111fef2e0109, server = 0x0a2f9da25c636ffb49c35bb14fa428b4 } } } }
+
+encode-proto -
+match b4 33 81 a0 00 01 00 01 00 00 00 01 00 00 06 00 01 00 00 06 00 01 00 01 4e fe 00 40 01 61 0c 72 6f 6f 74 2d 73 65 72 76 65 72 73 03 6e 65 74 00 05 6e 73 74 6c 64 0c 76 65 72 69 73 69 67 6e 2d 67 72 73 03 63 6f 6d 00 78 57 d1 92 00 00 07 08 00 00 03 84 00 09 3a 80 00 01 51 80 00 00 29 10 00 00 00 00 00 00 1c 00 0a 00 18 36 bf 11 1f ef 2e 01 09 0a 2f 9d a2 5c 63 6f fb 49 c3 5b b1 4f a4 28 b4
+
+count
+match 18

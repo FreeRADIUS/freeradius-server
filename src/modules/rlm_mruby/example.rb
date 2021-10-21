@@ -1,6 +1,9 @@
 #This is example radius.rb script
+
+# frozen_string_literal: true
+
 module Radiusd
-    def self.instantiate()
+    def self.instantiate
         radlog(L_DBG, "[mruby]Running ruby instantiate")
         return RLM_MODULE_OK
     end
@@ -12,9 +15,8 @@ module Radiusd
         radlog(L_ERR, "[mruby]Running ruby authorize")
         radlog(L_WARN, "Authorize: #{request.inspect}(#{request.class})")
         radlog(L_WARN, "Authorize: #{request.request.inspect}(#{request.request.class})")
-    
         reply = [["Framed-MTU", 1500]]
-        control = [["Cleartext-Password", "hello"], ["Tmp-String-0", "!*", "ANY"]]
+        control = [["Password.Cleartext", "hello"], ["Tmp-String-0", "!*", "ANY"]]
         return [RLM_MODULE_UPDATED, reply, control]
     end
     def self.post_auth(request)

@@ -27,30 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/io/listen.h>
 #include "unlang_priv.h"
 
-/** Run the interpreter after creating a subrequest.
- *
- * Just run some "unlang", but don't do anything else.
- *
- * This is a shim function added to 'fake' requests by the subrequest and parallel keywords.
- */
-fr_io_final_t unlang_io_process_interpret(UNUSED void const *instance, REQUEST *request)
-{
-	rlm_rcode_t rcode;
-
-	REQUEST_VERIFY(request);
-
-	rcode = unlang_interpret_resume(request);
-
-	if (request->master_state == REQUEST_STOP_PROCESSING) return FR_IO_DONE;
-
-	if (rcode == RLM_MODULE_YIELD) return FR_IO_YIELD;
-
-	/*
-	 *	Don't bother setting request->reply->code.
-	 */
-	return FR_IO_DONE;
-}
-
 /** Allocate a child request based on the parent.
  *
  * @param[in] parent		spawning the child request.
@@ -60,32 +36,32 @@ fr_io_final_t unlang_io_process_interpret(UNUSED void const *instance, REQUEST *
  *      - The new child request.
  *	- NULL on error.
  */
-REQUEST *unlang_io_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace, bool detachable)
+request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namespace, bool detachable)
 {
-	REQUEST			*child;
+	request_t		*child;
 
-	if (!detachable) {
-		child = request_alloc_fake(parent, namespace);
-	} else {
-		child = request_alloc_detachable(parent, namespace);
-	}
+	child = request_alloc_internal(detachable ? NULL : parent,
+				       (&(request_init_args_t){
+						.parent = parent,
+						.namespace = namespace,
+						.detachable = detachable
+				       }));
 	if (!child) return NULL;
+
+	/*
+	 *	Child gets its parent's interpreter
+	 */
+	((unlang_stack_t *)child->stack)->intp = ((unlang_stack_t *)parent->stack)->intp;
 
 	/*
 	 *	Push the child, and set it's top frame to be true.
 	 */
-
 	child->log.unlang_indent = parent->log.unlang_indent;
 
 	/*
 	 *	Initialize some basic information for the child.
-	 *
-	 *	Note that we do NOT initialize child->backlog, as the
-	 *	child is never resumable... the parent is resumable.
 	 */
 	child->number = parent->number;
-	child->el = parent->el;
-	child->server_cs = parent->server_cs;
 
 	/*
 	 *	Initialize all of the async fields.
@@ -93,24 +69,10 @@ REQUEST *unlang_io_subrequest_alloc(REQUEST *parent, fr_dict_t const *namespace,
 	child->async = talloc_zero(child, fr_async_t);
 
 #define COPY_FIELD(_x) child->async->_x = parent->async->_x
-	COPY_FIELD(listen);
 	COPY_FIELD(recv_time);
-	child->async->original_recv_time = &child->async->recv_time;
-	child->async->fake = true;
+	fr_assert(request_is_internal(child));
 
-	/*
-	 *	Always set the "process" function to the local
-	 *	bare-bones function which just runs on section of
-	 *	"unlang", and doesn't send replies or anything else.
-	 */
-	child->async->process = unlang_io_process_interpret;
-
-	/*
-	 *	Note that we don't do time tracking on the child.
-	 *	Instead, all of it is done in the context of the
-	 *	parent.
-	 */
-	fr_dlist_init(&child->async->tracking.list, fr_time_tracking_t, list.entry);
+	REQUEST_VERIFY(child);
 
 	return child;
 }

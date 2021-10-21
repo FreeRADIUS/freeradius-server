@@ -2,19 +2,21 @@ Source: freeradius
 Build-Depends: @BUILDDEPS@ debhelper (>= 9),
  quilt,
  dpkg-dev (>= 1.13.19),
- dh-systemd (>= 1.5),
+ dh-systemd (>= 1.5) | debhelper (>= 13.3.0),
  autotools-dev,
  libcurl4-openssl-dev | libcurl4-gnutls-dev,
  libcap-dev,
  libgdbm-dev,
- libjson0 | libjson-c2 | libjson-c3,
- libjson0-dev | libjson-c-dev,
+ libidn11-dev,
+ libjson-perl,
+ libjson-c (>= 1.13) | libjson-c4 | libjson-c5,
+ libjson-c-dev,
  libkrb5-dev | heimdal-dev,
  libkqueue-dev,
  libldap2-dev,
  libpam0g-dev,
  libpcap-dev,
- libpcre3-dev,
+ libpcre2-dev | libpcre3-dev,
  libperl-dev,
  libmysqlclient-dev | default-libmysqlclient-dev,
  libpq-dev,
@@ -30,11 +32,12 @@ Build-Depends: @BUILDDEPS@ debhelper (>= 9),
  libhiredis-dev,
  python-dev,
  samba-dev,
- dh-systemd,
- unixodbc-dev
+ unixodbc-dev,
+ asciidoctor,
+ pandoc
 Section: net
 Priority: optional
-Maintainer: Josip Rodin <joy-packages@debian.org>
+Maintainer: Network RADIUS SARL <info@networkradius.com>
 Uploaders: Stephen Gran <sgran@debian.org>, Mark Hymers <mhy@debian.org>
 Standards-Version: 3.9.6
 Homepage: http://www.freeradius.org/
@@ -77,7 +80,6 @@ Architecture: any
 Replaces: freeradius (<< 3)
 Conflicts: radiusd-livingston, yardradius
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}, freeradius-common, freeradius-config, libfreeradius4 (= ${binary:Version})
-Recommends: libdbi-perl
 Description: FreeRADIUS client utilities
  This package contains various client programs and utilities from
  the FreeRADIUS Server project, including:
@@ -89,6 +91,19 @@ Description: FreeRADIUS client utilities
   - radwho
   - radzap
   - smbencrypt
+
+Package: freeradius-perl-util
+Architecture: any
+Depends: libnet-ip-perl
+Recommends: libtemplate-perl, libdbi-perl, libyaml-libyaml-perl, libdbd-pg-perl, libdbd-mysql-perl, libdbd-sqlite3-perl, libdbd-sybase-perl
+Description: FreeRADIUS Perl utilities
+ This package contains utilities for managing IP pools in SQL databases
+
+Package: freeradius-snmp
+Architecture: any
+Depends: libsnmp-base
+Description: FreeRADIUS SNMP mibs and utilities
+ This package contains custom FreeRADIUS mibs, and SNMP integration utilities
 
 Package: libfreeradius4
 Architecture: any
@@ -124,7 +139,7 @@ Description: kerberos module for FreeRADIUS server
 
 Package: freeradius-ldap
 Architecture: any
-Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}, libsasl2-modules-gssapi-mit
 Description: LDAP module for FreeRADIUS server
  The FreeRADIUS server can use LDAP to authenticate users, and this module
  is necessary for that.

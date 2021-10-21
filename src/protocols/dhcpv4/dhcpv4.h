@@ -41,23 +41,35 @@ extern "C" {
 #define DHCP_OPTION_MAGIC_NUMBER (0x63825363)
 
 typedef enum {
-	FR_DHCP_DISCOVER = (1),
-	FR_DHCP_OFFER =	(2),
-	FR_DHCP_REQUEST	= (3),
-	FR_DHCP_DECLINE	= (4),
-	FR_DHCP_ACK = (5),
-	FR_DHCP_NAK = (6),
-	FR_DHCP_RELEASE = (7),
-	FR_DHCP_INFORM = (8),
-	FR_DHCP_FORCE_RENEW = (9),
-	FR_DHCP_LEASE_QUERY = (10),
-	FR_DHCP_LEASE_UNASSIGNED = (11),
-	FR_DHCP_LEASE_UNKNOWN = (12),
-	FR_DHCP_LEASE_ACTIVE = (13),
-	FR_DHCP_BULK_LEASE_QUERY = (14),
-	FR_DHCP_LEASE_QUERY_DONE = (15),
-	FR_DHCP_MAX = (16)
-} fr_dhcpv4_codes_t;
+	FR_DHCP_INVALID = 0,
+	FR_DHCP_DISCOVER = 1,
+	FR_DHCP_OFFER =	2,
+	FR_DHCP_REQUEST	= 3,
+	FR_DHCP_DECLINE	= 4,
+	FR_DHCP_ACK = 5,
+	FR_DHCP_NAK = 6,
+	FR_DHCP_RELEASE = 7,
+	FR_DHCP_INFORM = 8,
+	FR_DHCP_FORCE_RENEW = 9,
+	FR_DHCP_LEASE_QUERY = 10,
+	FR_DHCP_LEASE_UNASSIGNED = 11,
+	FR_DHCP_LEASE_UNKNOWN = 12,
+	FR_DHCP_LEASE_ACTIVE = 13,
+	FR_DHCP_BULK_LEASE_QUERY = 14,
+	FR_DHCP_LEASE_QUERY_DONE = 15,
+	FR_DHCP_CODE_MAX = 16,
+	FR_DHCP_DO_NOT_RESPOND = 256,
+} fr_dhcpv4_packet_code_t;
+
+#define FR_DHCP_PACKET_CODE_VALID(_code) (((_code) > 0) && ((_code) < FR_DHCP_CODE_MAX))
+
+/** subtype values for DHCPv4 and DHCPv6
+ *
+ */
+enum {
+	FLAG_ENCODE_NONE = 0,				//!< no particular encoding for DHCPv6 strings
+	FLAG_ENCODE_DNS_LABEL,				//!< encode as DNS label
+};
 
 typedef struct {
 	uint8_t		opcode;
@@ -105,6 +117,7 @@ typedef struct {
 #endif
 
 extern fr_dict_attr_t const	**dhcp_header_attrs[];
+extern size_t dhcp_header_attrs_len;
 extern char const		*dhcp_message_types[];
 extern int			dhcp_header_sizes[];
 extern uint8_t			eth_bcast[ETH_ADDR_LEN];
@@ -131,17 +144,16 @@ typedef struct {
 	fr_dict_attr_t const *root;
 } fr_dhcpv4_ctx_t;
 
-RADIUS_PACKET *fr_dhcpv4_udp_packet_recv(int sockfd);
-int fr_dhcpv4_udp_packet_send(RADIUS_PACKET *packet);
-
 /*
  *	base.c
  */
 int8_t		fr_dhcpv4_attr_cmp(void const *a, void const *b);
 
 bool		fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, uint32_t *xid);
-RADIUS_PACKET	*fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len);
-ssize_t		fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original, int code, uint32_t xid, VALUE_PAIR *vps);
+fr_radius_packet_t	*fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len);
+bool 		fr_dhcpv4_is_encodable(void const *item, void const *uctx);
+ssize_t		fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original, int code, uint32_t xid, fr_pair_list_t *vps);
+ssize_t		fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int code, uint32_t xid, fr_pair_list_t *vps);
 int		fr_dhcpv4_global_init(void);
 void		fr_dhcpv4_global_free(void);
 void		fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
@@ -149,23 +161,23 @@ void		fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
 /*
  *	decode.c
  */
-ssize_t		fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_cursor_t *cursor, fr_dict_t const *dict,
-					uint8_t const *data, size_t len, void *decoder_ctx);
+ssize_t		fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+					uint8_t const *data, size_t len, void *decode_ctx);
 
 /*
  *	encode.c
  */
-ssize_t		fr_dhcpv4_encode_option(uint8_t *out, size_t outlen,
-					fr_cursor_t *cursor, void *encoder_ctx);
+ssize_t		fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx);
 
 /*
  *	packet.c
  */
 uint8_t const	*fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t packet_size, fr_dict_attr_t const *da);
 
-int		fr_dhcpv4_packet_decode(RADIUS_PACKET *packet);
+int		fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
+				 uint8_t const *data, size_t data_len, unsigned int *code);
 
-int		fr_dhcpv4_packet_encode(RADIUS_PACKET *packet);
+int		fr_dhcpv4_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list);
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 /*
@@ -174,9 +186,11 @@ int		fr_dhcpv4_packet_encode(RADIUS_PACKET *packet);
 #include <linux/if_packet.h>
 int		fr_dhcpv4_raw_socket_open(struct sockaddr_ll *p_ll, int iface_index);
 
-int		fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET *packet);
+int		fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *p_ll,
+					  fr_radius_packet_t *packet, fr_pair_list_t *list);
 
-RADIUS_PACKET	*fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET *request);
+fr_radius_packet_t	*fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *p_ll,
+						  fr_radius_packet_t *request, fr_pair_list_t *list);
 #endif
 
 /*
@@ -186,16 +200,17 @@ RADIUS_PACKET	*fr_dhcv4_raw_packet_recv(int sockfd, struct sockaddr_ll *p_ll, RA
 /*
  *	Use fr_pcap_init and fr_pcap_open to create/open handles.
  */
-RADIUS_PACKET	*fr_dhcpv4_pcap_recv(fr_pcap_t *pcap);
+fr_radius_packet_t	*fr_dhcpv4_pcap_recv(fr_pcap_t *pcap);
 
-int		fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET *packet);
+int		fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, fr_radius_packet_t *packet);
 #endif
 
 /*
  *	udp.c
  */
-int		fr_dhcpv4_udp_add_arp_entry(int fd, char const *interface,
-					    fr_ipaddr_t const *ip, uint8_t macaddr[static 6]);
+fr_radius_packet_t	*fr_dhcpv4_udp_packet_recv(int sockfd);
+int		fr_dhcpv4_udp_packet_send(fr_radius_packet_t *packet);
+
 #ifdef __cplusplus
 }
 #endif

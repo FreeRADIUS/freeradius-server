@@ -2,8 +2,7 @@
 #  PRE: update if
 #
 update {
-       &control:Cleartext-Password := 'hello'
-       &request:Class := 0x0101
+       &request.Class := 0x0101
 }
 
 if (<short>&Class == 257) {

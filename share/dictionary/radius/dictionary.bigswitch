@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -12,7 +12,7 @@
 VENDOR		Big-Switch-Networks		37538
 BEGIN-VENDOR	Big-Switch-Networks
 
-ATTRIBUTE	BSN-User-Role				1	string
-ATTRIBUTE	BSN-AVPair				2	string
+ATTRIBUTE	User-Role				1	string
+ATTRIBUTE	AVPair					2	string
 
 END-VENDOR	Big-Switch-Networks

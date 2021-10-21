@@ -1,0 +1,5 @@
+ALIAS	VNC-PPPoE-CBQ-RX                        	26.16313.1
+ALIAS	VNC-PPPoE-CBQ-TX                        	26.16313.2
+ALIAS	VNC-PPPoE-CBQ-RX-Fallback               	26.16313.3
+ALIAS	VNC-PPPoE-CBQ-TX-Fallback               	26.16313.4
+ALIAS	VNC-Splash                              	26.16313.10

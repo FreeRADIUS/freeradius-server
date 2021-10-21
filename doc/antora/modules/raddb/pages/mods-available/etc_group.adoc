@@ -1,0 +1,62 @@
+
+
+
+
+= etc_group Module
+
+The `etc_group` module provides group names from the `/etc/group` file.
+
+NOTE: Please see the `csv` module for full documentation on the
+configuration items used here.
+
+
+
+## Configuration Settings
+
+The `csv` module configuration for the /etc/group file.  The module
+adds a `Etc-Group-Name` attribute for every group that the user is
+a member of.
+
+You will have to define the `Etc-Group-Name` in the `dictionary` file,
+as a `string` type.  For example:
+
+
+We cannot use the `Group` attribute here.  The `Group` attribute is
+automatically created by the `unix` module, and checked against
+`/etc/group` automatically.  Which means that the `Group` attribute
+has a pre-defined meaning, and you *cannot* use it for this module.
+
+
+
+
+The field names are just place-holders.
+They are NOT attribute names!
+
+
+
+
+Add the ETC-Group-Name attribute to the request list.
+If the user is a member of multiple groups, then the
+module will add multiple ETC-Group-Name attributes,
+one for each group.
+
+The field names from the `fields` entry above are used
+here in the right-hand side of the `update` section.
+
+
+== Default Configuration
+
+```
+#	ATTRIBUTE Etc-Group-Name string 3020
+csv etc_group {
+	filename = ${modconfdir}/csv/${.:instance}
+	delimiter = ":"
+	header = no
+	key = &User-Name
+	fields = "group:::,user"
+	index_field = user
+	update request {
+	       &ETC-Group-Name := 'group'
+	}
+}
+```

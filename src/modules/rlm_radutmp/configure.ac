@@ -3,6 +3,10 @@ AC_INIT(rlm_radutmp.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_radutmp])
 
+AC_ARG_WITH([]modname,
+[AS_HELP_STRING([--without-[]modname],[build without module])]
+)
+
 if test x$with_[]modname != xno; then
 
 	AC_CHECK_HEADERS(sys/mman.h)

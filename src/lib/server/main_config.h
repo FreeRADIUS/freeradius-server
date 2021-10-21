@@ -40,9 +40,9 @@ extern main_config_t const *main_config;		//!< Global configuration singleton.
 
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/tmpl.h>
-#include <freeradius-devel/server/main_config.h>
 
 #include <freeradius-devel/util/dict.h>
+
 
 /** Main server configuration
  *
@@ -61,17 +61,11 @@ struct main_config_s {
 	fr_time_delta_t	max_request_time;		//!< How long a request can be processed for before
 							//!< timing out.
 
-	uint32_t	num_networks;			//!< number of network threads
-	uint32_t	num_workers;			//!< number of network threads
-
 	bool		drop_requests;			//!< Administratively disable request processing.
 
 	char const	*log_dir;
 	char const	*local_state_dir;
 	char const	*chroot_dir;
-#ifdef WITH_CONF_WRITE
-	char const	*write_dir;			//!< where the normalized config is written
-#endif
 
 	bool		reverse_lookups;
 	bool		hostname_lookups;
@@ -91,14 +85,16 @@ struct main_config_s {
 	bool		log_line_number;		//!< Log src file/line the message was generated on.
 
 	bool		log_dates_utc;
-	bool		*log_timestamp;
+	bool		log_timestamp;
 	bool		log_timestamp_is_set;
 
 	int32_t		syslog_facility;
 
 	char const	*dict_dir;			//!< Where to load dictionaries from.
 
-	size_t		talloc_pool_size;		//!< Size of pool to allocate to hold each #REQUEST.
+	size_t		talloc_pool_size;		//!< Size of pool to allocate to hold each #request_t.
+
+	uint32_t	max_requests;			//!< maximum number of requests outstanding
 
 	bool		write_pid;			//!< write the PID file
 
@@ -118,6 +114,12 @@ struct main_config_s {
 #ifdef HAVE_OPENSSL_CRYPTO_H
 	bool		openssl_fips_mode;		//!< Whether OpenSSL fips mode is enabled or disabled.
 	bool		openssl_fips_mode_is_set;	//!< Whether the user specified a value.
+
+	size_t		openssl_async_pool_init;		//!< Tuning option to set the minimum number of requests
+							///< in the async ctx pool.
+
+	size_t		openssl_async_pool_max;		//!< Tuning option to set the maximum number of requests
+							///< in the async ctx pool.
 #endif
 
 	fr_dict_t	*dict;				//!< Main dictionary.
@@ -138,13 +140,25 @@ struct main_config_s {
 							//!< Can only be used when the server is running in single
 							//!< threaded mode.
 
-	size_t		talloc_memory_limit;		//!< Limit the amount of talloced memory the server uses.
-							//!< Only applicable in single threaded mode.
+	bool		allow_multiple_procs;		//!< Allow multiple instances of radiusd to run with the
+							///< same config file.
+
+	int		multi_proc_sem_id;		//!< Semaphore we use to prevent multiple processes running.
+	char		*multi_proc_sem_path;		//!< Semaphore path.
+
+	uint32_t	max_networks;			//!< for the scheduler
+	uint32_t	max_workers;			//!< for the scheduler
+	fr_time_delta_t	stats_interval;			//!< for the scheduler
+
 };
 
 void			main_config_name_set_default(main_config_t *config, char const *name, bool overwrite_config);
 void			main_config_raddb_dir_set(main_config_t *config, char const *path);
 void			main_config_dict_dir_set(main_config_t *config, char const *path);
+
+void			main_config_exclusive_proc_done(main_config_t  const *config);
+int			main_config_exclusive_proc_child(main_config_t const *config);
+int			main_config_exclusive_proc(main_config_t *config);
 
 main_config_t		*main_config_alloc(TALLOC_CTX *ctx);
 int			main_config_init(main_config_t *config);

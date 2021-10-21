@@ -42,10 +42,13 @@
 #undef HAVE_BINSAFE_REGEX
 
 /* Define if the compiler supports __builtin_bswap64 */
-#undef HAVE_BUILTIN_BSWAP_64
+#undef HAVE_BUILTIN_BSWAP64
 
 /* Define if the compiler supports __builtin_choose_expr */
 #undef HAVE_BUILTIN_CHOOSE_EXPR
+
+/* Define if the compiler supports __builtin_clzll */
+#undef HAVE_BUILTIN_CLZLL
 
 /* Define if the compiler supports __builtin_types_compatible_p */
 #undef HAVE_BUILTIN_TYPES_COMPATIBLE_P
@@ -227,9 +230,6 @@
 /* Define to 1 if you have the `ssl' library (-lssl). */
 #undef HAVE_LIBSSL
 
-/* Define to 1 if you have the `ws2_32' library (-lws2_32). */
-#undef HAVE_LIBWS2_32
-
 /* Define to 1 if you have the <limits.h> header file. */
 #undef HAVE_LIMITS_H
 
@@ -247,6 +247,9 @@
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
+
+/* Define to 1 if you have the `memrchr' function. */
+#undef HAVE_MEMRCHR
 
 /* Define to 1 if you have the `mkdirat' function. */
 #undef HAVE_MKDIRAT
@@ -329,6 +332,9 @@
 /* Define to 1 if you have the <readline/readline.h> header file. */
 #undef HAVE_READLINE_READLINE_H
 
+/* Define to 1 if you have the `recvmmsg' function. */
+#undef HAVE_RECVMMSG
+
 /* Define if we have any regular expression library */
 #undef HAVE_REGEX
 
@@ -358,6 +364,9 @@
 
 /* Define to 1 if you have the <semaphore.h> header file. */
 #undef HAVE_SEMAPHORE_H
+
+/* Define to 1 if you have the `sendmmsg' function. */
+#undef HAVE_SENDMMSG
 
 /* Define to 1 if you have the `setlinebuf' function. */
 #undef HAVE_SETLINEBUF
@@ -479,6 +488,9 @@
 /* Define to 1 if you have the <sys/prctl.h> header file. */
 #undef HAVE_SYS_PRCTL_H
 
+/* Define to 1 if you have the <sys/procctl.h> header file. */
+#undef HAVE_SYS_PROCCTL_H
+
 /* Define to 1 if you have the <sys/ptrace.h> header file. */
 #undef HAVE_SYS_PTRACE_H
 
@@ -508,12 +520,6 @@
 
 /* Define to 1 if you have the <sys/wait.h> header file. */
 #undef HAVE_SYS_WAIT_H
-
-/* Define to 1 if you have the `talloc_pooled_object' function. */
-#undef HAVE_TALLOC_POOLED_OBJECT
-
-/* Define to 1 if you have the `talloc_set_memlimit' function. */
-#undef HAVE_TALLOC_SET_MEMLIMIT
 
 /* 128 bit unsigned integer */
 #undef HAVE_UINT128_T
@@ -545,8 +551,8 @@
 /* Define if the compiler supports -Wdocumentation */
 #undef HAVE_WDOCUMENTATION
 
-/* Define to 1 if you have the <winsock.h> header file. */
-#undef HAVE_WINSOCK_H
+/* Define to 1 if you have the `_talloc_pooled_object' function. */
+#undef HAVE__TALLOC_POOLED_OBJECT
 
 /* compiler specific 128 bit unsigned integer */
 #undef HAVE___UINT128_T
@@ -627,26 +633,8 @@
 #endif
 
 
-/* include support for Ascend binary filter attributes */
-#undef WITH_ASCEND_BINARY
-
-/* define if you want dhcp */
-#undef WITH_DHCP
-
 /* define if the server was built with -DNDEBUG */
 #undef WITH_NDEBUG
-
-/* define if you want tacacs */
-#undef WITH_TACACS
-
-/* define if you want tcp */
-#undef WITH_TCP
-
-/* define if you want udpfromto */
-#undef WITH_UDPFROMTO
-
-/* define if you want vmps */
-#undef WITH_VMPS
 
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */

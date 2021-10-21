@@ -29,8 +29,7 @@
 extern "C" {
 #endif
 
-unlang_action_t unlang_return(REQUEST *request,
-			      UNUSED rlm_rcode_t *result, UNUSED int *priority);
+unlang_action_t unlang_return(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame);
 
 #ifdef __cplusplus
 }

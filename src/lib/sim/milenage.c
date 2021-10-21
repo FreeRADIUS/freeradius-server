@@ -23,6 +23,7 @@
 #include <freeradius-devel/tls/log.h>
 #include <freeradius-devel/util/proto.h>
 #include <openssl/evp.h>
+#include "common.h"
 #include "milenage.h"
 
 #define MILENAGE_MAC_A_SIZE	8
@@ -31,10 +32,10 @@
 static inline int aes_128_encrypt_block(EVP_CIPHER_CTX *evp_ctx,
 					uint8_t const key[16], uint8_t const in[16], uint8_t out[16])
 {
-	size_t len;
+	size_t len = 0;
 
 	if (unlikely(EVP_EncryptInit_ex(evp_ctx, EVP_aes_128_ecb(), NULL, key, NULL) != 1)) {
-		tls_strerror_printf("Failed initialising AES-128-ECB context");
+		fr_tls_log_strerror_printf("Failed initialising AES-128-ECB context");
 		return -1;
 	}
 
@@ -51,9 +52,11 @@ static inline int aes_128_encrypt_block(EVP_CIPHER_CTX *evp_ctx,
 	EVP_CIPHER_CTX_set_padding(evp_ctx, 0);
 	if (unlikely(EVP_EncryptUpdate(evp_ctx, out, (int *)&len, in, 16) != 1) ||
 	    unlikely(EVP_EncryptFinal_ex(evp_ctx, out + len, (int *)&len) != 1)) {
-		tls_strerror_printf("Failed encrypting data");
+		fr_tls_log_strerror_printf("Failed encrypting data");
 		return -1;
 	}
+
+	EVP_CIPHER_CTX_reset(evp_ctx);
 
 	return 0;
 }
@@ -88,7 +91,7 @@ static int milenage_f1(uint8_t mac_a[MILENAGE_MAC_A_SIZE],
 
 	evp_ctx = EVP_CIPHER_CTX_new();
 	if (!evp_ctx) {
-		tls_strerror_printf("Failed allocating EVP context");
+		fr_tls_log_strerror_printf("Failed allocating EVP context");
 		return -1;
 	}
 
@@ -163,7 +166,7 @@ static int milenage_f2345(uint8_t res[MILENAGE_RES_SIZE],
 
 	evp_ctx = EVP_CIPHER_CTX_new();
 	if (!evp_ctx) {
-		tls_strerror_printf("Failed allocating EVP context");
+		fr_tls_log_strerror_printf("Failed allocating EVP context");
 		return -1;
 	}
 
@@ -248,7 +251,7 @@ int milenage_opc_generate(uint8_t opc[MILENAGE_OPC_SIZE],
 
 	evp_ctx = EVP_CIPHER_CTX_new();
 	if (!evp_ctx) {
-		tls_strerror_printf("Failed allocating EVP context");
+		fr_tls_log_strerror_printf("Failed allocating EVP context");
 		return -1;
 	}
  	ret = aes_128_encrypt_block(evp_ctx, ki, op, tmp);
@@ -464,7 +467,7 @@ int milenage_check(uint8_t ik[MILENAGE_IK_SIZE],
 
 	if (CRYPTO_memcmp(mac_a, autn + 8, 8) != 0) {
 		FR_PROTO_HEX_DUMP(autn + 8, 8, "Received MAC_A");
-		fr_strerror_printf("MAC mismatch");
+		fr_strerror_const("MAC mismatch");
 		return -1;
 	}
 
@@ -475,7 +478,7 @@ int milenage_check(uint8_t ik[MILENAGE_IK_SIZE],
 /*
  *  cc milenage.c -g3 -Wall -DHAVE_DLFCN_H -DTESTING_MILENAGE -DWITH_TLS -I../../../../ -I../../../ -I ../base/ -I /usr/local/opt/openssl/include/ -include ../include/build.h -L /usr/local/opt/openssl/lib/ -l ssl -l crypto -l talloc -L ../../../../../build/lib/local/.libs/ -lfreeradius-server -lfreeradius-tls -lfreeradius-util -o test_milenage && ./test_milenage
  */
-#include <freeradius-devel/util/cutest.h>
+#include <freeradius-devel/util/acutest.h>
 
 void test_set_1(void)
 {

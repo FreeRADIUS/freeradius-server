@@ -29,95 +29,48 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
 #define LOG_PREFIX "%s - "
-#define LOG_PREFIX_ARGS (*pconn)->config->name
+#define LOG_PREFIX_ARGS name
 
 #include <freeradius-devel/ldap/base.h>
 
-static FR_NAME_NUMBER const fr_ldap_directory_type_table[] = {
-	{ "Unknown",			FR_LDAP_DIRECTORY_UNKNOWN	},
-	{ "Active Directory",		FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY	},
-	{ "eDirectory",			FR_LDAP_DIRECTORY_EDIRECTORY },
-	{ "IBM",			FR_LDAP_DIRECTORY_IBM },
-	{ "NetScape",			FR_LDAP_DIRECTORY_NETSCAPE },
-	{ "OpenLDAP",			FR_LDAP_DIRECTORY_OPENLDAP	},
-	{ "Oracle Internet Directory",	FR_LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY },
-	{ "Oracle Unified Directory",	FR_LDAP_DIRECTORY_ORACLE_UNIFIED_DIRECTORY },
-	{ "Oracle Virtual Directory",	FR_LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY },
-	{ "Sun One Directory",		FR_LDAP_DIRECTORY_SUN_ONE_DIRECTORY },
-	{ "Siemens AG",			FR_LDAP_DIRECTORY_SIEMENS_AG },
-	{ "Unbound ID",			FR_LDAP_DIRECTORY_UNBOUND_ID },
-	{  NULL , -1 }
+static fr_table_num_sorted_t const fr_ldap_directory_type_table[] = {
+	{ L("Active Directory"),		FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY		},
+	{ L("IBM"),			FR_LDAP_DIRECTORY_IBM				},
+	{ L("NetScape"),			FR_LDAP_DIRECTORY_NETSCAPE			},
+	{ L("OpenLDAP"),			FR_LDAP_DIRECTORY_OPENLDAP			},
+	{ L("Oracle Internet Directory"),	FR_LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY 	},
+	{ L("Oracle Unified Directory"),	FR_LDAP_DIRECTORY_ORACLE_UNIFIED_DIRECTORY	},
+	{ L("Oracle Virtual Directory"),	FR_LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY	},
+	{ L("Siemens AG"),			FR_LDAP_DIRECTORY_SIEMENS_AG			},
+	{ L("Sun One Directory"),		FR_LDAP_DIRECTORY_SUN_ONE_DIRECTORY		},
+	{ L("Unbound ID"),			FR_LDAP_DIRECTORY_UNBOUND_ID			},
+	{ L("Unknown"),			FR_LDAP_DIRECTORY_UNKNOWN			},
+	{ L("eDirectory"),			FR_LDAP_DIRECTORY_EDIRECTORY			}
 };
+static size_t fr_ldap_directory_type_table_len = NUM_ELEMENTS(fr_ldap_directory_type_table);
 
-/** Extract useful information from the rootDSE of the LDAP server
- *
- * @param[in] ctx	to allocate fr_ldap_directory_t in.
- * @param[out] out	where to write pointer to new fr_ldap_directory_t struct.
- * @param[in,out] pconn	connection for querying the directory.
- * @return
- *	- 0 on success.
- *	- 1 if we failed identifying the directory server.
- *	- -1 on error.
- */
-int fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_connection_t **pconn)
+static int ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
+				       LDAPMessage *result, char const *name)
 {
-	static char const	*attrs[] = { "vendorname",
-					     "vendorversion",
-					     "isGlobalCatalogReady",
-					     "objectClass",
-					     "orcldirectoryversion",
-					     NULL };
-	fr_ldap_rcode_t		status;
-	int			entry_cnt;
-	int			ldap_errno;
-	int			i, num;
-	int			rcode = 0;
-	struct			berval **values = NULL;
-	fr_ldap_directory_t	*directory;
+	int			entry_cnt, i, num, ldap_errno;
+	LDAPMessage		*entry;
+	struct berval		**values = NULL;
 
-	LDAPMessage *result = NULL, *entry;
-
-	*out = NULL;
-
-	directory = talloc_zero(ctx, fr_ldap_directory_t);
-	if (!directory) return -2;
-	*out = directory;
-
-	directory->type = FR_LDAP_DIRECTORY_UNKNOWN;
-
-	status = fr_ldap_search(&result, NULL, pconn, "", LDAP_SCOPE_BASE, "(objectclass=*)",
-				attrs, NULL, NULL);
-	switch (status) {
-	case LDAP_PROC_SUCCESS:
-		break;
-
-	case LDAP_PROC_NO_RESULT:
-		WARN("Capability check failed: Can't access rootDSE");
-		rcode = 1;
-		goto finish;
-
-	default:
-		rcode = 1;
-		goto finish;
-	}
-
-	entry_cnt = ldap_count_entries((*pconn)->handle, result);
+	entry_cnt = ldap_count_entries(handle, result);
 	if (entry_cnt != 1) {
 		WARN("Capability check failed: Ambiguous result for rootDSE, expected 1 entry, got %i", entry_cnt);
-		rcode = 1;
-		goto finish;
+		return 1;
 	}
 
-	entry = ldap_first_entry((*pconn)->handle, result);
+	entry = ldap_first_entry(handle, result);
 	if (!entry) {
-		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+		ldap_get_option(handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 
 		WARN("Capability check failed: Failed retrieving entry: %s", ldap_err2string(ldap_errno));
-		rcode = 1;
-		goto finish;
+		return 1;
 	}
 
-	values = ldap_get_values_len((*pconn)->handle, entry, "vendorname");
+	values = ldap_get_values_len(handle, entry, "vendorname");
 	if (values) {
 		directory->vendor_str = fr_ldap_berval_to_string(directory, values[0]);
 		INFO("Directory vendor: %s", directory->vendor_str);
@@ -125,7 +78,7 @@ int fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_
 		ldap_value_free_len(values);
 	}
 
-	values = ldap_get_values_len((*pconn)->handle, entry, "vendorversion");
+	values = ldap_get_values_len(handle, entry, "vendorversion");
 	if (values) {
 		directory->version_str = fr_ldap_berval_to_string(directory, values[0]);
 		INFO("Directory version: %s", directory->version_str);
@@ -180,7 +133,7 @@ int fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_
 	 *	isGlobalCatalogReady is only present on ActiveDirectory
 	 *	instances. AD doesn't provide vendorname or vendorversion
 	 */
-	values = ldap_get_values_len((*pconn)->handle, entry, "isGlobalCatalogReady");
+	values = ldap_get_values_len(handle, entry, "isGlobalCatalogReady");
 	if (values) {
 		directory->type = FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY;
 		ldap_value_free_len(values);
@@ -190,7 +143,7 @@ int fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_
 	/*
 	 *	OpenLDAP has a special objectClass for its RootDSE
 	 */
-	values = ldap_get_values_len((*pconn)->handle, entry, "objectClass");
+	values = ldap_get_values_len(handle, entry, "objectClass");
 	if (values) {
 		num = ldap_count_values_len(values);
 		for (i = 0; i < num; i++) {
@@ -205,7 +158,7 @@ int fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_
 	/*
 	 *	Oracle Virtual Directory and Oracle Internet Directory
 	 */
-	values = ldap_get_values_len((*pconn)->handle, entry, "orcldirectoryversion");
+	values = ldap_get_values_len(handle, entry, "orcldirectoryversion");
 	if (values) {
 		if (memmem(values[0]->bv_val, values[0]->bv_len, "OID", 3)) {
 			directory->type = FR_LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY;
@@ -216,7 +169,7 @@ int fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_
 	}
 
 found:
-	INFO("Directory type: %s", fr_int2str(fr_ldap_directory_type_table, directory->type, "<INVALID>"));
+	INFO("Directory type: %s", fr_table_str_by_value(fr_ldap_directory_type_table, directory->type, "<INVALID>"));
 
 	switch (directory->type) {
 	case FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY:
@@ -229,8 +182,108 @@ found:
 		break;
 	}
 
+	return 0;
+}
+
+/** Extract useful information from the rootDSE of the LDAP server
+ *
+ * @param[in] ctx	to allocate fr_ldap_directory_t in.
+ * @param[out] out	where to write pointer to new fr_ldap_directory_t struct.
+ * @param[in,out] pconn	connection for querying the directory.
+ * @return
+ *	- 0 on success.
+ *	- 1 if we failed identifying the directory server.
+ *	- -1 on error.
+ */
+int fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_connection_t **pconn)
+{
+	static char const	*attrs[] = { "vendorname",
+					     "vendorversion",
+					     "isGlobalCatalogReady",
+					     "objectClass",
+					     "orcldirectoryversion",
+					     NULL };
+	fr_ldap_rcode_t		status;
+	int			rcode = 0;
+	fr_ldap_directory_t	*directory;
+	char const		*name = (*pconn)->config->name;
+
+	LDAPMessage *result = NULL;
+
+	*out = NULL;
+
+	directory = talloc_zero(ctx, fr_ldap_directory_t);
+	if (!directory) return -2;
+	*out = directory;
+
+	directory->type = FR_LDAP_DIRECTORY_UNKNOWN;
+
+	status = fr_ldap_search(&result, NULL, pconn, "", LDAP_SCOPE_BASE, "(objectclass=*)",
+				attrs, NULL, NULL);
+	switch (status) {
+	case LDAP_PROC_SUCCESS:
+		break;
+
+	case LDAP_PROC_NO_RESULT:
+		WARN("Capability check failed: Can't access rootDSE");
+		rcode = 1;
+		goto finish;
+
+	default:
+		rcode = 1;
+		goto finish;
+	}
+
+	rcode = ldap_directory_result_parse(directory, (*pconn)->handle, result, name);
+
 finish:
 	if (result) ldap_msgfree(result);
 
 	return rcode;
+}
+
+/** Parse results of search on rootDSE to gather data on LDAP server
+ *
+ * @param[in] query	which requested the rootDSE.
+ * @param[in] result	head of LDAP results message chain.
+ */
+static void ldap_trunk_directory_alloc_read(LDAP *handle, fr_ldap_query_t *query, LDAPMessage *result, void *rctx)
+{
+	fr_ldap_config_t const	*config = query->ldap_conn->config;
+	fr_ldap_directory_t	*directory = talloc_get_type_abort(rctx, fr_ldap_directory_t);
+
+	(void)ldap_directory_result_parse(directory, handle, result, config->name);
+}
+
+/** Async extract useful information from the rootDSE of the LDAP server
+ *
+ * This is called once for each new thread trunk when it first connects.
+ *
+ * @param[in] ctx	to allocate fr_ldap_directory_t in.
+ * @param[in] ttrunk	Thread trunk connection to be queried
+ * @return
+ *	- 0 on success
+ *	< 0 on failure
+ */
+int fr_ldap_trunk_directory_alloc_async(TALLOC_CTX *ctx, fr_ldap_thread_trunk_t *ttrunk)
+{
+	static char const	*attrs[] = { "vendorname",
+					     "vendorversion",
+					     "isGlobalCatalogReady",
+					     "objectClass",
+					     "orcldirectoryversion",
+					     NULL };
+	fr_ldap_query_t		*query;
+
+	ttrunk->directory = talloc_zero(ctx, fr_ldap_directory_t);
+	if (!ttrunk->directory) return -1;
+
+	ttrunk->directory->type = FR_LDAP_DIRECTORY_UNKNOWN;
+
+	query = fr_ldap_search_alloc(ctx, "", LDAP_SCOPE_BASE, "(objectclass=*)", attrs, NULL, NULL);
+	query->parser = ldap_trunk_directory_alloc_read;
+
+	fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, NULL, query, ttrunk->directory);
+
+	return 0;
 }

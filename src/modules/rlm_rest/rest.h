@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -22,23 +23,12 @@
  *
  * @copyright 2012-2016 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-RCSIDH(other_h, "$Id$")
+RCSIDH(rest_h, "$Id$")
 
+#include <freeradius-devel/curl/base.h>
+#include <freeradius-devel/curl/config.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/pool.h>
-#include "config.h"
-
-#define CURL_NO_OLDIES 1
-
-/*
- *	We have to use this as curl uses lots of enums
- */
-#ifndef CURL_AT_LEAST_VERSION
-#  define CURL_VERSION_BITS(x, y, z) ((x) << 16 | (y) << 8 | z)
-#  define CURL_AT_LEAST_VERSION(x, y, z) (LIBCURL_VERSION_NUM >= CURL_VERSION_BITS(x, y, z))
-#endif
-
-#include <curl/curl.h>
 
 /*
  *	The common JSON library (also tells us if we have json-c)
@@ -92,6 +82,10 @@ typedef enum {
 	REST_HTTP_AUTH_NUM_ENTRIES
 } http_auth_type_t;
 
+/** Magic pointer value for determining if we should disable proxying
+ */
+extern char const *rest_no_proxy;
+
 /*
  *	Must be updated (in rest.c) if additional values are added to
  *	http_body_type_t
@@ -100,13 +94,17 @@ extern const http_body_type_t http_body_type_supported[REST_HTTP_BODY_NUM_ENTRIE
 
 extern const unsigned long http_curl_auth[REST_HTTP_AUTH_NUM_ENTRIES];
 
-extern const FR_NAME_NUMBER http_auth_table[];
+extern fr_table_num_sorted_t const http_auth_table[];
+extern size_t http_auth_table_len;
 
-extern const FR_NAME_NUMBER http_method_table[];
+extern fr_table_num_sorted_t const http_method_table[];
+extern size_t http_method_table_len;
 
-extern const FR_NAME_NUMBER http_body_type_table[];
+extern fr_table_num_sorted_t const http_body_type_table[];
+extern size_t http_body_type_table_len;
 
-extern const FR_NAME_NUMBER http_content_type_table[];
+extern fr_table_num_sorted_t const http_content_type_table[];
+extern size_t http_content_type_table_len;
 
 /*
  *	Structure for section configuration
@@ -137,19 +135,11 @@ typedef struct {
 	char const		*username;	//!< Username used for HTTP-Auth
 	char const		*password;	//!< Password used for HTTP-Auth
 
-	char const		*tls_certificate_file;
-	char const		*tls_private_key_file;
-	char const		*tls_private_key_password;
-	char const		*tls_ca_file;
-	char const		*tls_ca_path;
-	char const		*tls_random_file;
-	bool			tls_check_cert;
-	bool			tls_check_cert_cn;
-	bool			tls_extract_cert_attrs;
-
 	fr_time_delta_t		timeout;	//!< Timeout timeval.
 	uint32_t		chunk;		//!< Max chunk-size (mainly for testing the encoders)
 	size_t			max_body_in;	//!< Maximum size of incoming data.
+
+	fr_curl_tls_t		tls;
 } rlm_rest_section_t;
 
 /*
@@ -172,8 +162,6 @@ typedef struct {
 	rlm_rest_section_t	authorize;	//!< Configuration specific to authorisation.
 	rlm_rest_section_t	authenticate;	//!< Configuration specific to authentication.
 	rlm_rest_section_t	accounting;	//!< Configuration specific to accounting.
-	rlm_rest_section_t	checksimul;	//!< Configuration specific to simultaneous session
-						//!< checking.
 	rlm_rest_section_t	post_auth;	//!< Configuration specific to Post-auth
 
 #ifndef NDEBUG
@@ -188,12 +176,8 @@ typedef struct {
 typedef struct {
 	rlm_rest_t const	*inst;		//!< Instance of rlm_rest.
 	fr_pool_t		*pool;		//!< Thread specific connection pool.
-	CURLM			*mandle;	//!< Thread specific multi handle.  Serves as the dispatch
+	fr_curl_handle_t	*mhandle;	//!< Thread specific multi handle.  Serves as the dispatch
 						//!< and coralling structure for REST requests.
-	fr_event_list_t		*el;		//!< This thread's event list.
-	fr_event_timer_t const	*ev;		//!< Used to manage IO timers for libcurl.
-	unsigned int		transfers;	//!< Keep track of how many outstanding transfers
-						//!< we think there are.
 } rlm_rest_thread_t;
 
 /** Wrapper around the module thread stuct for individual xlats
@@ -231,10 +215,10 @@ typedef struct {
 	rlm_rest_t const	*instance;	//!< This instance of rlm_rest.
 	rlm_rest_section_t const *section;	//!< Section configuration.
 
-	REQUEST			*request;	//!< Current request.
+	request_t			*request;	//!< Current request.
 	read_state_t		state;		//!< Encoder state
 
-	fr_cursor_t		cursor;		//!< Cursor pointing to the start of the list to encode.
+	fr_dcursor_t		cursor;		//!< Cursor pointing to the start of the list to encode.
 
 	size_t			chunk;		//!< Chunk size
 
@@ -249,7 +233,7 @@ typedef struct {
 	rlm_rest_t const	*instance;	//!< This instance of rlm_rest.
 	rlm_rest_section_t const *section;	//!< Section configuration.
 
-	REQUEST			*request;	//!< Current request.
+	request_t			*request;	//!< Current request.
 	write_state_t		state;		//!< Decoder state.
 
 	char 			*buffer;	//!< Raw incoming HTTP data.
@@ -277,23 +261,15 @@ typedef struct {
 	rlm_rest_response_t	response;	//!< Response context data.
 } rlm_rest_curl_context_t;
 
-/*
- *	Connection API handle
- */
-typedef struct {
-	CURL			*candle;	//!< Libcurl easy handle
-	rlm_rest_curl_context_t	*ctx;		//!< Context, re-initialised after each request.
-} rlm_rest_handle_t;
-
 /** Stores the state of a yielded xlat
  *
  */
 typedef struct {
 	rlm_rest_section_t	section;	//!< Our mutated section config.
-	rlm_rest_handle_t	*handle;	//!< curl easy handle servicing our request.
+	fr_curl_io_request_t	*handle;	//!< curl easy handle servicing our request.
 } rlm_rest_xlat_rctx_t;
 
-extern fr_dict_t *dict_freeradius;
+extern fr_dict_t const *dict_freeradius;
 
 extern fr_dict_attr_t const *attr_rest_http_body;
 extern fr_dict_attr_t const *attr_rest_http_header;
@@ -307,48 +283,42 @@ typedef size_t (*rest_read_t)(void *ptr, size_t size, size_t nmemb,
 			      void *userdata);
 
 
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);
+void *rest_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);
 
 /*
  *	Request processing API
  */
 int rest_request_config(rlm_rest_t const *instance, rlm_rest_thread_t *thread,
-			rlm_rest_section_t const *section, REQUEST *request,
-			void *handle, http_method_t method,
+			rlm_rest_section_t const *section, request_t *request,
+			fr_curl_io_request_t *randle, http_method_t method,
 			http_body_type_t type, char const *uri,
-			char const *username, char const *password) CC_HINT(nonnull (1,2,3,4,5,8));
-
-int rest_response_certinfo(UNUSED rlm_rest_t const *instance, rlm_rest_section_t const *section,
-			   REQUEST *request, void *handle);
+			char const *username, char const *password) CC_HINT(nonnull (1,2,3,5,8));
 
 int rest_response_decode(rlm_rest_t const *instance,
-			UNUSED rlm_rest_section_t const *section, REQUEST *request,
-			void *handle);
+			UNUSED rlm_rest_section_t const *section, request_t *request,
+			fr_curl_io_request_t *randle);
 
-void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle);
-void rest_response_debug(REQUEST *request, rlm_rest_handle_t *handle);
+void rest_response_error(request_t *request, fr_curl_io_request_t *handle);
+void rest_response_debug(request_t *request, fr_curl_io_request_t *handle);
 
-void rest_request_cleanup(rlm_rest_t const *instance, void *handle);
+void rest_request_cleanup(rlm_rest_t const *instance, fr_curl_io_request_t *randle);
 
-#define rest_get_handle_code(_handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)_handle)->ctx)->response.code)
+#define rest_get_handle_code(_handle)(((rlm_rest_curl_context_t*)((fr_curl_io_request_t*)(_handle))->uctx)->response.code)
 
-#define rest_get_handle_type(_handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)_handle)->ctx)->response.type)
+#define rest_get_handle_type(_handle)(((rlm_rest_curl_context_t*)((fr_curl_io_request_t*)(_handle))->uctx)->response.type)
 
-size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle);
+size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *handle);
 
 /*
  *	Helper functions
  */
-size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *raw, UNUSED void *arg);
-ssize_t rest_uri_build(char **out, rlm_rest_t const *instance, REQUEST *request, char const *uri);
-ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *mod_inst, REQUEST *request,
-			       void *handle, char const *uri);
+size_t rest_uri_escape(UNUSED request_t *request, char *out, size_t outlen, char const *raw, UNUSED void *arg);
+ssize_t rest_uri_build(char **out, rlm_rest_t const *instance, request_t *request, char const *uri);
+ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *mod_inst, request_t *request,
+			       fr_curl_io_request_t *randle, char const *uri);
 
 /*
  *	Async IO helpers
  */
-void rest_io_module_action(void *instance, void *thread, REQUEST *request, void *rctx, fr_state_signal_t action);
-void rest_io_xlat_action(REQUEST *request, void *xlat_inst, void *xlat_thread_inst, void *rctx, fr_state_signal_t action);
-int rest_io_request_enqueue(rlm_rest_thread_t *thread, REQUEST *request, void *handle);
-int rest_io_init(rlm_rest_thread_t *thread, bool multiplex);
-
+void rest_io_module_action(module_ctx_t const *mctx, request_t *request, void *rctx, fr_state_signal_t action);
+void rest_io_xlat_signal(request_t *request, void *xlat_inst, void *xlat_thread_inst, void *rctx, fr_state_signal_t action);

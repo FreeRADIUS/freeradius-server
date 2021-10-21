@@ -30,7 +30,7 @@ RCSID("$Id$")
 #define LOG_PREFIX_ARGS inst->name
 
 #include	<freeradius-devel/server/base.h>
-#include	<freeradius-devel/server/rad_assert.h>
+#include	<freeradius-devel/util/debug.h>
 
 #include	<sys/file.h>
 #include	<sys/stat.h>
@@ -43,27 +43,27 @@ RCSID("$Id$")
  *	Translate rlm_sql rcodes to humanly
  *	readable reason strings.
  */
-const FR_NAME_NUMBER sql_rcode_description_table[] = {
-	{ "success",		RLM_SQL_OK		},
-	{ "need alt query",	RLM_SQL_ALT_QUERY	},
-	{ "server error",	RLM_SQL_ERROR		},
-	{ "query invalid",	RLM_SQL_QUERY_INVALID	},
-	{ "no connection",	RLM_SQL_RECONNECT	},
-	{ "no more rows",	RLM_SQL_NO_MORE_ROWS	},
-	{ NULL, 0 }
+fr_table_num_sorted_t const sql_rcode_description_table[] = {
+	{ L("need alt query"),	RLM_SQL_ALT_QUERY	},
+	{ L("no connection"),	RLM_SQL_RECONNECT	},
+	{ L("no more rows"),	RLM_SQL_NO_MORE_ROWS	},
+	{ L("query invalid"),	RLM_SQL_QUERY_INVALID	},
+	{ L("server error"),	RLM_SQL_ERROR		},
+	{ L("success"),		RLM_SQL_OK		}
 };
+size_t sql_rcode_description_table_len = NUM_ELEMENTS(sql_rcode_description_table);
 
-const FR_NAME_NUMBER sql_rcode_table[] = {
-	{ "ok",			RLM_SQL_OK		},
-	{ "alternate",		RLM_SQL_ALT_QUERY	},
-	{ "error",		RLM_SQL_ERROR		},
-	{ "invalid",		RLM_SQL_QUERY_INVALID	},
-	{ "reconnect",		RLM_SQL_RECONNECT	},
-	{ "empty",		RLM_SQL_NO_MORE_ROWS	},
-	{ NULL, 0 }
+fr_table_num_sorted_t const sql_rcode_table[] = {
+	{ L("alternate"),		RLM_SQL_ALT_QUERY	},
+	{ L("empty"),		RLM_SQL_NO_MORE_ROWS	},
+	{ L("error"),		RLM_SQL_ERROR		},
+	{ L("invalid"),		RLM_SQL_QUERY_INVALID	},
+	{ L("ok"),			RLM_SQL_OK		},
+	{ L("reconnect"),		RLM_SQL_RECONNECT	}
 };
+size_t sql_rcode_table_len = NUM_ELEMENTS(sql_rcode_table);
 
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
+void *sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
 	int rcode;
 	rlm_sql_t *inst = instance;
@@ -108,18 +108,21 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 
 /*************************************************************************
  *
- *	Function: sql_fr_pair_list_afrom_str
+ *	Function: sql_pair_afrom_row
  *
- *	Purpose: Read entries from the database and fill VALUE_PAIR structures
+ *	Purpose: Convert one rlm_sql_row_t to a fr_pair_t, and add it to "out"
  *
  *************************************************************************/
-int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **head, rlm_sql_row_t row)
+static int sql_pair_afrom_row(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *out, rlm_sql_row_t row, fr_pair_t **relative_vp)
 {
-	VALUE_PAIR *vp;
-	char const *ptr, *value;
-	char buf[FR_MAX_STRING_LEN];
-	char do_xlat = 0;
-	FR_TOKEN token, op = T_EOL;
+	fr_pair_t		*vp;
+	char const		*ptr, *value;
+	char			buf[FR_MAX_STRING_LEN];
+	char			do_xlat = 0;
+	fr_dict_attr_t const	*da;
+	fr_token_t		token, op = T_EOL;
+	fr_pair_list_t		*my_list;
+	TALLOC_CTX		*my_ctx;
 
 	/*
 	 *	Verify the 'Attribute' field
@@ -157,11 +160,13 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 		return -1;
 	}
 
+	RDEBUG3("Found row: %s %s %s", row[0], fr_table_str_by_value(fr_tokens_table, op, "???"), row[3]);
+
 	value = row[3];
 
 	/*
-	 *	If we have a new-style quoted string, where the
-	 *	*entire* string is quoted, do xlat's.
+	 *	If we have a string, where the *entire* string is
+	 *	quoted, do xlat's.
 	 */
 	if (row[3] != NULL &&
 	   ((row[3][0] == '\'') || (row[3][0] == '`') || (row[3][0] == '"')) &&
@@ -174,7 +179,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 		 */
 		case T_BACK_QUOTED_STRING:
 			do_xlat = 1;
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		/*
 		 *	Take the unquoted string.
@@ -194,13 +199,50 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 	}
 
 	/*
-	 *	Create the pair
+	 *	Check for relative attributes
+	 *
+	 *	@todo - allow "..foo" to mean "grandparent of
+	 *	relative_vp", and it should also update relative_vp
+	 *	with the new parent.  However, doing this means
+	 *	walking the list of the current relative_vp, finding
+	 *	the dlist head, and then converting that into a
+	 *	fr_pair_t pointer.  That's complex, so we don't do it
+	 *	right now.
 	 */
-	vp = fr_pair_make(ctx, request->dict, NULL, row[2], NULL, op);
-	if (!vp) {
-		RPEDEBUG("Failed to create the pair");
-		return -1;
+	if (row[2][0] == '.') {
+		char const *p = row[2];
+
+		if (!*relative_vp) {
+			REDEBUG("Relative attribute '%s' can only be used immediately after an attribute of type 'group'", row[2]);
+			return -1;
+		}
+
+		da = fr_dict_attr_by_oid(NULL, (*relative_vp)->da, p + 1);
+		if (!da) goto unknown;
+
+		my_list = &(*relative_vp)->vp_group;
+		my_ctx = *relative_vp;
+	} else {
+		/*
+		 *	Search in our local dictionary
+		 *	falling back to internal.
+		 */
+		da = fr_dict_attr_by_oid(NULL, fr_dict_root(request->dict), row[2]);
+		if (!da) {
+			da = fr_dict_attr_by_oid(NULL, fr_dict_root(fr_dict_internal()), row[2]);
+			if (!da) {
+			unknown:
+				RPEDEBUG("Unknown attribute '%s'", row[2]);
+				return -1;
+			}
+		}
+
+		my_list = out;
+		my_ctx = ctx;
 	}
+
+	MEM(vp = fr_pair_afrom_da(my_ctx, da));
+	vp->op = op;
 
 	if (do_xlat) {
 		if (fr_pair_mark_xlat(vp, value) < 0) {
@@ -209,6 +251,16 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 			talloc_free(vp);
 			return -1;
 		}
+
+	} else if ((vp->da->type == FR_TYPE_TLV) && !*value) {
+		/*
+		 *	Allow empty values for TLVs: we just create the value.
+		 *
+		 *	fr_pair_value_from_str() is not yet updated to
+		 *	handle TLVs.  Until such time as we know what
+		 *	to do there, we will just do a hack here,
+		 *	specific to the SQL module.
+		 */
 	} else {
 		if (fr_pair_value_from_str(vp, value, -1, '\0', true) < 0) {
 			RPEDEBUG("Error parsing value");
@@ -221,7 +273,30 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
 	/*
 	 *	Add the pair into the packet
 	 */
-	fr_pair_add(head, vp);
+	fr_pair_append(my_list, vp);
+
+	/*
+	 *	Update the relative vp.
+	 */
+	if (my_list == out) switch (da->type) {
+	case FR_TYPE_STRUCTURAL:
+		*relative_vp = vp;
+		break;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	If there's a relative VP, and it's not the one
+	 *	we just added above, and we're not adding this
+	 *	VP to the relative one, then nuke the relative
+	 *	VP.
+	 */
+	if (*relative_vp && (vp != *relative_vp) && (my_ctx != *relative_vp)) {
+		*relative_vp = NULL;
+	}
+
 	return 0;
 }
 
@@ -238,7 +313,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
  *	- #RLM_SQL_OK on success.
  *	- other #sql_rcode_t constants on error.
  */
-sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle)
+sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle)
 {
 	sql_rcode_t ret;
 
@@ -252,11 +327,11 @@ sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST
 	ret = (inst->driver->sql_fetch_row)(out, *handle, inst->config);
 	switch (ret) {
 	case RLM_SQL_OK:
-		rad_assert(*out != NULL);
+		fr_assert(*out != NULL);
 		return ret;
 
 	case RLM_SQL_NO_MORE_ROWS:
-		rad_assert(*out == NULL);
+		fr_assert(*out == NULL);
 		return ret;
 
 	default:
@@ -276,13 +351,13 @@ sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST
  * @param handle Handle to retrieve errors for.
  * @param force_debug Force all errors to be logged as debug messages.
  */
-void rlm_sql_print_error(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t *handle, bool force_debug)
+void rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, bool force_debug)
 {
 	char const	*driver;
 	sql_log_entry_t	log[20];
 	size_t		num, i;
 
-	num = (inst->driver->sql_error)(handle->log_ctx, log, (sizeof(log) / sizeof(*log)), handle, inst->config);
+	num = (inst->driver->sql_error)(handle->log_ctx, log, (NUM_ELEMENTS(log)), handle, inst->config);
 	if (num == 0) {
 		ROPTIONAL(RERROR, ERROR, "Unknown error");
 		return;
@@ -333,13 +408,13 @@ void rlm_sql_print_error(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle
  *	- #RLM_SQL_QUERY_INVALID, #RLM_SQL_ERROR on invalid query or connection error.
  *	- #RLM_SQL_ALT_QUERY on constraints violation.
  */
-sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query)
+sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query)
 {
 	int ret = RLM_SQL_ERROR;
 	int i, count;
 
 	/* Caller should check they have a valid handle */
-	rad_assert(*handle);
+	fr_assert(*handle);
 
 	/* There's no query to run, return an error */
 	if (query[0] == '\0') {
@@ -348,7 +423,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
 	}
 
 	/*
-	 *  inst->pool may be NULL is this function is called by mod_conn_create.
+	 *  inst->pool may be NULL is this function is called by sql_mod_conn_create.
 	 */
 	count = inst->pool ? fr_pool_state(inst->pool)->num : 0;
 
@@ -399,7 +474,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
 				break;
 			}
 			ret = RLM_SQL_ALT_QUERY;
-			/* FALL-THROUGH */
+			FALL_THROUGH;
 
 		/*
 		 *	Driver suggested using an alternative query
@@ -434,13 +509,13 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handl
  *	- #RLM_SQL_RECONNECT if a new handle is required (also sets *handle = NULL).
  *	- #RLM_SQL_QUERY_INVALID, #RLM_SQL_ERROR on invalid query or connection error.
  */
-sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query)
+sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query)
 {
 	int ret = RLM_SQL_ERROR;
 	int i, count;
 
 	/* Caller should check they have a valid handle */
-	rad_assert(*handle);
+	fr_assert(*handle);
 
 	/* There's no query to run, return an error */
 	if (query[0] == '\0') {
@@ -450,7 +525,7 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sq
 	}
 
 	/*
-	 *  inst->pool may be NULL is this function is called by mod_conn_create.
+	 *  inst->pool may be NULL is this function is called by sql_mod_conn_create.
 	 */
 	count = inst->pool ? fr_pool_state(inst->pool)->num : 0;
 
@@ -500,20 +575,21 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sq
  *	Purpose: Get any group check or reply pairs
  *
  *************************************************************************/
-int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle,
-		  VALUE_PAIR **pair, char const *query)
+int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle,
+		  fr_pair_list_t *out, char const *query)
 {
 	rlm_sql_row_t	row;
 	int		rows = 0;
 	sql_rcode_t	rcode;
+	fr_pair_t	*relative_vp = NULL;
 
-	rad_assert(request);
+	fr_assert(request);
 
 	rcode = rlm_sql_select_query(inst, request, handle, query);
 	if (rcode != RLM_SQL_OK) return -1; /* error handled by rlm_sql_select_query */
 
 	while (rlm_sql_fetch_row(&row, inst, request, handle) == RLM_SQL_OK) {
-		if (sql_fr_pair_list_afrom_str(ctx, request, pair, row) != 0) {
+		if (sql_pair_afrom_row(ctx, request, out, row, &relative_vp) != 0) {
 			REDEBUG("Error parsing user data from database result");
 
 			(inst->driver->sql_finish_select_query)(*handle, inst->config);
@@ -530,7 +606,7 @@ int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, REQUEST *request, rlm_
 /*
  *	Log the query to a file.
  */
-void rlm_sql_query_log(rlm_sql_t const *inst, REQUEST *request, sql_acct_section_t *section, char const *query)
+void rlm_sql_query_log(rlm_sql_t const *inst, request_t *request, sql_acct_section_t *section, char const *query)
 {
 	int fd;
 	char const *filename = NULL;
@@ -549,7 +625,7 @@ void rlm_sql_query_log(rlm_sql_t const *inst, REQUEST *request, sql_acct_section
 		return;
 	}
 
-	fd = exfile_open(inst->ef, request, filename, 0640);
+	fd = exfile_open(inst->ef, filename, 0640);
 	if (fd < 0) {
 		ERROR("Couldn't open logfile '%s': %s", expanded, fr_syserror(errno));
 
@@ -566,5 +642,5 @@ void rlm_sql_query_log(rlm_sql_t const *inst, REQUEST *request, sql_acct_section
 	if (failed) ERROR("Failed writing to logfile '%s': %s", expanded, fr_syserror(errno));
 
 	talloc_free(expanded);
-	exfile_close(inst->ef, request, fd);
+	exfile_close(inst->ef, fd);
 }

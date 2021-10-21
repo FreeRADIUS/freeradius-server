@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -35,7 +35,6 @@
 #	FreeRADIUS includes data types which are not defined
 #	in the RFC's.  These data types are:
 #
-#	abinary - Ascend's binary filter format.
 #	byte    - 8 bit unsigned integer
 #	ether   - 6 octets of hh:hh:hh:hh:hh:hh
 #		  where 'h' is hex digits, upper or lowercase.
@@ -60,7 +59,7 @@
 #	7		= 1	(integer encoding)
 #
 
-PROTOCOL	RADIUS		1
+PROTOCOL	RADIUS		1	verify=lib
 BEGIN-PROTOCOL	RADIUS
 
 #
@@ -144,7 +143,6 @@ $INCLUDE dictionary.actelis
 $INCLUDE dictionary.adtran
 $INCLUDE dictionary.airespace
 $INCLUDE dictionary.alcatel
-$INCLUDE dictionary.alcatel.sr
 $INCLUDE dictionary.alcatel-lucent.aaa
 $INCLUDE dictionary.alteon
 $INCLUDE dictionary.alvarion
@@ -153,8 +151,8 @@ $INCLUDE dictionary.aptilo
 $INCLUDE dictionary.arbor
 $INCLUDE dictionary.arista
 $INCLUDE dictionary.aruba
-$INCLUDE dictionary.azaire
 $INCLUDE dictionary.ascend
+$INCLUDE dictionary.azaire
 $INCLUDE dictionary.bay
 $INCLUDE dictionary.bigswitch
 $INCLUDE dictionary.bintec
@@ -166,7 +164,9 @@ $INCLUDE dictionary.bskyb
 $INCLUDE dictionary.bt
 $INCLUDE dictionary.cablelabs
 $INCLUDE dictionary.cabletron
+$INCLUDE dictionary.cambium
 $INCLUDE dictionary.camiant
+$INCLUDE dictionary.centec
 $INCLUDE dictionary.checkpoint
 $INCLUDE dictionary.chillispot
 $INCLUDE dictionary.cisco
@@ -178,8 +178,8 @@ $INCLUDE dictionary.cisco.asa
 #   Note : the altiga dictionary, not listed here, also uses the same Vendor ID
 #
 #$INCLUDE dictionary.cisco.vpn3000
-$INCLUDE dictionary.cisco.vpn5000
 $INCLUDE dictionary.cisco.bbsm
+$INCLUDE dictionary.cisco.vpn5000
 $INCLUDE dictionary.citrix
 $INCLUDE dictionary.clavister
 $INCLUDE dictionary.cnergee
@@ -188,8 +188,8 @@ $INCLUDE dictionary.compatible
 $INCLUDE dictionary.cosine
 $INCLUDE dictionary.dante
 $INCLUDE dictionary.dellemc
-$INCLUDE dictionary.dlink
 $INCLUDE dictionary.digium
+$INCLUDE dictionary.dlink
 $INCLUDE dictionary.dragonwave
 $INCLUDE dictionary.efficientip
 $INCLUDE dictionary.eltex
@@ -201,25 +201,26 @@ $INCLUDE dictionary.ericsson.packet.core.networks
 $INCLUDE dictionary.extreme
 $INCLUDE dictionary.f5
 $INCLUDE dictionary.fdxtended
-$INCLUDE dictionary.freeradius
-$INCLUDE dictionary.freeradius.internal
-$INCLUDE dictionary.freeswitch
 $INCLUDE dictionary.force10
 $INCLUDE dictionary.fortinet
 $INCLUDE dictionary.foundry
+$INCLUDE dictionary.freeradius
+$INCLUDE dictionary.freeradius.internal
+$INCLUDE dictionary.freeswitch
 $INCLUDE dictionary.gandalf
 $INCLUDE dictionary.gemtek
 $INCLUDE dictionary.h3c
 $INCLUDE dictionary.hillstone
+$INCLUDE dictionary.hitron
 $INCLUDE dictionary.hp
 $INCLUDE dictionary.huawei
 $INCLUDE dictionary.iea
 $INCLUDE dictionary.iec
 $INCLUDE dictionary.infinera
 $INCLUDE dictionary.infonet
+$INCLUDE dictionary.ipunplugged
 $INCLUDE dictionary.issanni
 $INCLUDE dictionary.itk
-$INCLUDE dictionary.ipunplugged
 $INCLUDE dictionary.juniper
 $INCLUDE dictionary.karlnet
 $INCLUDE dictionary.kineto
@@ -230,6 +231,7 @@ $INCLUDE dictionary.localweb
 $INCLUDE dictionary.lucent
 $INCLUDE dictionary.manzara
 $INCLUDE dictionary.meinberg
+$INCLUDE dictionary.mellanox
 $INCLUDE dictionary.meraki
 $INCLUDE dictionary.merit
 $INCLUDE dictionary.meru
@@ -238,13 +240,20 @@ $INCLUDE dictionary.microsoft
 $INCLUDE dictionary.mikrotik
 $INCLUDE dictionary.mimosa
 $INCLUDE dictionary.motorola
-$INCLUDE dictionary.motorola.wimax
+#
+#  The WiMAX dictionary uses the sanme vendor space
+#  as the main motorola dictionary.
+#
+#$INCLUDE dictionary.motorola.wimax
 $INCLUDE dictionary.navini
+$INCLUDE dictionary.net
 $INCLUDE dictionary.netscreen
 $INCLUDE dictionary.networkphysics
 $INCLUDE dictionary.nexans
-$INCLUDE dictionary.ntua
 $INCLUDE dictionary.nokia
+$INCLUDE dictionary.nokia.sr
+$INCLUDE dictionary.ntua
+
 #
 #  Commented out because of attribute conflicts.
 #
@@ -260,22 +269,24 @@ $INCLUDE dictionary.paloalto
 $INCLUDE dictionary.patton
 $INCLUDE dictionary.perle
 $INCLUDE dictionary.pfsense
+$INCLUDE dictionary.pica8
 $INCLUDE dictionary.propel
 $INCLUDE dictionary.prosoft
 $INCLUDE dictionary.proxim
 $INCLUDE dictionary.purewave
 $INCLUDE dictionary.quiconnect
 $INCLUDE dictionary.quintum
+$INCLUDE dictionary.rcntec
 $INCLUDE dictionary.redcreek
 $INCLUDE dictionary.riverbed
 $INCLUDE dictionary.riverstone
 $INCLUDE dictionary.roaringpenguin
-$INCLUDE dictionary.ruggedcom
 $INCLUDE dictionary.ruckus
+$INCLUDE dictionary.ruggedcom
 $INCLUDE dictionary.sandy
 $INCLUDE dictionary.sangoma
-$INCLUDE dictionary.shasta
 $INCLUDE dictionary.sg
+$INCLUDE dictionary.shasta
 $INCLUDE dictionary.shiva
 $INCLUDE dictionary.siemens
 $INCLUDE dictionary.slipstream
@@ -284,26 +295,24 @@ $INCLUDE dictionary.springtide
 $INCLUDE dictionary.starent
 $INCLUDE dictionary.surfnet
 $INCLUDE dictionary.symbol
+$INCLUDE dictionary.t_systems_nova
 $INCLUDE dictionary.telebit
+$INCLUDE dictionary.telrad
 $INCLUDE dictionary.terena
 $INCLUDE dictionary.trapeze
 $INCLUDE dictionary.travelping
 $INCLUDE dictionary.tripplite
 $INCLUDE dictionary.tropos
-$INCLUDE dictionary.t_systems_nova
 $INCLUDE dictionary.ukerna
 $INCLUDE dictionary.unisphere
-
-# This is the same as dictionary.unisphere, but
-# we prefer the "ERX" names.
-$INCLUDE dictionary.erx
 $INCLUDE dictionary.unix
 $INCLUDE dictionary.usr
 $INCLUDE dictionary.utstarcom
 $INCLUDE dictionary.valemount
+$INCLUDE dictionary.vasexperts
 $INCLUDE dictionary.versanet
-$INCLUDE dictionary.waverider
 $INCLUDE dictionary.walabi
+$INCLUDE dictionary.waverider
 $INCLUDE dictionary.wichorus
 $INCLUDE dictionary.wifialliance
 $INCLUDE dictionary.wimax

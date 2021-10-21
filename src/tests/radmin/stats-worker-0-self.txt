@@ -1,0 +1,1 @@
+stats worker 0 self

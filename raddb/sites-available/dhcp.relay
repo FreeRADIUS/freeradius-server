@@ -19,25 +19,25 @@ server dhcp.eth1 {
 	#  Packets received on the socket will be processed through one
 	#  of the following sections, named after the DHCP packet type.
 	#  See dictionary.dhcp for the packet types.
-	dhcp DHCP-Discover {
+	dhcp Discover {
 		update config {
 			#  IP Address of the DHCP server
-			&DHCP-Relay-To-IP-Address := 192.0.2.2
+			&Relay-To-IP-Address := 192.0.2.2
 		}
 		update request {
 			#  IP Address of the DHCP relay (ourselves)
-			&DHCP-Gateway-IP-Address := 192.0.2.1
+			&Gateway-IP-Address := 192.0.2.1
 		}
 		ok
 	}
 
-	dhcp DHCP-Request {
+	dhcp Request {
 		update config {
 			#  IP Address of the DHCP server
-			&DHCP-Relay-To-IP-Address := 192.0.2.2
+			&Relay-To-IP-Address := 192.0.2.2
 		}
 		update request {
-			&DHCP-Gateway-IP-Address := 192.0.2.2
+			&Gateway-IP-Address := 192.0.2.2
 		}
 		ok
 	}

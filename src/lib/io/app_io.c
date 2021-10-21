@@ -24,7 +24,7 @@
 #include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 
 char const *fr_app_io_socket_name(TALLOC_CTX *ctx, fr_app_io_t const *app_io,
@@ -41,45 +41,32 @@ char const *fr_app_io_socket_name(TALLOC_CTX *ctx, fr_app_io_t const *app_io,
 		if (dst_ipaddr->af == AF_INET) {
 			strlcpy(dst_buf, "*", sizeof(dst_buf));
 		} else {
-			rad_assert(dst_ipaddr->af == AF_INET6);
+			fr_assert(dst_ipaddr->af == AF_INET6);
 			strlcpy(dst_buf, "::", sizeof(dst_buf));
 		}
 	} else {
-		fr_value_box_snprint(dst_buf, sizeof(dst_buf), fr_box_ipaddr(*dst_ipaddr), 0);
+		fr_value_box_print(&FR_SBUFF_OUT(dst_buf, sizeof(dst_buf)), fr_box_ipaddr(*dst_ipaddr), NULL);
 	}
 
-	if (src_ipaddr) fr_value_box_snprint(src_buf, sizeof(src_buf), fr_box_ipaddr(*src_ipaddr), 0);
+	if (src_ipaddr) fr_value_box_print(&FR_SBUFF_OUT(src_buf, sizeof(src_buf)), fr_box_ipaddr(*src_ipaddr), NULL);
 
 	if (!interface) {
 		if (!src_ipaddr) {
-			return talloc_typed_asprintf(ctx, "proto_%s server %s port %u",
+			return talloc_typed_asprintf(ctx, "%s server %s port %u",
 						     app_io->name, dst_buf, dst_port);
 		}
 
 
-		return talloc_typed_asprintf(ctx, "proto_%s from client %s port %u to server %s port %u",
+		return talloc_typed_asprintf(ctx, "%s from client %s port %u to server %s port %u",
 					     app_io->name, src_buf, src_port, dst_buf, dst_port);
 	}
 
 	if (!src_ipaddr) {
-		return talloc_typed_asprintf(ctx, "proto_%s server %s port %u on interface %s",
+		return talloc_typed_asprintf(ctx, "%s server %s port %u on interface %s",
 					     app_io->name, dst_buf, dst_port, interface);
 		}
 
 
-		return talloc_typed_asprintf(ctx, "proto_%s from client %s port %u to server %s port %u on interface %s",
+		return talloc_typed_asprintf(ctx, "%s from client %s port %u to server %s port %u on interface %s",
 					     app_io->name, src_buf, src_port, dst_buf, dst_port, interface);
-}
-
-fr_socket_addr_t *fr_app_io_socket_addr(TALLOC_CTX *ctx, int proto, fr_ipaddr_t const *ipaddr, int port)
-{
-	fr_socket_addr_t *addr;
-
-	addr = talloc_zero(ctx, fr_socket_addr_t);
-
-	addr->proto = proto;
-	addr->ipaddr = *ipaddr;
-	addr->port = port;
-
-	return addr;
 }

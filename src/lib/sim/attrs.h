@@ -1,5 +1,6 @@
+#pragma once
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -20,7 +21,7 @@
  *
  * @copyright 2003-2016 The FreeRADIUS server project
  */
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/protocol/eap/sim/dictionary.h>
 #include <freeradius-devel/protocol/eap/sim/rfc4187.h>

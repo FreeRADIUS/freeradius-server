@@ -28,46 +28,42 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/users_file.h>
+#include <freeradius-devel/util/htrie.h>
 
 #include <ctype.h>
 #include <fcntl.h>
 
-typedef struct rlm_files_t {
-	vp_tmpl_t *key;
+typedef struct {
+	tmpl_t *key;
+	fr_type_t	key_data_type;
 
 	char const *filename;
-	rbtree_t *common;
+	fr_htrie_t *common;
+	PAIR_LIST_LIST *common_def;
 
 	/* autz */
 	char const *usersfile;
-	rbtree_t *users;
-
+	fr_htrie_t *users;
+	PAIR_LIST_LIST *users_def;
 
 	/* authenticate */
 	char const *auth_usersfile;
-	rbtree_t *auth_users;
+	fr_htrie_t *auth_users;
+	PAIR_LIST_LIST *auth_users_def;
 
 	/* preacct */
 	char const *acct_usersfile;
-	rbtree_t *acct_users;
-
-#ifdef WITH_PROXY
-	/* pre-proxy */
-	char const *preproxy_usersfile;
-	rbtree_t *preproxy_users;
-
-	/* post-proxy */
-	char const *postproxy_usersfile;
-	rbtree_t *postproxy_users;
-#endif
+	fr_htrie_t *acct_users;
+	PAIR_LIST_LIST *acct_users_def;
 
 	/* post-authenticate */
 	char const *postauth_usersfile;
-	rbtree_t *postauth_users;
+	fr_htrie_t *postauth_users;
+	PAIR_LIST_LIST *postauth_users_def;
 } rlm_files_t;
 
-static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_files_dict[];
 fr_dict_autoload_t rlm_files_dict[] = {
@@ -77,33 +73,21 @@ fr_dict_autoload_t rlm_files_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_fall_through;
+static fr_dict_attr_t const *attr_next_shortest_prefix;
 
 extern fr_dict_attr_autoload_t rlm_files_dict_attr[];
 fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 	{ .out = &attr_fall_through, .name = "Fall-Through", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_next_shortest_prefix, .name = "Next-Shortest-Prefix", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 
 	{ NULL }
 };
 
-/*
- *     See if a VALUE_PAIR list contains Fall-Through = Yes
- */
-static int fall_through(VALUE_PAIR *vp)
-{
-	VALUE_PAIR *tmp;
-	tmp = fr_pair_find_by_da(vp, attr_fall_through, TAG_ANY);
-
-	return tmp ? tmp->vp_uint32 : 0;
-}
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT, rlm_files_t, filename) },
 	{ FR_CONF_OFFSET("usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, usersfile) },
 	{ FR_CONF_OFFSET("acctusersfile", FR_TYPE_FILE_INPUT, rlm_files_t, acct_usersfile) },
-#ifdef WITH_PROXY
-	{ FR_CONF_OFFSET("preproxy_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, preproxy_usersfile) },
-	{ FR_CONF_OFFSET("postproxy_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, postproxy_usersfile) },
-#endif
 	{ FR_CONF_OFFSET("auth_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, auth_usersfile) },
 	{ FR_CONF_OFFSET("postauth_usersfile", FR_TYPE_FILE_INPUT, rlm_files_t, postauth_usersfile) },
 	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_NOT_EMPTY, rlm_files_t, key), .dflt = "%{%{Stripped-User-Name}:-%{User-Name}}", .quote = T_DOUBLE_QUOTED_STRING },
@@ -111,36 +95,55 @@ static const CONF_PARSER module_config[] = {
 };
 
 
-static int pairlist_cmp(void const *a, void const *b)
+static uint32_t pairlist_hash(void const *a)
 {
-	return strcmp(((PAIR_LIST const *)a)->name, ((PAIR_LIST const *)b)->name);
+	return fr_value_box_hash(((PAIR_LIST_LIST const *)a)->box);
 }
 
-static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
+static int8_t pairlist_cmp(void const *a, void const *b)
+{
+	int ret;
+
+	ret = fr_value_box_cmp(((PAIR_LIST_LIST const *)a)->box, ((PAIR_LIST_LIST const *)b)->box);
+	return CMP(ret, 0);
+}
+
+static int pairlist_to_key(uint8_t **out, size_t *outlen, void const *a)
+{
+	return fr_value_box_to_key(out, outlen, ((PAIR_LIST_LIST const *)a)->box);
+}
+
+static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptree, PAIR_LIST_LIST **pdefault, fr_type_t data_type)
 {
 	int rcode;
-	VALUE_PAIR *vp;
-	PAIR_LIST *users = NULL;
+	PAIR_LIST_LIST users;
+	PAIR_LIST_LIST search_list;	// Temporary list header used for matching in htrie
 	PAIR_LIST *entry, *next;
-	PAIR_LIST *user_list, *default_list, **default_tail;
-	rbtree_t *tree;
+	PAIR_LIST_LIST *user_list, *default_list;
+	fr_htrie_t *tree;
+	fr_htrie_type_t htype;
+	fr_value_box_t *box;
 
 	if (!filename) {
 		*ptree = NULL;
 		return 0;
 	}
 
+	pairlist_list_init(&users);
 	rcode = pairlist_read(ctx, dict_radius, filename, &users, 1);
 	if (rcode < 0) {
 		return -1;
 	}
 
+	htype = fr_htrie_hint(data_type);
+
 	/*
 	 *	Walk through the 'users' file list
 	 */
-	entry = users;
-	while (entry) {
-		fr_cursor_t cursor;
+	entry = NULL;
+	while ((entry = fr_dlist_next(&users.head, entry))) {
+		map_t *map = NULL;
+		fr_dict_attr_t const *da;
 
 		/*
 		 *	Look for improper use of '=' in the
@@ -149,14 +152,20 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		 *	and probably ':=' for server
 		 *	configuration items.
 		 */
-		for (vp = fr_cursor_init(&cursor, &entry->check);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		while ((map = fr_dlist_next(&entry->check, map))) {
+			if (!tmpl_is_attr(map->lhs)) {
+				ERROR("%s[%d] Left side of check item %s is not an attribute",
+				      entry->filename, entry->lineno, map->lhs->name);
+				return -1;
+
+			}
+			da = tmpl_da(map->lhs);
+
 			/*
 			 *	Ignore attributes which are set
 			 *	properly.
 			 */
-			if (vp->op != T_OP_EQ) {
+			if (map->op != T_OP_EQ) {
 				continue;
 			}
 
@@ -165,13 +174,13 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 			 *	or it's a wire protocol,
 			 *	ensure it has '=='.
 			 */
-			if ((fr_dict_vendor_num_by_da(vp->da) != 0) ||
-			    (vp->da->attr < 0x100)) {
-				WARN("[%s]:%d Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
-				     filename, entry->lineno,
-				     vp->da->name, vp->da->name,
+			if ((fr_dict_vendor_num_by_da(da) != 0) ||
+			    (da->attr < 0x100)) {
+				WARN("%s[%d] Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
+				     entry->filename, entry->lineno,
+				     da->name, da->name,
 				     entry->name);
-				vp->op = T_OP_CMP_EQ;
+				map->op = T_OP_CMP_EQ;
 				continue;
 			}
 		} /* end of loop over check items */
@@ -183,9 +192,21 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 		 *	It's a common enough mistake, that it's
 		 *	worth doing.
 		 */
-		for (vp = fr_cursor_init(&cursor, &entry->reply);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
+		map = NULL;
+		while ((map = fr_dlist_next(&entry->reply, map))) {
+			if (!tmpl_is_attr(map->lhs)) {
+				ERROR("%s[%d] Left side of reply item %s is not an attribute",
+				      entry->filename, entry->lineno, map->lhs->name);
+				return -1;
+			}
+			da = tmpl_da(map->lhs);
+
+			if ((htype != FR_HTRIE_TRIE) && (da == attr_next_shortest_prefix)) {
+				ERROR("%s[%d] Cannot use %s when key is not an IP / IP prefix",
+				      entry->filename, entry->lineno, da->name);
+				return -1;
+			}
+
 			/*
 			 *	If it's NOT a vendor attribute,
 			 *	and it's NOT a wire protocol
@@ -193,87 +214,129 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 			 *	then bitch about it, giving a
 			 *	good warning message.
 			 */
-			 if (fr_dict_attr_is_top_level(vp->da) && (vp->da->attr > 1000)) {
-				WARN("[%s]:%d Check item \"%s\"\n"
-				       "\tfound in reply item list for user \"%s\".\n"
-				       "\tThis attribute MUST go on the first line"
-				       " with the other check items", filename, entry->lineno, vp->da->name,
-				       entry->name);
+			if (fr_dict_attr_is_top_level(da) && (da->attr > 1000)) {
+				WARN("%s[%d] Check item \"%s\"\n"
+				     "\tfound in reply item list for user \"%s\".\n"
+				     "\tThis attribute MUST go on the first line"
+				     " with the other check items", entry->filename, entry->lineno, da->name,
+				     entry->name);
 			}
-		}
 
-		entry = entry->next;
+			/*
+			 *	If we allow list qualifiers in
+			 *	users_file.c, then this module also
+			 *	needs to be updated.  Ensure via an
+			 *	assertion that they do not get out of
+			 *	sync.
+			 */
+			fr_assert(tmpl_list(map->lhs) == PAIR_LIST_REPLY);
+		}
 	}
 
-	tree = rbtree_create(ctx, pairlist_cmp, NULL, RBTREE_FLAG_NONE);
+	tree = fr_htrie_alloc(ctx,  htype, pairlist_hash, pairlist_cmp, pairlist_to_key, NULL);
 	if (!tree) {
 		pairlist_free(&users);
 		return -1;
 	}
 
 	default_list = NULL;
-	default_tail = &default_list;
+	box = fr_value_box_alloc(ctx, data_type, NULL, false);
 
 	/*
 	 *	We've read the entries in linearly, but putting them
 	 *	into an indexed data structure would be much faster.
 	 *	Let's go fix that now.
 	 */
-	for (entry = users; entry != NULL; entry = next) {
+	for (entry = fr_dlist_head(&users.head); entry != NULL; entry = next) {
 		/*
 		 *	Remove this entry from the input list.
 		 */
-		next = entry->next;
-		entry->next = NULL;
+		next = fr_dlist_next(&users.head, entry);
+		fr_dlist_remove(&users.head, entry);
+
+		/*
+		 *	@todo - loop over entry->reply, calling
+		 *	unlang_fixup_update() or unlang_fixup_filter()
+		 *	to double-check the maps.
+		 *
+		 *	Those functions do normalization and sanity
+		 *	checks which are needed if this module is
+		 *	going to call an unlang function to *apply*
+		 *	the maps.
+		 */
 
 		/*
 		 *	DEFAULT entries get their own list.
 		 */
 		if (strcmp(entry->name, "DEFAULT") == 0) {
 			if (!default_list) {
-				default_list = entry;
+				default_list = talloc_zero(ctx, PAIR_LIST_LIST);
+				pairlist_list_init(default_list);
+				default_list->name = entry->name;
 
 				/*
-				 *	Insert the first DEFAULT into the tree.
+				 *	Don't insert the DEFAULT list
+				 *	into the tree, instead make it
+				 *	it's own list.
 				 */
-				if (!rbtree_insert(tree, entry)) {
-				error:
-					pairlist_free(&entry);
-					pairlist_free(&next);
-					talloc_free(tree);
-					return -1;
-				}
-
-			} else {
-				/*
-				 *	Tack this entry onto the tail
-				 *	of the DEFAULT list.
-				 */
-				*default_tail = entry;
+				*pdefault = default_list;
 			}
 
-			default_tail = &entry->next;
+			/*
+			 *	Append the entry to the DEFAULT list
+			 */
+			fr_dlist_insert_tail(&default_list->head, entry);
 			continue;
 		}
 
 		/*
-		 *	Not DEFAULT, must be a normal user.
+		 *	Not DEFAULT, must be a normal user. First look
+		 *	for a matching list header already in the tree.
 		 */
-		user_list = rbtree_finddata(tree, entry);
-		if (!user_list) {
-			/*
-			 *	Insert the first one.
-			 */
-			if (!rbtree_insert(tree, entry)) goto error;
-		} else {
-			/*
-			 *	Find the tail of this list, and add it
-			 *	there.
-			 */
-			while (user_list->next) user_list = user_list->next;
+		search_list.name = entry->name;
+		search_list.box = box;
 
-			user_list->next = entry;
+		/*
+		 *	Has to be of the correct data type.
+		 */
+		if (fr_value_box_from_str(box, box, data_type, NULL, entry->name, -1, 0, false) < 0) {
+			ERROR("%s[%d] Failed parsing key %s - %s",
+			      entry->filename, entry->lineno, entry->name, fr_strerror());
+			goto error;
 		}
+
+		/*
+		 *	Find an exact match, especially for patricia tries.
+		 */
+		user_list = fr_htrie_match(tree, &search_list);
+		if (!user_list) {
+			user_list = talloc_zero(ctx, PAIR_LIST_LIST);
+			pairlist_list_init(user_list);
+			user_list->name = entry->name;
+			user_list->box = fr_value_box_alloc(user_list, data_type, NULL, false);
+
+			(void) fr_value_box_copy(user_list, user_list->box, box);
+
+			/*
+			 *	Insert the new list header.
+			 */
+			if (!fr_htrie_insert(tree, user_list)) {
+				ERROR("%s[%d] Failed inserting key %s - %s",
+				      entry->filename, entry->lineno, entry->name, fr_strerror());
+				goto error;
+
+			error:
+				fr_value_box_clear_value(box);
+				talloc_free(tree);
+				return -1;
+			}
+		}
+		fr_value_box_clear_value(box);
+
+		/*
+		 *	Append the entry to the user list
+		 */
+		fr_dlist_insert_tail(&user_list->head, entry);
 	}
 
 	*ptree = tree;
@@ -286,24 +349,25 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree)
 /*
  *	(Re-)read the "users" file into memory.
  */
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_files_t *inst = instance;
 
+	inst->key_data_type = tmpl_expanded_type(inst->key);
+	if (fr_htrie_hint(inst->key_data_type) == FR_HTRIE_INVALID) {
+		cf_log_err(conf, "Invalid data type '%s' for 'files' module.",
+			   fr_table_str_by_value(fr_value_box_type_table, inst->key_data_type, "???"));
+		return -1;
+	}
+
 #undef READFILE
-#define READFILE(_x, _y) do { if (getusersfile(inst, inst->_x, &inst->_y) != 0) { ERROR("Failed reading %s", inst->_x); return -1;} } while (0)
+#define READFILE(_x, _y, _d) do { if (getusersfile(inst, inst->_x, &inst->_y, &inst->_d, inst->key_data_type) != 0) { ERROR("Failed reading %s", inst->_x); return -1;} } while (0)
 
-	READFILE(filename, common);
-	READFILE(usersfile, users);
-	READFILE(acct_usersfile, acct_users);
-
-#ifdef WITH_PROXY
-	READFILE(preproxy_usersfile, preproxy_users);
-	READFILE(postproxy_usersfile, postproxy_users);
-#endif
-
-	READFILE(auth_usersfile, auth_users);
-	READFILE(postauth_usersfile, postauth_users);
+	READFILE(filename, common, common_def);
+	READFILE(usersfile, users, users_def);
+	READFILE(acct_usersfile, acct_users, acct_users_def);
+	READFILE(auth_usersfile, auth_users, auth_users_def);
+	READFILE(postauth_usersfile, postauth_users, postauth_users_def);
 
 	return 0;
 }
@@ -311,36 +375,79 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 /*
  *	Common code called by everything below.
  */
-static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char const *filename, rbtree_t *tree,
-			       RADIUS_PACKET *request_packet, RADIUS_PACKET *reply_packet)
+static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *inst,
+				   request_t *request, char const *filename, fr_htrie_t *tree, PAIR_LIST_LIST *default_list)
 {
-	char const	*name;
-	VALUE_PAIR	*check_tmp = NULL;
-	VALUE_PAIR	*reply_tmp = NULL;
-	PAIR_LIST const *user_pl, *default_pl;
-	bool		found = false;
-	PAIR_LIST	my_pl;
-	char		buffer[256];
+	PAIR_LIST_LIST const	*user_list;
+	PAIR_LIST const 	*user_pl, *default_pl;
+	bool			found = false;
+	PAIR_LIST_LIST		my_list;
+	uint8_t			key_buffer[16], *key;
+	size_t			keylen = 0;
 
-	if (tmpl_expand(&name, buffer, sizeof(buffer), request, inst->key, NULL, NULL) < 0) {
-		REDEBUG("Failed expanding key %s", inst->key->name);
-		return RLM_MODULE_FAIL;
+	if (!tree && !default_list) RETURN_MODULE_NOOP;
+
+	if (tree) {
+		fr_value_box_t *box;
+
+		if (tmpl_aexpand(request, &box, request, inst->key, NULL, NULL) < 0) {
+			REDEBUG("Failed expanding key %s", inst->key->name);
+			RETURN_MODULE_FAIL;
+		}
+
+		my_list.name = NULL;
+		my_list.box = box;
+		user_list = fr_htrie_find(tree, &my_list);
+
+		/*
+		 *	Grab our own copy of the key if necessary.
+		 */
+		if (user_list && (tree->type == FR_HTRIE_TRIE)) {
+			key = key_buffer;
+			keylen = sizeof(key_buffer) * 8;
+
+			(void) fr_value_box_to_key(&key, &keylen, box);
+
+			RDEBUG3("Keylen %ld", keylen);
+			RHEXDUMP3(key, (keylen + 7) >> 3, "KEY ");
+
+			/*
+			 *	We're going to free the value_box
+			 *	shortly, so copy the key to our
+			 *	internal key buffer.
+			 */
+			if (key != key_buffer) {
+				if (((keylen + 7) >> 3) > sizeof(key_buffer)) {
+					REDEBUG("Key is too long - truncating");
+					keylen = sizeof(key_buffer) << 3;
+				}
+
+				memcpy(key_buffer, key, (keylen + 7) >> 3);
+				key = key_buffer;
+			}
+		}
+
+		talloc_free(box);
+
+		user_pl = user_list ? fr_dlist_head(&user_list->head) : NULL;
+	} else {
+		user_pl = NULL;
+		user_list = NULL;
 	}
 
-	if (!tree) return RLM_MODULE_NOOP;
-
-	my_pl.name = name;
-	user_pl = rbtree_finddata(tree, &my_pl);
-	my_pl.name = "DEFAULT";
-	default_pl = rbtree_finddata(tree, &my_pl);
+redo:
+	default_pl = default_list ? fr_dlist_head(&default_list->head) : NULL;
 
 	/*
 	 *	Find the entry for the user.
 	 */
 	while (user_pl || default_pl) {
-		fr_cursor_t cursor;
-		VALUE_PAIR *vp;
+		fr_pair_t *vp;
+		map_t *map = NULL;
 		PAIR_LIST const *pl;
+		fr_pair_list_t list;
+		bool fall_through, next_shortest_prefix;
+		bool match = true;
 
 		/*
 		 *	Figure out which entry to match on.
@@ -348,64 +455,162 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
 
 		if (!default_pl && user_pl) {
 			pl = user_pl;
-			user_pl = user_pl->next;
+			user_pl = fr_dlist_next(&user_list->head, user_pl);
 
 		} else if (!user_pl && default_pl) {
 			pl = default_pl;
-			default_pl = default_pl->next;
+			default_pl = fr_dlist_next(&default_list->head, default_pl);
 
 		} else if (user_pl->order < default_pl->order) {
 			pl = user_pl;
-			user_pl = user_pl->next;
+			user_pl = fr_dlist_next(&user_list->head, user_pl);
 
 		} else {
 			pl = default_pl;
-			default_pl = default_pl->next;
+			default_pl = fr_dlist_next(&default_list->head, default_pl);
 		}
 
-		MEM(fr_pair_list_copy(request, &check_tmp, pl->check) >= 0);
-		for (vp = fr_cursor_init(&cursor, &check_tmp);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			if (xlat_eval_pair(request, vp) < 0) {
-				RWARN("Failed parsing expanded value for check item, skipping entry: %s", fr_strerror());
-				fr_pair_list_free(&check_tmp);
-				continue;
+		fr_pair_list_init(&list);
+
+		/*
+		 *	Realize the map to a list of VPs
+		 */
+		while ((map = fr_dlist_next(&pl->check, map))) {
+			int rcode;
+			fr_pair_list_t tmp_list;
+
+			/*
+			 *	Control items get realized to VPs, and
+			 *	copied to a temporary list, which is
+			 *	then copied to control if the entire
+			 *	line matches.
+			 */
+			switch (map->op) {
+			case T_OP_EQ:
+			case T_OP_SET:
+			case T_OP_ADD:
+				fr_pair_list_init(&tmp_list);
+				if (map_to_vp(request->control_ctx, &tmp_list, request, map, NULL) < 0) {
+					fr_pair_list_free(&list);
+					RPWARN("Failed parsing check item, skipping entry");
+					match = false;
+					break;
+				}
+
+				fr_pair_list_append(&list, &tmp_list);
+				break;
+
+				/*
+				 *	Evaluate the map, including regexes.
+				 */
+			default:
+				rcode = fr_cond_eval_map(request, map);
+				if (rcode < 0) {
+					RPWARN("Failed evaluating check item, skipping entry");
+					break;
+				}
+
+				if (rcode == 0) match = false;
+				break;
+			}
+
+			if (!match) break;
+		}
+
+		if (!match) {
+			fr_pair_list_free(&list);
+			continue;
+		}
+
+		RDEBUG2("Found match \"%s\" on line %d of %s", pl->name, pl->lineno, filename);
+		found = true;
+		fall_through = false;
+		next_shortest_prefix = false;
+
+		/*
+		 *	Move the control items over, too.
+		 */
+		fr_pair_list_move(&request->control_pairs, &list, T_OP_ADD);
+		fr_pair_list_free(&list);
+
+		/* ctx may be reply */
+		if (!fr_dlist_empty(&pl->reply)) {
+			map = NULL;
+			while ((map = fr_dlist_next(&pl->reply, map))) {
+				fr_pair_list_t tmp_list;
+				fr_pair_list_init(&tmp_list);
+				if (map->op == T_OP_CMP_FALSE) continue;
+
+				if (map_to_vp(request->reply_ctx, &tmp_list, request, map, NULL) < 0) {
+					RPWARN("Failed parsing map for reply item %s, skipping it", map->lhs->name);
+					break;
+				}
+
+				/*
+				 *	Check for Fall-Through in the
+				 *	reply list.  If so, don't copy
+				 *	the attribute over to the reply
+				 */
+				vp = fr_pair_list_head(&tmp_list);
+				if (vp->da == attr_fall_through) {
+					fall_through = vp->vp_bool;
+					fr_pair_list_free(&tmp_list);
+					continue;
+				}
+
+				/*
+				 *	And for prefix tries.
+				 */
+				if (keylen > 0) {
+					vp = fr_pair_list_head(&tmp_list);
+					if (vp->da == attr_next_shortest_prefix) {
+						next_shortest_prefix = vp->vp_bool;
+						fr_pair_list_free(&tmp_list);
+						continue;
+					}
+				}
+				radius_pairmove(request, &request->reply_pairs, &tmp_list, true);
 			}
 		}
 
-		if (paircmp(request, request_packet->vps, check_tmp, &reply_packet->vps) == 0) {
-			RDEBUG2("Found match \"%s\" one line %d of %s", pl->name, pl->lineno, filename);
-			found = true;
-
-			/* ctx may be reply or proxy */
-			MEM(fr_pair_list_copy(reply_packet, &reply_tmp, pl->reply) >= 0);
-
-			radius_pairmove(request, &reply_packet->vps, reply_tmp, true);
-			fr_pair_list_move(&request->control, &check_tmp);
-
-			reply_tmp = NULL;	/* radius_pairmove() frees input attributes */
-			fr_pair_list_free(&check_tmp);
-
+		/*
+		 *	Fallthrough?
+		 */
+		if (!fall_through) {
 			/*
-			 *	Fallthrough?
+			 *	Walk back up the trie looking for shorter prefixes.
+			 *
+			 *	Note that we've already found an
+			 *	entry, so we MUST start with that
+			 *	prefix, otherwise we would end up in
+			 *	an loop of finding the same prefix
+			 *	over and over.
 			 */
-			if (!fall_through(pl->reply)) break;
+			if ((keylen > 0) && next_shortest_prefix) {
+				if (keylen > user_list->box->vb_ip.prefix) keylen = user_list->box->vb_ip.prefix;
+
+				do {
+					keylen--;
+					user_list = fr_trie_lookup_by_key(tree->store, key, keylen);
+					if (!user_list) continue;
+
+					user_pl = fr_dlist_head(&user_list->head);
+					RDEBUG("Found matching shorter subnet %s at key length %ld", user_pl->name, keylen);
+					goto redo;
+				} while (keylen > 0);
+			}
+
+			break;
 		}
 	}
-
-	/*
-	 *	Remove server internal parameters.
-	 */
-	fr_pair_delete_by_da(&reply_packet->vps, attr_fall_through);
 
 	/*
 	 *	See if we succeeded.
 	 */
 	if (!found)
-		return RLM_MODULE_NOOP; /* on to the next module */
+		RETURN_MODULE_NOOP; /* on to the next module */
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 
 }
 
@@ -416,13 +621,13 @@ static rlm_rcode_t file_common(rlm_files_t const *inst, REQUEST *request, char c
  *	for this user from the database. The main code only
  *	needs to check the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_files_t const *inst = instance;
+	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
-	return file_common(inst, request, inst->filename,
+	return file_common(p_result, inst, request, inst->filename,
 			   inst->users ? inst->users : inst->common,
-			   request->packet, request->reply);
+			   inst->users ? inst->users_def : inst->common_def);
 }
 
 
@@ -431,51 +636,31 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
  *	config. Reply items are Not Recommended(TM) in acct_users,
  *	except for Fallthrough, which should work
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_files_t const *inst = instance;
+	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
-	return file_common(inst, request, inst->acct_usersfile,
+	return file_common(p_result, inst, request, inst->acct_usersfile,
 			   inst->acct_users ? inst->acct_users : inst->common,
-			   request->packet, request->reply);
+			   inst->acct_users ? inst->acct_users_def : inst->common_def);
 }
 
-#ifdef WITH_PROXY
-static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_files_t const *inst = instance;
+	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
-	return file_common(inst, request, inst->preproxy_usersfile,
-			   inst->preproxy_users ? inst->preproxy_users : inst->common,
-			   request->packet, request->proxy->packet);
-}
-
-static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, UNUSED void *thread, REQUEST *request)
-{
-	rlm_files_t const *inst = instance;
-
-	return file_common(inst, request, inst->postproxy_usersfile,
-			   inst->postproxy_users ? inst->postproxy_users : inst->common,
-			   request->proxy->reply, request->reply);
-}
-#endif
-
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED void *thread, REQUEST *request)
-{
-	rlm_files_t const *inst = instance;
-
-	return file_common(inst, request, inst->auth_usersfile,
+	return file_common(p_result, inst, request, inst->auth_usersfile,
 			   inst->auth_users ? inst->auth_users : inst->common,
-			   request->packet, request->reply);
+			   inst->auth_users ? inst->auth_users_def : inst->common_def);
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_files_t const *inst = instance;
+	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
 
-	return file_common(inst, request, inst->postauth_usersfile,
+	return file_common(p_result, inst, request, inst->postauth_usersfile,
 			   inst->postauth_users ? inst->postauth_users : inst->common,
-			   request->packet, request->reply);
+			   inst->postauth_users ? inst->postauth_users_def : inst->common_def);
 }
 
 
@@ -491,12 +676,20 @@ module_t rlm_files = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_preacct,
-
-#ifdef WITH_PROXY
-		[MOD_PRE_PROXY]		= mod_pre_proxy,
-		[MOD_POST_PROXY]	= mod_post_proxy,
-#endif
 		[MOD_POST_AUTH]		= mod_post_auth
 	},
-};
+	.method_names = (module_method_names_t[]){
+		/*
+		 * Use mod_authorize for all DHCP processing - for consistent
+		 * use of data in the file referenced by "filename"
+		 */
+		{ .name1 = "recv",	.name2 = "Discover",	.method = mod_authorize },
+		{ .name1 = "recv",	.name2 = "Request",	.method = mod_authorize },
+		{ .name1 = "recv",	.name2 = "Inform",	.method = mod_authorize },
+		{ .name1 = "recv",	.name2 = "Release",	.method = mod_authorize },
+		{ .name1 = "recv",	.name2 = "Decline",	.method = mod_authorize },
 
+		MODULE_NAME_TERMINATOR
+	}
+
+};

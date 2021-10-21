@@ -5,9 +5,7 @@ update request {
 	&Tmp-String-0		:= '9870'
 	&Tmp-Octets-0		:= 0x39383731
 	&Tmp-IP-Address-0	:= 57.56.55.50
-	&Tmp-Date-0		:= 959985459
 	&Tmp-Integer-0		:= 959985460
-	&Tmp-Cast-Abinary	:= 'ip out forward srcip 57.56.55.53/32 udp dstport = 1812'
 	&Tmp-Cast-IfId		:= '0000:0000:3938:3737'
 	&Tmp-Cast-IPv6Addr	:= '::3938:3738'
 	&Tmp-Cast-IPv6Prefix	:= '::3938:3739/128'
@@ -22,9 +20,7 @@ update request {
 	&Tmp-String-0		:= "%{hex:%{Tmp-String-0}}"
 	&Tmp-String-1		:= "%{hex:%{Tmp-Octets-0}}"
 	&Tmp-String-2		:= "%{hex:%{Tmp-IP-Address-0}}"
-	&Tmp-String-3		:= "%{hex:%{Tmp-Date-0}}"
 	&Tmp-String-4		:= "%{hex:%{Tmp-Integer-0}}"
-	&Tmp-String-5		:= "%{hex:%{Tmp-Cast-Abinary}}"
 	&Tmp-String-6		:= "%{hex:%{Tmp-Cast-Ifid}}"
 	&Tmp-String-7		:= "%{hex:%{Tmp-Cast-IPv6Addr}}"
 	&Tmp-String-8		:= "%{hex:%{Tmp-Cast-IPv6Prefix}}"
@@ -46,18 +42,8 @@ if (&Tmp-String-2 != '39383732') {
 	test_fail
 }
 
-# Date
-if (&Tmp-String-3 != '39383733') {
-	test_fail
-}
-
 # Integer
 if (&Tmp-String-4 != '39383734') {
-	test_fail
-}
-
-# Abinary
-if (&Tmp-String-5 != '0101000039383735000000002000110000000714000200000000000000000000') {
 	test_fail
 }
 

@@ -31,10 +31,10 @@ extern "C" {
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/time.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <stdbool.h>
 #include <sys/event.h>
-#include <talloc.h>
 
 /** An opaque file descriptor handle
  */
@@ -110,16 +110,17 @@ typedef struct {
  * @param[in] now	The current time.
  * @param[in] uctx	User ctx passed to #fr_event_timer_in or #fr_event_timer_at.
  */
-typedef	void (*fr_event_cb_t)(fr_event_list_t *el, fr_time_t now, void *uctx);
+typedef	void (*fr_event_timer_cb_t)(fr_event_list_t *el, fr_time_t now, void *uctx);
 
 /** Called after each event loop cycle
  *
  * Called before calling kqueue to put the thread in a sleeping state.
  *
  * @param[in] now	The current time.
+ * @param[in] wake	When we'll next need to wake up to service an event.
  * @param[in] uctx	User ctx passed to #fr_event_list_alloc.
  */
-typedef	int (*fr_event_status_cb_t)(void *uctx, fr_time_t now);
+typedef	int (*fr_event_status_cb_t)(fr_time_t now, fr_time_delta_t wake, void *uctx);
 
 /** Called when an IO event occurs on a file descriptor
  *
@@ -157,6 +158,12 @@ typedef void (*fr_event_pid_cb_t)(fr_event_list_t *el, pid_t pid, int status, vo
  */
 typedef void (*fr_event_user_handler_t)(int kq, struct kevent const *kev, void *uctx);
 
+/** Alternative time source, useful for testing
+ *
+ * @return the current time in nanoseconds past the epoch.
+ */
+typedef fr_time_t (*fr_event_time_source_t)(void);
+
 /** Callbacks for the #FR_EVENT_FILTER_IO filter
  */
 typedef struct {
@@ -189,36 +196,76 @@ typedef union {
 	fr_event_vnode_func_t	vnode;			//!< vnode callback functions.
 } fr_event_funcs_t;
 
-int		fr_event_list_num_fds(fr_event_list_t *el);
-int		fr_event_list_num_timers(fr_event_list_t *el);
+uint64_t	fr_event_list_num_fds(fr_event_list_t *el);
+uint64_t	fr_event_list_num_timers(fr_event_list_t *el);
 int		fr_event_list_kq(fr_event_list_t *el);
-fr_time_t	fr_event_list_time(fr_event_list_t *el);
+fr_time_t	fr_event_list_time(fr_event_list_t *el) CC_HINT(nonnull);
+
+int		_fr_event_fd_move(NDEBUG_LOCATION_ARGS
+				 fr_event_list_t *dst, fr_event_list_t *src, int fd, fr_event_filter_t filter);
+#define		fr_event_fd_mode(...) _fr_event_fd_move(NDEBUG_LOCATION_EXP __VA_ARGS__)
+
+int		_fr_event_filter_insert(NDEBUG_LOCATION_ARGS
+				        TALLOC_CTX *ctx, fr_event_fd_t **ef_out,
+				        fr_event_list_t *el, int fd,
+				        fr_event_filter_t filter,
+				        void *funcs,
+				        fr_event_error_cb_t error,
+				        void *uctx);
+#define		fr_event_filter_insert(...) _fr_event_filter_insert(NDEBUG_LOCATION_EXP __VA_ARGS__)
+
+int		_fr_event_filter_update(NDEBUG_LOCATION_ARGS
+					fr_event_list_t *el, int fd, fr_event_filter_t filter,
+					fr_event_update_t const updates[]);
+#define		fr_event_filter_update(...) _fr_event_filter_update(NDEBUG_LOCATION_EXP __VA_ARGS__)
+
+int		_fr_event_fd_insert(NDEBUG_LOCATION_ARGS
+				    TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
+				    fr_event_fd_cb_t read_fn,
+				    fr_event_fd_cb_t write_fn,
+				    fr_event_error_cb_t error,
+				    void *uctx);
+#define		fr_event_fd_insert(...) _fr_event_fd_insert(NDEBUG_LOCATION_EXP __VA_ARGS__)
 
 int		fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter);
 
-int		fr_event_filter_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
-				       fr_event_filter_t filter,
-				       void *funcs,
-				       fr_event_error_cb_t error,
-				       void *uctx);
+fr_event_fd_t	*fr_event_fd_handle(fr_event_list_t *el, int fd, fr_event_filter_t filter);
 
-int		fr_event_filter_update(fr_event_list_t *el, int fd, fr_event_filter_t filter,
-			   	       fr_event_update_t updates[]);
+fr_event_fd_cb_t fr_event_fd_cb(fr_event_fd_t *ef, int filter, int fflags);
 
-int		fr_event_fd_insert(TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
-				   fr_event_fd_cb_t read_fn,
-				   fr_event_fd_cb_t write_fn,
-				   fr_event_error_cb_t error,
-				   void *uctx);
+void		*fr_event_fd_uctx(fr_event_fd_t *ef);
 
-int		fr_event_pid_wait(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const **ev_p,
-				  pid_t pid, fr_event_pid_cb_t wait_fn, void *uctx) CC_HINT(nonnull(2,5));
+#ifndef NDEBUG
+int		fr_event_fd_armour(fr_event_list_t *el, int fd, fr_event_filter_t, uintptr_t armour);
+int		fr_event_fd_unarmour(fr_event_list_t *el, int fd, fr_event_filter_t filter, uintptr_t armour);
+#endif
 
-int		fr_event_timer_at(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev,
-				  fr_time_t when, fr_event_cb_t callback, void const *uctx);
-int		fr_event_timer_in(TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev,
-				  fr_time_delta_t delta, fr_event_cb_t callback, void const *uctx);
-int		fr_event_timer_delete(fr_event_list_t *el, fr_event_timer_t const **ev);
+int		_fr_event_timer_at(NDEBUG_LOCATION_ARGS
+				   TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev,
+				   fr_time_t when, fr_event_timer_cb_t callback, void const *uctx);
+#define		fr_event_timer_at(...) _fr_event_timer_at(NDEBUG_LOCATION_EXP __VA_ARGS__)
+
+int		_fr_event_timer_in(NDEBUG_LOCATION_ARGS
+				   TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_timer_t const **ev,
+				   fr_time_delta_t delta, fr_event_timer_cb_t callback, void const *uctx);
+#define		fr_event_timer_in(...) _fr_event_timer_in(NDEBUG_LOCATION_EXP __VA_ARGS__)
+
+int		fr_event_timer_delete(fr_event_timer_t const **ev);
+
+int		_fr_event_pid_wait(NDEBUG_LOCATION_ARGS
+				   TALLOC_CTX *ctx, fr_event_list_t *el, fr_event_pid_t const **ev_p,
+				   pid_t pid, fr_event_pid_cb_t wait_fn, void *uctx)
+				   CC_HINT(nonnull(NDEBUG_LOCATION_NONNULL(2)));
+#define		fr_event_pid_wait(...) _fr_event_pid_wait(NDEBUG_LOCATION_EXP __VA_ARGS__)
+
+int		_fr_event_pid_reap(NDEBUG_LOCATION_ARGS
+				   fr_event_list_t *el, pid_t pid,
+				   fr_event_pid_cb_t wait_fn, void *uctx)
+				   CC_HINT(nonnull(NDEBUG_LOCATION_NONNULL(1)));
+#define		fr_event_pid_reap(...) _fr_event_pid_reap(NDEBUG_LOCATION_EXP __VA_ARGS__)
+
+unsigned int	fr_event_list_reap_signal(fr_event_list_t *el, fr_time_delta_t timeout, int signal);
+
 int		fr_event_timer_run(fr_event_list_t *el, fr_time_t *when);
 
 uintptr_t      	fr_event_user_insert(fr_event_list_t *el, fr_event_user_handler_t user, void *uctx) CC_HINT(nonnull(1,2));
@@ -227,10 +274,10 @@ int		fr_event_user_delete(fr_event_list_t *el, fr_event_user_handler_t user, voi
 int		fr_event_pre_insert(fr_event_list_t *el, fr_event_status_cb_t callback, void *uctx) CC_HINT(nonnull(1,2));
 int		fr_event_pre_delete(fr_event_list_t *el, fr_event_status_cb_t callback, void *uctx) CC_HINT(nonnull(1,2));
 
-int		fr_event_post_insert(fr_event_list_t *el, fr_event_cb_t callback, void *uctx) CC_HINT(nonnull(1,2));
-int		fr_event_post_delete(fr_event_list_t *el, fr_event_cb_t callback, void *uctx) CC_HINT(nonnull(1,2));
+int		fr_event_post_insert(fr_event_list_t *el, fr_event_timer_cb_t callback, void *uctx) CC_HINT(nonnull(1,2));
+int		fr_event_post_delete(fr_event_list_t *el, fr_event_timer_cb_t callback, void *uctx) CC_HINT(nonnull(1,2));
 
-int		fr_event_corral(fr_event_list_t *el, bool wait);
+int		fr_event_corral(fr_event_list_t *el, fr_time_t now, bool wait);
 void		fr_event_service(fr_event_list_t *el);
 
 void		fr_event_loop_exit(fr_event_list_t *el, int code);
@@ -238,6 +285,16 @@ bool		fr_event_loop_exiting(fr_event_list_t *el);
 int		fr_event_loop(fr_event_list_t *el);
 
 fr_event_list_t	*fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t status, void *status_ctx);
+void		fr_event_list_set_time_func(fr_event_list_t *el, fr_event_time_source_t func);
+
+bool		fr_event_list_empty(fr_event_list_t *el);
+
+#ifdef WITH_EVENT_DEBUG
+void		fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx);
+#  ifndef NDEBUG
+void		fr_event_timer_dump(fr_event_list_t *el);
+#  endif
+#endif
 
 #ifdef __cplusplus
 }

@@ -35,7 +35,7 @@ RCSID("$Id$")
 #include <lauxlib.h>
 #include <lualib.h>
 
-static _Thread_local REQUEST *fr_lua_request;
+static _Thread_local request_t *fr_lua_request;
 static _Thread_local rlm_lua_t const *fr_lua_inst;
 
 void fr_lua_util_fr_register(lua_State *L)
@@ -56,7 +56,7 @@ void fr_lua_util_fr_register(lua_State *L)
 static int _util_log_debug(lua_State *L)
 {
 	rlm_lua_t const		*inst = fr_lua_inst;
-	REQUEST			*request = fr_lua_request;
+	request_t			*request = fr_lua_request;
 	int			idx;
 
 	while ((idx = lua_gettop(L))) {
@@ -80,7 +80,7 @@ static int _util_log_debug(lua_State *L)
 static int _util_log_info(lua_State *L)
 {
 	rlm_lua_t const		*inst = fr_lua_inst;
-	REQUEST			*request = fr_lua_request;
+	request_t			*request = fr_lua_request;
 	int 			idx;
 
 	while ((idx = lua_gettop(L))) {
@@ -105,7 +105,7 @@ static int _util_log_info(lua_State *L)
 static int _util_log_warn(lua_State *L)
 {
 	rlm_lua_t const		*inst = fr_lua_inst;
-	REQUEST			*request = fr_lua_request;
+	request_t			*request = fr_lua_request;
 	int			idx;
 
 	while ((idx = lua_gettop(L))) {
@@ -129,7 +129,7 @@ static int _util_log_warn(lua_State *L)
 static int _util_log_error(lua_State *L)
 {
 	rlm_lua_t const		*inst = fr_lua_inst;
-	REQUEST			*request = fr_lua_request;
+	request_t			*request = fr_lua_request;
 	int			idx;
 
 	while ((idx = lua_gettop(L))) {
@@ -145,7 +145,7 @@ static int _util_log_error(lua_State *L)
 
 static int _util_log_newindex(UNUSED lua_State *L)
 {
-	REQUEST	*request = fr_lua_util_get_request();
+	request_t	*request = fr_lua_util_get_request();
 
 	RWDEBUG("fr.log.$func() is read-only");
 
@@ -159,7 +159,7 @@ static int _util_log_newindex(UNUSED lua_State *L)
 void fr_lua_util_jit_log_debug(char const *msg)
 {
 	rlm_lua_t const		*inst = fr_lua_inst;
-	REQUEST			*request = fr_lua_request;
+	request_t			*request = fr_lua_request;
 
 	ROPTIONAL(RDEBUG2, DEBUG2, "%s", msg);
 }
@@ -171,7 +171,7 @@ void fr_lua_util_jit_log_debug(char const *msg)
 void fr_lua_util_jit_log_info(char const *msg)
 {
 	rlm_lua_t const		*inst = fr_lua_inst;
-	REQUEST			*request = fr_lua_request;
+	request_t			*request = fr_lua_request;
 
 	ROPTIONAL(RINFO, INFO, "%s", msg);
 }
@@ -183,7 +183,7 @@ void fr_lua_util_jit_log_info(char const *msg)
 void fr_lua_util_jit_log_warn(char const *msg)
 {
 	rlm_lua_t const		*inst = fr_lua_inst;
-	REQUEST			*request = fr_lua_request;
+	request_t			*request = fr_lua_request;
 
 	ROPTIONAL(RWARN, WARN, "%s", msg);
 }
@@ -195,7 +195,7 @@ void fr_lua_util_jit_log_warn(char const *msg)
 void fr_lua_util_jit_log_error(char const *msg)
 {
 	rlm_lua_t const		*inst = fr_lua_inst;
-	REQUEST			*request = fr_lua_request;
+	request_t			*request = fr_lua_request;
 
 	ROPTIONAL(RERROR, ERROR, "%s", msg);
 }
@@ -326,7 +326,7 @@ rlm_lua_t const *fr_lua_util_get_inst(void)
  *
  * @param[in] request	all helper and C functions callable from Lua should use.
  */
-void fr_lua_util_set_request(REQUEST *request)
+void fr_lua_util_set_request(request_t *request)
 {
 	fr_lua_request = request;
 }
@@ -335,7 +335,7 @@ void fr_lua_util_set_request(REQUEST *request)
  *
  * @return request all helper and C functions callable from Lua should use.
  */
-REQUEST *fr_lua_util_get_request(void)
+request_t *fr_lua_util_get_request(void)
 {
 	return fr_lua_request;
 }

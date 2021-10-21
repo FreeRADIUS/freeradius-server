@@ -1,0 +1,130 @@
+:module_name:
+
+= Configuring the CHAP module
+
+The xref:raddb:mods-available/chap.adoc[mods-available/chap]
+configuration file describes the configuration parameters accepted by
+the CHAP module, and what they do.  This document explains how to
+perform testing with the CHAP module.
+
+include::howto:partial$pre_test.adoc[]
+
+== Editing mods-available/chap
+
+The xref:raddb:mods-available/chap.adoc[mods-available/chap] module
+contains no configuration items, and does not need to be edited.
+
+== Enabling mods-available/chap
+
+The `chap` module is enabled by creating a soft link from the
+`mods-enabled/` directory to the `mods-available/` directory.
+
+[source,shell]
+----
+cd raddb/mods-enabled && ln -s ../mods-available/chap
+----
+
+The default installation will automatically enable the `chap` module.
+In most circumstances, no additional work is required.
+
+== Testing the Server
+
+include::howto:partial$post_test.adoc[]
+
+== Testing CHAP Authentication
+
+Once the server is started in debugging mode, CHAP authentication can
+be performed via the following command:
+
+[source,shell]
+----
+cat <<'EOF' | radclient -x localhost auth testing123
+User-Name = "bob"
+CHAP-Password = "hello"
+EOF
+----
+
+The `radclient` program is smart enough to see that the
+`CHAP-Password` attribute is a cleartext password.  It then performs
+CHAP calculations in order to put the correct `CHAP-Password` value
+into the packet.
+
+NOTE: The server must be configured with a known user and a "known
+good" password before any CHAP tests are performed.  In this case, we
+assume that the server knows about a user `bob` with password `hello`.
+
+The output of `radclient` should look like the following.  Some of the
+numbers may be different, but the general format should be the same.
+
+[source,log]
+----
+Sent Access-Request Id 47 from 0.0.0.0:52132 to 127.0.0.1:1812 length 44
+	User-Name = "bob"
+	CHAP-Password = 0x70170db9ab2baad7ca45b3ef9cd844eccd
+	Password.Cleartext = "bob"
+Received Access-Accept Id 47 from 127.0.0.1:1812 to 127.0.0.1:52132 length 25
+	User-Name = "bob"
+----
+
+This output indicates that the authentication request was accepted.
+
+Next, read the server output.  The goal here is to look for messages
+containing `ERROR` or `WARNING`, or the `chap` module name.
+
+[source,log]
+----
+(0)  Received Access-Request ID 18 from 127.0.0.1:53623 to 127.0.0.1:1812 length 44 via socket proto_radius_udp server * port 1812
+(0)    User-Name = "bob"
+(0)    CHAP-Password = 0x3549a4e40fc76e876499badf736712c951
+...
+(0)    chap - Creating &CHAP-Challenge from request authenticator
+(0)    chap - Setting &control.Auth-Type = chap
+(0)    chap (ok)
+...
+(0)  Found "known good" password in &control.Password.Cleartext
+(0)  Running 'authenticate chap' from file ./raddb/sites-enabled/default
+(0)  authenticate chap {
+(0)    chap - Comparing with "known good" Password.Cleartext
+(0)    chap - CHAP user "bob" authenticated successfully
+(0)    chap (ok)
+(0)  } # authenticate chap (ok)
+...
+(0)  Sending Access-Accept ID 18 from 127.0.0.1:1812 to 127.0.0.1:53623 length 25 via socket proto_radius_udp server * port 1812
+(0)    User-Name = "bob"
+...
+----
+
+For the purposes of this test, the other messages in the debug output
+can be ignored.
+
+In the above output, the `chap` module is first run in the `recv
+Access-Request { ... }` section.  The module looks for `CHAP-Password`
+in the request packet, and if found, sets `Auth-Type := CHAP`.  That
+setting tells the server core to call the `chap` module again for
+authentication.
+
+Once the `recv Access-Request { ... }` section has finished
+processing, the server calls the `authenticate chap { ... }` section.
+In the default configuration, that section contains just a reference
+to the `chap` module.  The `chap` module finds a `Password.Cleartext`
+which has previously been added to the request, and performs the CHAP
+calculations.  If the calculated CHAP values match the CHAP values in
+the request packet, then the user is authenticated.  Otherwise,
+authentication fails and the user is rejected.
+
+This two-phase processing of CHAP ensures that the `chap` module is
+independent of any database.  That is, the "known good" password can
+be obtained from any other module, such as `ldap`, `sql`, `files`,
+etc.  The `chap` module only needs to know that it handles CHAP, and
+that it has been given a `Password.Cleartext` in order to authenticate
+the user.  The source of that `Password.Cleartext` is unimportant.
+
+== Disabling CHAP
+
+The local system requirements may be that CHAP authentication is
+forbidden.  In that case, the `chap` module should be removed from the
+`recv Access-Request { ... }` section, and the `authenticate chap {
+... }` section should be deleted.  The server will then be unable to
+process CHAP authentication requests.  All `Access-Request` packets
+that contain a `CHAP-Password` attribute will then result in an
+`Access-Reject`.

@@ -1,326 +1,508 @@
 /*
- * @copyright 1999, 2000, 2001, 2004, 2005, 2006 Free Software
- * Foundation, Inc.
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
  *
- * This program is left software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2, or (at your option)
- * any later version.
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/** Encode/decode binary data using printable characters
+/** Encode/decode binary data using printable characters (base64 format)
  *
- * @see RFC 3548 <http://www.ietf.org/rfc/rfc3548.txt>.
+ * @see RFC 4648 <http://www.ietf.org/rfc/rfc4648.txt>.
  *
  * @file src/lib/util/base64.c
- * @author Simon Josefsson.
+ *
+ * @copyright 2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 
 #include "base64.h"
 
 #include <freeradius-devel/util/strerror.h>
-
+#include <freeradius-devel/util/value.h>
 #define us(x) (uint8_t) x
 
-char const fr_base64_str[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+char const fr_base64_alphabet_encode[UINT8_MAX] = {
+	[62] = '+',
+	[63] = '/',
+	[52] = '0',
+	[53] = '1',
+	[54] = '2',
+	[55] = '3',
+	[56] = '4',
+	[57] = '5',
+	[58] = '6',
+	[59] = '7',
+	[60] = '8',
+	[61] = '9',
+	[0] = 'A',
+	[1] = 'B',
+	[2] = 'C',
+	[3] = 'D',
+	[4] = 'E',
+	[5] = 'F',
+	[6] = 'G',
+	[7] = 'H',
+	[8] = 'I',
+	[9] = 'J',
+	[10] = 'K',
+	[11] = 'L',
+	[12] = 'M',
+	[13] = 'N',
+	[14] = 'O',
+	[15] = 'P',
+	[16] = 'Q',
+	[17] = 'R',
+	[18] = 'S',
+	[19] = 'T',
+	[20] = 'U',
+	[21] = 'V',
+	[22] = 'W',
+	[23] = 'X',
+	[24] = 'Y',
+	[25] = 'Z',
+	[26] = 'a',
+	[27] = 'b',
+	[28] = 'c',
+	[29] = 'd',
+	[30] = 'e',
+	[31] = 'f',
+	[32] = 'g',
+	[33] = 'h',
+	[34] = 'i',
+	[35] = 'j',
+	[36] = 'k',
+	[37] = 'l',
+	[38] = 'm',
+	[39] = 'n',
+	[40] = 'o',
+	[41] = 'p',
+	[42] = 'q',
+	[43] = 'r',
+	[44] = 's',
+	[45] = 't',
+	[46] = 'u',
+	[47] = 'v',
+	[48] = 'w',
+	[49] = 'x',
+	[50] = 'y',
+	[51] = 'z'
+};
 
-/*
- * With this approach this file works independent of the charset used
- * (think EBCDIC).  However, it does assume that the characters in the
- * Base64 alphabet (A-Za-z0-9+/) are encoded in 0..255.  POSIX
- * 1003.1-2001 require that char and unsigned char are 8-bit
- * quantities, though, taking care of that problem.  But this may be a
- * potential problem on non-POSIX C99 platforms.
- *
- * IBM C V6 for AIX mishandles "#define B64(x) ...'x'...", so use "_"
- * as the formal parameter rather than "x".
- */
-#define B64(_)					\
-  ((_) == 'A' ? 0				\
-   : (_) == 'B' ? 1				\
-   : (_) == 'C' ? 2				\
-   : (_) == 'D' ? 3				\
-   : (_) == 'E' ? 4				\
-   : (_) == 'F' ? 5				\
-   : (_) == 'G' ? 6				\
-   : (_) == 'H' ? 7				\
-   : (_) == 'I' ? 8				\
-   : (_) == 'J' ? 9				\
-   : (_) == 'K' ? 10				\
-   : (_) == 'L' ? 11				\
-   : (_) == 'M' ? 12				\
-   : (_) == 'N' ? 13				\
-   : (_) == 'O' ? 14				\
-   : (_) == 'P' ? 15				\
-   : (_) == 'Q' ? 16				\
-   : (_) == 'R' ? 17				\
-   : (_) == 'S' ? 18				\
-   : (_) == 'T' ? 19				\
-   : (_) == 'U' ? 20				\
-   : (_) == 'V' ? 21				\
-   : (_) == 'W' ? 22				\
-   : (_) == 'X' ? 23				\
-   : (_) == 'Y' ? 24				\
-   : (_) == 'Z' ? 25				\
-   : (_) == 'a' ? 26				\
-   : (_) == 'b' ? 27				\
-   : (_) == 'c' ? 28				\
-   : (_) == 'd' ? 29				\
-   : (_) == 'e' ? 30				\
-   : (_) == 'f' ? 31				\
-   : (_) == 'g' ? 32				\
-   : (_) == 'h' ? 33				\
-   : (_) == 'i' ? 34				\
-   : (_) == 'j' ? 35				\
-   : (_) == 'k' ? 36				\
-   : (_) == 'l' ? 37				\
-   : (_) == 'm' ? 38				\
-   : (_) == 'n' ? 39				\
-   : (_) == 'o' ? 40				\
-   : (_) == 'p' ? 41				\
-   : (_) == 'q' ? 42				\
-   : (_) == 'r' ? 43				\
-   : (_) == 's' ? 44				\
-   : (_) == 't' ? 45				\
-   : (_) == 'u' ? 46				\
-   : (_) == 'v' ? 47				\
-   : (_) == 'w' ? 48				\
-   : (_) == 'x' ? 49				\
-   : (_) == 'y' ? 50				\
-   : (_) == 'z' ? 51				\
-   : (_) == '0' ? 52				\
-   : (_) == '1' ? 53				\
-   : (_) == '2' ? 54				\
-   : (_) == '3' ? 55				\
-   : (_) == '4' ? 56				\
-   : (_) == '5' ? 57				\
-   : (_) == '6' ? 58				\
-   : (_) == '7' ? 59				\
-   : (_) == '8' ? 60				\
-   : (_) == '9' ? 61				\
-   : (_) == '+' ? 62				\
-   : (_) == '.' ? 62				\
-   : (_) == '/' ? 63				\
-   : -1)
+uint8_t const fr_base64_alphabet_decode[UINT8_MAX] = {
+	F32(0, UINT8_MAX), F8(32, UINT8_MAX), F2(40, UINT8_MAX),
+	['+'] = 62,
+	F2(44, UINT8_MAX),
+	F1(46, UINT8_MAX),
+	['/'] = 63,
+	['0'] = 52,
+	['1'] = 53,
+	['2'] = 54,
+	['3'] = 55,
+	['4'] = 56,
+	['5'] = 57,
+	['6'] = 58,
+	['7'] = 59,
+	['8'] = 60,
+	['9'] = 61,
+	F4(58, UINT8_MAX), F2(62, UINT8_MAX), F1(64, UINT8_MAX),
+	['A'] = 0,
+	['B'] = 1,
+	['C'] = 2,
+	['D'] = 3,
+	['E'] = 4,
+	['F'] = 5,
+	['G'] = 6,
+	['H'] = 7,
+	['I'] = 8,
+	['J'] = 9,
+	['K'] = 10,
+	['L'] = 11,
+	['M'] = 12,
+	['N'] = 13,
+	['O'] = 14,
+	['P'] = 15,
+	['Q'] = 16,
+	['R'] = 17,
+	['S'] = 18,
+	['T'] = 19,
+	['U'] = 20,
+	['V'] = 21,
+	['W'] = 22,
+	['X'] = 23,
+	['Y'] = 24,
+	['Z'] = 25,
+	F4(91, UINT8_MAX), F2(95, UINT8_MAX),
+	['a'] = 26,
+	['b'] = 27,
+	['c'] = 28,
+	['d'] = 29,
+	['e'] = 30,
+	['f'] = 31,
+	['g'] = 32,
+	['h'] = 33,
+	['i'] = 34,
+	['j'] = 35,
+	['k'] = 36,
+	['l'] = 37,
+	['m'] = 38,
+	['n'] = 39,
+	['o'] = 40,
+	['p'] = 41,
+	['q'] = 42,
+	['r'] = 43,
+	['s'] = 44,
+	['t'] = 45,
+	['u'] = 46,
+	['v'] = 47,
+	['w'] = 48,
+	['x'] = 49,
+	['y'] = 50,
+	['z'] = 51,
+	F128(123, UINT8_MAX),
+	F4(251, UINT8_MAX)
+};
 
-char const fr_base64_sextet[0x100] = {
-  B64 (0), B64 (1), B64 (2), B64 (3),
-  B64 (4), B64 (5), B64 (6), B64 (7),
-  B64 (8), B64 (9), B64 (10), B64 (11),
-  B64 (12), B64 (13), B64 (14), B64 (15),
-  B64 (16), B64 (17), B64 (18), B64 (19),
-  B64 (20), B64 (21), B64 (22), B64 (23),
-  B64 (24), B64 (25), B64 (26), B64 (27),
-  B64 (28), B64 (29), B64 (30), B64 (31),
-  B64 (32), B64 (33), B64 (34), B64 (35),
-  B64 (36), B64 (37), B64 (38), B64 (39),
-  B64 (40), B64 (41), B64 (42), B64 (43),
-  B64 (44), B64 (45), B64 (46), B64 (47),
-  B64 (48), B64 (49), B64 (50), B64 (51),
-  B64 (52), B64 (53), B64 (54), B64 (55),
-  B64 (56), B64 (57), B64 (58), B64 (59),
-  B64 (60), B64 (61), B64 (62), B64 (63),
-  B64 (64), B64 (65), B64 (66), B64 (67),
-  B64 (68), B64 (69), B64 (70), B64 (71),
-  B64 (72), B64 (73), B64 (74), B64 (75),
-  B64 (76), B64 (77), B64 (78), B64 (79),
-  B64 (80), B64 (81), B64 (82), B64 (83),
-  B64 (84), B64 (85), B64 (86), B64 (87),
-  B64 (88), B64 (89), B64 (90), B64 (91),
-  B64 (92), B64 (93), B64 (94), B64 (95),
-  B64 (96), B64 (97), B64 (98), B64 (99),
-  B64 (100), B64 (101), B64 (102), B64 (103),
-  B64 (104), B64 (105), B64 (106), B64 (107),
-  B64 (108), B64 (109), B64 (110), B64 (111),
-  B64 (112), B64 (113), B64 (114), B64 (115),
-  B64 (116), B64 (117), B64 (118), B64 (119),
-  B64 (120), B64 (121), B64 (122), B64 (123),
-  B64 (124), B64 (125), B64 (126), B64 (127),
-  B64 (128), B64 (129), B64 (130), B64 (131),
-  B64 (132), B64 (133), B64 (134), B64 (135),
-  B64 (136), B64 (137), B64 (138), B64 (139),
-  B64 (140), B64 (141), B64 (142), B64 (143),
-  B64 (144), B64 (145), B64 (146), B64 (147),
-  B64 (148), B64 (149), B64 (150), B64 (151),
-  B64 (152), B64 (153), B64 (154), B64 (155),
-  B64 (156), B64 (157), B64 (158), B64 (159),
-  B64 (160), B64 (161), B64 (162), B64 (163),
-  B64 (164), B64 (165), B64 (166), B64 (167),
-  B64 (168), B64 (169), B64 (170), B64 (171),
-  B64 (172), B64 (173), B64 (174), B64 (175),
-  B64 (176), B64 (177), B64 (178), B64 (179),
-  B64 (180), B64 (181), B64 (182), B64 (183),
-  B64 (184), B64 (185), B64 (186), B64 (187),
-  B64 (188), B64 (189), B64 (190), B64 (191),
-  B64 (192), B64 (193), B64 (194), B64 (195),
-  B64 (196), B64 (197), B64 (198), B64 (199),
-  B64 (200), B64 (201), B64 (202), B64 (203),
-  B64 (204), B64 (205), B64 (206), B64 (207),
-  B64 (208), B64 (209), B64 (210), B64 (211),
-  B64 (212), B64 (213), B64 (214), B64 (215),
-  B64 (216), B64 (217), B64 (218), B64 (219),
-  B64 (220), B64 (221), B64 (222), B64 (223),
-  B64 (224), B64 (225), B64 (226), B64 (227),
-  B64 (228), B64 (229), B64 (230), B64 (231),
-  B64 (232), B64 (233), B64 (234), B64 (235),
-  B64 (236), B64 (237), B64 (238), B64 (239),
-  B64 (240), B64 (241), B64 (242), B64 (243),
-  B64 (244), B64 (245), B64 (246), B64 (247),
-  B64 (248), B64 (249), B64 (250), B64 (251),
-  B64 (252), B64 (253), B64 (254), B64 (255)
+char const fr_base64_url_alphabet_encode[UINT8_MAX] = {
+	[62] = '-',
+	[52] = '0',
+	[53] = '1',
+	[54] = '2',
+	[55] = '3',
+	[56] = '4',
+	[57] = '5',
+	[58] = '6',
+	[59] = '7',
+	[60] = '8',
+	[61] = '9',
+	[63] = '_',
+	[0] = 'A',
+	[1] = 'B',
+	[2] = 'C',
+	[3] = 'D',
+	[4] = 'E',
+	[5] = 'F',
+	[6] = 'G',
+	[7] = 'H',
+	[8] = 'I',
+	[9] = 'J',
+	[10] = 'K',
+	[11] = 'L',
+	[12] = 'M',
+	[13] = 'N',
+	[14] = 'O',
+	[15] = 'P',
+	[16] = 'Q',
+	[17] = 'R',
+	[18] = 'S',
+	[19] = 'T',
+	[20] = 'U',
+	[21] = 'V',
+	[22] = 'W',
+	[23] = 'X',
+	[24] = 'Y',
+	[25] = 'Z',
+	[26] = 'a',
+	[27] = 'b',
+	[28] = 'c',
+	[29] = 'd',
+	[30] = 'e',
+	[31] = 'f',
+	[32] = 'g',
+	[33] = 'h',
+	[34] = 'i',
+	[35] = 'j',
+	[36] = 'k',
+	[37] = 'l',
+	[38] = 'm',
+	[39] = 'n',
+	[40] = 'o',
+	[41] = 'p',
+	[42] = 'q',
+	[43] = 'r',
+	[44] = 's',
+	[45] = 't',
+	[46] = 'u',
+	[47] = 'v',
+	[48] = 'w',
+	[49] = 'x',
+	[50] = 'y',
+	[51] = 'z'
+};
+
+uint8_t const fr_base64_url_alphabet_decode[UINT8_MAX] = {
+	F32(0, UINT8_MAX), F8(32, UINT8_MAX), F4(40, UINT8_MAX),
+	['-'] = 62,
+	F2(46, UINT8_MAX),
+	['0'] = 52,
+	['1'] = 53,
+	['2'] = 54,
+	['3'] = 55,
+	['4'] = 56,
+	['5'] = 57,
+	['6'] = 58,
+	['7'] = 59,
+	['8'] = 60,
+	['9'] = 61,
+	F4(58, UINT8_MAX), F2(62, UINT8_MAX), F1(64, UINT8_MAX),
+	['A'] = 0,
+	['B'] = 1,
+	['C'] = 2,
+	['D'] = 3,
+	['E'] = 4,
+	['F'] = 5,
+	['G'] = 6,
+	['H'] = 7,
+	['I'] = 8,
+	['J'] = 9,
+	['K'] = 10,
+	['L'] = 11,
+	['M'] = 12,
+	['N'] = 13,
+	['O'] = 14,
+	['P'] = 15,
+	['Q'] = 16,
+	['R'] = 17,
+	['S'] = 18,
+	['T'] = 19,
+	['U'] = 20,
+	['V'] = 21,
+	['W'] = 22,
+	['X'] = 23,
+	['Y'] = 24,
+	['Z'] = 25,
+	F4(91, UINT8_MAX),
+	['_'] = 63,
+	F1(96, UINT8_MAX),
+	['a'] = 26,
+	['b'] = 27,
+	['c'] = 28,
+	['d'] = 29,
+	['e'] = 30,
+	['f'] = 31,
+	['g'] = 32,
+	['h'] = 33,
+	['i'] = 34,
+	['j'] = 35,
+	['k'] = 36,
+	['l'] = 37,
+	['m'] = 38,
+	['n'] = 39,
+	['o'] = 40,
+	['p'] = 41,
+	['q'] = 42,
+	['r'] = 43,
+	['s'] = 44,
+	['t'] = 45,
+	['u'] = 46,
+	['v'] = 47,
+	['w'] = 48,
+	['x'] = 49,
+	['y'] = 50,
+	['z'] = 51,
+	F128(123, UINT8_MAX),
+	F4(251, UINT8_MAX)
 };
 
 /** Base 64 encode binary data
  *
- * Base64 encode IN array of size INLEN into OUT array of size OUTLEN.
+ * Base64 encode in bytes to base64, writing to out.
  *
- * @param[out] out	Where to write Base64 string.
- * @param[in] outlen	size of buffer including NULL byte.
- * @param[in] in	Data to encode.
- * @param[in] inlen	Length of data to encode.
+ * @param[out] out		Where to write Base64 string.
+ * @param[in] in		Data to encode.
+ * @param[in] add_padding	Add padding bytes.
+ * @param[in] alphabet		to use for encoding.
  * @return
  *	- Amount of data we wrote to the buffer.
- *	- -1 if output buffer was too small.
+ *	- <0 the number of bytes we would have needed in the ouput buffer.
  */
-size_t fr_base64_encode(char *out, size_t outlen, uint8_t const *in, size_t inlen)
+ssize_t fr_base64_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in,
+			      bool add_padding, char const alphabet[static UINT8_MAX])
 {
-	char *p = out;
-	size_t need = FR_BASE64_ENC_LENGTH(inlen) + 1;
+	fr_sbuff_t		our_out = FR_SBUFF(out);
+	fr_dbuff_t		our_in = FR_DBUFF(in);
 
-	if (outlen < need) {
-		fr_strerror_printf("Output buffer too small, exected %zu bytes, got %zu bytes", need, outlen);
-		*out = '\0';
-		return -1;
+	fr_strerror_const("Insufficient buffer space");
+
+	for (;;) {
+		uint8_t a, b, c;
+
+		switch (fr_dbuff_extend_lowat(NULL, &our_in, 3)) {
+		/*
+		 *	Enough bytes for a 24bit quanta
+		 */
+		default:
+			a = *fr_dbuff_current(&our_in);
+			b = *(fr_dbuff_current(&our_in) + 1);
+			c = *(fr_dbuff_current(&our_in) + 2);
+			FR_SBUFF_IN_CHAR_RETURN(&our_out,
+						alphabet[(a >> 2) & 0x3f],
+						alphabet[((a << 4) | (b >> 4)) & 0x3f],
+						alphabet[((b << 2) | (c >> 6)) & 0x3f],
+						alphabet[c & 0x3f]);
+			fr_dbuff_advance(&our_in, 3);
+			continue;
+
+		case 2:
+			a = *fr_dbuff_current(&our_in);
+			b = *(fr_dbuff_current(&our_in) + 1);
+			FR_SBUFF_IN_CHAR_RETURN(&our_out,
+						alphabet[(a >> 2) & 0x3f],
+						alphabet[((a << 4) | (b >> 4)) & 0x3f],
+						alphabet[(b << 2) & 0x3f]);
+			fr_dbuff_advance(&our_in, 2);	/* Place at the end */
+			if (add_padding) FR_SBUFF_IN_CHAR_RETURN(&our_out, '=');
+			break;
+
+		case 1:
+			a = *fr_dbuff_current(&our_in);
+			FR_SBUFF_IN_CHAR_RETURN(&our_out,
+						alphabet[(a >> 2) & 0x3f],
+						alphabet[(a << 4) & 0x3f]);
+			fr_dbuff_advance(&our_in, 1);	/* Place at the end */
+			if (add_padding) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "==");
+			break;
+
+		case 0:
+			break;
+		}
+		break;
 	}
 
-	while (inlen) {
-		*p++ = fr_base64_str[(in[0] >> 2) & 0x3f];
-		*p++ = fr_base64_str[((in[0] << 4) + (--inlen ? in[1] >> 4 : 0)) & 0x3f];
-		*p++ = (inlen ? fr_base64_str[((in[1] << 2) + (--inlen ? in[2] >> 6 : 0)) & 0x3f] : '=');
-		*p++ = inlen ? fr_base64_str[in[2] & 0x3f] : '=';
+	fr_strerror_clear();
 
-		if (inlen) inlen--;
-		if (inlen) in += 3;
-	}
-
-	p[0] = '\0';
-
-	return p - out;
-}
-
-/** Check if char is in Base64 alphabet
- *
- * Note that '=' is padding and not considered to be part of the alphabet.
- *
- * @param c char to check.
- * @return
- *	- true if c is a character from the Base64 alphabet.
- *	- false if character is not in the Base64 alphabet.
- */
-bool fr_is_base64(char c)
-{
-	return fr_base64_sextet[us(c)] >= 0;
+	fr_sbuff_terminate(&our_out);	/* Ensure this is terminated, even on zero length input */
+	fr_dbuff_set(in, &our_in);
+	return fr_sbuff_set(out, &our_out);
 }
 
 /* Decode base64 encoded input array.
  *
- * Decode base64 encoded input array IN of length INLEN to output array OUT that
- * can hold *OUTLEN bytes.  Return true if decoding was successful, i.e.
- * if the input was valid base64 data, -1 otherwise.
- *
- * If *OUTLEN is too small, as many bytes as possible will be written to OUT.
- * On return, *OUTLEN holds the length of decoded bytes in OUT.
- *
- * Note that as soon as any non-alphabet characters are encountered,
- * decoding is stopped and -1 is returned.
- *
- * This means that, when applicable, you must remove any line terminators
- * that is part of the data stream before calling this function.
- *
- * @param[out] out	Where to write the decoded data.
- * @param[in] outlen	The length of the output buffer.
- * @param[in] in	Base64 string to decode.
- * @param[in] inlen	length of Base64 string.
+ * @param[out] err		If non-null contains any parse errors.
+ * @param[out] out		Where to write the decoded binary data.
+ * @param[in] in		String to decode.
+ * @param[in] expect_padding	Expect, and advanced past, padding characters '=' at
+ *				the end of the string.  Produce an error if we find
+ *				insufficient padding characters.
+ * @param[in] no_trailing	Error out if we find non-base64 characters
+ *				at the end of the string.
+ * @param[in] alphabet		to use for decoding.
  * @return
  *	- <= 0 on failure.  The offset where the decoding error occurred as a negative integer.
  *	- Length of decoded data.
  */
-ssize_t fr_base64_decode(uint8_t *out, size_t outlen, char const *in, size_t inlen)
+ssize_t	fr_base64_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
+			      bool expect_padding, bool no_trailing, uint8_t const alphabet[static UINT8_MAX])
 {
-	uint8_t		*out_p = out;
-	uint8_t		*out_end = out + outlen;
-	char const	*p = in, *q;
-	char const	*end = p + inlen;
+	fr_sbuff_t		our_in = FR_SBUFF(in);
+	fr_dbuff_t		our_out = FR_DBUFF(out);
+	fr_sbuff_marker_t	m_final;
+	uint8_t			pad;
 
 	/*
 	 *	Process complete 24bit quanta
 	 */
-	while ((end - p) >= 4) {
-		if (!fr_is_base64(p[0]) || !fr_is_base64(p[1]) || !fr_is_base64(p[2]) || !fr_is_base64(p[3])) break;
+	while (fr_sbuff_extend_lowat(NULL, &our_in, 4) >= 4) {
+		char *p = fr_sbuff_current(&our_in);
 
-		/*
-		 *	Check we have enough bytes to write out
-		 *	the 24bit quantum.
-		 */
-		if ((out_end - out_p) <= 3) {
+		if (!fr_is_base64_nstd(p[0], alphabet) ||
+		    !fr_is_base64_nstd(p[1], alphabet) ||
+		    !fr_is_base64_nstd(p[2], alphabet) ||
+		    !fr_is_base64_nstd(p[3], alphabet)) break;
+
+		if (fr_dbuff_in_bytes(&our_out,
+				      ((alphabet[us(p[0])] << 2) | (alphabet[us(p[1])] >> 4)),
+				      ((alphabet[us(p[1])] << 4) & 0xf0) | (alphabet[us(p[2])] >> 2),
+				      ((alphabet[us(p[2])] << 6) & 0xc0) | alphabet[us(p[3])]) != 3) {
 		oob:
-			fr_strerror_printf("Output buffer too small, needed at least %zu bytes", outlen + 1);
-			return p - end;
+			fr_strerror_printf("Output buffer too small, needed at least %zu bytes",
+					   fr_dbuff_used(&our_out) + 1);
+
+			if (err) *err = FR_SBUFF_PARSE_ERROR_OUT_OF_SPACE;
+
+			return -fr_sbuff_used(&our_in);
 		}
 
-		*out_p++ = ((fr_base64_sextet[us(p[0])] << 2) | (fr_base64_sextet[us(p[1])] >> 4));
-		*out_p++ = ((fr_base64_sextet[us(p[1])] << 4) & 0xf0) | (fr_base64_sextet[us(p[2])] >> 2);
-		*out_p++ = ((fr_base64_sextet[us(p[2])] << 6) & 0xc0) | fr_base64_sextet[us(p[3])];
-
-		p += 4;	/* 32bit input -> 24bit output */
+		fr_sbuff_advance(&our_in, 4);
 	}
 
-	q = p;
+	fr_sbuff_marker(&m_final, &our_in);
 
 	/*
 	 *	Find the first non-base64 char
 	 */
-	while ((q < end) && fr_is_base64(*q)) q++;
+	while (fr_sbuff_extend(&our_in) && fr_is_base64_nstd(*fr_sbuff_current(&our_in), alphabet)) {
+		fr_sbuff_advance(&our_in, 1);
+	}
 
-	switch (q - p) {
+	switch (fr_sbuff_behind(&m_final)) {
 	case 0:		/* Final quantum is 24 bits */
+		pad = 0;
 		break;
 
 	case 2:		/* Final quantum is 8 bits */
-		if ((out_end - out_p) < 1) goto oob;
-		*out_p++ = ((fr_base64_sextet[us(p[0])] << 2) | (fr_base64_sextet[us(p[1])] >> 4));
-		p += 2;
+	{
+		char *p = fr_sbuff_current(&m_final);
+
+		if (fr_dbuff_in_bytes(&our_out,
+				      (alphabet[us(p[0])] << 2) | (alphabet[us(p[1])] >> 4)) != 1) goto oob;
+		pad = 2;
+	}
 		break;
 
 	case 3:		/* Final quantum is 16 bits */
-		if ((out_end - out_p) < 2) goto oob;
-		*out_p++ = ((fr_base64_sextet[us(p[0])] << 2) | (fr_base64_sextet[us(p[1])] >> 4));
-		*out_p++ = ((fr_base64_sextet[us(p[1])] << 4) & 0xf0) | (fr_base64_sextet[us(p[2])] >> 2);
-		p += 3;
+	{
+		char *p = fr_sbuff_current(&m_final);
+
+		if (fr_dbuff_in_bytes(&our_out,
+				      ((alphabet[us(p[0])] << 2) | (alphabet[us(p[1])] >> 4)),
+				      ((alphabet[us(p[1])] << 4) & 0xf0) | (alphabet[us(p[2])] >> 2)) != 2) goto oob;
+		pad = 1;
+	}
 		break;
 
 	default:
-		fr_strerror_printf("Invalid base64 padding data");
-		return p - end;
+		fr_strerror_const("Invalid base64 padding data");
+
+	bad_format:
+		if (err) *err = FR_SBUFF_PARSE_ERROR_FORMAT;
+
+		return -fr_sbuff_used(&our_in);
 	}
 
-	while (p < end) {
-		if (*p != '=') {
-			fr_strerror_printf("Found non-padding char '%c' at end of base64 string", *p);
-			return p - end;
+	if (expect_padding) {
+		uint8_t i;
+		for (i = 0; i < pad; i++) {
+			if (!fr_sbuff_extend(&our_in)) {
+				fr_strerror_printf("Missing padding '=' at end of base64 string.  "
+						   "Expected %u padding char(s)", pad);
+				goto bad_format;
+			}
+			if (!fr_sbuff_next_if_char(&our_in, '=')) {
+				fr_strerror_printf("Found non-padding char '%c' at end of base64 string",
+						   *fr_sbuff_current(&our_in));
+				goto bad_format;
+			}
 		}
-		p++;
 	}
 
-	return out_p - out;
+	if (no_trailing && fr_sbuff_extend(&our_in)) {
+		fr_strerror_printf("Found trailing garbage '%c' at end of base64 string",
+				   *fr_sbuff_current(&our_in));
+
+		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
+
+		return -fr_sbuff_used(&our_in);
+	}
+
+	fr_sbuff_set(in, &our_in);
+	return fr_dbuff_set(out, &our_out);
 }

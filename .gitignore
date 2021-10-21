@@ -6,8 +6,6 @@
 *.la
 *.so
 *.lai
-*.bz2
-*.gz
 *.sig
 *.orig
 *.rej
@@ -25,6 +23,7 @@
 *.orig
 *.dSYM
 *.patch
+*.sock
 .pc
 
 # Editor projects
@@ -46,7 +45,8 @@ icon.png
 freeradius-server-*tar*
 
 # Autoconf and libtool output
-build
+build/*
+
 config.status
 *confdefs.h
 *conftest*
@@ -74,3 +74,7 @@ run.sh
 
 # rpm packages
 rpmbuild/
+/install
+
+# fuzzer output files
+crash-*

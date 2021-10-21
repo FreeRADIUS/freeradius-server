@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -15,7 +15,7 @@ VENDOR		Nexans				266
 
 BEGIN-VENDOR	Nexans
 
-ATTRIBUTE	Nexans-Port-Default-VLAN-ID		1	integer
-ATTRIBUTE	Nexans-Port-Voice-VLAN-ID		2	integer
+ATTRIBUTE	Port-Default-VLAN-ID			1	integer
+ATTRIBUTE	Port-Voice-VLAN-ID			2	integer
 
 END-VENDOR      Nexans

@@ -1,0 +1,119 @@
+name: CI FreeBSD
+
+on:
+  push:
+    branches:
+      - ci-debug
+  schedule:
+    - cron: '0 20 * * *'
+
+jobs:
+  freebsd-build:
+
+    runs-on: macos-latest
+
+    name: "FreeBSD build"
+
+    steps:
+
+    # Checkout, but defer pulling LFS objects until we've restored the cache
+    - uses: actions/checkout@v2
+      with:
+        lfs: false
+        path: freeradius
+
+    - name: Create LFS file list as cache key
+      run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+      working-directory: freeradius
+
+    - name: Restore LFS cache
+      uses: actions/cache@v2
+      id: lfs-cache
+      with:
+        path: .git/lfs
+        key: freebsd-lfs-${{ hashFiles('freeradius/.lfs-assets-id') }}-v1
+
+    # Now the LFS pull will be local if we hit the cache, or remote otherwise
+    - name: Git LFS pull
+      run: git lfs pull
+      working-directory: freeradius
+
+    - name: Test using a FreeBSD VirtualBox VM
+      uses: vmactions/freebsd-vm@v0.1.5
+      with:
+        usesh: true
+        sync: sshfs
+        prepare: |
+          pkg install -y         \
+            curl                 \
+            cyrus-sasl           \
+            firebird25-client    \
+            freetds              \
+            git                  \
+            git-lfs              \
+            gmake                \
+            google-perftools     \
+            hiredis              \
+            json-c               \
+            libidn               \
+            libmemcached         \
+            libpcap              \
+            lua52                \
+            luajit               \
+            mysql80-client       \
+            net-snmp             \
+            openldap25-client    \
+            python3              \
+            py38-pip             \
+            postgresql12-client  \
+            talloc               \
+            unixODBC
+          pip install tacacs_plus
+        run: |
+          freebsd-version
+          cd freeradius
+          ./configure
+          gmake -j `sysctl -n hw.ncpu`
+          # Disable some tests that are currently broken on FreeBSD
+          # Failing with: talloc type issue
+          echo                   > src/lib/server/trunk_tests.mk
+          # Failing with: Failed to send packet for ID 123: udp_send failed: EINVAL: Invalid argument
+          echo 'test.radclient:' > src/tests/radclient/all.mk
+          echo 'test.digest:'    > src/tests/digest/all.mk
+          echo 'test.radmin:'    > src/tests/radmin/all.mk
+          gmake test
+
+    #
+    #  If the CI has failed and the branch is ci-debug then we start a tmate
+    #  session to provide interactive shell access to the session.
+    #
+    #  The SSH rendezvous point will be emited continuously in the job output,
+    #  which will look something like:
+    #
+    #      SSH: ssh VfuX8SrNuU5pGPMyZcz7TpJTa@sfo2.tmate.io
+    #
+    #  For example:
+    #
+    #      git push origin ci-debug --force
+    #
+    #  Look at the job output in: https://github.com/FreeRADIUS/freeradius-server/actions
+    #
+    #      ssh VfuX8SrNuU5pGPMyZcz7TpJTa@sfo2.tmate.io
+    #
+    #  Access requires that you have the private key corresponding to the
+    #  public key of the GitHub user that initiated the job.
+    #
+    #  The above will open a shell for the MacOS environment on which the
+    #  FreeBSD VM is running within VirtualBox.
+    #
+    #  Access the FreeBSD VM with:
+    #
+    #      ssh -t freebsd
+    #
+    - name: "Debug: Start tmate"
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
+

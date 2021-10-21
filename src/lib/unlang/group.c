@@ -27,17 +27,9 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "group_priv.h"
 
-#define unlang_policy unlang_group
-
-unlang_action_t unlang_group(REQUEST *request,
-			     UNUSED rlm_rcode_t *result, UNUSED int *priority)
+unlang_action_t unlang_group(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-	unlang_group_t		*g;
-
-	g = unlang_generic_to_group(instruction);
+	unlang_group_t		*g = unlang_generic_to_group(frame->instruction);
 
 	/*
 	 *	The compiler catches most of these, EXCEPT for the
@@ -45,26 +37,49 @@ unlang_action_t unlang_group(REQUEST *request,
 	 *	and can be empty.
 	 */
 	if (!g->children) {
-		RDEBUG2("} # %s ... <ignoring empty subsection>", instruction->debug_name);
+		RDEBUG2("<ignoring empty subsection>");
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}
 
-	unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME);
+	if (unlang_interpret_push(request, g->children, frame->result, UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) {
+		*p_result = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_STOP_PROCESSING;
+	}
+
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
+
+static unlang_action_t unlang_policy(rlm_rcode_t *result, request_t *request, unlang_stack_frame_t *frame)
+{
+	/*
+	 *	Ensure returns stop at the enclosing policy
+	 */
+	return_point_set(frame);
+
+	return unlang_group(result, request, frame);
+}
+
 
 void unlang_group_init(void)
 {
 	unlang_register(UNLANG_TYPE_GROUP,
 			   &(unlang_op_t){
 				.name = "group",
-				.func = unlang_group,
+				.interpret = unlang_group,
+				.debug_braces = true
+			   });
+
+	unlang_register(UNLANG_TYPE_REDUNDANT,
+			   &(unlang_op_t){
+				.name = "redundant",
+				.interpret = unlang_group,
 				.debug_braces = true
 			   });
 
 	unlang_register(UNLANG_TYPE_POLICY,
 			   &(unlang_op_t){
 				.name = "policy",
-				.func = unlang_policy,
+				.interpret = unlang_policy,
+				.debug_braces = true
 			   });
 }

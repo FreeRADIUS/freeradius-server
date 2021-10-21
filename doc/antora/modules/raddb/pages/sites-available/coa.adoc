@@ -1,0 +1,76 @@
+
+Sample virtual server for receiving a CoA or Disconnect-Request packet.
+
+
+Listen on the CoA port.
+
+This uses the normal set of clients, with the same secret as for
+authentication and accounting.
+
+
+
+
+
+Receive a CoA request
+
+Insert your own policies here.
+
+
+Send a CoA ACK
+
+Sample module.
+
+
+Send a CoA NAK
+
+Sample module.
+
+
+Receive a Disconnect request
+
+Insert your own policies here.
+
+
+Send a Disconnect ACK
+
+Sample module.
+
+
+Send a Disconnect NAK
+
+Sample module.
+
+== Default Configuration
+
+```
+server coa {
+	namespace = radius
+	listen {
+		type = CoA-Request
+		type = Disconnect-Request
+		transport = udp
+		udp {
+			ipaddr = *
+			port = 3799
+		}
+	}
+	recv CoA-Request {
+		ok
+	}
+	send CoA-ACK {
+		ok
+	}
+	send CoA-NAK {
+		ok
+	}
+	recv Disconnect-Request {
+		ok
+	}
+	send Disconnect-ACK {
+		ok
+	}
+	send Disconnect-NAK {
+		ok
+	}
+}
+```

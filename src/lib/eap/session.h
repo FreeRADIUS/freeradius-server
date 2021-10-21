@@ -1,6 +1,6 @@
 #pragma once
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -23,6 +23,7 @@
  * @copyright 2019 The FreeRADIUS server project
  */
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/request_data.h>
 #include <freeradius-devel/server/module.h>
 
 #include "compose.h"
@@ -41,10 +42,13 @@ struct eap_session_s {
 
 	eap_session_t	*child;				//!< Session for tunneled EAP method.
 
+	request_t	*subrequest;			//!< Current subrequest being executed.
+	rlm_rcode_t	submodule_rcode;		//!< Result of last submodule call.
+
 	void const	*inst;				//!< Instance of the eap module this session was created by.
 	eap_type_t	type;				//!< EAP method number.
 
-	REQUEST		*request;			//!< Current request.  Only used by OpenSSL callbacks to
+	request_t	*request;			//!< Current request.  Only used by OpenSSL callbacks to
 							///< access the current request.  Must be NULL if eap_session
 							///< is not being processed by rlm_eap.
 
@@ -57,13 +61,11 @@ struct eap_session_s {
 
 	void 		*opaque;			//!< Opaque data used by EAP methods.
 
-	rlm_rcode_t	submodule_rcode;		//!< Result of last submodule call.
-
 	module_method_t	process;			//!< Callback that should be used to process the next round.
 							///< Usually set to the process function of an EAP submodule.
 	int		rounds;				//!< How many roundtrips have occurred this session.
 
-	time_t		updated;			//!< The last time we received a packet for this EAP session.
+	fr_time_t	updated;			//!< The last time we received a packet for this EAP session.
 
 	bool		tls;				//!< Whether EAP method uses TLS.
 	bool		finished;			//!< Whether we consider this session complete.
@@ -73,11 +75,11 @@ void		eap_session_destroy(eap_session_t **eap_session);
 
 void		eap_session_freeze(eap_session_t **eap_session);
 
-eap_session_t	*eap_session_thaw(REQUEST *request);
+eap_session_t	*eap_session_thaw(request_t *request);
 
-eap_session_t 	*eap_session_continue(void *instance, eap_packet_raw_t **eap_packet, REQUEST *request) CC_HINT(nonnull);
+eap_session_t 	*eap_session_continue(void const *instance, eap_packet_raw_t **eap_packet, request_t *request) CC_HINT(nonnull);
 
-static inline eap_session_t *eap_session_get(REQUEST *request)
+static inline eap_session_t *eap_session_get(request_t *request)
 {
 	return request_data_reference(request, NULL, REQUEST_DATA_EAP_SESSION);
 }

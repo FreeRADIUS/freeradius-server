@@ -32,6 +32,16 @@ if (&Tmp-String-2[0] != 'bar') {
 }
 
 #
+#  Multiple things in an alternation
+#
+update request {
+	&Tmp-String-2 := "%{%{Tmp-String-0[0]}:-%{Tmp-String-1[0]} foo}"
+}
+if (&Tmp-String-2[0] != 'bar foo') {
+	fail
+}
+
+#
 #  Everything null
 #
 update request {

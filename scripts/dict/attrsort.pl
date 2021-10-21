@@ -11,77 +11,86 @@
 #  $Id$
 #
 
+use strict;
+use warnings;
+
+my %attributes;
+my %values;
+my %name2val;
+
 while (<>) {
     #
     #  Get attribute.
     #
     if (/^ATTRIBUTE\s+([\w-]+)\s+(\w+)\s+(\w+)(.*)/) {
-	$name=$1;
-	$value = $2;
-	$type = $3;
-	$stuff = $4;
+        my $name=$1;
+        my $value = $2;
+        my $type = $3;
+        my $stuff = $4;
 
-	$value =~ tr/[A-F]/[a-f]/; # normal form for hex
-	$value =~ tr/X/x/;
+        $value =~ tr/[A-F]/[a-f]/; # normal form for hex
+        $value =~ tr/X/x/;
 
-	if ($value =~ /^0x/) {
-	    $index = hex $value;
-	} else {
-	    $index = $value;
-	}
+        my $index;
+        if ($value =~ /^0x/) {
+            $index = hex $value;
+        } else {
+            $index = $value;
+        }
 
-	$attributes{$index} = "$name $value $type$stuff";
-	$name2val{$name} = $index;
-	next;
+        $attributes{$index} = "$name $value $type$stuff";
+        $name2val{$name} = $index;
+        next;
     }
 
     #
     #  Values.
     #
-    if (/^VALUE\s+([\w-]+)\s+([\w-\/,.]+)\s+(\w+)(.*)/) {
-	$attr = $1;
-	$name = $2;
-	$value = $3;
-	$stuff = $d;
+    if (/^VALUE\s+([\w-]+)\s+([\w\/,.-]+)\s+(\w+)(.*)/) {
+        my $attr = $1;
+        my $name = $2;
+        my $value = $3;
+        my $stuff = '';
 
-	$value =~ tr/[A-F]/[a-f]/; # normal form for hex
-	$value =~ tr/X/x/;
+        $value =~ tr/[A-F]/[a-f]/; # normal form for hex
+        $value =~ tr/X/x/;
 
-	if ($value =~ /^0x/) {
-	    $index = hex $value;
-	} else {
-	    $index = $value;
-	}
+        my $index;
+        if ($value =~ /^0x/) {
+            $index = hex $value;
+        } else {
+            $index = $value;
+        }
 
-	if (!defined $name2val{$attr}) {
-	    print "# FIXME: FORWARD REF?\nVALUE $attr $name $value$stuff\n";
-	    next;
-	}
+        if (!defined $name2val{$attr}) {
+            print "# FIXME: FORWARD REF?\nVALUE $attr $name $value$stuff\n";
+            next;
+        }
 
-	$values{$name2val{$attr}}{$index} = "$attr $name $value$stuff";
-	next;
+        $values{$name2val{$attr}}{$index} = "$attr $name $value$stuff";
+        next;
     }
 }
 
 #
 #  Print out the attributes sorted by number.
 #
-foreach $attr_val (sort {$a <=> $b} keys %attributes) {
+foreach my $attr_val (sort {$a <=> $b} keys %attributes) {
     print "ATTRIBUTE ", $attributes{$attr_val}, "\n";
 }
 
-foreach $value (sort {$a <=> $b} keys %values) {
+foreach my $value (sort {$a <=> $b} keys %values) {
     print $value, "\t", $attributes{$value}, "\n";
 }
 
 #
 #  And again, this time printing out values.
 #
-foreach $attr_val (sort {$a <=> $b} keys %attributes) {
+foreach my $attr_val (sort {$a <=> $b} keys %attributes) {
 
-    next if (!defined %{$values{$attr_val}});
+    next if (!defined $values{$attr_val});
 
-    foreach $value (sort {$a <=> $b} keys %{$values{$attr_val}}) {
-	print "VALUE ", $values{$attr_val}{$value}, "\n";
+    foreach my $value (sort {$a <=> $b} keys %{$values{$attr_val}}) {
+        print "VALUE ", $values{$attr_val}{$value}, "\n";
     }
 }

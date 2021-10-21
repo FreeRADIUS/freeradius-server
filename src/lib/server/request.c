@@ -25,111 +25,114 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/base.h>
 
-/** Per-request opaque data, added by modules
- *
- */
-struct request_data_t {
-	fr_dlist_t	list;			//!< Next opaque request data struct linked to this request.
+static request_init_args_t	default_args;
 
-	void const	*unique_ptr;		//!< Key to lookup request data.
-	int		unique_int;		//!< Alternative key to lookup request data.
-	char const	*type;			//!< Opaque type e.g. VALUE_PAIR, fr_dict_attr_t etc...
-	void		*opaque;		//!< Opaque data.
-	bool		free_on_replace;	//!< Whether to talloc_free(opaque) when the request data is removed.
-	bool		free_on_parent;		//!< Whether to talloc_free(opaque) when the request is freed
-	bool		persist;		//!< Whether this data should be transfered to a session_entry_t
-						//!< after we're done processing this request.
+static fr_dict_t const *dict_freeradius;
+
+extern fr_dict_autoload_t request_dict[];
+fr_dict_autoload_t request_dict[] = {
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
 };
 
-/** Callback for freeing a request struct
+fr_dict_attr_t const *request_attr_root;
+fr_dict_attr_t const *request_attr_request;
+fr_dict_attr_t const *request_attr_reply;
+fr_dict_attr_t const *request_attr_control;
+fr_dict_attr_t const *request_attr_state;
+
+extern fr_dict_attr_autoload_t request_dict_attr[];
+fr_dict_attr_autoload_t request_dict_attr[] = {
+	{ .out = &request_attr_root, .name = "root", .type = FR_TYPE_GROUP, .dict = &dict_freeradius },
+	{ .out = &request_attr_request, .name = "request", .type = FR_TYPE_GROUP, .dict = &dict_freeradius },
+	{ .out = &request_attr_reply, .name = "reply", .type = FR_TYPE_GROUP, .dict = &dict_freeradius },
+	{ .out = &request_attr_control, .name = "control", .type = FR_TYPE_GROUP, .dict = &dict_freeradius },
+	{ .out = &request_attr_state, .name = "session-state", .type = FR_TYPE_GROUP, .dict = &dict_freeradius },
+	{ NULL }
+};
+
+/** The thread local free list
  *
+ * Any entries remaining in the list will be freed when the thread is joined
  */
-static int _request_free(REQUEST *request)
-{
-	rad_assert(!request->ev);
+static _Thread_local fr_dlist_head_t *request_free_list; /* macro */
 
 #ifndef NDEBUG
-	request->magic = 0x01020304;	/* set the request to be nonsense */
+static int _state_ctx_free(fr_pair_t *state)
+{
+	DEBUG4("state-ctx %p freed", state);
+
+	return 0;
+}
 #endif
-	request->client = NULL;
-#ifdef WITH_PROXY
-	request->proxy = NULL;
-#endif
+
+static inline void CC_HINT(always_inline) request_log_init_orphan(request_t *request)
+{
+	/*
+	 *	These may be changed later by request_pre_handler
+	 */
+	request->log.lvl = fr_debug_lvl;	/* Default to global debug level */
+	if (!request->log.dst) {
+		request->log.dst = talloc_zero(request, log_dst_t);
+	} else {
+		memset(request->log.dst, 0, sizeof(*request->log.dst));
+	}
+	request->log.dst->func = vlog_request;
+	request->log.dst->uctx = &default_log;
+}
+
+static inline void CC_HINT(always_inline) request_log_init_child(request_t *child, request_t const *parent)
+{
+	/*
+	 *	Copy debug information.
+	 */
+	memcpy(&(child->log), &(parent->log), sizeof(child->log));
+	child->log.unlang_indent = 0;	/* Apart from the indent which we reset */
+	child->log.module_indent = 0;	/* Apart from the indent which we reset */
+	child->log.lvl = parent->log.lvl;
+}
+
+static inline void CC_HINT(always_inline) request_log_init_detachable(request_t *child, request_t const *parent)
+{
+	request_log_init_child(child, parent);
 
 	/*
-	 *	This is parented separately.
-	 *
-	 *	The reason why it's OK to do this, is if the state attributes
-	 *	need to persist across requests, they will already have been
-	 *	moved to a fr_state_entry_t, with the state pointers in the
-	 *	request being set to NULL, before the request is freed.
+	 *	Ensure that we use our own version of the logging
+	 *	information, and not the original request one.
 	 */
-	if (request->state_ctx) TALLOC_FREE(request->state_ctx);
+	child->log.dst = talloc_zero(child, log_dst_t);
+	memcpy(child->log.dst, parent->log.dst, sizeof(*child->log.dst));
+}
 
-	talloc_free_children(request);
+static inline CC_HINT(always_inline) int request_detachable_init(request_t *child, request_t *parent)
+{
+	/*
+	 *	Associate the child with the parent, using the child's
+	 *	pointer as a unique identifier.  Free it if the parent
+	 *	goes away, but don't persist it across
+	 *	challenge-response boundaries.
+	 */
+	if (request_data_talloc_add(parent, child, 0, request_t, child, true, true, false) < 0) return -1;
 
 	return 0;
 }
 
-/** Create a new REQUEST data structure
- *
- */
-REQUEST *request_alloc(TALLOC_CTX *ctx)
+static inline CC_HINT(always_inline) int request_child_init(request_t *child, request_t *parent)
 {
-	REQUEST *request;
+	child->number = parent->child_number++;
+	if (!child->dict) child->dict = parent->dict;
 
-	request = talloc_zero(ctx, REQUEST);
-	if (!request) return NULL;
-	talloc_set_destructor(request, _request_free);
-#ifndef NDEBUG
-	request->magic = REQUEST_MAGIC;
-#endif
-#ifdef WITH_PROXY
-	request->proxy = NULL;
-#endif
-	request->reply = NULL;
-	request->control = NULL;
-
-	/*
-	 *	These may be changed later by request_pre_handler
-	 */
-	request->log.lvl = req_debug_lvl;	/* Default to global debug level */
-	request->log.dst = talloc_zero(request, log_dst_t);
-	request->log.dst->func = vlog_request;
-	request->log.dst->uctx = &default_log;
-
-	request->module = NULL;
-	request->component = "<core>";
-
-	MEM(request->stack = unlang_interpret_stack_alloc(request));
-
-	request->runnable_id = -1;
-	request->time_order_id = -1;
-
-	request->state_ctx = talloc_init("session-state");
-
-	/*
-	 *	Initialise the request data list
-	 */
-	fr_dlist_talloc_init(&request->data, request_data_t, list);
-
-	return request;
-}
-
-static REQUEST *request_init_fake(REQUEST *request, REQUEST *fake)
-{
-	fake->number = request->child_number++;
-	fake->name = talloc_typed_asprintf(fake, "%s.%" PRIu64 , request->name, fake->number);
-
-	fake->seq_start = 0;	/* children always start with their own sequence */
-
-	fake->parent = request;
-	fake->dict = request->dict;
-	fake->config = request->config;
-	fake->client = request->client;
+	if ((parent->seq_start == 0) || (parent->number == parent->seq_start)) {
+		child->name = talloc_typed_asprintf(child, "%s.%" PRIu64, parent->name, child->number);
+	} else {
+		child->name = talloc_typed_asprintf(child, "(%s,%" PRIu64 ").%" PRIu64,
+						   parent->name, parent->seq_start, child->number);
+	}
+	child->seq_start = 0;	/* children always start with their own sequence */
+	child->parent = parent;
 
 	/*
 	 *	For new server support.
@@ -138,694 +141,545 @@ static REQUEST *request_init_fake(REQUEST *request, REQUEST *fake)
 	 *
 	 *	FIXME: Permit different servers for inner && outer sessions?
 	 */
-	fake->server_cs = request->server_cs;
-
-	fake->packet = fr_radius_alloc(fake, true);
-	if (!fake->packet) {
-		talloc_free(fake);
-		return NULL;
+	child->packet = fr_radius_packet_alloc(child, true);
+	if (!child->packet) {
+		talloc_free(child);
+		return -1;
 	}
 
-	fake->reply = fr_radius_alloc(fake, false);
-	if (!fake->reply) {
-		talloc_free(fake);
-		return NULL;
+	child->reply = fr_radius_packet_alloc(child, false);
+	if (!child->reply) {
+		talloc_free(child);
+		return -1;
 	}
 
-	fake->master_state = REQUEST_ACTIVE;
-
-	/*
-	 *	Fill in the fake request.
-	 */
-	fake->packet->sockfd = -1;
-	fake->packet->src_ipaddr = request->packet->src_ipaddr;
-	fake->packet->src_port = request->packet->src_port;
-	fake->packet->dst_ipaddr = request->packet->dst_ipaddr;
-	fake->packet->dst_port = 0;
-
-	/*
-	 *	This isn't STRICTLY required, as the fake request MUST NEVER
-	 *	be put into the request list.  However, it's still reasonable
-	 *	practice.
-	 */
-	fake->packet->id = fake->number & 0xff;
-	fake->packet->code = request->packet->code;
-	fake->packet->timestamp = request->packet->timestamp;
-
-	/*
-	 *	Required for new identity support
-	 */
-	fake->listener = request->listener;
-
-	/*
-	 *	Fill in the fake reply, based on the fake request.
-	 */
-	fake->reply->sockfd = fake->packet->sockfd;
-	fake->reply->src_ipaddr = fake->packet->dst_ipaddr;
-	fake->reply->src_port = fake->packet->dst_port;
-	fake->reply->dst_ipaddr = fake->packet->src_ipaddr;
-	fake->reply->dst_port = fake->packet->src_port;
-	fake->reply->id = fake->packet->id;
-	fake->reply->code = 0; /* UNKNOWN code */
-
-	/*
-	 *	Copy debug information.
-	 */
-	memcpy(&(fake->log), &(request->log), sizeof(fake->log));
-	fake->log.unlang_indent = 0;	/* Apart from the indent which we reset */
-	fake->log.module_indent = 0;	/* Apart from the indent which we reset */
-
-	return fake;
+	return 0;
 }
 
-
-/*
- *	Create a new REQUEST, based on an old one.
+/** Setup logging and other fields for a request
  *
- *	This function allows modules to inject fake requests
- *	into the server, for tunneled protocols like TTLS & PEAP.
+ * @param[in] file		the request was allocated in.
+ * @param[in] line		the request was allocated on.
+ * @param[in] request		to (re)-initialise.
+ * @param[in] type		of request to initialise.
+ * @param[in] args		Other optional arguments.
  */
-REQUEST *request_alloc_fake(REQUEST *request, fr_dict_t const *namespace)
+static inline CC_HINT(always_inline) int request_init(char const *file, int line,
+						      request_t *request, request_type_t type,
+						      request_init_args_t const *args)
 {
-	REQUEST *fake;
 
-	fake = request_alloc(request);
-	if (!fake) return NULL;
+	/*
+	 *	Sanity checks for different requests types
+	 */
+	switch (type) {
+	case REQUEST_TYPE_EXTERNAL:
+		if (!fr_cond_assert_msg(!args->parent, "External requests must NOT have a parent")) return -1;
+		break;
 
-	if (!request_init_fake(request, fake)) return NULL;
+	case REQUEST_TYPE_INTERNAL:
+		break;
 
-	if (namespace) fake->dict = namespace;
+	case REQUEST_TYPE_DETACHED:
+		fr_assert_fail("Detached requests should start as type == REQUEST_TYPE_INTERNAL, "
+			       "args->detachable and be detached later");
+		return -1;
+	}
 
-	return fake;
+	*request = (request_t){
+#ifndef NDEBUG
+		.magic = REQUEST_MAGIC,
+#endif
+		.type = type,
+		.master_state = REQUEST_ACTIVE,
+		.dict = args->namespace,
+		.component = "<pre-core>",
+		.flags = {
+			.detachable = args->detachable
+		},
+		.alloc_file = file,
+		.alloc_line = line
+	};
+
+
+	/*
+	 *	Initialise the stack
+	 */
+	MEM(request->stack = unlang_interpret_stack_alloc(request));
+
+	/*
+	 *	Initialise the request data list
+	 */
+	request_data_list_init(&request->data);
+
+	{
+		fr_pair_t *vp = NULL, *pair_root;
+
+		/*
+		 *	Alloc the pair root this is a
+		 *	special pair which does not
+		 *	free its children when it is
+		 *	freed.
+		 */
+		pair_root = fr_pair_root_afrom_da(request, request_attr_root);
+		if (unlikely(!pair_root)) return -1;
+		request->pair_root = pair_root;
+
+		/*
+		 *	Copy all the pair lists over into
+		 *	the request.  We then check for
+		 *	the any uninitialised lists and
+		 *	create them locally.
+		 */
+		memcpy(&request->pair_list, &args->pair_list, sizeof(request->pair_list));
+
+#define list_init(_ctx, _list) \
+	do { \
+		vp = fr_pair_afrom_da(_ctx, request_attr_##_list); \
+		if (unlikely(!vp)) { \
+			talloc_free(pair_root); \
+			memset(&request->pair_list, 0, sizeof(request->pair_list)); \
+			return -1; \
+		} \
+		fr_pair_append(&pair_root->children, vp); \
+		request->pair_list._list = vp; \
+	} while(0)
+
+		if (!request->pair_list.request) list_init(request->pair_root, request);
+		if (!request->pair_list.reply) list_init(request->pair_root, reply);
+		if (!request->pair_list.control) list_init(request->pair_root, control);
+		if (!request->pair_list.state) {
+			list_init(NULL, state);
+#ifndef NDEBUG
+			talloc_set_destructor(request->pair_list.state, _state_ctx_free);
+#endif
+		}
+	}
+
+	/*
+	 *	Initialise packets and additional
+	 *	fields if this is going to be a
+	 *	child request.
+	 */
+	if (args->parent) {
+		if (request_child_init(request, args->parent) < 0) return -1;
+
+		if (args->detachable) {
+			if (request_detachable_init(request, args->parent) < 0) return -1;
+			request_log_init_detachable(request, args->parent);
+		} else {
+			request_log_init_child(request, args->parent);
+		}
+	} else {
+		request_log_init_orphan(request);
+	}
+	return 0;
 }
 
-/** Allocate a fake request which is detachable from the parent.
- * i.e. if the parent goes away, sometimes the child MAY continue to
- * run.
+/** Callback for freeing a request struct
+ *
+ * @param[in] request		to free or return to the free list.
+ * @return
+ *	- 0 in the request was freed.
+ *	- -1 if the request was inserted into the free list.
+ */
+static int _request_free(request_t *request)
+{
+	fr_assert_msg(!fr_heap_entry_inserted(request->time_order_id),
+		      "alloced %s:%i: %s still in the time_order heap ID %i",
+		      request->alloc_file,
+		      request->alloc_line,
+		      request->name ? request->name : "(null)", request->time_order_id);
+	fr_assert_msg(!fr_heap_entry_inserted(request->runnable_id),
+		      "alloced %s:%i: %s still in the runnable heap ID %i",
+		      request->alloc_file,
+		      request->alloc_line,
+		      request->name ? request->name : "(null)", request->runnable_id);
+
+	RDEBUG3("Request freed (%p)", request);
+
+	/*
+	 *	Reinsert into the free list if it's not already
+	 *	in the free list.
+	 *
+	 *	If it *IS* already in the free list, then free it.
+	 */
+	if (unlikely(fr_dlist_entry_in_list(&request->free_entry))) {
+		fr_dlist_entry_unlink(&request->free_entry);	/* Don't trust the list head to be available */
+		goto really_free;
+	}
+
+	/*
+	 *	We keep a buffer of <active> + N requests per
+	 *	thread, to avoid spurious allocations.
+	 */
+	if (fr_dlist_num_elements(request_free_list) <= 256) {
+		fr_dlist_head_t		*free_list;
+
+		if (request->session_state_ctx) {
+			fr_assert(talloc_parent(request->session_state_ctx) != request);	/* Should never be directly parented */
+			TALLOC_FREE(request->session_state_ctx);				/* Not parented from the request */
+		}
+		free_list = request_free_list;
+
+		/*
+		 *	Reinitialise the request
+		 */
+		talloc_free_children(request);
+
+		memset(request, 0, sizeof(*request));
+		request->component = "free_list";
+#ifndef NDEBUG
+		/*
+		 *	So we don't trip heap asserts
+		 *	if the request is freed out of
+		 *	the free list.
+		 */
+		request->time_order_id = 0;
+		request->runnable_id = 0;
+#endif
+
+		/*
+		 *	Reinsert into the free list
+		 */
+		fr_dlist_insert_head(free_list, request);
+		request_free_list = free_list;
+
+		return -1;	/* Prevent free */
+ 	}
+
+
+	/*
+	 *	Ensure anything that might reference the request is
+	 *	freed before it is.
+	 */
+	talloc_free_children(request);
+
+really_free:
+	/*
+	 *	state_ctx is parented separately.
+	 */
+	if (request->session_state_ctx) TALLOC_FREE(request->session_state_ctx);
+
+#ifndef NDEBUG
+	request->magic = 0x01020304;	/* set the request to be nonsense */
+#endif
+
+	return 0;
+}
+
+/** Free any free requests when the thread is joined
  *
  */
-REQUEST *request_alloc_detachable(REQUEST *request, fr_dict_t const *namespace)
+static void _request_free_list_free_on_exit(void *arg)
 {
-	REQUEST *fake;
-
-	fake = request_alloc(NULL);
-	if (!fake) return NULL;
-
-	if (!request_init_fake(request, fake)) return NULL;
-
-	if (namespace) fake->dict = namespace;
+	fr_dlist_head_t *list = talloc_get_type_abort(arg, fr_dlist_head_t);
+	request_t		*request;
 
 	/*
-	 *	Ensure that we use our own version of the logging
-	 *	information, and not the original request one.
+	 *	See the destructor for why this works
 	 */
-	fake->log.dst = talloc_zero(fake, log_dst_t);
-	memcpy(fake->log.dst, request->log.dst, sizeof(*fake->log.dst));
+	while ((request = fr_dlist_head(list))) talloc_free(request);
+	talloc_free(list);
+}
+
+static inline CC_HINT(always_inline) request_t *request_alloc_pool(TALLOC_CTX *ctx)
+{
+	request_t *request;
 
 	/*
-	 *	Associate the child with the parent, using the child's
-	 *	pointer as a unique identifier.  Free it if the parent
-	 *	goes away, but don't persist it across
-	 *	challenge-response boundaries.
+	 *	Only allocate requests in the NULL
+	 *	ctx.  There's no scenario where it's
+	 *	appropriate to allocate them in a
+	 *	pool, and using a strict talloc
+	 *	hierarchy means that child requests
+	 *	cannot be returned to a free list
+	 *	and would have to be freed.
 	 */
-	if (request_data_talloc_add(request, fake, 0, REQUEST, fake, true, true, false) < 0) {
-		talloc_free(fake);
+	MEM(request = talloc_pooled_object(ctx, request_t,
+					   1 + 					/* Stack pool */
+					   UNLANG_STACK_MAX + 			/* Stack Frames */
+					   2 + 					/* packets */
+					   10,					/* extra */
+					   (UNLANG_FRAME_PRE_ALLOC * UNLANG_STACK_MAX) +	/* Stack memory */
+					   (sizeof(fr_pair_t) * 5) +		/* pair lists and root*/
+					   (sizeof(fr_radius_packet_t) * 2) +	/* packets */
+					   128					/* extra */
+					   ));
+	fr_assert(ctx != request);
+
+	return request;
+}
+
+/** Create a new request_t data structure
+ *
+ * @param[in] file	where the request was allocated.
+ * @param[in] line	where the request was allocated.
+ * @param[in] ctx	to bind the request to.
+ * @param[in] type	what type of request to alloc.
+ * @param[in] args	Optional arguments.
+ * @return
+ *	- A request on success.
+ *	- NULL on error.
+ */
+request_t *_request_alloc(char const *file, int line, TALLOC_CTX *ctx,
+			  request_type_t type, request_init_args_t const *args)
+{
+	request_t		*request;
+	fr_dlist_head_t		*free_list;
+
+	if (!args) args = &default_args;
+
+	/*
+	 *	Setup the free list, or return the free
+	 *	list for this thread.
+	 */
+	if (unlikely(!request_free_list)) {
+		MEM(free_list = talloc(NULL, fr_dlist_head_t));
+		fr_dlist_init(free_list, request_t, free_entry);
+		fr_atexit_thread_local(request_free_list, _request_free_list_free_on_exit, free_list);
+	} else {
+		free_list = request_free_list;
+	}
+
+	request = fr_dlist_head(free_list);
+	if (!request) {
+		/*
+		 *	Must be allocated with in the NULL ctx
+		 *	as chunk is returned to the free list.
+		 */
+		request = request_alloc_pool(NULL);
+		talloc_set_destructor(request, _request_free);
+	} else {
+		/*
+		 *	Remove from the free list, as we're
+		 *	about to use it!
+		 */
+		fr_dlist_remove(free_list, request);
+	}
+
+	if (request_init(file, line, request, type, args) < 0) {
+		talloc_free(request);
 		return NULL;
 	}
 
-	return fake;
+	/*
+	 *	Initialise entry in free list
+	 */
+	fr_dlist_entry_init(&request->free_entry);	/* Needs to be initialised properly, else bad things happen */
+
+	/*
+	 *	Bind lifetime to a parent.
+	 *
+	 *	If the parent is freed the destructor
+	 *	will fire, and return the request
+	 *	to a "top level" free list.
+	 */
+	if (ctx) talloc_link_ctx(ctx, request);
+
+	return request;
+}
+
+static int _request_local_free(request_t *request)
+{
+	/*
+	 *	Ensure anything that might reference the request is
+	 *	freed before it is.
+	 */
+	talloc_free_children(request);
+
+	/*
+	 *	state_ctx is parented separately.
+	 *
+	 *	The reason why it's OK to do this, is if the state attributes
+	 *	need to persist across requests, they will already have been
+	 *	moved to a fr_state_entry_t, with the state pointers in the
+	 *	request being set to NULL, before the request is freed/
+	 *
+	 *	Note also that we do NOT call TALLOC_FREE(), which
+	 *	sets state_ctx=NULL.  We don't control the order in
+	 *	which talloc frees the children.  And the parents
+	 *	state_ctx pointer needs to stick around so that all of
+	 *	the children can check it.
+	 *
+	 *	If this assertion hits, it means that someone didn't
+	 *	call fr_state_store_in_parent()
+	 */
+	if (request->session_state_ctx) {
+		fr_assert(!request->parent || (request->session_state_ctx != request->parent->session_state_ctx));
+
+		talloc_free(request->session_state_ctx);
+	}
+
+#ifndef NDEBUG
+	request->magic = 0x01020304;	/* set the request to be nonsense */
+#endif
+
+	return 0;
+}
+
+/** Allocate a request that's not in the free list
+ *
+ * This can be useful if modules need a persistent request for their own purposes
+ * which needs to be outside of the normal free list, so that it can be freed
+ * when the module requires, not when the thread destructor runs.
+ */
+request_t *_request_local_alloc(char const *file, int line, TALLOC_CTX *ctx,
+				request_type_t type, request_init_args_t const *args)
+{
+	request_t *request;
+
+	if (!args) args = &default_args;
+
+	request = request_alloc_pool(ctx);
+	if (request_init(file, line, request, type, args) < 0) return NULL;
+
+	talloc_set_destructor(request, _request_local_free);
+
+	return request;
 }
 
 /** Unlink a subrequest from its parent
  *
  * @note This should be used for requests in preparation for freeing them.
  *
- * @param[in] fake		request to unlink.
- * @param[in] will_free		Caller super pinky swears to free
- *				the request ASAP, and that it wont
- *				touch persistable request data,
- *				request->state_ctx or request->state.
+ * @param[in] child		request to unlink.
  * @return
  *	 - 0 on success.
  *	 - -1 on failure.
  */
-int request_detach(REQUEST *fake, bool will_free)
+int request_detach(request_t *child)
 {
-	REQUEST		*request = fake->parent;
+	request_t	*request = child->parent;
 
-	rad_assert(request != NULL);
+	/*
+	 *	Already detached or not detachable
+	 */
+	if (request_is_detached(child)) return 0;
+
+	if (!request_is_detachable(child)) {
+		fr_strerror_const("Request is not detachable");
+		return -1;
+	}
 
 	/*
 	 *	Unlink the child from the parent.
 	 */
-	request_data_get(request, fake, 0);
+	request_data_get(request, child, 0);
+
+	child->parent = NULL;
 
 	/*
-	 *	Fixup any sate or persistent
-	 *	request data.
+	 *	Request is now detached
 	 */
-	fr_state_detach(fake, will_free);
-
-	fake->parent = NULL;
-
-	while (!request->backlog) {
-		rad_assert(request->parent != NULL);
-		request = request->parent;
-	}
-
-	fake->backlog = request->backlog;
+	child->type = REQUEST_TYPE_DETACHED;
 
 	return 0;
 }
 
-/* Initialise a dlist for storing request data
- *
- * @param[in] list to initialise.
- */
-void request_data_list_init(fr_dlist_head_t *data)
+int request_global_init(void)
 {
-	fr_dlist_talloc_init(data, request_data_t, list);
-}
-
-/** Ensure opaque data is freed by binding its lifetime to the request_data_t
- *
- * @param rd	Request data being freed.
- * @return
- *	- 0 if free on parent is false or there's no opaque data.
- *	- ...else whatever the destructor for the opaque data returned.
- */
-static int _request_data_free(request_data_t *rd)
-{
-	if (rd->free_on_parent && rd->opaque) {
-		int ret;
-
-		DEBUG4("%s: Freeing request data %s%s%p at %p:%i via destructor",
-			__FUNCTION__,
-			rd->type ? rd->type : "", rd->type ? " " : "",
-		       rd->opaque, rd->unique_ptr, rd->unique_int);
-		ret = talloc_free(rd->opaque);
-		rd->opaque = NULL;
-
-		return ret;
+	if (fr_dict_autoload(request_dict) < 0) {
+		PERROR("%s", __FUNCTION__);
+		return -1;
 	}
-	return 0;
-}
-
-/** Add opaque data to a REQUEST
- *
- * The unique ptr is meant to be a module configuration, and the unique
- * integer allows the caller to have multiple opaque data associated with a REQUEST.
- *
- * @param[in] request		to associate data with.
- * @param[in] unique_ptr	Identifier for the data.
- * @param[in] unique_int	Qualifier for the identifier.
- * @param[in] type		Type of data (if talloced)
- * @param[in] opaque		Data to associate with the request.  May be NULL.
- * @param[in] free_on_replace	Free opaque data if this request_data is replaced.
- * @param[in] free_on_parent	Free opaque data if the request is freed.
- *				Must not be set if the opaque data is also parented by
- *				the request or state (double free).
- * @param[in] persist		Transfer request data to an #fr_state_entry_t, and
- *				add it back to the next request we receive for the
- *				session.
- * @return
- *	- -2 on bad arguments.
- *	- -1 on memory allocation error.
- *	- 0 on success.
- */
-int _request_data_add(REQUEST *request, void const *unique_ptr, int unique_int, char const *type, void *opaque,
-		      bool free_on_replace, bool free_on_parent, bool persist)
-{
-	request_data_t	*rd = NULL;
-
-	/*
-	 *	Request must have a state ctx
-	 */
-	rad_assert(request);
-	rad_assert(!persist || request->state_ctx);
-	rad_assert(!persist ||
-		   (talloc_parent(opaque) == request->state_ctx) ||
-		   (talloc_parent(opaque) == talloc_null_ctx()));
-	rad_assert(!free_on_parent || (talloc_parent(opaque) != request));
-
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
-	if (type) opaque = _talloc_get_type_abort(opaque, type, __location__);
-#endif
-
-	while ((rd = fr_dlist_next(&request->data, rd))) {
-		if ((rd->unique_ptr != unique_ptr) || (rd->unique_int != unique_int)) continue;
-
-		fr_dlist_remove(&request->data, rd);	/* Unlink from the list */
-
-		/*
-		 *	If caller requires custom behaviour on free
-		 *	they must set a destructor.
-		 */
-		if (rd->free_on_replace && rd->opaque) {
-			RDEBUG4("%s: Freeing %s%s%p at %p:%i via replacement",
-				__FUNCTION__,
-				rd->type ? rd->type : "", rd->type ? " " : "",
-				rd->opaque, rd->unique_ptr, rd->unique_int);
-			talloc_free(rd->opaque);
-		}
-		/*
-		 *	Need a new one, rd one's parent is wrong.
-		 *	And no, we can't just steal.
-		 */
-		if (rd->persist != persist) {
-			rd->free_on_parent = false;
-			TALLOC_FREE(rd);
-		}
-
-		break;	/* replace the existing entry */
-	}
-
-	/*
-	 *	Only alloc new memory if we're not replacing
-	 *	an existing entry.
-	 *
-	 *	Tie the lifecycle of the data to either the state_ctx
-	 *	or the request, depending on whether it should
-	 *	persist or not.
-	 */
-	if (!rd) {
-		if (persist) {
-			rad_assert(request->state_ctx);
-			rd = talloc_zero(request->state_ctx, request_data_t);
-		} else {
-			rd = talloc_zero(request, request_data_t);
-		}
-		talloc_set_destructor(rd, _request_data_free);
-	}
-	if (!rd) return -1;
-
-	rd->unique_ptr = unique_ptr;
-	rd->unique_int = unique_int;
-	rd->type = type;
-	rd->opaque = opaque;
-	rd->free_on_replace = free_on_replace;
-	rd->free_on_parent = free_on_parent;
-	rd->persist = persist;
-
-	fr_dlist_insert_head(&request->data, rd);
-
-	RDEBUG4("%s: %s%s%p at %p:%i, free_on_replace: %s, free_on_parent: %s, persist: %s",
-		__FUNCTION__,
-		rd->type ? rd->type : "", rd->type ? " " : "",
-		rd->opaque, rd->unique_ptr, rd->unique_int,
-		free_on_replace ? "yes" : "no",
-		free_on_parent ? "yes" : "no",
-		persist ? "yes" : "no");
-
-	return 0;
-}
-
-/** Get opaque data from a request
- *
- * @note The unique ptr is meant to be a module configuration, and the unique
- *	integer allows the caller to have multiple opaque data associated with a REQUEST.
- *
- * @param[in] request		to retrieve data from.
- * @param[in] unique_ptr	Identifier for the data.
- * @param[in] unique_int	Qualifier for the identifier.
- * @return
- *	- NULL if no opaque data could be found.
- *	- the opaque data. The entry holding the opaque data is removed from the request.
- */
-void *request_data_get(REQUEST *request, void const *unique_ptr, int unique_int)
-{
-	request_data_t	*rd = NULL;
-
-	if (!request) return NULL;
-
-	while ((rd = fr_dlist_next(&request->data, rd))) {
-		void *ptr;
-
-		if ((rd->unique_ptr != unique_ptr) || (rd->unique_int != unique_int)) continue;
-
-		ptr = rd->opaque;
-
-		rd->free_on_parent = false;	/* Don't free opaque data we're handing back */
-		fr_dlist_remove(&request->data, rd);
-
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
-		if (rd->type) ptr = _talloc_get_type_abort(ptr, rd->type, __location__);
-#endif
-
-		RDEBUG4("%s: %s%s%p at %p:%i retrieved and unlinked",
-			__FUNCTION__,
-			rd->type ? rd->type : "", rd->type ? " " : "",
-			rd->opaque, rd->unique_ptr, rd->unique_int);
-
-		talloc_free(rd);
-
-		return ptr;
-	}
-
-	RDEBUG4("%s: No request data found at %p:%i", __FUNCTION__, unique_ptr, unique_int);
-
-	return NULL;		/* wasn't found, too bad... */
-}
-
-/** Get opaque data from a request without removing it
- *
- * @note The unique ptr is meant to be a module configuration, and the unique
- * 	integer allows the caller to have multiple opaque data associated with a REQUEST.
- *
- * @param request	to retrieve data from.
- * @param unique_ptr	Identifier for the data.
- * @param unique_int	Qualifier for the identifier.
- * @return
- *	- NULL if no opaque data could be found.
- *	- the opaque data.
- */
-void *request_data_reference(REQUEST *request, void const *unique_ptr, int unique_int)
-{
-	request_data_t	*rd = NULL;
-
-	if (!request) return NULL;
-
-	while ((rd = fr_dlist_next(&request->data, rd))) {
-		if ((rd->unique_ptr != unique_ptr) || (rd->unique_int != unique_int)) continue;
-
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
-		if (rd->type) rd->opaque = _talloc_get_type_abort(rd->opaque, rd->type, __location__);
-#endif
-
-		RDEBUG4("%s: %s%s%p at %p:%i retrieved",
-			__FUNCTION__,
-			rd->type ? rd->type : "", rd->type ? " " : "",
-			rd->opaque, rd->unique_ptr, rd->unique_int);
-
-		return rd->opaque;
-	}
-
-	RDEBUG4("%s: No request data found at %p:%i", __FUNCTION__, unique_ptr, unique_int);
-
-	return NULL;		/* wasn't found, too bad... */
-}
-
-/** Loop over all the request data, pulling out ones matching persist state
- *
- * @param[out] out	Head of result list.
- * @param[in] request	to search for request_data_t in.
- * @param[in] persist	Whether to pull persistable or non-persistable data.
- * @return number of request_data_t retrieved.
- */
-int request_data_by_persistance(fr_dlist_head_t *out, REQUEST *request, bool persist)
-{
-	int		count = 0;
-	request_data_t	*rd = NULL, *prev;
-
-	while ((rd = fr_dlist_next(&request->data, rd))) {
-		if (rd->persist != persist) continue;
-
-		prev = fr_dlist_remove(&request->data, rd);
-		fr_dlist_insert_tail(out, rd);
-		rd = prev;
-	}
-
-	return count;
-}
-
-/** Return how many request data entries exist of a given persistence
- *
- * @param[in] request	to check in.
- * @param[in] persist	Whether to count persistable or non-persistable data.
- * @return number of request_data_t that exist in persistable or non-persistable form
- */
-int request_data_by_persistance_count(REQUEST *request, bool persist)
-{
-	int 		count = 0;
-	request_data_t	*rd = NULL;
-
-	while ((rd = fr_dlist_next(&request->data, rd))) {
-		if (rd->persist != persist) continue;
-
-		count++;
-	}
-
-	return count;
-}
-
-/** Add request data back to a request
- *
- * @note May add multiple entries (if they're linked).
- * @note Will not check for duplicates.
- *
- * @param request	to add data to.
- * @param in		Data to add.
- */
-void request_data_restore(REQUEST *request, fr_dlist_head_t *in)
-{
-	fr_dlist_move(&request->data, in);
-}
-
-/** Realloc any request_data_t structs in a new ctx
- *
- */
-void request_data_ctx_change(TALLOC_CTX *state_ctx, REQUEST *request)
-{
-	fr_dlist_head_t		head;
-	request_data_t		*rd = NULL, *prev;
-
-	fr_dlist_talloc_init(&head, request_data_t, list);
-
-	while ((rd = fr_dlist_next(&request->data, rd))) {
-		request_data_t	*new;
-
-		if (!rd->persist) continue;	/* Parented by the request */
-
-		prev = fr_dlist_remove(&request->data, rd);	/* Unlink from the list */
-		new = talloc(state_ctx, request_data_t);
-		memcpy(new, rd, sizeof(*new));
-		rd->free_on_parent = false;
-		talloc_free(rd);
-		rd = prev;
-
-		fr_dlist_insert_tail(&head, new);
-	}
-
-	fr_dlist_move(&request->data, &head);
-}
-
-/** Used for removing data from subrequests that are about to be freed
- *
- * @param[in] request	to remove persistable data from.
- */
-void request_data_persistable_free(REQUEST *request)
-{
-	fr_dlist_head_t	head;
-
-	fr_dlist_talloc_init(&head, request_data_t, list);
-
-	request_data_by_persistance(&head, request, true);
-
-	fr_dlist_talloc_free(&head);
-}
-
-void request_data_dump(REQUEST *request)
-{
-	request_data_t	*rd = NULL;
-	int count = 0;
-
-	if (fr_dlist_empty(&request->data)) {
-		RDEBUG("No request data");
-		return;
-	}
-
-	RDEBUG("Current request data:");
-	RINDENT();
-	while ((rd = fr_dlist_next(&request->data, rd))) {
-		RDEBUG("[%i] %s%p %s at %p:%i",
-		       count,
-		       rd->type ? rd->type : "",
-		       rd->opaque,
-		       rd->persist ? "[persist]" : "",
-		       rd->unique_ptr,
-		       rd->unique_int);
-
-		count++;
-	}
-	REXDENT();
-}
-
-/** Free any subrequest request data if the dlist head is freed
- *
- */
-static int _free_subrequest_data(fr_dlist_head_t *head)
-{
-	request_data_t *rd = NULL, *prev;
-
-	while ((rd = fr_dlist_next(head, rd))) {
-		prev = fr_dlist_remove(head, rd);
-		talloc_free(rd);
-		rd = prev;
+	if (fr_dict_attr_autoload(request_dict_attr) < 0) {
+		PERROR("%s", __FUNCTION__);
+		fr_dict_autofree(request_dict);
+		return -1;
 	}
 
 	return 0;
 }
 
-/** Store persistable data from a subrequest in its parent
- *
- * @param[in] request		The child request to retrieve state from.
- * @param[in] unique_ptr	A parent may have multiple subrequests spawned
- *				by different modules.  This identifies the module
- *      			or other facility that spawned the subrequest.
- * @param[in] unique_int	Further identification.
- */
-void request_data_store_in_parent(REQUEST *request, void *unique_ptr, int unique_int)
+void request_global_free(void)
 {
-	fr_dlist_head_t	*head;
-
-	if (request_data_by_persistance_count(request, true) == 0) return;
-
-	MEM(head = talloc_zero(request->parent->state_ctx, fr_dlist_head_t));
-	fr_dlist_talloc_init(head, request_data_t, list);
-	talloc_set_destructor(head, _free_subrequest_data);
-
-	/*
-	 *	Pull everything out of the child,
-	 *	add it to our temporary list head...
-	 */
-	request_data_by_persistance(head, request, true);
-
-	/*
-	 *	...add that to the parent request under
-	 *	the specified unique identifiers.
-	 */
-	request_data_add(request->parent, unique_ptr, unique_int, head, true, false, true);
-}
-
-/** Restore subrequest data from a parent request
- *
- * @param[in] request		The child request to restore state to.
- * @param[in] unique_ptr	A parent may have multiple subrequests spawned
- *				by different modules.  This identifies the module
- *      			or other facility that spawned the subrequest.
- * @param[in] unique_int	Further identification.
- */
-void request_data_restore_to_child(REQUEST *request, void *unique_ptr, int unique_int)
-{
-	fr_dlist_head_t *head;
-
-	/*
-	 *	All requests are alloced with a state_ctx.
-	 *	In this case, nothing should be parented
-	 *	off it already, so we can just free it.
-	 */
-	rad_assert(talloc_get_size(request->state_ctx) == 0);
-	TALLOC_FREE(request->state_ctx);
-	request->state_ctx = request->parent->state_ctx;	/* Use top level state ctx */
-
-	head = request_data_get(request->parent, unique_ptr, unique_int);
-	if (!head) return;
-
-	request_data_restore(request, head);
-	talloc_free(head);
+	fr_dict_autofree(request_dict);
 }
 
 #ifdef WITH_VERIFY_PTR
 /*
  *	Verify a packet.
  */
-static void packet_verify(char const *file, int line, REQUEST const *request, RADIUS_PACKET const *packet, char const *type)
+static void packet_verify(char const *file, int line,
+			  request_t const *request, fr_radius_packet_t const *packet, char const *type)
 {
 	TALLOC_CTX *parent;
 
-	if (!packet) {
-		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: RADIUS_PACKET %s pointer was NULL", file, line, type);
-		if (!fr_cond_assert(0)) fr_exit_now(1);
-	}
+	fr_fatal_assert_msg(packet, "CONSISTENCY CHECK FAILED %s[%i]: fr_radius_packet_t %s pointer was NULL",
+			    file, line, type);
 
 	parent = talloc_parent(packet);
 	if (parent != request) {
-		ERROR("CONSISTENCY CHECK FAILED %s[%i]: Expected RADIUS_PACKET %s to be parented by %p (%s), "
-		      "but parented by %p (%s)", file, line, type, request, talloc_get_name(request),
-		      parent, parent ? talloc_get_name(parent) : "NULL");
-
 		fr_log_talloc_report(packet);
 		if (parent) fr_log_talloc_report(parent);
 
-		rad_assert(0);
+
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%i]: Expected fr_radius_packet_t %s to be parented "
+				     "by %p (%s), but parented by %p (%s)",
+				     file, line, type, request, talloc_get_name(request),
+				     parent, parent ? talloc_get_name(parent) : "NULL");
 	}
 
 	PACKET_VERIFY(packet);
-
-	if (!packet->vps) return;
-
-	fr_pair_list_verify(file, line, packet, packet->vps);
 }
 
 /*
  *	Catch horrible talloc errors.
  */
-void request_verify(char const *file, int line, REQUEST const *request)
+void request_verify(char const *file, int line, request_t const *request)
 {
 	request_data_t *rd = NULL;
 
-	if (!request) {
-		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: REQUEST pointer was NULL", file, line);
-		if (!fr_cond_assert(0)) fr_exit_now(1);
+	fr_fatal_assert_msg(request, "CONSISTENCY CHECK FAILED %s[%i]: request_t pointer was NULL", file, line);
+
+	(void) talloc_get_type_abort_const(request, request_t);
+
+	fr_assert(request->magic == REQUEST_MAGIC);
+
+	fr_fatal_assert_msg(talloc_get_size(request) == sizeof(request_t),
+			    "CONSISTENCY CHECK FAILED %s[%i]: expected request_t size of %zu bytes, got %zu bytes",
+			    file, line, sizeof(request_t), talloc_get_size(request));
+
+	(void)talloc_get_type_abort(request->request_ctx, fr_pair_t);
+	fr_pair_list_verify(file, line, request->request_ctx, &request->request_pairs);
+	(void)talloc_get_type_abort(request->reply_ctx, fr_pair_t);
+	fr_pair_list_verify(file, line, request->reply_ctx, &request->reply_pairs);
+	(void)talloc_get_type_abort(request->control_ctx, fr_pair_t);
+	fr_pair_list_verify(file, line, request->control_ctx, &request->control_pairs);
+	(void)talloc_get_type_abort(request->session_state_ctx, fr_pair_t);
+
+#ifndef NDEBUG
+	{
+		TALLOC_CTX *parent = talloc_parent(request->session_state_ctx);
+
+		fr_assert_msg((parent == NULL) || (parent == talloc_null_ctx()),
+			      "session_state_ctx must not be parented by another chunk, but is parented by %s",
+			      talloc_get_name(talloc_parent(request->session_state_ctx)));
 	}
+#endif
 
-	(void) talloc_get_type_abort_const(request, REQUEST);
-
-	rad_assert(request->magic == REQUEST_MAGIC);
-
-	if (talloc_get_size(request) != sizeof(REQUEST)) {
-		fprintf(stderr, "CONSISTENCY CHECK FAILED %s[%i]: expected REQUEST size of %zu bytes, got %zu bytes",
-			file, line, sizeof(REQUEST), talloc_get_size(request));
-		if (!fr_cond_assert(0)) fr_exit_now(1);
-	}
-
-	fr_pair_list_verify(file, line, request, request->control);
-	fr_pair_list_verify(file, line, request->state_ctx, request->state);
-
-	rad_assert(request->server_cs != NULL);
+	fr_pair_list_verify(file, line, request->session_state_ctx, &request->session_state_pairs);
 
 	if (request->packet) {
 		packet_verify(file, line, request, request->packet, "request");
-		if ((request->packet->code == FR_CODE_ACCESS_REQUEST) &&
-		    (request->reply && !request->reply->code)) {
-			rad_assert(request->state_ctx != NULL);
-		}
 	}
 	if (request->reply) packet_verify(file, line, request, request->reply, "reply");
 
 	if (request->async) {
 		(void) talloc_get_type_abort(request->async, fr_async_t);
-		rad_assert(talloc_parent(request->async) == request);
+		fr_assert(talloc_parent(request->async) == request);
 	}
 
 	while ((rd = fr_dlist_next(&request->data, rd))) {
 		(void) talloc_get_type_abort(rd, request_data_t);
 
-		if (rd->persist) {
-			rad_assert(request->state_ctx);
-			rad_assert(talloc_parent(rd) == request->state_ctx);
+		if (request_data_persistable(rd)) {
+			fr_assert(request->session_state_ctx);
+			fr_assert(talloc_parent(rd) == request->session_state_ctx);
 		} else {
-			rad_assert(talloc_parent(rd) == request);
+			fr_assert(talloc_parent(rd) == request);
 		}
 	}
-}
-
-/** Verify all request data is parented by the specified context
- *
- * @note Only available if built with WITH_VERIFY_PTR
- *
- * @param parent	that should hold the request data.
- * @param entry		to verify.
- * @return
- *	- true if chunk lineage is correct.
- *	- false if one of the chunks is parented by something else.
- */
-bool request_data_verify_parent(TALLOC_CTX *parent, fr_dlist_head_t *entry)
-{
-	request_data_t	*rd = NULL;
-
-	while ((rd = fr_dlist_next(entry, rd))) if (talloc_parent(rd) != parent) return false;
-
-	return true;
 }
 #endif

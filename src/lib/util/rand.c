@@ -22,8 +22,7 @@
  */
 RCSID("$Id$")
 
-#include "rand.h"
-
+#include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/hash.h>
 
 #include <errno.h>
@@ -245,4 +244,12 @@ while (p < end) { \
 		fill(byte)
 		return;
 	}
+}
+
+uint32_t fr_fast_rand(fr_fast_rand_t *ctx)
+{
+	ctx->a = (36969 * (ctx->a & 0xffff)) + (ctx->a >> 16);
+	ctx->b = (18000 * (ctx->b & 0xffff)) + (ctx->b >> 16);
+
+	return (ctx->a << 16) + ctx->b;
 }

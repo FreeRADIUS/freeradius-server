@@ -62,31 +62,16 @@ typedef struct {
 } fr_stats_ema_t;
 
 extern fr_stats_t	radius_auth_stats;
-#ifdef WITH_ACCOUNTING
 extern fr_stats_t	radius_acct_stats;
-#endif
-#ifdef WITH_COA
-extern fr_stats_t	radius_coa_stats;
-extern fr_stats_t	radius_dsc_stats;
-#endif
-#ifdef WITH_PROXY
-extern fr_stats_t	proxy_auth_stats;
-#ifdef WITH_ACCOUNTING
-extern fr_stats_t	proxy_acct_stats;
-#endif
-#ifdef WITH_COA
-extern fr_stats_t	proxy_coa_stats;
-extern fr_stats_t	proxy_dsc_stats;
-#endif
-#endif
 
 void radius_stats_init(int flag);
-void request_stats_final(REQUEST *request);
+void request_stats_final(request_t *request);
 void radius_stats_ema(fr_stats_ema_t *ema,
 		      fr_time_t start, fr_time_t end);
 void fr_stats_bins(fr_stats_t *stats, fr_time_t start, fr_time_t end);
-int fr_snmp_process(REQUEST *request);
+int fr_snmp_process(request_t *request);
 int fr_snmp_init(void);
+void fr_snmp_free(void);
 
 
 #define FR_STATS_INC(_x, _y) radius_ ## _x ## _stats._y++;if (listener) listener->stats._y++;if (client) client->_x._y++;

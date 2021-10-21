@@ -1,0 +1,13 @@
+ALIAS	SoftBank-BB-Unit-MAC                    	26.22197.1
+ALIAS	SoftBank-BB-Unit-Manufacturer           	26.22197.2
+ALIAS	SoftBank-BB-Unit-Model                  	26.22197.3
+ALIAS	SoftBank-BB-Unit-HW-Revision            	26.22197.4
+ALIAS	SoftBank-TFTP-Config-Server             	26.22197.185
+ALIAS	SoftBank-TFTP-Config-File               	26.22197.186
+ALIAS	SoftBank-DNS-IPv6-Primary               	26.22197.198
+ALIAS	SoftBank-DNS-IPv6-Secondary             	26.22197.199
+ALIAS	SoftBank-Syslog-Server                  	26.22197.201
+ALIAS	SoftBank-SNTP-Server                    	26.22197.203
+ALIAS	SoftBank-IPv4-Tunnel-Local-Address      	26.22197.204
+ALIAS	SoftBank-IPv4-Tunnel-Endpoint           	26.22197.207
+ALIAS	SoftBank-RouteInfo-Server               	26.22197.215

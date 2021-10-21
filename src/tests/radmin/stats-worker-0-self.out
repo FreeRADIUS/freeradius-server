@@ -1,0 +1,11 @@
+count.in			0
+count.out			0
+count.dup			0
+count.dropped			0
+count.naks			0
+count.active			0
+count.runnable			0
+cpu.request_time_rtt		0.000000000
+cpu.average_request_time	0.000000000
+cpu.used			0.000000
+cpu.waiting			0.000

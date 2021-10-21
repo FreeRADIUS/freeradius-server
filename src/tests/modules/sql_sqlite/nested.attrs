@@ -1,0 +1,14 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "user_auth_nested"
+User-Password = "password"
+NAS-IP-Address = "1.2.3.4"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Idle-Timeout == 3600
+Digest-Attributes == { Nonce == "dcd98b7102dd2f0e8b11d0f600bfb0c093", Method == "Invite", URI == "sip:bob@biloxi.com" }

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions about server configuration
+    url: https://freeradius.org/support/
+    about: 'Ask questions about configuring FreeRADIUS on the "users" mailing list.'
+  - name: Questions about developing custom modules and extending functionality
+    url: https://freeradius.org/support/
+    about: 'Ask questions about developing code for FreeRADIUS on the "development" mailing list.'
+  - name: Security defects
+    url: https://freeradius.org/security/
+    about: Security defects should be reported directly to the FreeRADIUS security team (security@freeradius.org)

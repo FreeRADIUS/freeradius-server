@@ -1,0 +1,12 @@
+ALIAS	3Com-User-Access-Level                  	26.43.1
+ALIAS	3Com-VLAN-Name                          	26.43.2
+ALIAS	3Com-Mobility-Profile                   	26.43.3
+ALIAS	3Com-Encryption-Type                    	26.43.4
+ALIAS	3Com-Time-Of-Day                        	26.43.5
+ALIAS	3Com-SSID                               	26.43.6
+ALIAS	3Com-End-Date                           	26.43.7
+ALIAS	3Com-URL                                	26.43.8
+ALIAS	3Com-Connect_Id                         	26.43.26
+ALIAS	3Com-NAS-Startup-Timestamp              	26.43.59
+ALIAS	3Com-Ip-Host-Addr                       	26.43.60
+ALIAS	3Com-Product-ID                         	26.43.255

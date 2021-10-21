@@ -1,0 +1,10 @@
+ALIAS	Siemens-URL-Redirection                 	26.4329.1
+ALIAS	Siemens-AP-Name                         	26.4329.2
+ALIAS	Siemens-AP-Serial                       	26.4329.3
+ALIAS	Siemens-VNS-Name                        	26.4329.4
+ALIAS	Siemens-SSID                            	26.4329.5
+ALIAS	Siemens-BSS-MAC                         	26.4329.6
+ALIAS	Siemens-Policy-Name                     	26.4329.7
+ALIAS	Siemens-Topology-Name                   	26.4329.8
+ALIAS	Siemens-Ingress-RC-Name                 	26.4329.9
+ALIAS	Siemens-Egress-RC-Name                  	26.4329.10

@@ -1,0 +1,14 @@
+ALIAS	Manzara-User-UID                        	26.19382.1
+ALIAS	Manzara-User-GID                        	26.19382.2
+ALIAS	Manzara-User-Home                       	26.19382.3
+ALIAS	Manzara-User-Shell                      	26.19382.4
+ALIAS	Manzara-PPP-Addr-String                 	26.19382.5
+ALIAS	Manzara-Full-Login-String               	26.19382.6
+ALIAS	Manzara-Tariff-Units                    	26.19382.7
+ALIAS	Manzara-Tariff-Type                     	26.19382.8
+ALIAS	Manzara-ECP-Session-Key                 	26.19382.9
+ALIAS	Manzara-Map-Name                        	26.19382.10
+ALIAS	Manzara-Map-Key                         	26.19382.11
+ALIAS	Manzara-Map-Value                       	26.19382.12
+ALIAS	Manzara-Map-Error                       	26.19382.13
+ALIAS	Manzara-Service-Type                    	26.19382.14

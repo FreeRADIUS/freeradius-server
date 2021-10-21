@@ -1,8 +1,7 @@
-FILES  := \
+TEST	:= test.bin
+
+FILES	:= \
 	atomic_queue_test 	\
-	control_test 		\
-	dhcpclient		\
-	message_set_test	\
 	radclient		\
 	radict 			\
 	radmin			\
@@ -10,46 +9,54 @@ FILES  := \
 	radsnmp 		\
 	radwho 			\
 	rbmonkey 		\
-	ring_buffer_test 	\
 	rlm_redis_ippool_tool 	\
-	smbencrypt 		\
 	unit_test_attribute 	\
 	unit_test_map 		\
 	unit_test_module
 
-
-DICT_DIR := $(top_srcdir)/share/dictionary
+#	dhcpclient		\
+#	message_set_test	\
+#	radmin			\
+#	radsniff 		\
+#	radsnmp 		\
+#	radwho 			\
+#	ring_buffer_test 	\
+#	smbencrypt 		\
+#	unit_test_attribute 	\
+#	unit_test_map 		\
+#	unit_test_module
 
 #
-#  Create the output directory
+#  Add in all of the binary tests
 #
-.PHONY: $(BUILD_DIR)/tests/bin
-$(BUILD_DIR)/tests/bin:
-	${Q}mkdir -p $@
+FILES += $(filter %_tests,$(ALL_TGTS)))
+
+$(eval $(call TEST_BOOTSTRAP))
+
+#
+#  Some tests take arguments, others do not.
+#
+radclient.ARGS = -h
+radict.ARGS = -D $(top_srcdir)/share/dictionary User-Name
+radmin.ARGS = -h
+radsniff.ARGS =  -D $(top_srcdir)/share/dictionary -h
+radsnmp.ARGS = -h
+radwho.ARGS = -h
+rlm_redis_ippool_tool.ARGS = -h
+unit_test_attribute.ARGS = -h
+unit_test_map.ARGS = -h
+unit_test_module.ARGS = -h
 
 #
 #  Files in the output dir depend on the bin tests, and on the binary
 #  that we're running
 #
-$(BUILD_DIR)/tests/bin/%: $(DIR)/% $(TESTBINDIR)/% | $(BUILD_DIR)/tests/bin
-	${Q}echo BIN-TEST $(notdir $@)
-	${Q}TESTBIN="$(TESTBIN)" TESTBINDIR="$(TESTBINDIR)" DICT_DIR="$(DICT_DIR)" $<
+$(BUILD_DIR)/tests/bin/%: $(BUILD_DIR)/bin/local/%
+	@echo "BIN-TEST $(notdir $@)"
+	${Q}if ! $(TEST_BIN)/$(notdir $<) $($(notdir $@).ARGS) > $@.log 2>&1; then \
+		echo $(TEST_BIN)/$(notdir $<) $($(notdir $@).ARGS); \
+		echo LOG in $@.log; \
+		cat $@.log; \
+		exit 1; \
+	fi
 	${Q}touch $@
-
-#
-#  Get all of the bin test output files
-#
-TESTS.BIN_FILES := $(addprefix $(BUILD_DIR)/tests/bin/,$(FILES))
-
-$(TESTS.BIN_FILES): $(TESTS.DICT_FILES)
-
-#
-#  Depend on the output files, and create the directory first.
-#
-tests.bin: $(TESTS.BIN_FILES)
-
-.PHONY: clean.tests.bin
-clean.tests.bin:
-	${Q}rm -rf $(BUILD_DIR)/tests/bin/
-
-clean.test: clean.tests.bin

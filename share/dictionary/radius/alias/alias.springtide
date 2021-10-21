@@ -1,0 +1,16 @@
+ALIAS	ST-Acct-VC-Connection-Id                	26.3551.1
+ALIAS	ST-Service-Name                         	26.3551.2
+ALIAS	ST-Service-Domain                       	26.3551.3
+ALIAS	ST-Policy-Name                          	26.3551.4
+ALIAS	ST-Primary-DNS-Server                   	26.3551.5
+ALIAS	ST-Secondary-DNS-Server                 	26.3551.6
+ALIAS	ST-Primary-NBNS-Server                  	26.3551.7
+ALIAS	ST-Secondary-NBNS-Server                	26.3551.8
+ALIAS	ST-Physical-Port                        	26.3551.9
+ALIAS	ST-Physical-Slot                        	26.3551.10
+ALIAS	ST-Virtual-Path-ID                      	26.3551.11
+ALIAS	ST-Virtual-Circuit-ID                   	26.3551.12
+ALIAS	ST-Realm-Name                           	26.3551.13
+ALIAS	ST-IPSec-Pfs-Group                      	26.3551.14
+ALIAS	ST-IPSec-Client-Firewall                	26.3551.15
+ALIAS	ST-IPSec-Client-Subnet                  	26.3551.16

@@ -107,7 +107,13 @@ static char const *proto(int id, int porttype)
  */
 static char *dotime(time_t t)
 {
-	char *s = ctime(&t);
+	/*
+	 *	man 3 ctime
+	 *	The caller must provide the output buffer buf
+	 *	(which must be at least 26 characters long)
+	 */
+	static char buff[26];
+	char *s = ctime_r(&t, buff);
 
 	if (showname) {
 		strlcpy(s + 4, s + 11, 6);
@@ -140,7 +146,7 @@ static char const *hostname(char *buf, size_t buflen, uint32_t ipaddr)
 /*
  *	Print usage message and exit.
  */
-static void NEVER_RETURNS usage(int status)
+static NEVER_RETURNS void usage(int status)
 {
 	FILE *output = status?stderr:stdout;
 
@@ -161,12 +167,12 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -u <user>            Show entries matching the given user.\n");
 	fprintf(output, "  -U <user>            Like -u, but case-sensitive.\n");
 	fprintf(output, "  -Z                   Include accounting stop information in radius output.  Requires -R.\n");
-	exit(status);
+	fr_exit_now(status);
 }
 
-
-/*
- *	Main program
+/**
+ *
+ * @hidecallgraph
  */
 int main(int argc, char **argv)
 {
@@ -191,16 +197,24 @@ int main(int argc, char **argv)
 	uint32_t		nas_ip_address = INADDR_NONE;
 	int			zap = 0;
 	fr_dict_t		*dict = NULL;
-	TALLOC_CTX		*autofree = talloc_autofree_context();
+	TALLOC_CTX		*autofree;
+	fr_dict_gctx_t const	*dict_gctx = NULL;
 
 	char const		*p;
 	main_config_t		*config;
+	int			ret = EXIT_SUCCESS;
 
+	/*
+	 *	Must be called first, so the handler is called last
+	 */
+	fr_atexit_global_setup();
+
+	autofree = talloc_autofree_context();
 
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("%s", main_config->name);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 #endif
 
@@ -213,7 +227,7 @@ int main(int argc, char **argv)
 	config = main_config_alloc(autofree);
 	if (!config) {
 		fr_perror("Failed allocating main config");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	p = strrchr(argv[0], FR_DIR_SEP);
@@ -293,22 +307,23 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (fr_dict_global_init(autofree, config->dict_dir) < 0) {
+	dict_gctx = fr_dict_global_ctx_init(autofree, config->dict_dir);
+	if (!dict_gctx) {
 		fr_perror("%s", main_config->name);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 
-	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
+	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
 		fr_perror("%s", config->name);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	if (fr_dict_read(dict, config->raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		PERROR("Failed to initialize the dictionaries");
 		return 1;
 	}
-	fr_strerror();	/* Clear the error buffer */
+	fr_strerror_clear();	/* Clear the error buffer */
 
 	/*
 	 *	Be safe.
@@ -328,35 +343,35 @@ int main(int argc, char **argv)
 		printf("NAS-IP-Address = %s\n",
 		       hostname(buffer, sizeof(buffer), nas_ip_address));
 		printf("Acct-Delay-Time = 0\n");
-		exit(0);	/* don't bother printing anything else */
+		fr_exit_now(0);	/* don't bother printing anything else */
 	}
 
 	if (radutmp_file) goto have_radutmp;
 
 	/* Read radiusd.conf */
 	maincs = cf_section_alloc(NULL, NULL, "main", NULL);
-	if (!maincs) exit(EXIT_FAILURE);
+	if (!maincs) fr_exit_now(EXIT_FAILURE);
 
 	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", config->raddb_dir);
 	if ((cf_file_read(maincs, buffer) < 0) || (cf_section_pass2(maincs) < 0)) {
 		fr_perror("%s: Error reading or parsing radiusd.conf\n", argv[0]);
 		talloc_free(maincs);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	cs = cf_section_find(maincs, "modules", NULL);
 	if (!cs) {
 		fr_perror("%s: No modules section found in radiusd.conf\n", argv[0]);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 	/* Read the radutmp section of radiusd.conf */
 	cs = cf_section_find(cs, "radutmp", NULL);
 	if (!cs) {
 		fr_perror("%s: No configuration information in radutmp section of radiusd.conf\n", argv[0]);
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
-	if (cf_section_rules_push(cs, module_config) < 0) exit(EXIT_FAILURE);
+	if (cf_section_rules_push(cs, module_config) < 0) fr_exit_now(EXIT_FAILURE);
 	cf_section_parse(maincs, NULL, cs);
 
 	/* Assign the correct path for the radutmp file */
@@ -548,7 +563,11 @@ int main(int argc, char **argv)
 	}
 	fclose(fp);
 
+	if (fr_dict_global_ctx_free(dict_gctx) < 0) {
+		fr_perror("radwho");
+		ret = EXIT_FAILURE;
+	}
 	main_config_free(&config);
 
-	return 0;
+	return ret;
 }

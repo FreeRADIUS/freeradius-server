@@ -20,34 +20,36 @@
  * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2014-2015 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#include "net.h"
+#include <freeradius-devel/util/net.h>
 
 /** Strings for L4 protocols
  *
  */
-FR_NAME_NUMBER const fr_net_ip_proto_table[] = {
-	{ "UDP",	IPPROTO_UDP },
-	{ "TCP",	IPPROTO_TCP },
-	{ NULL, 0 }
+fr_table_num_sorted_t const fr_net_ip_proto_table[] = {
+	{ L("ICMP"),	IPPROTO_ICMP	},
+	{ L("ICMPv6"),	IPPROTO_ICMPV6	},
+	{ L("TCP"),	IPPROTO_TCP	},
+	{ L("UDP"),	IPPROTO_UDP	}
 };
+size_t fr_net_ip_proto_table_len = NUM_ELEMENTS(fr_net_ip_proto_table);
 
 /** Strings for socket types
  *
  */
-FR_NAME_NUMBER const fr_net_sock_type_table[] = {
-	{ "UDP",	SOCK_DGRAM },
-	{ "TCP",	SOCK_STREAM },
-	{ NULL, 0 }
+fr_table_num_sorted_t const fr_net_sock_type_table[] = {
+	{ L("TCP"),	SOCK_STREAM	},
+	{ L("UDP"),	SOCK_DGRAM	}
 };
+size_t fr_net_sock_type_table_len = NUM_ELEMENTS(fr_net_sock_type_table);
 
 /** Strings for address families
  *
  */
-FR_NAME_NUMBER const fr_net_af_table[] = {
-	{ "IPv4",	AF_INET },
-	{ "IPv6",	AF_INET6 },
-	{ NULL, 0 }
+fr_table_num_sorted_t const fr_net_af_table[] = {
+	{ L("IPv4"),	AF_INET		},
+	{ L("IPv6"),	AF_INET6	}
 };
+size_t fr_net_af_table_len = NUM_ELEMENTS(fr_net_af_table);
 
 /** Check UDP header is valid
  *
@@ -90,7 +92,7 @@ FR_NAME_NUMBER const fr_net_af_table[] = {
 	expected = fr_udp_checksum((uint8_t const *) udp, ntohs(udp->len), udp->checksum,
 				   ip->ip_src, ip->ip_dst);
 	if (udp->checksum != expected) {
-		fr_strerror_printf("DHCP: UDP checksum invalid, packet: 0x%04hx calculated: 0x%04hx",
+		fr_strerror_printf("UDP checksum invalid, packet: 0x%04hx calculated: 0x%04hx",
 				   ntohs(udp->checksum), ntohs(expected));
 		/* Not a fatal error */
 		ret = 1;
@@ -157,6 +159,29 @@ uint16_t fr_ip_header_checksum(uint8_t const *data, uint8_t ihl)
 
 	for (sum = 0; nwords > 0; nwords--) {
 		sum += *p++;
+	}
+	sum = (sum >> 16) + (sum & 0xffff);
+	sum += (sum >> 16);
+	return ((uint16_t) ~sum);
+}
+
+uint16_t fr_ip6_pesudo_header_checksum(struct in6_addr *src, struct in6_addr *dst, uint16_t ip_len, uint8_t ip_next)
+{
+	uint64_t sum = 0;
+	ip_pseudo_header6_t ip6; /* Keep correct alignment for the pointer */
+	uint8_t const *p = (uint8_t const *) &ip6;
+	int8_t nwords = sizeof(ip6) >> 1; /* number of 16-bit words */
+
+	memcpy(&ip6.ip_src, src, sizeof(ip6.ip_src));
+	memcpy(&ip6.ip_dst, dst, sizeof(ip6.ip_dst));
+	ip6.ip_len = ip_len;
+	ip6.ip_next = ip_next;
+
+	for (sum = 0; nwords > 0; nwords--) {
+		uint16_t word;
+		memcpy(&word, p, sizeof(word)); /* Can't use a uint16_t * as GCC flags this for unaligned access */
+		sum += word;
+		p += sizeof(word);
 	}
 	sum = (sum >> 16) + (sum & 0xffff);
 	sum += (sum >> 16);

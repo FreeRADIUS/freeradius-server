@@ -85,7 +85,7 @@ extern		fr_md5_final_t		fr_md5_final;
 void		fr_md5_calc(uint8_t out[static MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen);
 
 /* hmac.c */
-void		fr_hmac_md5(uint8_t digest[static MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
+int		fr_hmac_md5(uint8_t digest[static MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
 			    uint8_t const *key, size_t key_len);
 #ifdef __cplusplus
 }

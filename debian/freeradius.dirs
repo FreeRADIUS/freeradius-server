@@ -1,2 +1,3 @@
 usr/lib/freeradius
 var/log/freeradius
+var/lib/freeradius

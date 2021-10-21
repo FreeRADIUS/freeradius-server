@@ -12,14 +12,14 @@ team.
 
 Each directory has several dockerfiles:
 
- - Dockerfile.deps will build an image which has full dependencies
-   installed, ready for building FreeRADIUS.
+- Dockerfile.deps will build an image which has full dependencies
+  installed, ready for building FreeRADIUS.
 
- - Dockerfile is based on Dockerfile.deps and will build the
-   FreeRADIUS source and run the server.
+- Dockerfile is based on Dockerfile.deps and will build the
+  FreeRADIUS source and run the server.
 
- - Dockerfile.jenkins is based on Dockerfile.deps and will
-   add components required for use in a jenkins build environment.
+- Dockerfile.jenkins is based on Dockerfile.deps and will
+  add components required for use in a jenkins build environment.
 
 
 ## Getting started
@@ -67,13 +67,13 @@ Building all these docker images can be done with the supplied
 script, for example:
 
 ```bash
-$ ./dockerbuild build-centos7
+./dockerbuild build-centos7
 ```
 
 to build the server, and
 
 ```bash
-$ ./dockerbuild -j build-centos7
+./dockerbuild -j build-centos7
 ```
 
 to build the jenkins image.
@@ -144,7 +144,7 @@ for more details on docker networking.
 
 Here are the steps you would follow to debug FreeRADIUS on centos7.
 
-```
+```bash
 cd scripts/docker/build-centos7
 docker build -f Dockerfile.deps -t freeradius/centos7-deps .
 docker run --privileged -it freeradius/centos7-deps

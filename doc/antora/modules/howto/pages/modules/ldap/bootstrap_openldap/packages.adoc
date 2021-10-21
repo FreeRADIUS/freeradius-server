@@ -1,0 +1,251 @@
+= Installing OpenLDAP from packages
+
+== Switch to privileged user
+
+[source,shell]
+----
+sudo -s
+----
+
+LDAP URIs that begin with `ldapi://` (as in the examples below) refer to a Unix
+Socket. Unix sockets use `peercred` authorization where the primary UID and GID
+of the user running the LDAP client, determines which resources they can access.
+
+For convenience we will configure the OLC database to be modifiable only by the
+root user (`UID=0`, `GID=0`).  When configuring OpenLDAP via OLC the `ldapadd`
+utility will be run as root so our changes are authorised.
+
+== Bootstrap
+
+=== Install packages
+
+OpenLDAP LTB packages available under the
+"Packaging and OpenLDAP extensions" heading https://ltb-project.org/documentation[here].
+
+You should add the appropriate repository definitions and install the `openldap`
+package (`yum install openldap` or `apt-get install openldap`).
+
+=== Define site specific variables
+Change the values here to match local paths and your site specific
+configuration.
+
+[source,shell]
+----
+# The base directory for OpenLDAP
+OPENLDAP_PATH="/usr/local/openldap"
+
+# Where to store a temporary shallow clone of the FreeRADIUS source
+# Or the path to an existing copy of the FreeRADIUS source
+FREERADIUS_SRC="/tmp/freeradius-src"
+
+# DN Suffix
+LDAP_BASE_DN="dc=example,dc=com"
+
+# Password for the administrative user
+LDAP_ADMIN_PASSWORD="secret"
+
+# Password for the read only user
+LDAP_READONLY_PASSWORD="readonly"
+----
+
+=== Switch OpenLDAP from using static configuration files to OLC
+After installing OpenLDAP, `slapd` (the main OpenLDAP daemon) needs to be
+switched to using OLC (on-line configuration).
+
+OLC provides an LDAP based interface for dynamically changing OpenLDAP's
+configuration at runtime. OLC also allows more programatic manipulation of
+OpenLDAP's configuration, which is the primary reason for using it in this
+example.
+
+[source,shell]
+----
+# Hash input passwords as SSHA
+LDAP_ADMIN_PASSWORD_HASH=$(slappasswd -s "${LDAP_ADMIN_PASSWORD}")
+LDAP_READONLY_PASSWORD_HASH=$(slappasswd -s "${LDAP_READONLY_PASSWORD}")
+
+# Stop OpenLDAP
+systemctl stop slapd
+
+# A very basic "bootstrap configuration"
+cat <<EOF > /tmp/slapd_bootstrap.conf
+# We always need the core schema loaded, otherwise things fail with obscure errors
+include         ${OPENLDAP_PATH}/etc/openldap/schema/core.schema
+pidfile         ${OPENLDAP_PATH}/var/run/slapd.pid
+argsfile        ${OPENLDAP_PATH}/var/run/slapd.args
+
+# Provide a defintion for the OLC database
+database config
+# Allow access to the root user only
+access to * by dn.exact="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage
+EOF
+
+# Make config dir, convert slapd.d to OLC format, then fixup permissions
+LDAP_SLAP_D_DIR="${OPENLDAP_PATH}/etc/openldap/slapd.d"
+mkdir "${LDAP_SLAP_D_DIR}"
+slaptest -f /tmp/slapd_bootstrap.conf -F "${LDAP_SLAP_D_DIR}"
+chown -R ldap:ldap "${LDAP_SLAP_D_DIR}"
+chmod -R 0750 "${LDAP_SLAP_D_DIR}"
+
+# Remove our temporary bootstrap file
+rm -f /tmp/slapd_bootstrap.conf
+
+# Alter the OpenLDAP LTB startup script to use OLC instead of slapd.conf
+sed -ie 's#^SLAPD_CONF=.*#SLAPD_CONF=""#;s#^SLAPD_CONF_DIR=.*#SLAPD_CONF_DIR="$SLAPD_PATH/etc/openldap/slapd.d"#' "${OPENLDAP_PATH}/etc/openldap/slapd-cli.conf"
+
+# Start slapd with an OLC definition only
+systemctl start slapd
+----
+
+=== Define a database and set appropriate ACLs
+
+[source,shell]
+----
+# Create MDB database
+cat <<EOF | ldapadd -Y EXTERNAL -H ldapi://%2Fvar%2Frun%2Fslapd%2Fldapi
+dn: olcDatabase=mdb,cn=config
+objectClass: olcDatabaseConfig
+objectClass: olcMdbConfig
+olcDatabase: {1}mdb
+olcSuffix: ${LDAP_BASE_DN}
+olcDbDirectory: ${OPENLDAP_PATH}/var/openldap-data/
+olcRootDN: cn=admin,${LDAP_BASE_DN}
+olcRootPW: ${LDAP_ADMIN_PASSWORD_HASH}
+olcDbIndex: objectClass eq
+olcLastMod: TRUE
+olcDbCheckpoint: 512 30
+olcAccess: to attrs=userPassword by dn="cn=admin,${LDAP_BASE_DN}" write by anonymous auth by self write by * none
+olcAccess: to * by dn.exact="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage by dn="cn=admin,${LDAP_BASE_DN}" manage by users read by * none
+olcAccess: to dn.base="" by * read
+EOF
+----
+
+.Wondering what those ACLs mean?
+[%collapsible]
+====
+
+The OpenLDAP ACL syntax can be difficult to understand for new users. To help
+with implementing site-specific ACLs, the humanly readable translation of the
+base ACLs in the above example is included below.
+
+* `to attrs=userPassword by dn="cn=admin,${LDAP_BASE_DN}" write by anonymous auth by self write by * none`
+** The administrative user can change the userPassword attribute.
+** Anonymous users can use the userPassword attribute contents for the purposes of authentication.
+** OpenLDAP itself can write to userPassword attributes.
+** Other than the above users no one can access the userPassword attribute.
+* `to * by dn.exact="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage by dn="cn=admin,${LDAP_BASE_DN}" manage by users read by * none`
+** The root user and admin users have full access to the data portion of the directory.
+** Any other authenticated user has read only access to the data portion of the directory.
+* `to dn.base="" by * read`
+** Any user may access the metadata at the top of the directory.  The is useful for the
+   autodiscovery functionality in LDAP browsers.
+====
+
+=== Populate the top level object, and add credentials for the readonly user
+
+[source,shell]
+----
+# Create the top level object and a read only user
+cat <<EOF | ldapadd -Y EXTERNAL -H ldapi://%2Fvar%2Frun%2Fslapd%2Fldapi
+dn: ${LDAP_BASE_DN}
+objectClass: top
+objectClass: dcObject
+objectclass: organization
+o: Example Organization
+dc: Example
+description: LDAP Example
+
+dn: cn=readonly,${LDAP_BASE_DN}
+objectClass: organizationalRole
+objectClass: simpleSecurityObject
+userPassword: ${LDAP_READONLY_PASSWORD_HASH}
+description: LDAP read only user
+EOF
+----
+
+== Load schemas
+
+For our tests we need to load some basic bundled OpenLDAP schemas and some
+FreeRADIUS specific schemas for defining profiles, RADIUS to LDAP mappings and
+clients.
+
+[source,shell]
+----
+if [ ! -d "${FREERADIUS_SRC}" ]; then
+	git clone --depth 1 https://github.com/FreeRADIUS/freeradius-server.git "${FREERADIUS_SRC}"
+fi
+
+SCHEMA_DIR="${OPENLDAP_PATH}/etc/openldap/schema"
+for i in cosine.ldif inetorgperson.ldif nis.ldif openldap.ldif; do
+	ldapadd -Y EXTERNAL -H ldapi://%2Fvar%2Frun%2Fslapd%2Fldapi -f ${SCHEMA_DIR}/$i
+done
+
+SCHEMA_DIR="${FREERADIUS_SRC}/doc/schemas/ldap/openldap"
+for i in freeradius.ldif freeradius-clients.ldif; do
+	ldapadd -Y EXTERNAL -H ldapi://%2Fvar%2Frun%2Fslapd%2Fldapi -f ${SCHEMA_DIR}/$i
+done
+----
+
+== Populate with test data
+Once slapd is running and appropriately configured with database definitions an
+admin user, a readonly user, and the prerequisite schemas, it can now be
+populated with test data.
+
+For test data we will be using the object definitions from the LDAP module's CIT
+(Continuous Integration Testing) script.
+
+These object definitions have been designed to exercise all features of the
+FreeRADIUS LDAP module.
+
+[source,shell]
+----
+sed -e '1,/^description:/ d' ${FREERADIUS_SRC}/src/tests/modules/ldap/example.com.ldif \
+    | ldapadd -Y EXTERNAL -H ldapi://%2Fvar%2Frun%2Fslapd%2Fldapi
+----
+
+== Switch to an unprivileged user
+[source,shell]
+----
+exit
+----
+
+Now the setup of the directory is complete, we can communicate with it
+over a standard TCP socket and no longer need a root session.
+
+If, however, you need to make further changes to OpenLDAP's configuration, you
+should note that the `ldapadd`, `ldapmodify` commands must be called as root
+with the `-Y EXTERNAL` argument.
+
+== Check it works
+
+As a final step you should verify that test data has been loaded correctly.
+This can be done using the `ldapsearch` utility using the LDAP read only user.
+
+The command below will retrieve the entry for one of the test `radiusClient`
+entries. You should see a single search result returned if everything worked
+correctly.
+
+[source,shell]
+----
+ldapsearch -LLL -H ldap://localhost -x -D cn=readonly,<base_dn> -w <readonly_password> -b <base_dn> '(&(objectClass=radiusClient)(radiusClientShortname=client2))'
+----
+
+.Searching for a RADIUS Client
+====
+[source,shell]
+----
+ldapsearch -LLL -H ldap://localhost -x -D cn=readonly,dc=example,dc=com -w readonly -b dc=example,dc=com '(&(objectClass=radiusClient)(radiusClientShortname=client2))'
+----
+
+.Expected output
+[source,ldif]
+----
+dn: radiusClientIdentifier=2.2.2.2,ou=clients,dc=example,dc=com
+objectClass: radiusClient
+radiusClientIdentifier: 2.2.2.2
+radiusClientSecret: 123secret
+radiusClientShortname: client2
+radiusClientType: cisco
+radiusClientRequireMa: TRUE
+radiusClientComment: Another test client
+----
+====

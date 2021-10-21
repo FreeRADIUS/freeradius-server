@@ -125,6 +125,14 @@ else
 fi
 
 dnl #
+dnl # check for Antora
+dnl #
+AC_PATH_PROG(ANTORA, antora)
+if test "x$ac_cv_path_ANTORA" = "x"; then
+  AC_MSG_WARN([antora not found - Please install if you want build the site])
+fi
+
+dnl #
 dnl #  Enable developer features like debugging symbols.
 dnl #  These checks must be done before expanding the AC_PROG_CC
 dnl #  and AC_PROG_CXX macros.
@@ -152,7 +160,7 @@ if test "x$GIT" = "xyes" && git status 2>&1 > /dev/null; then
 
   if test "x$RADIUSD_VERSION_COMMIT" = "x"; then
     AC_MSG_CHECKING([build commit])
-    RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
+    RADIUSD_VERSION_COMMIT=`git rev-parse --short=8 HEAD`
     AC_MSG_RESULT($RADIUSD_VERSION_COMMIT)
   fi
 
@@ -180,6 +188,22 @@ if test "x$developer" = "xyes"; then
   : ${CFLAGS=-g3}
 fi
 
+dnl #
+dnl #  The developer option WITH_VERIFY_PTR significantly scews profiling so
+dnl #  we allow it to be disabled.
+dnl #
+AC_ARG_ENABLE(verify-ptr,
+[  --disable-verify-ptr    disables WITH_VERIFY_PTR developer build option.],
+[ case "$enableval" in
+  no)
+    verify_ptr=""
+    ;;
+  *)
+    verify_ptr="-DWITH_VERIFY_PTR=1"
+  esac ],
+[ verify_ptr="-DWITH_VERIFY_PTR=1" ],
+)
+
 dnl #############################################################
 dnl #
 dnl #  0. Checks for compiler
@@ -191,6 +215,18 @@ dnl #  Get system information
 dnl #
 AC_CANONICAL_SYSTEM
 AC_SUBST(TARGET_SYSTEM, "$target")
+
+case "$target" in
+  *-darwin*)
+    library_ext="dylib"
+    ;;
+
+  *)
+    library_ext="so"
+    ;;
+esac
+
+AC_SUBST(LIBRARY_EXT, "$library_ext")
 
 dnl #  Check for GNU cc
 dnl #
@@ -329,18 +365,66 @@ AC_ARG_ENABLE(werror,
 )
 
 dnl #
+dnl #  Enable the -fsanitize=fuzzer and link in the address sanitizer
+dnl #  libraries.
+dnl #
+AC_ARG_ENABLE(fuzzer,
+[AS_HELP_STRING([--enable-fuzzer],
+                [build with support for a fuzzer])],
+[ case "$enableval" in
+  no)
+    fuzzer=no
+    ;;
+  *)
+    fuzzer=yes
+  esac ]
+)
+
+dnl #
 dnl #  Enable the -fsanitize=address and link in the address sanitizer
 dnl #  libraries.
 dnl #
-AC_ARG_ENABLE(llvm-address-sanitizer,
-[AS_HELP_STRING([--enable-llvm-address-sanitizer],
-                [build with support for LLVM's address sanitizer (if building with clang).])],
+AC_ARG_ENABLE(address-sanitizer,
+[AS_HELP_STRING([--enable-address-sanitizer],
+                [build with support for address sanitizer.])],
 [ case "$enableval" in
   no)
-    llvm_address_sanitizer=no
+    address_sanitizer=no
     ;;
   *)
-    llvm_address_sanitizer=yes
+    address_sanitizer=yes
+  esac ]
+)
+
+dnl #
+dnl #  Enable -fsanitize=leak and link in the leak sanitizer
+dnl #  libraries.
+dnl #
+AC_ARG_ENABLE(leak-sanitizer,
+[AS_HELP_STRING([--enable-leak-sanitizer],
+                [build with support for leak sanitizer.])],
+[ case "$enableval" in
+  no)
+    leak_sanitizer=no
+    ;;
+  *)
+    leak_sanitizer=yes
+  esac ]
+)
+
+dnl #
+dnl #  Enable -fsanitize=thread and link in the thread sanitizer
+dnl #  libraries.
+dnl #
+AC_ARG_ENABLE(thread-sanitizer,
+[AS_HELP_STRING([--enable-thread-sanitizer],
+                [build with support for thread sanitizer.])],
+[ case "$enableval" in
+  no)
+    thread_sanitizer=no
+    ;;
+  *)
+    thread_sanitizer=yes
   esac ]
 )
 
@@ -348,15 +432,15 @@ dnl #
 dnl #  Enable the -fsanitize=undefined and link in the address sanitizer
 dnl #  libraries.
 dnl #
-AC_ARG_ENABLE(llvm-undefined-behaviour-sanitizer,
-[AS_HELP_STRING([--enable-llvm-undefined-behaviour-sanitizer],
-                [build with support for LLVM's undefined behaviour sanitizer (if building with clang).])],
+AC_ARG_ENABLE(undefined-behaviour-sanitizer,
+[AS_HELP_STRING([--enable-undefined-behaviour-sanitizer],
+                [build with support for undefined behaviour sanitizer.])],
 [ case "$enableval" in
   no)
-    llvm_undefined_behaviour_sanitizer=no
+    undefined_behaviour_sanitizer=no
     ;;
   *)
-    llvm_undefined_behaviour_sanitizer=yes
+    undefined_behaviour_sanitizer=yes
   esac ]
 )
 
@@ -593,37 +677,32 @@ AC_ARG_WITH(dictdir,
 AC_SUBST(dictdir)
 AC_MSG_RESULT($dictdir)
 
-modconfdir='${raddbdir}/mods-config'
-AC_SUBST(modconfdir)
-
-dnl #############################################################
 dnl #
-dnl #  0d. Enable/disable build time features
+dnl #  extra argument: --with-mibdir
 dnl #
-dnl #############################################################
-
-dnl #
-dnl #  extra argument:		--with-ascend-binary
-dnl #
-WITH_ASCEND_BINARY=yes
-AC_ARG_WITH(ascend-binary,
-[  --with-ascend-binary    include support for Ascend binary filter attributes (default=yes)],
+mibdir='${datarootdir}/snmp/mibs'
+AC_MSG_CHECKING(mibdir)
+AC_ARG_WITH(mibdir,
+[  --with-mibdir=DIR      directory for dictionary files [DATAROOTDIR/snmp] ],
 [ case "$withval" in
+  no)
+    AC_MSG_ERROR([Need mibdir])
+    ;;
   yes)
     ;;
+  [[\\/$]]* | ?:[[\\/]]* )
+    mibdir="$withval"
+    ;;
   *)
-    WITH_ASCEND_BINARY=no
+    AC_MSG_ERROR([expected an absolute directory name for --with-mibdir: $withval])
+    ;;
   esac ]
 )
-if test "x$WITH_ASCEND_BINARY" = "xyes"; then
-  AC_DEFINE(WITH_ASCEND_BINARY, [1], [include support for Ascend binary filter attributes])
-fi
+AC_SUBST(mibdir)
+AC_MSG_RESULT($mibdir)
 
-AX_WITH_FEATURE_ARGS([tcp],[yes])
-AX_WITH_FEATURE_ARGS([vmps],[yes])
-AX_WITH_FEATURE_ARGS([dhcp],[yes])
-AX_WITH_FEATURE_ARGS([tacacs],[yes])
-AX_WITH_FEATURE_ARGS([udpfromto],[yes])
+modconfdir='${raddbdir}/mods-config'
+AC_SUBST(modconfdir)
 
 dnl #############################################################
 dnl #
@@ -635,6 +714,7 @@ AX_WITH_LIB_ARGS_OPT([cap],[yes])
 AX_WITH_LIB_ARGS_OPT([collectdclient],[yes])
 AX_WITH_LIB_ARGS_OPT([execinfo],[yes])
 AX_WITH_LIB_ARGS_OPT([gperftools],[yes])
+AX_WITH_LIB_ARGS_OPT([gnumake],[yes])
 AX_WITH_LIB_ARGS_OPT([openssl],[yes])
 AX_WITH_LIB_ARGS([kqueue])
 AX_WITH_LIB_ARGS_OPT([pcap],[yes])
@@ -807,7 +887,6 @@ dnl #  Check if we need -lnsl. Usually if we want to
 dnl #  link against -lsocket we need to include -lnsl as well.
 dnl #
 AC_CHECK_LIB(nsl, inet_ntoa)
-AC_CHECK_LIB(ws2_32, htonl)
 
 dnl #
 dnl #  Check if we need -lrt, this is required on
@@ -858,6 +937,7 @@ AC_CHECK_HEADERS( \
   sys/event.h \
   sys/fcntl.h \
   sys/prctl.h \
+  sys/procctl.h \
   sys/ptrace.h \
   sys/resource.h \
   sys/security.h \
@@ -872,8 +952,7 @@ AC_CHECK_HEADERS( \
   utime.h \
   utmp.h \
   utmpx.h \
-  valgrind.h \
-  winsock.h
+  valgrind.h
 )
 
 dnl #
@@ -900,8 +979,17 @@ smart_try_dir="$talloc_lib_dir"
 FR_SMART_CHECK_LIB(talloc, _talloc)
 if test "x$ac_cv_lib_talloc__talloc" != "xyes"; then
   AC_MSG_WARN([talloc library not found. Use --with-talloc-lib-dir=<path>.])
-  AC_MSG_ERROR([FreeRADIUS requires libtalloc.  Please read doc/source/dependencies.rst for further instructions.])
+  AC_MSG_ERROR([FreeRADIUS requires libtalloc.  Please read doc/developers/dependencies.adoc for further instructions.])
 fi
+
+dnl #
+dnl # Check for talloc_set_memlimit
+dnl # This was only included in version 2.0.8
+dnl # Needs to be done here with the talloc linker flags set
+dnl #
+AC_CHECK_FUNCS(
+  _talloc_pooled_object
+)
 
 TALLOC_LIBS="${smart_lib}"
 TALLOC_LDFLAGS="${smart_ldflags}"
@@ -918,7 +1006,7 @@ if test "x$ac_cv_func_kqueue" != "xyes"; then
   FR_SMART_CHECK_LIB(kqueue, kqueue)
   if test "x$ac_cv_lib_kqueue_kqueue" != "xyes"; then
     AC_MSG_WARN([kqueue library not found. Use --with-kqueue-lib-dir=<path>.])
-    AC_MSG_ERROR([FreeRADIUS requires libkqueue (or system kqueue).  Please read doc/source/dependencies.rst for further instructions.])
+    AC_MSG_ERROR([FreeRADIUS requires libkqueue (or system kqueue).  Please read doc/developers/dependencies.adoc for further instructions.])
   fi
 fi
 
@@ -1072,7 +1160,8 @@ case "$target" in
     CFLAGS="$CFLAGS -D_ALL_SOURCE"
     ;;
   *-darwin*)
-    CFLAGS="$CFLAGS -DDARWIN"
+    CFLAGS="$CFLAGS -DDARWIN -mmacosx-version-min=$(sw_vers -productVersion)"
+    LDFLAGS="$LDFLAGS -mmacosx-version-min=$(sw_vers -productVersion)"
     LIBS="-framework DirectoryService $LIBS"
     AC_DEFINE([__APPLE_USE_RFC_3542], 1, [Force OSX >= 10.7 Lion to use RFC2292 IPv6 socket options])
     ;;
@@ -1135,10 +1224,10 @@ if test "x$WITH_OPENSSL" = xyes; then
       ]
     )
 
-    AC_MSG_CHECKING([for OpenSSL version >= 1.0.2])
+    AC_MSG_CHECKING([for OpenSSL version >= 1.1.1])
     AC_EGREP_CPP(yes,
       [#include <openssl/crypto.h>
-       #if (OPENSSL_VERSION_NUMBER >= 0x10002000L)
+       #if (OPENSSL_VERSION_NUMBER >= 0x10101000L)
        yes
        #endif
       ],
@@ -1291,6 +1380,17 @@ else
   else
     AC_MSG_WARN([systemd headers not found.  Use --with-systemd-include-dir=<path>.])
   fi
+fi
+
+dnl #
+dnl #  Check for the gnumake headers
+dnl #  Why is GNU make not smart enough to export a variable saying where the heck this is?
+dnl #
+smart_try_dir="$gnumake_include_dir"
+FR_SMART_CHECK_INCLUDE([gnumake.h])
+if test "x$ac_cv_header_gnumake_h" != "xyes"; then
+  AC_MSG_WARN([gnumake.h not found. Use --with-gnumake-include-dir=<path>.])
+  AC_MSG_ERROR([FreeRADIUS build system requires gnumake.h (the public interface for GNU Make C extensions)])
 fi
 
 dnl #############################################################
@@ -1507,9 +1607,12 @@ AC_CHECK_FUNCS( \
   initgroups \
   localtime_r \
   mallopt \
+  memrchr \
   mkdirat \
   openat \
   pthread_sigmask \
+  recvmmsg \
+  sendmmsg \
   setlinebuf \
   setresuid \
   setsid \
@@ -1630,15 +1733,6 @@ if test "x$developer" = "xyes"; then
   AC_MSG_NOTICE([Setting additional developer CFLAGS])
 
   dnl #
-  dnl #  Tell the compiler to parse doxygen documentation and verify it against function and variable declarations
-  dnl #
-  AX_CC_WDOCUMENTATION_FLAG
-  if test "x$ax_cv_cc_wdocumentation_flag" = "xyes"; then
-    devcflags="-Wdocumentation"
-    AC_DEFINE([HAVE_WDOCUMENTATION],1,[Define if the compiler supports -Wdocumentation])
-  fi
-
-  dnl #
   dnl #  If we have -Weverything, it really means *everything* unlike -Wall
   dnl #  It's so verbose we need to turn off warnings which aren't useful.
   dnl #
@@ -1648,50 +1742,63 @@ if test "x$developer" = "xyes"; then
 	-W \
 	-Weverything \
 	-Wformat=2 \
-	-DWITH_VERIFY_PTR=1 \
-	-Wno-disabled-macro-expansion \
-	-Wno-missing-field-initializers \
 	-Wno-date-time \
-    	-Wno-padded \
+	-Wno-disabled-macro-expansion \
+	-Wno-format-pedantic \
+	-Wno-missing-field-initializers \
+    	-Wno-cast-align \
+    	-Wno-conversion \
+    	-Wno-covered-switch-default \
+    	-Wno-documentation-unknown-command \
+    	-Wno-extended-offsetof \
+    	-Wno-gnu-empty-initializer \
+    	-Wno-gnu-statement-expression \
     	-Wno-gnu-zero-variadic-macro-arguments \
+    	-Wno-packed \
+    	-Wno-padded \
+    	-Wno-poison-system-directories \
+    	-Wno-reserved-id-macro \
     	-Wno-shorten-64-to-32 \
     	-Wno-sign-conversion \
-    	-Wno-conversion \
     	-Wno-switch-enum \
-    	-Wno-gnu-statement-expression \
-    	-Wno-extended-offsetof \
-    	-Wno-cast-align \
-    	-Wno-documentation-unknown-command \
-    	-Wno-covered-switch-default \
-    	-Wno-packed \
-    	-Wno-reserved-id-macro \
-    	-Wno-format-pedantic"
+    	-Wno-vla \
+        $verify_ptr"
   else
     if test "x$GCC" = "xyes"; then
       devcflags="$devcflags \
-      	-Wshadow \
-      	-Wpointer-arith \
-      	-Wcast-qual \
-      	-Wcast-align \
-      	-Wwrite-strings \
-      	-Wstrict-prototypes \
-      	-Wmissing-prototypes \
-      	-Wmissing-declarations \
-      	-Wnested-externs \
       	-W \
-      	-Wredundant-decls \
-      	-Wundef \
-      	-Wformat-y2k \
-      	-Wno-missing-field-initializers \
-      	-Wno-format-extra-args \
-      	-Wno-format-zero-length \
-      	-Wno-cast-align \
+      	-Wall \
+      	-Wcast-align \
+      	-Wcast-qual \
       	-Wformat-nonliteral \
       	-Wformat-security \
+      	-Wformat-y2k \
       	-Wformat=2 \
-      	-DWITH_VERIFY_PTR=1"
+      	-Wmissing-declarations \
+      	-Wmissing-prototypes \
+      	-Wnested-externs \
+      	-Wno-cast-align \
+      	-Wno-format-extra-args \
+      	-Wno-format-zero-length \
+      	-Wno-missing-field-initializers \
+      	-Wpointer-arith \
+      	-Wredundant-decls \
+      	-Wshadow \
+      	-Wstrict-prototypes \
+      	-Wundef \
+      	-Wwrite-strings \
+	$verify_ptr"
       INSTALLSTRIP=""
     fi
+  fi
+
+  dnl #
+  dnl #  Tell the compiler to parse doxygen documentation and verify it against function and variable declarations
+  dnl #
+  AX_CC_WDOCUMENTATION_FLAG
+  if test "x$ax_cv_cc_wdocumentation_flag" = "xyes"; then
+    devcflags="$devcflags -Wdocumentation"
+    AC_DEFINE([HAVE_WDOCUMENTATION],1,[Define if the compiler supports -Wdocumentation])
   fi
 
   dnl #
@@ -1703,15 +1810,31 @@ if test "x$developer" = "xyes"; then
   fi
 
   dnl #
-  dnl #  If running with clang, add in ASAN
+  dnl #  Can't use mutliple -fsanitize flags, so we need to combine
+  dnl #  the values into one.
   dnl #
-  if test "x$llvm_address_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+  fsanitizeflags=
+
+  dnl #
+  dnl #  If running with clang, add in FUZZER
+  dnl #
+  if test "x$fuzzer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+    dnl #
+    dnl #  -fsanitize=fuzzer  - Build with fuzzer support
+    dnl #
+    fsanitizeflags="$fsanitizeflags,fuzzer"
+  fi
+
+  dnl #
+  dnl #  Add in ASAN
+  dnl #
+  if test "x$address_sanitizer" = "xyes"; then
     dnl #
     dnl #  -fsanitize=address		- Build with address sanitizer support
     dnl #  -fno-omit-frame-pointer	- Always keep the frame pointer in a register
     dnl #  -fno-optimize-sibling-calls	- Don't optimize away tail recursion.
     dnl #
-    devcflags="$devcflags -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls"
+    devcflags="$devcflags -fno-omit-frame-pointer -fno-optimize-sibling-calls"
 
     AX_CC_SANITZE_ADDRESS_USE_AFTER_SCOPE_FLAG
     if test "x$ax_cv_cc_sanitize_address_use_after_scope" = "xyes"; then
@@ -1719,20 +1842,46 @@ if test "x$developer" = "xyes"; then
     fi
 
     AC_CHECK_HEADERS(sanitizer/lsan_interface.h)
-
-    devldflags="$devldflags -fsanitize=address"
+    fsanitizeflags="$fsanitizeflags,address"
   fi
 
   dnl #
-  dnl #  If running with clang, add in UBSAN
+  dnl #  Add in LSAN
   dnl #
-  if test "x$llvm_undefined_behaviour_sanitizer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+  if test "x$leak_sanitizer" = "xyes"; then
+    dnl #
+    dnl #  -fsanitize=leak	- Build with lsan support
+    dnl #
+    fsanitizeflags="$fsanitizeflags,leak"
+  fi
+
+  dnl #
+  dnl #  Add in TSAN
+  dnl #
+  if test "x$thread_sanitizer" = "xyes"; then
+    dnl #
+    dnl #  -fsanitize=thread	- Build with tsan support
+    dnl #
+    fsanitizeflags="$fsanitizeflags,thread"
+  fi
+
+  dnl #
+  dnl #  Add in UBSAN
+  dnl #
+  if test "x$undefined_behaviour_sanitizer" = "xyes"; then
     dnl #
     dnl #  -fsanitize=undefined		- Build with ubsan support
     dnl #  -fno-omit-frame-pointer	- Always keep the frame pointer in a register
     dnl #
     devcflags="$devcflags -fno-sanitize-recover=undefined -fno-omit-frame-pointer"
     devldflags="$devldflags -fno-sanitize-recover=undefined"
+    fsanitizeflags="$fsanitizeflags,undefined"
+  fi
+
+  if test "x$fsanitizeflags" != "x"; then
+    fsanitizeflags="$(echo $fsanitizeflags | sed 's/^,*//')"
+    devcflags="-fsanitize=$fsanitizeflags $devcflags"
+    devldflags="-fsanitize=$fsanitizeflags $devldflags"
   fi
 
   dnl #
@@ -1778,7 +1927,8 @@ dnl #
 FR_TLS
 AX_CC_BUILTIN_CHOOSE_EXPR
 AX_CC_BUILTIN_TYPES_COMPATIBLE_P
-AX_CC_HAVE_BUILTIN_BSWAP64
+AX_CC_BUILTIN_BSWAP64
+AX_CC_BUILTIN_CLZLL
 
 AX_CC_HAVE_C11_GENERIC
 if test "x$ax_cv_cc_c11_generic" != "xyes"; then
@@ -1790,15 +1940,6 @@ dnl #
 dnl #  7. Checks for library functions
 dnl #
 dnl #############################################################
-
-dnl #
-dnl # Check for talloc_set_memlimit
-dnl # This was only included in version 2.0.8
-dnl #
-AC_CHECK_FUNCS(
-  talloc_set_memlimit \
-  talloc_pooled_object
-)
 
 dnl #
 dnl # Check for libcrypt
@@ -2351,7 +2492,7 @@ dnl #############################################################
 AC_CONFIG_COMMANDS([stamp-h], [echo timestamp > src/include/stamp-h])
 AC_CONFIG_COMMANDS([build-radpaths-h], [(cd ./src/include && /bin/sh ./build-radpaths-h)])
 AC_CONFIG_COMMANDS([main-chmod], [(cd ./src/bin && chmod +x checkrad radlast radtest)])
-AC_CONFIG_COMMANDS([scripts-chmod], [(cd ./scripts && chmod +x rc.radiusd cron/radiusd.cron.daily cron/radiusd.cron.monthly cryptpasswd)])
+AC_CONFIG_COMMANDS([scripts-chmod], [(cd ./scripts && chmod +x rc.radiusd cron/radiusd.cron.daily cron/radiusd.cron.monthly util/cryptpasswd)])
 
 dnl #
 dnl #  Substitute whatever libraries we found to be necessary
@@ -2368,7 +2509,7 @@ AC_OUTPUT(\
   ./scripts/rc.radiusd \
   ./scripts/cron/radiusd.cron.daily \
   ./scripts/cron/radiusd.cron.monthly \
-  ./scripts/cryptpasswd \
+  ./scripts/util/cryptpasswd \
   ./raddb/radrelay.conf \
   ./raddb/radiusd.conf
 )

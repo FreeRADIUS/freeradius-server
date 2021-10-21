@@ -93,12 +93,17 @@ server dynamic_clients {
 			idle_timeout = 60.0
 
 			#
-			#  If a dynamic client is disallowed, it is
-			#  placed onto a "NAK" blacklist for a period
-			#  of time.  This blacklist helps to prevent
-			#  DoS attacks.
+			#  nak_lifetime:: Time for which blocked
+			#  clients are placed into a NAK cache.
 			#
-			#  After "nak_timeout" seconds, the blacklist
+			#  If a dynamic client is disallowed, it is
+			#  placed onto a "NAK" list for a period
+			#  of time.  This process helps to prevent
+			#  DoS attacks.  When subsequent packets are
+			#  received from that IP address, they hit the
+			#  "NAK" cache, and are immediately discarded.
+			#
+			#  After `nak_timeout` seconds, the blocked
 			#  entry will be removed, and the IP will be
 			#  allowed to try again to define a dynamic
 			#  client.
@@ -116,7 +121,7 @@ server dynamic_clients {
 			#  a short period of time, after it is sent to
 			#  the NAS.  The reply packet may be lost in
 			#  the network, and the NAS will not see it.
-			#  The NAS will then re-send the request, and
+			#  The NAS will then resend the request, and
 			#  the server will respond quickly with the
 			#  cached reply.
 			#
@@ -141,7 +146,7 @@ server dynamic_clients {
 			#  Whether or not we allow dynamic clients.
 			#
 			#  If set to true, then packets from unknown
-			#  clients are passed throug the "new client"
+			#  clients are passed through the "new client"
 			#  subsection below.  See that section for
 			#  more information.
 			#
@@ -185,7 +190,7 @@ server dynamic_clients {
 				#  In this example, 127.0.0.1 can be
 				#  used to define a dynamic client.
 				#  But the (hypothetical) 127.1.0.1
-				#  address cannot be usef to define
+				#  address cannot be used to define
 				#  a dynamic client.
 				#
 				deny = 127.1/16
@@ -258,11 +263,11 @@ server dynamic_clients {
 		#  This requires the SQL module to be configured, of course.
 		#
 		map sql "SELECT nasname,shortname,secret,type,server FROM nas WHERE nasname = '%{Packet-Src-IP-Address}' LIMIT 1" {
-			&control:FreeRADIUS-Client-IP-Address := 'nasname'
-			&control:FreeRADIUS-Client-Shortname := 'shortname'
-			&control:FreeRADIUS-Client-Secret := 'secret'
-			&control:FreeRADIUS-Client-NAS-Type := 'type'
-			&control:FreeRADIUS-Client-Virtual-Server := 'server'
+			&control.FreeRADIUS-Client-IP-Address := 'nasname'
+			&control.FreeRADIUS-Client-Shortname := 'shortname'
+			&control.FreeRADIUS-Client-Secret := 'secret'
+			&control.FreeRADIUS-Client-NAS-Type := 'type'
+			&control.FreeRADIUS-Client-Virtual-Server := 'server'
 		}
 
 		#

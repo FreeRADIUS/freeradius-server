@@ -1,6 +1,6 @@
 FreeRADIUS 4.0.0 Sun 10 Jul 2016 15:48:14 EDT urgency=medium
 	Feature improvements
-	* For upgrade instructions, see doc/upgrade/README.md
+	* For upgrade instructions, see doc/upgrade/index.adoc
 	* "authorize", "authenticate", "preacct", etc.
 	  are no longer used.
 	* Dropped support for -i and -p flags in radiusd

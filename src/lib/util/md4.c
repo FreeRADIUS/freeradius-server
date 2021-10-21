@@ -9,15 +9,15 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/talloc.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/atexit.h>
 
 /*
  *  FORCE MD4 TO USE OUR MD4 HEADER FILE!
  *  If we don't do this, it might pick up the systems broken MD4.
  */
-#include "md4.h"
+#include <freeradius-devel/util/md4.h>
 
-fr_thread_local_setup(fr_md4_ctx_t *, md4_ctx)
+static _Thread_local fr_md4_ctx_t *md4_ctx;
 
 /*
  *	If we have OpenSSL's EVP API available, then build wrapper functions.
@@ -26,14 +26,14 @@ fr_thread_local_setup(fr_md4_ctx_t *, md4_ctx)
  *	be operating in FIPS mode where MD4 digest functions are unavailable.
  */
 #ifdef HAVE_OPENSSL_EVP_H
+
 #  include <openssl/evp.h>
 #  include <openssl/crypto.h>
+#  include <openssl/err.h>
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-#  define EVP_MD_CTX_new EVP_MD_CTX_create
-#  define EVP_MD_CTX_free EVP_MD_CTX_destroy
-#  define EVP_MD_CTX_reset EVP_MD_CTX_cleanup
-#endif
+#  if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#    include <openssl/provider.h>
+#  endif
 
 static int have_openssl_md4 = -1;
 
@@ -76,11 +76,22 @@ static fr_md4_ctx_t *fr_md4_openssl_ctx_alloc(bool thread_local)
 			md_ctx = EVP_MD_CTX_new();
 			if (unlikely(!md_ctx)) {
 			oom:
-				fr_strerror_printf("Out of memory");
+				fr_strerror_const("Out of memory");
 				return NULL;
 			}
-			fr_thread_local_set_destructor(md4_ctx, _md4_ctx_openssl_free_on_exit, md_ctx);
-			EVP_DigestInit_ex(md_ctx, EVP_md4(), NULL);
+			fr_atexit_thread_local(md4_ctx, _md4_ctx_openssl_free_on_exit, md_ctx);
+			if (unlikely(EVP_DigestInit_ex(md_ctx, EVP_md4(), NULL) != 1)) {
+				char buffer[256];
+			error:
+
+				ERR_error_string_n(ERR_get_error(), buffer, sizeof(buffer));
+
+				fr_strerror_printf("Failed initialising MD4 ctx: %s", buffer);
+				EVP_MD_CTX_free(md_ctx);
+				md_ctx = NULL;
+
+				return NULL;
+			}
 		} else {
 			md_ctx = md4_ctx;
 		}
@@ -92,7 +103,7 @@ static fr_md4_ctx_t *fr_md4_openssl_ctx_alloc(bool thread_local)
 	} else {
 		md_ctx = EVP_MD_CTX_new();
 		if (unlikely(!md_ctx)) goto oom;
-		EVP_DigestInit_ex(md_ctx, EVP_md4(), NULL);
+		if (EVP_DigestInit_ex(md_ctx, EVP_md4(), NULL) != 1) goto error;
 	}
 
 	return md_ctx;
@@ -211,9 +222,9 @@ static void fr_md4_openssl_final(uint8_t out[static MD4_DIGEST_LENGTH], fr_md4_c
 #define MD4_BLOCK_LENGTH 64
 
 /* The three core functions - F1 is optimized somewhat */
-#define F1(x, y, z) (z ^ (x & (y ^ z)))
-#define F2(x, y, z) ((x & y) | (x & z) | (y & z))
-#define F3(x, y, z) (x ^ y ^ z)
+#define MD4_F1(x, y, z) (z ^ (x & (y ^ z)))
+#define MD4_F2(x, y, z) ((x & y) | (x & z) | (y & z))
+#define MD4_F3(x, y, z) (x ^ y ^ z)
 
 /* This is the central step in the MD4 algorithm. */
 #define MD4STEP(f, w, x, y, z, data, s) (w += f(x, y, z) + data, w = w << s | w >> (32 - s))
@@ -237,56 +248,56 @@ static void fr_md4_local_transform(uint32_t state[static 4], uint8_t const block
 	c = state[2];
 	d = state[3];
 
-	MD4STEP(F1, a, b, c, d, in[ 0],  3);
-	MD4STEP(F1, d, a, b, c, in[ 1],  7);
-	MD4STEP(F1, c, d, a, b, in[ 2], 11);
-	MD4STEP(F1, b, c, d, a, in[ 3], 19);
-	MD4STEP(F1, a, b, c, d, in[ 4],  3);
-	MD4STEP(F1, d, a, b, c, in[ 5],  7);
-	MD4STEP(F1, c, d, a, b, in[ 6], 11);
-	MD4STEP(F1, b, c, d, a, in[ 7], 19);
-	MD4STEP(F1, a, b, c, d, in[ 8],  3);
-	MD4STEP(F1, d, a, b, c, in[ 9],  7);
-	MD4STEP(F1, c, d, a, b, in[10], 11);
-	MD4STEP(F1, b, c, d, a, in[11], 19);
-	MD4STEP(F1, a, b, c, d, in[12],  3);
-	MD4STEP(F1, d, a, b, c, in[13],  7);
-	MD4STEP(F1, c, d, a, b, in[14], 11);
-	MD4STEP(F1, b, c, d, a, in[15], 19);
+	MD4STEP(MD4_F1, a, b, c, d, in[ 0],  3);
+	MD4STEP(MD4_F1, d, a, b, c, in[ 1],  7);
+	MD4STEP(MD4_F1, c, d, a, b, in[ 2], 11);
+	MD4STEP(MD4_F1, b, c, d, a, in[ 3], 19);
+	MD4STEP(MD4_F1, a, b, c, d, in[ 4],  3);
+	MD4STEP(MD4_F1, d, a, b, c, in[ 5],  7);
+	MD4STEP(MD4_F1, c, d, a, b, in[ 6], 11);
+	MD4STEP(MD4_F1, b, c, d, a, in[ 7], 19);
+	MD4STEP(MD4_F1, a, b, c, d, in[ 8],  3);
+	MD4STEP(MD4_F1, d, a, b, c, in[ 9],  7);
+	MD4STEP(MD4_F1, c, d, a, b, in[10], 11);
+	MD4STEP(MD4_F1, b, c, d, a, in[11], 19);
+	MD4STEP(MD4_F1, a, b, c, d, in[12],  3);
+	MD4STEP(MD4_F1, d, a, b, c, in[13],  7);
+	MD4STEP(MD4_F1, c, d, a, b, in[14], 11);
+	MD4STEP(MD4_F1, b, c, d, a, in[15], 19);
 
-	MD4STEP(F2, a, b, c, d, in[ 0] + 0x5a827999,  3);
-	MD4STEP(F2, d, a, b, c, in[ 4] + 0x5a827999,  5);
-	MD4STEP(F2, c, d, a, b, in[ 8] + 0x5a827999,  9);
-	MD4STEP(F2, b, c, d, a, in[12] + 0x5a827999, 13);
-	MD4STEP(F2, a, b, c, d, in[ 1] + 0x5a827999,  3);
-	MD4STEP(F2, d, a, b, c, in[ 5] + 0x5a827999,  5);
-	MD4STEP(F2, c, d, a, b, in[ 9] + 0x5a827999,  9);
-	MD4STEP(F2, b, c, d, a, in[13] + 0x5a827999, 13);
-	MD4STEP(F2, a, b, c, d, in[ 2] + 0x5a827999,  3);
-	MD4STEP(F2, d, a, b, c, in[ 6] + 0x5a827999,  5);
-	MD4STEP(F2, c, d, a, b, in[10] + 0x5a827999,  9);
-	MD4STEP(F2, b, c, d, a, in[14] + 0x5a827999, 13);
-	MD4STEP(F2, a, b, c, d, in[ 3] + 0x5a827999,  3);
-	MD4STEP(F2, d, a, b, c, in[ 7] + 0x5a827999,  5);
-	MD4STEP(F2, c, d, a, b, in[11] + 0x5a827999,  9);
-	MD4STEP(F2, b, c, d, a, in[15] + 0x5a827999, 13);
+	MD4STEP(MD4_F2, a, b, c, d, in[ 0] + 0x5a827999,  3);
+	MD4STEP(MD4_F2, d, a, b, c, in[ 4] + 0x5a827999,  5);
+	MD4STEP(MD4_F2, c, d, a, b, in[ 8] + 0x5a827999,  9);
+	MD4STEP(MD4_F2, b, c, d, a, in[12] + 0x5a827999, 13);
+	MD4STEP(MD4_F2, a, b, c, d, in[ 1] + 0x5a827999,  3);
+	MD4STEP(MD4_F2, d, a, b, c, in[ 5] + 0x5a827999,  5);
+	MD4STEP(MD4_F2, c, d, a, b, in[ 9] + 0x5a827999,  9);
+	MD4STEP(MD4_F2, b, c, d, a, in[13] + 0x5a827999, 13);
+	MD4STEP(MD4_F2, a, b, c, d, in[ 2] + 0x5a827999,  3);
+	MD4STEP(MD4_F2, d, a, b, c, in[ 6] + 0x5a827999,  5);
+	MD4STEP(MD4_F2, c, d, a, b, in[10] + 0x5a827999,  9);
+	MD4STEP(MD4_F2, b, c, d, a, in[14] + 0x5a827999, 13);
+	MD4STEP(MD4_F2, a, b, c, d, in[ 3] + 0x5a827999,  3);
+	MD4STEP(MD4_F2, d, a, b, c, in[ 7] + 0x5a827999,  5);
+	MD4STEP(MD4_F2, c, d, a, b, in[11] + 0x5a827999,  9);
+	MD4STEP(MD4_F2, b, c, d, a, in[15] + 0x5a827999, 13);
 
-	MD4STEP(F3, a, b, c, d, in[ 0] + 0x6ed9eba1,  3);
-	MD4STEP(F3, d, a, b, c, in[ 8] + 0x6ed9eba1,  9);
-	MD4STEP(F3, c, d, a, b, in[ 4] + 0x6ed9eba1, 11);
-	MD4STEP(F3, b, c, d, a, in[12] + 0x6ed9eba1, 15);
-	MD4STEP(F3, a, b, c, d, in[ 2] + 0x6ed9eba1,  3);
-	MD4STEP(F3, d, a, b, c, in[10] + 0x6ed9eba1,  9);
-	MD4STEP(F3, c, d, a, b, in[ 6] + 0x6ed9eba1, 11);
-	MD4STEP(F3, b, c, d, a, in[14] + 0x6ed9eba1, 15);
-	MD4STEP(F3, a, b, c, d, in[ 1] + 0x6ed9eba1,  3);
-	MD4STEP(F3, d, a, b, c, in[ 9] + 0x6ed9eba1,  9);
-	MD4STEP(F3, c, d, a, b, in[ 5] + 0x6ed9eba1, 11);
-	MD4STEP(F3, b, c, d, a, in[13] + 0x6ed9eba1, 15);
-	MD4STEP(F3, a, b, c, d, in[ 3] + 0x6ed9eba1,  3);
-	MD4STEP(F3, d, a, b, c, in[11] + 0x6ed9eba1,  9);
-	MD4STEP(F3, c, d, a, b, in[ 7] + 0x6ed9eba1, 11);
-	MD4STEP(F3, b, c, d, a, in[15] + 0x6ed9eba1, 15);
+	MD4STEP(MD4_F3, a, b, c, d, in[ 0] + 0x6ed9eba1,  3);
+	MD4STEP(MD4_F3, d, a, b, c, in[ 8] + 0x6ed9eba1,  9);
+	MD4STEP(MD4_F3, c, d, a, b, in[ 4] + 0x6ed9eba1, 11);
+	MD4STEP(MD4_F3, b, c, d, a, in[12] + 0x6ed9eba1, 15);
+	MD4STEP(MD4_F3, a, b, c, d, in[ 2] + 0x6ed9eba1,  3);
+	MD4STEP(MD4_F3, d, a, b, c, in[10] + 0x6ed9eba1,  9);
+	MD4STEP(MD4_F3, c, d, a, b, in[ 6] + 0x6ed9eba1, 11);
+	MD4STEP(MD4_F3, b, c, d, a, in[14] + 0x6ed9eba1, 15);
+	MD4STEP(MD4_F3, a, b, c, d, in[ 1] + 0x6ed9eba1,  3);
+	MD4STEP(MD4_F3, d, a, b, c, in[ 9] + 0x6ed9eba1,  9);
+	MD4STEP(MD4_F3, c, d, a, b, in[ 5] + 0x6ed9eba1, 11);
+	MD4STEP(MD4_F3, b, c, d, a, in[13] + 0x6ed9eba1, 15);
+	MD4STEP(MD4_F3, a, b, c, d, in[ 3] + 0x6ed9eba1,  3);
+	MD4STEP(MD4_F3, d, a, b, c, in[11] + 0x6ed9eba1,  9);
+	MD4STEP(MD4_F3, c, d, a, b, in[ 7] + 0x6ed9eba1, 11);
+	MD4STEP(MD4_F3, b, c, d, a, in[15] + 0x6ed9eba1, 15);
 
 	state[0] += a;
 	state[1] += b;
@@ -345,7 +356,11 @@ static fr_md4_ctx_t *fr_md4_local_ctx_alloc(bool thread_local)
 		 *	md4 functions, and call the OpenSSL init
 		 *	function.
 		 */
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		if (!EVP_default_properties_is_fips_enabled(NULL)) {
+#else
 		if (FIPS_mode() == 0) {
+#endif
 			have_openssl_md4 = 1;
 
 			/*
@@ -374,7 +389,7 @@ static fr_md4_ctx_t *fr_md4_local_ctx_alloc(bool thread_local)
 			ctx_local = talloc(NULL, fr_md4_ctx_local_t);
 			if (unlikely(!ctx_local)) return NULL;
 			fr_md4_local_ctx_reset(ctx_local);
-			fr_thread_local_set_destructor(md4_ctx, _md4_ctx_local_free_on_exit, ctx_local);
+			fr_atexit_thread_local(md4_ctx, _md4_ctx_local_free_on_exit, ctx_local);
 		} else {
 			ctx_local = md4_ctx;
 		}
@@ -414,6 +429,14 @@ static void fr_md4_local_update(fr_md4_ctx_t *ctx, uint8_t const *in, size_t inl
 {
 	uint32_t		count;
 	fr_md4_ctx_local_t	*ctx_local = talloc_get_type_abort(ctx, fr_md4_ctx_local_t);
+
+	/*
+	 *	Needed so we can calculate the zero
+	 *	length md4 hash correctly.
+	 *	ubsan doesn't like arithmetic on
+	 *	NULL pointers.
+	 */
+	if (!in) in = (uint8_t[]){ 0x00 };
 
 	/* Bytes already stored in ctx_local->buffer */
 	count = (uint32_t)((ctx_local->count[0] >> 3) & 0x3f);

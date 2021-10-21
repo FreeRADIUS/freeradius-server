@@ -1,0 +1,10 @@
+ALIAS	Alteon-Group-Mapping                    	26.1872.1
+ALIAS	Alteon-VPN-Id                           	26.1872.3
+ALIAS	Alteon-Client-IP-Address                	26.1872.4
+ALIAS	Alteon-Client-Netmask                   	26.1872.5
+ALIAS	Alteon-Primary-NBNS-Server              	26.1872.6
+ALIAS	Alteon-Secondary-NBNS-Server            	26.1872.7
+ALIAS	Alteon-Primary-DNS-Server               	26.1872.8
+ALIAS	Alteon-Secondary-DNS-Server             	26.1872.9
+ALIAS	Alteon-Domain-Name                      	26.1872.10
+ALIAS	Alteon-Service-Type                     	26.1872.26

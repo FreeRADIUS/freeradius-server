@@ -23,21 +23,28 @@
  *
  * @copyright 2016-2019 The FreeRADIUS server project
  */
+#include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/unlang/compile.h>
+#include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/module.h>
+#include <freeradius-devel/unlang/subrequest.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-bool		unlang_section(CONF_SECTION *cs);
+bool			unlang_section(CONF_SECTION *cs);
 
-void		unlang_register(int type, unlang_op_t *op);
+int			unlang_init_global(void);
 
-int		unlang_init(void);
+void			unlang_free_global(void);
 
-void		unlang_free(void);
+int			unlang_thread_instantiate(TALLOC_CTX *ctx) CC_HINT(nonnull);
+
+#ifdef WITH_PERF
+void			unlang_perf_virtual_server(fr_log_t *log, char const *name);
+#endif
 
 #ifdef __cplusplus
 }

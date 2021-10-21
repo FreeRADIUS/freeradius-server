@@ -23,21 +23,32 @@
  */
 RCSIDH(struct_h, "$Id$")
 
-#include <freeradius-devel/util/value.h>
-#include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/dcursor.h>
 #include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/value.h>
+#include <freeradius-devel/util/proto.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_cursor_t *cursor,
-			       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
-			       fr_dict_attr_t const **child) CC_HINT(nonnull(2,3,4));
-ssize_t fr_struct_to_network(uint8_t *out, size_t outlen,
-			     fr_dict_attr_t const *parent, fr_cursor_t *cursor) CC_HINT(nonnull);
+typedef ssize_t (*fr_decode_value_t)(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+				     fr_dict_attr_t const *parent,
+				     uint8_t const *data, size_t const data_len, void *decode_ctx);
 
-VALUE_PAIR *fr_unknown_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
+ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
+			       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
+			       bool nested, void *decode_ctx,
+			       fr_decode_value_t decode_value, fr_decode_value_t decode_tlv) CC_HINT(nonnull(2,3,4));
+
+typedef ssize_t (*fr_encode_dbuff_t)(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth,
+				     fr_dcursor_t *cursor, void *encode_ctx);
+
+ssize_t fr_struct_to_network(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth,
+			     fr_dcursor_t *cursor, void *encode_ctx,
+			     fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_tlv) CC_HINT(nonnull(1,2,4));
+
+fr_pair_t *fr_raw_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
 				    uint8_t const *data, size_t data_len) CC_HINT(nonnull);
 
 #ifdef __cplusplus

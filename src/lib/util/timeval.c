@@ -82,7 +82,7 @@ int fr_timeval_from_str(struct timeval *out, char const *in)
 		len = strlen(end + 1);
 
 		if (len > 6) {
-			fr_strerror_printf("Too much precision for timeval");
+			fr_strerror_const("Too much precision for timeval");
 			return -1;
 		}
 

@@ -20,9 +20,10 @@
  * @brief Parses JSON responses
  *
  * @author Arran Cudbard-Bell
+ * @author Matthew Newton
  *
  * @copyright 2015 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
- * @copyright 2015 Network RADIUS SARL (info@networkradius.com)
+ * @copyright 2015,2020 Network RADIUS SARL (legal@networkradius.com)
  * @copyright 2015 The FreeRADIUS Server Project
  */
 RCSID("$Id$")
@@ -30,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/map_proc.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/json/base.h>
 
 #include <ctype.h>
@@ -38,6 +39,43 @@ RCSID("$Id$")
 #ifndef HAVE_JSON
 #  error "rlm_json should not be built unless json-c is available"
 #endif
+
+static fr_sbuff_parse_rules_t const json_arg_parse_rules = {
+	.terminals = &FR_SBUFF_TERMS(
+		L("\t"),
+		L(" "),
+		L("!")
+	)
+};
+
+/** rlm_json module instance
+ *
+ */
+typedef struct {
+	char const		*name;
+	fr_json_format_t	*format;
+} rlm_json_t;
+
+
+static CONF_PARSER const module_config[] = {
+	{ FR_CONF_OFFSET("encode", FR_TYPE_SUBSECTION, rlm_json_t, format),
+	  .subcs_size = sizeof(fr_json_format_t), .subcs_type = "fr_json_format_t",
+	  .subcs = (void const *) fr_json_format_config },
+
+	CONF_PARSER_TERMINATOR
+};
+
+
+/** Boilerplate to copy the pointer to the main module config into the xlat instance data
+ *
+ */
+static int json_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	*((rlm_json_t **)xlat_inst) = talloc_get_type_abort(uctx, rlm_json_t);
+
+	return 0;
+}
+
 
 /** Forms a linked list of jpath head node pointers (a list of jpaths)
  */
@@ -52,57 +90,218 @@ typedef struct {
 	json_object		*root;
 } rlm_json_jpath_to_eval_t;
 
-static ssize_t jsonquote_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			      REQUEST *request, char const *fmt)
+static xlat_arg_parser_t const json_quote_xlat_arg = {
+	.concat = true, .type = FR_TYPE_STRING
+};
+
+/** Ensure contents are quoted correctly for a JSON document
+ *
+ * @ingroup xlat_functions
+ *
+ * @param ctx talloc context
+ * @param out Where to write the output
+ * @param request The current request.
+ * @param xlat_inst unused
+ * @param xlat_thread_inst unused
+ * @param in list of value boxes as input
+ * @return XLAT_ACTION_DONE or XLAT_ACTION_FAIL
+ */
+static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				     UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				     fr_value_box_list_t *in)
 {
-	size_t len;
+	fr_value_box_t *vb;
+	fr_value_box_t *in_head = fr_dlist_head(in);
 	char *tmp;
 
-	tmp = fr_json_from_string(request, fmt, false);
+	if (!in_head) return XLAT_ACTION_DONE;	/* Empty input is allowed */
 
-	/* Indicate truncation */
-	if (!tmp) return outlen + 1;
-	len = strlen(tmp);
-	if (len >= outlen) return outlen + 1;
+	MEM(vb = fr_value_box_alloc_null(ctx));
 
-	*out = tmp;
+	if (!(tmp = fr_json_from_string(vb, in_head->vb_strvalue, false))) {
+		REDEBUG("Unable to JSON-quote string");
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
+	fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, tmp, false);
 
-	return len;
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
 }
+
+static xlat_arg_parser_t const jpath_validate_xlat_arg = {
+	.required = true, .concat = true, .type = FR_TYPE_STRING
+};
 
 /** Determine if a jpath expression is valid
  *
+ * @ingroup xlat_functions
+ *
  * @param ctx to allocate expansion buffer in.
- * @param mod_inst data.
- * @param xlat_inst data.
  * @param out Where to write the output (in the format @verbatim<bytes parsed>[:error]@endverbatim).
- * @param outlen How big out is.
  * @param request The current request.
- * @param fmt jpath expression to parse.
- * @return number of bytes written to out.
+ * @param xlat_inst unused.
+ * @param xlat_thread_inst unused.
+ * @param in jpath expression to parse.
+ * @return
+ * 	- XLAT_ACTION_DONE for valid paths
+ * 	- XLAT_ACTION_FAIL for invalid paths
  */
-static ssize_t jpath_validate_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			    	   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-				   REQUEST *request, char const *fmt)
+static xlat_action_t jpath_validate_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+			    		 UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					 fr_value_box_list_t *in)
 {
+	fr_value_box_t	*path = fr_dlist_head(in);
 	fr_jpath_node_t *head;
-	ssize_t slen, ret;
-	char *jpath_str;
+	ssize_t 	slen;
+	char 		*jpath_str;
+	fr_value_box_t	*vb;
 
-	slen = fr_jpath_parse(request, &head, fmt, strlen(fmt));
+	MEM(vb = fr_value_box_alloc_null(ctx));
+
+	slen = fr_jpath_parse(request, &head, path->vb_strvalue, path->vb_length);
 	if (slen <= 0) {
-		rad_assert(head == NULL);
-		return snprintf(*out, outlen, "%zd:%s", -(slen), fr_strerror());
+		fr_value_box_asprintf(ctx, vb, NULL, false, "%zu:%s", -(slen), fr_strerror());
+		fr_dcursor_append(out, vb);
+		fr_assert(head == NULL);
+		return XLAT_ACTION_DONE;
 	}
-	rad_assert(talloc_get_type_abort(head, fr_jpath_node_t));
+	fr_assert(talloc_get_type_abort(head, fr_jpath_node_t));
 
 	jpath_str = fr_jpath_asprint(request, head);
-	ret = snprintf(*out, outlen, "%zu:%s", (size_t) slen, jpath_str);
+
+	fr_value_box_asprintf(ctx, vb, NULL, false, "%zu:%s", (size_t) slen, jpath_str);
+	fr_dcursor_append(out, vb);
 	talloc_free(head);
 	talloc_free(jpath_str);
 
-	return ret;
+	return XLAT_ACTION_DONE;
+}
+
+static xlat_arg_parser_t const json_encode_xlat_arg = {
+	.required = true, .concat = true, .type = FR_TYPE_STRING
+};
+
+/** Convert given attributes to a JSON document
+ *
+ * Usage is `%{json_encode:attr tmpl list}`
+ *
+ * @ingroup xlat_functions
+ *
+ * @param ctx talloc context
+ * @param out where to write the output
+ * @param request the current request
+ * @param xlat_inst xlat instance data
+ * @param xlat_thread_inst unused
+ * @param in list of value boxes as input
+ * @return XLAT_ACTION_DONE or XLAT_ACTION_FAIL
+ */
+static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				      void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				      fr_value_box_list_t *in)
+{
+	rlm_json_t const	*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
+								    rlm_json_t);
+	fr_json_format_t const	*format = inst->format;
+
+	ssize_t			slen;
+	tmpl_t			*vpt = NULL;
+	fr_pair_list_t		json_vps, vps;
+	bool			negate;
+	char			*json_str = NULL;
+	fr_value_box_t		*vb;
+	fr_sbuff_t		sbuff;
+	fr_value_box_t		*in_head = fr_dlist_head(in);
+
+	fr_pair_list_init(&json_vps);
+	fr_pair_list_init(&vps);
+
+	sbuff = FR_SBUFF_IN(in_head->vb_strvalue, in_head->vb_length);
+	fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
+
+	/*
+	 * Iterate through the list of attribute templates in the xlat. For each
+	 * one we either add it to the list of attributes for the JSON document
+	 * or, if prefixed with '!', remove from the JSON list.
+	 */
+	while (fr_sbuff_extend(&sbuff)) {
+		negate = false;
+
+		/* Check if we should be removing attributes */
+		if (fr_sbuff_next_if_char(&sbuff, '!')) negate = true;
+
+		/* Decode next attr template */
+		slen = tmpl_afrom_attr_substr(ctx, NULL, &vpt,
+					      &sbuff,
+					      &json_arg_parse_rules,
+					      &(tmpl_rules_t){ .dict_def = request->dict });
+		if (slen <= 0) {
+			fr_sbuff_set(&sbuff, (size_t)(slen * -1));
+			REMARKER(fr_sbuff_start(&sbuff), fr_sbuff_used(&sbuff), "%s", fr_strerror());
+		error:
+			fr_pair_list_free(&json_vps);
+			talloc_free(vpt);
+			return XLAT_ACTION_FAIL;
+		}
+
+		/*
+		 * Get attributes from the template.
+		 * Missing attribute isn't an error (so -1, not 0).
+		 */
+		if (tmpl_copy_pairs(ctx, &vps, request, vpt) < -1) {
+			RPEDEBUG("Error copying attributes");
+			goto error;
+		}
+
+		if (negate) {
+			/* Remove all template attributes from JSON list */
+			for (fr_pair_t *vp = fr_pair_list_head(&vps);
+			     vp;
+			     vp = fr_pair_list_next(&vps, vp)) {
+
+				fr_pair_t *vpm = fr_pair_list_head(&json_vps);
+				while (vpm) {
+					if (vp->da == vpm->da) {
+						fr_pair_t *next = fr_pair_list_next(&json_vps, vpm);
+						fr_pair_delete(&json_vps, vpm);
+						vpm = next;
+						continue;
+					}
+					vpm = fr_pair_list_next(&json_vps, vpm);
+				}
+			}
+
+			fr_pair_list_free(&vps);
+		} else {
+			/* Add template VPs to JSON list */
+			fr_pair_list_append(&json_vps, &vps);
+		}
+
+		TALLOC_FREE(vpt);
+
+		/* Jump forward to next attr */
+		fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
+	}
+
+	/*
+	 * Given the list of attributes we now have in json_vps,
+	 * convert them into a JSON document and append it to the
+	 * return cursor.
+	 */
+	MEM(vb = fr_value_box_alloc_null(ctx));
+
+	json_str = fr_json_afrom_pair_list(vb, &json_vps, format);
+	if (!json_str) {
+		REDEBUG("Failed to generate JSON string");
+		goto error;
+	}
+	fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, json_str, false);
+
+	fr_dcursor_append(out, vb);
+	fr_pair_list_free(&json_vps);
+
+	return XLAT_ACTION_DONE;
 }
 
 /** Pre-parse and validate literal jpath expressions for maps
@@ -117,10 +316,10 @@ static ssize_t jpath_validate_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t ou
  * 	- -1 on failure.
  */
 static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, void *proc_inst,
-				    vp_tmpl_t const *src, vp_map_t const *maps)
+				    tmpl_t const *src, fr_map_list_t const *maps)
 {
 	rlm_json_jpath_cache_t	*cache_inst = proc_inst;
-	vp_map_t const		*map;
+	map_t const		*map = NULL;
 	ssize_t			slen;
 	rlm_json_jpath_cache_t	*cache = cache_inst, **tail = &cache->next;
 
@@ -130,12 +329,12 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 		return -1;
 	}
 
-	for (map = maps; map; map = map->next) {
+	while ((map = fr_dlist_next(maps, map))) {
 		CONF_PAIR	*cp = cf_item_to_pair(map->ci);
 		char const	*p;
 
 #ifndef HAVE_JSON_OBJECT_GET_INT64
-		if (tmpl_is_attr(map->lhs) && (map->lhs->tmpl_da->type == FR_TYPE_UINT64)) {
+		if (tmpl_is_attr(map->lhs) && (tmpl_da(map->lhs)->type == FR_TYPE_UINT64)) {
 			cf_log_err(cp, "64bit integers are not supported by linked json-c.  "
 				      "Upgrade to json-c >= 0.10 to use this feature");
 			return -1;
@@ -143,7 +342,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 #endif
 
 		switch (map->rhs->type) {
-		case TMPL_TYPE_UNPARSED:
+		case TMPL_TYPE_UNRESOLVED:
 			p = map->rhs->name;
 			slen = fr_jpath_parse(cache, &cache->jpath, p, map->rhs->len);
 			if (slen <= 0) {
@@ -163,12 +362,12 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 			break;
 
 		case TMPL_TYPE_DATA:
-			if (map->rhs->tmpl_value_type != FR_TYPE_STRING) {
+			if (tmpl_value_type(map->rhs) != FR_TYPE_STRING) {
 				cf_log_err(cp, "Right side of map must be a string");
 				return -1;
 			}
-			p = map->rhs->tmpl_value.vb_strvalue;
-			slen = fr_jpath_parse(cache, &cache->jpath, p, map->rhs->tmpl_value_length);
+			p = tmpl_value(map->rhs)->vb_strvalue;
+			slen = fr_jpath_parse(cache, &cache->jpath, p, tmpl_value_length(map->rhs));
 			if (slen <= 0) goto error;
 			break;
 
@@ -181,7 +380,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 		 *	list member was pre-allocated and passed to the
 		 *	instantiation callback.
 		 */
-		if (map->next) {
+		if (fr_dlist_next(maps, map)) {
 			*tail = cache = talloc_zero(cache, rlm_json_jpath_cache_t);
 			tail = &cache->next;
 		}
@@ -190,10 +389,10 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 	return 0;
 }
 
-/** Converts a string value into a #VALUE_PAIR
+/** Converts a string value into a #fr_pair_t
  *
- * @param[in,out] ctx to allocate #VALUE_PAIR (s).
- * @param[out] out where to write the resulting #VALUE_PAIR.
+ * @param[in,out] ctx to allocate #fr_pair_t (s).
+ * @param[out] out where to write the resulting #fr_pair_t.
  * @param[in] request The current request.
  * @param[in] map to process.
  * @param[in] uctx The json tree/jpath expression to evaluate.
@@ -201,43 +400,41 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
-				    vp_map_t const *map, void *uctx)
+static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request,
+				    map_t const *map, void *uctx)
 {
-	VALUE_PAIR			*vp;
-	fr_cursor_t			cursor;
+	fr_pair_t			*vp;
 	rlm_json_jpath_to_eval_t	*to_eval = uctx;
-	fr_value_box_t			*head, *value;
+	fr_value_box_t			*value;
+	fr_value_box_list_t		head;
 	int				ret;
 
-	*out = NULL;
+	fr_pair_list_free(out);
+	fr_value_box_list_init(&head);
 
-	ret = fr_jpath_evaluate_leaf(request, &head, map->lhs->tmpl_da->type, map->lhs->tmpl_da,
+	ret = fr_jpath_evaluate_leaf(request, &head, tmpl_da(map->lhs)->type, tmpl_da(map->lhs),
 			     	     to_eval->root, to_eval->jpath);
 	if (ret < 0) {
 		RPEDEBUG("Failed evaluating jpath");
 		return -1;
 	}
 	if (ret == 0) return 0;
-	rad_assert(head);
+	fr_assert(!fr_dlist_empty(&head));
 
-	for (fr_cursor_init(&cursor, out), value = head;
+	for (value = fr_dlist_head(&head);
 	     value;
-	     fr_cursor_append(&cursor, vp), value = value->next) {
-		vp = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
-		if (!vp) {
-		error:
-			talloc_free(*out);
-			return -1;
-		}
+	     fr_pair_append(out, vp), value = fr_dlist_next(&head, value)) {
+		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 		vp->op = map->op;
 
 		if (fr_value_box_steal(vp, &vp->data, value) < 0) {
 			RPEDEBUG("Copying data to attribute failed");
 			talloc_free(vp);
-			goto error;
+			fr_pair_list_free(out);
+			return -1;
 		}
 	}
+
 	return 0;
 }
 
@@ -250,32 +447,36 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *
  * @param maps		Head of the map list.
  * @return
  *	- #RLM_MODULE_NOOP no rows were returned or columns matched.
- *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
+ *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
-static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST *request,
-			      	fr_value_box_t **json, vp_map_t const *maps)
+static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, request_t *request,
+			      	fr_value_box_list_t *json, fr_map_list_t const *maps)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_UPDATED;
 	struct json_tokener		*tok;
 
 	rlm_json_jpath_cache_t		*cache = proc_inst;
-	vp_map_t const			*map;
+	map_t const			*map = NULL;
 
 	rlm_json_jpath_to_eval_t	to_eval;
 
 	char const			*json_str = NULL;
+	fr_value_box_t			*json_head = fr_dlist_head(json);
 
-	if (!*json) {
+	if (!json_head) {
 		REDEBUG("JSON map input cannot be (null)");
 		return RLM_MODULE_FAIL;
 	}
 
-	if (fr_value_box_list_concat(request, *json, json, FR_TYPE_STRING, true) < 0) {
+	if (fr_value_box_list_concat_in_place(request,
+					      json_head, json, FR_TYPE_STRING,
+					      FR_VALUE_BOX_LIST_FREE, true,
+					      SIZE_MAX) < 0) {
 		REDEBUG("Failed concatenating input");
 		return RLM_MODULE_FAIL;
 	}
-	json_str = (*json)->vb_strvalue;
+	json_str = json_head->vb_strvalue;
 
 	if ((talloc_array_length(json_str) - 1) == 0) {
 		REDEBUG("JSON map input length must be > 0");
@@ -290,12 +491,12 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST 
 		goto finish;
 	}
 
-	for (map = maps; map; map = map->next) {
+	while ((map = fr_dlist_next(maps, map))) {
 		switch (map->rhs->type) {
 		/*
 		 *	Cached types
 		 */
-		case TMPL_TYPE_UNPARSED:
+		case TMPL_TYPE_UNRESOLVED:
 		case TMPL_TYPE_DATA:
 			to_eval.jpath = cache->jpath;
 
@@ -349,10 +550,38 @@ finish:
 	return rcode;
 }
 
-static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	xlat_register(instance, "jsonquote", jsonquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
-	xlat_register(instance, "jpathvalidate", jpath_validate_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	rlm_json_t		*inst = talloc_get_type_abort(instance, rlm_json_t);
+	xlat_t			*xlat;
+	char 			*name;
+	fr_json_format_t	*format = inst->format;
+
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
+
+	xlat = xlat_register(instance, "jsonquote", json_quote_xlat, false);
+	xlat_func_mono(xlat, &json_quote_xlat_arg);
+	xlat = xlat_register(instance, "jpathvalidate", jpath_validate_xlat, false);
+	xlat_func_mono(xlat, &jpath_validate_xlat_arg);
+
+	name = talloc_asprintf(inst, "%s_encode", inst->name);
+	xlat = xlat_register(instance, name, json_encode_xlat, false);
+	xlat_func_mono(xlat, &json_encode_xlat_arg);
+	xlat_async_instantiate_set(xlat, json_xlat_instantiate,
+				   rlm_json_t *, NULL, inst);
+	talloc_free(name);
+
+	/*
+	 *	Check the output format type and warn on unused
+	 *	format options
+	 */
+	format->output_mode = fr_table_value_by_str(fr_json_format_table, format->output_mode_str, JSON_MODE_UNSET);
+	if (format->output_mode == JSON_MODE_UNSET) {
+		cf_log_err(conf, "output_mode value \"%s\" is invalid", format->output_mode_str);
+		return -1;
+	}
+	fr_json_format_verify(format, true);
 
 	if (map_proc_register(instance, "json", mod_map_proc,
 			      mod_map_proc_instantiate, sizeof(rlm_json_jpath_cache_t)) < 0) return -1;
@@ -381,5 +610,7 @@ module_t rlm_json = {
 	.name		= "json",
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.onload		= mod_load,
+	.config		= module_config,
+	.inst_size	= sizeof(rlm_json_t),
 	.bootstrap	= mod_bootstrap,
 };

@@ -3,6 +3,10 @@ AC_INIT(rlm_sql_sqlite.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_sql_sqlite])
 
+AC_ARG_WITH([]modname,
+[AS_HELP_STRING([--without-[]modname],[build without module])]
+)
+
 fail=
 SMART_LIBS=
 SMART_CLFAGS=

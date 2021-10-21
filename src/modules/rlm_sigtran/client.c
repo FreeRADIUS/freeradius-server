@@ -27,9 +27,9 @@
 #define LOG_PREFIX "rlm_sigtran - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
-#include <freeradius-devel/protocol/eap/aka/dictionary.h>
-#include <freeradius-devel/protocol/eap/sim/dictionary.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/protocol/eap/aka-sim/dictionary.h>
+#include <freeradius-devel/protocol/eap/aka-sim/dictionary.h>
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/server/module.h>
 
@@ -85,7 +85,7 @@ static int sigtran_client_do_ctrl_transaction(sigtran_transaction_t *txn)
 {
 	int ret;
 
-	rad_assert(ctrl_pipe[0] >= 0);
+	fr_assert(ctrl_pipe[0] >= 0);
 
 	pthread_mutex_lock(&ctrl_pipe_mutex);
 	ret = sigtran_client_do_transaction(ctrl_pipe[0], txn);
@@ -100,7 +100,7 @@ static int sigtran_client_do_ctrl_transaction(sigtran_transaction_t *txn)
 static void _sigtran_pipe_error(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, int fd_errno, UNUSED void *uctx)
 {
 	ERROR("worker - ctrl_pipe (%i) read failed : %s", fd, fr_syserror(fd_errno));
-	rad_assert(0);
+	fr_assert(0);
 }
 
 /** Drain any data we received
@@ -132,8 +132,8 @@ static void _sigtran_pipe_read(UNUSED fr_event_list_t *el, int fd, UNUSED int fl
 	txn = talloc_get_type_abort(ptr, sigtran_transaction_t);
 	if (txn->ctx.defunct) return;		/* Request was stopped */
 
-	rad_assert(txn->ctx.request);
-	unlang_interpret_resumable(txn->ctx.request);	/* Continue processing */
+	fr_assert(txn->ctx.request);
+	unlang_interpret_mark_runnable(txn->ctx.request);	/* Continue processing */
 }
 
 /** Called by a new thread to register a new req_pipe
@@ -156,7 +156,7 @@ int sigtran_client_thread_register(fr_event_list_t *el)
 		return -1;
 	}
 
-	rad_assert((req_pipe[0] >= 0) && (req_pipe[1] >= 0));
+	fr_assert((req_pipe[0] >= 0) && (req_pipe[1] >= 0));
 
 	txn = talloc_zero(NULL, sigtran_transaction_t);
 	txn->request.type = SIGTRAN_REQUEST_THREAD_REGISTER;
@@ -270,8 +270,8 @@ int sigtran_client_link_down(sigtran_conn_t const **conn)
 	return 0;
 }
 
-static void sigtran_client_signal(UNUSED REQUEST *request, UNUSED void *instance,
-				  UNUSED void *thread, void *rctx, fr_state_signal_t action)
+static void sigtran_client_signal(UNUSED module_ctx_t const *mctx, UNUSED request_t *request,
+				  void *rctx, fr_state_signal_t action)
 {
 	sigtran_transaction_t	*txn = talloc_get_type_abort(rctx, sigtran_transaction_t);
 
@@ -284,11 +284,11 @@ static void sigtran_client_signal(UNUSED REQUEST *request, UNUSED void *instance
 	txn->ctx.request = NULL;	/* remove the link to the (now dead) request */
 }
 
-static rlm_rcode_t sigtran_client_map_resume(REQUEST *request, UNUSED void *instance, UNUSED void *thread, void *rctx)
+static unlang_action_t sigtran_client_map_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request, void *rctx)
 {
 	sigtran_transaction_t			*txn = talloc_get_type_abort(rctx, sigtran_transaction_t);
 	rlm_rcode_t				rcode;
-	rad_assert(request == txn->ctx.request);
+	fr_assert(request == txn->ctx.request);
 
 	/*
 	 *	Process response
@@ -297,74 +297,80 @@ static rlm_rcode_t sigtran_client_map_resume(REQUEST *request, UNUSED void *inst
 	case SIGTRAN_RESPONSE_OK:
 	{
 		unsigned int		i = 0;
-		fr_cursor_t		cursor;
-		VALUE_PAIR		*vp;
+		fr_pair_t		*vp;
 		sigtran_vector_t	*vec;
 		sigtran_map_send_auth_info_res_t *res = talloc_get_type_abort(txn->response.data,
 									      sigtran_map_send_auth_info_res_t);
-		fr_cursor_init(&cursor, &request->control);
 
 		for (vec = res->vector; vec; vec = vec->next) {
 			switch (vec->type) {
 			case SIGTRAN_VECTOR_TYPE_SIM_TRIPLETS:
-				rad_assert(vec->sim.rand);
-				rad_assert(vec->sim.sres);
-				rad_assert(vec->sim.kc);
+				fr_assert(vec->sim.rand);
+				fr_assert(vec->sim.sres);
+				fr_assert(vec->sim.kc);
 
 				RDEBUG2("SIM auth vector %i", i);
 				RINDENT();
-				vp = fr_pair_afrom_da(request, attr_eap_sim_rand);
-				fr_pair_value_memsteal(vp, vec->sim.rand, false);
-				RDEBUG2("&control:%pP", vp);
-				fr_cursor_append(&cursor, vp);
+				MEM(vp = fr_pair_afrom_da(request->control_ctx, attr_eap_aka_sim_rand));
+				MEM(fr_pair_value_memdup_buffer(vp, vec->sim.rand, true) == 0);
+				TALLOC_FREE(vec->sim.rand);
+				RDEBUG2("&control.%pP", vp);
+				fr_pair_append(&request->control_pairs, vp);
 
-				vp = fr_pair_afrom_da(request, attr_eap_sim_sres);
-				fr_pair_value_memsteal(vp, vec->sim.sres, false);
-				RDEBUG2("&control:%pP", vp);
-				fr_cursor_append(&cursor, vp);
+				MEM(vp = fr_pair_afrom_da(request->control_ctx, attr_eap_aka_sim_sres));
+				MEM(fr_pair_value_memdup_buffer(vp, vec->sim.sres, true) == 0);
+				TALLOC_FREE(vec->sim.sres);
+				RDEBUG2("&control.%pP", vp);
+				fr_pair_append(&request->control_pairs, vp);
 
-				vp = fr_pair_afrom_da(request, attr_eap_sim_kc);
-				fr_pair_value_memsteal(vp, vec->sim.kc, false);
-				RDEBUG2("&control:%pP", vp);
-				fr_cursor_append(&cursor, vp);
+				MEM(vp = fr_pair_afrom_da(request->control_ctx, attr_eap_aka_sim_kc));
+				MEM(fr_pair_value_memdup_buffer(vp, vec->sim.kc, true) == 0);
+				TALLOC_FREE(vec->sim.kc);
+				RDEBUG2("&control.%pP", vp);
+				fr_pair_append(&request->control_pairs, vp);
 				REXDENT();
 
 				i++;
 				break;
 
 			case SIGTRAN_VECTOR_TYPE_UMTS_QUINTUPLETS:
-				rad_assert(vec->umts.rand);
-				rad_assert(vec->umts.xres);
-				rad_assert(vec->umts.ck);
-				rad_assert(vec->umts.ik);
-				rad_assert(vec->umts.authn);
+				fr_assert(vec->umts.rand);
+				fr_assert(vec->umts.xres);
+				fr_assert(vec->umts.ck);
+				fr_assert(vec->umts.ik);
+				fr_assert(vec->umts.authn);
 
 				RDEBUG2("UMTS auth vector %i", i);
 				RINDENT();
-				vp = fr_pair_afrom_da(request, attr_eap_aka_rand);
-				fr_pair_value_memsteal(vp, vec->umts.rand, false);
-				RDEBUG2("&control:%pP", vp);
-				fr_cursor_append(&cursor, vp);
+				MEM(vp = fr_pair_afrom_da(request->control_ctx, attr_eap_aka_sim_rand));
+				MEM(fr_pair_value_memdup_buffer(vp, vec->umts.rand, true) == 0);
+				TALLOC_FREE(vec->umts.rand);
+				RDEBUG2("&control.%pP", vp);
+				fr_pair_append(&request->control_pairs, vp);
 
-				vp = fr_pair_afrom_da(request, attr_eap_aka_xres);
-				fr_pair_value_memsteal(vp, vec->umts.xres, false);
-				RDEBUG2("&control:%pP", vp);
-				fr_cursor_append(&cursor, vp);
+				MEM(vp = fr_pair_afrom_da(request->control_ctx, attr_eap_aka_sim_xres));
+				MEM(fr_pair_value_memdup_buffer(vp, vec->umts.xres, true) == 0);
+				TALLOC_FREE(vec->umts.xres);
+				RDEBUG2("&control.%pP", vp);
+				fr_pair_append(&request->control_pairs, vp);
 
-				vp = fr_pair_afrom_da(request, attr_eap_aka_ck);
-				fr_pair_value_memsteal(vp, vec->umts.ck, false);
-				RDEBUG2("&control:%pP", vp);
-				fr_cursor_append(&cursor, vp);
+				MEM(vp = fr_pair_afrom_da(request->control_ctx, attr_eap_aka_sim_ck));
+				MEM(fr_pair_value_memdup_buffer(vp, vec->umts.ck, true) == 0);
+				TALLOC_FREE(vec->umts.ck);
+				RDEBUG2("&control.%pP", vp);
+				fr_pair_append(&request->control_pairs, vp);
 
-				vp = fr_pair_afrom_da(request, attr_eap_aka_ik);
-				fr_pair_value_memsteal(vp, vec->umts.ik, false);
-				RDEBUG2("&control:%pP", vp);
-				fr_cursor_append(&cursor, vp);
+				MEM(vp = fr_pair_afrom_da(request->control_ctx, attr_eap_aka_sim_ik));
+				MEM(fr_pair_value_memdup_buffer(vp, vec->umts.ik, true) == 0);
+				TALLOC_FREE(vec->umts.ik);
+				RDEBUG2("&control.%pP", vp);
+				fr_pair_append(&request->control_pairs, vp);
 
-				vp = fr_pair_afrom_da(request, attr_eap_aka_autn);
-				fr_pair_value_memsteal(vp, vec->umts.authn, false);
-				RDEBUG2("&control:%pP", vp);
-				fr_cursor_append(&cursor, vp);
+				MEM(vp = fr_pair_afrom_da(request->control_ctx, attr_eap_aka_sim_autn));
+				MEM(fr_pair_value_memdup_buffer(vp, vec->umts.authn, true) == 0);
+				TALLOC_FREE(vec->umts.authn);
+				RDEBUG2("&control.%pP", vp);
+				fr_pair_append(&request->control_pairs, vp);
 				REXDENT();
 
 				i++;
@@ -384,8 +390,8 @@ static rlm_rcode_t sigtran_client_map_resume(REQUEST *request, UNUSED void *inst
 		break;
 
 	default:
-		rad_assert(0);
-		/* FALL-THROUGH */
+		fr_assert(0);
+		FALL_THROUGH;
 
 	case SIGTRAN_RESPONSE_FAIL:
 		rcode = RLM_MODULE_FAIL;
@@ -393,28 +399,26 @@ static rlm_rcode_t sigtran_client_map_resume(REQUEST *request, UNUSED void *inst
 	}
 	talloc_free(txn);
 
-	return rcode;
+	RETURN_MODULE_RCODE(rcode);
 }
 
 /** Create a MAP_SEND_AUTH_INFO request
  *
+ * @param p_result 	Where to write the result.
  * @param inst		of rlm_sigtran.
  * @param request	The current request.
  * @param conn		current connection.
  * @param fd		file descriptor on which the transaction is done
- * @return
- *	- 0 on success.
- *	- -1 on failure.
  */
-rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t const *inst, REQUEST *request,
-					      sigtran_conn_t const *conn, int fd)
+unlang_action_t sigtran_client_map_send_auth_info(rlm_rcode_t *p_result, rlm_sigtran_t const *inst, request_t *request,
+				  		  sigtran_conn_t const *conn, int fd)
 {
 	sigtran_transaction_t			*txn;
 	sigtran_map_send_auth_info_req_t	*req;
 	char					*imsi;
 	size_t					len;
 
-	rad_assert((fd != ctrl_pipe[0]) && (fd != ctrl_pipe[1]));
+	fr_assert((fd != ctrl_pipe[0]) && (fd != ctrl_pipe[1]));
 
 	txn = talloc_zero(NULL, sigtran_transaction_t);
 	txn->request.type = SIGTRAN_REQUEST_MAP_SEND_AUTH_INFO;
@@ -426,7 +430,7 @@ rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t const *inst, REQUEST
 		ERROR("Failed retrieving version");
 	error:
 		talloc_free(txn);
-		return RLM_MODULE_FAIL;
+		RETURN_MODULE_FAIL;
 	}
 
 	switch (req->version) {
@@ -435,7 +439,7 @@ rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t const *inst, REQUEST
 		break;
 
 	default:
-		ERROR("%i is not a valid version", req->version);
+		REDEBUG("%i is not a valid version", req->version);
 		goto error;
 	}
 
@@ -443,26 +447,33 @@ rlm_rcode_t sigtran_client_map_send_auth_info(rlm_sigtran_t const *inst, REQUEST
 	txn->ctx.request = request;
 
 	if (tmpl_aexpand(req, &imsi, request, inst->imsi, NULL, NULL) < 0) {
-		ERROR("Failed retrieving IMSI");
+		REDEBUG("Failed retrieving IMSI");
 		goto error;
 	}
 
 	len = talloc_array_length(imsi) - 1;
 	if ((len != 16) && (len != 15)) {
-		ERROR("IMSI must be 15 or 16 digits got %zu digits", len);
+		REDEBUG("IMSI must be 15 or 16 digits got %zu digits", len);
 		goto error;
 	}
 
 	if (sigtran_ascii_to_tbcd(req, &req->imsi, imsi) < 0) {
-		ERROR("Failed converting ASCII to BCD");
+		REDEBUG("Failed converting ASCII to BCD");
 		goto error;
+	}
+
+	if (RDEBUG_ENABLED2) {
+		RDEBUG2("Sending MAPv%u request with IMSI \"%pV\"", req->version, fr_box_strvalue_buffer(imsi));
+	} else if (RDEBUG_ENABLED3){
+		RDEBUG3("Sending MAPv%u request with IMSI \"%pV\" (TBCD %pV)",
+			req->version, fr_box_strvalue_buffer(imsi), fr_box_octets_buffer(req->imsi));
 	}
 
 	/*
 	 *	FIXME - We shouldn't assume the pipe is always writable
 	 */
 	if (write(fd, &txn, sizeof(txn)) < 0) {
-		ERROR("worker - ctrl_pipe (%i) write failed: %s", fd, fr_syserror(errno));
+		REDEBUG("worker - ctrl_pipe (%i) write failed: %s", fd, fr_syserror(errno));
 		goto error;
 	}
 

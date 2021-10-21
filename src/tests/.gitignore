@@ -3,7 +3,6 @@
 .bar
 .request
 *.ok
-test.conf
 radius.log
 radiusd.pid
 cui.sqlite

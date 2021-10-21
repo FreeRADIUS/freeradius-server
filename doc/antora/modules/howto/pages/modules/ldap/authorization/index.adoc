@@ -1,0 +1,49 @@
+= Configuring Authorization
+
+The `authorize` method of the LDAP module is responsible for locating the
+authenticating user's LDAP object.
+
+In addition to determining where the user is, the authorize method also
+performs LDAP to FreeRADIUS attribute mappings.
+
+You should complete the xref:modules/ldap/base_configuration/index.adoc[base configuration]
+of the LDAP module before attempting to complete any of the howto sections
+listed below.
+
+== xref:modules/ldap/authorization/locating_the_user.adoc[Locating the user]
+
+No matter what functionality of the LDAP module is being used you must
+specify search DNs and filters that uniquely identify the authenticating
+user in the directory.
+
+This section should be competed first before attempting any more advanced
+configurations.
+
+== xref:modules/ldap/authorization/user_disambiguation.adoc[Disambiguating user objects]
+
+In some instances the same user may have objects in different areas of the
+LDAP directory.
+
+If multiple results are returned by the search operation locating the user,
+the LDAP module will reject the authentication attempt.
+
+This section discusses strategies to disambiguate user objects, and select
+a single user object consistently.
+
+== xref:modules/ldap/authorization/user_account_controls.adoc[Configuring the enable/disable attribute]
+
+In some instances it is useful to enable or disable user accounts without
+removing the objects from the directory.
+
+This section discusses methods of enabling or disabling user accounts in
+a way that the result is distinct from a user not being found.
+
+== xref:modules/ldap/authorization/groups.adoc[Group Membership]
+
+A very common requirement is to restrict service access to members of one
+or more groups in LDAP, and/or to change FreeRADIUS' response based on
+the user's group memberships.
+
+This section describes how to configure the LDAP module to perform group
+membership checks, and to make policy decisions based on the results of those
+checks.

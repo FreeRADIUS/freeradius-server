@@ -22,11 +22,13 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
 
-#include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/module.h>
+
+#include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/util/base.h>
 
 #include <ctype.h>
 
@@ -44,8 +46,8 @@ do { \
 	goto cleanup; \
 } while (0)
 
-static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t unit_test_module_dict[];
 fr_dict_autoload_t unit_test_module_dict[] = {
@@ -55,17 +57,16 @@ fr_dict_autoload_t unit_test_module_dict[] = {
 };
 
 
-static void NEVER_RETURNS usage(char *argv[])
+static NEVER_RETURNS void usage(char *argv[])
 {
 	fprintf(stderr, "usage: %s [OPTS] filename ...\n", argv[0]);
 	fprintf(stderr, "  -d <raddb>         Set user dictionary directory (defaults to " RADDBDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>       Set main dictionary directory (defaults to " DICTDIR ").\n");
-	fprintf(stderr, "  -O <output_dir>    Set output directory\n");
 	fprintf(stderr, "  -x                 Debugging mode.\n");
 	fprintf(stderr, "  -M                 Show program version information.\n");
 	fprintf(stderr, "  -r <receipt_file>  Create the <receipt_file> as a 'success' exit.\n");
 
-	exit(EXIT_SUCCESS);
+	fr_exit_now(EXIT_SUCCESS);
 }
 
 static int process_file(char const *filename)
@@ -73,15 +74,22 @@ static int process_file(char const *filename)
 	int		rcode;
 	char const	*name1, *name2;
 	CONF_SECTION	*cs;
-	vp_map_t	*head, *map;
+	fr_map_list_t	list;
+	map_t		*map = NULL;
 	char		buffer[8192];
 
 	main_config_t	*config;
 
-	vp_tmpl_rules_t	parse_rules = {
+	tmpl_rules_t	parse_rules = {
 		.dict_def = dict_radius,
 		.allow_foreign = true	/* Because we don't know what protocol we're operating with */
 	};
+
+	fr_map_list_init(&list);
+	/*
+	 *	Must be called first, so the handler is called last
+	 */
+	fr_atexit_global_setup();
 
 	config = main_config_alloc(NULL);
 	if (!config) {
@@ -108,12 +116,12 @@ static int process_file(char const *filename)
 	/*
 	 *	Convert the update section to a list of maps.
 	 */
-	rcode = map_afrom_cs(cs, &head, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
+	rcode = map_afrom_cs(cs, &list, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
 	if (rcode < 0) {
-		cf_log_err(cs, "map_afrom_cs failed: %s", fr_strerror());
+		cf_log_perr(cs, "map_afrom_cs failed");
 		return EXIT_FAILURE; /* message already printed */
 	}
-	if (!head) {
+	if (fr_dlist_empty(&list)) {
 		cf_log_err(cs, "'update' sections cannot be empty");
 		return EXIT_FAILURE;
 	}
@@ -132,8 +140,8 @@ static int process_file(char const *filename)
 		printf("%s %s {\n", name1, name2);
 	}
 
-	for (map = head; map != NULL; map = map->next) {
-		map_snprint(buffer + 1, sizeof(buffer) - 1, map);
+	while ((map = fr_dlist_next(&list, map))) {
+		map_print(&FR_SBUFF_OUT(buffer + 1, sizeof(buffer) - 1), map);
 		puts(buffer);
 	}
 	printf("}\n");
@@ -144,6 +152,10 @@ static int process_file(char const *filename)
 	return EXIT_SUCCESS;
 }
 
+/**
+ *
+ * @hidecallgraph
+ */
 int main(int argc, char *argv[])
 {
 	int			c, ret = EXIT_SUCCESS;
@@ -152,14 +164,34 @@ int main(int argc, char *argv[])
 	fr_dict_t		*dict = NULL;
 	char const		*receipt_file = NULL;
 
-	TALLOC_CTX		*autofree = talloc_autofree_context();
+	TALLOC_CTX		*autofree;
+	fr_dict_gctx_t const	*dict_gctx = NULL;
+
+	/*
+	 *	Must be called first, so the handler is called last
+	 */
+	fr_atexit_global_setup();
+
+	autofree = talloc_autofree_context();
 
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("unit_test_map");
-		exit(EXIT_FAILURE);
+		fr_exit(EXIT_FAILURE);
 	}
+#else
+	fr_disable_null_tracking_on_free(autofree);
 #endif
+
+	/*
+	 *	Sync wallclock and cpu time so that we can find
+	 *	uses of fr_time_[to|from]_* where
+	 *	fr_unix_time_[to|from]_* should be used.
+	 *
+	 *	If the wallclock/cpu offset is 0, then both sets
+	 *	of macros produce the same result.
+	 */
+	fr_time_start();
 
 	while ((c = getopt(argc, argv, "d:D:xMhr:")) != -1) switch (c) {
 		case 'd':
@@ -172,7 +204,6 @@ int main(int argc, char *argv[])
 
 		case 'x':
 			fr_debug_lvl++;
-			rad_debug_lvl = fr_debug_lvl;
 			break;
 
 		case 'M':
@@ -190,7 +221,7 @@ int main(int argc, char *argv[])
 	argc -= (optind - 1);
 	argv += (optind - 1);
 
-	if (receipt_file && (fr_file_unlink(receipt_file) < 0)) {
+	if (receipt_file && (fr_unlink(receipt_file) < 0)) {
 		fr_perror("unit_test_map");
 		EXIT_WITH_FAILURE;
 	}
@@ -203,12 +234,13 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	if (fr_dict_global_init(autofree, dict_dir) < 0) {
+	dict_gctx = fr_dict_global_ctx_init(autofree, dict_dir);
+	if (!dict_gctx) {
 		fr_perror("unit_test_map");
 		EXIT_WITH_FAILURE;
 	}
 
-	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR) < 0) {
+	if (fr_dict_internal_afrom_file(&dict, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
 		fr_perror("unit_test_map");
 		EXIT_WITH_FAILURE;
 	}
@@ -217,7 +249,7 @@ int main(int argc, char *argv[])
 	 *	Load the custom dictionary
 	 */
 	if (fr_dict_read(dict, raddb_dir, FR_DICTIONARY_FILE) == -1) {
-		fr_strerror_printf_push("Failed to initialize the dictionaries");
+		fr_strerror_const_push("Failed to initialize the dictionaries");
 		fr_perror("unit_test_map");
 		EXIT_WITH_FAILURE;
 	}
@@ -246,13 +278,22 @@ cleanup:
 	/*
 	 *	Free any autoload dictionaries
 	 */
-	fr_dict_autofree(unit_test_module_dict);
+	if (fr_dict_autofree(unit_test_module_dict) < 0) {
+		fr_perror("unit_test_map");
+		ret = EXIT_FAILURE;
+	}
 
-	fr_dict_free(&dict);
+	if (fr_dict_free(&dict, __FILE__) < 0) {
+		fr_perror("unit_test_map");
+		ret = EXIT_FAILURE;
+	}
 
-	fr_strerror_free();
+	if (fr_dict_global_ctx_free(dict_gctx) < 0) {
+		fr_perror("unit_test_map");
+		ret = EXIT_FAILURE;
+	}
 
-	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_file_touch(receipt_file, 0644) < 0)) {
+	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
 		fr_perror("unit_test_map");
 		ret = EXIT_FAILURE;
 	}

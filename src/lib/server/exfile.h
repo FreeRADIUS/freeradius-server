@@ -33,17 +33,17 @@ extern "C" {
 /*
  *	Multiple threads logging to one or more files.
  */
-typedef struct exfile_t exfile_t;
+typedef struct exfile_s exfile_t;
 
-exfile_t	*exfile_init(TALLOC_CTX *ctx, uint32_t entries, uint32_t idle, bool locking);
+exfile_t	*exfile_init(TALLOC_CTX *ctx, uint32_t entries, fr_time_delta_t idle, bool locking);
 
 void		exfile_enable_triggers(exfile_t *ef, CONF_SECTION *cs, char const *trigger_prefix,
-				       VALUE_PAIR *trigger_args);
+				       fr_pair_list_t *trigger_args);
 
-int		exfile_open(exfile_t *lf, REQUEST *request, char const *filename,
-			    mode_t permissions);
+CC_ACQUIRE_HANDLE("exfile_fd")
+int		exfile_open(exfile_t *lf, char const *filename, mode_t permissions);
 
-int		exfile_close(exfile_t *lf, REQUEST *request, int fd);
+int		exfile_close(exfile_t *lf, CC_RELEASE_HANDLE("exfile_fd") int fd);
 
 #ifdef __cplusplus
 }

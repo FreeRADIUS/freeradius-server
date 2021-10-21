@@ -1,4 +1,12 @@
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.66
+#
+# 11344.4.1.3.1
+# |     | | | |_ Accounting attributes (.1) accounting objects
+# |     | | |_ Accounting
+# |     | |_ RADIUS
+# |     |_ LDAP Attributes
+# |_ Vendor
+#
+attributetype ( 1.3.6.1.4.1.11344.4.1.3.1.66
 	NAME 'radiusAcctAuthentic'
 	DESC ''
 	EQUALITY caseIgnoreMatch
@@ -6,7 +14,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.66
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.67
+attributetype ( 1.3.6.1.4.1.11344.4.1.3.1.67
 	NAME 'radiusAcctInputOctets'
 	DESC ''
 	EQUALITY caseIgnoreMatch
@@ -14,7 +22,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.67
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.68
+attributetype ( 1.3.6.1.4.1.11344.4.1.3.1.68
 	NAME 'radiusAcctInterval'
 	DESC ''
 	EQUALITY caseIgnoreMatch
@@ -22,7 +30,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.68
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.69
+attributetype ( 1.3.6.1.4.1.11344.4.1.3.1.69
 	NAME 'radiusAcctOutputOctets'
 	DESC ''
 	EQUALITY caseIgnoreMatch
@@ -30,7 +38,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.69
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.70
+attributetype ( 1.3.6.1.4.1.11344.4.1.3.1.70
 	NAME 'radiusAcctSessionId'
 	DESC ''
 	EQUALITY caseIgnoreMatch
@@ -38,7 +46,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.70
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.71
+attributetype ( 1.3.6.1.4.1.11344.4.1.3.1.71
 	NAME 'radiusAcctSessionTime'
 	DESC ''
 	EQUALITY caseIgnoreMatch
@@ -46,7 +54,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.71
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.72
+attributetype ( 1.3.6.1.4.1.11344.4.1.3.1.72
 	NAME 'radiusAcctStartTime'
 	DESC ''
 	EQUALITY caseIgnoreMatch
@@ -54,7 +62,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.72
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.73
+attributetype ( 1.3.6.1.4.1.11344.4.1.3.1.73
 	NAME 'radiusAcctStopTime'
 	DESC ''
 	EQUALITY caseIgnoreMatch
@@ -62,7 +70,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.73
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.74
+attributetype ( 1.3.6.1.4.1.11344.4.1.3.1.74
 	NAME 'radiusAcctTerminateCause'
 	DESC ''
 	EQUALITY caseIgnoreMatch
@@ -70,7 +78,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.74
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.75
+attributetype ( 1.3.6.1.4.1.11344.4.1.3.1.75
 	NAME 'radiusAcctUniqueId'
 	DESC ''
 	EQUALITY caseIgnoreMatch
@@ -78,7 +86,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.75
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.76
+attributetype ( 1.3.6.1.4.1.11344.4.1.3.1.76
 	NAME 'radiusAcctUpdateTime'
 	DESC ''
 	EQUALITY caseIgnoreMatch
@@ -86,7 +94,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.76
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.77
+attributetype ( 1.3.6.1.4.1.11344.4.1.3.1.77
 	NAME 'radiusConnectInfoStart'
 	DESC ''
 	EQUALITY caseIgnoreMatch
@@ -94,7 +102,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.77
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.78
+attributetype ( 1.3.6.1.4.1.11344.4.1.3.1.78
 	NAME 'radiusConnectInfoStop'
 	DESC ''
 	EQUALITY caseIgnoreMatch
@@ -102,7 +110,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.78
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.79
+attributetype ( 1.3.6.1.4.1.11344.4.1.3.1.79
 	NAME 'radiusNASIdentifier'
 	DESC ''
 	EQUALITY caseIgnoreMatch
@@ -110,7 +118,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.79
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.80
+attributetype ( 1.3.6.1.4.1.11344.4.1.3.1.80
 	NAME 'radiusNASPort'
 	DESC ''
 	EQUALITY caseIgnoreMatch
@@ -118,7 +126,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.80
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.81
+attributetype ( 1.3.6.1.4.1.11344.4.1.3.1.81
 	NAME 'radiusNASPortId'
 	DESC ''
 	EQUALITY caseIgnoreMatch
@@ -126,7 +134,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.81
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.82
+attributetype ( 1.3.6.1.4.1.11344.4.1.3.1.82
 	NAME 'radiusNASPortType'
 	DESC ''
 	EQUALITY caseIgnoreMatch
@@ -134,7 +142,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.3.1.82
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.3.1.83
+attributetype ( 1.3.6.1.4.1.11344.4.1.3.1.83
 	NAME 'radiusUserName'
 	DESC ''
 	EQUALITY caseIgnoreMatch

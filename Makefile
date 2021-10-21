@@ -8,11 +8,6 @@
 #
 
 #
-#	we didn't called ./configure? just define the version.
-#
-RADIUSD_VERSION_STRING := $(shell cat VERSION)
-
-#
 #  The default rule is "all".
 #
 all:
@@ -21,7 +16,23 @@ all:
 #  Catch people who try to use BSD make
 #
 ifeq "0" "1"
-.error GNU Make is required to build FreeRADIUS
+$(error GNU Make is required to build FreeRADIUS)
+endif
+
+#
+#  The version of GNU Make is too old,
+#  don't use it (.FEATURES variable was added in 3.81)
+#
+ifndef .FEATURES
+$(error This build system requires GNU Make 4.0 or higher)
+endif
+
+#
+#  Check for our required list of features
+#
+is_feature = $(if $(filter $1,$(.FEATURES)),T)
+ifeq "$(call is_feature,load)" ""
+$(error GNU Make $(MAKE_VERSION) does not support the "load" keyword (dynamically loaded extensions), upgrade to GNU Make 4.0 or higher)
 endif
 
 #
@@ -41,13 +52,14 @@ endif
 endif
 endif
 
-MFLAGS += --no-print-directory
-
-# The version of GNU Make is too old, don't use it (.FEATURES variable was
-# wad added in 3.81)
-ifndef .FEATURES
-$(error The build system requires GNU Make 3.81 or later.)
+#
+#  'configure' was not run?  Get the version number from the file.
+#
+ifeq "$(RADIUS_VERSION_STRING)" ""
+RADIUSD_VERSION_STRING := $(shell cat VERSION)
 endif
+
+MFLAGS += --no-print-directory
 
 export DESTDIR := $(R)
 export PROJECT_NAME := freeradius
@@ -55,58 +67,85 @@ export PROJECT_NAME := freeradius
 #
 #  src/include/all.mk needs these, so define them before we include that file.
 #
-PROTOCOLS    := dhcpv4 eap/sim eap/aka freeradius snmp vmps dhcpv6 ethernet radius tacacs arp
+PROTOCOLS    := \
+	arp \
+	dhcpv4 \
+	dhcpv6 \
+	dns \
+	eap/aka-sim \
+	ethernet \
+	freeradius \
+	radius \
+	snmp \
+	tacacs \
+	vmps \
+	tftp \
+	tls
 
-# And over-ride all of the other magic.
+#
+#  If we're building packages or crossbuilding, just do that.
+#  Don't try to do a local build.
+#
 ifneq "$(MAKECMDGOALS)" "deb"
+ifneq "$(MAKECMDGOALS)" "rpm"
 ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
+#
+#  Include all of the autoconf definitions into the Make variable space
+#
+#  We include this file BEFORE starting the full make process.  That
+#  way every "all.mk" file can take advantage of the definitions seen
+#  here.
+#
+build/autoconf.mk: src/include/autoconf.h
+	@mkdir -p build
+	${Q}grep '^#define' $^ | sed 's/#define /AC_/;s/ / := /' > $@
+-include build/autoconf.mk
+
+#
+#  Autoload the various libraries needed for building.
+#
+#  If the build is targeting these explicitly, then we are OK if their
+#  features don't exist.  If we're building everything else, then
+#  build these first, and then load the libraries.
+#
+#  Ensure that these libraries are built ONLY when doing a full build,
+#  AND that they are built and loaded before using the rest of the
+#  boilermake framework, UNLESS we're doing "make clean", in which case
+#  don't include the magic libraries.
+#
+ifeq "$(findstring clean,$(MAKECMDGOALS))" ""
+ifeq "$(findstring libfreeradius-make,$(MAKECMDGOALS))" ""
+_:=$(shell $(MAKE) libfreeradius-make-dlopen.a libfreeradius-make-version.a)
+
+ifeq "${LIBRARY_EXT}" ""
+ifneq "$(findstring Darwin,$(shell hostinfo 2>/dev/null))" ""
+LIBRARY_EXT := dylib
+else
+LIBRARY_EXT := so
+endif
+endif
+
+load build/lib/.libs/libfreeradius-make-dlopen.${LIBRARY_EXT}(dlopen_gmk_setup)
+load build/lib/.libs/libfreeradius-make-version.${LIBRARY_EXT}(version_gmk_setup)
+
+else
+#
+#  We're building ONLY the libfreeradius-make-* files.
+#  Leave the outputs at the default location, but take the
+#  inputs from the scripts/build directory.
+#
+BUILD_DIR:=${top_srcdir}/build
+top_builddir:=${top_srcdir}/scripts/build
+endif
+endif
+
+#
+#  Load the huge boilermake framework.
+#
 include scripts/boiler.mk
 endif
 endif
-
-#
-#  To work around OpenSSL issues with travis.
-#
-.PHONY:
-raddb/test.conf:
-	@echo 'security {' >> $@
-	@echo '        allow_vulnerable_openssl = yes' >> $@
-	@echo '}' >> $@
-	@echo '$$INCLUDE radiusd.conf' >> $@
-
-#
-#  Run "radiusd -C", looking for errors.
-#
-# Only redirect STDOUT, which should contain details of why the test failed.
-# Don't molest STDERR as this may be used to receive output from a debugger.
-$(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd $(GENERATED_CERT_FILES) | build.raddb
-	@printf "radiusd -C... "
-	@if ! FR_LIBRARY_PATH=./build/lib/local/.libs/ ./build/make/jlibtool --mode=execute ./build/bin/local/radiusd -XCMd ./raddb -n debug -D ./share/dictionary -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
-		rm -f raddb/test.conf; \
-		cat $(BUILD_DIR)/tests/radiusd.config.log; \
-		echo "fail"; \
-		echo "FR_LIBRARY_PATH=./build/lib/local/.libs/ ./build/make/jlibtool --mode=execute ./build/bin/local/radiusd -XCMd ./raddb -n debug -D ./share/dictionary"; \
-		exit 1; \
-	fi
-	@rm -f raddb/test.conf
-	@echo "ok"
-	@touch $@
-
-test: ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient tests.bin tests.trie tests.unit tests.xlat tests.map tests.keywords tests.auth tests.modules $(BUILD_DIR)/tests/radiusd-c tests.eap | build.raddb
-	@$(MAKE) -C src/tests tests
-
-.PHONY: clean.test
-clean.test: clean.tests.modules
-	@$(MAKE) -C src/tests clean
-
-#  Tests specifically for Travis. We do a LOT more than just
-#  the above tests
-travis-test: raddb/test.conf test
-	@FR_LIBRARY_PATH=./build/lib/local/.libs/ ./build/make/jlibtool --mode=execute ./build/bin/local/radiusd -xxxv -n test
-	@rm -f raddb/test.conf
-	@$(MAKE) install
-	@perl -p -i -e 's/allow_vulnerable_openssl = no/allow_vulnerable_openssl = yes/' ${raddbdir}/radiusd.conf
-	@${sbindir}/radiusd -XC
+endif
 
 #
 # The $(R) is a magic variable not defined anywhere in this source.
@@ -125,21 +164,33 @@ travis-test: raddb/test.conf test
 # For compatibility with typical GNU packages (e.g. as seen in libltdl),
 # we make sure DESTDIR is defined.
 #
+#  If R is defined, ensure that it ends in a '/'.
+#
+ifneq "$(R)" ""
+R:=$(subst //,/,$(R)/)
 export DESTDIR := $(R)
+endif
 
 DICTIONARIES := $(wildcard $(addsuffix /dictionary*,$(addprefix share/dictionary/,$(PROTOCOLS))))
+MIBS = $(wildcard share/snmp/mibs/*.mib)
 
-install.share: $(addprefix $(R)$(dictdir)/,$(patsubst share/dictionary/%,%,$(DICTIONARIES)))
+install.share: \
+	$(addprefix $(R)$(dictdir)/,$(patsubst share/dictionary/%,%,$(DICTIONARIES))) \
+	$(addprefix $(R)$(mibdir)/,$(patsubst share/snmp/mibs/%,%,$(MIBS)))
 
 $(R)$(dictdir)/%: share/dictionary/%
 	@echo INSTALL $(patsubst share/dictionary/%,%,$<)
+	@$(INSTALL) -m 644 $< $@
+
+$(R)$(mibdir)/%: share/snmp/mibs/%
+	@echo INSTALL $(patsubst share/snmp/mibs/%,%,$<)
 	@$(INSTALL) -m 644 $< $@
 
 .PHONY: dictionary.format
 dictionary.format: $(DICTIONARIES)
 	@./scripts/dict/format.pl $(DICTIONARIES)
 
-MANFILES := $(wildcard man/man*/*.?)
+MANFILES := $(wildcard man/man*/*.?) $(AUTO_MAN_FILES)
 install.man: $(subst man/,$(R)$(mandir)/,$(MANFILES))
 
 $(R)$(mandir)/%: man/%
@@ -202,6 +253,14 @@ distclean: clean
 #  these rules enabled by default, then they're run too often.
 #
 ifeq "$(MAKECMDGOALS)" "reconfig"
+CONFIGURE_FILES=1
+endif
+
+ifneq "$(filter %configure,$(MAKECMDGOALS))" ""
+CONFIGURE_FILES=1
+endif
+
+ifeq "$(CONFIGURE_FILES)" "1"
 
 CONFIGURE_AC_FILES := $(shell find . -name configure.ac -print)
 CONFIGURE_FILES	   := $(patsubst %.ac,%,$(CONFIGURE_AC_FILES))
@@ -226,6 +285,7 @@ src/%configure: src/%configure.ac acinclude.m4 aclocal.m4 $(wildcard $(dir $@)m4
 		echo AUTOHEADER $@ \
 		cd $(dir $@) && $(AUTOHEADER); \
 	 fi
+	@touch $@
 
 # "%configure" doesn't match "configure"
 configure: configure.ac $(wildcard ac*.m4) $(wildcard m4/*.m4)
@@ -390,3 +450,11 @@ whitespace:
 ifneq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
 include scripts/docker/crossbuild/crossbuild.mk
 endif
+
+#
+#  Clean gcov files, too.
+#
+clean: clean.coverage
+.PHONY: clean.coverage
+clean.coverage:
+	@rm -f ${BUILD_DIR}/radiusd.info $(find ${BUILD_DIR} -name "*.gcda" -print)

@@ -1,0 +1,289 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: fig2dev Version 3.2 Patchlevel 5e -->
+<!-- CreationDate: Mon Aug 11 20:51:55 2014 -->
+<!-- Magnification: 1.000 -->
+<svg	xmlns="http://www.w3.org/2000/svg"
+	xmlns:xlink="http://www.w3.org/1999/xlink"
+	width="5.9in" height="3.1in"
+	viewBox="285 366 7066 3661">
+<g style="stroke-width:.025in; fill:none">
+<!-- Line: box -->
+<rect x="7200" y="1275" width="150" height="150" rx="0" 
+style="stroke:#ffffff;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:butt;
+"/>
+<!-- Line -->
+<polyline points="1425,975
+1426,975
+1428,976
+1432,977
+1438,978
+1446,980
+1457,983
+1471,986
+1488,990
+1507,994
+1528,999
+1552,1003
+1578,1008
+1606,1013
+1636,1017
+1667,1021
+1700,1025
+1734,1028
+1770,1031
+1807,1032
+1847,1033
+1889,1033
+1933,1031
+1979,1029
+2029,1024
+2082,1018
+2139,1011
+2198,1001
+2261,989
+2325,975
+2386,960
+2446,944
+2503,927
+2556,909
+2606,891
+2650,873
+2690,855
+2726,838
+2757,820
+2784,803
+2808,786
+2829,770
+2847,754
+2864,738
+2879,722
+2894,706
+2908,691
+2923,676
+2939,660
+2956,645
+2975,630
+2997,616
+3021,601
+3049,588
+3080,574
+3115,562
+3153,551
+3194,541
+3237,533
+3283,527
+3329,524
+3375,525
+3424,530
+3469,539
+3509,553
+3544,569
+3575,588
+3602,609
+3626,632
+3646,656
+3663,682
+3678,710
+3691,738
+3702,768
+3712,797
+3720,827
+3726,857
+3732,886
+3736,914
+3740,941
+3743,965
+3745,986
+3747,1005
+3748,1020
+3749,1032
+3737,810
+" style="stroke:#0000d1;stroke-width:15;
+stroke-linejoin:bevel; stroke-linecap:butt;
+"/>
+<!-- Arrowhead on XXXpoint 3749 1032 - 3751 1079-->
+<polygon points="3679 809
+3750 1047
+3799 804
+3679 809
+
+" style="stroke:#0000d1;stroke-width:15;stroke-miterlimit:8;
+fill:#0000d1;"/>
+<!-- Text -->
+<text xml:space="preserve" x="2100" y="1425" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">Is the request a valid RADIUS packet?</text>
+<!-- Text -->
+<text xml:space="preserve" x="2100" y="1740" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">Is the request from a known client?</text>
+<!-- Text -->
+<text xml:space="preserve" x="2100" y="2055" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">Is the request a duplicate?</text>
+<!-- Text -->
+<text xml:space="preserve" x="2100" y="2370" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">    Do we already have a reply for that request?</text>
+<!-- Text -->
+<text xml:space="preserve" x="2100" y="2685" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">    Should we re-send a proxied request?</text>
+<!-- Text -->
+<text xml:space="preserve" x="2100" y="3000" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">    Are we currently processing the original?</text>
+<!-- Text -->
+<text xml:space="preserve" x="2100" y="3630" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">Add the request to the internal cache</text>
+<!-- Text -->
+<text xml:space="preserve" x="2100" y="3945" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="192" text-anchor="start">Give the request to a child to process</text>
+<!-- Text -->
+<text xml:space="preserve" x="3900" y="750" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="144" text-anchor="start">Accounting-Request</text>
+<!-- Text -->
+<text xml:space="preserve" x="3750" y="525" fill="#000000"  font-family="Times" font-style="italic" font-weight="normal" font-size="144" text-anchor="start">Access-Request</text>
+<!-- Text -->
+<text xml:space="preserve" x="300" y="600" fill="#000000"  font-family="Times" font-style="normal" font-weight="normal" font-size="240" text-anchor="start">Server</text>
+<!-- Line: box -->
+<rect x="300" y="750" width="900" height="1569" rx="0" 
+style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#bdbebd;
+"/>
+<!-- Line: box -->
+<rect x="400" y="1351" width="700" height="33" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#dedfde;
+"/>
+<!-- Line: box -->
+<rect x="400" y="1318" width="700" height="33" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#424142;
+"/>
+<!-- Line: box -->
+<rect x="400" y="1451" width="700" height="33" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#dedfde;
+"/>
+<!-- Line: box -->
+<rect x="400" y="1418" width="700" height="33" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#424142;
+"/>
+<!-- Line: box -->
+<rect x="400" y="1551" width="700" height="34" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#dedfde;
+"/>
+<!-- Line: box -->
+<rect x="400" y="1518" width="700" height="33" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#424142;
+"/>
+<!-- Line: box -->
+<rect x="400" y="1651" width="700" height="34" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#dedfde;
+"/>
+<!-- Line: box -->
+<rect x="400" y="1618" width="700" height="33" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#424142;
+"/>
+<!-- Line: box -->
+<rect x="400" y="1751" width="700" height="35" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#dedfde;
+"/>
+<!-- Line: box -->
+<rect x="400" y="1718" width="700" height="33" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#424142;
+"/>
+<!-- Line: box -->
+<rect x="400" y="1853" width="700" height="33" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#dedfde;
+"/>
+<!-- Line: box -->
+<rect x="400" y="1818" width="700" height="35" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#424142;
+"/>
+<!-- Line: box -->
+<rect x="400" y="1951" width="700" height="35" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#dedfde;
+"/>
+<!-- Line: box -->
+<rect x="400" y="1919" width="700" height="32" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#424142;
+"/>
+<!-- Line: box -->
+<rect x="400" y="2052" width="700" height="34" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#dedfde;
+"/>
+<!-- Line: box -->
+<rect x="400" y="2019" width="700" height="33" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#424142;
+"/>
+<!-- Line: box -->
+<rect x="400" y="1118" width="700" height="32" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#dedfde;
+"/>
+<!-- Line: box -->
+<rect x="400" y="1083" width="700" height="35" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#424142;
+"/>
+<!-- Line: box -->
+<rect x="400" y="1017" width="700" height="33" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#dedfde;
+"/>
+<!-- Line: box -->
+<rect x="400" y="983" width="700" height="34" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#424142;
+"/>
+<!-- Line: box -->
+<rect x="400" y="917" width="700" height="33" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#dedfde;
+"/>
+<!-- Line: box -->
+<rect x="400" y="883" width="700" height="34" rx="0" 
+style="stroke:#000000;stroke-width:0;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#424142;
+"/>
+<!-- Line: box -->
+<rect x="300" y="2186" width="900" height="133" rx="0" 
+style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#424142;
+"/>
+<!-- Line -->
+<polyline points="300,1216
+1200,1216
+" style="stroke:#000000;stroke-width:7;
+stroke-linejoin:miter; stroke-linecap:round;
+fill:#bdbebd;
+"/>
+</g>
+</svg>

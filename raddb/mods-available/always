@@ -10,6 +10,10 @@
 #  The `always` module simply returns the same result, always, without
 #  doing anything else.  It is here for use in complex policies.
 #
+#  The main configuration item is `rcode`, which sets the return  code that
+#  this  instantiation  of  the  module  will return. The default, if none
+#  specified, is 'fail'.
+#
 
 #
 #  ## Syntax
@@ -29,7 +33,7 @@
 	#  | `handled`  | Indicate that the request has been handled,
 	#                 stop processing, and send response if set.
 	#  | `invalid`  | Indicate that the request is invalid.
-	#  | `userlock` | Indicate that the user account has been
+	#  | `disallow` | Indicate that the user account has been
 	#                 locked out.
 	#  | `notfound` | Indicate that a user account can't be found.
 	#  | `noop`     | Simulate a no-op.
@@ -56,7 +60,32 @@
 #}
 
 #
-#  ## Default Instance
+#  ## xlat for peeking and poking the status
+#
+#  An xlat based on the instance name can be called to change the status
+#  returned by the instance.
+#
+#  .Example
+#
+#  ```
+#  %{db_status:ok}
+#  %{db_status:fail}
+#  %{db_status:notfound}
+#  ...
+#  ```
+#
+#  The above xlats expand to the current status of the module. To fetch the
+#  current status without affecting it call the xlat with an empty argument:
+#
+#  .Example
+#
+#  ```
+#  %{db_status:}
+#  ```
+#
+
+#
+#  ## Configuration Settings
 #
 #  The following default instances allow the use of return codes like
 #  `reject` or `ok` in `unlang` policies.
@@ -76,8 +105,8 @@ always handled {
 always invalid {
 	rcode = invalid
 }
-always userlock {
-	rcode = userlock
+always disallow {
+	rcode = disallow
 }
 always notfound {
 	rcode = notfound

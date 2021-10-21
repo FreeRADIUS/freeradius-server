@@ -26,9 +26,12 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
+
+#include <freeradius-devel/util/base16.h>
+
 #include <ctype.h>
 
-static fr_dict_t *dict_freeradius;
+static fr_dict_t const *dict_freeradius;
 
 extern fr_dict_autoload_t rlm_unpack_dict[];
 fr_dict_autoload_t rlm_unpack_dict[] = {
@@ -44,172 +47,112 @@ fr_dict_attr_autoload_t rlm_unpack_dict_attr[] = {
 	{ NULL }
 };
 
-#define GOTO_ERROR do { REDEBUG("Unexpected text at '%s'", p); goto error;} while (0)
+static xlat_arg_parser_t const unpack_xlat_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_VOID },
+	{ .required = true, .single = true, .type = FR_TYPE_UINT32 },
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
 /** Unpack data
  *
- *  Example: %{unpack:&Class 0 integer}
+ * Example:
+@verbatim
+%(unpack:%{Class} 0 integer)
+@endverbatim
+ * Expands Class, treating octet at offset 0 (bytes 0-3) as an "integer".
  *
- *  Expands Class, treating octet at offset 0 (bytes 0-3) as an "integer".
+ * @ingroup xlat_functions
  */
-static ssize_t unpack_xlat(UNUSED TALLOC_CTX *ctx, char **out, size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
+static xlat_action_t unpack_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				 UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				 fr_value_box_list_t *in)
 {
-	char *data_name, *data_size, *data_type;
-	char *p;
-	size_t len, input_len;
-	int offset;
-	fr_type_t type;
-	fr_dict_attr_t const *da;
-	VALUE_PAIR *vp, *cast;
-	uint8_t const *input;
-	char buffer[256];
-	uint8_t blob[256];
+	size_t		len, input_len, offset;
+	fr_type_t	type;
+	uint8_t const	*input;
+	uint8_t		blob[256];
+	fr_value_box_t	*data_vb = fr_dlist_head(in);
+	fr_value_box_t	*offset_vb = fr_dlist_next(in, data_vb);
+	fr_value_box_t	*type_vb = fr_dlist_next(in, offset_vb);
+	fr_value_box_t	*vb;
 
-	/*
-	 *	FIXME: copy only the fields here, as we parse them.
-	 */
-	strlcpy(buffer, fmt, sizeof(buffer));
-
-	p = buffer;
-	fr_skip_spaces(p); /* skip leading spaces */
-
-	data_name = p;
-
-	while (*p && !isspace((int) *p)) p++;
-
-	if (!*p) {
-	error:
-		REDEBUG("Format string should be '<data> <offset> <type>' e.g. '&Class 1 integer'");
-	nothing:
-		return -1;
+	if ((data_vb->type != FR_TYPE_OCTETS) && (data_vb->type != FR_TYPE_STRING)) {
+		REDEBUG("unpack requires the input attribute to be 'string' or 'octets'");
+		return XLAT_ACTION_FAIL;
 	}
 
-	while (isspace((int) *p)) *(p++) = '\0';
-	if (!*p) GOTO_ERROR;
-
-	data_size = p;
-
-	while (*p && !isspace((int) *p)) p++;
-	if (!*p) GOTO_ERROR;
-
-	while (isspace((int) *p)) *(p++) = '\0';
-	if (!*p) GOTO_ERROR;
-
-	data_type = p;
-
-	while (*p && !isspace((int) *p)) p++;
-	if (*p) GOTO_ERROR;	/* anything after the type is an error */
-
-	/*
-	 *	Attribute reference
-	 */
-	if (*data_name == '&') {
-		if (xlat_fmt_get_vp(&vp, request, data_name) < 0) goto nothing;
-
-		if ((vp->vp_type != FR_TYPE_OCTETS) &&
-		    (vp->vp_type != FR_TYPE_STRING)) {
-			REDEBUG("unpack requires the input attribute to be 'string' or 'octets'");
-			goto nothing;
-		}
-		input = vp->vp_octets;
-		input_len = vp->vp_length;
-
-	} else if ((data_name[0] == '0') && (data_name[1] == 'x')) {
+	if ((data_vb->type == FR_TYPE_STRING) && (data_vb->vb_length > 1) &&
+	    (data_vb->vb_strvalue[0] == '0') && (data_vb->vb_strvalue[1] == 'x')) {
 		/*
 		 *	Hex data.
 		 */
-		len = strlen(data_name + 2);
-		if ((len & 0x01) != 0) {
-			REDEBUG("Invalid hex string in '%s'", data_name);
-			goto nothing;
+		len = strlen(data_vb->vb_strvalue + 2);
+		if (len > 0) {
+			fr_sbuff_parse_error_t err;
+
+			input = blob;
+			input_len = fr_base16_decode(&err, &FR_DBUFF_TMP(blob, sizeof(blob)),
+					       &FR_SBUFF_IN(data_vb->vb_strvalue + 2, len), true);
+			if (err) {
+				REDEBUG("Invalid hex string in '%s'", data_vb->vb_strvalue);
+				return XLAT_ACTION_FAIL;
+			}
+		} else {
+			REDEBUG("Zero length hex string in '%s'", data_vb->vb_strvalue);
+			return XLAT_ACTION_FAIL;
 		}
-		input = blob;
-		input_len = fr_hex2bin(blob, sizeof(blob), data_name + 2, len);
-
+	} else if (data_vb->type == FR_TYPE_STRING) {
+		input = (uint8_t const *)data_vb->vb_strvalue;
+		input_len = data_vb->length;
 	} else {
-		GOTO_ERROR;
+		input = data_vb->vb_octets;
+		input_len = data_vb->length;
 	}
 
-	offset = (int) strtoul(data_size, &p, 10);
-	if (*p) {
-		REDEBUG("unpack requires a float64 number, not '%s'", data_size);
-		goto nothing;
+	offset = offset_vb->vb_uint32;
+
+	if (offset >= input_len) {
+		REDEBUG("unpack offset %zu is larger than input data length %zu", offset, input_len);
+		return XLAT_ACTION_FAIL;
 	}
 
-	type = fr_str2int(fr_value_box_type_table, data_type, FR_TYPE_INVALID);
-	if (type == FR_TYPE_INVALID) {
-		REDEBUG("Invalid data type '%s'", data_type);
-		goto nothing;
+	type = fr_table_value_by_str(fr_value_box_type_table, type_vb->vb_strvalue, FR_TYPE_NULL);
+	if (fr_type_is_null(type)) {
+		REDEBUG("Invalid data type '%s'", type_vb->vb_strvalue);
+		return XLAT_ACTION_FAIL;
 	}
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
 
 	/*
-	 *	Output must be a non-zero limited size.
+	 *	Call the generic routines to get data from the
+	 *	"network" buffer.
 	 */
-	if ((dict_attr_sizes[type][0] ==  0) ||
-	    (dict_attr_sizes[type][0] != dict_attr_sizes[type][1])) {
-		REDEBUG("unpack requires fixed-size output type, not '%s'", data_type);
-		goto nothing;
+	if (fr_value_box_from_network(ctx, vb, type, NULL,
+				      &FR_DBUFF_TMP(input + offset, input_len - offset),
+				      input_len - offset, data_vb->tainted) < 0) {
+		RPEDEBUG("Failed decoding %s", type_vb->vb_strvalue);
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
 	}
 
-	if (input_len < (offset + dict_attr_sizes[type][0])) {
-		REDEBUG("Insufficient data to unpack '%s' from '%s'", data_type, data_name);
-		goto nothing;
-	}
+	fr_dcursor_append(out, vb);
 
-	da = fr_dict_attr_child_by_num(fr_dict_root(dict_freeradius), attr_cast_base->attr + type);
-	if (!da) {
-		REDEBUG("Cannot decode type '%s'", data_type);
-		goto nothing;
-	}
-
-	cast = fr_pair_afrom_da(request, da);
-	if (!cast) goto nothing;
-
-	memcpy(&(cast->data), input + offset, dict_attr_sizes[type][0]);
-
-	/*
-	 *	Hacks
-	 */
-	switch (type) {
-	case FR_TYPE_INT32:
-	case FR_TYPE_UINT32:
-	case FR_TYPE_DATE:
-		cast->vp_uint32 = ntohl(cast->vp_uint32);
-		break;
-
-	case FR_TYPE_UINT16:
-		cast->vp_uint16 = ((input[offset] << 8) | input[offset + 1]);
-		break;
-
-	case FR_TYPE_UINT64:
-		cast->vp_uint64 = ntohll(cast->vp_uint64);
-		break;
-
-	default:
-		break;
-	}
-
-	len = fr_pair_value_snprint(*out, outlen, cast, 0);
-	talloc_free(cast);
-	if (is_truncated(len, outlen)) {
-		REDEBUG("Insufficient buffer space to unpack data");
-		goto nothing;
-	}
-
-	return len;
+	return XLAT_ACTION_DONE;
 }
-
 
 /*
  *	Register the xlats
  */
 static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *conf)
 {
+	xlat_t	*xlat;
+
 	if (cf_section_name2(conf)) return 0;
 
-	xlat_register(NULL, "unpack", unpack_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN, true);
+	xlat = xlat_register(NULL, "unpack", unpack_xlat, false);
+	xlat_func_args(xlat, unpack_xlat_args);
 
 	return 0;
 }

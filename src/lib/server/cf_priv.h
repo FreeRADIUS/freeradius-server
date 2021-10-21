@@ -25,62 +25,61 @@
  */
 RCSIDH(cf_priv_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <sys/stat.h>
 
 #include <freeradius-devel/server/cf_parse.h>
-#include <freeradius-devel/util/rbtree.h>
-#include <freeradius-devel/util/cursor.h>
+#include <freeradius-devel/util/rb.h>
+#include <freeradius-devel/util/dlist.h>
 
 typedef enum conf_type {
 	CONF_ITEM_INVALID = 0,
 	CONF_ITEM_PAIR,
 	CONF_ITEM_SECTION,
 	CONF_ITEM_DATA,
-#ifdef WITH_CONF_WRITE
-	CONF_ITEM_COMMENT,
-	CONF_ITEM_INCLUDE
-#endif
 } CONF_ITEM_TYPE;
 
 /** Common header for all CONF_* types
  *
  */
 struct cf_item {
+	fr_rb_node_t		ident1_node;	//!< Entry in the ident1 tree.
+	fr_rb_node_t		ident2_node;	//!< Entry in the ident2 tree.
+
 	CONF_ITEM_TYPE		type;		//!< Whether the config item is a config_pair, conf_section or cf_data.
 
-	CONF_ITEM		*next;		//!< Sibling.
+	fr_dlist_t		entry;		//!< Entry in dlist
 	CONF_ITEM		*parent;	//!< Parent.
 
-	CONF_ITEM		*child;		//!< The head of the ordered list of children.
-	fr_cursor_t		cursor;		//!< Cursor to iterate over children.  Maintains a 'tail' pointer for
-						//!< efficient insertion.
+	fr_dlist_head_t		children;	//!< The head of the ordered list of children.
 
-	rbtree_t		*ident1;	//!< Tree to store the first identifier (name1 || type || attr).
-	rbtree_t		*ident2;	//!< Tree to store the second identifier (name2 || name).
+	fr_rb_tree_t		*ident1;	//!< Tree to store the first identifier (name1 || type || attr).
+	fr_rb_tree_t		*ident2;	//!< Tree to store the second identifier (name2 || name).
 
 	int			lineno;		//!< The line number the config item began on.
 	char const		*filename;	//!< The file the config item was parsed from.
 };
 
-/** Configuration AVP similar to a VALUE_PAIR
+/** Configuration AVP similar to a fr_pair_t
  *
  */
 struct cf_pair {
 	CONF_ITEM		item;		//!< Common set of fields.
 
 	char const		*attr;		//!< Attribute name
-#ifdef WITH_CONF_WRITE
-	char const		*orig_value;	/* original value */
-#endif
 	char const		*value;		//!< Attribute value
 
-	FR_TOKEN		op;		//!< Operator e.g. =, :=
-	FR_TOKEN		lhs_quote;	//!< Name quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
-	FR_TOKEN		rhs_quote;	//!< Value Quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
+	fr_token_t		op;		//!< Operator e.g. =, :=
+	fr_token_t		lhs_quote;	//!< Name quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
+	fr_token_t		rhs_quote;	//!< Value Quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
 
 	bool			pass2;		//!< do expansion in pass2.
 	bool			parsed;		//!< Was this item used during parsing?
+	bool			printed;	//!< Was this item printed already in debug mode?
 	bool			referenced;	//!< Was this item referenced in the config?
 };
 
@@ -93,14 +92,15 @@ struct cf_section {
 	char const		*name1;		//!< First name token.  Given ``foo bar {}`` would be ``foo``.
 	char const		*name2;		//!< Second name token. Given ``foo bar {}`` would be ``bar``.
 
-	FR_TOKEN		name2_quote;	//!< The type of quoting around name2.
+	fr_token_t		name2_quote;	//!< The type of quoting around name2.
 
 	int			argc;		//!< number of additional arguments
 	char const		**argv;		//!< additional arguments
-	FR_TOKEN		*argv_quote;
+	fr_token_t		*argv_quote;
 
 	void			*base;
 	int			depth;
+	int			allow_unlang;
 
 	CONF_SECTION		*template;
 };
@@ -119,32 +119,13 @@ struct cf_data {
 	bool			free;		//!< If true, free data with talloc if parent node is freed.
 };
 
-typedef enum cf_include_type {
-	CONF_INCLUDE_FILE,
-	CONF_INCLUDE_DIR,
-	CONF_INCLUDE_FROMDIR,
-} CONF_INCLUDE_TYPE;
-
-#ifdef WITH_CONF_WRITE
 typedef struct {
-	CONF_ITEM		item;
-	char const		*comment;
-} CONF_COMMENT;
-
-typedef struct {
-	CONF_ITEM		item;
-	char const		*filename;
-	CONF_INCLUDE_TYPE	file_type;
-} CONF_INCLUDE;
-#endif
-
-typedef struct {
-	char const		*filename;
-	CONF_SECTION		*cs;
-	struct stat		buf;
+	fr_rb_node_t		node;
+	char const		*filename;	//!< name of the file
+	CONF_SECTION		*cs;		//!< CONF_SECTION associated with the file
+	struct stat		buf;		//!< stat about the file
+	bool			from_dir;	//!< was read from a directory
 } cf_file_t;
-
-CONF_ITEM *cf_remove(CONF_ITEM *parent, CONF_ITEM *child);
 
 #ifdef __cplusplus
 }

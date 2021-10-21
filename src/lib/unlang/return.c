@@ -27,32 +27,17 @@ RCSID("$Id$")
 #include "unlang_priv.h"
 #include "return_priv.h"
 
-unlang_action_t unlang_return(REQUEST *request, rlm_rcode_t *presult, int *priority)
+unlang_action_t unlang_return(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	int			i;
-	VALUE_PAIR		**copy_p;
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
+	RDEBUG2("%s", unlang_ops[frame->instruction->type].name);
 
-	RDEBUG2("%s", unlang_ops[instruction->type].name);
+	*p_result = frame->result;
 
-	for (i = 8; i >= 0; i--) {
-		copy_p = request_data_get(request, (void *)xlat_fmt_get_vp, i);
-		if (copy_p) {
-			if (instruction->type == UNLANG_TYPE_BREAK) {
-				RDEBUG2("# break Foreach-Variable-%d", i);
-				break;
-			}
-		}
-	}
-
-	frame->unwind = instruction->type;
-
-	*presult = frame->result;
-	*priority = frame->priority;
-
-	return UNLANG_ACTION_BREAK;
+	/*
+	 *	Stop at the next return point, or if we hit
+	 *	the a top frame.
+	 */
+	return unwind_to_return(request->stack);
 }
 
 void unlang_return_init(void)
@@ -60,6 +45,6 @@ void unlang_return_init(void)
 	unlang_register(UNLANG_TYPE_RETURN,
 			   &(unlang_op_t){
 				.name = "return",
-				.func = unlang_return,
+				.interpret = unlang_return,
 			   });
 }

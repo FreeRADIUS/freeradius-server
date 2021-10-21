@@ -1,0 +1,102 @@
+VQP Version 1 Protocol 
+
+Protocol: 	UDP
+Port:		1589
+
+1. VQP Packet: variable length
+
+	1.1 Header: 8 bytes [1x]
+	
+		1.1.1 Const (0x01): 1 byte
+		1.1.2 Packet type : 1 byte
+			0x01 - VQP Request, Join Port
+			0x02 - VQP Response, Your VLAN 
+			0x03 - VQP Request, Reconfirm 
+			0x04 - VQP Response, Reconfirm 
+
+		1.1.3 Error Code/Action: 1 byte
+			0x00 - No Error	
+			0x03 - Access Denied
+			0x04 - Shutdown Port
+			0x05 - Wrong Domain
+
+		1.1.4 UNKNOWN: 1 byte
+			0x02 - In good response
+			0x06 - In requests
+ 
+		1.1.5 Packet Sequence Number : 4 bytes
+
+	1.2 Data Record [*]
+		1.2.1 Data Type : 4 bytes
+			00 00 0c 01 - Client IP Address
+			00 00 0c 02 - Port Name
+			00 00 0c 03 - VLAN Name
+			00 00 0c 04 - VTP/VMPS Domain Name
+			00 00 0c 05 - Ethernet Packet
+			00 00 0c 06 - 00 00 00 00 00 00 - MAC Address
+			00 00 0c 07 - UNKNOWN ( 0x00 as value )
+			00 00 0c 08 - MAC Address
+
+		1.2.2 Data Length in bytes : 2 bytes
+		1.2.3 Data : Data Length bytes	
+
+2. Packet types:
+
+	2.1 VQP Request - Join Port (0x01)
+
+		This packet is sent by VMPS client to VMPS server
+		requesting VLAN Name for (Port, MAC). For MAC address
+		the whole "joining" ethernet packet - the first packet 
+		encountered on port - is sent.  VMPS server uses only 
+		source MAC address, but it can be probably used for 
+		different VLAN classifications, other than based on MAC.
+
+		Other possibility is that Data Record 0x06 is sent, which
+		holds the MAC itself. This is used when port changes from 
+		static to dynamic. In this case MAC in Data Record 0x06 is
+		00 00 00 00 00 00.
+		
+		2.1.1 VQP Header
+		2.1.2 Data Record: 00 00 0c 01 - Client IP Address
+		2.1.3 Data Record: 00 00 0c 02 - Port Name
+		2.1.4 Data Record: 00 00 0c 03 - VLAN Name 
+		2.1.5 Data Record: 00 00 0c 04 - VTP/VMPS Domain Name
+		2.1.6 Data Record: 00 00 0c 07 - UNKNOWN ( 0x01 as value )
+		2.1.7 Data Record: 00 00 0c 05 - Ethernet Packet
+
+
+	2.2 VQP Response - Your VLAN (0x02)
+		
+		VMPS server send this packet to the client for 
+		positive response on 0x01 request. Error response
+		contains only header.
+
+		2.2.1 VQP Header
+		2.2.2 Data Record: 00 00 0c 03 - VLAN Name 
+		2.2.3 Data Record: 00 00 0c 08 - MAC Address
+
+	2.3 VQP Request - Reconfirm (0x03)
+
+		This packet is sent by VMPS client to VMPS server
+		requesting reconfirmation of current Port -> VLAN
+		assignments.
+		
+		2.1.1 VQP Header
+		2.1.2 Data Record: 00 00 0c 01 - Client IP Address
+		2.1.3 Data Record: 00 00 0c 02 - Port Name
+		2.1.4 Data Record: 00 00 0c 03 - VLAN Name 
+		2.1.5 Data Record: 00 00 0c 04 - VTP/VMPS Domain Name
+		2.1.6 Data Record: 00 00 0c 07 - UNKNOWN ( 0x01 as value )
+		2.1.7 Data Record: 00 00 0c 08 - MAC Address
+
+
+	2.4 VQP Response - Reconfirm (0x04)
+		
+		VMPS server send this packet to the client for 
+		positive response on 0x03 request. Error response
+		contains only header.
+
+		2.2.1 VQP Header
+		2.2.2 Data Record: 00 00 0c 03 - VLAN Name 
+		2.2.3 Data Record: 00 00 0c 08 - MAC Address
+

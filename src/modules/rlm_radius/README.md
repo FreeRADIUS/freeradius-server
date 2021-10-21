@@ -1,4 +1,4 @@
-# rlm_radius_client
+# rlm_radius
 ## Metadata
 <dl>
   <dt>category</dt><dd>io</dd>

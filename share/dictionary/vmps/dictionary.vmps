@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -13,11 +13,11 @@
 ##############################################################################
 
 #
-#  VQP / VMPS internal attributes for the packet header
+#  VQP / VMPS attributes for the packet header
 #
-ATTRIBUTE	Packet-Type				1	integer	internal
-ATTRIBUTE	Error-Code				2	integer internal
-ATTRIBUTE	Sequence-Number				3	integer internal
+ATTRIBUTE	Packet-Type				1	uint32
+ATTRIBUTE	Error-Code				2	uint8
+ATTRIBUTE	Sequence-Number				3	uint32
 
 #
 #  VQP / VMPS Attributes

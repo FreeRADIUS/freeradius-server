@@ -30,9 +30,9 @@ RCSIDH(cf_file_h, "$Id$")
 
 #include <freeradius-devel/server/cf_util.h>
 
-#include <freeradius-devel/util/rbtree.h>
+#include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/print.h>
 
 #ifdef __cplusplus
@@ -53,7 +53,6 @@ void		cf_file_free(CONF_SECTION *cs);
 
 bool		cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms);
 void		cf_file_check_user(uid_t uid, gid_t gid);
-int		cf_file_changed(CONF_SECTION *cs, rb_walker_t callback);
 
 /*
  *	Config file writing
@@ -64,10 +63,10 @@ int		cf_section_write(FILE *fp, CONF_SECTION *cs, int depth);
  *	Misc
  */
 CONF_ITEM	*cf_reference_item(CONF_SECTION const *parentcs, CONF_SECTION const *outercs, char const *ptr);
-char const	*cf_expand_variables(char const *cf, int *lineno,
+char const	*cf_expand_variables(char const *filename, int lineno,
 				     CONF_SECTION *outer_cs,
 				     char *output, size_t outsize,
-				     char const *input, bool *soft_fail);
+				     char const *input, ssize_t inlen, bool *soft_fail);
 #ifdef __cplusplus
 }
 #endif

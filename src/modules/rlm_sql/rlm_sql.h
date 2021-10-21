@@ -1,6 +1,6 @@
 #pragma once
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -120,7 +120,7 @@ typedef struct {
 								//!< NULL drivers.
 
 	char const		*allowed_chars;			//!< Chars which done need escaping..
-	uint32_t		query_timeout;			//!< How long to allow queries to run for.
+	fr_time_delta_t		query_timeout;			//!< How long to allow queries to run for.
 
 	char const		*connect_query;			//!< Query executed after establishing
 								//!< new connection.
@@ -150,8 +150,10 @@ typedef struct {
 								//!< when log strings need to be copied.
 } rlm_sql_handle_t;
 
-extern const FR_NAME_NUMBER sql_rcode_description_table[];
-extern const FR_NAME_NUMBER sql_rcode_table[];
+extern fr_table_num_sorted_t const sql_rcode_description_table[];
+extern size_t sql_rcode_description_table_len;
+extern fr_table_num_sorted_t const sql_rcode_table[];
+extern size_t sql_rcode_table_len;
 
 /*
  *	Capabilities flags for drivers
@@ -208,7 +210,7 @@ typedef struct {
 	sql_rcode_t (*sql_finish_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_finish_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
-	xlat_escape_t	sql_escape_func;
+	xlat_escape_legacy_t	sql_escape_func;
 } rlm_sql_driver_t;
 
 struct sql_inst {
@@ -224,11 +226,11 @@ struct sql_inst {
 	dl_module_inst_t		*driver_inst;		//!< Driver's instance data.
 	rlm_sql_driver_t const	*driver;		//!< Driver's exported interface.
 
-	int (*sql_set_user)(rlm_sql_t const *inst, REQUEST *request, char const *username);
-	xlat_escape_t sql_escape_func;
-	sql_rcode_t (*sql_query)(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
-	sql_rcode_t (*sql_select_query)(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
-	sql_rcode_t (*sql_fetch_row)(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle);
+	int (*sql_set_user)(rlm_sql_t const *inst, request_t *request, char const *username);
+	xlat_escape_legacy_t sql_escape_func;
+	sql_rcode_t (*sql_query)(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query);
+	sql_rcode_t (*sql_select_query)(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query);
+	sql_rcode_t (*sql_fetch_row)(rlm_sql_row_t *out, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle);
 
 	char const		*name;			//!< Module instance name.
 	fr_dict_attr_t const	*group_da;		//!< Group dictionary attribute.
@@ -240,22 +242,19 @@ struct rlm_sql_grouplist_s {
 	rlm_sql_grouplist_t	*next;
 };
 
-void		*mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);
-int		sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **first_pair, rlm_sql_row_t row);
-int		sql_read_realms(rlm_sql_handle_t *handle);
-int		sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, VALUE_PAIR **pair, char const *query);
-int		sql_dict_init(rlm_sql_handle_t *handle);
-void 		rlm_sql_query_log(rlm_sql_t const *inst, REQUEST *request, sql_acct_section_t *section, char const *query) CC_HINT(nonnull (1, 2, 4));
-sql_rcode_t	rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
-sql_rcode_t	rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
-int		rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle);
-void		rlm_sql_print_error(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t *handle, bool force_debug);
-int		sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username);
+void		*sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);
+int		sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, fr_pair_list_t *out, char const *query);
+void 		rlm_sql_query_log(rlm_sql_t const *inst, request_t *request, sql_acct_section_t *section, char const *query) CC_HINT(nonnull (1, 2, 4));
+sql_rcode_t	rlm_sql_select_query(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
+sql_rcode_t	rlm_sql_query(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
+int		rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle);
+void		rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, bool force_debug);
+int		sql_set_user(rlm_sql_t const *inst, request_t *request, char const *username);
 
 /*
  *	sql_state.c
  */
 fr_trie_t	*sql_state_trie_alloc(TALLOC_CTX *ctx);
 int		sql_state_entries_from_table(fr_trie_t *states, sql_state_entry_t const table[]);
-int		sql_sate_entries_from_cs(fr_trie_t *states, CONF_SECTION *overrides);
+int		sql_state_entries_from_cs(fr_trie_t *states, CONF_SECTION *overrides);
 sql_state_entry_t const		*sql_state_entry_find(fr_trie_t const *states, char const *sql_state);

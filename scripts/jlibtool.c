@@ -104,7 +104,7 @@
 #  define ADD_MINUS_L
 #  define LD_RUN_PATH			"LD_RUN_PATH"
 #  define LD_LIBRARY_PATH		"LD_LIBRARY_PATH"
-#  define LD_LIBRARY_PATH_LOCAL		LD_LIBRARY_PATH
+#  define LD_LIBRARY_PATH_LOCAL		"LD_LIBRARY_PATH"
 #endif
 
 #if defined(__sun) && !defined(__GNUC__)
@@ -126,7 +126,7 @@
 #  define HAS_REALPATH
 #  define LD_RUN_PATH			"LD_RUN_PATH"
 #  define LD_LIBRARY_PATH		"LD_LIBRARY_PATH"
-#  define LD_LIBRARY_PATH_LOCAL		LD_LIBRARY_PATH
+#  define LD_LIBRARY_PATH_LOCAL		"LD_LIBRARY_PATH"
 #endif
 
 #if defined(_OSD_POSIX)
@@ -160,7 +160,7 @@
 #  define NEED_SNPRINTF
 #  define LD_RUN_PATH			"LD_RUN_PATH"
 #  define LD_LIBRARY_PATH		"LD_LIBRARY_PATH"
-#  define LD_LIBRARY_PATH_LOCAL		LD_LIBRARY_PATH
+#  define LD_LIBRARY_PATH_LOCAL		"LD_LIBRARY_PATH"
 #endif
 
 #if defined(__MINGW32__)
@@ -180,7 +180,7 @@
 #endif
 
 #ifndef CC
-#define CC				"gcc"
+#define CC				"clang"
 #endif
 
 #ifndef CXX
@@ -188,7 +188,7 @@
 #endif
 
 #ifndef LINK_C
-#define LINK_C				"gcc"
+#define LINK_C				"clang"
 #endif
 
 #ifndef LINK_CXX
@@ -329,6 +329,7 @@ static void add_rpath(count_chars *cc, char const *path);
 #endif
 
 static pid_t spawn_pid;
+char const *program = NULL;
 
 static void usage(int code)
 {
@@ -381,6 +382,7 @@ static void usage(int code)
  * This is portable to any POSIX-compliant system has /dev/null
  */
 static FILE *f = NULL;
+
 static int vsnprintf(char *str, size_t n, char const *fmt, va_list ap)
 {
 	int res;
@@ -415,13 +417,27 @@ static int snprintf(char *str, size_t n, char const *fmt, ...)
 }
 #endif
 
+static void strip_double_chars(char *str, char c)
+{
+	size_t	len = strlen(str);
+	char	*p = str;
+	char	*out = str;
+	char	*end = p + len;
+
+	while (p < end) {
+		while ((p[0] == c) && (p[1] == c)) p++;
+		*out++ = *p++;
+	}
+	*out = '\0';
+}
+
 static void *lt_malloc(size_t size)
 {
 	void *out;
 
 	out = malloc(size);
 	if (!out) {
-		ERROR("Failed allocating %zu bytes, OOM", size);
+		ERROR("Failed allocating %zu bytes, OOM\n", size);
 		exit(1);
 	}
 
@@ -594,6 +610,10 @@ static int external_spawn(command_t *cmd, char const *file, char const **argv)
 		spawn_pid = fork();
 		if (spawn_pid == 0) {
 			return execvp(argv[0], (char**)argv);
+		}
+		else if (spawn_pid < 0) {
+			fprintf(stderr, "Failed fork: %s\n", strerror(errno));
+			return -1;
 		}
 		else {
 			int status;
@@ -1092,7 +1112,7 @@ static char *gen_library_name(char const *name, enum lib_type genlib)
 
 	newext = strrchr(newarg, '.');
 	if (!newext) {
-		ERROR("Library path does not have an extension");
+		ERROR("Library path does not have an extension\n");
 	free(newarg);
 
 	return NULL;
@@ -1184,7 +1204,7 @@ static char *check_library_exists(command_t *cmd, char const *arg, int pathlen,
 	strcpy(newarg + newpathlen, arg + pathlen);
 	ext = strrchr(newarg, '.');
 	if (!ext) {
-		ERROR("Error: Library path does not have an extension");
+		ERROR("Error: Library path does not have an extension\n");
 		free(newarg);
 
 		return NULL;
@@ -2080,6 +2100,7 @@ static void link_fixup(command_t *cmd)
 #if 0 && defined(PROGRAM_VERSION) && !defined(__APPLE__)
 				strcat(tmp, "." STRINGIFY(PROGRAM_VERSION));
 #endif
+				strip_double_chars(tmp, '/');	/* macos now complains bitterly about double slashes */
 
 				push_count_chars(cmd->shared_opts.normal, tmp);
 			}
@@ -2321,32 +2342,28 @@ static int run_mode(command_t *cmd)
 	{
 		char *l, libpath[PATH_MAX];
 
-		if (strlen(cmd->arglist->vals[0]) >= PATH_MAX) {
-			ERROR("Libpath too long no buffer space");
+		if (!cmd->arglist->num) {
+			ERROR("No command to execute.\n");
 			rv = 1;
 
 			goto finish;
 		}
 
-		strcpy(libpath, cmd->arglist->vals[0]);
-		add_dotlibs(libpath);
-#if 0
-		l = strrchr(libpath, '/');
-		if (!l) l = strrchr(libpath, '\\');
-		if (l) {
-			*l = '\0';
-			l = libpath;
-		} else {
-			l = ".libs/";
-		}
-#endif
+		/*
+		 *	jlibtool is in $(BUILD_DIR)/make/jlibtool
+		 */
+		strcpy(libpath, program);
 
-		l = "./build/lib/local/.libs";
-		setenv(LD_LIBRARY_PATH_LOCAL, l, 1);
-#ifdef __APPLE__
-		setenv("DYLD_FALLBACK_LIBRARY_PATH", l, 1);
-#endif
-		setenv("FR_LIBRARY_PATH", "./build/lib/local/.libs", 1);
+		/*
+		 *	Libraries are relative to jlibtool, in
+		 *	$(BUILD_DIR)/lib/local/.libs/
+		 */
+		l = strstr(libpath, "/make");
+		if (l) strcpy(l, "/lib/local/.libs");
+
+		setenv(LD_LIBRARY_PATH_LOCAL, libpath, 1);
+		setenv("FR_LIBRARY_PATH", libpath, 1);
+
 		rv = run_command(cmd, cmd->arglist);
 		if (rv) goto finish;
 	}
@@ -2374,7 +2391,7 @@ static void cleanup_tmp_dir(char const *dirname)
 	}
 
 	if ((strlen(dirname) + 1 + sizeof(entry->d_name)) >= sizeof(fullname)) {
-		ERROR("Dirname too long, out of buffer space");
+		ERROR("Dirname too long, out of buffer space\n");
 
 		(void) closedir(dir);
 		return;
@@ -2703,6 +2720,7 @@ int main(int argc, char *argv[])
 	int rc;
 	command_t cmd;
 
+	program = argv[0];
 	memset(&cmd, 0, sizeof(cmd));
 
 	cmd.options.pic_mode = PIC_UNKNOWN;

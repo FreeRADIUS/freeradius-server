@@ -4,14 +4,14 @@ objectClass: olcDatabaseConfig
 objectClass: olcMdbConfig
 olcDatabase: {1}mdb
 olcSuffix: dc=example,dc=com
-olcDbDirectory: /var/lib/ldap
+olcDbDirectory: /tmp/ldap/db
 olcRootDN: cn=admin,dc=example,dc=com
 olcRootPW: {SSHA}SgCZuAcGQA5HlgKi+g5xwVyI2NhXRFYh
 olcDbIndex: objectClass eq
 olcLastMod: TRUE
 olcDbCheckpoint: 512 30
-olcAccess: to * by dn.exact="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage by dn="cn=admin,cn=config" manage
 olcAccess: to attrs=userPassword by dn="cn=admin,dc=example,dc=com" write by anonymous auth by self write by * none
+olcAccess: to * by dn.exact="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage by dn="cn=admin,cn=config" manage
 olcAccess: to attrs=shadowLastChange by self write by * read
 olcAccess: to dn.base="" by * read
 olcAccess: to * by dn="cn=admin,dc=example,dc=com" write by * read
@@ -70,14 +70,30 @@ sn: Doe
 givenName: John
 cn: John Doe
 displayName: John Doe
-userPassword: {cleartext}password
+userPassword: password
 uidNumber: 100
 gidNumber: 100
 homeDirectory: /home/john
 radiusIdleTimeout: 3600
-radiusAttribute: reply:Session-Timeout := 7200
-radiusAttribute: control:NAS-IP-Address := 1.2.3.4
+radiusAttribute: reply.Session-Timeout := 7200
+radiusAttribute: control.NAS-IP-Address := 1.2.3.4
 radiusProfileDN: cn=profile1,ou=profiles,dc=example,dc=com
+
+dn: uid=bob,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: radiusprofile
+uid: bob
+sn: Smith
+givenName: Bob
+cn: Bob Smith
+displayName: Bob Smith (manager)
+userPassword: testing
+uidNumber: 101
+gidNumber: 101
+homeDirectory: /home/bob
+radiusIdleTimeout: 7200
 
 dn: ou=clients,dc=example,dc=com
 objectClass: organizationalUnit
@@ -100,3 +116,16 @@ radiusClientShortname: client2
 radiusClientType: cisco
 radiusClientRequireMa: TRUE
 radiusClientComment: Another test client
+
+dn: dc=subdept,dc=example,dc=com
+objectClass: referral
+objectClass: extensibleObject
+dc: subdept
+ref: ldap://127.0.0.1:3892/
+ref: ldap://127.0.0.1:3891/dc=subdept,dc=example,dc=com
+
+dn: ou=bounce2,dc=example,dc=com
+objectClass: referral
+objectClass: extensibleObject
+ou: bounce2
+ref: ldap://127.0.0.1:3891/dc=subdept,dc=example,dc=com??sub

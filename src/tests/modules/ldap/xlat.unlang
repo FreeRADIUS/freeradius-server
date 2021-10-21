@@ -1,0 +1,150 @@
+#
+#  Test the "ldap" module xlat escape functions
+#
+
+update request {
+        &Tmp-String-0 := "safe string"
+        &Tmp-String-1 := 'non safe,+"\<>;*=() string'
+        &Tmp-String-2 := ',+"\<>;*=()'
+}
+
+# String with no escaping
+update control {
+        &Tmp-String-0 := "%{ldap_escape:%{Tmp-String-0}}"
+}
+
+if (&control.Tmp-String-0 != "safe string") {
+        test_fail
+}
+
+# String with some characters to escape
+update control {
+        &Tmp-String-1 := "%{ldap_escape:%{Tmp-String-1}}"
+}
+
+if (&control.Tmp-String-1 != 'non safe\2c\2b\22\5c\3c\3e\3b\2a\3d\28\29 string') {
+        test_fail
+}
+
+# String where all characters require escaping
+update control {
+        &Tmp-String-2 := "%{ldap_escape:%{Tmp-String-2}}"
+}
+
+if (&control.Tmp-String-2 != '\2c\2b\22\5c\3c\3e\3b\2a\3d\28\29') {
+        test_fail
+}
+
+update request {
+        &Tmp-String-3 := "%{ldap_unescape:%{control.Tmp-String-0}}"
+}
+
+if (&Tmp-String-3 != 'safe string') {
+        test_fail
+}
+
+update request {
+        &Tmp-String-4 := "%{ldap_unescape:%{control.Tmp-String-1}}"
+}
+
+if (&Tmp-String-4 != 'non safe,+"\<>;*=() string') {
+        test_fail
+}
+
+update request {
+        &Tmp-String-5 := "%{ldap_unescape:%{control.Tmp-String-2}}"
+}
+
+if (&Tmp-String-5 != ',+"\<>;*=()') {
+        test_fail
+}
+
+update request {
+        &Tmp-String-6 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=people,dc=example,dc=com?displayName?sub?(uid=john)}"
+}
+
+if (&Tmp-String-6 != "John Doe") {
+        test_fail
+}
+
+# Return multiple values - could be in any sequence
+update request {
+        &Tmp-String-7 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=clients,dc=example,dc=com?radiusClientIdentifier?sub?(objectClass=radiusClient)}"
+}
+
+if ((&Tmp-String-7 != "1.1.1.12.2.2.2") && (&Tmp-String-7 != "2.2.2.21.1.1.1")) {
+        test_fail
+}
+
+# Use tainted string in filter - with special characters
+update request {
+        &Tmp-String-8 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=people,dc=example,dc=com?cn?sub?(displayName=*%{Tmp-String-9}*)}"
+}
+
+if (&Tmp-String-8 != "Bob Smith") {
+        test_fail
+}
+
+# A query which should return no results
+update request {
+        &Tmp-String-0 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=people,dc=example,dc=com?displayName?sub?(uid=notknown)}"
+}
+
+if (&Tmp-String-0 != "") {
+        test_fail
+}
+
+# Request an invalid DN
+update request {
+        &Tmp-String-0 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=notthere?displayName?sub?(uid=john)}"
+}
+
+if (&Tmp-String-0 != "") {
+        test_fail
+}
+
+if (&Module-Failure-Message != "LDAP server returned an error: lib error: No such object (32)") {
+        test_fail
+}
+
+# Query within a dn which will prompt a referral
+update request {
+        &Tmp-String-0 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/dc=subdept,dc=example,dc=com?displayName?sub?(uid=fred)}"
+}
+
+if (&Tmp-String-0 != "Fred Jones") {
+        test_fail
+}
+
+# Reference an alternative LDAP server in the xlat
+update request {
+        &Tmp-String-1 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:%{expr:$ENV{LDAP_TEST_SERVER_PORT} + 1}/dc=subdept,dc=example,dc=com?displayName?sub?(uid=fred)}"
+}
+
+if (&Tmp-String-1 != "Fred Jones") {
+        test_fail
+}
+
+# This query will follow 2 referrals, the second will present an alternate search base
+update request {
+        &Tmp-String-2 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=offsite,dc=subdept,dc=example,dc=com?displayName?sub?(uid=john)}"
+}
+
+if (&Tmp-String-2 != "John Doe") {
+        test_fail
+}
+
+# This query will follow 3 referrals - more than our max referral depth
+update request {
+        &Tmp-String-3 := "%{ldap:ldap://$ENV{LDAP_TEST_SERVER}:$ENV{LDAP_TEST_SERVER_PORT}/ou=bounce1,dc=subdept,dc=example,dc=com?displayName?sub?(uid=fred)}"
+}
+
+if (&Tmp-String-3 != "") {
+        test_fail
+}
+
+if (&Module-Failure-Message != "Maximum LDAP referral depth (2) exceeded") {
+        test_fail
+}
+
+test_pass

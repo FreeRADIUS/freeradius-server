@@ -19,7 +19,7 @@
 #
 
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 #  The following hashes are given to the module and
 #  filled with value-pairs (Attribute names and values)
@@ -54,7 +54,7 @@ perl {
 	#
 	#  filename:: Module to load functions from.
 	#
-	#  The Perl script to execute when the moduile is called.
+	#  The Perl script to execute when the module is called.
 	#  This is very similar to using the `exec` module, but it is
 	#  persistent, and therefore faster.
 	#
@@ -88,9 +88,6 @@ perl {
 #	func_pre_proxy = pre_proxy
 #	func_post_proxy = post_proxy
 #	func_post_auth = post_auth
-#	func_recv_coa = recv_coa
-#	func_send_coa = send_coa
-#	func_xlat = xlat
 #	func_detach = detach
 
 	#
@@ -116,7 +113,7 @@ perl {
 	#  [source,perl]
 	#  ----
 	#  $RAD_PERLCONF{'name'}
-	#  $RAD_PERLCONF{'sub-config'}->{'name'}`
+	#  $RAD_PERLCONF{'sub-config'}->{'name'}
 	#  ----
 	#
 #	config {

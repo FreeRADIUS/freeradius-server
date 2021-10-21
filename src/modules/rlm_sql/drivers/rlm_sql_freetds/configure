@@ -636,6 +636,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_sql_freetds
 with_freetds_include_dir
 with_freetds_lib_dir
 with_freetds_dir
@@ -1254,6 +1255,9 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --without-rlm_sql_freetds
+                          build without module
+
   --with-freetds-include-dir=DIR
                           Directory where the freetds includes may be found
   --with-freetds-lib-dir=DIR
@@ -1785,6 +1789,13 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
+
+
+# Check whether --with-rlm_sql_freetds was given.
+if test "${with_rlm_sql_freetds+set}" = set; then :
+  withval=$with_rlm_sql_freetds;
+fi
 
 
 fail=

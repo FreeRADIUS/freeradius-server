@@ -1,0 +1,5 @@
+--file-scope=yes 
+--recurse=yes
+--links=no 
+--format=2
+-I CC_HINT+,RECV+,SEND+,RESUME+

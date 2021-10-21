@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -14,6 +14,6 @@ VENDOR		Meinberg			5597
 
 BEGIN-VENDOR	Meinberg
 
-ATTRIBUTE	MBG-Management-Privilege-Level		1	integer
+ATTRIBUTE	Management-Privilege-Level		1	integer
 
 END-VENDOR     Meinberg

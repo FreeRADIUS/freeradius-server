@@ -1,6 +1,0 @@
-#
-#  Useful options for LLVM address-sanitizer and leak-sanitizer
-#
-export ASAN_SYMBOLIZER_PATH="<path to llvm-symbolizer>"
-export ASAN_OPTIONS="malloc_context_size=50 detect_leaks=1 symbolize=1"
-export LSAN_OPTIONS="print_suppressions=0 suppressions=<path_to>/scripts/lsan_leaks fast_unwind_on_malloc=0"

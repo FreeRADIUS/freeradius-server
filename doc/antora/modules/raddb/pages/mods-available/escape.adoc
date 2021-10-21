@@ -1,0 +1,33 @@
+
+
+
+
+= Escape Module
+
+The `escape` module registers two `xlat` functions.
+
+[options="header,autowidth"]
+|===
+| Function          | Description
+| `<module inst>`   | Replaces characters not in the `safe_characters` list with escaped versions.
+| `un<module inst>` | Replaces escape sequences with the original character.
+|===
+
+
+
+## Configuration Settings
+
+
+safe_characters::
+
+Characters that will not be encoded by the `%{escape}` `xlat` function.
+
+
+
+== Default Configuration
+
+```
+escape {
+	safe_characters = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /äéöüàâæçèéêëîïôœùûüaÿÄÉÖÜßÀÂÆÇÈÉÊËÎÏÔŒÙÛÜŸ"
+}
+```

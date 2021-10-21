@@ -1,0 +1,176 @@
+= Base configuration
+
+The configuration step should be little more than
+xref:modules/ldap/ldapsearch/index.adoc#_translating_ldapsearch_arguments_to_rlm_ldap_configuration_items[copying the parameters used by ldapsearch]
+to the xref:raddb:mods-available/ldap.adoc[ldap module] configuration file.
+
+The xref:raddb:mods-available/ldap.adoc[ldap module] configuration file
+describes the configuration parameters accepted by the module, and what they do.
+
+include::howto:partial$pre_test.adoc[]
+
+== Editing mods-available/ldap
+
+As with all FreeRADIUS configuration files, please change at little as
+possible in the default configuration.  The defaults are usually close
+to being correct.  All that is necessary is to make minor changes, and
+_test_ them.  FreeRADIUS should look for data.
+
+If the xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] tests above pass,
+then the LDAP module configuration can be copied directly from the
+command-line options to that tool using the
+xref:modules/ldap/ldapsearch/index.adoc#_translating_ldapsearch_arguments_to_rlm_ldap_configuration_items[translation table] on that page.
+
+At a minimum you will need to set the following configuration items
+in in xref:raddb:mods-available/ldap.adoc[mods-available/ldap] using
+the values you discovered
+running the xref:modules/ldap/ldapsearch/index.adoc[ldapsearch] tests.
+
+[source,config]
+----
+ldap {
+	# example - identity = 'cn=readonly,dc=example,dc=com'
+	identity = '<readonly_user_dn>'             <1>
+
+	# example - password = 'readonly'
+	password = '<readonly_user_password>'       <2>
+
+	# example - server = ldap://localhost
+	server = '<uri>'                            <3>
+
+	# example - base_dn = 'dc=example,dc=com'
+	base_dn = '<dn_that_parents_user_objects_and_group_objects>'  <4>
+
+	user {
+		# example - base_dn = "ou=people,${..base_dn}"
+		base_dn = "<path_from_base_dn_to_user_obj_dn>,${..base_dn}"  <5>
+
+		# example = "(&(uid=%{%{Stripped-User-Name}:-%{User-Name}})(objectClass=posixAccount))"
+		filter = "(&(<user_uid_attribute>=%{%{Stripped-User-Name}:-%{User-Name}})(<user_filter>))"  <6>
+	}
+}
+----
+
+<1> A read only user that can bind to the directory to perform searches.
+    This user should not have permission to modify the directory unless
+    you're also using LDAP for accounting
+    xref:modules/ldap/accounting.adoc[accounting].
+<2> The password for the read only user.
+<3> An LDAP URI pointing to the server.  If the LDAP server is on the same
+    host as the RADIUS server, consider using a Unix Socket (`ldapi://`)
+    to reduce network overhead.
+<4> The object containing all other objects we're interested in.
+<5> The object containing all the users we need to perform AAA functions for.
+<6> A filter to select the object matching the authenticating user.
+
+We do _not_ recommend immediately configuring TLS unless you are testing against
+a production server.  The best approach is to test one piece in isolation,
+before proceeding on to the next piece.
+
+== Enabling mods-available/ldap
+
+The `ldap` module is enabled by creating a soft link from the
+`mods-enabled/` directory to the `mods-available/` directory.
+
+[source,shell]
+----
+cd raddb/mods-enabled && ln -s ../mods-available/ldap
+----
+
+== Calling the LDAP module
+
+The LDAP module needs to be listed in different section depending on the
+function(s) it's performing.
+
+=== User authorization and group checks
+
+For simple authentication types like `PAP` and `CHAP` the LDAP module
+should be listed in the `recv Access-Request { ... }` (≥ v4.0.x)
+or `authorize { ... }` (≤ v3.0.x) section of the virtual server
+listening on the network (usually found in `sites-available/default`).
+
+For EAP authentication the LDAP module should be listed in
+`sites-available/inner-tunnel` instead.
+
+The LDAP module's `authorize` method will discover the authenticating user's DN
+and (optionally) cache that user's group memberships.
+
+It will also (optionally) check whether a user is authorized to use a particular
+service.
+
+[source,config]
+----
+server default {
+	...
+	recv Access-Request {
+		ldap
+		...
+	}
+	...
+}
+----
+
+Group checks may be performed _after_ the LDAP's authorize
+method has run, using the pair comparison attribute `LDAP-Group`.
+
+[source,unlang]
+----
+server default {
+	...
+	recv Access-Request {
+		ldap
+		if (&LDAP-Group != 'cn=authorized_users,ou=groups,dc=example,dc=com') {
+			reject
+		}
+		...
+	}
+}
+----
+
+See xref:modules/ldap/authorization/index.adoc[LDAP authorization] for more detailed
+information on configuring LDAP/Group authorization. Including how to perform
+authorization _after_ authentication.
+
+=== User authentication with LDAP binds
+
+Before deciding which authentication to use, you should read
+xref:concepts:modules/ldap/authentication.adoc[LDAP authentication concepts] as it will
+explain which authentication methods are appropriate for different deployments
+and authentication protocols.
+
+LDAP binds for simple authentication types like `PAP` the LDAP module should be
+listed in the `recv Access-Request { ... }` and `authenticate ldap { ... }` (≥
+v4.0.x) or `authorize { ... }` and `authenticate { ... }` (≤ v3.0.x) sections of
+the virtual server listening on the network (usually found in
+`sites-available/default`).
+
+For EAP authentication the LDAP module should be listed in
+`sites-available/inner-tunnel` instead.  Be aware that LDAP binds will only work
+for EAP methods which provide the user's password in the clear.
+
+[source,unlang]
+----
+server default {
+	...
+	recv Access-Request {
+		ldap
+		if (ok || updated) {
+			update control {
+				&Auth-Type := ldap
+			}
+		}
+	}
+
+	authenticate ldap {
+		ldap
+	}
+	...
+}
+----
+
+See xref:modules/ldap/authentication.adoc[LDAP authentication] for more detailed
+information on configuring LDAP authentication.
+
+== Testing the Server
+
+include::howto:partial$post_test.adoc[]

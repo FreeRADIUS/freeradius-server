@@ -9,11 +9,14 @@
 #
 #  Write a detailed log of all accounting records received.
 #
-#  NOTE: we do NOT use `NAS-IP-Address` here, as that
-#  attribute MAY BE from the originating NAS, and NOT from
-#  the proxy which actually sent us the request.
+#  It is primarily used for storing accounting information, but can be
+#  used in other sections to write packet details as well.
 #
-#  ## Default instance
+#  NOTE: we do NOT use `NAS-IP-Address` here, as that attribute MAY BE
+#  from the originating NAS, and NOT from the proxy which actually
+#  sent us the request.
+#
+#  ## Configuration Settings
 #
 detail {
 	#
@@ -26,7 +29,7 @@ detail {
 	#  rotation'.
 	#
 	#  If your detail files are large, you may also want to
-	#  add a `:%H` (see `doc/configuration/variables.rst`) to
+	#  add a `:%H` (see `doc/unlang/xlat_character.adoc`) to
 	#  the end of it, to create a new detail file every hour.
 	#
 	#  e.g.:
@@ -55,7 +58,7 @@ detail {
 	#  escape_filenames:: Whether or not to escape "special"
 	#  characters in filenames.
 	#
-	#  Most file systems can handly nearly the full range of UTF-8
+	#  Most file systems can handle nearly the full range of UTF-8
 	#  characters. Ones that can deal with a limited range should
 	#  set this to `yes`.
 	#
@@ -88,7 +91,7 @@ detail {
 	#  By default, we use the ctime format (see `man 3 ctime` for details).
 	#
 	#  The header can be customised by editing this string.
-	#  See `doc/configuration/variables.rst` for a description
+	#  See `doc/unlang/xlat.adoc` for a description
 	#  of what can be put here.
 	#
 	header = "%t"
@@ -97,7 +100,7 @@ detail {
 	#  locking:: Whether or not we should lock the detail file
 	#  before writing to it.
 	#
-	#  Mainly used if the detail file reader is be reading this file.
+	#  Mainly used if the detail file reader is to be reading this file.
 	#
 #	locking = yes
 

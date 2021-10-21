@@ -1,10 +1,6 @@
 #
 #  PRE: update
 #
-update control {
-       &Cleartext-Password := 'hello'
-}
-
 update request {
        &NAS-IP-Address    := 127.0.0.1
        &Framed-IP-Address := 127.0.0.1

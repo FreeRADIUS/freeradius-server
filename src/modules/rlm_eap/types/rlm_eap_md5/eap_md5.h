@@ -46,4 +46,4 @@ typedef struct {
 
 int 		eap_md5_compose(eap_round_t *auth, MD5_PACKET *reply);
 MD5_PACKET 	*eap_md5_extract(eap_round_t *auth);
-int 		eap_md5_verify(MD5_PACKET *pkt, VALUE_PAIR* pwd, uint8_t *ch);
+int 		eap_md5_verify(MD5_PACKET *pkt, fr_pair_t* pwd, uint8_t *ch);

@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -52,4 +52,9 @@ VALUE	Packet-Type			Disconnect		33
 VALUE	Packet-Type			State			34
 VALUE	Packet-Type			Contact			35
 
-ATTRIBUTE	Transaction-ID				65537	uint64		# Actually 48bits
+VALUE	Packet-Type			Do-Not-Respond		256
+
+ATTRIBUTE	Transaction-ID				65537	octets		# Actually 24 bits
+ATTRIBUTE	Hop-Count				65538	uint8
+ATTRIBUTE	Relay-Link-Address			65539	ipv6addr
+ATTRIBUTE	Relay-Peer-Address			65540	ipv6addr

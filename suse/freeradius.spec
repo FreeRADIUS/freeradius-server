@@ -212,7 +212,7 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 # doc
 %doc suse/README.SuSE
-%doc doc/* LICENSE COPYRIGHT CREDITS README.rst
+%doc doc/* LICENSE COPYRIGHT CREDITS README.md
 # SuSE
 %{_sysconfdir}/init.d/freeradius
 %config %{_sysconfdir}/pam.d/radiusd

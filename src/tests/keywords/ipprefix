@@ -1,9 +1,6 @@
 #
 #  PRE: update if
 #
-update control {
-       &Cleartext-Password := 'hello'
-}
 
 update control {
 	&Tmp-Cast-IPv4Prefix := 198.51.100.255/16
@@ -11,27 +8,27 @@ update control {
 	&Framed-IP-Address := 198.51.0.1
 }
 
-if ("%{control:Tmp-Cast-IPv6Prefix}" != '::198.51.0.0/112') {
+if (&control.Tmp-Cast-IPv6Prefix != '::198.51.0.0/112') {
 	test_fail
 }
 
-if ("%{control:Tmp-Cast-IPv4Prefix}" != '198.51.0.0/16') {
+if (&control.Tmp-Cast-IPv4Prefix != '198.51.0.0/16') {
 	test_fail
 }
 
-if (&control:Tmp-Cast-IPv6Prefix != ::198.51.0.0/112) {
+if (&control.Tmp-Cast-IPv6Prefix != ::198.51.0.0/112) {
 	test_fail
 }
 
-if (&control:Tmp-Cast-IPv4Prefix != 198.51.0.0/16) {
+if (&control.Tmp-Cast-IPv4Prefix != 198.51.0.0/16) {
 	test_fail
 }
 
-if (!(&control:Tmp-Cast-IPv4Prefix < 198.0.0.0/8)) {
+if (!(&control.Tmp-Cast-IPv4Prefix < 198.0.0.0/8)) {
 	test_fail
 }
 
-if (!(&control:Framed-IP-Address < 198.51.0.0/16)) {
+if (!(&control.Framed-IP-Address < 198.51.0.0/16)) {
 	test_fail
 }
 

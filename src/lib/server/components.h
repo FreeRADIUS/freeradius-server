@@ -34,12 +34,6 @@ typedef enum rlm_components {
 	MOD_AUTHORIZE,				//!< 1 methods index for authorize section.
 	MOD_PREACCT,				//!< 2 methods index for preacct section.
 	MOD_ACCOUNTING,				//!< 3 methods index for accounting section.
-	MOD_PRE_PROXY,				//!< 5 methods index for preproxy section.
-	MOD_POST_PROXY,				//!< 6 methods index for postproxy section.
 	MOD_POST_AUTH,				//!< 7 methods index for postauth section.
-#ifdef WITH_COA
-	MOD_RECV_COA,				//!< 8 methods index for recvcoa section.
-	MOD_SEND_COA,				//!< 9 methods index for sendcoa section.
-#endif
 	MOD_COUNT				//!< 10 how many components there are.
 } rlm_components_t;

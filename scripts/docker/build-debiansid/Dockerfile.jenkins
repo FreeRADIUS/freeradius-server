@@ -1,17 +1,20 @@
-ARG from=freeradius/debiansid-deps
-FROM ${from}
+FROM freeradius/debiansid-deps
 
-ARG osname=sid
+SHELL ["/usr/bin/nice", "-n", "5", "/usr/bin/ionice", "-c", "3", "/bin/sh", "-x", "-c"]
+
+ARG APT_OPTS="-y --option=Dpkg::options::=--force-unsafe-io --no-install-recommends"
 
 ARG DEBIAN_FRONTEND=noninteractive
 
 #
 #  This is necessary for the jenkins server to talk to the docker instance
 #
-# RUN echo deb http://ftp.debian.org/debian ${osname}-backports main >> /etc/apt/sources.list
-# RUN apt-get update && apt-get -t ${osname}-backports install -y openjdk-8-jre-headless
-RUN apt-get update && apt-get install -y openjdk-8-jre-headless
-RUN apt-get install -y openssh-server sudo
+RUN apt-get update && \
+    apt-get upgrade $APT_OPTS --option=Dpkg::Options::=--force-confdef --option=Dpkg::Options::=--force-confold && \
+    apt-get install $APT_OPTS \
+        default-jre-headless \
+        openssh-server \
+        sudo
 
 RUN useradd -m jenkins
 RUN echo "jenkins:jenkins1" | chpasswd

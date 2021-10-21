@@ -1,0 +1,174 @@
+#!/usr/bin/env perl
+#
+#  $Id$
+#
+#  Convert rlm_foo/README.md files to Asciidoc
+#  for inclusion in mods-available/index.adoc
+#
+#
+use File::Basename;
+use File::Spec;
+use Getopt::Std;
+
+my %categories;
+my %modules;
+
+
+getopts('a:d:');
+
+sub process_file {
+	my $filename = shift;
+	my $category, $module;
+
+	open my $input, "<$filename" or die "Failed reading $filename: $!\n";
+
+	while (<$input>) {
+	    #
+	    #  Look for the module name.
+	    #  It should really be the same as the directory name, but whatever.
+	    #
+	    if (m,# rlm_([^\s]+),) {
+		$module = $1;
+		next;
+	    }
+
+	    #
+	    #  Look for the category
+	    #
+	    if (m,<dt>category</dt><dd>([^<]+)</dd>,) {
+		$category = $1;
+		next;
+	    }
+
+	    #
+	    #  Stop reading headers at the summary.
+	    #
+	    last if (/## Summary/);
+
+	    #
+	    #  Ignore all other text.
+	    #
+	}
+
+	if (!/## Summary/) {
+	    die "No 'Summary' line in $filename";
+	}
+
+	if (!defined $category) {
+	    die "No 'category' line in $filename";
+	}
+
+	#
+	#  Mark that the module exists
+	#
+	$categories{$category}{$module}++;
+
+	#
+	#  Save the first line of the summary section.
+	#
+	while (<$input>) {
+	    last if /^\s*$/;
+
+	    $modules{$module} .= $_;
+	}
+
+	close $input;
+
+#	print $category, ":", $module, $modules{$module};
+
+}
+
+sub HELP_MESSAGE {
+	print "usage: mod_readme2adoc [opts] <files ...>\n";
+	print "    -a <directory>\tthe root directory for Asciidoc conversion.\n";
+	print "    -d <directory>\tthe raddb directory.\n";
+	print "    -m <directory>\tthe root directory where modules are stored.\n";
+	exit 0;
+}
+
+sub print_results
+{
+    foreach my $category (sort (keys %categories)) {
+	my $english = ucfirst $category;
+
+	$english = "IO" if ($english eq "Io");
+	$english = "Language" if ($english eq "Languages");
+
+	#
+	#  Header
+	#
+	print "== ", $english, " Modules\n";
+
+	print <<EOF;
+[options="header"]
+[cols="20%,80%"]
+|=====
+| Module | Description
+EOF
+
+	foreach my $module (sort (keys %{$categories{$category}})) {
+	    print "| xref:mods-available/", $module, ".adoc[", $module, "]\t| ";
+
+	    print $modules{$module};
+	}
+
+	#
+	#  Footer
+	#
+	print "|=====\n\n";
+    }
+}
+
+if (!defined $opt_a) {
+	$opt_a = "doc/antora/modules/raddb/mods-available/";
+}
+
+if (!defined $opt_d) {
+	$opt_d = "raddb/";
+}
+
+
+#
+#  Read all of the modules on input.
+#
+while ($filename = shift @ARGV) {
+    process_file($filename);
+}
+
+#
+#  @todo - cross-check against raddb/mods-available/foo
+#
+opendir(my $dh, "$opt_d/mods-available/") || die "Can't open $opt_d/mods-available/: $!";
+while (readdir $dh) {
+    my $module;
+    my $title;
+
+    next if (/^\./);
+    next if (/#/);
+    next if (/~/);
+    next if (defined $modules{$_});
+
+    $title = "";
+    $module = $_;
+
+    #
+    #  Open the module configuration, and look for the title.
+    #
+    open my $input, "<$opt_d/mods-available/$module" or die "Failed reading $opt_d/mods-available/$module: $!\n";
+    while (<$input>) {
+	if (/^#  = (.*)$/) {
+	    $title = $1;
+	    last;
+	}
+    }
+    close $input;
+
+    $title =~ s/ Module//;
+
+    $categories{'miscellaneous'}{$module}++;
+    $modules{$module} = $title . "\n";
+}
+closedir $dh;
+
+
+print_results();

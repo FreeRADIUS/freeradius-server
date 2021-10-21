@@ -23,28 +23,28 @@
  * @copyright 2000,2006,2015 The FreeRADIUS server project
  * @copyright 2011 TekSavvy Solutions (gabe@teksavvy.com)
  */
-#include "base.h"
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/redis/base.h>
+#include <freeradius-devel/util/debug.h>
 
-FR_NAME_NUMBER const redis_reply_types[] = {
-	{ "string",	REDIS_REPLY_STRING },
-	{ "integer",	REDIS_REPLY_INTEGER },
-	{ "array",	REDIS_REPLY_ARRAY },
-	{ "nil",	REDIS_REPLY_NIL },
-	{ "status",	REDIS_REPLY_STATUS },
-	{ "error",	REDIS_REPLY_ERROR },
-	{ NULL,		-1 }
+fr_table_num_sorted_t const redis_reply_types[] = {
+	{ L("array"),		REDIS_REPLY_ARRAY	},
+	{ L("error"),		REDIS_REPLY_ERROR	},
+	{ L("integer"),		REDIS_REPLY_INTEGER	},
+	{ L("nil"),		REDIS_REPLY_NIL		},
+	{ L("status"),		REDIS_REPLY_STATUS	},
+	{ L("string"),		REDIS_REPLY_STRING	}
 };
+size_t redis_reply_types_len = NUM_ELEMENTS(redis_reply_types);
 
-FR_NAME_NUMBER const redis_rcodes[] = {
-	{ "try again",	REDIS_RCODE_TRY_AGAIN },
-	{ "move",	REDIS_RCODE_MOVE },
-	{ "ask",	REDIS_RCODE_ASK },
-	{ "success",	REDIS_RCODE_SUCCESS },
-	{ "error",	REDIS_RCODE_ERROR },
-	{ "reconnect",	REDIS_RCODE_RECONNECT },
-	{ NULL,		-1 }
+fr_table_num_sorted_t const redis_rcodes[] = {
+	{ L("ask"),		REDIS_RCODE_ASK		},
+	{ L("error"),		REDIS_RCODE_ERROR	},
+	{ L("move"),		REDIS_RCODE_MOVE	},
+	{ L("reconnect"),	REDIS_RCODE_RECONNECT	},
+	{ L("success"),		REDIS_RCODE_SUCCESS	},
+	{ L("try again"),	REDIS_RCODE_TRY_AGAIN	}
 };
+size_t redis_rcodes_len = NUM_ELEMENTS(redis_rcodes);
 
 /** Print the version of libhiredis the server was built against
  *
@@ -56,8 +56,8 @@ void fr_redis_version_print(void)
 
 /** Check the reply for errors
  *
- * @param conn used to issue the command.
- * @param reply to process.
+ * @param[in] conn used to issue the command.
+ * @param[in] reply to process.
  * @return
  *	- REDIS_RCODE_TRY_AGAIN - If the operation should be retries.
  *	- REDIS_RCODE_MOVED  	- If the key has been permanently moved.
@@ -92,6 +92,11 @@ fr_redis_rcode_t fr_redis_command_status(fr_redis_conn_t *conn, redisReply *repl
 		return REDIS_RCODE_SUCCESS;
 
 	case REDIS_REPLY_ERROR:
+		/*
+		 *	May indicate the connection handle is bad.
+		 */
+		fr_assert_msg(reply->str, "Error response contained no error string");
+
 		fr_strerror_printf("Server error: %s", reply->str);
 		if (strncmp(REDIS_ERROR_MOVED_STR, reply->str, sizeof(REDIS_ERROR_MOVED_STR) - 1) == 0) {
 			return REDIS_RCODE_MOVE;
@@ -117,6 +122,8 @@ fr_redis_rcode_t fr_redis_command_status(fr_redis_conn_t *conn, redisReply *repl
 			ret = fr_redis_command_status(conn, reply->element[i]);
 			if (ret < 0) return ret;
 		}
+		break;
+
 	default:
 		break;
 	}
@@ -125,12 +132,12 @@ fr_redis_rcode_t fr_redis_command_status(fr_redis_conn_t *conn, redisReply *repl
 
 /** Print the response data in a useful treelike form
  *
- * @param lvl to print data at.
- * @param reply to print.
- * @param request The current request.
- * @param idx Response number.
+ * @param[in] lvl to print data at.
+ * @param[in] reply to print.
+ * @param[in] request The current request.
+ * @param[in] idx Response number.
  */
-void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, REQUEST *request, int idx)
+void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *request, int idx)
 {
 	size_t i = 0;
 
@@ -138,31 +145,31 @@ void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, REQUEST *request,
 
 	switch (reply->type) {
 	case REDIS_REPLY_ERROR:
-		REDEBUG("(%i) error   : %s", idx, reply->str);
+		ROPTIONAL(REDEBUG, ERROR, "(%i) error   : %s", idx, reply->str);
 		break;
 
 	case REDIS_REPLY_STATUS:
-		RDEBUGX(lvl, "(%i) status  : %s", idx, reply->str);
+		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%i) status  : %s", idx, reply->str);
 		break;
 
 	case REDIS_REPLY_STRING:
-		RDEBUGX(lvl, "(%i) string  : %s", idx, reply->str);
+		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%i) string  : %s", idx, reply->str);
 		break;
 
 	case REDIS_REPLY_INTEGER:
-		RDEBUGX(lvl, "(%i) integer : %lld", idx, reply->integer);
+		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%i) integer : %lld", idx, reply->integer);
 		break;
 
 	case REDIS_REPLY_NIL:
-		RDEBUGX(lvl, "(%i) nil", idx);
+		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%i) nil", idx);
 		break;
 
 	case REDIS_REPLY_ARRAY:
-		RDEBUGX(lvl, "(%i) array[%zu]", idx, reply->elements);
+		ROPTIONAL(RDEBUGX, DEBUGX, lvl, "(%i) array[%zu]", idx, reply->elements);
 		for (i = 0; i < reply->elements; i++) {
-			RINDENT();
+			if (request) RINDENT();
 			fr_redis_reply_print(lvl, reply->element[i], request, i);
-			REXDENT();
+			if (request) REXDENT();
 		}
 		break;
 	}
@@ -177,26 +184,41 @@ void fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, REQUEST *request,
  * @note Any unsupported types will trigger an assert. You must check the
  *	reply type prior to calling this function.
  *
- * @param[in,out] ctx to allocate any buffers in.
- * @param[out] out Where to write the cast type.
- * @param[in] reply to process.
- * @param[in] dst_type to convert to.
- * @param[in] dst_enumv Used to convert string types to integers for attributes
- *	with enumerated values.
+ * @param[in,out] ctx		to allocate any buffers in.
+ * @param[out] out		Where to write the cast type.
+ * @param[in] reply		to process.
+ * @param[in] dst_type		to convert to. May be FR_TYPE_VOID
+ *      			to infer type.
+ * @param[in] dst_enumv		Used to convert string types to
+ *				integers for attribute with enumerated
+ *				values.
+ * @param[in] box_error		If true then REDIS_REPLY_ERROR will be
+ *				copied to a box, otherwise we'll return
+ *				and error with the contents of the error
+ *				available on the thread local error stack.
+ * @param[in] shallow		If true, we shallow copy strings.
  * @return
- *	- 1 if we received a NIL reply. Out will remain uninitialized.
+ *	- 1 if we received a NIL reply.
  *	- 0 on success.
  *	- -1 on cast or parse failure.
  */
 int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply *reply,
-				 fr_type_t dst_type, fr_dict_attr_t const *dst_enumv)
+				fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+				bool box_error, bool shallow)
 {
 	fr_value_box_t	in;
+	fr_value_box_t	*to_cast;
 
-	memset(&in, 0, sizeof(in));
+	if (dst_type != FR_TYPE_VOID) {
+		memset(&in, 0, sizeof(in));
+		to_cast = &in;
+	} else {
+		to_cast = out;
+	}
 
 	switch (reply->type) {
 	case REDIS_REPLY_NIL:
+		fr_value_box_init(out, FR_TYPE_NULL, NULL, false);
 		return 1;
 
 	/*
@@ -205,45 +227,119 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 	 *	the greatest chance of success.
 	 */
 	case REDIS_REPLY_INTEGER:
-		if (reply->integer < INT32_MIN) {	/* 64bit signed (not supported)*/
-			fr_strerror_printf("Signed 64bit integers are not supported");
+		if (reply->integer < INT32_MIN) {	/* 64bit signed */
+			fr_value_box_shallow(to_cast, (int64_t) reply->integer, true);
+		}
+		else if (reply->integer < INT16_MIN) {	/* 32bit signed */
+			fr_value_box_shallow(to_cast, (int32_t) reply->integer, true);
+		}
+		else if (reply->integer < INT8_MIN) {	/* 16bit signed */
+			fr_value_box_shallow(to_cast, (int16_t) reply->integer, true);
+		}
+		else if (reply->integer < 0) {	/* 8bit signed */
+			fr_value_box_shallow(to_cast, (int8_t) reply->integer, true);
+		}
+		else if (reply->integer > UINT32_MAX) {	/* 64bit unsigned */
+			fr_value_box_shallow(to_cast, (uint64_t) reply->integer, true);
+		}
+		else if (reply->integer > UINT16_MAX) {	/* 32bit unsigned */
+			fr_value_box_shallow(to_cast, (uint32_t) reply->integer, true);
+		}
+		else if (reply->integer > UINT8_MAX) {	/* 16bit unsigned */
+			fr_value_box_shallow(to_cast, (uint16_t) reply->integer, true);
+		}
+		else {					/* 8bit unsigned */
+			fr_value_box_shallow(to_cast, (uint8_t) reply->integer, true);
+		}
+		break;
+
+#if HIREDIS_MAJOR >= 1
+	case REDIS_REPLY_DOUBLE:
+		/* reply->str is \0 terminated in this case */
+		fr_value_box_shallow(to_cast, strtod(reply->str, NULL), true);
+		break;
+
+	case REDIS_REPLY_BOOL:
+		fr_value_box_shallow(to_cast, (bool)reply->integer, true);
+		break;
+#endif
+
+	case REDIS_REPLY_ERROR:
+		if (!box_error) {
+			fr_strerror_printf("Redis error: %pV",
+					   fr_box_strvalue_len(reply->str, reply->len));
 			return -1;
 		}
-		if (reply->integer < 0) {		/* 32bit signed (supported) */
-			in.type = FR_TYPE_INT32;
-			in.vb_int32 = (int32_t) reply->integer;
-		}
-		else if (reply->integer > UINT32_MAX) {	/* 64bit unsigned (supported) */
-			in.type = FR_TYPE_UINT64;
-			in.vb_uint64 = (uint64_t) reply->integer;
-		}
-		else if (reply->integer > UINT16_MAX) {	/* 32bit unsigned (supported) */
-			in.type = FR_TYPE_UINT32;
-			in.vb_uint32 = (uint32_t) reply->integer;
-		}
-		else if (reply->integer > UINT8_MAX) {	/* 16bit unsigned (supported) */
-			in.type = FR_TYPE_UINT16;
-			in.vb_uint16 = (uint16_t) reply->integer;
-		}
-		else {		/* 8bit unsigned (supported) */
-			in.type = FR_TYPE_UINT8;
-			in.vb_uint8 = (uint8_t) reply->integer;
-		}
-		break;
+		FALL_THROUGH;
 
+#if HIREDIS_MAJOR >= 1
+	case REDIS_REPLY_BIGNUM:	/* FIXME - Could try and conver to integer ? */
+#endif
 	case REDIS_REPLY_STRING:
 	case REDIS_REPLY_STATUS:
-	case REDIS_REPLY_ERROR:
-		in.type = FR_TYPE_STRING;
-		in.datum.ptr = reply->str;
-		in.datum.length = reply->len;
+		if (shallow) {
+			fr_value_box_bstrndup_shallow(out, NULL, reply->str, reply->len, true);
+		} else {
+			if (fr_value_box_bstrndup(ctx, out, NULL, reply->str, reply->len, true) < 0) return -1;
+		}
 		break;
 
+#if HIREDIS_MAJOR >= 1
+	case REDIS_REPLY_VERB:
+	{
+		fr_value_box_t *verb, *vtype;
+
+		fr_value_box_init(out, FR_TYPE_GROUP, NULL, true);
+
+		verb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, true);
+		if (unlikely(!verb)) {
+			fr_strerror_const("Out of memory");
+			return -1;
+		}
+		if (fr_value_box_bstrndup(ctx, verb, NULL, reply->str, reply->len, true) < 0) return -1;
+		fr_dlist_insert_head(&out->vb_group, verb);
+
+		vtype = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, true);
+		if (unlikely(!vtype)) {
+			fr_strerror_const("Out of memory");
+			talloc_free(verb);
+			return -1;
+		}
+		if (fr_value_box_strdup(ctx, vtype, NULL, reply->vtype, true) < 0) return -1;
+		fr_dlist_insert_head(&out->vb_group, vtype);
+
+	}
+		break;
+#endif
+
+#if HIREDIS_MAJOR >= 1
+	case REDIS_REPLY_SET:
+	case REDIS_REPLY_MAP:
+	case REDIS_REPLY_PUSH:
+#endif
 	case REDIS_REPLY_ARRAY:
-		rad_assert(0);
+	{
+		fr_value_box_t *vb;
+		size_t i;
+
+		fr_value_box_init(out, FR_TYPE_GROUP, NULL, true);
+
+		for (i = 0; i < reply->elements; i++) {
+			vb = fr_value_box_alloc_null(ctx);
+			if (unlikely(!vb)) {
+			array_error:
+				fr_dlist_talloc_free(&out->vb_group);
+				return -1;
+			}
+			fr_dlist_insert_tail(&out->vb_group, vb);
+
+			if (fr_redis_reply_to_value_box(vb, vb, reply->element[i],
+							FR_TYPE_VOID, NULL, box_error, shallow) < 0) goto array_error;
+		}
+	}
 	}
 
-	if (fr_value_box_cast(ctx, out, dst_type, dst_enumv, &in) < 0) return -1;
+	if ((dst_type != FR_TYPE_VOID) && (fr_value_box_cast(ctx, out, dst_type, dst_enumv, to_cast) < 0)) return -1;
 
 	return 0;
 }
@@ -262,17 +358,15 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
+int fr_redis_reply_to_map(TALLOC_CTX *ctx, fr_map_list_t *out, request_t *request,
 			  redisReply *key, redisReply *op, redisReply *value)
 {
-	vp_map_t	*map = NULL;
+	map_t	*map = NULL;
 	ssize_t		slen;
-
-	*out = NULL;
 
 	if (key->type != REDIS_REPLY_STRING) {
 		REDEBUG("Bad key type, expected string, got %s",
-			fr_int2str(redis_reply_types, key->type, "<UNKNOWN>"));
+			fr_table_str_by_value(redis_reply_types, key->type, "<UNKNOWN>"));
 	error:
 		TALLOC_FREE(map);
 		return -1;
@@ -280,7 +374,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
 
 	if (op->type != REDIS_REPLY_STRING) {
 		REDEBUG("Bad key type, expected string, got %s",
-			fr_int2str(redis_reply_types, op->type, "<UNKNOWN>"));
+			fr_table_str_by_value(redis_reply_types, op->type, "<UNKNOWN>"));
 		goto error;
 	}
 
@@ -288,14 +382,15 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
 	RDEBUG3("Got op    : %s", op->str);
 	RDEBUG3("Got value : %pV", fr_box_strvalue_len(value->str, value->len));
 
-	map = talloc_zero(ctx, vp_map_t);
-	slen = tmpl_afrom_attr_str(map, NULL, &map->lhs, key->str, &(vp_tmpl_rules_t){ .dict_def = request->dict });
-	if (slen < 0) {
+	MEM(map = talloc_zero(ctx, map_t));
+	slen = tmpl_afrom_attr_str(map, NULL, &map->lhs, key->str,
+				   &(tmpl_rules_t){ .dict_def = request->dict });
+	if (slen <= 0) {
 		REMARKER(key->str, -slen, "%s", fr_strerror());
 		goto error;
 	}
 
-	map->op = fr_str2int(fr_tokens_table, op->str, T_INVALID);
+	map->op = fr_table_value_by_str(fr_tokens_table, op->str, T_INVALID);
 	if (map->op == T_INVALID) {
 		REDEBUG("Invalid operator \"%s\"", op->str);
 		goto error;
@@ -309,7 +404,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
 
 		/* Logs own errors */
 		if (fr_redis_reply_to_value_box(map, &vpt, value,
-						 map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
+						tmpl_da(map->lhs)->type, tmpl_da(map->lhs), false, false) < 0) {
 			RPEDEBUG("Failed converting Redis data");
 			goto error;
 		}
@@ -321,13 +416,13 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
 
 	default:
 		REDEBUG("Bad value type, expected string or integer, got %s",
-			fr_int2str(redis_reply_types, value->type, "<UNKNOWN>"));
+			fr_table_str_by_value(redis_reply_types, value->type, "<UNKNOWN>"));
 		goto error;
 
 	}
 	MAP_VERIFY(map);
 
-	*out = map;
+	fr_dlist_insert_tail(out, map);
 
 	return 0;
 }
@@ -351,38 +446,40 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
  *	0 on success.
  *	-1 on failure.
  */
-int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[], vp_map_t *map)
+int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[], map_t *map)
 {
 	char		*new;
 
 	char		key_buf[256];
 	char		*key;
 	size_t		key_len;
+	ssize_t		slen;
 
-	rad_assert(tmpl_is_attr(map->lhs));
-	rad_assert(tmpl_is_data(map->rhs));
+	fr_assert(tmpl_is_attr(map->lhs));
+	fr_assert(tmpl_is_data(map->rhs));
 
-	key_len = tmpl_snprint(key_buf, sizeof(key_buf), map->lhs);
-	if (is_truncated(key_len, sizeof(key_buf))) {
+	slen = tmpl_print(&FR_SBUFF_OUT(key_buf, sizeof(key_buf)), map->lhs, TMPL_ATTR_REF_PREFIX_NO, NULL);
+	if (slen < 0) {
 		fr_strerror_printf("Key too long.  Must be < " STRINGIFY(sizeof(key_buf)) " "
-				   "bytes, got %zu bytes", key_len);
+				   "bytes, got %zu bytes", (size_t)(slen * -1));
 		return -1;
 	}
+	key_len = (size_t)slen;
 	key = talloc_bstrndup(pool, key_buf, key_len);
 	if (!key) return -1;
 
-	switch (map->rhs->tmpl_value_type) {
+	switch (tmpl_value_type(map->rhs)) {
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
-		out[2] = map->rhs->tmpl_value.datum.ptr;
-		out_len[2] = map->rhs->tmpl_value_length;
+		out[2] = tmpl_value(map->rhs)->datum.ptr;
+		out_len[2] = tmpl_value_length(map->rhs);
 		break;
 
 	/*
 	 *	For everything else we get the string representation
 	 */
 	default:
-		new = fr_value_box_asprint(pool, &map->rhs->tmpl_value, '\0');
+		fr_value_box_aprint(pool, &new, tmpl_value(map->rhs), NULL);
 		if (!new) {
 			talloc_free(key);
 			return -1;
@@ -394,7 +491,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 
 	out[0] = key;
 	out_len[0] = key_len;
-	out[1] = fr_int2str(fr_tokens_table, map->op, NULL);
+	out[1] = fr_table_str_by_value(fr_tokens_table, map->op, NULL);
 	out_len[1] = strlen(out[1]);
 
 	return 0;
@@ -433,9 +530,9 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 	fr_redis_rcode_t	status = REDIS_RCODE_SUCCESS;
 	redisReply		*reply = NULL;
 
-	rad_assert(out_len >= (size_t)*pipelined);
+	fr_assert(out_len >= (size_t)*pipelined);
 
-	fr_strerror();	/* Clear any outstanding errors */
+	fr_strerror_clear();	/* Clear any outstanding errors */
 
 	if ((size_t) *pipelined > out_len) {
 		for (i = 0; i < (size_t)*pipelined; i++) {
@@ -445,7 +542,7 @@ fr_redis_rcode_t fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcod
 
 		*pipelined = 0;			/* all outstanding responses should be cleared */
 
-		fr_strerror_printf("Too many pipelined commands");
+		fr_strerror_const("Too many pipelined commands");
 		out[0] = NULL;
 		return REDIS_RCODE_ERROR;
 	}
@@ -533,7 +630,7 @@ fr_redis_rcode_t fr_redis_get_version(char *out, size_t out_len, fr_redis_conn_t
 	fr_redis_rcode_t	status;
 	char			*p, *q;
 
-	rad_assert(out_len > 0);
+	fr_assert(out_len > 0);
 	out[0] = '\0';
 
 	reply = redisCommand(conn->handle, "INFO SERVER");
@@ -542,7 +639,7 @@ fr_redis_rcode_t fr_redis_get_version(char *out, size_t out_len, fr_redis_conn_t
 
 	if (reply->type != REDIS_REPLY_STRING) {
 		fr_strerror_printf("Bad value type, expected string or integer, got %s",
-				   fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
+				   fr_table_str_by_value(redis_reply_types, reply->type, "<UNKNOWN>"));
 	error:
 		fr_redis_reply_free(&reply);
 		return REDIS_RCODE_ERROR;
@@ -550,12 +647,12 @@ fr_redis_rcode_t fr_redis_get_version(char *out, size_t out_len, fr_redis_conn_t
 
 	p = strstr(reply->str, "redis_version:");
 	if (!p) {
-		fr_strerror_printf("Response did not contain version string");
+		fr_strerror_const("Response did not contain version string");
 		goto error;
 	}
 
 	p = strchr(p, ':');
-	rad_assert(p);
+	fr_assert(p);
 	p++;
 
 	q = strstr(p, "\r\n");

@@ -22,11 +22,11 @@
  */
 #ifdef HAVE_LIBPCAP
 
-#include "pcap.h"
-
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/net.h>
+#include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/pcap.h>
+#include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/talloc.h>
 
@@ -211,8 +211,8 @@ int fr_pcap_open(fr_pcap_t *pcap)
 		 *
 		 *	We do this first, as it's the most specific error.
 		 */
-		pcap->if_index = if_nametoindex(pcap->name);
-		if (!pcap->if_index) {
+		pcap->ifindex = if_nametoindex(pcap->name);
+		if (!pcap->ifindex) {
 			fr_strerror_printf("Unknown interface \"%s\"", pcap->name);
 			return -1;
 		}
@@ -308,7 +308,7 @@ int fr_pcap_open(fr_pcap_t *pcap)
 		}
 		pcap->handle = pcap_open_dead(pcap->link_layer, SNAPLEN);
 		if (!pcap->handle) {
-			fr_strerror_printf("Unknown error occurred opening dead PCAP handle");
+			fr_strerror_const("Unknown error occurred opening dead PCAP handle");
 
 			return -1;
 		}
@@ -333,7 +333,7 @@ int fr_pcap_open(fr_pcap_t *pcap)
 		break;
 #else
 	case PCAP_STDIO_IN:
-		fr_strerror_printf("This version of libpcap does not support reading pcap data from streams");
+		fr_strerror_const("This version of libpcap does not support reading pcap data from streams");
 
 		return -1;
 #endif
@@ -349,7 +349,7 @@ int fr_pcap_open(fr_pcap_t *pcap)
 		break;
 #else
 	case PCAP_STDIO_OUT:
-		fr_strerror_printf("This version of libpcap does not support writing pcap data to streams");
+		fr_strerror_const("This version of libpcap does not support writing pcap data to streams");
 
 		return -1;
 #endif
@@ -388,7 +388,7 @@ int fr_pcap_apply_filter(fr_pcap_t *pcap, char const *expression)
 	 */
 #ifdef DLT_NFLOG
 	if (pcap->link_layer == DLT_NFLOG) {
-		fr_strerror_printf("NFLOG link-layer type filtering not implemented");
+		fr_strerror_const("NFLOG link-layer type filtering not implemented");
 
 		return 1;
 	}
@@ -430,34 +430,43 @@ int fr_pcap_apply_filter(fr_pcap_t *pcap, char const *expression)
 char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *pcap, char c)
 {
 	fr_pcap_t *pcap_p;
-	char *buff, *p;
-	size_t len = 0, left = 0, wrote;
+	char *buff, *p, *end;
+	size_t len = 0;
 
 	if (!pcap) {
-		goto null;
-	}
-
-	for (pcap_p = pcap;
-	     pcap_p;
-	     pcap_p = pcap_p->next) {
-		len += talloc_array_length(pcap_p->name);	// Talloc array length includes the \0
-	}
-
-	if (!len) {
 	null:
 		return talloc_zero_array(ctx, char, 1);
 	}
 
-	left = len + 1;
-	buff = p = talloc_zero_array(ctx, char, left);
 	for (pcap_p = pcap;
 	     pcap_p;
 	     pcap_p = pcap_p->next) {
-		wrote = snprintf(p, left, "%s%c", pcap_p->name, c);
-		left -= wrote;
-		p += wrote;
+	     	/*
+	     	 *	talloc_array_length includes \0 which accounts for c
+	     	 */
+		len += talloc_array_length(pcap_p->name);
 	}
-	buff[len - 1] = '\0';
+
+	if (!len) goto null;
+
+	buff = p = talloc_zero_array(ctx, char, len);
+	end = p + len;
+
+	for (pcap_p = pcap;
+	     pcap_p;
+	     pcap_p = pcap_p->next) {
+	     	size_t name_len = talloc_array_length(pcap_p->name) - 1;
+
+		if (!fr_cond_assert(p < end)) {
+			talloc_free(buff);
+			return NULL;
+		}
+
+		memcpy(p, pcap_p->name, name_len);
+		p += name_len;
+		*p++ = c;
+	}
+	*(end - 1) = '\0';	/* Strip trailing separation char */
 
 	return buff;
 }
@@ -560,7 +569,7 @@ ssize_t fr_pcap_link_layer_offset(uint8_t const *data, size_t len, int link_laye
 				goto done;
 			}
 		}
-		fr_strerror_printf("Exceeded maximum level of VLAN tag nesting (2)");
+		fr_strerror_const("Exceeded maximum level of VLAN tag nesting (2)");
 		return -1;
 	}
 

@@ -1,0 +1,277 @@
+
+
+
+
+= SMTP Module
+
+The `smtp` module validates a users name and password against an SMTP server.
+It should be called from an `authenticate` section.
+
+The module can optionally perform a tls handshake, enabled with require_cert
+
+
+
+tls { ... }:: Configure the tls related items which control
+how FreeRADIUS connects to an SMTP server.
+
+
+.Certificate validation options
+
+Specifies how the certificate(s) presented by the
+SMTP server are validated, and which certificates
+(if any) to send to that SMTP server.
+
+The options here behave the same as the options in
+other `tls` sections in the server.
+
+
+
+certificate_file:: PEM formatted file containing the certificate we present to the SMTP server
+
+Specifies a certificate and any intermediary CAs we should send to the SMTP server.
+
+This file should usually contain the client certificate file first, then any
+intermediary signing CAs, shallowest (direct signee of the certificate_file)
+to deepest (signed directly by the root CA).
+
+
+
+ca_file:: PEM formatted file containing the chain
+to validate the SMTP server's certificate.
+
+Any certificate chain MUST be in order from server
+certificate (first in the file) to intermediary CAs (second) to
+Root CA (last in the file) as per https://tools.ietf.org/html/rfc4346#section-7.4.2[RFC 4346 Section 7.4.2] (see certificate_list)
+
+Providing a complete certificate chain here is the
+most common way of validating the certificate
+presented by an SMTP server.
+
+
+
+ca_issuer_file:: PEM formatted file containing the
+CA that signed the SMTP server's certificate.
+
+Specifies the certificate which directly signed
+the certificate presented by the SMTPs server.
+
+This configuration option can be used to prevent
+certificates passing validation which were signed
+by other intermediary CAs, or root CAs, in the
+trusted certificate chain.
+
+
+
+ca_path:: A directory containing multiple root CA certs named by their hash.
+
+See the OpenSSL documentation for more details:
+- https://www.openssl.org/docs/man1.1.0/man3/SSL_CTX_set_default_verify_paths.html
+- https://www.openssl.org/docs/man1.1.1/man1/c_rehash.html
+
+This configuration option should only be used when the SMTP server being contacted
+is not known ahead of time (using a URL from an external source), and/or the CA used
+to sign the SMTP server certificate is unknown.
+
+
+
+private_key_file:: PEM formatted file containing the private key for the specified `certificate_file`
+
+This item must be specified if `certificate_file` is being used.
+
+
+
+private_key_password:: Password used to decrypt the `private_key_file`.
+
+
+
+random_file:: Source of random data used for various cryptographic functions.
+
+
+
+check_cert:: Server certificate verification requirements.
+
+May be one of:
+
+[options="header,autowidth"]
+|===
+| Option | Description
+| `no`   | Server certificate can be signed by any CA or be self-signed.
+| `yes`  | Server certificate must be issued by one of the trusted CAs.
+|===
+
+Default is `yes`
+
+
+
+request_cert:: Options for controlling how the
+module requests TLS to the SMTP server.
+
+May be one of:
+
+[options="header,autowidth"]
+|===
+| Option | Description
+| `demand`   | Require ssl validation to accept login
+| `never`  | Do not try to establish ssl connection
+| `allow`  | Try to establish ssl connection, continue even if it cannot
+|===
+
+default is 'allow'
+
+
+
+check_cert_cn:: Server certificate CN verification requirements.
+
+May be one of:
+
+[options="header,autowidth"]
+|===
+| Option | Description
+| `no`   | Server certificate CN can be any value.
+| `yes`  | Server certificate CN matches the host in the URI.
+|===
+
+Default is `yes`
+
+
+
+extract_cert_attrs:: Extract OIDs from presented certificates as OIDs.
+
+Default is `no`
+
+
+
+uri:: URI which will be used for connecting to the SMTP server.
+
+The `smtp` module uses Curl (https://curl.haxx.se/libcurl/) to implement
+the underlying mail protocols.  The URI should be in the form of:
+
+`SCHEME://IP:PORT/`
+
+
+`SCHEME` can be one of the SMTP protocols supported by Curl.
+i.e. smtp, smtps.
+If no `SCHEME` is given, it defaults to `smtp`.
+
+`IP` is the IP address of the server.  It can be an IPv4 address,
+IPv6 address, hostname, etc.
+
+`PORT` is optional, and will normally be chosen to be correct
+for the given `SCHEME`.
+
+For more information, see the CURL documentation at
+
+https://ec.haxx.se/cmdline/cmdline-urls
+
+
+
+timeout:: How long the module will wait before giving up on the response
+from the SMTP server.
+
+
+
+template_directory:: The source directory where all file attachments are pulled from
+All file attachments should be their relative path from this location, without a leading /
+
+
+
+Attachments:: attachments with their relative path from template_directory
+There can be no leading / or ..
+
+
+
+envelope_address:: This is the address used to send the mail,
+Sent to the receiving server as MAIL FROM:<envelope_address>
+sender_address will be defaulted to if this is not set
+
+
+
+sender_address:: This are the addresses displayed in the FROM: element of the header
+This can be different than the provided envelope_address,
+If envelope_address is set, this can be formatted however you want it to appear to the receiver
+If envelope_address is not set, the first element in sender_address will be used as the envelope address
+
+
+
+recipients:: Email addresses to be set as recipients for the email
+If recipients is set bcc, cc, and to will not be automatically added to the email
+And so they must be included here.
+
+
+
+to:: Email addresses to be set in the TO: header
+These addresses will be added as envelope recipients only if recipients is not set
+
+
+cc:: Email addresses to be set in the CC: header
+These addresses will be added as envelope recipients only if recipients is not set
+
+
+
+bcc:: Comma separated list of emails.
+the local part may contain commas, the domain may not (https://tools.ietf.org/html/rfc2821[RFC 2821])
+Therefore, first comma after the @ represents a new address
+not listed in the header of the email
+if recipients is not set, these emails will be added to the envelope recipients
+
+
+
+set_date:: Adds a Date: to the header, set to the time the request is received
+Formatted as "Fri, 07 Aug 2020 00:57:37 -0400, (EDT)"
+May be one of:
+
+[options="header,autowidth"]
+|===
+| Option | Description
+| `no`   | A Date: should be specified in the header, or left to the receiving mta
+| `yes`  | A Date is formatted and added (recommended)
+|===
+
+Default is `yes`
+
+
+
+header:: This is where any other headers can be added to the email
+FROM, TO, and CC, should not be added here if their respective elements were set in the config
+If no DATE header is provided, one will be added showing time that the request was received(recommended)
+Non-standard mail headers may be set. Adhere to your MTA's documentation
+
+
+== Default Configuration
+
+```
+smtp {
+	tls {
+#		certificate_file     = /path/to/radius.pem
+#		ca_file	             = "${certdir}/cacert.pem"
+#		ca_issuer_file     = "${certdir}/caissuer.pem"
+#		ca_path	             = "${certdir}"
+#		private_key_file     = /path/to/radius.key
+#		private_key_password = "supersecret"
+#		random_file          = /dev/urandom
+#		check_cert = no
+#		require_cert = allow
+#		check_cert_cn = no
+#		extract_cert_attrs = no
+	}
+	uri = "smtp://192.0.20.1/"
+	timeout = 5s
+	template_directory = raddb/mods_config/smtp
+	attachments = &SMTP-Attachments[*]
+	envelope_address = "postmaster@localhost"
+	sender_address = &SMTP-Sender-Address[*]
+#	recipients = &SMTP-Recipients[*]
+#	recipients = &SMTP-TO[*]
+#	recipients = &SMTP-CC[*]
+#	recipients = &SMTP-BCC[*]
+#	to = &SMTP-TO[*]
+#	cc = &SMTP-CC[*]
+#	bcc = &SMTP-BCC[*]
+#	set_date = yes
+	header {
+		subject = "email subject"
+		Message-ID = "950124.162336@example.com"
+#		X-Originating-IP = "192.0.20.1"
+	}
+}
+```

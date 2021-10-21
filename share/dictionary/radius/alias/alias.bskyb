@@ -1,0 +1,8 @@
+ALIAS	Sky-Wifi-AP-ID                          	26.16924.1
+ALIAS	Sky-Wifi-Service-ID                     	26.16924.2
+ALIAS	Sky-Wifi-Filter-Profile                 	26.16924.3
+ALIAS	Sky-Wifi-Billing-Class                  	26.16924.4
+ALIAS	Sky-Wifi-Provider-ID                    	26.16924.5
+ALIAS	Sky-Wifi-Credentials                    	26.16924.6
+ALIAS	Sky-Wifi-Replicated-Packet              	26.16924.7
+ALIAS	Sky-Wifi-Protocol-Restriction           	26.16924.8

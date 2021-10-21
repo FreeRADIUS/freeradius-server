@@ -5,6 +5,7 @@
 *.p12
 *.old
 *.attr
+*.crl
 ca.der
 dh
 index.txt

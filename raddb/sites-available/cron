@@ -1,0 +1,109 @@
+#  -*- text -*-
+#
+#
+#  $Id$
+
+#######################################################################
+#
+#  = The cron Virtual Server
+#
+#  The `cron` virtual server is an example of using `cron` style functionality in FreeRADIUS.
+#
+#  ## The Virtual Server
+#
+#  This is the `cron` virtual server.
+#
+server cron {
+	#
+	#  namespace:: The protocol / dictionary to use.
+	#
+	#  The `cron` functionality can be used with any protocol.
+	#
+	namespace = radius
+
+	#
+	#  You can have a `radius` subsection here.  See the `default`
+	#  virtual server for documentation.
+	#
+
+	#
+	#  Create a `cron` listener.  Note that leaving off the `cron` name
+	#  will result in the protocol trying to open a socket!
+	#
+	listen cron {
+		#
+		#  type:: What type of packet is being processed.
+		#
+		#  The `type` should be a valid name for the protocol.
+		#
+		type = Access-Request
+
+		#
+		#  transport: What kind of cron functionality we are using.
+		#
+		#  For now, only `crontab` is supported.
+		#
+		transport = crontab
+
+		#
+		#  crontab:: Run `crontab` style jobs.
+		#
+		crontab {
+			#
+			#  timespec:: the `crontab` style time specification.
+			#
+			#  The fields are:
+			#
+			#  * minute (0-59)
+			#  * hour (0-59)
+			#  * day of month (1-31)
+			#  * month of year (1-12)
+			#  * day of week (0-6)
+			#
+			#  The allowed values follow the specification given in
+			#  `man 5 crontab`, or https://man7.org/linux/man-pages/man5/crontab.5.html
+			#
+			#  Multiple values can be given, separated by comma:
+			#  * 1,2,3
+			#
+			#  Ranges can be specified
+			#  * 1-4
+			#  * `*`
+			#
+			#  Steps can be given for ranges:
+			#  * 1-20/4
+			#
+			timespec = "* * * * *"
+
+			#
+			#  filename:: The file which is read, cached, and processed
+			#
+			#  When the timer hits, the `cron` section processes the attributes
+			#  from this file, as if they had been received from the network.
+			#
+			#  Nothing is done with the reply packet (if
+			#  anything).  The `cron` functionality
+			#  assumes that all of the work necessary for
+			#  `cron` is done inside of the processing
+			#  sections.
+			#
+			filename = /Users/alandekok/git/wrapper/freeradius-server/user_password
+		}
+	}
+
+recv Access-Request {
+	ok
+}
+
+send Access-Accept {
+	ok
+}
+
+send Access-Reject {
+	ok
+}
+
+send Do-Not-Respond {
+	ok
+}
+}

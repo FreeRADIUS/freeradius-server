@@ -1,0 +1,22 @@
+
+
+
+
+= Debugging configuration
+
+This is a minimal configuration file used when debugging the
+source code.
+
+This file should not be installed by `make install`, or by any
+packaging system. It is only for developers.
+
+
+
+## The main configuration file.
+
+
+== Default Configuration
+
+```
+$INCLUDE ${confdir}/radiusd.conf
+```

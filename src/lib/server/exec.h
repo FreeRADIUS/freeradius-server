@@ -33,33 +33,67 @@ extern "C" {
 
 #define EXEC_TIMEOUT		10	//!< Default wait time for exec calls (in seconds).
 
-extern pid_t	(*rad_fork)(void);
-extern pid_t	(*rad_waitpid)(pid_t pid, int *status);
-
 #ifdef __cplusplus
 }
 #endif
 
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/pair.h>
-
+#include <freeradius-devel/util/talloc.h>
 #include <sys/types.h>
-#include <talloc.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-pid_t	radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
-			     int *input_fd, int *output_fd,
-			     VALUE_PAIR *input_pairs, bool shell_escape);
 
-int	radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
-				char *answer, int left);
+typedef struct {
+	fr_sbuff_t			stdout_buff;	//!< Expandable buffer to store process output.
+	fr_sbuff_uctx_talloc_t		stdout_tctx;	//!< sbuff talloc ctx data.
 
-int	radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **output_pairs,
-			    REQUEST *request, char const *cmd, VALUE_PAIR *input_pairs,
-			    bool exec_wait, bool shell_escape, fr_time_delta_t timeout) CC_HINT(nonnull (5, 6));
+	log_fd_event_ctx_t		stdout_uctx;	//!< Config for the stdout logger.
+	log_fd_event_ctx_t		stderr_uctx;	//!< Config for the stderr logger.
+	char				stdout_prefix[sizeof("pid -9223372036854775808 (stdout)")];
+	char				stderr_prefix[sizeof("pid -9223372036854775808 (stderr)")];
 
+	pid_t				pid;		//!< child PID
+	int				stdin_fd;	//!< for writing to the child.
+	bool				stdin_used;	//!< use stdin fd?
+	int				stdout_fd;	//!< for reading from the child.
+
+	bool				stdout_used;	//!< use stdout fd?
+	TALLOC_CTX			*stdout_ctx;	//!< ctx to allocate output buffers
+
+	int				stderr_fd;	//!< for producing error messages.
+
+	fr_event_timer_t const		*ev;		//!< for timing out the child
+	fr_event_pid_t const   		*ev_pid;	//!< for cleaning up the process
+	bool				failed;		//!< due to exec timeout or buffer overflow
+
+	int				status;		//!< return code of the program
+
+	fr_pair_list_t			*env_pairs;	//!< input VPs.  These are inserted into
+							///< the environment of the child as
+							///< environmental variables.
+
+	request_t			*request;	//!< request this exec is related to
+
+} fr_exec_state_t;
+
+void	fr_exec_cleanup(fr_exec_state_t *exec, int signal);
+
+int	fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *args,
+			    fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit);
+
+int	fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_fd,
+			  request_t *request, fr_value_box_list_t *args,
+			  fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit);
+
+int	fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
+		      fr_value_box_list_t *args,
+		      fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit,
+		      bool need_stdin,
+		      bool store_stdout, TALLOC_CTX *stdout_ctx,
+		      fr_time_delta_t timeout);
 #ifdef __cplusplus
 }
 #endif

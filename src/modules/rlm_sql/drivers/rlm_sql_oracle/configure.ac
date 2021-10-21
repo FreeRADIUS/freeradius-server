@@ -2,6 +2,11 @@ AC_INIT(rlm_sql_oracle.c)
 AC_REVISION($Revision: 1.10 $)
 AC_DEFUN(modname,[rlm_sql_oracle])
 
+AC_ARG_WITH([]modname,
+[AS_HELP_STRING([--without-[]modname],[build without module])]
+)
+
+oracle_supported_versions="19 18 12 11"
 fail=
 mod_ldflags=
 mod_cflags=
@@ -87,10 +92,11 @@ if test x$with_[]modname != xno; then
 	lib_path="${ORACLE_HOME}/lib "
     fi
 
+    AC_MSG_WARN([Oracle supported versions: ${oracle_supported_versions}])
     AC_MSG_WARN([Oracle version >= 12 needs -laio])
 
     for path in $lib_path "/usr/local/instaclient/lib" "" "/opt/lib"; do
-	for oracle_version in 19 18 12.1 12 11 10 9 ""; do
+	for oracle_version in ${oracle_supported_versions} ""; do
 	    if test "$path" != ""; then
 		AC_MSG_CHECKING([for OCIInitialize in nnz${oracle_version} in $path])
 	    else

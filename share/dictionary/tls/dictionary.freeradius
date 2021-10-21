@@ -1,0 +1,29 @@
+# -*- text -*-
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	The FreeRADIUS Vendor-Specific dictionary for TLS operations.
+#
+# Version:	$Id$
+#
+
+ATTRIBUTE	Packet-Type				1	uint32
+
+VALUE	Packet-Type			Load-Session		1
+VALUE	Packet-Type			Store-Session		2
+VALUE	Packet-Type			Clear-Session		3
+VALUE	Packet-Type			Verify-Certificate	4
+
+#
+#  We use response packet types instead of rcodes so that
+#  the virtual server can be tested in isolation.
+#
+VALUE	Packet-Type			success			10
+VALUE	Packet-Type			failure			11
+VALUE	Packet-Type			notfound		12
+
+ATTRIBUTE	Session-Id				10	octets
+ATTRIBUTE	Session-Data				11	octets
+ATTRIBUTE	Session-Resumed				12	bool
+ATTRIBUTE	Session-TTL				13	time_delta

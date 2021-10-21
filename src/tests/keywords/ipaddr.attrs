@@ -1,6 +1,7 @@
 #
 #  Input packet
 #
+Packet-Type = Access-Request
 User-Name = "bob"
 User-Password = "hello"
 NAS-IP-Address = 127.0.0.1
@@ -8,5 +9,5 @@ NAS-IP-Address = 127.0.0.1
 #
 #  Expected answer
 #
-Response-Packet-Type == Access-Accept
-Filter-Id == 'filter'
+Packet-Type == Access-Accept
+Result-Status == "success"

@@ -1,15 +1,15 @@
 #
 #  Parse / print data types
 #
-uint32 0
-data 0
+value uint32 0
+match 0
 
-ipaddr 127.0.0.1
-data 127.0.0.1
+value ipaddr 127.0.0.1
+match 127.0.0.1
 
 #  And canonicalized
-ipaddr 127.0.0.001
-data 127.0.0.1
+value ipaddr 127.0.0.001
+match 127.0.0.1
 
 #
 #  Time deltas can have qualifiers, but they're always printed
@@ -17,38 +17,202 @@ data 127.0.0.1
 #
 #  Unless the attribute (which we don't have here) has a scale defined
 #
-time_delta 1
-data 1
+value time_delta 1
+match 1
 
-time_delta 2.4
-data 2.4
+value time_delta 2.4
+match 2.4
 
-time_delta 1ms
-data 0.001
+value time_delta 1ms
+match 0.001
 
-time_delta 1us
-data 0.000001
+value time_delta 1us
+match 0.000001
 
-time_delta 1.5us
-data 0.0000015
+value time_delta 1.5us
+match 0.0000015
 
-time_delta 1ns
-data 0.000000001
+value time_delta 1ns
+match 0.000000001
 
-time_delta 1:30
-data 90
+value time_delta 1:30
+match 90
 
-uint8 256
-data ERROR parsing value: Value 256 is invalid for type uint8 (must be in range 0...255)
+value time_delta 1h
+match 3600
 
-uint8 -128
-data ERROR parsing value: Invalid negative value "-128" for unsigned integer
+#
+#  And negative numbers
+#
+value time_delta -1
+match -1
 
-int8 128
-data ERROR parsing value: Value 128 is invalid for type int8 (must be in range -128...127)
+value time_delta -2.4
+match -2.4
 
-int8 -128
-data -128
+value time_delta -0.001
+match -0.001
 
-int8 -130
-data ERROR parsing value: Value -130 is invalid for type int8 (must be in range -128...127)
+value time_delta -1ms
+match -0.001
+
+value time_delta -1us
+match -0.000001
+
+value time_delta -1.5us
+match -0.0000015
+
+value time_delta -1ns
+match -0.000000001
+
+value time_delta -1:30
+match -90
+
+value time_delta -1h
+match -3600
+
+
+
+#
+#  uint8
+#
+value uint8 256
+match Value 256 is invalid for type uint8 (must be in range 0...255)
+
+value uint8 -128
+match Invalid negative value "-128" for unsigned integer
+
+value int8 128
+match Value 128 is invalid for type int8 (must be in range -128...127)
+
+value int8 -128
+match -128
+
+value int8 -130
+match Value -130 is invalid for type int8 (must be in range -128...127)
+
+value date Jan  1 1970 12:00:00 UTC
+match Jan  1 1970 12:00:00 UTC
+
+#
+#  10 days in
+#
+value date 864000
+match Jan 11 1970 00:00:00 UTC
+
+# 100 days
+value date 8640000
+match Apr 11 1970 00:00:00 UTC
+
+# 1,000 days
+value date 86400000
+match Sep 27 1972 00:00:00 UTC
+
+# 10,000 days
+value date 864000000
+match May 19 1997 00:00:00 UTC
+
+#
+#  Input can be whatever.  But for the tests, output is UTC.
+#
+#  Note that this test is wrong, because the HH:MM are the
+#  same, even though they are in different time zones.
+#  Our parse function ignores time zones, which is bad.
+#
+value date Aug 21 2019 07:43:03 EDT
+match Aug 21 2019 07:43:03 UTC
+
+#
+#  Can't yet test this as the parse / print / parse / cmp
+#  functions don't yet allow for choosing ISO8601 vs the
+#  traditional FreeRADIUS time.
+#
+#date 2019-08-21T07:40:31-04:00
+#data foo
+
+#
+#  DNS labels
+#
+encode-dns-label foo.com
+match 03 66 6f 6f 03 63 6f 6d 00
+
+#
+#  Make sure that we can decode the label, too.
+#
+decode-dns-label -
+match foo.com
+
+#
+#  Trailing dots are suppressed.
+#
+encode-dns-label foo.com.
+match 03 66 6f 6f 03 63 6f 6d 00
+
+
+encode-dns-label foo.com,b.ca
+match 03 66 6f 6f 03 63 6f 6d 00 01 62 02 63 61 00
+
+decode-dns-label -
+match foo.com,b.ca
+
+# root gets encoded as a plain 0.
+encode-dns-label .
+match 00
+
+decode-dns-label -
+match .
+
+# From RFC 1035 Section 4.1.4
+encode-dns-label F.ISI.ARPA,FOO.F.ISI.ARPA,ARPA,.
+match 01 46 03 49 53 49 04 41 52 50 41 00 03 46 4f 4f c0 00 c0 06 00
+
+decode-dns-label -
+match F.ISI.ARPA,FOO.F.ISI.ARPA,ARPA,.
+
+encode-dns-label www.example.com,ftp.example.com,www.ftp.example.com
+match 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 c0 04 03 77 77 77 c0 11
+
+decode-dns-label -
+match www.example.com,ftp.example.com,www.ftp.example.com
+
+encode-dns-label www.example.com,ftp.example.com,www.example.org,ftp.example.org,ns.example.org
+match 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 66 74 70 c0 04 03 77 77 77 07 65 78 61 6d 70 6c 65 03 6f 72 67 00 03 66 74 70 c0 1b 02 6e 73 c0 1b
+
+decode-dns-label -
+match www.example.com,ftp.example.com,www.example.org,ftp.example.org,ns.example.org
+
+#
+#  Underscores are allowed as the first character of a label.
+#
+encode-dns-label _foo.com
+match 04 5f 66 6f 6f 03 63 6f 6d 00
+
+decode-dns-label -
+match _foo.com
+
+#
+#  Error cases
+#
+encode-dns-label www.it-is-a-long-crazy-domain-name-just-to-get-63-chars-and-yes-1234.com
+match Label is larger than 63 characters
+
+# same as above, but first element
+encode-dns-label it-is-a-long-crazy-domain-name-just-to-get-63-chars-and-yes-1234.com
+match Label is larger than 63 characters
+
+# same as above, but last element
+encode-dns-label www.it-is-a-long-crazy-domain-name-just-to-get-63-chars-and-yes-1234
+match Label is larger than 63 characters
+
+encode-dns-label .foo.com
+match Empty labels are invalid
+
+encode-dns-label www..foo.com
+match Double dots '..' are forbidden
+
+#  underscore as non-first character is illegal
+encode-dns-label www_foo.com
+match Invalid character 0x5f in label
+
+count
+match 104

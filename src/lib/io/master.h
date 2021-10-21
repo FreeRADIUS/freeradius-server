@@ -25,12 +25,11 @@
  */
 RCSIDH(master_h, "$Id$")
 
-#include <talloc.h>
-
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/util/trie.h>
+#include <freeradius-devel/util/talloc.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,12 +37,18 @@ extern "C" {
 
 typedef struct fr_io_client_s fr_io_client_t;
 
-typedef struct {
+typedef struct fr_io_track_s {
+	fr_rb_node_t			node;		//!< rbtree node in the tracking tree.
 	fr_event_timer_t const		*ev;		//!< when we clean up this tracking entry
 	fr_time_t			timestamp;	//!< when this packet was received
+	fr_time_t			expires;	//!< when this packet expires
 	int				packets;     	//!< number of packets using this entry
 	uint8_t				*reply;		//!< reply packet (if any)
 	size_t				reply_len;	//!< length of reply, or 1 for "do not reply"
+
+	bool				discard;	//!< whether or not we discard the packet
+	bool				do_not_respond;	//!< don't respond
+	bool				finished;	//!< are we finished the request?
 
 	/*
 	 *	We can't set the "process" function here, because a
@@ -53,9 +58,9 @@ typedef struct {
 	 *	definition.
 	 */
 	fr_time_t			dynamic;	//!< timestamp for packet doing dynamic client definition
-	fr_io_address_t   		*address;	//!< of this packet.. shared between multiple packets
+	fr_io_address_t const  		*address;	//!< of this packet.. shared between multiple packets
 	fr_io_client_t			*client;	//!< client handling this packet.
-	uint8_t				packet[20];	//!< original request packet
+	uint8_t				*packet;	//!< really a tracking structure, not a packet
 } fr_io_track_t;
 
 /** The master IO instance
@@ -72,7 +77,7 @@ typedef struct {
  *  creates the listener, and adds it to the scheduler.
  */
 typedef struct {
-	dl_module_inst_t const   		*dl_inst;			//!< our parent dl_inst
+	dl_module_inst_t const   	*dl_inst;			//!< our parent dl_inst
 
 	uint32_t			max_connections;		//!< maximum number of connections to allow
 	uint32_t			max_clients;			//!< maximum number of dynamic clients to allow
@@ -87,10 +92,10 @@ typedef struct {
 
 	CONF_SECTION			*server_cs;			//!< server CS for this listener
 
-	dl_module_inst_t			*submodule;			//!< As provided by the transport_parse
+	dl_module_inst_t		*submodule;			//!< As provided by the transport_parse
 									///< callback.  Broken out into the
 									///< app_io_* fields below for convenience.
-	dl_module_inst_t			*dynamic_submodule;		//!< for dynamically defined clients
+	dl_module_inst_t		*dynamic_submodule;		//!< for dynamically defined clients
 
 	fr_app_t			*app;				//!< main protocol handler
 	void				*app_instance;			//!< instance data for main protocol handler

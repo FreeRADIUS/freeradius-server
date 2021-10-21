@@ -52,3 +52,13 @@ protocol_error {
 	}
 	handled
 }
+
+#
+#  Discard the packet without replying
+#
+discard {
+	update reply {
+		&Packet-Type := Do-Not-Respond
+	}
+	handled
+}

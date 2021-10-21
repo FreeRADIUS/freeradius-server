@@ -23,6 +23,7 @@
  *
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
+#include <freeradius-devel/util/inet.h>
 #include <stdint.h>
 #include <stddef.h>
 
@@ -84,8 +85,8 @@ typedef struct CC_HINT(__packed__) {
  *
  */
 typedef struct {
-	uint8_t		src_addr[ETHER_ADDR_LEN];
-	uint8_t		dst_addr[ETHER_ADDR_LEN];
+	fr_ethernet_t	src_addr;
+	fr_ethernet_t	dst_addr;
 	uint16_t	ether_type;		//!< Ether type.  Usually 0x0800 (IPv4) 0x086DD (IPv6).
 
 	uint16_t	cvlan_tpid;		//!< CVLAN tag type.  If 0, no CVLAN/SVLAN present.

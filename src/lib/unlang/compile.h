@@ -18,7 +18,7 @@
 /**
  * $Id$
  *
- * @file unlang/interpret.h
+ * @file unlang/compile.h
  * @brief Declarations for the unlang interpreter.
  *
  * @copyright 2019 The FreeRADIUS server project
@@ -31,13 +31,22 @@ extern "C" {
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/components.h>
 #include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/util/retry.h>
 
-int		unlang_compile(CONF_SECTION *cs, rlm_components_t component, vp_tmpl_rules_t const *rules);
+typedef struct {
+	int			actions[RLM_MODULE_NUMCODES];
+	fr_retry_config_t	retry;
+} unlang_actions_t;
 
-int		unlang_compile_subsection(CONF_SECTION *subsection,
-					  rlm_components_t component, vp_tmpl_rules_t const *rules);
+void		unlang_compile_init(void);
+
+void		unlang_compile_free(void);
+
+int		unlang_compile(CONF_SECTION *cs, rlm_components_t component, tmpl_rules_t const *rules, void **instruction);
 
 bool		unlang_compile_is_keyword(const char *name);
+
+bool		unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *parent, bool module_retry);
 
 #ifdef __cplusplus
 }

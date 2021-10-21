@@ -1,10 +1,6 @@
 #
 #  PRE: update if
 #
-update control {
-	&Cleartext-Password := 'hello'
-}
-
 if (&User-Name == "bob") {
 	success
 
@@ -22,3 +18,6 @@ if (&User-Name == "bob") {
 	#
 	return
 }
+
+# Shouldn't get here
+test_fail

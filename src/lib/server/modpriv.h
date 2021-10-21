@@ -35,7 +35,7 @@ extern "C" {
 #endif
 int			module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char const *name);
 
-int			unlang_fixup_update(vp_map_t *map, void *ctx);
+int			unlang_fixup_update(map_t *map, void *ctx);
 
 #ifdef __cplusplus
 }

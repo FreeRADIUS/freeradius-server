@@ -1,0 +1,10 @@
+#
+#  PRE: update if-empty-allow
+#
+
+if (&User-Name == 'bob') {
+	ok
+}
+else {
+}
+success

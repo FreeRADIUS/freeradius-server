@@ -284,18 +284,17 @@ static int m3ua_conn_write(struct osmo_fd *ofd, struct msgb *msg)
 	struct sctp_sndrcvinfo info;
 	memcpy(&info, msg->data, sizeof(info));
 
-	LOGP(DINP, LOGL_DEBUG, "Writing %zu bytes to fd %i\n", msgb_l2len(msg), ofd->fd);
+	LOGP(DINP, LOGL_DEBUG, "Writing %u bytes to fd %i\n", msgb_l2len(msg), ofd->fd);
 	ret = sctp_send(ofd->fd, msg->l2h, msgb_l2len(msg), &info, 0);
 
 	if (ret != msgb_l2len(msg)) {
 		/* Needs to be thread safe for library use in threaded programs */
 		strerrbuf[0] = '\0';
-		strerror_r(errno, strerrbuf, sizeof(strerrbuf));
 
 		LOGP(DINP, LOGL_ERROR, "Failed writing to fd %i (only wrote %zu bytes): %s.\n",
-		     ofd->fd, strerrbuf);
+		     ofd->fd, ret, strerror_r(errno, strerrbuf, sizeof(strerrbuf)));
 	} else {
-		LOGP(DINP, LOGL_DEBUG, "Wrote %zu bytes to fd %i\n", msgb_l2len(msg), ofd->fd);
+		LOGP(DINP, LOGL_DEBUG, "Wrote %u bytes to fd %i\n", msgb_l2len(msg), ofd->fd);
 	}
 
 	return 0;
@@ -425,13 +424,13 @@ static void m3ua_start(void *data)
 	struct sctp_event_subscribe events;
 
 	sctp = socket(PF_INET, SOCK_STREAM, IPPROTO_SCTP);
-	if (!sctp) {
-		LOGP(DINP, LOGL_ERROR, "Failed to create socket.\n");
+	if (sctp < 0) {
+		LOGP(DINP, LOGL_ERROR, "Failed to create socket: %s (%i).\n", strerror(errno), errno);
 		return fail_link(link);
 	}
 
 	if (setsockopt(sctp, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-		LOGP(DINP, LOGL_ERROR, "Failed setting reuseaddr: %s (%i).\n", strerror(errno), errno);
+		LOGP(DINP, LOGL_ERROR, "Failed setting reuseaddr on FD %u: %s (%i).\n", sctp, strerror(errno), errno);
 	error:
 		close(sctp);
 		return fail_link(link);

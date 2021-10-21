@@ -22,10 +22,10 @@
  * @author Arran Cudbard-Bell
  *
  * @copyright 2015 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
- * @copyright 2015 Network RADIUS SARL (info@networkradius.com)
+ * @copyright 2015 Network RADIUS SARL (legal@networkradius.com)
  * @copyright 2015 The FreeRADIUS Server Project
  */
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include "base.h"
 
 #define	SELECTOR_INDEX_UNSET			INT32_MAX
@@ -89,7 +89,7 @@ struct fr_jpath_node {
 	fr_jpath_node_t		*next;		//!< Next in the jpath chain.
 };
 
-static char const escape_chars[] = "[],*.:\\()?";
+static char const escape_chars[] = "[],*.:()?";
 
 
 /** Escapes special chars
@@ -103,7 +103,7 @@ static char const escape_chars[] = "[],*.:\\()?";
  * @param arg uctx data, not used.
  * @return the number of chars written to out.
  */
-size_t fr_jpath_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+size_t fr_jpath_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	char const *p = in;
 	char *q = out, *end = out + outlen;
@@ -128,7 +128,7 @@ size_t fr_jpath_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, c
 /** Recursive function for jpath_expr_evaluate
  *
  * @param[in,out] ctx to allocate fr_value_box_t in.
- * @param[out] tail Where to write fr_value_box_t (**).
+ * @param[out] tail Where to write fr_value_box_t.
  * @param[in] dst_type FreeRADIUS type to convert to.
  * @param[in] dst_enumv Enumeration values to allow string to integer conversions.
  * @param[in] object current node in the json tree.
@@ -138,7 +138,7 @@ size_t fr_jpath_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, c
  *	- 0 on no match.
  *	- -1 on error.
  */
-static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
+static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_list_t *tail,
 			  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 			  json_object *object, fr_jpath_node_t const *jpath)
 {
@@ -154,7 +154,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 	 */
 	for (node = jpath; node; node = node->next) switch (node->selector->type) {
 	case JPATH_SELECTOR_FIELD:
-		if (!fr_json_object_is_type(object, json_type_object)) return 0;
+		if (!json_object_is_type(object, json_type_object)) return 0;
 		if (!json_object_object_get_ex(object, node->selector->field, &object)) return 0;
 		continue;
 
@@ -168,9 +168,9 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 		{
 			struct array_list *array_obj;	/* Because array_list is a global... */
 
-			rad_assert(selector->slice[0] != SELECTOR_INDEX_UNSET);
+			fr_assert(selector->slice[0] != SELECTOR_INDEX_UNSET);
 
-			if (!fr_json_object_is_type(object, json_type_array)) return 0;
+			if (!json_object_is_type(object, json_type_array)) return 0;
 			array_obj = json_object_get_array(object);
 			if ((selector->slice[0] < 0) ||
 			    (selector->slice[0] >= (int32_t)(array_obj->length & INT32_MAX))) continue;
@@ -187,7 +187,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 			struct array_list *array_obj;
 			int32_t start, end, step, i;
 
-			if (!fr_json_object_is_type(object, json_type_array)) return 0;
+			if (!json_object_is_type(object, json_type_array)) return 0;
 			array_obj = json_object_get_array(object);
 
 			/*
@@ -211,7 +211,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 			 *	Descending
 			 */
 			if (step < 0) for (i = start; (i > end) && (i >= 0); i += step) {
-				rad_assert((i >= 0) && (i < (int32_t)(array_obj->length & INT32_MAX)));
+				fr_assert((i >= 0) && (i < (int32_t)(array_obj->length & INT32_MAX)));
 				ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
 						     array_obj->array[i], node->next);
 				if (ret < 0) return ret;
@@ -220,7 +220,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 			 *	Ascending
 			 */
 			} else for (i = start; (i < end) && (i < (int32_t)(array_obj->length & INT32_MAX)); i += step) {
-				rad_assert((i >= 0) && (i < (int32_t)(array_obj->length & INT32_MAX)));
+				fr_assert((i >= 0) && (i < (int32_t)(array_obj->length & INT32_MAX)));
 				ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
 						     array_obj->array[i], node->next);
 				if (ret < 0) return ret;
@@ -230,7 +230,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 			break;
 
 		default:
-			rad_assert(0);
+			fr_assert(0);
 			return -1;
 	}
 		return child_matched ? 1 : 0;
@@ -242,7 +242,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 	{
 		int i;
 
-		if (fr_json_object_is_type(object, json_type_array)) {
+		if (json_object_is_type(object, json_type_array)) {
 			struct array_list *array_obj;
 
 			array_obj = json_object_get_array(object);
@@ -253,10 +253,10 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 				if (ret == 1) child_matched = true;
 			}
 			return child_matched ? 1 : 0;
-		} else if (fr_json_object_is_type(object, json_type_object)) {
+		} else if (json_object_is_type(object, json_type_object)) {
 			json_object_object_foreach(object, field_name, field_value) {
 #ifndef NDEBUG
-				rad_assert(field_name);
+				fr_assert(field_name);
 #else
 				UNUSED_VAR(field_name);
 #endif
@@ -276,7 +276,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 	{
 		int i;
 
-		if (fr_json_object_is_type(object, json_type_array)) {
+		if (json_object_is_type(object, json_type_array)) {
 			struct array_list *array_obj;
 
 			/*
@@ -299,13 +299,13 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 			if (ret == 1) child_matched = true;
 
 			return child_matched ? 1 : 0;
-		} else if (fr_json_object_is_type(object, json_type_object)) {
+		} else if (json_object_is_type(object, json_type_object)) {
 			/*
 			 *	Descend into each field of the object
 			 */
 			json_object_object_foreach(object, field_name, field_value) {
 #ifndef NDEBUG
-				rad_assert(field_name);
+				fr_assert(field_name);
 #else
 				UNUSED_VAR(field_name);
 #endif
@@ -340,7 +340,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 	case JPATH_SELECTOR_INVALID:
 	case JPATH_SELECTOR_ROOT:
 	case JPATH_SELECTOR_CURRENT:
-		rad_assert(0);
+		fr_assert(0);
 		return -1;		/* Not yet implemented */
 	}
 
@@ -360,8 +360,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
 		return -1;
 	}
 
-	**tail = value;
-	*tail = &(**tail)->next;
+	fr_dlist_insert_tail(tail, value);
 	return 1;
 }
 
@@ -381,14 +380,10 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_t ***tail,
  *	- 0 on no match.
  *	- -1 on error.
  */
-int fr_jpath_evaluate_leaf(TALLOC_CTX *ctx, fr_value_box_t **out,
+int fr_jpath_evaluate_leaf(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 			   fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 			   json_object *root, fr_jpath_node_t const *jpath)
 {
-	fr_value_box_t **tail = out;
-
-	*tail = NULL;
-
 	if (!root) return -1;
 
 	switch (jpath->selector->type) {
@@ -397,11 +392,11 @@ int fr_jpath_evaluate_leaf(TALLOC_CTX *ctx, fr_value_box_t **out,
 		break;
 
 	default:
-		rad_assert(0);
+		fr_assert(0);
 		return -1;
 	}
 
-	return jpath_evaluate(ctx, &tail, dst_type, dst_enumv, root, jpath->next);
+	return jpath_evaluate(ctx, out, dst_type, dst_enumv, root, jpath->next);
 }
 
 /** Print a node list to a string for debugging
@@ -476,7 +471,7 @@ char *fr_jpath_asprint(TALLOC_CTX *ctx, fr_jpath_node_t const *head)
 			break;
 
 		default:
-			rad_assert(0);	/* Not yet implemented */
+			fr_assert(0);	/* Not yet implemented */
 			break;
 		}
 		p = talloc_strdup_append_buffer(p, "]");
@@ -496,7 +491,7 @@ char *fr_jpath_asprint(TALLOC_CTX *ctx, fr_jpath_node_t const *head)
 		break;
 
 	case JPATH_SELECTOR_INVALID:
-		rad_assert(0);
+		fr_assert(0);
 		return NULL;
 	}
 
@@ -512,7 +507,7 @@ static ssize_t jpath_filter_expr_parse(UNUSED jpath_selector_t *selector, UNUSED
 {
 	/* selector->type = JPATH_SELECTOR_FILTER_EXPRESSION; */
 
-	fr_strerror_printf("Filter expressions not yet implemented");
+	fr_strerror_const("Filter expressions not yet implemented");
 	return 0;
 }
 
@@ -525,7 +520,7 @@ static ssize_t jpath_expr_parse(UNUSED jpath_selector_t *selector, UNUSED char c
 {
 	/* selector->type = JPATH_SELECTOR_EXPRESSION; */
 
-	fr_strerror_printf("Expressions not yet implemented");
+	fr_strerror_const("Expressions not yet implemented");
 	return 0;
 }
 
@@ -566,18 +561,18 @@ static ssize_t jpath_array_parse(jpath_selector_t *selector, char const *in, siz
 	 */
 	for (p = in; p < end; p++) if ((p[0] == ',') || (p[0] == ']')) break;
 	if (p == end) {
-		fr_strerror_printf("Missing selector delimiter ',' or terminator ']'");
+		fr_strerror_const("Missing selector delimiter ',' or terminator ']'");
 		return -inlen;
 	}
 
 	ret = (p - in);
 	if (ret == 0) {
-		fr_strerror_printf("Empty selector");
+		fr_strerror_const("Empty selector");
 		return 0;
 	}
 
 	if (inlen > sizeof(buffer)) {	/* - 1 for ] */
-		fr_strerror_printf("Selector too long");
+		fr_strerror_const("Selector too long");
 		return -inlen;
 	}
 
@@ -596,7 +591,7 @@ static ssize_t jpath_array_parse(jpath_selector_t *selector, char const *in, siz
 	if (q > p) switch (q[0]) {
 	default:
 	no_term:
-		fr_strerror_printf("Expected num, ':' or ']'");
+		fr_strerror_const("Expected num, ':' or ']'");
 		return buffer - q;
 
 	case ':':			/* More integers to parse */
@@ -638,12 +633,12 @@ static ssize_t jpath_array_parse(jpath_selector_t *selector, char const *in, siz
 	 */
 	num = (int32_t)strtol(p, &q, 10);
 	if (q[0] != '\0') {
-		fr_strerror_printf("Expected num or ']'");
+		fr_strerror_const("Expected num or ']'");
 		return buffer - q;
 	}
 	if (q > p) {
 		if (num == 0) {
-			fr_strerror_printf("Step cannot be 0");
+			fr_strerror_const("Step cannot be 0");
 			return buffer - p;
 		}
 		selector->slice[idx] = num;
@@ -669,13 +664,13 @@ static size_t jpath_field_parse(fr_jpath_node_t *node, char const *in, size_t in
 
 		if (buff_p == buff_end) {
 		name_too_big:
-			fr_strerror_printf("Exceeded maximum field name length");
+			fr_strerror_const("Exceeded maximum field name length");
 			return in - p;
 		}
 
 		clen = fr_utf8_char((uint8_t const *)p, end - p);
 		if (clen == 0) {
-			fr_strerror_printf("Bad UTF8 char");
+			fr_strerror_const("Bad UTF8 char");
 			return in - p;
 		}
 
@@ -720,7 +715,7 @@ static size_t jpath_field_parse(fr_jpath_node_t *node, char const *in, size_t in
 	}
 
 	if (buff_p == buffer) {
-		fr_strerror_printf("Empty field specifier");
+		fr_strerror_const("Empty field specifier");
 		return 0;
 	}
 	node->selector->field = talloc_bstrndup(node, buffer, buff_p - buffer);
@@ -745,7 +740,7 @@ static size_t jpath_selector_parse(fr_jpath_node_t *node, char const *in, size_t
 
 	if (++p == end) {	/* Skip past [ */
 	missing_terminator:
-		fr_strerror_printf("Missing selector terminator ']'");
+		fr_strerror_const("Missing selector terminator ']'");
 		return in - p;
 	}
 
@@ -772,7 +767,7 @@ static size_t jpath_selector_parse(fr_jpath_node_t *node, char const *in, size_t
 		}
 		p += slen;
 		if (p == end) goto missing_terminator;
-		rad_assert(p < end);
+		fr_assert(p < end);
 
 		/*
 		 *	Things that terminate a selector
@@ -793,7 +788,7 @@ static size_t jpath_selector_parse(fr_jpath_node_t *node, char const *in, size_t
 		 */
 		*stail = selector = talloc_zero(node, jpath_selector_t);
 		if (!selector) {
-			fr_strerror_printf("Failed allocating selector");
+			fr_strerror_const("Failed allocating selector");
 			return in - p;
 		}
 		stail = &selector->next;
@@ -835,7 +830,7 @@ do { \
 
 	if (inlen < 1) {
 	bad_start:
-		fr_strerror_printf("Expected root specifier '$', or current node specifier '@'");
+		fr_strerror_const("Expected root specifier '$', or current node specifier '@'");
 		return 0;
 	}
 
@@ -901,7 +896,7 @@ do { \
 				node->selector->type = JPATH_SELECTOR_RECURSIVE_DESCENT;
 
 				if ((p + 1) == end) {
-					fr_strerror_printf("Path may not end in recursive descent");
+					fr_strerror_const("Path may not end in recursive descent");
 					goto error;
 				}
 
@@ -931,7 +926,7 @@ do { \
 				}
 				p += slen;
 				if (p == end) return p - in;	/* The end of string! */
-				rad_assert(p < end);
+				fr_assert(p < end);
 			}
 			break;
 
@@ -943,11 +938,11 @@ do { \
 			}
 			p += slen;
 			if (p == end) return p - in;	/* The end of string! */
-			rad_assert(p < end);
+			fr_assert(p < end);
 			break;
 
 		default:
-			fr_strerror_printf("Expected field specifier '.' or selector '['");
+			fr_strerror_const("Expected field specifier '.' or selector '['");
 			goto error;
 		}
 	}

@@ -1,0 +1,69 @@
+
+
+
+
+= Expr Module
+
+This module performs mathematical calculations:
+
+NOTE: This module is not called directly in any section, it is
+invoked through the dynamic expansion of strings.
+
+e.g:
+
+  Attribute-Name = "%{expr:2 + 3 + &NAS-Port}"
+
+It supports the following operators (in order of precedence).
+
+[options="header,autowidth"]
+|===
+| Operator  | Description
+| &         | binary AND
+| \|        | binary OR
+| <<	       | left shift
+| >>        | right shift
+| +         | addition
+| -         | subtraction
+| *         | multiply
+| /         | divide
+| %%        | remainder
+| ^         | exponentiation
+| (...)     | sub-expression
+|===
+
+Operator precedence follows the normal rules.
+Division by zero means that the entire expression is invalid.
+
+All calculations are done on signed 63-bit integers.
+e.g. `int64_t`.  This should be sufficient for all normal
+purposes.
+
+  * Hex numbers are supported:		0xabcdef
+  * It also allows unary negation:	-1
+  * And twos complement:		~1
+  * Otherwise numbers are decimal.
+
+As with all string expansions, you can nest the expansions:
+
+  %{expr: %{NAS-Port} + 1}
+  %{expr: %{sql:SELECT ... } + 1}
+
+Attribute references are supported for integer attributes.
+e.g. `&NAS-Port`.  The benefit of using attribute references
+is that the expression is calculated directly on the
+attribute.
+
+
+
+## Configuration Settings
+
+This module takes no configuration.
+
+
+
+== Default Configuration
+
+```
+expr {
+}
+```

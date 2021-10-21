@@ -1,0 +1,12 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = 'Bob'
+User-Password = 'Saget'
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+

@@ -1,0 +1,17 @@
+= Howto Guides
+
+The documents in this section describe how to perform various common tasks with
+FreeRADIUS. They also provide worked examples on using the various modules in
+common deployment scenarions.
+
+If you have a topic you'd like to see included in the list of howtos, contact
+the developers on the
+link:http://lists.freeradius.org/mailman/listinfo/freeradius-users[User's
+mailing list].
+
+Some of the documents here started life as pages on
+link:http://wiki.freeradius.org[wiki.freeradius.org].  If you've just been
+through a particularly arduous service configuration and deployment, and would
+like to help your fellow users, then please create a new how to on the wiki.
+If it's popular enough, we'll include it in the official documentation for the
+next release.

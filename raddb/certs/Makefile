@@ -17,9 +17,10 @@ PARTIAL		= -partial_chain
 endif
 
 #
-#  Set the passwords
+#	Just to mute the WARNING messages complaining about the missing openssl.cnf
 #
-include passwords.mk
+OPENSSL_CONF := /dev/null
+export OPENSSL_CONF
 
 ######################################################################
 #
@@ -27,16 +28,16 @@ include passwords.mk
 #
 ######################################################################
 .PHONY: all
-all: index.txt serial dh server ca client ocsp
+all: index.txt serial dh ca server client ocsp
 
 .PHONY: client
-client: rsa/client.pem ecc/client.pem
+client: rsa/client.pem ecc/client.pem rsa/client.crt ecc/client.crt
 
 .PHONY: ca
-ca: rsa/ca.der ecc/ca.der
+ca: rsa/ca.der ecc/ca.der rsa/ca.crl rsa/ca.crt ecc/ca.crt
 
 .PHONY: server
-server: rsa/server.pem rsa/server.vrfy ecc/server.pem ecc/server.vrfy
+server: rsa/server.pem rsa/server.crt rsa/server.vrfy ecc/server.pem ecc/server.crt ecc/server.vrfy
 
 .PHONY: ocsp
 ocsp: rsa/ocsp.pem rsa/ocsp.vrfy ecc/ocsp.pem ecc/ocsp.vrfy
@@ -47,7 +48,14 @@ inner-server: rsa/inner-server.pem rsa/inner-server.vrfy ecc/inner-server.pem ec
 .PHONY: verify
 verify: rsa/server.vrfy rsa/client.vrfy ecc/server.vrfy ecc/client.vrfy
 
+######################################################################
+#
+#  Set the passwords once, so we don't have to do it on every
+#  invocation of "make".
+#
+######################################################################
 passwords.mk: server.cnf ca.cnf client.cnf inner-server.cnf ocsp.cnf
+	@echo BUILD passwords.mk
 	@echo "PASSWORD_SERVER	= '$(shell grep output_password server.cnf | sed 's/.*=//;s/^ *//')'"		> $@
 	@echo "PASSWORD_INNER	= '$(shell grep output_password inner-server.cnf | sed 's/.*=//;s/^ *//')'"	>> $@
 	@echo "PASSWORD_CA	= '$(shell grep output_password ca.cnf | sed 's/.*=//;s/^ *//')'"		>> $@
@@ -55,6 +63,8 @@ passwords.mk: server.cnf ca.cnf client.cnf inner-server.cnf ocsp.cnf
 	@echo "PASSWORD_OCSP	= '$(shell grep output_password ocsp.cnf | sed 's/.*=//;s/^ *//')'"		>> $@
 	@echo "USER_NAME	= '$(shell grep emailAddress client.cnf | grep '@' | sed 's/.*=//;s/^ *//')'"	>> $@
 	@echo "CA_DEFAULT_DAYS  = '$(shell grep default_days ca.cnf | sed 's/.*=//;s/^ *//')'"			>> $@
+
+-include passwords.mk
 
 ######################################################################
 #
@@ -87,13 +97,23 @@ dh:
 rsa/ca.key rsa/ca.pem: ca.cnf | $(OUTPUT_DIRS)
 	@[ -f index.txt ] || $(MAKE) index.txt
 	@[ -f serial ] || $(MAKE) serial
-	openssl req -new -x509 -keyout rsa/ca.key -out rsa/ca.pem -config ./ca.cnf -days $(CA_DEFAULT_DAYS)
+	openssl req -new -x509 -keyout rsa/ca.key -out rsa/ca.pem -config ./ca.cnf -days $(CA_DEFAULT_DAYS) \
+	-passin pass:$(PASSWORD_CA) -passout pass:$(PASSWORD_CA)
 
 rsa/ca.der: rsa/ca.pem
 	openssl x509 -inform PEM -outform DER -in rsa/ca.pem -out rsa/ca.der
 
+rsa/ca.crl: rsa/ca.pem
+	openssl ca -gencrl -keyfile rsa/ca.key -cert rsa/ca.pem -config ./ca.cnf -out rsa/ca-crl.pem -key $(PASSWORD_CA)
+	openssl crl -in rsa/ca-crl.pem -outform der -out rsa/ca.crl
+	@rm -f rsa/ca-crl.pem
+
 rsa/ca.csr: ca.cnf
 	openssl req -new -x509 -keyout rsa/ca.key -out rsa/ca.csr -config ./ca.cnf -days $(CA_DEFAULT_DAYS)
+
+rsa/ca.crt: rsa/ca.pem
+	openssl x509 -outform der -in rsa/ca.pem -out rsa/ca.crt
+
 
 ######################################################################
 #
@@ -111,6 +131,10 @@ ecc/ca.pem: ecc/ca.key ca.cnf
 	@[ -f serial ] || $(MAKE) serial
 	openssl req -new -x509 -key ecc/ca.key -out ecc/ca.pem -config ./ca.cnf -days $(CA_DEFAULT_DAYS)
 
+ecc/ca.crt: ecc/ca.pem
+	openssl x509 -outform der -in ecc/ca.pem -out ecc/ca.crt
+
+
 ######################################################################
 #
 #  Create a new server certificate, signed by the above RSA CA.
@@ -119,7 +143,7 @@ ecc/ca.pem: ecc/ca.key ca.cnf
 rsa/server.csr rsa/server.key: server.cnf | $(OUTPUT_DIRS)
 	openssl req -new -out rsa/server.csr -keyout rsa/server.key -config ./server.cnf
 
-rsa/server.crt: rsa/server.csr rsa/ca.key rsa/ca.pem
+rsa/server.crt: rsa/ca.key rsa/ca.pem rsa/server.csr
 	openssl ca -batch -keyfile rsa/ca.key -cert rsa/ca.pem -in rsa/server.csr -key $(PASSWORD_CA) -out rsa/server.crt -config ./server.cnf
 
 rsa/server.p12: rsa/server.crt
@@ -143,7 +167,7 @@ ecc/server.key: server.cnf | $(OUTPUT_DIRS)
 ecc/server.csr: ecc/server.key server.cnf
 	openssl req -new -out ecc/server.csr -key ecc/server.key -config ./server.cnf
 
-ecc/server.crt: ecc/server.csr ecc/ca.key ecc/ca.pem
+ecc/server.crt: ecc/ca.key ecc/ca.pem ecc/server.csr
 	openssl ca -batch -keyfile ecc/ca.key -cert ecc/ca.pem -in ecc/server.csr -key $(PASSWORD_CA) -out ecc/server.crt -config ./server.cnf
 
 ecc/server.p12: ecc/server.crt
@@ -164,7 +188,7 @@ ecc/server.vrfy: ecc/ca.pem
 rsa/ocsp.csr rsa/ocsp.key: ocsp.cnf | $(OUTPUT_DIRS)
 	openssl req -new -out rsa/ocsp.csr -keyout rsa/ocsp.key -config ./ocsp.cnf
 
-rsa/ocsp.crt: rsa/ocsp.csr rsa/ca.key rsa/ca.pem
+rsa/ocsp.crt: rsa/ca.key rsa/ca.pem rsa/ocsp.csr
 	openssl ca -batch -keyfile rsa/ca.key -cert rsa/ca.pem -in rsa/ocsp.csr -key $(PASSWORD_CA) -out rsa/ocsp.crt -config ./ocsp.cnf
 
 rsa/ocsp.p12: rsa/ocsp.crt
@@ -188,7 +212,7 @@ ecc/ocsp.key: ocsp.cnf | $(OUTPUT_DIRS)
 ecc/ocsp.csr: ecc/ocsp.key ocsp.cnf
 	openssl req -new -out ecc/ocsp.csr -key ecc/ocsp.key -config ./ocsp.cnf
 
-ecc/ocsp.crt: ecc/ocsp.csr ecc/ca.key ecc/ca.pem
+ecc/ocsp.crt: ecc/ca.key ecc/ca.pem ecc/ocsp.csr
 	openssl ca -batch -keyfile ecc/ca.key -cert ecc/ca.pem -in ecc/ocsp.csr -key $(PASSWORD_CA) -out ecc/ocsp.crt -config ./ocsp.cnf
 
 ecc/ocsp.p12: ecc/ocsp.crt
@@ -209,7 +233,7 @@ ecc/ocsp.vrfy: ecc/ca.pem
 rsa/client.csr rsa/client.key: client.cnf | $(OUTPUT_DIRS)
 	openssl req -new -out rsa/client.csr -keyout rsa/client.key -config ./client.cnf
 
-rsa/client.crt: rsa/client.csr rsa/ca.pem rsa/ca.key
+rsa/client.crt: rsa/ca.pem rsa/ca.key rsa/client.csr
 	openssl ca -batch -keyfile rsa/ca.key -cert rsa/ca.pem -in rsa/client.csr -key $(PASSWORD_CA) -out rsa/client.crt -config ./client.cnf
 
 rsa/client.p12: rsa/client.crt
@@ -235,7 +259,7 @@ ecc/client.key: client.cnf | $(OUTPUT_DIRS)
 ecc/client.csr: ecc/client.key client.cnf
 	openssl req -new -out ecc/client.csr -key ecc/client.key -config ./client.cnf
 
-ecc/client.crt: ecc/client.csr ecc/ca.pem ecc/ca.key
+ecc/client.crt: ecc/ca.pem ecc/ca.key ecc/client.csr
 	openssl ca -batch -keyfile ecc/ca.key -cert ecc/ca.pem -in ecc/client.csr -key $(PASSWORD_CA) -out ecc/client.crt -config ./client.cnf
 
 ecc/client.p12: ecc/client.crt
@@ -243,7 +267,7 @@ ecc/client.p12: ecc/client.crt
 
 ecc/client.pem: ecc/client.p12
 	openssl pkcs12 -in ecc/client.p12 -out ecc/client.pem -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
-	cp ecc/client.pem $(USER_NAME).pem
+	cp ecc/client.pem $(USER_NAME).ecc.pem
 
 .PHONY: ecc/client.vrfy
 ecc/client.vrfy: ecc/ca.pem ecc/client.pem
@@ -259,7 +283,7 @@ rsa/inner-server.csr rsa/inner-server.key: inner-server.cnf | $(OUTPUT_DIRS)
 	openssl req -new -out rsa/inner-server.csr -keyout rsa/inner-server.key -config ./inner-server.cnf
 	chmod g+r rsa/inner-server.key
 
-rsa/inner-server.crt: rsa/inner-server.csr rsa/ca.key rsa/ca.pem
+rsa/inner-server.crt: rsa/ca.key rsa/ca.pem rsa/inner-server.csr
 	openssl ca -batch -keyfile rsa/ca.key -cert rsa/ca.pem -in rsa/inner-server.csr -key $(PASSWORD_CA) -out rsa/inner-server.crt -extensions xpserver_ext -extfile xpextensions -config ./inner-server.cnf
 
 rsa/inner-server.p12: rsa/inner-server.crt
@@ -286,7 +310,7 @@ ecc/inner-server.csr: ecc/inner-server.key inner-server.cnf
 	openssl req -new -out ecc/inner-server.csr -key ecc/inner-server.key -config ./inner-server.cnf
 	chmod g+r ecc/inner-server.key
 
-ecc/inner-server.crt: ecc/inner-server.csr ecc/ca.key ecc/ca.pem
+ecc/inner-server.crt: ecc/ca.key ecc/ca.pem ecc/inner-server.csr
 	openssl ca -batch -keyfile ecc/ca.key -cert ecc/ca.pem -in ecc/inner-server.csr -key $(PASSWORD_CA) -out ecc/inner-server.crt -extensions xpserver_ext -extfile xpextensions -config ./inner-server.cnf
 
 ecc/inner-server.p12: ecc/inner-server.crt
@@ -321,7 +345,7 @@ printca:
 	openssl x509 -text -in ecc/ca.pem
 
 clean:
-	@rm -f *~ *old rsa/client.csr rsa/client.key rsa/client.crt rsa/client.p12 rsa/client.pem ecc/client.csr ecc/client.key ecc/client.crt ecc/client.p12 ecc/client.pem
+	@rm -f *~ *old rsa/client.* ecc/client.*
 
 #
 #	Make a target that people won't run too often.

@@ -25,7 +25,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/radius/defs.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/syserror.h>
@@ -42,14 +42,14 @@ RCSID("$Id$")
 
 static int		debug_lvl = 0;
 
-static void NEVER_RETURNS usage(void)
+static NEVER_RETURNS void usage(void)
 {
 	fprintf(stderr, "usage: schedule_test [OPTS]\n");
 	fprintf(stderr, "  -n <num>               Start num network threads\n");
 	fprintf(stderr, "  -w <num>               Start num worker threads\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
 
-	exit(EXIT_FAILURE);
+	fr_exit_now(EXIT_FAILURE);
 }
 
 int main(int argc, char *argv[])
@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 
 	fr_time_start();
 
-	fr_log_init(&default_log, false);
+	fr_log_init_legacy(&default_log, false);
 
 	while ((c = getopt(argc, argv, "n:w:x")) != -1) switch (c) {
 		case 'n':
@@ -93,12 +93,12 @@ int main(int argc, char *argv[])
 	sched = fr_schedule_create(autofree, NULL, &default_log, L_DBG_LVL_MAX, num_networks, num_workers, NULL, NULL);
 	if (!sched) {
 		fprintf(stderr, "schedule_test: Failed to create scheduler\n");
-		exit(EXIT_FAILURE);
+		fr_exit_now(EXIT_FAILURE);
 	}
 
 	sleep(1);
 
-	(void) fr_schedule_destroy(sched);
+	(void) fr_schedule_destroy(&sched);
 
 	return 0;
 }

@@ -32,7 +32,7 @@ RCSIDH(message_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct fr_message_set_t fr_message_set_t;
+typedef struct fr_message_set_s fr_message_set_t;
 
 typedef enum fr_message_status_t {
 	FR_MESSAGE_FREE = 0,

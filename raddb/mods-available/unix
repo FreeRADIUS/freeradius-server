@@ -8,8 +8,7 @@
 #  = Unix Module
 #
 #  The `unix` module calls the system `getpwent()` functions to get
-#  the `known good` password.  This password is usually in the `crypt`
-#  form, and is incompatible with `CHAP`, `MS-CHAP`, `PEAP`, etc.
+#  the `known good` password.
 #
 #  If the passwords are in /etc/shadow, you will need to set the
 #  `group` configuration in `radiusd.conf` so that the server can read
@@ -17,9 +16,22 @@
 #
 #  Look for "shadow", and follow the instructions there.
 #
+#  NOTE: This password is usually in the `crypt` form, and is incompatible
+#  with `CHAP`, `MS-CHAP`, `PEAP`, etc*.
+#
+#  == Group Comparisons
+#
+#  The module also registers a `Unix-Group` comparison, where it is possible
+#  to check if the user is a member of a particular Unix group.
+#
+#    if (&Unix-Group == "admin") { ...
+#
+#  Note that the old attributes `Group` and `Group-Name` are no longer
+#  supported.  They were confusing, and poorly named.
+#
 
 #
-#  ## Default instance
+#  ## Configuration Settings
 #
 unix {
 	#

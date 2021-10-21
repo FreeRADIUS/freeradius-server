@@ -1,7 +1,7 @@
 #pragma once
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include "acexport.h"
 
@@ -35,19 +35,20 @@ typedef enum {
 
 #define SECURID_STATE_LEN 32
 typedef struct {
-	struct _securid_session_t *prev, *next;
-	SDI_HANDLE		  sdiHandle;
-	SECURID_SESSION_STATE	  securidSessionState;
+	struct _securid_session_t	*prev, *next;
+	fr_rb_node_t			node;
+	SDI_HANDLE		 	 sdiHandle;
+	SECURID_SESSION_STATE	  	securidSessionState;
 
-	char			  state[SECURID_STATE_LEN];
+	char			  	state[SECURID_STATE_LEN];
 
-	fr_ipaddr_t		  src_ipaddr;
-	time_t			  timestamp;
-	unsigned int		  session_id;
-	uint32_t		  trips;
+	fr_ipaddr_t			src_ipaddr;
+	time_t				timestamp;
+	unsigned int			session_id;
+	uint32_t			trips;
 
-	char			  *pin;	     /* previous pin if user entered it during NEW-PIN mode process */
-	char			  *identity; /* save user's identity name for future use */
+	char				*pin;	     /* previous pin if user entered it during NEW-PIN mode process */
+	char				 *identity; /* save user's identity name for future use */
 
 } SECURID_SESSION;
 
@@ -63,7 +64,7 @@ typedef struct {
  */
 typedef struct {
 	pthread_mutex_t	session_mutex;
-	rbtree_t*	session_tree;
+	fr_rb_tree_t*	session_tree;
 	SECURID_SESSION	*session_head, *session_tail;
 
 	unsigned int	 last_session_id;
@@ -83,11 +84,11 @@ extern fr_dict_attr_t const *attr_user_password;
 
 /* Memory Management */
 SECURID_SESSION*     securid_session_alloc(void);
-void		     securid_session_free(rlm_securid_t *inst, REQUEST *request,SECURID_SESSION *session)
+void		     securid_session_free(rlm_securid_t *inst, request_t *request,SECURID_SESSION *session)
 		     CC_HINT(nonnull);
 
-void		     securid_sessionlist_free(rlm_securid_t *inst,REQUEST *request) CC_HINT(nonnull);
+void		     securid_sessionlist_free(rlm_securid_t *inst,request_t *request) CC_HINT(nonnull);
 
-int		     securid_sessionlist_add(rlm_securid_t *inst, REQUEST *request, SECURID_SESSION *session)
+int		     securid_sessionlist_add(rlm_securid_t *inst, request_t *request, SECURID_SESSION *session)
 		     CC_HINT(nonnull);
-SECURID_SESSION	     *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request) CC_HINT(nonnull);
+SECURID_SESSION	     *securid_sessionlist_find(rlm_securid_t *inst, request_t *request) CC_HINT(nonnull);

@@ -1,0 +1,20 @@
+= Before starting
+
+Try to determine answers to the following questions:
+
+* What's the IP address of the LDAP server being tested?
+** If using an FQDN does the FQDN resolve to this IP address?
+* Does the LDAP server requires encrypted connections?
+** If yes:
+*** Does the LDAP server use the StartTLS extension to transition to
+encrypted communication, or is communication encrypted from the start (LDAPS)?
+*** What are the necessary root certificates and intermediary certificates
+needed to validate the identity of the LDAP server?
+* What port is used to connect to the LDAP server?  Usually this will be `389`
+(unencrypted or StartTLS) or `636` (LDAPS).
+* Do connections need to be bound to perform searches on the LDAP directory?
+** If yes:
+*** Determine what credentials are needed for binding, and whether a client
+certificate is required.
+* Determine the Base DN, the object deepest in the tree that contains the object
+representing users, groups, clients etc...

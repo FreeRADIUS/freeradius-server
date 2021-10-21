@@ -26,7 +26,7 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/ldap/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <sasl/sasl.h>
 
 /** Holds arguments for the bind operation
@@ -88,18 +88,22 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *uctx
 		switch (cb_p->id) {
 		case SASL_CB_AUTHNAME:
 			cb_p->result = sasl_ctx->identity;
+			cb_p->len = strlen(sasl_ctx->identity);
 			break;
 
 		case SASL_CB_PASS:
 			cb_p->result = sasl_ctx->password;
+			cb_p->len = strlen(sasl_ctx->password);
 			break;
 
 		case SASL_CB_USER:
 			cb_p->result = sasl_ctx->proxy ? sasl_ctx->proxy : sasl_ctx->identity;
+			cb_p->len = sasl_ctx->proxy ? strlen(sasl_ctx->proxy) : strlen(sasl_ctx->identity);
 			break;
 
 		case SASL_CB_GETREALM:
 			cb_p->result = sasl_ctx->realm;
+			cb_p->len = strlen(sasl_ctx->realm);
 			break;
 
 		default:
@@ -124,24 +128,25 @@ static void _ldap_sasl_bind_io_read(fr_event_list_t *el, int fd, UNUSED int flag
 	fr_ldap_rcode_t		status;
 
 	/*
+	 *	Free the old result (if there is one)
+	 */
+	if (sasl_ctx->result) {
+		ldap_msgfree(sasl_ctx->result);
+		sasl_ctx->result = NULL;
+	}
+
+	/*
 	 *	If LDAP parse result indicates there was an error
 	 *	then we're done.
 	 */
-	status = fr_ldap_result(&sasl_ctx->result, NULL, c, sasl_ctx->msgid, LDAP_MSG_ALL, sasl_ctx->identity, 0);
+	status = fr_ldap_result(&sasl_ctx->result, NULL, c, sasl_ctx->msgid, LDAP_MSG_ALL,
+				sasl_ctx->identity, fr_time_delta_wrap(0));
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 	case LDAP_PROC_CONTINUE:
 	{
 		struct berval			*srv_cred;
 		int				ret;
-
-		/*
-		 *	Free the old result (if there is one)
-		 */
-		if (sasl_ctx->result) {
-			ldap_msgfree(sasl_ctx->result);
-			sasl_ctx->result = NULL;
-		}
 
 		ret = ldap_parse_sasl_bind_result(c->handle, sasl_ctx->result, &srv_cred, 0);
 		if (ret != LDAP_SUCCESS) {
@@ -153,7 +158,7 @@ static void _ldap_sasl_bind_io_read(fr_event_list_t *el, int fd, UNUSED int flag
 		}
 
 		DEBUG3("SASL response  : %pV", fr_box_strvalue_len(srv_cred->bv_val, srv_cred->bv_len));
-		ldap_memfree(srv_cred);
+		ber_bvfree(srv_cred);
 
 		/*
 		 *	If we need to continue, wait until the
@@ -195,17 +200,12 @@ static void _ldap_sasl_bind_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 	LDAPControl			*our_clientctrls[LDAP_MAX_CONTROLS];
 
 	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
-			      sizeof(our_serverctrls) / sizeof(*our_serverctrls),
-			      sizeof(our_clientctrls) / sizeof(*our_clientctrls),
+			      NUM_ELEMENTS(our_serverctrls),
+			      NUM_ELEMENTS(our_clientctrls),
 			      c, sasl_ctx->serverctrls, sasl_ctx->clientctrls);
 
-	DEBUG2("Starting SASL mech(s): %s", sasl_ctx->mechs);
+	DEBUG2("%s SASL mech(s): %s", (sasl_ctx->result == NULL ? "Starting" : "Continuing"), sasl_ctx->mechs);
 
-	/*
-	 *	Set timeout to be 0.0, which is the magic
-	 *	non-blocking value.
-	 */
-	(void) ldap_set_option(c->handle, LDAP_OPT_NETWORK_TIMEOUT, &fr_time_delta_to_timeval(0));
 	ret = ldap_sasl_interactive_bind(c->handle, NULL, sasl_ctx->mechs,
 					 our_serverctrls, our_clientctrls,
 					 LDAP_SASL_AUTOMATIC,
@@ -242,6 +242,11 @@ static void _ldap_sasl_bind_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 	 *	Want to read more SASL stuff...
 	 */
 	case LDAP_SASL_BIND_IN_PROGRESS:
+		if (fd < 0) {
+			ret = ldap_get_option(c->handle, LDAP_OPT_DESC, &fd);
+			if ((ret != LDAP_OPT_SUCCESS) || (fd < 0)) goto error;
+		}
+		c->fd = fd;
 		ret = fr_event_fd_insert(sasl_ctx, el, fd,
 					 _ldap_sasl_bind_io_read,
 					 NULL,
@@ -316,9 +321,13 @@ int fr_ldap_sasl_bind_async(fr_ldap_connection_t *c,
 	sasl_ctx->serverctrls = serverctrls;
 	sasl_ctx->clientctrls = clientctrls;
 
-	el = fr_connection_get_el(c->conn);
+	el = c->conn->el;
 
-	if (ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) == LDAP_SUCCESS) {
+	/*
+	 *	ldap_get_option can return LDAP_SUCCESS even if the fd is not yet available
+	 *	- hence the test for fd >= 0
+	 */
+	if ((ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) == LDAP_SUCCESS) && (fd >= 0)){
 		int ret;
 
 		ret = fr_event_fd_insert(sasl_ctx, el, fd,

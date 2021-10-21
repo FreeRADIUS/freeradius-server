@@ -1,0 +1,21 @@
+#
+#  PRE: update
+#
+
+# Test empty call section
+call second {
+}
+
+if (!&reply.Reply-Message) {
+	test_fail
+}
+
+if (&reply.Reply-Message[0] != "call second") {
+	test_fail
+}
+
+update reply {
+	&Reply-Message !* ANY
+}
+
+success

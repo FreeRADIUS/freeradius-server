@@ -1,6 +1,6 @@
 if (&User-Name == 'plaintext_with_dollar_2') {
 	update control {
-		&Cleartext-Password := 'pass$word'
+		&Password.Cleartext := 'pass$word'
 	}
 	pap.authorize
 	pap.authenticate

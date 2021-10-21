@@ -5,7 +5,7 @@
 After refactoring...
 
 * on read(), don't put connection into active state, as it may not be writable?
- * or, just do it, and hope for the best... with the event loop handling it
+  * or, just do it, and hope for the best... with the event loop handling it
 
 
 ## RADIUS fixes
@@ -27,7 +27,7 @@ We limit the number of connections, but not the number of proxied
 packets.  This is because (for now), each connection can only proxy 256 packets...
 
 ## Status Checks
-    
+
 * connection negotiation in Status-Server in proto_radius
   * some is there (Response-Length)
   * add more?  Extended ID, etc.
@@ -59,13 +59,15 @@ this whole thing is wrong... we end up signaling on every damned packet in real 
 OK... fix the damned channel to use queue depth instead of ACKs
 which makes them less general, but better.  The worker can NAK a packet, send a reply, or mark it ask discarded
 
-DATA		N -> W: (packet + queue 1, active)
 
-DATA		N <- W (packet + queue is now 0, inactive)
+    DATA        N -> W: (packet + queue 1, active)
+    
+    DATA        N <- W (packet + queue is now 0, inactive)
+    
+    DISCARD     N <- W (no packet, queue is now 0, inactive)
+    
+    SLEEPING    N <- W (no packet, queue is 1, inactive)
 
-DISCARD		N <- W (no packet, queue is now 0, inactive)
-
-SLEEPING	N <- W (no packet, queue is 1, inactive)
 
 We also need an "must_signal" flag, for if the other end is
 sleeping... the network always sets it, I guess..
@@ -82,12 +84,12 @@ sleeping... the network always sets it, I guess..
   little weird, but it should work.
 
 * needs helper functions in virtual_server.c to do it.. and to create
-  child REQUEST async stuff with listen, protocol handler, etc.
+  child request_t async stuff with listen, protocol handler, etc.
 
 * fork also needs to do this sanity check on compile, so that it knows
   it can dereference sections which exist...
 
-### clean up REQUEST structure
+### clean up request_t structure
 
 many fields are essentially unused.  request->proxy is no longer used,
 but is referenced all over the place.

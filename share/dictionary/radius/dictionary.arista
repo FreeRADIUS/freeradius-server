@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -12,10 +12,18 @@
 VENDOR		Arista				30065
 BEGIN-VENDOR	Arista
 
-ATTRIBUTE	Arista-AVPair				1	string
-ATTRIBUTE	Arista-User-Priv-Level			2	integer
-ATTRIBUTE	Arista-User-Role			3	string
-ATTRIBUTE	Arista-CVP-Role				4	string
-ATTRIBUTE	Arista-Command				5	string
+ATTRIBUTE	AVPair					1	string
+ATTRIBUTE	User-Priv-Level				2	integer
+ATTRIBUTE	User-Role				3	string
+ATTRIBUTE	CVP-Role				4	string
+ATTRIBUTE	Command					5	string
+ATTRIBUTE	WebAuth					6	integer
+ATTRIBUTE	BlockMac				7	string
+ATTRIBUTE	UnblockMac				8	string
+ATTRIBUTE	PortFlap				9	integer
+ATTRIBUTE	Captive-Portal				10	string
+
+VALUE	WebAuth				start			1
+VALUE	WebAuth				complete		2
 
 END-VENDOR   Arista

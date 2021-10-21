@@ -1,0 +1,3 @@
+update control {
+	&Password.Cleartext := &User-Name
+}

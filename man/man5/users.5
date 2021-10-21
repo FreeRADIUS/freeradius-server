@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH USERS 5 "04 Jan 2004" "" "FreeRADIUS user authorization file"
+.TH USERS 5 "27 Apr 2021" "" "FreeRADIUS user authorization file"
 .SH NAME
 users \- user authorization file for the FreeRADIUS server
 .SH DESCRIPTION
@@ -59,14 +59,6 @@ Care should be taken when using \fBFall-Through\fP.  The server should
 be tested in debugging mode with a number of test requests, in order
 to verify that the configured entries behave as expected.
 
-The special attribute \fBAuth-Type\fP is used to identify the
-authentication type to be used for that user.  See the
-\fBdictionary\fP file for a list of permitted values for the
-\fBAuth-Type\fP attribute.
-
-Once the \fBusers\fP file has been processed, the request is authenticated,
-using the method given by \fBAuth-Type\fP.
-
 .SH OPERATORS
 Additional operators other than \fB=\fP may be used for the attributes in
 either the check item, or reply item list.  The following is a list of
@@ -102,10 +94,18 @@ Not allowed as a reply item.
 .TP 0.5i
 .B "Attribute += Value"
 Always matches as a check item, and adds the current attribute with
-value to the list of configuration items.
+value to the tail of the list of configuration items.
 .br
 As a reply item, it has an identical meaning, but the attribute is
-added to the reply items.
+added to the tail of the reply items list.
+
+.TP 0.5i
+.B "Attribute ^= Value"
+Always matches as a check item, and adds the current attribute with
+value to the head of the list of configuration items.
+.br
+As a reply item, it has an identical meaning, but the attribute is
+added to the head of the reply items list.
 
 .TP 0.5i
 .B "Attribute != Value"
@@ -156,28 +156,29 @@ attribute, no matter what the value is.
 .br
 Not allowed as a reply item.
 
+.TP 0.5i
+.B "Attribute =~ /regex/"
+As a check item, it matches if the value of the regular expression
+matches the value of the attribute.
+.br
+Not allowed as a reply item.
+
+.TP 0.5i
+.B "Attribute !~ /regex/"
+As a check item, it matches if the value of the value of the regular expression
+does not  the value of the attribute.
+Not allowed as a reply item.
+
 .SH EXAMPLES
 
 .DS
-bob	Cleartext-Password := "hello"
+bob	Password.Cleartext := "hello"
 
 .DE
 .RS
 Requests containing the User-Name attribute, with value "bob", will be
 authenticated using the "known good" password "hello".  There are no
 reply items, so the reply will be empty.
-.RE
-
-.DS
-DEFAULT	Auth-Type = System
-.br
-	Fall-Through = Yes
-
-.DE
-.RS
-For all users reaching this entry, perform authentication against the
-system, unless Auth-Type has already been set.  Also, process any
-following entries which may match.
 .RE
 
 .DS

@@ -35,9 +35,9 @@
  */
 eap_type_t eap_name2type(char const *name)
 {
-	fr_dict_enum_t	*dv;
+	fr_dict_enum_value_t	*dv;
 
-	dv = fr_dict_enum_by_alias(attr_eap_type, name, -1);
+	dv = fr_dict_enum_by_name(attr_eap_type, name, -1);
 	if (!dv) return FR_EAP_METHOD_INVALID;
 
 	if (dv->value->vb_uint32 >= FR_EAP_METHOD_MAX) return FR_EAP_METHOD_INVALID;
@@ -51,10 +51,10 @@ eap_type_t eap_name2type(char const *name)
  */
 char const *eap_type2name(eap_type_t method)
 {
-	fr_dict_enum_t	*dv;
+	fr_dict_enum_value_t	*dv;
 
 	dv = fr_dict_enum_by_value(attr_eap_type, fr_box_uint32(method));
-	if (dv) return dv->alias;
+	if (dv) return dv->name;
 
 	return "unknown";
 }

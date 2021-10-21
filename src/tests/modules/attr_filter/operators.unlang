@@ -1,0 +1,33 @@
+attr_filter
+
+if ((!&NAS-Port) || (&NAS-Port != 10)) {
+        test_fail
+}
+
+if (&Idle-Timeout) {
+        test_fail
+}
+
+if ((&Called-Station-Id != "bar") || (&Called-Station-Id[1])) {
+        test_fail
+}
+
+if ((&Service-Type != 5) || (&Service-Type[1])) {
+        test_fail
+}
+
+if ((&Framed-IP-Address != 192.168.10.20) || (&Framed-IP-Address[1])) {
+        test_fail
+}
+
+if ((&Calling-Station-Id != "bob") || (&Calling-Station-Id[1] != "jim") || (&Calling-Station-Id[2])) {
+        test_fail
+}
+
+update control {
+	&Password.Cleartext := "goodbye"
+}
+
+update reply {
+        &Reply-Message := &request.Reply-Message
+}

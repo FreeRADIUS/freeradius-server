@@ -6,36 +6,26 @@ ldap
 #
 #  Resolve using group name attribute
 #
-if (&LDAP-Group == 'foo') {
-        test_pass
-}
-else {
+if (&LDAP-Group != 'foo') {
         test_fail
 }
 
 #
 #  Resolve using group DN
 #
-if (&LDAP-Group == 'cn=foo,ou=groups,dc=example,dc=com') {
-        test_pass
-}
-else {
+if (&LDAP-Group != 'cn=foo,ou=groups,dc=example,dc=com') {
         test_fail
 }
 
 #
 #  Check we have these values cached
 #
-if (&control:LDAP-Cached-Membership[*] == 'foo') {
-	test_pass
-}
-else {
+if (&control.LDAP-Cached-Membership[*] != 'foo') {
 	test_fail
 }
 
-if (&control:LDAP-Cached-Membership[*] == 'cn=foo,ou=groups,dc=example,dc=com') {
-	test_pass
-}
-else {
+if (&control.LDAP-Cached-Membership[*] != 'cn=foo,ou=groups,dc=example,dc=com') {
 	test_fail
 }
+
+test_pass

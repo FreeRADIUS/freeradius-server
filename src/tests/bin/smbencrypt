@@ -3,22 +3,22 @@
 . src/tests/bin/lib.sh
 
 # -h help option?
-do_test $TESTBIN/smbencrypt -h
+do_test $TEST_BIN/smbencrypt -h
 
 # encrypt output?
 _pass_raw="caipirinha"
 
 _expect_lm_hash="1F2FD8485E0EC984E2000DE7B1D8469C"
-_test_lm_hash="$($TESTBIN/smbencrypt $_pass_raw 2>&1 | tail -1 | cut -f1)"
+_test_lm_hash="$($TEST_BIN/smbencrypt $_pass_raw 2>&1 | tail -1 | cut -f1)"
 
 if [ "$_expect_lm_hash" != "$_test_lm_hash" ]; then
-	echo "The $TESTBIN/smbencrypt $_pass_raw returns wrong result"
+	echo "The $TEST_BIN/smbencrypt $_pass_raw returns wrong result"
 	exit 1
 fi
 
 _expect_nt_hash="2012E4A51A4AC527D1C88DBA8D64C878"
-_test_nt_hash="$($TESTBIN/smbencrypt $_pass_raw 2>&1 | tail -1 | cut -f2)"
+_test_nt_hash="$($TEST_BIN/smbencrypt $_pass_raw 2>&1 | tail -1 | cut -f2)"
 if [ "$_expect_nt_hash" != "$_test_nt_hash" ]; then
-	echo "The $TESTBIN/smbencrypt $_pass_raw returns wrong result"
+	echo "The $TEST_BIN/smbencrypt $_pass_raw returns wrong result"
 	exit 1
 fi

@@ -30,9 +30,11 @@ RCSIDH(dl_h, "$Id$")
 #else
 #  include <dlfcn.h>
 #endif
+#include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/rb.h>
+#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/version.h>
 
-#include <talloc.h>
 #include <stdbool.h>
 
 #ifdef __cplusplus
@@ -54,6 +56,8 @@ typedef struct dl_loader_s dl_loader_t;
  * Contains module's dlhandle, and the functions it exports.
  */
 typedef struct dl_s {
+	fr_rb_node_t		node;		//!< Entry in the rbtree module handles.
+
 	char const		*name;		//!< Name of the module e.g. sql.
 	void			*handle;	//!< Handle returned by dlopen.
 	dl_loader_t		*loader;	//!< Loader that owns this dl.
@@ -86,6 +90,7 @@ typedef void (*dl_unload_t)(dl_t const *module, void *symbol, void *user_ctx);
 /*
  *	Functions
  */
+void			*dl_open_by_sym(char const *sym_name, int flags);
 
 int			dl_symbol_init(dl_loader_t *dl_loader, dl_t const *dl);
 
@@ -104,16 +109,23 @@ void			dl_symbol_free_cb_unregister(dl_loader_t *dl_loader,
 						     char const *symbol, dl_unload_t func);
 
 dl_t			*dl_by_name(dl_loader_t *dl_loader, char const *name,
-				    void *uctx, bool uctx_free);
+				    void *uctx, bool uctx_free) CC_HINT(nonnull(1,2));
 
-char const		*dl_search_path(dl_loader_t *dl_loader);
+int			dl_free(dl_t const *dl);
+
+char const		*dl_search_path(dl_loader_t *dl_loader) CC_HINT(nonnull);
 
 int			dl_search_path_set(dl_loader_t *dl_loader, char const *lib_dir) CC_HINT(nonnull);
 
-void			*dl_loader_uctx(dl_loader_t *dl_loader);
+int			dl_search_path_prepend(dl_loader_t *dl_loader, char const *lib_dir) CC_HINT(nonnull);
 
-dl_loader_t		*dl_loader_init(TALLOC_CTX *ctx, char const *lib_dir,
-					void *uctx, bool uctx_free, bool defer_symbol_init);
+int			dl_search_path_append(dl_loader_t *dl_loader, char const *lib_dir) CC_HINT(nonnull);
+
+void			*dl_loader_uctx(dl_loader_t *dl_loader) CC_HINT(nonnull);
+
+dl_loader_t		*dl_loader_init(TALLOC_CTX *ctx, void *uctx, bool uctx_free, bool defer_symbol_init);
+
+void			dl_loader_debug(dl_loader_t *dl);
 #ifdef __cplusplus
 }
 #endif

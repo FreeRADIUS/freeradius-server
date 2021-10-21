@@ -1,0 +1,13 @@
+on:
+  issues:
+    types: [opened]
+jobs:
+  titlePrefixCheck:
+    runs-on: ubuntu-latest
+    steps:
+      - if: contains(github.event.pull_request.labels.*.name, 'close')
+        name: Close Issue
+        uses: peter-evans/close-issue@v1
+        with:
+          comment: Direct questions about server operation or development to the FreeRADIUS mailing lists https://freeradius.org/support/.
+            

@@ -25,14 +25,16 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/exec.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/util.h>
+#include <freeradius-devel/unlang/interpret.h>
 
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/thread_local.h>
+#include <freeradius-devel/util/atexit.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
@@ -40,294 +42,216 @@ RCSID("$Id$")
 
 #include <fcntl.h>
 #include <ctype.h>
+#include <signal.h>
+
+#if defined(__APPLE__) || defined(__FreeBSD__)
+extern char **environ;
+#else
+#  include <unistd.h>
+#endif
 
 #ifdef HAVE_SYS_WAIT_H
-#	include <sys/wait.h>
+#  include <sys/wait.h>
 #endif
 #ifndef WEXITSTATUS
-#	define WEXITSTATUS(stat_val) ((unsigned)(stat_val) >> 8)
+#  define WEXITSTATUS(stat_val) ((unsigned)(stat_val) >> 8)
 #endif
 #ifndef WIFEXITED
-#	define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
+#  define WIFEXITED(stat_val) (((stat_val) & 0x7f) == 0)
 #endif
 
-#define MAX_ARGV (256)
+#define MAX_ENVP 1024
 
-static pid_t waitpid_wrapper(pid_t pid, int *status)
-{
-	return waitpid(pid, status, 0);
-}
+static _Thread_local char *env_arr[MAX_ENVP];				/* Avoid allocing 8k on the stack */
+static _Thread_local char env_buff[NUM_ELEMENTS(env_arr) * 128];	/* Avoid allocing 128k on the stack */
+static _Thread_local fr_sbuff_marker_t env_m[NUM_ELEMENTS(env_arr)];
 
-pid_t (*rad_fork)(void) = fork;
-pid_t (*rad_waitpid)(pid_t pid, int *status) = waitpid_wrapper;
-
-typedef struct {
-	fr_dlist_t	entry;
-	pid_t		pid;
-} fr_child_t;
-
-fr_thread_local_setup(fr_dlist_head_t *, fr_children) /* macro */
-
-static void _fr_children_free(void *arg)
-{
-	talloc_free(arg);
-}
-
-
-/** Start a process
+/** Flatten a list into individual "char *" argv-style array
  *
- * @param cmd Command to execute. This is parsed into argv[] parts, then each individual argv
- *	part is xlat'ed.
- * @param request Current reuqest
- * @param exec_wait set to true to read from or write to child.
- * @param[in,out] input_fd pointer to int, receives the stdin file descriptor. Set to NULL
- *	and the child will have /dev/null on stdin.
- * @param[in,out] output_fd pinter to int, receives the stdout file descriptor. Set to NULL
- *	and child will have /dev/null on stdout.
- * @param input_pairs list of value pairs - these will be put into the environment variables
- *	of the child.
- * @param shell_escape values before passing them as arguments.
+ * @param[in] ctx	to allocate boxes in.
+ * @param[out] argv_p	where output strings go
+ * @param[in] in	boxes to flatten
  * @return
- *	- PID of the child process.
+ *	- >= 0 number of array elements in argv
+ *	- <0 on error
+ */
+static int exec_value_box_list_to_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value_box_list_t const *in)
+{
+	char		**argv;
+	fr_value_box_t	*vb = NULL;
+	unsigned int	i = 0;
+	size_t		argc = fr_value_box_list_len(in);
+
+	argv = talloc_zero_array(ctx, char *, argc + 1);
+	if (!argv) return -1;
+
+	while ((vb = fr_dlist_next(in, vb))) {
+		/*
+		 *	Print the children of each group into the argv array.
+		 */
+		argv[i] = fr_value_box_list_aprint(argv, &vb->vb_group, NULL, NULL);
+		if (!argv[i]) {
+			talloc_free(argv);
+			return -1;
+		}
+		i++;
+	}
+
+	*argv_p = argv;
+
+	return argc;
+}
+
+/** Convert pairs from a request and a list of pairs into environmental variables
+ *
+ * @param[out] env_p		Where to write an array of \0 terminated strings.
+ * @param[in] env_len		Length of env_p.
+ * @param[out] env_sbuff	To write environmental variables too. Each variable
+ *				will be written to the buffer, and separated with
+ *				a '\0'.
+ * @param[in] request		Will look for &control.Exec-Export items to convert to
+ *      			env vars.
+ * @param[in] env_pairs		Other items to convert to environmental variables.
+ *				The dictionary attribute name will be converted to
+ *				uppercase, and all '-' converted to '_' and will form
+ *				the variable name.
+ * @param[in] env_escape	Wrap string values in double quotes, and apply doublequote
+ *				escaping to all environmental variable values.
+ * @return
+ *      - The number of environmental variables created.
  *	- -1 on failure.
  */
-pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
-			   int *input_fd, int *output_fd,
-			   VALUE_PAIR *input_pairs, bool shell_escape)
+static int exec_pair_to_env(char **env_p, size_t env_len, fr_sbuff_t *env_sbuff,
+			    request_t *request, fr_pair_list_t *env_pairs, bool env_escape)
 {
-#ifndef __MINGW32__
-	VALUE_PAIR	*vp;
-	int		n;
-	int		to_child[2] = {-1, -1};
-	int		from_child[2] = {-1, -1};
-	pid_t		pid;
-#endif
-	int		argc;
-	int		i;
-	char const	**argv_p;
-	char		*argv[MAX_ARGV], **argv_start = argv;
-	char		argv_buf[4096];
-#define MAX_ENVP 1024
-	char		*envp[MAX_ENVP];
-	size_t		envlen = 0;
-	TALLOC_CTX	*input_ctx = NULL;
-	fr_dlist_head_t *list;
+	char			*p;
+	size_t			i, j;
+	fr_dcursor_t		cursor;
+	fr_dict_attr_t const	*da;
+	fr_pair_t		*vp;
+	fr_sbuff_t		sbuff = FR_SBUFF_BIND_CURRENT(env_sbuff);
 
 	/*
-	 *	Stupid array decomposition...
-	 *
-	 *	If we do memcpy(&argv_p, &argv, sizeof(argv_p)) src ends up being a char **
-	 *	pointing to the value of the first element.
+	 *	Set up the environment variables in the
+	 *	parent, so we don't call libc functions that
+	 *	hold mutexes.  They might be locked when we fork,
+	 *	and will remain locked in the child.
 	 */
-	memcpy(&argv_p, &argv_start, sizeof(argv_p));
-	argc = rad_expand_xlat(request, cmd, MAX_ARGV, argv_p, true, sizeof(argv_buf), argv_buf);
-	if (argc <= 0) {
-		ROPTIONAL(RPEDEBUG, PERROR, "Invalid command '%s'", cmd);
-		return -1;
-	}
+	for (vp = fr_pair_list_head(env_pairs), i = 0;
+	     vp && (i < env_len - 1);
+	     vp = fr_pair_list_next(env_pairs, vp), i++) {
+		fr_sbuff_marker(&env_m[i], &sbuff);
 
-	if (DEBUG_ENABLED3) {
-		for (i = 0; i < argc; i++) DEBUG3("arg[%d] %s", i, argv[i]);
-	}
+	     	if (fr_sbuff_in_strcpy(&sbuff, vp->da->name) <= 0) {
+	     		REDEBUG("Out of buffer space adding attribute name");
+	     		return -1;
+	     	}
 
-	list = fr_children;
-	if (!list) {
-		list = talloc_zero(NULL, fr_dlist_head_t);
-		if (!list) {
-			ERROR("Out of memory");
+		/*
+		 *	POSIX only allows names to contain
+		 *	uppercase chars, digits, and
+		 *	underscores.  Digits are not allowed
+		 *	for the first char.
+		 */
+		p = fr_sbuff_current(&env_m[i]);
+		if (isdigit((int)*p)) *p = '_';
+		while (p++ < fr_sbuff_current(&sbuff)) {
+			if (isalpha((int)*p)) *p = toupper(*p);
+			else if (*p == '-') *p = '_';
+			else if (isdigit((int)*p)) continue;
+			else *p = '_';
+		}
+
+		if (fr_sbuff_in_char(&sbuff, '=') <= 0) {
+			REDEBUG("Out of buffer space");
 			return -1;
 		}
 
-		fr_dlist_init(list, fr_child_t, entry);
-
-		fr_thread_local_set_destructor(fr_children, _fr_children_free, list);
-	} else {
-		fr_child_t *child, *next;
-
-		/*
-		 *	Clean up the children.  ALL of them.  This is
-		 *	slow as heck, but correct. :(
-		 */
-		for (child = fr_dlist_head(fr_children);
-		     child != NULL;
-		     child = next) {
-			int status;
-
-			next = fr_dlist_next(fr_children, child);
-			pid = waitpid(child->pid, &status, WNOHANG);
-			if (pid != 0) {
-				fr_dlist_remove(fr_children, child);
-				talloc_free(child);
-			}
-		}
-	}
-
-#ifndef __MINGW32__
-	/*
-	 *	Open a pipe for child/parent communication, if necessary.
-	 */
-	if (exec_wait) {
-		if (input_fd) {
-			if (pipe(to_child) != 0) {
-				ERROR("Couldn't open pipe to child: %s", fr_syserror(errno));
+		if (env_escape) {
+			if (fr_value_box_print_quoted(&sbuff, &vp->data, T_DOUBLE_QUOTED_STRING) < 0) {
+				RPEDEBUG("Out of buffer space adding attribute value for %pV", &vp->data);
 				return -1;
 			}
-		}
-		if (output_fd) {
-			if (pipe(from_child) != 0) {
-				ERROR("Couldn't open pipe from child: %s", fr_syserror(errno));
-				/* safe because these either need closing or are == -1 */
-				close(to_child[0]);
-				close(to_child[1]);
-				return -1;
-			}
-		}
-	}
-
-	envp[0] = NULL;
-
-	if (input_pairs) {
-		char			*p;
-		fr_cursor_t		cursor;
-		char			buffer[1024];
-		fr_dict_attr_t const	*da;
-
-		input_ctx = talloc_new(request);
-
-		/*
-		 *	Set up the environment variables in the
-		 *	parent, so we don't call libc functions that
-		 *	hold mutexes.  They might be locked when we fork,
-		 *	and will remain locked in the child.
-		 */
-		for (vp = fr_cursor_init(&cursor, &input_pairs);
-		     vp && (envlen < ((sizeof(envp) / sizeof(*envp)) - 1));
-		     vp = fr_cursor_next(&cursor)) {
+		} else {
 			/*
-			 *	Hmm... maybe we shouldn't pass the
-			 *	user's password in an environment
-			 *	variable...
-			 */
-			snprintf(buffer, sizeof(buffer), "%s=", vp->da->name);
-			if (shell_escape) {
-				for (p = buffer; *p != '='; p++) {
-					if (*p == '-') {
-						*p = '_';
-					} else if (isalpha((int) *p)) {
-						*p = toupper(*p);
-					}
-				}
-			}
-
-			n = strlen(buffer);
-			fr_pair_value_snprint(buffer + n, sizeof(buffer) - n, vp, shell_escape ? '"' : 0);
-
-			DEBUG3("export %s", buffer);
-			envp[envlen++] = talloc_typed_strdup(input_ctx, buffer);
-		}
-
-		if (request) {
-			da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal), FR_EXEC_EXPORT);
-			if (da) {
-				for (vp = fr_cursor_iter_by_da_init(&cursor, &request->control, da);
-				     vp && (envlen < ((sizeof(envp) / sizeof(*envp)) - 1));
-				     vp = fr_cursor_next(&cursor)) {
-					DEBUG3("export %pV", &vp->data);
-					memcpy(&envp[envlen++], &vp->vp_strvalue, sizeof(*envp));
-				}
-
-				/*
-				 *	NULL terminate for execve
-				 */
-				envp[envlen] = NULL;
-			}
-		}
-	}
-
-	if (exec_wait) {
-		pid = rad_fork();	/* remember PID */
-	} else {
-		pid = fork();		/* don't wait */
-	}
-
-	if (pid == 0) {
-		int devnull;
-
-		/*
-		 *	Child process.
-		 *
-		 *	We try to be fail-safe here. So if ANYTHING
-		 *	goes wrong, we exit with status 1.
-		 */
-
-		/*
-		 *	Open STDIN to /dev/null
-		 */
-		devnull = open("/dev/null", O_RDWR);
-		if (devnull < 0) {
-			ERROR("Failed opening /dev/null: %s\n", fr_syserror(errno));
-
-			/*
-			 *	Where the status code is interpreted as a module rcode
-			 * 	one is subtracted from it, to allow 0 to equal success
+			 *	This can be zero length for empty strings
 			 *
-			 *	2 is RLM_MODULE_FAIL + 1
+			 *	Note we don't do double quote escaping here,
+			 *	we just escape unprintable chars.
+			 *
+			 *	Environmental variable values are not
+			 *	restricted we likely wouldn't need to do
+			 *	any escaping if we weren't dealing with C
+			 *	strings.
+			 *
+			 *	If we end up passing binary data through
+			 *	then the user can unescape the octal
+			 *	sequences on the other side.
+			 *
+			 *	We unfortunately still need to escape '\'
+			 *	because of this.
 			 */
-			exit(2);
-		}
-
-		/*
-		 *	Only massage the pipe handles if the parent
-		 *	has created them.
-		 */
-		if (exec_wait) {
-			if (input_fd) {
-				close(to_child[1]);
-				dup2(to_child[0], STDIN_FILENO);
-			} else {
-				dup2(devnull, STDIN_FILENO);
+			if (fr_value_box_print(&sbuff, &vp->data, &fr_value_escape_unprintables) < 0) {
+				RPEDEBUG("Out of buffer space adding attribute value for %pV", &vp->data);
+				return -1;
 			}
-
-			if (output_fd) {
-				close(from_child[0]);
-				dup2(from_child[1], STDOUT_FILENO);
-			} else {
-				dup2(devnull, STDOUT_FILENO);
-			}
-
-		} else {	/* no pipe, STDOUT should be /dev/null */
-			dup2(devnull, STDIN_FILENO);
-			dup2(devnull, STDOUT_FILENO);
 		}
+		if (fr_sbuff_in_char(&sbuff, '\0') <= 0) {
+			REDEBUG("Out of buffer space");
+			return -1;
+		}
+	}
 
-		/*
-		 *	If we're not debugging, then we can't do
-		 *	anything with the error messages, so we throw
-		 *	them away.
-		 *
-		 *	If we are debugging, then we want the error
-		 *	messages to go to the STDERR of the server.
-		 */
-		if (!RDEBUG_ENABLED) dup2(devnull, STDERR_FILENO);
-		close(devnull);
+	/*
+	 *	Do this as a separate step so that if env_sbuff
+	 *	is extended at any point during the conversion
+	 *	the sbuff we use is the final one.
+	 */
+	for (j = 0; j < i; j++) {
+		env_p[j] = fr_sbuff_current(&env_m[j]);
+	}
+	if (request) {
+		da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_EXEC_EXPORT);
+		if (da) {
+			for (vp = fr_pair_dcursor_by_da_init(&cursor, &request->control_pairs, da);
+			     vp && (i < (env_len - 1));
+			     vp = fr_dcursor_next(&cursor)) {
+				env_p[i++] = UNCONST(char *, vp->vp_strvalue);
+			}
+		}
+	}
 
-		/*
-		 *	The server may have MANY FD's open.  We don't
-		 *	want to leave dangling FD's for the child process
-		 *	to play funky games with, so we close them.
-		 */
-		closefrom(3);
+	if (unlikely(i == (env_len - 1))) {
+		REDEBUG("Out of space for environmental variables");
+		return -1;
+	}
 
-		/*
-		 *	I swear the signature for execve is wrong and should
-		 *	take 'char const * const argv[]'.
-		 *
-		 *	Note: execve(), unlike system(), treats all the space
-		 *	delimited arguments as literals, so there's no need
-		 *	to perform additional escaping.
-		 */
-		execve(argv[0], argv, envp);
-		printf("Failed to execute \"%s\": %s", argv[0], fr_syserror(errno)); /* fork output will be captured */
+	/*
+	 *	NULL terminate for execve
+	 */
+	env_p[i] = NULL;
+
+	return i;
+}
+
+/*
+ *	Child process.
+ *
+ *	We try to be fail-safe here. So if ANYTHING
+ *	goes wrong, we exit with status 1.
+ */
+static NEVER_RETURNS void exec_child(request_t *request, char **argv, char **envp,
+				     bool exec_wait,
+				     int stdin_pipe[static 2], int stdout_pipe[static 2], int stderr_pipe[static 2])
+{
+	int devnull;
+
+	/*
+	 *	Open STDIN to /dev/null
+	 */
+	devnull = open("/dev/null", O_RDWR);
+	if (devnull < 0) {
+		fprintf(stderr, "Failed opening /dev/null: %s\n", fr_syserror(errno));
 
 		/*
 		 *	Where the status code is interpreted as a module rcode
@@ -339,374 +263,792 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	}
 
 	/*
-	 *	Free child environment variables
-	 */
-	talloc_free(input_ctx);
-
-	/*
-	 *	Parent process.
-	 */
-	if (pid < 0) {
-		ERROR("Couldn't fork %s: %s", argv[0], fr_syserror(errno));
-		if (exec_wait) {
-			/* safe because these either need closing or are == -1 */
-			close(to_child[0]);
-			close(to_child[1]);
-			close(from_child[0]);
-			close(from_child[1]);
-		}
-		return -1;
-	}
-
-	/*
-	 *	We're done.  Do any necessary cleanups.
+	 *	Only massage the pipe handles if the parent
+	 *	has created them.
 	 */
 	if (exec_wait) {
+		if (stdin_pipe[1] >= 0) {
+			close(stdin_pipe[1]);
+			dup2(stdin_pipe[0], STDIN_FILENO);
+		} else {
+			dup2(devnull, STDIN_FILENO);
+		}
+
+		if (stdout_pipe[1] >= 0) {
+			close(stdout_pipe[0]);
+			dup2(stdout_pipe[1], STDOUT_FILENO);
+		} else {
+			dup2(devnull, STDOUT_FILENO);
+		}
+
+		if (stderr_pipe[1] >= 0) {
+			close(stderr_pipe[0]);
+			dup2(stderr_pipe[1], STDERR_FILENO);
+		} else {
+			dup2(devnull, STDERR_FILENO);
+		}
+	} else {	/* no pipe, STDOUT should be /dev/null */
+		dup2(devnull, STDIN_FILENO);
+		dup2(devnull, STDOUT_FILENO);
+
 		/*
-		 *	Close the ends of the pipe(s) the child is using
-		 *	return the ends of the pipe(s) our caller wants
+		 *	If we're not debugging, then we can't do
+		 *	anything with the error messages, so we throw
+		 *	them away.
 		 *
+		 *	If we are debugging, then we want the error
+		 *	messages to go to the STDERR of the server.
 		 */
-		if (input_fd) {
-			*input_fd = to_child[1];
-			close(to_child[0]);
-		}
-		if (output_fd) {
-			*output_fd = from_child[0];
-			close(from_child[1]);
-		}
-
-	} else {
-		fr_child_t *child;
-
-		MEM(child = talloc_zero(fr_children, fr_child_t));
-		fr_dlist_insert_tail(fr_children, child);
-		child->pid = pid;
+		if (!request || !RDEBUG_ENABLED) dup2(devnull, STDERR_FILENO);
 	}
 
-	return pid;
-#else
-	if (exec_wait) {
-		ERROR("Wait is not supported");
+	close(devnull);
+
+	/*
+	 *	The server may have MANY FD's open.  We don't
+	 *	want to leave dangling FD's for the child process
+	 *	to play funky games with, so we close them.
+	 */
+	closefrom(STDERR_FILENO + 1);
+
+	/*
+	 *	Disarm the thread local destructors
+	 *
+	 *	FIXME - Leaving them enabled causes issues in child
+	 *	execd processes, but we should really track down why.
+	 */
+	fr_atexit_thread_local_disarm_all();
+
+	/*
+	 *	I swear the signature for execve is wrong and should
+	 *	take 'char const * const argv[]'.
+	 *
+	 *	Note: execve(), unlike system(), treats all the space
+	 *	delimited arguments as literals, so there's no need
+	 *	to perform additional escaping.
+	 */
+	execve(argv[0], argv, envp);
+	printf("Failed to execute \"%s\": %s", argv[0], fr_syserror(errno)); /* fork output will be captured */
+
+	/*
+	 *	Where the status code is interpreted as a module rcode
+	 * 	one is subtracted from it, to allow 0 to equal success
+	 *
+	 *	2 is RLM_MODULE_FAIL + 1
+	 */
+	exit(2);
+}
+
+/** Execute a program without waiting for the program to finish.
+ *
+ * @param[in] request		the request
+ * @param[in] args		as returned by xlat_frame_eval()
+ * @param[in] env_pairs		env_pairs to put into into the environment.  May be NULL.
+ * @param[in] env_escape	Wrap string values in double quotes, and apply doublequote
+ *				escaping to all environmental variable values.
+ * @param[in] env_inherit	Inherit the environment from the current process.
+ *				This will be merged with any variables from env_pairs.
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ *
+ *  @todo - maybe take an fr_dcursor_t instead of env_pairs?  That
+ *  would allow finer-grained control over the attributes to put into
+ *  the environment.
+ */
+int fr_exec_fork_nowait(request_t *request, fr_value_box_list_t *args,
+			fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit)
+{
+
+	int			argc;
+	char			**env;
+	char			**argv;
+	pid_t			pid;
+	fr_value_box_t		*first;
+
+	/*
+	 *	Ensure that we don't do anything stupid.
+	 */
+	first =  fr_dlist_head(args);
+	if (first->type == FR_TYPE_GROUP) first = fr_dlist_head(&first->vb_group);
+	if (first->tainted) {
+		REDEBUG("Program to run comes from tainted source - %pV", first);
 		return -1;
 	}
 
-	{
-		/*
-		 *	The _spawn and _exec families of functions are
-		 *	found in Windows compiler libraries for
-		 *	portability from UNIX. There is a variety of
-		 *	functions, including the ability to pass
-		 *	either a list or array of parameters, to
-		 *	search in the PATH or otherwise, and whether
-		 *	or not to pass an environment (a set of
-		 *	environment variables). Using _spawn, you can
-		 *	also specify whether you want the new process
-		 *	to close your program (_P_OVERLAY), to wait
-		 *	until the new process is finished (_P_WAIT) or
-		 *	for the two to run concurrently (_P_NOWAIT).
+	/*
+	 *	Get the environment variables.
+	 */
+	if (env_pairs && !fr_pair_list_empty(env_pairs)) {
+		char **env_p, **env_end, **env_in;
 
-		 *	_spawn and _exec are useful for instances in
-		 *	which you have simple requirements for running
-		 *	the program, don't want the overhead of the
-		 *	Windows header file, or are interested
-		 *	primarily in portability.
-		 */
+		env_p = env_arr;
+		env_end = env_p + NUM_ELEMENTS(env_arr);
+
+		if (env_inherit) {
+			for (env_in = environ; (env_p < env_end) && *env_in; env_in++, env_p++) *env_p = *env_in;
+		}
+
+		if (exec_pair_to_env(env_p, env_end - env_p,
+				     &FR_SBUFF_OUT(env_buff, sizeof(env_buff)),
+				     request, env_pairs, env_escape) < 0) return -1;
+
+		env = env_arr;
+	} else if (env_inherit) {
+		env = environ;		/* Our current environment */
+	} else {
+		env = env_arr;
+		env_arr[0] = NULL;
+	}
+
+	argc = exec_value_box_list_to_argv(request, &argv, args);
+	if (argc < 0) return -1;
+
+	if (RDEBUG_ENABLED3) {
+		int i;
+		char **env_p = env;
+
+		for (i = 0; i < argc; i++) RDEBUG3("arg[%d] %s", i, argv[i]);
+		while (*env_p) RDEBUG3("export %s", *env_p++);
+	}
+
+	pid = fork();
+
+	/*
+	 *	The child never returns from calling exec_child();
+	 */
+	if (pid == 0) {
+		int unused[2] = { -1, -1 };
+
+		exec_child(request, argv, env, false, unused, unused, unused);
+	}
+
+	if (pid < 0) {
+		RPEDEBUG("Couldn't fork %s", argv[0]);
+		return -1;
+	}
+
+	/*
+	 *	Ensure that we can clean up any child processes.  We
+	 *	don't want them left over as zombies.
+	 */
+	if (fr_event_pid_reap(unlang_interpret_event_list(request), pid, NULL, NULL) < 0) {
+		int status;
 
 		/*
-		 *	FIXME: check return code... what is it?
+		 *	Try and cleanup... really we have
+		 *	no idea what state things are in.
 		 */
-		_spawnve(_P_NOWAIT, argv[0], argv, envp);
+		kill(pid, SIGKILL);
+		waitpid(pid, &status, WNOHANG);
+
+		return -1;
 	}
 
 	return 0;
-#endif
 }
 
-/** Read from the child process.
+/** Execute a program assuming that the caller waits for it to finish.
  *
- * @param fd file descriptor to read from.
- * @param pid pid of child, will be reaped if it dies.
- * @param timeout amount of time to wait, in seconds.
- * @param answer buffer to write into.
- * @param left length of buffer.
+ *  The caller takes responsibility for calling waitpid() on the returned PID.
+ *
+ *  The caller takes responsibility for reading from the returned FD,
+ *  and closing it.
+ *
+ * @param[out] pid_p		The PID of the child
+ * @param[out] stdin_fd		The stdin FD of the child.
+ * @param[out] stdout_fd 	The stdout FD of the child.
+ * @param[out] stderr_fd 	The stderr FD of the child.
+ * @param[in] request		the request
+ * @param[in] args		as returned by xlat_frame_eval()
+ * @param[in] env_pairs		env_pairs to put into into the environment.  May be NULL.
+ * @param[in] env_escape	Wrap string values in double quotes, and apply doublequote
+ *				escaping to all environmental variable values.
+ * @param[in] env_inherit	Inherit the environment from the current process.
+ *				This will be merged with any variables from env_pairs.
  * @return
- *	- -1 on failure.
- *	- Length of output.
+ *	- <0 on error
+ *	- 0 on success
+ *
+ *  @todo - maybe take an fr_dcursor_t instead of env_pairs?  That
+ *  would allow finer-grained control over the attributes to put into
+ *  the environment.
  */
-int radius_readfrom_program(int fd, pid_t pid, fr_time_delta_t timeout,
-			    char *answer, int left)
+int fr_exec_fork_wait(pid_t *pid_p, int *stdin_fd, int *stdout_fd, int *stderr_fd,
+		      request_t *request, fr_value_box_list_t *args,
+		      fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit)
 {
-	int done = 0;
-#ifndef __MINGW32__
-	int status;
-	fr_time_t start;
-#ifdef O_NONBLOCK
-	bool nonblock = true;
-#endif
-
-#ifdef O_NONBLOCK
-	/*
-	 *	Try to set it non-blocking.
-	 */
-	do {
-		int flags;
-
-		if ((flags = fcntl(fd, F_GETFL, NULL)) < 0)  {
-			nonblock = false;
-			break;
-		}
-
-		flags |= O_NONBLOCK;
-		if (fcntl(fd, F_SETFL, flags) < 0) {
-			nonblock = false;
-			break;
-		}
-	} while (0);
-#endif
+	int		argc;
+	char		**env;
+	char		**argv;
+	pid_t		pid;
+	fr_value_box_t	*first;
+	int		stdin_pipe[2] = {-1, -1};
+	int		stderr_pipe[2] = {-1, -1};
+	int		stdout_pipe[2] = {-1, -1};
 
 	/*
-	 *	Minimum timeout period is one section
+	 *	Ensure that we don't do anything stupid.
 	 */
-	if (timeout < NSEC) timeout = fr_time_delta_from_sec(1);
-
-	/*
-	 *	Read from the pipe until we doesn't get any more or
-	 *	until the message is full.
-	 */
-	start = fr_time();
-	while (1) {
-		int		rcode;
-		fd_set		fds;
-		fr_time_delta_t	elapsed;
-
-		FD_ZERO(&fds);
-		FD_SET(fd, &fds);
-
-		elapsed = fr_time() - start;
-		if (elapsed >= timeout) goto too_long;
-
-		rcode = select(fd + 1, &fds, NULL, NULL, &fr_time_delta_to_timeval(timeout - elapsed));
-		if (rcode == 0) {
-		too_long:
-			DEBUG("Child PID %u is taking too much time: forcing failure and killing child.", pid);
-			kill(pid, SIGTERM);
-			close(fd); /* should give SIGPIPE to child, too */
-
-			/*
-			 *	Clean up the child entry.
-			 */
-			rad_waitpid(pid, &status);
-			return -1;
-		}
-		if (rcode < 0) {
-			if (errno == EINTR) continue;
-			break;
-		}
-
-#ifdef O_NONBLOCK
-		/*
-		 *	Read as many bytes as possible.  The kernel
-		 *	will return the number of bytes available.
-		 */
-		if (nonblock) {
-			status = read(fd, answer + done, left);
-		} else
-#endif
-			/*
-			 *	There's at least 1 byte ready: read it.
-			 */
-			status = read(fd, answer + done, 1);
-
-		/*
-		 *	Nothing more to read: stop.
-		 */
-		if (status == 0) {
-			break;
-		}
-
-		/*
-		 *	Error: See if we have to continue.
-		 */
-		if (status < 0) {
-			/*
-			 *	We were interrupted: continue reading.
-			 */
-			if (errno == EINTR) {
-				continue;
-			}
-
-			/*
-			 *	There was another error.  Most likely
-			 *	The child process has finished, and
-			 *	exited.
-			 */
-			break;
-		}
-
-		done += status;
-		left -= status;
-		if (left <= 0) break;
-	}
-#endif	/* __MINGW32__ */
-
-	/* Strip trailing new lines */
-	while ((done > 0) && (answer[done - 1] == '\n')) {
-		answer[--done] = '\0';
+	first =  fr_dlist_head(args);
+	if (first->type == FR_TYPE_GROUP) first = fr_dlist_head(&first->vb_group);
+	if (first->tainted) {
+		fr_strerror_printf("Program to run comes from tainted source - %pV", first);
+		return -1;
 	}
 
-	return done;
-}
+	/*
+	 *	Get the environment variables.
+	 */
+	if (env_pairs && !fr_pair_list_empty(env_pairs)) {
+		char **env_p, **env_end, **env_in;
 
-/** Execute a program.
- *
- * @param[in,out] ctx to allocate new VALUE_PAIR (s) in.
- * @param[out] out buffer to append plaintext (non valuepair) output.
- * @param[in] outlen length of out buffer.
- * @param[out] output_pairs list of value pairs - Data on child's stdout will be parsed and
- *	added into this list of value pairs.
- * @param[in] request Current request (may be NULL).
- * @param[in] cmd Command to execute. This is parsed into argv[] parts, then each individual argv
- *	part is xlat'ed.
- * @param[in] input_pairs list of value pairs - these will be available in the environment of the
- *	child.
- * @param[in] exec_wait set to 1 if you want to read from or write to child.
- * @param[in] shell_escape values before passing them as arguments.
- * @param[in] timeout amount of time to wait, in seconds.
- * @return
- *	- 0 if exec_wait==0.
- *	- exit code if exec_wait!=0.
- *	- -1 on failure.
- */
-int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **output_pairs,
-			REQUEST *request, char const *cmd, VALUE_PAIR *input_pairs,
-			bool exec_wait, bool shell_escape, fr_time_delta_t timeout)
+		env_p = env_arr;
+		env_end = env_p + NUM_ELEMENTS(env_arr);
 
-{
-	pid_t pid;
-	int from_child;
-	char *p;
-	pid_t child_pid;
-	int comma = 0;
-	int status, ret = 0;
-	ssize_t len;
-	char answer[4096];
+		if (env_inherit) {
+			for (env_in = environ; (env_p < env_end) && *env_in; env_in++, env_p++) *env_p = *env_in;
+		}
 
-	RDEBUG2("Executing: %s", cmd);
+		if (exec_pair_to_env(env_p, env_end - env_p,
+				     &FR_SBUFF_OUT(env_buff, sizeof(env_buff)),
+				     request, env_pairs, env_escape) < 0) return -1;
+		env = env_arr;
+	} else if (env_inherit) {
+		env = environ;		/* Our current environment */
+	} else {
+		env = env_arr;
+		env[0] = NULL;
+	}
 
-	if (out) *out = '\0';
+	argc = exec_value_box_list_to_argv(request, &argv, args);
+	if (argc < 0) {
+	error:
+		return -1;
+	}
 
-	pid = radius_start_program(cmd, request, exec_wait, NULL, &from_child, input_pairs, shell_escape);
+	if (DEBUG_ENABLED3) {
+		int i;
+		char **env_p = env;
+
+		for (i = 0; i < argc; i++) RDEBUG3("arg[%d] %s", i, argv[i]);
+		while (*env_p) RDEBUG3("export %s", *env_p++);
+	}
+
+	if (stdin_fd) {
+		if (pipe(stdin_pipe) < 0) {
+		error2:
+			fr_strerror_const_push("Failed opening pipe to read to child");
+			talloc_free(argv);
+			goto error;
+		}
+		if (fr_nonblock(stdin_pipe[1]) < 0) PERROR("Error setting stdin to nonblock");
+	}
+
+	if (stdout_fd) {
+		if (pipe(stdout_pipe) < 0) {
+		error3:
+			close(stdin_pipe[0]);
+			close(stdin_pipe[1]);
+			goto error2;
+		}
+		if (fr_nonblock(stdout_pipe[0]) < 0) PERROR("Error setting stdout to nonblock");
+	}
+
+	if (stderr_fd) {
+		if (pipe(stderr_pipe) < 0) {
+			close(stdout_pipe[0]);
+			close(stdout_pipe[1]);
+			goto error3;
+		}
+		if (fr_nonblock(stderr_pipe[0]) < 0) PERROR("Error setting stderr to nonblock");
+	}
+
+	pid = fork();
+
+	/*
+	 *	The child never returns from calling exec_child();
+	 */
+	if (pid == 0) exec_child(request, argv, env, true, stdin_pipe, stdout_pipe, stderr_pipe);
+
 	if (pid < 0) {
+		PERROR("Couldn't fork %s", argv[0]);
+		close(stdin_pipe[0]);
+		close(stdin_pipe[1]);
+		close(stdout_pipe[0]);
+		close(stdout_pipe[1]);
+		close(stderr_pipe[0]);
+		close(stderr_pipe[1]);
+		talloc_free(argv);
 		return -1;
 	}
 
-	if (!exec_wait) {
-		return 0;
+	/*
+	 *	Tell the caller the childs PID, and the FD to read
+	 *	from.
+	 */
+	*pid_p = pid;
+
+	if (stdin_fd) {
+		*stdin_fd = stdin_pipe[1];
+		close(stdout_pipe[0]);
 	}
 
-	len = radius_readfrom_program(from_child, pid, timeout, answer, sizeof(answer));
-	if (len < 0) {
+	if (stdout_fd) {
+		*stdout_fd = stdout_pipe[0];
+		close(stdout_pipe[1]);
+	}
+
+	if (stderr_fd) {
+		*stderr_fd = stderr_pipe[0];
+		close(stderr_pipe[1]);
+	}
+
+	return 0;
+}
+
+/** Cleans up an exec'd process on error
+ *
+ * This function is intended to be called at any point after a successful
+ * #fr_exec_start call in order to release resources and cleanup
+ * zombie processes.
+ *
+ * @param[in] exec	state to cleanup.
+ * @param[in] signal	If non-zero, and we think the process is still
+ *			running, send it a signal to cause it to exit.
+ *			The PID reaper we insert here will cleanup its
+ *			state so it doesn't become a zombie.
+ *
+ */
+void fr_exec_cleanup(fr_exec_state_t *exec, int signal)
+{
+	request_t	*request = exec->request;
+	fr_event_list_t	*el = unlang_interpret_event_list(request);
+
+	if (exec->pid) RDEBUG3("Cleaning up exec state for pid %u", exec->pid);
+
+	/*
+	 *	There's still an EV_PROC event installed
+	 *	for the PID remove it (there's a destructor).
+	 */
+	if (exec->ev_pid) {
+		talloc_const_free(exec->ev_pid);
+		fr_assert(!exec->ev_pid);	/* Should be NULLified by destructor */
+	}
+
+	if (exec->stdout_fd >= 0) {
+		if (fr_event_fd_delete(el, exec->stdout_fd, FR_EVENT_FILTER_IO) < 0){
+			RPERROR("Failed removing stdout handler");
+		}
+		close(exec->stdout_fd);
+		exec->stdout_fd = -1;
+	}
+
+	if (exec->stderr_fd >= 0) {
+		if (fr_event_fd_delete(el, exec->stderr_fd, FR_EVENT_FILTER_IO) < 0) {
+			RPERROR("Failed removing stderr handler");
+		}
+		close(exec->stderr_fd);
+		exec->stderr_fd = -1;
+	}
+
+	if (exec->pid >= 0) {
+		if (signal > 0) kill(exec->pid, signal);
+
+		if (unlikely(fr_event_pid_reap(el, exec->pid, NULL, NULL) < 0)) {
+			int status;
+
+			RPERROR("Failed setting up async PID reaper, PID %u may now be a zombie", exec->pid);
+
+			/*
+			 *	Try and cleanup... really we have
+			 *	no idea what state things are in.
+			 */
+			kill(exec->pid, SIGKILL);
+			waitpid(exec->pid, &status, WNOHANG);
+		}
+		exec->pid = -1;
+	}
+
+	if (exec->ev) fr_event_timer_delete(&exec->ev);
+}
+
+/*
+ *	Callback when exec has completed.  Record the status and tidy up.
+ */
+static void exec_reap(fr_event_list_t *el, pid_t pid, int status, void *uctx)
+{
+	fr_exec_state_t *exec = uctx;	/* may not be talloced */
+	request_t	*request = exec->request;
+	int		wait_status = 0;
+	int		ret;
+
+	if (!fr_cond_assert(pid == exec->pid)) RWDEBUG("Event PID %u and exec->pid %u do not match", pid, exec->pid);
+
+	/*
+	 *	Reap the process.  This is needed so the processes
+	 *	don't stick around indefinitely.  libkqueue/kqueue
+	 *	does not do this for us!
+	 */
+	ret = waitpid(exec->pid, &wait_status, WNOHANG);
+	if (ret < 0) {
+		RWDEBUG("Failed reaping PID %i: %s", exec->pid, fr_syserror(errno));
+	/*
+	 *	Either something cleaned up the process before us
+	 *	(bad!), or the notification system is broken
+	 *	(also bad!)
+	 *
+	 *	This could be caused by 3rd party libraries.
+	 */
+	} else if (ret == 0) {
+		RWDEBUG("Something reaped PID %d before us!", exec->pid);
+		wait_status = status;
+	}
+
+	/*
+	 *	kevent should be returning an identical status value
+	 *	to waitpid.
+	 */
+	if (wait_status != status) RWDEBUG("Exit status from waitpid (%d) and kevent (%d) disagree",
+					   wait_status, status);
+
+	if (WIFEXITED(wait_status)) {
+		RDEBUG("Program exited with status code %d", WEXITSTATUS(wait_status));
+		exec->status = WEXITSTATUS(wait_status);
+	} else if (WIFSIGNALED(wait_status)) {
+		RDEBUG("Program exited due to signal with status code %d", WTERMSIG(wait_status));
+		exec->status = -WTERMSIG(wait_status);
+	} else {
+		RDEBUG("Program exited due to unknown status %d", wait_status);
+		exec->status = -wait_status;
+	}
+	exec->pid = -1;	/* pid_t is signed */
+
+	if (exec->ev) fr_event_timer_delete(&exec->ev);
+
+	/*
+	 *	Process exit notifications (EV_PROC) and file
+	 *	descriptor read events (EV_READ) can race.
+	 *
+	 *	So... If the process has exited, trigger the IO
+	 *	handlers manually.
+	 *
+	 *	This is icky, but the only other option is to
+	 *      enhance our event loop so we can look for
+	 *	pending events associated with file
+	 *	descriptors...
+	 *
+	 *	Even then we might get the file readable
+	 *	notification and the process exited notification
+	 *	in different kevent() calls on busy systems.
+	 */
+	if (exec->stdout_fd >= 0) {
+		fr_event_fd_t		*ef;
+		fr_event_fd_cb_t	cb;
+
+		ef = fr_event_fd_handle(el, exec->stdout_fd, FR_EVENT_FILTER_IO);
+		if (!fr_cond_assert_msg(ef, "no event associated with processes's stdout fd (%i)",
+					exec->stdout_fd)) goto close_stdout;
+
+		cb = fr_event_fd_cb(ef, EVFILT_READ, 0);
+		if (!fr_cond_assert_msg(cb, "no read callback associated with processes's stdout_fd (%i)",
+					exec->stdout_fd)) goto close_stdout;
+
 		/*
-		 *	Failure - radius_readfrom_program will
-		 *	have called close(from_child) for us
+		 *	Call the original read callback that
+		 *	was setup here to ensure that there's
+		 *	no pending data.
 		 */
-		RERROR("Failed to read from child output");
+		cb(el, exec->stdout_fd, 0, fr_event_fd_uctx(ef));
+
+		/*
+		 *	...and delete the event from the event
+		 *	loop.  This should also suppress the
+		 *      EVFILT_READ event if there was one.
+		 */
+		(void) fr_event_fd_delete(el, exec->stdout_fd, FR_EVENT_FILTER_IO);
+	close_stdout:
+		close(exec->stdout_fd);
+		exec->stdout_fd = -1;
+	}
+
+	if (exec->stderr_fd >= 0) {
+		fr_event_fd_t		*ef;
+		fr_event_fd_cb_t	cb;
+
+		ef = fr_event_fd_handle(el, exec->stderr_fd, FR_EVENT_FILTER_IO);
+		if (!fr_cond_assert_msg(ef, "no event associated with processes's stderr fd (%i)",
+					exec->stderr_fd)) goto close_stderr;
+
+		cb = fr_event_fd_cb(ef, EVFILT_READ, 0);
+		if (!fr_cond_assert_msg(cb, "no read callback associated with processes's stderr_fd (%i)",
+					exec->stderr_fd)) goto close_stderr;
+
+		cb(el, exec->stderr_fd, 0, fr_event_fd_uctx(ef));
+		(void) fr_event_fd_delete(el, exec->stderr_fd, FR_EVENT_FILTER_IO);
+	close_stderr:
+		close(exec->stderr_fd);
+		exec->stderr_fd = -1;
+	}
+
+	unlang_interpret_mark_runnable(exec->request);
+}
+
+/*
+ *	Callback when an exec times out.
+ */
+static void exec_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	fr_exec_state_t *exec = uctx; /* may not be talloced */
+	request_t	*request = exec->request;
+
+	if (exec->stdout_fd < 0) {
+		REDEBUG("Timeout waiting for program to exit - killing it and failing the request");
+	} else {
+		REDEBUG("Timeout running program - killing it and failing the request");
+	}
+	exec->failed = true;
+
+	fr_exec_cleanup(exec, SIGKILL);
+	unlang_interpret_mark_runnable(exec->request);
+}
+
+/*
+ *	Callback to read stdout from an exec into the pre-prepared extensible sbuff
+ */
+static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void *uctx) {
+	fr_exec_state_t		*exec = uctx;
+	request_t		*request = exec->request;
+	ssize_t			data_len, remaining;
+	fr_sbuff_marker_t	start_m;
+
+	fr_sbuff_marker(&start_m, &exec->stdout_buff);
+
+	do {
+		/*
+		 *	Read in 128 byte chunks
+		 */
+		remaining = fr_sbuff_extend_lowat(NULL, &exec->stdout_buff, 128);
+
+		/*
+		 *	Ran out of buffer space.
+		 */
+		if (unlikely(!remaining)) {
+			REDEBUG("Too much output from program - killing it and failing the request");
+
+		error:
+			exec->failed = true;
+			fr_exec_cleanup(exec, SIGKILL);
+			break;
+		}
+
+		data_len = read(fd, fr_sbuff_current(&exec->stdout_buff), remaining);
+		if (data_len < 0) {
+			if (errno == EINTR) continue;
+
+			/*
+			 *	This can happen when the callback is called
+			 *	manually when we're reaping the process.
+			 *
+			 *	It's pretty much an identical condition to
+			 *	data_len == 0.
+			 */
+			if (errno == EWOULDBLOCK) break;
+
+			REDEBUG("Error reading from child program - %s", fr_syserror(errno));
+			goto error;
+		}
+
+		/*
+		 *	Even if we get 0 now the process may write more data later
+		 *	before it completes, so we leave the fd handlers in place.
+		 */
+		if (data_len == 0) break;
+
+		fr_sbuff_advance(&exec->stdout_buff, data_len);
+	} while (remaining == data_len);	/* If process returned maximum output, loop again */
+
+	if (flags & EV_EOF) {
+		/*
+		 *	We've received EOF - so the process has finished writing
+		 *	Remove event and tidy up
+		 */
+		(void) fr_event_fd_delete(unlang_interpret_event_list(exec->request), fd, FR_EVENT_FILTER_IO);
+		close(fd);
+		exec->stdout_fd = -1;
+
+		if (exec->pid < 0) {
+			/*
+			 *	Child has already exited - unlang can resume
+			 */
+			if (exec->ev) fr_event_timer_delete(&exec->ev);
+			unlang_interpret_mark_runnable(exec->request);
+		}
+	}
+
+	/*
+	 *	Only print if we got additional data
+	 */
+	if (RDEBUG_ENABLED2 && fr_sbuff_behind(&start_m)) {
+		RDEBUG2("pid %u (stdout) - %pV", exec->pid,
+			fr_box_strvalue_len(fr_sbuff_current(&start_m),
+					    fr_sbuff_behind(&start_m)));
+	}
+
+	fr_sbuff_marker_release(&start_m);
+}
+
+/** Call an child program, optionally reading it's output
+ *
+ * @note If the caller set need_stdin = true, it is the caller's
+ *	 responsibility to close exec->std_in and remove it from any event loops
+ *	 if this function returns 0 (success).
+ *
+ * @param[in] ctx		to allocate events in.
+ * @param[in,out] exec		structure holding the state of the external call.
+ * @param[in] request		currently being processed.
+ * @param[in] args		to call as a fr_value_boc_list_t.  Program will
+ *      			be the first box and arguments in the subsequent boxes.
+ * @param[in] env_pairs		list of pairs to be presented as evironment variables
+ *				to the child.
+ * @param[in] env_escape	Wrap string values in double quotes, and apply doublequote
+ *				escaping to all environmental variable values.
+ * @param[in] env_inherit	Inherit the environment from the current process.
+ *				This will be merged with any variables from env_pairs.
+ * @param[in] need_stdin	If true, allocate a pipe that will allow us to send data to the
+ *      			process.
+ * @param[in] store_stdout	if true keep a copy of stdout in addition to logging
+ *				it if RDEBUG_ENABLED2.
+ * @param[in] stdout_ctx	ctx to alloc stdout data in.
+ * @param[in] timeout		to wait for child to complete.
+ * @return
+ *	- 0 on success
+ *	- -1 on failure
+ */
+int fr_exec_start(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
+		  fr_value_box_list_t *args,
+		  fr_pair_list_t *env_pairs, bool env_escape, bool env_inherit,
+		  bool need_stdin,
+		  bool store_stdout, TALLOC_CTX *stdout_ctx,
+		  fr_time_delta_t timeout)
+{
+	int		*stdout_fd = (store_stdout || RDEBUG_ENABLED2) ? &exec->stdout_fd : NULL;
+	fr_event_list_t	*el = unlang_interpret_event_list(request);
+
+	*exec = (fr_exec_state_t){
+		.request = request,
+		.env_pairs = env_pairs,
+		.pid = -1,
+		.stdout_fd = -1,
+		.stderr_fd = -1,
+		.stdin_fd = -1,
+		.status = -1,				/* default to program didn't work */
+		.stdin_used = need_stdin,
+		.stdout_used = store_stdout,
+		.stdout_ctx = stdout_ctx
+	};
+
+	if (fr_exec_fork_wait(&exec->pid, exec->stdin_used ? &exec->stdin_fd : NULL,
+			      stdout_fd, &exec->stderr_fd, request, args,
+			      exec->env_pairs, env_escape, env_inherit) < 0) {
+		RPEDEBUG("Failed executing program");
+	fail:
+		/*
+		 *	Not done in fr_exec_cleanup as it's
+		 *	usually the caller's responsibility.
+		 */
+		if (exec->stdin_fd >= 0) {
+			close(exec->stdin_fd);
+			exec->stdin_fd = -1;
+		}
+		fr_exec_cleanup(exec, 0);
 		return -1;
-
-	}
-	answer[len] = '\0';
-
-	/*
-	 *	Make sure that the writer can't block while writing to
-	 *	a pipe that no one is reading from anymore.
-	 */
-	close(from_child);
-
-	if (len == 0) {
-		goto wait;
 	}
 
 	/*
-	 *	Parse the output, if any.
+	 *	Tell the event loop that it needs to wait for this PID
 	 */
-	if (output_pairs) {
-		VALUE_PAIR *vps = NULL;
+	if (fr_event_pid_wait(ctx, el, &exec->ev_pid, exec->pid, exec_reap, exec) < 0) {
+		exec->pid = -1;
+		RPEDEBUG("Failed adding watcher for child process");
 
+	fail_and_close:
 		/*
-		 *	HACK: Replace '\n' with ',' so that
-		 *	fr_pair_list_afrom_str() can parse the buffer in
-		 *	one go (the proper way would be to
-		 *	fix fr_pair_list_afrom_str(), but oh well).
+		 *	Avoid spurious errors in fr_exec_cleanup
+		 *	when it tries to remove FDs from the
+		 *	event loop that were never added.
 		 */
-		for (p = answer; *p; p++) {
-			if (*p == '\n') {
-				*p = comma ? ' ' : ',';
-				p++;
-				comma = 0;
-			}
-			if (*p == ',') {
-				comma++;
-			}
+		if (exec->stdout_fd >= 0) {
+			close(exec->stdout_fd);
+			exec->stdout_fd = -1;
 		}
 
-		/*
-		 *	Replace any trailing comma by a NUL.
-		 */
-		if (answer[len - 1] == ',') {
-			answer[--len] = '\0';
+		if (exec->stderr_fd >= 0) {
+			close(exec->stderr_fd);
+			exec->stderr_fd = -1;
 		}
 
-		if (fr_pair_list_afrom_str(ctx, request->dict, answer, &vps) == T_INVALID) {
-			RPERROR("Failed parsing output from: %s", cmd);
-			if (out) strlcpy(out, answer, len);
-			ret = -1;
-		}
-
-		/*
-		 *	We want to mark the new attributes as tainted,
-		 *	but not the existing ones.
-		 */
-		fr_pair_list_tainted(vps);
-		fr_pair_add(output_pairs, vps);
-
-	} else if (out) {
-		/*
-		 *	We've not been told to extract output pairs,
-		 *	just copy the programs output to the out
-		 *	buffer.
-		 */
-		strlcpy(out, answer, outlen);
+		goto fail;
 	}
 
 	/*
-	 *	Call rad_waitpid (should map to waitpid on non-threaded
-	 *	or single-server systems).
+	 *	Setup event to kill the child process after a period of time.
 	 */
-wait:
-	child_pid = rad_waitpid(pid, &status);
-	if (child_pid == 0) {
-		RERROR("Timeout waiting for child");
+	if (fr_time_delta_ispos(timeout) &&
+	    (fr_event_timer_in(ctx, el, &exec->ev, timeout, exec_timeout, exec) < 0)) goto fail_and_close;
 
-		return -2;
-	}
+	/*
+	 *	If we need to parse stdout, insert a special IO handler that
+	 *	aggregates all stdout data into an expandable buffer.
+	 */
+	if (exec->stdout_used) {
+		/*
+		 *	Accept a maximum of 32k of data from the process.
+		 */
+		fr_sbuff_init_talloc(exec->stdout_ctx, &exec->stdout_buff, &exec->stdout_tctx, 128, 32 * 1024);
+		if (fr_event_fd_insert(ctx, el, exec->stdout_fd, exec_stdout_read, NULL, NULL, exec) < 0) {
+			RPEDEBUG("Failed adding event listening to stdout");
+			goto fail_and_close;
+		}
 
-	if (child_pid == pid) {
-		if (WIFEXITED(status)) {
-			status = WEXITSTATUS(status);
-			if ((status != 0) || (ret < 0)) {
-				RERROR("Program returned code (%d) and output \"%pV\"", status,
-				       fr_box_strvalue_len(answer, len));
-			} else {
-				RDEBUG2("Program returned code (%d) and output \"%pV\"", status,
-					fr_box_strvalue_len(answer, len));
-			}
+	/*
+	 *	If the caller doesn't want the output box, we still want to copy stdout
+	 *	into the request log if we're logging at a high enough level of verbosity.
+	 */
+	} else if (RDEBUG_ENABLED2) {
+		snprintf(exec->stdout_prefix, sizeof(exec->stdout_prefix), "pid %u (stdout)", exec->pid);
+		exec->stdout_uctx = (log_fd_event_ctx_t) {
+			.type = L_DBG,
+			.lvl = L_DBG_LVL_2,
+			.request = request,
+			.prefix = exec->stdout_prefix
+		};
 
-			return ret < 0 ? ret : status;
+		if (fr_event_fd_insert(ctx, el, exec->stdout_fd, log_request_fd_event,
+				       NULL, NULL, &exec->stdout_uctx) < 0){
+			RPEDEBUG("Failed adding event listening to stdout");
+			goto fail_and_close;
 		}
 	}
 
-	RERROR("Abnormal child exit: %s", fr_syserror(errno));
+	/*
+	 *	Send stderr to the request log as error messages with a custom prefix
+	 */
+	snprintf(exec->stderr_prefix, sizeof(exec->stderr_prefix), "pid %u (stderr)", exec->pid);
+	exec->stderr_uctx = (log_fd_event_ctx_t) {
+		.type = L_DBG_ERR,
+		.lvl = L_DBG_LVL_1,
+		.request = request,
+		.prefix = exec->stderr_prefix
+	};
 
-	return -1;
+	if (fr_event_fd_insert(ctx, el, exec->stderr_fd, log_request_fd_event,
+			       NULL, NULL, &exec->stderr_uctx) < 0) {
+		RPEDEBUG("Failed adding event listening to stderr");
+		close(exec->stderr_fd);
+		exec->stderr_fd = -1;
+		goto fail;
+	}
+
+	return 0;
 }

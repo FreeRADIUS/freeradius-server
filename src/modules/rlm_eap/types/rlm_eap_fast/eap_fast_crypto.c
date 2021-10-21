@@ -82,7 +82,7 @@ void T_PRF(unsigned char const *secret, unsigned int secret_len,
 }
 
 // http://stackoverflow.com/a/29838852
-static void NEVER_RETURNS handleErrors(void)
+static NEVER_RETURNS void handleErrors(void)
 {
 	unsigned long errCode;
 
@@ -223,51 +223,61 @@ static void crypto_rfc4346_p_hash(uint8_t *out, size_t out_len,
 				  uint8_t const *secret, size_t secret_len,
 				  uint8_t const *seed,  size_t seed_len)
 {
-	HMAC_CTX *ctx_a, *ctx_out;
-	uint8_t a[HMAC_MAX_MD_CBLOCK];
+	EVP_MD_CTX *ctx_a, *ctx_out;
+	EVP_PKEY *pkey;
+
+	uint8_t a[EVP_MAX_MD_SIZE];
 	size_t size;
 
-	ctx_a = HMAC_CTX_new();
-	ctx_out = HMAC_CTX_new();
-#ifdef EVP_MD_CTX_FLAG_NON_FIPS_ALLOW
-	HMAC_CTX_set_flags(ctx_a, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
-	HMAC_CTX_set_flags(ctx_out, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
-#endif
-	HMAC_Init_ex(ctx_a, secret, secret_len, evp_md, NULL);
-	HMAC_Init_ex(ctx_out, secret, secret_len, evp_md, NULL);
+	ctx_a = EVP_MD_CTX_new();
+	ctx_out = EVP_MD_CTX_new();
 
-	size = HMAC_size(ctx_out);
+	MEM(pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, secret, secret_len));
+
+	EVP_DigestSignInit(ctx_a, NULL, evp_md, NULL, pkey);
+	EVP_DigestSignInit(ctx_out, NULL, evp_md, NULL, pkey);
+
+	size = EVP_MD_size(evp_md);
 
 	/* Calculate A(1) */
-	HMAC_Update(ctx_a, seed, seed_len);
-	HMAC_Final(ctx_a, a, NULL);
+	EVP_DigestSignUpdate(ctx_a, seed, seed_len);
+
+	/*
+	 *	OpenSSL <= 1.1.1 requires a non-null pointer for len
+	 */
+	EVP_DigestSignFinal(ctx_a, a, &(size_t){ 0 });
 
 	while (1) {
 		/* Calculate next part of output */
-		HMAC_Update(ctx_out, a, size);
-		HMAC_Update(ctx_out, seed, seed_len);
+		EVP_DigestSignUpdate(ctx_out, a, size);
+		EVP_DigestSignUpdate(ctx_out, seed, seed_len);
 
 		/* Check if last part */
 		if (out_len < size) {
-			HMAC_Final(ctx_out, a, NULL);
+			EVP_DigestSignFinal(ctx_out, a, &(size_t){ 0 });
 			memcpy(out, a, out_len);
 			break;
 		}
 
 		/* Place digest in output buffer */
-		HMAC_Final(ctx_out, out, NULL);
-		HMAC_Init_ex(ctx_out, NULL, 0, NULL, NULL);
+		EVP_DigestSignFinal(ctx_out, out, &(size_t){ 0 });
+		EVP_MD_CTX_reset(ctx_out);
+
+		EVP_DigestSignInit(ctx_out, NULL, evp_md, NULL, pkey);
 		out += size;
 		out_len -= size;
 
 		/* Calculate next A(i) */
-		HMAC_Init_ex(ctx_a, NULL, 0, NULL, NULL);
-		HMAC_Update(ctx_a, a, size);
-		HMAC_Final(ctx_a, a, NULL);
+		EVP_MD_CTX_reset(ctx_a);
+		EVP_DigestSignInit(ctx_a, NULL, evp_md, NULL, pkey);
+		EVP_DigestSignUpdate(ctx_a, a, size);
+		EVP_DigestSignFinal(ctx_a, a, &(size_t){ 0 });
 	}
 
-	HMAC_CTX_free(ctx_a);
-	HMAC_CTX_free(ctx_out);
+	EVP_PKEY_free(pkey);
+
+	EVP_MD_CTX_free(ctx_a);
+	EVP_MD_CTX_free(ctx_out);
 #ifdef __STDC_LIB_EXT1__
 	memset_s(a, 0, sizeof(a), sizeof(a));
 #else

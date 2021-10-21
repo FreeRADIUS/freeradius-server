@@ -29,14 +29,14 @@ extern "C" {
 
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/talloc.h>
 
 #include <stddef.h>
 #include <stdint.h>
-#include <talloc.h>
 
 size_t		fr_utf8_char(uint8_t const *str, ssize_t inlen);
 ssize_t		fr_utf8_str(uint8_t const *str, ssize_t inlen);
-char const     	*fr_utf8_strchr(int *chr_len, char const *str, char const *chr);
+char const     	*fr_utf8_strchr(int *chr_len, char const *str, ssize_t inlen, char const *chr);
 size_t		fr_snprint(char *out, size_t outlen, char const *in, ssize_t inlen, char quote);
 size_t		fr_snprint_len(char const *in, ssize_t inlen, char quote);
 char		*fr_asprint(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote);
@@ -46,27 +46,3 @@ ssize_t 	fr_fprintf(FILE *stream, char const *fmt, ...) CC_HINT(format (printf, 
 
 #define		is_truncated(_ret, _max) ((_ret) >= (size_t)(_max))
 #define		truncate_len(_ret, _max) (((_ret) >= (size_t)(_max)) ? (((size_t)(_max)) - 1) : _ret)
-
-/** Boilerplate for checking truncation
- *
- * If truncation has occurred, advance _p as far as possible without
- * overrunning the output buffer, and \0 terminate.  Then return the length
- * of the buffer we would have needed to write the full value.
- *
- * If truncation has not occurred, advance _p by whatever the copy or print
- * function returned.
- */
-#define RETURN_IF_TRUNCATED(_p, _ret, _max) \
-do { \
-	if (is_truncated(_ret, _max)) { \
-		size_t _r = (_p - out) + _ret; \
-		_p += truncate_len(_ret, _max); \
-		*_p = '\0'; \
-		return _r; \
-	} \
-	_p += _ret; \
-} while (0)
-
-#ifdef __cplusplus
-}
-#endif

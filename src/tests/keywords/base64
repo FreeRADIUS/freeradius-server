@@ -5,9 +5,7 @@ update request {
 	&Tmp-String-0		:= '9870'
 	&Tmp-Octets-0		:= 0x39383731
 	&Tmp-IP-Address-0	:= 57.56.55.50
-	&Tmp-Date-0		:= 959985459
 	&Tmp-Integer-0		:= 959985460
-	&Tmp-Cast-Abinary	:= 'ip out forward srcip 57.56.55.53/32 udp dstport = 1812'
 	&Tmp-Cast-IfId		:= '0000:0000:3938:3737'
 	&Tmp-Cast-IPv6Addr	:= '::3938:3738'
 	&Tmp-Cast-IPv6Prefix	:= '::3938:3739/128'
@@ -22,9 +20,7 @@ update request {
 	&Tmp-String-0		:= "%{base64:%{Tmp-String-0}}"
 	&Tmp-String-1		:= "%{base64:%{Tmp-Octets-0}}"
 	&Tmp-String-2		:= "%{base64:%{Tmp-IP-Address-0}}"
-	&Tmp-String-3		:= "%{base64:%{Tmp-Date-0}}"
 	&Tmp-String-4		:= "%{base64:%{Tmp-Integer-0}}"
-	&Tmp-String-5		:= "%{base64:%{Tmp-Cast-Abinary}}"
 	&Tmp-String-6		:= "%{base64:%{Tmp-Cast-Ifid}}"
 	&Tmp-String-7		:= "%{base64:%{Tmp-Cast-IPv6Addr}}"
 	&Tmp-String-8		:= "%{base64:%{Tmp-Cast-IPv6Prefix}}"
@@ -46,18 +42,8 @@ if (&Tmp-String-2[0] != 'OTg3Mg==') {
 	test_fail
 }
 
-# Date - bin 0x39383733
-if (&Tmp-String-3[0] != 'OTg3Mw==') {
-	test_fail
-}
-
 # Integer - bin 0x39383734
 if (&Tmp-String-4[0] != 'OTg3NA==') {
-	test_fail
-}
-
-# Abinary - bin 0x0101000039383735000000002000110000000714000200000000000000000000
-if (&Tmp-String-5[0] != 'AQEAADk4NzUAAAAAIAARAAAABxQAAgAAAAAAAAAAAAA=') {
 	test_fail
 }
 
@@ -121,4 +107,20 @@ if (&Tmp-Octets-1 != 0x008000000000000000000000000039383739) {
 	test_fail
 }
 
+# Regression tests
+update request {
+	&Tmp-Octets-0 := %{base64decode:5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK}
+}
+
+if (&Tmp-Octets-0 != 0xe5136a365f2260b6e409cec9851f1ab384ed0c3097ea8b6eb96b5c8daf2b213532c7dceb9c749ef6d4c71a628a) {
+	test_fail
+}
+
+update request {
+	&Tmp-Octets-0 := "%{base64decode:eHfXPKZ+2iv9cnMV1MOmE/moYYA1Uk5xTmw4aVlMYmtDYzdKaFI4YXM0VHRERENYNm90dXVXdGNqYThySVRVeXg5enJuSFNlOXRUSEdtS0s=}"
+}
+
+if (&Tmp-Octets-0 != 0x7877d73ca67eda2bfd727315d4c3a613f9a8618035524e714e6c3869594c626b4363374a685238617334547444444358366f7475755774636a6138724954557978397a726e48536539745448476d4b4b) {
+	test_fail
+}
 success

@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -23,29 +23,38 @@ VALUE	Failover-Binding-Status		Reset			8
 ATTRIBUTE	Failover-Connect-Flags			115	uint16
 VALUE	Failover-Connect-Flags		Fixed-PD-Length		1
 
-ATTRIBUTE	Failover-DNS-Removal-Info		116	tlv
+ATTRIBUTE	Failover-DNS-Removal-Info		116	group
 
-BEGIN-TLV	Failover-DNS-Removal-Info
-ATTRIBUTE	Failover-DNS-Host-Name			117	octets			# Domain name
-ATTRIBUTE	Failover-DNS-Zone-Name			118	octets			# Zone name
+#
+#  The next 3 attributes can only occur inside of Failover-DNS-Removal-Info.
+#  However, in DHCPv6, the attribute number space is global.
+#
+ATTRIBUTE	Host-Name				117	string dns_label
+ATTRIBUTE	Zone-Name				118	string dns_label
 
-ATTRIBUTE	Failover-DNS-Flags			119	uint16
-VALUE	Failover-DNS-Flags		Fwd-Up-To-Date		0x01
-VALUE	Failover-DNS-Flags		Rev-Up-To-Date		0x02
-VALUE	Failover-DNS-Flags		Synthesized-Name	0x04
-VALUE	Failover-DNS-Flags		Using-Requested-FQDN	0x08
-END-TLV		Failover-DNS-Removal-Info
+ATTRIBUTE	Flags					119	uint16
+VALUE	Flags				Fwd-Up-To-Date		0x01
+VALUE	Flags				Rev-Up-To-Date		0x02
+VALUE	Flags				Synthesized-Name	0x04
+VALUE	Flags				Using-Requested-FQDN	0x08
+
 
 ATTRIBUTE	Failover-Expiration-Time		120	date
 ATTRIBUTE	Failover-Max-Unacked-BNDUPD		121	uint32
 ATTRIBUTE	Failover-Max-Client-Lead-Time		122	uint32
-ATTRIBUTE	Failover-Max-Partner-Lifetime		123	uint32
-ATTRIBUTE	Failover-Partner-Lifetime-Sent		124	uint32
+ATTRIBUTE	Failover-Max-Partner-Lifetime		123	date
+ATTRIBUTE	Failover-Partner-Lifetime-Sent		124	date
 ATTRIBUTE	Failover-Partner-Down-Time		125	date
 ATTRIBUTE	Failover-Partner-Raw-CLT-Time		126	date
-ATTRIBUTE	Failover-Protocol-Version		127	octets		# Complex struct see RFC 8156
+ATTRIBUTE	Failover-Protocol-Version		127	struct
+MEMBER		Major					uint16
+MEMBER		Minor					uint16
+
 ATTRIBUTE	Failover-Keepalive-Time			128	uint32
-ATTRIBUTE	Failover-Reconfigure-Data		129	octets		# Complex struct see RFC 8156
+ATTRIBUTE	Failover-Reconfigure-Data		129	struct
+MEMBER		Time					date
+MEMBER		Key					octets
+
 ATTRIBUTE	Failover-Relationship-Name		130	string
 
 ATTRIBUTE	Failover-Server-Flags			131	uint8
@@ -66,4 +75,4 @@ VALUE	Failover-Server-State		Resolution-Interrupted	9
 VALUE	Failover-Server-State		Conflict-Done		10
 
 ATTRIBUTE	Failover-Start-Time-Of-State		133	date
-ATTRIBUTE	Failover-State-Expiration-Time		134	uint32
+ATTRIBUTE	Failover-State-Expiration-Time		134	date

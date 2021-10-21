@@ -1,5 +1,6 @@
+#pragma once
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -25,10 +26,6 @@
  * @copyright 2000,2006,2015 The FreeRADIUS server project
  * @copyright 2011 TekSavvy Solutions (gabe@teksavvy.com)
  */
-
-#ifndef LIBFREERADIUS_REDIS_H
-#define	LIBFREERADIUS_REDIS_H
-
 RCSIDH(redis_h, "$Id$")
 
 #include <freeradius-devel/server/base.h>
@@ -36,6 +33,10 @@ RCSIDH(redis_h, "$Id$")
 #include <freeradius-devel/server/module.h>
 
 #include <hiredis/hiredis.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define MAX_REDIS_COMMAND_LEN		4096
 #define MAX_REDIS_ARGS			32
@@ -68,8 +69,10 @@ static inline void fr_redis_pipeline_free(redisReply *reply[], size_t num)
 	for (i = 0; i < num; i++) fr_redis_reply_free(&(reply[i]));
 }
 
-extern FR_NAME_NUMBER const redis_reply_types[];
-extern FR_NAME_NUMBER const redis_rcodes[];
+extern fr_table_num_sorted_t const redis_reply_types[];
+extern size_t redis_reply_types_len;
+extern fr_table_num_sorted_t const redis_rcodes[];
+extern size_t redis_rcodes_len;
 
 /** Codes are ordered inversely by priority
  *
@@ -112,6 +115,11 @@ typedef struct {
 	uint32_t		max_alt;	//!< Maximum alternative nodes to try.
 	fr_time_delta_t		retry_delay;	//!< How long to wait when we received a -TRYAGAIN
 						//!< message.
+	fr_time_delta_t		connection_timeout;
+
+	fr_time_delta_t		reconnection_delay;
+
+	char const		*log_prefix;
 } fr_redis_conf_t;
 
 #define REDIS_COMMON_CONFIG \
@@ -130,15 +138,16 @@ void		fr_redis_version_print(void);
  */
 fr_redis_rcode_t	fr_redis_command_status(fr_redis_conn_t *conn, redisReply *reply);
 
-void			fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, REQUEST *request, int idx);
+void			fr_redis_reply_print(fr_log_lvl_t lvl, redisReply *reply, request_t *request, int idx);
 
 int			fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply *reply,
-						    fr_type_t dst_type, fr_dict_attr_t const *dst_enumv);
+						    fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+						    bool box_error, bool shallow);
 
-int			fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out,
-					      REQUEST *request, redisReply *key, redisReply *op, redisReply *value);
+int			fr_redis_reply_to_map(TALLOC_CTX *ctx, fr_map_list_t *out,
+					      request_t *request, redisReply *key, redisReply *op, redisReply *value);
 
-int			fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[], vp_map_t *map);
+int			fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[], map_t *map);
 
 fr_redis_rcode_t	fr_redis_get_version(char *out, size_t out_len, fr_redis_conn_t *conn);
 
@@ -150,4 +159,7 @@ uint32_t		fr_redis_version_num(char const *version);
 fr_redis_rcode_t	fr_redis_pipeline_result(unsigned int *pipelined, fr_redis_rcode_t *rcode,
 						 redisReply *out[], size_t out_len,
 						 fr_redis_conn_t *conn) CC_HINT(nonnull);
-#endif /* LIBFREERADIUS_REDIS_H */
+
+#ifdef __cplusplus
+}
+#endif

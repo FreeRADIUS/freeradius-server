@@ -636,6 +636,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_libfreeradius_redis
 with_redis_include_dir
 with_redis_lib_dir
 with_redis_dir
@@ -1254,6 +1255,9 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --without-libfreeradius-redis
+                          build without redis support
+
   --with-redis-include-dir=DIR
                           Directory where the redis includes may be found
   --with-redis-lib-dir=DIR
@@ -1787,10 +1791,18 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
+
+# Check whether --with-libfreeradius-redis was given.
+if test "${with_libfreeradius_redis+set}" = set; then :
+  withval=$with_libfreeradius_redis;
+fi
+
+
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
-if test x$with_libfreeradius-redis != xno; then
+if test x$with_libfreeradius_redis != xno; then
 
         redis_include_dir=
 

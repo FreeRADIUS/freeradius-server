@@ -1,5 +1,0 @@
-type = aka
-
-aka {
-	network_name = "testing123"
-}

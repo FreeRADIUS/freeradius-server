@@ -6,74 +6,30 @@
 #
 #  Test name
 #
-TEST := tests.keywords
+TEST := test.keywords
 
 #
 #  The test files are files without extensions.
 #  The list is unordered.  The order is added in the next step by looking
 #  at precursors.
 #
-FILES := $(filter-out %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
+FILES := $(filter-out %.ignore %.conf %.md %.attrs %.mk %~ %.rej,$(subst $(DIR)/,,$(wildcard $(DIR)/*)))
 
 #
 #  Don't run SSHA tests if there's no SSL
 #
 ifeq "$(OPENSSL_LIBS)" ""
-FILES := $(filter-out pap-ssha2,$(FILES))
+FILES := $(filter-out pap-ssha2 sha2,$(FILES))
 endif
 
-OUTPUT := $(subst $(top_srcdir)/src,$(BUILD_DIR),$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+#
+#  Some tests require PCRE or PCRE2
+#
+ifeq "$(AC_HAVE_REGEX_PCRE)$(AC_HAVE_REGEX_PCRE2)" ""
+FILES := $(filter-out if-regex-match-named,$(FILES))
+endif
 
-#
-#  Create the output directory
-#
-.PHONY: $(OUTPUT)
-$(OUTPUT):
-	${Q}mkdir -p $@
-
-#
-#  All of the output files depend on the input files
-#
-FILES.$(TEST) := $(addprefix $(OUTPUT),$(notdir $(FILES)))
-
-#
-#  The output files also depend on the directory
-#  and on the previous test.
-#
-$(FILES.$(TEST)): | $(OUTPUT)
-
-#
-#  We have a real file that's created if all of the tests pass.
-#
-$(BUILD_DIR)/tests/$(TEST): $(FILES.$(TEST))
-	${Q}touch $@
-
-#
-#  For simplicity, we create a phony target so that the poor developer
-#  doesn't need to remember path names
-#
-$(TEST): $(BUILD_DIR)/tests/$(TEST)
-
-#
-#  Clean the ouput directory and files.
-#
-#  Note that we have to specify the actual filenames here, because
-#  of stupidities with GNU Make.
-#
-.PHONY: clean.$(TEST)
-clean.$(TEST):
-	${Q}rm -rf $(BUILD_DIR)/tests/keywords $(BUILD_DIR)/tests/tests.keywords
-
-clean.test: clean.$(TEST)
-
-#
-#  Find which input files are needed by the tests
-#  strip out the ones which exist
-#  move the filenames to the build directory.
-#
-BOOTSTRAP_EXISTS := $(addprefix $(DIR)/,$(addsuffix .attrs,$(FILES)))
-BOOTSTRAP_NEEDS	 := $(filter-out $(wildcard $(BOOTSTRAP_EXISTS)),$(BOOTSTRAP_EXISTS))
-BOOTSTRAP	 := $(subst $(DIR),$(OUTPUT),$(BOOTSTRAP_NEEDS))
+$(eval $(call TEST_BOOTSTRAP))
 
 #
 #  For each file, look for precursor test.
@@ -83,7 +39,7 @@ BOOTSTRAP	 := $(subst $(DIR),$(OUTPUT),$(BOOTSTRAP_NEEDS))
 
 export OPENSSL_LIBS
 
-$(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
+$(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(sort $(FILES))) | $(OUTPUT)
 	${Q}rm -f $@
 	${Q}touch $@
 	${Q}for x in $^; do \
@@ -92,30 +48,27 @@ $(OUTPUT)/depends.mk: $(addprefix $(DIR)/,$(FILES)) | $(OUTPUT)
 			z=`echo $$x | sed 's,src/,$(BUILD_DIR)/',`; \
 			echo "$$z: $$y" >> $@; \
 			echo "" >> $@; \
+		fi; \
+		y=`grep 'PROTOCOL: ' $$x | sed 's/.*://;s/  / /g'`; \
+		if [ "$$y" != "" ]; then \
+			z=`echo $$x | sed 's,src/tests/keywords/,,;s/-/_/g'`; \
+			echo "UNIT_TEST_KEYWORD_ARGS.$$z=-p $$y" >> $@; \
+			echo "" >> $@; \
 		fi \
 	done
 
 #
-#  These ones get copied over from the default input
+#  Cache the list of modules which are enabled, so that we don't run
+#  the shell script on every build.
 #
-$(BOOTSTRAP): $(DIR)/default-input.attrs | $(OUTPUT)
-	${Q}cp $< $@
+#  KEYWORD_MODULES := $(shell grep -- mods-enabled src/tests/keywords/unit_test_module.conf | sed 's,.*/,,')
+#
+$(OUTPUT)/enabled.mk: src/tests/keywords/unit_test_module.conf | $(OUTPUT)
+	${Q}echo "KEYWORD_MODULES := " $$(grep -- mods-enabled src/tests/keywords/unit_test_module.conf | sed 's,.*/,,' | tr '\n' ' ' ) > $@
+-include $(OUTPUT)/enabled.mk
 
-#
-#  These ones get copied over from their original files
-#
-$(BUILD)/tests/keywords/%.attrs: $(DIR)/%.attrs $(DIR)/default-input.attrs | $(OUTPUT)
-	${Q}cp $< $@
-
-#
-#  Don't auto-remove the files copied by the rule just above.
-#  It's unnecessary, and it clutters the output with crap.
-#
-.PRECIOUS: $(OUTPUT)/%.attrs
-
-KEYWORD_MODULES := $(shell grep -- mods-enabled src/tests/keywords/unit_test_module.conf | sed 's,.*/,,')
 KEYWORD_RADDB	:= $(addprefix raddb/mods-enabled/,$(KEYWORD_MODULES))
-KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_example.la rlm_cache.la rlm_csv.la
+KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_csv.la
 
 #
 #  Files in the output dir depend on the unit tests
@@ -133,30 +86,32 @@ KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_exampl
 #  Otherwise, check the log file for a parse error which matches the
 #  ERROR line in the input.
 #
-$(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(TESTBINDIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_cache_rbtree.la rlm_test.la rlm_csv.la
-	${Q}echo KEYWORD-TEST $(notdir $@)
-	${Q}if [ -f $<.attrs ] ; then \
-		cp $<.attrs $(BUILD_DIR)/tests/keywords/; \
-	else \
-		cp $(dir $<)/default-input.attrs $(BUILD_DIR)/tests/keywords/$(notdir $<).attrs; \
-	fi
-	${Q}if ! KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/keywords/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx > "$@.log" 2>&1 || ! test -f "$@"; then \
+#  NOTE: Grepping for $< is not safe cross platform, as on Linux it
+#  expands to the full absolute path, and on macOS it appears to be relative.
+$(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_module | $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_test.la rlm_csv.la rlm_unpack.la
+	$(eval CMD:=KEYWORD=$(notdir $@) $(TEST_BIN)/unit_test_module $(UNIT_TEST_KEYWORD_ARGS.$(subst -,_,$(notdir $@))) -D share/dictionary -d src/tests/keywords/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xx)
+	@echo "KEYWORD-TEST $(notdir $@)"
+	${Q}cp $(if $(wildcard $<.attrs),$<.attrs,$(dir $<)/default-input.attrs) $@.attrs
+	${Q}if ! $(CMD) > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo "KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/keywords/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
-			rm -f $(BUILD_DIR)/tests/tests.keywords; \
+			echo $(CMD); \
+			rm -f $(BUILD_DIR)/tests/test.keywords; \
 			exit 1; \
 		fi; \
-		FOUND=$$(grep -E '^(Error : )?$<' $@.log | head -1 | sed 's/.*\[//;s/\].*//'); \
+		FOUND=$$(grep -E '^(Error : )?src/tests/keywords/$(notdir $@)' $@.log | head -1 | sed 's/.*\[//;s/\].*//'); \
 		EXPECTED=$$(grep -n ERROR $< | sed 's/:.*//'); \
 		if [ "$$EXPECTED" != "$$FOUND" ]; then \
 			cat $@.log; \
 			echo "# $@.log"; \
-			echo "KEYWORD=$(notdir $@) $(TESTBIN)/unit_test_module -D share/dictionary -d src/tests/keywords/ -i \"$@.attrs\" -f \"$@.attrs\" -r \"$@\" -xx"; \
-			rm -f $(BUILD_DIR)/tests/tests.keywords; \
+			echo $(CMD); \
+			rm -f $(BUILD_DIR)/tests/test.keywords; \
 			exit 1; \
 		else \
 			touch "$@"; \
 		fi \
 	fi
+
+$(TEST):
+	@touch $(BUILD_DIR)/tests/$@

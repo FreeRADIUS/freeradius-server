@@ -37,8 +37,10 @@ extern "C" {
  */
 typedef enum {
 	CHILD_INIT = 0,					//!< Initial state.
-	CHILD_RUNNABLE,					//!< Child can continue running.
-	CHILD_YIELDED,					//!< Child is yielded waiting on an event.
+	CHILD_RUNNABLE,					//!< Running/runnable.
+	CHILD_EXITED,					//!< Child has exited
+	CHILD_DETACHED,					//!< Child has detached.
+	CHILD_CANCELLED,				//!< Child was cancelled.
 	CHILD_DONE					//!< The child has completed.
 } unlang_parallel_child_state_t;
 
@@ -46,21 +48,48 @@ typedef enum {
  *
  */
 typedef struct {
+	int				num;		//!< The child number.
+
 	unlang_parallel_child_state_t	state;		//!< State of the child.
-	REQUEST				*child; 	//!< Child request.
-	unlang_t			*instruction;	//!< broken out of g->children
+	request_t			*request; 	//!< Child request.
+	char				*name;		//!< Cache the request name.
+	unlang_t const			*instruction;	//!< broken out of g->children
 } unlang_parallel_child_t;
 
 typedef struct {
-	rlm_rcode_t		result;
-	int			priority;
+	rlm_rcode_t			result;
+	int				priority;
 
-	int			num_children;		//!< How many children are executing.
+	int				num_children;	//!< How many children are executing.
+	int				num_complete;	//!< How many children are complete.
 
-	unlang_group_t		*g;
+	bool				detach;		//!< are we creating the child detached
+	bool				clone;		//!< are the children cloned
 
-	unlang_parallel_child_t children[];		//!< Array of children.
+	unlang_parallel_child_t		children[];	//!< Array of children.
+} unlang_parallel_state_t;
+
+typedef struct {
+	unlang_group_t			group;
+	bool				detach;		//!< are we creating the child detached
+	bool				clone;
 } unlang_parallel_t;
+
+/** Cast a group structure to the parallel keyword extension
+ *
+ */
+static inline unlang_parallel_t *unlang_group_to_parallel(unlang_group_t *g)
+{
+	return talloc_get_type_abort(g, unlang_parallel_t);
+}
+
+/** Cast a parallel keyword extension to a group structure
+ *
+ */
+static inline unlang_group_t *unlang_parallel_to_group(unlang_parallel_t *parallel)
+{
+	return (unlang_group_t *)parallel;
+}
 
 #ifdef __cplusplus
 }

@@ -27,8 +27,6 @@
  */
 RCSIDH(eap_fast_crypto_h, "$Id$")
 
-#include <freeradius-devel/tls/missing.h>
-
 void T_PRF(unsigned char const *secret, unsigned int secret_len, char const *prf_label, unsigned char const *seed, unsigned int seed_len, unsigned char *out, unsigned int out_len) CC_HINT(nonnull(1,3,6));
 
 int eap_fast_encrypt(uint8_t const *plaintext, size_t plaintext_len,

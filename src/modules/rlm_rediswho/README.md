@@ -1,4 +1,4 @@
-# rlm_redis_who
+# rlm_rediswho
 ## Metadata
 <dl>
   <dt>category</dt><dd>datastore</dd>

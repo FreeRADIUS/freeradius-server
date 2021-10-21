@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/map_proc.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 /** Client field
  *
@@ -39,36 +39,39 @@ typedef struct {
 	char const	*field;		//!< Field name.
 } client_get_vp_ctx_t;
 
-static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
-				   vp_map_t const *map, void *uctx)
+static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request,
+				   map_t const *map, void *uctx)
 {
 	client_get_vp_ctx_t	*client = uctx;
-	VALUE_PAIR		*head = NULL, *vp;
-	fr_cursor_t		cursor;
+	fr_pair_list_t		head;
+	fr_pair_t		*vp;
 	fr_dict_attr_t const	*da;
 	CONF_PAIR const		*cp;
 
-	rad_assert(ctx != NULL);
+	fr_assert(ctx != NULL);
 
-	fr_cursor_init(&cursor, &head);
+	fr_pair_list_init(&head);
 
 	/*
 	 *	FIXME: allow multiple entries.
 	 */
 	if (tmpl_is_attr(map->lhs)) {
-		da = map->lhs->tmpl_da;
+		da = tmpl_da(map->lhs);
 	} else {
 		char *attr;
 
 		if (tmpl_aexpand(ctx, &attr, request, map->lhs, NULL, NULL) <= 0) {
 			RWDEBUG("Failed expanding string");
+		error:
+			fr_pair_list_free(&head);
 			return -1;
 		}
 
-		da = fr_dict_attr_by_name(request->dict, attr);
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), attr);
 		if (!da) {
 			RWDEBUG("No such attribute '%s'", attr);
-			return -1;
+			talloc_free(attr);
+			goto error;
 		}
 
 		talloc_free(attr);
@@ -82,19 +85,18 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
 		MEM(vp = fr_pair_afrom_da(ctx, da));
 		if (fr_pair_value_from_str(vp, value, talloc_array_length(value) - 1, '\0', false) < 0) {
 			RWDEBUG("Failed parsing value \"%pV\" for attribute %s: %s", fr_box_strvalue(value),
-				map->lhs->tmpl_da->name, fr_strerror());
-			fr_pair_list_free(&head);
+				tmpl_da(map->lhs)->name, fr_strerror());
 			talloc_free(vp);
-			return -1;
+			goto error;
 		}
 
 		vp->op = map->op;
-		fr_cursor_append(&cursor, vp);
+		fr_pair_append(&head, vp);
 
 		if (map->op != T_OP_ADD) break;	/* Create multiple attribute for multiple CONF_PAIRs */
 	}
 
-	*out = head;
+	fr_pair_list_append(out, &head);
 
 	return 0;
 }
@@ -109,30 +111,34 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
  * @param[in] maps		Head of the map list.
  * @return
  *	- #RLM_MODULE_NOOP no rows were returned.
- *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
+ *	- #RLM_MODULE_UPDATED if one or more #fr_pair_t were added to the #request_t.
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
-static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
-				   fr_value_box_t **client_override, vp_map_t const *maps)
+static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst, request_t *request,
+				   fr_value_box_list_t *client_override, fr_map_list_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
-	vp_map_t const		*map;
+	map_t const		*map = NULL;
 	RADCLIENT		*client;
 	client_get_vp_ctx_t	uctx;
 
-	if (*client_override) {
+	if (!fr_dlist_empty(client_override)) {
 		fr_ipaddr_t	ip;
 		char const	*client_str;
+		fr_value_box_t	*client_override_head = fr_dlist_head(client_override);
 
 		/*
 		 *	Concat don't asprint, as this becomes a noop
 		 *	in the vast majority of cases.
 		 */
-		if (fr_value_box_list_concat(request, *client_override, client_override, FR_TYPE_STRING, true) < 0) {
+		if (fr_value_box_list_concat_in_place(request,
+						      client_override_head, client_override, FR_TYPE_STRING,
+						      FR_VALUE_BOX_LIST_FREE, true,
+						      SIZE_MAX) < 0) {
 			REDEBUG("Failed concatenating input data");
 			return RLM_MODULE_FAIL;
 		}
-		client_str = (*client_override)->vb_strvalue;
+		client_str = client_override_head->vb_strvalue;
 
 		if (fr_inet_pton(&ip, client_str, -1, AF_UNSPEC, false, true) < 0) {
 			REDEBUG("\"%s\" is not a valid IPv4 or IPv6 address", client_str);
@@ -162,14 +168,16 @@ static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst
 			}
 		}
 	} else {
-		client = request->client;
+		client = client_from_request(request);
+		if (!client) {
+			REDEBUG("No client associated with this request");
+			return RLM_MODULE_FAIL;
+		}
 	}
 	uctx.cs = client->cs;
 
 	RINDENT();
-	for (map = maps;
-	     map != NULL;
-	     map = map->next) {
+	while ((map = fr_dlist_next(maps, map))) {
 		char	*field = NULL;
 
 		if (tmpl_aexpand(request, &field, request, map->rhs, NULL, NULL) < 0) {
@@ -206,130 +214,138 @@ finish:
 	return rcode;
 }
 
-/*
- *	Xlat for %{client:[<ipaddr>.]foo}
+static xlat_arg_parser_t const xlat_client_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	{ .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** xlat to get client config data
+ *
+ * Example:
+@verbatim
+%(client:foo [<ipaddr>])
+@endverbatim
+ *
+ * @ingroup xlat_functions
  */
-static ssize_t xlat_client(TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			   REQUEST *request, char const *fmt)
+static xlat_action_t xlat_client(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+				 UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				 fr_value_box_list_t *in)
 {
 	char const	*value = NULL;
-	char		buffer[INET6_ADDRSTRLEN], *q;
-	char const	*p = fmt;
 	fr_ipaddr_t	ip;
 	CONF_PAIR	*cp;
 	RADCLIENT	*client = NULL;
+	fr_value_box_t	*field = fr_dlist_head(in);
+	fr_value_box_t	*client_ip = fr_dlist_next(in, field);
+	fr_value_box_t	*vb;
 
-	*out = NULL;
-
-	q = strrchr(p, '.');
-	if (q) {
-		strlcpy(buffer, p, (q + 1) - p);
-		if (fr_inet_pton(&ip, buffer, -1, AF_UNSPEC, false, true) < 0) goto request_client;
-
-		p = q + 1;
+	if (!fr_box_is_null(client_ip)) {
+		if (fr_inet_pton(&ip, client_ip->vb_strvalue, -1, AF_UNSPEC, false, true) < 0) {
+			RDEBUG("Invalid client IP address \"%s\"", client_ip->vb_strvalue);
+			return XLAT_ACTION_FAIL;
+		}
 
 		client = client_find(NULL, &ip, IPPROTO_IP);
 		if (!client) {
-			RDEBUG("No client found with IP \"%s\"", buffer);
-			return 0;
+			RDEBUG("No client found with IP \"%s\"", client_ip->vb_strvalue);
+			return XLAT_ACTION_FAIL;
 		}
 	} else {
-	request_client:
-		client = request->client;
+		client = client_from_request(request);
 		if (!client) {
-			RERROR("No client associated with this request");
-
-			return -1;
+			REDEBUG("No client associated with this request");
+			return XLAT_ACTION_FAIL;
 		}
 	}
 
-	cp = cf_pair_find(client->cs, p);
+	cp = cf_pair_find(client->cs, field->vb_strvalue);
 	if (!cp || !(value = cf_pair_value(cp))) {
-		if (strcmp(fmt, "shortname") == 0 && request->client->shortname) {
-			value = request->client->shortname;
+		if (strcmp(field->vb_strvalue, "shortname") == 0 && client->shortname) {
+			value = client->shortname;
 		}
-		else if (strcmp(fmt, "nas_type") == 0 && request->client->nas_type) {
-			value = request->client->nas_type;
+		else if (strcmp(field->vb_strvalue, "nas_type") == 0 && client->nas_type) {
+			value = client->nas_type;
 		}
-		if (!value) return 0;
+		if (!value) return XLAT_ACTION_DONE;
 	}
 
-	*out = talloc_typed_strdup(ctx, value);
-	return talloc_array_length(*out) - 1;
+	MEM(vb = fr_value_box_alloc_null(ctx));
+
+	if (fr_value_box_strdup(ctx, vb, NULL, value, false) < 0) {
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
 }
 
 
 /*
  *	Find the client definition.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
-	size_t length;
-	char const *value;
-	CONF_PAIR *cp;
-	RADCLIENT *c;
-	CONF_SECTION *server_cs;
-	char buffer[2048];
+	size_t		length;
+	char const	*value;
+	CONF_PAIR	*cp;
+	char		buffer[2048];
+	RADCLIENT	*client;
 
 	/*
 	 *	Ensure we're only being called from the main thread,
 	 *	with fake packets.
 	 */
-	if ((request->packet->src_port != 0) || (request->packet->vps != NULL) ||
+	if ((request->packet->socket.inet.src_port != 0) || (!fr_pair_list_empty(&request->request_pairs)) ||
 	    (request->parent != NULL)) {
 		REDEBUG("Improper configuration");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
-	if (!request->client || !request->client->cs) {
+	client = client_from_request(request);
+	if (!client || !client->cs) {
 		REDEBUG("Unknown client definition");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
-	cp = cf_pair_find(request->client->cs, "directory");
+	cp = cf_pair_find(client->cs, "directory");
 	if (!cp) {
 		REDEBUG("No directory configuration in the client");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	value = cf_pair_value(cp);
 	if (!value) {
 		REDEBUG("No value given for the directory entry in the client");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	length = strlen(value);
 	if (length > (sizeof(buffer) - 256)) {
 		REDEBUG("Directory name too long");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	memcpy(buffer, value, length + 1);
-	fr_inet_ntoh(&request->packet->src_ipaddr, buffer + length, sizeof(buffer) - length - 1);
+	fr_inet_ntoh(&request->packet->socket.inet.src_ipaddr, buffer + length, sizeof(buffer) - length - 1);
 
 	/*
 	 *	Read the buffer and generate the client.
 	 */
-	if (request->client->server) {
-		server_cs = request->client->server_cs;
+	if (!client->server) RETURN_MODULE_FAIL;
 
-	} else if (request->listener) {
-		server_cs = request->listener->server_cs;
-	} else {
-		return RLM_MODULE_FAIL;
-	}
-
-	c = client_read(buffer, server_cs, true);
-	if (!c) return RLM_MODULE_FAIL;
+	client = client_read(buffer, client->server_cs, true);
+	if (!client) RETURN_MODULE_FAIL;
 
 	/*
 	 *	Replace the client.  This is more than a bit of a
 	 *	hack.
 	 */
-	request->client = c;
+	request->client = client;
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /*
@@ -344,7 +360,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
  */
 static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 {
-	xlat_register(instance, "client", xlat_client, NULL, NULL, 0, 0, true);
+	xlat_t	*xlat;
+	xlat = xlat_register(instance, "client", xlat_client, false);
+	xlat_func_args(xlat, xlat_client_args);
 	map_proc_register(instance, "client", map_proc_client, NULL, 0);
 
 	return 0;

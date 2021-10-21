@@ -24,20 +24,250 @@
  */
 RCSID("$Id$")
 
-#include "unlang_priv.h"
-#include "parallel_priv.h"
+#include "function.h"
+#include "interpret_priv.h"
 #include "module_priv.h"
+#include "parallel_priv.h"
+#include "subrequest_priv.h"
+#include "unlang_priv.h"
+
+
+/** Cancel a specific child
+ *
+ */
+static inline CC_HINT(always_inline) void unlang_parallel_cancel_child(unlang_parallel_state_t *state, int i)
+{
+	request_t *child = state->children[i].request;
+	request_t *request = child->parent;	/* For debug messages */
+
+	switch (state->children[i].state) {
+	case CHILD_INIT:
+		state->children[i].state = CHILD_CANCELLED;
+		fr_assert(!state->children[i].request);
+		break;
+
+	case CHILD_EXITED:
+		state->children[i].state = CHILD_CANCELLED;
+		TALLOC_FREE(state->children[i].request);
+		break;
+
+	case CHILD_RUNNABLE:	/* Don't check runnable_id, may be yielded */
+		/*
+		 *	Signal the child to stop
+		 *
+		 *	The signal function cleans up the request
+		 *	and signals anything that was tracking it
+		 *	that it's now complete.
+		 */
+		unlang_interpret_signal(child, FR_SIGNAL_CANCEL);
+
+		/*
+		 *	Free it.
+		 */
+		TALLOC_FREE(state->children[i].request);
+		break;
+
+	case CHILD_DONE:
+		fr_assert(!fr_heap_entry_inserted(child->runnable_id));
+
+		/*
+		 *	Completed children just get freed
+		 */
+		TALLOC_FREE(state->children[i].request);
+		break;
+
+	case CHILD_DETACHED:
+	case CHILD_CANCELLED:
+		return;
+	}
+
+	RDEBUG3("parallel - child %s (%d/%d) CANCELLED",
+		state->children[i].name,
+		i + 1, state->num_children);
+	state->children[i].state = CHILD_CANCELLED;
+}
+
+#if 0
+/** Cancel all the child's siblings
+ *
+ * Siblings will be excluded from final result calculation for the parallel section.
+ */
+static void unlang_parallel_cancel_siblings(request_t *request)
+{
+	unlang_stack_t		*stack = request->parent->stack;
+	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
+	unlang_parallel_state_t	*state = talloc_get_type_abort(frame->state, unlang_parallel_state_t);
+	int i;
+
+	for (i = 0; i < state->num_children; i++) {
+		if (state->children[i].request == request) continue;	/* Don't cancel this one */
+
+		unlang_parallel_cancel_child(state, i);
+	}
+}
+#endif
+
+/** Signal handler to deal with UNLANG_ACTION_DETACH
+ *
+ * When a request detaches we need
+ */
+static void unlang_parallel_child_signal(request_t *request, fr_state_signal_t action, void *uctx)
+{
+	unlang_parallel_child_t		*child = uctx;
+	unlang_stack_frame_t		*frame;
+	unlang_parallel_state_t		*state;
+
+	if (action != FR_SIGNAL_DETACH) return;
+
+	frame = frame_current(request->parent);
+	state = talloc_get_type_abort(frame->state, unlang_parallel_state_t);
+
+	RDEBUG3("parallel - child %s (%d/%d) DETACHED",
+		request->name,
+		child->num + 1, state->num_children);
+
+	child->state = CHILD_DETACHED;
+	child->request = NULL;
+	state->num_complete++;
+
+	/*
+	 *	All children exited, resume the parent
+	 */
+	if (state->num_complete == state->num_children) {
+		RDEBUG3("Signalling parent %s that all children have EXITED or DETACHED", request->parent->name);
+		unlang_interpret_mark_runnable(request->parent);
+	}
+
+	return;
+}
+
+/** When the chld is done, tell the parent that we've exited.
+ *
+ */
+static unlang_action_t unlang_parallel_child_done(UNUSED rlm_rcode_t *p_result, UNUSED int *p_priority, request_t *request, void *uctx)
+{
+	unlang_parallel_child_t *child = uctx;
+
+	/*
+	 *	If we have a parent, then we're running synchronously
+	 *	with it.  Tell the parent that we've exited, and it
+	 *	can continue.
+	 *
+	 *	Otherwise we're a detached child, and we don't tell
+	 *	the parent anything.  Because we have that kind of
+	 *	relationship.
+	 */
+	if (child->state == CHILD_RUNNABLE) {
+		/*
+		 *	Reach into the parent to get the unlang_parallel_state_t
+		 *      for the whole parallel block.
+		 */
+		unlang_stack_frame_t		*frame = frame_current(request->parent);
+		unlang_parallel_state_t		*state = talloc_get_type_abort(frame->state, unlang_parallel_state_t);
+
+		RDEBUG3("parallel - child %s (%d/%d) EXITED",
+			request->name,
+			child->num + 1, state->num_children);
+
+		child->state = CHILD_EXITED;
+		state->num_complete++;
+
+		/*
+		 *	All children exited, resume the parent
+		 */
+		if (state->num_complete == state->num_children) {
+			RDEBUG3("Signalling parent %s that all children have EXITED or DETACHED", request->parent->name);
+			unlang_interpret_mark_runnable(request->parent);
+		}
+	}
+
+	/*
+	 *	Don't change frame->result, it's the result of the child.
+	 */
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+static unlang_action_t unlang_parallel_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_parallel_state_t		*state = talloc_get_type_abort(frame->state, unlang_parallel_state_t);
+
+	int				i, priority;
+	rlm_rcode_t			result;
+
+	for (i = 0; i < state->num_children; i++) {
+		if (!state->children[i].request) continue;
+
+		fr_assert(state->children[i].state == CHILD_EXITED);
+		REQUEST_VERIFY(state->children[i].request);
+
+		RDEBUG3("parallel - child %s (%d/%d) DONE",
+			state->children[i].name,
+			i + 1, state->num_children);
+
+		state->children[i].state = CHILD_DONE;
+
+		priority = ((unlang_stack_t *)state->children[i].request->stack)->priority;
+		result = ((unlang_stack_t *)state->children[i].request->stack)->result;
+
+		/*
+		 *	Return isn't allowed to make it back
+		 *	to the parent... Not sure this is
+		 *      the correct behaviour, but it's what
+		 *      was there before.
+		 */
+		if (priority == MOD_ACTION_RETURN) {
+			priority = 0;
+		} else if (priority == MOD_ACTION_REJECT) {
+			result = RLM_MODULE_REJECT;
+			priority = 0;
+		}
+
+		/*
+		 *	Do priority over-ride.
+		 */
+		if (priority > state->priority) {
+			state->result = result;
+			state->priority = priority;
+
+			RDEBUG4("** [%i] %s - over-riding result from higher priority to (%s %d)",
+				stack_depth_current(request), __FUNCTION__,
+				fr_table_str_by_value(mod_rcode_table, result, "<invalid>"),
+				priority);
+		}
+	}
+
+	/*
+	 *	Reap the children....
+	 */
+	for (i = 0; i < state->num_children; i++) {
+		if (!state->children[i].request) continue;
+
+		fr_assert(!fr_heap_entry_inserted(state->children[i].request->runnable_id));
+		TALLOC_FREE(state->children[i].request);
+	}
+
+	*p_result = state->result;
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
 
 /** Run one or more sub-sections from the parallel section.
  *
  */
-static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *state)
+static unlang_action_t unlang_parallel_process(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	int			i, priority;
-	rlm_rcode_t		result;
-	unlang_parallel_child_state_t done = CHILD_DONE; /* hope that we're done */
+	unlang_parallel_state_t		*state = talloc_get_type_abort(frame->state, unlang_parallel_state_t);
+	request_t			*child;
+	int				i;
 
-	// @todo - rdebug running the request.
+	/*
+	 *	If the children should be created detached, we return
+	 *	"noop".  This function then creates the children,
+	 *	detaches them, and returns.
+	 */
+	if (state->detach) {
+		state->priority = 0;
+		state->result = RLM_MODULE_NOOP;
+	}
 
 	/*
 	 *	Loop over all the children.
@@ -46,296 +276,208 @@ static rlm_rcode_t unlang_parallel_run(REQUEST *request, unlang_parallel_t *stat
 	 *	bottom, and we always service all of it.
 	 */
 	for (i = 0; i < state->num_children; i++) {
-		switch (state->children[i].state) {
+		fr_assert(state->children[i].instruction != NULL);
+		child = unlang_io_subrequest_alloc(request,
+						   request->dict, state->detach);
+		child->packet->code = request->packet->code;
+
+		RDEBUG3("parallel - child %s (%d/%d) INIT",
+			child->name,
+			i + 1, state->num_children);
+
+		if (state->clone) {
 			/*
-			 *	Not ready to run.
+			 *	Note that we do NOT copy the
+			 *	Session-State list!  That
+			 *	contains state information for
+			 *	the parent.
 			 */
-		case CHILD_YIELDED:
-			RDEBUG3("parallel child %d is already YIELDED", i + 1);
-			rad_assert(state->children[i].child != NULL);
-			rad_assert(state->children[i].instruction != NULL);
-			done = CHILD_YIELDED;
-			continue;
-
-			/*
-			 *	Don't need to call this any more.
-			 */
-		case CHILD_DONE:
-			RDEBUG3("parallel child %d is already DONE", i + 1);
-			rad_assert(state->children[i].child == NULL);
-			rad_assert(state->children[i].instruction == NULL);
-			continue;
-
-			/*
-			 *	Create the child and then run it.
-			 */
-		case CHILD_INIT:
-			RDEBUG3("parallel child %d is INIT", i + 1);
-			rad_assert(state->children[i].instruction != NULL);
-			state->children[i].child = unlang_io_subrequest_alloc(request,
-									      request->dict, UNLANG_NORMAL_CHILD);
-			state->children[i].state = CHILD_RUNNABLE;
-			state->children[i].child->packet->code = request->packet->code;
-
-			/*
-			 *	Push first instruction for child to execute
-			 */
-			unlang_interpret_push(state->children[i].child,
-					      state->children[i].instruction, RLM_MODULE_FAIL,
-					      UNLANG_NEXT_STOP, UNLANG_TOP_FRAME);
-
-			if (state->g->clone) {
-				if ((fr_pair_list_copy(state->children[i].child->packet,
-						       &state->children[i].child->packet->vps,
-						       request->packet->vps) < 0) ||
-				    (fr_pair_list_copy(state->children[i].child->reply,
-						       &state->children[i].child->reply->vps,
-						       request->reply->vps) < 0) ||
-				    (fr_pair_list_copy(state->children[i].child,
-						       &state->children[i].child->control,
-						       request->control) < 0)) {
-					REDEBUG("failed copying lists to clone");
-					for (i = 0; i < state->num_children; i++) TALLOC_FREE(state->children[i].child);
-					return RLM_MODULE_FAIL;
-				}
-			}
-
-			/* FALL-THROUGH */
-
-			/*
-			 *	Run this entry.
-			 */
-		case CHILD_RUNNABLE:
-			RDEBUG2("parallel - running entry %d/%d", i + 1, state->num_children);
-			result = unlang_interpret_run(state->children[i].child);
-			if (result == RLM_MODULE_YIELD) {
-				state->children[i].state = CHILD_YIELDED;
-				done = CHILD_YIELDED;
-				continue;
-			}
-
-			RDEBUG3("parallel child %d returns %s", i + 1,
-				fr_int2str(mod_rcode_table, result, "<invalid>"));
-
-			/*
-			 *	Remember this before we delete the
-			 *	reference to 'instruction'.
-			 */
-			priority = state->children[i].instruction->actions[result];
-
-			/*
-			 *	Clean up the state entry.
-			 */
-			state->children[i].state = CHILD_DONE;
-			TALLOC_FREE(state->children[i].child);
-			state->children[i].instruction = NULL;
-
-			/*
-			 *	return is "stop processing the
-			 *	parallel section".
-			 */
-			if (priority == MOD_ACTION_RETURN) {
-				RDEBUG2("child %d/%d says 'return' - skipping the remaining children",
-				        i + 1, state->num_children);
-
+			if ((fr_pair_list_copy(child->request_ctx,
+					       &child->request_pairs,
+					       &request->request_pairs) < 0) ||
+			    (fr_pair_list_copy(child->reply_ctx,
+					       &child->reply_pairs,
+					       &request->reply_pairs) < 0) ||
+			    (fr_pair_list_copy(child->control_ctx,
+					       &child->control_pairs,
+					       &request->control_pairs) < 0)) {
+				REDEBUG("failed copying lists to clone");
+			error:
 				/*
-				 *	Fall through to processing the
-				 *	priorities and return codes.
+				 *	Detached children which have
+				 *	already been created are
+				 *	allowed to continue.
 				 */
-				i = state->num_children;
-				priority = 0;
-				done = CHILD_DONE;
+				if (!state->detach) {
+					/*
+					 *	Remove the current child
+					 *
+					 *	Should also free detached children
+					 */
+					unlang_interpret_request_done(child);
+
+					/*
+					 *	Remove all previously
+					 *	spawned children.
+					 */
+					for (--i; i >= 0; i--) unlang_interpret_request_done(child);
+				}
+
+				RETURN_MODULE_FAIL;
+			}
+		}
+
+		/*
+		 *	Child starts detached, the parent knows
+		 *	and can exit immediately once all
+		 *	the children are initialised.
+		 */
+		if (state->detach) {
+			if (RDEBUG_ENABLED3) {
+				request_t *parent = request;
+
+				request = child;
+				RDEBUG3("parallel - child %s (%d/%d) DETACHED",
+					request->name,
+					i + 1, state->num_children);
+				request = parent;
 			}
 
+			state->children[i].state = CHILD_DETACHED;
+
 			/*
-			 *	Reject is just reject.
+			 *	Detach the child, and insert
+			 *	it into the backlog.
 			 */
-			if (priority == MOD_ACTION_REJECT) {
-				priority = 0;
-				result = RLM_MODULE_REJECT;
+			if ((unlang_subrequest_lifetime_set(child) < 0) || (request_detach(child) < 0)) {
+				request = child;
+				RPEDEBUG("Failed detaching request");
+				talloc_free(child);
+
+			        RETURN_MODULE_FAIL;
 			}
+		/*
+		 *	If the children don't start detached
+		 *	push a function onto the stack to
+		 *	notify the parent when the child is
+		 *	done.
+		 */
+		} else {
+			unlang_stack_frame_t *child_frame;
 
-			/*
-			 *	Do priority over-ride.
-			 */
-			if (priority > state->priority) {
-				unlang_stack_t *stack = request->stack;
+			if (unlang_function_push(child,
+		    				 NULL,
+		    				 unlang_parallel_child_done,
+		    				 unlang_parallel_child_signal,
+		    				 UNLANG_TOP_FRAME,
+		    				 &state->children[i]) < 0) goto error;
+			child_frame = frame_current(child);
+			return_point_set(child_frame);		/* Don't unwind this frame */
 
-				state->result = result;
-				state->priority = priority;
+			state->children[i].num = i;
+			state->children[i].name = talloc_bstrdup(state, child->name);
+			state->children[i].request = child;
+			state->children[i].state = CHILD_RUNNABLE;
 
-				RDEBUG4("** [%i] %s - over-riding result from higher priority to (%s %d)",
-					stack->depth, __FUNCTION__,
-					fr_int2str(mod_rcode_table, result, "<invalid>"),
-					priority);
-			}
-
-			/*
-			 *	Another child has yielded, so we
-			 *	remember the yield instead of the fact
-			 *	that we're done.
-			 */
-			if (done == CHILD_YIELDED) continue;
-
-			rad_assert(done == CHILD_DONE);
-			break;
 		}
+		interpret_child_init(child);
+
+		/*
+		 *	Push the first instruction for
+		 *      the child to run.
+		 */
+		if (unlang_interpret_push(child,
+					  state->children[i].instruction, RLM_MODULE_FAIL,
+					  UNLANG_NEXT_STOP,
+					  state->detach ? UNLANG_TOP_FRAME : UNLANG_SUB_FRAME) < 0) goto error;
 	}
 
 	/*
-	 *	Yield if necessary.
+	 *	If all children start detached,
+	 *	then we're done.
 	 */
-	if (done == CHILD_YIELDED) {
-		return RLM_MODULE_YIELD;
-	}
-
-	rad_assert(done == CHILD_DONE);
+	if (state->detach) return UNLANG_ACTION_CALCULATE_RESULT;
 
 	/*
-	 *	Clean up all of the child requests, because once we
-	 *	return, no one can access their data any more.
+	 *	Don't call this function again when
+	 *      the parent resumes, instead call
+	 *	a function to process the results
+	 *	of the children.
 	 */
-	for (i = 0; i < state->num_children; i++) {
-		switch (state->children[i].state) {
-		case CHILD_RUNNABLE:
-			rad_assert(state->children[i].child->backlog == NULL);
-			rad_assert(state->children[i].child->runnable_id < 0);
-
-			/*
-			 *	Un-detached children are never in the
-			 *	runnable queue.
-			 */
-			/* FALL-THROUGH */
-
-		case CHILD_YIELDED:
-			REQUEST_VERIFY(state->children[i].child);
-			rad_assert(state->children[i].child->runnable_id < 0);
-
-			/*
-			 *	Signal the child that it's going to be
-			 *	stopped.  This tells any child modules
-			 *	to clean up timers, etc.
-			 */
-			unlang_interpret_signal(state->children[i].child, FR_SIGNAL_CANCEL);
-			TALLOC_FREE(state->children[i].child);
-			/* FALL-THROUGH */
-
-		default:
-			state->children[i].state = CHILD_DONE;
-			state->children[i].child = NULL;
-			state->children[i].instruction = NULL;
-			break;
-		}
-	}
+	frame_repeat(frame, unlang_parallel_resume);
 
 	/*
-	 *	Return the final result.  The caller will take care of
-	 *	free'ing "state".
-	 */
-	return state->result;
-}
-
-
-/** Send a signal from parent request to all of it's children
- *
- */
-static void unlang_parallel_signal(UNUSED REQUEST *request, void *rctx, fr_state_signal_t action)
-{
-	int			i;
-	unlang_parallel_t	*state = talloc_get_type_abort(rctx, unlang_parallel_t);
-
-	/*
-	 *	Signal all of the children, if they exist.
-	 */
-	for (i = 0; i < state->num_children; i++) {
-		switch (state->children[i].state) {
-		case CHILD_INIT:
-		case CHILD_DONE:
-			break;
-
-		case CHILD_RUNNABLE:
-		case CHILD_YIELDED:
-			rad_assert(state->children[i].child != NULL);
-			unlang_interpret_signal(state->children[i].child, action);
-			break;
-		}
-	}
-}
-
-
-static unlang_action_t unlang_parallel_resume(REQUEST *request, rlm_rcode_t *presult, void *rctx)
-{
-	unlang_parallel_t	*state = talloc_get_type_abort(rctx, unlang_parallel_t);
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-
-#ifndef NDEBUG
-	unlang_resume_t		*mr;
-#endif
-
-	/*
-	 *	Continue running the child.
-	 */
-	*presult = unlang_parallel_run(request, state);
-	if (*presult != RLM_MODULE_YIELD) {
-		rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
-
-		frame->instruction->type = UNLANG_TYPE_PARALLEL; /* for debug purposes */
-		talloc_free(state);
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-#ifndef NDEBUG
-	rad_assert(frame->instruction->type == UNLANG_TYPE_RESUME);
-
-	mr = unlang_generic_to_resume(frame->instruction);
-	(void) talloc_get_type_abort(mr, unlang_resume_t);
-
-	rad_assert(mr->resume == NULL);
-	rad_assert(mr->rctx == state);
-#endif
-
-	/*
-	 *	If the child yields, our current frame is still an
-	 *	unlang_resume_t.
+	 *	Yield to the children
+	 *
+	 *	They scamper off to play on their
+	 *	own when they're all done, the last
+	 *	one tells the parent, so it can resume,
+	 *	and gather up all the results.
 	 */
 	return UNLANG_ACTION_YIELD;
 }
 
-static unlang_action_t unlang_parallel(REQUEST *request,
-				       rlm_rcode_t *presult, int *priority)
+/** Send a signal from parent request to all of it's children
+ *
+ */
+static void unlang_parallel_signal(UNUSED request_t *request,
+				   unlang_stack_frame_t *frame, fr_state_signal_t action)
 {
+	unlang_parallel_state_t	*state = talloc_get_type_abort(frame->state, unlang_parallel_state_t);
 	int			i;
-	rlm_rcode_t		rcode;
-	unlang_stack_t		*stack = request->stack;
-	unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-	unlang_t		*instruction = frame->instruction;
-	unlang_group_t		*g;
-	unlang_parallel_t	*state;
-	unlang_resume_t		*mr;
 
-	g = unlang_generic_to_group(instruction);
+	if (action == FR_SIGNAL_CANCEL) {
+		for (i = 0; i < state->num_children; i++) unlang_parallel_cancel_child(state, i);
 
+		return;
+	}
+
+	/*
+	 *	Signal all of the runnable/running children.
+	 */
+	for (i = 0; i < state->num_children; i++) {
+		if (state->children[i].state != CHILD_RUNNABLE) continue;
+
+		unlang_interpret_signal(state->children[i].request, action);
+	}
+}
+
+static unlang_action_t unlang_parallel(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_t const			*instruction;
+	unlang_group_t			*g;
+	unlang_parallel_t		*gext;
+	unlang_parallel_state_t		*state;
+
+	int				i;
+
+	g = unlang_generic_to_group(frame->instruction);
 	if (!g->num_children) {
-		*presult = RLM_MODULE_NOOP;
-		*priority = instruction->actions[*presult];
+		*p_result = RLM_MODULE_NOOP;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
+
+	gext = unlang_group_to_parallel(g);
 
 	/*
 	 *	Allocate an array for the children.
 	 */
-	state = talloc_zero_size(request, sizeof(unlang_parallel_t) + sizeof(state->children[0]) * g->num_children);
+	MEM(frame->state = state = _talloc_zero_pooled_object(request,
+							      sizeof(unlang_parallel_state_t) +
+							      (sizeof(state->children[0]) * g->num_children),
+							      "unlang_parallel_state_t",
+							      g->num_children,
+							      (talloc_array_length(request->name) * 2)));
 	if (!state) {
-		*presult = RLM_MODULE_FAIL;
-		*priority = instruction->actions[*presult];
+		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	};
 
-	(void) talloc_set_type(state, unlang_parallel_t);
+	(void) talloc_set_type(state, unlang_parallel_state_t);
 	state->result = RLM_MODULE_FAIL;
 	state->priority = -1;				/* as-yet unset */
-	state->g = g;
+	state->detach = gext->detach;
+	state->clone = gext->clone;
 	state->num_children = g->num_children;
 
 	/*
@@ -346,35 +488,8 @@ static unlang_action_t unlang_parallel(REQUEST *request,
 		state->children[i].instruction = instruction;
 	}
 
-	/*
-	 *	Reset this...
-	 */
-	instruction = frame->instruction;
-
-	/*
-	 *	Run the various children.  On the off chance they're
-	 *	all done, free things, and return.
-	 */
-	rcode = unlang_parallel_run(request, state);
-	if (rcode != RLM_MODULE_YIELD) {
-		talloc_free(state);
-		*presult = rcode;
-		*priority = instruction->actions[*presult];
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-	/*
-	 *	Create the "resume" stack frame, and have it replace our stack frame.
-	 */
-	mr = unlang_interpret_resume_alloc(request, NULL, NULL, state);
-	if (!mr) {
-		*presult = RLM_MODULE_FAIL;
-		*priority = instruction->actions[*presult];
-		return UNLANG_ACTION_CALCULATE_RESULT;
-	}
-
-	*presult = RLM_MODULE_YIELD;
-	return UNLANG_ACTION_YIELD;
+	frame->process = unlang_parallel_process;
+	return unlang_parallel_process(p_result, request, frame);
 }
 
 void unlang_parallel_init(void)
@@ -382,9 +497,8 @@ void unlang_parallel_init(void)
 	unlang_register(UNLANG_TYPE_PARALLEL,
 			   &(unlang_op_t){
 				.name = "parallel",
-				.func = unlang_parallel,
+				.interpret = unlang_parallel,
 				.signal = unlang_parallel_signal,
-				.resume = unlang_parallel_resume,
 				.debug_braces = true
 			   });
 }

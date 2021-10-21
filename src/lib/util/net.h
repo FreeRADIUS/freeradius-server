@@ -33,10 +33,12 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/build.h>
+#include <freeradius-devel/ethernet/ethernet.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/hash.h>
+#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/token.h>
+#include <freeradius-devel/util/table.h>
 
 #include <netinet/in.h>
 #include <stdint.h>
@@ -88,22 +90,13 @@ typedef enum {
 
 
 #define IP_V(ip)	(((ip)->ip_vhl & 0xf0) >> 4)
-#define IP_HL(ip)       ((ip)->ip_vhl & 0x0f)
+#define IP_HL(ip)       (((ip)->ip_vhl & 0x0f) << 2)
 
 #define IP_VHL(v, hl) ((v & 0x0f) << 4) | (hl & 0x0f)
 
 #define	I_DF		0x4000		//!< Dont fragment flag.
 #define IP_MF		0x2000		//!< More fragments flag.
 #define IP_OFFMASK	0x1fff		//!< Mask for fragmenting bits.
-
-/*
- *	Structure of a DEC/Intel/Xerox or 802.3 Ethernet header.
- */
-typedef struct CC_HINT(__packed__) {
-	uint8_t		ether_dst[ETHER_ADDR_LEN];
-	uint8_t		ether_src[ETHER_ADDR_LEN];
-	uint16_t	ether_type;
-} ethernet_header_t;
 
 /*
  *	Structure of an internet header, naked of options.
@@ -132,6 +125,12 @@ typedef struct CC_HINT(__packed__) {
 	struct in6_addr ip_src, ip_dst;	//!< Src and Dst address
 } ip_header6_t;
 
+typedef struct CC_HINT(__packed__) {
+	struct in6_addr ip_src, ip_dst;	//!< Src and Dst address
+	uint32_t	ip_len;		//!< length
+	uint32_t	ip_next;	//!< upper 24 bits must be zero
+} ip_pseudo_header6_t;
+
 /*
  *	UDP protocol header.
  *	Per RFC 768, September, 1981.
@@ -143,22 +142,209 @@ typedef struct CC_HINT(__packed__) {
 	uint16_t	checksum;	//!< UDP checksum.
 } udp_header_t;
 
-typedef struct CC_HINT(__packed__) {
-	uint8_t		code;
-	uint8_t		id;
-	uint8_t		length[2];
-	uint8_t		vector[RADIUS_AUTH_VECTOR_LENGTH];
-	uint8_t		data[];
-} radius_packet_t;
-
-extern FR_NAME_NUMBER const fr_net_ip_proto_table[];
-extern FR_NAME_NUMBER const fr_net_sock_type_table[];
-extern FR_NAME_NUMBER const fr_net_af_table[];
+extern fr_table_num_sorted_t const fr_net_ip_proto_table[];
+extern size_t fr_net_ip_proto_table_len;
+extern fr_table_num_sorted_t const fr_net_sock_type_table[];
+extern size_t fr_net_sock_type_table_len;
+extern fr_table_num_sorted_t const fr_net_af_table[];
+extern size_t fr_net_af_table_len;
 
 uint16_t	fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
 			 	struct in_addr const src_addr, struct in_addr const dst_addr);
 int		fr_udp_header_check(uint8_t const *data, uint16_t remaining, ip_header_t const *ip);
 uint16_t	fr_ip_header_checksum(uint8_t const *data, uint8_t ihl);
+uint16_t	fr_ip6_pesudo_header_checksum(struct in6_addr *src, struct in6_addr *dst, uint16_t ip_len, uint8_t ip_next);
+
+/** Write out an unsigned 16bit integer in wire format (big endian)
+ *
+ * @param[out] out	Where to write the integer.
+ * @param[in] num	to encode.
+ */
+static inline void fr_net_from_uint16(uint8_t out[static sizeof(uint16_t)], uint16_t num)
+{
+	out[0] = (num >> 8) & 0xff;
+	out[1] = num & 0xff;
+}
+
+/** Write out an unsigned 24bit integer in wire format (big endian)
+ *
+ * @param[out] out	Where to write the integer.
+ * @param[in] num	to encode.
+ */
+static inline void fr_net_from_uint24(uint8_t out[static 3], uint32_t num)
+{
+	out[0] = (num >> 16) & 0xff;
+	out[1] = (num >> 8) & 0xff;
+	out[2] = num & 0xff;
+}
+
+/** Write out an unsigned 32bit integer in wire format (big endian)
+ *
+ * @param[out] out	Where to write the integer.
+ * @param[in] num	to encode.
+ */
+static inline void fr_net_from_uint32(uint8_t out[static sizeof(uint32_t)], uint32_t num)
+{
+	fr_net_from_uint16(out, (uint16_t) (num >> 16));
+	fr_net_from_uint16(out + sizeof(uint16_t), (uint16_t) num);
+}
+
+/** Write out an unsigned 64bit integer in wire format (big endian)
+ *
+ * @param[out] out	Where to write the integer.
+ * @param[in] num	to encode.
+ */
+static inline void fr_net_from_uint64(uint8_t out[static sizeof(uint64_t)], uint64_t num)
+{
+	fr_net_from_uint32(out, (uint32_t)(num >> 32));
+	fr_net_from_uint32(out + sizeof(uint32_t), (uint32_t)num);
+}
+
+/** Write out an signed 16bit integer in wire format (big endian)
+ *
+ * @param[out] out	Where to write the integer.
+ * @param[in] num	to encode.
+ */
+static inline void fr_net_from_int16(uint8_t out[static sizeof(int16_t)], int16_t num)
+{
+	out[0] = (num >> 8) & 0xff;
+	out[1] = num & 0xff;
+}
+
+/** Write out an signed 32bit integer in wire format (big endian)
+ *
+ * @param[out] out	Where to write the integer.
+ * @param[in] num	to encode.
+ */
+static inline void fr_net_from_int32(uint8_t out[static sizeof(int32_t)], int32_t num)
+{
+	fr_net_from_uint16(out, (int16_t) (num >> 16));
+	fr_net_from_uint16(out + sizeof(int16_t), (int16_t) num);
+}
+
+/** Write out an signed 64bit integer in wire format (big endian)
+ *
+ * @param[out] out	Where to write the integer.
+ * @param[in] num	to encode.
+ */
+static inline void fr_net_from_int64(uint8_t out[static sizeof(uint64_t)], uint64_t num)
+{
+	fr_net_from_uint32(out, (int32_t)(num >> 32));
+	fr_net_from_uint32(out + sizeof(int32_t), (int32_t)num);
+}
+
+/** Write out an unsigned 64bit integer in wire format using the fewest bytes possible
+ *
+ * @param[out] out	Where to write big endian encoding of num.
+ *			Should be at least 8 bytes.
+ * @param[in] num	Number to encode.
+ * @return the number of bytes written to out.
+ */
+static inline size_t fr_net_from_uint64v(uint8_t out[static sizeof(uint64_t)], uint64_t num)
+{
+	size_t ret;
+
+	ret = ROUND_UP_DIV((size_t)fr_high_bit_pos(num | 0x80), 8);
+	num = ntohll(num);
+	memcpy(out, ((uint8_t *)&num) + (sizeof(uint64_t) - ret), ret);	/* aligned */
+
+	return ret;
+}
+
+/** Read an unsigned 16bit integer from wire format (big endian)
+ *
+ * @param[in] data	To convert to a 16bit unsigned integer of native endianness.
+ * @return a 16 bit unsigned integer of native endianness.
+ */
+static inline uint16_t fr_net_to_uint16(uint8_t const data[static sizeof(uint16_t)])
+{
+	return (((uint16_t)data[0]) << 8) | data[1];
+}
+
+/** Read an unsigned 24bit integer from wire format (big endian)
+ *
+ * @param[in] data	To convert to a 24bit unsigned integer of native endianness.
+ * @return a 24 bit unsigned integer of native endianness.
+ */
+static inline uint32_t fr_net_to_uint24(uint8_t const data[static 3])
+{
+	return (((uint32_t)data[0]) << 16) | (((uint32_t)data[1]) << 8) | data[2];
+}
+
+/** Read an unsigned 32bit integer from wire format (big endian)
+ *
+ * @param[in] data	To convert to a 32bit unsigned integer of native endianness.
+ * @return a 32 bit unsigned integer of native endianness.
+ */
+static inline uint32_t fr_net_to_uint32(uint8_t const data[static sizeof(uint32_t)])
+{
+	return ((uint32_t)fr_net_to_uint16(data) << 16) | fr_net_to_uint16(data + sizeof(uint16_t));
+}
+
+/** Read an unsigned 64bit integer from wire format (big endian)
+ *
+ * @param[in] data	To convert to a 64bit unsigned integer of native endianness.
+ * @return a 64 bit unsigned integer of native endianness.
+ */
+static inline uint64_t fr_net_to_uint64(uint8_t const data[static sizeof(uint64_t)])
+{
+	return ((uint64_t)fr_net_to_uint32(data) << 32) | fr_net_to_uint32(data + sizeof(uint32_t));
+}
+
+/*
+ * To get signed integers, simply cast.
+ */
+#define fr_net_to_int16(_x)	((int16_t) fr_net_to_uint16(_x))
+#define fr_net_to_int32(_x)	((int32_t) fr_net_to_uint32(_x))
+#define fr_net_to_int64(_x)	((int64_t) fr_net_to_uint64(_x))
+
+
+/** Read an unsigned 64bit integer from wire format (big endian) with a variable length encoding
+ *
+ * @param[in] data	Buffer containing the number.
+ * @param[in] data_len	Length of number.
+ * @return a 64 bit unsigned integer of native endianness.
+ */
+static inline uint64_t fr_net_to_uint64v(uint8_t const *data, size_t data_len)
+{
+	uint64_t num = 0;
+
+	if (unlikely(data_len > sizeof(uint64_t))) return 0;
+
+	/*
+	 *	Copy at an offset into memory
+	 *	allocated for the uin64_t
+	 */
+	memcpy(((uint8_t *)&num) + (sizeof(uint64_t) - data_len), data, data_len);	/* aligned */
+	return ntohll(num);
+}
+
+static inline uint64_t fr_net_to_int64v(uint8_t const *data, size_t data_len)
+{
+	int64_t num = 0;
+
+	if (unlikely(data_len > sizeof(uint64_t))) return 0;
+
+	/*
+	 *	Copy at an offset into memory
+	 *	allocated for the uin64_t
+	 */
+	memcpy(((uint8_t *)&num) + (sizeof(uint64_t) - data_len), data, data_len);	/* aligned */
+
+	if (*data & 0x80) memset(((uint8_t *)&num) + data_len, 0xff, sizeof(num) - data_len);
+
+	return ntohll(num);
+}
+
+/** Convert bits (as in prefix length) to bytes, rounding up.
+ *
+ * @param bits number of bits in the prefix
+ * @return number of bytes taken to store the prefix
+ */
+static inline unsigned int fr_bytes_from_bits(unsigned int bits)
+{
+	return (bits + 7) >> 3;
+}
 
 #ifdef __cplusplus
 }

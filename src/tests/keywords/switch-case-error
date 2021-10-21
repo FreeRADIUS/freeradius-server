@@ -1,0 +1,17 @@
+switch &User-Name {
+	case "%{Filter-Id}" {	# ERROR
+		success
+	}
+
+	case "doug" {
+		update reply {
+			&Filter-Id := "doug"
+		}
+	}
+
+	default {
+		update reply {
+			&Filter-Id := "default"
+		}
+	}
+}

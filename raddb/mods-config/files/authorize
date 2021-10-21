@@ -69,7 +69,7 @@
 # entry so that no DEFAULT entry will be used, and the user will NOT
 # get any attributes in addition to the ones listed here.
 #
-#steve	Cleartext-Password := "testing"
+#steve	Password.Cleartext := "testing"
 #	Service-Type = Framed-User,
 #	Framed-Protocol = PPP,
 #	Framed-IP-Address = 172.16.3.33,
@@ -83,7 +83,7 @@
 # The canonical testing user which is in most of the
 # examples.
 #
-#bob	Cleartext-Password := "hello"
+#bob	Password.Cleartext := "hello"
 #	Reply-Message := "Hello, %{User-Name}"
 #
 
@@ -95,13 +95,13 @@
 #
 # See raddb/policy.d/filter, filter_username {} section.
 #
-#"John Doe"	Cleartext-Password := "hello"
+#"John Doe"	Password.Cleartext := "hello"
 #		Reply-Message = "Hello, %{User-Name}"
 
 #
 # Dial user back and telnet to the default host for that port
 #
-#Deg	Cleartext-Password := "ge55ged"
+#Deg	Password.Cleartext := "ge55ged"
 #	Service-Type = Callback-Login-User,
 #	Login-IP-Host = 0.0.0.0,
 #	Callback-Number = "9,5551212",
@@ -113,7 +113,7 @@
 # connection will be broken and the user will be dialed back after which
 # he will get a connection to the host "timeshare1".
 #
-#dialbk	Cleartext-Password := "callme"
+#dialbk	Password.Cleartext := "callme"
 #	Service-Type = Callback-Login-User,
 #	Login-IP-Host = timeshare1,
 #	Login-Service = PortMaster,
@@ -131,36 +131,12 @@
 #		Fall-Through = Yes
 
 #
-# If the user logs in as 'username.shell', then authenticate them
-# using the default method, give them shell access, and stop processing
-# the rest of the file.
-#
-#DEFAULT	Suffix == ".shell"
-#		Service-Type = Login-User,
-#		Login-Service = Telnet,
-#		Login-IP-Host = your.shell.machine
-
-
-#
 # The rest of this file contains the several DEFAULT entries.
 # DEFAULT entries match with all login names.
 # Note that DEFAULT entries can also Fall-Through (see first entry).
 # A name-value pair from a DEFAULT entry will _NEVER_ override
 # an already existing name-value pair.
 #
-
-#
-# Set up different IP address pools for the terminal servers.
-# Note that the "+" behind the IP address means that this is the "base"
-# IP address. The Port-Id (S0, S1 etc) will be added to it.
-#
-#DEFAULT	Service-Type == Framed-User, Huntgroup-Name == "alphen"
-#		Framed-IP-Address = 192.0.2.32+,
-#		Fall-Through = Yes
-
-#DEFAULT	Service-Type == Framed-User, Huntgroup-Name == "delft"
-#		Framed-IP-Address = 198.51.100.32+,
-#		Fall-Through = Yes
 
 #
 # Sample defaults for all framed connections.
@@ -173,26 +149,10 @@
 
 #
 # Default for PPP: dynamic IP address, PPP mode, VJ-compression.
-# NOTE: we do not use Hint = "PPP", since PPP might also be auto-detected
-#	by the terminal server in which case there may not be a "P" suffix.
-#	The terminal server sends "Framed-Protocol = PPP" for auto PPP.
 #
 DEFAULT	Framed-Protocol == PPP
 	Framed-Protocol = PPP,
 	Framed-Compression = Van-Jacobson-TCP-IP
-
-#
-# Default for CSLIP: dynamic IP address, SLIP mode, VJ-compression.
-#
-DEFAULT	Hint == "CSLIP"
-	Framed-Protocol = SLIP,
-	Framed-Compression = Van-Jacobson-TCP-IP
-
-#
-# Default for SLIP: dynamic IP address, SLIP mode.
-#
-DEFAULT	Hint == "SLIP"
-	Framed-Protocol = SLIP
 
 #
 # Last default: rlogin to our main server.

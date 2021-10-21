@@ -1,3 +1,4 @@
+#pragma once
 /*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -92,4 +93,4 @@ char const *rlm_krb5_error(rlm_krb5_t const *inst, krb5_context context, krb5_er
 # define KRB5_UNUSED
 #endif
 
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);
+void *krb5_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);

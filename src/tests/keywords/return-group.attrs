@@ -1,4 +1,5 @@
+Packet-Type = Access-Request
 User-Name = 'test'
 
-Response-Packet-Type == Access-Accept
+Packet-Type == Access-Accept
 Reply-Message == 'pass'

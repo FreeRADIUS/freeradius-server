@@ -1,135 +1,143 @@
 #!/usr/bin/env perl
 
+use strict;
+use warnings;
+
+my %refs;
+my $ref;
+
 #
 #   Read in the references, and put into an associative array
 #
-open FILE, "<refs" || die "Error opening refs: $!\n";
-while (<FILE>) {
+open(my $FILE, '<' ,'refs') || die "Error opening refs: $!\n";
+while (<$FILE>) {
     chop;
-    split;
+    @_ = split;
 
     $refs{$_[1]} = $_[0];
 }
-close FILE;
+close $FILE;
 
 #
 #  now loop over the input RFC's.
 #
-foreach $file (@ARGV) {
-    open FILE, "<$file" || die "Error opening $file: $!\n";
+foreach my $file (@ARGV) {
+    open (my $FILE, '<', $file) || die "Error opening $file: $!\n";
 
-    $attribute = "zzzzz";
+    my $attribute = "zzzzz";
 
     # get the current reference
     $ref = $file;
     $ref =~ s/\..*//g;
 
-    open OUTPUT, ">$ref.html" || die "Error creating $ref.html: $!\n";
+    open(my $OUTPUT, '>', "$ref.html") || die "Error creating $ref.html: $!\n";
 
     #
     #  Print out the HTML header
     #
-    print OUTPUT <<EOF;
-<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
-<HTML>
+    print $OUTPUT <<EOF;
+<!DOCTYPE html>
+<html>
 <head>
    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
    <meta name="GENERATOR" content="Perl">
    <title>$ref.html</title>
 </head>
 <body>
-<PRE>
+<pre>
 
 EOF
 
     #  loop over the input file
-    while (<FILE>) {
-	# html-ize it
-	s/&/&amp;/g;
-	s/</&lt;/g;
-	s/>/&gt;/g;
+    while (<$FILE>) {
+        # html-ize it
+        s/&/&amp;/g;
+        s/</&lt;/g;
+        s/>/&gt;/g;
 
-	if (/\[Page/) {
-	    print OUTPUT;
-	    next;
-	}
+        if (/\[Page/) {
+            print $OUTPUT "";
+            next;
+        }
 
-	if (/^RFC \d+/) {
-	    print OUTPUT;
-	    next;
-	}
+        if (/^RFC \d+/) {
+            print $OUTPUT "";
+            next;
+        }
 
-	chop;
+        chop;
 
-	#
-	#  Attribute name header.
-	#
-	if (/^\d+\./ && !/\d$/) {
-	    split;
+        #
+        #  Attribute name header.
+        #
+        if (/^\d+\./ && !/\d$/) {
+            @_ = split;
 
-	    if ($refs{$_[1]} ne "") {
-		$attribute = $_[1];
+            if ($refs{$_[1]} && $refs{$_[1]} ne "") {
+               $attribute = $_[1];
 
-		print OUTPUT "<A NAME=\"$attribute\"><H2>$_</H2></a>\n";
+               print $OUTPUT "<a name=\"$attribute\"><h2>$_</h2></a>\n";
 
-	    } else {
-		print OUTPUT "<H2>$_</H2>\n";
-		$attribute = "zzzz";
-	    }
-	    next;
-	}
+            } else {
+               print $OUTPUT "<h2>$_</h2>\n";
+               $attribute = "zzzz";
+            }
+            next;
+        }
 
-	#
-	#  Mark these up special.
-	#
-	if ((/^   Description/) ||
-	    (/^   Type/) ||
-	    (/^   Length/) ||
-	    (/^   Value/)) {
-	    print OUTPUT "<B>$_</B>\n";
-	    next;
-	}
+        #
+        #  Mark these up special.
+        #
+        if ((/^   Description/) ||
+            (/^   Type/) ||
+            (/^   Length/) ||
+            (/^   Value/)) {
+            print $OUTPUT "<b>$_</b>\n";
+            next;
+        }
 
-	# Make the current attribute name bold
-	s/$attribute/<B>$attribute<\/B>/g;
+        # Make the current attribute name bold
+        s/$attribute/<b>$attribute<\/b>/g;
 
-	split;
+        @_ = split;
 
-	#
-	#  Re-write the output with links to where-ever
-	#
-	foreach $word (@_) {
-	    $word =~ s/[^-a-zA-Z]//g;
+        #
+        #  Re-write the output with links to where-ever
+        #
+        foreach my $word (@_) {
+            $word =~ s/[^-a-zA-Z]//g;
 
-	    if ($refs{$word} ne "") {
-		if ($refs{$word} eq $ref) {
-		    s/$word/<A HREF="#$word">$word<\/A>/g;
-		} else {
-		    s/$word/<A HREF="$refs{$word}.html#$word">$word<\/A>/g;
-		}
-	    }
-	}
+            if ($refs{$word} && $refs{$word} ne "") {
+               if ($refs{$word} eq $ref) {
+                   s/$word/<a href="#$word">$word<\/a>/g;
+               } else {
+                   s/$word/<a href="$refs{$word}.html#$word">$word<\/a>/g;
+               }
+            }
+        }
 
-	print OUTPUT $_, "\n";
+        print $OUTPUT $_, "\n";
+
     }
 
-    print OUTPUT "</PRE>\n";
-    print OUTPUT "</BODY>\n";
-    close OUTPUT;
-    close FILE;
+    print $OUTPUT "</pre>\n";
+    print $OUTPUT "</body>\n";
+    print $OUTPUT "</html>\n";
+    close $OUTPUT;
+    close $FILE;
 }
 
 #
 #  And finally, create the index.
 #
-open OUTPUT, ">attributes.html" || die "Error creating attributes.html: $!\n";
+open(my $OUTPUT, '>', "attributes.html") || die "Error creating attributes.html: $!\n";
 
 #
 #  Print out the HTML header
 #
-print OUTPUT <<EOF;
-<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
-<HTML>
+print $OUTPUT <<EOF;
+<!DOCTYPE html>
+<html>
 <head>
    <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
    <meta name="GENERATOR" content="Perl">
@@ -137,23 +145,24 @@ print OUTPUT <<EOF;
 </head>
 <body>
 
-<H2>RADIUS Attribute List</H2>
+<h2>RADIUS Attribute List</h2>
 EOF
 
-$letter = "@";
+my $letter = "@";
 
-foreach $key (sort keys %refs) {
+foreach my $key (sort keys %refs) {
     if (substr($key,0,1) ne $letter) {
-	print OUTPUT "</UL>\n" if ($letter ne "@");
-	$letter = substr($key,0,1);
-	print OUTPUT "\n<H3>$letter</H3>\n\n";
-        print OUTPUT "<UL>\n";
+        print $OUTPUT "</ul>\n" if $letter ne "@";
+        $letter = substr($key,0,1);
+        print $OUTPUT "\n<h3>$letter</h3>\n\n";
+        print $OUTPUT "<ul>\n";
     }
 
-    print OUTPUT "<A HREF=\"$refs{$key}.html#$key\">$key</A><BR>\n";
+    print $OUTPUT "<a href=\"$refs{$key}.html#$key\">$key</a><br>\n";
 }
 
-print OUTPUT "</UL>\n";
+print $OUTPUT "</ul>\n";
 
-print OUTPUT "</BODY>\n";
-close OUTPUT;
+print $OUTPUT "</body>\n";
+print $OUTPUT "</html>\n";
+close $OUTPUT;

@@ -15,3 +15,19 @@ time_elapsed_ms {
 		Tmp-Integer64-1 := "%{expr:(%c*1000) + (%C/1000) - %{Tmp-Integer64-0}}"
 	}
 }
+
+# Handles the Expiration attribute
+#
+expiration {
+	if (&control.Expiration) {
+		if (&control.Expiration < "%l") {
+			disallow
+		}
+
+		elsif (!&reply.Session-Timeout || (&Session-Timeout > "%{expr:%{Expiration} - %l}")) {
+			update reply {
+				&Session-Timeout := "%{expr:%{Expiration} - %l}"
+			}
+		}
+	}
+}

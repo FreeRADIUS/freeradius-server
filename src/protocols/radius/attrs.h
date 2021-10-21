@@ -26,10 +26,13 @@
 RCSIDH(radius_attrs_h, "$Id$")
 
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/radius/radius.h>
 
-extern fr_dict_t *dict_freeradius;
-extern fr_dict_t *dict_radius;
+extern fr_dict_t const *dict_freeradius;
+extern fr_dict_t const *dict_radius;
 
+extern fr_dict_attr_t const *attr_packet_type;
+extern fr_dict_attr_t const *attr_packet_authentication_vector;
 extern fr_dict_attr_t const *attr_raw_attribute;
 extern fr_dict_attr_t const *attr_chap_challenge;
 extern fr_dict_attr_t const *attr_chargeable_user_identity;
@@ -37,3 +40,4 @@ extern fr_dict_attr_t const *attr_eap_message;
 extern fr_dict_attr_t const *attr_message_authenticator;
 extern fr_dict_attr_t const *attr_state;
 extern fr_dict_attr_t const *attr_vendor_specific;
+extern fr_dict_attr_t const *attr_nas_filter_rule;

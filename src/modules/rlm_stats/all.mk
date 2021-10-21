@@ -6,4 +6,4 @@ endif
 
 SOURCES		:= rlm_stats.c
 
-TGT_PREREQS	:= libfreeradius-radius.a libfreeradius-util.a
+TGT_PREREQS	:= libfreeradius-radius.a

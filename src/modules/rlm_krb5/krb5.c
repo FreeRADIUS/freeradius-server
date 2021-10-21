@@ -27,14 +27,14 @@ RCSID("$Id$")
 #define LOG_PREFIX "rlm_krb5 (%s) - "
 #define LOG_PREFIX_ARGS inst->name
 
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/base.h>
 #include "krb5.h"
 
 #ifdef HAVE_KRB5_GET_ERROR_MESSAGE
 #  define KRB5_STRERROR_BUFSIZE (2048)
 
-fr_thread_local_setup(char *, krb5_error_buffer)	/* macro */
+static _Thread_local char *krb5_error_buffer;
 
 /*
  *	Explicitly cleanup the memory allocated to the error buffer.
@@ -59,7 +59,7 @@ char const *rlm_krb5_error(rlm_krb5_t const *inst, krb5_context context, krb5_er
 			return NULL;
 		}
 
-		fr_thread_local_set_destructor(krb5_error_buffer, _krb5_logging_free, buffer);
+		fr_atexit_thread_local(krb5_error_buffer, _krb5_logging_free, buffer);
 	}
 
 	msg = krb5_get_error_message(context, code);
@@ -68,12 +68,7 @@ char const *rlm_krb5_error(rlm_krb5_t const *inst, krb5_context context, krb5_er
 #  ifdef HAVE_KRB5_FREE_ERROR_MESSAGE
 		krb5_free_error_message(context, msg);
 #  elif defined(HAVE_KRB5_FREE_ERROR_STRING)
-		{
-			char *free;
-
-			memcpy(&free, &msg, sizeof(free));
-			krb5_free_error_string(context, free);
-		}
+		krb5_free_error_string(context, UNCONST(char *, msg));
 #  else
 #    error "No way to free error strings, missing krb5_free_error_message() and krb5_free_error_string()"
 #  endif
@@ -110,9 +105,9 @@ static int _mod_conn_free(rlm_krb5_handle_t *conn) {
  * by libkrb5 and that it does connection caching associated with contexts, so it's
  * worth using a connection pool to preserve connections when workers die.
  */
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta_t timeout)
+void *krb5_mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta_t timeout)
 {
-	rlm_krb5_t const *inst = instance;
+	rlm_krb5_t const *inst = talloc_get_type_abort_const(instance, rlm_krb5_t);
 	rlm_krb5_handle_t *conn;
 	krb5_error_code ret;
 

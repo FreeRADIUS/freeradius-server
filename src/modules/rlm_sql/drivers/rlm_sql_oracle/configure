@@ -636,6 +636,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_rlm_sql_oracle
 with_oracle_include_dir
 with_oracle_lib_dir
 with_oracle_dir
@@ -1254,6 +1255,9 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --without-rlm_sql_oracle
+                          build without module
+
   --with-oracle-include-dir=DIR
                           Directory where the oracle includes may be found
   --with-oracle-lib-dir=DIR
@@ -1787,6 +1791,14 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
+# Check whether --with-rlm_sql_oracle was given.
+if test "${with_rlm_sql_oracle+set}" = set; then :
+  withval=$with_rlm_sql_oracle;
+fi
+
+
+oracle_supported_versions="19 18 12 11"
 fail=
 mod_ldflags=
 mod_cflags=
@@ -2882,11 +2894,13 @@ $as_echo "$as_me: WARNING: oracle headers not found. Use --with-oracle-include-d
 	lib_path="${ORACLE_HOME}/lib "
     fi
 
+    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Oracle supported versions: ${oracle_supported_versions}" >&5
+$as_echo "$as_me: WARNING: Oracle supported versions: ${oracle_supported_versions}" >&2;}
     { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Oracle version >= 12 needs -laio" >&5
 $as_echo "$as_me: WARNING: Oracle version >= 12 needs -laio" >&2;}
 
     for path in $lib_path "/usr/local/instaclient/lib" "" "/opt/lib"; do
-	for oracle_version in 19 18 12.1 12 11 10 9 ""; do
+	for oracle_version in ${oracle_supported_versions} ""; do
 	    if test "$path" != ""; then
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for OCIInitialize in nnz${oracle_version} in $path" >&5
 $as_echo_n "checking for OCIInitialize in nnz${oracle_version} in $path... " >&6; }

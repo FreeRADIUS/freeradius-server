@@ -3,289 +3,208 @@
 #
 
 # 0. Expect success - Field selectors
-if ("%{jpathvalidate:$.foo.bar}" == '9:$.foo.bar') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo.bar}" != '9:$.foo.bar') {
 	test_fail
 }
 
 # 1. Expect success - Field selectors
-if ("%{jpathvalidate:@.foo.bar}" == '9:@.foo.bar') {
-	test_pass
-} else {
+if ("%{jpathvalidate:@.foo.bar}" != '9:@.foo.bar') {
 	test_fail
 }
 
 # 2. Expect success - Array selector
-if ("%{jpathvalidate:$.foo[1]}" == '8:$.foo[1]') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[1]}" != '8:$.foo[1]') {
 	test_fail
 }
 
 # 3. Expect success - Array selector
-if ("%{jpathvalidate:$.foo[1:2]}" == '10:$.foo[1:2]') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[1:2]}" != '10:$.foo[1:2]') {
 	test_fail
 }
 
 # 4. Expect success - Array slice selector
-if ("%{jpathvalidate:$.foo[:1]}" == '9:$.foo[:1]') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[:1]}" != '9:$.foo[:1]') {
 	test_fail
 }
 
 # 5. Expect success - Array slice selector
-if ("%{jpathvalidate:$.foo[1::1]}" == '11:$.foo[1::1]') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[1::1]}" != '11:$.foo[1::1]') {
 	test_fail
 }
 
 # 6. Expect success - Array step selector
-if ("%{jpathvalidate:$.foo[::2]}" == '10:$.foo[::2]') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[::2]}" != '10:$.foo[::2]') {
 	test_fail
 }
 
 # 7. Expect success - Array step selector
-if ("%{jpathvalidate:$.foo[1:1:2]}" == '12:$.foo[1:1:2]') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[1:1:2]}" != '12:$.foo[1:1:2]') {
 	test_fail
 }
 
 # 8. Expect success - Array multiple selectors
-if ("%{jpathvalidate:$.foo[1,1:1:2]}" == '14:$.foo[1,1:1:2]') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[1,1:1:2]}" != '14:$.foo[1,1:1:2]') {
 	test_fail
 }
 
 # 9. Expect success - Wildcard selector 1
-if ("%{jpathvalidate:$.*}" == '3:$.*') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.*}" != '3:$.*') {
 	test_fail
 }
 
 # 10. Expect success - Wildcard selector 2
-if ("%{jpathvalidate:$.*.foo}" == '7:$.*.foo') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.*.foo}" != '7:$.*.foo') {
 	test_fail
 }
 
 # 11. Expect success - Mixture of selectors
-if ("%{jpathvalidate:$.foo[::2].*.bar[::1]}" == '21:$.foo[::2].*.bar[::1]') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[::2].*.bar[::1]}" != '21:$.foo[::2].*.bar[::1]') {
 	test_fail
 }
 
 # 12. Expect success - Escape sequence
-if ("%{jpathvalidate:$.foo.bar\[\]}" == '13:$.foo.bar\[\]') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo.bar\[\]}" != '13:$.foo.bar\[\]') {
 	test_fail
 }
 
 # 13. Expect success - Non escape sequence
-if ("%{jpathvalidate:$.foo.bar\@}" == '11:$.foo.bar\@') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo.bar\@}" != '11:$.foo.bar\@') {
 	test_fail
 }
 
 # 14. Expect failure - Invalid starting char
-if ("%{jpathvalidate:[.foo}" == '0:Expected root specifier \'$\', or current node specifier \'@\'') {
-	test_pass
-} else {
+if ("%{jpathvalidate:[.foo}" != '0:Expected root specifier \'$\', or current node specifier \'@\'') {
 	test_fail
 }
 
 # 15. Expect failure - Invalid char following root specifier
-if ("%{jpathvalidate:$[]}" == '2:Empty selector') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$[]}" != '2:Empty selector') {
 	test_fail
 }
 
 # 16. Expect failure - Invalid char following root specifier
-if ("%{jpathvalidate:$.}" == '2:Expected recursive descent \'..\' wildcard \'*\' or field specifier') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.}" != '2:Expected recursive descent \'..\' wildcard \'*\' or field specifier') {
 	test_fail
 }
 
 # 17. Expect failure - Recursive descent after child delimiter
-if ("%{jpathvalidate:$...}" == '3:Recursive descent must not be followed by child delimiter \'.\'') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$...}" != '3:Recursive descent must not be followed by child delimiter \'.\'') {
 	test_fail
 }
 
 # 18. Expect failure - Missing selector terminator
-if ("%{jpathvalidate:$.foo[}" == '6:Missing selector terminator \']\'') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[}" != '6:Missing selector terminator \']\'') {
 	test_fail
 }
 
 # 19. Expect failure - Missing selector terminator
-if ("%{jpathvalidate:$.foo[0}" == '7:Missing selector delimiter \',\' or terminator \']\'') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[0}" != '7:Missing selector delimiter \',\' or terminator \']\'') {
 	test_fail
 }
 
 # 20. Expect failure - Unexpected selector terminator
-if ("%{jpathvalidate:$.foo]}" == '5:Expected field specifier \'.\' or selector \'[\'') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo]}" != '5:Expected field specifier \'.\' or selector \'[\'') {
 	test_fail
 }
 
 # 21. Expect failure - Empty selector
-if ("%{jpathvalidate:$.foo[,}" == '6:Empty selector') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[,}" != '6:Empty selector') {
 	test_fail
 }
 
 # 22. Expect failure - Empty selector
-if ("%{jpathvalidate:$.foo[,]}" == '6:Empty selector') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[,]}" != '6:Empty selector') {
 	test_fail
 }
 
 # 23. Expect failure - Empty selector
-if ("%{jpathvalidate:$.foo[]}" == '6:Empty selector') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[]}" != '6:Empty selector') {
 	test_fail
 }
 
 # 24. Expect failure - Empty selector
-if ("%{jpathvalidate:$.foo[1,1:1:2,]}" == '14:Empty selector') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[1,1:1:2,]}" != '14:Empty selector') {
 	test_fail
 }
 
 # 25. Expect failure - Bad array index
-if ("%{jpathvalidate:$.foo[a]}" == '6:Expected num, \':\' or \']\'') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[a]}" != '6:Expected num, \':\' or \']\'') {
 	test_fail
 }
 
 # 26. Expect failure - Bad array end
-if ("%{jpathvalidate:$.foo[0:a]}" == '8:Expected num, \':\' or \']\'') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[0:a]}" != '8:Expected num, \':\' or \']\'') {
 	test_fail
 }
 
 # 27. Expect failure - Bad array slice
-if ("%{jpathvalidate:$.foo[0:0:a]}" == '10:Expected num or \']\'') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[0:0:a]}" != '10:Expected num or \']\'') {
 	test_fail
 }
 
 # 28. Expect failure - Bad array slice value
-if ("%{jpathvalidate:$.foo[0:0:0]}" == '10:Step cannot be 0') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[0:0:0]}" != '10:Step cannot be 0') {
 	test_fail
 }
 
 # 29. Expect failure - Field too long
-if ("%{jpathvalidate:$.foo.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}" == '134:Exceeded maximum field name length') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}" != '134:Exceeded maximum field name length') {
 	test_fail
 }
 
 # 30. Expect success - Field ok
-if ("%{jpathvalidate:$.foo.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}" == '134:$.foo.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}" != '134:$.foo.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa') {
 	test_fail
 }
 
 # 31. Expect failure - Empty field
-if ("%{jpathvalidate:$.foo.[]}" == '6:Empty field specifier') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo.[]}" != '6:Empty field specifier') {
 	test_fail
 }
 
 # 32. Expect success - Nested array
-if ("%{jpathvalidate:$[0][1]}" == '7:$[0][1]') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$[0][1]}" != '7:$[0][1]') {
 	test_fail
 }
 
 # 33. Expect success - Nested array with multiple indicies
-if ("%{jpathvalidate:$[0][1,2]}" == '9:$[0][1,2]') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$[0][1,2]}" != '9:$[0][1,2]') {
 	test_fail
 }
 
 # 34. Expect failure - Recursive descent followed by nothing
-if ("%{jpathvalidate:$..}" == '2:Path may not end in recursive descent') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$..}" != '2:Path may not end in recursive descent') {
 	test_fail
 }
 
 # 35. Expect success - Recursive descent followed by field
-if ("%{jpathvalidate:$..foo}" == '6:$..foo') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$..foo}" != '6:$..foo') {
 	test_fail
 }
 
 # 36. Expect success - Recursive descent followed by selector
-if ("%{jpathvalidate:$..[0]}" == '6:$..[0]') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$..[0]}" != '6:$..[0]') {
 	test_fail
 }
 
 # 37. Expect success - Recursive descent followed by two selectors
-if ("%{jpathvalidate:$..foo[0]}" == '9:$..foo[0]') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$..foo[0]}" != '9:$..foo[0]') {
 	test_fail
 }
 
 # 38. Expect success - Recursive descent followed by wildcard
-if ("%{jpathvalidate:$..*}" == '4:$..*') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$..*}" != '4:$..*') {
 	test_fail
 }
 
 # 39. Expect failure - Filter expressions NYI
-if ("%{jpathvalidate:$.foo[?@.bar = baz]}" == '6:Filter expressions not yet implemented') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[?@.bar = baz]}" != '6:Filter expressions not yet implemented') {
 	test_fail
 }
 
 # 40. Expect failure - Expressions NYI
-if ("%{jpathvalidate:$.foo[(@.bar = baz)]}" == '6:Expressions not yet implemented') {
-	test_pass
-} else {
+if ("%{jpathvalidate:$.foo[(@.bar = baz)]}" != '6:Expressions not yet implemented') {
 	test_fail
 }
 
+test_pass

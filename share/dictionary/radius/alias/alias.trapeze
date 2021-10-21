@@ -1,0 +1,13 @@
+ALIAS	Trapeze-VLAN-Name                       	26.14525.1
+ALIAS	Trapeze-Mobility-Profile                	26.14525.2
+ALIAS	Trapeze-Encryption-Type                 	26.14525.3
+ALIAS	Trapeze-Time-Of-Day                     	26.14525.4
+ALIAS	Trapeze-SSID                            	26.14525.5
+ALIAS	Trapeze-End-Date                        	26.14525.6
+ALIAS	Trapeze-Start-Date                      	26.14525.7
+ALIAS	Trapeze-URL                             	26.14525.8
+ALIAS	Trapeze-User-Group-Name                 	26.14525.9
+ALIAS	Trapeze-QoS-Profile                     	26.14525.10
+ALIAS	Trapeze-Simultaneous-Logins             	26.14525.11
+ALIAS	Trapeze-CoA-Username                    	26.14525.12
+ALIAS	Trapeze-Audit                           	26.14525.13

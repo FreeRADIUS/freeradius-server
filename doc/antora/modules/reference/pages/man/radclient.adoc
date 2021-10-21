@@ -1,0 +1,180 @@
+= radclient(1)
+Alan DeKok
+:doctype: manpage
+:release-version: 4.0.0
+:man manual: FreeRADIUS
+:man source: FreeRADIUS
+:page-layout: base
+:manvolnum: 1
+
+== NAME
+
+radclient - send packets to a RADIUS server, show reply
+
+== SYNOPSIS
+
+*radclient* _[ OPTIONS ]_ _server {acct|auth|status|disconnect|auto} secret_
+
+== DESCRIPTION
+
+`radclient* is a radius client program. It can send arbitrary radius
+packets to a radius server, then shows the reply. It can be used to test
+changes you made in the configuration of the radius server, or it can be
+used to monitor if a radius server is up.
+
+*radclient* reads radius attribute/value pairs from it standard input,
+or from a file specified on the command line. It then encodes these
+attribute/value pairs using the dictionary, and sends them to the remote
+server.
+
+The `User-Password` and `CHAP-Password` attributes are automatically
+encrypted before the packet is sent to the server.
+
+== OPTIONS
+
+*-4*::
+  Use IPv4 (default)
+
+*-6*::
+  Use IPv6
+
+*-c count*::
+  Send each packet _count_ times.
+
+*-d config_dir*::
+  The directory that contains the user dictionary file. Defaults to
+  `/etc/raddb`.
+
+*-D dict_dir*::
+  The directory that contains the main dictionary file. Defaults to
+  `/usr/share/freeradius/dictionary`.
+
+*-f filename[:filename]*::
+  File to read the attribute/value pairs from. If this is not specified,
+  they are read from stdin. This option can be specified multiple times,
+  in which case packets are sent in order by file, and within each file,
+  by first packet to last packet. A blank line separates logical packets
+  within a file. If a pair of files separated by a colon is specified, the
+  second file will be used to filter the responses to requests from the
+  first. The number of requests and filters must be the same. A summary of
+  filter results will be displayed if -s is passed.
+
+*-F*::
+  Print the file name, packet number and reply code.
+
+*-h*::
+  Print usage help information.
+
+*-i id*::
+  Use _id_ as the RADIUS request Id.
+
+*-n number*::
+  Try to send _number_ requests per second, evenly spaced. This option
+  allows you to slow down the rate at which radclient sends requests. When
+  not using `-n`, the default is to send packets as quickly as possible,
+  with no inter-packet delays.
+ +
+  Due to limitations in radclient, this option does not accurately send
+  the requested number of packets per second.
+
+*-p number*::
+  Send _number_ requests in parallel, without waiting for a response
+  for each one. By default, radclient sends the first request it has
+  read, waits for the response, and once the response is received,
+  sends the second request in its list. This option allows you to send
+  many requests at simultaneously. Once _number_ are sent, radclient
+  waits for all of the responses to arrive (or for the requests to
+  time out), before sending any more packets.
+ +
+  This option permits you to discover the maximum load accepted by a
+  RADIUS server.
+
+*-P proto*::
+  Use _proto_ transport protocol ("tcp" or "udp"). Only available if
+  FreeRADIUS is compiled with TCP transport support.
+
+*-q*::
+  Go to quiet mode, and do not print out anything.
+
+*-r number*::
+  Try to send each packet _number_ of times as retries, before giving up on it.
+  The default is 10.
+
+*-s*::
+  Print out some summaries of packets sent and received.
+
+*-S filename*::
+   Rather than reading the shared secret from the command-line (where it
+  can be seen by others on the local system), read it instead from
+  _filename_.
+
+*-t timeout*::
+  Wait _timeout_ seconds before deciding that the NAS has not responded
+  to a request, and re-sending the packet. The default timeout is 3.
+
+*-v*::
+  Print out version information.
+
+*-x*::
+  Print out debugging information.
+
+*server[:port]*::
+  The hostname or IP address of the remote server. Optionally a UDP port
+  can be specified. If no UDP port is specified, it is looked up in
+  `/etc/services`. The service name looked for is *radacct* for accounting
+  packets, and *radius* for all other requests. If a service is not found
+  in `/etc/services`, 1813 and 1812 are used respectively.
+ +
+  The RADIUS attributes read by _radclient_ can contain the special
+  attribute `Packet-Dst-IP-Address`. If this attribute exists, then that
+  IP address is where the packet is sent, and the *server* specified on
+  the command-line is ignored.
+ +
+  If the RADIUS attribute list always contains the `Packet-Dst-IP-Address`
+  attribute, then the *server* parameter can be given as *-*.
+ +
+  The RADIUS attributes read by _radclient_ can contain the special
+  attribute `Packet-Dst-Port`. If this attribute exists, then that UDP
+  port is where the packet is sent, and the *:port* specified on the
+  command-line is ignored.
+
+*auth | acct | status | disconnect | auto*::
+  Use *auth* to send an authentication packet (Access-Request), *acct*
+  to send an accounting packet (Accounting-Request), *status* to send an
+  status packet (Status-Server), or *disconnect* to send a disconnection
+  request. Instead of these values, you can also use a decimal code here.
+  For example, code 12 is also *Status-Server*.
+ +
+  The RADIUS attributes read by _radclient_ can contain the special
+  attribute `Packet-Type`. If this attribute exists, then that type of
+  packet is sent, and the _type_ specified on the command-line is ignored.
+ +
+  If the RADIUS attribute list always contains the `Packet-Type`
+  attribute, then the *type* parameter can be given as *auto*.
+
+*secret*::
+  The shared secret for this client. It needs to be defined on the
+  radius server side too, for the IP address you are sending the radius
+  packets from.
+
+== EXAMPLE
+
+A sample session that queries the remote server for _Status-Server_.
+Not all servers support this, but FreeRADIUS has configurable support
+for it.
+
+[source,shell]
+----
+$ echo "Message-Authenticator = 0x00" | radclient 192.0.2.42 status s3cr3t
+Sending request to server 192.0.2.42, port 1812.
+Received Packet from host 192.0.2.42 code=2, id=140, length=54
+    Reply-Message = "FreeRADIUS up 21 days, 02:05"
+----
+
+== SEE ALSO
+
+radiusd(8),
+
+== AUTHOR
+
+The FreeRADIUS Server Project (http://www.freeradius.org)

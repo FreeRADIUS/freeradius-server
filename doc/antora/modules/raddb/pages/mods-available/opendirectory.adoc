@@ -1,0 +1,39 @@
+
+
+
+
+= OpenDirectory Module
+
+The `opendirectory` module is only used when the server is running on the same
+system as OpenDirectory.  The configuration of the module is hard-coded
+by Apple, and cannot be changed here.
+
+The `mschap` module will also automatically talk to OpenDirectory
+if the server is built on an OSX machine.  However, you must also
+set `dsAttrTypeNative:apple-enabled-auth-mech` attribute in the
+`/config/dirserv` OpenDirectory record.
+
+NOTE: You will probably also need to change the user passwords in
+order to re-generate the appropriate hashes.
+
+See also https://discussions.apple.com/thread/6053980?tstart=0
+
+In order to allow NTLM passwords, you may need to run the following
+command on the OpenDirectory machine:
+
+
+
+
+## Configuration Settings
+
+This module takes no configuration.
+
+
+
+== Default Configuration
+
+```
+#	dscl -u diradmin -p /LDAPv3/127.0.0.1 -append /Config/dirserv apple-enabled-auth-mech SMB-NTLM2v
+opendirectory {
+}
+```

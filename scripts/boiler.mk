@@ -49,6 +49,34 @@ else
     ANALYZE_C_DUMP=true
 endif
 
+# FIND_DIRS - find all subdirectories in a given directory
+#
+#  Note that it excludes normal files
+#
+define FIND_DIRS
+$(patsubst %/,%,$(sort $(dir $(wildcard ${1}/*/ ${1}/*/*/ ${1}/*/*/*/ ${1}/*/*/*/*/ ${1}/*/*/*/*/*/))))
+endef
+
+# FIND_FILES - find all files in a given directory
+#
+#  Note that it excludes directories
+#
+define FIND_FILES
+$(filter-out %~ $(call FIND_DIRS,${1}),$(wildcard ${1}/* ${1}/*/* ${1}/*/*/* ${1}/*/*/*/* ${1}/*/*/*/*/* ${1}/*/*/*/*/*/* ))
+endef
+
+# FIND_FILES_SUFFIX - find all the files with a given suffix
+define FIND_FILES_SUFFIX
+$(foreach d,$(wildcard $(1:=/*)),$(call FIND_FILES_SUFFIX,$d,$2) $(filter $(subst *,%,$2),$d))
+endef
+
+# remove duplicates without sorting.
+define uniq
+  $(eval seen :=)
+  $(foreach _,$1,$(if $(filter $_,${seen}),,$(eval seen += $_)))
+  ${seen}
+endef
+
 # ADD_CLEAN_RULE - Parameterized "function" that adds a new rule and phony
 #   target for cleaning the specified target (removing its build-generated
 #   files).
@@ -60,7 +88,7 @@ define ADD_CLEAN_RULE
     .PHONY: clean.$(notdir ${1})
     clean.$(notdir ${1}):
 	$(Q)$(strip rm -f ${${1}_BUILD}/${1} $${${1}_OBJS} $${${1}_DEPS} $${${1}_OBJS:%.${OBJ_EXT}=%.[do]}) $(if ${TARGET_DIR},$${TARGET_DIR}/$(notdir ${1}))
-	$${${1}_POSTCLEAN}
+	${Q}$${${1}_POSTCLEAN}
 
 endef
 
@@ -182,6 +210,15 @@ endif
 define ADD_TARGET_TO_ALL
     all: ${1}
 
+endef
+
+# ADD_TARGET_TO_ALL - Parameterized "function" that adds the target,
+#   and makes "all" depend on it.
+#
+#   USE WITH EVAL
+#
+define ADD_DEPENDS_MK
+    ALL_DEPENDS_MK += ${1}
 endef
 
 # ADD_TARGET_RULE.* - Parameterized "functions" that adds a new target to the
@@ -354,6 +391,7 @@ define INCLUDE_SUBMAKEFILE
     MAN :=
     FILES :=
     OUTPUT :=
+    DEPENDS_MK :=
 
     SUBMAKEFILES :=
 
@@ -390,20 +428,32 @@ define INCLUDE_SUBMAKEFILE
         $${TGT}_POSTMAKE := $${TGT_POSTMAKE}
         $${TGT}_POSTCLEAN := $${TGT_POSTCLEAN}
         $${TGT}_POSTINSTALL := $${TGT_POSTINSTALL}
-        $${TGT}_PREREQS := $${TGT_PREREQS}
         $${TGT}_PRBIN := $$(addprefix $${BUILD_DIR}/bin/,$$(filter-out %.a %.so %.la,$${TGT_PREREQS}))
-        $${TGT}_PRLIBS := $$(addprefix $${BUILD_DIR}/lib/,$$(filter %.a %.so %.la,$${TGT_PREREQS}))
         $${TGT}_DEPS :=
         $${TGT}_OBJS :=
         $${TGT}_SOURCES :=
         $${TGT}_MAN := $${MAN}
         $${TGT}_SUFFIX := $$(if $$(suffix $${TGT}),$$(suffix $${TGT}),.exe)
 
+        #  If we link to FOO, and FOO itself links to things, then we also link to the things
+        #  which FOO needs.  That way we don't have to manually specify the recursive library
+        #  references.
+	$${TGT}_PREREQS := $$(strip $$(call uniq,$$(foreach x,$${TGT_PREREQS},$$(or $${$${x}_PREREQS},) $${x})))
+        $${TGT}_PRLIBS := $$(addprefix $${BUILD_DIR}/lib/,$$(filter %.a %.so %.la,$${$${TGT}_PREREQS}))
+
         # If it's an EXE, ensure that transitive library linking works.
         # i.e. we build libfoo.a which in turn requires -lbar.  So, the executable
         # has to be linked to both libfoo.a and -lbar.
 	ifeq "$${$${TGT}_SUFFIX}" ".exe"
 		$${TGT}_LDLIBS += $$(filter-out %.a %.so %.la,$${$${TGT_PREREQS}_LDLIBS})
+
+		#
+		#  OSX does lazy linking by default.  We want to over-ride that for binaries.
+		#  That way we catch errors at compile time, and not at run time.
+		#
+		ifneq "$(findstring apple-darwin,$(TARGET_SYSTEM))" ""
+			$${TGT}_LDFLAGS += -Wl,-undefined -Wl,error
+		endif
 	endif
 
         $${TGT}_BUILD := $$(if $$(suffix $${TGT}),$${BUILD_DIR}/lib,$${BUILD_DIR}/bin)
@@ -486,6 +536,10 @@ define INCLUDE_SUBMAKEFILE
            $$(eval $$(call INCLUDE_SUBMAKEFILE,\
                       $$(call CANONICAL_PATH,\
                          $$(call QUALIFY_PATH,$${DIR},$${MK})))))
+    endif
+
+    ifneq "$${DEPENDS_MK}" ""
+        $$(eval $$(call ADD_DEPENDS_MK,$${DEPENDS_MK}))
     endif
 
     # Reset the "current" target to it's previous value.
@@ -686,11 +740,44 @@ ifneq "$(MAKECMDGOALS)" "clean"
       $(eval -include ${${TGT}_DEPS}))
 endif
 
+#
+#  Install binaries
+#
+$(foreach B,$(INSTALL_BIN),\
+  $(eval $(call ADD_INSTALL_RULE.bin,${B})))
+
 # Build rules for installation subdirectories
-$(foreach D,$(patsubst %/,%,$(sort $(dir ${ALL_INSTALL}))),\
+$(foreach D,$(patsubst %/,%,$(sort $(subst //,/,$(dir ${ALL_INSTALL})))),\
   $(eval $(call ADD_INSTALL_RULE.dir,${D})))
 
+#
+#  Now that all of the targets have been defined, include auto-build
+#  dependency files.
+#
+ifneq "$(ALL_DEPENDS_MK)" ""
+-include $(ALL_DEPENDS_MK)
+endif
+
 scan: ${ALL_PLISTS}
+
+scan.protocols: $(filter build/plist/src/protocols/%,$(ALL_PLISTS))
+
+scan.modules: $(filter build/plist/src/modules/%,$(ALL_PLISTS))
+
+scan.unlang: $(filter build/plist/src/lib/unlang/%,$(ALL_PLISTS))
+
+scan.server: $(filter build/plist/src/lib/server/%,$(ALL_PLISTS))
+
+.PHONY: scan.help
+scan.help:
+	@echo ""
+	@echo "Make targets:"
+	@echo "    scan                - scan all source"
+	@echo "    scan.protocols      - scan src/protocols"
+	@echo "    scan.modules        - scan src/modules"
+	@echo "    scan.server         - scan src/lib/server"
+	@echo "    scan.unlang         - scan src/lib/unlang"
+
 
 .PHONY: clean.scan
 clean.scan:

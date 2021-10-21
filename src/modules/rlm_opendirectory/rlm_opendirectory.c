@@ -31,7 +31,8 @@
 USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/perm.h>
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -46,7 +47,7 @@ USES_APPLE_DEPRECATED_API
 
 typedef struct {
 	char const		*name;		//!< Auth-Type value for this module instance.
-	fr_dict_enum_t		*auth_type;
+	fr_dict_enum_value_t		*auth_type;
 } rlm_opendirectory_t;
 
 #ifndef HAVE_DECL_MBR_CHECK_SERVICE_MEMBERSHIP
@@ -60,8 +61,8 @@ int mbr_check_membership_refresh(uuid_t const user, uuid_t group, int *ismember)
 #define kRadiusSACLName		"com.apple.access_radius"
 #define kRadiusServiceName	"radius"
 
-static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_opendirectory_dict[];
 fr_dict_autoload_t rlm_opendirectory_dict[] = {
@@ -88,7 +89,7 @@ fr_dict_attr_autoload_t rlm_opendirectory_dict_attr[] = {
  *  Returns: ds err
  */
 
-static long od_check_passwd(REQUEST *request, char const *uname, char const *password)
+static long od_check_passwd(request_t *request, char const *uname, char const *password)
 {
 	long			result 		= eDSAuthFailed;
 	tDirReference		dsRef 		= 0;
@@ -306,14 +307,14 @@ static long od_check_passwd(REQUEST *request, char const *uname, char const *pas
  *	Check the users password against the standard UNIX
  *	password table.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	int		ret;
 	long		odResult = eDSAuthFailed;
-	VALUE_PAIR *username, *password;
+	fr_pair_t *username, *password;
 
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
-	password = fr_pair_find_by_da(request->packet->vps, attr_user_password, TAG_ANY);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0);
+	password = fr_pair_find_by_da(&request->request_pairs, attr_user_password, 0);
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -321,12 +322,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	 */
 	if (!username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	if (!password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -334,16 +335,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 	 */
 	if (password->vp_length == 0) {
 		REDEBUG("User-Password must not be empty");
-		return RLM_MODULE_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
 	 *	Log the password
 	 */
 	if (RDEBUG_ENABLED3) {
-		REDEBUG("Login attempt with password \"%pV\"", &password->data);
+		RDEBUG("Login attempt with password \"%pV\"", &password->data);
 	} else {
-		REDEBUG2("Login attempt with password");
+		RDEBUG2("Login attempt with password");
 	}
 
 	odResult = od_check_passwd(request, username->vp_strvalue,
@@ -362,7 +363,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		case eDSAuthAccountInactive:
 		case eDSAuthInvalidLogonHours:
 		case eDSAuthInvalidComputer:
-			ret = RLM_MODULE_USERLOCK;
+			ret = RLM_MODULE_DISALLOW;
 			break;
 
 		default:
@@ -375,98 +376,95 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, UNUS
 		return ret;
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 
 /*
  *	member of the radius group?
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_opendirectory_t	*inst = instance;
-	struct passwd		*userdata = NULL;
-	int			ismember = 0;
-	RADCLIENT		*rad_client = NULL;
-	uuid_t			uuid;
-	uuid_t			guid_sacl;
-	uuid_t			guid_nasgroup;
-	int			err;
-	char			host_ipaddr[128] = {0};
-	gid_t			gid;
-	VALUE_PAIR		*username;
+	rlm_opendirectory_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_opendirectory_t);
+	struct passwd			*userdata = NULL;
+	int				ismember = 0;
+	RADCLIENT			*client = NULL;
+	uuid_t				uuid;
+	uuid_t				guid_sacl;
+	uuid_t				guid_nasgroup;
+	int				err;
+	char				host_ipaddr[128] = {0};
+	gid_t				gid;
+	fr_pair_t			*username;
 
 	/*
 	 *	We can only authenticate user requests which HAVE
 	 *	a User-Name attribute.
 	 */
-	username = fr_pair_find_by_da(request->packet->vps, attr_user_name, TAG_ANY);
+	username = fr_pair_find_by_da(&request->request_pairs, attr_user_name, 0);
 	if (!username) {
 		RDEBUG2("OpenDirectory requires a User-Name attribute");
-		return RLM_MODULE_NOOP;
+		RETURN_MODULE_NOOP;
 	}
 
 	/* resolve SACL */
 	uuid_clear(guid_sacl);
 
-	if (rad_getgid(request, &gid, kRadiusSACLName) < 0) {
+	if (fr_perm_gid_from_str(request, &gid, kRadiusSACLName) < 0) {
 		RDEBUG2("The SACL group \"%s\" does not exist on this system", kRadiusSACLName);
 	} else {
 		err = mbr_gid_to_uuid(gid, guid_sacl);
 		if (err != 0) {
 			REDEBUG("The group \"%s\" does not have a GUID", kRadiusSACLName);
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 	}
 
 	/* resolve client access list */
 	uuid_clear(guid_nasgroup);
 
-	rad_client = request->client;
+	client = client_from_request(request);
 #if 0
-	if (rad_client->community[0] != '\0' ) {
+	if (client->community[0] != '\0' ) {
 		/*
 		 *	The "community" can be a GUID (Globally Unique ID) or
 		 *	a group name
 		 */
-		if (uuid_parse(rad_client->community, guid_nasgroup) != 0) {
+		if (uuid_parse(client->community, guid_nasgroup) != 0) {
 			/* attempt to resolve the name */
-			groupdata = getgrnam(rad_client->community);
+			groupdata = getgrnam(client->community);
 			if (!groupdata) {
-				REDEBUG("The group \"%s\" does not exist on this system", rad_client->community);
-				return RLM_MODULE_FAIL;
+				REDEBUG("The group \"%s\" does not exist on this system", client->community);
+				RETURN_MODULE_FAIL;
 			}
 			err = mbr_gid_to_uuid(groupdata->gr_gid, guid_nasgroup);
 			if (err != 0) {
-				REDEBUG("The group \"%s\" does not have a GUID", rad_client->community);
-				return RLM_MODULE_FAIL;
+				REDEBUG("The group \"%s\" does not have a GUID", client->community);
+				RETURN_MODULE_FAIL;
 			}
 		}
 	}
 	else
 #endif
 	{
-		if (!rad_client) {
+		if (!client) {
 			RDEBUG2("The client record could not be found for host %s",
-			       fr_inet_ntoh(&request->packet->src_ipaddr, host_ipaddr, sizeof(host_ipaddr)));
+			       fr_inet_ntoh(&request->packet->socket.inet.src_ipaddr, host_ipaddr, sizeof(host_ipaddr)));
 		} else {
 			RDEBUG2("The host %s does not have an access group",
-			       fr_inet_ntoh(&request->packet->src_ipaddr, host_ipaddr, sizeof(host_ipaddr)));
+			       fr_inet_ntoh(&request->packet->socket.inet.src_ipaddr, host_ipaddr, sizeof(host_ipaddr)));
 		}
 	}
 
 	if (uuid_is_null(guid_sacl) && uuid_is_null(guid_nasgroup)) {
 		RDEBUG2("No access control groups, all users allowed");
-
-		if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
-
-		return RLM_MODULE_OK;
+		goto setup_auth_type;
 	}
 
 	/* resolve user */
 	uuid_clear(uuid);
 
-	rad_getpwnam(request, &userdata, username->vp_strvalue);
+	fr_perm_getpwnam(request, &userdata, username->vp_strvalue);
 	if (userdata != NULL) {
 		err = mbr_uid_to_uuid(userdata->pw_uid, uuid);
 		if (err != 0)
@@ -476,19 +474,19 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 
 	if (uuid_is_null(uuid)) {
 		REDEBUG("Could not get the user's uuid");
-		return RLM_MODULE_NOTFOUND;
+		RETURN_MODULE_NOTFOUND;
 	}
 
 	if (!uuid_is_null(guid_sacl)) {
 		err = mbr_check_service_membership(uuid, kRadiusServiceName, &ismember);
 		if (err != 0) {
 			REDEBUG("Failed to check group membership");
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		if (ismember == 0) {
 			REDEBUG("User is not authorized");
-			return RLM_MODULE_USERLOCK;
+			RETURN_MODULE_DISALLOW;
 		}
 	}
 
@@ -496,18 +494,25 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 		err = mbr_check_membership_refresh(uuid, guid_nasgroup, &ismember);
 		if (err != 0) {
 			REDEBUG("Failed to check group membership");
-			return RLM_MODULE_FAIL;
+			RETURN_MODULE_FAIL;
 		}
 
 		if (ismember == 0) {
 			REDEBUG("User is not authorized");
-			return RLM_MODULE_USERLOCK;
+			RETURN_MODULE_DISALLOW;
 		}
 	}
 
-	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) return RLM_MODULE_NOOP;
+setup_auth_type:
+	if (!inst->auth_type) {
+		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup OpenDirectory authentication",
+		     inst->name, inst->name);
+		RETURN_MODULE_NOOP;
+	}
 
-	return RLM_MODULE_OK;
+	if (!module_section_type_set(request, attr_auth_type, inst->auth_type)) RETURN_MODULE_NOOP;
+
+	RETURN_MODULE_OK;
 }
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
@@ -517,12 +522,18 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	if (fr_dict_enum_add_alias_next(attr_auth_type, inst->name) < 0) {
-		PERROR("Failed adding %s alias", attr_auth_type->name);
-		return -1;
+	return 0;
+}
+
+static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+{
+	rlm_opendirectory_t *inst = instance;
+
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
+	if (!inst->auth_type) {
+		WARN("Failed to find 'authenticate %s {...}' section.  OpenDirectory authentication will likely not work",
+		     inst->name);
 	}
-	inst->auth_type = fr_dict_enum_by_alias(attr_auth_type, inst->name, -1);
-	rad_assert(inst->auth_type);
 
 	return 0;
 }
@@ -535,6 +546,7 @@ module_t rlm_opendirectory = {
 	.inst_size	= sizeof(rlm_opendirectory_t),
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.bootstrap	= mod_bootstrap,
+	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize

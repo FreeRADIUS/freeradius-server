@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2019 The FreeRADIUS Server project and contributors
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -10,7 +10,7 @@
 #
 ##############################################################################
 
-PROTOCOL	DHCPv6		3
+PROTOCOL	DHCPv6		3	verify=lib
 BEGIN-PROTOCOL	DHCPv6
 
 $INCLUDE dictionary.freeradius.internal
@@ -41,6 +41,7 @@ $INCLUDE dictionary.rfc6011
 $INCLUDE dictionary.rfc6153
 $INCLUDE dictionary.rfc6225
 $INCLUDE dictionary.rfc6334
+$INCLUDE dictionary.rfc6355
 $INCLUDE dictionary.rfc6422
 $INCLUDE dictionary.rfc6440
 $INCLUDE dictionary.rfc6603
@@ -64,5 +65,9 @@ $INCLUDE dictionary.rfc7839
 $INCLUDE dictionary.rfc8026
 $INCLUDE dictionary.rfc8115
 $INCLUDE dictionary.rfc8156
+
+$INCLUDE dictionary.freeradius
+$INCLUDE dictionary.microsoft
+$INCLUDE dictionary.nokia.sr
 
 END-PROTOCOL 	DHCPv6

@@ -25,7 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <wbclient.h>
 #include <core/ntstatus.h>
@@ -84,46 +84,30 @@ static char *wbclient_normalise_username(TALLOC_CTX *ctx, struct wbcContext *wb_
  *	- -1 auth failure.
  *	- -648 password expired.
  */
-int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
+int do_auth_wbclient(rlm_mschap_t const *inst, request_t *request,
 		     uint8_t const *challenge, uint8_t const *response,
 		     uint8_t nthashhash[NT_DIGEST_LENGTH])
 {
 	int				ret = -1;
-	struct				wbcContext *wb_ctx = NULL;
-	struct				wbcAuthUserParams authparams;
+	struct wbcContext		*wb_ctx = NULL;
+	struct wbcAuthUserParams	*authparams;
 	wbcErr				err;
 	ssize_t				slen;
 	struct wbcAuthUserInfo		*info = NULL;
 	struct wbcAuthErrorInfo		*error = NULL;
-	char				user_name_buf[500];
-	char				domain_name_buf[500];
 	uint8_t				resp[NT_LENGTH];
 
 	/*
-	 * Clear the auth parameters - this is important, as
-	 * there are options that will cause wbcAuthenticateUserEx
-	 * to bomb out if not zero.
+	 *	wb_username must be set for this function to be called
 	 */
-	memset(&authparams, 0, sizeof(authparams));
+	fr_assert(inst->wb_username);
 
+	MEM(authparams = talloc_zero_pooled_object(NULL, struct wbcAuthUserParams, 2, 1024));
 	/*
-	 * wb_username must be set for this function to be called
+	 *	Domain first so we don't leave holes in the pool
 	 */
-	rad_assert(inst->wb_username);
-
-	/*
-	 * Get the username and domain from the configuration
-	 */
-	slen = tmpl_expand(&authparams.account_name, user_name_buf, sizeof(user_name_buf),
-			   request, inst->wb_username, NULL, NULL);
-	if (slen < 0) {
-		REDEBUG2("Unable to expand winbind_username");
-		goto finish;
-	}
-
 	if (inst->wb_domain) {
-		slen = tmpl_expand(&authparams.domain_name, domain_name_buf, sizeof(domain_name_buf),
-				   request, inst->wb_domain, NULL, NULL);
+		slen = tmpl_aexpand(authparams, &authparams->domain_name, request, inst->wb_domain, NULL, NULL);
 		if (slen < 0) {
 			REDEBUG2("Unable to expand winbind_domain");
 			goto finish;
@@ -132,20 +116,27 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 		RWDEBUG2("No domain specified; authentication may fail because of this");
 	}
 
+	/*
+	 *	Get the username and domain from the configuration
+	 */
+	slen = tmpl_aexpand(authparams, &authparams->account_name, request, inst->wb_username, NULL, NULL);
+	if (slen < 0) {
+		REDEBUG2("Unable to expand winbind_username");
+		goto finish;
+	}
 
 	/*
 	 * Build the wbcAuthUserParams structure with what we know
 	 */
-	authparams.level = WBC_AUTH_USER_LEVEL_RESPONSE;
-	authparams.password.response.nt_length = NT_LENGTH;
+	authparams->level = WBC_AUTH_USER_LEVEL_RESPONSE;
+	authparams->password.response.nt_length = NT_LENGTH;
 
 	memcpy(resp, response, NT_LENGTH);
-	authparams.password.response.nt_data = resp;
+	authparams->password.response.nt_data = resp;
 
-	memcpy(authparams.password.response.challenge, challenge,
-	       sizeof(authparams.password.response.challenge));
+	memcpy(authparams->password.response.challenge, challenge, sizeof(authparams->password.response.challenge));
 
-	authparams.parameter_control |= WBC_MSV1_0_ALLOW_MSVCHAPV2 |
+	authparams->parameter_control |= WBC_MSV1_0_ALLOW_MSVCHAPV2 |
 					WBC_MSV1_0_ALLOW_WORKSTATION_TRUST_ACCOUNT |
 					WBC_MSV1_0_ALLOW_SERVER_TRUST_ACCOUNT;
 
@@ -158,52 +149,57 @@ int do_auth_wbclient(rlm_mschap_t const *inst, REQUEST *request,
 		goto finish;
 	}
 
-	RDEBUG2("sending authentication request user='%s' domain='%s'",
-		authparams.account_name, authparams.domain_name);
+	RDEBUG2("Sending authentication request user \"%pV\" domain \"%pV\"",
+		fr_box_strvalue_buffer(authparams->account_name),
+		fr_box_strvalue_buffer(authparams->domain_name));
 
-	err = wbcCtxAuthenticateUserEx(wb_ctx, &authparams, &info, &error);
+	err = wbcCtxAuthenticateUserEx(wb_ctx, authparams, &info, &error);
 	if (err == WBC_ERR_AUTH_ERROR && inst->wb_retry_with_normalised_username) {
-		VALUE_PAIR 	*vp_response;
-		VALUE_PAIR	*vp_challenge;
-		VALUE_PAIR	*vp_chap_user_name;
+		fr_pair_t 	*vp_response;
+		fr_pair_t	*vp_challenge;
+		fr_pair_t	*vp_chap_user_name;
 		char		*normalised_username = NULL;
 
-		normalised_username = wbclient_normalise_username(request, wb_ctx, authparams.domain_name,
-								  authparams.account_name);
+		normalised_username = wbclient_normalise_username(authparams, wb_ctx, authparams->domain_name,
+								  authparams->account_name);
 		if (!normalised_username) goto release;
 
-		RDEBUG2("Starting retry, normalised username %s to %s", authparams.account_name, normalised_username);
-		if (strcmp(authparams.account_name, normalised_username) == 0) goto release;
+		RDEBUG2("Starting retry, normalised username \"%pV\" -> \"%pV\"",
+			fr_box_strvalue_buffer(authparams->account_name),
+			fr_box_strvalue_buffer(normalised_username));
 
-		authparams.account_name = normalised_username;
+		if (talloc_memcmp_bstr(authparams->account_name, normalised_username) == 0) goto release;
+
+		talloc_const_free(authparams->account_name);
+		authparams->account_name = normalised_username;
 
 		/* Set MS-CHAP-USER-NAME */
 		MEM(pair_update_request(&vp_chap_user_name, attr_ms_chap_user_name) >= 0);
-		fr_pair_value_bstrncpy(vp_chap_user_name,
-				       normalised_username, talloc_array_length(normalised_username) - 1);
+		fr_pair_value_bstrdup_buffer(vp_chap_user_name, normalised_username, true);
 
-		RDEBUG2("Retrying authentication request user='%s' domain='%s'",
-			authparams.account_name, authparams.domain_name);
+		RDEBUG2("Retrying authentication request user \"%pV\" domain \"%pV\"",
+			fr_box_strvalue_buffer(authparams->account_name),
+			fr_box_strvalue_buffer(normalised_username));
 
 		/* Recalculate hash */
-		vp_challenge = fr_pair_find_by_da(request->packet->vps, attr_ms_chap_challenge, TAG_ANY);
+		vp_challenge = fr_pair_find_by_da(&request->request_pairs, attr_ms_chap_challenge, 0);
 		if (!vp_challenge) {
 			RERROR("Unable to get MS-CHAP-Challenge");
 			goto release;
 		}
 
-		vp_response = fr_pair_find_by_da(request->packet->vps, attr_ms_chap2_response, TAG_ANY);
+		vp_response = fr_pair_find_by_da(&request->request_pairs, attr_ms_chap2_response, 0);
 		if (!vp_response) {
 			RERROR("Unable to get MS-CHAP2-Response");
 			goto release;
 		}
 
-		mschap_challenge_hash(vp_response->vp_octets + 2,
+		mschap_challenge_hash(authparams->password.response.challenge,
+				      vp_response->vp_octets + 2,
 				      vp_challenge->vp_octets,
-				      normalised_username,
-				      authparams.password.response.challenge);
+				      vp_chap_user_name->vp_strvalue, vp_chap_user_name->vp_length);
 
-		err = wbcCtxAuthenticateUserEx(wb_ctx, &authparams, &info, &error);
+		err = wbcCtxAuthenticateUserEx(wb_ctx, authparams, &info, &error);
 release:
 		talloc_free(normalised_username);
 	}
@@ -272,6 +268,7 @@ release:
 	}
 
 finish:
+	talloc_free(authparams);
 	if (info) wbcFreeMemory(info);
 	if (error) wbcFreeMemory(error);
 

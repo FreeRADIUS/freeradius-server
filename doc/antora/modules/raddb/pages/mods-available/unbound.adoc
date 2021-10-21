@@ -1,0 +1,74 @@
+
+
+
+
+= Unbound Module
+
+The `unbound` module performs queries against a DNS service to allow
+FQDNs to be resolved during request processing.
+
+
+
+## Configuration Settings
+
+
+File to read unbound configuration details from.
+
+filename = "${raddbdir}/mods-config/unbound/default.conf"
+
+
+Timeout for unbound queries.
+
+timeout = 3000
+
+
+resolv.conf file to instruct unbound to load resolvers from.
+Defaults to not set.
+Without this set, unbound queries root DNS servers.  If a local
+caching DNS server is available that will improve performance.
+
+resolvconf = "/etc/resolv.conf"
+
+
+hosts file to load data from.  Defaults to not set.
+
+hosts = "/etc/hosts"
+
+
+## xlat for DNS resolution
+
+An xlat based on the instance name can be used to perform DNS lookups.
+
+.Example
+
+```
+%(dns:www.example.com A)
+%(dns:www.example.com AAAA)
+```
+
+Given an instance `dns` the above xlats will perform A record and
+AAAA record lookups on www.example.com.
+
+.Example
+
+```
+%(dns:1.1.168.192.in-addr.arpa PTR)
+```
+
+The above example will perform reverse DNS lookup on 192.168.1.1
+
+.Example
+
+```
+%(dns:example.com MX 1)
+```
+
+The above example will perform an MX lookup on example.com returning
+just the first result.
+
+== Default Configuration
+
+```
+unbound dns {
+}
+```

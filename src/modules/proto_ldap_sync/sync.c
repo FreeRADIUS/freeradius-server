@@ -32,12 +32,14 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/ldap/base.h>
-#include <freeradius-devel/server/rad_assert.h>
+#include <freeradius-devel/util/debug.h>
 #include <lber.h>
 #include "sync.h"
 
 struct sync_state_s {
-	fr_ldap_connection_t 			*conn;
+	fr_rb_node_t			node;			//!< Entry in the tree of nodes.
+
+	fr_ldap_connection_t 		*conn;
 
 	sync_config_t const		*config;
 
@@ -48,39 +50,39 @@ struct sync_state_s {
 	sync_phases_t			phase;
 };
 
-FR_NAME_NUMBER sync_state_table[] = {
-	{ "present",			SYNC_STATE_PRESENT },
-	{ "add",			SYNC_STATE_ADD },
-	{ "modify",			SYNC_STATE_MODIFY },
-	{ "delete",			SYNC_STATE_DELETE },
-	{ NULL, 0}
+fr_table_num_sorted_t sync_state_table[] = {
+	{ L("present"),			SYNC_STATE_PRESENT		},
+	{ L("add"),			SYNC_STATE_ADD			},
+	{ L("modify"),			SYNC_STATE_MODIFY		},
+	{ L("delete"),			SYNC_STATE_DELETE		}
 };
+size_t sync_state_table_len = NUM_ELEMENTS(sync_state_table);
 
-FR_NAME_NUMBER sync_phase_table[] = {
-	{ "init",			SYNC_PHASE_INIT },
-	{ "present",			SYNC_PHASE_PRESENT },
-	{ "delete",			SYNC_PHASE_DELETE },
-	{ "present-idset",		SYNC_PHASE_PRESENT_IDSET },
-	{ "delete-idset",		SYNC_PHASE_DELETE_IDSET },
-	{ "done",			SYNC_PHASE_DONE },
-	{ NULL, 0 }
+fr_table_num_sorted_t sync_phase_table[] = {
+	{ L("delete"),			SYNC_PHASE_DELETE		},
+	{ L("delete-idset"),		SYNC_PHASE_DELETE_IDSET		},
+	{ L("done"),			SYNC_PHASE_DONE			},
+	{ L("init"),			SYNC_PHASE_INIT			},
+	{ L("present"),			SYNC_PHASE_PRESENT		},
+	{ L("present-idset"),		SYNC_PHASE_PRESENT_IDSET	}
 };
+size_t sync_phase_table_len = NUM_ELEMENTS(sync_state_table);
 
-FR_NAME_NUMBER sync_protocol_op_table[] = {
-	{ "searchResEntry",		LDAP_RES_SEARCH_ENTRY },
-	{ "searchResReference",		LDAP_RES_SEARCH_REFERENCE },
-	{ "searchRes",			LDAP_RES_SEARCH_RESULT },
-	{ "intermediateResponse",	LDAP_RES_INTERMEDIATE },
-	{ NULL, 0 }
+fr_table_num_sorted_t sync_protocol_op_table[] = {
+	{ L("intermediateResponse"),	LDAP_RES_INTERMEDIATE		},
+	{ L("searchRes"),			LDAP_RES_SEARCH_RESULT		},
+	{ L("searchResEntry"),		LDAP_RES_SEARCH_ENTRY		},
+	{ L("searchResReference"),		LDAP_RES_SEARCH_REFERENCE	}
 };
+size_t sync_protocol_op_table_len = NUM_ELEMENTS(sync_state_table);
 
-FR_NAME_NUMBER sync_info_tag_table[] = {
- 	{ "newCookie",			LDAP_TAG_SYNC_NEW_COOKIE },
- 	{ "refreshDelete",		LDAP_TAG_SYNC_REFRESH_DELETE },
- 	{ "refreshPresent",		LDAP_TAG_SYNC_REFRESH_PRESENT },
-	{ "refreshIDSet",		LDAP_TAG_SYNC_ID_SET },
-	{ NULL, 0 }
+fr_table_num_sorted_t sync_info_tag_table[] = {
+ 	{ L("newCookie"),			LDAP_TAG_SYNC_NEW_COOKIE	},
+ 	{ L("refreshDelete"),		LDAP_TAG_SYNC_REFRESH_DELETE	},
+	{ L("refreshIDSet"),		LDAP_TAG_SYNC_ID_SET		},
+ 	{ L("refreshPresent"),		LDAP_TAG_SYNC_REFRESH_PRESENT	}
 };
+size_t sync_info_tag_table_len = NUM_ELEMENTS(sync_state_table);
 
 /** Process a cookie element
  *
@@ -183,9 +185,9 @@ static int sync_search_entry_or_reference(sync_state_t *sync, LDAPMessage *msg, 
 	sync_states_t		state = SYNC_STATE_INVALID;
 	bool			new_cookie;
 
-	rad_assert(sync->conn);
-	rad_assert(sync);
-	rad_assert(msg);
+	fr_assert(sync->conn);
+	fr_assert(sync);
+	fr_assert(msg);
 
 	if (!ctrls) {
 	missing_control:
@@ -247,8 +249,8 @@ static int sync_search_entry_or_reference(sync_state_t *sync, LDAPMessage *msg, 
 		default:
 		bad_phase:
 			ERROR("Entries with %s state are not allowed during refresh %s phase",
-			      fr_int2str(sync_state_table, state, "<unknown>"),
-			      fr_int2str(sync_phase_table, sync->phase, "<unknown>"));
+			      fr_table_str_by_value(sync_state_table, state, "<unknown>"),
+			      fr_table_str_by_value(sync_phase_table, sync->phase, "<unknown>"));
 			goto error;
 		}
 		break;
@@ -286,11 +288,11 @@ static int sync_search_entry_or_reference(sync_state_t *sync, LDAPMessage *msg, 
 		fr_value_box_t	uuid_box;
 
 		entry_dn = ldap_get_dn(sync->conn->handle, msg);
-		fr_ldap_berval_to_value(&uuid_box, &entry_uuid);
+		fr_ldap_berval_to_value_shallow(&uuid_box, &entry_uuid);
 
 		DEBUG3("Processing %s (%s), dn \"%s\", entryUUID %pV",
-		       fr_int2str(sync_protocol_op_table, ldap_msgtype(msg), "<unknown>"),
-		       fr_int2str(sync_state_table, state, "<unknown>"),
+		       fr_table_str_by_value(sync_protocol_op_table, ldap_msgtype(msg), "<unknown>"),
+		       fr_table_str_by_value(sync_state_table, state, "<unknown>"),
 		       entry_dn ? entry_dn : "<unknown>",
 		       &uuid_box);
 
@@ -384,7 +386,7 @@ static int sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPCo
 	}
 
 	sync_info_tag = ber_peek_tag(ber, &len);
-	DEBUG3("Processing syncInfo (%s)", fr_int2str(sync_info_tag_table, sync_info_tag, "<unknown>"));
+	DEBUG3("Processing syncInfo (%s)", fr_table_str_by_value(sync_info_tag_table, sync_info_tag, "<unknown>"));
 
 	switch (sync_info_tag) {
 	case LDAP_TAG_SYNC_NEW_COOKIE:
@@ -412,8 +414,8 @@ static int sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPCo
 
 		default:
 			ERROR("Invalid refresh phase transition (%s->%s)",
-			      fr_int2str(sync_phase_table, sync->phase, "<unknown>"),
-			      fr_int2str(sync_phase_table, SYNC_PHASE_DELETE, "<unknown>"));
+			      fr_table_str_by_value(sync_phase_table, sync->phase, "<unknown>"),
+			      fr_table_str_by_value(sync_phase_table, SYNC_PHASE_DELETE, "<unknown>"));
 			goto error;
 		}
 
@@ -461,8 +463,8 @@ static int sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPCo
 
 		default:
 			ERROR("Invalid refresh phase transition (%s->%s)",
-			      fr_int2str(sync_phase_table, sync->phase, "<unknown>"),
-			      fr_int2str(sync_phase_table, SYNC_PHASE_DELETE, "<unknown>"));
+			      fr_table_str_by_value(sync_phase_table, sync->phase, "<unknown>"),
+			      fr_table_str_by_value(sync_phase_table, SYNC_PHASE_DELETE, "<unknown>"));
 
 			goto error;
 		}
@@ -520,8 +522,8 @@ static int sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPCo
 
 			default:
 				ERROR("Invalid refresh phase transition (%s->%s)",
-				      fr_int2str(sync_phase_table, sync->phase, "<unknown>"),
-				      fr_int2str(sync_phase_table, SYNC_PHASE_DELETE, "<unknown>"));
+				      fr_table_str_by_value(sync_phase_table, sync->phase, "<unknown>"),
+				      fr_table_str_by_value(sync_phase_table, SYNC_PHASE_DELETE, "<unknown>"));
 				goto error;
 			}
 		} else {
@@ -532,8 +534,8 @@ static int sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPCo
 
 			default:
 				ERROR("Invalid refresh phase transition (%s->%s)",
-				      fr_int2str(sync_phase_table, sync->phase, "<unknown>"),
-				      fr_int2str(sync_phase_table, SYNC_PHASE_DELETE, "<unknown>"));
+				      fr_table_str_by_value(sync_phase_table, sync->phase, "<unknown>"),
+				      fr_table_str_by_value(sync_phase_table, SYNC_PHASE_DELETE, "<unknown>"));
 				goto error;
 			}
 		}
@@ -607,9 +609,9 @@ static int sync_search_result(sync_state_t *sync, LDAPMessage *msg, LDAPControl 
 	ber_len_t	len;
 	bool		new_cookie;
 
-	rad_assert(sync->conn);
-	rad_assert(sync);
-	rad_assert(msg);
+	fr_assert(sync->conn);
+	fr_assert(sync);
+	fr_assert(msg);
 
 	/*
 	 *	Should not happen with refreshAndPersist
@@ -674,7 +676,7 @@ static int sync_search_result(sync_state_t *sync, LDAPMessage *msg, LDAPControl 
 		default:
 			ERROR("syncDone control indicated end of refresh delete phase but "
 			      "We were in refresh %s phase",
-			      fr_int2str(sync_phase_table, sync->phase, "<unknown>"));
+			      fr_table_str_by_value(sync_phase_table, sync->phase, "<unknown>"));
 			goto error;
 		}
 	} else {
@@ -686,7 +688,7 @@ static int sync_search_result(sync_state_t *sync, LDAPMessage *msg, LDAPControl 
 		default:
 			ERROR("syncDone control indicated end of refresh present phase but "
 			      "we were in refresh %s phase",
-			      fr_int2str(sync_phase_table, sync->phase, "<unknown>"));
+			      fr_table_str_by_value(sync_phase_table, sync->phase, "<unknown>"));
 			goto error;
 		}
 	}
@@ -722,11 +724,11 @@ int sync_demux(int *sync_id, fr_ldap_connection_t *conn)
 	int			ret = 0;
 	fr_ldap_rcode_t		rcode;
 	sync_state_t		find = { .msgid = -1 }, *sync = NULL;
-	rbtree_t		*tree;
+	fr_rb_tree_t		*tree;
 
-	tree = talloc_get_type_abort(conn->uctx, rbtree_t);
+	tree = talloc_get_type_abort(conn->uctx, fr_rb_tree_t);
 
-	rad_assert(conn);
+	fr_assert(conn);
 
 	/*
 	 *	Drain any messages outstanding on this connection
@@ -734,7 +736,8 @@ int sync_demux(int *sync_id, fr_ldap_connection_t *conn)
 	ret = ldap_result(conn->handle, LDAP_RES_ANY, LDAP_MSG_RECEIVED, &poll, &head);
 	switch (ret) {
 	case 0:	/* timeout - shouldn't happen */
-		rad_assert(0);
+		fr_assert(0);
+		return -2;
 
 	case -1:
 		rcode = fr_ldap_error_check(NULL, conn, NULL, NULL);
@@ -760,7 +763,7 @@ int sync_demux(int *sync_id, fr_ldap_connection_t *conn)
 
 		if (msgid == 0) {
 			WARN("Ignoring unsolicited %s message",
-			     fr_int2str(sync_protocol_op_table, type, "<invalid>"));
+			     fr_table_str_by_value(sync_protocol_op_table, type, "<invalid>"));
 			continue;
 		}
 
@@ -771,7 +774,7 @@ int sync_demux(int *sync_id, fr_ldap_connection_t *conn)
 		if (!sync || (sync->msgid != msgid)) {
 			find.msgid = msgid;
 
-			sync = rbtree_finddata(tree, &find);
+			sync = fr_rb_find(tree, &find);
 			if (!sync) {
 				WARN("Ignoring msgid %i, doesn't match any outstanding syncs",
 				     find.msgid);
@@ -812,7 +815,7 @@ int sync_demux(int *sync_id, fr_ldap_connection_t *conn)
 		}
 
 		DEBUG3("Got %s message for sync (msgid %i)",
-		       fr_int2str(sync_protocol_op_table, type, "<invalid>"), sync->msgid);
+		       fr_table_str_by_value(sync_protocol_op_table, type, "<invalid>"), sync->msgid);
 
 		switch (type) {
 		case LDAP_RES_SEARCH_REFERENCE:
@@ -860,10 +863,10 @@ static int _sync_state_free(sync_state_t *sync)
 {
 
 	fr_ldap_connection_t	*conn = talloc_get_type_abort(sync->conn, fr_ldap_connection_t);	/* check for premature free */
-	rbtree_t	*tree = talloc_get_type_abort(conn->uctx, rbtree_t);
+	fr_rb_tree_t	*tree = talloc_get_type_abort(conn->uctx, fr_rb_tree_t);
 	sync_state_t	find = { .msgid = sync->msgid };
 
-	rad_assert(sync->conn->handle);
+	fr_assert(sync->conn->handle);
 
 	DEBUG3("Abandoning sync");
 
@@ -873,7 +876,7 @@ static int _sync_state_free(sync_state_t *sync)
 	 *	Tell the remote server to stop sending results
 	 */
 	ldap_abandon_ext(sync->conn->handle, sync->msgid, NULL, NULL);
-	rbtree_deletebydata(tree, &find);
+	fr_rb_delete(tree, &find);
 
 	return 0;
 }
@@ -882,13 +885,13 @@ static int _sync_state_free(sync_state_t *sync)
  *
  * @param[in] one first sync to compare.
  * @param[in] two second sync to compare.
- * @return the difference between the msgids.
+ * @return CMP(one, two)
  */
-static int _sync_cmp(void const *one, void const *two)
+static int8_t _sync_cmp(void const *one, void const *two)
 {
 	sync_state_t const *a = one, *b = two;
 
-	return a->msgid - b->msgid;
+	return CMP(a->msgid, b->msgid);
 }
 
 /** Destroy a sync (does not free config)
@@ -907,15 +910,15 @@ static int _sync_cmp(void const *one, void const *two)
 void sync_state_destroy(fr_ldap_connection_t *conn, int msgid)
 {
 	sync_state_t	find, *sync;
-	rbtree_t	*tree;
+	fr_rb_tree_t	*tree;
 
 	if (!conn->uctx) return;
 
-	tree = talloc_get_type_abort(conn->uctx, rbtree_t);
+	tree = talloc_get_type_abort(conn->uctx, fr_rb_tree_t);
 
 	find.msgid = msgid;
 
-	sync = rbtree_finddata(tree, &find);
+	sync = fr_rb_find(tree, &find);
 	talloc_free(sync);	/* Will inform the server */
 }
 
@@ -927,15 +930,15 @@ void sync_state_destroy(fr_ldap_connection_t *conn, int msgid)
 sync_config_t const *sync_state_config_get(fr_ldap_connection_t *conn, int msgid)
 {
 	sync_state_t	find, *sync;
-	rbtree_t	*tree;
+	fr_rb_tree_t	*tree;
 
 	if (!conn->uctx) return NULL;
 
-	tree = talloc_get_type_abort(conn->uctx, rbtree_t);
+	tree = talloc_get_type_abort(conn->uctx, fr_rb_tree_t);
 
 	find.msgid = msgid;
 
-	sync = rbtree_finddata(tree, &find);
+	sync = fr_rb_find(tree, &find);
 	return sync->config;
 }
 
@@ -979,10 +982,10 @@ int sync_state_init(fr_ldap_connection_t *conn, sync_config_t const *config,
 	int			ret;
 	int			mode;
 	sync_state_t		*sync;
-	rbtree_t		*tree;
+	fr_rb_tree_t		*tree;
 
-	rad_assert(conn);
-	rad_assert(config);
+	fr_assert(conn);
+	fr_assert(config);
 
 	mode = config->persist ? LDAP_SYNC_REFRESH_AND_PERSIST : LDAP_SYNC_REFRESH_ONLY;
 
@@ -991,10 +994,10 @@ int sync_state_init(fr_ldap_connection_t *conn, sync_config_t const *config,
 	 *	these are specific to the connection.
 	 */
 	if (!conn->uctx) {
-		MEM(tree = rbtree_talloc_create(conn, _sync_cmp, sync_state_t, NULL, RBTREE_FLAG_NONE));
+		MEM(tree = fr_rb_inline_talloc_alloc(conn, sync_state_t, node, _sync_cmp, NULL));
 		conn->uctx = tree;
 	} else {
-		tree = talloc_get_type_abort(conn->uctx, rbtree_t);
+		tree = talloc_get_type_abort(conn->uctx, fr_rb_tree_t);
 	}
 
 	/*
@@ -1058,7 +1061,7 @@ int sync_state_init(fr_ldap_connection_t *conn, sync_config_t const *config,
 		return -1;
 	}
 
-	if (!rbtree_insert(tree, sync)) {
+	if (!fr_rb_insert(tree, sync)) {
 		ERROR("Duplicate sync (msgid %i)", sync->msgid);
 		return -1;
 	}

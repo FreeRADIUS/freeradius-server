@@ -1,0 +1,9 @@
+ALIAS	NS-Admin-Privilege                      	26.3224.1
+ALIAS	NS-VSYS-Name                            	26.3224.2
+ALIAS	NS-User-Group                           	26.3224.3
+ALIAS	NS-Primary-DNS                          	26.3224.4
+ALIAS	NS-Secondary-DNS                        	26.3224.5
+ALIAS	NS-Primary-WINS                         	26.3224.6
+ALIAS	NS-Secondary-WINS                       	26.3224.7
+ALIAS	NS-NSM-User-Domain-Name                 	26.3224.220
+ALIAS	NS-NSM-User-Role-Mapping                	26.3224.221

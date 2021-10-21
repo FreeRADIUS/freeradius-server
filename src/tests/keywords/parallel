@@ -16,7 +16,7 @@ parallel {
 	}
 }
 
-if ("%{control:Tmp-Integer-0[#]}" != 4) {
+if ("%{control.Tmp-Integer-0[#]}" != 4) {
 	test_fail
 
 	return

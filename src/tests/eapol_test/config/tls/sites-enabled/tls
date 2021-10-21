@@ -1,0 +1,36 @@
+server eap-tls-test {
+	namespace = tls
+
+	load session {
+		update control {
+			&control.Cache-Allow-Insert := no
+		}
+		cache_tls_session
+	}
+
+	store session {
+		cache_tls_session
+	}
+
+	clear session {
+		update control {
+			&control.Cache-Allow-Insert := no
+			&control.Cache-Allow-Merge := no
+			&control.Cache-TTL := 0
+		}
+		cache_tls_session
+	}
+
+	verify certificate {
+		if (&Session-Resumed == true) {
+			reject
+		}
+
+		#
+		#  Ensure we have access to the certificate attributes
+		#
+		if (!&parent.session-state.TLS-Certificate[0].Issuer) {
+			reject
+		}
+	}
+}

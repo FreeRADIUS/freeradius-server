@@ -1,5 +1,6 @@
+#pragma once
 /*
- *   This program is is free software; you can redistribute it and/or modify
+ *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or (at
  *   your option) any later version.
@@ -22,9 +23,8 @@
  * @copyright 2016 The FreeRADIUS server project
  */
 
-#ifdef HAVE_WDOCUMENTATION
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(documentation)
-#endif
 #include <mruby.h>
 #include <mruby/compile.h>
 #include <mruby/array.h>
@@ -32,8 +32,7 @@ DIAG_OFF(documentation)
 #include <mruby/numeric.h>
 #include <mruby/string.h>
 #include <mruby/variable.h>
-#ifdef HAVE_WDOCUMENTATION
 DIAG_ON(documentation)
-#endif
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
 struct RClass *mruby_request_class(mrb_state *mrb, struct RClass *parent);

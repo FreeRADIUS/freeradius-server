@@ -51,7 +51,7 @@
 #
 #  * configure the module in `mods-available/`
 #  * enable the module in `mods-enabled`.  e.g. for LDAP, do:  `cd mods-enabled;ln -s ../mods-available/ldap`
-#  *  un-comment the references to it in this file.
+#  *  uncomment the references to it in this file.
 #
 #  In most cases, those small changes will result in the server being
 #  able to connect to the database, and to authenticate users.
@@ -71,6 +71,132 @@ server default {
 	#  only accept packets for that protocol.
 	#
 	namespace = radius
+
+	#
+	#  ### RADIUS Configuration
+	#
+	#  All of the configuration for processing RADIUS packets goes here.
+	#
+	radius {
+		#
+		#  #### Access-Request subsection
+		#
+		#  This section contains configuration which is
+		#  specific to processing `Access-Request` packets.
+		#
+		#  Similar sections can be added, but are not
+		#  necessary for Accounting-Request (and other)
+		#  packets.  At this time, there is no configuration
+		#  needed for other packet types.
+		#
+		Access-Request {
+			#
+			#  log:: Logging configuration for `Access-Request` packets
+			#
+			#  In v3, the `Access-Request` logging was
+			#  configured in the main `radiusd.conf` file,
+			#  in the main `log` subsection.  That
+			#  limitation meant that the configuration was
+			#  global to FreeRADIUS.  i.e. you could not
+			#  have different `Access-Request` logging for
+			#  different virtual server.
+			#
+			#  The extra configuration in v4 allows for
+			#  increased flexibility.
+			#
+			log {
+				#
+				#  stripped_names:: Log the full
+				#  `User-Name` attribute, as it was
+				#  found in the request.
+				#
+				#  allowed values: {no, yes}
+				#
+				stripped_names = no
+
+				#
+				#  auth:: Log authentication requests
+				#  to the log file.
+				#
+				#  allowed values: {no, yes}
+				#
+				auth = no
+
+				#
+				#  auth_goodpass:: Log "good"
+				#  passwords with the authentication
+				#  requests.
+				#
+				#  allowed values: {no, yes}
+				#
+				auth_goodpass = no
+
+				#
+				#  auth_badpass:: Log "bad"
+				#  passwords with the authentication
+				#  requests.
+				#
+				#  allowed values: {no, yes}
+				#
+				auth_badpass = no
+
+				#
+				#  msg_goodpass::
+				#  msg_badpass::
+				#
+				#  Log additional text at the end of the "Login OK" messages.
+				#  for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
+				#  configurations above have to be set to "yes".
+				#
+				#  The strings below are dynamically expanded, which means that
+				#  you can put anything you want in them.  However, note that
+				#  this expansion can be slow, and can negatively impact server
+				#  performance.
+				#
+#				msg_goodpass = ""
+#				msg_badpass = ""
+
+				#
+				#  msg_denied::
+				#
+				#  The message when the user exceeds the Simultaneous-Use limit.
+				#
+				msg_denied = "You are already logged in - access denied"
+			}
+
+			#
+			#  session:: Controls how ongoing
+			#  (multi-round) sessions are handled
+			#
+			#  This section is primarily useful for EAP.
+			#  It controls the number of EAP
+			#  authentication attempts that can occur
+			#  concurrently.
+			#
+			session {
+				#
+				#  max:: The maximum number of ongoing sessions
+				#
+#				max = 4096
+
+				#
+				#  timeout:: How long to wait before expiring a
+				#  session.
+				#
+				#  The timer starts when a response
+				#  with a state value is sent.  The
+				#  timer stops when a request
+				#  containing the previously sent
+				#  state value is received.
+				#
+#				timeout = 15
+			}
+		}
+
+		#
+		#  There is currently no configuration for other packet types.
+		#
+	}
 
 	#
 	#  ### The listen section
@@ -170,17 +296,17 @@ server default {
 			idle_timeout = 60.0
 
 			#
-			#  nak_lifetime:: Time for which blacklisted
+			#  nak_lifetime:: Time for which blocked
 			#  clients are placed into a NAK cache.
 			#
 			#  If a dynamic client is disallowed, it is
-			#  placed onto a "NAK" blacklist for a period
-			#  of time.  This blacklist helps to prevent
+			#  placed onto a "NAK" list for a period
+			#  of time.  This process helps to prevent
 			#  DoS attacks.  When subsequent packets are
 			#  received from that IP address, they hit the
 			#  "NAK" cache, and are immediately discarded.
 			#
-			#  After `nak_timeout` seconds, the blacklist
+			#  After `nak_timeout` seconds, the blocked
 			#  entry will be removed, and the IP will be
 			#  allowed to try again to define a dynamic
 			#  client.
@@ -198,7 +324,7 @@ server default {
 			#  a short period of time, after it is sent to
 			#  the NAS.  The reply packet may be lost in
 			#  the network, and the NAS will not see it.
-			#  The NAS will then re-send the request, and
+			#  The NAS will then resend the request, and
 			#  the server will respond quickly with the
 			#  cached reply.
 			#
@@ -342,14 +468,18 @@ server default {
 		#
 		tcp {
 			#
+			#  ipaddr:: The IP address where FreeRADIUS
+			#  accepts packets.
+			#
+			#  It has the same definition and meaning as
+			#  the UDP `ipaddr` configuration above.
+			#
+			ipaddr = *
+
+			#
 			#  NOTE: As with v3, `ipaddr`, `ipv4addr`, and `ipv6addr`
 			#  are all allowed.
 			#
-
-			#
-			#  ipaddr::
-			#
-			ipaddr = *
 
 			#
 			#  port:: the TCP where FreeRADIUS accepts
@@ -382,140 +512,30 @@ server default {
 			#
 			networks {
 				#
-				#  allow::
-				#  deny::
+				#  allow::  Allow packets from a network.
 				#
-				#  Allow packets from these networks
+				#  deny:: Deny packets from a network.
+				#
+				#  Allow or deny packets from these networks
 				#  to define dynamic clients.
 				#
 				#  Packets from all other sources will
-				#  be rejected.
+				#  be discarded.
 				#
 				#  Even if a packet is from an allowed
-				#  network, it still must be allowed
+				#  network, it still must be permitted
 				#  by the "new client" subsection.
 				#
 				#  There is no limit to the number of
 				#  networks which can be listed here.
 				#
+				#  The allow / deny checks are organised by
+				#  address.  The order of the items given here
+				#  does not matter.
+				#
 				allow = 127/8
 				allow = 192.0.2/24
 #				deny = 127.0.0/24
-			}
-		}
-
-		#
-		#  #### Access-Request subsection
-		#
-		#  This section contains configuration which is
-		#  specific to processing `Access-Request` packets.
-		#
-		#  Similar sections can be added, but are not
-		#  necessary for Accounting-Request (and other)
-		#  packets.  At this time, there is no configuration
-		#  needed for other packet types.
-		#
-		Access-Request {
-			#
-			#  log:: Logging configuration for `Access-Request` packets
-			#
-			#  In v3, the `Access-Request` logging was
-			#  configured in the main `radiusd.conf` file,
-			#  in the main `log` subsection.  That
-			#  limitation meant that the configuration was
-			#  global to FreeRADIUS.  i.e. you could not
-			#  have different `Access-Request` logging for
-			#  different virtual server.
-			#
-			#  The extra configuration in v4 allows for
-			#  increased flexibility.
-			#
-			log {
-				#
-				#  stripped_names:: Log the full
-				#  `User-Name` attribute, as it was
-				#  found in the request.
-				#
-				#  allowed values: {no, yes}
-				#
-				stripped_names = no
-
-				#
-				#  auth:: Log authentication requests
-				#  to the log file.
-				#
-				#  allowed values: {no, yes}
-				#
-				auth = no
-
-				#
-				#  auth_goodpass:: Log "good"
-				#  passwords with the authentication
-				#  requests.
-				#
-				#  allowed values: {no, yes}
-				#
-				auth_goodpass = no
-
-				#
-				#  auth_badpass:: Log "bad"
-				#  passwords with the authentication
-				#  requests.
-				#
-				#  allowed values: {no, yes}
-				#
-				auth_badpass = no
-
-				#
-				#  msg_goodpass::
-				#  msg_badpass::
-				#
-				#  Log additional text at the end of the "Login OK" messages.
-				#  for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
-				#  configurations above have to be set to "yes".
-				#
-				#  The strings below are dynamically expanded, which means that
-				#  you can put anything you want in them.  However, note that
-				#  this expansion can be slow, and can negatively impact server
-				#  performance.
-				#
-#				msg_goodpass = ""
-#				msg_badpass = ""
-
-				#
-				#  msg_denied::
-				#
-				#  The message when the user exceeds the Simultaneous-Use limit.
-				#
-				msg_denied = "You are already logged in - access denied"
-			}
-
-			#
-			#  session:: Controls how ongoing
-			#  (multi-round) sessions are handled
-			#
-			#  This section is primarily useful for EAP.
-			#  It controls the number of EAP
-			#  authentication attempts that can occur
-			#  concurrently.
-			#
-			session {
-				#
-				#  max:: The maximum number of ongoing sessions
-				#
-#				max = 4096
-
-				#
-				#  timeout:: How long to wait before expiring a
-				#  session.
-				#
-				#  The timer starts when a response
-				#  with a state value is sent.  The
-				#  timer stops when a request
-				#  containing the previously sent
-				#  state value is received.
-				#
-#				timeout = 15
 			}
 		}
 	}
@@ -570,109 +590,6 @@ server default {
 				allow = 127/8
 				allow = 192.0.2/24
 #				deny = 127.0.0/24
-			}
-		}
-
-		#
-		#  #### Access-Request subsection
-		#
-		#  This section contains configuration which is
-		#  specific to processing `Access-Request` packets.
-		#
-		#  Similar sections can be added, but are not
-		#  necessary for Accounting-Request (and other)
-		#  packets.  At this time, there is no configuration
-		#  needed for other packet types.
-		#
-		Access-Request {
-			#
-			#  log:: Logging configuration for `Access-Request` packets
-			#
-			#  In v3, the `Access-Request` logging was
-			#  configured in the main `radiusd.conf` file,
-			#  in the main `log` subsection.  That
-			#  limitation meant that the configuration was
-			#  global to FreeRADIUS.  i.e. you could not
-			#  have different `Access-Request` logging for
-			#  different virtual server.
-			#
-			#  The extra configuration in v4 allows for
-			#  increased flexibility.
-			#
-			log {
-				#  stripped_names:: Log the full
-				#  `User-Name` attribute, as it was
-				#  found in the request.
-				#
-				#  allowed values: {no, yes}
-				#
-				stripped_names = no
-
-				#  auth:: Log authentication requests
-				#  to the log file.
-				#
-				#  allowed values: {no, yes}
-				#
-				auth = no
-
-				#  auth_goodpass:: Log "good"
-				#  passwords with the authentication
-				#  requests.
-				#
-				#  allowed values: {no, yes}
-				#
-				auth_badpass = no
-
-				#  auth_badpass:: Log "bad"
-				#  passwords with the authentication
-				#  requests.
-				#
-				#  allowed values: {no, yes}
-				#
-				auth_goodpass = no
-
-				#  Log additional text at the end of the "Login OK" messages.
-				#  for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
-				#  configurations above have to be set to "yes".
-				#
-				#  The strings below are dynamically expanded, which means that
-				#  you can put anything you want in them.  However, note that
-				#  this expansion can be slow, and can negatively impact server
-				#  performance.
-				#
-#				msg_goodpass = ""
-#				msg_badpass = ""
-
-				#  The message when the user exceeds the Simultaneous-Use limit.
-				#
-				msg_denied = "You are already logged in - access denied"
-			}
-
-			#
-			#  session:: Controls how ongoing
-			#  (multi-round) sessions are handled
-			#
-			#  This section is primarily useful for EAP.
-			#  It controls the number of EAP
-			#  authentication attempts that can occur
-			#  concurrently.
-			#
-			session {
-				#
-				#  max:: The maximum number of ongoing sessions
-				#
-#				max = 4096
-
-				#  timeout:: How long to wait before expiring a
-				#  session.
-				#
-				#  The timer starts when a response
-				#  with a state value is sent.  The
-				#  timer stops when a request
-				#  containing the previously sent
-				#  state value is received.
-				#
-#				timeout = 15
 			}
 		}
 	}
@@ -816,7 +733,7 @@ recv Access-Request {
 	#
 	#  If you have a Cisco SIP server authenticating against
 	#  FreeRADIUS, the `digest` module will set `Auth-Type :=
-	#  "Digest"` if we are handling an SIP Digest request and the
+	#  "Digest"` if we are handling a SIP Digest request and the
 	#  `Auth-Type` has not already been set.
 	#
 	digest
@@ -826,7 +743,7 @@ recv Access-Request {
 	#
 	#  The WiMAX specification says that the `Calling-Station-Id`
 	#  is 6 octets of the MAC.  This definition conflicts with RFC
-	#  3580, and all common RADIUS practices. Un-commenting the
+	#  3580, and all common RADIUS practices. Uncommenting the
 	#  `wimax` module here allows the module to change the
 	#  `Calling-Station-Id` attribute to the normal format as
 	#  specified in RFC 3580 Section 3.21.
@@ -879,7 +796,7 @@ recv Access-Request {
 
 	#
 	#  If you are using /etc/smbpasswd, and are also doing mschap
-	#  authentication, the un-comment this line, configure the
+	#  authentication, the uncomment this line, configure the
 	#  module.
 	#
 #	smbpasswd
@@ -895,9 +812,9 @@ recv Access-Request {
 
 	#
 	#  Enforce daily limits on time spent logged in. This module
-	#  is a variant of the the `counter` module.
+	#  is a variant of the `counter` module.
 	#
-#	daily
+#	dailycounter
 
 	#
 	#  See if the account has expired: check the time in the
@@ -924,7 +841,7 @@ recv Access-Request {
 	#  e.g. `NT-Password` may come as a 16 byte blob, or as a
 	#  32-byte hex string, or as a base-64 encoded string.  The
 	#  `pap` module will look for common variations of password
-	#  encoding, and conver them all to a normal form.
+	#  encoding, and convert them all to a normal form.
 	#
 	#  This module should be listed last, so that the other
 	#  modules get a chance to set Auth-Type for themselves.
@@ -1000,7 +917,7 @@ authenticate pap {
 #
 #  For users who are using CHAP authentication. A back-end database
 #  listed in the "recv Access-Request" section MUST supply a
-#  Cleartext-Password attribute. Encrypted passwords won't work.
+#  Password.Cleartext attribute. Encrypted passwords won't work.
 #
 authenticate chap {
 	chap
@@ -1011,7 +928,7 @@ authenticate chap {
 #
 #  For users who are using MS-CHAP authentication. A back-end
 #  database listed in the "recv Access-Request" section MUST supply
-#  either a Cleartext-Password attribute, or an NT-Password
+#  either a Password.Cleartext attribute, or an NT-Password
 #  attribute. Encrypted passwords won't work.
 #
 authenticate mschap {
@@ -1050,7 +967,7 @@ authenticate digest {
 #  good" password from LDAP.  The module binds to the LDAP directory
 #  as the user, along with the password taken from the User-Password
 #  attribute.  The "bind as user" method means that CHAP, MS-CHAP, and
-#  EAP won't work, as they does not supply a plain-text password.
+#  EAP won't work, as they do not supply a plain-text password.
 #
 #  We do NOT recommend using this. LDAP servers are databases, not
 #  authentication servers.  It is only here as a last resort for
@@ -1154,7 +1071,7 @@ send Access-Accept {
 	#  here. e.g. for later CoA-Request with State, and
 	#  Service-Type = Authorize-Only.
 	#
-#	if (!&reply:State) {
+#	if (!&reply.State) {
 #		update reply {
 #			&State := "0x%{randstr:16h}"
 #		}
@@ -1170,7 +1087,7 @@ send Access-Accept {
 	#  `Access-Reject` or `Access-Accept` packet has been sent.
 	#
 	update {
-		&reply: += &session-state:
+		&reply += &session-state
 	}
 
 	#
@@ -1182,7 +1099,7 @@ send Access-Accept {
 	#
 	#  Get an address from the IP Pool.
 	#
-#	main_pool
+#	sqlippool
 
 
 	#
@@ -1194,7 +1111,7 @@ send Access-Accept {
 
 	#
 	#  If you want to have a log of authentication replies,
-	#  un-comment the following line. This is defined in
+	#  uncomment the following line. This is defined in
 	#  `mods-available/detail.log`.
 	#
 #	reply_log
@@ -1212,7 +1129,7 @@ send Access-Accept {
 #	sql_log
 
 	#
-	#  Un-comment the following if you want to modify the
+	#  Uncomment the following if you want to modify the
 	#  user's object in LDAP after a successful login.
 	#
 #	ldap
@@ -1223,7 +1140,7 @@ send Access-Accept {
 	#  via:
 	#
 #	update request {
-#		WiMAX-MN-NAI = "%{User-Name}"
+#		&WiMAX-MN-NAI = "%{User-Name}"
 #	}
 
 	#  If you want various keys to be calculated, you will
@@ -1233,8 +1150,8 @@ send Access-Accept {
 	#  calculations, e.g.
 	#
 #	update reply {
-#		WiMAX-FA-RK-Key = 0x00
-#		WiMAX-MSK = "%{EAP-MSK}"
+#		&Vendor-Specific.WiMAX.FA-RK-Key = 0x00
+#		&Vendor-Specific.WiMAX.MSK = "%{reply.EAP-MSK}"
 #	}
 
 	#  You may want to delete the `MS-MPPE-*-Keys` from the
@@ -1259,19 +1176,12 @@ send Access-Accept {
 	#  available).
 	#
 #	update reply {
-#		&Reply-Message += "%{session-state:TLS-Cert-Serial}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Expiration}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Subject}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Issuer}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Common-Name}"
-#		&Reply-Message += "%{session-state:TLS-Cert-Subject-Alt-Name-Email}"
-#
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Serial}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Expiration}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Subject}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Issuer}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Common-Name}"
-#		&Reply-Message += "%{session-state:TLS-Client-Cert-Subject-Alt-Name-Email}"
+#		&Reply-Message += "%{session-state.TLS-Certificate.Serial}"
+#		&Reply-Message += "%{session-state.TLS-Certificate.Not-After}"
+#		&Reply-Message += "%{session-state.TLS-Certificate.Subject}"
+#		&Reply-Message += "%{session-state.TLS-Certificate.Issuer}"
+#		&Reply-Message += "%{session-state.TLS-Certificate.Common-Name}"
+#		&Reply-Message += "%{session-state.TLS-Certificate.Subject-Alt-Name-Email}"
 #	}
 
 	#
@@ -1296,9 +1206,9 @@ send Access-Accept {
 	#  Uncomment the next few lines to copy the required data
 	#  into the EAP-Key-Name attribute.
 #
-#	if (&reply:EAP-Session-Id) {
+#	if (&reply.EAP-Session-Id) {
 #		update reply {
-#			&EAP-Key-Name := &reply:EAP-Session-Id
+#			&EAP-Key-Name := &reply.EAP-Session-Id
 #		}
 #	}
 
@@ -1396,8 +1306,17 @@ recv Accounting-Request {
 	#  The start time is: NOW - delay - session_length
 	#
 #	update request {
-#		&FreeRADIUS-Acct-Session-Start-Time = "%{expr: %l - %{%{Acct-Session-Time}:-0} - %{%{Acct-Delay-Time}:-0}}"
+#		&FreeRADIUS-Acct-Session-Start-Time = "%{expr: %{%{Event-Timestamp}:-%l} - %{%{Acct-Session-Time}:-0} - %{%{Acct-Delay-Time}:-0}}"
 #	}
+
+	#
+	#  The packet should have a timestamp.  If not, use "now" from the server.
+	#
+	if (!&Event-Timestamp) {
+		update request {
+			&Event-Timestamp := "%{expr:%l - &Acct-Delay-Time}"
+		}
+	}
 
 	#
 	#  Ensure that we have a semi-unique identifier for every
@@ -1487,7 +1406,7 @@ accounting Failed {
 send Accounting-Response {
 	#
 	#  Add the CUI attribute from the corresponding
-	#  Access-Accept to the Accouning-Response.
+	#  Access-Accept to the Accounting-Response.
 	#
 	#  Use it only if your NAS boxes do not support CUI
 	#  themselves.
@@ -1523,10 +1442,13 @@ send Accounting-Response {
 #	sradutmp
 
 	#
-	#  Return an address to the IP Pool when we see a stop
-	#  record.
+	#  Refresh leases when we see a start or alive. Return an address to
+	#  the IP Pool when we see a stop record.
 	#
-#	main_pool
+	#  Ensure that &control.IP-Pool.Name is set to determine which
+	#  pool of IPs are used.
+	#
+#	sqlippool
 
 	#
 	#  Log traffic to an SQL database.

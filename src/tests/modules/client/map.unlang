@@ -2,10 +2,7 @@ map client {
 	&Tmp-String-0 := 'nas_type'
 }
 
-if (&Tmp-String-0 == 'a_type') {
-	test_pass
-}
-else {
+if (&Tmp-String-0 != 'a_type') {
 	test_fail
 }
 
@@ -13,10 +10,7 @@ map client 127.0.0.1 {
 	&Tmp-String-0 := 'nas_type'
 }
 
-if (&Tmp-String-0 == 'a_type') {
-	test_pass
-}
-else {
+if (&Tmp-String-0 != 'a_type') {
 	test_fail
 }
 
@@ -24,10 +18,7 @@ map client 127.0.0.2 {
 	&Tmp-String-0 := 'nas_type'
 }
 
-if (&Tmp-String-0 == 'b_type') {
-	test_pass
-}
-else {
+if (&Tmp-String-0 != 'b_type') {
 	test_fail
 }
 
@@ -35,10 +26,7 @@ map client 127.0.0.5 {
 	&Tmp-String-0 := 'nas_type'
 }
 
-if (&Tmp-String-0 == 'b_type') {
-	test_pass
-}
-else {
+if (&Tmp-String-0 != 'b_type') {
 	test_fail
 }
 
@@ -49,24 +37,15 @@ map client {
 	&Tmp-String-1 += 'group'
 }
 
-if (&Tmp-String-1[0] == 'a') {
-	test_pass
-}
-else {
+if (&Tmp-String-1[0] != 'a') {
 	test_fail
 }
 
-if (&Tmp-String-1[1] == 'b') {
-	test_pass
-}
-else {
+if (&Tmp-String-1[1] != 'b') {
 	test_fail
 }
 
-if (&Tmp-String-1[2] == 'c') {
-	test_pass
-}
-else {
+if (&Tmp-String-1[2] != 'c') {
 	test_fail
 }
 
@@ -74,24 +53,15 @@ map client 127.0.0.2 {
 	&Tmp-String-2 += 'group'
 }
 
-if (&Tmp-String-2[0] == 'd') {
-	test_pass
-}
-else {
+if (&Tmp-String-2[0] != 'd') {
 	test_fail
 }
 
-if (&Tmp-String-2[1] == 'e') {
-	test_pass
-}
-else {
+if (&Tmp-String-2[1] != 'e') {
 	test_fail
 }
 
-if (&Tmp-String-2[2] == 'f') {
-	test_pass
-}
-else {
+if (&Tmp-String-2[2] != 'f') {
 	test_fail
 }
 
@@ -106,14 +76,9 @@ map client {
 if (&Tmp-String-3) {
 	test_fail
 }
-else {
-	test_pass
-}
 
 if (&Tmp-String-4) {
 	test_fail
 }
-else {
-	test_pass
-}
 
+test_pass

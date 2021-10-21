@@ -1,0 +1,15 @@
+ALIAS	UKERNA-GSS-Acceptor-Service-Name        	26.25622.128
+ALIAS	UKERNA-GSS-Acceptor-Host-Name           	26.25622.129
+ALIAS	UKERNA-GSS-Acceptor-Service-Specific    	26.25622.130
+ALIAS	UKERNA-GSS-Acceptor-Realm-Name          	26.25622.131
+ALIAS	SAML-AAA-Assertion                      	26.25622.132
+ALIAS	EAP-Channel-Binding-Message             	26.25622.135
+ALIAS	Trust-Router-COI                        	26.25622.136
+ALIAS	Trust-Router-APC                        	26.25622.137
+ALIAS	Moonshot-Host-TargetedId                	26.25622.138
+ALIAS	Moonshot-Realm-TargetedId               	26.25622.139
+ALIAS	Moonshot-TR-COI-TargetedId              	26.25622.140
+ALIAS	Moonshot-MSTID-GSS-Acceptor             	26.25622.141
+ALIAS	Moonshot-MSTID-Namespace                	26.25622.142
+ALIAS	Moonshot-MSTID-TargetedId               	26.25622.143
+ALIAS	Moonshot-OTP-Secret                     	26.25622.144

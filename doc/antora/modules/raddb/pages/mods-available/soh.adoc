@@ -1,0 +1,31 @@
+
+
+
+
+= SoH Module
+
+The `soh` module is used for decoding Microsoft's "Statement of
+Health" sub-protocol.
+
+See the below link for additional information about the SoH Protocol.
+
+  https://trustedcomputinggroup.org/resource/tnc-if-tnccs-protocol-bindings-for-soh-version-1-0/
+  https://winprotocoldoc.blob.core.windows.net/productionwindowsarchives/WinArchive/[MS-SOH].pdf
+
+
+
+## Configuration Settings
+
+
+dhcp:: If enabled, It will do SoH over DHCP.
+
+Default is `no`.
+
+
+== Default Configuration
+
+```
+soh {
+	dhcp = yes
+}
+```

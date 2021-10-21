@@ -26,20 +26,55 @@
 extern "C" {
 #endif
 
-/** Parameters for initialising the subrequest
+#include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/util/dict.h>
+#include "unlang_priv.h"
+
+typedef struct {
+	unlang_group_t		group;
+	tmpl_t			*vpt;			//!< Value to expand to find the value to place
+							///< into the packet-type attribute.
+
+	tmpl_t			*src;			//!< Pairs to copy into the subrequest request list.
+	tmpl_t			*dst;			//!< Where to copy pairs from the reply list in the
+							///< subrequest to.
+
+	fr_dict_t const		*dict;			//!< Dictionary of the subrequest protocol.
+	fr_dict_attr_t const	*attr_packet_type;	//!< Packet-type attribute in the subrequest protocol.
+	fr_dict_enum_value_t const	*type_enum;		//!< Static enumeration value for attr_packet_type
+							///< if the packet-type is static.
+} unlang_subrequest_t;
+
+/** Parameters for initialising the subrequest (parent's frame state)
  *
- * State of one level of nesting within an xlat expansion.
  */
 typedef struct {
-	rlm_rcode_t		*presult;		//!< Where to store the result.
-	REQUEST			*child;			//!< Pre-allocated child request.
-	bool			persist : 1;		//!< Whether we should free the child after it completes.
-	bool			detachable : 1;		//!< Whether the request can be detached.
+	rlm_rcode_t			*p_result;			//!< Where to store the result.
+	request_t			*child;				//!< Pre-allocated child request.
+	bool				free_child;			//!< Whether we should free the child after
+									///< it completes.
+	bool				detachable;			//!< Whether the request can be detached.
+	unlang_subrequest_session_t	session;			//!< Session configuration.
 } unlang_frame_state_subrequest_t;
 
-void	unlang_subrequest_free(REQUEST **child);
+/** Cast a group structure to the subrequest keyword extension
+ *
+ */
+static inline unlang_subrequest_t *unlang_group_to_subrequest(unlang_group_t *g)
+{
+	return talloc_get_type_abort(g, unlang_subrequest_t);
+}
 
-void	unlang_subrequest_push(rlm_rcode_t *out, REQUEST *child, bool top_frame);
+/** Cast a subrequest keyword extension to a group structure
+ *
+ */
+static inline unlang_group_t *unlang_subrequest_to_group(unlang_subrequest_t *subrequest)
+{
+	return (unlang_group_t *)subrequest;
+}
+
+int unlang_subrequest_detach_child(request_t *request);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,11 +1,11 @@
-if (${feature.tls} == 'no') {
+if ("${feature.tls}" == no) {
 	test_pass
 	return
 }
 
 if (&User-Name == 'pbkdf2_sha1') {
 	update control {
-		&PBKDF2-Password := 'HMACSHA1:AAAD6A:Xw1P133xrwk=:dtQBXQRiR/No5A8Ip3JFGF/qUC0='
+		&Password.PBKDF2 := 'HMACSHA1:AAAD6A:Xw1P133xrwk=:dtQBXQRiR/No5A8Ip3JFGF/qUC0='
 	}
 	pap.authorize
 	pap.authenticate

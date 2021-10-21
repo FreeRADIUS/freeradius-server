@@ -46,10 +46,12 @@ ifeq "${LIBTOOL}" "JLIBTOOL"
 	$(Q)echo CC jlibtool.c
 	$(Q)${CC} $< -o $@ -DPROGRAM_VERSION=$(RADIUSD_VERSION_STRING)
 
-    clean: jlibtool_clean
+    jlibtool: ${JLIBTOOL}
 
-    .PHONY: jlibtool_clean
-    jlibtool_clean:
+    clean: clean.jlibtool
+
+    .PHONY: clean.jlibtool
+    clean.jlibtool:
 	$(Q)rm -f ${JLIBTOOL}
 
     # Tell GNU Make to use this value, rather than anything specified
@@ -60,10 +62,10 @@ endif    # else we're not using jlibtool
 # When using libtool, it produces a '.libs' directory.  Ensure that it
 # is removed on "make clean", too.
 #
-clean: .libs_clean
+clean: clean.libs
 
-.PHONY: .libs_clean
-.libs_clean:
+.PHONY: clean.libs
+clean.libs:
 	$(Q)rm -rf ${BUILD_DIR}/.libs/
 
 # Re-define compilers and linkers

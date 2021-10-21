@@ -3,6 +3,10 @@ AC_INIT(rlm_unbound.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_unbound])
 
+AC_ARG_WITH([]modname,
+[AS_HELP_STRING([--without-[]modname],[build without module])]
+)
+
 if test x$with_[]modname != xno; then
 	dnl extra argument: --with-rlm-unbound-lib-dir
 	rlm_unbound_lib_dir=
@@ -37,8 +41,8 @@ if test x$with_[]modname != xno; then
 	)
 
 	smart_try_dir=$rlm_unbound_lib_dir
-	FR_SMART_CHECK_LIB(unbound, ub_ctx_create)
-	if test "x$ac_cv_lib_unbound_ub_ctx_create" != "xyes"; then
+	FR_SMART_CHECK_LIB(unbound, ub_ctx_create_ub_event)
+	if test "x$ac_cv_lib_unbound_ub_ctx_create_ub_event" != "xyes"; then
 		fail="$fail libunbound"
 	fi
 
@@ -46,6 +50,12 @@ if test x$with_[]modname != xno; then
 	FR_SMART_CHECK_INCLUDE(unbound.h)
 	if test "$ac_cv_header_unbound_h" != "yes"; then
 		fail="$fail unbound.h"
+	fi
+
+	smart_try_dir=$rlm_unbound_include_dir
+	FR_SMART_CHECK_INCLUDE(unbound-event.h)
+	if test "$ac_cv_header_unboundmevent_h" != "yes"; then
+		fail="$fail unbound-event.h"
 	fi
 
 	targetname=modname

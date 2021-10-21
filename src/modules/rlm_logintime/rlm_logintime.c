@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <ctype.h>
 
 /* timestr.c */
-int		timestr_match(char const *, time_t);
+int timestr_match(fr_time_delta_t *out, char const *tmstr, fr_time_t when);
 
 /*
  *	Define a structure for our module configuration.
@@ -40,16 +40,16 @@ int		timestr_match(char const *, time_t);
  *	be used as the instance handle.
  */
 typedef struct {
-	uint32_t	min_time;
+	fr_time_delta_t	min_time;
 } rlm_logintime_t;
 
 static const CONF_PARSER module_config[] = {
-  { FR_CONF_OFFSET("minimum_timeout", FR_TYPE_UINT32, rlm_logintime_t, min_time), .dflt = "60" },
+  { FR_CONF_OFFSET("minimum_timeout", FR_TYPE_TIME_DELTA, rlm_logintime_t, min_time), .dflt = "60s" },
 	CONF_PARSER_TERMINATOR
 };
 
-static fr_dict_t *dict_freeradius;
-static fr_dict_t *dict_radius;
+static fr_dict_t const *dict_freeradius;
+static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_logintime_dict[];
 fr_dict_autoload_t rlm_logintime_dict[] = {
@@ -70,7 +70,7 @@ fr_dict_attr_autoload_t rlm_logintime_dict_attr[] = {
 	{ .out = &attr_login_time, .name = "Login-Time", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_time_of_day, .name = "Time-Of-Day", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
-	{ .out = &attr_session_timeout, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_session_timeout, .name = "Session-Timeout", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 
 	{ NULL }
 };
@@ -78,13 +78,16 @@ fr_dict_attr_autoload_t rlm_logintime_dict_attr[] = {
 /*
  *      Compare the current time to a range.
  */
-static int timecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *request, VALUE_PAIR *check,
-		   UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+static int timecmp(UNUSED void *instance, request_t *request, UNUSED fr_pair_list_t *request_list, fr_pair_t const *check)
 {
+	fr_time_delta_t left;
+
+	if (timestr_match(&left, check->vp_strvalue, request->packet->timestamp) < 0) return -1;
+
 	/*
-	 *      If there's a request, use that timestamp.
+	 *	0 is a special case meaning "allowed".
 	 */
-	if (timestr_match(check->vp_strvalue, req ? fr_time_to_sec(req->packet->timestamp) : time(NULL)) >= 0) return 0;
+	if (fr_time_delta_gteq(left, fr_time_delta_wrap(0))) return 0;
 
 	return -1;
 }
@@ -93,9 +96,8 @@ static int timecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *reque
 /*
  *	Time-Of-Day support
  */
-static int time_of_day(UNUSED void *instance, REQUEST *request,
-		       UNUSED VALUE_PAIR *request_pairs, VALUE_PAIR *check,
-		       UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+static int time_of_day(UNUSED void *instance, request_t *request,
+		       UNUSED fr_pair_list_t *request_list, fr_pair_t const *check)
 {
 	int		scan;
 	int		hhmmss, when;
@@ -104,7 +106,7 @@ static int time_of_day(UNUSED void *instance, REQUEST *request,
 	time_t		now;
 
 	if (strspn(check->vp_strvalue, "0123456789: ") != strlen(check->vp_strvalue)) {
-		RDEBUG2("Bad Time-Of-Day value \"%s\"", check->vp_strvalue);
+		RDEBUG2("Bad Time-Of-Day value \"%pV\"", &check->data);
 		return -1;
 	}
 
@@ -119,7 +121,7 @@ static int time_of_day(UNUSED void *instance, REQUEST *request,
 	scan = atoi(p);
 	p = strchr(p, ':');
 	if ((scan > 23) || !p) {
-		RDEBUG2("Bad Time-Of-Day value \"%s\"", check->vp_strvalue);
+		RDEBUG2("Bad Time-Of-Day value \"%pV\"", &check->data);
 		return -1;
 	}
 	when = scan * 3600;
@@ -127,7 +129,7 @@ static int time_of_day(UNUSED void *instance, REQUEST *request,
 
 	scan = atoi(p);
 	if (scan > 59) {
-		RDEBUG2("Bad Time-Of-Day value \"%s\"", check->vp_strvalue);
+		RDEBUG2("Bad Time-Of-Day value \"%pV\"", &check->data);
 		return -1;
 	}
 	when += scan * 60;
@@ -136,7 +138,7 @@ static int time_of_day(UNUSED void *instance, REQUEST *request,
 	if (p) {
 		scan = atoi(p + 1);
 		if (scan > 59) {
-			RDEBUG2("Bad Time-Of-Day value \"%s\"", check->vp_strvalue);
+			RDEBUG2("Bad Time-Of-Day value \"%pV\"", &check->data);
 			return -1;
 		}
 		when += scan;
@@ -151,14 +153,14 @@ static int time_of_day(UNUSED void *instance, REQUEST *request,
 /*
  *      Check if account has expired, and if user may login now.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *thread, REQUEST *request)
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_logintime_t const	*inst = instance;
-	VALUE_PAIR		*ends, *vp;
-	int32_t			left;
+	rlm_logintime_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_logintime_t);
+	fr_pair_t		*ends, *vp;
+	fr_time_delta_t		left;
 
-	ends = fr_pair_find_by_da(request->control, attr_login_time, TAG_ANY);
-	if (!ends) return RLM_MODULE_NOOP;
+	ends = fr_pair_find_by_da(&request->control_pairs, attr_login_time, 0);
+	if (!ends) RETURN_MODULE_NOOP;
 
 	/*
 	 *      Authentication is OK. Now see if this user may login at this time of the day.
@@ -168,13 +170,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	/*
 	 *	Compare the time the request was received with the current Login-Time value
 	 */
-	left = timestr_match(ends->vp_strvalue, fr_time_to_sec(request->packet->timestamp));
-	if (left < 0) return RLM_MODULE_USERLOCK; /* outside of the allowed time */
+	if (timestr_match(&left, ends->vp_strvalue, request->packet->timestamp) < 0) {
+		RETURN_MODULE_DISALLOW; /* outside of the allowed time */
+	}
 
 	/*
-	 *      Do nothing, login time is not controlled (unendsed).
+	 *      Do nothing, login time is not controlled (unended).
 	 */
-	if (left == 0) return RLM_MODULE_OK;
+	if (fr_time_delta_eq(left, fr_time_delta_wrap(0))) RETURN_MODULE_OK;
 
 	/*
 	 *      The min_time setting is to deal with NAS that won't allow Session-vp values below a certain value
@@ -182,40 +185,40 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, UNUSED void *t
 	 *
 	 *	We don't know were going to get another chance to lock out the user, so we need to do it now.
 	 */
-	if ((uint32_t)left < inst->min_time) {
+	if (fr_time_delta_lt(left, inst->min_time)) {
 		REDEBUG("Login outside of allowed time-slot (session end %s, with lockout %i seconds before)",
-			ends->vp_strvalue, inst->min_time);
+			ends->vp_strvalue, (int) fr_time_delta_to_sec(inst->min_time));
 
-		return RLM_MODULE_USERLOCK;
+		RETURN_MODULE_DISALLOW;
 	}
 
 	/* else left > inst->min_time */
 
 	/*
-	 *	There's time left in the users session, inform the NAS by including a Session-vp
+	 *	There's time left in the users session, inform the NAS by including a Session-Timeout
 	 *	attribute in the reply, or modifying the existing one.
 	 */
-	RDEBUG2("Login within allowed time-slot, %d seconds left in this session", left);
+	RDEBUG2("Login within allowed time-slot, %d seconds left in this session", (int) fr_time_delta_to_sec(left));
 
 	switch (pair_update_reply(&vp, attr_session_timeout)) {
 	case 1:
 		/* just update... */
-		if (vp->vp_uint32 > (uint32_t)left) {
-			vp->vp_uint32 = (uint32_t)left;
-			RDEBUG2("&reply:Session-Timeout := %pV", &vp->data);
+		if (vp->vp_uint32 > fr_time_delta_to_sec(left)) {
+			vp->vp_uint32 = fr_time_delta_to_sec(left);
+			RDEBUG2("&reply.Session-Timeout := %pV", &vp->data);
 		}
 		break;
 
 	case 0:	/* no pre-existing */
-		vp->vp_uint32 = (uint32_t)left;
-		RDEBUG2("&reply:Session-Timeout := %pV", &vp->data);
+		vp->vp_uint32 = fr_time_delta_to_sec(left);
+		RDEBUG2("&reply.Session-Timeout := %pV", &vp->data);
 		break;
 
 	case -1: /* malloc failure */
 		MEM(NULL);
 	}
 
-	return RLM_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 
@@ -233,7 +236,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 {
 	rlm_logintime_t *inst = instance;
 
-	if (inst->min_time == 0) {
+	if (!fr_time_delta_ispos(inst->min_time)) {
 		cf_log_err(conf, "Invalid value '0' for minimum_timeout");
 		return -1;
 	}

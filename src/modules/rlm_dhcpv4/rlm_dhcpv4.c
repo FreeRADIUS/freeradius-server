@@ -23,21 +23,44 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/util/base.h>
-
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/io/pair.h>
+#include <freeradius-devel/util/udp_queue.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
+
+#include <freeradius-devel/unlang/module.h>
 
 #include <ctype.h>
 
-static fr_dict_t *dict_dhcpv4;
+static fr_dict_t const *dict_dhcpv4;
+static fr_dict_t const *dict_freeradius;
 
 extern fr_dict_autoload_t rlm_dhcpv4_dict[];
 fr_dict_autoload_t rlm_dhcpv4_dict[] = {
 	{ .out = &dict_dhcpv4, .proto = "dhcpv4" },
+	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ NULL }
 };
+
+static fr_dict_attr_t const *attr_transaction_id;
+static fr_dict_attr_t const *attr_message_type;
+static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_packet_dst_ip_address;
+static fr_dict_attr_t const *attr_packet_dst_port;
+static fr_dict_attr_t const *attr_gateway_ip_address;
+
+extern fr_dict_attr_autoload_t rlm_dhcpv4_dict_attr[];
+fr_dict_attr_autoload_t rlm_dhcpv4_dict_attr[] = {
+	{ .out = &attr_transaction_id, .name = "Transaction-Id", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv4 },
+	{ .out = &attr_gateway_ip_address, .name = "Gateway-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
+	{ .out = &attr_message_type, .name = "Message-Type", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv4 },
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv4 },
+	{ .out = &attr_packet_dst_ip_address, .name = "Packet-Dst-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
+	{ .out = &attr_packet_dst_port, .name = "Packet-Dst-Port", .type = FR_TYPE_UINT16, .dict = &dict_freeradius },
+	{ NULL }
+};
+
 
 /*
  *	Define a structure for our module configuration.
@@ -47,156 +70,276 @@ fr_dict_autoload_t rlm_dhcpv4_dict[] = {
  *	be used as the instance handle.
  */
 typedef struct {
-	int nothing;
+	char const		*name;
+	char const		*xlat_name;
+
+	fr_udp_queue_config_t	config;		//!< UDP queue config
+
+	uint32_t		max_packet_size;	//!< Maximum packet size.
 } rlm_dhcpv4_t;
 
-static xlat_action_t dhcpv4_decode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
-				        REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				        fr_value_box_t **in)
+typedef struct {
+	fr_udp_queue_t		*uq;			//!< udp queue handler
+	uint8_t			*buffer;		//!< for encoding packets
+	uint32_t		buffer_size;		//!< Maximum packet size.
+	uint32_t		xid;			//!< XID
+} rlm_dhcpv4_thread_t;
+
+static const CONF_PARSER module_config[] = {
+	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_IPV4_ADDR, rlm_dhcpv4_t, config.ipaddr), },
+	{ FR_CONF_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, rlm_dhcpv4_t, config.ipaddr) },
+
+	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, rlm_dhcpv4_t, config.port), .dflt = "68" },
+
+	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, rlm_dhcpv4_t, config.interface) },
+
+	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, rlm_dhcpv4_t, config.send_buff) },
+
+	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, rlm_dhcpv4_t, max_packet_size), .dflt = "576" },
+	{ FR_CONF_OFFSET("max_queued_packets", FR_TYPE_UINT32, rlm_dhcpv4_t, config.max_queued_packets), .dflt = "65536" },
+
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, rlm_dhcpv4_t, config.max_queued_time), .dflt = "0" },
+
+	CONF_PARSER_TERMINATOR
+};
+
+/** Bootstrap the module
+ *
+ * Bootstrap I/O and type submodules.
+ *
+ * @param[in] instance	Ctx data for this module
+ * @param[in] conf    our configuration section parsed to give us instance.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	fr_cursor_t	in_cursor, cursor;
-	fr_value_box_t	*vb, *vb_decoded;
-	VALUE_PAIR	*vp, *head = NULL;
-	int		decoded = 0;
+	rlm_dhcpv4_t	*inst = talloc_get_type_abort(instance, rlm_dhcpv4_t);
 
-	fr_cursor_init(&cursor, &head);
-
-	for (vb = fr_cursor_talloc_init(&in_cursor, in, fr_value_box_t);
-	     vb;
-	     vb = fr_cursor_next(&in_cursor)) {
-		uint8_t const	*p, *end;
-		ssize_t		len;
-		VALUE_PAIR	*vps = NULL;
-		fr_cursor_t	options_cursor;
-
-		if (vb->type != FR_TYPE_OCTETS) {
-			RWDEBUG("Skipping value \"%pV\", expected value of type %s, got type %s",
-				vb,
-				fr_int2str(fr_value_box_type_table, FR_TYPE_OCTETS, "<INVALID>"),
-				fr_int2str(fr_value_box_type_table, vb->type, "<INVALID>"));
-			continue;
-		}
-
-		fr_cursor_init(&options_cursor, &vps);
-
-		p = vb->vb_octets;
-		end = vb->vb_octets + vb->vb_length;
-
-		/*
-		 *	Loop over all the options data
-		 */
-		while (p < end) {
-			len = fr_dhcpv4_decode_option(request->packet, &options_cursor, dict_dhcpv4,
-						      p, end - p, NULL);
-			if (len <= 0) {
-				RWDEBUG("DHCP option decoding failed: %s", fr_strerror());
-				return XLAT_ACTION_FAIL;
-			}
-			p += len;
-		}
-		fr_cursor_head(&options_cursor);
-		fr_cursor_merge(&cursor, &options_cursor);
-	}
-
-	for (vp = fr_cursor_head(&cursor);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
-		RDEBUG2("dhcp_option: &%pP", vp);
-		decoded++;
-	}
-
-	fr_pair_list_move(&(request->packet->vps), &head);
-
-	/* Free any unmoved pairs */
-	fr_pair_list_free(&head);
-
-	/* create a value box to hold the decoded count */
-	MEM(vb_decoded = fr_value_box_alloc(ctx, FR_TYPE_UINT16, NULL, false));
-	vb_decoded->vb_uint16 = decoded;
-	fr_cursor_append(out, vb_decoded);
-
-	return XLAT_ACTION_DONE;
-}
-
-static xlat_action_t dhcpv4_encode_xlat(TALLOC_CTX *ctx, fr_cursor_t *out,
-					REQUEST *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-					fr_value_box_t **in)
-{
-	fr_cursor_t	*cursor;
-	bool		tainted = false;
-	fr_value_box_t	*encoded;
-	VALUE_PAIR	*vp;
-
-	uint8_t		binbuf[2048];
-	uint8_t		*p = binbuf, *end = p + sizeof(binbuf);
-	ssize_t		len = 0;
-
-	if (!*in) return XLAT_ACTION_DONE;
-
-	if (fr_value_box_list_concat(ctx, *in, in, FR_TYPE_STRING, true) < 0) {
-		RPEDEBUG("Failed concatenating input string for attribute reference");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (xlat_fmt_to_cursor(NULL, &cursor, &tainted, request, (*in)->vb_strvalue) < 0) return XLAT_ACTION_FAIL;
-
-	if (!fr_cursor_head(cursor)) return XLAT_ACTION_DONE;	/* Nothing to encode */
-
-	while ((vp = fr_cursor_current(cursor))) {
-		len = fr_dhcpv4_encode_option(p, end - p, cursor,
-					      &(fr_dhcpv4_ctx_t){ .root = fr_dict_root(dict_dhcpv4) });
-		if (len < 0) {
-			RPEDEBUG("DHCP option encoding failed");
-			talloc_free(cursor);
-			return XLAT_ACTION_FAIL;
-		}
-		p += len;
-	}
-	talloc_free(cursor);
+	inst->xlat_name = cf_section_name2(conf);
+	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
+	inst->name = inst->xlat_name;
 
 	/*
-	 *	Pass the options string back
+	 *	Ensure that we have a destination address.
 	 */
-	MEM(encoded = fr_value_box_alloc_null(ctx));
-	fr_value_box_memcpy(encoded, encoded, NULL, binbuf, (size_t)len, tainted);
-	fr_cursor_append(out, encoded);
-
-	return XLAT_ACTION_DONE;
-}
-
-static int dhcp_load(void)
-{
-	if (fr_dhcpv4_global_init() < 0) {
-		PERROR("Failed initialising protocol library");
+	if (inst->config.ipaddr.af == AF_UNSPEC) {
+		cf_log_err(conf, "A value must be given for 'ipaddr'");
 		return -1;
 	}
 
-	xlat_async_register(NULL, "dhcpv4_decode", dhcpv4_decode_xlat);
-	xlat_async_register(NULL, "dhcpv4_encode", dhcpv4_encode_xlat);
+	if (inst->config.ipaddr.af != AF_INET) {
+		cf_log_err(conf, "DHCPv4 can only use IPv4 addresses in 'ipaddr'");
+		return -1;
+	}
+
+	if (!inst->config.port) {
+		cf_log_err(conf, "A value must be given for 'port'");
+		return -1;
+	}
+
+	/*
+	 *	Clamp max_packet_size
+	 */
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, DEFAULT_PACKET_SIZE);
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, MAX_PACKET_SIZE);
 
 	return 0;
 }
 
-static void dhcp_unload(void)
+typedef struct {
+	request_t		*request;
+	bool			sent;
+} rlm_dhcpv4_delay_t;
+
+static void dhcpv4_queue_resume(bool sent, void *rctx)
 {
-	fr_dhcpv4_global_free();
+	rlm_dhcpv4_delay_t *d = talloc_get_type_abort(rctx, rlm_dhcpv4_delay_t);
+
+	d->sent = sent;
+
+	unlang_interpret_mark_runnable(d->request);
 }
 
-/*
- *	The module name should be the only globally exported symbol.
- *	That is, everything else should be 'static'.
+/** Instantiate thread data for the submodule.
  *
- *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
- *	The server will then take care of ensuring that the module
- *	is single-threaded.
  */
+static int mod_thread_instantiate(CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *thread)
+{
+	rlm_dhcpv4_t *inst = talloc_get_type_abort(instance, rlm_dhcpv4_t);
+	rlm_dhcpv4_thread_t *t = talloc_get_type_abort(thread, rlm_dhcpv4_thread_t);
+
+	t->buffer = talloc_array(t, uint8_t, inst->max_packet_size);
+	if (!t->buffer) {
+		cf_log_err(cs, "Failed allocating buffer");
+		return -1;
+	}
+
+	t->buffer_size = inst->max_packet_size;
+
+	t->uq = fr_udp_queue_alloc(t, &inst->config, el, dhcpv4_queue_resume);
+	if (!t->uq) {
+		cf_log_err(cs, "Failed allocating outbound udp queue - %s", fr_strerror());
+		return -1;
+	}
+
+	return 0;
+}
+
+static unlang_action_t dhcpv4_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
+				     UNUSED request_t *request, void *rctx)
+{
+	rlm_dhcpv4_delay_t *d = talloc_get_type_abort(rctx, rlm_dhcpv4_delay_t);
+
+	if (!d->sent) {
+		talloc_free(d);
+		RETURN_MODULE_FAIL;
+	}
+
+	talloc_free(d);
+	RETURN_MODULE_OK;
+}
+
+
+/** Send packets outbound.
+ *
+ */
+static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_dhcpv4_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_dhcpv4_thread_t);
+	ssize_t			data_len;
+	dhcp_packet_t		*original = (dhcp_packet_t *) request->packet->data;
+	dhcp_packet_t		*packet;
+
+	uint32_t		xid;
+	fr_pair_t		*vp;
+	int			code, port, rcode;
+
+	rlm_dhcpv4_delay_t	*d;
+
+	/*
+	 *	We can only send relayed packets, which have a gateway IP
+	 */
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_gateway_ip_address, 0);
+	if (!vp) {
+		REDEBUG("Relayed packets MUST have a Gateway-IP-Address attribute");
+		RETURN_MODULE_FAIL;
+	}
+
+	/*
+	 *	Get the transaction ID.
+	 */
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_transaction_id, 0);
+	if (vp) {
+		xid = vp->vp_uint32;
+
+	} else if (original) {
+		xid = ntohl(original->xid);
+
+	} else {
+		xid = t->xid++;
+	}
+
+	/*
+	 *	Set the packet type.
+	 *
+	 *	@todo - make sure it's a client type.
+	 */
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_packet_type, 0);
+	if (vp) {
+		code = vp->vp_uint32;
+
+	} else if ((vp = fr_pair_find_by_da(&request->request_pairs, attr_message_type, 0)) != NULL) {
+		code = vp->vp_uint8;
+
+	} else {
+		code = request->packet->code;
+	}
+
+	/*
+	 *	Set the destination port, defaulting to 67
+	 */
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_packet_dst_port, 0);
+	if (vp) {
+		port = vp->vp_uint16;
+	} else {
+		port = 67;	/* DHCPv4 server port */
+	}
+
+	/*
+	 *	Get the destination address / port, and unicast it there.
+	 */
+	vp = fr_pair_find_by_da(&request->request_pairs, attr_packet_dst_ip_address, 0);
+	if (!vp) {
+		RDEBUG("No Packet-Dst-IP-Address, cannot relay packet");
+		RETURN_MODULE_NOOP;
+	}
+
+	/*
+	 *	Encode the packet using the original information.
+	 */
+	data_len = fr_dhcpv4_encode(t->buffer, t->buffer_size, original, code, xid, &request->request_pairs);
+	if (data_len <= 0) {
+		RPEDEBUG("Failed encoding DHCPV4 request");
+		RETURN_MODULE_FAIL;
+	}
+
+	/*
+	 *	Enforce some other RFC requirements.
+	 */
+	packet = (dhcp_packet_t *) t->buffer;
+	if (packet->opcode == 1) {
+		if (original) {
+			if (original->hops < 255) packet->hops = original->hops + 1;
+		} else {
+			if (packet->hops < 255) packet->hops++;
+		}
+
+	} /* else sending a server message?  OK boomer. */
+
+	FR_PROTO_HEX_DUMP(t->buffer, data_len, "DHCPv4");
+
+	d = talloc_zero(request, rlm_dhcpv4_delay_t);
+	if (!d) RETURN_MODULE_FAIL;
+
+	*d = (rlm_dhcpv4_delay_t) {
+		.request = request,
+		.sent = false,
+	};
+
+	rcode = fr_udp_queue_write(d, t->uq, t->buffer, data_len, &vp->vp_ip, port, d);
+	if (rcode > 0) {
+		talloc_free(d);
+		RETURN_MODULE_OK;
+	}
+	if (rcode < 0) {
+		talloc_free(d);
+		RETURN_MODULE_FAIL;
+	}
+
+	return unlang_module_yield(request, dhcpv4_resume, NULL, d);
+}
+
 extern module_t rlm_dhcpv4;
 module_t rlm_dhcpv4 = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "dhcpv4",
 	.inst_size	= sizeof(rlm_dhcpv4_t),
+	.bootstrap	= mod_bootstrap,
 
-	.onload		= dhcp_load,
-	.unload		= dhcp_unload,
+	.config			= module_config,
+
+	.thread_inst_size = sizeof(rlm_dhcpv4_thread_t),
+	.thread_inst_type = "rlm_dhcpv4_thread_t",
+	.thread_instantiate = mod_thread_instantiate,
+
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_process,
+		[MOD_POST_AUTH]		= mod_process,
+	},
+        .method_names = (module_method_names_t[]){
+                { .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,	.method = mod_process },
+                MODULE_NAME_TERMINATOR
+        },
 };
