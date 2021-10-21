@@ -155,7 +155,12 @@ install: install.src.include
 clean.src.include:
 	${Q}rm -rf $(addprefix src/include/,$(HEADERS_DY))
 
-clean: clean.src.include
+#
+#  Don't remove the auto-generated headers on "make clean".
+#  Regenerating them takes a long time (at least on OSX),
+#  and they rarely change.
+#
+#clean: clean.src.include
 
 distclean.src.include: clean.src.include
 	${Q}rm -f autoconf.sed
