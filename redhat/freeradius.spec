@@ -878,6 +878,7 @@ fi
 #  Oracle
 #
 %if %{?_with_rlm_sql_oracle:1}%{!?_with_rlm_sql_oracle:0}
+%attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/driver/oracle
 %dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/main/oracle
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/main/oracle/*
 
