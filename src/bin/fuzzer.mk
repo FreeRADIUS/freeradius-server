@@ -28,10 +28,13 @@ TGT_LDLIBS	:= $(LIBS)
 #  Ensure that the large data file is copied from git-lfs,
 #  and then the files are extracted.
 #
+#  git-lfs fails to update the git index when multiple instances run
+#  concurrently.
+#
 .PHONY:src/tests/fuzzer-corpus/$(PROTOCOL)
 src/tests/fuzzer-corpus/$(PROTOCOL):
 	${Q}if [ ! -e $@ ]; then \
-		git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=src/tests/fuzzer-corpus/$(PROTOCOL).tar' lfs pull; \
+		flock -F /tmp/git-lfs-mutex git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=src/tests/fuzzer-corpus/$(PROTOCOL).tar' lfs pull; \
 		cd src/tests/fuzzer-corpus; \
 		tar -xf $(PROTOCOL).tar; \
 	fi
