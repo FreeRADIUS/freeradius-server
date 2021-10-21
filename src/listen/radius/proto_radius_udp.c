@@ -27,11 +27,9 @@
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/util/debug.h>
 
 #include "proto_radius.h"
 

@@ -24,7 +24,6 @@
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/arp/arp.h>
-#include <freeradius-devel/protocol/arp/rfc826.h>
 
 static fr_dict_t const *dict_arp;
 

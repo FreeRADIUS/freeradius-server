@@ -67,7 +67,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/auth.h>
 #include <freeradius-devel/unlang/call.h>
-#include <freeradius-devel/util/debug.h>
 #include "types.h"
 #include "attrs.h"
 

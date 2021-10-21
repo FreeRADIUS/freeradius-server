@@ -26,8 +26,6 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/server/virtual_servers.h>
-#include <freeradius-devel/util/debug.h>
 
 #include "proto_load.h"
 

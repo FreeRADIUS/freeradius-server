@@ -24,13 +24,11 @@
  */
 
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/misc.h>
 

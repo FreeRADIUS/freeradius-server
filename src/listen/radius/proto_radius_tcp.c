@@ -27,11 +27,9 @@
 #include <freeradius-devel/radius/tcp.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/radius/radius.h>
-#include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/util/debug.h>
 #include "proto_radius.h"
 
 extern fr_app_io_t proto_radius_tcp;

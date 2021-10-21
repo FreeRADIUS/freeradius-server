@@ -23,27 +23,20 @@
  * @copyright 2018 Alan DeKok (aland@deployingradius.com)
  */
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/server/protocol.h>
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/fopencookie.h>
 #include <freeradius-devel/util/perm.h>
-#include <freeradius-devel/util/socket.h>
 #include <freeradius-devel/util/trie.h>
 #include <netdb.h>
 
 #include "proto_control.h"
 
 #ifdef HAVE_SYS_STAT_H
-#include <sys/stat.h>
 #endif
 
 #include <fcntl.h>
 #include <libgen.h>
-#include <pwd.h>
-#include <grp.h>
 
 typedef struct {
 	char const			*name;			//!< socket name

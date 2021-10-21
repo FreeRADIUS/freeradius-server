@@ -26,7 +26,6 @@
 
 #include "attrs.h"
 #include "compose.h"
-#include "session.h"
 
 static int _eap_session_free(eap_session_t *eap_session)
 {
