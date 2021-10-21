@@ -1,0 +1,17 @@
+#  -*- text -*-
+#
+#  SQL driver configuration for Oracle
+#
+#  Should be included inside of a SQL module's configuration section
+#
+# $Id$
+#
+oracle {
+	spool {
+		min = ${...pool.min}
+		max = ${...pool.max}
+		inc = ${...pool.spare}
+		timeout = 0
+		statement_cache_size = 64
+	}
+}

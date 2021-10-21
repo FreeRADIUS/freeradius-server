@@ -15,6 +15,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
+ * @copyright 2019 Robert Biktimirov (pobept@gmail.com)
  * @copyright 2000,2006 The FreeRADIUS server project
  * @copyright 2000 David Kerry (davidk@snti.com)
  */
@@ -48,7 +49,20 @@ DIAG_ON(unused-macros)
 #include "rlm_sql.h"
 
 typedef struct {
-	OCIEnv		*env;
+	OCIEnv		*env;	//!< Number of columns associated with the result set
+	OCIError	*error;	//!< Oracle error handle
+	OCISPool	*pool;	//!< Oracle session pool handle
+	char		*pool_name;	//!< The name of the session pool returned by OCISessionPoolCreate
+	ub4		pool_name_len;	//!< Length of pool_name in bytes.
+	
+	int		stmt_cache_size;	//!< Statement cache size for each of the sessions in a session pool
+	int		spool_timeout;	//!< The sessions idle time (in seconds) (0 disable).
+	uint32_t	spool_min;	//!< Specifies the minimum number of sessions in the session pool.
+	uint32_t	spool_max;	//!< Specifies the maximum number of sessions that can be opened in the session pool
+	uint32_t	spool_inc;	//!< Specifies the increment for sessions to be started if the current number of sessions are less than sessMax
+} rlm_sql_oracle_t;
+
+typedef struct {
 	OCIStmt		*query;
 	OCIError	*error;
 	OCISvcCtx	*ctx;
@@ -57,6 +71,20 @@ typedef struct {
 	int		id;
 	int		col_count;	//!< Number of columns associated with the result set
 } rlm_sql_oracle_conn_t;
+
+static CONF_PARSER spool_config[] = {
+	{ FR_CONF_OFFSET("stmt_cache_size", FR_TYPE_UINT32, rlm_sql_oracle_t, stmt_cache_size), .dflt = "32" },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, rlm_sql_oracle_t, spool_timeout), .dflt = "0" },
+	{ FR_CONF_OFFSET("min", FR_TYPE_UINT32, rlm_sql_oracle_t, spool_min), .dflt = "1" },
+	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, rlm_sql_oracle_t, spool_max), .dflt = "2" },
+	{ FR_CONF_OFFSET("inc", FR_TYPE_UINT32, rlm_sql_oracle_t, spool_inc), .dflt = "1" },
+	CONF_PARSER_TERMINATOR
+};
+
+static CONF_PARSER driver_config[] = {
+	{ FR_CONF_POINTER("spool", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) spool_config },
+	CONF_PARSER_TERMINATOR
+};
 
 #define	MAX_DATASTR_LEN	64
 
@@ -114,6 +142,92 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED si
 	return 1;
 }
 
+static int mod_detach(void *instance)
+{
+	rlm_sql_oracle_t	*inst = instance;
+
+	if (inst->pool) OCISessionPoolDestroy((dvoid *)inst->pool, (dvoid *)inst->error, OCI_DEFAULT );
+	if (inst->error) OCIHandleFree((dvoid *)inst->error, OCI_HTYPE_ERROR);
+	if (inst->env) OCIHandleFree((dvoid *)inst->env, OCI_HTYPE_ENV);
+
+	return 0;
+}
+
+static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_SECTION *conf)
+{
+	char  errbuff[512];
+	sb4 errcode = 0;	
+	rlm_sql_oracle_t	*inst = instance;
+
+	if (!cf_section_find(conf, "spool", NULL)) {
+		ERROR("Couldn't load configuration of session pool(\"spool\" section in driver config)");
+		return RLM_SQL_ERROR;
+	}
+
+	/*
+	 *	Initialises the oracle environment
+	 */
+	if (OCIEnvCreate(&inst->env, OCI_DEFAULT | OCI_THREADED, NULL, NULL, NULL, NULL, 0, NULL)) {
+		ERROR("Couldn't init Oracle OCI environment (OCIEnvCreate())");
+
+		return RLM_SQL_ERROR;
+	}
+
+	/*
+	 *	Allocates an error handle
+	 */
+	if (OCIHandleAlloc((dvoid *)inst->env, (dvoid **)&inst->error, OCI_HTYPE_ERROR, 0, NULL)) {
+		ERROR("Couldn't init Oracle ERROR handle (OCIHandleAlloc())");
+
+		return RLM_SQL_ERROR;
+	}
+	
+	/*
+	 *	Allocates an session pool handle
+	 */
+	if (OCIHandleAlloc((dvoid *)inst->env, (dvoid **)&inst->pool, OCI_HTYPE_SPOOL, 0, NULL)) {
+		ERROR("Couldn't init Oracle session pool (OCIHandleAlloc())");
+		return RLM_SQL_ERROR;
+	}
+	
+	/*
+	 *	Create session pool
+	 */
+	DEBUG("OCISessionPoolCreate min=%d max=%d inc=%d", inst->spool_min, inst->spool_max, inst->spool_inc);
+	if (OCISessionPoolCreate((dvoid *)inst->env, (dvoid *)inst->error, (dvoid *)inst->pool,
+			(OraText**)&inst->pool_name, (ub4*)&inst->pool_name_len,
+			(OraText *)config->sql_db, strlen(config->sql_db),
+			inst->spool_min, inst->spool_max, inst->spool_inc,
+			(OraText *)config->sql_login, strlen(config->sql_login),
+			(OraText *)config->sql_password, strlen(config->sql_password),
+			OCI_SPC_STMTCACHE | OCI_SPC_HOMOGENEOUS)) {
+
+		errbuff[0] = '\0';
+		OCIErrorGet((dvoid *) inst->error, 1, (OraText *) NULL, &errcode, (OraText *) errbuff,
+		    sizeof(errbuff), OCI_HTYPE_ERROR);
+		if (!errcode) return RLM_SQL_ERROR;
+
+		ERROR("Oracle create session pool failed: '%s'", errbuff);
+		return RLM_SQL_ERROR;
+	}
+	
+	if (inst->spool_timeout > 0) {
+		if (OCIAttrSet(inst->pool, OCI_HTYPE_SPOOL, &inst->spool_timeout, 0, 
+		      OCI_ATTR_SPOOL_TIMEOUT, inst->error) != OCI_SUCCESS) {
+			ERROR("Couldn't set Oracle session idle time");
+			return RLM_SQL_ERROR;
+		}
+	}
+
+	if (OCIAttrSet(inst->pool, OCI_HTYPE_SPOOL, &inst->stmt_cache_size, 0, 
+	      OCI_ATTR_SPOOL_STMTCACHESIZE, inst->error) != OCI_SUCCESS) {
+		ERROR("Couldn't set Oracle default statement cache size");
+		return RLM_SQL_ERROR;
+	}
+	
+	return 0;
+}
+
 static int sql_check_reconnect(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	char errbuff[512];
@@ -130,11 +244,8 @@ static int sql_check_reconnect(rlm_sql_handle_t *handle, rlm_sql_config_t *confi
 
 static int _sql_socket_destructor(rlm_sql_oracle_conn_t *conn)
 {
-	if (conn->ctx) OCILogoff(conn->ctx, conn->error);
-	if (conn->query) OCIHandleFree((dvoid *)conn->query, OCI_HTYPE_STMT);
+	if (conn->ctx) OCISessionRelease(conn->ctx, conn->error, NULL, 0, OCI_DEFAULT);
 	if (conn->error) OCIHandleFree((dvoid *)conn->error, OCI_HTYPE_ERROR);
-	if (conn->env) OCIHandleFree((dvoid *)conn->env, OCI_HTYPE_ENV);
-
 	return 0;
 }
 
@@ -143,47 +254,30 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 {
 	char errbuff[512];
 
+	rlm_sql_oracle_t *inst = config->driver;
 	rlm_sql_oracle_conn_t *conn;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_oracle_conn_t));
 	talloc_set_destructor(conn, _sql_socket_destructor);
 
 	/*
-	 *	Initialises the oracle environment
-	 */
-	if (OCIEnvCreate(&conn->env, OCI_DEFAULT | OCI_THREADED, NULL, NULL, NULL, NULL, 0, NULL)) {
-		ERROR("Couldn't init Oracle OCI environment (OCIEnvCreate())");
-
-		return RLM_SQL_ERROR;
-	}
-
-	/*
 	 *	Allocates an error handle
 	 */
-	if (OCIHandleAlloc((dvoid *)conn->env, (dvoid **)&conn->error, OCI_HTYPE_ERROR, 0, NULL)) {
+	if (OCIHandleAlloc((dvoid *)inst->env, (dvoid **)&conn->error, OCI_HTYPE_ERROR, 0, NULL)) {
 		ERROR("Couldn't init Oracle ERROR handle (OCIHandleAlloc())");
 
 		return RLM_SQL_ERROR;
 	}
 
 	/*
-	 *	Allocate handles for select and update queries
+	 *	Get session from pool
 	 */
-	if (OCIHandleAlloc((dvoid *)conn->env, (dvoid **)&conn->query, OCI_HTYPE_STMT, 0, NULL)) {
-		ERROR("Couldn't init Oracle query handles: %s",
-		      (sql_snprint_error(errbuff, sizeof(errbuff), handle, config) == 0) ? errbuff : "unknown");
-
-		return RLM_SQL_ERROR;
-	}
-
-	/*
-	 *	Login to the oracle server
-	 */
-	if (OCILogon(conn->env, conn->error, &conn->ctx,
-		     (OraText const *)config->sql_login, strlen(config->sql_login),
-		     (OraText const *)config->sql_password, strlen(config->sql_password),
-		     (OraText const *)config->sql_db, strlen(config->sql_db))) {
-		ERROR("Oracle logon failed: '%s'",
+	if (OCISessionGet((dvoid *)inst->env, conn->error, &conn->ctx, NULL, 
+		     (OraText *)inst->pool_name, inst->pool_name_len, 
+		     NULL, 0, NULL, NULL, NULL,
+		     OCI_SESSGET_SPOOL | OCI_SESSGET_STMTCACHE) != OCI_SUCCESS) {
+		ERROR("Oracle get sessin from pool[%s] failed: '%s'",
+		      inst->pool_name,
 		      (sql_snprint_error(errbuff, sizeof(errbuff), handle, config) == 0) ? errbuff : "unknown");
 
 		return RLM_SQL_ERROR;
@@ -256,8 +350,8 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 		return RLM_SQL_RECONNECT;
 	}
 
-	if (OCIStmtPrepare(conn->query, conn->error, UNCONST(OraText *, query), strlen(query),
-			   OCI_NTV_SYNTAX, OCI_DEFAULT)) {
+	if (OCIStmtPrepare2(conn->ctx, &conn->query, conn->error, oracle_query, strlen(query),
+	           NULL, 0, OCI_NTV_SYNTAX, OCI_DEFAULT)) {
 		ERROR("prepare failed in sql_query");
 
 		return RLM_SQL_ERROR;
@@ -292,8 +386,10 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 
 	rlm_sql_oracle_conn_t *conn = handle->conn;
 
-	if (OCIStmtPrepare(conn->query, conn->error, UNCONST(OraText *, query), strlen(query), OCI_NTV_SYNTAX,
-			   OCI_DEFAULT)) {
+	memcpy(&oracle_query, &query, sizeof(oracle_query));
+
+	if (OCIStmtPrepare2(conn->ctx, &conn->query, conn->error, oracle_query, strlen(query), 
+	           NULL, 0, OCI_NTV_SYNTAX, OCI_DEFAULT)) {
 		ERROR("prepare failed in sql_select_query");
 
 		return RLM_SQL_ERROR;
@@ -465,11 +561,23 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 	conn->ind = NULL;	/* ind is a child of row */
 	conn->col_count = 0;
 
+	if (OCIStmtRelease (conn->query, conn->error, NULL, 0, OCI_DEFAULT) != OCI_SUCCESS ) {
+		ERROR("OCI release failed in sql_finish_query");
+		return RLM_SQL_ERROR;
+	}
+
 	return RLM_SQL_OK;
 }
 
 static sql_rcode_t sql_finish_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
+	rlm_sql_oracle_conn_t *conn = handle->conn;
+
+	if (OCIStmtRelease(conn->query, conn->error, NULL, 0, OCI_DEFAULT) != OCI_SUCCESS ) {
+		ERROR("OCI release failed in sql_finish_query");
+		return RLM_SQL_ERROR;
+	}
+
 	return 0;
 }
 
@@ -480,6 +588,11 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_
 	TALLOC_FREE(conn->row);
 	conn->ind = NULL;	/* ind is a child of row */
 	conn->col_count = 0;
+
+	if (OCIStmtRelease (conn->query, conn->error, NULL, 0, OCI_DEFAULT) != OCI_SUCCESS ) {
+		ERROR("OCI release failed in sql_finish_query");
+		return RLM_SQL_ERROR;
+	}
 
 	return 0;
 }
@@ -494,6 +607,10 @@ extern rlm_sql_driver_t rlm_sql_oracle;
 rlm_sql_driver_t rlm_sql_oracle = {
 	.name				= "rlm_sql_oracle",
 	.magic				= RLM_MODULE_INIT,
+	.inst_size			= sizeof(rlm_sql_oracle_t),
+	.config				= driver_config,
+	.mod_instantiate		= mod_instantiate,
+	.detach				= mod_detach,
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,
