@@ -1186,7 +1186,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(rlm_rcode_t *p_result, 
 	uint8_t			buffer[1024];
 	uint8_t const		*key;
 	ssize_t			key_len;
-	fr_time_delta_t		ttl = fr_time_delta_wrap(0);
+	fr_time_delta_t		ttl;
 	bool 			expire = false;
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
@@ -1338,7 +1338,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl(rlm_rcode_t *p_result, mo
 	uint8_t			buffer[1024];
 	uint8_t const		*key;
 	ssize_t			key_len;
-	fr_time_delta_t	ttl = fr_time_delta_wrap(0);
+	fr_time_delta_t		ttl;
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
 	fr_pair_t		*vp;
