@@ -30,12 +30,21 @@ jobs:
           sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
           sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
 
+      - name: Download coverity tool MD5
+        run: |
+          wget https://scan.coverity.com/download/linux64 \
+            --post-data "token=${TOKEN}&project=${OWNER}%2Ffreeradius-server&md5=1" \
+            -O coverity_tool.tar.gz.md5
+        env:
+          TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+
       - name: Cache coverity tool
         uses: actions/cache@v2
         id: cache-coverity
         with:
-          key: coverity-tool-cache-${{ runner.os }}
           path: coverity_tool.tar.gz
+          key: coverity-tool-cache-${{ hashFiles('coverity_tool.tar.gz.md5') }}
 
       - name: Download coverity tool
         if: steps.cache-coverity.outputs.cache-hit != 'true'
