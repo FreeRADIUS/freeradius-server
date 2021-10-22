@@ -1,6 +1,8 @@
 radius
 dhcpv4
 dhcpv6
+dns
 tacacs
 vmps
 tftp
+util
