@@ -333,8 +333,8 @@ jobs:
         # For fuzzing we won't be needing eapol_test
         mkdir -p build/tests/eapol_test
         : > build/tests/eapol_test/eapol_test.mk
-        make -j 5 test.fuzzer FUZZER_TIMEOUT=720
-        find build/fuzzer -type f | grep . && exit 1 || :
+        make -j 8 test.fuzzer FUZZER_TIMEOUT=720
+        find build/fuzzer -type f ! -path 'build/fuzzer/*.log' | grep . && exit 1 || :
 
     - name: "Clang libFuzzer: Store assets on failure"
       uses: actions/upload-artifact@v2
