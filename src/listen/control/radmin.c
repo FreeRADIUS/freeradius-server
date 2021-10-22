@@ -73,7 +73,6 @@ DIAG_ON(strict-prototypes)
 #include <freeradius-devel/server/radmin.h>
 
 #include <freeradius-devel/util/conf.h>
-#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/socket.h>
 #include <freeradius-devel/util/atexit.h>

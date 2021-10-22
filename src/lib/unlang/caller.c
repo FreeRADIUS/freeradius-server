@@ -28,7 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/state.h>
 
 #include "caller_priv.h"
-#include "unlang_priv.h"
 #include "group_priv.h"
 
 static unlang_action_t unlang_caller(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)

@@ -33,7 +33,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/regex.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
-#include <ctype.h>
 
 #undef XLAT_DEBUG
 #undef XLAT_HEXDUMP

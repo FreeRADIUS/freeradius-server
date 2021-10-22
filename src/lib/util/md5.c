@@ -8,7 +8,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/util/atexit.h>
 
 /*

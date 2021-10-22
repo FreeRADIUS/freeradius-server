@@ -32,7 +32,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/paths.h>
 #include <freeradius-devel/util/syserror.h>
 
-#include <ctype.h>
 
 #ifdef HAVE_VALGRIND_H
 #  include <valgrind.h>

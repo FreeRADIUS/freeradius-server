@@ -26,7 +26,6 @@ RCSID("$Id$")
 #ifndef HAVE_FOPENCOOKIE
 #include <freeradius-devel/util/talloc.h>
 #include <stdio.h>
-#include <errno.h>
 #include "fopencookie.h"
 
 #define NEED_READ 0x01

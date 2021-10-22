@@ -26,13 +26,10 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/cond.h>
-#include <freeradius-devel/unlang/xlat.h>
 
 #include "interpret_priv.h"
 #include "module_priv.h"
 #include "parallel_priv.h"
-#include "unlang_priv.h"
 
 /** The default interpreter instance for this thread
  */

@@ -30,7 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/io/schedule.h>
 
-#include <ctype.h>
 
 /** Holds instance data created by xlat_instantiate
  */

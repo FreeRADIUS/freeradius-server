@@ -29,14 +29,10 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/server/map.h>
-#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/tmpl.h>
 
-#include <freeradius-devel/server/map_proc_priv.h>
 
 #include "map_priv.h"
-#include "unlang_priv.h"
 
 typedef enum {
 	UNLANG_UPDATE_MAP_INIT = 0,				//!< Start processing a map.

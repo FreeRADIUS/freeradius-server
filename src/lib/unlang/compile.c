@@ -26,7 +26,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modpriv.h>
-#include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include "call_priv.h"
@@ -40,7 +39,6 @@ RCSID("$Id$")
 #include "subrequest_priv.h"
 #include "switch_priv.h"
 
-#include "unlang_priv.h"
 
 #define UNLANG_IGNORE ((unlang_t *) -1)
 

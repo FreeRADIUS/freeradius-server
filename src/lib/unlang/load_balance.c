@@ -27,7 +27,6 @@
 
 #include "load_balance_priv.h"
 #include "module_priv.h"
-#include "unlang_priv.h"
 
 #define unlang_redundant_load_balance unlang_load_balance
 

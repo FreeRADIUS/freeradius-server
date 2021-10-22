@@ -10,7 +10,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/sha1.h>
 
-#include <arpa/inet.h>
 
 #ifndef WITH_OPENSSL_SHA1
 #  define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))

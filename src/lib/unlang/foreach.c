@@ -28,7 +28,6 @@ RCSID("$Id$")
 
 #include "foreach_priv.h"
 #include "return_priv.h"
-#include "unlang_priv.h"
 #include "xlat_priv.h"
 
 static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",

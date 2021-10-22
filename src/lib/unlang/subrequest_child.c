@@ -25,8 +25,6 @@
 #include <freeradius-devel/server/state.h>
 #include "interpret_priv.h"
 #include "subrequest_child_priv.h"
-#include "subrequest_priv.h"
-#include "unlang_priv.h"
 
 /** Holds a synthesised instruction that we insert into the parent request
  *

@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include "module_priv.h"
 #include "parallel_priv.h"
 #include "subrequest_priv.h"
-#include "unlang_priv.h"
 
 
 /** Cancel a specific child

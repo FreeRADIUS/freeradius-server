@@ -29,7 +29,6 @@ RCSID("$Id$")
 
 #include "call_priv.h"
 #include "module_priv.h"
-#include "unlang_priv.h"
 
 static unlang_action_t unlang_call_resume(UNUSED rlm_rcode_t *p_result, request_t *request,
 					  unlang_stack_frame_t *frame)
