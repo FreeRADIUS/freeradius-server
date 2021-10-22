@@ -484,16 +484,18 @@ NOTE: `LDAP_OPT_DEREF` is set to this value.
 
 
 
-chase_referrals:: and the such `rebind` control whether the server follows
-references returned by LDAP directory.
+chase_referrals:: controls whether the server follows references returned by LDAP directory.
 
-They are  mostly for Active Directory compatibility.
-If you set these to `no`, then searches will likely return 'operations error',
+They are mostly for Active Directory compatibility.
+If you set this to `no`, then searches will likely return 'operations error',
 instead of a useful result.
 
 
 
-rebind:: See `chase_referrals` for more detail.
+rebind:: If `chase_referrals` is `yes`, then, when a referral is followed, having `rebind`
+set to `no` will cause libldap to do an anonymous bind when making any additional connections.
+Setting this to `yes` will either bind with the admin credentials or the credientials from the
+rebind url depending on `use_referral_credentials`.
 
 
 

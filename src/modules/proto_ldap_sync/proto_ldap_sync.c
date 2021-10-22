@@ -963,7 +963,9 @@ static int proto_ldap_socket_recv(rad_listen_t *listen)
 static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 {
 	proto_ldap_inst_t		*inst = listen->data;
+#if 0
 	fr_ldap_rcode_t			status;
+#endif
 	size_t				i;
 
 	struct sockaddr_storage		addr;
@@ -1010,7 +1012,7 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 			return -1;
 		}
 	}
-
+#if 0
 	status = fr_ldap_bind(NULL,
 			      &inst->conn,
 			      inst->conn->config->admin_identity, inst->conn->config->admin_password,
@@ -1023,7 +1025,7 @@ static int proto_ldap_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *listen)
 	 *	We need to know the directory type so we can synthesize cookies
 	 */
 	if (fr_ldap_directory_alloc(inst->conn, &inst->conn->directory, &inst->conn) < 0) goto error;
-
+#endif
 	if (ldap_get_option(inst->conn->handle, LDAP_OPT_DESC, &listen->fd) != LDAP_OPT_SUCCESS) {
 		int ldap_errno;
 

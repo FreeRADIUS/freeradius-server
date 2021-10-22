@@ -191,12 +191,3 @@ unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result,
 
 unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
 				      rlm_ldap_t const *inst, request_t *request, fr_pair_t const *check);
-
-/*
- *	conn.c - Connection wrappers.
- */
-fr_ldap_connection_t	*mod_conn_get(rlm_ldap_t const *inst, request_t *request);
-
-void		ldap_mod_conn_release(rlm_ldap_t const *inst, request_t *request, fr_ldap_connection_t *conn);
-
-void		*ldap_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);

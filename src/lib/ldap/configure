@@ -3946,12 +3946,6 @@ then :
   printf "%s\n" "#define HAVE_LDAP_INITIALIZE 1" >>confdefs.h
 
 fi
-ac_fn_c_check_func "$LINENO" "ldap_set_rebind_proc" "ac_cv_func_ldap_set_rebind_proc"
-if test "x$ac_cv_func_ldap_set_rebind_proc" = xyes
-then :
-  printf "%s\n" "#define HAVE_LDAP_SET_REBIND_PROC 1" >>confdefs.h
-
-fi
 ac_fn_c_check_func "$LINENO" "ldap_create_sort_control" "ac_cv_func_ldap_create_sort_control"
 if test "x$ac_cv_func_ldap_create_sort_control" = xyes
 then :
@@ -4086,37 +4080,6 @@ else $as_nop
 fi
 printf "%s\n" "#define HAVE_DECL_LDAP_CREATE_SESSION_TRACKING_CONTROL $ac_have_decl" >>confdefs.h
 
-		{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether ldap_set_rebind_proc takes 3 arguments" >&5
-printf %s "checking whether ldap_set_rebind_proc takes 3 arguments... " >&6; }
-if test ${ac_cv_ldap_set_rebind_proc+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-
-			cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-				#include <lber.h>
-				#include <ldap.h>
-int
-main (void)
-{
-ldap_set_rebind_proc(0, 0, 0);
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-  ac_cv_ldap_set_rebind_proc=3
-else $as_nop
-  ac_cv_ldap_set_rebind_proc=2
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_ldap_set_rebind_proc" >&5
-printf "%s\n" "$ac_cv_ldap_set_rebind_proc" >&6; }
 	fi
 
 
@@ -4386,9 +4349,6 @@ fi
 
 
 printf "%s\n" "#define WITH_EDIR 1" >>confdefs.h
-
-
-printf "%s\n" "#define LDAP_SET_REBIND_PROC_ARGS ${ac_cv_ldap_set_rebind_proc}" >>confdefs.h
 
 
 mod_ldflags=$SMART_LIBS

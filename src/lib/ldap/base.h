@@ -233,11 +233,9 @@ typedef struct {
 
 	uint16_t		referral_depth;		//!< How many referrals to chase
 
-	bool			rebind;			//!< Controls whether we set an ldad_rebind_proc function
-							///< and so determines if we can bind to other servers whilst
-							///< chasing referrals. If this is false, we will still chase
-							///< referrals on the same server, but won't bind to other
-							///< servers.
+	bool			rebind;			//!< If use_referral_credentials is false, controls whether we
+							///< bind as our admin credentials (true) or anonymously (false)
+							///< when connecting to a different server to follow a referral
 
 	/*
 	 *	TLS items.
@@ -313,11 +311,6 @@ typedef struct fr_ldap_thread_trunk_s fr_ldap_thread_trunk_t;
  */
 typedef struct {
 	LDAP			*handle;		//!< libldap handle.
-
-	bool			rebound;		//!< Whether the connection has been rebound to something
-							///< other than the admin user.
-	bool			referred;		//!< Whether the connection is now established a server
-							///< other than the configured one.
 
 	fr_ldap_control_t	serverctrls[LDAP_MAX_CONTROLS + 1];	//!< Server controls to use for all operations
 									///< with this handle.
@@ -626,32 +619,12 @@ size_t		fr_ldap_unescape_func(UNUSED request_t *request, char *out, size_t outle
 
 ssize_t		fr_ldap_xlat_filter(request_t *request, char const **sub, size_t sublen, char *out, size_t outlen);
 
-fr_ldap_rcode_t	fr_ldap_bind(request_t *request,
-			     fr_ldap_connection_t **pconn,
-			     char const *dn, char const *password,
-#ifdef WITH_SASL
-			     fr_ldap_sasl_t const *sasl,
-#else
-			     NDEBUG_UNUSED fr_ldap_sasl_t const *sasl,
-#endif
-			     fr_time_delta_t timeout,
-			     LDAPControl **serverctrls, LDAPControl **clientctrls);
-
 char const	*fr_ldap_error_str(fr_ldap_connection_t const *conn);
-
-fr_ldap_rcode_t	fr_ldap_search(LDAPMessage **result, request_t *request,
-			       fr_ldap_connection_t **pconn,
-			       char const *dn, int scope, char const *filter, char const * const * attrs,
-			       LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 fr_ldap_rcode_t	fr_ldap_search_async(int *msgid, request_t *request,
 				     fr_ldap_connection_t **pconn,
 				     char const *dn, int scope, char const *filter, char const * const *attrs,
 				     LDAPControl **serverctrls, LDAPControl **clientctrls);
-
-fr_ldap_rcode_t	fr_ldap_modify(request_t *request, fr_ldap_connection_t **pconn,
-			       char const *dn, LDAPMod *mods[],
-			       LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 fr_ldap_rcode_t	fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_connection_t **pconn,
 			       char const *dn, LDAPMod *mods[],
@@ -695,8 +668,6 @@ int		fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t 
 /*
  *	directory.c - Get directory capabilities from the remote server
  */
-int		fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_connection_t **pconn);
-
 int		fr_ldap_trunk_directory_alloc_async(TALLOC_CTX *ctx, fr_ldap_thread_trunk_t *ttrunk);
 
 /*

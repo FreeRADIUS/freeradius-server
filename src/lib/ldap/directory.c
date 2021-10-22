@@ -35,7 +35,7 @@ USES_APPLE_DEPRECATED_API
 
 static fr_table_num_sorted_t const fr_ldap_directory_type_table[] = {
 	{ L("Active Directory"),		FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY		},
-	{ L("IBM"),			FR_LDAP_DIRECTORY_IBM				},
+	{ L("IBM"),				FR_LDAP_DIRECTORY_IBM				},
 	{ L("NetScape"),			FR_LDAP_DIRECTORY_NETSCAPE			},
 	{ L("OpenLDAP"),			FR_LDAP_DIRECTORY_OPENLDAP			},
 	{ L("Oracle Internet Directory"),	FR_LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY 	},
@@ -44,7 +44,7 @@ static fr_table_num_sorted_t const fr_ldap_directory_type_table[] = {
 	{ L("Siemens AG"),			FR_LDAP_DIRECTORY_SIEMENS_AG			},
 	{ L("Sun One Directory"),		FR_LDAP_DIRECTORY_SUN_ONE_DIRECTORY		},
 	{ L("Unbound ID"),			FR_LDAP_DIRECTORY_UNBOUND_ID			},
-	{ L("Unknown"),			FR_LDAP_DIRECTORY_UNKNOWN			},
+	{ L("Unknown"),				FR_LDAP_DIRECTORY_UNKNOWN			},
 	{ L("eDirectory"),			FR_LDAP_DIRECTORY_EDIRECTORY			}
 };
 static size_t fr_ldap_directory_type_table_len = NUM_ELEMENTS(fr_ldap_directory_type_table);
@@ -183,63 +183,6 @@ found:
 	}
 
 	return 0;
-}
-
-/** Extract useful information from the rootDSE of the LDAP server
- *
- * @param[in] ctx	to allocate fr_ldap_directory_t in.
- * @param[out] out	where to write pointer to new fr_ldap_directory_t struct.
- * @param[in,out] pconn	connection for querying the directory.
- * @return
- *	- 0 on success.
- *	- 1 if we failed identifying the directory server.
- *	- -1 on error.
- */
-int fr_ldap_directory_alloc(TALLOC_CTX *ctx, fr_ldap_directory_t **out, fr_ldap_connection_t **pconn)
-{
-	static char const	*attrs[] = { "vendorname",
-					     "vendorversion",
-					     "isGlobalCatalogReady",
-					     "objectClass",
-					     "orcldirectoryversion",
-					     NULL };
-	fr_ldap_rcode_t		status;
-	int			rcode = 0;
-	fr_ldap_directory_t	*directory;
-	char const		*name = (*pconn)->config->name;
-
-	LDAPMessage *result = NULL;
-
-	*out = NULL;
-
-	directory = talloc_zero(ctx, fr_ldap_directory_t);
-	if (!directory) return -2;
-	*out = directory;
-
-	directory->type = FR_LDAP_DIRECTORY_UNKNOWN;
-
-	status = fr_ldap_search(&result, NULL, pconn, "", LDAP_SCOPE_BASE, "(objectclass=*)",
-				attrs, NULL, NULL);
-	switch (status) {
-	case LDAP_PROC_SUCCESS:
-		break;
-
-	case LDAP_PROC_NO_RESULT:
-		WARN("Capability check failed: Can't access rootDSE");
-		rcode = 1;
-		goto finish;
-
-	default:
-		rcode = 1;
-		goto finish;
-	}
-
-	rcode = ldap_directory_result_parse(directory, (*pconn)->handle, result, name);
-
-finish:
-	if (result) ldap_msgfree(result);
-
-	return rcode;
 }
 
 /** Parse results of search on rootDSE to gather data on LDAP server
