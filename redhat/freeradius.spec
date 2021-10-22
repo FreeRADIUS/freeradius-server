@@ -619,6 +619,7 @@ rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/ruby
 %if %{?_with_rlm_sql_oracle:0}%{!?_with_rlm_sql_oracle:1}
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/main/oracle
+rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/driver/oracle
 %endif
 %if %{?_with_rlm_unbound:0}%{!?_with_rlm_unbound:1}
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/unbound
@@ -883,6 +884,8 @@ fi
 
 %dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle/*
+
+%attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/driver/oracle
 %endif
 
 %files utils
