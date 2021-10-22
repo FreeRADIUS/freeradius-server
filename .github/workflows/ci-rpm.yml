@@ -2,6 +2,8 @@ name: CI RPM
 
 on:
   push:
+    branches-ignore:
+      - coverity_scan
   schedule:
     - cron: '0 20 * * *'
 

@@ -10,7 +10,7 @@ on:
 jobs:
   coverity:
     runs-on: ubuntu-20.04
-    if: github.repository_owner == 'FreeRADIUS'
+    if: github.repository_owner == 'FreeRADIUS' || github.ref == 'refs/heads/coverity_scan'
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -30,21 +30,31 @@ jobs:
           sudo mk-build-deps -irt"apt-get -y --no-install-recommends" debian/control
           sudo mk-build-deps -irt"apt-get -y --no-install-recommends" scripts/ci/extra-packages.debian.control
 
+      - name: Download coverity tool MD5
+        run: |
+          wget https://scan.coverity.com/download/linux64 \
+            --post-data "token=${TOKEN}&project=${OWNER}%2Ffreeradius-server&md5=1" \
+            -O coverity_tool.tar.gz.md5
+        env:
+          TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+
       - name: Cache coverity tool
         uses: actions/cache@v2
         id: cache-coverity
         with:
-          key: coverity-tool-cache-${{ runner.os }}
           path: coverity_tool.tar.gz
+          key: coverity-tool-cache-${{ hashFiles('coverity_tool.tar.gz.md5') }}
 
       - name: Download coverity tool
         if: steps.cache-coverity.outputs.cache-hit != 'true'
         run: |
           wget https://scan.coverity.com/download/linux64 \
-            --post-data "token=${TOKEN}&project=FreeRADIUS%2Ffreeradius-server" \
+            --post-data "token=${TOKEN}&project=${OWNER}%2Ffreeradius-server" \
             -O coverity_tool.tar.gz
         env:
           TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
 
       - name: Extract coverity tool
         run: |
@@ -70,6 +80,7 @@ jobs:
             --form file=@cov-int.tar.gz \
             --form version="`cat VERSION`" \
             --form description="FreeRADIUS" \
-            https://scan.coverity.com/builds?project=freeradius%2Ffreeradius-server
+            https://scan.coverity.com/builds?project=${OWNER}%2Ffreeradius-server
         env:
           TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
