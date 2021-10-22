@@ -4,3 +4,5 @@ dhcpv6
 tacacs
 vmps
 tftp
+dns
+util
