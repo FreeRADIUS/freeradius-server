@@ -10,7 +10,7 @@ on:
 jobs:
   coverity:
     runs-on: ubuntu-20.04
-    if: github.repository_owner == 'FreeRADIUS'
+    if: github.repository_owner == 'FreeRADIUS' || github.ref == 'refs/heads/coverity_scan'
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -41,10 +41,11 @@ jobs:
         if: steps.cache-coverity.outputs.cache-hit != 'true'
         run: |
           wget https://scan.coverity.com/download/linux64 \
-            --post-data "token=${TOKEN}&project=FreeRADIUS%2Ffreeradius-server" \
+            --post-data "token=${TOKEN}&project=${OWNER}%2Ffreeradius-server" \
             -O coverity_tool.tar.gz
         env:
           TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
 
       - name: Extract coverity tool
         run: |
@@ -70,6 +71,7 @@ jobs:
             --form file=@cov-int.tar.gz \
             --form version="`cat VERSION`" \
             --form description="FreeRADIUS" \
-            https://scan.coverity.com/builds?project=freeradius%2Ffreeradius-server
+            https://scan.coverity.com/builds?project=${OWNER}%2Ffreeradius-server
         env:
           TOKEN: ${{ secrets.COVERITY_SCAN_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
