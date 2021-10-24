@@ -4,6 +4,7 @@ on:
   push:
     branches-ignore:
       - coverity_scan
+      - run-fuzzer**
   schedule:
     - cron: '0 20 * * *'
 
