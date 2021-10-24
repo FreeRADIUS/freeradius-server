@@ -33,20 +33,65 @@ env:
   CC: clang
 
 jobs:
+
+  #
+  #  Constructs a matrix of protocols to fuzz as JSON that when set in the main
+  #  fuzzer job is equivalent to the following YAML:
+  #
+  #    matrix:
+  #      env:
+  #        - { "PROTOCOL": "radius", "TOTAL_RUNTIME": "20000" }
+  #        - { "PROTOCOL": "dhcpv4", "TOTAL_RUNTIME": "20000" }
+  #        - ...
+  #
+  set-matrix:
+
+    name: Setup build matrix
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
+    steps:
+
+    - uses: actions/checkout@v2
+      with:
+        lfs: false
+
+    - id: set-matrix
+      name: Setup the matrix
+      run: |
+        #
+        #  20000s is just short of the 6h GitHub Action job limit
+        #
+        TIMEOUT=20000
+        P=$(
+            for PROTO in `sed -ne 's/^FUZZER_PROTOCOLS\s\+=\s\+\(.*\)/\1/p' src/bin/all.mk`; do
+              echo "{ \"PROTOCOL\": \"$PROTO\", \"TOTAL_RUNTIME\": \"$TIMEOUT\" },"
+            done
+          )
+        M=$(cat <<EOF
+        {
+          "env": [
+            ${P:0:-1}
+          ]
+        }
+        EOF
+          )
+        echo ::set-output name=matrix::$M
+
+
   fuzzer:
+
+    needs:
+      - set-matrix
 
     runs-on: ubuntu-20.04
 
-    # TOTAL_RUNTIME: 20000 is just short of the 6 hours GH Actions limit
     strategy:
       fail-fast: false
-      matrix:
-        env:
-          - { PROTOCOL: radius, TOTAL_RUNTIME: 20000 }
-          - { PROTOCOL: dhcpv4, TOTAL_RUNTIME: 20000 }
-          - { PROTOCOL: dhcpv6, TOTAL_RUNTIME: 20000 }
-          - { PROTOCOL: vmps,   TOTAL_RUNTIME: 20000 }
-          - { PROTOCOL: tacacs, TOTAL_RUNTIME: 20000 }
+      matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
 
     env: ${{ matrix.env }}
 
@@ -100,14 +145,6 @@ jobs:
       run: |
         pip3 install tacacs_plus
 
-#    - name: Install LLVM snapshot
-#      run: |
-#        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
-#        sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
-#        sudo apt-get install -y --no-install-recommends clang llvm gdb
-#        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 60 && sudo update-alternatives --set clang /usr/bin/clang-12
-#        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-12 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-12
-
     - name: Install LLVM 10
       run: |
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
@@ -154,16 +191,15 @@ jobs:
         REMAINING_TIME=$(( $TOTAL_RUNTIME + `cat ~/start_timestamp` - `date +%s` ))
         echo "Fuzzing ${{ steps.pick_commit.outputs.commit_id }}:$PROTOCOL for $REMAINING_TIME secs"
         [[ "$REMAINING_TIME" -lt 1 ]] && exit 1
-        timeout "$REMAINING_TIME" make test.fuzzer.$PROTOCOL FUZZER_TIMEOUT=300 FUZZER_ARGUMENTS="-jobs=10000 -workers=`nproc`" || :
-        cp fuzz-*.log build/fuzzer
-        find build/fuzzer -type f ! -name 'fuzz-*.log' | grep . && exit 1 || :
+        make test.fuzzer.$PROTOCOL FUZZER_TIMEOUT="$REMAINING_TIME" FUZZER_ARGUMENTS="-jobs=`nproc` -workers=`nproc`" || :
+        find build/fuzzer -type f ! -path 'build/fuzzer/*.log' | grep . && exit 1 || :
       env:
         GITHUB_REF: "${{ github.ref }}"
 
     - name: "Clang libFuzzer: Store assets on failure"
       uses: actions/upload-artifact@v2
       with:
-        name: fuzzer-${{ matrix.env.PROTOCOL }}-${{ steps.pick_commit.outputs.commit_id }}
+        name: clang-fuzzer-${{ matrix.env.PROTOCOL }}-${{ steps.pick_commit.outputs.commit_id }}
         path: build/fuzzer
         retention-days: 30
       if: ${{ failure() }}
