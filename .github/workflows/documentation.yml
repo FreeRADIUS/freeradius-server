@@ -2,8 +2,9 @@ name: Documentation
 
 on:
   push:
-    branches-ignore: 
+    branches-ignore:
       - coverity_scan
+      - run-fuzzer**
   pull_request:
 
 jobs:
@@ -15,18 +16,18 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-        
+
     - name: Install common build dependencies
       run: |
         sudo apt-get install -y --no-install-recommends \
         asciidoctor \
         doxygen \
         graphviz
-        
+
     - name: Install Antora
       run: |
         sudo npm i -g @antora/cli@2.0 @antora/site-generator-default@2.0;
-        
+
     - name: Show versions
       run: |
         make --version
@@ -48,6 +49,6 @@ jobs:
         target_branch: main
         pages_directory: doc/doxygen/html
         target_directory : docs
-        
+
     - name: Build Antora docsite
-      run: antora site.yml 
+      run: antora site.yml

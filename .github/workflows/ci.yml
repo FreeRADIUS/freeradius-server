@@ -4,6 +4,7 @@ on:
   push:
     branches-ignore:
       - coverity_scan
+      - run-fuzzer**
   pull_request:
 
 env:
