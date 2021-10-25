@@ -477,11 +477,10 @@ static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const
 
 		slen = decode_option(vp, &vp->vp_group, dict, parent, p, (end - p), decode_ctx);
 		if (slen <= 0) {
-			if (!do_raw) return slen;
+			if (!do_raw) return slen - (p - data);
 
 			slen = decode_raw(vp, &vp->vp_group, dict, parent, p, (end - p), decode_ctx);
-			if (slen <= 0) return slen;
-			break;
+			if (slen <= 0) return slen - (p - data);
 		}
 
 		p += slen;
