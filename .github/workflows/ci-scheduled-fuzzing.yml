@@ -1,14 +1,21 @@
-name: Scheduled fuzzing
-
 #
 #  This workflow will normally run on a schedule.
 #
-#  It can also be invoked manually by pushing to a branch called
-#  run-fuzzer[-<timeout>], e.g.
+#  It can also be invoked manually by pushing to a branch named as follows:
 #
-#    - 'run-fuzzer':      Start fuzzing immediately
-#    - 'run-fuzzer-3600': Limit the runtime to one hour
+#      run-fuzzer[[-<protocol>]-<timeout>]
 #
+#      <timeout> is total run length, including setup.
+#      <protocol> is the name of the unit to fuzz.
+#
+#  For example:
+#
+#    - 'run-fuzzer':             Start fuzzing all protocols (default timeout)
+#    - 'run-fuzzer-3600':        Start fuzzing all protocols for one hour
+#    - 'run-fuzzer-radius-7200': Start fuzzing RADIUS for two hours
+#
+
+name: Scheduled fuzzing
 
 on:
   push:
@@ -52,8 +59,14 @@ jobs:
 
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      starttimestamp: ${{ steps.starttimestamp.outputs.starttimestamp }}
 
     steps:
+
+    - id: starttimestamp
+      name: Record run start time
+      run: |
+        echo ::set-output name=starttimestamp::`date +%s`
 
     - uses: actions/checkout@v2
       with:
@@ -63,12 +76,22 @@ jobs:
       name: Setup the matrix
       run: |
         #
-        #  20000s is just short of the 6h GitHub Action job limit
+        #  By default we fuzz all protocols for 20000s (just short of the 6h
+        #  GitHub Action run limit)
         #
-        TIMEOUT=20000
+        TOTAL_RUNTIME=20000
+        PROTOS=`sed -ne 's/^FUZZER_PROTOCOLS\s\+=\s\+\(.*\)/\1/p' src/bin/all.mk`
+        #
+        if [[ "$GITHUB_REF" = refs/heads/run-fuzzer-*-* ]]; then
+          PROTOS=${GITHUB_REF#refs/heads/run-fuzzer-}
+          TOTAL_RUNTIME=${PROTOS##*-}
+          PROTOS=${PROTOS%-*}
+        elif [[ "$GITHUB_REF" = refs/heads/run-fuzzer-* ]]; then
+          TOTAL_RUNTIME=${GITHUB_REF#refs/heads/run-fuzzer-}
+        fi
         P=$(
-            for PROTO in `sed -ne 's/^FUZZER_PROTOCOLS\s\+=\s\+\(.*\)/\1/p' src/bin/all.mk`; do
-              echo "{ \"PROTOCOL\": \"$PROTO\", \"TOTAL_RUNTIME\": \"$TIMEOUT\" },"
+            for PROTO in $PROTOS; do
+              echo "{ \"PROTOCOL\": \"$PROTO\", \"TOTAL_RUNTIME\": \"$TOTAL_RUNTIME\" },"
             done
           )
         M=$(cat <<EOF
@@ -79,6 +102,8 @@ jobs:
         }
         EOF
           )
+        echo "Matrix:"
+        echo "$M"
         echo ::set-output name=matrix::$M
 
 
@@ -98,9 +123,6 @@ jobs:
     name: Fuzzing ${{ matrix.env.PROTOCOL}}
 
     steps:
-
-    - name: Stamp start time
-      run: date +%s > ~/start_timestamp
 
     #  Checkout, but defer pulling LFS objects until we've restored the cache
     #
@@ -187,14 +209,14 @@ jobs:
 
     - name: Run fuzzer tests
       run: |
-        [[ "$GITHUB_REF" = refs/heads/run-fuzzer-* ]] && TOTAL_RUNTIME=${GITHUB_REF#refs/heads/run-fuzzer-}
-        REMAINING_TIME=$(( $TOTAL_RUNTIME + `cat ~/start_timestamp` - `date +%s` ))
-        echo "Fuzzing ${{ steps.pick_commit.outputs.commit_id }}:$PROTOCOL for $REMAINING_TIME secs"
+        REMAINING_TIME=$(( $TOTAL_RUNTIME + $START_TIMESTAMP - `date +%s` ))
+        echo "Started at $START_TIMESTAMP for $TOTAL_RUNTIME secs. Fuzzing ${{ steps.pick_commit.outputs.commit_id }}:$PROTOCOL for $REMAINING_TIME secs"
         [[ "$REMAINING_TIME" -lt 1 ]] && exit 1
         make test.fuzzer.$PROTOCOL FUZZER_TIMEOUT="$REMAINING_TIME" FUZZER_ARGUMENTS="-jobs=`nproc` -workers=`nproc`" || :
         find build/fuzzer -type f ! -path 'build/fuzzer/*.log' | grep . && exit 1 || :
       env:
         GITHUB_REF: "${{ github.ref }}"
+        START_TIMESTAMP: "${{ needs.set-matrix.outputs.starttimestamp }}"
 
     - name: "Clang libFuzzer: Store assets on failure"
       uses: actions/upload-artifact@v2
