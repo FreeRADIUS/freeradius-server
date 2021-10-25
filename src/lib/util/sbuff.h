@@ -217,6 +217,16 @@ typedef enum {
 	FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW	= -6		//!< Integer type would underflow.
 } fr_sbuff_parse_error_t;
 
+extern fr_table_num_ordered_t const sbuff_parse_error_table[];
+extern size_t sbuff_parse_error_table_len;
+
+/** Replace the contents of the thread local error stack with the string representation of a parse error
+ */
+static inline void fr_sbuff_parse_error_to_strerror(fr_sbuff_parse_error_t err)
+{
+	fr_strerror_const(fr_table_str_by_value(sbuff_parse_error_table, err, "<INVALID>"));
+}
+
 #define FR_SBUFF_FLAG_EXTENDABLE		0x01
 #define FR_SBUFF_FLAG_EXTENDED			0x02
 #define FR_SBUFF_FLAG_EXTEND_ERROR		0x04
@@ -234,9 +244,6 @@ typedef enum {
 
 #define fr_sbuff_is_extendable(_status)		((_status) & FR_SBUFF_FLAG_EXTENDABLE)
 #define fr_sbuff_was_extended(_status)		((_status) & FR_SBUFF_FLAG_EXTENDED)
-
-extern fr_table_num_ordered_t const sbuff_parse_error_table[];
-extern size_t sbuff_parse_error_table_len;
 
 extern bool const sbuff_char_class_uint[UINT8_MAX + 1];
 extern bool const sbuff_char_class_int[UINT8_MAX + 1];
