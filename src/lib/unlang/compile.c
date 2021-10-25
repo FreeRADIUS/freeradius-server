@@ -2158,29 +2158,32 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	checks / casts against us.
 	 */
 	if (!pass2_fixup_tmpl(g, &gext->vpt, cf_section_to_item(cs), unlang_ctx->rules->dict_def)) {
+	error:
 		talloc_free(g);
 		return NULL;
 	}
 
 	if (tmpl_is_list(gext->vpt)) {
 		cf_log_err(cs, "Cannot use list for 'switch' statement");
-		talloc_free(g);
-		return NULL;
+		goto error;
 	}
 
 	if (tmpl_contains_regex(gext->vpt)) {
 		cf_log_err(cs, "Cannot use regular expression for 'switch' statement");
-		talloc_free(g);
-		return NULL;
+		goto error;
 	}
 
 	if (tmpl_is_data(gext->vpt)) {
 		cf_log_err(cs, "Cannot use constant data for 'switch' statement");
-		talloc_free(g);
-		return NULL;
+		goto error;
 	}
 
-	if (!tmpl_is_attr(gext->vpt)) (void) tmpl_cast_set(gext->vpt, FR_TYPE_STRING);
+	if (!tmpl_is_attr(gext->vpt)) {
+		if (tmpl_cast_set(gext->vpt, FR_TYPE_STRING) < 0) {
+			cf_log_perr(cs, "Failed setting cast type");
+			goto error;
+		}
+	}
 
 	type = FR_TYPE_STRING;
 	if (gext->vpt->cast) {
@@ -2194,8 +2197,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	if (htype == FR_HTRIE_INVALID) {
 		cf_log_err(cs, "Invalid data type '%s' used for 'switch' statement",
 			    fr_table_str_by_value(fr_value_box_type_table, type, "???"));
-		talloc_free(g);
-		return NULL;
+		goto error;
 	}
 
 	gext->ht = fr_htrie_alloc(gext, htype,
@@ -2205,8 +2207,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 				  NULL);
 	if (!gext->ht) {
 		cf_log_err(cs, "Failed initializing internal data structures");
-		talloc_free(g);
-		return NULL;
+		goto error;
 	}
 
 	/*
@@ -2224,8 +2225,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 			if (!cf_item_is_pair(ci)) continue;
 
 			cf_log_err(ci, "\"switch\" sections can only have \"case\" subsections");
-			talloc_free(g);
-			return NULL;
+			goto error;
 		}
 
 		subcs = cf_item_to_section(ci);	/* can't return NULL */
@@ -2238,15 +2238,13 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 			if (strcmp(name1, "default") == 0) {
 				if (cf_section_name2(subcs) != 0) {
 					cf_log_err(ci, "\"default\" sections cannot have a match argument");
-					talloc_free(g);
-					return NULL;
+					goto error;
 				}
 				goto handle_default;
 			}
 
 			cf_log_err(ci, "\"switch\" sections can only have \"case\" subsections");
-			talloc_free(g);
-			return NULL;
+			goto error;
 		}
 
 		name2 = cf_section_name2(subcs);
@@ -2254,8 +2252,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		handle_default:
 			if (gext->default_case) {
 				cf_log_err(ci, "Cannot have two 'default' case statements");
-				talloc_free(g);
-				return NULL;
+				goto error;
 			}
 		}
 
@@ -2263,10 +2260,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 		 *	Compile the subsection.
 		 */
 		single = compile_case(c, unlang_ctx, subcs);
-		if (!single) {
-			talloc_free(g);
-			return NULL;
-		}
+		if (!single) goto error;
 
 		fr_assert(single->type == UNLANG_TYPE_CASE);
 
@@ -2288,8 +2282,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 			if (single) cf_log_err(unlang_generic_to_group(single)->cs, "Duplicate may be here.");
 
-			talloc_free(g);
-			return NULL;
+			goto error;
 		}
 
 		*g->tail = single;
