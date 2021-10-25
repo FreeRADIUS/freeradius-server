@@ -559,20 +559,6 @@ typedef struct {
 						///< ars referenced.
 } tmpl_attr_extent_t;
 
-extern fr_sbuff_parse_rules_t const tmpl_parse_rules_bareword_unquoted;
-extern fr_sbuff_parse_rules_t const tmpl_parse_rules_double_unquoted;
-extern fr_sbuff_parse_rules_t const tmpl_parse_rules_single_unquoted;
-extern fr_sbuff_parse_rules_t const tmpl_parse_rules_solidus_unquoted;
-extern fr_sbuff_parse_rules_t const tmpl_parse_rules_backtick_unquoted;
-extern fr_sbuff_parse_rules_t const *tmpl_parse_rules_unquoted[T_TOKEN_LAST];
-
-extern fr_sbuff_parse_rules_t const tmpl_parse_rules_bareword_quoted;
-extern fr_sbuff_parse_rules_t const tmpl_parse_rules_double_quoted;
-extern fr_sbuff_parse_rules_t const tmpl_parse_rules_single_quoted;
-extern fr_sbuff_parse_rules_t const tmpl_parse_rules_solidus_quoted;
-extern fr_sbuff_parse_rules_t const tmpl_parse_rules_backtick_quoted;
-extern fr_sbuff_parse_rules_t const *tmpl_parse_rules_quoted[T_TOKEN_LAST];
-
 /** Convenience macro for printing a meaningful assert message when we get a bad tmpl type
  */
 #define tmpl_assert_type(_cond) \

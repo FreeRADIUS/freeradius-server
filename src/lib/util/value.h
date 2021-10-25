@@ -350,6 +350,27 @@ typedef enum {
 #define fr_box_is_non_value(_x)			fr_type_is_non_value((_x)->type)
 /** @} */
 
+/** @name Parsing rules for various types of string
+ *
+ * @{
+ */
+extern fr_sbuff_parse_rules_t const value_parse_rules_bareword_unquoted;
+extern fr_sbuff_parse_rules_t const value_parse_rules_double_unquoted;
+extern fr_sbuff_parse_rules_t const value_parse_rules_single_unquoted;
+extern fr_sbuff_parse_rules_t const value_parse_rules_solidus_unquoted;
+extern fr_sbuff_parse_rules_t const value_parse_rules_backtick_unquoted;
+extern fr_sbuff_parse_rules_t const *value_parse_rules_unquoted[T_TOKEN_LAST];
+extern fr_sbuff_parse_rules_t const *value_parse_rules_unquoted_char[UINT8_MAX];
+
+extern fr_sbuff_parse_rules_t const value_parse_rules_bareword_quoted;
+extern fr_sbuff_parse_rules_t const value_parse_rules_double_quoted;
+extern fr_sbuff_parse_rules_t const value_parse_rules_single_quoted;
+extern fr_sbuff_parse_rules_t const value_parse_rules_solidus_quoted;
+extern fr_sbuff_parse_rules_t const value_parse_rules_backtick_quoted;
+extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted[T_TOKEN_LAST];
+extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX];
+/** @} */
+
 /** @name Convenience functions
  *
  * These macros and inline functions simplify working

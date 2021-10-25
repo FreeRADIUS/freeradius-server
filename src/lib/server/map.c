@@ -127,7 +127,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		slen = tmpl_afrom_substr(ctx, &map->lhs,
 					 &FR_SBUFF_IN(attr, talloc_array_length(attr) - 1),
 					 type,
-					 tmpl_parse_rules_unquoted[type],	/* We're not searching for quotes */
+					 value_parse_rules_unquoted[type],	/* We're not searching for quotes */
 					 lhs_rules);
 		if (slen <= 0) {
 			char *spaces, *text;
@@ -167,7 +167,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	slen = tmpl_afrom_substr(map, &map->rhs,
 				 &FR_SBUFF_IN(value, strlen(value)),
 				 type,
-				 tmpl_parse_rules_unquoted[type],	/* We're not searching for quotes */
+				 value_parse_rules_unquoted[type],	/* We're not searching for quotes */
 				 rhs_rules);
 	if (slen < 0) {
 		marker_subject = value;
@@ -281,10 +281,10 @@ fr_sbuff_parse_rules_t const map_parse_rules_bareword_quoted = {
 
 fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST] = {
 	[T_BARE_WORD]			= &map_parse_rules_bareword_quoted,
-	[T_DOUBLE_QUOTED_STRING]	= &tmpl_parse_rules_double_quoted,
-	[T_SINGLE_QUOTED_STRING]	= &tmpl_parse_rules_single_quoted,
-	[T_SOLIDUS_QUOTED_STRING]	= &tmpl_parse_rules_solidus_quoted,
-	[T_BACK_QUOTED_STRING]		= &tmpl_parse_rules_backtick_quoted
+	[T_DOUBLE_QUOTED_STRING]	= &value_parse_rules_double_quoted,
+	[T_SINGLE_QUOTED_STRING]	= &value_parse_rules_single_quoted,
+	[T_SOLIDUS_QUOTED_STRING]	= &value_parse_rules_solidus_quoted,
+	[T_BACK_QUOTED_STRING]		= &value_parse_rules_backtick_quoted
 };
 
 /** Parse sbuff into (which may contain refs) to map_t.
@@ -350,7 +350,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	case T_BACK_QUOTED_STRING:
 	case T_SINGLE_QUOTED_STRING:
 		slen = tmpl_afrom_substr(map, &map->lhs, &our_in, token,
-					 tmpl_parse_rules_quoted[token], lhs_rules);
+					 value_parse_rules_quoted[token], lhs_rules);
 		break;
 
 	default:
@@ -542,11 +542,11 @@ parse_rhs:
 	case T_BACK_QUOTED_STRING:
 	case T_SINGLE_QUOTED_STRING:
 		slen = tmpl_afrom_substr(map, &map->rhs, &our_in, token,
-					 tmpl_parse_rules_quoted[token], rhs_rules);
+					 value_parse_rules_quoted[token], rhs_rules);
 		break;
 
 	default:
-		if (!p_rules) p_rules = &tmpl_parse_rules_bareword_quoted;
+		if (!p_rules) p_rules = &value_parse_rules_bareword_quoted;
 
 		/*
 		 *	Use the RHS termination rules ONLY for bare

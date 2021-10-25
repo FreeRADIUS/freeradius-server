@@ -126,7 +126,7 @@ static int cf_table_parse_tmpl(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 
 	slen = tmpl_afrom_substr(cp, &vpt, &FR_SBUFF_IN(cf_pair_value(cp), strlen(cf_pair_value(cp))),
 				 cf_pair_value_quote(cp),
-				 tmpl_parse_rules_unquoted[cf_pair_value_quote(cp)],
+				 value_parse_rules_unquoted[cf_pair_value_quote(cp)],
 				 &rules);
 
 	/* There was an error */

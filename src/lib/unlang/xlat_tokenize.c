@@ -1335,12 +1335,12 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 	if (p_rules && p_rules->terminals) {
 		tmp_p_rules = (fr_sbuff_parse_rules_t){	/* Stack allocated due to CL scope */
 			.terminals = fr_sbuff_terminals_amerge(NULL, p_rules->terminals,
-							       tmpl_parse_rules_bareword_quoted.terminals),
-			.escapes = (p_rules->escapes ? p_rules->escapes : tmpl_parse_rules_bareword_quoted.escapes)
+							       value_parse_rules_bareword_quoted.terminals),
+			.escapes = (p_rules->escapes ? p_rules->escapes : value_parse_rules_bareword_quoted.escapes)
 		};
 		our_p_rules = &tmp_p_rules;
 	} else {
-		our_p_rules = &tmpl_parse_rules_bareword_quoted;
+		our_p_rules = &value_parse_rules_bareword_quoted;
 	}
 
 	/*
@@ -1378,7 +1378,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 			if (xlat_tokenize_literal(node, &node->child, &node->flags, &our_in,
 						  false, our_p_rules, t_rules) < 0) {
 			error:
-				if (our_p_rules != &tmpl_parse_rules_bareword_quoted) {
+				if (our_p_rules != &value_parse_rules_bareword_quoted) {
 					talloc_const_free(our_p_rules->terminals);
 				}
 				talloc_free(node);
@@ -1395,7 +1395,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 		 */
 		case T_DOUBLE_QUOTED_STRING:
 			if (xlat_tokenize_literal(node, &node->child, &node->flags, &our_in,
-						  false, &tmpl_parse_rules_double_quoted, t_rules) < 0) goto error;
+						  false, &value_parse_rules_double_quoted, t_rules) < 0) goto error;
 			xlat_flags_merge(flags, &node->flags);
 			break;
 
@@ -1411,8 +1411,8 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 			node->flags.needs_async = false;	/* Literals are always needs_async */
 
 			slen = fr_sbuff_out_aunescape_until(node->child, &str, &our_in, SIZE_MAX,
-							    tmpl_parse_rules_single_quoted.terminals,
-							    tmpl_parse_rules_single_quoted.escapes);
+							    value_parse_rules_single_quoted.terminals,
+							    value_parse_rules_single_quoted.escapes);
 			if (slen < 0) goto error;
 			xlat_exp_set_name_buffer_shallow(node->child, str);
 			xlat_flags_merge(flags, &node->flags);
@@ -1468,7 +1468,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 		}
 	}
 
-	if (our_p_rules != &tmpl_parse_rules_bareword_quoted) talloc_const_free(our_p_rules->terminals);
+	if (our_p_rules != &value_parse_rules_bareword_quoted) talloc_const_free(our_p_rules->terminals);
 
 	return fr_sbuff_set(in, &our_in);
 }

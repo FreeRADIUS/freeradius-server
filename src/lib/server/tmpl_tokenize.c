@@ -40,6 +40,18 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+/** Default parser rules
+ *
+ * Because this is getting to be a ridiculous number of parsing rules
+ * to pass in via arguments.
+ *
+ * Defaults are used if a NULL rules pointer is passed to the parsing function.
+ */
+static tmpl_rules_t const default_attr_rules = {
+	.request_def = REQUEST_CURRENT,
+	.list_def = PAIR_LIST_REQUEST
+};
+
 /* clang-format off */
 /** Map #tmpl_type_t values to descriptive strings
  */
@@ -1005,123 +1017,6 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 	return 0;
 }
 /** @} */
-
-/** @name Produce a #tmpl_t from a string or substring
- *
- * @{
- */
-
-/* clang-format off */
-/** Default parser rules
- *
- * Because this is getting to be a ridiculous number of parsing rules
- * to pass in via arguments.
- *
- * Defaults are used if a NULL rules pointer is passed to the parsing function.
- */
-static tmpl_rules_t const default_attr_rules = {
-	.request_def = REQUEST_CURRENT,
-	.list_def = PAIR_LIST_REQUEST
-};
-
-/** Default formatting rules
- *
- * Control token termination, escaping and how the tmpl is printed.
- */
-fr_sbuff_parse_rules_t const tmpl_parse_rules_bareword_unquoted = {
-
-};
-
-fr_sbuff_parse_rules_t const tmpl_parse_rules_double_unquoted = {
-	.escapes = &fr_value_unescape_double
-};
-
-fr_sbuff_parse_rules_t const tmpl_parse_rules_single_unquoted = {
-	.escapes = &fr_value_unescape_single
-};
-
-fr_sbuff_parse_rules_t const tmpl_parse_rules_solidus_unquoted = {
-	.escapes = &fr_value_unescape_solidus
-};
-
-fr_sbuff_parse_rules_t const tmpl_parse_rules_backtick_unquoted = {
-	.escapes = &fr_value_unescape_backtick
-};
-
-/** Parse rules for non-quoted strings
- *
- * These parse rules should be used for processing escape sequences in
- * data from external data sources like SQL databases and REST APIs.
- *
- * They do not include terminals to stop parsing as it assumes the values
- * are discreet, and not wrapped in quotes.
- */
-fr_sbuff_parse_rules_t const *tmpl_parse_rules_unquoted[T_TOKEN_LAST] = {
-	[T_BARE_WORD]			= &tmpl_parse_rules_bareword_unquoted,
-	[T_DOUBLE_QUOTED_STRING]	= &tmpl_parse_rules_double_unquoted,
-	[T_SINGLE_QUOTED_STRING]	= &tmpl_parse_rules_single_unquoted,
-	[T_SOLIDUS_QUOTED_STRING]	= &tmpl_parse_rules_solidus_unquoted,
-	[T_BACK_QUOTED_STRING]		= &tmpl_parse_rules_backtick_unquoted
-};
-
-fr_sbuff_parse_rules_t const tmpl_parse_rules_bareword_quoted = {
-	.escapes = &(fr_sbuff_unescape_rules_t){
-		.chr = '\\',
-		/*
-		 *	Allow barewords to contain whitespace
-		 *	if they're escaped.
-		 */
-		.subs = {
-			['\t'] = '\t',
-			['\n'] = '\n',
-			[' '] = ' '
-		},
-		.do_hex = false,
-		.do_oct = false
-	},
-	.terminals = &FR_SBUFF_TERMS(
-		L("\t"),
-		L("\n"),
-		L(" ")
-	)
-};
-
-fr_sbuff_parse_rules_t const tmpl_parse_rules_double_quoted = {
-	.escapes = &fr_value_unescape_double,
-	.terminals = &FR_SBUFF_TERM("\"")
-};
-
-fr_sbuff_parse_rules_t const tmpl_parse_rules_single_quoted = {
-	.escapes = &fr_value_unescape_single,
-	.terminals = &FR_SBUFF_TERM("'")
-};
-
-fr_sbuff_parse_rules_t const tmpl_parse_rules_solidus_quoted = {
-	.escapes = &fr_value_unescape_solidus,
-	.terminals = &FR_SBUFF_TERM("/")
-};
-
-fr_sbuff_parse_rules_t const tmpl_parse_rules_backtick_quoted = {
-	.escapes = &fr_value_unescape_backtick,
-	.terminals = &FR_SBUFF_TERM("`")
-};
-
-/** Parse rules for quoted strings
- *
- * These parse rules should be used for internal parsing functions that
- * are working with configuration files.
- *
- * They include appropriate quote terminals to force functions parsing
- * quoted strings to return when they reach a quote character.
- */
-fr_sbuff_parse_rules_t const *tmpl_parse_rules_quoted[T_TOKEN_LAST] = {
-	[T_BARE_WORD]			= &tmpl_parse_rules_bareword_quoted,
-	[T_DOUBLE_QUOTED_STRING]	= &tmpl_parse_rules_double_quoted,
-	[T_SINGLE_QUOTED_STRING]	= &tmpl_parse_rules_single_quoted,
-	[T_SOLIDUS_QUOTED_STRING]	= &tmpl_parse_rules_solidus_quoted,
-	[T_BACK_QUOTED_STRING]		= &tmpl_parse_rules_backtick_quoted
-};
-/* clang-format on */
 
 /** Verify, after skipping whitespace, that a substring ends in a terminal char, or ends without further chars
  *

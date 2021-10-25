@@ -1008,7 +1008,7 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 #ifdef HAVE_REGEX
 	case T_SOLIDUS_QUOTED_STRING:
 #endif
-		p_rules = tmpl_parse_rules_quoted[type];
+		p_rules = value_parse_rules_quoted[type];
 		break;
 #ifndef HAVE_REGEX
 	case T_SOLIDUS_QUOTED_STRING:

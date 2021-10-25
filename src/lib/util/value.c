@@ -51,7 +51,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/ascend.h>
 #include <freeradius-devel/util/dcursor.h>
 #include <freeradius-devel/util/base16.h>
-
+#include <freeradius-devel/util/atexit.h>
 
 /** Sanity checks
  *
@@ -490,6 +490,129 @@ fr_sbuff_escape_rules_t fr_value_escape_unprintables = {
 	.do_utf8 = true,
 	.do_oct = true
 };
+
+
+/** @name Produce a #tmpl_t from a string or substring
+ *
+ * @{
+ */
+
+/* clang-format off */
+/** Default formatting rules
+ *
+ * Control token termination, escaping and how the tmpl is printed.
+ */
+fr_sbuff_parse_rules_t const value_parse_rules_bareword_unquoted = {
+
+};
+
+fr_sbuff_parse_rules_t const value_parse_rules_double_unquoted = {
+	.escapes = &fr_value_unescape_double
+};
+
+fr_sbuff_parse_rules_t const value_parse_rules_single_unquoted = {
+	.escapes = &fr_value_unescape_single
+};
+
+fr_sbuff_parse_rules_t const value_parse_rules_solidus_unquoted = {
+	.escapes = &fr_value_unescape_solidus
+};
+
+fr_sbuff_parse_rules_t const value_parse_rules_backtick_unquoted = {
+	.escapes = &fr_value_unescape_backtick
+};
+
+/** Parse rules for non-quoted strings
+ *
+ * These parse rules should be used for processing escape sequences in
+ * data from external data sources like SQL databases and REST APIs.
+ *
+ * They do not include terminals to stop parsing as it assumes the values
+ * are discreet, and not wrapped in quotes.
+ */
+fr_sbuff_parse_rules_t const *value_parse_rules_unquoted[T_TOKEN_LAST] = {
+	[T_BARE_WORD]			= &value_parse_rules_bareword_unquoted,
+	[T_DOUBLE_QUOTED_STRING]	= &value_parse_rules_double_unquoted,
+	[T_SINGLE_QUOTED_STRING]	= &value_parse_rules_single_unquoted,
+	[T_SOLIDUS_QUOTED_STRING]	= &value_parse_rules_solidus_unquoted,
+	[T_BACK_QUOTED_STRING]		= &value_parse_rules_backtick_unquoted
+};
+
+fr_sbuff_parse_rules_t const *value_parse_rules_unquoted_char[UINT8_MAX] = {
+	['\0']				= &value_parse_rules_bareword_unquoted,
+	['"']				= &value_parse_rules_double_unquoted,
+	['\'']				= &value_parse_rules_single_unquoted,
+	['/']				= &value_parse_rules_solidus_unquoted,
+	['`']				= &value_parse_rules_backtick_unquoted
+};
+
+fr_sbuff_parse_rules_t const value_parse_rules_bareword_quoted = {
+	.escapes = &(fr_sbuff_unescape_rules_t){
+		.chr = '\\',
+		/*
+		 *	Allow barewords to contain whitespace
+		 *	if they're escaped.
+		 */
+		.subs = {
+			['\t'] = '\t',
+			['\n'] = '\n',
+			[' '] = ' '
+		},
+		.do_hex = false,
+		.do_oct = false
+	},
+	.terminals = &FR_SBUFF_TERMS(
+		L("\t"),
+		L("\n"),
+		L(" ")
+	)
+};
+
+fr_sbuff_parse_rules_t const value_parse_rules_double_quoted = {
+	.escapes = &fr_value_unescape_double,
+	.terminals = &FR_SBUFF_TERM("\"")
+};
+
+fr_sbuff_parse_rules_t const value_parse_rules_single_quoted = {
+	.escapes = &fr_value_unescape_single,
+	.terminals = &FR_SBUFF_TERM("'")
+};
+
+fr_sbuff_parse_rules_t const value_parse_rules_solidus_quoted = {
+	.escapes = &fr_value_unescape_solidus,
+	.terminals = &FR_SBUFF_TERM("/")
+};
+
+fr_sbuff_parse_rules_t const value_parse_rules_backtick_quoted = {
+	.escapes = &fr_value_unescape_backtick,
+	.terminals = &FR_SBUFF_TERM("`")
+};
+
+/** Parse rules for quoted strings
+ *
+ * These parse rules should be used for internal parsing functions that
+ * are working with configuration files.
+ *
+ * They include appropriate quote terminals to force functions parsing
+ * quoted strings to return when they reach a quote character.
+ */
+fr_sbuff_parse_rules_t const *value_parse_rules_quoted[T_TOKEN_LAST] = {
+	[T_BARE_WORD]			= &value_parse_rules_bareword_quoted,
+	[T_DOUBLE_QUOTED_STRING]	= &value_parse_rules_double_quoted,
+	[T_SINGLE_QUOTED_STRING]	= &value_parse_rules_single_quoted,
+	[T_SOLIDUS_QUOTED_STRING]	= &value_parse_rules_solidus_quoted,
+	[T_BACK_QUOTED_STRING]		= &value_parse_rules_backtick_quoted
+};
+
+fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX] = {
+	['\0']				= &value_parse_rules_bareword_quoted,
+	['"']				= &value_parse_rules_double_quoted,
+	['\'']				= &value_parse_rules_single_quoted,
+	['/']				= &value_parse_rules_solidus_quoted,
+	['`']				= &value_parse_rules_backtick_quoted
+};
+/* clang-format on */
+/** @} */
 
 /** Copy flags and type data from one value box to another
  *

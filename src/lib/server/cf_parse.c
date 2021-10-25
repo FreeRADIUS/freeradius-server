@@ -244,7 +244,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		}
 
 		slen = tmpl_afrom_substr(cp, &vpt, &sbuff, cp->rhs_quote,
-					 tmpl_parse_rules_unquoted[cp->rhs_quote],
+					 value_parse_rules_unquoted[cp->rhs_quote],
 					 &rules);
 		if (!vpt) goto tmpl_error;
 
