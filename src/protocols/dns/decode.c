@@ -429,7 +429,10 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t con
 
 	if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype) {
 		slen = decode_dns_labels(ctx, out, dict, da, data + 4, len, decode_ctx);
-		if (slen < 0) return slen;
+		if (slen < 0) {
+			fr_dict_unknown_free(&da);
+			return slen;
+		}
 
 		/*
 		 *	The DNS labels may only partially fill the
@@ -437,7 +440,10 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t con
 		 *	byte which caused the error, accounting for
 		 *	the option header.
 		 */
-		if ((size_t) slen != len) return -(4 + slen);
+		if ((size_t) slen != len) {
+			fr_dict_unknown_free(&da);
+			return -(4 + slen);
+		}
 
 	} else if (da->flags.array) {
 		slen = decode_array(ctx, out, dict, da, data + 4, len, decode_ctx);
@@ -445,6 +451,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t con
 	} else {
 		slen = decode_value(ctx, out, dict, da, data + 4, len, decode_ctx);
 	}
+	fr_dict_unknown_free(&da);
 
 	if (slen < 0) return slen;
 
