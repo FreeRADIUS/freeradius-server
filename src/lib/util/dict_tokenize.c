@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/value.h>
 
 #include <sys/stat.h>
 
@@ -806,7 +807,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	 */
 	if (!vendor && (attr < 256) &&
 	    !strstr(fn, "rfc") && !strstr(fn, "illegal")) {
-		fprintf(stderr, "WARNING: Illegal Attribute %s in %s\n",
+		fprintf(stderr, "WARNING: Illegal attribute %s in %s\n",
 			argv[0], fn);
 	}
 #endif
@@ -1303,7 +1304,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	case FR_TYPE_STRUCTURAL:
 	case FR_TYPE_NULL:
 	case FR_TYPE_MAX:
-		fr_strerror_printf_push("Cannot define VALUE for Attribute '%s' of data type \"%s\"", da->name,
+		fr_strerror_printf_push("Cannot define VALUE for attribute '%s' of data type '%s'", da->name,
 					fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
 		return -1;
 
