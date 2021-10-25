@@ -497,7 +497,10 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *d
 	/*
 	 *	Force the RHS to be cast to whatever the LHS da is.
 	 */
-	(void) tmpl_cast_set(map->rhs, tmpl_da(map->lhs)->type);
+	if ((tmpl_cast_set(map->rhs, tmpl_da(map->lhs)->type) < 0) ||
+	    (tmpl_enumv_set(map->rhs, tmpl_da(map->rhs)) < 0)) {
+		cf_log_perr(map->ci, "Failed setting rhs type");
+	};
 
 	if (map->op != T_OP_CMP_EQ) {
 		cf_log_err(map->ci, "Must use '==' for comparisons with virtual attribute %s", map->lhs->name);

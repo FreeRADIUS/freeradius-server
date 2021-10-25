@@ -254,7 +254,10 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			return -1;
 		}
 
-		tmpl_cast_set(vpt, cast);
+		if (tmpl_cast_set(vpt, cast) < 0) {
+			cf_log_perr(cp, "Failed setting tmpl type");
+			return -1;
+		}
 
 		/*
 		 *	Non-blocking xlat's
