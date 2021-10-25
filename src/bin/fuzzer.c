@@ -39,7 +39,6 @@ RCSID("$Id$")
  */
 
 static bool			init = false;
-static void 			*decode_ctx = NULL;
 static fr_test_point_proto_decode_t *tp	= NULL;
 static dl_t			*dl = NULL;
 static dl_loader_t		*dl_loader;
@@ -177,11 +176,6 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-	if (tp->test_ctx && (tp->test_ctx(&decode_ctx, NULL) < 0)) {
-		fr_perror("fuzzer: Failed initializing test point %s", buffer);
-		fr_exit_now(EXIT_FAILURE);
-	}
-
 	init = true;
 
 	return 1;
@@ -191,11 +185,18 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 {
 	TALLOC_CTX *   ctx = talloc_init_const("fuzzer");
 	fr_pair_list_t vps;
+	void *decode_ctx = NULL;
 
 	fr_pair_list_init(&vps);
 	if (!init) LLVMFuzzerInitialize(NULL, NULL);
 
+	if (tp->test_ctx && (tp->test_ctx(&decode_ctx, NULL) < 0)) {
+		fr_perror("fuzzer: Failed initializing test point decode_ctx");
+		fr_exit_now(EXIT_FAILURE);
+	}
+
 	tp->func(ctx, &vps, buf, len, decode_ctx);
+	talloc_free(decode_ctx);
 	talloc_free(ctx);
 
 	/*
