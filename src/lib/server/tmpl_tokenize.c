@@ -1130,7 +1130,7 @@ static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_at
 		fr_sbuff_parse_error_t	sberr = FR_SBUFF_PARSE_OK;
 		fr_sbuff_t tmp = FR_SBUFF(name);
 
-		if (fr_sbuff_out(&sberr, &ar->num, &tmp) == 0) {
+		if (fr_sbuff_out(&sberr, &ar->num, &tmp) < 0) {
 			if (sberr == FR_SBUFF_PARSE_ERROR_NOT_FOUND) {
 				fr_strerror_const("Invalid array index");
 				if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
@@ -2035,7 +2035,7 @@ static ssize_t tmpl_afrom_bool_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 	bool		a_bool;
 	tmpl_t		*vpt;
 
-	if (!fr_sbuff_out(NULL, &a_bool, &our_in)) {
+	if (fr_sbuff_out(NULL, &a_bool, &our_in) < 0) {
 		fr_strerror_const("Not a boolean value");
 		return 0;
 	}
@@ -2151,7 +2151,7 @@ static ssize_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 	 *	an IP prefix.
 	 */
 	if (fr_sbuff_next_if_char(&our_in, '/')) {
-		if (!fr_sbuff_out(NULL, &octet, &our_in)) {
+		if (fr_sbuff_out(NULL, &octet, &our_in) < 0) {
 			fr_strerror_const("IPv4 CIDR mask malformed");
 			goto error;
 		}
@@ -2268,7 +2268,7 @@ static ssize_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 	if (fr_sbuff_next_if_char(&our_in, '/')) {
 		uint8_t		mask;
 
-		if (!fr_sbuff_out(NULL, &mask, &our_in)) {
+		if (fr_sbuff_out(NULL, &mask, &our_in) < 0) {
 			fr_strerror_const("IPv6 CIDR mask malformed");
 			goto error;
 		}

@@ -42,6 +42,17 @@ extern "C" {
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/talloc.h>
 
+/** Represents number of bytes parsed or location of parse error
+ *
+ * Number of bytes parsed will be >= 0.
+ *
+ * If a parse error occurs the value will be the negative offset
+ * of the error -1.  i.e. offset 0 will be -1.
+ *
+ * This is to disambiguate between 0 bytes parsed and error at
+ * offset 0.
+ */
+typedef ssize_t fr_slen_t;
 typedef struct fr_sbuff_s fr_sbuff_t;
 typedef struct fr_sbuff_ptr_s fr_sbuff_marker_t;
 
@@ -806,6 +817,15 @@ static inline fr_sbuff_t *fr_sbuff_init_talloc(TALLOC_CTX *ctx,
 	((size_t)(fr_sbuff_start(_sbuff_or_marker) > fr_sbuff_current(_sbuff_or_marker) ? \
 		0 : (fr_sbuff_current(_sbuff_or_marker) - fr_sbuff_start(_sbuff_or_marker))))
 
+/** Return the current position as an error marker
+ *
+ * +1 is added to the position to disambiguate with 0 meaning "parsed no data".
+ *
+ * An error at offset 0 will be returned as -1.
+ */
+#define fr_sbuff_error(_sbuff_or_marker) \
+	(-(fr_sbuff_used(_sbuff_or_marker) + 1))
+
 /** Like fr_sbuff_used, but adjusts for the value returned for the amount shifted
  *
  * @param[in] _sbuff_or_marker	to return the number of bytes used for.
@@ -1427,29 +1447,33 @@ SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_unescape_until, in, len, tt, u_rules)
  * so that if the output variable type changes, the parse rules are automatically changed.
  * @{
  */
-size_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in);
+fr_slen_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in);
 
-size_t fr_sbuff_out_int8(fr_sbuff_parse_error_t *err, int8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_int16(fr_sbuff_parse_error_t *err, int16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_int32(fr_sbuff_parse_error_t *err, int32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_int64(fr_sbuff_parse_error_t *err, int64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_uint8(fr_sbuff_parse_error_t *err, uint8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_uint16(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_uint32(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_uint64(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_int8(fr_sbuff_parse_error_t *err, int8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_int16(fr_sbuff_parse_error_t *err, int16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_int32(fr_sbuff_parse_error_t *err, int32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_int64(fr_sbuff_parse_error_t *err, int64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_ssize(fr_sbuff_parse_error_t *err, ssize_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_uint8(fr_sbuff_parse_error_t *err, uint8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_uint16(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_uint32(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_uint64(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_size(fr_sbuff_parse_error_t *err, size_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 
-size_t fr_sbuff_out_uint8_oct(fr_sbuff_parse_error_t *err, uint8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_uint16_oct(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_uint32_oct(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_uint64_oct(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_uint8_oct(fr_sbuff_parse_error_t *err, uint8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_uint16_oct(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_uint32_oct(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_uint64_oct(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_size_oct(fr_sbuff_parse_error_t *err, size_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 
-size_t fr_sbuff_out_uint8_hex(fr_sbuff_parse_error_t *err, uint8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_uint16_hex(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_uint32_hex(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_uint64_hex(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_uint8_hex(fr_sbuff_parse_error_t *err, uint8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_uint16_hex(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_uint32_hex(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_uint64_hex(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_size_hex(fr_sbuff_parse_error_t *err, size_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 
-size_t fr_sbuff_out_float32(fr_sbuff_parse_error_t *err, float *out, fr_sbuff_t *sbuff, bool no_trailing);
-size_t fr_sbuff_out_float64(fr_sbuff_parse_error_t *err, double *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_float32(fr_sbuff_parse_error_t *err, float *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_float64(fr_sbuff_parse_error_t *err, double *out, fr_sbuff_t *sbuff, bool no_trailing);
 
 /** Parse a value based on the output type
  *
@@ -1466,10 +1490,12 @@ size_t fr_sbuff_out_float64(fr_sbuff_parse_error_t *err, double *out, fr_sbuff_t
 		 int16_t *	: fr_sbuff_out_int16(_err, (int16_t *)_out, _in, true), \
 		 int32_t *	: fr_sbuff_out_int32(_err, (int32_t *)_out, _in, true), \
 		 int64_t *	: fr_sbuff_out_int64(_err, (int64_t *)_out, _in, true), \
+		 ssize_t *	: fr_sbuff_out_ssize(_err, (ssize_t *)_out, _in, true), \
 		 uint8_t *	: fr_sbuff_out_uint8(_err, (uint8_t *)_out, _in, true), \
 		 uint16_t *	: fr_sbuff_out_uint16(_err, (uint16_t *)_out, _in, true), \
 		 uint32_t *	: fr_sbuff_out_uint32(_err, (uint32_t *)_out, _in, true), \
 		 uint64_t *	: fr_sbuff_out_uint64(_err, (uint64_t *)_out, _in, true), \
+		 size_t *	: fr_sbuff_out_size(_err, (size_t *)_out, _in, true), \
 		 float *	: fr_sbuff_out_float32(_err, (float *)_out, _in, true), \
 		 double *	: fr_sbuff_out_float64(_err, (double *)_out, _in, true) \
 	)
