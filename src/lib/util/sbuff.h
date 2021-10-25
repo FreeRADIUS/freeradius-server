@@ -499,6 +499,38 @@ do { \
 	.is_const	= IS_CONST(char *, _start) \
 })
 
+/** Structure to encapsulate a thread local sbuff information
+ *
+ */
+typedef struct {
+	fr_sbuff_t			sbuff;		//!< Thread local sbuff.
+	fr_sbuff_uctx_talloc_t		tctx;		//!< Thread local tctx.
+} fr_sbuff_thread_local_t;
+
+static inline void _sbuff_thread_local_free(void *sbtl)
+{
+	talloc_free(sbtl);
+}
+
+/** Create a function local and thread local extensible sbuff
+ *
+ * @param[out] _sbuff_out	Where to write a pointer to the thread local sbuff
+ * @param[in] _init		Initial size for the sbuff buffer.
+ * @param[in] _max		Maximum size of the sbuff buffer.
+ */
+#define FR_SBUFF_TALLOC_THREAD_LOCAL(_out, _init, _max) \
+{ \
+	static _Thread_local fr_sbuff_thread_local_t *_sbuff_t_local; \
+	if (!_sbuff_t_local) { \
+		fr_sbuff_thread_local_t *sbtl = talloc_zero(NULL, fr_sbuff_thread_local_t); \
+		fr_sbuff_init_talloc(sbtl, &sbtl->sbuff, &sbtl->tctx, _init, _max); \
+		fr_atexit_thread_local(_sbuff_t_local, _sbuff_thread_local_free, sbtl); \
+		*(_out) = &_sbuff_t_local->sbuff; \
+	} else { \
+		fr_sbuff_reset_talloc(&_sbuff_t_local->sbuff); \
+		*(_out) = &_sbuff_t_local->sbuff; \
+	} \
+}
 
 void	fr_sbuff_update(fr_sbuff_t *sbuff, char *new_buff, size_t new_len);
 
