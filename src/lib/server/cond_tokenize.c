@@ -226,7 +226,10 @@ static int cond_cast_tmpl(tmpl_t *vpt, fr_type_t *p_type, tmpl_t *other)
 	 *	Which means we no longer need the cast.
 	 */
 	fr_assert(tmpl_is_data(vpt));
-	fr_assert(fr_type_is_null(vpt->cast) || (vpt->cast == tmpl_value_type(vpt)));
+	fr_assert_msg(fr_type_is_null(vpt->cast) || (vpt->cast == tmpl_value_type(vpt)),
+		      "Cast mismatch, target was %s, but output was %s",
+		      fr_table_str_by_value(fr_value_box_type_table, vpt->cast, "<INVALID>"),
+		      fr_table_str_by_value(fr_value_box_type_table, tmpl_value_type(vpt), "<INVALID>"));
 	(void) tmpl_cast_set(vpt, FR_TYPE_NULL);
 	return 0;
 }
