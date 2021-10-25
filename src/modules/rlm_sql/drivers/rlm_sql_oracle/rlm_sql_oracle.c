@@ -54,7 +54,7 @@ typedef struct {
 	OCISPool	*pool;	//!< Oracle session pool handle
 	char		*pool_name;	//!< The name of the session pool returned by OCISessionPoolCreate
 	ub4		pool_name_len;	//!< Length of pool_name in bytes.
-	
+
 	uint32_t	stmt_cache_size;	//!< Statement cache size for each of the sessions in a session pool
 	uint32_t	spool_timeout;	//!< The sessions idle time (in seconds) (0 disable).
 	uint32_t	spool_min;	//!< Specifies the minimum number of sessions in the session pool.
@@ -156,7 +156,7 @@ static int mod_detach(void *instance)
 static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_SECTION *conf)
 {
 	char  errbuff[512];
-	sb4 errcode = 0;	
+	sb4 errcode = 0;
 	rlm_sql_oracle_t	*inst = instance;
 	OraText *sql_password = NULL;
 	OraText *sql_login = NULL;
@@ -183,7 +183,7 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 
 		return RLM_SQL_ERROR;
 	}
-	
+
 	/*
 	 *	Allocates an session pool handle
 	 */
@@ -191,7 +191,7 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 		ERROR("Couldn't init Oracle session pool (OCIHandleAlloc())");
 		return RLM_SQL_ERROR;
 	}
-	
+
 	/*
 	 *	Create session pool
 	 */
@@ -217,21 +217,21 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 		ERROR("Oracle create session pool failed: '%s'", errbuff);
 		return RLM_SQL_ERROR;
 	}
-	
+
 	if (inst->spool_timeout > 0) {
-		if (OCIAttrSet(inst->pool, OCI_HTYPE_SPOOL, &inst->spool_timeout, 0, 
+		if (OCIAttrSet(inst->pool, OCI_HTYPE_SPOOL, &inst->spool_timeout, 0,
 		      OCI_ATTR_SPOOL_TIMEOUT, inst->error) != OCI_SUCCESS) {
 			ERROR("Couldn't set Oracle session idle time");
 			return RLM_SQL_ERROR;
 		}
 	}
 
-	if (OCIAttrSet(inst->pool, OCI_HTYPE_SPOOL, &inst->stmt_cache_size, 0, 
+	if (OCIAttrSet(inst->pool, OCI_HTYPE_SPOOL, &inst->stmt_cache_size, 0,
 	      OCI_ATTR_SPOOL_STMTCACHESIZE, inst->error) != OCI_SUCCESS) {
 		ERROR("Couldn't set Oracle default statement cache size");
 		return RLM_SQL_ERROR;
 	}
-	
+
 	return 0;
 }
 
@@ -279,8 +279,8 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	/*
 	 *	Get session from pool
 	 */
-	if (OCISessionGet((dvoid *)inst->env, conn->error, &conn->ctx, NULL, 
-		     (OraText *)inst->pool_name, inst->pool_name_len, 
+	if (OCISessionGet((dvoid *)inst->env, conn->error, &conn->ctx, NULL,
+		     (OraText *)inst->pool_name, inst->pool_name_len,
 		     NULL, 0, NULL, NULL, NULL,
 		     OCI_SESSGET_SPOOL | OCI_SESSGET_STMTCACHE) != OCI_SUCCESS) {
 		ERROR("Oracle get sessin from pool[%s] failed: '%s'",
@@ -393,7 +393,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 
 	rlm_sql_oracle_conn_t *conn = handle->conn;
 
-	if (OCIStmtPrepare2(conn->ctx, &conn->query, conn->error, (const OraText *)query, strlen(query), 
+	if (OCIStmtPrepare2(conn->ctx, &conn->query, conn->error, (const OraText *)query, strlen(query),
 	           NULL, 0, OCI_NTV_SYNTAX, OCI_DEFAULT)) {
 		ERROR("prepare failed in sql_select_query");
 
@@ -574,7 +574,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_finish_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_oracle_conn_t *conn = handle->conn;
 
