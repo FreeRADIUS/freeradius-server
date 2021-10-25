@@ -140,7 +140,7 @@ typedef struct {
 	char		*ptr;		//!< pointer into read buffer
 
 	char		*token;		//!< current token that we parsed
-	int		token_len;	//!< length of the token
+	size_t		token_len;	//!< length of the token
 
 	char		string[256];	//!< double quoted strings go here, so we don't mangle the input buffer
 } rlm_isc_dhcp_tokenizer_t;
@@ -565,7 +565,7 @@ static int match_subword(rlm_isc_dhcp_tokenizer_t *state, char const *cmd, rlm_i
 			if (*p != *q) {
 			fail:
 				fr_strerror_printf("Expected '%.*s', got unknown text '%.*s'",
-						   state->token_len, state->token,
+						   (int)state->token_len, state->token,
 						   (int) (next - cmd), cmd);
 				return -1;
 			}
@@ -839,7 +839,7 @@ static fr_type_t isc2fr_type(rlm_isc_dhcp_tokenizer_t *state)
 	TYPE_CHECK("text", FR_TYPE_STRING);
 	TYPE_CHECK("string", FR_TYPE_OCTETS);
 
-	fr_strerror_printf("unknown type '%.*s'", state->token_len, state->token);
+	fr_strerror_printf("unknown type '%.*s'", (int)state->token_len, state->token);
 	return FR_TYPE_NULL;
 }
 
@@ -894,7 +894,7 @@ static int parse_option_definition(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tok
 	if (ret <= 0) goto error_ret;
 
 	if ((state->token_len != 1) || (state->token[0] != '=')) {
-		fr_strerror_printf("expected '=' after code definition got '%.*s'", state->token_len, state->token);
+		fr_strerror_printf("expected '=' after code definition got '%.*s'", (int)state->token_len, state->token);
 		goto error;
 	}
 
@@ -923,7 +923,7 @@ static int parse_option_definition(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tok
 
 		if (! ((state->token_len == 2) && (memcmp(state->token, "of", 2) == 0))) {
 			fr_strerror_printf("expected 'array of', not 'array %.*s'",
-					   state->token_len, state->token);
+					   (int)state->token_len, state->token);
 			goto error;
 		}
 
@@ -1051,7 +1051,7 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 		fr_pair_append(&parent->options, vp);
 
 		// @todo - print out ISC names...
-		IDEBUG("%.*s option %s %.*ss ", state->braces, spaces, da->name, state->token_len, state->token);
+		IDEBUG("%.*s option %s %.*ss ", state->braces, spaces, da->name, (int)state->token_len, state->token);
 	}
 
 	/*
@@ -1234,7 +1234,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	 */
 	if (!q) {
 	unknown:
-		fr_strerror_printf("unknown command '%.*s'", state->token_len, state->token);
+		fr_strerror_printf("unknown command '%.*s'", (int)state->token_len, state->token);
 		return -1;
 	}
 
@@ -1254,7 +1254,7 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 	if (state->inst->pedantic && !tokens[half].parse) {
 		if (tokens[half].type == ISC_INVALID) {
 			ERROR("Command '%.*s' is not supported.",
-			      state->token_len, state->token);
+			      (int)state->token_len, state->token);
 			return -1;
 		}
 
@@ -1266,19 +1266,19 @@ static int match_keyword(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *
 		if (DEBUG_ENABLED) {
 			if (tokens[half].type == ISC_NOOP) {
 				WARN("Command '%.*s' is not yet implemented.",
-				     state->token_len, state->token);
+				     (int)state->token_len, state->token);
 			}
 
 			if (tokens[half].type == ISC_IGNORE) {
 				WARN("Ignoring command '%.*s'.  It is not relevant.",
-				     state->token_len, state->token);
+				     (int)state->token_len, state->token);
 			}
 		}
 	}
 
 	semicolon = YES_SEMICOLON; /* default to always requiring this */
 
-	DDEBUG("... TOKEN %.*s ", state->token_len, state->token);
+	DDEBUG("... TOKEN %.*s ", (int)state->token_len, state->token);
 
 	info = talloc_zero(parent, rlm_isc_dhcp_info_t);
 	fr_pair_list_init(&info->options);
