@@ -497,8 +497,7 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *d
 	/*
 	 *	Force the RHS to be cast to whatever the LHS da is.
 	 */
-	if ((tmpl_cast_set(map->rhs, tmpl_da(map->lhs)->type) < 0) ||
-	    (tmpl_enumv_set(map->rhs, tmpl_da(map->rhs)) < 0)) {
+	if (tmpl_cast_set(map->rhs, tmpl_da(map->lhs)->type) < 0) {
 		cf_log_perr(map->ci, "Failed setting rhs type");
 	};
 
