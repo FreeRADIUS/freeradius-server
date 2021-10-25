@@ -2545,12 +2545,14 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 			return fr_sbuff_set(in, &our_in);
 		}
+		fr_assert(!*out);
 
 		/*
 		 *	See if it's an octets string
 		 */
 		slen = tmpl_afrom_octets_substr(ctx, out, &our_in, p_rules);
 		if (slen > 0) goto done_bareword;
+		fr_assert(!*out);
 
 		/*
 		 *	See if it's a mac address
@@ -2561,18 +2563,21 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 */
 		slen = tmpl_afrom_ether_substr(ctx, out, &our_in, p_rules);
 		if (slen > 0) goto done_bareword;
+		fr_assert(!*out);
 
 		/*
 		 *	See if it's an IPv4 address or prefix
 		 */
 		slen = tmpl_afrom_ipv4_substr(ctx, out, &our_in, p_rules);
 		if (slen > 0) goto done_bareword;
+		fr_assert(!*out);
 
 		/*
 		 *	See if it's an IPv6 address or prefix
 		 */
 		slen = tmpl_afrom_ipv6_substr(ctx, out, &our_in, p_rules);
 		if (slen > 0) goto done_bareword;
+		fr_assert(!*out);
 
 		/*
 		 *	See if it's a float
@@ -2586,6 +2591,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 */
 		slen = tmpl_afrom_integer_substr(ctx, out, &our_in, p_rules);
 		if (slen > 0) goto done_bareword;
+		fr_assert(!*out);
 
 		/*
 		 *	See if it's an attribute reference
@@ -2593,6 +2599,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 */
 		slen = tmpl_afrom_attr_substr(ctx, NULL, out, &our_in, p_rules, t_rules);
 		if (slen > 0) goto done_bareword;
+		fr_assert(!*out);
 
 		vpt = tmpl_alloc_null(ctx);
 
