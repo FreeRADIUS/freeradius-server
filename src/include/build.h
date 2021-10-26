@@ -241,6 +241,19 @@ do { \
 #define NUM_ELEMENTS(_t) (sizeof((_t)) / sizeof(*(_t)))
 
 /*
+ *	Type checking
+ */
+
+/** Check if two types are compatible (the C11 way)
+ *
+ * Expands to 1 if types are compatible, else 0.
+ *
+ * @param _x pointer to check.
+ * @param _t type to check compatibility with.
+ */
+#define IS_COMPATIBLE(_x, _t) _Generic(_x, _t:1, default: 0)
+
+/*
  *	Only use GCC __attribute__ if were building with a GCClike
  *	compiler.
  */

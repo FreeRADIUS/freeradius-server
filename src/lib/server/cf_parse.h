@@ -82,15 +82,6 @@ typedef void _mismatch_default;		//!< Dummy type used to indicate FR_TYPE_*/C ty
 typedef void conf_type_mismatch;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid FR_TYPE_*.
 
-/** Check if two types are compatible (the C11 way)
- *
- * Expands to 1 if types are compatible, else 0.
- *
- * @param _x pointer to check.
- * @param _t type to check compatibility with.
- */
-#define is_compatible(_x, _t) _Generic(_x, _t:1, default: 0)
-
 /** Check the type #_t matches the destination data type
  *
  * Validation macro to check the type of the pointer or offset #_p passed in
@@ -109,25 +100,25 @@ typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid FR_TYP
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_SUBSECTION), _p, \
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_VOID), _p, \
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_SIZE) && !((_t) & FR_TYPE_MULTI), \
-	__builtin_choose_expr(is_compatible((_ct), size_t *), _p, (_mismatch_size) 0), \
+	__builtin_choose_expr(IS_COMPATIBLE((_ct), size_t *), _p, (_mismatch_size) 0), \
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_SIZE) && ((_t) & FR_TYPE_MULTI), \
-	__builtin_choose_expr(is_compatible((_ct), size_t **), _p, (_mismatch_size_m) 0), \
+	__builtin_choose_expr(IS_COMPATIBLE((_ct), size_t **), _p, (_mismatch_size_m) 0), \
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_DATE) && !((_t) & FR_TYPE_MULTI), \
-	__builtin_choose_expr(is_compatible((_ct), time_t *), _p, (_mismatch_time) 0), \
+	__builtin_choose_expr(IS_COMPATIBLE((_ct), time_t *), _p, (_mismatch_time) 0), \
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_DATE) && ((_t) & FR_TYPE_MULTI), \
-	__builtin_choose_expr(is_compatible((_ct), time_t **), _p, (_mismatch_time_m) 0), \
+	__builtin_choose_expr(IS_COMPATIBLE((_ct), time_t **), _p, (_mismatch_time_m) 0), \
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIME_DELTA) && !((_t) & FR_TYPE_MULTI), \
-	__builtin_choose_expr(is_compatible((_ct), fr_time_delta_t *), _p, (_mismatch_time_delta) 0), \
+	__builtin_choose_expr(IS_COMPATIBLE((_ct), fr_time_delta_t *), _p, (_mismatch_time_delta) 0), \
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIME_DELTA) && ((_t) & FR_TYPE_MULTI), \
-	__builtin_choose_expr(is_compatible((_ct), fr_time_delta_t **), _p, (_mismatch_time_delta_m) 0), \
+	__builtin_choose_expr(IS_COMPATIBLE((_ct), fr_time_delta_t **), _p, (_mismatch_time_delta_m) 0), \
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_ETHERNET) && !((_t) & FR_TYPE_MULTI), \
-	__builtin_choose_expr(is_compatible((_ct), uint8_t(*)[6]), _p, (_mismatch_ethernet) 0), \
+	__builtin_choose_expr(IS_COMPATIBLE((_ct), uint8_t(*)[6]), _p, (_mismatch_ethernet) 0), \
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_ETHERNET) && ((_t) & FR_TYPE_MULTI), \
-	__builtin_choose_expr(is_compatible((_ct), uint8_t ***), _p, (_mismatch_ethernet_m) 0), \
+	__builtin_choose_expr(IS_COMPATIBLE((_ct), uint8_t ***), _p, (_mismatch_ethernet_m) 0), \
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_IFID) && !((_t) & FR_TYPE_MULTI), \
-	__builtin_choose_expr(is_compatible((_ct), uint8_t(*)[8]), _p, (_mismatch_ifid) 0), \
+	__builtin_choose_expr(IS_COMPATIBLE((_ct), uint8_t(*)[8]), _p, (_mismatch_ifid) 0), \
 __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_IFID) && ((_t) & FR_TYPE_MULTI), \
-	__builtin_choose_expr(is_compatible((_ct), uint8_t ***), _p, (_mismatch_ifid_m) 0), \
+	__builtin_choose_expr(IS_COMPATIBLE((_ct), uint8_t ***), _p, (_mismatch_ifid_m) 0), \
 _Generic((_ct), \
 	tmpl_t **	: __builtin_choose_expr(((_t) & FR_TYPE_TMPL) && !((_t) & FR_TYPE_MULTI), \
 			_p, (_mismatch_vp_tmpl) 0), \
