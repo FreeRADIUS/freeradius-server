@@ -390,12 +390,12 @@ do { \
  *
  * @private
  */
-#define _FR_SBUFF(_sbuff_or_marker, _start, _end, _adv_parent) \
+#define _FR_SBUFF(_sbuff_or_marker, _start, _current, _end, _adv_parent) \
 ((fr_sbuff_t){ \
 	.buff		= fr_sbuff_buff(_sbuff_or_marker), \
 	.start		= (_start), \
 	.end		= (_end), \
-	.p		= fr_sbuff_current(_sbuff_or_marker), \
+	.p		= (_current), \
 	.is_const 	= fr_sbuff_ptr(_sbuff_or_marker)->is_const, \
 	.adv_parent 	= (_adv_parent), \
 	.shifted	= fr_sbuff_ptr(_sbuff_or_marker)->shifted, \
@@ -414,6 +414,7 @@ do { \
  */
 #define FR_SBUFF(_sbuff_or_marker) _FR_SBUFF(_sbuff_or_marker, \
 					     fr_sbuff_current(_sbuff_or_marker), \
+					     fr_sbuff_current(_sbuff_or_marker), \
 					     fr_sbuff_end(_sbuff_or_marker), \
 					     0x00)
 
@@ -426,6 +427,7 @@ do { \
  */
 #define FR_SBUFF_ABS(_sbuff_or_marker) _FR_SBUFF(_sbuff_or_marker, \
 						 fr_sbuff_start(_sbuff_or_marker), \
+						 fr_sbuff_current(_sbuff_or_marker), \
 						 fr_sbuff_end(_sbuff_or_marker), \
 						 0x00)
 
@@ -442,6 +444,7 @@ do { \
  */
 #define FR_SBUFF_REPARSE(_sbuff_or_marker) _FR_SBUFF(_sbuff_or_marker, \
 						     fr_sbuff_start(_sbuff_or_marker), \
+						     fr_sbuff_start(_sbuff_or_marker), \
 						     fr_sbuff_current(_sbuff_or_marker), \
 						     0x00)
 
@@ -453,6 +456,7 @@ do { \
  * @param[in] _sbuff_or_marker	to make an ephemeral copy of.
  */
 #define FR_SBUFF_BIND_CURRENT(_sbuff_or_marker) _FR_SBUFF(_sbuff_or_marker, \
+							  fr_sbuff_current(_sbuff_or_marker), \
 							  fr_sbuff_current(_sbuff_or_marker), \
 							  fr_sbuff_end(_sbuff_or_marker), \
 							  0x01)
@@ -466,6 +470,7 @@ do { \
  */
 #define FR_SBUFF_BIND_CURRENT_ABS(_sbuff_or_marker) FR_SBUFF_ABS(_sbuff_or_marker, \
 								 fr_sbuff_start(_sbuff_or_marker), \
+								 fr_sbuff_current(_sbuff_or_marker), \
 								 fr_sbuff_end(_sbuff_or_marker), \
 								 0x01)
 
