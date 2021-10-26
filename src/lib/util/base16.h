@@ -48,12 +48,12 @@ extern uint8_t const fr_base16_alphabet_decode_mc[UINT8_MAX + 1];	/* mixed case 
  *	- true if c is a character from the base32 alphabet.
  *	- false if character is not in the base32 alphabet.
  */
-static inline bool fr_is_base16_nstd(char c, uint8_t const alphabet[static UINT8_MAX])
+static inline bool fr_is_base16_nstd(char c, uint8_t const alphabet[static UINT8_MAX + 1])
 {
 	return alphabet[(uint8_t)c] < 16;
 }
 
-ssize_t		fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alphabet[static UINT8_MAX]);
+ssize_t		fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alphabet[static UINT8_MAX + 1]);
 #define		fr_base16_encode(_out, _in) \
 		fr_base16_encode_nstd(_out, _in, fr_base16_alphabet_encode_lc)
 
@@ -91,7 +91,7 @@ static inline ssize_t fr_base16_aencode(TALLOC_CTX *ctx, char **out, fr_dbuff_t 
 }
 
 ssize_t		fr_base16_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
-				      bool no_trailing, uint8_t const alphabet[static UINT8_MAX]);
+				      bool no_trailing, uint8_t const alphabet[static UINT8_MAX + 1]);
 #define		fr_base16_decode(_err, _out, _in, _no_trailing) \
 		fr_base16_decode_nstd(_err, _out, _in, _no_trailing, fr_base16_alphabet_decode_mc)
 

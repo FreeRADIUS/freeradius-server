@@ -112,7 +112,7 @@ uint8_t const fr_base16_alphabet_decode_mc[UINT8_MAX + 1] = {
  *	- >=0 the number of bytes written to out.
  *	- <0 number of bytes we would have needed to print the next hexit.
  */
-ssize_t fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alphabet[static UINT8_MAX])
+ssize_t fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alphabet[static UINT8_MAX + 1])
 {
 	fr_sbuff_t	our_out = FR_SBUFF(out);
 	fr_dbuff_t	our_in = FR_DBUFF(in);
@@ -142,7 +142,7 @@ ssize_t fr_base16_encode_nstd(fr_sbuff_t *out, fr_dbuff_t *in, char const alphab
  *	- Length of decoded data.
  */
 ssize_t fr_base16_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_sbuff_t *in,
-			      bool no_trailing, uint8_t const alphabet[static UINT8_MAX])
+			      bool no_trailing, uint8_t const alphabet[static UINT8_MAX + 1])
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	fr_dbuff_t	our_out = FR_DBUFF(out);
