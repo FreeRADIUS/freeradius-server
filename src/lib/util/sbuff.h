@@ -1502,13 +1502,12 @@ fr_slen_t fr_sbuff_out_float64(fr_sbuff_parse_error_t *err, double *out, fr_sbuf
 		 int16_t *	: fr_sbuff_out_int16(_err, (int16_t *)_out, _in, true), \
 		 int32_t *	: fr_sbuff_out_int32(_err, (int32_t *)_out, _in, true), \
 		 int64_t *	: fr_sbuff_out_int64(_err, (int64_t *)_out, _in, true), \
-		 ssize_t *	: fr_sbuff_out_ssize(_err, (ssize_t *)_out, _in, true), \
+		 _fr_sbuff_out_ssize(_err, _out, _in) \
 		 uint8_t *	: fr_sbuff_out_uint8(_err, (uint8_t *)_out, _in, true), \
 		 uint16_t *	: fr_sbuff_out_uint16(_err, (uint16_t *)_out, _in, true), \
 		 uint32_t *	: fr_sbuff_out_uint32(_err, (uint32_t *)_out, _in, true), \
 		 uint64_t *	: fr_sbuff_out_uint64(_err, (uint64_t *)_out, _in, true), \
 		 _fr_sbuff_out_size(_err, _out, _in) \
-		 _fr_sbuff_out_ssize(_err, _out, _in) \
 		 float *	: fr_sbuff_out_float32(_err, (float *)_out, _in, true), \
 		 double *	: fr_sbuff_out_float64(_err, (double *)_out, _in, true) \
 	)
