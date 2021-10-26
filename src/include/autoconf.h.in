@@ -596,10 +596,17 @@
 /* Define as the return type of signal handlers (`int' or `void'). */
 #undef RETSIGTYPE
 
+/* Define if the compiler supports size_t has the same underlying type as
+   uint64 */
+#undef SIZE_SAME_AS_UINT64
+
 /* Solaris-Style ctime_r */
 #undef SOLARISSTYLE
 
 /* Define to 1 if you have the ANSI C header files. */
+/* Define if the compiler supports ssize_t has the same underlying type as
+   int64 */
+#undef SSIZE_SAME_AS_INT64
 #undef STDC_HEADERS
 
 /* SYSV-Style get*byaddr_r */

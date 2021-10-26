@@ -3099,6 +3099,10 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 
 
 
+
+
+
+
 #
 # SYNOPSIS
 #
@@ -15287,7 +15291,6 @@ printf "%s\n" "#define HAVE_BUILTIN_CLZLL 1" >>confdefs.h
 fi
 
 
-
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for _Generic support in compiler" >&5
 printf %s "checking for _Generic support in compiler... " >&6; }
 if test ${ax_cv_cc_c11_generic+y}
@@ -15337,6 +15340,105 @@ fi
 if test "x$ax_cv_cc_c11_generic" != "xyes"; then
   as_fn_error $? "FreeRADIUS requires support for the C11 _Generic keyword" "$LINENO" 5
 fi
+
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if size_t == uint64_t" >&5
+printf %s "checking if size_t == uint64_t... " >&6; }
+if test ${ax_cv_cc_size_same_as_uint64+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
+  if test "$cross_compiling" = yes
+then :
+  { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+printf "%s\n" "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else $as_nop
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+        #include <stdint.h>
+        #include <stddef.h>
+
+        int main(int argc, char **argv) {
+          return _Generic((size_t)(0), uint64_t: 1, default: 0);
+        }
+
+
+_ACEOF
+if ac_fn_c_try_run "$LINENO"
+then :
+  ax_cv_cc_size_same_as_uint64=no
+else $as_nop
+  ax_cv_cc_size_same_as_uint64=yes
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_size_same_as_uint64" >&5
+printf "%s\n" "$ax_cv_cc_size_same_as_uint64" >&6; }
+if test "x$ax_cv_cc_size_same_as_uint64" = "xyes"; then
+
+printf "%s\n" "#define SIZE_SAME_AS_UINT64 1" >>confdefs.h
+
+fi
+
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if ssize_t == int64_t" >&5
+printf %s "checking if ssize_t == int64_t... " >&6; }
+if test ${ax_cv_cc_ssize_same_as_int64+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
+  if test "$cross_compiling" = yes
+then :
+  { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+printf "%s\n" "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else $as_nop
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+        #include <stdint.h>
+        #include <stddef.h>
+
+        int main(int argc, char **argv) {
+          return _Generic((ssize_t)(0), int64_t: 1, default: 0);
+        }
+
+
+_ACEOF
+if ac_fn_c_try_run "$LINENO"
+then :
+  ax_cv_cc_ssize_same_as_int64=no
+else $as_nop
+  ax_cv_cc_ssize_same_as_int64=yes
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_ssize_same_as_int64" >&5
+printf "%s\n" "$ax_cv_cc_ssize_same_as_int64" >&6; }
+if test "x$ax_cv_cc_ssize_same_as_int64" = "xyes"; then
+
+printf "%s\n" "#define SSIZE_SAME_AS_INT64 1" >>confdefs.h
+
+fi
+
 
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for crypt in -lcrypt" >&5

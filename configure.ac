@@ -1929,11 +1929,13 @@ AX_CC_BUILTIN_CHOOSE_EXPR
 AX_CC_BUILTIN_TYPES_COMPATIBLE_P
 AX_CC_BUILTIN_BSWAP64
 AX_CC_BUILTIN_CLZLL
-
 AX_CC_HAVE_C11_GENERIC
 if test "x$ax_cv_cc_c11_generic" != "xyes"; then
   AC_MSG_ERROR([FreeRADIUS requires support for the C11 _Generic keyword])
 fi
+
+AX_CC_SIZE_SAME_AS_UINT64
+AX_CC_SSIZE_SAME_AS_INT64
 
 dnl #############################################################
 dnl #

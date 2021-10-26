@@ -336,6 +336,58 @@ fi
 ])
 
 dnl #
+dnl #  Check if size_t and int64_t are identical
+dnl #
+AC_DEFUN([AX_CC_SIZE_SAME_AS_UINT64],
+[
+AC_CACHE_CHECK([if size_t == uint64_t], [ax_cv_cc_size_same_as_uint64],[
+  AC_RUN_IFELSE(
+    [
+      AC_LANG_SOURCE([
+        #include <stdint.h>
+        #include <stddef.h>
+
+        int main(int argc, char **argv) {
+          return _Generic((size_t)(0), uint64_t: 1, default: 0);
+        }
+      ])
+    ],
+    [ax_cv_cc_size_same_as_uint64=no],
+    [ax_cv_cc_size_same_as_uint64=yes]
+  )
+])
+if test "x$ax_cv_cc_size_same_as_uint64" = "xyes"; then
+  AC_DEFINE([SIZE_SAME_AS_UINT64],1,[Define if the compiler supports size_t has the same underlying type as uint64])
+fi
+])
+
+dnl #
+dnl #  Check if ssize_t and int64_t are identical
+dnl #
+AC_DEFUN([AX_CC_SSIZE_SAME_AS_INT64],
+[
+AC_CACHE_CHECK([if ssize_t == int64_t], [ax_cv_cc_ssize_same_as_int64],[
+  AC_RUN_IFELSE(
+    [
+      AC_LANG_SOURCE([
+        #include <stdint.h>
+        #include <stddef.h>
+
+        int main(int argc, char **argv) {
+          return _Generic((ssize_t)(0), int64_t: 1, default: 0);
+        }
+      ])
+    ],
+    [ax_cv_cc_ssize_same_as_int64=no],
+    [ax_cv_cc_ssize_same_as_int64=yes]
+  )
+])
+if test "x$ax_cv_cc_ssize_same_as_int64" = "xyes"; then
+  AC_DEFINE([SSIZE_SAME_AS_INT64],1,[Define if the compiler supports ssize_t has the same underlying type as int64])
+fi
+])
+
+dnl #
 dnl # Determine the number of system cores we have
 dnl #
 AC_DEFUN([AX_SYSTEM_CORES],[
