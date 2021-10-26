@@ -374,7 +374,7 @@ int main(int argc, char *argv[])
 		do {
 			DEBUG2("Looking for \"%s\" in dict \"%s\"", attr, fr_dict_root(*dict_p)->name);
 
-			da = fr_dict_attr_by_name(NULL, fr_dict_root(*dict_p), attr);
+			da = fr_dict_attr_by_oid(NULL, fr_dict_root(*dict_p), attr);
 			if (da) {
 				da_print_info_td(*dict_p, da);
 				found = true;
