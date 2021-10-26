@@ -1459,21 +1459,18 @@ fr_slen_t fr_sbuff_out_uint16(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbu
 fr_slen_t fr_sbuff_out_uint32(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 fr_slen_t fr_sbuff_out_uint64(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 fr_slen_t fr_sbuff_out_size(fr_sbuff_parse_error_t *err, size_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-fr_slen_t fr_sbuff_out_ssize(fr_sbuff_parse_error_t *err, ssize_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 
 fr_slen_t fr_sbuff_out_uint8_oct(fr_sbuff_parse_error_t *err, uint8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 fr_slen_t fr_sbuff_out_uint16_oct(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 fr_slen_t fr_sbuff_out_uint32_oct(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 fr_slen_t fr_sbuff_out_uint64_oct(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 fr_slen_t fr_sbuff_out_size_oct(fr_sbuff_parse_error_t *err, size_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-fr_slen_t fr_sbuff_out_ssize_oct(fr_sbuff_parse_error_t *err, ssize_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 
 fr_slen_t fr_sbuff_out_uint8_hex(fr_sbuff_parse_error_t *err, uint8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 fr_slen_t fr_sbuff_out_uint16_hex(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 fr_slen_t fr_sbuff_out_uint32_hex(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 fr_slen_t fr_sbuff_out_uint64_hex(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 fr_slen_t fr_sbuff_out_size_hex(fr_sbuff_parse_error_t *err, size_t *out, fr_sbuff_t *sbuff, bool no_trailing);
-fr_slen_t fr_sbuff_out_ssize_hex(fr_sbuff_parse_error_t *err, ssize_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 
 fr_slen_t fr_sbuff_out_float32(fr_sbuff_parse_error_t *err, float *out, fr_sbuff_t *sbuff, bool no_trailing);
 fr_slen_t fr_sbuff_out_float64(fr_sbuff_parse_error_t *err, double *out, fr_sbuff_t *sbuff, bool no_trailing);
