@@ -626,7 +626,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	test_ctx = talloc_zero(ctx, fr_dhcpv6_decode_ctx_t);
 	if (!test_ctx) return -1;
 
-	test_ctx->tmp_ctx = talloc(ctx, uint8_t);
+	test_ctx->tmp_ctx = talloc(test_ctx, uint8_t);
 	talloc_set_destructor(test_ctx, _test_ctx_free);
 
 	*out = test_ctx;

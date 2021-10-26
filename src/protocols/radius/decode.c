@@ -1810,7 +1810,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	test_ctx = talloc_zero(ctx, fr_radius_ctx_t);
 	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
 	memcpy(test_ctx->vector, vector, sizeof(test_ctx->vector));
-	test_ctx->tmp_ctx = talloc_zero(ctx, uint8_t);
+	test_ctx->tmp_ctx = talloc_zero(test_ctx, uint8_t);
 	talloc_set_destructor(test_ctx, _test_ctx_free);
 
 	*out = test_ctx;
