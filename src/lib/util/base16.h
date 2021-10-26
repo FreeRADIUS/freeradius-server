@@ -36,9 +36,9 @@ extern "C" {
 #include <stdint.h>
 #include <sys/types.h>
 
-extern char const fr_base16_alphabet_encode_lc[UINT8_MAX];
-extern char const fr_base16_alphabet_encode_uc[UINT8_MAX];
-extern uint8_t const fr_base16_alphabet_decode_mc[UINT8_MAX];	/* mixed case */
+extern char const fr_base16_alphabet_encode_lc[UINT8_MAX + 1];
+extern char const fr_base16_alphabet_encode_uc[UINT8_MAX + 1];
+extern uint8_t const fr_base16_alphabet_decode_mc[UINT8_MAX + 1];	/* mixed case */
 
 /** Check if char is in base16 alphabet
  *

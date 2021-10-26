@@ -28,7 +28,7 @@ RCSID("$Id$")
 /** lower case encode alphabet for base16
  *
  */
-char const fr_base16_alphabet_encode_lc[UINT8_MAX] = {
+char const fr_base16_alphabet_encode_lc[UINT8_MAX + 1] = {
 	[0] = '0',
 	[1] = '1',
 	[2] = '2',
@@ -50,7 +50,7 @@ char const fr_base16_alphabet_encode_lc[UINT8_MAX] = {
 /** lower case encode alphabet for base16
  *
  */
-char const fr_base16_alphabet_encode_uc[UINT8_MAX] = {
+char const fr_base16_alphabet_encode_uc[UINT8_MAX + 1] = {
 	[0] = '0',
 	[1] = '1',
 	[2] = '2',
@@ -72,7 +72,7 @@ char const fr_base16_alphabet_encode_uc[UINT8_MAX] = {
 /** Mixed case decode alphabet for base16
  *
  */
-uint8_t const fr_base16_alphabet_decode_mc[UINT8_MAX] = {
+uint8_t const fr_base16_alphabet_decode_mc[UINT8_MAX + 1] = {
 	F32(0, UINT8_MAX), F16(32, UINT8_MAX),
 	['0'] = 0,
 	['1'] = 1,
