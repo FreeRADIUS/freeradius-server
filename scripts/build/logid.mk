@@ -10,5 +10,5 @@ LOGID_FILES := $(shell grep -l LOG_ID ${ALL_MAKEFILES})
 logid.check: $(LOGID_FILES)
 	@./scripts/build/logid-check.pl $^
 
-logid.update: $(ALL_SRCS)
+logid.update: $(shell find src -name "*.c" -print)
 	@./scripts/build/logid-update.pl $^
