@@ -73,6 +73,8 @@ ATTRIBUTE	Aruba-UBT-Gateway-CPPM-Role		59	string
 
 ATTRIBUTE  	Aruba-AP-MAC-Address        		60      string
 ATTRIBUTE  	Aruba-Device-MAC-Address    		61      string
+ATTRIBUTE	Aruba-Device-Traffic-Class		63	integer
+
 
 VALUE	Aruba-AirGroup-Device-Type	Personal-Device		1
 VALUE	Aruba-AirGroup-Device-Type	Shared-Device		2
@@ -87,6 +89,7 @@ VALUE	Aruba-PoE-Priority		Low			2
 
 VALUE	Aruba-Port-Auth-Mode		Infrastructure-Mode	1
 VALUE	Aruba-Port-Auth-Mode		Client-Mode		2
+VALUE	Aruba-Port-Auth-Mode		Multi-Domain-Mode	3
 
 VALUE	Aruba-QoS-Trust-Mode		DSCP			0
 VALUE	Aruba-QoS-Trust-Mode		QoS			1

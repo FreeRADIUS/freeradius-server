@@ -1,6 +1,7 @@
 FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	Feature improvements
 	* Add dictionary.mellanox
+	* Update dictionary.aruba
 
 	Bug fixes
 
