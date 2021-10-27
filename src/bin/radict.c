@@ -62,7 +62,7 @@ static void usage(void)
 	fprintf(stderr, "Very simple interface to extract attribute definitions from FreeRADIUS dictionaries\n");
 }
 
-static int load_dicts(char const *dict_dir)
+static int load_dicts(char const *dict_dir, char const *protocol)
 {
 	DIR		*dir;
 	struct dirent	*dp;
@@ -80,6 +80,11 @@ static int load_dicts(char const *dict_dir)
 		char *file_str;
 
 		if (dp->d_name[0] == '.') continue;
+
+		/*
+		 *	We only want to load one...
+		 */
+		if (protocol && (strcmp(dp->d_name, protocol) != 0)) continue;
 
 		/*
 		 *	Skip the internal FreeRADIUS dictionary.
@@ -322,7 +327,7 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-	if (load_dicts(dict_dir) < 0) {
+	if (load_dicts(dict_dir, protocol) < 0) {
 		fr_perror("radict");
 		ret = 1;
 		goto finish;
