@@ -352,12 +352,13 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		int minutes = sec;
 
 		p = end + 1;
+		errno = 0; /* Must be reset */
 		sec = strtoul(p, &end, 10);
 		if (p == end) goto failed;
 
 		if (*end) goto failed;
 
-		if (sec > 60) {
+		if ((errno = ERANGE) || (sec > 60)) {	/* ERANGE is for wrap detection */
 			fr_strerror_printf("Too many seconds in \"%s\"", in);
 			return -1;
 		}
@@ -374,9 +375,9 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		if (*end) goto failed;
 
 		if (negative) {
-			*out = fr_time_delta_from_sec(minutes * 60 - sec);
+			*out = fr_time_delta_from_sec(((int64_t)minutes * 60) - sec);
 		} else {
-			*out = fr_time_delta_from_sec(minutes * 60 + sec);
+			*out = fr_time_delta_from_sec(((int64_t)minutes * 60) + sec);
 		}
 		return 0;
 
