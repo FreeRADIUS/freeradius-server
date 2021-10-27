@@ -21,15 +21,18 @@ if (&Tmp-Ethernet-0[2] != 00:11:22:33:44:56) {
 }
 
 # NULL assignment
-update request {
-	&Tmp-Ethernet-0 += "%{Tmp-Ethernet-1[42]}"
+group {
+	update request {
+		&Tmp-Ethernet-0 += "%{Tmp-Ethernet-1[42]}"
+	}
+
+	actions {
+		fail = 1
+	}
 }
 
-# Null xlat expansion results in zero length string, which with current behaviour
-# results in all zeros ethernet address.
-if (&Tmp-Ethernet-0[3] != 00:00:00:00:00:00) {
+if (!fail) {
 	test_fail
 }
-
 
 success

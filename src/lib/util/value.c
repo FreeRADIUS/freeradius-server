@@ -1040,8 +1040,6 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 	}
 }
 
-static char const hextab[] = "0123456789abcdef";
-
 /** Convert a string value with escape sequences into its binary form
  *
  * The quote character determines the escape sequences recognised.
@@ -4716,6 +4714,75 @@ parse:
 		return slen;	/* Just whatever the last error offset was */
 	}
 
+	case FR_TYPE_ETHERNET:
+	{
+		uint64_t 		num;
+		fr_ethernet_t		ether;
+		fr_dbuff_t		dbuff;
+		fr_sbuff_parse_error_t	err;
+
+		fr_dbuff_init(&dbuff, ether.addr, sizeof(ether.addr));
+
+		/*
+		 *	Convert things which are obviously integers to Ethernet addresses
+		 *
+		 *	We assume the number is the decimal
+		 *	representation of the ethernet address.
+		 *	i.e. the ethernet address converted to a
+		 *	number, and printed.
+		 *
+		 *	The string gets converted to a network-order
+		 *	8-byte number, and then the lower bytes of
+		 *	that get copied to the ethernet address.
+		 */
+		if ((fr_sbuff_out(NULL, &num, &our_in) > 0) && !fr_sbuff_is_char(&our_in, ':')) {
+			num = htonll(num);
+
+			fr_dbuff_in_memcpy(&dbuff, ((uint8_t *) &num) + 2, sizeof(dst->vb_ether));
+			fr_value_box_ethernet_addr(dst, dst_enumv, &ether, tainted);
+
+			return fr_sbuff_set(in, &our_in);
+		}
+
+		fr_sbuff_set_to_start(&our_in);
+
+		fr_base16_decode(&err, &dbuff, &our_in, true);
+		if (err != FR_SBUFF_PARSE_OK) {
+		ether_error:
+			fr_sbuff_parse_error_to_strerror(err);
+			return fr_sbuff_error(&our_in);
+		}
+
+		if (!fr_sbuff_next_if_char(&our_in, ':')) goto ether_error;
+
+		fr_base16_decode(&err, &dbuff, &our_in, true);
+		if (err != FR_SBUFF_PARSE_OK) goto ether_error;
+
+		if (!fr_sbuff_next_if_char(&our_in, ':')) goto ether_error;
+
+		fr_base16_decode(&err, &dbuff, &our_in, true);
+		if (err != FR_SBUFF_PARSE_OK) goto ether_error;
+
+		if (!fr_sbuff_next_if_char(&our_in, ':')) goto ether_error;
+
+		fr_base16_decode(&err, &dbuff, &our_in, true);
+		if (err != FR_SBUFF_PARSE_OK) goto ether_error;
+
+		if (!fr_sbuff_next_if_char(&our_in, ':')) goto ether_error;
+
+		fr_base16_decode(&err, &dbuff, &our_in, true);
+		if (err != FR_SBUFF_PARSE_OK) goto ether_error;
+
+		if (!fr_sbuff_next_if_char(&our_in, ':')) goto ether_error;
+
+		fr_base16_decode(&err, &dbuff, &our_in, true);
+		if (err != FR_SBUFF_PARSE_OK) goto ether_error;
+
+		fr_value_box_ethernet_addr(dst, dst_enumv, &ether, tainted);
+
+		return fr_sbuff_set(in, &our_in);
+	}
+
 	case FR_TYPE_NULL:
 		if (!rules->escapes && fr_sbuff_adv_past_str_literal(in, "NULL")) {
 			fr_value_box_init(dst, dst_type, dst_enumv, tainted);
@@ -4776,54 +4843,6 @@ parse:
 			fr_strerror_printf("Failed to parse interface-id string \"%s\"", buffer);
 			return -1;
 		}
-		break;
-
-	case FR_TYPE_ETHERNET:
-	{
-		char const *c1, *c2, *cp;
-		size_t p_len = 0;
-
-		/*
-		 *	Convert things which are obviously integers to Ethernet addresses
-		 *
-		 *	We assume the number is the decimal
-		 *	representation of the ethernet address.
-		 *	i.e. the ethernet address converted to a
-		 *	number, and printed.
-		 *
-		 *	The string gets converted to a network-order
-		 *	8-byte number, and then the lower bytes of
-		 *	that get copied to the ethernet address.
-		 */
-		if (is_integer(buffer)) {
-			uint64_t lvalue = htonll(atoll(buffer));
-
-			memcpy(dst->vb_ether, ((uint8_t *) &lvalue) + 2, sizeof(dst->vb_ether));
-			break;
-		}
-
-		cp = buffer;
-		while (*cp) {
-			if (cp[1] == ':') {
-				c1 = hextab;
-				c2 = memchr(hextab, tolower((int) cp[0]), 16);
-				cp += 2;
-			} else if ((cp[1] != '\0') && ((cp[2] == ':') || (cp[2] == '\0'))) {
-				c1 = memchr(hextab, tolower((int) cp[0]), 16);
-				c2 = memchr(hextab, tolower((int) cp[1]), 16);
-				cp += 2;
-				if (*cp == ':') cp++;
-			} else {
-				c1 = c2 = NULL;
-			}
-			if (!c1 || !c2 || (p_len >= sizeof(dst->vb_ether))) {
-				fr_strerror_printf("failed to parse Ethernet address \"%s\"", buffer);
-				return -1;
-			}
-			dst->vb_ether[p_len] = ((c1-hextab)<<4) + (c2-hextab);
-			p_len++;
-		}
-	}
 		break;
 
 	/*
