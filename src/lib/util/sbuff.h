@@ -390,7 +390,7 @@ do { \
  *
  * @private
  */
-#define _FR_SBUFF(_sbuff_or_marker, _start, _current, _end, _adv_parent) \
+#define _FR_SBUFF(_sbuff_or_marker, _start, _current, _end, _extend, _adv_parent) \
 ((fr_sbuff_t){ \
 	.buff		= fr_sbuff_buff(_sbuff_or_marker), \
 	.start		= (_start), \
@@ -399,7 +399,7 @@ do { \
 	.is_const 	= fr_sbuff_ptr(_sbuff_or_marker)->is_const, \
 	.adv_parent 	= (_adv_parent), \
 	.shifted	= fr_sbuff_ptr(_sbuff_or_marker)->shifted, \
-	.extend		= fr_sbuff_ptr(_sbuff_or_marker)->extend, \
+	.extend		= (_extend), \
 	.uctx		= fr_sbuff_ptr(_sbuff_or_marker)->uctx, \
 	.parent 	= fr_sbuff_ptr(_sbuff_or_marker) \
 })
@@ -416,6 +416,7 @@ do { \
 					     fr_sbuff_current(_sbuff_or_marker), \
 					     fr_sbuff_current(_sbuff_or_marker), \
 					     fr_sbuff_end(_sbuff_or_marker), \
+					     fr_sbuff_ptr(_sbuff_or_marker)->extend, \
 					     0x00)
 
 /** Create a new sbuff pointing to the same underlying buffer
@@ -429,6 +430,7 @@ do { \
 						 fr_sbuff_start(_sbuff_or_marker), \
 						 fr_sbuff_current(_sbuff_or_marker), \
 						 fr_sbuff_end(_sbuff_or_marker), \
+						 fr_sbuff_ptr(_sbuff_or_marker)->extend, \
 						 0x00)
 
 /** Create a new sbuff pointing to the same underlying buffer
@@ -439,6 +441,7 @@ do { \
  * - Parent will _NOT_ be advanced by operations on its child.
  * - Child will have its `start` pointer set to the `start` pointer of the parent.
  * - Child will have its `end` pointer set to the `p` pointer of the parent.
+ * - Child will not extend parent.
  *
  * @param[in] _sbuff_or_marker	to make an ephemeral copy of.
  */
@@ -446,6 +449,7 @@ do { \
 						     fr_sbuff_start(_sbuff_or_marker), \
 						     fr_sbuff_start(_sbuff_or_marker), \
 						     fr_sbuff_current(_sbuff_or_marker), \
+						     NULL, \
 						     0x00)
 
 /** Create a new sbuff pointing to the same underlying buffer
@@ -459,6 +463,7 @@ do { \
 							  fr_sbuff_current(_sbuff_or_marker), \
 							  fr_sbuff_current(_sbuff_or_marker), \
 							  fr_sbuff_end(_sbuff_or_marker), \
+							  fr_sbuff_ptr(_sbuff_or_marker)->extend, \
 							  0x01)
 
 /** Create a new sbuff pointing to the same underlying buffer
@@ -472,6 +477,7 @@ do { \
 								 fr_sbuff_start(_sbuff_or_marker), \
 								 fr_sbuff_current(_sbuff_or_marker), \
 								 fr_sbuff_end(_sbuff_or_marker), \
+								 fr_sbuff_ptr(_sbuff_or_marker)->extend, \
 								 0x01)
 
 /** Creates a compound literal to pass into functions which accept a sbuff
@@ -1464,6 +1470,12 @@ fr_slen_t fr_sbuff_out_uint16(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbu
 fr_slen_t fr_sbuff_out_uint32(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 fr_slen_t fr_sbuff_out_uint64(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 fr_slen_t fr_sbuff_out_size(fr_sbuff_parse_error_t *err, size_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+
+fr_slen_t fr_sbuff_out_uint8_dec(fr_sbuff_parse_error_t *err, uint8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_uint16_dec(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_uint32_dec(fr_sbuff_parse_error_t *err, uint32_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_uint64_dec(fr_sbuff_parse_error_t *err, uint64_t *out, fr_sbuff_t *sbuff, bool no_trailing);
+fr_slen_t fr_sbuff_out_size_dec(fr_sbuff_parse_error_t *err, size_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 
 fr_slen_t fr_sbuff_out_uint8_oct(fr_sbuff_parse_error_t *err, uint8_t *out, fr_sbuff_t *sbuff, bool no_trailing);
 fr_slen_t fr_sbuff_out_uint16_oct(fr_sbuff_parse_error_t *err, uint16_t *out, fr_sbuff_t *sbuff, bool no_trailing);

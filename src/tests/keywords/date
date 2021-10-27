@@ -68,10 +68,10 @@ update request {
 }
 
 update request {
-	&Tmp-Integer-3 := "%(sqldate:%{Tmp-String-3})"
+	&Tmp-String-0 := "%(sqldate:%{Tmp-String-3})"
 }
 
-if (&Tmp-Integer-3 != 0) {
+if (&Tmp-String-0 != "") {
 	test_fail
 }
 

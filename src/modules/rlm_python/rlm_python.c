@@ -344,7 +344,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, rlm_python_t const *inst, request_t *re
 		talloc_free(dst);
 
 		vp->op = op;
-		if (fr_pair_value_from_str(vp, s2, -1, '\0', false) < 0) {
+		if (fr_pair_value_from_str(vp, s2, strlen(s2), NULL, false) < 0) {
 			DEBUG("%s - Failed: '%s.%s' %s '%s'", funcname, list_name, s1,
 			      fr_table_str_by_value(fr_tokens_table, op, "="), s2);
 		} else {

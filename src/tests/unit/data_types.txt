@@ -77,19 +77,19 @@ match -3600
 #  uint8
 #
 value uint8 256
-match Value 256 is invalid for type uint8 (must be in range 0...255)
+match integer overflow
 
 value uint8 -128
-match Invalid negative value "-128" for unsigned integer
+match integer underflow
 
 value int8 128
-match Value 128 is invalid for type int8 (must be in range -128...127)
+match integer overflow
 
 value int8 -128
 match -128
 
 value int8 -130
-match Value -130 is invalid for type int8 (must be in range -128...127)
+match integer underflow
 
 value date Jan  1 1970 12:00:00 UTC
 match Jan  1 1970 12:00:00 UTC

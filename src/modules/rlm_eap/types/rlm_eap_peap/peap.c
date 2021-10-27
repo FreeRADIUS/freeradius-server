@@ -750,7 +750,7 @@ static int CC_HINT(nonnull) setup_fake_request(request_t *request, request_t *fa
 	 *	Tell the request that it's a fake one.
 	 */
 	MEM(fr_pair_prepend_by_da(fake->request_ctx, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
-	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"), '\0', false);
+	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1") - 1, NULL, false);
 
 	if (t->username) {
 		vp = fr_pair_copy(fake->request_ctx, t->username);

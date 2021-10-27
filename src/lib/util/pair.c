@@ -1805,16 +1805,15 @@ int fr_pair_value_copy(fr_pair_t *dst, fr_pair_t *src)
  * @param[in] vp	to assign value to.
  * @param[in] value	string to convert. Binary safe for variable
  *			length values if len is provided.
- * @param[in] inlen	may be < 0 in which case strlen(len) is used
- *			to determine length, else inlen should be the
- *			length of the string or sub string to parse.
- * @param[in] quote	character used set unescape mode.  @see fr_value_str_unescape.
+ * @param[in] inlen	The length of the input string.
+ * @param[in] uerules	used to perform unescaping.
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_pair_value_from_str(fr_pair_t *vp, char const *value, ssize_t inlen, char quote, bool tainted)
+int fr_pair_value_from_str(fr_pair_t *vp, char const *value, size_t inlen,
+			   fr_sbuff_unescape_rules_t const *uerules, bool tainted)
 {
 	/*
 	 *	This is not yet supported because the rest of the APIs
@@ -1837,7 +1836,10 @@ int fr_pair_value_from_str(fr_pair_t *vp, char const *value, ssize_t inlen, char
 	 *	We presume that the input data is from a double quoted
 	 *	string, and needs unescaping
 	 */
-	if (fr_value_box_from_str(vp, &vp->data, vp->da->type, vp->da, value, inlen, quote, tainted) < 0) return -1;
+	if (fr_value_box_from_str(vp, &vp->data, vp->da->type, vp->da,
+				  value, inlen,
+				  uerules,
+				  tainted) < 0) return -1;
 	vp->type = VT_DATA;
 
 	PAIR_VERIFY(vp);

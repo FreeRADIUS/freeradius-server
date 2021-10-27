@@ -134,8 +134,9 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 		fr_value_box_list_init(&state->box);
 		MEM(box = fr_value_box_alloc(state->ctx, FR_TYPE_STRING, NULL, true));
 		if (fr_value_box_from_str(state->ctx, box, type, NULL,
-					  fr_sbuff_buff(&state->exec.stdout_buff),
-					  fr_sbuff_used(&state->exec.stdout_buff), 0, true) < 0) {
+					  fr_sbuff_start(&state->exec.stdout_buff),
+					  fr_sbuff_used(&state->exec.stdout_buff),
+					  NULL, true) < 0) {
 			talloc_free(box);
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;

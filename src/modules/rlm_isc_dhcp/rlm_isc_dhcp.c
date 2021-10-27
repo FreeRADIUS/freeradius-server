@@ -694,7 +694,7 @@ redo_multi:
 	info->argv[info->argc] = talloc_zero(info, fr_value_box_t);
 
 	ret = fr_value_box_from_str(info, info->argv[info->argc], type, NULL,
-				      state->token, state->token_len, 0, false);
+				    state->token, state->token_len, NULL, false);
 	if (ret < 0) return ret;
 
 	info->argc++;
@@ -884,7 +884,7 @@ static int parse_option_definition(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tok
 
 	type = FR_TYPE_UINT32;
 	ret = fr_value_box_from_str(NULL, &box, type, NULL,
-				      state->token, state->token_len, 0, false);
+				    state->token, state->token_len, NULL, false);
 	if (ret < 0) goto error;
 
 	/*
@@ -1014,7 +1014,7 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 	/*
 	 *	Add in the first value.
 	 */
-	ret = fr_pair_value_from_str(vp, value, talloc_array_length(value) - 1, '\0', false);
+	ret = fr_pair_value_from_str(vp, value, talloc_array_length(value) - 1, NULL, false);
 	if (ret < 0) {
 		talloc_free(value);
 		return ret;
@@ -1043,7 +1043,7 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 
 		MEM(vp = fr_pair_afrom_da(parent, da));
 
-		ret = fr_pair_value_from_str(vp, state->token, state->token_len, '\0', false);
+		ret = fr_pair_value_from_str(vp, state->token, state->token_len, NULL, false);
 		if (ret < 0) return ret;
 
 		vp->op = T_OP_EQ;

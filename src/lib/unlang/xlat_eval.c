@@ -1623,8 +1623,9 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 			fr_value_box_t data;
 
 			type = FR_TYPE_STRING;
-			if (fr_value_box_from_str(ctx, &data, type, NULL, child,
-						  talloc_array_length(child) - 1, '"', false) < 0) {
+			if (fr_value_box_from_str(ctx, &data, type, NULL,
+						  child, talloc_array_length(child) - 1,
+						  &fr_value_unescape_double, false) < 0) {
 				talloc_free(child);
 				return NULL;
 			}
@@ -2076,7 +2077,7 @@ int xlat_eval_pair(request_t *request, fr_pair_t *vp)
 		return 0;
 	}
 
-	if (fr_pair_value_from_str(vp, expanded, -1, '"', true) < 0){
+	if (fr_pair_value_from_str(vp, expanded, strlen(expanded), &fr_value_unescape_double, true) < 0){
 		talloc_free(expanded);
 		return -2;
 	}

@@ -155,7 +155,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 			MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 
 			if (fr_pair_value_from_str(vp, self->values[i]->bv_val,
-						   self->values[i]->bv_len, '\0', true) < 0) {
+						   self->values[i]->bv_len, NULL, true) < 0) {
 				RPWDEBUG("Failed parsing value \"%pV\" for attribute %s",
 					 fr_box_strvalue_len(self->values[i]->bv_val, self->values[i]->bv_len),
 					 tmpl_da(map->lhs)->name);

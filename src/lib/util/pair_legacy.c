@@ -137,7 +137,7 @@ static fr_pair_t *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
 		goto error;
 	}
 
-	if (fr_pair_value_from_str(vp, value, -1, '"', false) < 0) goto error;
+	if (fr_pair_value_from_str(vp, value, strlen(value), &fr_value_unescape_double, false) < 0) goto error;
 
 	vp->op = (op == 0) ? T_OP_EQ : op;
 	return vp;
@@ -244,7 +244,7 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
 	 *	We probably want to fix fr_pair_value_from_str to accept
 	 *	octets as values for any attribute.
 	 */
-	if (value && (fr_pair_value_from_str(vp, value, -1, '\"', false) < 0)) {
+	if (value && (fr_pair_value_from_str(vp, value, strlen(value), &fr_value_unescape_double, false) < 0)) {
 		talloc_free(vp);
 		return NULL;
 	}
@@ -515,14 +515,8 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 					talloc_free(vp);
 					goto error;
 				}
-
-				/*
-				 *	Parse it ourselves.  The RHS
-				 *	might NOT be tainted, but we
-				 *	don't know.  So just mark it
-				 *	as such to be safe.
-				 */
-			} else if (fr_pair_value_from_str(vp, raw.r_opand, -1, '"', false) < 0) {
+			} else if (fr_pair_value_from_str(vp, raw.r_opand, strlen(raw.r_opand),
+							  fr_value_unescape_by_quote[quote], false) < 0) {
 				talloc_free(vp);
 				goto error;
 			}

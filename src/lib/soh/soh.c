@@ -205,7 +205,7 @@ static int eap_peap_soh_mstlv(request_t *request, uint8_t const *p, unsigned int
 			data_len -= 18;
 
 			MEM(pair_update_request(&vp, attr_soh_ms_machine_os_vendor) >= 0);
-			fr_pair_value_from_str(vp, "Microsoft", -1, '\0', false);
+			fr_pair_value_from_str(vp, "Microsoft", sizeof("Microsoft") - 1, NULL, false);
 
 			MEM(pair_update_request(&vp, attr_soh_ms_machine_os_version) >= 0);
 			vp->vp_uint32 = soh_pull_be_32(p);

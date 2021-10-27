@@ -174,8 +174,10 @@ static inline CC_HINT(always_inline) int dict_fixup_enumv_apply(UNUSED dict_fixu
 	type = da->type;
 
 	if (fr_value_box_from_str(fixup, &value, type, NULL,
-				  fixup->value, talloc_array_length(fixup->value) - 1, '\0', false) < 0) {
-		fr_strerror_printf_push("Invalid VALUE for Attribute '%s' at %s[%d]",
+				  fixup->value, talloc_array_length(fixup->value) - 1,
+				  NULL, false) < 0) {
+		fr_strerror_printf_push("Invalid VALUE '%pV' for attribute '%s' at %s[%d]",
+					fr_box_strvalue_buffer(fixup->value),
 					da->name,
 					fr_cwd_strip(fixup->common.filename), fixup->common.line);
 		return -1;

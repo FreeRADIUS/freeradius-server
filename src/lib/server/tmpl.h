@@ -478,8 +478,13 @@ struct tmpl_s {
 #endif
 	} data;
 
-	fr_type_t	_CONST cast;
-	tmpl_rules_t	_CONST rules;
+	fr_type_t	_CONST		cast;	//!< Type we should interpret unresolved data with.
+	fr_dict_attr_t const * _CONST	enumv;	//!< Enumeration we should use when parsing unescaped
+						///< i.e. barewords with an unknown format.
+
+	tmpl_rules_t	_CONST		rules;	//!< The rules that were used when creating the tmpl.
+						///< These are useful for multiple resolution passes as
+						///< they ensure the correct parsing rules are applied.
 };
 
 typedef struct tmpl_cursor_ctx_s tmpl_pair_cursor_ctx_t;
@@ -717,7 +722,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
 #define	tmpl_init_initialiser_list(_request, _list)\
 { \
 	.name = "static", \
-	.len = sizeof("static"), \
+	.len = sizeof("static") - 1, \
 	.type = TMPL_TYPE_LIST, \
 	.quote = T_SINGLE_QUOTED_STRING, \
 	.data = { \
@@ -907,9 +912,10 @@ ssize_t			tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 					  fr_sbuff_parse_rules_t const *p_rules,
 					  tmpl_rules_t const *t_rules);
 
-ssize_t			tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in);	/* Parses cast string */
+ssize_t			tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in);		/* Parses cast string */
 
-int			tmpl_cast_set(tmpl_t *vpt, fr_type_t type);		/* Sets cast type */
+int			tmpl_cast_set(tmpl_t *vpt, fr_type_t type) CC_HINT(nonnull);	/* Sets cast type */
+
 
 #ifdef HAVE_REGEX
 ssize_t			tmpl_regex_flags_substr(tmpl_t *vpt, fr_sbuff_t *in,

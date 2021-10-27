@@ -366,7 +366,7 @@ unsigned int fr_tls_session_psk_server_cb(SSL *ssl, const char *identity,
 		}
 
 		MEM(pair_update_request(&vp, attr_tls_psk_identity) >= 0);
-		if (fr_pair_value_from_str(vp, identity, -1, '\0', true) < 0) {
+		if (fr_pair_value_from_str(vp, identity, strlen(identity), NULL, true) < 0) {
 			RPWDEBUG2("Failed parsing TLS PSK Identity");
 			talloc_free(vp);
 			return 0;

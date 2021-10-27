@@ -1802,6 +1802,7 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 	 *	Lookup by name
 	 */
 	case FR_SBUFF_PARSE_ERROR_NOT_FOUND:
+	case FR_SBUFF_PARSE_ERROR_TRAILING:
 	{
 		fr_dict_attr_err_t	our_err;
 		ssize_t			slen;
@@ -1820,7 +1821,8 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 		break;
 
 	default:
-		fr_strerror_printf("Invalid OID component \"%.*s\"",
+		fr_strerror_printf("Invalid OID component (%s) \"%.*s\"",
+				   fr_table_str_by_value(sbuff_parse_error_table, sberr, "<INVALID>"),
 				   (int)fr_sbuff_remaining(in), fr_sbuff_current(in));
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 		return -fr_sbuff_marker_release_behind(&start);

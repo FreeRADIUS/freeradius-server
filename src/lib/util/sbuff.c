@@ -422,7 +422,7 @@ int fr_sbuff_reset_talloc(fr_sbuff_t *sbuff)
  */
 #define FILL_OR_GOTO_DONE(_out, _in, _len) if (fr_sbuff_move(_out, _in, _len) < (size_t)(_len)) goto done
 
-/** Constrain end pointer to prevent advancing more than the amount the called specified
+/** Constrain end pointer to prevent advancing more than the amount the caller specified
  *
  * @param[in] _sbuff	to constrain.
  * @param[in] _max	maximum amount to advance.
@@ -784,6 +784,8 @@ size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 		p = fr_sbuff_current(&our_in);
 		end = CONSTRAINED_END(&our_in, len, fr_sbuff_used_total(&our_in));
 
+		if (p == end) break;
+
 		if (escape_chr == '\0') {
 			while ((p < end) && !fr_sbuff_terminal_search(in, p, idx, tt, needle_len)) p++;
 		} else {
@@ -1064,8 +1066,9 @@ fr_slen_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in)
  * @param[in] _max_char	Maximum digits that can be used to represent an integer.
  *			Can't use stringify because of width modifiers like 'u'
  *			used in <stdint.h>.
+ * @param[in] _base	to use.
  */
-#define SBUFF_PARSE_INT_DEF(_name, _type, _min, _max, _max_char) \
+#define SBUFF_PARSE_INT_DEF(_name, _type, _min, _max, _max_char, _base) \
 fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
 { \
 	char		buff[_max_char + 1]; \
@@ -1078,26 +1081,27 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
-	num = strtoll(buff, &end, 10); \
+	errno = 0; \
+	num = strtoll(buff, &end, _base); \
 	if (end == buff) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
-	if ((num > (_max)) || ((errno == EINVAL) && (num == LLONG_MAX))) { \
+	if ((num > (_max)) || ((errno == EINVAL) && (num == 0)) || ((errno == ERANGE) && (num == LLONG_MAX))) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
 		*out = (_type)(_max); \
 		return -1; \
+	} else if ((num < (_min)) || ((errno == ERANGE) && (num == LLONG_MIN))) { \
+		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW; \
+		*out = (_type)(_min); \
+		return -1; \
 	} else if (no_trailing && (((a_end = in->p + (end - buff)) + 1) < in->end)) { \
-		if (isdigit(*a_end)) { \
+		if (isdigit(*a_end) || (((_base > 10) || (_base == 0)) && ((tolower(*a_end) >= 'a') && (tolower(*a_end) <= 'f')))) { \
 			if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 			*out = (_type)(_max); \
 			return fr_sbuff_error(&our_in); \
 		} \
 		*out = (_type)(num); \
-	} else if (num < (_min) || ((errno == EINVAL) && (num == LLONG_MIN))) { \
-		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW; \
-		*out = (_type)(_min); \
-		return -1; \
 	} else { \
 		if (err) *err = FR_SBUFF_PARSE_OK; \
 		*out = (_type)(num); \
@@ -1105,11 +1109,11 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	return fr_sbuff_advance(in, end - buff); /* Advance by the length strtoll gives us */ \
 }
 
-SBUFF_PARSE_INT_DEF(int8, int8_t, INT8_MIN, INT8_MAX, 4)
-SBUFF_PARSE_INT_DEF(int16, int16_t, INT16_MIN, INT16_MAX, 6)
-SBUFF_PARSE_INT_DEF(int32, int32_t, INT32_MIN, INT32_MAX, 11)
-SBUFF_PARSE_INT_DEF(int64, int64_t, INT64_MIN, INT64_MAX, 20)
-SBUFF_PARSE_INT_DEF(ssize, ssize_t, SSIZE_MIN, SSIZE_MAX, 20)
+SBUFF_PARSE_INT_DEF(int8, int8_t, INT8_MIN, INT8_MAX, 4, 0)
+SBUFF_PARSE_INT_DEF(int16, int16_t, INT16_MIN, INT16_MAX, 6, 0)
+SBUFF_PARSE_INT_DEF(int32, int32_t, INT32_MIN, INT32_MAX, 11, 0)
+SBUFF_PARSE_INT_DEF(int64, int64_t, INT64_MIN, INT64_MAX, 20, 0)
+SBUFF_PARSE_INT_DEF(ssize, ssize_t, SSIZE_MIN, SSIZE_MAX, 20, 0)
 
 /** Used to define a number parsing functions for singed integers
  *
@@ -1119,7 +1123,7 @@ SBUFF_PARSE_INT_DEF(ssize, ssize_t, SSIZE_MIN, SSIZE_MAX, 20)
  * @param[in] _max_char	Maximum digits that can be used to represent an integer.
  *			Can't use stringify because of width modifiers like 'u'
  *			used in <stdint.h>.
- * @param[in] _base	of the number being parsed, 8, 10, 18 etc...
+ * @param[in] _base	of the number being parsed, 8, 10, 16 etc...
  */
 #define SBUFF_PARSE_UINT_DEF(_name, _type, _max, _max_char, _base) \
 fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff_t *in, bool no_trailing) \
@@ -1134,17 +1138,22 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
+	if (buff[0] == '-') { \
+		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW; \
+		return -1; \
+	} \
+	errno = 0; \
 	num = strtoull(buff, &end, _base); \
 	if (end == buff) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
-	if ((num > (_max)) || ((errno == EINVAL) && (num == ULLONG_MAX))) { \
+	if ((num > (_max)) || ((errno == EINVAL) && (num == 0)) || ((errno == ERANGE) && (num == ULLONG_MAX))) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
 		*out = (_type)(_max); \
 		return -1; \
 	} else if (no_trailing && (((a_end = in->p + (end - buff)) + 1) < in->end)) { \
-		if (isdigit(*a_end) || ((_base > 10) && ((tolower(*a_end) >= 'a') && (tolower(*a_end) <= 'f')))) { \
+		if (isdigit(*a_end) || (((_base > 10) || (_base == 0)) && ((tolower(*a_end) >= 'a') && (tolower(*a_end) <= 'f')))) { \
 			if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 			*out = (_type)(_max); \
 			return fr_sbuff_error(&our_in); \
@@ -1158,11 +1167,19 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	return fr_sbuff_advance(in, end - buff); /* Advance by the length strtoull gives us */ \
 }
 
-SBUFF_PARSE_UINT_DEF(uint8, uint8_t, UINT8_MAX, 3, 10)
-SBUFF_PARSE_UINT_DEF(uint16, uint16_t, UINT16_MAX, 4, 10)
-SBUFF_PARSE_UINT_DEF(uint32, uint32_t, UINT32_MAX, 10, 10)
-SBUFF_PARSE_UINT_DEF(uint64, uint64_t, UINT64_MAX, 19, 10)
-SBUFF_PARSE_UINT_DEF(size, size_t, SIZE_MAX, 19, 10)
+/* max chars here is the octal string value with prefix */
+SBUFF_PARSE_UINT_DEF(uint8, uint8_t, UINT8_MAX, 4, 0)
+SBUFF_PARSE_UINT_DEF(uint16, uint16_t, UINT16_MAX, 7, 0)
+SBUFF_PARSE_UINT_DEF(uint32, uint32_t, UINT32_MAX, 12, 0)
+SBUFF_PARSE_UINT_DEF(uint64, uint64_t, UINT64_MAX, 23, 0)
+SBUFF_PARSE_UINT_DEF(size, size_t, SIZE_MAX, 23, 0)
+
+SBUFF_PARSE_UINT_DEF(uint8_dec, uint8_t, UINT8_MAX, 3, 0)
+SBUFF_PARSE_UINT_DEF(uint16_dec, uint16_t, UINT16_MAX, 4, 0)
+SBUFF_PARSE_UINT_DEF(uint32_dec, uint32_t, UINT32_MAX, 10, 0)
+SBUFF_PARSE_UINT_DEF(uint64_dec, uint64_t, UINT64_MAX, 19, 0)
+SBUFF_PARSE_UINT_DEF(size_dec, size_t, SIZE_MAX, 19, 0)
+
 
 SBUFF_PARSE_UINT_DEF(uint8_oct, uint8_t, UINT8_MAX, 3, 8)
 SBUFF_PARSE_UINT_DEF(uint16_oct, uint16_t, UINT16_MAX, 6, 8)
@@ -1201,6 +1218,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
+	errno = 0; \
 	res = _func(buff, &end); \
 	if (errno == ERANGE) { \
 		if (res > 0) { \

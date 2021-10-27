@@ -134,7 +134,7 @@ static ssize_t op_to_token(fr_token_t *token, char const *op, size_t oplen)
  * @param op	the operator
  * @param value the value to parse
  * @param value_len length of the value string
- * @param quote	the quotation character for the value string.
+ * @param uerules used for unescaping.
  * @return
  *	- fr_pair_t* on success
  *	- NULL on error
@@ -146,7 +146,7 @@ static ssize_t op_to_token(fr_token_t *token, char const *op, size_t oplen)
 static fr_pair_t *fr_pair_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *da,
 					fr_token_t op,
 					char const *value, size_t value_len,
-					char quote)
+					fr_sbuff_unescape_rules_t const *uerules)
 {
 	fr_pair_t *vp;
 
@@ -157,7 +157,7 @@ static fr_pair_t *fr_pair_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *da
 
 	vp->op = op;
 
-	if (fr_pair_value_from_str(vp, value, value_len, quote, false) < 0) {
+	if (fr_pair_value_from_str(vp, value, value_len, uerules, false) < 0) {
 		talloc_free(vp);
 		return NULL;
 	}
@@ -258,7 +258,7 @@ static ssize_t fr_pair_afrom_str(fr_pair_ctx_t *pair_ctx, char const *start, cha
 		return -(p - start);
 	}
 
-	vp = fr_pair_afrom_fields(pair_ctx->ctx, da, op, value, value_len, quote);
+	vp = fr_pair_afrom_fields(pair_ctx->ctx, da, op, value, value_len, fr_value_unescape_by_char[(uint8_t)quote]);
 	if (!vp) return -(in - start);
 
 	fr_pair_append(pair_ctx->list, vp);

@@ -802,7 +802,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 			return count;
 		}
 
-		ret = fr_pair_value_from_str(vp, expanded, -1, '\0', true);
+		ret = fr_pair_value_from_str(vp, expanded, strlen(value), NULL, true);
 		TALLOC_FREE(expanded);
 		if (ret < 0) {
 			RWDEBUG("Incompatible value assignment, skipping");

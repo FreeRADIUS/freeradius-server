@@ -187,7 +187,7 @@ static int tacacs_decode_args(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr
 			 *
 			 *	And if that fails, just ignore it completely.
 			 */
-			if (fr_pair_value_from_str(vp, (char const *) value, arg_end - value, 0, true) < 0) {
+			if (fr_pair_value_from_str(vp, (char const *) value, arg_end - value, NULL, true) < 0) {
 			fail:
 				talloc_free(vp);
 				if (da != parent) goto raw;

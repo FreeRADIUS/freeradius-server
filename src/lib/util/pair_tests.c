@@ -91,7 +91,7 @@ static void test_fr_pair_afrom_da(void)
 	TEST_CHECK(vp != NULL);
 	if (!vp) return;
 
-	TEST_CHECK(fr_pair_value_from_str(vp, test_string, strlen(test_string), '"', false) == 0);
+	TEST_CHECK(fr_pair_value_from_str(vp, test_string, strlen(test_string), &fr_value_unescape_double, false) == 0);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -566,7 +566,7 @@ static void test_fr_pair_value_from_str(void)
 	PAIR_VERIFY(vp);
 
 	TEST_CASE("Convert 'test_string' value to attribute value using fr_pair_value_from_str()");
-	TEST_CHECK(fr_pair_value_from_str(vp, test_string, strlen(test_string), '"', false) == 0);
+	TEST_CHECK(fr_pair_value_from_str(vp, test_string, strlen(test_string), &fr_value_unescape_double, false) == 0);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);

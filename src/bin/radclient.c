@@ -457,7 +457,10 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				 *	Xlat expansions are not supported. Convert xlat to value box (if possible).
 				 */
 				if (vp->type == VT_XLAT) {
-					if (fr_value_box_from_str(vp, &vp->data, vp->da->type, NULL, vp->xlat, -1, '\0', false) < 0) {
+					if (fr_value_box_from_str(vp, &vp->data,
+								  vp->da->type, NULL,
+								  vp->xlat, strlen(vp->xlat),
+								  NULL, false) < 0) {
 						fr_perror("radclient");
 						goto error;
 					}
@@ -491,7 +494,9 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			 *	Xlat expansions are not supported. Convert xlat to value box (if possible).
 			 */
 			if (vp->type == VT_XLAT) {
-				if (fr_value_box_from_str(vp, &vp->data, vp->da->type, NULL, vp->xlat, -1, '\0', false) < 0) {
+				if (fr_value_box_from_str(vp, &vp->data, vp->da->type, NULL,
+							  vp->xlat, strlen(vp->xlat),
+							  NULL, false) < 0) {
 					fr_perror("radclient");
 					goto error;
 				}

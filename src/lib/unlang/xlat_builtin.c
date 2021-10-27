@@ -1090,14 +1090,21 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		break;
 
 	case FR_TYPE_OCTETS:
-		if (in_vb->vb_length > sizeof(uint64_t)) goto error;
+		if (in_vb->vb_length > sizeof(uint64_t)) {
+			fr_strerror_printf("Expected octets length <= %zu, got %zu", sizeof(uint64_t), in_vb->vb_length);
+			goto error;
+		}
 
 		if (in_vb->vb_length > sizeof(uint32_t)) {
 			fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT64, NULL);
-			break;
+		} else if (in_vb->vb_length > sizeof(uint16_t)) {
+			fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT32, NULL);
+		} else if (in_vb->vb_length > sizeof(uint8_t)) {
+			fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT16, NULL);
+		} else {
+			fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT8, NULL);
 		}
 
-		fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT32, NULL);
 		break;
 
 	case FR_TYPE_IPV4_ADDR:

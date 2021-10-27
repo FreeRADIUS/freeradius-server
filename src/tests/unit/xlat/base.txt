@@ -64,7 +64,7 @@ xlat %{33}
 match ERROR offset 2: Invalid regex reference.  Must be in range 0-32
 
 xlat %{3a}
-match ERROR offset 2: Unexpected text after attribute reference
+match ERROR offset 2: Invalid regex reference.  Must be in range 0-32
 
 xlat %{-3}
 match ERROR offset 2: Unresolved attributes not allowed in expansions here

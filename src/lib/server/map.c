@@ -1075,7 +1075,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 
 		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 		vp->op = map->op;
-		if (fr_pair_value_from_str(vp, answer, -1, '"', false) < 0) {
+		if (fr_pair_value_from_str(vp, answer, strlen(answer), &fr_value_unescape_single, false) < 0) {
 			RPEDEBUG("Failed parsing exec output");
 			talloc_free(&vp);
 			return -2;
@@ -1243,7 +1243,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 
 		RDEBUG2("--> %s", str);
 
-		rcode = fr_pair_value_from_str(n, str, -1, '\0', false);
+		rcode = fr_pair_value_from_str(n, str, strlen(str), NULL, false);
 		talloc_free(str);
 		if (rcode < 0) {
 			talloc_free(&n);
@@ -1259,7 +1259,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 
 		MEM(n = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 
-		if (fr_pair_value_from_str(n, map->rhs->name, -1, '\0', false) < 0) {
+		if (fr_pair_value_from_str(n, map->rhs->name, strlen(map->rhs->name), NULL, false) < 0) {
 			rcode = 0;
 			talloc_free(n);
 			goto error;

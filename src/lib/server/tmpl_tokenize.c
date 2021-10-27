@@ -2172,8 +2172,9 @@ static ssize_t tmpl_afrom_ipv4_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 	}
 
 	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, T_BARE_WORD, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in)));
-	if (fr_value_box_from_str(vpt, &vpt->data.literal, type, NULL,
-				  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), '\0', false) < 0) {
+	if (fr_value_box_from_substr(vpt, &vpt->data.literal, type, NULL,
+				     &FR_SBUFF_REPARSE(&our_in),
+				     NULL, false) < 0) {
 		talloc_free(vpt);
 		goto error;
 	}
@@ -2288,8 +2289,9 @@ static ssize_t tmpl_afrom_ipv6_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t 
 	}
 
 	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, T_BARE_WORD, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in)));
-	if (fr_value_box_from_str(vpt, &vpt->data.literal, type, NULL,
-				  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), '\0', false) < 0) {
+	if (fr_value_box_from_substr(vpt, &vpt->data.literal, type, NULL,
+				     &FR_SBUFF_REPARSE(&our_in),
+				     NULL, false) < 0) {
 		talloc_free(vpt);
 		goto error;
 	}
@@ -2929,6 +2931,36 @@ ssize_t tmpl_regex_flags_substr(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_term_t con
  * @{
  */
 
+/** Determine the correct quoting after a cast
+ *
+ * @param[in] existing_quote	Exiting quotation type.
+ * @param[in] type		Cast type.
+ * @param[in] enumv		Enumeration values.
+ */
+static CC_HINT(always_inline) fr_token_t tmpl_cast_quote(fr_token_t existing_quote,
+ 							 fr_type_t type, fr_dict_attr_t const *enumv,
+ 							 char const *unescaped, size_t unescaped_len)
+{
+	if (!fr_type_is_string(type)) return T_BARE_WORD;
+
+	if (enumv && fr_dict_enum_by_name(enumv, unescaped, unescaped_len)) return T_BARE_WORD;
+
+	/*
+	 *	Leave the original quoting if it's
+	 *	single or double, else default to
+	 *	single quoting.
+	 */
+	switch (existing_quote) {
+	case T_SINGLE_QUOTED_STRING:
+	case T_DOUBLE_QUOTED_STRING:
+		return existing_quote;
+
+	default:
+		return T_SINGLE_QUOTED_STRING;
+	}
+}
+
+
 /** Convert #tmpl_t of type #TMPL_TYPE_UNRESOLVED or #TMPL_TYPE_DATA to #TMPL_TYPE_DATA of type specified
  *
  * @note Conversion is done in place.
@@ -2955,27 +2987,59 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 		char *unescaped = vpt->data.unescaped;
 
 		/*
-		 *	Why do we pass a pointer to a temporary type
-		 *	variable? Goddamn WiMAX.
+		 *	We're trying to convert an unresolved (bareword)
+		 *	tmpl to octets.
+		 *
+		 *	tmpl_afrom_substr uses the 0x prefix as type
+		 *	inference, so if it was a hex string the tmpl
+		 *	type would not have fallen through to
+		 *	unresolved.
+		 *
+		 *	That means if we're trying to resolve it here
+		 *	it's really a printable string, not a sequence
+		 *	of hexits, so we just want the binary
+		 *	representation of that string, and not the hex
+		 *	to bin conversion.
 		 */
-		if (fr_value_box_from_str(vpt, &vpt->data.literal, type,
-					  enumv, unescaped, talloc_array_length(unescaped) - 1,
-					  '\0', false) < 0) return -1;
-		talloc_free(unescaped);
+		if (fr_type_is_octets(type)) {
+			if (fr_value_box_memdup(vpt, &vpt->data.literal, enumv,
+					        (uint8_t const *)unescaped, talloc_array_length(unescaped) - 1,
+					        false) < 0) return -1;
+		} else {
+			if (fr_value_box_from_str(vpt, &vpt->data.literal, type,
+						  enumv,
+						  unescaped, talloc_array_length(unescaped) - 1,
+						  NULL, false) < 0) return -1;
+		}
 		vpt->type = TMPL_TYPE_DATA;
+		vpt->quote = tmpl_cast_quote(vpt->quote, type, enumv,
+					     unescaped, talloc_array_length(unescaped) - 1);
+		talloc_free(unescaped);
 	}
 		break;
 
 	case TMPL_TYPE_DATA:
 	{
-		fr_value_box_t new;
-
 		if (type == tmpl_value_type(vpt)) return 0;	/* noop */
 
-		if (fr_value_box_cast(vpt, &new, type, enumv, &vpt->data.literal) < 0) return -1;
+		/*
+		 *	Enumerations aren't used when casting between
+		 *	data types.  They're only used when processing
+		 *	unresolved tmpls.
+		 *
+		 *	i.e. TMPL_TYPE_UNRESOLVED != TMPL_TYPE_DATA(FR_TYPE_STRING)
+		 */
+		if (fr_value_box_cast_in_place(vpt, &vpt->data.literal, type, NULL) < 0) return -1;
 
-		fr_value_box_clear(&vpt->data.literal);
-		fr_value_box_copy(vpt, &vpt->data.literal, &new);
+		/*
+		 *	Strings get quoted, everything else is a bare
+		 *	word...
+		 */
+		if (fr_type_is_string(type)) {
+			vpt->quote = T_SINGLE_QUOTED_STRING;
+		} else {
+			vpt->quote = T_BARE_WORD;
+		}
 	}
 		break;
 
@@ -2987,28 +3051,6 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 	default:
 		fr_assert(0);
 	}
-
-	/*
-	 *	Fixup quoting
-	 */
-	switch (type) {
-	case FR_TYPE_STRING:
-		switch (vpt->quote) {
-		case T_SINGLE_QUOTED_STRING:
-		case T_DOUBLE_QUOTED_STRING:
-			break;
-
-		default:
-			vpt->quote = T_SINGLE_QUOTED_STRING;
-			break;
-		}
-		break;
-
-	default:
-		vpt->quote = T_BARE_WORD;
-		break;
-	}
-
 	TMPL_VERIFY(vpt);
 
 	return 0;
@@ -3216,24 +3258,15 @@ int tmpl_resolve(tmpl_t *vpt)
 	 *	Convert unresolved tmpls into literal string values.
 	 */
 	} else if (tmpl_is_unresolved(vpt)) {
-		char *unescaped = vpt->data.unescaped;	/* Copy the pointer before zeroing the union */
+		fr_type_t dst_type = vpt->cast;
 
-		fr_value_box_init_null(&vpt->data.literal);
+		if (fr_type_is_null(dst_type)) dst_type = FR_TYPE_STRING;	/* Default to strings */
 
-		fr_value_box_bstrdup_buffer_shallow(NULL, &vpt->data.literal, NULL, unescaped, false);
+		if (tmpl_cast_in_place(vpt, dst_type, NULL) < 0) return -1;
 
-		/*
-		 *	Attempt to process the cast
-		 */
-		if (vpt->cast != FR_TYPE_NULL) {
-			ret = fr_value_box_cast_in_place(vpt, &vpt->data.literal, vpt->cast, NULL);
-			if (ret < 0) goto done;
-		}
-		vpt->type = TMPL_TYPE_DATA;
 		TMPL_VERIFY(vpt);
 	}
 
-done:
 	return ret;
 }
 

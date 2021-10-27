@@ -224,7 +224,7 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 				continue;
 			}
 			MEM(vp = fr_pair_afrom_da(container, da));
-			fr_pair_value_from_str(vp, q + 1, -1, '\0', true);
+			fr_pair_value_from_str(vp, q + 1, strlen(q + 1), NULL, true);
 
 			fr_pair_append(&container->vp_group, vp);
 		}

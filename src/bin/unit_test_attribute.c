@@ -1520,7 +1520,10 @@ static size_t command_encode_dns_label(command_result_t *result, command_file_ct
 
 		fr_skip_whitespace(p);
 
-		if (fr_value_box_from_str(box, box, FR_TYPE_STRING, NULL, p, -1, '"', false) < 0) {
+		if (fr_value_box_from_str(box, box, FR_TYPE_STRING, NULL,
+					  p, strlen(p),
+					  &fr_value_unescape_double,
+					  false) < 0) {
 			talloc_free(box);
 			RETURN_OK_WITH_ERROR();
 		}
@@ -2237,7 +2240,10 @@ static size_t command_value_box_normalise(command_result_t *result, UNUSED comma
 	p = in + match_len;
 	fr_skip_whitespace(p);
 
-	if (fr_value_box_from_str(box, box, type, NULL, p, -1, '"', false) < 0) {
+	if (fr_value_box_from_str(box, box, type, NULL,
+				  p, strlen(p),
+				  &fr_value_unescape_double,
+				  false) < 0) {
 	error:
 		talloc_free(box);
 		RETURN_OK_WITH_ERROR();
@@ -2260,7 +2266,9 @@ static size_t command_value_box_normalise(command_result_t *result, UNUSED comma
 	 *	box as last time.
 	 */
 	box2 = talloc_zero(NULL, fr_value_box_t);
-	if (fr_value_box_from_str(box2, box2, type, NULL, data, slen, '"', false) < 0) {
+	if (fr_value_box_from_str(box2, box2, type, NULL,
+				  data, slen,
+				  &fr_value_unescape_double, false) < 0) {
 		talloc_free(box2);
 		talloc_free(box);
 		RETURN_OK_WITH_ERROR();

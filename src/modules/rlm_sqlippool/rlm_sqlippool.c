@@ -627,7 +627,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	 *	error out.  If so, add it to the list.
 	 */
 	MEM(vp = fr_pair_afrom_da(request->reply_ctx, inst->allocated_address_da));
-	if (fr_pair_value_from_str(vp, allocation, allocation_len, '\0', true) < 0) {
+	if (fr_pair_value_from_str(vp, allocation, allocation_len, NULL, true) < 0) {
 		DO_PART(alloc_commit);
 
 		RDEBUG2("Invalid IP number [%s] returned from instbase query.", allocation);

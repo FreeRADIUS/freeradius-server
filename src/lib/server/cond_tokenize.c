@@ -140,39 +140,18 @@ ssize_t cond_print(fr_sbuff_t *out, fr_cond_t const *in)
 }
 
 
-static int cond_cast_tmpl(tmpl_t *vpt, fr_type_t *p_type, tmpl_t *other)
+static int cond_cast_tmpl(tmpl_t *vpt, fr_type_t type, tmpl_t *other)
 {
 	fr_dict_attr_t const *da;
-	fr_type_t type = *p_type;
 
 	fr_assert(type != FR_TYPE_NULL);
 	fr_assert(type < FR_TYPE_TLV);
 
-	if (tmpl_is_unresolved(vpt)) {
-		switch (type) {
-		case FR_TYPE_IPV4_ADDR:
-			if (strchr(vpt->name, '/') != NULL) {
-				*p_type = type = FR_TYPE_IPV4_PREFIX;
-				(void) tmpl_cast_set(other, type);
-			}
-			break;
-
-		case FR_TYPE_IPV6_ADDR:
-			if (strchr(vpt->name, '/') != NULL) {
-				*p_type = type = FR_TYPE_IPV6_PREFIX;
-				(void) tmpl_cast_set(other, type);
-			}
-			break;
-
-		default:
-			break;
-		}
-
-	} else if (tmpl_is_attr(vpt)) {
+	if (tmpl_is_attr(vpt)) {
 		(void) tmpl_cast_set(vpt, type);
 		return 0;
 
-	} else if (!tmpl_is_data(vpt)) {
+	} else if (!tmpl_is_data(vpt) && !tmpl_is_unresolved(vpt)) {
 		/*
 		 *	Nothing to do.
 		 */
@@ -216,8 +195,7 @@ static int cond_cast_tmpl(tmpl_t *vpt, fr_type_t *p_type, tmpl_t *other)
 
 	if (tmpl_cast_in_place(vpt, type, da) < 0) {
 		fr_strerror_printf("Failed parsing value as type '%s'",
-				   fr_table_str_by_value(fr_value_box_type_table,
-							 type, "??"));
+				   fr_table_str_by_value(fr_value_box_type_table, type, "??"));
 		return -1;
 	}
 
@@ -502,12 +480,12 @@ set_types:
 	/*
 	 *	Cast both sides to the promoted type.
 	 */
-	if (cond_cast_tmpl(c->data.map->lhs, &cast_type, c->data.map->rhs) < 0) {
+	if (cond_cast_tmpl(c->data.map->lhs, cast_type, c->data.map->rhs) < 0) {
 		if (in) fr_sbuff_set(in, m_lhs);
 		return -1;
 	}
 
-	if (cond_cast_tmpl(c->data.map->rhs, &cast_type, c->data.map->lhs) < 0) {
+	if (cond_cast_tmpl(c->data.map->rhs, cast_type, c->data.map->lhs) < 0) {
 		if (in) fr_sbuff_set(in, m_rhs);
 		return -1;
 	}

@@ -299,7 +299,8 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 		/*
 		 *	Has to be of the correct data type.
 		 */
-		if (fr_value_box_from_str(box, box, data_type, NULL, entry->name, -1, 0, false) < 0) {
+		if (fr_value_box_from_str(box, box, data_type, NULL,
+					  entry->name, strlen(entry->name), NULL, false) < 0) {
 			ERROR("%s[%d] Failed parsing key %s - %s",
 			      entry->filename, entry->lineno, entry->name, fr_strerror());
 			goto error;

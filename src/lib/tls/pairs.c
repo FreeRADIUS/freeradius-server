@@ -314,7 +314,7 @@ skip_alt:
 
 			MEM(vp = fr_pair_afrom_da(ctx, da));
 			if (fr_pair_value_from_str(vp, (char *)fr_dbuff_current(out), fr_dbuff_remaining(out),
-						   '\0', true) < 0) {
+						   NULL, true) < 0) {
 				RPWDEBUG3("Skipping: %s += \"%pV\"",
 					  da->name, fr_box_strvalue_len((char *)fr_dbuff_current(out),
 					  				fr_dbuff_remaining(out)));

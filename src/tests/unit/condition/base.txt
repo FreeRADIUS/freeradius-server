@@ -331,7 +331,7 @@ condition <ipaddr>127.0.0.1/32 == 127.0.0.1
 match true
 
 condition <ipaddr>127.0.0.1/327 == 127.0.0.1
-match ERROR offset 8: Failed parsing value as type 'ipv4prefix'
+match ERROR offset 8: Failed parsing value as type 'ipaddr'
 
 condition <ipaddr>127.0.0.1/32 == 127.0.0.1
 match true

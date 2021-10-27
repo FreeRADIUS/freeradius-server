@@ -137,7 +137,7 @@ static int generic_cmp(UNUSED void *instance,
 
 		MEM(vp = fr_pair_afrom_da(request->request_ctx, check_item->da));
 		vp->op = check_item->op;
-		fr_pair_value_from_str(vp, value, -1, '"', false);
+		fr_pair_value_from_str(vp, value, strlen(value), &fr_value_unescape_single, false);
 
 		/*
 		 *	Paircmp returns 0 for failed comparison, 1 for succeeded -1 for error.

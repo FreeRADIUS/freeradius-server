@@ -28,11 +28,12 @@ RCSID("$Id$")
 
 #define _TMPL_PRIVATE 1
 
-#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/exec_legacy.h>
-#include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/value.h>
 
 /** Resolve attribute #pair_list_t value to an attribute list.
  *
@@ -620,7 +621,8 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
 		ret = fr_value_box_from_str(tmp_ctx, &tmp, src_type, NULL,
-					    result, (size_t)slen, '"', false);
+					    result, (size_t)slen,
+					    &fr_value_unescape_double, false);
 		if (ret < 0) goto error;
 
 		fr_value_box_bstrndup_shallow(&value, NULL, tmp.vb_strvalue, tmp.vb_length, tmp.tainted);
@@ -649,7 +651,8 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		 *	@fixme We need a way of signalling xlat not to escape things.
 		 */
 		ret = fr_value_box_from_str(tmp_ctx, &tmp, src_type, NULL,
-					    result, (size_t)slen, '"', false);
+					    result, (size_t)slen,
+					    &fr_value_unescape_double, false);
 		if (ret < 0) goto error;
 
 		fr_value_box_bstrndup_shallow(&value, NULL, tmp.vb_strvalue, tmp.vb_length, tmp.tainted);

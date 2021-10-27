@@ -457,7 +457,8 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		if (fr_value_box_from_str(fr_dlist_head(&n->mod),
 					  tmpl_value(fr_map_list_head(&n->mod)->rhs), type,
 					  tmpl_da(mutated->lhs),
-					  mutated->rhs->name, mutated->rhs->len, mutated->rhs->quote, false)) {
+					  mutated->rhs->name, mutated->rhs->len,
+					  fr_value_unescape_by_quote[(uint8_t)mutated->rhs->quote], false)) {
 			RPEDEBUG("Assigning value to \"%s\" failed", tmpl_da(mutated->lhs)->name);
 			goto error;
 		}

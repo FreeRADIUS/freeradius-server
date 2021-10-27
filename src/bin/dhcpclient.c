@@ -186,7 +186,10 @@ static int request_init(fr_radius_packet_t **out, fr_pair_list_t *packet_vps, ch
 		 *	Xlat expansions are not supported. Convert xlat to value box (if possible).
 		 */
 		if (vp->type == VT_XLAT) {
-			if (fr_value_box_from_str(vp, &vp->data, vp->da->type, NULL, vp->xlat, -1, '\0', false) < 0) {
+			if (fr_value_box_from_str(vp, &vp->data,
+						  vp->da->type, NULL,
+						  vp->xlat, strlen(vp->xlat),
+						  NULL, false) < 0) {
 				fr_perror("dhcpclient");
 				fr_radius_packet_free(&packet);
 				if (fp && (fp != stdin)) fclose(fp);

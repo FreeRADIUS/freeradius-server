@@ -811,9 +811,15 @@ void		fr_value_box_increment(fr_value_box_t *vb);
  *
  * @{
  */
-int		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
+ssize_t		fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
+					 fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+					 fr_sbuff_t *in, fr_sbuff_parse_rules_t const *rules, bool tainted)
+					 CC_HINT(nonnull(2,5));
+
+ssize_t		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-				      char const *src, ssize_t src_len, char quote, bool tainted)
+				      char const *in, size_t inlen,
+				      fr_sbuff_unescape_rules_t const *erules, bool tainted)
 				      CC_HINT(nonnull(2,5));
 /** @} */
 

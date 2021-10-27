@@ -187,7 +187,7 @@ fr_radius_packet_code_t chbind_process(request_t *request, CHBIND_REQ *chbind)
 	/* Set-up the fake request */
 	fake = request_alloc_internal(request, &(request_init_args_t){ .parent = request });
 	MEM(fr_pair_prepend_by_da(fake->request_ctx, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
-	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1"), '\0', false);
+	fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1") - 1, NULL, false);
 
 	/* Add the username to the fake request */
 	if (chbind->username) {

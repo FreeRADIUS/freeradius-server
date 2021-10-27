@@ -35,7 +35,8 @@ static int decode_test_ctx(void **out, UNUSED TALLOC_CTX *ctx)
  *
  *	This isn't perfect, but it allows simple fuzzing of the parsers for all of the data types.
  */
-static ssize_t util_decode_proto(TALLOC_CTX *ctx, UNUSED fr_pair_list_t *out, uint8_t const *data, size_t data_len, UNUSED void *proto_ctx)
+static ssize_t util_decode_proto(TALLOC_CTX *ctx, UNUSED fr_pair_list_t *out, uint8_t const *data, size_t data_len,
+				 UNUSED void *proto_ctx)
 {
 	ssize_t rcode;
 	fr_type_t type;
@@ -68,11 +69,13 @@ static ssize_t util_decode_proto(TALLOC_CTX *ctx, UNUSED fr_pair_list_t *out, ui
 
 
 	/*
-	 *	Some things in value_box_from_str() don't yet respect
+	 *	Some things in fr_value_box_from_substr() don't yet respect
 	 *	data_len.  This means that if there's no zero
 	 *	termination, we _know_ there will be buffer over-runs.
 	 */
-	rcode = fr_value_box_from_str(box, box, type, NULL, (char const *) copy, data_len - 1, 0, true);
+	rcode = fr_value_box_from_str(box, box, type, NULL,
+				      (char const *)copy, data_len - 1,
+				      NULL, true);
 	talloc_free(box);
 	return rcode;
 }

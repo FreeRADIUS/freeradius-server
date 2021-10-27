@@ -262,7 +262,7 @@ static int sql_pair_afrom_row(TALLOC_CTX *ctx, request_t *request, fr_pair_list_
 		 *	specific to the SQL module.
 		 */
 	} else {
-		if (fr_pair_value_from_str(vp, value, -1, '\0', true) < 0) {
+		if (fr_pair_value_from_str(vp, value, strlen(value), NULL, true) < 0) {
 			RPEDEBUG("Error parsing value");
 
 			talloc_free(vp);
