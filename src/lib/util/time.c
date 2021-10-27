@@ -608,7 +608,6 @@ fr_unix_time_t fr_unix_time_from_tm(struct tm *tm)
 	CHECK(year, 3000);
 	CHECK(wday, 7);
 	CHECK(mon, 12);
-	CHECK(sec, 60);
 	CHECK(yday, 366);
 	/* don't check gmtoff, it can be negative */
 
