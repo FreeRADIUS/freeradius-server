@@ -44,7 +44,7 @@ static ssize_t util_decode_proto(TALLOC_CTX *ctx, UNUSED fr_pair_list_t *out, ui
 
 	if (data_len < 1) return data_len;	/* We want to check zero length input too */
 
-	type = data[0];
+	type = data[0] % (FR_TYPE_MAX + 1);
 	switch (type) {
 	case FR_TYPE_LEAF:
 		break;
