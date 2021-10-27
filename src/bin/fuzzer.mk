@@ -34,7 +34,7 @@ TGT_LDLIBS	:= $(LIBS)
 .PHONY:src/tests/fuzzer-corpus/$(PROTOCOL)
 src/tests/fuzzer-corpus/$(PROTOCOL):
 	${Q}if [ ! -e $@ ]; then \
-		if which -s flock; then flock -F /tmp/git-lfs-mutex git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=src/tests/fuzzer-corpus/$(PROTOCOL).tar' lfs pull; \
+		if which flock > /dev/null 2>&1; then flock -F /tmp/git-lfs-mutex git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=src/tests/fuzzer-corpus/$(PROTOCOL).tar' lfs pull; \
 		else git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=src/tests/fuzzer-corpus/$(PROTOCOL).tar' lfs pull; fi; \
 		cd src/tests/fuzzer-corpus; \
 		tar -xf $(PROTOCOL).tar; \
