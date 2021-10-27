@@ -2937,9 +2937,10 @@ ssize_t tmpl_regex_flags_substr(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_term_t con
  * @param[in] type		Cast type.
  * @param[in] enumv		Enumeration values.
  */
-static CC_HINT(always_inline) fr_token_t tmpl_cast_quote(fr_token_t existing_quote,
- 							 fr_type_t type, fr_dict_attr_t const *enumv,
- 							 char const *unescaped, size_t unescaped_len)
+static inline CC_HINT(always_inline)
+fr_token_t tmpl_cast_quote(fr_token_t existing_quote,
+ 			   fr_type_t type, fr_dict_attr_t const *enumv,
+ 			   char const *unescaped, size_t unescaped_len)
 {
 	if (!fr_type_is_string(type)) return T_BARE_WORD;
 
