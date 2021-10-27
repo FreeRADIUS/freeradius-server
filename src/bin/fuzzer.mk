@@ -93,10 +93,10 @@ test.fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-c
 	fi
 endif
 
-test.fuzzer.$(PROTOCOL).crash: $(wildcard $(BUILD_DIR)/fuzzer/$(PROTOCOL)/crash-*) $(wildcard $(BUILD_DIR)/fuzzer/$(PROTOCOL)/slow-unit-*) $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
+test.fuzzer.$(PROTOCOL).crash: $(wildcard $(BUILD_DIR)/fuzzer/$(PROTOCOL)/crash-*) $(wildcard $(BUILD_DIR)/fuzzer/$(PROTOCOL)/timeout-*) $(wildcard $(BUILD_DIR)/fuzzer/$(PROTOCOL)/slow-unit-*) $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
 	$(TEST_BIN)/fuzzer_$(PROTOCOL) \
 		-artifact_prefix="$(FUZZER_ARTIFACTS)/$(PROTOCOL)/" \
 		-max_len=512 $(FUZZER_ARGUMENTS) \
 		-max_total_time=$(FUZZER_TIMEOUT) \
 		-D share/dictionary \
-		$(filter $(BUILD_DIR)/fuzzer/$(PROTOCOL)/crash-% $(BUILD_DIR)/fuzzer/$(PROTOCOL)/slow-unit-%, $?)
+		$(filter $(BUILD_DIR)/fuzzer/$(PROTOCOL)/crash-% $(BUILD_DIR)/fuzzer/$(PROTOCOL)/timeout-% $(BUILD_DIR)/fuzzer/$(PROTOCOL)/slow-unit-%, $?)
