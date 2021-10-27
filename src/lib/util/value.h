@@ -77,12 +77,14 @@ extern fr_sbuff_unescape_rules_t fr_value_unescape_single;
 extern fr_sbuff_unescape_rules_t fr_value_unescape_solidus;
 extern fr_sbuff_unescape_rules_t fr_value_unescape_backtick;
 extern fr_sbuff_unescape_rules_t *fr_value_unescape_by_quote[T_TOKEN_LAST];
+extern fr_sbuff_unescape_rules_t *fr_value_unescape_by_char[UINT8_MAX + 1];
 
 extern fr_sbuff_escape_rules_t fr_value_escape_double;
 extern fr_sbuff_escape_rules_t fr_value_escape_single;
 extern fr_sbuff_escape_rules_t fr_value_escape_solidus;
 extern fr_sbuff_escape_rules_t fr_value_escape_backtick;
 extern fr_sbuff_escape_rules_t *fr_value_escape_by_quote[T_TOKEN_LAST];
+extern fr_sbuff_escape_rules_t *fr_value_escape_by_char[UINT8_MAX + 1];
 
 extern fr_sbuff_escape_rules_t fr_value_escape_unprintables;
 

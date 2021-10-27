@@ -395,6 +395,13 @@ fr_sbuff_unescape_rules_t *fr_value_unescape_by_quote[T_TOKEN_LAST] = {
 	[T_BACK_QUOTED_STRING]		= &fr_value_unescape_backtick,
 };
 
+fr_sbuff_unescape_rules_t *fr_value_unescape_by_char[UINT8_MAX + 1] = {
+	['"']	= &fr_value_unescape_double,
+	['\'']	= &fr_value_unescape_single,
+	['/']	= &fr_value_unescape_solidus,
+	['`']	= &fr_value_unescape_backtick,
+};
+
 fr_sbuff_escape_rules_t fr_value_escape_double = {
 	.name = "double",
 	.chr = '\\',
@@ -475,6 +482,13 @@ fr_sbuff_escape_rules_t *fr_value_escape_by_quote[T_TOKEN_LAST] = {
 	[T_SINGLE_QUOTED_STRING]	= &fr_value_escape_single,
 	[T_SOLIDUS_QUOTED_STRING]	= &fr_value_escape_solidus,
 	[T_BACK_QUOTED_STRING]		= &fr_value_escape_backtick,
+};
+
+fr_sbuff_escape_rules_t *fr_value_escape_by_char[UINT8_MAX + 1] = {
+	['"']	= &fr_value_escape_double,
+	['\'']	= &fr_value_escape_single,
+	['/']	= &fr_value_escape_solidus,
+	['`']	= &fr_value_escape_backtick,
 };
 
 fr_sbuff_escape_rules_t fr_value_escape_unprintables = {
