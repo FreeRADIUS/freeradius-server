@@ -358,7 +358,7 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 
 		if (*end) goto failed;
 
-		if ((errno = ERANGE) || (sec > 60)) {	/* ERANGE is for wrap detection */
+		if (((errno = ERANGE) && ((unsigned long)sec == ULONG_MAX)) || (sec > 60)) {	/* ERANGE is for wrap detection */
 			fr_strerror_printf("Too many seconds in \"%s\"", in);
 			return -1;
 		}
