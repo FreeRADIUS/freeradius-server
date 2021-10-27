@@ -275,7 +275,7 @@ do { \
 /*
  *	Handle acquire/release macros
  */
-#ifdef __clang__
+#if defined(__clang__) && (__clang_major__ >= 13)
 #  define CC_ACQUIRE_HANDLE(_tag) CC_HINT(acquire_handle(_tag))
 #  define CC_USE_HANDLE(_tag) CC_HINT(use_handle(_tag))
 #  define CC_RELEASE_HANDLE(_tag) CC_HINT(release_handle(_tag))
