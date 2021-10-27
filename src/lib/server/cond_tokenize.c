@@ -270,7 +270,7 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 		 *	Force a cast to 'string', so the conditional
 		 *	evaluator has less work to do.
 		 */
-		(void) tmpl_cast_set(c->data.map->lhs, FR_TYPE_STRING);
+		(void) tmpl_cast_set(c->data.map->lhs, cast_type);
 		return 0;
 	}
 #endif
