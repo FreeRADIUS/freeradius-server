@@ -4556,6 +4556,7 @@ parse:
 					talloc_free(buff);
 					return -1;
 				}
+				talloc_set_type(bin, uint8_t); /* talloc_realloc doesn't do this */
 
 				fr_value_box_memdup_buffer_shallow(NULL, dst, dst_enumv, bin, tainted);
 			/*
