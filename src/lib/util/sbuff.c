@@ -1076,12 +1076,13 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	size_t		len; \
 	long long	num; \
 	fr_sbuff_t	our_in = FR_SBUFF(in); \
+	buff[0] = '\0'; /* clang scan */ \
 	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char); \
 	if (len == 0) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
-	errno = 0; \
+	errno = 0; /* this is needed as strtoll doesn't reset errno */ \
 	num = strtoll(buff, &end, _base); \
 	if (end == buff) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
@@ -1096,7 +1097,8 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		*out = (_type)(_min); \
 		return -1; \
 	} else if (no_trailing && (((a_end = in->p + (end - buff)) + 1) < in->end)) { \
-		if (isdigit(*a_end) || (((_base > 10) || (_base == 0)) && ((tolower(*a_end) >= 'a') && (tolower(*a_end) <= 'f')))) { \
+		if (isdigit(*a_end) || (((_base > 10) || ((_base == 0) && (len > 2) && (buff[0] == '0') && (buff[1] == 'x'))) && \
+		    ((tolower(*a_end) >= 'a') && (tolower(*a_end) <= 'f')))) { \
 			if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 			*out = (_type)(_max); \
 			return fr_sbuff_error(&our_in); \
@@ -1133,6 +1135,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	size_t			len; \
 	unsigned long long	num; \
 	fr_sbuff_t		our_in = FR_SBUFF(in); \
+	buff[0] = '\0'; /* clang scan */ \
 	len = fr_sbuff_out_bstrncpy(&FR_SBUFF_IN(buff, sizeof(buff)), &our_in, _max_char); \
 	if (len == 0) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
@@ -1142,7 +1145,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW; \
 		return -1; \
 	} \
-	errno = 0; \
+	errno = 0; /* this is needed as strtoull doesn't reset errno */ \
 	num = strtoull(buff, &end, _base); \
 	if (end == buff) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
@@ -1153,7 +1156,8 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		*out = (_type)(_max); \
 		return -1; \
 	} else if (no_trailing && (((a_end = in->p + (end - buff)) + 1) < in->end)) { \
-		if (isdigit(*a_end) || (((_base > 10) || (_base == 0)) && ((tolower(*a_end) >= 'a') && (tolower(*a_end) <= 'f')))) { \
+		if (isdigit(*a_end) || (((_base > 10) || ((_base == 0) && (len > 2) && (buff[0] == '0') && (buff[1] == 'x'))) && \
+		    ((tolower(*a_end) >= 'a') && (tolower(*a_end) <= 'f')))) { \
 			if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
 			*out = (_type)(_max); \
 			return fr_sbuff_error(&our_in); \
@@ -1218,7 +1222,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
-	errno = 0; \
+	errno = 0; /* this is needed as parsing functions don't reset errno */ \
 	res = _func(buff, &end); \
 	if (errno == ERANGE) { \
 		if (res > 0) { \
