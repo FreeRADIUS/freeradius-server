@@ -22,19 +22,20 @@ SOURCES		:= fuzzer.c
 
 TGT_PREREQS	:= libfreeradius-$(PROTOCOL).a
 
-TGT_LDLIBS	:= $(LIBS) 
+TGT_LDLIBS	:= $(LIBS)
 
 #
 #  Ensure that the large data file is copied from git-lfs,
 #  and then the files are extracted.
 #
 #  git-lfs fails to update the git index when multiple instances run
-#  concurrently.
+#  concurrently.  Unfortunately there's no equivalent command on macOS.
 #
 .PHONY:src/tests/fuzzer-corpus/$(PROTOCOL)
 src/tests/fuzzer-corpus/$(PROTOCOL):
 	${Q}if [ ! -e $@ ]; then \
-		flock -F /tmp/git-lfs-mutex git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=src/tests/fuzzer-corpus/$(PROTOCOL).tar' lfs pull; \
+		if which -s flock; then flock -F /tmp/git-lfs-mutex git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=src/tests/fuzzer-corpus/$(PROTOCOL).tar' lfs pull; \
+		else git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=src/tests/fuzzer-corpus/$(PROTOCOL).tar' lfs pull; fi; \
 		cd src/tests/fuzzer-corpus; \
 		tar -xf $(PROTOCOL).tar; \
 	fi
