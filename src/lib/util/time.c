@@ -597,6 +597,20 @@ fr_unix_time_t fr_unix_time_from_tm(struct tm *tm)
 	uint32_t leap_days = 1 + (febs / 4) - (febs / 100) + (febs / 400);
 	uint32_t days = 365 * year_adj + leap_days + month_yday[tm->tm_mon] + tm->tm_mday - 1;
 
+#define CHECK(_x, _max) if ((tm->tm_ ## _x < 0) || (tm->tm_ ## _x >= _max)) tm->tm_ ## _x = _max - 1
+
+	CHECK(sec, 60);
+	CHECK(min, 60);
+	CHECK(hour, 24);
+	CHECK(mday, 32);
+	CHECK(mon, 12);
+	CHECK(year, 3000);
+	CHECK(wday, 7);
+	CHECK(mon, 12);
+	CHECK(sec, 60);
+	CHECK(yday, 366);
+	/* don't check gmtoff, it can be negative */
+
 	/*
 	 *	2472692 adjusts the days for Unix epoch.  It is calculated as
 	 *	(365.2425 * (4800 + 1970))
