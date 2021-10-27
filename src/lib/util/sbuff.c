@@ -35,6 +35,7 @@ static_assert(sizeof(unsigned long long) >= sizeof(uint64_t), "long long must be
 fr_table_num_ordered_t const sbuff_parse_error_table[] = {
 	{ L("ok"),			FR_SBUFF_PARSE_OK				},
 	{ L("token not found"),		FR_SBUFF_PARSE_ERROR_NOT_FOUND			},
+	{ L("trailing data"),		FR_SBUFF_PARSE_ERROR_TRAILING			},
 	{ L("token format invalid"),	FR_SBUFF_PARSE_ERROR_FORMAT			},
 	{ L("out of space"),		FR_SBUFF_PARSE_ERROR_OUT_OF_SPACE		},
 	{ L("integer overflow"),	FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW		},
