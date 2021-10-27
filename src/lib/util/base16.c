@@ -98,7 +98,7 @@ uint8_t const fr_base16_alphabet_decode_mc[UINT8_MAX + 1] = {
 	['d'] = 13,
 	['e'] = 14,
 	['f'] = 15,
-	F128(103, UINT8_MAX), F16(231, UINT8_MAX), F8(247, UINT8_MAX)
+	F128(103, UINT8_MAX), F16(231, UINT8_MAX), F8(247, UINT8_MAX), F1(255, UINT8_MAX)
 };
 
 /** Convert binary data to a hex string
@@ -158,6 +158,7 @@ ssize_t fr_base16_decode_nstd(fr_sbuff_parse_error_t *err, fr_dbuff_t *out, fr_s
 		   		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
 		   		return -fr_sbuff_used(&our_in);
 		   	}
+		   	break;
 		}
 
 		FR_DBUFF_IN_BYTES_RETURN(&our_out, (alphabet[us(p[0])] << 4) | alphabet[us(p[1])]);
