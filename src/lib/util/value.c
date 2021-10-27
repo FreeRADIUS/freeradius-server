@@ -4544,19 +4544,31 @@ parse:
 		 */
 		if (rules->escapes || !fr_sbuff_adv_past_strcase_literal(&our_in, "0x")) {
 			if (!dst_enumv) {
-				char	*buff;
+				char	*buff = NULL;
 				uint8_t	*bin;
 
-				fr_sbuff_out_aunescape_until(ctx, &buff, &our_in, SIZE_MAX,
-							     rules->terminals, rules->escapes);
+				if (fr_sbuff_extend(&our_in)) {
+					fr_sbuff_out_aunescape_until(ctx, &buff, &our_in, SIZE_MAX,
+								     rules->terminals, rules->escapes);
 
-				bin = talloc_realloc(ctx, buff, uint8_t, talloc_array_length(buff) - 1);
-				if (unlikely(!bin)) {
-					fr_strerror_const("Failed trimming string buffer");
-					talloc_free(buff);
-					return -1;
+					bin = talloc_realloc(ctx, buff, uint8_t, talloc_array_length(buff) - 1);
+					if (unlikely(!bin)) {
+						fr_strerror_const("Failed trimming string buffer");
+						talloc_free(buff);
+						return -1;
+					}
+					talloc_set_type(bin, uint8_t); /* talloc_realloc doesn't do this */
+				/*
+				 *	Input data is zero
+				 *
+				 *	talloc realloc will refuse to realloc to
+				 *	a zero length buffer.  This is probably
+				 *	a bug, because we can create zero length
+				 *	arrays normally
+				 */
+				} else {
+					bin = talloc_zero_array(ctx, uint8_t, 0);
 				}
-				talloc_set_type(bin, uint8_t); /* talloc_realloc doesn't do this */
 
 				fr_value_box_memdup_buffer_shallow(NULL, dst, dst_enumv, bin, tainted);
 			/*
