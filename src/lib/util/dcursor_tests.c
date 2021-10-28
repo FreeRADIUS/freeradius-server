@@ -1,9 +1,9 @@
 #include <freeradius-devel/util/acutest.h>
+#include <freeradius-devel/util/dcursor.h>
 //#include <talloc.h>
 //nclude <string.h>
 //#include <stdint.h>
 
-#include "dcursor.c"
 
 typedef struct {
 	char const *name;

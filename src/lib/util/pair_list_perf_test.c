@@ -46,7 +46,6 @@ static void pair_list_perf_init(void);
 #undef WITH_VERIFY_PTR
 #endif
 
-#include "pair.c"
 #include <freeradius-devel/util/dict_test.h>
 #include <freeradius-devel/server/base.h>
 

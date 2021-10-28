@@ -1,8 +1,7 @@
 #include <freeradius-devel/util/acutest.h>
+#include <freeradius-devel/server/trunk.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-
-#include "trunk.c"
 
 #if 0
 //#include <gperftools/profiler.h>

@@ -23,8 +23,7 @@
 #include <freeradius-devel/util/acutest.h>
 #include <freeradius-devel/util/acutest_helpers.h>
 #include <freeradius-devel/util/rand.h>
-
-#include "rb.c"
+#include <freeradius-devel/util/rb.h>
 
 #define MAXSIZE 128
 
