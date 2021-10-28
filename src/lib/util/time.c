@@ -214,44 +214,44 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 	int64_t	sec;
 	uint64_t subsec = 0;
 	int	scale = 1;
-	char	*p, *end;
+	char	*p, *next = NULL;
 	bool	negative = false;
 
 	if (*in == '-') negative = true; /* catch the case of negative zero! */
 
-	sec = strtoll(in, &end, 10);
-	if (in == end) {
+	sec = strtoll(in, &next, 10);
+	if (in == next) {
 	failed:
 		fr_strerror_printf("Failed parsing \"%s\" as time_delta", in);
 		return -1;
 	}
 
 	/*
-	 *	Allow "1ns", etc.
-	 */
-	if ((*end >= 'a') && (*end <= 'z')) {
-		p = end;
-		goto parse_precision;
-	}
-
-	/*
 	 *	The input is just a number.  Scale and clamp it as appropriate.
 	 */
-	if (!*end) {
+	if (!next || !*next) {
 		*out = fr_time_delta_from_nsec(fr_time_scale(sec, hint));
 		return 0;
 	}
 
 	/*
+	 *	Allow "1ns", etc.
+	 */
+	if ((*next >= 'a') && (*next <= 'z')) {
+		p = next;
+		goto parse_precision;
+	}
+
+	/*
 	 *	Decimal number
 	 */
-	if (*end == '.') {
+	if (*next == '.') {
 		int len;
 
 		len = subsec = 0;
 
-		end++;
-		p = end;
+		next++;
+		p = next;
 
 		/*
 		 *	Parse the decimal portion of a number like "0.1".
@@ -345,18 +345,18 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		fr_strerror_printf("Invalid time qualifier at \"%s\"", p);
 		return -1;
 
-	} else if (*end == ':') {
+	} else if (*next == ':') {
 		/*
 		 *	00:01 is at least minutes, potentially hours
 		 */
 		int minutes = sec;
 
-		p = end + 1;
+		p = next + 1;
 		errno = 0; /* Must be reset */
-		sec = strtoul(p, &end, 10);
-		if (p == end) goto failed;
+		sec = strtoul(p, &next, 10);
+		if (p == next) goto failed;
 
-		if (*end) goto failed;
+		if (*next) goto failed;
 
 		if (((errno = ERANGE) && ((unsigned long)sec == ULONG_MAX)) || (sec > 60)) {	/* ERANGE is for wrap detection */
 			fr_strerror_printf("Too many seconds in \"%s\"", in);
@@ -372,7 +372,7 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		 *	@todo - support hours, maybe.  Even though
 		 *	pretty much nothing needs them right now.
 		 */
-		if (*end) goto failed;
+		if (*next) goto failed;
 
 		if (negative) {
 			*out = fr_time_delta_from_sec(((int64_t)minutes * 60) - sec);
@@ -381,8 +381,8 @@ int fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t h
 		}
 		return 0;
 
-	} else if (*end) {
-		p = end;
+	} else if (*next) {
+		p = next;
 		goto error;
 
 	} else {
