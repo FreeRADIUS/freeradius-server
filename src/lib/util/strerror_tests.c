@@ -24,8 +24,6 @@
 #include <freeradius-devel/util/acutest_helpers.h>
 #include <freeradius-devel/util/time.h>
 
-#include "strerror.c"
-
 static void strerror_uninit(void)
 {
 	char const *error;
