@@ -5851,7 +5851,7 @@ then :
 else $as_nop
 
     CFLAGS_SAVED=$CFLAGS
-    CFLAGS="$CFLAGS -Werror --unwindlib=libunwind"
+    CFLAGS="$CFLAGS -Werror --rtlib=compiler-rt --unwindlib=libunwind"
 
     if test "$cross_compiling" = yes
 then :

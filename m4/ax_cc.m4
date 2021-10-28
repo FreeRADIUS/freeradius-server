@@ -64,7 +64,7 @@ dnl #
 AC_DEFUN([AX_CC_UNWINDLIB_ARG],[
   AC_CACHE_CHECK([if the compiler accepts --unwindlib], [ax_cv_cc_unwindlib_arg],[
     CFLAGS_SAVED=$CFLAGS
-    CFLAGS="$CFLAGS -Werror --unwindlib=libunwind"
+    CFLAGS="$CFLAGS -Werror --rtlib=compiler-rt --unwindlib=libunwind"
 
     AC_RUN_IFELSE(
     [
