@@ -513,7 +513,7 @@ int fr_size_from_str(size_t *out, char const *str)
 		break;
 
 	case 'k':		/* kilobyte */
-		if (fr_multiply(&size, size, 1024)) {
+		if (!fr_multiply(&size, size, 1024)) {
 		overflow:
 			fr_strerror_printf("Value must be less than %zu", (size_t)SIZE_MAX);
 			return -1;
@@ -521,15 +521,15 @@ int fr_size_from_str(size_t *out, char const *str)
 		break;
 
 	case 'm':		/* megabyte */
-		if (fr_multiply(&size, size, (1024 * 1024))) goto overflow;
+		if (!fr_multiply(&size, size, (1024 * 1024))) goto overflow;
 		break;
 
 	case 'g':		/* gigabyte */
-		if (fr_multiply(&size, size, (1024 * 1024 * 1024))) goto overflow;
+		if (!fr_multiply(&size, size, (1024 * 1024 * 1024))) goto overflow;
 		break;
 
 	case 't':		/* terabyte */
-		if (fr_multiply(&size, size, ((uint64_t)1024 * 1024 * 1024 * 1024))) goto overflow;
+		if (!fr_multiply(&size, size, ((uint64_t)1024 * 1024 * 1024 * 1024))) goto overflow;
 		break;
 
 	default:
@@ -552,27 +552,6 @@ int fr_size_from_str(size_t *out, char const *str)
 	*out = (size_t)size;
 
 	return 0;
-}
-
-/** Multiply, checking for overflow
- *
- * Multiplication will only occur if it would not overflow.
- *
- * @param[out] result	of multiplication.
- * @param[in] lhs	First operand.
- * @param[in] rhs	Second operand.
- *
- * @return
- *	- true multiplication overflowed.
- *	- false multiplication did not overflow.
- */
-bool fr_multiply(uint64_t *result, uint64_t lhs, uint64_t rhs)
-{
-	if (rhs > 0 && (UINT64_MAX / rhs) < lhs) return true;
-
-	*result = lhs * rhs;	/* ubsan would flag this */
-
-	return false;
 }
 
 /** Multiply with modulo wrap

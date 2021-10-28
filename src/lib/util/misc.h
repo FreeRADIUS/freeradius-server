@@ -27,6 +27,39 @@ RCSIDH(misc_h, "$Id$")
 extern "C" {
 #endif
 
+/** Multiplies two integers together
+ *
+ * @param[in] _out	Where to store the result.
+ * @param[in] _a	first argument to multiply.
+ * @param[in] _b	second argument to multiply.
+ * @return
+ *      - false on overflow.
+ *      - true if there was no overflow.
+ */
+#define fr_multiply(_out, _a, _b) !__builtin_mul_overflow(_a, _b, _out)
+
+/** Adds two integers
+ *
+ * @param[in] _out	Where to store the result.
+ * @param[in] _a	first argument to add.
+ * @param[in] _b	second argument to add.
+ * @return
+ *      - false on overflow.
+ *      - true if there was no overflow.
+ */
+#define fr_add(_out, _a, _b) !__builtin_add_overflow(_a, _b, _out)
+
+/** Subtraces two integers
+ *
+ * @param[in] _out	Where to store the result.
+ * @param[in] _a	first argument to subtract.
+ * @param[in] _b	second argument to subtract.
+ * @return
+ *      - false on overflow.
+ *      - true if there was no overflow.
+ */
+#define fr_sub(_out, _a, _b) !__builtin_sub_overflow(_a, _b, _out)
+
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/print.h>
@@ -200,7 +233,6 @@ ssize_t		fr_writev(int fd, struct iovec vector[], int iovcnt, fr_time_delta_t ti
 ssize_t		fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inlen);
 size_t		fr_snprint_uint128(char *out, size_t outlen, uint128_t const num);
 
-bool		fr_multiply(uint64_t *result, uint64_t lhs, uint64_t rhs);
 uint64_t	fr_multiply_mod(uint64_t lhs, uint64_t rhs, uint64_t mod);
 
 int		fr_size_from_str(size_t *out, char const *str);
