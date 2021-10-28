@@ -274,7 +274,7 @@ static bool get_number(request_t *request, char const **string, int64_t *answer)
 				 *	integer number of milliseconds
 				 */
 			case FR_TYPE_TIME_DELTA:
-				y = fr_time_delta_scale(vp->vp_time_delta, vp->data.enumv ? vp->data.enumv->flags.flag_time_res : FR_TIME_RES_SEC);
+				y = fr_time_delta_to_integer(vp->vp_time_delta, vp->data.enumv ? vp->data.enumv->flags.flag_time_res : FR_TIME_RES_SEC);
 				break;
 
 			case FR_TYPE_DATE:

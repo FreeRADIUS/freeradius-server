@@ -26,21 +26,29 @@
  */
 RCSIDH(time_h, "$Id$")
 
-/*
- *	For sys/time.h and time.h
- */
-#include <freeradius-devel/missing.h>
-#include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/sbuff.h>
+#include <stdint.h>
 #include <inttypes.h>
 #include <stdatomic.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <sys/time.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/** The base resolution for print parse operations
+ */
+typedef enum {
+	FR_TIME_RES_INVALID = -1,
+	FR_TIME_RES_SEC = 0,
+	FR_TIME_RES_MIN,
+	FR_TIME_RES_HOUR,
+	FR_TIME_RES_DAY,
+	FR_TIME_RES_CSEC,
+	FR_TIME_RES_MSEC,
+	FR_TIME_RES_USEC,
+	FR_TIME_RES_NSEC
+} fr_time_res_t;
 
 /** "server local" time.  This is the time in nanoseconds since the application started.
  *
@@ -54,11 +62,6 @@ typedef struct fr_time_s {
 				///< entries.
 } fr_time_t;
 
-#define fr_time_max() (fr_time_t){ .value = INT64_MAX }
-#define fr_time_min() (fr_time_t){ .value = INT64_MIN }
-#define fr_time_wrap(_time) (fr_time_t){ .value = (_time) }
-static inline int64_t fr_time_unwrap(fr_time_t time) { return time.value; }	/* func to stop mixing with fr_time_delta_t */
-
 /** A time delta, a difference in time measured in nanoseconds.
  *
  * This is easier to distinguish where server epoch time is being
@@ -67,11 +70,6 @@ static inline int64_t fr_time_unwrap(fr_time_t time) { return time.value; }	/* f
 typedef struct fr_time_delta_s {
 	int64_t value;
 } fr_time_delta_t;
-
-#define fr_time_delta_max() (fr_time_delta_t){ .value = INT64_MAX }
-#define fr_time_delta_min() (fr_time_delta_t){ .value = INT64_MIN }
-#define fr_time_delta_wrap(_time) (fr_time_delta_t){ .value = (_time) }
-static inline int64_t fr_time_delta_unwrap(fr_time_delta_t time) { return time.value; }	/* func to stop mixing with fr_time_t */
 
 /** "Unix" time.  This is the time in nanoseconds since midnight January 1, 1970
  *
@@ -88,13 +86,70 @@ typedef struct fr_unix_time_s {
 	uint64_t value;
 } fr_unix_time_t;
 
+#ifdef __cplusplus
+}
+#endif
+
+/*
+ *	For sys/time.h and time.h
+ */
+#include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/misc.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern int64_t const			fr_time_multiplier_by_res[];
 extern fr_table_num_ordered_t const	fr_time_precision_table[];
 extern size_t				fr_time_precision_table_len;
+
+static bool fr_time_op_ispos(bool a, bool op, bool b)
+{
+	return ((a == op) == b);
+}
+
+/** Determine, if an overflow has occurred, which direction it occurred in
+ *
+ * @param[in] _a	First operand.
+ * @param[in] _op	Operator, true if add or multiply, false if subtract.
+ * @param[in] _b	Second operand.
+ */
+#define fr_time_overflow_ispos(_a, _op, _b) \
+fr_time_op_ispos( \
+	_Generic(&(_a), \
+		 fr_time_t *: (fr_time_unwrap(*((fr_time_t *)&(_a))) >= 0), \
+		 fr_time_delta_t *: (fr_time_delta_unwrap(*((fr_time_delta_t *)&(_a))) >= 0), \
+		 fr_unix_time_t *: true), \
+	_op, \
+	_Generic(&(_b), \
+		 fr_time_t *: (fr_time_unwrap(*((fr_time_t *)&(_b))) >= 0), \
+		 fr_time_delta_t *: (fr_time_delta_unwrap(*((fr_time_delta_t *)&(_b))) >= 0), \
+		 fr_unix_time_t *: true)\
+	)
+
+#define fr_time_max() (fr_time_t){ .value = INT64_MAX }
+#define fr_time_min() (fr_time_t){ .value = INT64_MIN }
+#define fr_time_wrap(_time) (fr_time_t){ .value = (_time) }
+static inline int64_t fr_time_unwrap(fr_time_t time) { return time.value; }	/* func to stop mixing with fr_time_delta_t */
+#define fr_time_overflow_add(_a, _b) (fr_time_overflow_ispos(_a, true, _b) ? fr_time_max() : fr_time_min())
+#define fr_time_overflow_sub(_a, _b) (fr_time_overflow_ispos(_a, false, _b) ? fr_time_max() : fr_time_min())
+
+#define fr_time_delta_max() (fr_time_delta_t){ .value = INT64_MAX }
+#define fr_time_delta_min() (fr_time_delta_t){ .value = INT64_MIN }
+#define fr_time_delta_wrap(_time) (fr_time_delta_t){ .value = (_time) }
+static inline int64_t fr_time_delta_unwrap(fr_time_delta_t time) { return time.value; }	/* func to stop mixing with fr_time_t */
+#define fr_time_delta_overflow_add(_a, _b) (fr_time_overflow_ispos(_a, true, _b) ? fr_time_delta_max() : fr_time_delta_min())
+#define fr_time_delta_overflow_sub(_a, _b) (fr_time_overflow_ispos(_a, false, _b) ? fr_time_delta_max() : fr_time_delta_min())
+
 #define fr_unix_time_max() (fr_unix_time_t){ .value = UINT64_MAX }
 #define fr_unix_time_min() (fr_unix_time_t){ .value = 0 }
 #define fr_unix_time_wrap(_time) (fr_unix_time_t){ .value = (_time) }
 static inline uint64_t fr_unix_time_unwrap(fr_unix_time_t time) { return time.value; }	/* func to stop mixing with fr_time_t */
+#define fr_unix_time_overflow_add(_a, _b) (fr_time_overflow_ispos(_a, true, _b) ? fr_unix_time_max() : fr_unix_time_min())
+#define fr_unix_time_overflow_sub(_a, _b) (fr_time_overflow_ispos(_a, false, _b) ? fr_unix_time_max() : fr_unix_time_min())
 
 /** @name fr_time_t arithmetic and comparison macros
  *
@@ -104,8 +159,19 @@ static inline uint64_t fr_unix_time_unwrap(fr_unix_time_t time) { return time.va
  * @{
  */
 /* Don't add fr_time_add_time_time, it's almost always a type error */
-static inline fr_time_t fr_time_add_time_delta(fr_time_t a, fr_time_delta_t b) { return fr_time_wrap(fr_time_unwrap(a) + fr_time_delta_unwrap(b)); }
-static inline fr_time_t fr_time_add_delta_time(fr_time_delta_t a, fr_time_t b) { return fr_time_wrap(fr_time_delta_unwrap(a) + fr_time_unwrap(b)); }
+static inline fr_time_t fr_time_add_time_delta(fr_time_t a, fr_time_delta_t b)
+{
+	typeof_field(fr_time_t, value) out;
+	if (!fr_add(&out, fr_time_unwrap(a), fr_time_delta_unwrap(b))) return fr_time_overflow_add(a, b);
+	return fr_time_wrap(out);
+}
+
+static inline fr_time_t fr_time_add_delta_time(fr_time_delta_t a, fr_time_t b)
+{
+	typeof_field(fr_time_t, value) out;
+	if (!fr_add(&out, fr_time_delta_unwrap(a), fr_time_unwrap(b))) return fr_time_overflow_add(a, b);
+	return fr_time_wrap(out);
+}
 
 /** Add a time/time delta together
  *
@@ -127,8 +193,18 @@ static inline fr_time_t fr_time_add_delta_time(fr_time_delta_t a, fr_time_t b) {
 				  ) \
 	)(_a, _b)
 
-static inline fr_time_delta_t fr_time_sub_time_time(fr_time_t a, fr_time_t b) { return fr_time_delta_wrap(fr_time_unwrap(a) - fr_time_unwrap(b)); }
-static inline fr_time_t fr_time_sub_time_delta(fr_time_t a, fr_time_delta_t b) { return fr_time_wrap(fr_time_unwrap(a) - fr_time_delta_unwrap(b)); }
+static inline fr_time_delta_t fr_time_sub_time_time(fr_time_t a, fr_time_t b)
+{
+	typeof_field(fr_time_t, value) out;
+	if (!fr_sub(&out, fr_time_unwrap(a), fr_time_unwrap(b))) return fr_time_delta_overflow_sub(a, b);
+	return fr_time_delta_wrap(out);
+}
+static inline fr_time_t fr_time_sub_time_delta(fr_time_t a, fr_time_delta_t b)
+{
+	typeof_field(fr_time_t, value) out;
+	if (!fr_sub(&out, fr_time_unwrap(a), fr_time_delta_unwrap(b))) return fr_time_overflow_sub(a, b);
+	return fr_time_wrap(out);
+}
 
 /** Subtract one time from another
  *
@@ -165,10 +241,30 @@ static inline fr_time_t fr_time_sub_time_delta(fr_time_t a, fr_time_delta_t b) {
  * The macros below allow basic arithmetic and comparisons to be performed.
  * @{
  */
-static inline fr_time_delta_t fr_time_delta_add(fr_time_delta_t a, fr_time_delta_t b) { return fr_time_delta_wrap(fr_time_delta_unwrap(a) + fr_time_delta_unwrap(b)); }
-static inline fr_time_delta_t fr_time_delta_sub(fr_time_delta_t a, fr_time_delta_t b) { return fr_time_delta_wrap(fr_time_delta_unwrap(a) - fr_time_delta_unwrap(b)); }
-static inline fr_time_delta_t fr_time_delta_div(fr_time_delta_t a, fr_time_delta_t b) { return fr_time_delta_wrap(fr_time_delta_unwrap(a) / fr_time_delta_unwrap(b)); }
-static inline fr_time_delta_t fr_time_delta_mul(fr_time_delta_t a, fr_time_delta_t b) { return fr_time_delta_wrap(fr_time_delta_unwrap(a) * fr_time_delta_unwrap(b)); }
+static inline fr_time_delta_t fr_time_delta_add(fr_time_delta_t a, fr_time_delta_t b)
+{
+	typeof_field(fr_time_delta_t, value) out;
+	if (!fr_add(&out, fr_time_delta_unwrap(a), fr_time_delta_unwrap(b))) return fr_time_delta_overflow_add(a, b);
+	return fr_time_delta_wrap(out);
+}
+static inline fr_time_delta_t fr_time_delta_sub(fr_time_delta_t a, fr_time_delta_t b)
+{
+	typeof_field(fr_time_delta_t, value) out;
+	if (!fr_sub(&out, fr_time_delta_unwrap(a), fr_time_delta_unwrap(b))) return fr_time_delta_overflow_sub(a, b);
+	return fr_time_delta_wrap(out);
+}
+static inline fr_time_delta_t fr_time_delta_div(fr_time_delta_t a, fr_time_delta_t b)
+{
+	return fr_time_delta_wrap(fr_time_delta_unwrap(a) / fr_time_delta_unwrap(b));
+}
+static inline fr_time_delta_t fr_time_delta_mul(fr_time_delta_t a, fr_time_delta_t b)
+{
+	typeof_field(fr_time_delta_t, value) out;
+	if (!fr_multiply(&out, fr_time_delta_unwrap(a), fr_time_delta_unwrap(b))) {
+		return fr_time_delta_overflow_add(a, b);
+	}
+	return fr_time_delta_wrap(out);
+}
 
 #define fr_time_delta_cond(_a, _op, _b) (fr_time_delta_unwrap(_a) _op fr_time_delta_unwrap(_b))
 #define fr_time_delta_gt(_a, _b) (fr_time_delta_unwrap(_a) > fr_time_delta_unwrap(_b))
@@ -190,8 +286,18 @@ static inline fr_time_delta_t fr_time_delta_mul(fr_time_delta_t a, fr_time_delta
  * @{
  */
 /* Don't add fr_unix_time_add_time_time, it's almost always a type error */
-static inline fr_unix_time_t fr_unix_time_add_time_delta(fr_unix_time_t a, fr_time_delta_t b) { return fr_unix_time_wrap(fr_unix_time_unwrap(a) + fr_time_delta_unwrap(b)); }
-static inline fr_unix_time_t fr_unix_time_add_delta_time(fr_time_delta_t a, fr_unix_time_t b) { return fr_unix_time_wrap(fr_time_delta_unwrap(a) + fr_unix_time_unwrap(b)); }
+static inline fr_unix_time_t fr_unix_time_add_time_delta(fr_unix_time_t a, fr_time_delta_t b)
+{
+	typeof_field(fr_unix_time_t, value) out;
+	if (!fr_add(&out, fr_unix_time_unwrap(a), fr_time_delta_unwrap(b))) return fr_unix_time_overflow_add(a, b);
+	return fr_unix_time_wrap(out);
+}
+static inline fr_unix_time_t fr_unix_time_add_delta_time(fr_time_delta_t a, fr_unix_time_t b)
+{
+	typeof_field(fr_unix_time_t, value) out;
+	if (!fr_add(&out, fr_time_delta_unwrap(a), fr_unix_time_unwrap(b))) return fr_unix_time_overflow_add(a, b);
+	return fr_unix_time_wrap(out);
+}
 
 /** Add a time/time delta together
  *
@@ -213,8 +319,18 @@ static inline fr_unix_time_t fr_unix_time_add_delta_time(fr_time_delta_t a, fr_u
 				  ) \
 	)(_a, _b)
 
-static inline fr_time_delta_t fr_unix_time_sub_time_time(fr_unix_time_t a, fr_unix_time_t b) { return fr_time_delta_wrap(fr_unix_time_unwrap(a) - fr_unix_time_unwrap(b)); }
-static inline fr_unix_time_t fr_unix_time_sub_time_delta(fr_unix_time_t a, fr_time_delta_t b) { return fr_unix_time_wrap(fr_unix_time_unwrap(a) - fr_time_delta_unwrap(b)); }
+static inline fr_time_delta_t fr_unix_time_sub_time_time(fr_unix_time_t a, fr_unix_time_t b)
+{
+	typeof_field(fr_time_delta_t, value) out;
+	if (!fr_sub(&out, fr_unix_time_unwrap(a), fr_unix_time_unwrap(b))) return fr_time_delta_overflow_sub(a, b);
+	return fr_time_delta_wrap(out);
+}
+static inline fr_unix_time_t fr_unix_time_sub_time_delta(fr_unix_time_t a, fr_time_delta_t b)
+{
+	typeof_field(fr_unix_time_t, value) out;
+	if (!fr_sub(&out, fr_unix_time_unwrap(a), fr_time_delta_unwrap(b))) return fr_unix_time_overflow_sub(a, b);
+	return fr_unix_time_wrap(out);
+}
 
 /** Subtract one time from another
  *
@@ -243,16 +359,6 @@ static inline fr_unix_time_t fr_unix_time_sub_time_delta(fr_unix_time_t a, fr_ti
 #define fr_unix_time_ispos(_a) (fr_unix_time_unwrap(_a) > 0)
 /** @} */
 
-/** The base resolution for print parse operations
- */
-typedef enum {
-	FR_TIME_RES_SEC = 0,
-	FR_TIME_RES_CSEC,
-	FR_TIME_RES_MSEC,
-	FR_TIME_RES_USEC,
-	FR_TIME_RES_NSEC
-} fr_time_res_t;
-
 typedef struct {
 	uint64_t	array[8];		//!< 100ns to 100s
 } fr_time_elapsed_t;
@@ -275,6 +381,18 @@ extern uint64_t				our_mach_epoch;
  *
  * @{
  */
+static inline fr_unix_time_t fr_unix_time_from_integer(bool *overflow, int64_t integer, fr_time_res_t res)
+{
+	int64_t out;
+	if (res == FR_TIME_RES_INVALID) return fr_unix_time_max();
+	if (!fr_multiply(&out, integer, fr_time_multiplier_by_res[res])) {
+		if (overflow) *overflow = true;
+		return fr_unix_time_max();
+	}
+	if (overflow) *overflow = false;
+	return fr_unix_time_wrap(out);
+}
+
 static inline fr_unix_time_t fr_unix_time_from_nsec(int64_t nsec)
 {
 	return fr_unix_time_wrap(nsec);
@@ -282,32 +400,65 @@ static inline fr_unix_time_t fr_unix_time_from_nsec(int64_t nsec)
 
 static inline fr_unix_time_t fr_unix_time_from_usec(int64_t usec)
 {
-	return fr_unix_time_wrap(usec * (NSEC / USEC));
+	uint64_t out;
+	if (!fr_multiply(&out, usec, (NSEC / USEC))) return (usec > 0) ? fr_unix_time_max() : fr_unix_time_min();
+	return fr_unix_time_wrap(out);
 }
 
 static inline fr_unix_time_t fr_unix_time_from_msec(int64_t msec)
 {
-	return fr_unix_time_wrap(msec * (NSEC / MSEC));
+	uint64_t out;
+	if (!fr_multiply(&out, msec, (NSEC / MSEC))) return (msec > 0) ? fr_unix_time_max() : fr_unix_time_min();
+	return fr_unix_time_wrap(out);
 }
 
 static inline fr_unix_time_t fr_unix_time_from_csec(int64_t csec)
 {
-	return fr_unix_time_wrap(csec * (NSEC / CSEC));
+	uint64_t out;
+	if (!fr_multiply(&out, csec, (NSEC / CSEC))) return (csec > 0) ? fr_unix_time_max() : fr_unix_time_min();
+	return fr_unix_time_wrap(out);
 }
 
 static inline fr_unix_time_t fr_unix_time_from_sec(int64_t sec)
 {
-	return fr_unix_time_wrap(sec * NSEC);
+	uint64_t out;
+	if (!fr_multiply(&out, sec, NSEC)) return (sec > 0) ? fr_unix_time_max() : fr_unix_time_min();
+	return fr_unix_time_wrap(out);
 }
 
 static inline CC_HINT(nonnull) fr_unix_time_t fr_unix_time_from_timeval(struct timeval const *tv)
 {
-	return fr_unix_time_wrap((((typeof_field(fr_unix_time_t, value)) tv->tv_sec) * NSEC) + (((typeof_field(fr_unix_time_t, value)) tv->tv_usec) * (NSEC / USEC)));
+	typeof_field(fr_unix_time_t, value) integer, fraction, out;
+
+	if (!fr_multiply(&integer, (typeof_field(fr_unix_time_t, value)) tv->tv_sec, NSEC)) {
+	overflow:
+		return fr_unix_time_max();
+	}
+
+	if (!fr_multiply(&fraction,
+			 (typeof_field(fr_unix_time_t, value)) tv->tv_usec, (NSEC / USEC))) goto overflow;
+
+	if (!fr_add(&out, integer, fraction)) goto overflow;
+
+	return fr_unix_time_wrap(out);
 }
 
 static inline CC_HINT(nonnull) fr_unix_time_t fr_unix_time_from_timespec(struct timespec const *ts)
 {
-	return fr_unix_time_wrap((((typeof_field(fr_unix_time_t, value))ts->tv_sec) * NSEC) + ts->tv_nsec);
+	typeof_field(fr_unix_time_t, value) integer, out;
+
+	if (!fr_multiply(&integer, (typeof_field(fr_unix_time_t, value)) ts->tv_sec, NSEC)) {
+	overflow:
+		return fr_unix_time_max();
+	}
+	if (!fr_add(&out, integer, ts->tv_nsec)) goto overflow;
+
+	return fr_unix_time_wrap(out);
+}
+
+static inline int64_t fr_unix_time_to_integer(fr_unix_time_t delta, fr_time_res_t res)
+{
+	return fr_unix_time_unwrap(delta) / fr_time_multiplier_by_res[res];
 }
 
 static inline int64_t fr_unix_time_to_usec(fr_unix_time_t delta)
@@ -330,6 +481,21 @@ static inline int64_t fr_unix_time_to_sec(fr_unix_time_t delta)
 	return (fr_unix_time_unwrap(delta) / NSEC);
 }
 
+static inline int64_t fr_unix_time_to_min(fr_unix_time_t delta)
+{
+	return (fr_unix_time_unwrap(delta) / NSEC) / 60;
+}
+
+static inline int64_t fr_unix_time_to_hour(fr_unix_time_t delta)
+{
+	return (fr_unix_time_unwrap(delta) / NSEC) / 3600;
+}
+
+static inline int64_t fr_unix_time_to_day(fr_unix_time_t delta)
+{
+	return (fr_unix_time_unwrap(delta) / NSEC) / 386400;
+}
+
 /** Covert a time_t into out internal fr_unix_time_t
  *
  * Our internal unix time representation is unsigned and in nanoseconds which
@@ -342,7 +508,7 @@ static inline int64_t fr_unix_time_to_sec(fr_unix_time_t delta)
  */
 static inline CC_HINT(nonnull) fr_unix_time_t fr_unix_time_from_time(time_t time)
 {
-	if (time < 0) return fr_unix_time_wrap(0);
+	if (time < 0) return fr_unix_time_min();
 
 	return fr_unix_time_wrap(time * NSEC);
 }
@@ -352,6 +518,21 @@ static inline CC_HINT(nonnull) fr_unix_time_t fr_unix_time_from_time(time_t time
  *
  * @{
  */
+static inline fr_time_delta_t fr_time_delta_from_integer(bool *overflow, int64_t integer, fr_time_res_t res)
+{
+	int64_t out;
+	if (res == FR_TIME_RES_INVALID) {
+		if (overflow) *overflow = true;
+		return fr_time_delta_max();
+	}
+	if (!fr_multiply(&out, integer, fr_time_multiplier_by_res[res])) {
+		if (overflow) *overflow = true;
+		return fr_time_delta_wrap(integer > 0 ? INT64_MAX: INT64_MIN);
+	}
+	if (overflow) *overflow = false;
+	return fr_time_delta_wrap(out);
+}
+
 static inline fr_time_delta_t fr_time_delta_from_nsec(int64_t nsec)
 {
 	return fr_time_delta_wrap(nsec);
@@ -359,32 +540,65 @@ static inline fr_time_delta_t fr_time_delta_from_nsec(int64_t nsec)
 
 static inline fr_time_delta_t fr_time_delta_from_usec(int64_t usec)
 {
-	return fr_time_delta_wrap(usec * (NSEC / USEC));
+	int64_t out;
+	if (!fr_multiply(&out, usec, (NSEC / USEC))) return (usec > 0) ? fr_time_delta_max() : fr_time_delta_min();
+	return fr_time_delta_wrap(out);
 }
 
 static inline fr_time_delta_t fr_time_delta_from_msec(int64_t msec)
 {
-	return fr_time_delta_wrap(msec * (NSEC / MSEC));
+	int64_t out;
+	if (!fr_multiply(&out, msec, (NSEC / MSEC))) return (msec > 0) ? fr_time_delta_max() : fr_time_delta_min();
+	return fr_time_delta_wrap(out);
 }
 
 static inline fr_time_delta_t fr_time_delta_from_csec(int64_t csec)
 {
-	return fr_time_delta_wrap(csec * (NSEC / CSEC));
+	int64_t out;
+	if (!fr_multiply(&out, csec, (NSEC / CSEC))) return (csec > 0) ? fr_time_delta_max() : fr_time_delta_min();
+	return fr_time_delta_wrap(out);
 }
 
 static inline fr_time_delta_t fr_time_delta_from_sec(int64_t sec)
 {
-	return fr_time_delta_wrap(sec * NSEC);
+	int64_t out;
+	if (!fr_multiply(&out, sec, NSEC)) return (sec > 0) ? fr_time_delta_max() : fr_time_delta_min();
+	return fr_time_delta_wrap(out);
 }
 
 static inline CC_HINT(nonnull) fr_time_delta_t fr_time_delta_from_timeval(struct timeval const *tv)
 {
-	return fr_time_delta_wrap((((typeof_field(fr_time_delta_t, value))tv->tv_sec) * NSEC) + (((typeof_field(fr_time_delta_t, value)) tv->tv_usec) * (NSEC / USEC)));
+	typeof_field(fr_time_delta_t, value) integer, fraction, out;
+
+	if (!fr_multiply(&integer, (typeof_field(fr_time_delta_t, value)) tv->tv_sec, NSEC)) {
+	overflow:
+		return fr_time_delta_max();
+	}
+
+	if (!fr_multiply(&fraction,
+			 (typeof_field(fr_time_delta_t, value)) tv->tv_usec, (NSEC / USEC))) goto overflow;
+
+	if (!fr_add(&out, integer, fraction)) goto overflow;
+
+	return fr_time_delta_wrap(out);
 }
 
 static inline CC_HINT(nonnull) fr_time_delta_t fr_time_delta_from_timespec(struct timespec const *ts)
 {
-	return fr_time_delta_wrap((((typeof_field(fr_time_delta_t, value))ts->tv_sec) * NSEC) + ts->tv_nsec);
+	typeof_field(fr_time_delta_t, value) integer, out;
+
+	if (!fr_multiply(&integer, (typeof_field(fr_time_delta_t, value)) ts->tv_sec, NSEC)) {
+	overflow:
+		return fr_time_delta_max();
+	}
+	if (!fr_add(&out, integer, ts->tv_nsec)) goto overflow;
+
+	return fr_time_delta_wrap(out);
+}
+
+static inline int64_t fr_time_delta_to_integer(fr_time_delta_t delta, fr_time_res_t res)
+{
+	return fr_time_delta_unwrap(delta) / fr_time_multiplier_by_res[res];
 }
 
 static inline int64_t fr_time_delta_to_usec(fr_time_delta_t delta)
@@ -440,12 +654,33 @@ static inline int64_t fr_time_wallclock_at_last_sync(void)
 	return atomic_load_explicit(&our_realtime, memory_order_consume);
 }
 
+/** Convert an fr_time_t (internal time) to arbitrary unit as wallclock time
+ *
+ */
+static inline int64_t fr_time_to_integer(bool *overflow, fr_time_t when, fr_time_res_t res)
+{
+	int64_t out;
+
+	if (!fr_add(&out, fr_time_unwrap(when) / fr_time_multiplier_by_res[res],
+		    atomic_load_explicit(&our_realtime, memory_order_consume) / fr_time_multiplier_by_res[res])) {
+		if (overflow) *overflow = true;
+		return fr_time_unwrap(when) > 0 ? INT64_MAX : INT64_MIN;
+	}
+	if (overflow) *overflow = false;
+	return out;
+}
+
 /** Convert an fr_time_t (internal time) to our version of unix time (wallclock time)
  *
  */
 static inline fr_unix_time_t fr_time_to_unix_time(fr_time_t when)
 {
-	return fr_unix_time_wrap(fr_time_unwrap(when) + atomic_load_explicit(&our_realtime, memory_order_consume));
+	int64_t out;
+
+	if (!fr_add(&out, fr_time_unwrap(when), atomic_load_explicit(&our_realtime, memory_order_consume))) {
+		return fr_time_unwrap(when) ? fr_unix_time_max() : fr_unix_time_min();
+	}
+	return fr_unix_time_wrap(out);
 }
 
 /** Convert an fr_time_t (internal time) to number of usec since the unix epoch (wallclock time)
@@ -453,7 +688,9 @@ static inline fr_unix_time_t fr_time_to_unix_time(fr_time_t when)
  */
 static inline int64_t fr_time_to_usec(fr_time_t when)
 {
-	return ((fr_time_unwrap(when) + atomic_load_explicit(&our_realtime, memory_order_consume)) / (NSEC / USEC));
+	/* Divide each operand separately to avoid overflow on addition */
+	return (((fr_time_unwrap(when) / (NSEC / USEC)) +
+		(atomic_load_explicit(&our_realtime, memory_order_consume) / (NSEC / USEC))));
 }
 
 /** Convert an fr_time_t (internal time) to number of msec since the unix epoch (wallclock time)
@@ -461,7 +698,9 @@ static inline int64_t fr_time_to_usec(fr_time_t when)
  */
 static inline int64_t fr_time_to_msec(fr_time_t when)
 {
-	return ((fr_time_unwrap(when) + atomic_load_explicit(&our_realtime, memory_order_consume)) / (NSEC / MSEC));
+	/* Divide each operand separately to avoid overflow on addition */
+	return (((fr_time_unwrap(when) / (NSEC / MSEC)) +
+		(atomic_load_explicit(&our_realtime, memory_order_consume) / (NSEC / MSEC))));
 }
 
 /** Convert an fr_time_t (internal time) to number of csec since the unix epoch (wallclock time)
@@ -469,7 +708,9 @@ static inline int64_t fr_time_to_msec(fr_time_t when)
  */
 static inline int64_t fr_time_to_csec(fr_time_t when)
 {
-	return ((fr_time_unwrap(when) + atomic_load_explicit(&our_realtime, memory_order_consume)) / (NSEC / CSEC));
+	/* Divide each operand separately to avoid overflow on addition */
+	return (((fr_time_unwrap(when) / (NSEC / CSEC)) +
+		(atomic_load_explicit(&our_realtime, memory_order_consume) / (NSEC / CSEC))));
 }
 
 /** Convert an fr_time_t (internal time) to number of sec since the unix epoch (wallclock time)
@@ -477,7 +718,9 @@ static inline int64_t fr_time_to_csec(fr_time_t when)
  */
 static inline int64_t fr_time_to_sec(fr_time_t when)
 {
-	return ((fr_time_unwrap(when) + atomic_load_explicit(&our_realtime, memory_order_consume)) / NSEC);
+	/* Divide each operand separately to avoid overflow on addition */
+	return (((fr_time_unwrap(when) / NSEC) +
+		(atomic_load_explicit(&our_realtime, memory_order_consume) / NSEC)));
 }
 
 /** Convert server epoch time to unix epoch time
@@ -492,6 +735,34 @@ static inline int64_t fr_time_to_sec(fr_time_t when)
  */
 #define fr_time_to_timespec(_when) fr_time_delta_to_timespec(fr_time_delta_wrap(fr_time_wallclock_at_last_sync() + fr_time_unwrap(_when)))
 
+/** Convert wallclock time to a fr_time_t (internal time)
+ *
+ * @param[out] overflow	Whether the conversion overflowed.
+ * @param[in] when	The timestamp to convert.
+ * @param[in] res	The scale the integer value is in.
+ * @return
+ *	- >0 number of nanoseconds since the server started.
+ *	- 0 when the server started.
+ *	- <0 number of nanoseconds before the server started.
+ */
+static inline fr_time_t fr_time_from_integer(bool *overflow, int64_t when, fr_time_res_t res)
+{
+	typeof_field(fr_time_t, value) out;
+
+	if (!fr_multiply(&out, when, fr_time_multiplier_by_res[res])) {
+		if (overflow) *overflow = true;
+		return when > 0 ? fr_time_max() : fr_time_min();
+	}
+
+	if (!fr_sub(&out, out, atomic_load_explicit(&our_realtime, memory_order_consume))) {
+		if (overflow) *overflow = true;
+		return when < 0 ? fr_time_max() : fr_time_min();
+	}
+
+	if (overflow) *overflow = false;
+	return fr_time_wrap(out);
+}
+
 /** Convert a nsec (wallclock time) to a fr_time_t (internal time)
  *
  * @param[in] when	The timestamp to convert.
@@ -502,7 +773,12 @@ static inline int64_t fr_time_to_sec(fr_time_t when)
  */
 static inline fr_time_t fr_time_from_nsec(int64_t when)
 {
-	return fr_time_wrap((when * NSEC) - atomic_load_explicit(&our_realtime, memory_order_consume));
+	typeof_field(fr_time_t, value) out = fr_time_delta_unwrap(fr_time_delta_from_nsec(when));
+
+	if (!fr_sub(&out, out, atomic_load_explicit(&our_realtime, memory_order_consume))) {
+		return when > 0 ? fr_time_min() : fr_time_max();
+	}
+	return fr_time_wrap(out);
 }
 
 /** Convert usec (wallclock time) to a fr_time_t (internal time)
@@ -515,7 +791,12 @@ static inline fr_time_t fr_time_from_nsec(int64_t when)
  */
 static inline fr_time_t fr_time_from_usec(int64_t when)
 {
-	return fr_time_wrap((when * USEC) - atomic_load_explicit(&our_realtime, memory_order_consume));
+	typeof_field(fr_time_t, value) out = fr_time_delta_unwrap(fr_time_delta_from_usec(when));
+
+	if (!fr_sub(&out, out, atomic_load_explicit(&our_realtime, memory_order_consume))) {
+		return when > 0 ? fr_time_min() : fr_time_max();
+	}
+	return fr_time_wrap(out);
 }
 
 /** Convert msec (wallclock time) to a fr_time_t (internal time)
@@ -528,7 +809,12 @@ static inline fr_time_t fr_time_from_usec(int64_t when)
  */
 static inline fr_time_t fr_time_from_msec(int64_t when)
 {
-	return fr_time_wrap((when * MSEC) - atomic_load_explicit(&our_realtime, memory_order_consume));
+	typeof_field(fr_time_t, value) out = fr_time_delta_unwrap(fr_time_delta_from_msec(when));
+
+	if (!fr_sub(&out, out, atomic_load_explicit(&our_realtime, memory_order_consume))) {
+		return when > 0 ? fr_time_min() : fr_time_max();
+	}
+	return fr_time_wrap(out);
 }
 
 /** Convert csec (wallclock time) to a fr_time_t (internal time)
@@ -541,7 +827,12 @@ static inline fr_time_t fr_time_from_msec(int64_t when)
  */
 static inline fr_time_t fr_time_from_csec(int64_t when)
 {
-	return fr_time_wrap((when * CSEC) - atomic_load_explicit(&our_realtime, memory_order_consume));
+	typeof_field(fr_time_t, value) out = fr_time_delta_unwrap(fr_time_delta_from_csec(when));
+
+	if (!fr_sub(&out, out, atomic_load_explicit(&our_realtime, memory_order_consume))) {
+		return when > 0 ? fr_time_min() : fr_time_max();
+	}
+	return fr_time_wrap(out);
 }
 
 /** Convert a time_t (wallclock time) to a fr_time_t (internal time)
@@ -554,8 +845,15 @@ static inline fr_time_t fr_time_from_csec(int64_t when)
  */
 static inline fr_time_t fr_time_from_sec(time_t when)
 {
-	return fr_time_wrap((when * NSEC) - atomic_load_explicit(&our_realtime, memory_order_consume));
+	typeof_field(fr_time_t, value) out = fr_time_delta_unwrap(fr_time_delta_from_sec(when));
+
+	if (!fr_sub(&out, out, atomic_load_explicit(&our_realtime, memory_order_consume))) {
+		return when > 0 ? fr_time_min() : fr_time_max();
+	}
+	return fr_time_wrap(out);
 }
+
+
 
 /** Convert a timespec (wallclock time) to a fr_time_t (internal time)
  *
@@ -567,7 +865,12 @@ static inline fr_time_t fr_time_from_sec(time_t when)
  */
 static inline CC_HINT(nonnull) fr_time_t fr_time_from_timespec(struct timespec const *when_ts)
 {
-	return fr_time_wrap(fr_time_delta_unwrap(fr_time_delta_from_timespec(when_ts)) - atomic_load_explicit(&our_realtime, memory_order_consume));
+	typeof_field(fr_time_t, value) tmp = fr_time_delta_unwrap(fr_time_delta_from_timespec(when_ts)), out;
+
+	if (!fr_sub(&out, tmp, atomic_load_explicit(&our_realtime, memory_order_consume))) {
+		return tmp > 0 ? fr_time_min() : fr_time_max();
+	}
+	return fr_time_wrap(out);
 }
 
 /** Convert a timeval (wallclock time) to a fr_time_t (internal time)
@@ -580,7 +883,12 @@ static inline CC_HINT(nonnull) fr_time_t fr_time_from_timespec(struct timespec c
  */
 static inline CC_HINT(nonnull) fr_time_t fr_time_from_timeval(struct timeval const *when_tv)
 {
-	return fr_time_wrap(fr_time_delta_unwrap(fr_time_delta_from_timeval(when_tv)) - atomic_load_explicit(&our_realtime, memory_order_consume));
+	typeof_field(fr_time_t, value) tmp = fr_time_delta_unwrap(fr_time_delta_from_timeval(when_tv)), out;
+
+	if (!fr_sub(&out, tmp, atomic_load_explicit(&our_realtime, memory_order_consume))) {
+		return tmp > 0 ? fr_time_min() : fr_time_max();
+	}
+	return fr_time_wrap(out);
 }
 /** @} */
 
@@ -661,8 +969,6 @@ int 		fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t
 
 size_t		fr_time_strftime_local(fr_sbuff_t *out, fr_time_t time, char const *fmt) CC_HINT(format(strftime, 3, 0));
 size_t		fr_time_strftime_utc(fr_sbuff_t *out, fr_time_t time, char const *fmt)  CC_HINT(format(strftime, 3, 0));
-
-int64_t		fr_time_delta_scale(fr_time_delta_t delta, fr_time_res_t hint);
 
 void		fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end) CC_HINT(nonnull);
 void		fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char const *prefix, int tabs) CC_HINT(nonnull(1,2));

@@ -656,31 +656,6 @@ fr_unix_time_t fr_unix_time_from_tm(struct tm *tm)
 	return fr_unix_time_from_sec((days - 2472692) * 86400 + (tm->tm_hour * 3600) + (tm->tm_min * 60) + tm->tm_sec + tm->tm_gmtoff);
 }
 
-int64_t fr_time_delta_scale(fr_time_delta_t delta, fr_time_res_t hint)
-{
-	switch (hint) {
-	case FR_TIME_RES_SEC:
-		return fr_time_delta_to_sec(delta);
-
-	case FR_TIME_RES_CSEC:
-		return fr_time_delta_to_csec(delta);
-
-	case FR_TIME_RES_MSEC:
-		return fr_time_delta_to_msec(delta);
-
-	case FR_TIME_RES_USEC:
-		return fr_time_delta_to_usec(delta);
-
-	case FR_TIME_RES_NSEC:
-		return fr_time_delta_unwrap(delta);
-
-	default:
-		break;
-	}
-
-	return 0;
-}
-
 /** Scale an input time to NSEC, clamping it at max / min.
  *
  * @param t	input time / time delta
