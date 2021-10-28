@@ -7,6 +7,23 @@
 #
 #  Updates log IDs
 #
+#  Log IDs are 64-bit numbers composed of:
+#
+#   4 bits of type (DEBUG, ERROR, INFO, WARN, etc.)
+#   4 bits of log level (e.g. DEBUG vs DEBUG4)
+#   4 bit of flags
+#     1 bit of "is it for a request or not"
+#     1 bit of "is it for a module"  (lets us easily do core vs module filters)
+#     2 bits reserved
+#
+#  16 bits of library
+#   8 bits of "thing within a library"
+#  16 bits of globally unique identifier
+#
+#  totalling 52 bits.  Which leaves 12 bits for future things.
+#
+#  Having the globally unique identifier means that it's easier
+#  to track the various IDs.
 #
 ######################################################################
 
@@ -14,18 +31,25 @@ use strict;
 use warnings;
 use Data::Dumper;
 
+#
+#  Ensure that we can read the output of Data::Dumper
+#
+$Data::Dumper::Purity = 1;
+
 my $status = 0;
 my $max_id;
 my $regex;
 my %files;
 my %lines;
 my %messages;
+my %types;
 
 sub process {
     my $file = shift;
     my $text;
     my $id;
     my $line;
+    my $type;
 
     open(my $FILE, "<", $file) or die "Failed to open $file: $!\n";
     open(my $OUTPUT, ">", "$file.tmp") or die "Failed to create $file.tmp: $!\n";
@@ -41,10 +65,12 @@ sub process {
 	#
 	#  Allow DEBUG(0, ...) to mean "please assign an ID".
 	#
-	if (! s/^(\s*R?(DEBUG|P?ERROR|INFO)[0-9]?)\((\s*\d+\s*,)?/${1}_ID\(\@/g) {
+	if (! s/^(\s*R?(DEBUG|P?ERROR|INFO|WARN)[0-9]?)\((\s*\d+\s*,)?/${1}_ID\(\@/g) {
 	    print $OUTPUT $_;
 	    next;
 	}
+
+	$type = $2;
 
 	#  Remember the number so that later regexes don't nuke it.
 	$id = $3;
@@ -73,11 +99,21 @@ sub process {
 	chop $text;
 
 	#
+	#  If we see the same ID twice, it's an error.
+	#
+	if (defined $files{$id}) {
+	    die "ID $id is defined already in $files{$id}:$lines{$id}, and again in $file:$line";
+	}
+
+	#
 	#  Remember where everything is.
 	#
 	$files{$id} = $file;
 	$lines{$id} = $line;
 	$messages{$id} = $text;
+
+	$type =~ s/^P//;	# PERROR -> ERROR
+	$types{$id} = $type;	# DEBUG, ERROR, INFO, WARN
 
 	print $OUTPUT $_;
     }
@@ -137,6 +173,8 @@ foreach my $file (@ARGV) {
     process($file);
 }
 
-write_max_id("scripts/build/max_id.txt") if ($status == 0);
+exit 1 if ($status != 0);
+
+write_max_id("scripts/build/max_id.txt");
 
 exit $status;
