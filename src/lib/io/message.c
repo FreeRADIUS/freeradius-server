@@ -1288,19 +1288,15 @@ int fr_message_set_messages_used(fr_message_set_t *ms)
 void fr_message_set_gc(fr_message_set_t *ms)
 {
 	int i;
-	int num_cleaned;
 
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 
 	/*
 	 *	Manually clean up each message ring.
 	 */
-	num_cleaned = 0;
 	for (i = 0; i <= ms->mr_max; i++) {
-		num_cleaned += fr_message_ring_gc(ms, ms->mr_array[i], ~0);
+		(void) fr_message_ring_gc(ms, ms->mr_array[i], ~0);
 	}
-
-	MPRINT("GC cleaned %d\n", num_cleaned);
 
 	/*
 	 *	And then do one last pass to clean up the arrays.
