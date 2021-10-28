@@ -17,23 +17,67 @@ use Data::Dumper;
 my $status = 0;
 my $max_id;
 my $regex;
+my %files;
+my %lines;
+my %messages;
 
 sub process {
     my $file = shift;
+    my $text;
+    my $id;
+    my $line;
 
     open(my $FILE, "<", $file) or die "Failed to open $file: $!\n";
     open(my $OUTPUT, ">", "$file.tmp") or die "Failed to create $file.tmp: $!\n";
 
+    $line = 0;
     while (<$FILE>) {
+	$line++;
+
 	#
 	#  Change the various non-ID messages to ID-based messages
 	#
 	#  Allow "R" variants of the macros, and DEBUG(2,3,4)
 	#
-	if (s/^(\s*R?(DEBUG|P?ERROR|INFO)[0-9]?)\((\s*0\s*,)?/${1}_ID\(\@/g) {
-	    s/_ID\(\@/\($max_id, /;
-	    $max_id++;
+	#  Allow DEBUG(0, ...) to mean "please assign an ID".
+	#
+	if (! s/^(\s*R?(DEBUG|P?ERROR|INFO)[0-9]?)\((\s*\d+\s*,)?/${1}_ID\(\@/g) {
+	    print $OUTPUT $_;
+	    next;
 	}
+
+	#  Remember the number so that later regexes don't nuke it.
+	$id = $3;
+
+	#
+	#  If there's no number, or it's 0, allocate one.
+	#
+	if (! defined $id || ($id eq '0,')) {
+	    s/_ID\(\@/\($max_id, /;
+	    $id = $max_id++;
+	} else {
+	    #
+	    #  Ensure that the numbers are stable.
+	    #
+	    s/_ID\(\@/\($id/;
+	    $id =~ s/,//;
+	}
+
+	#
+	#  Try to get the actual message.
+	#
+	my $text = $_;
+	$text =~ s/^[^"]+//;
+	$text =~ s/",.*/"/;
+	$text =~ s/"\).*/"/;
+	chop $text;
+
+	#
+	#  Remember where everything is.
+	#
+	$files{$id} = $file;
+	$lines{$id} = $line;
+	$messages{$id} = $text;
 
 	print $OUTPUT $_;
     }
