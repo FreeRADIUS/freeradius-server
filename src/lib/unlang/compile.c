@@ -1574,7 +1574,7 @@ static bool compile_retry_section(unlang_actions_t *actions, CONF_ITEM *ci)
 		 *	magical reasons.
 		 */
 		if (strcmp(name, "initial_rtx_time") == 0) {
-			if (fr_time_delta_from_str(&actions->retry.irt, value, FR_TIME_RES_SEC) < 0) {
+			if (fr_time_delta_from_str(&actions->retry.irt, value, strlen(value), FR_TIME_RES_SEC) < 0) {
 			error:
 				cf_log_err(csi, "Failed parsing '%s = %s' - %s",
 					   name, value, fr_strerror());
@@ -1582,7 +1582,7 @@ static bool compile_retry_section(unlang_actions_t *actions, CONF_ITEM *ci)
 			}
 
 		} else if (strcmp(name, "max_rtx_time") == 0) {
-			if (fr_time_delta_from_str(&actions->retry.mrt, value, FR_TIME_RES_SEC) < 0) goto error;
+			if (fr_time_delta_from_str(&actions->retry.mrt, value, strlen(value), FR_TIME_RES_SEC) < 0) goto error;
 
 		} else if (strcmp(name, "max_rtx_count") == 0) {
 			unsigned long v = strtoul(value, 0, 0);
@@ -1596,7 +1596,7 @@ static bool compile_retry_section(unlang_actions_t *actions, CONF_ITEM *ci)
 			actions->retry.mrc = v;
 
 		} else if (strcmp(name, "max_rtx_duration") == 0) {
-			if (fr_time_delta_from_str(&actions->retry.mrd, value, FR_TIME_RES_SEC) < 0) goto error;
+			if (fr_time_delta_from_str(&actions->retry.mrd, value, strlen(value), FR_TIME_RES_SEC) < 0) goto error;
 		} else {
 			cf_log_err(csi, "Invalid item '%s' in 'retry' configuration.", name);
 			return false;

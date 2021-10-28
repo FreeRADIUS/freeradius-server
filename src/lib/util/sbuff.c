@@ -64,6 +64,10 @@ bool const sbuff_char_class_float[UINT8_MAX + 1] = {
 	['-'] = true, ['+'] = true, ['e'] = true, ['E'] = true, ['.'] = true,
 };
 
+bool const sbuff_char_class_zero[UINT8_MAX + 1] = {
+	['0'] = true
+};
+
 bool const sbuff_char_class_hex[UINT8_MAX + 1] = { SBUFF_CHAR_CLASS_HEX };
 bool const sbuff_char_alpha_num[UINT8_MAX + 1] = { SBUFF_CHAR_CLASS_ALPHA_NUM };
 bool const sbuff_char_whitespace[UINT8_MAX + 1] = {

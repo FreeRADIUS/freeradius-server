@@ -259,6 +259,7 @@ typedef enum {
 extern bool const sbuff_char_class_uint[UINT8_MAX + 1];
 extern bool const sbuff_char_class_int[UINT8_MAX + 1];
 extern bool const sbuff_char_class_float[UINT8_MAX + 1];
+extern bool const sbuff_char_class_zero[UINT8_MAX + 1];
 extern bool const sbuff_char_class_hex[UINT8_MAX + 1];
 extern bool const sbuff_char_alpha_num[UINT8_MAX + 1];
 extern bool const sbuff_char_whitespace[UINT8_MAX + 1];
@@ -1548,6 +1549,8 @@ size_t	fr_sbuff_adv_past_strcase(fr_sbuff_t *sbuff, char const *needle, size_t n
 
 size_t	fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len,
 				  bool const allowed[static UINT8_MAX + 1], fr_sbuff_term_t const *tt);
+
+#define fr_sbuff_adv_past_zeros(_sbuff, _len, _tt) fr_sbuff_adv_past_allowed(_sbuff, _len, sbuff_char_class_zero, _tt)
 
 #define fr_sbuff_adv_past_whitespace(_sbuff, _len, _tt) fr_sbuff_adv_past_allowed(_sbuff, _len, sbuff_char_whitespace, _tt)
 

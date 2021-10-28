@@ -38,8 +38,17 @@ match 0.000000001
 value time_delta 1:30
 match 90
 
+value time_delta 1:1:30
+match 3690
+
+value time_delta 01:01:30
+match 3690
+
 value time_delta 1h
 match 3600
+
+value time_delta 1d
+match 86400
 
 #
 #  And negative numbers
@@ -68,10 +77,17 @@ match -0.000000001
 value time_delta -1:30
 match -90
 
+value time_delta -1:1:30
+match -3690
+
+value time_delta -01:01:30
+match -3690
+
 value time_delta -1h
 match -3600
 
-
+value time_delta -1d
+match -86400
 
 #
 #  uint8
@@ -215,4 +231,4 @@ encode-dns-label www_foo.com
 match Invalid character 0x5f in label
 
 count
-match 104
+match 116

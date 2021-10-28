@@ -965,7 +965,10 @@ int		fr_time_sync(void);
 int64_t		fr_time_scale(int64_t t, fr_time_res_t hint);
 
 int		fr_time_delta_from_time_zone(char const *tz, fr_time_delta_t *delta) CC_HINT(nonnull);
-int 		fr_time_delta_from_str(fr_time_delta_t *out, char const *in, fr_time_res_t hint) CC_HINT(nonnull);
+
+fr_slen_t	fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_time_res_t hint,
+					  bool no_trailing, fr_sbuff_term_t const *tt) CC_HINT(nonnull(1,2));
+fr_slen_t	fr_time_delta_from_str(fr_time_delta_t *out, char const *in, size_t inlen, fr_time_res_t hint) CC_HINT(nonnull);
 
 size_t		fr_time_strftime_local(fr_sbuff_t *out, fr_time_t time, char const *fmt) CC_HINT(format(strftime, 3, 0));
 size_t		fr_time_strftime_utc(fr_sbuff_t *out, fr_time_t time, char const *fmt)  CC_HINT(format(strftime, 3, 0));

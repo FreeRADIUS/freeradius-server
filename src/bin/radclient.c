@@ -1315,7 +1315,7 @@ int main(int argc, char **argv)
 		       break;
 
 		case 't':
-			if (fr_time_delta_from_str(&timeout, optarg, FR_TIME_RES_SEC) < 0) {
+			if (fr_time_delta_from_str(&timeout, optarg, strlen(optarg), FR_TIME_RES_SEC) < 0) {
 				fr_perror("Failed parsing timeout value");
 				fr_exit_now(EXIT_FAILURE);
 			}

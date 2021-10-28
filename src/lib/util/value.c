@@ -4342,6 +4342,7 @@ ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	fr_sbuff_t			our_in = FR_SBUFF(in);
 	ssize_t				ret;
 	char				buffer[256];
+	fr_slen_t			slen;
 
 	if (!fr_cond_assert(dst_type != FR_TYPE_NULL)) return -1;
 
@@ -4573,9 +4574,6 @@ parse:
 		return fr_value_box_from_numeric_substr(dst, dst_type, dst_enumv, in, tainted);
 
 	case FR_TYPE_BOOL:
-	{
-		fr_slen_t slen;
-
 		fr_value_box_init(dst, dst_type, dst_enumv, tainted);
 
 		/*
@@ -4609,7 +4607,6 @@ parse:
 				 "\"yes\", \"no\", \"true\", \"false\" or any unquoted integer");
 
 		return slen;	/* Just whatever the last error offset was */
-	}
 
 	case FR_TYPE_ETHERNET:
 	{
@@ -4680,6 +4677,15 @@ parse:
 		return fr_sbuff_set(in, &our_in);
 	}
 
+	case FR_TYPE_TIME_DELTA:
+		fr_value_box_init(dst, FR_TYPE_TIME_DELTA, dst_enumv, tainted);
+
+		slen = fr_time_delta_from_substr(&dst->datum.time_delta, &our_in,
+						 dst_enumv ? dst_enumv->flags.flag_time_res : FR_TIME_RES_SEC,
+						 false, rules->terminals);
+		if (slen < 0) return slen;
+		return fr_sbuff_set(in, &our_in);
+
 	case FR_TYPE_NULL:
 		if (!rules->escapes && fr_sbuff_adv_past_str_literal(in, "NULL")) {
 			fr_value_box_init(dst, dst_type, dst_enumv, tainted);
@@ -4713,14 +4719,6 @@ parse:
 	switch (dst_type) {
 	case FR_TYPE_SIZE:
 		if (fr_size_from_str(&dst->datum.size, buffer) < 0) return -1;
-		break;
-
-	case FR_TYPE_TIME_DELTA:
-		if (dst_enumv) {
-			if (fr_time_delta_from_str(&dst->datum.time_delta, buffer, dst_enumv->flags.flag_time_res) < 0) return -1;
-		} else {
-			if (fr_time_delta_from_str(&dst->datum.time_delta, buffer, FR_TIME_RES_SEC) < 0) return -1;
-		}
 		break;
 
 	case FR_TYPE_DATE:
