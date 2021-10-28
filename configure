@@ -5841,7 +5841,7 @@ printf "%s\n" "$ax_cv_cc_clang" >&6; }
 if test "x$ax_cv_cc_clang" = "xyes"; then
   clang_path="$CC"
 
-    LDFLAGS="$LDFLAGS --rtlib=compiler-rt --unwindlib=compiler-rt"
+    LDFLAGS="$LDFLAGS --rtlib=compiler-rt --unwindlib=libunwind"
 else
   clang_path=""
 

@@ -249,8 +249,8 @@ dnl #
 AX_CC_IS_CLANG
 if test "x$ax_cv_cc_clang" = "xyes"; then
   AC_SUBST(clang_path, "$CC")
-  dnl # Needed for builtins to function correctly
-  LDFLAGS="$LDFLAGS --rtlib=compiler-rt --unwindlib=compiler-rt"
+  dnl # Needed for builtins to function correctly (https://bugs.gentoo.org/702344)
+  LDFLAGS="$LDFLAGS --rtlib=compiler-rt --unwindlib=libunwind"
 else
   AC_SUBST(clang_path, "")
 fi
