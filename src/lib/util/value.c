@@ -1878,28 +1878,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 
 		FR_DBUFF_OUT_UINT64V_RETURN(&date, &work_dbuff, length);
 
-		switch (precision) {
-		case FR_TIME_RES_SEC: /* external seconds, internal nanoseconds */
-			date *= NSEC;
-			break;
-
-		case FR_TIME_RES_CSEC:
-			date *= (NSEC / CSEC);
-			break;
-
-		case FR_TIME_RES_MSEC:
-			date *= (NSEC / MSEC);
-			break;
-
-		case FR_TIME_RES_USEC:
-			date *= (NSEC / USEC);
-			break;
-
-		case FR_TIME_RES_NSEC:
-			break;
-		}
-
-		dst->vb_date = fr_unix_time_wrap(date);
+		dst->vb_date = fr_unix_time_wrap(fr_time_scale(date, precision));
 	}
 		break;
 
