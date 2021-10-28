@@ -88,7 +88,7 @@ ssize_t fr_dict_attr_flags_print(fr_sbuff_t *out, fr_dict_t const *dict, fr_type
 	 */
 	if ((type == FR_TYPE_DATE) || (type == FR_TYPE_TIME_DELTA)) {
 		FR_SBUFF_IN_STRCPY_RETURN(&our_out,
-					  fr_table_str_by_value(date_precision_table, flags->flag_time_res, "?"));
+					  fr_table_str_by_value(fr_time_precision_table, flags->flag_time_res, "?"));
 	}
 
 	fr_sbuff_trim(&our_out, (bool[UINT8_MAX + 1]){ [','] = true });

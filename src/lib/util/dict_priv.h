@@ -135,9 +135,6 @@ struct fr_dict_gctx_s {
 
 extern fr_dict_gctx_t *dict_gctx;
 
-extern fr_table_num_ordered_t const	date_precision_table[];
-extern size_t				date_precision_table_len;
-
 bool			dict_has_dependents(fr_dict_t *dict);
 
 int			dict_dependent_add(fr_dict_t *dict, char const *dependent);

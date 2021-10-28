@@ -445,7 +445,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			} else {
 				int precision;
 
-				precision = fr_table_value_by_str(date_precision_table, key, -1);
+				precision = fr_table_value_by_str(fr_time_precision_table, key, -1);
 				if (precision < 0) {
 					fr_strerror_printf("Unknown %s precision '%s'",
 							   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"),

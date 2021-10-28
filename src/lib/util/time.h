@@ -88,6 +88,9 @@ typedef struct fr_unix_time_s {
 	uint64_t value;
 } fr_unix_time_t;
 
+extern int64_t const			fr_time_multiplier_by_res[];
+extern fr_table_num_ordered_t const	fr_time_precision_table[];
+extern size_t				fr_time_precision_table_len;
 #define fr_unix_time_max() (fr_unix_time_t){ .value = UINT64_MAX }
 #define fr_unix_time_min() (fr_unix_time_t){ .value = 0 }
 #define fr_unix_time_wrap(_time) (fr_unix_time_t){ .value = (_time) }

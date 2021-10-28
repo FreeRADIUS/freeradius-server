@@ -34,25 +34,6 @@ RCSID("$Id$")
 
 fr_dict_gctx_t *dict_gctx = NULL;	//!< Top level structure containing global dictionary state.
 
-fr_table_num_ordered_t const date_precision_table[] = {
-	{ L("microseconds"),	FR_TIME_RES_USEC },
-	{ L("us"),		FR_TIME_RES_USEC },
-
-	{ L("nanoseconds"),	FR_TIME_RES_NSEC },
-	{ L("ns"),		FR_TIME_RES_NSEC },
-
-	{ L("milliseconds"),	FR_TIME_RES_MSEC },
-	{ L("ms"),		FR_TIME_RES_MSEC },
-
-	{ L("centiseconds"),	FR_TIME_RES_CSEC },
-	{ L("cs"),		FR_TIME_RES_CSEC },
-
-	{ L("seconds"),		FR_TIME_RES_SEC },
-	{ L("s"),		FR_TIME_RES_SEC }
-
-};
-size_t date_precision_table_len = NUM_ELEMENTS(date_precision_table);
-
 /** Characters allowed in dictionary names
  *
  */

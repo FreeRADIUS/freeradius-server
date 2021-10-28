@@ -26,7 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
-#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/time.h>
 
 /*
  *	Avoid too many ifdef's later in the code.
@@ -47,6 +47,44 @@ USES_APPLE_DEPRECATED_API
 #  include <mach/mach_time.h>
 #endif
 
+int64_t const fr_time_multiplier_by_res[] = {
+	[FR_TIME_RES_NSEC]	= 1,
+	[FR_TIME_RES_USEC]	= NSEC / USEC,
+	[FR_TIME_RES_MSEC]	= NSEC / MSEC,
+	[FR_TIME_RES_CSEC]	= NSEC / CSEC,
+	[FR_TIME_RES_SEC]	= NSEC,
+	[FR_TIME_RES_MIN]	= (int64_t)NSEC * 60,
+	[FR_TIME_RES_HOUR]	= (int64_t)NSEC * 3600,
+	[FR_TIME_RES_DAY]	= (int64_t)NSEC * 386400
+};
+
+fr_table_num_ordered_t const fr_time_precision_table[] = {
+	{ L("microseconds"),	FR_TIME_RES_USEC },
+	{ L("us"),		FR_TIME_RES_USEC },
+
+	{ L("nanoseconds"),	FR_TIME_RES_NSEC },
+	{ L("ns"),		FR_TIME_RES_NSEC },
+
+	{ L("milliseconds"),	FR_TIME_RES_MSEC },
+	{ L("ms"),		FR_TIME_RES_MSEC },
+
+	{ L("centiseconds"),	FR_TIME_RES_CSEC },
+	{ L("cs"),		FR_TIME_RES_CSEC },
+
+	{ L("seconds"),		FR_TIME_RES_SEC },
+	{ L("s"),		FR_TIME_RES_SEC },
+
+	{ L("minutes"),		FR_TIME_RES_MIN },
+	{ L("m"),		FR_TIME_RES_MIN },
+
+	{ L("hours"),		FR_TIME_RES_HOUR },
+	{ L("h"),		FR_TIME_RES_HOUR },
+
+	{ L("days"),		FR_TIME_RES_DAY },
+	{ L("d"),		FR_TIME_RES_DAY }
+
+};
+size_t fr_time_precision_table_len = NUM_ELEMENTS(fr_time_precision_table);
 
 _Atomic int64_t			our_realtime;	//!< realtime at the start of the epoch in nanoseconds.
 static char const		*tz_names[2] = { NULL, NULL };	//!< normal, DST, from localtime_r(), tm_zone
