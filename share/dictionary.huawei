@@ -152,10 +152,10 @@ ATTRIBUTE	Huawei-Framed-Pool-Group		157	string
 ATTRIBUTE	Huawei-Framed-IPv6-Address		158	ipv6addr
 ATTRIBUTE	Huawei-Acct-Update-Address		159	integer
 ATTRIBUTE	Huawei-NAT-Policy-Name			160	string
-ATTRIBUTE	Huawei-NAT-Public-Address		161	string
-ATTRIBUTE	Huawei-NAT-Start-Port			162	string
-ATTRIBUTE	Huawei-NAT-End-Port			163	string
-ATTRIBUTE	Huawei-NAT-Port-Forwarding		164	string
+ATTRIBUTE	Huawei-NAT-Public-Address		161	ipaddr
+ATTRIBUTE	Huawei-NAT-Start-Port			162	integer
+ATTRIBUTE	Huawei-NAT-End-Port			163	integer
+ATTRIBUTE	Huawei-NAT-Port-Forwarding		164	integer
 ATTRIBUTE	Huawei-NAT-Port-Range-Update		165	integer
 ATTRIBUTE	Huawei-DS-Lite-Tunnel-Name		166	string
 ATTRIBUTE	Huawei-PCP-Server-Name			167	string # manual says text?
