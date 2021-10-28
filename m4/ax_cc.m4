@@ -59,6 +59,32 @@ AC_DEFUN([AX_CC_STD_C11],[
 ])
 
 dnl #
+dnl # clang and gcc originally used different flags to specify c11 support
+dnl #
+AC_DEFUN([AX_CC_UNWINDLIB_ARG],[
+  AC_CACHE_CHECK([if the compiler accepts --unwindlib], [ax_cv_cc_unwindlib_arg],[
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror --unwindlib=libunwind"
+
+    AC_RUN_IFELSE(
+    [
+      AC_LANG_SOURCE(
+      [
+        int main(int argc, char **argv) {
+          return 0;
+        }
+      ])
+    ],
+      [ax_cv_cc_unwindlib_arg=yes],
+      [ax_cv_cc_unwindlib_arg=no]
+    )
+
+    CFLAGS="$CFLAGS_SAVED"
+  ])
+])
+
+
+dnl #
 dnl #  Check if we have the _Generic construct
 dnl #
 AC_DEFUN([AX_CC_HAVE_C11_GENERIC],

@@ -248,9 +248,15 @@ dnl #  Definitive check for whether the compiler is clang
 dnl #
 AX_CC_IS_CLANG
 if test "x$ax_cv_cc_clang" = "xyes"; then
+  AX_CC_UNWINDLIB_ARG
   AC_SUBST(clang_path, "$CC")
+
   dnl # Needed for builtins to function correctly (https://bugs.gentoo.org/702344)
-  LDFLAGS="$LDFLAGS --rtlib=compiler-rt --unwindlib=libunwind"
+  LDFLAGS="$LDFLAGS --rtlib=compiler-rt"
+
+  if test "x$ax_cv_cc_unwindlib_arg" = "xyes"; then
+    LDFLAGS="$LDFLAGS --unwindlib=libunwind"
+  fi
 else
   AC_SUBST(clang_path, "")
 fi

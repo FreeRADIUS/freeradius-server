@@ -3103,6 +3103,9 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 
 
 
+
+
+
 #
 # SYNOPSIS
 #
@@ -5839,9 +5842,60 @@ fi
 printf "%s\n" "$ax_cv_cc_clang" >&6; }
 
 if test "x$ax_cv_cc_clang" = "xyes"; then
+
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if the compiler accepts --unwindlib" >&5
+printf %s "checking if the compiler accepts --unwindlib... " >&6; }
+if test ${ax_cv_cc_unwindlib_arg+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror --unwindlib=libunwind"
+
+    if test "$cross_compiling" = yes
+then :
+  { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+printf "%s\n" "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else $as_nop
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+        int main(int argc, char **argv) {
+          return 0;
+        }
+
+
+_ACEOF
+if ac_fn_c_try_run "$LINENO"
+then :
+  ax_cv_cc_unwindlib_arg=yes
+else $as_nop
+  ax_cv_cc_unwindlib_arg=no
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+    CFLAGS="$CFLAGS_SAVED"
+
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_unwindlib_arg" >&5
+printf "%s\n" "$ax_cv_cc_unwindlib_arg" >&6; }
+
   clang_path="$CC"
 
-    LDFLAGS="$LDFLAGS --rtlib=compiler-rt --unwindlib=libunwind"
+
+    LDFLAGS="$LDFLAGS --rtlib=compiler-rt"
+
+  if test "x$ax_cv_cc_unwindlib_arg" = "xyes"; then
+    LDFLAGS="$LDFLAGS --unwindlib=libunwind"
+  fi
 else
   clang_path=""
 
