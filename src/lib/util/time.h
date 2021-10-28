@@ -663,7 +663,9 @@ int64_t		fr_time_delta_scale(fr_time_delta_t delta, fr_time_res_t hint);
 
 void		fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end) CC_HINT(nonnull);
 void		fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char const *prefix, int tabs) CC_HINT(nonnull(1,2));
+
 fr_unix_time_t	fr_unix_time_from_tm(struct tm *tm) CC_HINT(nonnull);
+int		fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_res_t hint);
 
 #ifdef __cplusplus
 }
