@@ -154,6 +154,13 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
+	/*
+	 *	Disable hostname lookups, so we don't produce spurious DNS
+	 *	queries, and there's no chance of spurious failures if
+	 *	it takes a long time to get a response.
+	 */
+	fr_hostname_lookups = false;
+
 	dl_loader = dl_loader_init(NULL, NULL, 0, false);
 	if (!dl_loader) {
 		fr_perror("fuzzer: Failed initializing library loader");
