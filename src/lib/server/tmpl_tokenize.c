@@ -1905,13 +1905,6 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	fr_sbuff_out_by_longest_prefix(&list_len, &vpt->data.attribute.list, pair_list_table,
 				       &our_name, t_rules->list_def);
 
-	if ((t_rules->attr_parent || t_rules->disallow_qualifiers) && (list_len > 0)) {
-		fr_strerror_const("It is not permitted to specify a pair list here");
-		if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
-		talloc_free(vpt);
-		FR_SBUFF_ERROR_RETURN(&our_name);
-	}
-
 	/*
 	 *	Check if we need to backtrack
 	 *
@@ -1927,6 +1920,13 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		fr_sbuff_set(&our_name, &m_l);
 		list_len = 0;
 		vpt->data.attribute.list = t_rules->list_def;
+	}
+
+	if ((t_rules->attr_parent || t_rules->disallow_qualifiers) && (list_len > 0)) {
+		fr_strerror_const("It is not permitted to specify a pair list here");
+		if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
+		talloc_free(vpt);
+		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
 
 	/*
