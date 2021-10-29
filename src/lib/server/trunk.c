@@ -42,6 +42,7 @@ typedef struct fr_trunk_s fr_trunk_t;
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/table.h>
+#include <freeradius-devel/util/minmax_heap.h>
 
 #ifdef HAVE_STDATOMIC_H
 #  include <stdatomic.h>
@@ -214,7 +215,7 @@ struct fr_trunk_s {
 
  	fr_dlist_head_t		connecting;		//!< Connections which are not yet in the open state.
 
-	fr_heap_t		*active;		//!< Connections which can service requests.
+	fr_minmax_heap_t	*active;		//!< Connections which can service requests.
 
 	fr_dlist_head_t		full;			//!< Connections which have too many outstanding
 							///< requests.
@@ -753,11 +754,11 @@ do { \
 #define CONN_REORDER(_tconn) \
 do { \
 	int _ret; \
-	if ((fr_heap_num_elements((_tconn)->pub.trunk->active) == 1)) break; \
+	if ((fr_minmax_heap_num_elements((_tconn)->pub.trunk->active) == 1)) break; \
 	if (!fr_cond_assert((_tconn)->pub.state == FR_TRUNK_CONN_ACTIVE)) break; \
-	_ret = fr_heap_extract((_tconn)->pub.trunk->active, (_tconn)); \
+	_ret = fr_minmax_heap_extract((_tconn)->pub.trunk->active, (_tconn)); \
 	if (!fr_cond_assert_msg(_ret == 0, "Failed extracting conn from active heap: %s", fr_strerror())) break; \
-	fr_heap_insert((_tconn)->pub.trunk->active, (_tconn)); \
+	fr_minmax_heap_insert((_tconn)->pub.trunk->active, (_tconn)); \
 } while (0)
 
 /** Call a list of watch functions associated with a state
@@ -1519,7 +1520,7 @@ static fr_trunk_enqueue_t trunk_request_check_enqueue(fr_trunk_connection_t **tc
 	 *	If we have an active connection then
 	 *	return that.
 	 */
-	tconn = fr_heap_peek(trunk->active);
+	tconn = fr_minmax_heap_min_peek(trunk->active);
 	if (tconn) {
 		*tconn_out = tconn;
 		return FR_TRUNK_ENQUEUE_OK;
@@ -1795,7 +1796,7 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 	if (tconn->pub.state == FR_TRUNK_CONN_ACTIVE) {
 		int ret;
 
-		ret = fr_heap_extract(trunk->active, tconn);
+		ret = fr_minmax_heap_extract(trunk->active, tconn);
 		if (!fr_cond_assert_msg(ret == 0,
 					"Failed extracting conn from active heap: %s", fr_strerror())) goto done;
 
@@ -1859,7 +1860,7 @@ static uint64_t trunk_connection_requests_requeue(fr_trunk_connection_t *tconn, 
 	if (tconn->pub.state == FR_TRUNK_CONN_ACTIVE) {
 		int ret;
 
-		ret = fr_heap_insert(trunk->active, tconn);
+		ret = fr_minmax_heap_insert(trunk->active, tconn);
 		if (!fr_cond_assert_msg(ret == 0,
 				        "Failed re-inserting conn into active heap: %s", fr_strerror())) goto done;
 	}
@@ -2722,7 +2723,7 @@ uint16_t fr_trunk_connection_count_by_state(fr_trunk_t *trunk, int conn_state)
 
 	if (conn_state & FR_TRUNK_CONN_INIT) count += fr_dlist_num_elements(&trunk->init);
 	if (conn_state & FR_TRUNK_CONN_CONNECTING) count += fr_dlist_num_elements(&trunk->connecting);
-	if (conn_state & FR_TRUNK_CONN_ACTIVE) count += fr_heap_num_elements(trunk->active);
+	if (conn_state & FR_TRUNK_CONN_ACTIVE) count += fr_minmax_heap_num_elements(trunk->active);
 	if (conn_state & FR_TRUNK_CONN_FULL) count += fr_dlist_num_elements(&trunk->full);
 	if (conn_state & FR_TRUNK_CONN_INACTIVE) count += fr_dlist_num_elements(&trunk->inactive);
 	if (conn_state & FR_TRUNK_CONN_INACTIVE_DRAINING) count += fr_dlist_num_elements(&trunk->inactive_draining);
@@ -2918,7 +2919,7 @@ static void trunk_connection_remove(fr_trunk_connection_t *tconn)
 	{
 		int ret;
 
-		ret = fr_heap_extract(trunk->active, tconn);
+		ret = fr_minmax_heap_extract(trunk->active, tconn);
 		if (!fr_cond_assert_msg(ret == 0, "Failed extracting conn from active heap: %s", fr_strerror())) return;
 	}
 		return;
@@ -3128,7 +3129,7 @@ static void trunk_connection_enter_active(fr_trunk_connection_t *tconn)
 		CONN_BAD_STATE_TRANSITION(FR_TRUNK_CONN_ACTIVE);
 	}
 
-	ret = fr_heap_insert(trunk->active, tconn);	/* re-insert into the active heap*/
+	ret = fr_minmax_heap_insert(trunk->active, tconn);	/* re-insert into the active heap*/
 	if (!fr_cond_assert_msg(ret == 0, "Failed inserting connection into active heap: %s", fr_strerror())) {
 		trunk_connection_enter_inactive_draining(tconn);
 		return;
@@ -3914,13 +3915,13 @@ static void trunk_rebalance(fr_trunk_t *trunk)
 {
 	fr_trunk_connection_t	*head;
 
-	head = fr_heap_peek(trunk->active);
+	head = fr_minmax_heap_min_peek(trunk->active);
 
 	/*
 	 *	Only rebalance if the top and bottom of
 	 *	the heap are not equal.
 	 */
-	if (trunk->funcs.connection_prioritise(fr_heap_peek_tail(trunk->active), head) == 0) return;
+	if (trunk->funcs.connection_prioritise(fr_minmax_heap_max_peek(trunk->active), head) == 0) return;
 
 	DEBUG3("Rebalancing requests");
 
@@ -3930,8 +3931,8 @@ static void trunk_rebalance(fr_trunk_t *trunk)
 	 *	connection at the top is shifted from that
 	 *	position.
 	 */
-	while ((fr_heap_peek(trunk->active) == head) &&
-	       trunk_connection_requests_requeue(fr_heap_peek_tail(trunk->active),
+	while ((fr_minmax_heap_min_peek(trunk->active) == head) &&
+	       trunk_connection_requests_requeue(fr_minmax_heap_max_peek(trunk->active),
 	       					 FR_TRUNK_REQUEST_STATE_PENDING, 1, false));
 }
 
@@ -4245,7 +4246,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 *	connections, start draining "active"
 		 *	connections.
 		 */
-		} else if ((tconn = fr_heap_peek_tail(trunk->active))) {
+		} else if ((tconn = fr_minmax_heap_max_peek(trunk->active))) {
 			/*
 			 *	If the connection has no requests associated
 			 *	with it then immediately free.
@@ -4296,7 +4297,7 @@ uint64_t fr_trunk_request_count_by_state(fr_trunk_t *trunk, int conn_state, int 
 {
 	uint64_t		count = 0;
 	fr_trunk_connection_t	*tconn = NULL;
-	fr_heap_iter_t		iter;
+	fr_minmax_heap_iter_t	iter;
 
 #define COUNT_BY_STATE(_state, _list) \
 do { \
@@ -4309,9 +4310,9 @@ do { \
 } while (0);
 
 	if (conn_state & FR_TRUNK_CONN_ACTIVE) {
-		for (tconn = fr_heap_iter_init(trunk->active, &iter);
+		for (tconn = fr_minmax_heap_iter_init(trunk->active, &iter);
 		     tconn;
-		     tconn = fr_heap_iter_next(trunk->active, &iter)) {
+		     tconn = fr_minmax_heap_iter_next(trunk->active, &iter)) {
 			count += fr_trunk_request_count_by_connection(tconn, req_state);
 		}
 	}
@@ -4483,7 +4484,7 @@ static void trunk_backlog_drain(fr_trunk_t *trunk)
 			continue;
 
 		case FR_TRUNK_ENQUEUE_NO_CAPACITY:
-			fr_assert(fr_heap_num_elements(trunk->active) == 0);
+			fr_assert(fr_minmax_heap_num_elements(trunk->active) == 0);
 			return;
 		}
 	}
@@ -4519,7 +4520,7 @@ do { \
 
 	if (states & FR_TRUNK_CONN_ACTIVE) {
 		fr_trunk_connection_t *tconn;
-		while ((tconn = fr_heap_peek(trunk->active))) fr_connection_signal_reconnect(tconn->pub.conn, reason);
+		while ((tconn = fr_minmax_heap_min_peek(trunk->active))) fr_connection_signal_reconnect(tconn->pub.conn, reason);
 	}
 
 	RECONNECT_BY_STATE(FR_TRUNK_CONN_INIT, init);
@@ -4640,7 +4641,7 @@ static int _trunk_free(fr_trunk_t *trunk)
 	 *	Each time a connection is freed it removes itself from the list
 	 *	its in, which means the head should keep advancing automatically.
 	 */
-	while ((tconn = fr_heap_peek(trunk->active))) fr_connection_signal_halt(tconn->pub.conn);
+	while ((tconn = fr_minmax_heap_min_peek(trunk->active))) fr_connection_signal_halt(tconn->pub.conn);
 	while ((tconn = fr_dlist_head(&trunk->init))) fr_connection_signal_halt(tconn->pub.conn);
 	while ((tconn = fr_dlist_head(&trunk->connecting))) fr_connection_signal_halt(tconn->pub.conn);
 	while ((tconn = fr_dlist_head(&trunk->full))) fr_connection_signal_halt(tconn->pub.conn);
@@ -4742,7 +4743,7 @@ fr_trunk_t *fr_trunk_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	/*
 	 *	Connection queues and trees
 	 */
-	MEM(trunk->active = fr_heap_talloc_alloc(trunk, trunk->funcs.connection_prioritise,
+	MEM(trunk->active = fr_minmax_heap_talloc_alloc(trunk, trunk->funcs.connection_prioritise,
 						  fr_trunk_connection_t, heap_id, 0));
 	fr_dlist_talloc_init(&trunk->init, fr_trunk_connection_t, entry);
 	fr_dlist_talloc_init(&trunk->connecting, fr_trunk_connection_t, entry);

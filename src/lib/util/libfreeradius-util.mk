@@ -45,6 +45,7 @@ SOURCES		:= \
 		   machine.c \
 		   md4.c \
 		   md5.c \
+		   minmax_heap.c \
 		   misc.c \
 		   missing.c \
 		   net.c \
