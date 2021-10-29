@@ -1,6 +1,7 @@
 TARGET	:= radiusd
 SOURCES := \
-    radiusd.c
+    radiusd.c \
+    radmin.c
 
 SRC_CFLAGS	:= $(LIBREADLINE_CFLAGS)
 

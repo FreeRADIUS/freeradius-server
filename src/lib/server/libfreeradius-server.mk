@@ -29,7 +29,6 @@ SOURCES	:= \
 	password.c \
 	pool.c \
 	rcode.c \
-	radmin.c \
 	regex.c \
 	request.c \
 	request_data.c \

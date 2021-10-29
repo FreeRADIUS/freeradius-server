@@ -17,8 +17,8 @@
 /**
  * $Id$
  *
- * @file src/lib/server/radmin.c
- * @brief Server-side implementation of radmin which handles requests from the client.
+ * @file src/bin/radmin.c
+ * @brief Internal implementation of radmin
  *
  * @copyright 2018 The FreeRADIUS server project
  * @copyright 2018 Alan DeKok (aland@freeradius.org)
