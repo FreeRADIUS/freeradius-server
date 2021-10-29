@@ -1771,36 +1771,36 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		FR_DBUFF_OUT_MEMCPY_RETURN(((uint8_t *)&dst->datum) + fr_value_box_offsets[type], &work_dbuff, len);
 		break;
 
-	case FR_TYPE_INT8:
-		FR_DBUFF_OUT_RETURN(&dst->vb_int8, &work_dbuff);
-		break;
-
 	case FR_TYPE_UINT8:
 		FR_DBUFF_OUT_RETURN(&dst->vb_uint8, &work_dbuff);
-		break;
-
-	case FR_TYPE_INT16:
-		FR_DBUFF_OUT_RETURN(&dst->vb_int16, &work_dbuff);
 		break;
 
 	case FR_TYPE_UINT16:
 		FR_DBUFF_OUT_RETURN(&dst->vb_uint16, &work_dbuff);
 		break;
 
-	case FR_TYPE_INT32:
-		FR_DBUFF_OUT_RETURN(&dst->vb_int32, &work_dbuff);
-		break;
-
 	case FR_TYPE_UINT32:
 		FR_DBUFF_OUT_RETURN(&dst->vb_uint32, &work_dbuff);
 		break;
 
-	case FR_TYPE_INT64:
-		FR_DBUFF_OUT_RETURN(&dst->vb_int64, &work_dbuff);
-		break;
-
 	case FR_TYPE_UINT64:
 		FR_DBUFF_OUT_RETURN(&dst->vb_uint64, &work_dbuff);
+		break;
+
+	case FR_TYPE_INT8:
+		FR_DBUFF_OUT_RETURN(&dst->vb_int8, &work_dbuff);
+		break;
+
+	case FR_TYPE_INT16:
+		FR_DBUFF_OUT_RETURN(&dst->vb_int16, &work_dbuff);
+		break;
+
+	case FR_TYPE_INT32:
+		FR_DBUFF_OUT_RETURN(&dst->vb_int32, &work_dbuff);
+		break;
+
+	case FR_TYPE_INT64:
+		FR_DBUFF_OUT_RETURN(&dst->vb_int64, &work_dbuff);
 		break;
 
 	case FR_TYPE_FLOAT32:
