@@ -406,7 +406,7 @@ static void const *table_ordered_value_by_longest_prefix(size_t *match_len,
 
 		offset = TABLE_IDX(table, i, element_size);
 
-		for (j = 0; (j < (size_t)name_len) && (name[j] == (ELEM_STR(offset))[j]); j++);
+		for (j = 0; (j < (size_t)name_len) && (j < ELEM_LEN(offset)) && (name[j] == (ELEM_STR(offset))[j]); j++);
 
 		/*
 		 *	If we didn't get to the end of the
