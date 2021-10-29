@@ -74,8 +74,14 @@ static char const *action_codes[] = {
 	"dup",
 	"timer",
 #ifdef WITH_PROXY
-	"proxy-reply"
+	"proxy-reply",
 #endif
+	"request was cancelled",
+	"conflicting packet was received",
+	"max_time was reached",
+	"internal failure",
+	"cleanup_delay was reached",
+	"CoA packet was cancelled, and not sent",
 };
 
 #ifdef DEBUG_STATE_MACHINE
@@ -632,9 +638,10 @@ static void proxy_reply_too_late(REQUEST *request)
  *	}
  *  \enddot
  */
-static void request_done(REQUEST *request, int action)
+static void request_done(REQUEST *request, int original)
 {
 	struct timeval now, when;
+	int action = original;
 
 	VERIFY_REQUEST(request);
 
@@ -700,7 +707,7 @@ static void request_done(REQUEST *request, int action)
 	/*
 	 *	If it was administratively canceled, then it's done.
 	 */
-	if (action == FR_ACTION_CANCELLED) {
+	if (action >= FR_ACTION_CANCELLED) {
 		action = FR_ACTION_DONE;
 
 #ifdef WITH_COA
@@ -887,9 +894,10 @@ static void request_done(REQUEST *request, int action)
 #endif
 
 	if (request->packet) {
-		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
+		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d due to %s",
 			request->packet->id,
-			(unsigned int) (request->timestamp - fr_start_time));
+			(unsigned int) (request->timestamp - fr_start_time),
+			action_codes[original]);
 	} /* else don't print anything */
 
 	ASSERT_MASTER;
@@ -994,8 +1002,7 @@ static bool request_max_time(REQUEST *request)
 	 *	stop" macro already took care of it.
 	 */
 	if (request->child_state == REQUEST_DONE) {
-	done:
-		request_done(request, FR_ACTION_CANCELLED);
+		request_done(request, FR_ACTION_DONE);
 		return true;
 	}
 
@@ -1027,7 +1034,8 @@ static bool request_max_time(REQUEST *request)
 		/*
 		 *	Tell the request that it's done.
 		 */
-		goto done;
+		request_done(request, FR_ACTION_MAX_TIME);
+		return true;
 	}
 
 	/*
@@ -1096,7 +1104,7 @@ static void request_queue_or_run(REQUEST *request,
 			 *	Otherwise we're not going to do anything with
 			 *	it...
 			 */
-			request_done(request, FR_ACTION_CANCELLED);
+			request_done(request, FR_ACTION_INTERNAL_FAILURE);
 			return;
 		}
 #endif
@@ -1212,7 +1220,7 @@ static void request_cleanup_delay(REQUEST *request, int action)
 			return;
 		} /* else it's time to clean up */
 
-		request_done(request, FR_ACTION_DONE);
+		request_done(request, FR_ACTION_CLEANUP_DELAY);
 		break;
 
 	default:
@@ -1802,7 +1810,7 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 		 *	the request just as we're logging the
 		 *	complaint.
 		 */
-		request_done(request, FR_ACTION_CANCELLED);
+		request_done(request, FR_ACTION_CONFLICT);
 		request = NULL;
 
 		/*
@@ -1891,7 +1899,7 @@ skip_dup:
 	if (!listener->nodup) {
 		if (!rbtree_insert(pl, &request->packet)) {
 			RERROR("Failed to insert request in the list of live requests: discarding it");
-			request_done(request, FR_ACTION_CANCELLED);
+			request_done(request, FR_ACTION_INTERNAL_FAILURE);
 			return 1;
 		}
 
@@ -3303,7 +3311,7 @@ do_home:
 	 *	Once we've decided to proxy a request, we cannot send
 	 *	a CoA packet.  So we free up any CoA packet here.
 	 */
-	if (request->coa) request_done(request->coa, FR_ACTION_CANCELLED);
+	if (request->coa) request_done(request->coa, FR_ACTION_COA_CANCELLED);
 #endif
 
 	/*
@@ -3532,7 +3540,7 @@ static int request_proxy(REQUEST *request)
 #ifdef WITH_COA
 	if (request->coa) {
 		RWDEBUG("Cannot proxy and originate CoA packets at the same time.  Cancelling CoA request");
-		request_done(request->coa, FR_ACTION_CANCELLED);
+		request_done(request->coa, FR_ACTION_COA_CANCELLED);
 	}
 #endif
 
@@ -4698,7 +4706,7 @@ static void coa_retransmit(REQUEST *request)
 	    request->proxy_reply ||
 	    !request->proxy_listener ||
 	    (request->proxy_listener->status >= RAD_LISTEN_STATUS_EOL)) {
-		request_done(request, FR_ACTION_CANCELLED);
+		request_done(request, FR_ACTION_COA_CANCELLED);
 		return;
 	}
 
@@ -4853,7 +4861,7 @@ static bool coa_max_time(REQUEST *request)
 	 */
 	if (request->child_state == REQUEST_DONE) {
 	done:
-		request_done(request, FR_ACTION_CANCELLED);
+		request_done(request, FR_ACTION_MAX_TIME);
 		return true;
 	}
 

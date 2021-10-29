@@ -47,6 +47,11 @@ typedef enum fr_state_action_t {	/* server action */
 	FR_ACTION_PROXY_REPLY,
 #endif
 	FR_ACTION_CANCELLED,
+	FR_ACTION_CONFLICT,
+	FR_ACTION_MAX_TIME,
+	FR_ACTION_INTERNAL_FAILURE,
+	FR_ACTION_CLEANUP_DELAY,
+	FR_ACTION_COA_CANCELLED,
 } fr_state_action_t;
 
 /*
