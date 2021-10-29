@@ -316,7 +316,7 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
 			 *	up the fractional parsing when the
 			 *	fraction is all zeros...
 			 */
-			if ((sberr != FR_SBUFF_PARSE_ERROR_NOT_FOUND) || (*fr_sbuff_current(&m_f) != '0')) goto num_error;
+			if ((sberr != FR_SBUFF_PARSE_ERROR_NOT_FOUND) || fr_sbuff_is_char(&m_f, '0')) goto num_error;
 		}
 
 		f_len = fr_sbuff_behind(&m_f);

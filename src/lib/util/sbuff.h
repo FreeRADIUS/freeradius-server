@@ -1613,47 +1613,55 @@ static inline bool fr_sbuff_is_str(fr_sbuff_t *sbuff, char const *str, size_t le
 }
 #define fr_sbuff_is_str_literal(_sbuff, _str) fr_sbuff_is_str(_sbuff, _str, sizeof(_str) - 1)
 
-static inline bool fr_sbuff_is_char(fr_sbuff_t *sbuff, char c)
+static inline bool _fr_sbuff_is_char(fr_sbuff_t *sbuff, char *p, char c)
 {
 	if (!fr_sbuff_extend(sbuff)) return false;
-	return *sbuff->p == c;
+	return *p == c;
 }
+#define fr_sbuff_is_char(_sbuff_or_marker, _c) _fr_sbuff_is_char(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker), _c)
 
-static inline bool fr_sbuff_is_digit(fr_sbuff_t *sbuff)
+static inline bool _fr_sbuff_is_digit(fr_sbuff_t *sbuff, char *p)
 {
 	if (!fr_sbuff_extend(sbuff)) return false;
-	return isdigit(*sbuff->p);
+	return isdigit(*p);
 }
+#define fr_sbuff_is_digit(_sbuff_or_marker) _fr_sbuff_is_digit(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
 
-static inline bool fr_sbuff_is_upper(fr_sbuff_t *sbuff)
+static inline bool _fr_sbuff_is_upper(fr_sbuff_t *sbuff, char const *p)
 {
 	if (!fr_sbuff_extend(sbuff)) return false;
-	return isupper(*sbuff->p);
+	return isupper(*p);
 }
+#define fr_sbuff_is_upper(_sbuff_or_marker) _fr_sbuff_is_upper(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
 
-static inline bool fr_sbuff_is_lower(fr_sbuff_t *sbuff)
+static inline bool _fr_sbuff_is_lower(fr_sbuff_t *sbuff, char const *p)
 {
 	if (!fr_sbuff_extend(sbuff)) return false;
-	return islower(*sbuff->p);
+	return islower(*p);
 }
+#define fr_sbuff_is_lower(_sbuff_or_marker) _fr_sbuff_is_lower(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
 
-static inline bool fr_sbuff_is_alpha(fr_sbuff_t *sbuff)
+static inline bool _fr_sbuff_is_alpha(fr_sbuff_t *sbuff, char const *p)
 {
 	if (!fr_sbuff_extend(sbuff)) return false;
-	return isalpha(*sbuff->p);
+	return isalpha(*p);
 }
+#define fr_sbuff_is_alpha(_sbuff_or_marker) _fr_sbuff_is_alpha(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
 
-static inline bool fr_sbuff_is_space(fr_sbuff_t *sbuff)
+static inline bool _fr_sbuff_is_space(fr_sbuff_t *sbuff, char const *p)
 {
 	if (!fr_sbuff_extend(sbuff)) return false;
-	return isspace(*sbuff->p);
+	return isspace(*p);
 }
+#define fr_sbuff_is_space(_sbuff_or_marker) _fr_sbuff_is_space(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
 
-static inline bool fr_sbuff_is_hex(fr_sbuff_t *sbuff)
+static inline bool _fr_sbuff_is_hex(fr_sbuff_t *sbuff, char const *p)
 {
 	if (!fr_sbuff_extend(sbuff)) return false;
-	return isxdigit(*sbuff->p);
+	return isxdigit(*p);
 }
+#define fr_sbuff_is_hex(_sbuff_or_marker) _fr_sbuff_is_hex(fr_sbuff_ptr(_sbuff_or_marker), fr_sbuff_current(_sbuff_or_marker))
+
 /** @} */
 
 #ifdef __cplusplus
