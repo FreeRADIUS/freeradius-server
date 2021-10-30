@@ -558,7 +558,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	The tests should have only IPs, not host names.
 	 */
-	fr_hostname_lookups = false;
+	fr_hostname_lookups = fr_reverse_lookups = false;
 
 	/*
 	 *	We always log to stdout.

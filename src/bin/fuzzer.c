@@ -159,7 +159,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	 *	queries, and there's no chance of spurious failures if
 	 *	it takes a long time to get a response.
 	 */
-	fr_hostname_lookups = false;
+	fr_hostname_lookups = fr_reverse_lookups = false;
 
 	dl_loader = dl_loader_init(NULL, NULL, 0, false);
 	if (!dl_loader) {
