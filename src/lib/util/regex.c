@@ -1278,7 +1278,7 @@ ssize_t regex_flags_parse(int *err, fr_regex_flags_t *out, fr_sbuff_t *in,
  *	- The number of bytes written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
  */
-ssize_t regex_flags_print(fr_sbuff_t *sbuff, fr_regex_flags_t const flags[static REGEX_FLAG_BUFF_SIZE])
+ssize_t regex_flags_print(fr_sbuff_t *sbuff, fr_regex_flags_t const *flags)
 {
 	fr_sbuff_t our_sbuff = FR_SBUFF(sbuff);
 
