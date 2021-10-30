@@ -201,6 +201,8 @@ void _fr_pair_list_log(fr_log_t const *log, int lvl, fr_pair_t *parent, fr_pair_
 	fr_sbuff_t sbuff;
 	char buffer[1024];
 
+	buffer[0] = '\0';	/* Fix GCC11 bug where it flags the buffer as uninitialised for no reason */
+
 	fr_sbuff_init_out(&sbuff, buffer, sizeof(buffer));
 
 	fr_pair_list_log_sbuff(log, lvl, parent, list, file, line, &sbuff);
@@ -222,6 +224,8 @@ void fr_pair_debug(fr_pair_t const *pair)
 {
 	fr_sbuff_t sbuff;
 	char buffer[1024];
+
+	buffer[0] = '\0';	/* Fix GCC11 bug where it flags the buffer as uninitialised for no reason */
 
 	fr_sbuff_init_out(&sbuff, buffer, sizeof(buffer));
 
