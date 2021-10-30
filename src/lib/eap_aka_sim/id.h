@@ -115,7 +115,7 @@ uint8_t		fr_aka_sim_id_3gpp_pseudonym_tag(char const encr_id[AKA_SIM_3GPP_PSEUDO
 
 uint8_t		fr_aka_sim_id_3gpp_pseudonym_key_index(char const encr_id[AKA_SIM_3GPP_PSEUDONYM_LEN]);
 
-int		fr_aka_sim_id_3gpp_pseudonym_decrypt(char out[AKA_SIM_IMSI_MAX_LEN],
+int		fr_aka_sim_id_3gpp_pseudonym_decrypt(char out[AKA_SIM_IMSI_MAX_LEN + 1],
 				     		     char const encr_id[AKA_SIM_3GPP_PSEUDONYM_LEN],
 				     		     uint8_t const key[16]);
 
