@@ -852,7 +852,7 @@ if test "x$HAVE_THREADS" != "xyes"; then
         CFLAGS="$CFLAGS -pthread"
       fi
     ],
-    [ fail=[-lc_r or -lpthread] ]
+    [ fail="-lc_r or -lpthread" ]
   )
 fi
 

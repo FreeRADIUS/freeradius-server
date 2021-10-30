@@ -8318,7 +8318,7 @@ printf "%s\n" "$ax_cv_cc_pthread_flag" >&6; }
       fi
 
 else $as_nop
-   fail=-lc_r or -lpthread
+   fail="-lc_r or -lpthread"
 
 fi
 
