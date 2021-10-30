@@ -473,7 +473,7 @@ static void queue_cmp(unsigned int count)
 	{
 		minmax_heap_thing	**array;
 		populate_values(values, count);
-		fr_time_t		start_alloc, end_alloc, start_insert, end_insert, start_pop, end_pop, end_pop_first;
+		fr_time_t		start_alloc, end_alloc, start_insert, end_insert, start_pop, end_pop, end_pop_first = fr_time_min();
 
 		start_alloc = fr_time();
 		array = talloc_array(NULL, minmax_heap_thing *, count);
