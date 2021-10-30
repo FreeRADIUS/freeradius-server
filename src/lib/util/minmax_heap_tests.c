@@ -435,7 +435,7 @@ static void queue_cmp(unsigned int count)
 	 *	Check times for heap alloc, insert, pop
 	 */
 	{
-		fr_time_t	start_alloc, end_alloc, start_insert, end_insert, start_pop, end_pop, end_pop_first;
+		fr_time_t	start_alloc, end_alloc, start_insert, end_insert, start_pop, end_pop, end_pop_first = fr_time_min();
 
 		populate_values(values, count);
 
