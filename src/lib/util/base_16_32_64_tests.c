@@ -60,7 +60,7 @@ static const test_vector base64_vectors[] = {
 
 static void test_base16_encode(void)
 {
-	char		buffer[17] = { '\0' };
+	char		buffer[17];
 	fr_sbuff_t	out;
 	size_t		i;
 
@@ -104,7 +104,7 @@ static void test_base16_decode(void)
 
 static void test_base32_encode(void)
 {
-	char		buffer[17] = { '\0' };
+	char		buffer[17];
 	fr_sbuff_t	out;
 	size_t		i;
 
@@ -151,7 +151,7 @@ static void test_base32_decode(void)
 
 static void test_base32_hex_encode(void)
 {
-	char		buffer[17] = { '\0' };
+	char		buffer[17];
 	fr_sbuff_t	out;
 	size_t		i;
 
@@ -198,7 +198,7 @@ static void test_base32_hex_decode(void)
 
 static void test_base64_encode(void)
 {
-	char		buffer[17] = { '\0' };
+	char		buffer[17];
 	fr_sbuff_t	out;
 	size_t		i;
 
