@@ -81,7 +81,7 @@ static void test_base16_encode(void)
 
 static void test_base16_decode(void)
 {
-	char		buffer[7];
+	char		buffer[7] = { '\0' };
 	fr_dbuff_t	out;
 	size_t		i;
 
@@ -126,7 +126,7 @@ static void test_base32_encode(void)
 
 static void test_base32_decode(void)
 {
-	char		buffer[7];
+	char		buffer[7] = { '\0' };
 	fr_dbuff_t	out;
 	size_t		i;
 
@@ -173,7 +173,7 @@ static void test_base32_hex_encode(void)
 
 static void test_base32_hex_decode(void)
 {
-	char		buffer[7];
+	char		buffer[7] = { '\0' };
 	fr_dbuff_t	out;
 	size_t		i;
 
@@ -220,7 +220,7 @@ static void test_base64_encode(void)
 
 static void test_base64_decode(void)
 {
-	char		buffer[7];
+	char		buffer[7] = { '\0' };
 	fr_dbuff_t	out;
 	size_t		i;
 
