@@ -116,12 +116,12 @@ typedef struct {
 #  define ETH_ADDR_LEN   6
 #endif
 
-extern fr_dict_attr_t const	**dhcp_header_attrs[];
-extern size_t dhcp_header_attrs_len;
-extern char const		*dhcp_message_types[];
-extern int			dhcp_header_sizes[];
-extern uint8_t			eth_bcast[ETH_ADDR_LEN];
-extern fr_dict_attr_t const 	*dhcp_option_82;
+extern fr_dict_attr_t const		**dhcp_header_attrs[];
+extern size_t			 	dhcp_header_attrs_len;
+extern char const			*dhcp_message_types[];
+extern int				dhcp_header_sizes[];
+extern uint8_t				eth_bcast[ETH_ADDR_LEN];
+extern HIDDEN fr_dict_attr_t const 	*dhcp_option_82;
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 #  define ETH_HDR_SIZE   14

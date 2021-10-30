@@ -27,28 +27,28 @@ RCSIDH(dhcpv4_attrs_h, "$Id$")
 
 #include <freeradius-devel/util/dict.h>
 
-extern fr_dict_t const *dict_dhcpv4;
+extern HIDDEN fr_dict_t const *dict_dhcpv4;
 
-extern fr_dict_attr_t const *attr_dhcp_boot_filename;
-extern fr_dict_attr_t const *attr_dhcp_client_hardware_address;
-extern fr_dict_attr_t const *attr_dhcp_client_ip_address;
-extern fr_dict_attr_t const *attr_dhcp_flags;
-extern fr_dict_attr_t const *attr_dhcp_gateway_ip_address;
-extern fr_dict_attr_t const *attr_dhcp_hardware_address_length;
-extern fr_dict_attr_t const *attr_dhcp_hardware_type;
-extern fr_dict_attr_t const *attr_dhcp_hop_count;
-extern fr_dict_attr_t const *attr_dhcp_number_of_seconds;
-extern fr_dict_attr_t const *attr_dhcp_opcode;
-extern fr_dict_attr_t const *attr_dhcp_server_host_name;
-extern fr_dict_attr_t const *attr_dhcp_server_ip_address;
-extern fr_dict_attr_t const *attr_dhcp_transaction_id;
-extern fr_dict_attr_t const *attr_dhcp_your_ip_address;
-extern fr_dict_attr_t const *attr_dhcp_dhcp_maximum_msg_size;
-extern fr_dict_attr_t const *attr_dhcp_interface_mtu_size;
-extern fr_dict_attr_t const *attr_dhcp_message_type;
-extern fr_dict_attr_t const *attr_dhcp_parameter_request_list;
-extern fr_dict_attr_t const *attr_dhcp_overload;
-extern fr_dict_attr_t const *attr_dhcp_vendor_class_identifier;
-extern fr_dict_attr_t const *attr_dhcp_relay_link_selection;
-extern fr_dict_attr_t const *attr_dhcp_subnet_selection_option;
-extern fr_dict_attr_t const *attr_dhcp_network_subnet;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_boot_filename;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_client_hardware_address;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_client_ip_address;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_flags;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_gateway_ip_address;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_hardware_address_length;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_hardware_type;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_hop_count;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_number_of_seconds;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_opcode;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_server_host_name;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_server_ip_address;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_transaction_id;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_your_ip_address;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_dhcp_maximum_msg_size;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_interface_mtu_size;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_message_type;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_parameter_request_list;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_overload;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_vendor_class_identifier;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_relay_link_selection;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_subnet_selection_option;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_network_subnet;

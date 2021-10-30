@@ -269,11 +269,11 @@ typedef struct {
 	fr_curl_io_request_t	*handle;	//!< curl easy handle servicing our request.
 } rlm_rest_xlat_rctx_t;
 
-extern fr_dict_t const *dict_freeradius;
+extern HIDDEN fr_dict_t const *dict_freeradius;
 
-extern fr_dict_attr_t const *attr_rest_http_body;
-extern fr_dict_attr_t const *attr_rest_http_header;
-extern fr_dict_attr_t const *attr_rest_http_status_code;
+extern HIDDEN fr_dict_attr_t const *attr_rest_http_body;
+extern HIDDEN fr_dict_attr_t const *attr_rest_http_header;
+extern HIDDEN fr_dict_attr_t const *attr_rest_http_status_code;
 
 /*
  *	Function prototype for rest_read_wrapper. Matches CURL's

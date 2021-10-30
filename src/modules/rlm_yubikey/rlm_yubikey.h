@@ -69,12 +69,12 @@ int rlm_yubikey_ykclient_detach(rlm_yubikey_t *inst);
 
 unlang_action_t rlm_yubikey_validate(rlm_rcode_t *p_result, rlm_yubikey_t const *inst, request_t *request, char const *passcode);
 
-extern fr_dict_attr_t const *attr_auth_type;
-extern fr_dict_attr_t const *attr_user_password;
-extern fr_dict_attr_t const *attr_yubikey_key;
-extern fr_dict_attr_t const *attr_yubikey_public_id;
-extern fr_dict_attr_t const *attr_yubikey_private_id;
-extern fr_dict_attr_t const *attr_yubikey_counter;
-extern fr_dict_attr_t const *attr_yubikey_timestamp;
-extern fr_dict_attr_t const *attr_yubikey_random;
-extern fr_dict_attr_t const *attr_yubikey_otp;
+extern HIDDEN fr_dict_attr_t const *attr_auth_type;
+extern HIDDEN fr_dict_attr_t const *attr_user_password;
+extern HIDDEN fr_dict_attr_t const *attr_yubikey_key;
+extern HIDDEN fr_dict_attr_t const *attr_yubikey_public_id;
+extern HIDDEN fr_dict_attr_t const *attr_yubikey_private_id;
+extern HIDDEN fr_dict_attr_t const *attr_yubikey_counter;
+extern HIDDEN fr_dict_attr_t const *attr_yubikey_timestamp;
+extern HIDDEN fr_dict_attr_t const *attr_yubikey_random;
+extern HIDDEN fr_dict_attr_t const *attr_yubikey_otp;

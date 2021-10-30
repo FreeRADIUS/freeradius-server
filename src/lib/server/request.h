@@ -80,11 +80,11 @@ typedef enum request_state_t {
 typedef	void (*fr_request_process_t)(request_t *, fr_state_signal_t);	//!< Function handler for requests.
 typedef	rlm_rcode_t (*RAD_REQUEST_FUNP)(request_t *);
 
-extern fr_dict_attr_t const *request_attr_root;
-extern fr_dict_attr_t const *request_attr_request;
-extern fr_dict_attr_t const *request_attr_reply;
-extern fr_dict_attr_t const *request_attr_control;
-extern fr_dict_attr_t const *request_attr_state;
+extern HIDDEN fr_dict_attr_t const *request_attr_root;
+extern HIDDEN fr_dict_attr_t const *request_attr_request;
+extern HIDDEN fr_dict_attr_t const *request_attr_reply;
+extern HIDDEN fr_dict_attr_t const *request_attr_control;
+extern HIDDEN fr_dict_attr_t const *request_attr_state;
 
 /** Convenience macro for accessing the request list
  *

@@ -70,9 +70,9 @@ struct couchbase_opts_s {
     couchbase_opts_t *next; 		//!< Linked list.
 };
 
-extern fr_dict_attr_t const *attr_acct_status_type;
-extern fr_dict_attr_t const *attr_acct_session_time;
-extern fr_dict_attr_t const *attr_event_timestamp;
+extern HIDDEN fr_dict_attr_t const *attr_acct_status_type;
+extern HIDDEN fr_dict_attr_t const *attr_acct_session_time;
+extern HIDDEN fr_dict_attr_t const *attr_event_timestamp;
 
 /* couchbase statistics callback */
 void couchbase_stat_callback(lcb_t instance, const void *cookie, lcb_error_t error,

@@ -27,6 +27,6 @@ RCSIDH(radius_attrs_h, "$Id$")
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/arp/arp.h>
 
-extern fr_dict_t const *dict_arp;
+extern HIDDEN fr_dict_t const *dict_arp;
 
-extern fr_dict_attr_t const *attr_arp_packet;
+extern HIDDEN fr_dict_attr_t const *attr_arp_packet;

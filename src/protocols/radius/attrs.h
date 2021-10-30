@@ -28,16 +28,16 @@ RCSIDH(radius_attrs_h, "$Id$")
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/radius/radius.h>
 
-extern CC_HINT(visibility("hidden")) fr_dict_t const *dict_freeradius;
-extern CC_HINT(visibility("hidden")) fr_dict_t const *dict_radius;
+extern HIDDEN fr_dict_t const *dict_freeradius;
+extern HIDDEN fr_dict_t const *dict_radius;
 
-extern CC_HINT(visibility("hidden")) fr_dict_attr_t const *attr_packet_type;
-extern CC_HINT(visibility("hidden")) fr_dict_attr_t const *attr_packet_authentication_vector;
-extern CC_HINT(visibility("hidden")) fr_dict_attr_t const *attr_raw_attribute;
-extern CC_HINT(visibility("hidden")) fr_dict_attr_t const *attr_chap_challenge;
-extern CC_HINT(visibility("hidden")) fr_dict_attr_t const *attr_chargeable_user_identity;
-extern CC_HINT(visibility("hidden")) fr_dict_attr_t const *attr_eap_message;
-extern CC_HINT(visibility("hidden")) fr_dict_attr_t const *attr_message_authenticator;
-extern CC_HINT(visibility("hidden")) fr_dict_attr_t const *attr_state;
-extern CC_HINT(visibility("hidden")) fr_dict_attr_t const *attr_vendor_specific;
-extern CC_HINT(visibility("hidden")) fr_dict_attr_t const *attr_nas_filter_rule;
+extern HIDDEN fr_dict_attr_t const *attr_packet_type;
+extern HIDDEN fr_dict_attr_t const *attr_packet_authentication_vector;
+extern HIDDEN fr_dict_attr_t const *attr_raw_attribute;
+extern HIDDEN fr_dict_attr_t const *attr_chap_challenge;
+extern HIDDEN fr_dict_attr_t const *attr_chargeable_user_identity;
+extern HIDDEN fr_dict_attr_t const *attr_eap_message;
+extern HIDDEN fr_dict_attr_t const *attr_message_authenticator;
+extern HIDDEN fr_dict_attr_t const *attr_state;
+extern HIDDEN fr_dict_attr_t const *attr_vendor_specific;
+extern HIDDEN fr_dict_attr_t const *attr_nas_filter_rule;

@@ -26,48 +26,48 @@ RCSIDH(tls_attrs_h, "$Id$")
 
 #include <freeradius-devel/util/dict.h>
 
-extern fr_dict_t const *dict_freeradius;
-extern fr_dict_t const *dict_radius;
-extern fr_dict_t const *dict_tls;
+extern HIDDEN fr_dict_t const *dict_freeradius;
+extern HIDDEN fr_dict_t const *dict_radius;
+extern HIDDEN fr_dict_t const *dict_tls;
 
-extern fr_dict_attr_t const *attr_allow_session_resumption;
-extern fr_dict_attr_t const *attr_session_resumed;
+extern HIDDEN fr_dict_attr_t const *attr_allow_session_resumption;
+extern HIDDEN fr_dict_attr_t const *attr_session_resumed;
 
-extern fr_dict_attr_t const *attr_tls_certificate;
-extern fr_dict_attr_t const *attr_tls_certificate_serial;
-extern fr_dict_attr_t const *attr_tls_certificate_signature;
-extern fr_dict_attr_t const *attr_tls_certificate_signature_algorithm;
-extern fr_dict_attr_t const *attr_tls_certificate_issuer;
-extern fr_dict_attr_t const *attr_tls_certificate_not_before;
-extern fr_dict_attr_t const *attr_tls_certificate_not_after;
-extern fr_dict_attr_t const *attr_tls_certificate_subject;
-extern fr_dict_attr_t const *attr_tls_certificate_common_name;
-extern fr_dict_attr_t const *attr_tls_certificate_subject_alt_name_dns;
-extern fr_dict_attr_t const *attr_tls_certificate_subject_alt_name_email;
-extern fr_dict_attr_t const *attr_tls_certificate_subject_alt_name_upn;
-extern fr_dict_attr_t const *attr_tls_certificate_x509v3_extended_key_usage;
-extern fr_dict_attr_t const *attr_tls_certificate_x509v3_subject_key_identifier;
-extern fr_dict_attr_t const *attr_tls_certificate_x509v3_authority_key_identifier;
-extern fr_dict_attr_t const *attr_tls_certificate_x509v3_basic_constraints;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_serial;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_signature;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_signature_algorithm;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_issuer;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_not_before;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_not_after;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_subject;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_common_name;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_subject_alt_name_dns;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_subject_alt_name_email;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_subject_alt_name_upn;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_x509v3_extended_key_usage;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_x509v3_subject_key_identifier;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_x509v3_authority_key_identifier;
+extern HIDDEN fr_dict_attr_t const *attr_tls_certificate_x509v3_basic_constraints;
 
-extern fr_dict_attr_t const *attr_tls_client_error_code;
-extern fr_dict_attr_t const *attr_tls_ocsp_cert_valid;
-extern fr_dict_attr_t const *attr_tls_ocsp_next_update;
-extern fr_dict_attr_t const *attr_tls_ocsp_response;
-extern fr_dict_attr_t const *attr_tls_psk_identity;
+extern HIDDEN fr_dict_attr_t const *attr_tls_client_error_code;
+extern HIDDEN fr_dict_attr_t const *attr_tls_ocsp_cert_valid;
+extern HIDDEN fr_dict_attr_t const *attr_tls_ocsp_next_update;
+extern HIDDEN fr_dict_attr_t const *attr_tls_ocsp_response;
+extern HIDDEN fr_dict_attr_t const *attr_tls_psk_identity;
 
-extern fr_dict_attr_t const *attr_tls_session_cert_file;
-extern fr_dict_attr_t const *attr_tls_session_require_client_cert;
-extern fr_dict_attr_t const *attr_tls_session_cipher_suite;
-extern fr_dict_attr_t const *attr_tls_session_version;
+extern HIDDEN fr_dict_attr_t const *attr_tls_session_cert_file;
+extern HIDDEN fr_dict_attr_t const *attr_tls_session_require_client_cert;
+extern HIDDEN fr_dict_attr_t const *attr_tls_session_cipher_suite;
+extern HIDDEN fr_dict_attr_t const *attr_tls_session_version;
 
-extern fr_dict_attr_t const *attr_tls_packet_type;
-extern fr_dict_attr_t const *attr_tls_session_data;
-extern fr_dict_attr_t const *attr_tls_session_id;
-extern fr_dict_attr_t const *attr_tls_session_resumed;
-extern fr_dict_attr_t const *attr_tls_session_ttl;
+extern HIDDEN fr_dict_attr_t const *attr_tls_packet_type;
+extern HIDDEN fr_dict_attr_t const *attr_tls_session_data;
+extern HIDDEN fr_dict_attr_t const *attr_tls_session_id;
+extern HIDDEN fr_dict_attr_t const *attr_tls_session_resumed;
+extern HIDDEN fr_dict_attr_t const *attr_tls_session_ttl;
 
-extern fr_dict_attr_t const *attr_framed_mtu;
+extern HIDDEN fr_dict_attr_t const *attr_framed_mtu;
 
 extern fr_value_box_t const *enum_tls_packet_type_load_session;
 extern fr_value_box_t const *enum_tls_packet_type_store_session;

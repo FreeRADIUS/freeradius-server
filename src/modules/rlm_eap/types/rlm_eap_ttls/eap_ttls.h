@@ -29,18 +29,18 @@ RCSIDH(eap_ttls_h, "$Id$")
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/radius/defs.h>
 
-extern fr_dict_attr_t const *attr_eap_tls_require_client_cert;
-extern fr_dict_attr_t const *attr_proxy_to_realm;
-extern fr_dict_attr_t const *attr_chap_challenge;
-extern fr_dict_attr_t const *attr_ms_chap2_success;
-extern fr_dict_attr_t const *attr_eap_message;
-extern fr_dict_attr_t const *attr_freeradius_proxied_to;
-extern fr_dict_attr_t const *attr_ms_chap_challenge;
-extern fr_dict_attr_t const *attr_reply_message;
-extern fr_dict_attr_t const *attr_eap_channel_binding_message;
-extern fr_dict_attr_t const *attr_user_name;
-extern fr_dict_attr_t const *attr_user_password;
-extern fr_dict_attr_t const *attr_vendor_specific;
+extern HIDDEN fr_dict_attr_t const *attr_eap_tls_require_client_cert;
+extern HIDDEN fr_dict_attr_t const *attr_proxy_to_realm;
+extern HIDDEN fr_dict_attr_t const *attr_chap_challenge;
+extern HIDDEN fr_dict_attr_t const *attr_ms_chap2_success;
+extern HIDDEN fr_dict_attr_t const *attr_eap_message;
+extern HIDDEN fr_dict_attr_t const *attr_freeradius_proxied_to;
+extern HIDDEN fr_dict_attr_t const *attr_ms_chap_challenge;
+extern HIDDEN fr_dict_attr_t const *attr_reply_message;
+extern HIDDEN fr_dict_attr_t const *attr_eap_channel_binding_message;
+extern HIDDEN fr_dict_attr_t const *attr_user_name;
+extern HIDDEN fr_dict_attr_t const *attr_user_password;
+extern HIDDEN fr_dict_attr_t const *attr_vendor_specific;
 
 typedef struct {
 	fr_pair_t	*username;

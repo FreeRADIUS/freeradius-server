@@ -27,11 +27,11 @@ RCSIDH(dns_attrs_h, "$Id$")
 
 #include <freeradius-devel/util/dict.h>
 
-extern fr_dict_t const *dict_dns;
+extern HIDDEN fr_dict_t const *dict_dns;
 
-extern fr_dict_attr_t const *attr_packet_type;
-extern fr_dict_attr_t const *attr_dns_packet;
-extern fr_dict_attr_t const *attr_dns_question;
-extern fr_dict_attr_t const *attr_dns_rr;
-extern fr_dict_attr_t const *attr_dns_ns;
-extern fr_dict_attr_t const *attr_dns_ar;
+extern HIDDEN fr_dict_attr_t const *attr_packet_type;
+extern HIDDEN fr_dict_attr_t const *attr_dns_packet;
+extern HIDDEN fr_dict_attr_t const *attr_dns_question;
+extern HIDDEN fr_dict_attr_t const *attr_dns_rr;
+extern HIDDEN fr_dict_attr_t const *attr_dns_ns;
+extern HIDDEN fr_dict_attr_t const *attr_dns_ar;

@@ -77,10 +77,10 @@ typedef struct {
 	uint32_t	max_trips_per_session;
 } rlm_securid_t;
 
-extern fr_dict_attr_t const *attr_prompt;
-extern fr_dict_attr_t const *attr_reply_message;
-extern fr_dict_attr_t const *attr_state;
-extern fr_dict_attr_t const *attr_user_password;
+extern HIDDEN fr_dict_attr_t const *attr_prompt;
+extern HIDDEN fr_dict_attr_t const *attr_reply_message;
+extern HIDDEN fr_dict_attr_t const *attr_state;
+extern HIDDEN fr_dict_attr_t const *attr_user_password;
 
 /* Memory Management */
 SECURID_SESSION*     securid_session_alloc(void);

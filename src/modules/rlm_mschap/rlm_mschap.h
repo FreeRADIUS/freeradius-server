@@ -19,35 +19,35 @@ typedef enum {
 #endif
 } MSCHAP_AUTH_METHOD;
 
-extern fr_dict_attr_t const *attr_auth_type;
-extern fr_dict_attr_t const *attr_cleartext_password;
-extern fr_dict_attr_t const *attr_eap_identity;
-extern fr_dict_attr_t const *attr_nt_password;
-extern fr_dict_attr_t const *attr_lm_password;
-extern fr_dict_attr_t const *attr_ms_chap_use_ntlm_auth;
+extern HIDDEN fr_dict_attr_t const *attr_auth_type;
+extern HIDDEN fr_dict_attr_t const *attr_cleartext_password;
+extern HIDDEN fr_dict_attr_t const *attr_eap_identity;
+extern HIDDEN fr_dict_attr_t const *attr_nt_password;
+extern HIDDEN fr_dict_attr_t const *attr_lm_password;
+extern HIDDEN fr_dict_attr_t const *attr_ms_chap_use_ntlm_auth;
 
-extern fr_dict_attr_t const *attr_ms_chap_user_name;
+extern HIDDEN fr_dict_attr_t const *attr_ms_chap_user_name;
 
-extern fr_dict_attr_t const *attr_ms_chap_peer_challenge;
-extern fr_dict_attr_t const *attr_ms_chap_new_nt_password;
-extern fr_dict_attr_t const *attr_ms_chap_new_cleartext_password;
-extern fr_dict_attr_t const *attr_smb_account_ctrl;
-extern fr_dict_attr_t const *attr_smb_account_ctrl_text;
+extern HIDDEN fr_dict_attr_t const *attr_ms_chap_peer_challenge;
+extern HIDDEN fr_dict_attr_t const *attr_ms_chap_new_nt_password;
+extern HIDDEN fr_dict_attr_t const *attr_ms_chap_new_cleartext_password;
+extern HIDDEN fr_dict_attr_t const *attr_smb_account_ctrl;
+extern HIDDEN fr_dict_attr_t const *attr_smb_account_ctrl_text;
 
-extern fr_dict_attr_t const *attr_user_name;
-extern fr_dict_attr_t const *attr_ms_chap_error;
+extern HIDDEN fr_dict_attr_t const *attr_user_name;
+extern HIDDEN fr_dict_attr_t const *attr_ms_chap_error;
 
-extern fr_dict_attr_t const *attr_ms_chap_challenge;
-extern fr_dict_attr_t const *attr_ms_chap_response;
-extern fr_dict_attr_t const *attr_ms_chap2_response;
-extern fr_dict_attr_t const *attr_ms_chap2_success;
+extern HIDDEN fr_dict_attr_t const *attr_ms_chap_challenge;
+extern HIDDEN fr_dict_attr_t const *attr_ms_chap_response;
+extern HIDDEN fr_dict_attr_t const *attr_ms_chap2_response;
+extern HIDDEN fr_dict_attr_t const *attr_ms_chap2_success;
 
-extern fr_dict_attr_t const *attr_ms_chap_mppe_keys;
-extern fr_dict_attr_t const *attr_ms_mppe_encryption_policy;
-extern fr_dict_attr_t const *attr_ms_mppe_recv_key;
-extern fr_dict_attr_t const *attr_ms_mppe_send_key;
-extern fr_dict_attr_t const *attr_ms_mppe_encryption_types;
-extern fr_dict_attr_t const *attr_ms_chap2_cpw;
+extern HIDDEN fr_dict_attr_t const *attr_ms_chap_mppe_keys;
+extern HIDDEN fr_dict_attr_t const *attr_ms_mppe_encryption_policy;
+extern HIDDEN fr_dict_attr_t const *attr_ms_mppe_recv_key;
+extern HIDDEN fr_dict_attr_t const *attr_ms_mppe_send_key;
+extern HIDDEN fr_dict_attr_t const *attr_ms_mppe_encryption_types;
+extern HIDDEN fr_dict_attr_t const *attr_ms_chap2_cpw;
 
 typedef struct {
 	char const		*name;

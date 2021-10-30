@@ -216,6 +216,7 @@ do { \
  *
  */
 #define NEVER_RETURNS		_Noreturn
+#define HIDDEN			CC_HINT(visibility("hidden"))
 #define UNUSED			CC_HINT(unused)
 
 /** clang 10 doesn't recognised the FALL-THROUGH comment anymore

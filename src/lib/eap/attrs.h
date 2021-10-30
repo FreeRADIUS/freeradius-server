@@ -26,22 +26,22 @@ RCSIDH(lib_eap_attrs_h, "$Id$")
 
 #include <freeradius-devel/util/dict.h>
 
-extern fr_dict_t const *dict_freeradius;
-extern fr_dict_t const *dict_radius;
+extern HIDDEN fr_dict_t const *dict_freeradius;
+extern HIDDEN fr_dict_t const *dict_radius;
 
-extern fr_dict_attr_t const *attr_chbind_response_code;
-extern fr_dict_attr_t const *attr_eap_identity;
-extern fr_dict_attr_t const *attr_eap_session_id;
-extern fr_dict_attr_t const *attr_eap_type;
-extern fr_dict_attr_t const *attr_virtual_server;
+extern HIDDEN fr_dict_attr_t const *attr_chbind_response_code;
+extern HIDDEN fr_dict_attr_t const *attr_eap_identity;
+extern HIDDEN fr_dict_attr_t const *attr_eap_session_id;
+extern HIDDEN fr_dict_attr_t const *attr_eap_type;
+extern HIDDEN fr_dict_attr_t const *attr_virtual_server;
 
-extern fr_dict_attr_t const *attr_message_authenticator;
-extern fr_dict_attr_t const *attr_eap_channel_binding_message;
-extern fr_dict_attr_t const *attr_eap_message;
-extern fr_dict_attr_t const *attr_eap_msk;
-extern fr_dict_attr_t const *attr_eap_emsk;
-extern fr_dict_attr_t const *attr_freeradius_proxied_to;
-extern fr_dict_attr_t const *attr_ms_mppe_send_key;
-extern fr_dict_attr_t const *attr_ms_mppe_recv_key;
-extern fr_dict_attr_t const *attr_user_name;
-extern fr_dict_attr_t const *attr_state;
+extern HIDDEN fr_dict_attr_t const *attr_message_authenticator;
+extern HIDDEN fr_dict_attr_t const *attr_eap_channel_binding_message;
+extern HIDDEN fr_dict_attr_t const *attr_eap_message;
+extern HIDDEN fr_dict_attr_t const *attr_eap_msk;
+extern HIDDEN fr_dict_attr_t const *attr_eap_emsk;
+extern HIDDEN fr_dict_attr_t const *attr_freeradius_proxied_to;
+extern HIDDEN fr_dict_attr_t const *attr_ms_mppe_send_key;
+extern HIDDEN fr_dict_attr_t const *attr_ms_mppe_recv_key;
+extern HIDDEN fr_dict_attr_t const *attr_user_name;
+extern HIDDEN fr_dict_attr_t const *attr_state;

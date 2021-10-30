@@ -28,15 +28,15 @@ RCSIDH(tftp_attrs_h, "$Id$")
 
 #include <freeradius-devel/util/dict.h>
 
-extern fr_dict_t const *dict_tftp;
+extern HIDDEN fr_dict_t const *dict_tftp;
 
-extern fr_dict_attr_t const *attr_tftp_block;
-extern fr_dict_attr_t const *attr_tftp_block_size;
-extern fr_dict_attr_t const *attr_tftp_data;
-extern fr_dict_attr_t const *attr_tftp_error_code;
-extern fr_dict_attr_t const *attr_tftp_error_message;
-extern fr_dict_attr_t const *attr_tftp_filename;
-extern fr_dict_attr_t const *attr_tftp_opcode;
-extern fr_dict_attr_t const *attr_tftp_mode;
+extern HIDDEN fr_dict_attr_t const *attr_tftp_block;
+extern HIDDEN fr_dict_attr_t const *attr_tftp_block_size;
+extern HIDDEN fr_dict_attr_t const *attr_tftp_data;
+extern HIDDEN fr_dict_attr_t const *attr_tftp_error_code;
+extern HIDDEN fr_dict_attr_t const *attr_tftp_error_message;
+extern HIDDEN fr_dict_attr_t const *attr_tftp_filename;
+extern HIDDEN fr_dict_attr_t const *attr_tftp_opcode;
+extern HIDDEN fr_dict_attr_t const *attr_tftp_mode;
 
-extern fr_dict_attr_t const *attr_packet_type;
+extern HIDDEN fr_dict_attr_t const *attr_packet_type;
