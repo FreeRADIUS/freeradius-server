@@ -956,6 +956,8 @@ void log_request_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, 
 		return;
 	}
 
+	buffer[0] = '\0';	/* Fix GCC11 bug where it flags the buffer as uninitialised for no reason */
+
 	fr_sbuff_init_out(&sbuff, buffer, sizeof(buffer));
 	fr_sbuff_marker(&m_start, &sbuff);
 	fr_sbuff_marker(&m_end, &sbuff);
