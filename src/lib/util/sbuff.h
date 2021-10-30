@@ -594,6 +594,14 @@ static inline void _fr_sbuff_init(fr_sbuff_t *out, char const *start, char const
 	if (nul_term) *out->start = '\0';
 }
 
+/*
+ *	GCC is stupid and will warn about output variables
+ *	being unnitialised, even if they're not dereferenced.
+ */
+#if defined(__GNUC__) && __GNUC__ >= 11
+DIAG_OFF(maybe-uninitialized)
+#endif
+
 /** Initialise an sbuff around a stack allocated buffer for printing
  *
  * Will \0 terminate the output buffer.
@@ -613,6 +621,11 @@ _Generic((_len_or_end), \
 	char const *	: (char const *)(_len_or_end) \
 ), \
 IS_CONST(char *, _start), true)
+
+#if defined(__GNUC__) && __GNUC__ >= 11
+DIAG_ON(maybe-uninitialized)
+#endif
+
 
 /** Initialise an sbuff around a stack allocated buffer for parsing
  *

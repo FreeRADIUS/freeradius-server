@@ -135,6 +135,13 @@ void *fr_cursor_replace(fr_cursor_t *cursor, void *r) CC_HINT(nonnull);
 /** @hidecallergraph */
 void fr_cursor_free_list(fr_cursor_t *cursor) CC_HINT(nonnull);
 
+/*
+ *	GCC is stupid and will warn about output variables
+ *	being unnitialised, even if they're not dereferenced.
+ */
+#if defined(__GNUC__) && __GNUC__ >= 11
+DIAG_OFF(maybe-uninitialized)
+#endif
 /** Initialise a cursor with runtime talloc type safety checks and a custom iterator
  *
  * @param[in] _cursor	to initialise.
@@ -189,6 +196,9 @@ void fr_cursor_free_list(fr_cursor_t *cursor) CC_HINT(nonnull);
 
 void *_fr_cursor_init(fr_cursor_t *cursor, void * const *head, size_t offset,
 		      fr_cursor_iter_t iter, void const *ctx, char const *type);
+#if defined(__GNUC__) && __GNUC__ >= 11
+DIAG_ON(maybe-uninitialized)
+#endif
 
 /** talloc_free the current item
  *

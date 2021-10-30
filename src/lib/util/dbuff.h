@@ -317,6 +317,13 @@ do { \
  */
 #define FR_DBUFF_MAX_BIND_CURRENT(_dbuff_or_marker,  _max) _FR_DBUFF_MAX(_dbuff_or_marker, _max, FR_DBUFF_ADV_PARENT_CURRENT)
 
+/*
+ *	GCC is stupid and will warn about output variables
+ *	being unnitialised, even if they're not dereferenced.
+ */
+#if defined(__GNUC__) && __GNUC__ >= 11
+DIAG_OFF(maybe-uninitialized)
+#endif
 /** Does the actual work of initialising a dbuff
  * @private
  */
@@ -359,6 +366,9 @@ _fr_dbuff_init(_out, \
 			char *		: false, \
 			char const *	: true \
 	       ))
+#if defined(__GNUC__) && __GNUC__ >= 11
+DIAG_ON(maybe-uninitialized)
+#endif
 
 size_t	_fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
 
