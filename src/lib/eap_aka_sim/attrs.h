@@ -28,7 +28,7 @@
 
 extern HIDDEN fr_dict_t const *dict_freeradius;
 extern HIDDEN fr_dict_t const *dict_radius;
-extern HIDDEN fr_dict_t const *dict_eap_aka_sim;
+extern fr_dict_t const *dict_eap_aka_sim;	/* FIXME - Should be resolved by individual models and hidden */
 
 extern HIDDEN fr_dict_attr_t const *attr_eap_aka_sim_ak;
 extern HIDDEN fr_dict_attr_t const *attr_eap_aka_sim_any_id_req;
