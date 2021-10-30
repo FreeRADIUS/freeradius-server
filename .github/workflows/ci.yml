@@ -167,17 +167,18 @@ jobs:
       run: |
         pip3 install tacacs_plus
 
-    - name: Install LLVM 10
+    - name: Install LLVM 12
       if: ${{ matrix.env.CC == 'clang' && runner.os != 'macOS' }}
       run: |
-        sudo apt-get install -y --no-install-recommends clang-10 llvm-10 gdb
-        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10
-        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10
+        sudo apt-get install -y --no-install-recommends clang-12 llvm-12 gdb lldb
+        sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 60 && sudo update-alternatives --set clang /usr/bin/clang-12
+        sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-12 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-12
 
-    - name: Set compiler to GCC 10
+    - name: Set compiler to GCC 11
       if: ${{ matrix.env.CC == 'gcc' }}
       run: |
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 60 && sudo update-alternatives --set gcc /usr/bin/gcc-10
+        sudo apt-get install -y --no-install-recommends gcc-11 gdb lldb
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 60 && sudo update-alternatives --set gcc /usr/bin/gcc-11
 
     #
     #  Build using some alternative libraries
