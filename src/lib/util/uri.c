@@ -88,7 +88,7 @@ int fr_uri_escape(fr_value_box_list_t *uri, fr_uri_part_t const *uri_parts, void
 		/*
 		 *	Look for URI part terminator
 		 */
-		fr_sbuff_init(&sbuff, uri_vb->vb_strvalue, uri_vb->length);
+		fr_sbuff_init_in(&sbuff, uri_vb->vb_strvalue, uri_vb->length);
 
 		do {
 			fr_sbuff_adv_until(&sbuff, SIZE_MAX, uri_part->terminals, '\0');

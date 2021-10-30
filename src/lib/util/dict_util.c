@@ -2578,7 +2578,7 @@ fr_dict_attr_t const *fr_dict_attr_search_by_qualified_oid(fr_dict_attr_err_t *e
 	fr_sbuff_t		our_name;
 	fr_dict_attr_t const	*da;
 
-	fr_sbuff_init(&our_name, name, strlen(name) + 1);
+	fr_sbuff_init_in(&our_name, name, strlen(name));
 
 	slen = fr_dict_attr_search_by_qualified_oid_substr(err, &da, dict_def, &our_name, NULL, internal, foreign);
 	if (slen <= 0) return NULL;

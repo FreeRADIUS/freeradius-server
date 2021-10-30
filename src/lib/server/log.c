@@ -956,7 +956,7 @@ void log_request_fd_event(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, 
 		return;
 	}
 
-	fr_sbuff_init(&sbuff, buffer, sizeof(buffer));
+	fr_sbuff_init_in(&sbuff, buffer, sizeof(buffer) - 1);
 	fr_sbuff_marker(&m_start, &sbuff);
 	fr_sbuff_marker(&m_end, &sbuff);
 

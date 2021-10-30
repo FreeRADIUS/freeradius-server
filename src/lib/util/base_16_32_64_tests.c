@@ -64,7 +64,7 @@ static void test_base16_encode(void)
 	fr_sbuff_t	out;
 	size_t		i;
 
-	fr_sbuff_init(&out, buffer, sizeof(buffer));
+	fr_sbuff_init_out(&out, buffer, sizeof(buffer));
 
 	for (i = 0; i < NUM_ELEMENTS(base16_vectors); i++) {
 		fr_sbuff_set_to_start(&out);
@@ -108,7 +108,7 @@ static void test_base32_encode(void)
 	fr_sbuff_t	out;
 	size_t		i;
 
-	fr_sbuff_init(&out, buffer, sizeof(buffer));
+	fr_sbuff_init_out(&out, buffer, sizeof(buffer));
 
 	for (i = 0; i < NUM_ELEMENTS(base32_vectors); i++) {
 		fr_sbuff_set_to_start(&out);
@@ -155,7 +155,7 @@ static void test_base32_hex_encode(void)
 	fr_sbuff_t	out;
 	size_t		i;
 
-	fr_sbuff_init(&out, buffer, sizeof(buffer));
+	fr_sbuff_init_out(&out, buffer, sizeof(buffer));
 
 	for (i = 0; i < NUM_ELEMENTS(base32_hex_vectors); i++) {
 		fr_sbuff_set_to_start(&out);
@@ -202,7 +202,7 @@ static void test_base64_encode(void)
 	fr_sbuff_t	out;
 	size_t		i;
 
-	fr_sbuff_init(&out, buffer, sizeof(buffer));
+	fr_sbuff_init_out(&out, buffer, sizeof(buffer));
 
 	for (i = 0; i < NUM_ELEMENTS(base64_vectors); i++) {
 		fr_sbuff_set_to_start(&out);

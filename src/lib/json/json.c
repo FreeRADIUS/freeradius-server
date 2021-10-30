@@ -558,7 +558,7 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 		/*
 		 *	Get attribute name and value.
 		 */
-		fr_sbuff_init(&attr_name, buf, sizeof(buf));
+		fr_sbuff_init_in(&attr_name, buf, sizeof(buf) - 1);
 		if (attr_name_with_prefix(&attr_name, vp->da, format) < 0) {
 			return NULL;
 		}
@@ -686,7 +686,7 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 		/*
 		 *	Get attribute name and value.
 		 */
-		fr_sbuff_init(&attr_name, buf, sizeof(buf));
+		fr_sbuff_init_in(&attr_name, buf, sizeof(buf) - 1);
 		if (attr_name_with_prefix(&attr_name, vp->da, format) < 0) {
 			return NULL;
 		}
@@ -808,7 +808,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 		/*
 		 *	Get attribute name and value.
 		 */
-		fr_sbuff_init(&attr_name, buf, sizeof(buf));
+		fr_sbuff_init_in(&attr_name, buf, sizeof(buf) - 1);
 		if (attr_name_with_prefix(&attr_name, vp->da, format) < 0) {
 			return NULL;
 		}
@@ -982,7 +982,7 @@ static struct json_object *json_attr_array_afrom_pair_list(UNUSED TALLOC_CTX *ct
 
 		if (vp->da->flags.is_raw) continue;
 
-		fr_sbuff_init(&attr_name, buf, sizeof(buf));
+		fr_sbuff_init_in(&attr_name, buf, sizeof(buf) - 1);
 		if (attr_name_with_prefix(&attr_name, vp->da, format) < 0) {
 			return NULL;
 		}
