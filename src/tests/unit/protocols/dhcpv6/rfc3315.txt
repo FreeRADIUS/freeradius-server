@@ -7,6 +7,7 @@
 
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #  Encoding an option header:
@@ -145,4 +146,4 @@ decode-pair 00 02 00 0a 00 03 00 ff d3 4d 00 c0 ff ee
 match Server-ID.DUID = LL, raw.Server-ID.DUID.LL = 0x00ffd34d00c0ffee
 
 count
-match 28
+match 29

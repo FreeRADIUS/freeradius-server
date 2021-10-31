@@ -11,6 +11,7 @@
 
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #  1.
@@ -177,5 +178,5 @@ decode-proto 07 2f fd d1 00 03 00 28 02 03 04 05 00 00 0e 10 00 00 15 18 00 05 0
 match Packet-Type = Reply, Transaction-ID = 0x2ffdd1, IA-NA.IAID = 33752069, IA-NA.T1 = 3600, IA-NA.T2 = 5400, IA-NA.Options = { IA-Addr.IPv6-Address = 2a00:1:1:200:38e6:b22e:c440:acdf, IA-Addr.Preferred-Lifetime = 4500, IA-Addr.Valid-Lifetime = 7200 }, Client-ID.DUID = LL, Client-ID.DUID.LL.Hardware-Type = Ethernet, Client-ID.DUID.LL.Hardware-Type.Ethernet.Address = 00:01:02:03:04:05, Server-ID.DUID = LLT, Server-ID.DUID.LLT.Hardware-Type = Ethernet, Server-ID.DUID.LLT.Time = "Nov 26 2012 15:34:36 UTC", Server-ID.DUID.LLT.Hardware-Type.Ethernet.Address = 00:11:22:33:44:55
 
 count
-match 10
+match 11
 

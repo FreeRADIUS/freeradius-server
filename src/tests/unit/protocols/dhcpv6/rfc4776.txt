@@ -7,6 +7,7 @@
 
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #  A1 = "ON"
@@ -19,4 +20,4 @@ match Geoconf-Civic.What = Client-Location, Geoconf-Civic.Country-Code = "CA", G
 #match Geoconf-Civic = { What = Client-Location, Country-Code = "CA", Civic-Address-Elements = 0x01024f4e }
 
 count
-match 6
+match 7

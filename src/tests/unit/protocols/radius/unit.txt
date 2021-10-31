@@ -1,6 +1,7 @@
 # Load libfreeradius-radius
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 #
 #  And using the dictionaries
@@ -38,7 +39,7 @@ match Extended-Attribute-2.Extended-Vendor-Specific-2.FreeRADIUS.Unit-EVS-Intege
 #  that format instead of guessing.
 #
 
-encode-pair Extended-Attribute-1.Unit-Ext-241-TLV.Unit-TLV-Integer = 1, Extended-Attribute-1.Unit-Ext-241-TLV.Unit-TLV-Integer = 2 
+encode-pair Extended-Attribute-1.Unit-Ext-241-TLV.Unit-TLV-Integer = 1, Extended-Attribute-1.Unit-Ext-241-TLV.Unit-TLV-Integer = 2
 match f1 0f f3 01 06 00 00 00 01 01 06 00 00 00 02
 
 decode-pair -
@@ -71,4 +72,4 @@ attribute Unit-TLV.Milliseconds = "2019-08-21T07:40:31.123-04:00"
 match Unit-TLV.Milliseconds = "2019-08-21T03:40:31.123Z"
 
 count
-match 32
+match 33

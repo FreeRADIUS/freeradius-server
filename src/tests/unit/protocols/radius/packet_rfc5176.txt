@@ -11,6 +11,7 @@
 
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 #
 #  1.
@@ -115,5 +116,5 @@ decode-proto 2d 06 00 26 40 f2 1b de e2 7a 87 a5 d7 57 a3 0b fe d6 2f 28 50 12 8
 match Packet-Type = CoA-NAK, Packet-Authentication-Vector = 0x40f21bdee27a87a5d757a30bfed62f28, Message-Authenticator = 0x852579e8e2e5dcbd781a9007266a06a7
 
 count
-match 14
+match 15
 

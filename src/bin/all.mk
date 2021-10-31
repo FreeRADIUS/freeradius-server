@@ -63,6 +63,8 @@ fuzzer.help:
 
 test.fuzzer: $(addprefix test.fuzzer.,$(FUZZER_PROTOCOLS))
 
+test.fuzzer.merge: $(addsuffix .merge,$(addprefix test.fuzzer.,$(FUZZER_PROTOCOLS)))
+
 else
 .PHONY: fuzzer.help $(foreach X,${FUZZER_PROTOCOLS},fuzzer.${X})
 fuzzer.help $(foreach X,${FUZZER_PROTOCOLS},fuzzer.${X}) test.fuzzer:

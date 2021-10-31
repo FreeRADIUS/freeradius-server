@@ -10,6 +10,7 @@
 #
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #    0                   1                   2                   3
 #    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -43,4 +44,4 @@ decode-pair -
 match RDNSS-Selection.DNS-Recursive-Name-Server = ::1, RDNSS-Selection.Preference = High, RDNSS-Selection.FQDN = "ns1.example.com", RDNSS-Selection.FQDN = "ns2.example.com"
 
 count
-match 10
+match 11

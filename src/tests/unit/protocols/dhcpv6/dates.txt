@@ -7,6 +7,7 @@
 
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #  Date. Like a 32bit unix timestamp but starts from 1st Jan 2000 instead of 1st Jan 2000
@@ -44,4 +45,4 @@ decode-pair -
 match Failover-Expiration-Time = "Jan  1 2000 00:00:01 UTC"
 
 count
-match 20
+match 21

@@ -1,5 +1,6 @@
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 #
 #  See share/dictionary/radius/dictionary.iana for these attributes.
@@ -33,4 +34,4 @@ match cf 13 01 0c 62 69 6c 6f 78 69 2e 63 6f 6d 0a 05 62 6f 62
 
 
 count
-match 14
+match 15

@@ -11,6 +11,7 @@
 
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 #
 #  1.
@@ -22,5 +23,5 @@ decode-proto 2b a6 00 19 7f bf 02 c6 66 2b 59 90 83 8a 5e 6e 33 1b 3f f0 01 05 6
 match Packet-Type = CoA-Request, Packet-Authentication-Vector = 0x7fbf02c6662b5990838a5e6e331b3ff0, User-Name = "bob"
 
 count
-match 4
+match 5
 

@@ -1,5 +1,6 @@
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 decode-pair 05 04 01 02
 match raw.NAS-Port = 0x0102
@@ -17,4 +18,4 @@ encode-pair raw.NAS-Port = 0x0102
 match 05 04 01 02
 
 count
-match 8
+match 9

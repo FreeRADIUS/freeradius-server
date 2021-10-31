@@ -11,6 +11,7 @@
 
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 #
 #  1.
@@ -191,5 +192,5 @@ decode-proto 02 5a 00 2b fb aa 7d 05 d0 09 95 35 14 d0 06 97 da 4d 1d fc 38 06 3
 match Packet-Type = Access-Accept, Packet-Authentication-Vector = 0xfbaa7d05d009953514d00697da4d1dfc, Egress-VLANID = 855638139, Ingress-Filters = 3, Egress-VLAN-Name = "3vlanname"
 
 count
-match 14
+match 15
 

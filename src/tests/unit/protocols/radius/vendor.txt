@@ -1,5 +1,6 @@
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 load-dictionary dictionary
 
@@ -109,4 +110,4 @@ encode-pair Cisco-AVPair = "foo", Cisco-AVPair = "bar"
 match 1a 0b 00 00 00 09 01 05 66 6f 6f 1a 0b 00 00 00 09 01 05 62 61 72
 
 count
-match 51
+match 52

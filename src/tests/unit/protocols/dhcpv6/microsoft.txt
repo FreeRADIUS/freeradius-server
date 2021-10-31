@@ -7,6 +7,7 @@
 
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #  Microsoft VSAs. We have no idea what the contents are, and the documentation doesn't say.
@@ -18,4 +19,4 @@ decode-pair -
 match Vendor-Opts.Microsoft.Rogue-Detection-Request = 0x00
 
 count
-match 6
+match 7

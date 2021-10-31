@@ -1,5 +1,6 @@
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 encode-pair Vendor-Specific.Lucent.Max-Shared-Users = 1
 match 1a 0d 00 00 12 ee 00 02 07 00 00 00 01
@@ -14,4 +15,4 @@ encode-pair Vendor-Specific.Lucent.65282 = 0x00000001
 match 1a 0d 00 00 12 ee ff 02 07 00 00 00 01
 
 count
-match 10
+match 11

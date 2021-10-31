@@ -7,6 +7,7 @@
 
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #  True values are encoded by using an empty attribute.
@@ -20,9 +21,9 @@ decode-pair -
 match Rapid-Commit = yes
 
 encode-pair Rapid-Commit = no
-match 
+match
 
 # And we can't decode nothing...
 
 count
-match 8
+match 9

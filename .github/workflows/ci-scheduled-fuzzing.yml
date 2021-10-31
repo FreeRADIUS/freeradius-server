@@ -185,6 +185,9 @@ jobs:
 
     # We walk up the tree if necessary to find a commit that builds so that we
     # will fuzz something
+    #
+    # When we find a working commit we run the unit tests to create seed data
+    # from the latest versions of the unit tests.
     - name: Find a commit that builds
       id: pick_commit
       run: |
@@ -206,6 +209,7 @@ jobs:
           git clean -fxd
         done
         echo "::set-output name=commit_id::$(git rev-parse --short HEAD)"
+        make test.unit
 
     - name: Run fuzzer tests
       run: |

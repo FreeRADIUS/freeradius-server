@@ -1,6 +1,7 @@
 # Load libfreeradius-radius
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 # Example attributes as used in RFC 6929
 raw 241.1 "bob"
@@ -106,4 +107,4 @@ decode-pair f5 0a 1a 80 00 00 00 01 06 01 f5 05 1a 80 01
 match Extended-Attribute-5.Extended-Vendor-Specific-5.1.6 = 0x0101
 
 count
-match 60
+match 61

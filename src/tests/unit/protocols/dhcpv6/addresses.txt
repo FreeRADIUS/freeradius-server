@@ -7,6 +7,7 @@
 
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #  Encode ipv6address
@@ -89,4 +90,4 @@ decode-pair -
 match Unicast = 2001:db8:85a3:cade:cafe:8a2e:370:7334
 
 count
-match 42
+match 43

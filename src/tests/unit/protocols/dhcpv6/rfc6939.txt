@@ -10,6 +10,7 @@
 #
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #  4.  DHCPv6 Client Link-Layer Address Option
@@ -38,7 +39,7 @@ proto-dictionary dhcpv6
 #
 
 # type: Ethernet
-encode-pair Client-Link-Layer.Type = Ethernet, Client-Link-Layer.Type.Ethernet.Address = c0:ff:ee:c0:ff:ee 
+encode-pair Client-Link-Layer.Type = Ethernet, Client-Link-Layer.Type.Ethernet.Address = c0:ff:ee:c0:ff:ee
 match 00 4f 00 08 00 01 c0 ff ee c0 ff ee
 
 decode-pair 00 4f 00 08 00 01 c0 ff ee c0 ff ee
@@ -52,4 +53,4 @@ decode-pair -
 match Client-Link-Layer.Type = Lanstar, Client-Link-Layer.Type.Lanstar.Address = 0xc0ffeec0ffee
 
 count
-match 10
+match 11

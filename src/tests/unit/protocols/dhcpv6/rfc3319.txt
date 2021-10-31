@@ -7,6 +7,7 @@
 
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #  3.1  SIP Servers Domain Name List
@@ -77,4 +78,4 @@ decode-pair -
 match SIP-Server-Address = 2001:db8:85a3::8a2e:370:7334, SIP-Server-Address = 2001:db8:85a3::8a2e:370:7335, SIP-Server-Address = 2001:4860:4860::8888
 
 count
-match 30
+match 31

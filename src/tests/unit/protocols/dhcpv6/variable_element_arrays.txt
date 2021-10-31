@@ -7,6 +7,7 @@
 
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #  Array of strings, each substring should have a 16bit length field containing its length
@@ -58,4 +59,4 @@ decode-pair -
 match User-Class = 0x, User-Class = 0x
 
 count
-match 30
+match 31

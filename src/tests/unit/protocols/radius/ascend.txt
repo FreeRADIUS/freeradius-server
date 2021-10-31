@@ -1,5 +1,6 @@
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 encode-pair Vendor-Specific.Ascend.Data-Filter = "ip in drop tcp dstport > 1023"
 match 1a 28 00 00 02 11 f2 22 01 00 01 00 00 00 00 00 00 00 00 00 00 00 06 00 00 00 03 ff 00 03 00 00 00 00 00 00 00 00 00 00
@@ -41,4 +42,4 @@ decode-pair -
 match Vendor-Specific.Ascend.Send-Secret = "foo 56789abcdef0"
 
 count
-match 22
+match 23

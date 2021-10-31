@@ -1,5 +1,6 @@
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 #
 #  We can't look at the data here, because the encode-paird Tunnel-Password has a 2 byte
@@ -99,4 +100,4 @@ returned
 match -1
 
 count
-match 63
+match 64

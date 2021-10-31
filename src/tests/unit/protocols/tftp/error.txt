@@ -4,6 +4,7 @@
 #
 proto tftp
 proto-dictionary tftp
+fuzzer-out tftp
 
 #
 #	Invalid blksize
@@ -48,4 +49,4 @@ decode-proto 00 00 25 88
 match Invalid TFTP opcode 0000
 
 count
-match 18
+match 19

@@ -8,6 +8,7 @@
 #
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #  Client <-> Server
@@ -124,4 +125,4 @@ decode-proto -
 match Packet-Type = Reply, Transaction-ID = 0x00b33f, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f, Status-Code.Value = Success, Status-Code.Message = "Release received."
 
 count
-match 26
+match 27

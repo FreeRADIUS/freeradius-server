@@ -17,12 +17,14 @@
 #  then magically turns into different fuzzers.
 #
 
-TARGET		:= fuzzer_$(PROTOCOL)
-SOURCES		:= fuzzer.c
+TARGET			:= fuzzer_$(PROTOCOL)
+SOURCES			:= fuzzer.c
 
-TGT_PREREQS	:= libfreeradius-$(PROTOCOL).a
+TGT_PREREQS		:= libfreeradius-$(PROTOCOL).a
 
-TGT_LDLIBS	:= $(LIBS)
+TGT_LDLIBS		:= $(LIBS)
+
+FUZZER_CORPUS_DIR	:= src/tests/fuzzer-corpus
 
 #
 #  Ensure that the large data file is copied from git-lfs,
@@ -33,11 +35,12 @@ TGT_LDLIBS	:= $(LIBS)
 #
 .PHONY:src/tests/fuzzer-corpus/$(PROTOCOL)
 src/tests/fuzzer-corpus/$(PROTOCOL):
-	${Q}if [ ! -e $@ ]; then \
+	${Q}if [ ! -e $@ ] || [ ! -e "$@/.extracted" ]; then \
 		if which flock > /dev/null 2>&1; then flock -F /tmp/git-lfs-mutex git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=src/tests/fuzzer-corpus/$(PROTOCOL).tar' lfs pull; \
 		else git -c 'lfs.fetchexclude=' -c 'lfs.fetchinclude=src/tests/fuzzer-corpus/$(PROTOCOL).tar' lfs pull; fi; \
 		cd src/tests/fuzzer-corpus; \
 		tar -xf $(PROTOCOL).tar; \
+		touch "$(PROTOCOL)/.extracted"; \
 	fi
 
 .PHONY: $(FUZZER_ARTIFACTS)/$(PROTOCOL)
@@ -92,6 +95,20 @@ test.fuzzer.$(PROTOCOL): $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-c
 		exit 1; \
 	fi
 endif
+
+test.fuzzer.$(PROTOCOL).merge: | src/tests/fuzzer-corpus/$(PROTOCOL)
+	@echo MERGE-FUZZER-CORPUS $(PROTOCOL)
+	${Q}[ -e "$(FUZZER_CORPUS_DIR)/$(PROTOCOL)_new" ] || mkdir "$(FUZZER_CORPUS_DIR)/$(PROTOCOL)_new"
+	${Q}$(TEST_BIN)/fuzzer_$(PROTOCOL) \
+		-D share/dictionary \
+		-max_len=512 $(FUZZER_ARGUMENTS) \
+		-merge=1 \
+		"$(FUZZER_CORPUS_DIR)/$(PROTOCOL)_new" "$(FUZZER_CORPUS_DIR)/$(PROTOCOL)"
+	${Q}[ ! -e "$(FUZZER_CORPUS_DIR)/$(PROTOCOL).tar" ] || rm "$(FUZZER_CORPUS_DIR)/$(PROTOCOL).tar"
+	${Q}rm -rf "$(FUZZER_CORPUS_DIR)/$(PROTOCOL)"
+	${Q}mv "$(FUZZER_CORPUS_DIR)/$(PROTOCOL)_new" "$(FUZZER_CORPUS_DIR)/$(PROTOCOL)"
+	${Q}tar -C "$(FUZZER_CORPUS_DIR)" -c -f "$(FUZZER_CORPUS_DIR)/$(PROTOCOL).tar" "$(PROTOCOL)"
+	${Q}rm -rf "$(FUZZER_CORPUS_DIR)/$(PROTOCOL)_new"
 
 test.fuzzer.$(PROTOCOL).crash: $(wildcard $(BUILD_DIR)/fuzzer/$(PROTOCOL)/crash-*) $(wildcard $(BUILD_DIR)/fuzzer/$(PROTOCOL)/timeout-*) $(wildcard $(BUILD_DIR)/fuzzer/$(PROTOCOL)/slow-unit-*) $(TEST_BIN_DIR)/fuzzer_$(PROTOCOL) | src/tests/fuzzer-corpus/$(PROTOCOL)
 	$(TEST_BIN)/fuzzer_$(PROTOCOL) \

@@ -10,6 +10,7 @@
 #
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #  The format of the DHCPv6 [RFC3315] GeoLoc Option is as follows:
@@ -89,4 +90,4 @@ match 00 3f 00 10 04 42 35 af a6 04 c2 97 64 f6 10 40 00 00 63 42
 decode-pair -
 match Geolocation.Latitude-Uncertainty = 1, Geolocation.Latitude = 1110814630, Geolocation.Longitude-Uncertainty = 1, Geolocation.Longitude = 3264701686, Geolocation.Altitude-Type = Meters, Geolocation.Altitude-Uncertainty = 1, Geolocation.Altitude = 99, Geolocation.Version = 1, Geolocation.Reserved = 0, Geolocation.Datum = NAD83-NAVD88
 count
-match 6
+match 7

@@ -10,6 +10,7 @@
 #
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #  4.  The DHCPv6 Client FQDN Option
@@ -53,4 +54,4 @@ decode-pair -
 match Client-FQDN.Reserved = 0, Client-FQDN.No-Server-Update = yes, Client-FQDN.Server-Override = no, Client-FQDN.Server-Update = no, Client-FQDN.Domain-Name = "tapioca01"
 
 count
-match 10
+match 11

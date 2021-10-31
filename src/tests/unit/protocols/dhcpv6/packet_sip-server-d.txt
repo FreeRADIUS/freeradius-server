@@ -11,6 +11,7 @@
 
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #  1.
@@ -48,4 +49,4 @@ encode-proto -
 match 07 68 90 d8 00 01 00 0e 00 01 00 01 18 f0 0b 3f 00 0c 29 38 f3 68 00 02 00 0e 00 01 00 01 18 ef 95 1b 00 0c 29 9b a1 53 00 15 00 3e 04 73 69 70 31 09 6d 79 2d 64 6f 6d 61 69 6e 03 6e 65 74 00 04 73 69 70 32 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 04 73 69 70 33 03 73 75 62 09 6d 79 2d 64 6f 6d 61 69 6e 03 6f 72 67 00
 
 count
-match 6
+match 7

@@ -3,12 +3,13 @@
 #
 proto dns
 proto-dictionary dns
+fuzzer-out dns
 
 # 0x6000 questions
 decode-proto 44 81 9a 97 00 00 00 00 60 00 00 00  00 00 01 00 2d 00 00 dc dc 23
 match DNS packet malformed - more resource records than indicated in header
 
-# 
+#
 decode-proto 44 81 9a 97 00 00 00 00 00 01 00 00  01 00 00 00 2d 00 00 dc dc 23
 match DNS packet malformed - more resource records than indicated in header
 
@@ -22,4 +23,4 @@ decode-proto 2020 A020 0000 2020 2020 2020 012d 0000 0c20 2020 2020 2000 2520 20
 match DNS packet malformed - more resource records than indicated in header
 
 count
-match 12
+match 13

@@ -1,5 +1,6 @@
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 #
 #  RADIUS does not (yet) support nested TLVs.
@@ -29,4 +30,4 @@ decode-pair -
 match Extended-Attribute-1.IP-Port-Range = { Type = 1, Limit = 2 }
 
 count
-match 14
+match 15

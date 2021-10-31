@@ -42,13 +42,15 @@ typedef struct request_s request_t;
 #endif
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/unlang/xlat.h>
-#include <freeradius-devel/util/conf.h>
-#include <freeradius-devel/util/syserror.h>
-#include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/atexit.h>
-#include <freeradius-devel/util/file.h>
-#include <freeradius-devel/util/pair_legacy.h>
+#include <freeradius-devel/util/base64.h>
+#include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dns.h>
+#include <freeradius-devel/util/file.h>
+#include <freeradius-devel/util/log.h>
+#include <freeradius-devel/util/pair_legacy.h>
+#include <freeradius-devel/util/sha1.h>
+#include <freeradius-devel/util/syserror.h>
 
 #include <ctype.h>
 
@@ -61,8 +63,10 @@ typedef struct request_s request_t;
 #endif
 
 #include <assert.h>
+#include <fcntl.h>
 #include <libgen.h>
 #include <limits.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 
 #ifndef HAVE_SANITIZER_LSAN_INTERFACE_H
@@ -192,6 +196,7 @@ typedef struct {
 	fr_dict_gctx_t const	*dict_gctx;		//!< Dictionary gctx to "reset" to.
 	char const		*raddb_dir;
 	char const		*dict_dir;
+	char const		*fuzzer_dir;		//!< Where to write fuzzer files.
 	CONF_SECTION		*features;		//!< Enabled features.
 } command_config_t;
 
@@ -214,6 +219,8 @@ typedef struct {
 	fr_dict_t		*test_internal_dict;	//!< Internal dictionary of test_gctx.
 	fr_dict_gctx_t const	*test_gctx;		//!< Dictionary context for test dictionaries.
 
+	int			fuzzer_dir;		//!< File descriptor pointing to a a directory to
+							///< write fuzzer output.
 	command_config_t const	*config;
 } command_file_ctx_t;
 
@@ -354,9 +361,7 @@ static void mismatch_print(command_file_ctx_t *cc, char const *command,
 /** Print hex string to buffer
  *
  */
-static inline size_t hex_print(char *out, size_t outlen, uint8_t const *in, size_t inlen) CC_HINT(nonnull);
-
-static inline size_t hex_print(char *out, size_t outlen, uint8_t const *in, size_t inlen)
+static inline CC_HINT(nonnull) size_t hex_print(char *out, size_t outlen, uint8_t const *in, size_t inlen)
 {
 	char	*p = out;
 	char	*end = p + outlen;
@@ -398,6 +403,45 @@ static inline size_t strerror_concat(char *out, size_t outlen)
 	}
 
 	return p - out;
+}
+
+static inline int dump_fuzzer_data(int fd_dir, char const *text, uint8_t const *data, size_t data_len)
+{
+	fr_sha1_ctx	ctx;
+	uint8_t		digest[SHA1_DIGEST_LENGTH];
+	char		digest_str[(SHA1_DIGEST_LENGTH * 2) + 1];
+	int		file_fd;
+
+	fr_sha1_init(&ctx);
+	fr_sha1_update(&ctx, (uint8_t const *)text, strlen(text));
+	fr_sha1_final(digest, &ctx);
+
+	/*
+	 *	We need to use the url alphabet as the standard
+	 *	one contains forwarded slashes which openat
+	 *      doesn't like.
+	 */
+	fr_base64_encode_nstd(&FR_SBUFF_OUT(digest_str, sizeof(digest_str)), &FR_DBUFF_TMP(digest, sizeof(digest)),
+			      false, fr_base64_url_alphabet_encode);
+
+	file_fd = openat(fd_dir, digest_str, O_RDWR | O_CREAT | O_TRUNC);
+	if (file_fd < 0) {
+		fr_strerror_printf("Failed creating corpus input file \"%s\": %s", digest_str, fr_syserror(errno));
+		return -1;
+	}
+
+	if (fchmod(file_fd, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH) < 0) {
+		fr_strerror_printf("Failed setting permissions for \"%s\": %s", digest_str, fr_syserror(errno));
+		return -1;
+	}
+
+	if (write(file_fd, data, data_len) != (ssize_t)data_len) {
+		fr_strerror_printf("Failed writing to corpus input file \"%s\": %s", digest_str, fr_syserror(errno));
+		unlinkat(fd_dir, digest_str, 0);
+		return -1;
+	}
+
+	return 0;
 }
 
 /*
@@ -1548,6 +1592,11 @@ static size_t command_encode_dns_label(command_result_t *result, command_file_ct
 		if (next) *next = 0;
 	}
 
+	if ((cc->fuzzer_dir >= 0) &&
+	    (dump_fuzzer_data(cc->fuzzer_dir, p, cc->buffer_start, enc_p - cc->buffer_start) < 0)) {
+		RETURN_COMMAND_ERROR();
+	}
+
 	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, cc->buffer_start, enc_p - cc->buffer_start));
 }
 
@@ -1744,6 +1793,11 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 
 	CLEAR_TEST_POINT(cc);
 
+	if ((cc->fuzzer_dir >= 0) &&
+	    (dump_fuzzer_data(cc->fuzzer_dir, p, cc->buffer_start, enc_p - cc->buffer_start) < 0)) {
+		RETURN_COMMAND_ERROR();
+	}
+
 	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, cc->buffer_start, enc_p - cc->buffer_start));
 }
 
@@ -1819,6 +1873,11 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 
 	CLEAR_TEST_POINT(cc);
 
+	if ((cc->fuzzer_dir >= 0) &&
+	    (dump_fuzzer_data(cc->fuzzer_dir, p, cc->buffer_start, slen) < 0)) {
+		RETURN_COMMAND_ERROR();
+	}
+
 	RETURN_OK(hex_print(data, COMMAND_OUTPUT_MAX, cc->buffer_start, slen));
 }
 
@@ -1831,6 +1890,60 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 static size_t command_eof(UNUSED command_result_t *result, UNUSED command_file_ctx_t *cc,
 			  UNUSED char *data, UNUSED size_t data_used, UNUSED char *in, UNUSED size_t inlen)
 {
+	return 0;
+}
+
+/** Enable fuzzer output
+ *
+ * Any commands that produce potentially useful corpus seed data will write that out data
+ * to files in the specified directory, using the md5 of the text input at as the file name.
+ *
+ */
+static size_t command_fuzzer_out(command_result_t *result, command_file_ctx_t *cc,
+				 UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	int	fd;
+	struct	stat sdir;
+	char	*fuzzer_dir;
+
+	/*
+	 *	Close any open fuzzer output dirs
+	 */
+	if (cc->fuzzer_dir >= 0) {
+		close(cc->fuzzer_dir);
+		cc->fuzzer_dir = -1;
+	}
+
+	if (in[0] == '\0') {
+		fr_strerror_const("Missing directory name");
+		RETURN_PARSE_ERROR(0);
+	}
+
+	fuzzer_dir = talloc_asprintf(cc->tmp_ctx, "%s/%s",
+				     cc->config->fuzzer_dir ? cc->config->fuzzer_dir : cc->path, in);
+	fd = open(fuzzer_dir, O_RDONLY);
+	if (fd < 0) {
+		if (mkdir(fuzzer_dir, 0777) == 0) {
+			fd = open(fuzzer_dir, O_RDONLY);
+			if (fd >= 0) goto stat;
+		}
+		fr_strerror_printf("fuzzer-out \"%s\" doesn't exit: %s", fuzzer_dir, fr_syserror(errno));
+		RETURN_PARSE_ERROR(0);
+	}
+
+stat:
+	if (fstat(fd, &sdir) < 0) {
+		fr_strerror_printf("failed statting fuzzer-out \"%s\": %s", fuzzer_dir, fr_syserror(errno));
+		RETURN_PARSE_ERROR(0);
+	}
+
+	if (!(sdir.st_mode & S_IFDIR)) {
+		fr_strerror_printf("fuzzer-out \"%s\" is not a directory", fuzzer_dir);
+		RETURN_PARSE_ERROR(0);
+	}
+	cc->fuzzer_dir = fd;
+	talloc_free(fuzzer_dir);
+
 	return 0;
 }
 
@@ -2220,7 +2333,7 @@ static size_t command_tmpl_rules(command_result_t *result, command_file_ctx_t *c
 	return fr_sbuff_used(&sbuff);
 }
 
-static size_t command_value_box_normalise(command_result_t *result, UNUSED command_file_ctx_t *cc,
+static size_t command_value_box_normalise(command_result_t *result, command_file_ctx_t *cc,
 					  char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	fr_value_box_t *box = talloc_zero(NULL, fr_value_box_t);
@@ -2284,6 +2397,23 @@ static size_t command_value_box_normalise(command_result_t *result, UNUSED comma
 		talloc_free(box2);
 		talloc_free(box);
 		RETURN_OK_WITH_ERROR();
+	}
+
+	/*
+	 *	Store <type><value str...>
+	 */
+	if (cc->fuzzer_dir >= 0) {
+		char fuzzer_buffer[1024];
+		char *fuzzer_p = fuzzer_buffer, *fuzzer_end = fuzzer_p + sizeof(fuzzer_buffer);
+
+		*fuzzer_p++ = (uint8_t)type;	/* Fuzzer uses first byte for type */
+
+		strlcpy(fuzzer_p, data, slen > fuzzer_end - fuzzer_p ? fuzzer_end - fuzzer_p : slen);
+
+		if (dump_fuzzer_data(cc->fuzzer_dir, fuzzer_buffer,
+				     (uint8_t *)fuzzer_buffer, strlen(fuzzer_buffer)) < 0) {
+			RETURN_COMMAND_ERROR();
+		}
 	}
 
 	talloc_free(box2);
@@ -2496,6 +2626,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.usage = "exit[ <num>]",
 					.description = "Exit with the specified error number.  If no <num> is provided, process will exit with 0"
 				}},
+	{ L("fuzzer-out"),	&(command_entry_t){
+					.func = command_fuzzer_out,
+					.usage = "fuzzer-out <dir>",
+					.description = "Write encode-pair, encode-proto, and encode-dns-label output, and value input as separate files in the specified directory.  Text input will be sha1 hashed and base64 encoded to create the filename",
+				}},
 	{ L("load-dictionary "),&(command_entry_t){
 					.func = command_load_dictionary,
 					.usage = "load-dictionary <name> [<dir>]",
@@ -2662,6 +2797,10 @@ static int _command_ctx_free(command_file_ctx_t *cc)
 		fr_perror("unit_test_attribute");
 		return -1;
 	}
+	if (cc->fuzzer_dir >= 0) {
+		close(cc->fuzzer_dir);
+		cc->fuzzer_dir = -1;
+	}
 	return 0;
 }
 
@@ -2711,6 +2850,8 @@ static command_file_ctx_t *command_ctx_alloc(TALLOC_CTX *ctx,
 	fr_dict_global_ctx_dir_set(cc->path);	/* Load new dictionaries relative to the test file */
 	fr_dict_global_ctx_set(cc->config->dict_gctx);
 
+	cc->fuzzer_dir = -1;
+
 	return cc;
 }
 
@@ -2729,6 +2870,11 @@ static void command_ctx_reset(command_file_ctx_t *cc, TALLOC_CTX *ctx)
 	cc->test_gctx = fr_dict_global_ctx_init(cc, cc->config->dict_dir);
 	if (fr_dict_internal_afrom_file(&cc->test_internal_dict, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
 		fr_perror("Failed loading test dict_gctx internal dictionary");
+	}
+
+	if (cc->fuzzer_dir >= 0) {
+		close(cc->fuzzer_dir);
+		cc->fuzzer_dir = -1;
 	}
 }
 
@@ -3081,7 +3227,7 @@ int main(int argc, char *argv[])
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
 
-	while ((c = getopt(argc, argv, "cd:D:fxMhr:")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "cd:D:F:fxMhr:")) != -1) switch (c) {
 		case 'c':
 			do_commands = true;
 			break;
@@ -3092,6 +3238,10 @@ int main(int argc, char *argv[])
 
 		case 'D':
 			config.dict_dir = optarg;
+			break;
+
+		case 'F':
+			config.fuzzer_dir = optarg;
 			break;
 
 		case 'f':

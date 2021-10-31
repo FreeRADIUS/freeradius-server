@@ -1,6 +1,7 @@
 # Load libfreeradius-radius
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 #
 #  The salt is taken from fr_fast_rand(), with a seed set
@@ -108,4 +109,4 @@ decode-pair -
 match Tunnel-Client-Endpoint = "\001\002\003"
 
 count
-match 44
+match 45

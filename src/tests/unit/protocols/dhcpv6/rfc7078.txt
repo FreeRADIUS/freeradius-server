@@ -10,6 +10,7 @@
 #
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #  2.  Address Selection Options
@@ -100,4 +101,4 @@ decode-pair -
 match Address-Selection.Reserved = 0, Address-Selection.Automatic-Row-Addition = no, Address-Selection.Privacy-Reference = yes, Address-Selection.Table-Rows = { Address-Selection-Table.Label = 17, Address-Selection-Table.Precedence = 8, Address-Selection-Table.Prefix = ::ffff:0.0.0.16/128 }
 
 count
-match 6
+match 7

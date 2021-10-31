@@ -11,6 +11,7 @@
 
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 #
 #  1.
@@ -42,5 +43,5 @@ decode-proto 01 c8 00 37 bc 6e 70 22 44 5e 35 98 35 69 2c 8c 12 1c 19 85 01 05 6
 match Packet-Type = Access-Request, Packet-Authentication-Vector = 0xbc6e7022445e359835692c8c121c1985, User-Name = "bob", User-Password = "\204\032\0225\365\360\3048\204\356\351\370b\321\377\210", Error-Cause = Residual-Context-Removed, Error-Cause = 209
 
 count
-match 4
+match 5
 

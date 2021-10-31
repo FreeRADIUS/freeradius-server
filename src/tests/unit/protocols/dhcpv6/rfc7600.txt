@@ -8,6 +8,7 @@
 #
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #   0                   1                   2                   3
@@ -84,4 +85,4 @@ decode-pair -
 match IP4RD-Non-Map-Rule.Traffic-Class-Provided = yes, IP4RD-Non-Map-Rule.Reserved = 0, IP4RD-Non-Map-Rule.Hub-And-Spoke = yes, IP4RD-Non-Map-Rule.Domain-PMTU = 31
 
 count
-match 14
+match 15

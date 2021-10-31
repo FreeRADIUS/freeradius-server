@@ -6,6 +6,7 @@
 #
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 encode-pair IA-Addr.IPv6-Address = 2001:db8::c:78eb, IA-Addr.Valid-Lifetime = 3600
 match 00 05 00 18 20 01 0d b8 00 00 00 00 00 00 00 00 00 0c 78 eb 00 00 00 00 00 00 0e 10
@@ -46,4 +47,4 @@ decode-proto -
 match Packet-Type = Request, Transaction-ID = 0xabcdef, Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060708090a0b0c0d0e0f
 
 count
-match 18
+match 19

@@ -1,5 +1,6 @@
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 #
 #  Test vectors for WiMAX attributes.
@@ -54,7 +55,7 @@ match 1a 15 00 00 60 b5 54 0f 00 09 0c 06 0a 08 08 00 01 02 03 04 05
 
 #
 #  We copied enums, too
-# 
+#
 encode-pair Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec.Assigned = Src-Assigned
 match 1a 10 00 00 60 b5 1c 0a 00 0b 07 05 05 07 03 01
 
@@ -272,4 +273,4 @@ decode-pair -
 match Vendor-Specific.Telrad.TSDF-Table = { TSDF-Parameters = { Reference-QOS-Profile-Name = "garbage" } }
 
 count
-match 126
+match 127

@@ -4,6 +4,7 @@
 #
 proto tftp
 proto-dictionary tftp
+fuzzer-out tftp
 
 #
 #	Client -> Server (Read-Request) - Without block-size
@@ -60,4 +61,4 @@ encode-proto -
 match 00 05 00 04 4b 61 6c 6f 73 20 46 61 75 6c 74 00
 
 count
-match 26
+match 27

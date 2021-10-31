@@ -7,6 +7,7 @@
 
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #  Sub-structures are children of the "key" field.  Sorry.  :(
@@ -48,4 +49,4 @@ decode-pair -
 match Client-ID.DUID = LL, Client-ID.DUID.LL.Hardware-Type = Ethernet, Client-ID.DUID.LL.Hardware-Type.Ethernet.Address = 00:01:02:03:04:05
 
 count
-match 20
+match 21

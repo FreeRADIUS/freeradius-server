@@ -7,6 +7,7 @@
 
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #  1 byte unsigned integer (uint8)
@@ -42,4 +43,4 @@ decode-pair -
 match Information-Refresh-Time = 99
 
 count
-match 18
+match 19

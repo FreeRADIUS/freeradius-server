@@ -12,6 +12,7 @@
 #
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 #
 #  1.
@@ -793,5 +794,5 @@ decode-proto 02 94 00 47 f8 ee 56 2e d9 f5 5c 3a 66 81 98 24 99 07 0d 57 06 06 0
 match Packet-Type = Access-Accept, Packet-Authentication-Vector = 0xf8ee562ed9f55c3a6681982499070d57, Service-Type = Framed-User, Framed-Protocol = PPP, Framed-IP-Address = 172.16.3.33, Framed-IP-Netmask = 255.255.255.0, Framed-Routing = Broadcast-Listen, Filter-Id = "std.ppp", Framed-MTU = 1500, Framed-Compression = Van-Jacobson-TCP-IP
 
 count
-match 40
+match 41
 

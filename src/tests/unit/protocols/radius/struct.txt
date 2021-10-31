@@ -1,5 +1,6 @@
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 #
 #  Structs in RADIUS
@@ -72,4 +73,4 @@ encode-pair -
 match ff 0d 02 00 00 1a 99 ff fe fd fc fb fa
 
 count
-match 32
+match 33

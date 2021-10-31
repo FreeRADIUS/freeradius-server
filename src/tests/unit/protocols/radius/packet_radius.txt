@@ -11,6 +11,7 @@
 
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 #
 #  1.
@@ -231,5 +232,5 @@ decode-proto 02 06 00 61 fb ba 6a 78 4c 7d ec b3 14 ca f0 f2 79 44 a3 7b 08 06 f
 match Packet-Type = Access-Accept, Packet-Authentication-Vector = 0xfbba6a784c7decb314caf0f27944a37b, Framed-IP-Address = 255.255.255.254, Framed-MTU = 576, Service-Type = Framed-User, Reply-Message = "Hello, John.McGuirk", EAP-Message = 0x03010004, Message-Authenticator = 0xb9c4ae6213a71d32125ef7ca4e4c6360, User-Name = "John.McGuirk"
 
 count
-match 10
+match 11
 

@@ -1,3 +1,5 @@
+fuzzer-out util
+
 #
 #  Parse / print data types
 #
@@ -147,6 +149,11 @@ match Aug 21 2019 07:43:03 UTC
 #data foo
 
 #
+#  Switch fuzzer output to DNS corpus
+#
+fuzzer-out dns
+
+#
 #  DNS labels
 #
 encode-dns-label foo.com
@@ -231,4 +238,4 @@ encode-dns-label www_foo.com
 match Invalid character 0x5f in label
 
 count
-match 116
+match 118

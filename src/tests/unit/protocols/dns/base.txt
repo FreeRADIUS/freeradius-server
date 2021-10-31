@@ -3,6 +3,7 @@
 #
 proto dns
 proto-dictionary dns
+fuzzer-out dns
 
 #  16 bits of ID 0
 #  Query, all other bits are clear
@@ -10,7 +11,7 @@ proto-dictionary dns
 #  1 answer
 #  0 nscount
 #  0 arcount
-# 
+#
 #  A record of '.', class Internet, TTL 16
 #  length 4, with 127.0.0.1 as the IP address
 
@@ -71,4 +72,4 @@ decode-proto -
 match packet = { id = 0, query = response, opcode = query, authoritative = no, truncated-response = no, recursion-desired = no, recursion-available = no, reserved = no, authentic-data = no, checking-disabled = no, rcode = no-error, qdcount = 0, ancount = 3, nscount = 0, arcount = 0 }, rr = { name = "www.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }, rr = { name = "ftp.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }, rr = { name = "ns.example.com", type = a, class = 1, ttl = 16, type.a = { ip-address = 127.0.0.1 } }
 
 count
-match 22
+match 23

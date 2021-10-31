@@ -3,6 +3,7 @@
 #
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 #
 #  Time delta in milliseconds.
@@ -121,4 +122,4 @@ decode-pair -
 match Unit-TLV = { Delta-MSec-int32 = 2147483647 }
 
 count
-match 64
+match 65

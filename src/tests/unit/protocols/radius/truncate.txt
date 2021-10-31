@@ -3,6 +3,7 @@
 #
 proto radius
 proto-dictionary radius
+fuzzer-out radius
 
 #
 #  Torture tests for various types
@@ -33,4 +34,4 @@ returned
 match -36
 
 count
-match 20
+match 21

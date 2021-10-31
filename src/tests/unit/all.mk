@@ -59,8 +59,8 @@ test.unit.condition: $(addprefix $(OUTPUT)/,$(filter condition/%.txt,$(FILES))) 
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_attribute
 	$(eval DIR:=${top_srcdir}/src/tests/unit)
 	@echo "UNIT-TEST $(lastword $(subst /, ,$(dir $@))) $(basename $(notdir $@))"
-	${Q}if ! $(TEST_BIN)/unit_test_attribute -D ./share/dictionary -d $(DIR) -r "$@" $<; then \
-		echo "TZ=GMT $(TEST_BIN)/unit_test_attribute -D ./share/dictionary -d $(DIR) -r \"$@\" $<"; \
+	${Q}if ! $(TEST_BIN)/unit_test_attribute -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r "$@" $<; then \
+		echo "TZ=GMT $(TEST_BIN)/unit_test_attribute -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r \"$@\" $<"; \
 		rm -f $(BUILD_DIR)/tests/test.unit; \
 		exit 1; \
 	fi

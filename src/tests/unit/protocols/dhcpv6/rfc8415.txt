@@ -10,6 +10,7 @@
 #
 proto dhcpv6
 proto-dictionary dhcpv6
+fuzzer-out dhcpv6
 
 #
 #  8.  Client/Server Message Formats
@@ -1014,4 +1015,4 @@ decode-pair -
 match INF-Max-RT = 86400
 
 count
-match 90
+match 91
