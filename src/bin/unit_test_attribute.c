@@ -424,16 +424,8 @@ static inline int dump_fuzzer_data(int fd_dir, char const *text, uint8_t const *
 	fr_base64_encode_nstd(&FR_SBUFF_OUT(digest_str, sizeof(digest_str)), &FR_DBUFF_TMP(digest, sizeof(digest)),
 			      false, fr_base64_url_alphabet_encode);
 
-	file_fd = openat(fd_dir, digest_str, O_RDWR | O_CREAT | O_TRUNC);
-	if (file_fd < 0) {
-		fr_strerror_printf("Failed creating corpus input file \"%s\": %s", digest_str, fr_syserror(errno));
-		return -1;
-	}
-
-	if (fchmod(file_fd, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH) < 0) {
-		fr_strerror_printf("Failed setting permissions for \"%s\": %s", digest_str, fr_syserror(errno));
-		return -1;
-	}
+	file_fd = openat(fd_dir, digest_str, O_RDWR | O_CREAT | O_TRUNC,
+			 S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 
 	if (write(file_fd, data, data_len) != (ssize_t)data_len) {
 		fr_strerror_printf("Failed writing to corpus input file \"%s\": %s", digest_str, fr_syserror(errno));
