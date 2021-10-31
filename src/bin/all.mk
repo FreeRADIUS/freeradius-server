@@ -63,6 +63,8 @@ fuzzer.help:
 
 test.fuzzer: $(addprefix test.fuzzer.,$(FUZZER_PROTOCOLS))
 
+test.fuzzer.crash: $(addsuffix .crash,$(addprefix test.fuzzer.,$(FUZZER_PROTOCOLS)))
+
 test.fuzzer.merge: $(addsuffix .merge,$(addprefix test.fuzzer.,$(FUZZER_PROTOCOLS)))
 
 else
