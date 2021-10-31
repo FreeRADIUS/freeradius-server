@@ -2438,6 +2438,8 @@ ssize_t dict_attr_search_qualified(fr_dict_attr_err_t *err, fr_dict_attr_t const
 	slen = dict_attr_search(&our_err, out, initial, &our_in, tt, internal, foreign, func);
 	if (our_err != FR_DICT_ATTR_OK) goto error;
 
+	if (err) *err = FR_DICT_ATTR_OK;
+
 	return fr_sbuff_set(in, &our_in);
 }
 
