@@ -644,7 +644,12 @@ fr_unix_time_t fr_unix_time_from_tm(struct tm *tm)
 	uint32_t year_adj = tm->tm_year + 4800 + 1900;  /* Ensure positive year, multiple of 400. */
 	uint32_t febs = year_adj - (tm->tm_mon <= 2 ? 1 : 0);  /* Februaries since base. */
 	uint32_t leap_days = 1 + (febs / 4) - (febs / 100) + (febs / 400);
-	uint32_t days = 365 * year_adj + leap_days + month_yday[tm->tm_mon] + tm->tm_mday - 1;
+	uint32_t days;
+
+	/* Prevent crash if tm->tm_mon is invalid - seen in clusterfuzz */
+	if (unlikely(tm->tm_mon > (__typeof__(tm->tm_mon))NUM_ELEMENTS(month_yday))) return fr_unix_time_min();
+
+	days = 365 * year_adj + leap_days + month_yday[tm->tm_mon] + tm->tm_mday - 1;
 
 #define CHECK(_x, _max) if ((tm->tm_ ## _x < 0) || (tm->tm_ ## _x >= _max)) tm->tm_ ## _x = _max - 1
 
@@ -830,7 +835,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 		p = tail + 1;
 		s_tm.tm_year = tmp - 1900; /* 'struct tm' starts years in 1900 */
 
-		if (get_part(&p, &s_tm.tm_mon, 1, 13, '-', "month") < 0) return -1;
+		if (get_part(&p, &s_tm.tm_mon, 1, 12, '-', "month") < 0) return -1;
 		s_tm.tm_mon--;	/* ISO is 1..12, where 'struct tm' is 0..11 */
 
 		if (get_part(&p, &s_tm.tm_mday, 1, 31, 'T', "day") < 0) return -1;
