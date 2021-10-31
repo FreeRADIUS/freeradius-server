@@ -428,7 +428,7 @@ static inline int dump_fuzzer_data(int fd_dir, char const *text, uint8_t const *
 			 S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 
 	if (write(file_fd, data, data_len) != (ssize_t)data_len) {
-		fr_strerror_printf("Failed writing to corpus input file \"%s\": %s", digest_str, fr_syserror(errno));
+		fr_strerror_printf("Failed writing to corpus seed file \"%s\": %s", digest_str, fr_syserror(errno));
 		unlinkat(fd_dir, digest_str, 0);
 		return -1;
 	}
