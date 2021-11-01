@@ -15466,6 +15466,7 @@ else $as_nop
 
         #include <stdint.h>
         #include <stddef.h>
+        #include <sys/types.h>
 
         int main(int argc, char **argv) {
           return _Generic((ssize_t)(0), int64_t: 1, default: 0);
