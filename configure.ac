@@ -1889,7 +1889,7 @@ if test "x$developer" = "xyes"; then
   if test "x$fsanitizeflags" != "x"; then
     fsanitizeflags="$(echo $fsanitizeflags | sed 's/^,*//')"
     devcflags="-fsanitize=$fsanitizeflags $devcflags"
-    devldflags="-fsanitize=$fsanitizeflags $devldflags"
+    devldflags="-fsanitize=$(echo $fsanitizeflags | sed 's/fuzzer/fuzzer-no-link/') $devldflags"
   fi
 
   dnl #
