@@ -1007,6 +1007,14 @@ finish:
 	RETURN_MODULE_RCODE(rcode);
 }
 
+/** Make module instance available to xlats
+ *
+ */
+static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	*((void **)xlat_inst) = talloc_get_type_abort(uctx, rlm_sql_t);
+	return 0;
+}
 
 static int mod_detach(void *instance)
 {
