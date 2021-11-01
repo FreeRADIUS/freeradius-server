@@ -398,6 +398,7 @@ AC_CACHE_CHECK([if ssize_t == int64_t], [ax_cv_cc_ssize_same_as_int64],[
       AC_LANG_SOURCE([
         #include <stdint.h>
         #include <stddef.h>
+        #include <sys/types.h>
 
         int main(int argc, char **argv) {
           return _Generic((ssize_t)(0), int64_t: 1, default: 0);
