@@ -158,6 +158,48 @@ static sql_fall_through_t fall_through(fr_pair_list_t *vps)
  */
 static size_t sql_escape_func(request_t *, char *out, size_t outlen, char const *in, void *arg);
 
+/** Escape a tainted VB used as an xlat argument
+ *
+ */
+static int sql_xlat_escape(request_t *request, fr_value_box_t *vb, void *uctx)
+{
+	fr_sbuff_t		sbuff;
+	fr_sbuff_uctx_talloc_t	sbuff_ctx;
+
+	size_t			len;
+	rlm_sql_handle_t	*handle;
+	rlm_sql_t		*inst = talloc_get_type_abort(uctx, rlm_sql_t);
+	fr_dlist_t		entry;
+
+	handle = fr_pool_connection_get(inst->pool, request);
+	if (!handle) {
+		fr_value_box_clear_value(vb);
+		return -1;
+	}
+
+	/*
+	 *	Maximum escaped length is 3 * original - if every character needs escaping
+	 */
+	if (!fr_sbuff_init_talloc(vb, &sbuff, &sbuff_ctx, vb->length * 3, vb->length * 3)) {
+		fr_strerror_printf_push("Failed to allocate buffer for escaped sql argument");
+		return -1;
+	}
+
+	len = inst->sql_escape_func(request, fr_sbuff_buff(&sbuff), vb->length * 3 + 1, vb->vb_strvalue, handle);
+
+	/*
+	 *	fr_value_box_strdup_shallow resets the dlist entries - take a copy
+	 */
+	entry = vb->entry;
+	fr_sbuff_trim_talloc(&sbuff, len);
+	fr_value_box_clear_value(vb);
+	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), vb->tainted);
+	vb->entry = entry;
+
+	fr_pool_connection_release(inst->pool, request, handle);
+	return 0;
+}
+
 /** Execute an arbitrary SQL query
  *
  * For SELECTs, the first value of the first column will be returned.
