@@ -1535,7 +1535,7 @@ fr_slen_t fr_sbuff_out_float64(fr_sbuff_parse_error_t *err, double *out, fr_sbuf
 #endif
 
 #ifndef SSIZE_SAME_AS_INT64
-#  define _fr_sbuff_out_ssize(_err, _out, _in)	ssize_t *	: fr_sbuff_out_ssize(err, (ssize_t *)_out, _in, true),
+#  define _fr_sbuff_out_ssize(_err, _out, _in)	ssize_t *	: fr_sbuff_out_ssize(_err, (ssize_t *)_out, _in, true),
 #else
 #  define _fr_sbuff_out_ssize(_err, _out, _in)
 #endif
