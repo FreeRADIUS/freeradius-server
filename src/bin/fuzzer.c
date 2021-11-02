@@ -78,6 +78,11 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	fr_atexit_global_setup();
 
 	/*
+	 *	Initialise the talloc fault handlers.
+	 */
+	fr_talloc_fault_setup();
+
+	/*
 	 *	Initialise the error stack _before_ we run any
 	 *	tests so there's no chance of the memory
 	 *	appearing as a leak the first time an error
