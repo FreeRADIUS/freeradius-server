@@ -64,12 +64,15 @@ static void exitHandler(void)
 
 int LLVMFuzzerInitialize(int *argc, char ***argv)
 {
-	char const		*lib_dir  = getenv("FR_LIBRARY_PATH");
-	char const		*proto    = getenv("FR_LIBRARY_FUZZ_PROTOCOL");
-	char const		*dict_dir = getenv("FR_DICTIONARY_DIR");
+	char const		*lib_dir  	= getenv("FR_LIBRARY_PATH");
+	char const		*proto    	= getenv("FR_LIBRARY_FUZZ_PROTOCOL");
+	char const		*dict_dir	= getenv("FR_DICTIONARY_DIR");
+	char const		*debug_lvl_str	= getenv("FR_DEBUG_LVL");
 	char			buffer[1024];
 
 	if (!argc || !argv || !*argv) return -1; /* shut up clang scan */
+
+	if (debug_lvl_str) fr_debug_lvl = atoi(debug_lvl_str);
 
 	/*
 	 *	Setup atexit handlers to free any thread local
