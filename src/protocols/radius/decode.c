@@ -1087,6 +1087,7 @@ create_attrs:
 		vsa_len = decode_vsa_internal(ctx, &tlv_tmp, dict,
 					      vendor_da, data, attr_len, packet_ctx, dv);
 		if (vsa_len < 0) {
+			FR_PROTO_TRACE("TLV decode failed: %s", fr_strerror());
 			fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
 			fr_pair_list_free(&tlv_tmp);
 			return -1;
@@ -1225,6 +1226,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	}
 
 	if (tag) {
+		fr_radius_tag_ctx_t **new_tag_ctx = NULL;
+
 		if (!packet_ctx->tags) {
 			/*
 			 *	This should NOT be packet_ctx.tmp_ctx,
@@ -1232,40 +1235,50 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 			 *	packet.  We wish to aggregate the tags
 			 *	across multiple attributes.
 			 */
-			packet_ctx->tags = talloc_zero_array(NULL, fr_radius_tag_ctx_t *, 32);
-			if (!packet_ctx->tags) {
-				talloc_free(vp);
-				goto raw;
-			}
+			new_tag_ctx = talloc_zero_array(NULL, fr_radius_tag_ctx_t *, 32);
+			if (unlikely(!new_tag_ctx)) return PAIR_DECODE_OOM;
+
+			FR_PROTO_TRACE("Allocated tag cache %p", new_tag_ctx);
+
+			packet_ctx->tags = new_tag_ctx;
 		}
 
 		fr_assert(tag < 0x20);
 
 		if (!packet_ctx->tags[tag]) {
-			fr_pair_t *group;
-			fr_dict_attr_t const *group_da;
+			fr_pair_t		*group;
+			fr_dict_attr_t const	*group_da;
 
 			packet_ctx->tags[tag] = talloc_zero(packet_ctx->tags, fr_radius_tag_ctx_t);
-			if (!packet_ctx->tags[tag]) {
-				talloc_free(vp);
-				goto raw;
+			if (unlikely(!packet_ctx->tags[tag])) {
+				if (new_tag_ctx) TALLOC_FREE(packet_ctx->tags);
+				return PAIR_DECODE_OOM;
 			}
 
 			group_da = fr_dict_attr_child_by_num(fr_dict_root(dict_radius), FR_TAG_BASE + tag);
-			if (!group_da) {
-				talloc_free(vp);
-				goto raw;
+			if (unlikely(!group_da)) {
+			tag_alloc_error:
+				TALLOC_FREE(packet_ctx->tags[tag]);
+				return PAIR_DECODE_OOM;
 			}
 
-			group = fr_pair_afrom_da(ctx, group_da);
-			if (!group) {
-				talloc_free(vp);
-				goto raw;
-			}
+			group = fr_pair_afrom_da(packet_ctx->tag_root_ctx, group_da);
+			if (unlikely(!group)) goto tag_alloc_error;
 
-			fr_pair_append(out, group);
 			packet_ctx->tags[tag]->parent = group;
+
+			FR_PROTO_TRACE("Allocated tag attribute %p (%u)", group, tag);
+
+			fr_pair_append(packet_ctx->tag_root, group);
+#ifdef TALLOC_GET_TYPE_ABORT_NOOP
 		}
+#else
+		} else {
+			talloc_get_type_abort(packet_ctx->tags, fr_radius_tag_ctx_t *);
+			talloc_get_type_abort(packet_ctx->tags[tag], fr_radius_tag_ctx_t);
+			talloc_get_type_abort(packet_ctx->tags[tag]->parent, fr_pair_t);
+		}
+#endif
 	}
 
 	/*
@@ -1494,8 +1507,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 			 */
 			if (!extra || ((p[1] & 0x80) == 0)) {
 				ret = fr_radius_decode_pair_value(ctx, out, dict, child,
-								    p + min, attr_len - min, attr_len - min,
-								    packet_ctx);
+								  p + min, attr_len - min, attr_len - min,
+								  packet_ctx);
 				if (ret < 0) goto invalid_extended;
 				return attr_len;
 			}
@@ -1721,6 +1734,16 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t co
 		return -1;
 	}
 
+	/*
+	 *	If we don't have a tag root already, then record where
+	 *	we're putting the top level attributes and add tha tags
+	 *	there.
+	 */
+	if (!packet_ctx->tag_root) {
+		packet_ctx->tag_root = out;
+		packet_ctx->tag_root_ctx = ctx;
+	}
+
 	da = fr_dict_attr_child_by_num(fr_dict_root(dict), data[0]);
 	if (!da) {
 		FR_PROTO_TRACE("Unknown attribute %u", data[0]);
@@ -1790,7 +1813,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t co
 
 static int _test_ctx_free(fr_radius_ctx_t *ctx)
 {
-	talloc_free(ctx->tags);
+	TALLOC_FREE(ctx->tags);
 
 	fr_radius_free();
 

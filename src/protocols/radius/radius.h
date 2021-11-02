@@ -178,6 +178,8 @@ typedef struct {
 
 	uint8_t			tag;			//!< current tag for encoding
 	fr_radius_tag_ctx_t    	**tags;			//!< for decoding tagged attributes
+	fr_pair_list_t		*tag_root;		//!< Where to insert tag attributes.
+	TALLOC_CTX		*tag_root_ctx;		//!< Where to allocate new tag attributes.
 } fr_radius_ctx_t;
 
 /*
