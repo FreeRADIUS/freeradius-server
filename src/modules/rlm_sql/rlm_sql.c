@@ -140,8 +140,6 @@ fr_dict_attr_autoload_t rlm_sql_dict_attr[] = {
 	{ NULL }
 };
 
-static size_t sql_escape_for_xlat_func(request_t *request, char *out, size_t outlen, char const *in, void *arg);
-
 /*
  *	Fall-Through checking function from rlm_files.c
  */
@@ -664,28 +662,6 @@ static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outle
 	}
 	*out = '\0';
 	return len;
-}
-
-/** Passed as the escape function to map_proc and sql xlat methods
- *
- * The variant reserves a connection for the escape functions to use, and releases it after
- * escaping is complete.
- */
-static size_t sql_escape_for_xlat_func(request_t *request, char *out, size_t outlen, char const *in, void *arg)
-{
-	size_t			ret;
-	rlm_sql_t		*inst = talloc_get_type_abort(arg, rlm_sql_t);
-	rlm_sql_handle_t	*handle;
-
-	handle = fr_pool_connection_get(inst->pool, request);
-	if (!handle) {
-		out[0] = '\0';
-		return 0;
-	}
-	ret = inst->sql_escape_func(request, out, outlen, in, handle);
-	fr_pool_connection_release(inst->pool, request, handle);
-
-	return ret;
 }
 
 /*
