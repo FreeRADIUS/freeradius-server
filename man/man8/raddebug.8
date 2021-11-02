@@ -1,4 +1,4 @@
-.TH RADDEBUG 8 "1 September 2010" "" "FreeRADIUS Daemon"
+.TH RADDEBUG 8 "2 November 2021" "" "FreeRADIUS Daemon"
 .SH NAME
 raddebug - Display debugging output from a running server.
 .SH SYNOPSIS
@@ -45,7 +45,7 @@ required for its proper operation:
 For a number of reasons, the debugging output is placed in an
 intermediate file, rather than being sent directly to standard output.
 In order to prevent this file from growing too large, the
-\fBraddebug\fP program is automatically terminated after 10 seconds.
+\fBraddebug\fP program is automatically terminated after 60 seconds.
 This timeout can be changed via the "-t" parameter.
 .PP
 When the script exits, debug mode in the server is disabled, and the
