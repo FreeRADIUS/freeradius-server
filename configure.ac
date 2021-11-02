@@ -389,6 +389,21 @@ AC_ARG_ENABLE(fuzzer,
 )
 
 dnl #
+dnl #  Enable code coverage profiling
+dnl #
+AC_ARG_ENABLE(coverage,
+[AS_HELP_STRING([--enable-coverage],
+                [build with support for code coverage profiling])],
+[ case "$enableval" in
+  no)
+    coverage=no
+    ;;
+  *)
+    coverage=yes
+  esac ]
+)
+
+dnl #
 dnl #  Enable the -fsanitize=address and link in the address sanitizer
 dnl #  libraries.
 dnl #
@@ -1831,6 +1846,14 @@ if test "x$developer" = "xyes"; then
     dnl #  -fsanitize=fuzzer  - Build with fuzzer support
     dnl #
     fsanitizeflags="$fsanitizeflags,fuzzer"
+  fi
+
+  dnl #
+  dnl #  If running with clang, add in coverage checks
+  dnl #
+  if test "x$coverage" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+    devcflags="$devcflags -fprofile-instr-generate -fcoverage-mapping"
+    devldflags="$devldflags -fprofile-instr-generate -fcoverage-mapping"
   fi
 
   dnl #

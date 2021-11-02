@@ -778,6 +778,7 @@ enable_largefile
 enable_strict_dependencies
 enable_werror
 enable_fuzzer
+enable_coverage
 enable_address_sanitizer
 enable_leak_sanitizer
 enable_thread_sanitizer
@@ -1468,6 +1469,7 @@ Optional Features:
   --enable-strict-dependencies  fail configure on lack of module dependancy.
   --enable-werror         causes the build to fail if any warnings are generated.
   --enable-fuzzer         build with support for a fuzzer
+  --enable-coverage       build with support for code coverage profiling
   --enable-address-sanitizer
                           build with support for address sanitizer.
   --enable-leak-sanitizer build with support for leak sanitizer.
@@ -6857,6 +6859,20 @@ then :
     ;;
   *)
     fuzzer=yes
+  esac
+
+fi
+
+
+# Check whether --enable-coverage was given.
+if test ${enable_coverage+y}
+then :
+  enableval=$enable_coverage;  case "$enableval" in
+  no)
+    coverage=no
+    ;;
+  *)
+    coverage=yes
   esac
 
 fi
@@ -14926,6 +14942,11 @@ printf "%s\n" "$ax_cv_cc_wimplicit_fallthrough_flag" >&6; }
                 fsanitizeflags="$fsanitizeflags,fuzzer"
   fi
 
+        if test "x$coverage" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
+    devcflags="$devcflags -fprofile-instr-generate -fcoverage-mapping"
+    devldflags="$devldflags -fprofile-instr-generate -fcoverage-mapping"
+  fi
+
         if test "x$address_sanitizer" = "xyes"; then
                         devcflags="$devcflags -fno-omit-frame-pointer -fno-optimize-sibling-calls"
 
@@ -15009,7 +15030,7 @@ fi
   if test "x$fsanitizeflags" != "x"; then
     fsanitizeflags="$(echo $fsanitizeflags | sed 's/^,*//')"
     devcflags="-fsanitize=$fsanitizeflags $devcflags"
-    devldflags="-fsanitize=$(echo $fsanitizeflags | sed 's/fuzzer/fuzzer-no-link/')  $devldflags"
+    devldflags="-fsanitize=$(echo $fsanitizeflags | sed 's/fuzzer/fuzzer-no-link/') $devldflags"
   fi
 
         devcflags="$(echo $devcflags | sed -e 's/\\t//g;s/  //g')"
