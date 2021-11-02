@@ -14939,7 +14939,7 @@ printf "%s\n" "$ax_cv_cc_wimplicit_fallthrough_flag" >&6; }
           fsanitizeflags=
 
         if test "x$fuzzer" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
-                fsanitizeflags="$fsanitizeflags,fuzzer"
+                fsanitizeflags="$fsanitizeflags,fuzzer-no-link"
   fi
 
         if test "x$coverage" = "xyes" && test "x$ax_cv_cc_clang" = "xyes"; then
@@ -15030,7 +15030,7 @@ fi
   if test "x$fsanitizeflags" != "x"; then
     fsanitizeflags="$(echo $fsanitizeflags | sed 's/^,*//')"
     devcflags="-fsanitize=$fsanitizeflags $devcflags"
-    devldflags="-fsanitize=$(echo $fsanitizeflags | sed 's/fuzzer/fuzzer-no-link/') $devldflags"
+    devldflags="-fsanitize=$fsanitizeflags $devldflags"
   fi
 
         devcflags="$(echo $devcflags | sed -e 's/\\t//g;s/  //g')"

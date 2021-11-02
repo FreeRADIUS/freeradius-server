@@ -22,8 +22,9 @@ SOURCES			:= fuzzer.c
 
 TGT_PREREQS		:= libfreeradius-$(PROTOCOL).a
 
+TGT_CFLAGS		:= -fsanitize=fuzzer
+TGT_LDFLAGS		:= -fsanitize=fuzzer
 TGT_LDLIBS		:= $(LIBS)
-TGT_LDFLAGS	:= -fsanitize=fuzzer
 
 FUZZER_CORPUS_DIR	:= src/tests/fuzzer-corpus
 

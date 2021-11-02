@@ -1845,7 +1845,7 @@ if test "x$developer" = "xyes"; then
     dnl #
     dnl #  -fsanitize=fuzzer  - Build with fuzzer support
     dnl #
-    fsanitizeflags="$fsanitizeflags,fuzzer"
+    fsanitizeflags="$fsanitizeflags,fuzzer-no-link"
   fi
 
   dnl #
@@ -1912,7 +1912,7 @@ if test "x$developer" = "xyes"; then
   if test "x$fsanitizeflags" != "x"; then
     fsanitizeflags="$(echo $fsanitizeflags | sed 's/^,*//')"
     devcflags="-fsanitize=$fsanitizeflags $devcflags"
-    devldflags="-fsanitize=$(echo $fsanitizeflags | sed 's/fuzzer/fuzzer-no-link/') $devldflags"
+    devldflags="-fsanitize=$fsanitizeflags $devldflags"
   fi
 
   dnl #
