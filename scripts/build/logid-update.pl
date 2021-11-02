@@ -16,7 +16,7 @@
 #     1 bit of "is it for a module"  (lets us easily do core vs module filters)
 #     2 bits reserved
 #
-#  16 bits of library
+#  16 bits of library (libfreeradius-foo, or rlm_foo)
 #   8 bits of "thing within a library"
 #  16 bits of globally unique identifier
 #
@@ -24,6 +24,10 @@
 #
 #  Having the globally unique identifier means that it's easier
 #  to track the various IDs.
+#
+#  We also need instance IDs, for things like network / worker threads,
+#  and trunks, and connections.
+#
 #
 ######################################################################
 
