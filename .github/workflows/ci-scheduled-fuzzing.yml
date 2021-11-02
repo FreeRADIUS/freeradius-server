@@ -209,6 +209,7 @@ jobs:
           git clean -fxd
         done
         echo "::set-output name=commit_id::$(git rev-parse --short HEAD)"
+        make -j `nproc`
         make test.unit
 
     - name: Run fuzzer tests
