@@ -21,11 +21,14 @@ my %section_name2id;
 
 
 my $status = 0;
+my $max_id = 1;
 
-our ($opt_d, $opt_e, $opt_i, $opt_r, $opt_x, $opt_X);
+our ($opt_a, $opt_x);
 use Getopt::Std;
-getopts('x');
+getopts('ax');
 my $debug = (defined $opt_x);
+my $assign = (defined $opt_a);
+my %unassigned;
 
 sub process {
     my $file = shift;
@@ -46,9 +49,28 @@ sub process {
     #  The name of this thing is "server" for libfreeradius-server.mk,
     #  or "rlm_sql" for rlm_sql.mk
     #
-    $name =~ s,.*/,,;
-    $name =~ s/libfreeradius-//;
-    $name =~ s/\.mk//;
+    if ($name =~ /libfreeradius/) {
+	$name =~ s,.*/,,;
+	$name =~ s/libfreeradius-//;
+	$name =~ s/\.mk//;
+
+    } elsif ($name =~ /all.mk/) {
+	$name =~ s,/all.mk.*$,,;
+	$name =~ s,.*/,,;
+
+    } elsif ($name =~ /rlm_[\w_]+.mk/) {
+	$name =~ s,.*/,,;
+	$name =~ s/\.mk//;
+
+	#
+	#  These should arguably be in subdirectories, as with most of
+	#  the rest of the code.
+	#
+	next if ($name =~ /rlm_radius_/);
+
+    } else {
+	die "$name is not handled\n";
+    }
 
     #
     #  Prefer ".in" files, so that we edit the ones in source control.
@@ -66,6 +88,14 @@ sub process {
     print "$file\n" if $debug;
 
     while (<$FILE>) {
+	#
+	#  if this Makefile is loading other ones, then ignore it.
+	#
+	if (/SUBMAKEFILES/) {
+	    close $FILE;
+	    return;
+	}
+
 	next if ! /LOG_ID/;
 
 	if (/^\s*LOG_ID_LIB/) {
@@ -92,6 +122,7 @@ sub process {
 
 	    $id2name{$id} = $name;
 	    $name2id{$name} = $id;
+	    $log_id = $id;
 
 	    if (defined $dir2id{$dir}) {
 		print STDERR "LOG_ID_LIB is defined two different ways in $dir\n";
@@ -102,6 +133,8 @@ sub process {
 	    print "\tLOG_ID_LIB=$id with name $name\n" if $debug;
 
 	    $dir2id{$dir} = $id;
+
+	    $max_id = $id + 1 if ($id >= $max_id);
 	    next;
 	}
 
@@ -169,13 +202,34 @@ sub process {
 	}
     }
 
-    close $FILE;
+    if (!$assign) {
+	close $FILE;
+	return;
+    }
+
+    return if defined $log_id;
+
+    print "\tassigned ID $max_id\n" if $debug;
+
+    $unassigned{$file} = $max_id++;
 }
 
-foreach my $file (@ARGV) {
+foreach my $file (sort @ARGV) {
     next if $file !~ /\.mk/;
+    next if $file =~ /tool/;
 
     process($file);
+}
+
+#exit $status if !$status;
+
+#
+#  Go through and assign IDs.
+#
+foreach my $file (sort keys %unassigned) {
+    open my $FILE, ">>$file" or die "Failed opening $file: $!\n";
+    print $FILE "LOG_ID_LIB\t= $unassigned{$file}\n";
+    close $FILE;
 }
 
 exit $status;
