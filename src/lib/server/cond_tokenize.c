@@ -655,7 +655,7 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 			goto check_true; /* it's no longer a map */
 		}
 
-		c->async_required = tmpl_async_required(c->data.map->lhs) | tmpl_async_required(c->data.map->rhs);
+		c->async_required = tmpl_async_required(c->data.map->lhs) || tmpl_async_required(c->data.map->rhs);
 	}
 
 	/*
@@ -1635,7 +1635,7 @@ void fr_cond_async_update(fr_cond_t *c)
 			break;
 
 		case COND_TYPE_MAP:
-			c->async_required = tmpl_async_required(c->data.map->lhs) | tmpl_async_required(c->data.map->rhs);
+			c->async_required = tmpl_async_required(c->data.map->lhs) || tmpl_async_required(c->data.map->rhs);
 			break;
 
 		case COND_TYPE_CHILD:
