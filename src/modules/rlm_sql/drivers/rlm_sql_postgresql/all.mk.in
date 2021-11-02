@@ -10,3 +10,5 @@ SRC_CFLAGS	:= @mod_cflags@
 SRC_CFLAGS	+= -I${top_srcdir}/src/modules/rlm_sql
 TGT_LDLIBS	:= @mod_ldflags@
 TGT_PREREQS	:= rlm_sql.a
+
+$(call DEFINE_LOG_ID_SECTION,postgresql,1,$(SOURCES))

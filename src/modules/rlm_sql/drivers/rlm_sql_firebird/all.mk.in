@@ -9,3 +9,5 @@ SOURCES		:= $(TARGETNAME).c sql_fbapi.c
 SRC_CFLAGS	:= @mod_cflags@
 SRC_CFLAGS	+= -I${top_srcdir}/src/modules/rlm_sql
 TGT_LDLIBS	:= @mod_ldflags@
+
+$(call DEFINE_LOG_ID_SECTION,firebird,10,$(SOURCES))

@@ -9,3 +9,5 @@ SOURCES		:= $(TARGETNAME).c
 SRC_CFLAGS	:= @sql_ibmdb2_cflags@
 SRC_CFLAGS	+= -I${top_srcdir}/src/modules/rlm_sql
 TGT_LDLIBS	:= @sql_ibmdb2_ldflags@
+
+$(call DEFINE_LOG_ID_SECTION,db2,6,$(SOURCES))
