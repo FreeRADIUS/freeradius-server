@@ -29,6 +29,7 @@ my $debug = (defined $opt_x);
 
 sub process {
     my $file = shift;
+    my $FILE;
 
     # normalize it
     $file =~ s,//,/,g;
@@ -49,7 +50,15 @@ sub process {
     $name =~ s/libfreeradius-//;
     $name =~ s/\.mk//;
 
-    open(my $FILE, "<", $file) or die "Failed to open $file: $!\n";
+    #
+    #  Prefer ".in" files, so that we edit the ones in source control.
+    #
+    if (open($FILE, "<$file.in")) {
+	$file .= ".in";
+
+    } else {
+	open($FILE, "<", $file) or die "Failed to open $file: $!\n";
+    }
 
     my $line = 0;
     my $log_id;
@@ -149,7 +158,7 @@ sub process {
 		last;
 	    }
 
-	    print "\tLOG_ID_LIB $log_id $id2name{$log_id} has $section with ID $id\n" if ($debug > 0);
+	    print "\t$section=$id\n" if ($debug > 0);
 
 	    #
 	    #  Define a hierarchical namespace.
@@ -164,6 +173,8 @@ sub process {
 }
 
 foreach my $file (@ARGV) {
+    next if $file !~ /\.mk/;
+
     process($file);
 }
 
