@@ -20,3 +20,4 @@ $(R)$(modconfdir)/python/example.py: src/modules/rlm_python/example.py | $(R)$(m
 	@$(ECHO) INSTALL $(notdir $<)
 	@$(INSTALL) -m 755 $< $(R)$(modconfdir)/python
 endif
+LOG_ID_LIB	= 38

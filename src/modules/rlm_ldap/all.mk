@@ -13,3 +13,4 @@ SOURCES		:= $(TARGETNAME).c groups.c user.c
 
 SRC_CFLAGS	+= -I$(top_builddir)/src/modules/rlm_ldap
 TGT_PREREQS	:= libfreeradius-ldap.a
+LOG_ID_LIB	= 26

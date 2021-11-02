@@ -13,3 +13,4 @@ TGT_LDLIBS	:= @mod_ldflags@ $(OPENSSL_LIBS)
 
 MAN		:= rlm_unbound.5
 
+LOG_ID_LIB	= 54

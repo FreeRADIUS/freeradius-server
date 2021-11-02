@@ -10,3 +10,4 @@ TGT_PREREQS	+= libfreeradius-curl.a
 endif
 
 SOURCES		:= rlm_imap.c
+LOG_ID_LIB	= 22

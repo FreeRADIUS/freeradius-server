@@ -16,3 +16,4 @@ $(R)$(raddbdir)/mods-available/securid: src/modules/rlm_securid/securid | $(R)$(
 	@$(ECHO) INSTALL $(notdir $<)
 	@$(INSTALL) -m 640 $< $(R)$(raddbdir)/mods-available
 endif
+LOG_ID_LIB	= 45

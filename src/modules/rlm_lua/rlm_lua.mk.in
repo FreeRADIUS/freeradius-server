@@ -17,3 +17,4 @@ $(R)$(modconfdir)/lua/example.lua: src/modules/rlm_lua/example.lua | $(R)$(modco
 	@$(ECHO) INSTALL $(notdir $<)
 	@$(INSTALL) -m 755 $< $(R)$(modconfdir)/lua
 
+LOG_ID_LIB	= 30

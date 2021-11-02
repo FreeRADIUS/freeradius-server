@@ -16,3 +16,4 @@ SOURCES		:= $(TARGETNAME).c
 #
 SRC_CFLAGS	+= -I$(top_builddir)/src/lib/json/
 TGT_PREREQS	:= libfreeradius-json.a
+LOG_ID_LIB	= 24

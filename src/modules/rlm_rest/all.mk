@@ -21,3 +21,4 @@ TGT_PREREQS	+= libfreeradius-curl.a
 endif
 
 SOURCES		:= rlm_rest.c rest.c io.c
+LOG_ID_LIB	= 44

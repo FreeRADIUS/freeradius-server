@@ -20,3 +20,4 @@ $(R)$(modconfdir)/mruby/example.rb: src/modules/rlm_mruby/example.rb | $(R)$(mod
 	@$(ECHO) INSTALL $(notdir $<)
 	@$(INSTALL) -m 755 $< $(R)$(modconfdir)/mruby
 endif
+LOG_ID_LIB	= 31

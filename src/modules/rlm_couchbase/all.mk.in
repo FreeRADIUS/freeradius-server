@@ -24,3 +24,4 @@ TGT_PREREQS	:= libfreeradius-json.a
 
 # TODO: create man page
 #MAN		:= rlm_couchbase.8
+LOG_ID_LIB	= 7

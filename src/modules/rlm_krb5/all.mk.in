@@ -9,3 +9,4 @@ SOURCES		:= $(TARGETNAME).c krb5.c
 SRC_CFLAGS	:= @mod_cflags@
 SRC_CFLAGS	+= -DKRB5_DEPRECATED
 TGT_LDLIBS	:= @mod_ldflags@
+LOG_ID_LIB	= 25

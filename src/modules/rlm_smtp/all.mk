@@ -36,3 +36,4 @@ endif
 endif
 
 SOURCES		:= rlm_smtp.c
+LOG_ID_LIB	= 47

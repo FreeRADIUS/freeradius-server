@@ -37,3 +37,4 @@ SRC_INCDIRS	:= $(top_srcdir)/src/modules/rlm_sigtran/libosmo-m3ua/include/ $(top
 SRC_CFLAGS	:= -std=gnu11 @mod_cflags@
 TGT_LDLIBS	:= @mod_ldflags@
 NAME	:= @targetname@
+LOG_ID_LIB	= 46
