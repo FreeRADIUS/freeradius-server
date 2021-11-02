@@ -1055,6 +1055,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	rlm_sql_t	*inst = talloc_get_type_abort(instance, rlm_sql_t);
 	CONF_SECTION	*driver_cs;
 	char const	*name;
+	xlat_t		*xlat;
+	xlat_arg_parser_t	*sql_xlat_arg;
 
 	/*
 	 *	Hack...
@@ -1148,7 +1150,21 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Register the SQL xlat function
 	 */
-	xlat_register_legacy(inst, inst->name, sql_xlat, sql_escape_for_xlat_func, NULL, 0, 0);
+	xlat = xlat_register(inst, inst->name, sql_xlat, false);
+
+	/*
+	 *	The xlat escape function needs access to inst - so
+	 *	argument parser details need to be defined here
+	 */
+	sql_xlat_arg = talloc_zero(inst, xlat_arg_parser_t);
+	sql_xlat_arg->type = FR_TYPE_STRING;
+	sql_xlat_arg->required = true;
+	sql_xlat_arg->concat = true;
+	sql_xlat_arg->func = sql_xlat_escape;
+	sql_xlat_arg->uctx = inst;
+	xlat_func_mono(xlat, sql_xlat_arg);
+
+	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_sql_t *, NULL, inst);
 
 	/*
 	 *	Register the SQL map processor function
