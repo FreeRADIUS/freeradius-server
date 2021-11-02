@@ -1,6 +1,6 @@
 # The FreeRADIUS server
 
-[![CI build status][BuildStatus]][BuildStatusLink] [![Coverity Status][CoverityStatus]][CoverityStatusLink] [![LGTM Status][LGTMStatus]][LGTMStatusLink]
+[![CI build status][BuildStatus]][BuildStatusLink] [![OSS-Fuzz status][OssFuzz]][OssFuzzLink] [![Coverity Status][CoverityStatus]][CoverityStatusLink] [![LGTM Status][LGTMStatus]][LGTMStatusLink]
 
 ## Introduction
 
@@ -137,9 +137,13 @@ Technical support, managed systems support, custom deployments,
 sponsored feature development and many other commercial services
 are available from [Network RADIUS](https://networkradius.com).
 
-[CoverityStatus]: https://scan.coverity.com/projects/58/badge.svg?flat=1 "Coverity Status"
-[CoverityStatusLink]: https://scan.coverity.com/projects/58
 [BuildStatus]: https://github.com/FreeRADIUS/freeradius-server/workflows/CI/badge.svg?branch=master "CI status"
 [BuildStatusLink]: https://github.com/FreeRADIUS/freeradius-server/actions?query=workflow%3ACI
+[OssFuzz]: https://oss-fuzz-build-logs.storage.googleapis.com/badges/freeradius.svg "OSS-Fuzz status"
+[OssFuzzLink]: https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:freeradius
+[CoverityStatus]: https://scan.coverity.com/projects/58/badge.svg?flat=1 "Coverity Status"
+[CoverityStatusLink]: https://scan.coverity.com/projects/58
 [LGTMStatus]: https://img.shields.io/lgtm/alerts/g/FreeRADIUS/freeradius-server.svg?logo=lgtm&logoWidth=18
 [LGTMStatusLink]: https://lgtm.com/projects/g/FreeRADIUS/freeradius-server/alerts/
+   
+   <project>.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj
