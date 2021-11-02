@@ -202,7 +202,7 @@ static int sql_xlat_escape(request_t *request, fr_value_box_t *vb, void *uctx)
 
 /** Execute an arbitrary SQL query
  *
- * For SELECTs, the first value of the first column will be returned.
+ * For SELECTs, the values of the first column will be returned.
  * For INSERTS, UPDATEs and DELETEs, the number of rows affected will
  * be returned instead.
  *
@@ -212,23 +212,30 @@ static int sql_xlat_escape(request_t *request, fr_value_box_t *vb, void *uctx)
  *
  * @ingroup xlat_functions
  */
-static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen,
-			void const *mod_inst, UNUSED void const *xlat_inst,
-			request_t *request, char const *fmt)
+static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
+			      void const *xlat_inst, UNUSED void *xlat_thread_inst,
+			      fr_value_box_list_t *in)
 {
 	rlm_sql_handle_t	*handle = NULL;
 	rlm_sql_row_t		row;
-	rlm_sql_t const		*inst = mod_inst;
+	rlm_sql_t const		*inst;
+	void			*instance;
 	sql_rcode_t		rcode;
-	ssize_t			ret = 0;
+	xlat_action_t		ret = XLAT_ACTION_DONE;
 	char const		*p;
+	fr_value_box_t		*arg = fr_dlist_head(in);
+	fr_value_box_t		*vb = NULL;
+	bool			fetched = false;
+
+	memcpy(&instance, xlat_inst, sizeof(instance));
+	inst = talloc_get_type_abort(instance, rlm_sql_t);
 
 	handle = fr_pool_connection_get(inst->pool, request);	/* connection pool should produce error */
-	if (!handle) return 0;
+	if (!handle) return XLAT_ACTION_FAIL;
 
-	rlm_sql_query_log(inst, request, NULL, fmt);
+	rlm_sql_query_log(inst, request, NULL, arg->vb_strvalue);
 
-	p = fmt;
+	p = arg->vb_strvalue;
 
 	/*
 	 *	Trim whitespace for the prefix check
@@ -244,12 +251,12 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 	    (strncasecmp(p, "delete", 6) == 0)) {
 		int numaffected;
 
-		rcode = rlm_sql_query(inst, request, &handle, fmt);
+		rcode = rlm_sql_query(inst, request, &handle, arg->vb_strvalue);
 		if (rcode != RLM_SQL_OK) {
 		query_error:
 			RERROR("SQL query failed: %s", fr_table_str_by_value(sql_rcode_description_table, rcode, "<INVALID>"));
 
-			ret = -1;
+			ret = XLAT_ACTION_FAIL;
 			goto finish;
 		}
 
@@ -261,43 +268,51 @@ static ssize_t sql_xlat(UNUSED TALLOC_CTX *ctx, char **out, UNUSED size_t outlen
 			goto finish;
 		}
 
-		MEM(*out = talloc_typed_asprintf(request, "%d", numaffected));
-		ret = talloc_array_length(*out) - 1;
+		MEM(vb = fr_value_box_alloc_null(ctx));
+		fr_value_box_uint32(vb, NULL, (uint32_t)numaffected, false);
+		fr_dcursor_append(out, vb);
 
 		(inst->driver->sql_finish_query)(handle, inst->config);
 
 		goto finish;
 	} /* else it's a SELECT statement */
 
-	rcode = rlm_sql_select_query(inst, request, &handle, fmt);
+	rcode = rlm_sql_select_query(inst, request, &handle, arg->vb_strvalue);
 	if (rcode != RLM_SQL_OK) goto query_error;
 
-	rcode = rlm_sql_fetch_row(&row, inst, request, &handle);
-	switch (rcode) {
-	case RLM_SQL_OK:
-		if (row[0]) break;
+	do {
+		rcode = rlm_sql_fetch_row(&row, inst, request, &handle);
+		switch (rcode) {
+		case RLM_SQL_OK:
+			if (row[0]) break;
 
-		RDEBUG2("NULL value in first column of result");
-		(inst->driver->sql_finish_select_query)(handle, inst->config);
-		ret = -1;
+			RDEBUG2("NULL value in first column of result");
+			ret = XLAT_ACTION_FAIL;
 
-		goto finish;
+			goto finish_query;
 
-	case RLM_SQL_NO_MORE_ROWS:
-		RDEBUG2("SQL query returned no results");
-		(inst->driver->sql_finish_select_query)(handle, inst->config);
-		ret = -1;
+		case RLM_SQL_NO_MORE_ROWS:
+			if (!fetched) {
+				RDEBUG2("SQL query returned no results");
+				ret = XLAT_ACTION_FAIL;
+			}
 
-		goto finish;
+			goto finish_query;
 
-	default:
-		(inst->driver->sql_finish_select_query)(handle, inst->config);
-		goto query_error;
-	}
+		default:
+			(inst->driver->sql_finish_select_query)(handle, inst->config);
+			goto query_error;
+		}
 
-	*out = talloc_bstrndup(request, row[0], strlen(row[0]));
-	ret = talloc_array_length(*out) - 1;
+		fetched = true;
 
+		MEM(vb = fr_value_box_alloc_null(ctx));
+		fr_value_box_strdup(vb, vb, NULL, row[0], false);
+		fr_dcursor_append(out, vb);
+
+	} while (1);
+
+finish_query:
 	(inst->driver->sql_finish_select_query)(handle, inst->config);
 
 finish:
