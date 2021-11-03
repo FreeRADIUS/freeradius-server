@@ -715,10 +715,10 @@ static void _ldap_async_bind_auth_watch(fr_connection_t *conn, UNUSED fr_connect
 		return;
 	}
 	if (fr_event_fd_insert(conn, conn->el, ldap_conn->fd,
-					 _ldap_bind_auth_io_read,
-					 NULL,
-					 _ldap_bind_auth_io_error,
-					 thread) < 0) {
+			       _ldap_bind_auth_io_read,
+			       NULL,
+			       _ldap_bind_auth_io_error,
+			       thread) < 0) {
 		goto connection_failed;
 	};
 }
