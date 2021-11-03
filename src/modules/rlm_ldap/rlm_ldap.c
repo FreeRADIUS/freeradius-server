@@ -1810,15 +1810,15 @@ static int mod_thread_instatiate(UNUSED CONF_SECTION const *conf, void *instance
 static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 {
 	fr_ldap_thread_t	*this_thread = thread;
-	fr_ldap_thread_trunk_t	*ttrunk;
-	fr_rb_iter_preorder_t	iter;
+	void			**trunks_to_free;
+	int			i;
 
-	for (ttrunk = fr_rb_iter_init_preorder(&iter, this_thread->trunks);
-	     ttrunk;
-	     ttrunk = fr_rb_iter_next_preorder(&iter)) {
-		talloc_free(ttrunk->trunk);
-	}
+	if (fr_rb_flatten_inorder(NULL, &trunks_to_free, this_thread->trunks) < 0) return -1;
+
+	for (i = talloc_array_length(trunks_to_free); i >= 0; i--) talloc_free(trunks_to_free[i]);
+	talloc_free(trunks_to_free);
 	talloc_free(this_thread->trunks);
+
 	return 0;
 }
 
