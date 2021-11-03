@@ -1839,15 +1839,8 @@ static int parse_input(cf_stack_t *stack)
 		 *	statements.  And for those, "unlang"
 		 *	statements are only allowed in child
 		 *	subsection.
-		 *
-		 *	This isn't _strictly_ true for "instantiate",
-		 *	as we allow "group", "redundant", and a few
-		 *	more things there.  But only allow "if" as a
-		 *	keyword when it's inside of another grouping
-		 *	section.
 		 */
 		if (!parent->allow_unlang && !parent->item.parent) {
-			if (strcmp(css->name1, "instantiate") == 0) css->allow_unlang = 2;
 			if (strcmp(css->name1, "server") == 0) css->allow_unlang = 2;
 			if (strcmp(css->name1, "policy") == 0) css->allow_unlang = 2;
 
