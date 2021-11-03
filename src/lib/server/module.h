@@ -334,7 +334,7 @@ int		modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el) CC_HINT(no
 
 void		modules_thread_detach(void);
 
-int		modules_instantiate(CONF_SECTION *root) CC_HINT(nonnull);
+int		modules_instantiate(void) CC_HINT(nonnull);
 
 module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTION *cs) CC_HINT(nonnull(2));
 

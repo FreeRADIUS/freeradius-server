@@ -64,23 +64,6 @@ subsection there. See also xref:raddb/templates.conf.adoc[`templates.conf`]
 for a way to regain one global configuration for `Access-Request`
 packets.
 
-=== Instantiate Section
-
-The `instantiate` section has been removed.  It originally started out
-as a way to ensure that modules were instantiated in a particular
-order.  As of 3.0.9, listing modules in the `instantiate` section was
-no longer necessary.  The functionality was left in version 3 for
-compatibility, but has now been removed from version 4.
-
-The other use of the `instantiate` section was to define "virtual"
-modules for dynamic expansion.  That functionality has been moved to
-the `mods-available/` and `mods-enabled/` directories.  i.e. in
-version 4, just list the virtual module in a file, as if it was a real
-module.
-
-See the xref:mods-available/redundantsql.adoc[redundant_sql module]
-for more information.
-
 == Virtual Servers
 
 There are some changes to the virtual servers in `v4`. First, every

@@ -82,7 +82,7 @@ int server_init(CONF_SECTION *cs)
 	/*
 	 *	Instantiate the modules
 	 */
-	if (modules_instantiate(cs) < 0) return -1;
+	if (modules_instantiate() < 0) return -1;
 
 	/*
 	 *	Call xlat instantiation functions (after the xlats have been compiled)

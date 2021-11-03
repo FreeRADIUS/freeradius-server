@@ -57,7 +57,6 @@
 *** xref:mods-available/redis.adoc[REDIS Module]
 *** xref:mods-available/redis_ippool.adoc[Redis IP Pool Module]
 *** xref:mods-available/rediswho.adoc[REDISWho Module]
-*** xref:mods-available/redundant_sql.adoc[redundant_sql Module]
 *** xref:mods-available/rest.adoc[Rest Module]
 *** xref:mods-available/mruby.adoc[Ruby Module]
 *** xref:mods-available/smbpasswd.adoc[SMBPasswd Module]
