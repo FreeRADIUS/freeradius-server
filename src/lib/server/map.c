@@ -1792,7 +1792,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 			extent = fr_dlist_head(&leaf);
 			if (dst) {
 				DEBUG_OVERWRITE(dst, src_vp);
-				dst = fr_dcursor_replace(&dst_list, fr_pair_copy(extent->list_ctx, src_vp));
+				dst = fr_dcursor_replace(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
 				talloc_free(dst);
 			} else {
 				fr_pair_append(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
