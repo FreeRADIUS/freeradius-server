@@ -24,6 +24,7 @@
 *.dSYM
 *.patch
 *.sock
+*.profraw
 .pc
 
 # Editor projects
