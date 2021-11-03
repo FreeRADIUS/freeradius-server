@@ -699,7 +699,6 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle
 	int 			i, num;
 
 	rad_assert(*pconn && (*pconn)->handle);
-	rad_assert(!retry || inst->pool);
 
 #ifndef WITH_SASL
 	if (sasl && sasl->mech) {
