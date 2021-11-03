@@ -92,6 +92,12 @@ typedef struct {
 	fr_dcursor_t		cursor[];	//!< Stack of cursors.
 } fr_dcursor_stack_t;
 
+#ifndef TALLOC_GET_TYPE_ABORT_NOOP
+#define VALIDATE(_item) if (cursor->dlist->type && (_item)) _talloc_get_type_abort(_item, cursor->dlist->type, __location__);
+#else
+#define VALIDATE(_item)
+#endif
+
 /** Internal function to get the next item
  *
  * @param[in] cursor	to operate on.
@@ -113,12 +119,12 @@ static inline void *dcursor_next(fr_dcursor_t *cursor, void *current)
 		if (!cursor->iter) return (fr_dlist_head(cursor->dlist));	/* Fast path without custom iter */
 
 		current = fr_dlist_head(cursor->dlist);
-		return cursor->iter(cursor->dlist, current, cursor->iter_uctx);
+		next = cursor->iter(cursor->dlist, current, cursor->iter_uctx);
+		VALIDATE(next);
+		return next;
 	}
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
-	if (cursor->dlist->type) _talloc_get_type_abort(current, cursor->dlist->type, __location__);
-#endif
+	VALIDATE(current);
 
 	if (!cursor->iter) {
 		return fr_dlist_next(cursor->dlist, current);			/* Fast path without custom iter */
@@ -134,7 +140,9 @@ static inline void *dcursor_next(fr_dcursor_t *cursor, void *current)
 	 *	The iterator can just return what it was passed for curr
 	 *	if it just wants to advance by one.
 	 */
-	return cursor->iter(cursor->dlist, next, cursor->iter_uctx);
+	next = cursor->iter(cursor->dlist, next, cursor->iter_uctx);
+	VALIDATE(next);
+	return next;
 }
 
 /** Copy cursor parameters and state.
@@ -174,6 +182,8 @@ static inline void *fr_dcursor_head(fr_dcursor_t *cursor)
 
 	cursor->current = fr_dlist_head(cursor->dlist);
 
+	VALIDATE(cursor->current);
+
 	return cursor->current;
 }
 
@@ -195,6 +205,8 @@ static inline void *fr_dcursor_tail(fr_dcursor_t *cursor)
 		cursor->prev = NULL;
 	}
 
+	VALIDATE(cursor->current);
+
 	return cursor->current;
 }
 
@@ -213,6 +225,9 @@ static inline void * fr_dcursor_next(fr_dcursor_t *cursor)
 	cursor->current = dcursor_next(cursor, cursor->current);
 
 	cursor->prev = fr_dlist_prev(cursor->dlist, cursor->current);
+
+	VALIDATE(cursor->current);
+
 	return cursor->current;
 }
 
@@ -284,9 +299,11 @@ static inline void *fr_dcursor_list_prev_peek(fr_dcursor_t *cursor)
  *
  * @hidecallergraph
  */
-static inline void * fr_dcursor_current(fr_dcursor_t *cursor)
+static inline void *fr_dcursor_current(fr_dcursor_t *cursor)
 {
 	if (unlikely(!cursor)) return NULL;
+
+	VALIDATE(cursor->current);
 
 	return cursor->current;
 }
@@ -307,6 +324,8 @@ static inline void * fr_dcursor_set_current(fr_dcursor_t *cursor, void *item)
 
 	if (fr_dlist_empty(cursor->dlist)) return NULL;
 	if (!item) return NULL;
+
+	VALIDATE(item);
 
 	/*
 	 *	Item must be in the dlist
@@ -337,9 +356,7 @@ static inline int fr_dcursor_prepend(fr_dcursor_t *cursor, void *v)
 
 	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return -1;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
-	if (cursor->dlist->type) _talloc_get_type_abort(v, cursor->dlist->type, __location__);
-#endif
+	VALIDATE(v);
 
 	if (cursor->insert) if ((ret = cursor->insert(cursor->dlist, v, cursor->mod_uctx)) < 0) return ret;
 
@@ -378,9 +395,7 @@ static inline int fr_dcursor_append(fr_dcursor_t *cursor, void *v)
 
 	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return -1;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
-	if (cursor->dlist->type) _talloc_get_type_abort(v, cursor->dlist->type, __location__);
-#endif
+	VALIDATE(v);
 
 	if (cursor->insert) if ((ret = cursor->insert(cursor->dlist, v, cursor->mod_uctx)) < 0) return ret;
 
@@ -407,9 +422,7 @@ static inline int fr_dcursor_insert(fr_dcursor_t *cursor, void *v)
 
 	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return -1;
 
-#ifndef TALLOC_GET_TYPE_ABORT_NOOP
-	if (cursor->dlist->type) _talloc_get_type_abort(v, cursor->dlist->type, __location__);
-#endif
+	VALIDATE(v);
 
 	if (!cursor->current) {
 		if (fr_dcursor_append(cursor, v) < 0) return -1;
@@ -457,6 +470,8 @@ static inline void * fr_dcursor_remove(fr_dcursor_t *cursor)
 	if (!cursor->current) return NULL;			/* don't do anything fancy, it's just a noop */
 
 	v = cursor->current;
+
+	VALIDATE(v);
 
 	if (cursor->remove) if (cursor->remove(cursor->dlist, v, cursor->mod_uctx) < 0) return NULL;
 
@@ -591,6 +606,8 @@ static inline void *fr_dcursor_replace(fr_dcursor_t *cursor, void *r)
 
 	if (!fr_cond_assert_msg(!cursor->is_const, "attempting to modify const list")) return NULL;
 
+	VALIDATE(r);
+
 	/*
 	 *	Correct behaviour here is debatable
 	 */
@@ -610,6 +627,7 @@ static inline void *fr_dcursor_replace(fr_dcursor_t *cursor, void *r)
 		return NULL;
 	}
 	p = fr_dcursor_list_prev_peek(cursor);
+	VALIDATE(p);
 
 	if (cursor->remove) if (cursor->remove(cursor->dlist, v, cursor->mod_uctx) < 0) return NULL;
 
