@@ -405,7 +405,7 @@ static inline size_t strerror_concat(char *out, size_t outlen)
 	return p - out;
 }
 
-static inline int dump_fuzzer_data(int fd_dir, char const *text, uint8_t const *data, size_t data_len)
+static inline CC_HINT(nonnull) int dump_fuzzer_data(int fd_dir, char const *text, uint8_t const *data, size_t data_len)
 {
 	fr_sha1_ctx	ctx;
 	uint8_t		digest[SHA1_DIGEST_LENGTH];
@@ -1585,7 +1585,7 @@ static size_t command_encode_dns_label(command_result_t *result, command_file_ct
 	}
 
 	if ((cc->fuzzer_dir >= 0) &&
-	    (dump_fuzzer_data(cc->fuzzer_dir, p, cc->buffer_start, enc_p - cc->buffer_start) < 0)) {
+	    (dump_fuzzer_data(cc->fuzzer_dir, in, cc->buffer_start, enc_p - cc->buffer_start) < 0)) {
 		RETURN_COMMAND_ERROR();
 	}
 
