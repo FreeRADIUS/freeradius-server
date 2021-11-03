@@ -53,13 +53,24 @@ static fr_rb_tree_t *module_instance_name_tree;
  */
 static fr_rb_tree_t *module_instance_data_tree;
 
+/** Lookup virtual module by name
+ */
+static fr_rb_tree_t *virtual_module_name_tree;
+
+typedef struct {
+	fr_rb_node_t			name_node;	//!< Entry in the name tree.
+	char const			*name;		//!< module name
+	CONF_SECTION			*cs;		//!< CONF_SECTION where it is defined
+} virtual_module_t;
+
+
 /** Module command table
  */
 static fr_cmd_table_t cmd_module_table[];
 
 static int _module_instantiate(void *instance);
 
-static int virtual_module_instantiate(CONF_SECTION *vm_cs);
+static int virtual_module_bootstrap(CONF_SECTION *vm_cs);
 
 /*
  *	Ordered by component
@@ -281,6 +292,19 @@ static int8_t module_instance_data_cmp(void const *one, void const *two)
 
 	return CMP(a, b);
 }
+
+/** Compare virtual modules by name
+ */
+static int8_t virtual_module_name_cmp(void const *one, void const *two)
+{
+	virtual_module_t const *a = one;
+	virtual_module_t const *b = two;
+	int ret;
+
+	ret = strcmp(a->name, b->name);
+	return CMP(ret, 0);
+}
+
 /** Initialise a module specific exfile handle
  *
  * @see exfile_init
@@ -1135,6 +1159,7 @@ void modules_free(void)
 	}
 
 	TALLOC_FREE(module_instance_data_tree);
+	TALLOC_FREE(virtual_module_name_tree);
 	TALLOC_FREE(instance_ctx);
 }
 
@@ -1144,6 +1169,8 @@ int modules_init(void)
 							   module_instance_name_cmp, NULL));
 	MEM(module_instance_data_tree = fr_rb_inline_alloc(NULL, module_instance_t, data_node,
 							   module_instance_data_cmp, NULL));
+	MEM(virtual_module_name_tree = fr_rb_inline_alloc(NULL, virtual_module_t, name_node,
+							   virtual_module_name_cmp, NULL));
 	instance_ctx = talloc_init("module instance context");
 
 	return 0;
@@ -1334,11 +1361,9 @@ static int _module_instantiate(void *instance)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int modules_instantiate(CONF_SECTION *root)
+int modules_instantiate(UNUSED CONF_SECTION *root)
 {
 	void			*instance;
-	CONF_ITEM		*ci;
-	CONF_SECTION		*modules;
 	fr_rb_iter_inorder_t	iter;
 
 	DEBUG2("#### Instantiating modules ####");
@@ -1349,32 +1374,6 @@ int modules_instantiate(CONF_SECTION *root)
 		if (_module_instantiate(instance) < 0) {
 			return -1;
 		}
-	}
-
-	modules = cf_section_find(root, "modules", NULL);
-	if (!modules) return 0;
-
-	/*
-	 *	Instantiate the virtual modules.
-	 */
-	for (ci = cf_item_next(modules, NULL);
-	     ci != NULL;
-	     ci = cf_item_next(modules, ci)) {
-		char const *name;
-		CONF_SECTION *subcs;
-
-		if (!cf_item_is_section(ci)) continue;
-
-		subcs = cf_item_to_section(ci);
-
-		/*
-		 *	If it's not an unlang keyword, then skip it.
-		 *	It must be a module we already checked.
-		 */
-		name = cf_section_name1(subcs);
-		if (!unlang_compile_is_keyword(name)) continue;
-
-		if (virtual_module_instantiate(subcs) < 0) return -1;
 	}
 
 	return 0;
@@ -1605,14 +1604,27 @@ module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTIO
 	return mi;
 }
 
-/** Instantiate a virtual module from an instantiate section
+CONF_SECTION *module_by_name_virtual(char const *asked_name)
+{
+	virtual_module_t *inst;
+
+	inst = fr_rb_find(virtual_module_name_tree,
+			       &(virtual_module_t){
+					.name = asked_name,
+			       });
+	if (!inst) return NULL;
+
+	return inst->cs;
+}
+
+/** Create a virtual module.
  *
  * @param[in] cs	that defines the virtual module.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int virtual_module_instantiate(CONF_SECTION *cs)
+static int virtual_module_bootstrap(CONF_SECTION *cs)
 {
 	char const		*name;
 	bool			all_same = true;
@@ -1620,6 +1632,7 @@ static int virtual_module_instantiate(CONF_SECTION *cs)
 	CONF_ITEM 		*sub_ci = NULL;
 	CONF_PAIR		*cp;
 	module_instance_t	*mi;
+	virtual_module_t	*inst;
 
 	name = cf_section_name1(cs);
 
@@ -1704,6 +1717,17 @@ static int virtual_module_instantiate(CONF_SECTION *cs)
 	 */
 	if (all_same && (xlat_register_legacy_redundant(cs) < 0)) return -1;
 
+	inst = talloc_zero(cs, virtual_module_t);
+	if (!inst) return -1;
+
+	inst->cs = cs;
+	inst->name = talloc_strdup(inst, name);
+
+	if (!fr_cond_assert(fr_rb_insert(virtual_module_name_tree, inst))) {
+		talloc_free(inst);
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -1748,6 +1772,9 @@ int modules_bootstrap(CONF_SECTION *root)
 		CONF_SECTION *subcs;
 		module_instance_t *instance;
 
+		/*
+		 *	@todo - maybe this should be a warning?
+		 */
 		if (!cf_item_is_section(ci)) continue;
 
 		subcs = cf_item_to_section(ci);
@@ -1772,6 +1799,8 @@ int modules_bootstrap(CONF_SECTION *root)
 				cf_log_err(subcs, "Missing second name at '%s'", name);
 				return -1;
 			}
+
+			if (virtual_module_bootstrap(subcs) < 0) return -1;
 			continue;
 		}
 
