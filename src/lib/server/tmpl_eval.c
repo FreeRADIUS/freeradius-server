@@ -1452,7 +1452,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 	if (vpt->type == TMPL_TYPE_LIST) {
 	do_list:
 		if (leaf) EXTENT_ADD(leaf, NULL, list_ctx, list_head);
-		return 0;
+		goto done;
 	}
 
 	/*
@@ -1542,6 +1542,17 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 			break;
 		}
 	}
+
+done:
+	/*
+	 *	If we were asked to provide interior
+	 *	and leaf lists, and there's no result
+	 *	in either, then that's a logic error.
+	 *
+	 *	We either have an attribute or will
+	 *	need to build out pairs to it.
+	 */
+	fr_assert(!leaf || !interior || (fr_dlist_num_elements(leaf) > 0) || (fr_dlist_num_elements(interior) > 0));
 
 	return 0;
 }
