@@ -1,6 +1,6 @@
 # The FreeRADIUS server
 
-[![CI build status][BuildStatus]][BuildStatusLink] [![OSS-Fuzz status][OssFuzz]][OssFuzzLink] [![Coverity Status][CoverityStatus]][CoverityStatusLink] [![LGTM Status][LGTMStatus]][LGTMStatusLink]
+[![CI build status][BuildStatus]][BuildStatusLink] [![OSS-Fuzz status][OssFuzz]][OssFuzzLink] [![LGTM Status][LGTMStatus]][LGTMStatusLink]
 
 ## Introduction
 
@@ -145,5 +145,3 @@ are available from [Network RADIUS](https://networkradius.com).
 [CoverityStatusLink]: https://scan.coverity.com/projects/58
 [LGTMStatus]: https://img.shields.io/lgtm/alerts/g/FreeRADIUS/freeradius-server.svg?logo=lgtm&logoWidth=18
 [LGTMStatusLink]: https://lgtm.com/projects/g/FreeRADIUS/freeradius-server/alerts/
-   
-   <project>.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj
