@@ -123,6 +123,12 @@ typedef struct {
 	void			*uctx;		//!< Argument to pass to escape callback.
 } xlat_arg_parser_t;
 
+typedef struct {
+	tmpl_res_rules_t const	*tr_rules;	//!< tmpl resolution rules.
+	bool			allow_unresolved; //!< If false, all resolution steps must be completed
+						///< this round, otherwise an error will be produced.
+} xlat_res_rules_t;
+
 #define XLAT_ARG_PARSER_TERMINATOR { .required = false, .concat = false, .single = false, .variadic = false, \
 					.type = FR_TYPE_NULL, .func = NULL, .uctx = NULL }
 
@@ -352,7 +358,7 @@ bool		xlat_is_literal(xlat_exp_t const *head);
 
 bool		xlat_to_literal(TALLOC_CTX *ctx, char **str, xlat_exp_t **head);
 
-int		xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, bool allow_unresolved);
+int		xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const *xr_rules);
 
 
 #define XLAT_DEFAULT_BUF_LEN	2048

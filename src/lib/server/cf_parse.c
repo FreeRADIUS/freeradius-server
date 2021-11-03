@@ -1315,13 +1315,14 @@ finish:
  *	We don't have (or need yet) cf_pair_parse_pass2(), so we just
  *	do it for tmpls.
  */
-static int cf_parse_tmpl_pass2(UNUSED CONF_SECTION *cs, tmpl_t **out, CONF_PAIR *cp, fr_type_t type, bool attribute)
+static int cf_parse_tmpl_pass2(UNUSED CONF_SECTION *cs, tmpl_t **out, CONF_PAIR *cp, fr_type_t type,
+			       bool attribute, fr_dict_t const *dict_def)
 {
 	tmpl_t *vpt = *out;
 
 	fr_assert(vpt);	/* We need something to resolve */
 
-	if (tmpl_resolve(vpt) < 0) {
+	if (tmpl_resolve(vpt, &(tmpl_res_rules_t){ .dict_def = dict_def, .force_dict_def = (dict_def != NULL)}) < 0) {
 		cf_log_perr(cp, "Failed processing configuration item '%s'", cp->attr);
 		return -1;
 	}
@@ -1526,7 +1527,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		 *	Parse the pair into a template
 		 */
 		} else if (is_tmpl && !multi) {
-			if (cf_parse_tmpl_pass2(cs, (tmpl_t **)data, cp, type, attribute) < 0) {
+			if (cf_parse_tmpl_pass2(cs, (tmpl_t **)data, cp, type, attribute, dict) < 0) {
 				return -1;
 			}
 
@@ -1538,7 +1539,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			for (i = 0; i < talloc_array_length(array); i++, cp = cf_pair_find_next(cs, cp, name)) {
 				if (!cp) break;
 
-				if (cf_parse_tmpl_pass2(cs, &array[i], cp, type, attribute) < 0) {
+				if (cf_parse_tmpl_pass2(cs, &array[i], cp, type, attribute, dict) < 0) {
 					return -1;
 				}
 			}

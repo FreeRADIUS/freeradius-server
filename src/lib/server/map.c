@@ -439,7 +439,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 		 *	for string data without xlat.  Instead, it
 		 *	creates TMPL_TYPE_UNRESOLVED.
 		 */
-		if (tmpl_resolve(map->lhs) < 0) {
+		if (tmpl_resolve(map->lhs, NULL) < 0) {
 			fr_sbuff_set(&our_in, &m_lhs);	/* Marker points to LHS */
 			goto error;
 		}
@@ -572,7 +572,7 @@ parse_rhs:
 		 *	for string data without xlat.  Instead, it
 		 *	creates TMPL_TYPE_UNRESOLVED.
 		 */
-		if (tmpl_resolve(map->rhs) < 0) {
+		if (tmpl_resolve(map->rhs, NULL) < 0) {
 			fr_sbuff_set(&our_in, &m_rhs);	/* Marker points to RHS */
 			goto error;
 		}

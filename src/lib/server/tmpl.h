@@ -247,8 +247,8 @@ typedef enum tmpl_type_e {
 extern fr_table_num_ordered_t const tmpl_type_table[];
 extern size_t tmpl_type_table_len;
 
-
 typedef struct tmpl_rules_s tmpl_rules_t;
+typedef struct tmpl_res_rules_s tmpl_res_rules_t;
 typedef struct tmpl_s tmpl_t;
 
 #include <freeradius-devel/unlang/xlat.h>
@@ -320,6 +320,28 @@ struct tmpl_rules_s {
 
 	tmpl_attr_prefix_t	prefix;			//!< Whether the attribute reference requires
 							///< a prefix.
+};
+
+/** Similar to tmpl_rules_t, but used to specify parameters that may change during subsequent resolution passes
+ *
+ * When a tmpl is parsed initially the rules are stored in the #tmpl_t.
+ *
+ * During subsequent resolution phases where unresolved attributes are resolved to dictionary
+ * attributes the initial #tmpl_rules_t is used to control resolution.
+ *
+ * In some instances however (primarily policies), some rules may need change between initial
+ * parsing and subsequent resolution phases.
+ *
+ * This structure holds rules which may override the tmpl_rules_s during subsequent resolution passes.
+ */
+struct tmpl_res_rules_s {
+	fr_dict_t const 	*dict_def;		//!< Alternative default dictionary to use if
+							///< vpt->rules->dict_def is NULL.
+							//!< Will be written to vpt->rules->dict_def
+							///< if used.
+
+	bool			force_dict_def;		//!< Use supplied dict_def even if original
+							///< vpt->rules->dict_def was not NULL.
 };
 
 typedef enum {
@@ -928,7 +950,7 @@ ssize_t			tmpl_regex_flags_substr(tmpl_t *vpt, fr_sbuff_t *in,
  */
 int			tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv);
 
-int			tmpl_resolve(tmpl_t *vpt) CC_HINT(nonnull);
+int			tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules) CC_HINT(nonnull(1));
 
 void			tmpl_unresolve(tmpl_t *vpt) CC_HINT(nonnull);
 

@@ -3081,21 +3081,27 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
  *
  * Multi-pass parsing fixups for attribute references.
  *
- * @param[in] vpt	to resolve.
+ * @param[in]	vpt		to resolve.
+ * @param[in]	tr_rules	Combined with the original parse rules for
+ *				additional resolution passes.
  * @return
  *	- 0 if all references were resolved.
  *	- -1 if there are unknown attributes which need
  *	    adding to the global dictionary first.
  *	- -2 if there are attributes we couldn't resolve.
  */
-static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
+static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 {
 	tmpl_attr_t		*ar = NULL, *next, *prev;
 	fr_dict_attr_t const	*da;
+	fr_dict_t const		*dict_def;
 
 	fr_assert(tmpl_is_attr_unresolved(vpt));
 
 	TMPL_VERIFY(vpt);
+
+	dict_def = vpt->rules.dict_def;
+	if (!tr_rules->dict_def || tr_rules->force_dict_def) dict_def = tr_rules->dict_def;
 
 	/*
 	 *	First component is special becase we may need
@@ -3108,7 +3114,7 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 	if (ar->type == TMPL_ATTR_TYPE_UNRESOLVED) {
 		(void)fr_dict_attr_search_by_name_substr(NULL,
 							 &da,
-							 vpt->rules.dict_def,
+							 dict_def,
 							 &FR_SBUFF_IN(ar->ar_unresolved,
 							 	      talloc_array_length(ar->ar_unresolved) - 1),
 							 NULL,
@@ -3119,6 +3125,12 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
 		ar->ar_type = TMPL_ATTR_TYPE_NORMAL;
 		ar->ar_da = da;
 		ar->ar_parent = fr_dict_root(fr_dict_by_da(da));
+
+		/*
+		 *	Record the dictionary that was
+		 *	successfully used for resolution.
+		 */
+		vpt->rules.dict_def = tr_rules->dict_def;
 
 		/*
 		 *	Reach into the next reference
@@ -3234,14 +3246,21 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt)
  * - TMPL_TYPE_EXEC
  * - TMPL_TYPE_REGEX_XLAT
  *
- * @param[in] vpt	Containing the xlat expansion to resolve.
+ * @param[in]	vpt		Containing the xlat expansion to resolve.
+ * @param[in]	tr_rules	Combined with the original parse rules for
+ *				additional resolution passes.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static inline CC_HINT(always_inline) int tmpl_xlat_resolve(tmpl_t *vpt)
+static inline CC_HINT(always_inline)
+int tmpl_xlat_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 {
-	if (xlat_resolve(&vpt->data.xlat.ex, &vpt->data.xlat.flags, false) < 0) return -1;
+	if (xlat_resolve(&vpt->data.xlat.ex, &vpt->data.xlat.flags,
+			 &(xlat_res_rules_t){
+			 	.tr_rules = tr_rules,
+			 	.allow_unresolved = false
+			 }) < 0) return -1;
 
 	RESOLVED_SET(&vpt->type);
 	TMPL_VERIFY(vpt);
@@ -3251,29 +3270,38 @@ static inline CC_HINT(always_inline) int tmpl_xlat_resolve(tmpl_t *vpt)
 
 /** Attempt to resolve functions and attributes in xlats and attribute references
  *
- * @param[in,out] vpt	to resolve.  Should be of type TMPL_TYPE_XLAT_UNRESOLVED
- *			or TMPL_TYPE_ATTR_UNRESOLVED.  All other types will be
- *			noops.
+ * @note If resolution is successful, the rules->dict_def field will be modified to
+ *	 reflect the dictionary resolution was successful in.
+ *
+ * @param[in,out] 	vpt		to resolve.  Should be of type TMPL_TYPE_XLAT_UNRESOLVED
+ *					or TMPL_TYPE_ATTR_UNRESOLVED.  All other types will be
+ *					noops.
+ * @param[in]		tr_rules	Combined with the original parse rules for
+ *					additional resolution passes.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int tmpl_resolve(tmpl_t *vpt)
+int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 {
+	static tmpl_res_rules_t const default_tr_rules;
+
 	int ret = 0;
 
 	if (!tmpl_needs_resolving(vpt)) return 0;	/* Nothing to do */
+
+	if (!tr_rules) tr_rules = &default_tr_rules;
 
 	/*
 	 *	The xlat component of the #tmpl_t needs resolving.
 	 */
 	if (tmpl_contains_xlat(vpt)) {
-		ret = tmpl_xlat_resolve(vpt);
+		ret = tmpl_xlat_resolve(vpt, tr_rules);
 	/*
 	 *	The attribute reference needs resolving.
 	 */
 	} else if (tmpl_contains_attr(vpt)) {
-		ret = tmpl_attr_resolve(vpt);
+		ret = tmpl_attr_resolve(vpt, tr_rules);
 
 	/*
 	 *	Convert unresolved tmpls into literal string values.

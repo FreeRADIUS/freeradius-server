@@ -1583,17 +1583,21 @@ bool xlat_to_literal(TALLOC_CTX *ctx, char **str, xlat_exp_t **head)
  *
  * @param[in,out] head		of xlat tree to resolve.
  * @param[in,out] flags		that control evaluation and parsing.
- * @param[in] allow_unresolved	Don't error out if we can't resolve a function or attribute.
+ * @param[in] xr_rules		Specifies rules to use for resolution passes after initial
+ *      			tokenization.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, bool allow_unresolved)
+int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const *xr_rules)
 {
-	xlat_exp_t	*node;
-	xlat_flags_t	our_flags;
+	static xlat_res_rules_t		xr_default;
+	xlat_exp_t			*node;
+	xlat_flags_t			our_flags;
 
 	if (!flags->needs_resolving) return 0;			/* Already done */
+
+	if (!xr_rules) xr_rules = &xr_default;
 
 	our_flags = *flags;
 	our_flags.needs_resolving = false;			/* We flip this if not all resolutions are successful */
@@ -1603,7 +1607,7 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, bool allow_unresolved)
 
 		switch (node->type) {
 		case XLAT_GROUP:
-			return xlat_resolve(&node->child, &node->flags, allow_unresolved);
+			return xlat_resolve(&node->child, &node->flags, xr_rules);
 
 		/*
 		 *	Alternate expansion a || b
@@ -1614,8 +1618,8 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, bool allow_unresolved)
 		{
 			xlat_flags_t	child_flags = node->flags, alt_flags = node->flags;
 
-			if ((xlat_resolve(&node->child, &child_flags, allow_unresolved) < 0) ||
-			    (xlat_resolve(&node->alternate, &alt_flags, allow_unresolved) < 0)) return -1;
+			if ((xlat_resolve(&node->child, &child_flags, xr_rules) < 0) ||
+			    (xlat_resolve(&node->alternate, &alt_flags, xr_rules) < 0)) return -1;
 
 			xlat_flags_merge(&child_flags, &alt_flags);
 			node->flags = child_flags;
@@ -1626,7 +1630,7 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, bool allow_unresolved)
 		 *	A resolved function with unresolved args
 		 */
 		case XLAT_FUNC:
-			if (xlat_resolve(&node->child, &node->flags, allow_unresolved) < 0) return -1;
+			if (xlat_resolve(&node->child, &node->flags, xr_rules) < 0) return -1;
 			xlat_flags_merge(&our_flags, &node->flags);
 			break;
 
@@ -1643,7 +1647,7 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, bool allow_unresolved)
 			 *	We can't tell if it's just the function
 			 *	that needs resolving or its children too.
 			 */
-			if (xlat_resolve(&node->child, &child_flags, allow_unresolved) < 0) return -1;
+			if (xlat_resolve(&node->child, &child_flags, xr_rules) < 0) return -1;
 
 			/*
 			 *	Try and find the function
@@ -1653,7 +1657,7 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, bool allow_unresolved)
 				/*
 				 *	FIXME - Produce proper error with marker
 				 */
-				if (!allow_unresolved) {
+				if (!xr_rules->allow_unresolved) {
 					fr_strerror_printf("Failed resolving function \"%pV\"",
 							   fr_box_strvalue_buffer(node->fmt));
 					return -1;
@@ -1732,11 +1736,12 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, bool allow_unresolved)
 			/*
 			 *	Try and resolve (in-place) as an attribute
 			 */
-			if ((tmpl_resolve(node->attr) < 0) || (node->attr->type != TMPL_TYPE_ATTR)) {
+			if ((tmpl_resolve(node->attr, xr_rules->tr_rules) < 0) ||
+			    (node->attr->type != TMPL_TYPE_ATTR)) {
 				/*
 				 *	FIXME - Produce proper error with marker
 				 */
-				if (!allow_unresolved) {
+				if (!xr_rules->allow_unresolved) {
 				error_unresolved:
 					fr_strerror_printf_push("Failed resolving attribute in expansion %%{%s}",
 								node->fmt);
@@ -1760,7 +1765,7 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, bool allow_unresolved)
 			break;
 
 		case XLAT_ATTRIBUTE:
-			if (!allow_unresolved) goto error_unresolved;
+			if (!xr_rules->allow_unresolved) goto error_unresolved;
 			break;
 
 		default:

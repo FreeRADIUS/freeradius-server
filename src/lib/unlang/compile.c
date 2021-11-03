@@ -240,7 +240,7 @@ static bool pass2_fixup_tmpl(TALLOC_CTX *ctx, tmpl_t **vpt_p, CONF_ITEM const *c
 	/*
 	 *	Fixup any other tmpl types
 	 */
-	if (tmpl_resolve(vpt) < 0) {
+	if (tmpl_resolve(vpt, &(tmpl_res_rules_t){ .dict_def = dict, .force_dict_def = (dict != NULL)}) < 0) {
 		cf_log_perr(ci, NULL);
 		return false;
 	}
