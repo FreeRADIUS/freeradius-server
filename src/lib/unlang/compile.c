@@ -2818,7 +2818,6 @@ static int validate_limited_subsection(CONF_SECTION *cs, char const *name)
 
 static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
-	char const			*name2;
 	unlang_t			*c;
 
 	static unlang_ext_t const	redundant_ext = {
@@ -2837,22 +2836,8 @@ static unlang_t *compile_redundant(unlang_t *parent, unlang_compile_t *unlang_ct
 	if (!c) return NULL;
 
 	/*
-	 *	"redundant" is just "group" with different default actions.
-	 *
-	 *	Named redundant sections are only allowed in the
-	 *	"instantiate" section.
+	 *	We no longer care if "redundant" sections have a name.  If they do, it's ignored.
 	 */
-	name2 = cf_section_name2(cs);
-
-	/*
-	 *	But only outside of the "instantiate" section.
-	 *	For backwards compatibility.
-	 */
-	if (name2 &&
-	    (strcmp(cf_section_name1(cf_item_to_section(cf_parent(cs))), "instantiate") != 0)) {
-		cf_log_err(cs, "'redundant' sections cannot have a name");
-		return NULL;
-	}
 
 	return c;
 }
@@ -3505,7 +3490,7 @@ static unlang_t *compile_function(unlang_t *parent, unlang_compile_t *unlang_ctx
 	return c;
 }
 
-/** Load a named module from "instantiate" or "policy".
+/** Load a named module from the virtual module list, or from the "policy" subsection.
  *
  * If it's "foo.method", look for "foo", and return "method" as the method
  * we wish to use, instead of the input component.
@@ -3551,22 +3536,18 @@ static CONF_SECTION *virtual_module_find_cs(CONF_ITEM *ci, rlm_components_t *pco
 	}
 
 	/*
-	 *	Look for "foo" in the "instantiate" section.  If we
-	 *	find it, AND there's no method name, we've found the
-	 *	right thing.
+	 *	Look for "foo" as a virtual server.  If we find it,
+	 *	AND there's no method name, we've found the right
+	 *	thing.
+	 *
+	 *	Found "foo".  Load it as "foo", or "foo.method".
 	 *
 	 *	Return it to the caller, with the updated method.
 	 */
-	cs = cf_section_find(conf_root, "instantiate", NULL);
-	if (cs) {
-		/*
-		 *	Found "foo".  Load it as "foo", or "foo.method".
-		 */
-		subcs = cf_section_find(cs, CF_IDENT_ANY, virtual_name);
-		if (subcs) {
-			*pcomponent = method;
-			goto check_for_loop;
-		}
+	subcs = module_by_name_virtual(virtual_name);
+	if (subcs) {
+		*pcomponent = method;
+		goto check_for_loop;
 	}
 
 	/*
@@ -3923,7 +3904,6 @@ check_for_module:
 	if (realname != name) {
 		cf_log_warn(ci, "Ignoring \"%s\" as the \"%s\" module is not enabled.", name, realname);
 		return UNLANG_IGNORE;
-
 	}
 
 	/*
