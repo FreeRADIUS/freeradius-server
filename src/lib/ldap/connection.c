@@ -498,7 +498,7 @@ static void _ldap_trunk_idle_timeout(fr_event_list_t *el, UNUSED fr_time_t now, 
 		/*
 		 *	There are still pending queries - insert a new event
 		 */
-		fr_event_timer_in(ttrunk->t, el, &ttrunk->ev, ttrunk->t->config->idle_timeout,
+		fr_event_timer_in(ttrunk, el, &ttrunk->ev, ttrunk->t->config->idle_timeout,
 				  _ldap_trunk_idle_timeout, ttrunk);
 	}
 }
@@ -768,7 +768,7 @@ static void ldap_trunk_request_demux(fr_trunk_connection_t *tconn, fr_connection
 	/*
 	 *  Reset the idle timeout event
 	 */
-	fr_event_timer_in(ttrunk->t, ttrunk->t->el, &ttrunk->ev,
+	fr_event_timer_in(ttrunk, ttrunk->t->el, &ttrunk->ev,
 			  ttrunk->t->config->idle_timeout, _ldap_trunk_idle_timeout, ttrunk);
 
 	do {
