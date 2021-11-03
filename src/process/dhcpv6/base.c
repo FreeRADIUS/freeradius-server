@@ -385,7 +385,7 @@ process_dhcpv6_relay_fields_t *dhcpv6_relay_fields_store(request_t *request)
 		return NULL;
 	}
 
-	link_address = fr_pair_find_by_da(&request->request_pairs, attr_relay_link_address);
+	link_address = fr_pair_find_by_da(&request->request_pairs, attr_relay_link_address, 0);
 	if (!link_address) {
 		REDEBUG("Missing Link-Address");
 		return NULL;
@@ -397,7 +397,7 @@ process_dhcpv6_relay_fields_t *dhcpv6_relay_fields_store(request_t *request)
 		return NULL;
 	}
 
-	peer_address = fr_pair_find_by_da(&request->request_pairs, attr_relay_peer_address);
+	peer_address = fr_pair_find_by_da(&request->request_pairs, attr_relay_peer_address, 0);
 	if (!peer_address) {
 		REDEBUG("Missing Peer-Address");
 		return NULL;
