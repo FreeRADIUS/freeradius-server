@@ -405,7 +405,7 @@ static void worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t
 	 *	Look at the oldest requests, and see if they need to
 	 *	be deleted.
 	 */
-	while ((request = fr_minmax_heap_max_peek(worker->time_order)) != NULL) {
+	while ((request = fr_minmax_heap_max_pop(worker->time_order)) != NULL) {
 		fr_time_t cleanup;
 
 		REQUEST_VERIFY(request);
