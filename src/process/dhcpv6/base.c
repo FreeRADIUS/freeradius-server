@@ -391,21 +391,9 @@ process_dhcpv6_relay_fields_t *dhcpv6_relay_fields_store(request_t *request)
 		return NULL;
 	}
 
-	if (link_address->vp_length != DHCPV6_LINK_ADDRESS_LEN) {
-		REDEBUG("Invalid Link-Address, expected len %u, got len %zu",
-			DHCPV6_LINK_ADDRESS_LEN, link_address->vp_length);
-		return NULL;
-	}
-
 	peer_address = fr_pair_find_by_da(&request->request_pairs, attr_relay_peer_address, 0);
 	if (!peer_address) {
 		REDEBUG("Missing Peer-Address");
-		return NULL;
-	}
-
-	if (peer_address->vp_length != DHCPV6_PEER_ADDRESS_LEN) {
-		REDEBUG("Invalid Peer-Address, expected len %u, got len %zu",
-			DHCPV6_PEER_ADDRESS_LEN, peer_address->vp_length);
 		return NULL;
 	}
 
