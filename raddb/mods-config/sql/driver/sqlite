@@ -8,7 +8,7 @@
 #
 sqlite {
 	# Path to the sqlite database
-	filename = "/tmp/freeradius.db"
+	filename = "${db_dir}/sqlite-${...:instance}.db"
 
 	# If the file above does not exist and bootstrap is set
 	# a new database file will be created, and the SQL statements
