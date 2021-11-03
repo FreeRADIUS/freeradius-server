@@ -51,9 +51,9 @@ static const CONF_PARSER module_config[] = {
  *
  * Marks the request as resumable, and prints the delayed delay time.
  */
-static void _delay_done(UNUSED module_ctx_t const *mctx, request_t *request, void *rctx, fr_time_t fired)
+static void _delay_done(module_ctx_t const *mctx, request_t *request, fr_time_t fired)
 {
-	fr_time_t *yielded = talloc_get_type_abort(rctx, fr_time_t);
+	fr_time_t *yielded = talloc_get_type_abort(mctx->rctx, fr_time_t);
 
 	RDEBUG2("Delay done");
 
@@ -116,10 +116,9 @@ static int delay_add(request_t *request, fr_time_t *resume_at, fr_time_t now,
 /** Called resume_at the delay is complete, and we're running from the interpreter
  *
  */
-static unlang_action_t mod_delay_return(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
-					request_t *request, void *rctx)
+static unlang_action_t mod_delay_return(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	fr_time_t *yielded = talloc_get_type_abort(rctx, fr_time_t);
+	fr_time_t *yielded = talloc_get_type_abort(mctx->rctx, fr_time_t);
 
 	/*
 	 *	Print how long the delay *really* was.
@@ -130,14 +129,13 @@ static unlang_action_t mod_delay_return(rlm_rcode_t *p_result, UNUSED module_ctx
 	RETURN_MODULE_OK;
 }
 
-static void mod_delay_cancel(UNUSED module_ctx_t const *mctx, request_t *request, void *rctx,
-			     fr_state_signal_t action)
+static void mod_delay_cancel(module_ctx_t const *mctx, request_t *request, fr_state_signal_t action)
 {
 	if (action != FR_SIGNAL_CANCEL) return;
 
 	RDEBUG2("Cancelling delay");
 
-	(void) unlang_module_timeout_delete(request, rctx);
+	(void) unlang_module_timeout_delete(request, mctx->rctx);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)

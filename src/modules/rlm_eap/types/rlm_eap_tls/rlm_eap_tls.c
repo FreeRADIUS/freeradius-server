@@ -71,15 +71,14 @@ fr_dict_attr_autoload_t rlm_eap_tls_dict_attr[] = {
 };
 
 static unlang_action_t mod_handshake_done(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
-					  UNUSED request_t *request, UNUSED void *rctx)
+					  UNUSED request_t *request)
 {
 	RETURN_MODULE_OK;
 }
 
-static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
-					    request_t *request, void *rctx)
+static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	eap_session_t		*eap_session = talloc_get_type_abort(rctx, eap_session_t);
+	eap_session_t		*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 
@@ -111,7 +110,7 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, UNUSED module
 		 *	Result is always OK, even if we fail to persist the
 		 *	session data.
 		 */
-		unlang_module_yield(request, mod_handshake_done, NULL, NULL);
+		unlang_module_yield(request, mod_handshake_done, NULL, mctx->rctx);
 		/*
 		 *	Write the session to the session cache
 		 *

@@ -73,10 +73,10 @@ static const CONF_PARSER module_config[] = {
  *	If it wasn't we returns REJECT, if it was we returns OK
 */
 static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-								request_t *request, void *rctx)
+								request_t *request)
 {
 	rlm_imap_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_imap_t);
-	fr_curl_io_request_t     	*randle = rctx;
+	fr_curl_io_request_t     	*randle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 	fr_curl_tls_t const		*tls;
 	long 				curl_out;
 	long				curl_out_valid;

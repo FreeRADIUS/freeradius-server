@@ -350,11 +350,9 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
  *
  * @param[in] mctx	module calling ctx.
  * @param[in] request	The current request.
- * @param[in] rctx	the eap_session_t
  * @param[in] action	to perform.
  */
-static void mod_authenticate_cancel(UNUSED module_ctx_t const *mctx, request_t *request, void *rctx,
-				    fr_state_signal_t action)
+static void mod_authenticate_cancel(module_ctx_t const *mctx, request_t *request, fr_state_signal_t action)
 {
 	eap_session_t	*eap_session;
 
@@ -362,7 +360,7 @@ static void mod_authenticate_cancel(UNUSED module_ctx_t const *mctx, request_t *
 
 	RDEBUG2("Request cancelled - Destroying EAP-Session");
 
-	eap_session = talloc_get_type_abort(rctx, eap_session_t);
+	eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
 
 	TALLOC_FREE(eap_session->subrequest);
 
@@ -469,13 +467,12 @@ finish:
  * @param[out] p_result	The result of the operation.
  * @param[in] mctx	module calling ctx.
  * @param[in] request	the current request.
- * @param[in] rctx	the eap_session_t.
  * @return The result of this round of authentication.
  */
 static unlang_action_t mod_authenticate_result_async(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-						     request_t *request, void *rctx)
+						     request_t *request)
 {
-	eap_session_t	*eap_session = talloc_get_type_abort(rctx, eap_session_t);
+	eap_session_t	*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
 
 	return mod_authenticate_result(p_result, mctx, request, eap_session, eap_session->submodule_rcode);
 }

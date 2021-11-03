@@ -359,7 +359,7 @@ RESUME(access_request)
 	rlm_rcode_t			rcode = request->rcode;
 	fr_pair_t			*vp;
 	CONF_SECTION			*cs;
-	fr_dict_enum_value_t const		*dv;
+	fr_dict_enum_value_t const	*dv;
 	fr_process_state_t const	*state;
 	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_ttls_t);
 
@@ -419,7 +419,7 @@ RESUME(access_request)
 	RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, RLM_MODULE_NOOP, resume_auth_type,
-					      NULL, rctx);
+					      NULL, mctx->rctx);
 }
 
 RESUME(auth_type)
@@ -452,7 +452,7 @@ RESUME(auth_type)
 		       fr_table_str_by_value(rcode_table, rcode, "???"));
 
 		fr_assert(state->send != NULL);
-		return state->send(p_result, mctx, request, rctx);
+		return state->send(p_result, mctx, request);
 	}
 
 	/*
@@ -521,7 +521,7 @@ RESUME(auth_type)
 	UPDATE_STATE(reply);
 
 	fr_assert(state->send != NULL);
-	return state->send(p_result, mctx, request, rctx);
+	return state->send(p_result, mctx, request);
 }
 
 RESUME_NO_RCTX(access_accept)

@@ -187,10 +187,9 @@ static int mod_thread_instantiate(CONF_SECTION const *cs, void *instance, fr_eve
 	return 0;
 }
 
-static unlang_action_t dhcpv4_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,
-				     UNUSED request_t *request, void *rctx)
+static unlang_action_t dhcpv4_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	rlm_dhcpv4_delay_t *d = talloc_get_type_abort(rctx, rlm_dhcpv4_delay_t);
+	rlm_dhcpv4_delay_t *d = talloc_get_type_abort(mctx->rctx, rlm_dhcpv4_delay_t);
 
 	if (!d->sent) {
 		talloc_free(d);

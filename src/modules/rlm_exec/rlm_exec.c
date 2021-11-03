@@ -280,10 +280,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  *
  */
 static unlang_action_t mod_exec_nowait_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-					      request_t *request, void *rctx)
+					      request_t *request)
 {
 	rlm_exec_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
-	fr_value_box_list_t	*box = talloc_get_type_abort(rctx, fr_value_box_list_t);
+	fr_value_box_list_t	*box = talloc_get_type_abort(mctx->rctx, fr_value_box_list_t);
 	fr_pair_list_t		*env_pairs = NULL;
 
 	/*
@@ -367,12 +367,11 @@ static rlm_rcode_t rlm_exec_status2rcode(request_t *request, fr_value_box_t *box
 	return rcode;
 }
 
-static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-					    request_t *request, void *rctx)
+static unlang_action_t mod_exec_wait_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	int			status;
-	rlm_exec_ctx_t		*m = talloc_get_type_abort(rctx, rlm_exec_ctx_t);
 	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->instance, rlm_exec_t);
+	rlm_exec_ctx_t		*m = talloc_get_type_abort(mctx->rctx, rlm_exec_ctx_t);
 	rlm_rcode_t		rcode;
 
 	/*
@@ -445,7 +444,8 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 		fr_value_box_list_t *box = talloc_zero(ctx, fr_value_box_list_t);
 
 		fr_value_box_list_init(box);
-		return unlang_module_yield_to_xlat(request, box, request, tmpl_xlat(inst->tmpl), mod_exec_nowait_resume, NULL, box);
+		return unlang_module_yield_to_xlat(request, box, request, tmpl_xlat(inst->tmpl),
+						   mod_exec_nowait_resume, NULL, box);
 	}
 
 	/*

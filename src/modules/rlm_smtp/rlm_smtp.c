@@ -97,7 +97,7 @@ typedef struct {
 	fr_time_t 		time;
 	char 			time_str[60];
 	curl_mime		*mime;
-} fr_mail_ctx;
+} fr_mail_ctx_t;
 
 /*
  * 	Used to ensure that only strings are being set to the tmpl_t ** output
@@ -194,9 +194,9 @@ static const CONF_PARSER module_config[] = {
 /*
  * 	Adds every element associated with a dict_attr to a curl_slist
  */
-static int da_to_slist(fr_mail_ctx *uctx, struct curl_slist **out, const fr_dict_attr_t *dict_attr)
+static int da_to_slist(fr_mail_ctx_t *uctx, struct curl_slist **out, const fr_dict_attr_t *dict_attr)
 {
-	request_t 			*request = ((fr_mail_ctx *)uctx)->request;
+	request_t 			*request = ((fr_mail_ctx_t *)uctx)->request;
 	fr_pair_t			*vp;
 	int 				elems_added = 0;
 
@@ -217,9 +217,9 @@ static int da_to_slist(fr_mail_ctx *uctx, struct curl_slist **out, const fr_dict
 /*
  * 	Takes a TMPL_TYPE_ATTR and adds it to an slist
  */
-static int tmpl_attr_to_slist(fr_mail_ctx *uctx, struct curl_slist **out, tmpl_t * const tmpl)
+static int tmpl_attr_to_slist(fr_mail_ctx_t *uctx, struct curl_slist **out, tmpl_t * const tmpl)
 {
-	request_t 			*request = ((fr_mail_ctx *)uctx)->request;
+	request_t 			*request = ((fr_mail_ctx_t *)uctx)->request;
 	fr_pair_t			*vp;
 	tmpl_pair_cursor_ctx_t       	cc;
 	int 				count = 0;
@@ -239,7 +239,7 @@ static int tmpl_attr_to_slist(fr_mail_ctx *uctx, struct curl_slist **out, tmpl_t
 /*
  * 	Parse through an array of tmpl * elements and add them to an slist
  */
-static int tmpl_arr_to_slist (rlm_smtp_thread_t *t, fr_mail_ctx *uctx, struct curl_slist **out, tmpl_t ** const tmpl)
+static int tmpl_arr_to_slist (rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struct curl_slist **out, tmpl_t ** const tmpl)
 {
 	request_t 	*request = uctx->request;
 	int 		count = 0;
@@ -266,7 +266,7 @@ static int tmpl_arr_to_slist (rlm_smtp_thread_t *t, fr_mail_ctx *uctx, struct cu
 /*
  * 	Adds every element associated with a tmpl_attr to an sbuff
  */
-static ssize_t tmpl_attr_to_sbuff (fr_mail_ctx *uctx, fr_sbuff_t *out, tmpl_t const *vpt, char const *delimeter)
+static ssize_t tmpl_attr_to_sbuff (fr_mail_ctx_t *uctx, fr_sbuff_t *out, tmpl_t const *vpt, char const *delimeter)
 {
 	fr_pair_t		*vp;
 	tmpl_pair_cursor_ctx_t       cc;
@@ -290,7 +290,7 @@ static ssize_t tmpl_attr_to_sbuff (fr_mail_ctx *uctx, fr_sbuff_t *out, tmpl_t co
 /*
  * 	Adds every value in a dict_attr to a curl_slist as a comma separated list with a preposition
  */
-static int tmpl_arr_to_header (rlm_smtp_thread_t *t, fr_mail_ctx *uctx, struct curl_slist **out, tmpl_t ** const tmpl,
+static int tmpl_arr_to_header (rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struct curl_slist **out, tmpl_t ** const tmpl,
 		const char *preposition)
 {
 	request_t			*request = uctx->request;
@@ -339,7 +339,7 @@ static int tmpl_arr_to_header (rlm_smtp_thread_t *t, fr_mail_ctx *uctx, struct c
 /*
  * 	Takes a string value and adds it as a file path to upload as an attachment
  */
-static int str_to_attachments (fr_mail_ctx *uctx, curl_mime *mime, char const * str, size_t len,
+static int str_to_attachments (fr_mail_ctx_t *uctx, curl_mime *mime, char const * str, size_t len,
 		fr_sbuff_t *path_buffer, fr_sbuff_marker_t *m)
 {
 	int 			attachments_set = 0;
@@ -374,7 +374,7 @@ static int str_to_attachments (fr_mail_ctx *uctx, curl_mime *mime, char const * 
 /*
  * 	Parse a tmpl attr into a file attachment path and add it as a mime part
  */
-static int tmpl_attr_to_attachment (fr_mail_ctx *uctx, curl_mime *mime, const tmpl_t * tmpl,
+static int tmpl_attr_to_attachment (fr_mail_ctx_t *uctx, curl_mime *mime, const tmpl_t * tmpl,
 		fr_sbuff_t *path_buffer, fr_sbuff_marker_t *m)
 {
 	fr_pair_t 		*vp;
@@ -399,7 +399,7 @@ static int tmpl_attr_to_attachment (fr_mail_ctx *uctx, curl_mime *mime, const tm
 /*
  * 	Adds every element in a tmpl** to an attachment path, then adds it to the email
  */
-static int tmpl_arr_to_attachments (rlm_smtp_thread_t *t, fr_mail_ctx *uctx, curl_mime *mime, tmpl_t ** const tmpl,
+static int tmpl_arr_to_attachments (rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, curl_mime *mime, tmpl_t ** const tmpl,
 		fr_sbuff_t *path_buffer, fr_sbuff_marker_t *m)
 {
 	request_t		*request = uctx->request;
@@ -442,7 +442,7 @@ static const char * get_envelope_address(rlm_smtp_t const *inst)
 /*
  * 	Generate the FROM: header
  */
-static int generate_from_header (rlm_smtp_thread_t *t, fr_mail_ctx *uctx, struct curl_slist **out, rlm_smtp_t const *inst)
+static int generate_from_header (rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struct curl_slist **out, rlm_smtp_t const *inst)
 {
 	char const 			*from = "FROM: ";
 	fr_sbuff_t 			sbuff;
@@ -470,7 +470,7 @@ static int generate_from_header (rlm_smtp_thread_t *t, fr_mail_ctx *uctx, struct
 /*
  *	Generates a curl_slist of recipients
  */
-static int recipients_source(rlm_smtp_thread_t *t, fr_mail_ctx *uctx, rlm_smtp_t const *inst)
+static int recipients_source(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, rlm_smtp_t const *inst)
 {
 	request_t			*request = uctx->request;
 	int 			recipients_set = 0;
@@ -501,7 +501,7 @@ static int recipients_source(rlm_smtp_thread_t *t, fr_mail_ctx *uctx, rlm_smtp_t
 /*
  *	Generates a curl_slist of header elements header elements
  */
-static int header_source(rlm_smtp_thread_t *t, fr_mail_ctx *uctx, rlm_smtp_t const *inst)
+static int header_source(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, rlm_smtp_t const *inst)
 {
 	fr_sbuff_t 			time_out;
 	char const 			*to = "TO: ";
@@ -570,7 +570,7 @@ static int header_source(rlm_smtp_thread_t *t, fr_mail_ctx *uctx, rlm_smtp_t con
  */
 static size_t body_source(char *ptr, size_t size, size_t nmemb, void *mail_ctx)
 {
-	fr_mail_ctx 		*uctx = mail_ctx;
+	fr_mail_ctx_t 		*uctx = mail_ctx;
 	fr_dbuff_t		out;
 	request_t			*request = uctx->request;
 	fr_pair_t 		*vp;
@@ -600,7 +600,7 @@ static size_t body_source(char *ptr, size_t size, size_t nmemb, void *mail_ctx)
 /*
  * 	Initialize all the body elements to be uploaded later
  */
-static int body_init (fr_mail_ctx *uctx, curl_mime *mime)
+static int body_init (fr_mail_ctx_t *uctx, curl_mime *mime)
 {
 	fr_pair_t 	*vp;
 	request_t		*request = uctx->request;
@@ -643,7 +643,7 @@ static int body_init (fr_mail_ctx *uctx, curl_mime *mime)
 /*
  * 	Adds every SMTP_Attachments file to the email as a MIME part
  */
-static int attachments_source(rlm_smtp_thread_t *t, fr_mail_ctx *uctx, curl_mime *mime, rlm_smtp_t const *inst)
+static int attachments_source(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, curl_mime *mime, rlm_smtp_t const *inst)
 {
 	request_t			*request = uctx->request;
 	int 			attachments_set = 0;
@@ -679,7 +679,7 @@ static int attachments_source(rlm_smtp_thread_t *t, fr_mail_ctx *uctx, curl_mime
 /*
  * 	Free the curl slists
  */
-static int _free_mail_ctx(fr_mail_ctx *uctx)
+static int _free_mail_ctx(fr_mail_ctx_t *uctx)
 {
 	curl_mime_free(uctx->mime);
 	curl_slist_free_all(uctx->header);
@@ -690,9 +690,9 @@ static int _free_mail_ctx(fr_mail_ctx *uctx)
 /*
  * 	Check if the email was successfully sent, and if the certificate information was extracted
  */
-static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, void *rctx)
+static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	fr_mail_ctx 			*mail_ctx = rctx;
+	fr_mail_ctx_t 			*mail_ctx = talloc_get_type_abort(mctx->rctx, fr_mail_ctx_t);
 	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_smtp_t);
 	fr_curl_io_request_t     	*randle = mail_ctx->randle;
 	fr_curl_tls_t const		*tls;
@@ -737,7 +737,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_smtp_t);
 	rlm_smtp_thread_t       	*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
 	fr_curl_io_request_t     	*randle;
-	fr_mail_ctx			*mail_ctx;
+	fr_mail_ctx_t			*mail_ctx;
 	const char 			*envelope_address;
 
 	fr_pair_t const 		*smtp_body, *username, *password;
@@ -770,8 +770,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	}
 
 	/* Initialize the uctx to perform the email */
-	mail_ctx = talloc_zero(randle, fr_mail_ctx);
-	*mail_ctx = (fr_mail_ctx) {
+	mail_ctx = talloc_zero(randle, fr_mail_ctx_t);
+	*mail_ctx = (fr_mail_ctx_t) {
 		.request 	= request,
 		.randle 	= randle,
 		.mime 		= curl_mime_init(randle->candle),
@@ -858,11 +858,10 @@ error:
  * 	If the response was not OK, we REJECT the request
  * 	This does not confirm an email may be sent, only that the provided login credentials are valid for the server
  */
-static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_result,
-								module_ctx_t const *mctx, request_t *request, void *rctx)
+static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_smtp_t);
-	fr_curl_io_request_t     	*randle = rctx;
+	fr_curl_io_request_t     	*randle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 	fr_curl_tls_t const		*tls;
 	long 				curl_out;
 	long				curl_out_valid;

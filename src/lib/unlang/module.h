@@ -45,11 +45,10 @@ extern "C" {
  *
  * @param[in] mctx		calling context for the module.
  *				Contains global, thread-specific, and call-specific data for a module.
- * @param[in] rctx		a local context for the callback.
  * @param[in] request		the request.
  * @param[in] fired		the time the timeout event actually fired.
  */
-typedef	void (*unlang_module_timeout_t)(module_ctx_t const *mctx, request_t *request, void *rctx, fr_time_t fired);
+typedef	void (*unlang_module_timeout_t)(module_ctx_t const *mctx, request_t *request, fr_time_t fired);
 
 /** A callback when the FD is ready for reading
  *
@@ -61,10 +60,9 @@ typedef	void (*unlang_module_timeout_t)(module_ctx_t const *mctx, request_t *req
  * @param[in] mctx		calling context for the module.
  *				Contains global, thread-specific, and call-specific data for a module.
  * @param[in] request		the current request.
- * @param[in] rctx		a local context for the callback.
  * @param[in] fd		the file descriptor.
  */
-typedef void (*unlang_module_fd_event_t)(module_ctx_t const *mctx, request_t *request, void *rctx, int fd);
+typedef void (*unlang_module_fd_event_t)(module_ctx_t const *mctx, request_t *request, int fd);
 
 /** A callback for when the request is resumed.
  *
@@ -74,11 +72,9 @@ typedef void (*unlang_module_fd_event_t)(module_ctx_t const *mctx, request_t *re
  * @param[in] mctx		calling context for the module.
  *				Contains global, thread-specific, and call-specific data for a module.
  * @param[in] request		the current request.
- * @param[in] rctx		a local context for the callback.
  * @return an instruction for the interpreter.
  */
-typedef unlang_action_t (*unlang_module_resume_t)(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-						  request_t *request, void *rctx);
+typedef unlang_action_t (*unlang_module_resume_t)(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request);
 
 /** A callback when the request gets a fr_state_signal_t.
  *
@@ -89,12 +85,10 @@ typedef unlang_action_t (*unlang_module_resume_t)(rlm_rcode_t *p_result, module_
  *
  * @param[in] mctx		calling context for the module.
  *				Contains global, thread-specific, and call-specific data for a module.
- * @param[in] rctx		Resume ctx for the callback.
  * @param[in] request		The current request.
  * @param[in] action		which is signalling the request.
  */
-typedef void (*unlang_module_signal_t)(module_ctx_t const *mctx, request_t *request,
-				       void *rctx, fr_state_signal_t action);
+typedef void (*unlang_module_signal_t)(module_ctx_t const *mctx, request_t *request, fr_state_signal_t action);
 
 int		unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callback,
 					  void const *ctx, fr_time_t when);

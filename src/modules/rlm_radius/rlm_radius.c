@@ -363,7 +363,7 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 }
 
 
-static void mod_radius_signal(module_ctx_t const *mctx, request_t *request, void *rctx, fr_state_signal_t action)
+static void mod_radius_signal(module_ctx_t const *mctx, request_t *request, fr_state_signal_t action)
 {
 	rlm_radius_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_radius_t);
 	rlm_radius_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_radius_thread_t);
@@ -377,19 +377,28 @@ static void mod_radius_signal(module_ctx_t const *mctx, request_t *request, void
 
 	if (!inst->io->signal) return;
 
-	inst->io->signal(&(module_ctx_t){.instance = inst->io_instance, .thread = t->io_thread }, request, rctx, action);
+	inst->io->signal(&(module_ctx_t){
+				.instance = inst->io_instance,
+				.thread = t->io_thread,
+				.rctx = mctx->rctx
+			 }, request, action);
 }
 
 
 /** Continue after unlang_interpret_mark_runnable()
  *
  */
-static unlang_action_t mod_radius_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, void *ctx)
+static unlang_action_t mod_radius_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_radius_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_radius_t);
 	rlm_radius_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_radius_thread_t);
 
-	return inst->io->resume(p_result, &(module_ctx_t){.instance = inst->io_instance, .thread = t->io_thread }, request, ctx);
+	return inst->io->resume(p_result,
+				&(module_ctx_t){
+					.instance = inst->io_instance,
+					.thread = t->io_thread,
+					.rctx = mctx->rctx
+				}, request);
 }
 
 /** Do any RADIUS-layer fixups for proxying.

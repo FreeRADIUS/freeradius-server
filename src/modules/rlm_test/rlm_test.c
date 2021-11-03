@@ -279,12 +279,12 @@ static unlang_action_t CC_HINT(nonnull) mod_return(rlm_rcode_t *p_result, UNUSED
 	RETURN_MODULE_OK;
 }
 
-static void mod_retry_signal(module_ctx_t const *mctx, request_t *request, void *rctx, fr_state_signal_t action);
+static void mod_retry_signal(module_ctx_t const *mctx, request_t *request, fr_state_signal_t action);
 
 /** Continue after marked runnable
  *
  */
-static unlang_action_t mod_retry_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request, UNUSED void *ctx)
+static unlang_action_t mod_retry_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	RDEBUG("Test called main retry handler - that's a failure");
 
@@ -294,7 +294,7 @@ static unlang_action_t mod_retry_resume(rlm_rcode_t *p_result, UNUSED module_ctx
 /** Continue after FR_SIGNAL_RETRY
  *
  */
-static unlang_action_t mod_retry_resume_retry(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request, UNUSED void *ctx)
+static unlang_action_t mod_retry_resume_retry(UNUSED rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	RDEBUG("Test retry");
 
@@ -304,14 +304,14 @@ static unlang_action_t mod_retry_resume_retry(UNUSED rlm_rcode_t *p_result, UNUS
 /** Continue after FR_SIGNAL_TIMEOUT
  *
  */
-static unlang_action_t mod_retry_resume_timeout(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request, UNUSED void *ctx)
+static unlang_action_t mod_retry_resume_timeout(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 {
 	RDEBUG("Test timed out as expected");
 
 	RETURN_MODULE_OK;
 }
 
-static void mod_retry_signal(UNUSED module_ctx_t const *mctx, request_t *request, UNUSED void *rctx, fr_state_signal_t action)
+static void mod_retry_signal(UNUSED module_ctx_t const *mctx, request_t *request, fr_state_signal_t action)
 {
 	switch (action) {
 	case FR_SIGNAL_RETRY:

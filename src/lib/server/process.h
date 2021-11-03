@@ -111,11 +111,11 @@ do { \
 static fr_process_state_t const process_state[];
 
 #define RECV(_x) static inline unlang_action_t recv_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-#define SEND(_x) static inline unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, void *rctx)
-#define RESUME(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, void *rctx)
-#define SEND_NO_RCTX(_x) static inline unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
-#define RESUME_NO_RCTX(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
-#define RESUME_NO_MCTX(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request, UNUSED void *rctx)
+#define SEND(_x) static inline unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+#define RESUME(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+#define SEND_NO_RCTX(_x) static inline unlang_action_t send_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+#define RESUME_NO_RCTX(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+#define RESUME_NO_MCTX(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 
 /** Call a named recv function directly
  */
@@ -123,30 +123,30 @@ static fr_process_state_t const process_state[];
 
 /** Call a named send function directly
  */
-#define CALL_SEND(_x) send_ ## _x(p_result, mctx, request, rctx)
+#define CALL_SEND(_x) send_ ## _x(p_result, mctx, request)
 
 /** Call a named resume function directly
  */
-#define CALL_RESUME(_x) resume_ ## _x(p_result, mctx, request, rctx)
+#define CALL_RESUME(_x) resume_ ## _x(p_result, mctx, request)
 
 /** Call the send function for the current state
  */
-#define CALL_SEND_STATE(_state) state->send(p_result, mctx, request, rctx)
+#define CALL_SEND_STATE(_state) state->send(p_result, mctx, request)
 
 /** Set the current reply code, and call the send function for that state
  */
-#define CALL_SEND_TYPE(_x) call_send_type(process_state[(request->reply->code = _x)].send, p_result, mctx, request, rctx)
+#define CALL_SEND_TYPE(_x) call_send_type(process_state[(request->reply->code = _x)].send, p_result, mctx, request)
 
 static inline unlang_action_t call_send_type(unlang_module_resume_t send, \
 					     rlm_rcode_t *p_result, module_ctx_t const *mctx,
-					     request_t *request, void *rctx)
+					     request_t *request)
 {
 	/*
 	 *	Stupid hack to stop this being honoured
 	 *	by send_generic.
 	 */
 	pair_delete_reply(attr_packet_type);
-	return send(p_result, mctx, request, rctx);
+	return send(p_result, mctx, request);
 }
 
 RECV(generic)
@@ -175,7 +175,7 @@ RECV(generic)
 	if (cs) RDEBUG("Running '%s %s' from file %s", cf_section_name1(cs), cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->resume,
-					      NULL, NULL);
+					      NULL, mctx->rctx);
 }
 
 RESUME(recv_generic)
@@ -204,7 +204,7 @@ RESUME(recv_generic)
 	fr_assert(state->send != NULL);
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->send,
-					      NULL, rctx);
+					      NULL, mctx->rctx);
 }
 
 RESUME_NO_MCTX(recv_no_send)
@@ -288,7 +288,7 @@ SEND(generic)
 
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, state->rcode, state->resume,
-					      NULL, rctx);
+					      NULL, mctx->rctx);
 }
 
 RESUME(send_generic)
@@ -343,7 +343,7 @@ RESUME(send_generic)
 
 			return unlang_module_yield_to_section(p_result, request,
 							      cs, state->rcode, state->send,
-							      NULL, rctx);
+							      NULL, mctx->rctx);
 		}
 
 		fr_assert(!state->packet_type[rcode] || (state->packet_type[rcode] == request->reply->code));

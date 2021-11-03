@@ -518,12 +518,12 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	return unlang_xlat_yield(request, rest_xlat_resume, rest_io_xlat_signal, rctx);
 }
 
-static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, void *rctx)
+static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
-	fr_curl_io_request_t		*handle = talloc_get_type_abort(rctx, fr_curl_io_request_t);
+	fr_curl_io_request_t		*handle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 
 	int				hcode;
 	rlm_rcode_t			rcode = RLM_MODULE_OK;
@@ -633,12 +633,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 }
 
 static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result,
-					       module_ctx_t const *mctx, request_t *request, void *rctx)
+					       module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
-	fr_curl_io_request_t		*handle = talloc_get_type_abort(rctx, fr_curl_io_request_t);
+	fr_curl_io_request_t		*handle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 
 	int				hcode;
 	int				rcode = RLM_MODULE_OK;
@@ -782,13 +782,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	return unlang_module_yield(request, mod_authenticate_result, NULL, handle);
 }
 
-static unlang_action_t mod_accounting_result(rlm_rcode_t *p_result,
-					     module_ctx_t const *mctx, request_t *request, void *rctx)
+static unlang_action_t mod_accounting_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
-	fr_curl_io_request_t		*handle = rctx;
+	fr_curl_io_request_t		*handle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 
 	int				hcode;
 	int				rcode = RLM_MODULE_OK;
@@ -862,13 +861,12 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	return unlang_module_yield(request, mod_accounting_result, NULL, handle);
 }
 
-static unlang_action_t mod_post_auth_result(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-					    request_t *request, void *rctx)
+static unlang_action_t mod_post_auth_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
-	fr_curl_io_request_t		*handle = rctx;
+	fr_curl_io_request_t		*handle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 
 	int				hcode;
 	int				rcode = RLM_MODULE_OK;

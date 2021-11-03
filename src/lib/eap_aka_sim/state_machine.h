@@ -34,28 +34,14 @@ extern "C" {
 
 typedef struct eap_aka_sim_session_s eap_aka_sim_session_t;
 
-/** The state function which should receive any incoming packets
- *
- */
-typedef unlang_action_t (*eap_aka_sim_state_t)(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-					       request_t *request, eap_aka_sim_session_t *eap_aka_sim_session);
-
-/** The function to execute after common code has completed
- *
- * Mostly used to set functions to run after pseudonym and session
- * loading/clearing/storing is complete.
- */
-typedef unlang_action_t (*eap_aka_sim_next_t)(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-					      request_t *request, eap_aka_sim_session_t *eap_aka_sim_session);
-
 struct eap_aka_sim_session_s {
 	/*
 	 *	State machine management
 	 */
-	eap_aka_sim_state_t		state;				//!< The process function to run when we
+	module_method_t			state;				//!< The process function to run when we
 									///< receive the next round of EAP-SIM/AKA/AKA'.
 
-	eap_aka_sim_next_t		next;				//!< Resumption function to call after
+	module_method_t			next;				//!< Resumption function to call after
 									///< executing common code.
 
 	eap_type_t			type;				//!< Either FR_TYPE_AKA, or FR_TYPE_AKA_PRIME.

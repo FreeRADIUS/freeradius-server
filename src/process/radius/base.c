@@ -357,7 +357,6 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(process_radius_auth_t co
 RECV(access_request)
 {
 	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
-	void				*rctx = NULL;
 
 	/*
 	 *	Only reject if the state has already been thawed.
@@ -438,7 +437,7 @@ RESUME(access_request)
 	RDEBUG("Running 'authenticate %s' from file %s", cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, RLM_MODULE_NOOP, resume_auth_type,
-					      NULL, rctx);
+					      NULL, mctx->rctx);
 }
 
 RESUME(auth_type)
@@ -471,7 +470,7 @@ RESUME(auth_type)
 		       fr_table_str_by_value(rcode_table, rcode, "???"));
 
 		fr_assert(state->send != NULL);
-		return state->send(p_result, mctx, request, rctx);
+		return state->send(p_result, mctx, request);
 	}
 
 	/*
@@ -540,7 +539,7 @@ RESUME(auth_type)
 	UPDATE_STATE(reply);
 
 	fr_assert(state->send != NULL);
-	return state->send(p_result, mctx, request, rctx);
+	return state->send(p_result, mctx, request);
 }
 
 RESUME_NO_RCTX(access_accept)
@@ -641,14 +640,14 @@ RESUME(acct_type)
 		       fr_table_str_by_value(rcode_table, rcode, "???"));
 
 		fr_assert(state->send != NULL);
-		return state->send(p_result, mctx, request, rctx);
+		return state->send(p_result, mctx, request);
 	}
 
 	request->reply->code = FR_RADIUS_CODE_ACCOUNTING_RESPONSE;
 	UPDATE_STATE(reply);
 
 	fr_assert(state->send != NULL);
-	return state->send(p_result, mctx, request, rctx);
+	return state->send(p_result, mctx, request);
 }
 
 RESUME(accounting_request)
@@ -701,7 +700,7 @@ RESUME(accounting_request)
 	 */
 	return unlang_module_yield_to_section(p_result, request,
 					      cs, RLM_MODULE_NOOP, resume_acct_type,
-					      NULL, rctx);
+					      NULL, mctx->rctx);
 }
 
 #if 0

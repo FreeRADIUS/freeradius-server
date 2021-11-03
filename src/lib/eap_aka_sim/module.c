@@ -39,8 +39,7 @@ RCSID("$Id$")
 /** Encode EAP session data from attributes
  *
  */
-static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-				  request_t *request, UNUSED void *rctx)
+static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	eap_aka_sim_module_conf_t	*inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_module_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);

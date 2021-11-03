@@ -2644,21 +2644,20 @@ static void request_free(UNUSED request_t *request, void *preq_to_free, UNUSED v
 /** Resume execution of the request, returning the rcode set during trunk execution
  *
  */
-static unlang_action_t mod_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, UNUSED request_t *request, void *rctx)
+static unlang_action_t mod_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	udp_result_t	*r = talloc_get_type_abort(rctx, udp_result_t);
+	udp_result_t	*r = talloc_get_type_abort(mctx->rctx, udp_result_t);
 	rlm_rcode_t	rcode = r->rcode;
 
-	talloc_free(rctx);
+	talloc_free(r);
 
 	RETURN_MODULE_RCODE(rcode);
 }
 
-static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request,
-		       void *rctx, fr_state_signal_t action)
+static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_state_signal_t action)
 {
 	udp_thread_t		*t = talloc_get_type_abort(mctx->thread, udp_thread_t);
-	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
+	udp_result_t		*r = talloc_get_type_abort(mctx->rctx, udp_result_t);
 
 	/*
 	 *	If we don't have a treq associated with the
@@ -2671,7 +2670,7 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request,
 	 *	(don't use it).
 	 */
 	if (!r->treq) {
-		talloc_free(rctx);
+		talloc_free(r);
 		return;
 	}
 

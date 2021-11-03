@@ -337,7 +337,7 @@ void status_code_add(request_t *request, fr_value_box_t const **code)
  */
 RESUME(send_to_client)
 {
-	process_dhcpv6_client_fields_t	*fields = talloc_get_type_abort(rctx, process_dhcpv6_client_fields_t);
+	process_dhcpv6_client_fields_t	*fields = talloc_get_type_abort(mctx->rctx, process_dhcpv6_client_fields_t);
 	fr_process_state_t const	*state;
 
 
@@ -445,7 +445,7 @@ RECV(from_relay)
  */
 RESUME(send_to_relay)
 {
-	process_dhcpv6_relay_fields_t	*fields = talloc_get_type_abort(rctx, process_dhcpv6_relay_fields_t);
+	process_dhcpv6_relay_fields_t	*fields = talloc_get_type_abort(mctx->rctx, process_dhcpv6_relay_fields_t);
 	fr_process_state_t const	*state;
 
 	UPDATE_STATE(reply);

@@ -126,14 +126,13 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 	return t;
 }
 
-static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
-					    request_t *request, void *rctx)
+static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_peap_t		*inst = talloc_get_type(mctx->instance, rlm_eap_peap_t);
 
 	rlm_rcode_t		rcode;
 
-	eap_session_t		*eap_session = talloc_get_type_abort(rctx, eap_session_t);
+	eap_session_t		*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
 	peap_tunnel_t		*peap = talloc_get_type_abort(tls_session->opaque, peap_tunnel_t);

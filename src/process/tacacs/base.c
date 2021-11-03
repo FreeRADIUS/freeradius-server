@@ -245,7 +245,7 @@ RESUME(tacacs_type)
 	UPDATE_STATE(reply);
 
 	fr_assert(state->send != NULL);
-	return state->send(p_result, mctx, request, rctx);
+	return state->send(p_result, mctx, request);
 }
 
 RESUME(recv_tacacs)
@@ -297,7 +297,7 @@ RESUME(recv_tacacs)
 
 			return unlang_module_yield_to_section(p_result, request,
 							      subcs, RLM_MODULE_NOOP, resume_tacacs_type,
-							      NULL, rctx);
+							      NULL, mctx->rctx);
 		}
 		break;
 

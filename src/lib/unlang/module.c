@@ -71,7 +71,11 @@ static void unlang_event_fd_read_handler(UNUSED fr_event_list_t *el, int fd, UNU
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
 
-	ev->fd_read(&(module_ctx_t){ .instance = mutable_inst, .thread = ev->thread }, ev->request, mutable_ctx, fd);
+	ev->fd_read(&(module_ctx_t){
+			.instance = mutable_inst,
+			.thread = ev->thread,
+			.rctx = mutable_ctx },
+		    ev->request, fd);
 }
 
 /** Frees an unlang event, removing it from the request's event loop
@@ -113,7 +117,11 @@ static void unlang_module_event_timeout_handler(UNUSED fr_event_list_t *el, fr_t
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
 
-	ev->timeout(&(module_ctx_t){ .instance = mutable_inst, .thread = ev->thread }, ev->request, mutable_ctx, now);
+	ev->timeout(&(module_ctx_t){
+			.instance = mutable_inst,
+			.thread = ev->thread,
+			.rctx = mutable_ctx
+		    }, ev->request, now);
 	talloc_free(ev);
 }
 
@@ -209,7 +217,11 @@ static void unlang_event_fd_write_handler(UNUSED fr_event_list_t *el, int fd, UN
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
 
-	ev->fd_write(&(module_ctx_t){ .instance = mutable_inst, .thread = ev->thread }, ev->request, mutable_ctx, fd);
+	ev->fd_write(&(module_ctx_t){
+			.instance = mutable_inst,
+			.thread = ev->thread,
+			.rctx = mutable_ctx },
+		     ev->request, fd);
 }
 
 /** Call the callback registered for an I/O error event
@@ -232,7 +244,11 @@ static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd,
 	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
 	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
 
-	ev->fd_error(&(module_ctx_t){ .instance = mutable_inst, .thread = ev->thread }, ev->request, mutable_ctx, fd);
+	ev->fd_error(&(module_ctx_t){
+			.instance = mutable_inst,
+			.thread = ev->thread,
+			.rctx = mutable_ctx
+		     }, ev->request, fd);
 }
 
 
@@ -553,8 +569,9 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 		return resume(p_result,
 			      &(module_ctx_t){
 				.instance = mc->instance->dl_inst->data,
-				.thread = module_thread(mc->instance)->data
-			      }, request, rctx);
+				.thread = module_thread(mc->instance)->data,
+				.rctx = rctx
+			      }, request);
 	}
 
 	/*
@@ -649,9 +666,10 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 	safe_lock(mc->instance);
 	state->signal(&(module_ctx_t){
 			.instance = mc->instance->dl_inst->data,
-			.thread = state->thread->data
+			.thread = state->thread->data,
+			.rctx = state->rctx
 		      },
-		      request, state->rctx, action);
+		      request, action);
 	safe_unlock(mc->instance);
 	request->module = caller;
 
@@ -746,8 +764,9 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	ua = resume(&state->rcode,
 		    &(module_ctx_t){
 			.instance = mc->instance->dl_inst->data,
-			.thread = state->thread->data
-		    }, request, state->rctx);
+			.thread = state->thread->data,
+			.rctx = state->rctx,
+		    }, request);
 	safe_unlock(mc->instance);
 
 	request->rcode = state->rcode;

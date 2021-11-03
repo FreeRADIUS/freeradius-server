@@ -30,9 +30,9 @@
  * If we're signalled that the request has been cancelled (FR_SIGNAL_CANCEL).
  * Cleanup any pending state and release the connection handle back into the pool.
  */
-void rest_io_module_action(module_ctx_t const *mctx, request_t *request, void *rctx, fr_state_signal_t action)
+void rest_io_module_action(module_ctx_t const *mctx, request_t *request, fr_state_signal_t action)
 {
-	fr_curl_io_request_t	*randle = talloc_get_type_abort(rctx, fr_curl_io_request_t);
+	fr_curl_io_request_t	*randle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 	rlm_rest_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	CURLMcode		ret;
 
@@ -65,5 +65,5 @@ void rest_io_xlat_signal(request_t *request, UNUSED void *instance, void *thread
 	rlm_rest_xlat_rctx_t		*our_rctx = talloc_get_type_abort(rctx, rlm_rest_xlat_rctx_t);
 	fr_curl_io_request_t		*randle = talloc_get_type_abort(our_rctx->handle, fr_curl_io_request_t);
 
-	rest_io_module_action(&(module_ctx_t){ .instance = mod_inst, .thread = t }, request, randle, action);
+	rest_io_module_action(&(module_ctx_t){ .instance = mod_inst, .thread = t, .rctx = randle }, request, action);
 }
