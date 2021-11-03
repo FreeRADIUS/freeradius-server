@@ -1802,11 +1802,13 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 			extent = fr_dlist_head(&leaf);
 			fr_pair_append(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
 		}
+
+		fr_assert(fr_dlist_num_elements(&interior) == 0);
+		fr_dlist_talloc_free(&leaf);
+
 	op_set_done:
 		/* Free any we didn't insert */
 		fr_pair_list_free(&src_list);
-		fr_assert(fr_dlist_num_elements(&interior) == 0);
-		fr_dlist_talloc_free(&leaf);
 	}
 		break;
 
