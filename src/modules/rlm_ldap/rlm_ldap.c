@@ -1815,7 +1815,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 
 	if (fr_rb_flatten_inorder(NULL, &trunks_to_free, this_thread->trunks) < 0) return -1;
 
-	for (i = talloc_array_length(trunks_to_free); i >= 0; i--) talloc_free(trunks_to_free[i]);
+	for (i = talloc_array_length(trunks_to_free) - 1; i >= 0; i--) talloc_free(trunks_to_free[i]);
 	talloc_free(trunks_to_free);
 	talloc_free(this_thread->trunks);
 
