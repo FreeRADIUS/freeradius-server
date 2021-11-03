@@ -526,12 +526,6 @@ struct tmpl_cursor_nested_s {
 
 	union {
 		struct {
-			fr_da_stack_t		da_stack;		//!< fr_dict_attr_t hierarchy
-									///< between a->b.
-			fr_dcursor_stack_t	*cursor_stack;		//!< Track state as we traverse VPs.
-		} tlv;
-
-		struct {
 			fr_dcursor_t		cursor;			//!< Group traversal is much easier
 									///< but we still need to keep track
 									///< where we are in the list in case

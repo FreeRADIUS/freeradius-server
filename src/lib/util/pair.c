@@ -940,6 +940,62 @@ int fr_pair_append(fr_pair_list_t *list, fr_pair_t *to_add)
 	return 0;
 }
 
+/** Add a VP after another VP.
+ *
+ * @param[in] list	VP in linked list. Will add new VP to this list.
+ * @param[in] pos	to insert pair after.
+ * @param[in] to_add	VP to add to list.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure (pair already in list).
+ */
+int fr_pair_insert_after(fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *to_add)
+{
+	PAIR_VERIFY(to_add);
+
+	if (fr_dlist_entry_in_list(&to_add->order_entry)) {
+		fr_strerror_printf("Pair %pV already inserted into list", to_add);
+		return -1;
+	}
+
+	if (!fr_dlist_entry_in_list(&to_add->order_entry)) {
+		fr_strerror_printf("Pair %pV not in list", pos);
+		return -1;
+	}
+
+	fr_dlist_insert_after(fr_pair_list_order(list), pos, to_add);
+
+	return 0;
+}
+
+/** Add a VP before another VP.
+ *
+ * @param[in] list	VP in linked list. Will add new VP to this list.
+ * @param[in] pos	to insert pair after.
+ * @param[in] to_add	VP to add to list.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure (pair already in list).
+ */
+int fr_pair_insert_before(fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *to_add)
+{
+	PAIR_VERIFY(to_add);
+
+	if (fr_dlist_entry_in_list(&to_add->order_entry)) {
+		fr_strerror_printf("Pair %pV already inserted into list", to_add);
+		return -1;
+	}
+
+	if (!fr_dlist_entry_in_list(&to_add->order_entry)) {
+		fr_strerror_printf("Pair %pV not in list", pos);
+		return -1;
+	}
+
+	fr_dlist_insert_before(fr_pair_list_order(list), pos, to_add);
+
+	return 0;
+}
+
 /** Replace first matching VP
  *
  * Walks over 'list', and replaces the first VP that matches 'replace'.
@@ -948,45 +1004,17 @@ int fr_pair_append(fr_pair_list_t *list, fr_pair_t *to_add)
  * @note Memory used by the VP being replaced will be freed.
  * @note Will not work with unknown attributes.
  *
- * @param[in,out] list VP in linked list. Will search and replace in this list.
- * @param[in] replace VP to replace.
+ * @param[in,out] list		pair list containing #to_replace.
+ * @param[in] to_replace	pair to release.
+ * @param[in] vp		New pair to insert.
  */
-void fr_pair_replace(fr_pair_list_t *list, fr_pair_t *replace)
+void fr_pair_replace(fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *vp)
 {
-	fr_pair_t *i;
+	PAIR_VERIFY(to_replace);
+	PAIR_VERIFY(vp);
 
-	PAIR_VERIFY(replace);
-
-	if (fr_dlist_empty(&list->order)) {
-		fr_pair_append(list, replace);
-		return;
-	}
-
-	/*
-	 *	Not an empty list, so find item if it is there, and
-	 *	replace it. Note, we always replace the head one, and
-	 *	we ignore any others that might exist.
-	 */
-	for (i = fr_pair_list_head(list); i; i = fr_pair_list_next(list, i)) {
-		PAIR_VERIFY(i);
-
-		/*
-		 *	Found the head attribute, replace it,
-		 *	and return.
-		 */
-		if (i->da == replace->da) {
-			i = fr_dlist_replace(&list->order, i, replace);
-			talloc_free(i);
-			return;
-		}
-
-	}
-
-	/*
-	 *	If we got here, we didn't find anything to replace, so
-	 *	we just append.
-	 */
-	fr_pair_append(list, replace);
+	fr_pair_insert_after(list, to_replace, vp);
+	fr_pair_remove(list, to_replace);
 }
 
 /** Alloc a new fr_pair_t (and append)

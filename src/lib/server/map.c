@@ -1768,12 +1768,13 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		fr_dlist_head_t		interior;
 		fr_pair_t 		*src_vp;
 
-		if (dst) {
-			fr_pair_t *old;
+		src_vp = fr_pair_list_tail(&src_list);
 
+		if (dst) {
 			DEBUG_OVERWRITE(dst, src_vp);
-			old = fr_dcursor_replace(&dst_list, fr_pair_copy(talloc_parent(dst), src_vp));
-			talloc_free(old);	/* Remove the old pair */
+
+			fr_pair_reinit_from_da(NULL, dst, src_vp->da);
+			fr_pair_value_copy(dst, src_vp);
 
 			goto op_set_done;
 		}
@@ -1784,7 +1785,6 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		/*
 		 *	Find out what we need to build and build it
 		 */
-		src_vp = fr_pair_list_tail(&src_list);
 		if ((tmpl_extents_find(tmp_ctx, &leaf, &interior, request, map->lhs) < 0) ||
 		    (tmpl_extents_build_to_leaf(&leaf, &interior, map->lhs) < 0)) {
 		    op_set_error:

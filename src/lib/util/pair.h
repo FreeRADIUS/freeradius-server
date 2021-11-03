@@ -275,7 +275,11 @@ int		fr_pair_append(fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull);
 
 int		fr_pair_prepend(fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull);
 
-void		fr_pair_replace(fr_pair_list_t *list, fr_pair_t *add) CC_HINT(nonnull);
+int		fr_pair_insert_after(fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *to_add) CC_HINT(nonnull);
+
+int		fr_pair_insert_before(fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *to_add) CC_HINT(nonnull);
+
+void		fr_pair_replace(fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *vp) CC_HINT(nonnull);
 
 int		fr_pair_delete_by_child_num(fr_pair_list_t *list,
 					    fr_dict_attr_t const *parent, unsigned int attr) CC_HINT(nonnull);
