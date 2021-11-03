@@ -1817,7 +1817,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 	     ttrunk;
 	     ttrunk = fr_rb_iter_next_preorder(&iter)) {
 		talloc_free(ttrunk->trunk);
-	     }
+	}
 	talloc_free(this_thread->trunks);
 	return 0;
 }

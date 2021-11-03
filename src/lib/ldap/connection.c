@@ -491,7 +491,7 @@ static void _ldap_trunk_idle_timeout(fr_event_list_t *el, UNUSED fr_time_t now, 
 	fr_ldap_thread_trunk_t	*ttrunk = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
 
 	if (ttrunk->trunk->req_alloc == 0) {
-		DEBUG2("Removing idle LDAP trunk to %s", ttrunk->uri);
+		DEBUG2("Removing idle LDAP trunk to \"%s\"", ttrunk->uri);
 		talloc_free(ttrunk->trunk);
 		talloc_free(ttrunk);
 	} else {
@@ -928,6 +928,13 @@ static void ldap_trunk_request_demux(fr_trunk_connection_t *tconn, fr_connection
 	} while (1);
 }
 
+static int _thread_ldap_trunk_free(fr_ldap_thread_trunk_t *ttrunk)
+{
+	if (ttrunk->t && fr_rb_node_inline_in_tree(&ttrunk->node)) fr_rb_remove(ttrunk->t->trunks, ttrunk);
+
+	return 0;
+}
+
 /** Find a thread specific LDAP connection for a specific URI / bind DN
  *
  * If no existing connection exists for that combination then create a new one
@@ -957,6 +964,7 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 	 */
 	ROPTIONAL(RDEBUG2, DEBUG2, "No existing connection found - creating new one");
 	found = talloc_zero(thread, fr_ldap_thread_trunk_t);
+	talloc_set_destructor(found, _thread_ldap_trunk_free);
 
 	/*
 	 *	Buld config for this connection - start with module settings and
