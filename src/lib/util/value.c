@@ -4258,7 +4258,7 @@ void fr_value_box_increment(fr_value_box_t *vb)
 static inline CC_HINT(always_inline)
 fr_slen_t fr_value_box_from_numeric_substr(fr_value_box_t *dst, fr_type_t dst_type,
 					   fr_dict_attr_t const *dst_enumv,
-					   fr_sbuff_t *in, bool tainted)
+					   fr_sbuff_t *in, fr_sbuff_parse_rules_t const *rules, bool tainted)
 {
 	fr_slen_t		slen;
 	fr_sbuff_parse_error_t	err;
@@ -4315,7 +4315,26 @@ fr_slen_t fr_value_box_from_numeric_substr(fr_value_box_t *dst, fr_type_t dst_ty
 		return -1;
 	}
 
-	if (slen < 0) fr_sbuff_parse_error_to_strerror(err);
+	if (slen < 0) {
+		/*
+		 *	If an enumeration attribute is provided and we
+		 *      don't find an integer, assume this is an enumv
+		 *      lookup fail, and produce a better error.
+		 */
+		if (dst_enumv && dst_enumv->flags.has_value && (err == FR_SBUFF_PARSE_ERROR_NOT_FOUND)) {
+			fr_sbuff_t our_in = FR_SBUFF(in);
+			fr_sbuff_adv_until(&our_in, SIZE_MAX, rules->terminals,
+					   rules->escapes ? rules->escapes->chr : '\0');
+
+			fr_strerror_printf("Invalid enumeration value \"%pV\" for %s",
+					   fr_box_strvalue_len(fr_sbuff_start(&our_in), fr_sbuff_used(&our_in)),
+					   dst_enumv->name);
+			return -1;
+		}
+
+		fr_sbuff_parse_error_to_strerror(err);
+	}
+
 
 	return slen;
 }
@@ -4347,6 +4366,8 @@ ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	if (!fr_cond_assert(dst_type != FR_TYPE_NULL)) return -1;
 
 	if (!rules) rules = &default_rules;
+
+	fr_strerror_clear();
 
 	/*
 	 *	Set size for all fixed length attributes.
@@ -4571,7 +4592,7 @@ parse:
 	case FR_TYPE_INT64:
 	case FR_TYPE_FLOAT32:
 	case FR_TYPE_FLOAT64:
-		return fr_value_box_from_numeric_substr(dst, dst_type, dst_enumv, in, tainted);
+		return fr_value_box_from_numeric_substr(dst, dst_type, dst_enumv, in, rules, tainted);
 
 	case FR_TYPE_BOOL:
 		fr_value_box_init(dst, dst_type, dst_enumv, tainted);
@@ -4647,27 +4668,31 @@ parse:
 			return fr_sbuff_error(&our_in);
 		}
 
-		if (!fr_sbuff_next_if_char(&our_in, ':')) goto ether_error;
+		if (!fr_sbuff_next_if_char(&our_in, ':')) {
+		ether_sep_error:
+			fr_strerror_const("Missing separator, expected ':'");
+			return fr_sbuff_error(&our_in);
+		}
 
 		fr_base16_decode(&err, &dbuff, &our_in, true);
 		if (err != FR_SBUFF_PARSE_OK) goto ether_error;
 
-		if (!fr_sbuff_next_if_char(&our_in, ':')) goto ether_error;
+		if (!fr_sbuff_next_if_char(&our_in, ':')) goto ether_sep_error;
 
 		fr_base16_decode(&err, &dbuff, &our_in, true);
 		if (err != FR_SBUFF_PARSE_OK) goto ether_error;
 
-		if (!fr_sbuff_next_if_char(&our_in, ':')) goto ether_error;
+		if (!fr_sbuff_next_if_char(&our_in, ':')) goto ether_sep_error;
 
 		fr_base16_decode(&err, &dbuff, &our_in, true);
 		if (err != FR_SBUFF_PARSE_OK) goto ether_error;
 
-		if (!fr_sbuff_next_if_char(&our_in, ':')) goto ether_error;
+		if (!fr_sbuff_next_if_char(&our_in, ':')) goto ether_sep_error;
 
 		fr_base16_decode(&err, &dbuff, &our_in, true);
 		if (err != FR_SBUFF_PARSE_OK) goto ether_error;
 
-		if (!fr_sbuff_next_if_char(&our_in, ':')) goto ether_error;
+		if (!fr_sbuff_next_if_char(&our_in, ':')) goto ether_sep_error;
 
 		fr_base16_decode(&err, &dbuff, &our_in, true);
 		if (err != FR_SBUFF_PARSE_OK) goto ether_error;

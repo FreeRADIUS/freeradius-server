@@ -219,10 +219,10 @@ condition &Event-Timestamp == 'January 1, 2012'
 
 # literals are parsed when the conditions are parsed
 condition <integer>X == 1
-match ERROR offset 9: Failed parsing value as type 'uint32'
+match ERROR offset 9: token not found: Failed parsing value as type 'uint32'
 
 condition &NAS-Port == X
-match ERROR offset 13: Failed parsing value as type 'uint32'
+match ERROR offset 13: token not found: Failed parsing value as type 'uint32'
 
 #
 #  The RHS is a static string, so this gets mashed to a literal,
@@ -250,7 +250,7 @@ condition <ether> 00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
 match 00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
 
 condition <ether> 00:XX:22:33:44:55 == 00:11:22:33:44:55
-match ERROR offset 8: Failed parsing value as type 'ether'
+match ERROR offset 8: Missing separator, expected ':': Failed parsing value as type 'ether'
 
 #
 #  Tests for boolean data types.
@@ -331,7 +331,7 @@ condition <ipaddr>127.0.0.1/32 == 127.0.0.1
 match true
 
 condition <ipaddr>127.0.0.1/327 == 127.0.0.1
-match ERROR offset 8: Failed parsing value as type 'ipaddr'
+match ERROR offset 8: Invalid IPv4 mask length "/327".  Should be between 0-32: Failed parsing value as type 'ipaddr'
 
 condition <ipaddr>127.0.0.1/32 == 127.0.0.1
 match true
