@@ -1768,6 +1768,16 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		fr_dlist_head_t		interior;
 		fr_pair_t 		*src_vp;
 
+		if (dst) {
+			fr_pair_t *old;
+
+			DEBUG_OVERWRITE(dst, src_vp);
+			old = fr_dcursor_replace(&dst_list, fr_pair_copy(talloc_parent(dst), src_vp));
+			talloc_free(old);	/* Remove the old pair */
+
+			goto op_set_done;
+		}
+
 		fr_dlist_talloc_init(&leaf, tmpl_attr_extent_t, entry);
 		fr_dlist_talloc_init(&interior, tmpl_attr_extent_t, entry);
 
@@ -1790,15 +1800,9 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 			goto op_set_error;
 		} else {
 			extent = fr_dlist_head(&leaf);
-			if (dst) {
-				DEBUG_OVERWRITE(dst, src_vp);
-				dst = fr_dcursor_replace(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
-				talloc_free(dst);
-			} else {
-				fr_pair_append(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
-			}
+			fr_pair_append(extent->list, fr_pair_copy(extent->list_ctx, src_vp));
 		}
-
+	op_set_done:
 		/* Free any we didn't insert */
 		fr_pair_list_free(&src_list);
 		fr_assert(fr_dlist_num_elements(&interior) == 0);

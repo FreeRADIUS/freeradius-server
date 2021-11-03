@@ -1387,6 +1387,7 @@ int tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
  * @param[in] vpt		specifying the #fr_pair_t type to retrieve or create.
  *				Must be #TMPL_TYPE_ATTR.
  * @return
+ *	- 1 on success a pair was created.
  *	- 0 on success a pair was found.
  *	- -1 if a new #fr_pair_t couldn't be found or created.
  *	- -2 if list could not be found (doesn't exist in current #request_t).
@@ -1451,7 +1452,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 	if (vpt->type == TMPL_TYPE_LIST) {
 	do_list:
 		if (leaf) EXTENT_ADD(leaf, NULL, list_ctx, list_head);
-		goto done;
+		return 0;
 	}
 
 	/*
@@ -1538,21 +1539,9 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 			continue;
 
 		default:
-			if (leaf) EXTENT_ADD(leaf, NULL, list_ctx, list_head);
 			break;
 		}
 	}
-
-done:
-	/*
-	 *	If we were asked to provide interior
-	 *	and leaf lists, and there's no result
-	 *	in either, then that's a logic error.
-	 *
-	 *	We either have an attribute or will
-	 *	need to build out pairs to it.
-	 */
-	fr_assert(!leaf || !interior || (fr_dlist_num_elements(leaf) > 0) || (fr_dlist_num_elements(interior) > 0));
 
 	return 0;
 }
