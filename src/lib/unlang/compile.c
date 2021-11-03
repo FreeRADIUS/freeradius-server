@@ -2880,10 +2880,11 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 	name2 = cf_section_name2(cs);
 
 	/*
-	 *	Inside of the "instantiate" section, the name is a name, not a key.
+	 *	Inside of the "modules" section, it's a virtual
+	 *	module.  The name is a module name, not a key.
 	 */
 	if (name2) {
-		if (strcmp(cf_section_name1(cf_item_to_section(cf_parent(cs))), "instantiate") == 0) name2 = NULL;
+		if (strcmp(cf_section_name1(cf_item_to_section(cf_parent(cs))), "modules") == 0) name2 = NULL;
 	}
 
 	if (name2) {
@@ -3823,11 +3824,11 @@ check_for_module:
 	 *	this section.
 	 *
 	 *	Or, the name can refer to a virtual module, in the
-	 *	"instantiate" section.  In that case, the name will be
-	 *	the first of the sub-section of "instantiate".
+	 *	"modules" section.  In that case, the name will be
+	 *	name2 of the CONF_SECTION.
 	 *
 	 *	We try these in sequence, from the bottom up.  This is
-	 *	so that things in "instantiate" and "policy" can
+	 *	so that virtual modules and things in "policy" can
 	 *	over-ride calls to real modules.
 	 */
 
@@ -3835,13 +3836,8 @@ check_for_module:
 	/*
 	 *	Try:
 	 *
-	 *	instantiate { ... name { ...} ... }
 	 *	policy { ... name { .. } .. }
 	 *	policy { ... name.method { .. } .. }
-	 *
-	 *	The only difference between things in "instantiate"
-	 *	and "policy" is that "instantiate" will cause modules
-	 *	to be instantiated in a particular order.
 	 */
 	p = strrchr(name, '.');
 	if (!p) {
@@ -3860,9 +3856,7 @@ check_for_module:
 	 *	We've found the thing which defines this "function".
 	 *	It MUST be a sub-section.
 	 *
-	 *	i.e. it refers to a a subsection in "policy", or to a
-	 *	named redundant / load-balance subsection defined in
-	 *	"instantiate".
+	 *	i.e. it refers to a a subsection in "policy".
 	 */
 	if (subcs) {
 		c = compile_function(parent, unlang_ctx, ci, subcs, component, policy);
