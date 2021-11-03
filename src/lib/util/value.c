@@ -4326,7 +4326,7 @@ fr_slen_t fr_value_box_from_numeric_substr(fr_value_box_t *dst, fr_type_t dst_ty
 			fr_sbuff_adv_until(&our_in, SIZE_MAX, rules->terminals,
 					   rules->escapes ? rules->escapes->chr : '\0');
 
-			fr_strerror_printf("Invalid enumeration value \"%pV\" for %s",
+			fr_strerror_printf("Invalid enumeration value \"%pV\" for attribute %s",
 					   fr_box_strvalue_len(fr_sbuff_start(&our_in), fr_sbuff_used(&our_in)),
 					   dst_enumv->name);
 			return -1;
