@@ -431,7 +431,7 @@ RECV(from_relay)
 	process_dhcpv6_relay_fields_t	*rctx = NULL;
 
 	rctx = dhcpv6_relay_fields_store(request);
-	if (!rctx) *p_result = RLM_MODULE_INVALID;
+	if (!rctx) RETURN_MODULE_INVALID;
 
 	UPDATE_STATE_CS(packet);
 
