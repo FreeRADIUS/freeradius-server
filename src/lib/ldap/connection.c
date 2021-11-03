@@ -1001,7 +1001,7 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 	/*
 	 *  Insert event to close trunk if it becomes idle
 	 */
-	fr_event_timer_in(thread, thread->el, &found->ev, thread->config->idle_timeout,
+	fr_event_timer_in(found, thread->el, &found->ev, thread->config->idle_timeout,
 			  _ldap_trunk_idle_timeout, found);
 
 	/*
