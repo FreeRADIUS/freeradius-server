@@ -39,6 +39,8 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct {
+	char const	*name;
+
 	tmpl_t		*tmpl;
 	tmpl_t		**tmpl_m;
 	char const	*string;
@@ -375,6 +377,36 @@ static xlat_action_t trigger_test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, reque
 }
 
 
+static xlat_arg_parser_t const test_xlat_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+
+/** Run a generic xlat (useful for testing)
+ *
+ * This just copies the input to the output.
+ */
+static xlat_action_t test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
+				       UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				       fr_value_box_list_t *in)
+{
+	fr_value_box_t	*in_head = fr_dlist_head(in);
+	fr_value_box_t	*vb;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+
+	if (fr_value_box_copy(ctx, vb, in_head) < 0) {
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+
 static int mod_thread_instantiate(UNUSED CONF_SECTION  const *cs, UNUSED void *instance, UNUSED fr_event_list_t *el,
 				  void *thread)
 {
@@ -411,11 +443,17 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 {
 	xlat_t *xlat;
 	rlm_test_t *inst = instance;
+	char const *name2;
 
-	if (paircmp_register_by_name("Test-Paircmp", attr_user_name, false,
-					rlm_test_cmp, inst) < 0) {
-		PERROR("Failed registering \"Test-Paircmp\"");
-		return -1;
+	inst->name = name2 = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
+
+	if (!name2) {
+		if (paircmp_register_by_name("Test-Paircmp", attr_user_name, false,
+					     rlm_test_cmp, inst) < 0) {
+			PERROR("Failed registering \"Test-Paircmp\"");
+			return -1;
+		}
 	}
 
 	/*
@@ -444,8 +482,17 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 		INFO("inst->tmpl_m is NULL");
 	}
 
-	if (!(xlat = xlat_register(instance, "test_trigger", trigger_test_xlat, false))) return -1;
-	xlat_func_args(xlat, trigger_test_xlat_args);
+	if (!name2) {
+		if (!(xlat = xlat_register(instance, "test_trigger", trigger_test_xlat, false))) return -1;
+		xlat_func_args(xlat, trigger_test_xlat_args);
+
+		if (!(xlat = xlat_register(instance, "test", test_xlat, false))) return -1;
+		xlat_func_args(xlat, test_xlat_args);
+
+	} else {
+		if (!(xlat = xlat_register(instance, name2, test_xlat, false))) return -1;
+		xlat_func_args(xlat, test_xlat_args);
+	}
 
 	return 0;
 }
