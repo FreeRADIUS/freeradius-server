@@ -61,6 +61,7 @@ typedef struct {
 	fr_rb_node_t			name_node;	//!< Entry in the name tree.
 	char const			*name;		//!< module name
 	CONF_SECTION			*cs;		//!< CONF_SECTION where it is defined
+	bool				all_same;
 } virtual_module_t;
 
 
@@ -1627,7 +1628,7 @@ CONF_SECTION *module_by_name_virtual(char const *asked_name)
 static int virtual_module_bootstrap(CONF_SECTION *cs)
 {
 	char const		*name;
-	bool			all_same = true;
+	bool			all_same;
 	module_t const 	*last = NULL;
 	CONF_ITEM 		*sub_ci = NULL;
 	CONF_PAIR		*cp;
@@ -1673,6 +1674,11 @@ static int virtual_module_bootstrap(CONF_SECTION *cs)
 	}
 
 	/*
+	 *	Don't bother registering redundant xlats for a simple "group".
+	 */
+	all_same = (strcmp(cf_section_name1(cs), "group") != 0);
+
+	/*
 	 *	Ensure that the modules we reference here exist.
 	 */
 	while ((sub_ci = cf_item_next(cs, sub_ci))) {
@@ -1687,6 +1693,10 @@ static int virtual_module_bootstrap(CONF_SECTION *cs)
 			 *	Allow "foo.authorize" in subsections.
 			 *
 			 *	Note that we don't care what the method is, just that it exists.
+			 *
+			 *	This check is needed only because we
+			 *	want to know if we need to register a
+			 *	redundant xlat for the virtual module.
 			 */
 			mi = module_by_name_and_method(NULL, NULL, NULL, NULL, cf_pair_attr(cp));
 			if (!mi) {
@@ -1708,20 +1718,17 @@ static int virtual_module_bootstrap(CONF_SECTION *cs)
 		}
 
 		/*
-		 *	Don't check subsections for now.
+		 *	Don't check subsections for now.  That check
+		 *	happens later in the unlang compiler.
 		 */
-	} /* loop over modules in a "redundant foo" section */
-
-	/*
-	 *	Register a redundant xlat
-	 */
-	if (all_same && (xlat_register_legacy_redundant(cs) < 0)) return -1;
+	} /* loop over things in a virtual module section */
 
 	inst = talloc_zero(cs, virtual_module_t);
 	if (!inst) return -1;
 
 	inst->cs = cs;
 	inst->name = talloc_strdup(inst, name);
+	inst->all_same = all_same;
 
 	if (!fr_cond_assert(fr_rb_insert(virtual_module_name_tree, inst))) {
 		talloc_free(inst);
@@ -1745,6 +1752,8 @@ int modules_bootstrap(CONF_SECTION *root)
 {
 	CONF_ITEM *ci;
 	CONF_SECTION *cs, *modules;
+	virtual_module_t	*vm;
+	fr_rb_iter_inorder_t	iter;
 
 	/*
 	 *	Remember where the modules were stored.
@@ -1858,6 +1867,19 @@ int modules_bootstrap(CONF_SECTION *root)
 				   cf_section_name1(subcs));
 			return -1;
 		}
+	}
+
+	/*
+	 *	Now that all of the xlat things have been registered,
+	 *	register our redundant xlats.  But only when all of
+	 *	the items in such a section are the same.
+	 */
+	for (vm = fr_rb_iter_init_inorder(&iter, virtual_module_name_tree);
+	     vm;
+	     vm = fr_rb_iter_next_inorder(&iter)) {
+		if (!vm->all_same) continue;
+
+		if (xlat_register_redundant(vm->cs) < 0) return -1;
 	}
 
 	return 0;

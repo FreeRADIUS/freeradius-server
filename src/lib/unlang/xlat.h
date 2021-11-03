@@ -409,7 +409,7 @@ void _xlat_async_thread_instantiate_set(xlat_t const *xlat,
 
 void		xlat_unregister(char const *name);
 void		xlat_unregister_module(void *instance);
-int		xlat_register_legacy_redundant(CONF_SECTION *cs);
+int		xlat_register_redundant(CONF_SECTION *cs);
 int		xlat_init(void);
 void		xlat_free(void);
 

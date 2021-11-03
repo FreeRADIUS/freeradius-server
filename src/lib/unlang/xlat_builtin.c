@@ -515,6 +515,16 @@ typedef struct {
 } xlat_redundant_t;
 
 
+/** Make module instance available to xlats
+ *
+ */
+static int xlat_redundant_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
+{
+	*((void **)xlat_inst) = talloc_get_type_abort(uctx, xlat_redundant_t);
+	return 0;
+}
+
+
 /** xlat "redundant" processing
  *
  * Processes xlat calls for modules defined in "redundant"
@@ -522,16 +532,18 @@ typedef struct {
  *
  * @ingroup xlat_functions
  */
-static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t outlen,
-			      void const *mod_inst, UNUSED void const *xlat_inst,
-			      request_t *request, char const *fmt)
+static xlat_action_t xlat_redundant(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				    request_t *request, void const *xlat_inst,
+				    UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
 {
-	xlat_redundant_t const *xr = mod_inst;
+	xlat_redundant_t const *xr;
 	CONF_ITEM *ci;
 	char const *name;
 	xlat_t *xlat;
 
-	fr_assert((*out == NULL) && (outlen == 0));	/* Caller must not have allocated buf */
+	memcpy(&xr, xlat_inst, sizeof(xr));
+	xr = talloc_get_type_abort(xr, xlat_redundant_t);
+
 	fr_assert(xr->type == XLAT_REDUNDANT);
 
 	/*
@@ -540,36 +552,26 @@ static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t 
 	for (ci = cf_item_next(xr->cs, NULL);
 	     ci != NULL;
 	     ci = cf_item_next(xr->cs, ci)) {
-		ssize_t ret;
-
 		if (!cf_item_is_pair(ci)) continue;
 
 		name = cf_pair_attr(cf_item_to_pair(ci));
 		fr_assert(name != NULL);
 
+		/*
+		 *	@todo - cache these in a fixed size array in
+		 *	the xlat_inst, which should save some run-time
+		 *	cost.
+		 */
 		xlat = xlat_func_find(name, -1);
 		if (!xlat) continue;
 
-		if (xlat->buf_len > 0) {
-			*out = talloc_array(ctx, char, xlat->buf_len);
-			**out = '\0';	/* Be sure the string is \0 terminated */
-		} else {
-			*out = NULL;
-		}
-
-		ret = xlat->func.sync(ctx, out, xlat->buf_len, xlat->mod_inst, NULL, request, fmt);
-		if (ret <= 0) {
-			TALLOC_FREE(*out);
-			continue;
-		}
-		return ret;
+		return xlat->func.async(ctx, out, request, xlat->mod_inst, xlat->thread_uctx, in);
 	}
 
 	/*
-	 *	Everything failed.  Oh well.
+	 *	Everything failed.  Don't modify the output.  Just return failure.
 	 */
-	*out = NULL;
-	return 0;
+	return XLAT_ACTION_FAIL;
 }
 
 
@@ -580,18 +582,19 @@ static ssize_t xlat_redundant(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t 
  *
  * @ingroup xlat_functions
  */
-static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size_t outlen,
-				 void const *mod_inst, UNUSED void const *xlat_inst,
-				 request_t *request, char const *fmt)
+static xlat_action_t xlat_load_balance(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				       request_t *request, void const *xlat_inst,
+				       UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
 {
 	uint32_t count = 0;
-	xlat_redundant_t const *xr = mod_inst;
+	xlat_redundant_t const *xr;
 	CONF_ITEM *ci;
 	CONF_ITEM *found = NULL;
 	char const *name;
 	xlat_t *xlat;
 
-	fr_assert((*out == NULL) && (outlen == 0));	/* Caller must not have allocated buf */
+	memcpy(&xr, xlat_inst, sizeof(xr));
+	xr = talloc_get_type_abort(xr, xlat_redundant_t);
 
 	/*
 	 *	Choose a child at random.
@@ -615,23 +618,18 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
 	 *	Plain load balancing: do one child, and only one child.
 	 */
 	if (xr->type == XLAT_LOAD_BALANCE) {
-		ssize_t slen;
 		name = cf_pair_attr(cf_item_to_pair(found));
 		fr_assert(name != NULL);
 
+		/*
+		 *	@todo - cache these in a fixed size array in
+		 *	the xlat_inst, which should save some run-time
+		 *	cost.
+		 */
 		xlat = xlat_func_find(name, -1);
 		if (!xlat) return -1;
 
-		if (xlat->buf_len > 0) {
-			*out = talloc_array(ctx, char, xlat->buf_len);
-			**out = '\0';	/* Be sure the string is \0 terminated */
-		} else {
-			*out = NULL;
-		}
-		slen = xlat->func.sync(ctx, out, xlat->buf_len, xlat->mod_inst, NULL, request, fmt);
-		if (slen <= 0) TALLOC_FREE(*out);
-
-		return slen;
+		return xlat->func.async(ctx, out, request, xlat->mod_inst, xlat->thread_uctx, in);
 	}
 
 	fr_assert(xr->type == XLAT_REDUNDANT_LOAD_BALANCE);
@@ -647,17 +645,14 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
 
 		xlat = xlat_func_find(name, -1);
 		if (xlat) {
-			ssize_t ret;
+			xlat_action_t xa;
 
-			if (xlat->buf_len > 0) {
-				*out = talloc_array(ctx, char, xlat->buf_len);
-				**out = '\0';	/* Be sure the string is \0 terminated */
-			} else {
-				*out = NULL;
-			}
-			ret = xlat->func.sync(ctx, out, xlat->buf_len, xlat->mod_inst, NULL, request, fmt);
-			if (ret > 0) return ret;
-			TALLOC_FREE(*out);
+			/*
+			 *	The function shouldn't muck with the
+			 *	output list, unless it succeeds.
+			 */
+			xa = xlat->func.async(ctx, out, request, xlat->mod_inst, xlat->thread_uctx, in);
+			if (xa != XLAT_ACTION_FAIL) return xa;
 		}
 
 		/*
@@ -667,7 +662,7 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
 		if (!ci) ci = cf_item_next(xr->cs, NULL);
 	} while (ci != found);
 
-	return -1;
+	return XLAT_ACTION_FAIL;
 }
 
 
@@ -686,10 +681,13 @@ static ssize_t xlat_load_balance(TALLOC_CTX *ctx, char **out, NDEBUG_UNUSED size
  *	- -1 on error.
  *	- 1 if the modules in the section do not have an xlat method.
  */
-int xlat_register_legacy_redundant(CONF_SECTION *cs)
+int xlat_register_redundant(CONF_SECTION *cs)
 {
 	char const *name1, *name2;
 	xlat_redundant_t *xr;
+	xlat_t const *xlat, *old = NULL;
+	CONF_ITEM *ci = NULL;
+	xlat_func_t func;
 
 	name1 = cf_section_name1(cs);
 	name2 = cf_section_name2(cs);
@@ -703,10 +701,16 @@ int xlat_register_legacy_redundant(CONF_SECTION *cs)
 
 	if (strcmp(name1, "redundant") == 0) {
 		xr->type = XLAT_REDUNDANT;
+		func = xlat_redundant;
+
 	} else if (strcmp(name1, "redundant-load-balance") == 0) {
 		xr->type = XLAT_REDUNDANT_LOAD_BALANCE;
+		func = xlat_load_balance;
+
 	} else if (strcmp(name1, "load-balance") == 0) {
 		xr->type = XLAT_LOAD_BALANCE;
+		func = xlat_load_balance;
+
 	} else {
 		fr_assert(0);
 	}
@@ -714,43 +718,44 @@ int xlat_register_legacy_redundant(CONF_SECTION *cs)
 	xr->cs = cs;
 
 	/*
-	 *	Get the number of children for load balancing.
+	 *	Count the number of children for load-balance, and
+	 *	also find out a little bit more about the old xlats.
 	 */
-	if (xr->type == XLAT_REDUNDANT) {
-		if (!xlat_register_legacy(xr, name2, xlat_redundant, NULL, NULL, 0, 0)) {
-			ERROR("Registering xlat for redundant section failed");
+	while ((ci = cf_item_next(cs, ci))) {
+		char const *attr;
+
+		if (!cf_item_is_pair(ci)) continue;
+
+		attr = cf_pair_attr(cf_item_to_pair(ci));
+
+		/*
+		 *	This is ok, it just means the module
+		 *	doesn't have an xlat method.
+		 */
+		old = xlat_func_find(attr, -1);
+		if (!old) {
 			talloc_free(xr);
-			return -1;
+			return 1;
 		}
 
-	} else {
-		CONF_ITEM *ci = NULL;
-
-		while ((ci = cf_item_next(cs, ci))) {
-			char const *attr;
-
-			if (!cf_item_is_pair(ci)) continue;
-
-			attr = cf_pair_attr(cf_item_to_pair(ci));
-
-			/*
-			 *	This is ok, it just means the module
-			 *	doesn't have an xlat method.
-			 */
-			if (!xlat_func_find(attr, -1)) {
-				talloc_free(xr);
-				return 1;
-			}
-
-			xr->count++;
-		}
-
-		if (!xlat_register_legacy(xr, name2, xlat_load_balance, NULL, NULL, 0, 0)) {
-			ERROR("Registering xlat for load-balance section failed");
-			talloc_free(xr);
-			return -1;
-		}
+		xr->count++;
 	}
+
+	/*
+	 *	At least one "old" xlat has to exist.  Look at it in
+	 *	order to find out which arguments we need to pass to
+	 *	xlat_register()
+	 */
+	if (!old) return 1;
+
+	xlat = xlat_register(NULL, name2, func, old->needs_async);
+	if (!xlat) {
+		ERROR("Registering xlat for load-balance section failed");
+		talloc_free(xr);
+		return -1;
+	}
+
+	xlat_async_instantiate_set(xlat, xlat_redundant_instantiate, xlat_redundant_t *, NULL, xr);
 
 	return 0;
 }
