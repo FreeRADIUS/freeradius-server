@@ -1,0 +1,53 @@
+#  -*- text -*-
+#
+#
+#  $Id$
+
+#######################################################################
+#
+#  = redundant_sql Module
+#
+#  The `redundant_sql` module handles SQL expansions in a redundant manner.
+#
+#
+#  This configuration can be thought of as a `virtual` module.
+#
+#  e.g. If you have two redundant SQL servers, and you want to use
+#  them in the authorize and accounting sections, you could place a
+#  `redundant` block in each section, containing the exact same text.
+#  Or, you could uncomment the following lines, and list
+#  `redundant_sql` in the authorize and accounting sections.
+#
+#  The `virtual` module defined here can also be used with dynamic
+#  expansions, under a few conditions:
+#
+#  * The section is one of `group`, `redundant`, `load-balance`, or
+#    `redundant-load-balance`
+#  * The section contains module names ONLY, and no sub-sections
+#  * All modules in the section are using the same
+#    driver, e.g. They are all sql, or all ldap, etc.
+#
+#  When those conditions are satisfied, the server will
+#  automatically register a dynamic expansion, using the
+#  name of the `virtual` module.  In the example below,
+#  it will be `redundant_sql`.  You can then use this expansion
+#  just like any other:
+#
+#  	update reply {
+#  		Filter-Id := "%{redundant_sql: ... }"
+#  	}
+#
+#  In this example, the expansion is done via module `sql1`, and if
+#  that expansion fails, using module `sql2`.
+#
+#  For best results, configure the `pool` subsection of the module so
+#  that `retry_delay` is non-zero.  That will allow the redundant
+#  block to quickly ignore all "down" SQL databases.  If instead we
+#  have `retry_delay = 0`, then every time the redundant block is
+#  used, the server will try to open a connection to every `down`
+#  database, causing problems.
+#
+redundant redundant_sql {
+	sql1
+	sql2
+}
