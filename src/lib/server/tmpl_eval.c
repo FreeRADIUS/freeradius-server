@@ -1387,7 +1387,6 @@ int tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
  * @param[in] vpt		specifying the #fr_pair_t type to retrieve or create.
  *				Must be #TMPL_TYPE_ATTR.
  * @return
- *	- 1 on success a pair was created.
  *	- 0 on success a pair was found.
  *	- -1 if a new #fr_pair_t couldn't be found or created.
  *	- -2 if list could not be found (doesn't exist in current #request_t).
@@ -1539,6 +1538,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 			continue;
 
 		default:
+			if (leaf) EXTENT_ADD(leaf, NULL, list_ctx, list_head);
 			break;
 		}
 	}
