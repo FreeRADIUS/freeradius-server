@@ -1,21 +1,17 @@
 # Database settings
-dn: olcDatabase=hdb,cn=config
+dn: olcDatabase=mdb,cn=config
 objectClass: olcDatabaseConfig
-objectClass: olcHdbConfig
-olcDatabase: {1}hdb
+objectClass: olcMdbConfig
+olcDatabase: {1}mdb
 olcSuffix: dc=example,dc=com
-olcDbDirectory: /var/lib/ldap
+olcDbDirectory: /tmp/ldap/db
 olcRootDN: cn=admin,dc=example,dc=com
 olcRootPW: {SSHA}SgCZuAcGQA5HlgKi+g5xwVyI2NhXRFYh
-olcDbConfig: set_cachesize 0 2097152 0
-olcDbConfig: set_lk_max_objects 1500
-olcDbConfig: set_lk_max_locks 1500
-olcDbConfig: set_lk_max_lockers 1500
 olcDbIndex: objectClass eq
 olcLastMod: TRUE
 olcDbCheckpoint: 512 30
-olcAccess: to * by dn.exact="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage
 olcAccess: to attrs=userPassword by dn="cn=admin,dc=example,dc=com" write by anonymous auth by self write by * none
+olcAccess: to * by dn.exact="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage by dn="cn=admin,cn=config" manage
 olcAccess: to attrs=shadowLastChange by self write by * read
 olcAccess: to dn.base="" by * read
 olcAccess: to * by dn="cn=admin,dc=example,dc=com" write by * read
