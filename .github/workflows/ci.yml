@@ -155,7 +155,29 @@ jobs:
       if: ${{ matrix.env.CC == 'clang' && failure() }}
 
     - name: Test
-      run: make ci-test
+      run: |
+        # Temporarily replace ucf (for config merge) with cp since it's
+        # terribly slow!
+        sudo mv /usr/bin/ucf /usr/bin/ucf.disabled
+        sudo sh -c 'echo "#!/bin/sh"          >  /usr/bin/ucf'
+        sudo sh -c 'echo "shift && cp -v \$@" >> /usr/bin/ucf'
+        sudo chmod +x /usr/bin/ucf
+        sudo apt-get install -y --no-install-recommends \
+          apparmor-utils \
+          slapd ldap-utils
+        sudo mv -f /usr/bin/ucf.disabled /usr/bin/ucf
+        sudo systemctl stop slapd
+        sudo aa-complain /usr/sbin/slapd
+
+        export PG_VER=14
+        sudo sh -c "echo host  all all 127.0.0.1/32 trust >  /etc/postgresql/$PG_VER/main/pg_hba.conf"
+        sudo sh -c "echo local all all              trust >> /etc/postgresql/$PG_VER/main/pg_hba.conf"
+
+        sudo systemctl start mysql postgresql
+
+        mysql -h 127.0.0.1 -uroot -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '';"
+
+        make ci-test
 
     #
     #  If the CI has failed and the branch is ci-debug then start a tmate
