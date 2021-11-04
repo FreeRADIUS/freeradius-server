@@ -225,6 +225,9 @@ process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, b
 	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), process_dhcpv6_client_fields_t));
 	rctx->transaction_id = fr_pair_copy(rctx, transaction_id);
 
+	fr_pair_list_init(&rctx->client_id);
+	fr_pair_list_init(&rctx->server_id);
+
 	/*
 	 *	These should just become straight copies
 	 *	when the structure pairs are nested.
