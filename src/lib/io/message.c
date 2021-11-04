@@ -152,8 +152,8 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 		return NULL;
 	}
 
-	message_size += 15;
-	message_size &= ~(size_t) 15;
+	message_size += 63;
+	message_size &= ~(size_t) 63;
 	ms->message_size = message_size;
 
 	ms->rb_array[0] = fr_ring_buffer_create(ms, ring_buffer_size);
