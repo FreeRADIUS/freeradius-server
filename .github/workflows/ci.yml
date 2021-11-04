@@ -192,6 +192,7 @@ jobs:
 
       env:
         SQL_MYSQL_TEST_SERVER: 127.0.0.1
+        SQL_POSTGRESQL_TEST_SERVER: 127.0.0.1
     #
     #  If the CI has failed and the branch is ci-debug then start a tmate
     #  session. SSH rendezvous point is emited continuously in the job output.
