@@ -32,6 +32,7 @@ extern "C" {
 #ifdef HAVE_CAPABILITY_H
 #  include <sys/capability.h>
 #  include <stdbool.h>
+#  include <talloc.h>
 
 bool	fr_cap_is_enabled(cap_value_t cap, cap_flag_t set);
 

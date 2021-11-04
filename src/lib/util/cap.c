@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/table.h>
 
-#include <talloc.h>
 #include <pthread.h>
 
 static fr_table_num_sorted_t const cap_set_table[] = {
