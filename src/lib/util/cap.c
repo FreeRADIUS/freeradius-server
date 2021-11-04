@@ -293,7 +293,7 @@ ssize_t fr_cap_set_to_str(TALLOC_CTX *ctx, char **out)
 {
 	cap_t caps = NULL;
 	char *tmp;
-	size_t len;
+	ssize_t slen;
 
 	caps = cap_get_proc();
 	if (unlikely(!caps)) {
@@ -310,6 +310,6 @@ ssize_t fr_cap_set_to_str(TALLOC_CTX *ctx, char **out)
 	*out = talloc_bstrndup(ctx, tmp, len);
 	free(tmp);
 
-	return len;
+	return slen;
 }
 #endif	/* HAVE_CAPABILITY_H */
