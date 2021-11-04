@@ -542,7 +542,7 @@ static xlat_action_t xlat_redundant(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	xlat_t *xlat;
 
 	memcpy(&xr, xlat_inst, sizeof(xr));
-	xr = talloc_get_type_abort(xr, xlat_redundant_t);
+	xr = talloc_get_type_abort_const(xr, xlat_redundant_t);
 
 	fr_assert(xr->type == XLAT_REDUNDANT);
 
@@ -594,7 +594,7 @@ static xlat_action_t xlat_load_balance(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	xlat_t *xlat;
 
 	memcpy(&xr, xlat_inst, sizeof(xr));
-	xr = talloc_get_type_abort(xr, xlat_redundant_t);
+	xr = talloc_get_type_abort_const(xr, xlat_redundant_t);
 
 	/*
 	 *	Choose a child at random.
