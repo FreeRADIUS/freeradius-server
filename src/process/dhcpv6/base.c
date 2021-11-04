@@ -152,9 +152,16 @@ static void dhcpv6_packet_debug(request_t *request, fr_radius_packet_t const *pa
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
 	char if_name[IFNAMSIZ];
 #endif
+	char const *module;
 
 	if (!packet) return;
 	if (!RDEBUG_ENABLED) return;
+
+	/*
+	 *	Looks better without module prefix
+	 */
+	module = request->module;
+	request->module = NULL;
 
 	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s XID %08x from %s%pV%s:%i to %s%pV%s:%i "
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
@@ -184,6 +191,8 @@ static void dhcpv6_packet_debug(request_t *request, fr_radius_packet_t const *pa
 	} else {
 		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
 	}
+
+	request->module = module;
 }
 
 /** Keep a copy of header fields to prevent them being tampered with
