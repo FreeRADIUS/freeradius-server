@@ -265,11 +265,12 @@ unsigned int	fr_pair_count_by_da(fr_pair_list_t const *list, fr_dict_attr_t cons
 fr_pair_t	*fr_pair_find_by_da(fr_pair_list_t const *list,
 				    fr_dict_attr_t const *da, unsigned int n) CC_HINT(nonnull);
 
-fr_pair_t	*fr_pair_find_by_ancestor(fr_pair_list_t const *list,
-					  fr_dict_attr_t const *ancestor) CC_HINT(nonnull);
+fr_pair_t	*fr_pair_find_by_ancestor(fr_pair_list_t const *list, fr_pair_t const *prev,
+					  fr_dict_attr_t const *ancestor) CC_HINT(nonnull(1,3));
 
 fr_pair_t	*fr_pair_find_by_child_num(fr_pair_list_t *list,
-					   fr_dict_attr_t const *parent, unsigned int attr) CC_HINT(nonnull);
+					   fr_dict_attr_t const *parent, unsigned int attr,
+					   unsigned int n) CC_HINT(nonnull);
 
 int		fr_pair_append(fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull);
 

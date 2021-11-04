@@ -249,7 +249,7 @@ static void test_fr_pair_find_by_child_num(void)
 	fr_pair_t *vp;
 
 	TEST_CASE("Search for FR_TEST_ATTR_STRING using fr_pair_find_by_child_num()");
-	TEST_CHECK((vp = fr_pair_find_by_child_num(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_child_num(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -290,7 +290,7 @@ static void test_fr_pair_delete_by_child_num(void)
 	fr_pair_delete_by_child_num(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING);
 
 	TEST_CASE("The fr_dict_attr_test_string shouldn't exist in 'test_pairs'");
-	TEST_CHECK(fr_pair_find_by_child_num(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING) == NULL);
+	TEST_CHECK(fr_pair_find_by_child_num(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING, 0) == NULL);
 
 	TEST_CASE("Add fr_dict_attr_test_string back into 'test_pairs'");
 	TEST_CHECK(fr_pair_prepend_by_da(autofree, NULL, &test_pairs, fr_dict_attr_test_string) == 0);
@@ -354,11 +354,11 @@ static void test_fr_pair_delete(void)
 	fr_pair_t *vp;
 
 	TEST_CASE("Delete fr_dict_attr_test_string using fr_pair_delete()");
-	TEST_CHECK((vp = fr_pair_find_by_child_num(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_child_num(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING, 0)) != NULL);
 	fr_pair_delete(&test_pairs, vp);
 
 	TEST_CASE("The fr_dict_attr_test_string shouldn't exist in 'test_pairs'");
-	TEST_CHECK((vp = fr_pair_find_by_child_num(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING)) == NULL);
+	TEST_CHECK((vp = fr_pair_find_by_child_num(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING, 0)) == NULL);
 
 	TEST_CASE("Add fr_dict_attr_test_string back into 'test_pairs'");
 	TEST_CHECK(fr_pair_prepend_by_da(autofree, NULL, &test_pairs, fr_dict_attr_test_string) == 0);

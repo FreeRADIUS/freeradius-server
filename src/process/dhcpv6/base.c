@@ -118,8 +118,8 @@ typedef struct {
  */
 typedef struct {
 	fr_pair_t	*transaction_id;
-	fr_pair_t	*client_id;
-	fr_pair_t	*server_id;
+	fr_pair_list_t	client_id;
+	fr_pair_list_t	server_id;
 } process_dhcpv6_client_fields_t;
 
 /** Records fields from the original relay-request so we have a known good copy
@@ -207,13 +207,13 @@ process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, b
 		return NULL;
 	}
 
-	client_id = fr_pair_find_by_ancestor(&request->request_pairs, attr_client_id);
+	client_id = fr_pair_find_by_ancestor(&request->request_pairs, NULL, attr_client_id);
 	if (!client_id) {
 		REDEBUG("Missing Client-ID");
 		return NULL;
 	}
 
-	server_id = fr_pair_find_by_da(&request->request_pairs, attr_server_id, 0);
+	server_id = fr_pair_find_by_ancestor(&request->request_pairs, NULL, attr_server_id);
 	if (!server_id && expect_server_id) {
 		REDEBUG("Missing Server-ID");
 		return NULL;
@@ -224,8 +224,26 @@ process_dhcpv6_client_fields_t *dhcpv6_client_fields_store(request_t *request, b
 
 	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), process_dhcpv6_client_fields_t));
 	rctx->transaction_id = fr_pair_copy(rctx, transaction_id);
-	rctx->client_id = fr_pair_copy(rctx, client_id);
-	if (expect_server_id) rctx->server_id = fr_pair_copy(rctx, server_id);
+
+	/*
+	 *	These should just become straight copies
+	 *	when the structure pairs are nested.
+	 */
+	if (fr_pair_list_copy_by_ancestor(rctx, &rctx->client_id,
+					  &request->request_pairs, attr_client_id, 0) < 0) {
+		REDEBUG("Error copying Client-ID");
+	error:
+		talloc_free(rctx);
+		return NULL;
+	}
+
+	if (expect_server_id) {
+		if (fr_pair_list_copy_by_ancestor(rctx, &rctx->server_id,
+						  &request->request_pairs, attr_server_id, 0) < 0) {
+			REDEBUG("Error copying Server-ID");
+			goto error;
+		}
+	}
 
 	return rctx;
 }
@@ -296,7 +314,8 @@ RECV(for_this_server)
 static inline CC_HINT(always_inline)
 int restore_field(request_t *request, fr_pair_t **to_restore)
 {
-	fr_pair_t			*vp;
+	fr_pair_t	*vp;
+	int		ret = 0;
 
 	PAIR_VERIFY(*to_restore);
 
@@ -304,16 +323,34 @@ int restore_field(request_t *request, fr_pair_t **to_restore)
 	if (vp) {
 		if (fr_pair_cmp(vp, *to_restore) != 0) {
 			RWDEBUG("&reply.%pP does not match &request.%pP", vp, *to_restore);
-			return 0;
+		free:
+			talloc_free(*to_restore);
+			*to_restore = NULL;
+			return ret;
 		}
 	} else if (fr_pair_steal_append(request->reply_ctx, &request->reply_pairs, *to_restore) < 0) {
 		RPERROR("Failed adding %s", (*to_restore)->da->name);
-		return -1;
+		ret = -1;
+		goto free;
 	}
 	*to_restore = NULL;
 
 	return 0;
 }
+
+static inline CC_HINT(always_inline)
+int restore_field_list(request_t *request, fr_pair_list_t *to_restore)
+{
+	fr_pair_t *vp;
+
+	while ((vp = fr_pair_list_head(to_restore))) {
+		fr_pair_remove(to_restore, vp);
+		if (restore_field(request, &vp) < 0) return -1;
+	}
+
+	return 0;
+}
+
 
 /** Add a status code if one doesn't already exist
  *
@@ -364,8 +401,10 @@ RESUME(send_to_client)
 		*p_result = RLM_MODULE_FAIL;
 		return CALL_RESUME(send_generic);
 	}
-	if (unlikely(restore_field(request, &fields->client_id) < 0)) goto fail;
-	if (fields->server_id && unlikely(restore_field(request, &fields->server_id) < 0)) goto fail;
+	if (unlikely(restore_field_list(request, &fields->client_id) < 0)) goto fail;
+	if (unlikely(restore_field_list(request, &fields->server_id) < 0)) goto fail;
+
+	dhcpv6_packet_debug(request, request->reply, &request->reply_pairs, false);
 
 	return CALL_RESUME(send_generic);
 }
@@ -453,6 +492,8 @@ RESUME(send_to_relay)
 	}
 	if (unlikely(restore_field(request, &fields->link_address) < 0)) goto fail;
 	if (unlikely(restore_field(request, &fields->peer_address) < 0)) goto fail;
+
+	dhcpv6_packet_debug(request, request->reply, &request->reply_pairs, false);
 
 	return CALL_RESUME(send_generic);
 }
