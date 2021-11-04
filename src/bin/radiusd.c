@@ -47,7 +47,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 
 #ifdef HAVE_CAPABILITY_H
-#include <freeradius-devel/util/cap.h
+#include <freeradius-devel/util/cap.h>
 #endif
 
 #include <ctype.h>
