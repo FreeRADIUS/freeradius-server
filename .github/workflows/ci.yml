@@ -177,6 +177,17 @@ jobs:
 
         mysql -h 127.0.0.1 -uroot -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '';"
 
+        for i in \
+            postgresql-setup.sh \
+            mysql-setup.sh \
+            ldap-setup.sh \
+            ldap2-setup.sh; do
+
+            script="./scripts/ci/$i"
+            echo "Calling $i"
+            $script
+        done
+
         make ci-test
 
     #
