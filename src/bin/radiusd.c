@@ -198,7 +198,7 @@ static void fr_exit_after(fr_event_list_t *el, fr_time_t now, void *uctx)
 #define DUMP_CAPABILITIES(_phase) \
 { \
 	char *cap_str; \
-	if (fr_cap_set_to_str(autofree, &cap_str) < 0) { \
+	if (fr_cap_set_to_str(talloc_autofree_context(), &cap_str) < 0) { \
 		PWARN("Failed retrieving %s capabilities", _phase); \
 	} else { \
 		INFO("%s capabilities: %s", cap_str, _phase); \
