@@ -283,4 +283,33 @@ done:
 
 	return ret;
 }
+
+/** Snapshot the processes' current capability set, printing it to a string
+ *
+ * @param[in] ctx	Where to allocate the string.
+ * @param[out] out	The string containing the capabilities.
+ */
+ssize_t fr_cap_set_to_str(TALLOC_CTX *ctx, char **out)
+{
+	cap_t caps = NULL;
+	char const *tmp;
+	size_t len;
+
+	caps = cap_get_proc();
+	if (unlikely(!caps)) {
+		fr_strerror_printf("Failed retrieving process capabilities: %s", fr_syserror(errno));
+		return -1;
+	}
+	tmp = cap_to_text(out, &len)
+	cap_free(caps);
+	if (unlikely(!tmp)) {
+		fr_strerror_printf("Failed converting capabilities to string: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	*out = talloc_bstrndup(ctx, tmp, len);
+	free(tmp);
+
+	return ret;
+}
 #endif	/* HAVE_CAPABILITY_H */

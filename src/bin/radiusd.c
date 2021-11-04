@@ -46,6 +46,10 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
 
+#ifdef HAVE_CAPABILITY_H
+#include <freeradius-devel/util/cap.h
+#endif
+
 #include <ctype.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -188,6 +192,21 @@ static void fr_exit_after(fr_event_list_t *el, fr_time_t now, void *uctx)
 
 	main_loop_signal_raise(RADIUS_SIGNAL_SELF_TERM);
 }
+#endif
+
+#ifdef HAVE_CAPABILITIES_H
+#define DUMP_CAPABILITIES(_phase) \
+{ \
+	char *cap_str; \
+	if (fr_cap_set_to_str(autofree, &cap_str) < 0) { \
+		PWARN("Failed retrieving %s capabilities", _phase); \
+	} else { \
+		INFO("%s capabilities: %s", cap_str, _phase); \
+		talloc_free(cap_str); \
+	} \
+}
+#else
+#define DUMP_CAPABILITIES(_phase)
 #endif
 
 /** Entry point for the daemon
@@ -650,6 +669,8 @@ int main(int argc, char *argv[])
 		pid_t pid;
 		int devnull;
 
+		DUMP_CAPABILITIES("pre-fork");
+
 		/*
 		 *  Really weird things happen if we leave stdin open and call things like
 		 *  system() later.
@@ -729,6 +750,10 @@ int main(int argc, char *argv[])
 #ifdef HAVE_SETSID
 		setsid();
 #endif
+
+		DUMP_CAPABILITIES("post-fork");
+	} else {
+		DUMP_CAPABILITIES("pre-suid-down");
 	}
 
 	/*
@@ -820,6 +845,8 @@ int main(int argc, char *argv[])
 	 *	back to root uid.
 	 */
 	rad_suid_down_permanent();
+
+	DUMP_CAPABILITIES("post-suid-down");
 
 	/*
 	 *	Dropping down may change the RLIMIT_CORE value, so
