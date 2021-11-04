@@ -1,0 +1,34 @@
+/* config.h.in.  Generated from configure.ac by autoheader.  */
+
+/* Build with JSON support from json-c */
+#undef HAVE_JSON
+
+/* json.h is at json-c/json.h relative to include dir */
+#undef HAVE_JSONMC_JSON_H
+
+/* Define to 1 if you have the `json_c_version' function. */
+#undef HAVE_JSON_C_VERSION
+
+/* json.h is at json/json.h relative to include dir */
+#undef HAVE_JSON_JSON_H
+
+/* Define to 1 if you have the `json_object_get_int64' function. */
+#undef HAVE_JSON_OBJECT_GET_INT64
+
+/* Define to 1 if you have the `json_object_get_string_len' function. */
+#undef HAVE_JSON_OBJECT_GET_STRING_LEN
+
+/* Define to 1 if you have the `json_object_new_int64' function. */
+#undef HAVE_JSON_OBJECT_NEW_INT64
+
+/* Define to 1 if you have the `json_object_object_add_ex' function. */
+#undef HAVE_JSON_OBJECT_OBJECT_ADD_EX
+
+/* Define to 1 if you have the `json_object_object_get_ex' function. */
+#undef HAVE_JSON_OBJECT_OBJECT_GET_EX
+
+/* Define to 1 if you have the `json_tokener_error_desc' function. */
+#undef HAVE_JSON_TOKENER_ERROR_DESC
+
+/* Define to 1 if you have the `json_tokener_get_error' function. */
+#undef HAVE_JSON_TOKENER_GET_ERROR

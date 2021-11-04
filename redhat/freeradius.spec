@@ -301,7 +301,7 @@ This plugin provides Redis support for the FreeRADIUS server project.
 %endif
 
 %package rest
-Summary: REST support for FreeRADIUS
+Summary: REST and JSON support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
 Requires: json-c >= 0.10
@@ -880,6 +880,7 @@ fi
 %files rest
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_rest.so
+%{_libdir}/freeradius/rlm_json.so
 
 %if %{?_with_rlm_ruby:1}%{!?_with_rlm_ruby:0}
 %files ruby

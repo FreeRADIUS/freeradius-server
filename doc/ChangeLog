@@ -11,6 +11,7 @@ FreeRADIUS 3.2.0 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	  day of the month the counter should be reset.
 	* Add dictionary.mellanox
 	* Update dictionary.aruba
+	* Partial backport of rlm_json from v4, providing the json_encode xlat
 
 	Bug fixes
 	* Ensure PBKDF2 always uses at least one iteration

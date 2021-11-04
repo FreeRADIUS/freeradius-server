@@ -13,6 +13,7 @@ rlm_expiration
 rlm_expr
 rlm_files
 rlm_ippool
+rlm_json
 rlm_krb5
 rlm_ldap
 rlm_linelog
