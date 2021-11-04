@@ -300,7 +300,7 @@ ssize_t fr_cap_set_to_str(TALLOC_CTX *ctx, char **out)
 		fr_strerror_printf("Failed retrieving process capabilities: %s", fr_syserror(errno));
 		return -1;
 	}
-	tmp = cap_to_text(caps, &len);
+	tmp = cap_to_text(caps, &slen);
 	cap_free(caps);
 	if (unlikely(!tmp)) {
 		fr_strerror_printf("Failed converting capabilities to string: %s", fr_syserror(errno));
