@@ -73,6 +73,7 @@ ATTRIBUTE	UBT-Gateway-CPPM-Role			59	string
 
 ATTRIBUTE	AP-MAC-Address				60	string
 ATTRIBUTE	Device-MAC-Address			61	string
+ATTRIBUTE	Device-Traffic-Class			63	integer
 
 VALUE	AirGroup-Device-Type		Personal-Device		1
 VALUE	AirGroup-Device-Type		Shared-Device		2
@@ -87,6 +88,7 @@ VALUE	PoE-Priority			Low			2
 
 VALUE	Port-Auth-Mode			Infrastructure-Mode	1
 VALUE	Port-Auth-Mode			Client-Mode		2
+VALUE	Port-Auth-Mode			Multi-Domain-Mode	3
 
 VALUE	QoS-Trust-Mode			DSCP			0
 VALUE	QoS-Trust-Mode			QoS			1
