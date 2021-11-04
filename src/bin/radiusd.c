@@ -194,7 +194,7 @@ static void fr_exit_after(fr_event_list_t *el, fr_time_t now, void *uctx)
 }
 #endif
 
-#ifdef HAVE_CAPABILITIES_H
+#ifdef HAVE_CAPABILITY_H
 #define DUMP_CAPABILITIES(_phase) \
 { \
 	char *cap_str; \
