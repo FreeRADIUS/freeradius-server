@@ -128,6 +128,7 @@ typedef struct {
 	fr_pair_t	*hop_count;
 	fr_pair_t	*link_address;
 	fr_pair_t	*peer_address;
+	fr_pair_t	*interface_id;
 } process_dhcpv6_relay_fields_t;
 
 #define PROCESS_PACKET_TYPE		fr_dhcpv6_packet_code_t
@@ -427,7 +428,7 @@ RESUME(send_to_client)
 static inline CC_HINT(always_inline)
 process_dhcpv6_relay_fields_t *dhcpv6_relay_fields_store(request_t *request)
 {
-	fr_pair_t		 	*hop_count, *link_address, *peer_address;
+	fr_pair_t		 	*hop_count, *link_address, *peer_address, *interface_id;
 	process_dhcpv6_relay_fields_t	*rctx;
 
 	hop_count = fr_pair_find_by_da(&request->request_pairs, attr_hop_count, 0);
@@ -448,6 +449,8 @@ process_dhcpv6_relay_fields_t *dhcpv6_relay_fields_store(request_t *request)
 		return NULL;
 	}
 
+	interface_id = fr_pair_find_by_da(&request->request_pairs, attr_interface_id, 0);
+
 	/*
 	 *	Remember the relay fields
 	 */
@@ -455,6 +458,7 @@ process_dhcpv6_relay_fields_t *dhcpv6_relay_fields_store(request_t *request)
 	MEM(rctx->hop_count = fr_pair_copy(rctx, hop_count));
 	MEM(rctx->link_address = fr_pair_copy(rctx, link_address));
 	MEM(rctx->peer_address = fr_pair_copy(rctx, peer_address));
+	if (interface_id) MEM(rctx->interface_id = fr_pair_copy(rctx, interface_id));	/* Optional */
 
 	return rctx;
 }
@@ -504,6 +508,7 @@ RESUME(send_to_relay)
 	}
 	if (unlikely(restore_field(request, &fields->link_address) < 0)) goto fail;
 	if (unlikely(restore_field(request, &fields->peer_address) < 0)) goto fail;
+	if (fields->interface_id && unlikely(restore_field(request, &fields->interface_id) < 0)) goto fail;
 
 	dhcpv6_packet_debug(request, request->reply, &request->reply_pairs, false);
 
