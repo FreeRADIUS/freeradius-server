@@ -201,7 +201,7 @@ static void fr_exit_after(fr_event_list_t *el, fr_time_t now, void *uctx)
 	if (fr_cap_set_to_str(talloc_autofree_context(), &cap_str) < 0) { \
 		PWARN("Failed retrieving %s capabilities", _phase); \
 	} else { \
-		INFO("%s capabilities: %s", cap_str, _phase); \
+		INFO("%s capabilities: %s", _phase, cap_str); \
 		talloc_free(cap_str); \
 	} \
 }
