@@ -311,10 +311,18 @@ endif
 ifneq "$(wildcard config.log)" ""
 CONFIGURE_ARGS	   := $(shell head -10 config.log | grep '^  \$$' | sed 's/^....//;s:.*configure ::')
 
+#
+#  ONLY re-run "configure" if we're told to do that.  Otherwise every
+#  change to a configure file will have it try to re-run the local
+#  configure script, which doesn't always work.
+#
 src/%all.mk: src/%all.mk.in src/%configure
-	@echo CONFIGURE $(dir $@)
-	@rm -f ./config.cache $(dir $<)/config.cache
-	@cd $(dir $<) && ./configure $(CONFIGURE_ARGS)
+	@echo WARNING: $@ is out of date.  Please re-run 'configure'
+
+#	@echo CONFIGURE $(dir $@)
+#	@rm -f ./config.cache $(dir $<)/config.cache
+#	@cd $(dir $<) && ./configure $(CONFIGURE_ARGS)
+
 endif
 
 .PHONY: check-includes
