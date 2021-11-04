@@ -627,7 +627,7 @@ static xlat_action_t xlat_load_balance(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 *	cost.
 		 */
 		xlat = xlat_func_find(name, -1);
-		if (!xlat) return -1;
+		if (!xlat) return XLAT_ACTION_FAIL;
 
 		return xlat->func.async(ctx, out, request, xlat->mod_inst, xlat->thread_uctx, in);
 	}
@@ -713,6 +713,8 @@ int xlat_register_redundant(CONF_SECTION *cs)
 
 	} else {
 		fr_assert(0);
+		cf_log_err(cs, "Invalid redundant section verb");
+		return -1;
 	}
 
 	xr->cs = cs;

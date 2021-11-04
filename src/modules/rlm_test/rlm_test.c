@@ -439,7 +439,7 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	xlat_t *xlat;
 	rlm_test_t *inst = instance;
