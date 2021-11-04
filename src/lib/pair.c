@@ -235,6 +235,30 @@ void fr_pair_delete_by_num(VALUE_PAIR **first, unsigned int attr, unsigned int v
 	}
 }
 
+/** Delete matching pairs by da
+ *
+ * Delete matching pairs from the attribute list.
+ *
+ * @param[in,out] first VP in list.
+ * @param[in] da to match.
+ */
+void fr_pair_delete_by_da(VALUE_PAIR **first, DICT_ATTR const *da)
+{
+	VALUE_PAIR *i, *next;
+	VALUE_PAIR **last = first;
+
+	for(i = *first; i; i = next) {
+		VERIFY_VP(i);
+		next = i->next;
+		if (i->da == da) {
+			*last = next;
+			talloc_free(i);
+		} else {
+			last = &i->next;
+		}
+	}
+}
+
 /** Add a VP to the end of the list.
  *
  * Locates the end of 'first', and links an additional VP 'add' at the end.
