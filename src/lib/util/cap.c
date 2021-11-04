@@ -307,7 +307,7 @@ ssize_t fr_cap_set_to_str(TALLOC_CTX *ctx, char **out)
 		return -1;
 	}
 
-	*out = talloc_bstrndup(ctx, tmp, len);
+	*out = talloc_bstrndup(ctx, tmp, slen);
 	free(tmp);
 
 	return slen;
