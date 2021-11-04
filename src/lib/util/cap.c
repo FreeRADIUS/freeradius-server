@@ -293,7 +293,7 @@ done:
 ssize_t fr_cap_set_to_str(TALLOC_CTX *ctx, char **out)
 {
 	cap_t caps = NULL;
-	char const *tmp;
+	char *tmp;
 	size_t len;
 
 	caps = cap_get_proc();
@@ -301,7 +301,7 @@ ssize_t fr_cap_set_to_str(TALLOC_CTX *ctx, char **out)
 		fr_strerror_printf("Failed retrieving process capabilities: %s", fr_syserror(errno));
 		return -1;
 	}
-	tmp = cap_to_text(out, &len)
+	tmp = cap_to_text(caps, &len);
 	cap_free(caps);
 	if (unlikely(!tmp)) {
 		fr_strerror_printf("Failed converting capabilities to string: %s", fr_syserror(errno));
@@ -311,6 +311,6 @@ ssize_t fr_cap_set_to_str(TALLOC_CTX *ctx, char **out)
 	*out = talloc_bstrndup(ctx, tmp, len);
 	free(tmp);
 
-	return ret;
+	return len;
 }
 #endif	/* HAVE_CAPABILITY_H */
