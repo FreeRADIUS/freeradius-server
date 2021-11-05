@@ -190,7 +190,7 @@ static void dhcpv6_packet_debug(request_t *request, fr_radius_packet_t const *pa
 	if (received || request->parent) {
 		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
 	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, dict_dhcpv6, list, NULL);
+		log_request_proto_pair_list(L_DBG_LVL_1, request, fr_dict_root(dict_dhcpv6), list, NULL);
 	}
 
 	request->module = module;

@@ -104,7 +104,7 @@ static void dhcpv4_packet_debug(request_t *request, fr_radius_packet_t *packet, 
 	if (received || request->parent) {
 		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
 	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, dict_dhcpv4, list, NULL);
+		log_request_proto_pair_list(L_DBG_LVL_1, request, fr_dict_root(dict_dhcpv4), list, NULL);
 	}
 }
 
