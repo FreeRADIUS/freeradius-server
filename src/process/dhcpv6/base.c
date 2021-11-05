@@ -774,7 +774,7 @@ static fr_process_state_t const process_state[] = {
 	 *	addresses to the client.
 	 */
 	[ FR_DHCPV6_INFORMATION_REQUEST ] = {
-		.recv = recv_for_this_server,
+		.recv = recv_for_any_server,
 		.resume = resume_recv_generic,
 		.packet_type = {
 			[RLM_MODULE_NOOP]	= FR_DHCPV6_REPLY,
