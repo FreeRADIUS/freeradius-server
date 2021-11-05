@@ -172,7 +172,7 @@ static void arp_packet_debug(request_t *request, fr_radius_packet_t const *packe
 	if (received || request->parent) {
 		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
 	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
+		log_request_proto_pair_list(L_DBG_LVL_1, request, dict_arp, list, NULL);
 	}
 }
 
