@@ -1295,7 +1295,7 @@ rlm_rcode_t virtual_server_process_auth(request_t *request, CONF_SECTION *virtua
 	char const	*auth_name;
 	rlm_rcode_t	rcode = RLM_MODULE_NOOP;
 
-	vp = fr_pair_find_by_da(&request->control_pairs, attr_auth_type, 0);
+	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_auth_type, 0);
 	if (!vp) {
 		RDEBUG2("No &control.Auth-Type found");
 	fail:

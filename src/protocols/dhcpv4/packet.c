@@ -214,7 +214,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 		}
 
 		if (code) {
-			vp = fr_pair_find_by_da(&tmp, attr_dhcp_message_type, 0);
+			vp = fr_pair_find_by_da_idx(&tmp, attr_dhcp_message_type, 0);
 			if (vp) {
 				*code = vp->vp_uint8;
 			}
@@ -224,7 +224,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 		 *	If option Overload is present in the 'options' field, then fields 'file' and/or 'sname'
 		 *	are used to hold more options. They are partitioned and must be interpreted in sequence.
 		 */
-		vp = fr_pair_find_by_da(&tmp, attr_dhcp_overload, 0);
+		vp = fr_pair_find_by_da_idx(&tmp, attr_dhcp_overload, 0);
 		if (vp) {
 			if ((vp->vp_uint8 & 1) == 1) {
 				/*
@@ -281,14 +281,14 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 		/*
 		 *	DHCP Opcode is request
 		 */
-		vp = fr_pair_find_by_da(&tmp, attr_dhcp_opcode, 0);
+		vp = fr_pair_find_by_da_idx(&tmp, attr_dhcp_opcode, 0);
 		if (vp && vp->vp_uint8 == 1) {
 			/*
 			 *	Vendor is "MSFT 98"
 			 */
-			vp = fr_pair_find_by_da(&tmp, attr_dhcp_vendor_class_identifier, 0);
+			vp = fr_pair_find_by_da_idx(&tmp, attr_dhcp_vendor_class_identifier, 0);
 			if (vp && (vp->vp_length == 7) && (memcmp(vp->vp_strvalue, "MSFT 98", 7) == 0)) {
-				vp = fr_pair_find_by_da(&tmp, attr_dhcp_flags, 0);
+				vp = fr_pair_find_by_da_idx(&tmp, attr_dhcp_flags, 0);
 
 				/*
 				 *	Reply should be broadcast.
@@ -315,12 +315,12 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 	/*
 	 *	First look for Relay-Link-Selection
 	 */
-	netaddr = fr_pair_find_by_da(&tmp, attr_dhcp_relay_link_selection, 0);
+	netaddr = fr_pair_find_by_da_idx(&tmp, attr_dhcp_relay_link_selection, 0);
 	if (!netaddr) {
 		/*
 		 *	Next try Subnet-Selection-Option
 		 */
-		netaddr = fr_pair_find_by_da(&tmp, attr_dhcp_subnet_selection_option, 0);
+		netaddr = fr_pair_find_by_da_idx(&tmp, attr_dhcp_subnet_selection_option, 0);
 	}
 
 	if (netaddr) {
@@ -354,8 +354,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 	 *	Client can request a LARGER size, but not a smaller
 	 *	one.  They also cannot request a size larger than MTU.
 	 */
-	maxms = fr_pair_find_by_da(&tmp, attr_dhcp_dhcp_maximum_msg_size, 0);
-	mtu = fr_pair_find_by_da(&tmp, attr_dhcp_interface_mtu_size, 0);
+	maxms = fr_pair_find_by_da_idx(&tmp, attr_dhcp_dhcp_maximum_msg_size, 0);
+	mtu = fr_pair_find_by_da_idx(&tmp, attr_dhcp_interface_mtu_size, 0);
 
 	if (mtu && (mtu->vp_uint16 < DEFAULT_PACKET_SIZE)) {
 		fr_strerror_const("Client says MTU is smaller than minimum permitted by the specification");
@@ -396,7 +396,7 @@ int fr_dhcpv4_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list)
 	if (packet->code == 0) packet->code = FR_DHCP_NAK;
 
 	/* store xid */
-	if ((vp = fr_pair_find_by_da(list, attr_dhcp_transaction_id, 0))) {
+	if ((vp = fr_pair_find_by_da_idx(list, attr_dhcp_transaction_id, 0))) {
 		packet->id = vp->vp_uint32;
 	} else {
 		packet->id = fr_rand();

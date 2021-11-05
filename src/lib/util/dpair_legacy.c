@@ -701,7 +701,7 @@ void fr_pair_list_move(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t op)
 		 *	it doesn't already exist.
 		 */
 		case T_OP_EQ:
-			found = fr_pair_find_by_da(to, i->da);
+			found = fr_pair_find_by_da_idx(to, i->da);
 			if (!found) goto do_add;
 
 			i = fr_pair_list_next(from, i);
@@ -712,7 +712,7 @@ void fr_pair_list_move(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t op)
 		 *	of the same vendor/attr which already exists.
 		 */
 		case T_OP_SET:
-			found = fr_pair_find_by_da(to, i->da);
+			found = fr_pair_find_by_da_idx(to, i->da);
 			if (!found) goto do_add;
 
 			/*

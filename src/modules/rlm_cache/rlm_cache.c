@@ -428,7 +428,7 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 	/*
 	 *	Check to see if we need to merge the entry into the request
 	 */
-	vp = fr_pair_find_by_da(&request->control_pairs, attr_cache_merge_new, 0);
+	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_cache_merge_new, 0);
 	if (vp && vp->vp_bool) merge = true;
 
 	if (merge) cache_merge(inst, request, c);
@@ -567,7 +567,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, modu
 	 *	If Cache-Status-Only == yes, only return whether we found a
 	 *	valid cache entry
 	 */
-	vp = fr_pair_find_by_da(&request->control_pairs, attr_cache_status_only, 0);
+	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_cache_status_only, 0);
 	if (vp && vp->vp_bool) {
 		RINDENT();
 		RDEBUG3("status-only: yes");
@@ -589,13 +589,13 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, modu
 	/*
 	 *	Figure out what operation we're doing
 	 */
-	vp = fr_pair_find_by_da(&request->control_pairs, attr_cache_allow_merge, 0);
+	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_cache_allow_merge, 0);
 	if (vp) merge = vp->vp_bool;
 
-	vp = fr_pair_find_by_da(&request->control_pairs, attr_cache_allow_insert, 0);
+	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_cache_allow_insert, 0);
 	if (vp) insert = vp->vp_bool;
 
-	vp = fr_pair_find_by_da(&request->control_pairs, attr_cache_ttl, 0);
+	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_cache_ttl, 0);
 	if (vp) {
 		if (vp->vp_int32 == 0) {
 			expire = true;
@@ -1212,7 +1212,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(rlm_rcode_t *p_result, 
 
 	/* Process the TTL */
 	ttl = inst->config.ttl; /* Set the default value from cache { ttl=... } */
-	vp = fr_pair_find_by_da(&request->control_pairs, attr_cache_ttl, 0);
+	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_cache_ttl, 0);
 	if (vp) {
 		if (vp->vp_int32 == 0) {
 			expire = true;
@@ -1363,7 +1363,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl(rlm_rcode_t *p_result, mo
 
 	/* Process the TTL */
 	ttl = inst->config.ttl; /* Set the default value from cache { ttl=... } */
-	vp = fr_pair_find_by_da(&request->control_pairs, attr_cache_ttl, 0);
+	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_cache_ttl, 0);
 	if (vp) {
 		if (vp->vp_int32 < 0) {
 			ttl = fr_time_delta_from_sec(-(vp->vp_int32));

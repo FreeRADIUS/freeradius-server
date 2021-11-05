@@ -337,7 +337,7 @@ static void do_test_fr_pair_append(unsigned int len, unsigned int perc, unsigned
 	TEST_MSG_ALWAYS("per_sec=%0.0lf", (reps * len)/(fr_time_delta_unwrap(used) / (double)NSEC));
 }
 
-static void do_test_fr_pair_find_by_da(unsigned int len, unsigned int perc, unsigned int reps, fr_pair_t *source_vps[])
+static void do_test_fr_pair_find_by_da_idx(unsigned int len, unsigned int perc, unsigned int reps, fr_pair_t *source_vps[])
 {
 	fr_pair_list_t		test_vps;
 	unsigned int		i, j;
@@ -367,7 +367,7 @@ static void do_test_fr_pair_find_by_da(unsigned int len, unsigned int perc, unsi
 			int idx = rand() % input_count;
 			da = source_vps[idx]->da;
 			start = fr_time();
-			(void) fr_pair_find_by_da(&test_vps, da, 0);
+			(void) fr_pair_find_by_da_idx(&test_vps, da, 0);
 			end = fr_time();
 			used = fr_time_delta_add(used, fr_time_sub(end, start));
 		}
@@ -413,7 +413,7 @@ static void do_test_find_nth(unsigned int len, unsigned int perc, unsigned int r
 
 			da = source_vps[idx]->da;
 			start = fr_time();
-			(void) fr_pair_find_by_da(&test_vps, da, nth_item);
+			(void) fr_pair_find_by_da_idx(&test_vps, da, nth_item);
 			end = fr_time();
 			used = fr_time_delta_add(used, fr_time_sub(end, start));
 		}
@@ -478,7 +478,7 @@ static void test_ ## _func ## _ ## _count ## _ ## _perc(void)\
 	test_funcs(_func, 100)
 
 all_test_funcs(fr_pair_append)
-all_test_funcs(fr_pair_find_by_da)
+all_test_funcs(fr_pair_find_by_da_idx)
 all_test_funcs(find_nth)
 all_test_funcs(fr_pair_list_free)
 
@@ -498,7 +498,7 @@ all_test_funcs(fr_pair_list_free)
 
 TEST_LIST = {
 	all_repetition_tests(fr_pair_append)
-	all_repetition_tests(fr_pair_find_by_da)
+	all_repetition_tests(fr_pair_find_by_da_idx)
 	all_repetition_tests(find_nth)
 	all_repetition_tests(fr_pair_list_free)
 

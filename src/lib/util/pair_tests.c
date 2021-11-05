@@ -230,12 +230,12 @@ static void test_fr_pair_dcursor_by_ancestor_init(void)
 	TEST_CHECK(needle && needle->da == fr_dict_attr_test_tlv_string);
 }
 
-static void test_fr_pair_find_by_da(void)
+static void test_fr_pair_find_by_da_idx(void)
 {
 	fr_pair_t *vp;
 
-	TEST_CASE("Search for fr_dict_attr_test_tlv_string using fr_pair_find_by_da()");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_tlv_string, 0)) != NULL);
+	TEST_CASE("Search for fr_dict_attr_test_tlv_string using fr_pair_find_by_da_idx()");
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_tlv_string, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -244,12 +244,12 @@ static void test_fr_pair_find_by_da(void)
 	TEST_CHECK(vp && vp->da == fr_dict_attr_test_tlv_string);
 }
 
-static void test_fr_pair_find_by_child_num(void)
+static void test_fr_pair_find_by_child_num_idx(void)
 {
 	fr_pair_t *vp;
 
-	TEST_CASE("Search for FR_TEST_ATTR_STRING using fr_pair_find_by_child_num()");
-	TEST_CHECK((vp = fr_pair_find_by_child_num(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING, 0)) != NULL);
+	TEST_CASE("Search for FR_TEST_ATTR_STRING using fr_pair_find_by_child_num_idx()");
+	TEST_CHECK((vp = fr_pair_find_by_child_num_idx(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -290,7 +290,7 @@ static void test_fr_pair_delete_by_child_num(void)
 	fr_pair_delete_by_child_num(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING);
 
 	TEST_CASE("The fr_dict_attr_test_string shouldn't exist in 'test_pairs'");
-	TEST_CHECK(fr_pair_find_by_child_num(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING, 0) == NULL);
+	TEST_CHECK(fr_pair_find_by_child_num_idx(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING, 0) == NULL);
 
 	TEST_CASE("Add fr_dict_attr_test_string back into 'test_pairs'");
 	TEST_CHECK(fr_pair_prepend_by_da(autofree, NULL, &test_pairs, fr_dict_attr_test_string) == 0);
@@ -328,7 +328,7 @@ static void test_fr_pair_update_by_da(void)
 	vp->vp_uint32 = 54321;
 
 	TEST_CASE("Expected fr_dict_attr_test_uint32 (vp->vp_uint32 == 54321)");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_uint32, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_uint32, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -343,7 +343,7 @@ static void test_fr_pair_delete_by_da(void)
 	TEST_CHECK(fr_pair_delete_by_da(&test_pairs, fr_dict_attr_test_string) == 1);
 
 	TEST_CASE("The fr_dict_attr_test_string shouldn't exist in 'test_pairs'");
-	TEST_CHECK(fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0) == NULL);
+	TEST_CHECK(fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_string, 0) == NULL);
 
 	TEST_CASE("Add fr_dict_attr_test_string back into 'test_pairs'");
 	TEST_CHECK(fr_pair_prepend_by_da(autofree, NULL, &test_pairs, fr_dict_attr_test_string) == 0);
@@ -354,11 +354,11 @@ static void test_fr_pair_delete(void)
 	fr_pair_t *vp;
 
 	TEST_CASE("Delete fr_dict_attr_test_string using fr_pair_delete()");
-	TEST_CHECK((vp = fr_pair_find_by_child_num(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_child_num_idx(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING, 0)) != NULL);
 	fr_pair_delete(&test_pairs, vp);
 
 	TEST_CASE("The fr_dict_attr_test_string shouldn't exist in 'test_pairs'");
-	TEST_CHECK((vp = fr_pair_find_by_child_num(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING, 0)) == NULL);
+	TEST_CHECK((vp = fr_pair_find_by_child_num_idx(&test_pairs, fr_dict_root(test_dict), FR_TEST_ATTR_STRING, 0)) == NULL);
 
 	TEST_CASE("Add fr_dict_attr_test_string back into 'test_pairs'");
 	TEST_CHECK(fr_pair_prepend_by_da(autofree, NULL, &test_pairs, fr_dict_attr_test_string) == 0);
@@ -541,7 +541,7 @@ static void test_fr_pair_value_copy(void)
 	fr_pair_t *vp1, vp2;
 
 	TEST_CASE("Create 'vp1' with Test-Integer = 123");
-	TEST_CHECK((vp1 = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_uint32, 0)) != NULL);
+	TEST_CHECK((vp1 = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_uint32, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp1);
@@ -560,7 +560,7 @@ static void test_fr_pair_value_from_str(void)
 	fr_pair_t *vp;
 
 	TEST_CASE("Find 'Test-String'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -580,7 +580,7 @@ static void test_fr_pair_value_strdup(void)
 	fr_pair_t *vp;
 
 	TEST_CASE("Find 'Test-String'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -601,7 +601,7 @@ static void test_fr_pair_value_strdup_shallow(void)
 	char      *copy_test_string;
 
 	TEST_CASE("Find 'Test-String'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -626,7 +626,7 @@ static void test_fr_pair_value_strtrim(void)
 	fr_pair_t *vp;
 
 	TEST_CASE("Find 'Test-String'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -653,7 +653,7 @@ static void test_fr_pair_value_aprintf(void)
 	snprintf(fmt_test, sizeof(fmt_test), "Now is %"PRId64, fr_time_unwrap(now));
 
 	TEST_CASE("Find 'Test-String'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -674,7 +674,7 @@ static void test_fr_pair_value_bstr_alloc(void)
 	char      *out = NULL;
 
 	TEST_CASE("Find 'Test-String'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -701,7 +701,7 @@ static void test_fr_pair_value_bstr_realloc(void)
 	char      *out = NULL;
 
 	TEST_CASE("Find 'Test-String'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -730,7 +730,7 @@ static void test_fr_pair_value_bstrndup(void)
 	fr_pair_t *vp;
 
 	TEST_CASE("Find 'Test-String'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -748,7 +748,7 @@ static void test_fr_pair_value_bstrdup_buffer(void)
 	char      *copy_test_string;
 
 	TEST_CASE("Find 'Test-String'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -771,7 +771,7 @@ static void test_fr_pair_value_bstrndup_shallow(void)
 	char      *copy_test_string;
 
 	TEST_CASE("Find 'Test-String'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -794,7 +794,7 @@ static void test_fr_pair_value_bstrdup_buffer_shallow(void)
 	char      *copy_test_string;
 
 	TEST_CASE("Find 'Test-String'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -817,7 +817,7 @@ static void test_fr_pair_value_bstrn_append(void)
 	char      *copy_test_string;
 
 	TEST_CASE("Find 'Test-String'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -847,7 +847,7 @@ static void test_fr_pair_value_bstr_append_buffer(void)
 	char      *copy_test_string;
 
 	TEST_CASE("Find 'Test-String'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -880,7 +880,7 @@ static void test_fr_pair_value_mem_alloc(void)
 	uint8_t   *out;
 
 	TEST_CASE("Find 'Test-Octets'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -904,7 +904,7 @@ static void test_fr_pair_value_mem_realloc(void)
 	uint8_t   *out;
 
 	TEST_CASE("Find 'Test-Octets'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -941,7 +941,7 @@ static void test_fr_pair_value_memdup(void)
 	fr_pair_t *vp;
 
 	TEST_CASE("Find 'Test-Octets'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -959,7 +959,7 @@ static void test_fr_pair_value_memdup_buffer(void)
 	uint8_t   *copy_test_octets;
 
 	TEST_CASE("Find 'Test-Octets'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -982,7 +982,7 @@ static void test_fr_pair_value_memdup_shallow(void)
 	uint8_t   *copy_test_octets;
 
 	TEST_CASE("Find 'Test-Octets'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -1005,7 +1005,7 @@ static void test_fr_pair_value_memdup_buffer_shallow(void)
 	uint8_t   *copy_test_octets;
 
 	TEST_CASE("Find 'Test-Octets'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -1027,7 +1027,7 @@ static void test_fr_pair_value_mem_append(void)
 	fr_pair_t *vp;
 
 	TEST_CASE("Find 'Test-Octets'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -1052,7 +1052,7 @@ static void test_fr_pair_value_mem_append_buffer(void)
 	uint8_t   *copy_test_octets;
 
 	TEST_CASE("Find 'Test-Octets'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_octets, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -1083,7 +1083,7 @@ static void test_fr_pair_value_enum(void)
 	char        buf[20];
 
 	TEST_CASE("Find 'Test-Values'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_enum, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_enum, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -1105,7 +1105,7 @@ static void test_fr_pair_value_enum_box(void)
 	fr_value_box_t const *vb;
 
 	TEST_CASE("Find 'Test-Values'");
-	TEST_CHECK((vp = fr_pair_find_by_da(&test_pairs, fr_dict_attr_test_enum, 0)) != NULL);
+	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_enum, 0)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
@@ -1134,8 +1134,8 @@ TEST_LIST = {
 	{ "fr_dcursor_iter_by_da_init",           test_fr_pair_dcursor_by_da_init },
 	{ "fr_pair_dcursor_by_ancestor_init",     test_fr_pair_dcursor_by_ancestor_init },
 	{ "fr_pair_to_unknown",                   test_fr_pair_to_unknown },
-	{ "fr_pair_find_by_da",                   test_fr_pair_find_by_da },
-	{ "fr_pair_find_by_child_num",            test_fr_pair_find_by_child_num },
+	{ "fr_pair_find_by_da_idx",                   test_fr_pair_find_by_da_idx },
+	{ "fr_pair_find_by_child_num_idx",            test_fr_pair_find_by_child_num_idx },
 	{ "fr_pair_append",                       test_fr_pair_append },
 	{ "fr_pair_prepend_by_da",                test_fr_pair_prepend_by_da },
 	{ "fr_pair_delete_by_child_num",          test_fr_pair_delete_by_child_num },

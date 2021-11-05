@@ -557,7 +557,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t con
 	 *	We don't have a "pair find in out"
 	 */
 	if (flag_concat(&parent->flags)) {
-		vp = fr_pair_find_by_da(out, parent, 0);
+		vp = fr_pair_find_by_da_idx(out, parent, 0);
 		concat = (vp != NULL);
 	} else {
 		vp = NULL;

@@ -89,7 +89,7 @@ xlat_action_t trigger_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *reques
 		return XLAT_ACTION_FAIL;
 	}
 
-	vp = fr_pair_find_by_da(head, da, 0);
+	vp = fr_pair_find_by_da_idx(head, da, 0);
 	if (!vp) {
 		ERROR("Attribute \"%pV\" is not valid for this trigger", in_head);
 		return XLAT_ACTION_FAIL;

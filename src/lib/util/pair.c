@@ -627,30 +627,55 @@ unsigned int fr_pair_count_by_da(fr_pair_list_t const *list, fr_dict_attr_t cons
 	return count;
 }
 
-/** Find a pair with a matching da
+/** Find a pair with a matching da at a given index
  *
  * @param[in] list	to search in.
- * @param[in] da	to look for in the list.
- * @param[in] n		Instance of the attribute to return.
+ * @param[in] prev	the previous attribute in the list.
+ * @param[in] da	the next da to find.
  * @return
  *	- first matching fr_pair_t.
  *	- NULL if no fr_pair_ts match.
  *
  * @hidecallergraph
  */
-fr_pair_t *fr_pair_find_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *da, unsigned int n)
+fr_pair_t *fr_pair_find_by_da(fr_pair_list_t const *list, fr_pair_t const *prev, fr_dict_attr_t const *da)
 {
-	fr_pair_t	*vp = NULL;
+	fr_pair_t *vp = UNCONST(fr_pair_t *, prev);
+
+	if (fr_dlist_empty(&list->order)) return NULL;
+
+	PAIR_LIST_VERIFY(list);
+
+	while ((vp = fr_pair_list_next(list, vp))) if (da == vp->da) return vp;
+
+	return NULL;
+}
+
+/** Find a pair with a matching da at a given index
+ *
+ * @param[in] list	to search in.
+ * @param[in] da	to look for in the list.
+ * @param[in] idx	Instance of the attribute to return.
+ * @return
+ *	- first matching fr_pair_t.
+ *	- NULL if no fr_pair_ts match.
+ *
+ * @hidecallergraph
+ */
+fr_pair_t *fr_pair_find_by_da_idx(fr_pair_list_t const *list, fr_dict_attr_t const *da, unsigned int idx)
+{
+	fr_pair_t *vp = NULL;
 
 	if (fr_dlist_empty(&list->order)) return NULL;
 
 	PAIR_LIST_VERIFY(list);
 
 	while ((vp = fr_pair_list_next(list, vp))) {
-		if (da == vp->da) {
-			if (n == 0) return vp;
-			n--;
-		}
+		if (da != vp->da) continue;
+
+		if (idx == 0) return vp;
+
+		idx--;
 	}
 	return NULL;
 }
@@ -658,7 +683,7 @@ fr_pair_t *fr_pair_find_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *
 /** Find a pair which has the specified ancestor
  *
  * @param[in] list	to search in.
- * @param[in] prev	where to start the search from.
+ * @param[in] prev	attribute to start search from.
  * @param[in] ancestor	to look for in the list.
  * @return
  *	- first matching fr_pair_t.
@@ -666,10 +691,10 @@ fr_pair_t *fr_pair_find_by_da(fr_pair_list_t const *list, fr_dict_attr_t const *
  *
  * @hidecallergraph
  */
-fr_pair_t *fr_pair_find_by_ancestor(fr_pair_list_t const *list,
-				    fr_pair_t const *prev, fr_dict_attr_t const *ancestor)
+fr_pair_t *fr_pair_find_by_ancestor(fr_pair_list_t const *list, fr_pair_t const *prev,
+				    fr_dict_attr_t const *ancestor)
 {
-	fr_pair_t	*vp = UNCONST(fr_pair_t *, prev);
+	fr_pair_t *vp = UNCONST(fr_pair_t *, prev);
 
 	while ((vp = fr_pair_list_next(list, vp))) {
 		if (!fr_dict_attr_common_parent(ancestor, vp->da, true)) continue;
@@ -680,18 +705,44 @@ fr_pair_t *fr_pair_find_by_ancestor(fr_pair_list_t const *list,
 	return NULL;
 }
 
+/** Find a pair which has the specified ancestor at a given index
+ *
+ * @param[in] list	to search in.
+ * @param[in] ancestor	to look for in the list.
+ * @param[in] idx	Instance of the attribute to return.
+ * @return
+ *	- first matching fr_pair_t.
+ *	- NULL if no fr_pair_ts match.
+ *
+ * @hidecallergraph
+ */
+fr_pair_t *fr_pair_find_by_ancestor_idx(fr_pair_list_t const *list,
+					fr_dict_attr_t const *ancestor, unsigned int idx)
+{
+	fr_pair_t *vp = NULL;
+
+	while ((vp = fr_pair_list_next(list, vp))) {
+		if (!fr_dict_attr_common_parent(ancestor, vp->da, true)) continue;
+
+		if (idx == 0) return vp;
+		idx--;
+	}
+
+	return NULL;
+}
+
 /** Find the pair with the matching child attribute
  *
  * @param[in] list	in which to search.
+ * @param[in] prev	attribute to start search from.
  * @param[in] parent	attribute in which to lookup child.
  * @param[in] attr	id of child.
- * @param[in] n		Instance of the attribute to return.
  * @return
  *	- first matching value pair.
  *	- NULL if no pair found.
  */
-fr_pair_t *fr_pair_find_by_child_num(fr_pair_list_t *list,
-				     fr_dict_attr_t const *parent, unsigned int attr, unsigned int n)
+fr_pair_t *fr_pair_find_by_child_num(fr_pair_list_t const *list, fr_pair_t const *prev,
+				     fr_dict_attr_t const *parent, unsigned int attr)
 {
 	fr_dict_attr_t const	*da;
 
@@ -703,7 +754,33 @@ fr_pair_t *fr_pair_find_by_child_num(fr_pair_list_t *list,
 	da = fr_dict_attr_child_by_num(parent, attr);
 	if (!da) return NULL;
 
-	return fr_pair_find_by_da(list, da, n);
+	return fr_pair_find_by_da(list, prev, da);
+}
+
+/** Find the pair with the matching child attribute at a given index
+ *
+ * @param[in] list	in which to search.
+ * @param[in] parent	attribute in which to lookup child.
+ * @param[in] attr	id of child.
+ * @param[in] idx	Instance of the attribute to return.
+ * @return
+ *	- first matching value pair.
+ *	- NULL if no pair found.
+ */
+fr_pair_t *fr_pair_find_by_child_num_idx(fr_pair_list_t const *list,
+					 fr_dict_attr_t const *parent, unsigned int attr, unsigned int idx)
+{
+	fr_dict_attr_t const	*da;
+
+	/* List head may be NULL if it contains no VPs */
+	if (fr_dlist_empty(&list->order)) return NULL;
+
+	PAIR_LIST_VERIFY(list);
+
+	da = fr_dict_attr_child_by_num(parent, attr);
+	if (!da) return NULL;
+
+	return fr_pair_find_by_da_idx(list, da, idx);
 }
 
 /** Return a pointer to the pair list
@@ -1093,7 +1170,7 @@ int fr_pair_update_by_da(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t *list,
 {
 	fr_pair_t	*vp;
 
-	vp = fr_pair_find_by_da(list, da, n);
+	vp = fr_pair_find_by_da_idx(list, da, n);
 	if (vp) {
 		PAIR_VERIFY(vp);
 		if (out) *out = vp;

@@ -214,7 +214,7 @@ static inline CC_HINT(always_inline) void client_error_debug(request_t *request)
 {
 	fr_pair_t *vp;
 
-	vp = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_client_error_code, 0);
+	vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_client_error_code, 0);
 	if (!vp) {
 		REDEBUG("Peer has not supplied a AT_ERROR_CODE");
 	} else {
@@ -513,14 +513,14 @@ static int checkcode_validate(request_t *request)
 	 *	done by the calling module, we just check
 	 *      the result.
 	 */
-	our_checkcode = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_checkcode, 0);
+	our_checkcode = fr_pair_find_by_da_idx(&request->control_pairs, attr_eap_aka_sim_checkcode, 0);
 	if (our_checkcode) {
 		/*
 		 *	If the peer doesn't include a checkcode then that
 		 *	means they don't support it, and we can't validate
 		 *	their view of the identity packets.
 		 */
-		peer_checkcode = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_checkcode, 0);
+		peer_checkcode = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_checkcode, 0);
 		if (peer_checkcode) {
 			if (fr_pair_cmp(peer_checkcode, our_checkcode) == 0) {
 				RDEBUG2("Received AT_CHECKCODE matches calculated AT_CHECKCODE");
@@ -558,7 +558,7 @@ static int mac_validate(request_t *request)
 	 *	done by the calling module, we just check
 	 *      the result.
 	 */
-	our_mac = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_mac, 0);
+	our_mac = fr_pair_find_by_da_idx(&request->control_pairs, attr_eap_aka_sim_mac, 0);
 	if (!our_mac) {
 		REDEBUG("Missing &control.%s", attr_eap_aka_sim_mac->name);
 		return -1;
@@ -570,7 +570,7 @@ static int mac_validate(request_t *request)
 	 *	means they don't support it, and we can't validate
 	 *	their view of the identity packets.
 	 */
-	peer_mac = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_mac, 0);
+	peer_mac = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_mac, 0);
 	if (!peer_mac) {
 		REDEBUG("Peer didn't include AT_MAC");
 		return -1;
@@ -657,7 +657,7 @@ RESUME(store_pseudonym)
 	 *	find a next_reauth_id pair in the
 	 *	reply list.
 	 */
-	vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_next_reauth_id, 0);
+	vp = fr_pair_find_by_da_idx(&request->reply_pairs, attr_eap_aka_sim_next_reauth_id, 0);
 	if (vp) {
 		/*
 		 *	Generate a random fastauth string
@@ -737,7 +737,7 @@ RESUME(store_pseudonym)
 		 *	state increment by 1, otherwise, add the
 		 *	attribute and set to zero.
 		 */
-		vp = fr_pair_find_by_da(&request->session_state_pairs, attr_eap_aka_sim_counter, 0);
+		vp = fr_pair_find_by_da_idx(&request->session_state_pairs, attr_eap_aka_sim_counter, 0);
 		if (vp) {
 			vp->vp_uint16++;
 		/*
@@ -788,7 +788,7 @@ static unlang_action_t session_and_pseudonym_store(rlm_rcode_t *p_result, module
 
 	unlang_interpret_stack_result_set(request, RLM_MODULE_NOOP); /* Needed because we may call resume functions directly */
 
-	vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_next_pseudonym, 0);
+	vp = fr_pair_find_by_da_idx(&request->reply_pairs, attr_eap_aka_sim_next_pseudonym, 0);
 	if (vp) {
 		/*
 		 *	Generate a random pseudonym string
@@ -1108,7 +1108,7 @@ static int sim_start_selected_version_check(request_t *request, eap_aka_sim_sess
 	/*
 	 *	Check that we got an AT_SELECTED_VERSION
 	 */
-	selected_version_vp = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_selected_version, 0);
+	selected_version_vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_selected_version, 0);
 	if (!selected_version_vp) {
 		REDEBUG("EAP-Response/SIM/Start does not contain AT_SELECTED_VERSION");
 		return -1;
@@ -1161,7 +1161,7 @@ static int sim_start_nonce_mt_check(request_t *request, eap_aka_sim_session_t *e
 	/*
 	 *	Copy nonce_mt to the keying material
 	 */
-	nonce_mt_vp = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_nonce_mt, 0);
+	nonce_mt_vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_nonce_mt, 0);
 	if (!nonce_mt_vp) {
 		REDEBUG("EAP-Response/SIM/Start does not contain AT_NONCE_MT");
 		return -1;
@@ -1260,7 +1260,7 @@ STATE(common_failure_notification)
 	eap_aka_sim_process_conf_t	*inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_process_conf_t);
 	fr_pair_t			*subtype_vp = NULL;
 
-	subtype_vp = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_subtype, 0);
+	subtype_vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_subtype, 0);
 	if (!subtype_vp) goto fail;
 
 	switch (subtype_vp->vp_uint16) {
@@ -1306,7 +1306,7 @@ RESUME(send_common_failure_notification)
 	 *	- FR_NOTIFICATION_VALUE_NOT_SUBSCRIBED
 	 *	  User has not subscribed to the requested service.
 	 */
-	notification_vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_notification, 0);
+	notification_vp = fr_pair_find_by_da_idx(&request->reply_pairs, attr_eap_aka_sim_notification, 0);
 
 	/*
 	 *	Keep Notification, but remove everything else...
@@ -1656,7 +1656,7 @@ RESUME(recv_common_reauthentication_response)
 	 *	clear out reauth information and enter the
 	 *	challenge state.
 	 */
-	if (fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_counter_too_small, 0)) {
+	if (fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_counter_too_small, 0)) {
 		RWDEBUG("Peer sent AT_COUNTER_TOO_SMALL (indicating our AT_COUNTER value (%u) wasn't fresh)",
 			eap_aka_sim_session->keys.reauth.counter);
 
@@ -1674,13 +1674,13 @@ RESUME(recv_common_reauthentication_response)
 	 *	RFC 4187 Section #6.2. Result Indications
 	 */
 	if (eap_aka_sim_session->send_result_ind) {
-		if (!fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_result_ind, 0)) {
+		if (!fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_result_ind, 0)) {
 			RDEBUG("We wanted to use protected result indications, but peer does not");
 			eap_aka_sim_session->send_result_ind = false;
 		} else {
 			return STATE_TRANSITION(common_success_notification);
 		}
-	} else if (fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_result_ind, 0)) {
+	} else if (fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_result_ind, 0)) {
 		RDEBUG("Peer wanted to use protected result indications, but we do not");
 	}
 
@@ -1703,7 +1703,7 @@ STATE(common_reauthentication)
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(mctx->rctx, eap_aka_sim_session_t);
 	fr_pair_t			*subtype_vp = NULL;
 
-	subtype_vp = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_subtype, 0);
+	subtype_vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_subtype, 0);
 	if (!subtype_vp) {
 		REDEBUG("Missing AT_SUBTYPE");
 		goto fail;
@@ -1767,7 +1767,7 @@ static unlang_action_t common_reauthentication_request_compose(rlm_rcode_t *p_re
 	 *	Not seen any doing this for re-authentication
 	 *	but you never know...
 	 */
-	kdf_id = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_kdf_identity, 0);
+	kdf_id = fr_pair_find_by_da_idx(&request->control_pairs, attr_eap_aka_sim_kdf_identity, 0);
 	if (kdf_id) {
 		crypto_identity_set(request, eap_aka_sim_session,
 				    (uint8_t const *)kdf_id->vp_strvalue, kdf_id->vp_length);
@@ -1840,7 +1840,7 @@ static unlang_action_t common_reauthentication_request_compose(rlm_rcode_t *p_re
 	 *
 	 *	Use our default, but allow user override too.
 	 */
-	vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_result_ind, 0);
+	vp = fr_pair_find_by_da_idx(&request->reply_pairs, attr_eap_aka_sim_result_ind, 0);
 	if (vp) eap_aka_sim_session->send_result_ind = vp->vp_bool;
 
 	/*
@@ -2118,7 +2118,7 @@ RESUME(recv_aka_syncronization_failure)
 	 *	We couldn't generate an SQN and the user didn't provide one,
 	 *	so we need to fail.
 	 */
-	vp = fr_pair_find_by_da(&request->control_pairs, attr_sim_sqn, 0);
+	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_sim_sqn, 0);
 	if (!vp) {
 		REDEBUG("No &control.SQN value provided after resynchronisation, cannot continue");
 		goto failure;
@@ -2176,7 +2176,7 @@ RESUME(recv_aka_challenge_response)
 	 */
 	if (checkcode_validate(request) < 0) goto failure;
 
-	vp = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_res, 0);
+	vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_res, 0);
 	if (!vp) {
 		REDEBUG("AT_RES missing from challenge response");
 		goto failure;
@@ -2208,13 +2208,13 @@ RESUME(recv_aka_challenge_response)
 	 *	RFC 4187 Section #6.2. Result Indications
 	 */
 	if (eap_aka_sim_session->send_result_ind) {
-		if (!fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_result_ind, 0)) {
+		if (!fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_result_ind, 0)) {
 			RDEBUG("We wanted to use protected result indications, but peer does not");
 			eap_aka_sim_session->send_result_ind = false;
 		} else {
 			return STATE_TRANSITION(common_success_notification);
 		}
-	} else if (fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_result_ind, 0)) {
+	} else if (fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_result_ind, 0)) {
 		RDEBUG("Peer wanted to use protected result indications, but we do not");
 	}
 
@@ -2239,7 +2239,7 @@ STATE(aka_challenge)
 	fr_pair_t			*subtype_vp = NULL;
 	fr_pair_t			*vp;
 
-	subtype_vp = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_subtype, 0);
+	subtype_vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_subtype, 0);
 	if (!subtype_vp) {
 		REDEBUG("Missing AT_SUBTYPE");
 		goto fail;
@@ -2262,7 +2262,7 @@ STATE(aka_challenge)
 
 		eap_aka_sim_session->allow_encrypted = false;
 
-		vp = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_auts, 0);
+		vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_auts, 0);
 		if (!vp) {
 			REDEBUG("EAP-Response/AKA-Synchronisation-Failure missing AT_AUTS");
 		failure:
@@ -2341,7 +2341,7 @@ RESUME(send_aka_challenge_request)
 	 *	implement RFC 4187 correctly and use the
 	 *	wrong identity as input the the PRF/KDF.
 	 */
-	kdf_id = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_kdf_identity, 0);
+	kdf_id = fr_pair_find_by_da_idx(&request->control_pairs, attr_eap_aka_sim_kdf_identity, 0);
 	if (kdf_id) {
 		crypto_identity_set(request, eap_aka_sim_session,
 				    (uint8_t const *)kdf_id->vp_strvalue, kdf_id->vp_length);
@@ -2355,7 +2355,7 @@ RESUME(send_aka_challenge_request)
 		 *	Copy the network name the user specified for
 		 *	key derivation purposes.
 		 */
-		vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_kdf_input, 0);
+		vp = fr_pair_find_by_da_idx(&request->reply_pairs, attr_eap_aka_sim_kdf_input, 0);
 		if (vp) {
 			talloc_free(eap_aka_sim_session->keys.network);
 			eap_aka_sim_session->keys.network = talloc_memdup(eap_aka_sim_session,
@@ -2423,7 +2423,7 @@ RESUME(send_aka_challenge_request)
 	 *
 	 *	Use our default, but allow user override too.
 	 */
-	vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_result_ind, 0);
+	vp = fr_pair_find_by_da_idx(&request->reply_pairs, attr_eap_aka_sim_result_ind, 0);
 	if (vp) eap_aka_sim_session->send_result_ind = vp->vp_bool;
 
 	/*
@@ -2506,7 +2506,7 @@ STATE_GUARD(aka_challenge)
 	 	 *	and send it to the peer.
 	 	 */
 		if (inst->network_name &&
-		    !fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_kdf_input, 0)) {
+		    !fr_pair_find_by_da_idx(&request->reply_pairs, attr_eap_aka_sim_kdf_input, 0)) {
 			MEM(pair_append_reply(&vp, attr_eap_aka_sim_kdf_input) >= 0);
 			fr_pair_value_bstrdup_buffer(vp, inst->network_name, false);
 		}
@@ -2522,7 +2522,7 @@ STATE_GUARD(aka_challenge)
 	 *	Set the defaults for protected result indicator
 	 */
 	if (eap_aka_sim_session->send_result_ind &&
-	    !fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_result_ind, 0)) {
+	    !fr_pair_find_by_da_idx(&request->reply_pairs, attr_eap_aka_sim_result_ind, 0)) {
 	    	MEM(pair_append_reply(&vp, attr_eap_aka_sim_result_ind) >= 0);
 		vp->vp_bool = true;
 	}
@@ -2564,13 +2564,13 @@ RESUME(recv_sim_challenge_response)
 	 *      notification, otherwise send a normal EAP-Success.
 	 */
 	if (eap_aka_sim_session->send_result_ind) {
-		if (!fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_result_ind, 0)) {
+		if (!fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_result_ind, 0)) {
 			RDEBUG("We wanted to use protected result indications, but peer does not");
 			eap_aka_sim_session->send_result_ind = false;
 		} else {
 			return STATE_TRANSITION(common_success_notification);
 		}
-	} else if (fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_result_ind, 0)) {
+	} else if (fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_result_ind, 0)) {
 		RDEBUG("Peer wanted to use protected result indications, but we do not");
 	}
 
@@ -2591,7 +2591,7 @@ STATE(sim_challenge)
 	eap_aka_sim_session_t	   *eap_aka_sim_session = talloc_get_type_abort(mctx->rctx, eap_aka_sim_session_t);
 	fr_pair_t		   *subtype_vp = NULL;
 
-	subtype_vp = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_subtype, 0);
+	subtype_vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_subtype, 0);
 	if (!subtype_vp) {
 		REDEBUG("Missing AT_SUBTYPE");
 		goto fail;
@@ -2645,7 +2645,7 @@ RESUME(send_sim_challenge_request)
 	 *	implement RFC 4187 correctly and use the
 	 *	wrong identity as input the the PRF/KDF.
 	 */
-	kdf_id = fr_pair_find_by_da(&request->control_pairs, attr_eap_aka_sim_kdf_identity, 0);
+	kdf_id = fr_pair_find_by_da_idx(&request->control_pairs, attr_eap_aka_sim_kdf_identity, 0);
 	if (kdf_id) {
 		crypto_identity_set(request, eap_aka_sim_session,
 				    (uint8_t const *)kdf_id->vp_strvalue, kdf_id->vp_length);
@@ -2673,7 +2673,7 @@ RESUME(send_sim_challenge_request)
 	 *
 	 *	Use our default, but allow user override too.
 	 */
-	vp = fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_result_ind, 0);
+	vp = fr_pair_find_by_da_idx(&request->reply_pairs, attr_eap_aka_sim_result_ind, 0);
 	if (vp) eap_aka_sim_session->send_result_ind = vp->vp_bool;
 
 	/*
@@ -2730,7 +2730,7 @@ STATE_GUARD(sim_challenge)
 	 *	Set the defaults for protected result indicator
 	 */
 	if (eap_aka_sim_session->send_result_ind &&
-	    !fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_result_ind, 0)) {
+	    !fr_pair_find_by_da_idx(&request->reply_pairs, attr_eap_aka_sim_result_ind, 0)) {
 	    	MEM(pair_append_reply(&vp, attr_eap_aka_sim_result_ind) >= 0);
 		vp->vp_bool = true;
 	}
@@ -2825,7 +2825,7 @@ RESUME(recv_aka_identity_response)
 	 *	If the identity looks like a fast re-auth id
 	 *	run fast re-auth, otherwise do fullauth.
 	 */
-	identity_type = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_identity_type, 0);
+	identity_type = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_identity_type, 0);
 	if (identity_type) switch (identity_type->vp_uint32) {
 	case FR_IDENTITY_TYPE_VALUE_FASTAUTH:
 		return STATE_TRANSITION(common_reauthentication);
@@ -2865,7 +2865,7 @@ STATE(aka_identity)
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(mctx->rctx, eap_aka_sim_session_t);
 	fr_pair_t			*subtype_vp = NULL;
 
-	subtype_vp = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_subtype, 0);
+	subtype_vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_subtype, 0);
 	if (!subtype_vp) {
 		REDEBUG("Missing AT_SUBTYPE");
 		goto fail;
@@ -2880,7 +2880,7 @@ STATE(aka_identity)
 		fr_pair_t		*id;
 		fr_aka_sim_id_type_t	type;
 
-		id = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_identity, 0);
+		id = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_identity, 0);
 		if (!id) {
 			/*
 			 *  9.2.  EAP-Response/Identity
@@ -3090,7 +3090,7 @@ RESUME(recv_sim_start_response)
 	 *	If the identity looks like a fast re-auth id
 	 *	run fast re-auth, otherwise do fullauth.
 	 */
-	identity_type = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_identity_type, 0);
+	identity_type = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_identity_type, 0);
 	if (identity_type) switch (identity_type->vp_uint32) {
 	case FR_IDENTITY_TYPE_VALUE_FASTAUTH:
 		/*
@@ -3100,7 +3100,7 @@ RESUME(recv_sim_start_response)
 		 *  with a fast re-authentication identity is present for fast
 		 *  re-authentication
 		 */
-		if (fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_nonce_mt, 0)) {
+		if (fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_nonce_mt, 0)) {
 			REDEBUG("AT_NONCE_MT is not allowed in EAP-Response/SIM-Reauthentication messages");
 			return STATE_TRANSITION(common_failure_notification);
 		}
@@ -3112,7 +3112,7 @@ RESUME(recv_sim_start_response)
 		 *  AT_IDENTITY attribute with a fast re-authentication identity is
 		 *  present for fast re-authentication.
 		 */
-		if (fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_selected_version, 0)) {
+		if (fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_selected_version, 0)) {
 			REDEBUG("AT_SELECTED_VERSION is not allowed in EAP-Response/SIM-Reauthentication messages");
 			return STATE_TRANSITION(common_failure_notification);
 		}
@@ -3168,7 +3168,7 @@ STATE(sim_start)
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(mctx->rctx, eap_aka_sim_session_t);
 	fr_pair_t			*subtype_vp = NULL;
 
-	subtype_vp = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_subtype, 0);
+	subtype_vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_subtype, 0);
 	if (!subtype_vp) {
 		REDEBUG("Missing AT_SUBTYPE");
 		goto fail;
@@ -3179,7 +3179,7 @@ STATE(sim_start)
 		fr_pair_t		*id;
 		fr_aka_sim_id_type_t	type;
 
-		id = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_identity, 0);
+		id = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_identity, 0);
 		if (!id) {
 			/*
 			 *  RFC 4186 Section #9.2
@@ -3281,7 +3281,7 @@ RESUME(send_sim_start)
 	 *	If the user provided no versions, then
 	 *      just add the default (1).
 	 */
-	if (!(fr_pair_find_by_da(&request->reply_pairs, attr_eap_aka_sim_version_list, 0))) {
+	if (!(fr_pair_find_by_da_idx(&request->reply_pairs, attr_eap_aka_sim_version_list, 0))) {
 		MEM(pair_append_reply(&vp, attr_eap_aka_sim_version_list) >= 0);
 		vp->vp_uint16 = EAP_SIM_VERSION;
 	}
@@ -3401,10 +3401,10 @@ RESUME(recv_common_identity_response)
 	 *	This must be done before we enter
 	 *	the submodule.
 	 */
-	eap_type = fr_pair_find_by_da(&request->control_pairs, attr_eap_type, 0);
+	eap_type = fr_pair_find_by_da_idx(&request->control_pairs, attr_eap_type, 0);
 	if (eap_type) RWDEBUG("Ignoring &control.EAP-Type, this must be set *before* the EAP module is called");
 
-	method = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_method_hint, 0);
+	method = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_method_hint, 0);
 
 	/*
 	 *	Set default configuration, we may allow these
@@ -3514,7 +3514,7 @@ RESUME(recv_common_identity_response)
 	 *	If the identity looks like a fast re-auth id
 	 *	run fast re-auth, otherwise do a fullauth.
 	 */
-	identity_type = fr_pair_find_by_da(&request->request_pairs, attr_eap_aka_sim_identity_type, 0);
+	identity_type = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_identity_type, 0);
 	if (identity_type) switch (identity_type->vp_uint32) {
 	case FR_IDENTITY_TYPE_VALUE_FASTAUTH:
 		return STATE_TRANSITION(common_reauthentication);

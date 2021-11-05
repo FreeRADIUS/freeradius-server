@@ -239,7 +239,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	uint8_t buffer[80];	/* multiple of 5*8 characters */
 
 
-	password = fr_pair_find_by_da(&request->request_pairs, attr_totp_user_password, 0);
+	password = fr_pair_find_by_da_idx(&request->request_pairs, attr_totp_user_password, 0);
 	if (!password) RETURN_MODULE_NOOP;
 
 	if (password->vp_length != 6) {
@@ -250,7 +250,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	/*
 	 *	Look for the raw key first.
 	 */
-	vp = fr_pair_find_by_da(&request->control_pairs, attr_totp_key, 0);
+	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_totp_key, 0);
 	if (vp) {
 		key = vp->vp_octets;
 		keylen = vp->vp_length;
@@ -258,7 +258,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	} else {
 		ssize_t len;
 
-		vp = fr_pair_find_by_da(&request->control_pairs, attr_totp_secret, 0);
+		vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_totp_secret, 0);
 		if (!vp) RETURN_MODULE_NOOP;
 
 		len = base32_decode(buffer, sizeof(buffer), vp->vp_strvalue);

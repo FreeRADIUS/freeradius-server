@@ -293,7 +293,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	 *	number.
 	 */
 	if ((request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) &&
-	    fr_pair_find_by_da(&request->request_pairs, attr_state, 0)) {
+	    fr_pair_find_by_da_idx(&request->request_pairs, attr_state, 0)) {
 		request->async->sequence = 1;
 	}
 

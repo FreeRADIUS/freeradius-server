@@ -211,7 +211,7 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	}
 
 	if (verify_applies(conf->verify.attribute_mode, depth, untrusted) &&
-	    (!(container = fr_pair_find_by_da(&request->session_state_pairs, attr_tls_certificate, depth)) ||
+	    (!(container = fr_pair_find_by_da_idx(&request->session_state_pairs, attr_tls_certificate, depth)) ||
 	     fr_pair_list_empty(&container->vp_group))) {
 	     	if (!container) {
 	    	     	unsigned int i;
@@ -401,7 +401,7 @@ static unlang_action_t tls_verify_client_cert_result(UNUSED rlm_rcode_t *p_resul
 
 	fr_assert(tls_session->validate.state == FR_TLS_VALIDATION_REQUESTED);
 
-	vp = fr_pair_find_by_da(&request->reply_pairs, attr_tls_packet_type, 0);
+	vp = fr_pair_find_by_da_idx(&request->reply_pairs, attr_tls_packet_type, 0);
 	if (!vp || (vp->vp_uint32 != enum_tls_packet_type_success->vb_uint32)) {
 		REDEBUG("Failed (re-)validating certificates");
 		tls_session->validate.state = FR_TLS_VALIDATION_FAILED;

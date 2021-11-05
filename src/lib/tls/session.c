@@ -1713,7 +1713,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	/*
 	 *	Add the session certificate to the session.
 	 */
-	vp = fr_pair_find_by_da(&request->control_pairs, attr_tls_session_cert_file, 0);
+	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_tls_session_cert_file, 0);
 	if (vp) {
 		RDEBUG2("Loading TLS session certificate \"%pV\"", &vp->data);
 
@@ -1755,7 +1755,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	 * This is mainly used for testing in environments where we can't
 	 * get test credentials for the host.
 	 */
-	vp = fr_pair_find_by_da(&request->control_pairs, attr_tls_session_require_client_cert, 0);
+	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_tls_session_require_client_cert, 0);
 	if (vp) client_cert = vp->vp_bool;
 
 	/*
@@ -1794,7 +1794,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	 *	just too much.
 	 */
 	tls_session->mtu = conf->fragment_size;
-	vp = fr_pair_find_by_da(&request->request_pairs, attr_framed_mtu, 0);
+	vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_framed_mtu, 0);
 	if (vp && (vp->vp_uint32 > 100) && (vp->vp_uint32 < tls_session->mtu)) {
 		RDEBUG2("Setting fragment_len to %u from &Framed-MTU", vp->vp_uint32);
 		tls_session->mtu = vp->vp_uint32;

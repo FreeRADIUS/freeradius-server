@@ -457,7 +457,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	 *	int the reply, we use that in preference to the
 	 *	old state.
 	 */
-	vp = fr_pair_find_by_da(reply_list, state->da, 0);
+	vp = fr_pair_find_by_da_idx(reply_list, state->da, 0);
 	if (vp) {
 		if (DEBUG_ENABLED && (vp->vp_length > sizeof(entry->state))) {
 			WARN("State too long, will be truncated.  Expected <= %zd bytes, got %zu bytes",
@@ -606,7 +606,7 @@ void fr_state_discard(fr_state_tree_t *state, request_t *request)
 	fr_state_entry_t	*entry;
 	fr_pair_t		*vp;
 
-	vp = fr_pair_find_by_da(&request->request_pairs, state->da, 0);
+	vp = fr_pair_find_by_da_idx(&request->request_pairs, state->da, 0);
 	if (!vp) return;
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
@@ -666,7 +666,7 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 	/*
 	 *	No State, don't do anything.
 	 */
-	vp = fr_pair_find_by_da(&request->request_pairs, state->da, 0);
+	vp = fr_pair_find_by_da_idx(&request->request_pairs, state->da, 0);
 	if (!vp) {
 		RDEBUG3("No &request.%s attribute, can't restore &session-state", state->da->name);
 		if (request->seq_start == 0) request->seq_start = request->number;	/* Need check for fake requests */

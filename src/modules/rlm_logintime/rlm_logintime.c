@@ -159,7 +159,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	fr_pair_t		*ends, *vp;
 	fr_time_delta_t		left;
 
-	ends = fr_pair_find_by_da(&request->control_pairs, attr_login_time, 0);
+	ends = fr_pair_find_by_da_idx(&request->control_pairs, attr_login_time, 0);
 	if (!ends) RETURN_MODULE_NOOP;
 
 	/*

@@ -72,7 +72,7 @@ static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *
 	 */
 	type_enum = fr_dict_enum_by_value(gext->attr_packet_type, fr_box_uint32(request->packet->code));
 	if (!type_enum) {
-		packet_type_vp = fr_pair_find_by_da(&request->request_pairs, gext->attr_packet_type, 0);
+		packet_type_vp = fr_pair_find_by_da_idx(&request->request_pairs, gext->attr_packet_type, 0);
 		if (!packet_type_vp) {
 		bad_packet_type:
 			REDEBUG("No such value '%d' of attribute 'Packet-Type' for server %s",

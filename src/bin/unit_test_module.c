@@ -180,7 +180,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client
 	 */
 	fr_pair_list_tainted(&request->request_pairs);
 
-	vp = fr_pair_find_by_da(&request->request_pairs, attr_packet_type, 0);
+	vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_packet_type, 0);
 	if (!vp) {
 		fr_strerror_printf("Input packet does not specify a Packet-Type");
 		goto error;

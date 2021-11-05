@@ -164,7 +164,7 @@ static void message_failed(request_t *request, PROCESS_INST *inst, fr_process_st
 	/*
 	 *	Set the server reply message.  Note that we do not tell the user *why* they failed authentication.
 	 */
-	if (!fr_pair_find_by_da(&request->reply_pairs, attr_tacacs_server_message, 0)) {
+	if (!fr_pair_find_by_da_idx(&request->reply_pairs, attr_tacacs_server_message, 0)) {
 		MEM(pair_update_reply(&vp, attr_tacacs_server_message) >= 0);
 		fr_pair_value_strdup(vp, msg, false);
 	}
@@ -276,8 +276,8 @@ RESUME(recv_tacacs)
 			fr_dict_enum_value_t const *dv;
 			CONF_SECTION *subcs;
 
-			vp = fr_pair_find_by_da(&request->request_pairs, *state->attr_process, 0);
-			if (!vp) vp = fr_pair_find_by_da(&request->control_pairs, *state->attr_process, 0);
+			vp = fr_pair_find_by_da_idx(&request->request_pairs, *state->attr_process, 0);
+			if (!vp) vp = fr_pair_find_by_da_idx(&request->control_pairs, *state->attr_process, 0);
 			if (!vp) {
 				RDEBUG2("No attribute found for &request.%s - proceeding to 'send'", (*state->attr_process)->name);
 				break;
@@ -332,7 +332,7 @@ RESUME(send_tacacs)
 	 *	Save the state
 	 */
 	if (!request->parent &&
-	    (fr_pair_find_by_da(&request->request_pairs, attr_tacacs_state, 0) != NULL)) {
+	    (fr_pair_find_by_da_idx(&request->request_pairs, attr_tacacs_state, 0) != NULL)) {
 		fr_tacacs_packet_hdr_t const	*pkt = (fr_tacacs_packet_hdr_t const *) request->packet->data;
 
 		/*

@@ -90,7 +90,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, request_t *request, fr_ld
 	 *	If the caller isn't looking for the result we can just return the current userdn value.
 	 */
 	if (!force) {
-		vp = fr_pair_find_by_da(&request->control_pairs, attr_ldap_userdn, 0);
+		vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_ldap_userdn, 0);
 		if (vp) {
 			RDEBUG2("Using user DN from request \"%pV\"", &vp->data);
 			*rcode = RLM_MODULE_OK;
@@ -242,11 +242,11 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_th
 	*/
 	if (!inst->expect_password || !RDEBUG_ENABLED2) return;
 
-	if (!fr_pair_find_by_da(&request->control_pairs, attr_cleartext_password, 0) &&
-	    !fr_pair_find_by_da(&request->control_pairs, attr_nt_password, 0) &&
-	    !fr_pair_find_by_da(&request->control_pairs, attr_user_password, 0) &&
-	    !fr_pair_find_by_da(&request->control_pairs, attr_password_with_header, 0) &&
-	    !fr_pair_find_by_da(&request->control_pairs, attr_crypt_password, 0)) {
+	if (!fr_pair_find_by_da_idx(&request->control_pairs, attr_cleartext_password, 0) &&
+	    !fr_pair_find_by_da_idx(&request->control_pairs, attr_nt_password, 0) &&
+	    !fr_pair_find_by_da_idx(&request->control_pairs, attr_user_password, 0) &&
+	    !fr_pair_find_by_da_idx(&request->control_pairs, attr_password_with_header, 0) &&
+	    !fr_pair_find_by_da_idx(&request->control_pairs, attr_crypt_password, 0)) {
 		switch (ttrunk->directory->type) {
 		case FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY:
 			RWDEBUG2("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
