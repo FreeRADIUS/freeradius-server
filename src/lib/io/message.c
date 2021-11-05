@@ -40,6 +40,8 @@ RCSID("$Id$")
 
 #define MSG_ARRAY_SIZE (16)
 
+#define CACHE_ALIGN(_x) do { _x += 63; _x &= ~(size_t) 63; } while (0)
+
 /** A Message set, composed of message headers and ring buffer data.
  *
  *  A message set is intended to send short-lived messages.  The
@@ -152,8 +154,7 @@ fr_message_set_t *fr_message_set_create(TALLOC_CTX *ctx, int num_messages, size_
 		return NULL;
 	}
 
-	message_size += 63;
-	message_size &= ~(size_t) 63;
+	CACHE_ALIGN(message_size);
 	ms->message_size = message_size;
 
 	ms->rb_array[0] = fr_ring_buffer_create(ms, ring_buffer_size);
@@ -964,6 +965,7 @@ fr_message_t *fr_message_reserve(fr_message_set_t *ms, size_t reserve_size)
 	 *	reserved room for the packet data, but nothing has
 	 *	been allocated.
 	 */
+	CACHE_ALIGN(reserve_size);
 	m->rb_size = reserve_size;
 
 	return fr_message_get_ring_buffer(ms, m, cleaned_up);
@@ -987,13 +989,14 @@ fr_message_t *fr_message_reserve(fr_message_set_t *ms, size_t reserve_size)
 fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size)
 {
 	uint8_t *p;
+	size_t reserve_size;
 
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
 
 	/* m is NOT talloc'd */
 
 	if (!m) {
-		m = fr_message_reserve(ms, actual_packet_size);
+		m = fr_message_reserve(ms, actual_packet_size); /* will cache align it */
 		if (!m) return NULL;
 	}
 
@@ -1003,7 +1006,10 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
 	fr_assert(m->data_size == 0);
 	fr_assert(m->rb_size >= actual_packet_size);
 
-	p = fr_ring_buffer_alloc(m->rb, actual_packet_size);
+	reserve_size = actual_packet_size;
+	CACHE_ALIGN(reserve_size);
+
+	p = fr_ring_buffer_alloc(m->rb, reserve_size);
 	fr_assert(p != NULL);
 	if (!p) {
 		fr_strerror_const_push("Failed allocating from ring buffer");
@@ -1012,12 +1018,8 @@ fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t act
 
 	fr_assert(p == m->data);
 
-	/*
-	 *	The caller can change m->data size to something a bit
-	 *	smaller, e.g. for cache alignment issues.
-	 */
 	m->data_size = actual_packet_size;
-	m->rb_size = actual_packet_size;
+	m->rb_size = reserve_size;
 
 	return m;
 }
