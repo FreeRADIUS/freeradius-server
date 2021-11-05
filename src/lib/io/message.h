@@ -57,7 +57,6 @@ fr_message_t *fr_message_reserve(fr_message_set_t *ms, size_t reserve_size) CC_H
 fr_message_t *fr_message_alloc(fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size) CC_HINT(nonnull(1));
 fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size,
 				       size_t leftover, size_t reserve_size) CC_HINT(nonnull);
-fr_message_t *fr_message_alloc_aligned(fr_message_set_t *ms, fr_message_t *m, size_t actual_packet_size) CC_HINT(nonnull(1));
 int fr_message_done(fr_message_t *m) CC_HINT(nonnull);
 
 fr_message_t *fr_message_localize(TALLOC_CTX *ctx, fr_message_t *m, size_t message_size) CC_HINT(nonnull);
