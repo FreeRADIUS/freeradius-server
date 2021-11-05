@@ -197,7 +197,7 @@ static void vmps_packet_debug(request_t *request, fr_radius_packet_t const *pack
 	if (received || request->parent) {
 		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
 	} else {
-		log_request_proto_pair_list(L_DBG_LVL_1, request, fr_dict_root(dict_vmps), list, NULL);
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
 	}
 }
 
