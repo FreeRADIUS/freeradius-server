@@ -1071,9 +1071,12 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	bool cleaned_up;
 	uint8_t *p;
 	fr_message_t *m2;
-	size_t m_rb_size;
+	size_t m_rb_size, align_size;
 
 	(void) talloc_get_type_abort(ms, fr_message_set_t);
+
+	align_size = actual_packet_size;
+	CACHE_ALIGN(align_size);
 
 	/* m is NOT talloc'd */
 
@@ -1082,7 +1085,7 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	fr_assert(m->data != NULL);
 	fr_assert(m->rb_size >= actual_packet_size);
 
-	p = fr_ring_buffer_alloc(m->rb, actual_packet_size);
+	p = fr_ring_buffer_alloc(m->rb, align_size);
 	fr_assert(p != NULL);
 	if (!p) {
 		fr_strerror_const_push("Failed allocating from ring buffer");
@@ -1093,16 +1096,14 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 
 	m_rb_size = m->rb_size;	/* for ring buffer cleanups */
 
-	/*
-	 *	The caller can change m->data size to something a bit
-	 *	smaller, e.g. for cache alignment issues.
-	 */
 	m->data_size = actual_packet_size;
-	m->rb_size = actual_packet_size;
+	m->rb_size = align_size;
 
 	/*
 	 *	If we've allocated all of the reserved ring buffer
 	 *	data, then just reserve a brand new reservation.
+	 *
+	 *	This will be automatically cache aligned.
 	 */
 	if (!leftover) return fr_message_reserve(ms, reserve_size);
 
@@ -1111,6 +1112,15 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	 */
 	m2 = fr_message_get_message(ms, &cleaned_up);
 	if (!m2) return NULL;
+
+	/*
+	 *	Ensure that there's enough room to shift the next
+	 *	packet, so that it's cache aligned.  Moving small
+	 *	amounts of memory is likely faster than having two
+	 *	CPUs fight over the same cache lines.
+	 */
+	reserve_size += (align_size - actual_packet_size);
+	CACHE_ALIGN(reserve_size);
 
 	/*
 	 *	Track how much data there is in the packet.
@@ -1123,18 +1133,24 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	 *	Try to extend the reservation.  If we can do it,
 	 *	return.
 	 */
-	m2->data = fr_ring_buffer_reserve(m2->rb, m2->rb_size);
+	m2->data = fr_ring_buffer_reserve(m2->rb, reserve_size);
 	if (m2->data) {
 		/*
-		 *	We've wrapped around in the reservation.  Copy the data over.
+		 *	The next packet pointer doesn't point to the
+		 *	actual data after the current packet.  Move
+		 *	the next packet to match up with the ring
+		 *	buffer allocation.
 		 */
 		if (m2->data != (m->data + actual_packet_size)) {
-			memcpy(m2->data, m->data + actual_packet_size, leftover);
+			memmove(m2->data, m->data + actual_packet_size, leftover);
 		}
 		return m2;
 	}
 
 	/*
+	 *	We failed reserving more memory at the end of the
+	 *	current ring buffer.
+	 *
 	 *	Reserve data from a new ring buffer.  If it doesn't
 	 *	succeed, ensure that the old message will properly
 	 *	clean up the old ring buffer.
@@ -1149,23 +1165,32 @@ fr_message_t *fr_message_alloc_reserve(fr_message_set_t *ms, fr_message_t *m, si
 	 *	buffer to the new one.
 	 */
 	if (m2->data != (m->data + actual_packet_size)) {
-		memcpy(m2->data, m->data + actual_packet_size, leftover);
+		memmove(m2->data, m->data + actual_packet_size, leftover);
 	}
 
 	/*
-	 *	This shouldn't happen, but it's possible if the caller
-	 *	takes shortcuts, and doesn't check the things they
-	 *	need to check.
+	 *	The messages are in different ring buffers.  We've
+	 *	aligned m->rb_size above for the current packet, but
+	 *	there's no subsequent message to clean up this
+	 *	reservation.  Re-extend the current message to it's
+	 *	original size, so that cleaning it up will clean up the ring buffer.
 	 */
-	if (m2->rb == m->rb) {
+	if (m2->rb != m->rb) {
+		m->rb_size = m_rb_size;
 		return m2;
 	}
 
 	/*
-	 *	Ensure that the old message will properly clean up the
-	 *	ring buffer.
+	 *	If we've managed to allocate the next message in the
+	 *	current ring buffer, then it really should have
+	 *	wrapped around.  In which case, re-extend the current
+	 *	message as above.
 	 */
-	m->rb_size = m_rb_size;
+	if (m2->data < m->data) {
+		m->rb_size = m_rb_size;
+		return m2;
+	}
+
 	return m2;
 }
 
