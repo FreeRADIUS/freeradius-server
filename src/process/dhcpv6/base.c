@@ -372,14 +372,24 @@ static inline CC_HINT(always_inline)
 void status_code_add(request_t *request, fr_value_box_t const **code)
 {
 	fr_pair_t		*vp;
+	fr_value_box_t const	*vb;
 
-	if (!code) return;
+	if (!code || !*code) return;
+
+	vb = *code;
+
+	/*
+	 *	If it's a success save some bytes
+	 *	in the packet and don't bother
+	 *	adding the success code.
+	 */
+	if (vb->vb_uint16 == 0) return;
 
 	/*
 	 *	Don't override user
 	 */
 	if (pair_update_reply(&vp, attr_status_code_value) == 1) return;
-	fr_value_box_copy(vp, &vp->data, *code);
+	fr_value_box_copy(vp, &vp->data, vb);
 }
 
 /** Restore our copy of the header fields into the reply list
