@@ -37,52 +37,6 @@
 #include <freeradius-devel/dhcpv6/dhcpv6.h>
 #include <freeradius-devel/protocol/dhcpv6/freeradius.internal.h>
 
-static fr_dict_t const *dict_dhcpv6;
-
-extern fr_dict_autoload_t process_dhcpv6_dict[];
-fr_dict_autoload_t process_dhcpv6_dict[] = {
-	{ .out = &dict_dhcpv6, .proto = "dhcpv6" },
-	{ NULL }
-};
-
-static fr_dict_attr_t const *attr_client_id;
-static fr_dict_attr_t const *attr_server_id;
-static fr_dict_attr_t const *attr_hop_count;
-static fr_dict_attr_t const *attr_interface_id;
-static fr_dict_attr_t const *attr_packet_type;
-static fr_dict_attr_t const *attr_relay_link_address;
-static fr_dict_attr_t const *attr_relay_peer_address;
-static fr_dict_attr_t const *attr_transaction_id;
-static fr_dict_attr_t const *attr_status_code_value;
-
-extern fr_dict_attr_autoload_t process_dhcpv6_dict_attr[];
-fr_dict_attr_autoload_t process_dhcpv6_dict_attr[] = {
-	{ .out = &attr_client_id, .name = "Client-ID", .type = FR_TYPE_STRUCT, .dict = &dict_dhcpv6 },
-	{ .out = &attr_hop_count, .name = "Hop-Count", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv6 },
-	{ .out = &attr_interface_id, .name = "Interface-ID", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv6 },
-	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6 },
-	{ .out = &attr_relay_link_address, .name = "Relay-Link-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_dhcpv6 },
-	{ .out = &attr_relay_peer_address, .name = "Relay-Peer-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_dhcpv6 },
-	{ .out = &attr_server_id, .name = "Server-ID", .type = FR_TYPE_STRUCT, .dict = &dict_dhcpv6 },
-	{ .out = &attr_status_code_value, .name = "Status-Code.Value", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv6 },
-	{ .out = &attr_transaction_id, .name = "Transaction-Id", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv6 },
-	{ NULL }
-};
-
-static fr_value_box_t const	*enum_status_code_success;
-static fr_value_box_t const	*enum_status_code_unspec_fail;
-static fr_value_box_t const	*enum_status_code_not_on_link;
-static fr_value_box_t const	*enum_status_code_no_binding;
-
-extern fr_dict_enum_autoload_t process_dhcpv6_dict_enum[];
-fr_dict_enum_autoload_t process_dhcpv6_dict_enum[] = {
-	{ .out = &enum_status_code_success, .name = "success", .attr = &attr_status_code_value },
-	{ .out = &enum_status_code_unspec_fail, .name = "UnspecFail", .attr = &attr_status_code_value },
-	{ .out = &enum_status_code_not_on_link, .name = "NotOnLink", .attr = &attr_status_code_value },
-	{ .out = &enum_status_code_no_binding, .name = "NoBinding", .attr = &attr_status_code_value },
-	{ NULL }
-};
-
 /*
  *	DHCPV6 state machine configuration
  */
@@ -112,6 +66,31 @@ typedef struct {
 	CONF_SECTION			*server_cs;	//!< Our virtual server.
 	process_dhcpv6_sections_t	sections;	//!< Pointers to various config sections
 							///< we need to execute.
+	bool status_code_on_success;			//!< Controls whether we add a status-code
+							///< option to outbound packets if the status
+							///< code would be 0.
+							///< This is allowed by RFC 3315, but seems
+							///< to cause issues with some clients.
+
+	bool send_failure_message;			//!< If true, all instances of
+							///< Module-Failure-Message in the request
+							///< are concatenated and returned in the
+							///< status-message field of the status-code
+							///< option if the status-code is anything
+							///< other than success.
+							///< This may leak information about the
+							///< internal state of the server, so is
+							///< disabled by default.
+
+	bool move_failure_message_to_parent;		//!< If true, and a parent exists, and the
+							///< parent is a DHCPv6 request, all module
+							///< failure messages will get copied to the
+							///< parent and then freed.
+							///< When combined with send_failure_message
+							///< this ensures only the outer relay message
+							///< contains failure data.  The outer relay
+							///< typically being controlled by the admin
+							///< and not the end user.
 } process_dhcpv6_t;
 
 /** Records fields from the original request so we have a known good copy
@@ -131,6 +110,60 @@ typedef struct {
 	fr_pair_t	*interface_id;
 } process_dhcpv6_relay_fields_t;
 
+static fr_dict_t const *dict_dhcpv6;
+static fr_dict_t const *dict_freeradius;
+
+extern fr_dict_autoload_t process_dhcpv6_dict[];
+fr_dict_autoload_t process_dhcpv6_dict[] = {
+	{ .out = &dict_dhcpv6, .proto = "dhcpv6" },
+	{ .out = &dict_freeradius, .proto = "freeradius" },
+	{ NULL }
+};
+
+static fr_dict_attr_t const *attr_client_id;
+static fr_dict_attr_t const *attr_server_id;
+static fr_dict_attr_t const *attr_hop_count;
+static fr_dict_attr_t const *attr_interface_id;
+static fr_dict_attr_t const *attr_packet_type;
+static fr_dict_attr_t const *attr_relay_link_address;
+static fr_dict_attr_t const *attr_relay_peer_address;
+static fr_dict_attr_t const *attr_transaction_id;
+static fr_dict_attr_t const *attr_status_code_value;
+static fr_dict_attr_t const *attr_status_code_message;
+
+static fr_dict_attr_t const *attr_module_failure_message;
+
+extern fr_dict_attr_autoload_t process_dhcpv6_dict_attr[];
+fr_dict_attr_autoload_t process_dhcpv6_dict_attr[] = {
+	{ .out = &attr_client_id, .name = "Client-ID", .type = FR_TYPE_STRUCT, .dict = &dict_dhcpv6 },
+	{ .out = &attr_hop_count, .name = "Hop-Count", .type = FR_TYPE_UINT8, .dict = &dict_dhcpv6 },
+	{ .out = &attr_interface_id, .name = "Interface-ID", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv6 },
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_dhcpv6 },
+	{ .out = &attr_relay_link_address, .name = "Relay-Link-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_dhcpv6 },
+	{ .out = &attr_relay_peer_address, .name = "Relay-Peer-Address", .type = FR_TYPE_IPV6_ADDR, .dict = &dict_dhcpv6 },
+	{ .out = &attr_server_id, .name = "Server-ID", .type = FR_TYPE_STRUCT, .dict = &dict_dhcpv6 },
+	{ .out = &attr_status_code_value, .name = "Status-Code.Value", .type = FR_TYPE_UINT16, .dict = &dict_dhcpv6 },
+	{ .out = &attr_status_code_message, .name = "Status-Code.Message", .type = FR_TYPE_STRING, .dict = &dict_dhcpv6 },
+	{ .out = &attr_transaction_id, .name = "Transaction-Id", .type = FR_TYPE_OCTETS, .dict = &dict_dhcpv6 },
+
+	{ .out = &attr_module_failure_message, .name = "Module-Failure-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ NULL }
+};
+
+static fr_value_box_t const *enum_status_code_success;
+static fr_value_box_t const *enum_status_code_unspec_fail;
+static fr_value_box_t const *enum_status_code_not_on_link;
+static fr_value_box_t const *enum_status_code_no_binding;
+
+extern fr_dict_enum_autoload_t process_dhcpv6_dict_enum[];
+fr_dict_enum_autoload_t process_dhcpv6_dict_enum[] = {
+	{ .out = &enum_status_code_success, .name = "success", .attr = &attr_status_code_value },
+	{ .out = &enum_status_code_unspec_fail, .name = "UnspecFail", .attr = &attr_status_code_value },
+	{ .out = &enum_status_code_not_on_link, .name = "NotOnLink", .attr = &attr_status_code_value },
+	{ .out = &enum_status_code_no_binding, .name = "NoBinding", .attr = &attr_status_code_value },
+	{ NULL }
+};
+
 #define PROCESS_PACKET_TYPE		fr_dhcpv6_packet_code_t
 #define PROCESS_CODE_MAX		FR_DHCPV6_CODE_MAX
 #define PROCESS_CODE_DO_NOT_RESPOND	FR_DHCPV6_DO_NOT_RESPOND
@@ -144,6 +177,102 @@ typedef struct {
  */
 #define PROCESS_STATE_EXTRA_FIELDS	fr_value_box_t const **status_codes[RLM_MODULE_NUMCODES];
 #include <freeradius-devel/server/process.h>
+
+static CONF_PARSER dhcpv6_process_config[] = {
+	{ FR_CONF_OFFSET("status_code_on_success", FR_TYPE_BOOL, process_dhcpv6_t, status_code_on_success), .dflt = "no" },
+	{ FR_CONF_OFFSET("send_failure_message", FR_TYPE_BOOL, process_dhcpv6_t, send_failure_message), .dflt = "no" },
+	{ FR_CONF_OFFSET("move_failure_message_to_parent", FR_TYPE_BOOL, process_dhcpv6_t, move_failure_message_to_parent), .dflt = "yes" },
+	CONF_PARSER_TERMINATOR
+};
+
+static const virtual_server_compile_t compile_list[] = {
+	{
+		.name = "recv",
+		.name2 = "Solicit",
+		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(recv_solicit)
+	},
+	{
+		.name = "recv",
+		.name2 = "Request",
+		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(recv_request)
+	},
+	{
+		.name = "recv",
+		.name2 = "Confirm",
+		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(recv_confirm)
+	},
+	{
+		.name = "recv",
+		.name2 = "Renew",
+		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(recv_renew)
+	},
+	{
+		.name = "recv",
+		.name2 = "Rebind",
+		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(recv_rebind)
+	},
+	{
+		.name = "recv",
+		.name2 = "Release",
+		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(recv_release)
+	},
+	{
+		.name = "recv",
+		.name2 = "Decline",
+		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(recv_decline)
+	},
+	{
+		.name = "recv",
+		.name2 = "Reconfigure",
+		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(recv_reconfigure)
+	},
+	{
+		.name = "recv",
+		.name2 = "Information-Request",
+		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(recv_information_request)
+	},
+	{
+		.name = "recv",
+		.name2 = "Relay-Forward",
+		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(recv_relay_forward)
+	},
+
+	{
+		.name = "send",
+		.name2 = "Advertise",
+		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(send_advertise)
+	},
+	{
+		.name = "send",
+		.name2 = "Reply",
+		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(send_reply)
+	},
+	{
+		.name = "send",
+		.name2 = "Relay-Reply",
+		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(send_relay_reply)
+	},
+	{
+		.name = "send",
+		.name2 = "Do-Not-Respond",
+		.component = MOD_POST_AUTH,
+		.offset = PROCESS_CONF_OFFSET(do_not_respond)
+	},
+	COMPILE_TERMINATOR
+};
 
 /*
  *	Debug the packet if requested.
@@ -369,10 +498,11 @@ int restore_field_list(request_t *request, fr_pair_list_t *to_restore)
  *
  */
 static inline CC_HINT(always_inline)
-void status_code_add(request_t *request, fr_value_box_t const **code)
+void status_code_add(process_dhcpv6_t const *inst, request_t *request, fr_value_box_t const **code)
 {
-	fr_pair_t		*vp;
+	fr_pair_t		*vp, *failure_message = NULL;
 	fr_value_box_t const	*vb;
+	bool			moved_failure_message = false;
 
 	if (!code || !*code) return;
 
@@ -381,15 +511,67 @@ void status_code_add(request_t *request, fr_value_box_t const **code)
 	/*
 	 *	If it's a success save some bytes
 	 *	in the packet and don't bother
-	 *	adding the success code.
+	 *	adding the success code unless
+	 *	explicitly requested to.
 	 */
-	if (vb->vb_uint16 == 0) return;
+	if ((vb->vb_uint16 == 0) && !inst->status_code_on_success) return;
 
 	/*
-	 *	Don't override user
+	 *	Don't override the user status
+	 *      code.
 	 */
-	if (pair_update_reply(&vp, attr_status_code_value) == 1) return;
-	fr_value_box_copy(vp, &vp->data, vb);
+	if (pair_update_reply(&vp, attr_status_code_value) == 0) fr_value_box_copy(vp, &vp->data, vb);
+
+	/*
+	 *	Move the module failure messages upwards
+	 *	if requested to by the user.
+	 */
+	if (inst->move_failure_message_to_parent && request->parent && (request->parent->dict == request->dict)) {
+		fr_pair_t const *prev = NULL;
+
+		while ((failure_message = fr_pair_find_by_da(&request->request_pairs,
+							     prev, attr_module_failure_message))) {
+			MEM(vp = fr_pair_copy(request->parent->request_ctx, failure_message));
+			fr_pair_append(&request->parent->request_pairs, vp);
+
+			prev = fr_pair_remove(&request->request_pairs, failure_message);
+			talloc_free(failure_message);
+		}
+
+		moved_failure_message = true;
+	}
+
+	/*
+	 *	Concat all the module failure messages
+	 *	and place them in the status code
+	 *      message.
+	 */
+	if (inst->send_failure_message && !moved_failure_message &&
+	    (failure_message = fr_pair_find_by_da(&request->request_pairs, NULL, attr_module_failure_message)) &&
+	    (pair_update_reply(&vp, attr_status_code_message) == 0)) {
+		fr_sbuff_uctx_talloc_t	tctx;
+		fr_sbuff_t		sbuff;
+
+		do {
+			/*
+			 *	Create an aggregation buffer up to
+			 *      the maximum length of a status
+			 *	message.
+			 */
+			fr_sbuff_init_talloc(vp, &sbuff, &tctx, 1024, UINT16_MAX - 2);
+
+			/*
+			 *	Best effort... it's probably OK
+			 *	if we truncate really long messages.
+			 */
+			if (unlikely(fr_sbuff_in_bstrncpy(&sbuff, failure_message->vp_strvalue,
+							  failure_message->vp_length) < 0)) break;
+		} while ((failure_message = fr_pair_find_by_da(&request->request_pairs, failure_message,
+							       attr_module_failure_message)) &&
+			 (fr_sbuff_in_strcpy_literal(&sbuff, ". ") == 2));
+		fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);	/* Fix size */
+		fr_pair_value_bstrndup_shallow(vp, fr_sbuff_start(&sbuff), fr_sbuff_used(&sbuff), false);
+	}
 }
 
 /** Restore our copy of the header fields into the reply list
@@ -397,6 +579,7 @@ void status_code_add(request_t *request, fr_value_box_t const **code)
  */
 RESUME(send_to_client)
 {
+	process_dhcpv6_t		*inst = talloc_get_type_abort(mctx->instance, process_dhcpv6_t);
 	process_dhcpv6_client_fields_t	*fields = talloc_get_type_abort(mctx->rctx, process_dhcpv6_client_fields_t);
 	fr_process_state_t const	*state;
 
@@ -412,7 +595,7 @@ RESUME(send_to_client)
 	/*
 	 *	Add a status code if we have one
 	 */
-	status_code_add(request, state->status_codes[*p_result]);
+	status_code_add(inst, request, state->status_codes[*p_result]);
 
 	/*
 	 *	If we have a status code entry then we'll
@@ -498,6 +681,7 @@ RECV(from_relay)
  */
 RESUME(send_to_relay)
 {
+	process_dhcpv6_t		*inst = talloc_get_type_abort(mctx->instance, process_dhcpv6_t);
 	process_dhcpv6_relay_fields_t	*fields = talloc_get_type_abort(mctx->rctx, process_dhcpv6_relay_fields_t);
 	fr_process_state_t const	*state;
 
@@ -506,7 +690,7 @@ RESUME(send_to_relay)
 	/*
 	 *	Add a status code if we have one
 	 */
-	status_code_add(request, state->status_codes[*p_result]);
+	status_code_add(inst, request, state->status_codes[*p_result]);
 
 	/*
 	 *	Restore relay fields
@@ -1045,100 +1229,11 @@ static fr_process_state_t const process_state[] = {
 	}
 };
 
-static const virtual_server_compile_t compile_list[] = {
-	{
-		.name = "recv",
-		.name2 = "Solicit",
-		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(recv_solicit)
-	},
-	{
-		.name = "recv",
-		.name2 = "Request",
-		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(recv_request)
-	},
-	{
-		.name = "recv",
-		.name2 = "Confirm",
-		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(recv_confirm)
-	},
-	{
-		.name = "recv",
-		.name2 = "Renew",
-		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(recv_renew)
-	},
-	{
-		.name = "recv",
-		.name2 = "Rebind",
-		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(recv_rebind)
-	},
-	{
-		.name = "recv",
-		.name2 = "Release",
-		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(recv_release)
-	},
-	{
-		.name = "recv",
-		.name2 = "Decline",
-		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(recv_decline)
-	},
-	{
-		.name = "recv",
-		.name2 = "Reconfigure",
-		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(recv_reconfigure)
-	},
-	{
-		.name = "recv",
-		.name2 = "Information-Request",
-		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(recv_information_request)
-	},
-	{
-		.name = "recv",
-		.name2 = "Relay-Forward",
-		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(recv_relay_forward)
-	},
-
-	{
-		.name = "send",
-		.name2 = "Advertise",
-		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(send_advertise)
-	},
-	{
-		.name = "send",
-		.name2 = "Reply",
-		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(send_reply)
-	},
-	{
-		.name = "send",
-		.name2 = "Relay-Reply",
-		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(send_relay_reply)
-	},
-	{
-		.name = "send",
-		.name2 = "Do-Not-Respond",
-		.component = MOD_POST_AUTH,
-		.offset = PROCESS_CONF_OFFSET(do_not_respond)
-	},
-	COMPILE_TERMINATOR
-};
-
 extern fr_process_module_t process_dhcpv6;
 fr_process_module_t process_dhcpv6 = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "process_dhcpv6",
-//	.config		= config,
+	.config		= dhcpv6_process_config,
 	.inst_size	= sizeof(process_dhcpv6_t),
 
 	.bootstrap	= mod_bootstrap,

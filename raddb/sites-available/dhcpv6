@@ -204,6 +204,73 @@ server dhcpv6 {
 		}
 	}
 
+	#
+	#  #### State machine configuration
+	#
+	dhcpv6 {
+		#
+		#  status_code_on_success:: Include a status-code
+		#  option in the packet even when the operation is
+		#  successful (status code 0).
+		#
+		#  RFC8415 states that the absence of a status-code
+		#  option is identical to a status-code option with
+		#  value (0).  This option is included in case
+		#  there are broken DHCPv6 clients that require an
+		#  explicit success notification.
+		#
+		#  This config item is disabled by default as
+		#  including status-code adds approximately 6 bytes
+		#  per nested message, and some clients are buggy
+		#  and count any status-code option as a failure
+		#  indication.
+		#
+#		status_code_on_success = no
+
+		#
+		#  send_failure_message:: Concatenate the contents
+		#  of any Module-Failure-Message attribute in the
+		#  request, and include it in the message field
+		#  of the status-code option when status-code is
+		#  not 0 or when `status_code_on_success = yes`.
+		#
+		#  This is disabled by default as these messages
+		#  may reveal sensitive information about the
+		#  internal state of the server.
+		#
+		#  It's recommended to only enable this config item
+		#  for debugging, or in conjunction with
+		#  move_failure_message_to_parent where the upsteam
+		#  relay is trusted and secure.
+		#
+#		send_failure_message = no
+
+		#
+		#  move_failure_message_to_parent:: Move all
+		#  Module-Failure-Message attributes to the parent
+		#  request.
+		#
+		#  Attributes are only moved when:
+		#
+		#  - A parent request is available.
+		#  - The parent request of type DHCPv6.
+		#  - status-code != 0, or `status_code_on_success = yes`
+		#
+		#  When combined with send_failure_message and
+		#  a secure upstream DHCPv6 relay this provides a
+		#  useful debugging tool where the reason for a
+		#  given allocation failure can be determined from
+		#  packet traces, or trace functionality on the
+		#  upstream relay.
+		#
+		#  As relays will strip off the outer relay-message
+		#  as the packet moves through them, the contents
+		#  of the Module-Failure-Message will not reach
+		#  the end DHCPv6 client.
+		#
+#		move_failure_message_to_parent = yes
+	}
+
 #
 #  Receive a Solicit message
 #
