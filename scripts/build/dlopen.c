@@ -1002,6 +1002,7 @@ static char *make_ad_dump_defines(__attribute__((unused)) char const *nm, unsign
 		if (!fp) {
 			fprintf(stderr, "ad_dump_defs: Failed opening %s - %s\n",
 				argv[0], strerror(errno));
+			return NULL;
 		}
 
 		/*
