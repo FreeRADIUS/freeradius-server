@@ -988,7 +988,7 @@ ntlm_auth_err:
 		/*
 		 *  Decrypt the blob
 		 */
-		RC4_set_key(&key, nt_password->vp_length, nt_password->vp_octets);
+		RC4_set_key(&key, nt_password->vp_length, nt_password->vp_octets); /* lgtm [cpp/weak-cryptographic-algorithm] */
 		RC4(&key, 516, new_nt_password, nt_pass_decrypted);
 
 		/*
