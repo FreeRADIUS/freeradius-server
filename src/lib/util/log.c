@@ -504,7 +504,7 @@ void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line
 #ifdef HAVE_SYSLOG_H
 	case L_DST_SYSLOG:
 	{
-		int syslog_priority;
+		int syslog_priority = L_DBG;
 
 		switch (type) {
 		case L_DBG:
