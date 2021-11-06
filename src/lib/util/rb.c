@@ -557,16 +557,7 @@ static inline CC_HINT(always_inline) fr_rb_node_t *find_node(fr_rb_tree_t const 
 
 		if (result == 0) return current;
 
-		/*
-		 *	If result > 0, return the start of the struct
-		 *	i.e. the left branch.
-		 *
-		 *	If result < 0, return struct + sizeof(fr_rb_node_t)
-		 *	i.e. the right branch.
-		 *
-		 *	One fewer branch in the hot loop...
-		 */
-		current = *(fr_rb_node_t **)((uint8_t *)current + ((result > 0) * sizeof(fr_rb_node_t *)));
+		current = (result < 0) ? current->left : current->right;
 	}
 
 	return NULL;

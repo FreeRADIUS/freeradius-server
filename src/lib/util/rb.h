@@ -39,9 +39,9 @@ typedef enum {
 } fr_rb_colour_t;
 
 typedef struct fr_rb_node_s fr_rb_node_t;
-struct CC_HINT(packed) fr_rb_node_s {
-	fr_rb_node_t		*left;		//!< Left child - Must occur first in the struct.
-	fr_rb_node_t		*right;		//!< Right child - Must occur second in the struct.
+struct fr_rb_node_s {
+	fr_rb_node_t		*left;		//!< Left child
+	fr_rb_node_t		*right;		//!< Right child
 	fr_rb_node_t		*parent;	//!< Parent
 	void			*data;		//!< data stored in node
 
