@@ -60,7 +60,7 @@
 
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_eap"
+#define LOG_PREFIX "eap"
 
 #include <freeradius-devel/eap/base.h>
 #include <freeradius-devel/server/virtual_servers.h>
