@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_test"
+#define LOG_PREFIX inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
@@ -111,6 +111,7 @@ typedef struct {
 } rlm_test_t;
 
 typedef struct {
+	rlm_test_t	*inst;
 	pthread_t	value;
 } rlm_test_thread_t;
 
@@ -407,11 +408,13 @@ static xlat_action_t test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED reques
 }
 
 
-static int mod_thread_instantiate(UNUSED CONF_SECTION  const *cs, UNUSED void *instance, UNUSED fr_event_list_t *el,
+static int mod_thread_instantiate(UNUSED CONF_SECTION  const *cs, void *instance, UNUSED fr_event_list_t *el,
 				  void *thread)
 {
+	rlm_test_t *inst = instance;
 	rlm_test_thread_t *t = thread;
 
+	t->inst = inst;
 	t->value = pthread_self();
 	INFO("Performing instantiation for thread %p (ctx %p)", (void *)t->value, t);
 
@@ -421,6 +424,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION  const *cs, UNUSED void *i
 static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 {
 	rlm_test_thread_t *t = thread;
+	rlm_test_t *inst = t->inst;
 
 	INFO("Performing detach for thread %p", (void *)t->value);
 
