@@ -24,8 +24,8 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_always (%s) - "
-#define LOG_PREFIX_ARGS dl_module_instance_name_by_data(inst)
+#define LOG_PREFIX "%s - "
+#define LOG_PREFIX_ARGS inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
@@ -137,7 +137,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		cf_log_err(conf, "Can't find the module instance data for this module: %s", inst->name);
 		return -1;
 	}
-
 
 	xlat = xlat_register(inst, inst->name, always_xlat, false);
 	xlat_func_args(xlat, always_xlat_args);

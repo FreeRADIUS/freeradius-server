@@ -23,8 +23,8 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_chap (%s) - "
-#define LOG_PREFIX_ARGS dl_module_instance_name_by_data(inst)
+#define LOG_PREFIX "%s - "
+#define LOG_PREFIX_ARGS inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/password.h>
@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radius/radius.h>
 
 typedef struct {
-	char const		*name;		//!< Auth-Type value for this module instance.
+	char const			*name;		//!< Auth-Type value for this module instance.
 	fr_dict_enum_value_t		*auth_type;
 } rlm_chap_t;
 

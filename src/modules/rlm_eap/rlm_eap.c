@@ -25,8 +25,8 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_eap (%s) - "
-#define LOG_PREFIX_ARGS dl_module_instance_name_by_data(inst)
+#define LOG_PREFIX "%s - "
+#define LOG_PREFIX_ARGS inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>

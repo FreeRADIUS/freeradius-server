@@ -25,8 +25,8 @@
 /*  MPPE support from Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp> */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_mschap (%s) - "
-#define LOG_PREFIX_ARGS dl_module_instance_name_by_data(inst)
+#define LOG_PREFIX "%s - "
+#define LOG_PREFIX_ARGS inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/exec_legacy.h>
@@ -2264,16 +2264,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	char const		*name;
 	rlm_mschap_t		*inst = instance;
 	xlat_t			*xlat;
 
-	/*
-	 *	Create the dynamic translation.
-	 */
-	name = cf_section_name2(conf);
-	if (!name) name = cf_section_name1(conf);
-	inst->name = name;
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	xlat = xlat_register(inst, inst->name, mschap_xlat, false);
 	xlat_func_args(xlat, mschap_xlat_args);

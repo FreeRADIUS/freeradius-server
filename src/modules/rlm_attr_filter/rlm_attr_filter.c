@@ -24,8 +24,8 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_attr_filter (%s) - "
-#define LOG_PREFIX_ARGS dl_module_instance_name_by_data(inst)
+#define LOG_PREFIX "%s - "
+#define LOG_PREFIX_ARGS inst->name
 
 #include	<freeradius-devel/server/base.h>
 #include	<freeradius-devel/server/module.h>
@@ -42,6 +42,7 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct {
+	char const	*name;
 	char const	*filename;
 	tmpl_t		*key;
 	bool		relaxed;
@@ -160,6 +161,16 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char co
 	return 0;
 }
 
+
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+{
+	rlm_attr_filter_t	*inst = instance;
+
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
+
+	return 0;
+}
 
 /*
  *	(Re-)read the "attrs" file into memory.
@@ -375,6 +386,7 @@ module_t rlm_attr_filter = {
 	.name		= "attr_filter",
 	.inst_size	= sizeof(rlm_attr_filter_t),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
