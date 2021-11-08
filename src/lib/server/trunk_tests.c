@@ -1324,7 +1324,6 @@ static void test_requeue_on_reconnect(void)
 }
 #endif
 
-#if 0
 static void test_connection_start_on_enqueue(void)
 {
 	TALLOC_CTX		*ctx = talloc_init_const("test");
@@ -1352,6 +1351,16 @@ static void test_connection_start_on_enqueue(void)
 	TEST_CASE("C0 - Enqueue should spawn");
 	fr_trunk_request_enqueue(&treq_a, trunk, NULL, preq, NULL);
 
+	/*
+	 *	This causes the event associated with the request left on
+	 *	the backlog queue to be handled, which (along with the other
+	 *	corral; service sequence, makes the checks all pass... but
+	 *	is the result a valid test? Not sure what the original author's
+	 *	intent was.
+	 */
+	fr_event_corral(el, test_time_base, false);
+	fr_event_service(el);
+
 	TEST_CHECK(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) == 1);
 
 	TEST_CASE("C1 connecting, !max_req_per_conn - Enqueue MUST NOT spawn");
@@ -1376,7 +1385,6 @@ static void test_connection_start_on_enqueue(void)
 	talloc_free(ctx);
 	talloc_free(preq);
 }
-#endif
 
 static void test_connection_rebalance_requests(void)
 {
@@ -1659,7 +1667,7 @@ static void test_connection_levels_alternating_edges(void)
 	fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
 
-	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));;
+	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
 
 	TEST_CASE("C1 connected, C2 connecting, R2 - MUST NOT spawn");
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_ALL) == 3);
@@ -1878,8 +1886,8 @@ TEST_LIST = {
 	/*
 	 *	Connection spawning tests
 	 */
-#if 0
 	{ "Spawn - Test connection start on enqueue",	test_connection_start_on_enqueue },
+#if 0
 	{ "Spawn - Connection levels max",		test_connection_levels_max },
 	{ "Spawn - Connection levels alternating edges",test_connection_levels_alternating_edges },
 #endif
