@@ -21,7 +21,7 @@
  *
  * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
  */
-#define LOG_PREFIX "proto_dns_udp - "
+#define LOG_PREFIX "proto_dns_udp"
 
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/util/udp.h>

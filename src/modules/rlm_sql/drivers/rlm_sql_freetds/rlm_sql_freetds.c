@@ -26,7 +26,7 @@
 
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_sql_freetds - "
+#define LOG_PREFIX "rlm_sql_freetds"
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>

@@ -48,8 +48,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "%s - "
-#define LOG_PREFIX_ARGS worker->name
+#define LOG_PREFIX worker->name
 #define LOG_DST worker->log
 
 #include <freeradius-devel/io/channel.h>

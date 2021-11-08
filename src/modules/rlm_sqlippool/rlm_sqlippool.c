@@ -25,8 +25,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_sql_ippool (%s) - "
-#define LOG_PREFIX_ARGS inst->sql_instance_name
+#define LOG_PREFIX inst->name
 
 #include <rlm_sql.h>
 #include <freeradius-devel/util/debug.h>
@@ -41,6 +40,7 @@ RCSID("$Id$")
  *	Define a structure for our module configuration.
  */
 typedef struct {
+	char const      *name;
 	char const	*sql_instance_name;
 
 	uint32_t	lease_duration;
@@ -395,6 +395,19 @@ finish:
 	(data->sql_inst->driver->sql_finish_select_query)(*handle, data->sql_inst->config);
 
 	return retval;
+}
+
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+{
+	rlm_sqlippool_t	*inst = instance;
+	char const *name;
+
+	name = cf_section_name2(conf);
+	if (!name) name = cf_section_name1(conf);
+
+	inst->name = talloc_asprintf(inst, "%s - %s", name, inst->sql_instance_name);
+
+	return 0;
 }
 
 /*
@@ -850,6 +863,7 @@ module_t rlm_sqlippool = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_sqlippool_t),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_ACCOUNTING]	= mod_accounting,

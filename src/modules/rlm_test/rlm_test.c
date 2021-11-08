@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_test - "
+#define LOG_PREFIX "rlm_test"
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>

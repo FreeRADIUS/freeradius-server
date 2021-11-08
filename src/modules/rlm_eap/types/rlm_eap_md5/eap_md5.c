@@ -36,7 +36,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_eap_md5 - "
+#define LOG_PREFIX "rlm_eap_md5"
 
 #include <stdio.h>
 #include <stdlib.h>

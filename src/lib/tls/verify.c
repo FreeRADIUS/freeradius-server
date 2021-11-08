@@ -26,7 +26,7 @@
  * @copyright 2006-2016 The FreeRADIUS server project
  */
 #ifdef WITH_TLS
-#define LOG_PREFIX "tls - "
+#define LOG_PREFIX "tls"
 
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/pair.h>

@@ -21,7 +21,7 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
-#define LOG_PREFIX "rlm_sql_unixodbc - "
+#define LOG_PREFIX "rlm_sql_unixodbc"
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>

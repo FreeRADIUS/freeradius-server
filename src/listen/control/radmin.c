@@ -65,7 +65,7 @@ DIAG_ON(strict-prototypes)
 #endif /* HAVE_READLINE_HISTORY */
 #endif /* HAVE_LIBREADLINE */
 
-#define LOG_PREFIX "radmin - "
+#define LOG_PREFIX "radmin"
 
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/cf_file.h>

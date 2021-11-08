@@ -24,8 +24,7 @@
  * @copyright 2019-2020 The FreeRADIUS server project
  */
 
-#define LOG_PREFIX "%s - "
-#define LOG_PREFIX_ARGS trunk->log_prefix
+#define LOG_PREFIX trunk->log_prefix
 
 #ifdef NDEBUG
 #  define TALLOC_GET_TYPE_ABORT_NOOP 1

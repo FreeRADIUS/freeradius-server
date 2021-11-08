@@ -23,7 +23,7 @@
  * @copyright 2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #ifdef WITH_TLS
-#define LOG_PREFIX "tls - "
+#define LOG_PREFIX "tls"
 
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/call.h>

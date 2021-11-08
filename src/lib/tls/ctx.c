@@ -28,7 +28,7 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #ifdef WITH_TLS
-#define LOG_PREFIX "tls - "
+#define LOG_PREFIX "tls"
 
 #include <freeradius-devel/tls/log.h>
 #include <freeradius-devel/util/base16.h>

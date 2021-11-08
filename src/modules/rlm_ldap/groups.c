@@ -31,8 +31,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/util/debug.h>
 #include <ctype.h>
 
-#define LOG_PREFIX "rlm_ldap (%s) - "
-#define LOG_PREFIX_ARGS inst->name
+#define LOG_PREFIX inst->name
 
 #include "rlm_ldap.h"
 

@@ -22,8 +22,7 @@
  *
  * @copyright 2017-2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#define LOG_PREFIX "%s "
-#define LOG_PREFIX_ARGS conn->pub.name
+#define LOG_PREFIX conn->pub.name
 
 typedef struct fr_connection_s fr_connection_t;
 #define _CONNECTION_PRIVATE 1

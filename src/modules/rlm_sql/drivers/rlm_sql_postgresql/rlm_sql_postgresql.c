@@ -39,7 +39,7 @@
 
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_sql_postgresql - "
+#define LOG_PREFIX "rlm_sql_postgresql"
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>

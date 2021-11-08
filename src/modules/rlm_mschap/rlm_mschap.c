@@ -25,8 +25,7 @@
 /*  MPPE support from Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp> */
 RCSID("$Id$")
 
-#define LOG_PREFIX "%s - "
-#define LOG_PREFIX_ARGS inst->name
+#define LOG_PREFIX inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/exec_legacy.h>

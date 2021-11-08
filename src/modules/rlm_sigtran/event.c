@@ -56,7 +56,7 @@
  *
  * @copyright 2016 Network RADIUS SARL (license@networkradius.com)
  */
-#define LOG_PREFIX "rlm_sigtran - "
+#define LOG_PREFIX "rlm_sigtran"
 
 #include <osmocom/core/talloc.h>
 

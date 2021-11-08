@@ -25,7 +25,7 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
-#define LOG_PREFIX "rlm_eap_tls - "
+#define LOG_PREFIX "rlm_eap_tls"
 
 #ifdef HAVE_OPENSSL_RAND_H
 #  include <openssl/rand.h>

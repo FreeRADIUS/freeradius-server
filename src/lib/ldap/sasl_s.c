@@ -27,8 +27,7 @@ RCSID("$Id$")
 
 USES_APPLE_DEPRECATED_API
 
-#define LOG_PREFIX "%s - "
-#define LOG_PREFIX_ARGS handle_config->name
+#define LOG_PREFIX handle_config->name
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/base.h>

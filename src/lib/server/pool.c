@@ -25,8 +25,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "%s - "
-#define LOG_PREFIX_ARGS pool->log_prefix
+#define LOG_PREFIX pool->log_prefix
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modpriv.h>

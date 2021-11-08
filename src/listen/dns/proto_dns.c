@@ -21,7 +21,7 @@
  *
  * @copyright 2020 Network RADIUS SARL (legal@networkradius.com)
  */
-#define LOG_PREFIX "proto_dns - "
+#define LOG_PREFIX "proto_dns"
 
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/module.h>

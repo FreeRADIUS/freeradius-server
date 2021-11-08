@@ -22,7 +22,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_eap_peap - "
+#define LOG_PREFIX "rlm_eap_peap"
 
 #include <freeradius-devel/eap/tls.h>
 #include "eap_peap.h"

@@ -28,7 +28,7 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #ifdef WITH_TLS
-#define LOG_PREFIX "tls - "
+#define LOG_PREFIX "tls"
 
 #include <openssl/conf.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L

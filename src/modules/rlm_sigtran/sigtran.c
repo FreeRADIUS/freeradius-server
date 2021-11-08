@@ -30,7 +30,7 @@
  * @file rlm_sigtran/sigtran.c
  * @brief Miscellaneous functions.
  */
-#define LOG_PREFIX "rlm_sigtran - "
+#define LOG_PREFIX "rlm_sigtran"
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>

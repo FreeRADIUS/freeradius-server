@@ -30,8 +30,7 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
-#define LOG_PREFIX "rlm_unix (%s) - "
-#define LOG_PREFIX_ARGS inst->name
+#define LOG_PREFIX inst->name
 
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/server/base.h>

@@ -24,7 +24,7 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
-#define LOG_PREFIX "rlm_wimax - "
+#define LOG_PREFIX "rlm_wimax"
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>

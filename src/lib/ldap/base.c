@@ -30,8 +30,7 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/util/debug.h>
 
-#define LOG_PREFIX "%s - "
-#define LOG_PREFIX_ARGS handle_config->name
+#define LOG_PREFIX handle_config->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/ldap/base.h>

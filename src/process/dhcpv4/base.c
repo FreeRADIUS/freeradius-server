@@ -22,7 +22,7 @@
  * @copyright 2018 The Freeradius server project.
  * @copyright 2018 Alan DeKok (aland@deployingradius.com)
  */
-#define LOG_PREFIX "process_dhcpv4 - "
+#define LOG_PREFIX "process_dhcpv4"
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/server/protocol.h>

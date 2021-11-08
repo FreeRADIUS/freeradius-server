@@ -24,8 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_krb5 (%s) - "
-#define LOG_PREFIX_ARGS inst->name
+#define LOG_PREFIX inst->name
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/base.h>

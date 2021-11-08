@@ -24,8 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "%s - "
-#define LOG_PREFIX_ARGS nr->name
+#define LOG_PREFIX nr->name
 
 #define LOG_DST nr->log
 

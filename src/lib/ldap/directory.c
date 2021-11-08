@@ -28,8 +28,7 @@ RCSID("$Id$")
 
 USES_APPLE_DEPRECATED_API
 
-#define LOG_PREFIX "%s - "
-#define LOG_PREFIX_ARGS name
+#define LOG_PREFIX name
 
 #include <freeradius-devel/ldap/base.h>
 

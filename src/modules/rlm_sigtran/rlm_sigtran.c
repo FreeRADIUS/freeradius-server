@@ -34,7 +34,6 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_sigtran (%s) - "
 #define LOG_PREFIX_ARGS inst->name
 
 #include <osmocom/core/linuxlist.h>

@@ -183,19 +183,16 @@ void	log_global_free(void);
  *  The prefix is set with LOG_PREFIX, and arguments may
  *  be passed with LOG_PREFIX_ARGS
  */
-#ifndef LOG_PREFIX
-#  define LOG_PREFIX ""
-#endif
-#ifdef LOG_PREFIX_ARGS
-#  define _FR_LOG_PREFIX(_lvl, _fmt, ...) _FR_LOG_DST(_lvl, LOG_PREFIX _fmt, LOG_PREFIX_ARGS, ## __VA_ARGS__)
-#  define _FR_LOG_PREFIX_PERROR(_lvl, _fmt, ...) _FR_LOG_DST_PERROR(_lvl, LOG_PREFIX _fmt, LOG_PREFIX_ARGS, ## __VA_ARGS__)
-#  define _FR_LOG_PREFIX_FATAL(_fmt, ...) _FR_LOG_DST_FATAL(LOG_PREFIX _fmt, LOG_PREFIX_ARGS, ## __VA_ARGS__)
-#  define _FR_LOG_PREFIX_MARKER(_lvl, _str, _str_len, _marker_idx, _marker) _FR_LOG_DST_MARKER(_lvl, _str, _str_len, _marker_idx, _marker, LOG_PREFIX, LOG_PREFIX_ARGS)
+#ifdef LOG_PREFIX
+#  define _FR_LOG_PREFIX(_lvl, _fmt, ...) _FR_LOG_DST(_lvl, "%s - " _fmt, LOG_PREFIX, ## __VA_ARGS__)
+#  define _FR_LOG_PREFIX_PERROR(_lvl, _fmt, ...) _FR_LOG_DST_PERROR(_lvl, "%s - " _fmt, LOG_PREFIX, ## __VA_ARGS__)
+#  define _FR_LOG_PREFIX_FATAL(_fmt, ...) _FR_LOG_DST_FATAL("%s - " _fmt, LOG_PREFIX, ## __VA_ARGS__)
+#  define _FR_LOG_PREFIX_MARKER(_lvl, _str, _str_len, _marker_idx, _marker) _FR_LOG_DST_MARKER(_lvl, _str, _str_len, _marker_idx, _marker, "%s", LOG_PREFIX)
 #else
-#  define _FR_LOG_PREFIX(_lvl, _fmt, ...) _FR_LOG_DST(_lvl, LOG_PREFIX _fmt, ## __VA_ARGS__)
-#  define _FR_LOG_PREFIX_PERROR(_lvl, _fmt, ...) _FR_LOG_DST_PERROR(_lvl, LOG_PREFIX _fmt, ## __VA_ARGS__)
-#  define _FR_LOG_PREFIX_FATAL(_fmt, ...) _FR_LOG_DST_FATAL(LOG_PREFIX _fmt, ## __VA_ARGS__)
-#  define _FR_LOG_PREFIX_MARKER(_lvl, _str, _str_len, _marker_idx, _marker) _FR_LOG_DST_MARKER(_lvl, _str, _str_len, _marker_idx, _marker, LOG_PREFIX)
+#  define _FR_LOG_PREFIX(_lvl, _fmt, ...) _FR_LOG_DST(_lvl, _fmt, ## __VA_ARGS__)
+#  define _FR_LOG_PREFIX_PERROR(_lvl, _fmt, ...) _FR_LOG_DST_PERROR(_lvl, _fmt, ## __VA_ARGS__)
+#  define _FR_LOG_PREFIX_FATAL(_fmt, ...) _FR_LOG_DST_FATAL(_fmt, ## __VA_ARGS__)
+#  define _FR_LOG_PREFIX_MARKER(_lvl, _str, _str_len, _marker_idx, _marker) _FR_LOG_DST_MARKER(_lvl, _str, _str_len, _marker_idx, _marker, "")
 #endif
 
 /** @name Log global messages

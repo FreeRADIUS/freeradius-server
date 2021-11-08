@@ -23,8 +23,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "%s - "
-#define LOG_PREFIX_ARGS inst->config.name
+#define LOG_PREFIX inst->config.name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
