@@ -146,7 +146,7 @@ typedef struct {
  *	Structure for module configuration
  */
 typedef struct {
-	char const		*xlat_name;	//!< Instance name.
+	char const		*name;		//!< Instance name.
 
 	char const		*connect_proxy;	//!< Send request via this proxy.
 

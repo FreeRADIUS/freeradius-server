@@ -26,7 +26,7 @@
 RCSID("$Id$")
 
 #define LOG_PREFIX "rlm_lua (%s) - "
-#define LOG_PREFIX_ARGS inst->xlat_name
+#define LOG_PREFIX_ARGS inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
@@ -138,8 +138,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	rlm_lua_t *inst = instance;
 	rlm_rcode_t rcode;
 
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	/*
 	 *	Get an instance global interpreter to use with various things...

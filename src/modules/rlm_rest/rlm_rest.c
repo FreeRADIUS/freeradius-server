@@ -1124,7 +1124,7 @@ static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_e
 	 *	thread safe.
 	 */
 	my_conf = cf_section_dup(NULL, NULL, conf, cf_section_name1(conf), cf_section_name2(conf), true);
-	t->pool = fr_pool_init(NULL, my_conf, instance, rest_mod_conn_create, NULL, inst->xlat_name);
+	t->pool = fr_pool_init(NULL, my_conf, instance, rest_mod_conn_create, NULL, inst->name);
 	talloc_free(my_conf);
 
 	if (!t->pool) {
@@ -1208,10 +1208,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	rlm_rest_t	*inst = instance;
 	xlat_t		*xlat;
 
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	xlat = xlat_register(inst, inst->xlat_name, rest_xlat, true);
+	xlat = xlat_register(inst, inst->name, rest_xlat, true);
 	xlat_func_args(xlat, rest_xlat_args);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, rest_xlat_thread_inst_t, NULL, inst);
 

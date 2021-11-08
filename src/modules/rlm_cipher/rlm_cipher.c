@@ -176,7 +176,7 @@ typedef struct {
  *
  */
 typedef struct {
-	char const		*xlat_name;			//!< Name of xlat we registered.
+	char const		*name;			//!< Name of xlat we registered.
 	cipher_type_t		type;				//!< Type of encryption to use.
 
 	/** Supported cipher types
@@ -1311,8 +1311,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_cipher_t	*inst = talloc_get_type_abort(instance, rlm_cipher_t);
 
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	switch (inst->type) {
 	case RLM_CIPHER_TYPE_RSA:
@@ -1334,7 +1334,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			/*
 			 *	Register decrypt xlat
 			 */
-			xlat_name = talloc_asprintf(inst, "%s_decrypt", inst->xlat_name);
+			xlat_name = talloc_asprintf(inst, "%s_decrypt", inst->name);
 			xlat = xlat_register(inst, xlat_name, cipher_rsa_decrypt_xlat, false);
 			xlat_func_mono(xlat, &cipher_rsa_decrypt_xlat_arg);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
@@ -1351,7 +1351,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			/*
 			 *	Verify sign xlat
 			 */
-			xlat_name = talloc_asprintf(inst, "%s_verify", inst->xlat_name);
+			xlat_name = talloc_asprintf(inst, "%s_verify", inst->name);
 			xlat = xlat_register(inst, xlat_name, cipher_rsa_verify_xlat, false);
 			xlat_func_args(xlat, cipher_rsa_verify_xlat_arg);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
@@ -1389,7 +1389,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			/*
 			 *	Register encrypt xlat
 			 */
-			xlat_name = talloc_asprintf(inst, "%s_encrypt", inst->xlat_name);
+			xlat_name = talloc_asprintf(inst, "%s_encrypt", inst->name);
 			xlat = xlat_register(inst, xlat_name, cipher_rsa_encrypt_xlat, false);
 			xlat_func_mono(xlat, &cipher_rsa_encrypt_xlat_arg);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
@@ -1405,7 +1405,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			/*
 			 *	Register sign xlat
 			 */
-			xlat_name = talloc_asprintf(inst, "%s_sign", inst->xlat_name);
+			xlat_name = talloc_asprintf(inst, "%s_sign", inst->name);
 			xlat = xlat_register(inst, xlat_name, cipher_rsa_sign_xlat, false);
 			xlat_func_mono(xlat, &cipher_rsa_sign_xlat_arg);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
@@ -1418,7 +1418,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 							  inst);
 			talloc_free(xlat_name);
 
-			xlat_name = talloc_asprintf(inst, "%s_certificate", inst->xlat_name);
+			xlat_name = talloc_asprintf(inst, "%s_certificate", inst->name);
 			xlat = xlat_register(inst, xlat_name, cipher_certificate_xlat, false);
 			xlat_func_args(xlat, cipher_certificate_xlat_args);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,

@@ -30,7 +30,7 @@
 #include <time.h>
 
 typedef struct {
-	char const *xlat_name;
+	char const *name;
 	char const *fmt;
 	bool utc;
 } rlm_date_t;
@@ -236,12 +236,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	rlm_date_t 	*inst = instance;
 	xlat_t 		*xlat;
 
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) {
-		inst->xlat_name = cf_section_name1(conf);
-	}
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	xlat = xlat_register(inst, inst->xlat_name, xlat_date_convert, false);
+	xlat = xlat_register(inst, inst->name, xlat_date_convert, false);
 	xlat_func_args(xlat,xlat_date_convert_args);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_date_t *, NULL, inst);
 

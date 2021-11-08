@@ -38,7 +38,7 @@ USES_APPLE_DEPRECATED_API
  *	Define a structure for our module configuration.
  */
 typedef struct {
-	char const *xlat_name;
+	char const *name;
 } rlm_expr_t;
 
 /** Calculate powers
@@ -610,12 +610,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	rlm_expr_t	*inst = instance;
 	xlat_t		*xlat;
 
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) {
-		inst->xlat_name = cf_section_name1(conf);
-	}
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	xlat = xlat_register(inst, inst->xlat_name, expr_xlat, false);
+	xlat = xlat_register(inst, inst->name, expr_xlat, false);
 	xlat_func_mono(xlat, &expr_xlat_arg);
 
 	return 0;

@@ -60,6 +60,8 @@ extern char **environ;
  *	be used as the instance handle.
  */
 typedef struct {
+	char const	*name;
+
 	/* Name of the perl module */
 	char const	*module;
 
@@ -72,7 +74,6 @@ typedef struct {
 	char const	*func_preacct;
 	char const	*func_detach;
 	char const	*func_post_auth;
-	char const	*xlat_name;
 	char const	*perl_flags;
 	PerlInterpreter	*perl;
 	bool		perl_parsed;
@@ -639,12 +640,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_perl_t	*inst = instance;
 	xlat_t		*xlat;
-	char const	*xlat_name;
 
-	xlat_name = cf_section_name2(conf);
-	if (!xlat_name) xlat_name = cf_section_name1(conf);
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	xlat = xlat_register(NULL, xlat_name, perl_xlat, false);
+	xlat = xlat_register(NULL, inst->name, perl_xlat, false);
 	xlat_func_args(xlat, perl_xlat_args);
 
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_perl_xlat_t, NULL, inst);

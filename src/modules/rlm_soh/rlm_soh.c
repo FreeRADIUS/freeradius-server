@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/soh/base.h>
 
 typedef struct {
-	char const *xlat_name;
+	char const *name;
 	bool dhcp;
 } rlm_soh_t;
 
@@ -271,16 +271,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 
 static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
-	char const	*name;
 	rlm_soh_t	*inst = instance;
 	xlat_t		*xlat;
 
-	name = cf_section_name2(conf);
-	if (!name) name = cf_section_name1(conf);
-	inst->xlat_name = name;
-	if (!inst->xlat_name) return -1;
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	xlat = xlat_register(inst, inst->xlat_name, soh_xlat, false);
+	xlat = xlat_register(inst, inst->name, soh_xlat, false);
 	xlat_func_args(xlat, soh_xlat_args);
 
 	return 0;

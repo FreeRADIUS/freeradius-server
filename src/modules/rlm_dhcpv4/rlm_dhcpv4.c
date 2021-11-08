@@ -71,7 +71,6 @@ fr_dict_attr_autoload_t rlm_dhcpv4_dict_attr[] = {
  */
 typedef struct {
 	char const		*name;
-	char const		*xlat_name;
 
 	fr_udp_queue_config_t	config;		//!< UDP queue config
 
@@ -117,9 +116,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	rlm_dhcpv4_t	*inst = talloc_get_type_abort(instance, rlm_dhcpv4_t);
 
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
-	inst->name = inst->xlat_name;
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	/*
 	 *	Ensure that we have a destination address.

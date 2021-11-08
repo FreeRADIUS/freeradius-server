@@ -39,7 +39,6 @@ RCSID("$Id$")
  */
 typedef struct {
 	char const	*name;
-	char const	*xlat_name;
 	char const	*interface;
 	fr_time_delta_t	timeout;
 	fr_ipaddr_t	src_ipaddr;
@@ -538,11 +537,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	rlm_icmp_t	*inst = instance;
 	xlat_t		*xlat;
 
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
-	inst->name = inst->xlat_name;
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	xlat = xlat_register(inst, inst->xlat_name, xlat_icmp, true);
+	xlat = xlat_register(inst, inst->name, xlat_icmp, true);
 	xlat_func_args(xlat, xlat_icmp_args);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_icmp_t *, NULL, inst);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, xlat_icmp_thread_inst_t, NULL, inst);

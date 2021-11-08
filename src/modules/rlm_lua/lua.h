@@ -46,7 +46,7 @@ typedef struct {
 						//!< basis, or use a single mutex protected interpreter.
 
 	bool 		jit;			//!< Whether the linked interpreter is Lua 5.1 or LuaJIT.
-	const char	*xlat_name;		//!< Name of this instance.
+	const char	*name;			//!< Name of this instance.
 	const char 	*module;		//!< Full path to lua script to load and execute.
 
 	const char	*func_instantiate;	//!< Name of function to run on instantiation.

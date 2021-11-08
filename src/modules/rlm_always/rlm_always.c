@@ -35,8 +35,9 @@ RCSID("$Id$")
  *	going to return.
  */
 typedef struct {
-	char const	*xlat_name;
+	char const	*name;
 	char const	*rcode_str;	//!< The base value.
+	module_instance_t *mi;
 
 	rlm_rcode_t	rcode;		//!< The integer constant representing rcode_str.
 	uint32_t	simulcount;
@@ -77,17 +78,11 @@ static xlat_action_t always_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 fr_value_box_list_t *in)
 {
 	rlm_always_t const	*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),rlm_always_t);
-	module_instance_t	*mi;
+	module_instance_t	*mi = inst->mi;
 	char const		*status;
 	char const		*p;
 	fr_value_box_t		*vb;
 	fr_value_box_t		*in_head = fr_dlist_head(in);
-
-	mi = module_by_name(NULL, inst->xlat_name);
-	if (!mi) {
-		RERROR("Can't find the module that registered this xlat: %s", inst->xlat_name);
-		return XLAT_ACTION_FAIL;
-	}
 
 	/*
 	 *      Expand to the existing status
@@ -134,12 +129,17 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	rlm_always_t	*inst = instance;
 	xlat_t		*xlat;
 
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) {
-		inst->xlat_name = cf_section_name1(conf);
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
+
+	inst->mi = module_by_name(NULL, inst->name);
+	if (!inst->mi) {
+		cf_log_err(conf, "Can't find the module instance data for this module: %s", inst->name);
+		return -1;
 	}
 
-	xlat = xlat_register(inst, inst->xlat_name, always_xlat, false);
+
+	xlat = xlat_register(inst, inst->name, always_xlat, false);
 	xlat_func_args(xlat, always_xlat_args);
 	xlat_async_instantiate_set(xlat, always_xlat_instantiate, rlm_always_t *, NULL, inst);
 

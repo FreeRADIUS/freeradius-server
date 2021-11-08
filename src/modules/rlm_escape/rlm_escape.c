@@ -35,7 +35,7 @@ USES_APPLE_DEPRECATED_API
  *	Define a structure for our module configuration.
  */
 typedef struct {
-	char const *xlat_name;
+	char const *name;
 	char const *allowed_chars;
 } rlm_escape_t;
 
@@ -199,13 +199,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	char		*unescape;
 	xlat_t		*xlat;
 
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) {
-		inst->xlat_name = cf_section_name1(conf);
-	}
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	MEM(unescape = talloc_asprintf(NULL, "un%s", inst->xlat_name));
-	xlat = xlat_register(NULL, inst->xlat_name, escape_xlat, false);
+	MEM(unescape = talloc_asprintf(NULL, "un%s", inst->name));
+	xlat = xlat_register(NULL, inst->name, escape_xlat, false);
 	xlat_func_mono(xlat, &escape_xlat_arg);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_escape_t *, NULL, inst);
 
