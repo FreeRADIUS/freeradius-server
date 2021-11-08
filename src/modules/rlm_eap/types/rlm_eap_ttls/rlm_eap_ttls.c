@@ -26,7 +26,7 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
-#define LOG_PREFIX "rlm_eap_ttls"
+#define LOG_PREFIX "eap - ttls"
 
 #include <freeradius-devel/eap/tls.h>
 #include "eap_ttls.h"

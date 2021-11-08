@@ -30,7 +30,7 @@
  * @file rlm_sigtran/log.c
  * @brief Interface libosmo with FreeRADIUS logging
  */
-#define LOG_PREFIX "rlm_sigtran"
+#define LOG_PREFIX "sigtran"
 
 #include <freeradius-devel/server/base.h>
 #include <osmocom/core/logging.h>

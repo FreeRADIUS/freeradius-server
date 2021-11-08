@@ -20,7 +20,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_sql_firebird"
+#define LOG_PREFIX "sql - firebird"
 
 #include "sql_fbapi.h"
 #include <freeradius-devel/util/debug.h>

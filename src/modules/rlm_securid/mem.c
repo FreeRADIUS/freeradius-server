@@ -19,7 +19,7 @@
  * @copyright 2012 Alan DeKok (aland@networkradius.com)
  */
 
-#define LOG_PREFIX "rlm_securid"
+#define LOG_PREFIX "securid"
 
 #include <stdio.h>
 #include "rlm_securid.h"

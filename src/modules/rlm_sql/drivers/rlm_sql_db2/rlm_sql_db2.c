@@ -29,7 +29,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_sql_db2"
+#define LOG_PREFIX "sql - db2"
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>

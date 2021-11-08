@@ -33,7 +33,7 @@
  * @author Linnaea Von Lavia (le.concorde.4590@gmail.com)
  * @author Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#define LOG_PREFIX "rlm_sql_cassandra"
+#define LOG_PREFIX "sql - cassandra"
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>

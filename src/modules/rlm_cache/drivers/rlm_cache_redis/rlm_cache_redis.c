@@ -21,7 +21,7 @@
  *
  * @copyright 2015 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#define LOG_PREFIX "rlm_cache_redis"
+#define LOG_PREFIX "cache - redis"
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>

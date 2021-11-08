@@ -24,7 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#define LOG_PREFIX "rlm_sigtran"
+#define LOG_PREFIX "sigtran"
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>

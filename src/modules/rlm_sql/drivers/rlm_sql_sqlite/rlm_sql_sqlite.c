@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_sql_sqlite"
+#define LOG_PREFIX "sql - sqlite"
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
 

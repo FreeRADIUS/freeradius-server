@@ -22,7 +22,7 @@
  * @copyright 2014 The FreeRADIUS server project
  */
 
-#define LOG_PREFIX "rlm_cache_memcached"
+#define LOG_PREFIX "cache - memcached"
 
 #include <libmemcached/memcached.h>
 

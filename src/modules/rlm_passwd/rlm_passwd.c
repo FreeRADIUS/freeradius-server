@@ -23,7 +23,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_passwd"
+#define LOG_PREFIX "passwd"
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>

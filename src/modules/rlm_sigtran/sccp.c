@@ -34,7 +34,7 @@
  *
  * @copyright 2016 Network RADIUS SARL (license@networkradius.com)
  */
-#define LOG_PREFIX "rlm_sigtran - osmocom thread"
+#define LOG_PREFIX "sigtran - osmocom thread"
 
 #include <osmocom/core/talloc.h>
 

@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_sqlcounter"
+#define LOG_PREFIX "sqlcounter"
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
