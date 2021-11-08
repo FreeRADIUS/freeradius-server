@@ -22,8 +22,8 @@
  *
  * @copyright 2017-2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#define LOG_PREFIX "%s - [%" PRIu64 "] "
-#define LOG_PREFIX_ARGS conn->pub.log_prefix, conn->pub.id
+#define LOG_PREFIX "%s "
+#define LOG_PREFIX_ARGS conn->pub.name
 
 typedef struct fr_connection_s fr_connection_t;
 #define _CONNECTION_PRIVATE 1
@@ -1503,15 +1503,19 @@ fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 {
 	size_t i;
 	fr_connection_t *conn;
+	uint64_t id;
 
 	fr_assert(el);
 
 	conn = talloc(ctx, fr_connection_t);
 	if (!conn) return NULL;
 	talloc_set_destructor(conn, _connection_free);
+
+	id = atomic_fetch_add_explicit(&connection_counter, 1, memory_order_relaxed);
+
 	*conn = (fr_connection_t){
 		.pub = {
-			.id = atomic_fetch_add_explicit(&connection_counter, 1, memory_order_relaxed),
+			.id = id,
 			.state = FR_CONNECTION_STATE_HALTED,
 			.el = el
 		},
@@ -1523,7 +1527,7 @@ fr_connection_t *fr_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 		.failed = funcs->failed,
 		.shutdown = funcs->shutdown,
 		.is_closed = true,		/* Starts closed */
-		.pub.log_prefix = talloc_typed_strdup(conn, log_prefix)
+		.pub.name = talloc_asprintf(conn, "%s - [%" PRIu64 "]", log_prefix, id)
 	};
 	memcpy(&conn->uctx, &uctx, sizeof(conn->uctx));
 

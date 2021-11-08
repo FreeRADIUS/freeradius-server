@@ -65,12 +65,13 @@ typedef enum {
  * the connection API.
  */
 struct fr_connection_pub_s {
+	char const		* _CONST name;		//!< Prefix to add to log messages.
+
 	fr_connection_state_t _CONST	state;		//!< Current connection state.
 	fr_connection_state_t _CONST	prev;		//!< The previous state the connection was in.
 	uint64_t _CONST			id;		//!< Unique identifier for the connection.
 	void			* _CONST h;		//!< Connection handle
 	fr_event_list_t		* _CONST el;		//!< Event list for timers and I/O events.
-	char const		* _CONST log_prefix;	//!< Prefix to add to log messages.
 
 	uint64_t _CONST			reconnected;	//!< How many times we've attempted to establish or
 							///< re-establish this connection.
