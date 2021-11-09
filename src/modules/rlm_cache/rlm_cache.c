@@ -965,8 +965,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	char const 	*name;
 	xlat_t		*xlat;
 
-	inst->cs = conf;
-
 	inst->config.name = cf_section_name2(conf);
 	if (!inst->config.name) inst->config.name = cf_section_name1(conf);
 
@@ -1027,8 +1025,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	rlm_cache_t	*inst = instance;
 	CONF_SECTION	*update;
 
-	inst->cs = conf;
-
 	fr_assert(inst->config.key);
 
 	if (!fr_time_delta_ispos(inst->config.ttl)) {
@@ -1041,7 +1037,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	update = cf_section_find(inst->cs, "update", CF_IDENT_ANY);
+	update = cf_section_find(conf, "update", CF_IDENT_ANY);
 	if (!update) {
 		cf_log_err(conf, "Must have an 'update' section in order to cache anything");
 		return -1;
@@ -1063,7 +1059,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	}
 
 	if (fr_dlist_empty(&inst->maps)) {
-		cf_log_err(inst->cs, "Cache config must contain an update section, and "
+		cf_log_err(conf, "Cache config must contain an update section, and "
 			      "that section must not be empty");
 		return -1;
 	}

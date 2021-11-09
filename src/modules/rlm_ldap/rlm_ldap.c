@@ -1907,7 +1907,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	CONF_SECTION	*options, *update;
 	rlm_ldap_t	*inst = instance;
 
-	inst->cs = conf;
 	fr_map_list_init(&inst->user_map);
 
 	options = cf_section_find(conf, "options", NULL);
@@ -2337,7 +2336,7 @@ if (inst->handle_config.tls_min_version_str) {
 			.allow_foreign = true	/* Because we don't know where we'll be called */
 		};
 
-		update = cf_section_find(inst->cs, "update", NULL);
+		update = cf_section_find(conf, "update", NULL);
 		if (update && (map_afrom_cs(inst, &inst->user_map, update,
 					    &parse_rules, &parse_rules, fr_ldap_map_verify, NULL,
 					    LDAP_MAX_ATTRMAP) < 0)) {

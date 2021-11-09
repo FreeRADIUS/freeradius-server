@@ -32,8 +32,6 @@ typedef struct {
 typedef struct {
 	char const	*name;				//!< Instance name.
 
-	CONF_SECTION	*cs;				//!< Main configuration section for this instance.
-
 	bool		expect_password;		//!< True if the user_map included a mapping between an LDAP
 							//!< attribute and one of our password reference attributes.
 

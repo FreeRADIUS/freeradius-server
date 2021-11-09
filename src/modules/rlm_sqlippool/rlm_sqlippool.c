@@ -467,7 +467,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	inst->sql_inst = (rlm_sql_t *) sql_inst->dl_inst->data;
 
-	if (strcmp(cf_section_name1(inst->sql_inst->cs), "sql") != 0) {
+	if (strcmp(talloc_get_name(inst->sql_inst), "rlm_sql_t") != 0) {
 		cf_log_err(conf, "Module \"%s\" is not an instance of the rlm_sql module",
 			      inst->sql_instance_name);
 		return -1;

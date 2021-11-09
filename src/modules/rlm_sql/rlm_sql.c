@@ -1033,8 +1033,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	xlat_t		*xlat;
 	xlat_arg_parser_t	*sql_xlat_arg;
 
-	inst->cs = conf;
-
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
@@ -1226,7 +1224,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 */
 	INFO("Attempting to connect to database \"%s\"", inst->config.sql_db);
 
-	inst->pool = module_connection_pool_init(inst->cs, inst, sql_mod_conn_create, NULL, NULL, NULL, NULL);
+	inst->pool = module_connection_pool_init(conf, inst, sql_mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) return -1;
 
 	return 0;

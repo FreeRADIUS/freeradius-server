@@ -216,7 +216,6 @@ typedef struct {
 struct sql_inst {
 	rlm_sql_config_t	config; /* HACK */
 	fr_pool_t		*pool;
-	CONF_SECTION		*cs;
 
 	fr_dict_attr_t const	*sql_user;		//!< Cached pointer to SQL-User-Name
 							//!< dictionary attribute.

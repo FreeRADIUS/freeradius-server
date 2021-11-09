@@ -73,7 +73,6 @@ typedef struct {
 	char const		*name;			//!< Auth-Type value for this module instance.
 	fr_dict_enum_value_t		*auth_type;
 	fr_map_list_t		header_maps;		//!< Attribute map used to process header elements
-	CONF_SECTION		*cs;
 	bool 			set_date;
 } rlm_smtp_t;
 
@@ -986,10 +985,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	rlm_smtp_t	*inst = instance;
 	CONF_SECTION	*header;
 
-	inst->cs = conf;
-
 	fr_map_list_init(&inst->header_maps);
-	header = cf_section_find(inst->cs, "header", NULL);
+	header = cf_section_find(conf, "header", NULL);
 	if (!header) {
 		return 0;
 	}

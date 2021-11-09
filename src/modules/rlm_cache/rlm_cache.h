@@ -73,7 +73,6 @@ typedef struct {
 
 	fr_map_list_t		maps;			//!< Attribute map applied to users.
 							//!< and profiles.
-	CONF_SECTION		*cs;
 } rlm_cache_t;
 
 typedef struct {
