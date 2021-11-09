@@ -72,6 +72,7 @@ jobs:
         libidn11-dev \
         libiodbc2 \
         libiodbc2-dev \
+        libjson-c-dev \
         libkqueue-dev \
         libkrb5-dev \
         libldap2-dev \
@@ -99,14 +100,6 @@ jobs:
         python3-dev \
         ruby-dev \
         quilt
-
-    - name: Install JSON build deps for 18.04
-      if: ${{ matrix.os == 'ubuntu-18.04' }}
-      run: sudo apt-get install -y --no-install-recommends libjson-c3
-
-    - name: Install JSON build deps for 20.04
-      if: ${{ matrix.os == 'ubuntu-20.04' }}
-      run: sudo apt-get install -y --no-install-recommends libjson-c4
 
     - name: Install LLVM 10 for 18.04
       if: ${{ matrix.os == 'ubuntu-18.04' && matrix.env.CC == 'clang' }}
