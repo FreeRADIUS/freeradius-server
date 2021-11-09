@@ -503,7 +503,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	fr_value_box_t		*in_vb = NULL;
 	ldap_xlat_thread_inst_t	*xt = talloc_get_type_abort(xlat_thread_inst, ldap_xlat_thread_inst_t);
 	char			*host_url;
-	fr_ldap_config_t const	*handle_config = &xt->t->inst->handle_config;
+	fr_ldap_config_t const	*handle_config = xt->t->config;
 	fr_ldap_thread_trunk_t	*ttrunk;
 	fr_ldap_query_t		*query = NULL;
 
@@ -1777,7 +1777,6 @@ static int mod_thread_instatiate(UNUSED CONF_SECTION const *conf, void *instance
 	 */
 	MEM(this_thread->trunks = fr_rb_inline_talloc_alloc(this_thread, fr_ldap_thread_trunk_t, node, fr_ldap_trunk_cmp, NULL));
 
-	this_thread->inst = inst;
 	this_thread->config = &inst->handle_config;
 	this_thread->trunk_conf = &inst->trunk_conf;
 	this_thread->el = el;

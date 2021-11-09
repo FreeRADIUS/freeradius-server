@@ -17,8 +17,6 @@
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/ldap/base.h>
 
-typedef struct ldap_inst_s rlm_ldap_t;
-
 typedef struct {
 	tmpl_t	*mech;				//!< SASL mech(s) to try.
 	tmpl_t	*proxy;				//!< Identity to proxy.
@@ -31,7 +29,7 @@ typedef struct {
 	char const	*reference;			//!< Configuration reference string.
 } ldap_acct_section_t;
 
-struct ldap_inst_s {
+typedef struct {
 	char const	*name;				//!< Instance name.
 
 	CONF_SECTION	*cs;				//!< Main configuration section for this instance.
@@ -150,7 +148,7 @@ struct ldap_inst_s {
 							//!< are unavailable.
 
 	uint32_t	ldap_debug;			//!< Debug flag for the SDK.
-};
+} rlm_ldap_t;
 
 extern HIDDEN fr_dict_attr_t const *attr_cleartext_password;
 extern HIDDEN fr_dict_attr_t const *attr_crypt_password;

@@ -354,14 +354,11 @@ typedef struct {
 	int		count;				//!< Index on next free element.
 } fr_ldap_map_exp_t;
 
-typedef struct ldap_inst_s rlm_ldap_t;
-
 /** Thread specific structure to manage LDAP trunk connections.
  *
  */
 typedef struct {
 	fr_rb_tree_t		*trunks;	//!< Tree of LDAP trunks used by this thread
-	rlm_ldap_t		*inst;		//!< Module instance data
 	fr_ldap_config_t	*config;	//!< Module instance config
 	fr_trunk_conf_t		*trunk_conf;	//!< Module trunk config
 	fr_event_list_t		*el;		//!< Thread event list for callbacks / timeouts
