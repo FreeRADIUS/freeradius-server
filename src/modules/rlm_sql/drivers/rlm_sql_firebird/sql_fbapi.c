@@ -344,7 +344,7 @@ int fb_init_socket(rlm_sql_firebird_conn_t *conn)
 	return 0;
 }
 
-int fb_connect(rlm_sql_firebird_conn_t *conn, rlm_sql_config_t *config)
+int fb_connect(rlm_sql_firebird_conn_t *conn, rlm_sql_config_t const *config)
 {
 	char *p;
 	char *database;
