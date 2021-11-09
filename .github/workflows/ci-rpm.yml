@@ -14,7 +14,6 @@ jobs:
         env:
           - { NAME: "centos-7",  OS: "centos:7" }
           - { NAME: "centos-8",  OS: "centos:8" }
-          - { NAME: "fedora-rawhide", OS: "fedora:rawhide" }
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -153,7 +152,6 @@ jobs:
         env:
           - { NAME: "centos-7", OS: "centos:7" }
           - { NAME: "centos-8", OS: "centos:8" }
-          - { NAME: "fedora-rawhide", OS: "fedora:rawhide" }
       fail-fast: false
 
     runs-on: ubuntu-latest
