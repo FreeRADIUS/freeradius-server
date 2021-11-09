@@ -154,7 +154,7 @@ static const CONF_PARSER driver_config[] = {
 };
 
 /* Prototypes */
-static sql_rcode_t sql_free_result(rlm_sql_handle_t*, rlm_sql_config_t*);
+static sql_rcode_t sql_free_result(rlm_sql_handle_t*, rlm_sql_config_t const *);
 
 static int _sql_socket_destructor(rlm_sql_mysql_conn_t *conn)
 {
