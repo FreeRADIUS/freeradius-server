@@ -1447,12 +1447,14 @@ static void test_connection_rebalance_requests(void)
 	talloc_free(preq);
 }
 
+#if 0
 #define ALLOC_REQ(_id) \
 do { \
 	treq_##_id = fr_trunk_request_alloc(trunk, NULL); \
 	preq_##_id = talloc_zero(ctx, test_proto_request_t); \
 	preq_##_id->treq = treq_##_id; \
 } while (0)
+#endif
 
 #if 0
 static void test_connection_levels_max(void)
