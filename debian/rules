@@ -183,6 +183,7 @@ install-arch: build-arch-stamp
 	  dh_install --sourcedir=$(freeradius_dir) -p freeradius-$$pkg ; \
 	  rm -f $(freeradius_dir)/usr/lib/freeradius/rlm_$$mod*.so ; \
 	done
+	rm -f $(freeradius_dir)/usr/lib/freeradius/rlm_json.so
 
 	dh_install --sourcedir=$(freeradius_dir) -p freeradius-memcached
 	rm -f $(freeradius_dir)/usr/lib/freeradius/rlm_cache_memcached.so
