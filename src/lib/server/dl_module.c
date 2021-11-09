@@ -283,7 +283,7 @@ static void dl_module_instance_data_alloc(dl_module_inst_t *dl_inst, dl_module_t
 	if (!module->common->inst_type) {
 		talloc_set_name(data, "%s_t", module->dl->name ? module->dl->name : "config");
 	} else {
-		talloc_set_name(data, "%s", module->common->inst_type);
+		talloc_set_name_const(data, module->common->inst_type);
 	}
 	dl_inst->data = data;
 

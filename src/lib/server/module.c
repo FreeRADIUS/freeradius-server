@@ -1260,7 +1260,7 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 			if (!mi->module->thread_inst_type) {
 				talloc_set_name(ti->data, "rlm_%s_thread_t", mi->module->name);
 			} else {
-				talloc_set_name(ti->data, "%s", mi->module->thread_inst_type);
+				talloc_set_name_const(ti->data, mi->module->thread_inst_type);
 			}
 		}
 
