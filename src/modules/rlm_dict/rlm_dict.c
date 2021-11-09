@@ -225,9 +225,15 @@ static xlat_action_t xlat_attr_num(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 {
 	xlat_t	*xlat;
+
+	/*
+	 *	Only register these xlats for the first instance of the dictionary module.
+	 */
+	if (cf_section_name2(conf) != NULL) return 0;
+
 	xlat = xlat_register(instance, "attr_by_num", xlat_dict_attr_by_num, false);
 	xlat_func_args(xlat, xlat_dict_attr_by_num_args);
 	xlat = xlat_register(instance, "attr_by_oid", xlat_dict_attr_by_oid, false);

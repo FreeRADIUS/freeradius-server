@@ -1881,10 +1881,12 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	xlat = xlat_register(NULL, inst->name, ldap_xlat, false);
 	xlat_func_mono(xlat, &ldap_xlat_arg);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, ldap_xlat_thread_inst_t, NULL, inst);
+
 	xlat = xlat_register(NULL, "ldap_escape", ldap_escape_xlat, false);
-	xlat_func_mono(xlat, &ldap_escape_xlat_arg);
+	if (xlat) xlat_func_mono(xlat, &ldap_escape_xlat_arg);
 	xlat = xlat_register(NULL, "ldap_unescape", ldap_unescape_xlat, false);
-	xlat_func_mono(xlat, &ldap_escape_xlat_arg);
+	if (xlat) xlat_func_mono(xlat, &ldap_escape_xlat_arg);
+
 	map_proc_register(inst, inst->name, mod_map_proc, ldap_map_verify, 0);
 
 	return 0;

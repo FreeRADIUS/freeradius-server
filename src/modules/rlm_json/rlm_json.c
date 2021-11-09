@@ -561,9 +561,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	xlat = xlat_register(instance, "jsonquote", json_quote_xlat, false);
-	xlat_func_mono(xlat, &json_quote_xlat_arg);
+	if (xlat) xlat_func_mono(xlat, &json_quote_xlat_arg);
 	xlat = xlat_register(instance, "jpathvalidate", jpath_validate_xlat, false);
-	xlat_func_mono(xlat, &jpath_validate_xlat_arg);
+	if (xlat) xlat_func_mono(xlat, &jpath_validate_xlat_arg);
 
 	name = talloc_asprintf(inst, "%s_encode", inst->name);
 	xlat = xlat_register(instance, name, json_encode_xlat, false);

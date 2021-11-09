@@ -149,10 +149,8 @@ static int mod_bootstrap(UNUSED void *instance, CONF_SECTION *conf)
 {
 	xlat_t	*xlat;
 
-	if (cf_section_name2(conf)) return 0;
-
 	xlat = xlat_register(NULL, "unpack", unpack_xlat, false);
-	xlat_func_args(xlat, unpack_xlat_args);
+	if (xlat) xlat_func_args(xlat, unpack_xlat_args);
 
 	return 0;
 }

@@ -198,10 +198,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 #endif
 
-	if (cf_section_name2(conf)) return 0;
-
 	xlat = xlat_register(inst, "modhextohex", modhex_to_hex_xlat, false);
-	xlat_func_mono(xlat, &modhex_to_hex_xlat_arg);
+	if (xlat) xlat_func_mono(xlat, &modhex_to_hex_xlat_arg);
 
 	return 0;
 }
