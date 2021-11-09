@@ -1003,6 +1003,15 @@ static inline rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2_parse(REQUEST *reques
 		p = q + 1;
 	}
 
+	/*
+	 *	Sanitise iterations. Seems OpenSSL 1.0 did this, but at least
+	 *	version 1.1 in RH8 does not, so safest to check ourselves.
+	 */
+	if (iterations == 0) {
+		RWDEBUG("PBKDF2 can not have zero iterations; increasing to 1");
+		iterations = 1;
+	}
+
 	if (((end - p) < 1) || !(q = memchr(p, salt_sep, end - p))) {
 		REDEBUG("PBKDF2-Password missing salt component");
 		goto finish;

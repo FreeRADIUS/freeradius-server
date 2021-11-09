@@ -13,4 +13,5 @@ FreeRADIUS 3.2.0 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	* Update dictionary.aruba
 
 	Bug fixes
+	* Ensure PBKDF2 always uses at least one iteration
 
