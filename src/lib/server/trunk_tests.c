@@ -86,7 +86,6 @@ static void test_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn,
 			fr_perror("%s - %s", __FUNCTION__, fr_syserror(errno));
 			return;
 		}
-		if (slen < 0) return;
 		if (slen == 0) return;
 		if (slen < (ssize_t)sizeof(preq)) abort();
 
@@ -101,9 +100,9 @@ static void test_demux(UNUSED fr_trunk_connection_t *tconn, fr_connection_t *con
 	test_proto_request_t	*preq;
 	ssize_t			slen;
 
-	do {
+	for (;;) {
 		slen = read(fd, &preq, sizeof(preq));
-		if (slen <= 0) return;
+		if (slen <= 0) break;
 
 		if (acutest_verbose_level_ >= 3) printf("%s - Read %p (%zu)\n", __FUNCTION__, preq, (size_t)slen);
 		TEST_CHECK(slen == sizeof(preq));
@@ -130,7 +129,7 @@ static void test_demux(UNUSED fr_trunk_connection_t *tconn, fr_connection_t *con
 			fr_assert(0);
 			break;
 		}
-	} while (slen >= 0);
+	}
 }
 
 static void _conn_io_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags,
