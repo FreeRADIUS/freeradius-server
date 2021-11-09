@@ -189,7 +189,7 @@ typedef struct {
 
 	int		flags;
 
-	sql_rcode_t (*mod_instantiate)(rlm_sql_config_t const *config, void *instance, CONF_SECTION *cs);
+	sql_rcode_t (*instantiate)(rlm_sql_config_t const *config, void *instance, CONF_SECTION *cs);
 	sql_rcode_t (*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 				       fr_time_delta_t timeout);
 

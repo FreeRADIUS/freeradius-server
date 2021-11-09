@@ -1074,9 +1074,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Call the driver's instantiate function (if set)
 	 */
-	if (inst->driver->mod_instantiate && (inst->driver->mod_instantiate(inst->config,
-									    inst->driver_inst->data,
-									    driver_cs)) < 0) {
+	if (inst->driver->instantiate && (inst->driver->instantiate(inst->config,
+								    inst->driver_inst->data,
+								    driver_cs)) < 0) {
 	error:
 		TALLOC_FREE(inst->driver_inst);
 		return -1;
