@@ -27,12 +27,9 @@ RCSID("$Id$")
 #include	"rlm_sql.h"
 
 
-/* Prototypes */
-static sql_rcode_t sql_free_result(rlm_sql_handle_t*, rlm_sql_config_t*);
-
 static const void *fake = "fake";
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config,
 				   UNUSED fr_time_delta_t timeout)
 {
 	memcpy(&handle->conn, &fake, sizeof(handle->conn));
@@ -40,36 +37,36 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 }
 
 static sql_rcode_t sql_query(UNUSED rlm_sql_handle_t * handle,
-			     UNUSED rlm_sql_config_t *config, UNUSED char const *query)
+			     UNUSED rlm_sql_config_t const *config, UNUSED char const *query)
 {
 	return 0;
 }
 
-static int sql_num_fields(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static int sql_num_fields(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t const *config)
 {
 	return 0;
 }
 
 static sql_rcode_t sql_select_query(UNUSED rlm_sql_handle_t *handle,
-				    UNUSED rlm_sql_config_t *config, UNUSED char const *query)
+				    UNUSED rlm_sql_config_t const *config, UNUSED char const *query)
 {
 	return 0;
 }
 
-static int sql_num_rows(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static int sql_num_rows(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t const *config)
 {
 	return 0;
 }
 
 static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, UNUSED rlm_sql_handle_t *handle,
-				 UNUSED rlm_sql_config_t *config)
+				 UNUSED rlm_sql_config_t const *config)
 {
 	*out = NULL;
 
 	return RLM_SQL_NO_MORE_ROWS;
 }
 
-static sql_rcode_t sql_free_result(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_free_result(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t const *config)
 {
 	return 0;
 }
@@ -78,22 +75,22 @@ static sql_rcode_t sql_free_result(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_
  *
  */
 static size_t sql_error(UNUSED TALLOC_CTX *ctx, UNUSED sql_log_entry_t out[], UNUSED size_t outlen,
-			UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+			UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	return 0;
 }
 
-static sql_rcode_t sql_finish_query(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_finish_query(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t const *config)
 {
 	return 0;
 }
 
-static sql_rcode_t sql_finish_select_query(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_finish_select_query(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t const *config)
 {
 	return 0;
 }
 
-static int sql_affected_rows(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static int sql_affected_rows(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t const *config)
 {
 	return 1;
 }

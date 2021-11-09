@@ -27,10 +27,10 @@ RCSID("$Id$")
 
 
 /* Forward declarations */
-static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
-static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
-static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
-static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
 static int _sql_socket_destructor(rlm_sql_firebird_conn_t *conn)
 {
@@ -67,7 +67,7 @@ static int _sql_socket_destructor(rlm_sql_firebird_conn_t *conn)
 /** Establish connection to the db
  *
  */
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
 				   UNUSED fr_time_delta_t timeout)
 {
 	rlm_sql_firebird_conn_t	*conn;
@@ -92,7 +92,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 /** Issue a non-SELECT query (ie: update/delete/insert) to the database.
  *
  */
-static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char const *query)
+static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config, char const *query)
 {
 	rlm_sql_firebird_conn_t *conn = handle->conn;
 
@@ -153,7 +153,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 /** Issue a select query to the database.
  *
  */
-static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
+static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, char const *query)
 {
 	return sql_query(handle, config, query);
 }
@@ -161,7 +161,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 /** Returns number of columns from query.
  *
  */
-static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	return ((rlm_sql_firebird_conn_t *) handle->conn)->sqlda_out->sqld;
 }
@@ -169,7 +169,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
 /** Returns number of rows in query.
  *
  */
-static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
 	return sql_affected_rows(handle, config);
 }
@@ -177,7 +177,7 @@ static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 /** Returns name of fields.
  *
  */
-static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_firebird_conn_t	*conn = handle->conn;
 
@@ -198,7 +198,7 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 /** Returns an individual row.
  *
  */
-static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_firebird_conn_t *conn = handle->conn;
 	int res;
@@ -229,7 +229,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, U
 /** End the select query, such as freeing memory or result.
  *
  */
-static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_firebird_conn_t *conn = (rlm_sql_firebird_conn_t *) handle->conn;
 
@@ -242,7 +242,7 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_
 /** End the query
  *
  */
-static sql_rcode_t sql_finish_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_finish_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	return 0;
 }
@@ -250,7 +250,7 @@ static sql_rcode_t sql_finish_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_
 /** Frees memory allocated for a result set.
  *
  */
-static sql_rcode_t sql_free_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_free_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	return 0;
 }
@@ -267,7 +267,7 @@ static sql_rcode_t sql_free_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_s
  * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED size_t outlen,
-			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_firebird_conn_t *conn = handle->conn;
 
@@ -285,7 +285,7 @@ static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UN
 /** Return the number of rows affected by the query (update, or insert)
  *
  */
-static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	return fb_affected_rows(handle->conn);
 }

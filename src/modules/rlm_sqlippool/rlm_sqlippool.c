@@ -320,9 +320,9 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
 	 */
 	if (!*handle) return -1;
 
-	affected = (data->sql_inst->driver->sql_affected_rows)(*handle, data->sql_inst->config);
+	affected = (data->sql_inst->driver->sql_affected_rows)(*handle, &data->sql_inst->config);
 
-	(data->sql_inst->driver->sql_finish_query)(*handle, data->sql_inst->config);
+	(data->sql_inst->driver->sql_finish_query)(*handle, &data->sql_inst->config);
 
 	return affected;
 }
@@ -392,7 +392,7 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 	retval = rlen;
 
 finish:
-	(data->sql_inst->driver->sql_finish_select_query)(*handle, data->sql_inst->config);
+	(data->sql_inst->driver->sql_finish_select_query)(*handle, &data->sql_inst->config);
 
 	return retval;
 }

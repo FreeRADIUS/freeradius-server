@@ -87,7 +87,7 @@ void *sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeo
 	 */
 	handle->inst = inst;
 
-	rcode = (inst->driver->sql_socket_init)(handle, inst->config, timeout);
+	rcode = (inst->driver->sql_socket_init)(handle, &inst->config, timeout);
 	if (rcode != 0) {
 	fail:
 		/*
@@ -97,9 +97,9 @@ void *sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeo
 		return NULL;
 	}
 
-	if (inst->config->connect_query) {
-		if (rlm_sql_select_query(inst, NULL, &handle, inst->config->connect_query) != RLM_SQL_OK) goto fail;
-		(inst->driver->sql_finish_select_query)(handle, inst->config);
+	if (inst->config.connect_query) {
+		if (rlm_sql_select_query(inst, NULL, &handle, inst->config.connect_query) != RLM_SQL_OK) goto fail;
+		(inst->driver->sql_finish_select_query)(handle, &inst->config);
 	}
 
 	return handle;
@@ -323,7 +323,7 @@ sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, request
 	 *	may require the original connection to free up queries or
 	 *	result sets associated with that connection.
 	 */
-	ret = (inst->driver->sql_fetch_row)(out, *handle, inst->config);
+	ret = (inst->driver->sql_fetch_row)(out, *handle, &inst->config);
 	switch (ret) {
 	case RLM_SQL_OK:
 		fr_assert(*out != NULL);
@@ -356,13 +356,13 @@ void rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, rlm_sql_hand
 	sql_log_entry_t	log[20];
 	size_t		num, i;
 
-	num = (inst->driver->sql_error)(handle->log_ctx, log, (NUM_ELEMENTS(log)), handle, inst->config);
+	num = (inst->driver->sql_error)(handle->log_ctx, log, (NUM_ELEMENTS(log)), handle, &inst->config);
 	if (num == 0) {
 		ROPTIONAL(RERROR, ERROR, "Unknown error");
 		return;
 	}
 
-	driver = inst->config->sql_driver_name;
+	driver = inst->config.sql_driver_name;
 
 	for (i = 0; i < num; i++) {
 		if (force_debug) goto debug;
@@ -393,7 +393,7 @@ void rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, rlm_sql_hand
 
 /** Call the driver's sql_query method, reconnecting if necessary.
  *
- * @note Caller must call ``(inst->driver->sql_finish_query)(handle, inst->config);``
+ * @note Caller must call ``(inst->driver->sql_finish_query)(handle, &inst->config);``
  *	after they're done with the result.
  *
  * @param handle to query the database with. *handle should not be NULL, as this indicates
@@ -433,7 +433,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, request_t *request, rlm_sql_han
 	for (i = 0; i < (count + 1); i++) {
 		ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query);
 
-		ret = (inst->driver->sql_query)(*handle, inst->config, query);
+		ret = (inst->driver->sql_query)(*handle, &inst->config, query);
 		switch (ret) {
 		case RLM_SQL_OK:
 			break;
@@ -454,7 +454,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, request_t *request, rlm_sql_han
 		 */
 		case RLM_SQL_QUERY_INVALID:
 			rlm_sql_print_error(inst, request, *handle, false);
-			(inst->driver->sql_finish_query)(*handle, inst->config);
+			(inst->driver->sql_finish_query)(*handle, &inst->config);
 			break;
 
 		/*
@@ -469,7 +469,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, request_t *request, rlm_sql_han
 		case RLM_SQL_ERROR:
 			if (inst->driver->flags & RLM_SQL_RCODE_FLAGS_ALT_QUERY) {
 				rlm_sql_print_error(inst, request, *handle, false);
-				(inst->driver->sql_finish_query)(*handle, inst->config);
+				(inst->driver->sql_finish_query)(*handle, &inst->config);
 				break;
 			}
 			ret = RLM_SQL_ALT_QUERY;
@@ -480,7 +480,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, request_t *request, rlm_sql_han
 		 */
 		case RLM_SQL_ALT_QUERY:
 			rlm_sql_print_error(inst, request, *handle, true);
-			(inst->driver->sql_finish_query)(*handle, inst->config);
+			(inst->driver->sql_finish_query)(*handle, &inst->config);
 			break;
 
 		}
@@ -495,7 +495,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, request_t *request, rlm_sql_han
 
 /** Call the driver's sql_select_query method, reconnecting if necessary.
  *
- * @note Caller must call ``(inst->driver->sql_finish_select_query)(handle, inst->config);``
+ * @note Caller must call ``(inst->driver->sql_finish_select_query)(handle, &inst->config);``
  *	after they're done with the result.
  *
  * @param inst #rlm_sql_t instance data.
@@ -534,7 +534,7 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, request_t *request, rlm_
 	for (i = 0; i < (count + 1); i++) {
 		ROPTIONAL(RDEBUG2, DEBUG2, "Executing select query: %s", query);
 
-		ret = (inst->driver->sql_select_query)(*handle, inst->config, query);
+		ret = (inst->driver->sql_select_query)(*handle, &inst->config, query);
 		switch (ret) {
 		case RLM_SQL_OK:
 			break;
@@ -554,7 +554,7 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, request_t *request, rlm_
 		case RLM_SQL_ERROR:
 		default:
 			rlm_sql_print_error(inst, request, *handle, false);
-			(inst->driver->sql_finish_select_query)(*handle, inst->config);
+			(inst->driver->sql_finish_select_query)(*handle, &inst->config);
 			break;
 		}
 
@@ -591,13 +591,13 @@ int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rl
 		if (sql_pair_afrom_row(ctx, request, out, row, &relative_vp) != 0) {
 			REDEBUG("Error parsing user data from database result");
 
-			(inst->driver->sql_finish_select_query)(*handle, inst->config);
+			(inst->driver->sql_finish_select_query)(*handle, &inst->config);
 
 			return -1;
 		}
 		rows++;
 	}
-	(inst->driver->sql_finish_select_query)(*handle, inst->config);
+	(inst->driver->sql_finish_select_query)(*handle, &inst->config);
 
 	return rows;
 }
@@ -605,7 +605,7 @@ int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rl
 /*
  *	Log the query to a file.
  */
-void rlm_sql_query_log(rlm_sql_t const *inst, request_t *request, sql_acct_section_t *section, char const *query)
+void rlm_sql_query_log(rlm_sql_t const *inst, request_t *request, sql_acct_section_t const *section, char const *query)
 {
 	int fd;
 	char const *filename = NULL;
@@ -613,7 +613,7 @@ void rlm_sql_query_log(rlm_sql_t const *inst, request_t *request, sql_acct_secti
 	size_t len;
 	bool failed = false;	/* Write the log message outside of the critical region */
 
-	filename = inst->config->logfile;
+	filename = inst->config.logfile;
 	if (section && section->logfile) filename = section->logfile;
 
 	if (!filename || !*filename) {

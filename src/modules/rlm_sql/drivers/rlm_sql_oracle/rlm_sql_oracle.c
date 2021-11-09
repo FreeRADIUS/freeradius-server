@@ -98,7 +98,7 @@ static const CONF_PARSER driver_config[] = {
  *	- 0 on success.
  *	- -1 if there was no error.
  */
-static int sql_snprint_error(char *out, size_t outlen, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static int sql_snprint_error(char *out, size_t outlen, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	sb4			errcode = 0;
 	rlm_sql_oracle_conn_t	*conn = handle->conn;
@@ -126,7 +126,7 @@ static int sql_snprint_error(char *out, size_t outlen, rlm_sql_handle_t *handle,
  * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED size_t outlen,
-		        rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+		        rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
 	char errbuff[512];
 	int ret;
@@ -235,7 +235,7 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 	return 0;
 }
 
-static int sql_check_reconnect(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static int sql_check_reconnect(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
 	char errbuff[512];
 
@@ -256,7 +256,7 @@ static int _sql_socket_destructor(rlm_sql_oracle_conn_t *conn)
 	return 0;
 }
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
 				   UNUSED fr_time_delta_t timeout)
 {
 	char errbuff[512];
@@ -293,7 +293,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	return RLM_SQL_OK;
 }
 
-static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	int count;
 	rlm_sql_oracle_conn_t *conn = handle->conn;
@@ -305,7 +305,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
 	return count;
 }
 
-static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
 	rlm_sql_oracle_conn_t *conn = handle->conn;
 	int		fields, i, status;
@@ -346,7 +346,7 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
+static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, char const *query)
 {
 	int			status;
 	rlm_sql_oracle_conn_t	*conn = handle->conn;
@@ -377,7 +377,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 	return RLM_SQL_ERROR;
 }
 
-static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
+static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, char const *query)
 {
 	int		status;
 	char		**row;
@@ -508,7 +508,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 	return RLM_SQL_ERROR;
 }
 
-static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_oracle_conn_t *conn = handle->conn;
 	ub4 rows = 0;
@@ -519,7 +519,7 @@ static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *confi
 	return rows;
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
 	int status;
 	rlm_sql_oracle_conn_t *conn = handle->conn;
@@ -555,7 +555,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, r
 	return RLM_SQL_ERROR;
 }
 
-static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_oracle_conn_t *conn = handle->conn;
 
@@ -574,7 +574,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_oracle_conn_t *conn = handle->conn;
 
@@ -586,7 +586,7 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 	return 0;
 }
 
-static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_oracle_conn_t *conn = handle->conn;
 
@@ -602,7 +602,7 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_
 	return 0;
 }
 
-static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
 	return sql_num_rows(handle, config);
 }

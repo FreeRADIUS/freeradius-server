@@ -257,10 +257,10 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *req
 			goto finish;
 		}
 
-		numaffected = (inst->driver->sql_affected_rows)(handle, inst->config);
+		numaffected = (inst->driver->sql_affected_rows)(handle, &inst->config);
 		if (numaffected < 1) {
 			RDEBUG2("SQL query affected no rows");
-			(inst->driver->sql_finish_query)(handle, inst->config);
+			(inst->driver->sql_finish_query)(handle, &inst->config);
 
 			goto finish;
 		}
@@ -269,7 +269,7 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *req
 		fr_value_box_uint32(vb, NULL, (uint32_t)numaffected, false);
 		fr_dcursor_append(out, vb);
 
-		(inst->driver->sql_finish_query)(handle, inst->config);
+		(inst->driver->sql_finish_query)(handle, &inst->config);
 
 		goto finish;
 	} /* else it's a SELECT statement */
@@ -297,7 +297,7 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *req
 			goto finish_query;
 
 		default:
-			(inst->driver->sql_finish_select_query)(handle, inst->config);
+			(inst->driver->sql_finish_select_query)(handle, &inst->config);
 			goto query_error;
 		}
 
@@ -310,7 +310,7 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *req
 	} while (1);
 
 finish_query:
-	(inst->driver->sql_finish_select_query)(handle, inst->config);
+	(inst->driver->sql_finish_select_query)(handle, &inst->config);
 
 finish:
 	fr_pool_connection_release(inst->pool, request, handle);
@@ -455,11 +455,11 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 	 *	Not every driver provides an sql_num_rows function
 	 */
 	if (inst->driver->sql_num_rows) {
-		ret = inst->driver->sql_num_rows(handle, inst->config);
+		ret = inst->driver->sql_num_rows(handle, &inst->config);
 		if (ret == 0) {
 			RDEBUG2("Server returned an empty result");
 			rcode = RLM_MODULE_NOOP;
-			(inst->driver->sql_finish_select_query)(handle, inst->config);
+			(inst->driver->sql_finish_select_query)(handle, &inst->config);
 			goto finish;
 		}
 
@@ -467,7 +467,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 			RERROR("Failed retrieving row count");
 		error:
 			rcode = RLM_MODULE_FAIL;
-			(inst->driver->sql_finish_select_query)(handle, inst->config);
+			(inst->driver->sql_finish_select_query)(handle, &inst->config);
 			goto finish;
 		}
 	}
@@ -475,7 +475,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 	/*
 	 *	Map proc only registered if driver provides an sql_fields function
 	 */
-	ret = (inst->driver->sql_fields)(&fields, handle, inst->config);
+	ret = (inst->driver->sql_fields)(&fields, handle, &inst->config);
 	if (ret != RLM_SQL_OK) {
 		RERROR("Failed retrieving field names: %s", fr_table_str_by_value(sql_rcode_description_table, ret, "<INVALID>"));
 		goto error;
@@ -516,7 +516,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 	if (!found_field) {
 		RDEBUG2("No fields matching map found in query result");
 		rcode = RLM_MODULE_NOOP;
-		(inst->driver->sql_finish_select_query)(handle, inst->config);
+		(inst->driver->sql_finish_select_query)(handle, &inst->config);
 		goto finish;
 	}
 
@@ -544,7 +544,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 		rcode = RLM_MODULE_NOOP;
 	}
 
-	(inst->driver->sql_finish_select_query)(handle, inst->config);
+	(inst->driver->sql_finish_select_query)(handle, &inst->config);
 
 finish:
 	talloc_free(fields);
@@ -627,7 +627,7 @@ static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outle
 		 *	mime-encoded equivalents.
 		 */
 		if ((in[0] < 32) ||
-		    strchr(inst->config->allowed_chars, *in) == NULL) {
+		    strchr(inst->config.allowed_chars, *in) == NULL) {
 			/*
 			 *	Only 3 or less bytes available.
 			 */
@@ -682,8 +682,8 @@ int sql_set_user(rlm_sql_t const *inst, request_t *request, char const *username
 
 	if (username != NULL) {
 		sqluser = username;
-	} else if (inst->config->query_user[0] != '\0') {
-		sqluser = inst->config->query_user;
+	} else if (inst->config.query_user[0] != '\0') {
+		sqluser = inst->config.query_user;
 	} else {
 		return 0;
 	}
@@ -723,8 +723,8 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, r
 
 	entry = *phead = NULL;
 
-	if (!inst->config->groupmemb_query || !*inst->config->groupmemb_query) return 0;
-	if (xlat_aeval(request, &expanded, request, inst->config->groupmemb_query,
+	if (!inst->config.groupmemb_query || !*inst->config.groupmemb_query) return 0;
+	if (xlat_aeval(request, &expanded, request, inst->config.groupmemb_query,
 			 inst->sql_escape_func, *handle) < 0) return -1;
 
 	ret = rlm_sql_select_query(inst, request, handle, expanded);
@@ -734,7 +734,7 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, r
 	while (rlm_sql_fetch_row(&row, inst, request, handle) == RLM_SQL_OK) {
 		if (!row[0]){
 			RDEBUG2("row[0] returned NULL");
-			(inst->driver->sql_finish_select_query)(*handle, inst->config);
+			(inst->driver->sql_finish_select_query)(*handle, &inst->config);
 			talloc_free(entry);
 			return -1;
 		}
@@ -752,7 +752,7 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, r
 		num_groups++;
 	}
 
-	(inst->driver->sql_finish_select_query)(*handle, inst->config);
+	(inst->driver->sql_finish_select_query)(*handle, &inst->config);
 
 	return num_groups;
 }
@@ -777,7 +777,7 @@ static int sql_groupcmp(void *instance, request_t *request, UNUSED fr_pair_list_
 	/*
 	 *	No group queries, don't do group comparisons.
 	 */
-	if (!inst->config->groupmemb_query) {
+	if (!inst->config.groupmemb_query) {
 		RWARN("Cannot do group comparison when group_membership_query is not set");
 		return 1;
 	}
@@ -847,7 +847,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 	fr_pair_list_init(&check_tmp);
 	fr_pair_list_init(&reply_tmp);
 
-	if (!inst->config->groupmemb_query) {
+	if (!inst->config.groupmemb_query) {
 		RWARN("Cannot do check groups when group_membership_query is not set");
 
 	do_nothing:
@@ -889,13 +889,13 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 		fr_assert(entry != NULL);
 		fr_pair_value_strdup(sql_group, entry->name, true);
 
-		if (inst->config->authorize_group_check_query) {
+		if (inst->config.authorize_group_check_query) {
 			fr_pair_t	*vp;
 
 			/*
 			 *	Expand the group query
 			 */
-			if (xlat_aeval(request, &expanded, request, inst->config->authorize_group_check_query,
+			if (xlat_aeval(request, &expanded, request, inst->config.authorize_group_check_query,
 					 inst->sql_escape_func, *handle) < 0) {
 				REDEBUG("Error generating query");
 				rcode = RLM_MODULE_FAIL;
@@ -943,12 +943,12 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 			fr_pair_list_free(&check_tmp);
 		}
 
-		if (inst->config->authorize_group_reply_query) {
+		if (inst->config.authorize_group_reply_query) {
 
 			/*
 			 *	Now get the reply pairs since the paircmp matched
 			 */
-			if (xlat_aeval(request, &expanded, request, inst->config->authorize_group_reply_query,
+			if (xlat_aeval(request, &expanded, request, inst->config.authorize_group_reply_query,
 					 inst->sql_escape_func, *handle) < 0) {
 				REDEBUG("Error generating query");
 				rcode = RLM_MODULE_FAIL;
@@ -1033,10 +1033,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	xlat_t		*xlat;
 	xlat_arg_parser_t	*sql_xlat_arg;
 
-	/*
-	 *	Hack...
-	 */
-	inst->config = &inst->myconfig;
 	inst->cs = conf;
 
 	inst->name = cf_section_name2(conf);
@@ -1045,9 +1041,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Accomodate full and partial driver names
 	 */
-	name = strrchr(inst->config->sql_driver_name, '_');
+	name = strrchr(inst->config.sql_driver_name, '_');
 	if (!name) {
-		name = inst->config->sql_driver_name;
+		name = inst->config.sql_driver_name;
 	} else {
 		name++;
 	}
@@ -1074,7 +1070,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Call the driver's instantiate function (if set)
 	 */
-	if (inst->driver->instantiate && (inst->driver->instantiate(inst->config,
+	if (inst->driver->instantiate && (inst->driver->instantiate(&inst->config,
 								    inst->driver_inst->data,
 								    driver_cs)) < 0) {
 	error:
@@ -1086,18 +1082,18 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	 *	@fixme Inst should be passed to all driver callbacks
 	 *	instead of being stored here.
 	 */
-	inst->config->driver = inst->driver_inst->data;
+	inst->config.driver = inst->driver_inst->data;
 
 	/*
 	 *	Register the group comparison attribute
 	 */
-	if (inst->config->groupmemb_query) {
+	if (inst->config.groupmemb_query) {
 		char buffer[256];
 
 		char const *group_attribute;
 
-		if (inst->config->group_attribute) {
-			group_attribute = inst->config->group_attribute;
+		if (inst->config.group_attribute) {
+			group_attribute = inst->config.group_attribute;
 		} else if (cf_section_name2(conf)) {
 			snprintf(buffer, sizeof(buffer), "%s-SQL-Group", inst->name);
 			group_attribute = buffer;
@@ -1157,8 +1153,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Sanity check for crazy people.
 	 */
-	if (strncmp(inst->config->sql_driver_name, "rlm_sql_", 8) != 0) {
-		ERROR("\"%s\" is NOT an SQL driver!", inst->config->sql_driver_name);
+	if (strncmp(inst->config.sql_driver_name, "rlm_sql_", 8) != 0) {
+		ERROR("\"%s\" is NOT an SQL driver!", inst->config.sql_driver_name);
 		return -1;
 	}
 
@@ -1169,18 +1165,18 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	Or we need group_membership_query if authorize_group_check_query or
 	 *	authorize_group_reply_query is set.
 	 */
-	if (!inst->config->groupmemb_query) {
-		if (inst->config->authorize_group_check_query) {
+	if (!inst->config.groupmemb_query) {
+		if (inst->config.authorize_group_check_query) {
 			WARN("Ignoring authorize_group_reply_query as group_membership_query is not configured");
 		}
 
-		if (inst->config->authorize_group_reply_query) {
+		if (inst->config.authorize_group_reply_query) {
 			WARN("Ignoring authorize_group_check_query as group_membership_query is not configured");
 		}
 
-		if (!inst->config->read_groups) {
+		if (!inst->config.read_groups) {
 			WARN("Ignoring read_groups as group_membership_query is not configured");
-			inst->config->read_groups = false;
+			inst->config.read_groups = false;
 		}
 	} /* allow the group check / reply queries to be NULL */
 
@@ -1191,11 +1187,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	configuration.  So if that doesn't exist, we ignore
 	 *	the whole subsection.
 	 */
-	inst->config->accounting.cs = cf_section_find(conf, "accounting", NULL);
-	inst->config->accounting.reference_cp = (cf_pair_find(inst->config->accounting.cs, "reference") != NULL);
+	inst->config.accounting.cs = cf_section_find(conf, "accounting", NULL);
+	inst->config.accounting.reference_cp = (cf_pair_find(inst->config.accounting.cs, "reference") != NULL);
 
-	inst->config->postauth.cs = cf_section_find(conf, "post-auth", NULL);
-	inst->config->postauth.reference_cp = (cf_pair_find(inst->config->postauth.cs, "reference") != NULL);
+	inst->config.postauth.cs = cf_section_find(conf, "post-auth", NULL);
+	inst->config.postauth.reference_cp = (cf_pair_find(inst->config.postauth.cs, "reference") != NULL);
 
 	/*
 	 *	Cache the SQL-User-Name fr_dict_attr_t, so we can be slightly
@@ -1228,7 +1224,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Initialise the connection pool for this instance
 	 */
-	INFO("Attempting to connect to database \"%s\"", inst->config->sql_db);
+	INFO("Attempting to connect to database \"%s\"", inst->config.sql_db);
 
 	inst->pool = module_connection_pool_init(inst->cs, inst, sql_mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) return -1;
@@ -1260,8 +1256,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	fr_assert(request->packet != NULL);
 	fr_assert(request->reply != NULL);
 
-	if (!inst->config->authorize_check_query && !inst->config->authorize_reply_query &&
-	    !inst->config->read_groups && !inst->config->read_profiles) {
+	if (!inst->config.authorize_check_query && !inst->config.authorize_reply_query &&
+	    !inst->config.read_groups && !inst->config.read_profiles) {
 		RWDEBUG("No authorization checks configured, returning noop");
 
 		RETURN_MODULE_NOOP;
@@ -1287,10 +1283,10 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	/*
 	 *	Query the check table to find any conditions associated with this user/realm/whatever...
 	 */
-	if (inst->config->authorize_check_query) {
+	if (inst->config.authorize_check_query) {
 		fr_pair_t	*vp;
 
-		if (xlat_aeval(request, &expanded, request, inst->config->authorize_check_query,
+		if (xlat_aeval(request, &expanded, request, inst->config.authorize_check_query,
 				 inst->sql_escape_func, handle) < 0) {
 			REDEBUG("Failed generating query");
 			rcode = RLM_MODULE_FAIL;
@@ -1340,12 +1336,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		fr_pair_list_free(&check_tmp);
 	}
 
-	if (inst->config->authorize_reply_query) {
+	if (inst->config.authorize_reply_query) {
 
 		/*
 		 *	Now get the reply pairs since the paircmp matched
 		 */
-		if (xlat_aeval(request, &expanded, request, inst->config->authorize_reply_query,
+		if (xlat_aeval(request, &expanded, request, inst->config.authorize_reply_query,
 				 inst->sql_escape_func, handle) < 0) {
 			REDEBUG("Error generating query");
 			rcode = RLM_MODULE_FAIL;
@@ -1379,11 +1375,11 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	Neither group checks or profiles will work without
 	 *	a group membership query.
 	 */
-	if (!inst->config->groupmemb_query) goto release;
+	if (!inst->config.groupmemb_query) goto release;
 
 skip_reply:
 	if ((do_fall_through == FALL_THROUGH_YES) ||
-	    (inst->config->read_groups && (do_fall_through == FALL_THROUGH_DEFAULT))) {
+	    (inst->config.read_groups && (do_fall_through == FALL_THROUGH_DEFAULT))) {
 		rlm_rcode_t ret;
 
 		RDEBUG3("... falling-through to group processing");
@@ -1418,7 +1414,7 @@ skip_reply:
 	 *	Repeat the above process with the default profile or User-Profile
 	 */
 	if ((do_fall_through == FALL_THROUGH_YES) ||
-	    (inst->config->read_profiles && (do_fall_through == FALL_THROUGH_DEFAULT))) {
+	    (inst->config.read_profiles && (do_fall_through == FALL_THROUGH_DEFAULT))) {
 		rlm_rcode_t	ret;
 		char const	*profile;
 
@@ -1430,7 +1426,7 @@ skip_reply:
 
 		profile = user_profile ?
 				      user_profile->vp_strvalue :
-				      inst->config->default_profile;
+				      inst->config.default_profile;
 
 		if (!profile || !*profile) goto release;
 
@@ -1491,7 +1487,7 @@ release:
  *	doesn't update any rows, the next matching config item is used.
  *
  */
-static unlang_action_t acct_redundant(rlm_rcode_t *p_result, rlm_sql_t const *inst, request_t *request, sql_acct_section_t *section)
+static unlang_action_t acct_redundant(rlm_rcode_t *p_result, rlm_sql_t const *inst, request_t *request, sql_acct_section_t const *section)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 
@@ -1619,8 +1615,8 @@ static unlang_action_t acct_redundant(rlm_rcode_t *p_result, rlm_sql_t const *in
 		 *  We need to have updated something for the query to have been
 		 *  counted as successful.
 		 */
-		numaffected = (inst->driver->sql_affected_rows)(handle, inst->config);
-		(inst->driver->sql_finish_query)(handle, inst->config);
+		numaffected = (inst->driver->sql_affected_rows)(handle, &inst->config);
+		(inst->driver->sql_finish_query)(handle, &inst->config);
 		RDEBUG2("%i record(s) updated", numaffected);
 
 		if (numaffected > 0) break;	/* A query succeeded, were done! */
@@ -1656,8 +1652,8 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 {
 	rlm_sql_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_sql_t);
 
-	if (inst->config->accounting.reference_cp) {
-		return acct_redundant(p_result, inst, request, &inst->config->accounting);
+	if (inst->config.accounting.reference_cp) {
+		return acct_redundant(p_result, inst, request, &inst->config.accounting);
 	}
 
 	RETURN_MODULE_NOOP;
@@ -1670,8 +1666,8 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 {
 	rlm_sql_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_sql_t);
 
-	if (inst->config->postauth.reference_cp) {
-		return acct_redundant(p_result, inst, request, &inst->config->postauth);
+	if (inst->config.postauth.reference_cp) {
+		return acct_redundant(p_result, inst, request, &inst->config.postauth);
 	}
 
 	RETURN_MODULE_NOOP;

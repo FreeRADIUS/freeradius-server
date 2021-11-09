@@ -232,7 +232,7 @@ static int _sql_socket_destructor(rlm_sql_postgres_conn_t *conn)
 	return 0;
 }
 
-static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
+static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
 					    UNUSED fr_time_delta_t timeout)
 {
 	rlm_sql_postgres_t *inst = config->driver;
@@ -261,7 +261,7 @@ static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_co
 	return 0;
 }
 
-static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
+static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
 					      char const *query)
 {
 	rlm_sql_postgres_conn_t	*conn = handle->conn;
@@ -400,12 +400,12 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	return sql_classify_error(inst, status, conn->result);;
 }
 
-static sql_rcode_t sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config, char const *query)
+static sql_rcode_t sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t const *config, char const *query)
 {
 	return sql_query(handle, config, query);
 }
 
-static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_postgres_conn_t *conn = handle->conn;
 
@@ -423,7 +423,7 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 
 	int records, i, len;
@@ -455,7 +455,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, U
 	return RLM_SQL_NO_MORE_ROWS;
 }
 
-static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_postgres_conn_t *conn = handle->conn;
 
@@ -465,7 +465,7 @@ static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *co
 	return 0;
 }
 
-static sql_rcode_t sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_postgres_conn_t *conn = handle->conn;
 
@@ -491,7 +491,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_con
  * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
-			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_postgres_conn_t	*conn = handle->conn;
 	char const		*p, *q;
@@ -515,7 +515,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	return i;
 }
 
-static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_postgres_conn_t *conn = handle->conn;
 

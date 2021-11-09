@@ -182,7 +182,7 @@ extern size_t sql_rcode_table_len;
  *	>0 - Number of log entries
  */
 typedef size_t (*sql_error_t)(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen, rlm_sql_handle_t *handle,
-			      rlm_sql_config_t *config);
+			      rlm_sql_config_t const *config);
 
 typedef struct {
 	DL_MODULE_COMMON;				//!< Common fields to all loadable modules.
@@ -190,33 +190,32 @@ typedef struct {
 	int		flags;
 
 	sql_rcode_t (*instantiate)(rlm_sql_config_t const *config, void *instance, CONF_SECTION *cs);
-	sql_rcode_t (*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
+	sql_rcode_t (*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
 				       fr_time_delta_t timeout);
 
-	sql_rcode_t (*sql_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query);
-	sql_rcode_t (*sql_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query);
-	sql_rcode_t (*sql_store_result)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+	sql_rcode_t (*sql_query)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, char const *query);
+	sql_rcode_t (*sql_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, char const *query);
+	sql_rcode_t (*sql_store_result)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
-	int (*sql_num_fields)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
-	int (*sql_num_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
-	int (*sql_affected_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+	int (*sql_num_fields)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+	int (*sql_num_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+	int (*sql_affected_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
-	sql_rcode_t (*sql_fetch_row)(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t *config);
-	sql_rcode_t (*sql_fields)(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t *config);
-	sql_rcode_t (*sql_free_result)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+	sql_rcode_t (*sql_fetch_row)(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+	sql_rcode_t (*sql_fields)(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+	sql_rcode_t (*sql_free_result)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
 	sql_error_t	sql_error;				//!< Get any errors from the previous query.
 
-	sql_rcode_t (*sql_finish_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
-	sql_rcode_t (*sql_finish_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+	sql_rcode_t (*sql_finish_query)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+	sql_rcode_t (*sql_finish_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
 	xlat_escape_legacy_t	sql_escape_func;
 } rlm_sql_driver_t;
 
 struct sql_inst {
-	rlm_sql_config_t	myconfig; /* HACK */
+	rlm_sql_config_t	config; /* HACK */
 	fr_pool_t		*pool;
-	rlm_sql_config_t	*config;
 	CONF_SECTION		*cs;
 
 	fr_dict_attr_t const	*sql_user;		//!< Cached pointer to SQL-User-Name
@@ -244,7 +243,7 @@ struct rlm_sql_grouplist_s {
 
 void		*sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);
 int		sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, fr_pair_list_t *out, char const *query);
-void 		rlm_sql_query_log(rlm_sql_t const *inst, request_t *request, sql_acct_section_t *section, char const *query) CC_HINT(nonnull (1, 2, 4));
+void 		rlm_sql_query_log(rlm_sql_t const *inst, request_t *request, sql_acct_section_t const *section, char const *query) CC_HINT(nonnull (1, 2, 4));
 sql_rcode_t	rlm_sql_select_query(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
 sql_rcode_t	rlm_sql_query(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
 int		rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle);
