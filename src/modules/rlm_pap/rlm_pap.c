@@ -589,13 +589,13 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 
 		iterations = ntohl(iterations);
 
-		/*
-		 *	0 iterations is invalid (we need at least one)
-		 */
-		if (iterations == 0) iterations = 1;
-
 		p = q + 1;
 	}
+
+	/*
+	 *	0 iterations is invalid (we need at least one)
+	 */
+	if (iterations == 0) iterations = 1;
 
 	if (((end - p) < 1) || !(q = memchr(p, salt_sep, end - p))) {
 		REDEBUG("PBKDF2-Password missing salt component");
