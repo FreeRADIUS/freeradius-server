@@ -71,8 +71,3 @@ typedef struct {
 
 	fr_randctx			rand_pool;			//!< Pool of random data.
 } rlm_eap_t;
-
-/*
- *	EAP Method selection
- */
-int      	eap_method_instantiate(rlm_eap_method_t **out, rlm_eap_t *inst, eap_type_t num, CONF_SECTION *cs);
