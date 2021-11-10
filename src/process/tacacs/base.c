@@ -183,7 +183,7 @@ RECV(tacacs)
 {
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	PROCESS_INST	 		*inst = mctx->instance;
+	PROCESS_INST	 		*inst = mctx->inst->data;
 	fr_tacacs_packet_hdr_t const	*pkt = (fr_tacacs_packet_hdr_t const *) request->packet->data;
 
 	PROCESS_TRACE;
@@ -215,7 +215,7 @@ RESUME(tacacs_type)
 {
 	rlm_rcode_t			rcode = *p_result;
 	fr_process_state_t const	*state;
-	PROCESS_INST	 		*inst = mctx->instance;
+	PROCESS_INST	 		*inst = mctx->inst->data;
 
 	PROCESS_TRACE;
 
@@ -253,7 +253,7 @@ RESUME(recv_tacacs)
 	rlm_rcode_t			rcode = *p_result;
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	PROCESS_INST	   		*inst = mctx->instance;
+	PROCESS_INST	   		*inst = mctx->inst->data;
 
 	PROCESS_TRACE;
 
@@ -324,7 +324,7 @@ RESUME(recv_tacacs)
 
 RESUME(send_tacacs)
 {
-	PROCESS_INST const   		*inst = mctx->instance;
+	PROCESS_INST const   		*inst = mctx->inst->data;
 
 	PROCESS_TRACE;
 
@@ -562,7 +562,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	PROCESS_TRACE;
 
-	(void)talloc_get_type_abort_const(mctx->instance, process_tacacs_t);
+	(void)talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
 	fr_assert(PROCESS_PACKET_CODE_VALID(request->packet->code));
 
 	request->component = "tacacs";

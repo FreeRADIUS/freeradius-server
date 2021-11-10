@@ -1442,7 +1442,7 @@ static void mppe_chap2_gen_keys128(uint8_t const *nt_hashhash, uint8_t const *re
  */
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_mschap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_mschap_t);
+	rlm_mschap_t const 	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_mschap_t);
 	fr_pair_t		*challenge = NULL;
 
 	challenge = fr_pair_find_by_da_idx(&request->request_pairs, attr_ms_chap_challenge, 0);
@@ -2000,7 +2000,7 @@ static unlang_action_t CC_HINT(nonnull(1,2,3,4,5,8,9)) mschap_process_v2_respons
  */
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_mschap_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_mschap_t);
+	rlm_mschap_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_mschap_t);
 	fr_pair_t		*challenge = NULL;
 	fr_pair_t		*response = NULL;
 	fr_pair_t		*cpw = NULL;
@@ -2063,7 +2063,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	input attribute, and we're calling out to an
 	 *	external password store.
 	 */
-	if (nt_password_find(&ephemeral, &nt_password, mctx->instance, request) < 0) RETURN_MODULE_FAIL;
+	if (nt_password_find(&ephemeral, &nt_password, mctx->inst->data, request) < 0) RETURN_MODULE_FAIL;
 
 	/*
 	 *	Check to see if this is a change password request, and process
@@ -2073,7 +2073,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	if (cpw) {
 		uint8_t		*p;
 
-		mschap_process_cpw_request(&rcode, mctx->instance, request, cpw, nt_password);
+		mschap_process_cpw_request(&rcode, mctx->inst->data, request, cpw, nt_password);
 		if (rcode != RLM_MODULE_OK) goto finish;
 
 		/*

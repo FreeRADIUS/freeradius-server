@@ -338,7 +338,7 @@ static char *uue(void *in)
  */
 static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_unix_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_unix_t);
+	rlm_unix_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_unix_t);
 	fr_pair_t		*vp;
 	FILE			*fp;
 	struct utmp		ut;

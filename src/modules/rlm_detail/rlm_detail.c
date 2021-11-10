@@ -374,7 +374,7 @@ static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_
 	char		*endptr;
 #endif
 
-	rlm_detail_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_detail_t);
+	rlm_detail_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_detail_t);
 
 	/*
 	 *	Generate the path for the detail file.  Use the same

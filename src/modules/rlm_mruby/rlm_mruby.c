@@ -472,7 +472,7 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 	{ \
 		return do_mruby(p_result, \
 			       request,	\
-			       (rlm_mruby_t const *)mctx->instance, \
+			       (rlm_mruby_t const *)mctx->inst->data, \
 			       #foo); \
 	}
 

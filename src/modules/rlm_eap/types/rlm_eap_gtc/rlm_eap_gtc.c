@@ -124,7 +124,7 @@ static unlang_action_t mod_process_auth_type(rlm_rcode_t *p_result, UNUSED modul
  */
 static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_eap_gtc_t const	*inst = talloc_get_type_abort(mctx->instance, rlm_eap_gtc_t);
+	rlm_eap_gtc_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_gtc_t);
 	rlm_rcode_t		rcode;
 
 	eap_session_t		*eap_session = eap_session_get(request->parent);
@@ -200,7 +200,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	char		challenge_str[1024];
 	int		length;
 	eap_round_t	*eap_round = eap_session->this_round;
-	rlm_eap_gtc_t	*inst = talloc_get_type_abort(mctx->instance, rlm_eap_gtc_t);
+	rlm_eap_gtc_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_gtc_t);
 
 	if (xlat_eval(challenge_str, sizeof(challenge_str), request, inst->challenge, NULL, NULL) < 0) {
 		RETURN_MODULE_FAIL;

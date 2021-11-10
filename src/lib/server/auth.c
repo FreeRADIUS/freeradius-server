@@ -168,7 +168,7 @@ unlang_action_t rad_virtual_server(rlm_rcode_t *p_result, request_t *request)
 	}
 
 	RDEBUG("server %s {", cf_section_name2(unlang_call_current(request)));
-	request->async->process(&final, &(module_ctx_t){ .instance = request->async->process_inst }, request);
+	request->async->process(&final, &(module_ctx_t){ .inst = dl_module_instance_by_data(request->async->process_inst) }, request);
 	RDEBUG("} # server %s", cf_section_name2(unlang_call_current(request)));
 
 	fr_cond_assert(final == RLM_MODULE_OK);

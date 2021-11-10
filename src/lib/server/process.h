@@ -153,7 +153,7 @@ RECV(generic)
 {
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	PROCESS_INST const		*inst = mctx->instance;
+	PROCESS_INST const		*inst = mctx->inst->data;
 
 	PROCESS_TRACE;
 
@@ -183,7 +183,7 @@ RESUME(recv_generic)
 	rlm_rcode_t			rcode = *p_result;
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	PROCESS_INST const   		*inst = mctx->instance;
+	PROCESS_INST const   		*inst = mctx->inst->data;
 
 	PROCESS_TRACE;
 
@@ -234,7 +234,7 @@ SEND(generic)
 	fr_pair_t 			*vp;
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	PROCESS_INST const   		*inst = mctx->instance;
+	PROCESS_INST const   		*inst = mctx->inst->data;
 
 	PROCESS_TRACE;
 
@@ -296,7 +296,7 @@ RESUME(send_generic)
 	rlm_rcode_t			rcode = *p_result;
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	PROCESS_INST const   		*inst = mctx->instance;
+	PROCESS_INST const   		*inst = mctx->inst->data;
 
 	PROCESS_TRACE;
 

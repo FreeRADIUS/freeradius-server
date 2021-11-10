@@ -75,7 +75,7 @@ static const CONF_PARSER module_config[] = {
 static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
 								request_t *request)
 {
-	rlm_imap_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_imap_t);
+	rlm_imap_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_imap_t);
 	fr_curl_io_request_t     	*randle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 	fr_curl_tls_t const		*tls;
 	long 				curl_out;
@@ -114,7 +114,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_r
  */
 static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_imap_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_imap_t);
+	rlm_imap_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_imap_t);
 	rlm_imap_thread_t       *t = talloc_get_type_abort(mctx->thread, rlm_imap_thread_t);
 
 	fr_pair_t const 	*username;

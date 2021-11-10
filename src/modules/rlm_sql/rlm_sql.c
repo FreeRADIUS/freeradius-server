@@ -1234,7 +1234,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 {
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 
-	rlm_sql_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_sql_t);
+	rlm_sql_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_sql_t);
 	rlm_sql_handle_t	*handle;
 
 	fr_pair_list_t		check_tmp;
@@ -1648,7 +1648,7 @@ finish:
  */
 static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_sql_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_sql_t);
+	rlm_sql_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_sql_t);
 
 	if (inst->config.accounting.reference_cp) {
 		return acct_redundant(p_result, inst, request, &inst->config.accounting);
@@ -1662,7 +1662,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
  */
 static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_sql_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_sql_t);
+	rlm_sql_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_sql_t);
 
 	if (inst->config.postauth.reference_cp) {
 		return acct_redundant(p_result, inst, request, &inst->config.postauth);

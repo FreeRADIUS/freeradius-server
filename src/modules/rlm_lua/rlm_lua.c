@@ -58,7 +58,7 @@ static const CONF_PARSER module_config[] = {
 #define DO_LUA(_s)\
 static unlang_action_t mod_##_s(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 {\
-	rlm_lua_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_lua_t);\
+	rlm_lua_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_lua_t);\
 	if (!inst->func_##_s) RETURN_MODULE_NOOP;\
 	return fr_lua_run(p_result, mctx, request, inst->func_##_s);\
 }
@@ -119,7 +119,7 @@ static int mod_detach(void *instance)
 	if (inst->interpreter) {
 		if (inst->func_detach) {
 			fr_lua_run(&ret, &(module_ctx_t){
-						.instance = inst,
+						.inst = dl_module_instance_by_data(instance),
 						.thread = &(rlm_lua_thread_t){
 							.interpreter = inst->interpreter
 						}
@@ -151,7 +151,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	if (inst->func_instantiate) {
 		fr_lua_run(&rcode, &(module_ctx_t){
-					.instance = inst,
+					.inst = dl_module_instance_by_data(instance),
 					.thread = &(rlm_lua_thread_t){
 				   		.interpreter = inst->interpreter
 					}

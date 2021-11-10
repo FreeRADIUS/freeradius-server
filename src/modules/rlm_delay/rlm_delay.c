@@ -140,7 +140,7 @@ static void mod_delay_cancel(module_ctx_t const *mctx, request_t *request, fr_st
 
 static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_delay_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_delay_t);
+	rlm_delay_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_delay_t);
 	fr_time_delta_t		delay;
 	fr_time_t		resume_at, *yielded_at;
 

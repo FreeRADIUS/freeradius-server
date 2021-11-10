@@ -155,7 +155,7 @@ static int time_of_day(UNUSED void *instance, request_t *request,
  */
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_logintime_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_logintime_t);
+	rlm_logintime_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_logintime_t);
 	fr_pair_t		*ends, *vp;
 	fr_time_delta_t		left;
 

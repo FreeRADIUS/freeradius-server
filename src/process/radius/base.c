@@ -356,7 +356,7 @@ static void CC_HINT(format (printf, 4, 5)) auth_message(process_radius_auth_t co
 
 RECV(access_request)
 {
-	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_radius_t);
 
 	/*
 	 *	Only reject if the state has already been thawed.
@@ -379,7 +379,7 @@ RESUME(access_request)
 	CONF_SECTION			*cs;
 	fr_dict_enum_value_t const		*dv;
 	fr_process_state_t const	*state;
-	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -545,7 +545,7 @@ RESUME(auth_type)
 RESUME_NO_RCTX(access_accept)
 {
 	fr_pair_t			*vp;
-	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -578,7 +578,7 @@ RESUME_NO_RCTX(access_accept)
 RESUME_NO_RCTX(access_reject)
 {
 	fr_pair_t			*vp;
-	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -595,7 +595,7 @@ RESUME_NO_RCTX(access_reject)
 
 RESUME(access_challenge)
 {
-	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -657,7 +657,7 @@ RESUME(accounting_request)
 	CONF_SECTION			*cs;
 	fr_dict_enum_value_t const		*dv;
 	fr_process_state_t const	*state;
-	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -758,7 +758,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 {
 	fr_process_state_t const *state;
 
-	(void) talloc_get_type_abort_const(mctx->instance, process_radius_t);
+	(void) talloc_get_type_abort_const(mctx->inst->data, process_radius_t);
 
 	PROCESS_TRACE;
 

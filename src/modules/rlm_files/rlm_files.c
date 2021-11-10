@@ -624,7 +624,7 @@ redo:
  */
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
+	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_files_t);
 
 	return file_common(p_result, inst, request, inst->filename,
 			   inst->users ? inst->users : inst->common,
@@ -639,7 +639,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
  */
 static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
+	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_files_t);
 
 	return file_common(p_result, inst, request, inst->acct_usersfile,
 			   inst->acct_users ? inst->acct_users : inst->common,
@@ -648,7 +648,7 @@ static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, modul
 
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
+	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_files_t);
 
 	return file_common(p_result, inst, request, inst->auth_usersfile,
 			   inst->auth_users ? inst->auth_users : inst->common,
@@ -657,7 +657,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_files_t);
+	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_files_t);
 
 	return file_common(p_result, inst, request, inst->postauth_usersfile,
 			   inst->postauth_users ? inst->postauth_users : inst->common,

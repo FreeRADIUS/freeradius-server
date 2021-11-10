@@ -160,7 +160,7 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_
  */
 static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_stats_t		*inst = talloc_get_type_abort(mctx->instance, rlm_stats_t);
+	rlm_stats_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_stats_t);
 	rlm_stats_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_stats_thread_t);
 	int			i;
 	uint32_t		stats_type;

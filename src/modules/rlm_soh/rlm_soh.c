@@ -188,7 +188,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 {
 	int			rcode;
 	fr_pair_t		*vp;
-	rlm_soh_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_soh_t);
+	rlm_soh_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_soh_t);
 
 	if (!inst->dhcp) RETURN_MODULE_NOOP;
 

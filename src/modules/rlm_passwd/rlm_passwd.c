@@ -535,7 +535,7 @@ static void result_add(TALLOC_CTX *ctx, rlm_passwd_t const *inst, request_t *req
 
 static unlang_action_t CC_HINT(nonnull) mod_passwd_map(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_passwd_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_passwd_t);
+	rlm_passwd_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_passwd_t);
 
 	char			buffer[1024];
 	fr_pair_t		*key, *i;

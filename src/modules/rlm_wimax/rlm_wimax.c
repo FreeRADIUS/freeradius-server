@@ -162,7 +162,7 @@ static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, modul
  */
 static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_wimax_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_wimax_t);
+	rlm_wimax_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_wimax_t);
 	fr_pair_t		*msk, *emsk, *vp;
 	fr_pair_t		*mn_nai, *ip, *fa_rk;
 	EVP_MD_CTX		*hmac_ctx;

@@ -274,7 +274,7 @@ static int CC_HINT(nonnull) otp_string_valid(rlm_yubikey_t const *inst, char con
  */
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_yubikey_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_yubikey_t);
+	rlm_yubikey_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_yubikey_t);
 	char const		*passcode;
 	size_t			len;
 	fr_pair_t		*vp, *password;
@@ -385,7 +385,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
  */
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_yubikey_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_yubikey_t);
+	rlm_yubikey_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_yubikey_t);
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	char const		*passcode = NULL;
 	fr_pair_t const	*vp;

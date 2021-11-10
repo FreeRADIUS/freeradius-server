@@ -248,7 +248,7 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 				  eap_type_t type,
 				  eap_type_data_t *nak)
 {
-	rlm_eap_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
+	rlm_eap_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_eap_t);
 	unsigned int i;
 	fr_pair_t *vp;
 	eap_type_t method = FR_EAP_METHOD_INVALID;
@@ -539,7 +539,7 @@ static ssize_t eap_identity_is_nai_with_realm(char const *identity)
  */
 static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t const *mctx, eap_session_t *eap_session)
 {
-	rlm_eap_t const			*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
+	rlm_eap_t const			*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_eap_t);
 	eap_type_data_t			*type = &eap_session->this_round->response->type;
 	request_t			*request = eap_session->request;
 
@@ -807,7 +807,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 
 static unlang_action_t mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
+	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_eap_t);
 	eap_session_t		*eap_session;
 	eap_packet_raw_t	*eap_packet;
 	unlang_action_t		ua;
@@ -872,7 +872,7 @@ static unlang_action_t mod_authenticate(rlm_rcode_t *p_result, module_ctx_t cons
  */
 static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
+	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_eap_t);
 	int			status;
 
 #ifdef WITH_PROXY
@@ -920,7 +920,7 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 
 static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_eap_t);
+	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_eap_t);
 	fr_pair_t		*vp;
 	eap_session_t		*eap_session;
 	fr_pair_t		*username;

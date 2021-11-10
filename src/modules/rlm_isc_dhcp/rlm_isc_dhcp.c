@@ -2211,7 +2211,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_isc_dhcp_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_isc_dhcp_t);
+	rlm_isc_dhcp_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_isc_dhcp_t);
 	int			ret;
 
 	ret = apply_fixed_ip(inst, request);
@@ -2225,7 +2225,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_isc_dhcp_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_isc_dhcp_t);
+	rlm_isc_dhcp_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_isc_dhcp_t);
 	int			ret;
 
 	ret = apply(inst, request, inst->head);

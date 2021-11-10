@@ -166,7 +166,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  */
 static unlang_action_t CC_HINT(nonnull) mod_always_return(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	rlm_always_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_always_t);
+	rlm_always_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_always_t);
 
 	RETURN_MODULE_RCODE(inst->rcode);
 }

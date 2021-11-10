@@ -144,12 +144,12 @@ static unlang_action_t sometimes_return(rlm_rcode_t *p_result, void const *insta
 
 static unlang_action_t CC_HINT(nonnull) mod_sometimes_packet(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	return sometimes_return(p_result, mctx->instance, request, request->packet, request->reply);
+	return sometimes_return(p_result, mctx->inst->data, request, request->packet, request->reply);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_sometimes_reply(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	return sometimes_return(p_result, mctx->instance, request, request->reply, NULL);
+	return sometimes_return(p_result, mctx->inst->data, request, request->reply, NULL);
 }
 
 extern module_t rlm_sometimes;

@@ -86,7 +86,7 @@ fr_dict_attr_autoload_t rlm_digest_dict_attr[] = {
 
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_digest_t const	*inst = talloc_get_type_abort(mctx->instance, rlm_digest_t);
+	rlm_digest_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_digest_t);
 	fr_pair_t		*vp;
 
 	/*

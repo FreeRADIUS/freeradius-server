@@ -957,7 +957,7 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, void *instance, request_t 
 #define RLM_PERL_FUNC(_x) \
 static unlang_action_t CC_HINT(nonnull) mod_##_x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 { \
-	rlm_perl_t *inst = talloc_get_type_abort(mctx->instance, rlm_perl_t); \
+	rlm_perl_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_perl_t); \
 	return do_perl(p_result, inst, request, \
 		       ((rlm_perl_thread_t *)talloc_get_type_abort(mctx->thread, rlm_perl_thread_t))->perl, \
 		       inst->func_##_x); \
@@ -973,7 +973,7 @@ RLM_PERL_FUNC(preacct)
  */
 static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_perl_t	 	*inst = talloc_get_type_abort(mctx->instance, rlm_perl_t);
+	rlm_perl_t	 	*inst = talloc_get_type_abort(mctx->inst->data, rlm_perl_t);
 	fr_pair_t		*pair;
 	int 			acct_status_type = 0;
 	char const		*func;

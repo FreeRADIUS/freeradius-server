@@ -369,7 +369,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 
 #define RLM_AF_FUNC(_x, _y, _z) static unlang_action_t CC_HINT(nonnull) mod_##_x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 	{ \
-		return attr_filter_common(p_result, mctx->instance, request, request->_y, &request->_z##_pairs); \
+		return attr_filter_common(p_result, mctx->inst->data, request, request->_y, &request->_z##_pairs); \
 	}
 
 RLM_AF_FUNC(authorize, packet, request)

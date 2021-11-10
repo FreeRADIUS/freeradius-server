@@ -449,7 +449,7 @@ static size_t linelog_escape_func(UNUSED request_t *request,
  */
 static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->instance, rlm_linelog_t);
+	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_linelog_t);
 	linelog_conn_t			*conn;
 	fr_time_delta_t			timeout = fr_time_delta_wrap(0);
 	char				buff[4096];

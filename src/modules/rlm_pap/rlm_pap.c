@@ -137,7 +137,7 @@ static fr_dict_attr_t const **pap_alloweds;
  */
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_pap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_pap_t);
+	rlm_pap_t const 	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_pap_t);
 	fr_pair_t		*password;
 
 	if (fr_pair_find_by_da_idx(&request->control_pairs, attr_auth_type, 0) != NULL) {
@@ -920,7 +920,7 @@ static const pap_auth_func_t auth_func_table[] = {
  */
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_pap_t const 	*inst = talloc_get_type_abort_const(mctx->instance, rlm_pap_t);
+	rlm_pap_t const 	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_pap_t);
 	fr_pair_t		*known_good;
 	fr_pair_t		*password;
 	rlm_rcode_t		rcode = RLM_MODULE_INVALID;

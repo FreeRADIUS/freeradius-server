@@ -468,7 +468,7 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	int			rcode;
-	rlm_securid_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_securid_t);
+	rlm_securid_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_securid_t);
 	char		 	buffer[FR_MAX_STRING_LEN]="";
 	fr_pair_t		*username, *password;
 	fr_pair_t		*vp;

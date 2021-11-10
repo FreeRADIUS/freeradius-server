@@ -618,7 +618,7 @@ static unlang_action_t do_python(rlm_rcode_t *p_result, rlm_python_t const *inst
 #define MOD_FUNC(x) \
 static unlang_action_t CC_HINT(nonnull) mod_##x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 { \
-	rlm_python_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_python_t); \
+	rlm_python_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_python_t); \
 	rlm_python_thread_t *thread = talloc_get_type_abort(mctx->thread, rlm_python_thread_t); \
 	return do_python(p_result, inst, thread, request, inst->x.function, #x);\
 }

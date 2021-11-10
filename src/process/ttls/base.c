@@ -361,7 +361,7 @@ RESUME(access_request)
 	CONF_SECTION			*cs;
 	fr_dict_enum_value_t const	*dv;
 	fr_process_state_t const	*state;
-	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_ttls_t);
+	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_ttls_t);
 
 	PROCESS_TRACE;
 
@@ -527,7 +527,7 @@ RESUME(auth_type)
 RESUME_NO_RCTX(access_accept)
 {
 	fr_pair_t			*vp;
-	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_ttls_t);
+	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_ttls_t);
 
 	PROCESS_TRACE;
 
@@ -560,7 +560,7 @@ RESUME_NO_RCTX(access_accept)
 RESUME_NO_RCTX(access_reject)
 {
 	fr_pair_t			*vp;
-	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_ttls_t);
+	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_ttls_t);
 
 	PROCESS_TRACE;
 
@@ -579,7 +579,7 @@ RESUME(access_challenge)
 {
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->instance, process_ttls_t);
+	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_ttls_t);
 
 	PROCESS_TRACE;
 
@@ -640,7 +640,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 {
 	fr_process_state_t const *state;
 
-	(void) talloc_get_type_abort_const(mctx->instance, process_ttls_t);
+	(void) talloc_get_type_abort_const(mctx->inst->data, process_ttls_t);
 
 	PROCESS_TRACE;
 

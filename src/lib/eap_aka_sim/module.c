@@ -41,7 +41,7 @@ RCSID("$Id$")
  */
 static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	eap_aka_sim_module_conf_t	*inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_module_conf_t);
+	eap_aka_sim_module_conf_t	*inst = talloc_get_type_abort(mctx->inst->data, eap_aka_sim_module_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_mod_session_t	*mod_session = talloc_get_type_abort(eap_session->opaque,
 										eap_aka_sim_mod_session_t);
@@ -281,7 +281,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
  */
 unlang_action_t eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	eap_aka_sim_module_conf_t	*inst = talloc_get_type_abort(mctx->instance, eap_aka_sim_module_conf_t);
+	eap_aka_sim_module_conf_t	*inst = talloc_get_type_abort(mctx->inst->data, eap_aka_sim_module_conf_t);
 	eap_session_t			*eap_session = eap_session_get(request->parent);
 	eap_aka_sim_mod_session_t	*mod_session = talloc_get_type_abort(eap_session->opaque,
 									     eap_aka_sim_mod_session_t);

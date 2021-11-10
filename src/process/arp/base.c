@@ -182,7 +182,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	PROCESS_TRACE;
 
-	(void)talloc_get_type_abort_const(mctx->instance, process_arp_t);
+	(void)talloc_get_type_abort_const(mctx->inst->data, process_arp_t);
 	fr_assert(PROCESS_PACKET_CODE_VALID(request->packet->code));
 
 	request->component = "arp";

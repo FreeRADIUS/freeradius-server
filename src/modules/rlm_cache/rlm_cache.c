@@ -534,7 +534,7 @@ static int cache_verify(map_t *map, void *ctx)
 static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_cache_entry_t	*c = NULL;
-	rlm_cache_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_cache_t);
+	rlm_cache_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_cache_t);
 
 	rlm_cache_handle_t	*handle;
 
@@ -1076,7 +1076,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  */
 static unlang_action_t CC_HINT(nonnull) mod_method_status(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->instance, rlm_cache_t);
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	uint8_t			buffer[1024];
 	uint8_t const		*key;
@@ -1124,7 +1124,7 @@ finish:
  */
 static unlang_action_t CC_HINT(nonnull) mod_method_load(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->instance, rlm_cache_t);
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	uint8_t			buffer[1024];
 	uint8_t const		*key;
@@ -1176,7 +1176,7 @@ finish:
  */
 static unlang_action_t CC_HINT(nonnull) mod_method_store(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->instance, rlm_cache_t);
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	uint8_t			buffer[1024];
 	uint8_t const		*key;
@@ -1276,7 +1276,7 @@ finish:
  */
 static unlang_action_t CC_HINT(nonnull) mod_method_clear(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->instance, rlm_cache_t);
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	uint8_t			buffer[1024];
 	uint8_t const		*key;
@@ -1328,7 +1328,7 @@ finish:
  */
 static unlang_action_t CC_HINT(nonnull) mod_method_ttl(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->instance, rlm_cache_t);
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	uint8_t			buffer[1024];
 	uint8_t const		*key;

@@ -265,8 +265,7 @@ typedef struct {
  *
  */
 struct module_ctx_s {
-	dl_module_inst_t		*dl_inst;	//!< dl API handle for the module.
-	void				*instance;	//!< Global instance data for the module.
+	dl_module_inst_t const		*inst;		//!< Dynamic loader API handle for the module.
 	void				*thread;	//!< Thread specific instance data.
 	void				*rctx;		//!< Resume ctx that a module previously set.
 };

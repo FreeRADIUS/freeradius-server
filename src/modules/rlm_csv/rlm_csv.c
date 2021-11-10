@@ -1001,7 +1001,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 
 static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_csv_t const *inst = talloc_get_type_abort_const(mctx->instance, rlm_csv_t);
+	rlm_csv_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_csv_t);
 	rlm_rcode_t rcode;
 	ssize_t slen;
 	fr_value_box_t *key;

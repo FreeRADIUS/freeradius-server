@@ -320,7 +320,7 @@ static rlm_rcode_t krb5_process_error(rlm_krb5_t const *inst, request_t *request
  */
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_krb5_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_krb5_t);
+	rlm_krb5_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_krb5_t);
 	rlm_rcode_t		rcode;
 	krb5_error_code		ret;
 	rlm_krb5_handle_t	*conn;
@@ -411,7 +411,7 @@ cleanup:
  */
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_krb5_t const	*inst = talloc_get_type_abort_const(mctx->instance, rlm_krb5_t);
+	rlm_krb5_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_krb5_t);
 	rlm_rcode_t		rcode;
 	krb5_error_code		ret;
 
