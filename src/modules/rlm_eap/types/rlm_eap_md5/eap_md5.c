@@ -36,8 +36,6 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "eap - md5"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <freeradius-devel/eap/base.h>
@@ -48,7 +46,7 @@ RCSID("$Id$")
 /*
  *	We expect only RESPONSE for which SUCCESS or FAILURE is sent back
  */
-MD5_PACKET *eap_md5_extract(eap_round_t *eap_round)
+MD5_PACKET *eap_md5_extract(request_t *request, eap_round_t *eap_round)
 {
 	md5_packet_t	*data;
 	MD5_PACKET	*packet;
@@ -66,7 +64,7 @@ MD5_PACKET *eap_md5_extract(eap_round_t *eap_round)
 	    !eap_round->response->type.data 		 ||
 	    (eap_round->response->length <= MD5_HEADER_LEN) ||
 	    (eap_round->response->type.data[0] == 0)) {
-		ERROR("corrupted data");
+		REDEBUG("corrupted data");
 		return NULL;
 	}
 
@@ -128,7 +126,7 @@ MD5_PACKET *eap_md5_extract(eap_round_t *eap_round)
 /*
  * verify = MD5(id+password+challenge_sent)
  */
-int eap_md5_verify(MD5_PACKET *packet, fr_pair_t* password,
+int eap_md5_verify(request_t *request, MD5_PACKET *packet, fr_pair_t* password,
 		  uint8_t *challenge)
 {
 	char	*ptr;
@@ -140,7 +138,7 @@ int eap_md5_verify(MD5_PACKET *packet, fr_pair_t* password,
 	 *	Sanity check it.
 	 */
 	if (packet->value_size != 16) {
-		ERROR("Expected 16 bytes of response to challenge, got %d", packet->value_size);
+		REDEBUG("Expected 16 bytes of response to challenge, got %d", packet->value_size);
 		return 0;
 	}
 

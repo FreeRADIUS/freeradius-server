@@ -74,7 +74,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 	/*
 	 *	Extract the EAP-MD5 packet.
 	 */
-	packet = eap_md5_extract(eap_session->this_round);
+	packet = eap_md5_extract(request, eap_session->this_round);
 	if (!packet) {
 		if (ephemeral) TALLOC_FREE(known_good);
 		RETURN_MODULE_INVALID;
@@ -91,7 +91,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 	 *	Verify the received packet against the previous packet
 	 *	(i.e. challenge) which we sent out.
 	 */
-	if (eap_md5_verify(packet, known_good, eap_session->opaque)) {
+	if (eap_md5_verify(request, packet, known_good, eap_session->opaque)) {
 		reply->code = FR_MD5_SUCCESS;
 	} else {
 		reply->code = FR_MD5_FAILURE;

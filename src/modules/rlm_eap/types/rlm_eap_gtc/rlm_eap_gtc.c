@@ -23,8 +23,6 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "eap - gtc"
-
 #include <freeradius-devel/eap/base.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/virtual_servers.h>

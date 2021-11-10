@@ -22,8 +22,6 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "eap - peap"
-
 #include <freeradius-devel/eap/tls.h>
 #include "eap_peap.h"
 
@@ -396,7 +394,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	 */
 	inst->tls_conf = eap_tls_conf_parse(cs, "tls");
 	if (!inst->tls_conf) {
-		ERROR("Failed initializing SSL context");
+		cf_log_err(cs, "Failed initializing SSL context");
 		return -1;
 	}
 

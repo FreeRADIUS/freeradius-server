@@ -33,8 +33,6 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
-#define LOG_PREFIX "eap - pwd"
-
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/tls/base.h>
@@ -579,7 +577,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 
 	inst->bnctx = BN_CTX_new();
 	if (!inst->bnctx) {
-		ERROR("Failed to get BN context");
+		cf_log_err(cs, "Failed to get BN context");
 		return -1;
 	}
 

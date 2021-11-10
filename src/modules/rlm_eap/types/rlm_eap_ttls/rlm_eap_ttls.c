@@ -26,8 +26,6 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
-#define LOG_PREFIX "eap - ttls"
-
 #include <freeradius-devel/eap/tls.h>
 #include "eap_ttls.h"
 
@@ -371,7 +369,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	 */
 	inst->tls_conf = eap_tls_conf_parse(cs, "tls");
 	if (!inst->tls_conf) {
-		ERROR("Failed initializing SSL context");
+		cf_log_err(cs, "Failed initializing SSL context");
 		return -1;
 	}
 
