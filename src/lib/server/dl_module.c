@@ -24,8 +24,6 @@
  * @copyright 2016-2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
-
-#include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/debug.h>
 
@@ -34,6 +32,9 @@ RCSID("$Id$")
 
 #include <ctype.h>
 #include <unistd.h>
+
+#define _DL_MODULE_PRIVATE 1
+#include <freeradius-devel/server/dl_module.h>
 
 #define DL_INIT_CHECK fr_assert(dl_module_loader)
 
@@ -276,7 +277,7 @@ static void dl_module_instance_data_alloc(dl_module_inst_t *dl_inst, dl_module_t
 	 *	succeed, and will create a talloc chunk header.
 	 *
 	 *      This is needed so we can resolve instance data back to
-	 *	dl_module_instance_t/dl_module_t/dl_t.
+	 *	dl_module_inst_t/dl_module_t/dl_t.
 	 */
 	MEM(data = talloc_zero_array(dl_inst, uint8_t, module->common->inst_size));
 

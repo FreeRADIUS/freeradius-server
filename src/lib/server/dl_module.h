@@ -40,6 +40,15 @@ RCSIDH(dl_module_h, "$Id$")
 extern "C" {
 #endif
 
+#ifdef _CONST
+#  error _CONST can only be defined in the local header
+#endif
+#ifndef _DL_MODULE_PRIVATE
+#  define _CONST const
+#else
+#  define _CONST
+#endif
+
 #ifdef __APPLE__
 #  define DL_EXTENSION ".dylib"
 #elif defined (WIN32)
@@ -124,19 +133,19 @@ typedef struct {
  */
 typedef struct dl_module_s dl_module_t;
 struct dl_module_s {
-	dl_t				*dl;		//!< Dynamic loader handle.
+	dl_t				* _CONST dl;		//!< Dynamic loader handle.
 
-	dl_module_t const		*parent;	//!< of this module.
+	dl_module_t const		* _CONST parent;	//!< of this module.
 
-	dl_module_type_t		type;		//!< of this module.
+	dl_module_type_t		_CONST type;		//!< of this module.
 
-	dl_module_common_t const	*common;	//!< Symbol exported by the module, containing its public
-							//!< functions, name and behaviour control flags.
+	dl_module_common_t const	* _CONST common;	//!< Symbol exported by the module, containing its public
+								//!< functions, name and behaviour control flags.
 
-	CONF_SECTION			*conf;		//!< The module's global configuration
-							///< (as opposed to the instance, configuration).
-							///< May be NULL.
-	bool				in_tree;
+	CONF_SECTION			* _CONST conf;		//!< The module's global configuration
+								///< (as opposed to the instance, configuration).
+								///< May be NULL.
+	bool				_CONST in_tree;
 };
 
 /** A module/inst tuple
@@ -145,11 +154,11 @@ struct dl_module_s {
  */
 typedef struct dl_module_instance_s dl_module_inst_t;
 struct dl_module_instance_s {
-	char const		*name;			//!< Instance name.
-	dl_module_t const	*module;		//!< Module
-	void			*data;			//!< Module instance's parsed configuration.
-	CONF_SECTION		*conf;			//!< Module's instance configuration.
-	dl_module_inst_t const	*parent;		//!< Parent module's instance (if any).
+	char const			* _CONST name;		//!< Instance name.
+	dl_module_t const		* _CONST module;	//!< Module
+	void				* _CONST data;		//!< Module instance's parsed configuration.
+	CONF_SECTION			* _CONST conf;		//!< Module's instance configuration.
+	dl_module_inst_t const		* _CONST parent;	//!< Parent module's instance (if any).
 };
 
 extern fr_table_num_sorted_t const dl_module_type_prefix[];
@@ -175,6 +184,8 @@ char const		*dl_module_search_path(void);
 dl_loader_t		*dl_loader_from_module_loader(dl_module_loader_t *dl_module_loader);
 
 dl_module_loader_t	*dl_module_loader_init(char const *lib_dir);
+
+#undef _CONST
 
 #ifdef __cplusplus
 }
