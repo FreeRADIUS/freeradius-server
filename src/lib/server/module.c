@@ -1191,15 +1191,15 @@ static int _module_thread_inst_array_free(module_thread_instance_t **array)
 
 		ti = talloc_get_type_abort(array[i], module_thread_instance_t);
 
-		if (ti->module) DEBUG4("Worker cleaning up %s thread instance data (%p/%p)", ti->module->name, ti, ti->data);
+		if (ti->mi) DEBUG4("Worker cleaning up %s thread instance data (%p/%p)",
+				   ti->mi->module->name, ti, ti->data);
 
 		/*
 		 *	Check for ti->module is a hack
 		 *	and should be removed along with
 		 *	starting the instance number at 0
 		 */
-		if (ti->module && ti->module->thread_detach) (void) ti->module->thread_detach(ti->el, ti->data);
-
+		if (ti->mi && ti->mi->module->thread_detach) ti->mi->module->thread_detach(ti->el, ti->data);
 		talloc_free(ti);
 	}
 
@@ -1219,7 +1219,7 @@ static int _module_thread_inst_array_free(module_thread_instance_t **array)
  */
 int modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 {
-	void				*instance;
+	void			*instance;
 	fr_rb_iter_inorder_t	iter;
 
 	/*
@@ -1247,8 +1247,7 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 
 		MEM(ti = talloc_zero(module_thread_inst_array, module_thread_instance_t));
 		ti->el = el;
-		ti->module = mi->module;
-		ti->mod_inst = mi->dl_inst->data;	/* For efficient lookups */
+		ti->mi = mi;
 
 		if (mi->module->thread_inst_size) {
 			MEM(ti->data = talloc_zero_array(ti, uint8_t, mi->module->thread_inst_size));
@@ -1264,7 +1263,7 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 			}
 		}
 
-		DEBUG4("Worker alloced %s thread instance data (%p/%p)", ti->module->name, ti, ti->data);
+		DEBUG4("Worker alloced %s thread instance data (%p/%p)", ti->mi->module->name, ti, ti->data);
 		if (mi->module->thread_instantiate) {
 			if (mi->module->thread_instantiate(mi->dl_inst->conf, mi->dl_inst->data, el, ti->data) < 0) {
 				PERROR("Thread instantiation failed for module \"%s\"", mi->name);
