@@ -925,7 +925,7 @@ fr_pair_t *_fr_pair_dcursor_by_ancestor_init(fr_dcursor_t *cursor,
  *	- pointer to the first item in the list.
  * @hidecallergraph
  */
-void *fr_pair_list_head(fr_pair_list_t const *list)
+fr_pair_t *fr_pair_list_head(fr_pair_list_t const *list)
 {
 	return fr_dlist_head(&list->order);
 }
@@ -939,7 +939,7 @@ void *fr_pair_list_head(fr_pair_list_t const *list)
  *	- pointer to the next item
  * @hidecallergraph
  */
-void *fr_pair_list_next(fr_pair_list_t const *list, fr_pair_t const *item)
+fr_pair_t *fr_pair_list_next(fr_pair_list_t const *list, fr_pair_t const *item)
 {
 	return fr_dlist_next(&list->order, item);
 }
@@ -952,7 +952,7 @@ void *fr_pair_list_next(fr_pair_list_t const *list, fr_pair_t const *item)
  *	- NULL if the head of the list has been reached
  *	- pointer to the previous item
  */
-void *fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const *item)
+fr_pair_t *fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const *item)
 {
 	return fr_dlist_prev(&list->order, item);
 }
@@ -965,7 +965,7 @@ void *fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const *item)
  *	- NULL if the list is empty
  *	- pointer to the last item in the list.
  */
-void *fr_pair_list_tail(fr_pair_list_t const *list)
+fr_pair_t *fr_pair_list_tail(fr_pair_list_t const *list)
 {
 	return fr_dlist_tail(&list->order);
 }

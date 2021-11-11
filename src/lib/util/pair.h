@@ -438,14 +438,14 @@ void		fr_pair_list_append(fr_pair_list_t *dst, fr_pair_list_t *src) CC_HINT(nonn
 void		fr_pair_list_prepend(fr_pair_list_t *dst, fr_pair_list_t *src) CC_HINT(nonnull);
 
 /** @hidecallergraph */
-void		*fr_pair_list_head(fr_pair_list_t const *list) CC_HINT(nonnull);
+fr_pair_t	*fr_pair_list_head(fr_pair_list_t const *list) CC_HINT(nonnull);
 
 /** @hidecallergraph */
-void		*fr_pair_list_next(fr_pair_list_t const *list, fr_pair_t const *item) CC_HINT(nonnull(1));
+fr_pair_t      	*fr_pair_list_next(fr_pair_list_t const *list, fr_pair_t const *item) CC_HINT(nonnull(1));
 
-void		*fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const *item) CC_HINT(nonnull(1));
+fr_pair_t      	*fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const *item) CC_HINT(nonnull(1));
 
-void		*fr_pair_list_tail(fr_pair_list_t const *list) CC_HINT(nonnull);
+fr_pair_t      	*fr_pair_list_tail(fr_pair_list_t const *list) CC_HINT(nonnull);
 
 /** @name Pair to pair copying
  *
