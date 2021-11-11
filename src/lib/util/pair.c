@@ -1036,7 +1036,7 @@ int fr_pair_insert_after(fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *to_add
 		return -1;
 	}
 
-	if (!fr_dlist_entry_in_list(&to_add->order_entry)) {
+	if (pos && !fr_dlist_entry_in_list(&pos->order_entry)) {
 		fr_strerror_printf("Pair %pV not in list", pos);
 		return -1;
 	}
@@ -1064,7 +1064,7 @@ int fr_pair_insert_before(fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *to_ad
 		return -1;
 	}
 
-	if (!fr_dlist_entry_in_list(&to_add->order_entry)) {
+	if (pos && !fr_dlist_entry_in_list(&pos->order_entry)) {
 		fr_strerror_printf("Pair %pV not in list", pos);
 		return -1;
 	}
