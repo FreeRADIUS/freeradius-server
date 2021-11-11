@@ -25,6 +25,7 @@ SOURCES		:= \
 		   dict_validate.c \
 		   dl.c \
 		   dns.c \
+		   edit.c \
 		   event.c \
 		   ext.c \
 		   fifo.c \

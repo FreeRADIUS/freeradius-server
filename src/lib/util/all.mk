@@ -4,6 +4,7 @@ SUBMAKEFILES := \
 	dbuff_tests.mk \
 	dcursor_tests.mk \
 	dlist_tests.mk \
+	edit_tests.mk \
 	heap_tests.mk \
 	hmac_tests.mk \
 	libfreeradius-util.mk \
