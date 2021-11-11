@@ -1537,8 +1537,9 @@ static size_t command_dictionary_dump(command_result_t *result, command_file_ctx
 	RETURN_OK(data_used);
 }
 
-static size_t command_encode_dns_label(command_result_t *result, command_file_ctx_t *cc,
-				       char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+static CC_HINT(nonnull)
+size_t command_encode_dns_label(command_result_t *result, command_file_ctx_t *cc,
+				char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	size_t		need;
 	ssize_t		ret;
