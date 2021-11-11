@@ -40,6 +40,8 @@ typedef struct module_method_names_s		module_method_names_t;
 typedef struct module_instance_s		module_instance_t;
 typedef struct module_thread_instance_s		module_thread_instance_t;
 typedef struct module_ctx_s			module_ctx_t;
+typedef struct module_inst_ctx_s		module_inst_ctx_t;
+typedef struct module_thread_inst_ctx_s		module_thread_inst_ctx_t;
 
 #define RLM_TYPE_THREAD_SAFE	(0 << 0) 	//!< Module is threadsafe.
 #define RLM_TYPE_THREAD_UNSAFE	(1 << 0) 	//!< Module is not threadsafe.
@@ -66,42 +68,36 @@ typedef unlang_action_t (*module_method_t)(rlm_rcode_t *p_result, module_ctx_t c
  * Is called once per module instance. Is not called when new threads are
  * spawned. See module_thread_instantiate_t for that.
  *
- * @param[in] mod_cs		Module instance's configuration section.
- * @param[in] instance		data, specific to an instantiated module.
- *				Pre-allocated, and populated during the
- *				bootstrap and instantiate calls.
+ * @param[in] mctx		Holds global instance data.
  * @return
  *	- 0 on success.
  *	- -1 if instantiation failed.
  */
-typedef int (*module_instantiate_t)(void *instance, CONF_SECTION *mod_cs);
+typedef int (*module_instantiate_t)(module_inst_ctx_t const *mctx);
 
 /** Module thread creation callback
  *
  * Called whenever a new thread is created.
  *
- * @param[in] mod_cs		Module instance's configuration section.
- * @param[in] instance		data, specific to an instantiated module.
- *				Pre-allocated, and populated during the
- *				bootstrap and instantiate calls.
- * @param[in] el		The event list serviced by this thread.
- * @param[in] thread		data specific to this module instance.
+ * @param[in] mctx		Holds global instance data, thread instance
+ *				data, and the thread-specific event list.
  * @return
  *	- 0 on success.
  *	- -1 if instantiation failed.
  */
-typedef int (*module_thread_instantiate_t)(CONF_SECTION const *mod_cs, void *instance, fr_event_list_t *el, void *thread);
+typedef int (*module_thread_instantiate_t)(module_thread_inst_ctx_t const *mctx);
 
 /** Module thread destruction callback
  *
  * Destroy a module/thread instance.
  *
- * @param[in] thread		data specific to this module instance.
+ * @param[in] mctx		Holds global instance data, thread instance
+ *				data, and the thread-specific event list.
  * @return
  *	- 0 on success.
  *	- -1 if instantiation failed.
  */
-typedef int (*module_thread_detach_t)(fr_event_list_t *el, void *thread);
+typedef int (*module_thread_detach_t)(module_thread_inst_ctx_t const *mctx);
 
 #define FR_MODULE_COMMON \
 	struct { \
@@ -263,6 +259,25 @@ struct module_ctx_s {
 	dl_module_inst_t const		*inst;		//!< Dynamic loader API handle for the module.
 	void				*thread;	//!< Thread specific instance data.
 	void				*rctx;		//!< Resume ctx that a module previously set.
+};
+
+/** Temporary structure to hold arguments for instantiation calls
+ *
+ */
+struct module_inst_ctx_s {
+	dl_module_inst_t const		*inst;		//!< Dynamic loader API handle for the module.
+};
+
+/** Temporary structure to hold arguments for thread_instantiation calls
+ *
+ */
+struct module_thread_inst_ctx_s {
+	dl_module_inst_t const		*inst;		//!< Dynamic loader API handle for the module.
+							///< Must come first to allow cast between
+							///< module_inst_ctx.
+	void				*thread;	//!< Thread instance data.
+	fr_event_list_t			*el;		//!< Event list to register any IO handlers
+							///< and timers against.
 };
 
 /** @name Convenience wrappers around other internal APIs to make them easier to instantiate with modules

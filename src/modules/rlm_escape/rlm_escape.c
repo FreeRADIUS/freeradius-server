@@ -35,7 +35,6 @@ USES_APPLE_DEPRECATED_API
  *	Define a structure for our module configuration.
  */
 typedef struct {
-	char const *name;
 	char const *allowed_chars;
 } rlm_escape_t;
 
@@ -193,17 +192,14 @@ static xlat_action_t unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_escape_t	*inst = instance;
+	rlm_escape_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_escape_t);
 	char		*unescape;
 	xlat_t		*xlat;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	MEM(unescape = talloc_asprintf(NULL, "un%s", inst->name));
-	xlat = xlat_register(NULL, inst->name, escape_xlat, false);
+	MEM(unescape = talloc_asprintf(NULL, "un%s", mctx->inst->name));
+	xlat = xlat_register(NULL, mctx->inst->name, escape_xlat, false);
 	xlat_func_mono(xlat, &escape_xlat_arg);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_escape_t *, NULL, inst);
 

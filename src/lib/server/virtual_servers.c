@@ -723,7 +723,9 @@ static int process_instantiate(CONF_SECTION *server_cs, dl_module_inst_t *dl_ins
 	fr_process_module_t const *process = (fr_process_module_t const *) dl_inst->module->common;
 
 	if (process->instantiate &&
-	    (process->instantiate(dl_inst->data, dl_inst->conf) < 0)) {
+	    (process->instantiate(&(module_inst_ctx_t){
+					.inst = dl_inst
+				  }) < 0)) {
 		cf_log_err(dl_inst->conf, "Instantiate failed");
 		return -1;
 	}
@@ -879,8 +881,9 @@ static int process_bootstrap(dl_module_inst_t *dl_inst, char const *namespace)
 	fr_process_module_t const *process = (fr_process_module_t const *) dl_inst->module->common;
 
 	if (process->bootstrap &&
-	    (process->bootstrap(dl_inst->data,
-				dl_inst->conf) < 0)) {
+	    (process->bootstrap(&(module_inst_ctx_t){
+					.inst = dl_inst
+				}) < 0)) {
 		cf_log_err(dl_inst->conf, "Bootstrap failed");
 		return -1;
 	}

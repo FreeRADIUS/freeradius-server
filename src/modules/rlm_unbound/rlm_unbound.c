@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX inst->name
+#define LOG_PREFIX mctx->inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
@@ -36,7 +36,6 @@ RCSID("$Id$")
 
 typedef struct {
 	char const	*name;
-
 	uint32_t	timeout;
 
 	char const	*filename;		//!< Unbound configuration file
@@ -426,14 +425,14 @@ static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread
 	return 0;
 }
 
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *thread)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_unbound_t		*inst = talloc_get_type_abort(instance, rlm_unbound_t);
-	rlm_unbound_thread_t	*t = talloc_get_type_abort(thread, rlm_unbound_thread_t);
+	rlm_unbound_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_unbound_t);
+	rlm_unbound_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_unbound_thread_t);
 	int			res;
 
 	t->inst = inst;
-	if (unbound_io_init(t, &t->ev_b, el) < 0) {
+	if (unbound_io_init(t, &t->ev_b, mctx->el) < 0) {
 		PERROR("Unable to create unbound event base");
 		return -1;
 	}
@@ -479,9 +478,9 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	return 0;
 }
 
-static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_unbound_thread_t	*t = talloc_get_type_abort(thread, rlm_unbound_thread_t);
+	rlm_unbound_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_unbound_thread_t);
 
 	talloc_free(t->u_log);
 	talloc_free(t->ev_b);
@@ -489,20 +488,17 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 	return 0;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_unbound_t	*inst = instance;
+	rlm_unbound_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_unbound_t);
 	xlat_t		*xlat;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
 	if (inst->timeout > 10000) {
-		cf_log_err(conf, "timeout must be 0 to 10000");
+		cf_log_err(mctx->inst->conf, "timeout must be 0 to 10000");
 		return -1;
 	}
 
-	if(!(xlat = xlat_register(NULL, inst->name, xlat_unbound, true))) return -1;
+	if(!(xlat = xlat_register(NULL, mctx->inst->name, xlat_unbound, true))) return -1;
 	xlat_func_args(xlat, xlat_unbound_args);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, unbound_xlat_thread_inst_t, NULL, inst);
 

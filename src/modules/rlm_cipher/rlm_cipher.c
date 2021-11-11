@@ -176,7 +176,6 @@ typedef struct {
  *
  */
 typedef struct {
-	char const		*name;			//!< Name of xlat we registered.
 	cipher_type_t		type;				//!< Type of encryption to use.
 
 	/** Supported cipher types
@@ -1123,11 +1122,10 @@ static int cipher_rsa_padding_params_set(EVP_PKEY_CTX *evp_pkey_ctx, cipher_rsa_
  *
  * @return 0.
  */
-static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instance,
-					 UNUSED fr_event_list_t *el, void *thread)
+static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_cipher_t const		*inst = talloc_get_type_abort(instance, rlm_cipher_t);
-	rlm_cipher_rsa_thread_inst_t	*ti = thread;
+	rlm_cipher_t const		*inst = talloc_get_type_abort(mctx->inst->data, rlm_cipher_t);
+	rlm_cipher_rsa_thread_inst_t	*ti = talloc_get_type_abort(mctx->thread, rlm_cipher_rsa_thread_inst_t);
 
 	/*
 	 *	Pre-allocate different contexts for the different operations
@@ -1284,15 +1282,14 @@ static int cipher_rsa_thread_instantiate(UNUSED CONF_SECTION const *conf, void *
 	return 0;
 }
 
-static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance,
-				  fr_event_list_t *el, void *thread)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_cipher_t	*inst = talloc_get_type_abort(instance, rlm_cipher_t);
+	rlm_cipher_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cipher_t);
 
 	switch (inst->type) {
 	case RLM_CIPHER_TYPE_RSA:
-		talloc_set_type(thread, rlm_cipher_rsa_thread_inst_t);
-		return cipher_rsa_thread_instantiate(conf, instance, el, thread);
+		talloc_set_type(mctx->thread, rlm_cipher_rsa_thread_inst_t);
+		return cipher_rsa_thread_instantiate(mctx);
 
 	case RLM_CIPHER_TYPE_INVALID:
 		fr_assert(0);
@@ -1307,12 +1304,10 @@ static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance,
  *	to external databases, read configuration files, set up
  *	dictionary entries, etc.
  */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_cipher_t	*inst = talloc_get_type_abort(instance, rlm_cipher_t);
-
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
+	rlm_cipher_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cipher_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
 
 	switch (inst->type) {
 	case RLM_CIPHER_TYPE_RSA:
@@ -1334,7 +1329,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			/*
 			 *	Register decrypt xlat
 			 */
-			xlat_name = talloc_asprintf(inst, "%s_decrypt", inst->name);
+			xlat_name = talloc_asprintf(inst, "%s_decrypt", mctx->inst->name);
 			xlat = xlat_register(inst, xlat_name, cipher_rsa_decrypt_xlat, false);
 			xlat_func_mono(xlat, &cipher_rsa_decrypt_xlat_arg);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
@@ -1351,7 +1346,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			/*
 			 *	Verify sign xlat
 			 */
-			xlat_name = talloc_asprintf(inst, "%s_verify", inst->name);
+			xlat_name = talloc_asprintf(inst, "%s_verify", mctx->inst->name);
 			xlat = xlat_register(inst, xlat_name, cipher_rsa_verify_xlat, false);
 			xlat_func_args(xlat, cipher_rsa_verify_xlat_arg);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
@@ -1389,7 +1384,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			/*
 			 *	Register encrypt xlat
 			 */
-			xlat_name = talloc_asprintf(inst, "%s_encrypt", inst->name);
+			xlat_name = talloc_asprintf(inst, "%s_encrypt", mctx->inst->name);
 			xlat = xlat_register(inst, xlat_name, cipher_rsa_encrypt_xlat, false);
 			xlat_func_mono(xlat, &cipher_rsa_encrypt_xlat_arg);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
@@ -1405,7 +1400,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			/*
 			 *	Register sign xlat
 			 */
-			xlat_name = talloc_asprintf(inst, "%s_sign", inst->name);
+			xlat_name = talloc_asprintf(inst, "%s_sign", mctx->inst->name);
 			xlat = xlat_register(inst, xlat_name, cipher_rsa_sign_xlat, false);
 			xlat_func_mono(xlat, &cipher_rsa_sign_xlat_arg);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
@@ -1418,7 +1413,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 							  inst);
 			talloc_free(xlat_name);
 
-			xlat_name = talloc_asprintf(inst, "%s_certificate", inst->name);
+			xlat_name = talloc_asprintf(inst, "%s_certificate", mctx->inst->name);
 			xlat = xlat_register(inst, xlat_name, cipher_certificate_xlat, false);
 			xlat_func_args(xlat, cipher_certificate_xlat_args);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,

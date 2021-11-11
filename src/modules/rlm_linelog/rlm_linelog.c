@@ -78,7 +78,6 @@ typedef struct {
 /** linelog module instance
  */
 typedef struct {
-	char const		*name;			//!< Module instance name.
 	fr_pool_t		*pool;			//!< Connection pool instance.
 
 	char const		*delimiter;		//!< Line termination string (usually \n).
@@ -196,9 +195,9 @@ static int _mod_conn_free(linelog_conn_t *conn)
 
 static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
-	rlm_linelog_t const	*inst = instance;
-	linelog_conn_t			*conn;
-	int				sockfd = -1;
+	rlm_linelog_t const	*inst = talloc_get_type_abort(instance, rlm_linelog_t const);
+	linelog_conn_t		*conn;
+	int			sockfd = -1;
 
 	switch (inst->log_dst) {
 	case LINELOG_DST_UNIX:
@@ -270,9 +269,9 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t ti
 	return conn;
 }
 
-static int mod_detach(void *instance)
+static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_linelog_t *inst = instance;
+	rlm_linelog_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_linelog_t);
 
 	fr_pool_free(inst->pool);
 
@@ -283,9 +282,10 @@ static int mod_detach(void *instance)
 /*
  *	Instantiate the module.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_linelog_t	*inst = instance;
+	rlm_linelog_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_linelog_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 	char			prefix[100];
 
 	/*
@@ -308,10 +308,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	snprintf(prefix, sizeof(prefix), "rlm_linelog (%s)", inst->name);
+	snprintf(prefix, sizeof(prefix), "rlm_linelog (%s)", mctx->inst->name);
 
 	/*
 	 *	Setup the logging destination

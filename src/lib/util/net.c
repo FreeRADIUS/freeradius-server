@@ -165,7 +165,7 @@ uint16_t fr_ip_header_checksum(uint8_t const *data, uint8_t ihl)
 	return ((uint16_t) ~sum);
 }
 
-uint16_t fr_ip6_pesudo_header_checksum(struct in6_addr *src, struct in6_addr *dst, uint16_t ip_len, uint8_t ip_next)
+uint16_t fr_ip6_pesudo_header_checksum(struct in6_addr const *src, struct in6_addr const *dst, uint16_t ip_len, uint8_t ip_next)
 {
 	uint64_t sum = 0;
 	ip_pseudo_header6_t ip6; /* Keep correct alignment for the pointer */

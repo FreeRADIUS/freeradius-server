@@ -48,8 +48,6 @@ typedef struct {
 	fr_redis_conf_t		conf;		//!< Connection parameters for the Redis server.
 						//!< Must be first field in this struct.
 
-	char const		*name;		//!< Instance name.
-
 	fr_redis_cluster_t	*cluster;	//!< Redis cluster.
 } rlm_redis_t;
 
@@ -461,29 +459,26 @@ finish:
 	return action;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_redis_t	*inst = instance;
+	rlm_redis_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_redis_t);
 	char		*name;
 	xlat_t		*xlat;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	xlat = xlat_register(inst, inst->name, redis_xlat, false);
+	xlat = xlat_register(inst, mctx->inst->name, redis_xlat, false);
 	xlat_func_args(xlat, redis_args);
 	xlat_async_instantiate_set(xlat, redis_xlat_instantiate, rlm_redis_t *, NULL, inst);
 
 	/*
 	 *	%(redis_node:<key>[ idx])
 	 */
-	name = talloc_asprintf(NULL, "%s_node", inst->name);
+	name = talloc_asprintf(NULL, "%s_node", mctx->inst->name);
 	xlat = xlat_register(inst, name, redis_node_xlat, false);
 	xlat_func_args(xlat, redis_node_xlat_args);
 	xlat_async_instantiate_set(xlat, redis_xlat_instantiate, rlm_redis_t *, NULL, inst);
 	talloc_free(name);
 
-	name = talloc_asprintf(NULL, "%s_remap", inst->name);
+	name = talloc_asprintf(NULL, "%s_remap", mctx->inst->name);
 	xlat = xlat_register(inst, name, redis_remap_xlat, false);
 	xlat_func_args(xlat, redis_remap_xlat_args);
 	xlat_async_instantiate_set(xlat, redis_xlat_instantiate, rlm_redis_t *, NULL, inst);
@@ -492,11 +487,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_redis_t *inst = instance;
+	rlm_redis_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_redis_t);
 
-	inst->cluster = fr_redis_cluster_alloc(inst, conf, &inst->conf, true, NULL, NULL, NULL);
+	inst->cluster = fr_redis_cluster_alloc(inst, mctx->inst->conf, &inst->conf, true, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
 
 	return 0;

@@ -706,9 +706,9 @@ static int sql_affected_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 	return 1;
 }
 
-static int mod_detach(void *instance)
+static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_sql_cassandra_t *inst = instance;
+	rlm_sql_cassandra_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_cassandra_t);
 
 	if (inst->ssl) cass_ssl_free(inst->ssl);
 	if (inst->session) cass_session_free(inst->session);	/* also synchronously closes the session */
@@ -723,7 +723,7 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 {
 	bool				do_tls = false;
 	bool				do_latency_aware_routing = false;
-	rlm_sql_cassandra_t		*inst = instance;
+	rlm_sql_cassandra_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_cassandra_t);
 
 	CassCluster *cluster;
 

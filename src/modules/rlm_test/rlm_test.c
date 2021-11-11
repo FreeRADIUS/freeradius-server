@@ -408,11 +408,10 @@ static xlat_action_t test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED reques
 }
 
 
-static int mod_thread_instantiate(UNUSED CONF_SECTION  const *cs, void *instance, UNUSED fr_event_list_t *el,
-				  void *thread)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_test_t *inst = instance;
-	rlm_test_thread_t *t = thread;
+	rlm_test_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_test_t);
+	rlm_test_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_test_thread_t);
 
 	t->inst = inst;
 	t->value = pthread_self();
@@ -421,10 +420,10 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION  const *cs, void *instance
 	return 0;
 }
 
-static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_test_thread_t *t = thread;
-	rlm_test_t *inst = t->inst;
+	rlm_test_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_test_t);
+	rlm_test_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_test_thread_t);
 
 	INFO("Performing detach for thread %p", (void *)t->value);
 
@@ -443,16 +442,12 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
+	rlm_test_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_test_t);
 	xlat_t *xlat;
-	rlm_test_t *inst = instance;
-	char const *name2;
 
-	inst->name = name2 = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	if (!name2) {
+	if (!cf_section_name2(mctx->inst->conf)) {
 		if (paircmp_register_by_name("Test-Paircmp", attr_user_name, false,
 					     rlm_test_cmp, inst) < 0) {
 			PERROR("Failed registering \"Test-Paircmp\"");
@@ -486,24 +481,18 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		INFO("inst->tmpl_m is NULL");
 	}
 
-	if (!name2) {
-		if (!(xlat = xlat_register(instance, "test_trigger", trigger_test_xlat, false))) return -1;
+	if (!cf_section_name2(mctx->inst->conf)) {
+		if (!(xlat = xlat_register(inst, "test_trigger", trigger_test_xlat, false))) return -1;
 		xlat_func_args(xlat, trigger_test_xlat_args);
 
-		if (!(xlat = xlat_register(instance, "test", test_xlat, false))) return -1;
+		if (!(xlat = xlat_register(inst, "test", test_xlat, false))) return -1;
 		xlat_func_args(xlat, test_xlat_args);
 
 	} else {
-		if (!(xlat = xlat_register(instance, name2, test_xlat, false))) return -1;
+		if (!(xlat = xlat_register(inst, mctx->inst->name, test_xlat, false))) return -1;
 		xlat_func_args(xlat, test_xlat_args);
 	}
 
-	return 0;
-}
-
-static int mod_detach(UNUSED void *instance)
-{
-	/* free things here */
 	return 0;
 }
 
@@ -527,7 +516,6 @@ module_t rlm_test = {
 	.bootstrap		= mod_bootstrap,
 	.thread_instantiate	= mod_thread_instantiate,
 	.thread_detach		= mod_thread_detach,
-	.detach			= mod_detach,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,

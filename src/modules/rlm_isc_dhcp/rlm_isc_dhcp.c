@@ -74,7 +74,6 @@ typedef struct rlm_isc_dhcp_info_s rlm_isc_dhcp_info_t;
  *	be used as the instance handle.
  */
 typedef struct {
-	char const		*name;
 	char const		*filename;
 	bool			debug;
 	bool			pedantic;
@@ -2176,16 +2175,14 @@ static int read_file(rlm_isc_dhcp_t *inst, rlm_isc_dhcp_info_t *parent, char con
 	return 1;
 }
 
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	int ret;
-	rlm_isc_dhcp_t *inst = instance;
-	rlm_isc_dhcp_info_t *info;
+	rlm_isc_dhcp_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_isc_dhcp_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
+	rlm_isc_dhcp_info_t	*info;
+	int			ret;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	inst->head = info = talloc_zero(inst, rlm_isc_dhcp_info_t);
+	MEM(inst->head = info = talloc_zero(inst, rlm_isc_dhcp_info_t));
 	fr_pair_list_init(&info->options);
 	info->last = &(info->child);
 

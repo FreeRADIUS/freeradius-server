@@ -53,7 +53,6 @@ typedef struct {
 } rlm_imap_t;
 
 typedef struct {
-	rlm_imap_t const    		*inst;		//!< Instance of rlm_imap.
 	fr_curl_handle_t    		*mhandle;	//!< Thread specific multi handle.  Serves as the dispatch and coralling structure for imap requests.
 } rlm_imap_thread_t;
 
@@ -185,14 +184,12 @@ static void mod_unload(void)
 /*
  *	Initialize a new thread with a curl instance
  */
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instance, fr_event_list_t *el, void *thread)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_imap_thread_t    		*t = thread;
+	rlm_imap_thread_t    		*t = talloc_get_type_abort(mctx->thread, rlm_imap_thread_t);
 	fr_curl_handle_t    		*mhandle;
 
-	t->inst = instance;
-
-	mhandle = fr_curl_io_init(t, el, false);
+	mhandle = fr_curl_io_init(t, mctx->el, false);
 	if (!mhandle) return -1;
 
 	t->mhandle = mhandle;
@@ -202,12 +199,12 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 /*
  *	Close the thread and free the memory
  */
-static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
-    rlm_imap_thread_t    *t = thread;
+	rlm_imap_thread_t    		*t = talloc_get_type_abort(mctx->thread, rlm_imap_thread_t);
 
-    talloc_free(t->mhandle);
-    return 0;
+	talloc_free(t->mhandle);
+    	return 0;
 }
 
 /*

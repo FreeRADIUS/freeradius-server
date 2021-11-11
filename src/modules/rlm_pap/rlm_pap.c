@@ -68,8 +68,7 @@ static pthread_mutex_t fr_crypt_mutex = PTHREAD_MUTEX_INITIALIZER;
  *      be used as the instance handle.
  */
 typedef struct {
-	char const		*name;
-	fr_dict_enum_value_t		*auth_type;
+	fr_dict_enum_value_t	*auth_type;
 	bool			normify;
 } rlm_pap_t;
 
@@ -141,7 +140,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	fr_pair_t		*password;
 
 	if (fr_pair_find_by_da_idx(&request->control_pairs, attr_auth_type, 0) != NULL) {
-		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
+		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", mctx->inst->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -153,7 +152,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup PAP authentication.",
-		     inst->name, inst->name);
+		     mctx->inst->name, mctx->inst->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -993,29 +992,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	RETURN_MODULE_RCODE(rcode);
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	char const		*name;
-	rlm_pap_t		*inst = instance;
+	rlm_pap_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_pap_t);
 
-	/*
-	 *	Create the dynamic translation.
-	 */
-	name = cf_section_name2(conf);
-	if (!name) name = cf_section_name1(conf);
-	inst->name = name;
-
-	return 0;
-}
-
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
-{
-	rlm_pap_t	*inst = talloc_get_type_abort(instance, rlm_pap_t);
-
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->inst->name, -1);
 	if (!inst->auth_type) {
 		WARN("Failed to find 'authenticate %s {...}' section.  PAP will likely not work",
-		     inst->name);
+		     mctx->inst->name);
 	}
 
 	return 0;
@@ -1094,7 +1078,6 @@ module_t rlm_pap = {
 	.onload		= mod_load,
 	.unload		= mod_unload,
 	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,

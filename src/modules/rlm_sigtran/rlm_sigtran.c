@@ -34,7 +34,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX_ARGS inst->name
+#define LOG_PREFIX_ARGS mctx->inst->name
 
 #include <osmocom/core/linuxlist.h>
 
@@ -305,11 +305,10 @@ static int sigtran_sccp_sockaddr_from_conf(TALLOC_CTX *ctx, rlm_sigtran_t *inst,
 	return 0;
 }
 
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
-				  fr_event_list_t *el, void *thread)
+static int mod_thread_instantiate(module_thread_inst_ctx_t *mctx)
 {
-	rlm_sigtran_t		*inst = instance;
-	rlm_sigtran_thread_t	*t = thread;
+	rlm_sigtran_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sigtran_t);
+	rlm_sigtran_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_sigtran_thread_t);
 	int			fd;
 
 	t->inst = instance;
@@ -325,21 +324,18 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	return 0;
 }
 
-static int mod_thread_detach(fr_event_list_t *el, void *thread)
+static int mod_thread_detach(module_thread_inst_ctx_t *mctx)
 {
-	rlm_sigtran_thread_t	*t = thread;
+	rlm_sigtran_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_sigtran_thread_t);
 
 	sigtran_client_thread_unregister(el, t->fd);	/* Also closes our side */
 
 	return 0;
 }
 
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_sigtran_t *inst = instance;
-
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
+	rlm_sigtran_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_sigtran_t);
 
 	/*
 	 *	Translate traffic mode string to integer
@@ -402,9 +398,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 /**
  * Cleanup internal state.
  */
-static int mod_detach(UNUSED void *instance)
+static int mod_detach(module_detach_ctx_t *mctx)
 {
-	rlm_sigtran_t *inst = instance;
+	rlm_sigtran_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_sigtran_t);
 
 	/*
 	 *	If we're just checking the config we didn't start the

@@ -23,7 +23,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX inst->name
+#define LOG_PREFIX mctx->inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/password.h>
@@ -31,7 +31,6 @@ RCSID("$Id$")
 #include <freeradius-devel/radius/radius.h>
 
 typedef struct {
-	char const			*name;		//!< Auth-Type value for this module instance.
 	fr_dict_enum_value_t		*auth_type;
 } rlm_chap_t;
 
@@ -114,7 +113,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	rlm_chap_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_chap_t);
 
 	if (fr_pair_find_by_da_idx(&request->control_pairs, attr_auth_type, 0) != NULL) {
-		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", inst->name);
+		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", mctx->inst->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -143,7 +142,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup CHAP authentication",
-		     inst->name, inst->name);
+		     mctx->inst->name, mctx->inst->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -273,28 +272,18 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	RETURN_MODULE_OK;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
-{
-	rlm_chap_t	*inst = instance;
-
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	return 0;
-}
-
 /*
  *	Create instance for our module. Allocate space for
  *	instance structure and read configuration parameters
  */
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_chap_t		*inst = instance;
+	rlm_chap_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_chap_t);
 
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->inst->name, -1);
 	if (!inst->auth_type) {
 		WARN("Failed to find 'authenticate %s {...}' section.  CHAP authentication will likely not work",
-		     inst->name);
+		     mctx->inst->name);
 	}
 
 	return 0;
@@ -332,7 +321,6 @@ module_t rlm_chap = {
 	.inst_size	= sizeof(rlm_chap_t),
 	.onload		= mod_load,
 	.unload		= mod_unload,
-	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.dict		= &dict_radius,
 	.methods = {

@@ -686,7 +686,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle,
 static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_SECTION *cs)
 {
 	bool			exists;
-	rlm_sql_sqlite_t	*inst = instance;
+	rlm_sql_sqlite_t	*inst = talloc_get_type_abort(instance, rlm_sql_sqlite_t);
 	struct stat		buf;
 
 	if (!inst->filename) {

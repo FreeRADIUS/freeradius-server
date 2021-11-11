@@ -350,13 +350,13 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 /*
  *	(Re-)read the "users" file into memory.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_files_t *inst = instance;
+	rlm_files_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_files_t);
 
 	inst->key_data_type = tmpl_expanded_type(inst->key);
 	if (fr_htrie_hint(inst->key_data_type) == FR_HTRIE_INVALID) {
-		cf_log_err(conf, "Invalid data type '%s' for 'files' module.",
+		cf_log_err(mctx->inst->conf, "Invalid data type '%s' for 'files' module.",
 			   fr_table_str_by_value(fr_value_box_type_table, inst->key_data_type, "???"));
 		return -1;
 	}

@@ -40,8 +40,6 @@ typedef struct {
 	fr_redis_conf_t		conf;		//!< Connection parameters for the Redis server.
 						//!< Must be first field in this struct.
 
-	char const		*name;		//!< Instance name.
-	CONF_SECTION		*cs;
 	fr_redis_cluster_t	*cluster;	//!< Pool O pools
 
 	int			expiry_time;	//!< Expiry time in seconds if no updates are received for a user
@@ -199,9 +197,10 @@ static unlang_action_t mod_accounting_all(rlm_rcode_t *p_result, rlm_rediswho_t 
 static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rediswho_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_rediswho_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 	rlm_rcode_t		rcode;
 	fr_pair_t		*vp;
-	fr_dict_enum_value_t		*dv;
+	fr_dict_enum_value_t	*dv;
 	CONF_SECTION		*cs;
 	char const		*insert, *trim, *expire;
 
@@ -217,7 +216,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 		RETURN_MODULE_NOOP;
 	}
 
-	cs = cf_section_find(inst->cs, dv->name, NULL);
+	cs = cf_section_find(conf, dv->name, NULL);
 	if (!cs) {
 		RDEBUG2("No subsection %s", dv->name);
 		RETURN_MODULE_NOOP;
@@ -230,20 +229,10 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	return mod_accounting_all(&rcode, inst, request, insert, trim, expire);
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_rediswho_t *inst = instance;
-
-	inst->cs = conf;
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	return 0;
-}
-
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
-{
-	rlm_rediswho_t *inst = instance;
+	rlm_rediswho_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_rediswho_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
 
 	inst->cluster = fr_redis_cluster_alloc(inst, conf, &inst->conf, true, NULL, NULL, NULL);
 	if (!inst->cluster) return -1;
@@ -267,7 +256,6 @@ module_t rlm_rediswho = {
 	.config		= module_config,
 	.onload		= mod_load,
 	.instantiate	= mod_instantiate,
-	.bootstrap	= mod_bootstrap,
 	.methods = {
 		[MOD_ACCOUNTING]	= mod_accounting
 	},

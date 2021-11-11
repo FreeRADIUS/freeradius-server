@@ -873,12 +873,12 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 /*
  *	Attach the module.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *cs)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_eap_mschapv2_t *inst = talloc_get_type_abort(instance, rlm_eap_mschapv2_t);
+	rlm_eap_mschapv2_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_mschapv2_t);
 
 	if (inst->identity && (strlen(inst->identity) > 255)) {
-		cf_log_err(cs, "identity is too long");
+		cf_log_err(mctx->inst->conf, "identity is too long");
 		return -1;
 	}
 

@@ -427,9 +427,9 @@ static SECURID_AUTH_RC securidAuth(void *instance, request_t *request,
 }
 
 /******************************************/
-static int mod_detach(void *instance)
+static int mod_detach(module_detach_ctx_t *mctx)
 {
-	rlm_securid_t *inst = (rlm_securid_t *) instance;
+	rlm_securid_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_securid_t);
 
 	/* delete session tree */
 	if (inst->session_tree) {
@@ -443,9 +443,9 @@ static int mod_detach(void *instance)
 }
 
 
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_securid_t *inst = instance;
+	rlm_securid_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_securid_t);
 
 	/*
 	 *	Lookup sessions in the tree.  We don't free them in

@@ -545,23 +545,20 @@ static unlang_action_t mod_insert_logtee(rlm_rcode_t *p_result, module_ctx_t con
 
 /** Create thread-specific connections and buffers
  *
- * @param[in] conf	section containing the configuration of this module instance.
- * @param[in] instance	of rlm_logtee_t.
- * @param[in] el	The event list serviced by this thread.
- * @param[in] thread	specific data.
+ * @param[in] mctx	specific data.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instance, fr_event_list_t *el, void *thread)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_logtee_t		*inst = talloc_get_type_abort(instance, rlm_logtee_t);
-	rlm_logtee_thread_t	*t = talloc_get_type_abort(thread, rlm_logtee_thread_t);
+	rlm_logtee_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_logtee_t);
+	rlm_logtee_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_logtee_thread_t);
 
 	MEM(t->fring = fr_fring_alloc(t, inst->buffer_depth, false));
 
 	t->inst = inst;
-	t->el = el;
+	t->el = mctx->el;
 
 	/*
 	 *	Pre-allocate temporary attributes
@@ -574,7 +571,7 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 	/*
 	 *	This opens the outbound connection
 	 */
-	t->conn = fr_connection_alloc(t, el,
+	t->conn = fr_connection_alloc(t, t->el,
 				      &(fr_connection_funcs_t){
 					.init = _logtee_conn_init,
 				   	.open = _logtee_conn_open,
@@ -595,9 +592,10 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 /*
  *	Instantiate the module.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_logtee_t	*inst = instance;
+	rlm_logtee_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_logtee_t);
+	CONF_SECTION    *conf = mctx->inst->conf;
 	char		prefix[100];
 
 	/*
@@ -614,9 +612,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		cf_log_err(conf, "Invalid log destination \"%s\"", inst->log_dst_str);
 		return -1;
 	}
-
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	snprintf(prefix, sizeof(prefix), "rlm_logtee (%s)", inst->name);
 

@@ -85,7 +85,7 @@ fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
  */
 static int winbind_group_cmp(void *instance, request_t *request, UNUSED fr_pair_list_t *request_list, fr_pair_t const *check)
 {
-	rlm_winbind_t		*inst = instance;
+	rlm_winbind_t		*inst = talloc_get_type_abort(instance, rlm_winbind_t);
 	int			ret = 1;
 	struct wbcContext	*wb_ctx;
 	wbcErr			err;
@@ -323,26 +323,22 @@ static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED fr_t
  *	- 0	success
  *	- -1	failure
  */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_winbind_t		*inst = instance;
+	rlm_winbind_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_winbind_t);
 	char const		*group_attribute;
 	char			buffer[256];
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
 	if (inst->group_attribute) {
 		group_attribute = inst->group_attribute;
-	} else if (cf_section_name2(conf)) {
-		snprintf(buffer, sizeof(buffer), "%s-Winbind-Group", inst->name);
+	} else if (cf_section_name2(mctx->inst->conf)) {
+		snprintf(buffer, sizeof(buffer), "%s-Winbind-Group", mctx->inst->name);
 		group_attribute = buffer;
 	} else {
 		group_attribute = "Winbind-Group";
 	}
 
-	if (paircmp_register_by_name(group_attribute, attr_user_name, false,
-					winbind_group_cmp, inst) < 0) {
+	if (paircmp_register_by_name(group_attribute, attr_user_name, false, winbind_group_cmp, inst) < 0) {
 		PERROR("Error registering group comparison");
 		return -1;
 	}
@@ -360,10 +356,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  *	- 0	instantiation succeeded
  *	- -1	instantiation failed
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_winbind_t			*inst = instance;
+	rlm_winbind_t			*inst = talloc_get_type_abort(mctx->inst->data, rlm_winbind_t);
 	struct wbcInterfaceDetails	*wb_info = NULL;
+	CONF_SECTION			*conf = mctx->inst->conf;
 
 	if (!inst->wb_username) {
 		cf_log_err(conf, "winbind_username must be defined to use rlm_winbind");
@@ -376,10 +373,10 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->inst->name, -1);
 	if (!inst->auth_type) {
 		WARN("Failed to find 'authenticate %s {...}' section.  Winbind authentication will likely not work",
-		     inst->name);
+		     mctx->inst->name);
 	}
 
 	/*
@@ -414,7 +411,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			goto no_domain;
 		}
 
-		tmpl_afrom_substr(instance, &inst->wb_domain,
+		tmpl_afrom_substr(inst, &inst->wb_domain,
 			          &FR_SBUFF_IN(wb_info->netbios_domain, strlen(wb_info->netbios_domain)),
 			          T_SINGLE_QUOTED_STRING,
 			          NULL,
@@ -445,9 +442,9 @@ no_domain:
  * @param[in] instance This module's instance (unused)
  * @return 0
  */
-static int mod_detach(void *instance)
+static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_winbind_t *inst = instance;
+	rlm_winbind_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_winbind_t);
 
 	fr_pool_free(inst->wb_pool);
 
@@ -479,7 +476,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup Winbind authentication",
-		     inst->name, inst->name);
+		     mctx->inst->name, mctx->inst->name);
 		RETURN_MODULE_NOOP;
 	}
 

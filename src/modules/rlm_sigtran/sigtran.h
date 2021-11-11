@@ -229,13 +229,11 @@ typedef struct sigtran_map_send_auth_info_res {
 } sigtran_map_send_auth_info_res_t;
 
 typedef struct rlm_sigtran {
-	char const		*name;					//!< Instance name.
-
 	sigtran_conn_t const	*conn;					//!< Linkset associated with this instance.
 
 	sigtran_conn_conf_t	conn_conf;				//!< Connection configuration
 
-	tmpl_t		*imsi;					//!< Subscriber identifier.
+	tmpl_t			*imsi;					//!< Subscriber identifier.
 } rlm_sigtran_t;
 
 typedef struct rlm_sigtran_thread {

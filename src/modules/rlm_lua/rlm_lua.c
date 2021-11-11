@@ -25,7 +25,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX inst->name
+#define LOG_PREFIX mctx->inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
@@ -73,34 +73,30 @@ DO_LUA(post_auth)
 /** Free any thread specific interpreters
  *
  */
-static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_lua_thread_t *this_thread = thread;
+	rlm_lua_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_lua_thread_t);
 
 	/*
 	 *	May be NULL if fr_lua_init failed
 	 */
-	if (this_thread->interpreter) lua_close(this_thread->interpreter);
+	if (t->interpreter) lua_close(t->interpreter);
 
 	return 0;
 }
 
 /** Create thread-specific connections and buffers
  *
- * @param[in] conf	section containing the configuration of this module instance.
- * @param[in] instance	of rlm_lua_t.
- * @param[in] el	The event list serviced by this thread.
- * @param[in] thread	specific data (where we write the interpreter).
+ * @param[in] mctx	specific data (where we write the interpreter).
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instance,
-				  UNUSED fr_event_list_t *el, void *thread)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_lua_thread_t *this_thread = thread;
+	rlm_lua_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_lua_thread_t);
 
-	if (fr_lua_init(&this_thread->interpreter, instance) < 0) return -1;
+	if (fr_lua_init(&t->interpreter, (module_inst_ctx_t const *)mctx) < 0) return -1;
 
 	return 0;
 }
@@ -108,9 +104,9 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 /** Close the global interpreter
  *
  */
-static int mod_detach(void *instance)
+static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_lua_t *inst = instance;
+	rlm_lua_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_lua_t);
 	rlm_rcode_t ret = 0;
 
 	/*
@@ -119,7 +115,7 @@ static int mod_detach(void *instance)
 	if (inst->interpreter) {
 		if (inst->func_detach) {
 			fr_lua_run(&ret, &(module_ctx_t){
-						.inst = dl_module_instance_by_data(instance),
+						.inst = mctx->inst,
 						.thread = &(rlm_lua_thread_t){
 							.interpreter = inst->interpreter
 						}
@@ -132,18 +128,15 @@ static int mod_detach(void *instance)
 	return ret;
 }
 
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_lua_t *inst = instance;
+	rlm_lua_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_lua_t);
 	rlm_rcode_t rcode;
-
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	/*
 	 *	Get an instance global interpreter to use with various things...
 	 */
-	if (fr_lua_init(&inst->interpreter, inst) < 0) return -1;
+	if (fr_lua_init(&inst->interpreter, mctx) < 0) return -1;
 	inst->jit = fr_lua_isjit(inst->interpreter);
 	if (!inst->jit) WARN("Using standard Lua interpreter, performance will be suboptimal");
 
@@ -151,11 +144,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 
 	if (inst->func_instantiate) {
 		fr_lua_run(&rcode, &(module_ctx_t){
-					.inst = dl_module_instance_by_data(instance),
-					.thread = &(rlm_lua_thread_t){
-				   		.interpreter = inst->interpreter
-					}
-				    },
+				.inst = mctx->inst,
+				.thread = &(rlm_lua_thread_t){
+					.interpreter = inst->interpreter
+				}
+			    },
 			  NULL, inst->func_instantiate);
 	}
 

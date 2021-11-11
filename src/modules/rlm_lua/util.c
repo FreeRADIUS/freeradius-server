@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX inst->name
+#define LOG_PREFIX fr_lua_mctx->inst->name
 
 #include <freeradius-devel/server/base.h>
 
@@ -35,7 +35,7 @@ RCSID("$Id$")
 #include <lualib.h>
 
 static _Thread_local request_t *fr_lua_request;
-static _Thread_local rlm_lua_t const *fr_lua_inst;
+static _Thread_local module_ctx_t const *fr_lua_mctx;
 
 void fr_lua_util_fr_register(lua_State *L)
 {
@@ -54,8 +54,7 @@ void fr_lua_util_fr_register(lua_State *L)
  */
 static int _util_log_debug(lua_State *L)
 {
-	rlm_lua_t const		*inst = fr_lua_inst;
-	request_t			*request = fr_lua_request;
+	request_t		*request = fr_lua_request;
 	int			idx;
 
 	while ((idx = lua_gettop(L))) {
@@ -78,8 +77,7 @@ static int _util_log_debug(lua_State *L)
  */
 static int _util_log_info(lua_State *L)
 {
-	rlm_lua_t const		*inst = fr_lua_inst;
-	request_t			*request = fr_lua_request;
+	request_t		*request = fr_lua_request;
 	int 			idx;
 
 	while ((idx = lua_gettop(L))) {
@@ -103,8 +101,7 @@ static int _util_log_info(lua_State *L)
  */
 static int _util_log_warn(lua_State *L)
 {
-	rlm_lua_t const		*inst = fr_lua_inst;
-	request_t			*request = fr_lua_request;
+	request_t		*request = fr_lua_request;
 	int			idx;
 
 	while ((idx = lua_gettop(L))) {
@@ -127,8 +124,7 @@ static int _util_log_warn(lua_State *L)
  */
 static int _util_log_error(lua_State *L)
 {
-	rlm_lua_t const		*inst = fr_lua_inst;
-	request_t			*request = fr_lua_request;
+	request_t		*request = fr_lua_request;
 	int			idx;
 
 	while ((idx = lua_gettop(L))) {
@@ -157,8 +153,7 @@ static int _util_log_newindex(UNUSED lua_State *L)
  */
 void fr_lua_util_jit_log_debug(char const *msg)
 {
-	rlm_lua_t const		*inst = fr_lua_inst;
-	request_t			*request = fr_lua_request;
+	request_t		*request = fr_lua_request;
 
 	ROPTIONAL(RDEBUG2, DEBUG2, "%s", msg);
 }
@@ -169,8 +164,7 @@ void fr_lua_util_jit_log_debug(char const *msg)
  */
 void fr_lua_util_jit_log_info(char const *msg)
 {
-	rlm_lua_t const		*inst = fr_lua_inst;
-	request_t			*request = fr_lua_request;
+	request_t		*request = fr_lua_request;
 
 	ROPTIONAL(RINFO, INFO, "%s", msg);
 }
@@ -181,8 +175,7 @@ void fr_lua_util_jit_log_info(char const *msg)
  */
 void fr_lua_util_jit_log_warn(char const *msg)
 {
-	rlm_lua_t const		*inst = fr_lua_inst;
-	request_t			*request = fr_lua_request;
+	request_t		*request = fr_lua_request;
 
 	ROPTIONAL(RWARN, WARN, "%s", msg);
 }
@@ -193,8 +186,7 @@ void fr_lua_util_jit_log_warn(char const *msg)
  */
 void fr_lua_util_jit_log_error(char const *msg)
 {
-	rlm_lua_t const		*inst = fr_lua_inst;
-	request_t			*request = fr_lua_request;
+	request_t		*request = fr_lua_request;
 
 	ROPTIONAL(RERROR, ERROR, "%s", msg);
 }
@@ -204,15 +196,16 @@ void fr_lua_util_jit_log_error(char const *msg)
  * For LuaJIT using the FFI is significantly faster than the Lua interface.
  * Help people wishing to use the FFI by inserting cdefs for standard functions.
  *
- * @param inst Current instance of the fr_lua module.
  * @param L Lua interpreter.
  * @return 0 (no arguments).
  */
-int fr_lua_util_jit_log_register(rlm_lua_t const *inst, lua_State *L)
+int fr_lua_util_jit_log_register(lua_State *L)
 {
 	char const *search_path;
 	char *lua_str;
 	int ret;
+
+	fr_assert(fr_lua_mctx);
 
 	search_path = dl_module_search_path();
 	lua_str = talloc_asprintf(NULL, "\
@@ -262,11 +255,10 @@ int fr_lua_util_jit_log_register(rlm_lua_t const *inst, lua_State *L)
 
 /** Register utililiary functions in the lua environment
  *
- * @param inst Current instance of the fr_lua module.
  * @param L Lua interpreter.
  * @return 0 (no arguments).
  */
-int fr_lua_util_log_register(UNUSED rlm_lua_t const *inst, lua_State *L)
+int fr_lua_util_log_register(lua_State *L)
 {
 	/* fr.{} */
 	lua_getglobal(L, "fr");
@@ -305,20 +297,20 @@ int fr_lua_util_log_register(UNUSED rlm_lua_t const *inst, lua_State *L)
 
 /** Set the thread local instance
  *
- * @param[in] inst	all helper and C functions callable from Lua should use.
+ * @param[in] mctx	all helper and C functions callable from Lua should use.
  */
-void fr_lua_util_set_inst(rlm_lua_t const *inst)
+void fr_lua_util_set_mctx(module_ctx_t const *mctx)
 {
-	fr_lua_inst = inst;
+	fr_lua_mctx = mctx;
 }
 
 /** Get the thread local instance
  *
- * @return inst all helper and C functions callable from Lua should use.
+ * @return mctx 	all helper and C functions callable from Lua should use.
  */
-rlm_lua_t const *fr_lua_util_get_inst(void)
+module_ctx_t const *fr_lua_util_get_mctx(void)
 {
-	return fr_lua_inst;
+	return fr_lua_mctx;
 }
 
 /** Set the thread local request

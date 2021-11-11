@@ -30,8 +30,6 @@ typedef struct {
 } ldap_acct_section_t;
 
 typedef struct {
-	char const	*name;				//!< Instance name.
-
 	bool		expect_password;		//!< True if the user_map included a mapping between an LDAP
 							//!< attribute and one of our password reference attributes.
 
@@ -165,7 +163,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, request_t *request, fr_ld
 
 rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request, LDAP *handle, LDAPMessage *entry);
 
-void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t const *ttrunk);
+void rlm_ldap_check_reply(module_ctx_t const *mctx, request_t *request, fr_ldap_thread_trunk_t const *ttrunk);
 
 /*
  *	groups.c - Group membership functions.

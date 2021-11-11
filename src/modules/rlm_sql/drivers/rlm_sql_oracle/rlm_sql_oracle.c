@@ -142,9 +142,9 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED si
 	return 1;
 }
 
-static int mod_detach(void *instance)
+static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_sql_oracle_t	*inst = instance;
+	rlm_sql_oracle_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_oracle_t);
 
 	if (inst->pool) OCISessionPoolDestroy((dvoid *)inst->pool, (dvoid *)inst->error, OCI_DEFAULT );
 	if (inst->error) OCIHandleFree((dvoid *)inst->error, OCI_HTYPE_ERROR);
@@ -157,7 +157,7 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 {
 	char  errbuff[512];
 	sb4 errcode = 0;
-	rlm_sql_oracle_t	*inst = instance;
+	rlm_sql_oracle_t	*inst = talloc_get_type_abort(instance, rlm_sql_oracle_t);
 	OraText *sql_password = NULL;
 	OraText *sql_login = NULL;
 

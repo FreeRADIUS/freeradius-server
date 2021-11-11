@@ -737,11 +737,11 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	return state->recv(p_result, mctx, request);
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *cs)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	process_dhcpv6_t	*inst = instance;
+	process_dhcpv6_t	*inst = talloc_get_type_abort(mctx->inst->data, process_dhcpv6_t);
 
-	inst->server_cs = cf_section_find_in_parent(cs, "server", CF_IDENT_ANY);
+	inst->server_cs = cf_section_find_in_parent(mctx->inst->conf, "server", CF_IDENT_ANY);
 
 	return 0;
 }

@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX inst->name
+#define LOG_PREFIX mctx->inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
@@ -35,7 +35,6 @@ RCSID("$Id$")
  *	Define a structure for our module configuration.
  */
 typedef struct {
-	char const		*name;
 	bool			wait;
 	char const		*program;
 	char const		*input;
@@ -164,18 +163,14 @@ static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, v
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	char const	*p;
-	rlm_exec_t	*inst = instance;
+	rlm_exec_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_exec_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
 	xlat_t		*xlat;
+	char const	*p;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) {
-		inst->name = cf_section_name1(conf);
-	}
-
-	xlat = xlat_register(NULL, inst->name, exec_xlat, true);
+	xlat = xlat_register(NULL, mctx->inst->name, exec_xlat, true);
 	xlat_func_args(xlat, exec_xlat_args);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_exec_t *, NULL, inst);
 
@@ -238,15 +233,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  *
  * Creates a new instance of the module reading parameters from a configuration section.
  *
- * @param conf to parse.
- * @param instance configuration data.
+ * @param[in] mctx to parse.
  * @return
  *	- 0 on success.
  *	- < 0 on failure.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_exec_t		*inst = instance;
+	rlm_exec_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_exec_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 	ssize_t			slen;
 
 	if (!inst->program) return 0;

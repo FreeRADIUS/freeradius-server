@@ -64,30 +64,24 @@ fr_dict_attr_autoload_t rlm_cache_redis_dict_attr[] = {
 
 /** Create a new rlm_cache_redis instance
  *
- * @param instance	A uint8_t array of inst_size if inst_size > 0, else NULL,
- *			this should contain the result of parsing the driver's
- *			CONF_PARSER array that it specified in the interface struct.
- * @param conf		section holding driver specific #CONF_PAIR (s).
+ * @param[in] mctx		Data required for instantiation.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_cache_redis_t		*driver = instance;
+	rlm_cache_redis_t		*driver = talloc_get_type_abort(mctx->inst->data, rlm_cache_redis_t);
 	char				buffer[256];
-	rlm_cache_config_t const	*config = dl_module_parent_data_by_child_data(instance);
-
-	fr_assert(config);
 
 	buffer[0] = '\0';
 
-	if (cf_section_rules_push(conf, driver_config) < 0) return -1;
-	if (cf_section_parse(driver, driver, conf) < 0) return -1;
+	if (cf_section_rules_push(mctx->inst->conf, driver_config) < 0) return -1;
+	if (cf_section_parse(driver, driver, mctx->inst->conf) < 0) return -1;
 
-	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", config->name);
+	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", mctx->inst->parent->name);
 
-	driver->cluster = fr_redis_cluster_alloc(driver, conf, &driver->conf, true,
+	driver->cluster = fr_redis_cluster_alloc(driver, mctx->inst->conf, &driver->conf, true,
 						 buffer, "modules.cache.pool", NULL);
 	if (!driver->cluster) {
 		ERROR("Cluster failure");

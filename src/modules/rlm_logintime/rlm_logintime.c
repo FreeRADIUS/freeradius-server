@@ -232,9 +232,10 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_logintime_t *inst = instance;
+	rlm_logintime_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_logintime_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
 
 	if (!fr_time_delta_ispos(inst->min_time)) {
 		cf_log_err(conf, "Invalid value '0' for minimum_timeout");

@@ -600,11 +600,10 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	RETURN_MODULE_HANDLED;
 }
 
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
-				  UNUSED fr_event_list_t *el, void *thread)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
-	rlm_eap_fast_thread_t	*t = talloc_get_type_abort(thread, rlm_eap_fast_thread_t);
+	rlm_eap_fast_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_fast_t);
+	rlm_eap_fast_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_eap_fast_thread_t);
 
 	t->ssl_ctx = fr_tls_ctx_alloc(inst->tls_conf, false);
 	if (!t->ssl_ctx) return -1;
@@ -612,9 +611,9 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	return 0;
 }
 
-static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_eap_fast_thread_t	*t = talloc_get_type_abort(thread, rlm_eap_fast_thread_t);
+	rlm_eap_fast_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_eap_fast_thread_t);
 
 	if (likely(t->ssl_ctx != NULL)) SSL_CTX_free(t->ssl_ctx);
 	t->ssl_ctx = NULL;
@@ -625,18 +624,20 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 /*
  *	Attach the module.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *cs)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_eap_fast_t		*inst = talloc_get_type_abort(instance, rlm_eap_fast_t);
+	rlm_eap_fast_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_fast_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 
 	if (!virtual_server_find(inst->virtual_server)) {
-		cf_log_err_by_child(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
+		cf_log_err_by_child(mctx->inst->conf, "virtual_server", "Unknown virtual server '%s'",
+				    inst->virtual_server);
 		return -1;
 	}
 
 	inst->default_provisioning_method = eap_name2type(inst->default_provisioning_method_name);
 	if (!inst->default_provisioning_method) {
-		cf_log_err_by_child(cs, "default_provisioning_eap_type", "Unknown EAP type %s",
+		cf_log_err_by_child(conf, "default_provisioning_eap_type", "Unknown EAP type %s",
 				   inst->default_provisioning_method_name);
 		return -1;
 	}
@@ -645,15 +646,15 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	 *	Read tls configuration, either from group given by 'tls'
 	 *	option, or from the eap-tls configuration.
 	 */
-	inst->tls_conf = eap_tls_conf_parse(cs, "tls");
+	inst->tls_conf = eap_tls_conf_parse(conf, "tls");
 
 	if (!inst->tls_conf) {
-		cf_log_err_by_child(cs, "tls", "Failed initializing SSL context");
+		cf_log_err_by_child(conf, "tls", "Failed initializing SSL context");
 		return -1;
 	}
 
 	if (talloc_array_length(inst->pac_opaque_key) - 1 != 32) {
-		cf_log_err_by_child(cs, "pac_opaque_key", "Must be 32 bytes long");
+		cf_log_err_by_child(conf, "pac_opaque_key", "Must be 32 bytes long");
 		return -1;
 	}
 
@@ -662,12 +663,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	 *	disable TLSv1.2 later.
 	 */
 	if (inst->tls_conf->tls_min_version > (float) 1.1) {
-		cf_log_err_by_child(cs, "tls_min_version", "require tls_min_version <= 1.1");
+		cf_log_err_by_child(conf, "tls_min_version", "require tls_min_version <= 1.1");
 		return -1;
 	}
 
 	if (!fr_time_delta_ispos(inst->pac_lifetime)) {
-		cf_log_err_by_child(cs, "pac_lifetime", "must be non-zero");
+		cf_log_err_by_child(conf, "pac_lifetime", "must be non-zero");
 		return -1;
 	}
 

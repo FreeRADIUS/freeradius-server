@@ -220,9 +220,9 @@ static virtual_server_compile_t compile_list[] = {
 	COMPILE_TERMINATOR
 };
 
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	eap_aka_sim_process_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_process_conf_t);
+	eap_aka_sim_process_conf_t	*inst = talloc_get_type_abort(mctx->inst->data, eap_aka_sim_process_conf_t);
 
 	inst->type = FR_EAP_METHOD_SIM;
 

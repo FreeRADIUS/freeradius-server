@@ -23,7 +23,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX inst->name
+#define LOG_PREFIX mctx->inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
@@ -37,17 +37,14 @@ RCSID("$Id$")
  *	Define a structure for our module configuration.
  */
 typedef struct {
-	char const	*name;
 	char const	*interface;
 	fr_time_delta_t	timeout;
 	fr_ipaddr_t	src_ipaddr;
 } rlm_icmp_t;
 
 typedef struct {
-	rlm_icmp_t	*inst;
 	fr_rb_tree_t	*tree;
 	int		fd;
-	fr_event_list_t *el;
 
 	uint32_t	data;
 	uint16_t	ident;
@@ -256,7 +253,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *	Start off with the IPv6 pseudo-header checksum
 	 */
 	if (thread->t->ipaddr_type == FR_TYPE_IPV6_ADDR) {
-		checksum = fr_ip6_pesudo_header_checksum(&thread->t->inst->src_ipaddr.addr.v6, &echo->ip->vb_ip.addr.v6,
+		checksum = fr_ip6_pesudo_header_checksum(&inst->src_ipaddr.addr.v6, &echo->ip->vb_ip.addr.v6,
 							 sizeof(ip_header6_t) + sizeof(icmp), IPPROTO_ICMPV6);
 	}
 
@@ -294,14 +291,15 @@ static int8_t echo_cmp(void const *one, void const *two)
 	return CMP(a->counter, b->counter);
 }
 
-static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags, void *ctx)
+static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags, void *uctx)
 {
-	rlm_icmp_thread_t *t = talloc_get_type_abort(ctx, rlm_icmp_thread_t);
-	rlm_icmp_t *inst = t->inst;
-	ssize_t len;
-	icmp_header_t *icmp;
-	rlm_icmp_echo_t my_echo, *echo;
-	uint64_t buffer[256];
+	module_thread_inst_ctx_t const	*mctx = talloc_get_type_abort(uctx, module_thread_inst_ctx_t);
+	rlm_icmp_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_icmp_thread_t);
+
+	ssize_t			len;
+	icmp_header_t		*icmp;
+	rlm_icmp_echo_t		my_echo, *echo;
+	uint64_t		buffer[256];
 
 	len = read(t->fd, (char *) buffer, sizeof(buffer));
 	if (len <= 0) return;
@@ -379,10 +377,10 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 }
 
 static void mod_icmp_error(fr_event_list_t *el, UNUSED int sockfd, UNUSED int flags,
-			   UNUSED int fd_errno, void *ctx)
+			   UNUSED int fd_errno, void *uctx)
 {
-	rlm_icmp_thread_t *t = talloc_get_type_abort(ctx, rlm_icmp_thread_t);
-	rlm_icmp_t *inst = t->inst;
+	module_ctx_t const	*mctx = talloc_get_type_abort(uctx, module_ctx_t);
+	rlm_icmp_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_icmp_thread_t);
 
 	ERROR("Failed reading from ICMP socket - Closing it");
 
@@ -422,16 +420,23 @@ static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, v
 /** Instantiate thread data for the submodule.
  *
  */
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *thread)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
+	module_thread_inst_ctx_t	*our_mctx;
+	rlm_icmp_t			*inst = talloc_get_type_abort(mctx->inst->data, rlm_icmp_t);
+	rlm_icmp_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_icmp_thread_t);
+	fr_ipaddr_t			ipaddr, *src;
+
 	int fd, af, proto;
-	rlm_icmp_t *inst = talloc_get_type_abort(instance, rlm_icmp_t);
-	rlm_icmp_thread_t *t = talloc_get_type_abort(thread, rlm_icmp_thread_t);
-	fr_ipaddr_t ipaddr, *src;
+
+	/*
+	 *	Create a copy of the mctx on the heap that we can
+	 *	pass as the uctx to the io functions.
+	 */
+	MEM(our_mctx = talloc_zero(t, module_thread_inst_ctx_t));
+	memcpy(our_mctx, mctx, sizeof(*our_mctx));
 
 	MEM(t->tree = fr_rb_inline_alloc(t, rlm_icmp_echo_t, node, echo_cmp, NULL));
-	t->inst = inst;
-	t->el = el;
 
 	/*
 	 *      Since these fields are random numbers, we don't care
@@ -517,11 +522,11 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	 *	We assume that the outbound socket is always writable.
 	 *	If not, too bad.  Packets will get lost.
 	 */
-	if (fr_event_fd_insert(t, el, fd,
+	if (fr_event_fd_insert(t, mctx->el, fd,
 			       mod_icmp_read,
 			       NULL,
 			       mod_icmp_error,
-			       t) < 0) {
+			       our_mctx) < 0) {
 		fr_strerror_const_push("Failed adding socket to event loop");
 		close(fd);
 		return -1;
@@ -531,15 +536,12 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	return 0;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_icmp_t	*inst = instance;
+	rlm_icmp_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_icmp_t);
 	xlat_t		*xlat;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	xlat = xlat_register(inst, inst->name, xlat_icmp, true);
+	xlat = xlat_register(inst, mctx->inst->name, xlat_icmp, true);
 	xlat_func_args(xlat, xlat_icmp_args);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_icmp_t *, NULL, inst);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, xlat_icmp_thread_inst_t, NULL, inst);
@@ -568,13 +570,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 /** Destroy thread data for the submodule.
  *
  */
-static int mod_thread_detach(fr_event_list_t *el, void *thread)
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_icmp_thread_t *t = talloc_get_type_abort(thread, rlm_icmp_thread_t);
+	rlm_icmp_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_icmp_thread_t);
 
 	if (t->fd < 0) return 0;
 
-	(void) fr_event_fd_delete(el, t->fd, FR_EVENT_FILTER_IO);
+	(void) fr_event_fd_delete(mctx->el, t->fd, FR_EVENT_FILTER_IO);
 	close(t->fd);
 	t->fd = -1;
 

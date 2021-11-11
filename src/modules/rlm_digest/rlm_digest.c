@@ -31,7 +31,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/md5.h>
 
 typedef struct {
-	char const		*name;		//!< Auth-Type value for this module instance.
 	fr_dict_enum_value_t		*auth_type;
 } rlm_digest_t;
 
@@ -97,7 +96,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup Digest authentication",
-		     inst->name, inst->name);
+		     mctx->inst->name, mctx->inst->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -446,33 +445,19 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	RETURN_MODULE_REJECT;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
-{
-	char const		*name;
-	rlm_digest_t		*inst = instance;
-
-	/*
-	 *	Create the dynamic translation.
-	 */
-	name = cf_section_name2(conf);
-	if (!name) name = cf_section_name1(conf);
-	inst->name = name;
-
-	return 0;
-}
 
 /*
  *	Create instance for our module. Allocate space for
  *	instance structure and read configuration parameters
  */
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_digest_t		*inst = instance;
+	rlm_digest_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_digest_t);
 
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->inst->name, -1);
 	if (!inst->auth_type) {
 		WARN("Failed to find 'authenticate %s {...}' section.  Digest authentication will likely not work",
-		     inst->name);
+		     mctx->inst->name);
 	}
 
 	return 0;
@@ -492,7 +477,6 @@ module_t rlm_digest = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "digest",
 	.inst_size	= sizeof(rlm_digest_t),
-	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.dict		= &dict_radius,
 	.methods = {

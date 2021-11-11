@@ -57,6 +57,8 @@ extern "C" {
 #  define DL_EXTENSION ".so"
 #endif
 
+typedef struct dl_module_instance_s dl_module_inst_t;
+
 /** Stop people using different module/library/server versions together
  *
  */
@@ -80,6 +82,10 @@ typedef enum {
 
 typedef struct dl_module_loader_s dl_module_loader_t;
 
+typedef struct {
+	dl_module_inst_t const	*inst;
+} module_detach_ctx_t;
+
 /** Module detach callback
  *
  * Is called just before the server exits, and after re-instantiation on HUP,
@@ -88,12 +94,12 @@ typedef struct dl_module_loader_s dl_module_loader_t;
  * Detach should close all handles associated with the module instance, and
  * free any memory allocated during instantiate.
  *
- * @param[in] instance to free.
+ * @param[in] inst to free.
  * @return
  *	- 0 on success.
  *	- -1 if detach failed.
  */
-typedef int (*module_detach_t)(void *instance);
+typedef int (*module_detach_t)(module_detach_ctx_t const *inst);
 
 /** Callback to call when a module is first loaded
  *
@@ -152,7 +158,6 @@ struct dl_module_s {
  *
  * Used to pass data back from dl_module_instance_parse_func
  */
-typedef struct dl_module_instance_s dl_module_inst_t;
 struct dl_module_instance_s {
 	char const			* _CONST name;		//!< Instance name.
 	dl_module_t const		* _CONST module;	//!< Module

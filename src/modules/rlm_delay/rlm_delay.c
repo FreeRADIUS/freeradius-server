@@ -31,8 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/time.h>
 
 typedef struct {
-	char const	*name;		//!< Name of our xlat function.
-	tmpl_t	*delay;			//!< How long we delay for.
+	tmpl_t		*delay;			//!< How long we delay for.
 	bool		relative;		//!< Whether the delay is relative to the start of request processing.
 	bool		force_reschedule;	//!< Whether we should force rescheduling of the request.
 } rlm_delay_t;
@@ -275,15 +274,12 @@ static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, v
 	return 0;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_delay_t	*inst = instance;
+	rlm_delay_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_delay_t);
 	xlat_t		*xlat;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	xlat = xlat_register(inst, inst->name, xlat_delay, true);
+	xlat = xlat_register(inst, mctx->inst->name, xlat_delay, true);
 	xlat_func_args(xlat, xlat_delay_args);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_delay_t *, NULL, inst);
 	return 0;

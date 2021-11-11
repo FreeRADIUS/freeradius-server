@@ -256,7 +256,7 @@ static int _dl_module_instance_data_free(void *data)
                 return -1;
         }
 
-        if (dl_inst->module->common->detach) dl_inst->module->common->detach(dl_inst->data);
+        if (dl_inst->module->common->detach) dl_inst->module->common->detach(&(module_detach_ctx_t){ .inst = dl_inst });
 
         return 0;
 }

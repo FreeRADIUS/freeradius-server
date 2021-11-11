@@ -622,7 +622,7 @@ do { \
 	       (_tconn)->pub.conn, \
 	       (_tconn)->pub.trunk->uctx); \
 	(_tconn)->pub.trunk->in_handler = (void *)(_tconn)->pub.trunk->funcs.request_demux; \
-	(_tconn)->pub.trunk->funcs.request_demux((_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
+	(_tconn)->pub.trunk->funcs.request_demux((_tconn)->pub.trunk->el, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
 	(_tconn)->pub.trunk->in_handler = _prev; \
 } while(0)
 
@@ -639,7 +639,7 @@ do { \
 		       (_tconn)->pub.conn, \
 		       (_tconn)->pub.trunk->uctx); \
 		(_tconn)->pub.trunk->in_handler = (void *)(_tconn)->pub.trunk->funcs.request_cancel_mux; \
-		(_tconn)->pub.trunk->funcs.request_cancel_mux((_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
+		(_tconn)->pub.trunk->funcs.request_cancel_mux((_tconn)->pub.trunk->el, (_tconn), (_tconn)->pub.conn, (_tconn)->pub.trunk->uctx); \
 		(_tconn)->pub.trunk->in_handler = _prev; \
 	} \
 } while(0)

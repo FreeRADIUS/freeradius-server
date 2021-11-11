@@ -25,7 +25,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX inst->name
+#define LOG_PREFIX mctx->inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
@@ -352,14 +352,14 @@ static int _lua_pair_get(lua_State *L)
  */
 static int _lua_pair_set(lua_State *L)
 {
-	rlm_lua_t const		*inst = fr_lua_util_get_inst();
-	request_t			*request = fr_lua_util_get_request();
+	module_ctx_t const	*mctx = fr_lua_util_get_mctx();
+	rlm_lua_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_lua_t);
+	request_t		*request = fr_lua_util_get_request();
 	fr_dcursor_t		cursor;
 	fr_dict_attr_t const	*da;
 	fr_pair_t		*vp = NULL, *new;
 	lua_Integer		index;
 	bool			delete = false;
-
 
 	/*
 	 *	This function should only be called as a closure.
@@ -612,12 +612,12 @@ char const *fr_lua_version(lua_State *L)
  *
  * Also check what was loaded there is a function and that it accepts the correct arguments.
  *
- * @param inst Current instance of fr_lua
- * @param L the lua state
- * @param name of function to check.
+ * @param[in] mctx 		module instantiation data.
+ * @param[in] L			the lua state.
+ * @param[in] name		of function to check.
  * @returns 0 on success (function is present and correct), or -1 on failure.
  */
-static int fr_lua_check_func(rlm_lua_t const *inst, lua_State *L, char const *name)
+static int fr_lua_check_func(module_inst_ctx_t const *mctx, lua_State *L, char const *name)
 {
 	int ret;
 	int type;
@@ -739,12 +739,11 @@ static void _lua_fr_request_register(lua_State *L, request_t *request)
 
 unlang_action_t fr_lua_run(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, char const *funcname)
 {
-	rlm_lua_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_lua_t);
 	rlm_lua_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_lua_thread_t);
 	lua_State		*L = thread->interpreter;
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 
-	fr_lua_util_set_inst(inst);
+	fr_lua_util_set_mctx(mctx);
 	fr_lua_util_set_request(request);
 
 	ROPTIONAL(RDEBUG2, DEBUG2, "Calling %s() in interpreter %p", funcname, L);
@@ -756,7 +755,7 @@ unlang_action_t fr_lua_run(rlm_rcode_t *p_result, module_ctx_t const *mctx, requ
 	 */
 	if (fr_lua_get_field(L, request, funcname) < 0) {
 error:
-		fr_lua_util_set_inst(NULL);
+		fr_lua_util_set_mctx(NULL);
 		fr_lua_util_set_request(NULL);
 
 		RETURN_MODULE_FAIL;
@@ -801,7 +800,7 @@ error:
 	}
 
 done:
-	fr_lua_util_set_inst(NULL);
+	fr_lua_util_set_mctx(NULL);
 	fr_lua_util_set_request(NULL);
 
 	RETURN_MODULE_RCODE(rcode);
@@ -874,17 +873,15 @@ static void fr_lua_rcode_register(lua_State *L, char const *name)
  * Creates a new lua_State and verifies all required functions have been loaded correctly.
  *
  * @param[in] out	Where to write a pointer to the new state.
- * @param[in] instance	Current instance of fr_lua, a talloc marker
- *			context will be inserted into the context of instance
- *			to ensure the interpreter is freed when instance data is freed.
+ * @parma[in] mctx	configuration data for the
  * @return 0 on success else -1.
  */
-int fr_lua_init(lua_State **out, rlm_lua_t const *instance)
+int fr_lua_init(lua_State **out, module_inst_ctx_t const *mctx)
 {
-	rlm_lua_t const		*inst = talloc_get_type_abort_const(instance, rlm_lua_t);
+	rlm_lua_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_lua_t);
 	lua_State		*L;
 
-	fr_lua_util_set_inst(inst);
+	fr_lua_util_set_mctx(&(module_ctx_t){ .inst = mctx->inst });
 
 	L = luaL_newstate();
 	if (!L) {
@@ -902,7 +899,7 @@ int fr_lua_init(lua_State **out, rlm_lua_t const *instance)
 
 	error:
 		*out = NULL;
-		fr_lua_util_set_inst(NULL);
+		fr_lua_util_set_mctx(NULL);
 		lua_close(L);
 		return -1;
 	}
@@ -923,10 +920,10 @@ int fr_lua_init(lua_State **out, rlm_lua_t const *instance)
 	 */
 	if (inst->jit) {
 		DEBUG4("Initialised new LuaJIT interpreter %p", L);
-		if (fr_lua_util_jit_log_register(inst, L) < 0) goto error;
+		if (fr_lua_util_jit_log_register(L) < 0) goto error;
 	} else {
 		DEBUG4("Initialised new Lua interpreter %p", L);
-		if (fr_lua_util_log_register(inst, L) < 0) goto error;
+		if (fr_lua_util_log_register(L) < 0) goto error;
 	}
 
 	/*
@@ -938,14 +935,14 @@ int fr_lua_init(lua_State **out, rlm_lua_t const *instance)
 	/*
 	 *	Verify all the functions were provided.
 	 */
-	if (fr_lua_check_func(inst, L, inst->func_authorize)
-	    || fr_lua_check_func(inst, L, inst->func_authenticate)
-	    || fr_lua_check_func(inst, L, inst->func_preacct)
-	    || fr_lua_check_func(inst, L, inst->func_accounting)
-	    || fr_lua_check_func(inst, L, inst->func_post_auth)
-	    || fr_lua_check_func(inst, L, inst->func_instantiate)
-	    || fr_lua_check_func(inst, L, inst->func_detach)
-	    || fr_lua_check_func(inst, L, inst->func_xlat)) {
+	if (fr_lua_check_func(mctx, L, inst->func_authorize)
+	    || fr_lua_check_func(mctx, L, inst->func_authenticate)
+	    || fr_lua_check_func(mctx, L, inst->func_preacct)
+	    || fr_lua_check_func(mctx, L, inst->func_accounting)
+	    || fr_lua_check_func(mctx, L, inst->func_post_auth)
+	    || fr_lua_check_func(mctx, L, inst->func_instantiate)
+	    || fr_lua_check_func(mctx, L, inst->func_detach)
+	    || fr_lua_check_func(mctx, L, inst->func_xlat)) {
 	 	goto error;
 	}
 

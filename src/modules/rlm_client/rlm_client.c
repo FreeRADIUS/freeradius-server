@@ -358,15 +358,16 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
+	CONF_SECTION	*conf = mctx->inst->conf;
 	xlat_t	*xlat;
 
 	if (cf_section_name2(conf)) return 0;
 
-	xlat = xlat_register(instance, "client", xlat_client, false);
+	xlat = xlat_register(mctx->inst->data, "client", xlat_client, false);
 	xlat_func_args(xlat, xlat_client_args);
-	map_proc_register(instance, "client", map_proc_client, NULL, 0);
+	map_proc_register(mctx->inst->data, "client", map_proc_client, NULL, 0);
 
 	return 0;
 }

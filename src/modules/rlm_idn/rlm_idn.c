@@ -32,7 +32,6 @@ RCSID("$Id$")
  *      Structure for module configuration
  */
 typedef struct {
-	char const	*name;
 	bool		use_std3_ascii_rules;
 	bool		allow_unassigned;
 } rlm_idn_t;
@@ -156,15 +155,12 @@ static xlat_action_t xlat_idna(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *re
 	return XLAT_ACTION_DONE;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_idn_t	*inst = instance;
+	rlm_idn_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_idn_t);
 	xlat_t		*xlat;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	xlat = xlat_register(inst, inst->name, xlat_idna, false);
+	xlat = xlat_register(inst, mctx->inst->name, xlat_idna, false);
 	xlat_func_mono(xlat, &xlat_idna_arg);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_idn_t *, NULL, inst);
 

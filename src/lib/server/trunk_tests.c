@@ -57,7 +57,7 @@ static void test_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn, f
 	TEST_CHECK(count > 0);
 }
 
-static void test_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
+static void test_cancel_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
 	fr_trunk_request_t	*treq;
 	size_t			count = 0;
@@ -94,7 +94,7 @@ static void test_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn,
 	TEST_CHECK(count > 0);
 }
 
-static void test_demux(UNUSED fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
+static void test_demux(UNUSED fr_event_list_t *el, UNUSED fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
 	int			fd = *(talloc_get_type_abort(conn->h, int));
 	test_proto_request_t	*preq;

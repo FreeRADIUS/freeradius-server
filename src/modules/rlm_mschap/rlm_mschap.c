@@ -25,7 +25,7 @@
 /*  MPPE support from Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp> */
 RCSID("$Id$")
 
-#define LOG_PREFIX inst->name
+#define LOG_PREFIX mctx->inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/exec_legacy.h>
@@ -722,8 +722,8 @@ static int _mod_conn_free(struct wbcContext **wb_ctx)
  */
 static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta_t timeout)
 {
-	struct wbcContext **wb_ctx;
-	rlm_mschap_t const	*inst = talloc_get_type_abort_const(instance, rlm_mschap_t);
+	struct wbcContext	**wb_ctx;
+	module_inst_ctx_t	*mctx = &(module_inst_ctx_t){ .inst = dl_module_instance_by_data(instance) };
 
 	wb_ctx = talloc_zero(ctx, struct wbcContext *);
 	*wb_ctx = wbcCtxCreate();
@@ -1457,7 +1457,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup MS-CHAP authentication",
-		     inst->name, inst->name);
+		     mctx->inst->name, mctx->inst->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -2104,7 +2104,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	challenge = fr_pair_find_by_da_idx(&request->request_pairs, attr_ms_chap_challenge, 0);
 	if (!challenge) {
 		REDEBUG("&control.Auth-Type = %s set for a request that does not contain &%s",
-			inst->name, attr_ms_chap_challenge->name);
+			mctx->inst->name, attr_ms_chap_challenge->name);
 		rcode = RLM_MODULE_INVALID;
 		goto finish;
 	}
@@ -2130,7 +2130,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		if (rcode != RLM_MODULE_OK) goto finish;
 	} else {		/* Neither CHAPv1 or CHAPv2 response: die */
 		REDEBUG("&control.Auth-Type = %s set for a request that does not contain &%s or &%s attributes",
-			inst->name, attr_ms_chap_response->name, attr_ms_chap2_response->name);
+			mctx->inst->name, attr_ms_chap_response->name, attr_ms_chap2_response->name);
 		rcode = RLM_MODULE_INVALID;
 		goto finish;
 	}
@@ -2192,14 +2192,15 @@ finish:
  *	Create instance for our module. Allocate space for
  *	instance structure and read configuration parameters
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_mschap_t		*inst = instance;
+	rlm_mschap_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_mschap_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->inst->name, -1);
 	if (!inst->auth_type) {
 		WARN("Failed to find 'authenticate %s {...}' section.  MS-CHAP authentication will likely not work",
-		     inst->name);
+		     mctx->inst->name);
 	}
 
 	/*
@@ -2261,15 +2262,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_mschap_t		*inst = instance;
+	rlm_mschap_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_mschap_t);
 	xlat_t			*xlat;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	xlat = xlat_register(inst, inst->name, mschap_xlat, false);
+	xlat = xlat_register(inst, mctx->inst->name, mschap_xlat, false);
 	xlat_func_args(xlat, mschap_xlat_args);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_mschap_t *, NULL, inst);
 
@@ -2283,10 +2281,10 @@ static int mod_detach(
 #ifndef WITH_AUTH_WINBIND
 		      UNUSED
 #endif
-		      void *instance)
+		      module_detach_ctx_t const *mctx)
 {
 #ifdef WITH_AUTH_WINBIND
-	rlm_mschap_t *inst = instance;
+	rlm_mschap_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_mschap_t);
 
 	fr_pool_free(inst->wb_pool);
 #endif

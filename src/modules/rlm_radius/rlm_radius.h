@@ -41,7 +41,6 @@ typedef struct rlm_radius_io_s rlm_radius_io_t;
  * Contains buffers and connection handles specific to the thread.
  */
 typedef struct {
-	rlm_radius_t const	*inst;			//!< Instance of the module.
 	void			*io_thread;		//!< thread context for the IO submodule
 } rlm_radius_thread_t;
 
@@ -49,8 +48,7 @@ typedef struct {
  *	Define a structure for our module configuration.
  */
 struct rlm_radius_s {
-	char const		*name;			//!< Module instance name.
-
+	char const		*name;
 	dl_module_inst_t	*io_submodule;		//!< As provided by the transport_parse
 	rlm_radius_io_t const	*io;			//!< Easy access to the IO handle
 	void			*io_instance;		//!< Easy access to the IO instance

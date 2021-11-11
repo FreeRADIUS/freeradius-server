@@ -1006,9 +1006,9 @@ static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, v
 	return 0;
 }
 
-static int mod_detach(void *instance)
+static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_sql_t	*inst = talloc_get_type_abort(instance, rlm_sql_t);
+	rlm_sql_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_t);
 
 	if (inst->pool) fr_pool_free(inst->pool);
 
@@ -1025,9 +1025,10 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_sql_t	*inst = talloc_get_type_abort(instance, rlm_sql_t);
+	rlm_sql_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
 	CONF_SECTION	*driver_cs;
 	char const	*name;
 	xlat_t		*xlat;
@@ -1144,9 +1145,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 }
 
 
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_sql_t *inst = instance;
+	rlm_sql_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
 
 	/*
 	 *	Sanity check for crazy people.

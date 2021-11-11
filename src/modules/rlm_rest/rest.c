@@ -20,12 +20,12 @@
  * @brief Functions and datatypes for the REST (HTTP) transport.
  * @file rest.c
  *
- * @copyright 2012-2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2012-2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 
 RCSID("$Id$")
 
-#define LOG_PREFIX inst->name
+#define LOG_PREFIX mctx->inst->name
 
 #include <ctype.h>
 #include <string.h>
@@ -1626,7 +1626,7 @@ size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *randle)
  * data will be sent using multiple HTTP requests, or contiguous mode where
  * the request data will be sent in a single HTTP request.
  *
- * @param[in] inst	configuration data.
+ * @param[in] mctx	Call data.
  * @param[in] section	configuration data.
  * @param[in] request	Current request.
  * @param[in] randle	fr_curl_io_request_t to configure.
@@ -1636,11 +1636,11 @@ size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *randle)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int rest_request_config_body(rlm_rest_t const *inst, rlm_rest_section_t const *section,
+static int rest_request_config_body(module_ctx_t const *mctx, rlm_rest_section_t const *section,
 				    request_t *request, fr_curl_io_request_t *randle, rest_read_t func)
 {
+	rlm_rest_t const *inst = talloc_get_type_abort(mctx->inst, rlm_rest_t);
 	rlm_rest_curl_context_t	*uctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
-
 	ssize_t len;
 
 	/*
@@ -1696,8 +1696,7 @@ error:
  *
  * Sets up callbacks for all response processing (buffers and body data).
  *
- * @param[in] inst	configuration data.
- * @param[in] t		Thread specific instance data.
+ * @param[in] mctx	call data.
  * @param[in] section	configuration data.
  * @param[in] randle	to configure.
  * @param[in] request	Current request.
@@ -1713,11 +1712,13 @@ error:
  *	- 0 on success (all opts configured).
  *	- -1 on failure.
  */
-int rest_request_config(rlm_rest_t const *inst, rlm_rest_thread_t *t, rlm_rest_section_t const *section,
+int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *section,
 			request_t *request, fr_curl_io_request_t *randle, http_method_t method,
 			http_body_type_t type,
 			char const *uri, char const *username, char const *password)
 {
+	rlm_rest_t const	*inst = talloc_get_type_abort(mctx->inst, rlm_rest_t);
+	rlm_rest_thread_t const	*t = talloc_get_type_abort(mctx->inst, rlm_rest_thread_t);
 	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 	CURL			*candle = randle->candle;
 	fr_time_delta_t		timeout;
@@ -1966,7 +1967,7 @@ do {\
 	 */
 	switch (type) {
 	case REST_HTTP_BODY_NONE:
-		if (rest_request_config_body(inst, section, request, randle, NULL) < 0) return -1;
+		if (rest_request_config_body(mctx, section, request, randle, NULL) < 0) return -1;
 
 		break;
 
@@ -1984,7 +1985,7 @@ do {\
 
 		/* Use the encoder specific pointer to store the data we need to encode */
 		ctx->request.encoder = data;
-		if (rest_request_config_body(inst, section, request, randle, rest_encode_custom) < 0) {
+		if (rest_request_config_body(mctx, section, request, randle, rest_encode_custom) < 0) {
 			TALLOC_FREE(ctx->request.encoder);
 			return -1;
 		}
@@ -2003,7 +2004,7 @@ do {\
 
 		/* Use the encoder specific pointer to store the data we need to encode */
 		ctx->request.encoder = data;
-		if (rest_request_config_body(inst, section, request, randle, rest_encode_custom) < 0) {
+		if (rest_request_config_body(mctx, section, request, randle, rest_encode_custom) < 0) {
 			TALLOC_FREE(ctx->request.encoder);
 			return -1;
 		}
@@ -2020,7 +2021,7 @@ do {\
 
 		rest_request_init(section, request, &ctx->request);
 
-		if (rest_request_config_body(inst, section, request, randle, rest_encode_json) < 0) return -1;
+		if (rest_request_config_body(mctx, section, request, randle, rest_encode_json) < 0) return -1;
 	}
 
 		break;
@@ -2030,7 +2031,7 @@ do {\
 		rest_request_init(section, request, &ctx->request);
 		fr_pair_dcursor_init(&(ctx->request.cursor), &request->request_pairs);
 
-		if (rest_request_config_body(inst, section, request, randle, rest_encode_post) < 0) return -1;
+		if (rest_request_config_body(mctx, section, request, randle, rest_encode_post) < 0) return -1;
 
 		break;
 

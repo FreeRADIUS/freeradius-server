@@ -146,8 +146,10 @@ int rlm_yubikey_ykclient_detach(rlm_yubikey_t *inst)
 	return 0;
 }
 
-unlang_action_t rlm_yubikey_validate(rlm_rcode_t *p_result, rlm_yubikey_t const *inst, request_t *request, char const *passcode)
+unlang_action_t rlm_yubikey_validate(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+				     request_t *request, char const *passcode)
 {
+	rlm_yubikey_t const *inst = talloc_get_type_abort(mctx->inst->data, rlm_yubikey_t);
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 	ykclient_rc status;
 	ykclient_handle_t *yandle;

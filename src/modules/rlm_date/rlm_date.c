@@ -30,7 +30,6 @@
 #include <time.h>
 
 typedef struct {
-	char const *name;
 	char const *fmt;
 	bool utc;
 } rlm_date_t;
@@ -64,7 +63,7 @@ static xlat_action_t date_convert_string(TALLOC_CTX *ctx, fr_dcursor_t *out, req
 		char *p;
 
 		/*
-		 *	
+		 *
 		 */
 		MEM(my_str = talloc_strdup(ctx, str));
 		p = my_str + (tz - str);
@@ -76,7 +75,7 @@ static xlat_action_t date_convert_string(TALLOC_CTX *ctx, fr_dcursor_t *out, req
 			talloc_free(my_str);
 			return XLAT_ACTION_FAIL;
 		}
-		talloc_free(my_str);		
+		talloc_free(my_str);
 
 		/*
 		 *	The output is converted to the local time zone, so
@@ -231,15 +230,12 @@ static xlat_action_t xlat_date_convert(TALLOC_CTX *ctx, fr_dcursor_t *out, reque
 	return XLAT_ACTION_FAIL;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_date_t 	*inst = instance;
+	rlm_date_t 	*inst = talloc_get_type_abort(mctx->inst->data, rlm_date_t );
 	xlat_t 		*xlat;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	xlat = xlat_register(inst, inst->name, xlat_date_convert, false);
+	xlat = xlat_register(inst, mctx->inst->name, xlat_date_convert, false);
 	xlat_func_args(xlat,xlat_date_convert_args);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_date_t *, NULL, inst);
 

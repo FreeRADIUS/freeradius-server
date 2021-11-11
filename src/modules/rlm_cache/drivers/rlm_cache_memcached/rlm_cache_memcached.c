@@ -99,24 +99,22 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t ti
 
 /** Create a new rlm_cache_memcached instance
  *
- * @param instance	A uint8_t array of inst_size if inst_size > 0, else NULL,
- *			this should contain the result of parsing the driver's
- *			CONF_PARSER array that it specified in the interface struct.
- * @param conf		section holding driver specific #CONF_PAIR (s).
+ * @param[in] mctx		Data required for instantiation.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_cache_memcached_t		*driver = instance;
+	rlm_cache_memcached_t		*driver = talloc_get_type_abort(mctx->inst->data, rlm_cache_memcached_t);
+	CONF_SECTION			*conf = mctx->inst->conf;
 	memcached_return_t		ret;
 	char				buffer[256];
-	rlm_cache_config_t const	*config = dl_module_parent_data_by_child_data(instance);
+	rlm_cache_config_t const	*config = talloc_get_type_abort(mctx->inst->parent->data, rlm_cache_config_t);
 
 	fr_assert(config);
 
-	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", config->name);
+	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", mctx->inst->parent->name);
 
 	ret = libmemcached_check_configuration(driver->options, talloc_array_length(driver->options) -1,
 					       buffer, sizeof(buffer));

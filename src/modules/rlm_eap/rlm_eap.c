@@ -25,7 +25,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX inst->name
+#define LOG_PREFIX mctx->inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
@@ -178,9 +178,10 @@ static int submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 	case FR_EAP_METHOD_AKA:
 	case FR_EAP_METHOD_SIM:
 	{
-		rlm_eap_t *inst = ((dl_module_inst_t *)cf_data_value(cf_data_find(eap_cs,
-								     dl_module_inst_t, "rlm_eap")))->data;
-
+		module_inst_ctx_t *mctx = &(module_inst_ctx_t){
+			.inst = ((dl_module_inst_t *)cf_data_value(cf_data_find(eap_cs,
+								   dl_module_inst_t, "rlm_eap")))
+		};
 		WARN("Ignoring EAP method %s because we don't have OpenSSL support", name);
 
 		talloc_free(our_name);
@@ -886,7 +887,7 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup EAP authentication",
-		     inst->name, inst->name);
+		     mctx->inst->name, mctx->inst->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -920,7 +921,6 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 
 static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_eap_t);
 	fr_pair_t		*vp;
 	eap_session_t		*eap_session;
 	fr_pair_t		*username;
@@ -989,7 +989,7 @@ static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *
 	 *	Was *NOT* an EAP-Failure, so we now need to turn it into one.
 	 */
 	REDEBUG("Request rejected after last call to module \"%s\", transforming response into EAP-Failure",
-		inst->name);
+		mctx->inst->name);
 	eap_fail(eap_session);				/* Compose an EAP failure */
 	eap_session_destroy(&eap_session);		/* Free the EAP session, and dissociate it from the request */
 
@@ -1003,15 +1003,15 @@ static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *
 	RETURN_MODULE_UPDATED;
 }
 
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_eap_t	*inst = talloc_get_type_abort(instance, rlm_eap_t);
+	rlm_eap_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_t);
 	size_t		i;
 
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->inst->name, -1);
 	if (!inst->auth_type) {
 		WARN("Failed to find 'authenticate %s {...}' section.  EAP authentication will likely not work",
-		     inst->name);
+		     mctx->inst->name);
 	}
 
 	/*
@@ -1024,13 +1024,10 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 	return 0;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *cs)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_eap_t	*inst = talloc_get_type_abort(instance, rlm_eap_t);
+	rlm_eap_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_t);
 	size_t		i, j, loaded, count = 0;
-
-	inst->name = cf_section_name2(cs);
-	if (!inst->name) inst->name = cf_section_name1(cs);
 
 	/*
 	 *	Load and bootstrap the submodules now
@@ -1112,13 +1109,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	allowed by the config.
 	 */
 	if (inst->default_method_is_set && !inst->methods[inst->default_method].submodule) {
-		cf_log_err_by_child(cs, "default_eap_type", "EAP-Type \"%s\" is not enabled",
+		cf_log_err_by_child(mctx->inst->conf, "default_eap_type", "EAP-Type \"%s\" is not enabled",
 				    eap_type2name(inst->default_method));
 		return -1;
 	}
 
 	if (count == 0) {
-		cf_log_err(cs, "No EAP method(s) configured, module cannot do anything");
+		cf_log_err(mctx->inst->conf, "No EAP method(s) configured, module cannot do anything");
 		return -1;
 	}
 
@@ -1141,11 +1138,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 static int mod_load(void)
 {
-	rlm_eap_t	instance = { .name = "global" };
-	rlm_eap_t	*inst = &instance;
-
 	if (eap_base_init() < 0) {
-		PERROR("Failed initialising EAP base library");
+		fr_perror("Failed initialising EAP base library");
 		return -1;
 	}
 	return 0;

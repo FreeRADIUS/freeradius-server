@@ -1199,7 +1199,13 @@ static int _module_thread_inst_array_free(module_thread_instance_t **array)
 		 *	and should be removed along with
 		 *	starting the instance number at 0
 		 */
-		if (ti->mi && ti->mi->module->thread_detach) ti->mi->module->thread_detach(ti->el, ti->data);
+		if (ti->mi && ti->mi->module->thread_detach) {
+			ti->mi->module->thread_detach(&(module_thread_inst_ctx_t const ){
+							.inst = ti->mi->dl_inst,
+							.thread = ti->data,
+							.el = ti->el
+						      });
+		}
 		talloc_free(ti);
 	}
 
@@ -1265,7 +1271,11 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 
 		DEBUG4("Worker alloced %s thread instance data (%p/%p)", ti->mi->module->name, ti, ti->data);
 		if (mi->module->thread_instantiate) {
-			if (mi->module->thread_instantiate(mi->dl_inst->conf, mi->dl_inst->data, el, ti->data) < 0) {
+			if (mi->module->thread_instantiate(&(module_thread_inst_ctx_t){
+								.inst = mi->dl_inst,
+								.thread = ti->data,
+								.el = el
+							   }) < 0) {
 				PERROR("Thread instantiation failed for module \"%s\"", mi->name);
 				TALLOC_FREE(module_thread_inst_array);
 				return -1;
@@ -1324,7 +1334,9 @@ static int _module_instantiate(void *instance)
 		/*
 		 *	Call the module's instantiation routine.
 		 */
-		if ((mi->module->instantiate)(mi->dl_inst->data, mi->dl_inst->conf) < 0) {
+		if ((mi->module->instantiate)(&(module_inst_ctx_t){
+							.inst = mi->dl_inst
+					      }) < 0) {
 			cf_log_err(mi->dl_inst->conf, "Instantiation failed for module \"%s\"",
 				   mi->name);
 
@@ -1585,7 +1597,9 @@ module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTIO
 	if (mi->module->bootstrap) {
 		cf_log_debug(mi->dl_inst->conf, "Bootstrapping module \"%s\"", mi->name);
 
-	    	if ((mi->module->bootstrap)(mi->dl_inst->data, cs) < 0) {
+		if ((mi->module->bootstrap)(&(module_inst_ctx_t){
+	    					.inst = mi->dl_inst,
+					    }) < 0) {
 			cf_log_err(cs, "Bootstrap failed for module \"%s\"", mi->name);
 			talloc_free(mi);
 			return NULL;

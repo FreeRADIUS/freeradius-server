@@ -351,10 +351,10 @@ static int8_t data_cmp(const void *one, const void *two)
 /** Instantiate thread data for the submodule.
  *
  */
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, UNUSED fr_event_list_t *el, void *thread)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_stats_t *inst = talloc_get_type_abort(instance, rlm_stats_t);
-	rlm_stats_thread_t *t = thread;
+	rlm_stats_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_stats_t);
+	rlm_stats_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_stats_thread_t);
 
 	(void) talloc_set_type(t, rlm_stats_thread_t);
 
@@ -381,9 +381,9 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 /** Destroy thread data for the submodule.
  *
  */
-static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_stats_thread_t	*t = talloc_get_type_abort(thread, rlm_stats_thread_t);
+	rlm_stats_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_stats_thread_t);
 	rlm_stats_t		*inst = t->inst;
 	int			i;
 
@@ -398,9 +398,9 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 	return 0;
 }
 
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_stats_t	*inst = instance;
+	rlm_stats_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_stats_t);
 
 	pthread_mutex_init(&inst->mutex, NULL);
 	fr_dlist_init(&inst->list, rlm_stats_thread_t, entry);
@@ -412,9 +412,9 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
  *	Only free memory we allocated.  The strings allocated via
  *	cf_section_parse() do not need to be freed.
  */
-static int mod_detach(void *instance)
+static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_stats_t *inst = talloc_get_type_abort(instance, rlm_stats_t);
+	rlm_stats_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_stats_t);
 
 	pthread_mutex_destroy(&inst->mutex);
 

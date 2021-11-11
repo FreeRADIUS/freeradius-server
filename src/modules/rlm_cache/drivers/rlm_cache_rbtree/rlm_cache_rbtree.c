@@ -66,9 +66,9 @@ static int8_t cache_heap_cmp(void const *one, void const *two)
 /** Cleanup a cache_rbtree instance
  *
  */
-static int mod_detach(void *instance)
+static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
+	rlm_cache_rbtree_t *driver = talloc_get_type_abort(mctx->inst->data, rlm_cache_rbtree_t);
 
 	if (driver->cache) {
 		fr_rb_iter_inorder_t	iter;
@@ -89,17 +89,14 @@ static int mod_detach(void *instance)
 
 /** Create a new cache_rbtree instance
  *
- * @param instance	A uint8_t array of inst_size if inst_size > 0, else NULL,
- *			this should contain the result of parsing the driver's
- *			CONF_PARSER array that it specified in the interface struct.
- * @param conf		section holding driver specific #CONF_PAIR (s).
+ * @param[in] mctx		Data required for instantiation.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
+	rlm_cache_rbtree_t *driver = talloc_get_type_abort(mctx->inst->data, rlm_cache_rbtree_t);
 
 	/*
 	 *	The cache.
@@ -341,6 +338,7 @@ rlm_cache_driver_t rlm_cache_rbtree = {
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,
 	.inst_size	= sizeof(rlm_cache_rbtree_t),
+	.inst_type	= "rlm_cache_rbtree_t",
 	.alloc		= cache_entry_alloc,
 
 	.find		= cache_entry_find,

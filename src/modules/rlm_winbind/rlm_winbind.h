@@ -9,7 +9,6 @@
  *      Structure for the module configuration.
  */
 typedef struct {
-	char const		*name;
 	fr_pool_t		*wb_pool;
 	fr_dict_enum_value_t		*auth_type;
 

@@ -34,13 +34,6 @@ USES_APPLE_DEPRECATED_API
 
 #include "rlm_expr.h"
 
-/*
- *	Define a structure for our module configuration.
- */
-typedef struct {
-	char const *name;
-} rlm_expr_t;
-
 /** Calculate powers
  *
  * @author Orson Peters
@@ -605,15 +598,11 @@ static xlat_action_t expr_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *re
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_expr_t	*inst = instance;
 	xlat_t		*xlat;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	xlat = xlat_register(inst, inst->name, expr_xlat, false);
+	xlat = xlat_register(mctx->inst->data, mctx->inst->name, expr_xlat, false);
 	xlat_func_mono(xlat, &expr_xlat_arg);
 
 	return 0;
@@ -632,6 +621,5 @@ extern module_t rlm_expr;
 module_t rlm_expr = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "expr",
-	.inst_size	= sizeof(rlm_expr_t),
 	.bootstrap	= mod_bootstrap,
 };

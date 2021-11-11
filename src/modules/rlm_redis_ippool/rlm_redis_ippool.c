@@ -1370,12 +1370,12 @@ static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, modul
 	return mod_action(p_result, inst, request, vp ? vp->vp_uint32 : POOL_ACTION_RELEASE);
 }
 
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	static bool			done_hash = false;
-	CONF_SECTION			*subcs = cf_section_find(conf, "redis", NULL);
+	CONF_SECTION			*subcs = cf_section_find(mctx->inst->conf, "redis", NULL);
 
-	rlm_redis_ippool_t		*inst = instance;
+	rlm_redis_ippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_redis_ippool_t);
 
 	fr_assert(tmpl_is_attr(inst->allocated_address_attr));
 	fr_assert(subcs);

@@ -60,8 +60,6 @@ extern char **environ;
  *	be used as the instance handle.
  */
 typedef struct {
-	char const	*name;
-
 	/* Name of the perl module */
 	char const	*module;
 
@@ -636,15 +634,12 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 	DEBUG("%*s}", indent_section, " ");
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_perl_t	*inst = instance;
+	rlm_perl_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_perl_t);
 	xlat_t		*xlat;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	xlat = xlat_register(NULL, inst->name, perl_xlat, false);
+	xlat = xlat_register(NULL, mctx->inst->name, perl_xlat, false);
 	xlat_func_args(xlat, perl_xlat_args);
 
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_perl_xlat_t, NULL, inst);
@@ -848,11 +843,11 @@ static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pai
  * 	Store all vps in hashes %RAD_CONFIG %RAD_REPLY %RAD_REQUEST
  *
  */
-static unlang_action_t do_perl(rlm_rcode_t *p_result, void *instance, request_t *request,
+static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request,
 			       PerlInterpreter *interp, char const *function_name)
 {
 
-	rlm_perl_t		*inst = instance;
+	rlm_perl_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_perl_t);
 	fr_pair_list_t		vps;
 	int			ret=0, count;
 	STRLEN			n_a;
@@ -958,7 +953,7 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, void *instance, request_t 
 static unlang_action_t CC_HINT(nonnull) mod_##_x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 { \
 	rlm_perl_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_perl_t); \
-	return do_perl(p_result, inst, request, \
+	return do_perl(p_result, mctx, request, \
 		       ((rlm_perl_thread_t *)talloc_get_type_abort(mctx->thread, rlm_perl_thread_t))->perl, \
 		       inst->func_##_x); \
 }
@@ -1008,7 +1003,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 		break;
 	}
 
-	return do_perl(p_result, inst, request,
+	return do_perl(p_result, mctx, request,
 		       ((rlm_perl_thread_t *)talloc_get_type_abort(mctx->thread, rlm_perl_thread_t))->perl, func);
 }
 
@@ -1042,11 +1037,10 @@ static void rlm_perl_interp_free(PerlInterpreter *perl)
 DIAG_ON(shadow)
 DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
-				  UNUSED fr_event_list_t *el, void *thread)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_perl_t		*inst = talloc_get_type_abort(instance, rlm_perl_t);
-	rlm_perl_thread_t	*t = talloc_get_type_abort(thread, rlm_perl_thread_t);
+	rlm_perl_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_perl_t);
+	rlm_perl_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_perl_thread_t);
 	PerlInterpreter		*interp;
 	UV			clone_flags = 0;
 
@@ -1070,9 +1064,9 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	return 0;
 }
 
-static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_perl_thread_t	*t = talloc_get_type_abort(thread, rlm_perl_thread_t);
+	rlm_perl_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_perl_thread_t);
 
 	rlm_perl_interp_free(t->perl);
 
@@ -1093,9 +1087,10 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
  *	parse a module and give it a chance to live
  *
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_perl_t	*inst = instance;
+	rlm_perl_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_perl_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
 	AV		*end_AV;
 
 	char const	**embed_c;	/* Stupid Perl and lack of const consistency */
@@ -1170,9 +1165,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  * Detach a instance give a chance to a module to make some internal setup ...
  */
 DIAG_OFF(nested-externs)
-static int mod_detach(void *instance)
+static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_perl_t	*inst = (rlm_perl_t *) instance;
+	rlm_perl_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_perl_t);
 	int 		ret = 0, count = 0;
 
 

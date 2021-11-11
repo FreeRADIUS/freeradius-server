@@ -65,7 +65,7 @@ size_t sql_rcode_table_len = NUM_ELEMENTS(sql_rcode_table);
 void *sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
 	int rcode;
-	rlm_sql_t *inst = instance;
+	rlm_sql_t *inst = talloc_get_type_abort(instance, rlm_sql_t);
 	rlm_sql_handle_t *handle;
 
 	/*

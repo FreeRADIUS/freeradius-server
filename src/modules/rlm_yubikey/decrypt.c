@@ -14,12 +14,13 @@
 /** Decrypt a Yubikey OTP AES block
  *
  * @param[out] p_result		The result of attempt to decrypt the token.
- * @param[in] inst		Module configuration.
+ * @param[in] mctx		call data.
  * @param[in] request		The current request.
  * @param[in] passcode		string to decrypt.
  */
-unlang_action_t rlm_yubikey_decrypt(rlm_rcode_t *p_result, rlm_yubikey_t const *inst, request_t *request, char const *passcode)
+unlang_action_t rlm_yubikey_decrypt(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, char const *passcode)
 {
+	rlm_yubikey_t const *inst = talloc_get_type_abort(mctx->inst->data, rlm_yubikey_t);
 	uint32_t counter, timestamp;
 	yubikey_token_st token;
 

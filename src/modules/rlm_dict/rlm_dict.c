@@ -225,26 +225,28 @@ static xlat_action_t xlat_attr_num(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
+	void *inst = mctx->inst->data;
+
 	xlat_t	*xlat;
 
 	/*
 	 *	Only register these xlats for the first instance of the dictionary module.
 	 */
-	if (cf_section_name2(conf) != NULL) return 0;
+	if (cf_section_name2(mctx->inst->conf) != NULL) return 0;
 
-	xlat = xlat_register(instance, "attr_by_num", xlat_dict_attr_by_num, false);
+	xlat = xlat_register(inst, "attr_by_num", xlat_dict_attr_by_num, false);
 	xlat_func_args(xlat, xlat_dict_attr_by_num_args);
-	xlat = xlat_register(instance, "attr_by_oid", xlat_dict_attr_by_oid, false);
+	xlat = xlat_register(inst, "attr_by_oid", xlat_dict_attr_by_oid, false);
 	xlat_func_args(xlat, xlat_dict_attr_by_oid_args);
-	xlat = xlat_register(instance, "vendor", xlat_vendor, false);
+	xlat = xlat_register(inst, "vendor", xlat_vendor, false);
 	xlat_func_args(xlat, xlat_vendor_args);
-	xlat = xlat_register(instance, "vendor_num", xlat_vendor_num, false);
+	xlat = xlat_register(inst, "vendor_num", xlat_vendor_num, false);
 	xlat_func_args(xlat, xlat_vendor_num_args);
-	xlat = xlat_register(instance, "attr", xlat_attr, false);
+	xlat = xlat_register(inst, "attr", xlat_attr, false);
 	xlat_func_args(xlat, xlat_attr_args);
-	xlat = xlat_register(instance, "attr_num", xlat_attr_num, false);
+	xlat = xlat_register(inst, "attr_num", xlat_attr_num, false);
 	xlat_func_args(xlat, xlat_attr_num_args);
 
 	return 0;

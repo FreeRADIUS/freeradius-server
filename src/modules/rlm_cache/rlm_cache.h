@@ -49,7 +49,6 @@ typedef enum {
  * rlm_cache instance data.
  */
 typedef struct {
-	char const		*name;			//!< Name of xlat function to register.
 	char const		*driver_name;		//!< Driver name.
 	tmpl_t			*key;			//!< What to expand to get the value of the key.
 	fr_time_delta_t		ttl;			//!< How long an entry is valid for.

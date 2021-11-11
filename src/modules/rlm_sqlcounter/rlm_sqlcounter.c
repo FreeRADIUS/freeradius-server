@@ -552,9 +552,10 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_sqlcounter_t	*inst = instance;
+	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlcounter_t);
+	CONF_SECTION    	*conf = mctx->inst->conf;
 
 	fr_assert(inst->query && *inst->query);
 
@@ -578,10 +579,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_sqlcounter_t		*inst = instance;
-	fr_dict_attr_flags_t		flags;
+	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlcounter_t);
+	CONF_SECTION    	*conf = mctx->inst->conf;
+	fr_dict_attr_flags_t	flags;
 
 	/*
 	 *	Create a new attribute for the counter.

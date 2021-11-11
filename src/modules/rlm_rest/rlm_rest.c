@@ -206,13 +206,15 @@ static int rlm_rest_status_update(request_t *request, void *handle)
 	return 0;
 }
 
-static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *t,
+static int rlm_rest_perform(module_ctx_t const *mctx,
 			    rlm_rest_section_t const *section, fr_curl_io_request_t *randle,
 			    request_t *request, char const *username, char const *password)
 {
-	ssize_t		uri_len;
-	char		*uri = NULL;
-	int		ret;
+	rlm_rest_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_rest_t);
+	rlm_rest_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
+	ssize_t			uri_len;
+	char			*uri = NULL;
+	int			ret;
 
 	RDEBUG2("Expanding URI components");
 
@@ -220,7 +222,7 @@ static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *t,
 	 *  Build xlat'd URI, this allows REST servers to be specified by
 	 *  request attributes.
 	 */
-	uri_len = rest_uri_build(&uri, instance, request, section->uri);
+	uri_len = rest_uri_build(&uri, inst, request, section->uri);
 	if (uri_len <= 0) return -1;
 
 	RDEBUG2("Sending HTTP %s to \"%s\"", fr_table_str_by_value(http_method_table, section->method, NULL), uri);
@@ -229,7 +231,7 @@ static int rlm_rest_perform(rlm_rest_t const *instance, rlm_rest_thread_t *t,
 	 *  Configure various CURL options, and initialise the read/write
 	 *  context data.
 	 */
-	ret = rest_request_config(instance, t, section, request, randle, section->method, section->body,
+	ret = rest_request_config(mctx, section, request, randle, section->method, section->body,
 				  uri, username, password);
 	talloc_free(uri);
 	if (ret < 0) return -1;
@@ -502,7 +504,8 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *
 	 *  @todo We could extract the User-Name and password from the URL string.
 	 */
-	ret = rest_request_config(mod_inst, t, section, request, randle, section->method,
+	ret = rest_request_config(&(module_ctx_t){ .inst = dl_module_instance_by_data(mod_inst), .thread = t },
+				  section, request, randle, section->method,
 				  section->body, uri_vb->vb_strvalue, NULL, NULL);
 	if (ret < 0) goto error;
 
@@ -621,7 +624,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	handle = fr_pool_connection_get(t->pool, request);
 	if (!handle) RETURN_MODULE_FAIL;
 
-	ret = rlm_rest_perform(inst, t, section, handle, request, NULL, NULL);
+	ret = rlm_rest_perform(mctx, section, handle, request, NULL, NULL);
 	if (ret < 0) {
 		rest_request_cleanup(inst, handle);
 		fr_pool_connection_release(t->pool, request, handle);
@@ -770,7 +773,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	handle = fr_pool_connection_get(t->pool, request);
 	if (!handle) RETURN_MODULE_FAIL;
 
-	ret = rlm_rest_perform(inst, t, section,
+	ret = rlm_rest_perform(mctx, section,
 			       handle, request, username->vp_strvalue, password->vp_strvalue);
 	if (ret < 0) {
 		rest_request_cleanup(inst, handle);
@@ -850,7 +853,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	handle = fr_pool_connection_get(t->pool, request);
 	if (!handle) RETURN_MODULE_FAIL;
 
-	ret = rlm_rest_perform(inst, t, section, handle, request, NULL, NULL);
+	ret = rlm_rest_perform(mctx, section, handle, request, NULL, NULL);
 	if (ret < 0) {
 		rest_request_cleanup(inst, handle);
 		fr_pool_connection_release(t->pool, request, handle);
@@ -929,7 +932,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	handle = fr_pool_connection_get(t->pool, request);
 	if (!handle) RETURN_MODULE_FAIL;
 
-	ret = rlm_rest_perform(inst, t, section, handle, request, NULL, NULL);
+	ret = rlm_rest_perform(mctx, section, handle, request, NULL, NULL);
 	if (ret < 0) {
 		rest_request_cleanup(inst, handle);
 
@@ -1102,29 +1105,27 @@ static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread
  * Easy handles representing requests are added to the curl multihandle
  * with the multihandle used for mux/demux.
  *
- * @param[in] conf	section containing the configuration of this module instance.
- * @param[in] instance	of rlm_rest_t.
- * @param[in] thread	specific data.
- * @param[in] el	The event list serviced by this thread.
+ * @param[in] mctx	Thread instantiation data.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_event_list_t *el, void *thread)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_rest_t		*inst = instance;
-	rlm_rest_thread_t	*t = thread;
+	rlm_rest_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_rest_t);
+	rlm_rest_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 	fr_curl_handle_t	*mhandle;
 	CONF_SECTION		*my_conf;
 
-	t->inst = instance;
+	t->inst = inst;
 
 	/*
 	 *	Temporary hack to make config parsing
 	 *	thread safe.
 	 */
 	my_conf = cf_section_dup(NULL, NULL, conf, cf_section_name1(conf), cf_section_name2(conf), true);
-	t->pool = fr_pool_init(NULL, my_conf, instance, rest_mod_conn_create, NULL, inst->name);
+	t->pool = fr_pool_init(NULL, my_conf, inst, rest_mod_conn_create, NULL, mctx->inst->name);
 	talloc_free(my_conf);
 
 	if (!t->pool) {
@@ -1137,7 +1138,7 @@ static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_e
 		return -1;
 	}
 
-	mhandle = fr_curl_io_init(t, el, inst->multiplex);
+	mhandle = fr_curl_io_init(t, mctx->el, inst->multiplex);
 	if (!mhandle) return -1;
 
 	t->mhandle = mhandle;
@@ -1150,13 +1151,12 @@ static int mod_thread_instantiate(CONF_SECTION const *conf, void *instance, fr_e
  * Destroys all curl easy handles, and then the multihandle associated
  * with this thread.
  *
- * @param[in] el	for this thread.
- * @param[in] thread	specific data to destroy.
+ * @param[in] mctx	data to destroy.
  * @return 0
  */
-static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_rest_thread_t	*t = thread;
+	rlm_rest_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 
 	talloc_free(t->mhandle);	/* Ensure this is shutdown before the pool */
 	fr_pool_free(t->pool);
@@ -1174,9 +1174,10 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_rest_t *inst = instance;
+	rlm_rest_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_rest_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
 
 	inst->xlat.method_str = "GET";
 	inst->xlat.body = REST_HTTP_BODY_NONE;
@@ -1203,15 +1204,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_rest_t	*inst = instance;
+	rlm_rest_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_rest_t);
 	xlat_t		*xlat;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	xlat = xlat_register(inst, inst->name, rest_xlat, true);
+	xlat = xlat_register(inst, mctx->inst->name, rest_xlat, true);
 	xlat_func_args(xlat, rest_xlat_args);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, rest_xlat_thread_inst_t, NULL, inst);
 

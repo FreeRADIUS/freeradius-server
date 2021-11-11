@@ -2365,7 +2365,7 @@ static void status_check_reply(fr_trunk_request_t *treq, fr_time_t now)
 	fr_trunk_connection_signal_active(treq->tconn);
 }
 
-static void request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
+static void request_demux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
 {
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);;
 
@@ -2815,10 +2815,10 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, void 
 /** Instantiate thread data for the submodule.
  *
  */
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *tctx)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_radius_udp_t		*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
-	udp_thread_t			*thread = talloc_get_type_abort(tctx, udp_thread_t);
+	rlm_radius_udp_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_radius_udp_t);
+	udp_thread_t			*thread = talloc_get_type_abort(mctx->thread, udp_thread_t);
 
 	static fr_trunk_io_funcs_t	io_funcs = {
 						.connection_alloc = thread_conn_alloc,
@@ -2849,30 +2849,20 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	inst->trunk_conf->req_pool_headers = 4;	/* One for the request, one for the buffer, one for the tracking binding, one for Proxy-State VP */
 	inst->trunk_conf->req_pool_size = sizeof(udp_request_t) + inst->max_packet_size + sizeof(radius_track_entry_t ***) + sizeof(fr_pair_t) + 20;
 
-	thread->el = el;
+	thread->el = mctx->el;
 	thread->inst = inst;
-	thread->trunk = fr_trunk_alloc(thread, el, inst->replicate ? &io_funcs_replicate : &io_funcs,
+	thread->trunk = fr_trunk_alloc(thread, mctx->el, inst->replicate ? &io_funcs_replicate : &io_funcs,
 				       inst->trunk_conf, inst->parent->name, thread, false);
 	if (!thread->trunk) return -1;
 
 	return 0;
 }
 
-/** Instantiate the module
- *
- * Instantiate I/O and type submodules.
- *
- * @param[in] instance	data for this module
- * @param[in] conf	our configuration section parsed to give us instance.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_radius_t		*parent = talloc_get_type_abort(dl_module_parent_data_by_child_data(instance),
-								rlm_radius_t);
-	rlm_radius_udp_t	*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
+	rlm_radius_t		*parent = talloc_get_type_abort(mctx->inst->parent->data, rlm_radius_t);
+	rlm_radius_udp_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_radius_udp_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 
 	if (!parent) {
 		ERROR("IO module cannot be instantiated directly");
@@ -2962,26 +2952,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-/** Bootstrap the module
- *
- * Bootstrap I/O and type submodules.
- *
- * @param[in] instance	Ctx data for this module
- * @param[in] conf    our configuration section parsed to give us instance.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
-{
-	rlm_radius_udp_t *inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
-
-	(void) talloc_set_type(inst, rlm_radius_udp_t);
-	inst->config = conf;
-
-	return 0;
-}
-
 extern rlm_radius_io_t rlm_radius_udp;
 rlm_radius_io_t rlm_radius_udp = {
 	.magic			= RLM_MODULE_INIT,
@@ -2992,7 +2962,6 @@ rlm_radius_io_t rlm_radius_udp = {
 	.thread_inst_type	= "udp_thread_t",
 
 	.config			= module_config,
-	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,
 	.thread_instantiate 	= mod_thread_instantiate,
 

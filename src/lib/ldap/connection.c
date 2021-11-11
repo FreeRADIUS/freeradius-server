@@ -507,11 +507,13 @@ static void _ldap_trunk_idle_timeout(fr_event_list_t *el, UNUSED fr_time_t now, 
  *
  * Inform the remote LDAP server that we no longer want responses to specific queries.
  *
+ * @param[in] el	For timer mangement.
  * @param[in] tconn	The trunk connection handle
  * @param[in] conn	The specific connection queries will be cancelled on
  * @param[in] uctx	Context provided to fr_trunk_alloc
  */
-static void ldap_request_cancel_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
+static void ldap_request_cancel_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn,
+				    fr_connection_t *conn, UNUSED void *uctx)
 {
 	fr_trunk_request_t	*treq;
 	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
@@ -748,11 +750,12 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
  * only gather those which are complete before either following a referral or passing
  * the head of the resulting chain of messages back.
  *
+ * @param[in] el	To insert timers into.
  * @param[in] tconn	Trunk connection associated with these results.
  * @param[in] conn	Connection handle for these results.
  * @param[in] uctx	Thread specific trunk structure - contains tree of pending queries.
  */
-static void ldap_trunk_request_demux(fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx)
+static void ldap_trunk_request_demux(fr_event_list_t *el, fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx)
 {
 	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
 	fr_ldap_thread_trunk_t	*ttrunk = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
@@ -768,7 +771,7 @@ static void ldap_trunk_request_demux(fr_trunk_connection_t *tconn, fr_connection
 	/*
 	 *  Reset the idle timeout event
 	 */
-	fr_event_timer_in(ttrunk, ttrunk->t->el, &ttrunk->ev,
+	fr_event_timer_in(ttrunk, el, &ttrunk->ev,
 			  ttrunk->t->config->idle_timeout, _ldap_trunk_idle_timeout, ttrunk);
 
 	do {

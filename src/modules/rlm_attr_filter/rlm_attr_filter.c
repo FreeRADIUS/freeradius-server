@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX inst->name
+#define LOG_PREFIX mctx->inst->name
 
 #include	<freeradius-devel/server/base.h>
 #include	<freeradius-devel/server/module.h>
@@ -41,7 +41,6 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct {
-	char const	*name;
 	char const	*filename;
 	tmpl_t		*key;
 	bool		relaxed;
@@ -101,7 +100,7 @@ static void check_pair(request_t *request, fr_pair_t *check_item, fr_pair_t *rep
 	return;
 }
 
-static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char const *filename, PAIR_LIST_LIST *pair_list)
+static int attr_filter_getfile(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx, char const *filename, PAIR_LIST_LIST *pair_list)
 {
 	int rcode;
 	PAIR_LIST *entry = NULL;
@@ -160,27 +159,16 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, rlm_attr_filter_t *inst, char co
 	return 0;
 }
 
-
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
-{
-	rlm_attr_filter_t	*inst = instance;
-
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	return 0;
-}
-
 /*
  *	(Re-)read the "attrs" file into memory.
  */
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_attr_filter_t *inst = instance;
+	rlm_attr_filter_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_attr_filter_t);
 	int rcode;
 	pairlist_list_init(&inst->attrs);
 
-	rcode = attr_filter_getfile(inst, inst, inst->filename, &inst->attrs);
+	rcode = attr_filter_getfile(inst, mctx, inst->filename, &inst->attrs);
 	if (rcode != 0) {
 		ERROR("Errors reading %s", inst->filename);
 
@@ -195,10 +183,10 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
  *	Common attr_filter checks
  */
 static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_result,
-								void const *instance, request_t *request,
+								module_ctx_t const *mctx, request_t *request,
 								fr_radius_packet_t *packet, fr_pair_list_t *list)
 {
-	rlm_attr_filter_t const *inst = talloc_get_type_abort_const(instance, rlm_attr_filter_t);
+	rlm_attr_filter_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_attr_filter_t);
 	fr_pair_list_t	output;
 	PAIR_LIST	*pl = NULL;
 	int		found = 0;
@@ -369,7 +357,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 
 #define RLM_AF_FUNC(_x, _y, _z) static unlang_action_t CC_HINT(nonnull) mod_##_x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 	{ \
-		return attr_filter_common(p_result, mctx->inst->data, request, request->_y, &request->_z##_pairs); \
+		return attr_filter_common(p_result, mctx, request, request->_y, &request->_z##_pairs); \
 	}
 
 RLM_AF_FUNC(authorize, packet, request)
@@ -385,7 +373,6 @@ module_t rlm_attr_filter = {
 	.name		= "attr_filter",
 	.inst_size	= sizeof(rlm_attr_filter_t),
 	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,

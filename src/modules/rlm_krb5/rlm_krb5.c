@@ -57,9 +57,9 @@ fr_dict_attr_autoload_t rlm_krb5_dict_attr[] = {
 	{ NULL }
 };
 
-static int mod_detach(void *instance)
+static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_krb5_t *inst = instance;
+	rlm_krb5_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_krb5_t);
 
 #ifndef HEIMDAL_KRB5
 	talloc_free(inst->vic_options);
@@ -79,9 +79,9 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_krb5_t *inst = instance;
+	rlm_krb5_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_krb5_t);
 	krb5_error_code ret;
 #ifndef HEIMDAL_KRB5
 	krb5_keytab keytab;
@@ -122,9 +122,6 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		WARN("Reconfigure and recompile rlm_krb5 to enable thread support");
 #endif
 	}
-
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	ret = krb5_init_context(&inst->context);
 	if (ret) {
@@ -225,7 +222,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Initialize the socket pool.
 	 */
-	inst->pool = module_connection_pool_init(conf, inst, krb5_mod_conn_create, NULL, NULL, NULL, NULL);
+	inst->pool = module_connection_pool_init(mctx->inst->conf, inst, krb5_mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) return -1;
 #else
 	inst->conn = krb5_mod_conn_create(inst, inst, fr_time_delta_wrap(0));

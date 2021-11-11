@@ -46,7 +46,6 @@ USES_APPLE_DEPRECATED_API
 #include <membership.h>
 
 typedef struct {
-	char const		*name;		//!< Auth-Type value for this module instance.
 	fr_dict_enum_value_t		*auth_type;
 } rlm_opendirectory_t;
 
@@ -506,7 +505,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 setup_auth_type:
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup OpenDirectory authentication",
-		     inst->name, inst->name);
+		     mctx->inst->name, mctx->inst->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -515,24 +514,14 @@ setup_auth_type:
 	RETURN_MODULE_OK;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_opendirectory_t	*inst = instance;
+	rlm_opendirectory_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_opendirectory_t);
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	return 0;
-}
-
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
-{
-	rlm_opendirectory_t *inst = instance;
-
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->inst->name, -1);
 	if (!inst->auth_type) {
 		WARN("Failed to find 'authenticate %s {...}' section.  OpenDirectory authentication will likely not work",
-		     inst->name);
+		     mctx->inst->name);
 	}
 
 	return 0;
@@ -545,7 +534,6 @@ module_t rlm_opendirectory = {
 	.name		= "opendirectory",
 	.inst_size	= sizeof(rlm_opendirectory_t),
 	.type		= RLM_TYPE_THREAD_SAFE,
-	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,

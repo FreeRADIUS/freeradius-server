@@ -62,7 +62,7 @@ static int _mod_conn_free(rlm_couchbase_handle_t *chandle)
  */
 int mod_free_api_opts(void *instance)
 {
-	rlm_couchbase_t *inst = instance;	/* our module instance */
+	rlm_couchbase_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_couchbase_t);	/* our module instance */
 	couchbase_opts_t *opts = inst->api_opts;
 
 	if (!opts) return 0;
@@ -93,7 +93,7 @@ int mod_free_api_opts(void *instance)
  */
 int mod_build_api_opts(CONF_SECTION *conf, void *instance)
 {
-	rlm_couchbase_t *inst = instance;	/* our module instance */
+	rlm_couchbase_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_couchbase_t);	/* our module instance */
 	CONF_SECTION *cs;                	/* module config list */
 	CONF_ITEM *ci;                   	/* config item */
 	CONF_PAIR *cp;                   	/* config pair */
@@ -238,7 +238,7 @@ int mod_conn_alive(UNUSED void *instance, void *handle)
  */
 int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 {
-	rlm_couchbase_t *inst = instance;   /* our module instance */
+	rlm_couchbase_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_couchbase_t);   /* our module instance */
 	CONF_SECTION *cs;                   /* module config list */
 	CONF_ITEM *ci;                      /* config item */
 	CONF_PAIR *cp;                      /* conig pair */

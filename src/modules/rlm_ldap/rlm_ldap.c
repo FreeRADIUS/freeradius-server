@@ -1431,7 +1431,7 @@ skip_edir:
 		if (fr_ldap_map_do(request, handle, inst->valuepair_attr,
 				   &expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
 		REXDENT();
-		rlm_ldap_check_reply(inst, request, ttrunk);
+		rlm_ldap_check_reply(mctx, request, ttrunk);
 	}
 
 finish:
@@ -1697,9 +1697,9 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 /** Detach from the LDAP server and cleanup internal state.
  *
  */
-static int mod_detach(void *instance)
+static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_ldap_t *inst = instance;
+	rlm_ldap_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
 
 #ifdef HAVE_LDAP_CREATE_SORT_CONTROL
 	if (inst->userobj_sort_ctrl) ldap_control_free(inst->userobj_sort_ctrl);
@@ -1714,7 +1714,7 @@ static int mod_detach(void *instance)
  *
  * Allocate a new ldap_acct_section_t and write the config data into it.
  *
- * @param[in] inst rlm_ldap configuration.
+ * @param[in] mctx rlm_ldap configuration.
  * @param[in] parent of the config section.
  * @param[out] config to write the sub section parameters to.
  * @param[in] comp The section name were parsing the config for.
@@ -1722,17 +1722,19 @@ static int mod_detach(void *instance)
  *	- 0 on success.
  *	- < 0 on failure.
  */
-static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_section_t **config,
+static int parse_sub_section(module_inst_ctx_t const *mctx,
+			     CONF_SECTION *parent, ldap_acct_section_t **config,
 			     rlm_components_t comp)
 {
-	CONF_SECTION *cs;
+	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
+	CONF_SECTION 	*cs;
 
 	char const *name = section_type_value[comp];
 
 	cs = cf_section_find(parent, name, NULL);
 	if (!cs) {
 		DEBUG2("rlm_ldap (%s) - Couldn't find configuration for %s, will return NOOP for calls "
-		       "from this section", inst->name, name);
+		       "from this section", mctx->inst->name, name);
 
 		return 0;
 	}
@@ -1741,7 +1743,7 @@ static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_s
 
 	*config = talloc_zero(inst, ldap_acct_section_t);
 	if (cf_section_parse(*config, *config, cs) < 0) {
-		PERROR("rlm_ldap (%s) - Failed parsing configuration for section %s", inst->name, name);
+		PERROR("rlm_ldap (%s) - Failed parsing configuration for section %s", mctx->inst->name, name);
 
 		return -1;
 	}
@@ -1765,26 +1767,25 @@ static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread
 /** Initialise thread specific data structure
  *
  */
-static int mod_thread_instatiate(UNUSED CONF_SECTION const *conf, void *instance,
-				 fr_event_list_t *el, void *thread)
+static int mod_thread_instatiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_ldap_t		*inst = instance;
-	fr_ldap_thread_t	*this_thread = thread;
+	rlm_ldap_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
+	fr_ldap_thread_t	*t = talloc_get_type_abort(mctx->thread, fr_ldap_thread_t);
 	fr_ldap_thread_trunk_t	*ttrunk;
 
 	/*
 	 *	Initialise tree for connection trunks used by this thread
 	 */
-	MEM(this_thread->trunks = fr_rb_inline_talloc_alloc(this_thread, fr_ldap_thread_trunk_t, node, fr_ldap_trunk_cmp, NULL));
+	MEM(t->trunks = fr_rb_inline_talloc_alloc(t, fr_ldap_thread_trunk_t, node, fr_ldap_trunk_cmp, NULL));
 
-	this_thread->config = &inst->handle_config;
-	this_thread->trunk_conf = &inst->trunk_conf;
-	this_thread->el = el;
+	t->config = &inst->handle_config;
+	t->trunk_conf = &inst->trunk_conf;
+	t->el = mctx->el;
 
 	/*
 	 *	Launch trunk for module default connection
 	 */
-	ttrunk = fr_thread_ldap_trunk_get(this_thread, inst->handle_config.server, inst->handle_config.admin_identity,
+	ttrunk = fr_thread_ldap_trunk_get(t, inst->handle_config.server, inst->handle_config.admin_identity,
 					  inst->handle_config.admin_password, NULL, &inst->handle_config);
 	if (!ttrunk) {
 		ERROR("Unable to launch LDAP trunk");
@@ -1794,11 +1795,11 @@ static int mod_thread_instatiate(UNUSED CONF_SECTION const *conf, void *instance
 	/*
 	 *	Set up a per-thread LDAP connection to use for bind auths
 	 */
-	this_thread->conn = fr_ldap_connection_state_alloc(this_thread, el, this_thread->config, inst->name);
-	fr_connection_add_watch_post(this_thread->conn, FR_CONNECTION_STATE_CONNECTED, _ldap_async_bind_auth_watch, false, this_thread);
-	fr_connection_signal_init(this_thread->conn);
+	t->conn = fr_ldap_connection_state_alloc(t, mctx->el, t->config, mctx->inst->name);
+	fr_connection_add_watch_post(t->conn, FR_CONNECTION_STATE_CONNECTED, _ldap_async_bind_auth_watch, false, t);
+	fr_connection_signal_init(t->conn);
 
-	MEM(this_thread->binds = fr_rb_inline_talloc_alloc(this_thread, fr_ldap_bind_auth_ctx_t, node, fr_ldap_bind_auth_cmp, NULL));
+	MEM(t->binds = fr_rb_inline_talloc_alloc(t, fr_ldap_bind_auth_ctx_t, node, fr_ldap_bind_auth_cmp, NULL));
 
 	return 0;
 }
@@ -1806,17 +1807,17 @@ static int mod_thread_instatiate(UNUSED CONF_SECTION const *conf, void *instance
 /** Clean up thread specific data structure
  *
  */
-static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
-	fr_ldap_thread_t	*this_thread = thread;
+	fr_ldap_thread_t	*t = talloc_get_type_abort(mctx->thread, fr_ldap_thread_t);
 	void			**trunks_to_free;
 	int			i;
 
-	if (fr_rb_flatten_inorder(NULL, &trunks_to_free, this_thread->trunks) < 0) return -1;
+	if (fr_rb_flatten_inorder(NULL, &trunks_to_free, t->trunks) < 0) return -1;
 
 	for (i = talloc_array_length(trunks_to_free) - 1; i >= 0; i--) talloc_free(trunks_to_free[i]);
 	talloc_free(trunks_to_free);
-	talloc_free(this_thread->trunks);
+	talloc_free(t->trunks);
 
 	return 0;
 }
@@ -1825,28 +1826,25 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
  *
  * Define attributes.
  *
- * @param conf to parse.
- * @param instance configuration data.
+ * @param[in] mctx configuration data.
  * @return
  *	- 0 on success.
  *	- < 0 on failure.
  */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_ldap_t	*inst = instance;
+	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
 	char		buffer[256];
 	char const	*group_attribute;
 	xlat_t		*xlat;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	inst->handle_config.name = talloc_typed_asprintf(inst, "rlm_ldap (%s)", inst->name);
+	inst->handle_config.name = talloc_typed_asprintf(inst, "rlm_ldap (%s)", mctx->inst->name);
 
 	if (inst->group_attribute) {
 		group_attribute = inst->group_attribute;
 	} else if (cf_section_name2(conf)) {
-		snprintf(buffer, sizeof(buffer), "%s-LDAP-Group", inst->name);
+		snprintf(buffer, sizeof(buffer), "%s-LDAP-Group", mctx->inst->name);
 		group_attribute = buffer;
 	} else {
 		group_attribute = "LDAP-Group";
@@ -1878,7 +1876,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		inst->cache_da = inst->group_da;	/* Default to the group_da */
 	}
 
-	xlat = xlat_register(NULL, inst->name, ldap_xlat, false);
+	xlat = xlat_register(NULL, mctx->inst->name, ldap_xlat, false);
 	xlat_func_mono(xlat, &ldap_xlat_arg);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, ldap_xlat_thread_inst_t, NULL, inst);
 
@@ -1887,7 +1885,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	xlat = xlat_register(NULL, "ldap_unescape", ldap_unescape_xlat, false);
 	if (xlat) xlat_func_mono(xlat, &ldap_escape_xlat_arg);
 
-	map_proc_register(inst, inst->name, mod_map_proc, ldap_map_verify, 0);
+	map_proc_register(inst, mctx->inst->name, mod_map_proc, ldap_map_verify, 0);
 
 	return 0;
 }
@@ -1896,18 +1894,18 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  *
  * Creates a new instance of the module reading parameters from a configuration section.
  *
- * @param conf to parse.
- * @param instance configuration data.
+ * @param [in] mctx configuration data.
  * @return
  *	- 0 on success.
  *	- < 0 on failure.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	size_t		i;
 
 	CONF_SECTION	*options, *update;
-	rlm_ldap_t	*inst = instance;
+	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
 
 	fr_map_list_init(&inst->user_map);
 
@@ -1919,8 +1917,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	If the configuration parameters can't be parsed, then fail.
 	 */
-	if ((parse_sub_section(inst, conf, &inst->accounting, MOD_ACCOUNTING) < 0) ||
-	    (parse_sub_section(inst, conf, &inst->postauth, MOD_POST_AUTH) < 0)) {
+	if ((parse_sub_section(mctx, conf, &inst->accounting, MOD_ACCOUNTING) < 0) ||
+	    (parse_sub_section(mctx, conf, &inst->postauth, MOD_POST_AUTH) < 0)) {
 		cf_log_err(conf, "Failed parsing configuration");
 
 		goto error;
@@ -2202,7 +2200,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 */
 	if (inst->handle_config.server) {
 		inst->handle_config.server[talloc_array_length(inst->handle_config.server) - 2] = '\0';
-		DEBUG4("rlm_ldap (%s) - LDAP server string: %s", inst->name, inst->handle_config.server);
+		DEBUG4("rlm_ldap (%s) - LDAP server string: %s", mctx->inst->name, inst->handle_config.server);
 	}
 
 #ifdef LDAP_OPT_X_TLS_NEVER

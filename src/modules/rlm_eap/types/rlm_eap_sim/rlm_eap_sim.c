@@ -57,9 +57,9 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	return eap_session->process(p_result, mctx, request);
 }
 
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	eap_aka_sim_module_conf_t	*inst = talloc_get_type_abort(instance, eap_aka_sim_module_conf_t);
+	eap_aka_sim_module_conf_t	*inst = talloc_get_type_abort(mctx->inst->data, eap_aka_sim_module_conf_t);
 
 	inst->type = rlm_eap_sim.provides[0];
 

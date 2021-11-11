@@ -46,9 +46,10 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_sometimes_t *inst = instance;
+	rlm_sometimes_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_sometimes_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
 
 	/*
 	 *	Convert the rcode string to an int, and get rid of it
@@ -70,11 +71,11 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 /*
  *	A lie!  It always returns!
  */
-static unlang_action_t sometimes_return(rlm_rcode_t *p_result, void const *instance, request_t *request,
+static unlang_action_t sometimes_return(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request,
 					fr_radius_packet_t *packet, fr_radius_packet_t *reply)
 {
+	rlm_sometimes_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_sometimes_t);
 	uint32_t		hash;
-	rlm_sometimes_t const	*inst = talloc_get_type_abort_const(instance, rlm_sometimes_t);
 	fr_pair_t		*vp;
 	float			value;
 
@@ -144,12 +145,12 @@ static unlang_action_t sometimes_return(rlm_rcode_t *p_result, void const *insta
 
 static unlang_action_t CC_HINT(nonnull) mod_sometimes_packet(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	return sometimes_return(p_result, mctx->inst->data, request, request->packet, request->reply);
+	return sometimes_return(p_result, mctx, request, request->packet, request->reply);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_sometimes_reply(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	return sometimes_return(p_result, mctx->inst->data, request, request->reply, NULL);
+	return sometimes_return(p_result, mctx, request, request->reply, NULL);
 }
 
 extern module_t rlm_sometimes;

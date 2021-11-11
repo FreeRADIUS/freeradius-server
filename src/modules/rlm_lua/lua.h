@@ -46,7 +46,6 @@ typedef struct {
 						//!< basis, or use a single mutex protected interpreter.
 
 	bool 		jit;			//!< Whether the linked interpreter is Lua 5.1 or LuaJIT.
-	const char	*name;			//!< Name of this instance.
 	const char 	*module;		//!< Full path to lua script to load and execute.
 
 	const char	*func_instantiate;	//!< Name of function to run on instantiation.
@@ -65,7 +64,7 @@ typedef struct {
 } rlm_lua_thread_t;
 
 /* lua.c */
-int		fr_lua_init(lua_State **out, rlm_lua_t const *instance);
+int		fr_lua_init(lua_State **out, module_inst_ctx_t const *mctx);
 unlang_action_t fr_lua_run(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, char const *funcname);
 bool		fr_lua_isjit(lua_State *L);
 char const	*fr_lua_version(lua_State *L);
@@ -76,10 +75,10 @@ void		fr_lua_util_jit_log_info(char const *msg);
 void		fr_lua_util_jit_log_warn(char const *msg);
 void		fr_lua_util_jit_log_error(char const *msg);
 
-int		fr_lua_util_jit_log_register(rlm_lua_t const *inst, lua_State *L);
-int		fr_lua_util_log_register(rlm_lua_t const *inst, lua_State *L);
-void		fr_lua_util_set_inst(rlm_lua_t const *inst);
-rlm_lua_t const	*fr_lua_util_get_inst(void);
+int		fr_lua_util_jit_log_register(lua_State *L);
+int		fr_lua_util_log_register(lua_State *L);
+void		fr_lua_util_set_mctx(module_ctx_t const *mctx);
+module_ctx_t const *fr_lua_util_get_mctx(void);
 void		fr_lua_util_set_request(request_t *request);
 request_t		*fr_lua_util_get_request(void);
 void		fr_lua_util_fr_register(lua_State *L);

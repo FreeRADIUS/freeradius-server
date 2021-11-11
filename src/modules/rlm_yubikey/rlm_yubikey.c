@@ -183,13 +183,10 @@ static void mod_unload(void)
 	fr_dict_autofree(rlm_yubikey_dict);
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_yubikey_t	*inst = instance;
+	rlm_yubikey_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_yubikey_t);
 	xlat_t		*xlat;
-
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
 
 #ifndef HAVE_YUBIKEY
 	if (inst->decrypt) {
@@ -214,14 +211,17 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_yubikey_t *inst = instance;
+	rlm_yubikey_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_yubikey_t);
+	CONF_SECTION    *conf = mctx->inst->conf;
+
+	inst->name = mctx->inst->name;
 
 	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
 	if (!inst->auth_type) {
 		WARN("Failed to find 'authenticate %s {...}' section.  Yubikey authentication will likely not work",
-		     inst->name);
+		     mctx->inst->name);
 	}
 
 	if (inst->validate) {
@@ -247,9 +247,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 }
 
 #ifdef HAVE_YKCLIENT
-static int mod_detach(void *instance)
+static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_yubikey_ykclient_detach((rlm_yubikey_t *) instance);
+	rlm_yubikey_ykclient_detach(talloc_get_type_abort(mctx->inst->data, rlm_yubikey_t));
 	return 0;
 }
 #endif
@@ -370,7 +370,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup Yubikey authentication",
-		     inst->name, inst->name);
+		     mctx->inst->name, mctx->inst->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -433,14 +433,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 #ifdef HAVE_YUBIKEY
 	if (inst->decrypt) {
 
-		rlm_yubikey_decrypt(&rcode, inst, request, passcode);
+		rlm_yubikey_decrypt(&rcode, mctx, request, passcode);
 		if (rcode != RLM_MODULE_OK) RETURN_MODULE_RCODE(rcode);
 		/* Fall-Through to doing ykclient auth in addition to local auth */
 	}
 #endif
 
 #ifdef HAVE_YKCLIENT
-	if (inst->validate) return rlm_yubikey_validate(p_result, inst, request, passcode);
+	if (inst->validate) return rlm_yubikey_validate(p_result, mctx, request, passcode);
 #endif
 	RETURN_MODULE_RCODE(rcode);
 }

@@ -461,7 +461,6 @@ typedef void (*fr_trunk_connection_notify_t)(fr_trunk_connection_t *tconn, fr_co
  * popping/processing other requests.
  *
  * @param[in] el		For timer management.
- *
  * @param[in] tconn		The trunk connection to dequeue trunk
  *      			requests from.
  * @param[in] conn		Connection to write the request to.
@@ -496,13 +495,15 @@ typedef void (*fr_trunk_request_mux_t)(fr_event_list_t *el,
  * used for reporting failures at an I/O layer level not failures of queries or
  * external services.
  *
+ * @param[in] el		For timer management.
  * @param[in] tconn		The trunk connection.
  * @param[in] conn		Connection to read the request from.
  *				Use conn->h to access the
  *				connection handle or file descriptor.
  * @param[in] uctx		User context data passed to #fr_trunk_alloc.
  */
-typedef void (*fr_trunk_request_demux_t)(fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx);
+typedef void (*fr_trunk_request_demux_t)(fr_event_list_t *el,
+					 fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx);
 
 /** Inform a remote service like a datastore that a request should be cancelled
  *
@@ -526,6 +527,8 @@ typedef void (*fr_trunk_request_demux_t)(fr_trunk_connection_t *tconn, fr_connec
  * remove the entry from the tracking tree and call
  * #fr_trunk_request_signal_cancel_complete.
  *
+ * @param[in] el		To insert any timers into.
+ *
  * @param[in] tconn		The trunk connection used to dequeue
  *				cancellation requests.
  * @param[in] conn		Connection to write the request to.
@@ -533,7 +536,8 @@ typedef void (*fr_trunk_request_demux_t)(fr_trunk_connection_t *tconn, fr_connec
  *				connection handle or file descriptor.
  * @param[in] uctx		User context data passed to #fr_trunk_alloc.
  */
-typedef void (*fr_trunk_request_cancel_mux_t)(fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx);
+typedef void (*fr_trunk_request_cancel_mux_t)(fr_event_list_t *el,
+					      fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx);
 
 /** Remove an outstanding "sent" request from a tracking/matching structure
  *

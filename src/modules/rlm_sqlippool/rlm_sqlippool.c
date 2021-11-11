@@ -397,15 +397,10 @@ finish:
 	return retval;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_sqlippool_t	*inst = instance;
-	char const *name;
-
-	name = cf_section_name2(conf);
-	if (!name) name = cf_section_name1(conf);
-
-	inst->name = talloc_asprintf(inst, "%s - %s", name, inst->sql_instance_name);
+	rlm_sqlippool_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
+	inst->name = talloc_asprintf(inst, "%s - %s", mctx->inst->name, inst->sql_instance_name);
 
 	return 0;
 }
@@ -420,10 +415,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	module_instance_t	*sql_inst;
-	rlm_sqlippool_t		*inst = instance;
+	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 	char const		*pool_name = NULL;
 
 	pool_name = cf_section_name2(conf);

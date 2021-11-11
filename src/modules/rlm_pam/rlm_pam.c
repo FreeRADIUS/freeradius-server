@@ -85,9 +85,9 @@ fr_dict_attr_autoload_t rlm_pam_dict_attr[] = {
 	{ NULL }
 };
 
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_pam_t *inst = instance;
+	rlm_pam_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_pam_t);
 
 	if (!inst->pam_auth_name) inst->pam_auth_name = main_config->name;
 

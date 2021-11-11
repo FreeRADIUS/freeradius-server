@@ -31,7 +31,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/util/debug.h>
 #include <ctype.h>
 
-#define LOG_PREFIX inst->name
+#define LOG_PREFIX mctx->inst->name
 
 #include "rlm_ldap.h"
 
@@ -227,12 +227,14 @@ rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request, LD
  *
  * Checks to see if after the LDAP to RADIUS mapping has been completed that a reference password.
  *
- * @param inst rlm_ldap configuration.
- * @param request Current request.
- * @param ttrunk the connection thread trunk.
+ * @param[in] mctx	rlm_ldap configuration.
+ * @param[in] request	Current request.
+ * @param[in] ttrunk	the connection thread trunk.
  */
-void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_thread_trunk_t const *ttrunk)
+void rlm_ldap_check_reply(module_ctx_t const *mctx, request_t *request, fr_ldap_thread_trunk_t const *ttrunk)
 {
+	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
+
        /*
 	*	More warning messages for people who can't be bothered to read the documentation.
 	*
@@ -255,9 +257,9 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_th
 			RWDEBUG2("!!!  - Configure authentication via wbclient (mschapv2 only)");
 			RWDEBUG2("!!!    that password attribute");
 			RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
-				 inst->name);
+				 mctx->inst->name);
 			RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
-				 inst->name);
+				 mctx->inst->name);
 			RWDEBUG2("!!!    (pap only)");
 
 			break;
@@ -270,9 +272,9 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_th
 			RWDEBUG2("!!!    eDir server (recommended)");
 			RWDEBUG2("!!!    that password attribute");
 			RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
-				 inst->name);
+				 mctx->inst->name);
 			RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
-				 inst->name);
+				 mctx->inst->name);
 			RWDEBUG("!!!    (pap only)");
 			break;
 
@@ -285,9 +287,9 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_th
 				RWDEBUG2("!!!    \"%s\" has permission to read that password attribute (recommended)",
 					 ttrunk->config.admin_identity);
 				RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
-					 inst->name);
+					 mctx->inst->name);
 				RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
-					 inst->name);
+					 mctx->inst->name);
 				RWDEBUG2("!!!    (pap only)");
 			} else {
 				RWDEBUG2("!!! No \"known good\" password added");
@@ -297,9 +299,9 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, request_t *request, fr_ldap_th
 				RWDEBUG2("!!!    'identity' is set to the DN of an account that has permission to read");
 				RWDEBUG2("!!!    that password attribute");
 				RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
-					 inst->name);
+					 mctx->inst->name);
 				RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
-					 inst->name);
+					 mctx->inst->name);
 				RWDEBUG2("!!!    (pap only)");
 			}
 			break;

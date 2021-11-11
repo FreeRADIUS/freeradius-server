@@ -507,17 +507,21 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 /** Destroy thread data for the submodule.
  *
  */
-static int mod_thread_detach(fr_event_list_t *el, void *thread)
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
-	rlm_radius_t const *inst = t->inst;
+	rlm_radius_t const *inst = talloc_get_type_abort(mctx->inst->data, rlm_radius_t);
+	rlm_radius_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_radius_thread_t);
 
 	/*
 	 *	Tell the submodule to shut down all of its
 	 *	connections.
 	 */
 	if (inst->io->thread_detach &&
-	    (inst->io->thread_detach(el, t->io_thread) < 0)) {
+	    (inst->io->thread_detach(&(module_thread_inst_ctx_t){
+	    				.inst = inst->io_submodule,
+	    				.thread = t->io_thread,
+	    				.el = mctx->el
+	    			     }) < 0)) {
 		return -1;
 	}
 
@@ -527,12 +531,10 @@ static int mod_thread_detach(fr_event_list_t *el, void *thread)
 /** Instantiate thread data for the submodule.
  *
  */
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *thread)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
-	rlm_radius_thread_t *t = talloc_get_type_abort(thread, rlm_radius_thread_t);
-
-	t->inst = instance;
+	rlm_radius_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_radius_t);
+	rlm_radius_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_radius_thread_t);
 
 	/*
 	 *	Allocate thread-specific data.  The connections should
@@ -553,47 +555,34 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	 *	sockets, set timers, etc.
 	 */
 	if (inst->io->thread_instantiate &&
-	    inst->io->thread_instantiate(inst->io_conf, inst->io_instance, el, t->io_thread) < 0) return -1;
+	    inst->io->thread_instantiate(&(module_thread_inst_ctx_t){
+	    					.inst = inst->io_submodule,
+	    					.thread = t->io_thread,
+	    					.el = mctx->el
+	    				 }) < 0) return -1;
 
 	return 0;
 }
 
-/** Instantiate the module
- *
- * Instantiate I/O and type submodules.
- *
- * @param[in] instance	Ctx data for this module
- * @param[in] conf	our configuration section parsed to give us instance.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
+	rlm_radius_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_radius_t);
 
-	if (inst->io->instantiate && inst->io->instantiate(inst->io_instance, inst->io_conf) < 0) return -1;
+	if (inst->io->instantiate &&
+	    inst->io->instantiate(&(module_inst_ctx_t){
+	    				.inst = inst->io_submodule
+	    			  }) < 0) return -1;
 
 	return 0;
 }
 
-/** Bootstrap the module
- *
- * Bootstrap I/O and type submodules.
- *
- * @param[in] instance	Ctx data for this module
- * @param[in] conf    our configuration section parsed to give us instance.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	size_t i, num_types;
-	rlm_radius_t *inst = talloc_get_type_abort(instance, rlm_radius_t);
+	rlm_radius_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_radius_t);
+	CONF_SECTION *conf = mctx->inst->conf;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
+	inst->name = mctx->inst->name;
 
 	/*
 	 *	These limits are specific to RADIUS, and cannot be over-ridden
@@ -754,9 +743,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 setup_io_submodule:
 	inst->io = (rlm_radius_io_t const *) inst->io_submodule->module->common;
-	inst->io_instance = inst->io_submodule->data;
-	inst->io_conf = inst->io_submodule->conf;
-
 	fr_assert(inst->io->thread_inst_size > 0);
 	fr_assert(inst->io->bootstrap != NULL);
 	fr_assert(inst->io->instantiate != NULL);
@@ -769,7 +755,10 @@ setup_io_submodule:
 	/*
 	 *	Bootstrap the submodule.
 	 */
-	if (inst->io->bootstrap(inst->io_instance, inst->io_conf) < 0) return -1;
+	if (inst->io->bootstrap &&
+	    inst->io->bootstrap(&(module_inst_ctx_t){
+	    				.inst = inst->io_submodule
+	    			}) < 0) return -1;
 
 	return 0;
 }

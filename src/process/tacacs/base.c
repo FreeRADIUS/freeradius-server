@@ -578,9 +578,9 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 }
 
 
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *process_app_cs)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	process_tacacs_t	*inst = instance;
+	process_tacacs_t	*inst = talloc_get_type_abort(mctx->inst->data, process_tacacs_t);
 
 	/*
 	 *	Usually we use the 'State' attribute. But, in this
@@ -596,12 +596,12 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *process_app_cs)
 	return 0;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *process_app_cs)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	process_tacacs_t	*inst = instance;
-	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(process_app_cs));
+	process_tacacs_t	*inst = talloc_get_type_abort(mctx->inst->data, process_tacacs_t);
+	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(mctx->inst->conf));
 
-	fr_assert(process_app_cs);
+	fr_assert(mctx->inst->conf);
 	fr_assert(server_cs);
 
 	fr_assert(strcmp(cf_section_name1(server_cs), "server") == 0);

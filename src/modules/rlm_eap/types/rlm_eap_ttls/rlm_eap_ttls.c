@@ -329,11 +329,10 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	RETURN_MODULE_OK;
 }
 
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
-				  UNUSED fr_event_list_t *el, void *thread)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_eap_ttls_t		*inst = talloc_get_type_abort(instance, rlm_eap_ttls_t);
-	rlm_eap_ttls_thread_t	*t = talloc_get_type_abort(thread, rlm_eap_ttls_thread_t);
+	rlm_eap_ttls_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_ttls_t);
+	rlm_eap_ttls_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_eap_ttls_thread_t);
 
 	t->ssl_ctx = fr_tls_ctx_alloc(inst->tls_conf, false);
 	if (!t->ssl_ctx) return -1;
@@ -341,9 +340,9 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *cs, void *instance,
 	return 0;
 }
 
-static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_eap_ttls_thread_t	*t = talloc_get_type_abort(thread, rlm_eap_ttls_thread_t);
+	rlm_eap_ttls_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_eap_ttls_thread_t);
 
 	if (likely(t->ssl_ctx != NULL)) SSL_CTX_free(t->ssl_ctx);
 	t->ssl_ctx = NULL;
@@ -354,12 +353,13 @@ static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
 /*
  *	Attach the module.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *cs)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_eap_ttls_t *inst = talloc_get_type_abort(instance, rlm_eap_ttls_t);
+	rlm_eap_ttls_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_ttls_t);
+	CONF_SECTION 	*conf = mctx->inst->conf;
 
 	if (!virtual_server_find(inst->virtual_server)) {
-		cf_log_err_by_child(cs, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
+		cf_log_err_by_child(conf, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
 		return -1;
 	}
 
@@ -367,9 +367,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 	 *	Read tls configuration, either from group given by 'tls'
 	 *	option, or from the eap-tls configuration.
 	 */
-	inst->tls_conf = eap_tls_conf_parse(cs, "tls");
+	inst->tls_conf = eap_tls_conf_parse(conf, "tls");
 	if (!inst->tls_conf) {
-		cf_log_err(cs, "Failed initializing SSL context");
+		cf_log_err(conf, "Failed initializing SSL context");
 		return -1;
 	}
 

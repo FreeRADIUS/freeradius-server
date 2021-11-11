@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX inst->name
+#define LOG_PREFIX mctx->inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
@@ -34,7 +34,6 @@ RCSID("$Id$")
  *	going to return.
  */
 typedef struct {
-	char const	*name;
 	char const	*rcode_str;	//!< The base value.
 	module_instance_t *mi;
 
@@ -123,37 +122,34 @@ done:
 
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_always_t	*inst = instance;
+	rlm_always_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_always_t);
 	xlat_t		*xlat;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	inst->mi = module_by_name(NULL, inst->name);
+	inst->mi = module_by_name(NULL, mctx->inst->name);
 	if (!inst->mi) {
-		cf_log_err(conf, "Can't find the module instance data for this module: %s", inst->name);
+		cf_log_err(mctx->inst->conf, "Can't find the module instance data for this module: %s", mctx->inst->name);
 		return -1;
 	}
 
-	xlat = xlat_register(inst, inst->name, always_xlat, false);
+	xlat = xlat_register(inst, mctx->inst->name, always_xlat, false);
 	xlat_func_args(xlat, always_xlat_args);
 	xlat_async_instantiate_set(xlat, always_xlat_instantiate, rlm_always_t *, NULL, inst);
 
 	return 0;
 }
 
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_always_t *inst = instance;
+	rlm_always_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_always_t);
 
 	/*
 	 *	Convert the rcode string to an int
 	 */
 	inst->rcode = fr_table_value_by_str(rcode_table, inst->rcode_str, RLM_MODULE_NOT_SET);
 	if (inst->rcode == RLM_MODULE_NOT_SET) {
-		cf_log_err(conf, "rcode value \"%s\" is invalid", inst->rcode_str);
+		cf_log_err(mctx->inst->conf, "rcode value \"%s\" is invalid", inst->rcode_str);
 		return -1;
 	}
 

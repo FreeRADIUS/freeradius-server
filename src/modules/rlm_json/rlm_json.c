@@ -52,7 +52,6 @@ static fr_sbuff_parse_rules_t const json_arg_parse_rules = {
  *
  */
 typedef struct {
-	char const		*name;
 	fr_json_format_t	*format;
 } rlm_json_t;
 
@@ -550,23 +549,21 @@ finish:
 	return rcode;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_json_t		*inst = talloc_get_type_abort(instance, rlm_json_t);
+	rlm_json_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_json_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 	xlat_t			*xlat;
 	char 			*name;
 	fr_json_format_t	*format = inst->format;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	xlat = xlat_register(instance, "jsonquote", json_quote_xlat, false);
+	xlat = xlat_register(inst, "jsonquote", json_quote_xlat, false);
 	if (xlat) xlat_func_mono(xlat, &json_quote_xlat_arg);
-	xlat = xlat_register(instance, "jpathvalidate", jpath_validate_xlat, false);
+	xlat = xlat_register(inst, "jpathvalidate", jpath_validate_xlat, false);
 	if (xlat) xlat_func_mono(xlat, &jpath_validate_xlat_arg);
 
-	name = talloc_asprintf(inst, "%s_encode", inst->name);
-	xlat = xlat_register(instance, name, json_encode_xlat, false);
+	name = talloc_asprintf(inst, "%s_encode", mctx->inst->name);
+	xlat = xlat_register(inst, name, json_encode_xlat, false);
 	xlat_func_mono(xlat, &json_encode_xlat_arg);
 	xlat_async_instantiate_set(xlat, json_xlat_instantiate,
 				   rlm_json_t *, NULL, inst);
@@ -583,7 +580,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	}
 	fr_json_format_verify(format, true);
 
-	if (map_proc_register(instance, "json", mod_map_proc,
+	if (map_proc_register(inst, "json", mod_map_proc,
 			      mod_map_proc_instantiate, sizeof(rlm_json_jpath_cache_t)) < 0) return -1;
 	return 0;
 }

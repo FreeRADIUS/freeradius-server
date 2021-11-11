@@ -77,7 +77,6 @@ typedef struct {
 } rlm_smtp_t;
 
 typedef struct {
-	rlm_smtp_t const    	*inst;		//!< Instance of rlm_smtp.
 	fr_curl_handle_t    	*mhandle;	//!< Thread specific multi handle.  Serves as the dispatch and coralling structure for smtp requests
 } rlm_smtp_thread_t;
 
@@ -970,9 +969,9 @@ static int smtp_verify(map_t *map, void *ctx)
 	return 0;
 }
 
-static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_smtp_t 	*inst = instance;
+	rlm_smtp_t 	*inst = talloc_get_type_abort(mctx->inst->data, rlm_smtp_t );
 
 	talloc_foreach(inst->recipient_addrs, vpt) INFO("NAME: %s", vpt->name);
 
@@ -980,9 +979,10 @@ static int mod_bootstrap(void *instance, UNUSED CONF_SECTION *conf)
 }
 
 
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_smtp_t	*inst = instance;
+	rlm_smtp_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_smtp_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
 	CONF_SECTION	*header;
 
 	fr_map_list_init(&inst->header_maps);
@@ -1013,14 +1013,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 /*
  *	Initialize a new thread with a curl instance
  */
-static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instance, fr_event_list_t *el, void *thread)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_smtp_thread_t    		*t = thread;
+	rlm_smtp_thread_t    		*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
 	fr_curl_handle_t    		*mhandle;
 
-	t->inst = instance;
-
-	mhandle = fr_curl_io_init(t, el, false);
+	mhandle = fr_curl_io_init(t, mctx->el, false);
 	if (!mhandle) return -1;
 
 	t->mhandle = mhandle;
@@ -1030,9 +1028,9 @@ static int mod_thread_instantiate(UNUSED CONF_SECTION const *conf, void *instanc
 /*
  *	Close the thread and free the memory
  */
-static int mod_thread_detach(UNUSED fr_event_list_t *el, void *thread)
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_smtp_thread_t    *t = thread;
+	rlm_smtp_thread_t    		*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
 	talloc_free(t->mhandle);
 	return 0;
 }

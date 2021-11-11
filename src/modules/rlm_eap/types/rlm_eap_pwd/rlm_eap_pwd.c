@@ -542,23 +542,22 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	RETURN_MODULE_HANDLED;
 }
 
-static int mod_detach(void *arg)
+static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_eap_pwd_t *inst;
-
-	inst = (rlm_eap_pwd_t *) arg;
+	rlm_eap_pwd_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_pwd_t);
 
 	if (inst->bnctx) BN_CTX_free(inst->bnctx);
 
 	return 0;
 }
 
-static int mod_instantiate(void *instance, CONF_SECTION *cs)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_eap_pwd_t *inst = talloc_get_type_abort(instance, rlm_eap_pwd_t);
+	rlm_eap_pwd_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_pwd_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
 
 	if (inst->fragment_size < 100) {
-		cf_log_err(cs, "Fragment size is too small");
+		cf_log_err(conf, "Fragment size is too small");
 		return -1;
 	}
 
@@ -571,13 +570,13 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		break;
 
 	default:
-		cf_log_err_by_child(cs, "group", "Group %i is not supported", inst->group);
+		cf_log_err_by_child(conf, "group", "Group %i is not supported", inst->group);
 		return -1;
 	}
 
 	inst->bnctx = BN_CTX_new();
 	if (!inst->bnctx) {
-		cf_log_err(cs, "Failed to get BN context");
+		cf_log_err(conf, "Failed to get BN context");
 		return -1;
 	}
 

@@ -387,7 +387,7 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	int			num_fields = 0, key_field = -1, listable = 0;
 	char const		*s;
@@ -395,7 +395,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	size_t			len;
 	int			i;
 	fr_dict_attr_t const	*da;
-	rlm_passwd_t		*inst = instance;
+	rlm_passwd_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_passwd_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 
 	fr_assert(inst->filename && *inst->filename);
 	fr_assert(inst->format && *inst->format);
@@ -501,15 +502,15 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 #undef inst
 }
 
-static int mod_detach (void *instance) {
-#define inst ((rlm_passwd_t *)instance)
-	if(inst->ht) {
+static int mod_detach(module_detach_ctx_t const *mctx)
+{
+	rlm_passwd_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_passwd_t);
+	if (inst->ht) {
 		release_ht(inst->ht);
 		inst->ht = NULL;
 	}
 	talloc_free(inst->pwd_fmt);
 	return 0;
-#undef inst
 }
 
 static void result_add(TALLOC_CTX *ctx, rlm_passwd_t const *inst, request_t *request,

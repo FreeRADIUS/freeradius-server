@@ -23,7 +23,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX inst->config.name
+#define LOG_PREFIX mctx->inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
@@ -938,9 +938,9 @@ static void cache_unref(request_t *request, rlm_cache_t const *inst, rlm_cache_e
 /** Free any memory allocated under the instance
  *
  */
-static int mod_detach(void *instance)
+static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_cache_t *inst = instance;
+	rlm_cache_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
 
 	/*
 	 *	We need to explicitly free all children, so if the driver
@@ -958,15 +958,13 @@ static int mod_detach(void *instance)
 /** Register module xlats
  *
  */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_cache_t 	*inst = instance;
+	rlm_cache_t 	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t );
+	CONF_SECTION	*conf = mctx->inst->conf;
 	CONF_SECTION	*driver_cs;
 	char const 	*name;
 	xlat_t		*xlat;
-
-	inst->config.name = cf_section_name2(conf);
-	if (!inst->config.name) inst->config.name = cf_section_name1(conf);
 
 	name = strrchr(inst->config.driver_name, '_');
 	if (!name) {
@@ -1010,7 +1008,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Register the cache xlat function
 	 */
-	xlat = xlat_register(inst, inst->config.name, cache_xlat, true);
+	xlat = xlat_register(inst, mctx->inst->name, cache_xlat, true);
 	xlat_func_args(xlat, cache_xlat_args);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, cache_xlat_thread_inst_t, NULL, inst);
 
@@ -1020,9 +1018,10 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 /** Create a new rlm_cache_instance
  *
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_cache_t	*inst = instance;
+	rlm_cache_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
 	CONF_SECTION	*update;
 
 	fr_assert(inst->config.key);
@@ -1084,7 +1083,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_status(rlm_rcode_t *p_result,
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
 
-	DEBUG3("Calling %s.status", inst->config.name);
+	DEBUG3("Calling %s.status", mctx->inst->name);
 
 	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
 			      request, inst->config.key, NULL, NULL);
@@ -1132,7 +1131,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_load(rlm_rcode_t *p_result, m
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
 
-	DEBUG3("Calling %s.load", inst->config.name);
+	DEBUG3("Calling %s.load", mctx->inst->name);
 
 	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
 			      request, inst->config.key, NULL, NULL);
@@ -1187,7 +1186,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(rlm_rcode_t *p_result, 
 	rlm_cache_handle_t 	*handle = NULL;
 	fr_pair_t		*vp;
 
-	DEBUG3("Calling %s.store", inst->config.name);
+	DEBUG3("Calling %s.store", mctx->inst->name);
 
 	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
 			      request, inst->config.key, NULL, NULL);
@@ -1284,7 +1283,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_clear(rlm_rcode_t *p_result, 
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
 
-	DEBUG3("Calling %s.clear", inst->config.name);
+	DEBUG3("Calling %s.clear", mctx->inst->name);
 
 	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
 			      request, inst->config.key, NULL, NULL);
@@ -1338,7 +1337,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl(rlm_rcode_t *p_result, mo
 	rlm_cache_handle_t 	*handle = NULL;
 	fr_pair_t		*vp;
 
-	DEBUG3("Calling %s.ttl", inst->config.name);
+	DEBUG3("Calling %s.ttl", mctx->inst->name);
 
 	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
 			      request, inst->config.key, NULL, NULL);

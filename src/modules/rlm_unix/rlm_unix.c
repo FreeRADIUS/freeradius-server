@@ -30,7 +30,7 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
-#define LOG_PREFIX inst->name
+#define LOG_PREFIX mctx->inst->name
 
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/server/base.h>
@@ -52,7 +52,6 @@ static char trans[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012
 #define ENC(c) trans[c]
 
 typedef struct {
-	char const *name;	//!< Instance name.
 	char const *radwtmp;
 } rlm_unix_t;
 
@@ -153,20 +152,17 @@ static int groupcmp(UNUSED void *instance, request_t *request, UNUSED fr_pair_li
 /*
  *	Read the config
  */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_unix_t		*inst = instance;
+	rlm_unix_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_unix_t);
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) {
-		inst->name = cf_section_name1(conf);
-
+	if (!cf_section_name2(mctx->inst->conf)) {
 		if (paircmp_register_by_name("Unix-Group", attr_user_name, false, groupcmp, inst) < 0) {
 			PERROR("Failed registering Unix-Group");
 			return -1;
 		}
 	} else {
-		char *unix_group = talloc_asprintf(inst, "%s-Unix-Group", inst->name);
+		char *unix_group = talloc_asprintf(inst, "%s-Unix-Group", mctx->inst->name);
 
 		if (paircmp_register_by_name(unix_group, attr_user_name, false, groupcmp, inst) < 0) {
 			PERROR("Failed registering %s", unix_group);

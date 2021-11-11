@@ -145,7 +145,7 @@ static xlat_action_t unpack_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *
 /*
  *	Register the xlats
  */
-static int mod_bootstrap(UNUSED void *instance, UNUSED CONF_SECTION *conf)
+static int mod_bootstrap(UNUSED module_inst_ctx_t const *mctx)
 {
 	xlat_t	*xlat;
 

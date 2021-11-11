@@ -70,8 +70,6 @@ fr_dict_attr_autoload_t rlm_dhcpv4_dict_attr[] = {
  *	be used as the instance handle.
  */
 typedef struct {
-	char const		*name;
-
 	fr_udp_queue_config_t	config;		//!< UDP queue config
 
 	uint32_t		max_packet_size;	//!< Maximum packet size.
@@ -106,18 +104,15 @@ static const CONF_PARSER module_config[] = {
  *
  * Bootstrap I/O and type submodules.
  *
- * @param[in] instance	Ctx data for this module
- * @param[in] conf    our configuration section parsed to give us instance.
+ * @param[in] mctx	data for this module
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_dhcpv4_t	*inst = talloc_get_type_abort(instance, rlm_dhcpv4_t);
-
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
+	rlm_dhcpv4_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_dhcpv4_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
 
 	/*
 	 *	Ensure that we have a destination address.
@@ -163,22 +158,23 @@ static void dhcpv4_queue_resume(bool sent, void *rctx)
 /** Instantiate thread data for the submodule.
  *
  */
-static int mod_thread_instantiate(CONF_SECTION const *cs, void *instance, fr_event_list_t *el, void *thread)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_dhcpv4_t *inst = talloc_get_type_abort(instance, rlm_dhcpv4_t);
-	rlm_dhcpv4_thread_t *t = talloc_get_type_abort(thread, rlm_dhcpv4_thread_t);
+	rlm_dhcpv4_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_dhcpv4_t);
+	rlm_dhcpv4_thread_t 	*t = talloc_get_type_abort(mctx->thread, rlm_dhcpv4_thread_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 
 	t->buffer = talloc_array(t, uint8_t, inst->max_packet_size);
 	if (!t->buffer) {
-		cf_log_err(cs, "Failed allocating buffer");
+		cf_log_err(conf, "Failed allocating buffer");
 		return -1;
 	}
 
 	t->buffer_size = inst->max_packet_size;
 
-	t->uq = fr_udp_queue_alloc(t, &inst->config, el, dhcpv4_queue_resume);
+	t->uq = fr_udp_queue_alloc(t, &inst->config, mctx->el, dhcpv4_queue_resume);
 	if (!t->uq) {
-		cf_log_err(cs, "Failed allocating outbound udp queue - %s", fr_strerror());
+		cf_log_err(conf, "Failed allocating outbound udp queue - %s", fr_strerror());
 		return -1;
 	}
 

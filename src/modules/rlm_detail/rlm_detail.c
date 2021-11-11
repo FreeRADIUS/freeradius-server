@@ -23,7 +23,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX inst->name
+#define LOG_PREFIX mctx->inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/exfile.h>
@@ -50,7 +50,6 @@ RCSID("$Id$")
  * Holds the configuration and preparsed data for a instance of rlm_detail.
  */
 typedef struct {
-	char const	*name;		//!< Instance name.
 	char const	*filename;	//!< File/path to write to.
 	uint32_t	perm;		//!< Permissions to use for new files.
 	char const	*group;		//!< Group to use for new files.
@@ -130,13 +129,11 @@ static int8_t detail_cmp(void const *a, void const *b)
 /*
  *	(Re-)read radiusd.conf into memory.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_detail_t *inst = instance;
+	rlm_detail_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_detail_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
 	CONF_SECTION	*cs;
-
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	/*
 	 *	Escape filenames only if asked.

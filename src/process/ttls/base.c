@@ -657,9 +657,9 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	return state->recv(p_result, mctx, request);
 }
 
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *process_app_cs)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	process_ttls_t	*inst = instance;
+	process_ttls_t	*inst = talloc_get_type_abort(mctx->inst->data, process_ttls_t);
 
 	inst->auth.state_tree = fr_state_tree_init(inst, attr_state, main_config->spawn_workers, inst->auth.max_session,
 						   inst->auth.session_timeout, inst->auth.state_server_id,
@@ -668,11 +668,11 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *process_app_cs)
 	return 0;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *cs)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	process_ttls_t	*inst = instance;
+	process_ttls_t	*inst = talloc_get_type_abort(mctx->inst->data, process_ttls_t);
 
-	inst->server_cs = cf_section_find_in_parent(cs, "server", CF_IDENT_ANY);
+	inst->server_cs = cf_section_find_in_parent(mctx->inst->conf, "server", CF_IDENT_ANY);
 	if (virtual_server_section_attribute_define(inst->server_cs, "authenticate", attr_auth_type) < 0) return -1;
 
 	return 0;

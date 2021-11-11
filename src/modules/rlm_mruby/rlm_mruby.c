@@ -129,9 +129,9 @@ static void mruby_parse_config(mrb_state *mrb, CONF_SECTION *cs, int lvl, mrb_va
  *	to external databases, read configuration files, set up
  *	dictionary entries, etc.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_mruby_t *inst = instance;
+	rlm_mruby_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_mruby_t);
 	mrb_state *mrb;
 	CONF_SECTION *cs;
 	FILE *f;
@@ -489,7 +489,7 @@ RLM_MRUBY_FUNC(accounting)
  */
 static int mod_detach(void *instance)
 {
-	rlm_mruby_t *inst = instance;
+	rlm_mruby_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_mruby_t);
 
 	mrb_close(inst->mrb);
 

@@ -546,7 +546,7 @@ static size_t sql_escape_func(request_t *request, char *out, size_t outlen, char
 
 static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_SECTION *conf)
 {
-	rlm_sql_postgres_t	*inst = instance;
+	rlm_sql_postgres_t	*inst = talloc_get_type_abort(instance, rlm_sql_postgres_t);
 	char 			application_name[NAMEDATALEN];
 	char			*db_string;
 

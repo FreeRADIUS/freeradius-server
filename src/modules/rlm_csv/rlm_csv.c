@@ -42,7 +42,6 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
  *	be used as the instance handle.
  */
 typedef struct {
-	char const	*name;
 	char const	*filename;
 	char const	*delimiter;
 	char const	*fields;
@@ -386,7 +385,7 @@ static int fieldname2offset(rlm_csv_t const *inst, char const *field_name, int *
  */
 static int csv_map_verify(map_t *map, void *instance)
 {
-	rlm_csv_t *inst = instance;
+	rlm_csv_t *inst = talloc_get_type_abort(instance, rlm_csv_t);
 	int offset;
 	fr_type_t type = FR_TYPE_NULL;
 
@@ -511,17 +510,15 @@ static int csv_maps_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_i
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_csv_t *inst = instance;
-	int i;
-	char const *p;
-	char *q;
-	char *fields;
+	rlm_csv_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_csv_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
+	int		i;
+	char const	*p;
+	char		*q;
+	char		*fields;
 	fr_htrie_type_t	htype;
-
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	if (inst->delimiter[1]) {
 		cf_log_err(conf, "'delimiter' must be one character long");
@@ -738,7 +735,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	And register the `map csv <key> { ... }` function.
 	 */
-	map_proc_register(inst, inst->name, mod_map_proc, csv_maps_verify, 0);
+	map_proc_register(inst, mctx->inst->name, mod_map_proc, csv_maps_verify, 0);
 
 	return 0;
 }
@@ -748,18 +745,18 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
  *
  * Creates a new instance of the module reading parameters from a configuration section.
  *
- * @param conf to parse.
- * @param instance configuration data.
+ * @param[in] mctx	configuration data.
  * @return
  *	- 0 on success.
  *	- < 0 on failure.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_csv_t *inst = instance;
-	CONF_SECTION *cs;
-	int lineno;
-	FILE *fp;
+	rlm_csv_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_csv_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
+	CONF_SECTION	*cs;
+	int		lineno;
+	FILE		*fp;
 	tmpl_rules_t	parse_rules = {
 		.allow_foreign = true	/* Because we don't know where we'll be called */
 	};
