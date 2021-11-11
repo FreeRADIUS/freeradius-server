@@ -63,7 +63,7 @@ typedef struct {
 	char const	*db_string;		//!< Text based configuration string.
 	bool		send_application_name;	//!< Whether we send the application name to PostgreSQL.
 	fr_trie_t	*states;		//!< sql state trie.
-} rlm_sql_postgres_t;
+} rlm_sql_postgresql_t;
 
 typedef struct {
 	PGconn		*db;
@@ -75,7 +75,7 @@ typedef struct {
 } rlm_sql_postgres_conn_t;
 
 static CONF_PARSER driver_config[] = {
-	{ FR_CONF_OFFSET("send_application_name", FR_TYPE_BOOL, rlm_sql_postgres_t, send_application_name), .dflt = "yes" },
+	{ FR_CONF_OFFSET("send_application_name", FR_TYPE_BOOL, rlm_sql_postgresql_t, send_application_name), .dflt = "yes" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -149,7 +149,7 @@ static void free_result_row(rlm_sql_postgres_conn_t *conn)
 }
 
 #if defined(PG_DIAG_SQLSTATE) && defined(PG_DIAG_MESSAGE_PRIMARY)
-static sql_rcode_t sql_classify_error(rlm_sql_postgres_t *inst, ExecStatusType status, PGresult const *result)
+static sql_rcode_t sql_classify_error(rlm_sql_postgresql_t *inst, ExecStatusType status, PGresult const *result)
 {
 	char const		*error_code;
 	char const		*error_msg;
@@ -235,7 +235,7 @@ static int _sql_socket_destructor(rlm_sql_postgres_conn_t *conn)
 static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
 					    UNUSED fr_time_delta_t timeout)
 {
-	rlm_sql_postgres_t *inst = config->driver;
+	rlm_sql_postgresql_t *inst = config->driver;
 	rlm_sql_postgres_conn_t *conn;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_postgres_conn_t));
@@ -265,7 +265,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 					      char const *query)
 {
 	rlm_sql_postgres_conn_t	*conn = handle->conn;
-	rlm_sql_postgres_t	*inst = config->driver;
+	rlm_sql_postgresql_t	*inst = config->driver;
 	fr_time_delta_t		timeout = config->query_timeout;
 	fr_time_t		start;
 	int			sockfd;
@@ -546,7 +546,7 @@ static size_t sql_escape_func(request_t *request, char *out, size_t outlen, char
 
 static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_SECTION *conf)
 {
-	rlm_sql_postgres_t	*inst = talloc_get_type_abort(instance, rlm_sql_postgres_t);
+	rlm_sql_postgresql_t	*inst = talloc_get_type_abort(instance, rlm_sql_postgresql_t);
 	char 			application_name[NAMEDATALEN];
 	char			*db_string;
 
@@ -670,7 +670,7 @@ rlm_sql_driver_t rlm_sql_postgresql = {
 	.name				= "rlm_sql_postgresql",
 	.magic				= RLM_MODULE_INIT,
 	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
-	.inst_size			= sizeof(rlm_sql_postgres_t),
+	.inst_size			= sizeof(rlm_sql_postgresql_t),
 	.onload				= mod_load,
 	.config				= driver_config,
 	.instantiate			= mod_instantiate,
