@@ -493,6 +493,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_unbound_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_unbound_t);
 	xlat_t		*xlat;
 
+	inst->name = mctx->inst->name;
+
 	if (inst->timeout > 10000) {
 		cf_log_err(mctx->inst->conf, "timeout must be 0 to 10000");
 		return -1;
