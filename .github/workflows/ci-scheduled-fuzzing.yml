@@ -144,7 +144,9 @@ jobs:
         path: .git/lfs
         key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}-v1
 
-    # Now the LFS pull will be local if we hit the cache, or remote otherwise
+    #
+    #  Now the LFS pull will be local if we hit the cache, or remote otherwise
+    #
     - name: Git LFS pull
       run: git lfs pull
 
@@ -183,11 +185,13 @@ jobs:
         pcre-config --libs-posix --version 2>/dev/null || :
         pcre2-config --libs-posix --version 2>/dev/null || :
 
-    # We walk up the tree if necessary to find a commit that builds so that we
-    # will fuzz something
     #
-    # When we find a working commit we run the unit tests to create seed data
-    # from the latest versions of the unit tests.
+    #  We walk up the tree if necessary to find a commit that builds so that we
+    #  will fuzz something
+    #
+    #  When we find a working commit we run the unit tests to create seed data
+    #  from the latest versions of the unit tests.
+    #
     - name: Find a commit that builds
       id: pick_commit
       run: |
@@ -230,3 +234,25 @@ jobs:
         path: build/fuzzer
         retention-days: 30
       if: ${{ failure() }}
+
+    #
+    #  Merge and push back the corpus
+    #
+    #  We can push the LFS file directly, but we must use the GitHub API to
+    #  create the actual commit due to the "signed-commits" branch protection
+    #  rule for the master branch.
+    #
+    - name: Push back the merged corpus
+      run: |
+        make test.fuzzer.$PROTOCOL.merge
+        export FILE=src/tests/fuzzer-corpus/$PROTOCOL.tar
+        if ! git diff --exit-code "$FILE"; then
+          pip install PyGithub
+          git add "$FILE"
+          OID="$(git lfs ls-files -l -I "$FILE" | cut -f1 -d ' ')"
+          git lfs push --object-id origin "$OID"
+          export CONTENTS="$(git show ":$FILE")"
+          python3 scripts/ci/commit_lfs_file_update.py
+        fi
+      env:
+        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
