@@ -98,8 +98,7 @@ static int edit_undo(fr_edit_t *e)
 		fr_assert(rcode == 0);
 		break;
 
-	case FR_EDIT_INSERT_BEFORE:
-	case FR_EDIT_INSERT_AFTER:
+	case FR_EDIT_INSERT:
 		/*
 		 *	We can free the VP here, as any edits to its'
 		 *	children MUST come after the creation of the
@@ -220,8 +219,7 @@ int fr_edit_list_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_p
 			 *	pair (inserted, deleted, or updated
 			 *	the value), as the pair is new!
 			 */
-		case FR_EDIT_INSERT_BEFORE:
-		case FR_EDIT_INSERT_AFTER:
+		case FR_EDIT_INSERT:
 			fr_assert(0);
 			return -1;
 
@@ -249,8 +247,7 @@ int fr_edit_list_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_p
 			 *	edit list is freed, the VP will be
 			 *	freed.
 			 */
-			if ((e->op == FR_EDIT_INSERT_BEFORE) ||
-			    (e->op == FR_EDIT_INSERT_AFTER)) {
+			if (e->op == FR_EDIT_INSERT) {
 				fr_assert(e->list == list);
 
 				fr_pair_remove(list, vp);
@@ -308,18 +305,7 @@ int fr_edit_list_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_p
 		}
 		break;
 
-	case FR_EDIT_INSERT_BEFORE:
-		fr_assert(list != NULL);
-
-		/*
-		 *	There's no need to record "prev".  On undo, we
-		 *	just delete this pair from the list.
-		 */
-		e->list = list;
-		fr_pair_insert_before(list, ref, vp);
-		break;
-
-	case FR_EDIT_INSERT_AFTER:
+	case FR_EDIT_INSERT:
 		fr_assert(list != NULL);
 
 		/*
@@ -365,8 +351,7 @@ static int _edit_list_destructor(fr_edit_list_t *el)
 			fr_assert(0);
 			break;
 
-		case FR_EDIT_INSERT_BEFORE:
-		case FR_EDIT_INSERT_AFTER:
+		case FR_EDIT_INSERT:
 			break;
 
 		case FR_EDIT_DELETE:

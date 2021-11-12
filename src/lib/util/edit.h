@@ -35,8 +35,7 @@ typedef enum {
 	FR_EDIT_INVALID = 0,
 	FR_EDIT_DELETE,			//!< delete a VP
 	FR_EDIT_VALUE,			//!< edit a VP in place
-	FR_EDIT_INSERT_BEFORE, 		//!< insert a VP into a list, before another one
-	FR_EDIT_INSERT_AFTER,		//!< insert a VP into a list, after another one.
+	FR_EDIT_INSERT,			//!< insert a VP into a list, after another one.
 } fr_edit_op_t;
 
 typedef struct fr_edit_list_s fr_edit_list_t;
