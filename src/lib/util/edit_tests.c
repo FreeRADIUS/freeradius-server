@@ -130,7 +130,7 @@ static void test_pair_delete_head(void)
 	vp = fr_pair_list_head(&local_pairs);
 
 	el = fr_edit_list_alloc(NULL);
-	TEST_CHECK(el != NULL);
+	fr_assert(el != NULL);
 
 	rcode = fr_edit_list_record(el, FR_EDIT_DELETE, vp, &local_pairs, NULL);
 	TEST_CHECK(rcode == 0);
@@ -163,7 +163,7 @@ static void test_pair_delete_head_abort(void)
 	vp = fr_pair_list_head(&local_pairs);
 
 	el = fr_edit_list_alloc(NULL);
-	TEST_CHECK(el != NULL);
+	fr_assert(el != NULL);
 
 	rcode = fr_edit_list_record(el, FR_EDIT_DELETE, vp, &local_pairs, NULL);
 	TEST_CHECK(rcode == 0);
@@ -196,10 +196,10 @@ static void test_pair_delete_middle(void)
 
 	vp = fr_pair_list_head(&local_pairs);
 	vp = fr_pair_list_next(&local_pairs, vp);
-	TEST_CHECK(vp != NULL);
+	fr_assert(vp != NULL);
 
 	el = fr_edit_list_alloc(NULL);
-	TEST_CHECK(el != NULL);
+	fr_assert(el != NULL);
 
 	rcode = fr_edit_list_record(el, FR_EDIT_DELETE, vp, &local_pairs, NULL);
 	TEST_CHECK(rcode == 0);
@@ -234,11 +234,11 @@ static void test_pair_delete_middle_abort(void)
 
 	vp = fr_pair_list_head(&local_pairs);
 	middle = fr_pair_list_next(&local_pairs, vp);
-	TEST_CHECK(middle != NULL);
+	fr_assert(middle != NULL);
 	TEST_CHECK(middle->da == fr_dict_attr_test_octets);
 
 	el = fr_edit_list_alloc(NULL);
-	TEST_CHECK(el != NULL);
+	fr_assert(el != NULL);
 
 	rcode = fr_edit_list_record(el, FR_EDIT_DELETE, middle, &local_pairs, NULL);
 	TEST_CHECK(rcode == 0);
@@ -277,16 +277,16 @@ static void test_pair_delete_multiple(void)
 
 	vp = fr_pair_list_head(&local_pairs);
 	vp = fr_pair_list_next(&local_pairs, vp);
-	TEST_CHECK(vp != NULL);
+	fr_assert(vp != NULL);
 
 	el = fr_edit_list_alloc(NULL);
-	TEST_CHECK(el != NULL);
+	fr_assert(el != NULL);
 
 	rcode = fr_edit_list_record(el, FR_EDIT_DELETE, vp, &local_pairs, NULL); /* middle */
 	TEST_CHECK(rcode == 0);
 
 	vp = fr_pair_list_tail(&local_pairs);
-	TEST_CHECK(vp != NULL);
+	fr_assert(vp != NULL);
 
 	rcode = fr_edit_list_record(el, FR_EDIT_DELETE, vp, &local_pairs, NULL); /* tail */
 	TEST_CHECK(rcode == 0);
@@ -323,13 +323,13 @@ static void test_pair_delete_multiple_abort(void)
 	TEST_CHECK(vp->da == fr_dict_attr_test_octets);
 
 	el = fr_edit_list_alloc(NULL);
-	TEST_CHECK(el != NULL);
+	fr_assert(el != NULL);
 
 	rcode = fr_edit_list_record(el, FR_EDIT_DELETE, vp, &local_pairs, NULL); /* middle */
 	TEST_CHECK(rcode == 0);
 
 	vp = fr_pair_list_tail(&local_pairs);
-	TEST_CHECK(vp != NULL);
+	fr_assert(vp != NULL);
 
 	rcode = fr_edit_list_record(el, FR_EDIT_DELETE, vp, &local_pairs, NULL); /* tail */
 	TEST_CHECK(rcode == 0);
@@ -367,10 +367,10 @@ static void test_pair_edit_value(void)
 	add_pairs(&local_pairs);
 
 	vp = fr_pair_list_head(&local_pairs);
-	TEST_CHECK(vp != NULL);
+	fr_assert(vp != NULL);
 
 	el = fr_edit_list_alloc(NULL);
-	TEST_CHECK(el != NULL);
+	fr_assert(el != NULL);
 
 	rcode = fr_edit_list_record(el, FR_EDIT_VALUE, vp, NULL, NULL);
 	TEST_CHECK(rcode == 0);
@@ -401,10 +401,10 @@ static void test_pair_edit_value_abort(void)
 	add_pairs(&local_pairs);
 
 	vp = fr_pair_list_head(&local_pairs);
-	TEST_CHECK(vp != NULL);
+	fr_assert(vp != NULL);
 
 	el = fr_edit_list_alloc(NULL);
-	TEST_CHECK(el != NULL);
+	fr_assert(el != NULL);
 
 	rcode = fr_edit_list_record(el, FR_EDIT_VALUE, vp, NULL, NULL);
 	TEST_CHECK(rcode == 0);
