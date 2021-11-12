@@ -113,7 +113,6 @@ static int edit_undo(fr_edit_t *e)
 		 *	must come after this VP was created.
 		 */
 		fr_pair_delete(e->list, vp);
-		talloc_free(vp);
 		break;
 	}
 
@@ -141,6 +140,11 @@ void fr_edit_list_abort(fr_edit_list_t *el)
 	 */
 	while ((e = fr_dlist_pop_tail(&el->list)) != NULL) {
 		edit_undo(e);
+		/*
+		 *	Don't free "e", it will be cleaned up when we
+		 *	talloc_free(el).  That should be somewhat
+		 *	faster than doing it incrementally.
+		 */
 	};
 }
 
