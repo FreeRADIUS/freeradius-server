@@ -101,15 +101,9 @@ static int edit_undo(fr_edit_t *e)
 		return -1;
 
 	case FR_EDIT_VALUE:
-		if (fr_type_is_leaf(vp->vp_type)) {
-			if (!fr_type_is_fixed_size(vp->vp_type)) fr_value_box_clear(&vp->data);
-			fr_value_box_copy_shallow(NULL, &vp->data, &e->data);
-		} else {
-			fr_assert(fr_type_is_structural(vp->vp_type));
-
-			fr_pair_list_free(&vp->vp_group);
-			fr_pair_list_append(&vp->vp_group, &e->children);
-		}
+		fr_assert(fr_type_is_leaf(vp->vp_type));
+		if (!fr_type_is_fixed_size(vp->vp_type)) fr_value_box_clear(&vp->data);
+		fr_value_box_copy_shallow(NULL, &vp->data, &e->data);
 		break;
 
 	case FR_EDIT_DELETE:
@@ -223,20 +217,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 			 *	issues with the code.
 			 */
 			fr_assert(e->op != FR_EDIT_DELETE);
-
-			/*
-			 *	We're over-writing (again) the
-			 *	children of a structural type.
-			 *
-			 *	Save the attributes we added in the
-			 *	previous T_OP_SET operation.  Some
-			 *	other edit may be changing them, so we
-			 *	don't want to delete the attributes
-			 *	until we're done.
-			 */
-			if (fr_type_is_structural(vp->vp_type) && !fr_pair_list_empty(&vp->vp_group)) {
-				fr_pair_list_append(&el->deleted_pairs, &vp->vp_group);
-			}
+			fr_assert(fr_type_is_leaf(vp->vp_type));
 			return 0;
 
 			/*
@@ -319,17 +300,11 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 		fr_assert(list == NULL);
 		fr_assert(ref == NULL);
 
-		if (fr_type_is_leaf(vp->vp_type)) {
-			fr_value_box_copy_shallow(NULL, &e->data, &vp->data);
-			if (!fr_type_is_fixed_size(vp->vp_type)) fr_value_box_memdup_shallow(&vp->data, vp->data.enumv,
-											     e->data.vb_octets, e->data.vb_length,
-											     e->data.tainted);
-		} else {
-			fr_assert(fr_type_is_structural(vp->vp_type));
-
-			fr_pair_list_init(&e->children);
-			fr_pair_list_append(&e->children, &vp->vp_group);
-		}
+		fr_assert(fr_type_is_leaf(vp->vp_type));
+		fr_value_box_copy_shallow(NULL, &e->data, &vp->data);
+		if (!fr_type_is_fixed_size(vp->vp_type)) fr_value_box_memdup_shallow(&vp->data, vp->data.enumv,
+										     e->data.vb_octets, e->data.vb_length,
+										     e->data.tainted);
 		break;
 
 	case FR_EDIT_INSERT:
@@ -469,12 +444,8 @@ static int _edit_list_destructor(fr_edit_list_t *el)
 			break;
 
 		case FR_EDIT_VALUE:
-			if (fr_type_is_leaf(e->vp->vp_type)) {
-				fr_value_box_clear(&e->data);
-			} else {
-				fr_assert(fr_type_is_structural(e->vp->vp_type));
-				fr_pair_list_free(&e->children);
-			}
+			fr_assert(fr_type_is_leaf(e->vp->vp_type));
+			fr_value_box_clear(&e->data);
 			break;
 		}
 	}
