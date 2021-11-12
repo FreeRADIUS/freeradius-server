@@ -133,7 +133,7 @@ static int edit_undo(fr_edit_t *e)
  *  After this call, the input list(s) are unchanged from before any
  *  edits were made.
  *
- *  the caller still has to call talloc_free(el);
+ *  the caller does not have to call talloc_free(el);
  */
 void fr_edit_list_abort(fr_edit_list_t *el)
 {
@@ -155,6 +155,8 @@ void fr_edit_list_abort(fr_edit_list_t *el)
 		 *	faster than doing it incrementally.
 		 */
 	};
+
+	talloc_free(el);
 }
 
 /** Record one particular edit

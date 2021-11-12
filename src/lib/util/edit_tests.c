@@ -177,8 +177,6 @@ static void test_pair_delete_head_abort(void)
 	 */
 	fr_edit_list_abort(el);
 
-	talloc_free(el);
-
 	expect3(&local_pairs);
 }
 
@@ -257,8 +255,6 @@ static void test_pair_delete_middle_abort(void)
 	 *	Abort the edit
 	 */
 	fr_edit_list_abort(el);
-
-	talloc_free(el);
 
 	expect3(&local_pairs);
 }
@@ -349,8 +345,6 @@ static void test_pair_delete_multiple_abort(void)
 	 */
 	fr_edit_list_abort(el);
 
-	talloc_free(el);
-
 	expect3(&local_pairs);
 }
 
@@ -418,8 +412,6 @@ static void test_pair_edit_value_abort(void)
 	 *	Abort the edit
 	 */
 	fr_edit_list_abort(el);
-
-	talloc_free(el);
 
 	vp = fr_pair_list_head(&local_pairs);
 	TEST_CHECK(vp->da == fr_dict_attr_test_uint32);
@@ -489,7 +481,6 @@ static void test_pair_insert_after_head_abort(void)
 	 *	Abort the edit
 	 */
 	fr_edit_list_abort(el);
-	talloc_free(el);
 
 	expect3(&local_pairs);
 }
@@ -559,7 +550,6 @@ static void test_pair_insert_after_middle_abort(void)
 	 *	Abort the edit
 	 */
 	fr_edit_list_abort(el);
-	talloc_free(el);
 
 	expect3(&local_pairs);
 }
