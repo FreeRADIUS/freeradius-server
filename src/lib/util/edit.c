@@ -162,7 +162,8 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 {
 	fr_edit_t *e;
 
-	if (!el) return 0;
+	fr_assert(el != NULL);
+	fr_assert(vp != NULL);
 
 	/*
 	 *	Search for previous edits.
@@ -339,19 +340,79 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 	return 0;
 }
 
-int fr_edit_list_insert(fr_edit_list_t *el, fr_pair_t *vp, fr_pair_list_t *list, fr_pair_t *prev)
+
+/** Insert a new VP after an existing one.
+ *
+ *  This function mirrors fr_pair_insert_after().
+ *
+ *  After this function returns, the new VP has been inserted into the
+ *  list.
+ */
+int fr_edit_list_insert_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *vp)
 {
-	return edit_record(el, FR_EDIT_INSERT, vp, list, prev);
+	if (!el) return 0;
+
+	return edit_record(el, FR_EDIT_INSERT, vp, list, pos);
 }
 
-int fr_edit_list_delete(fr_edit_list_t *el, fr_pair_t *vp, fr_pair_list_t *list)
+
+/** Delete a VP
+ *
+ *  This function mirrors fr_pair_delete()
+ *
+ *  After this function returns, the VP has been removed from the list.
+ */
+int fr_edit_list_delete(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *vp)
 {
 	return edit_record(el, FR_EDIT_DELETE, vp, list, NULL);
 }
 
-int fr_edit_list_record(fr_edit_list_t *el, fr_pair_t *vp)
+/** Record the value of a leaf #fr_value_box_t
+ *
+ *  After this function returns, it's safe to edit the pair.
+ */
+int fr_edit_list_record_value(fr_edit_list_t *el, fr_pair_t *vp)
 {
+	if (!el) return 0;
+
+	if (!fr_type_is_leaf(vp->vp_type)) return -1;
+
 	return edit_record(el, FR_EDIT_VALUE, vp, NULL, NULL);
+}
+
+/** Replace a pair with another one.
+ *
+ *  This function mirrors fr_pair_replace().
+ *
+ *  After this function returns, the new VP has replaced the old one,
+ *  and the new one can be edited.
+ */
+int fr_edit_list_replace(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *vp)
+{
+	if (!el) return 0;
+
+	if (to_replace->da != vp->da) return -1;
+
+	if (edit_record(el, FR_EDIT_INSERT, vp, list, to_replace) < 0) return -1;
+
+	/*
+	 *	If deleting the old entry fails, then the new entry
+	 *	above MUST be the last member of the edit list.  If
+	 *	it's not the last member, then it means that it
+	 *	already existed in the list (either VP list of edit
+	 *	list).  The edit_record() function checks for that,
+	 *	and errors if so.
+	 */
+	if (edit_record(el, FR_EDIT_DELETE, to_replace, list, NULL) < 0) {
+		fr_edit_t *e = fr_dlist_pop_tail(&el->list);
+
+		fr_assert(e != NULL);
+		fr_assert(e->vp == vp);
+		talloc_free(e);
+		return -1;
+	}
+
+	return 0;
 }
 
 

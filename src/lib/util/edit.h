@@ -37,11 +37,13 @@ fr_edit_list_t *fr_edit_list_alloc(TALLOC_CTX *ctx);
 
 void fr_edit_list_abort(fr_edit_list_t *el);
 
-int fr_edit_list_insert(fr_edit_list_t *el, fr_pair_t *vp, fr_pair_list_t *list, fr_pair_t *prev);
+int fr_edit_list_insert_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *vp) CC_HINT(nonnull(2,4));
 
-int fr_edit_list_delete(fr_edit_list_t *el, fr_pair_t *vp, fr_pair_list_t *list);
+int fr_edit_list_delete(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull(2,3));
 
-int fr_edit_list_record(fr_edit_list_t *el, fr_pair_t *vp);
+int fr_edit_list_record_value(fr_edit_list_t *el, fr_pair_t *vp) CC_HINT(nonnull(2));
+
+int fr_edit_list_replace(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *vp) CC_HINT(nonnull(2,3,4));
 
 #ifdef __cplusplus
 }
