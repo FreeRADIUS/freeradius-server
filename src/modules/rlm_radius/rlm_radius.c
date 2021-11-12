@@ -377,11 +377,7 @@ static void mod_radius_signal(module_ctx_t const *mctx, request_t *request, fr_s
 
 	if (!inst->io->signal) return;
 
-	inst->io->signal(&(module_ctx_t){
-				.inst = inst->io_submodule,
-				.thread = t->io_thread,
-				.rctx = mctx->rctx
-			 }, request, action);
+	inst->io->signal(MODULE_CTX(inst->io_submodule, t->io_thread, mctx->rctx), request, action);
 }
 
 
@@ -393,12 +389,7 @@ static unlang_action_t mod_radius_resume(rlm_rcode_t *p_result, module_ctx_t con
 	rlm_radius_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_radius_t);
 	rlm_radius_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_radius_thread_t);
 
-	return inst->io->resume(p_result,
-				&(module_ctx_t){
-					.inst = inst->io_submodule,
-					.thread = t->io_thread,
-					.rctx = mctx->rctx
-				}, request);
+	return inst->io->resume(p_result, MODULE_CTX(inst->io_submodule, t->io_thread, mctx->rctx), request);
 }
 
 /** Do any RADIUS-layer fixups for proxying.
@@ -517,11 +508,8 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 	 *	connections.
 	 */
 	if (inst->io->thread_detach &&
-	    (inst->io->thread_detach(&(module_thread_inst_ctx_t){
-	    				.inst = inst->io_submodule,
-	    				.thread = t->io_thread,
-	    				.el = mctx->el
-	    			     }) < 0)) {
+	    (inst->io->thread_detach(MODULE_THREAD_INST_CTX(inst->io_submodule,
+	    						    t->io_thread, mctx->el)) < 0)) {
 		return -1;
 	}
 
@@ -555,11 +543,8 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	 *	sockets, set timers, etc.
 	 */
 	if (inst->io->thread_instantiate &&
-	    inst->io->thread_instantiate(&(module_thread_inst_ctx_t){
-	    					.inst = inst->io_submodule,
-	    					.thread = t->io_thread,
-	    					.el = mctx->el
-	    				 }) < 0) return -1;
+	    inst->io->thread_instantiate(MODULE_THREAD_INST_CTX(inst->io_submodule,
+	    							t->io_thread, mctx->el)) < 0) return -1;
 
 	return 0;
 }
@@ -569,9 +554,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_radius_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_radius_t);
 
 	if (inst->io->instantiate &&
-	    inst->io->instantiate(&(module_inst_ctx_t){
-	    				.inst = inst->io_submodule
-	    			  }) < 0) return -1;
+	    inst->io->instantiate(MODULE_INST_CTX(inst->io_submodule)) < 0) return -1;
 
 	return 0;
 }
@@ -756,9 +739,7 @@ setup_io_submodule:
 	 *	Bootstrap the submodule.
 	 */
 	if (inst->io->bootstrap &&
-	    inst->io->bootstrap(&(module_inst_ctx_t){
-	    				.inst = inst->io_submodule
-	    			}) < 0) return -1;
+	    inst->io->bootstrap(MODULE_INST_CTX(inst->io_submodule)) < 0) return -1;
 
 	return 0;
 }

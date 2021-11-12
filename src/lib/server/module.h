@@ -31,6 +31,7 @@ extern "C" {
 
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/module_ctx.h>
 #include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/compile.h>
 #include <freeradius-devel/util/event.h>
@@ -39,9 +40,6 @@ typedef struct module_s				module_t;
 typedef struct module_method_names_s		module_method_names_t;
 typedef struct module_instance_s		module_instance_t;
 typedef struct module_thread_instance_s		module_thread_instance_t;
-typedef struct module_ctx_s			module_ctx_t;
-typedef struct module_inst_ctx_s		module_inst_ctx_t;
-typedef struct module_thread_inst_ctx_s		module_thread_inst_ctx_t;
 
 #define RLM_TYPE_THREAD_SAFE	(0 << 0) 	//!< Module is threadsafe.
 #define RLM_TYPE_THREAD_UNSAFE	(1 << 0) 	//!< Module is not threadsafe.
@@ -252,33 +250,6 @@ typedef struct {
 	module_method_t			func;		//!< State function.
 } module_state_func_table_t;
 
-/** Temporary structure to hold arguments for module calls
- *
- */
-struct module_ctx_s {
-	dl_module_inst_t const		*inst;		//!< Dynamic loader API handle for the module.
-	void				*thread;	//!< Thread specific instance data.
-	void				*rctx;		//!< Resume ctx that a module previously set.
-};
-
-/** Temporary structure to hold arguments for instantiation calls
- *
- */
-struct module_inst_ctx_s {
-	dl_module_inst_t const		*inst;		//!< Dynamic loader API handle for the module.
-};
-
-/** Temporary structure to hold arguments for thread_instantiation calls
- *
- */
-struct module_thread_inst_ctx_s {
-	dl_module_inst_t const		*inst;		//!< Dynamic loader API handle for the module.
-							///< Must come first to allow cast between
-							///< module_inst_ctx.
-	void				*thread;	//!< Thread instance data.
-	fr_event_list_t			*el;		//!< Event list to register any IO handlers
-							///< and timers against.
-};
 
 /** @name Convenience wrappers around other internal APIs to make them easier to instantiate with modules
  *

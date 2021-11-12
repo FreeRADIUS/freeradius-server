@@ -24,6 +24,9 @@
  * @copyright 2016-2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
+#define _DL_MODULE_PRIVATE 1
+#include <freeradius-devel/server/dl_module.h>
+
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/debug.h>
 
@@ -32,9 +35,6 @@ RCSID("$Id$")
 
 #include <ctype.h>
 #include <unistd.h>
-
-#define _DL_MODULE_PRIVATE 1
-#include <freeradius-devel/server/dl_module.h>
 
 #define DL_INIT_CHECK fr_assert(dl_module_loader)
 

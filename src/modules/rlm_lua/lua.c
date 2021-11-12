@@ -881,7 +881,7 @@ int fr_lua_init(lua_State **out, module_inst_ctx_t const *mctx)
 	rlm_lua_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_lua_t);
 	lua_State		*L;
 
-	fr_lua_util_set_mctx(&(module_ctx_t){ .inst = mctx->inst });
+	fr_lua_util_set_mctx(MODULE_CTX_FROM_INST(mctx));
 
 	L = luaL_newstate();
 	if (!L) {

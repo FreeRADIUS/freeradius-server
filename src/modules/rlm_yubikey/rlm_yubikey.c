@@ -190,7 +190,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 #ifndef HAVE_YUBIKEY
 	if (inst->decrypt) {
-		cf_log_err(conf, "Requires libyubikey for OTP decryption");
+		cf_log_err(mctx->inst->conf, "Requires libyubikey for OTP decryption");
 		return -1;
 	}
 #endif

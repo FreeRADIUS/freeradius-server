@@ -656,7 +656,7 @@ static int python_function_load(module_inst_ctx_t const *mctx, python_func_def_t
 	if (!def->module) {
 		ERROR("%s - Module '%s' load failed", funcname, def->module_name);
 	error:
-		python_error_log(&(module_ctx_t){ .inst = mctx->inst }, NULL);
+		python_error_log(MODULE_CTX_FROM_INST(mctx), NULL);
 		Py_XDECREF(def->function);
 		def->function = NULL;
 		Py_XDECREF(def->module);
@@ -781,7 +781,7 @@ static int python_module_import_config(module_inst_ctx_t const *mctx, CONF_SECTI
 	error:
 		Py_XDECREF(inst->pythonconf_dict);
 		inst->pythonconf_dict = NULL;
-		python_error_log(&(module_ctx_t){ .inst = mctx->inst }, NULL);
+		python_error_log(MODULE_CTX_FROM_INST(mctx), NULL);
 		return -1;
 	}
 
@@ -809,7 +809,7 @@ static int python_module_import_constants(module_inst_ctx_t const *mctx, PyObjec
 	for (i = 0; freeradius_constants[i].name; i++) {
 		if ((PyModule_AddIntConstant(module, freeradius_constants[i].name, freeradius_constants[i].value)) < 0) {
 			ERROR("Failed adding constant to module");
-			python_error_log(&(module_ctx_t){ .inst = mctx->inst }, NULL);
+			python_error_log(MODULE_CTX_FROM_INST(mctx), NULL);
 			return -1;
 		}
 	}
@@ -878,7 +878,7 @@ static int python_interpreter_init(module_inst_ctx_t const *mctx)
 	 *	called during interpreter initialisation
 	 *	it can get at the current instance config.
 	 */
-	current_mctx = &(module_ctx_t){ .inst = mctx->inst };
+	current_mctx = MODULE_CTX_FROM_INST(mctx);
 	current_conf = conf;
 
 	PyEval_RestoreThread(global_interpreter);
@@ -975,7 +975,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	if (inst->instantiate.function) {
 		rlm_rcode_t rcode;
 
-		do_python_single(&rcode, &(module_ctx_t){ .inst = mctx->inst }, NULL, inst->instantiate.function, "instantiate");
+		do_python_single(&rcode, MODULE_CTX_FROM_INST(mctx), NULL, inst->instantiate.function, "instantiate");
 		switch (rcode) {
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_REJECT:
@@ -1019,7 +1019,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	if (inst->detach.function) {
 		rlm_rcode_t rcode;
 
-		(void)do_python_single(&rcode, &(module_ctx_t){ .inst = mctx->inst }, NULL, inst->detach.function, "detach");
+		(void)do_python_single(&rcode, MODULE_CTX_FROM_INST(mctx), NULL, inst->detach.function, "detach");
 	}
 
 #define PYTHON_FUNC_DESTROY(_x) python_function_destroy(&inst->_x)

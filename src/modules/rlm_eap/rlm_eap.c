@@ -178,10 +178,9 @@ static int submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 	case FR_EAP_METHOD_AKA:
 	case FR_EAP_METHOD_SIM:
 	{
-		module_inst_ctx_t *mctx = &(module_inst_ctx_t){
-			.inst = ((dl_module_inst_t *)cf_data_value(cf_data_find(eap_cs,
-								   dl_module_inst_t, "rlm_eap")))
-		};
+		module_inst_ctx_t *mctx = MODULE_INST_CTX(
+			((dl_module_inst_t *)cf_data_value(cf_data_find(eap_cs,
+									dl_module_inst_t, "rlm_eap"))));
 		WARN("Ignoring EAP method %s because we don't have OpenSSL support", name);
 
 		talloc_free(our_name);

@@ -114,13 +114,13 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	 */
 	if (inst->interpreter) {
 		if (inst->func_detach) {
-			fr_lua_run(&ret, &(module_ctx_t){
-						.inst = mctx->inst,
-						.thread = &(rlm_lua_thread_t){
+			fr_lua_run(&ret,
+				   MODULE_CTX(mctx->inst,
+					      &(rlm_lua_thread_t){
 							.interpreter = inst->interpreter
-						}
-					},
-					NULL, inst->func_detach);
+					      },
+					      NULL),
+				   NULL, inst->func_detach);
 		}
 		lua_close(inst->interpreter);
 	}
@@ -143,13 +143,13 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	DEBUG("Using %s interpreter", fr_lua_version(inst->interpreter));
 
 	if (inst->func_instantiate) {
-		fr_lua_run(&rcode, &(module_ctx_t){
-				.inst = mctx->inst,
-				.thread = &(rlm_lua_thread_t){
-					.interpreter = inst->interpreter
-				}
-			    },
-			  NULL, inst->func_instantiate);
+		fr_lua_run(&rcode,
+			   MODULE_CTX(mctx->inst,
+			   	      &(rlm_lua_thread_t){
+						.interpreter = inst->interpreter
+				      },
+				      NULL),
+			   NULL, inst->func_instantiate);
 	}
 
 	return 0;
