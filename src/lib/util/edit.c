@@ -35,6 +35,18 @@ typedef enum {
 	FR_EDIT_INSERT,			//!< insert a VP into a list, after another one.
 } fr_edit_op_t;
 
+#if 0
+/*
+ *	For debugging.
+ */
+static const char *edit_names[4] = {
+	"invalid",
+	"delete",
+	"record_value",
+	"insert",
+};
+#endif
+
 /** Track a series of edits.
  *
  */
@@ -80,6 +92,9 @@ static int edit_undo(fr_edit_t *e)
 #ifndef NDEBUG
 	int rcode;
 #endif
+
+	fr_assert(vp != NULL);
+	PAIR_VERIFY(vp);
 
 	switch (e->op) {
 	case FR_EDIT_INVALID:
@@ -397,6 +412,12 @@ int fr_edit_list_replace(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *to
 
 	if (to_replace->da != vp->da) return -1;
 
+	/*
+	 *	We call edit_record() twice, which involves two
+	 *	complete passes over the edit list.  That's fine,
+	 *	either the edit list is small, OR we will eventially
+	 *	put the VPs to be edited into an RB tree.
+	 */
 	if (edit_record(el, FR_EDIT_INSERT, vp, list, to_replace) < 0) return -1;
 
 	/*
