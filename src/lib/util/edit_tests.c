@@ -440,8 +440,6 @@ static void test_pair_insert_after_head(void)
 
 	add_pairs(&local_pairs);
 
-	vp = fr_pair_list_head(&local_pairs);
-
 	el = fr_edit_list_alloc(NULL);
 	fr_assert(el != NULL);
 
@@ -474,8 +472,6 @@ static void test_pair_insert_after_head_abort(void)
 	TEST_CASE("Add 3 pairs and insert a new one at the head, then abort");
 
 	add_pairs(&local_pairs);
-
-	vp = fr_pair_list_head(&local_pairs);
 
 	el = fr_edit_list_alloc(NULL);
 	fr_assert(el != NULL);
