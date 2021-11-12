@@ -428,6 +428,146 @@ static void test_pair_edit_value_abort(void)
 	expect3(&local_pairs);
 }
 
+static void test_pair_insert_after_head(void)
+{
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs;
+	size_t		count;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add 3 pairs and insert a new one at the head");
+
+	add_pairs(&local_pairs);
+
+	vp = fr_pair_list_head(&local_pairs);
+
+	el = fr_edit_list_alloc(NULL);
+	fr_assert(el != NULL);
+
+	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string)) != NULL);
+
+	rcode = fr_edit_list_insert_after(el, &local_pairs, NULL, vp);
+	TEST_CHECK(rcode == 0);
+
+	talloc_free(el);
+
+	count = fr_pair_list_len(&local_pairs);
+	TEST_CASE("Expected (count == 4) after inserting a new one");
+	TEST_CHECK(count == 4);
+
+	vp = fr_pair_list_head(&local_pairs);
+	TEST_CASE("head is now what was the second pair");
+	TEST_CHECK(vp->da == fr_dict_attr_test_string);
+
+	fr_pair_list_free(&local_pairs);
+}
+
+static void test_pair_insert_after_head_abort(void)
+{
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs;
+	size_t		count;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add 3 pairs and insert a new one at the head, then abort");
+
+	add_pairs(&local_pairs);
+
+	vp = fr_pair_list_head(&local_pairs);
+
+	el = fr_edit_list_alloc(NULL);
+	fr_assert(el != NULL);
+
+	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string)) != NULL);
+
+	rcode = fr_edit_list_insert_after(el, &local_pairs, NULL, vp);
+	TEST_CHECK(rcode == 0);
+
+	count = fr_pair_list_len(&local_pairs);
+	TEST_CASE("Expected (count == 4) after inserting a new one");
+	TEST_CHECK(count == 4);
+
+	/*
+	 *	Abort the edit
+	 */
+	fr_edit_list_abort(el);
+	talloc_free(el);
+
+	expect3(&local_pairs);
+}
+
+static void test_pair_insert_after_middle(void)
+{
+	fr_pair_t	*vp, *middle;
+	fr_pair_list_t	local_pairs;
+	size_t		count;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add 3 pairs and insert a new one at the head");
+
+	add_pairs(&local_pairs);
+
+	vp = fr_pair_list_head(&local_pairs);
+	middle = fr_pair_list_next(&local_pairs, vp);
+	fr_assert(middle != NULL);
+
+	el = fr_edit_list_alloc(NULL);
+	fr_assert(el != NULL);
+
+	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string)) != NULL);
+
+	rcode = fr_edit_list_insert_after(el, &local_pairs, middle, vp);
+	TEST_CHECK(rcode == 0);
+
+	talloc_free(el);
+
+	count = fr_pair_list_len(&local_pairs);
+	TEST_CASE("Expected (count == 4) after inserting a new one");
+	TEST_CHECK(count == 4);
+
+	fr_pair_list_free(&local_pairs);
+}
+
+static void test_pair_insert_after_middle_abort(void)
+{
+	fr_pair_t	*vp, *middle;
+	fr_pair_list_t	local_pairs;
+	size_t		count;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add 3 pairs and insert a new one at the head, then abort");
+
+	add_pairs(&local_pairs);
+
+	vp = fr_pair_list_head(&local_pairs);
+	middle = fr_pair_list_next(&local_pairs, vp);
+	fr_assert(middle != NULL);
+
+	el = fr_edit_list_alloc(NULL);
+	fr_assert(el != NULL);
+
+	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string)) != NULL);
+
+	rcode = fr_edit_list_insert_after(el, &local_pairs, middle, vp);
+	TEST_CHECK(rcode == 0);
+
+	count = fr_pair_list_len(&local_pairs);
+	TEST_CASE("Expected (count == 4) after inserting a new one");
+	TEST_CHECK(count == 4);
+
+	/*
+	 *	Abort the edit
+	 */
+	fr_edit_list_abort(el);
+	talloc_free(el);
+
+	expect3(&local_pairs);
+}
+
 TEST_LIST = {
 	/*
 	 *	Deletion.
@@ -442,12 +582,13 @@ TEST_LIST = {
 	{ "pair_delete_multiple_abort",		test_pair_delete_multiple_abort },
 
 	/*
-	 *	Insert before
-	 */
-
-	/*
 	 *	Insert after
 	 */
+	{ "pair_insert_after_head",    		test_pair_insert_after_head },
+	{ "pair_insert_after_head_abort",      	test_pair_insert_after_head_abort },
+
+	{ "pair_insert_after_middle",    	test_pair_insert_after_middle },
+	{ "pair_insert_after_middle_abort",     test_pair_insert_after_middle_abort },
 
 	/*
 	 *	Value modification
