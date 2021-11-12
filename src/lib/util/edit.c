@@ -28,6 +28,13 @@ RCSID("$Id$")
 #include <freeradius-devel/util/value.h>
 #include "edit.h"
 
+typedef enum {
+	FR_EDIT_INVALID = 0,
+	FR_EDIT_DELETE,			//!< delete a VP
+	FR_EDIT_VALUE,			//!< edit a VP in place
+	FR_EDIT_INSERT,			//!< insert a VP into a list, after another one.
+} fr_edit_op_t;
+
 /** Track a series of edits.
  *
  */
@@ -151,7 +158,7 @@ void fr_edit_list_abort(fr_edit_list_t *el)
  *  other modification to structural types, we MUST instead call
  *  insert / delete on the vp_group.
  */
-int fr_edit_list_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pair_list_t *list, fr_pair_t *ref)
+static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pair_list_t *list, fr_pair_t *ref)
 {
 	fr_edit_t *e;
 
@@ -331,6 +338,22 @@ int fr_edit_list_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_p
 	fr_dlist_insert_tail(&el->list, e);
 	return 0;
 }
+
+int fr_edit_list_insert(fr_edit_list_t *el, fr_pair_t *vp, fr_pair_list_t *list, fr_pair_t *prev)
+{
+	return edit_record(el, FR_EDIT_INSERT, vp, list, prev);
+}
+
+int fr_edit_list_delete(fr_edit_list_t *el, fr_pair_t *vp, fr_pair_list_t *list)
+{
+	return edit_record(el, FR_EDIT_DELETE, vp, list, NULL);
+}
+
+int fr_edit_list_record(fr_edit_list_t *el, fr_pair_t *vp)
+{
+	return edit_record(el, FR_EDIT_VALUE, vp, NULL, NULL);
+}
+
 
 /** Finalize the edits when we destroy the edit list.
  *

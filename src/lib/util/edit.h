@@ -31,20 +31,17 @@ RCSIDH(map_h, "$Id$")
 extern "C" {
 #endif
 
-typedef enum {
-	FR_EDIT_INVALID = 0,
-	FR_EDIT_DELETE,			//!< delete a VP
-	FR_EDIT_VALUE,			//!< edit a VP in place
-	FR_EDIT_INSERT,			//!< insert a VP into a list, after another one.
-} fr_edit_op_t;
-
 typedef struct fr_edit_list_s fr_edit_list_t;
 
 fr_edit_list_t *fr_edit_list_alloc(TALLOC_CTX *ctx);
 
 void fr_edit_list_abort(fr_edit_list_t *el);
 
-int fr_edit_list_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pair_list_t *list, fr_pair_t *prev);
+int fr_edit_list_insert(fr_edit_list_t *el, fr_pair_t *vp, fr_pair_list_t *list, fr_pair_t *prev);
+
+int fr_edit_list_delete(fr_edit_list_t *el, fr_pair_t *vp, fr_pair_list_t *list);
+
+int fr_edit_list_record(fr_edit_list_t *el, fr_pair_t *vp);
 
 #ifdef __cplusplus
 }
