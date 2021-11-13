@@ -554,6 +554,84 @@ static void test_pair_insert_after_middle_abort(void)
 	expect3(&local_pairs);
 }
 
+static void test_pair_edit_value_delete(void)
+{
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs;
+	fr_edit_list_t	*el;
+	int		rcode, count;
+
+	TEST_CASE("Add 3 pairs, change the value of the first one, and delete it");
+
+	add_pairs(&local_pairs);
+
+	vp = fr_pair_list_head(&local_pairs);
+	fr_assert(vp != NULL);
+
+	el = fr_edit_list_alloc(NULL, 5);
+	fr_assert(el != NULL);
+
+	rcode = fr_edit_list_save_value(el, vp);
+	TEST_CHECK(rcode == 0);
+
+	TEST_CHECK(vp->vp_uint32 == 0);
+
+	vp->vp_uint32 = 1;
+	TEST_CHECK(vp->vp_uint32 == 1);
+
+	rcode = fr_edit_list_delete(el, &local_pairs, vp); /* tail */
+	TEST_CHECK(rcode == 0);
+
+	fr_edit_list_commit(el);
+
+	vp = fr_pair_list_head(&local_pairs);
+	TEST_CHECK(vp->da == fr_dict_attr_test_octets);
+
+	count = fr_pair_list_len(&local_pairs);
+	TEST_CASE("Expected (count == 2) after deleting the edited pair");
+	TEST_CHECK(count == 2);
+}
+
+static void test_pair_edit_value_delete_abort(void)
+{
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add 3 pairs, change the value of the first one, and delete it, then abort");
+
+	add_pairs(&local_pairs);
+
+	vp = fr_pair_list_head(&local_pairs);
+	fr_assert(vp != NULL);
+
+	el = fr_edit_list_alloc(NULL, 5);
+	fr_assert(el != NULL);
+
+	rcode = fr_edit_list_save_value(el, vp);
+	TEST_CHECK(rcode == 0);
+
+	TEST_CHECK(vp->vp_uint32 == 0);
+
+	vp->vp_uint32 = 1;
+	TEST_CHECK(vp->vp_uint32 == 1);
+
+	rcode = fr_edit_list_delete(el, &local_pairs, vp); /* tail */
+	TEST_CHECK(rcode == 0);
+
+	/*
+	 *	Abort the edit
+	 */
+	fr_edit_list_abort(el);
+
+	vp = fr_pair_list_head(&local_pairs);
+	TEST_CHECK(vp->da == fr_dict_attr_test_uint32);
+	TEST_CHECK(vp->vp_uint32 == 0);
+
+	expect3(&local_pairs);
+}
+
 TEST_LIST = {
 	/*
 	 *	Deletion.
@@ -581,6 +659,12 @@ TEST_LIST = {
 	 */
 	{ "pair_edit_value",			test_pair_edit_value },
 	{ "pair_edit_value_abort",		test_pair_edit_value_abort },
+
+	/*
+	 *	Value modification, then deletion
+	 */
+	{ "pair_edit_value_delete",		test_pair_edit_value_delete },
+	{ "pair_edit_value_delete_abort",	test_pair_edit_value_delete_abort },
 
 	{ NULL }
 };
