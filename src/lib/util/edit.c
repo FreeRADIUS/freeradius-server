@@ -108,6 +108,7 @@ static int edit_undo(fr_edit_t *e)
 		break;
 
 	case FR_EDIT_DELETE:
+		fr_assert(e->list != NULL);
 #ifndef NDEBUG
 		rcode =
 #endif
@@ -280,8 +281,16 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 			 */
 			fr_assert(e->op == FR_EDIT_VALUE);
 			edit_undo(e);
+
+			/*
+			 *	Rewrite the edit to be delete.
+			 */
 			e->op = FR_EDIT_DELETE;
-			goto delete;
+			e->list = list;
+			e->ref = fr_pair_list_prev(list, vp);
+
+			fr_pair_remove(list, vp);
+			return 0;
 		}
 	} /* loop over existing edits */
 
@@ -322,7 +331,6 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 		break;
 
 	case FR_EDIT_DELETE:
-	delete:
 		fr_assert(list != NULL);
 		fr_assert(ref == NULL);
 
