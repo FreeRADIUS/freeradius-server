@@ -33,7 +33,7 @@ extern "C" {
 
 typedef struct fr_edit_list_s fr_edit_list_t;
 
-fr_edit_list_t *fr_edit_list_alloc(TALLOC_CTX *ctx);
+fr_edit_list_t *fr_edit_list_alloc(TALLOC_CTX *ctx, int hint);
 
 void fr_edit_list_abort(fr_edit_list_t *el);
 

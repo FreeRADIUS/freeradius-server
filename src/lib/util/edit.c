@@ -26,6 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/value.h>
+#include <freeradius-devel/util/talloc.h>
 #include "edit.h"
 
 typedef enum {
@@ -459,11 +460,11 @@ static int _edit_list_destructor(fr_edit_list_t *el)
 	return 0;
 }
 
-fr_edit_list_t *fr_edit_list_alloc(TALLOC_CTX *ctx)
+fr_edit_list_t *fr_edit_list_alloc(TALLOC_CTX *ctx, int hint)
 {
 	fr_edit_list_t *el;
 
-	el = talloc_zero(ctx, fr_edit_list_t);
+	el = talloc_zero_pooled_object(ctx, fr_edit_list_t, hint, hint * sizeof(fr_edit_t));
 	if (!el) return NULL;
 
 	fr_dlist_init(&el->list, fr_edit_t, entry);
