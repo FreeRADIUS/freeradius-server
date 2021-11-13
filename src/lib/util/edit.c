@@ -144,6 +144,13 @@ void fr_edit_list_abort(fr_edit_list_t *el)
 	if (!el) return;
 
 	/*
+	 *      All of these pairs are already in the edit list.  They
+	 *      have the correct parent, and will be placed back into
+	 *      their correct location by edit_undo()
+	 */
+	fr_pair_list_init(&el->deleted_pairs);
+
+	/*
 	 *	Undo edits in reverse order, as later edits depend on
 	 *	earlier ones.  We don't have multiple edits of the
 	 *	same VP, but we can create a VP, and then later edit
