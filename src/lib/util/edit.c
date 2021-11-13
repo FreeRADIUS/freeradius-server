@@ -226,7 +226,14 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 			 *	If we delete a pair, we can't later
 			 *	edit it.  That indicates serious
 			 *	issues with the code.
-			 */
+			 *
+			 *      However, if we previously inserted
+			 *      this VP, then we don't need to record
+			 *      changes to its value.  Similarly, if
+			 *      we had previously changed its value,
+			 *      we don't need to record that
+			 *      information again.
+                         */
 			fr_assert(e->op != FR_EDIT_DELETE);
 			fr_assert(fr_type_is_leaf(vp->vp_type));
 			return 0;
@@ -291,13 +298,18 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 
 			/*
 			 *	Rewrite the edit to be delete.
+			 *
+			 *	And move the deletion to the tail of
+			 *	the edit list, because edits between
+			 *	"here" and the tail of the list may
+			 *	refer to "vp".  If we leave the
+			 *	deletion in place, then subsequent
+			 *	edit list entries will refer to a VP
+			 *	which has been deleted!
 			 */
 			e->op = FR_EDIT_DELETE;
-			e->list = list;
-			e->ref = fr_pair_list_prev(list, vp);
-
-			fr_pair_remove(list, vp);
-			return 0;
+			fr_dlist_remove(&el->list, e);
+			goto delete;
 		}
 	} /* loop over existing edits */
 
@@ -338,6 +350,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 		break;
 
 	case FR_EDIT_DELETE:
+	delete:
 		fr_assert(list != NULL);
 		fr_assert(ref == NULL);
 
