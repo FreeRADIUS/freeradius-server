@@ -135,7 +135,7 @@ static void test_pair_delete_head(void)
 	rcode = fr_edit_list_delete(el, &local_pairs, vp);
 	TEST_CHECK(rcode == 0);
 
-	talloc_free(el);
+	fr_edit_list_commit(el);
 
 	count = fr_pair_list_len(&local_pairs);
 	TEST_CASE("Expected (count == 2) after deleting the head");
@@ -202,7 +202,7 @@ static void test_pair_delete_middle(void)
 	rcode = fr_edit_list_delete(el, &local_pairs, vp);
 	TEST_CHECK(rcode == 0);
 
-	talloc_free(el);
+	fr_edit_list_commit(el);
 
 	/* let's count */
 	count = fr_pair_list_len(&local_pairs);
@@ -287,7 +287,7 @@ static void test_pair_delete_multiple(void)
 	rcode = fr_edit_list_delete(el, &local_pairs, vp); /* tail */
 	TEST_CHECK(rcode == 0);
 
-	talloc_free(el);
+	fr_edit_list_commit(el);
 
 	count = fr_pair_list_len(&local_pairs);
 	TEST_CASE("Expected (count == 1) after deleting the last 2");
@@ -374,7 +374,7 @@ static void test_pair_edit_value(void)
 	vp->vp_uint32 = 1;
 	TEST_CHECK(vp->vp_uint32 == 1);
 
-	talloc_free(el);
+	fr_edit_list_commit(el);
 
 	vp = fr_pair_list_head(&local_pairs);
 	TEST_CHECK(vp->da == fr_dict_attr_test_uint32);
@@ -440,7 +440,7 @@ static void test_pair_insert_after_head(void)
 	rcode = fr_edit_list_insert_after(el, &local_pairs, NULL, vp);
 	TEST_CHECK(rcode == 0);
 
-	talloc_free(el);
+	fr_edit_list_commit(el);
 
 	count = fr_pair_list_len(&local_pairs);
 	TEST_CASE("Expected (count == 4) after inserting a new one");
@@ -509,7 +509,7 @@ static void test_pair_insert_after_middle(void)
 	rcode = fr_edit_list_insert_after(el, &local_pairs, middle, vp);
 	TEST_CHECK(rcode == 0);
 
-	talloc_free(el);
+	fr_edit_list_commit(el);
 
 	count = fr_pair_list_len(&local_pairs);
 	TEST_CASE("Expected (count == 4) after inserting a new one");

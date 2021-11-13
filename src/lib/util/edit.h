@@ -37,6 +37,8 @@ fr_edit_list_t *fr_edit_list_alloc(TALLOC_CTX *ctx);
 
 void fr_edit_list_abort(fr_edit_list_t *el);
 
+#define fr_edit_list_commit(_x) talloc_free(_x)
+
 int fr_edit_list_insert_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *vp) CC_HINT(nonnull(2,4));
 
 int fr_edit_list_delete(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull(2,3));
