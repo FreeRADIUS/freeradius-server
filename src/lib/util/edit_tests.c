@@ -579,7 +579,7 @@ static void test_pair_edit_value_delete(void)
 	vp->vp_uint32 = 1;
 	TEST_CHECK(vp->vp_uint32 == 1);
 
-	rcode = fr_edit_list_delete(el, &local_pairs, vp); /* tail */
+	rcode = fr_edit_list_delete(el, &local_pairs, vp);
 	TEST_CHECK(rcode == 0);
 
 	fr_edit_list_commit(el);
@@ -617,7 +617,7 @@ static void test_pair_edit_value_delete_abort(void)
 	vp->vp_uint32 = 1;
 	TEST_CHECK(vp->vp_uint32 == 1);
 
-	rcode = fr_edit_list_delete(el, &local_pairs, vp); /* tail */
+	rcode = fr_edit_list_delete(el, &local_pairs, vp);
 	TEST_CHECK(rcode == 0);
 
 	/*
@@ -631,6 +631,75 @@ static void test_pair_edit_value_delete_abort(void)
 
 	expect3(&local_pairs);
 }
+
+static void test_pair_insert_after_head_delete(void)
+{
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs;
+	size_t		count;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add 3 pairs and insert a new one at the head, and delete it");
+
+	add_pairs(&local_pairs);
+
+	el = fr_edit_list_alloc(NULL, 5);
+	fr_assert(el != NULL);
+
+	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string)) != NULL);
+
+	rcode = fr_edit_list_insert_after(el, &local_pairs, NULL, vp);
+	TEST_CHECK(rcode == 0);
+
+	count = fr_pair_list_len(&local_pairs);
+	TEST_CASE("Expected (count == 4) after inserting a new one");
+	TEST_CHECK(count == 4);
+
+	rcode = fr_edit_list_delete(el, &local_pairs, vp);
+	TEST_CHECK(rcode == 0);
+
+	count = fr_pair_list_len(&local_pairs);
+	TEST_CASE("Expected (count == 3) after deleting the just inserted on");
+	TEST_CHECK(count == 3);
+
+	fr_edit_list_commit(el);
+
+	expect3(&local_pairs);
+}
+
+static void test_pair_insert_after_head_delete_abort(void)
+{
+	fr_pair_t	*vp;
+	fr_pair_list_t	local_pairs;
+	size_t		count;
+	fr_edit_list_t	*el;
+	int		rcode;
+
+	TEST_CASE("Add 3 pairs and insert a new one at the head and delete it, then abort");
+
+	add_pairs(&local_pairs);
+
+	el = fr_edit_list_alloc(NULL, 5);
+	fr_assert(el != NULL);
+
+	TEST_CHECK((vp = fr_pair_afrom_da(autofree, fr_dict_attr_test_string)) != NULL);
+
+	rcode = fr_edit_list_insert_after(el, &local_pairs, NULL, vp);
+	TEST_CHECK(rcode == 0);
+
+	count = fr_pair_list_len(&local_pairs);
+	TEST_CASE("Expected (count == 4) after inserting a new one");
+	TEST_CHECK(count == 4);
+
+	/*
+	 *	Abort the edit
+	 */
+	fr_edit_list_abort(el);
+
+	expect3(&local_pairs);
+}
+
 
 TEST_LIST = {
 	/*
@@ -665,6 +734,12 @@ TEST_LIST = {
 	 */
 	{ "pair_edit_value_delete",		test_pair_edit_value_delete },
 	{ "pair_edit_value_delete_abort",	test_pair_edit_value_delete_abort },
+
+	/*
+	 *	Insert after, then delete
+	 */
+	{ "pair_insert_after_head_delete",    	 test_pair_insert_after_head_delete },
+	{ "pair_insert_after_head_delete_abort", test_pair_insert_after_head_delete_abort },
 
 	{ NULL }
 };
