@@ -366,7 +366,7 @@ static void test_pair_edit_value(void)
 	el = fr_edit_list_alloc(NULL, 5);
 	fr_assert(el != NULL);
 
-	rcode = fr_edit_list_record_value(el, vp);
+	rcode = fr_edit_list_save_value(el, vp);
 	TEST_CHECK(rcode == 0);
 
 	TEST_CHECK(vp->vp_uint32 == 0);
@@ -400,7 +400,7 @@ static void test_pair_edit_value_abort(void)
 	el = fr_edit_list_alloc(NULL, 5);
 	fr_assert(el != NULL);
 
-	rcode = fr_edit_list_record_value(el, vp);
+	rcode = fr_edit_list_save_value(el, vp);
 	TEST_CHECK(rcode == 0);
 
 	TEST_CHECK(vp->vp_uint32 == 0);

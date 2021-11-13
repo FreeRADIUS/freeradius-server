@@ -43,7 +43,7 @@ typedef enum {
 static const char *edit_names[4] = {
 	"invalid",
 	"delete",
-	"record_value",
+	"value",
 	"insert",
 };
 #endif
@@ -368,13 +368,30 @@ int fr_edit_list_delete(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *vp)
  *
  *  After this function returns, it's safe to edit the pair.
  */
-int fr_edit_list_record_value(fr_edit_list_t *el, fr_pair_t *vp)
+int fr_edit_list_save_value(fr_edit_list_t *el, fr_pair_t *vp)
 {
 	if (!el) return 0;
 
 	if (!fr_type_is_leaf(vp->vp_type)) return -1;
 
 	return edit_record(el, FR_EDIT_VALUE, vp, NULL, NULL);
+}
+
+/** Write a new value to the #fr_value_box_t
+ *
+ *  After this function returns, the value has been updated.
+ */
+int fr_edit_list_replace_value(fr_edit_list_t *el, fr_pair_t *vp, fr_value_box_t *box)
+{
+	if (!el) return 0;
+
+	if (!fr_type_is_leaf(vp->vp_type)) return -1;
+
+	if (edit_record(el, FR_EDIT_VALUE, vp, NULL, NULL) < 0) return -1;
+
+	if (!fr_type_is_fixed_size(vp->vp_type)) fr_value_box_clear(&vp->data);
+	fr_value_box_copy_shallow(NULL, &vp->data, box);
+	return 0;
 }
 
 /** Replace a pair with another one.
@@ -498,5 +515,5 @@ fr_edit_list_t *fr_edit_list_alloc(TALLOC_CTX *ctx, int hint)
  *		edit VPs, recording edits
  *
  *	free temporary map
- *	talloc_free(edit list)
+ *	commit(edit list)
  */
