@@ -1835,6 +1835,16 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			 *	It's not a subgroup.
 			 */
 			name = cf_section_name1(subcs);
+
+			/*
+			 *	In-line attribute editing is not supported.
+			 */
+			if (*name == '&') {
+				cf_log_err(subcs, "Please use 'update' sections to add / modify / delete attributes");
+				talloc_free(c);
+				return NULL;
+			}
+
 			if (strcmp(name, "actions") == 0) {
 				if (!compile_action_subsection(c, g->cs, subcs)) {
 					talloc_free(c);
@@ -1889,6 +1899,15 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			CONF_PAIR *cp = cf_item_to_pair(ci);
 
 			attr = cf_pair_attr(cp);
+
+			/*
+			 *	In-line attribute editing is not supported.
+			 */
+			if (*attr == '&') {
+				cf_log_err(cp, "Please use 'update' sections to add / modify / delete attributes");
+				talloc_free(c);
+				return NULL;
+			}
 
 			/*
 			 *	Bare "foo = bar" is disallowed.
