@@ -49,6 +49,9 @@ int fr_edit_list_replace_value(fr_edit_list_t *el, fr_pair_t *vp, fr_value_box_t
 
 int fr_edit_list_replace(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *vp) CC_HINT(nonnull(2,3,4));
 
+int fr_edit_list_insert_list_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *pos, fr_pair_list_t *to_insert) CC_HINT(nonnull(2,4));
+
+
 int fr_edit_list_free_children(fr_edit_list_t *el, fr_pair_t *vp) CC_HINT(nonnull(2));
 
 #ifdef __cplusplus

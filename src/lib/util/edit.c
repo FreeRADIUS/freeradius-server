@@ -500,7 +500,7 @@ int fr_edit_list_replace(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *to
 }
 
 
-/** Replace a pair with another one.
+/** Free children of a structural pair.
  *
  *  This function mirrors fr_pair_replace().
  *
@@ -520,6 +520,42 @@ int fr_edit_list_free_children(fr_edit_list_t *el, fr_pair_t *vp)
 	 */
 	return edit_record(el, FR_EDIT_CLEAR, vp, NULL, NULL);
 }
+
+/** Insert a list after a particular point in another list.
+ *
+ *  This function mirrors fr_pair_list_append(), but with a bit more
+ *  control over where the to_insert list ends up.
+ *
+ *  There's nothing magical about this function, it's just easier to
+ *  have it here than in multiple places in the code.
+ */
+int fr_edit_list_insert_list_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *pos, fr_pair_list_t *to_insert)
+{
+	fr_pair_t *prev, *vp;
+
+	if (!el) return 0;
+
+	prev = pos;
+
+	/*
+	 *	We have to record each individual insert as a separate
+	 *	item.  Some later edit may insert pairs in the middle
+	 *	of the ones we've added.
+	 */
+	while ((vp = fr_pair_list_head(to_insert)) != NULL) {
+		(void) fr_pair_remove(to_insert, vp);
+
+		if (edit_record(el, FR_EDIT_INSERT, vp, list, prev) < 0) {
+			fr_pair_prepend(to_insert, vp); /* don't lose it! */
+			return -1;
+		}
+
+		prev = vp;
+	}
+
+	return 0;
+}
+
 
 /** Finalize the edits when we destroy the edit list.
  *
