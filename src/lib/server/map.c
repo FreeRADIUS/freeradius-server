@@ -1497,7 +1497,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	context = request;
 	request_ref = tmpl_request(map->lhs);
 	if (tmpl_request_ptr(&context, request_ref) < 0) {
-		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to invalid request reference \"%s\" in right side of map",
+		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" cannot be performed due to invalid request reference \"%s\" in left side of map",
 			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name,
 			fr_table_str_by_value(tmpl_request_ref_table, request_ref, "<INVALID>"));
 		rcode = -2;
