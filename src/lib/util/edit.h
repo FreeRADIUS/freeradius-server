@@ -23,7 +23,7 @@
  *
  * @copyright 2021 Network RADIUS SAS (legal@networkradius.com)
  */
-RCSIDH(map_h, "$Id$")
+RCSIDH(edit_h, "$Id$")
 
 #include <freeradius-devel/util/pair.h>
 
