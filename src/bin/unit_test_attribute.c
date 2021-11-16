@@ -44,6 +44,7 @@ typedef struct request_s request_t;
 #include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/base64.h>
+#include <freeradius-devel/util/calc.h>
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dns.h>
 #include <freeradius-devel/util/file.h>
@@ -1003,9 +1004,14 @@ static size_t parse_typed_value(command_result_t *result, fr_value_box_t *box, c
 	fr_skip_whitespace(p);
 	*out = p;
 
+	/*
+	 *	As a hack, allow most things to be inside
+	 *	double-quoted strings.  This is really only for dates,
+	 *	which are space-delimited.
+	 */
 	if (*p == '"'){
 		p++;
-		slen = fr_value_box_from_substr(box, box, type, NULL,
+		slen = fr_value_box_from_substr(box, box, FR_TYPE_STRING, NULL,
 						&FR_SBUFF_IN(p, strlen(p)),
 						&value_parse_rules_double_quoted,
 						false);
@@ -1019,6 +1025,12 @@ static size_t parse_typed_value(command_result_t *result, fr_value_box_t *box, c
 		}
 		p++;
 		slen += 2;
+
+		if (type != FR_TYPE_STRING) {
+			if (fr_value_box_cast_in_place(box, box, type, NULL) < 0) {
+				RETURN_PARSE_ERROR(0);
+			}
+		}
 
 	} else {
 		slen = fr_value_box_from_substr(box, box, type, NULL,
@@ -1148,6 +1160,79 @@ static size_t command_normalise_attribute(command_result_t *result, command_file
 		fr_strerror_const("Encoder output would overflow output buffer");
 		RETURN_OK_WITH_ERROR();
 	}
+
+	RETURN_OK(slen);
+}
+
+static const fr_token_t token2op[UINT8_MAX + 1] = {
+	[ '+' ] = T_OP_ADD,
+	[ '-' ] = T_OP_SUB,
+	[ '^' ] = T_OP_PREPEND,
+	[ '.' ] = T_OP_ADD,
+};
+
+/** Perform calculations
+ *
+ */
+static size_t command_calc(command_result_t *result, command_file_ctx_t *cc,
+			   char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	fr_value_box_t *a, *b, *out;
+	size_t match_len;
+	fr_type_t type;
+	fr_token_t op;
+	char const *p, *value, *end;
+	size_t slen;
+
+	a = talloc_zero(cc->tmp_ctx, fr_value_box_t);
+	b = talloc_zero(cc->tmp_ctx, fr_value_box_t);
+	out = talloc_zero(cc->tmp_ctx, fr_value_box_t);
+
+	p = in;
+	end = in + inlen;
+
+	match_len = parse_typed_value(result, a, &value, p, end - p);
+	if (match_len == 0) return 0; /* errors have already been updated */
+
+	p += match_len;
+	fr_skip_whitespace(p);
+
+	op = fr_table_value_by_longest_prefix(&match_len, fr_tokens_table, p, end - p, T_INVALID);
+	if (op != T_INVALID) {
+		p += match_len;
+	} else {
+		op = token2op[(uint8_t) p[0]];
+		if (op == T_INVALID) RETURN_PARSE_ERROR(0);
+		p++;
+	}
+	fr_skip_whitespace(p);
+
+	match_len = parse_typed_value(result, b, &value, p, end - p);
+	if (match_len == 0) return 0;
+
+	p += match_len;
+	fr_skip_whitespace(p);
+
+	/*
+	 *	If there's no output data type, then the code tries to
+	 *	figure one out automatically.
+	 */
+	if (!*p) {
+		type = FR_TYPE_NULL;
+	} else {
+		if (strncmp(p, "->", 2) != 0) RETURN_PARSE_ERROR(0);
+		p += 2;
+		fr_skip_whitespace(p);
+
+		type = fr_table_value_by_longest_prefix(&match_len, fr_value_box_type_table, p, end - p, FR_TYPE_MAX);
+		if (type == FR_TYPE_MAX) RETURN_PARSE_ERROR(0);
+		fr_value_box_init(out, type, NULL, false);
+	}
+
+	if (fr_value_calc(cc->tmp_ctx, out, type, a, op, b) < 0) RETURN_PARSE_ERROR(0);
+
+	slen = fr_value_box_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), out, NULL);
+	if (slen <= 0) RETURN_OK_WITH_ERROR();
 
 	RETURN_OK(slen);
 }
@@ -2582,6 +2667,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.func = command_normalise_attribute,
 					.usage = "attribute <attr> = <value>",
 					.description = "Parse and reprint an attribute value pair, writing \"ok\" to the data buffer on success"
+				}},
+	{ L("calc "),		&(command_entry_t){
+					.func = command_calc,
+					.usage = "calc <type1> <value1> <operator> <type2> <value2> -> <output-type>",
+					.description = "Perform calculations on value boxes",
 				}},
 	{ L("cd "),		&(command_entry_t){
 					.func = command_cd,

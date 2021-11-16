@@ -1,0 +1,35 @@
+#
+#  Calculate various thingies.
+#
+
+# string append
+calc string "a" . string "b" -> string
+match ab
+
+# string prepend
+calc string "a" ^ string "b" -> string
+match ba
+
+# time deltas
+calc time_delta 1 + time_delta 2 -> time_delta
+match 3
+
+# dates can be subtracted, but not added.
+calc date "Jan 11 1970 00:00:00 UTC" - date "Jan 1 1970 00:00:00 UTC" -> time_delta
+match 864000
+
+#  One day earlier
+calc date "Jan 11 1970 00:00:00 UTC" -  time_delta 86400 -> date
+match Jan 10 1970 00:00:00 UTC
+
+calc date "Jan 11 1970 00:00:00 UTC" -  time_delta 1d -> date
+match Jan 10 1970 00:00:00 UTC
+
+#
+#  Comparisons don't need output data types
+#
+calc date "Jan 11 1970 00:00:00 UTC" < date "Jan 1 1970 00:00:00 UTC"
+match no
+
+count
+match 14

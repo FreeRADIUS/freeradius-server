@@ -10,6 +10,7 @@ SOURCES		:= \
 		   base16.c \
 		   base32.c \
 		   base64.c \
+		   calc.c \
 		   cap.c \
 		   cursor.c \
 		   dbuff.c \
