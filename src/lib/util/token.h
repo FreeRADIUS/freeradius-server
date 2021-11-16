@@ -71,7 +71,7 @@ typedef enum fr_token {
 } fr_token_t;
 
 #define T_EQSTART	T_OP_ADD
-#define	T_EQEND		(T_OP_PREPEND + 1)
+#define	T_EQEND		(T_HASH)
 
 /** Macro to use as dflt
  *
