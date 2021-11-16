@@ -983,6 +983,58 @@ static int dictionary_load_common(command_result_t *result, command_file_ctx_t *
 	RETURN_OK(0);
 }
 
+static size_t parse_typed_value(command_result_t *result, fr_value_box_t *box, char const **out, char const *in, size_t inlen)
+{
+	fr_type_t	type;
+	size_t		match_len;
+	ssize_t		slen;
+	char const     	*p;
+
+	/*
+	 *	Parse data types
+	 */
+	type = fr_table_value_by_longest_prefix(&match_len, fr_value_box_type_table, in, inlen, FR_TYPE_NULL);
+	if (fr_type_is_null(type)) {
+		RETURN_PARSE_ERROR(0);
+	}
+	fr_assert(match_len < inlen);
+
+	p = in + match_len;
+	fr_skip_whitespace(p);
+	*out = p;
+
+	if (*p == '"'){
+		p++;
+		slen = fr_value_box_from_substr(box, box, type, NULL,
+						&FR_SBUFF_IN(p, strlen(p)),
+						&value_parse_rules_double_quoted,
+						false);
+		if (slen < 0) {
+			RETURN_OK_WITH_ERROR();
+		}
+
+		p += slen;
+		if (*p != '"') {
+			RETURN_PARSE_ERROR(0);
+		}
+		p++;
+		slen += 2;
+
+	} else {
+		slen = fr_value_box_from_substr(box, box, type, NULL,
+						&FR_SBUFF_IN(p, strlen(p)),
+						&value_parse_rules_bareword_unquoted,
+						false);
+		if (slen < 0) {
+			RETURN_OK_WITH_ERROR();
+		}
+		p += slen;
+	}
+	fr_skip_whitespace(p);
+
+	RETURN_OK(p - in);
+}
+
 static fr_cmd_t *command_head = NULL;
 
 static int command_func(UNUSED FILE *fp, UNUSED FILE *fp_err, UNUSED void *ctx, UNUSED fr_cmd_info_t const *info)
@@ -2331,29 +2383,18 @@ static size_t command_value_box_normalise(command_result_t *result, command_file
 {
 	fr_value_box_t *box = talloc_zero(NULL, fr_value_box_t);
 	fr_value_box_t *box2;
-	fr_type_t	type;
+	char const	*value;
 	size_t		match_len;
 	ssize_t		slen;
-	char		*p;
+	fr_type_t	type;
 
-	/*
-	 *	Parse data types
-	 */
-	type = fr_table_value_by_longest_prefix(&match_len, fr_value_box_type_table, in, strlen(in), FR_TYPE_NULL);
-	if (fr_type_is_null(type)) {
-		RETURN_PARSE_ERROR(0);
-	}
-	p = in + match_len;
-	fr_skip_whitespace(p);
-
-	if (fr_value_box_from_str(box, box, type, NULL,
-				  p, strlen(p),
-				  &fr_value_unescape_double,
-				  false) < 0) {
-	error:
+	match_len = parse_typed_value(result, box, &value, in, strlen(in));
+	if (match_len == 0) {
 		talloc_free(box);
-		RETURN_OK_WITH_ERROR();
+		return 0;	/* errors have already been updated */
 	}
+
+	type = box->type;
 
 	/*
 	 *	Don't print dates with enclosing quotation marks.
@@ -2364,7 +2405,10 @@ static size_t command_value_box_normalise(command_result_t *result, command_file
 	} else {
 		slen = fr_value_box_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), box, NULL);
 	}
-	if (slen <= 0) goto error;
+	if (slen <= 0) {
+		talloc_free(box);
+		RETURN_OK_WITH_ERROR();
+	}
 
 	/*
 	 *	Behind the scenes, parse the data
@@ -2386,7 +2430,7 @@ static size_t command_value_box_normalise(command_result_t *result, command_file
 	if (fr_value_box_cmp(box, box2) != 0) {
 		fr_strerror_const("ERROR value box reparsing failed.  Results not identical");
 		fr_strerror_printf_push("out: %pV (as string %.*s)", box2, (int) slen, data);
-		fr_strerror_printf_push("in: %pV (from string %s)", box, p);
+		fr_strerror_printf_push("in: %pV (from string %s)", box, value);
 		talloc_free(box2);
 		talloc_free(box);
 		RETURN_OK_WITH_ERROR();
