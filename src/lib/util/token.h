@@ -82,11 +82,11 @@ extern fr_table_num_ordered_t const fr_tokens_table[];
 extern size_t fr_tokens_table_len;
 extern fr_table_num_sorted_t const fr_token_quotes_table[];
 extern size_t fr_token_quotes_table_len;
-extern const char *fr_tokens[];
-extern const char fr_token_quote[];
-extern const bool fr_assignment_op[];
-extern const bool fr_equality_op[];
-extern const bool fr_str_tok[];
+extern const char *fr_tokens[T_TOKEN_LAST + 1];
+extern const char fr_token_quote[T_TOKEN_LAST + 1];
+extern const bool fr_assignment_op[T_TOKEN_LAST + 1];
+extern const bool fr_equality_op[T_TOKEN_LAST + 1];
+extern const bool fr_str_tok[T_TOKEN_LAST + 1];
 
 int		getword (char const **ptr, char *buf, int buflen, bool unescape);
 fr_token_t	gettoken(char const **ptr, char *buf, int buflen, bool unescape);

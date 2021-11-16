@@ -69,7 +69,7 @@ size_t fr_token_quotes_table_len = NUM_ELEMENTS(fr_token_quotes_table);
 /*
  *  This is a hack, and has to be kept in sync with tokens.h
  */
-char const *fr_tokens[] = {
+char const *fr_tokens[T_TOKEN_LAST + 1] = {
 	"?",			/* T_INVALID */
 	"EOL",			/* T_EOL */
 	"{",
@@ -99,149 +99,58 @@ char const *fr_tokens[] = {
 	"<\"STRING\">",
 	"<'STRING'>",
 	"<`STRING`>",
-	"</STRING/>"
+	"</STRING/>",
+	"<invalid>"
 };
 
 
 /** Convert tokens back to a quoting character
  *
- * None string types convert to '?' to screw ups can be identified easily
+ * Non-string types convert to '?' to screw ups can be identified easily
  */
-const char fr_token_quote[] = {
-	'?',		/* invalid token */
-	'?',		/* end of line */
-	'?',		/* { */
-	'?',		/* } */
-	'?',		/* ( */
-	'?',		/* ) 		 5 */
-	'?',		/* , */
-	'?',		/* ; */
+const char fr_token_quote[T_TOKEN_LAST + 1] = {
+	[ 0 ... T_HASH ] = '?',	/* GCC extension for range initialization, also allowed by clang */
 
-	'?',		/* ++ */
-	'?',		/* += */
-	'?',		/* -=  		10 */
-	'?',		/* := */
-	'?',		/* = */
-	'?',		/* != */
-	'?',		/* >= */
-	'?',		/* > 		15 */
-	'?',		/* <= */
-	'?',		/* < */
-	'?',		/* =~ */
-	'?',		/* !~ */
-	'?',		/* =* 		20 */
-	'?',		/* !* */
-	'?',		/* == */
-	'?',		/* ^= */
-	'?',		/* # */
-	'\0',		/* bare word 	25 */
-	'"',		/* "foo" */
-	'\'',		/* 'foo' */
-	'`',		/* `foo` */
-	'/',		/* /foo/ */
-	'?'
+	[T_BARE_WORD] = '\0',
+	[T_DOUBLE_QUOTED_STRING] = '"',
+	[T_SINGLE_QUOTED_STRING] = '\'',
+	[T_BACK_QUOTED_STRING] = '`',
+	[T_SOLIDUS_QUOTED_STRING] = '/',
+
+	[T_TOKEN_LAST] = '?',
 };
 
-const bool fr_assignment_op[] = {
-	false,		/* invalid token */
-	false,		/* end of line */
-	false,		/* { */
-	false,		/* } */
-	false,		/* ( */
-	false,		/* ) 		 5 */
-	false,		/* , */
-	false,		/* ; */
+#define T(_x) [T_OP_ ## _x] = true
 
-	true,		/* ++ */
-	true,		/* += */
-	true,		/* -=  		10 */
-	true,		/* := */
-	true,		/* = */
-	false,		/* != */
-	false,		/* >= */
-	false,		/* > 		15 */
-	false,		/* <= */
-	false,		/* < */
-	false,		/* =~ */
-	false,		/* !~ */
-	false,		/* =* 		20 */
-	false,		/* !* */
-	false,		/* == */
-	true,		/* ^= */
-	false,		/* # */
-	false,		/* bare word 	25 */
-	false,		/* "foo" */
-	false,		/* 'foo' */
-	false,		/* `foo` */
-	false
+const bool fr_assignment_op[T_TOKEN_LAST + 1] = {
+	T(INCRM),
+	T(ADD),
+	T(SUB),
+	T(SET),
+	T(EQ),
+	T(PREPEND),
 };
 
-const bool fr_equality_op[] = {
-	false,		/* invalid token */
-	false,		/* end of line */
-	false,		/* { */
-	false,		/* } */
-	false,		/* ( */
-	false,		/* ) 		 5 */
-	false,		/* , */
-	false,		/* ; */
-
-	false,		/* ++ */
-	false,		/* += */
-	false,		/* -=  		10 */
-	false,		/* := */
-	false,		/* = */
-	true,		/* != */
-	true,		/* >= */
-	true,		/* > 		15 */
-	true,		/* <= */
-	true,		/* < */
-	true,		/* =~ */
-	true,		/* !~ */
-	true,		/* =* 		20 */
-	true,		/* !* */
-	true,		/* == */
-	false,		/* ^= */
-	false,		/* # */
-	false,		/* bare word 	25 */
-	false,		/* "foo" */
-	false,		/* 'foo' */
-	false,		/* `foo` */
-	false
+const bool fr_equality_op[T_TOKEN_LAST + 1] = {
+	T(NE),
+	T(GE),
+	T(GT),
+	T(LE),
+	T(LT),
+	T(REG_EQ),
+	T(REG_NE),
+	T(CMP_TRUE),
+	T(CMP_FALSE),
+	T(CMP_EQ),
 };
 
-const bool fr_str_tok[] = {
-	false,		/* invalid token */
-	false,		/* end of line */
-	false,		/* { */
-	false,		/* } */
-	false,		/* ( */
-	false,		/* ) 		 5 */
-	false,		/* , */
-	false,		/* ; */
-
-	false,		/* ++ */
-	false,		/* += */
-	false,		/* -=  		10 */
-	false,		/* := */
-	false,		/* = */
-	false,		/* != */
-	false,		/* >= */
-	false,		/* > 		15 */
-	false,		/* <= */
-	false,		/* < */
-	false,		/* =~ */
-	false,		/* !~ */
-	false,		/* =* 		20 */
-	false,		/* !* */
-	false,		/* == */
-	false,		/* ^= */
-	false,		/* # */
-	true,		/* bare word 	25 */
-	true,		/* "foo" */
-	true,		/* 'foo' */
-	true,		/* `foo` */
-	false
+#undef T
+#define T(_x) [T_## _x] = true
+const bool fr_str_tok[T_TOKEN_LAST + 1] = {
+	T(BARE_WORD),
+	T(DOUBLE_QUOTED_STRING),
+	T(SINGLE_QUOTED_STRING),
+	T(BACK_QUOTED_STRING),
 };
 
 /*
