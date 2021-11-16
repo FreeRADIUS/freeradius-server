@@ -54,6 +54,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dcursor.h>
 #include <freeradius-devel/util/time.h>
 
+#include <math.h>
+
 /** Sanity checks
  *
  * There should never be an instance where these fail.
@@ -2676,6 +2678,9 @@ static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst
 					     NULL, src->tainted);
 
 	case FR_TYPE_OCTETS:
+		/*
+		 *	This is really "bool from network"
+		 */
 		return fr_value_box_fixed_size_from_octets(dst, dst_type, dst_enumv, src);
 
 	default:
@@ -2718,6 +2723,22 @@ static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst
 
 	case FR_TYPE_UINT64:
 		dst->vb_bool = (src->vb_uint64 != 0);
+		break;
+
+	case FR_TYPE_SIZE:
+		dst->vb_bool = (src->vb_size != 0);
+		break;
+
+	case FR_TYPE_TIME_DELTA:
+		dst->vb_bool = (fr_time_delta_unwrap(src->vb_time_delta) != 0);
+		break;
+
+	case FR_TYPE_FLOAT32:
+		dst->vb_bool = (fpclassify(src->vb_float32) == FP_ZERO);
+		break;
+
+	case FR_TYPE_FLOAT64:
+		dst->vb_bool = (fpclassify(src->vb_float64) == FP_ZERO);
 		break;
 
 	default:
