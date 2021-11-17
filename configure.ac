@@ -1774,6 +1774,7 @@ if test "x$developer" = "xyes"; then
     	-Wno-covered-switch-default \
     	-Wno-documentation-unknown-command \
     	-Wno-extended-offsetof \
+    	-Wno-gnu-designator \
     	-Wno-gnu-empty-initializer \
     	-Wno-gnu-statement-expression \
     	-Wno-gnu-zero-variadic-macro-arguments \
