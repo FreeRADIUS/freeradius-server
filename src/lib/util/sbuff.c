@@ -68,6 +68,21 @@ bool const sbuff_char_class_zero[UINT8_MAX + 1] = {
 	['0'] = true
 };
 
+/*
+ *	Anything which vaguely resembles an IP address, prefix, or host name.
+ */
+bool const sbuff_char_class_hostname[UINT8_MAX + 1] = {
+	SBUFF_CHAR_CLASS_ALPHA_NUM,
+	['.'] = true,		/* only for IPv4 and host names */
+	[':'] = true,		/* only for IPv6 numerical addresses */
+	['-'] = true,		/* only for host names */
+	['/'] = true,		/* only for prefixes */
+	['['] = true,		/* only for IPv6 numerical addresses */
+	[']'] = true,		/* only for IPv6 numerical addresses */
+	['_'] = true,		/* only for certain host name labels */
+	['*'] = true,		/* really only for ipv4 addresses */
+};
+
 bool const sbuff_char_class_hex[UINT8_MAX + 1] = { SBUFF_CHAR_CLASS_HEX };
 bool const sbuff_char_alpha_num[UINT8_MAX + 1] = { SBUFF_CHAR_CLASS_ALPHA_NUM };
 bool const sbuff_char_whitespace[UINT8_MAX + 1] = {
