@@ -3474,6 +3474,13 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	Disable hostname lookups, so we don't produce spurious DNS
+	 *	queries, and there's no chance of spurious failures if
+	 *	it takes a long time to get a response.
+	 */
+	fr_hostname_lookups = fr_reverse_lookups = false;
+
+	/*
 	 *	Read tests from stdin
 	 */
 	if (argc < 2) {
