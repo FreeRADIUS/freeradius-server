@@ -4554,8 +4554,10 @@ parse:
 	case FR_TYPE_IPV4_ADDR:
 	{
 		fr_ipaddr_t addr;
+		fr_sbuff_t ip_start = FR_SBUFF(in);
+		size_t name_len = fr_sbuff_adv_past_allowed(&ip_start, fr_sbuff_remaining(in), sbuff_char_class_hostname, rules->terminals);
 
-		if (fr_inet_pton4(&addr, fr_sbuff_current(in), fr_sbuff_remaining(in),
+		if (fr_inet_pton4(&addr, fr_sbuff_current(in), name_len,
 				  fr_hostname_lookups, false, true) < 0) return -1;
 
 		/*
@@ -4573,15 +4575,22 @@ parse:
 		goto finish;
 
 	case FR_TYPE_IPV4_PREFIX:
-		if (fr_inet_pton4(&dst->vb_ip, fr_sbuff_current(in), fr_sbuff_remaining(in),
+	{
+		fr_sbuff_t ip_start = FR_SBUFF(in);
+		size_t name_len = fr_sbuff_adv_past_allowed(&ip_start, fr_sbuff_remaining(in), sbuff_char_class_hostname, rules->terminals);
+
+		if (fr_inet_pton4(&dst->vb_ip, fr_sbuff_current(in), name_len,
 				  fr_hostname_lookups, false, true) < 0) return -1;
+	}
 		goto finish;
 
 	case FR_TYPE_IPV6_ADDR:
 	{
 		fr_ipaddr_t addr;
+		fr_sbuff_t ip_start = FR_SBUFF(in);
+		size_t name_len = fr_sbuff_adv_past_allowed(&ip_start, fr_sbuff_remaining(in), sbuff_char_class_hostname, rules->terminals);
 
-		if (fr_inet_pton6(&addr, fr_sbuff_current(in), fr_sbuff_remaining(in),
+		if (fr_inet_pton6(&addr, fr_sbuff_current(in), name_len,
 				  fr_hostname_lookups, false, true) < 0) return -1;
 
 		/*
@@ -4599,8 +4608,13 @@ parse:
 		goto finish;
 
 	case FR_TYPE_IPV6_PREFIX:
-		if (fr_inet_pton6(&dst->vb_ip, fr_sbuff_current(in), fr_sbuff_remaining(in),
+	{
+		fr_sbuff_t ip_start = FR_SBUFF(in);
+		size_t name_len = fr_sbuff_adv_past_allowed(&ip_start, fr_sbuff_remaining(in), sbuff_char_class_hostname, rules->terminals);
+
+		if (fr_inet_pton6(&dst->vb_ip, fr_sbuff_current(in), name_len,
 				  fr_hostname_lookups, false, true) < 0) return -1;
+	}
 		goto finish;
 
 	case FR_TYPE_UINT8:
