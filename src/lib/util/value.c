@@ -4572,6 +4572,7 @@ parse:
 		}
 
 		memcpy(&dst->vb_ip, &addr, sizeof(dst->vb_ip));
+		fr_sbuff_advance(in, name_len);
 	}
 		goto finish;
 
@@ -4582,6 +4583,7 @@ parse:
 
 		if (fr_inet_pton4(&dst->vb_ip, fr_sbuff_current(in), name_len,
 				  fr_hostname_lookups, false, true) < 0) return -1;
+		fr_sbuff_advance(in, name_len);
 	}
 		goto finish;
 
@@ -4605,6 +4607,7 @@ parse:
 		}
 
 		memcpy(&dst->vb_ip, &addr, sizeof(dst->vb_ip));
+		fr_sbuff_advance(in, name_len);
 	}
 		goto finish;
 
@@ -4615,6 +4618,7 @@ parse:
 
 		if (fr_inet_pton6(&dst->vb_ip, fr_sbuff_current(in), name_len,
 				  fr_hostname_lookups, false, true) < 0) return -1;
+		fr_sbuff_advance(in, name_len);
 	}
 		goto finish;
 
