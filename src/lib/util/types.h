@@ -54,21 +54,20 @@ typedef enum {
 	FR_TYPE_UINT32,				//!< 32 Bit unsigned integer.
 	FR_TYPE_UINT64,				//!< 64 Bit unsigned integer.
 
+	FR_TYPE_SIZE,				//!< Unsigned integer capable of representing any memory
+						//!< address on the local system.
+
+	FR_TYPE_DATE,				//!< Unix time stamp, always has value >2^31
 
 	FR_TYPE_INT8,				//!< 8 Bit signed integer.
 	FR_TYPE_INT16,				//!< 16 Bit signed integer.
 	FR_TYPE_INT32,				//!< 32 Bit signed integer.
 	FR_TYPE_INT64,				//!< 64 Bit signed integer.
 
-	FR_TYPE_FLOAT32,			//!< Single precision floating point.
-	FR_TYPE_FLOAT64,			//!< Double precision floating point.
-
-	FR_TYPE_DATE,				//!< Unix time stamp, always has value >2^31
-
 	FR_TYPE_TIME_DELTA,			//!< A period of time measured in nanoseconds.
 
-	FR_TYPE_SIZE,				//!< Unsigned integer capable of representing any memory
-						//!< address on the local system.
+	FR_TYPE_FLOAT32,			//!< Single precision floating point.
+	FR_TYPE_FLOAT64,			//!< Double precision floating point.
 
 	FR_TYPE_TLV,				//!< Contains nested attributes.
 	FR_TYPE_STRUCT,				//!< like TLV, but without T or L, and fixed-width children
