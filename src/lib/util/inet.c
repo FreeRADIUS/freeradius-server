@@ -517,10 +517,21 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 			out->addr.v4.s_addr = htonl(strtoul(value, NULL, 0));
 
 		} else if (!resolve) {
-			if (inet_pton(AF_INET, value, &out->addr.v4.s_addr) <= 0) {
+			unsigned int a, b, c, d;
+			int num;
+			char rest;
+
+			a = b = c = d = 0;
+
+			num = sscanf(value, "%u.%u.%u.%u%c", &a, &b, &c, &d, &rest);
+			if ((num == 0) || (num == 5) ||
+			    (a > 255) || (b > 255) || (c > 255) || (d > 255)) {
 				fr_strerror_printf("Failed to parse IPv4 address string \"%s\"", value);
 				return -1;
 			}
+
+			out->addr.v4.s_addr = htonl((a << 24) | (b << 16) | (c << 8) | d);
+
 		} else if (fr_inet_hton(out, AF_INET, value, fallback) < 0) return -1;
 
 		return 0;
