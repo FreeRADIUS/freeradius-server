@@ -1024,7 +1024,6 @@ static size_t parse_typed_value(command_result_t *result, fr_value_box_t *box, c
 			RETURN_PARSE_ERROR(0);
 		}
 		p++;
-		slen += 2;
 
 		if (type != FR_TYPE_STRING) {
 			if (fr_value_box_cast_in_place(box, box, type, NULL) < 0) {
