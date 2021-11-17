@@ -990,6 +990,7 @@ static size_t parse_typed_value(command_result_t *result, fr_value_box_t *box, c
 	size_t		match_len;
 	ssize_t		slen;
 	char const     	*p;
+	fr_sbuff_t	sbuff;
 
 	/*
 	 *	Parse data types
@@ -1011,15 +1012,16 @@ static size_t parse_typed_value(command_result_t *result, fr_value_box_t *box, c
 	 */
 	if (*p == '"'){
 		p++;
+		sbuff = FR_SBUFF_IN(p, strlen(p));
 		slen = fr_value_box_from_substr(box, box, FR_TYPE_STRING, NULL,
-						&FR_SBUFF_IN(p, strlen(p)),
+						&sbuff,
 						&value_parse_rules_double_quoted,
 						false);
 		if (slen < 0) {
 			RETURN_OK_WITH_ERROR();
 		}
 
-		p += slen;
+		p += fr_sbuff_used(&sbuff);
 		if (*p != '"') {
 			RETURN_PARSE_ERROR(0);
 		}
@@ -1032,14 +1034,16 @@ static size_t parse_typed_value(command_result_t *result, fr_value_box_t *box, c
 		}
 
 	} else {
+		sbuff = FR_SBUFF_IN(p, strlen(p));
+
 		slen = fr_value_box_from_substr(box, box, type, NULL,
-						&FR_SBUFF_IN(p, strlen(p)),
+						&sbuff,
 						&value_parse_rules_bareword_unquoted,
 						false);
 		if (slen < 0) {
 			RETURN_OK_WITH_ERROR();
 		}
-		p += slen;
+		p += fr_sbuff_used(&sbuff);
 	}
 	fr_skip_whitespace(p);
 
@@ -1201,7 +1205,10 @@ static size_t command_calc(command_result_t *result, command_file_ctx_t *cc,
 		p += match_len;
 	} else {
 		op = token2op[(uint8_t) p[0]];
-		if (op == T_INVALID) RETURN_PARSE_ERROR(0);
+		if (op == T_INVALID) {
+			fr_strerror_printf("Unknown operator '%c'", p[0]);
+			RETURN_PARSE_ERROR(0);
+		}
 		p++;
 	}
 	fr_skip_whitespace(p);
