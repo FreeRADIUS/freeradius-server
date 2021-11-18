@@ -181,7 +181,6 @@ static const fr_type_t upcast[FR_TYPE_FLOAT64 + 1][FR_TYPE_FLOAT64 + 1] = {
 	[FR_TYPE_FLOAT32] = {
 		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
 	},
-
 };
 
 
@@ -419,6 +418,11 @@ static int cast_ipv4_addr(fr_value_box_t *out, fr_value_box_t const *in)
 				   fr_table_str_by_value(fr_value_box_type_table, in->type, "<INVALID>"));
 		return -1;
 
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV4_ADDR:
+		fr_value_box_copy(NULL, out, in);
+		break;
+
 	case FR_TYPE_IPV6_ADDR:
 		if (fr_value_box_cast(NULL, out, FR_TYPE_IPV4_ADDR, NULL, in) < 0) return -1;
 		break;
@@ -491,7 +495,8 @@ static int calc_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		 */
 		if (b->vb_uint32 >= (((uint32_t) 1) << a->vb_ip.prefix)) return OVERFLOW;
 
-		dst->vb_ip.addr.v4.s_addr = a->vb_ip.addr.v4.s_addr + b->vb_uint32;
+		dst->vb_ip.af = AF_INET;
+		dst->vb_ip.addr.v4.s_addr = htonl(ntohl(a->vb_ip.addr.v4.s_addr) + b->vb_uint32);
 		dst->vb_ip.prefix = 0;
 		break;
 
@@ -509,6 +514,11 @@ static int cast_ipv6_addr(fr_value_box_t *out, fr_value_box_t const *in)
 		fr_strerror_printf("Cannot operate on ipv6addr and %s",
 				   fr_table_str_by_value(fr_value_box_type_table, in->type, "<INVALID>"));
 		return -1;
+
+	case FR_TYPE_IPV6_PREFIX:
+	case FR_TYPE_IPV6_ADDR:
+		fr_value_box_copy(NULL, out, in);
+		break;
 
 	case FR_TYPE_IPV4_ADDR:
 		if (fr_value_box_cast(NULL, out, FR_TYPE_IPV6_ADDR, NULL, in) < 0) return -1;
@@ -550,6 +560,8 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 {
 	fr_value_box_t one, two;
 	fr_value_box_t *a, *b;
+	int i;
+	uint64_t mask;
 
 	fr_assert(dst->type == FR_TYPE_IPV6_ADDR);
 
@@ -582,12 +594,16 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		 */
 		if (b->vb_uint64 >= (((uint64_t) 1) << a->vb_ip.prefix)) return OVERFLOW;
 
-#if 0
 		/*
-		 *	@todo - do the masking on stuff
+		 *	Add in the relevant low bits.
 		 */
-		dst->vb_ip.addr.v6.s_addr = a->vb_ip.addr.v6.s_addr + b->uint64;
-#endif
+		mask = b->vb_uint64;
+		for (i = 15; i >= ((a->vb_ip.prefix + 7) >> 3); i--) {
+			dst->vb_ip.addr.v6.s6_addr[i] |= mask & 0xff;
+			mask >>= 8;
+		}
+
+		dst->vb_ip.af = AF_INET6;
 		dst->vb_ip.prefix = 0;
 		dst->vb_ip.scope_id = a->vb_ip.scope_id;
 		break;
@@ -819,8 +835,6 @@ int fr_value_calc(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint, fr_value
 	 *	guess based on a variety of factors.
 	 */
 	if (hint == FR_TYPE_NULL) do {
-			fr_type_t a_type, b_type;
-
 		switch (op) {
 		case T_OP_PREPEND:
 			/*
@@ -883,11 +897,9 @@ int fr_value_calc(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint, fr_value
 			 *	uint8 + uint16, and have the output as
 			 *	uint16.
 			 */
-			a_type = a->type;
-			b_type = b->type;
-			if (a_type > b_type) swap(a_type, b_type);
+			hint = upcast[a->type][b->type];
+			if (hint == FR_TYPE_NULL) hint = upcast[b->type][a->type];
 
-			hint = upcast[a_type][b_type];
 			if (hint != FR_TYPE_NULL) {
 				break;
 			}
@@ -953,21 +965,14 @@ int fr_value_calc(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint, fr_value
 	case T_OP_ADD:
 	case T_OP_SUB:
 	case T_OP_PREPEND:
-		if (hint == FR_TYPE_NULL) {
-			if (a->type != b->type) {
-				fr_strerror_const("not yet implemented");
-				goto done;
-			}
+		fr_assert(hint != FR_TYPE_NULL);
 
-			fr_value_box_init(dst, hint, NULL, false);
-
-		} else if ((dst != a) && (dst != b)) {
-			/*
-			 *	It's OK to use one of the inputs as
-			 *	the output.  But if we don't, ensure
-			 *	that the output value box is
-			 *	initialized.
-			 */
+		/*
+		 *	It's OK to use one of the inputs as the
+		 *	output.  But if we don't, ensure that the
+		 *	output value box is initialized.
+		 */
+		if ((dst != a) && (dst != b)) {
 			fr_value_box_init(dst, hint, NULL, false);
 		}
 

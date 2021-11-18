@@ -67,5 +67,11 @@ match 13
 calc uint32 1000 - uint32 999 -> uint8
 match 1
 
+#
+# make an IP out of a prefix and an offset
+#
+calc ipv4prefix 127/8 + uint8 1 -> ipaddr
+match 127.0.0.1
+
 count
-match 30
+match 32
