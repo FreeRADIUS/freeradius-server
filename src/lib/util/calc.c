@@ -774,6 +774,7 @@ static int calc_integer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t con
 	fr_value_box_t const *a = in1;
 	fr_value_box_t const *b = in2;
 	fr_value_box_t one, two, out;
+	fr_binary_op_t calc = NULL;
 
 	/*
 	 *	All of the types are the same.  Just do the work.
@@ -824,14 +825,25 @@ static int calc_integer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t con
 		b = &two;
 	}
 
-	if (!calc_integer_type[type]) {
+	/*
+	 *	Clang scan is too stupid to notice that
+	 *	calc_integer_type[] is "const", so if we check
+	 *	calc_integer_type[type] for being !NULL, and then call
+	 *	a function from calc_integer_type[type], then the
+	 *	array entry can't be NULL.
+	 *
+	 *	Apparently putting the function pointer into an
+	 *	intermediate variable shuts it up.
+	 */
+	calc = calc_integer_type[type];
+	if (!calc) {
 	not_yet:
 		fr_strerror_const("Not yet implemented");
 		return -1;
 	}
 
 	fr_value_box_init(&out, type, dst->enumv, false);
-	rcode = calc_integer_type[type](ctx, &out, a, op, b);
+	rcode = calc(ctx, &out, a, op, b);
 	if (rcode < 0) return rcode;
 
 	/*
@@ -841,7 +853,7 @@ static int calc_integer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t con
 	return fr_value_box_cast(ctx, dst, dst->type, dst->enumv, &out);
 }
 
-static const fr_binary_op_t calc_type[FR_TYPE_MAX] = {
+static const fr_binary_op_t calc_type[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_OCTETS]	= calc_octets,
 	[FR_TYPE_STRING]	= calc_string,
 
