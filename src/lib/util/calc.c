@@ -35,7 +35,9 @@ RCSID("$Id$")
 
 /** Updates type (a,b) -> c
  *
- *  Note that we MUST have a less than b here
+ *  Note that we MUST have a less than b here.  Otherwise there will
+ *  be two entries for the same upcast, and the entries may get out of
+ *  sync.
  */
 static const fr_type_t upcast[FR_TYPE_FLOAT64 + 1][FR_TYPE_FLOAT64 + 1] = {
 	/*
@@ -46,6 +48,7 @@ static const fr_type_t upcast[FR_TYPE_FLOAT64 + 1][FR_TYPE_FLOAT64 + 1] = {
 		[FR_TYPE_UINT16] =  FR_TYPE_IPV4_ADDR,
 		[FR_TYPE_UINT32] =  FR_TYPE_IPV4_ADDR,
 		[FR_TYPE_UINT64] =  FR_TYPE_IPV4_ADDR,
+
 		[FR_TYPE_SIZE] =    FR_TYPE_IPV4_ADDR,
 
 		[FR_TYPE_INT8] =    FR_TYPE_IPV4_ADDR,
@@ -62,6 +65,7 @@ static const fr_type_t upcast[FR_TYPE_FLOAT64 + 1][FR_TYPE_FLOAT64 + 1] = {
 		[FR_TYPE_UINT16] =  FR_TYPE_IPV6_ADDR,
 		[FR_TYPE_UINT32] =  FR_TYPE_IPV6_ADDR,
 		[FR_TYPE_UINT64] =  FR_TYPE_IPV6_ADDR,
+
 		[FR_TYPE_SIZE] =    FR_TYPE_IPV6_ADDR,
 
 		[FR_TYPE_INT8] =    FR_TYPE_IPV6_ADDR,
@@ -81,62 +85,86 @@ static const fr_type_t upcast[FR_TYPE_FLOAT64 + 1][FR_TYPE_FLOAT64 + 1] = {
 		[FR_TYPE_UINT16] = FR_TYPE_UINT16,
 		[FR_TYPE_UINT32] = FR_TYPE_UINT32,
 		[FR_TYPE_UINT64] = FR_TYPE_UINT64,
-		[FR_TYPE_SIZE] =   FR_TYPE_SIZE,
-		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
-		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
 
+		[FR_TYPE_SIZE] =   FR_TYPE_SIZE,
+
+		[FR_TYPE_DATE]  = FR_TYPE_DATE,
+
+		[FR_TYPE_INT8]   = FR_TYPE_INT16,
 		[FR_TYPE_INT16]  = FR_TYPE_INT16,
 		[FR_TYPE_INT32]  = FR_TYPE_INT32,
 		[FR_TYPE_INT64]  = FR_TYPE_INT64,
 
 		[FR_TYPE_TIME_DELTA] = FR_TYPE_TIME_DELTA,
-		[FR_TYPE_DATE]  = FR_TYPE_DATE,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
+		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
 	},
 
 	[FR_TYPE_UINT16] = {
 		[FR_TYPE_UINT32] = FR_TYPE_UINT32,
 		[FR_TYPE_UINT64] = FR_TYPE_UINT64,
-		[FR_TYPE_SIZE] =   FR_TYPE_SIZE,
-		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
-		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
 
+		[FR_TYPE_SIZE] =   FR_TYPE_SIZE,
+
+		[FR_TYPE_DATE]  = FR_TYPE_DATE,
+
+		[FR_TYPE_INT8]   = FR_TYPE_INT32,
+		[FR_TYPE_INT16]  = FR_TYPE_INT32,
 		[FR_TYPE_INT32]  = FR_TYPE_INT32,
 		[FR_TYPE_INT64]  = FR_TYPE_INT64,
 
 		[FR_TYPE_TIME_DELTA]  = FR_TYPE_TIME_DELTA,
-		[FR_TYPE_DATE]  = FR_TYPE_DATE,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
+		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
 	},
 
 	[FR_TYPE_UINT32] = {
 		[FR_TYPE_UINT64] = FR_TYPE_UINT64,
-		[FR_TYPE_SIZE] =   FR_TYPE_SIZE,
-		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
-		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
 
+		[FR_TYPE_SIZE]   = FR_TYPE_SIZE,
+
+		[FR_TYPE_DATE]   = FR_TYPE_DATE,
+
+		[FR_TYPE_INT8]   = FR_TYPE_INT64,
+		[FR_TYPE_INT16]  = FR_TYPE_INT64,
+		[FR_TYPE_INT32]  = FR_TYPE_INT64,
 		[FR_TYPE_INT64]  = FR_TYPE_INT64,
 
 		[FR_TYPE_TIME_DELTA]  = FR_TYPE_TIME_DELTA,
-		[FR_TYPE_DATE]  = FR_TYPE_DATE,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
+		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
 	},
 
 	[FR_TYPE_UINT64] = {
-		[FR_TYPE_SIZE] =   FR_TYPE_SIZE,
-		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
-		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
+		[FR_TYPE_SIZE]  = FR_TYPE_SIZE,
+
+		[FR_TYPE_DATE]  = FR_TYPE_DATE,
 
 		[FR_TYPE_TIME_DELTA]  = FR_TYPE_TIME_DELTA,
-		[FR_TYPE_DATE]  = FR_TYPE_DATE,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
+		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
 	},
 
 	[FR_TYPE_SIZE] = {
+		[FR_TYPE_INT8]    = FR_TYPE_INT64,
+		[FR_TYPE_INT16]   = FR_TYPE_INT64,
+		[FR_TYPE_INT32]   = FR_TYPE_INT64,
+		[FR_TYPE_INT64]   = FR_TYPE_INT64,
+
 		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
 		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
 	},
 
 	[FR_TYPE_DATE] = {
+		[FR_TYPE_INT8]	= FR_TYPE_DATE,
 		[FR_TYPE_INT16]	= FR_TYPE_DATE,
 		[FR_TYPE_INT32] = FR_TYPE_DATE,
 		[FR_TYPE_INT64] = FR_TYPE_DATE,
+
 		[FR_TYPE_TIME_DELTA]  = FR_TYPE_DATE,
 
 		[FR_TYPE_FLOAT32] = FR_TYPE_DATE,
@@ -147,22 +175,27 @@ static const fr_type_t upcast[FR_TYPE_FLOAT64 + 1][FR_TYPE_FLOAT64 + 1] = {
 	 *	Signed ints
 	 */
 	[FR_TYPE_INT8] = {
-		[FR_TYPE_INT16] = FR_TYPE_INT16,
+		[FR_TYPE_INT16] = FR_TYPE_INT32,
 		[FR_TYPE_INT32] = FR_TYPE_INT32,
 		[FR_TYPE_INT64] = FR_TYPE_INT64,
+
+		[FR_TYPE_TIME_DELTA] = FR_TYPE_TIME_DELTA,
+
 		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
 		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
 	},
 
 	[FR_TYPE_INT16] = {
-		[FR_TYPE_INT32] = FR_TYPE_INT32,
+		[FR_TYPE_INT32] = FR_TYPE_INT64,
 		[FR_TYPE_INT64] = FR_TYPE_INT64,
+
 		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
 		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
 	},
 
 	[FR_TYPE_INT32] = {
 		[FR_TYPE_INT64] = FR_TYPE_INT64,
+
 		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
 		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
 	},
@@ -755,6 +788,16 @@ static int calc_integer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t con
 	/*
 	 *	Upcast to the largest type which will handle the
 	 *	calculations.
+	 *
+	 *	Note that this still won't catch all of the overflow
+	 *	cases, just the majority.
+	 *
+	 *	This will still fail if we do things like
+	 *
+	 *	    uint64 foo - int64 INT64_MIN -> uint64
+	 *
+	 *	the RHS should arguably be converted to uint64.
+	 *	Perhaps we'll do that as a later step.
 	 */
 	type = dst->type;
 	if (upcast[type][a->type] != FR_TYPE_NULL) {
@@ -835,6 +878,14 @@ int fr_value_calc(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint, fr_value
 
 	fr_value_box_init_null(&one);
 	fr_value_box_init_null(&two);
+
+	/*
+	 *	Ensure that the upcast array is ordered.  We have
+	 *	entries in [a][b] only when a<b.  This limit ensures
+	 *	that we don't have conflicting entries.
+	 */
+	fr_assert((upcast[a->type][b->type] == FR_TYPE_NULL) || (a->type < b->type));
+	fr_assert((upcast[b->type][a->type] == FR_TYPE_NULL) || (b->type < a->type));
 
 	/*
 	 *	We don't know what the output type should be.  Try to
