@@ -39,7 +39,7 @@ RCSID("$Id$")
  *  be two entries for the same upcast, and the entries may get out of
  *  sync.
  */
-static const fr_type_t upcast[FR_TYPE_FLOAT64 + 1][FR_TYPE_FLOAT64 + 1] = {
+static const fr_type_t upcast[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	/*
 	 *	Prefix + int --> ipaddr
 	 */
