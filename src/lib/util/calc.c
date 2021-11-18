@@ -711,6 +711,8 @@ CALC(uint16)
 CALC(uint32)
 CALC(uint64)
 
+CALC(size)
+
 CALC(int8)
 CALC(int16)
 CALC(int32)
@@ -724,11 +726,12 @@ static const fr_binary_op_t calc_integer_type[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_UINT32] = calc_uint32,
 	[FR_TYPE_UINT64] = calc_uint64,
 
+	[FR_TYPE_SIZE] = calc_size,
+
 	[FR_TYPE_INT8] =  calc_int8,
 	[FR_TYPE_INT16] = calc_int16,
 	[FR_TYPE_INT32] = calc_int32,
 	[FR_TYPE_INT64] = calc_int64,
-
 };
 
 static int calc_integer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *in1, fr_token_t op, fr_value_box_t const *in2)
@@ -744,6 +747,8 @@ static int calc_integer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t con
 	 */
 	if ((dst->type == in1->type) &&
 	    (dst->type == in2->type)) {
+		if (!calc_integer_type[dst->type]) goto not_yet;
+
 		return calc_integer_type[dst->type](ctx, dst, in1, op, in2);
 	}
 
@@ -777,6 +782,7 @@ static int calc_integer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t con
 	}
 
 	if (!calc_integer_type[type]) {
+	not_yet:
 		fr_strerror_const("Not yet implemented");
 		return -1;
 	}
