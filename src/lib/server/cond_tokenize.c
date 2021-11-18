@@ -196,8 +196,6 @@ static int cond_cast_tmpl(tmpl_t *vpt, fr_type_t type, tmpl_t *other)
 	fr_strerror_clear();
 
 	if (tmpl_cast_in_place(vpt, type, da) < 0) {
-		fr_strerror_printf_push("Failed parsing value as type '%s'",
-					fr_table_str_by_value(fr_value_box_type_table, type, "??"));
 		return -1;
 	}
 

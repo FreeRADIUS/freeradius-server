@@ -4355,7 +4355,7 @@ fr_slen_t fr_value_box_from_numeric_substr(fr_value_box_t *dst, fr_type_t dst_ty
 		}
 
 		if (err == FR_SBUFF_PARSE_ERROR_NOT_FOUND) {
-			fr_strerror_printf("Cannot parse type '%s' from input string",
+			fr_strerror_printf("Failed parsing string as type '%s'",
 					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		} else {
 			fr_sbuff_parse_error_to_strerror(err);
