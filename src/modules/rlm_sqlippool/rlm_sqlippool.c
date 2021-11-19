@@ -504,7 +504,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
 	char			allocation[FR_MAX_STRING_LEN];
 	int			allocation_len;
-	fr_pair_t		*vp;
+	fr_pair_t		*vp = NULL;
 	rlm_sql_handle_t	*handle;
 
 	/*
@@ -644,20 +644,21 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 		return do_logging(p_result, inst, request, inst->log_failed, RLM_MODULE_NOOP);
 	}
 
-	RDEBUG2("Allocated IP %s", allocation);
-	fr_pair_append(&request->reply_pairs, vp);
-
 	/*
 	 *	UPDATE
 	 */
 	if (sqlippool_command(inst->alloc_update, &handle, inst, request,
 			      allocation, allocation_len) < 0) {
 	error:
+		talloc_free(vp);
 		if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
 		RETURN_MODULE_FAIL;
 	}
 
 	DO_PART(alloc_commit);
+
+	RDEBUG2("Allocated IP %s", allocation);
+	fr_pair_append(&request->reply_pairs, vp);
 
 	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
 
