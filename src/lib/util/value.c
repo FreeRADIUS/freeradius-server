@@ -3003,6 +3003,115 @@ bad_cast:
 	return -1;
 }
 
+/** Convert any value to a floating point value
+ *
+ * @param ctx		unused.
+ * @param dst		Where to write result of casting.
+ * @param dst_type	to cast to.
+ * @param dst_enumv	enumeration values.
+ * @param src		Input data.
+ */
+static inline int fr_value_box_cast_to_float(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst,
+					     fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
+					     fr_value_box_t const *src)
+{
+	double num;
+
+	switch (src->type) {
+	case FR_TYPE_FLOAT32:
+		if (dst_type == FR_TYPE_FLOAT64) {
+			num = src->vb_float32;
+			goto good_cast;
+		}
+
+		goto bad_cast;
+
+	case FR_TYPE_FLOAT64:
+		if (dst_type == FR_TYPE_FLOAT32) {
+			num = src->vb_float64;
+			goto good_cast;
+		}
+
+		goto bad_cast;
+
+	case FR_TYPE_BOOL:
+		num = src->vb_bool;
+		goto good_cast;
+
+	case FR_TYPE_INT8:
+		num = src->vb_int8;
+		goto good_cast;
+
+	case FR_TYPE_INT16:
+		num = src->vb_int16;
+		goto good_cast;
+
+	case FR_TYPE_INT32:
+		num = src->vb_int32;
+		goto good_cast;
+
+	case FR_TYPE_INT64:
+		num = src->vb_int64;
+		goto good_cast;
+
+	case FR_TYPE_UINT8:
+		num = src->vb_uint8;
+		goto good_cast;
+
+	case FR_TYPE_UINT16:
+		num = src->vb_uint16;
+		goto good_cast;
+
+	case FR_TYPE_UINT32:
+		num = src->vb_uint32;
+		goto good_cast;
+
+	case FR_TYPE_UINT64:
+		num = src->vb_uint64;
+		goto good_cast;
+
+	case FR_TYPE_DATE:
+		/*
+		 *	Unix times are in nanoseconds
+		 */
+		num = fr_unix_time_unwrap(src->vb_date);
+		num /= NSEC;
+		goto good_cast;
+
+	case FR_TYPE_TIME_DELTA:
+		/*
+		 *	Time deltas are in nanoseconds, but scaled.
+		 */
+		num = fr_time_delta_unwrap(src->vb_time_delta);
+		if (src->enumv) {
+			num /= fr_time_multiplier_by_res[src->enumv->flags.flag_time_res];
+		}
+		goto good_cast;
+
+	case FR_TYPE_SIZE:
+		num = src->vb_size;
+
+	good_cast:
+		fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
+		if (dst_type == FR_TYPE_FLOAT32) {
+			dst->vb_float32 = num;
+		} else {
+			dst->vb_float64 = num;
+		}
+		return 0;
+
+	default:
+		break;
+	}
+
+bad_cast:
+	fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
+			   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
+			   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+	return -1;
+}
+
+
 /** Convert one type of fr_value_box_t to another
  *
  * This should be the canonical function used to convert between INTERNAL data formats.
@@ -3110,7 +3219,10 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 
 	case FR_TYPE_FLOAT32:
 	case FR_TYPE_FLOAT64:
-		break;
+		if (fr_type_is_fixed_size(src->type)) {
+			return fr_value_box_cast_to_float(ctx, dst, dst_type, dst_enumv, src);
+		}
+		break;		/* use generic string/octets stuff below */
 
 	/*
 	 *	Invalid types for casting (should have been caught earlier)
