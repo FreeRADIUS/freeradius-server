@@ -727,6 +727,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	if (fr_pair_value_from_str(vp, allocation, allocation_len) < 0) {
 		DO_PART(allocate_commit);
 
+		talloc_free(vp);
 		RDEBUG("Invalid IP number [%s] returned from instbase query.", allocation);
 		fr_connection_release(inst->sql_inst->pool, handle);
 		return do_logging(request, inst->log_failed, RLM_MODULE_NOOP);
