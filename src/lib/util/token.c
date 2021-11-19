@@ -80,6 +80,11 @@ char const *fr_tokens[T_TOKEN_LAST] = {
 	[T_COMMA] = ",",
 	[T_SEMICOLON] = ";",
 
+	[T_ADD]	     = "+",
+	[T_SUB]	     = "-",
+	[T_MUL]	     = "*",
+	[T_DIV]	     = "/",
+
 	[T_OP_INCRM] = "++",
 
 	[T_OP_ADD_EQ] = "+=",

@@ -45,6 +45,14 @@ typedef enum fr_token {
 	T_COMMA,			/* , */
 	T_SEMICOLON,			/* ; */
 
+	T_ADD,				/* + */
+	T_SUB,				/* - */
+	T_MUL,				/* * */
+	T_DIV,				/* / */
+
+	/*
+	 *	Only used by LDAP ???
+	 */
 	T_OP_INCRM,			/* ++ */
 
 	/*
