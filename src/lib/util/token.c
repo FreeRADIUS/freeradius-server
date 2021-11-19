@@ -69,7 +69,7 @@ size_t fr_token_quotes_table_len = NUM_ELEMENTS(fr_token_quotes_table);
 /*
  *  This is a hack, and has to be kept in sync with tokens.h
  */
-char const *fr_tokens[T_TOKEN_LAST + 1] = {
+char const *fr_tokens[T_TOKEN_LAST] = {
 	[T_INVALID] = "?",
 	[T_EOL] = "EOL",
 
@@ -108,8 +108,6 @@ char const *fr_tokens[T_TOKEN_LAST + 1] = {
 	[T_SINGLE_QUOTED_STRING]  = "<'STRING'>",
 	[T_BACK_QUOTED_STRING]    = "<`STRING`>",
 	[T_SOLIDUS_QUOTED_STRING] = "</STRING/>",
-
-	[T_TOKEN_LAST] = "<invalid>",
 };
 
 
@@ -117,7 +115,7 @@ char const *fr_tokens[T_TOKEN_LAST + 1] = {
  *
  * Non-string types convert to '?' to screw ups can be identified easily
  */
-const char fr_token_quote[T_TOKEN_LAST + 1] = {
+const char fr_token_quote[T_TOKEN_LAST] = {
 	[ 0 ... T_HASH ] = '?',	/* GCC extension for range initialization, also allowed by clang */
 
 	[T_BARE_WORD] = '\0',
@@ -125,13 +123,11 @@ const char fr_token_quote[T_TOKEN_LAST + 1] = {
 	[T_SINGLE_QUOTED_STRING] = '\'',
 	[T_BACK_QUOTED_STRING] = '`',
 	[T_SOLIDUS_QUOTED_STRING] = '/',
-
-	[T_TOKEN_LAST] = '?',
 };
 
 #define T(_x) [T_OP_ ## _x] = true
 
-const bool fr_assignment_op[T_TOKEN_LAST + 1] = {
+const bool fr_assignment_op[T_TOKEN_LAST] = {
 	T(INCRM),
 	T(ADD_EQ),
 	T(SUB_EQ),
@@ -140,7 +136,7 @@ const bool fr_assignment_op[T_TOKEN_LAST + 1] = {
 	T(PREPEND),
 };
 
-const bool fr_equality_op[T_TOKEN_LAST + 1] = {
+const bool fr_equality_op[T_TOKEN_LAST] = {
 	T(NE),
 	T(GE),
 	T(GT),
@@ -155,7 +151,7 @@ const bool fr_equality_op[T_TOKEN_LAST + 1] = {
 
 #undef T
 #define T(_x) [T_## _x] = true
-const bool fr_str_tok[T_TOKEN_LAST + 1] = {
+const bool fr_str_tok[T_TOKEN_LAST] = {
 	T(BARE_WORD),
 	T(DOUBLE_QUOTED_STRING),
 	T(SINGLE_QUOTED_STRING),

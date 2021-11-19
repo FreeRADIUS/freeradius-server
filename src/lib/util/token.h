@@ -67,8 +67,11 @@ typedef enum fr_token {
 	T_SINGLE_QUOTED_STRING,		/* 'foo' */
 	T_BACK_QUOTED_STRING,		/* `foo` */
 	T_SOLIDUS_QUOTED_STRING,	/* /foo/ */
-	T_TOKEN_LAST
 } fr_token_t;
+/*
+ *	This must be manually updated, and is never part of the ENUM.
+ */
+#define T_TOKEN_LAST (T_SOLIDUS_QUOTED_STRING + 1)
 
 #define T_EQSTART	T_OP_ADD_EQ
 #define	T_EQEND		(T_HASH)
@@ -82,11 +85,11 @@ extern fr_table_num_ordered_t const fr_tokens_table[];
 extern size_t fr_tokens_table_len;
 extern fr_table_num_sorted_t const fr_token_quotes_table[];
 extern size_t fr_token_quotes_table_len;
-extern const char *fr_tokens[T_TOKEN_LAST + 1];
-extern const char fr_token_quote[T_TOKEN_LAST + 1];
-extern const bool fr_assignment_op[T_TOKEN_LAST + 1];
-extern const bool fr_equality_op[T_TOKEN_LAST + 1];
-extern const bool fr_str_tok[T_TOKEN_LAST + 1];
+extern const char *fr_tokens[T_TOKEN_LAST];
+extern const char fr_token_quote[T_TOKEN_LAST];
+extern const bool fr_assignment_op[T_TOKEN_LAST];
+extern const bool fr_equality_op[T_TOKEN_LAST];
+extern const bool fr_str_tok[T_TOKEN_LAST];
 
 int		getword (char const **ptr, char *buf, int buflen, bool unescape);
 fr_token_t	gettoken(char const **ptr, char *buf, int buflen, bool unescape);
