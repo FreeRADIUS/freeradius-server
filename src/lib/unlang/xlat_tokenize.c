@@ -140,6 +140,8 @@ static inline CC_HINT(always_inline) xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx,
 	node->type = type;
 	if (in) node->fmt = talloc_bstrndup(node, in, inlen);
 
+	node->flags.pure = (type == XLAT_LITERAL);
+
 	return node;
 }
 
@@ -151,6 +153,11 @@ static inline CC_HINT(always_inline) xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx,
 static inline CC_HINT(always_inline) void xlat_exp_set_type(xlat_exp_t *node, xlat_type_t type)
 {
 	node->type = type;
+
+	if (type == XLAT_LITERAL) {
+		node->flags.needs_async = false; /* literals are always non-async */
+		node->flags.pure = true;	 /* literals are always pure */
+	}
 }
 
 #if 0
@@ -189,6 +196,7 @@ static inline CC_HINT(always_inline) void xlat_flags_merge(xlat_flags_t *parent,
 {
 	parent->needs_async |= child->needs_async;
 	parent->needs_resolving |= child->needs_resolving;
+	parent->pure &= child->pure; /* purity can only be removed, never added */
 }
 
 /** Free a linked list of xlat nodes
@@ -947,7 +955,6 @@ static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 				   escapes ? escapes->name : "(none)",
 				   fr_box_strvalue_len(str, talloc_array_length(str) - 1));
 			XLAT_HEXDUMP((uint8_t const *)str, talloc_array_length(str) - 1, " LITERAL ");
-			node->flags.needs_async = false; /* literals are always true */
 			fr_cursor_insert(&cursor, node);
 			node = NULL;
 		}
@@ -1408,7 +1415,6 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 
 			node->child = xlat_exp_alloc_null(node);
 			xlat_exp_set_type(node->child, XLAT_LITERAL);
-			node->flags.needs_async = false;	/* Literals are always needs_async */
 
 			slen = fr_sbuff_out_aunescape_until(node->child, &str, &our_in, SIZE_MAX,
 							    value_parse_rules_single_quoted.terminals,

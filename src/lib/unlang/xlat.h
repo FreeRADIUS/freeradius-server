@@ -91,6 +91,7 @@ typedef struct {
 	bool			needs_resolving;	//!< Needs pass2 resolution.
 	bool			needs_async;	//!< Node and all child nodes are guaranteed to not
 						///< require asynchronous expansion.
+	bool			pure;		//!< has no external side effects
 } xlat_flags_t;
 
 extern fr_table_num_sorted_t const xlat_action_table[];
