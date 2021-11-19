@@ -351,7 +351,7 @@ certs:
 BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
 
 .PHONY: freeradius-server-$(RADIUSD_VERSION_STRING).tar
-freeradius-server-$(RADIUSD_VERSION_STRING).tar: .git
+freeradius-server-$(RADIUSD_VERSION_STRING).tar: .git/HEAD
 	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ $(BRANCH) > $@
 ifneq "$(EXT_MODULES)" ""
 	rm -rf build/freeradius-server-$(RADIUSD_VERSION_STRING)
