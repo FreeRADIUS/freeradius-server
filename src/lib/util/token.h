@@ -46,8 +46,8 @@ typedef enum fr_token {
 	T_SEMICOLON,			/* ; */
 
 	T_OP_INCRM,			/* ++ */
-	T_OP_ADD,			/* += */
-	T_OP_SUB,			/* -=  		10 */
+	T_OP_ADD_EQ,			/* += */
+	T_OP_SUB_EQ,			/* -=  		10 */
 	T_OP_SET,			/* := */
 	T_OP_EQ,			/* = */
 	T_OP_NE,			/* != */
@@ -70,7 +70,7 @@ typedef enum fr_token {
 	T_TOKEN_LAST
 } fr_token_t;
 
-#define T_EQSTART	T_OP_ADD
+#define T_EQSTART	T_OP_ADD_EQ
 #define	T_EQEND		(T_HASH)
 
 /** Macro to use as dflt

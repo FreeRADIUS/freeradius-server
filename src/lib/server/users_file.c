@@ -96,7 +96,7 @@ static fr_table_num_sorted_t const check_cmp_op_table[] = {
 	{ L("!*"),	T_OP_CMP_FALSE		},
 	{ L("!="),	T_OP_NE			},
 	{ L("!~"),	T_OP_REG_NE		},
-	{ L("+="),	T_OP_ADD		},
+	{ L("+="),	T_OP_ADD_EQ		},
 	{ L(":="),	T_OP_SET		},
 	{ L("<"),	T_OP_LT			},
 	{ L("<="),	T_OP_LE			},

@@ -489,7 +489,7 @@ redo:
 			switch (map->op) {
 			case T_OP_EQ:
 			case T_OP_SET:
-			case T_OP_ADD:
+			case T_OP_ADD_EQ:
 				fr_pair_list_init(&tmp_list);
 				if (map_to_vp(request->control_ctx, &tmp_list, request, map, NULL) < 0) {
 					fr_pair_list_free(&list);
@@ -531,7 +531,7 @@ redo:
 		/*
 		 *	Move the control items over, too.
 		 */
-		fr_pair_list_move(&request->control_pairs, &list, T_OP_ADD);
+		fr_pair_list_move(&request->control_pairs, &list, T_OP_ADD_EQ);
 		fr_pair_list_free(&list);
 
 		/* ctx may be reply */

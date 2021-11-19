@@ -458,8 +458,8 @@ static int csv_map_verify(map_t *map, void *instance)
 	switch (map->op) {
 	case T_OP_SET:
 	case T_OP_EQ:
-	case T_OP_SUB:
-	case T_OP_ADD:
+	case T_OP_SUB_EQ:
+	case T_OP_ADD_EQ:
 	case T_OP_PREPEND:
 	case T_OP_LT:
 	case T_OP_GT:

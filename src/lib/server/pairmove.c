@@ -103,7 +103,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 		 *	is empty, and we're supposed to replace or
 		 *	"add if not existing".
 		 */
-		if (from_vp->op == T_OP_ADD) goto do_append;
+		if (from_vp->op == T_OP_ADD_EQ) goto do_append;
 
 		/*
 		 *	The attribute needs to be prepended to the "to"
@@ -176,7 +176,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 			 *	Delete all matching attributes from
 			 *	"to"
 			 */
-			if ((from_vp->op == T_OP_SUB) ||
+			if ((from_vp->op == T_OP_SUB_EQ) ||
 			    (from_vp->op == T_OP_CMP_EQ) ||
 			    (from_vp->op == T_OP_LE) ||
 			    (from_vp->op == T_OP_GE)) {
@@ -206,7 +206,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 					if (rcode != 0) goto delete;
 					break;
 
-				case T_OP_SUB:
+				case T_OP_SUB_EQ:
 					if (rcode == 0) {
 					delete:
 						RDEBUG4("::: DELETING %s FROM %d TO %d",

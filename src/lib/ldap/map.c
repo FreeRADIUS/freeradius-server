@@ -139,7 +139,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 			/*
 			 *	Only process the first value, unless the operator is +=
 			 */
-			if (map->op != T_OP_ADD) break;
+			if (map->op != T_OP_ADD_EQ) break;
 		}
 		break;
 
@@ -170,7 +170,7 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 			/*
 			 *	Only process the first value, unless the operator is +=
 			 */
-			if (map->op != T_OP_ADD) break;
+			if (map->op != T_OP_ADD_EQ) break;
 		}
 		break;
 
@@ -231,8 +231,8 @@ int fr_ldap_map_verify(map_t *map, UNUSED void *instance)
 	switch (map->op) {
 	case T_OP_SET:
 	case T_OP_EQ:
-	case T_OP_SUB:
-	case T_OP_ADD:
+	case T_OP_SUB_EQ:
+	case T_OP_ADD_EQ:
 		break;
 
 	default:

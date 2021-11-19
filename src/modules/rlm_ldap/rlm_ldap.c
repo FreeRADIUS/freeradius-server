@@ -1595,7 +1595,7 @@ static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst
 		 *  T_OP_EQ is *NOT* supported, it is impossible to
 		 *  support because of the lack of transactions in LDAP
 		 */
-		case T_OP_ADD:
+		case T_OP_ADD_EQ:
 			mod_s[total].mod_op = LDAP_MOD_ADD;
 			break;
 
@@ -1603,7 +1603,7 @@ static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst
 			mod_s[total].mod_op = LDAP_MOD_REPLACE;
 			break;
 
-		case T_OP_SUB:
+		case T_OP_SUB_EQ:
 		case T_OP_CMP_FALSE:
 			mod_s[total].mod_op = LDAP_MOD_DELETE;
 			break;

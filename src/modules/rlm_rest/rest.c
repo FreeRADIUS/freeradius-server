@@ -1132,7 +1132,7 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 			 *  Automagically switch the op for multivalued attributes.
 			 */
 			if (((flags.op == T_OP_SET) || (flags.op == T_OP_EQ)) && (i >= 1)) {
-				flags.op = T_OP_ADD;
+				flags.op = T_OP_ADD_EQ;
 			}
 
 			if (json_object_is_type(element, json_type_object) && !flags.is_json) {

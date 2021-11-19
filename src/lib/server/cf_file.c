@@ -1877,8 +1877,8 @@ static int parse_input(cf_stack_t *stack)
 	 */
 	name2_token = gettoken(&ptr, buff[2], stack->bufsize, false);
 	switch (name2_token) {
-	case T_OP_ADD:
-	case T_OP_SUB:
+	case T_OP_ADD_EQ:
+	case T_OP_SUB_EQ:
 	case T_OP_NE:
 	case T_OP_GE:
 	case T_OP_GT:

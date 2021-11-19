@@ -1050,7 +1050,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 		}
 			goto finish;
 
-		case T_OP_ADD:
+		case T_OP_ADD_EQ:
 		{
 			fr_pair_list_t	vp_from;
 
@@ -1128,7 +1128,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 	 *	- If tmpl_num(map->lhs) == NUM_ANY, we compare all instances of the found attribute
 	 *	  against each of the src_list attributes.
 	 */
-	case T_OP_SUB:
+	case T_OP_SUB_EQ:
 	{
 		/* We didn't find any attributes earlier */
 		if (!found) goto finish;
@@ -1170,7 +1170,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 	/*
 	 *	+= - Add all attributes to the destination
 	 */
-	case T_OP_ADD:
+	case T_OP_ADD_EQ:
 	do_add:
 	{
 		fr_pair_list_t	vp_from;

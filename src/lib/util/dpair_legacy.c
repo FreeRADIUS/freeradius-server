@@ -726,7 +726,7 @@ void fr_pair_list_move(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t op)
 		 *	Move it from the old list and add it
 		 *	to the new list.
 		 */
-		case T_OP_ADD:
+		case T_OP_ADD_EQ:
 	do_add:
 			j = fr_pair_list_next(from, i);
 			fr_pair_remove(from, i);

@@ -513,7 +513,7 @@ int paircmp(request_t *request,
 		 *	sent to us by the user.  It ALWAYS matches.
 		 */
 		if ((check_item->op == T_OP_SET) ||
-		    (check_item->op == T_OP_ADD)) {
+		    (check_item->op == T_OP_ADD_EQ)) {
 			continue;
 		}
 

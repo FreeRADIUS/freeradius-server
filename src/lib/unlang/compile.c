@@ -916,7 +916,7 @@ int unlang_fixup_update(map_t *map, UNUSED void *ctx)
 		case T_OP_CMP_FALSE:
 			break;
 
-		case T_OP_ADD:
+		case T_OP_ADD_EQ:
 			if (!tmpl_is_list(map->rhs) &&
 			    !tmpl_is_exec(map->rhs)) {
 				cf_log_err(map->ci, "Invalid source for list assignment '%s += ...'", map->lhs->name);

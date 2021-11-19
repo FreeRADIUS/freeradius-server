@@ -1168,10 +1168,10 @@ static size_t command_normalise_attribute(command_result_t *result, command_file
 }
 
 static const fr_token_t token2op[UINT8_MAX + 1] = {
-	[ '+' ] = T_OP_ADD,
-	[ '-' ] = T_OP_SUB,
+	[ '+' ] = T_OP_ADD_EQ,
+	[ '-' ] = T_OP_SUB_EQ,
 	[ '^' ] = T_OP_PREPEND,
-	[ '.' ] = T_OP_ADD,
+	[ '.' ] = T_OP_ADD_EQ,
 };
 
 /** Perform calculations

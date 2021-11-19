@@ -221,8 +221,8 @@ fr_table_num_sorted_t const map_assignment_op_table[] = {
 	{ L("!*"),	T_OP_CMP_FALSE		},
 	{ L("!="),	T_OP_NE			},
 	{ L("!~"),	T_OP_REG_NE		},
-	{ L("+="),	T_OP_ADD		},
-	{ L("-="),	T_OP_SUB		},
+	{ L("+="),	T_OP_ADD_EQ		},
+	{ L("-="),	T_OP_SUB_EQ		},
 	{ L(":="),	T_OP_SET		},
 	{ L("<"),	T_OP_LT			},
 	{ L("<="),	T_OP_LE			},
@@ -1205,7 +1205,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		for (vp = fr_pair_list_head(&found);
 		     vp;
 		     vp = fr_pair_list_next(&found, vp)) {
-			vp->op = T_OP_ADD;
+			vp->op = T_OP_ADD_EQ;
 		}
 
 		fr_pair_list_append(out, &found);
@@ -1578,8 +1578,8 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 				fr_assert(tmpl_is_exec(map->rhs));
 				FALL_THROUGH;
 
-		case T_OP_ADD:
-				fr_pair_list_move(list, &src_list, T_OP_ADD);
+		case T_OP_ADD_EQ:
+				fr_pair_list_move(list, &src_list, T_OP_ADD_EQ);
 				fr_pair_list_free(&src_list);
 			}
 			goto update;
@@ -1647,7 +1647,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 *	- If tmpl_num(map->lhs) == NUM_ANY, we compare all instances of the dst attribute
 	 *	  against each of the src_list attributes.
 	 */
-	case T_OP_SUB:
+	case T_OP_SUB_EQ:
 		/* We didn't find any attributes earlier */
 		if (!dst) {
 			fr_pair_list_free(&src_list);
@@ -1823,7 +1823,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	/*
 	 *	+= - Add all src_list attributes to the destination
 	 */
-	case T_OP_ADD:
+	case T_OP_ADD_EQ:
 	{
 		tmpl_attr_extent_t 	*extent = NULL;
 		fr_dlist_head_t		leaf;

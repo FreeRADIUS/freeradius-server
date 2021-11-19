@@ -39,8 +39,8 @@ fr_table_num_ordered_t const fr_tokens_table[] = {
 	{ L(")"),	T_RBRACE	},
 	{ L(","),	T_COMMA		},
 	{ L("++"),	T_OP_INCRM	},
-	{ L("+="),	T_OP_ADD	},
-	{ L("-="),	T_OP_SUB	},
+	{ L("+="),	T_OP_ADD_EQ	},
+	{ L("-="),	T_OP_SUB_EQ	},
 	{ L(":="),	T_OP_SET	},
 	{ L("=*"), 	T_OP_CMP_TRUE	},
 	{ L("!*"), 	T_OP_CMP_FALSE	},
@@ -124,8 +124,8 @@ const char fr_token_quote[T_TOKEN_LAST + 1] = {
 
 const bool fr_assignment_op[T_TOKEN_LAST + 1] = {
 	T(INCRM),
-	T(ADD),
-	T(SUB),
+	T(ADD_EQ),
+	T(SUB_EQ),
 	T(SET),
 	T(EQ),
 	T(PREPEND),

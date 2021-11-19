@@ -221,6 +221,7 @@ static int calc_date(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t
 {
 	fr_value_box_t one, two;
 	bool overflow;
+	int64_t when;
 
 	fr_assert(dst->type == FR_TYPE_DATE);
 
@@ -245,17 +246,17 @@ static int calc_date(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t
 	}
 
 	switch (op) {
-	case T_OP_ADD:
-		dst->vb_date = fr_unix_time_from_integer(&overflow,
-							 fr_time_delta_unwrap(a->vb_time_delta) + fr_time_delta_unwrap(b->vb_time_delta),
-							 FR_TIME_RES_NSEC);
+	case T_OP_ADD_EQ:
+		if (!fr_add(&when, fr_time_delta_unwrap(a->vb_time_delta), fr_time_delta_unwrap(b->vb_time_delta))) return OVERFLOW;
+
+		dst->vb_date = fr_unix_time_from_integer(&overflow, when, FR_TIME_RES_NSEC);
 		if (overflow) return OVERFLOW; /* overflow */
 		break;
 
-	case T_OP_SUB:
-		dst->vb_date = fr_unix_time_from_integer(&overflow,
-							 fr_time_delta_unwrap(a->vb_time_delta) - fr_time_delta_unwrap(b->vb_time_delta),
-							 FR_TIME_RES_NSEC);
+	case T_OP_SUB_EQ:
+		if (!fr_sub(&when, fr_time_delta_unwrap(a->vb_time_delta), fr_time_delta_unwrap(b->vb_time_delta))) return OVERFLOW;
+
+		dst->vb_date = fr_unix_time_from_integer(&overflow, when, FR_TIME_RES_NSEC);
 		if (overflow) return OVERFLOW; /* overflow */
 		break;
 
@@ -269,6 +270,7 @@ static int calc_date(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t
 static int calc_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *a, fr_token_t op, fr_value_box_t const *b)
 {
 	fr_value_box_t one, two;
+	int64_t when;
 
 	fr_assert(dst->type == FR_TYPE_TIME_DELTA);
 
@@ -277,7 +279,7 @@ static int calc_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value
 	 *	cannot add two dates to get a time delta.
 	 */
 	if ((a->type == FR_TYPE_DATE) && (b->type == FR_TYPE_DATE)) {
-		if (op != T_OP_SUB) {
+		if (op != T_OP_SUB_EQ) {
 			fr_strerror_const("Cannot perform operation on two dates");
 			return -1;
 		}
@@ -311,12 +313,14 @@ static int calc_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value
 	}
 
 	switch (op) {
-	case T_OP_ADD:
-		dst->vb_time_delta = fr_time_delta_wrap(fr_time_delta_unwrap(a->vb_time_delta) + fr_time_delta_unwrap(b->vb_time_delta));
+	case T_OP_ADD_EQ:
+		if (!fr_add(&when, fr_time_delta_unwrap(a->vb_time_delta), fr_time_delta_unwrap(b->vb_time_delta))) return OVERFLOW;
+		dst->vb_time_delta = fr_time_delta_wrap(when);
 		break;
 
-	case T_OP_SUB:
-		dst->vb_time_delta = fr_time_delta_wrap(fr_time_delta_unwrap(a->vb_time_delta) - fr_time_delta_unwrap(b->vb_time_delta));
+	case T_OP_SUB_EQ:
+		if (!fr_sub(&when, fr_time_delta_unwrap(a->vb_time_delta), fr_time_delta_unwrap(b->vb_time_delta))) return OVERFLOW;
+		dst->vb_time_delta = fr_time_delta_wrap(when);
 		break;
 
 	default:
@@ -363,7 +367,7 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
 		break;
 
-	case T_OP_ADD:	/* dst = a . b */
+	case T_OP_ADD_EQ:	/* dst = a . b */
 		buf = talloc_array(ctx, uint8_t, len);
 		if (!buf) goto oom;
 
@@ -421,7 +425,7 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		fr_value_box_strdup_shallow(dst, dst->enumv, buf, a->tainted | b->tainted);
 		break;
 
-	case T_OP_ADD:
+	case T_OP_ADD_EQ:
 		buf = talloc_array(ctx, char, len + 1);
 		if (!buf) goto oom;
 
@@ -506,7 +510,7 @@ static int calc_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 	b = &two;
 
 	switch (op) {
-	case T_OP_ADD:
+	case T_OP_ADD_EQ:
 		/*
 		 *	For simplicity, make sure that the prefix is first.
 		 */
@@ -605,7 +609,7 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 	b = &two;
 
 	switch (op) {
-	case T_OP_ADD:
+	case T_OP_ADD_EQ:
 		/*
 		 *	For simplicity, make sure that the prefix is first.
 		 */
@@ -670,11 +674,11 @@ static int calc_float32(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 	}
 
 	switch (op) {
-	case T_OP_ADD:
+	case T_OP_ADD_EQ:
 		dst->vb_float32 = a->vb_float64 + b->vb_float64;
 		break;
 
-	case T_OP_SUB:
+	case T_OP_SUB_EQ:
 		dst->vb_float32 = a->vb_float64 - b->vb_float64;
 		break;
 
@@ -705,11 +709,11 @@ static int calc_float64(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 	}
 
 	switch (op) {
-	case T_OP_ADD:
+	case T_OP_ADD_EQ:
 		dst->vb_float64 = a->vb_float64 + b->vb_float64;
 		break;
 
-	case T_OP_SUB:
+	case T_OP_SUB_EQ:
 		dst->vb_float64 = a->vb_float64 - b->vb_float64;
 		break;
 
@@ -724,11 +728,11 @@ static int calc_float64(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 #define CALC(_t) static int calc_ ## _t(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *in1, fr_token_t op, fr_value_box_t const *in2) \
 { \
 	switch (op) { \
-	case T_OP_ADD: \
+	case T_OP_ADD_EQ: \
 		if (!fr_add(&dst->vb_ ## _t, in1->vb_ ## _t, in2->vb_ ## _t)) return OVERFLOW; \
 		break; \
  \
-	case T_OP_SUB: \
+	case T_OP_SUB_EQ: \
 		if (!fr_sub(&dst->vb_ ## _t, in1->vb_ ## _t, in2->vb_ ## _t)) return OVERFLOW; \
 		break; \
  \
@@ -935,8 +939,8 @@ int fr_value_calc(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint, fr_value
 			hint = FR_TYPE_BOOL;
 			break;
 
-		case T_OP_ADD:
-		case T_OP_SUB:
+		case T_OP_ADD_EQ:
+		case T_OP_SUB_EQ:
 			if (a->type == b->type) {
 				hint = a->type;
 				break;
@@ -1031,8 +1035,8 @@ int fr_value_calc(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint, fr_value
 		rcode = 0;
 		break;
 
-	case T_OP_ADD:
-	case T_OP_SUB:
+	case T_OP_ADD_EQ:
+	case T_OP_SUB_EQ:
 	case T_OP_PREPEND:
 		fr_assert(hint != FR_TYPE_NULL);
 
