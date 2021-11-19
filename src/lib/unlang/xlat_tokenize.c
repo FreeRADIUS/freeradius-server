@@ -1637,7 +1637,6 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const 
 		 */
 		case XLAT_FUNC:
 			if (xlat_resolve(&node->child, &node->flags, xr_rules) < 0) return -1;
-			xlat_flags_merge(&our_flags, &node->flags);
 			break;
 
 		/*
