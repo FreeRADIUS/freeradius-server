@@ -1253,9 +1253,9 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	} \
 	if (no_trailing && (*end != '\0')) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING; \
-		*out = res; \
 		return fr_sbuff_error(&our_in); \
 	} \
+	*out = res; \
 	return fr_sbuff_advance(in, end - buff); \
 }
 
