@@ -1237,7 +1237,7 @@ static size_t command_calc(command_result_t *result, command_file_ctx_t *cc,
 		fr_value_box_init(out, type, NULL, false);
 	}
 
-	if (fr_value_calc(cc->tmp_ctx, out, type, a, op, b) < 0) {
+	if (fr_value_calc_binary_op(cc->tmp_ctx, out, type, a, op, b) < 0) {
 		RETURN_OK_WITH_ERROR();
 	}
 
