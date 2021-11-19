@@ -485,8 +485,6 @@ void tls_session_id(SSL_SESSION *ssn, char *buffer, size_t bufsize)
 #endif
 }
 
-
-
 static int _tls_session_free(tls_session_t *ssn)
 {
 	/*
@@ -501,6 +499,52 @@ static int _tls_session_free(tls_session_t *ssn)
 
 	return 0;
 }
+
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(LIBRESSL_VERSION_NUMBER)
+/*
+ * By setting the environment variable SSLKEYLOGFILE to a filename keying
+ * material will be exported that you may use with Wireshark to decode any
+ * TLS flows. Please see the following for more details:
+ *
+ * https://gitlab.com/wireshark/wireshark/-/wikis/TLS#tls-decryption
+ *
+ * An example logging session is (you should delete the file on each run):
+ *
+ * rm -f /tmp/sslkey.log; env SSLKEYLOGFILE=/tmp/sslkey.log freeradius -X | tee /tmp/debug
+ */
+static void tls_keylog_cb(UNUSED const SSL *ssl, const char *line)
+{
+	int fd;
+	size_t len;
+	const char *filename;
+	// less than _POSIX_PIPE_BUF (512) guarantees writes are atomic for O_APPEND
+	char buffer[64 + 2*SSL3_RANDOM_SIZE + 2*SSL_MAX_MASTER_KEY_LENGTH];
+
+	len = strlen(line);
+	if (len + 1 > sizeof(buffer)) {
+		fr_strerror_printf("SSLKEYLOGFILE buffer not large enough, max %lu, required %lu", sizeof(buffer), len + 1);
+		return;
+	}
+
+	memcpy(buffer, line, len);
+	buffer[len] = '\n';
+
+	filename = getenv("SSLKEYLOGFILE");
+	if (filename == NULL) return;
+
+	fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
+	if (fd < 0) {
+		fr_strerror_printf("Failed to open file %s: %s", filename, strerror(errno));
+		return;
+	}
+
+	if (write(fd, buffer, len + 1) == -1) {
+		fr_strerror_printf("Failed to write to file %s: %s", filename, strerror(errno));
+	}
+
+	close(fd);
+}
+#endif
 
 tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, int fd, VALUE_PAIR **certs)
 {
@@ -554,10 +598,8 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	ret = SSL_connect(ssn->ssl);
 	if (ret < 0) {
 		switch (SSL_get_error(ssn->ssl, ret)) {
-			default:
-				break;
-
-
+		default:
+			break;
 
 		case SSL_ERROR_WANT_READ:
 		case SSL_ERROR_WANT_WRITE:
@@ -687,6 +729,10 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	state->ctx = conf->ctx;
 	state->ssl = new_tls;
 	state->conf = conf;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(LIBRESSL_VERSION_NUMBER)
+	if (getenv("SSLKEYLOGFILE") != NULL) SSL_CTX_set_keylog_callback(state->ctx, tls_keylog_cb);
+#endif
 
 	/*
 	 *	Initialize callbacks
@@ -966,7 +1012,6 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 			RINDENT();
 			rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 			REXDENT();
-
 		}
 	}
 	else if (SSL_in_init(ssn->ssl)) { RDEBUG2("(TLS) In Handshake Phase"); }
@@ -1018,7 +1063,6 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 			return 0;
 		}
 	} else {
-
 		RDEBUG2("(TLS) Application data.");
 		/* Its clean application data, do whatever we want */
 		record_init(&ssn->clean_out);
