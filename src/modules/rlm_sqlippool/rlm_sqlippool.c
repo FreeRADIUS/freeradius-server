@@ -639,6 +639,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	if (fr_pair_value_from_str(vp, allocation, allocation_len, NULL, true) < 0) {
 		DO_PART(alloc_commit);
 
+		talloc_free(vp);
 		RDEBUG2("Invalid IP number [%s] returned from instbase query.", allocation);
 		fr_pool_connection_release(inst->sql_inst->pool, request, handle);
 		return do_logging(p_result, inst, request, inst->log_failed, RLM_MODULE_NOOP);
