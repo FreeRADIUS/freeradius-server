@@ -2,6 +2,30 @@
 #  Calculate various thingies.
 #
 
+calc uint8 255 + uint8 255 -> uint8
+match Value overflows/underflows when calculating answer for uint8
+
+calc uint8 127 + uint8 127 -> uint8
+match 254
+
+#
+#  Wildly varying types get intermediate values upcast to the "best"
+#  type which is likely to handle the result.  The final result is
+#  then cast to the output type.
+#
+calc int8 -1 + uint8 14 -> int16
+match 13
+
+calc int32 -1 + uint8 14 -> int16
+match 13
+
+#
+#  Intermediate values are too large for destination, but the
+#  resulting value can fit.
+#
+calc uint32 1000 - uint32 999 -> uint8
+match 1
+
 # string append
 calc string "a" . string "b" -> string
 match ab
@@ -42,30 +66,6 @@ match yes
 # this can't
 calc string "stuff" < uint32 2 -> bool
 match Failed parsing string as type 'uint32'
-
-calc uint8 255 + uint8 255 -> uint8
-match Value overflows/underflows when calculating answer for uint8
-
-calc uint8 127 + uint8 127 -> uint8
-match 254
-
-#
-#  Wildly varying types get intermediate values upcast to the "best"
-#  type which is likely to handle the result.  The final result is
-#  then cast to the output type.
-#
-calc int8 -1 + uint8 14 -> int16
-match 13
-
-calc int32 -1 + uint8 14 -> int16
-match 13
-
-#
-#  Intermediate values are too large for destination, but the
-#  resulting value can fit.
-#
-calc uint32 1000 - uint32 999 -> uint8
-match 1
 
 #
 # make an IP out of a prefix and an offset
