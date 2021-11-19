@@ -70,37 +70,46 @@ size_t fr_token_quotes_table_len = NUM_ELEMENTS(fr_token_quotes_table);
  *  This is a hack, and has to be kept in sync with tokens.h
  */
 char const *fr_tokens[T_TOKEN_LAST + 1] = {
-	"?",			/* T_INVALID */
-	"EOL",			/* T_EOL */
-	"{",
-	"}",
-	"(",
-	")",
-	",",
-	";",
-	"++",
-	"+=",
-	"-=",
-	":=",
-	"=",
-	"!=",
-	">=",
-	">",
-	"<=",
-	"<",
-	"=~",
-	"!~",
-	"=*",
-	"!*",
-	"==",
-	"^=",
-	"#",
-	"<BARE-WORD>",
-	"<\"STRING\">",
-	"<'STRING'>",
-	"<`STRING`>",
-	"</STRING/>",
-	"<invalid>"
+	[T_INVALID] = "?",
+	[T_EOL] = "EOL",
+
+	[T_LCBRACE] = "{",
+	[T_RCBRACE] = "}",
+	[T_LBRACE] = "(",
+	[T_RBRACE] = ")",
+	[T_COMMA] = ",",
+	[T_SEMICOLON] = ";",
+
+	[T_OP_INCRM] = "++",
+
+	[T_OP_ADD_EQ] = "+=",
+	[T_OP_SUB_EQ] = "-=",
+	[T_OP_SET]    = ":=",
+	[T_OP_EQ]     = "=",
+
+	[T_OP_NE]     = "!=",
+	[T_OP_GE]     = ">=",
+	[T_OP_GT]     = ">",
+	[T_OP_LE]     = "<=",
+	[T_OP_LT]     = "<",
+	[T_OP_REG_EQ] = "=~",
+	[T_OP_REG_NE] = "!~",
+
+	[T_OP_CMP_TRUE] = "=*",
+	[T_OP_CMP_FALSE] = "!*",
+
+	[T_OP_CMP_EQ] = "==",
+
+	[T_OP_PREPEND] = "^=",
+
+	[T_HASH]                  = "#",
+	[T_BARE_WORD]             = "<BARE-WORD>",
+	[T_DOUBLE_QUOTED_STRING]  = "<\"STRING\">",
+	[T_SINGLE_QUOTED_STRING]  = "<'STRING'>",
+	[T_BACK_QUOTED_STRING]    = "<`STRING`>",
+	[T_SOLIDUS_QUOTED_STRING] = "</STRING/>",
+
+	[T_TOKEN_LAST] = "<invalid>",
 };
 
 
