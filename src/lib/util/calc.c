@@ -383,8 +383,8 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		return ERR_INVALID;	/* invalid operator */
 	}
 
-	if (a != &one) fr_value_box_clear(&one);
-	if (b != &two) fr_value_box_clear(&two);
+	if (a == &one) fr_value_box_clear_value(&one);
+	if (b == &two) fr_value_box_clear_value(&two);
 
 	return 0;
 }
@@ -442,8 +442,8 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		return ERR_INVALID;	/* invalid operator */
 	}
 
-	if (a != &one) fr_value_box_clear(&one);
-	if (b != &two) fr_value_box_clear(&two);
+	if (a == &one) fr_value_box_clear_value(&one);
+	if (b == &two) fr_value_box_clear_value(&two);
 
 	return 0;
 }
