@@ -379,6 +379,31 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
 		break;
 
+	case T_SUB:
+		/*
+		 *  The inverse of add!
+		 */
+		if (a->vb_length < b->vb_length) {
+			fr_strerror_const("Suffix to remove is longer than input string");
+			return -1;
+		}
+
+		if (memcmp(a->vb_octets + a->vb_length - b->vb_length, b->vb_strvalue, b->vb_length) != 0) {
+			fr_strerror_const("Right side is not a suffix of the input string");
+			return -1;
+		}
+
+		len = a->vb_length - b->vb_length;
+		buf = talloc_array(ctx, uint8_t, len);
+		if (!buf) goto oom;
+
+		memcpy(buf, a->vb_strvalue, len);
+		buf[len] = '\0';
+
+		fr_value_box_clear_value(dst);
+		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
+		break;
+
 	default:
 		return ERR_INVALID;	/* invalid operator */
 	}
@@ -433,6 +458,31 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		memcpy(buf, a->vb_strvalue, a->vb_length);
 		memcpy(buf + a->vb_length, b->vb_strvalue, b->vb_length);
 		buf[a->vb_length + b->vb_length] = '\0';
+
+		fr_value_box_clear_value(dst);
+		fr_value_box_strdup_shallow(dst, dst->enumv, buf, a->tainted | b->tainted);
+		break;
+
+	case T_SUB:
+		/*
+		 *  The inverse of add!
+		 */
+		if (a->vb_length < b->vb_length) {
+			fr_strerror_const("Suffix to remove is longer than input string");
+			return -1;
+		}
+
+		if (memcmp(a->vb_strvalue + a->vb_length - b->vb_length, b->vb_strvalue, b->vb_length) != 0) {
+			fr_strerror_const("Right side is not a suffix of the input string");
+			return -1;
+		}
+
+		len = a->vb_length - b->vb_length;
+		buf = talloc_array(ctx, char, len + 1);
+		if (!buf) goto oom;
+
+		memcpy(buf, a->vb_strvalue, len);
+		buf[len] = '\0';
 
 		fr_value_box_clear_value(dst);
 		fr_value_box_strdup_shallow(dst, dst->enumv, buf, a->tainted | b->tainted);

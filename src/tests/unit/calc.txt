@@ -30,9 +30,22 @@ match 1
 calc string "a" . string "b" -> string
 match ab
 
-# string prepend
-calc string "a" ^ string "b" -> string
-match ba
+# string subtraction is the inverse of addition!
+calc string "ab" - string "b" -> string
+match a
+
+# octets prepend
+calc octets "a" ^ octets "b" -> octets
+match 0x6261
+
+# octets append
+calc octets "a" . octets "b" -> octets
+match 0x6162
+
+# octets subtraction is the inverse of addition!
+calc octets "ab" - octets "b" -> octets
+match 0x61
+
 
 # time deltas
 calc time_delta 1 + time_delta 2 -> time_delta
@@ -94,4 +107,4 @@ calc string "2" += string "test"
 match 2test
 
 count
-match 42
+match 48
