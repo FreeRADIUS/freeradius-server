@@ -155,6 +155,17 @@ const bool fr_equality_op[T_TOKEN_LAST] = {
 };
 
 #undef T
+#define T(_x) [T_ ## _x] = true
+
+const bool fr_binary_op[T_TOKEN_LAST] = {
+	T(ADD),
+	T(SUB),
+	T(MUL),
+	T(DIV),
+};
+
+
+#undef T
 #define T(_x) [T_## _x] = true
 const bool fr_str_tok[T_TOKEN_LAST] = {
 	T(BARE_WORD),

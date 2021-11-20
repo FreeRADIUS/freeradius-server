@@ -111,6 +111,7 @@ extern const char *fr_tokens[T_TOKEN_LAST];
 extern const char fr_token_quote[T_TOKEN_LAST];
 extern const bool fr_assignment_op[T_TOKEN_LAST];
 extern const bool fr_equality_op[T_TOKEN_LAST];
+extern const bool fr_binary_op[T_TOKEN_LAST];
 extern const bool fr_str_tok[T_TOKEN_LAST];
 
 int		getword (char const **ptr, char *buf, int buflen, bool unescape);
