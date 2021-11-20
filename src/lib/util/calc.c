@@ -398,7 +398,6 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		if (!buf) goto oom;
 
 		memcpy(buf, a->vb_strvalue, len);
-		buf[len] = '\0';
 
 		fr_value_box_clear_value(dst);
 		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
