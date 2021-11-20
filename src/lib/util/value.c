@@ -3020,7 +3020,7 @@ static inline int fr_value_box_cast_to_float(UNUSED TALLOC_CTX *ctx, fr_value_bo
 	switch (src->type) {
 	case FR_TYPE_FLOAT32:
 		if (dst_type == FR_TYPE_FLOAT64) {
-			num = src->vb_float32;
+			num = (double) src->vb_float32;
 			goto good_cast;
 		}
 
