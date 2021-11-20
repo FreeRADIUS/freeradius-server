@@ -84,6 +84,8 @@ char const *fr_tokens[T_TOKEN_LAST] = {
 	[T_SUB]	     = "-",
 	[T_MUL]	     = "*",
 	[T_DIV]	     = "/",
+	[T_AND]	     = "&",
+	[T_OR]	     = "|",
 
 	[T_OP_INCRM] = "++",
 
@@ -169,6 +171,8 @@ const bool fr_binary_op[T_TOKEN_LAST] = {
 	T(SUB),
 	T(MUL),
 	T(DIV),
+	T(AND),
+	T(OR),
 };
 
 

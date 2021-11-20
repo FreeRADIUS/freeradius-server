@@ -49,6 +49,8 @@ typedef enum fr_token {
 	T_SUB,				/* - */
 	T_MUL,				/* * */
 	T_DIV,				/* / */
+	T_AND,				/* & */
+	T_OR,				/* | */
 
 	/*
 	 *	Only used by LDAP ???

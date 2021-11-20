@@ -403,6 +403,38 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
 		break;
 
+	case T_AND:
+		if (a->vb_length != b->vb_length) {
+		length_error:
+			fr_strerror_const("Cannot perform operation on strings of different length");
+			return -1;
+		}
+
+		buf = talloc_array(ctx, uint8_t, a->vb_length);
+		if (!buf) goto oom;
+
+		for (len = 0; len < a->vb_length; len++) {
+			buf[len] = a->vb_octets[len] & b->vb_octets[len];
+		}
+
+		fr_value_box_clear_value(dst);
+		fr_value_box_memdup_shallow(dst, dst->enumv, buf, a->vb_length, a->tainted | b->tainted);
+		break;
+
+	case T_OR:
+		if (a->vb_length != b->vb_length) goto length_error;
+
+		buf = talloc_array(ctx, uint8_t, a->vb_length);
+		if (!buf) goto oom;
+
+		for (len = 0; len < a->vb_length; len++) {
+			buf[len] = a->vb_octets[len] | b->vb_octets[len];
+		}
+
+		fr_value_box_clear_value(dst);
+		fr_value_box_memdup_shallow(dst, dst->enumv, buf, a->vb_length, a->tainted | b->tainted);
+		break;
+
 	default:
 		return ERR_INVALID;	/* invalid operator */
 	}
@@ -814,6 +846,14 @@ static int calc_float64(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 		dst->vb_ ## _t = in1->vb_ ## _t /  in2->vb_ ## _t; \
 		break; \
  \
+	case T_AND: \
+		dst->vb_ ## _t = in1->vb_ ## _t &  in2->vb_ ## _t; \
+		break; \
+ \
+	case T_OR: \
+		dst->vb_ ## _t = in1->vb_ ## _t |  in2->vb_ ## _t; \
+		break; \
+ \
 	default: \
 		return ERR_INVALID; \
 	} \
@@ -1126,6 +1166,8 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	case T_SUB:
 	case T_MUL:
 	case T_DIV:
+	case T_AND:
+	case T_OR:
 	case T_OP_PREPEND:
 		fr_assert(hint != FR_TYPE_NULL);
 

@@ -2,6 +2,10 @@
 #  Calculate various thingies.
 #
 
+######################################################################
+#
+#  integers
+#
 calc uint8 255 + uint8 255 -> uint8
 match Value overflows/underflows when calculating answer for uint8
 
@@ -19,6 +23,9 @@ match 13
 calc int32 -1 + uint8 14 -> int16
 match 13
 
+calc int8 0x7f & uint8 0x40 -> uint8
+match 64
+
 #
 #  Intermediate values are too large for destination, but the
 #  resulting value can fit.
@@ -26,6 +33,18 @@ match 13
 calc uint32 1000 - uint32 999 -> uint8
 match 1
 
+# this can be cast
+calc string "1" < uint32 2 -> bool
+match yes
+
+# this can't
+calc string "stuff" < uint32 2 -> bool
+match Failed parsing string as type 'uint32'
+
+######################################################################
+#
+#  strings
+#
 # string append
 calc string "a" . string "b" -> string
 match ab
@@ -34,6 +53,10 @@ match ab
 calc string "ab" - string "b" -> string
 match a
 
+######################################################################
+#
+#  octets
+#
 # octets prepend
 calc octets "a" ^ octets "b" -> octets
 match 0x6261
@@ -46,7 +69,20 @@ match 0x6162
 calc octets "ab" - octets "b" -> octets
 match 0x61
 
+calc octets "a" & octets "b" -> octets
+match 0x60
 
+calc octets "a" | octets "b" -> octets
+match 0x63
+
+# we can "fake out" structs by just appending stuff
+calc ipaddr 127.0.0.1 . ipaddr 127.0.0.2 -> octets
+match 0x7f0000017f000002
+
+######################################################################
+#
+#  times and dates
+#
 # time deltas
 calc time_delta 1 + time_delta 2 -> time_delta
 match 3
@@ -68,17 +104,10 @@ match Jan 10 1970 00:00:00 UTC
 calc date "Jan 11 1970 00:00:00 UTC" < date "Jan 1 1970 00:00:00 UTC"
 match no
 
-# we can "fake out" structs by just appending stuff
-calc ipaddr 127.0.0.1 . ipaddr 127.0.0.2 -> octets
-match 0x7f0000017f000002
-
-# this can be cast
-calc string "1" < uint32 2 -> bool
-match yes
-
-# this can't
-calc string "stuff" < uint32 2 -> bool
-match Failed parsing string as type 'uint32'
+######################################################################
+#
+#  ip addresses and prefixes
+#
 
 #
 # make an IP out of a prefix and an offset
@@ -107,4 +136,4 @@ calc string "2" += string "test"
 match 2test
 
 count
-match 48
+match 54

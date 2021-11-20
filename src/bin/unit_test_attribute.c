@@ -1174,6 +1174,8 @@ static const fr_token_t token2op[UINT8_MAX + 1] = {
 	[ '/' ] = T_DIV,
 	[ '^' ] = T_OP_PREPEND,
 	[ '.' ] = T_ADD,
+	[ '&' ] = T_AND,
+	[ '|' ] = T_OR,
 };
 
 /** Perform calculations
