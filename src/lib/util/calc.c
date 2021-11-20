@@ -1113,3 +1113,52 @@ done:
 
 	return rcode;
 }
+
+int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t op, fr_value_box_t const *src)
+{
+	int rcode = -1;
+
+	if (!fr_type_is_leaf(dst->type)) return -1;
+
+	if (!fr_assignment_op[op]) goto invalid;
+
+	switch (op) {
+	case T_OP_EQ:
+	case T_OP_SET:
+		fr_value_box_clear(dst);
+		fr_value_box_copy(ctx, dst, src);
+		rcode = 0;
+		break;
+
+	case T_OP_ADD_EQ:
+	case T_OP_SUB_EQ:
+	case T_OP_PREPEND:
+		/*
+		 *	Just call the binary op function.  It already
+		 *	ensures that (a) the inputs are "const", and
+		 *	(b) the output is over-written only as the
+		 *	final step
+		 */
+		rcode = fr_value_calc_binary_op(ctx, dst, dst->type, dst, op, src);
+		break;
+
+	default:
+	invalid:
+		rcode = ERR_INVALID;
+		break;
+	}
+
+	if (rcode == ERR_OVERFLOW) {
+		fr_strerror_printf("Value overflows/underflows when calculating answer for %s",
+				   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
+
+	} else if (rcode == ERR_INVALID) {
+		fr_strerror_printf("Invalid operator %s for destination type %s",
+				   fr_tokens[op],
+				   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
+	}
+
+	if (rcode == 0) dst->tainted |= src->tainted;
+
+	return rcode;
+}

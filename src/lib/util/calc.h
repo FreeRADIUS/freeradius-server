@@ -31,7 +31,9 @@ RCSIDH(calc_h, "$Id$")
 extern "C" {
 #endif
 
-int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint, fr_value_box_t const *a, fr_token_t op, fr_value_box_t const *b);
+int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint, fr_value_box_t const *a, fr_token_t op, fr_value_box_t const *b) CC_HINT(nonnull(2,4,6));
+
+int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t op, fr_value_box_t const *src) CC_HINT(nonnull(2,4));
 
 #ifdef __cplusplus
 }
