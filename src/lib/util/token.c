@@ -116,6 +116,11 @@ char const *fr_tokens[T_TOKEN_LAST] = {
 };
 
 
+/*
+ *	This is fine.  Don't complain.
+ */
+#pragma clang diagnostic ignored "-Wgnu-designator"
+
 /** Convert tokens back to a quoting character
  *
  * Non-string types convert to '?' to screw ups can be identified easily
