@@ -1167,8 +1167,8 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 done:
 	if (rcode == 0) dst->tainted = a->tainted | b->tainted;
 
-	fr_value_box_clear(&one);
-	fr_value_box_clear(&two);
+	fr_value_box_clear_value(&one);
+	fr_value_box_clear_value(&two);
 
 	return rcode;
 }
@@ -1195,7 +1195,7 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 	switch (op) {
 	case T_OP_EQ:
 	case T_OP_SET:
-		fr_value_box_clear(dst);
+		fr_value_box_clear_value(dst);
 		fr_value_box_copy(ctx, dst, src);
 		rcode = 0;
 		break;
