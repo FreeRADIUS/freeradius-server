@@ -80,5 +80,18 @@ match 3.500000
 calc float32 1.0 * float32 2.5 -> float32
 match 2.500000
 
+######################################################################
+#
+#  Assignment operations
+#
+calc uint8 1 := uint8 2
+match 2
+
+calc uint8 1 += uint8 3
+match 4
+
+calc string "2" += string "test"
+match 2test
+
 count
-match 36
+match 42

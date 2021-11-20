@@ -1188,10 +1188,10 @@ static size_t command_calc(command_result_t *result, command_file_ctx_t *cc,
 	fr_token_t op;
 	char const *p, *value, *end;
 	size_t slen;
+	bool assignment;
 
 	a = talloc_zero(cc->tmp_ctx, fr_value_box_t);
 	b = talloc_zero(cc->tmp_ctx, fr_value_box_t);
-	out = talloc_zero(cc->tmp_ctx, fr_value_box_t);
 
 	p = in;
 	end = in + inlen;
@@ -1205,6 +1205,8 @@ static size_t command_calc(command_result_t *result, command_file_ctx_t *cc,
 	op = fr_table_value_by_longest_prefix(&match_len, fr_tokens_table, p, end - p, T_INVALID);
 	if (op != T_INVALID) {
 		p += match_len;
+		assignment = fr_assignment_op[op];
+
 	} else {
 		op = token2op[(uint8_t) p[0]];
 		if (op == T_INVALID) {
@@ -1212,6 +1214,8 @@ static size_t command_calc(command_result_t *result, command_file_ctx_t *cc,
 			RETURN_PARSE_ERROR(0);
 		}
 		p++;
+
+		assignment = false;
 	}
 	fr_skip_whitespace(p);
 
@@ -1221,24 +1225,34 @@ static size_t command_calc(command_result_t *result, command_file_ctx_t *cc,
 	p += match_len;
 	fr_skip_whitespace(p);
 
-	/*
-	 *	If there's no output data type, then the code tries to
-	 *	figure one out automatically.
-	 */
-	if (!*p) {
-		type = FR_TYPE_NULL;
+	if (assignment) {
+		if (fr_value_calc_assignment_op(cc->tmp_ctx, a, op, b) < 0) {
+			RETURN_OK_WITH_ERROR();
+		}
+		out = a;
+
 	} else {
-		if (strncmp(p, "->", 2) != 0) RETURN_PARSE_ERROR(0);
-		p += 2;
-		fr_skip_whitespace(p);
+		out = talloc_zero(cc->tmp_ctx, fr_value_box_t);
 
-		type = fr_table_value_by_longest_prefix(&match_len, fr_value_box_type_table, p, end - p, FR_TYPE_MAX);
-		if (type == FR_TYPE_MAX) RETURN_PARSE_ERROR(0);
-		fr_value_box_init(out, type, NULL, false);
-	}
+		/*
+		 *	If there's no output data type, then the code tries to
+		 *	figure one out automatically.
+		 */
+		if (!*p) {
+			type = FR_TYPE_NULL;
+		} else {
+			if (strncmp(p, "->", 2) != 0) RETURN_PARSE_ERROR(0);
+			p += 2;
+			fr_skip_whitespace(p);
 
-	if (fr_value_calc_binary_op(cc->tmp_ctx, out, type, a, op, b) < 0) {
-		RETURN_OK_WITH_ERROR();
+			type = fr_table_value_by_longest_prefix(&match_len, fr_value_box_type_table, p, end - p, FR_TYPE_MAX);
+			if (type == FR_TYPE_MAX) RETURN_PARSE_ERROR(0);
+			fr_value_box_init(out, type, NULL, false);
+		}
+
+		if (fr_value_calc_binary_op(cc->tmp_ctx, out, type, a, op, b) < 0) {
+			RETURN_OK_WITH_ERROR();
+		}
 	}
 
 	slen = fr_value_box_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), out, NULL);
