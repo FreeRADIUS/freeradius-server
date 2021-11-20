@@ -912,6 +912,15 @@ static const fr_binary_op_t calc_type[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_FLOAT64]	= calc_float64,
 };
 
+/** Calculate DST = A OP B
+ *
+ *  The result is written to DST only *after* it has been calculated.
+ *  So it's safe to pass DST as either A or B.
+ *
+ *  This function should arguably not take comparison operators, but
+ *  whatever.  The "promote types" code is the same for all of the
+ *  binary operations, so we might as well just have one function.
+ */
 int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint, fr_value_box_t const *a, fr_token_t op, fr_value_box_t const *b)
 {
 	int rcode = -1;
@@ -1114,6 +1123,13 @@ done:
 	return rcode;
 }
 
+/** Calculate DST OP SRC
+ *
+ *  e.g. "foo += bar".
+ *
+ *  This is done by doing some sanity checks, and then just calling
+ *  the "binary operation" function.
+ */
 int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t op, fr_value_box_t const *src)
 {
 	int rcode = -1;
@@ -1169,6 +1185,106 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 	}
 
 	if (rcode == 0) dst->tainted |= src->tainted;
+
+	return rcode;
+}
+
+/** Calculate DST OP
+ *
+ *  e.g. "foo ++".
+ *
+ *  This is done by doing some sanity checks, and then just calling
+ *  the "binary operation" function.
+ */
+int fr_value_calc_unary_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op)
+{
+	int rcode = -1;
+	fr_value_box_t one;
+	fr_token_t new_op;
+
+	if (!fr_type_is_leaf(box->type)) {
+		fr_strerror_printf("Cannot perform any operations for destination type %s",
+				   fr_table_str_by_value(fr_value_box_type_table, box->type, "<INVALID>"));
+		return -1;
+	}
+
+	if (op != T_OP_INCRM) goto invalid;
+
+	switch (op) {
+	case T_OP_INCRM:
+		new_op = T_ADD;
+		break;
+
+	default:
+		rcode = ERR_INVALID;
+		goto invalid;
+	}
+
+	/*
+	 *	Add 1 or subtract 1 means RHS is always 1.
+	 */
+	fr_value_box_init(&one, box->type, NULL, false);
+	switch (box->type) {
+	case FR_TYPE_UINT8:
+		one.vb_uint8 = 1;
+		break;
+
+	case FR_TYPE_UINT16:
+		one.vb_uint16 = 1;
+		break;
+
+	case FR_TYPE_UINT32:
+		one.vb_uint32 = 1;
+		break;
+
+	case FR_TYPE_UINT64:
+		one.vb_uint64 = 1;
+		break;
+
+	case FR_TYPE_SIZE:
+		one.vb_size = 1;
+		break;
+
+	case FR_TYPE_INT8:
+		one.vb_int8 = 1;
+		break;
+
+	case FR_TYPE_INT16:
+		one.vb_int16 = 1;
+		break;
+
+	case FR_TYPE_INT32:
+		one.vb_int32 = 1;
+		break;
+
+	case FR_TYPE_INT64:
+		one.vb_int64 = 1;
+		break;
+
+	case FR_TYPE_FLOAT32:
+		one.vb_float32 = 1;
+		break;
+
+	case FR_TYPE_FLOAT64:
+		one.vb_float64 = 1;
+		break;
+
+	default:
+		goto invalid;
+	}
+
+	rcode = fr_value_calc_binary_op(ctx, box, box->type, box, new_op, &one);
+
+	if (rcode == ERR_OVERFLOW) {
+		fr_strerror_printf("Value overflows/underflows when calculating answer for %s",
+				   fr_table_str_by_value(fr_value_box_type_table, box->type, "<INVALID>"));
+
+	} else if (rcode == ERR_INVALID) {
+	invalid:
+		fr_strerror_printf("Invalid assignment operator %s for destination type %s",
+				   fr_tokens[op],
+				   fr_table_str_by_value(fr_value_box_type_table, box->type, "<INVALID>"));
+	}
 
 	return rcode;
 }
