@@ -26,12 +26,13 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/strerror.h>
+#include <math.h>
 #include "calc.h"
 
 #define swap(_a, _b) do { __typeof__ (_a) _tmp = _a; _a = _b; _b = _tmp; } while (0)
 
-#define OVERFLOW (-3)
-#define INVALID  (-2)
+#define ERR_OVERFLOW (-3)
+#define ERR_INVALID  (-2)
 
 /** Updates type (a,b) -> c
  *
@@ -247,21 +248,21 @@ static int calc_date(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t
 
 	switch (op) {
 	case T_ADD:
-		if (!fr_add(&when, fr_time_delta_unwrap(a->vb_time_delta), fr_time_delta_unwrap(b->vb_time_delta))) return OVERFLOW;
+		if (!fr_add(&when, fr_time_delta_unwrap(a->vb_time_delta), fr_time_delta_unwrap(b->vb_time_delta))) return ERR_OVERFLOW;
 
 		dst->vb_date = fr_unix_time_from_integer(&overflow, when, FR_TIME_RES_NSEC);
-		if (overflow) return OVERFLOW; /* overflow */
+		if (overflow) return ERR_OVERFLOW; /* overflow */
 		break;
 
 	case T_SUB:
-		if (!fr_sub(&when, fr_time_delta_unwrap(a->vb_time_delta), fr_time_delta_unwrap(b->vb_time_delta))) return OVERFLOW;
+		if (!fr_sub(&when, fr_time_delta_unwrap(a->vb_time_delta), fr_time_delta_unwrap(b->vb_time_delta))) return ERR_OVERFLOW;
 
 		dst->vb_date = fr_unix_time_from_integer(&overflow, when, FR_TIME_RES_NSEC);
-		if (overflow) return OVERFLOW; /* overflow */
+		if (overflow) return ERR_OVERFLOW; /* overflow */
 		break;
 
 	default:
-		return INVALID;	/* invalid operator */
+		return ERR_INVALID;	/* invalid operator */
 	}
 
 	return 0;
@@ -314,17 +315,17 @@ static int calc_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value
 
 	switch (op) {
 	case T_ADD:
-		if (!fr_add(&when, fr_time_delta_unwrap(a->vb_time_delta), fr_time_delta_unwrap(b->vb_time_delta))) return OVERFLOW;
+		if (!fr_add(&when, fr_time_delta_unwrap(a->vb_time_delta), fr_time_delta_unwrap(b->vb_time_delta))) return ERR_OVERFLOW;
 		dst->vb_time_delta = fr_time_delta_wrap(when);
 		break;
 
 	case T_SUB:
-		if (!fr_sub(&when, fr_time_delta_unwrap(a->vb_time_delta), fr_time_delta_unwrap(b->vb_time_delta))) return OVERFLOW;
+		if (!fr_sub(&when, fr_time_delta_unwrap(a->vb_time_delta), fr_time_delta_unwrap(b->vb_time_delta))) return ERR_OVERFLOW;
 		dst->vb_time_delta = fr_time_delta_wrap(when);
 		break;
 
 	default:
-		return INVALID;	/* invalid operator */
+		return ERR_INVALID;	/* invalid operator */
 	}
 
 	return 0;
@@ -379,7 +380,7 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		break;
 
 	default:
-		return INVALID;	/* invalid operator */
+		return ERR_INVALID;	/* invalid operator */
 	}
 
 	if (a != &one) fr_value_box_clear(&one);
@@ -438,7 +439,7 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		break;
 
 	default:
-		return INVALID;	/* invalid operator */
+		return ERR_INVALID;	/* invalid operator */
 	}
 
 	if (a != &one) fr_value_box_clear(&one);
@@ -523,14 +524,14 @@ static int calc_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		 *	uint32, and is at least vaguely within the
 		 *	allowed range.
 		 */
-		if (a->type != FR_TYPE_IPV4_PREFIX) return INVALID;
+		if (a->type != FR_TYPE_IPV4_PREFIX) return ERR_INVALID;
 
-		if (b->type != FR_TYPE_UINT32) return INVALID;
+		if (b->type != FR_TYPE_UINT32) return ERR_INVALID;
 
 		/*
 		 *	Trying to add a number outside of the given prefix.  That's not allowed.
 		 */
-		if (b->vb_uint32 >= (((uint32_t) 1) << a->vb_ip.prefix)) return OVERFLOW;
+		if (b->vb_uint32 >= (((uint32_t) 1) << a->vb_ip.prefix)) return ERR_OVERFLOW;
 
 		dst->vb_ip.af = AF_INET;
 		dst->vb_ip.addr.v4.s_addr = htonl(ntohl(a->vb_ip.addr.v4.s_addr) + b->vb_uint32);
@@ -538,7 +539,7 @@ static int calc_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		break;
 
 	default:
-		return INVALID;
+		return ERR_INVALID;
 	}
 
 	return 0;
@@ -622,14 +623,14 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		 *	uint32, and is at least vaguely within the
 		 *	allowed range.
 		 */
-		if (a->type != FR_TYPE_IPV6_PREFIX) return INVALID;
+		if (a->type != FR_TYPE_IPV6_PREFIX) return ERR_INVALID;
 
-		if (b->type != FR_TYPE_UINT64) return INVALID;
+		if (b->type != FR_TYPE_UINT64) return ERR_INVALID;
 
 		/*
 		 *	Trying to add a number outside of the given prefix.  That's not allowed.
 		 */
-		if (b->vb_uint64 >= (((uint64_t) 1) << a->vb_ip.prefix)) return OVERFLOW;
+		if (b->vb_uint64 >= (((uint64_t) 1) << a->vb_ip.prefix)) return ERR_OVERFLOW;
 
 		/*
 		 *	Add in the relevant low bits.
@@ -646,7 +647,7 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		break;
 
 	default:
-		return INVALID;
+		return ERR_INVALID;
 	}
 
 	return 0;
@@ -682,8 +683,18 @@ static int calc_float32(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 		dst->vb_float32 = a->vb_float64 - b->vb_float64;
 		break;
 
+	case T_MUL:
+		dst->vb_float32 = a->vb_float64 * b->vb_float64;
+		break;
+
+	case T_DIV:
+		if (fpclassify(b->vb_float64) == FP_ZERO) return ERR_OVERFLOW;
+
+		dst->vb_float32 = a->vb_float64 / b->vb_float64;
+		break;
+
 	default:
-		return INVALID;
+		return ERR_INVALID;
 	}
 
 	return 0;
@@ -717,8 +728,18 @@ static int calc_float64(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 		dst->vb_float64 = a->vb_float64 - b->vb_float64;
 		break;
 
+	case T_MUL:
+		dst->vb_float64 = a->vb_float64 * b->vb_float64;
+		break;
+
+	case T_DIV:
+		if (fpclassify(b->vb_float64) == FP_ZERO) return ERR_OVERFLOW;
+
+		dst->vb_float64 = a->vb_float64 / b->vb_float64;
+		break;
+
 	default:
-		return INVALID;
+		return ERR_INVALID;
 	}
 
 	return 0;
@@ -729,15 +750,23 @@ static int calc_float64(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 { \
 	switch (op) { \
 	case T_ADD: \
-		if (!fr_add(&dst->vb_ ## _t, in1->vb_ ## _t, in2->vb_ ## _t)) return OVERFLOW; \
+		if (!fr_add(&dst->vb_ ## _t, in1->vb_ ## _t, in2->vb_ ## _t)) return ERR_OVERFLOW; \
 		break; \
  \
 	case T_SUB: \
-		if (!fr_sub(&dst->vb_ ## _t, in1->vb_ ## _t, in2->vb_ ## _t)) return OVERFLOW; \
+		if (!fr_sub(&dst->vb_ ## _t, in1->vb_ ## _t, in2->vb_ ## _t)) return ERR_OVERFLOW; \
+		break; \
+ \
+	case T_MUL: \
+		if (!fr_multiply(&dst->vb_ ## _t, in1->vb_ ## _t, in2->vb_ ## _t)) return ERR_OVERFLOW; \
+		break; \
+ \
+	case T_DIV: \
+		dst->vb_ ## _t = in1->vb_ ## _t /  in2->vb_ ## _t; \
 		break; \
  \
 	default: \
-		return INVALID; \
+		return ERR_INVALID; \
 	} \
  \
 	return 0; \
@@ -984,7 +1013,7 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 			goto done;
 
 		default:
-			return INVALID;
+			return ERR_INVALID;
 		}
 	} while (0);
 
@@ -1037,6 +1066,8 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 
 	case T_ADD:
 	case T_SUB:
+	case T_MUL:
+	case T_DIV:
 	case T_OP_PREPEND:
 		fr_assert(hint != FR_TYPE_NULL);
 
@@ -1060,15 +1091,15 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 		break;
 
 	default:
-		rcode = INVALID;
+		rcode = ERR_INVALID;
 		break;
 	}
 
-	if (rcode == OVERFLOW) {
+	if (rcode == ERR_OVERFLOW) {
 		fr_strerror_printf("Value overflows/underflows when calculating answer for %s",
 				   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
 
-	} else if (rcode == INVALID) {
+	} else if (rcode == ERR_INVALID) {
 		fr_strerror_printf("Invalid operator %s for destination type %s",
 				   fr_tokens[op],
 				   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
