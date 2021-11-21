@@ -675,7 +675,6 @@ KQUEUE_LIBS
 TALLOC_LDFLAGS
 TALLOC_LIBS
 DIRNAME
-LOCATE
 AUTOHEADER
 AUTOCONF
 ACLOCAL
@@ -7944,9 +7943,8 @@ fi
 
 
 missing_dir=`cd $ac_aux_dir && pwd`
-
-# Expand $ac_aux_dir to an absolute path.
-am_aux_dir=`cd "$ac_aux_dir" && pwd`
+# expand $ac_aux_dir to an absolute path
+am_aux_dir=`cd $ac_aux_dir && pwd`
 
 
   if test x"${MISSING+set}" != xset; then
@@ -7974,51 +7972,6 @@ AUTOCONF=${AUTOCONF-"${am_missing_run}autoconf"}
 
 
 AUTOHEADER=${AUTOHEADER-"${am_missing_run}autoheader"}
-
-
-# Extract the first word of "locate", so it can be a program name with args.
-set dummy locate; ac_word=$2
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
-printf %s "checking for $ac_word... " >&6; }
-if test ${ac_cv_path_LOCATE+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  case $LOCATE in
-  [\\/]* | ?:[\\/]*)
-  ac_cv_path_LOCATE="$LOCATE" # Let the user override the test with a path.
-  ;;
-  *)
-  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
-for as_dir in $PATH
-do
-  IFS=$as_save_IFS
-  case $as_dir in #(((
-    '') as_dir=./ ;;
-    */) ;;
-    *) as_dir=$as_dir/ ;;
-  esac
-    for ac_exec_ext in '' $ac_executable_extensions; do
-  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
-    ac_cv_path_LOCATE="$as_dir$ac_word$ac_exec_ext"
-    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
-    break 2
-  fi
-done
-  done
-IFS=$as_save_IFS
-
-  ;;
-esac
-fi
-LOCATE=$ac_cv_path_LOCATE
-if test -n "$LOCATE"; then
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $LOCATE" >&5
-printf "%s\n" "$LOCATE" >&6; }
-else
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-fi
 
 
 # Extract the first word of "dirname", so it can be a program name with args.
@@ -9307,60 +9260,6 @@ fi
 
 if test "x$smart_lib" = "x"; then
 
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libtalloc${libltdl_cv_shlibext}
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libtalloc.a
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
 for try in $smart_lib_dir /usr/local/lib /opt/lib; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for _talloc in -ltalloc in $try" >&5
 printf %s "checking for _talloc in -ltalloc in $try... " >&6; }
@@ -9512,60 +9411,6 @@ fi
 
 if test "x$smart_lib" = "x"; then
 
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libkqueue${libltdl_cv_shlibext}
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libkqueue.a
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
 for try in $smart_lib_dir /usr/local/lib /opt/lib; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for kqueue in -lkqueue in $try" >&5
 printf %s "checking for kqueue in -lkqueue in $try... " >&6; }
@@ -9702,60 +9547,6 @@ LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" = "x"; then
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libpcap${libltdl_cv_shlibext}
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libpcap.a
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
 
 for try in $smart_lib_dir /usr/local/lib /opt/lib; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for pcap_open_live in -lpcap in $try" >&5
@@ -9916,60 +9707,6 @@ fi
 
 if test "x$smart_lib" = "x"; then
 
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libcollectdclient${libltdl_cv_shlibext}
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libcollectdclient.a
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
 for try in $smart_lib_dir /usr/local/lib /opt/lib; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for lcc_connect in -lcollectdclient in $try" >&5
 printf %s "checking for lcc_connect in -lcollectdclient in $try... " >&6; }
@@ -10102,60 +9839,6 @@ LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" = "x"; then
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libcap${libltdl_cv_shlibext}
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libcap.a
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
 
 for try in $smart_lib_dir /usr/local/lib /opt/lib; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for cap_get_proc in -lcap in $try" >&5
@@ -10292,60 +9975,6 @@ fi
 
 if test "x$smart_lib" = "x"; then
 
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libprofiler${libltdl_cv_shlibext}
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libprofiler.a
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
 for try in $smart_lib_dir /usr/local/lib /opt/lib; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for ProfilerStart in -lprofiler in $try" >&5
 printf %s "checking for ProfilerStart in -lprofiler in $try... " >&6; }
@@ -10480,60 +10109,6 @@ LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" = "x"; then
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libsystemd${libltdl_cv_shlibext}
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libsystemd.a
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
 
 for try in $smart_lib_dir /usr/local/lib /opt/lib; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for sd_notify in -lsystemd in $try" >&5
@@ -10676,60 +10251,6 @@ LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" = "x"; then
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libsystemd${libltdl_cv_shlibext}
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libsystemd.a
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
 
 for try in $smart_lib_dir /usr/local/lib /opt/lib; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for sd_watchdog_enabled in -lsystemd in $try" >&5
@@ -11046,63 +10567,6 @@ fi
 
 if test "x$smart_include" = "x"; then
 
-for prefix in $smart_prefix; do
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file="${_prefix}/${1}"
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-done
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=talloc.h
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-
 for try in $_smart_include_dir; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for talloc.h in $try" >&5
 printf %s "checking for talloc.h in $try... " >&6; }
@@ -11284,63 +10748,6 @@ fi
 
 if test "x$smart_include" = "x"; then
 
-for prefix in $smart_prefix; do
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file="${_prefix}/${1}"
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-done
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=sys/event.h
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-
 for try in $_smart_include_dir; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for sys/event.h in $try" >&5
 printf %s "checking for sys/event.h in $try... " >&6; }
@@ -11493,60 +10900,6 @@ fi
 
 if test "x$smart_lib" = "x"; then
 
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libcrypto${libltdl_cv_shlibext}
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libcrypto.a
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
 for try in $smart_lib_dir /usr/local/lib /opt/lib; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for DH_new in -lcrypto in $try" >&5
 printf %s "checking for DH_new in -lcrypto in $try... " >&6; }
@@ -11676,60 +11029,6 @@ LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" = "x"; then
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libssl${libltdl_cv_shlibext}
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libssl.a
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
 
 for try in $smart_lib_dir /usr/local/lib /opt/lib; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for SSL_new in -lssl in $try" >&5
@@ -11927,63 +11226,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-
-for prefix in $smart_prefix; do
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file="${_prefix}/${1}"
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-done
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=openssl/ssl.h
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
 
 for try in $_smart_include_dir; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for openssl/ssl.h in $try" >&5
@@ -12288,63 +11530,6 @@ fi
 
 if test "x$smart_include" = "x"; then
 
-for prefix in $smart_prefix; do
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file="${_prefix}/${1}"
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-done
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=pcap.h
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-
 for try in $_smart_include_dir; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for pcap.h in $try" >&5
 printf %s "checking for pcap.h in $try... " >&6; }
@@ -12534,63 +11719,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-
-for prefix in $smart_prefix; do
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file="${_prefix}/${1}"
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-done
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=collectd/client.h
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
 
 for try in $_smart_include_dir; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for collectd/client.h in $try" >&5
@@ -12782,63 +11910,6 @@ fi
 
 if test "x$smart_include" = "x"; then
 
-for prefix in $smart_prefix; do
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file="${_prefix}/${1}"
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-done
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=sys/capability.h
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-
 for try in $_smart_include_dir; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for sys/capability.h in $try" >&5
 printf %s "checking for sys/capability.h in $try... " >&6; }
@@ -13026,63 +12097,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-
-for prefix in $smart_prefix; do
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file="${_prefix}/${1}"
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-done
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=gperftools/profiler.h
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
 
 for try in $_smart_include_dir; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for gperftools/profiler.h in $try" >&5
@@ -13274,63 +12288,6 @@ fi
 
 if test "x$smart_include" = "x"; then
 
-for prefix in $smart_prefix; do
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file="${_prefix}/${1}"
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-done
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=systemd/sd-daemon.h
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-
 for try in $_smart_include_dir; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for systemd/sd-daemon.h in $try" >&5
 printf %s "checking for systemd/sd-daemon.h in $try... " >&6; }
@@ -13516,63 +12473,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-
-for prefix in $smart_prefix; do
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file="${_prefix}/${1}"
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-done
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=gnumake.h
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
 
 for try in $_smart_include_dir; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for gnumake.h in $try" >&5
@@ -15807,63 +14707,6 @@ fi
 
 if test "x$smart_include" = "x"; then
 
-for prefix in $smart_prefix; do
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file="${_prefix}/${1}"
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-done
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=execinfo.h
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-
 for try in $_smart_include_dir; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for execinfo.h in $try" >&5
 printf %s "checking for execinfo.h in $try... " >&6; }
@@ -15990,60 +14833,6 @@ LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" = "x"; then
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libexecinfo${libltdl_cv_shlibext}
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libexecinfo.a
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
 
 for try in $smart_lib_dir /usr/local/lib /opt/lib; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for backtrace_symbols in -lexecinfo in $try" >&5
@@ -16263,63 +15052,6 @@ fi
 
 if test "x$smart_include" = "x"; then
 
-for prefix in $smart_prefix; do
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file="${_prefix}/${1}"
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-done
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=pcre2.h
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-
 for try in $_smart_include_dir; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for pcre2.h in $try" >&5
 printf %s "checking for pcre2.h in $try... " >&6; }
@@ -16446,60 +15178,6 @@ LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" = "x"; then
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libpcre2-8${libltdl_cv_shlibext}
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libpcre2-8.a
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
 
 for try in $smart_lib_dir /usr/local/lib /opt/lib; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for pcre2_compile_8 in -lpcre2-8 in $try" >&5
@@ -16684,63 +15362,6 @@ fi
 
 if test "x$smart_include" = "x"; then
 
-for prefix in $smart_prefix; do
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file="${_prefix}/${1}"
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-done
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=pcre.h
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-
 for try in $_smart_include_dir; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for pcre.h in $try" >&5
 printf %s "checking for pcre.h in $try... " >&6; }
@@ -16867,60 +15488,6 @@ LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" = "x"; then
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libpcre${libltdl_cv_shlibext}
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=libpcre.a
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
 
 for try in $smart_lib_dir /usr/local/lib /opt/lib; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for pcre_compile in -lpcre in $try" >&5
@@ -17169,63 +15736,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-
-for prefix in $smart_prefix; do
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file="${_prefix}/${1}"
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
-done
-
-
-if test "x$LOCATE" != "x"; then
-DIRS=
-file=regex.h
-
-for x in `${LOCATE} $file 2>/dev/null`; do
-                    base=`echo $x | sed "s%/${file}%%"`
-  if test "x$x" = "x$base"; then
-    continue;
-  fi
-
-  dir=`${DIRNAME} $x 2>/dev/null`
-        exclude=`echo ${dir} | ${GREP} /home`
-  if test "x$exclude" != "x"; then
-    continue
-  fi
-
-          already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
-  if test "x$already" = "x"; then
-    DIRS="$DIRS $dir"
-  fi
-done
-fi
-
-eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
-
 
 for try in $_smart_include_dir; do
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for regex.h in $try" >&5
