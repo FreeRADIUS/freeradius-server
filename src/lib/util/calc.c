@@ -218,6 +218,57 @@ static const fr_type_t upcast[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 };
 
 
+static int calc_bool(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *a, fr_token_t op, fr_value_box_t const *b)
+{
+	fr_value_box_t one, two;
+
+	fr_assert(dst->type == FR_TYPE_BOOL);
+
+	if (a->type != FR_TYPE_BOOL) {
+		if (fr_value_box_cast(NULL, &one, FR_TYPE_BOOL, NULL, a) < 0) return -1;
+		a = &one;
+	}
+
+	if (a->type != FR_TYPE_BOOL) {
+		if (fr_value_box_cast(NULL, &two, FR_TYPE_BOOL, NULL, b) < 0) return -1;
+		b = &two;
+	}
+
+	switch (op) {
+	case T_ADD:
+		/*
+		 *	1+1 = 2, which isn't a valid boolean value.
+		 */
+		if (a->vb_bool & b->vb_bool) return ERR_OVERFLOW;
+
+		dst->vb_bool = a->vb_bool | b->vb_bool;
+		break;
+
+	case T_SUB:
+		/*
+		 *	0-1 = -1, which isn't a valid boolean value.
+		 */
+		if (a->vb_bool < b->vb_bool) return ERR_OVERFLOW;
+
+		dst->vb_bool = a->vb_bool - b->vb_bool;
+		break;
+
+	case T_MUL:		/* MUL is just AND here! */
+	case T_AND:
+		dst->vb_bool = a->vb_bool & b->vb_bool;
+		break;
+
+	case T_OR:
+		dst->vb_bool = a->vb_bool | b->vb_bool;
+		break;
+
+	default:
+		return ERR_INVALID;
+	}
+
+	return 0;
+}
+
 static int calc_date(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *a, fr_token_t op, fr_value_box_t const *b)
 {
 	fr_value_box_t one, two;
@@ -289,18 +340,7 @@ static int calc_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value
 	/*
 	 *	Unix times are always converted 1-1 to our internal
 	 *	TIME_DELTA.
-	 */
-	if (a->type == FR_TYPE_DATE) {
-		if (fr_value_box_cast(NULL, &one, FR_TYPE_TIME_DELTA, NULL, a) < 0) return -1;
-		a = &one;
-	}
-
-	if (b->type == FR_TYPE_DATE) {
-		if (fr_value_box_cast(NULL, &two, FR_TYPE_TIME_DELTA, NULL, b) < 0) return -1;
-		b = &two;
-	}
-
-	/*
+	 *
 	 *	We cast the inputs based on the destination time resolution.  So "5ms + 5" = "10ms".
 	 */
 	if (a->type != FR_TYPE_TIME_DELTA) {
@@ -616,6 +656,22 @@ static int calc_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 
 		dst->vb_ip.af = AF_INET;
 		dst->vb_ip.addr.v4.s_addr = htonl(ntohl(a->vb_ip.addr.v4.s_addr) + b->vb_uint32);
+		dst->vb_ip.prefix = 0;
+		break;
+
+	case T_SUB:
+		/*
+		 *	Subtract two addresses to see how far apart
+		 *	they are.  If the caller does "0.0.0.0 -
+		 *	255.xxxx", well, they deserve what they get.
+		 */
+		if ((a->type != FR_TYPE_IPV4_ADDR) && (b->type != FR_TYPE_IPV4_ADDR)) {
+			fr_strerror_const("Cannot perform operation on two 'ipaddr' types");
+			return -1;
+		}
+
+		dst->vb_ip.af = AF_INET;
+		dst->vb_ip.addr.v4.s_addr = htonl(ntohl(a->vb_ip.addr.v4.s_addr) - ntohl(b->vb_ip.addr.v4.s_addr));
 		dst->vb_ip.prefix = 0;
 		break;
 
@@ -976,6 +1032,8 @@ static int calc_integer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t con
 }
 
 static const fr_binary_op_t calc_type[FR_TYPE_MAX + 1] = {
+	[FR_TYPE_BOOL]		= calc_bool,
+
 	[FR_TYPE_OCTETS]	= calc_octets,
 	[FR_TYPE_STRING]	= calc_string,
 
