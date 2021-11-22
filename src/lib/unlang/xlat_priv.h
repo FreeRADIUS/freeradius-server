@@ -120,21 +120,24 @@ struct xlat_exp {
 	xlat_exp_t	*next;		//!< Next in the list.
 
 	xlat_exp_t	*child;		//!< Nested expansion, i.e. arguments for an xlat function.
-	xlat_exp_t	*alternate;	//!< Alternative expansion if this expansion produced no values.
 
-	/** An attribute reference
-	 *
-	 * May be an attribute to expand, or provide context for a call.
-	 */
-	tmpl_t		*attr;
+	union {
+		xlat_exp_t	*alternate;	//!< Alternative expansion if this expansion produced no values.
 
-	/** A capture group, i.e. for %{1} and friends
-	 */
-	int		regex_index;
+		/** An attribute reference
+		 *
+		 * May be an attribute to expand, or provide context for a call.
+		 */
+		tmpl_t		*attr;
 
-	/** An xlat function call
-	 */
-	xlat_call_t	call;
+		/** A capture group, i.e. for %{1} and friends
+		 */
+		int		regex_index;
+
+		/** An xlat function call
+		 */
+		xlat_call_t	call;
+	};
 };
 
 typedef struct {
