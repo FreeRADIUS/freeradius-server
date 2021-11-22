@@ -580,20 +580,18 @@ static int xlat_resolve_virtual_attribute(xlat_exp_t *node, tmpl_t *vpt)
 	} else {
 		func = xlat_func_find(tmpl_attr_unresolved(vpt), -1);
 	}
-	if (func) {
-		xlat_exp_set_type(node, XLAT_VIRTUAL);
-		xlat_exp_set_name_buffer_shallow(node, vpt->name);
+	if (!func) return -1;
 
-		XLAT_DEBUG("VIRTUAL <-- %pV",
-			   fr_box_strvalue_len(vpt->name, vpt->len));
-		node->call.func = func;
-		node->attr = vpt;	/* Store for context */
-		node->flags.needs_async = func->needs_async;
+	xlat_exp_set_type(node, XLAT_VIRTUAL);
+	xlat_exp_set_name_buffer_shallow(node, vpt->name);
 
-		return 0;
-	}
+	XLAT_DEBUG("VIRTUAL <-- %pV",
+		   fr_box_strvalue_len(vpt->name, vpt->len));
+	node->call.func = func;
+	node->attr = vpt;	/* Store for context */
+	node->flags.needs_async = func->needs_async;
 
-	return -1;
+	return 0;
 }
 
 /** Parse an attribute ref or a virtual attribute
@@ -1715,26 +1713,7 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const 
 		 */
 		case XLAT_VIRTUAL_UNRESOLVED:
 		{
-			xlat_t *func;
-			char const *name;
-
-			if (node->attr->type == TMPL_TYPE_ATTR_UNRESOLVED) {
-				name = tmpl_attr_unresolved(node->attr);
-			} else {
-				fr_assert(node->attr->type == TMPL_TYPE_ATTR);
-				name = tmpl_da(node->attr)->name;
-			}
-
-			func = xlat_func_find(name, -1);
-			if (func) {
-				xlat_exp_set_type(node, XLAT_VIRTUAL);
-				node->attr = node->attr;	/* Shift to the right location */
-				node->call.func = func;
-
-				/*
-				 *	Reset node flags
-				 */
-				node->flags = (xlat_flags_t){ .needs_async = func->needs_async };
+			if (xlat_resolve_virtual_attribute(node, node->attr) == 0) {
 				break;
 			}
 
