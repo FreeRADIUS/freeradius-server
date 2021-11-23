@@ -240,6 +240,7 @@ xlat_t *xlat_register_legacy(void *mod_inst, char const *name,
 xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, xlat_flags_t const *flags)
 {
 	xlat_t	*c;
+	static const xlat_flags_t my_flags = (xlat_flags_t) { 0 };
 
 	if (!xlat_root) xlat_init();
 
@@ -248,7 +249,7 @@ xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, xlat_
 		return NULL;
 	}
 
-	if (!flags) flags = &(xlat_flags_t) { 0 };
+	if (!flags) flags = &my_flags;
 
 	/*
 	 *	If it already exists, replace the instance.
@@ -300,6 +301,7 @@ xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, xlat_
 	 *	non-pure functions don't need to be async.
 	 */
 	fr_assert(!flags->needs_async || !flags->pure);
+	fr_assert(!flags->needs_resolving);
 
 	return c;
 }
