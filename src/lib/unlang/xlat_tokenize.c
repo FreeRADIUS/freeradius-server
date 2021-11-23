@@ -202,6 +202,7 @@ static inline CC_HINT(always_inline) void xlat_flags_merge(xlat_flags_t *parent,
 	parent->needs_async |= child->needs_async;
 	parent->needs_resolving |= child->needs_resolving;
 	parent->pure &= child->pure; /* purity can only be removed, never added */
+	parent->pure &= !parent->needs_async; /* things needing async cannot be pure */
 }
 
 /** Free a linked list of xlat nodes
