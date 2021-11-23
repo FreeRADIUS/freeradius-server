@@ -3342,30 +3342,48 @@ int xlat_init(void)
 
 	XLAT_REGISTER(xlat);
 
+	/*
+	 *	These are all "pure" functions.
+	 */
 #define XLAT_REGISTER_ARGS(_xlat, _func, _args) \
 do { \
-	if (!(xlat = xlat_register(NULL, _xlat, _func, NULL))) return -1; \
+	if (!(xlat = xlat_register(NULL, _xlat, _func, XLAT_FLAG_PURE))) return -1; \
 	xlat_func_args(xlat, _args); \
 } while (0)
 
 	XLAT_REGISTER_ARGS("concat", xlat_func_concat, xlat_func_concat_args);
-	XLAT_REGISTER_ARGS("debug", xlat_func_debug, xlat_func_debug_args);
-	XLAT_REGISTER_ARGS("debug_attr", xlat_func_debug_attr, xlat_func_debug_attr_args);
 	XLAT_REGISTER_ARGS("explode", xlat_func_explode, xlat_func_explode_args);
 	XLAT_REGISTER_ARGS("hmacmd5", xlat_func_hmac_md5, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("hmacsha1", xlat_func_hmac_sha1, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("integer", xlat_func_integer, xlat_func_integer_args);
 	XLAT_REGISTER_ARGS("join", xlat_func_join, xlat_func_join_args);
 	XLAT_REGISTER_ARGS("length", xlat_func_length, xlat_func_length_args);
-	XLAT_REGISTER_ARGS("nexttime", xlat_func_next_time, xlat_func_next_time_args);
-	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("lpad", xlat_func_lpad, xlat_func_pad_args);
 	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, xlat_func_pad_args);
-	XLAT_REGISTER_ARGS("trigger", trigger_xlat, trigger_xlat_args);
 
-#define XLAT_REGISTER_MONO(_xlat, _func, _arg) \
+	/*
+	 *	The inputs to these functions are variable.
+	 */
+#undef XLAT_REGISTER_ARGS
+#define XLAT_REGISTER_ARGS(_xlat, _func, _args) \
 do { \
 	if (!(xlat = xlat_register(NULL, _xlat, _func, NULL))) return -1; \
+	xlat_func_args(xlat, _args); \
+} while (0)
+
+	XLAT_REGISTER_ARGS("debug", xlat_func_debug, xlat_func_debug_args);
+	XLAT_REGISTER_ARGS("debug_attr", xlat_func_debug_attr, xlat_func_debug_attr_args);
+	XLAT_REGISTER_ARGS("nexttime", xlat_func_next_time, xlat_func_next_time_args);
+	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
+	XLAT_REGISTER_ARGS("sub", xlat_func_sub, xlat_func_sub_args);
+	XLAT_REGISTER_ARGS("trigger", trigger_xlat, trigger_xlat_args);
+
+	/*
+	 *	All of these functions are pure.
+	 */
+#define XLAT_REGISTER_MONO(_xlat, _func, _arg) \
+do { \
+	if (!(xlat = xlat_register(NULL, _xlat, _func, XLAT_FLAG_PURE))) return -1; \
 	xlat_func_mono(xlat, &_arg); \
 } while (0)
 
@@ -3376,7 +3394,6 @@ do { \
 	XLAT_REGISTER_MONO("map", xlat_func_map, xlat_func_map_arg);
 	XLAT_REGISTER_MONO("md4", xlat_func_md4, xlat_func_md4_arg);
 	XLAT_REGISTER_MONO("md5", xlat_func_md5, xlat_func_md5_arg);
-	xlat_register(NULL, "module", xlat_func_module, NULL);
 	XLAT_REGISTER_MONO("pack", xlat_func_pack, xlat_func_pack_arg);
 	XLAT_REGISTER_MONO("rand", xlat_func_rand, xlat_func_rand_arg);
 	XLAT_REGISTER_MONO("randstr", xlat_func_randstr, xlat_func_randstr_arg);
@@ -3404,11 +3421,12 @@ do { \
 
 	XLAT_REGISTER_MONO("string", xlat_func_string, xlat_func_string_arg);
 	XLAT_REGISTER_MONO("strlen", xlat_func_strlen, xlat_func_strlen_arg);
-	XLAT_REGISTER_ARGS("sub", xlat_func_sub, xlat_func_sub_args);
 	XLAT_REGISTER_MONO("tolower", xlat_func_tolower, xlat_change_case_arg);
 	XLAT_REGISTER_MONO("toupper", xlat_func_toupper, xlat_change_case_arg);
 	XLAT_REGISTER_MONO("urlquote", xlat_func_urlquote, xlat_func_urlquote_arg);
 	XLAT_REGISTER_MONO("urlunquote", xlat_func_urlunquote, xlat_func_urlunquote_arg);
+
+	xlat_register(NULL, "module", xlat_func_module, NULL);
 
 	return 0;
 }

@@ -1880,9 +1880,9 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_func_mono(xlat, &ldap_xlat_arg);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, ldap_xlat_thread_inst_t, NULL, inst);
 
-	xlat = xlat_register(NULL, "ldap_escape", ldap_escape_xlat, NULL);
+	xlat = xlat_register(NULL, "ldap_escape", ldap_escape_xlat, XLAT_FLAG_PURE);
 	if (xlat) xlat_func_mono(xlat, &ldap_escape_xlat_arg);
-	xlat = xlat_register(NULL, "ldap_unescape", ldap_unescape_xlat, NULL);
+	xlat = xlat_register(NULL, "ldap_unescape", ldap_unescape_xlat, XLAT_FLAG_PURE);
 	if (xlat) xlat_func_mono(xlat, &ldap_escape_xlat_arg);
 
 	map_proc_register(inst, mctx->inst->name, mod_map_proc, ldap_map_verify, 0);
