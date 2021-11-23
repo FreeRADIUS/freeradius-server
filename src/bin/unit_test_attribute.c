@@ -3494,7 +3494,7 @@ int main(int argc, char *argv[])
 
 	unlang_thread_instantiate(autofree);
 
-	if (!xlat_register(NULL, "test", xlat_test, false)) {
+	if (!xlat_register(NULL, "test", xlat_test, NULL)) {
 		ERROR("Failed registering xlat");
 		EXIT_WITH_FAILURE;
 	}

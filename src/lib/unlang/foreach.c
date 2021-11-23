@@ -221,7 +221,7 @@ void unlang_foreach_init(void)
 		xlat_t *x;
 
 		x = xlat_register(NULL, xlat_foreach_names[i],
-				  unlang_foreach_xlat, true);
+				  unlang_foreach_xlat, XLAT_FLAG_NEEDS_ASYNC);
 		x->uctx = &xlat_foreach_inst[i];
 		fr_assert(x);
 		xlat_internal(x);

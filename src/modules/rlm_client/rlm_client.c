@@ -365,7 +365,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	if (cf_section_name2(conf)) return 0;
 
-	xlat = xlat_register(mctx->inst->data, "client", xlat_client, false);
+	xlat = xlat_register(mctx->inst->data, "client", xlat_client, NULL);
 	xlat_func_args(xlat, xlat_client_args);
 	map_proc_register(mctx->inst->data, "client", map_proc_client, NULL, 0);
 

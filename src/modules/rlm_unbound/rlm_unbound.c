@@ -500,7 +500,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	if(!(xlat = xlat_register(NULL, mctx->inst->name, xlat_unbound, true))) return -1;
+	if(!(xlat = xlat_register(NULL, mctx->inst->name, xlat_unbound, XLAT_FLAG_NEEDS_ASYNC))) return -1;
 	xlat_func_args(xlat, xlat_unbound_args);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, unbound_xlat_thread_inst_t, NULL, inst);
 

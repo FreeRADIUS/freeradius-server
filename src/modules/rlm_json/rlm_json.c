@@ -557,13 +557,13 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	char 			*name;
 	fr_json_format_t	*format = inst->format;
 
-	xlat = xlat_register(inst, "jsonquote", json_quote_xlat, false);
+	xlat = xlat_register(inst, "jsonquote", json_quote_xlat, NULL);
 	if (xlat) xlat_func_mono(xlat, &json_quote_xlat_arg);
-	xlat = xlat_register(inst, "jpathvalidate", jpath_validate_xlat, false);
+	xlat = xlat_register(inst, "jpathvalidate", jpath_validate_xlat, NULL);
 	if (xlat) xlat_func_mono(xlat, &jpath_validate_xlat_arg);
 
 	name = talloc_asprintf(inst, "%s_encode", mctx->inst->name);
-	xlat = xlat_register(inst, name, json_encode_xlat, false);
+	xlat = xlat_register(inst, name, json_encode_xlat, NULL);
 	xlat_func_mono(xlat, &json_encode_xlat_arg);
 	xlat_async_instantiate_set(xlat, json_xlat_instantiate,
 				   rlm_json_t *, NULL, inst);

@@ -94,6 +94,14 @@ typedef struct {
 	bool			pure;		//!< has no external side effects
 } xlat_flags_t;
 
+/*
+ *	Simplify many use-cases
+ *
+ *	We can't set "needs_resolving" here, and async functions can't be pure.
+ */
+#define XLAT_FLAG_NEEDS_ASYNC &(xlat_flags_t) { .needs_async = true, }
+#define XLAT_FLAG_PURE &(xlat_flags_t) { .pure = true, }
+
 extern fr_table_num_sorted_t const xlat_action_table[];
 extern size_t xlat_action_table_len;
 
@@ -369,7 +377,7 @@ xlat_t		*xlat_register_legacy(void *mod_inst, char const *name,
 				      xlat_instantiate_t instantiate, size_t inst_size,
 				      size_t buf_len);
 
-xlat_t		*xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool needs_async) CC_HINT(nonnull(2));
+xlat_t		*xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, xlat_flags_t const *flags) CC_HINT(nonnull(2));
 
 int		xlat_func_args(xlat_t *xlat, xlat_arg_parser_t const args[]) CC_HINT(nonnull);
 

@@ -273,7 +273,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_soh_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_soh_t);
 	xlat_t		*xlat;
 
-	xlat = xlat_register(inst, mctx->inst->name, soh_xlat, false);
+	xlat = xlat_register(inst, mctx->inst->name, soh_xlat, NULL);
 	xlat_func_args(xlat, soh_xlat_args);
 
 	return 0;

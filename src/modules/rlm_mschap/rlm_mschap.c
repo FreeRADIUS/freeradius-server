@@ -2267,7 +2267,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_mschap_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_mschap_t);
 	xlat_t			*xlat;
 
-	xlat = xlat_register(inst, mctx->inst->name, mschap_xlat, false);
+	xlat = xlat_register(inst, mctx->inst->name, mschap_xlat, NULL);
 	xlat_func_args(xlat, mschap_xlat_args);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_mschap_t *, NULL, inst);
 

@@ -541,7 +541,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_icmp_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_icmp_t);
 	xlat_t		*xlat;
 
-	xlat = xlat_register(inst, mctx->inst->name, xlat_icmp, true);
+	xlat = xlat_register(inst, mctx->inst->name, xlat_icmp, XLAT_FLAG_NEEDS_ASYNC);
 	xlat_func_args(xlat, xlat_icmp_args);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_icmp_t *, NULL, inst);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, xlat_icmp_thread_inst_t, NULL, inst);

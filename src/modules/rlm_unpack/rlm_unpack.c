@@ -149,7 +149,7 @@ static int mod_bootstrap(UNUSED module_inst_ctx_t const *mctx)
 {
 	xlat_t	*xlat;
 
-	xlat = xlat_register(NULL, "unpack", unpack_xlat, false);
+	xlat = xlat_register(NULL, "unpack", unpack_xlat, NULL);
 	if (xlat) xlat_func_args(xlat, unpack_xlat_args);
 
 	return 0;

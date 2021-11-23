@@ -602,7 +602,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	xlat_t		*xlat;
 
-	xlat = xlat_register(mctx->inst->data, mctx->inst->name, expr_xlat, false);
+	xlat = xlat_register(mctx->inst->data, mctx->inst->name, expr_xlat, NULL);
 	xlat_func_mono(xlat, &expr_xlat_arg);
 
 	return 0;

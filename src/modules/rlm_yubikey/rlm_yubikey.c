@@ -195,7 +195,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	}
 #endif
 
-	xlat = xlat_register(inst, "modhextohex", modhex_to_hex_xlat, false);
+	xlat = xlat_register(inst, "modhextohex", modhex_to_hex_xlat, NULL);
 	if (xlat) xlat_func_mono(xlat, &modhex_to_hex_xlat_arg);
 
 	return 0;

@@ -213,7 +213,6 @@ xlat_t *xlat_register_legacy(void *mod_inst, char const *name,
 	c->mod_inst = mod_inst;
 	c->instantiate = instantiate;
 	c->inst_size = inst_size;
-	c->needs_async = false;
 
 	DEBUG3("%s: %s", __FUNCTION__, c->name);
 
@@ -233,12 +232,12 @@ xlat_t *xlat_register_legacy(void *mod_inst, char const *name,
  * @param[in] ctx		Used to automate deregistration of the xlat fnction.
  * @param[in] name		of the xlat.
  * @param[in] func		to register.
- * @param[in] needs_async	Requires asynchronous evaluation.
+ * @param[in] flags		various function flags
  * @return
  *	- A handle for the newly registered xlat function on success.
  *	- NULL on failure.
  */
-xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool needs_async)
+xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, xlat_flags_t const *flags)
 {
 	xlat_t	*c;
 
@@ -248,6 +247,8 @@ xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool 
 		ERROR("%s: Invalid xlat name", __FUNCTION__);
 		return NULL;
 	}
+
+	if (!flags) flags = &(xlat_flags_t) { 0 };
 
 	/*
 	 *	If it already exists, replace the instance.
@@ -259,7 +260,7 @@ xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool 
 			return NULL;
 		}
 
-		if ((c->type != XLAT_FUNC_NORMAL) || (c->needs_async != needs_async)) {
+		if ((c->type != XLAT_FUNC_NORMAL) || (c->flags.needs_async != flags->needs_async)) {
 			ERROR("%s: Cannot change async capability of %s", __FUNCTION__, name);
 			return NULL;
 		}
@@ -282,7 +283,7 @@ xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool 
 			.async = func
 		},
 		.type = XLAT_FUNC_NORMAL,
-		.needs_async = needs_async,		/* this function may yield */
+		.flags = *flags,
 		.input_type = XLAT_INPUT_UNPROCESSED	/* set default - will be overridden if args are registered */
 	};
 	talloc_set_destructor(c, _xlat_func_talloc_free);
@@ -293,6 +294,13 @@ xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, bool 
 		talloc_free(c);
 		return NULL;
 	}
+
+	/*
+	 *	If the function is async, it can't be pure.  But
+	 *	non-pure functions don't need to be async.
+	 */
+	fr_assert(!flags->needs_async || !flags->pure);
+	fr_assert(!flags->needs_resolving);
 
 	return c;
 }
@@ -451,6 +459,14 @@ void _xlat_async_thread_instantiate_set(xlat_t const *xlat,
 				        void *uctx)
 {
 	xlat_t *c = UNCONST(xlat_t *, xlat);
+
+	/*
+	 *	Pure functions can't use any thread-local
+	 *	variables. They MUST operate only on constant
+	 *	instantiation data, and on their (possibly constant)
+	 *	inputs.
+	 */
+	fr_assert(!c->flags.pure);
 
 	c->thread_instantiate = thread_instantiate;
 	c->thread_inst_type = thread_inst_type;
@@ -750,7 +766,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	 */
 	if (!old) return 1;
 
-	xlat = xlat_register(NULL, name2, func, old->needs_async);
+	xlat = xlat_register(NULL, name2, func, &old->flags);
 	if (!xlat) {
 		ERROR("Registering xlat for load-balance section failed");
 		talloc_free(xr);
@@ -3242,7 +3258,7 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 	if (tp_decode) {
 		snprintf(buffer, sizeof(buffer), "decode.%s", name);
 
-		xlat = xlat_register(NULL, buffer, protocol_decode_xlat, false);
+		xlat = xlat_register(NULL, buffer, protocol_decode_xlat, NULL);
 		xlat_func_args(xlat, protocol_decode_xlat_args);
 		xlat_async_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_decode_t *, NULL, tp_decode);
 	}
@@ -3255,7 +3271,7 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 	if (tp_encode) {
 		snprintf(buffer, sizeof(buffer), "encode.%s", name);
 
-		xlat = xlat_register(NULL, buffer, protocol_encode_xlat, false);
+		xlat = xlat_register(NULL, buffer, protocol_encode_xlat, NULL);
 		xlat_func_args(xlat, protocol_encode_xlat_args);
 		xlat_async_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_encode_t *, NULL, tp_encode);
 	}
@@ -3328,7 +3344,7 @@ int xlat_init(void)
 
 #define XLAT_REGISTER_ARGS(_xlat, _func, _args) \
 do { \
-	if (!(xlat = xlat_register(NULL, _xlat, _func, false))) return -1; \
+	if (!(xlat = xlat_register(NULL, _xlat, _func, NULL))) return -1; \
 	xlat_func_args(xlat, _args); \
 } while (0)
 
@@ -3349,7 +3365,7 @@ do { \
 
 #define XLAT_REGISTER_MONO(_xlat, _func, _arg) \
 do { \
-	if (!(xlat = xlat_register(NULL, _xlat, _func, false))) return -1; \
+	if (!(xlat = xlat_register(NULL, _xlat, _func, NULL))) return -1; \
 	xlat_func_mono(xlat, &_arg); \
 } while (0)
 
@@ -3360,12 +3376,12 @@ do { \
 	XLAT_REGISTER_MONO("map", xlat_func_map, xlat_func_map_arg);
 	XLAT_REGISTER_MONO("md4", xlat_func_md4, xlat_func_md4_arg);
 	XLAT_REGISTER_MONO("md5", xlat_func_md5, xlat_func_md5_arg);
-	xlat_register(NULL, "module", xlat_func_module, false);
+	xlat_register(NULL, "module", xlat_func_module, NULL);
 	XLAT_REGISTER_MONO("pack", xlat_func_pack, xlat_func_pack_arg);
 	XLAT_REGISTER_MONO("rand", xlat_func_rand, xlat_func_rand_arg);
 	XLAT_REGISTER_MONO("randstr", xlat_func_randstr, xlat_func_randstr_arg);
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
-	xlat_register(NULL, "regex", xlat_func_regex, false);
+	xlat_register(NULL, "regex", xlat_func_regex, NULL);
 #endif
 	XLAT_REGISTER_MONO("sha1", xlat_func_sha1, xlat_func_sha_arg);
 

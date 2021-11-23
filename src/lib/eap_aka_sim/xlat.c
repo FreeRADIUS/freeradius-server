@@ -500,15 +500,15 @@ void fr_aka_sim_xlat_register(void)
 		return;
 	}
 
-	xlat = xlat_register(NULL, "aka_sim_id_method", aka_sim_xlat_id_method_xlat, false);
+	xlat = xlat_register(NULL, "aka_sim_id_method", aka_sim_xlat_id_method_xlat, NULL);
 	xlat_func_args(xlat, aka_sim_xlat_id_method_xlat_args);
-	xlat = xlat_register(NULL, "aka_sim_id_type", aka_sim_xlat_id_type_xlat, false);
+	xlat = xlat_register(NULL, "aka_sim_id_type", aka_sim_xlat_id_type_xlat, NULL);
 	xlat_func_args(xlat, aka_sim_xlat_id_type_xlat_args);
-	xlat = xlat_register(NULL, "3gpp_temporary_id_key_index", aka_sim_id_3gpp_temporary_id_key_index_xlat, false);
+	xlat = xlat_register(NULL, "3gpp_temporary_id_key_index", aka_sim_id_3gpp_temporary_id_key_index_xlat, NULL);
 	xlat_func_args(xlat, aka_sim_id_3gpp_temporary_id_key_index_xlat_args);
-	xlat = xlat_register(NULL, "3gpp_temporary_id_decrypt", aka_sim_3gpp_temporary_id_decrypt_xlat, false);
+	xlat = xlat_register(NULL, "3gpp_temporary_id_decrypt", aka_sim_3gpp_temporary_id_decrypt_xlat, NULL);
 	xlat_func_args(xlat, aka_sim_3gpp_temporary_id_decrypt_xlat_args);
-	xlat = xlat_register(NULL, "3gpp_temporary_id_encrypt", aka_sim_3gpp_temporary_id_encrypt_xlat, false);
+	xlat = xlat_register(NULL, "3gpp_temporary_id_encrypt", aka_sim_3gpp_temporary_id_encrypt_xlat, NULL);
 	xlat_func_args(xlat, aka_sim_3gpp_temporary_id_encrypt_xlat_args);
 	aka_sim_xlat_refs = 1;
 }

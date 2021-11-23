@@ -1444,6 +1444,6 @@ unlang_interpret_t *unlang_interpret_get_thread_default(void)
 void unlang_interpret_init_global(void)
 {
 	xlat_t	*xlat;
-	xlat = xlat_register(NULL, "interpreter", unlang_interpret_xlat, false);
+	xlat = xlat_register(NULL, "interpreter", unlang_interpret_xlat, NULL);
 	xlat_func_args(xlat, unlang_interpret_xlat_args);
 }

@@ -1288,7 +1288,7 @@ do {\
 	/*
 	 *	Register the %(config:section.subsection) xlat function.
 	 */
-	xlat = xlat_register(NULL, "config", xlat_config, false);
+	xlat = xlat_register(NULL, "config", xlat_config, NULL);
 	xlat_func_args(xlat, xlat_config_args);
 
 	/*

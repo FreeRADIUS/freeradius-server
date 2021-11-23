@@ -425,7 +425,7 @@ static inline int xlat_tokenize_function_mono(TALLOC_CTX *ctx, xlat_exp_t **head
 			return -1;
 		}
 		node->call.func = func;
-		node->flags.needs_async = func->needs_async;
+		node->flags = func->flags;
 	}
 
 	fr_sbuff_next(in);			/* Skip the ':' */
@@ -552,7 +552,7 @@ static inline int xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **head
 			return -1;
 		}
 		node->call.func = func;
-		node->flags.needs_async = func->needs_async;
+		node->flags = func->flags;
 	}
 
 	fr_sbuff_next(in);			/* Skip the ':' */
@@ -602,7 +602,7 @@ static int xlat_resolve_virtual_attribute(xlat_exp_t *node, tmpl_t *vpt)
 	XLAT_DEBUG("VIRTUAL <-- %pV",
 		   fr_box_strvalue_len(vpt->name, vpt->len));
 	node->call.func = func;
-	node->flags.needs_async = func->needs_async;
+	node->flags = func->flags;
 
 	return 0;
 }
@@ -1712,7 +1712,7 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const 
 			/*
 			 *	Reset node flags
 			 */
-			node->flags = (xlat_flags_t){ .needs_async = func->needs_async };
+			node->flags = func->flags;
 
 			/*
 			 *	Merge the result of trying to resolve
@@ -1862,8 +1862,9 @@ int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
 			node = xlat_exp_alloc(ctx, XLAT_VIRTUAL, vpt->name, vpt->len);
 			node->attr = talloc_move(node, vpt_p);
 			node->call.func = func;
+			node->flags = func->flags;
+
 			*head = node;
-			node->flags = (xlat_flags_t) { .needs_async = func->needs_async };
 		} else if (tmpl_is_attr_unresolved(vpt)) {
 			func = xlat_func_find(tmpl_attr_unresolved(vpt), -1);
 			if (!func) goto unresolved;
