@@ -4500,11 +4500,15 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 			 *	expansion, including the enclosing %{}
 			 *	characters.
 			 */
-			if (*p == close) {
+			if ((*p == '}') || (*p == ')')) {
+				bool match = (*p == close);
+
 				p++;
 				depth--;
 
 				if (depth == 0) {
+					if (!match) break;
+
 					*outlen = p - (*out);
 					return p - in;
 				}
