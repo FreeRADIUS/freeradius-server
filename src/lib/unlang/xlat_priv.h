@@ -80,7 +80,7 @@ typedef struct xlat_s {
 
 typedef enum {
 	XLAT_INVALID		= 0x0000,		//!< Bad expansion
-	XLAT_LITERAL		= 0x0001,		//!< Literal string
+	XLAT_BOX		= 0x0001,		//!< #fr_value_box_t
 	XLAT_ONE_LETTER		= 0x0002,		//!< Special "one-letter" expansion
 	XLAT_FUNC		= 0x0004,		//!< xlat module
 	XLAT_FUNC_UNRESOLVED	= 0x0008,		//!< func needs resolution during pass2.

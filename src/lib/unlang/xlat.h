@@ -355,9 +355,9 @@ static inline size_t xlat_aprint(TALLOC_CTX *ctx, char **out, xlat_exp_t const *
 
 void		xlat_debug(xlat_exp_t const *node);
 
-bool		xlat_is_literal(xlat_exp_t const *head);
+bool		xlat_is_value_box(xlat_exp_t const *head);
 
-bool		xlat_to_literal(TALLOC_CTX *ctx, char **str, xlat_exp_t **head);
+bool		xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_t **head);
 
 int		xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const *xr_rules);
 

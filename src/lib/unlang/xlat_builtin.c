@@ -1351,7 +1351,7 @@ static ssize_t xlat_func_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
 		slen = xlat_eval(*out, outlen, request, vp->vp_strvalue, NULL, NULL);
 		if (slen <= 0) return slen;
 	/*
-	 *	If it's not a string, treat it as a literal
+	 *	If it's not a string, treat it as a literal value
 	 */
 	} else {
 		slen = fr_value_box_aprint(ctx, out, &vp->data, NULL);

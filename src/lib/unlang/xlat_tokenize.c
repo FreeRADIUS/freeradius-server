@@ -44,7 +44,7 @@ RCSID("$Id$")
 #  define XLAT_HEXDUMP(...)
 #endif
 
-/** These rules apply to literals and function arguments inside of an expansion
+/** These rules apply to literal values and function arguments inside of an expansion
  *
  */
 static fr_sbuff_unescape_rules_t const xlat_unescape = {
@@ -66,7 +66,7 @@ static fr_sbuff_unescape_rules_t const xlat_unescape = {
 	.do_oct = true
 };
 
-/** These rules apply to literals and function arguments inside of an expansion
+/** These rules apply to literal values and function arguments inside of an expansion
  *
  */
 static fr_sbuff_escape_rules_t const xlat_escape = {
@@ -91,7 +91,7 @@ static fr_sbuff_escape_rules_t const xlat_escape = {
 	.do_oct = true
 };
 
-/** Parse rules for literals inside of an expansion
+/** Parse rules for literal values inside of an expansion
  *
  * These rules are used to parse literals as arguments to functions and
  * on the RHS of alternations.
@@ -141,9 +141,9 @@ static inline CC_HINT(always_inline) xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx,
 	node->type = type;
 	if (in) node->fmt = talloc_bstrndup(node, in, inlen);
 
-	if (type == XLAT_LITERAL) {
-		node->flags.pure = true;	 /* literals are always pure */
-		node->flags.needs_async = false; /* literals are always non-async */
+	if (type == XLAT_BOX) {
+		node->flags.pure = true;	 /* value boxes are always pure */
+		node->flags.needs_async = false; /* value boxes are always non-async */
 		fr_value_box_strdup_shallow(&node->data, NULL, node->fmt, false);
 	}
 
@@ -159,9 +159,9 @@ static inline CC_HINT(always_inline) void xlat_exp_set_type(xlat_exp_t *node, xl
 {
 	node->type = type;
 
-	if (type == XLAT_LITERAL) {
-		node->flags.pure = true;	 /* literals are always pure */
-		node->flags.needs_async = false; /* literals are always non-async */
+	if (type == XLAT_BOX) {
+		node->flags.pure = true;	 /* value boxes are always pure */
+		node->flags.needs_async = false; /* value boxes are always non-async */
 	}
 }
 
@@ -223,7 +223,7 @@ void xlat_exp_free(xlat_exp_t **head)
 static int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 				   tmpl_rules_t const *t_rules);
 
-static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
+static int xlat_tokenize_string(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
 				 fr_sbuff_t *in, bool brace,
 				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
@@ -261,7 +261,7 @@ static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, 
 	 *	Allow the RHS to be empty as a special case.
 	 */
 	if (fr_sbuff_next_if_char(in, '}')) {
-		node->alternate = xlat_exp_alloc(node, XLAT_LITERAL, "", 0);
+		node->alternate = xlat_exp_alloc(node, XLAT_BOX, "", 0);
 		xlat_flags_merge(&node->flags, &node->child->flags);
 		*head = node;
 		return 0;
@@ -270,7 +270,7 @@ static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, 
 	/*
 	 *	Parse the alternate expansion.
 	 */
-	if (xlat_tokenize_literal(node, &node->alternate, &node->flags, in,
+	if (xlat_tokenize_string(node, &node->alternate, &node->flags, in,
 				  true, &xlat_expansion_rules, t_rules) < 0) goto error;
 
 	if (!node->alternate) {
@@ -437,7 +437,7 @@ static inline int xlat_tokenize_function_mono(TALLOC_CTX *ctx, xlat_exp_t **head
 	 *	Now parse the child nodes that form the
 	 *	function's arguments.
 	 */
-	if (xlat_tokenize_literal(node, &node->child, &node->flags, in, true, &xlat_expansion_rules, rules) < 0) {
+	if (xlat_tokenize_string(node, &node->child, &node->flags, in, true, &xlat_expansion_rules, rules) < 0) {
 		goto error;
 	}
 
@@ -476,7 +476,7 @@ static inline int xlat_validate_function_args(xlat_exp_t *node)
 		/*
 		 *	The argument isn't of the correct type.  Cast it.
 		 */
-		if ((child->type == XLAT_LITERAL) && (child->data.type != arg_p->type) &&
+		if ((child->type == XLAT_BOX) && (child->data.type != arg_p->type) &&
 		    (fr_value_box_cast_in_place(child, &child->data, arg_p->type, NULL) < 0)) {
 			return -1;
 		}
@@ -878,7 +878,7 @@ static int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
 	return 0;
 }
 
-/** Parse an xlat literal i.e. a non-expansion or non-function
+/** Parse an xlat string i.e. a non-expansion or non-function
  *
  * When this function is being used outside of an xlat expansion, i.e. on a string
  * which contains one or more xlat expansions, it uses the terminal grammar and
@@ -903,7 +903,7 @@ static int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
+static int xlat_tokenize_string(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
 				 fr_sbuff_t *in, bool brace,
 				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
@@ -955,17 +955,17 @@ static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 		len = fr_sbuff_out_aunescape_until(node, &str, in, SIZE_MAX, tokens, escapes);
 
 		/*
-		 *	It's a literal, create a literal node...
+		 *	It's a value box, create an appropriate node
 		 */
 		if (len > 0) {
-			xlat_exp_set_type(node, XLAT_LITERAL);
+			xlat_exp_set_type(node, XLAT_BOX);
 			xlat_exp_set_name_buffer_shallow(node, str);
 			fr_value_box_strdup_shallow(&node->data, NULL, str, false);
 
-			XLAT_DEBUG("LITERAL (%s)<-- %pV",
+			XLAT_DEBUG("VALUE-BOX (%s)<-- %pV",
 				   escapes ? escapes->name : "(none)",XXX
 				   fr_box_strvalue_len(str, talloc_array_length(str) - 1));
-			XLAT_HEXDUMP((uint8_t const *)str, talloc_array_length(str) - 1, " LITERAL ");
+			XLAT_HEXDUMP((uint8_t const *)str, talloc_array_length(str) - 1, " VALUE-BOX ");
 			fr_cursor_insert(&cursor, node);
 			node = NULL;
 		}
@@ -1019,7 +1019,9 @@ static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 			xlat_exp_set_type(node, XLAT_ONE_LETTER);
 			xlat_exp_set_name_buffer_shallow(node, str);
 
-			node->flags.needs_async = false; /* literals are always true */
+			node->flags.pure = true;	 /* value boxes are always pure */
+			node->flags.needs_async = false; /* value boxes are always non-async */
+
 			xlat_flags_merge(flags, &node->flags);
 			fr_cursor_insert(&cursor, node);
 			node = NULL;
@@ -1042,7 +1044,7 @@ static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 		 */
 		} else if (len == 0) {
 			talloc_free(node);
-			XLAT_DEBUG("LITERAL <-- (empty)");
+			XLAT_DEBUG("VALUE-BOX <-- (empty)");
 		}
 		break;
 	}
@@ -1067,8 +1069,8 @@ void xlat_debug(xlat_exp_t const *node)
 	fr_assert(node != NULL);
 	while (node) {
 		switch (node->type) {
-		case XLAT_LITERAL:
-			INFO("literal --> %s", node->fmt);
+		case XLAT_BOX:
+			INFO("value-box --> %s", node->fmt);
 			break;
 
 		case XLAT_GROUP:
@@ -1179,7 +1181,7 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rule
 			if (node->next) FR_SBUFF_IN_CHAR_RETURN(out, ' ');	/* Add ' ' between args */
 			goto next;
 
-		case XLAT_LITERAL:
+		case XLAT_BOX:
 			FR_SBUFF_RETURN(fr_value_box_print, out, &node->data, e_rules);
 			goto next;
 
@@ -1252,7 +1254,7 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rule
 			break;
 
 		case XLAT_INVALID:
-		case XLAT_LITERAL:
+		case XLAT_BOX:
 		case XLAT_ONE_LETTER:
 		case XLAT_GROUP:
 			fr_assert_fail(NULL);
@@ -1295,14 +1297,14 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 	*head = NULL;
 
 	fr_strerror_clear();	/* Clear error buffer */
-	if (xlat_tokenize_literal(ctx, head, flags, &our_in,
+	if (xlat_tokenize_string(ctx, head, flags, &our_in,
 				  false, p_rules, t_rules) < 0) return -fr_sbuff_used(&our_in);
 
 	/*
 	 *	Zero length expansion, return a zero length node.
 	 */
 	if (!*head) {
-		*head = xlat_exp_alloc(ctx, XLAT_LITERAL, "", 0);
+		*head = xlat_exp_alloc(ctx, XLAT_BOX, "", 0);
 		return 0;
 	}
 
@@ -1393,7 +1395,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 		 *	Barewords --may-contain=%{expansions}
 		 */
 		case T_BARE_WORD:
-			if (xlat_tokenize_literal(node, &node->child, &node->flags, &our_in,
+			if (xlat_tokenize_string(node, &node->child, &node->flags, &our_in,
 						  false, our_p_rules, t_rules) < 0) {
 			error:
 				if (our_p_rules != &value_parse_rules_bareword_quoted) {
@@ -1412,20 +1414,20 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 		 *	"Double quoted strings may contain %{expansions}"
 		 */
 		case T_DOUBLE_QUOTED_STRING:
-			if (xlat_tokenize_literal(node, &node->child, &node->flags, &our_in,
+			if (xlat_tokenize_string(node, &node->child, &node->flags, &our_in,
 						  false, &value_parse_rules_double_quoted, t_rules) < 0) goto error;
 			xlat_flags_merge(flags, &node->flags);
 			break;
 
 		/*
-		 *	'Single quoted strings get parsed as literals'
+		 *	'Single quoted strings get parsed as literal strings'
 		 */
 		case T_SINGLE_QUOTED_STRING:
 		{
 			char		*str;
 
 			node->child = xlat_exp_alloc_null(node);
-			xlat_exp_set_type(node->child, XLAT_LITERAL);
+			xlat_exp_set_type(node->child, XLAT_BOX);
 
 			slen = fr_sbuff_out_aunescape_until(node->child, &str, &our_in, SIZE_MAX,
 							    value_parse_rules_single_quoted.terminals,
@@ -1518,14 +1520,14 @@ ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, f
 
 	fr_strerror_clear();	/* Clear error buffer */
 
-	if (xlat_tokenize_literal(ctx, head, flags, &our_in,
+	if (xlat_tokenize_string(ctx, head, flags, &our_in,
 				  false, p_rules, t_rules) < 0) return -fr_sbuff_used(&our_in);
 
 	/*
 	 *	Zero length expansion, return a zero length node.
 	 */
 	if (!*head) {
-		*head = xlat_exp_alloc(ctx, XLAT_LITERAL, "", 0);
+		*head = xlat_exp_alloc(ctx, XLAT_BOX, "", 0);
 		return fr_sbuff_set(in, &our_in);
 	}
 
@@ -1541,21 +1543,21 @@ ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, f
 	return fr_sbuff_set(in, &our_in);
 }
 
-/** Check to see if the expansion consists entirely of literal elements
+/** Check to see if the expansion consists entirely of value-box elements
  *
  * @param[in] head	to check.
  * @return
  *	- true if expansion contains only literal elements.
  *	- false if expansion contains expandable elements.
  */
-bool xlat_is_literal(xlat_exp_t const *head)
+bool xlat_is_value_box(xlat_exp_t const *head)
 {
 	xlat_exp_t const *node;
 
 	for (node = head;
 	     node;
 	     node = node->next) {
-		if (node->type != XLAT_LITERAL) return false;
+		if (node->type != XLAT_BOX) return false;
 	}
 
 	return true;
@@ -1563,14 +1565,16 @@ bool xlat_is_literal(xlat_exp_t const *head)
 
 /** Convert an xlat node to an unescaped literal string and free the original node
  *
+ *  This is really "unparse the xlat nodes, and convert back to their original string".
+ *
  * @param[in] ctx	to allocate the new string in.
  * @param[out] str	a duplicate of the node's fmt string.
  * @param[in,out] head	to convert.
  * @return
- *	- true	the tree consists of a single literal node which was converted.
+ *	- true	the tree consists of a single value node which was converted.
  *      - false the tree was more complex than a single literal, op was a noop.
  */
-bool xlat_to_literal(TALLOC_CTX *ctx, char **str, xlat_exp_t **head)
+bool xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_t **head)
 {
 	xlat_exp_t 		*node;
 	fr_sbuff_t		out;
@@ -1586,7 +1590,7 @@ bool xlat_to_literal(TALLOC_CTX *ctx, char **str, xlat_exp_t **head)
 	 *	list until we find a non-literal.
 	 */
 	for (node = *head; node; node = node->next) {
-		if (!xlat_is_literal(node)) return false;
+		if (!xlat_is_value_box(node)) return false;
 		len += talloc_array_length(node->fmt) - 1;
 	}
 

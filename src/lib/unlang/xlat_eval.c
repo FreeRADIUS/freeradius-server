@@ -99,7 +99,7 @@ static ssize_t xlat_process(TALLOC_CTX *ctx, char **out, request_t *request, xla
 static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 {
 	switch (node->type) {
-	case XLAT_LITERAL:
+	case XLAT_BOX:
 	case XLAT_GROUP:
 		return talloc_asprintf(ctx, "%s", node->fmt);
 
@@ -200,7 +200,7 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 	 *	we print the concatenated arguments list as
 	 *	well as the original fmt string.
 	 */
-	if ((node->type == XLAT_FUNC) && !xlat_is_literal(node->child)) {
+	if ((node->type == XLAT_FUNC) && !xlat_is_value_box(node->child)) {
 		RDEBUG2("      (%%%c%s:%pM%c)",
 			(node->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
 			node->call.func->name, args,
@@ -1257,11 +1257,11 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 		VALUE_BOX_TALLOC_LIST_VERIFY(out->dlist);
 
 		switch (node->type) {
-		case XLAT_LITERAL:
-			XLAT_DEBUG("** [%i] %s(literal) - %s", unlang_interpret_stack_depth(request), __FUNCTION__, node->fmt);
+		case XLAT_BOX:
+			XLAT_DEBUG("** [%i] %s(value_box) - %s", unlang_interpret_stack_depth(request), __FUNCTION__, node->fmt);
 
 			/*
-			 *	Empty literals are only allowed if
+			 *	Empty boxes are only allowed if
 			 *      they're the only node in the expansion.
 			 *
 			 *	If they're found anywhere else the xlat
@@ -1442,8 +1442,8 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 	/*
 	 *	Don't escape this.
 	 */
-	case XLAT_LITERAL:
-		XLAT_DEBUG("%.*sxlat_sync_eval LITERAL", lvl, xlat_spaces);
+	case XLAT_BOX:
+		XLAT_DEBUG("%.*sxlat_sync_eval value_box", lvl, xlat_spaces);
 		{
 			char *out;
 			slen = fr_value_box_aprint(ctx, &out, &node->data, NULL);
@@ -1722,7 +1722,7 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 	}
 
 	/*
-	 *	Escape the non-literals we found above.
+	 *	Escape the tainted strings we found above.
 	 */
 	if (str && escape) {
 		size_t len;

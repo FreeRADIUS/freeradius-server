@@ -2673,7 +2673,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	convert the xlat expansion into an unescaped
 		 *	literal for parsing later.
 		 */
-		if (xlat_to_literal(vpt, &str, &head)) {
+		if (xlat_to_string(vpt, &str, &head)) {
 			tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, quote, fr_sbuff_start(&our_in), slen);
 			vpt->data.unescaped = str;	/* Store the unescaped string for parsing later */
 
@@ -2746,7 +2746,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	after we return.
 		 */
 
-		if (xlat_to_literal(vpt, &str, &head)) {
+		if (xlat_to_string(vpt, &str, &head)) {
 			tmpl_init(vpt, TMPL_TYPE_REGEX_UNCOMPILED, quote, fr_sbuff_start(&our_in), slen);
 			vpt->data.unescaped = str;	/* Store the unescaped string for compilation later */
 
