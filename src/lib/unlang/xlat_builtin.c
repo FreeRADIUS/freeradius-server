@@ -300,7 +300,6 @@ xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, xlat_
 	 *	non-pure functions don't need to be async.
 	 */
 	fr_assert(!flags->needs_async || !flags->pure);
-	fr_assert(!flags->needs_resolving);
 
 	return c;
 }
