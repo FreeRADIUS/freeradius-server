@@ -123,6 +123,7 @@ static inline CC_HINT(always_inline) xlat_exp_t *xlat_exp_alloc_null(TALLOC_CTX 
 	return node;
 }
 
+
 /** Allocate an xlat node
  *
  * @param[in] ctx	to allocate node in.
@@ -140,7 +141,11 @@ static inline CC_HINT(always_inline) xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx,
 	node->type = type;
 	if (in) node->fmt = talloc_bstrndup(node, in, inlen);
 
-	node->flags.pure = (type == XLAT_LITERAL);
+	if (type == XLAT_LITERAL) {
+		node->flags.pure = true;	 /* literals are always pure */
+		node->flags.needs_async = false; /* literals are always non-async */
+		fr_value_box_strdup_shallow(&node->data, NULL, node->fmt, false);
+	}
 
 	return node;
 }
@@ -155,8 +160,8 @@ static inline CC_HINT(always_inline) void xlat_exp_set_type(xlat_exp_t *node, xl
 	node->type = type;
 
 	if (type == XLAT_LITERAL) {
-		node->flags.needs_async = false; /* literals are always non-async */
 		node->flags.pure = true;	 /* literals are always pure */
+		node->flags.needs_async = false; /* literals are always non-async */
 	}
 }
 
@@ -465,6 +470,14 @@ static inline int xlat_validate_function_args(xlat_exp_t *node)
 		if (!child) {
 			fr_strerror_printf("Missing required arg %u",
 					   (unsigned int)(arg_p - node->call.func->args) + 1);
+			return -1;
+		}
+
+		/*
+		 *	The argument isn't of the correct type.  Cast it.
+		 */
+		if ((child->type == XLAT_LITERAL) && (child->data.type != arg_p->type) &&
+		    (fr_value_box_cast_in_place(child, &child->data, arg_p->type, NULL) < 0)) {
 			return -1;
 		}
 
@@ -947,9 +960,10 @@ static int xlat_tokenize_literal(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 		if (len > 0) {
 			xlat_exp_set_type(node, XLAT_LITERAL);
 			xlat_exp_set_name_buffer_shallow(node, str);
+			fr_value_box_strdup_shallow(&node->data, NULL, str, false);
 
 			XLAT_DEBUG("LITERAL (%s)<-- %pV",
-				   escapes ? escapes->name : "(none)",
+				   escapes ? escapes->name : "(none)",XXX
 				   fr_box_strvalue_len(str, talloc_array_length(str) - 1));
 			XLAT_HEXDUMP((uint8_t const *)str, talloc_array_length(str) - 1, " LITERAL ");
 			fr_cursor_insert(&cursor, node);
@@ -1166,7 +1180,7 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rule
 			goto next;
 
 		case XLAT_LITERAL:
-			FR_SBUFF_IN_ESCAPE_BUFFER_RETURN(out, node->fmt, e_rules);
+			FR_SBUFF_RETURN(fr_value_box_print, out, &node->data, e_rules);
 			goto next;
 
 		case XLAT_ONE_LETTER:
@@ -1417,7 +1431,9 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 							    value_parse_rules_single_quoted.terminals,
 							    value_parse_rules_single_quoted.escapes);
 			if (slen < 0) goto error;
+
 			xlat_exp_set_name_buffer_shallow(node->child, str);
+			fr_value_box_strdup_shallow(&node->child->data, NULL, str, false);
 			xlat_flags_merge(flags, &node->flags);
 		}
 			break;

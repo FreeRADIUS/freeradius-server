@@ -1274,7 +1274,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 			 *	because references aren't threadsafe.
 			 */
 			MEM(value = fr_value_box_alloc_null(ctx));
-			fr_value_box_bstrdup_buffer(value, value, NULL, node->fmt, false);
+			if (fr_value_box_copy(ctx, value, &node->data) < 0) goto fail;
 			fr_dcursor_append(out, value);
 			continue;
 
@@ -1444,7 +1444,12 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 	 */
 	case XLAT_LITERAL:
 		XLAT_DEBUG("%.*sxlat_sync_eval LITERAL", lvl, xlat_spaces);
-		return talloc_typed_strdup(ctx, node->fmt);
+		{
+			char *out;
+			slen = fr_value_box_aprint(ctx, &out, &node->data, NULL);
+			if (slen < 0) return NULL;
+			return out;
+		}
 
 	case XLAT_GROUP:
 		XLAT_DEBUG("%.*sxlat_sync_eval CHILD", lvl, xlat_spaces);

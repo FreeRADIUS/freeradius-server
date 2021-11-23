@@ -137,6 +137,11 @@ struct xlat_exp {
 		/** An xlat function call
 		 */
 		xlat_call_t	call;
+
+		/** A value box
+		 *
+		 */
+		fr_value_box_t	data;
 	};
 };
 
