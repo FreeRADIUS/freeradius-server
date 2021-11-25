@@ -3396,8 +3396,6 @@ do { \
 	XLAT_REGISTER_MONO("md4", xlat_func_md4, xlat_func_md4_arg);
 	XLAT_REGISTER_MONO("md5", xlat_func_md5, xlat_func_md5_arg);
 	XLAT_REGISTER_MONO("pack", xlat_func_pack, xlat_func_pack_arg);
-	XLAT_REGISTER_MONO("rand", xlat_func_rand, xlat_func_rand_arg);
-	XLAT_REGISTER_MONO("randstr", xlat_func_randstr, xlat_func_randstr_arg);
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
 	xlat_register(NULL, "regex", xlat_func_regex, NULL);
 #endif
@@ -3426,6 +3424,16 @@ do { \
 	XLAT_REGISTER_MONO("toupper", xlat_func_toupper, xlat_change_case_arg);
 	XLAT_REGISTER_MONO("urlquote", xlat_func_urlquote, xlat_func_urlquote_arg);
 	XLAT_REGISTER_MONO("urlunquote", xlat_func_urlunquote, xlat_func_urlunquote_arg);
+
+#undef XLAT_REGISTER_MONO
+#define XLAT_REGISTER_MONO(_xlat, _func, _arg) \
+do { \
+	if (!(xlat = xlat_register(NULL, _xlat, _func, NULL))) return -1; \
+	xlat_func_mono(xlat, &_arg); \
+} while (0)
+
+	XLAT_REGISTER_MONO("rand", xlat_func_rand, xlat_func_rand_arg);
+	XLAT_REGISTER_MONO("randstr", xlat_func_randstr, xlat_func_randstr_arg);
 
 	xlat_register(NULL, "module", xlat_func_module, NULL);
 
