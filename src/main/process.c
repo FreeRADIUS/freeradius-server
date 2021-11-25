@@ -5463,7 +5463,16 @@ static void event_new_fd(rad_listen_t *this)
 			return;
 		}
 
-		ERROR("Failed adding event handler for socket: %s", fr_strerror());
+		/*
+		 *	Print out which socket failed.
+		 *
+		 *	If we're trying to add the socket, then
+		 *	forcibly remove it immediately, without any
+		 *	additional cleanups.  There cannot, and MUST
+		 *	NOT be any packets associated with the socket.
+		 */
+		this->print(this, buffer, sizeof(buffer));
+		ERROR("Failed adding event handler for socket %s: %s", buffer, fr_strerror());
 		this->status = RAD_LISTEN_STATUS_REMOVE_NOW;
 	} /* end of INIT */
 
