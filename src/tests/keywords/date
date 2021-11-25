@@ -19,7 +19,7 @@ if (&Tmp-String-0 != "Fri 22 Sep 17:25:00 GMT 2017") && (&Tmp-String-0 != "Fri 2
 
 # Convert string to integer
 update request {
-	&Tmp-Integer-1 := "%(date:%{Tmp-String-0})"
+	&Tmp-Integer-1 := %(date:%{Tmp-String-0})
 }
 
 if (&Tmp-Integer-1 != &Tmp-Integer-0) {
