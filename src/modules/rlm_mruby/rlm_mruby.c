@@ -181,7 +181,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	/* Convert a FreeRADIUS config structure into a mruby hash */
 	inst->mrubyconf_hash = mrb_hash_new(mrb);
-	cs = cf_section_find(conf, "config", NULL);
+	cs = cf_section_find(mctx->inst->conf, "config", NULL);
 	if (cs) mruby_parse_config(mrb, cs, 0, inst->mrubyconf_hash);
 
 	/* Define the Request class */
@@ -487,7 +487,7 @@ RLM_MRUBY_FUNC(accounting)
  *	Only free memory we allocated.  The strings allocated via
  *	cf_section_parse() do not need to be freed.
  */
-static int mod_detach(void *instance)
+static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_mruby_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_mruby_t);
 
