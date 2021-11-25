@@ -119,6 +119,7 @@ static inline CC_HINT(always_inline) xlat_exp_t *xlat_exp_alloc_null(TALLOC_CTX 
 	xlat_exp_t *node;
 
 	MEM(node = talloc_zero(ctx, xlat_exp_t));
+	node->flags.pure = true;	/* everything starts pure */
 
 	return node;
 }
@@ -139,11 +140,13 @@ static inline CC_HINT(always_inline) xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx,
 
 	node = xlat_exp_alloc_null(ctx);
 	node->type = type;
-	if (in) node->fmt = talloc_bstrndup(node, in, inlen);
+	node->flags.pure = true;	/* everything starts pure */
+
+	if (!in) return node;
+
+	node->fmt = talloc_bstrndup(node, in, inlen);
 
 	if (type == XLAT_BOX) {
-		node->flags.pure = true;	 /* value boxes are always pure */
-		node->flags.needs_async = false; /* value boxes are always non-async */
 		fr_value_box_strdup_shallow(&node->data, NULL, node->fmt, false);
 	}
 
@@ -158,11 +161,6 @@ static inline CC_HINT(always_inline) xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx,
 static inline CC_HINT(always_inline) void xlat_exp_set_type(xlat_exp_t *node, xlat_type_t type)
 {
 	node->type = type;
-
-	if (type == XLAT_BOX) {
-		node->flags.pure = true;	 /* value boxes are always pure */
-		node->flags.needs_async = false; /* value boxes are always non-async */
-	}
 }
 
 #if 0
