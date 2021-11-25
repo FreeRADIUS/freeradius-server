@@ -39,20 +39,39 @@ void fr_edit_list_abort(fr_edit_list_t *el);
 
 #define fr_edit_list_commit(_x) talloc_free(_x)
 
-int fr_edit_list_insert_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *vp) CC_HINT(nonnull(2,4));
+/*
+ *	Functions to modify #fr_pair_t
+ */
+int fr_edit_list_insert_pair_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *vp) CC_HINT(nonnull(2,4));
 
-int fr_edit_list_delete(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull(2,3));
+#define fr_edit_list_insert_pair_head(_el, _list, _vp) fr_edit_list_insert_after(_el, _list, NULL, _vp)
 
-int fr_edit_list_save_value(fr_edit_list_t *el, fr_pair_t *vp) CC_HINT(nonnull(2));
+#define fr_edit_list_insert_pair_tail(_el, _list, _vp) fr_edit_list_insert_after(_el, _list, fr_pair_list_tail(_list), _vp)
 
-int fr_edit_list_replace_value(fr_edit_list_t *el, fr_pair_t *vp, fr_value_box_t *box) CC_HINT(nonnull(2,3));
+int fr_edit_list_pair_delete(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull(2,3));
 
-int fr_edit_list_replace(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *vp) CC_HINT(nonnull(2,3,4));
+int fr_edit_list_save_pair_value(fr_edit_list_t *el, fr_pair_t *vp) CC_HINT(nonnull(2));
 
+int fr_edit_list_replace_pair_value(fr_edit_list_t *el, fr_pair_t *vp, fr_value_box_t *box) CC_HINT(nonnull(2,3));
+
+int fr_edit_list_replace_pair(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *vp) CC_HINT(nonnull(2,3,4));
+
+int fr_edit_list_free_pair_children(fr_edit_list_t *el, fr_pair_t *vp) CC_HINT(nonnull(2));
+
+int fr_edit_list_apply_pair_assignment(fr_edit_list_t *el, fr_pair_t *vp, fr_token_t op, fr_value_box_t const *in);
+
+/*
+ *	Functions to modify #fr_pair_list_t
+ */
 int fr_edit_list_insert_list_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *pos, fr_pair_list_t *to_insert) CC_HINT(nonnull(2,4));
 
+#define fr_edit_list_insert_list_head(_el, _list, _to_insert) fr_edit_list_insert_list_after(_el, _list, NULL, _to_insert)
 
-int fr_edit_list_free_children(fr_edit_list_t *el, fr_pair_t *vp) CC_HINT(nonnull(2));
+#define fr_edit_list_insert_list_tail(_el, _list, _to_insert) fr_edit_list_insert_list_after(_el, _list, fr_pair_list_tail(_list), _to_insert)
+
+int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_token_t op, fr_pair_list_t *src) CC_HINT(nonnull(1,2,4));
+
+int fr_edit_list_apply_list_assignment_const(fr_edit_list_t *el, fr_pair_t *dst, fr_token_t op, fr_pair_list_t const *src)  CC_HINT(nonnull(1,2,4));
 
 #ifdef __cplusplus
 }

@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/talloc.h>
 #include "edit.h"
+#include "calc.h"
 
 typedef enum {
 	FR_EDIT_INVALID = 0,
@@ -409,7 +410,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
  *  After this function returns, the new VP has been inserted into the
  *  list.
  */
-int fr_edit_list_insert_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *vp)
+int fr_edit_list_insert_pair_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *vp)
 {
 	if (!el) return 0;
 
@@ -423,7 +424,7 @@ int fr_edit_list_insert_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_
  *
  *  After this function returns, the VP has been removed from the list.
  */
-int fr_edit_list_delete(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *vp)
+int fr_edit_list_pair_delete(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *vp)
 {
 	return edit_record(el, FR_EDIT_DELETE, vp, list, NULL);
 }
@@ -432,7 +433,7 @@ int fr_edit_list_delete(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *vp)
  *
  *  After this function returns, it's safe to edit the pair.
  */
-int fr_edit_list_save_value(fr_edit_list_t *el, fr_pair_t *vp)
+int fr_edit_list_save_pair_value(fr_edit_list_t *el, fr_pair_t *vp)
 {
 	if (!el) return 0;
 
@@ -445,7 +446,7 @@ int fr_edit_list_save_value(fr_edit_list_t *el, fr_pair_t *vp)
  *
  *  After this function returns, the value has been updated.
  */
-int fr_edit_list_replace_value(fr_edit_list_t *el, fr_pair_t *vp, fr_value_box_t *box)
+int fr_edit_list_replace_pair_value(fr_edit_list_t *el, fr_pair_t *vp, fr_value_box_t *box)
 {
 	if (!el) return 0;
 
@@ -465,7 +466,7 @@ int fr_edit_list_replace_value(fr_edit_list_t *el, fr_pair_t *vp, fr_value_box_t
  *  After this function returns, the new VP has replaced the old one,
  *  and the new one can be edited.
  */
-int fr_edit_list_replace(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *vp)
+int fr_edit_list_replace_pair(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *vp)
 {
 	if (!el) return 0;
 
@@ -507,7 +508,7 @@ int fr_edit_list_replace(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *to
  *  After this function returns, the new VP has replaced the old one,
  *  and the new one can be edited.
  */
-int fr_edit_list_free_children(fr_edit_list_t *el, fr_pair_t *vp)
+int fr_edit_list_free_pair_children(fr_edit_list_t *el, fr_pair_t *vp)
 {
 	if (!el) return 0;
 
@@ -520,42 +521,6 @@ int fr_edit_list_free_children(fr_edit_list_t *el, fr_pair_t *vp)
 	 */
 	return edit_record(el, FR_EDIT_CLEAR, vp, NULL, NULL);
 }
-
-/** Insert a list after a particular point in another list.
- *
- *  This function mirrors fr_pair_list_append(), but with a bit more
- *  control over where the to_insert list ends up.
- *
- *  There's nothing magical about this function, it's just easier to
- *  have it here than in multiple places in the code.
- */
-int fr_edit_list_insert_list_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *pos, fr_pair_list_t *to_insert)
-{
-	fr_pair_t *prev, *vp;
-
-	if (!el) return 0;
-
-	prev = pos;
-
-	/*
-	 *	We have to record each individual insert as a separate
-	 *	item.  Some later edit may insert pairs in the middle
-	 *	of the ones we've added.
-	 */
-	while ((vp = fr_pair_list_head(to_insert)) != NULL) {
-		(void) fr_pair_remove(to_insert, vp);
-
-		if (edit_record(el, FR_EDIT_INSERT, vp, list, prev) < 0) {
-			fr_pair_prepend(to_insert, vp); /* don't lose it! */
-			return -1;
-		}
-
-		prev = vp;
-	}
-
-	return 0;
-}
-
 
 /** Finalize the edits when we destroy the edit list.
  *
@@ -642,3 +607,151 @@ fr_edit_list_t *fr_edit_list_alloc(TALLOC_CTX *ctx, int hint)
  *	free temporary map
  *	commit(edit list)
  */
+
+/**********************************************************************
+ *
+ *  Now we have helper functions which use the edit list to get things
+ *  done.
+ *
+ **********************************************************************/
+
+/** Insert a list after a particular point in another list.
+ *
+ *  This function mirrors fr_pair_list_append(), but with a bit more
+ *  control over where the to_insert list ends up.
+ *
+ *  There's nothing magical about this function, it's just easier to
+ *  have it here than in multiple places in the code.
+ */
+int fr_edit_list_insert_list_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *pos, fr_pair_list_t *to_insert)
+{
+	fr_pair_t *prev, *vp;
+
+	if (!el) return 0;
+
+	prev = pos;
+
+	/*
+	 *	We have to record each individual insert as a separate
+	 *	item.  Some later edit may insert pairs in the middle
+	 *	of the ones we've added.
+	 */
+	while ((vp = fr_pair_list_head(to_insert)) != NULL) {
+		(void) fr_pair_remove(to_insert, vp);
+
+		if (edit_record(el, FR_EDIT_INSERT, vp, list, prev) < 0) {
+			fr_pair_prepend(to_insert, vp); /* don't lose it! */
+			return -1;
+		}
+
+		prev = vp;
+	}
+
+	return 0;
+}
+
+/** Apply operators to pairs.
+ *
+ *  := is "if found vp, call fr_pair_replace().  Otherwise call fr_edit_list_insert_pair_tail()
+ *   = is "if found vp, do nothing.  Otherwise call fr_edit_list_insert_pair_tail()
+ *
+ */
+int fr_edit_list_apply_pair_assignment(fr_edit_list_t *el, fr_pair_t *vp, fr_token_t op, fr_value_box_t const *in)
+{
+	if (fr_edit_list_save_pair_value(el, vp) < 0) return -1;
+
+	if (fr_value_calc_assignment_op(vp, &vp->data, op, in) < 0) return -1;
+
+	return 0;
+}
+
+/** Apply operators to lists.
+ *
+ *   = is "if found vp, do nothing.  Otherwise call fr_edit_list_insert_pair_tail()
+ *
+ *  The src list MUST have been talloc'd from the right place already.
+ */
+int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_token_t op, fr_pair_list_t *src)
+{
+	if (!fr_type_is_structural(dst->vp_type)) {
+		return -1;
+	}
+
+	switch (op) {
+		/*
+		 *	Over-ride existing value (i.e. children) with
+		 *	new list.
+		 */
+	case T_OP_SET:
+		if (fr_edit_list_free_pair_children(el, dst) < 0) return -1;
+		FALL_THROUGH;
+
+	case T_OP_ADD_EQ:
+		return fr_edit_list_insert_list_tail(el, &dst->children, src);
+
+	case T_OP_PREPEND:
+		return fr_edit_list_insert_list_head(el, &dst->children, src);
+
+	default:
+		break;
+	}
+
+	fr_strerror_printf("Invalid assignment operator %s for destination type %s",
+			   fr_tokens[op],
+			   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
+	return -1;
+}
+
+/** Apply operators to lists.
+ *
+ *   = is "if found vp, do nothing.  Otherwise call fr_edit_list_insert_pair_tail()
+ *
+ *  The src list here is "const".  This is a separate function, which
+ *  means that in many cases we can avoid copying the source list.
+ *
+ *  This isn't much use for simple operations, but it can have
+ *  significant benefits for union, merge, etc. where only some of the
+ *  source list is copied.
+ */
+int fr_edit_list_apply_list_assignment_const(fr_edit_list_t *el, fr_pair_t *dst, fr_token_t op, fr_pair_list_t const *src)
+{
+	fr_pair_list_t copy;
+
+	if (!fr_type_is_structural(dst->vp_type)) {
+		return -1;
+	}
+
+#define COPY do { \
+		fr_pair_list_init(&copy); \
+		if (fr_pair_list_copy(dst, &copy, src) < 0) return -1; \
+	} while (0)
+	
+
+	switch (op) {
+		/*
+		 *	Over-ride existing value (i.e. children) with
+		 *	new list.
+		 */
+	case T_OP_SET:
+		if (fr_edit_list_free_pair_children(el, dst) < 0) return -1;
+		FALL_THROUGH;
+
+	case T_OP_ADD_EQ:
+		COPY;
+
+		return fr_edit_list_insert_list_tail(el, &dst->children, &copy);
+
+	case T_OP_PREPEND:
+		COPY;
+
+		return fr_edit_list_insert_list_head(el, &dst->children, &copy);
+
+	default:
+		break;
+	}
+
+	fr_strerror_printf("Invalid assignment operator %s for destination type %s",
+			   fr_tokens[op],
+			   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
+	return -1;
+}
