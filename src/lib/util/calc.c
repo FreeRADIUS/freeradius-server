@@ -1332,9 +1332,13 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 				   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
 	}
 
-	if (rcode == 0) dst->tainted |= src->tainted;
+	/*
+	 *	Don't bother returning private magic numbers.
+	 */
+	if (rcode < 0) return -1;
 
-	return rcode;
+	dst->tainted |= src->tainted;
+	return 0;
 }
 
 /** Calculate DST OP
