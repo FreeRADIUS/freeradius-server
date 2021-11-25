@@ -127,8 +127,8 @@ fr_table_num_ordered_t const fr_value_box_type_table[] = {
 	{ L("float32"),		FR_TYPE_FLOAT32		},
 	{ L("float64"),		FR_TYPE_FLOAT64		},
 
-	{ L("time_delta"),	FR_TYPE_TIME_DELTA	},
 	{ L("date"),		FR_TYPE_DATE		},
+	{ L("time_delta"),	FR_TYPE_TIME_DELTA	},
 
 	{ L("size"),		FR_TYPE_SIZE		},
 
