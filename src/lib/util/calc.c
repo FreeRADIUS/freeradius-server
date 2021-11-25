@@ -1081,14 +1081,6 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	fr_value_box_init_null(&two);
 
 	/*
-	 *	Ensure that the upcast array is ordered.  We have
-	 *	entries in [a][b] only when a<b.  This limit ensures
-	 *	that we don't have conflicting entries.
-	 */
-	fr_assert((upcast[a->type][b->type] == FR_TYPE_NULL) || (a->type < b->type));
-	fr_assert((upcast[b->type][a->type] == FR_TYPE_NULL) || (b->type < a->type));
-
-	/*
 	 *	We don't know what the output type should be.  Try to
 	 *	guess based on a variety of factors.
 	 */
