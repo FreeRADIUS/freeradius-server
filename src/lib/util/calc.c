@@ -1146,9 +1146,16 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 			 *	so that we can take (for example)
 			 *	uint8 + uint16, and have the output as
 			 *	uint16.
+			 *
+			 *	There must be only one entry per [a,b]
+			 *	pairing.  That way we're sure that [a,b]==[b,a]
 			 */
 			hint = upcast[a->type][b->type];
-			if (hint == FR_TYPE_NULL) hint = upcast[b->type][a->type];
+			if (hint == FR_TYPE_NULL) {
+				hint = upcast[b->type][a->type];
+			} else {
+				fr_assert(upcast[b->type][a->type] == FR_TYPE_NULL);
+			}
 
 			if (hint != FR_TYPE_NULL) {
 				break;
