@@ -1294,7 +1294,7 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 	case T_OP_EQ:
 	case T_OP_SET:
 		fr_value_box_clear_value(dst);
-		fr_value_box_copy(ctx, dst, src);
+		fr_value_box_cast(ctx, dst, dst->type, dst->enumv, src); /* cast, as the RHS might not (yet) be the same! */
 		rcode = 0;
 		break;
 
