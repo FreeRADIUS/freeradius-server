@@ -493,7 +493,7 @@ eap {
 		#
 		#	openssl ecparam -list_curves
 		#
-		ecdh_curve = "prime256v1"
+		ecdh_curve = ""
 
 		#  Session resumption / fast reauthentication
 		#  cache.
