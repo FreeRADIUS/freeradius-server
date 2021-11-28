@@ -502,15 +502,15 @@ static int _tls_session_free(tls_session_t *ssn)
 
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(LIBRESSL_VERSION_NUMBER)
 /*
- * By setting the environment variable SSLKEYLOGFILE to a filename keying
- * material will be exported that you may use with Wireshark to decode any
- * TLS flows. Please see the following for more details:
+ *  By setting the environment variable SSLKEYLOGFILE to a filename keying
+ *  material will be exported that you may use with Wireshark to decode any
+ *  TLS flows. Please see the following for more details:
  *
- * https://gitlab.com/wireshark/wireshark/-/wikis/TLS#tls-decryption
+ *	https://gitlab.com/wireshark/wireshark/-/wikis/TLS#tls-decryption
  *
- * An example logging session is (you should delete the file on each run):
+ *  An example logging session is (you should delete the file on each run):
  *
- * rm -f /tmp/sslkey.log; env SSLKEYLOGFILE=/tmp/sslkey.log freeradius -X | tee /tmp/debug
+ *	rm -f /tmp/sslkey.log; env SSLKEYLOGFILE=/tmp/sslkey.log freeradius -X | tee /tmp/debug
  */
 static void tls_keylog_cb(UNUSED const SSL *ssl, const char *line)
 {
@@ -520,17 +520,17 @@ static void tls_keylog_cb(UNUSED const SSL *ssl, const char *line)
 	// less than _POSIX_PIPE_BUF (512) guarantees writes are atomic for O_APPEND
 	char buffer[64 + 2*SSL3_RANDOM_SIZE + 2*SSL_MAX_MASTER_KEY_LENGTH];
 
+	filename = getenv("SSLKEYLOGFILE");
+	if (!filename) return;
+
 	len = strlen(line);
-	if (len + 1 > sizeof(buffer)) {
-		fr_strerror_printf("SSLKEYLOGFILE buffer not large enough, max %lu, required %lu", sizeof(buffer), len + 1);
+	if ((len + 1) > sizeof(buffer)) {
+		DEBUG("SSLKEYLOGFILE buffer not large enough, max %lu, required %lu", sizeof(buffer), len + 1);
 		return;
 	}
 
 	memcpy(buffer, line, len);
 	buffer[len] = '\n';
-
-	filename = getenv("SSLKEYLOGFILE");
-	if (filename == NULL) return;
 
 	fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
 	if (fd < 0) {
@@ -539,7 +539,7 @@ static void tls_keylog_cb(UNUSED const SSL *ssl, const char *line)
 	}
 
 	if (write(fd, buffer, len + 1) == -1) {
-		fr_strerror_printf("Failed to write to file %s: %s", filename, strerror(errno));
+		DEBUG("Failed to write to file %s: %s", filename, strerror(errno));
 	}
 
 	close(fd);
@@ -731,6 +731,9 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	state->conf = conf;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(LIBRESSL_VERSION_NUMBER)
+	/*
+	 *	Set the keylog file if the admin requested it.
+	 */
 	if (getenv("SSLKEYLOGFILE") != NULL) SSL_CTX_set_keylog_callback(state->ctx, tls_keylog_cb);
 #endif
 
