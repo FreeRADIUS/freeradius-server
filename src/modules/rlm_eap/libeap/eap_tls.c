@@ -1,3 +1,4 @@
+
 /*
  * eap_tls.c
  *
@@ -801,7 +802,10 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 	 *	This occurs for EAP-TTLS/PAP with TLSv1.3.
 	 */
 	if (!tls_session->is_init_finished && SSL_is_init_finished(tls_session->ssl)) {
-		tls_session->is_init_finished = true;
+		/*
+		 *	Don't set is_init_finished, as that causes the
+		 *	rest of the code to make too many assumptions.
+		 */
 		return FR_TLS_OK;
 	}
 
