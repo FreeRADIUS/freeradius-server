@@ -171,7 +171,7 @@ ifeq "${bm_shared_libs}" "yes"
     # RELINL : flags use to build executables that can be run
     #          from the build directory / source tree.
     RPATH_FLAGS := -rpath ${libdir}
-    LOCAL_FLAGS := -rpath $(abspath ${BUILD_DIR})/lib/${LOCAL}/.libs
+    LOCAL_FLAGS := -rpath $(subst //,/,$(abspath ${BUILD_DIR})/lib/${LOCAL}/.libs)
 
     LOCAL_FLAGS_MIN := -rpath ${libdir}
 
