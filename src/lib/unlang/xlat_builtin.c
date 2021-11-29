@@ -1082,6 +1082,7 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
 {
 	fr_value_box_t	*in_vb = fr_dlist_head(in);
+	char const *p;
 
 	fr_strerror_clear(); /* Make sure we don't print old errors */
 
@@ -1103,15 +1104,34 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		in_vb->enumv = NULL;
 
 		/*
-		 *	FR_TYPE_DATE and FR_TYPE_DELTA need to be cast to
-		 *	in64_t so that they're printed in a numeric format.
+		 *	FR_TYPE_DATE and FR_TYPE_DELTA need to be cast
+		 *	to int64_t so that they're printed in a
+		 *	numeric format.
 		 */
-		if ((in_vb->type != FR_TYPE_DATE) && (in_vb->type != FR_TYPE_TIME_DELTA)) break;
-		if (fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_INT64, NULL) < 0) goto error;
+		if ((in_vb->type == FR_TYPE_DATE) || (in_vb->type == FR_TYPE_TIME_DELTA)) {
+			if (fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_INT64, NULL) < 0) goto error;
+		}
 		break;
 
 	case FR_TYPE_STRING:
-		if (fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT64, NULL) < 0) goto error;
+		/*
+		 *	Strings are always zero terminated.  They may
+		 *	also have zeros in the middle, but if that
+		 *	happens, the caller will only get the part up
+		 *	to the first zero.
+		 *
+		 *	We check for negative numbers, just to be
+		 *	nice.
+		 */
+		for (p = in_vb->vb_strvalue; *p != '\0'; p++) {
+			if (*p == '-') break;
+		}
+
+		if (*p == '-') {
+			if (fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_INT64, NULL) < 0) goto error;
+		} else {
+			if (fr_value_box_cast_in_place(ctx, in_vb, FR_TYPE_UINT64, NULL) < 0) goto error;
+		}
 		break;
 
 	case FR_TYPE_OCTETS:
