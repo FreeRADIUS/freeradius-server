@@ -405,9 +405,6 @@ int dual_tls_recv(rad_listen_t *listener)
 	listen_socket_t *sock = listener->data;
 	RADCLIENT	*client = sock->client;
 	BIO		*rbio;
-#ifdef WITH_COA_TUNNEL
-	bool		is_reply = false;
-#endif
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
@@ -466,14 +463,6 @@ redo:
 		FR_STATS_INC(dsc, total_requests);
 		fun = rad_coa_recv;
 		break;
-
-#ifdef WITH_COA_TUNNEL
-	case PW_CODE_COA_ACK:
-	case PW_CODE_COA_NAK:
-		if (!listener->send_coa) goto bad_packet;
-		is_reply = true;
-                break;
-#endif
 #endif
 
 	case PW_CODE_STATUS_SERVER:
@@ -499,15 +488,6 @@ redo:
 		rad_free(&packet);
 		return 0;
 	} /* switch over packet types */
-
-#ifdef WITH_COA_TUNNEL
-	if (is_reply) {
-		if (!request_proxy_reply(packet)) {
-			rad_free(&packet);
-			return 0;
-		}
-	} else
-#endif
 
 	if (!request_receive(NULL, listener, packet, client, fun)) {
 		FR_STATS_INC(auth, total_packets_dropped);
@@ -589,21 +569,6 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	if (request->reply->code == 0) return 0;
 
-#ifdef WITH_COA_TUNNEL
-	/*
-	 *	Save the key, if we haven't already done that.
-	 */
-	if (listener->send_coa && !listener->key) {
-		VALUE_PAIR *vp = NULL;
-
-		vp = fr_pair_find_by_num(request->config, PW_ORIGINATING_REALM_KEY, 0, TAG_ANY);
-		if (vp) {
-			RDEBUG("Adding send CoA listener with key %s", vp->vp_strvalue);
-			listen_coa_add(request->listener, vp->vp_strvalue);
-		}
-	}
-#endif
-
 	/*
 	 *	Pack the VPs
 	 */
@@ -654,58 +619,6 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 
 	return 0;
 }
-
-#ifdef WITH_COA_TUNNEL
-/*
- *	Send a CoA request to a NAS, as a proxied packet.
- *
- *	The proxied packet MUST already have been encoded.
- */
-int dual_tls_send_coa_request(rad_listen_t *listener, REQUEST *request)
-{
-	listen_socket_t *sock = listener->data;
-
-	VERIFY_REQUEST(request);
-
-	rad_assert(listener->proxy_send == dual_tls_send_coa_request);
-
-	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
-
-	rad_assert(request->proxy->data);
-
-	if (request->proxy->data_len > (MAX_PACKET_LEN - 100)) {
-		RWARN("Packet is large, and possibly truncated - %zd vs max %d",
-		      request->proxy->data_len, MAX_PACKET_LEN);
-	}
-
-	PTHREAD_MUTEX_LOCK(&sock->mutex);
-
-	/*
-	 *	Write the packet to the SSL buffers.
-	 */
-	sock->ssn->record_plus(&sock->ssn->clean_in,
-			       request->proxy->data, request->proxy->data_len);
-
-	dump_hex("TUNNELED DATA < ", sock->ssn->clean_in.data, sock->ssn->clean_in.used);
-
-	/*
-	 *	Do SSL magic to get encrypted data.
-	 */
-	tls_handshake_send(request, sock->ssn);
-
-	/*
-	 *	And finally write the data to the socket.
-	 */
-	if (sock->ssn->dirty_out.used > 0) {
-		dump_hex("WRITE TO SSL", sock->ssn->dirty_out.data, sock->ssn->dirty_out.used);
-
-		tls_socket_write(listener, request);
-	}
-	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
-
-	return 0;
-}
-#endif
 
 static int try_connect(tls_session_t *ssn)
 {
@@ -873,10 +786,6 @@ int proxy_tls_recv(rad_listen_t *listener)
 	RADIUS_PACKET *packet;
 	uint8_t *data;
 	ssize_t data_len;
-#ifdef WITH_COA_TUNNEL
-	bool is_request = false;
-	RADCLIENT *client = sock->client;
-#endif
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
@@ -931,25 +840,9 @@ int proxy_tls_recv(rad_listen_t *listener)
 	case PW_CODE_DISCONNECT_NAK:
 		break;
 
-#ifdef WITH_COA_TUNNEL
-	case PW_CODE_COA_REQUEST:
-		if (!listener->send_coa) goto bad_packet;
-		FR_STATS_INC(coa, total_requests);
-		is_request = true;
-		break;
-
-	case PW_CODE_DISCONNECT_REQUEST:
-		if (!listener->send_coa) goto bad_packet;
-		FR_STATS_INC(dsc, total_requests);
-		is_request = true;
-		break;
-#endif
 #endif
 
 	default:
-#ifdef WITH_COA_TUNNEL
-	bad_packet:
-#endif
 		/*
 		 *	FIXME: Update MIB for packet types?
 		 */
@@ -962,15 +855,6 @@ int proxy_tls_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-#ifdef WITH_COA_TUNNEL
-	if (is_request) {
-		if (!request_receive(NULL, listener, packet, client, rad_coa_recv)) {
-			FR_STATS_INC(auth, total_packets_dropped);
-			rad_free(&packet);
-			return 0;
-		}
-	} else
-#endif
 	if (!request_proxy_reply(packet)) {
 		rad_free(&packet);
 		return 0;
@@ -1041,71 +925,6 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 
 	return 1;
 }
-
-#ifdef WITH_COA_TUNNEL
-int proxy_tls_send_reply(rad_listen_t *listener, REQUEST *request)
-{
-	int rcode;
-	listen_socket_t *sock = listener->data;
-
-	VERIFY_REQUEST(request);
-
-	rad_assert(sock->ssn->connected);
-
-	if ((listener->status != RAD_LISTEN_STATUS_INIT &&
-	    (listener->status != RAD_LISTEN_STATUS_KNOWN))) return 0;
-
-	/*
-	 *	Pack the VPs
-	 */
-	if (rad_encode(request->reply, request->packet,
-		       request->client->secret) < 0) {
-		RERROR("Failed encoding packet: %s", fr_strerror());
-		return 0;
-	}
-
-	if (request->reply->data_len > (MAX_PACKET_LEN - 100)) {
-		RWARN("Packet is large, and possibly truncated - %zd vs max %d",
-		      request->reply->data_len, MAX_PACKET_LEN);
-	}
-
-	/*
-	 *	Sign the packet.
-	 */
-	if (rad_sign(request->reply, request->packet,
-		       request->client->secret) < 0) {
-		RERROR("Failed signing packet: %s", fr_strerror());
-		return 0;
-	}
-
-	DEBUG3("Proxy is writing %u bytes to SSL",
-	       (unsigned int) request->reply->data_len);
-	PTHREAD_MUTEX_LOCK(&sock->mutex);
-	rcode = SSL_write(sock->ssn->ssl, request->reply->data,
-			  request->reply->data_len);
-	if (rcode < 0) {
-		int err;
-
-		err = ERR_get_error();
-		switch (err) {
-		case SSL_ERROR_NONE:
-		case SSL_ERROR_WANT_READ:
-		case SSL_ERROR_WANT_WRITE:
-			break;	/* let someone else retry */
-
-		default:
-			tls_error_log(NULL, "Failed in proxy send");
-			DEBUG("Closing TLS socket to home server");
-			tls_socket_close(listener);
-			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
-			return 0;
-		}
-	}
-	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
-
-	return 1;
-}
-#endif	/* WITH_COA_TUNNEL */
 #endif	/* WITH_PROXY */
 
 #endif	/* WITH_TLS */

@@ -2102,11 +2102,7 @@ static void tcp_socket_timer(void *ctx)
 			 *	open to listen for replies to requests we had
 			 *	previously sent.
 			 */
-			if (listener->type == RAD_LISTEN_PROXY
-#ifdef WITH_COA_TUNNEL
-			    || listener->send_coa
-#endif
-				) {
+			if (listener->type == RAD_LISTEN_PROXY) {
 				PTHREAD_MUTEX_LOCK(&proxy_mutex);
 				if (!fr_packet_list_socket_freeze(proxy_list,
 								  listener->fd)) {
@@ -2231,16 +2227,6 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 
 	if (!request->in_proxy_hash) return;
 
-#ifdef COA_TUNNEL
-	/*
-	 *	Track how many IDs are used.  This information
-	 *	helps the listen_coa_find() function get a
-	 *	listener which has free IDs.
-	 */
-	rad_assert(request->proxy_listener->num_ids_used > 0);
-	request->proxy_listener->num_ids_used--;
-#endif
-
 	fr_packet_list_id_free(proxy_list, request->proxy, yank);
 	request->in_proxy_hash = false;
 
@@ -2343,9 +2329,6 @@ static int insert_into_proxy_hash(REQUEST *request)
 	int tries;
 	bool success = false;
 	void *proxy_listener;
-#ifdef WITH_COA_TUNNEL
-	bool reverse_coa = request->proxy_listener && (request->proxy_listener->type != RAD_LISTEN_PROXY);
-#endif
 
 	VERIFY_REQUEST(request);
 
@@ -2368,35 +2351,6 @@ static int insert_into_proxy_hash(REQUEST *request)
 						  request->home_server->proto,
 						  &request->proxy, &proxy_listener);
 		if (success) break;
-
-#ifdef WITH_COA_TUNNEL
-		/*
-		 *	Can't allocate an ID here, try to grab another
-		 *	listener by key.
-		 */
-		if (reverse_coa) {
-			int rcode;
-			VALUE_PAIR *vp;
-
-			/*
-			 *	Find the Originating-Realm key, which
-			 *	might not be the same as
-			 *	proxy_listener->key.
-			 */
-			vp = fr_pair_find_by_num(request->config, PW_PROXY_TO_ORIGINATING_REALM, 0, TAG_ANY);
-			if (!vp) break;
-
-			/*
-			 *	We don't want to hold multiple mutexes
-			 *	at the same time.
-			 */
-			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-			rcode = listen_coa_find(request, vp->vp_strvalue);
-			PTHREAD_MUTEX_LOCK(&proxy_mutex);
-			if (rcode < 0) continue;
-			break;
-		}
-#endif
 
 		if (tries > 0) continue; /* try opening new socket only once */
 
@@ -2436,15 +2390,6 @@ static int insert_into_proxy_hash(REQUEST *request)
 			      fr_strerror());
 			goto fail;
 		}
-
-#ifdef COA_TUNNEL
-		/*
-		 *	Track how many IDs are used.  This information
-		 *	helps the listen_coa_find() function get a
-		 *	listener which has free IDs.
-		 */
-		request->proxy_listener->num_ids_used++;
-#endif
 
 		/*
 		 *	Add it to the event loop.  Ensure that we have
@@ -2498,9 +2443,6 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	int post_proxy_type = 0;
 	VALUE_PAIR *vp;
 	char const *old_server;
-#ifdef WITH_COA_TUNNEL
-	bool reverse_coa = false;
-#endif
 
 	VERIFY_REQUEST(request);
 
@@ -2564,15 +2506,6 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	if (post_proxy_type > 0) RDEBUG2("Found Post-Proxy-Type %s",
 					 dict_valnamebyattr(PW_POST_PROXY_TYPE, 0, post_proxy_type));
 
-#ifdef WITH_COA_TUNNEL
-	/*
-	 *	Cache this, as request->proxy_listener will be
-	 *	NULL after removing the request from the proxy
-	 *	hash.
-	 */
-	if (request->proxy_listener) reverse_coa = request->proxy_listener->type != RAD_LISTEN_PROXY;
-#endif
-
 	if (reply) {
 		VERIFY_PACKET(reply);
 
@@ -2609,15 +2542,6 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	old_server = request->server;
 	if (request->home_server && request->home_server->virtual_server) {
 		request->server = request->home_server->virtual_server;
-
-#ifdef WITH_COA_TUNNEL
-	} else if (reverse_coa) {
-		rad_assert((request->proxy->code == PW_CODE_COA_REQUEST) ||
-			   (request->proxy->code == PW_CODE_DISCONNECT_REQUEST));
-		rad_assert(request->home_server != NULL);
-		rad_assert(request->home_server->recv_coa_server != NULL);
-		request->server = request->home_server->recv_coa_server;
-#endif
 
 	} else if (request->home_pool && request->home_pool->virtual_server) {
 			request->server = request->home_pool->virtual_server;
@@ -3249,36 +3173,6 @@ static int request_will_proxy(REQUEST *request)
 
 		return 0;
 
-#ifdef WITH_COA_TUNNEL
-	} else if (((request->packet->code == PW_CODE_COA_REQUEST) ||
-		    (request->packet->code == PW_CODE_DISCONNECT_REQUEST)) &&
-		   ((vp = fr_pair_find_by_num(request->config, PW_PROXY_TO_ORIGINATING_REALM, 0, TAG_ANY)) != NULL)) {
-
-		/*
-		 *	This function will set request->home_server,
-		 *	and also request->proxy_listener.
-		 */
-		if (listen_coa_find(request, vp->vp_strvalue) < 0) {
-			vp_cursor_t cursor;
-
-			(void) fr_cursor_init(&cursor, &request->config); /* already checked it above */
-
-			while ((vp = fr_cursor_next(&cursor)) != NULL) {
-				if (listen_coa_find(request, vp->vp_strvalue) == 0) break;
-			}
-
-			/*
-			 *	Not found.
-			 */
-			return 0;
-		}
-
-		/*
-		 *	Initialise request->proxy, and copy VPs over.
-		 */
-		home_server_update_request(request->home_server, request);
-		goto add_proxy_state;
-#endif
 	} else {
 
 		return 0;
@@ -3376,10 +3270,6 @@ do_home:
 	 *	The RFC's say we have to do this, but FreeRADIUS
 	 *	doesn't need it.
 	 */
-#ifdef WITH_COA_TUNNEL
-add_proxy_state:
-#endif
-
 	vp = radius_pair_create(request->proxy, &request->proxy->vps, PW_PROXY_STATE, 0);
 	fr_pair_value_sprintf(vp, "%u", request->packet->id);
 
@@ -3409,15 +3299,6 @@ add_proxy_state:
 	old_server = request->server;
 	if (request->home_server && request->home_server->virtual_server) {
 		request->server = request->home_server->virtual_server;
-
-#ifdef WITH_COA_TUNNEL
-	} else if (request->proxy_listener && (request->proxy_listener->type != RAD_LISTEN_PROXY)) {
-		rad_assert((request->packet->code == PW_CODE_COA_REQUEST) ||
-			   (request->packet->code == PW_CODE_DISCONNECT_REQUEST));
-		rad_assert(request->home_server != NULL);
-		rad_assert(request->home_server->recv_coa_server != NULL);
-		request->server = request->home_server->recv_coa_server;
-#endif
 
 	} else {
 		char buffer[128];
@@ -4452,26 +4333,6 @@ static void request_coa_originate(REQUEST *request)
 	coa = request->coa;
 	coa->listener = NULL;	/* copied here by request_alloc_fake(), but not needed */
 
-#ifdef WITH_COA_TUNNEL
-	/*
-	 *	Proxy-To-Originating-Realm is preferred to any other
-	 *	method of originating CoA requests.
-	 */
-	vp = fr_pair_find_by_num(coa->proxy->vps, PW_PROXY_TO_ORIGINATING_REALM, 0, TAG_ANY);
-	if (vp) {
-		/*
-		 *	This function will set request->home_server,
-		 *	and also request->proxy_listener.
-		 */
-		if (listen_coa_find(coa, vp->vp_strvalue) < 0) {
-			RWDEBUG("Unknown Originating realm '%s'", vp->vp_strvalue);
-			return;
-		}
-
-		goto set_packet_type;
-	}
-#endif
-
 	/*
 	 *	src_ipaddr will be set up in proxy_encode.
 	 */
@@ -4537,9 +4398,6 @@ static void request_coa_originate(REQUEST *request)
 		}
 	}
 
-#ifdef WITH_COA_TUNNEL
-set_packet_type:
-#endif
 	vp = fr_pair_find_by_num(coa->proxy->vps, PW_PACKET_TYPE, 0, TAG_ANY);
 	if (vp) {
 		switch (vp->vp_integer) {
@@ -4592,15 +4450,6 @@ set_packet_type:
 	old_server = request->server;
 	if (coa->home_server && coa->home_server->virtual_server) {
 		coa->server = coa->home_server->virtual_server;
-
-#ifdef WITH_COA_TUNNEL
-	} else if (coa->proxy_listener && (coa->proxy_listener->type != RAD_LISTEN_PROXY)) {
-		rad_assert((coa->proxy->code == PW_CODE_COA_REQUEST) ||
-			   (coa->proxy->code == PW_CODE_DISCONNECT_REQUEST));
-		rad_assert(coa->home_server != NULL);
-		rad_assert(coa->home_server->recv_coa_server != NULL);
-		coa->server = coa->home_server->recv_coa_server;
-#endif
 
 	} else if (coa->home_pool && coa->home_pool->virtual_server) {
 		coa->server = coa->home_pool->virtual_server;
@@ -5424,31 +5273,6 @@ static void event_new_fd(rad_listen_t *this)
 					fr_exit(1);
 				}
 			}
-
-#ifdef WITH_COA_TUNNEL
-			/*
-			 *	If we're allowed to send CoA requests
-			 *	back down this incoming socket, then
-			 *	add the socket to the proxy listener
-			 *	list.  We need to check for "parent",
-			 *	as the main incoming listener has
-			 *	"send_coa" set, but it just calls
-			 *	accept(), and doesn't actually send
-			 *	any packets.
-			 */
-			if (this->send_coa && this->parent) {
-				PTHREAD_MUTEX_LOCK(&proxy_mutex);
-				if (!fr_packet_list_socket_add(proxy_list, this->fd,
-							       sock->proto,
-							       &sock->other_ipaddr, sock->other_port,
-							       this)) {
-					ERROR("Failed adding coa proxy socket");
-					fr_exit_now(1);
-				}
-				PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-			}
-#endif	/* WITH_COA_TUNNEL */
-
 #endif	/* WITH_TCP */
 			break;
 		} /* switch over listener types */
@@ -5530,11 +5354,7 @@ static void event_new_fd(rad_listen_t *this)
 		/*
 		 *	Tell all requests using this socket that the socket is dead.
 		 */
-		if (this->type == RAD_LISTEN_PROXY
-#ifdef WITH_COA_TUNNEL
-		    || (this->send_coa && this->parent)
-#endif
-			) {
+		if (this->type == RAD_LISTEN_PROXY) {
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
 			if (!fr_packet_list_socket_freeze(proxy_list,
 							  this->fd)) {
@@ -5629,11 +5449,7 @@ static void event_new_fd(rad_listen_t *this)
 		 *	to stop using it.  And then remove it from the
 		 *	list of outgoing sockets.
 		 */
-		if (this->type == RAD_LISTEN_PROXY
-#ifdef WITH_COA_TUNNEL
-		    || (this->send_coa && this->parent)
-#endif
-			) {
+		if (this->type == RAD_LISTEN_PROXY) {
 			home_server_t *home;
 
 			home = sock->home;
@@ -5653,37 +5469,15 @@ static void event_new_fd(rad_listen_t *this)
 				fr_exit(1);
 			}
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-
-#ifdef WITH_COA_TUNNEL
-			/*
-			 *	Clean up the proxied packets AND the
-			 *	normal one.
-			 */
-			if (this->send_coa && this->parent) goto shutdown;
-#endif
-
 		} else
 #endif	/* WITH_PROXY */
 		{
-#ifdef WITH_COA_TUNNEL
-		shutdown:
-#endif
 			INFO(" ... shutting down socket %s", buffer);
 
 			/*
 			 *	EOL all requests using this socket.
 			 */
 			rbtree_walk(pl, RBTREE_DELETE_ORDER, eol_listener, this);
-
-#ifdef WITH_COA_TUNNEL
-			/*
-			 *	Delete the listener from the set of
-			 *	listeners by key.  This is done early,
-			 *	so that it won't be used while the
-			 *	cleanup timers are being run.
-			 */
-			if (this->tls) this->dead = true;
-#endif
 		}
 
 		/*
