@@ -858,10 +858,6 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
  *  caller can run radiusd, then they can only write to files which
  *  they own.  If radiusd is running as root, then only root can
  *  change the environment variables for radiusd.
- *
- *  Note also that we don't try anything fancy, like xlat expansions.
- *  Those could block, and the OpenSSL API doesn't support async key
- *  log callbacks.  Instead,
  */
 void fr_tls_session_keylog_cb(const SSL *ssl, const char *line)
 {
@@ -871,7 +867,10 @@ void fr_tls_session_keylog_cb(const SSL *ssl, const char *line)
 	char buffer[64 + 2*SSL3_RANDOM_SIZE + 2*SSL_MAX_MASTER_KEY_LENGTH];
 
 	/*
-	 *	Just a double-check.
+	 *	Prefer the environment variable definition to the
+	 *	configuration file.  This allows for "one-shot"
+	 *	dumping of EAP keys when you know you're not using
+	 *	RadSec, and you don't want to edit the configuration.
 	 */
 	filename = getenv("SSLKEYLOGFILE");
 	if (!filename) {
