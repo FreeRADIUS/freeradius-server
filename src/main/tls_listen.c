@@ -118,216 +118,9 @@ static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener, REQUEST *re
 
 	return 1;
 }
-
-/*
- *	Check for PROXY protocol.  Once that's done, clear
- *	listener->proxy_protocol.
- */
-static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
-{
-	listen_socket_t *sock = listener->data;
-	uint8_t const *p, *end, *eol;
-	int af, argc, src_port, dst_port;
-	unsigned long num;
-	fr_ipaddr_t src, dst;
-	char *argv[5], *eos;
-	ssize_t rcode;
-	RADCLIENT *client;
-
-	/*
-	 *	Begin by trying to fill the buffer.
-	 */
-	rcode = read(request->packet->sockfd,
-		     sock->ssn->dirty_in.data + sock->ssn->dirty_in.used,
-		     sizeof(sock->ssn->dirty_in.data) - sock->ssn->dirty_in.used);
-	if (rcode < 0) {
-		if (errno == EINTR) return 0;
-		RDEBUG("(TLS) Closing PROXY socket from client port %u due to read error - %s", sock->other_port, fr_syserror(errno));
-		return -1;
-	}
-
-	if (rcode == 0) {
-		DEBUG("(TLS) Closing PROXY socket from client port %u - other end closed connection", sock->other_port);
-		return -1;
-	}
-
-	/*
-	 *	We've read data, scan the buffer for a CRLF.
-	 */
-	sock->ssn->dirty_in.used += rcode;
-
-	dump_hex("READ FROM PROXY PROTOCOL SOCKET", sock->ssn->dirty_in.data, sock->ssn->dirty_in.used);
-
-	p = sock->ssn->dirty_in.data;
-
-	/*
-	 *	CRLF MUST be within the first 107 bytes.
-	 */
-	if (sock->ssn->dirty_in.used < 107) {
-		end = p + sock->ssn->dirty_in.used;
-	} else {
-		end = p + 107;
-	}
-	eol = NULL;
-
-	/*
-	 *	Scan for CRLF.
-	 */
-	while ((p + 1) < end) {
-		if ((p[0] == 0x0d) && (p[1] == 0x0a)) {
-			eol = p;
-			break;
-		}
-
-		/*
-		 *	Other control characters, or non-ASCII data.
-		 *	That's a problem.
-		 */
-		if ((*p < ' ') || (*p >= 0x80)) {
-		invalid_data:
-			DEBUG("(TLS) Closing PROXY socket from client port %u - received invalid data", sock->other_port);
-			return -1;
-		}
-
-		p++;
-	}
-
-	/*
-	 *	No CRLF, keep reading until we have it.
-	 */
-	if (!eol) return 0;
-
-	p = sock->ssn->dirty_in.data;
-
-	/*
-	 *	Let's see if the PROXY line is well-formed.
-	 */
-	if ((eol - p) < 14) goto invalid_data;
-	
-	/*
-	 *	We only support TCP4 and TCP6.
-	 */
-	if (memcmp(p, "PROXY TCP", 9) != 0) goto invalid_data;
-
-	p += 9;
-
-	if (*p == '4') {
-		af = AF_INET;
-
-	} else if (*p == '6') {
-		af = AF_INET6;
-
-	} else goto invalid_data;
-
-	p++;
-	if (*p != ' ') goto invalid_data;
-	p++;
-
-	sock->ssn->dirty_in.data[eol - sock->ssn->dirty_in.data] = '\0'; /* overwite the CRLF */
-
-	/*
-	 *	Parse the fields (being a little forgiving), while
-	 *	checking for too many / too few fields.
-	 */
-	argc = str2argv((char *) &sock->ssn->dirty_in.data[p - sock->ssn->dirty_in.data], (char **) &argv, 5);
-	if (argc != 4) goto invalid_data;
-
-	memset(&src, 0, sizeof(src));
-	memset(&dst, 0, sizeof(dst));
-
-	if (fr_pton(&src, argv[0], -1, af, false) < 0) goto invalid_data;
-	if (fr_pton(&dst, argv[1], -1, af, false) < 0) goto invalid_data;
-
-	num = strtoul(argv[2], &eos, 10);
-	if (num > 65535) goto invalid_data;
-	if (*eos) goto invalid_data;
-	src_port = num;
-
-	num = strtoul(argv[3], &eos, 10);
-	if (num > 65535) goto invalid_data;
-	if (*eos) goto invalid_data;
-	dst_port = num;
-
-	/*
-	 *	And copy the various fields around.
-	 */
-	sock->haproxy_src_ipaddr = sock->other_ipaddr;
-	sock->haproxy_src_port = sock->other_port;
-
-	sock->haproxy_dst_ipaddr = sock->my_ipaddr;
-	sock->haproxy_dst_port = sock->my_port;
-
-	sock->my_ipaddr = dst;
-	sock->my_port = dst_port;
-
-	sock->other_ipaddr = src;
-	sock->other_port = src_port;
-
-	/*
-	 *	Print out what we've changed.  Note that the TCP
-	 *	socket address family and the PROXY address family may
-	 *	be different!
-	 */
-	if (RDEBUG_ENABLED) {
-		char src_buf[128], dst_buf[128];
-
-		RDEBUG("(TLS) Received PROXY protocol connection from client %s:%s -> %s:%s, via proxy %s:%u -> %s:%u",
-		       argv[0], argv[2], argv[1], argv[3],
-		       inet_ntop(af, &sock->haproxy_src_ipaddr.ipaddr, src_buf, sizeof(src_buf)),
-		       sock->haproxy_src_port,
-		       inet_ntop(af, &sock->haproxy_dst_ipaddr.ipaddr, dst_buf, sizeof(dst_buf)),
-		       sock->haproxy_dst_port);
-	}
-
-        /*
-         *      Ensure that the source IP indicated by the PROXY
-         *      protocol is a known TLS client.
-         */
-        if ((client = client_listener_find(listener, &src, src_port)) == NULL ||
-             client->proto != IPPROTO_TCP) {
-		RDEBUG("(TLS) Unknown client %s - dropping PROXY protocol connection", argv[0]);
-		return -1;
-        }
-
-        /*
-         *      Use the client indicated by the proxy.
-         */
-        sock->client = client;
-
-	/*
-         *      Fix up the current request so that the first packet's
-         *      src/dst is valid.  Subsequent packets will get the
-         *      clients IP from the listener and listen_sock
-         *      structures.
-         */
-        request->packet->dst_ipaddr = dst;
-        request->packet->dst_port = dst_port;
-        request->packet->src_ipaddr = src;
-        request->packet->src_port = src_port;
-
-	/*
-	 *	Move any remaining TLS data to the start of the buffer.
-	 */
-	eol += 2;
-	end = sock->ssn->dirty_in.data + sock->ssn->dirty_in.used;
-	if (eol < end) {
-		memmove(sock->ssn->dirty_in.data, eol, end - eol);
-		sock->ssn->dirty_in.used = end - eol;
-	} else {
-		sock->ssn->dirty_in.used = 0;
-	}
-		
-	/*
-	 *	It's no longer a PROXY protocol, but just straight TLS.
-	 */
-	listener->proxy_protocol = false;
-
-	return 1;
-}
-
 static int tls_socket_recv(rad_listen_t *listener)
 {
-	bool doing_init = false, already_read = false;
+	bool doing_init = false;
 	ssize_t rcode;
 	RADIUS_PACKET *packet;
 	REQUEST *request;
@@ -392,30 +185,6 @@ static int tls_socket_recv(rad_listen_t *listener)
 
 	request = sock->request;
 
-	/*
-	 *	Bypass ALL of the TLS stuff until we've read the PROXY
-	 *	header.
-	 *
-	 *	If the PROXY header checks pass, then the flag is
-	 *	cleared, as we don't need it any more.
-	 */
-	if (listener->proxy_protocol) {
-		rcode = proxy_protocol_check(listener, request);
-		if (rcode < 0) {
-			RDEBUG("(TLS) Closing PROXY TLS socket from client port %u", sock->other_port);
-			tls_socket_close(listener);
-			return 0;
-		}
-		if (rcode == 0) return 1;
-
-		/*
-		 *	The buffer might already have data.  In that
-		 *	case, we don't want to do a blocking read
-		 *	later.
-		 */
-		already_read = (sock->ssn->dirty_in.used > 0);
-	}
-
 	if (sock->state == LISTEN_TLS_SETUP) {
 		RDEBUG3("(TLS) Setting connection state to RUNNING");
 		sock->state = LISTEN_TLS_RUNNING;
@@ -441,31 +210,28 @@ static int tls_socket_recv(rad_listen_t *listener)
 		goto check_for_setup;
 	}
 
-	if (!already_read) {
-		rcode = read(request->packet->sockfd,
-			     sock->ssn->dirty_in.data,
-			     sizeof(sock->ssn->dirty_in.data));
-		if ((rcode < 0) && (errno == ECONNRESET)) {
-		do_close:
-			DEBUG("(TLS) Closing socket from client port %u", sock->other_port);
-			tls_socket_close(listener);
-			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
-			return 0;
-		}
-
-		if (rcode < 0) {
-			RDEBUG("(TLS) Error reading socket: %s", fr_syserror(errno));
-			goto do_close;
-		}
-
-		/*
-		 *	Normal socket close.
-		 */
-		if (rcode == 0) goto do_close;
-
-		sock->ssn->dirty_in.used = rcode;
+	rcode = read(request->packet->sockfd,
+		     sock->ssn->dirty_in.data,
+		     sizeof(sock->ssn->dirty_in.data));
+	if ((rcode < 0) && (errno == ECONNRESET)) {
+	do_close:
+		DEBUG("(TLS) Closing socket from client port %u", sock->other_port);
+		tls_socket_close(listener);
+		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+		return 0;
 	}
 
+	if (rcode < 0) {
+		RDEBUG("(TLS) Error reading socket: %s", fr_syserror(errno));
+		goto do_close;
+	}
+
+	/*
+	 *	Normal socket close.
+	 */
+	if (rcode == 0) goto do_close;
+
+	sock->ssn->dirty_in.used = rcode;
 	dump_hex("READ FROM SSL", sock->ssn->dirty_in.data, sock->ssn->dirty_in.used);
 
 	/*

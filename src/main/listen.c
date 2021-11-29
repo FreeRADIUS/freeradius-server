@@ -1233,12 +1233,6 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			}
 
 			/*
-			 *	Add support for http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
-			 */
-			rcode = cf_item_parse(cs, "proxy_protocol", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &this->proxy_protocol), NULL);
-			if (rcode < 0) return -1;
-
-			/*
 			 *	If unset, set to default.
 			 */
 			if (listen_port == 0) listen_port = PW_RADIUS_TLS_PORT;

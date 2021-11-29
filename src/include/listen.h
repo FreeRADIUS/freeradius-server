@@ -76,7 +76,6 @@ struct rad_listen {
 	rad_listen_t	*parent;
 
 	bool		dual;
-	bool		proxy_protocol;		//!< haproxy protocol
 #endif
 	bool		nodup;
 	bool		synchronous;
@@ -167,11 +166,6 @@ typedef struct listen_socket_t {
 	RADCLIENT	*client;
 
 	RADIUS_PACKET   *packet; /* for reading partial packets */
-
-	fr_ipaddr_t	haproxy_src_ipaddr;	//!< for proxy_protocol
-	fr_ipaddr_t	haproxy_dst_ipaddr;
-	uint16_t	haproxy_src_port;
-	uint16_t	haproxy_dst_port;
 #endif
 
 #ifdef WITH_TLS
