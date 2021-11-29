@@ -284,6 +284,8 @@ void 		fr_tls_session_info_cb(SSL const *s, int where, int ret);
 void 		fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 				      void const *buf, size_t len, SSL *ssl, void *arg);
 
+void		fr_tls_session_keylog_cb(const SSL *ssl, const char *line);
+
 int		fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *ctx,
 				     		    request_t *request, X509 *cert) CC_HINT(nonnull);
 

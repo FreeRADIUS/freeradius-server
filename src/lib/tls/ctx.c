@@ -1028,6 +1028,15 @@ post_ca:
 	 */
 	if (fr_tls_cache_ctx_init(ctx, &conf->cache) < 0) goto error;
 
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(LIBRESSL_VERSION_NUMBER)
+	/*
+	 *	Set the keylog file if the admin requested it.
+	 */
+	if ((getenv("SSLKEYLOGFILE") != NULL) || (conf->keylog_file && *conf->keylog_file)) {
+		SSL_CTX_set_keylog_callback(ctx, fr_tls_session_keylog_cb);
+	}
+#endif
+
 	return ctx;
 }
 #endif

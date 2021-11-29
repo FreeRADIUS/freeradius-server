@@ -170,6 +170,8 @@ struct fr_tls_conf_s {
 	char const		*psk_query;
 #endif
 
+	char const		*keylog_file;		//!< for SSLKEYLOGFILE functionality.
+
 	fr_tls_cache_conf_t	cache;			//!< Session cache configuration.
 	fr_tls_verify_conf_t	verify;
 };

@@ -42,6 +42,7 @@
 
 #include <openssl/ssl.h>
 #include <ctype.h>
+#include <fcntl.h>
 
 #include "attrs.h"
 #include "base.h"
@@ -840,6 +841,82 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 				       fr_tls_request_log_bio(request, L_DBG, L_DBG_LVL_3));
 #endif
 }
+
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(LIBRESSL_VERSION_NUMBER)
+/*
+ *  By setting the environment variable SSLKEYLOGFILE to a filename keying
+ *  material will be exported that you may use with Wireshark to decode any
+ *  TLS flows. Please see the following for more details:
+ *
+ *	https://gitlab.com/wireshark/wireshark/-/wikis/TLS#tls-decryption
+ *
+ *  An example logging session is (you should delete the file on each run):
+ *
+ *	rm -f /tmp/sslkey.log; env SSLKEYLOGFILE=/tmp/sslkey.log freeradius -X | tee /tmp/debug
+ *
+ *  Note that we rely on the OS to check file permissions.  If the
+ *  caller can run radiusd, then they can only write to files which
+ *  they own.  If radiusd is running as root, then only root can
+ *  change the environment variables for radiusd.
+ *
+ *  Note also that we don't try anything fancy, like xlat expansions.
+ *  Those could block, and the OpenSSL API doesn't support async key
+ *  log callbacks.  Instead,
+ */
+void fr_tls_session_keylog_cb(const SSL *ssl, const char *line)
+{
+	int fd;
+	size_t len;
+	const char *filename;
+	char buffer[64 + 2*SSL3_RANDOM_SIZE + 2*SSL_MAX_MASTER_KEY_LENGTH];
+
+	/*
+	 *	Just a double-check.
+	 */
+	filename = getenv("SSLKEYLOGFILE");
+	if (!filename) {
+		fr_tls_conf_t *conf;
+
+		conf = (fr_tls_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
+		if (!conf || !conf->keylog_file || !*conf->keylog_file) return;
+
+		filename = conf->keylog_file;
+	}
+
+	/*
+	 *	We write all of the data at once.  This is *generally*
+	 *	atomic on most systems.
+	 */
+	len = strlen(line);
+	if ((len + 1) > sizeof(buffer)) {
+		DEBUG("SSLKEYLOGFILE buffer not large enough, max %lu, required %lu", sizeof(buffer), len + 1);
+		return;
+	}
+
+	/*
+	 *	Add a \n, which means that in order to write() the
+	 *	buffer AND the trailing \n, we have to place both
+	 *	strings into the same buffer.
+	 */
+	memcpy(buffer, line, len);
+	buffer[len] = '\n';
+
+	fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
+	if (fd < 0) {
+		DEBUG("Failed to open file %s: %s", filename, strerror(errno));
+		return;
+	}
+
+	/*
+	 *	This should work in most situations.
+	 */
+	if (write(fd, buffer, len + 1) < 0) {
+		DEBUG("Failed to write to file %s: %s", filename, strerror(errno));
+	}
+
+	close(fd);
+}
+#endif
 
 /** Decrypt application data
  *
