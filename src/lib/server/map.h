@@ -162,6 +162,7 @@ extern fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST];
 
 #define fr_map_list_init(_list) fr_dlist_talloc_init(_list, map_t, entry)
 #define fr_map_list_head(_list) ((map_t *)fr_dlist_head(_list))
+#define fr_map_list_tail(_list) ((map_t *)fr_dlist_tail(_list))
 
 #ifdef __cplusplus
 }
