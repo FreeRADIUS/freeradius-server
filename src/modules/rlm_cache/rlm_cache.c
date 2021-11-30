@@ -1047,6 +1047,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 */
 	{
 		tmpl_rules_t	parse_rules = {
+			.dict_def = fr_dict_internal(),
 			.allow_foreign = true	/* Because we don't know where we'll be called */
 		};
 
