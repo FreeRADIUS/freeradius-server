@@ -544,6 +544,103 @@ static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dic
 		if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, rules->dict_def)) return false;
 	}
 
+	switch (map->lhs->type) {
+	case TMPL_TYPE_ATTR:
+		if (!fr_assignment_op[map->op] && !fr_equality_op[map->op]) {
+			cf_log_err(map->ci, "Invalid operator \"%s\" in update section.  "
+				   "Only assignment or filter operators are allowed",
+				   fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
+			return -1;
+		}
+
+		if (fr_equality_op[map->op]) {
+			cf_log_warn(map->ci, "Please use the 'filter' keyword for attribute filtering");
+		}
+
+		/*
+		 *	Fixup LHS attribute references to change NUM_ANY to NUM_ALL.
+		 */
+		tmpl_attr_rewrite_leaf_num(map->lhs, NUM_ANY, NUM_ALL);
+		break;
+
+	case TMPL_TYPE_LIST:
+		/*
+		 *	Can't copy an xlat expansion or literal into a list,
+		 *	we don't know what type of attribute we'd need
+		 *	to create.
+		 *
+		 *	The only exception is where were using a unary
+		 *	operator like !*.
+		 */
+		if (map->op != T_OP_CMP_FALSE) switch (map->rhs->type) {
+		case TMPL_TYPE_XLAT_UNRESOLVED:
+		case TMPL_TYPE_UNRESOLVED:
+			cf_log_err(map->ci, "Can't copy value into list (we don't know which attribute to create)");
+			return -1;
+
+		default:
+			break;
+		}
+
+		/*
+		 *	Only += and :=, and !*, and ^= operators are supported
+		 *	for lists.
+		 */
+		switch (map->op) {
+		case T_OP_CMP_FALSE:
+			break;
+
+		case T_OP_ADD_EQ:
+			if (!tmpl_is_list(map->rhs) &&
+			    !tmpl_is_exec(map->rhs)) {
+				cf_log_err(map->ci, "Invalid source for list assignment '%s += ...'", map->lhs->name);
+				return -1;
+			}
+			break;
+
+		case T_OP_SET:
+			if (tmpl_is_exec(map->rhs)) {
+				WARN("%s[%d]: Please change ':=' to '=' for list assignment",
+				     cf_filename(map->ci), cf_lineno(map->ci));
+			}
+
+			if (!tmpl_is_list(map->rhs)) {
+				cf_log_err(map->ci, "Invalid source for list assignment '%s := ...'", map->lhs->name);
+				return -1;
+			}
+			break;
+
+		case T_OP_EQ:
+			if (!tmpl_is_exec(map->rhs)) {
+				cf_log_err(map->ci, "Invalid source for list assignment '%s = ...'", map->lhs->name);
+				return -1;
+			}
+			break;
+
+		case T_OP_PREPEND:
+			if (!tmpl_is_list(map->rhs) &&
+			    !tmpl_is_exec(map->rhs)) {
+				cf_log_err(map->ci, "Invalid source for list assignment '%s ^= ...'", map->lhs->name);
+				return -1;
+			}
+			break;
+
+		default:
+			cf_log_err(map->ci, "Operator \"%s\" not allowed for list assignment",
+				   fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
+			return -1;
+		}
+
+		/*
+		 *	Fixup LHS attribute references to change NUM_ANY to NUM_ALL.
+		 */
+		tmpl_attr_rewrite_leaf_num(map->lhs, NUM_ANY, NUM_ALL);
+		break;
+
+	default:
+		break;
+	}
+
 	/*
 	 *	Enforce parent-child relationships in nested maps.
 	 */
@@ -580,6 +677,69 @@ static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dic
 				return false;
 			}
 		}
+
+		/*
+		 *	Fixup RHS attribute references to change NUM_ANY to NUM_ALL.
+		 */
+		switch (map->rhs->type) {
+		case TMPL_TYPE_ATTR:
+		case TMPL_TYPE_LIST:
+			tmpl_attr_rewrite_leaf_num(map->rhs, NUM_ANY, NUM_ALL);
+			break;
+
+		default:
+			break;
+		}
+
+		/*
+		 *	Values used by unary operators should be literal ANY
+		 *
+		 *	We then free the template and alloc a NULL one instead.
+		 */
+		if (map->op == T_OP_CMP_FALSE) {
+			if (!tmpl_is_unresolved(map->rhs) || (strcmp(map->rhs->name, "ANY") != 0)) {
+				WARN("%s[%d] Wildcard deletion MUST use '!* ANY'",
+				     cf_filename(map->ci), cf_lineno(map->ci));
+			}
+
+			TALLOC_FREE(map->rhs);
+
+			map->rhs = tmpl_alloc(map, TMPL_TYPE_NULL, T_INVALID, NULL, 0);
+		}
+
+		/*
+		 *	If LHS is an attribute, and RHS is a literal, we can
+		 *	preparse the information into a TMPL_TYPE_DATA.
+		 *
+		 *	Unless it's a unary operator in which case we
+		 *	ignore map->rhs.
+		 */
+		if (tmpl_is_unresolved(map->rhs)) {
+			if (!tmpl_is_attr(map->lhs)) {
+				cf_log_err(map->ci, "Failed parsing right-hand side");
+				return -1;
+			}
+
+			/*
+			 *	It's a literal string, just copy it.
+			 *	Don't escape anything.
+			 */
+			if (tmpl_cast_in_place(map->rhs, tmpl_da(map->lhs)->type, tmpl_da(map->lhs)) < 0) {
+				cf_log_perr(map->ci, "Cannot convert RHS value (%s) to LHS attribute type (%s)",
+					    fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
+					    fr_table_str_by_value(fr_value_box_type_table, tmpl_da(map->lhs)->type, "<INVALID>"));
+				return -1;
+			}
+		}
+	}
+
+	/*
+	 *	What exactly where you expecting to happen here?
+	 */
+	if (tmpl_is_attr(map->lhs) && map->rhs &&
+	    tmpl_is_list(map->rhs)) {
+		cf_log_err(map->ci, "Can't copy list into an attribute");
+		return -1;
 	}
 
 	/*
@@ -761,7 +921,7 @@ static int unlang_fixup_map(map_t *map, UNUSED void *ctx)
 		break;
 
 	default:
-		cf_log_err(map->ci, "Left side of map must be an attribute "
+		cf_log_err(cp, "Left side of map must be an attribute "
 		           "or an xlat (that expands to an attribute), not a %s",
 		           fr_table_str_by_value(tmpl_type_table, map->lhs->type, "<INVALID>"));
 		return -1;
@@ -776,12 +936,12 @@ static int unlang_fixup_map(map_t *map, UNUSED void *ctx)
 		break;
 
 	default:
-		cf_log_err(map->ci, "Right side of map must be an attribute, literal, xlat or exec");
+		cf_log_err(cp, "Right side of map must be an attribute, literal, xlat or exec");
 		return -1;
 	}
 
 	if (!fr_assignment_op[map->op] && !fr_equality_op[map->op]) {
-		cf_log_err(map->ci, "Invalid operator \"%s\" in map section.  "
+		cf_log_err(cp, "Invalid operator \"%s\" in map section.  "
 			   "Only assignment or filter operators are allowed",
 			   fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
 		return -1;
@@ -794,14 +954,15 @@ static int unlang_fixup_map(map_t *map, UNUSED void *ctx)
 /** Validate and fixup a map that's part of an update section.
  *
  * @param map to validate.
- * @param ctx data to pass to fixup function (currently unused).
+ * @param ctx data to pass to fixup function, which MUST be tmpl_rules_t*
  * @return
  *	- 0 if valid.
  *	- -1 not valid.
  */
-int unlang_fixup_update(map_t *map, UNUSED void *ctx)
+int unlang_fixup_update(map_t *map, void *ctx)
 {
 	CONF_PAIR *cp = cf_item_to_pair(map->ci);
+	tmpl_rules_t *rules = ctx;
 
 	/*
 	 *	Anal-retentive checks.
@@ -819,170 +980,10 @@ int unlang_fixup_update(map_t *map, UNUSED void *ctx)
 	}
 
 	/*
-	 *	Fixup LHS attribute references to change NUM_ANY to NUM_ALL.
+	 *	Call the main fixup function to resolve everything,
+	 *	and check LHS OP RHS things.
 	 */
-	switch (map->lhs->type) {
-	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_LIST:
-		tmpl_attr_rewrite_leaf_num(map->lhs, NUM_ANY, NUM_ALL);
-		break;
-
-	default:
-		break;
-	}
-
-	/*
-	 *	Fixup RHS attribute references to change NUM_ANY to NUM_ALL.
-	 */
-	switch (map->rhs->type) {
-	case TMPL_TYPE_ATTR:
-	case TMPL_TYPE_LIST:
-		tmpl_attr_rewrite_leaf_num(map->rhs, NUM_ANY, NUM_ALL);
-		break;
-
-	default:
-		break;
-	}
-
-	/*
-	 *	Values used by unary operators should be literal ANY
-	 *
-	 *	We then free the template and alloc a NULL one instead.
-	 */
-	if (map->op == T_OP_CMP_FALSE) {
-		if (!tmpl_is_unresolved(map->rhs) || (strcmp(map->rhs->name, "ANY") != 0)) {
-			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'",
-			     cf_filename(cp), cf_lineno(cp));
-		}
-
-		TALLOC_FREE(map->rhs);
-
-		map->rhs = tmpl_alloc(map, TMPL_TYPE_NULL, T_INVALID, NULL, 0);
-	}
-
-	/*
-	 *	Lots of sanity checks for insane people...
-	 */
-
-	/*
-	 *	What exactly where you expecting to happen here?
-	 */
-	if (tmpl_is_attr(map->lhs) &&
-	    tmpl_is_list(map->rhs)) {
-		cf_log_err(map->ci, "Can't copy list into an attribute");
-		return -1;
-	}
-
-	/*
-	 *	Depending on the attribute type, some operators are disallowed.
-	 */
-	if (tmpl_is_attr(map->lhs)) {
-		if (!fr_assignment_op[map->op] && !fr_equality_op[map->op]) {
-			cf_log_err(map->ci, "Invalid operator \"%s\" in update section.  "
-				   "Only assignment or filter operators are allowed",
-				   fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
-			return -1;
-		}
-
-		if (fr_equality_op[map->op]) {
-			cf_log_warn(cp, "Please use the 'filter' keyword for attribute filtering");
-		}
-	}
-
-	if (tmpl_is_list(map->lhs)) {
-		/*
-		 *	Can't copy an xlat expansion or literal into a list,
-		 *	we don't know what type of attribute we'd need
-		 *	to create.
-		 *
-		 *	The only exception is where were using a unary
-		 *	operator like !*.
-		 */
-		if (map->op != T_OP_CMP_FALSE) switch (map->rhs->type) {
-		case TMPL_TYPE_XLAT_UNRESOLVED:
-		case TMPL_TYPE_UNRESOLVED:
-			cf_log_err(map->ci, "Can't copy value into list (we don't know which attribute to create)");
-			return -1;
-
-		default:
-			break;
-		}
-
-		/*
-		 *	Only += and :=, and !*, and ^= operators are supported
-		 *	for lists.
-		 */
-		switch (map->op) {
-		case T_OP_CMP_FALSE:
-			break;
-
-		case T_OP_ADD_EQ:
-			if (!tmpl_is_list(map->rhs) &&
-			    !tmpl_is_exec(map->rhs)) {
-				cf_log_err(map->ci, "Invalid source for list assignment '%s += ...'", map->lhs->name);
-				return -1;
-			}
-			break;
-
-		case T_OP_SET:
-			if (tmpl_is_exec(map->rhs)) {
-				WARN("%s[%d]: Please change ':=' to '=' for list assignment",
-				     cf_filename(cp), cf_lineno(cp));
-			}
-
-			if (!tmpl_is_list(map->rhs)) {
-				cf_log_err(map->ci, "Invalid source for list assignment '%s := ...'", map->lhs->name);
-				return -1;
-			}
-			break;
-
-		case T_OP_EQ:
-			if (!tmpl_is_exec(map->rhs)) {
-				cf_log_err(map->ci, "Invalid source for list assignment '%s = ...'", map->lhs->name);
-				return -1;
-			}
-			break;
-
-		case T_OP_PREPEND:
-			if (!tmpl_is_list(map->rhs) &&
-			    !tmpl_is_exec(map->rhs)) {
-				cf_log_err(map->ci, "Invalid source for list assignment '%s ^= ...'", map->lhs->name);
-				return -1;
-			}
-			break;
-
-		default:
-			cf_log_err(map->ci, "Operator \"%s\" not allowed for list assignment",
-				   fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
-			return -1;
-		}
-	}
-
-	/*
-	 *	If the map has a unary operator there's no further
-	 *	processing we need to, as RHS is unused.
-	 */
-	if (map->op == T_OP_CMP_FALSE) return 0;
-
-	/*
-	 *	If LHS is an attribute, and RHS is a literal, we can
-	 *	preparse the information into a TMPL_TYPE_DATA.
-	 *
-	 *	Unless it's a unary operator in which case we
-	 *	ignore map->rhs.
-	 */
-	if (tmpl_is_attr(map->lhs) && tmpl_is_unresolved(map->rhs)) {
-		/*
-		 *	It's a literal string, just copy it.
-		 *	Don't escape anything.
-		 */
-		if (tmpl_cast_in_place(map->rhs, tmpl_da(map->lhs)->type, tmpl_da(map->lhs)) < 0) {
-			cf_log_perr(map->ci, "Cannot convert RHS value (%s) to LHS attribute type (%s)",
-				    fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
-				    fr_table_str_by_value(fr_value_box_type_table, tmpl_da(map->lhs)->type, "<INVALID>"));
-			return -1;
-		}
-	} /* else we can't precompile the data */
+	if (!pass2_fixup_update_map(map, rules, NULL)) return -1;
 
 	return 0;
 }
@@ -1027,6 +1028,11 @@ static int unlang_fixup_filter(map_t *map, UNUSED void *ctx)
 		cf_log_err(map->ci, "Cannot filter an attribute using a list.");
 		return -1;
 	}
+
+	/*
+	 *	@todo - Many of these checks are the same as
+	 *	pass2_fixup_update_map().  Maybe find a way to unify them.
+	 */
 
 	/*
 	 *	Fixup LHS attribute references to change NUM_ANY to NUM_ALL.
@@ -1391,7 +1397,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	This looks at cs->name2 to determine which list to update
 	 */
 	fr_map_list_init(&gext->map);
-	rcode = map_afrom_cs(gext, &gext->map, cs, &t_rules, &t_rules, unlang_fixup_update, NULL, 128);
+	rcode = map_afrom_cs(gext, &gext->map, cs, &t_rules, &t_rules, unlang_fixup_update, &t_rules, 128);
 	if (rcode < 0) return NULL; /* message already printed */
 	if (fr_dlist_empty(&gext->map)) {
 		cf_log_err(cs, "'update' sections cannot be empty");
