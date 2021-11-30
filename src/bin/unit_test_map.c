@@ -83,7 +83,7 @@ static int process_file(char const *filename)
 
 	tmpl_rules_t	parse_rules = {
 		.dict_def = dict_radius,
-		.allow_foreign = true	/* Because we don't know what protocol we're operating with */
+		.allow_foreign = false, /* tests are in the RADIUS dictionary */
 	};
 
 	fr_map_list_init(&list);
