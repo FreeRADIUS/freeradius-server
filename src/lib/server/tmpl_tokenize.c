@@ -2822,8 +2822,8 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
 
 		/*
 		 *	If the tmpl contains a _compiled_ regex
-		 *      then convert it back to an uncompiled
-		 *      regex and recompile.
+		 *	then convert it back to an uncompiled
+		 *	regex and recompile.
 		 *
 		 *	Most of the regex libraries don't allow
 		 *	copying compiled expressions.
