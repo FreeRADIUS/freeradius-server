@@ -487,17 +487,29 @@ struct tmpl_s {
 		 */
 		fr_value_box_t	literal;			 //!< Value data.
 
-		_CONST struct {
-			xlat_exp_t		*ex;	 	//!< pre-parsed xlat_exp_t
-			xlat_flags_t		flags;		//!< Flags controlling evaluation
-								///< and expansion.
-		} xlat;
+		struct {
+			union {
+				_CONST struct {
+					xlat_exp_t		*ex;	 	//!< pre-parsed xlat_exp_t
+					xlat_flags_t		flags;		//!< Flags controlling evaluation
+										///< and expansion.
+				} xlat;
 #ifdef HAVE_REGEX
-		_CONST struct {
-			regex_t			*ex;		//!< pre-parsed regex_t
-			fr_regex_flags_t	flags;		//!< Flags for regular expressions.
-		} reg;
+				_CONST struct {
+					char			*src;		//!< Original unescaped source string.
+					regex_t			*ex;		//!< pre-parsed regex_t
+					bool			subcaptures;	//!< Whether the regex was compiled with
+										///< subcaptures.
+				} reg;
 #endif
+			};
+			fr_regex_flags_t	reg_flags;	//!< Flags for regular expressions.
+								///< Used by:
+								///< - TMPL_TYPE_REGEX_XLAT
+								///< - TMPL_TYPE_REGEX_UNCOMPILED
+								///< - TMPL_TYPE_REGEX
+								///< - TMPL_TYPE_REGEX_XLAT_UNRESOLVED
+		};
 	} data;
 
 	fr_type_t	_CONST		cast;	//!< Type we should interpret unresolved data with.
@@ -698,7 +710,7 @@ static inline tmpl_pair_list_t tmpl_list(tmpl_t const *vpt)
  */
 #ifdef HAVE_REGEX
 #  define tmpl_regex(_tmpl)			(_tmpl)->data.reg.ex		//!< #TMPL_TYPE_REGEX only.
-#  define tmpl_regex_flags(_tmpl)		(&(_tmpl)->data.reg.flags)
+#  define tmpl_regex_flags(_tmpl)		(&(_tmpl)->data.reg_flags)
 #endif
 /** @} */
 
@@ -927,6 +939,8 @@ ssize_t			tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 					  fr_token_t quote,
 					  fr_sbuff_parse_rules_t const *p_rules,
 					  tmpl_rules_t const *t_rules);
+
+tmpl_t			*tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in);
 
 ssize_t			tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in);		/* Parses cast string */
 

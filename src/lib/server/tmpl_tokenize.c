@@ -2778,6 +2778,72 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 	return fr_sbuff_set(in, &our_in);
 }
 
+/** Copy a tmpl
+ *
+ * Fully duplicates the contents of a tmpl including any nested attribute
+ * references.
+ *
+ * @param[in] ctx	to perform allocations under.
+ * @param[in] in	tmpl to duplicate.
+ * @return
+ *	- NULL on error.
+ *      - A new tmpl on success.
+ */
+tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
+{
+	tmpl_t *vpt;
+
+	MEM(vpt = tmpl_alloc(ctx, in->type, in->quote, in->name, in->len));
+	vpt->cast = in->cast;
+	vpt->enumv = in->enumv;
+	vpt->rules = in->rules;
+
+	/*
+	 *	Copy over the unescaped data
+	 */
+	if (tmpl_is_unresolved(vpt) || tmpl_is_regex_uncompiled(vpt)) {
+		if (unlikely(!(vpt->data.unescaped = talloc_bstrdup(vpt, in->data.unescaped)))) {
+		error:
+			talloc_free(vpt);
+			return NULL;
+		}
+	}
+
+	/*
+	 *	Copy attribute references
+	 */
+	if (tmpl_contains_attr(vpt) && unlikely(tmpl_attr_copy(vpt, in) < 0)) goto error;
+
+	/*
+	 *	Copy flags for all regex flavours (and possibly recompile the regex)
+	 */
+	if (tmpl_contains_regex(vpt)) {
+		vpt->data.reg_flags = in->data.reg_flags;
+
+		/*
+		 *	If the tmpl contains a _compiled_ regex
+		 *      then convert it back to an uncompiled
+		 *      regex and recompile.
+		 *
+		 *	Most of the regex libraries don't allow
+		 *	copying compiled expressions.
+		 */
+		 if (tmpl_is_regex(vpt)) {
+			vpt->type = TMPL_TYPE_REGEX_UNCOMPILED;
+			if (unlikely(!(vpt->data.unescaped = talloc_bstrdup(vpt, in->data.reg.src)))) goto error;
+			if (unlikely(tmpl_regex_compile(vpt, vpt->data.reg.subcaptures) < 0)) goto error;
+			return vpt;
+		}
+	}
+
+	/*
+	 *	Copy the xlat component
+	 */
+	if (tmpl_contains_xlat(vpt) && unlikely(xlat_copy(vpt, &vpt->data.xlat.ex, in->data.xlat.ex) < 0)) goto error;
+
+	return vpt;
+}
+
 /** Parse a cast specifier
  *
  * @param[out] out	Where to write the cast type.
@@ -2925,7 +2991,7 @@ ssize_t tmpl_regex_flags_substr(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_term_t con
 
 	fr_assert(tmpl_is_regex_uncompiled(vpt) || tmpl_is_regex_xlat(vpt) || tmpl_is_regex_xlat_unresolved(vpt));
 
-	slen = regex_flags_parse(&err, &vpt->data.reg.flags, in, terminals, true);
+	slen = regex_flags_parse(&err, &vpt->data.reg_flags, in, terminals, true);
 	switch (err) {
 	case 0:
 		break;
@@ -3612,11 +3678,12 @@ ssize_t tmpl_regex_compile(tmpl_t *vpt, bool subcaptures)
 
 	slen = regex_compile(vpt, &vpt->data.reg.ex,
 			     unescaped, talloc_array_length(unescaped) - 1,
-			     &vpt->data.reg.flags, subcaptures, vpt->rules.at_runtime);
+			     &vpt->data.reg_flags, subcaptures, vpt->rules.at_runtime);
 	if (slen <= 0) return vpt->quote != T_BARE_WORD ? slen - 1 : slen;	/* Account for the quoting */
-	talloc_free(unescaped);
 
 	vpt->type = TMPL_TYPE_REGEX;
+	vpt->data.reg.src = unescaped;			/* Keep this around for debugging and copying */
+	vpt->data.reg.subcaptures = subcaptures;
 
 	TMPL_VERIFY(vpt);
 

@@ -1875,3 +1875,92 @@ int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
 
 	return 0;
 }
+
+/** Copy all nodes in the input list to the output list
+ *
+ * @param[in] ctx	to allocate new nodes in.
+ * @param[out] out	Where to write new nodes.
+ * @param[in] in	Input nodes.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int xlat_copy(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t *in)
+{
+	xlat_exp_t	*p;
+	fr_cursor_t	out_cursor, in_cursor;
+
+	if (!in) {
+		*out = NULL;
+		return 0;
+	}
+
+	fr_cursor_talloc_init(&out_cursor, out, xlat_exp_t);
+	fr_cursor_talloc_init(&in_cursor, &in, xlat_exp_t);
+
+	/*
+	 *	Copy everything in the list of nodes
+	 */
+	while ((p = fr_cursor_next(&in_cursor))) {
+		xlat_exp_t *node;
+
+		MEM(node = xlat_exp_alloc(ctx, p->type, p->fmt, talloc_array_length(p->fmt) - 1));
+		node->quote = p->quote;
+		node->flags = p->flags;
+
+		switch (p->type) {
+		case XLAT_INVALID:
+			fr_strerror_printf("Cannot copy xlat node of type \"invalid\"");
+		error:
+			fr_cursor_head(&out_cursor);
+			fr_cursor_free_list(&out_cursor);
+			return -1;
+
+		case XLAT_BOX:
+			if (unlikely(fr_value_box_copy(node, &node->data, &p->data) < 0)) goto error;
+			continue;
+
+		case XLAT_ONE_LETTER: /* Done with format */
+		case XLAT_FUNC_UNRESOLVED:
+		case XLAT_VIRTUAL_UNRESOLVED:
+			continue;
+
+		case XLAT_FUNC:
+		case XLAT_VIRTUAL:
+			/*
+			 *	Only copy the function pointer, and whether this
+			 *	is ephemeral.
+			 *
+			 *	All instance data is specific to the xlat node and
+			 *	cannot be duplicated.
+			 *
+			 *	The node xlat nodes will need to be registered in
+			 *	the xlat instantiation table later.
+			 */
+			node->call.func = p->call.func;
+			node->call.ephemeral = p->call.ephemeral;
+			if (unlikely(xlat_copy(node, &node->child, p->child) < 0)) goto error;
+			continue;
+
+		case XLAT_ATTRIBUTE:
+			node->attr = tmpl_copy(node, p->attr);
+			continue;
+
+#ifdef HAVE_REGEX
+		case XLAT_REGEX:
+			node->regex_index = p->regex_index;
+			continue;
+#endif
+
+		case XLAT_ALTERNATE:
+			if (unlikely(xlat_copy(node, &node->alternate, p->alternate) < 0)) goto error;
+			continue;
+
+		case XLAT_GROUP:
+			if (unlikely(xlat_copy(node, &node->child, p->child) < 0)) goto error;
+			continue;
+		}
+	}
+
+	return 0;
+}
