@@ -1052,7 +1052,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 		fr_map_list_init(&inst->maps);
 		if (map_afrom_cs(inst, &inst->maps, update,
-				 &parse_rules, &parse_rules, cache_verify, &parse_rules, MAX_ATTRMAP) < 0) {
+				 &parse_rules, &parse_rules, cache_verify, NULL, MAX_ATTRMAP) < 0) {
 			return -1;
 		}
 	}
