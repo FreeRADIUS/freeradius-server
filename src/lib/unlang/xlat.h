@@ -264,30 +264,6 @@ typedef int (*xlat_detach_t)(xlat_inst_ctx_t const *xctx);
  */
 typedef int (*xlat_thread_detach_t)(xlat_thread_inst_ctx_t const *xctx);
 
-/** legacy xlat callback function
- *
- * Should write the result of expanding the fmt string to the output buffer.
- *
- * If a outlen > 0 was provided to #xlat_register_legacy, out will point to a talloced
- * buffer of that size, which the result should be written to.
- *
- * If outlen is 0, then the function should allocate its own buffer, in the
- * context of the request.
- *
- * @param[in] ctx		to allocate any dynamic buffers in.
- * @param[in,out] out		Where to write either a pointer to a new buffer,
- *				or data to an existing buffer.
- * @param[in] outlen		Length of pre-allocated buffer, or 0 if function should
- *				allocate its own buffer.
- * @param[in] mod_inst		Instance data provided by the xlat that registered the xlat.
- * @param[in] xlat_inst		Instance data created by the xlat instantiation function.
- * @param[in] request		The current request.
- * @param[in] fmt		string to expand.
- */
-typedef ssize_t (*xlat_func_legacy_t)(TALLOC_CTX *ctx, char **out, size_t outlen,
-				      void const *mod_inst, void const *xlat_inst,
-				      request_t *request, char const *fmt);
-
 typedef size_t (*xlat_escape_legacy_t)(request_t *request, char *out, size_t outlen, char const *in, void *arg);
 
 int		xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name);
@@ -347,14 +323,6 @@ bool		xlat_is_value_box(xlat_exp_t const *head);
 bool		xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_t **head);
 
 int		xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const *xr_rules);
-
-
-#define XLAT_DEFAULT_BUF_LEN	2048
-
-xlat_t		*xlat_register_legacy(void *mod_inst, char const *name,
-				      xlat_func_legacy_t func, xlat_escape_legacy_t escape,
-				      xlat_instantiate_t instantiate, size_t inst_size,
-				      size_t buf_len);
 
 xlat_t		*xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 				      char const *name, xlat_func_t func, xlat_flags_t const *flags);

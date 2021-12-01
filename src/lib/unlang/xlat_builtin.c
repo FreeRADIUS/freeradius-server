@@ -150,81 +150,6 @@ static void _xlat_func_tree_free(void *xlat)
 	talloc_free(xlat);
 }
 
-
-/** Register an old style xlat function
- *
- * @note No new legacy xlat functions should be added to the server.
- *       Each one added creates additional work later for a member
- *	 of the development team to fix the function to conform to
- *	 the new API.
- *
- * @param[in] mod_inst		Instance of module that's registering the xlat function.
- * @param[in] name		xlat name.
- * @param[in] func		xlat function to be called.
- * @param[in] escape		function to sanitize any sub expansions passed to the xlat function.
- * @param[in] instantiate	function to pre-parse any xlat specific data.
- * @param[in] inst_size		sizeof() this xlat's instance data.
- * @param[in] buf_len		Size of the output buffer to allocate when calling the function.
- *				May be 0 if the function allocates its own buffer.
- * @return
- *	- A handle for the newly registered xlat function on success.
- *	- NULL on failure.
- */
-xlat_t *xlat_register_legacy(void *mod_inst, char const *name,
-			     xlat_func_legacy_t func, xlat_escape_legacy_t escape,
-			     xlat_instantiate_t instantiate, size_t inst_size,
-			     size_t buf_len)
-{
-	xlat_t	*c;
-	bool	is_new = false;
-
-	if (!xlat_root && (xlat_init() < 0)) return NULL;
-
-	if (!*name) {
-		ERROR("%s: Invalid xlat name", __FUNCTION__);
-		return NULL;
-	}
-
-	/*
-	 *	If it already exists, replace the instance.
-	 */
-	c = fr_rb_find(xlat_root, &(xlat_t){ .name = name });
-	if (c) {
-		if (c->internal) {
-			ERROR("%s: Cannot re-define internal expansion %s", __FUNCTION__, name);
-			return NULL;
-		}
-	/*
-	 *	Doesn't exist.  Create it.
-	 */
-	} else {
-		c = talloc_zero(xlat_root, xlat_t);
-		c->name = talloc_typed_strdup(c, name);
-		talloc_set_destructor(c, _xlat_func_talloc_free);
-		is_new = true;
-	}
-
-	c->func.sync = func;
-	c->type = XLAT_FUNC_LEGACY;
-	c->buf_len = buf_len;
-	c->escape = escape;
-	c->mod_inst = mod_inst;
-	c->instantiate = instantiate;
-	c->inst_size = inst_size;
-
-	DEBUG3("%s: %s", __FUNCTION__, c->name);
-
-	if (is_new && (fr_rb_replace(NULL, xlat_root, c) < 0)) {
-		ERROR("Failed inserting xlat registration for %s",
-		      c->name);
-		talloc_free(c);
-		return NULL;
-	}
-
-	return c;
-}
-
-
 /** Register an xlat function for a module
  *
  * @param[in] ctx		Used to automate deregistration of the xlat fnction.
@@ -263,12 +188,12 @@ xlat_t *xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 			return NULL;
 		}
 
-		if ((c->type != XLAT_FUNC_NORMAL) || (c->flags.needs_async != flags->needs_async)) {
+		if (c->flags.needs_async != flags->needs_async) {
 			ERROR("%s: Cannot change async capability of %s", __FUNCTION__, name);
 			return NULL;
 		}
 
-		if (c->func.async != func) {
+		if (c->func != func) {
 			ERROR("%s: Cannot change callback function for %s", __FUNCTION__, name);
 			return NULL;
 		}
@@ -286,11 +211,8 @@ xlat_t *xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 	}
 	*c = (xlat_t){
 		.name = talloc_typed_strdup(c, name),
-		.func = {
-			.async = func
-		},
+		.func = func,
 		.mctx = our_mctx,
-		.type = XLAT_FUNC_NORMAL,
 		.flags = *flags,
 		.input_type = XLAT_INPUT_UNPROCESSED	/* set default - will be overridden if args are registered */
 	};
@@ -880,11 +802,6 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
  *
  * These xlats wrap the xlat methods of the modules in a redundant section,
  * emulating the behaviour of a redundant section, but over xlats.
- *
- * @todo - make xlat_register_legacy() take ASYNC / SYNC / UNKNOWN.  We may
- * need "unknown" here in order to properly handle the children, which
- * we don't know are async-safe or not.  For now, it's best to assume
- * that all xlat's in a redundant block are module calls, and are not async-safe
  *
  * @return
  *	- 0 on success.

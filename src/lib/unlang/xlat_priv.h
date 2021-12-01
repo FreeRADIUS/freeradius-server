@@ -36,24 +36,10 @@ extern "C" {
 #  define XLAT_DEBUG(...)
 #endif
 
-/** Function types
- *
- */
-typedef enum {
-	XLAT_FUNC_LEGACY,				//!< Ingests and excretes strings.
-	XLAT_FUNC_NORMAL				//!< Ingests and excretes value boxes (and may yield)
-} xlat_func_legacy_type_t;
-
 typedef struct xlat_s {
 	fr_rb_node_t		node;			//!< Entry in the xlat function tree.
 	char const		*name;			//!< Name of xlat function.
-
-	union {
-		xlat_func_legacy_t	sync;		//!< synchronous xlat function (async safe).
-		xlat_func_t		async;		//!< async xlat function (async unsafe).
-	} func;
-	xlat_func_legacy_type_t	type;			//!< Type of xlat function.
-
+	xlat_func_t		func;			//!< async xlat function (async unsafe).
 	bool			internal;		//!< If true, cannot be redefined.
 
 	module_inst_ctx_t const	*mctx;			//!< Original module instantiation ctx if this
@@ -74,9 +60,7 @@ typedef struct xlat_s {
 
 	xlat_flags_t		flags;			//!< various flags
 
-	size_t			buf_len;		//!< Length of output buffer to pre-allocate.
 	void			*mod_inst;		//!< Module instance passed to xlat
-	xlat_escape_legacy_t	escape;			//!< Escape function to apply to dynamic input to func.
 	xlat_input_type_t	input_type;		//!< Type of input used.
 	xlat_arg_parser_t const	*args;			//!< Definition of args consumed.
 } xlat_t;
