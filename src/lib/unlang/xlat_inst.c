@@ -105,7 +105,7 @@ static xlat_thread_inst_t *xlat_thread_inst_alloc(TALLOC_CTX *ctx, fr_event_list
 {
 	size_t 			extra_headers = 0;
 	size_t 			extra_mem = 0;
-	xlat_call_t const	*call = &((xlat_inst_t *)talloc_get_type_abort(xi, xlat_inst_t))->node->call;
+	xlat_call_t const	*call = &((xlat_inst_t const *)talloc_get_type_abort_const(xi, xlat_inst_t))->node->call;
 	xlat_thread_inst_t	*xt = NULL;
 
 	/*
@@ -178,7 +178,7 @@ static xlat_thread_inst_t *xlat_thread_inst_alloc(TALLOC_CTX *ctx, fr_event_list
  */
 static int _xlat_inst_detach(xlat_inst_t *xi)
 {
-	xlat_call_t const *call = &((xlat_exp_t *)talloc_get_type_abort_const(xi->node, xlat_exp_t))->call;
+	xlat_call_t const *call = &((xlat_exp_t const *)talloc_get_type_abort_const(xi->node, xlat_exp_t))->call;
 
 	fr_assert(xlat_inst_tree);		/* xlat_inst_init must have been called */
 	fr_assert(xi->node->type == XLAT_FUNC);
