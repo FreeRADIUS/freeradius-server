@@ -71,7 +71,8 @@ static module_ctx_t *module_ctx_from_inst(TALLOC_CTX *ctx, module_inst_ctx_t con
 {
 	module_ctx_t *nmctx;
 
-	MEM(nmctx = talloc_zero(ctx, module_ctx_t));
+	nmctx = talloc_zero(ctx, module_ctx_t);
+	if (unlikely(!nmctx)) return NULL;
 	nmctx->inst = mctx->inst;
 
 	return nmctx;
@@ -84,7 +85,8 @@ static module_ctx_t *module_ctx_from_thread_inst(TALLOC_CTX *ctx, module_thread_
 {
 	module_ctx_t *nmctx;
 
-	MEM(nmctx = talloc_zero(ctx, module_ctx_t));
+	nmctx = talloc_zero(ctx, module_ctx_t);
+	if (unlikely(!nmctx)) return NULL;
 	nmctx->inst = mctx->inst;
 	nmctx->thread = mctx->thread;
 
@@ -99,6 +101,7 @@ static module_ctx_t *module_ctx_dup(TALLOC_CTX *ctx, module_ctx_t const *mctx)
 	module_ctx_t *nmctx;
 
 	nmctx = talloc_zero(ctx, module_ctx_t);
+	if (unlikely(!nmctx)) return NULL;
 	memcpy(nmctx, mctx, sizeof(*nmctx));
 
 	return nmctx;
