@@ -139,13 +139,6 @@ static int redis_command_read_only(fr_redis_rcode_t *status_out, redisReply **re
 	return 0;
 }
 
-static int redis_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	*((rlm_redis_t **)xlat_inst) = talloc_get_type_abort(uctx, rlm_redis_t);
-
-	return 0;
-}
-
 static xlat_arg_parser_t const redis_remap_xlat_args[] = {
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -160,12 +153,10 @@ static xlat_arg_parser_t const redis_remap_xlat_args[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t redis_remap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				      request_t *request, void const *xlat_inst,
-				      UNUSED void *xlat_thread_inst,
-				      fr_value_box_list_t *in)
+				      xlat_ctx_t const *xctx,
+				      request_t *request, fr_value_box_list_t *in)
 {
-	rlm_redis_t const		*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
-									    rlm_redis_t);
+	rlm_redis_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_redis_t);
 
 	fr_socket_t			node_addr;
 	fr_pool_t			*pool;
@@ -216,12 +207,10 @@ static xlat_arg_parser_t const redis_node_xlat_args[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t redis_node_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				     request_t *request, void const *xlat_inst,
-				     UNUSED void *xlat_thread_inst,
-				     fr_value_box_list_t *in)
+				     xlat_ctx_t const *xctx,
+				     request_t *request, fr_value_box_list_t *in)
 {
-	rlm_redis_t const			*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
-										    rlm_redis_t);
+	rlm_redis_t const			*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_redis_t);
 
 	fr_redis_cluster_key_slot_t const	*key_slot;
 	fr_redis_cluster_node_t const		*node;
@@ -274,12 +263,10 @@ static xlat_arg_parser_t const redis_args[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t redis_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				request_t *request, void const *xlat_inst,
-				UNUSED void *xlat_thread_inst,
-				fr_value_box_list_t *in)
+				xlat_ctx_t const *xctx,
+				request_t *request, fr_value_box_list_t *in)
 {
-
-	rlm_redis_t const	*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst), rlm_redis_t);
+	rlm_redis_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_redis_t);
 	xlat_action_t		action = XLAT_ACTION_DONE;
 	fr_redis_conn_t		*conn;
 
@@ -467,7 +454,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	xlat = xlat_register_module(inst, mctx, mctx->inst->name, redis_xlat, NULL);
 	xlat_func_args(xlat, redis_args);
-	xlat_async_instantiate_set(xlat, redis_xlat_instantiate, rlm_redis_t *, NULL, inst);
 
 	/*
 	 *	%(redis_node:<key>[ idx])
@@ -475,13 +461,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	name = talloc_asprintf(NULL, "%s_node", mctx->inst->name);
 	xlat = xlat_register_module(inst, mctx, name, redis_node_xlat, NULL);
 	xlat_func_args(xlat, redis_node_xlat_args);
-	xlat_async_instantiate_set(xlat, redis_xlat_instantiate, rlm_redis_t *, NULL, inst);
 	talloc_free(name);
 
 	name = talloc_asprintf(NULL, "%s_remap", mctx->inst->name);
 	xlat = xlat_register_module(inst, mctx, name, redis_remap_xlat, NULL);
 	xlat_func_args(xlat, redis_remap_xlat_args);
-	xlat_async_instantiate_set(xlat, redis_xlat_instantiate, rlm_redis_t *, NULL, inst);
 	talloc_free(name);
 
 	return 0;

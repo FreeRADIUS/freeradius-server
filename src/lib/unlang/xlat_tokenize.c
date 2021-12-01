@@ -1308,7 +1308,8 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rule
  *
  * @param[in] ctx	to allocate dynamic buffers in.
  * @param[out] head	the head of the xlat list / tree structure.
- * @param[in,out] flags	that control evaluation and parsing.
+ * @param[in] el	for registering any I/O handlers.
+ * @param[in] flags	that control evaluation and parsing.
  * @param[in] in	the format string to expand.
  * @param[in] p_rules	from the encompassing grammar.
  * @param[in] t_rules	controlling how attribute references are parsed.
@@ -1318,8 +1319,9 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rule
  *	- 0 and *head != NULL - Zero length expansion
  *	- <0 the negative offset of the parse failure.
  */
-ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
-			        fr_sbuff_t *in,
+ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head,
+				fr_event_list_t *el,
+				xlat_flags_t *flags, fr_sbuff_t *in,
 			        fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
@@ -1344,7 +1346,7 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 	/*
 	 *	Create ephemeral instance data for the xlat
 	 */
-	if (xlat_instantiate_ephemeral(*head) < 0) {
+	if (xlat_instantiate_ephemeral(*head, el) < 0) {
 		fr_strerror_const("Failed performing ephemeral instantiation for xlat");
 		TALLOC_FREE(*head);
 		return 0;

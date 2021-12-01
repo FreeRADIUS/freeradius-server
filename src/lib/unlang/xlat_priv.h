@@ -101,6 +101,10 @@ typedef enum {
  *
  */
 typedef struct {
+	uint64_t		id;			//!< Identifier unique to each permanent xlat node.
+							///< This is used by the instantiation code to order
+							///< nodes by the time they were created.
+
 	xlat_t const		*func;			//!< The xlat expansion to expand format with.
 	bool			ephemeral;		//!< Instance data is ephemeral (not inserted)
 							///< into the instance tree.
@@ -194,7 +198,7 @@ void		xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
 			    request_t *request, void *rctx, fr_state_signal_t action);
 
 xlat_action_t	xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				       xlat_func_resume_t resume, xlat_exp_t const *exp,
+				       xlat_func_t resume, xlat_exp_t const *exp,
 				       request_t *request, fr_value_box_list_t *result, void *rctx);
 
 xlat_action_t	xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,

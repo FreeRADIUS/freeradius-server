@@ -63,14 +63,6 @@ typedef struct {
 	request_t	*request;		//!< so it can be resumed when we get the echo reply
 } rlm_icmp_echo_t;
 
-/** Wrapper around the module thread stuct for individual xlats
- *
- */
-typedef struct {
-	rlm_icmp_t		*inst;		//!< Instance of rlm_icmp.
-	rlm_icmp_thread_t	*t;		//!< rlm_icmp thread instance.
-} xlat_icmp_thread_inst_t;
-
 typedef struct CC_HINT(__packed__) {
 	uint8_t		type;
 	uint8_t		code;
@@ -118,18 +110,17 @@ static const CONF_PARSER module_config[] = {
 };
 
 static xlat_action_t xlat_icmp_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				      UNUSED request_t *request,
-				      UNUSED void const *xlat_inst, void *xlat_thread_inst,
-				      UNUSED fr_value_box_list_t *in, void *rctx)
+				      xlat_ctx_t const *xctx,
+				      UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
 {
-	rlm_icmp_echo_t *echo = talloc_get_type_abort(rctx, rlm_icmp_echo_t);
-	xlat_icmp_thread_inst_t	*thread = talloc_get_type_abort(xlat_thread_inst, xlat_icmp_thread_inst_t);
+	rlm_icmp_echo_t *echo = talloc_get_type_abort(xctx->rctx, rlm_icmp_echo_t);
+	rlm_icmp_thread_t *t = talloc_get_type_abort(xctx->mctx->thread, rlm_icmp_thread_t);
 	fr_value_box_t	*vb;
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
 	vb->vb_bool = echo->replied;
 
-	(void) fr_rb_delete(thread->t->tree, echo);
+	(void) fr_rb_delete(t->tree, echo);
 	talloc_free(echo);
 
 	fr_dcursor_insert(out, vb);
@@ -137,25 +128,23 @@ static xlat_action_t xlat_icmp_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static void xlat_icmp_cancel(request_t *request, UNUSED void *xlat_inst, void *xlat_thread_inst,
-			     void *rctx, fr_state_signal_t action)
+static void xlat_icmp_cancel(xlat_ctx_t const *xctx, request_t *request, fr_state_signal_t action)
 {
-	rlm_icmp_echo_t *echo = talloc_get_type_abort(rctx, rlm_icmp_echo_t);
-	xlat_icmp_thread_inst_t	*thread = talloc_get_type_abort(xlat_thread_inst, xlat_icmp_thread_inst_t);
+	rlm_icmp_echo_t *echo = talloc_get_type_abort(xctx->rctx, rlm_icmp_echo_t);
+	rlm_icmp_thread_t *t = talloc_get_type_abort(xctx->mctx->thread, rlm_icmp_thread_t);
 
 	if (action != FR_SIGNAL_CANCEL) return;
 
 	RDEBUG2("Cancelling ICMP request for %pV (counter=%d)", echo->ip, echo->counter);
 
-	(void) fr_rb_delete(thread->t->tree, echo);
+	(void) fr_rb_delete(t->tree, echo);
 	talloc_free(echo);
 }
 
 
-static void _xlat_icmp_timeout(request_t *request,
-			     UNUSED void *xlat_inst, UNUSED void *xlat_thread_inst, void *rctx, UNUSED fr_time_t fired)
+static void _xlat_icmp_timeout(xlat_ctx_t const *xctx, request_t *request, UNUSED fr_time_t fired)
 {
-	rlm_icmp_echo_t *echo = talloc_get_type_abort(rctx, rlm_icmp_echo_t);
+	rlm_icmp_echo_t *echo = talloc_get_type_abort(xctx->rctx, rlm_icmp_echo_t);
 
 	if (echo->replied) return; /* it MUST already have been marked resumable. */
 
@@ -179,12 +168,11 @@ static xlat_arg_parser_t const xlat_icmp_args[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-			       request_t *request, void const *xlat_inst, void *xlat_thread_inst,
-			       fr_value_box_list_t *in)
+			       xlat_ctx_t const *xctx,
+			       request_t *request, fr_value_box_list_t *in)
 {
-	void			*instance;
-	rlm_icmp_t const	*inst;
-	xlat_icmp_thread_inst_t	*thread = talloc_get_type_abort(xlat_thread_inst, xlat_icmp_thread_inst_t);
+	rlm_icmp_t		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_icmp_t);
+	rlm_icmp_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_icmp_thread_t);
 	rlm_icmp_echo_t		*echo;
 	icmp_header_t		icmp;
 	uint16_t		checksum;
@@ -193,16 +181,12 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	struct sockaddr_storage	dst;
 	fr_value_box_t		*in_head = fr_dlist_head(in);
 
-	memcpy(&instance, xlat_inst, sizeof(instance));	/* Stupid const issues */
-
-	inst = talloc_get_type_abort(instance, rlm_icmp_t);
-
 	/*
 	 *	If there's no input, do we can't ping anything.
 	 */
 	if (!in_head) return XLAT_ACTION_FAIL;
 
-	if (fr_value_box_cast_in_place(ctx, in_head, thread->t->ipaddr_type, NULL) < 0) {
+	if (fr_value_box_cast_in_place(ctx, in_head, t->ipaddr_type, NULL) < 0) {
 		RPEDEBUG("Failed casting result to IP address");
 		return XLAT_ACTION_FAIL;
 	}
@@ -210,7 +194,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	MEM(echo = talloc_zero(ctx, rlm_icmp_echo_t));
 	echo->ip = in_head;
 	echo->request = request;
-	echo->counter = thread->t->counter++;
+	echo->counter = t->counter++;
 
 	/*
 	 *	Add the IP to the local tracking heap, so that the IO
@@ -219,16 +203,16 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *	This insert will never fail, because of the unique
 	 *	counter above.
 	 */
-	if (!fr_rb_insert(thread->t->tree, echo)) {
+	if (!fr_rb_insert(t->tree, echo)) {
 		RPEDEBUG("Failed inserting IP into tracking table");
 		talloc_free(echo);
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (unlang_xlat_event_timeout_add(request, _xlat_icmp_timeout, echo,
-					  fr_time_add(fr_time(), inst->timeout)) < 0) {
+	if (unlang_xlat_timeout_add(request, _xlat_icmp_timeout, echo,
+				    fr_time_add(fr_time(), inst->timeout)) < 0) {
 		RPEDEBUG("Failed adding timeout");
-		(void) fr_rb_delete(thread->t->tree, echo);
+		(void) fr_rb_delete(t->tree, echo);
 		talloc_free(echo);
 		return XLAT_ACTION_FAIL;
 	}
@@ -236,9 +220,9 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	RDEBUG("Sending ICMP request to %pV (counter=%d)", echo->ip, echo->counter);
 
 	icmp = (icmp_header_t) {
-		.type = thread->t->request_type,
-		.ident = thread->t->ident,
-		.data = thread->t->data,
+		.type = t->request_type,
+		.ident = t->ident,
+		.data = t->data,
 		.counter = echo->counter
 	};
 
@@ -252,7 +236,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	/*
 	 *	Start off with the IPv6 pseudo-header checksum
 	 */
-	if (thread->t->ipaddr_type == FR_TYPE_IPV6_ADDR) {
+	if (t->ipaddr_type == FR_TYPE_IPV6_ADDR) {
 		checksum = fr_ip6_pesudo_header_checksum(&inst->src_ipaddr.addr.v6, &echo->ip->vb_ip.addr.v6,
 							 sizeof(ip_header6_t) + sizeof(icmp), IPPROTO_ICMPV6);
 	}
@@ -262,17 +246,17 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 */
 	icmp.checksum = htons(icmp_checksum((uint8_t *) &icmp, sizeof(icmp), checksum));
 
-	rcode = sendto(thread->t->fd, &icmp, sizeof(icmp), 0, (struct sockaddr *) &dst, salen);
+	rcode = sendto(t->fd, &icmp, sizeof(icmp), 0, (struct sockaddr *) &dst, salen);
 	if (rcode < 0) {
 		REDEBUG("Failed sending ICMP request to %pV: %s", echo->ip, fr_syserror(errno));
-		(void) fr_rb_delete(thread->t->tree, echo);
+		(void) fr_rb_delete(t->tree, echo);
 		talloc_free(echo);
 		return XLAT_ACTION_FAIL;
 	}
 
 	if ((size_t) rcode < sizeof(icmp)) {
 		REDEBUG("Failed sending entire ICMP packet");
-		(void) fr_rb_delete(thread->t->tree, echo);
+		(void) fr_rb_delete(t->tree, echo);
 		talloc_free(echo);
 		return XLAT_ACTION_FAIL;
 	}
@@ -387,34 +371,6 @@ static void mod_icmp_error(fr_event_list_t *el, UNUSED int sockfd, UNUSED int fl
 	(void) fr_event_fd_delete(el, t->fd, FR_EVENT_FILTER_IO);
 	close(t->fd);
 	t->fd = -1;
-}
-
-/** Resolves and caches the module's thread instance for use by a specific xlat instance
- *
- * @param[in] xlat_inst			UNUSED.
- * @param[in] xlat_thread_inst		pre-allocated structure to hold pointer to module's
- *					thread instance.
- * @param[in] exp			UNUSED.
- * @param[in] uctx			Module's global instance.  Used to lookup thread
- *					specific instance.
- * @return 0.
- */
-static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread_inst,
-				       UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	rlm_icmp_t		*inst = talloc_get_type_abort(uctx, rlm_icmp_t);
-	xlat_icmp_thread_inst_t	*xt = xlat_thread_inst;
-
-	xt->inst = inst;
-	xt->t = talloc_get_type_abort(module_thread_by_data(inst)->data, rlm_icmp_thread_t);
-
-	return 0;
-}
-
-static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	*((void **)xlat_inst) = talloc_get_type_abort(uctx, rlm_icmp_t);
-	return 0;
 }
 
 /** Instantiate thread data for the submodule.
@@ -543,8 +499,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	xlat = xlat_register_module(inst, mctx, mctx->inst->name, xlat_icmp, XLAT_FLAG_NEEDS_ASYNC);
 	xlat_func_args(xlat, xlat_icmp_args);
-	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_icmp_t *, NULL, inst);
-	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, xlat_icmp_thread_inst_t, NULL, inst);
 
 	FR_TIME_DELTA_BOUND_CHECK("timeout", inst->timeout, >=, fr_time_delta_from_msec(100)); /* 1/10s minimum timeout */
 	FR_TIME_DELTA_BOUND_CHECK("timeout", inst->timeout, <=, fr_time_delta_from_sec(10));

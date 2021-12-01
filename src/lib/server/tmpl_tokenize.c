@@ -2539,7 +2539,8 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			if (!t_rules->at_runtime) {
 				slen = xlat_tokenize(vpt, &head, &flags, &our_in, p_rules, t_rules);
 			} else {
-				slen = xlat_tokenize_ephemeral(vpt, &head, &flags, &our_in, p_rules, t_rules);
+				slen = xlat_tokenize_ephemeral(vpt, &head,
+							       t_rules->runtime_el, &flags, &our_in, p_rules, t_rules);
 			}
 
 			if (!head) return slen;
@@ -2664,7 +2665,8 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		if (!t_rules->at_runtime) {
 			slen = xlat_tokenize(vpt, &head, &flags, &our_in, p_rules, t_rules);
 		} else {
-			slen = xlat_tokenize_ephemeral(vpt, &head, &flags, &our_in, p_rules, t_rules);
+			slen = xlat_tokenize_ephemeral(vpt, &head, t_rules->runtime_el,
+						       &flags, &our_in, p_rules, t_rules);
 		}
 		if (!head) return slen;
 

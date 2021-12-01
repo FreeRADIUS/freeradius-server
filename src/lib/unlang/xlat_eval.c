@@ -20,6 +20,7 @@
  * @file xlat_eval.c
  * @brief String expansion ("translation").  Evaluation of pre-parsed xlat epxansions.
  *
+ * @copyright 2018-2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2000,2006 The FreeRADIUS server project
  * @copyright 2000 Alan DeKok (aland@freeradius.org)
  */
@@ -931,7 +932,9 @@ static const char xlat_spaces[] = "                                             
 void xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
 		 request_t *request, void *rctx, fr_state_signal_t action)
 {
-	signal(request, exp->call.inst, xlat_thread_instance_find(exp)->data, rctx, action);
+	xlat_thread_inst_t *t = xlat_thread_instance_find(exp);
+
+	signal(XLAT_CTX(exp->call.inst, t->data, t->mctx, rctx), request, action);
 }
 
 /** Call an xlat's resumption method
@@ -946,10 +949,10 @@ void xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
  *				when it yielded.
  */
 xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				     xlat_func_resume_t resume, xlat_exp_t const *exp,
+				     xlat_func_t resume, xlat_exp_t const *exp,
 				     request_t *request, fr_value_box_list_t *result, void *rctx)
 {
-	xlat_thread_inst_t	*thread_inst = xlat_thread_instance_find(exp);
+	xlat_thread_inst_t	*t = xlat_thread_instance_find(exp);
 	xlat_action_t		xa;
 
 	/*
@@ -959,7 +962,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	and don't remove them from the list.
 	 */
 	VALUE_BOX_TALLOC_LIST_VERIFY(result);
-	xa = resume(ctx, out, request, exp->call.inst, thread_inst->data, result, rctx);
+	xa = resume(ctx, out, XLAT_CTX(exp->call.inst->data, t->data, t->mctx, rctx), request, result);
 	VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
 	RDEBUG2("EXPAND %%%c%s:...%c",
@@ -1072,10 +1075,11 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		case XLAT_FUNC_NORMAL:
 		{
 			xlat_action_t		xa;
-			xlat_thread_inst_t	*thread_inst;
+			xlat_thread_inst_t	*t;
 			fr_value_box_list_t	result_copy;
 
-			thread_inst = xlat_thread_instance_find(node);
+			t = xlat_thread_instance_find(node);
+			fr_assert(t);
 
 			XLAT_DEBUG("** [%i] %s(func-async) - %%%c%s:%pM%c",
 				   unlang_interpret_stack_depth(request), __FUNCTION__,
@@ -1104,9 +1108,9 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			}
 			VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
-			xa = node->call.func->func.async(ctx, out, request,
-							 node->call.inst ? node->call.inst->data : NULL,
-							 thread_inst ? thread_inst->data : NULL, result);
+			xa = node->call.func->func.async(ctx, out,
+							 XLAT_CTX(node->call.inst->data, t->data, t->mctx, NULL),
+							 request, result);
 			VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
 			if (RDEBUG_ENABLED2) xlat_debug_log_expansion(request, *in, &result_copy);
@@ -1117,11 +1121,15 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				return xa;
 
 			case XLAT_ACTION_PUSH_CHILD:
-				RDEBUG2("   -- CHILD");
+				RDEBUG3("   -- CHILD");
+				return xa;
+
+			case XLAT_ACTION_PUSH_UNLANG:
+				RDEBUG3("  -- UNLANG");
 				return xa;
 
 			case XLAT_ACTION_YIELD:
-				RDEBUG2("   -- YIELD");
+				RDEBUG3("   -- YIELD");
 				return xa;
 
 			case XLAT_ACTION_DONE:				/* Process the result */
@@ -1311,7 +1319,9 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 
 			xlat_debug_log_expansion(request, node, NULL);
 			if (node->call.func->type == XLAT_FUNC_NORMAL) {
-				node->call.func->func.async(ctx, out, request, node->call.func->uctx, NULL, NULL);
+				node->call.func->func.async(ctx, out,
+							    XLAT_CTX(node->call.func->uctx, NULL, NULL, NULL),
+							    request, NULL);
 			} else {
 				MEM(value = fr_value_box_alloc_null(ctx));
 				slen = node->call.func->func.sync(value, &str, node->call.func->buf_len, node->call.func->mod_inst,
@@ -1527,7 +1537,9 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 			fr_value_box_list_init (&result);
 			fr_dcursor_init(&out, &result);
 
-			action = node->call.func->func.async(pool, &out, request, node->call.func->uctx, NULL, NULL);
+			action = node->call.func->func.async(ctx, &out,
+							     XLAT_CTX(node->call.func->uctx, NULL, NULL, NULL),
+							     request, NULL);
 			if (action == XLAT_ACTION_FAIL) {
 				talloc_free(pool);
 				return NULL;
@@ -1574,7 +1586,7 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 			 *	the async xlat up until the point
 			 *	that it needs to yield.
 			 */
-			if (unlang_xlat_push(pool, &result, request, node, true) < 0) {
+			if (unlang_xlat_push(pool, NULL, &result, request, node, true) < 0) {
 				talloc_free(pool);
 				return NULL;
 			}
@@ -1881,9 +1893,6 @@ static ssize_t _xlat_eval_compiled(TALLOC_CTX *ctx, char **out, size_t outlen, r
 	return slen;
 }
 
-static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *request, char const *fmt,
-			  xlat_escape_legacy_t escape, void const *escape_ctx) CC_HINT(nonnull (2, 4, 5));
-
 /** Replace %whatever in a string.
  *
  * See 'doc/unlang/xlat.adoc' for more information.
@@ -1897,8 +1906,9 @@ static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t 
  * @param[in] escape_ctx	pointer to pass to escape function.
  * @return length of string written @bug should really have -1 for failure.
  */
-static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *request, char const *fmt,
-			  xlat_escape_legacy_t escape, void const *escape_ctx)
+static CC_HINT(nonnull (2, 4, 5))
+ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *request, char const *fmt,
+		   xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	ssize_t len;
 	xlat_exp_t *node;
@@ -1909,7 +1919,7 @@ static ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t 
 	/*
 	 *	Give better errors than the old code.
 	 */
-	len = xlat_tokenize_ephemeral(ctx, &node, NULL,
+	len = xlat_tokenize_ephemeral(ctx, &node, unlang_interpret_event_list(request), NULL,
 				      &FR_SBUFF_IN(fmt, strlen(fmt)),
 				      NULL, &(tmpl_rules_t){ .dict_def = request->dict });
 	if (len == 0) {

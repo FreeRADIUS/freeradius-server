@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX inst->name
+#define LOG_PREFIX mctx->inst->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module.h>
@@ -356,8 +356,8 @@ static xlat_arg_parser_t const trigger_test_xlat_args[] = {
 /** Run a trigger (useful for testing)
  *
  */
-static xlat_action_t trigger_test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-				       UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+static xlat_action_t trigger_test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				       UNUSED xlat_ctx_t const *xctx, request_t *request,
 				       fr_value_box_list_t *in)
 {
 	fr_value_box_t	*in_head = fr_dlist_head(in);
@@ -388,9 +388,9 @@ static xlat_arg_parser_t const test_xlat_args[] = {
  *
  * This just copies the input to the output.
  */
-static xlat_action_t test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
-				       UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				       fr_value_box_list_t *in)
+static xlat_action_t test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+			       UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,
+			       fr_value_box_list_t *in)
 {
 	fr_value_box_t	*vb_p = NULL;
 	fr_value_box_t	*vb;
@@ -424,7 +424,6 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 
 static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_test_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_test_t);
 	rlm_test_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_test_thread_t);
 
 	INFO("Performing detach for thread %p", (void *)t->value);

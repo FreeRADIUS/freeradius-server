@@ -722,7 +722,7 @@ int fr_edit_list_apply_list_assignment_const(fr_edit_list_t *el, fr_pair_t *dst,
 		fr_pair_list_init(&copy); \
 		if (fr_pair_list_copy(dst, &copy, src) < 0) return -1; \
 	} while (0)
-	
+
 
 	switch (op) {
 		/*

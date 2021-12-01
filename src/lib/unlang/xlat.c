@@ -49,25 +49,28 @@ typedef struct {
 								///< expansion.
 	bool			alternate;			//!< record which alternate branch we
 								///< previously took.
-	xlat_func_resume_t	resume;				//!< called on resume
+	xlat_func_t		resume;				//!< called on resume
 	xlat_func_signal_t	signal;				//!< called on signal
 	void			*rctx;				//!< for resume / signal
+
+	bool			*success;			//!< If set, where to record the result
+								///< of the execution.
 } unlang_frame_state_xlat_t;
 
 /** Wrap an #fr_event_timer_t providing data needed for unlang events
  *
  */
 typedef struct {
-	request_t				*request;			//!< Request this event pertains to.
-	int				fd;				//!< File descriptor to wait on.
-	fr_unlang_xlat_timeout_t	timeout;			//!< Function to call on timeout.
-	fr_unlang_xlat_fd_event_t	fd_read;			//!< Function to call when FD is readable.
-	fr_unlang_xlat_fd_event_t	fd_write;			//!< Function to call when FD is writable.
-	fr_unlang_xlat_fd_event_t	fd_error;			//!< Function to call when FD has errored.
-	void const			*inst;				//!< Module instance to pass to callbacks.
-	void				*thread;			//!< Thread specific xlat instance.
-	void const			*ctx;				//!< ctx data to pass to callbacks.
-	fr_event_timer_t const		*ev;				//!< Event in this worker's event heap.
+	request_t			*request;		//!< Request this event pertains to.
+	int				fd;			//!< File descriptor to wait on.
+	fr_unlang_xlat_timeout_t	timeout;		//!< Function to call on timeout.
+	fr_unlang_xlat_fd_event_t	fd_read;		//!< Function to call when FD is readable.
+	fr_unlang_xlat_fd_event_t	fd_write;		//!< Function to call when FD is writable.
+	fr_unlang_xlat_fd_event_t	fd_error;		//!< Function to call when FD has errored.
+	xlat_inst_t			*inst;			//!< xlat instance data.
+	xlat_thread_inst_t		*thread;		//!< Thread specific xlat instance.
+	void const			*rctx;			//!< rctx data to pass to callbacks.
+	fr_event_timer_t const		*ev;			//!< Event in this worker's event heap.
 } unlang_xlat_event_t;
 
 /** Frees an unlang event, removing it from the request's event loop
@@ -94,20 +97,26 @@ static int _unlang_xlat_event_free(unlang_xlat_event_t *ev)
  *
  * @param[in] el	the event timer was inserted into.
  * @param[in] now	The current time, as held by the event_list.
- * @param[in] ctx	unlang_module_event_t structure holding callbacks.
+ * @param[in] uctx	unlang_module_event_t structure holding callbacks.
  *
  */
-static void unlang_xlat_event_timeout_handler(UNUSED fr_event_list_t *el, fr_time_t now, void *ctx)
+static void unlang_xlat_event_timeout_handler(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 {
-	unlang_xlat_event_t *ev = talloc_get_type_abort(ctx, unlang_xlat_event_t);
+	unlang_xlat_event_t		*ev = talloc_get_type_abort(uctx, unlang_xlat_event_t);
 
-	void *mutable_ctx;
-	void *mutable_inst;
-
-	memcpy(&mutable_ctx, &ev->ctx, sizeof(mutable_ctx));
-	memcpy(&mutable_inst, &ev->inst, sizeof(mutable_inst));
-
-	ev->timeout(ev->request, mutable_inst, ev->thread, mutable_ctx, now);
+	/*
+	 *	If the timeout's fired then the xlat must necessarily
+	 *	be yielded, so it's fine to pass in its rctx.
+	 *
+	 *	It should be able to free the rctx if it wants to.
+	 *	We never free it explicitly, and instead rely on
+	 *	talloc parenting.
+	 */
+	ev->timeout(XLAT_CTX(ev->inst->data,
+			     ev->thread->data,
+			     ev->thread->mctx,
+			     UNCONST(void *, ev->rctx)),
+			     ev->request, now);
 
 	/* Remove old references from the request */
 	talloc_free(ev);
@@ -119,14 +128,14 @@ static void unlang_xlat_event_timeout_handler(UNUSED fr_event_list_t *el, fr_tim
  *
  * @param[in] request	the request
  * @param[in] callback	to run when the timeout hits
- * @param[in] ctx	passed to the callback
+ * @param[in] rctx	passed to the callback
  * @param[in] when	when the timeout fires
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int unlang_xlat_event_timeout_add(request_t *request, fr_unlang_xlat_timeout_t callback,
-				  void const *ctx, fr_time_t when)
+int unlang_xlat_timeout_add(request_t *request,
+			    fr_unlang_xlat_timeout_t callback, void const *rctx, fr_time_t when)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -139,14 +148,14 @@ int unlang_xlat_event_timeout_add(request_t *request, fr_unlang_xlat_timeout_t c
 	if (!state->event_ctx) MEM(state->event_ctx = talloc_zero(state, bool));
 
 	ev = talloc_zero(state->event_ctx, unlang_xlat_event_t);
-	if (!ev) return -1;
+	if (unlikely(!ev)) return -1;
 
 	ev->request = request;
 	ev->fd = -1;
 	ev->timeout = callback;
 	ev->inst = state->exp->call.inst;
 	ev->thread = xlat_thread_instance_find(state->exp);
-	ev->ctx = ctx;
+	ev->rctx = rctx;
 
 	if (fr_event_timer_at(request, unlang_interpret_event_list(request),
 			      &ev->ev, when, unlang_xlat_event_timeout_handler, ev) < 0) {
@@ -163,6 +172,8 @@ int unlang_xlat_event_timeout_add(request_t *request, fr_unlang_xlat_timeout_t c
 /** Push a pre-compiled xlat onto the stack for evaluation
  *
  * @param[in] ctx		To allocate value boxes and values in.
+ * @param[out] p_success	If set, and execution succeeds, true will be written
+ *				here.  If execution fails, false will be written.
  * @param[out] out		Where to write the result of the expansion.
  * @param[in] request		to push xlat onto.
  * @param[in] exp		node to evaluate.
@@ -172,7 +183,7 @@ int unlang_xlat_event_timeout_add(request_t *request, fr_unlang_xlat_timeout_t c
  *	- 0 on success.
  *	- -1 on failure.
  */
-int unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_list_t *out,
+int unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
 		     request_t *request, xlat_exp_t const *exp, bool top_frame)
 {
 	/** Static instruction for performing xlat evaluations
@@ -205,9 +216,8 @@ int unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 	/*
 	 *	Push a new xlat eval frame onto the stack
 	 */
-	if (unlang_interpret_push(request, &xlat_instruction, RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, top_frame) < 0) {
-		return -1;
-	}
+	if (unlang_interpret_push(request, &xlat_instruction,
+				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, top_frame) < 0) return -1;
 	frame = &stack->frame[stack->depth];
 
 	/*
@@ -215,11 +225,14 @@ int unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 	 */
 	MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_xlat_t));
 	state->exp = talloc_get_type_abort_const(exp, xlat_exp_t);	/* Ensure the node is valid */
+	state->success = p_success;
+	state->ctx = ctx;
 
+	/*
+	 *	Initialise the input and output lists
+	 */
 	fr_dcursor_init(&state->values, out);
 	fr_value_box_list_init(&state->rhead);
-
-	state->ctx = ctx;
 
 	return 0;
 }
@@ -244,10 +257,14 @@ static unlang_action_t unlang_xlat_repeat(rlm_rcode_t *p_result, request_t *requ
 		 *	multiple sibling nodes.
 		 */
 		fr_dlist_talloc_free(&state->rhead);
-		if (unlang_xlat_push(state->ctx, &state->rhead, request, child, false) < 0) {
+		if (unlang_xlat_push(state->ctx, state->success, &state->rhead, request, child, false) < 0) {
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
+		return UNLANG_ACTION_PUSHED_CHILD;
+
+	case XLAT_ACTION_PUSH_UNLANG:
+		repeatable_set(frame);	/* Call the xlat code on the way back down */
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case XLAT_ACTION_YIELD:
@@ -259,11 +276,13 @@ static unlang_action_t unlang_xlat_repeat(rlm_rcode_t *p_result, request_t *requ
 		return UNLANG_ACTION_YIELD;
 
 	case XLAT_ACTION_DONE:
+		if (state->success) *state->success = true;
 		*p_result = RLM_MODULE_OK;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_FAIL:
 	fail:
+		if (state->success) *state->success = false;
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -297,10 +316,14 @@ static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request, un
 		 *	multiple sibling nodes.
 		 */
 		fr_dlist_talloc_free(&state->rhead);
-		if (unlang_xlat_push(state->ctx, &state->rhead, request, child, false) < 0) {
+		if (unlang_xlat_push(state->ctx, state->success, &state->rhead, request, child, false) < 0) {
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
+		return UNLANG_ACTION_PUSHED_CHILD;
+
+	case XLAT_ACTION_PUSH_UNLANG:
+		repeatable_set(frame);	/* Call the xlat code on the way back down */
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case XLAT_ACTION_YIELD:
@@ -312,11 +335,13 @@ static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request, un
 		return UNLANG_ACTION_YIELD;
 
 	case XLAT_ACTION_DONE:
+		if (state->success) *state->success = true;
 		*p_result = RLM_MODULE_OK;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
 	case XLAT_ACTION_FAIL:
 	fail:
+		if (state->success) *state->success = false;
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -389,6 +414,10 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
 		*p_result = RLM_MODULE_OK;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
+	case XLAT_ACTION_PUSH_UNLANG:
+		repeatable_set(frame);
+		return UNLANG_ACTION_PUSHED_CHILD;
+
 	case XLAT_ACTION_PUSH_CHILD:
 		fr_assert(0);
 		FALL_THROUGH;
@@ -422,7 +451,7 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
  * @return always returns XLAT_ACTION_YIELD
  */
 xlat_action_t unlang_xlat_yield(request_t *request,
-				xlat_func_resume_t resume, xlat_func_signal_t signal,
+				xlat_func_t resume, xlat_func_signal_t signal,
 				void *rctx)
 {
 	unlang_stack_t			*stack = request->stack;

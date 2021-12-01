@@ -65,10 +65,9 @@ static void _delay_done(module_ctx_t const *mctx, request_t *request, fr_time_t 
 	unlang_interpret_mark_runnable(request);
 }
 
-static void _xlat_delay_done(request_t *request,
-			     UNUSED void *xlat_inst, UNUSED void *xlat_thread_inst, void *rctx, fr_time_t fired)
+static void _xlat_delay_done(xlat_ctx_t const *xctx, request_t *request, fr_time_t fired)
 {
-	fr_time_t *yielded = talloc_get_type_abort(rctx, fr_time_t);
+	fr_time_t *yielded = talloc_get_type_abort(xctx->rctx, fr_time_t);
 
 	RDEBUG2("Delay done");
 
@@ -176,11 +175,10 @@ static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_
 }
 
 static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				       request_t *request,
-				       UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				       UNUSED fr_value_box_list_t *in, void *rctx)
+				       xlat_ctx_t const *xctx,
+				       request_t *request, UNUSED fr_value_box_list_t *in)
 {
-	fr_time_t	*yielded_at = talloc_get_type_abort(rctx, fr_time_t);
+	fr_time_t	*yielded_at = talloc_get_type_abort(xctx->rctx, fr_time_t);
 	fr_time_delta_t	delayed;
 	fr_value_box_t	*vb;
 
@@ -197,8 +195,7 @@ static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static void xlat_delay_cancel(request_t *request, UNUSED void *instance, UNUSED void *thread,
-			      UNUSED void *rctx, fr_state_signal_t action)
+static void xlat_delay_cancel(UNUSED xlat_ctx_t const *xctx, request_t *request, fr_state_signal_t action)
 {
 	if (action != FR_SIGNAL_CANCEL) return;
 
@@ -220,17 +217,12 @@ static xlat_arg_parser_t const xlat_delay_args[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_delay(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-				request_t *request, void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				fr_value_box_list_t *in)
+				xlat_ctx_t const *xctx,
+				request_t *request, fr_value_box_list_t *in)
 {
-	rlm_delay_t const	*inst;
-	void			*instance;
+	rlm_delay_t const	*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_delay_t);
 	fr_time_t		resume_at, *yielded_at;
 	fr_value_box_t		*delay = fr_dlist_head(in);
-
-	memcpy(&instance, xlat_inst, sizeof(instance));	/* Stupid const issues */
-
-	inst = talloc_get_type_abort(instance, rlm_delay_t);
 
 	/*
 	 *	Record the time that we yielded the request
@@ -260,18 +252,12 @@ static xlat_action_t xlat_delay(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out
 yield:
 	RDEBUG3("Current time %pVs, resume time %pVs", fr_box_time(*yielded_at), fr_box_time(resume_at));
 
-	if (unlang_xlat_event_timeout_add(request, _xlat_delay_done, yielded_at, resume_at) < 0) {
+	if (unlang_xlat_timeout_add(request, _xlat_delay_done, yielded_at, resume_at) < 0) {
 		RPEDEBUG("Adding event failed");
 		return XLAT_ACTION_FAIL;
 	}
 
 	return unlang_xlat_yield(request, xlat_delay_resume, xlat_delay_cancel, yielded_at);
-}
-
-static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	*((void **)xlat_inst) = talloc_get_type_abort(uctx, rlm_delay_t);
-	return 0;
 }
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
@@ -281,7 +267,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	xlat = xlat_register_module(inst, mctx, mctx->inst->name, xlat_delay, XLAT_FLAG_NEEDS_ASYNC);
 	xlat_func_args(xlat, xlat_delay_args);
-	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_delay_t *, NULL, inst);
 	return 0;
 }
 

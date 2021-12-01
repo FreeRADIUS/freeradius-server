@@ -61,11 +61,11 @@ static const CONF_PARSER module_config[] = {
 };
 
 
-static xlat_action_t exec_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-				      UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				      UNUSED fr_value_box_list_t *in, void *rctx)
+static xlat_action_t exec_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				      xlat_ctx_t const *xctx,
+				      request_t *request, UNUSED fr_value_box_list_t *in)
 {
-	fr_exec_state_t	*exec = talloc_get_type_abort(rctx, fr_exec_state_t);
+	fr_exec_state_t	*exec = talloc_get_type_abort(xctx->rctx, fr_exec_state_t);
 	fr_value_box_t	*vb;
 
 	/*
@@ -110,11 +110,11 @@ static xlat_arg_parser_t const exec_xlat_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out, request_t *request,
-			       void const *xlat_inst, UNUSED void *xlat_thread_inst,
-			       fr_value_box_list_t *in)
+static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+			       xlat_ctx_t const *xctx,
+			       request_t *request, fr_value_box_list_t *in)
 {
-	rlm_exec_t const	*inst = talloc_get_type_abort_const(*UNCONST(void **, xlat_inst), rlm_exec_t);
+	rlm_exec_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_exec_t);
 	fr_pair_list_t		*env_pairs = NULL;
 	fr_exec_state_t		*exec;
 
@@ -147,12 +147,6 @@ static xlat_action_t exec_xlat(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out, reques
 	return unlang_xlat_yield(request, exec_xlat_resume, NULL, exec);
 }
 
-static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	*((void **)xlat_inst) = talloc_get_type_abort(uctx, rlm_exec_t);
-	return 0;
-}
-
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -172,7 +166,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	xlat = xlat_register_module(NULL, mctx, mctx->inst->name, exec_xlat, XLAT_FLAG_NEEDS_ASYNC);
 	xlat_func_args(xlat, exec_xlat_args);
-	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_exec_t *, NULL, inst);
 
 	if (inst->input) {
 		p = inst->input;
@@ -438,7 +431,7 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch(rlm_rcode_t *p_result,
 		fr_value_box_list_t *box = talloc_zero(ctx, fr_value_box_list_t);
 
 		fr_value_box_list_init(box);
-		return unlang_module_yield_to_xlat(request, box, request, tmpl_xlat(inst->tmpl),
+		return unlang_module_yield_to_xlat(request, NULL, box, request, tmpl_xlat(inst->tmpl),
 						   mod_exec_nowait_resume, NULL, box);
 	}
 

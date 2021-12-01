@@ -52,13 +52,6 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static int always_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	*((rlm_always_t **)xlat_inst) = talloc_get_type_abort(uctx, rlm_always_t);
-
-	return 0;
-}
-
 static xlat_arg_parser_t const always_xlat_args[] = {
 	{ .single = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -71,11 +64,10 @@ static xlat_arg_parser_t const always_xlat_args[] = {
  * Example: "%{db_status:fail}"
  */
 static xlat_action_t always_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				 request_t *request, void const *xlat_inst,
-				 UNUSED void *xlat_thread_inst,
-				 fr_value_box_list_t *in)
+				 xlat_ctx_t const *xctx,
+				 request_t *request, fr_value_box_list_t *in)
 {
-	rlm_always_t const	*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),rlm_always_t);
+	rlm_always_t		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_always_t);
 	module_instance_t	*mi = inst->mi;
 	char const		*status;
 	char const		*p;
@@ -135,7 +127,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	xlat = xlat_register_module(inst, mctx, mctx->inst->name, always_xlat, NULL);
 	xlat_func_args(xlat, always_xlat_args);
-	xlat_async_instantiate_set(xlat, always_xlat_instantiate, rlm_always_t *, NULL, inst);
 
 	return 0;
 }

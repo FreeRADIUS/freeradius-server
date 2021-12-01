@@ -61,9 +61,9 @@ xlat_arg_parser_t const trigger_xlat_args[] = {
 /** Retrieve attributes from a special trigger list
  *
  */
-xlat_action_t trigger_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-			   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-			   fr_value_box_list_t *in)
+xlat_action_t trigger_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+			   UNUSED xlat_ctx_t const *xctx,
+			   request_t *request, fr_value_box_list_t *in)
 {
 	fr_pair_list_t		*head = NULL;
 	fr_dict_attr_t const	*da;
@@ -251,7 +251,7 @@ static unlang_action_t trigger_run(rlm_rcode_t *p_result, UNUSED int *priority, 
 
 	RDEBUG("Running trigger \"%s\"", trigger->command);
 
-	if (unlang_xlat_push(request, &trigger->args, request,
+	if (unlang_xlat_push(request, NULL, &trigger->args, request,
 			     trigger->xlat, UNLANG_SUB_FRAME) < 0) RETURN_MODULE_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;

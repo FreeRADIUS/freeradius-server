@@ -80,8 +80,8 @@ static xlat_arg_parser_t const soh_xlat_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t soh_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-			      UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+static xlat_action_t soh_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+			      UNUSED xlat_ctx_t const *xctx, request_t *request,
 			      fr_value_box_list_t *in)
 {
 	fr_value_box_t	*in_head = fr_dlist_head(in);

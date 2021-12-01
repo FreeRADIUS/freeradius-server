@@ -209,23 +209,19 @@ static int sql_xlat_escape(request_t *request, fr_value_box_t *vb, void *uctx)
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-			      void const *xlat_inst, UNUSED void *xlat_thread_inst,
-			      fr_value_box_list_t *in)
+static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+			      xlat_ctx_t const *xctx,
+			      request_t *request, fr_value_box_list_t *in)
 {
 	rlm_sql_handle_t	*handle = NULL;
 	rlm_sql_row_t		row;
-	rlm_sql_t const		*inst;
-	void			*instance;
+	rlm_sql_t const		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_sql_t);
 	sql_rcode_t		rcode;
 	xlat_action_t		ret = XLAT_ACTION_DONE;
 	char const		*p;
 	fr_value_box_t		*arg = fr_dlist_head(in);
 	fr_value_box_t		*vb = NULL;
 	bool			fetched = false;
-
-	memcpy(&instance, xlat_inst, sizeof(instance));
-	inst = talloc_get_type_abort(instance, rlm_sql_t);
 
 	handle = fr_pool_connection_get(inst->pool, request);	/* connection pool should produce error */
 	if (!handle) return XLAT_ACTION_FAIL;
@@ -997,15 +993,6 @@ finish:
 	RETURN_MODULE_RCODE(rcode);
 }
 
-/** Make module instance available to xlats
- *
- */
-static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	*((void **)xlat_inst) = talloc_get_type_abort(uctx, rlm_sql_t);
-	return 0;
-}
-
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_sql_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_t);
@@ -1133,8 +1120,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	sql_xlat_arg->func = sql_xlat_escape;
 	sql_xlat_arg->uctx = inst;
 	xlat_func_mono(xlat, sql_xlat_arg);
-
-	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_sql_t *, NULL, inst);
 
 	/*
 	 *	Register the SQL map processor function

@@ -286,12 +286,6 @@ static int pdb_decode_acct_ctrl(char const *p)
 	return acct_ctrl;
 }
 
-static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	*((void **)xlat_inst) = talloc_get_type_abort(uctx, rlm_mschap_t);
-	return 0;
-}
-
 static xlat_arg_parser_t const mschap_xlat_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_STRING },
 	{ .concat = true, .type = FR_TYPE_STRING },
@@ -305,23 +299,19 @@ static xlat_arg_parser_t const mschap_xlat_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-				 void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				 fr_value_box_list_t *in)
+static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				 xlat_ctx_t const *xctx,
+				 request_t *request, fr_value_box_list_t *in)
 {
 	size_t			data_len;
 	uint8_t const  		*data = NULL;
 	uint8_t			buffer[32];
 	fr_pair_t		*user_name;
 	fr_pair_t		*chap_challenge, *response;
-	rlm_mschap_t const	*inst;
-	void			*instance;
+	rlm_mschap_t const	*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_mschap_t);
 	fr_value_box_t		*arg = fr_dlist_head(in);
 	fr_value_box_t		*vb;
 	bool			tainted = false;
-
-	memcpy(&instance, xlat_inst, sizeof(instance));
-	inst = talloc_get_type_abort(instance, rlm_mschap_t);
 
 	response = NULL;
 
@@ -2269,7 +2259,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	xlat = xlat_register_module(inst, mctx, mctx->inst->name, mschap_xlat, NULL);
 	xlat_func_args(xlat, mschap_xlat_args);
-	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_mschap_t *, NULL, inst);
 
 	return 0;
 }

@@ -96,6 +96,7 @@ int		fr_heap_insert(fr_heap_t *hp, void *data) CC_HINT(nonnull);
 int		fr_heap_extract(fr_heap_t *hp, void *data) CC_HINT(nonnull);
 void		*fr_heap_pop(fr_heap_t *hp) CC_HINT(nonnull);
 void		*fr_heap_peek(fr_heap_t *hp) CC_HINT(nonnull);
+void		*fr_heap_peek_at(fr_heap_t *hp, fr_heap_index_t idx) CC_HINT(nonnull);
 void		*fr_heap_peek_tail(fr_heap_t *hp) CC_HINT(nonnull);
 
 uint32_t	fr_heap_num_elements(fr_heap_t *hp) CC_HINT(nonnull);

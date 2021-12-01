@@ -229,9 +229,9 @@ static xlat_arg_parser_t const xlat_client_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_client(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-				 UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				 fr_value_box_list_t *in)
+static xlat_action_t xlat_client(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				 UNUSED xlat_ctx_t const *xctx,
+				 request_t *request, fr_value_box_list_t *in)
 {
 	char const	*value = NULL;
 	fr_ipaddr_t	ip;
@@ -348,30 +348,23 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, UNU
 	RETURN_MODULE_OK;
 }
 
-/*
- *	Do any per-module initialization that is separate to each
- *	configured instance of the module.  e.g. set up connections
- *	to external databases, read configuration files, set up
- *	dictionary entries, etc.
- *
- *	If configuration information is given in the config section
- *	that must be referenced in later calls, store a handle to it
- *	in *instance otherwise put a null pointer there.
- */
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
+static int mod_load(void)
 {
-	CONF_SECTION	*conf = mctx->inst->conf;
 	xlat_t	*xlat;
 
-	if (cf_section_name2(conf)) return 0;
-
-	xlat = xlat_register(mctx->inst->data, "client", xlat_client, NULL);
+	xlat = xlat_register(NULL, "client", xlat_client, NULL);
+	if (!xlat) return -1;
 	xlat_func_args(xlat, xlat_client_args);
-	map_proc_register(mctx->inst->data, "client", map_proc_client, NULL, 0);
+
+	map_proc_register(NULL, "client", map_proc_client, NULL, 0);
 
 	return 0;
 }
 
+static void mod_unload(void)
+{
+	xlat_unregister("client");
+}
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -387,7 +380,8 @@ module_t rlm_client = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "dynamic_clients",
 	.type		= RLM_TYPE_THREAD_SAFE,		/* type */
-	.bootstrap	= mod_bootstrap,
+	.onload		= mod_load,
+	.unload		= mod_unload,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize
 	},

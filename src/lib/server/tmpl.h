@@ -318,6 +318,9 @@ struct tmpl_rules_s {
 							///< Instantiated xlats are not added to the global
 							///< trees, regexes are not JIT'd.
 
+	fr_event_list_t		*runtime_el;		//!< The eventlist to use for runtime instantiation
+							///< of xlats.
+
 	tmpl_attr_prefix_t	prefix;			//!< Whether the attribute reference requires
 							///< a prefix.
 };

@@ -115,9 +115,7 @@ xlat_t *xlat_func_find(char const *in, ssize_t inlen)
 
 	if (!xlat_root) return NULL;
 
-	if (inlen < 0) {
-		return fr_rb_find(xlat_root, &(xlat_t){ .name = in });
-	}
+	if (inlen < 0) return fr_rb_find(xlat_root, &(xlat_t){ .name = in });
 
 	if ((size_t) inlen >= sizeof(buffer)) return NULL;
 
@@ -330,6 +328,69 @@ xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, xlat_
 	return xlat_register_module(ctx, NULL, name, func, flags);
 }
 
+#if 0
+/** Compare two argument entries to see if they're equivalent
+ *
+ * @note Does not check escape function or uctx pointers.
+ *
+ * @param[in] a		First argument structure.
+ * @param[in] b		Second argument structure.
+ * @return
+ *	- 1 if a > b
+ *	- 0 if a == b
+ *	- -1 if a < b
+ */
+static int xlat_arg_cmp_no_escape(xlat_arg_parser_t const *a, xlat_arg_parser_t const *b)
+{
+	int8_t ret;
+
+	ret = CMP(a->required, b->required);
+	if (ret != 0) return ret;
+
+	ret = CMP(a->concat, b->concat);
+	if (ret != 0) return ret;
+
+	ret = CMP(a->single, b->single);
+	if (ret != 0) return ret;
+
+	ret = CMP(a->variadic, b->variadic);
+	if (ret != 0) return ret;
+
+	ret = CMP(a->always_escape, b->always_escape);
+	if (ret != 0) return ret;
+
+	return CMP(a->type, b->type);
+}
+
+/** Compare two argument lists to see if they're equivalent
+ *
+ * @note Does not check escape function or uctx pointers.
+ *
+ * @param[in] a		First argument structure.
+ * @param[in] b		Second argument structure.
+ * @return
+ *	- 1 if a > b
+ *	- 0 if a == b
+ *	- -1 if a < b
+ */
+static int xlat_arg_cmp_list_no_escape(xlat_arg_parser_t const a[], xlat_arg_parser_t const b[])
+{
+	xlat_arg_parser_t const *arg_a_p;
+	xlat_arg_parser_t const *arg_b_p;
+
+	for (arg_a_p = a, arg_b_p = b;
+	     (arg_a_p->type != FR_TYPE_NULL) && (arg_b_p->type != FR_TYPE_NULL);
+	     arg_a_p++, arg_b_p++) {
+		int8_t ret;
+
+		ret = xlat_arg_cmp_no_escape(arg_a_p, arg_b_p);
+		if (ret != 0) return ret;
+	}
+
+	return CMP(arg_a_p, arg_b_p);	/* Check we ended at the same point */
+}
+#endif
+
 /** Verify xlat arg specifications are valid
  *
  * @param[in] arg	specification to validate.
@@ -541,170 +602,279 @@ void xlat_unregister_module(void *instance)
 /*
  *	Internal redundant handler for xlats
  */
-typedef enum xlat_redundant_type_t {
-	XLAT_REDUNDANT_INVALID = 0,
-	XLAT_REDUNDANT,
-	XLAT_LOAD_BALANCE,
-	XLAT_REDUNDANT_LOAD_BALANCE,
+typedef enum {
+	XLAT_REDUNDANT_INVALID = 0,			//!< Not a valid redundant type.
+	XLAT_REDUNDANT,					//!< Use the first xlat function first, then
+							///< go through in sequence, using the next
+							///< function after each failure.
+
+	XLAT_LOAD_BALANCE,				//!< Pick a random xlat, and if that fails
+							///< then the call as a whole fails.
+
+	XLAT_REDUNDANT_LOAD_BALANCE,			//!< Pick a random xlat to start, then fail
+							///< between the other xlats in the redundant
+							///< group.
 } xlat_redundant_type_t;
 
 typedef struct {
-	xlat_redundant_type_t		type;
-	uint32_t			count;
-	CONF_SECTION const		*cs;
+	fr_dlist_t			entry;		//!< Entry in the redundant function list.
+	xlat_t				*func;		//!< Resolved xlat function.
+} xlat_redundant_func_t;
+
+typedef struct {
+	xlat_redundant_type_t		type;		//!< Type of redundant xlat expression.
+	fr_dlist_head_t			funcs;		//!< List of redundant xlat functions.
+	CONF_SECTION			*cs;		//!< That this redundant xlat list was created from.
 } xlat_redundant_t;
 
+typedef struct {
+	xlat_redundant_t		*xr;		//!< Information about the redundant xlat.
+	xlat_exp_t			**ex;		//!< Array of xlat expressions created by
+							///< tokenizing the arguments to the redundant
+							///< xlat, then duplicating them multiple times,
+							///< one for each xlat function that may be called.
+} xlat_redundant_inst_t;
 
-/** Make module instance available to xlats
+typedef struct {
+	bool				last_success;	//!< Did the last call succeed?
+
+	xlat_exp_t			**first;	//!< First function called.
+							///< Used for redundant-load-balance.
+	xlat_exp_t			**current;	//!< Last function called, used for redundant xlats.
+} xlat_redundant_rctx_t;
+
+/** Pass back the result from a single redundant child call
  *
  */
-static int xlat_redundant_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
+static xlat_action_t xlat_redundant_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					   xlat_ctx_t const *xctx,
+					   request_t *request, UNUSED fr_value_box_list_t *in)
 {
-	*((void **)xlat_inst) = talloc_get_type_abort(uctx, xlat_redundant_t);
-	return 0;
+	xlat_redundant_inst_t const	*xri = talloc_get_type_abort_const(xctx->inst, xlat_redundant_inst_t);
+	xlat_redundant_rctx_t		*rctx = talloc_get_type_abort(xctx->rctx, xlat_redundant_rctx_t);
+	xlat_action_t			xa = XLAT_ACTION_DONE;
+
+	if (rctx->last_success) {
+	done:
+		talloc_free(rctx);
+		return xa;
+	}
+
+	/*
+	 *	We're at the end, loop back to the start
+	 */
+	if (++rctx->current >= (xri->ex + talloc_array_length(xri->ex))) rctx->current = xri->ex;
+
+	/*
+	 *	We're back to the first one we tried, fail...
+	 */
+	if (rctx->current == rctx->first) {
+	error:
+		xa = XLAT_ACTION_FAIL;
+		goto done;
+	}
+
+	if (unlang_xlat_yield(request, xlat_redundant_resume, NULL, rctx) != UNLANG_ACTION_YIELD) goto error;
+
+	/*
+	 *	Push the next child...
+	 */
+	if (unlang_xlat_push(ctx, &rctx->last_success, out->dlist,
+			     request, *rctx->current, UNLANG_SUB_FRAME) < 0) goto error;
+
+	return XLAT_ACTION_PUSH_UNLANG;
 }
 
-
-/** xlat "redundant" processing
+/** Pass back the result from a single redundant child call
  *
- * Processes xlat calls for modules defined in "redundant"
- * sub-sections of the instantiate configuration.
+ */
+static xlat_action_t xlat_load_balance_resume(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					      xlat_ctx_t const *xctx,
+					      UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	xlat_redundant_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_redundant_rctx_t);
+	xlat_action_t 		xa = rctx->last_success ? XLAT_ACTION_DONE : XLAT_ACTION_FAIL;
+
+	talloc_free(rctx);
+
+	return xa;
+}
+
+/** xlat "redundant", "load-balance" and "redundant-load-balance" processing
  *
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_redundant(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				    request_t *request, void const *xlat_inst,
-				    UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
+				    xlat_ctx_t const *xctx,
+				    request_t *request, UNUSED fr_value_box_list_t *in)
 {
-	xlat_redundant_t const *xr;
-	CONF_ITEM *ci;
-	char const *name;
-	xlat_t *xlat;
+	xlat_redundant_inst_t const	*xri = talloc_get_type_abort_const(xctx->inst, xlat_redundant_inst_t);
+	xlat_redundant_rctx_t		*rctx;
 
-	memcpy(&xr, xlat_inst, sizeof(xr));
-	xr = talloc_get_type_abort_const(xr, xlat_redundant_t);
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_redundant_rctx_t));
 
-	fr_assert(xr->type == XLAT_REDUNDANT);
+	switch (xri->xr->type) {
+	/*
+	 *	Run through each of the redundant functions sequentially
+	 *	starting at the first.
+	 */
+	case XLAT_REDUNDANT:
+		rctx->current = rctx->first = xri->ex;	/* First element first */
+		if (unlang_xlat_yield(request, xlat_redundant_resume, NULL, rctx) != XLAT_ACTION_YIELD) {
+		error:
+			talloc_free(rctx);
+			return XLAT_ACTION_FAIL;
+		}
+		break;
 
 	/*
-	 *	Pick the first xlat which succeeds
+	 *	Run a single random redundant function.
 	 */
-	for (ci = cf_item_next(xr->cs, NULL);
-	     ci != NULL;
-	     ci = cf_item_next(xr->cs, ci)) {
-		if (!cf_item_is_pair(ci)) continue;
+	case XLAT_LOAD_BALANCE:
+		rctx->first = &xri->ex[(size_t)fr_rand() & (talloc_array_length(xri->ex) - 1)];	/* Random start */
+		if (unlang_xlat_yield(request, xlat_load_balance_resume, NULL, rctx) != XLAT_ACTION_YIELD) goto error;
+		break;
 
-		name = cf_pair_attr(cf_item_to_pair(ci));
-		fr_assert(name != NULL);
+	/*
+	 *	Run through each of the redundant functions sequentially
+	 *	starting at a random element.
+	 */
+	case XLAT_REDUNDANT_LOAD_BALANCE:
+		rctx->first = &xri->ex[(size_t)fr_rand() & (talloc_array_length(xri->ex) - 1)];	/* Random start */
+		if (unlang_xlat_yield(request, xlat_redundant_resume, NULL, rctx) != XLAT_ACTION_YIELD) goto error;
+		break;
 
-		/*
-		 *	@todo - cache these in a fixed size array in
-		 *	the xlat_inst, which should save some run-time
-		 *	cost.
-		 */
-		xlat = xlat_func_find(name, -1);
-		if (!xlat) continue;
-
-		return xlat->func.async(ctx, out, request, xlat->mod_inst, xlat->thread_uctx, in);
+	default:
+		fr_assert(0);
 	}
 
-	/*
-	 *	Everything failed.  Don't modify the output.  Just return failure.
-	 */
-	return XLAT_ACTION_FAIL;
+	if (unlang_xlat_push(ctx, &rctx->last_success, out->dlist,
+			     request, *rctx->current, UNLANG_SUB_FRAME) < 0) return XLAT_ACTION_FAIL;
+
+	return XLAT_ACTION_PUSH_UNLANG;
 }
 
 
-/** xlat "load-balance" processing
+/** Allocate additional nodes for evaluation
  *
- * Processes xlat calls for modules defined in "load-balance"
- * sub-sections of the instantiate configuration.
- *
- * @ingroup xlat_functions
  */
-static xlat_action_t xlat_load_balance(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				       request_t *request, void const *xlat_inst,
-				       UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
+static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 {
-	uint32_t count = 0;
-	xlat_redundant_t const *xr;
-	CONF_ITEM *ci;
-	CONF_ITEM *found = NULL;
-	char const *name;
-	xlat_t *xlat;
+	xlat_redundant_t		*xr = talloc_get_type_abort(xctx->uctx, xlat_redundant_t);
+	xlat_redundant_inst_t		*xri = talloc_get_type_abort(xctx->inst, xlat_redundant_inst_t);
+	unsigned int			num = 0;
+	xlat_redundant_func_t const	*head;
 
-	memcpy(&xr, xlat_inst, sizeof(xr));
-	xr = talloc_get_type_abort_const(xr, xlat_redundant_t);
+	MEM(xri->ex = talloc_array(xri, xlat_exp_t *, fr_dlist_num_elements(&xr->funcs)));
+	xri->xr = xr;
+
+	head = talloc_get_type_abort(fr_dlist_head(&xr->funcs), xlat_redundant_func_t);
 
 	/*
-	 *	Choose a child at random.
+	 *	Check the calling style matches the first
+	 *	function.
+	 *
+	 *	We do this here as the redundant xlat
+	 *	itself can't have an input type or
+	 *	defined arguments;
 	 */
-	for (ci = cf_item_next(xr->cs, NULL);
-	     ci != NULL;
-	     ci = cf_item_next(xr->cs, ci)) {
-		if (!cf_item_is_pair(ci)) continue;
-		count++;
+	switch (xctx->ex->call.input_type) {
+	case XLAT_INPUT_UNPROCESSED:
+		break;
 
-		/*
-		 *	Replace the previously found one with a random
-		 *	new one.
-		 */
-		if ((count * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
-			found = ci;
+	case XLAT_INPUT_MONO:
+		if (head->func->input_type == XLAT_INPUT_ARGS) {
+			PERROR("Expansion function \"%s\" takes defined arguments and should "
+			       "be called using %%(func:args) syntax",
+				xctx->ex->call.func->name);
+			return -1;
+
 		}
+		break;
+
+	case XLAT_INPUT_ARGS:
+		if (head->func->input_type == XLAT_INPUT_MONO) {
+			PERROR("Expansion function \"%s\" should be called using %%{func:arg} syntax",
+			       xctx->ex->call.func->name);
+			return -1;
+		}
+		break;
 	}
 
 	/*
-	 *	Plain load balancing: do one child, and only one child.
+	 *	For each function, create the appropriate xlat
+	 *	node, and duplicate the child arguments.
 	 */
-	if (xr->type == XLAT_LOAD_BALANCE) {
-		name = cf_pair_attr(cf_item_to_pair(found));
-		fr_assert(name != NULL);
+	fr_dlist_foreach(&xr->funcs, xlat_redundant_func_t, xrf) {
+		xlat_exp_t *node;
 
 		/*
-		 *	@todo - cache these in a fixed size array in
-		 *	the xlat_inst, which should save some run-time
-		 *	cost.
+		 *	We have to do this here as it only
+		 *	becomes an error when the user tries
+		 *	to use the redundant xlat.
 		 */
-		xlat = xlat_func_find(name, -1);
-		if (!xlat) return XLAT_ACTION_FAIL;
-
-		return xlat->func.async(ctx, out, request, xlat->mod_inst, xlat->thread_uctx, in);
-	}
-
-	fr_assert(xr->type == XLAT_REDUNDANT_LOAD_BALANCE);
-
-	/*
-	 *	Try the random one we found.  If it fails, keep going
-	 *	through the rest of the children.
-	 */
-	ci = found;
-	do {
-		name = cf_pair_attr(cf_item_to_pair(ci));
-		fr_assert(name != NULL);
-
-		xlat = xlat_func_find(name, -1);
-		if (xlat) {
-			xlat_action_t xa;
-
-			/*
-			 *	The function shouldn't muck with the
-			 *	output list, unless it succeeds.
-			 */
-			xa = xlat->func.async(ctx, out, request, xlat->mod_inst, xlat->thread_uctx, in);
-			if (xa != XLAT_ACTION_FAIL) return xa;
+		if (head->func->input_type != xrf->func->input_type) {
+			cf_log_err(xr->cs, "Expansion functions \"%s\" and \"%s\" use different argument styles "
+				   "cannot be used in the same redundant section", head->func->name, xrf->func->name);
+		error:
+			talloc_free(xri->ex);
+			return -1;
 		}
 
 		/*
-		 *	Go to the next one, wrapping around at the end.
+		 *	We pass the current arguments in
+		 *	so that the instantiation functions
+		 *	for the new node can operate
+		 *	correctly.
 		 */
-		ci = cf_item_next(xr->cs, ci);
-		if (!ci) ci = cf_item_next(xr->cs, NULL);
-	} while (ci != found);
+		MEM(node = xlat_exp_func_alloc(xri->ex, xrf->func, xctx->ex->child));
 
-	return XLAT_ACTION_FAIL;
+		switch (xrf->func->input_type) {
+		case XLAT_INPUT_UNPROCESSED:
+			break;
+
+		case XLAT_INPUT_MONO:
+			if (xlat_validate_function_mono(node) < 0) {
+				PERROR("Invalid arguments for redundant expansion function \"%s\"",
+				       xrf->func->name);
+				goto error;
+			}
+			break;
+
+		case XLAT_INPUT_ARGS:
+			if (xlat_validate_function_args(node) < 0) {
+				PERROR("Invalid arguments for redundant expansion function \"%s\"",
+				       xrf->func->name);
+				goto error;
+			}
+			break;
+		}
+
+		/*
+		 *	Add the xlat function (and any children)
+		 *	to the end of the instantiation list so
+		 *	they'll get called at some point after
+		 *	we return.
+		 */
+		xlat_bootstrap(node);
+		xri->ex[num++] = node;
+	}
+
+	/*
+	 *	Free the original argument nodes so they're
+	 *	not evaluated when the redundant xlat is called.
+	 *
+	 *	We need to re-evaluate the arguments for each
+	 *	redundant function call we perform.
+	 *
+	 *	The xlat_exp_func_alloc call above associates
+	 *	a copy of the original arguments with each
+	 *	function that's called.
+	 */
+	xlat_exp_free(&xctx->ex->child);
+
+	return 0;
 }
-
 
 /** Registers a redundant xlat
  *
@@ -723,92 +893,109 @@ static xlat_action_t xlat_load_balance(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 int xlat_register_redundant(CONF_SECTION *cs)
 {
-	char const *name1, *name2;
-	xlat_redundant_t *xr;
-	xlat_t const *xlat, *old = NULL;
-	CONF_ITEM *ci = NULL;
-	xlat_func_t func;
+	static fr_table_num_sorted_t const xlat_redundant_type_table[] = {
+		{ L("load-balance"),		XLAT_LOAD_BALANCE		},
+		{ L("redundant"),		XLAT_REDUNDANT			},
+		{ L("redundant-load-balance"),	XLAT_REDUNDANT_LOAD_BALANCE	},
+	};
+	static size_t xlat_redundant_type_table_len = NUM_ELEMENTS(xlat_redundant_type_table);
+
+	char const		*name1, *name2;
+	xlat_redundant_type_t	xr_type;
+	xlat_redundant_t	*xr;
+	xlat_flags_t		flags = {
+					.pure = true	/* Gets removed by the merge function */
+				};
+
+	xlat_t const		*xlat;
+	CONF_ITEM		*ci = NULL;
 
 	name1 = cf_section_name1(cs);
-	name2 = cf_section_name2(cs);
+	xr_type = fr_table_value_by_str(xlat_redundant_type_table, name1, XLAT_REDUNDANT_INVALID);
+	if (unlikely(xr_type == XLAT_REDUNDANT_INVALID)) {
+		cf_log_err(cs, "Invalid redundant section verb \"%s\"", name1);
+		return -1;
+	}
 
-	if (xlat_func_find(name2, -1)) {
+	name2 = cf_section_name2(cs);
+	if (xlat_func_find(name2, talloc_array_length(name2) - 1)) {
 		cf_log_err(cs, "An expansion is already registered for this name");
 		return -1;
 	}
 
 	MEM(xr = talloc_zero(cs, xlat_redundant_t));
-
-	if (strcmp(name1, "redundant") == 0) {
-		xr->type = XLAT_REDUNDANT;
-		func = xlat_redundant;
-
-	} else if (strcmp(name1, "redundant-load-balance") == 0) {
-		xr->type = XLAT_REDUNDANT_LOAD_BALANCE;
-		func = xlat_load_balance;
-
-	} else if (strcmp(name1, "load-balance") == 0) {
-		xr->type = XLAT_LOAD_BALANCE;
-		func = xlat_load_balance;
-
-	} else {
-		fr_assert(0);
-		cf_log_err(cs, "Invalid redundant section verb");
-		return -1;
-	}
-
+	xr->type = xr_type;
 	xr->cs = cs;
+	fr_dlist_talloc_init(&xr->funcs, xlat_redundant_func_t, entry);
 
 	/*
 	 *	Count the number of children for load-balance, and
 	 *	also find out a little bit more about the old xlats.
+	 *
+	 *	These are just preemptive checks, the majority of
+	 *	the work is done when a redundant xlat is
+	 *	instantiated.  There we create an xlat node for
+	 *	each of the children of the section.
 	 */
 	while ((ci = cf_item_next(cs, ci))) {
-		char const *attr;
+		xlat_redundant_func_t	*xrf;
+		xlat_t			*mod_func = NULL;
+		char const		*mod_func_name;
 
 		if (!cf_item_is_pair(ci)) continue;
 
-		attr = cf_pair_attr(cf_item_to_pair(ci));
+		mod_func_name = cf_pair_attr(cf_item_to_pair(ci));
 
 		/*
 		 *	This is ok, it just means the module
 		 *	doesn't have an xlat method.
+		 *
+		 *	If there are ordering issues we could
+		 *	move this check to the instantiation
+		 *	function.
 		 */
-		old = xlat_func_find(attr, -1);
-		if (!old) {
+		mod_func = xlat_func_find(mod_func_name, talloc_array_length(mod_func_name) - 1);
+		if (!mod_func) {
 			talloc_free(xr);
 			return 1;
 		}
 
-		xr->count++;
+		MEM(xrf = talloc_zero(xr, xlat_redundant_func_t));
+		xrf->func = mod_func;
+		fr_dlist_insert_tail(&xr->funcs, xrf);
+
+		/*
+		 *	Figure out pure status.  If any of
+		 *	the children are un-pure then the
+		 *	whole redundant xlat is un-pure,
+		 *	same with async.
+		 */
+		xlat_flags_merge(&flags, &mod_func->flags);
 	}
 
 	/*
-	 *	At least one "old" xlat has to exist.  Look at it in
-	 *	order to find out which arguments we need to pass to
-	 *	xlat_register()
+	 *	At least one module xlat has to exist.
 	 */
-	if (!old) return 1;
+	if (!fr_dlist_num_elements(&xr->funcs)) {
+		talloc_free(xr);
+		return 1;
+	}
 
-	xlat = xlat_register(NULL, name2, func, &old->flags);
+	xlat = xlat_register(NULL, name2, xlat_redundant, &flags);
 	if (!xlat) {
-		ERROR("Registering xlat for load-balance section failed");
+		ERROR("Registering xlat for %s section failed",
+		      fr_table_str_by_value(xlat_redundant_type_table, xr->type, "<INVALID>"));
 		talloc_free(xr);
 		return -1;
 	}
-
-	xlat_async_instantiate_set(xlat, xlat_redundant_instantiate, xlat_redundant_t *, NULL, xr);
+	xlat_async_instantiate_set(xlat, xlat_redundant_instantiate, xlat_redundant_inst_t, NULL, xr);
 
 	return 0;
 }
 
-
-
 /*
  *	Regular xlat functions
  */
-
-
 static xlat_arg_parser_t const xlat_func_debug_args[] = {
 	{ .single = true, .type = FR_TYPE_INT8 },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -824,8 +1011,8 @@ static xlat_arg_parser_t const xlat_func_debug_args[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_debug(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				     request_t *request, UNUSED void const *xlat_inst,
-				     UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
+				     UNUSED xlat_ctx_t const *xctx,
+				     request_t *request, fr_value_box_list_t *in)
 {
 	int level = 0;
 	fr_value_box_t	*vb;
@@ -879,8 +1066,8 @@ static xlat_arg_parser_t const xlat_func_debug_attr_args[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-					  request_t *request, UNUSED void const *xlat_inst,
-					  UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
+					  UNUSED xlat_ctx_t const *xctx,
+					  request_t *request, fr_value_box_list_t *in)
 {
 	fr_pair_t		*vp;
 	fr_dcursor_t		cursor;
@@ -1021,8 +1208,8 @@ update request {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_explode(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				       request_t *request, UNUSED void const *xlat_inst,
-				       UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
+				       UNUSED xlat_ctx_t const *xctx,
+				       request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t		*strings = fr_dlist_head(in);
 	fr_value_box_list_t	*list = &strings->vb_group;
@@ -1101,8 +1288,8 @@ update request {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				       request_t *request, UNUSED void const *xlat_inst,
-				       UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
+				       UNUSED xlat_ctx_t const *xctx,
+				       request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t	*in_vb = fr_dlist_head(in);
 	char const *p;
@@ -1229,9 +1416,9 @@ static xlat_arg_parser_t const xlat_func_map_arg = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				   fr_value_box_list_t *in)
+static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				   UNUSED xlat_ctx_t const *xctx,
+				   request_t *request, fr_value_box_list_t *in)
 {
 	map_t		*map = NULL;
 	int		ret;
@@ -1307,9 +1494,9 @@ static xlat_arg_parser_t const xlat_func_next_time_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_next_time(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-					 UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-					 fr_value_box_list_t *in)
+static xlat_action_t xlat_func_next_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					 UNUSED xlat_ctx_t const *xctx,
+					 request_t *request, fr_value_box_list_t *in)
 {
 	long		num;
 
@@ -1451,9 +1638,8 @@ static xlat_arg_parser_t const xlat_func_pad_args[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_lpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
-				    request_t *request, UNUSED void const *xlat_inst,
-				    UNUSED void *xlat_thread_inst,
-				    fr_value_box_list_t *args)
+				    UNUSED xlat_ctx_t const *xctx,
+				    request_t *request, fr_value_box_list_t *args)
 {
 	fr_value_box_t		*values = fr_dlist_head(args);
 	fr_value_box_list_t	*list = &values->vb_group;
@@ -1533,9 +1719,8 @@ static xlat_action_t xlat_func_lpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_rpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
-				    request_t *request, UNUSED void const *xlat_inst,
-				    UNUSED void *xlat_thread_inst,
-				    fr_value_box_list_t *args)
+				    UNUSED xlat_ctx_t const *xctx,
+				    request_t *request, fr_value_box_list_t *args)
 {
 	fr_value_box_t		*values = fr_dlist_head(args);
 	fr_value_box_list_t	*list = &values->vb_group;
@@ -1610,9 +1795,8 @@ static xlat_arg_parser_t const xlat_func_base64_encode_arg = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_base64_encode(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					     request_t *request, UNUSED void const *xlat_inst,
-					     UNUSED void *xlat_thread_inst,
-					     fr_value_box_list_t *args)
+					     UNUSED xlat_ctx_t const *xctx,
+					     request_t *request, fr_value_box_list_t *args)
 {
 	size_t		alen;
 	ssize_t		elen;
@@ -1658,9 +1842,8 @@ static xlat_arg_parser_t const xlat_func_base64_decode_arg = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					     request_t *request, UNUSED void const *xlat_inst,
-					     UNUSED void *xlat_thread_inst,
-					     fr_value_box_list_t *args)
+					     UNUSED xlat_ctx_t const *xctx,
+					     request_t *request, fr_value_box_list_t *args)
 {
 	size_t		alen;
 	ssize_t		declen = 0;
@@ -1707,8 +1890,8 @@ static xlat_arg_parser_t const xlat_func_bin_arg = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				   request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				   fr_value_box_list_t *in)
+				   UNUSED xlat_ctx_t const *xctx,
+				   request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t		*result;
 	char const		*p, *end;
@@ -1771,8 +1954,8 @@ static xlat_arg_parser_t const xlat_func_concat_args[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				      request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				      fr_value_box_list_t *in)
+				      UNUSED xlat_ctx_t const *xctx,
+				      request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t	*result;
 	fr_value_box_t	*list = fr_dlist_head(in);
@@ -1816,9 +1999,9 @@ static xlat_arg_parser_t const xlat_func_hex_arg = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_hex(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
-				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				   fr_value_box_list_t *in)
+static xlat_action_t xlat_func_hex(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+				   UNUSED xlat_ctx_t const *xctx,
+				   UNUSED request_t *request, fr_value_box_list_t *in)
 {
 	char		*new_buff;
 	fr_value_box_t	*bin = fr_dlist_pop_head(in);	/* First argument */
@@ -1886,9 +2069,9 @@ static xlat_arg_parser_t const xlat_hmac_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_hmac_md5(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
-					UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-					fr_value_box_list_t *in)
+static xlat_action_t xlat_func_hmac_md5(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					UNUSED xlat_ctx_t const *xctx,
+					UNUSED request_t *request, fr_value_box_list_t *in)
 {
 	uint8_t		digest[MD5_DIGEST_LENGTH];
 	return xlat_hmac(ctx, out, in, digest, MD5_DIGEST_LENGTH, HMAC_MD5);
@@ -1904,9 +2087,9 @@ static xlat_action_t xlat_func_hmac_md5(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUS
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_hmac_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
-					UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-					 fr_value_box_list_t *in)
+static xlat_action_t xlat_func_hmac_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					 UNUSED xlat_ctx_t const *xctx,
+					 UNUSED request_t *request, fr_value_box_list_t *in)
 {
 	uint8_t		digest[SHA1_DIGEST_LENGTH];
 	return xlat_hmac(ctx, out, in, digest, SHA1_DIGEST_LENGTH, HMAC_SHA1);
@@ -1921,8 +2104,8 @@ static xlat_arg_parser_t const xlat_func_join_args[] = {
  *
  */
 static xlat_action_t xlat_func_join(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
-				    UNUSED request_t *request, UNUSED void const *xlat_inst,
-				    UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
+				    UNUSED xlat_ctx_t const *xctx,
+				    UNUSED request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t	*arg = NULL, *vb, *p;
 
@@ -1956,8 +2139,8 @@ static xlat_arg_parser_t const xlat_func_length_args[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_length(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				      UNUSED request_t *request, UNUSED void const *xlat_inst,
-				      UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
+				      UNUSED xlat_ctx_t const *xctx,
+				      UNUSED request_t *request, fr_value_box_list_t *in)
 
 {
 	fr_value_box_t	*vb = NULL;
@@ -1988,9 +2171,9 @@ static xlat_arg_parser_t const xlat_func_md4_arg = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
-				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				   fr_value_box_list_t *in)
+static xlat_action_t xlat_func_md4(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				   UNUSED xlat_ctx_t const *xctx,
+				   UNUSED request_t *request, fr_value_box_list_t *in)
 {
 	uint8_t		digest[MD5_DIGEST_LENGTH];
 	fr_value_box_t	*vb;
@@ -2025,9 +2208,9 @@ static xlat_arg_parser_t const xlat_func_md5_arg = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
-				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				   fr_value_box_list_t *in)
+static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				   UNUSED xlat_ctx_t const *xctx,
+				   UNUSED request_t *request, fr_value_box_list_t *in)
 {
 	uint8_t		digest[MD5_DIGEST_LENGTH];
 	fr_value_box_t	*vb;
@@ -2069,8 +2252,8 @@ exec echo {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				      request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				      UNUSED fr_value_box_list_t *in)
+				      UNUSED xlat_ctx_t const *xctx,
+				      request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	fr_value_box_t	*vb = NULL;
 
@@ -2105,9 +2288,9 @@ static xlat_arg_parser_t const xlat_func_pack_arg = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_pack(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
-				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				   fr_value_box_list_t *in)
+static xlat_action_t xlat_func_pack(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+				    UNUSED xlat_ctx_t const *xctx,
+				    UNUSED request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t	*vb;
 
@@ -2143,8 +2326,8 @@ static xlat_arg_parser_t const xlat_func_pairs_args[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				     request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				     fr_value_box_list_t *in)
+				     UNUSED xlat_ctx_t const *xctx,
+				     request_t *request, fr_value_box_list_t *in)
 {
 	tmpl_t			*vpt = NULL;
 	fr_dcursor_t		cursor;
@@ -2202,9 +2385,9 @@ static xlat_arg_parser_t const xlat_func_rand_arg = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_rand(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
-				    UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				    fr_value_box_list_t *in)
+static xlat_action_t xlat_func_rand(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				    UNUSED xlat_ctx_t const *xctx,
+				    UNUSED request_t *request, fr_value_box_list_t *in)
 {
 	int64_t		result;
 	fr_value_box_t	*vb;
@@ -2260,8 +2443,8 @@ static xlat_arg_parser_t const xlat_func_randstr_arg = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				       request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				       fr_value_box_list_t *in)
+				       UNUSED xlat_ctx_t const *xctx,
+				       request_t *request, fr_value_box_list_t *in)
 {
 	/*
 	 *	Lookup tables for randstr char classes
@@ -2440,8 +2623,8 @@ if ("foo" =~ /^(?<name>.*)/) {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				     request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				     fr_value_box_list_t *in)
+				     UNUSED xlat_ctx_t const *xctx,
+				     request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t	*in_head  = fr_dlist_head(in);
 	/*
@@ -2546,9 +2729,9 @@ static xlat_arg_parser_t const xlat_func_sha_arg = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
-				    UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				    fr_value_box_list_t *in)
+static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				    UNUSED xlat_ctx_t const *xctx,
+				    UNUSED request_t *request, fr_value_box_list_t *in)
 {
 	uint8_t		digest[SHA1_DIGEST_LENGTH];
 	fr_sha1_ctx	sha1_ctx;
@@ -2583,9 +2766,9 @@ static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED r
  * @ingroup xlat_functions
  */
 #ifdef HAVE_OPENSSL_EVP_H
-static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
-			         UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-			         fr_value_box_list_t *in, EVP_MD const *md)
+static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				 UNUSED xlat_ctx_t const *xctx,
+				 UNUSED request_t *request, fr_value_box_list_t *in, EVP_MD const *md)
 {
 	uint8_t		digest[EVP_MAX_MD_SIZE];
 	unsigned int	digestlen;
@@ -2613,10 +2796,11 @@ static xlat_action_t xlat_evp_md(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED requ
 
 #  define EVP_MD_XLAT(_md, _md_func) \
 static xlat_action_t xlat_func_##_md(TALLOC_CTX *ctx, fr_dcursor_t *out,\
-				      request_t *request, void const *xlat_inst, void *xlat_thread_inst,\
-				      fr_value_box_list_t *in)\
+				     xlat_ctx_t const *xctx, \
+				     request_t *request,\
+				     fr_value_box_list_t *in)\
 {\
-	return xlat_evp_md(ctx, out, request, xlat_inst, xlat_thread_inst, in, EVP_##_md_func());\
+	return xlat_evp_md(ctx, out, xctx, request, in, EVP_##_md_func());\
 }
 
 EVP_MD_XLAT(sha2_224, sha224)
@@ -2648,9 +2832,9 @@ static xlat_arg_parser_t const xlat_func_string_arg = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_string(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
-				      UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				      fr_value_box_list_t *in)
+static xlat_action_t xlat_func_string(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+				      UNUSED xlat_ctx_t const *xctx,
+				      UNUSED request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t	*in_head = fr_dlist_pop_head(in);
 
@@ -2681,8 +2865,8 @@ static xlat_arg_parser_t const xlat_func_strlen_arg = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				      UNUSED request_t *request, UNUSED void const *xlat_inst,
-				      UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
+				      UNUSED xlat_ctx_t const *xctx,
+				      UNUSED request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t	*vb;
 	fr_value_box_t	*in_head = fr_dlist_head(in);
@@ -2720,7 +2904,7 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					 request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+					 UNUSED xlat_ctx_t const *xctx, request_t *request,
 					 fr_value_box_list_t *in)
 {
 	char const		*p, *q, *end;
@@ -2818,13 +3002,12 @@ static xlat_arg_parser_t const xlat_func_sub_args[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				   request_t *request,
 #ifdef HAVE_REGEX_PCRE2
-				   void const *xlat_inst, void *xlat_thread_inst,
+				   xlat_ctx_t const *xctx,
 #else
-				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+				   UNUSED xlat_ctx_t const *xctx,
 #endif
-				   fr_value_box_list_t *in)
+				   request_t *request, fr_value_box_list_t *in)
 {
 	char const		*p, *q, *end;
 	char			*vb_str;
@@ -2840,7 +3023,7 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	if (*pattern == '/') {
 #ifdef HAVE_REGEX_PCRE2
-		return xlat_func_sub_regex(ctx, out, request, xlat_inst, xlat_thread_inst, in);
+		return xlat_func_sub_regex(ctx, out, xctx, request, in);
 #else
 		REDEBUG("regex based substitutions require libpcre2.  "
 			"Check ${features.regex-pcre2} to determine support");
@@ -2935,8 +3118,8 @@ static xlat_arg_parser_t const xlat_change_case_arg = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_tolower(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				       request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				       fr_value_box_list_t *in)
+				       UNUSED xlat_ctx_t const *xctx,
+				       request_t *request, fr_value_box_list_t *in)
 {
 	return xlat_change_case(ctx, out, request, in, false);
 }
@@ -2954,8 +3137,8 @@ static xlat_action_t xlat_func_tolower(TALLOC_CTX *ctx, fr_dcursor_t *out,
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_toupper(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				       request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				       fr_value_box_list_t *in)
+				       UNUSED xlat_ctx_t const *xctx,
+				       request_t *request, fr_value_box_list_t *in)
 {
 	return xlat_change_case(ctx, out, request, in, true);
 }
@@ -2976,9 +3159,9 @@ static xlat_arg_parser_t const xlat_func_urlquote_arg = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_urlquote(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED request_t *request,
-					UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-					fr_value_box_list_t *in)
+static xlat_action_t xlat_func_urlquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					UNUSED xlat_ctx_t const *xctx,
+					UNUSED request_t *request, fr_value_box_list_t *in)
 {
 	char const	*p, *end;
 	char		*buff_p;
@@ -3059,8 +3242,8 @@ static xlat_arg_parser_t const xlat_func_urlunquote_arg = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_urlunquote(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					  request_t *request, UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-					  fr_value_box_list_t *in)
+					  UNUSED xlat_ctx_t const *xctx,
+					  request_t *request, fr_value_box_list_t *in)
 {
 	char const	*p, *end;
 	char		*buff_p;
@@ -3132,15 +3315,13 @@ static xlat_arg_parser_t const protocol_decode_xlat_args[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					  request_t *request, void const *xlat_inst, UNUSED void *xlat_thread_inst,
-					  fr_value_box_list_t *in)
+					  xlat_ctx_t const *xctx,
+					  request_t *request, fr_value_box_list_t *in)
 {
-	int		decoded;
-	fr_value_box_t	*vb;
-	void		*decode_ctx = NULL;
-	fr_test_point_pair_decode_t const *tp_decode;
-
-	memcpy(&tp_decode, xlat_inst, sizeof(tp_decode)); /* const issues */
+	int					decoded;
+	fr_value_box_t				*vb;
+	void					*decode_ctx = NULL;
+	fr_test_point_pair_decode_t const	*tp_decode = *(void * const *)xctx->inst;
 
 	if (tp_decode->test_ctx) {
 		if (tp_decode->test_ctx(&decode_ctx, ctx) < 0) {
@@ -3168,9 +3349,9 @@ static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static int protocol_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
+static int protocol_xlat_instantiate(xlat_inst_ctx_t const *mctx)
 {
-	*(void **) xlat_inst = uctx;
+	*(void **) mctx->inst = mctx->uctx;
 	return 0;
 }
 
@@ -3191,8 +3372,8 @@ static xlat_arg_parser_t const protocol_encode_xlat_args[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					  request_t *request, void const *xlat_inst, UNUSED void *xlat_thread_inst,
-					  fr_value_box_list_t *in)
+					  xlat_ctx_t const *xctx,
+					  request_t *request, fr_value_box_list_t *in)
 {
 	tmpl_t		*vpt;
 	fr_pair_t	*vp;
@@ -3209,7 +3390,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	void		*encode_ctx = NULL;
 	fr_test_point_pair_encode_t const *tp_encode;
 
-	memcpy(&tp_encode, xlat_inst, sizeof(tp_encode)); /* const issues */
+	memcpy(&tp_encode, xctx->inst, sizeof(tp_encode)); /* const issues */
 
 	if (tmpl_afrom_attr_str(ctx, NULL, &vpt, in_head->vb_strvalue,
 				&(tmpl_rules_t){

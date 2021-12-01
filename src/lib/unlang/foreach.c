@@ -59,9 +59,9 @@ typedef struct {
 #endif
 } unlang_frame_state_foreach_t;
 
-static xlat_action_t unlang_foreach_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-					 UNUSED void const *xlat_inst, void *xlat_thread_inst,
-					 UNUSED fr_value_box_list_t *in);
+static xlat_action_t unlang_foreach_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					 xlat_ctx_t const *xctx,
+					 request_t *request, UNUSED fr_value_box_list_t *in);
 
 #define FOREACH_REQUEST_DATA (void *)unlang_foreach_xlat
 
@@ -196,12 +196,12 @@ static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, u
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t unlang_foreach_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-					 void const *xlat_inst, UNUSED void *xlat_thread_inst,
-					 UNUSED fr_value_box_list_t *in)
+static xlat_action_t unlang_foreach_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					 xlat_ctx_t const *xctx,
+					 request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	fr_pair_t			**pvp;
-	int const			*inst = xlat_inst;
+	int const			*inst = xctx->inst;
 	fr_value_box_t			*vb;
 
 	pvp = (fr_pair_t **) request_data_reference(request, FOREACH_REQUEST_DATA, *inst);

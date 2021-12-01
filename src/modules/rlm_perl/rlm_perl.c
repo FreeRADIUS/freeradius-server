@@ -83,14 +83,6 @@ typedef struct {
 	PerlInterpreter		*perl;	//!< Thread specific perl interpreter.
 } rlm_perl_thread_t;
 
-typedef struct {
-	rlm_perl_t		*inst;	//!< Module global instance
-} rlm_perl_xlat_t;
-
-typedef struct {
-	rlm_perl_thread_t	*t;	//!< Module thread instance
-} rlm_perl_xlat_thread_t;
-
 static void *perl_dlhandle;		//!< To allow us to load perl's symbols into the global symbol table.
 
 /*
@@ -444,27 +436,6 @@ static int perl_sv_to_vblist(TALLOC_CTX *ctx, fr_value_box_list_t *list, request
 	return 0;
 }
 
-static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	rlm_perl_t	*inst = talloc_get_type_abort(uctx, rlm_perl_t);
-	rlm_perl_xlat_t	*xi = talloc_get_type_abort(xlat_inst, rlm_perl_xlat_t);
-
-	xi->inst = inst;
-
-	return 0;
-}
-
-static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread_inst,
-				       UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	rlm_perl_t		*inst = talloc_get_type_abort(uctx, rlm_perl_t);
-	rlm_perl_xlat_thread_t	*xt = xlat_thread_inst;
-
-	xt->t = talloc_get_type_abort(module_thread_by_data(inst)->data, rlm_perl_thread_t);
-
-	return 0;
-}
-
 static xlat_arg_parser_t const perl_xlat_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_STRING },
 	{ .variadic = true, .type = FR_TYPE_VOID },
@@ -475,11 +446,11 @@ static xlat_arg_parser_t const perl_xlat_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-			       UNUSED void const *xlat_inst, void *xlat_thread_inst,
-			       fr_value_box_list_t *in)
+static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+			       xlat_ctx_t const *xctx,
+			       request_t *request, fr_value_box_list_t *in)
 {
-	rlm_perl_xlat_thread_t const	*xt = talloc_get_type_abort_const(xlat_thread_inst, rlm_perl_xlat_thread_t);
+	rlm_perl_thread_t const		*t = talloc_get_type_abort_const(xctx->mctx->thread, rlm_perl_thread_t);
 	int				count, i;
 	xlat_action_t			ret = XLAT_ACTION_FAIL;
 	STRLEN				n_a;
@@ -494,8 +465,8 @@ static xlat_action_t perl_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *re
 	fr_value_box_list_init(&sub_list);
 
 	{
-		dTHXa(xt->t->perl);
-		PERL_SET_CONTEXT(xt->t->perl);
+		dTHXa(t->perl);
+		PERL_SET_CONTEXT(t->perl);
 	}
 
 	{
@@ -636,14 +607,10 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_perl_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_perl_t);
 	xlat_t		*xlat;
 
 	xlat = xlat_register_module(NULL, mctx, mctx->inst->name, perl_xlat, NULL);
 	xlat_func_args(xlat, perl_xlat_args);
-
-	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_perl_xlat_t, NULL, inst);
-	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, rlm_perl_xlat_thread_t, NULL, inst);
 
 	return 0;
 }

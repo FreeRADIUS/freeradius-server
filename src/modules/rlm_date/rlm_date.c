@@ -42,7 +42,7 @@ static const CONF_PARSER module_config[] = {
 
 DIAG_OFF(format-nonliteral)
 static xlat_action_t date_convert_string(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-				   const char *str, rlm_date_t const *inst)
+					 const char *str, rlm_date_t const *inst)
 {
 	struct tm	tminfo;
 	time_t		date = 0;
@@ -107,7 +107,7 @@ static xlat_action_t date_convert_string(TALLOC_CTX *ctx, fr_dcursor_t *out, req
 }
 
 static xlat_action_t date_encode_strftime(TALLOC_CTX *ctx, fr_dcursor_t *out, rlm_date_t const *inst,
-				    request_t *request, time_t date)
+					  request_t *request, time_t date)
 {
 	struct tm	tminfo;
 	char		buff[64];
@@ -134,12 +134,6 @@ static xlat_action_t date_encode_strftime(TALLOC_CTX *ctx, fr_dcursor_t *out, rl
 	return XLAT_ACTION_DONE;
 }
 DIAG_ON(format-nonliteral)
-
-static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	*((void **)xlat_inst) = talloc_get_type_abort(uctx, rlm_date_t);
-	return 0;
-}
 
 static xlat_arg_parser_t const xlat_date_convert_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_VOID },
@@ -171,18 +165,13 @@ update request {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_date_convert(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-				       void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				       fr_value_box_list_t *in)
+static xlat_action_t xlat_date_convert(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				       xlat_ctx_t const *xctx,
+				       request_t *request, fr_value_box_list_t *in)
 {
-	rlm_date_t const	*inst;
-	void			*instance;
+	rlm_date_t const	*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_date_t);
 	struct tm 		tminfo;
 	fr_value_box_t		*arg = fr_dlist_head(in);
-
-	memcpy(&instance, xlat_inst, sizeof(instance));
-
-	inst = talloc_get_type_abort(instance, rlm_date_t);
 
 	memset(&tminfo, 0, sizeof(tminfo));
 
@@ -236,7 +225,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_t 		*xlat;
 
 	xlat = xlat_register_module(inst, mctx, mctx->inst->name, xlat_date_convert, NULL);
-	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_date_t *, NULL, inst);
 	xlat_func_args(xlat, xlat_date_convert_args);
 
 	return 0;

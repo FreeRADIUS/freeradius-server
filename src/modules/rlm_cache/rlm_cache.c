@@ -797,16 +797,6 @@ finish:
 	RETURN_MODULE_RCODE(rcode);
 }
 
-static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread_inst,
-				       UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	rlm_cache_t			*inst = talloc_get_type_abort(uctx, rlm_cache_t);
-	cache_xlat_thread_inst_t	*xt = xlat_thread_inst;
-
-	xt->inst = inst;
-	return 0;
-}
-
 static xlat_arg_parser_t const cache_xlat_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -816,15 +806,13 @@ static xlat_arg_parser_t const cache_xlat_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-				UNUSED void const *xlat_inst, void *xlat_thread_inst,
-				fr_value_box_list_t *in) CC_HINT(nonnull);
-static xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-				UNUSED void const *xlat_inst, void *xlat_thread_inst,
-				fr_value_box_list_t *in)
+static CC_HINT(nonnull)
+xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+			 xlat_ctx_t const *xctx,
+			 request_t *request, fr_value_box_list_t *in)
 {
 	rlm_cache_entry_t 		*c = NULL;
-	cache_xlat_thread_inst_t	*xti = talloc_get_type_abort(xlat_thread_inst, cache_xlat_thread_inst_t);
+	rlm_cache_t			*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_cache_t);
 	rlm_cache_handle_t		*handle = NULL;
 
 	ssize_t				slen;
@@ -840,7 +828,7 @@ static xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *r
 	rlm_rcode_t			rcode = RLM_MODULE_NOOP;
 
 	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
-			      request, xti->inst->config.key, NULL, NULL);
+			      request, inst->config.key, NULL, NULL);
 	if (key_len < 0) return XLAT_ACTION_FAIL;
 
 	slen = tmpl_afrom_attr_substr(ctx, NULL, &target,
@@ -855,12 +843,12 @@ static xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *r
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (cache_acquire(&handle, xti->inst, request) < 0) {
+	if (cache_acquire(&handle, inst, request) < 0) {
 		talloc_free(target);
 		return XLAT_ACTION_FAIL;
 	}
 
-	cache_find(&rcode, &c, xti->inst, request, &handle, key, key_len);
+	cache_find(&rcode, &c, inst, request, &handle, key, key_len);
 	switch (rcode) {
 	case RLM_MODULE_OK:		/* found */
 		break;
@@ -890,8 +878,8 @@ static xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *r
 	 */
 	if (!map) return XLAT_ACTION_FAIL;
 
-	cache_free(xti->inst, &c);
-	cache_release(xti->inst, request, &handle);
+	cache_free(inst, &c);
+	cache_release(inst, request, &handle);
 
 	return XLAT_ACTION_DONE;
 }
@@ -1010,7 +998,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 */
 	xlat = xlat_register_module(inst, mctx, mctx->inst->name, cache_xlat, XLAT_FLAG_NEEDS_ASYNC);
 	xlat_func_args(xlat, cache_xlat_args);
-	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, cache_xlat_thread_inst_t, NULL, inst);
 
 	return 0;
 }

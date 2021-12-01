@@ -86,12 +86,6 @@ static const CONF_PARSER mod_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	*((void **)xlat_inst) = talloc_get_type_abort(uctx, rlm_idn_t);
-	return 0;
-}
-
 static xlat_arg_parser_t const xlat_idna_arg = { .required = true, .concat = true, .type = FR_TYPE_STRING };
 
 /** Convert domain name to ASCII punycode
@@ -102,22 +96,17 @@ static xlat_arg_parser_t const xlat_idna_arg = { .required = true, .concat = tru
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_idna(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-			       void const *xlat_inst, UNUSED void *xlat_thread_inst,
-			       fr_value_box_list_t *in)
+static xlat_action_t xlat_idna(TALLOC_CTX *ctx, fr_dcursor_t *out,
+			       xlat_ctx_t const *xctx,
+			       request_t *request, fr_value_box_list_t *in)
 {
-	rlm_idn_t const	*inst;
-	void		*instance;
+	rlm_idn_t const	*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_idn_t);
 	char		*idna = NULL;
 	int		res;
 	size_t		len;
 	int		flags = 0;
 	fr_value_box_t	*arg = fr_dlist_head(in);
 	fr_value_box_t	*vb;
-
-	memcpy(&instance, xlat_inst, sizeof(instance));
-
-	inst = talloc_get_type_abort(instance, rlm_idn_t);
 
 	if (inst->use_std3_ascii_rules) {
 		flags |= IDNA_USE_STD3_ASCII_RULES;
@@ -162,7 +151,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	xlat = xlat_register_module(inst, mctx, mctx->inst->name, xlat_idna, XLAT_FLAG_PURE);
 	xlat_func_mono(xlat, &xlat_idna_arg);
-	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_idn_t *, NULL, inst);
 
 	return 0;
 }

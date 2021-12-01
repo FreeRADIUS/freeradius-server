@@ -38,14 +38,6 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/server/map_proc.h>
 
-
-/*
- *	Xlat pointer to thread handling the query
- */
-typedef struct {
-	fr_ldap_thread_t	*t;
-} ldap_xlat_thread_inst_t;
-
 static CONF_PARSER sasl_mech_dynamic[] = {
 	{ FR_CONF_OFFSET("mech", FR_TYPE_TMPL | FR_TYPE_NOT_EMPTY, fr_ldap_sasl_t_dynamic_t, mech) },
 	{ FR_CONF_OFFSET("proxy", FR_TYPE_TMPL, fr_ldap_sasl_t_dynamic_t, proxy) },
@@ -290,9 +282,9 @@ static xlat_arg_parser_t const ldap_escape_xlat_arg = { .required = true, .conca
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-				      UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				      fr_value_box_list_t *in)
+static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				      UNUSED xlat_ctx_t const *xctx,
+				      request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t		*vb, *in_vb = fr_dlist_head(in);
 	fr_sbuff_t		sbuff;
@@ -328,9 +320,9 @@ static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, reques
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t ldap_unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-					UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-					fr_value_box_list_t *in)
+static xlat_action_t ldap_unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					UNUSED xlat_ctx_t const *xctx,
+					request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t		*vb, *in_vb = fr_dlist_head(in);
 	fr_sbuff_t		sbuff;
@@ -358,6 +350,7 @@ static xlat_action_t ldap_unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, requ
 	fr_sbuff_trim_talloc(&sbuff, len);
 	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), in_vb->tainted);
 	fr_dcursor_append(out, vb);
+
 	return XLAT_ACTION_DONE;
 }
 
@@ -412,11 +405,11 @@ static void ldap_query_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now,
 /** Callback when resuming after async ldap query is completed
  *
  */
-static xlat_action_t ldap_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-				      UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				      UNUSED fr_value_box_list_t *in, void *rctx)
+static xlat_action_t ldap_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				      xlat_ctx_t const *xctx,
+	 			      request_t *request, UNUSED fr_value_box_list_t *in)
 {
-	fr_ldap_query_t		*query = talloc_get_type_abort(rctx, fr_ldap_query_t);
+	fr_ldap_query_t		*query = talloc_get_type_abort(xctx->rctx, fr_ldap_query_t);
 	fr_ldap_connection_t	*ldap_conn = query->ldap_conn;
 	fr_value_box_t		*vb = NULL;
 	LDAPMessage		*msg;
@@ -459,9 +452,9 @@ static xlat_action_t ldap_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, reques
 /** Callback for signalling async ldap query
  *
  */
-static void ldap_xlat_signal(request_t *request, UNUSED void *instance, UNUSED void *thread, void *rctx, fr_state_signal_t action)
+static void ldap_xlat_signal(xlat_ctx_t const *xctx, request_t *request, fr_state_signal_t action)
 {
-	fr_ldap_query_t		*query = talloc_get_type_abort(rctx, fr_ldap_query_t);
+	fr_ldap_query_t		*query = talloc_get_type_abort(xctx->rctx, fr_ldap_query_t);
 
 	if (action != FR_SIGNAL_CANCEL) return;
 
@@ -496,14 +489,14 @@ static xlat_arg_parser_t const ldap_xlat_arg = { .required = true, .type = FR_TY
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out, request_t *request,
-			       UNUSED void const *xlat_inst, void *xlat_thread_inst,
-			       fr_value_box_list_t *in)
+static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+			       xlat_ctx_t const *xctx,
+	 		       request_t *request, fr_value_box_list_t *in)
 {
+	fr_ldap_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, fr_ldap_thread_t);
 	fr_value_box_t		*in_vb = NULL;
-	ldap_xlat_thread_inst_t	*xt = talloc_get_type_abort(xlat_thread_inst, ldap_xlat_thread_inst_t);
 	char			*host_url;
-	fr_ldap_config_t const	*handle_config = xt->t->config;
+	fr_ldap_config_t const	*handle_config = t->config;
 	fr_ldap_thread_trunk_t	*ttrunk;
 	fr_ldap_query_t		*query = NULL;
 
@@ -571,7 +564,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	                        	   ldap_url->lud_host, ldap_url->lud_port);
 	}
 
-	ttrunk = fr_thread_ldap_trunk_get(xt->t, host_url, handle_config->admin_identity,
+	ttrunk = fr_thread_ldap_trunk_get(t, host_url, handle_config->admin_identity,
 					  handle_config->admin_password, request, handle_config);
 	if (!ttrunk) {
 		REDEBUG("Unable to get LDAP query for xlat");
@@ -1753,17 +1746,6 @@ static int parse_sub_section(module_inst_ctx_t const *mctx,
 	return 0;
 }
 
-static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread_inst,
-				       UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	rlm_ldap_t		*inst = talloc_get_type_abort(uctx, rlm_ldap_t);
-	ldap_xlat_thread_inst_t	*xt = xlat_thread_inst;
-
-	xt->t = talloc_get_type_abort(module_thread_by_data(inst)->data, fr_ldap_thread_t);
-
-	return 0;
-}
-
 /** Initialise thread specific data structure
  *
  */
@@ -1878,7 +1860,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	xlat = xlat_register_module(NULL, mctx, mctx->inst->name, ldap_xlat, NULL);
 	xlat_func_mono(xlat, &ldap_xlat_arg);
-	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, ldap_xlat_thread_inst_t, NULL, inst);
 
 	xlat = xlat_register_module(NULL, mctx, "ldap_escape", ldap_escape_xlat, XLAT_FLAG_PURE);
 	if (xlat) xlat_func_mono(xlat, &ldap_escape_xlat_arg);

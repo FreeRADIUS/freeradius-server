@@ -251,8 +251,8 @@ typedef struct {
 } command_entry_t;
 
 static xlat_action_t xlat_test(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-			       UNUSED request_t *request, UNUSED void const *mod_inst,
-			       UNUSED void *xlat_thread_inst, UNUSED fr_value_box_list_t *in)
+			       UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,
+			       UNUSED fr_value_box_list_t *in)
 {
 	return XLAT_ACTION_DONE;
 }

@@ -139,8 +139,8 @@ static xlat_arg_parser_t const modhex_to_hex_xlat_arg = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t modhex_to_hex_xlat(UNUSED TALLOC_CTX *ctx, fr_dcursor_t * out, request_t *request,
-					UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+static xlat_action_t modhex_to_hex_xlat(UNUSED TALLOC_CTX *ctx, fr_dcursor_t * out,
+					UNUSED xlat_ctx_t const *xctx, request_t *request,
 					fr_value_box_list_t *in)
 {
 	ssize_t 	len;

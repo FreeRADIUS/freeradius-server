@@ -307,6 +307,15 @@ void *fr_heap_peek(fr_heap_t *hp)
 	return h->p[1];
 }
 
+void *fr_heap_peek_at(fr_heap_t *hp, fr_heap_index_t idx)
+{
+	heap_t *h = *hp;
+
+	if (unlikely(idx > h->num_elements)) return NULL;
+
+	return h->p[idx];
+}
+
 void *fr_heap_pop(fr_heap_t *hp)
 {
 	heap_t *h = *hp;

@@ -34,6 +34,9 @@ extern "C" {
  */
 typedef enum {
 	XLAT_ACTION_PUSH_CHILD = 1,		//!< A deeper level of nesting needs to be evaluated.
+	XLAT_ACTION_PUSH_UNLANG,		//!< An xlat function pushed an unlang frame onto the unlang stack.
+						///< This frame needs to be evaluated, and then we need to call
+						///< the xlat's resume function.
 	XLAT_ACTION_YIELD,			//!< An xlat function pushed a resume frame onto the stack.
 	XLAT_ACTION_DONE,			//!< We're done evaluating this level of nesting.
 	XLAT_ACTION_FAIL			//!< An xlat function failed.
@@ -66,9 +69,12 @@ typedef struct xlat_exp xlat_exp_t;
  *
  */
 struct xlat_inst {
-	fr_rb_node_t		inst_node;	//!< Entry in rbtree of thread instances.
+	fr_heap_index_t		idx;		//!< Entry in heap of xlat instances.
+						///< Identical instances are used for
+						///< global instance data and thread-specific
+						///< instance data.
 
-	xlat_exp_t const	*node;		//!< Node this data relates to.
+	xlat_exp_t		*node;		//!< Node this data relates to.
 	void			*data;		//!< xlat node specific instance data.
 };
 
@@ -76,10 +82,18 @@ struct xlat_inst {
  *
  */
 struct xlat_thread_inst {
-	fr_rb_node_t		inst_node;	//!< Entry in rbtree of thread instances.
+	fr_heap_index_t		idx;		//!< Entry in heap of xlat thread instances.
+						///< Identical instances are used for
+						///< global instance data and thread-specific
+						///< instance data.
+
+	fr_event_list_t		*el;		//!< Event list associated with this thread.
 
 	xlat_exp_t const	*node;		//!< Node this data relates to.
  	void			*data;		//!< Thread specific instance data.
+
+	module_ctx_t const	*mctx;		//!< A synthesised module calling ctx containing
+						///< module global and thread instance data.
 
 	uint64_t		total_calls;	//! total number of times we've been called
 	uint64_t		active_callers; //! number of active callers.  i.e. number of current yields
@@ -91,7 +105,7 @@ typedef struct xlat_s xlat_t;
  *
  */
 typedef struct {
-	bool			needs_resolving;	//!< Needs pass2 resolution.
+	bool			needs_resolving;//!< Needs pass2 resolution.
 	bool			needs_async;	//!< Node and all child nodes are guaranteed to not
 						///< require asynchronous expansion.
 	bool			pure;		//!< has no external side effects
@@ -152,14 +166,11 @@ typedef struct {
  * @note The callback is automatically removed on unlang_interpret_mark_runnable(), i.e. if an event
  *	on a registered FD occurs before the timeout event fires.
  *
+ * @param[in] xctx		xlat calling ctx.  Contains all instance data.
  * @param[in] request		the request.
- * @param[in] xlat_inst		the xlat instance.
- * @param[in] xlat_thread_inst	data specific to this xlat instance.
- * @param[in] rctx		Resume ctx provided when the xlat last yielded.
  * @param[in] fired		the time the timeout event actually fired.
  */
-typedef	void (*fr_unlang_xlat_timeout_t)(request_t *request, void *xlat_inst,
-					 void *xlat_thread_inst, void *rctx, fr_time_t fired);
+typedef	void (*fr_unlang_xlat_timeout_t)(xlat_ctx_t const *xctx, request_t *request, fr_time_t fired);
 
 /** A callback when the FD is ready for reading
  *
@@ -168,14 +179,11 @@ typedef	void (*fr_unlang_xlat_timeout_t)(request_t *request, void *xlat_inst,
  *
  * @note The callback is automatically removed on unlang_interpret_mark_runnable(), so
  *
+ * @param[in] xctx		xlat calling ctx.  Contains all instance data.
  * @param[in] request		the current request.
- * @param[in] xlat_inst		the xlat instance.
- * @param[in] xlat_thread_inst	data specific to this xlat instance.
- * @param[in] rctx		Resume ctx provided when the xlat last yielded.
  * @param[in] fd		the file descriptor.
  */
-typedef void (*fr_unlang_xlat_fd_event_t)(request_t *request, void *xlat_inst,
-					  void *xlat_thread_inst, void *rctx, int fd);
+typedef void (*fr_unlang_xlat_fd_event_t)(xlat_ctx_t const *xctx, request_t *request, int fd);
 
 /** xlat callback function
  *
@@ -184,9 +192,9 @@ typedef void (*fr_unlang_xlat_fd_event_t)(request_t *request, void *xlat_inst,
  * @param[in] ctx		to allocate any fr_value_box_t in.
  * @param[out] out		Where to append #fr_value_box_t containing the output of
  *				this function.
+ * @param[in] xctx		xlat calling ctx.  Contains all instance data and the resume
+ *				ctx if this function is being resumed.
  * @param[in] request		The current request.
- * @param[in] xlat_inst		Global xlat instance.
- * @param[in] xlat_thread_inst	Thread specific xlat instance.
  * @param[in] in		Input arguments.
  * @return
  *	- XLAT_ACTION_YIELD	xlat function is waiting on an I/O event and
@@ -196,69 +204,36 @@ typedef void (*fr_unlang_xlat_fd_event_t)(request_t *request, void *xlat_inst,
  *	- XLAT_ACTION_FAIL	the xlat function failed.
  */
 typedef xlat_action_t (*xlat_func_t)(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				     request_t *request, void const *xlat_inst, void *xlat_thread_inst,
-				     fr_value_box_list_t *in);
-
-/** xlat callback resumption function
- *
- * Ingests a list of value boxes as arguments, with arguments delimited by spaces.
- *
- * @param[in] ctx		to allocate any fr_value_box_t in.
- * @param[out] out		Where to append #fr_value_box_t containing the output of
- *				this function.
- * @param[in] request		The current request.
- * @param[in] xlat_inst		Global xlat instance.
- * @param[in] xlat_thread_inst	Thread specific xlat instance.
- * @param[in] in		Input arguments.
- * @param[in] rctx		Resume ctx provided when the xlat last yielded.
- * @return
- *	- XLAT_ACTION_YIELD	xlat function is waiting on an I/O event and
- *				has pushed a resumption function onto the stack.
- *	- XLAT_ACTION_DONE	xlat function completed. This does not necessarily
- *				mean it turned a result.
- *	- XLAT_ACTION_FAIL	the xlat function failed.
- */
-typedef xlat_action_t (*xlat_func_resume_t)(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					    request_t *request, void const *xlat_inst, void *xlat_thread_inst,
-					    fr_value_box_list_t *in, void *rctx);
+				     xlat_ctx_t const *xctx, request_t *request, fr_value_box_list_t *in);
 
 /** A callback when the request gets a fr_state_signal_t.
  *
  * @note The callback is automatically removed on unlang_interpret_mark_runnable().
  *
  * @param[in] request		The current request.
- * @param[in] xlat_inst		the xlat instance.
- * @param[in] xlat_thread_inst	data specific to this xlat instance.
- * @param[in] rctx		Resume ctx provided when the xlat last yielded.
+ * @param[in] xctx		xlat calling ctx.  Contains all instance data.
  * @param[in] action		which is signalling the request.
  */
-typedef void (*xlat_func_signal_t)(request_t *request, void *xlat_inst, void *xlat_thread_inst,
-				   void *rctx, fr_state_signal_t action);
+typedef void (*xlat_func_signal_t)(xlat_ctx_t const *xctx, request_t *request, fr_state_signal_t action);
 
 /** Allocate new instance data for an xlat instance
  *
- * @param[out] xlat_inst 	Structure to populate. Allocated by #map_proc_instantiate.
- * @param[in] exp		Tokenized expression to use in expansion.
- * @param[in] uctx		passed to the registration function.
+ * @param[in] xctx	instantiate/detach calling ctx.
+
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*xlat_instantiate_t)(void *xlat_inst, xlat_exp_t const *exp, void *uctx);
+typedef int (*xlat_instantiate_t)(xlat_inst_ctx_t const *xctx);
 
 /** Allocate new thread instance data for an xlat instance
  *
- * @param[in] xlat_inst		Previously instantiated xlat instance.
- * @param[out] xlat_thread_inst	Thread specific structure to populate.
- *				Allocated by #map_proc_instantiate.
- * @param[in] exp		Tokenized expression to use in expansion.
- * @param[in] uctx		passed to the registration function.
+ * @param[in] xctx	thread instantiate/detach ctx.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*xlat_thread_instantiate_t)(void *xlat_inst, void *xlat_thread_inst,
-					 xlat_exp_t const *exp, void *uctx);
+typedef int (*xlat_thread_instantiate_t)(xlat_thread_inst_ctx_t const *xctx);
 
 /** xlat detach callback
  *
@@ -267,13 +242,12 @@ typedef int (*xlat_thread_instantiate_t)(void *xlat_inst, void *xlat_thread_inst
  * Detach should close all handles associated with the xlat instance, and
  * free any memory allocated during instantiate.
  *
- * @param[in] xlat_inst		to free.
- * @param[in] uctx		passed to the xlat registration function.
+ * @param[in] xctx	instantiate/detach calling ctx.
  * @return
  *	- 0 on success.
  *	- -1 if detach failed.
  */
-typedef int (*xlat_detach_t)(void *xlat_inst, void *uctx);
+typedef int (*xlat_detach_t)(xlat_inst_ctx_t const *xctx);
 
 /** xlat thread detach callback
  *
@@ -283,13 +257,12 @@ typedef int (*xlat_detach_t)(void *xlat_inst, void *uctx);
  * Detach should close all handles associated with the xlat instance, and
  * free any memory allocated during instantiate.
  *
- * @param[in] xlat_thread_inst	to free.
- * @param[in] uctx		passed to the xlat registration function.
+ * @param[in] xctx	thread instantiate/detach calling ctx.
  * @return
  *	- 0 on success.
  *	- -1 if detach failed.
  */
-typedef int (*xlat_thread_detach_t)(void *xlat_thread_inst, void *uctx);
+typedef int (*xlat_thread_detach_t)(xlat_thread_inst_ctx_t const *xctx);
 
 /** legacy xlat callback function
  *
@@ -317,8 +290,6 @@ typedef ssize_t (*xlat_func_legacy_t)(TALLOC_CTX *ctx, char **out, size_t outlen
 
 typedef size_t (*xlat_escape_legacy_t)(request_t *request, char *out, size_t outlen, char const *in, void *arg);
 
-
-
 int		xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name);
 
 ssize_t		xlat_eval(char *out, size_t outlen, request_t *request, char const *fmt, xlat_escape_legacy_t escape,
@@ -331,7 +302,7 @@ ssize_t		xlat_eval_compiled(char *out, size_t outlen, request_t *request, xlat_e
 
 ssize_t		xlat_aeval(TALLOC_CTX *ctx, char **out, request_t *request,
 			   char const *fmt, xlat_escape_legacy_t escape, void const *escape_ctx)
-			   CC_HINT(nonnull (2, 3, 4));
+			   CC_HINT(nonnull(2, 3, 4));
 
 ssize_t		xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, request_t *request,
 				    xlat_exp_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
@@ -346,8 +317,9 @@ int		xlat_eval_pair(request_t *request, fr_pair_t *vp);
 
 bool		xlat_async_required(xlat_exp_t const *xlat);
 
-ssize_t		xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
-					fr_sbuff_t *in,
+ssize_t		xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head,
+					fr_event_list_t *el,
+					xlat_flags_t *flags, fr_sbuff_t *in,
 					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
 ssize_t 	xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
@@ -447,11 +419,11 @@ int		xlat_copy(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t const *in);
 /*
  *	xlat_inst.c
  */
-int		xlat_instantiate_ephemeral(xlat_exp_t *root);
+int		xlat_instantiate_ephemeral(xlat_exp_t *root, fr_event_list_t *el) CC_HINT(nonnull(1));
 
 xlat_thread_inst_t *xlat_thread_instance_find(xlat_exp_t const *node);
 
-int		xlat_thread_instantiate(TALLOC_CTX *ctx);
+int		xlat_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el);
 
 int		xlat_instantiate(void);
 
@@ -466,15 +438,15 @@ void		xlat_instances_free(void);
 /*
  *	xlat.c
  */
-int		unlang_xlat_event_timeout_add(request_t *request, fr_unlang_xlat_timeout_t callback,
-					      void const *ctx, fr_time_t when);
+int		unlang_xlat_timeout_add(request_t *request, fr_unlang_xlat_timeout_t callback,
+					void const *rctx, fr_time_t when);
 
-int		unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_list_t *out,
+int		unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
 				 request_t *request, xlat_exp_t const *exp, bool top_frame)
 				 CC_HINT(warn_unused_result);
 
 xlat_action_t	unlang_xlat_yield(request_t *request,
-				  xlat_func_resume_t callback, xlat_func_signal_t signal,
+				  xlat_func_t callback, xlat_func_signal_t signal,
 				  void *rctx);
 #ifdef __cplusplus
 }

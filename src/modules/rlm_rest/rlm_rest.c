@@ -247,21 +247,19 @@ static int rlm_rest_perform(module_ctx_t const *mctx,
 }
 
 static xlat_action_t rest_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				      request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
-				      UNUSED fr_value_box_list_t *in, void *rctx)
+				      xlat_ctx_t const *xctx,
+				      request_t *request, UNUSED fr_value_box_list_t *in)
 {
-	rest_xlat_thread_inst_t		*xti = talloc_get_type_abort(xlat_thread_inst, rest_xlat_thread_inst_t);
-	rlm_rest_t const		*mod_inst = xti->inst;
-	rlm_rest_thread_t		*t = xti->t;
-
-	rlm_rest_xlat_rctx_t		*our_rctx = talloc_get_type_abort(rctx, rlm_rest_xlat_rctx_t);
+	rlm_rest_t const		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_rest_t);
+	rlm_rest_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, rlm_rest_thread_t);
+	rlm_rest_xlat_rctx_t		*rctx = talloc_get_type_abort(xctx->rctx, rlm_rest_xlat_rctx_t);
 	int				hcode;
 	ssize_t				len;
 	char const			*body;
 	xlat_action_t			xa = XLAT_ACTION_DONE;
 
-	fr_curl_io_request_t		*handle = talloc_get_type_abort(our_rctx->handle, fr_curl_io_request_t);
-	rlm_rest_section_t		*section = &our_rctx->section;
+	fr_curl_io_request_t		*handle = talloc_get_type_abort(rctx->handle, fr_curl_io_request_t);
+	rlm_rest_section_t		*section = &rctx->section;
 
 	if (section->tls.extract_cert_attrs) fr_curl_response_certinfo(request, handle);
 
@@ -310,11 +308,11 @@ error:
 	}
 
 finish:
-	rest_request_cleanup(mod_inst, handle);
+	rest_request_cleanup(inst, handle);
 
 	fr_pool_connection_release(t->pool, request, handle);
 
-	talloc_free(our_rctx);
+	talloc_free(rctx);
 
 	return xa;
 }
@@ -383,12 +381,11 @@ static xlat_arg_parser_t const rest_xlat_args[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-			       request_t *request, UNUSED void const *xlat_inst, void *xlat_thread_inst,
+			       xlat_ctx_t const *xctx, request_t *request,
 			       fr_value_box_list_t *in)
 {
-	rest_xlat_thread_inst_t		*xti = talloc_get_type_abort(xlat_thread_inst, rest_xlat_thread_inst_t);
-	rlm_rest_t const		*mod_inst = xti->inst;
-	rlm_rest_thread_t		*t = xti->t;
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_rest_t);
+	rlm_rest_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, rlm_rest_thread_t);
 
 	fr_curl_io_request_t		*randle = NULL;
 	int				ret;
@@ -405,7 +402,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	/*
 	 *	Section gets modified, so we need our own copy.
 	 */
-	memcpy(&rctx->section, &mod_inst->xlat, sizeof(*section));
+	memcpy(&rctx->section, &inst->xlat, sizeof(*section));
 
 	fr_assert(in_vb->type == FR_TYPE_GROUP);
 
@@ -462,7 +459,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		RPEDEBUG("Failed escaping URI");
 
 	error:
-		rest_request_cleanup(mod_inst, randle);
+		rest_request_cleanup(inst, randle);
 		fr_pool_connection_release(t->pool, request, randle);
 		talloc_free(section);
 
@@ -504,7 +501,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *
 	 *  @todo We could extract the User-Name and password from the URL string.
 	 */
-	ret = rest_request_config(MODULE_CTX(dl_module_instance_by_data(mod_inst), t, NULL),
+	ret = rest_request_config(MODULE_CTX(dl_module_instance_by_data(inst), t, NULL),
 				  section, request, randle, section->method,
 				  section->body, uri_vb->vb_strvalue, NULL, NULL);
 	if (ret < 0) goto error;
@@ -632,7 +629,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		RETURN_MODULE_FAIL;
 	}
 
-	return unlang_module_yield(request, mod_authorize_result, rest_io_module_action, handle);
+	return unlang_module_yield(request, mod_authorize_result, rest_io_module_signal, handle);
 }
 
 static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result,
@@ -1078,28 +1075,6 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER
 	return 0;
 }
 
-/** Resolves and caches the module's thread instance for use by a specific xlat instance
- *
- * @param[in] xlat_inst			UNUSED.
- * @param[in] xlat_thread_inst		pre-allocated structure to hold pointer to module's
- *					thread instance.
- * @param[in] exp			UNUSED.
- * @param[in] uctx			Module's global instance.  Used to lookup thread
- *					specific instance.
- * @return 0.
- */
-static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread_inst,
-				       UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	rlm_rest_t		*inst = talloc_get_type_abort(uctx, rlm_rest_t);
-	rest_xlat_thread_inst_t	*xt = xlat_thread_inst;
-
-	xt->inst = inst;
-	xt->t = talloc_get_type_abort(module_thread_by_data(inst)->data, rlm_rest_thread_t);
-
-	return 0;
-}
-
 /** Create a thread specific multihandle
  *
  * Easy handles representing requests are added to the curl multihandle
@@ -1174,7 +1149,7 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(module_inst_ctx_t const *mctx)
+static int instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_rest_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_rest_t);
 	CONF_SECTION	*conf = mctx->inst->conf;
@@ -1211,7 +1186,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	xlat = xlat_register_module(inst, mctx, mctx->inst->name, rest_xlat, XLAT_FLAG_NEEDS_ASYNC);
 	xlat_func_args(xlat, rest_xlat_args);
-	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, rest_xlat_thread_inst_t, NULL, inst);
 
 	return 0;
 }
@@ -1272,7 +1246,7 @@ module_t rlm_rest = {
 	.onload			= mod_load,
 	.unload			= mod_unload,
 	.bootstrap		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
+	.instantiate		= instantiate,
 	.thread_instantiate	= mod_thread_instantiate,
 	.thread_detach		= mod_thread_detach,
 	.methods = {

@@ -48,7 +48,7 @@ typedef struct {
 	dl_module_inst_t		*dl_inst;	//!< Module instance to pass to callbacks.
 							///< Use dl_inst->data to get instance data.
 	void				*thread;	//!< Thread specific module instance.
-	void const			*ctx;		//!< ctx data to pass to callbacks.
+	void const			*rctx;		//!< rctx data to pass to callbacks.
 	fr_event_timer_t const		*ev;		//!< Event in this worker's event heap.
 } unlang_module_event_t;
 
@@ -67,7 +67,7 @@ static void unlang_event_fd_read_handler(UNUSED fr_event_list_t *el, int fd, UNU
 
 	fr_assert(ev->fd == fd);
 
-	ev->fd_read(MODULE_CTX(ev->dl_inst, ev->thread, UNCONST(void *, ev->ctx)), ev->request, fd);
+	ev->fd_read(MODULE_CTX(ev->dl_inst, ev->thread, UNCONST(void *, ev->rctx)), ev->request, fd);
 }
 
 /** Frees an unlang event, removing it from the request's event loop
@@ -78,7 +78,7 @@ static void unlang_event_fd_read_handler(UNUSED fr_event_list_t *el, int fd, UNU
  */
 static int _unlang_event_free(unlang_module_event_t *ev)
 {
-	if (ev->request) (void) request_data_get(ev->request, ev->ctx, UNLANG_TYPE_MODULE);
+	if (ev->request) (void) request_data_get(ev->request, ev->rctx, UNLANG_TYPE_MODULE);
 
 	if (ev->ev) {
 		(void) fr_event_timer_delete(&(ev->ev));
@@ -104,7 +104,7 @@ static void unlang_module_event_timeout_handler(UNUSED fr_event_list_t *el, fr_t
 {
 	unlang_module_event_t *ev = talloc_get_type_abort(ctx, unlang_module_event_t);
 
-	ev->timeout(MODULE_CTX(ev->dl_inst, ev->thread, UNCONST(void *, ev->ctx)), ev->request, now);
+	ev->timeout(MODULE_CTX(ev->dl_inst, ev->thread, UNCONST(void *, ev->rctx)), ev->request, now);
 	talloc_free(ev);
 }
 
@@ -117,21 +117,20 @@ static void unlang_module_event_timeout_handler(UNUSED fr_event_list_t *el, fr_t
  *
  * param[in] request		the current request.
  * param[in] callback		to call.
- * param[in] ctx		for the callback.
+ * param[in] rctx		to pass to the callback.
  * param[in] timeout		when to call the timeout (i.e. now + timeout).
  * @return
  *	- 0 on success.
  *	- <0 on error.
  */
 int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callback,
-			      void const *ctx, fr_time_t when)
+			      void const *rctx, fr_time_t when)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_module_event_t		*ev;
 	unlang_module_t			*mc;
-	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state,
-								    unlang_frame_state_module_t);
+	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
 	fr_assert(stack->depth > 0);
 	fr_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
@@ -146,7 +145,7 @@ int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callba
 		.timeout = callback,
 		.dl_inst = mc->instance->dl_inst,
 		.thread = state->thread,
-		.ctx = ctx
+		.rctx = rctx
 	};
 
 	if (fr_event_timer_at(request, unlang_interpret_event_list(request), &ev->ev,
@@ -156,7 +155,7 @@ int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callba
 		return -1;
 	}
 
-	(void) request_data_talloc_add(request, ctx, UNLANG_TYPE_MODULE, unlang_module_event_t, ev, true, false, false);
+	(void) request_data_talloc_add(request, rctx, UNLANG_TYPE_MODULE, unlang_module_event_t, ev, true, false, false);
 
 	talloc_set_destructor(ev, _unlang_event_free);
 
@@ -194,7 +193,7 @@ static void unlang_event_fd_write_handler(UNUSED fr_event_list_t *el, int fd, UN
 	unlang_module_event_t *ev = talloc_get_type_abort(ctx, unlang_module_event_t);
 	fr_assert(ev->fd == fd);
 
-	ev->fd_write(MODULE_CTX(ev->dl_inst, ev->thread, UNCONST(void *, ev->ctx)), ev->request, fd);
+	ev->fd_write(MODULE_CTX(ev->dl_inst, ev->thread, UNCONST(void *, ev->rctx)), ev->request, fd);
 }
 
 /** Call the callback registered for an I/O error event
@@ -212,7 +211,7 @@ static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd,
 
 	fr_assert(ev->fd == fd);
 
-	ev->fd_error(MODULE_CTX(ev->dl_inst, ev->thread, UNCONST(void *, ev->ctx)), ev->request, fd);
+	ev->fd_error(MODULE_CTX(ev->dl_inst, ev->thread, UNCONST(void *, ev->rctx)), ev->request, fd);
 }
 
 
@@ -234,7 +233,7 @@ static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd,
  *				a suspended state.
  * @param[in] error		callback.  If the fd enters an error state.  Should cleanup any
  *				handles wrapping the file descriptor, and any outstanding requests.
- * @param[in] ctx		for the callback.
+ * @param[in] rctx		for the callback.
  * @param[in] fd		to watch.
  * @return
  *	- 0 on success.
@@ -244,7 +243,7 @@ int unlang_module_fd_add(request_t *request,
 			unlang_module_fd_event_t read,
 			unlang_module_fd_event_t write,
 			unlang_module_fd_event_t error,
-			void const *ctx, int fd)
+			void const *rctx, int fd)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
@@ -268,7 +267,7 @@ int unlang_module_fd_add(request_t *request,
 	ev->fd_error = error;
 	ev->dl_inst = mc->instance->dl_inst;
 	ev->thread = state->thread;
-	ev->ctx = ctx;
+	ev->rctx = rctx;
 
 	/*
 	 *	Register for events on the file descriptor
@@ -282,7 +281,7 @@ int unlang_module_fd_add(request_t *request,
 		return -1;
 	}
 
-	(void) request_data_talloc_add(request, ctx, fd, unlang_module_event_t, ev, true, false, false);
+	(void) request_data_talloc_add(request, rctx, fd, unlang_module_event_t, ev, true, false, false);
 	talloc_set_destructor(ev, _unlang_event_free);
 
 	return 0;
@@ -432,6 +431,7 @@ int unlang_module_set_resume(request_t *request, unlang_module_resume_t resume)
  * will then call the module resumption frame, allowing the module to continue exectuion.
  *
  * @param[in] ctx		To allocate talloc value boxes and values in.
+ * @param[out] p_success	Whether xlat evaluation was successful.
  * @param[out] out		Where to write the result of the expansion.
  * @param[in] request		The current request.
  * @param[in] exp		XLAT expansion to evaluate.
@@ -441,7 +441,7 @@ int unlang_module_set_resume(request_t *request, unlang_module_resume_t resume)
  * @return
  *	- UNLANG_ACTION_YIELD
  */
-unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_list_t *out,
+unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
 					    request_t *request, xlat_exp_t const *exp,
 					    unlang_module_resume_t resume,
 					    unlang_module_signal_t signal, void *rctx)
@@ -455,7 +455,7 @@ unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, fr_value_box_list_t
 	/*
 	 *	Push the xlat function
 	 */
-	if (unlang_xlat_push(ctx, out, request, exp, false) < 0) return UNLANG_ACTION_STOP_PROCESSING;
+	if (unlang_xlat_push(ctx, p_success, out, request, exp, false) < 0) return UNLANG_ACTION_STOP_PROCESSING;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }

@@ -239,7 +239,7 @@ static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request, un
 		 *	text in the configuration files.
 		 */
 		frame_repeat(frame, unlang_tmpl_exec_nowait_resume);
-		if (unlang_xlat_push(state->ctx, &state->box, request, tmpl_xlat(ut->tmpl), false) < 0) {
+		if (unlang_xlat_push(state->ctx, NULL, &state->box, request, tmpl_xlat(ut->tmpl), false) < 0) {
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
@@ -251,7 +251,7 @@ static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request, un
 	 */
 	if (ut->tmpl->type == TMPL_TYPE_XLAT) {
 		frame_repeat(frame, unlang_tmpl_resume);
-		if (unlang_xlat_push(state->ctx, &state->box, request, tmpl_xlat(ut->tmpl), false) < 0) {
+		if (unlang_xlat_push(state->ctx, NULL, &state->box, request, tmpl_xlat(ut->tmpl), false) < 0) {
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
@@ -280,7 +280,7 @@ static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request, un
 	 *	Expand the arguments to the program we're executing.
 	 */
 	frame_repeat(frame, unlang_tmpl_exec_wait_resume);
-	if (unlang_xlat_push(state->ctx, &state->box, request, xlat, false) < 0) {
+	if (unlang_xlat_push(state->ctx, NULL, &state->box, request, xlat, false) < 0) {
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}

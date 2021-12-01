@@ -336,7 +336,7 @@ static void print_packet(FILE *fp, fr_radius_packet_t *packet, fr_pair_list_t *l
 /*
  *	Read a file compose of xlat's and expected results
  */
-static bool do_xlats(char const *filename, FILE *fp)
+static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 {
 	int		lineno = 0;
 	ssize_t		len;
@@ -394,7 +394,7 @@ static bool do_xlats(char const *filename, FILE *fp)
 			xlat_exp_t		*head = NULL;
 			fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
 
-			slen = xlat_tokenize_ephemeral(xlat_ctx, &head, NULL,
+			slen = xlat_tokenize_ephemeral(xlat_ctx, &head, el, NULL,
 						       &FR_SBUFF_IN(fmt, talloc_array_length(fmt) - 1), &p_rules, NULL);
 			if (slen <= 0) {
 				talloc_free(xlat_ctx);
@@ -795,7 +795,7 @@ int main(int argc, char *argv[])
 	 *	Simulate thread specific instantiation
 	 */
 	if (modules_thread_instantiate(thread_ctx, el) < 0) EXIT_WITH_FAILURE;
-	if (xlat_thread_instantiate(thread_ctx) < 0) EXIT_WITH_FAILURE;
+	if (xlat_thread_instantiate(thread_ctx, el) < 0) EXIT_WITH_FAILURE;
 	unlang_thread_instantiate(thread_ctx);
 
 	/*
@@ -830,7 +830,7 @@ int main(int argc, char *argv[])
 	 *	For simplicity, read xlat's.
 	 */
 	if (xlat_only) {
-		if (!do_xlats(input_file, fp)) ret = EXIT_FAILURE;
+		if (!do_xlats(el, input_file, fp)) ret = EXIT_FAILURE;
 		if (input_file) fclose(fp);
 		goto cleanup;
 	}

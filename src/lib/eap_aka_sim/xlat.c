@@ -44,8 +44,9 @@ static xlat_arg_parser_t const aka_sim_xlat_id_method_xlat_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-						 UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
+static xlat_action_t aka_sim_xlat_id_method_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+						 UNUSED xlat_ctx_t const *xctx,
+						 request_t *request,
 						 fr_value_box_list_t *in)
 {
 	char const			*method;
@@ -100,9 +101,9 @@ static xlat_arg_parser_t const aka_sim_xlat_id_type_xlat_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-					       UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-					       fr_value_box_list_t *in)
+static xlat_action_t aka_sim_xlat_id_type_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					       UNUSED xlat_ctx_t const *xctx,
+					       request_t *request, fr_value_box_list_t *in)
 {
 	char const			*type;
 	fr_aka_sim_id_type_t		type_hint;
@@ -156,9 +157,9 @@ static xlat_arg_parser_t const aka_sim_id_3gpp_temporary_id_key_index_xlat_args[
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t aka_sim_id_3gpp_temporary_id_key_index_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-							      UNUSED void const *xlat_inst,
-							      UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
+static xlat_action_t aka_sim_id_3gpp_temporary_id_key_index_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+						 		 UNUSED xlat_ctx_t const *xctx,
+								 request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t	*id = fr_dlist_head(in);
 	fr_value_box_t	*vb;
@@ -221,9 +222,9 @@ xlat_arg_parser_t aka_sim_3gpp_temporary_id_decrypt_xlat_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t aka_sim_3gpp_temporary_id_decrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-							    UNUSED void const *xlat_inst,
-							    UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
+static xlat_action_t aka_sim_3gpp_temporary_id_decrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+						 	    UNUSED xlat_ctx_t const *xctx,
+							    request_t *request, fr_value_box_list_t *in)
 {
 	uint8_t		tag;
 	char		out_tag = '\0', *buff;
@@ -338,9 +339,9 @@ xlat_arg_parser_t aka_sim_3gpp_temporary_id_encrypt_xlat_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-							    UNUSED void const *xlat_inst,
-							    UNUSED void *xlat_thread_inst, fr_value_box_list_t *in)
+static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+							    UNUSED xlat_ctx_t const *xctx,
+							    request_t *request, fr_value_box_list_t *in)
 {
 	char				encrypted[AKA_SIM_3GPP_PSEUDONYM_LEN + 1];
 	uint8_t				tag = 0;

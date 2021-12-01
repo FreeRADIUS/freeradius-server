@@ -64,18 +64,6 @@ static CONF_PARSER const module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-
-/** Boilerplate to copy the pointer to the main module config into the xlat instance data
- *
- */
-static int json_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	*((rlm_json_t **)xlat_inst) = talloc_get_type_abort(uctx, rlm_json_t);
-
-	return 0;
-}
-
-
 /** Forms a linked list of jpath head node pointers (a list of jpaths)
  */
 typedef struct rlm_json_jpath_cache rlm_json_jpath_cache_t;
@@ -97,17 +85,10 @@ static xlat_arg_parser_t const json_quote_xlat_arg = {
  *
  * @ingroup xlat_functions
  *
- * @param ctx talloc context
- * @param out Where to write the output
- * @param request The current request.
- * @param xlat_inst unused
- * @param xlat_thread_inst unused
- * @param in list of value boxes as input
- * @return XLAT_ACTION_DONE or XLAT_ACTION_FAIL
  */
-static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-				     UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				     fr_value_box_list_t *in)
+static xlat_action_t json_quote_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				     UNUSED xlat_ctx_t const *xctx,
+				     request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t *vb;
 	fr_value_box_t *in_head = fr_dlist_head(in);
@@ -137,19 +118,11 @@ static xlat_arg_parser_t const jpath_validate_xlat_arg = {
  *
  * @ingroup xlat_functions
  *
- * @param ctx to allocate expansion buffer in.
- * @param out Where to write the output (in the format @verbatim<bytes parsed>[:error]@endverbatim).
- * @param request The current request.
- * @param xlat_inst unused.
- * @param xlat_thread_inst unused.
- * @param in jpath expression to parse.
- * @return
- * 	- XLAT_ACTION_DONE for valid paths
- * 	- XLAT_ACTION_FAIL for invalid paths
+ * Writes the output (in the format @verbatim<bytes parsed>[:error]@endverbatim).
  */
-static xlat_action_t jpath_validate_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-			    		 UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-					 fr_value_box_list_t *in)
+static xlat_action_t jpath_validate_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					 UNUSED xlat_ctx_t const *xctx,
+					 request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t	*path = fr_dlist_head(in);
 	fr_jpath_node_t *head;
@@ -187,21 +160,12 @@ static xlat_arg_parser_t const json_encode_xlat_arg = {
  * Usage is `%{json_encode:attr tmpl list}`
  *
  * @ingroup xlat_functions
- *
- * @param ctx talloc context
- * @param out where to write the output
- * @param request the current request
- * @param xlat_inst xlat instance data
- * @param xlat_thread_inst unused
- * @param in list of value boxes as input
- * @return XLAT_ACTION_DONE or XLAT_ACTION_FAIL
  */
-static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-				      void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				      fr_value_box_list_t *in)
+static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				      xlat_ctx_t const *xctx,
+				      request_t *request, fr_value_box_list_t *in)
 {
-	rlm_json_t const	*inst = talloc_get_type_abort_const(*((void const * const *)xlat_inst),
-								    rlm_json_t);
+	rlm_json_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_json_t);
 	fr_json_format_t const	*format = inst->format;
 
 	ssize_t			slen;
@@ -565,8 +529,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	name = talloc_asprintf(inst, "%s_encode", mctx->inst->name);
 	xlat = xlat_register_module(inst, mctx, name, json_encode_xlat, NULL);
 	xlat_func_mono(xlat, &json_encode_xlat_arg);
-	xlat_async_instantiate_set(xlat, json_xlat_instantiate,
-				   rlm_json_t *, NULL, inst);
 	talloc_free(name);
 
 	/*

@@ -50,11 +50,6 @@ typedef struct {
 } rlm_unbound_thread_t;
 
 typedef struct {
-	rlm_unbound_t		*inst;		//!< Instance data
-	rlm_unbound_thread_t	*t;		//!< Thread structure
-} unbound_xlat_thread_inst_t;
-
-typedef struct {
 	int			async_id;	//!< Id of async query
 	request_t		*request;	//!< Current request being processed
 	rlm_unbound_thread_t	*t;		//!< Thread running this request
@@ -270,10 +265,9 @@ static void xlat_unbound_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t no
 /*
  *	Xlat signal callback if an unbound request needs cancelling
  */
-static void xlat_unbound_signal(request_t *request, UNUSED void *instance, UNUSED void *thread,
-				void *rctx, fr_state_signal_t action)
+static void xlat_unbound_signal(xlat_ctx_t const *xctx, request_t *request, fr_state_signal_t action)
 {
-	unbound_request_t	*ur = talloc_get_type_abort(rctx, unbound_request_t);
+	unbound_request_t	*ur = talloc_get_type_abort(xctx->rctx, unbound_request_t);
 
 	if (action != FR_SIGNAL_CANCEL) return;
 
@@ -286,12 +280,12 @@ static void xlat_unbound_signal(request_t *request, UNUSED void *instance, UNUSE
  *	Xlat resume callback after unbound has either returned or timed out
  *	Move the parsed results to the xlat output cursor
  */
-static xlat_action_t xlat_unbound_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-					 UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-					 UNUSED fr_value_box_list_t *in, void *rctx)
+static xlat_action_t xlat_unbound_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+					 xlat_ctx_t const *xctx,
+					 request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	fr_value_box_t		*vb;
-	unbound_request_t	*ur = talloc_get_type_abort(rctx, unbound_request_t);
+	unbound_request_t	*ur = talloc_get_type_abort(xctx->rctx, unbound_request_t);
 
 	/*
 	 *	Request timed out
@@ -346,14 +340,15 @@ static xlat_arg_parser_t const xlat_unbound_args[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_unbound(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-				  UNUSED void const *xlat_inst, void *xlat_thread_inst,
-				  fr_value_box_list_t *in)
+static xlat_action_t xlat_unbound(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				  xlat_ctx_t const *xctx,
+				  request_t *request, fr_value_box_list_t *in)
 {
+	rlm_unbound_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_unbound_t);
+	rlm_unbound_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, rlm_unbound_thread_t);
 	fr_value_box_t			*host_vb = fr_dlist_head(in);
 	fr_value_box_t			*query_vb = fr_dlist_next(in, host_vb);
 	fr_value_box_t			*count_vb = fr_dlist_next(in, query_vb);
-	unbound_xlat_thread_inst_t	*xt = talloc_get_type_abort(xlat_thread_inst, unbound_xlat_thread_inst_t);
 	unbound_request_t		*ur;
 
 	if (host_vb->length == 0) {
@@ -374,14 +369,14 @@ static xlat_action_t xlat_unbound(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t 
 	}
 
 	ur->request = request;
-	ur->t = xt->t;
+	ur->t = t;
 	ur->out_ctx = ctx;
 
 #define UB_QUERY(_record, _rrvalue, _return, _hasprio) \
 	if (strcmp(query_vb->vb_strvalue, _record) == 0) { \
 		ur->return_type = _return; \
 		ur->has_priority = _hasprio; \
-		ub_resolve_event(xt->t->ev_b->ub, host_vb->vb_strvalue, _rrvalue, 1, ur, \
+		ub_resolve_event(t->ev_b->ub, host_vb->vb_strvalue, _rrvalue, 1, ur, \
 				xlat_unbound_callback, &ur->async_id); \
 	}
 
@@ -401,28 +396,22 @@ static xlat_action_t xlat_unbound(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t 
 	 *	unbound returned before we yielded - run the callback
 	 *	This is when serving results from local data
 	 */
-	if (ur->async_id == 0) return xlat_unbound_resume(NULL, out, request, NULL, NULL, NULL, ur);
+	if (ur->async_id == 0) {
+		xlat_ctx_t our_xctx = *xctx;
 
-	if (fr_event_timer_in(ur, ur->t->ev_b->el, &ur->ev, fr_time_delta_from_msec(xt->inst->timeout),
+		our_xctx.rctx = ur;	/* Make the rctx available to the resume function */
+
+		return xlat_unbound_resume(ctx, out, &our_xctx, request, in);
+	}
+
+	if (fr_event_timer_in(ur, ur->t->ev_b->el, &ur->ev, fr_time_delta_from_msec(inst->timeout),
 			      xlat_unbound_timeout, ur) < 0) {
 		REDEBUG("Unable to attach unbound timeout_envent");
-		ub_cancel(xt->t->ev_b->ub, ur->async_id);
+		ub_cancel(t->ev_b->ub, ur->async_id);
 		return XLAT_ACTION_FAIL;
 	}
 
 	return unlang_xlat_yield(request, xlat_unbound_resume, xlat_unbound_signal, ur);
-}
-
-static int mod_xlat_thread_instantiate(UNUSED void *xlat_inst, void *xlat_thread_inst,
-				       UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	rlm_unbound_t			*inst = talloc_get_type_abort(uctx, rlm_unbound_t);
-	unbound_xlat_thread_inst_t	*xt = talloc_get_type_abort(xlat_thread_inst, unbound_xlat_thread_inst_t);
-
-	xt->inst = inst;
-	xt->t = talloc_get_type_abort(module_thread_by_data(inst)->data, rlm_unbound_thread_t);
-
-	return 0;
 }
 
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
@@ -502,7 +491,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	if(!(xlat = xlat_register_module(NULL, mctx, mctx->inst->name, xlat_unbound, XLAT_FLAG_NEEDS_ASYNC))) return -1;
 	xlat_func_args(xlat, xlat_unbound_args);
-	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, unbound_xlat_thread_inst_t, NULL, inst);
 
 	return 0;
 }

@@ -45,12 +45,6 @@ static const CONF_PARSER module_config[] = {
 
 static char const hextab[] = "0123456789abcdef";
 
-static int mod_xlat_instantiate(void *xlat_inst, UNUSED xlat_exp_t const *exp, void *uctx)
-{
-	*((void **)xlat_inst) = talloc_get_type_abort(uctx, rlm_escape_t);
-	return 0;
-}
-
 static xlat_arg_parser_t const escape_xlat_arg = { .required = true, .concat = true, .type = FR_TYPE_STRING };
 
 /** Equivalent to the old safe_characters functionality in rlm_sql but with utf8 support
@@ -62,12 +56,11 @@ static xlat_arg_parser_t const escape_xlat_arg = { .required = true, .concat = t
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-				 void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				 fr_value_box_list_t *in)
+static xlat_action_t escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				 xlat_ctx_t const *xctx,
+				 request_t *request, fr_value_box_list_t *in)
 {
-	rlm_escape_t const	*inst;
-	void			*instance;
+	rlm_escape_t const	*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_escape_t);
 	fr_value_box_t		*arg = fr_dlist_head(in);
 	char const		*p = arg->vb_strvalue;
 	size_t			len;
@@ -76,8 +69,6 @@ static xlat_action_t escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *
 	fr_sbuff_uctx_talloc_t	sbuff_ctx;
 	int			i;
 
-	memcpy(&instance, xlat_inst, sizeof(instance));
-	inst = talloc_get_type_abort(instance, rlm_escape_t);
 	len = talloc_array_length(inst->allowed_chars) - 1;
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
@@ -136,9 +127,9 @@ static xlat_arg_parser_t const unescape_xlat_arg = { .required = true, .concat =
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request,
-				   UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
-				   fr_value_box_list_t *in)
+static xlat_action_t unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				   UNUSED xlat_ctx_t const *xctx,
+				   request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t	*arg = fr_dlist_head(in);
 	char const	*p, *end;
@@ -194,14 +185,12 @@ static xlat_action_t unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_escape_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_escape_t);
 	char		*unescape;
 	xlat_t		*xlat;
 
 	MEM(unescape = talloc_asprintf(NULL, "un%s", mctx->inst->name));
 	xlat = xlat_register_module(NULL, mctx, mctx->inst->name, escape_xlat, XLAT_FLAG_PURE);
 	xlat_func_mono(xlat, &escape_xlat_arg);
-	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_escape_t *, NULL, inst);
 
 	xlat = xlat_register_module(NULL, mctx, unescape, unescape_xlat, XLAT_FLAG_PURE);
 	xlat_func_mono(xlat, &unescape_xlat_arg);

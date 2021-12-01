@@ -326,6 +326,8 @@ static inline bool fr_rb_node_inline_replace(fr_rb_tree_t *tree, fr_rb_node_t *t
 	memcpy(replacement, to_replace, sizeof(*replacement));
 	memset(to_replace, 0, sizeof(*to_replace));
 
+	/* FIXME - Need to fix children and parent */
+
 	return true;
 }
 
@@ -343,6 +345,11 @@ void		*fr_rb_iter_next_inorder(fr_rb_iter_inorder_t *iter) CC_HINT(nonnull);
 
 void		fr_rb_iter_delete_inorder(fr_rb_iter_inorder_t *iter) CC_HINT(nonnull);
 
+#define fr_rb_inorder_foreach(_tree, _type, _iter) \
+{ \
+	fr_rb_iter_inorder_t _state; \
+	for (_type *_iter = fr_rb_iter_init_inorder(&_state, _tree); _iter; _iter = fr_rb_iter_next_inorder(&_state))
+
 /** Iterator structure for pre-order traversal of an rbtree
  */
 typedef struct {
@@ -354,6 +361,11 @@ void		*fr_rb_iter_init_preorder(fr_rb_iter_preorder_t *iter, fr_rb_tree_t *tree)
 
 void		*fr_rb_iter_next_preorder(fr_rb_iter_preorder_t *iter) CC_HINT(nonnull);
 
+#define fr_rb_preorder_foreach(_tree, _type, _iter) \
+{ \
+	fr_rb_iter_preorder_t _state; \
+	for (_type *_iter = fr_rb_iter_init_preorder(&_state, _tree); _iter; _iter = fr_rb_iter_next_preorder(&_state))
+
 /** Iterator structure for post-order traversal of an rbtree
  */
 typedef struct {
@@ -364,6 +376,11 @@ typedef struct {
 void		*fr_rb_iter_init_postorder(fr_rb_iter_postorder_t *iter, fr_rb_tree_t *tree) CC_HINT(nonnull);
 
 void		*fr_rb_iter_next_postorder(fr_rb_iter_postorder_t *iter) CC_HINT(nonnull);
+
+#define fr_rb_postorder_foreach(_tree, _type, _iter) \
+{ \
+	fr_rb_iter_postorder_t _state; \
+	for (_type *_iter = fr_rb_iter_init_postorder(&_state, _tree); _iter; _iter = fr_rb_iter_next_postorder(&_state))
 
 int		fr_rb_flatten_inorder(TALLOC_CTX *ctx, void **out[], fr_rb_tree_t *tree);
 
