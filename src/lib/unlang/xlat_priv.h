@@ -153,6 +153,22 @@ typedef struct {
 	size_t		len;		//!< Length of the output string.
 } xlat_out_t;
 
+/** Merge flags from child to parent
+ *
+ * For pass2, if either the parent or child is marked up for pass2, then the parent
+ * is marked up for pass2.
+ *
+ * For needs_async, if both the parent and the child are needs_async, the parent is
+ * needs_async.
+ */
+static inline void xlat_flags_merge(xlat_flags_t *parent, xlat_flags_t const *child)
+{
+	parent->needs_async |= child->needs_async;
+	parent->needs_resolving |= child->needs_resolving;
+	parent->pure &= child->pure; /* purity can only be removed, never added */
+	parent->pure &= !parent->needs_async; /* things needing async cannot be pure */
+}
+
 /** Walker callback for xlat_walk()
  *
  * @param[in] exp	being evaluated.
