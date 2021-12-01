@@ -70,30 +70,6 @@ typedef struct {
 	fr_event_timer_t const		*ev;				//!< Event in this worker's event heap.
 } unlang_xlat_event_t;
 
-
-/** Static instruction for performing xlat evaluations
- *
- */
-static unlang_t xlat_instruction = {
-	.type = UNLANG_TYPE_XLAT,
-	.name = "xlat",
-	.debug_name = "xlat",
-	.actions = {
-		.actions = {
-			[RLM_MODULE_REJECT]	= 0,
-			[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
-			[RLM_MODULE_OK]		= 0,
-			[RLM_MODULE_HANDLED]	= 0,
-			[RLM_MODULE_INVALID]	= 0,
-			[RLM_MODULE_DISALLOW]	= 0,
-			[RLM_MODULE_NOTFOUND]	= 0,
-			[RLM_MODULE_NOOP]	= 0,
-			[RLM_MODULE_UPDATED]	= 0
-		},
-		.retry = RETRY_INIT,
-	},
-};
-
 /** Frees an unlang event, removing it from the request's event loop
  *
  * @param[in] ev	The event to free.
@@ -199,6 +175,28 @@ int unlang_xlat_event_timeout_add(request_t *request, fr_unlang_xlat_timeout_t c
 int unlang_xlat_push(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 		     request_t *request, xlat_exp_t const *exp, bool top_frame)
 {
+	/** Static instruction for performing xlat evaluations
+	 *
+	 */
+	static unlang_t xlat_instruction = {
+		.type = UNLANG_TYPE_XLAT,
+		.name = "xlat",
+		.debug_name = "xlat",
+		.actions = {
+			.actions = {
+				[RLM_MODULE_REJECT]	= 0,
+				[RLM_MODULE_FAIL]	= MOD_ACTION_RETURN,	/* Exit out of nested levels */
+				[RLM_MODULE_OK]		= 0,
+				[RLM_MODULE_HANDLED]	= 0,
+				[RLM_MODULE_INVALID]	= 0,
+				[RLM_MODULE_DISALLOW]	= 0,
+				[RLM_MODULE_NOTFOUND]	= 0,
+				[RLM_MODULE_NOOP]	= 0,
+				[RLM_MODULE_UPDATED]	= 0
+			},
+			.retry = RETRY_INIT,
+		},
+	};
 
 	unlang_frame_state_xlat_t	*state;
 	unlang_stack_t			*stack = request->stack;
