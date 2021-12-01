@@ -988,7 +988,7 @@ static int xlat_tokenize_string(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 			fr_value_box_strdup_shallow(&node->data, NULL, str, false);
 
 			XLAT_DEBUG("VALUE-BOX (%s)<-- %pV",
-				   escapes ? escapes->name : "(none)",XXX
+				   escapes ? escapes->name : "(none)",
 				   fr_box_strvalue_len(str, talloc_array_length(str) - 1));
 			XLAT_HEXDUMP((uint8_t const *)str, talloc_array_length(str) - 1, " VALUE-BOX ");
 			fr_cursor_insert(&cursor, node);
