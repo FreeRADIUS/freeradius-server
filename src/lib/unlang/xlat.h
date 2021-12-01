@@ -54,10 +54,13 @@ typedef struct xlat_exp xlat_exp_t;
 #include <freeradius-devel/server/signal.h>
 
 #include <freeradius-devel/util/cursor.h>
-#include <freeradius-devel/util/time.h>
+#include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/pair.h>
-#include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/time.h>
+#include <freeradius-devel/util/value.h>
+
+#include <freeradius-devel/unlang/xlat_ctx.h>
 
 /** Instance data for an xlat expansion node
  *
