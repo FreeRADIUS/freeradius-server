@@ -1063,88 +1063,91 @@ static fr_table_num_sorted_t const xlat_quote_table[] = {
 };
 static size_t xlat_quote_table_len = NUM_ELEMENTS(xlat_quote_table);
 
-void xlat_debug(xlat_exp_t const *node)
+static void _xlat_debug(xlat_exp_t const *node, int depth)
 {
+
+#define INFO_INDENT(_fmt, ...)  INFO("%*s"_fmt, depth * 2, " ", ## __VA_ARGS__)
+
 	fr_assert(node != NULL);
 	while (node) {
 		switch (node->type) {
 		case XLAT_BOX:
-			INFO("value-box --> %s", node->fmt);
+			INFO_INDENT("value --> %pV", &node->data);
 			break;
 
 		case XLAT_GROUP:
-			INFO("child --> %s", node->fmt);
-			INFO("{");
-			xlat_debug(node->child);
-			INFO("}");
+			INFO_INDENT("child \"%s\"", node->fmt);
+			INFO_INDENT("{");
+			_xlat_debug(node->child, depth + 1);
+			INFO_INDENT("}");
 			break;
 
 		case XLAT_ONE_LETTER:
-			INFO("percent --> %c", node->fmt[0]);
+			INFO_INDENT("percent (%c)", node->fmt[0]);
 			break;
 
 		case XLAT_ATTRIBUTE:
 			fr_assert(tmpl_da(node->attr) != NULL);
-			INFO("attribute --> %s", tmpl_da(node->attr)->name);
+			INFO_INDENT("attribute (%s)", tmpl_da(node->attr)->name);
 			fr_assert(node->child == NULL);
 			if (tmpl_num(node->attr) != NUM_ANY) {
-				INFO("{");
-				INFO("ref  %d", tmpl_request(node->attr));
-				INFO("list %d", tmpl_list(node->attr));
+				INFO_INDENT("{");
+				INFO_INDENT("ref  %d", tmpl_request(node->attr));
+				INFO_INDENT("list %d", tmpl_list(node->attr));
 				if (tmpl_num(node->attr) != NUM_ANY) {
 					if (tmpl_num(node->attr) == NUM_COUNT) {
-						INFO("[#]");
+						INFO_INDENT("[#]");
 					} else if (tmpl_num(node->attr) == NUM_ALL) {
-						INFO("[*]");
+						INFO_INDENT("[*]");
 					} else {
-						INFO("[%d]", tmpl_num(node->attr));
+						INFO_INDENT("[%d]", tmpl_num(node->attr));
 					}
 				}
-				INFO("}");
+				INFO_INDENT("}");
 			}
 			break;
 
 		case XLAT_VIRTUAL:
 			fr_assert(node->fmt != NULL);
-			INFO("virtual --> %s", node->fmt);
+			INFO_INDENT("virtual (%s)", node->fmt);
 			break;
 
 		case XLAT_VIRTUAL_UNRESOLVED:
 			fr_assert(node->fmt != NULL);
-			INFO("virtual-unresolved --> %s", node->fmt);
+			INFO_INDENT("virtual-unresolved (%s)", node->fmt);
 			break;
 
 		case XLAT_FUNC:
 			fr_assert(node->call.func != NULL);
-			INFO("xlat --> %s", node->call.func->name);
+			INFO_INDENT("xlat (%s)", node->call.func->name);
 			if (node->child) {
-				INFO("{");
-				xlat_debug(node->child);
-				INFO("}");
+				INFO_INDENT("{");
+				_xlat_debug(node->child, depth + 1);
+				INFO_INDENT("}");
 			}
 			break;
 
 		case XLAT_FUNC_UNRESOLVED:
-			INFO("xlat-unresolved --> %s", node->fmt);
+			INFO_INDENT("xlat-unresolved (%s)", node->fmt);
 			if (node->child) {
-				INFO("{");
-				xlat_debug(node->child);
-				INFO("}");
+				INFO_INDENT("{");
+				_xlat_debug(node->child, depth + 1);
+				INFO_INDENT("}");
 			}
 			break;
 
 #ifdef HAVE_REGEX
 		case XLAT_REGEX:
-			INFO("regex-var --> %d", node->regex_index);
+			INFO_INDENT("regex-var -- %d", node->regex_index);
 			break;
 #endif
 
 		case XLAT_ALTERNATE:
 			DEBUG("XLAT-IF {");
-			xlat_debug(node->child);
+			_xlat_debug(node->child, depth + 1);
 			DEBUG("}");
 			DEBUG("XLAT-ELSE {");
-			xlat_debug(node->alternate);
+			_xlat_debug(node->alternate, depth + 1);
 			DEBUG("}");
 			break;
 
@@ -1154,6 +1157,11 @@ void xlat_debug(xlat_exp_t const *node)
 		}
 		node = node->next;
 	}
+}
+
+void xlat_debug(xlat_exp_t const *node)
+{
+	_xlat_debug(node, 0);
 }
 
 /** Reconstitute an xlat expression from its constituent nodes
