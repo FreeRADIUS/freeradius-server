@@ -1088,7 +1088,7 @@ module_instance_t *module_by_data(void const *data)
 }
 
 
-/** Retrieve module/thread specific instance data for a module
+/** Retrieve module/thread specific instance for a module
  *
  * @param[in] mi	to find thread specific data for.
  * @return
