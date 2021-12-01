@@ -412,7 +412,7 @@ void xlat_thread_detach(void)
  */
 static int xlat_instantiate_init(void)
 {
-	if (unlikely(xlat_inst_tree)) return 0;
+	if (unlikely(xlat_inst_tree != NULL)) return 0;
 
 	xlat_inst_tree = fr_heap_talloc_alloc(NULL, _xlat_inst_cmp, xlat_inst_t, idx, 0);
 	if (!xlat_inst_tree) return -1;

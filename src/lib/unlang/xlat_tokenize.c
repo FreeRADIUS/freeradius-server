@@ -170,7 +170,7 @@ xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t *func, xlat_exp_t const 
 	node->call.func = func;
 	if (unlikely(xlat_copy(node, &node->child, args) < 0)) {
 		talloc_free(node);
-		return -1;
+		return NULL;
 	}
 	node->flags = func->flags;
 
