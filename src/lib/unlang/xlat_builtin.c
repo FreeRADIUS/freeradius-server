@@ -674,7 +674,7 @@ static xlat_action_t xlat_redundant_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		goto done;
 	}
 
-	if (unlang_xlat_yield(request, xlat_redundant_resume, NULL, rctx) != UNLANG_ACTION_YIELD) goto error;
+	if (unlang_xlat_yield(request, xlat_redundant_resume, NULL, rctx) != XLAT_ACTION_YIELD) goto error;
 
 	/*
 	 *	Push the next child...
