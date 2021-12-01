@@ -1639,7 +1639,8 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const 
 
 		switch (node->type) {
 		case XLAT_GROUP:
-			return xlat_resolve(&node->child, &node->flags, xr_rules);
+			if (xlat_resolve(&node->child, &node->flags, xr_rules) < 0) return -1;
+			break;
 
 		/*
 		 *	Alternate expansion a || b
