@@ -3,7 +3,10 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	* Add dictionary.mellanox
 	* Update dictionary.aruba
 	* Removed haproxy support.  It's new and experimental,
-	  and belongs in the v3.2 release.
+	  and belongs in the v3.2 release, where it will be
+	  fully supported.
+	* Support PEAP and TTLS with TLS 1.3.  This has been
+	  tested with wpa_supplicant and Windows 11.
 
 	Bug fixes
 	* Ensure PBKDF2 always uses at least one iteration
