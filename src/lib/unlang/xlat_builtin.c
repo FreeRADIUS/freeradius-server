@@ -903,18 +903,29 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	char const		*name1, *name2;
 	xlat_redundant_type_t	xr_type;
 	xlat_redundant_t	*xr;
-	xlat_flags_t		flags = {
-					.pure = true	/* Gets removed by the merge function */
-				};
+	xlat_flags_t		flags = {};
 
 	xlat_t const		*xlat;
 	CONF_ITEM		*ci = NULL;
 
 	name1 = cf_section_name1(cs);
 	xr_type = fr_table_value_by_str(xlat_redundant_type_table, name1, XLAT_REDUNDANT_INVALID);
-	if (unlikely(xr_type == XLAT_REDUNDANT_INVALID)) {
+	switch (xr_type) {
+	case XLAT_REDUNDANT_INVALID:
 		cf_log_err(cs, "Invalid redundant section verb \"%s\"", name1);
 		return -1;
+
+	case XLAT_REDUNDANT:
+		flags.pure = true;	/* Can be pure */
+		break;
+
+	case XLAT_LOAD_BALANCE:
+		flags.pure = false;	/* Can never be pure because of random selection */
+		break;
+
+	case XLAT_REDUNDANT_LOAD_BALANCE:
+		flags.pure = false;	/* Can never be pure because of random selection */
+		break;
 	}
 
 	name2 = cf_section_name2(cs);
