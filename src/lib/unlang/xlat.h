@@ -361,6 +361,10 @@ static inline size_t xlat_aprint(TALLOC_CTX *ctx, char **out, xlat_exp_t const *
 		SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(xlat_print, node, e_rules);
 }
 
+int		xlat_validate_function_mono(xlat_exp_t *node);
+
+int		xlat_validate_function_args(xlat_exp_t *node);
+
 void		xlat_debug(xlat_exp_t const *node);
 
 bool		xlat_is_value_box(xlat_exp_t const *head);

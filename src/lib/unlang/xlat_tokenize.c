@@ -369,7 +369,7 @@ static inline int xlat_tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_f
 }
 #endif
 
-static inline int xlat_validate_function_mono(xlat_exp_t *node)
+int xlat_validate_function_mono(xlat_exp_t *node)
 {
 	fr_assert(node->type == XLAT_FUNC);
 
@@ -450,6 +450,15 @@ static inline int xlat_tokenize_function_mono(TALLOC_CTX *ctx, xlat_exp_t **head
 		node->flags = func->flags;
 	}
 
+	/*
+	 *	Record the calling style, this is useful
+	 *	for checking later with unresolved
+	 *	functions, for printing accurate debug
+	 *	info, and for weird xlats like the
+	 *	redundant xlat
+	 */
+	node->call.input_type = XLAT_INPUT_MONO;
+
 	fr_sbuff_next(in);			/* Skip the ':' */
 	XLAT_DEBUG("FUNC-ARGS <-- %s ... %pV",
 		   node->fmt, fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
@@ -480,7 +489,7 @@ static inline int xlat_tokenize_function_mono(TALLOC_CTX *ctx, xlat_exp_t **head
 	return 0;
 }
 
-static inline int xlat_validate_function_args(xlat_exp_t *node)
+int xlat_validate_function_args(xlat_exp_t *node)
 {
 	xlat_arg_parser_t const *arg_p;
 	xlat_exp_t		*child = node->child;
@@ -568,7 +577,7 @@ static inline int xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **head
 		node->flags.needs_resolving = true;	/* Needs resolution during pass2 */
 	} else {
 		if (func && (func->input_type != XLAT_INPUT_ARGS)) {
-			fr_strerror_const("Function should be called using the syntax %{func:arg}");
+			fr_strerror_const("Function should be called using %{func:arg} syntax");
 		error:
 			talloc_free(node);
 			return -1;
@@ -576,6 +585,15 @@ static inline int xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **head
 		node->call.func = func;
 		node->flags = func->flags;
 	}
+
+	/*
+	 *	Record the calling style, this is useful
+	 *	for checking later with unresolved
+	 *	functions, for printing accurate debug
+	 *	info, and for weird xlats like the
+	 *	redundant xlat
+	 */
+	node->call.input_type = XLAT_INPUT_ARGS;
 
 	fr_sbuff_next(in);			/* Skip the ':' */
 	XLAT_DEBUG("FUNC-ARGS <-- %s ... %pV",
@@ -1732,10 +1750,20 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const 
 				break;
 
 			case XLAT_INPUT_MONO:
+				if (node->call.input_type != XLAT_INPUT_MONO) {
+					fr_strerror_const("Function should be called using %{func:arg} syntax");
+					return -1;
+
+				}
 				if (xlat_validate_function_mono(node) < 0) return -1;
 				break;
 
 			case XLAT_INPUT_ARGS:
+				if (node->call.input_type != XLAT_INPUT_ARGS) {
+					fr_strerror_const("Function takes defined arguments and should "
+							  "be called using %(func:args) syntax");
+					return -1;
+				}
 				if (xlat_validate_function_args(node) < 0) return -1;
 				break;
 			}

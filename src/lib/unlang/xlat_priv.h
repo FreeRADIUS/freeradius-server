@@ -104,6 +104,9 @@ typedef struct {
 	xlat_inst_t		*inst;			//!< Instance data for the #xlat_t.
 	xlat_thread_inst_t	*thread_inst;		//!< Thread specific instance.
 							///< ONLY USED FOR EPHEMERAL XLATS.
+
+	xlat_input_type_t	input_type;		//!< The input type used inferred from the
+							///< bracketing style.
 } xlat_call_t;
 
 /** An xlat expansion node
