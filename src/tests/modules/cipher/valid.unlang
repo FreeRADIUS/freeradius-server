@@ -3,9 +3,9 @@ update request {
 	&Tmp-Date-1 := "%(cipher_rsa_certificate:notAfter)"
 }
 
-# Check the cert validity period is 365 days
-if (<uint32>"%{expr:%(integer:%{Tmp-Date-1}) - %(integer:%{Tmp-Date-0})}" != <uint32>"%{expr:86400 * 365}") {
+# Check the cert validity period is 60 days, from raddb/certs/server.cnf
+if (<uint32>"%{expr:%(integer:%{Tmp-Date-1}) - %(integer:%{Tmp-Date-0})}" != <uint32>"%{expr:86400 * 60}") {
 	test_fail
-} else {
-	test_pass
 }
+
+test_pass
