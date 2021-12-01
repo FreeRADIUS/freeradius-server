@@ -425,6 +425,8 @@ void		xlat_free(void);
 /*
  *	xlat_tokenize.c
  */
+xlat_exp_t	*xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t *func, xlat_exp_t const *args);
+
 void 		xlat_exp_free(xlat_exp_t **head);
 
 tmpl_t		*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *xlat);

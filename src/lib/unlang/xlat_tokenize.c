@@ -155,6 +155,28 @@ static inline CC_HINT(always_inline) xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx,
 	return node;
 }
 
+/** Allocate an xlat node to call an xlat function
+ *
+ * @param[in] ctx	to allocate the new node in.
+ * @param[in] func	to call.
+ * @param[in] args	Arguments to the function.  Will be copied,
+ *			and freed when the new xlat node is freed.
+ */
+xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t *func, xlat_exp_t const *args)
+{
+	xlat_exp_t *node;
+
+	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, func->name, strlen(func->name)));
+	node->call.func = func;
+	if (unlikely(xlat_copy(node, &node->child, args) < 0)) {
+		talloc_free(node);
+		return -1;
+	}
+	node->flags = func->flags;
+
+	return node;
+}
+
 /** Set the type of an xlat node
  *
  * @param[in] node	to set type for.
