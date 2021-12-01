@@ -20,9 +20,9 @@
  * @file xlat_tokenize.c
  * @brief String expansion ("translation").  Tokenizes xlat expansion strings.
  *
+ * @copyright 2017-2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2000 Alan DeKok (aland@freeradius.org)
  * @copyright 2000,2006 The FreeRADIUS server project
- * @copyright 2017-2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 
 RCSID("$Id$")
@@ -124,7 +124,6 @@ static inline CC_HINT(always_inline) xlat_exp_t *xlat_exp_alloc_null(TALLOC_CTX 
 	return node;
 }
 
-
 /** Allocate an xlat node
  *
  * @param[in] ctx	to allocate node in.
@@ -144,9 +143,13 @@ static inline CC_HINT(always_inline) xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx,
 	if (!in) return node;
 
 	node->fmt = talloc_bstrndup(node, in, inlen);
-
-	if (type == XLAT_BOX) {
+	switch (type) {
+	case XLAT_BOX:
 		fr_value_box_strdup_shallow(&node->data, NULL, node->fmt, false);
+		break;
+
+	default:
+		break;
 	}
 
 	return node;
@@ -1738,9 +1741,7 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const 
 		 */
 		case XLAT_VIRTUAL_UNRESOLVED:
 		{
-			if (xlat_resolve_virtual_attribute(node, node->attr) == 0) {
-				break;
-			}
+			if (xlat_resolve_virtual_attribute(node, node->attr) == 0) break;
 
 			/*
 			 *	Try and resolve (in-place) as an attribute
