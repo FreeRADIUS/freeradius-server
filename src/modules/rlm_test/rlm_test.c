@@ -379,7 +379,7 @@ static xlat_action_t trigger_test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, reque
 
 
 static xlat_arg_parser_t const test_xlat_args[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .concat = true, .variadic = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -392,17 +392,19 @@ static xlat_action_t test_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED reques
 				       UNUSED void const *xlat_inst, UNUSED void *xlat_thread_inst,
 				       fr_value_box_list_t *in)
 {
-	fr_value_box_t	*in_head = fr_dlist_head(in);
+	fr_value_box_t	*vb_p = NULL;
 	fr_value_box_t	*vb;
 
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
+	while ((vb_p = fr_dlist_next(in, vb_p))) {
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL, false));
 
-	if (fr_value_box_copy(ctx, vb, in_head) < 0) {
-		talloc_free(vb);
-		return XLAT_ACTION_FAIL;
+		if (fr_value_box_copy(ctx, vb, vb_p) < 0) {
+			talloc_free(vb);
+			return XLAT_ACTION_FAIL;
+		}
+
+		fr_dcursor_append(out, vb);
 	}
-
-	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
 }

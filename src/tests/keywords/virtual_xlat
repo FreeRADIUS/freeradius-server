@@ -1,8 +1,0 @@
-#
-#  PRE: if
-#
-if ("%{redundant_test:foo bar}" != "foo bar") {
-	test_fail
-}
-
-success
