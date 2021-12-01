@@ -431,7 +431,7 @@ tmpl_t		*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *xlat);
 
 int		xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, tmpl_t **vpt_p);
 
-int		xlat_copy(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t *in);
+int		xlat_copy(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t const *in);
 
 /*
  *	xlat_inst.c
