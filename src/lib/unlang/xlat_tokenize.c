@@ -1309,7 +1309,7 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rule
  * @param[in] ctx	to allocate dynamic buffers in.
  * @param[out] head	the head of the xlat list / tree structure.
  * @param[in] el	for registering any I/O handlers.
- * @param[in] flags	that control evaluation and parsing.
+ * @param[out] flags	indicating the state of the ephemeral tree.
  * @param[in] in	the format string to expand.
  * @param[in] p_rules	from the encompassing grammar.
  * @param[in] t_rules	controlling how attribute references are parsed.
@@ -1325,15 +1325,20 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head,
 			        fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
+	tmpl_rules_t	our_t_rules = {};
 	xlat_flags_t	tmp_flags = {};
 
 	if (!flags) flags = &tmp_flags;
 
 	*head = NULL;
 
+	if (t_rules) our_t_rules = *t_rules;
+
+	our_t_rules.runtime_el = el;
+
 	fr_strerror_clear();	/* Clear error buffer */
 	if (xlat_tokenize_string(ctx, head, flags, &our_in,
-				  false, p_rules, t_rules) < 0) return -fr_sbuff_used(&our_in);
+				 false, p_rules, &our_t_rules) < 0) return -fr_sbuff_used(&our_in);
 
 	/*
 	 *	Zero length expansion, return a zero length node.

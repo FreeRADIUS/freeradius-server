@@ -1563,58 +1563,111 @@ static xlat_action_t xlat_func_next_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	MEM(vb=fr_value_box_alloc_null(ctx));
+	MEM(vb = fr_value_box_alloc_null(ctx));
 	fr_value_box_uint64(vb, NULL, (uint64_t)(mktime(local) - now), false);
 	fr_dcursor_append(out, vb);
 	return XLAT_ACTION_DONE;
 }
 
-/** xlat expand string attribute value
+typedef struct {
+	bool		last_success;
+	xlat_exp_t	*ex;
+} xlat_eval_rctx_t;
+
+/** Just serves to push the result up the stack
+ *
+ */
+static xlat_action_t xlat_eval_resume(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+				      xlat_ctx_t const *xctx,
+				      UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	xlat_eval_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_eval_rctx_t);
+	xlat_action_t		*xa = rctx->last_success ? XLAT_ACTION_DONE : XLAT_ACTION_YIELD;
+
+	talloc_free(rctx);
+
+	return xa;
+}
+
+static xlat_arg_parser_t const xlat_func_eval_arg = {
+	.required = true,
+	.concat = true,
+	.type = FR_TYPE_STRING
+};
+
+/** Dynamically evaluate an expansion string
  *
  * @ingroup xlat_functions
  */
-static ssize_t xlat_func_xlat(TALLOC_CTX *ctx, char **out, size_t outlen,
-			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			      request_t *request, char const *fmt)
+static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				    UNUSED xlat_ctx_t const *xctx,
+				    request_t *request, fr_value_box_list_t *in)
 {
-	ssize_t		slen;
-	fr_pair_t	*vp;
 
-	fr_skip_whitespace(fmt);
-
-	if (outlen < 3) {
-	nothing:
-		return 0;
-	}
-
-	if ((xlat_fmt_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
-
-	RDEBUG2("EXPAND %s", fmt);
-	RINDENT();
+	xlat_flags_t		flags = {};
+	xlat_eval_rctx_t	*rctx;
+	fr_value_box_t		*arg = fr_dlist_head(in);
 
 	/*
-	 *	If it's a string, expand it again
+	 *	These are escaping rules applied to the
+	 *	input string. They're mostly here to
+	 *	allow \% and \\ to work.
+	 *
+	 *	Everything else should be passed in as
+	 *	unescaped data.
 	 */
-	if (vp->vp_type == FR_TYPE_STRING) {
-		slen = xlat_eval(*out, outlen, request, vp->vp_strvalue, NULL, NULL);
-		if (slen <= 0) return slen;
+	static fr_sbuff_unescape_rules_t const escape_rules = {
+		.name = "xlat",
+		.chr = '\\',
+		.subs = {
+			['%'] = '%',
+			['\\'] = '\\',
+		},
+		.do_hex = false,
+		.do_oct = false
+	};
+
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_eval_rctx_t));
+
 	/*
-	 *	If it's not a string, treat it as a literal value
+	 *	Parse the input as a literal expansion
 	 */
-	} else {
-		slen = fr_value_box_aprint(ctx, out, &vp->data, NULL);
-		if (!*out) return -1;
+	if (xlat_tokenize_ephemeral(rctx,
+				    &rctx->ex, unlang_interpret_event_list(request), &flags,
+				    &FR_SBUFF_IN(arg->vb_strvalue, arg->vb_length),
+				    &(fr_sbuff_parse_rules_t){ .escapes = &escape_rules },
+				    &(tmpl_rules_t){
+					.allow_unknown = false,
+					.allow_unresolved = false,
+					.allow_foreign = false,
+					.dict_def = request->dict,
+					.at_runtime = true
+				    }) < 0) {
+		RPEDEBUG("Failed parsing expansion");
+	error:
+		talloc_free(rctx);
+		return XLAT_ACTION_FAIL;
 	}
 
-	REXDENT();
-	RDEBUG2("--> %s", *out);
+	/*
+	 *	Call the resolution function so we produce
+	 *	good errors about what function was
+	 *	unresolved.
+	 */
+	if (flags.needs_resolving &&
+	    (xlat_resolve(&rctx->ex, &flags, &(xlat_res_rules_t){ .allow_unresolved = false }) < 0)) {
+		RPEDEBUG("Unresolved expansion functions in expansion");
+		goto error;
 
-	return slen;
+	}
+
+	if (unlang_xlat_yield(request, xlat_eval_resume, NULL, rctx) != XLAT_ACTION_YIELD) goto error;
+
+	if (unlang_xlat_push(ctx, &rctx->last_success, out->dlist,
+			     request, rctx->ex, UNLANG_SUB_FRAME) < 0) goto error;
+
+	return XLAT_ACTION_PUSH_UNLANG;
 }
-
-/*
- *	Async xlat functions
- */
 
 static xlat_arg_parser_t const xlat_func_pad_args[] = {
 	{ .required = true, .type = FR_TYPE_STRING },
@@ -1622,7 +1675,6 @@ static xlat_arg_parser_t const xlat_func_pad_args[] = {
 	{ .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
-
 
 /** lpad a string
  *
@@ -3563,11 +3615,6 @@ int xlat_init(void)
 	 */
 	if (xlat_protocol_init() < 0) return -1;
 
-#define XLAT_REGISTER(_x) xlat = xlat_register_legacy(NULL, STRINGIFY(_x), xlat_func_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN); \
-	xlat_internal(xlat);
-
-	XLAT_REGISTER(xlat);
-
 	/*
 	 *	These are all "pure" functions.
 	 */
@@ -3649,6 +3696,7 @@ do { \
 	XLAT_REGISTER_MONO("toupper", xlat_func_toupper, xlat_change_case_arg);
 	XLAT_REGISTER_MONO("urlquote", xlat_func_urlquote, xlat_func_urlquote_arg);
 	XLAT_REGISTER_MONO("urlunquote", xlat_func_urlunquote, xlat_func_urlunquote_arg);
+	XLAT_REGISTER_MONO("eval", xlat_func_eval, xlat_func_eval_arg);
 
 #undef XLAT_REGISTER_MONO
 #define XLAT_REGISTER_MONO(_xlat, _func, _arg) \
