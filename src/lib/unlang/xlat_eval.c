@@ -2127,6 +2127,21 @@ int xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_type_t type, void
 			}
 			break;
 
+		case XLAT_FUNC_UNRESOLVED:
+			if (!type || (type & XLAT_FUNC_UNRESOLVED)) {
+				ret = walker(node, uctx);
+				if (ret < 0) return ret;
+			}
+
+			/*
+			 *	Now evaluate the function's arguments
+			 */
+			if (node->child) {
+				ret = xlat_eval_walk(node->child, walker, type, uctx);
+				if (ret < 0) return ret;
+			}
+			break;
+
 		case XLAT_ALTERNATE:
 			if (!type || (type & XLAT_ALTERNATE)) {
 				ret = walker(node, uctx);
