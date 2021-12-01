@@ -140,7 +140,6 @@ static inline CC_HINT(always_inline) xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx,
 
 	node = xlat_exp_alloc_null(ctx);
 	node->type = type;
-	node->flags.pure = true;	/* everything starts pure */
 
 	if (!in) return node;
 
