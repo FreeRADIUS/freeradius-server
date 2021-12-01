@@ -56,6 +56,9 @@ typedef struct xlat_s {
 
 	bool			internal;		//!< If true, cannot be redefined.
 
+	module_inst_ctx_t const	*mctx;			//!< Original module instantiation ctx if this
+							///< xlat was registered by a module.
+
 	xlat_instantiate_t	instantiate;		//!< Instantiation function.
 	xlat_detach_t		detach;			//!< Destructor for when xlat instances are freed.
 	char const		*inst_type;		//!< C type of instance structure.

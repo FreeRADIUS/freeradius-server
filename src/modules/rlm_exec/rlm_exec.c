@@ -170,7 +170,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_t		*xlat;
 	char const	*p;
 
-	xlat = xlat_register(NULL, mctx->inst->name, exec_xlat, XLAT_FLAG_NEEDS_ASYNC);
+	xlat = xlat_register_module(NULL, mctx, mctx->inst->name, exec_xlat, XLAT_FLAG_NEEDS_ASYNC);
 	xlat_func_args(xlat, exec_xlat_args);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_exec_t *, NULL, inst);
 

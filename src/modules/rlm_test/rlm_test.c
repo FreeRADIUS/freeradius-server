@@ -482,14 +482,14 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	}
 
 	if (!cf_section_name2(mctx->inst->conf)) {
-		if (!(xlat = xlat_register(inst, "test_trigger", trigger_test_xlat, NULL))) return -1;
+		if (!(xlat = xlat_register_module(inst, mctx, "test_trigger", trigger_test_xlat, NULL))) return -1;
 		xlat_func_args(xlat, trigger_test_xlat_args);
 
-		if (!(xlat = xlat_register(inst, "test", test_xlat, NULL))) return -1;
+		if (!(xlat = xlat_register_module(inst, mctx, "test", test_xlat, NULL))) return -1;
 		xlat_func_args(xlat, test_xlat_args);
 
 	} else {
-		if (!(xlat = xlat_register(inst, mctx->inst->name, test_xlat, NULL))) return -1;
+		if (!(xlat = xlat_register_module(inst, mctx, mctx->inst->name, test_xlat, NULL))) return -1;
 		xlat_func_args(xlat, test_xlat_args);
 	}
 

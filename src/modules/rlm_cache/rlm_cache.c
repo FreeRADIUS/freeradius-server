@@ -1008,7 +1008,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Register the cache xlat function
 	 */
-	xlat = xlat_register(inst, mctx->inst->name, cache_xlat, XLAT_FLAG_NEEDS_ASYNC);
+	xlat = xlat_register_module(inst, mctx, mctx->inst->name, cache_xlat, XLAT_FLAG_NEEDS_ASYNC);
 	xlat_func_args(xlat, cache_xlat_args);
 	xlat_async_thread_instantiate_set(xlat, mod_xlat_thread_instantiate, cache_xlat_thread_inst_t, NULL, inst);
 

@@ -1330,7 +1330,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			 *	Register decrypt xlat
 			 */
 			xlat_name = talloc_asprintf(inst, "%s_decrypt", mctx->inst->name);
-			xlat = xlat_register(inst, xlat_name, cipher_rsa_decrypt_xlat, NULL);
+			xlat = xlat_register_module(inst, mctx, xlat_name, cipher_rsa_decrypt_xlat, NULL);
 			xlat_func_mono(xlat, &cipher_rsa_decrypt_xlat_arg);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
 						   rlm_cipher_t *,
@@ -1347,7 +1347,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			 *	Verify sign xlat
 			 */
 			xlat_name = talloc_asprintf(inst, "%s_verify", mctx->inst->name);
-			xlat = xlat_register(inst, xlat_name, cipher_rsa_verify_xlat, NULL);
+			xlat = xlat_register_module(inst, mctx, xlat_name, cipher_rsa_verify_xlat, NULL);
 			xlat_func_args(xlat, cipher_rsa_verify_xlat_arg);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
 						   rlm_cipher_t *,
@@ -1385,7 +1385,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			 *	Register encrypt xlat
 			 */
 			xlat_name = talloc_asprintf(inst, "%s_encrypt", mctx->inst->name);
-			xlat = xlat_register(inst, xlat_name, cipher_rsa_encrypt_xlat, NULL);
+			xlat = xlat_register_module(inst, mctx, xlat_name, cipher_rsa_encrypt_xlat, NULL);
 			xlat_func_mono(xlat, &cipher_rsa_encrypt_xlat_arg);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
 						   rlm_cipher_t *,
@@ -1401,7 +1401,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			 *	Register sign xlat
 			 */
 			xlat_name = talloc_asprintf(inst, "%s_sign", mctx->inst->name);
-			xlat = xlat_register(inst, xlat_name, cipher_rsa_sign_xlat, NULL);
+			xlat = xlat_register_module(inst, mctx, xlat_name, cipher_rsa_sign_xlat, NULL);
 			xlat_func_mono(xlat, &cipher_rsa_sign_xlat_arg);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
 						   rlm_cipher_t *,
@@ -1414,7 +1414,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			talloc_free(xlat_name);
 
 			xlat_name = talloc_asprintf(inst, "%s_certificate", mctx->inst->name);
-			xlat = xlat_register(inst, xlat_name, cipher_certificate_xlat, NULL);
+			xlat = xlat_register_module(inst, mctx, xlat_name, cipher_certificate_xlat, NULL);
 			xlat_func_args(xlat, cipher_certificate_xlat_args);
 			xlat_async_instantiate_set(xlat, cipher_xlat_instantiate,
 						   rlm_cipher_t *,

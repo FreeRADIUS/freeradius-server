@@ -236,17 +236,17 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 */
 	if (cf_section_name2(mctx->inst->conf) != NULL) return 0;
 
-	xlat = xlat_register(inst, "attr_by_num", xlat_dict_attr_by_num, NULL);
+	xlat = xlat_register_module(inst, mctx, "attr_by_num", xlat_dict_attr_by_num, NULL);
 	xlat_func_args(xlat, xlat_dict_attr_by_num_args);
-	xlat = xlat_register(inst, "attr_by_oid", xlat_dict_attr_by_oid, NULL);
+	xlat = xlat_register_module(inst, mctx, "attr_by_oid", xlat_dict_attr_by_oid, NULL);
 	xlat_func_args(xlat, xlat_dict_attr_by_oid_args);
-	xlat = xlat_register(inst, "vendor", xlat_vendor, NULL);
+	xlat = xlat_register_module(inst, mctx, "vendor", xlat_vendor, NULL);
 	xlat_func_args(xlat, xlat_vendor_args);
-	xlat = xlat_register(inst, "vendor_num", xlat_vendor_num, NULL);
+	xlat = xlat_register_module(inst, mctx, "vendor_num", xlat_vendor_num, NULL);
 	xlat_func_args(xlat, xlat_vendor_num_args);
-	xlat = xlat_register(inst, "attr", xlat_attr, NULL);
+	xlat = xlat_register_module(inst, mctx, "attr", xlat_attr, NULL);
 	xlat_func_args(xlat, xlat_attr_args);
-	xlat = xlat_register(inst, "attr_num", xlat_attr_num, NULL);
+	xlat = xlat_register_module(inst, mctx, "attr_num", xlat_attr_num, NULL);
 	xlat_func_args(xlat, xlat_attr_num_args);
 
 	return 0;

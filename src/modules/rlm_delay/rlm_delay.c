@@ -279,7 +279,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_delay_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_delay_t);
 	xlat_t		*xlat;
 
-	xlat = xlat_register(inst, mctx->inst->name, xlat_delay, XLAT_FLAG_NEEDS_ASYNC);
+	xlat = xlat_register_module(inst, mctx, mctx->inst->name, xlat_delay, XLAT_FLAG_NEEDS_ASYNC);
 	xlat_func_args(xlat, xlat_delay_args);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_delay_t *, NULL, inst);
 	return 0;

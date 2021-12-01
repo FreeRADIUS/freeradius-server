@@ -639,7 +639,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_perl_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_perl_t);
 	xlat_t		*xlat;
 
-	xlat = xlat_register(NULL, mctx->inst->name, perl_xlat, NULL);
+	xlat = xlat_register_module(NULL, mctx, mctx->inst->name, perl_xlat, NULL);
 	xlat_func_args(xlat, perl_xlat_args);
 
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_perl_xlat_t, NULL, inst);

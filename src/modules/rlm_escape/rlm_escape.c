@@ -199,11 +199,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_t		*xlat;
 
 	MEM(unescape = talloc_asprintf(NULL, "un%s", mctx->inst->name));
-	xlat = xlat_register(NULL, mctx->inst->name, escape_xlat, XLAT_FLAG_PURE);
+	xlat = xlat_register_module(NULL, mctx, mctx->inst->name, escape_xlat, XLAT_FLAG_PURE);
 	xlat_func_mono(xlat, &escape_xlat_arg);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_escape_t *, NULL, inst);
 
-	xlat = xlat_register(NULL, unescape, unescape_xlat, XLAT_FLAG_PURE);
+	xlat = xlat_register_module(NULL, mctx, unescape, unescape_xlat, XLAT_FLAG_PURE);
 	xlat_func_mono(xlat, &unescape_xlat_arg);
 	talloc_free(unescape);
 

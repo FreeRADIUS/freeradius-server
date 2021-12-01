@@ -160,7 +160,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_idn_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_idn_t);
 	xlat_t		*xlat;
 
-	xlat = xlat_register(inst, mctx->inst->name, xlat_idna, XLAT_FLAG_PURE);
+	xlat = xlat_register_module(inst, mctx, mctx->inst->name, xlat_idna, XLAT_FLAG_PURE);
 	xlat_func_mono(xlat, &xlat_idna_arg);
 	xlat_async_instantiate_set(xlat, mod_xlat_instantiate, rlm_idn_t *, NULL, inst);
 

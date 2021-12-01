@@ -381,6 +381,8 @@ xlat_t		*xlat_register_legacy(void *mod_inst, char const *name,
 				      xlat_instantiate_t instantiate, size_t inst_size,
 				      size_t buf_len);
 
+xlat_t		*xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
+				      char const *name, xlat_func_t func, xlat_flags_t const *flags);
 xlat_t		*xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, xlat_flags_t const *flags) CC_HINT(nonnull(2));
 
 int		xlat_func_args(xlat_t *xlat, xlat_arg_parser_t const args[]) CC_HINT(nonnull);

@@ -133,7 +133,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	xlat = xlat_register(inst, mctx->inst->name, always_xlat, NULL);
+	xlat = xlat_register_module(inst, mctx, mctx->inst->name, always_xlat, NULL);
 	xlat_func_args(xlat, always_xlat_args);
 	xlat_async_instantiate_set(xlat, always_xlat_instantiate, rlm_always_t *, NULL, inst);
 

@@ -227,9 +227,11 @@ xlat_t *xlat_register_legacy(void *mod_inst, char const *name,
 }
 
 
-/** Register an xlat function
+/** Register an xlat function for a module
  *
  * @param[in] ctx		Used to automate deregistration of the xlat fnction.
+ * @param[in] mctx		Instantiation context from the module.
+ *				Will be duplicated and passed to future xlat calls.
  * @param[in] name		of the xlat.
  * @param[in] func		to register.
  * @param[in] flags		various function flags
@@ -237,10 +239,12 @@ xlat_t *xlat_register_legacy(void *mod_inst, char const *name,
  *	- A handle for the newly registered xlat function on success.
  *	- NULL on failure.
  */
-xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, xlat_flags_t const *flags)
+xlat_t *xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
+			     char const *name, xlat_func_t func, xlat_flags_t const *flags)
 {
+	static const xlat_flags_t default_flags;
 	xlat_t	*c;
-	static const xlat_flags_t my_flags = (xlat_flags_t) { 0 };
+	module_inst_ctx_t *our_mctx = NULL;
 
 	if (!xlat_root) xlat_init();
 
@@ -249,7 +253,7 @@ xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, xlat_
 		return NULL;
 	}
 
-	if (!flags) flags = &my_flags;
+	if (!flags) flags = &default_flags;
 
 	/*
 	 *	If it already exists, replace the instance.
@@ -278,11 +282,16 @@ xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, xlat_
 	 *	Doesn't exist.  Create it.
 	 */
 	MEM(c = talloc(ctx, xlat_t));
+	if (mctx) {
+		MEM(our_mctx = talloc_zero(c, module_inst_ctx_t));	/* Original won't stick around */
+		memcpy(our_mctx, mctx, sizeof(*our_mctx));
+	}
 	*c = (xlat_t){
 		.name = talloc_typed_strdup(c, name),
 		.func = {
 			.async = func
 		},
+		.mctx = our_mctx,
 		.type = XLAT_FUNC_NORMAL,
 		.flags = *flags,
 		.input_type = XLAT_INPUT_UNPROCESSED	/* set default - will be overridden if args are registered */
@@ -306,6 +315,20 @@ xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, xlat_
 	return c;
 }
 
+/** Register an xlat function
+ *
+ * @param[in] ctx		Used to automate deregistration of the xlat fnction.
+ * @param[in] name		of the xlat.
+ * @param[in] func		to register.
+ * @param[in] flags		various function flags
+ * @return
+ *	- A handle for the newly registered xlat function on success.
+ *	- NULL on failure.
+ */
+xlat_t *xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, xlat_flags_t const *flags)
+{
+	return xlat_register_module(ctx, NULL, name, func, flags);
+}
 
 /** Verify xlat arg specifications are valid
  *
