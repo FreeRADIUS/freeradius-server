@@ -384,7 +384,10 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, fr_map_list_t *out, request_t *reques
 
 	MEM(map = talloc_zero(ctx, map_t));
 	slen = tmpl_afrom_attr_str(map, NULL, &map->lhs, key->str,
-				   &(tmpl_rules_t){ .dict_def = request->dict });
+				   &(tmpl_rules_t){
+				   	.prefix = TMPL_ATTR_REF_PREFIX_NO,
+				   	.dict_def = request->dict
+				   });
 	if (slen <= 0) {
 		REMARKER(key->str, -slen, "%s", fr_strerror());
 		goto error;
