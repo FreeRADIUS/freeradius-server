@@ -668,7 +668,8 @@ fr_unix_time_t fr_unix_time_from_tm(struct tm *tm)
 	 *	2472692 adjusts the days for Unix epoch.  It is calculated as
 	 *	(365.2425 * (4800 + 1970))
 	 */
-	return fr_unix_time_from_sec((days - 2472692) * 86400 + (tm->tm_hour * 3600) + (tm->tm_min * 60) + tm->tm_sec + tm->tm_gmtoff);
+	return fr_unix_time_from_sec((((days - 2472692) * 86400) + (tm->tm_hour * 3600) +
+				     (tm->tm_min * 60) + tm->tm_sec) - tm->tm_gmtoff);
 }
 
 /** Scale an input time to NSEC, clamping it at max / min.
