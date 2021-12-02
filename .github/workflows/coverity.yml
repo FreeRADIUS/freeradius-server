@@ -66,7 +66,7 @@ jobs:
           export PATH=`pwd`/coverity_tool/bin:$PATH
           ./configure -with-rlm-python-bin=/usr/bin/python2.7
           cov-configure --config coverity.xml --comptype gcc --compiler cc1 --template
-          cov-build --dir cov-int make
+          cov-build --dir cov-int --config coverity.xml make
 
       - name: Display build result
         run: |
