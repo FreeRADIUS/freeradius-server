@@ -4,6 +4,7 @@
 #
 
 import os
+import base64
 
 from github import Github
 
@@ -12,7 +13,7 @@ branch_env = os.environ["GITHUB_REF"]
 token_env = os.environ["GITHUB_TOKEN"]
 
 filename = os.environ["FILE"]
-contents = os.environ["CONTENTS"]
+contents = base64.b64decode(os.environ["CONTENTS"])
 
 print("About to commit update of " + filename + " to " + repo_env + ":" + branch_env)
 

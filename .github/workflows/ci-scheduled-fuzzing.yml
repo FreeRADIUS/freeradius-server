@@ -251,7 +251,7 @@ jobs:
           git add "$FILE"
           OID="$(git lfs ls-files -l -I "$FILE" | cut -f1 -d ' ')"
           git lfs push --object-id origin "$OID"
-          export CONTENTS="$(git show ":$FILE")"
+          export CONTENTS="$(git show ":$FILE" | base64)"
           python3 scripts/ci/commit_lfs_file_update.py
         fi
       env:
