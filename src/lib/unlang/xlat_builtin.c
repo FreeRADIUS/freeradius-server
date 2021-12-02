@@ -1593,7 +1593,7 @@ static xlat_action_t xlat_eval_resume(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_
 				      UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	xlat_eval_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_eval_rctx_t);
-	xlat_action_t		*xa = rctx->last_success ? XLAT_ACTION_DONE : XLAT_ACTION_YIELD;
+	xlat_action_t		xa = rctx->last_success ? XLAT_ACTION_DONE : XLAT_ACTION_YIELD;
 
 	talloc_free(rctx);
 
