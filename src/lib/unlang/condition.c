@@ -29,32 +29,15 @@ RCSID("$Id$")
 
 static unlang_action_t unlang_if(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	int			condition;
 	unlang_group_t		*g = unlang_generic_to_group(frame->instruction);
 	unlang_cond_t		*gext = unlang_group_to_cond(g);
 
 	fr_assert(gext->cond != NULL);
 
-	condition = cond_eval(request, *p_result, gext->cond);
-	if (condition < 0) {
-		switch (condition) {
-		case -2:
-			REDEBUG("Condition evaluation failed because a referenced attribute "
-				"was not found in the request");
-			break;
-		default:
-		case -1:
-			REDEBUG("Condition evaluation failed because the value of an operand "
-				"could not be determined - %s", fr_strerror());
-			break;
-		}
-		condition = 0;
-	}
-
 	/*
 	 *	Didn't pass.  Remember that.
 	 */
-	if (!condition) {
+	if (!cond_eval(request, *p_result, gext->cond)) {
 		RDEBUG2("...");
 		return UNLANG_ACTION_EXECUTE_NEXT;
 	}

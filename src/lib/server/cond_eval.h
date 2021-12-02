@@ -39,7 +39,7 @@ typedef struct fr_cond_s fr_cond_t;
 
 void	cond_debug(fr_cond_t const *cond);
 
-int	cond_eval(request_t *request, rlm_rcode_t modreturn, fr_cond_t const *c);
+bool	cond_eval(request_t *request, rlm_rcode_t modreturn, fr_cond_t const *c);
 
 typedef struct {
 	TALLOC_CTX	*ctx;		//!< for intermediate value boxes
@@ -65,7 +65,7 @@ typedef struct {
 
 int cond_eval_async(request_t *request, fr_cond_async_t *a);
 
-int fr_cond_eval_map(request_t *request, map_t const *map);
+bool fr_cond_eval_map(request_t *request, map_t const *map);
 
 #ifdef __cplusplus
 }

@@ -637,15 +637,14 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 		 */
 		if (tmpl_is_data(c->data.map->lhs) &&
 		    tmpl_is_data(c->data.map->rhs)) {
-			int rcode;
+			bool rcode;
 
 			fr_assert(c->next == NULL);
 
 			rcode = cond_eval(NULL, RLM_MODULE_NOOP, c);
-			fr_assert(rcode >= 0);
 			TALLOC_FREE(c->data.map);
 
-			if (rcode > 0) {
+			if (rcode) {
 				c->type = COND_TYPE_TRUE;
 			} else {
 				c->type = COND_TYPE_FALSE;

@@ -477,7 +477,6 @@ redo:
 		 *	Realize the map to a list of VPs
 		 */
 		while ((map = fr_dlist_next(&pl->check, map))) {
-			int rcode;
 			fr_pair_list_t tmp_list;
 
 			/*
@@ -505,13 +504,7 @@ redo:
 				 *	Evaluate the map, including regexes.
 				 */
 			default:
-				rcode = fr_cond_eval_map(request, map);
-				if (rcode < 0) {
-					RPWARN("Failed evaluating check item, skipping entry");
-					break;
-				}
-
-				if (rcode == 0) match = false;
+				if (!fr_cond_eval_map(request, map)) match = false;
 				break;
 			}
 

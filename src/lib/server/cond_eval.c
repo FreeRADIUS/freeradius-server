@@ -514,7 +514,7 @@ static int cond_realize_attr(request_t *request, fr_value_box_t **realized, fr_v
 	return 0;
 }
 
-static int cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t const *map)
+static bool cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t const *map)
 {
 	int	       		rcode;
 	fr_pair_t		*vp;
@@ -547,10 +547,10 @@ static int cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t con
 	}
 
 	tmpl_pair_cursor_clear(&cc);
-	return rcode;
+	return (rcode == 1);
 }
 
-static int cond_compare_virtual(request_t *request, map_t const *map)
+static bool cond_compare_virtual(request_t *request, map_t const *map)
 {
 	int	       		rcode;
 	fr_pair_t		*virt, *vp;
@@ -589,7 +589,7 @@ static int cond_compare_virtual(request_t *request, map_t const *map)
 	}
 
 	tmpl_pair_cursor_clear(&cc);
-	return rcode;
+	return (rcode == 1);
 }
 
 /** Evaluate a map
@@ -599,11 +599,10 @@ static int cond_compare_virtual(request_t *request, map_t const *map)
  * @param[in] async_lhs the asynchronously evaluated value box, for XLAT and EXEC
  * @param[in] async_rhs the asynchronously evaluated value box, for XLAT and EXEC
  * @return
- *	- -1 on failure.
- *	- 0 for "no match".
- *	- 1 for "match".
+ *	- false for no match (including "not found")
+ *	- true for match
  */
-static int cond_eval_map(request_t *request, fr_cond_t const *c,
+static bool cond_eval_map(request_t *request, fr_cond_t const *c,
 			 fr_value_box_t *async_lhs, fr_value_box_t *async_rhs)
 {
 	int		rcode = 0;
@@ -637,7 +636,7 @@ static int cond_eval_map(request_t *request, fr_cond_t const *c,
 	 */
 	if (cond_realize_tmpl(request, &lhs, &lhs_free, map->lhs, map->rhs, async_lhs) < 0) {
 		fr_strerror_const("Failed evaluating left side of condition");
-		return -1;
+		return false;
 	}
 
 	/*
@@ -645,7 +644,7 @@ static int cond_eval_map(request_t *request, fr_cond_t const *c,
 	 */
 	if (cond_realize_tmpl(request, &rhs, &rhs_free, map->rhs, map->lhs, async_rhs) < 0) {
 		fr_strerror_const("Failed evaluating right side of condition");
-		return -1;
+		return false;
 	}
 
 	/*
@@ -666,7 +665,7 @@ static int cond_eval_map(request_t *request, fr_cond_t const *c,
 			if (slen <= 0) {
 				REMARKER(rhs->vb_strvalue, -slen, "%s", fr_strerror());
 				EVAL_DEBUG("FAIL %d", __LINE__);
-				return -1;
+				return false;
 			}
 			preg = preg_free;
 		}
@@ -707,7 +706,7 @@ static int cond_eval_map(request_t *request, fr_cond_t const *c,
 
 		if (map->op == T_OP_REG_EQ) {
 			fr_strerror_const("Virtual attributes cannot be used with regular expressions");
-			return -1;
+			return false;
 		}
 
 		/*
@@ -726,7 +725,7 @@ static int cond_eval_map(request_t *request, fr_cond_t const *c,
 		 */
 		if (!rhs) {
 			fr_strerror_const("Invalid comparison for virtual attribute");
-			return -1;
+			return false;
 		}
 
 		MEM(vp = fr_pair_afrom_da(request->request_ctx, tmpl_da(map->lhs)));
@@ -839,7 +838,7 @@ done:
 	 *	request data, in which case we don't free it.
 	 */
 	if (preg) talloc_free(preg_free);
-	return rcode;
+	return (rcode == 1);
 }
 
 
@@ -849,12 +848,10 @@ done:
  * @param[in] modreturn the previous module return code
  * @param[in] c the condition to evaluate
  * @return
- *	- -1 on failure.
- *	- -2 on attribute not found.
- *	- 0 for "no match".
- *	- 1 for "match".
+ *	- false for "no match", including "not found"
+ *	- true for "match"
  */
-int cond_eval(request_t *request, rlm_rcode_t modreturn, fr_cond_t const *c)
+bool cond_eval(request_t *request, rlm_rcode_t modreturn, fr_cond_t const *c)
 {
 	int rcode = -1;
 
@@ -892,13 +889,13 @@ int cond_eval(request_t *request, rlm_rcode_t modreturn, fr_cond_t const *c)
 			break;
 		default:
 			EVAL_DEBUG("FAIL %d", __LINE__);
-			return -1;
+			return false;
 		}
 
 		/*
-		 *	Errors cause failures.
+		 *	Errors are "no match".
 		 */
-		if (rcode < 0) return rcode;
+		if (rcode < 0) return false;
 
 		if (c->negate) rcode = !rcode;
 
@@ -912,7 +909,7 @@ int cond_eval(request_t *request, rlm_rcode_t modreturn, fr_cond_t const *c)
 		while (!c->next) {
 return_to_parent:
 			c = c->parent;
-			if (!c) return rcode;
+			if (!c) goto done;
 		}
 
 		/*
@@ -938,10 +935,11 @@ return_to_parent:
 		}
 	}
 
+done:
 	if (rcode < 0) {
 		EVAL_DEBUG("FAIL %d", __LINE__);
 	}
-	return rcode;
+	return (rcode == 1);
 }
 
 /** Asynchronous evaluation of conditions.
@@ -1112,7 +1110,7 @@ return_to_parent:
 /** Evaluate a map as if it is a condition.
  *
  */
-int fr_cond_eval_map(request_t *request, map_t const *map)
+bool fr_cond_eval_map(request_t *request, map_t const *map)
 {
 	fr_cond_t cond;
 
