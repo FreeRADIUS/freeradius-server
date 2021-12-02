@@ -124,3 +124,9 @@ $(foreach x,$(subst /,,$(sort $(dir $(FILES)))),$(eval $(call UNIT_TEST_MODULES,
 
 $(TEST):
 	@touch $(BUILD_DIR)/tests/$@
+
+#
+#  Create the certs directory
+#
+$(DIR)/certs: $(top_srcdir)/raddb/certs
+	@ln -s $< $@
