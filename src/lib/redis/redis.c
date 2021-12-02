@@ -278,9 +278,9 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 	case REDIS_REPLY_STRING:
 	case REDIS_REPLY_STATUS:
 		if (shallow) {
-			fr_value_box_bstrndup_shallow(out, NULL, reply->str, reply->len, true);
+			fr_value_box_bstrndup_shallow(to_cast, NULL, reply->str, reply->len, true);
 		} else {
-			if (fr_value_box_bstrndup(ctx, out, NULL, reply->str, reply->len, true) < 0) return -1;
+			if (fr_value_box_bstrndup(ctx, to_cast, NULL, reply->str, reply->len, true) < 0) return -1;
 		}
 		break;
 
