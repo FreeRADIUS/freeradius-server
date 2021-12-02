@@ -46,9 +46,9 @@ else
   ifdef ${1}_require_test_server
     ifdef TEST_SERVER
       # define and export FOO_TEST_SERVER if it's not already defined
-      $(eval export $(shell echo ${1} | tr a-z A-Z)_TEST_SERVER ?= $(TEST_SERVER))
+      $(eval export $(call uc, ${1})_TEST_SERVER ?= $(TEST_SERVER))
     endif
-    ifeq "$($(shell echo ${1} | tr a-z A-Z)_TEST_SERVER)" ""
+    ifeq "$($(call uc,${1})_TEST_SERVER)" ""
       # the module requires a test server, but we don't have one.  Skip it.
       FILES_SKIP += ${2}
     endif
