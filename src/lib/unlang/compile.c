@@ -38,6 +38,7 @@ RCSID("$Id$")
 #include "parallel_priv.h"
 #include "subrequest_priv.h"
 #include "switch_priv.h"
+#include "edit_priv.h"
 
 
 #define UNLANG_IGNORE ((unlang_t *) -1)
@@ -716,6 +717,22 @@ static void unlang_dump(unlang_t *instruction, int depth)
 			DEBUG("%.*s}", depth, unlang_spaces);
 		}
 			break;
+
+		case UNLANG_TYPE_EDIT:
+		{
+			unlang_edit_t *edit;
+
+			edit = unlang_generic_to_edit(c);
+			map = NULL;
+			while ((map = fr_dlist_next(&edit->maps, map))) {
+				map_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map);
+				DEBUG("%.*s%s", depth + 1, unlang_spaces, buffer);
+			}
+
+			DEBUG("%.*s}", depth, unlang_spaces);
+		}
+			break;
+
 
 		case UNLANG_TYPE_CALL:
 		case UNLANG_TYPE_CALLER:
@@ -1511,6 +1528,75 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	return c;
 }
 
+/** Compile one edit.
+ *
+ *  Edits which are adjacent to one another are automatically merged
+ *  into one larger edit transaction.
+ */
+static unlang_t *compile_edit(unlang_t *parent, unlang_compile_t *unlang_ctx, unlang_t **prev, CONF_PAIR *cp)
+{
+	unlang_edit_t		*edit, *edit_free;
+	unlang_t		*c, *out = UNLANG_IGNORE;
+	map_t			*map;
+
+	tmpl_rules_t		t_rules;
+
+	/*
+	 *	We allow unknown attributes here.
+	 */
+	t_rules = *(unlang_ctx->rules);
+	t_rules.allow_unknown = true;
+	RULES_VERIFY(&t_rules);
+
+	c = *prev;
+	edit = edit_free = NULL;
+
+	if (c && (c->type == UNLANG_TYPE_EDIT)) {
+		edit = unlang_generic_to_edit(c);
+
+	} else {
+		edit = talloc_zero(parent, unlang_edit_t);
+		if (!edit) return NULL;
+
+		c = out = unlang_edit_to_generic(edit);
+		c->parent = parent;
+		c->next = NULL;
+		c->name = cf_pair_attr(cp);
+		c->debug_name = c->name;
+		c->type = UNLANG_TYPE_EDIT;
+
+		fr_map_list_init(&edit->maps);
+		edit_free = edit;
+
+		compile_action_defaults(c, unlang_ctx);
+	}
+
+	/*
+	 *	Convert this particular map.
+	 */
+	if (map_afrom_cp(edit, &map, fr_map_list_tail(&edit->maps), cp, &t_rules, &t_rules) < 0) {
+	fail:
+		talloc_free(edit_free);
+		return NULL;
+	}
+
+	/*
+	 *	Do basic sanity checks and resolving.
+	 */
+	if (!pass2_fixup_map(map, unlang_ctx->rules, NULL)) goto fail;
+
+	/*
+	 *	Check operators, and ensure that the RHS has been
+	 *	resolved.
+	 */
+	if (unlang_fixup_update(map, NULL) < 0) goto fail;
+
+	fr_dlist_insert_tail(&edit->maps, map);
+
+	*prev = c;
+	return out;
+}
+
 /*
  *	Compile action && rcode for later use.
  */
@@ -1838,6 +1924,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 	unlang_t	*c, *single;
 	bool		was_if = false;
 	char const	*skip_else = NULL;
+	unlang_t	*edit = NULL;
 
 	c = unlang_group_to_generic(g);
 
@@ -1854,6 +1941,8 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 		if (cf_item_is_section(ci)) {
 			char const *name = NULL;
 			CONF_SECTION *subcs = cf_item_to_section(ci);
+
+			edit = NULL; /* no longer doing implicit merging of edits */
 
 			/*
 			 *	Skip precompiled blocks.  This is
@@ -1935,10 +2024,16 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			 *	In-line attribute editing is not supported.
 			 */
 			if (*attr == '&') {
-				cf_log_err(cp, "Please use 'update' sections to add / modify / delete attributes");
-				talloc_free(c);
-				return NULL;
+				single = compile_edit(c, unlang_ctx, &edit, cp);
+				if (!single) {
+					talloc_free(c);
+					return NULL;
+				}
+
+				goto add_child;
 			}
+
+			edit = NULL; /* no longer doing implicit merging of edits */
 
 			/*
 			 *	Bare "foo = bar" is disallowed.

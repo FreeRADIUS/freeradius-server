@@ -1,0 +1,17 @@
+#
+#  PRE: if update
+#
+update request {
+	&Tmp-Integer-0 := 4
+}
+
+#
+#  Many, many, years of work led up to this!
+#
+&Tmp-Integer-0 += 5
+
+if (&Tmp-Integer-0 != 9) {
+	test_fail
+}
+
+success

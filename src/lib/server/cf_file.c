@@ -1886,9 +1886,12 @@ static int parse_input(cf_stack_t *stack)
 	case T_OP_LT:
 	case T_OP_CMP_EQ:
 	case T_OP_CMP_FALSE:
-		if (!parent || !frame->special) {
-			ERROR("%s[%d]: Invalid operator in assignment",
-			      frame->filename, frame->lineno);
+		/*
+		 *	As a hack, allow any operators when using &foo=bar
+		 */
+		if ((!parent || !frame->special) && (buff[1][0] != '&')) {
+			ERROR("%s[%d]: Invalid operator in assignment for %s ...",
+			      frame->filename, frame->lineno, buff[1]);
 			return -1;
 		}
 		FALL_THROUGH;

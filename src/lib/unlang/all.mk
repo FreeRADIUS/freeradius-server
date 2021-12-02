@@ -6,6 +6,7 @@ SOURCES	:=	base.c \
 		compile.c \
 		condition.c \
 		detach.c \
+		edit.c \
 		foreach.c \
 		function.c \
 		group.c \

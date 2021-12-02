@@ -100,6 +100,7 @@ int unlang_init_global(void)
 	unlang_call_init();
 	unlang_caller_init();
 	unlang_tmpl_init();
+	unlang_edit_init();
 
 	instance_count++;
 
