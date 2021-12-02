@@ -1291,6 +1291,12 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 	if (!fr_assignment_op[op]) goto invalid;
 
 	switch (op) {
+		/*
+		 *	These operators are included here for testing
+		 *	and completeness.  But see comments in
+		 *	fr_edit_list_apply_pair_assignment() for what
+		 *	the caller should be doing.
+		 */
 	case T_OP_EQ:
 	case T_OP_SET:
 		fr_value_box_clear_value(dst);
