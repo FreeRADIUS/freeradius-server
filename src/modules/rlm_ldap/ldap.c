@@ -699,6 +699,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle
 	int 			i, num;
 
 	rad_assert(*pconn && (*pconn)->handle);
+	rad_assert(!retry || inst->pool);
 
 #ifndef WITH_SASL
 	if (sasl && sasl->mech) {
@@ -716,8 +717,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle
 	 *	For sanity, for when no connections are viable,
 	 *	and we can't make a new one.
 	 */
-	num = 0;
-	if (inst->pool && retry) num = fr_connection_pool_get_num(inst->pool);
+	num = retry ? fr_connection_pool_get_num(inst->pool) : 0;
 	for (i = num; i >= 0; i--) {
 #ifdef WITH_SASL
 		if (sasl && sasl->mech) {
@@ -758,7 +758,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle
 			break;
 
 		case LDAP_PROC_RETRY:
-			if (num) {
+			if (retry) {
 				*pconn = fr_connection_reconnect(inst->pool, *pconn);
 				if (*pconn) {
 					LDAP_DBGW_REQ("Bind with %s to %s failed: %s. Got new socket, retrying...",
@@ -1560,7 +1560,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	}
 
 	status = rlm_ldap_bind(inst, NULL, &conn, conn->inst->admin_identity, conn->inst->admin_password,
-			       &(conn->inst->admin_sasl), true);
+			       &(conn->inst->admin_sasl), false);
 	if (status != LDAP_PROC_SUCCESS) {
 		goto error;
 	}
