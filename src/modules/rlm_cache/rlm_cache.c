@@ -235,17 +235,24 @@ static unlang_action_t cache_find(rlm_rcode_t *p_result, rlm_cache_entry_t **out
 	 *	Yes, but it expired, OR the "forget all" epoch has
 	 *	passed.  Delete it, and pretend it doesn't exist.
 	 */
-	if (fr_unix_time_lt(c->expires, fr_time_to_unix_time(request->packet->timestamp)) ||
-	    fr_unix_time_lt(c->created, fr_unix_time_from_sec(inst->config.epoch))) {
-		RDEBUG2("Found entry for \"%pV\", but it expired %pV ago.  Removing it",
+	if (fr_unix_time_lt(c->expires, fr_time_to_unix_time(request->packet->timestamp))) {
+		RDEBUG2("Found entry for \"%pV\", but it expired %pV ago at %pV (packet received %pV).  Removing it",
 			fr_box_strvalue_len((char const *)key, key_len),
-			fr_box_time_delta(fr_unix_time_sub(fr_time_to_unix_time(request->packet->timestamp), c->expires)));
+			fr_box_time_delta(fr_unix_time_sub(fr_time_to_unix_time(request->packet->timestamp), c->expires)),
+			fr_box_date(c->expires),
+			fr_box_time(request->packet->timestamp));
 
+	expired:
 		inst->driver->expire(&inst->config, inst->driver_inst->dl_inst->data, request, handle, c->key, c->key_len);
 		cache_free(inst, &c);
 		RETURN_MODULE_NOTFOUND;	/* Couldn't find a non-expired entry */
 	}
 
+	if (fr_unix_time_lt(c->created, fr_unix_time_from_sec(inst->config.epoch))) {
+		RDEBUG2("Found entry for \"%pV\", but it was created before the current epoch.  Removing it",
+			fr_box_strvalue_len((char const *)key, key_len));
+		goto expired;
+	}
 	RDEBUG2("Found entry for \"%pV\"", fr_box_strvalue_len((char const *)key, key_len));
 
 	c->hits++;
