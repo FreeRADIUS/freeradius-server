@@ -5756,7 +5756,7 @@ int fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value_
 	return 0;
 }
 
-/** Check to see if any list members are tainted
+/** Check to see if any list members (or their children) are tainted
  *
  * @param[in] head	of list to check.
  * @return
@@ -5767,13 +5767,40 @@ bool fr_value_box_list_tainted(fr_value_box_list_t const *head)
 {
 	fr_value_box_t *vb = NULL;
 
-	if (fr_dlist_empty(head)) return false;
-
 	while ((vb = fr_dlist_next(head, vb))) {
+		if (fr_type_is_group(vb->type) && fr_value_box_list_tainted(&vb->vb_group)) return true;
 		if (vb->tainted) return true;
 	}
 
 	return false;
+}
+
+/** Taint every list member (and their children)
+ *
+ * @param[in] head	of list.
+ */
+void fr_value_box_list_taint(fr_value_box_list_t *head)
+{
+	fr_value_box_t *vb = NULL;
+
+	while ((vb = fr_dlist_next(head, vb))) {
+		if (fr_type_is_group(vb->type)) fr_value_box_list_taint(&vb->vb_group);
+		vb->tainted = true;
+	}
+}
+
+/** Untaint every list member (and their children)
+ *
+ * @param[in] head	of list.
+ */
+void fr_value_box_list_untaint(fr_value_box_list_t *head)
+{
+	fr_value_box_t *vb = NULL;
+
+	while ((vb = fr_dlist_next(head, vb))) {
+		if (fr_type_is_group(vb->type)) fr_value_box_list_untaint(&vb->vb_group);
+		vb->tainted = false;
+	}
 }
 
 /** Validation function to check that a fr_value_box_t is correctly initialised

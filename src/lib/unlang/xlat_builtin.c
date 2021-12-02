@@ -1196,6 +1196,32 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_action_t xlat_func_untaint(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+				       UNUSED xlat_ctx_t const *xctx,
+				       UNUSED request_t *request, fr_value_box_list_t *in)
+{
+	fr_dcursor_t cursor_in;
+
+	fr_dcursor_init(&cursor_in, in);
+	fr_value_box_list_untaint(in);
+	fr_dcursor_merge(out, &cursor_in);
+
+	return XLAT_ACTION_DONE;
+}
+
+static xlat_action_t xlat_func_taint(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+				     UNUSED xlat_ctx_t const *xctx,
+				     UNUSED request_t *request, fr_value_box_list_t *in)
+{
+	fr_dcursor_t cursor_in;
+
+	fr_dcursor_init(&cursor_in, in);
+	fr_value_box_list_taint(in);
+	fr_dcursor_merge(out, &cursor_in);
+
+	return XLAT_ACTION_DONE;
+}
+
 static xlat_arg_parser_t const xlat_func_explode_args[] = {
 	{ .required = true, .type = FR_TYPE_STRING },
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
@@ -3661,6 +3687,9 @@ do { \
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("sub", xlat_func_sub, xlat_func_sub_args);
 	XLAT_REGISTER_ARGS("trigger", trigger_xlat, trigger_xlat_args);
+
+ 	xlat_register(NULL, "untaint", xlat_func_untaint, NULL);
+ 	xlat_register(NULL, "taint", xlat_func_taint, NULL);
 
 	/*
 	 *	All of these functions are pure.
