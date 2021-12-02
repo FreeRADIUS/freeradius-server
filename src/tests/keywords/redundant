@@ -39,7 +39,7 @@ foreach &Tmp-Integer-1 {
 	redundant {
 		group {
 			# fail on even numbered values, succeed on odd numbered ones
-			if ("%{expr:%{Foreach-Variable-0} %% 2}" == 0) {
+			if ("%{expr:%{Foreach-Variable-0} % 2}" == 0) {
 				fail
 			}
 			else {
@@ -52,7 +52,7 @@ foreach &Tmp-Integer-1 {
 		}
 		group {
 			# succeed on even-numbered values, fail on off-numbered ones.
-			if ("%{expr:%{Foreach-Variable-0} %% 2}" == 1) {
+			if ("%{expr:%{Foreach-Variable-0} % 2}" == 1) {
 				fail
 			}
 			else {

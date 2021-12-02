@@ -324,7 +324,9 @@ ssize_t _tmpl_to_type(void *out,
 		size_t len;
 
 		RDEBUG4("EXPAND TMPL XLAT PARSED");
-		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
+
+		/* No EXPAND <xlat> here as the xlat code does it */
+
 		if (!buff) {
 			fr_strerror_const("Missing expansion buffer for XLAT_STRUCT");
 			return -1;
@@ -638,7 +640,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		char		*result;
 
 		RDEBUG4("EXPAND TMPL XLAT STRUCT");
-		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
+		/* No EXPAND xlat here as the xlat code does it */
 
 		/* Error in expansion, this is distinct from zero length expansion */
 		slen = xlat_aeval_compiled(tmp_ctx, &result, request, tmpl_xlat(vpt), escape, escape_ctx);
@@ -657,8 +659,6 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 		fr_value_box_bstrndup_shallow(&value, NULL, tmp.vb_strvalue, tmp.vb_length, tmp.tainted);
 		to_cast = &value;
-
-		RDEBUG2("   --> %s", value.vb_strvalue);	/* Print post-unescaping */
 	}
 		break;
 

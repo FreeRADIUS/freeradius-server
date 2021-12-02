@@ -1353,10 +1353,14 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 			      xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	fr_value_box_list_t	result;
+	bool			success = false;
 	TALLOC_CTX		*pool = talloc_new(NULL);
+	rlm_rcode_t		rcode;
 	char			*str;
 
 	XLAT_DEBUG("xlat_eval_sync");
+
+	*out = NULL;
 
 	fr_value_box_list_init(&result);
 	/*
@@ -1364,23 +1368,53 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 	 *	the async xlat up until the point
 	 *	that it needs to yield.
 	 */
-	if (unlang_xlat_push(pool, NULL, &result, request, head, true) < 0) {
+	if (unlang_xlat_push(pool, &success, &result, request, head, true) < 0) {
 		talloc_free(pool);
-		return NULL;
+		return -1;
 	}
 
-	switch (unlang_interpret_synchronous(unlang_interpret_event_list(request), request)) {
+	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
+	switch (rcode) {
 	default:
 		break;
 
 	case RLM_MODULE_REJECT:
 	case RLM_MODULE_FAIL:
+	eval_failed:
 		RPEDEBUG("xlat evaluation failed");
 		talloc_free(pool);
-		return NULL;
+		return -1;
 	}
+	if (!success) goto eval_failed;
 
 	if (!fr_dlist_empty(&result)) {
+		if (escape) {
+			fr_value_box_t *vb = NULL;
+
+			/*
+			 *	For tainted boxes perform the requested escaping
+			 */
+			while ((vb = fr_dlist_next(&result, vb))) {
+				fr_dlist_t entry;
+				size_t len, real_len;
+				char *escaped;
+
+				if (!vb->tainted) continue;
+
+				len = talloc_array_length(str) * 3;
+
+				escaped = talloc_array(pool, char, len);
+				real_len = escape(request, escaped, len, str, UNCONST(void *, escape_ctx));
+
+				entry = vb->entry;
+				fr_value_box_clear_value(vb);
+				fr_value_box_bstrndup(vb, vb, NULL, escaped, real_len, false);
+				vb->entry = entry;
+
+				talloc_free(escaped);
+			}
+		}
+
 		str = fr_value_box_list_aprint(ctx, &result, NULL, &fr_value_escape_double);
 		if (!str) {
 			RPEDEBUG("Failed concatenating xlat result string");
@@ -1391,18 +1425,6 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 		str = talloc_strdup(ctx, "");
 	}
 	talloc_free(pool);	/* Memory should be in new ctx */
-
-	if (escape) {
-		size_t len;
-		char *escaped;
-
-		len = talloc_array_length(str) * 3;
-
-		escaped = talloc_array(ctx, char, len);
-		escape(request, escaped, len, str, UNCONST(void *, escape_ctx));
-		talloc_free(str);
-		str = escaped;
-	}
 
 	*out = str;
 
@@ -1476,7 +1498,6 @@ ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *reques
 	ssize_t len;
 	xlat_exp_t *node;
 
-	RDEBUG2("EXPAND %s", fmt);
 	RINDENT();
 
 	/*
@@ -1506,7 +1527,6 @@ ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *reques
 	talloc_free(node);
 
 	REXDENT();
-	RDEBUG2("--> %s", *out);
 
 	return len;
 }
@@ -1561,7 +1581,7 @@ ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, request_t *request,
  *	- >0 on success	which is argc to the corresponding argv
  */
 int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, request_t *request,
-				 xlat_exp_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
+			     xlat_exp_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	int			i;
 	ssize_t			slen;

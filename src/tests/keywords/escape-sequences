@@ -54,7 +54,7 @@ if ("%{Tmp-String-0[1]}" != "0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°") {
 }
 
 # And another slightly different codepath...
-if ("%{Tmp-String-0[*]}" != "i have scary embedded things\000 inside me,0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°") {
+if ("%{Tmp-String-0[*]}" != "i have scary embedded things\000 inside me0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°") {
 	test_fail
 }
 

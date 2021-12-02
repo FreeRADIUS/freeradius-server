@@ -15,7 +15,7 @@ if (("%{Tmp-IP-Address-0[0]}" != 192.0.2.1) || ("%{Tmp-IP-Address-0[1]}" != 192.
 	test_fail
 }
 
-if ("%{Tmp-IP-Address-0[*]}" != '192.0.2.1,192.0.2.2') {
+if ("%{Tmp-IP-Address-0[*]}" != '192.0.2.1192.0.2.2') {
 	test_fail
 }
 
