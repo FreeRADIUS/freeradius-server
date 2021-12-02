@@ -649,7 +649,7 @@ int fr_edit_list_insert_list_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_
 
 /** Apply operators to pairs.
  *
- *  := is "if found vp, call fr_pair_replace().  Otherwise call fr_edit_list_insert_pair_tail()
+ *  := is "if found vp, call fr_edit_list_pair_replace().  Otherwise call fr_edit_list_insert_pair_tail()
  *   = is "if found vp, do nothing.  Otherwise call fr_edit_list_insert_pair_tail()
  *
  */
