@@ -667,6 +667,8 @@ fr_unix_time_t fr_unix_time_from_tm(struct tm *tm)
 	/*
 	 *	2472692 adjusts the days for Unix epoch.  It is calculated as
 	 *	(365.2425 * (4800 + 1970))
+	 *
+	 *	We REMOVE the time zone offset in order to get internal unix times in UTC.
 	 */
 	return fr_unix_time_from_sec((((days - 2472692) * 86400) + (tm->tm_hour * 3600) +
 				     (tm->tm_min * 60) + tm->tm_sec) - tm->tm_gmtoff);
@@ -912,7 +914,10 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 		if (*tail == '-') tz *= -1;
 
 	done:
-		tm->tm_gmtoff = tz;
+		/*
+		 *	We REMOVE the time zone offset in order to get internal unix times in UTC.
+		 */
+		tm->tm_gmtoff = -tz;
 		*date = fr_unix_time_add(fr_unix_time_from_tm(tm), fr_time_delta_wrap(subseconds));
 		return 0;
 	}
