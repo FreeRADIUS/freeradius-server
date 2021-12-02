@@ -515,7 +515,12 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *d
 	return true;
 }
 
-static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_t const *parent)
+/** Fixup ONE map (recursively)
+ *
+ *  This function resolves most things.  Most notable it CAN leave the
+ *  RHS unresolved, for use in `map` sections.
+ */
+static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_t const *parent)
 {
 	RULES_VERIFY(rules);
 
@@ -605,14 +610,14 @@ static bool pass2_fixup_update_map(map_t *map, tmpl_rules_t const *rules, fr_dic
 			return false;
 		}
 
-		return pass2_fixup_update_map(fr_dlist_head(&map->child), rules, da);
+		return pass2_fixup_map(fr_dlist_head(&map->child), rules, da);
 	}
 
 	return true;
 }
 
 /*
- *	Compile the RHS of update sections to xlat_exp_t
+ *	Do all kinds of fixups and checks for update sections.
  */
 static bool pass2_fixup_update(unlang_group_t *g, tmpl_rules_t const *rules)
 {
@@ -622,7 +627,17 @@ static bool pass2_fixup_update(unlang_group_t *g, tmpl_rules_t const *rules)
 	RULES_VERIFY(rules);
 
 	while ((map = fr_dlist_next(&gext->map, map))) {
-		if (!pass2_fixup_update_map(map, rules, NULL)) return false;
+		/*
+		 *	Mostly fixup the map, but maybe leave the RHS
+		 *	unresolved.
+		 */
+		if (!pass2_fixup_map(map, rules, NULL)) return false;
+
+		/*
+		 *	Check allowed operators, and ensure that the
+		 *	RHS is resolved.
+		 */
+		if (cf_item_is_pair(map->ci) && (unlang_fixup_update(map, NULL) < 0)) return false;
 	}
 
 	return true;
@@ -634,13 +649,19 @@ static bool pass2_fixup_update(unlang_group_t *g, tmpl_rules_t const *rules)
 static bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules)
 {
 	unlang_map_t	*gext = unlang_group_to_map(g);
+	map_t		*map = NULL;
 
 	RULES_VERIFY(rules);
 
 	/*
-	 *	Compile the map
+	 *	Do most fixups on the maps.  Leaving the RHS as
+	 *	unresolved, so that the `map` function can interpret
+	 *	the RHS as a reference to a json string, SQL column
+	 *	name, etc.
 	 */
-	if (!pass2_fixup_update(g, rules)) return false;
+	while ((map = fr_dlist_next(&gext->map, map))) {
+		if (!pass2_fixup_map(map, rules, NULL)) return false;
+	}
 
 	/*
 	 *	Map sections don't need a VPT.
@@ -964,6 +985,8 @@ int unlang_fixup_update(map_t *map, UNUSED void *ctx)
 	 */
 	if (map->op == T_OP_CMP_FALSE) return 0;
 
+	if (!tmpl_is_unresolved(map->rhs)) return 0;
+
 	/*
 	 *	If LHS is an attribute, and RHS is a literal, we can
 	 *	preparse the information into a TMPL_TYPE_DATA.
@@ -971,7 +994,7 @@ int unlang_fixup_update(map_t *map, UNUSED void *ctx)
 	 *	Unless it's a unary operator in which case we
 	 *	ignore map->rhs.
 	 */
-	if (tmpl_is_attr(map->lhs) && tmpl_is_unresolved(map->rhs)) {
+	if (tmpl_is_attr(map->lhs)) {
 		/*
 		 *	It's a literal string, just copy it.
 		 *	Don't escape anything.
@@ -982,7 +1005,15 @@ int unlang_fixup_update(map_t *map, UNUSED void *ctx)
 				    fr_table_str_by_value(fr_value_box_type_table, tmpl_da(map->lhs)->type, "<INVALID>"));
 			return -1;
 		}
+
+		return 0;
 	} /* else we can't precompile the data */
+
+	if (!tmpl_is_xlat(map->lhs)) {
+		fr_assert(0);
+		cf_log_err(map->ci, "Cannot determine what update action to perform");
+		return -1;
+	}
 
 	return 0;
 }
