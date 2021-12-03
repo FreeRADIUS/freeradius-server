@@ -49,7 +49,7 @@ static unlang_action_t unlang_call_finalize(UNUSED rlm_rcode_t *p_result, reques
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-static unlang_action_t unlang_call_children(UNUSED rlm_rcode_t *p_result, request_t *request,
+static unlang_action_t unlang_call_children(rlm_rcode_t *p_result, request_t *request,
 					    unlang_stack_frame_t *frame)
 {
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
