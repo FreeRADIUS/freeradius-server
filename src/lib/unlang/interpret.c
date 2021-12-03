@@ -99,20 +99,42 @@ static void frame_dump(request_t *request, unlang_stack_frame_t *frame)
 	REXDENT();
 }
 
+static char *stack_unwind_flag_dump(uint8_t unwind)
+{
+	static __thread char buf[256];
+	size_t len;
+
+#define UNWIND_FLAG_DUMP(attrib) \
+	if (unwind & attrib) strcat(buf, #attrib" ");
+
+	snprintf(buf, sizeof(buf), "unwind=0x%x (", unwind);
+
+	UNWIND_FLAG_DUMP(UNWIND_FLAG_TOP_FRAME);
+	UNWIND_FLAG_DUMP(UNWIND_FLAG_BREAK_POINT);
+	UNWIND_FLAG_DUMP(UNWIND_FLAG_RETURN_POINT);
+
+	len = strlen(buf);
+	if (buf[len - 1] == ' ') buf[len - 1] = '\0';    /* Trim trailing space */
+	strcat(buf, ")");
+
+#undef UNWIND_FLAG_DUMP
+
+	return buf;
+}
+
 static void stack_dump(request_t *request)
 {
 	int i;
 	unlang_stack_t *stack = request->stack;
 
-	RDEBUG2("----- Begin stack debug [depth %i, unwind %i] -----", stack->depth, stack->unwind);
+	RDEBUG2("----- Begin stack debug [depth %i, %s] -----", stack->depth, stack_unwind_flag_dump(stack->unwind));
 	for (i = stack->depth; i >= 0; i--) {
 		unlang_stack_frame_t *frame = &stack->frame[i];
 
 		RDEBUG2("[%d] Frame contents", i);
 		frame_dump(request, frame);
 	}
-
-	RDEBUG2("----- End stack debug [depth %i, unwind %i] -------", stack->depth, stack->unwind);
+	RDEBUG2("----- End stack debug [depth %i, %s] -------", stack->depth, stack_unwind_flag_dump(stack->unwind));
 }
 #define DUMP_STACK if (DEBUG_ENABLED5) stack_dump(request)
 #else
@@ -477,6 +499,24 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		repeatable_clear(frame);
 		ua = frame->process(result, request, frame);
 
+		/*
+		 *	If this frame is breaking or returning
+		 *	frame then clear that unwind flag,
+		 *	it's been consumed by this call.
+		 *
+		 *	We leave the unwind flags for the eval
+		 *	call so that the process function knows
+		 *	that the stack is being unwound.
+		 */
+		if (is_break_point(frame)) {
+			stack_unwind_break_clear(stack);
+			stack_unwind_top_frame_clear(stack);
+		}
+		if (is_return_point(frame)) {
+			stack_unwind_return_clear(stack);
+			stack_unwind_top_frame_clear(stack);
+		}
+
 		RDEBUG4("** [%i] %s << %s (%d)", stack->depth, __FUNCTION__,
 			fr_table_str_by_value(unlang_action_table, ua, "<INVALID>"), *priority);
 
@@ -672,7 +712,7 @@ CC_HINT(hot) rlm_rcode_t unlang_interpret(request_t *request)
 			/*
 			 *	Head on back up the stack
 			 */
-			frame_pop(stack);
+			frame_pop(request, stack);
 			frame = &stack->frame[stack->depth];
 			DUMP_STACK;
 
@@ -1386,7 +1426,7 @@ unlang_interpret_t *unlang_interpret_init(TALLOC_CTX *ctx,
  */
 void unlang_interpet_frame_discard(request_t *request)
 {
-	frame_pop(request->stack);
+	frame_pop(request, request->stack);
 }
 
 /** Set a specific interpreter for a request

@@ -80,6 +80,9 @@ static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *req
 	fr_pair_t			*vp;
 	unlang_frame_state_foreach_t	*foreach = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
+
+	if (is_stack_unwinding_to_break(request->stack)) return UNLANG_ACTION_CALCULATE_RESULT;
+
 	vp = fr_dcursor_current(&foreach->cursor);
 	if (!vp) {
 		*p_result = frame->result;

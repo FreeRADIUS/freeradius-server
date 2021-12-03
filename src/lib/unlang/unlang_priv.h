@@ -365,6 +365,13 @@ static inline unlang_action_t unwind_all(unlang_stack_t *stack)
 	return UNLANG_ACTION_UNWIND;
 }
 
+static inline bool is_stack_unwinding_to_top_frame(unlang_stack_t *stack)	{ return stack->unwind & UNWIND_FLAG_TOP_FRAME; }
+static inline bool is_stack_unwinding_to_break(unlang_stack_t *stack)		{ return stack->unwind & UNWIND_FLAG_BREAK_POINT; }
+static inline bool is_stack_unwinding_to_return(unlang_stack_t *stack)		{ return stack->unwind & UNWIND_FLAG_RETURN_POINT; }
+static inline void stack_unwind_top_frame_clear(unlang_stack_t *stack)		{ stack->unwind &= ~UNWIND_FLAG_TOP_FRAME; }
+static inline void stack_unwind_break_clear(unlang_stack_t *stack)		{ stack->unwind &= ~UNWIND_FLAG_BREAK_POINT; }
+static inline void stack_unwind_return_clear(unlang_stack_t *stack)		{ stack->unwind &= ~UNWIND_FLAG_RETURN_POINT; }
+
 static inline unlang_stack_frame_t *frame_current(request_t *request)
 {
 	unlang_stack_t *stack = request->stack;
@@ -458,9 +465,10 @@ static inline void frame_next(unlang_stack_t *stack, unlang_stack_frame_t *frame
 
 /** Pop a stack frame, removing any associated dynamically allocated state
  *
+ * @param[in] request	The current request.
  * @param[in] stack	frame to pop.
  */
-static inline void frame_pop(unlang_stack_t *stack)
+static inline void frame_pop(request_t *request, unlang_stack_t *stack)
 {
 	unlang_stack_frame_t *frame;
 
@@ -481,7 +489,14 @@ static inline void frame_pop(unlang_stack_t *stack)
 
 	frame = &stack->frame[--stack->depth];
 
-	if (stack->unwind && is_repeatable(frame) && !is_break_point(frame) && !is_return_point(frame)) {
+	/*
+	 *	Signal the frame to get it back into a consistent state
+	 *	as we won't be calling the resume function.
+	 */
+	if (stack->unwind && is_repeatable(frame) &&
+	    ((is_stack_unwinding_to_break(stack) && !is_break_point(frame)) ||
+	     (is_stack_unwinding_to_return(stack) && !is_return_point(frame)))) {
+		if (frame->signal) frame->signal(request, frame, FR_SIGNAL_CANCEL);
 		repeatable_clear(frame);
 	}
 }
