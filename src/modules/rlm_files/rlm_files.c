@@ -381,7 +381,7 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 {
 	PAIR_LIST_LIST const	*user_list;
 	PAIR_LIST const 	*user_pl, *default_pl;
-	bool			found = false;
+	bool			found = false, trie = false;
 	PAIR_LIST_LIST		my_list;
 	uint8_t			key_buffer[16], *key;
 	size_t			keylen = 0;
@@ -400,10 +400,12 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, rlm_files_t const *ins
 		my_list.box = box;
 		user_list = fr_htrie_find(tree, &my_list);
 
+		trie = (tree->type == FR_HTRIE_TRIE);
+
 		/*
 		 *	Grab our own copy of the key if necessary.
 		 */
-		if (user_list && (tree->type == FR_HTRIE_TRIE)) {
+		if (user_list && trie) {
 			key = key_buffer;
 			keylen = sizeof(key_buffer) * 8;
 
@@ -453,7 +455,6 @@ redo:
 		/*
 		 *	Figure out which entry to match on.
 		 */
-
 		if (!default_pl && user_pl) {
 			pl = user_pl;
 			user_pl = fr_dlist_next(&user_list->head, user_pl);
@@ -553,9 +554,9 @@ redo:
 				}
 
 				/*
-				 *	And for prefix tries.
+				 *	And do the same checks for prefix tries.
 				 */
-				if (keylen > 0) {
+				if (trie && (keylen > 0)) {
 					vp = fr_pair_list_head(&tmp_list);
 					if (vp->da == attr_next_shortest_prefix) {
 						next_shortest_prefix = vp->vp_bool;
@@ -563,39 +564,49 @@ redo:
 						continue;
 					}
 				}
+
 				radius_pairmove(request, &request->reply_pairs, &tmp_list, true);
 			}
 		}
 
+		if (fall_through) {
+			continue;
+		}
+
 		/*
-		 *	Fallthrough?
+		 *	We're not doing patricia tries.  Stop now.
 		 */
-		if (!fall_through) {
-			/*
-			 *	Walk back up the trie looking for shorter prefixes.
-			 *
-			 *	Note that we've already found an
-			 *	entry, so we MUST start with that
-			 *	prefix, otherwise we would end up in
-			 *	an loop of finding the same prefix
-			 *	over and over.
-			 */
-			if ((keylen > 0) && next_shortest_prefix) {
-				if (keylen > user_list->box->vb_ip.prefix) keylen = user_list->box->vb_ip.prefix;
-
-				do {
-					keylen--;
-					user_list = fr_trie_lookup_by_key(tree->store, key, keylen);
-					if (!user_list) continue;
-
-					user_pl = fr_dlist_head(&user_list->head);
-					RDEBUG("Found matching shorter subnet %s at key length %ld", user_pl->name, keylen);
-					goto redo;
-				} while (keylen > 0);
-			}
-
+		if (!trie) {
 			break;
 		}
+
+		/*
+		 *	We're doing patricia tries, but we've been
+		 *	told to not walk back up the trie, OR we're at the top of the tree.  Stop.
+		 */
+		if (!next_shortest_prefix || (keylen == 0)) {
+			break;
+		}
+
+		/*
+		 *	Walk back up the trie looking for shorter prefixes.
+		 *
+		 *	Note that we've already found an entry, so we
+		 *	MUST start with that prefix, otherwise we
+		 *	would end up in an loop of finding the same
+		 *	prefix over and over.
+		 */
+		if (keylen > user_list->box->vb_ip.prefix) keylen = user_list->box->vb_ip.prefix;
+
+		do {
+			keylen--;
+			user_list = fr_trie_lookup_by_key(tree->store, key, keylen);
+			if (!user_list) continue;
+
+			user_pl = fr_dlist_head(&user_list->head);
+			RDEBUG("Found matching shorter subnet %s at key length %ld", user_pl->name, keylen);
+			goto redo;
+		} while (keylen > 0);
 	}
 
 	/*
