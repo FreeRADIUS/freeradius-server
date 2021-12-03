@@ -47,8 +47,8 @@ jobs:
   #
   #    matrix:
   #      env:
-  #        - { "PROTOCOL": "radius", "TOTAL_RUNTIME": "20000" }
-  #        - { "PROTOCOL": "dhcpv4", "TOTAL_RUNTIME": "20000" }
+  #        - { "PROTOCOL": "radius", "TOTAL_RUNTIME": "20000", "UPLOAD_SLOT": "0", "NUM_SLOTS": "15" }
+  #        - { "PROTOCOL": "dhcpv4", "TOTAL_RUNTIME": "20000", "UPLOAD_SLOT": "3", "NUM_SLOTS": "15" }
   #        - ...
   #
   set-matrix:
@@ -80,18 +80,19 @@ jobs:
         #  GitHub Action run limit)
         #
         TOTAL_RUNTIME=20000
-        PROTOS=`sed -ne 's/^FUZZER_PROTOCOLS\s\+=\s\+\(.*\)/\1/p' src/bin/all.mk`
+        SLOT_SPREAD=3  # secs
+        read -r -a PROTOS <<< $(sed -ne 's/^FUZZER_PROTOCOLS\s\+=\s\+\(.*\)/\1/p' src/bin/all.mk)
         #
         if [[ "$GITHUB_REF" = refs/heads/run-fuzzer-*-* ]]; then
           PROTOS=${GITHUB_REF#refs/heads/run-fuzzer-}
           TOTAL_RUNTIME=${PROTOS##*-}
-          PROTOS=${PROTOS%-*}
+          PROTOS=( "${PROTOS%-*}" )
         elif [[ "$GITHUB_REF" = refs/heads/run-fuzzer-* ]]; then
           TOTAL_RUNTIME=${GITHUB_REF#refs/heads/run-fuzzer-}
         fi
         P=$(
-            for PROTO in $PROTOS; do
-              echo "{ \"PROTOCOL\": \"$PROTO\", \"TOTAL_RUNTIME\": \"$TOTAL_RUNTIME\" },"
+            for i in ${!PROTOS[@]}; do
+              echo "{ \"PROTOCOL\": \"${PROTOS[$i]}\", \"TOTAL_RUNTIME\": \"$TOTAL_RUNTIME\", \"UPLOAD_SLOT\": \"$((i * $SLOT_SPREAD))\", \"NUM_SLOTS\": \"$((${#PROTOS[@]} * $SLOT_SPREAD))\" },"
             done
           )
         M=$(cat <<EOF
@@ -252,6 +253,9 @@ jobs:
           OID="$(git lfs ls-files -l -I "$FILE" | cut -f1 -d ' ')"
           git lfs push --object-id origin "$OID"
           export CONTENTS="$(git show ":$FILE" | base64)"
+          SLEEP_FOR=$(( ( $UPLOAD_SLOT - `date +%s` % $NUM_SLOTS + $NUM_SLOTS ) % $NUM_SLOTS ))
+          echo Waiting $SLEEP_FOR secs for our upload slot...
+          sleep $SLEEP_FOR
           python3 scripts/ci/commit_lfs_file_update.py
         fi
       env:
