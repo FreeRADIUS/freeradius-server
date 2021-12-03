@@ -50,7 +50,7 @@ group {
 		fail {
 			fail = 10	# Higher priority than ok and no longer action return
 		}
-		update request {	# This should now be dispatched
+		update parent.request {	# This should now be dispatched
 			&Tmp-String-0 := 'foo'
 		}
 	}
