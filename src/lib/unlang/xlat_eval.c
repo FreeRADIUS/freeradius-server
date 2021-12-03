@@ -1051,9 +1051,9 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		}
 		VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
-		xa = node->call.func->func.async(ctx, out,
-						 XLAT_CTX(node->call.inst->data, t->data, t->mctx, NULL),
-						 request, result);
+		xa = node->call.func->func(ctx, out,
+					   XLAT_CTX(node->call.inst->data, t->data, t->mctx, NULL),
+					   request, result);
 		VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
 		if (RDEBUG_ENABLED2) xlat_debug_log_expansion(request, *in, &result_copy);
@@ -1255,9 +1255,9 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 				   node->fmt);
 
 			xlat_debug_log_expansion(request, node, NULL);
-			node->call.func->func.async(ctx, out,
-						    XLAT_CTX(node->call.func->uctx, NULL, NULL, NULL),
-						    request, NULL);
+			node->call.func->func(ctx, out,
+					      XLAT_CTX(node->call.func->uctx, NULL, NULL, NULL),
+					      request, NULL);
 			fr_dcursor_next(out);
 
 			xlat_debug_log_result(request, fr_dcursor_current(out));
@@ -1458,9 +1458,9 @@ static char *xlat_sync_eval(TALLOC_CTX *ctx, request_t *request, xlat_exp_t cons
 		fr_value_box_list_init (&result);
 		fr_dcursor_init(&out, &result);
 
-		action = node->call.func->func.async(ctx, &out,
-						     XLAT_CTX(node->call.func->uctx, NULL, NULL, NULL),
-						     request, NULL);
+		action = node->call.func->func(ctx, &out,
+					       XLAT_CTX(node->call.func->uctx, NULL, NULL, NULL),
+					       request, NULL);
 		if (action == XLAT_ACTION_FAIL) {
 			talloc_free(pool);
 			return NULL;

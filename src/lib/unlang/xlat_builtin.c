@@ -194,7 +194,7 @@ xlat_t *xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 			return NULL;
 		}
 
-		if (c->func.async != func) {
+		if (c->func != func) {
 			ERROR("%s: Cannot change callback function for %s", __FUNCTION__, name);
 			return NULL;
 		}
@@ -212,9 +212,7 @@ xlat_t *xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 	}
 	*c = (xlat_t){
 		.name = talloc_typed_strdup(c, name),
-		.func = {
-			.async = func
-		},
+		.func = func,
 		.mctx = our_mctx,
 		.flags = *flags,
 		.input_type = XLAT_INPUT_UNPROCESSED	/* set default - will be overridden if args are registered */

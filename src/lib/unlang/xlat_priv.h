@@ -40,10 +40,7 @@ typedef struct xlat_s {
 	fr_rb_node_t		node;			//!< Entry in the xlat function tree.
 	char const		*name;			//!< Name of xlat function.
 
-	union {
-		xlat_func_legacy_t	sync;		//!< synchronous xlat function (async safe).
-		xlat_func_t		async;		//!< async xlat function (async unsafe).
-	} func;
+	xlat_func_t		func;			//!< async xlat function (async unsafe).
 
 	bool			internal;		//!< If true, cannot be redefined.
 
