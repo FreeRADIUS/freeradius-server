@@ -189,7 +189,7 @@ xlat_t *xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 			return NULL;
 		}
 
-		if ((c->type != XLAT_FUNC_NORMAL) || (c->flags.needs_async != flags->needs_async)) {
+		if (c->flags.needs_async != flags->needs_async) {
 			ERROR("%s: Cannot change async capability of %s", __FUNCTION__, name);
 			return NULL;
 		}
