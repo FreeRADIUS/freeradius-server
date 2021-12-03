@@ -351,11 +351,6 @@ int		xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const
 
 #define XLAT_DEFAULT_BUF_LEN	2048
 
-xlat_t		*xlat_register_legacy(void *mod_inst, char const *name,
-				      xlat_func_legacy_t func, xlat_escape_legacy_t escape,
-				      xlat_instantiate_t instantiate, size_t inst_size,
-				      size_t buf_len);
-
 xlat_t		*xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 				      char const *name, xlat_func_t func, xlat_flags_t const *flags);
 xlat_t		*xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, xlat_flags_t const *flags) CC_HINT(nonnull(2));
