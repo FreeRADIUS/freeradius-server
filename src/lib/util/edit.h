@@ -42,6 +42,8 @@ void fr_edit_list_abort(fr_edit_list_t *el);
 /*
  *	Functions to modify #fr_pair_t
  */
+#define fr_edit_list_insert_pair_before(_el, _list, _pos, _vp) fr_edit_list_insert_pair_after(_el, _list, fr_pair_list_prev(_list, _pos), _vp)
+
 int fr_edit_list_insert_pair_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *vp) CC_HINT(nonnull(2,4));
 
 #define fr_edit_list_insert_pair_head(_el, _list, _vp) fr_edit_list_insert_after(_el, _list, NULL, _vp)
