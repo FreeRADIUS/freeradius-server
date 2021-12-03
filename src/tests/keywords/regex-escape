@@ -7,8 +7,8 @@
 #  characters escaped.  Because the input strings are unsafe.
 #
 update request {
-	&Tmp-String-0 := "example.com"
-	&Tmp-String-1 := "exampleXcom"
+	&Tmp-String-0 := "%{taint:example.com}"
+	&Tmp-String-1 := "%{taint:exampleXcom}"
 }
 
 if ("exampleXcom" =~ /%{Tmp-String-0}/) {
