@@ -10,6 +10,10 @@ update request {
 	&control !* ANY
 }
 
+if ("%{Tmp-String-0[#]}" != 2) {
+	test_fail
+}
+
 if (&Tmp-String-0[0] != 'foo') {
 	fail
 }
@@ -24,7 +28,8 @@ if (&Tmp-String-0[0] != 'foo') {
 	fail
 }
 
-if (&Tmp-String-0[1] != 'baz') {
+# Nothing should exist for this attribute.
+if (&Tmp-String-0[1]) {
 	fail
 }
 
