@@ -1016,130 +1016,71 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	switch (node->type) {
 	case XLAT_FUNC:
-		switch (node->call.func->type) {
-		case XLAT_FUNC_LEGACY:
-		{
-			fr_value_box_t	*value;
-			char		*str = NULL;
-			char		*result_str = NULL;
-			ssize_t		slen;
+	{
+		xlat_action_t		xa;
+		xlat_thread_inst_t	*t;
+		fr_value_box_list_t	result_copy;
 
-			if (!fr_dlist_empty(result)) {
-				VALUE_BOX_TALLOC_LIST_VERIFY(result);
-				result_str = fr_value_box_list_aprint(NULL, result, NULL, NULL);
-				if (!result_str) return XLAT_ACTION_FAIL;
-			} else {
-				result_str = talloc_typed_strdup(NULL, "");
-			}
+		t = xlat_thread_instance_find(node);
+		fr_assert(t);
 
-			MEM(value = fr_value_box_alloc_null(ctx));
-			if (node->call.func->buf_len > 0) {
-				fr_value_box_bstr_alloc(value, &str, value, NULL, node->call.func->buf_len, false);
-			}
+		XLAT_DEBUG("** [%i] %s(func-async) - %%%c%s:%pM%c",
+			   unlang_interpret_stack_depth(request), __FUNCTION__,
+		   	   (node->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
+			   node->fmt, result,
+			   (node->call.func->input_type == XLAT_INPUT_ARGS) ? ')' : '}');
 
-			XLAT_DEBUG("** [%i] %s(func) - %%{%s:%pV}", unlang_interpret_stack_depth(request), __FUNCTION__,
-				   node->fmt,
-				   fr_box_strvalue_len(result_str, talloc_array_length(result_str) - 1));
+		VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
-			slen = node->call.func->func.sync(value, &str, node->call.func->buf_len,
-						     node->call.func->mod_inst, NULL, request, result_str);
-			xlat_debug_log_expansion(request, *in, result);
-			if (slen < 0) {
-				talloc_free(value);
-				talloc_free(result_str);
-				return XLAT_ACTION_FAIL;
-			}
-			if (slen == 0) {				/* Zero length result */
-				talloc_free(result_str);
-				talloc_free(value);
-				break;
-			}
-			(void)talloc_get_type_abort(str, char);		/* Check output buffer is sane */
+		/*
+		 *	Always need to init and free the
+		 *      copy list as debug level could change
+		 *	when the xlat function executes.
+		 */
+		fr_value_box_list_init(&result_copy);
 
-			/*
-			 *	Shrink the buffer
-			 */
-			if (node->call.func->buf_len > 0) {
-				if (slen > 0) fr_value_box_bstr_realloc(value, &str, value, slen);
-			} else {
-				fr_value_box_bstrdup_buffer_shallow(NULL, value, NULL, str, false);
-			}
-
-			VALUE_BOX_VERIFY(value);
-			fr_dcursor_append(out, value);			/* Append the result of the expansion */
-			talloc_free(result_str);
-			xlat_debug_log_result(request, value);
-		}
-			break;
-
-		case XLAT_FUNC_NORMAL:
-		{
-			xlat_action_t		xa;
-			xlat_thread_inst_t	*t;
-			fr_value_box_list_t	result_copy;
-
-			t = xlat_thread_instance_find(node);
-			fr_assert(t);
-
-			XLAT_DEBUG("** [%i] %s(func-async) - %%%c%s:%pM%c",
-				   unlang_interpret_stack_depth(request), __FUNCTION__,
-			   	   (node->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
-				   node->fmt, result,
-				   (node->call.func->input_type == XLAT_INPUT_ARGS) ? ')' : '}');
-
-			VALUE_BOX_TALLOC_LIST_VERIFY(result);
-
-			/*
-			 *	Always need to init and free the
-			 *      copy list as debug level could change
-			 *	when the xlat function executes.
-			 */
-			fr_value_box_list_init(&result_copy);
-
-			/*
-			 *	Need to copy the input list in case
-			 *	the async function mucks with it.
-			 */
-			if (RDEBUG_ENABLED2) fr_value_box_list_acopy(NULL, &result_copy, result);
-			xa = xlat_process_args(ctx, result, request, node->call.func->input_type, node->call.func->args);
-			if (xa == XLAT_ACTION_FAIL) {
-				fr_dlist_talloc_free(&result_copy);
-				return xa;
-			}
-			VALUE_BOX_TALLOC_LIST_VERIFY(result);
-
-			xa = node->call.func->func.async(ctx, out,
-							 XLAT_CTX(node->call.inst->data, t->data, t->mctx, NULL),
-							 request, result);
-			VALUE_BOX_TALLOC_LIST_VERIFY(result);
-
-			if (RDEBUG_ENABLED2) xlat_debug_log_expansion(request, *in, &result_copy);
+		/*
+		 *	Need to copy the input list in case
+		 *	the async function mucks with it.
+		 */
+		if (RDEBUG_ENABLED2) fr_value_box_list_acopy(NULL, &result_copy, result);
+		xa = xlat_process_args(ctx, result, request, node->call.func->input_type, node->call.func->args);
+		if (xa == XLAT_ACTION_FAIL) {
 			fr_dlist_talloc_free(&result_copy);
+			return xa;
+		}
+		VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
-			switch (xa) {
-			case XLAT_ACTION_FAIL:
-				return xa;
+		xa = node->call.func->func.async(ctx, out,
+						 XLAT_CTX(node->call.inst->data, t->data, t->mctx, NULL),
+						 request, result);
+		VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
-			case XLAT_ACTION_PUSH_CHILD:
-				RDEBUG3("   -- CHILD");
-				return xa;
+		if (RDEBUG_ENABLED2) xlat_debug_log_expansion(request, *in, &result_copy);
+		fr_dlist_talloc_free(&result_copy);
 
-			case XLAT_ACTION_PUSH_UNLANG:
-				RDEBUG3("  -- UNLANG");
-				return xa;
+		switch (xa) {
+		case XLAT_ACTION_FAIL:
+			return xa;
 
-			case XLAT_ACTION_YIELD:
-				RDEBUG3("   -- YIELD");
-				return xa;
+		case XLAT_ACTION_PUSH_CHILD:
+			RDEBUG3("   -- CHILD");
+			return xa;
 
-			case XLAT_ACTION_DONE:				/* Process the result */
-				fr_dcursor_next(out);
-				xlat_debug_log_result(request, fr_dcursor_current(out));
-				break;
-			}
+		case XLAT_ACTION_PUSH_UNLANG:
+			RDEBUG3("  -- UNLANG");
+			return xa;
+
+		case XLAT_ACTION_YIELD:
+			RDEBUG3("   -- YIELD");
+			return xa;
+
+		case XLAT_ACTION_DONE:				/* Process the result */
+			fr_dcursor_next(out);
+			xlat_debug_log_result(request, fr_dcursor_current(out));
 			break;
 		}
-		}
+	}
 		break;
 
 	case XLAT_ALTERNATE:
