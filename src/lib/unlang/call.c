@@ -30,8 +30,8 @@ RCSID("$Id$")
 #include "call_priv.h"
 #include "module_priv.h"
 
-static unlang_action_t unlang_call_resume(UNUSED rlm_rcode_t *p_result, request_t *request,
-					  unlang_stack_frame_t *frame)
+static unlang_action_t unlang_call_finalize(UNUSED rlm_rcode_t *p_result, request_t *request,
+					    unlang_stack_frame_t *frame)
 {
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_call_t			*gext = unlang_group_to_call(g);
@@ -48,6 +48,28 @@ static unlang_action_t unlang_call_resume(UNUSED rlm_rcode_t *p_result, request_
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
+
+static unlang_action_t unlang_call_children(UNUSED rlm_rcode_t *p_result, request_t *request,
+					    unlang_stack_frame_t *frame)
+{
+	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
+
+	fr_assert(g->children);
+
+	/*
+	 *      Push the contents of the call { } section onto the stack.
+	 *      This gets executed after the server returns.
+	 */
+	if (unlang_interpret_push(request, g->children, frame->result,
+				  UNLANG_NEXT_SIBLING, UNLANG_SUB_FRAME) < 0) {
+		*p_result = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_STOP_PROCESSING;
+	}
+
+	frame_repeat(frame, unlang_call_finalize);
+	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
 
 static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *request,
 					      unlang_stack_frame_t *frame)
@@ -116,7 +138,11 @@ static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *
 	 *	DIE DIE DIE DIE DIE DIE DIE DIE DIE
 	 *	DIE DIE DIE DIE DIE DIE DIE DIE DIE.
 	 */
-	frame_repeat(frame, unlang_call_resume);
+	if (!g->children) {
+		frame_repeat(frame, unlang_call_finalize);
+	} else {
+		frame_repeat(frame, unlang_call_children);
+	}
 
 	if (virtual_server_push(request, gext->server_cs, UNLANG_SUB_FRAME) < 0) goto error;
 
