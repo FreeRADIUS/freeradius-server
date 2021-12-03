@@ -36,14 +36,6 @@ extern "C" {
 #  define XLAT_DEBUG(...)
 #endif
 
-/** Function types
- *
- */
-typedef enum {
-	XLAT_FUNC_LEGACY,				//!< Ingests and excretes strings.
-	XLAT_FUNC_NORMAL				//!< Ingests and excretes value boxes (and may yield)
-} xlat_func_legacy_type_t;
-
 typedef struct xlat_s {
 	fr_rb_node_t		node;			//!< Entry in the xlat function tree.
 	char const		*name;			//!< Name of xlat function.
@@ -52,7 +44,6 @@ typedef struct xlat_s {
 		xlat_func_legacy_t	sync;		//!< synchronous xlat function (async safe).
 		xlat_func_t		async;		//!< async xlat function (async unsafe).
 	} func;
-	xlat_func_legacy_type_t	type;			//!< Type of xlat function.
 
 	bool			internal;		//!< If true, cannot be redefined.
 

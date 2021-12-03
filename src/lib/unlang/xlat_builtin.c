@@ -216,7 +216,6 @@ xlat_t *xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 			.async = func
 		},
 		.mctx = our_mctx,
-		.type = XLAT_FUNC_NORMAL,
 		.flags = *flags,
 		.input_type = XLAT_INPUT_UNPROCESSED	/* set default - will be overridden if args are registered */
 	};
