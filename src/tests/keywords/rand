@@ -17,7 +17,7 @@ update request {
 #
 #  Invalid limit should have failed
 #
-if (&Tmp-String-0 != 0) {
+if (&Tmp-String-0 != '') {
 	test_fail
 }
 
