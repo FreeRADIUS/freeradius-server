@@ -349,8 +349,6 @@ bool		xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_t **head);
 int		xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const *xr_rules);
 
 
-#define XLAT_DEFAULT_BUF_LEN	2048
-
 xlat_t		*xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 				      char const *name, xlat_func_t func, xlat_flags_t const *flags);
 xlat_t		*xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, xlat_flags_t const *flags) CC_HINT(nonnull(2));
