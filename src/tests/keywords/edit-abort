@@ -23,4 +23,7 @@ if (&Tmp-Integer-0 != 4) {
 	test_fail
 }
 
+if (&Tmp-Integer-1 != 5) {
+	test_fail
+}
 success
