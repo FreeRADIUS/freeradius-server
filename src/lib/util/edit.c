@@ -409,11 +409,10 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
  */
 int fr_edit_list_insert_pair_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *vp)
 {
-	if (!el) return 0;
+	if (!el) return fr_pair_insert_after(list, pos, vp);
 
 	return edit_record(el, FR_EDIT_INSERT, vp, list, pos);
 }
-
 
 /** Delete a VP
  *
@@ -423,6 +422,11 @@ int fr_edit_list_insert_pair_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_
  */
 int fr_edit_list_pair_delete(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *vp)
 {
+	if (!el) {
+		fr_pair_delete(list, vp);
+		return 0;
+	}
+
 	return edit_record(el, FR_EDIT_DELETE, vp, list, NULL);
 }
 
@@ -445,11 +449,9 @@ int fr_edit_list_save_pair_value(fr_edit_list_t *el, fr_pair_t *vp)
  */
 int fr_edit_list_replace_pair_value(fr_edit_list_t *el, fr_pair_t *vp, fr_value_box_t *box)
 {
-	if (!el) return 0;
-
 	if (!fr_type_is_leaf(vp->vp_type)) return -1;
 
-	if (edit_record(el, FR_EDIT_VALUE, vp, NULL, NULL) < 0) return -1;
+	if (el && (edit_record(el, FR_EDIT_VALUE, vp, NULL, NULL) < 0)) return -1;
 
 	if (!fr_type_is_fixed_size(vp->vp_type)) fr_value_box_clear(&vp->data);
 	fr_value_box_copy_shallow(NULL, &vp->data, box);
@@ -465,9 +467,13 @@ int fr_edit_list_replace_pair_value(fr_edit_list_t *el, fr_pair_t *vp, fr_value_
  */
 int fr_edit_list_replace_pair(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *vp)
 {
-	if (!el) return 0;
-
 	if (to_replace->da != vp->da) return -1;
+
+	if (!el) {
+		if (fr_pair_insert_after(list, to_replace, vp) < 0) return -1;
+		fr_pair_delete(list, to_replace);
+		return -1;
+	}
 
 	/*
 	 *	We call edit_record() twice, which involves two
@@ -507,9 +513,12 @@ int fr_edit_list_replace_pair(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_
  */
 int fr_edit_list_free_pair_children(fr_edit_list_t *el, fr_pair_t *vp)
 {
-	if (!el) return 0;
-
 	if (!fr_type_is_structural(vp->vp_type)) return -1;
+
+	if (!el) {
+		fr_pair_list_free(&vp->children);
+		return 0;
+	}
 
 	/*
 	 *	Record the list, even if it's empty.  That way if we
@@ -655,11 +664,9 @@ int fr_edit_list_insert_list_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_
  */
 int fr_edit_list_apply_pair_assignment(fr_edit_list_t *el, fr_pair_t *vp, fr_token_t op, fr_value_box_t const *in)
 {
-	if (fr_edit_list_save_pair_value(el, vp) < 0) return -1;
+	if (el && (fr_edit_list_save_pair_value(el, vp) < 0)) return -1;
 
-	if (fr_value_calc_assignment_op(vp, &vp->data, op, in) < 0) return -1;
-
-	return 0;
+	return fr_value_calc_assignment_op(vp, &vp->data, op, in);
 }
 
 /** Apply operators to lists.
