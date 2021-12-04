@@ -13,6 +13,9 @@ update request {
 &Tmp-Integer-0 += 5
 &Tmp-Integer-1 -= 16	# Run-time underflow!
 
+# try to see what's up
+%(debug_attr:request[*])
+
 #
 #  The various edits above should have been reverted.
 #
