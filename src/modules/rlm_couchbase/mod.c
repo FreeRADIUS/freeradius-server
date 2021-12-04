@@ -343,11 +343,12 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
  * This code is heavily based on the vp_prints_value_json() function
  * from src/lib/print.c.
  *
- * @param  request The request object.
- * @param  vp      The value pair to convert.
- * @return         Returns a JSON object.
+ * @param  request   The request object.
+ * @param  vp        The value pair to convert.
+ * @param  raw_value Print all values as raw, even if enum values exist.
+ * @return           Returns a JSON object.
  */
-json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
+json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp, bool raw_value)
 {
 	char value[255];    /* radius attribute value */
 
@@ -368,8 +369,9 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 			i = vp->vp_byte;
 
 		print_int:
-			/* skip if we have flags */
-			if (vp->da->flags.has_value) break;
+			/* add a raw value to our json output - i.e. do not try resolve enum.
+			   skip this if raw_value is false, and we have a value in the dictionary */
+			if (!raw_value && !vp->da->flags.has_value) break;
 #ifdef HAVE_JSON_OBJECT_NEW_INT64
 			/* debug */
 			RDEBUG3("creating new int64 for unsigned 32 bit int/byte/short '%s'", vp->da->name);
@@ -548,6 +550,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	json_object *jrows = NULL;                               /* json object to hold view rows */
 	CONF_SECTION *client;                                    /* freeradius config section */
 	RADCLIENT *c;                                            /* freeradius client */
+	int slen;
 
 	/* get handle */
 	handle = fr_connection_get(inst->pool);
@@ -562,7 +565,13 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	cookie_t *cookie = handle->cookie;
 
 	/* build view path */
-	snprintf(vpath, sizeof(vpath), "%s?stale=false", inst->client_view);
+	slen = snprintf(vpath, sizeof(vpath), "%s?stale=false", inst->client_view);
+	if (slen >= (int) sizeof(vpath) || slen < 0) {
+		ERROR("rlm_couchbase: view path too long");
+		retval=-1;
+		goto free_and_return;
+	}
+
 
 	/* query view for document */
 	cb_error = couchbase_query_view(cb_inst, cookie, vpath, NULL);

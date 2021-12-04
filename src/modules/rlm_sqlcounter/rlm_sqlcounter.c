@@ -624,7 +624,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		uint64_t next_reset = inst->reset_time - request->timestamp;
 
 		RDEBUG2("Time (%" PRIu64 "s) to next reset is smaller than time remaining this reset (%" PRIu64 "s).  "
-			"Extending limit to end of next reset time (^" PRIu64 "s).",
+			"Extending limit to end of next reset time (%" PRIu64 "s).",
 			next_reset, unused, next_reset + limit->vp_integer);
 
 		unused = next_reset + limit->vp_integer;

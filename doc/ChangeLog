@@ -1,7 +1,28 @@
-FreeRADIUS 3.0.25 Wed 29 Sep 2021 12:00:00 EDT urgency=low
+FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	Feature improvements
+	* Add dictionary.mellanox
+	* Update dictionary.aruba
+	* Removed haproxy support.  It's new and experimental,
+	  and belongs in the v3.2 release, where it will be
+	  fully supported.
+	* Support PEAP and TTLS with TLS 1.3.  This has been
+	  tested with wpa_supplicant and Windows 11.
 
 	Bug fixes
+	* Ensure PBKDF2 always uses at least one iteration
+
+FreeRADIUS 3.0.25 Thu 07 Oct 2021 12:00:00 EDT urgency=medium
+	Feature improvements
+	* Better debug output when proxying is disabled
+	* Updates to support PostgreSQL 14 (#4251)
+
+	Bug fixes
+	* Add `correct_escapes` back into default configuration
+	* Fix undeclared variable with some compile options (#4246)
+	* Quiet erroneous debug output
+	* Fix segfault when proxying to zombie home server
+	* Fix resolving values to enum strings in rlm_rest (#4167)
+	* Fix printing raw values rather than enum strings in rlm_couchbase (#4167)
 
 FreeRADIUS 3.0.24 Wed 29 Sep 2021 12:00:00 EDT urgency=medium
 	Feature improvements
@@ -30,6 +51,8 @@ FreeRADIUS 3.0.24 Wed 29 Sep 2021 12:00:00 EDT urgency=medium
 	* The Simultaneous-Use code is now IPv6 aware, and can deal with
 	  NAS-IPv6-Address.
 	* Add dictionary.cambium
+	* Add new %{lasttime:...} allowing calculation of a number of
+	  hours/days/weeks/years in the past.
 
 	Bug fixes
 	* Fix crash in trustrouter module (#4115). Patch from Alejandro Perez

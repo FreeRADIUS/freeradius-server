@@ -576,7 +576,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	rlm_sqlippool_t *inst = (rlm_sqlippool_t *) instance;
 	char allocation[MAX_STRING_LEN];
 	int allocation_len;
-	VALUE_PAIR *vp;
+	VALUE_PAIR *vp = NULL;
 	rlm_sql_handle_t *handle;
 	time_t now;
 	uint32_t diff_time;
@@ -727,13 +727,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	if (fr_pair_value_from_str(vp, allocation, allocation_len) < 0) {
 		DO_PART(allocate_commit);
 
+		talloc_free(vp);
 		RDEBUG("Invalid IP number [%s] returned from instbase query.", allocation);
 		fr_connection_release(inst->sql_inst->pool, handle);
 		return do_logging(request, inst->log_failed, RLM_MODULE_NOOP);
 	}
-
-	RDEBUG("Allocated IP %s", allocation);
-	fr_pair_add(&request->reply->vps, vp);
 
 	/*
 	 *	UPDATE
@@ -741,11 +739,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	if (sqlippool_command(inst->allocate_update, &handle, inst, request,
 			      allocation, allocation_len) < 0) {
 	error:
+		talloc_free(vp);
 		if (handle) fr_connection_release(inst->sql_inst->pool, handle);
 		return RLM_MODULE_FAIL;
 	}
 
 	DO_PART(allocate_commit);
+
+	RDEBUG("Allocated IP %s", allocation);
+	fr_pair_add(&request->reply->vps, vp);
 
 	if (handle) fr_connection_release(inst->sql_inst->pool, handle);
 

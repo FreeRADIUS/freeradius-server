@@ -72,6 +72,7 @@ jobs:
         libidn11-dev \
         libiodbc2 \
         libiodbc2-dev \
+        libjson-c-dev \
         libkqueue-dev \
         libkrb5-dev \
         libldap2-dev \
@@ -99,14 +100,6 @@ jobs:
         python3-dev \
         ruby-dev \
         quilt
-
-    - name: Install JSON build deps for 18.04
-      if: ${{ matrix.os == 'ubuntu-18.04' }}
-      run: sudo apt-get install -y --no-install-recommends libjson-c3
-
-    - name: Install JSON build deps for 20.04
-      if: ${{ matrix.os == 'ubuntu-20.04' }}
-      run: sudo apt-get install -y --no-install-recommends libjson-c4
 
     - name: Install LLVM 10 for 18.04
       if: ${{ matrix.os == 'ubuntu-18.04' && matrix.env.CC == 'clang' }}
@@ -155,8 +148,46 @@ jobs:
       if: ${{ matrix.env.CC == 'clang' && failure() }}
 
     - name: Test
-      run: make ci-test
+      run: |
+        # Temporarily replace ucf (for config merge) with cp since it's
+        # terribly slow!
+        sudo mv /usr/bin/ucf /usr/bin/ucf.disabled
+        sudo sh -c 'echo "#!/bin/sh"          >  /usr/bin/ucf'
+        sudo sh -c 'echo "shift && cp -v \$@" >> /usr/bin/ucf'
+        sudo chmod +x /usr/bin/ucf
+        sudo apt-get install -y --no-install-recommends \
+          apparmor-utils \
+          slapd ldap-utils
+        sudo mv -f /usr/bin/ucf.disabled /usr/bin/ucf
+        sudo systemctl stop slapd
+        sudo aa-complain /usr/sbin/slapd
 
+        export PG_VER=14
+        sudo sh -c "echo host  all all 127.0.0.1/32 trust >  /etc/postgresql/$PG_VER/main/pg_hba.conf"
+        sudo sh -c "echo local all all              trust >> /etc/postgresql/$PG_VER/main/pg_hba.conf"
+
+        sudo systemctl start mysql postgresql
+
+        mysql -h 127.0.0.1 -uroot -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '';"
+
+        for i in \
+            postgresql-setup.sh \
+            mysql-setup.sh \
+            ldap-setup.sh \
+            ldap2-setup.sh; do
+
+            script="./scripts/ci/$i"
+            echo "Calling $i"
+            $script
+        done
+
+        make ci-test
+
+      env:
+        SQL_MYSQL_TEST_SERVER: 127.0.0.1
+        SQL_POSTGRESQL_TEST_SERVER: 127.0.0.1
+        LDAP_TEST_SERVER: 127.0.0.1
+        LDAP_TEST_SERVER_PORT: 3890
     #
     #  If the CI has failed and the branch is ci-debug then start a tmate
     #  session. SSH rendezvous point is emited continuously in the job output.
@@ -231,7 +262,7 @@ jobs:
       - name: "Report whether PERSONAL_ACCESS_TOKEN secret exists"
         id: merge-preflight
         run: |
-          [ -n "$PERSONAL_ACCESS_TOKEN" ] && echo "::set-output name=PERSONAL_ACCESS_TOKEN_EXISTS::1"
+          [ -z "$PERSONAL_ACCESS_TOKEN" ] || echo "::set-output name=PERSONAL_ACCESS_TOKEN_EXISTS::1"
         env:
           PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
     outputs:

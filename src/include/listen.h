@@ -76,7 +76,6 @@ struct rad_listen {
 	rad_listen_t	*parent;
 
 	bool		dual;
-	bool		proxy_protocol;		//!< haproxy protocol
 #endif
 	bool		nodup;
 	bool		synchronous;
@@ -85,19 +84,6 @@ struct rad_listen {
 #ifdef WITH_TLS
 	fr_tls_server_conf_t *tls;
 	bool		check_client_connections;
-
-#ifdef WITH_COA_TUNNEL
-	char const	*key;		/* Originating-Realm-Key */
-	bool		send_coa;	/* to the NAS */
-	bool		dead;
-
-	uint32_t	coa_irt;
-	uint32_t	coa_mrc;
-	uint32_t	coa_mrt;
-	uint32_t	coa_mrd;
-
-	int		num_ids_used;	/* for proxying CoA packets */
-#endif
 #endif
 
 	rad_listen_recv_t recv;
@@ -167,11 +153,6 @@ typedef struct listen_socket_t {
 	RADCLIENT	*client;
 
 	RADIUS_PACKET   *packet; /* for reading partial packets */
-
-	fr_ipaddr_t	haproxy_src_ipaddr;	//!< for proxy_protocol
-	fr_ipaddr_t	haproxy_dst_ipaddr;
-	uint16_t	haproxy_src_port;
-	uint16_t	haproxy_dst_port;
 #endif
 
 #ifdef WITH_TLS

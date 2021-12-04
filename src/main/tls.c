@@ -485,8 +485,6 @@ void tls_session_id(SSL_SESSION *ssn, char *buffer, size_t bufsize)
 #endif
 }
 
-
-
 static int _tls_session_free(tls_session_t *ssn)
 {
 	/*
@@ -501,6 +499,52 @@ static int _tls_session_free(tls_session_t *ssn)
 
 	return 0;
 }
+
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(LIBRESSL_VERSION_NUMBER)
+/*
+ *  By setting the environment variable SSLKEYLOGFILE to a filename keying
+ *  material will be exported that you may use with Wireshark to decode any
+ *  TLS flows. Please see the following for more details:
+ *
+ *	https://gitlab.com/wireshark/wireshark/-/wikis/TLS#tls-decryption
+ *
+ *  An example logging session is (you should delete the file on each run):
+ *
+ *	rm -f /tmp/sslkey.log; env SSLKEYLOGFILE=/tmp/sslkey.log freeradius -X | tee /tmp/debug
+ */
+static void tls_keylog_cb(UNUSED const SSL *ssl, const char *line)
+{
+	int fd;
+	size_t len;
+	const char *filename;
+	// less than _POSIX_PIPE_BUF (512) guarantees writes are atomic for O_APPEND
+	char buffer[64 + 2*SSL3_RANDOM_SIZE + 2*SSL_MAX_MASTER_KEY_LENGTH];
+
+	filename = getenv("SSLKEYLOGFILE");
+	if (!filename) return;
+
+	len = strlen(line);
+	if ((len + 1) > sizeof(buffer)) {
+		DEBUG("SSLKEYLOGFILE buffer not large enough, max %lu, required %lu", sizeof(buffer), len + 1);
+		return;
+	}
+
+	memcpy(buffer, line, len);
+	buffer[len] = '\n';
+
+	fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
+	if (fd < 0) {
+		fr_strerror_printf("Failed to open file %s: %s", filename, strerror(errno));
+		return;
+	}
+
+	if (write(fd, buffer, len + 1) == -1) {
+		DEBUG("Failed to write to file %s: %s", filename, strerror(errno));
+	}
+
+	close(fd);
+}
+#endif
 
 tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, int fd, VALUE_PAIR **certs)
 {
@@ -554,10 +598,8 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	ret = SSL_connect(ssn->ssl);
 	if (ret < 0) {
 		switch (SSL_get_error(ssn->ssl, ret)) {
-			default:
-				break;
-
-
+		default:
+			break;
 
 		case SSL_ERROR_WANT_READ:
 		case SSL_ERROR_WANT_WRITE:
@@ -687,6 +729,13 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	state->ctx = conf->ctx;
 	state->ssl = new_tls;
 	state->conf = conf;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(LIBRESSL_VERSION_NUMBER)
+	/*
+	 *	Set the keylog file if the admin requested it.
+	 */
+	if (getenv("SSLKEYLOGFILE") != NULL) SSL_CTX_set_keylog_callback(state->ctx, tls_keylog_cb);
+#endif
 
 	/*
 	 *	Initialize callbacks
@@ -966,7 +1015,6 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 			RINDENT();
 			rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 			REXDENT();
-
 		}
 	}
 	else if (SSL_in_init(ssn->ssl)) { RDEBUG2("(TLS) In Handshake Phase"); }
@@ -1018,7 +1066,6 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 			return 0;
 		}
 	} else {
-
 		RDEBUG2("(TLS) Application data.");
 		/* Its clean application data, do whatever we want */
 		record_init(&ssn->clean_out);
@@ -1160,6 +1207,7 @@ void tls_session_information(tls_session_t *tls_session)
 {
 	char const *str_write_p, *str_version, *str_content_type = "";
 	char const *str_details1 = "", *str_details2= "";
+	char const *details = NULL;
 	REQUEST *request;
 	VALUE_PAIR *vp;
 	char content_type[16], alert_buf[16];
@@ -1181,6 +1229,8 @@ void tls_session_information(tls_session_t *tls_session)
 	if (!request) return;
 
 	str_write_p = tls_session->info.origin ? "(TLS) send" : "(TLS) recv";
+
+#define FROM_CLIENT (tls_session->info.origin == 0)
 
 	switch (tls_session->info.version) {
 	case SSL2_VERSION:
@@ -1253,9 +1303,12 @@ void tls_session_information(tls_session_t *tls_session)
 				}
 
 				str_details2 = " ???";
+				details = "there is a failure inside the TLS protocol exchange";
+
 				switch (tls_session->info.alert_description) {
 				case SSL3_AD_CLOSE_NOTIFY:
 					str_details2 = " close_notify";
+					details = "the connection has been closed, and no further TLS exchanges will take place";
 					break;
 
 				case SSL3_AD_UNEXPECTED_MESSAGE:
@@ -1284,26 +1337,32 @@ void tls_session_information(tls_session_t *tls_session)
 
 				case SSL3_AD_NO_CERTIFICATE:
 					str_details2 = " no_certificate";
+					details = "the server did not present a certificate to the client";
 					break;
 
 				case SSL3_AD_BAD_CERTIFICATE:
 					str_details2 = " bad_certificate";
+					details = "it believes the server certificate is invalid or malformed";
 					break;
 
 				case SSL3_AD_UNSUPPORTED_CERTIFICATE:
 					str_details2 = " unsupported_certificate";
+					details = "it does not understand the certificate presented by the server";
 					break;
 
 				case SSL3_AD_CERTIFICATE_REVOKED:
 					str_details2 = " certificate_revoked";
+					details = "it believes that the server certificate has been revoked";
 					break;
 
 				case SSL3_AD_CERTIFICATE_EXPIRED:
 					str_details2 = " certificate_expired";
+					details = "it believes that the server certificate has expired.  Either renew the server certificate, or check the time on the client";
 					break;
 
 				case SSL3_AD_CERTIFICATE_UNKNOWN:
 					str_details2 = " certificate_unknown";
+					details = "it does not recognize the server certificate";
 					break;
 
 				case SSL3_AD_ILLEGAL_PARAMETER:
@@ -1312,6 +1371,7 @@ void tls_session_information(tls_session_t *tls_session)
 
 				case TLS1_AD_UNKNOWN_CA:
 					str_details2 = " unknown_ca";
+					details = "it does not recognize the CA used to issue the server certificate.  Please update the client so that it knows about the CA";
 					break;
 
 				case TLS1_AD_ACCESS_DENIED:
@@ -1332,6 +1392,7 @@ void tls_session_information(tls_session_t *tls_session)
 
 				case TLS1_AD_PROTOCOL_VERSION:
 					str_details2 = " protocol_version";
+					details = "the client does not accept the version of TLS negotiated by the server";
 
 #ifdef TLS1_3_VERSION
 					/*
@@ -1364,18 +1425,21 @@ void tls_session_information(tls_session_t *tls_session)
 #ifdef TLS13_AD_MISSING_EXTENSIONS
 				case TLS13_AD_MISSING_EXTENSIONS:
 					str_details2 = " missing_extensions";
+					details = "the server did not present a TLS extension which the client expected to be present.  Please check the TLS libraries on the client and server for compatibility";
 					break;
 #endif
 
 #ifdef TLS13_AD_CERTIFICATE_REQUIRED
 				case TLS13_AD_CERTIFICATE_REQUIRED:
 					str_details2 = " certificate_required";
+					details = "the server did not present a certificate";
 					break;
 #endif
 
 #ifdef TLS1_AD_UNSUPPORTED_EXTENSION
 				case TLS1_AD_UNSUPPORTED_EXTENSION:
 					str_details2 = " unsupported_extension";
+					details = "the server has sent a TLS message which the client does not recognize.  Please check the TLS libraries on the client and server for compatibility";
 					break;
 #endif
 
@@ -1506,6 +1570,8 @@ void tls_session_information(tls_session_t *tls_session)
 	}
 
 	RDEBUG2("%s", tls_session->info.info_description);
+
+	if (FROM_CLIENT && details) RDEBUG2("(TLS) The client is informing us that %s.", details);
 }
 
 static CONF_PARSER cache_config[] = {
@@ -3233,8 +3299,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			}
 
 			if (conf->disallow_untrusted) {
-				AUTH(LOG_PREFIX ": There are untrusted certificates in the certificate chain.  Rejecting.",
-				     issuer, conf->check_cert_issuer);
+				AUTH(LOG_PREFIX ": There are untrusted certificates in the certificate chain.  Rejecting.");
 				my_ok = 0;
 			}
 		}

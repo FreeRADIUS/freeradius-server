@@ -94,7 +94,7 @@ typedef struct _record_t {
 } record_t;
 
 typedef struct _tls_info_t {
-	int		origin;
+	int		origin;		// 0 - received (from peer), 1 - sending (to peer)
 	int		content_type;
 	uint8_t		handshake_type;
 	uint8_t		alert_level;

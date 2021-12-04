@@ -64,6 +64,7 @@ static const CONF_PARSER module_config[] = {
 	{ "simul_vkey", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_couchbase_t, simul_vkey), "%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}" },
 	{ "verify_simul", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_couchbase_t, verify_simul), NULL }, /* NULL defaults to "no" */
 #endif
+	{ "raw_value", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_couchbase_t, raw_value), "yes" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -361,7 +362,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 		if ((vp = fr_pair_find_by_num(request->packet->vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY)) != NULL) {
 			/* add to json object */
 			json_object_object_add(cookie->jobj, "startTimestamp",
-					       mod_value_pair_to_json_object(request, vp));
+					       mod_value_pair_to_json_object(request, vp, inst->raw_value));
 		}
 		break;
 
@@ -370,7 +371,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 		if ((vp = fr_pair_find_by_num(request->packet->vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY)) != NULL) {
 			/* add to json object */
 			json_object_object_add(cookie->jobj, "stopTimestamp",
-					       mod_value_pair_to_json_object(request, vp));
+					       mod_value_pair_to_json_object(request, vp, inst->raw_value));
 		}
 		/* check start timestamp and adjust if needed */
 		mod_ensure_start_timestamp(cookie->jobj, request->packet->vps);
@@ -395,7 +396,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 			/* debug */
 			RDEBUG3("mapped attribute %s => %s", vp->da->name, element);
 			/* add to json object with mapped name */
-			json_object_object_add(cookie->jobj, element, mod_value_pair_to_json_object(request, vp));
+			json_object_object_add(cookie->jobj, element, mod_value_pair_to_json_object(request, vp, inst->raw_value));
 		}
 	}
 
@@ -473,6 +474,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 	uint32_t framed_ip_addr = 0;           /* framed ip address from accounting document */
 	char framed_proto = 0;                 /* framed proto from accounting document */
 	int session_time = 0;                  /* session time from accounting document */
+	int slen;
 
 	/* do nothing if this is not enabled */
 	if (inst->check_simul != true) {
@@ -507,8 +509,12 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 	cookie_t *cookie = handle->cookie;
 
 	/* build view path */
-	snprintf(vpath, sizeof(vpath), "%s?key=\"%s\"&stale=update_after",
-		 inst->simul_view, vkey);
+	slen = snprintf(vpath, sizeof(vpath), "%s?key=\"%s\"&stale=update_after",
+			inst->simul_view, vkey);
+	if (slen >= (int) sizeof(vpath) || slen < 0) {
+		RERROR("view path is too long");
+		return RLM_MODULE_FAIL;
+	}
 
 	/* query view for document */
 	cb_error = couchbase_query_view(cb_inst, cookie, vpath, NULL);

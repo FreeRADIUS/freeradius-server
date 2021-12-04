@@ -880,7 +880,7 @@ int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_
  * @param ctx to allocate new clients in.
  * @param cs to process as a client.
  * @param in_server Whether the client should belong to a specific virtual server.
- * @param with_coa If true and coa_server or coa_home_pool aren't specified automatically,
+ * @param with_coa If true and coa_home_server or coa_home_pool aren't specified automatically,
  *	create a coa home_server section and add it to the client CONF_SECTION.
  * @return new RADCLIENT struct.
  */

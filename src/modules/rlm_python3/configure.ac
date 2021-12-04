@@ -53,6 +53,8 @@ if test x$with_[]modname != xno; then
 		dnl # Strip -DNDEBUG
 		dnl # Strip -frecord-gcc-switches, We decide if we need that, not python.
 		dnl # Strip -specs=/path/whatever.specs, We don't need the compiler .specs that comes from Python
+		dnl # Strip -ffat-lto-objects, We decide if we need that, not python.
+		dnl # Strip -flto=auto, We decide if we need that, not python.
 		mod_cflags=`echo " $python3_cflags" | sed -e '\
 			s/ -I/ -isystem/g;\
 			s/ -isysroot[[ =]]\{0,1\}[[^-]]*/ /g;\
@@ -62,7 +64,9 @@ if test x$with_[]modname != xno; then
 			s/ -W[[^ ]]*/ /g;\
 			s/ -DNDEBUG[[[:blank:]]]*/ /g;\
 			s/ -frecord-gcc-switches/ /g;\
-			s/ -specs=[[^ ]]*/ /g;
+			s/ -specs=[[^ ]]*/ /g; \
+			s/ -ffat-lto-objects/ /g; \
+			s/ -flto=[[^ ]]*/ /g;
 			'`
 		AC_MSG_NOTICE([Sanitized cflags were \"${mod_cflags}\"])
 

@@ -502,7 +502,9 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp, bool
 {
 	char const	*q;
 	size_t		len, freespace = outlen;
-	bool		raw = raw_value || (!vp->da->flags.has_tag && !vp->da->flags.has_value);
+	/* attempt to print raw_value when has_value is false, or raw_value is false, but only
+	   if has_tag is also false */
+	bool		raw = (raw_value || !vp->da->flags.has_value) && !vp->da->flags.has_tag;
 
 	if (raw) {
 		switch (vp->da->type) {

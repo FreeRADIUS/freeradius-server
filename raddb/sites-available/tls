@@ -65,29 +65,6 @@ listen {
 	clients = radsec
 
 	#
-	#  Use the haproxy "PROXY protocol".
-	#
-	#  This configuration allows for many FreeRADIUS servers to be
-	#  behind a haproxy server.  The "PROXY protocol" allows
-	#  haproxy to send the actual client IP to FreeRADIUS.
-	#
-	#  This will work ONLY for RadSec (TLS).  Both the haproxy AND
-	#  the RadSec client MUST be listed as allowed RADIUS clients.
-	#
-	#  haproxy needs to have "send-proxy" configured for this server.
-	#  Health checks should be turned off, as haproxy does not
-	#  support RADIUS health checks.
-	#
-	#  The main use of this feature is for scalability.  There is no
-	#  longer any need to have a RADIUS proxy as a load balancer.
-	#  haproxy is fast, stable, and supports dynamic reloads!
-	#
-	#  The only problem is that many RADIUS clients do not support
-	#  RadSec.  That situation will hopefully change over time.
-	#
-#	proxy_protocol = no
-
-	#
 	#  When this is set to "yes", new TLS connections
 	#  are processed through a section called
 	#
