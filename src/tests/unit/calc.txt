@@ -29,6 +29,9 @@ match 64
 calc uint8 5 - uint8 16 -> uint8
 match Value overflows/underflows when calculating answer for uint8
 
+calc uint32 5 - uint32 16 -> uint32
+match Value overflows/underflows when calculating answer for uint32
+
 #
 #  Intermediate values are too large for destination, but the
 #  resulting value can fit.
@@ -139,4 +142,4 @@ calc string "2" += string "test"
 match 2test
 
 count
-match 56
+match 58
