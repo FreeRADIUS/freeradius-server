@@ -887,7 +887,7 @@ int unlang_fixup_update(map_t *map, UNUSED void *ctx)
 	 *
 	 *	We then free the template and alloc a NULL one instead.
 	 */
-	if (map->op == T_OP_CMP_FALSE) {
+	if ((map->op == T_OP_CMP_FALSE) && !tmpl_is_null(map->rhs)) {
 		if (!tmpl_is_unresolved(map->rhs) || (strcmp(map->rhs->name, "ANY") != 0)) {
 			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'",
 			     cf_filename(cp), cf_lineno(cp));
@@ -922,7 +922,7 @@ int unlang_fixup_update(map_t *map, UNUSED void *ctx)
 			return -1;
 		}
 
-		if (fr_equality_op[map->op]) {
+		if (fr_equality_op[map->op] && (map->op != T_OP_CMP_FALSE)) {
 			cf_log_warn(cp, "Please use the 'filter' keyword for attribute filtering");
 		}
 	}
