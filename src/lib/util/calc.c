@@ -394,8 +394,7 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 	switch (op) {
 	case T_OP_PREPEND:	/* dst = b . a */
-		buf = talloc_array(ctx, uint8_t, len);
-		if (!buf) {
+		if (unlikely(fr_value_box_mem_alloc(ctx, &buf, dst, dst->enumv, len, a->tainted | b->tainted) < 0)) {
 		oom:
 			fr_strerror_const("Out of memory");
 			return -1;
@@ -403,20 +402,13 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 		memcpy(buf, b->vb_octets, b->vb_length);
 		memcpy(buf + b->vb_length, a->vb_octets, a->vb_length);
-
-		fr_value_box_clear_value(dst);
-		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
 		break;
 
 	case T_ADD:	/* dst = a . b */
-		buf = talloc_array(ctx, uint8_t, len);
-		if (!buf) goto oom;
+		if (unlikely(fr_value_box_mem_alloc(ctx, &buf, dst, dst->enumv, len, a->tainted | b->tainted) < 0)) goto oom;
 
 		memcpy(buf, a->vb_octets, a->vb_length);
 		memcpy(buf + a->vb_length, b->vb_octets, b->vb_length);
-
-		fr_value_box_clear_value(dst);
-		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
 		break;
 
 	case T_SUB:
@@ -434,13 +426,8 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		}
 
 		len = a->vb_length - b->vb_length;
-		buf = talloc_array(ctx, uint8_t, len);
-		if (!buf) goto oom;
-
+		if (unlikely(fr_value_box_mem_alloc(ctx, &buf, dst, dst->enumv, len, a->tainted | b->tainted) < 0)) goto oom;
 		memcpy(buf, a->vb_strvalue, len);
-
-		fr_value_box_clear_value(dst);
-		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
 		break;
 
 	case T_AND:
@@ -450,29 +437,17 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 			return -1;
 		}
 
-		buf = talloc_array(ctx, uint8_t, a->vb_length);
-		if (!buf) goto oom;
+		if (unlikely(fr_value_box_mem_alloc(ctx, &buf, dst, dst->enumv, a->vb_length, a->tainted | b->tainted) < 0)) goto oom;
 
-		for (len = 0; len < a->vb_length; len++) {
-			buf[len] = a->vb_octets[len] & b->vb_octets[len];
-		}
-
-		fr_value_box_clear_value(dst);
-		fr_value_box_memdup_shallow(dst, dst->enumv, buf, a->vb_length, a->tainted | b->tainted);
+		for (len = 0; len < a->vb_length; len++) buf[len] = a->vb_octets[len] & b->vb_octets[len];
 		break;
 
 	case T_OR:
 		if (a->vb_length != b->vb_length) goto length_error;
 
-		buf = talloc_array(ctx, uint8_t, a->vb_length);
-		if (!buf) goto oom;
+		if (unlikely(fr_value_box_mem_alloc(ctx, &buf, dst, dst->enumv, a->vb_length, a->tainted | b->tainted) < 0)) goto oom;
 
-		for (len = 0; len < a->vb_length; len++) {
-			buf[len] = a->vb_octets[len] | b->vb_octets[len];
-		}
-
-		fr_value_box_clear_value(dst);
-		fr_value_box_memdup_shallow(dst, dst->enumv, buf, a->vb_length, a->tainted | b->tainted);
+		for (len = 0; len < a->vb_length; len++) buf[len] = a->vb_octets[len] | b->vb_octets[len];
 		break;
 
 	default:
@@ -507,8 +482,7 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 	switch (op) {
 	case T_OP_PREPEND:	/* dst = b . a */
-		buf = talloc_array(ctx, char, len + 1);
-		if (!buf) {
+		if (unlikely(fr_value_box_bstr_alloc(ctx, &buf, dst, dst->enumv, len, a->tainted | b->tainted) < 0)) {
 		oom:
 			fr_strerror_const("Out of memory");
 			return -1;
@@ -517,21 +491,13 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		memcpy(buf, b->vb_strvalue, b->vb_length);
 		memcpy(buf + b->vb_length, a->vb_strvalue, a->vb_length);
 		buf[a->vb_length + b->vb_length] = '\0';
-
-		fr_value_box_clear_value(dst);
-		fr_value_box_strdup_shallow(dst, dst->enumv, buf, a->tainted | b->tainted);
 		break;
 
 	case T_ADD:
-		buf = talloc_array(ctx, char, len + 1);
-		if (!buf) goto oom;
+		if (unlikely(fr_value_box_bstr_alloc(ctx, &buf, dst, dst->enumv, len, a->tainted | b->tainted) < 0)) goto oom;
 
 		memcpy(buf, a->vb_strvalue, a->vb_length);
 		memcpy(buf + a->vb_length, b->vb_strvalue, b->vb_length);
-		buf[a->vb_length + b->vb_length] = '\0';
-
-		fr_value_box_clear_value(dst);
-		fr_value_box_strdup_shallow(dst, dst->enumv, buf, a->tainted | b->tainted);
 		break;
 
 	case T_SUB:
@@ -549,14 +515,9 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		}
 
 		len = a->vb_length - b->vb_length;
-		buf = talloc_array(ctx, char, len + 1);
-		if (!buf) goto oom;
 
+		if (unlikely(fr_value_box_bstr_alloc(ctx, &buf, dst, dst->enumv, len, a->tainted | b->tainted) < 0)) goto oom;
 		memcpy(buf, a->vb_strvalue, len);
-		buf[len] = '\0';
-
-		fr_value_box_clear_value(dst);
-		fr_value_box_strdup_shallow(dst, dst->enumv, buf, a->tainted | b->tainted);
 		break;
 
 	default:
