@@ -1322,6 +1322,14 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 		rcode = fr_value_calc_binary_op(ctx, dst, dst->type, dst, op, src);
 		break;
 
+	case T_OP_AND_EQ:
+		rcode = fr_value_calc_binary_op(ctx, dst, dst->type, dst, T_OR, src);
+		break;
+
+	case T_OP_OR_EQ:
+		rcode = fr_value_calc_binary_op(ctx, dst, dst->type, dst, T_AND, src);
+		break;
+
 	default:
 	invalid:
 		rcode = ERR_INVALID;
