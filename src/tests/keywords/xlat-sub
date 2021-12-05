@@ -106,11 +106,11 @@ if ("%(sub:%{Tmp-String-1} /\n/g \r)" != "\r\r\r") {
 }
 
 # Bad regex
-if ("%(sub:%{Tmp-String-0} /***/g .)" != '') {
+if ("%(sub:%{Tmp-String-0} /***/g .)") {
 	test_fail
 }
 
-if (&Module-Failure-Message[3] != 'Failed compiling regex: quantifier does not follow a repeatable item') {
+if (&Module-Failure-Message[1] != 'Failed compiling regex: quantifier does not follow a repeatable item') {
 	test_fail
 }
 
@@ -119,11 +119,11 @@ update request {
 }
 
 # Empty regex
-if ("%(sub:%{Tmp-String-0} //g .)" != '') {
+if ("%(sub:%{Tmp-String-0} //g .)") {
 	test_fail
 }
 
-if (&Module-Failure-Message[3] != 'Failed compiling regex: Empty expression') {
+if (&Module-Failure-Message[1] != 'Failed compiling regex: Empty expression') {
 	test_fail
 }
 }

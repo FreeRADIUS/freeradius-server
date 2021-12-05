@@ -38,7 +38,7 @@ if ((<integer64>&Tmp-String-1 != &Tmp-Integer64-0) || (&Tmp-Integer64-0 != 98709
 }
 
 # String - Can't convert 12 byte string to integer (our biggest native size is a 64bit unsigned int)
-if ("%(integer:%{Tmp-String-2})" != '') {
+if ("%(integer:%{Tmp-String-2})") {
 	test_fail
 }
 
@@ -74,7 +74,7 @@ if (&Tmp-Integer64-0 != 4123106143410599729) {
 }
 
 # String - Can't convert 12 byte octet string to integer (our biggest native size is a 64bit unsigned int)
-if ("%(integer:%{Tmp-Octets-2})" != '') {
+if ("%(integer:%{Tmp-Octets-2})") {
 	test_fail
 }
 
