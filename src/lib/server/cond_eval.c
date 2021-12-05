@@ -528,6 +528,7 @@ static bool cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t co
 
 	if (tmpl_is_attr(map->lhs) && fr_type_is_null(map->lhs->cast)) da = tmpl_da(map->lhs);
 
+	fr_assert(lhs != NULL);
 	rhs = NULL;		/* shut up clang scan */
 	fr_value_box_init_null(&rhs_cast);
 
@@ -541,7 +542,7 @@ static bool cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t co
 			break;
 		}
 
-		fr_assert(lhs->type == rhs->type);
+		fr_assert(rhs && (lhs->type == rhs->type));
 
 		rcode = fr_value_box_cmp_op(map->op, lhs, rhs);
 
