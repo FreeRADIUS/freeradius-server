@@ -383,6 +383,14 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 	} else if (tmpl_is_data(c->data.map->rhs)) {
 		rhs_type = tmpl_value_type(c->data.map->rhs);
 
+		/*
+		 *	If we have ATTR op DATA, then ensure that the
+		 *	data type we choose is the one from the
+		 *	attribute, because that's what limits the
+		 *	range of the RHS data.
+		 */
+		if (fr_type_is_numeric(lhs_type) && tmpl_is_attr(c->data.map->lhs)) rhs_type = lhs_type;
+
 	} else if (tmpl_is_attr(c->data.map->rhs)) {
 		rhs_type = tmpl_da(c->data.map->rhs)->type;
 
