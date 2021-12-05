@@ -99,12 +99,11 @@ do { \
  */
 #define MEMCMP_RETURN(_a, _b, _field, _len_field) \
 do { \
-	int8_t _ret = CMP((_a)->_len_field, (_b)->_len_field); \
-	int _mret; \
+	int8_t _lret = CMP((_a)->_len_field, (_b)->_len_field); \
+	int8_t _ret; \
+	_ret = CMP(memcmp((_a)->_field, (_b)->_field, _lret > 0 ? (_a)->_len_field : (_b)->_len_field), 0); \
 	if (_ret != 0) return _ret; \
-	_mret = memcmp((_a)->_field, (_b)->_field, (_a)->_len_field); \
-	_ret = CMP(_mret, 0); \
-	if (_ret != 0) return _ret; \
+	return _lret; \
 } while (0)
 
 /** Remove const qualification from a pointer
