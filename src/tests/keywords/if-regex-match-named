@@ -1,4 +1,4 @@
-# PRE: if
+# PRE: if if-failed-xlat
 #
 if (('${feature.regex-pcre}' == 'yes') || ('${feature.regex-pcre2}' == 'yes')) {
 update request {

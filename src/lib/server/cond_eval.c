@@ -124,13 +124,12 @@ void cond_debug(fr_cond_t const *cond)
  * @param[in] in the template to evaluate
  * @param[in] async the asynchronously evaluated value box, for XLAT and EXEC
  * @return
- *	- <0 for failure
  *	- 0 for "no match"
  *	- 1 for "match".
  */
-static int cond_eval_tmpl(request_t *request, tmpl_t const *in, fr_value_box_t *async)
+static bool cond_eval_tmpl(request_t *request, tmpl_t const *in, fr_value_box_t *async)
 {
-	int rcode = -1;
+	int rcode = false;
 	fr_pair_t *vp = NULL;
 	fr_value_box_t *box, *box_free;
 	tmpl_t *vpt;
@@ -153,7 +152,7 @@ static int cond_eval_tmpl(request_t *request, tmpl_t const *in, fr_value_box_t *
 		 *	particular type.
 		 */
 		if (tmpl_find_vp(&vp, request, vpt) < 0) {
-			return -1;
+			return false;
 		}
 
 		MEM(box = fr_value_box_alloc_null(request));
@@ -173,8 +172,7 @@ static int cond_eval_tmpl(request_t *request, tmpl_t const *in, fr_value_box_t *
 		 *	Realize and cast the tmpl.
 		 */
 		if (cond_realize_tmpl(request, &box, &box_free, vpt, NULL, async) < 0) {
-			fr_strerror_const("Failed evaluating condition");
-			return -1;
+			return false;
 		}
 
 		/*
@@ -196,7 +194,7 @@ static int cond_eval_tmpl(request_t *request, tmpl_t const *in, fr_value_box_t *
 				 */
 			default:
 				fr_assert(0);
-				return -1;
+				return false;
 			}
 		}
 		break;
@@ -435,7 +433,12 @@ static int cond_realize_tmpl(request_t *request,
 		if (!async) {
 			box = NULL;
 			ret = tmpl_aexpand(request, &box, request, in, escape, NULL);
-			if (ret < 0) return ret;
+			if (ret < 0) {
+				if (cast_type != FR_TYPE_STRING) return -1;
+
+				box = fr_value_box_alloc(request, FR_TYPE_STRING, NULL, false);
+				if (!box) return -1;
+			}
 
 			fr_assert(box != NULL);
 			*out = *to_free = box;
@@ -507,7 +510,7 @@ static int cond_realize_attr(request_t *request, fr_value_box_t **realized, fr_v
 		if (request) RPEDEBUG("Failed casting %pV to type %s", &vp->data,
 				      fr_table_str_by_value(fr_value_box_type_table,
 							    vpt->cast, "??"));
-		return -1;
+		return false;
 	}
 
 	*realized = box;
@@ -853,7 +856,7 @@ done:
  */
 bool cond_eval(request_t *request, rlm_rcode_t modreturn, fr_cond_t const *c)
 {
-	int rcode = -1;
+	int rcode = false;
 
 #ifdef WITH_EVAL_DEBUG
 	char buffer[1024];

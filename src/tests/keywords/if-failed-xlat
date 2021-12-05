@@ -1,0 +1,15 @@
+#
+#  PRE: if
+#
+
+# Check failure when no previous capture - named group
+# but a failed regex is equivalent to an empty string
+if ("%{regex:foo}" != "") {
+	test_fail
+}
+
+if (&Module-Failure-Message[*] != "No previous named regex capture group") {
+	test_fail
+}
+
+success
