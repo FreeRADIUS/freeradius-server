@@ -7,7 +7,7 @@ update request {
 }
 
 # Check failure when no previous capture - full capture
-if ("%{regex:}" != "") {
+if ("%{regex:}") {
 	test_fail
 }
 
@@ -20,7 +20,7 @@ update request {
 }
 
 # Check failure when no previous capture - named group
-if ("%{regex:foo}" != "") {
+if ("%{regex:foo}") {
 	test_fail
 }
 
@@ -33,7 +33,7 @@ update request {
 }
 
 # Check failure when no previous capture - numbered group
-if ("%{regex:%{Tmp-Integer-1}}" != "") {
+if ("%{regex:%{Tmp-Integer-1}}") {
 	test_fail
 }
 
