@@ -669,59 +669,175 @@ int fr_edit_list_apply_pair_assignment(fr_edit_list_t *el, fr_pair_t *vp, fr_tok
 	return fr_value_calc_assignment_op(vp, &vp->data, op, in);
 }
 
-/** Apply operators to lists.
+
+/** A UNION B
  *
- *   = is "if found vp, do nothing.  Otherwise call fr_edit_list_insert_pair_tail()
- *
- *  The src list MUST have been talloc'd from the right place already.
  */
-int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_token_t op, fr_pair_list_t *src)
+static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src)
 {
-	if (!fr_type_is_structural(dst->vp_type)) {
-		return -1;
-	}
+	fr_pair_t *a, *b;
+	fr_dcursor_t cursor1, cursor2;
 
-	switch (op) {
+	fr_pair_list_sort(&dst->children, fr_pair_cmp_by_parent_num);
+	fr_pair_list_sort(src, fr_pair_cmp_by_parent_num);
+
+	fr_pair_dcursor_init(&cursor1, &dst->children);
+	fr_pair_dcursor_init(&cursor2, src);
+
+	while (true) {
+		int rcode;
+
+		a = fr_dcursor_current(&cursor1);
+		b = fr_dcursor_current(&cursor2);
+
+		rcode = fr_pair_cmp_by_parent_num(a, b);
+
 		/*
-		 *	Over-ride existing value (i.e. children) with
-		 *	new list.
+		 *	a < b
+		 *
+		 *	A stays in its list, but we advance to the
+		 *	next item.  Maybe at that point we will be
+		 *	able to take the union of A and B.
 		 */
-	case T_OP_SET:
-		if (fr_edit_list_free_pair_children(el, dst) < 0) return -1;
-		FALL_THROUGH;
+		if (rcode < 0) {
+			fr_dcursor_next(&cursor1);
+			continue;
+		}
 
-	case T_OP_ADD_EQ:
-		return fr_edit_list_insert_list_tail(el, &dst->children, src);
+		/*
+		 *	a > b
+		 *
+		 *	This means that in the ordered set, the
+		 *	equivalent to B does not exist.  So we copy B
+		 *	to the destination list, before A.
+		 */
+		if (rcode > 0) {
+			if (fr_edit_list_insert_pair_before(el, &dst->children, a, fr_pair_copy(dst, b)) < 0) {
+				return -1;
+			}
 
-	case T_OP_PREPEND:
-		return fr_edit_list_insert_list_head(el, &dst->children, src);
+			fr_dcursor_next(&cursor2);
+			continue;
+		}
 
-	default:
-		break;
+		fr_assert(rcode == 0);
+
+		/*
+		 *	They're the same.  Recurse if necessary.
+		 *
+		 *	Then, copy B to after A.
+		 *
+		 *	The attributes are the same.  Add both in.
+		 *
+		 *	For leaf attributes, this means just adding
+		 *	both attributes.
+		 */
+		fr_assert(a->da == b->da);
+
+		if (fr_type_is_structural(a->vp_type)) {
+			rcode = list_union(el, a, &b->children);
+			if (rcode < 0) return rcode;
+		}
+
+		fr_dcursor_next(&cursor1);
+		fr_dcursor_next(&cursor2);
 	}
 
-	fr_strerror_printf("Invalid assignment operator %s for destination type %s",
-			   fr_tokens[op],
-			   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
-	return -1;
+	return 0;
+}
+
+/** A MERGE B
+ *
+ * with priority to A
+ */
+static int list_merge_lhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src)
+{
+	fr_pair_t *a, *b;
+	fr_dcursor_t cursor1, cursor2;
+
+	fr_pair_list_sort(&dst->children, fr_pair_cmp_by_parent_num);
+	fr_pair_list_sort(src, fr_pair_cmp_by_parent_num);
+
+	fr_pair_dcursor_init(&cursor1, &dst->children);
+	fr_pair_dcursor_init(&cursor2, src);
+
+	while (true) {
+		int rcode;
+
+		a = fr_dcursor_current(&cursor1);
+		b = fr_dcursor_current(&cursor2);
+
+		rcode = fr_pair_cmp_by_parent_num(a, b);
+
+		/*
+		 *	a < b
+		 *
+		 *	A stays in its list, but we advance to the
+		 *	next item.  Maybe at that point we will be
+		 *	able to merge A and B.
+		 */
+		if (rcode < 0) {
+			fr_dcursor_next(&cursor1);
+			continue;
+		}
+
+		/*
+		 *	a > b
+		 *
+		 *	This means that in the ordered set, the
+		 *	equivalent to B does not exist.  So we copy B
+		 *	to before A.
+		 */
+		if (rcode > 0) {
+			if (fr_edit_list_insert_pair_before(el, &dst->children, a, fr_pair_copy(dst, b)) < 0) {
+				return -1;
+			}
+
+			fr_dcursor_next(&cursor2);
+			continue;
+		}
+
+		fr_assert(rcode == 0);
+
+		/*
+		 *	They're the same.  Recurse if necessary.
+		 *
+		 *	Then, ignore B, because we already have A.
+		 *
+		 *	The attributes are the same.  Keep A, but also
+		 *	check if we have to merge the children of A
+		 *	and B.
+		 */
+		fr_assert(a->da == b->da);
+
+		if (fr_type_is_structural(a->vp_type)) {
+			rcode = list_merge_lhs(el, a, &b->children);
+			if (rcode < 0) return rcode;
+		}
+
+		/*
+		 *	We have both A and B, so we prefer A.
+		 */
+		fr_dcursor_next(&cursor1);
+		fr_dcursor_next(&cursor2);
+	}
+
+	return 0;
 }
 
 /** Apply operators to lists.
  *
  *   = is "if found vp, do nothing.  Otherwise call fr_edit_list_insert_pair_tail()
  *
- *  The src list here is "const".  This is a separate function, which
- *  means that in many cases we can avoid copying the source list.
- *
- *  This isn't much use for simple operations, but it can have
- *  significant benefits for union, merge, etc. where only some of the
- *  source list is copied.
+ *  The src list is sorted, but is otherwise not modified.
  */
-int fr_edit_list_apply_list_assignment_const(fr_edit_list_t *el, fr_pair_t *dst, fr_token_t op, fr_pair_list_t const *src)
+int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_token_t op, fr_pair_list_t *src)
 {
 	fr_pair_list_t copy;
 
 	if (!fr_type_is_structural(dst->vp_type)) {
+		fr_strerror_printf("Cannot perform list assignment to non-structural type '%s'",
+				   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
 		return -1;
 	}
 
@@ -742,13 +858,17 @@ int fr_edit_list_apply_list_assignment_const(fr_edit_list_t *el, fr_pair_t *dst,
 
 	case T_OP_ADD_EQ:
 		COPY;
-
 		return fr_edit_list_insert_list_tail(el, &dst->children, &copy);
 
 	case T_OP_PREPEND:
 		COPY;
-
 		return fr_edit_list_insert_list_head(el, &dst->children, &copy);
+
+	case T_OP_OR_EQ:
+		return list_union(el, dst, src);
+
+	case T_OP_GE:
+		return list_merge_lhs(el, dst, src);
 
 	default:
 		break;
