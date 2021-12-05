@@ -111,7 +111,12 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 		return talloc_asprintf(ctx, "%%{%s}", node->fmt);
 
 	case XLAT_VIRTUAL:
-		return talloc_asprintf(ctx, "%%{%s}", node->call.func->name);;
+		return talloc_asprintf(ctx, "%%{%s}", node->call.func->name);
+
+#ifdef HAVE_REGEX
+	case XLAT_REGEX:
+		return talloc_asprintf(ctx, "%%{%u}", node->regex_index);
+#endif
 
 	case XLAT_FUNC:
 	{
