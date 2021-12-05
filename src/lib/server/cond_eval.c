@@ -1037,8 +1037,6 @@ redo:
 		case COND_TYPE_TMPL:
 			fr_assert(a->vb_lhs);
 			rcode = cond_eval_tmpl(request, c->data.vpt, a->vb_lhs);
-			if (rcode < 0) return rcode;
-
 			a->result = (rcode == 1);
 			break;
 
@@ -1046,7 +1044,6 @@ redo:
 			fr_assert(a->vb_lhs || a->vb_rhs);
 
 			rcode = cond_eval_map(request, c, a->vb_lhs, a->vb_rhs);
-			if (rcode < 0) return rcode;
 			break;
 
 		default:
