@@ -46,6 +46,8 @@ fr_table_num_ordered_t const fr_tokens_table[] = {
 	{ L("!*"), 	T_OP_CMP_FALSE	},
 	{ L("=="),	T_OP_CMP_EQ	},
 	{ L("^="),	T_OP_PREPEND	},
+	{ L("|="),	T_OP_OR_EQ	},
+	{ L("&="),	T_OP_AND_EQ	},
 	{ L("="),	T_OP_EQ		},
 	{ L("!="),	T_OP_NE		},
 	{ L(">="),	T_OP_GE		},
@@ -93,6 +95,8 @@ char const *fr_tokens[T_TOKEN_LAST] = {
 	[T_OP_SUB_EQ] = "-=",
 	[T_OP_SET]    = ":=",
 	[T_OP_EQ]     = "=",
+	[T_OP_OR_EQ]  = "|=",
+	[T_OP_AND_EQ]  = "&=",
 
 	[T_OP_NE]     = "!=",
 	[T_OP_GE]     = ">=",
@@ -148,6 +152,8 @@ const bool fr_assignment_op[T_TOKEN_LAST] = {
 	T(SET),
 	T(EQ),
 	T(PREPEND),
+	T(OR_EQ),
+	T(AND_EQ),
 };
 
 const bool fr_equality_op[T_TOKEN_LAST] = {

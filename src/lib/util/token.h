@@ -64,6 +64,9 @@ typedef enum fr_token {
 	T_OP_SUB_EQ,			/* -= */
 	T_OP_SET,			/* := */
 	T_OP_PREPEND,			/* ^= */
+#define T_OP_XOR_EQ T_OP_PREPEND
+	T_OP_OR_EQ,			/* |= */
+	T_OP_AND_EQ,			/* &= */
 
 	T_OP_EQ,			/* = */
 
