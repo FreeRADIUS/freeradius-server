@@ -1446,3 +1446,68 @@ int fr_value_calc_unary_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op)
 
 	return rcode;
 }
+
+/** Apply a set of operations in order to create an output box.
+ *
+ */
+int fr_value_calc_list_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op, fr_value_box_list_t const *list)
+{
+	/*
+	 *	For octets and string and prepend / append, figure out
+	 *	first how long the output is, create a string that
+	 *	long, and then loop assigning the values.  Doing it
+	 *	this way avoids a lot of intermediate garbage.
+	 */
+	if (fr_type_is_variable_size(box->type)) {
+		bool tainted = false;
+		int rcode;
+		size_t len = 0;
+		uint8_t *str, *p;
+		fr_value_box_t src;
+
+		fr_dlist_foreach(list,fr_value_box_t const, a) {
+			if (a->type != box->type) {
+				len = 0;
+				break;
+			}
+
+			len += a->vb_length;
+		}
+
+		if (!len) goto brute_force;
+
+		if (box->type == FR_TYPE_STRING) {
+			str = talloc_array(ctx, uint8_t, len);
+			if (!str) return -1;
+		} else {
+			str = talloc_array(ctx, uint8_t, len + 1);
+			if (!str) return -1;
+
+			str[len] = '\0';
+		}
+
+		p = str;
+		fr_dlist_foreach(list,fr_value_box_t const, a) {
+			memcpy(p, a->vb_octets, a->vb_length);
+			p += a->vb_length;
+			tainted |= a->tainted;
+		}
+
+		if (box->type == FR_TYPE_STRING) {
+			fr_value_box_bstrndup_shallow(&src, NULL, (char const *) str, len, tainted);
+		} else {
+			fr_value_box_memdup_shallow(&src, NULL, str, len, tainted);
+		}
+
+		rcode = fr_value_calc_binary_op(ctx, box, box->type, box, op, &src);
+		talloc_free(str);
+		return rcode;
+	}
+
+brute_force:
+	fr_dlist_foreach(list,fr_value_box_t const, a) {
+		if (fr_value_calc_binary_op(ctx, box, box->type, box, op, a) < 0) return -1;
+	}
+
+	return 0;
+}
