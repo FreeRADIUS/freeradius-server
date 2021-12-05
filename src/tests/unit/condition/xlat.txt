@@ -1,0 +1,10 @@
+proto-dictionary radius
+
+condition %(integer:0)
+match %(integer:0)
+
+condition (%(integer:0))
+match %(integer:0)
+
+count
+match 5

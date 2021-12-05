@@ -1700,6 +1700,12 @@ static inline bool _fr_sbuff_is_hex(fr_sbuff_t *sbuff, char const *p)
 
 /** @} */
 
+void	fr_sbuff_unescape_debug(fr_sbuff_unescape_rules_t const *escapes);
+
+void	fr_sbuff_terminal_debug(fr_sbuff_term_t const *tt);
+
+void 	fr_sbuff_parse_rules_debug(fr_sbuff_parse_rules_t const *p_rules);
+
 #ifdef __cplusplus
 }
 #endif

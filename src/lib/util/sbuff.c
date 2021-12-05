@@ -590,7 +590,7 @@ fr_sbuff_term_t *fr_sbuff_terminals_amerge(TALLOC_CTX *ctx, fr_sbuff_term_t cons
 	for (j = 0; j < b->len; i++, j++) tmp[i] = &b->elem[j];
 
 	if (likely(i > 1)) {
-		fr_quick_sort((void const **)tmp, 0, i, terminal_cmp);
+		fr_quick_sort((void const **)tmp, 0, i - 1, terminal_cmp);
 
 		for (j = 0; j < (i - 1); j++) {
 			/*
@@ -2036,4 +2036,100 @@ bool fr_sbuff_is_terminal(fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 	fr_sbuff_terminal_idx_init(&needle_len, idx, tt);
 
 	return fr_sbuff_terminal_search(in, in->p, idx, tt, needle_len);
+}
+
+/** Print a char in a friendly format
+ *
+ */
+static char const *sbuff_print_char(char c)
+{
+	static bool const unprintables[UINT8_MAX + 1] = {
+		SBUFF_CHAR_UNPRINTABLES_LOW,
+		SBUFF_CHAR_UNPRINTABLES_EXTENDED
+	};
+
+	static _Thread_local char str[10][5];
+	static _Thread_local char **p;
+
+	switch (c) {
+	case '\a':
+		return "\a";
+
+	case '\b':
+		return "\b";
+
+	case '\n':
+		return "\n";
+
+	case '\r':
+		return "\r";
+
+	case '\t':
+		return "\t";
+
+	case '\f':
+		return "\f";
+
+	case '\v':
+		return "\v";
+
+	default:
+		if (!p || (p++ >= ((char **)str + (NUM_ELEMENTS(str) - 1)))) p = (char **)str;
+
+		if (unprintables[(uint8_t)c]) {
+			snprintf(*p, sizeof(*str), "\\x%x", c);
+			return *p;
+		}
+
+		*p[0] = c;
+		*p[1] = '\0';
+		return *p;
+	}
+}
+
+void fr_sbuff_unescape_debug(fr_sbuff_unescape_rules_t const *escapes)
+{
+	uint8_t i;
+
+	FR_FAULT_LOG("Escape rules %s (%p)", escapes->name, escapes);
+	FR_FAULT_LOG("chr     : %c", escapes->chr ? escapes->chr : ' ');
+	FR_FAULT_LOG("do_hex  : %s", escapes->do_hex ? "yes" : "no");
+	FR_FAULT_LOG("do_oct  : %s", escapes->do_oct ? "yes" : "no");
+
+	FR_FAULT_LOG("substitutions:");
+	for (i = 0; i < UINT8_MAX; i++) {
+		if (escapes->subs[i]) FR_FAULT_LOG("\t%s -> %s",
+						   sbuff_print_char((char)i),
+						   sbuff_print_char((char)escapes->subs[i]));
+	}
+	FR_FAULT_LOG("skipes:");
+	for (i = 0; i < UINT8_MAX; i++) {
+		if (escapes->skip[i]) FR_FAULT_LOG("\t%s", sbuff_print_char((char)i));
+	}
+}
+
+void fr_sbuff_terminal_debug(fr_sbuff_term_t const *tt)
+{
+	size_t i;
+
+	FR_FAULT_LOG("Terminal count %zu", tt->len);
+
+	for (i = 0; i < tt->len; i++) FR_FAULT_LOG("\t\"%s\" (%zu)", tt->elem[i].str, tt->elem[i].len);
+}
+
+void fr_sbuff_parse_rules_debug(fr_sbuff_parse_rules_t const *p_rules)
+{
+	FR_FAULT_LOG("Parse rules %p", p_rules);
+
+	if (p_rules->escapes) {
+		fr_sbuff_unescape_debug(p_rules->escapes);
+	} else {
+		FR_FAULT_LOG("No unescapes");
+	}
+
+	if (p_rules->terminals) {
+		fr_sbuff_terminal_debug(p_rules->terminals);
+	} else {
+		FR_FAULT_LOG("No terminals");
+	}
 }

@@ -598,34 +598,34 @@ int8_t fr_pointer_cmp(void const *a, void const *b)
  *
  * @param to_sort array of pointers to sort.
  * @param start the lowest index (usually 0).
- * @param len the length of the array.
+ * @param end the length of the array.
  * @param cmp the comparison function to use to sort the array elements.
  */
-void fr_quick_sort(void const *to_sort[], int start, int len, fr_cmp_t cmp)
+void fr_quick_sort(void const *to_sort[], int start, int end, fr_cmp_t cmp)
 {
-	int i = start;
-	int j = len;
+	int		i, pi;
+	void const	*pivot;
 
-	void const *pivot  = to_sort[(i + j) / 2];
+	if (start >= end) return;
 
-	while (i < j) {
-		void const *tmp;
+#define SWAP(_a, _b) \
+	do { \
+		void const *_tmp = to_sort[_a]; \
+		to_sort[_a] = to_sort[_b]; \
+		to_sort[_b] = _tmp; \
+	} while (0)
 
-		do ++i; while ((i < len) && (cmp(to_sort[i], pivot) < 0));
-		do --j; while ((i > start) && (cmp(to_sort[j], pivot) > 0));
-
-		if (i <= j) {
-			tmp = to_sort[i];
-			to_sort[i] = to_sort[j];
-			to_sort[j] = tmp;
-
-			i++;
-			j--;
+	pivot = to_sort[end];
+	for (pi = start, i = start; i < end; i++) {
+		if (cmp(to_sort[i], pivot) < 0) {
+			SWAP(i , pi);
+			pi++;
 		}
 	}
+	SWAP(end, pi);
 
-	if (start < j) fr_quick_sort(to_sort, start, j, cmp);
-	if (i < len) fr_quick_sort(to_sort, i, len, cmp);
+	fr_quick_sort(to_sort, start, pi - 1, cmp);
+	fr_quick_sort(to_sort, pi + 1, end, cmp);
 }
 
 #ifdef TALLOC_DEBUG
