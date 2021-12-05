@@ -103,7 +103,7 @@ do { \
 	int8_t _ret; \
 	_ret = CMP(memcmp((_a)->_field, (_b)->_field, _lret > 0 ? (_a)->_len_field : (_b)->_len_field), 0); \
 	if (_ret != 0) return _ret; \
-	return _lret; \
+	if (_lret != 0) return _lret; \
 } while (0)
 
 /** Remove const qualification from a pointer
