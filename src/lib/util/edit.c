@@ -867,21 +867,37 @@ int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_to
 		 *	new list.
 		 */
 	case T_OP_SET:
+		if (&dst->children == src) return 0; /* A := A == A */
+
 		if (fr_edit_list_free_pair_children(el, dst) < 0) return -1;
 		FALL_THROUGH;
 
 	case T_OP_ADD_EQ:
+		if (&dst->children == src) {
+			fr_strerror_printf("Cannot append list to itself");
+			return -1;
+		}
+
 		COPY;
 		return fr_edit_list_insert_list_tail(el, &dst->children, &copy);
 
 	case T_OP_PREPEND:
+		if (&dst->children == src) {
+			fr_strerror_printf("Cannot prepend list to itself");
+			return -1;
+		}
+
 		COPY;
 		return fr_edit_list_insert_list_head(el, &dst->children, &copy);
 
 	case T_OP_OR_EQ:
+		if (&dst->children == src) return 0; /* A UNION A == A */
+
 		return list_union(el, dst, src);
 
 	case T_OP_GE:
+		if (&dst->children == src) return 0; /* A MERGE A == A */
+
 		return list_merge_lhs(el, dst, src);
 
 	default:
