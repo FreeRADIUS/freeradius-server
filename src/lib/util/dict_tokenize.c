@@ -926,13 +926,18 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 			}
 
 		check:
-			if (fr_dict_attr_ref(da)) {
-				fr_strerror_const("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...'");
-				talloc_free(ref);
+			talloc_free(ref);
+
+			if (da->type != FR_TYPE_TLV) {
+				fr_strerror_const("References MUST be to an ATTRIBUTE of type 'tlv'");
 				return -1;
 			}
 
-			talloc_free(ref);
+			if (fr_dict_attr_ref(da)) {
+				fr_strerror_const("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...'");
+				return -1;
+			}
+
 			self->dict = dict;
 
 			dict_attr_ref_set(self, da);
