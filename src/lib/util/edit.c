@@ -678,6 +678,20 @@ static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src)
 	fr_pair_t *a, *b;
 	fr_dcursor_t cursor1, cursor2;
 
+	/*
+	 *	Prevent people from doing stupid things.
+	 *	While it's technically possible to take a
+	 *	UNION of structs, that would work ONLY when
+	 *	the two structs had disjoint members.
+	 *	e.g. {1, 3, 4} and {2, 5, 6}.  That's too
+	 *	complex to check right now, so we punt on the
+	 *	problem.
+	 */
+	if (dst->type == FR_TYPE_STRUCT) {
+		fr_strerror_printf("Cannot take union of STRUCT data types, it would break the structure");
+		return -1;
+	}
+
 	fr_pair_list_sort(&dst->children, fr_pair_cmp_by_parent_num);
 	fr_pair_list_sort(src, fr_pair_cmp_by_parent_num);
 
