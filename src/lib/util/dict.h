@@ -464,6 +464,9 @@ ssize_t			fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
 fr_dict_attr_t const	*fr_dict_attr_by_oid(fr_dict_attr_err_t *err,
 					     fr_dict_attr_t const *parent, char const *oid)
 					     CC_HINT(nonnull(2,3));
+
+bool			fr_dict_attr_compatible(fr_dict_attr_t const *a, fr_dict_attr_t const *b) CC_HINT(nonnull);
+
 /** @} */
 
 /** @name Attribute, vendor and dictionary lookup

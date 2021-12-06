@@ -3924,3 +3924,36 @@ void fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da)
 		break;
 	}
 }
+
+/** See if two DAs are compatible, and can contain the same things.
+ *
+ */
+bool fr_dict_attr_compatible(fr_dict_attr_t const *a, fr_dict_attr_t const *b)
+{
+	fr_dict_attr_t const *ref;
+
+	/*
+	 *	They're the same DA, they're compatible.
+	 */
+	if (a == b) return true;
+
+	/*
+	 *	@todo - TLVs and STRUCTs can clone other things.  In
+	 *	which case we want to allow the various cloned src/dst
+	 *	attributes to be able to copy child VPs to each other.
+	 */
+
+	if ((a->type != FR_TYPE_GROUP) && (b->type != FR_TYPE_GROUP)) return false;
+
+	/*
+	 *	Groups can reference other things.  In which case we
+	 *	check the reference, not the input attribute.
+	 */
+	ref = fr_dict_attr_ref(a);
+	if (ref) a = ref;
+
+	ref = fr_dict_attr_ref(b);
+	if (ref) b = ref;
+
+	return (a == b);
+}
