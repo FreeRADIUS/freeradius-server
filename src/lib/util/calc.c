@@ -404,7 +404,6 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		memcpy(buf, b->vb_octets, b->vb_length);
 		memcpy(buf + b->vb_length, a->vb_octets, a->vb_length);
 
-		fr_value_box_clear_value(dst);
 		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
 		break;
 
@@ -415,7 +414,6 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		memcpy(buf, a->vb_octets, a->vb_length);
 		memcpy(buf + a->vb_length, b->vb_octets, b->vb_length);
 
-		fr_value_box_clear_value(dst);
 		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
 		break;
 
@@ -439,7 +437,6 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 		memcpy(buf, a->vb_strvalue, len);
 
-		fr_value_box_clear_value(dst);
 		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
 		break;
 
@@ -457,7 +454,6 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 			buf[len] = a->vb_octets[len] & b->vb_octets[len];
 		}
 
-		fr_value_box_clear_value(dst);
 		fr_value_box_memdup_shallow(dst, dst->enumv, buf, a->vb_length, a->tainted | b->tainted);
 		break;
 
@@ -471,7 +467,6 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 			buf[len] = a->vb_octets[len] | b->vb_octets[len];
 		}
 
-		fr_value_box_clear_value(dst);
 		fr_value_box_memdup_shallow(dst, dst->enumv, buf, a->vb_length, a->tainted | b->tainted);
 		break;
 
@@ -518,7 +513,6 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		memcpy(buf + b->vb_length, a->vb_strvalue, a->vb_length);
 		buf[a->vb_length + b->vb_length] = '\0';
 
-		fr_value_box_clear_value(dst);
 		fr_value_box_strdup_shallow(dst, dst->enumv, buf, a->tainted | b->tainted);
 		break;
 
@@ -530,7 +524,6 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		memcpy(buf + a->vb_length, b->vb_strvalue, b->vb_length);
 		buf[a->vb_length + b->vb_length] = '\0';
 
-		fr_value_box_clear_value(dst);
 		fr_value_box_strdup_shallow(dst, dst->enumv, buf, a->tainted | b->tainted);
 		break;
 
@@ -555,7 +548,6 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		memcpy(buf, a->vb_strvalue, len);
 		buf[len] = '\0';
 
-		fr_value_box_clear_value(dst);
 		fr_value_box_strdup_shallow(dst, dst->enumv, buf, a->tainted | b->tainted);
 		break;
 
@@ -1072,6 +1064,7 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 {
 	int rcode = -1;
 	fr_value_box_t one, two;
+	fr_value_box_t out;
 
 	fr_assert(fr_type_is_leaf(a->type));
 	fr_assert(fr_type_is_leaf(b->type));
@@ -1203,20 +1196,15 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	case T_OP_LT:
 		if (hint != FR_TYPE_BOOL) {
 			fr_strerror_printf("Invalid destination type '%s' for comparison operator",
-					   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
+					   fr_table_str_by_value(fr_value_box_type_table, hint, "<INVALID>"));
 			goto done;
 		}
-
-		fr_value_box_clear_value(dst);
-		fr_value_box_init(dst, FR_TYPE_BOOL, NULL, false);	// just force it...
 
 		rcode = fr_value_box_cmp_op(op, a, b);
-		if (rcode < 0) {
-			goto done;
-		}
+		if (rcode < 0) goto done;
 
+		fr_value_box_init(dst, FR_TYPE_BOOL, NULL, false);
 		dst->vb_bool = (rcode > 0);
-		rcode = 0;
 		break;
 
 	case T_ADD:
@@ -1228,23 +1216,25 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	case T_OP_PREPEND:
 		fr_assert(hint != FR_TYPE_NULL);
 
-		/*
-		 *	It's OK to use one of the inputs as the
-		 *	output.  But if we don't, ensure that the
-		 *	output value box is initialized.
-		 */
-		if ((dst != a) && (dst != b)) {
-			fr_value_box_init(dst, hint, NULL, false);
-		}
-
-		if (!calc_type[dst->type]) {
+		if (!calc_type[hint]) {
 			fr_strerror_printf("Cannot perform any operations for destination type %s",
-					   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
+					   fr_table_str_by_value(fr_value_box_type_table, hint, "<INVALID>"));
 			rcode = -1;
 			break;
 		}
 
-		rcode = calc_type[dst->type](ctx, dst, a, op, b);
+		/*
+		 *	It's OK to use one of the inputs as the
+		 *	output.  In order to ensure that nothing bad
+		 *	happens, we use an intermediate value-box.
+		 */
+		fr_value_box_init(&out, hint, NULL, false);
+
+		rcode = calc_type[hint](ctx, &out, a, op, b);
+		if (rcode < 0) goto done;
+
+		fr_value_box_copy_shallow(NULL, dst, &out);
+		dst->tainted = a->tainted | b->tainted;
 		break;
 
 	default:
@@ -1252,18 +1242,16 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 		break;
 	}
 
+done:
 	if (rcode == ERR_OVERFLOW) {
 		fr_strerror_printf("Value overflows/underflows when calculating answer for %s",
-				   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
+				   fr_table_str_by_value(fr_value_box_type_table, hint, "<INVALID>"));
 
 	} else if (rcode == ERR_INVALID) {
 		fr_strerror_printf("Invalid operator %s for destination type %s",
 				   fr_tokens[op],
-				   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
+				   fr_table_str_by_value(fr_value_box_type_table, hint, "<INVALID>"));
 	}
-
-done:
-	if (rcode == 0) dst->tainted = a->tainted | b->tainted;
 
 	fr_value_box_clear_value(&one);
 	fr_value_box_clear_value(&two);
@@ -1281,6 +1269,7 @@ done:
 int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t op, fr_value_box_t const *src)
 {
 	int rcode = -1;
+	fr_value_box_t out;
 
 	if (!fr_type_is_leaf(dst->type)) {
 		fr_strerror_printf("Cannot perform any operations for destination type %s",
@@ -1289,6 +1278,8 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 	}
 
 	if (!fr_assignment_op[op]) goto invalid;
+
+	fr_value_box_init(&out, dst->type, dst->enumv, false);
 
 	switch (op) {
 		/*
@@ -1301,8 +1292,7 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 	case T_OP_SET:
 		fr_value_box_clear_value(dst);
 		fr_value_box_cast(ctx, dst, dst->type, dst->enumv, src); /* cast, as the RHS might not (yet) be the same! */
-		rcode = 0;
-		break;
+		return 0;
 
 		/*
 		 *	Just call the binary op function.  It already
@@ -1311,11 +1301,11 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 		 *	final step
 		 */
 	case T_OP_ADD_EQ:
-		rcode = fr_value_calc_binary_op(ctx, dst, dst->type, dst, T_ADD, src);
+		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_ADD, src);
 		break;
 
 	case T_OP_SUB_EQ:
-		rcode = fr_value_calc_binary_op(ctx, dst, dst->type, dst, T_SUB, src);
+		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_SUB, src);
 		break;
 
 	case T_OP_PREPEND:
@@ -1323,11 +1313,11 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 		break;
 
 	case T_OP_AND_EQ:
-		rcode = fr_value_calc_binary_op(ctx, dst, dst->type, dst, T_OR, src);
+		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_OR, src);
 		break;
 
 	case T_OP_OR_EQ:
-		rcode = fr_value_calc_binary_op(ctx, dst, dst->type, dst, T_AND, src);
+		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_AND, src);
 		break;
 
 	default:
@@ -1351,7 +1341,8 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 	 */
 	if (rcode < 0) return -1;
 
-	dst->tainted |= src->tainted;
+	fr_value_box_clear_value(dst);
+	fr_value_box_copy_shallow(NULL, dst, &out);
 	return 0;
 }
 
@@ -1436,6 +1427,7 @@ int fr_value_calc_unary_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op)
 		break;
 
 	default:
+		rcode = ERR_INVALID;
 		goto invalid;
 	}
 
