@@ -1081,7 +1081,7 @@ fr_pair_t *tmpl_pair_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_pair_cursor_ctx
 				 fr_dcursor_t *cursor, request_t *request, tmpl_t const *vpt)
 {
 	fr_pair_t		*vp = NULL;
-	fr_pair_list_t		*list_head;
+	fr_pair_list_t		*list_head = NULL;
 	tmpl_request_t		*rr = NULL;
 	TALLOC_CTX		*list_ctx;
 
@@ -1108,18 +1108,44 @@ fr_pair_t *tmpl_pair_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_pair_cursor_ctx
 	}
 
 	/*
-	 *	Get the right list in the specified context
+	 *	If the rules say "return the list as an attribute",
+	 *	then check for that.  But if the first da isn't a
+	 *	list, then default to whatever list ref is given.
+	 *
+	 *	@todo - for the future, have the tokenizer (or
+	 *	whatever) always add the list head to the list of
+	 *	attribute references.
 	 */
-	list_head = tmpl_list_head(request, tmpl_list(vpt));
-	if (!list_head) {
-		if (err) {
-			*err = -2;
-			fr_strerror_printf("List \"%s\" not available in this context",
-					   fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"));
+	if (vpt->rules.list_as_attr) {
+		tmpl_attr_t const *ar;
+
+		ar = fr_dlist_head(&vpt->data.attribute.ar);
+		fr_assert(ar != NULL);
+
+		if ((ar->ar_da == request_attr_request) ||
+		    (ar->ar_da == request_attr_reply) ||
+		    (ar->ar_da == request_attr_control) ||
+		    (ar->ar_da == request_attr_state)) {
+			list_head = &request->pair_root->vp_group;
+			list_ctx = request->pair_root;
 		}
-		goto error;
 	}
-	list_ctx = tmpl_list_ctx(request, tmpl_list(vpt));
+
+	if (!list_head) {
+		/*
+		 *	Get the right list in the specified context
+		 */
+		list_head = tmpl_list_head(request, tmpl_list(vpt));
+		if (!list_head) {	
+			if (err) {
+				*err = -2;
+				fr_strerror_printf("List \"%s\" not available in this context",
+						   fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"));
+			}
+			goto error;
+		}
+		list_ctx = tmpl_list_ctx(request, tmpl_list(vpt));
+	}
 
 	/*
 	 *	Initialise the temporary cursor context

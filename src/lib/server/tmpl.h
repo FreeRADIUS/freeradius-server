@@ -317,6 +317,8 @@ struct tmpl_rules_s {
 	bool			at_runtime;		//!< Produce an ephemeral/runtime tmpl.
 							///< Instantiated xlats are not added to the global
 							///< trees, regexes are not JIT'd.
+	bool			list_as_attr;		//!< return #TMPL_TYPE_ATTR for lists, and not #TMPL_TYPE_LIST
+
 
 	fr_event_list_t		*runtime_el;		//!< The eventlist to use for runtime instantiation
 							///< of xlats.

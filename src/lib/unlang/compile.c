@@ -1546,6 +1546,7 @@ static unlang_t *compile_edit(unlang_t *parent, unlang_compile_t *unlang_ctx, un
 	 */
 	t_rules = *(unlang_ctx->rules);
 	t_rules.allow_unknown = true;
+	t_rules.list_as_attr = true;
 	RULES_VERIFY(&t_rules);
 
 	c = *prev;

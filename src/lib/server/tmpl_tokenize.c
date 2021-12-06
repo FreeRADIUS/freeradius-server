@@ -1830,7 +1830,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 			       tmpl_rules_t const *t_rules)
 {
 	int			ret;
-	size_t			list_len;
+	size_t			list_len = 0;
 	tmpl_t			*vpt;
 	fr_sbuff_t		our_name = FR_SBUFF(name);	/* Take a local copy in case we need to back track */
 	bool			ref_prefix = false;
@@ -1896,37 +1896,39 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 
 	fr_sbuff_marker(&m_l, &our_name);
 
-	/*
-	 *	Parse the list reference
-	 *
-	 *      This code should be removed when lists
-	 *	are integrated into attribute references.
-	 */
-	fr_sbuff_out_by_longest_prefix(&list_len, &vpt->data.attribute.list, pair_list_table,
-				       &our_name, t_rules->list_def);
+	if (!t_rules->list_as_attr) {
+		/*
+		 *	Parse the list reference
+		 *
+		 *      This code should be removed when lists
+		 *	are integrated into attribute references.
+		 */
+		fr_sbuff_out_by_longest_prefix(&list_len, &vpt->data.attribute.list, pair_list_table,
+					       &our_name, t_rules->list_def);
 
-	/*
-	 *	Check if we need to backtrack
-	 *
-	 *	Lists can be followed by a '.', '[', or the end of the attribute reference
-	 *
-	 *	If we don't find any of those things it wasn't an actual list match
-	 *	but one of the list identifiers matched part of an attribute reference.
-	 *
-	 *	i.e. reply with reply-message.
-	 */
-	if ((list_len > 0) && !fr_sbuff_is_char(&our_name, '.') &&
-	    !fr_sbuff_is_char(&our_name, '[') && !tmpl_substr_terminal_check(&our_name, p_rules)) {
-		fr_sbuff_set(&our_name, &m_l);
-		list_len = 0;
-		vpt->data.attribute.list = t_rules->list_def;
-	}
+		/*
+		 *	Check if we need to backtrack
+		 *
+		 *	Lists can be followed by a '.', '[', or the end of the attribute reference
+		 *
+		 *	If we don't find any of those things it wasn't an actual list match
+		 *	but one of the list identifiers matched part of an attribute reference.
+		 *
+		 *	i.e. reply with reply-message.
+		 */
+		if ((list_len > 0) && !fr_sbuff_is_char(&our_name, '.') &&
+		    !fr_sbuff_is_char(&our_name, '[') && !tmpl_substr_terminal_check(&our_name, p_rules)) {
+			fr_sbuff_set(&our_name, &m_l);
+			list_len = 0;
+			vpt->data.attribute.list = t_rules->list_def;
+		}
 
-	if ((t_rules->attr_parent || t_rules->disallow_qualifiers) && (list_len > 0)) {
-		fr_strerror_const("It is not permitted to specify a pair list here");
-		if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
-		talloc_free(vpt);
-		FR_SBUFF_ERROR_RETURN(&our_name);
+		if ((t_rules->attr_parent || t_rules->disallow_qualifiers) && (list_len > 0)) {
+			fr_strerror_const("It is not permitted to specify a pair list here");
+			if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
+			talloc_free(vpt);
+			FR_SBUFF_ERROR_RETURN(&our_name);
+		}
 	}
 
 	/*
