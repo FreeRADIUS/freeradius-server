@@ -314,7 +314,7 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 	}
 
 	talloc_free(vp_to_free);
-	goto next;
+	return 0;
 
 leaf:
 	/*
@@ -343,11 +343,6 @@ leaf:
 		RPERROR("Failed performing %s operation", fr_tokens[map->op]);
 		return -1;
 	}
-
-next:
-	state->state = UNLANG_EDIT_INIT;
-	TALLOC_FREE(state->lhs_free);
-	state->lhs_parent = state->lhs_vp = NULL;
 
 	return 0;
 }
@@ -430,6 +425,8 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 			 *	parent list.
 			 */
 			if (tmpl_find_vp(&state->lhs_vp, request, state->lhs) < 0) {
+				if (map->op == T_OP_EQ) goto next;
+
 				REDEBUG("Failed to find %s", state->lhs->name);
 				goto error;
 			}
@@ -459,8 +456,15 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 		case UNLANG_EDIT_CHECK_RHS:
 		check_rhs:
 			if (apply_edits(request, state, map) < 0) goto error;
+
+
+		next:
+			state->state = UNLANG_EDIT_INIT;
+			TALLOC_FREE(state->lhs_free);
+			state->lhs_parent = state->lhs_vp = NULL;
 			break;
 		}
+
 	} /* loop over the map */
 
 	/*
