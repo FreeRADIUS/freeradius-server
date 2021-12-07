@@ -687,7 +687,7 @@ static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src)
 	 *	complex to check right now, so we punt on the
 	 *	problem.
 	 */
-	if (dst->type == FR_TYPE_STRUCT) {
+	if (dst->vp_type == FR_TYPE_STRUCT) {
 		fr_strerror_printf("Cannot take union of STRUCT data types, it would break the structure");
 		return -1;
 	}
@@ -903,7 +903,7 @@ int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_to
 
 	if (!fr_type_is_structural(dst->vp_type)) {
 		fr_strerror_printf("Cannot perform list assignment to non-structural type '%s'",
-				   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
+				   fr_table_str_by_value(fr_value_box_type_table, dst->vp_type, "<INVALID>"));
 		return -1;
 	}
 
@@ -958,6 +958,6 @@ int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_to
 
 	fr_strerror_printf("Invalid assignment operator %s for destination type %s",
 			   fr_tokens[op],
-			   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
+			   fr_table_str_by_value(fr_value_box_type_table, dst->vp_type, "<INVALID>"));
 	return -1;
 }
