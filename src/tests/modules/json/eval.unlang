@@ -434,7 +434,7 @@ update request {
 	{\
 		\"foo.bar\": \"baz\" \
 	}"
-	&Tmp-String-2 := 'foo.bar'
+	&Tmp-String-2 := %{taint:foo.bar}
 }
 map json &Tmp-String-0 {
 	&Tmp-String-1 := "$.%{Tmp-String-2}"

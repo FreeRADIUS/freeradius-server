@@ -122,7 +122,7 @@ size_t fr_jpath_escape_func(UNUSED request_t *request, char *out, size_t outlen,
 	}
 	*q = '\0';
 
-	return q - end;
+	return q - out;
 }
 
 /** Recursive function for jpath_expr_evaluate
