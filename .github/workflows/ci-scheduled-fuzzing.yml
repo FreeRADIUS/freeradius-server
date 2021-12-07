@@ -135,22 +135,6 @@ jobs:
         lfs: false
         fetch-depth: 50
 
-    - name: Create LFS file list as cache key
-      run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
-
-    - name: Restore LFS cache
-      uses: actions/cache@v2
-      id: lfs-cache
-      with:
-        path: .git/lfs
-        key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}-v1
-
-    #
-    #  Now the LFS pull will be local if we hit the cache, or remote otherwise
-    #
-    - name: Git LFS pull
-      run: git lfs pull
-
     #
     #  We push changes to the corpus to the GH Actions cache, and restore based
     #  on the commit date of the corpus tar file from the repo.
