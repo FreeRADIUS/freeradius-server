@@ -32,6 +32,14 @@ endif
 $(eval $(call TEST_BOOTSTRAP))
 
 #
+#  For sheer laziness, allow "make test.keywords.foo"
+#
+define KEYWORD_TEST
+test.keywords.${1}: $(addprefix $(OUTPUT)/,${1})
+endef
+$(foreach x,$(FILES),$(eval $(call KEYWORD_TEST,$x)))
+
+#
 #  For each file, look for precursor test.
 #  Ensure that each test depends on its precursors.
 #
