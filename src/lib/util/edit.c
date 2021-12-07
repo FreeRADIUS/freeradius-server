@@ -704,6 +704,23 @@ static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src)
 		a = fr_dcursor_current(&cursor1);
 		b = fr_dcursor_current(&cursor2);
 
+		/*
+		 *	B is done, so we stop processing the union.
+		 */
+		if (!b) break;
+
+		/*
+		 *	A is done, so we always union in B at the end of A.
+		 */
+		if (!a) {
+			if (fr_edit_list_insert_pair_tail(el, &dst->children, fr_pair_copy(dst, b)) < 0) {
+				return -1;
+			}
+
+			fr_dcursor_next(&cursor2);
+			continue;
+		}
+
 		rcode = fr_pair_cmp_by_parent_num(a, b);
 
 		/*
@@ -748,12 +765,30 @@ static int list_union(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src)
 		 */
 		fr_assert(a->da == b->da);
 
+		/*
+		 *	UNION the children, and then don't bother
+		 *	copying B to A, as its children have already
+		 *	been added in.
+		 */
 		if (fr_type_is_structural(a->vp_type)) {
 			rcode = list_union(el, a, &b->children);
 			if (rcode < 0) return rcode;
+
+			fr_dcursor_next(&cursor1);
+			fr_dcursor_next(&cursor2);
+			continue;
 		}
 
-		fr_dcursor_next(&cursor1);
+		/*
+		 *
+		 */
+		if (fr_edit_list_insert_pair_after(el, &dst->children, a, fr_pair_copy(dst, b)) < 0) {
+			return -1;
+		}
+
+		fr_dcursor_next(&cursor1); /* skip A */
+		fr_dcursor_next(&cursor1); /* skip copy of B we just added */
+
 		fr_dcursor_next(&cursor2);
 	}
 
@@ -780,6 +815,23 @@ static int list_merge_lhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
 
 		a = fr_dcursor_current(&cursor1);
 		b = fr_dcursor_current(&cursor2);
+
+		/*
+		 *	B is done, so we stop processing the merge.
+		 */
+		if (!b) break;
+
+		/*
+		 *	A is done, so we always merge in B at the end of A.
+		 */
+		if (!a) {
+			if (fr_edit_list_insert_pair_tail(el, &dst->children, fr_pair_copy(dst, b)) < 0) {
+				return -1;
+			}
+
+			fr_dcursor_next(&cursor2);
+			continue;
+		}
 
 		rcode = fr_pair_cmp_by_parent_num(a, b);
 
