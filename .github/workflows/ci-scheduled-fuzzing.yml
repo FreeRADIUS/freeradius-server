@@ -151,6 +151,29 @@ jobs:
     - name: Git LFS pull
       run: git lfs pull
 
+    #
+    #  We push changes to the corpus to the GH Actions cache, and restore based
+    #  on the commit date of the corpus tar file from the repo.
+    #
+    #  Therefore, if a new corpus is pushed to the repo then we will use it.
+    #  Otherwise we will search the cache for a more recently merged version of
+    #  the corpus in the repo.
+    #
+    - name: Get the corpus age
+      id: corpusparams
+      run: |
+        echo "::set-output name=corpusct::$(git log -1 --format=%ct -- src/tests/fuzzer-corpus/$PROTOCOL.tar)"
+        echo "::set-output name=corpusage::$((`date +%s` - `git log -1 --format=%ct -- src/tests/fuzzer-corpus/$PROTOCOL.tar`))"
+
+    - name: Restore the fuzzer corpus tar file from cache
+      uses: actions/cache@v2
+      id: corpus-cache
+      with:
+        path: src/tests/fuzzer-corpus/${{ matrix.env.PROTOCOL }}.tar
+        key: corpus-${{ matrix.env.PROTOCOL }}-${{ steps.corpusparams.outputs.corpusct }}-${{ github.run_number }}
+        restore-keys: |
+          corpus-${{ matrix.env.PROTOCOL }}-${{ steps.corpusparams.outputs.corpusct }}-
+
     - name: Package manager performance improvements
       run: |
         sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
@@ -189,9 +212,6 @@ jobs:
     #
     #  We walk up the tree if necessary to find a commit that builds so that we
     #  will fuzz something
-    #
-    #  When we find a working commit we run the unit tests to create seed data
-    #  from the latest versions of the unit tests.
     #
     - name: Find a commit that builds
       id: pick_commit
@@ -237,15 +257,19 @@ jobs:
       if: ${{ failure() }}
 
     #
-    #  Merge and push back the corpus
+    #  Merge the corpus which will be stored in the cache for the next run
+    #
+    - name: Merge the corpus
+      run: |
+        make test.fuzzer.$PROTOCOL.merge
+
     #
     #  We can push the LFS file directly, but we must use the GitHub API to
     #  create the actual commit due to the "signed-commits" branch protection
     #  rule for the master branch.
     #
-    - name: Push back the merged corpus
+    - name: Monthly push back of corpus
       run: |
-        make test.fuzzer.$PROTOCOL.merge
         export FILE=src/tests/fuzzer-corpus/$PROTOCOL.tar
         if ! git diff --exit-code "$FILE"; then
           pip install PyGithub
@@ -260,3 +284,4 @@ jobs:
         fi
       env:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      if: ${{ steps.corpusparms.outputs.corpusage > 2592000 }}
