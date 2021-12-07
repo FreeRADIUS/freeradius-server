@@ -7,6 +7,8 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	  fully supported.
 	* Support PEAP and TTLS with TLS 1.3.  This has been
 	  tested with wpa_supplicant and Windows 11.
+	* Add %{concat:foo[*] ;}, which concatenates a set
+	  of attributes, separated by a character.
 
 	Bug fixes
 	* Ensure PBKDF2 always uses at least one iteration
