@@ -773,6 +773,7 @@ check_attrs:
 				rcode = -1;
 				goto done;
 			}
+			fr_assert(lhs != NULL);
 
 			/*
 			 *	Now that we have a realized LHS, we
