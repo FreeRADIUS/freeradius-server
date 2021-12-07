@@ -1044,6 +1044,7 @@ redo:
 			fr_assert(a->vb_lhs || a->vb_rhs);
 
 			rcode = cond_eval_map(request, c, a->vb_lhs, a->vb_rhs);
+			a->result = (rcode == 1);
 			break;
 
 		default:
