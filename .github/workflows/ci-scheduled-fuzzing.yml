@@ -268,4 +268,4 @@ jobs:
         fi
       env:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-      if: ${{ steps.corpusparms.outputs.corpusage > 2592000 }}
+      if: ${{ steps.corpusparms.outputs.corpusage > 2592000 && github.repository_owner == 'FreeRADIUS' }}
