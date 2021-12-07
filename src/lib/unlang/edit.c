@@ -61,8 +61,6 @@ typedef struct {
 	fr_value_box_list_t	rhs_result;			//!< Result of expanding the RHS.
 	int			rhs_exec_status;		//!< status of program on RHS.
 
-	fr_value_box_t const	*rhs_box;			//!< RHS value box
-
 	unlang_edit_state_t	state;				//!< What we're currently doing.
 } unlang_frame_state_edit_t;
 
@@ -103,6 +101,10 @@ static int templatize_lhs(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_list_t *li
 
 /*
  *  Convert a value-box list to a RHS #tmpl_t
+ *
+ *  This probably doesn't work for structural types.  If "type" is
+ *  structural, we should parse the RHS as a set of VPs, and return
+ *  that.
  */
 static int templatize_rhs(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_list_t *list,
 			  fr_type_t type, request_t *request, fr_dict_attr_t const *enumv)
@@ -192,6 +194,165 @@ static int template_realize(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_
 	return -1;
 }
 
+/** Apply the edits.  Broken out for simplicity
+ *
+ *  The edits are applied as:
+ *
+ *  For leaves, merge RHS #fr_value_box_list_t, so that we have only one #fr_value_box_t
+ *
+ *  Loop over VPs on the LHS, doing the operation with the RHS.
+ *
+ *  For now, we only support one VP on the LHS, and one value-box on
+ *  the RHS.  Fixing this means updating templatize_rhs() to peek at
+ *  the RHS list, and if they're all of the same data type, AND the
+ *  same data type as the expected output, leave them alone.  This
+ *  lets us do things like:
+ *
+ *	&Foo-Bar += &Baz[*]
+ *
+ *  which is an implicit sum over all RHS "Baz" attributes.
+ */
+static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map_t *map)
+{
+	fr_pair_t *vp, *vp_to_free = NULL;
+	fr_pair_list_t list, *children;
+	fr_value_box_t const *rhs_box = NULL;
+
+	/*
+	 *	Get the resulting value box.
+	 */
+	if (tmpl_is_data(state->rhs)) {
+		rhs_box = tmpl_value(state->rhs);
+		goto leaf;
+	}
+
+	/*
+	 *	If it's not data, it must be an attribute or a list.
+	 */
+	if (!tmpl_is_attr(state->rhs) && !tmpl_is_list(state->rhs)) {
+		RERROR("Unknown RHS %s", state->rhs->name);
+		return -1;
+	}
+
+	/*
+	 *	Find the RHS attribute / list.
+	 *
+	 *	@todo - if the LHS is structural, and the operator is
+	 *	"-=", then treat the RHS vp as the name of the DA to
+	 *	remove from the LHS?  i.e. "remove all DAs of name
+	 *	FOO"?
+	 */
+	if (tmpl_find_vp(&vp, request, state->rhs) < 0) {
+		RERROR("Can't find %s", state->rhs->name);
+		return -1;
+	}
+
+	fr_assert(state->lhs_vp != NULL);
+
+	/*
+	 *	LHS is a leaf.  The RHS must be a leaf.
+	 *
+	 *	@todo - or RHS is a list of boxes of the same data
+	 *	type.
+	 */
+	if (fr_type_is_leaf(state->lhs_vp->vp_type)) {
+		if (!fr_type_is_leaf(vp->vp_type)) {
+			REDEBUG("Cannot assign structural %s to leaf %s",
+				vp->da->name, state->lhs_vp->da->name);
+			return -1;
+		}
+
+		rhs_box = &vp->data;
+		goto leaf;
+	}
+
+	fr_assert(fr_type_is_structural(state->lhs_vp->vp_type));
+
+	/*
+	 *	As a special operation, allow "list OP attr", which
+	 *	treats the RHS as a one-member list.
+	 */
+	if (fr_type_is_leaf(vp->vp_type)) {
+		fr_pair_list_init(&list);
+		vp_to_free = fr_pair_copy(request, vp);
+		if (!vp_to_free) return -1;
+
+		fr_pair_append(&list, vp_to_free);
+		children = &list;
+
+	} else {
+		/*
+		 *	List to list operations should be compatible.
+		 */
+		fr_assert(fr_type_is_structural(vp->vp_type));
+
+		/*
+		 *	Forbid copying incompatible structs, TLVs, groups,
+		 *	etc.
+		 */
+		if (!fr_dict_attr_compatible(state->lhs_vp->da, vp->da)) {
+			RERROR("DAs are incompatible (%s vs %s)",
+			       state->lhs_vp->da->name, vp->da->name);
+			return -1;
+		}
+
+		children = &vp->children;
+	}
+
+	/*
+	 *	Apply structural thingies!
+	 */
+	RDEBUG2("%s %s %s", state->lhs->name, fr_tokens[map->op], state->rhs->name);
+
+	if (fr_edit_list_apply_list_assignment(state->el,
+					       state->lhs_vp,
+					       map->op,
+					       children) < 0) {
+		RPERROR("Failed performing list %s operation", fr_tokens[map->op]);
+		talloc_free(vp_to_free);
+		return -1;
+	}
+
+	talloc_free(vp_to_free);
+	goto next;
+
+leaf:
+	/*
+	 *	The leaf assignment also checks many
+	 *	of these, but not all of them.
+	 */
+	if (!tmpl_is_attr(state->lhs) || !state->lhs_vp ||
+	    !fr_type_is_leaf(state->lhs_vp->vp_type)) {
+		RERROR("Cannot assign data to list %s", map->lhs->name);
+		return -1;
+	}
+
+	RDEBUG2("%s %s %pV", state->lhs->name, fr_tokens[map->op], rhs_box);
+
+	/*
+	 *	The apply function also takes care of
+	 *	doing data type upcasting and
+	 *	conversion.  So we don't have to check
+	 *	for compatibility of the data types on
+	 *	the LHS and RHS.
+	 */
+	if (fr_edit_list_apply_pair_assignment(state->el,
+					       state->lhs_vp,
+					       map->op,
+					       rhs_box) < 0) {
+		RPERROR("Failed performing %s operation", fr_tokens[map->op]);
+		return -1;
+	}
+
+next:
+	state->state = UNLANG_EDIT_INIT;
+	TALLOC_FREE(state->lhs_free);
+	state->lhs_parent = state->lhs_vp = NULL;
+
+	return 0;
+}
+
+
 /** Create a list of modifications to apply to one or more fr_pair_t lists
  *
  * @param[out] p_result	The rcode indicating what the result
@@ -207,8 +368,6 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 	unlang_frame_state_edit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
 	map_t				*map;
 	int				rcode;
-	fr_type_t			type;
-	fr_dict_attr_t const		*enumv;
 
 	/*
 	 *	Iterate over the maps, expanding the LHS and RHS.
@@ -260,16 +419,6 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 		case UNLANG_EDIT_CHECK_LHS:
 		check_lhs:
 			/*
-			 *	Check for lists now, after the expansion above.
-			 */
-			if (tmpl_is_list(state->lhs)) {
-				REDEBUG("List modification not yet implemented");
-				goto error;
-			}
-
-			fr_assert(tmpl_is_attr(state->lhs));
-
-			/*
 			 *	Find the LHS VP.  If it doesn't exist,
 			 *	return an error.  Note that this means
 			 *	":=" and "=" don't yet work.
@@ -281,12 +430,7 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 			 *	parent list.
 			 */
 			if (tmpl_find_vp(&state->lhs_vp, request, state->lhs) < 0) {
-				REDEBUG("VP %s not found", state->lhs->name);
-				goto error;
-			}
-
-			if (fr_type_is_structural(state->lhs_vp->vp_type)) {
-				RDEBUG("LHS structural not yet implemented");
+				REDEBUG("Failed to find %s", state->lhs->name);
 				goto error;
 			}
 
@@ -303,16 +447,9 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 			goto check_rhs;
 
 		case UNLANG_EDIT_EXPANDED_RHS:
-			type = FR_TYPE_STRING;
-			enumv = NULL;
-
-			if (tmpl_is_attr(state->lhs)) {
-				type = tmpl_da(state->lhs)->type;
-				enumv = tmpl_value(state->lhs)->enumv;
-			}
-
 			if (templatize_rhs(state, &state->rhs_free, &state->rhs_result,
-					type, request, enumv) < 0) goto error;
+					   state->lhs_vp->vp_type, request,
+					   state->lhs_vp->data.enumv) < 0) goto error;
 
 			fr_dlist_talloc_free(&state->rhs_result);
 			state->rhs = state->rhs_free;
@@ -321,60 +458,7 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 
 		case UNLANG_EDIT_CHECK_RHS:
 		check_rhs:
-			fr_assert(tmpl_is_attr(state->lhs));
-			fr_assert(state->lhs_vp != NULL);
-
-			/*
-			 *	Now we have LHS attr, RHS is ... ???
-			 */
-			if (tmpl_is_list(state->rhs)) {
-				RERROR("RHS list not yet implemented");
-				goto error;
-			}
-
-			/*
-			 *	Get the resulting value box.
-			 */
-			if (tmpl_is_data(state->rhs)) {
-				state->rhs_box = tmpl_value(state->rhs);
-
-			} else if (tmpl_is_attr(state->rhs)) {
-				fr_pair_t *vp;
-
-				if (tmpl_find_vp(&vp, request, state->rhs) < 0) {
-					RERROR("Can't find attr %s", state->rhs->name);
-					goto error;
-				}
-
-				if (fr_type_is_structural(vp->vp_type)) {
-					RERROR("RHS structural not yet implemented");
-					goto error;
-				}
-
-				state->rhs_box = &vp->data;
-			}
-
-			RDEBUG2("%s %s %pV", map->lhs->name, fr_tokens[map->op], state->rhs_box);
-
-			/*
-			 *	The apply function also takes care of
-			 *	doing data type upcasting and
-			 *	conversion.  So we don't have to check
-			 *	for compatibility of the data types on
-			 *	the LHS and RHS.
-			 */
-			if (fr_edit_list_apply_pair_assignment(state->el,
-							       state->lhs_vp,
-							       map->op,
-							       state->rhs_box) < 0) {
-				RPERROR("Failed performing %s operation", fr_tokens[map->op]);
-				goto error;
-			}
-
-			state->state = UNLANG_EDIT_INIT;
-			TALLOC_FREE(state->lhs_free);
-			state->lhs_parent = state->lhs_vp = NULL;
-			state->rhs_box = NULL;
+			if (apply_edits(request, state, map) < 0) goto error;
 			break;
 		}
 	} /* loop over the map */
