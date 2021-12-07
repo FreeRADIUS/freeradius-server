@@ -1146,6 +1146,7 @@ fr_pair_t *tmpl_pair_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_pair_cursor_ctx
 		}
 		list_ctx = tmpl_list_ctx(request, tmpl_list(vpt));
 	}
+	fr_assert(list_ctx != NULL);
 
 	/*
 	 *	Initialise the temporary cursor context
