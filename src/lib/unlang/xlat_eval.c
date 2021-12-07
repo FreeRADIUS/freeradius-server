@@ -1083,8 +1083,6 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	case XLAT_ALTERNATE:
 	{
-		fr_dcursor_t from;
-
 		fr_assert(alternate);
 
 		/*
@@ -1118,9 +1116,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		xlat_debug_log_list_result(request, result);
 
 		VALUE_BOX_TALLOC_LIST_VERIFY(result);
-		fr_dcursor_init(&from, result);
-		fr_dcursor_merge(out, &from);
-		fr_assert(fr_dlist_empty(result));
+		fr_dlist_move(out->dlist, result);
 	}
 		break;
 
