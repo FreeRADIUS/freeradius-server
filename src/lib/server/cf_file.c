@@ -1864,8 +1864,8 @@ static int parse_input(cf_stack_t *stack)
 	 *	operators start with one of these characters,
 	 *	so we check for them first.
 	 */
-	if (!((*ptr == '=') || (*ptr == '!') || (*ptr == '>') || (*ptr == '<') ||
-	      (*ptr == '-') || (*ptr == '+') || (*ptr == ':') || (*ptr == '^'))) {
+	if ((ptr[0] != '=') && (ptr[0] != '!') && (ptr[0] != '<') && (ptr[0] != '>') &&
+	    (ptr[1] != '=') && (ptr[1] != '~')) {
 		ERROR("%s[%d]: Parse error at unexpected text: %s",
 		      frame->filename, frame->lineno, ptr);
 		return -1;
@@ -1879,6 +1879,8 @@ static int parse_input(cf_stack_t *stack)
 	switch (name2_token) {
 	case T_OP_ADD_EQ:
 	case T_OP_SUB_EQ:
+	case T_OP_AND_EQ:
+	case T_OP_OR_EQ:
 	case T_OP_NE:
 	case T_OP_GE:
 	case T_OP_GT:
