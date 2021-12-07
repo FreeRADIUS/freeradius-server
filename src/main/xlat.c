@@ -87,6 +87,50 @@ static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
 
 static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };	/* up to 10 for foreach */
 
+static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
+			bool escape, bool return_null, char const *concat);
+
+/** Concatenation
+ *
+ */
+static ssize_t xlat_concat(UNUSED void *instance, REQUEST *request,
+			   char const *fmt, char *out, size_t outlen)
+{
+	ssize_t slen;
+	vp_tmpl_t vpt;
+	char *str;
+	char const *concat;
+	char buffer[2];
+
+	while (isspace((int) *fmt)) fmt++;
+
+	slen = tmpl_from_attr_substr(&vpt, fmt,  REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	if (slen <= 0) {
+		RDEBUG("%s", fr_strerror());
+		return -1;
+	}
+
+	fmt += slen;
+	while (isspace((int) *fmt)) fmt++;
+
+	if (!*fmt) {
+		concat = ",";
+	} else {
+		buffer[0] = *fmt;
+		buffer[1] = '\0';
+
+		concat = buffer;
+	}
+
+	str = xlat_getvp(request, request, &vpt, true, true, concat);
+	if (!str) return 0;
+
+	strlcpy(out, str, outlen);
+	talloc_free(str);
+
+	return strlen(out);
+}
+
 /** Print length of its RHS.
  *
  */
@@ -775,6 +819,7 @@ int xlat_register(char const *name, xlat_func_t func, xlat_escape_t escape, void
 		rad_assert(c != NULL); \
 		c->internal = true
 
+		XLAT_REGISTER(concat);
 		XLAT_REGISTER(integer);
 		XLAT_REGISTER(strlen);
 		XLAT_REGISTER(length);
@@ -1804,7 +1849,7 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 
 
 static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
-			bool escape, bool return_null)
+			bool escape, bool return_null, char const *concat)
 {
 	VALUE_PAIR *vp = NULL, *virtual = NULL;
 	RADIUS_PACKET *packet = NULL;
@@ -2050,7 +2095,7 @@ do_print:
 		while ((vp = tmpl_cursor_next(&cursor, vpt)) != NULL) {
 			q = vp_aprints_value(ctx, vp, quote);
 			if (!q) return NULL;
-			p = talloc_strdup_append(p, ",");
+			p = talloc_strdup_append(p, concat);
 			p = talloc_strdup_append(p, q);
 		}
 
@@ -2243,7 +2288,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		/*
 		 *	Some attributes are virtual <sigh>
 		 */
-		str = xlat_getvp(ctx, request, &node->attr, escape ? false : true, true);
+		str = xlat_getvp(ctx, request, &node->attr, escape ? false : true, true, ",");
 		if (str) {
 			XLAT_DEBUG("%.*sEXPAND attr %s", lvl, xlat_spaces, node->attr.tmpl_da->name);
 			XLAT_DEBUG("%.*s       ---> %s", lvl ,xlat_spaces, str);

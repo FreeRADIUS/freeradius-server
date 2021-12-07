@@ -1,0 +1,40 @@
+#
+# PRE: xlat-list
+#
+#  concat xlat
+#
+
+update control {
+    control !* ANY
+}
+
+update control {
+	Tmp-IP-Address-0 := 192.0.2.1
+	Tmp-IP-Address-0 += 192.0.2.2
+}
+
+update request {
+	Tmp-String-0 := "%{concat:control:[*] ;}"
+}
+
+if (Tmp-String-0 != '192.0.2.1;192.0.2.2') {
+	update {
+		reply:Filter-Id += 'fail 1'
+	}
+}
+
+update request {
+	Tmp-String-0 := "%{concat:control:[*] X}"
+}
+
+if (Tmp-String-0 != '192.0.2.1X192.0.2.2') {
+	update {
+		reply:Filter-Id += 'fail 2'
+	}
+}
+
+# Boilerplate junk
+update {
+	control:Cleartext-Password := 'hello'
+	reply:Filter-Id := 'filter'
+}
