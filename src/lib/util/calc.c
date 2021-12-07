@@ -1065,6 +1065,7 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	int rcode = -1;
 	fr_value_box_t one, two;
 	fr_value_box_t out;
+	fr_binary_op_t func;
 
 	fr_assert(fr_type_is_leaf(a->type));
 	fr_assert(fr_type_is_leaf(b->type));
@@ -1216,7 +1217,8 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	case T_OP_PREPEND:
 		fr_assert(hint != FR_TYPE_NULL);
 
-		if (!calc_type[hint]) {
+		func = calc_type[hint];
+		if (!func) {
 			fr_strerror_printf("Cannot perform any operations for destination type %s",
 					   fr_table_str_by_value(fr_value_box_type_table, hint, "<INVALID>"));
 			rcode = -1;
@@ -1230,7 +1232,7 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 		 */
 		fr_value_box_init(&out, hint, NULL, false);
 
-		rcode = calc_type[hint](ctx, &out, a, op, b);
+		rcode = func(ctx, &out, a, op, b); /* not calc_type[hint], to shut up clang */
 		if (rcode < 0) goto done;
 
 		fr_value_box_copy_shallow(NULL, dst, &out);
