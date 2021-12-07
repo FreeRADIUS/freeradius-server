@@ -2074,7 +2074,7 @@ static char const *sbuff_print_char(char c)
 		return "\v";
 
 	default:
-		if (!p || (p++ >= ((char **)str + (NUM_ELEMENTS(str) - 1)))) p = (char **)str;
+		if (!p || (p++ >= ((char **)str + (NUM_PTR_ELEMENTS(str) - 1)))) p = (char **)str;
 
 		if (unprintables[(uint8_t)c]) {
 			snprintf(*p, sizeof(*str), "\\x%x", c);

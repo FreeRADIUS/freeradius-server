@@ -241,6 +241,13 @@ do { \
 #define NUM_ELEMENTS(_t) (sizeof((_t)) / sizeof(*(_t)))
 
 /*
+ *	For use with multidimensional arrays where
+ *	the deeper array element has a size smaller than
+ *	a pointer i.e. char foo[n][m]
+ */
+#define NUM_PTR_ELEMENTS(_t) (sizeof((_t)) / sizeof(void *))
+
+/*
  *	Type checking
  */
 
