@@ -4,10 +4,10 @@
 
 # Regression test for double consecutive alternations
 update request {
-	&Tmp-Integer64-0 := "%{%{Acct-Input-Octets}:-2}%{%{Acct-Input-Gigawords}:-1}"
+	&Tmp-uint64-0 := "%{%{Acct-Input-Octets}:-2}%{%{Acct-Input-Gigawords}:-1}"
 }
 
-if (&Tmp-Integer64-0 != 21) {
+if (&Tmp-uint64-0 != 21) {
 	fail
 }
 

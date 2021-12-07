@@ -420,16 +420,16 @@ match <ipaddr>&Filter-Id == &Framed-IP-Address
 condition <ipaddr>127.0.0.1 == &Filter-Id
 match <ipaddr>&Filter-Id == 127.0.0.1
 
-condition &Tmp-Integer64-0 == &request.Foo-Stuff-Bar
-match &Tmp-Integer64-0 == &Foo-Stuff-Bar
+condition &Tmp-uint64-0 == &request.Foo-Stuff-Bar
+match &Tmp-uint64-0 == &Foo-Stuff-Bar
 
-condition &Tmp-Integer64-0 == &reply.Foo-Stuff-Bar
-match &Tmp-Integer64-0 == &reply.Foo-Stuff-Bar
+condition &Tmp-uint64-0 == &reply.Foo-Stuff-Bar
+match &Tmp-uint64-0 == &reply.Foo-Stuff-Bar
 
 #
 #  Casting attributes of different size
 #
-condition <ipaddr>&Tmp-Integer64-0 == &Framed-IP-Address
+condition <ipaddr>&Tmp-uint64-0 == &Framed-IP-Address
 match ERROR offset 8: Cannot cast type 'uint64' to 'ipaddr'
 
 #
@@ -441,8 +441,8 @@ condition <ipaddr>&PMIP6-Home-IPv4-HoA == &Framed-IP-Address
 match <ipaddr>&PMIP6-Home-IPv4-HoA == &Framed-IP-Address
 
 # but these are allowed
-condition <ether>&Tmp-Integer64-0 == "%{module: foo}"
-match <ether>&Tmp-Integer64-0 == "%{module: foo}"
+condition <ether>&Tmp-uint64-0 == "%{module: foo}"
+match <ether>&Tmp-uint64-0 == "%{module: foo}"
 
 condition <ipaddr>&Filter-Id == &Framed-IP-Address
 match <ipaddr>&Filter-Id == &Framed-IP-Address

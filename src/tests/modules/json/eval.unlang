@@ -282,9 +282,7 @@ update request {
 map json &Tmp-String-0 {
 	&Tmp-Integer-0 += '$.my_array[3::-3]'
 }
-if ((&Tmp-Integer-0[0] == 3) && (&Tmp-Integer-0[1] == 0) && !&Tmp-Integer-0[2]) {
-	test_pass
-} else {
+if ((&Tmp-Integer-0[0] != 3) || (&Tmp-Integer-0[1] != 0) || &Tmp-Integer-0[2]) {
 	test_fail
 }
 update request {
@@ -386,9 +384,7 @@ redundant {
 	}
 	noop
 }
-if (noop || ((&Tmp-Integer-0 == 4294967295) || (&Tmp-Integer-0 == 2147483647))) {
-	test_pass
-} else {
+if (!noop && ((&Tmp-Integer-0 != 4294967295) && (&Tmp-Integer-0 != 2147483647))) {
 	test_fail
 }
 
@@ -403,7 +399,40 @@ update request {
 	&Tmp-Integer-0 !* ANY
 }
 
-# 33. Multiple array indicies
+# 33. Signed 64bit integers
+map json &Tmp-String-0 {
+	&Tmp-int64-0 := '$[0]'
+}
+if (&Tmp-int64-0 != 9223372036854775807) {
+	test_fail
+}
+update request {
+	&Tmp-int64-0 !* ANY
+}
+
+# 34. Signed 64bit integers
+map json &Tmp-String-0 {
+	&Tmp-int64-0 := '$[1]'
+}
+if (&Tmp-int64-0 != -9223372036854775807) {
+	test_fail
+}
+update request {
+	&Tmp-int64-0 !* ANY
+}
+
+# 35. Unsigned 64bit integers (not allowed by json so gets truncated)
+map json &Tmp-String-0 {
+	&Tmp-uint64-0 := '$[2]'
+}
+if (&Tmp-uint64-0 != 9223372036854775807) {
+	test_fail
+}
+update request {
+	&Tmp-uint64-0 !* ANY
+}
+
+# 36. Multiple array indicies
 map json &Tmp-String-0 {
 	&Tmp-Signed-0 += '$[3][0,1]'
 }
@@ -414,7 +443,7 @@ update request {
 	&Tmp-Signed-0 !* ANY
 }
 
-# 34. Path containing dynamic expansion
+# 37. Path containing dynamic expansion
 update request {
 	&Tmp-Integer-2 := 0
 }
@@ -428,7 +457,7 @@ update request {
 	&Tmp-Integer-0 !* ANY
 }
 
-# 35. An expanded field name with bad chars
+# 38. An expanded field name with bad chars
 update request {
 	&Tmp-String-0 := "\
 	{\
@@ -473,7 +502,7 @@ update request {
 	}"
 }
 
-# 36. Recursive descent with field match
+# 39. Recursive descent with field match
 map json &Tmp-String-0 {
 	&Tmp-String-1 += '$..bool'
 }
@@ -484,7 +513,7 @@ update request {
 	&Tmp-String-1 !* ANY
 }
 
-# 37. Recursive descent with element match (2nd element in each array)
+# 40. Recursive descent with element match (2nd element in each array)
 map json &Tmp-String-0 {
 	&Tmp-String-1 += '$..[1]'
 }
@@ -495,7 +524,7 @@ update request {
 	&Tmp-String-1 !* ANY
 }
 
-# 38. Recursive descent with field then element match
+# 41. Recursive descent with field then element match
 map json &Tmp-String-0 {
 	&Tmp-String-1 += '$..my_cats[2]'
 }
@@ -504,55 +533,6 @@ if (("%{Tmp-String-1[#]}" != 2) || (&Tmp-String-1[0] != 'flat') || (&Tmp-String-
 }
 update request {
 	&Tmp-String-1 !* ANY
-}
-
-#
-#  @todo - What's going on here?  The input json has an array as
-#  element 0, whicj is most definitely not a 64-bit integer.
-#
-if (0) {
-# 39. Unsigned 64bit integers
-map json &Tmp-String-0 {
-	&Tmp-Integer64-0 := '$[0]'
-}
-if (&Tmp-Integer64-0 != 9223372036854775807) {
-	test_fail
-}
-update request {
-	&Tmp-Integer64-0 !* ANY
-}
-
-# 40. Signed 64bit integers (not supported)
-redundant {
-	group {
-		map json &Tmp-String-0 {
-			&Tmp-Integer64-0 := '$[1]'
-		}
-	}
-	ok
-}
-if (fail || &Tmp-Integer64-0) {
-	test_fail
-}
-update request {
-	&Tmp-Integer64-0 !* ANY
-}
-
-# 41. Signed 64bit integers (not supported)
-redundant {
-	group {
-		map json &Tmp-String-0 {
-			&Tmp-Integer64-0 := '$[1]'
-		}
-	}
-	ok
-}
-if (fail || &Tmp-Integer64-0) {
-	test_fail
-}
-update request {
-	&Tmp-Integer64-0 !* ANY
-}
 }
 
 test_pass

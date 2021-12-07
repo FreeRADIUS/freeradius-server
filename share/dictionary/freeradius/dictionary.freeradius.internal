@@ -209,8 +209,8 @@ ATTRIBUTE	MS-CHAP-New-NT-Password			1137	octets
 
 ATTRIBUTE	Called-Station-SSID			1139	string
 
-ATTRIBUTE	Acct-Input-Octets64			1148	integer64
-ATTRIBUTE	Acct-Output-Octets64			1149	integer64
+ATTRIBUTE	Acct-Input-Octets64			1148	uint64
+ATTRIBUTE	Acct-Output-Octets64			1149	uint64
 
 ATTRIBUTE	FreeRADIUS-Client-IP-Prefix		1150	ipv4prefix
 ATTRIBUTE	FreeRADIUS-Client-IPv6-Prefix		1151	ipv6prefix
@@ -362,33 +362,44 @@ ATTRIBUTE	Tmp-Date-9				1759	date
 #  Attributes 1850 through 1850 + FR_TYPE_MAX are reserved.
 #
 
-ATTRIBUTE	Tmp-Integer64-0				1760	integer64
-ATTRIBUTE	Tmp-Integer64-1				1761	integer64
-ATTRIBUTE	Tmp-Integer64-2				1762	integer64
-ATTRIBUTE	Tmp-Integer64-3				1763	integer64
-ATTRIBUTE	Tmp-Integer64-4				1764	integer64
-ATTRIBUTE	Tmp-Integer64-5				1765	integer64
-ATTRIBUTE	Tmp-Integer64-6				1766	integer64
-ATTRIBUTE	Tmp-Integer64-7				1767	integer64
-ATTRIBUTE	Tmp-Integer64-8				1768	integer64
-ATTRIBUTE	Tmp-Integer64-9				1769	integer64
+ATTRIBUTE	Tmp-uint64-0				1760	uint64
+ATTRIBUTE	Tmp-uint64-1				1761	uint64
+ATTRIBUTE	Tmp-uint64-2				1762	uint64
+ATTRIBUTE	Tmp-uint64-3				1763	uint64
+ATTRIBUTE	Tmp-uint64-4				1764	uint64
+ATTRIBUTE	Tmp-uint64-5				1765	uint64
+ATTRIBUTE	Tmp-uint64-6				1766	uint64
+ATTRIBUTE	Tmp-uint64-7				1767	uint64
+ATTRIBUTE	Tmp-uint64-8				1768	uint64
+ATTRIBUTE	Tmp-uint64-9				1769	uint64
 
-ATTRIBUTE	Tmp-Signed-0				1770	signed
-ATTRIBUTE	Tmp-Signed-1				1771	signed
-ATTRIBUTE	Tmp-Signed-2				1772	signed
-ATTRIBUTE	Tmp-Signed-3				1773	signed
-ATTRIBUTE	Tmp-Signed-4				1774	signed
-ATTRIBUTE	Tmp-Signed-5				1775	signed
-ATTRIBUTE	Tmp-Signed-6				1776	signed
-ATTRIBUTE	Tmp-Signed-7				1777	signed
-ATTRIBUTE	Tmp-Signed-8				1778	signed
-ATTRIBUTE	Tmp-Signed-9				1779	signed
+ATTRIBUTE	Tmp-int64-0				1770	int64
+ATTRIBUTE	Tmp-int64-1				1771	int64
+ATTRIBUTE	Tmp-int64-2				1772	int64
+ATTRIBUTE	Tmp-int64-3				1773	int64
+ATTRIBUTE	Tmp-int64-4				1774	int64
+ATTRIBUTE	Tmp-int64-5				1775	int64
+ATTRIBUTE	Tmp-int64-6				1776	int64
+ATTRIBUTE	Tmp-int64-7				1777	int64
+ATTRIBUTE	Tmp-int64-8				1778	int64
+ATTRIBUTE	Tmp-int64-9				1779	int64
 
-ATTRIBUTE	Tmp-Ethernet-0				1780	ether
-ATTRIBUTE	Tmp-Ethernet-1				1781	ether
-ATTRIBUTE	Tmp-Ethernet-2				1782	ether
-ATTRIBUTE	Tmp-Ethernet-3				1783	ether
-ATTRIBUTE	Tmp-Ethernet-4				1784	ether
+ATTRIBUTE	Tmp-Signed-0				1780	signed
+ATTRIBUTE	Tmp-Signed-1				1781	signed
+ATTRIBUTE	Tmp-Signed-2				1782	signed
+ATTRIBUTE	Tmp-Signed-3				1783	signed
+ATTRIBUTE	Tmp-Signed-4				1784	signed
+ATTRIBUTE	Tmp-Signed-5				1785	signed
+ATTRIBUTE	Tmp-Signed-6				1786	signed
+ATTRIBUTE	Tmp-Signed-7				1787	signed
+ATTRIBUTE	Tmp-Signed-8				1788	signed
+ATTRIBUTE	Tmp-Signed-9				1789	signed
+
+ATTRIBUTE	Tmp-Ethernet-0				1790	ether
+ATTRIBUTE	Tmp-Ethernet-1				1791	ether
+ATTRIBUTE	Tmp-Ethernet-2				1792	ether
+ATTRIBUTE	Tmp-Ethernet-3				1793	ether
+ATTRIBUTE	Tmp-Ethernet-4				1794	ether
 
 ATTRIBUTE	Tmp-Float-0				1880	float32
 
