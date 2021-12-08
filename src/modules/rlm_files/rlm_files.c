@@ -525,7 +525,7 @@ redo:
 		/*
 		 *	Move the control items over, too.
 		 */
-		fr_pair_list_move(&request->control_pairs, &list, T_OP_ADD_EQ);
+		fr_pair_list_move_op(&request->control_pairs, &list, T_OP_ADD_EQ);
 		fr_pair_list_free(&list);
 
 		/* ctx may be reply */

@@ -647,7 +647,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
  *
  * @see radius_pairmove
  */
-void fr_pair_list_move(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t op)
+void fr_pair_list_move_op(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t op)
 {
 	fr_pair_t *i, *found;
 	fr_pair_list_t head_new, head_prepend;

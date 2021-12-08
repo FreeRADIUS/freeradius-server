@@ -35,7 +35,7 @@ RCSID("$Id$")
 #include <ctype.h>
 
 /*
- *	The fr_pair_list_move() function in src/lib/valuepair.c does all sorts of
+ *	The fr_pair_list_move_op() function in src/lib/valuepair.c does all sorts of
  *	extra magic that we don't want here.
  *
  *	FIXME: integrate this with the code calling it, so that we
@@ -58,7 +58,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 	 *
 	 *	It also means that the operators apply ONLY to the
 	 *	attributes in the original list.  With the previous
-	 *	implementation of fr_pair_list_move(), adding two attributes
+	 *	implementation of fr_pair_list_move_op(), adding two attributes
 	 *	via "+=" and then "=" would mean that the second one
 	 *	wasn't added, because of the existence of the first
 	 *	one in the "to" list.  This implementation doesn't

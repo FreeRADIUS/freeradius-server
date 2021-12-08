@@ -209,7 +209,7 @@ static void test_fr_pair_list_afrom_file(void)
 	fclose(fp);
 }
 
-static void test_fr_pair_list_move(void)
+static void test_fr_pair_list_move_op(void)
 {
 	fr_pair_t      *vp;
 	fr_pair_list_t old_list, new_list;
@@ -224,8 +224,8 @@ static void test_fr_pair_list_move(void)
 	TEST_CHECK(fr_pair_list_afrom_file(autofree, test_dict, &old_list, fp, &pfiledone) == 0);
 	TEST_CHECK(pfiledone == true);
 
-	TEST_CASE("Move pair from 'old_list' to 'new_list' using fr_pair_list_move()");
-	fr_pair_list_move(&new_list, &old_list, T_OP_ADD_EQ);
+	TEST_CASE("Move pair from 'old_list' to 'new_list' using fr_pair_list_move_op()");
+	fr_pair_list_move_op(&new_list, &old_list, T_OP_ADD_EQ);
 
 	TEST_CASE("Looking for Test-Uint32-0");
 	TEST_CHECK((vp = fr_pair_find_by_da_idx(&new_list, fr_dict_attr_test_uint32, 0)) != NULL);
@@ -263,7 +263,7 @@ TEST_LIST = {
 	{ "fr_pair_mark_xlat",       test_fr_pair_mark_xlat },
 	{ "fr_pair_list_afrom_str",  test_fr_pair_list_afrom_str },
 	{ "fr_pair_list_afrom_file", test_fr_pair_list_afrom_file },
-	{ "fr_pair_list_move",       test_fr_pair_list_move },
+	{ "fr_pair_list_move_op",       test_fr_pair_list_move_op },
 
 	{ NULL }
 };
