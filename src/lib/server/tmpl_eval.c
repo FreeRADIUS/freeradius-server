@@ -1083,7 +1083,7 @@ fr_pair_t *tmpl_pair_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_pair_cursor_ctx
 	fr_pair_t		*vp = NULL;
 	fr_pair_list_t		*list_head = NULL;
 	tmpl_request_t		*rr = NULL;
-	TALLOC_CTX		*list_ctx;
+	TALLOC_CTX		*list_ctx = NULL;
 
 	TMPL_VERIFY(vpt);
 
