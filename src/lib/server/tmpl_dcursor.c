@@ -367,16 +367,18 @@ fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 	/*
 	 *	Get the right list in the specified context
 	 */
-	list_head = tmpl_list_head(request, tmpl_list(vpt));
-	if (!list_head) {
-		if (err) {
-			*err = -2;
+	if (!vpt->rules.list_as_attr) {
+		list_head = tmpl_list_head(request, tmpl_list(vpt));
+		if (!list_head) {
 			fr_strerror_printf("List \"%s\" not available in this context",
 					   fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"));
+			goto error;
 		}
-		goto error;
+		list_ctx = tmpl_list_ctx(request, tmpl_list(vpt));
+	} else {
+		list_head = &request->pair_root->vp_group;
+		list_ctx = request->pair_root;
 	}
-	list_ctx = tmpl_list_ctx(request, tmpl_list(vpt));
 
 	/*
 	 *	Initialise the temporary cursor context
@@ -511,16 +513,21 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 		}
 	}
 
-	/*
-	 *	Get the right list in the specified context
-	 */
-	list_head = tmpl_list_head(request, tmpl_list(vpt));
-	if (!list_head) {
-		fr_strerror_printf("List \"%s\" not available in this context",
-				   fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"));
-		return -2;
+	if (!vpt->rules.list_as_attr) {
+		/*
+		 *	Get the right list in the specified context
+		 */
+		list_head = tmpl_list_head(request, tmpl_list(vpt));
+		if (!list_head) {
+			fr_strerror_printf("List \"%s\" not available in this context",
+					   fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"));
+			return -2;
+		}
+		list_ctx = tmpl_list_ctx(request, tmpl_list(vpt));
+	} else {
+		list_head = &request->pair_root->vp_group;
+		list_ctx = request->pair_root;
 	}
-	list_ctx = tmpl_list_ctx(request, tmpl_list(vpt));
 
 	/*
 	 *	If it's a list, just return the list head

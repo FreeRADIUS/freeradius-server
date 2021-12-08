@@ -1956,6 +1956,56 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		 *	later.
 		 */
 		if (tmpl_is_attr(vpt) && is_raw) tmpl_attr_to_raw(vpt);
+
+		/*
+		 *	Check to see what the first attribute reference
+		 *	was.  If it wasn't a known list group attribute
+		 *	and we're parsing in list_as_attr mode, then
+		 *	we need to add in a default list.
+		 */
+		if (t_rules->list_as_attr) {
+			tmpl_attr_t *ar;
+
+			ar = fr_dlist_head(&vpt->data.attribute.ar);
+			fr_assert(ar != NULL);
+
+			if ((ar->ar_type != TMPL_ATTR_TYPE_NORMAL) ||
+			    ((ar->ar_da != request_attr_request) &&
+			     (ar->ar_da != request_attr_reply) &&
+			     (ar->ar_da != request_attr_control) &&
+			     (ar->ar_da != request_attr_state))) {
+				MEM(ar = talloc(vpt, tmpl_attr_t));
+				*ar = (tmpl_attr_t){
+					.ar_type = TMPL_ATTR_TYPE_NORMAL,
+					.ar_parent = fr_dict_root(fr_dict_internal())
+				};
+
+				switch (t_rules->list_def) {
+				default:
+				case PAIR_LIST_REQUEST:
+					ar->ar_da = request_attr_request;
+					break;
+
+				case PAIR_LIST_REPLY:
+					ar->ar_da = request_attr_reply;
+					break;
+
+				case PAIR_LIST_CONTROL:
+					ar->ar_da = request_attr_control;
+					break;
+
+				case PAIR_LIST_STATE:
+					ar->ar_da = request_attr_state;
+					break;
+				}
+
+				/*
+				 *	Prepend the list ref so it gets evaluated
+				 *	first.
+				 */
+				fr_dlist_insert_head(&vpt->data.attribute.ar, ar);
+			}
+		}
 	}
 
 	/*
