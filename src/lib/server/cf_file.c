@@ -1933,7 +1933,7 @@ static int parse_input(cf_stack_t *stack)
 	 *	allow it everywhere.
 	 */
 	if (*ptr == '{') {
-		if (!frame->special) {
+		if (!parent->allow_unlang) {
 			ERROR("%s[%d]: Parse error: Invalid location for grouped attribute",
 			      frame->filename, frame->lineno);
 			return -1;
