@@ -1528,12 +1528,204 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	return c;
 }
 
-/** Compile one edit.
+/** Validate and fixup a map that's part of an edit section.
+ *
+ * @param map to validate.
+ * @param ctx data to pass to fixup function (currently unused).
+ * @return 0 if valid else -1.
+ *
+ *  @todo - this is only called for CONF_PAIR maps, not for
+ *  CONF_SECTION.  So when we parse nested maps, there's no validation
+ *  done of the CONF_SECTION.  In order to fix this, we need to have
+ *  map_afrom_cs() call the validation function for the CONF_SECTION
+ *  *before* recursing.
+ */
+static int unlang_fixup_edit(map_t *map, void *ctx)
+{
+	CONF_PAIR *cp = cf_item_to_pair(map->ci);
+	fr_dict_attr_t const *da;
+	fr_dict_attr_t const *parent = NULL;
+
+	if (map->op != T_OP_EQ) {
+		cf_log_err(cp, "When creating an 'in-place list', the attributes can only be specified with with \"=\" operator");
+		return -1;
+	}
+
+	if (!map->parent) {
+		parent = *(fr_dict_attr_t **) ctx;
+
+	} else if (tmpl_is_attr(map->parent->lhs)) {
+		parent = tmpl_da(map->parent->lhs);
+	}
+
+	/*
+	 *	Anal-retentive checks.
+	 */
+	if (DEBUG_ENABLED3) {
+		if (tmpl_is_attr(map->lhs) && (map->lhs->name[0] != '&')) {
+			cf_log_warn(cp, "Please change attribute reference to '&%s %s ...'",
+				    map->lhs->name, fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
+		}
+
+		if (tmpl_is_attr(map->rhs) && (map->rhs->name[0] != '&')) {
+			cf_log_warn(cp, "Please change attribute reference to '... %s &%s'",
+				    fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
+		}
+	}
+
+	switch (map->lhs->type) {
+	case TMPL_TYPE_ATTR:
+		da = tmpl_da(map->lhs);
+		if (!da->flags.internal && parent && (parent->type != FR_TYPE_GROUP) &&
+		    (da->parent != parent)) {
+			cf_log_err(cp, "Invalid location for %s - it is not a child of %s",
+				   da->name, parent->name);
+			return -1;
+		}
+		break;
+
+	case TMPL_TYPE_XLAT_UNRESOLVED:
+	case TMPL_TYPE_XLAT:
+		break;
+
+	default:
+		cf_log_err(map->ci, "Left side of map must be an attribute "
+		           "or an xlat (that expands to an attribute), not a %s",
+		           fr_table_str_by_value(tmpl_type_table, map->lhs->type, "<INVALID>"));
+		return -1;
+	}
+
+	fr_assert(map->rhs);
+
+	switch (map->rhs->type) {
+	case TMPL_TYPE_UNRESOLVED:
+	case TMPL_TYPE_XLAT_UNRESOLVED:
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_EXEC:
+		break;
+
+	default:
+		cf_log_err(map->ci, "Right side of map must be an attribute, literal, xlat or exec");
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Compile one edit section.
  *
  *  Edits which are adjacent to one another are automatically merged
  *  into one larger edit transaction.
  */
-static unlang_t *compile_edit(unlang_t *parent, unlang_compile_t *unlang_ctx, unlang_t **prev, CONF_PAIR *cp)
+static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang_ctx, unlang_t **prev, CONF_SECTION *cs)
+{
+	unlang_edit_t		*edit, *edit_free;
+	unlang_t		*c, *out = UNLANG_IGNORE;
+	map_t			*map;
+	char const		*name;
+	fr_token_t		op;
+	ssize_t			slen;
+	fr_dict_attr_t const	*parent_da;
+
+	tmpl_rules_t		t_rules;
+
+	name = cf_section_name2(cs);
+	if (name) {
+		cf_log_err(cs, "Unexpected text for editing list %s.", cf_section_name1(cs));
+		return NULL;
+	}
+	op = cf_section_name2_quote(cs);
+	if ((op == T_INVALID) || !fr_assignment_op[op]) {
+		cf_log_err(cs, "Invalid operator '%s' for editing list %s.", name, cf_section_name1(cs));
+		return NULL;
+	}
+
+	/*
+	 *	We allow unknown attributes here.
+	 */
+	t_rules = *(unlang_ctx->rules);
+	t_rules.allow_unknown = true;
+	t_rules.list_as_attr = true;
+	RULES_VERIFY(&t_rules);
+
+	c = *prev;
+	edit = edit_free = NULL;
+
+	if (c && (c->type == UNLANG_TYPE_EDIT)) {
+		edit = unlang_generic_to_edit(c);
+
+	} else {
+		edit = talloc_zero(parent, unlang_edit_t);
+		if (!edit) return NULL;
+
+		c = out = unlang_edit_to_generic(edit);
+		c->parent = parent;
+		c->next = NULL;
+		c->name = cf_section_name1(cs);
+		c->debug_name = c->name;
+		c->type = UNLANG_TYPE_EDIT;
+
+		fr_map_list_init(&edit->maps);
+		edit_free = edit;
+
+		compile_action_defaults(c, unlang_ctx);
+	}
+
+	/*
+	 *	Allocate the map and initialize it.
+	 */
+	MEM(map = talloc_zero(parent, map_t));
+	map->op = op;
+	map->ci = cf_section_to_item(cs);
+	fr_map_list_init(&map->child);
+
+	name = cf_section_name1(cs);
+
+	slen = tmpl_afrom_attr_str(map, NULL, &map->lhs, name, &t_rules);
+	if (slen <= 0) {
+		cf_log_err(cs, "Failed parsing list reference %s", name);
+	fail:
+		talloc_free(edit_free);
+		return NULL;
+	}
+
+	/*
+	 *	If the DA isn't structural, then it can't have children.
+	 */
+	parent_da = tmpl_da(map->lhs);
+	if (!fr_type_is_structural(parent_da->type)) {
+		cf_log_err(cs, "Only structural data types can be assigned a list");
+		goto fail;
+	}
+
+	if (map_afrom_cs(map, &map->child, cs, &t_rules, &t_rules, unlang_fixup_edit, &parent_da, 256) < 0) {
+		goto fail;
+	}
+
+	/*
+	 *	Do basic sanity checks and resolving.
+	 */
+	if (!pass2_fixup_map(map, unlang_ctx->rules, NULL)) goto fail;
+
+	/*
+	 *	Check operators, and ensure that the RHS has been
+	 *	resolved.
+	 */
+//	if (unlang_fixup_update(map, NULL) < 0) goto fail;
+
+	fr_dlist_insert_tail(&edit->maps, map);
+
+	*prev = c;
+	return out;
+}
+
+/** Compile one edit pair
+ *
+ *  Edits which are adjacent to one another are automatically merged
+ *  into one larger edit transaction.
+ */
+static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ctx, unlang_t **prev, CONF_PAIR *cp)
 {
 	unlang_edit_t		*edit, *edit_free;
 	unlang_t		*c, *out = UNLANG_IGNORE;
@@ -1943,8 +2135,6 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			char const *name = NULL;
 			CONF_SECTION *subcs = cf_item_to_section(ci);
 
-			edit = NULL; /* no longer doing implicit merging of edits */
-
 			/*
 			 *	Skip precompiled blocks.  This is
 			 *	mainly for policies.
@@ -1958,13 +2148,19 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			name = cf_section_name1(subcs);
 
 			/*
-			 *	In-line attribute editing is not supported.
+			 *	In-line attribute editing.
 			 */
 			if (*name == '&') {
-				cf_log_err(subcs, "Please use 'update' sections to add / modify / delete attributes");
-				talloc_free(c);
-				return NULL;
+				single = compile_edit_section(c, unlang_ctx, &edit, subcs);
+				if (!single) {
+					talloc_free(c);
+					return NULL;
+				}
+
+				goto add_child;
 			}
+
+			edit = NULL; /* no longer doing implicit merging of edits */
 
 			if (strcmp(name, "actions") == 0) {
 				if (!compile_action_subsection(c, g->cs, subcs)) {
@@ -2025,7 +2221,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			 *	In-line attribute editing is not supported.
 			 */
 			if (*attr == '&') {
-				single = compile_edit(c, unlang_ctx, &edit, cp);
+				single = compile_edit_pair(c, unlang_ctx, &edit, cp);
 				if (!single) {
 					talloc_free(c);
 					return NULL;
