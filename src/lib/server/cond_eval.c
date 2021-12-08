@@ -25,11 +25,12 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/cond_eval.h>
 #include <freeradius-devel/server/cond.h>
+#include <freeradius-devel/server/cond_eval.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/paircmp.h>
 #include <freeradius-devel/server/regex.h>
+#include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/print.h>
 
@@ -522,7 +523,7 @@ static bool cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t co
 	int	       		rcode;
 	fr_pair_t		*vp;
 	fr_dcursor_t		cursor;
-	tmpl_pair_cursor_ctx_t	cc;
+	tmpl_dcursor_ctx_t	cc;
 	fr_value_box_t		*rhs, rhs_cast;
 	fr_dict_attr_t const	*da = NULL;
 
@@ -532,7 +533,7 @@ static bool cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t co
 	rhs = NULL;		/* shut up clang scan */
 	fr_value_box_init_null(&rhs_cast);
 
-	for (vp = tmpl_pair_cursor_init(&rcode, request, &cc, &cursor, request, map->rhs);
+	for (vp = tmpl_dcursor_init(&rcode, request, &cc, &cursor, request, map->rhs);
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
 		if (cond_realize_attr(request, &rhs, &rhs_cast, map->rhs, vp, da) < 0) {
@@ -550,7 +551,7 @@ static bool cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t co
 		if (rcode != 0) break;
 	}
 
-	tmpl_pair_cursor_clear(&cc);
+	tmpl_dursor_clear(&cc);
 	return (rcode == 1);
 }
 
@@ -560,7 +561,7 @@ static bool cond_compare_virtual(request_t *request, map_t const *map)
 	fr_pair_t		*virt, *vp;
 	fr_value_box_t		*rhs, rhs_cast;
 	fr_dcursor_t		cursor;
-	tmpl_pair_cursor_ctx_t	cc;
+	tmpl_dcursor_ctx_t	cc;
 
 	fr_assert(tmpl_is_attr(map->lhs));
 	fr_assert(tmpl_is_attr(map->rhs));
@@ -568,7 +569,7 @@ static bool cond_compare_virtual(request_t *request, map_t const *map)
 	rhs = NULL;		/* shut up clang scan */
 	fr_value_box_clear(&rhs_cast);
 
-	for (vp = tmpl_pair_cursor_init(&rcode, request, &cc, &cursor, request, map->rhs);
+	for (vp = tmpl_dcursor_init(&rcode, request, &cc, &cursor, request, map->rhs);
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
 		if (cond_realize_attr(request, &rhs, &rhs_cast, map->rhs, vp, NULL) < 0) {
@@ -592,7 +593,7 @@ static bool cond_compare_virtual(request_t *request, map_t const *map)
 		if (rcode != 0) break;
 	}
 
-	tmpl_pair_cursor_clear(&cc);
+	tmpl_dursor_clear(&cc);
 	return (rcode == 1);
 }
 
@@ -756,11 +757,11 @@ check_attrs:
 	{
 		fr_pair_t		*vp;
 		fr_dcursor_t		cursor;
-		tmpl_pair_cursor_ctx_t	cc;
+		tmpl_dcursor_ctx_t	cc;
 
 		fr_assert(!lhs);
 
-		for (vp = tmpl_pair_cursor_init(&rcode, request, &cc, &cursor, request, map->lhs);
+		for (vp = tmpl_dcursor_init(&rcode, request, &cc, &cursor, request, map->lhs);
 		     vp;
 	     	     vp = fr_dcursor_next(&cursor)) {
 			fr_value_box_t lhs_cast;
@@ -822,7 +823,7 @@ check_attrs:
 			continue;
 		}
 
-		tmpl_pair_cursor_clear(&cc);
+		tmpl_dursor_clear(&cc);
 	}
 		break;
 

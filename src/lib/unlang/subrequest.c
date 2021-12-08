@@ -101,7 +101,7 @@ static unlang_action_t unlang_subrequest_parent_resume(rlm_rcode_t *p_result, re
 		 *	Find out what we need to build and build it
 		 */
 		if ((tmpl_extents_find(state, &leaf, &interior, request, gext->dst) < 0) ||
-		    (tmpl_extents_build_to_leaf(&leaf, &interior, gext->dst) < 0)) {
+		    (tmpl_extents_build_to_leaf_parent(&leaf, &interior, gext->dst) < 0)) {
 			RPDEBUG("Discarding subrequest attributes - Failed allocating groups");
 			fr_dlist_talloc_free(&leaf);
 			fr_dlist_talloc_free(&interior);

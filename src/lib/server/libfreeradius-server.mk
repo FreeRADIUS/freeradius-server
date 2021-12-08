@@ -35,6 +35,7 @@ SOURCES	:= \
 	snmp.c \
 	state.c \
 	stats.c \
+	tmpl_dcursor.c \
 	tmpl_eval.c \
 	tmpl_tokenize.c \
 	trigger.c \

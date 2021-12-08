@@ -31,8 +31,9 @@ RCSID("$Id$")
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/paircmp.h>
-#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/server/tmpl_dcursor.h>
 
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/pair_legacy.h>
 
@@ -538,7 +539,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 	case TMPL_TYPE_ATTR:
 	{
 		fr_dcursor_t		from;
-		tmpl_pair_cursor_ctx_t	cc_attr;
+		tmpl_dcursor_ctx_t	cc_attr;
 		fr_pair_t		*vp;
 		fr_value_box_t		*n_vb;
 		int			err;
@@ -556,7 +557,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		 *	Check we have pairs to copy *before*
 		 *	doing any expensive allocations.
 		 */
-		vp = tmpl_pair_cursor_init(&err, request, &cc_attr, &from, request, mutated->rhs);
+		vp = tmpl_dcursor_init(&err, request, &cc_attr, &from, request, mutated->rhs);
 		if (!vp) switch (err) {
 		default:
 			break;
@@ -568,20 +569,20 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			 *	we should delete all LHS attributes.
 			 */
 			if (mutated->op == T_OP_SET) n = list_mod_delete_afrom_map(ctx, original, mutated);
-			tmpl_pair_cursor_clear(&cc_attr);
+			tmpl_dursor_clear(&cc_attr);
 			goto finish;
 
 		case -2:		/* No matching list */
 		case -3:		/* No request context */
 		case -4:		/* memory allocation error */
 			RPEDEBUG("Failed resolving attribute source");
-			tmpl_pair_cursor_clear(&cc_attr);
+			tmpl_dursor_clear(&cc_attr);
 			goto error;
 		}
 
 		n = list_mod_generic_afrom_map(ctx, original, mutated);
 		if (!n) {
-			tmpl_pair_cursor_clear(&cc_attr);
+			tmpl_dursor_clear(&cc_attr);
 			goto error;
 		}
 
@@ -593,7 +594,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			attr_error:
 				fr_dcursor_head(&values);
 				fr_dcursor_free_list(&values);
-				tmpl_pair_cursor_clear(&cc_attr);
+				tmpl_dursor_clear(&cc_attr);
 				goto error;
 			}
 
@@ -611,7 +612,7 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 			fr_dcursor_append(&values, n_vb);
 		} while ((vp = fr_dcursor_next(&from)));
 
-		tmpl_pair_cursor_clear(&cc_attr);
+		tmpl_dursor_clear(&cc_attr);
 	}
 		break;
 
@@ -950,7 +951,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 	TALLOC_CTX		*parent;
 
 	fr_dcursor_t		list;
-	tmpl_pair_cursor_ctx_t	cc;
+	tmpl_dcursor_ctx_t	cc;
 
 	memset(&cc, 0, sizeof(cc));
 
@@ -1088,7 +1089,7 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 	 *	the list and vp pointing to the attribute or the VP
 	 *	being NULL (no attribute at that index).
 	 */
-	found = tmpl_pair_cursor_init(NULL, request, &cc, &list, request, mod->lhs);
+	found = tmpl_dcursor_init(NULL, request, &cc, &list, request, mod->lhs);
 
 	/*
 	 *	The destination is an attribute
@@ -1286,6 +1287,6 @@ int map_list_mod_apply(request_t *request, vp_list_mod_t const *vlm)
 	}
 
 finish:
-	tmpl_pair_cursor_clear(&cc);
+	tmpl_dursor_clear(&cc);
 	return rcode;
 }

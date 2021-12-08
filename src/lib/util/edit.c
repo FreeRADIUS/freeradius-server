@@ -596,7 +596,7 @@ fr_edit_list_t *fr_edit_list_alloc(TALLOC_CTX *ctx, int hint)
  *  inserting pairs in a list, then we find the lowest existing pair,
  *  and add pairs there.
  *
- *  The functions tmpl_extents_find() and tmpl_extents_build_to_leaf()
+ *  The functions tmpl_extents_find() and tmpl_extents_build_to_leaf_parent()
  *  should help us figure out where the VPs exist or not.
  *
  *  The overall "update" algorithm is now:

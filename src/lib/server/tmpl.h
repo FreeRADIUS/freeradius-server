@@ -45,7 +45,7 @@
  * functions which can be used to iterate over only the #fr_pair_t that match a
  * tmpl_t in a given list.
  *
- * @see tmpl_pair_cursor_init
+ * @see tmpl_dcursor_init
  * @see tmpl_cursor_next
  *
  * Or for simplicity, there are functions which wrap the cursor functions, to copy or
@@ -526,57 +526,6 @@ struct tmpl_s {
 						///< they ensure the correct parsing rules are applied.
 };
 
-typedef struct tmpl_cursor_ctx_s tmpl_pair_cursor_ctx_t;
-typedef struct tmpl_cursor_nested_s tmpl_cursor_nested_t;
-
-typedef fr_pair_t *(*tmpl_cursor_eval_t)(fr_dlist_head_t *list_head, fr_pair_t *current, tmpl_cursor_nested_t *ns);
-
-/** State for traversing an attribute reference
- *
- */
-struct tmpl_cursor_nested_s {
-	fr_dlist_t		entry;		//!< Entry in the dlist.
-	tmpl_attr_t const	*ar;		//!< Attribute reference this state
-						///< entry is associated with.  Mainly for debugging.
-	tmpl_cursor_eval_t	func;		//!< Function used to evaluate this attribute reference.
-	TALLOC_CTX		*list_ctx;	//!< Track where we should be allocating attributes.
-
-	union {
-		struct {
-			fr_dcursor_t		cursor;			//!< Group traversal is much easier
-									///< but we still need to keep track
-									///< where we are in the list in case
-									///< we're doing counts.
-		} group;
-
-		struct {
-			fr_pair_list_t		*list_head;		//!< Head of the list we're currently
-									///< iterating over.
-		} leaf;
-	};
-};
-
-/** Maintains state between cursor calls
- *
- */
-struct tmpl_cursor_ctx_s {
-	TALLOC_CTX		*ctx;		//!< Temporary allocations go here.
-	TALLOC_CTX		*pool;		//!< Temporary pool.
-	tmpl_t const		*vpt;		//!< tmpl we're evaluating.
-
-	request_t		*request;	//!< Result of following the request references.
-	fr_pair_list_t		*list;		//!< List within the request.
-
-	tmpl_cursor_nested_t	leaf;		//!< Pre-allocated leaf state.  We always need
-						///< one of these so it doesn't make sense to
-						///< allocate it later.
-
-	fr_dlist_head_t		nested;		//!< Nested state.  These are allocated when we
-						///< need to maintain state between multiple
-						///< cursor calls for a particular attribute
-						///< reference.
-};
-
 /** Describes the current extents of a pair tree in relation to the tree described by a tmpl_t
  *
  */
@@ -735,21 +684,21 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt);
  @code{.c}
    static tmpl_t     list = tmpl_init_initialiser_list(CURRENT_REQUEST, PAIR_LIST_REQUEST);
    fr_dcursor_t      cursor;
-   tmpl_pair_cursor_ctx_t cc,
+   tmpl_dcursor_ctx_t cc,
    fr_pair_t        *vp;
 
    // Iterate over all pairs in the request list
-   for (vp = tmpl_pair_cursor_init(NULL, &cursor, request, &list);
+   for (vp = tmpl_dcursor_init(NULL, &cursor, request, &list);
    	vp;
    	vp = tmpl_cursor_next(&cursor, &list)) {
    	// Do something
    }
-   tmpl_pair_cursor_clear(&cc);
+   tmpl_dursor_clear(&cc);
  @endcode
  *
  * @param _request to locate the list in.
  * @param _list to set as the target for the template.
- * @see tmpl_pair_cursor_init
+ * @see tmpl_dcursor_init
  * @see tmpl_cursor_next
  */
 #define	tmpl_init_initialiser_list(_request, _list)\
@@ -1012,12 +961,6 @@ ssize_t			_tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 				       fr_type_t dst_type)
 			CC_HINT(nonnull (2, 3, 4));
 
-fr_pair_t		*tmpl_pair_cursor_init(int *err, TALLOC_CTX *ctx, tmpl_pair_cursor_ctx_t *cc,
-					  fr_dcursor_t *cursor, request_t *request,
-					  tmpl_t const *vpt);
-
-void			tmpl_pair_cursor_clear(tmpl_pair_cursor_ctx_t *cc);
-
 int			tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					request_t *request, tmpl_t const *vpt);
 
@@ -1032,7 +975,7 @@ int			tmpl_extents_find(TALLOC_CTX *ctx,
 		      			  fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
 					  request_t *request, tmpl_t const *vpt);
 
-int			tmpl_extents_build_to_leaf(fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
+int			tmpl_extents_build_to_leaf_parent(fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
 						   tmpl_t const *vpt);
 
 void			tmpl_extents_debug(fr_dlist_head_t *head);

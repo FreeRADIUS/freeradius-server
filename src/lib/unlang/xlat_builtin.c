@@ -31,6 +31,7 @@ RCSID("$Id$")
  */
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 
 #include <freeradius-devel/io/test_point.h>
@@ -999,7 +1000,7 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 {
 	fr_pair_t		*vp;
 	fr_dcursor_t		cursor;
-	tmpl_pair_cursor_ctx_t	cc;
+	tmpl_dcursor_ctx_t	cc;
 	tmpl_t			*vpt;
 	fr_value_box_t		*attr = fr_dlist_head(in);
 	char const		*fmt;
@@ -1020,7 +1021,7 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 	RIDEBUG("Attributes matching \"%s\"", fmt);
 
 	RINDENT();
-	for (vp = tmpl_pair_cursor_init(NULL, NULL, &cc, &cursor, request, vpt);
+	for (vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt);
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
 		fr_dict_vendor_t const		*vendor;
@@ -1105,7 +1106,7 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 			talloc_free(dst);
 		}
 	}
-	tmpl_pair_cursor_clear(&cc);
+	tmpl_dursor_clear(&cc);
 	REXDENT();
 
 	talloc_free(vpt);
@@ -2337,7 +2338,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 {
 	tmpl_t			*vpt = NULL;
 	fr_dcursor_t		cursor;
-	tmpl_pair_cursor_ctx_t	cc;
+	tmpl_dcursor_ctx_t	cc;
 	fr_value_box_t		*vb;
 	fr_value_box_t		*in_head = fr_dlist_head(in);
 
@@ -2352,7 +2353,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	for (vp = tmpl_pair_cursor_init(NULL, NULL, &cc, &cursor, request, vpt);
+	for (vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt);
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
 		fr_token_t op = vp->op;
@@ -2367,7 +2368,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, buff, false);
 		fr_dcursor_append(out, vb);
 	}
-	tmpl_pair_cursor_clear(&cc);
+	tmpl_dursor_clear(&cc);
 	talloc_free(vpt);
 
 	return XLAT_ACTION_DONE;
@@ -3384,7 +3385,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	tmpl_t		*vpt;
 	fr_pair_t	*vp;
 	fr_dcursor_t	cursor;
-	tmpl_pair_cursor_ctx_t	cc;
+	tmpl_dcursor_ctx_t	cc;
 	bool		tainted = false;
 	fr_value_box_t	*encoded;
 
@@ -3420,7 +3421,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Loop over the attributes, encoding them.
 	 */
-	for (vp = tmpl_pair_cursor_init(NULL, NULL, &cc, &cursor, request, vpt);
+	for (vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt);
 	     vp != NULL;
 	     vp = fr_dcursor_next(&cursor)) {
 		if (vp->da->flags.internal) continue;
@@ -3440,7 +3441,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		len = tp_encode->func(&FR_DBUFF_TMP(p, end), &cursor, encode_ctx);
 		if (len < 0) {
 			RPEDEBUG("Protocol encoding failed");
-			tmpl_pair_cursor_clear(&cc);
+			tmpl_dursor_clear(&cc);
 			talloc_free(vpt);
 			return XLAT_ACTION_FAIL;
 		}
@@ -3449,7 +3450,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		p += len;
 	}
 
-	tmpl_pair_cursor_clear(&cc);
+	tmpl_dursor_clear(&cc);
 	talloc_free(vpt);
 
 	/*

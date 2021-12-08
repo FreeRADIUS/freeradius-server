@@ -26,8 +26,8 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/server/base.h>
-
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/util/debug.h>
 
 #include <ctype.h>
@@ -212,7 +212,7 @@ static bool get_number(request_t *request, char const **string, int64_t *answer)
 		ssize_t			slen;
 		fr_pair_t		*vp;
 		fr_dcursor_t		cursor;
-		tmpl_pair_cursor_ctx_t	cc;
+		tmpl_dcursor_ctx_t	cc;
 
 		slen = tmpl_afrom_attr_substr(request, NULL, &vpt,
 					      &FR_SBUFF_IN(p, strlen(p)),
@@ -237,7 +237,7 @@ static bool get_number(request_t *request, char const **string, int64_t *answer)
 		}
 
 		x = 0;
-		for (i = 0, vp = tmpl_pair_cursor_init(&err, NULL, &cc, &cursor, request, vpt);
+		for (i = 0, vp = tmpl_dcursor_init(&err, NULL, &cc, &cursor, request, vpt);
 		     (i < max) && (vp != NULL);
 		     i++, vp = fr_dcursor_next(&cursor)) {
 			int64_t		y;
@@ -291,7 +291,7 @@ static bool get_number(request_t *request, char const **string, int64_t *answer)
 					RPEDEBUG("Failed converting &%.*s to an integer value", (int) vpt->len,
 						 vpt->name);
 				error:
-					tmpl_pair_cursor_clear(&cc);
+					tmpl_dursor_clear(&cc);
 					return false;
 				}
 				if (value.vb_uint64 > INT64_MAX) {
@@ -318,7 +318,7 @@ static bool get_number(request_t *request, char const **string, int64_t *answer)
 
 			x += y;
 		} /* loop over all found VPs */
-		tmpl_pair_cursor_clear(&cc);
+		tmpl_dursor_clear(&cc);
 
 		if (err != 0) {
 			RWDEBUG("Can't find &%.*s.  Using 0 as operand value", (int)vpt->len, vpt->name);

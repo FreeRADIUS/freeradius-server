@@ -28,8 +28,9 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
+#include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/unlang/unlang_priv.h>	/* Remove when everything uses new xlat API */
 
@@ -819,7 +820,7 @@ xlat_eval_pair_real(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reques
 	fr_value_box_t		*value;
 
 	fr_dcursor_t		cursor;
-	tmpl_pair_cursor_ctx_t	cc;
+	tmpl_dcursor_ctx_t	cc;
 
 	xlat_action_t		ret = XLAT_ACTION_DONE;
 
@@ -831,7 +832,7 @@ xlat_eval_pair_real(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reques
 	 *	This allows users to manipulate virtual attributes as if
 	 *	they were real ones.
 	 */
-	vp = tmpl_pair_cursor_init(NULL, NULL, &cc, &cursor, request, vpt);
+	vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt);
 
 	/*
 	 *	We didn't find the VP in a list, check to see if it's
@@ -902,7 +903,7 @@ xlat_eval_pair_real(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reques
 	default:
 		/*
 		 *	The cursor was set to the correct
-		 *	position above by tmpl_pair_cursor_init.
+		 *	position above by tmpl_dcursor_init.
 		 */
 		vp = fr_dcursor_current(&cursor);			/* NULLness checked above */
 		value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
@@ -914,7 +915,7 @@ xlat_eval_pair_real(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reques
 	}
 
 done:
-	tmpl_pair_cursor_clear(&cc);
+	tmpl_dursor_clear(&cc);
 	return ret;
 }
 

@@ -26,6 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/exfile.h>
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/perm.h>
 
@@ -561,12 +562,12 @@ build_vector:
 	{
 		#define VECTOR_INCREMENT 20
 		fr_dcursor_t		cursor;
-		tmpl_pair_cursor_ctx_t	cc;
+		tmpl_dcursor_ctx_t	cc;
 		fr_pair_t		*vp;
 		int			alloced = VECTOR_INCREMENT, i;
 
 		MEM(vector = talloc_array(request, struct iovec, alloced));
-		for (vp = tmpl_pair_cursor_init(NULL, NULL, &cc, &cursor, request, vpt_p), i = 0;
+		for (vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt_p), i = 0;
 		     vp;
 		     vp = fr_dcursor_next(&cursor), i++) {
 		     	/* need extra for line terminator */
@@ -598,7 +599,7 @@ build_vector:
 				vector[i].iov_len = inst->delimiter_len;
 			}
 		}
-		tmpl_pair_cursor_clear(&cc);
+		tmpl_dursor_clear(&cc);
 		vector_p = vector;
 		vector_len = i;
 	}

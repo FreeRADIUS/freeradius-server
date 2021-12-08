@@ -28,11 +28,12 @@
 
 RCSID("$Id$")
 
+#include <freeradius-devel/server/cond.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/exec_legacy.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/paircmp.h>
-#include <freeradius-devel/server/cond.h>
+#include <freeradius-devel/server/tmpl_dcursor.h>
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
@@ -1416,7 +1417,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	tmpl_request_ref_t	request_ref;
 	tmpl_pair_list_t	list_ref;
 
-	tmpl_pair_cursor_ctx_t	cc = {};
+	tmpl_dcursor_ctx_t	cc = {};
 
 	fr_pair_list_init(&src_list);
 	MAP_VERIFY(map);
@@ -1601,7 +1602,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	 *	the dst_list and vp pointing to the attribute or the VP
 	 *	being NULL (no attribute at that index).
 	 */
-	dst = tmpl_pair_cursor_init(NULL, tmp_ctx, &cc, &dst_list, request, map->lhs);
+	dst = tmpl_dcursor_init(NULL, tmp_ctx, &cc, &dst_list, request, map->lhs);
 	/*
 	 *	The destination is an attribute
 	 */
@@ -1723,7 +1724,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		 *	Find out what we need to build and build it
 		 */
 		if ((tmpl_extents_find(tmp_ctx, &leaf, &interior, request, map->lhs) < 0) ||
-		    (tmpl_extents_build_to_leaf(&leaf, &interior, map->lhs) < 0)) {
+		    (tmpl_extents_build_to_leaf_parent(&leaf, &interior, map->lhs) < 0)) {
 			fr_dlist_talloc_free(&leaf);
 			fr_dlist_talloc_free(&interior);
 			rcode = -1;
@@ -1786,7 +1787,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		 *	Find out what we need to build and build it
 		 */
 		if ((tmpl_extents_find(tmp_ctx, &leaf, &interior, request, map->lhs) < 0) ||
-		    (tmpl_extents_build_to_leaf(&leaf, &interior, map->lhs) < 0)) {
+		    (tmpl_extents_build_to_leaf_parent(&leaf, &interior, map->lhs) < 0)) {
 		    op_set_error:
 			fr_dlist_talloc_free(&leaf);
 			fr_dlist_talloc_free(&interior);
@@ -1836,7 +1837,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		 *	Find out what we need to build and build it
 		 */
 		if ((tmpl_extents_find(tmp_ctx, &leaf, &interior, request, map->lhs) < 0) ||
-		    (tmpl_extents_build_to_leaf(&leaf, &interior, map->lhs) < 0)) {
+		    (tmpl_extents_build_to_leaf_parent(&leaf, &interior, map->lhs) < 0)) {
 			fr_dlist_talloc_free(&leaf);
 			fr_dlist_talloc_free(&interior);
 			rcode = -1;
@@ -1913,7 +1914,7 @@ update:
 	fr_assert(fr_pair_list_empty(&src_list));
 
 finish:
-	tmpl_pair_cursor_clear(&cc);
+	tmpl_dursor_clear(&cc);
 	talloc_free(tmp_ctx);
 	return rcode;
 }

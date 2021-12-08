@@ -24,11 +24,12 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/curl/base.h>
-#include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cf_priv.h>
+#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/tmpl_dcursor.h>
+#include <freeradius-devel/util/talloc.h>
 
 static fr_dict_t const 	*dict_radius; /*dictionary for radius protocol*/
 static fr_dict_t const 	*dict_freeradius;
@@ -219,18 +220,18 @@ static int tmpl_attr_to_slist(fr_mail_ctx_t *uctx, struct curl_slist **out, tmpl
 {
 	request_t 			*request = ((fr_mail_ctx_t *)uctx)->request;
 	fr_pair_t			*vp;
-	tmpl_pair_cursor_ctx_t       	cc;
+	tmpl_dcursor_ctx_t       	cc;
 	int 				count = 0;
 
 	/* Iterate over the VP and add the string value to the curl_slist */
-	vp = tmpl_pair_cursor_init(NULL, NULL, &cc, &uctx->cursor, request, tmpl);
+	vp = tmpl_dcursor_init(NULL, NULL, &cc, &uctx->cursor, request, tmpl);
 	while (vp) {
 		count += 1;
 		*out = curl_slist_append(*out, vp->vp_strvalue);
 		vp = fr_dcursor_next(&uctx->cursor);
 	}
 	/* Return the number of elements that were found */
-	tmpl_pair_cursor_clear(&cc);
+	tmpl_dursor_clear(&cc);
 	return count;
 }
 
@@ -267,12 +268,12 @@ static int tmpl_arr_to_slist (rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struct 
 static ssize_t tmpl_attr_to_sbuff (fr_mail_ctx_t *uctx, fr_sbuff_t *out, tmpl_t const *vpt, char const *delimeter)
 {
 	fr_pair_t		*vp;
-	tmpl_pair_cursor_ctx_t       cc;
+	tmpl_dcursor_ctx_t       cc;
 
 	ssize_t			copied = 0;
 
 	/* Loop through the elements to be added to the sbuff */
-	vp = tmpl_pair_cursor_init(NULL, NULL, &cc, &uctx->cursor, uctx->request, vpt);
+	vp = tmpl_dcursor_init(NULL, NULL, &cc, &uctx->cursor, uctx->request, vpt);
 	while (vp) {
 		copied += fr_sbuff_in_bstrncpy(out, vp->vp_strvalue, vp->vp_length);
 		vp = fr_dcursor_next(&uctx->cursor);
@@ -281,7 +282,7 @@ static ssize_t tmpl_attr_to_sbuff (fr_mail_ctx_t *uctx, fr_sbuff_t *out, tmpl_t 
 			copied += fr_sbuff_in_strcpy(out, delimeter);
 		}
 	}
-	tmpl_pair_cursor_clear(&cc);
+	tmpl_dursor_clear(&cc);
 	return copied;
 }
 
@@ -377,11 +378,11 @@ static int tmpl_attr_to_attachment (fr_mail_ctx_t *uctx, curl_mime *mime, const 
 {
 	fr_pair_t 		*vp;
 	request_t			*request = uctx->request;
-	tmpl_pair_cursor_ctx_t       cc;
+	tmpl_dcursor_ctx_t       cc;
 	int 			attachments_set = 0;
 
 	/* Check for any file attachments */
-	for( vp = tmpl_pair_cursor_init(NULL, NULL, &cc, &uctx->cursor, request, tmpl);
+	for( vp = tmpl_dcursor_init(NULL, NULL, &cc, &uctx->cursor, request, tmpl);
 	vp;
        	vp = fr_dcursor_next(&uctx->cursor)){
 		if(vp->vp_tainted) {
@@ -390,7 +391,7 @@ static int tmpl_attr_to_attachment (fr_mail_ctx_t *uctx, curl_mime *mime, const 
 		}
 		attachments_set += str_to_attachments(uctx, mime, vp->vp_strvalue, vp->vp_length, path_buffer, m);
 	}
-	tmpl_pair_cursor_clear(&cc);
+	tmpl_dursor_clear(&cc);
 	return attachments_set;
 }
 
