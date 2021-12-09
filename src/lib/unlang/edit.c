@@ -40,6 +40,13 @@ typedef enum {
 	UNLANG_EDIT_CHECK_RHS,				//!< check the LHS for things
 } unlang_edit_state_t;
 
+typedef struct {
+	fr_value_box_list_t	result;			//!< result of expansion
+	tmpl_t const		*vpt;			//!< expanded tmpl
+	tmpl_t			*to_free;		//!< tmpl to free.
+	fr_pair_t		*vp;			//!< VP referenced by tmpl.  @todo - make it a cursor
+} edit_result_t;
+
 /** State of an edit block
  *
  */
@@ -48,16 +55,8 @@ typedef struct {
 
 	fr_edit_list_t		*el;				//!< edit list
 
-	fr_value_box_list_t	lhs_result;			//!< Result of expanding the LHS
-	tmpl_t const   		*lhs;				//!< expanded LHS tmpl
-	tmpl_t			*lhs_free;			//!< expanded tmpl to free
-
-	fr_pair_t		*lhs_parent;			//!< LHS parent VP to modify
-	fr_pair_t		*lhs_vp;			//!< LHS fr_pair_t to modify
-
-	tmpl_t const   		*rhs;				//!< expanded RHS tmpl
-	tmpl_t			*rhs_free;			//!< expanded tmpl to free
-	fr_value_box_list_t	rhs_result;			//!< Result of expanding the RHS.
+	edit_result_t		lhs;				//!< LHS of things to do
+	edit_result_t		rhs;				//!< RHS of things to do
 
 	unlang_edit_state_t	state;				//!< What we're currently doing.
 } unlang_frame_state_edit_t;
@@ -66,15 +65,15 @@ typedef struct {
 /*
  *  Convert a value-box list to a LHS #tmpl_t
  */
-static int templatize_lhs(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_list_t *list, request_t *request)
+static int templatize_lhs(TALLOC_CTX *ctx, edit_result_t *out, request_t *request)
 {
 	ssize_t slen;
-	fr_value_box_t *box = fr_dlist_head(list);
+	fr_value_box_t *box = fr_dlist_head(&out->result);
 
 	/*
 	 *	Mash all of the results together.
 	 */
-	if (fr_value_box_list_concat_in_place(box, box, list, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
+	if (fr_value_box_list_concat_in_place(box, box, &out->result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 		RPEDEBUG("Left side expansion failed");
 		return -1;
 	}
@@ -83,7 +82,7 @@ static int templatize_lhs(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_list_t *li
 	 *	Parse the LHS as an attribute reference.  It can't
 	 *	really be anything else.
 	 */
-	slen = tmpl_afrom_attr_str(ctx, NULL, out, box->vb_strvalue,
+	slen = tmpl_afrom_attr_str(ctx, NULL, &out->to_free, box->vb_strvalue,
 				   &(tmpl_rules_t){
 					   .dict_def = request->dict,
 					   .prefix = TMPL_ATTR_REF_PREFIX_NO
@@ -92,6 +91,9 @@ static int templatize_lhs(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_list_t *li
 		RPEDEBUG("Left side expansion result \"%s\" is not an attribute reference", box->vb_strvalue);
 		return -1;
 	}
+
+	out->vpt = out->to_free;
+	fr_dlist_talloc_free(&out->result);
 
 	return 0;
 }
@@ -104,24 +106,24 @@ static int templatize_lhs(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_list_t *li
  *  structural, we should parse the RHS as a set of VPs, and return
  *  that.
  */
-static int templatize_rhs(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_list_t *list,
-			  fr_type_t type, request_t *request, fr_dict_attr_t const *enumv)
+static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *lhs, request_t *request)
 {
 	ssize_t slen;
-	fr_value_box_t *box = fr_dlist_head(list);
+	fr_value_box_t *box = fr_dlist_head(&out->result);
 
 	/*
 	 *	There's only one box, and it's the correct type.  Just
 	 *	return that.
 	 */
-	if ((type != FR_TYPE_STRING) && (type == box->type) && !fr_dlist_next(list, box)) {
-		return tmpl_afrom_value_box(ctx, out, box, false);
+	if ((lhs->vp_type != FR_TYPE_STRING) && (lhs->vp_type == box->type) && !fr_dlist_next(&out->result, box)) {
+		if (tmpl_afrom_value_box(ctx, &out->to_free, box, false) < 0) return -1;
+		goto done;
 	}
 
 	/*
 	 *	Mash all of the results together as a string.
 	 */
-	if (fr_value_box_list_concat_in_place(box, box, list, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
+	if (fr_value_box_list_concat_in_place(box, box, &out->result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 		RPEDEBUG("Right side expansion failed");
 		return -1;
 	}
@@ -137,10 +139,10 @@ static int templatize_rhs(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_list_t *li
 	 *	And since enums and IP addresses don't start with '&',
 	 *	there's no conflict
 	 */
-	if ((type != FR_TYPE_STRING) &&
-	    (fr_value_box_cast_in_place(ctx, box, type, enumv) == 0) &&
-	    (tmpl_afrom_value_box(ctx, out, box, false) == 0)) {
-		return 0;
+	if ((lhs->vp_type != FR_TYPE_STRING) &&
+	    (fr_value_box_cast_in_place(ctx, box, lhs->vp_type, lhs->data.enumv) == 0) &&
+	    (tmpl_afrom_value_box(ctx, &out->to_free, box, false) == 0)) {
+		goto done;
 	}
 
 	/*
@@ -149,12 +151,16 @@ static int templatize_rhs(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_list_t *li
 	 *	If it can't be parsed as an attribute reference, then
 	 *	we don't know what it is.
 	 */
-	slen = tmpl_afrom_attr_str(ctx, NULL, out, box->vb_strvalue,
+	slen = tmpl_afrom_attr_str(ctx, NULL, &out->to_free, box->vb_strvalue,
 				   &(tmpl_rules_t){
 					   .dict_def = request->dict,
 					   .prefix = TMPL_ATTR_REF_PREFIX_NO
 				   });
 	if (slen <= 0) return -1;
+
+done:
+	out->vpt = out->to_free;
+	fr_dlist_talloc_free(&out->result);
 
 	return 0;
 }
@@ -219,16 +225,16 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 	/*
 	 *	Get the resulting value box.
 	 */
-	if (tmpl_is_data(state->rhs)) {
-		rhs_box = tmpl_value(state->rhs);
+	if (tmpl_is_data(state->rhs.vpt)) {
+		rhs_box = tmpl_value(state->rhs.vpt);
 		goto leaf;
 	}
 
 	/*
 	 *	If it's not data, it must be an attribute or a list.
 	 */
-	if (!tmpl_is_attr(state->rhs) && !tmpl_is_list(state->rhs)) {
-		RERROR("Unknown RHS %s", state->rhs->name);
+	if (!tmpl_is_attr(state->rhs.vpt) && !tmpl_is_list(state->rhs.vpt)) {
+		RERROR("Unknown RHS %s", state->rhs.vpt->name);
 		return -1;
 	}
 
@@ -240,12 +246,12 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 	 *	remove from the LHS?  i.e. "remove all DAs of name
 	 *	FOO"?
 	 */
-	if (tmpl_find_vp(&vp, request, state->rhs) < 0) {
-		RERROR("Can't find %s", state->rhs->name);
+	if (tmpl_find_vp(&vp, request, state->rhs.vpt) < 0) {
+		RERROR("Can't find %s", state->rhs.vpt->name);
 		return -1;
 	}
 
-	fr_assert(state->lhs_vp != NULL);
+	fr_assert(state->lhs.vp != NULL);
 
 	/*
 	 *	LHS is a leaf.  The RHS must be a leaf.
@@ -253,10 +259,10 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 	 *	@todo - or RHS is a list of boxes of the same data
 	 *	type.
 	 */
-	if (fr_type_is_leaf(state->lhs_vp->vp_type)) {
+	if (fr_type_is_leaf(state->lhs.vp->vp_type)) {
 		if (!fr_type_is_leaf(vp->vp_type)) {
 			REDEBUG("Cannot assign structural %s to leaf %s",
-				vp->da->name, state->lhs_vp->da->name);
+				vp->da->name, state->lhs.vp->da->name);
 			return -1;
 		}
 
@@ -264,7 +270,7 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 		goto leaf;
 	}
 
-	fr_assert(fr_type_is_structural(state->lhs_vp->vp_type));
+	fr_assert(fr_type_is_structural(state->lhs.vp->vp_type));
 
 	/*
 	 *	As a special operation, allow "list OP attr", which
@@ -288,9 +294,9 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 		 *	Forbid copying incompatible structs, TLVs, groups,
 		 *	etc.
 		 */
-		if (!fr_dict_attr_compatible(state->lhs_vp->da, vp->da)) {
+		if (!fr_dict_attr_compatible(state->lhs.vp->da, vp->da)) {
 			RERROR("DAs are incompatible (%s vs %s)",
-			       state->lhs_vp->da->name, vp->da->name);
+			       state->lhs.vp->da->name, vp->da->name);
 			return -1;
 		}
 
@@ -300,10 +306,10 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 	/*
 	 *	Apply structural thingies!
 	 */
-	RDEBUG2("%s %s %s", state->lhs->name, fr_tokens[map->op], state->rhs->name);
+	RDEBUG2("%s %s %s", state->lhs.vpt->name, fr_tokens[map->op], state->rhs.vpt->name);
 
 	if (fr_edit_list_apply_list_assignment(state->el,
-					       state->lhs_vp,
+					       state->lhs.vp,
 					       map->op,
 					       children) < 0) {
 		RPERROR("Failed performing list %s operation", fr_tokens[map->op]);
@@ -319,13 +325,13 @@ leaf:
 	 *	The leaf assignment also checks many
 	 *	of these, but not all of them.
 	 */
-	if (!tmpl_is_attr(state->lhs) || !state->lhs_vp ||
-	    !fr_type_is_leaf(state->lhs_vp->vp_type)) {
+	if (!tmpl_is_attr(state->lhs.vpt) || !state->lhs.vp ||
+	    !fr_type_is_leaf(state->lhs.vp->vp_type)) {
 		RERROR("Cannot assign data to list %s", map->lhs->name);
 		return -1;
 	}
 
-	RDEBUG2("%s %s %pV", state->lhs->name, fr_tokens[map->op], rhs_box);
+	RDEBUG2("%s %s %pV", state->lhs.vpt->name, fr_tokens[map->op], rhs_box);
 
 	/*
 	 *	The apply function also takes care of
@@ -335,7 +341,7 @@ leaf:
 	 *	the LHS and RHS.
 	 */
 	if (fr_edit_list_apply_pair_assignment(state->el,
-					       state->lhs_vp,
+					       state->lhs.vp,
 					       map->op,
 					       rhs_box) < 0) {
 		RPERROR("Failed performing %s operation", fr_tokens[map->op]);
@@ -372,10 +378,10 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 
 		switch (state->state) {
 		case UNLANG_EDIT_INIT:
-			fr_assert(fr_dlist_empty(&state->lhs_result));	/* Should have been consumed */
-			fr_assert(fr_dlist_empty(&state->rhs_result));	/* Should have been consumed */
+			fr_assert(fr_dlist_empty(&state->lhs.result));	/* Should have been consumed */
+			fr_assert(fr_dlist_empty(&state->rhs.result));	/* Should have been consumed */
 
-			rcode = template_realize(state, &state->lhs_result, request, map->lhs);
+			rcode = template_realize(state, &state->lhs.result, request, map->lhs);
 			if (rcode < 0) {
 			error:
 				fr_edit_list_abort(state->el);
@@ -397,15 +403,12 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 			}
 
 			state->state = UNLANG_EDIT_CHECK_LHS; /* data, attr, list */
-			state->lhs = map->lhs;
+			state->lhs.vpt = map->lhs;
 			goto check_lhs;
 
 		case UNLANG_EDIT_EXPANDED_LHS:
-			if (templatize_lhs(state, &state->lhs_free, &state->lhs_result,
-					   request) < 0) goto error;
+			if (templatize_lhs(state, &state->lhs, request) < 0) goto error;
 
-			fr_dlist_talloc_free(&state->lhs_result);
-			state->lhs = state->lhs_free;
 			state->state = UNLANG_EDIT_CHECK_LHS;
 			FALL_THROUGH;
 
@@ -422,14 +425,14 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 			 *	add the newly created attribute to the
 			 *	parent list.
 			 */
-			if (tmpl_find_vp(&state->lhs_vp, request, state->lhs) < 0) {
+			if (tmpl_find_vp(&state->lhs.vp, request, state->lhs.vpt) < 0) {
 				if (map->op == T_OP_EQ) goto next;
 
-				REDEBUG("Failed to find %s", state->lhs->name);
+				REDEBUG("Failed to find %s", state->lhs.vpt->name);
 				goto error;
 			}
 
-			rcode = template_realize(state, &state->rhs_result, request, map->rhs);
+			rcode = template_realize(state, &state->rhs.result, request, map->rhs);
 			if (rcode < 0) goto error;
 
 			if (rcode == 1) {
@@ -438,16 +441,12 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 			}
 
 			state->state = UNLANG_EDIT_CHECK_RHS;
-			state->rhs = map->rhs;
+			state->rhs.vpt = map->rhs;
 			goto check_rhs;
 
 		case UNLANG_EDIT_EXPANDED_RHS:
-			if (templatize_rhs(state, &state->rhs_free, &state->rhs_result,
-					   state->lhs_vp->vp_type, request,
-					   state->lhs_vp->data.enumv) < 0) goto error;
+			if (templatize_rhs(state, &state->rhs, state->lhs.vp, request) < 0) goto error;
 
-			fr_dlist_talloc_free(&state->rhs_result);
-			state->rhs = state->rhs_free;
 			state->state = UNLANG_EDIT_CHECK_RHS;
 			FALL_THROUGH;
 
@@ -455,11 +454,10 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 		check_rhs:
 			if (apply_edits(request, state, map) < 0) goto error;
 
-
 		next:
 			state->state = UNLANG_EDIT_INIT;
-			TALLOC_FREE(state->lhs_free);
-			state->lhs_parent = state->lhs_vp = NULL;
+			TALLOC_FREE(state->lhs.to_free);
+			state->lhs.vp = NULL;
 			break;
 		}
 
@@ -491,8 +489,9 @@ static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *
 	unlang_frame_state_edit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
 
 	fr_dcursor_init(&state->maps, &edit->maps);
-	fr_value_box_list_init(&state->lhs_result);
-	fr_value_box_list_init(&state->rhs_result);
+
+	fr_value_box_list_init(&state->lhs.result);
+	fr_value_box_list_init(&state->rhs.result);
 
 	/*
 	 *	The edit list creates a local pool which should
