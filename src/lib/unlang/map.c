@@ -49,9 +49,7 @@ typedef struct {
 	fr_dlist_head_t		vlm_head;			//!< Head of list of VP List Mod.
 
 	fr_value_box_list_t	lhs_result;			//!< Result of expanding the LHS
-	int			lhs_exec_status;		//!< status of program on LHS.
 	fr_value_box_list_t	rhs_result;			//!< Result of expanding the RHS.
-	int			rhs_exec_status;		//!< status of program on RHS.
 
 	unlang_update_state_t	state;				//!< What we're currently doing.
 } unlang_frame_state_update_t;

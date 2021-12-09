@@ -49,7 +49,6 @@ typedef struct {
 	fr_edit_list_t		*el;				//!< edit list
 
 	fr_value_box_list_t	lhs_result;			//!< Result of expanding the LHS
-	int			lhs_exec_status;		//!< status of program on LHS.
 	tmpl_t const   		*lhs;				//!< expanded LHS tmpl
 	tmpl_t			*lhs_free;			//!< expanded tmpl to free
 
@@ -59,7 +58,6 @@ typedef struct {
 	tmpl_t const   		*rhs;				//!< expanded RHS tmpl
 	tmpl_t			*rhs_free;			//!< expanded tmpl to free
 	fr_value_box_list_t	rhs_result;			//!< Result of expanding the RHS.
-	int			rhs_exec_status;		//!< status of program on RHS.
 
 	unlang_edit_state_t	state;				//!< What we're currently doing.
 } unlang_frame_state_edit_t;
