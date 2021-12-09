@@ -148,7 +148,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	default:
 		slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, attr, lhs_rules);
 		if (slen <= 0) {
-			cf_log_err(cp, "Failed parsing attribute reference");
+			cf_log_err(cp, "Failed parsing attribute reference %s - %s", attr, fr_strerror());
 			marker_subject = attr;
 			goto marker;
 		}
@@ -755,7 +755,8 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, map_t *parent, CON
 			 */
 			slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, cf_section_name1(subcs), &our_lhs_rules);
 			if (slen <= 0) {
-				cf_log_err(ci, "Failed parsing attribute reference");
+				cf_log_err(ci, "Failed parsing attribute reference for list %s - %s",
+					   cf_section_name1(subcs), fr_strerror());
 				talloc_free(map);
 				goto error; /* re-do "goto marker" stuff to print out spaces ? */
 			}
