@@ -1151,7 +1151,11 @@ static int command_show_home_servers(rad_listen_t *listener, int argc, char *arg
 
 	char buffer[256];
 
-	for (i = 0; (home = home_server_bynumber(i)) != NULL; i++) {
+	for (i = 0; i < home_server_max_number; i++) {
+
+		if ((home = home_server_bynumber(i)) == NULL)
+			continue;
+
 		/*
 		 *	Internal "virtual" home server.
 		 */

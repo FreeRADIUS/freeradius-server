@@ -100,7 +100,7 @@ static realm_config_t *realm_config = NULL;
 static rbtree_t	*home_servers_byaddr = NULL;
 static rbtree_t	*home_servers_byname = NULL;
 #ifdef WITH_STATS
-static int home_server_max_number = 0;
+int home_server_max_number = 0;
 static rbtree_t	*home_servers_bynumber = NULL;
 #endif
 
