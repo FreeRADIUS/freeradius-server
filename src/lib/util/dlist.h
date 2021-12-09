@@ -1052,8 +1052,14 @@ static inline void fr_dlist_sort(fr_dlist_head_t *list, fr_cmp_t cmp)
  */
 #define FR_DLIST_NEW_TYPE(_name, _list_type, _member_head, _entry_type, _member) \
 DIAG_OFF(unused-function) \
+	static inline	fr_dlist_head_t *fr_ ## _name ## _dlist_head(_list_type *list) \
+		{  return &list->_member_head; } \
+\
 	static inline	void fr_ ## _name ## _entry_init(_entry_type *entry) \
 		{                    fr_dlist_entry_init(&entry->_member); } \
+\
+	static inline	void fr_ ## _name ## _init(_list_type *list) \
+		{                          _fr_dlist_init(&list->_member_head, offsetof(_entry_type, _member), NULL); } \
 \
 	static inline	void fr_ ## _name ## _talloc_init(_list_type *list) \
 		{                          _fr_dlist_init(&list->_member_head, offsetof(_entry_type, _member), #_entry_type); } \
