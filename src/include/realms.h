@@ -204,6 +204,7 @@ CONF_SECTION	*home_server_cs_afrom_client(CONF_SECTION *client);
 home_server_t	*home_server_byname(char const *name, int type);
 #endif
 #ifdef WITH_STATS
+extern int home_server_max_number;
 home_server_t	*home_server_bynumber(int number);
 #endif
 home_pool_t	*home_pool_byname(char const *name, int type);
