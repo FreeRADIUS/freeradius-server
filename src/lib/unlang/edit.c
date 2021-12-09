@@ -79,8 +79,8 @@ static int templatize_lhs(TALLOC_CTX *ctx, edit_result_t *out, request_t *reques
 	}
 
 	/*
-	 *	Parse the LHS as an attribute reference.  It can't
-	 *	really be anything else.
+	 *	Parse the LHS as an attribute reference.  It can't be
+	 *	anything else.
 	 */
 	slen = tmpl_afrom_attr_str(ctx, NULL, &out->to_free, box->vb_strvalue,
 				   &(tmpl_rules_t){
@@ -102,18 +102,21 @@ static int templatize_lhs(TALLOC_CTX *ctx, edit_result_t *out, request_t *reques
 /*
  *  Convert a value-box list to a RHS #tmpl_t
  *
- *  This probably doesn't work for structural types.  If "type" is
- *  structural, we should parse the RHS as a set of VPs, and return
+ *  This doesn't work for structural types.  If "type" is structural,
+ *  the calling code should parse the RHS as a set of VPs, and return
  *  that.
  */
 static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *lhs, request_t *request)
 {
 	ssize_t slen;
+	bool is_string;
 	fr_value_box_t *box = fr_dlist_head(&out->result);
+
+	fr_assert(fr_type_is_leaf(lhs->vp_type));
 
 	/*
 	 *	There's only one box, and it's the correct type.  Just
-	 *	return that.
+	 *	return that.  This is the fast path.
 	 */
 	if ((lhs->vp_type != FR_TYPE_STRING) && (lhs->vp_type == box->type) && !fr_dlist_next(&out->result, box)) {
 		if (tmpl_afrom_value_box(ctx, &out->to_free, box, false) < 0) return -1;
@@ -121,7 +124,16 @@ static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *
 	}
 
 	/*
-	 *	Mash all of the results together as a string.
+	 *	If the first value box is NOT a string, then
+	 *	we're pretty darned sure that it's not an attribute
+	 *	reference.  In which case don't even bother trying to
+	 *	parse it as an attribute reference.
+	 */
+	is_string = (box->type == FR_TYPE_STRING);
+
+	/*
+	 *	Slow path: mash all of the results together as a
+	 *	string and then cast it to the correct data type.
 	 */
 	if (fr_value_box_list_concat_in_place(box, box, &out->result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 		RPEDEBUG("Right side expansion failed");
@@ -129,34 +141,27 @@ static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *
 	}
 
 	/*
-	 *	If we can parse it as a value, do that.  It should be
-	 *	rare that there's any conflict between enum names, IP
-	 *	address, numbers, and attribute names.  If there is a
-	 *	conflict, we want to choose the enum.
-	 *
-	 *	@todo - maybe check for leading '&', in which case we
-	 *	can force the string to be an attribute reference?
-	 *	And since enums and IP addresses don't start with '&',
-	 *	there's no conflict
+	 *	If the first box was of type string, AND the
+	 *	concatenated string has a leading '&', then it MIGHT
+	 *	be an attribute reference.
 	 */
-	if ((lhs->vp_type != FR_TYPE_STRING) &&
-	    (fr_value_box_cast_in_place(ctx, box, lhs->vp_type, lhs->data.enumv) == 0) &&
-	    (tmpl_afrom_value_box(ctx, &out->to_free, box, false) == 0)) {
-		goto done;
+	if (is_string && (box->length > 1) && (box->vb_strvalue[0] == '&')) {
+		slen = tmpl_afrom_attr_str(ctx, NULL, &out->to_free, box->vb_strvalue,
+					   &(tmpl_rules_t){
+						   .dict_def = request->dict,
+						   .prefix = TMPL_ATTR_REF_PREFIX_NO
+					   });
+		if (slen > 0) goto done;
 	}
 
 	/*
-	 *	Otherwise try to parse it as an attribute reference.
-	 *
-	 *	If it can't be parsed as an attribute reference, then
-	 *	we don't know what it is.
+	 *	The concatenated string is not an attribute reference.
+	 *	It MUST be parsed as a value of the input data type.
 	 */
-	slen = tmpl_afrom_attr_str(ctx, NULL, &out->to_free, box->vb_strvalue,
-				   &(tmpl_rules_t){
-					   .dict_def = request->dict,
-					   .prefix = TMPL_ATTR_REF_PREFIX_NO
-				   });
-	if (slen <= 0) return -1;
+	if ((fr_value_box_cast_in_place(ctx, box, lhs->vp_type, lhs->data.enumv) <= 0) ||
+	    (tmpl_afrom_value_box(ctx, &out->to_free, box, false) < 0)) {
+		return -1;
+	}
 
 done:
 	out->vpt = out->to_free;
