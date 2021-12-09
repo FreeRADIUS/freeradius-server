@@ -280,7 +280,7 @@ static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
 				list_head = &vp->vp_group;
 				_tmpl_cursor_pair_init(vp, list_head, ar, cc);
 				curr = fr_pair_list_head(list_head);
-				list = UNCONST(fr_dlist_head_t *, fr_pair_list_order(list_head));
+				list = UNCONST(fr_dlist_head_t *, &list_head->order);
 				continue;
 			}
 
