@@ -21,4 +21,6 @@ FreeRADIUS 3.2.0 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 
 	Bug fixes
 	* All bug fixes from v3.0.x are included in the v3.2.x release.
+	* Fix for incomplete home server list after deleting a home
+	  server via radmin.
 
