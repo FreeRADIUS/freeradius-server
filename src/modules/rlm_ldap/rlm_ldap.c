@@ -833,9 +833,9 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 		}
 
 		RINDENT();
-		for (map = fr_dlist_head(maps), i = 0;
+		for (map = fr_map_list_head(maps), i = 0;
 		     map != NULL;
-		     map = fr_dlist_next(maps, map), i++) {
+		     map = fr_map_list_next(maps, map), i++) {
 			int			ret;
 			fr_ldap_result_t	attr;
 
@@ -1418,7 +1418,7 @@ skip_edir:
 		}
 	}
 
-	if (!fr_dlist_empty(&inst->user_map) || inst->valuepair_attr) {
+	if (!fr_map_list_empty(&inst->user_map) || inst->valuepair_attr) {
 		RDEBUG2("Processing user attributes");
 		RINDENT();
 		if (fr_ldap_map_do(request, handle, inst->valuepair_attr,
