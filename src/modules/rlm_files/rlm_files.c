@@ -565,7 +565,7 @@ redo:
 					}
 				}
 
-				radius_pairmove(request, &request->reply_pairs, &tmp_list, true);
+				radius_pairmove(request, &request->reply_pairs, &tmp_list);
 			}
 		}
 

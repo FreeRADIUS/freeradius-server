@@ -934,7 +934,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 			 	RDEBUG2("&%pP", vp);
 			}
 			REXDENT();
-			radius_pairmove(request, &request->control_pairs, &check_tmp, true);
+			radius_pairmove(request, &request->control_pairs, &check_tmp);
 
 			fr_pair_list_free(&check_tmp);
 		}
@@ -972,7 +972,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 
 			log_request_pair_list(L_DBG_LVL_2, request, NULL, &reply_tmp, NULL);
 
-			radius_pairmove(request, &request->reply_pairs, &reply_tmp, true);
+			radius_pairmove(request, &request->reply_pairs, &reply_tmp);
 			fr_pair_list_free(&reply_tmp);
 		/*
 		 *	If there's no reply query configured, then we assume
@@ -1315,7 +1315,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 			RDEBUG2("&%pP", vp);
 		}
 		REXDENT();
-		radius_pairmove(request, &request->control_pairs, &check_tmp, true);
+		radius_pairmove(request, &request->control_pairs, &check_tmp);
 
 		rcode = RLM_MODULE_OK;
 		fr_pair_list_free(&check_tmp);
@@ -1350,7 +1350,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &reply_tmp, NULL);
 
-		radius_pairmove(request, &request->reply_pairs, &reply_tmp, true);
+		radius_pairmove(request, &request->reply_pairs, &reply_tmp);
 
 		rcode = RLM_MODULE_OK;
 		fr_pair_list_free(&reply_tmp);

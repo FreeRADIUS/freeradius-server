@@ -385,7 +385,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vp
 
 		fr_pair_append(&tmp_list, vp);
 	}
-	radius_pairmove(request, vps, &tmp_list, false);
+	radius_pairmove(request, vps, &tmp_list);
 }
 
 static inline int mruby_set_vps(request_t *request, mrb_state *mrb, mrb_value mruby_request,

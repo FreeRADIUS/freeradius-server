@@ -583,12 +583,6 @@ int paircmp(request_t *request,
 		if (check_item->op == T_OP_CMP_FALSE) return -1;
 
 		/*
-		 *	We've got to xlat the string before doing
-		 *	the comparison.
-		 */
-		xlat_eval_pair(request, check_item);
-
-		/*
 		 *	OK it is present now compare them.
 		 */
 		compare = paircmp_func(request, auth_item, request_list, check_item);

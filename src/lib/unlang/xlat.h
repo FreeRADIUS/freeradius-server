@@ -289,8 +289,6 @@ int		xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, request_t *request,
 
 int		xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_exp_t const *xlat);
 
-int		xlat_eval_pair(request_t *request, fr_pair_t *vp);
-
 bool		xlat_async_required(xlat_exp_t const *xlat);
 
 ssize_t		xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head,

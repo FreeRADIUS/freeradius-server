@@ -1647,55 +1647,6 @@ int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_e
 	return count;
 }
 
-/** Expands an attribute marked with fr_pair_mark_xlat
- *
- * Writes the new value to the vp.
- *
- * @param request Current request.
- * @param vp to expand.
- * @return On failure pair will still no longer be marked for xlat expansion.
- *	- 0 if successful.
- *	- -1 On xlat failure.
- *	- -2 On parse failure.
- */
-int xlat_eval_pair(request_t *request, fr_pair_t *vp)
-{
-	ssize_t slen;
-
-	char *expanded = NULL;
-	if (vp->type != VT_XLAT) return 0;
-
-	vp->type = VT_DATA;
-
-	slen = xlat_aeval(request, &expanded, request, vp->xlat, NULL, NULL);
-	talloc_const_free(vp->xlat);
-	vp->xlat = NULL;
-	if (slen < 0) {
-		return -1;
-	}
-
-	/*
-	 *	Parse the string into a new value.
-	 *
-	 *	If the fr_pair_t is being used in a regular expression
-	 *	then we just want to copy the new value in unmolested.
-	 */
-	if ((vp->op == T_OP_REG_EQ) || (vp->op == T_OP_REG_NE)) {
-		fr_pair_value_bstrdup_buffer(vp, expanded, vp->vp_tainted);
-		talloc_free(expanded);
-		return 0;
-	}
-
-	if (fr_pair_value_from_str(vp, expanded, strlen(expanded), &fr_value_unescape_double, true) < 0){
-		talloc_free(expanded);
-		return -2;
-	}
-
-	talloc_free(expanded);
-
-	return 0;
-}
-
 /** Walk over all xlat nodes (depth first) in a xlat expansion, calling a callback
  *
  * @param[in] exp	to evaluate.

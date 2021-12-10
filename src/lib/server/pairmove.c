@@ -42,7 +42,7 @@ RCSID("$Id$")
  *	only fr_pair_list_copy() those attributes that we're really going to
  *	use.
  */
-void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *from, bool do_xlat)
+void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *from)
 {
 	int		i, j, count, to_count, tailto;
 	fr_pair_t	*from_vp, *next_from, *to_vp, *next_to = NULL;
@@ -95,8 +95,6 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 		next_from = fr_pair_list_next(from, from_vp);
 
 		RDEBUG4("::: Examining %s", from_vp->da->name);
-
-		if (do_xlat) xlat_eval_pair(request, from_vp);
 
 		/*
 		 *	Attribute should be appended, OR the "to" list

@@ -353,7 +353,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, module_ctx_t const *mctx, request_t *re
 
 		fr_pair_append(&tmp_list, vp);
 	}
-	radius_pairmove(request, vps, &tmp_list, false);
+	radius_pairmove(request, vps, &tmp_list);
 }
 
 
