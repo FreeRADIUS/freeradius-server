@@ -63,16 +63,19 @@ typedef struct {
 	char const		*uri;			//!< URI of smtp server
 	char const		*template_dir;		//!< The directory that contains all email attachments
 	char const		*envelope_address;	//!< The address used to send the message
+
 	tmpl_t 			**sender_address;	//!< The address used to generate the FROM: header
 	tmpl_t 			**attachments;		//!< The attachments to be set
 	tmpl_t 			**recipient_addrs;	//!< Comma separated list of emails. Overrides elements in to, cc, bcc
 	tmpl_t 			**to_addrs;		//!< Comma separated list of emails to be listed in TO:
 	tmpl_t 			**cc_addrs;		//!< Comma separated list of emails to be listed in CC:
 	tmpl_t 			**bcc_addrs;		//!< Comma separated list of emails not to be listed
+
 	fr_time_delta_t 	timeout;		//!< Timeout for connection and server response
 	fr_curl_tls_t		tls;			//!< Used for handled all tls specific curl components
+
 	char const		*name;			//!< Auth-Type value for this module instance.
-	fr_dict_enum_value_t		*auth_type;
+	fr_dict_enum_value_t	*auth_type;
 	fr_map_list_t		header_maps;		//!< Attribute map used to process header elements
 	bool 			set_date;
 } rlm_smtp_t;
@@ -85,14 +88,16 @@ typedef struct {
  *	Holds the context for parsing the email elements
  */
 typedef struct {
-	request_t			*request;
+	request_t		*request;
 	fr_curl_io_request_t	*randle;
 	fr_dcursor_t		cursor;
 	fr_dcursor_t		body_cursor;
 	fr_dbuff_t		vp_in;
+
 	struct curl_slist	*recipients;
 	struct curl_slist	*header;
 	struct curl_slist 	*body_header;
+
 	fr_time_t 		time;
 	char 			time_str[60];
 	curl_mime		*mime;
@@ -201,15 +206,15 @@ static int da_to_slist(fr_mail_ctx_t *uctx, struct curl_slist **out, const fr_di
 
 	/* Iterate over the VP and add the string value to the curl_slist */
 	vp = fr_pair_dcursor_by_da_init(&uctx->cursor, &uctx->request->request_pairs, dict_attr);
+
 	while (vp) {
 		*out = curl_slist_append(*out, vp->vp_strvalue);
-		elems_added++;
 		vp = fr_dcursor_next(&uctx->cursor);
+		elems_added++;
 	}
-	/* Check that the elements were found */
-	if (elems_added == 0) {
-		RDEBUG3("There were no %s elements found", dict_attr->name);
-	}
+
+	if (!elems_added) RDEBUG3("There were no %s elements found", dict_attr->name);
+
 	return elems_added;
 }
 
@@ -225,12 +230,14 @@ static int tmpl_attr_to_slist(fr_mail_ctx_t *uctx, struct curl_slist **out, tmpl
 
 	/* Iterate over the VP and add the string value to the curl_slist */
 	vp = tmpl_dcursor_init(NULL, NULL, &cc, &uctx->cursor, request, tmpl);
+
 	while (vp) {
-		count += 1;
 		*out = curl_slist_append(*out, vp->vp_strvalue);
 		vp = fr_dcursor_next(&uctx->cursor);
+		count++;
 	}
-	/* Return the number of elements that were found */
+
+	/* Return the number of elements which were found */
 	tmpl_dursor_clear(&cc);
 	return count;
 }
@@ -238,7 +245,7 @@ static int tmpl_attr_to_slist(fr_mail_ctx_t *uctx, struct curl_slist **out, tmpl
 /*
  * 	Parse through an array of tmpl * elements and add them to an slist
  */
-static int tmpl_arr_to_slist (rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struct curl_slist **out, tmpl_t ** const tmpl)
+static int tmpl_arr_to_slist(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struct curl_slist **out, tmpl_t ** const tmpl)
 {
 	request_t 	*request = uctx->request;
 	int 		count = 0;
@@ -248,14 +255,16 @@ static int tmpl_arr_to_slist (rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struct 
 		if (current->type == TMPL_TYPE_ATTR) {
 			/* If the element contains a reference to an attribute, parse every value it references */
 			count += tmpl_attr_to_slist(uctx, out, current);
+
 		} else {
 			/* If the element is just a normal string, add it's name to the slist*/
-			if( tmpl_aexpand(t, &expanded_str, request, current, NULL, NULL) < 0) {
+			if (tmpl_aexpand(t, &expanded_str, request, current, NULL, NULL) < 0) {
 				RDEBUG2("Could not expand the element %s", current->name);
 				break;
 			}
+
 			*out = curl_slist_append(*out, expanded_str);
-			count += 1;
+			count++;
 		}
 	}
 
@@ -265,7 +274,7 @@ static int tmpl_arr_to_slist (rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struct 
 /*
  * 	Adds every element associated with a tmpl_attr to an sbuff
  */
-static ssize_t tmpl_attr_to_sbuff (fr_mail_ctx_t *uctx, fr_sbuff_t *out, tmpl_t const *vpt, char const *delimeter)
+static ssize_t tmpl_attr_to_sbuff(fr_mail_ctx_t *uctx, fr_sbuff_t *out, tmpl_t const *vpt, char const *delimiter)
 {
 	fr_pair_t		*vp;
 	tmpl_dcursor_ctx_t       cc;
@@ -276,10 +285,11 @@ static ssize_t tmpl_attr_to_sbuff (fr_mail_ctx_t *uctx, fr_sbuff_t *out, tmpl_t 
 	vp = tmpl_dcursor_init(NULL, NULL, &cc, &uctx->cursor, uctx->request, vpt);
 	while (vp) {
 		copied += fr_sbuff_in_bstrncpy(out, vp->vp_strvalue, vp->vp_length);
+
 		vp = fr_dcursor_next(&uctx->cursor);
 		/* If there will be more values, add a comma and whitespace */
 		if (vp) {
-			copied += fr_sbuff_in_strcpy(out, delimeter);
+			copied += fr_sbuff_in_strcpy(out, delimiter);
 		}
 	}
 	tmpl_dursor_clear(&cc);
@@ -289,10 +299,10 @@ static ssize_t tmpl_attr_to_sbuff (fr_mail_ctx_t *uctx, fr_sbuff_t *out, tmpl_t 
 /*
  * 	Adds every value in a dict_attr to a curl_slist as a comma separated list with a preposition
  */
-static int tmpl_arr_to_header (rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struct curl_slist **out, tmpl_t ** const tmpl,
-		const char *preposition)
+static int tmpl_arr_to_header(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struct curl_slist **out, tmpl_t ** const tmpl,
+			      const char *preposition)
 {
-	request_t			*request = uctx->request;
+	request_t		*request = uctx->request;
 	fr_sbuff_t 		sbuff;
 	fr_sbuff_uctx_talloc_t 	sbuff_ctx;
 	ssize_t 		out_len = 0;
@@ -308,10 +318,12 @@ static int tmpl_arr_to_header (rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struct
 		if (out_len > 0) {
 			out_len += fr_sbuff_in_strcpy(&sbuff, ", ");
 		}
+
 		/* Add the tmpl to the header sbuff */
 		if (vpt->type == TMPL_TYPE_ATTR) {
 			/* If the element contains a reference to an attribute, parse every value it references */
 			out_len += tmpl_attr_to_sbuff(uctx, &sbuff, vpt, ", ");
+
 		} else {
 			/* If the element is just a normal string, add it's name to the slist*/
 			if( tmpl_aexpand(t, &expanded_str, request, vpt, NULL, NULL) < 0) {
@@ -326,11 +338,10 @@ static int tmpl_arr_to_header (rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struct
 	if (out_len > 0) {
 		*out = curl_slist_append(*out, sbuff.buff);
 		talloc_free(sbuff.buff);
-		/* one element was successfully added */
 		return 1;
 	}
+
 	talloc_free(sbuff.buff);
-	/* The element failed to be added */
 	RDEBUG2("Failed to add the element to the header");
 	return 0;
 }
@@ -338,11 +349,11 @@ static int tmpl_arr_to_header (rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struct
 /*
  * 	Takes a string value and adds it as a file path to upload as an attachment
  */
-static int str_to_attachments (fr_mail_ctx_t *uctx, curl_mime *mime, char const * str, size_t len,
-		fr_sbuff_t *path_buffer, fr_sbuff_marker_t *m)
+static int str_to_attachments(fr_mail_ctx_t *uctx, curl_mime *mime, char const * str, size_t len,
+			      fr_sbuff_t *path_buffer, fr_sbuff_marker_t *m)
 {
 	int 			attachments_set = 0;
-	request_t			*request = uctx->request;
+	request_t		*request = uctx->request;
 	curl_mimepart		*part;
 
 	/* Move to the end of the template directory filepath */
@@ -351,46 +362,51 @@ static int str_to_attachments (fr_mail_ctx_t *uctx, curl_mime *mime, char const 
 	/* Check to see if the file attachment is valid, skip it if not */
 	RDEBUG2("Trying to set attachment: %s", str);
 
-	if(strncmp(str, "/", 1) == 0) {
+	if (strncmp(str, "/", 1) == 0) {
 		RDEBUG2("File attachments cannot be an absolute path");
 		return 0;
 	}
-	if(strncmp(str, "..", 2) == 0) {
+
+	if (strncmp(str, "..", 2) == 0) {
 		RDEBUG2("Cannot access values outside of template_directory");
 		return 0;
 	}
 
 	/* Copy the filename into the buffer */
 	fr_sbuff_in_bstrncpy(path_buffer, str, len);
+
 	/* Add the file attachment as a mime encoded part */
 	attachments_set++;
 	part = curl_mime_addpart(mime);
 	curl_mime_encoder(part, "base64");
 	curl_mime_filedata(part, path_buffer->buff);
+
 	return 1;
 }
 
 /*
  * 	Parse a tmpl attr into a file attachment path and add it as a mime part
  */
-static int tmpl_attr_to_attachment (fr_mail_ctx_t *uctx, curl_mime *mime, const tmpl_t * tmpl,
-		fr_sbuff_t *path_buffer, fr_sbuff_marker_t *m)
+static int tmpl_attr_to_attachment(fr_mail_ctx_t *uctx, curl_mime *mime, const tmpl_t * tmpl,
+				   fr_sbuff_t *path_buffer, fr_sbuff_marker_t *m)
 {
 	fr_pair_t 		*vp;
-	request_t			*request = uctx->request;
-	tmpl_dcursor_ctx_t       cc;
+	request_t		*request = uctx->request;
+	tmpl_dcursor_ctx_t	cc;
 	int 			attachments_set = 0;
 
 	/* Check for any file attachments */
-	for( vp = tmpl_dcursor_init(NULL, NULL, &cc, &uctx->cursor, request, tmpl);
-	vp;
-       	vp = fr_dcursor_next(&uctx->cursor)){
-		if(vp->vp_tainted) {
-			RDEBUG2("Skipping a tainted attachment");
+	for (vp = tmpl_dcursor_init(NULL, NULL, &cc, &uctx->cursor, request, tmpl);
+	     vp;
+	     vp = fr_dcursor_next(&uctx->cursor)) {
+		if (vp->vp_tainted) {
+			RDEBUG2("Skipping tainted attachment");
 			continue;
 		}
+
 		attachments_set += str_to_attachments(uctx, mime, vp->vp_strvalue, vp->vp_length, path_buffer, m);
 	}
+
 	tmpl_dursor_clear(&cc);
 	return attachments_set;
 }
@@ -399,23 +415,25 @@ static int tmpl_attr_to_attachment (fr_mail_ctx_t *uctx, curl_mime *mime, const 
  * 	Adds every element in a tmpl** to an attachment path, then adds it to the email
  */
 static int tmpl_arr_to_attachments (rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, curl_mime *mime, tmpl_t ** const tmpl,
-		fr_sbuff_t *path_buffer, fr_sbuff_marker_t *m)
+				    fr_sbuff_t *path_buffer, fr_sbuff_marker_t *m)
 {
-	request_t		*request = uctx->request;
+	request_t	*request = uctx->request;
 	ssize_t 	count = 0;
 	ssize_t 	expanded_str_len;
 	char 		*expanded_str;
 
 	talloc_foreach(tmpl, current) {
 		/* write the elements to the sbuff as a comma separated list */
-		if(current->type == TMPL_TYPE_ATTR) {
+		if (current->type == TMPL_TYPE_ATTR) {
 			count += tmpl_attr_to_attachment(uctx, mime, current, path_buffer, m);
+
 		} else {
 			expanded_str_len = tmpl_aexpand(t, &expanded_str, request, current, NULL, NULL);
-			if(expanded_str_len < 0) {
+			if (expanded_str_len < 0) {
 				RDEBUG2("Could not expand the element %s", current->name);
 				continue;
 			}
+
 			count += str_to_attachments(uctx, mime, expanded_str, expanded_str_len, path_buffer, m);
 		}
 	}
@@ -426,7 +444,7 @@ static int tmpl_arr_to_attachments (rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, c
 /*
  * 	Returns the proper envolope address
  */
-static const char * get_envelope_address(rlm_smtp_t const *inst)
+static const char *get_envelope_address(rlm_smtp_t const *inst)
 {
 	/* If the envelope address is set in the config, use that to send the email */
 	if(inst->envelope_address) return inst->envelope_address;
@@ -441,7 +459,7 @@ static const char * get_envelope_address(rlm_smtp_t const *inst)
 /*
  * 	Generate the FROM: header
  */
-static int generate_from_header (rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struct curl_slist **out, rlm_smtp_t const *inst)
+static int generate_from_header(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struct curl_slist **out, rlm_smtp_t const *inst)
 {
 	char const 			*from = "FROM: ";
 	fr_sbuff_t 			sbuff;
@@ -452,8 +470,10 @@ static int generate_from_header (rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, stru
 		tmpl_arr_to_header(t, uctx, &uctx->header, inst->sender_address, from);
 		return 0;
 	}
+
 	/* Initialize the buffer for the recipients. Used for TO */
 	fr_sbuff_init_talloc(uctx, &sbuff, &sbuff_ctx, 256, SIZE_MAX);
+
 	/* Add the preposition for the header element */
 	fr_sbuff_in_strcpy(&sbuff, from);
 
@@ -463,6 +483,7 @@ static int generate_from_header (rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, stru
 
 	/* Free the buffer used to generate the FROM header */
 	talloc_free(sbuff.buff);
+
 	return 0;
 }
 
@@ -471,27 +492,37 @@ static int generate_from_header (rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, stru
  */
 static int recipients_source(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, rlm_smtp_t const *inst)
 {
-	request_t			*request = uctx->request;
+	request_t		*request = uctx->request;
 	int 			recipients_set = 0;
 
-	/* Try to load the recipients into the envelope recipients if they are set */
+	/*
+	  *	Try to load the recipients into the envelope recipients if they are set
+	  */
 	if(inst->recipient_addrs) recipients_set += tmpl_arr_to_slist(t, uctx, &uctx->recipients, inst->recipient_addrs);
 
-	/* If any recipients were found, ignore to cc and bcc, return the amount added. */
-	if(recipients_set > 0) {
+	/*
+	 *	If any recipients were found, ignore to cc and bcc, return the amount added.
+	 **/
+	if (recipients_set) {
 		RDEBUG2("Recipients were generated from \"SMTP-Recipients\" and/or recipients in the config");
 		return recipients_set;
 	}
 	RDEBUG2("No addresses were found in SMTP-Recipient");
 
-	/* Try to load the to: addresses into the envelope recipients if they are set */
-	if(inst->to_addrs) recipients_set += tmpl_arr_to_slist(t, uctx, &uctx->recipients, inst->to_addrs);
+	/*
+	 *	Try to load the to: addresses into the envelope recipients if they are set
+	 */
+	if (inst->to_addrs) recipients_set += tmpl_arr_to_slist(t, uctx, &uctx->recipients, inst->to_addrs);
 
-	/* Try to load the cc: addresses into the envelope recipients if they are set */
-	if(inst->cc_addrs) recipients_set += tmpl_arr_to_slist(t, uctx, &uctx->recipients, inst->cc_addrs);
+	/*
+	 *	Try to load the cc: addresses into the envelope recipients if they are set
+	 */
+	if (inst->cc_addrs) recipients_set += tmpl_arr_to_slist(t, uctx, &uctx->recipients, inst->cc_addrs);
 
-	/* Try to load the cc: addresses into the envelope recipients if they are set */
-	if(inst->bcc_addrs) recipients_set += tmpl_arr_to_slist(t, uctx, &uctx->recipients, inst->bcc_addrs);
+	/*
+	 *	Try to load the cc: addresses into the envelope recipients if they are set
+	 */
+	if (inst->bcc_addrs) recipients_set += tmpl_arr_to_slist(t, uctx, &uctx->recipients, inst->bcc_addrs);
 
 	RDEBUG2("%d recipients set", recipients_set);
 	return recipients_set;
@@ -512,30 +543,40 @@ static int header_source(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, rlm_smtp_t c
 
 	char 				*expanded_rhs;
 
-	/* Initialize the sbuff for writing the config elements as header attributes */
+	/*
+	 *	Initialize the sbuff for writing the config elements as header attributes
+	 */
 	fr_sbuff_init_talloc(uctx, &conf_buffer, &conf_ctx, 256, SIZE_MAX);
 	conf_map = fr_map_list_head(&inst->header_maps);
-	/* Load in all of the header elements supplies in the config */
+
+	/*
+	 *	Load in all of the header elements supplied in the config
+	 */
 	while (conf_map->rhs && conf_map->lhs) {
 		/* Do any string expansion required in the rhs */
 		if( tmpl_aexpand(t, &expanded_rhs, request, conf_map->rhs, NULL, NULL) < 0) {
 			RDEBUG2("Skipping: %s's could not parse: %s", conf_map->lhs->name, conf_map->rhs->name);
 			goto next;
 		}
+
 		/* Format the conf item to be a valid SMTP header */
 		fr_sbuff_in_bstrncpy(&conf_buffer, conf_map->lhs->name, conf_map->lhs->len);
 		fr_sbuff_in_strcpy(&conf_buffer, ": ");
 		fr_sbuff_in_bstrncpy(&conf_buffer, expanded_rhs, strlen(expanded_rhs));
+
 		/* Add the header to the curl slist */
 		uctx->header = curl_slist_append(uctx->header, conf_buffer.buff);
 		talloc_free(conf_buffer.buff);
-		/* Check if there are more values to parse */
+
 	next:
+		/* Check if there are more values to parse */
+
 		if (!fr_map_list_next(&inst->header_maps, conf_map)) break;
 		/* reinitialize the buffer and move to the next value */
 		fr_sbuff_init_talloc(uctx, &conf_buffer, &conf_ctx, 256, SIZE_MAX);
 		conf_map = fr_map_list_next(&inst->header_maps, conf_map);
 	}
+
 	/* Add the FROM: line */
 	generate_from_header(t, uctx, &uctx->header, inst);
 
@@ -549,17 +590,18 @@ static int header_source(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, rlm_smtp_t c
 	da_to_slist(uctx, &uctx->header, attr_smtp_header);
 
 	/* If no header elements could be found, there is an error */
-	if ( uctx->header == NULL) {
+	if (!uctx->header) {
 		RDEBUG2("Header elements could not be added");
  		return -1;
 	}
 
 	/* Set the DATE: to the time that the request was received */
-	if (inst->set_date == true){
+	if (inst->set_date) {
 		time_out = FR_SBUFF_OUT(uctx->time_str, sizeof(uctx->time_str));
 		fr_time_strftime_local(&time_out, fr_time(), "DATE: %a, %d %b %Y %T %z, (%Z) \r\n");
 		uctx->header = curl_slist_append(uctx->header, uctx->time_str);
 	}
+
 	RDEBUG2("Finished generating the curl_slist for the header elements");
 	return 0;
 }
@@ -571,7 +613,7 @@ static size_t body_source(char *ptr, size_t size, size_t nmemb, void *mail_ctx)
 {
 	fr_mail_ctx_t 		*uctx = mail_ctx;
 	fr_dbuff_t		out;
-	request_t			*request = uctx->request;
+	request_t		*request = uctx->request;
 	fr_pair_t 		*vp;
 
 	fr_dbuff_init(&out, (uint8_t *)ptr, (size * nmemb));  /* Wrap the output buffer so we can track our position easily */
@@ -581,17 +623,26 @@ static size_t body_source(char *ptr, size_t size, size_t nmemb, void *mail_ctx)
 		RDEBUG2("vp could not be found for the body element");
 		return 0;
 	}
-	/* Copy the vp into the email. If it cannot all be loaded, return the amount of memory that was loaded and get called again */
+
+	/*
+	 *	Copy the vp into the email. If it cannot all be
+	 *	loaded, return the amount of memory that was loaded
+	 *	and get called again.
+	 */
 	if (fr_dbuff_in_memcpy_partial(&out, &uctx->vp_in, SIZE_MAX) < fr_dbuff_remaining(&uctx->vp_in)) {
 		RDEBUG2("%zu bytes used (partial copy)", fr_dbuff_used(&out));
 		return fr_dbuff_used(&out);
 	}
-	/* Once this value pair is fully copied, prepare for the next element */
+
+	/*
+	 *	Once this value pair is fully copied, prepare for the next element
+	 */
 	vp = fr_dcursor_next(&uctx->body_cursor);
 	if (vp) {
 		fr_dbuff_init(&uctx->vp_in, (uint8_t const *)vp->vp_strvalue, vp->vp_length);
 
 	}
+
 	RDEBUG2("%zu bytes used (full copy)", fr_dbuff_used(&out));
 	return fr_dbuff_used(&out);
 }
@@ -599,7 +650,7 @@ static size_t body_source(char *ptr, size_t size, size_t nmemb, void *mail_ctx)
 /*
  * 	Initialize all the body elements to be uploaded later
  */
-static int body_init (fr_mail_ctx_t *uctx, curl_mime *mime)
+static int body_init(fr_mail_ctx_t *uctx, curl_mime *mime)
 {
 	fr_pair_t 	*vp;
 	request_t		*request = uctx->request;
@@ -617,11 +668,13 @@ static int body_init (fr_mail_ctx_t *uctx, curl_mime *mime)
 	fr_dbuff_init(&uctx->vp_in, (uint8_t const *)vp->vp_strvalue, vp->vp_length);
 
 	/* Add a mime part to mime_body for every body element */
-	while(vp){
+	while (vp) {
 		body_elements++;
 		part = curl_mime_addpart(mime_body);
+
 		curl_mime_encoder(part, "8bit");
 		curl_mime_data_cb(part, vp->vp_length, body_source, NULL, NULL, uctx);
+
 		vp = fr_dcursor_next(&uctx->body_cursor);
 	}
 	RDEBUG2("initialized %d body element part(s)", body_elements);
@@ -629,7 +682,9 @@ static int body_init (fr_mail_ctx_t *uctx, curl_mime *mime)
 	/* Re-initialize the cursor for use when uploading the data to curl */
 	fr_pair_dcursor_by_da_init(&uctx->body_cursor, &uctx->request->request_pairs, attr_smtp_body);
 
-	/* Add body_mime as a subpart of the mime request with a local content-disposition*/
+	/*
+	 *	Add body_mime as a subpart of the mime request with a local content-disposition
+	 */
 	part = curl_mime_addpart(mime);
 	curl_mime_subparts(part, mime_body);
 	curl_mime_type(part, "multipart/mixed" );
@@ -644,7 +699,7 @@ static int body_init (fr_mail_ctx_t *uctx, curl_mime *mime)
  */
 static int attachments_source(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, curl_mime *mime, rlm_smtp_t const *inst)
 {
-	request_t			*request = uctx->request;
+	request_t		*request = uctx->request;
 	int 			attachments_set = 0;
 	fr_sbuff_uctx_talloc_t 	sbuff_ctx;
 	fr_sbuff_t 		path_buffer;
@@ -658,6 +713,7 @@ static int attachments_source(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, curl_mi
 
 	/* Write the initial path to the buffer */
 	fr_sbuff_in_bstrcpy_buffer(&path_buffer, inst->template_dir);
+
 	/* Make sure the template_directory path ends in a "/" */
 	if (inst->template_dir[talloc_array_length(inst->template_dir)-2] != '/'){
 		RDEBUG2("Adding / to end of template_dir");
@@ -752,18 +808,20 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	smtp_body = fr_pair_find_by_da_idx(&request->request_pairs, attr_smtp_body, 0);
 
 	/* Make sure all of the essential email components are present and possible*/
-	if(!smtp_body) {
+	if (!smtp_body) {
 		RDEBUG2("Attribute \"smtp-body\" is required for smtp");
 		RETURN_MODULE_INVALID;
 	}
+
 	if (!inst->sender_address && !inst->envelope_address) {
 		RDEBUG2("At least one of \"sender_address\" or \"envelope_address\" in the config, or \"SMTP-Sender-Address\" in the request is needed");
+	error:
 		RETURN_MODULE_INVALID;
 	}
 
 	/* allocate the handle and set the curl options */
 	randle = fr_curl_io_request_alloc(request);
-	if (!randle){
+	if (!randle) {
 		RDEBUG2("A handle could not be allocated for the request");
 		RETURN_MODULE_FAIL;
 	}
@@ -788,10 +846,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS, CURLPROTO_SMTP | CURLPROTO_SMTPS);
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_TIMEOUT_MS, fr_time_delta_to_msec(inst->timeout));
-	if(RDEBUG_ENABLED3) {
-		FR_CURL_REQUEST_SET_OPTION(CURLOPT_VERBOSE, 1L);
-	}
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_UPLOAD, 1L);
+
+	if(RDEBUG_ENABLED3) FR_CURL_REQUEST_SET_OPTION(CURLOPT_VERBOSE, 1L);
 
 	/* Set the username and pasword if they have been provided */
 	if (username && username->vp_length != 0 && password) {
@@ -802,7 +859,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	/* Send the envelope address */
 	envelope_address = get_envelope_address(inst);
-	if(envelope_address == NULL) {
+	if (!envelope_address) {
 		RDEBUG2("The envelope address must be set");
 		goto error;
 	}
@@ -810,7 +867,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	/* Set the recipients */
 	mail_ctx->recipients = NULL; /* Prepare the recipients curl_slist to be initialized */
-       	if(recipients_source(t, mail_ctx, inst) <= 0) {
+       	if (recipients_source(t, mail_ctx, inst) <= 0) {
 		RDEBUG2("At least one recipient is required to send an email");
 		goto error;
 	}
@@ -818,12 +875,16 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	/* Set the header elements */
 	mail_ctx->header = NULL; /* Prepare the header curl_slist to be initialized */
-       	if(header_source(t, mail_ctx, inst) != 0) {
+       	if (header_source(t, mail_ctx, inst) != 0) {
 		RDEBUG2("The header slist could not be generated");
 		goto error;
 	}
-	/* CURLOPT_HTTPHEADER is the option that they use for the header in the curl example
-	 * https://curl.haxx.se/libcurl/c/smtp-mime.html */
+
+	/*
+	 *	CURLOPT_HTTPHEADER is the option that they use for the header in the curl example
+	 *
+	 *	https://curl.haxx.se/libcurl/c/smtp-mime.html
+	 */
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_HTTPHEADER, mail_ctx->header);
 
 	/* Initialize the body elements to be uploaded */
@@ -833,7 +894,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	}
 
 	/* Initialize the attachments if there are any*/
-	if(attachments_source(t, mail_ctx, mail_ctx->mime, inst) == 0){
+	if (attachments_source(t, mail_ctx, mail_ctx->mime, inst) == 0){
 		RDEBUG2("No files were attached to the email");
 	}
 
@@ -846,8 +907,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_MODULE_INVALID;
 
 	return unlang_module_yield(request, mod_authorize_result, NULL, mail_ctx);
-error:
-	RETURN_MODULE_INVALID;
 }
 
 /*
@@ -904,7 +963,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 	fr_curl_io_request_t    *randle;
 
 	randle = fr_curl_io_request_alloc(request);
-	if (!randle){
+	if (!randle) {
 	error:
 		RETURN_MODULE_FAIL;
 	}
@@ -988,9 +1047,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	fr_map_list_init(&inst->header_maps);
 	header = cf_section_find(conf, "header", NULL);
-	if (!header) {
-		return 0;
-	}
+	if (!header) return 0;
 
 	/*
 	 *	Make sure the users don't screw up too badly.
@@ -1002,6 +1059,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			.allow_unresolved = true,
 			.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
 		};
+
 		if (map_afrom_cs(inst, &inst->header_maps, header,
 				 &parse_rules, &parse_rules, smtp_verify, NULL, MAX_ATTRMAP) < 0) {
 			return -1;
@@ -1032,6 +1090,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
 	rlm_smtp_thread_t    		*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
+
 	talloc_free(t->mhandle);
 	return 0;
 }
