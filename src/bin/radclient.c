@@ -453,8 +453,6 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			     vp;
 			     vp = fr_pair_list_next(&request->filter, vp)) {
 			     again:
-				fr_assert(vp->type != VT_XLAT);
-
 				if (vp->da == attr_packet_type) {
 					fr_pair_t *next;
 					next = fr_pair_list_next(&request->filter, vp);	/* so we don't break the filter */
@@ -478,8 +476,6 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		for (vp = fr_pair_list_head(&request->request_pairs);
 		     vp;
 		     vp = fr_pair_list_next(&request->request_pairs, vp)) {
-			fr_assert(vp->type != VT_XLAT);
-
 			/*
 			 *	Allow it to set the packet type in
 			 *	the attributes read from the file.

@@ -226,8 +226,6 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client
 	for (vp = fr_pair_dcursor_init(&cursor, &request->request_pairs);
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
-		fr_assert(vp->type != VT_XLAT);
-
 		if (vp->da == attr_packet_type) {
 			request->packet->code = vp->vp_uint32;
 		} else if (vp->da == attr_packet_dst_port) {

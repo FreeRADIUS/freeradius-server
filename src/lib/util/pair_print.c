@@ -43,15 +43,6 @@ ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_toke
 
 	PAIR_VERIFY(vp);
 
-	/*
-	 *	Legacy crap that needs to be removed
-	 */
-	if (vp->type == VT_XLAT) {
-		char const *quote_str = fr_table_str_by_value(fr_token_quotes_table, quote, "");
-
-		return fr_sbuff_in_sprintf(out, "%s%s%s", quote_str, vp->xlat, quote_str);
-	}
-
 	switch (vp->da->type) {
 	/*
 	 *	For structural types descend down

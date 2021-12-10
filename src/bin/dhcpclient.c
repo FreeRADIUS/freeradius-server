@@ -181,8 +181,6 @@ static int request_init(fr_radius_packet_t **out, fr_pair_list_t *packet_vps, ch
 	for (vp = fr_pair_list_head(packet_vps);
 	     vp;
 	     vp = fr_pair_list_next(packet_vps, vp)) {
-		fr_assert(vp->type != VT_XLAT);
-
 		/*
 		 *	Allow to set packet type using Message-Type
 		 */

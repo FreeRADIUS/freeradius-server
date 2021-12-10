@@ -420,16 +420,6 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 
 
 	/*
-	 *	If it's an xlat, copy the raw string and return
-	 *	early, so we don't pre-expand or otherwise mangle
-	 *	the fr_pair_t.
-	 */
-	if (vp->type == VT_XLAT) {
-		n->xlat = talloc_typed_strdup(n, vp->xlat);
-		return n;
-	}
-
-	/*
 	 *	Groups are special.
 	 */
 	switch (n->da->type) {

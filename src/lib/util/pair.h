@@ -55,8 +55,6 @@ typedef enum value_type {
 	VT_SET,							//!< fr_pair_t has children.
 	VT_LIST,						//!< fr_pair_t has multiple values.
 	VT_DATA,						//!< fr_pair_t has a single value.
-	VT_XLAT							//!< valuepair value must be xlat expanded when it's
-								//!< added to fr_pair_t tree.
 } value_type_t;
 
 typedef struct value_pair_s fr_pair_t;
