@@ -1392,7 +1392,7 @@ int fr_pair_cmp(fr_pair_t const *a, fr_pair_t const *b)
 
 			if (!fr_cond_assert(a->vp_type == FR_TYPE_STRING)) return -1;
 
-			slen = regex_compile(NULL, &preg, a->xlat, talloc_array_length(a->xlat) - 1,
+			slen = regex_compile(NULL, &preg, a->vp_strvalue, talloc_array_length(a->vp_strvalue) - 1,
 					     NULL, false, true);
 			if (slen <= 0) {
 				fr_strerror_printf_push("Error at offset %zu compiling regex for %s", -slen,
