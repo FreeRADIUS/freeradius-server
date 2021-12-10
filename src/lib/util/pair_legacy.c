@@ -100,12 +100,10 @@ int fr_pair_mark_xlat(fr_pair_t *vp, char const *value)
  * @param dict to user for partial resolution.
  * @param attribute name to parse.
  * @param value to parse (must be a hex string).
- * @param op to assign to new valuepair.
  * @return new #fr_pair_t or NULL on error.
  */
 static fr_pair_t *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
-					char const *attribute, char const *value,
-					fr_token_t op)
+					char const *attribute, char const *value)
 {
 	fr_pair_t		*vp;
 	fr_dict_attr_t		*n;
@@ -139,7 +137,7 @@ static fr_pair_t *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
 
 	if (fr_pair_value_from_str(vp, value, strlen(value), &fr_value_unescape_double, false) < 0) goto error;
 
-	vp->op = (op == 0) ? T_OP_EQ : op;
+	vp->op = T_OP_EQ;
 	return vp;
 }
 
@@ -155,11 +153,10 @@ static fr_pair_t *fr_pair_make_unknown(TALLOC_CTX *ctx, fr_dict_t const *dict,
  * @param[in] vps	list where the attribute will be added (optional)
  * @param[in] attribute	name.
  * @param[in] value	attribute value (may be NULL if value will be set later).
- * @param[in] op	to assign to new #fr_pair_t.
  * @return a new #fr_pair_t.
  */
 fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *vps,
-			char const *attribute, char const *value, fr_token_t op)
+			char const *attribute, char const *value)
 {
 	fr_dict_attr_t const	*da;
 	fr_pair_t		*vp;
@@ -171,7 +168,7 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
 	 */
 	da = fr_dict_attr_search_by_qualified_oid(NULL, dict, attrname, true, true);
 	if (!da) {
-		vp = fr_pair_make_unknown(ctx, dict, attrname, value, op);
+		vp = fr_pair_make_unknown(ctx, dict, attrname, value);
 		if (!vp) return NULL;
 
 		if (vps) fr_pair_append(vps, vp);
@@ -185,60 +182,7 @@ fr_pair_t *fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *
 
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) return NULL;
-	vp->op = (op == 0) ? T_OP_EQ : op;
-
-	switch (vp->op) {
-	case T_OP_CMP_TRUE:
-	case T_OP_CMP_FALSE:
-		fr_pair_value_clear(vp);
-		value = NULL;	/* ignore it! */
-		break;
-
-		/*
-		 *	Regular expression comparison of integer attributes
-		 *	does a STRING comparison of the names of their
-		 *	integer attributes.
-		 */
-	case T_OP_REG_EQ:	/* =~ */
-	case T_OP_REG_NE:	/* !~ */
-	{
-#ifndef HAVE_REGEX
-		fr_strerror_const("Regular expressions are not supported");
-		return NULL;
-#else
-		ssize_t slen;
-		regex_t *preg;
-
-		/*
-		 *	Someone else will fill in the value.
-		 */
-		if (!value) break;
-
-		talloc_free(vp);
-
-		slen = regex_compile(ctx, &preg, value, strlen(value), NULL, false, true);
-		if (slen <= 0) {
-			fr_strerror_printf_push("Error at offset %zu compiling regex for %s", -slen, attribute);
-			return NULL;
-		}
-		talloc_free(preg);
-
-		vp = fr_pair_afrom_da(ctx, da);
-		if (!vp) return NULL;
-		vp->op = op;
-
-		if (fr_pair_mark_xlat(vp, value) < 0) {
-			talloc_free(vp);
-			return NULL;
-		}
-
-		value = NULL;	/* ignore it */
-		break;
-#endif
-	}
-	default:
-		break;
-	}
+	vp->op = T_OP_EQ;
 
 	/*
 	 *	We probably want to fix fr_pair_value_from_str to accept

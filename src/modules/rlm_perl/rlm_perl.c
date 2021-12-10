@@ -738,7 +738,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, request_t *request, fr_pair_l
  *     Value Pair Format
  *
  */
-static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, char *key, SV *sv, fr_token_t op,
+static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, char *key, SV *sv,
 		      const char *hash_name, const char *list_name)
 {
 	char		*val;
@@ -748,11 +748,10 @@ static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, 
 	if (!SvOK(sv)) return -1;
 
 	val = SvPV(sv, len);
-	vp = fr_pair_make(ctx, request->dict, vps, key, NULL, op);
+	vp = fr_pair_make(ctx, request->dict, vps, key, NULL);
 	if (!vp) {
 	fail:
-		REDEBUG("Failed to create pair %s.%s %s %s", list_name, key,
-			fr_table_str_by_value(fr_tokens_table, op, "<INVALID>"), val);
+		REDEBUG("Failed to create pair %s.%s = %s", list_name, key, val);
 		return -1;
 	}
 
@@ -771,8 +770,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, 
 
 	PAIR_VERIFY(vp);
 
-	RDEBUG2("&%s.%s %s $%s{'%s'} -> '%s'", list_name, key, fr_table_str_by_value(fr_tokens_table, op, "<INVALID>"),
-	        hash_name, key, val);
+	RDEBUG2("&%s.%s = $%s{'%s'} -> '%s'", list_name, key, hash_name, key, val);
 	return 0;
 }
 
@@ -795,9 +793,9 @@ static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pai
 			len = av_len(av);
 			for (j = 0; j <= len; j++) {
 				av_sv = av_fetch(av, j, 0);
-				ret = pairadd_sv(ctx, request, vps, key, *av_sv, T_OP_ADD_EQ, hash_name, list_name) + ret;
+				ret = pairadd_sv(ctx, request, vps, key, *av_sv, hash_name, list_name) + ret;
 			}
-		} else ret = pairadd_sv(ctx, request, vps, key, res_sv, T_OP_EQ, hash_name, list_name) + ret;
+		} else ret = pairadd_sv(ctx, request, vps, key, res_sv, hash_name, list_name) + ret;
 	}
 
 	if (!fr_pair_list_empty(vps)) PAIR_LIST_VERIFY(vps);

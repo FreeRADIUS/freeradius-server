@@ -92,7 +92,7 @@ static void test_fr_pair_make(void)
 	fr_pair_list_init(&list);
 
 	TEST_CASE("Creating 'vp' using fr_pair_make()");
-	TEST_CHECK((vp = fr_pair_make(ctx, test_dict, &list, "Test-String-0", test_string, T_DOUBLE_QUOTED_STRING)) != NULL);
+	TEST_CHECK((vp = fr_pair_make(ctx, test_dict, &list, "Test-String-0", test_string)) != NULL);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);

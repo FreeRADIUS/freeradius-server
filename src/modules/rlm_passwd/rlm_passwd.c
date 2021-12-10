@@ -524,7 +524,7 @@ static void result_add(TALLOC_CTX *ctx, rlm_passwd_t const *inst, request_t *req
 		    (i != inst->key_field) && inst->pwd_fmt->listflag[i] == when) {
 			if (!inst->ignore_empty || pw->field[i][0] != 0 ) { /* if value in key/value pair is not empty */
 				vp = fr_pair_make(ctx, request->dict,
-						  vps, inst->pwd_fmt->field[i], pw->field[i], T_OP_EQ);
+						  vps, inst->pwd_fmt->field[i], pw->field[i]);
 				if (vp) {
 					RDEBUG2("Added %s: '%s' to %s ", inst->pwd_fmt->field[i], pw->field[i], listname);
 				}

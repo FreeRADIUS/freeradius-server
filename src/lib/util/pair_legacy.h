@@ -35,7 +35,7 @@ extern "C" {
 #endif
 
 fr_pair_t	*fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict,
-			      fr_pair_list_t *vps, char const *attribute, char const *value, fr_token_t op);
+			      fr_pair_list_t *vps, char const *attribute, char const *value);
 
 int 		fr_pair_mark_xlat(fr_pair_t *vp, char const *value);
 
