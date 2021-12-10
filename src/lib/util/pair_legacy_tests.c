@@ -103,29 +103,6 @@ static void test_fr_pair_make(void)
 	fr_pair_list_free(&list);
 }
 
-static void test_fr_pair_mark_xlat(void)
-{
-	fr_pair_t  *vp;
-
-	TEST_CASE("Find 'Test-String-0'");
-	TEST_CHECK((vp = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_string, 0)) != NULL);
-
-	TEST_CASE("Validating PAIR_VERIFY()");
-	PAIR_VERIFY(vp);
-
-	TEST_CASE("Marking 'vp' using fr_pair_mark_xlat()");
-	TEST_CHECK(fr_pair_mark_xlat(vp, "Hello %{Test-Uint32-0}") == 0);
-
-	TEST_CASE("Validating PAIR_VERIFY()");
-	PAIR_VERIFY(vp);
-
-	TEST_CASE("Check (vp->xlat == 'Hello %{Test-Uint32-0}')");
-	TEST_CHECK(vp && strcmp(vp->xlat, "Hello %{Test-Uint32-0}") == 0);
-	TEST_CHECK(vp && vp->type == VT_XLAT);
-
-	talloc_free(vp);
-}
-
 static void test_fr_pair_list_afrom_str(void)
 {
 	fr_pair_t      *vp;
@@ -260,7 +237,6 @@ TEST_LIST = {
 	 *	Legacy calls
 	 */
 	{ "fr_pair_make",            test_fr_pair_make },
-	{ "fr_pair_mark_xlat",       test_fr_pair_mark_xlat },
 	{ "fr_pair_list_afrom_str",  test_fr_pair_list_afrom_str },
 	{ "fr_pair_list_afrom_file", test_fr_pair_list_afrom_file },
 	{ "fr_pair_list_move_op",       test_fr_pair_list_move_op },

@@ -55,41 +55,6 @@ static fr_sbuff_term_t const 	bareword_terminals =
 					L("||"),		/* Logical operator */
 				);
 
-/** Mark a valuepair for xlat expansion
- *
- * Copies xlat source (unprocessed) string to valuepair value, and sets value type.
- *
- * @param vp to mark for expansion.
- * @param value to expand.
- * @return
- *	- 0 if marking succeeded.
- *	- -1 if #fr_pair_t already had a value, or OOM.
- */
-int fr_pair_mark_xlat(fr_pair_t *vp, char const *value)
-{
-	char *raw;
-
-	/*
-	 *	valuepair should not already have a value.
-	 */
-	if (vp->type != VT_NONE) {
-		fr_strerror_const("Pair already has a value");
-		return -1;
-	}
-
-	raw = talloc_typed_strdup(vp, value);
-	if (!raw) {
-		fr_strerror_const("Out of memory");
-		return -1;
-	}
-
-	vp->type = VT_XLAT;
-	vp->xlat = raw;
-	vp->vp_length = 0;
-
-	return 0;
-}
-
 /** Create a valuepair from an ASCII attribute and value
  *
  * Where the attribute name is in the form:
@@ -222,7 +187,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 	fr_pair_list_t		tmp_list;
 	fr_pair_t		*vp = NULL;
 	fr_pair_t		*my_relative_vp;
-	char const		*p, *q, *next;
+	char const		*p, *next;
 	fr_token_t		quote, last_token = T_INVALID;
 	fr_pair_t_RAW		raw;
 	fr_dict_attr_t const	*internal = NULL;
@@ -401,22 +366,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			}
 
 			switch (quote) {
-				/*
-				 *	Perhaps do xlat's
-				 */
 			case T_DOUBLE_QUOTED_STRING:
-				/*
-				 *	Only report as double quoted if it contained valid
-				 *	a valid xlat expansion.
-				 */
-				q = strchr(raw.r_opand, '%');
-				if (q && (q[1] == '{')) {
-					raw.quote = quote;
-				} else {
-					raw.quote = T_SINGLE_QUOTED_STRING;
-				}
-				break;
-
 			case T_SINGLE_QUOTED_STRING:
 			case T_BACK_QUOTED_STRING:
 			case T_BARE_WORD:
@@ -449,18 +399,10 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 				 *	ignore it.
 				 */
 				break;
+			}
 
-				/*
-				 *	fr_pair_raw_from_str() only returns this when
-				 *	the input looks like it needs to be xlat'd.
-				 */
-			} if (raw.quote == T_DOUBLE_QUOTED_STRING) {
-				if (fr_pair_mark_xlat(vp, raw.r_opand) < 0) {
-					talloc_free(vp);
-					goto error;
-				}
-			} else if (fr_pair_value_from_str(vp, raw.r_opand, strlen(raw.r_opand),
-							  fr_value_unescape_by_quote[quote], false) < 0) {
+			if (fr_pair_value_from_str(vp, raw.r_opand, strlen(raw.r_opand),
+						   fr_value_unescape_by_quote[quote], false) < 0) {
 				talloc_free(vp);
 				goto error;
 			}
