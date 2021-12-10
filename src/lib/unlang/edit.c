@@ -51,16 +51,15 @@ typedef struct {
  *
  */
 typedef struct {
-	fr_dcursor_t		maps;				//!< Cursor of maps to evaluate.
-
 	fr_edit_list_t		*el;				//!< edit list
 
-	edit_result_t		lhs;				//!< LHS of things to do
-	edit_result_t		rhs;				//!< RHS of things to do
-
 	unlang_edit_state_t	state;				//!< What we're currently doing.
-} unlang_frame_state_edit_t;
+	fr_map_list_t const	*map_head;
+	map_t const		*map;				//!< the map to evaluate
 
+	edit_result_t		lhs;				//!< LHS child entries
+	edit_result_t		rhs;				//!< RHS child entries
+} unlang_frame_state_edit_t;
 
 /*
  *  Convert a value-box list to a LHS #tmpl_t
@@ -221,7 +220,7 @@ static int template_realize(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_
  *
  *  which is an implicit sum over all RHS "Baz" attributes.
  */
-static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map_t *map)
+static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map_t const *map)
 {
 	fr_pair_t *vp, *vp_to_free = NULL;
 	fr_pair_list_t list, *children;
@@ -370,15 +369,15 @@ leaf:
 static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_edit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
-	map_t				*map;
+	map_t const    			*map;
 	int				rcode;
 
 	/*
 	 *	Iterate over the maps, expanding the LHS and RHS.
 	 */
-	for (map = fr_dcursor_current(&state->maps);
-	     map;
-	     map = fr_dcursor_next(&state->maps)) {
+	for (map = state->map;
+	     map != NULL;
+	     map = state->map = fr_dlist_next(state->map_head, map)) {
 	     	repeatable_set(frame);	/* Call us again when done */
 
 		switch (state->state) {
@@ -493,8 +492,6 @@ static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *
 	unlang_edit_t			*edit = unlang_generic_to_edit(frame->instruction);
 	unlang_frame_state_edit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
 
-	fr_dcursor_init(&state->maps, &edit->maps);
-
 	fr_value_box_list_init(&state->lhs.result);
 	fr_value_box_list_init(&state->rhs.result);
 
@@ -503,6 +500,9 @@ static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *
 	 *	generally be large enough for most edits.
 	 */
 	MEM(state->el = fr_edit_list_alloc(state, fr_dlist_num_elements(&edit->maps)));
+
+	state->map_head = &edit->maps;
+	state->map = fr_dlist_head(state->map_head);
 
 	/*
 	 *	Call process_edit to do all of the work.
