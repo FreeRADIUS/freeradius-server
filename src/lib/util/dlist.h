@@ -1130,6 +1130,9 @@ DIAG_OFF(unused-function) \
 	static inline	void fr_ ## _name ## _talloc_free(_list_type *list) \
 		{                    fr_dlist_talloc_free(&list->_member_head); } \
 \
+	static inline	void fr_ ## _name ## _talloc_reverse_free(_list_type *list) \
+		{                    fr_dlist_talloc_reverse_free(&list->_member_head); } \
+\
 	static inline	unsigned int fr_ ## _name ## _num_elements(_list_type const *list) \
 		{ return                     fr_dlist_num_elements(&list->_member_head); } \
 \
