@@ -2030,7 +2030,6 @@ static int rs_build_dict_list(fr_dict_attr_t const **out, size_t len, char *list
 
 static int rs_build_filter(fr_pair_list_t *out, char const *filter)
 {
-	fr_pair_t *vp;
 	fr_token_t code;
 
 	code = fr_pair_list_afrom_str(conf, dict_radius, filter, strlen(filter), out);
@@ -2042,23 +2041,6 @@ static int rs_build_filter(fr_pair_list_t *out, char const *filter)
 	if (fr_pair_list_empty(out)) {
 		ERROR("Empty RADIUS filter '%s'", filter);
 		return -1;
-	}
-
-	for (vp = fr_pair_list_head(out);
-	     vp;
-	     vp = fr_pair_list_next(out, vp)) {
-		/*
-		 *	Xlat expansions are not supported. Convert xlat to value box (if possible).
-		 */
-		if (vp->type == VT_XLAT) {
-			if (fr_value_box_from_str(vp, &vp->data, vp->da->type, NULL,
-						  vp->xlat, strlen(vp->xlat),
-						  NULL, false) < 0) {
-				fr_perror("radsniff");
-				return -1;
-			}
-			vp->type = VT_DATA;
-		}
 	}
 
 	/*

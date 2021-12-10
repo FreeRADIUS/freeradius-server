@@ -181,22 +181,7 @@ static int request_init(fr_radius_packet_t **out, fr_pair_list_t *packet_vps, ch
 	for (vp = fr_pair_list_head(packet_vps);
 	     vp;
 	     vp = fr_pair_list_next(packet_vps, vp)) {
-
-		/*
-		 *	Xlat expansions are not supported. Convert xlat to value box (if possible).
-		 */
-		if (vp->type == VT_XLAT) {
-			if (fr_value_box_from_str(vp, &vp->data,
-						  vp->da->type, NULL,
-						  vp->xlat, strlen(vp->xlat),
-						  NULL, false) < 0) {
-				fr_perror("dhcpclient");
-				fr_radius_packet_free(&packet);
-				if (fp && (fp != stdin)) fclose(fp);
-				return -1;
-			}
-			vp->type = VT_DATA;
-		}
+		fr_assert(vp->type != VT_XLAT);
 
 		/*
 		 *	Allow to set packet type using Message-Type

@@ -453,19 +453,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			     vp;
 			     vp = fr_pair_list_next(&request->filter, vp)) {
 			     again:
-				/*
-				 *	Xlat expansions are not supported. Convert xlat to value box (if possible).
-				 */
-				if (vp->type == VT_XLAT) {
-					if (fr_value_box_from_str(vp, &vp->data,
-								  vp->da->type, NULL,
-								  vp->xlat, strlen(vp->xlat),
-								  NULL, false) < 0) {
-						fr_perror("radclient");
-						goto error;
-					}
-					vp->type = VT_DATA;
-				}
+				fr_assert(vp->type != VT_XLAT);
 
 				if (vp->da == attr_packet_type) {
 					fr_pair_t *next;
@@ -490,18 +478,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		for (vp = fr_pair_list_head(&request->request_pairs);
 		     vp;
 		     vp = fr_pair_list_next(&request->request_pairs, vp)) {
-			/*
-			 *	Xlat expansions are not supported. Convert xlat to value box (if possible).
-			 */
-			if (vp->type == VT_XLAT) {
-				if (fr_value_box_from_str(vp, &vp->data, vp->da->type, NULL,
-							  vp->xlat, strlen(vp->xlat),
-							  NULL, false) < 0) {
-					fr_perror("radclient");
-					goto error;
-				}
-				vp->type = VT_DATA;
-			}
+			fr_assert(vp->type != VT_XLAT);
 
 			/*
 			 *	Allow it to set the packet type in
