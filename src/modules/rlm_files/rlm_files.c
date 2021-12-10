@@ -152,7 +152,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 		 *	and probably ':=' for server
 		 *	configuration items.
 		 */
-		while ((map = fr_dlist_next(&entry->check, map))) {
+		while ((map = fr_map_list_next(&entry->check, map))) {
 			if (!tmpl_is_attr(map->lhs)) {
 				ERROR("%s[%d] Left side of check item %s is not an attribute",
 				      entry->filename, entry->lineno, map->lhs->name);
@@ -193,7 +193,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 		 *	worth doing.
 		 */
 		map = NULL;
-		while ((map = fr_dlist_next(&entry->reply, map))) {
+		while ((map = fr_map_list_next(&entry->reply, map))) {
 			if (!tmpl_is_attr(map->lhs)) {
 				ERROR("%s[%d] Left side of reply item %s is not an attribute",
 				      entry->filename, entry->lineno, map->lhs->name);
@@ -477,7 +477,7 @@ redo:
 		/*
 		 *	Realize the map to a list of VPs
 		 */
-		while ((map = fr_dlist_next(&pl->check, map))) {
+		while ((map = fr_map_list_next(&pl->check, map))) {
 			fr_pair_list_t tmp_list;
 
 			/*
@@ -529,9 +529,9 @@ redo:
 		fr_pair_list_free(&list);
 
 		/* ctx may be reply */
-		if (!fr_dlist_empty(&pl->reply)) {
+		if (!fr_map_list_empty(&pl->reply)) {
 			map = NULL;
-			while ((map = fr_dlist_next(&pl->reply, map))) {
+			while ((map = fr_map_list_next(&pl->reply, map))) {
 				fr_pair_list_t tmp_list;
 				fr_pair_list_init(&tmp_list);
 				if (map->op == T_OP_CMP_FALSE) continue;

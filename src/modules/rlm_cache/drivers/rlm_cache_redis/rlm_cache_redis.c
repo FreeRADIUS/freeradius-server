@@ -220,7 +220,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 
 		c->created = tmpl_value(fr_map_list_head(&head)->rhs)->vb_date;
 
-		map = fr_dlist_pop_head(&head);
+		map = fr_map_list_pop_head(&head);
 		talloc_free(map);
 	}
 
@@ -232,13 +232,13 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 
 		c->expires = tmpl_value(fr_map_list_head(&head)->rhs)->vb_date;
 
-		map = fr_dlist_pop_head(&head);
+		map = fr_map_list_pop_head(&head);
 		talloc_free(map);
 	}
 
 	c->key = talloc_memdup(c, key, key_len);
 	c->key_len = key_len;
-	fr_dlist_move(&c->maps, &head);
+	fr_map_list_move(&c->maps, &head);
 	*out = c;
 
 	return CACHE_OK;
@@ -306,7 +306,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	fr_value_box_init(&expires_value.data.literal, FR_TYPE_DATE, NULL, true);
 	tmpl_value(&expires_value)->vb_date = c->expires;
 
-	cnt = c->maps.num_elements + 2;
+	cnt = fr_map_list_num_elements(&c->maps) + 2;
 
 	/*
 	 *	The majority of serialized entries should be under 1k.
@@ -342,7 +342,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	}
 	argv_p += 3;
 	argv_len_p += 3;
-	while ((map = fr_dlist_next(&c->maps, map))) {
+	while ((map = fr_map_list_next(&c->maps, map))) {
 		if (fr_redis_tuple_from_map(pool, argv_p, argv_len_p, map) < 0) {
 			REDEBUG("Failed encoding map as Redis K/V pair");
 			talloc_free(pool);

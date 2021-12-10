@@ -425,7 +425,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, fr_map_list_t *out, request_t *reques
 	}
 	MAP_VERIFY(map);
 
-	fr_dlist_insert_tail(out, map);
+	fr_map_list_insert_tail(out, map);
 
 	return 0;
 }

@@ -653,4 +653,3 @@ int fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
 
 	return result;		/* 0 is OK, !0 is !OK, just like memcmp */
 }
-

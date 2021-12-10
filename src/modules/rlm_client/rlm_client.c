@@ -177,7 +177,7 @@ static rlm_rcode_t map_proc_client(UNUSED void *mod_inst, UNUSED void *proc_inst
 	uctx.cs = client->cs;
 
 	RINDENT();
-	while ((map = fr_dlist_next(maps, map))) {
+	while ((map = fr_map_list_next(maps, map))) {
 		char	*field = NULL;
 
 		if (tmpl_aexpand(request, &field, request, map->rhs, NULL, NULL) < 0) {

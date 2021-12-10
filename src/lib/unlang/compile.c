@@ -591,7 +591,7 @@ static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_
 	/*
 	 *	Sanity check sublists.
 	 */
-	if (!fr_dlist_empty(&map->child)) {
+	if (!fr_map_list_empty(&map->child)) {
 		fr_dict_attr_t const *da;
 
 		if (!tmpl_is_attr(map->lhs)) {
@@ -611,7 +611,7 @@ static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_
 			return false;
 		}
 
-		return pass2_fixup_map(fr_dlist_head(&map->child), rules, da);
+		return pass2_fixup_map(fr_map_list_head(&map->child), rules, da);
 	}
 
 	return true;
@@ -627,7 +627,7 @@ static bool pass2_fixup_update(unlang_group_t *g, tmpl_rules_t const *rules)
 
 	RULES_VERIFY(rules);
 
-	while ((map = fr_dlist_next(&gext->map, map))) {
+	while ((map = fr_map_list_next(&gext->map, map))) {
 		/*
 		 *	Mostly fixup the map, but maybe leave the RHS
 		 *	unresolved.
@@ -660,7 +660,7 @@ static bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules)
 	 *	the RHS as a reference to a json string, SQL column
 	 *	name, etc.
 	 */
-	while ((map = fr_dlist_next(&gext->map, map))) {
+	while ((map = fr_map_list_next(&gext->map, map))) {
 		if (!pass2_fixup_map(map, rules, NULL)) return false;
 	}
 
@@ -709,7 +709,7 @@ static void unlang_dump(unlang_t *instruction, int depth)
 			g = unlang_generic_to_group(c);
 			gext = unlang_group_to_map(g);
 			map = NULL;
-			while ((map = fr_dlist_next(&gext->map, map))) {
+			while ((map = fr_map_list_next(&gext->map, map))) {
 				map_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map);
 				DEBUG("%.*s%s", depth + 1, unlang_spaces, buffer);
 			}
@@ -724,7 +724,7 @@ static void unlang_dump(unlang_t *instruction, int depth)
 
 			edit = unlang_generic_to_edit(c);
 			map = NULL;
-			while ((map = fr_dlist_next(&edit->maps, map))) {
+			while ((map = fr_map_list_next(&edit->maps, map))) {
 				map_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map);
 				DEBUG("%.*s%s", depth + 1, unlang_spaces, buffer);
 			}
@@ -1369,7 +1369,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	fr_map_list_init(&gext->map);
 	rcode = map_afrom_cs(gext, &gext->map, cs, &t_rules, &t_rules, unlang_fixup_map, NULL, 256);
 	if (rcode < 0) return NULL; /* message already printed */
-	if (fr_dlist_empty(&gext->map)) {
+	if (fr_map_list_empty(&gext->map)) {
 		cf_log_err(cs, "'map' sections cannot be empty");
 		goto error;
 	}
@@ -1441,7 +1441,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	fr_map_list_init(&gext->map);
 	rcode = map_afrom_cs(gext, &gext->map, cs, &t_rules, &t_rules, unlang_fixup_update, NULL, 128);
 	if (rcode < 0) return NULL; /* message already printed */
-	if (fr_dlist_empty(&gext->map)) {
+	if (fr_map_list_empty(&gext->map)) {
 		cf_log_err(cs, "'update' sections cannot be empty");
 	error:
 		talloc_free(g);
@@ -1500,7 +1500,7 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	fr_map_list_init(&gext->map);
 	rcode = map_afrom_cs(gext, &gext->map, cs, &t_rules, &t_rules, unlang_fixup_filter, NULL, 128);
 	if (rcode < 0) return NULL; /* message already printed */
-	if (fr_dlist_empty(&gext->map)) {
+	if (fr_map_list_empty(&gext->map)) {
 		cf_log_err(cs, "'filter' sections cannot be empty");
 		return NULL;
 	}
@@ -1714,7 +1714,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 	 */
 //	if (unlang_fixup_update(map, NULL) < 0) goto fail;
 
-	fr_dlist_insert_tail(&edit->maps, map);
+	fr_map_list_insert_tail(&edit->maps, map);
 
 	*prev = c;
 	return out;
@@ -1784,7 +1784,7 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	 */
 	if (unlang_fixup_update(map, NULL) < 0) goto fail;
 
-	fr_dlist_insert_tail(&edit->maps, map);
+	fr_map_list_insert_tail(&edit->maps, map);
 
 	*prev = c;
 	return out;

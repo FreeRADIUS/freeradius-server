@@ -624,7 +624,7 @@ check_for_child:
 	 *	caller will have to check for this!
 	 */
 	if (is_child && parent) {
-		fr_dlist_insert_tail(&parent->child, map);
+		fr_map_list_insert_tail(&parent->child, map);
 	}
 
 	if (parent_p) *parent_p = new_parent;
@@ -718,7 +718,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, map_t *parent, CON
 			 *	Free in reverse as successive entries have their
 			 *	prececessors as talloc parent contexts
 			 */
-			fr_dlist_talloc_reverse_free(out);
+			fr_map_list_talloc_reverse_free(out);
 			return -1;
 		}
 
@@ -806,11 +806,11 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, map_t *parent, CON
 			 */
 			if (_map_afrom_cs(map, &child_list, map, cf_item_to_section(ci),
 					 &our_lhs_rules, rhs_rules, validate, uctx, max) < 0) {
-				fr_dlist_talloc_free(&child_list);
+				fr_map_list_talloc_free(&child_list);
 				talloc_free(map);
 				goto error;
 			}
-			fr_dlist_move(&map->child, &child_list);
+			fr_map_list_move(&map->child, &child_list);
 
 			our_lhs_rules.disallow_qualifiers = qualifiers;
 			MAP_VERIFY(map);
@@ -840,7 +840,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, map_t *parent, CON
 
 	next:
 		parent_ctx = map;
-		fr_dlist_insert_tail(out, map);
+		fr_map_list_insert_tail(out, map);
 	}
 
 	return 0;
@@ -998,17 +998,6 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 	return 0;
 }
 
-/** Sort a doubly linked list of #map_t using merge sort
- *
- * @param[in,out] list of #map_t to sort.
- * @param[in] cmp to sort with
- */
-void map_sort(fr_map_list_t *list, fr_cmp_t cmp)
-{
-	fr_dlist_sort(list, cmp);
-
-}
-
 /** Process map which has exec as a src
  *
  * Evaluate maps which specify exec as a src. This may be used by various sorts of update sections, and so
@@ -1161,9 +1150,9 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		MEM(n = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 		n->op = map->op;
 
-		for (child = fr_dlist_next(&map->child, NULL);
+		for (child = fr_map_list_next(&map->child, NULL);
 		     child != NULL;
-		     child = fr_dlist_next(&map->child, child)) {
+		     child = fr_map_list_next(&map->child, child)) {
 			fr_pair_list_t list;
 
 			/*
@@ -1958,7 +1947,7 @@ ssize_t map_print(fr_sbuff_t *out, map_t const *map)
 	 *	If there's no child and no RHS then the
 	 *	map was invalid.
 	 */
-	if (fr_dlist_empty(&map->child) && !fr_cond_assert(map->rhs != NULL)) {
+	if (fr_map_list_empty(&map->child) && !fr_cond_assert(map->rhs != NULL)) {
 		fr_sbuff_terminate(out);
 		return 0;
 	}
