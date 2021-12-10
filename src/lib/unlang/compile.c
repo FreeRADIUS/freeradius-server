@@ -586,6 +586,18 @@ static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_
 				return false;
 			}
 		}
+
+		/*
+		 *	If the LHS is structural, then that limits
+		 *	what the RHS can be.
+		 */
+		if (tmpl_is_list(map->lhs) ||
+		    (tmpl_is_attr(map->lhs) && fr_type_is_structural(tmpl_da(map->lhs)->type))) {
+			if (!tmpl_is_list(map->rhs) && !tmpl_is_attr(map->rhs)) {
+				cf_log_err(map->ci, "Cannot assign xlat / data / exec to list or structural type");
+				return false;
+			}
+		}
 	}
 
 	/*

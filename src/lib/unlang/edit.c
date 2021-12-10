@@ -111,7 +111,10 @@ static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *
 	bool is_string;
 	fr_value_box_t *box = fr_dlist_head(&out->result);
 
-	fr_assert(fr_type_is_leaf(lhs->vp_type));
+	if (!fr_type_is_leaf(lhs->vp_type)) {
+		REDEBUG("RHS is not a leaf");
+		return -1;
+	}
 
 	/*
 	 *	There's only one box, and it's the correct type.  Just
