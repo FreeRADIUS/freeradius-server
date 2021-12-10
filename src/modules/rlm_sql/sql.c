@@ -117,7 +117,6 @@ static int sql_pair_afrom_row(TALLOC_CTX *ctx, request_t *request, fr_pair_list_
 	fr_pair_t		*vp;
 	char const		*ptr, *value;
 	char			buf[FR_MAX_STRING_LEN];
-	char			do_xlat = 0;
 	fr_dict_attr_t const	*da;
 	fr_token_t		token, op = T_EOL;
 	fr_pair_list_t		*my_list;
@@ -174,15 +173,9 @@ static int sql_pair_afrom_row(TALLOC_CTX *ctx, request_t *request, fr_pair_list_
 		token = gettoken(&value, buf, sizeof(buf), false);
 		switch (token) {
 		/*
-		 *	Mark the pair to be allocated later.
-		 */
-		case T_BACK_QUOTED_STRING:
-			do_xlat = 1;
-			FALL_THROUGH;
-
-		/*
 		 *	Take the unquoted string.
 		 */
+		case T_BACK_QUOTED_STRING:
 		case T_SINGLE_QUOTED_STRING:
 		case T_DOUBLE_QUOTED_STRING:
 			value = buf;
@@ -243,15 +236,7 @@ static int sql_pair_afrom_row(TALLOC_CTX *ctx, request_t *request, fr_pair_list_
 	MEM(vp = fr_pair_afrom_da(my_ctx, da));
 	vp->op = op;
 
-	if (do_xlat) {
-		if (fr_pair_mark_xlat(vp, value) < 0) {
-			RPEDEBUG("Error marking pair for xlat");
-
-			talloc_free(vp);
-			return -1;
-		}
-
-	} else if ((vp->da->type == FR_TYPE_TLV) && !*value) {
+	if ((vp->da->type == FR_TYPE_TLV) && !*value) {
 		/*
 		 *	Allow empty values for TLVs: we just create the value.
 		 *
