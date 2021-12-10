@@ -665,10 +665,19 @@ int		fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t 
 /*
  *	directory.c - Get directory capabilities from the remote server
  */
+#define LDAP_DIRECTORY_ATTRS { "vendorname", \
+			       "vendorversion", \
+			       "isGlobalCatalogReady", \
+			       "objectClass", \
+			       "orcldirectoryversion", \
+			       NULL }
+
 int		fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 					       LDAPMessage *result, char const *name);
 
 int		fr_ldap_trunk_directory_alloc_async(TALLOC_CTX *ctx, fr_ldap_thread_trunk_t *ttrunk);
+
+int		fr_ldap_conn_directory_alloc_async(fr_ldap_connection_t *ldap_conn);
 
 /*
  *	edir.c - Edirectory integrations

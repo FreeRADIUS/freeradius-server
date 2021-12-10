@@ -209,13 +209,8 @@ static void ldap_trunk_directory_alloc_read(LDAP *handle, fr_ldap_query_t *query
  */
 int fr_ldap_trunk_directory_alloc_async(TALLOC_CTX *ctx, fr_ldap_thread_trunk_t *ttrunk)
 {
-	static char const	*attrs[] = { "vendorname",
-					     "vendorversion",
-					     "isGlobalCatalogReady",
-					     "objectClass",
-					     "orcldirectoryversion",
-					     NULL };
 	fr_ldap_query_t		*query;
+	static char const	*attrs[] = LDAP_DIRECTORY_ATTRS;
 
 	ttrunk->directory = talloc_zero(ctx, fr_ldap_directory_t);
 	if (!ttrunk->directory) return -1;
@@ -228,4 +223,27 @@ int fr_ldap_trunk_directory_alloc_async(TALLOC_CTX *ctx, fr_ldap_thread_trunk_t 
 	fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, NULL, query, ttrunk->directory);
 
 	return 0;
+}
+
+/** Async extract useful information from the rootDSE of the LDAP server
+ *
+ * This version is for a single connection rather than a connection trunk
+ *
+ * @param[in] ldap_conn	connection to be queried
+ * @return
+ *	- message ID on success
+ *	< 0 on failure
+ */
+int fr_ldap_conn_directory_alloc_async(fr_ldap_connection_t *ldap_conn)
+{
+	int			msgid;
+	static char const	*attrs[] = LDAP_DIRECTORY_ATTRS;
+
+	ldap_conn->directory = talloc_zero(ldap_conn, fr_ldap_directory_t);
+	if (!ldap_conn->directory) return -1;
+
+	if (fr_ldap_search_async(&msgid, NULL, &ldap_conn, "", LDAP_SCOPE_BASE, "(objectclass=*)", attrs,
+				 NULL, NULL) != LDAP_PROC_SUCCESS) return -1;
+
+	return msgid;
 }
