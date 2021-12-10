@@ -48,8 +48,8 @@ static fr_table_num_sorted_t const fr_ldap_directory_type_table[] = {
 };
 static size_t fr_ldap_directory_type_table_len = NUM_ELEMENTS(fr_ldap_directory_type_table);
 
-static int ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
-				       LDAPMessage *result, char const *name)
+int fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
+				   LDAPMessage *result, char const *name)
 {
 	int			entry_cnt, i, num, ldap_errno;
 	LDAPMessage		*entry;
@@ -194,7 +194,7 @@ static void ldap_trunk_directory_alloc_read(LDAP *handle, fr_ldap_query_t *query
 	fr_ldap_config_t const	*config = query->ldap_conn->config;
 	fr_ldap_directory_t	*directory = talloc_get_type_abort(rctx, fr_ldap_directory_t);
 
-	(void)ldap_directory_result_parse(directory, handle, result, config->name);
+	(void)fr_ldap_directory_result_parse(directory, handle, result, config->name);
 }
 
 /** Async extract useful information from the rootDSE of the LDAP server
