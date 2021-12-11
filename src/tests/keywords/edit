@@ -3,6 +3,7 @@
 #
 update request {
 	&Tmp-Integer-0 := 4
+	&Tmp-Integer-1 := 6
 }
 
 #
@@ -13,5 +14,11 @@ update request {
 if (&Tmp-Integer-0 != 9) {
 	test_fail
 }
+
+&Tmp-Integer-0 += &Tmp-Integer-1
+if (&Tmp-Integer-0 != 15) {
+	test_fail
+}
+
 
 success
