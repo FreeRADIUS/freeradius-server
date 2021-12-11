@@ -113,7 +113,7 @@ static inline CC_HINT(always_inline) void pair_init_null(fr_pair_t *vp)
 	 *	Legacy cruft
 	 */
 	vp->op = T_OP_EQ;
-	vp->type = VT_NONE;
+	vp->type = VT_DATA;
 }
 
 /** Dynamically allocate a new attribute with no #fr_dict_attr_t assigned
@@ -1937,7 +1937,6 @@ int fr_pair_value_from_str(fr_pair_t *vp, char const *value, size_t inlen,
 				  value, inlen,
 				  uerules,
 				  tainted) < 0) return -1;
-	vp->type = VT_DATA;
 
 	PAIR_VERIFY(vp);
 
@@ -1964,7 +1963,6 @@ int fr_pair_value_strdup(fr_pair_t *vp, char const *src, bool tainted)
 	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
 	ret = fr_value_box_strdup(vp, &vp->data, vp->da, src, tainted);
 	if (ret == 0) {
-		vp->type = VT_DATA;
 		PAIR_VERIFY(vp);
 	}
 
@@ -1987,7 +1985,6 @@ int fr_pair_value_strdup_shallow(fr_pair_t *vp, char const *src, bool tainted)
 	fr_value_box_clear(&vp->data);
 	fr_value_box_strdup_shallow(&vp->data, vp->da, src, tainted);
 
-	vp->type = VT_DATA;
 	PAIR_VERIFY(vp);
 
 	return 0;
@@ -2008,7 +2005,6 @@ int fr_pair_value_strtrim(fr_pair_t *vp)
 
 	ret = fr_value_box_strtrim(vp, &vp->data);
 	if (ret == 0) {
-		vp->type = VT_DATA;
 		PAIR_VERIFY(vp);
 	}
 
@@ -2035,12 +2031,10 @@ int fr_pair_value_aprintf(fr_pair_t *vp, char const *fmt, ...)
 	va_end(ap);
 
 	if (ret == 0) {
-		vp->type = VT_DATA;
 		PAIR_VERIFY(vp);
-		return 0;
 	}
 
-	return -1;
+	return ret;
 }
 
 /** Pre-allocate a memory buffer for a "string" type value pair
@@ -2065,7 +2059,6 @@ int fr_pair_value_bstr_alloc(fr_pair_t *vp, char **out, size_t size, bool tainte
 	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
 	ret = fr_value_box_bstr_alloc(vp, out, &vp->data, vp->da, size, tainted);
 	if (ret == 0) {
-		vp->type = VT_DATA;
 		PAIR_VERIFY(vp);
 	}
 
@@ -2090,7 +2083,6 @@ int fr_pair_value_bstr_realloc(fr_pair_t *vp, char **out, size_t size)
 
 	ret = fr_value_box_bstr_realloc(vp, out, &vp->data, size);
 	if (ret == 0) {
-		vp->type = VT_DATA;
 		PAIR_VERIFY(vp);
 	}
 
@@ -2121,7 +2113,6 @@ int fr_pair_value_bstrndup(fr_pair_t *vp, char const *src, size_t len, bool tain
 	fr_value_box_clear(&vp->data);
 	ret = fr_value_box_bstrndup(vp, &vp->data, vp->da, src, len, tainted);
 	if (ret == 0) {
-		vp->type = VT_DATA;
 		PAIR_VERIFY(vp);
 	}
 
@@ -2148,7 +2139,6 @@ int fr_pair_value_bstrdup_buffer(fr_pair_t *vp, char const *src, bool tainted)
 	fr_value_box_clear(&vp->data);
 	ret = fr_value_box_bstrdup_buffer(vp, &vp->data, vp->da, src, tainted);
 	if (ret == 0) {
-		vp->type = VT_DATA;
 		PAIR_VERIFY(vp);
 	}
 
@@ -2171,7 +2161,6 @@ int fr_pair_value_bstrndup_shallow(fr_pair_t *vp, char const *src, size_t len, b
 
 	fr_value_box_clear(&vp->data);
 	fr_value_box_bstrndup_shallow(&vp->data, vp->da, src, len, tainted);
-	vp->type = VT_DATA;
 	PAIR_VERIFY(vp);
 
 	return 0;
@@ -2195,7 +2184,6 @@ int fr_pair_value_bstrdup_buffer_shallow(fr_pair_t *vp, char const *src, bool ta
 	fr_value_box_clear(&vp->data);
 	ret = fr_value_box_bstrdup_buffer_shallow(NULL, &vp->data, vp->da, src, tainted);
 	if (ret == 0) {
-		vp->type = VT_DATA;
 		PAIR_VERIFY(vp);
 	}
 
@@ -2220,7 +2208,6 @@ int fr_pair_value_bstrn_append(fr_pair_t *vp, char const *src, size_t len, bool 
 
 	ret = fr_value_box_bstrn_append(vp, &vp->data, src, len, tainted);
 	if (ret == 0) {
-		vp->type = VT_DATA;
 		PAIR_VERIFY(vp);
 	}
 
@@ -2244,7 +2231,6 @@ int fr_pair_value_bstr_append_buffer(fr_pair_t *vp, char const *src, bool tainte
 
 	ret = fr_value_box_bstr_append_buffer(vp, &vp->data, src, tainted);
 	if (ret == 0) {
-		vp->type = VT_DATA;
 		PAIR_VERIFY(vp);
 	}
 
@@ -2273,7 +2259,6 @@ int fr_pair_value_mem_alloc(fr_pair_t *vp, uint8_t **out, size_t size, bool tain
 	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
 	ret = fr_value_box_mem_alloc(vp, out, &vp->data, vp->da, size, tainted);
 	if (ret == 0) {
-		vp->type = VT_DATA;
 		PAIR_VERIFY(vp);
 	}
 
@@ -2298,7 +2283,6 @@ int fr_pair_value_mem_realloc(fr_pair_t *vp, uint8_t **out, size_t size)
 
 	ret = fr_value_box_mem_realloc(vp, out, &vp->data, size);
 	if (ret == 0) {
-		vp->type = VT_DATA;
 		PAIR_VERIFY(vp);
 	}
 
@@ -2326,7 +2310,6 @@ int fr_pair_value_memdup(fr_pair_t *vp, uint8_t const *src, size_t size, bool ta
 	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
 	ret = fr_value_box_memdup(vp, &vp->data, vp->da, src, size, tainted);
 	if (ret == 0) {
-		vp->type = VT_DATA;
 		PAIR_VERIFY(vp);
 	}
 
@@ -2353,7 +2336,6 @@ int fr_pair_value_memdup_buffer(fr_pair_t *vp, uint8_t const *src, bool tainted)
 	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
 	ret = fr_value_box_memdup_buffer(vp, &vp->data, vp->da, src, tainted);
 	if (ret == 0) {
-		vp->type = VT_DATA;
 		PAIR_VERIFY(vp);
 	}
 
@@ -2376,7 +2358,6 @@ int fr_pair_value_memdup_shallow(fr_pair_t *vp, uint8_t const *src, size_t len, 
 
 	fr_value_box_clear(&vp->data);
 	fr_value_box_memdup_shallow(&vp->data, vp->da, src, len, tainted);
-	vp->type = VT_DATA;
 	PAIR_VERIFY(vp);
 
 	return 0;
@@ -2397,7 +2378,6 @@ int fr_pair_value_memdup_buffer_shallow(fr_pair_t *vp, uint8_t const *src, bool 
 
 	fr_value_box_clear(&vp->data);
 	fr_value_box_memdup_buffer_shallow(NULL, &vp->data, vp->da, src, tainted);
-	vp->type = VT_DATA;
 	PAIR_VERIFY(vp);
 
 	return 0;
@@ -2422,7 +2402,6 @@ int fr_pair_value_mem_append(fr_pair_t *vp, uint8_t *src, size_t len, bool taint
 
 	ret = fr_value_box_mem_append(vp, &vp->data, src, len, tainted);
 	if (ret == 0) {
-		vp->type = VT_DATA;
 		PAIR_VERIFY(vp);
 	}
 
@@ -2446,7 +2425,6 @@ int fr_pair_value_mem_append_buffer(fr_pair_t *vp, uint8_t *src, bool tainted)
 
 	ret = fr_value_box_mem_append_buffer(vp, &vp->data, src, tainted);
 	if (ret == 0) {
-		vp->type = VT_DATA;
 		PAIR_VERIFY(vp);
 	}
 

@@ -1706,7 +1706,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	}
 
 done:
-	vp->type = VT_DATA;
 	vp->vp_tainted = true;
 
 	if (!tag) {

@@ -823,7 +823,6 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 	}
 
 done:
-	vp->type = VT_DATA;
 	fr_pair_append(out, vp);
 
 	return attr_len;

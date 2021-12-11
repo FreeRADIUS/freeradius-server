@@ -53,7 +53,6 @@ fr_pair_t *fr_raw_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, ui
 		return NULL;
 	}
 
-	vp->type = VT_DATA;
 	return vp;
 }
 
@@ -200,7 +199,6 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					goto unknown;
 			}
 
-			vp->type = VT_DATA;
 			vp->vp_tainted = true;
 			fr_pair_append(child_list, vp);
 			p += (num_bits >> 3); /* go to the LAST bit, not the byte AFTER the last bit */
@@ -318,7 +316,6 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			return data_len;
 		}
 
-		vp->type = VT_DATA;
 		vp->vp_tainted = true;
 		fr_pair_append(child_list, vp);
 

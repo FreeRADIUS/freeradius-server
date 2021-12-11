@@ -51,9 +51,8 @@ extern "C" {
  * xlat is another type of data node which must first be expanded before use.
  */
 typedef enum value_type {
-	VT_NONE = 0,						//!< fr_pair_t has no value.
-	VT_SET,							//!< fr_pair_t has children.
-	VT_LIST,						//!< fr_pair_t has multiple values.
+	VT_INVALID = 0,						//!< fr_pair_t is broken
+	VT_SET,							//!< fr_pair_t is #fr_value_box_list
 	VT_DATA,						//!< fr_pair_t has a single value.
 } value_type_t;
 

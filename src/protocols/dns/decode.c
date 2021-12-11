@@ -73,7 +73,6 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_pair_list_t *out, UNUSED fr_dict_t
 		return slen;
 	}
 
-	vp->type = VT_DATA;
 	vp->vp_tainted = true;
 	fr_pair_append(out, vp);
 	return data_len;
@@ -223,7 +222,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 		break;
 	}
 
-	vp->type = VT_DATA;
 	vp->vp_tainted = true;
 	fr_pair_append(out, vp);
 	return data_len;
@@ -375,7 +373,6 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,UNUSED fr_
 			return -1;
 		}
 
-		vp->type = VT_DATA;
 		fr_pair_append(out, vp);
 	}
 

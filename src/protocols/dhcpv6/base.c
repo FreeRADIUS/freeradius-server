@@ -662,7 +662,6 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *pa
 	if (!vp) return -1;
 
 	vp->vp_uint32 = packet[0];
-	vp->type = VT_DATA;
 	fr_pair_append(&tmp, vp);
 
 	switch (packet[0]) {
@@ -723,7 +722,6 @@ ssize_t	fr_dhcpv6_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *pa
 	 */
 	(void) fr_pair_value_memdup(vp, packet + 1, 3, false);
 
-	vp->type = VT_DATA;
 	fr_pair_append(&tmp, vp);
 
 	p = packet + 4;
