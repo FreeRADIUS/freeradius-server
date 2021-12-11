@@ -589,6 +589,10 @@ int paircmp(request_t *request,
 		switch (check_item->op) {
 		case T_OP_EQ:
 		default:
+#ifdef __clang_analyzer__
+			if (!check_item->da) result = -1;
+#endif
+
 			RWDEBUG("Invalid operator '%s' for item %s: reverting to '=='",
 				fr_table_str_by_value(fr_tokens_table, check_item->op, "<INVALID>"), check_item->da->name);
 			FALL_THROUGH;
