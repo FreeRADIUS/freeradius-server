@@ -239,6 +239,7 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 	fr_value_box_t const *rhs_box = NULL;
 
 	fr_assert(state->rhs.vpt != NULL);
+	fr_assert(state->lhs.vp != NULL);
 
 	/*
 	 *	Get the resulting value box.
@@ -497,6 +498,8 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 			goto check_rhs;
 
 		case UNLANG_EDIT_EXPANDED_RHS:
+			fr_assert(state->lhs.vp != NULL);
+
 			if (templatize_rhs(state, &state->rhs, state->lhs.vp, request) < 0) goto error;
 
 			state->state = UNLANG_EDIT_CHECK_RHS;
