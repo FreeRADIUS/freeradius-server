@@ -498,7 +498,9 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 			goto check_rhs;
 
 		case UNLANG_EDIT_EXPANDED_RHS:
-			fr_assert(state->lhs.vp != NULL);
+#ifdef __clang_analyzer__
+			if (!state->lhs.vp) goto error;
+#endif
 
 			if (templatize_rhs(state, &state->rhs, state->lhs.vp, request) < 0) goto error;
 
