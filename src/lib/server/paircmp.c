@@ -590,7 +590,7 @@ int paircmp(request_t *request,
 		case T_OP_EQ:
 		default:
 #ifdef __clang_analyzer__
-			if (!check_item->da) result = -1;
+			if (!check_item->da) return -1;
 #endif
 
 			RWDEBUG("Invalid operator '%s' for item %s: reverting to '=='",
