@@ -1011,12 +1011,21 @@ int unlang_fixup_update(map_t *map, UNUSED void *ctx)
 	 *	Unless it's a unary operator in which case we
 	 *	ignore map->rhs.
 	 */
-	if (tmpl_is_attr(map->lhs)) {
+	if (tmpl_is_attr(map->lhs) && tmpl_is_unresolved(map->rhs)) {
+		fr_type_t type = tmpl_da(map->lhs)->type;
+
+		/*
+		 *	@todo - allow passing octets to
+		 *	FR_TYPE_STRUCT, which can then decode them as
+		 *	data?  That would be rather powerful.
+		 */
+		if (fr_type_is_structural(type)) type = FR_TYPE_STRING;
+
 		/*
 		 *	It's a literal string, just copy it.
 		 *	Don't escape anything.
 		 */
-		if (tmpl_cast_in_place(map->rhs, tmpl_da(map->lhs)->type, tmpl_da(map->lhs)) < 0) {
+		if (tmpl_cast_in_place(map->rhs, type, tmpl_da(map->lhs)) < 0) {
 			cf_log_perr(map->ci, "Cannot convert RHS value (%s) to LHS attribute type (%s)",
 				    fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
 				    fr_table_str_by_value(fr_value_box_type_table, tmpl_da(map->lhs)->type, "<INVALID>"));
@@ -1130,11 +1139,20 @@ static int unlang_fixup_filter(map_t *map, UNUSED void *ctx)
 	 *	ignore map->rhs.
 	 */
 	if (tmpl_is_attr(map->lhs) && tmpl_is_unresolved(map->rhs)) {
+		fr_type_t type = tmpl_da(map->lhs)->type;
+
+		/*
+		 *	@todo - allow passing octets to
+		 *	FR_TYPE_STRUCT, which can then decode them as
+		 *	data?  That would be rather powerful.
+		 */
+		if (fr_type_is_structural(type)) type = FR_TYPE_STRING;
+
 		/*
 		 *	It's a literal string, just copy it.
 		 *	Don't escape anything.
 		 */
-		if (tmpl_cast_in_place(map->rhs, tmpl_da(map->lhs)->type, tmpl_da(map->lhs)) < 0) {
+		if (tmpl_cast_in_place(map->rhs, type, tmpl_da(map->lhs)) < 0) {
 			cf_log_perr(map->ci, "Cannot convert RHS value (%s) to LHS attribute type (%s)",
 				    fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
 				    fr_table_str_by_value(fr_value_box_type_table, tmpl_da(map->lhs)->type, "<INVALID>"));
