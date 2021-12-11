@@ -112,7 +112,7 @@ static void test_fr_pair_list_afrom_str(void)
 	fr_pair_list_init(&list);
 
 	TEST_CASE("Create 'vp' using fr_pair_list_afrom_str()");
-	TEST_CHECK(fr_pair_list_afrom_str(autofree, test_dict, buffer, strlen(buffer), &list) == T_EOL);
+	TEST_CHECK(fr_pair_list_afrom_str(autofree, fr_dict_root(test_dict), buffer, strlen(buffer), &list) == T_EOL);
 
 	TEST_CASE("Looking for Test-Uint32-0");
 	TEST_CHECK((vp = fr_pair_find_by_da_idx(&list, fr_dict_attr_test_uint32, 0)) != NULL);

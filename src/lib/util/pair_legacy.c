@@ -470,18 +470,18 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
  * @note the valuepair list should probably be freed.
  *
  * @param[in] ctx	for talloc
- * @param[in] dict	to resolve attributes in.
+ * @param[in] parent	parent attribute for resolution
  * @param[in] buffer	to read valuepairs from.
  * @param[in] len	length of the buffer
  * @param[in] list	where the parsed fr_pair_ts will be appended.
  * @return the last token parsed, or #T_INVALID
  */
-fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *buffer, size_t len, fr_pair_list_t *list)
+fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *buffer, size_t len, fr_pair_list_t *list)
 {
 	fr_token_t token;
 	fr_pair_t	*relative_vp = NULL;
 
-	(void) fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), buffer, buffer + len, list, &token, 0, &relative_vp);
+	(void) fr_pair_list_afrom_substr(ctx, parent, buffer, buffer + len, list, &token, 0, &relative_vp);
 	return token;
 }
 

@@ -37,7 +37,7 @@ extern "C" {
 fr_pair_t	*fr_pair_make(TALLOC_CTX *ctx, fr_dict_t const *dict,
 			      fr_pair_list_t *vps, char const *attribute, char const *value);
 
-fr_token_t	fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_t const *dict,
+fr_token_t	fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
 				       char const *buffer, size_t len, fr_pair_list_t *head);
 int		fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict,
 					fr_pair_list_t *out, FILE *fp, bool *pfiledone);

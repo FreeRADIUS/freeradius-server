@@ -1149,10 +1149,11 @@ static size_t command_normalise_attribute(command_result_t *result, command_file
 {
 	fr_pair_list_t 	head;
 	ssize_t		slen;
+	fr_dict_t const	*dict = cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict;
 
 	fr_pair_list_init(&head);
 
-	if (fr_pair_list_afrom_str(NULL, cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict, in, inlen, &head) != T_EOL) {
+	if (fr_pair_list_afrom_str(NULL, fr_dict_root(dict), in, inlen, &head) != T_EOL) {
 		RETURN_OK_WITH_ERROR();
 	}
 
@@ -1815,6 +1816,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 	bool		truncate = false;
 
 	size_t		iterations = 0;
+	fr_dict_t const	*dict;
 
 	fr_pair_list_init(&head);
 	slen = load_test_point_by_command((void **)&tp, p, "tp_encode_pair");
@@ -1849,7 +1851,8 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 		RETURN_COMMAND_ERROR();
 	}
 
-	if (fr_pair_list_afrom_str(cc->tmp_ctx, cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict,
+	dict = cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict;
+	if (fr_pair_list_afrom_str(cc->tmp_ctx, fr_dict_root(dict),
 				   p, in + inlen - p, &head) != T_EOL) {
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
@@ -1992,6 +1995,8 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 	char		*p = in;
 
 	fr_pair_list_t	head;
+	fr_dict_t const *dict;
+
 	fr_pair_list_init(&head);
 
 	slen = load_test_point_by_command((void **)&tp, p, "tp_encode_proto");
@@ -2009,7 +2014,8 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 		RETURN_COMMAND_ERROR();
 	}
 
-	if (fr_pair_list_afrom_str(cc->tmp_ctx, cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict,
+	dict = cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict;
+	if (fr_pair_list_afrom_str(cc->tmp_ctx, fr_dict_root(dict),
 				   p, in + inlen - p, &head) != T_EOL) {
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();

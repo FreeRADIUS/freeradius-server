@@ -201,7 +201,7 @@ static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *d
 		while ((p = strchr(p, '#'))) {
 			*p = (char)(i + 48);
 		}
-		ret = fr_pair_list_afrom_str(ctx, dict, prep_pairs, strlen(prep_pairs), &list);
+		ret = fr_pair_list_afrom_str(ctx, fr_dict_root(dict), prep_pairs, strlen(prep_pairs), &list);
 		if (ret == T_INVALID) fr_perror("pair_list_perf_tests");
 		TEST_ASSERT(ret != T_INVALID);
 
