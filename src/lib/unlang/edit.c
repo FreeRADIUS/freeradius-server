@@ -241,6 +241,9 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 	fr_assert(state->rhs.vpt != NULL);
 	fr_assert(state->lhs.vp != NULL);
 
+#ifdef __clang_analyzer__
+	if (!state->lhs.vp) return -1;
+#endif
 	/*
 	 *	Get the resulting value box.
 	 */
