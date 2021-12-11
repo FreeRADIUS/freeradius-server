@@ -26,6 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/edit.h>
 #include <freeradius-devel/unlang/tmpl.h>
@@ -45,6 +46,7 @@ typedef struct {
 	tmpl_t const		*vpt;			//!< expanded tmpl
 	tmpl_t			*to_free;		//!< tmpl to free.
 	fr_pair_t		*vp;			//!< VP referenced by tmpl.  @todo - make it a cursor
+	fr_pair_list_t		pair_list;		//!< for structural attributes
 } edit_result_t;
 
 /** State of an edit block
@@ -97,7 +99,6 @@ static int templatize_lhs(TALLOC_CTX *ctx, edit_result_t *out, request_t *reques
 	return 0;
 }
 
-
 /*
  *  Convert a value-box list to a RHS #tmpl_t
  *
@@ -109,18 +110,14 @@ static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *
 {
 	ssize_t slen;
 	bool is_string;
+	fr_type_t type = lhs->vp_type;
 	fr_value_box_t *box = fr_dlist_head(&out->result);
-
-	if (!fr_type_is_leaf(lhs->vp_type)) {
-		REDEBUG("RHS is not a leaf");
-		return -1;
-	}
 
 	/*
 	 *	There's only one box, and it's the correct type.  Just
 	 *	return that.  This is the fast path.
 	 */
-	if ((lhs->vp_type != FR_TYPE_STRING) && (lhs->vp_type == box->type) && !fr_dlist_next(&out->result, box)) {
+	if ((type != FR_TYPE_STRING) && (type == box->type) && !fr_dlist_next(&out->result, box)) {
 		if (tmpl_afrom_value_box(ctx, &out->to_free, box, false) < 0) return -1;
 		goto done;
 	}
@@ -143,6 +140,14 @@ static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *
 	}
 
 	/*
+	 *	If the LHS is structural, the RHS MAY be an attribute
+	 *	reference, or it MAY be an in-place string list.
+	 */
+	if (fr_type_is_structural(type)) {
+		type = FR_TYPE_STRING;
+	}
+
+	/*
 	 *	If the first box was of type string, AND the
 	 *	concatenated string has a leading '&', then it MIGHT
 	 *	be an attribute reference.
@@ -160,7 +165,7 @@ static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *
 	 *	The concatenated string is not an attribute reference.
 	 *	It MUST be parsed as a value of the input data type.
 	 */
-	if ((fr_value_box_cast_in_place(ctx, box, lhs->vp_type, lhs->data.enumv) <= 0) ||
+	if ((fr_value_box_cast_in_place(ctx, box, type, lhs->data.enumv) <= 0) ||
 	    (tmpl_afrom_value_box(ctx, &out->to_free, box, false) < 0)) {
 		return -1;
 	}
@@ -226,15 +231,41 @@ static int template_realize(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_
 static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map_t const *map)
 {
 	fr_pair_t *vp, *vp_to_free = NULL;
-	fr_pair_list_t list, *children;
+	fr_pair_list_t *children;
 	fr_value_box_t const *rhs_box = NULL;
+
+	fr_assert(state->rhs.vpt != NULL);
 
 	/*
 	 *	Get the resulting value box.
 	 */
 	if (tmpl_is_data(state->rhs.vpt)) {
+		fr_token_t token;
+		fr_dict_attr_t const *da;
+
 		rhs_box = tmpl_value(state->rhs.vpt);
-		goto leaf;
+
+		if (fr_type_is_leaf(state->lhs.vp->vp_type)) {
+			goto leaf;
+		}
+
+		fr_assert(rhs_box->type == FR_TYPE_STRING);
+
+		da = state->lhs.vp->da;
+		if (fr_type_is_group(da->type)) da = fr_dict_root(request->dict);
+
+		children = &state->rhs.pair_list;
+
+		/*
+		 *	@todo - keep parsing until the end.
+		 */
+		token = fr_pair_list_afrom_str(state, da, rhs_box->vb_strvalue, rhs_box->length, children);
+		if (token == T_INVALID) {
+			RPEDEBUG("Failed parsing string as attribute list");
+			return -1;
+		}
+
+		goto apply_list;
 	}
 
 	/*
@@ -284,12 +315,15 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 	 *	treats the RHS as a one-member list.
 	 */
 	if (fr_type_is_leaf(vp->vp_type)) {
-		fr_pair_list_init(&list);
 		vp_to_free = fr_pair_copy(request, vp);
 		if (!vp_to_free) return -1;
 
-		fr_pair_append(&list, vp_to_free);
-		children = &list;
+		fr_assert(fr_pair_list_empty(&state->rhs.pair_list));
+
+		fr_pair_append(&state->rhs.pair_list, vp_to_free);
+		children = &state->rhs.pair_list;
+
+		vp_to_free = NULL; /* it's not in the pair list, and will be freed there */
 
 	} else {
 		/*
@@ -313,7 +347,14 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 	/*
 	 *	Apply structural thingies!
 	 */
+apply_list:
 	RDEBUG2("%s %s %s", state->lhs.vpt->name, fr_tokens[map->op], state->rhs.vpt->name);
+
+	if (fr_debug_lvl >= L_DBG_LVL_3) {
+		RINDENT();
+		fr_pair_list_debug(children);
+		REXDENT();
+	}
 
 	if (fr_edit_list_apply_list_assignment(state->el,
 					       state->lhs.vp,
@@ -464,6 +505,8 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 		next:
 			state->state = UNLANG_EDIT_INIT;
 			TALLOC_FREE(state->lhs.to_free);
+			TALLOC_FREE(state->rhs.to_free);
+			fr_pair_list_free(&state->rhs.pair_list);
 			state->lhs.vp = NULL;
 			break;
 		}
@@ -506,6 +549,7 @@ static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *
 
 	state->map_head = &edit->maps;
 	state->map = fr_map_list_head(state->map_head);
+	fr_pair_list_init(&state->rhs.pair_list);
 
 	/*
 	 *	Call process_edit to do all of the work.
