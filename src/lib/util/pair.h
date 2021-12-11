@@ -554,7 +554,7 @@ void		fr_pair_debug(fr_pair_t const *pair) CC_HINT(nonnull);
 void		fr_pair_list_tainted(fr_pair_list_t *vps) CC_HINT(nonnull);
 
 void		fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_pair_list_t *out,
-				       fr_dict_t const *dict, fr_value_box_t *box) CC_HINT(nonnull(1,2,3));
+				       fr_dict_t const *dict, fr_value_box_t *box) CC_HINT(nonnull);
 
 /* Tokenization */
 typedef struct {
