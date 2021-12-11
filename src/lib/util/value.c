@@ -4965,7 +4965,7 @@ parse:
 		break;
 
 	default:
-		fr_strerror_printf("Unknown attribute dst_type %d", dst_type);
+		fr_strerror_printf("Cannot parse input as data type %s", fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
 		return -1;
 	}
 
