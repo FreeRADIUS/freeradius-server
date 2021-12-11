@@ -63,6 +63,10 @@ typedef struct {
 	edit_result_t		rhs;				//!< RHS child entries
 } unlang_frame_state_edit_t;
 
+static int templatize_lhs(TALLOC_CTX *ctx, edit_result_t *out, request_t *request) CC_HINT(nonnull);
+static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *lhs, request_t *request) CC_HINT(nonnull);
+static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map_t const *map) CC_HINT(nonnull);
+
 /*
  *  Convert a value-box list to a LHS #tmpl_t
  */
