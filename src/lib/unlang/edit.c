@@ -481,7 +481,7 @@ leaf:
 	return 0;
 }
 
-static int expand_rhs_list(unlang_frame_state_edit_t *state, request_t *request, map_t const *map)
+static int expand_rhs_list(NDEBUG_UNUSED unlang_frame_state_edit_t *state, request_t *request, map_t const *map)
 {
 	if (map->op != T_OP_SET) {
 		REDEBUG("Operator not implemented");
