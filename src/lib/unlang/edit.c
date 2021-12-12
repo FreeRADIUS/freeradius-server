@@ -435,7 +435,7 @@ apply_list:
 			REXDENT();
 		}
 
-		RDEBUG2("}", state->lhs.vpt->name, fr_tokens[map->op]);
+		RDEBUG2("}");
 	}
 
 	if (fr_edit_list_apply_list_assignment(state->el,
