@@ -238,12 +238,17 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 	fr_pair_list_t *children;
 	fr_value_box_t const *rhs_box = NULL;
 
-	fr_assert(state->rhs.vpt != NULL);
 	fr_assert(state->lhs.vp != NULL);
 
 #ifdef __clang_analyzer__
 	if (!state->lhs.vp) return -1;
 #endif
+
+	if (!state->rhs.vpt) {
+		children = &state->rhs.pair_list;
+		goto apply_list;
+	}
+
 	/*
 	 *	Get the resulting value box.
 	 */
@@ -356,12 +361,22 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 	 *	Apply structural thingies!
 	 */
 apply_list:
-	RDEBUG2("%s %s %s", state->lhs.vpt->name, fr_tokens[map->op], state->rhs.vpt->name);
+	if (state->rhs.vpt) {
+		RDEBUG2("%s %s %s", state->lhs.vpt->name, fr_tokens[map->op], state->rhs.vpt->name);
+	} else {
+		fr_assert(children != NULL);
 
-	if (fr_debug_lvl >= L_DBG_LVL_3) {
-		RINDENT();
-		fr_pair_list_debug(children);
-		REXDENT();
+		/*
+		 *	@todo - we need a debug function which takes a request list...
+		 */
+		RDEBUG2("%s %s {", state->lhs.vpt->name, fr_tokens[map->op]);
+		if (fr_debug_lvl >= L_DBG_LVL_3) {
+			RINDENT();
+			fr_pair_list_debug(children);
+			REXDENT();
+		}
+
+		RDEBUG2("}", state->lhs.vpt->name, fr_tokens[map->op]);
 	}
 
 	if (fr_edit_list_apply_list_assignment(state->el,
@@ -407,6 +422,22 @@ leaf:
 	return 0;
 }
 
+static int expand_rhs_list(unlang_frame_state_edit_t *state, request_t *request, map_t const *map)
+{
+	if (map->op != T_OP_SET) {
+		REDEBUG("Operator not implemented");
+		return -1;
+	}
+
+	if (!fr_map_list_empty(&map->child)) {
+		REDEBUG("In-place lists not yet implemented");
+		return -1;
+	}
+
+	fr_assert(fr_pair_list_empty(&state->rhs.pair_list));
+
+	return 0;
+}
 
 /** Create a list of modifications to apply to one or more fr_pair_t lists
  *
@@ -486,6 +517,22 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 
 				REDEBUG("Failed to find %s", state->lhs.vpt->name);
 				goto error;
+			}
+
+			/*
+			 *	Leaf attributes MUST have a RHS.
+			 *	Structural attributes MAY have a RHS.
+			 */
+			if (!map->rhs) {
+				if (fr_type_is_leaf(state->lhs.vp->vp_type)) {
+					REDEBUG("Cannot assign list as a value");
+					goto error;
+				}
+
+				rcode = expand_rhs_list(state, request, map);
+				if (rcode < 0) goto error;
+
+				goto check_rhs;
 			}
 
 			rcode = template_realize(state, &state->rhs.result, request, map->rhs);
