@@ -41,6 +41,7 @@
 #include <openssl/x509v3.h>
 
 #include <openssl/ssl.h>
+#include <sys/stat.h>
 #include <ctype.h>
 #include <fcntl.h>
 
