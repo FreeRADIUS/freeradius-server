@@ -112,7 +112,6 @@ static int templatize_lhs(TALLOC_CTX *ctx, edit_result_t *out, request_t *reques
  */
 static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *lhs, request_t *request)
 {
-	ssize_t slen;
 	fr_type_t type = lhs->vp_type;
 	fr_value_box_t *box = fr_dlist_head(&out->result);
 
@@ -194,6 +193,64 @@ static int template_realize(TALLOC_CTX *ctx, fr_value_box_list_t *list, request_
 	return -1;
 }
 
+/** Remove VPs for laziness
+ *
+ */
+static int remove_vps(request_t *request, unlang_frame_state_edit_t *state, map_t const *map)
+{
+	fr_pair_t *vp, *next, *last;
+	fr_pair_list_t *list;
+	fr_dict_attr_t const *da;
+	int16_t num, count;
+
+	fr_assert(map->op == T_OP_SUB_EQ);
+	fr_assert(tmpl_is_attr(state->rhs.vpt));
+	fr_assert(state->lhs.vp != NULL);
+	fr_assert(fr_type_is_structural(state->lhs.vp->vp_type));
+
+	list = &state->lhs.vp->vp_group;
+	da = tmpl_da(state->rhs.vpt);
+
+	RDEBUG2("%s %s %s", state->lhs.vpt->name, fr_tokens[map->op], state->rhs.vpt->name);
+
+	num = tmpl_num(state->rhs.vpt);
+	count = 0;
+
+	/*
+	 *	@todo - tmpl_dcursor, which handles more things.  But
+	 *	that isn't done yet.  So we hack stuff here.
+	 */
+	last = NULL;
+	for (vp = fr_pair_list_head(list); vp; vp = next) {
+		next = fr_pair_list_next(list, vp);
+		if (da == vp->da) {
+			if ((num >= 0) && (count == num)) {
+				if (fr_edit_list_pair_delete(state->el, list, vp) < 0) return -1;
+				break;
+			}
+
+			if (num == NUM_ALL) {
+				if (fr_edit_list_pair_delete(state->el, list, vp) < 0) return -1;
+				continue;
+			}
+
+			if (num == NUM_LAST) {
+				last = vp;
+				continue;
+			}
+
+			count++;
+		}
+	}
+
+	/*
+	 *	Delete the last one.
+	 */
+	if (last) return fr_edit_list_pair_delete(state->el, list, last);
+
+	return 0;
+}
+
 /** Apply the edits.  Broken out for simplicity
  *
  *  The edits are applied as:
@@ -244,6 +301,11 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 
 		fr_assert(rhs_box->type == FR_TYPE_STRING);
 
+		if (map->op == T_OP_SUB_EQ) {
+			REDEBUG("Cannot remove data from a list");
+			return -1;
+		}
+
 		da = state->lhs.vp->da;
 		if (fr_type_is_group(da->type)) da = fr_dict_root(request->dict);
 
@@ -265,8 +327,25 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 	 *	If it's not data, it must be an attribute or a list.
 	 */
 	if (!tmpl_is_attr(state->rhs.vpt) && !tmpl_is_list(state->rhs.vpt)) {
-		RERROR("Unknown RHS %s", state->rhs.vpt->name);
+		REDEBUG("Unknown RHS %s", state->rhs.vpt->name);
 		return -1;
+	}
+
+	/*
+	 *	Remove an attribute from a list.
+	 *
+	 *	@todo - ensure RHS is only an attribute which is
+	 *	parented from the LHS, and that it has no list
+	 *	reference?  This probably needs to be done in
+	 *	unlang_fixup_edit()
+	 */
+	if (map->op == T_OP_SUB_EQ) {
+		if (!tmpl_is_attr(state->rhs.vpt)) {
+			REDEBUG("Cannot remove ??? from list");
+			return -1;
+		}
+
+		return remove_vps(request, state, map);
 	}
 
 	/*
@@ -278,7 +357,7 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 	 *	FOO"?
 	 */
 	if (tmpl_find_vp(&vp, request, state->rhs.vpt) < 0) {
-		RERROR("Can't find %s", state->rhs.vpt->name);
+		REDEBUG("Can't find %s", state->rhs.vpt->name);
 		return -1;
 	}
 
@@ -329,7 +408,7 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 		 *	etc.
 		 */
 		if (!fr_dict_attr_compatible(state->lhs.vp->da, vp->da)) {
-			RERROR("DAs are incompatible (%s vs %s)",
+			REDEBUG("DAs are incompatible (%s vs %s)",
 			       state->lhs.vp->da->name, vp->da->name);
 			return -1;
 		}
@@ -378,7 +457,7 @@ leaf:
 	 */
 	if (!tmpl_is_attr(state->lhs.vpt) || !state->lhs.vp ||
 	    !fr_type_is_leaf(state->lhs.vp->vp_type)) {
-		RERROR("Cannot assign data to list %s", map->lhs->name);
+		REDEBUG("Cannot assign data to list %s", map->lhs->name);
 		return -1;
 	}
 
