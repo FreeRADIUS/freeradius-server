@@ -2,15 +2,15 @@ name: CI FreeBSD
 
 on:
   push:
-    branches:
-      - ci-debug
-  schedule:
-    - cron: '0 20 * * *'
+    branches-ignore:
+      - coverity_scan
+      - run-fuzzer**
+  pull_request:
 
 jobs:
   freebsd-build:
 
-    runs-on: macos-latest
+    runs-on: macos-10.15
 
     name: "FreeBSD build"
 
@@ -42,7 +42,9 @@ jobs:
       uses: vmactions/freebsd-vm@v0.1.5
       with:
         usesh: true
-        sync: sshfs
+#        sync: sshfs
+        sync: rsync
+        mem: 4096
         prepare: |
           pkg install -y         \
             curl                 \
@@ -109,6 +111,10 @@ jobs:
     #  Access the FreeBSD VM with:
     #
     #      ssh -t freebsd
+    #
+    #  The working directory is:
+    #
+    #      /User/runner/work
     #
     - name: "Debug: Start tmate"
       uses: mxschmitt/action-tmate@v3
