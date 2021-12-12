@@ -154,6 +154,7 @@ struct value_box_s {
 	fr_type_t		_CONST type;			//!< Type of this value-box.
 
 	bool				tainted;		//!< i.e. did it come from an untrusted source
+	uint16_t		 _CONST safe;			//!< more detailed safety
 
 	fr_dict_attr_t const		*enumv;			//!< Enumeration values.
 
@@ -708,6 +709,17 @@ int		fr_value_box_ipaddr(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 					 fr_ipaddr_t const *ipaddr, bool tainted);
 
 int		fr_value_unbox_ipaddr(fr_ipaddr_t *dst, fr_value_box_t *src);
+
+static inline CC_HINT(nonnull,always_inline) bool fr_value_box_is_safe(fr_value_box_t const *box, uint16_t safe)
+{
+	if (!safe) return false;
+
+	return (box->safe == safe);
+}
+
+int fr_value_box_mark_safe(fr_value_box_t *box, uint16_t safe) CC_HINT(nonnull);
+
+void fr_value_box_mark_unsafe(fr_value_box_t *box) CC_HINT(nonnull);
 
 /** @name Box to box copying
  *

@@ -659,6 +659,7 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 	dst->enumv = src->enumv;
 	dst->type = src->type;
 	dst->tainted = src->tainted;
+	dst->safe = src->safe;
 	fr_dlist_entry_init(&dst->entry);
 }
 
@@ -5845,4 +5846,37 @@ void value_box_list_verify(char const *file, int line, fr_value_box_list_t const
 	fr_value_box_t const *vb = NULL;
 
 	while ((vb = fr_dlist_next(list, vb))) value_box_verify(file, line, vb, talloced);
+}
+
+
+/** Mark a value-box as "safe", of a particular type.
+ *
+ *  Tainted data cannot be marked "safe".  And once data is marked
+ *  safe, it cannot be marked as a different type of "safe"
+ */
+int fr_value_box_mark_safe(fr_value_box_t *box, uint16_t safe)
+{
+	if (box->tainted) {
+		fr_strerror_const("Cannot mark data as 'safe' - it is 'tainted'");
+		return -1;
+	}
+
+	if (box->safe == safe) return 0;
+
+	if (box->safe != 0) {
+		fr_strerror_const("Data was already marked 'safe', of a different type");
+		return -1;
+	}
+
+	box->safe = safe;
+	return 0;
+}
+
+/** Mark a value-box as "unsafe"
+ *
+ *  This always succeeds, and there are no side effects.
+ */
+void fr_value_box_mark_unsafe(fr_value_box_t *box)
+{
+	box->safe = 0;
 }
