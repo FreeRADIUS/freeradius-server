@@ -113,7 +113,6 @@ static int templatize_lhs(TALLOC_CTX *ctx, edit_result_t *out, request_t *reques
 static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *lhs, request_t *request)
 {
 	ssize_t slen;
-	bool is_string;
 	fr_type_t type = lhs->vp_type;
 	fr_value_box_t *box = fr_dlist_head(&out->result);
 
@@ -127,16 +126,11 @@ static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *
 	}
 
 	/*
-	 *	If the first value box is NOT a string, then
-	 *	we're pretty darned sure that it's not an attribute
-	 *	reference.  In which case don't even bother trying to
-	 *	parse it as an attribute reference.
-	 */
-	is_string = (box->type == FR_TYPE_STRING);
-
-	/*
 	 *	Slow path: mash all of the results together as a
 	 *	string and then cast it to the correct data type.
+	 *
+	 *	@todo - if all of the boxes are of the correct type,
+	 *	then return a vector.
 	 */
 	if (fr_value_box_list_concat_in_place(box, box, &out->result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 		RPEDEBUG("Right side expansion failed");
@@ -144,25 +138,11 @@ static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *
 	}
 
 	/*
-	 *	If the LHS is structural, the RHS MAY be an attribute
-	 *	reference, or it MAY be an in-place string list.
+	 *	If the LHS is structural, the RHS MUST be an in-place
+	 *	pair list, which gets parsed later.
 	 */
 	if (fr_type_is_structural(type)) {
 		type = FR_TYPE_STRING;
-	}
-
-	/*
-	 *	If the first box was of type string, AND the
-	 *	concatenated string has a leading '&', then it MIGHT
-	 *	be an attribute reference.
-	 */
-	if (is_string && (box->length > 1) && (box->vb_strvalue[0] == '&')) {
-		slen = tmpl_afrom_attr_str(ctx, NULL, &out->to_free, box->vb_strvalue,
-					   &(tmpl_rules_t){
-						   .dict_def = request->dict,
-						   .prefix = TMPL_ATTR_REF_PREFIX_NO
-					   });
-		if (slen > 0) goto done;
 	}
 
 	/*
