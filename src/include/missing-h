@@ -166,7 +166,7 @@ int sendmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, int flags);
 #endif
 
 #ifndef HAVE_CLOSEFROM
-int		closefrom(int fd);
+void		closefrom(int fd);
 #endif
 
 #ifndef HAVE_SETLINEBUF
