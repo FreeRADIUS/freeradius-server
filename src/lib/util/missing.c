@@ -548,7 +548,7 @@ int sendmmsg(int sockfd, struct mmsghdr *msgvec, unsigned int vlen, int flags)
 #  endif
 #endif
 
-int closefrom(int fd)
+void closefrom(int fd)
 {
 	int i;
 	int maxfd = 256;
@@ -557,7 +557,7 @@ int closefrom(int fd)
 #  endif
 
 #ifdef F_CLOSEM
-	if (fcntl(fd, F_CLOSEM) == 0) return 0;
+	if (fcntl(fd, F_CLOSEM) == 0) return;
 #  endif
 
 #  ifdef F_MAXFD
@@ -595,7 +595,7 @@ int closefrom(int fd)
 			}
 		}
 		(void) closedir(dir);
-		return 0;
+		return;
 	}
 #  endif
 
@@ -603,7 +603,7 @@ int closefrom(int fd)
 do_close:
 #  endif
 
-	if (fd > maxfd) return 0;
+	if (fd > maxfd) return;
 
 	/*
 	 *	FIXME: return EINTR?
@@ -612,6 +612,6 @@ do_close:
 		close(i);
 	}
 
-	return 0;
+	return;
 }
 #endif
