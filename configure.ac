@@ -917,6 +917,11 @@ dnl #  older Linuxes for clock_gettime.
 dnl #
 AC_CHECK_LIB(rt, clock_gettime)
 
+dnl #
+dnl #  Check for -lm
+dnl #
+AC_CHECK_LIB(m, sqrt)
+
 dnl #############################################################
 dnl #
 dnl #  2b. Checks for system header files
