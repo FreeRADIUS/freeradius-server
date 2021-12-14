@@ -8,6 +8,7 @@
 **** xref:unlang/caller.adoc[caller]
 **** xref:unlang/case.adoc[case]
 **** xref:unlang/detach.adoc[detach]
+**** xref:unlang/edit.adoc[editing]
 **** xref:unlang/else.adoc[else]
 **** xref:unlang/elsif.adoc[elsif]
 **** xref:unlang/filter.adoc[filter]

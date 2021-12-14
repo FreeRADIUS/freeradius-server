@@ -1,0 +1,295 @@
+= Editing Lists and Attributes
+
+Editing a list or attribute is signified by starting a line with the
+`&` character.  This character indicates that the following text
+should be interpreted as commands to edit lists and/or attributes.
+
+.Syntax
+[source,unlang]
+----
+&list1 := &list2
+&list1 += { ... }
+
+&attribute := value
+----
+
+In version 4, the `update` statements have been deprecated.  They
+still work, but using them will give warnings.  In addition, the
+`update` sections are generally incapable of dealing with nested
+attributes.
+
+An edit statement has the following standard syntax:
+
+.Syntax
+[source,unlang]
+----
+<lhs> <op> <rhs>
+----
+
+Where we have:
+
+_<lhs>_:: The name of a list or an attribute.
+
+_<op>_:: The operator such as `=`, `:=`, etc.
+
+_<rhs>_:: The value which is assigned to the attribute.  This value
+can sometimes be an "in-place" list, in which case it is delimited by
+brackets, as in `{...}`.
+
+NOTE: Despite the edit statements having syntax similar to `update`
+sections, the meaning of the operators have changed significantly.
+You _cannot_ convert an `update` section to the new syntax simply by
+removing the `update` keyword.
+
+== List Editing
+
+.Syntax
+[source,unlang]
+----
+&<list> <op> <rhs>
+----
+
+List editing can be done for the usual xref:reference:unlang/list.adoc[lists] such as `request`,
+`reply`, `control`, etc.  However, as version 4 also supports "nested"
+and "grouped" attributes, list editing _also_ applies to nested
+attributes.
+
+The operation to be performed depends on the operator, as given in the
+table below.  These operations are based on _set theory_, which is a
+mathematical system which gives consistency to the operations.  All of
+the list operations are simple, and well defined.
+
+.List Editing Operators
+[options="header"]
+[cols="10%,90%"]
+|=====
+| Operator | Description
+| =        | Set the list to the contents of the _<rhs>_, if the _<list>_ does not exist.  If the list already exists, nothing is done.  If the list does not exist, it is created, and the contents set to the value of the _<rhs>_
+| :=       | Override the list to the contents with the _<rhs>_.  If the list already exists, its value is over-written.  If the list does not exist, it is created, and the contents set to thex value of the _<rhs>_
+| +=       | Perform list append operation.  The contents of the _<rhs>_ are appended to the _<list>_.  The resulting list is _<list><rhs>_.
+| ^=       | Perform a list prepend operation.  The contents of the _<rhs>_ are prepended to the _<list>_.  The resulting list is _<rhs><list>_.
+| -=       | Remove attributes from the list which match the _<rhs>_
+| \|=       | Perform a list union.  The resulting list has all of the contents of the original _<list>_, and the _<rhs>_ list.
+| \<=       | Perform a priority merge of two lists. The resulting list has all of the contents of the original _<list>_, and a copy of any _<rhs>_ list attribute which is not already in _<list>_.
+|=====
+
+The _<rhs>_ can be a reference to another list (e.g. `request`,
+`reply`), or to a nested / grouped attribute.
+
+The _<rhs>_ can also be an "in-place" list, which has syntax similar
+to the `update` section.  However, for "in-place" lists, _the only
+operator which is permitted is `=`.  The server *will not start* if
+any other operator is used._
+
+If the _<rhs>_ is an "in-place" list, then all of the
+xref:xlat/index.adoc[string expansions] are valid, just as are
+xref:reference:unlang/attr.adoc[attribute references].
+
+As a special case, the _<rhs>_ can also be a string, or a
+xref:xlat/index.adoc[string expansion].  If so, the string is
+interpreted as a set of attribute definitions, as if it was an
+"in-place" list.  For example, `"Filter-Id = foo"`
+
+This functionality is complex, so some examples should make this
+clearer.
+
+=== Clearing a list
+
+A lists contents can be removed by creating an empty list, and
+assigning the empty list to the destination.
+
+.Clearing a list contents, or creating an empty list.
+====
+[source,unlang]
+----
+&reply := {}
+----
+====
+
+In most other contexts, the empty list is ignored.  i.e. Appending an
+empty list to `request` does nothing.
+
+=== Adding an attribute to a list
+
+This operation appends the `Filter-Id` attribute to the tail of the
+`reply` list.  Note again that the operator associated with the
+`Filter-Id` attribute is simply `=`.
+
+This operation can best be understood as a two-step process:
+
+1. Create a temporary "in-place" list from the _<rhs>_ of the edit
+operation.  This "in-place" list is not associated with any previous
+list, but is instead existing on its own.  As such, there is no need
+to use operators here.  Instead, the attributes are created in order,
+exactly as they are given.
+
+2. Perform the `+=` ("list append") operation, in which case the
+"in-place" list is appended to the `reply` list.
+
+.Appending the `Filter-Id` attribute to the `reply` list
+====
+[source,unlang]
+----
+&reply += {
+	Filter-Id = "foo"
+}
+----
+====
+
+As a special case, where the right side is an
+xref:reference:unlang/attr.adoc[attribute reference], it is possible
+to use `+=`.
+
+This example 
+
+.Appending the `User-Name` attribute from the `request` list, to the `reply` list.
+====
+[source,unlang]
+----
+&reply += &request.User-Name
+----
+====
+
+
+=== Over-riding the contents of a list
+
+The `:=` (override) operator will delete the contents of a list.  We
+note that the empty list example above is just a special case of
+overriding the contents of a list.
+
+.Set the contents of the `reply` list to the `Filter-Id` attribute.
+====
+[source,unlang]
+----
+&reply := {
+	Filter-Id = "foo"
+}
+----
+====
+
+Aftet this operation, the contents of the `reply` list will be one
+attribute: `Filter-Id`.
+
+=== Removing attributes from a list
+
+Attributes can be removed from a list using the `-=` (remove) operator.
+
+.Remove the _first_ instance of `Filter-Id` from the `reply` list.
+====
+[source,unlang]
+----
+&reply -= &Filter-Id
+----
+====
+
+.Remove _all_ instances of `Filter-Id` from the `reply` list.
+====
+[source,unlang]
+----
+&reply -= &Filter-Id[*]
+----
+====
+
+This syntax is clearer and more consistent than the old `!* ANY`
+hacks.
+
+Note also that the `-=` operator allows an attribute on the _<rhs>_,
+only when the meaning of the operation is clear.
+
+=== List to List Operatons
+
+Lists can also be copied, using the operators.
+
+.Remove all existing attributes in the `reply` list, and
+copies all of the `request` list contents to the `reply` list.
+====
+[source,unlang]
+----
+&reply := &request
+----
+====
+
+.Append the contents of the `request` list to the `reply` list.
+====
+[source,unlang]
+----
+&reply += &request
+----
+====
+
+== Attribute Editing
+
+.Syntax
+[source,unlang]
+----
+&<attribute> <op> <rhs>
+----
+
+Attribute editing can be done for any
+xref:reference:unlang/attr.adoc[attribute] such as
+`request.User-Name`, etc.  However, as version 4 also supports
+"nested" and "grouped" attributes, attribute editing _also_ can be
+done for nested attributes.
+
+The operation to be performed depends on the operator, as given in the
+table below.  Unlike the list operations above, attribute operations
+change the attribute _value_.
+
+.Attribute Editing Operators
+[options="header"]
+[cols="10%,90%"]
+|=====
+| Operator | Description
+| =        | Set the attribute to the contents of the _<rhs>_, if the _<attribute>_ does not exist.  If the attribute already exists, nothing is done.  If the attribute does not exist, it is created, and the contents set to the value of the _<rhs>_
+| :=       | Override the attribute with the contents with the _<rhs>_.  If the attribute already exists, its value is over-written.  If the attribute does not exist, it is created, and the contents set to thex value of the _<rhs>_
+| +=       | Perform addition.  The contents of the _<rhs>_ are added to the value of the _<attribute>_.
+| -=       | Perform subtraction. The contents of the _<rhs>_ are subtracted from the value of the _<attribute>_.
+| *=       | Perform multiplication.  The value of the _<attribute>_ is multiplied by the contents of the _<rhs>_.
+| /=       | Perform subtraction. The value of the _<attribute>_ is divided by the contents of the _<rhs>_.
+| \|=       | Perform logical "or".  The value of the _<attribute>_ is "or"ed with the contents of the _<rhs>_.
+| \&=       | Perform logical "and".  The value of the _<attribute>_ is "and"ed with the contents of the _<rhs>_.
+|=====
+
+The _<rhs>_ can be a reference to another attribute
+(e.g. `request.Filter-Id`).  If the field is a double-quoted string,
+it undergoes xref:xlat/index.adoc[string expansion], and the resulting
+value is processed as above.
+
+The edit process is atomic, in that either all of the attributes are
+modified, or none of them are modified.  If the edit fails for any
+reason, then all of the results are discarded, and the edit does not
+affect any server attributes.
+
+Note also that the server tracks overflows, underflows, and attempts
+to divide by zero.  For example, if an attribute is of type `uint8`,
+then it can only contain 8-bit integers.  Any attempt to overflow the
+value to more than `255`, or underflow it to lower than zero (`0`), or
+to divide by zero, will result in the edit operation failing to occur.
+
+Nothing bad will happen to the server, it will just encounter a
+run-time failure while editing the attribute, and the edit operation
+will not succeed.  All other packet processing will continue
+processing as normal.
+
+In short, failed edit operations are a effectively a "noop" operation.
+
+=== Operations on `string` and `octet` Data Types
+
+The operators also apply to non-integer attributes.
+
+.Attribute Editing Operators for `string` and `octet`
+[options="header"]
+[cols="10%,90%"]
+|=====
+| Operator | Description
+| =        | Set the attribute to the contents of the _<rhs>_, if the _<attribute>_ does not exist.  If the attribute already exists, nothing is done.  If the attribute does not exist, it is created, and the contents set to the value of the _<rhs>_
+| :=       | Override the attribute with the contents with the _<rhs>_.  If the attribute already exists, its value is over-written.  If the attribute does not exist, it is created, and the contents set to thex value of the _<rhs>_
+| +=       | Perform string append.  The contents of the _<rhs>_ are appended to the _<attribute>_.
+| -=       | Inverse of string append. The contents of the _<rhs>_ are deleted from from the _<attribute>_, if the `_<rhs>_` is a suffix of _<attribute>_ 
+| ^=       | Perform string prepend.  The contents of the _<rhs>_ are prepended to the _<attribute>_.
+| \|=       | Perform logical "or".  The value of the _<attribute>_ is "or"ed with the contents of the _<rhs>_.  Both strings must be of the same length.
+| \&=       | Perform logical "and".  The value of the _<attribute>_ is "and"ed with the contents of the _<rhs>_.  Both strings must be of the same length.
+|=====
+
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Development of this documentation was sponsored by Network RADIUS SAS.
