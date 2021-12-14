@@ -891,6 +891,102 @@ static int list_merge_lhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
 	return 0;
 }
 
+/** A MERGE B
+ *
+ * with priority to B
+ */
+static int list_merge_rhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src)
+{
+	fr_pair_t *a, *b;
+	fr_dcursor_t cursor1, cursor2;
+
+	fr_pair_list_sort(&dst->children, fr_pair_cmp_by_parent_num);
+	fr_pair_list_sort(src, fr_pair_cmp_by_parent_num);
+
+	fr_pair_dcursor_init(&cursor1, &dst->children);
+	fr_pair_dcursor_init(&cursor2, src);
+
+	while (true) {
+		int rcode;
+
+		a = fr_dcursor_current(&cursor1);
+		b = fr_dcursor_current(&cursor2);
+
+		/*
+		 *	B is done, so we stop processing the merge.
+		 */
+		if (!b) break;
+
+		/*
+		 *	A is done, so we always merge in B at the end of A.
+		 */
+		if (!a) {
+			if (fr_edit_list_insert_pair_tail(el, &dst->children, fr_pair_copy(dst, b)) < 0) {
+				return -1;
+			}
+
+			fr_dcursor_next(&cursor2);
+			continue;
+		}
+
+		rcode = fr_pair_cmp_by_parent_num(a, b);
+
+		/*
+		 *	a > b
+		 *
+		 *	A stays in its list, but we advance to the
+		 *	next item.  Maybe at that point we will be
+		 *	able to merge A and B.
+		 */
+		if (rcode > 0) {
+			fr_dcursor_next(&cursor1);
+			continue;
+		}
+
+		/*
+		 *	a < b
+		 *
+		 *	This means that in the ordered set, the
+		 *	equivalent to B does not exist.  So we copy B
+		 *	to before A.
+		 */
+		if (rcode < 0) {
+			if (fr_edit_list_insert_pair_before(el, &dst->children, a, fr_pair_copy(dst, b)) < 0) {
+				return -1;
+			}
+
+			fr_dcursor_next(&cursor2);
+			continue;
+		}
+
+		fr_assert(rcode == 0);
+
+		/*
+		 *	They're the same.  Recurse if necessary.
+		 *
+		 *	Then, ignore B, because we already have A.
+		 *
+		 *	The attributes are the same.  Keep A, but also
+		 *	check if we have to merge the children of A
+		 *	and B.
+		 */
+		fr_assert(a->da == b->da);
+
+		if (fr_type_is_structural(a->vp_type)) {
+			rcode = list_merge_rhs(el, a, &b->children);
+			if (rcode < 0) return rcode;
+		}
+
+		/*
+		 *	We have both A and B, so we prefer A.
+		 */
+		fr_dcursor_next(&cursor1);
+		fr_dcursor_next(&cursor2);
+	}
+
+	return 0;
+}
+
 /** Apply operators to lists.
  *
  *   = is "if found vp, do nothing.  Otherwise call fr_edit_list_insert_pair_tail()
@@ -951,6 +1047,11 @@ int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_to
 		if (&dst->children == src) return 0; /* A MERGE A == A */
 
 		return list_merge_lhs(el, dst, src);
+
+	case T_OP_LE:
+		if (&dst->children == src) return 0; /* A MERGE A == A */
+
+		return list_merge_rhs(el, dst, src);
 
 	default:
 		break;
