@@ -697,7 +697,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 				 *	that case, we should return
 				 *	NOTFOUND
 				 */
-				RDEBUG("pool appears to be full");
+				REDEBUG("pool appears to be full");
 				return do_logging(request, inst->log_failed, RLM_MODULE_NOTFOUND);
 
 			}
@@ -708,14 +708,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 			 *	sqlippool, so we should just ignore this
 			 *	allocation failure and return NOOP
 			 */
-			RDEBUG("IP address could not be allocated as no pool exists with that name");
+			REDEBUG("IP address could not be allocated as no pool exists with that name");
 			return RLM_MODULE_NOOP;
 
 		}
 
 		fr_connection_release(inst->sql_inst->pool, handle);
 
-		RDEBUG("IP address could not be allocated");
+		REDEBUG("IP address could not be allocated");
 		return do_logging(request, inst->log_failed, RLM_MODULE_NOOP);
 	}
 
@@ -728,7 +728,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		DO_PART(allocate_commit);
 
 		talloc_free(vp);
-		RDEBUG("Invalid IP address [%s] returned from database query.", allocation);
+		REDEBUG("Invalid IP address [%s] returned from database query.", allocation);
 		fr_connection_release(inst->sql_inst->pool, handle);
 		return do_logging(request, inst->log_failed, RLM_MODULE_NOOP);
 	}
