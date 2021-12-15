@@ -1051,6 +1051,13 @@ static const fr_binary_op_t calc_type[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_FLOAT64]	= calc_float64,
 };
 
+static int invalid_type(fr_type_t type)
+{
+	fr_strerror_printf("Cannot perform mathematical operations on data type %s",
+			   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
+	return -1;
+}
+
 /** Calculate DST = A OP B
  *
  *  The result is written to DST only *after* it has been calculated.
@@ -1067,9 +1074,10 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	fr_value_box_t out;
 	fr_binary_op_t func;
 
-	fr_assert(fr_type_is_leaf(a->type));
-	fr_assert(fr_type_is_leaf(b->type));
-	fr_assert((hint == FR_TYPE_NULL) || fr_type_is_leaf(hint));
+	if ((hint != FR_TYPE_NULL) && !fr_type_is_leaf(hint)) return invalid_type(hint);
+
+	if (!fr_type_is_leaf(a->type)) return invalid_type(a->type);
+	if (!fr_type_is_leaf(b->type)) return invalid_type(b->type);
 
 	fr_value_box_init_null(&one);
 	fr_value_box_init_null(&two);
@@ -1273,11 +1281,8 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 	int rcode = -1;
 	fr_value_box_t out;
 
-	if (!fr_type_is_leaf(dst->type)) {
-		fr_strerror_printf("Cannot perform any operations for destination type %s",
-				   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
-		return -1;
-	}
+	if (!fr_type_is_leaf(dst->type)) return invalid_type(dst->type);
+	if (!fr_type_is_leaf(src->type)) return invalid_type(src->type);
 
 	if (!fr_assignment_op[op]) goto invalid;
 
@@ -1361,11 +1366,7 @@ int fr_value_calc_unary_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op)
 	fr_value_box_t one;
 	fr_token_t new_op;
 
-	if (!fr_type_is_leaf(box->type)) {
-		fr_strerror_printf("Cannot perform any operations for destination type %s",
-				   fr_table_str_by_value(fr_value_box_type_table, box->type, "<INVALID>"));
-		return -1;
-	}
+	if (!fr_type_is_leaf(box->type)) return invalid_type(box->type);
 
 	if (op != T_OP_INCRM) goto invalid;
 
