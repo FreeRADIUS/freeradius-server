@@ -218,6 +218,28 @@ static const fr_type_t upcast[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 };
 
 
+static int invalid_type(fr_type_t type)
+{
+	fr_strerror_printf("Cannot perform mathematical operations on data type %s",
+			   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
+	return -1;
+}
+
+static int handle_result(fr_type_t type, fr_token_t op, int rcode)
+{
+	if (rcode == ERR_OVERFLOW) {
+		fr_strerror_printf("Value overflows/underflows when calculating answer for %s",
+				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
+
+	} else if (rcode == ERR_INVALID) {
+		fr_strerror_printf("Invalid assignment operator %s for destination type %s",
+				   fr_tokens[op],
+				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
+	}
+
+	return rcode;
+}
+
 static int calc_bool(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *a, fr_token_t op, fr_value_box_t const *b)
 {
 	fr_value_box_t one, two;
@@ -278,7 +300,7 @@ static int calc_date(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t
 	fr_assert(dst->type == FR_TYPE_DATE);
 
 	if ((a->type == FR_TYPE_DATE) && (b->type == FR_TYPE_DATE)) {
-		fr_strerror_const("Cannot perform operation on two dates");
+		fr_strerror_const("Cannot perform operation on two values of type 'date'.  One value must be a number.");
 		return -1;
 	}
 
@@ -332,7 +354,7 @@ static int calc_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value
 	 */
 	if ((a->type == FR_TYPE_DATE) && (b->type == FR_TYPE_DATE)) {
 		if (op != T_SUB) {
-			fr_strerror_const("Cannot perform operation on two dates");
+			fr_strerror_const("Cannot perform operation on two values of type 'date'.");
 			return -1;
 		}
 	}
@@ -422,12 +444,12 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		 *  The inverse of add!
 		 */
 		if (a->vb_length < b->vb_length) {
-			fr_strerror_const("Suffix to remove is longer than input string");
+			fr_strerror_const("Suffix to remove is longer than input string.");
 			return -1;
 		}
 
 		if (memcmp(a->vb_octets + a->vb_length - b->vb_length, b->vb_strvalue, b->vb_length) != 0) {
-			fr_strerror_const("Right side is not a suffix of the input string");
+			fr_strerror_const("Suffix to remove is not a suffix of the input string.");
 			return -1;
 		}
 
@@ -537,7 +559,7 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		}
 
 		if (memcmp(a->vb_strvalue + a->vb_length - b->vb_length, b->vb_strvalue, b->vb_length) != 0) {
-			fr_strerror_const("Right side is not a suffix of the input string");
+			fr_strerror_const("Suffix to remove is not a suffix of the input string");
 			return -1;
 		}
 
@@ -951,7 +973,7 @@ static int calc_integer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t con
 	 */
 	if ((dst->type == in1->type) &&
 	    (dst->type == in2->type)) {
-		if (!calc_integer_type[dst->type]) goto not_yet;
+		if (!calc_integer_type[dst->type]) return invalid_type(dst->type);
 
 		return calc_integer_type[dst->type](ctx, dst, in1, op, in2);
 	}
@@ -1006,11 +1028,7 @@ static int calc_integer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t con
 	 *	intermediate variable shuts it up.
 	 */
 	calc = calc_integer_type[type];
-	if (!calc) {
-	not_yet:
-		fr_strerror_const("Not yet implemented");
-		return -1;
-	}
+	if (!calc) return invalid_type(type);
 
 	fr_value_box_init(&out, type, dst->enumv, false);
 	rcode = calc(NULL, &out, a, op, b);
@@ -1050,13 +1068,6 @@ static const fr_binary_op_t calc_type[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_FLOAT32]	= calc_float32,
 	[FR_TYPE_FLOAT64]	= calc_float64,
 };
-
-static int invalid_type(fr_type_t type)
-{
-	fr_strerror_printf("Cannot perform mathematical operations on data type %s",
-			   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
-	return -1;
-}
 
 /** Calculate DST = A OP B
  *
@@ -1253,20 +1264,10 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	}
 
 done:
-	if (rcode == ERR_OVERFLOW) {
-		fr_strerror_printf("Value overflows/underflows when calculating answer for %s",
-				   fr_table_str_by_value(fr_value_box_type_table, hint, "<INVALID>"));
-
-	} else if (rcode == ERR_INVALID) {
-		fr_strerror_printf("Invalid operator %s for destination type %s",
-				   fr_tokens[op],
-				   fr_table_str_by_value(fr_value_box_type_table, hint, "<INVALID>"));
-	}
-
 	fr_value_box_clear_value(&one);
 	fr_value_box_clear_value(&two);
 
-	return rcode;
+	return handle_result(hint, op, rcode);
 }
 
 /** Calculate DST OP SRC
@@ -1333,20 +1334,7 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 		break;
 	}
 
-	if (rcode == ERR_OVERFLOW) {
-		fr_strerror_printf("Value overflows/underflows when calculating answer for %s",
-				   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
-
-	} else if (rcode == ERR_INVALID) {
-		fr_strerror_printf("Invalid assignment operator %s for destination type %s",
-				   fr_tokens[op],
-				   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
-	}
-
-	/*
-	 *	Don't bother returning private magic numbers.
-	 */
-	if (rcode < 0) return -1;
+	if (rcode < 0) return handle_result(dst->type, op, rcode);
 
 	fr_value_box_clear_value(dst);
 	fr_value_box_copy_shallow(NULL, dst, &out);
@@ -1376,7 +1364,6 @@ int fr_value_calc_unary_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op)
 		break;
 
 	default:
-		rcode = ERR_INVALID;
 		goto invalid;
 	}
 
@@ -1430,24 +1417,13 @@ int fr_value_calc_unary_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op)
 		break;
 
 	default:
-		rcode = ERR_INVALID;
-		goto invalid;
+	invalid:
+		return handle_result(box->type, op, ERR_INVALID);
 	}
 
 	rcode = fr_value_calc_binary_op(ctx, box, box->type, box, new_op, &one);
 
-	if (rcode == ERR_OVERFLOW) {
-		fr_strerror_printf("Value overflows/underflows when calculating answer for %s",
-				   fr_table_str_by_value(fr_value_box_type_table, box->type, "<INVALID>"));
-
-	} else if (rcode == ERR_INVALID) {
-	invalid:
-		fr_strerror_printf("Invalid assignment operator %s for destination type %s",
-				   fr_tokens[op],
-				   fr_table_str_by_value(fr_value_box_type_table, box->type, "<INVALID>"));
-	}
-
-	return rcode;
+	return handle_result(box->type, op, rcode);
 }
 
 /** Apply a set of operations in order to create an output box.
