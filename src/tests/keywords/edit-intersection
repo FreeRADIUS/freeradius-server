@@ -1,0 +1,45 @@
+#
+# PRE: edit-list
+#
+
+update control {
+	&Tmp-String-0 := "foo"
+}
+
+update reply {
+	&Tmp-String-0 := "foo"
+}
+
+&reply &= &control
+
+#  must exist
+if (!&reply.Tmp-String-0) {
+	%(debug_attr:reply[*])
+	test_fail
+}
+
+# and have the correct value
+if (&reply.Tmp-String-0 != "foo") {
+	%(debug_attr:reply[*])
+	test_fail
+}
+
+# reset
+&reply -= &Tmp-String-0[*]
+
+#
+# Same attribute, but different value
+#
+update reply {
+	&Tmp-String-0 := "bar"
+}
+
+&reply &= &control
+
+#  must NOT exist
+if (&reply.Tmp-String-0) {
+	%(debug_attr:reply[*])
+	test_fail
+}
+
+success

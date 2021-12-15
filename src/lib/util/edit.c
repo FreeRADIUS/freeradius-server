@@ -987,6 +987,117 @@ static int list_merge_rhs(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *sr
 	return 0;
 }
 
+/** A INTERSECTION B
+ *
+ */
+static int list_intersection(fr_edit_list_t *el, fr_pair_t *dst, fr_pair_list_t *src)
+{
+	fr_pair_t *a, *b;
+	fr_dcursor_t cursor1, cursor2;
+
+	/*
+	 *	Prevent people from doing stupid things.
+	 */
+	if (dst->vp_type == FR_TYPE_STRUCT) {
+		fr_strerror_printf("Cannot take intersection of STRUCT data types, it would break the structure");
+		return -1;
+	}
+
+	fr_pair_list_sort(&dst->children, fr_pair_cmp_by_parent_num);
+	fr_pair_list_sort(src, fr_pair_cmp_by_parent_num);
+
+	fr_pair_dcursor_init(&cursor1, &dst->children);
+	fr_pair_dcursor_init(&cursor2, src);
+
+	while (true) {
+		int rcode;
+
+		a = fr_dcursor_current(&cursor1);
+		b = fr_dcursor_current(&cursor2);
+
+		/*
+		 *	A is done, so we can return.
+		 */
+		if (!a) break;
+
+		/*
+		 *	B is done, so we delete everything else in A.
+		 */
+		if (!b) {
+		delete:
+			fr_dcursor_next(&cursor1);
+			if (fr_edit_list_pair_delete(el, &dst->children, a) < 0) return -1;
+			continue;
+		}
+
+		rcode = fr_pair_cmp_by_parent_num(a, b);
+
+		/*
+		 *	a < b
+		 *
+		 *	A gets removed.
+		 */
+		if (rcode < 0) goto delete;
+
+		/*
+		 *	a > b
+		 *
+		 *      Skip forward in B until we have it better matching A.
+		 */
+		if (rcode > 0) {
+			fr_dcursor_next(&cursor2);
+			continue;
+		}
+
+		fr_assert(rcode == 0);
+
+		/*
+		 *	INTERSECT the children, and then leave A
+		 *	alone, unless it's empty, in which case A
+		 *	INTERSECT B is empty, so we also delete A.
+		 */
+		if (fr_type_is_structural(a->vp_type)) {
+			rcode = list_intersection(el, a, &b->children);
+			if (rcode < 0) return rcode;
+
+			if (fr_pair_list_empty(&a->children)) {
+				if (fr_edit_list_pair_delete(el, &dst->children, a) < 0) return -1;
+			}
+
+			fr_dcursor_next(&cursor1);
+			fr_dcursor_next(&cursor2);
+			continue;
+		}
+
+		/*
+		 *	Process all identical attributes, but by
+		 *	value.
+		 */
+		while (a && b && (a->da == b->da)) {
+			fr_pair_t *next1, *next2;
+
+			next1 = fr_dcursor_next(&cursor1);
+			next2 = fr_dcursor_next(&cursor2);
+
+			/*
+			 *	Check if the values are the same.  This
+			 *	returns 0 for "equal", and non-zero for
+			 *	anything else.
+			 */
+			rcode = fr_value_box_cmp(&a->data, &b->data);
+			if (rcode != 0) {
+				if (fr_edit_list_pair_delete(el, &dst->children, a) < 0) return -1;
+			}
+
+			a = next1;
+			b = next2;
+		}
+	}
+
+	return 0;
+}
+
+
 /** Apply operators to lists.
  *
  *   = is "if found vp, do nothing.  Otherwise call fr_edit_list_insert_pair_tail()
@@ -1037,6 +1148,11 @@ int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_to
 
 		COPY;
 		return fr_edit_list_insert_list_head(el, &dst->children, &copy);
+
+	case T_OP_AND_EQ:
+		if (&dst->children == src) return 0; /* A INTERSECTION A == A */
+
+		return list_intersection(el, dst, src);
 
 	case T_OP_OR_EQ:
 		if (&dst->children == src) return 0; /* A UNION A == A */
