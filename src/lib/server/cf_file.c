@@ -1796,7 +1796,7 @@ static int parse_input(cf_stack_t *stack)
 	 *	Which seems bad.  But the old parser allowed
 	 *	it, so oh well.
 	 */
-	if ((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || (*ptr == '&') ||
+	if ((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || ((*ptr == '&') && (ptr[1] != '=')) ||
 	    ((*((uint8_t const *) ptr) & 0x80) != 0) || isalpha((int) *ptr)) {
 		if (cf_get_token(parent, &ptr, &name2_token, buff[2], stack->bufsize,
 				 frame->filename, frame->lineno) < 0) {
