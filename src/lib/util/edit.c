@@ -537,7 +537,7 @@ static int _edit_list_destructor(fr_edit_list_t *el)
 {
 	fr_edit_t *e;
 
-	if (!el) return 0;
+	fr_assert(el != NULL);
 
 	for (e = fr_dlist_head(&el->list);
 	     e != NULL;
@@ -633,9 +633,21 @@ int fr_edit_list_insert_list_after(fr_edit_list_t *el, fr_pair_list_t *list, fr_
 {
 	fr_pair_t *prev, *vp;
 
-	if (!el) return 0;
-
 	prev = pos;
+
+	if (!el) {
+		/*
+		 *	@todo - this should really be an O(1) dlist
+		 *	operation.
+		 */
+		while ((vp = fr_pair_list_head(to_insert)) != NULL) {
+			(void) fr_pair_remove(to_insert, vp);
+			(void) fr_pair_insert_after(list, prev, vp);
+			prev = vp;
+		}
+
+		return 0;
+	}
 
 	/*
 	 *	We have to record each individual insert as a separate
