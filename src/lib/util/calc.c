@@ -31,6 +31,8 @@ RCSID("$Id$")
 
 #define swap(_a, _b) do { __typeof__ (_a) _tmp = _a; _a = _b; _b = _tmp; } while (0)
 
+#define ERR_ZERO (-5)
+#define ERR_UNDERFLOW (-4)
 #define ERR_OVERFLOW (-3)
 #define ERR_INVALID  (-2)
 
@@ -227,12 +229,19 @@ static int invalid_type(fr_type_t type)
 
 static int handle_result(fr_type_t type, fr_token_t op, int rcode)
 {
-	if (rcode == ERR_OVERFLOW) {
-		fr_strerror_printf("Value overflows/underflows when calculating answer for %s",
+	if (rcode == ERR_ZERO) {
+		fr_strerror_const("Cannot divide by zero.");
+
+	} else if (rcode == ERR_UNDERFLOW) {
+		fr_strerror_printf("Value underflows '%s' when calculating result.",
+				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
+
+	} else if (rcode == ERR_OVERFLOW) {
+		fr_strerror_printf("Value overflows '%s' when calculating result.",
 				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
 
 	} else if (rcode == ERR_INVALID) {
-		fr_strerror_printf("Invalid assignment operator %s for destination type %s",
+		fr_strerror_printf("Invalid assignment operator '%s' for result type '%s'.",
 				   fr_tokens[op],
 				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
 	}
@@ -270,7 +279,7 @@ static int calc_bool(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t
 		/*
 		 *	0-1 = -1, which isn't a valid boolean value.
 		 */
-		if (a->vb_bool < b->vb_bool) return ERR_OVERFLOW;
+		if (a->vb_bool < b->vb_bool) return ERR_UNDERFLOW;
 
 		dst->vb_bool = a->vb_bool - b->vb_bool;
 		break;
@@ -324,14 +333,14 @@ static int calc_date(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t
 		if (!fr_add(&when, fr_time_delta_unwrap(a->vb_time_delta), fr_time_delta_unwrap(b->vb_time_delta))) return ERR_OVERFLOW;
 
 		dst->vb_date = fr_unix_time_from_integer(&overflow, when, FR_TIME_RES_NSEC);
-		if (overflow) return ERR_OVERFLOW; /* overflow */
+		if (overflow) return ERR_OVERFLOW;
 		break;
 
 	case T_SUB:
-		if (!fr_sub(&when, fr_time_delta_unwrap(a->vb_time_delta), fr_time_delta_unwrap(b->vb_time_delta))) return ERR_OVERFLOW;
+		if (!fr_sub(&when, fr_time_delta_unwrap(a->vb_time_delta), fr_time_delta_unwrap(b->vb_time_delta))) return ERR_UNDERFLOW;
 
 		dst->vb_date = fr_unix_time_from_integer(&overflow, when, FR_TIME_RES_NSEC);
-		if (overflow) return ERR_OVERFLOW; /* overflow */
+		if (overflow) return ERR_UNDERFLOW;
 		break;
 
 	default:
@@ -382,7 +391,7 @@ static int calc_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value
 		break;
 
 	case T_SUB:
-		if (!fr_sub(&when, fr_time_delta_unwrap(a->vb_time_delta), fr_time_delta_unwrap(b->vb_time_delta))) return ERR_OVERFLOW;
+		if (!fr_sub(&when, fr_time_delta_unwrap(a->vb_time_delta), fr_time_delta_unwrap(b->vb_time_delta))) return ERR_UNDERFLOW;
 		dst->vb_time_delta = fr_time_delta_wrap(when);
 		break;
 
@@ -839,7 +848,7 @@ static int calc_float32(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 		break;
 
 	case T_DIV:
-		if (fpclassify(b->vb_float64) == FP_ZERO) return ERR_OVERFLOW;
+		if (fpclassify(b->vb_float64) == FP_ZERO) return ERR_ZERO;
 
 		dst->vb_float32 = a->vb_float64 / b->vb_float64;
 		break;
@@ -884,7 +893,7 @@ static int calc_float64(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 		break;
 
 	case T_DIV:
-		if (fpclassify(b->vb_float64) == FP_ZERO) return ERR_OVERFLOW;
+		if (fpclassify(b->vb_float64) == FP_ZERO) return ERR_ZERO;
 
 		dst->vb_float64 = a->vb_float64 / b->vb_float64;
 		break;
@@ -905,7 +914,7 @@ static int calc_float64(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 		break; \
  \
 	case T_SUB: \
-		if (!fr_sub(&dst->vb_ ## _t, in1->vb_ ## _t, in2->vb_ ## _t)) return ERR_OVERFLOW; \
+		if (!fr_sub(&dst->vb_ ## _t, in1->vb_ ## _t, in2->vb_ ## _t)) return ERR_UNDERFLOW; \
 		break; \
  \
 	case T_MUL: \
