@@ -2693,6 +2693,7 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 
 		parent = talloc_parent(slow);
 		if (expected && (parent != expected)) {
+		bad_parent:
 			fr_log_talloc_report(expected);
 			if (parent) fr_log_talloc_report(parent);
 
@@ -2702,6 +2703,16 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 					     expected, talloc_get_name(expected),
 					     parent, parent ? talloc_get_name(parent) : "NULL");
 		}
+	}
+
+	/*
+	 *	Check the remaining pairs
+	 */
+	for (; slow; slow = fr_pair_list_next(list, slow)) {
+		PAIR_VERIFY(slow);
+
+		parent = talloc_parent(slow);
+		if (expected && (parent != expected)) goto bad_parent;
 	}
 }
 #endif
