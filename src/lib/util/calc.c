@@ -379,7 +379,11 @@ static int calc_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value
 		a = &one;
 	}
 
-	if (b->type != FR_TYPE_TIME_DELTA) {
+	if ((op == T_RSHIFT) || (op == T_LSHIFT)) {
+		if (fr_value_box_cast(ctx, &two, FR_TYPE_UINT8, dst->enumv, b) < 0) return -1;
+		b = &two;
+
+	} else if (b->type != FR_TYPE_TIME_DELTA) {
 		if (fr_value_box_cast(NULL, &two, FR_TYPE_TIME_DELTA, dst->enumv, b) < 0) return -1;
 		b = &two;
 	}
@@ -392,6 +396,18 @@ static int calc_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value
 
 	case T_SUB:
 		if (!fr_sub(&when, fr_time_delta_unwrap(a->vb_time_delta), fr_time_delta_unwrap(b->vb_time_delta))) return ERR_UNDERFLOW;
+		dst->vb_time_delta = fr_time_delta_wrap(when);
+		break;
+
+	case T_RSHIFT:
+		when = fr_time_delta_unwrap(a->vb_time_delta) >> b->vb_uint8;
+		dst->vb_time_delta = fr_time_delta_wrap(when);
+		break;
+
+	case T_LSHIFT:
+		if (b->vb_uint8 >= 64) return ERR_OVERFLOW;
+
+		when = fr_time_delta_unwrap(a->vb_time_delta) << b->vb_uint8;
 		dst->vb_time_delta = fr_time_delta_wrap(when);
 		break;
 
@@ -416,7 +432,11 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		a = &one;
 	}
 
-	if (b->type != FR_TYPE_OCTETS) {
+	if ((op == T_RSHIFT) || (op == T_LSHIFT)) {
+		if (fr_value_box_cast(ctx, &two, FR_TYPE_UINT32, dst->enumv, b) < 0) return -1;
+		b = &two;
+
+	} else if (b->type != FR_TYPE_OCTETS) {
 		if (fr_value_box_cast(ctx, &two, FR_TYPE_OCTETS, dst->enumv, b) < 0) return -1;
 		b = &two;
 	}
@@ -501,6 +521,31 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		fr_value_box_memdup_shallow(dst, dst->enumv, buf, a->vb_length, a->tainted | b->tainted);
 		break;
 
+	case T_RSHIFT:
+		if (b->vb_uint32 > a->vb_length) return ERR_UNDERFLOW;
+
+		len = a->vb_length - b->vb_uint32;
+		buf = talloc_array(ctx, uint8_t, len);
+		if (!buf) goto oom;
+
+		memcpy(buf, a->vb_octets, len);
+
+		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, a->tainted);
+		break;
+
+	case T_LSHIFT:
+		if (b->vb_uint32 > a->vb_length) return ERR_OVERFLOW;
+
+		len = a->vb_length - b->vb_uint32;
+
+		buf = talloc_array(ctx, uint8_t, len);
+		if (!buf) goto oom;
+
+		memcpy(buf, a->vb_octets + b->vb_uint32, len);
+
+		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, a->tainted);
+		break;
+
 	default:
 		return ERR_INVALID;	/* invalid operator */
 	}
@@ -524,7 +569,11 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		a = &one;
 	}
 
-	if (b->type != FR_TYPE_STRING) {
+	if ((op == T_RSHIFT) || (op == T_LSHIFT)) {
+		if (fr_value_box_cast(ctx, &two, FR_TYPE_UINT32, dst->enumv, b) < 0) return -1;
+		b = &two;
+
+	} else if (b->type != FR_TYPE_STRING) {
 		if (fr_value_box_cast(ctx, &two, FR_TYPE_STRING, dst->enumv, b) < 0) return -1;
 		b = &two;
 	}
@@ -540,22 +589,24 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 			return -1;
 		}
 
+		len = a->vb_length + b->vb_length;
 		memcpy(buf, b->vb_strvalue, b->vb_length);
 		memcpy(buf + b->vb_length, a->vb_strvalue, a->vb_length);
-		buf[a->vb_length + b->vb_length] = '\0';
+		buf[len] = '\0';
 
-		fr_value_box_strdup_shallow(dst, dst->enumv, buf, a->tainted | b->tainted);
+		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
 		break;
 
 	case T_ADD:
 		buf = talloc_array(ctx, char, len + 1);
 		if (!buf) goto oom;
 
+		len = a->vb_length + b->vb_length;
 		memcpy(buf, a->vb_strvalue, a->vb_length);
 		memcpy(buf + a->vb_length, b->vb_strvalue, b->vb_length);
-		buf[a->vb_length + b->vb_length] = '\0';
+		buf[len] = '\0';
 
-		fr_value_box_strdup_shallow(dst, dst->enumv, buf, a->tainted | b->tainted);
+		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
 		break;
 
 	case T_SUB:
@@ -579,7 +630,34 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		memcpy(buf, a->vb_strvalue, len);
 		buf[len] = '\0';
 
-		fr_value_box_strdup_shallow(dst, dst->enumv, buf, a->tainted | b->tainted);
+		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
+		break;
+
+	case T_RSHIFT:
+		if (b->vb_uint32 > a->vb_length) return ERR_UNDERFLOW;
+
+		len = a->vb_length - b->vb_uint32;
+		buf = talloc_array(ctx, char, len + 1);
+		if (!buf) goto oom;
+
+		memcpy(buf, a->vb_strvalue, len);
+		buf[len] = '\0';
+
+		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, a->tainted);
+		break;
+
+	case T_LSHIFT:
+		if (b->vb_uint32 > a->vb_length) return ERR_OVERFLOW;
+
+		len = a->vb_length - b->vb_uint32;
+
+		buf = talloc_array(ctx, char, len + 1);
+		if (!buf) goto oom;
+
+		memcpy(buf, a->vb_strvalue + b->vb_uint32, len);
+		buf[len] = '\0';
+
+		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, a->tainted);
 		break;
 
 	default:
@@ -933,6 +1011,18 @@ static int calc_float64(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 		dst->vb_ ## _t = in1->vb_ ## _t |  in2->vb_ ## _t; \
 		break; \
  \
+	case T_RSHIFT: \
+		if (in2->vb_uint8 > (8 * sizeof(in1->vb_ ## _t))) return ERR_UNDERFLOW; \
+ \
+		dst->vb_ ## _t = in1->vb_ ## _t >>  in2->vb_uint8; \
+		break; \
+ \
+	case T_LSHIFT: \
+		if (in2->vb_uint8 >= (8 * sizeof(in1->vb_ ## _t))) return ERR_OVERFLOW; \
+ \
+		dst->vb_ ## _t = in1->vb_ ## _t <<  in2->vb_uint8; \
+		break; \
+ \
 	default: \
 		return ERR_INVALID; \
 	} \
@@ -1140,6 +1230,12 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 
 		case T_ADD:
 		case T_SUB:
+		case T_MUL:
+		case T_DIV:
+		case T_AND:
+		case T_OR:
+		case T_RSHIFT:
+		case T_LSHIFT:
 			if (a->type == b->type) {
 				hint = a->type;
 				break;
@@ -1243,6 +1339,8 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	case T_AND:
 	case T_OR:
 	case T_OP_PREPEND:
+	case T_RSHIFT:
+	case T_LSHIFT:
 		fr_assert(hint != FR_TYPE_NULL);
 
 		func = calc_type[hint];
@@ -1335,6 +1433,14 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 
 	case T_OP_OR_EQ:
 		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_AND, src);
+		break;
+
+	case T_OP_RSHIFT_EQ:
+		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_RSHIFT, src);
+		break;
+
+	case T_OP_LSHIFT_EQ:
+		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_LSHIFT, src);
 		break;
 
 	default:
