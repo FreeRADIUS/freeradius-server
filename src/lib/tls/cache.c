@@ -1234,7 +1234,7 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 			goto kdf_error;
 		}
 		if (unlikely(EVP_PKEY_CTX_add1_hkdf_info(pkey_ctx,
-							 (unsigned char *)"freeradius-session-ticket",
+							 UNCONST(unsigned char *, "freeradius-session-ticket"),
 							 sizeof("freeradius-session-ticket") - 1) != 1)) {
 			fr_tls_log_strerror_printf(NULL);
 			PERROR("Failed setting KDF label");
