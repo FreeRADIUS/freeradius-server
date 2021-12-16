@@ -52,6 +52,12 @@ typedef enum fr_token {
 	T_AND,				/* & */
 	T_OR,				/* | */
 
+	T_RSHIFT,			/* >> */
+	T_LSHIFT,			/* << */
+
+	T_LAND,				/* && */
+	T_LOR,				/* || */
+
 	/*
 	 *	Only used by LDAP ???
 	 */
@@ -67,6 +73,9 @@ typedef enum fr_token {
 #define T_OP_XOR_EQ T_OP_PREPEND
 	T_OP_OR_EQ,			/* |= */
 	T_OP_AND_EQ,			/* &= */
+
+	T_OP_RSHIFT_EQ,			/* >>= */
+	T_OP_LSHIFT_EQ,			/* <<= */
 
 	T_OP_EQ,			/* = */
 

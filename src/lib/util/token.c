@@ -32,7 +32,7 @@ RCSID("$Id$")
 
 fr_table_num_ordered_t const fr_tokens_table[] = {
 	{ L("=~"), 	T_OP_REG_EQ	}, /* order is important! */
-	{ L("!~"),	 T_OP_REG_NE	},
+	{ L("!~"),	T_OP_REG_NE	},
 	{ L("{"),	T_LCBRACE	},
 	{ L("}"),	T_RCBRACE	},
 	{ L("("),	T_LBRACE	},
@@ -89,6 +89,12 @@ char const *fr_tokens[T_TOKEN_LAST] = {
 	[T_AND]	     = "&",
 	[T_OR]	     = "|",
 
+	[T_RSHIFT]   = ">>",
+	[T_LSHIFT]   = "<<",
+
+	[T_LAND]     = "&&",
+	[T_LOR]	     = "||",
+
 	[T_OP_INCRM] = "++",
 
 	[T_OP_ADD_EQ] = "+=",
@@ -97,6 +103,9 @@ char const *fr_tokens[T_TOKEN_LAST] = {
 	[T_OP_EQ]     = "=",
 	[T_OP_OR_EQ]  = "|=",
 	[T_OP_AND_EQ]  = "&=",
+
+	[T_OP_RSHIFT_EQ]   = ">>=",
+	[T_OP_LSHIFT_EQ]   = "<<=",
 
 	[T_OP_NE]     = "!=",
 	[T_OP_GE]     = ">=",
@@ -154,6 +163,8 @@ const bool fr_assignment_op[T_TOKEN_LAST] = {
 	T(PREPEND),
 	T(OR_EQ),
 	T(AND_EQ),
+	T(RSHIFT_EQ),
+	T(LSHIFT_EQ),
 };
 
 const bool fr_equality_op[T_TOKEN_LAST] = {
@@ -179,6 +190,8 @@ const bool fr_binary_op[T_TOKEN_LAST] = {
 	T(DIV),
 	T(AND),
 	T(OR),
+	T(RSHIFT),
+	T(LSHIFT),
 };
 
 
