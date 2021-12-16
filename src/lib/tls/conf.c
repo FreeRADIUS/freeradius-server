@@ -95,6 +95,8 @@ static CONF_PARSER tls_cache_config[] = {
 	{ FR_CONF_OFFSET("require_perfect_forward_secrecy", FR_TYPE_BOOL, fr_tls_cache_conf_t, require_pfs), .dflt = "no" },
 #endif
 
+	{ FR_CONF_OFFSET("session_ticket_key", FR_TYPE_OCTETS, fr_tls_cache_conf_t, session_ticket_key) },
+
 	/*
 	 *	Deprecated
 	 */
@@ -471,7 +473,15 @@ fr_tls_conf_t *fr_tls_conf_parse_server(CONF_SECTION *cs)
 	 *	Generate random, ephemeral, session-ticket keys.
 	 */
 	if (conf->cache.mode & FR_TLS_CACHE_STATELESS) {
-		fr_rand_buffer(conf->cache.session_ticket_key_rand, sizeof(conf->cache.session_ticket_key_rand));
+		/*
+		 *	Fill the key with randomness if one
+		 *	wasn't specified by the user.
+		 */
+		if (!conf->cache.session_ticket_key) {
+			MEM(conf->cache.session_ticket_key = talloc_array(conf, uint8_t, 256));
+			fr_rand_buffer(UNCONST(uint8_t *, conf->cache.session_ticket_key),
+				       talloc_array_length(conf->cache.session_ticket_key));
+		}
 	}
 
 	/*

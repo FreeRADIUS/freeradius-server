@@ -819,6 +819,28 @@ eap {
 #			require_perfect_forward_secrecy = no
 
 			#
+			#  session_ticket_key::
+			#
+			#  Sets a persistent key used to encrypt stateless session
+			#  tickets.  If this is not set, then a random key will be
+			#  chosen when the server starts.
+			*
+			#  As the ticket key length depends on the version/flavour
+			#  of OpenSSL being used, the value provided is fed into
+			#  a HKDF function (digest SHA256,
+			#  label "freeradius-session-ticket").  The number of
+			#  bytes OpenSSL indicates it needs are then extracted from
+			#  the HKDF.
+			#
+			#  It is important that a strong key is chosen here.  If the
+			#  key were ever revealed, then an attacker could manipulate
+			#  the contents of a session ticket.  This could in turn
+			#  allow privilege escalation, or if OpenSSL's ticket parsing
+			#  code is less than perfect, buffer overflow attacks.
+			#
+#			session_ticket_key = "super-secret-key"
+
+			#
 			#  [NOTE]
 			#  ====
 			#  As of 4.0 OpenSSL's internal cache has been disabled due to

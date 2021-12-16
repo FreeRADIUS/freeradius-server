@@ -107,7 +107,8 @@ typedef struct {
 	bool		require_pfs;			//!< Only allow session resumption if a cipher suite that
 							//!< supports perfect forward secrecy.
 
-	uint8_t		session_ticket_key_rand[16 + 32 + 32];	//!< OpenSSL really needs to export this length.
+	uint8_t	const	*session_ticket_key;		//!< Raw input data.  Is fed through HKDF to produce the
+							///< actual session key we use.
 } fr_tls_cache_conf_t;
 
 /** Certificate verification configuration
@@ -117,7 +118,7 @@ typedef struct {
 	fr_tls_verify_mode_t mode;			//!< What certificates we apply OpenSSL's pre-validation
 							///< mode to.
 
-	fr_tls_verify_mode_t attribute_mode;			//!< What set of certificates we're going to convert to
+	fr_tls_verify_mode_t attribute_mode;		//!< What set of certificates we're going to convert to
 							///< pairs for verification.
 
 	bool		check_crl;			//!< Check certificate revocation lists.

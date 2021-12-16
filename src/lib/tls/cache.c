@@ -30,6 +30,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define LOG_PREFIX "tls"
 
 #include <openssl/ssl.h>
+#include <openssl/kdf.h>
 
 #include <freeradius-devel/internal/internal.h>
 #include <freeradius-devel/server/pair.h>
@@ -1190,29 +1191,96 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 		FALL_THROUGH;
 
 	case FR_TLS_CACHE_STATELESS:
+	{
+		size_t key_len;
+		uint8_t *key_buff;
+		EVP_PKEY_CTX *pkey_ctx = NULL;
+
 		if (!(cache_conf->mode & FR_TLS_CACHE_STATEFUL)) tls_cache_disable_statefull_resumption(ctx);
 
+		/*
+		 *	If keys is NULL, then OpenSSL returns the expected
+		 *	key length, which may be different across diferent
+		 *	flavours/versions of OpenSSL.
+		 *
+		 *	We could calculate this in conf.c, but, if in future
+		 *	OpenSSL decides to use different key lengths based
+		 *	on other parameters in the ctx, that'd break.
+		 */
+		key_len = SSL_CTX_set_tlsext_ticket_keys(ctx, NULL, 0);
+
+		if (unlikely((pkey_ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL)) == NULL)) {
+			fr_tls_log_strerror_printf(NULL);
+			PERROR("Failed initialising KDF");
+		kdf_error:
+			if (pkey_ctx) EVP_PKEY_CTX_free(pkey_ctx);
+			return -1;
+		}
+		if (unlikely(EVP_PKEY_derive_init(pkey_ctx) != 1)) {
+			fr_tls_log_strerror_printf(NULL);
+			PERROR("Failed initialising KDF derivation ctx");
+			goto kdf_error;
+		}
+		if (unlikely(EVP_PKEY_CTX_set_hkdf_md(pkey_ctx, UNCONST(struct evp_md_st *, EVP_sha256())) != 1)) {
+			fr_tls_log_strerror_printf(NULL);
+			PERROR("Failed setting KDF MD");
+			goto kdf_error;
+		}
+		if (unlikely(EVP_PKEY_CTX_set1_hkdf_key(pkey_ctx,
+							UNCONST(unsigned char *, cache_conf->session_ticket_key),
+							talloc_array_length(cache_conf->session_ticket_key)) != 1)) {
+			fr_tls_log_strerror_printf(NULL);
+			PERROR("Failed setting KDF key");
+			goto kdf_error;
+		}
+		if (unlikely(EVP_PKEY_CTX_add1_hkdf_info(pkey_ctx,
+							 (unsigned char *)"freeradius-session-ticket",
+							 sizeof("freeradius-session-ticket") - 1) != 1)) {
+			fr_tls_log_strerror_printf(NULL);
+			PERROR("Failed setting KDF label");
+			goto kdf_error;
+		}
+
+		/*
+		 *	SSL_CTX_set_tlsext_ticket_keys memcpys its
+		 *	inputs so this is just a temporary buffer.
+		 */
+		MEM(key_buff = talloc_array(NULL, uint8_t, key_len));
+		if (EVP_PKEY_derive(pkey_ctx, key_buff, &key_len) != 1) {
+			fr_tls_log_strerror_printf(NULL);
+			PERROR("Failed deriving session ticket key");
+
+			talloc_free(key_buff);
+			goto kdf_error;
+		}
+		EVP_PKEY_CTX_free(pkey_ctx);
+
+		fr_assert(talloc_array_length(key_buff) == key_len);
 		/*
 		 *	Ensure the same keys are used across all threads
 		 */
 		if (SSL_CTX_set_tlsext_ticket_keys(ctx,
-						   UNCONST(uint8_t *, cache_conf->session_ticket_key_rand),
-						   sizeof(cache_conf->session_ticket_key_rand)) != 1) {
+						   key_buff, key_len) != 1) {
 			fr_tls_log_strerror_printf(NULL);
 			PERROR("Failed setting session ticket keys");
 			return -1;
 		}
 
+		DEBUG3("Derived session-ticket-key:");
+		HEXDUMP3(key_buff, key_len, NULL);
+		talloc_free(key_buff);
+
 		/*
 		 *	These callbacks embed and extract the
 		 *	session-state list from the session-ticket.
 		 */
-		if (SSL_CTX_set_session_ticket_cb(ctx,
-						  tls_cache_session_ticket_app_data_set,
-						  tls_cache_session_ticket_app_data_get,
-						  UNCONST(fr_tls_cache_conf_t *, cache_conf)) != 1) {
+		if (unlikely(SSL_CTX_set_session_ticket_cb(ctx,
+							   tls_cache_session_ticket_app_data_set,
+							   tls_cache_session_ticket_app_data_get,
+							   UNCONST(fr_tls_cache_conf_t *, cache_conf)) != 1)) {
 			fr_tls_log_strerror_printf(NULL);
 			PERROR("Failed setting session ticket callbacks");
+			return -1;
 		}
 
 		/*
@@ -1224,6 +1292,7 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
 		SSL_CTX_set_num_tickets(ctx, 1);
 #endif
+	}
 		break;
 	}
 
