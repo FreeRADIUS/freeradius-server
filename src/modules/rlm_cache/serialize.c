@@ -53,7 +53,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 	/*
 	 *	It's valid to have an empty cache entry (save allocing the pairs pool)
 	 */
-	if (fr_map_list_empty(&c->maps)) goto finish;
+	if (fr_dlist_map_empty(&c->maps)) goto finish;
 
 	value_pool = talloc_pool(ctx, 512);
 	if (!value_pool) {
@@ -63,7 +63,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 		return -1;
 	}
 
-	while ((map = fr_map_list_next(&c->maps, map))) {
+	while ((map = fr_dlist_map_next(&c->maps, map))) {
 		char	*value;
 		ssize_t	slen;
 
@@ -167,7 +167,7 @@ int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssi
 		MAP_VERIFY(map);
 
 		/* It's not a special attribute, add it to the map list */
-		fr_map_list_insert_tail(&c->maps, map);
+		fr_dlist_map_insert_tail(&c->maps, map);
 
 	next:
 		p = q + 1;

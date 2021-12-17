@@ -330,7 +330,7 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 	fr_map_list_t		*head = (fr_map_list_t *)out;
 
 	fr_assert(cf_item_is_section(ci));
-	fr_map_list_init(head);
+	fr_dlist_map_init(head);
 
 	cs = cf_item_to_section(ci);
 	name2 = cf_section_name2(cs);
@@ -349,7 +349,7 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 
 		rcode = map_afrom_cs(ctx, head, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);
 		if (rcode < 0) return -1; /* message already printed */
-		if (fr_map_list_empty(head)) {
+		if (fr_dlist_map_empty(head)) {
 			cf_log_err(cs, "'update' sections cannot be empty");
 			return -1;
 		}

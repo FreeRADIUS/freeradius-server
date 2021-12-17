@@ -547,7 +547,7 @@ static int header_source(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, rlm_smtp_t c
 	 *	Initialize the sbuff for writing the config elements as header attributes
 	 */
 	fr_sbuff_init_talloc(uctx, &conf_buffer, &conf_ctx, 256, SIZE_MAX);
-	conf_map = fr_map_list_head(&inst->header_maps);
+	conf_map = fr_dlist_map_head(&inst->header_maps);
 
 	/*
 	 *	Load in all of the header elements supplied in the config
@@ -571,10 +571,10 @@ static int header_source(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, rlm_smtp_t c
 	next:
 		/* Check if there are more values to parse */
 
-		if (!fr_map_list_next(&inst->header_maps, conf_map)) break;
+		if (!fr_dlist_map_next(&inst->header_maps, conf_map)) break;
 		/* reinitialize the buffer and move to the next value */
 		fr_sbuff_init_talloc(uctx, &conf_buffer, &conf_ctx, 256, SIZE_MAX);
-		conf_map = fr_map_list_next(&inst->header_maps, conf_map);
+		conf_map = fr_dlist_map_next(&inst->header_maps, conf_map);
 	}
 
 	/* Add the FROM: line */
@@ -1045,7 +1045,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	CONF_SECTION	*conf = mctx->inst->conf;
 	CONF_SECTION	*header;
 
-	fr_map_list_init(&inst->header_maps);
+	fr_dlist_map_init(&inst->header_maps);
 	header = cf_section_find(conf, "header", NULL);
 	if (!header) return 0;
 

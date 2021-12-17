@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/regex.h>
 
-FR_DLIST_NEW_TYPE(pair_dlist, fr_pair_list_t, order, fr_pair_t, order_entry)
+FR_DLIST_FUNCS(pair, fr_pair_t, order_entry)
 
 /** Initialise a pair list header
  *
@@ -46,7 +46,7 @@ void fr_pair_list_init(fr_pair_list_t *list)
 	 *	in the list and allows us to iterate over
 	 *	all of them.
 	 */
-	fr_pair_dlist_talloc_init(list);
+	fr_dlist_pair_talloc_init(&list->order);
 }
 
 /** Free a fr_pair_t
@@ -107,13 +107,12 @@ fr_pair_list_t *fr_pair_list_alloc(TALLOC_CTX *ctx)
  */
 static inline CC_HINT(always_inline) void pair_init_null(fr_pair_t *vp)
 {
-	fr_pair_dlist_entry_init(vp);
+	fr_dlist_pair_entry_init(vp);
 
 	/*
 	 *	Legacy cruft
 	 */
 	vp->op = T_OP_EQ;
-	vp->type = VT_DATA;
 }
 
 /** Dynamically allocate a new attribute with no #fr_dict_attr_t assigned
@@ -406,7 +405,6 @@ fr_pair_t *fr_pair_copy(TALLOC_CTX *ctx, fr_pair_t const *vp)
 	if (!n) return NULL;
 
 	n->op = vp->op;
-	n->type = vp->type;
 	/*
 	 *	Copy the unknown attribute hierarchy
 	 */
@@ -467,7 +465,7 @@ int fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp)
  */
 int fr_pair_steal_append(TALLOC_CTX *list_ctx, fr_pair_list_t *list, fr_pair_t *vp)
 {
-	if (fr_pair_dlist_in_list(list, vp)) {
+	if (fr_dlist_pair_in_list(&list->order, vp)) {
 		fr_strerror_printf("Pair %pV is a list member, cannot be moved", vp);
 		return -1;
 	}
@@ -490,7 +488,7 @@ int fr_pair_steal_append(TALLOC_CTX *list_ctx, fr_pair_list_t *list, fr_pair_t *
  */
 int fr_pair_steal_prepend(TALLOC_CTX *list_ctx, fr_pair_list_t *list, fr_pair_t *vp)
 {
-	if (fr_pair_dlist_in_list(list, vp)) {
+	if (fr_dlist_pair_in_list(&list->order, vp)) {
 		fr_strerror_printf("Pair %pV is a list member, cannot be moved", vp);
 		return -1;
 	}
@@ -510,7 +508,7 @@ int fr_pair_steal_prepend(TALLOC_CTX *list_ctx, fr_pair_list_t *list, fr_pair_t 
  */
 void fr_pair_list_free(fr_pair_list_t *list)
 {
-	fr_pair_dlist_talloc_free(list);
+	fr_dlist_pair_talloc_free(&list->order);
 }
 
 /** Is a valuepair list empty
@@ -522,7 +520,7 @@ void fr_pair_list_free(fr_pair_list_t *list)
  */
 bool fr_pair_list_empty(fr_pair_list_t const *list)
 {
-	return fr_pair_dlist_empty(list);
+	return fr_dlist_pair_empty(&list->order);
 }
 
 /** Mark malformed or unrecognised attributed as unknown
@@ -611,9 +609,9 @@ unsigned int fr_pair_count_by_da(fr_pair_list_t const *list, fr_dict_attr_t cons
 	fr_pair_t	*vp = NULL;
 	unsigned int	count = 0;
 
-	if (fr_pair_dlist_empty(list)) return 0;
+	if (fr_dlist_pair_empty(&list->order)) return 0;
 
-	while ((vp = fr_pair_dlist_next(list, vp))) if (da == vp->da) count++;
+	while ((vp = fr_dlist_pair_next(&list->order, vp))) if (da == vp->da) count++;
 
 	return count;
 }
@@ -633,11 +631,11 @@ fr_pair_t *fr_pair_find_by_da(fr_pair_list_t const *list, fr_pair_t const *prev,
 {
 	fr_pair_t *vp = UNCONST(fr_pair_t *, prev);
 
-	if (fr_pair_dlist_empty(list)) return NULL;
+	if (fr_dlist_pair_empty(&list->order)) return NULL;
 
 	PAIR_LIST_VERIFY(list);
 
-	while ((vp = fr_pair_dlist_next(list, vp))) if (da == vp->da) return vp;
+	while ((vp = fr_dlist_pair_next(&list->order, vp))) if (da == vp->da) return vp;
 
 	return NULL;
 }
@@ -657,7 +655,7 @@ fr_pair_t *fr_pair_find_by_da_idx(fr_pair_list_t const *list, fr_dict_attr_t con
 {
 	fr_pair_t *vp = NULL;
 
-	if (fr_pair_dlist_empty(list)) return NULL;
+	if (fr_dlist_pair_empty(&list->order)) return NULL;
 
 	PAIR_LIST_VERIFY(list);
 
@@ -738,7 +736,7 @@ fr_pair_t *fr_pair_find_by_child_num(fr_pair_list_t const *list, fr_pair_t const
 	fr_dict_attr_t const	*da;
 
 	/* List head may be NULL if it contains no VPs */
-	if (fr_pair_dlist_empty(list)) return NULL;
+	if (fr_dlist_pair_empty(&list->order)) return NULL;
 
 	PAIR_LIST_VERIFY(list);
 
@@ -764,7 +762,7 @@ fr_pair_t *fr_pair_find_by_child_num_idx(fr_pair_list_t const *list,
 	fr_dict_attr_t const	*da;
 
 	/* List head may be NULL if it contains no VPs */
-	if (fr_pair_dlist_empty(list)) return NULL;
+	if (fr_dlist_pair_empty(&list->order)) return NULL;
 
 	PAIR_LIST_VERIFY(list);
 
@@ -842,7 +840,7 @@ fr_pair_t *_fr_pair_dcursor_iter_init(fr_dcursor_t *cursor, fr_pair_list_t const
 				      fr_dcursor_iter_t iter, void const *uctx,
 				      bool is_const)
 {
-	return _fr_dcursor_init(cursor, &list->order,
+	return _fr_dcursor_init(cursor, fr_dlist_pair_list_head(&list->order),
 				iter, uctx,
 				_pair_list_dcursor_insert, _pair_list_dcursor_remove, list, is_const);
 }
@@ -863,7 +861,7 @@ fr_pair_t *_fr_pair_dcursor_iter_init(fr_dcursor_t *cursor, fr_pair_list_t const
 fr_pair_t *_fr_pair_dcursor_init(fr_dcursor_t *cursor, fr_pair_list_t const *list,
 				 bool is_const)
 {
-	return _fr_dcursor_init(cursor, &list->order,
+	return _fr_dcursor_init(cursor, fr_dlist_pair_list_head(&list->order),
 				NULL, NULL,
 				_pair_list_dcursor_insert, _pair_list_dcursor_remove, list, is_const);
 }
@@ -883,7 +881,7 @@ fr_pair_t *_fr_pair_dcursor_by_da_init(fr_dcursor_t *cursor,
 				        fr_pair_list_t const *list, fr_dict_attr_t const *da,
 				        bool is_const)
 {
-	return _fr_dcursor_init(cursor, &list->order,
+	return _fr_dcursor_init(cursor, fr_dlist_pair_list_head(&list->order),
 				fr_pair_iter_next_by_da, da,
 				_pair_list_dcursor_insert, _pair_list_dcursor_remove, list, is_const);
 }
@@ -902,7 +900,7 @@ fr_pair_t *_fr_pair_dcursor_by_ancestor_init(fr_dcursor_t *cursor,
 					     fr_pair_list_t const *list, fr_dict_attr_t const *da,
 					     bool is_const)
 {
-	return _fr_dcursor_init(cursor, &list->order,
+	return _fr_dcursor_init(cursor, fr_dlist_pair_list_head(&list->order),
 				fr_pair_iter_next_by_ancestor, da,
 				_pair_list_dcursor_insert, _pair_list_dcursor_remove, list, is_const);
 }
@@ -918,7 +916,7 @@ fr_pair_t *_fr_pair_dcursor_by_ancestor_init(fr_dcursor_t *cursor,
  */
 fr_pair_t *fr_pair_list_head(fr_pair_list_t const *list)
 {
-	return fr_pair_dlist_head(list);
+	return fr_dlist_pair_head(&list->order);
 }
 
 /** Get the next item in a valuepair list after a specific entry
@@ -932,7 +930,7 @@ fr_pair_t *fr_pair_list_head(fr_pair_list_t const *list)
  */
 fr_pair_t *fr_pair_list_next(fr_pair_list_t const *list, fr_pair_t const *item)
 {
-	return fr_pair_dlist_next(list, item);
+	return fr_dlist_pair_next(&list->order, item);
 }
 
 /** Get the previous item in a valuepair list before a specific entry
@@ -945,7 +943,7 @@ fr_pair_t *fr_pair_list_next(fr_pair_list_t const *list, fr_pair_t const *item)
  */
 fr_pair_t *fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const *item)
 {
-	return fr_pair_dlist_prev(list, item);
+	return fr_dlist_pair_prev(&list->order, item);
 }
 
 /** Get the tail of a valuepair list
@@ -958,7 +956,7 @@ fr_pair_t *fr_pair_list_prev(fr_pair_list_t const *list, fr_pair_t const *item)
  */
 fr_pair_t *fr_pair_list_tail(fr_pair_list_t const *list)
 {
-	return fr_pair_dlist_tail(list);
+	return fr_dlist_pair_tail(&list->order);
 }
 
 /** Add a VP to the start of the list.
@@ -975,12 +973,12 @@ int fr_pair_prepend(fr_pair_list_t *list, fr_pair_t *to_add)
 {
 	PAIR_VERIFY(to_add);
 
-	if (fr_pair_dlist_in_list(list, to_add)) {
+	if (fr_dlist_pair_in_list(&list->order, to_add)) {
 		fr_strerror_printf("Pair %pV already inserted into list", to_add);
 		return -1;
 	}
 
-	fr_pair_dlist_insert_head(list, to_add);
+	fr_dlist_pair_insert_head(&list->order, to_add);
 
 	return 0;
 }
@@ -999,12 +997,12 @@ int fr_pair_append(fr_pair_list_t *list, fr_pair_t *to_add)
 {
 	PAIR_VERIFY(to_add);
 
-	if (fr_pair_dlist_in_list(list, to_add)) {
+	if (fr_dlist_pair_in_list(&list->order, to_add)) {
 		fr_strerror_printf("Pair %pV already inserted into list", to_add);
 		return -1;
 	}
 
-	fr_pair_dlist_insert_tail(list, to_add);
+	fr_dlist_pair_insert_tail(&list->order, to_add);
 
 	return 0;
 }
@@ -1022,17 +1020,17 @@ int fr_pair_insert_after(fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *to_add
 {
 	PAIR_VERIFY(to_add);
 
-	if (fr_pair_dlist_in_list(list, to_add)) {
+	if (fr_dlist_pair_in_list(&list->order, to_add)) {
 		fr_strerror_printf("Pair %pV already inserted into list", to_add);
 		return -1;
 	}
 
-	if (pos && !fr_pair_dlist_in_list(list, pos)) {
+	if (pos && !fr_dlist_pair_in_list(&list->order, pos)) {
 		fr_strerror_printf("Pair %pV not in list", pos);
 		return -1;
 	}
 
-	fr_pair_dlist_insert_after(list, pos, to_add);
+	fr_dlist_pair_insert_after(&list->order, pos, to_add);
 
 	return 0;
 }
@@ -1050,17 +1048,17 @@ int fr_pair_insert_before(fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *to_ad
 {
 	PAIR_VERIFY(to_add);
 
-	if (fr_pair_dlist_in_list(list, to_add)) {
+	if (fr_dlist_pair_in_list(&list->order, to_add)) {
 		fr_strerror_printf("Pair %pV already inserted into list", to_add);
 		return -1;
 	}
 
-	if (pos && !fr_pair_dlist_in_list(list, pos)) {
+	if (pos && !fr_dlist_pair_in_list(&list->order, pos)) {
 		fr_strerror_printf("Pair %pV not in list", pos);
 		return -1;
 	}
 
-	fr_pair_dlist_insert_before(list, pos, to_add);
+	fr_dlist_pair_insert_before(&list->order, pos, to_add);
 
 	return 0;
 }
@@ -1234,8 +1232,8 @@ fr_pair_t *fr_pair_remove(fr_pair_list_t *list, fr_pair_t *vp)
 {
 	fr_pair_t *prev;
 
-	prev = fr_pair_dlist_prev(list, vp);
-	fr_pair_dlist_remove(list, vp);
+	prev = fr_dlist_pair_prev(&list->order, vp);
+	fr_dlist_pair_remove(&list->order, vp);
 
 	return prev;
 }
@@ -1250,8 +1248,8 @@ fr_pair_t *fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp)
 {
 	fr_pair_t *prev;
 
-	prev = fr_pair_dlist_prev(list, vp);
-	fr_pair_dlist_remove(list, vp);
+	prev = fr_dlist_pair_prev(&list->order, vp);
+	fr_dlist_pair_remove(&list->order, vp);
 	talloc_free(vp);
 
 	return prev;
@@ -1488,7 +1486,7 @@ int fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b)
  */
 void fr_pair_list_sort(fr_pair_list_t *list, fr_cmp_t cmp)
 {
-	fr_pair_dlist_sort(list, cmp);
+	fr_dlist_pair_sort(&list->order, cmp);
 }
 
 /** Write an error to the library errorbuff detailing the mismatch
@@ -1547,9 +1545,7 @@ bool fr_pair_validate(fr_pair_t const *failed[2], fr_pair_list_t *filter, fr_pai
 {
 	fr_pair_t *check, *match;
 
-	if (fr_pair_dlist_empty(filter) && fr_pair_dlist_empty(list)) {
-		return true;
-	}
+	if (fr_dlist_pair_empty(&filter->order) && fr_dlist_pair_empty(&list->order)) return true;
 
 	/*
 	 *	This allows us to verify the sets of validate and reply are equal
@@ -1622,9 +1618,7 @@ bool fr_pair_validate_relaxed(fr_pair_t const *failed[2], fr_pair_list_t *filter
 {
 	fr_pair_t *check, *last_check = NULL, *match = NULL;
 
-	if (fr_pair_dlist_empty(filter) && fr_pair_dlist_empty(list)) {
-		return true;
-	}
+	if (fr_dlist_pair_empty(&filter->order) && fr_dlist_pair_empty(&list->order)) return true;
 
 	/*
 	 *	This allows us to verify the sets of validate and reply are equal
@@ -1867,9 +1861,9 @@ void fr_pair_value_clear(fr_pair_t *vp)
 		break;
 
 	case FR_TYPE_STRUCTURAL:
-		if (!fr_pair_dlist_empty(&vp->vp_group)) return;
+		if (!fr_dlist_pair_empty(&vp->vp_group.order)) return;
 
-		while ((child = fr_pair_dlist_pop_tail(&vp->vp_group))) {
+		while ((child = fr_dlist_pair_pop_tail(&vp->vp_group.order))) {
 			fr_pair_value_clear(child);
 			talloc_free(child);
 		}
@@ -2710,7 +2704,6 @@ void fr_pair_list_verify(char const *file, int line, TALLOC_CTX const *expected,
 	 */
 	for (; slow; slow = fr_pair_list_next(list, slow)) {
 		PAIR_VERIFY(slow);
-
 		parent = talloc_parent(slow);
 		if (expected && (parent != expected)) goto bad_parent;
 	}
@@ -2751,7 +2744,7 @@ void fr_pair_list_tainted(fr_pair_list_t *list)
  */
 void fr_pair_list_append(fr_pair_list_t *dst, fr_pair_list_t *src)
 {
-	fr_pair_dlist_move(dst, src);
+	fr_dlist_pair_move(&dst->order, &src->order);
 }
 
 /** Move a list of fr_pair_t from a temporary list to the head of a destination list
@@ -2761,7 +2754,7 @@ void fr_pair_list_append(fr_pair_list_t *dst, fr_pair_list_t *src)
  */
 void fr_pair_list_prepend(fr_pair_list_t *dst, fr_pair_list_t *src)
 {
-	fr_pair_dlist_move_head(dst, src);
+	fr_dlist_pair_move_head(&dst->order, &src->order);
 }
 
 /** Evaluation function for matching if vp matches a given da
@@ -2788,7 +2781,7 @@ bool fr_pair_matches_da(void const *item, void const *uctx)
  */
 size_t fr_pair_list_len(fr_pair_list_t const *list)
 {
-	return fr_pair_dlist_num_elements(list);
+	return fr_dlist_pair_num_elements(&list->order);
 }
 
 /** Parse a list of VPs from a value box.

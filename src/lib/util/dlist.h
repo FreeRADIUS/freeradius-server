@@ -1047,97 +1047,126 @@ static inline void fr_dlist_sort(fr_dlist_head_t *list, fr_cmp_t cmp)
 	}
 }
 
-/*
- *  Hang onto your hats.  This gets weird.
+/** Expands to the type name used for the entry wrapper structure
+ *
+ * @param[in] _name	Prefix we add to type-specific structures.
+ * @return fr_dlist_<name>_entry_t
  */
-#define FR_DLIST_NEW_TYPE(_name, _list_type, _member_head, _entry_type, _member) \
+#define FR_DLIST_ENTRY_TYPE(_name) fr_dlist_ ## _name ## _entry_t
+
+/** Expands to the type name used for the head wrapper structure
+ *
+ * @param[in] _name	Prefix we add to type-specific structures.
+ * @return fr_dlist_<name>_head_t
+ */
+#define FR_DLIST_HEAD_TYPE(_name) fr_dlist_ ## _name ## _head_t
+
+/** Define type specific wrapper structs for dlists
+ *
+ * @note This macro should be used inside the header for the area of code
+ * which will use type specific functions.
+ */
+#define FR_DLIST_TYPES(_name) \
+	typedef struct { fr_dlist_t entry; } FR_DLIST_ENTRY_TYPE(_name); \
+	typedef struct { fr_dlist_head_t head; } FR_DLIST_HEAD_TYPE(_name); \
+
+/** Define type specific wrapper functions for dlists
+ *
+ * @note This macro should be used inside the source file that will use
+ * the type specific functions.
+ *
+ * @param[in] _name		Prefix we add to type-specific dlist functions.
+ * @param[in] _element_type	Type of structure that'll be inserted into the dlist.
+ * @param[in] _element_entry	Field in the _element_type that holds the dlist entry information.
+ */
+#define FR_DLIST_FUNCS(_name, _element_type, _element_entry) \
 DIAG_OFF(unused-function) \
-	static inline	fr_dlist_head_t *fr_ ## _name ## _dlist_head(_list_type *list) \
-		{  return &list->_member_head; } \
+	_Static_assert(IS_FIELD_COMPATIBLE(_element_type, _element_entry, FR_DLIST_ENTRY_TYPE(_name)) == 1, "Bad dlist entry field type");\
+	static inline	fr_dlist_head_t *fr_dlist_ ## _name ## _list_head(FR_DLIST_HEAD_TYPE(_name) const *list) \
+		{ return	UNCONST(fr_dlist_head_t *, &list->head); } \
+	static inline	void fr_dlist_ ## _name ## _entry_init(_element_type *entry) \
+		{		fr_dlist_entry_init(&entry->_element_entry.entry); } \
 \
-	static inline	void fr_ ## _name ## _entry_init(_entry_type *entry) \
-		{                    fr_dlist_entry_init(&entry->_member); } \
+	static inline	void fr_dlist_ ## _name ## _init(FR_DLIST_HEAD_TYPE(_name) *list) \
+		{		_fr_dlist_init(&list->head, offsetof(_element_type, _element_entry), NULL); } \
 \
-	static inline	void fr_ ## _name ## _init(_list_type *list) \
-		{                          _fr_dlist_init(&list->_member_head, offsetof(_entry_type, _member), NULL); } \
+	static inline	void fr_dlist_ ## _name ## _talloc_init(FR_DLIST_HEAD_TYPE(_name) *list) \
+		{		_fr_dlist_init(&list->head, offsetof(_element_type, _element_entry), #_element_type); } \
 \
-	static inline	void fr_ ## _name ## _talloc_init(_list_type *list) \
-		{                          _fr_dlist_init(&list->_member_head, offsetof(_entry_type, _member), #_entry_type); } \
+	static inline	void fr_dlist_ ## _name ## _clear(FR_DLIST_HEAD_TYPE(_name) *list) \
+		{		fr_dlist_clear(&list->head); } \
 \
-	static inline	void fr_ ## _name ## _clear(_list_type *list) \
-		{                    fr_dlist_clear(&list->_member_head); } \
+	static inline	bool fr_dlist_ ## _name ## _in_list(FR_DLIST_HEAD_TYPE(_name) *list, _element_type *ptr) \
+		{ return	fr_dlist_in_list(&list->head, ptr); } \
 \
-	static inline	bool fr_ ## _name ## _in_list(_list_type *list, _entry_type *ptr) \
-		{ return             fr_dlist_in_list(&list->_member_head, ptr); } \
+	static inline	int fr_dlist_ ## _name ## _insert_head(FR_DLIST_HEAD_TYPE(_name) *list, _element_type *ptr) \
+		{ return	fr_dlist_insert_head(&list->head, ptr); } \
 \
-	static inline	int fr_ ## _name ## _insert_head(_list_type *list, _entry_type *ptr) \
-		{ return            fr_dlist_insert_head(&list->_member_head, ptr); } \
+	static inline	int fr_dlist_ ## _name ## _insert_tail(FR_DLIST_HEAD_TYPE(_name) *list, _element_type *ptr) \
+		{ return	fr_dlist_insert_tail(&list->head, ptr); } \
 \
-	static inline	int fr_ ## _name ## _insert_tail(_list_type *list, _entry_type *ptr) \
-		{ return            fr_dlist_insert_tail(&list->_member_head, ptr); } \
+	static inline	int fr_dlist_ ## _name ## _insert_after(FR_DLIST_HEAD_TYPE(_name) *list, _element_type *pos, _element_type *ptr) \
+		{ return	fr_dlist_insert_after(&list->head, pos, ptr); } \
 \
-	static inline	int fr_ ## _name ## _insert_after(_list_type *list, _entry_type *pos, _entry_type *ptr) \
-		{ return            fr_dlist_insert_after(&list->_member_head, pos, ptr); } \
+	static inline	int fr_dlist_ ## _name ## _insert_before(FR_DLIST_HEAD_TYPE(_name) *list, _element_type *pos, _element_type *ptr) \
+		{ return	fr_dlist_insert_before(&list->head, pos, ptr); } \
 \
-	static inline	int fr_ ## _name ## _insert_before(_list_type *list, _entry_type *pos, _entry_type *ptr) \
-		{ return            fr_dlist_insert_before(&list->_member_head, pos, ptr); } \
+	static inline	_element_type *fr_dlist_ ## _name ## _head(FR_DLIST_HEAD_TYPE(_name) const *list) \
+		{ return	fr_dlist_head(&list->head); } \
 \
-	static inline	_entry_type *fr_ ## _name ## _head(_list_type const *list) \
-		{ return                     fr_dlist_head(&list->_member_head); } \
+	static inline	bool fr_dlist_ ## _name ## _empty(FR_DLIST_HEAD_TYPE(_name) const *list) \
+		{ return	fr_dlist_empty(&list->head); } \
 \
-	static inline	bool fr_ ## _name ## _empty(_list_type const *list) \
-		{ return             fr_dlist_empty(&list->_member_head); } \
+	static inline	bool fr_dlist_ ## _name ## _initialised(FR_DLIST_HEAD_TYPE(_name) const *list) \
+		{ return	fr_dlist_initialised(&list->head); } \
 \
-	static inline	bool fr_ ## _name ## _initialised(_list_type const *list) \
-		{ return            fr_dlist_initialised(&list->_member_head); } \
+	static inline	_element_type *fr_dlist_ ## _name ## _tail(FR_DLIST_HEAD_TYPE(_name) const *list) \
+		{ return	fr_dlist_tail(&list->head); } \
 \
-	static inline	_entry_type *fr_ ## _name ## _tail(_list_type const *list) \
-		{ return                     fr_dlist_tail(&list->_member_head); } \
+	static inline _element_type *fr_dlist_ ## _name ## _next(FR_DLIST_HEAD_TYPE(_name) const *list, _element_type const *ptr) \
+		{ return	fr_dlist_next(&list->head, ptr); } \
 \
-	static inline _entry_type *fr_ ## _name ## _next(_list_type const *list, _entry_type const *ptr) \
-		{ return                   fr_dlist_next(&list->_member_head, ptr); } \
+	static inline	_element_type *fr_dlist_ ## _name ## _prev(FR_DLIST_HEAD_TYPE(_name) const *list, _element_type const *ptr) \
+		{ return	fr_dlist_prev(&list->head, ptr); } \
 \
-	static inline	_entry_type *fr_ ## _name ## _prev(_list_type const *list, _entry_type const *ptr) \
-		{ return                     fr_dlist_prev(&list->_member_head, ptr); } \
+	static inline	_element_type *fr_dlist_ ## _name ## _remove(FR_DLIST_HEAD_TYPE(_name) *list, _element_type *ptr) \
+		{ return	fr_dlist_remove(&list->head, ptr); } \
 \
-	static inline	_entry_type *fr_ ## _name ## _remove(_list_type *list, _entry_type *ptr) \
-		{ return                     fr_dlist_remove(&list->_member_head, ptr); } \
+	static inline	_element_type *fr_dlist_ ## _name ## _pop_head(FR_DLIST_HEAD_TYPE(_name) *list) \
+		{ return	fr_dlist_pop_head(&list->head); } \
 \
-	static inline	_entry_type *fr_ ## _name ## _pop_head(_list_type *list) \
-		{ return                     fr_dlist_pop_head(&list->_member_head); } \
+	static inline	_element_type *fr_dlist_ ## _name ## _pop_tail(FR_DLIST_HEAD_TYPE(_name) *list) \
+		{ return	fr_dlist_pop_tail(&list->head); } \
 \
-	static inline	_entry_type *fr_ ## _name ## _pop_tail(_list_type *list) \
-		{ return                     fr_dlist_pop_tail(&list->_member_head); } \
+	static inline	_element_type *fr_dlist_ ## _name ## _replace(FR_DLIST_HEAD_TYPE(_name) *list, _element_type *item, _element_type *ptr) \
+		{ return	fr_dlist_replace(&list->head, item, ptr); } \
 \
-	static inline	_entry_type *fr_ ## _name ## _replace(_list_type *list, _entry_type *item, _entry_type *ptr) \
-		{ return                     fr_dlist_replace(&list->_member_head, item, ptr); } \
+	static inline	int fr_dlist_ ## _name ## _move(FR_DLIST_HEAD_TYPE(_name) *dst, FR_DLIST_HEAD_TYPE(_name) *src) \
+		{ return	fr_dlist_move(&dst->head, &src->head); } \
 \
-	static inline	int fr_ ## _name ## _move(_list_type *dst, _list_type *src) \
-		{ return            fr_dlist_move(&dst->_member_head, &src->_member_head); } \
+	static inline	int fr_dlist_ ## _name ## _move_head(FR_DLIST_HEAD_TYPE(_name) *dst, FR_DLIST_HEAD_TYPE(_name) *src) \
+		{ return	fr_dlist_move_head(&dst->head, &src->head); } \
 \
-	static inline	int fr_ ## _name ## _move_head(_list_type *dst, _list_type *src) \
-		{ return            fr_dlist_move_head(&dst->_member_head, &src->_member_head); } \
+	static inline	void fr_dlist_ ## _name ## _talloc_free_head(FR_DLIST_HEAD_TYPE(_name) *list) \
+		{		fr_dlist_talloc_free_head(&list->head); } \
 \
-	static inline	void fr_ ## _name ## _talloc_free_head(_list_type *list) \
-		{                    fr_dlist_talloc_free_head(&list->_member_head); } \
+	static inline	void fr_dlist_ ## _name ## _talloc_free_tail(FR_DLIST_HEAD_TYPE(_name) *list) \
+		{		fr_dlist_talloc_free_tail(&list->head); } \
 \
-	static inline	void fr_ ## _name ## _talloc_free_tail(_list_type *list) \
-		{                    fr_dlist_talloc_free_tail(&list->_member_head); } \
+	static inline	void fr_dlist_ ## _name ## _talloc_free_item(FR_DLIST_HEAD_TYPE(_name) *list, _element_type *ptr) \
+		{		fr_dlist_talloc_free_item(&list->head, ptr); } \
 \
-	static inline	void fr_ ## _name ## _talloc_free_item(_list_type *list, _entry_type *ptr) \
-		{                    fr_dlist_talloc_free_item(&list->_member_head, ptr); } \
+	static inline	void fr_dlist_ ## _name ## _talloc_free(FR_DLIST_HEAD_TYPE(_name) *list) \
+		{		fr_dlist_talloc_free(&list->head); } \
 \
-	static inline	void fr_ ## _name ## _talloc_free(_list_type *list) \
-		{                    fr_dlist_talloc_free(&list->_member_head); } \
+	static inline	void fr_dlist_ ## _name ## _talloc_reverse_free(FR_DLIST_HEAD_TYPE(_name) *list) \
+		{		fr_dlist_talloc_reverse_free(&list->head); } \
 \
-	static inline	void fr_ ## _name ## _talloc_reverse_free(_list_type *list) \
-		{                    fr_dlist_talloc_reverse_free(&list->_member_head); } \
+	static inline	unsigned int fr_dlist_ ## _name ## _num_elements(FR_DLIST_HEAD_TYPE(_name) const *list) \
+		{ return	fr_dlist_num_elements(&list->head); } \
 \
-	static inline	unsigned int fr_ ## _name ## _num_elements(_list_type const *list) \
-		{ return                     fr_dlist_num_elements(&list->_member_head); } \
-\
-	static inline	void fr_ ## _name ## _sort(_list_type *list, fr_cmp_t cmp) \
-		{                    fr_dlist_sort(&list->_member_head, cmp); } \
+	static inline	void fr_dlist_ ## _name ## _sort(FR_DLIST_HEAD_TYPE(_name) *list, fr_cmp_t cmp) \
+		{		fr_dlist_sort(&list->head, cmp); } \
 DIAG_ON(unused-function)
 
 

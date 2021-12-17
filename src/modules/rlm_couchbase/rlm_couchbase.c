@@ -153,7 +153,7 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 		vp_list_mod_t	*vlm;
 		fr_dlist_head_t	vlm_head;
 
-		fr_map_list_init(&map_head);
+		fr_dlist_map_init(&map_head);
 		fr_dcursor_init(&maps, &map_head);
 
 		/*

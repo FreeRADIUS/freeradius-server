@@ -44,22 +44,12 @@ extern "C" {
 #  define _CONST
 #endif
 
-/** The type of value a fr_pair_t contains
- *
- * This is used to add structure to nested fr_pair_ts and specifies what type of node it is (set, list, data).
- *
- * xlat is another type of data node which must first be expanded before use.
- */
-typedef enum value_type {
-	VT_INVALID = 0,						//!< fr_pair_t is broken
-	VT_SET,							//!< fr_pair_t is #fr_value_box_list
-	VT_DATA,						//!< fr_pair_t has a single value.
-} value_type_t;
-
 typedef struct value_pair_s fr_pair_t;
 
+FR_DLIST_TYPES(pair)
+
 typedef struct {
-        fr_dlist_head_t		order;				//!< Maintains the relative order of pairs in a list.
+        FR_DLIST_HEAD_TYPE(pair)		order;			//!< Maintains the relative order of pairs in a list.
 } fr_pair_list_t;
 
 /** Stores an attribute, a value and various bits of other data
@@ -74,7 +64,7 @@ struct value_pair_s {
 								///< Note: This should not be modified outside
 								///< of pair.c except via #fr_pair_reinit_from_da.
 
-	fr_dlist_t _CONST	order_entry;			//!< Entry to maintain relative order within a list
+	FR_DLIST_ENTRY_TYPE(pair) _CONST	order_entry;	//!< Entry to maintain relative order within a list
 								///< of pairs.  This ensures pairs within the list
 								///< are encoded in the same order as they were
 								///< received or inserted.
@@ -95,8 +85,6 @@ struct value_pair_s {
 		fr_token_t		op;			//!< Operator to use when moving or inserting
 								//!< valuepair into a list.
 		char const 		*xlat;			//!< Source string for xlat expansion.
-
-		value_type_t		type;			//!< Type of pointer in value union.
 	};
 };
 

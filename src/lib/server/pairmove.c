@@ -145,7 +145,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 				RDEBUG4("::: OVERWRITING %s FROM %d TO %d",
 				       to_vp->da->name, i, j);
 				fr_pair_remove(from, from_vp);
-				vp = fr_dlist_replace(&to->order, to_vp, from_vp);
+				vp = fr_dlist_replace(&to->order.head, to_vp, from_vp);
 				talloc_free(vp);
 				from_vp = NULL;
 				edited[j] = true;
@@ -226,7 +226,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 						RDEBUG4("::: REPLACING %s FROM %d TO %d",
 						       from_vp->da->name, i, j);
 						fr_pair_remove(from, from_vp);
-						vp = fr_dlist_replace(&to->order, to_vp, from_vp);
+						vp = fr_dlist_replace(&to->order.head, to_vp, from_vp);
 						talloc_free(vp);
 						from_vp = NULL;
 						edited[j] = true;
@@ -239,7 +239,7 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 						RDEBUG4("::: REPLACING %s FROM %d TO %d",
 						       from_vp->da->name, i, j);
 						fr_pair_remove(from, from_vp);
-						vp = fr_dlist_replace(&to->order, to_vp, from_vp);
+						vp = fr_dlist_replace(&to->order.head, to_vp, from_vp);
 						talloc_free(vp);
 						from_vp = NULL;
 						edited[j] = true;

@@ -292,7 +292,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 		return -1;
 	}
 
-	while ((map = fr_map_list_next(maps, map))) {
+	while ((map = fr_dlist_map_next(maps, map))) {
 		CONF_PAIR	*cp = cf_item_to_pair(map->ci);
 		char const	*p;
 
@@ -343,7 +343,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 		 *	list member was pre-allocated and passed to the
 		 *	instantiation callback.
 		 */
-		if (fr_map_list_next(maps, map)) {
+		if (fr_dlist_map_next(maps, map)) {
 			*tail = cache = talloc_zero(cache, rlm_json_jpath_cache_t);
 			tail = &cache->next;
 		}
@@ -454,7 +454,7 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, request_
 		goto finish;
 	}
 
-	while ((map = fr_map_list_next(maps, map))) {
+	while ((map = fr_dlist_map_next(maps, map))) {
 		switch (map->rhs->type) {
 		/*
 		 *	Cached types

@@ -490,7 +490,7 @@ static int csv_maps_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_i
 		return -1;
 	}
 
-	while ((map = fr_map_list_next(maps, map))) {
+	while ((map = fr_dlist_map_next(maps, map))) {
 		/*
 		 *	This function doesn't change the map, so it's OK.
 		 */
@@ -762,7 +762,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	};
 	char buffer[8192];
 
-	fr_map_list_init(&inst->map);
+	fr_dlist_map_init(&inst->map);
 	/*
 	 *	"update" without "key" is invalid, as we can't run the
 	 *	module.
@@ -907,7 +907,7 @@ static rlm_rcode_t mod_map_apply(rlm_csv_t const *inst, request_t *request,
 
 redo:
 	RINDENT();
-	while ((map = fr_map_list_next(maps, map))) {
+	while ((map = fr_dlist_map_next(maps, map))) {
 		int field;
 		char *field_name;
 
@@ -1003,7 +1003,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	ssize_t slen;
 	fr_value_box_t *key;
 
-	if (fr_map_list_empty(&inst->map) || !inst->key) RETURN_MODULE_NOOP;
+	if (fr_dlist_map_empty(&inst->map) || !inst->key) RETURN_MODULE_NOOP;
 
 	/*
 	 *	Expand the key to whatever it is.  For attributes,

@@ -255,17 +255,27 @@ do { \
  *
  * Expands to 1 if types are compatible, else 0.
  *
- * @param _x pointer to check.
- * @param _t type to check compatibility with.
+ * @param[in] _x pointer to check.
+ * @param[in] _t type to check compatibility with.
  */
 #define IS_COMPATIBLE(_x, _t) _Generic(_x, _t:1, default: 0)
+
+/** Check if a field in a struct is compatible (the C11 way)
+ *
+ * Expands to 1 if types are compatible, else 0.
+ *
+ * @param[in] _s struct to check.
+ * @param[in] _f field in struct.
+ * @param[in] _t type to check compatibility with.
+ */
+#define IS_FIELD_COMPATIBLE(_s, _f, _t) _Generic(((_s *)0)->_f, _t:1, default: 0)
 
 /*
  *	Only use GCC __attribute__ if were building with a GCClike
  *	compiler.
  */
 #ifdef __GNUC__
-#  define CC_HINT(...)	__attribute__ ((__VA_ARGS__))
+#  define CC_HINT(...)	__attribute__((__VA_ARGS__))
 #  define likely(_x)	__builtin_expect((_x), 1)
 #  define unlikely(_x)	__builtin_expect((_x), 0)
 #else

@@ -197,7 +197,7 @@ static void strerror_printf_benchmark(void)
 	printf("printf pop rate %" PRIu64 "\n", rate);
 
 	/* shared runners are terrible for performance tests */
-	if (!getenv("NO_PERFORMANCE_TESTS")) TEST_CHECK(rate > 400000);
+	if (!getenv("NO_PERFORMANCE_TESTS")) TEST_CHECK(rate > 200000);
 }
 
 

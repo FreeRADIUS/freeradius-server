@@ -39,6 +39,7 @@ typedef struct vp_list_mod_s vp_list_mod_t;
 
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/util/dlist.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -56,13 +57,12 @@ extern "C" {
 	['>'] = true, \
 	['~'] = true
 
-/** Value pair map list
+FR_DLIST_TYPES(map)
+
+/** Given these are used in so many places, it's more friendly to have a proper type
  *
- * Specifically define a type for lists of map_t to aid type checking
  */
-typedef struct {
-	fr_dlist_head_t head;
-} fr_map_list_t;
+typedef FR_DLIST_HEAD_TYPE(map) fr_map_list_t;
 
 /** Value pair map
  *
@@ -75,32 +75,32 @@ typedef struct {
  * @see tmpl_t
  */
 struct vp_map_s {
-	tmpl_t		*lhs;		//!< Typically describes the attribute to add, modify or compare.
-	tmpl_t		*rhs;   	//!< Typically describes a literal value or a src attribute
-						///< to copy or compare.
+	tmpl_t				*lhs;		//!< Typically describes the attribute to add, modify or compare.
+	tmpl_t				*rhs;   	//!< Typically describes a literal value or a src attribute
+							///< to copy or compare.
 
-	fr_token_t		op; 		//!< The operator that controls insertion of the dst attribute.
-	fr_type_t		cast;		//!< Cast value to this type.
+	fr_token_t			op; 		//!< The operator that controls insertion of the dst attribute.
+	fr_type_t			cast;		//!< Cast value to this type.
 
-	CONF_ITEM		*ci;		//!< Config item that the map was created from. Mainly used for
-						//!< logging validation errors.
+	CONF_ITEM			*ci;		//!< Config item that the map was created from. Mainly used for
+							//!< logging validation errors.
 
-	map_t		*parent;	//! parent map, for nested ones
-	fr_map_list_t	child;		//!< a child map.  If it exists, `rhs` MUST be NULL
-	fr_dlist_t	entry;		//!< List entry.
+	map_t				*parent;	//! parent map, for nested ones
+	fr_map_list_t			child;		//!< a child map.  If it exists, `rhs` MUST be NULL
+	FR_DLIST_ENTRY_TYPE(map)	entry;		//!< List entry.
 };
 
-FR_DLIST_NEW_TYPE(map_list, fr_map_list_t, head, map_t, entry)
+FR_DLIST_FUNCS(map, map_t, entry)
 
 /** A list modification
  *
  */
 struct vp_list_mod_s {
-	map_t const		*map;		//!< Original map describing the change to be made.
+	map_t const			*map;		//!< Original map describing the change to be made.
 
-	fr_map_list_t		mod;		//!< New map containing the destination (LHS) and
-						///< values (RHS).
-	fr_dlist_t		entry;		//!< Entry into dlist
+	fr_map_list_t			mod;		//!< New map containing the destination (LHS) and
+							///< values (RHS).
+	fr_dlist_t			entry;		//!< Entry into dlist
 };
 
 #ifndef WITH_VERIFY_PTR

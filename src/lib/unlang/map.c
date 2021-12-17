@@ -271,7 +271,7 @@ static unlang_action_t unlang_update_state_init(rlm_rcode_t *p_result, request_t
 								    (sizeof(tmpl_t) * 2) + 128),
 								    g->num_children));	/* 128 is for string buffers */
 
-	fr_dcursor_init(&update_state->maps, fr_map_list_dlist_head(&gext->map));
+	fr_dcursor_init(&update_state->maps, &gext->map.head);
 	fr_value_box_list_init(&update_state->lhs_result);
 	fr_value_box_list_init(&update_state->rhs_result);
 	fr_dlist_init(&update_state->vlm_head, vp_list_mod_t, entry);

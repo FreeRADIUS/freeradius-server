@@ -138,7 +138,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 #endif
 	rlm_cache_entry_t		*c;
 
-	fr_map_list_init(&head);
+	fr_dlist_map_init(&head);
 	for (s_ret = fr_redis_cluster_state_init(&state, &conn, driver->cluster, request, key, key_len, false);
 	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
 	     s_ret = fr_redis_cluster_state_next(&state, &conn, driver->cluster, request, status, &reply)) {
@@ -198,7 +198,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 #else
 	c = talloc_zero(NULL, rlm_cache_entry_t);
 #endif
-	fr_map_list_init(&c->maps);
+	fr_dlist_map_init(&c->maps);
 	/*
 	 *	Convert the key/value pairs back into maps
 	 */
@@ -215,30 +215,30 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	/*
 	 *	Pull out the cache created date
 	 */
-	if (tmpl_da(fr_map_list_head(&head)->lhs) == attr_cache_created) {
+	if (tmpl_da(fr_dlist_map_head(&head)->lhs) == attr_cache_created) {
 		map_t *map;
 
-		c->created = tmpl_value(fr_map_list_head(&head)->rhs)->vb_date;
+		c->created = tmpl_value(fr_dlist_map_head(&head)->rhs)->vb_date;
 
-		map = fr_map_list_pop_head(&head);
+		map = fr_dlist_map_pop_head(&head);
 		talloc_free(map);
 	}
 
 	/*
 	 *	Pull out the cache expires date
 	 */
-	if (tmpl_da(fr_map_list_head(&head)->lhs) == attr_cache_expires) {
+	if (tmpl_da(fr_dlist_map_head(&head)->lhs) == attr_cache_expires) {
 		map_t *map;
 
-		c->expires = tmpl_value(fr_map_list_head(&head)->rhs)->vb_date;
+		c->expires = tmpl_value(fr_dlist_map_head(&head)->rhs)->vb_date;
 
-		map = fr_map_list_pop_head(&head);
+		map = fr_dlist_map_pop_head(&head);
 		talloc_free(map);
 	}
 
 	c->key = talloc_memdup(c, key, key_len);
 	c->key_len = key_len;
-	fr_map_list_move(&c->maps, &head);
+	fr_dlist_map_move(&c->maps, &head);
 	*out = c;
 
 	return CACHE_OK;
@@ -306,7 +306,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	fr_value_box_init(&expires_value.data.literal, FR_TYPE_DATE, NULL, true);
 	tmpl_value(&expires_value)->vb_date = c->expires;
 
-	cnt = fr_map_list_num_elements(&c->maps) + 2;
+	cnt = fr_dlist_map_num_elements(&c->maps) + 2;
 
 	/*
 	 *	The majority of serialized entries should be under 1k.
@@ -342,7 +342,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	}
 	argv_p += 3;
 	argv_len_p += 3;
-	while ((map = fr_map_list_next(&c->maps, map))) {
+	while ((map = fr_dlist_map_next(&c->maps, map))) {
 		if (fr_redis_tuple_from_map(pool, argv_p, argv_len_p, map) < 0) {
 			REDEBUG("Failed encoding map as Redis K/V pair");
 			talloc_free(pool);

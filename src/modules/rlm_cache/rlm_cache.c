@@ -160,7 +160,7 @@ static rlm_rcode_t cache_merge(rlm_cache_t const *inst, request_t *request, rlm_
 
 	RDEBUG2("Merging cache entry into request");
 	RINDENT();
-	while ((map = fr_map_list_next(&c->maps, map))) {
+	while ((map = fr_dlist_map_next(&c->maps, map))) {
 		/*
 		 *	The only reason that the application of a map entry
 		 *	can fail, is if the destination list or request
@@ -320,7 +320,7 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 	if (!c) {
 		RETURN_MODULE_FAIL;
 	}
-	fr_map_list_init(&c->maps);
+	fr_dlist_map_init(&c->maps);
 	c->key = talloc_memdup(c, key, key_len);
 	c->key_len = key_len;
 
@@ -337,7 +337,7 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 	 *	gathering fr_pair_ts to cache.
 	 */
 	pool = talloc_pool(NULL, 2048);
-	while ((map = fr_map_list_next(&inst->maps, map))) {
+	while ((map = fr_dlist_map_next(&inst->maps, map))) {
 		fr_pair_list_t	to_cache;
 
 		fr_pair_list_init(&to_cache);
@@ -376,7 +376,7 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 
 			MEM(c_map = talloc_zero(c, map_t));
 			c_map->op = map->op;
-			fr_map_list_init(&c_map->child);
+			fr_dlist_map_init(&c_map->child);
 
 			/*
 			 *	Now we turn the fr_pair_ts into maps.
@@ -425,7 +425,7 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 				fr_assert(0);
 			}
 			MAP_VERIFY(c_map);
-			fr_map_list_insert_tail(&c->maps, c_map);
+			fr_dlist_map_insert_tail(&c->maps, c_map);
 		}
 		talloc_free_children(pool); /* reset pool state */
 	}
@@ -868,7 +868,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	while ((map = fr_map_list_next(&c->maps, map))) {
+	while ((map = fr_dlist_map_next(&c->maps, map))) {
 		if ((tmpl_da(map->lhs) != tmpl_da(target)) ||
 		    (tmpl_list(map->lhs) != tmpl_list(target))) continue;
 
@@ -1044,14 +1044,14 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			.allow_foreign = true	/* Because we don't know where we'll be called */
 		};
 
-		fr_map_list_init(&inst->maps);
+		fr_dlist_map_init(&inst->maps);
 		if (map_afrom_cs(inst, &inst->maps, update,
 				 &parse_rules, &parse_rules, cache_verify, NULL, MAX_ATTRMAP) < 0) {
 			return -1;
 		}
 	}
 
-	if (fr_map_list_empty(&inst->maps)) {
+	if (fr_dlist_map_empty(&inst->maps)) {
 		cf_log_err(conf, "Cache config must contain an update section, and "
 			      "that section must not be empty");
 		return -1;
