@@ -1,0 +1,144 @@
+# -*- text -*-
+######################################################################
+#
+#	This is a virtual server which handles TLS session caching.
+#
+#	$Id$
+#
+######################################################################
+#
+#  In mods-enabled/eap, "cache" subsection
+#
+#  comment out
+#
+#	persist_dir
+#
+#  add
+#
+#	virtual_server = tls-cache
+#
+#  and set
+#
+#	enable = yes
+#
+#  In order to enable caching.
+#
+
+#
+#  This virtual server SHOULD NOT have any "listen" sections.
+#
+#
+#  All of the cache sections key off of &request:TLS-Session-Id
+#
+#  The cache sections also run the "post-auth" section of any
+#  module which they use.
+#
+#  These sections do not need to return any specific codes (e.g. ok /
+#  fail /etc.).  The cache functionality depends only on which
+#  attributes are saved / loaded.
+#
+#  For example, if the "cache save" process fails, there is nothing
+#  that the server can do about that.  The users authentication
+#  session will still succeed.  The only difference from a successful
+#  "cache save" is that the user will be unable to resume their
+#  session.  Instead, they will need to do a full re-authentication
+#  process.
+#
+#  Similarly for "cache load".  If the session (and/or) the VPs are
+#  not loaded from the cache, then the user will do a full
+#  re-authentication.
+#
+#  Whilst any store can be used for tls session caching, whatever is
+#  chosen should be faster than performing a full re-authentication
+server tls-cache {
+
+cache clear {
+	#  clear the cache entry by keying off of &request:TLS-Session-Id
+
+	#  An example using redis
+#	"%{redis:DEL %{request:TLS-Session-ID}}"
+
+	#  An example using SQL
+#	"%{sql:DELETE FROM tls_cache WHERE session_id = '%{request:TLS-Session-ID}'}"
+}
+
+cache save {
+	#  use the key &request:TLS-Session-ID
+	#  save &session-state:TLS-Session-Data
+	#  save &reply:...
+
+	#  The &reply: list is initialized to the attributes
+	#  which should be saved.  This includes attributes
+	#  mentioned in the "store" subsection of the "cache"
+	#  section configuration.  This is the same set of
+	#  attributes which is saved when the 'persist_dir'
+	#  configuration is used.
+	#
+	#  Note the "store" subsection will only copy matching
+	#  attributes from the &reply: list at the time that
+	#  eap authentication succeeds.
+	#
+	#  Other attributes can be saved by referring to them
+	#  e.g. &outer.request:...
+
+	#  An example using redis
+#	update {
+#		&Tmp-String-0 := "%{session-state:TLS-Session-Data}|%{escape:%{reply:Tunnel-Private-Group-ID}}"
+#	}
+#	"%{redis: SET %{request:TLS-Session-ID} \"%{Tmp-String-0}\" EX 86400}"
+
+	#  An example using SQL
+#	"%{sql: INSERT INTO tls_cache (session_id, session_data, vlan, expiry) VALUES ('%{request:TLS-Session-ID}', '%{session-state:TLS-Session-Data}', '%{escape:%{reply:Tunnel-Private-Group-ID}}', DATE_ADD(NOW(), INTERVAL 24 HOUR))}"
+}
+
+cache load {
+	#  use the key &request:TLS-Session-ID
+	#  load &session-state:TLS-Session-Data
+	#  load &reply:...
+	
+	#  Attributes returned in &reply: which are listed
+	#  in the "store" subsection of the "cache" section
+	#  configuration will be copied to &session-state:
+	#
+	#  Certificate attributes returned in &reply: are added
+	#  to &request: if they do not already exist and if
+	#  EAP-Type is returned it is added to &control:
+	#
+	#  Any other attributes returned are added to &reply:
+	
+	#  An example using redis
+#	update {
+#		&Tmp-String-0 := "%{redis:GET %{request:TLS-Session-ID}}"
+#	}
+#	if (!&Tmp-String-0 || &Tmp-String-0 !~ /^([^|]+)\|([^|]+)$/) {
+#		return
+#	}
+#	update {
+#		&session-state:TLS-Session-Data := "%{1}"
+#		&reply:Tunnel-Private-Group-ID := "%{unescape:%{2}}"
+#	}
+
+	#  An example using SQL
+#	update {
+#		&Tmp-String-0 := "%{sql:SELECT CONCAT(session_data, '|', vlan) FROM session_cache WHERE session_id = '%{request:TLS-Session-ID}'}"
+#	}
+#	if (!&Tmp-String-0 || &Tmp-String-0 !~ /^([^|]+)\|([^|]+)$/) {
+#		return
+#	}
+#	update {
+#		&session-state:TLS-Session-Data := "%{1}"
+#		&reply:Tunnel-Private-Group-ID := "%{unescape:%{2}}"
+#	}
+}
+
+cache refresh {
+	#  refresh the cache entry by keying off of &request:TLS-Session-ID
+
+	#  An example using redis
+#	"%{redis:EXPIRE %{request:TLS-Session-ID} 86400}"
+
+	#  An example using SQL
+#	"%{sql:UPDATE tls_cache SET expiry = DATE_ADD(NOW(), INTERVAL 24 HOUR) WHERE session_id = '%{request:TLS-Session-ID}'}"
+}
+
+}
