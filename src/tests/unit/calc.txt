@@ -121,7 +121,20 @@ match no
 calc ipv4prefix 127/8 + uint8 1 -> ipaddr
 match 127.0.0.1
 
-# Math tests
+calc ipv4addr 192.168.2.1 & uint32 0xffff0000 -> ipv4prefix
+match 192.168.0.0/16
+
+#  unknown destination type results in an IPv4 prefix for this operation.
+calc ipv4addr 192.168.2.1 & uint32 0xffff0000 -> null
+match 192.168.0.0/16
+
+calc ipv4addr 192.168.2.1 & uint32 0xffff0080 -> ipv4prefix
+match Invalid network mask '0xffff0080'
+
+######################################################################
+#
+#  Float
+#
 calc float32 1.0 + float32 2.5 -> float32
 match 3.500000
 
@@ -142,4 +155,4 @@ calc string "2" += string "test"
 match 2test
 
 count
-match 58
+match 64

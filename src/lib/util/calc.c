@@ -43,6 +43,18 @@ RCSID("$Id$")
  *  sync.
  */
 static const fr_type_t upcast[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
+	[FR_TYPE_IPV4_ADDR] = {
+		/*
+		 *	ipaddr + int --> prefix (generally only "and")
+		 */
+		[FR_TYPE_UINT32] =  FR_TYPE_IPV4_PREFIX,
+
+		/*
+		 *	192.168.0.255 - 192.168.0.1 -> int64
+		 */
+		[FR_TYPE_IPV4_ADDR] =  FR_TYPE_INT64,
+	},
+
 	/*
 	 *	Prefix + int --> ipaddr
 	 */
@@ -734,6 +746,7 @@ static int calc_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 
 	switch (op) {
 	case T_ADD:
+	case T_OR:
 		/*
 		 *	For simplicity, make sure that the prefix is first.
 		 */
@@ -756,24 +769,90 @@ static int calc_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		if (b->vb_uint32 >= (((uint32_t) 1) << a->vb_ip.prefix)) return ERR_OVERFLOW;
 
 		dst->vb_ip.af = AF_INET;
-		dst->vb_ip.addr.v4.s_addr = htonl(ntohl(a->vb_ip.addr.v4.s_addr) + b->vb_uint32);
+		dst->vb_ip.addr.v4.s_addr = htonl(ntohl(a->vb_ip.addr.v4.s_addr) | b->vb_uint32);
 		dst->vb_ip.prefix = 0;
 		break;
 
-	case T_SUB:
-		/*
-		 *	Subtract two addresses to see how far apart
-		 *	they are.  If the caller does "0.0.0.0 -
-		 *	255.xxxx", well, they deserve what they get.
-		 */
-		if ((a->type != FR_TYPE_IPV4_ADDR) && (b->type != FR_TYPE_IPV4_ADDR)) {
-			fr_strerror_const("Cannot perform operation on two 'ipaddr' types");
+	default:
+		return ERR_INVALID;
+	}
+
+	return 0;
+}
+
+static int calc_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *a, fr_token_t op, fr_value_box_t const *b)
+{
+	int prefix;
+	fr_value_box_t one, two, tmp;
+
+	fr_assert(dst->type == FR_TYPE_IPV4_PREFIX);
+
+	switch (op) {
+	case T_AND:
+		if (fr_type_is_integer(a->type)) {
+			if (fr_value_box_cast(NULL, &one, FR_TYPE_UINT32, NULL, a) < 0) return -1;
+
+			a = &one;
+			swap(a,b);
+
+		} else if (fr_type_is_integer(b->type)) {
+			if (fr_value_box_cast(NULL, &two, FR_TYPE_UINT32, NULL, b) < 0) return -1;
+			b = &two;
+
+		} else {
+			fr_strerror_const("Invalid input types for ipv4prefix");
 			return -1;
 		}
 
+		switch (a->type) {
+		case FR_TYPE_IPV6_ADDR:
+			if (fr_value_box_cast(NULL, &tmp, FR_TYPE_IPV4_ADDR, NULL, a) < 0) return -1;
+			break;
+
+		case FR_TYPE_IPV4_ADDR:
+			break;
+
+		default:
+			fr_strerror_printf("Invalid input data type '%s' for logical 'and'",
+					   fr_table_str_by_value(fr_value_box_type_table, a->type, "<INVALID>"));
+
+			return -1;
+		}
+
+		if (b->vb_uint32 == 0) { /* set everything to zero */
+			dst->vb_ip.addr.v4.s_addr = 0;
+			prefix = 0;
+
+		} else if ((~b->vb_uint32) == 0) { /* all 1's */
+			dst->vb_ip.addr.v4.s_addr = a->vb_ip.addr.v4.s_addr;
+			prefix = 32;
+
+		} else {
+			uint32_t mask;
+
+			mask = ~b->vb_uint32;	/* 0xff00 -> 0x00ff */
+			mask++;			/* 0x00ff -> 0x0100 */
+			if ((mask & b->vb_uint32) != mask) {
+				fr_strerror_printf("Invalid network mask '0x%08x'", b->vb_uint32);
+				return -1;
+			}
+
+			mask = 0xfffffffe;
+			prefix = 31;
+
+			while (prefix > 0) {
+				if (mask == b->vb_uint32) break;
+
+				prefix--;
+				mask <<= 1;
+			}
+			fr_assert(prefix > 0);
+
+			dst->vb_ip.addr.v4.s_addr = htonl(ntohl(a->vb_ip.addr.v4.s_addr) & b->vb_uint32);
+		}
+
 		dst->vb_ip.af = AF_INET;
-		dst->vb_ip.addr.v4.s_addr = htonl(ntohl(a->vb_ip.addr.v4.s_addr) - ntohl(b->vb_ip.addr.v4.s_addr));
-		dst->vb_ip.prefix = 0;
+		dst->vb_ip.prefix = prefix;
 		break;
 
 	default:
@@ -1147,6 +1226,7 @@ static const fr_binary_op_t calc_type[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_STRING]	= calc_string,
 
 	[FR_TYPE_IPV4_ADDR]	= calc_ipv4_addr,
+	[FR_TYPE_IPV4_PREFIX]	= calc_ipv4_prefix,
 	[FR_TYPE_IPV6_ADDR]	= calc_ipv6_addr,
 
 	[FR_TYPE_UINT8]		= calc_integer,
