@@ -499,13 +499,12 @@ next:
  *
  * @param[in] ctx context	to alloc new attributes in.
  * @param[out] out		Where to write the decoded options.
- * @param[in] dict		to lookup attributes in.
  * @param[in] data		to parse.
  * @param[in] data_len		of data to parse.
  * @param[in] decode_ctx	Unused.
  */
 ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
-			        fr_dict_t const *dict, uint8_t const *data, size_t data_len, UNUSED void *decode_ctx)
+			        uint8_t const *data, size_t data_len, UNUSED void *decode_ctx)
 {
 	ssize_t			ret;
 	uint8_t const		*p = data;
@@ -518,7 +517,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	FR_PROTO_HEX_DUMP(data, data_len, NULL);
 
-	parent = fr_dict_root(dict);
+	parent = fr_dict_root(dict_dhcpv4);
 
 	/*
 	 *	Padding / End of options
@@ -593,13 +592,21 @@ static ssize_t fr_dhcpv4_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	return data_len;
 }
 
+static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out, NDEBUG_UNUSED fr_dict_t const *dict,
+			        uint8_t const *data, size_t data_len, void *decode_ctx)
+{
+	fr_assert(dict == dict_dhcpv4);
+
+	return fr_dhcpv4_decode_option(ctx, out, data, data_len, decode_ctx);
+}
+
 /*
  *	Test points
  */
 extern fr_test_point_pair_decode_t dhcpv4_tp_decode_pair;
 fr_test_point_pair_decode_t dhcpv4_tp_decode_pair = {
 	.test_ctx	= decode_test_ctx,
-	.func		= fr_dhcpv4_decode_option
+	.func		= decode_option
 };
 
 extern fr_test_point_proto_decode_t dhcpv4_tp_decode_proto;
