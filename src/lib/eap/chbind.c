@@ -209,7 +209,7 @@ fr_radius_packet_code_t chbind_process(request_t *request, CHBIND_REQ *chbind)
 		while (data_len > 0) {
 			ssize_t attr_len;
 
-			attr_len = fr_radius_decode_pair(fake->request_ctx, &fake->request_pairs, dict_radius,
+			attr_len = fr_radius_decode_pair(fake->request_ctx, &fake->request_pairs,
 							 attr_data, data_len, &packet_ctx);
 			if (attr_len <= 0) {
 				/*

@@ -209,15 +209,15 @@ ssize_t		fr_radius_decode_password(char *encpw, size_t len, char const *secret, 
 ssize_t		fr_radius_decode_tunnel_password(uint8_t *encpw, size_t *len, char const *secret,
 						 uint8_t const *vector, bool tunnel_password_zeros);
 
-ssize_t		fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dict_t const *dict,
+ssize_t		fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *list,
 					    fr_dict_attr_t const *parent,
 					    uint8_t const *data, size_t const attr_len, size_t const packet_len,
 					    fr_radius_ctx_t *packet_ctx) CC_HINT(nonnull);
 
-ssize_t		fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dict_t const *dict,
+ssize_t		fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *list,
 				     fr_dict_attr_t const *parent,
 				     uint8_t const *data, size_t data_len,
 				     fr_radius_ctx_t *packet_ctx) CC_HINT(nonnull);
 
-ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dict_t const *dict,
+ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *list,
 				      uint8_t const *data, size_t data_len, fr_radius_ctx_t *packet_ctx) CC_HINT(nonnull);

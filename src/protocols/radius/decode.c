@@ -528,7 +528,7 @@ static ssize_t decode_nas_filter_rule(TALLOC_CTX *ctx, fr_pair_list_t *out,
 /** Convert TLVs to one or more VPs
  *
  */
-ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			     fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
 			     fr_radius_ctx_t *packet_ctx)
 {
@@ -592,7 +592,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t con
 		}
 		FR_PROTO_TRACE("decode context changed %s -> %s", parent->name, child->name);
 
-		tlv_len = fr_radius_decode_pair_value(vp, &tlv_tmp, dict,
+		tlv_len = fr_radius_decode_pair_value(vp, &tlv_tmp,
 						      child, p + 2, p[1] - 2, p[1] - 2,
 						      packet_ctx);
 		if (tlv_len < 0) goto error;
@@ -609,7 +609,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t con
  *
  * "length" can be LONGER than just this sub-vsa.
  */
-static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				   fr_dict_attr_t const *parent,
 				   uint8_t const *data, size_t data_len,
 				   fr_radius_ctx_t *packet_ctx, fr_dict_vendor_t const *dv)
@@ -688,7 +688,7 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict
 	if (!da) return -1;
 	FR_PROTO_TRACE("decode context changed %s -> %s", da->parent->name, da->name);
 
-	my_len = fr_radius_decode_pair_value(ctx, out, dict,
+	my_len = fr_radius_decode_pair_value(ctx, out,
 					     da, data + dv->type + dv->length,
 					     attrlen - (dv->type + dv->length), attrlen - (dv->type + dv->length),
 					     packet_ctx);
@@ -710,7 +710,7 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict
  *
  * But for the first fragment, we get passed a pointer to the "extended-attr"
  */
-static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			       fr_dict_attr_t const *parent,
 			       uint8_t const *data, size_t attr_len, size_t packet_len,
 			       fr_radius_ctx_t *packet_ctx)
@@ -733,7 +733,7 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t c
 	 *	No continuation, just decode the attributre in place.
 	 */
 	if ((data[1] & 0x80) == 0) {
-		ret = fr_radius_decode_pair_value(ctx, out, dict,
+		ret = fr_radius_decode_pair_value(ctx, out,
 						  parent, data + 2, attr_len - 2, attr_len - 2, packet_ctx);
 		if (ret < 0) return -1;
 		return attr_len;
@@ -790,7 +790,7 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t c
 
 	FR_PROTO_HEX_DUMP(head, fraglen, "long-extended fragments");
 
-	ret = fr_radius_decode_pair_value(ctx, out, dict,
+	ret = fr_radius_decode_pair_value(ctx, out,
 					  parent, head, fraglen, fraglen, packet_ctx);
 	talloc_free(head);
 	if (ret < 0) return ret;
@@ -802,7 +802,7 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t c
  *
  * @note Called ONLY for Vendor-Specific
  */
-static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t attr_len, size_t packet_len,
 			    fr_radius_ctx_t *packet_ctx)
@@ -842,7 +842,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 	 *	No continuation, just decode the attributre in place.
 	 */
 	if ((data[6] & 0x80) == 0) {
-		ret = fr_radius_decode_pair_value(ctx, out, dict,
+		ret = fr_radius_decode_pair_value(ctx, out,
 						  da, data + 7, data[5] - 3, data[5] - 3, packet_ctx);
 		if (ret < 0) return ret;
 
@@ -960,7 +960,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 
 	FR_PROTO_HEX_DUMP(head, wimax_len, "Wimax fragments");
 
-	ret = fr_radius_decode_pair_value(ctx, out, dict,
+	ret = fr_radius_decode_pair_value(ctx, out,
 					  da, head, wimax_len, wimax_len, packet_ctx);
 	talloc_free(head);
 	if (ret < 0) return ret;
@@ -972,7 +972,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 /** Convert a top-level VSA to one or more VPs
  *
  */
-static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					    fr_dict_attr_t const *parent,
 					    uint8_t const *data, size_t attr_len, size_t packet_len,
 					    fr_radius_ctx_t *packet_ctx)
@@ -1047,7 +1047,7 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out
 	 *	We found an attribute representing the vendor
 	 *	so it *MUST* exist in the vendor tree.
 	 */
-	dv = fr_dict_vendor_by_num(dict, vendor);
+	dv = fr_dict_vendor_by_num(dict_radius, vendor);
 	if (!fr_cond_assert(dv)) return -1;
 	FR_PROTO_TRACE("decode context %s -> %s", parent->name, vendor_da->name);
 
@@ -1055,7 +1055,7 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out
 	 *	WiMAX craziness
 	 */
 	if (dv->continuation) {
-		ret = decode_wimax(ctx, out, dict, vendor_da, data, attr_len, packet_len, packet_ctx);
+		ret = decode_wimax(ctx, out, vendor_da, data, attr_len, packet_len, packet_ctx);
 		return ret;
 	}
 
@@ -1084,7 +1084,7 @@ create_attrs:
 		/*
 		 *	Vendor attributes can have subattributes (if you hadn't guessed)
 		 */
-		vsa_len = decode_vsa_internal(ctx, &tlv_tmp, dict,
+		vsa_len = decode_vsa_internal(ctx, &tlv_tmp,
 					      vendor_da, data, attr_len, packet_ctx, dv);
 		if (vsa_len < 0) {
 			FR_PROTO_TRACE("TLV decode failed: %s", fr_strerror());
@@ -1117,22 +1117,22 @@ create_attrs:
  *  packet length.  But when we're decoding values inside of a struct,
  *  we're not using extended attributes.
  */
-static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, UNUSED fr_dict_t const *dict,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t data_len, void *decode_ctx)
 {
-	return fr_radius_decode_pair_value(ctx, out, dict, parent, data, data_len, data_len, decode_ctx);
+	return fr_radius_decode_pair_value(ctx, out, parent, data, data_len, data_len, decode_ctx);
 }
 
 /** Wrapper called by fr_struct_from_network()
  */
-static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, UNUSED fr_dict_t const *dict,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t data_len, void *decode_ctx)
 {
 	FR_PROTO_HEX_DUMP(data, data_len, "%s", __FUNCTION__ );
 
-	return fr_radius_decode_tlv(ctx, out, dict, parent, data, data_len, decode_ctx);
+	return fr_radius_decode_tlv(ctx, out, parent, data, data_len, decode_ctx);
 }
 
 
@@ -1151,7 +1151,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const 
  *	- Length on success.
  *	- -1 on failure.
  */
-ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				    fr_dict_attr_t const *parent,
 				    uint8_t const *data, size_t const attr_len, size_t const packet_len,
 				    fr_radius_ctx_t *packet_ctx)
@@ -1398,7 +1398,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 			 *	VSAs can be WiMAX, in which case they don't
 			 *	fit into one attribute.
 			 */
-			ret = decode_vsa(ctx, out, dict, parent, p, attr_len, packet_len, packet_ctx);
+			ret = decode_vsa(ctx, out, parent, p, attr_len, packet_len, packet_ctx);
 			if (ret < 0) goto raw;
 			return ret;
 
@@ -1463,7 +1463,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 			 *	Everything was found in the dictionary, we can
 			 *	now recurse to decode the value.
 			 */
-			ret = fr_radius_decode_pair_value(ctx, out, dict,
+			ret = fr_radius_decode_pair_value(ctx, out,
 							  child, p + 5, attr_len - 5, attr_len - 5,
 							  packet_ctx);
 			if (ret < 0) goto raw;
@@ -1477,7 +1477,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 				 *	attribute, OR they've already been grouped
 				 *	into a contiguous memory buffer.
 				 */
-				ret = fr_radius_decode_tlv(ctx, out, dict, parent, p, attr_len, packet_ctx);
+				ret = fr_radius_decode_tlv(ctx, out,  parent, p, attr_len, packet_ctx);
 				if (ret < 0) goto raw;
 				return attr_len;
 		}
@@ -1506,7 +1506,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 			 *	set.  Just decode it.
 			 */
 			if (!extra || ((p[1] & 0x80) == 0)) {
-				ret = fr_radius_decode_pair_value(ctx, out, dict, child,
+				ret = fr_radius_decode_pair_value(ctx, out, child,
 								  p + min, attr_len - min, attr_len - min,
 								  packet_ctx);
 				if (ret < 0) goto invalid_extended;
@@ -1526,7 +1526,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 			 *	MUST have the "more" bit set.  So we
 			 *	don't check it again here.
 			 */
-			ret = decode_extended(ctx, out, dict, child, data, attr_len, packet_len, packet_ctx);
+			ret = decode_extended(ctx, out, child, data, attr_len, packet_len, packet_ctx);
 			if (ret >= 0) return ret; /* which may be LONGER than attr_len */
 
 			/* Fall through to invalid extended attribute */
@@ -1558,11 +1558,11 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 		 *	"long" extended.  Decode the value.
 		 */
 		if (extra) {
-			ret = decode_extended(ctx, out, dict, child, data, attr_len, packet_len, packet_ctx);
+			ret = decode_extended(ctx, out, child, data, attr_len, packet_len, packet_ctx);
 			if (ret >= 0) return ret; /* which may be LONGER than attr_len */
 		}
 
-		ret = fr_radius_decode_pair_value(ctx, out, dict, child,
+		ret = fr_radius_decode_pair_value(ctx, out, child,
 						  p + min, attr_len - min, attr_len - min,
 						  packet_ctx);
 		if (ret < 0) return -1;
@@ -1722,7 +1722,7 @@ done:
 /** Create a "normal" fr_pair_t from the given data
  *
  */
-ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			      uint8_t const *data, size_t data_len, fr_radius_ctx_t *packet_ctx)
 {
 	ssize_t			ret;
@@ -1743,10 +1743,10 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t co
 		packet_ctx->tag_root_ctx = ctx;
 	}
 
-	da = fr_dict_attr_child_by_num(fr_dict_root(dict), data[0]);
+	da = fr_dict_attr_child_by_num(fr_dict_root(dict_radius), data[0]);
 	if (!da) {
 		FR_PROTO_TRACE("Unknown attribute %u", data[0]);
-		da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, fr_dict_root(dict), data[0]);
+		da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, fr_dict_root(dict_radius), data[0]);
 	}
 	if (!da) return -1;
 	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
@@ -1757,7 +1757,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t co
 	if (data_len == 2) {
 		fr_pair_t *vp;
 
-		if (!fr_dict_root(dict)->flags.is_root) {
+		if (!fr_dict_root(dict_radius)->flags.is_root) {
 			return 2;
 		}
 
@@ -1802,7 +1802,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t co
 	 *	attributes may have the "continuation" bit set, and
 	 *	will thus be more than one attribute in length.
 	 */
-	ret = fr_radius_decode_pair_value(ctx, out, dict,
+	ret = fr_radius_decode_pair_value(ctx, out,
 					  da, data + 2, data[1] - 2, data_len - 2,
 					  packet_ctx);
 	if (ret < 0) return ret;
@@ -1878,13 +1878,22 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				test_ctx->secret, talloc_array_length(test_ctx->secret) - 1);
 }
 
+static ssize_t decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, NDEBUG_UNUSED fr_dict_t const *dict,
+			   uint8_t const *data, size_t data_len, fr_radius_ctx_t *packet_ctx)
+{
+	fr_assert(dict == dict_radius);
+
+	return fr_radius_decode_pair(ctx, out, data, data_len, packet_ctx);
+}
+
+
 /*
  *	Test points
  */
 extern fr_test_point_pair_decode_t radius_tp_decode_pair;
 fr_test_point_pair_decode_t radius_tp_decode_pair = {
 	.test_ctx	= decode_test_ctx,
-	.func		= (fr_pair_decode_t) fr_radius_decode_pair
+	.func		= (fr_pair_decode_t) decode_pair
 };
 
 extern fr_test_point_proto_decode_t radius_tp_decode_proto;

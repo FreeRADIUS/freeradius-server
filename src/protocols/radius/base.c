@@ -1051,7 +1051,7 @@ ssize_t fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	he doesn't, all hell breaks loose.
 	 */
 	while (attr < end) {
-		slen = fr_radius_decode_pair(ctx, out, dict_radius, attr, (end - attr), &packet_ctx);
+		slen = fr_radius_decode_pair(ctx, out, attr, (end - attr), &packet_ctx);
 		if (slen < 0) {
 		fail:
 			talloc_free(packet_ctx.tmp_ctx);

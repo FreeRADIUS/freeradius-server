@@ -189,7 +189,7 @@ int fr_radius_packet_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	This may return many VPs
 		 */
 		fr_assert(ptr != NULL);
-		my_len = fr_radius_decode_pair(ctx, &tmp_list, dict_radius, ptr, packet_length, &packet_ctx);
+		my_len = fr_radius_decode_pair(ctx, &tmp_list, ptr, packet_length, &packet_ctx);
 		if (my_len < 0) {
 		fail:
 			talloc_free(packet_ctx.tmp_ctx);
