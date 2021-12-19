@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/io/pair.h>
+#include <freeradius-devel/unlang/xlat_priv.h>
 
 /** Keep decoding pairs until all of the data has been used.
  *
@@ -87,9 +87,9 @@ static ssize_t fr_pair_decode_multi(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
  *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
  *	- > 0 on success.  How many value boxes were decoded
  */
-int fr_pair_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
-				  request_t *request, void *decode_ctx, fr_pair_decode_t decode,
-				  fr_value_box_list_t *in)
+int xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
+			       request_t *request, void *decode_ctx, fr_pair_decode_t decode,
+			       fr_value_box_list_t *in)
 {
 	int		decoded = 0;
 	fr_value_box_t	*vb = NULL;

@@ -3336,8 +3336,8 @@ static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		}
 	}
 
-	decoded = fr_pair_decode_value_box_list(request->request_ctx, &request->request_pairs,
-						request, decode_ctx, tp_decode->func, in);
+	decoded = xlat_decode_value_box_list(request->request_ctx, &request->request_pairs,
+					     request, decode_ctx, tp_decode->func, in);
 	if (decoded <= 0) {
 		talloc_free(decode_ctx);
 		RPERROR("Protocol decoding failed");

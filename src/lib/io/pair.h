@@ -134,7 +134,3 @@ typedef ssize_t (*fr_pair_encode_t)(fr_dbuff_t *out, fr_dcursor_t *cursor, void 
  */
 typedef ssize_t (*fr_pair_decode_t)(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 				    uint8_t const *data, size_t data_len, void *decode_ctx);
-
-int fr_pair_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
-				  request_t *request, void *decode_ctx, fr_pair_decode_t decode,
-				  fr_value_box_list_t *in);

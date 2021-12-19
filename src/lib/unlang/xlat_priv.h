@@ -30,6 +30,8 @@
 extern "C" {
 #endif
 
+#include <freeradius-devel/io/pair.h>
+
 #ifdef DEBUG_XLAT
 #  define XLAT_DEBUG RDEBUG3
 #else
@@ -200,6 +202,10 @@ int		xlat_eval_init(void);
 void		xlat_eval_free(void);
 
 void		unlang_xlat_init(void);
+
+int xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
+			       request_t *request, void *decode_ctx, fr_pair_decode_t decode,
+			       fr_value_box_list_t *in);
 
 #ifdef __cplusplus
 }
