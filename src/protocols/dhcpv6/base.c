@@ -735,7 +735,7 @@ decode_options:
 	 *	he doesn't, all hell breaks loose.
 	 */
 	while (p < end) {
-		slen = fr_dhcpv6_decode_option(ctx, &tmp, dict_dhcpv6, p, (end - p), &packet_ctx);
+		slen = fr_dhcpv6_decode_option(ctx, &tmp, p, (end - p), &packet_ctx);
 		if (slen < 0) {
 			talloc_free(packet_ctx.tmp_ctx);
 			goto fail;

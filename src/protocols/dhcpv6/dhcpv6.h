@@ -174,5 +174,5 @@ ssize_t		fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *
 /*
  *	decode.c
  */
-ssize_t		fr_dhcpv6_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+ssize_t		fr_dhcpv6_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					uint8_t const *data, size_t data_len, void *decode_ctx);
