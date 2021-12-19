@@ -316,8 +316,13 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 
 	/*
 	 *	Structural types
+	 *
+	 *	STRUCTs are encoded as TLVs, because the struct
+	 *	packing only applies to the original protocol, and not
+	 *	to our internal encoding.
 	 */
 	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
 		if (unlikely(tainted)) goto bad_tainted;
 
 		slen = internal_decode_tlv(ctx, out, da, &work_dbuff, decode_ctx);

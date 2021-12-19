@@ -154,8 +154,13 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	/*
 	 *	Children of TLVs are encoded in the context
 	 *	of the TLV.
+	 *
+	 *	STRUCTs are encoded as TLVs, because the struct
+	 *	packing only applies to the original protocol, and not
+	 *	to our internal encoding.
 	 */
 	case FR_TYPE_TLV:
+	case FR_TYPE_STRUCT:
 		/*
 		 *	We've done the complete stack.
 		 *	Hopefully this TLV has some
