@@ -1878,10 +1878,10 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				test_ctx->secret, talloc_array_length(test_ctx->secret) - 1);
 }
 
-static ssize_t decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, NDEBUG_UNUSED fr_dict_t const *dict,
+static ssize_t decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, NDEBUG_UNUSED fr_dict_attr_t const *parent,
 			   uint8_t const *data, size_t data_len, fr_radius_ctx_t *packet_ctx)
 {
-	fr_assert(dict == dict_radius);
+	fr_assert(parent == fr_dict_root(dict_radius));
 
 	return fr_radius_decode_pair(ctx, out, data, data_len, packet_ctx);
 }

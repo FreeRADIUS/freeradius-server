@@ -193,7 +193,7 @@ static int tls_cache_app_data_get(request_t *request, SSL_SESSION *sess)
 	 */
 	while (fr_dbuff_remaining(&dbuff) > 0) {
 		if (fr_internal_decode_pair_dbuff(request->session_state_ctx, &tmp,
-					    	  request->dict, &dbuff, NULL) < 0) {
+					    	  fr_dict_root(request->dict), &dbuff, NULL) < 0) {
 			fr_pair_list_free(&tmp);
 			RPEDEBUG("Failed decoding session-state");
 			return -1;

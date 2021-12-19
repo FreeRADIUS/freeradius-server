@@ -910,7 +910,7 @@ static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
  *
  * @param[in] ctx		to allocate attributes in.
  * @param[in] out		where to insert the attributes.
- * @param[in] dict		for looking up attributes.
+ * @param[in] parent		for looking up attributes.
  * @param[in] data		data to parse.
  * @param[in] data_len		length of data.  For top level attributes packet_ctx must be the length
  *				of the packet (so we can hunt for AT_IV), for Sub-TLVs it should
@@ -920,10 +920,10 @@ static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
  *	- The number of bytes parsed.
  *	- -1 on error.
  */
-ssize_t fr_aka_sim_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
-			   uint8_t const *data, size_t data_len, void *decode_ctx)
+ssize_t fr_aka_sim_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+			       uint8_t const *data, size_t data_len, void *decode_ctx)
 {
-	return sim_decode_pair_internal(ctx, out, fr_dict_root(dict), data, data_len, decode_ctx);
+	return sim_decode_pair_internal(ctx, out, parent, data, data_len, decode_ctx);
 }
 
 /** Decode SIM/AKA/AKA' specific packet data
@@ -959,6 +959,7 @@ int fr_aka_sim_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dic
 	ssize_t			ret;
 	uint8_t	const		*p = data;
 	uint8_t const		*end = p + data_len;
+	fr_dict_attr_t const	*parent;
 
 	/*
 	 *	We need at least enough data for the subtype
@@ -975,6 +976,7 @@ int fr_aka_sim_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dic
 		return -1;
 	}
 	p += 3;
+	parent = fr_dict_root(dict);
 
 	/*
 	 *	Loop over all the attributes decoding
@@ -982,7 +984,7 @@ int fr_aka_sim_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dic
 	 *	in the SIM/AKA/AKA' dict.
 	 */
 	while (p < end) {
-		ret = fr_aka_sim_decode_pair(ctx, out, dict, p, end - p, decode_ctx);
+		ret = fr_aka_sim_decode_pair(ctx, out, parent, p, end - p, decode_ctx);
 		if (ret <= 0) {
 			fr_strerror_const_push("Failed decoding AT");
 		error:
@@ -1001,7 +1003,7 @@ int fr_aka_sim_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dic
 	{
 		fr_pair_t *vp;
 
-		vp = fr_pair_afrom_child_num(ctx, fr_dict_root(dict), FR_SUBTYPE);
+		vp = fr_pair_afrom_child_num(ctx, parent, FR_SUBTYPE);
 		if (!vp) {
 			fr_strerror_const("Failed allocating subtype attribute");
 			goto error;

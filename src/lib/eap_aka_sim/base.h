@@ -253,7 +253,7 @@ extern size_t const fr_aka_sim_attr_sizes[FR_TYPE_MAX + 1][2];
 /*
  *	decode.c
  */
-ssize_t		fr_aka_sim_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+ssize_t		fr_aka_sim_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 				       uint8_t const *data, size_t data_len, void *decode_ctx);
 
 int		fr_aka_sim_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,

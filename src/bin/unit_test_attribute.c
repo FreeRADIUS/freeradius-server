@@ -1516,7 +1516,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	 *	point to produce fr_pair_ts.
 	 */
 	while (to_dec < to_dec_end) {
-		slen = tp->func(cc->tmp_ctx, &head, cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict,
+		slen = tp->func(cc->tmp_ctx, &head, fr_dict_root(cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict),
 				(uint8_t *)to_dec, (to_dec_end - to_dec), decode_ctx);
 		cc->last_ret = slen;
 		if (slen <= 0) {

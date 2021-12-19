@@ -124,15 +124,15 @@ typedef ssize_t (*fr_pair_encode_t)(fr_dbuff_t *out, fr_dcursor_t *cursor, void 
  *
  * @param[in] ctx		to allocate new pairs in.
  * @param[in] out		to insert new pairs into.
- * @param[in] dict		to use to lookup attributes.
+ * @param[in] parent		to use for decoding
  * @param[in] data		to decode.
  * @param[in] data_len		The length of the incoming data.
- * @param[in] decode_ctx	Any decode specific data such as secrets or configurable.
+ * @param[in] decode_ctx	Any decode specific data such as secrets or temporary allocation contexts
  * @return
  *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
  *	- > 0 on success.  How many bytes were decoded.
  */
-typedef ssize_t (*fr_pair_decode_t)(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+typedef ssize_t (*fr_pair_decode_t)(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 				    uint8_t const *data, size_t data_len, void *decode_ctx);
 
 int fr_pair_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,

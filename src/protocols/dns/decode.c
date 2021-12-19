@@ -582,13 +582,13 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
  *
  * @param[in] ctx context	to alloc new attributes in.
  * @param[in,out] out		Where to write the decoded options.
- * @param[in] dict		to lookup attributes in.
+ * @param[in] parent		to lookup attributes in.
  * @param[in] data		to parse.
  * @param[in] data_len		of data to parse.
  * @param[in] decode_ctx	Unused.
  */
-static ssize_t decode_rr(TALLOC_CTX *ctx, fr_pair_list_t *out,
-			 UNUSED fr_dict_t const *dict, uint8_t const *data, size_t data_len, void *decode_ctx)
+static ssize_t decode_rr(TALLOC_CTX *ctx, fr_pair_list_t *out, UNUSED fr_dict_attr_t const *parent,
+			 uint8_t const *data, size_t data_len, void *decode_ctx)
 {
 	ssize_t			slen;
 	fr_dns_ctx_t	*packet_ctx = (fr_dns_ctx_t *) decode_ctx;

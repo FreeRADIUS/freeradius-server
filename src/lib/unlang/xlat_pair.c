@@ -30,7 +30,7 @@ RCSID("$Id$")
  *
  * @param[in] ctx		to allocate new pairs in.
  * @param[in] out		the cursor to update
- * @param[in] dict		to use to lookup attributes.
+ * @param[in] parent		to use as the root
  * @param[in] data		to decode.
  * @param[in] data_len		The length of the incoming data.
  * @param[in] decode_ctx	Any decode specific data such as secrets or configurable.
@@ -39,7 +39,7 @@ RCSID("$Id$")
  *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
  *	- > 0 on success.  How many bytes were decoded.
  */
-static ssize_t fr_pair_decode_multi(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+static ssize_t fr_pair_decode_multi(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 				    uint8_t const *data, size_t data_len, void *decode_ctx, fr_pair_decode_t decode)
 {
 	uint8_t const *p, *end;
@@ -58,7 +58,7 @@ static ssize_t fr_pair_decode_multi(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	while (p < end) {
 		ssize_t len;
 
-		len = decode(ctx, &tmp, dict, p, end - p, decode_ctx);
+		len = decode(ctx, &tmp, parent, p, end - p, decode_ctx);
 		if (len <= 0) {
 			fr_pair_list_free(&tmp);
 			return len - (p - data);
@@ -94,6 +94,7 @@ int fr_pair_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	int		decoded = 0;
 	fr_value_box_t	*vb = NULL;
 	fr_pair_t	*vp = NULL;
+	fr_dict_attr_t const *parent = fr_dict_root(request->dict);
 	fr_pair_list_t	head;
 
 	fr_pair_list_init(&head);
@@ -109,7 +110,7 @@ int fr_pair_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			continue;
 		}
 
-		len = fr_pair_decode_multi(ctx, &head, request->dict,
+		len = fr_pair_decode_multi(ctx, &head, parent,
 					   vb->vb_octets, vb->vb_length, decode_ctx, decode);
 		if (len <= 0) {
 			fr_pair_list_free(&head);
@@ -119,7 +120,7 @@ int fr_pair_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	}
 
 	if (RDEBUG_ENABLED2) {
-		char const *name = fr_dict_root(request->dict)->name;
+		char const *name = parent->name;
 
 		while ((vp = fr_pair_list_next(&head, vp))) {
 			RDEBUG2("decode %s: &%pP", name, vp);

@@ -642,10 +642,10 @@ static ssize_t fr_dhcpv6_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint
 }
 
 
-static ssize_t decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, NDEBUG_UNUSED fr_dict_t const *dict,
+static ssize_t decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, NDEBUG_UNUSED fr_dict_attr_t const *parent,
 			   uint8_t const *data, size_t data_len, void *decode_ctx)
 {
-	fr_assert(dict == dict_dhcpv6);
+	fr_assert(parent == fr_dict_root(dict_dhcpv6));
 
 	return decode_option(ctx, out, fr_dict_root(dict_dhcpv6), data, data_len, decode_ctx);
 }

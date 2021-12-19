@@ -349,13 +349,13 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 /** Create a single fr_pair_t and all its nesting
  *
  */
-ssize_t fr_internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dict_t const *dict,
+ssize_t fr_internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_dict_attr_t const *parent,
 				uint8_t const *data, size_t data_len, void *decode_ctx)
 {
-	return fr_internal_decode_pair_dbuff(ctx, list, dict, &FR_DBUFF_TMP(data, data_len), decode_ctx);
+	return fr_internal_decode_pair_dbuff(ctx, list, parent, &FR_DBUFF_TMP(data, data_len), decode_ctx);
 }
 
-ssize_t fr_internal_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+ssize_t fr_internal_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 				fr_dbuff_t *dbuff, void *decode_ctx)
 {
 	fr_pair_list_t	tmp;
@@ -364,7 +364,7 @@ ssize_t fr_internal_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
 
 	fr_pair_list_init(&tmp);
 
-	slen = internal_decode_pair(ctx, &tmp, fr_dict_root(dict), &work_dbuff, decode_ctx);
+	slen = internal_decode_pair(ctx, &tmp, parent, &work_dbuff, decode_ctx);
 	if (slen <= 0) {
 		fr_pair_list_free(&tmp);
 		return slen;
