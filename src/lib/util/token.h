@@ -45,6 +45,9 @@ typedef enum fr_token {
 	T_COMMA,			/* , */
 	T_SEMICOLON,			/* ; */
 
+	/*
+	 *	Binary operations
+	 */
 	T_ADD,				/* + */
 	T_SUB,				/* - */
 	T_MUL,				/* * */
@@ -55,29 +58,34 @@ typedef enum fr_token {
 	T_RSHIFT,			/* >> */
 	T_LSHIFT,			/* << */
 
-	T_LAND,				/* && */
-	T_LOR,				/* || */
-
 	/*
-	 *	Only used by LDAP ???
-	 */
-	T_OP_INCRM,			/* ++ */
-
-	/*
-	 *	Assignment operators.
+	 *	Assignment operators associated with binary
+	 *	operations.
 	 */
 	T_OP_ADD_EQ,			/* += */
 	T_OP_SUB_EQ,			/* -= */
-	T_OP_SET,			/* := */
-	T_OP_PREPEND,			/* ^= */
-#define T_OP_XOR_EQ T_OP_PREPEND
+	T_OP_MUL_EQ,			/* *= */
+	T_OP_DIV_EQ,			/* /= */
 	T_OP_OR_EQ,			/* |= */
 	T_OP_AND_EQ,			/* &= */
 
 	T_OP_RSHIFT_EQ,			/* >>= */
 	T_OP_LSHIFT_EQ,			/* <<= */
 
+	/*
+	 *	Assignment operators associated with
+	 *	other operations.
+	 */
 	T_OP_EQ,			/* = */
+	T_OP_SET,			/* := */
+	T_OP_PREPEND,			/* ^= */
+#define T_OP_XOR_EQ T_OP_PREPEND
+
+	/*
+	 *	Logical / short-circuit operators.
+	 */
+	T_LAND,				/* && */
+	T_LOR,				/* || */
 
 	/*
 	 *	Comparison operators.
@@ -92,6 +100,11 @@ typedef enum fr_token {
 	T_OP_CMP_TRUE,			/* =* */
 	T_OP_CMP_FALSE,			/* !* */
 	T_OP_CMP_EQ,			/* == */
+
+	/*
+	 *	Only used by LDAP ???
+	 */
+	T_OP_INCRM,			/* ++ */
 
 	/*
 	 *	T_HASH MUST be after all of various assignment

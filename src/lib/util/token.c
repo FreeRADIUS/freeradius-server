@@ -155,16 +155,20 @@ const char fr_token_quote[T_TOKEN_LAST] = {
 #define T(_x) [T_OP_ ## _x] = true
 
 const bool fr_assignment_op[T_TOKEN_LAST] = {
-	T(INCRM),
+	T(INCRM),		/* only used by LDAP :( */
+
 	T(ADD_EQ),
 	T(SUB_EQ),
+	T(MUL_EQ),
+	T(DIV_EQ),
+	T(AND_EQ),
+	T(OR_EQ),
+	T(RSHIFT_EQ),
+	T(LSHIFT_EQ),
+
 	T(SET),
 	T(EQ),
 	T(PREPEND),
-	T(OR_EQ),
-	T(AND_EQ),
-	T(RSHIFT_EQ),
-	T(LSHIFT_EQ),
 };
 
 const bool fr_equality_op[T_TOKEN_LAST] = {
