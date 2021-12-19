@@ -33,7 +33,7 @@
 #include "dns.h"
 #include "attrs.h"
 
-static ssize_t decode_raw(TALLOC_CTX *ctx, fr_pair_list_t *out, UNUSED fr_dict_t const *dict,
+static ssize_t decode_raw(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			  fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
@@ -79,45 +79,45 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_pair_list_t *out, UNUSED fr_dict_t
 }
 
 
-static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t const data_len, void *decode_ctx);
-static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t const data_len, void *decode_ctx);
-static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				 fr_dict_attr_t const *parent,
 				 uint8_t const *data, size_t const data_len, void *decode_ctx);
-static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			   fr_dict_attr_t const *parent,
 			   uint8_t const *data, size_t const data_len, void *decode_ctx, bool do_raw);
 
-static ssize_t decode_tlv_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+static ssize_t decode_tlv_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out, UNUSED fr_dict_t const *dict,
 				     fr_dict_attr_t const *parent,
 				     uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
-	return decode_tlvs(ctx, out, dict, parent, data, data_len, decode_ctx, true);
+	return decode_tlvs(ctx, out, parent, data, data_len, decode_ctx, true);
 }
 
 /** Handle arrays of DNS labels for fr_struct_from_network()
  *
  */
-static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out, UNUSED fr_dict_t const *dict,
 				       fr_dict_attr_t const *parent,
 				       uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
 	if ((parent->type == FR_TYPE_STRING) && !parent->flags.extra && parent->flags.subtype) {
 		FR_PROTO_TRACE("decode DNS labels");
-		return decode_dns_labels(ctx, out, dict, parent, data, data_len, decode_ctx);
+		return decode_dns_labels(ctx, out, parent, data, data_len, decode_ctx);
 	}
 
-	if (parent->flags.array) return decode_array(ctx, out, dict, parent, data, data_len, decode_ctx);
+	if (parent->flags.array) return decode_array(ctx, out, parent, data, data_len, decode_ctx);
 
-	return decode_value(ctx, out, dict, parent, data, data_len, decode_ctx);
+	return decode_value(ctx, out, parent, data, data_len, decode_ctx);
 }
 
 
-static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
@@ -134,7 +134,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 	case FR_TYPE_IPV6_PREFIX:
 		if ((data_len == 0) || (data_len > (1 + sizeof(vp->vp_ipv6addr)))) {
 		raw:
-			return decode_raw(ctx, out, dict, parent, data, data_len, decode_ctx);
+			return decode_raw(ctx, out, parent, data, data_len, decode_ctx);
 
 		};
 
@@ -228,7 +228,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 }
 
 
-static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
@@ -254,12 +254,12 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 			 *	decode the last bit as raw data.
 			 */
 			if ((size_t) (end - p) < element_len) {
-				slen = decode_raw(ctx, out, dict, parent, p, end - p , decode_ctx);
+				slen = decode_raw(ctx, out, parent, p, end - p , decode_ctx);
 				if (slen < 0) return slen;
 				break;
 			}
 
-			slen = decode_value(ctx, out, dict, parent, p, element_len, decode_ctx);
+			slen = decode_value(ctx, out, parent, p, element_len, decode_ctx);
 			if (slen < 0) return slen;
 			if (!fr_cond_assert((size_t) slen == element_len)) return -(p - data);
 
@@ -285,7 +285,7 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 	while (p < end) {
 		if ((end - p) < 2) {
 		raw:
-			slen = decode_raw(ctx, out, dict, parent, p, end - p , decode_ctx);
+			slen = decode_raw(ctx, out, parent, p, end - p , decode_ctx);
 			if (slen < 0) return slen;
 			break;
 		}
@@ -296,7 +296,7 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 		}
 
 		p += 2;
-		slen = decode_value(ctx, out, dict, parent, p, element_len, decode_ctx);
+		slen = decode_value(ctx, out, parent, p, element_len, decode_ctx);
 		if (slen < 0) return slen;
 		p += slen;
 	}
@@ -304,7 +304,7 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 	return data_len;
 }
 
-static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,UNUSED fr_dict_t const *dict,
+static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				 fr_dict_attr_t const *parent,
 				 uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
@@ -384,7 +384,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,UNUSED fr_
 #define DNS_GET_OPTION_NUM(_x)	fr_net_to_uint16(_x)
 #define DNS_GET_OPTION_LEN(_x)	fr_net_to_uint16((_x) + 2)
 
-static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			      fr_dict_attr_t const *parent,
 			      uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
@@ -425,7 +425,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t con
 	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
 
 	if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype) {
-		slen = decode_dns_labels(ctx, out, dict, da, data + 4, len, decode_ctx);
+		slen = decode_dns_labels(ctx, out, da, data + 4, len, decode_ctx);
 		if (slen < 0) {
 			fr_dict_unknown_free(&da);
 			return slen;
@@ -443,10 +443,10 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t con
 		}
 
 	} else if (da->flags.array) {
-		slen = decode_array(ctx, out, dict, da, data + 4, len, decode_ctx);
+		slen = decode_array(ctx, out, da, data + 4, len, decode_ctx);
 
 	} else {
-		slen = decode_value(ctx, out, dict, da, data + 4, len, decode_ctx);
+		slen = decode_value(ctx, out, da, data + 4, len, decode_ctx);
 	}
 	fr_dict_unknown_free(&da);
 
@@ -458,7 +458,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t con
 /** Only for OPT 41
  *
  */
-static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			   fr_dict_attr_t const *parent,
 			   uint8_t const *data, size_t const data_len, void *decode_ctx, bool do_raw)
 {
@@ -479,11 +479,11 @@ static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const
 	while (p < end) {
 		ssize_t slen;
 
-		slen = decode_option(vp, &vp->vp_group, dict, parent, p, (end - p), decode_ctx);
+		slen = decode_option(vp, &vp->vp_group, parent, p, (end - p), decode_ctx);
 		if (slen <= 0) {
 			if (!do_raw) return slen - (p - data);
 
-			slen = decode_raw(vp, &vp->vp_group, dict, parent, p, (end - p), decode_ctx);
+			slen = decode_raw(vp, &vp->vp_group, parent, p, (end - p), decode_ctx);
 			if (slen <= 0) return slen - (p - data);
 		}
 
@@ -599,8 +599,8 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
  * @param[in] data_len		of data to parse.
  * @param[in] decode_ctx	Unused.
  */
-static ssize_t fr_dns_decode_rr(TALLOC_CTX *ctx, fr_pair_list_t *out,
-				UNUSED fr_dict_t const *dict, uint8_t const *data, size_t data_len, void *decode_ctx)
+static ssize_t decode_rr(TALLOC_CTX *ctx, fr_pair_list_t *out,
+			 UNUSED fr_dict_t const *dict, uint8_t const *data, size_t data_len, void *decode_ctx)
 {
 	ssize_t			slen;
 	fr_dns_ctx_t	*packet_ctx = (fr_dns_ctx_t *) decode_ctx;
@@ -686,7 +686,7 @@ static fr_table_num_ordered_t reason_fail_table[] = {
 };
 static size_t reason_fail_table_len = NUM_ELEMENTS(reason_fail_table);
 
-static ssize_t fr_dns_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, size_t data_len, void *proto_ctx)
+static ssize_t decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, size_t data_len, void *proto_ctx)
 {
 	fr_dns_ctx_t *packet_ctx = proto_ctx;
 	fr_dns_decode_fail_t reason;
@@ -721,11 +721,11 @@ static ssize_t fr_dns_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t
 extern fr_test_point_pair_decode_t dns_tp_decode_pair;
 fr_test_point_pair_decode_t dns_tp_decode_pair = {
 	.test_ctx	= decode_test_ctx,
-	.func		= fr_dns_decode_rr
+	.func		= decode_rr
 };
 
 extern fr_test_point_proto_decode_t dns_tp_decode_proto;
 fr_test_point_proto_decode_t dns_tp_decode_proto = {
 	.test_ctx	= decode_test_ctx,
-	.func		= fr_dns_decode_proto
+	.func		= decode_proto
 };
