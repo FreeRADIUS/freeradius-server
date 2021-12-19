@@ -32,7 +32,7 @@ RCSIDH(struct_h, "$Id$")
 extern "C" {
 #endif
 
-typedef ssize_t (*fr_decode_value_t)(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict,
+typedef ssize_t (*fr_decode_value_t)(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				     fr_dict_attr_t const *parent,
 				     uint8_t const *data, size_t const data_len, void *decode_ctx);
 

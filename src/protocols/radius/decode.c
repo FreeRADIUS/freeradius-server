@@ -1117,7 +1117,7 @@ create_attrs:
  *  packet length.  But when we're decoding values inside of a struct,
  *  we're not using extended attributes.
  */
-static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, UNUSED fr_dict_t const *dict,
+static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t data_len, void *decode_ctx)
 {
@@ -1126,7 +1126,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, UNUSED fr_dict
 
 /** Wrapper called by fr_struct_from_network()
  */
-static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, UNUSED fr_dict_t const *dict,
+static ssize_t decode_tlv_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t data_len, void *decode_ctx)
 {
@@ -1576,7 +1576,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	into a contiguous memory buffer.
 		 */
 		ret = fr_struct_from_network(ctx, out, parent, p, attr_len, false,
-					     packet_ctx, decode_value, decode_tlv);
+					     packet_ctx, decode_value_trampoline, decode_tlv_trampoline);
 		if (ret < 0) goto raw;
 		return attr_len;
 

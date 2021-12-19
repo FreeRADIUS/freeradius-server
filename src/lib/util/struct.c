@@ -225,7 +225,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			 *	Decode EVERYTHING as a TLV.
 			 */
 			while (p < end) {
-				slen = decode_tlv(child_ctx, child_list, fr_dict_by_da(child), child, p, end - p, decode_ctx);
+				slen = decode_tlv(child_ctx, child_list, child, p, end - p, decode_ctx);
 				if (slen < 0) {
 					FR_PROTO_TRACE("failed decoding TLV?");
 					goto unknown;
@@ -258,7 +258,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (decode_value) {
 			ssize_t slen;
 
-			slen = decode_value(child_ctx, child_list, fr_dict_by_da(child), child, p, child_length, decode_ctx);
+			slen = decode_value(child_ctx, child_list, child, p, child_length, decode_ctx);
 			if (slen < 0) {
 				FR_PROTO_TRACE("Failed decoding value");
 				goto unknown;

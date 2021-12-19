@@ -43,7 +43,7 @@ static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			   fr_dict_attr_t const *parent,
 			   uint8_t const *data, size_t const data_len, void *decode_ctx, bool do_raw);
 
-static ssize_t decode_tlv_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out, UNUSED fr_dict_t const *dict,
+static ssize_t decode_tlv_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				     fr_dict_attr_t const *parent,
 				     uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
@@ -106,10 +106,10 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				 fr_dict_attr_t const *parent,
 				 uint8_t const *data, size_t const data_len, void *decode_ctx);
 
-/** Handle arrays of DNS lavels for fr_struct_from_network()
+/** Handle arrays of DNS labels for fr_struct_from_network()
  *
  */
-static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out, UNUSED fr_dict_t const *dict,
+static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				       fr_dict_attr_t const *parent,
 				       uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
