@@ -113,15 +113,20 @@ static int templatize_lhs(TALLOC_CTX *ctx, edit_result_t *out, request_t *reques
 static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *lhs, request_t *request)
 {
 	fr_type_t type = lhs->vp_type;
+	fr_type_t cast_type = FR_TYPE_STRING;
 	fr_value_box_t *box = fr_dlist_head(&out->result);
 
 	/*
 	 *	There's only one box, and it's the correct type.  Just
 	 *	return that.  This is the fast path.
 	 */
-	if ((type != FR_TYPE_STRING) && (type == box->type) && !fr_dlist_next(&out->result, box)) {
+	if (fr_type_is_leaf(type) && (type == box->type) && !fr_dlist_next(&out->result, box)) {
 		if (tmpl_afrom_value_box(ctx, &out->to_free, box, false) < 0) return -1;
 		goto done;
+	}
+
+	if (fr_type_is_structural(type) && (box->type == FR_TYPE_OCTETS)) {
+		cast_type = FR_TYPE_OCTETS;
 	}
 
 	/*
@@ -131,27 +136,22 @@ static int templatize_rhs(TALLOC_CTX *ctx, edit_result_t *out, fr_pair_t const *
 	 *	@todo - if all of the boxes are of the correct type,
 	 *	then return a vector.
 	 */
-	if (fr_value_box_list_concat_in_place(box, box, &out->result, FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
+	if (fr_value_box_list_concat_in_place(box, box, &out->result, cast_type, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 		RPEDEBUG("Right side expansion failed");
 		return -1;
 	}
 
 	/*
-	 *	If the LHS is structural, the RHS MUST be an in-place
-	 *	pair list, which gets parsed later.
+	 *	Leaf types are cast to the correct type.  Either by
+	 *	decoding them from octets, or by parsing the string
+	 *	values.
 	 */
-	if (fr_type_is_structural(type)) {
-		type = FR_TYPE_STRING;
-	}
-
-	/*
-	 *	The concatenated string is not an attribute reference.
-	 *	It MUST be parsed as a value of the input data type.
-	 */
-	if ((fr_value_box_cast_in_place(ctx, box, type, lhs->data.enumv) <= 0) ||
-	    (tmpl_afrom_value_box(ctx, &out->to_free, box, false) < 0)) {
+	if (fr_type_is_leaf(type) &&
+	    (fr_value_box_cast_in_place(ctx, box, type, lhs->data.enumv) <= 0)) {
 		return -1;
 	}
+
+	if (tmpl_afrom_value_box(ctx, &out->to_free, box, false) < 0) return -1;
 
 done:
 	out->vpt = out->to_free;

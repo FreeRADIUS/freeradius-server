@@ -1,0 +1,17 @@
+#
+#  PRE: edit
+#
+
+&Framed-IP-Address := 0x7f000001
+
+if (!&Framed-IP-Address) {
+	%(debug_attr:request[*])
+	test_fail
+}
+
+if (&Framed-IP-Address != 127.0.0.1) {
+	%(debug_attr:request[*])
+	test_fail
+}
+
+success
