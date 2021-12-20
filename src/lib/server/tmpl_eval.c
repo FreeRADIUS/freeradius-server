@@ -37,6 +37,47 @@ RCSID("$Id$")
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/edit.h>
 
+/** Resolve a #tmpl_t into an #fr_pair_t
+ *
+ * @param[in] request containing the target lists.
+ * @param[in] vpt tmpl to resolve
+ * @return a pointer to the list in the #request_t.
+ *
+ * @This is just a temporary hack.
+ */
+fr_pair_t *tmpl_get_list(request_t *request, tmpl_t const *vpt)
+{
+	tmpl_pair_list_t list;
+
+	if (!request) return NULL;
+
+	list = tmpl_list(vpt);
+
+	switch (list) {
+	/* Don't add default */
+	case PAIR_LIST_UNKNOWN:
+		break;
+
+	case PAIR_LIST_REQUEST:
+		return request->pair_list.request;
+
+	case PAIR_LIST_REPLY:
+		return request->pair_list.reply;
+
+	case PAIR_LIST_CONTROL:
+		return request->pair_list.control;
+
+	case PAIR_LIST_STATE:
+		return request->pair_list.state;
+	}
+
+	RWDEBUG2("List \"%s\" is not available",
+		fr_table_str_by_value(pair_list_table, list, "<INVALID>"));
+
+	return NULL;
+}
+
+
 /** Resolve attribute #pair_list_t value to an attribute list.
  *
  * The value returned is a pointer to the pointer of the HEAD of a #fr_pair_t list in the

@@ -988,6 +988,8 @@ ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t
 
 bool			tmpl_async_required(tmpl_t const *vpt);
 
+fr_pair_t		*tmpl_get_list(request_t *request, tmpl_t const *vpt); /* temporary hack */
+
 #undef _CONST
 
 #ifdef __cplusplus
