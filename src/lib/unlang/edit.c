@@ -561,21 +561,48 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 		case UNLANG_EDIT_CHECK_LHS:
 		check_lhs:
 			/*
-			 *	Find the LHS VP.  If it doesn't exist,
-			 *	return an error.  Note that this means
-			 *	":=" and "=" don't yet work.
-			 *
-			 *	@todo - the "find vp" function needs
-			 *	to return the parent list, for
-			 *	T_OP_SET and T_OP_EQ, so that we can
-			 *	add the newly created attribute to the
-			 *	parent list.
+			 *	Find the LHS VP to edit.
 			 */
 			if (tmpl_find_vp(&state->lhs.vp, request, state->lhs.vpt) < 0) {
-				if (map->op == T_OP_EQ) goto next;
+				fr_pair_t *parent;
 
-				REDEBUG("Failed to find %s", state->lhs.vpt->name);
-				goto error;
+				/*
+				 *	Get the list.
+				 */
+				if ((map->op != T_OP_SET) && (map->op != T_OP_EQ)) {
+					REDEBUG("Failed to find %s", state->lhs.vpt->name);
+					goto error;
+				}
+
+				if (tmpl_is_attr(state->lhs.vpt) && fr_type_is_structural(tmpl_da(state->lhs.vpt)->type)) {
+					REDEBUG("Can't edit structural %s", state->lhs.vpt->name);
+					goto error;
+				}
+
+				fr_assert(!tmpl_is_list(state->lhs.vpt));
+
+				/*
+				 *	The VP doesn't exist, get the list it's in.
+				 */
+				parent = tmpl_get_list(request, state->lhs.vpt);
+				if (!parent) {
+					REDEBUG("Failed to find list for %s", state->lhs.vpt->name);
+					goto error;
+				}
+
+				/*
+				 *	Add the new VP to the parent.  The edit list code is safe for multiple
+				 *	edits of the same VP, so we don't have to do anything else here.
+				 */
+				MEM(state->lhs.vp = fr_pair_afrom_da(parent, tmpl_da(state->lhs.vpt)));
+				if (fr_edit_list_insert_pair_tail(state->el, &parent->vp_group, state->lhs.vp) < 0) goto error;
+
+			} else if (map->op == T_OP_EQ) {
+				/*
+				 *	We're setting the value, but the attribute already exists.  This is a
+				 *	NOOP.
+				 */
+				goto next;
 			}
 
 			/*
