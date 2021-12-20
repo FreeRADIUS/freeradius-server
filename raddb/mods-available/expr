@@ -135,6 +135,9 @@
 #  rpad		right-pad a string
 #		if User-Name is "foo": "%{rpad:&User-Name 5 -}" == "foo--"
 #
+#  concat 	concatenate a set of attributes, separated by a character.
+#		"%{concat:foo[*] ;}"
+#
 
 expr {
 	#
