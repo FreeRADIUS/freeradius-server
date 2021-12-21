@@ -606,13 +606,12 @@ static ssize_t encode_record(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, fr_pair
 /** Encode a DNS packet
  *
  */
-ssize_t fr_dns_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, void *encode_ctx)
+ssize_t fr_dns_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_dns_ctx_t *packet_ctx)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	ssize_t			slen;
 	uint8_t			*packet;
 	fr_pair_t		*vp;
-	fr_dns_ctx_t		*packet_ctx = encode_ctx;
 	fr_dcursor_t		cursor, child_cursor;
 	fr_da_stack_t		da_stack;
 
