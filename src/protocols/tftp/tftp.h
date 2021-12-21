@@ -79,7 +79,6 @@ extern "C" {
  */
 #define FR_TFTP_MAX_FILESIZE				(FR_TFTP_BLOCK_MAX_SIZE * FR_TFTP_BLOCK_MAX_SIZE)
 
-/* tftp.c */
 int fr_tftp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		   uint8_t const *data, size_t data_len) CC_HINT(nonnull(2,3));
 ssize_t fr_tftp_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps) CC_HINT(nonnull(1,2));
