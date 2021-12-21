@@ -41,13 +41,13 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			     uint8_t const *data, size_t const data_len, void *decode_ctx);
 static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			   fr_dict_attr_t const *parent,
-			   uint8_t const *data, size_t const data_len, void *decode_ctx, bool do_raw);
+			   uint8_t const *data, size_t const data_len, void *decode_ctx);
 
 static ssize_t decode_tlv_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				     fr_dict_attr_t const *parent,
 				     uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
-	return decode_tlvs(ctx, out, parent, data, data_len, decode_ctx, true);
+	return decode_tlvs(ctx, out, parent, data, data_len, decode_ctx);
 }
 
 
@@ -246,7 +246,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	header, as we're just decoding the values
 		 *	here.
 		 */
-		slen = decode_tlvs(vp, &vp->vp_group, fr_dict_root(dict_dhcpv6), data, data_len, decode_ctx, false);
+		slen = decode_tlvs(vp, &vp->vp_group, fr_dict_root(dict_dhcpv6), data, data_len, decode_ctx);
 		if (slen < 0) {
 			talloc_free(vp);
 			goto raw;
@@ -420,7 +420,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
  */
 static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			   fr_dict_attr_t const *parent,
-			   uint8_t const *data, size_t const data_len, void *decode_ctx, bool do_raw)
+			   uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
 	uint8_t const *p, *end;
 
@@ -437,8 +437,6 @@ static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		slen = decode_option(ctx, out, parent, p, (end - p), decode_ctx);
 		if (slen <= 0) {
-			if (!do_raw) return slen;
-
 			slen = decode_raw(ctx, out, parent, p, (end - p), decode_ctx);
 			if (slen <= 0) return slen;
 			break;
@@ -492,7 +490,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	FR_PROTO_TRACE("decode context %s -> %s", parent->name, da->name);
 
-	return decode_tlvs(ctx, out, da, data + 4, data_len - 4, decode_ctx, true);
+	return decode_tlvs(ctx, out, da, data + 4, data_len - 4, decode_ctx);
 }
 
 static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
@@ -569,7 +567,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = decode_vsa(ctx, out, da, data + 4, len, decode_ctx);
 
 	} else if (da->type == FR_TYPE_TLV) {
-		slen = decode_tlvs(ctx, out, da, data + 4, len, decode_ctx, true);
+		slen = decode_tlvs(ctx, out, da, data + 4, len, decode_ctx);
 
 	} else {
 		slen = decode_value(ctx, out, da, data + 4, len, decode_ctx);
