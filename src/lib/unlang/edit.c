@@ -299,8 +299,6 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 			goto leaf;
 		}
 
-		fr_assert(rhs_box->type == FR_TYPE_STRING);
-
 		if (map->op == T_OP_SUB_EQ) {
 			REDEBUG("Cannot remove data from a list");
 			return -1;
@@ -311,12 +309,35 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 
 		children = &state->rhs.pair_list;
 
-		/*
-		 *	@todo - keep parsing until the end.
-		 */
-		token = fr_pair_list_afrom_str(state, da, rhs_box->vb_strvalue, rhs_box->length, children);
-		if (token == T_INVALID) {
-			RPEDEBUG("Failed parsing string as attribute list");
+		switch (rhs_box->type) {
+		case FR_TYPE_STRING:
+			/*
+			 *	@todo - keep parsing until the end.
+			 */
+			token = fr_pair_list_afrom_str(state, da, rhs_box->vb_strvalue, rhs_box->length, children);
+			if (token == T_INVALID) {
+				RPEDEBUG("Failed parsing string as attribute list");
+				return -1;
+			}
+
+			if (token != T_EOL) {
+				REDEBUG("Failed to parse the entire string.");
+				return -1;
+			}
+
+			break;
+
+		case FR_TYPE_OCTETS:
+			/*
+			 *	@todo - do something like protocol_decode_xlat / xlat_decode_value_box_list(),
+			 *	except all of that requires a decode context :(
+			 */
+
+
+		default:
+			fr_strerror_printf("Cannot assign '%s' type to structural type '%s'",
+					   fr_table_str_by_value(fr_value_box_type_table, rhs_box->type, "<INVALID>"),
+					   fr_table_str_by_value(fr_value_box_type_table, state->lhs.vp->vp_type, "<INVALID>"));
 			return -1;
 		}
 
