@@ -8,6 +8,7 @@ on:
 
 env:
   PANIC_ACTION: "gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
+  ALT_OPENSSL: "3.0.1"
   CI: 1
   GH_ACTIONS: 1
 
@@ -23,14 +24,15 @@ jobs:
           - ubuntu-18.04
 #          - ubuntu-20.04
         env:
-          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-gcc-lean           }
-          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-gcc                }
-          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-gcc-reproducible   }
-          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", NAME: linux-gcc-O2-g3          }
-          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-clang-lean         }
-          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-clang              }
-          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-clang-reproducible }
-          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_SHARED: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", NAME: linux-clang-O2-g3        }
+          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_ALT: no,  REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-gcc-lean           }
+          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_ALT: no,  REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-gcc                }
+          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_ALT: no,  REPRODUCIBLE: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-gcc-reproducible   }
+          - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_ALT: no,  REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", NAME: linux-gcc-O2-g3          }
+          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_ALT: no,  REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-clang-lean         }
+          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_ALT: no,  REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-clang              }
+          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_ALT: yes, REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-clang-altlibs      }
+          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_ALT: no,  REPRODUCIBLE: yes, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-clang-reproducible }
+          - { CC: clang, DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_ALT: no,  REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", NAME: linux-clang-O2-g3        }
 
     env: ${{ matrix.env }}
 
@@ -124,15 +126,65 @@ jobs:
       run: |
         sudo apt-get install -y --no-install-recommends gcc gdb
 
+    #
+    #  Build using some alternative libraries
+    #
+    #    MIT Kerberos -> HEIMDAL Kerberos
+    #    OpenSSL 1.0  -> OpenSSL 3.0
+    #
+    - name: Use alternative libraries
+      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+      run: |
+        sudo apt-get install -y --no-install-recommends heimdal-dev
+
+    - name: 'Fetch OpenSSL 3.0 SHA'
+      id: opensslshasum
+      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+      run: |
+        wget -qO- http://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz.sha256 | sed -ne 's/^\s\+/::set-output name=shasum::/p'
+
+    - name: 'Restore OpenSSL 3.0 from the cache'
+      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+      uses: actions/cache@v2
+      id: openssl-cache
+      with:
+        path: /opt/openssl/
+        key: openssl3-${{ steps.opensslshasum.outputs.shasum }}
+
+    - name: 'Build OpenSSL 3.0 (if cache stale)'
+      if: ${{ matrix.env.LIBS_ALT == 'yes' && steps.openssl-cache.outputs.cache-hit != 'true' }}
+      run: |
+        cd ~
+        wget https://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz
+        tar xzf openssl-$ALT_OPENSSL.tar.gz
+        cd openssl-$ALT_OPENSSL
+        ./Configure --prefix=/opt/openssl --openssldir=.
+        make -j `nproc`
+        make install
+
+    - name: Use alternative libraries
+      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+      run: |
+        echo /opt/openssl/lib64 | sudo tee /etc/ld.so.conf.d/openssl3.conf >/dev/null
+        sudo ldconfig
+        sudo apt-get install -y --no-install-recommends heimdal-dev
+
     - name: Show versions
       run: |
         $CC --version
         make --version
+        krb5-config --all || :
+        [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
+        openssl version
 
     - name: Build
       run: |
         export PATH=$(echo "$PATH" | sed -e 's#:/home/linuxbrew/[^:]\+##g')
-        CFLAGS="${BUILD_CFLAGS}" ./configure -C --enable-werror --prefix=$HOME/freeradius --with-shared-libs=$LIBS_SHARED --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL --with-pcre=$LIBS_OPTIONAL --enable-reproducible-builds=${REPRODUCIBLE}
+        if [ -d /opt/openssl ]; then
+          export PATH=/opt/openssl/bin:$PATH
+          CONFIG_OPENSSL="--with-openssl-lib-dir=/opt/openssl/lib64 --with-openssl-include-dir=/opt/openssl/include"
+        fi
+        CFLAGS="${BUILD_CFLAGS}" ./configure -C --enable-werror --prefix=$HOME/freeradius --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL --with-pcre=$LIBS_OPTIONAL --enable-reproducible-builds=${REPRODUCIBLE} $CONFIG_OPENSSL
         make -j `nproc`
 
     - name: clang scan
@@ -149,6 +201,8 @@ jobs:
 
     - name: Test
       run: |
+        [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
+
         # Temporarily replace ucf (for config merge) with cp since it's
         # terribly slow!
         sudo mv /usr/bin/ucf /usr/bin/ucf.disabled
