@@ -197,7 +197,7 @@ fr_dict_attr_t *fr_dict_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *
 	 *	parents when this 'da' is freed.  We therefore talloc
 	 *	the parent from the 'da'.
 	 */
-	if (da->parent->flags.is_unknown) {
+	if (d->parent && da->parent->flags.is_unknown) {
 		parent = fr_dict_unknown_afrom_da(n, da->parent);
 		if (!parent) {
 			talloc_free(n);
