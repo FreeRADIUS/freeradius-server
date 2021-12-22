@@ -250,7 +250,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 #if HAVE_TLS_OPTIONS
 	{
 		enum mysql_option ssl_mysql_opt;
-		bool              ssl_mysql_arg = false;
+		unsigned int   	  ssl_mysql_arg;
 		bool              ssl_mode_isset = false;
 
 #  if defined(MARIADB_VERSION_ID) || defined(MARIADB_BASE_VERSION)
@@ -259,7 +259,8 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 #    else
 		if (driver->tls_required) {
 #    endif
-			ssl_mode_isset = ssl_mysql_arg = true;
+			ssl_mode_isset = true;
+			ssl_mysql_arg = SSL_MODE_REQUIRED;
 			ssl_mysql_opt = MYSQL_OPT_SSL_VERIFY_SERVER_CERT;
 		}
 #  else
