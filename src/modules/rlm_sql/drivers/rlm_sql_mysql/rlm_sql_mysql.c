@@ -250,7 +250,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 #if HAVE_TLS_OPTIONS
 	{
 		enum mysql_option ssl_mysql_opt;
-		unsigned int   	  ssl_mysql_arg = SL_MODE_PREFERRED;
+		unsigned int   	  ssl_mysql_arg = SSL_MODE_PREFERRED;
 		bool              ssl_mode_isset = false;
 
 #  if defined(MARIADB_VERSION_ID) || defined(MARIADB_BASE_VERSION)
