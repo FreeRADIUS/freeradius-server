@@ -18,6 +18,9 @@ FreeRADIUS 3.2.0 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	* Support for sending CoA-Request and Disconnect-Request packets
 	  in "reverse" down RadSec tunnels.  Experimental for now, and
 	  undocumented.  This will change before 3.2.0 is released.
+	* It is now possible to run a virtual server when saving / loading
+	  TLS cache attributes.  See sites-available/tls-cache for
+	  more information.
 
 	Bug fixes
 	* All bug fixes from v3.0.x are included in the v3.2.x release.
