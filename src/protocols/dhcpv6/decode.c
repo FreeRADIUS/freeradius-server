@@ -558,7 +558,9 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (slen < 0) {
 			talloc_free(vp);
 		raw:
-			return decode_raw(ctx, out, da, data + 4, len, decode_ctx);
+			slen = decode_raw(ctx, out, da, data + 4, len, decode_ctx);
+			if (slen < 0) return slen;
+			return 4 + slen;
 		}
 
 		fr_pair_append(out, vp);
