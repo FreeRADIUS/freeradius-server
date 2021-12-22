@@ -20,6 +20,7 @@ env:
   DO_BUILD: yes
   HOSTAPD_BUILD_DIR: eapol_test.ci
   HOSTAPD_GIT_TAG: hostap_2_9
+  ALT_OPENSSL: "3.0.1"
   DEBIAN_FRONTEND: noninteractive
   CI: 1
   GH_ACTIONS: 1
@@ -53,7 +54,7 @@ jobs:
           - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang-O2-g3   }
           - { CC: clang, BUILD_CFLAGS: "-DNDEBUG",                  LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang-ndebug  }
           - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: yes, TEST_TYPE: fixtures, OS: ubuntu-20.04, NAME: linux-clang-altlibs }
-          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: macos,    OS: macos-11,  NAME: macos-clang         }
+          - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: macos,    OS: macos-11,     NAME: macos-clang         }
           - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG -O2 -g3", LIBS_OPTIONAL: yes, LIBS_ALT: no,  TEST_TYPE: fuzzing,  OS: ubuntu-20.04, NAME: linux-fuzzer        }
 
     env: ${{ matrix.env }}
@@ -180,18 +181,48 @@ jobs:
         sudo apt-get install -y --no-install-recommends gcc-11 gdb lldb
         sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 60 && sudo update-alternatives --set gcc /usr/bin/gcc-11
 
+
     #
     #  Build using some alternative libraries
     #
     #    PCRE 2       -> PCRE 1
     #    MIT Kerberos -> HEIMDAL Kerberos
+    #    OpenSSL 1.0  -> OpenSSL 3.0
     #
+    - name: 'Fetch OpenSSL 3.0 SHA'
+      id: opensslshasum
+      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+      run: |
+        wget -qO- http://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz.sha256 | sed -ne 's/^\s\+/::set-output name=shasum::/p'
+
+    - name: 'Restore OpenSSL 3.0 from the cache'
+      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+      uses: actions/cache@v2
+      id: openssl-cache
+      with:
+        path: /opt/openssl/
+        key: openssl3-${{ steps.opensslshasum.outputs.shasum }}
+
+    - name: 'Build OpenSSL 3.0 (if cache stale)'
+      if: ${{ matrix.env.LIBS_ALT == 'yes' && steps.openssl-cache.outputs.cache-hit != 'true' }}
+      run: |
+        cd ~
+        wget https://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz
+        tar xzf openssl-$ALT_OPENSSL.tar.gz
+        cd openssl-$ALT_OPENSSL
+        ./Configure --prefix=/opt/openssl --openssldir=.
+        make -j `nproc`
+        make install_sw
+
     - name: Use alternative libraries
       if: ${{ matrix.env.LIBS_ALT == 'yes' }}
       run: |
+        echo /opt/openssl/lib64 | sudo tee /etc/ld.so.conf.d/openssl3.conf >/dev/null
+        sudo ldconfig
         sudo apt-get install -y --no-install-recommends libpcre3-dev  # "PCRE 1"
         sudo apt-get purge -y libpcre2-dev  # Remove default PCRE 2, leaving only PCRE 1
         sudo apt-get install -y --no-install-recommends heimdal-dev
+
 
     - name: Show versions
       run: |
@@ -200,6 +231,8 @@ jobs:
         krb5-config --all || :
         pcre-config --libs-posix --version 2>/dev/null || :
         pcre2-config --libs-posix --version 2>/dev/null || :
+        [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
+        openssl version
 
     - name: Configure
       run: |
@@ -215,10 +248,12 @@ jobs:
         else
             enable_sanitizers=""
         fi
+        build_paths=""
         if [ "`uname`" = "Darwin" ]; then
             build_paths="--with-libfreeradius-ldap-lib-dir=`brew --prefix`/opt/openldap/lib --with-libfreeradius-ldap-include-dir=`brew --prefix`/opt/openldap/include --with-openssl-lib-dir=`brew --prefix`/opt/openssl/lib --with-openssl-include-dir=`brew --prefix`/opt/openssl/include --with-unixodbc-lib-dir=`brew --prefix`/opt/unixodbc/lib --with-unixodbc-include-dir=`brew --prefix`/opt/unixodbc/include"
-        else
-            build_paths=""
+        elif [ -d /opt/openssl ]; then
+            export PATH=/opt/openssl/bin:$PATH
+            build_paths="--with-openssl-lib-dir=/opt/openssl/lib64 --with-openssl-include-dir=/opt/openssl/include"
         fi
         CFLAGS="${BUILD_CFLAGS}" ./configure -C \
             --enable-werror \
@@ -235,6 +270,7 @@ jobs:
 
     - name: Make
       run: |
+        [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
         make -j `nproc`
       if: ${{ matrix.env.TEST_TYPE != 'fuzzing' }}
 
@@ -255,6 +291,8 @@ jobs:
     - name: Install and setup fixtures then run full CI tests
       if: ${{ matrix.env.TEST_TYPE == 'fixtures' }}
       run: |
+        [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
+
         # Temporarily replace ucf (for config merge) with cp since it's
         # terribly slow!
         sudo mv /usr/bin/ucf /usr/bin/ucf.disabled
