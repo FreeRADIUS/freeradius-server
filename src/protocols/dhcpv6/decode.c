@@ -417,12 +417,22 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 /** Like decode_option(), but decodes *all* of the options.
  *
+ *  If decoding an option here fails, then we *don't* return a raw
+ *  attribute, as we're only decoding the *values*.  We rely on the
+ *  calling function to return a raw attribute of the correct parent
+ *  attribute.
+ *
+ *  This behavior is because when we decode #FR_TYPE_GROUP, we get
+ *  passed the *root* attribute.  But if the group is malformed, we
+ *  need to create a "raw" attribute from the *parent*
+ *  (i.e. container) attribute, not from the root.
  */
 static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			   fr_dict_attr_t const *parent,
 			   uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
 	uint8_t const *p, *end;
+	fr_pair_list_t tlvs;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_tlvs");
 
@@ -432,15 +442,21 @@ static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	p = data;
 	end = data + data_len;
 
+	fr_pair_list_init(&tlvs);
+
 	while (p < end) {
 		ssize_t slen;
 
-		slen = decode_option(ctx, out, parent, p, (end - p), decode_ctx);
-		if (slen <= 0) return slen; /* this only happens for memory errors! */
+		slen = decode_option(ctx, &tlvs, parent, p, (end - p), decode_ctx);
+		if (slen <= 0) {
+			fr_pair_list_free(&tlvs);
+			return slen;
+		}
 
 		p += slen;
 	}
 
+	fr_pair_list_append(out, &tlvs);
 	return data_len;
 }
 
