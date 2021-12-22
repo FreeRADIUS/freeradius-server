@@ -436,11 +436,7 @@ static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		ssize_t slen;
 
 		slen = decode_option(ctx, out, parent, p, (end - p), decode_ctx);
-		if (slen <= 0) {
-			slen = decode_raw(ctx, out, parent, p, (end - p), decode_ctx);
-			if (slen <= 0) return slen;
-			break;
-		}
+		if (slen <= 0) return slen; /* this only happens for memory errors! */
 
 		p += slen;
 	}
@@ -518,6 +514,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	option = DHCPV6_GET_OPTION_NUM(data);
 	len = DHCPV6_GET_OPTION_LEN(data);
 	if (len > (data_len - 4)) {
+		fprintf(stderr, "FAIL %d\n", __LINE__);
 		fr_strerror_printf("%s: Option overflows input.  "
 				   "Optional length must be less than %zu bytes, got %zu bytes",
 				   __FUNCTION__, data_len - 4, len);
@@ -544,21 +541,29 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = fr_dhcpv6_decode(vp, &vp->vp_group, data + 4, len);
 		if (slen < 0) {
 			talloc_free(vp);
-			return slen;
+		raw:
+			return decode_raw(ctx, out, da, data + 4, len, decode_ctx);
 		}
 
 		fr_pair_append(out, vp);
 	} else if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype) {
-		slen = decode_dns_labels(ctx, out, da, data + 4, len, decode_ctx);
-		if (slen < 0) return slen;
+		fr_pair_list_t tmp;
+
+		fr_pair_list_init(&tmp);
+
+		slen = decode_dns_labels(ctx, &tmp, da, data + 4, len, decode_ctx);
+		if (slen < 0) goto raw;
 
 		/*
 		 *	The DNS labels may only partially fill the
-		 *	option.  If so, that's an error.  Point to the
-		 *	byte which caused the error, accounting for
-		 *	the option header.
+		 *	option.  If so, then it's a decode error.
 		 */
-		if ((size_t) slen != len) return -(4 + slen);
+		if ((size_t) slen != len) {
+			fr_pair_list_free(&tmp);
+			goto raw;
+		}
+
+		fr_pair_list_append(out, &tmp);
 
 	} else if (da->flags.array) {
 		slen = decode_array(ctx, out, da, data + 4, len, decode_ctx);
@@ -573,7 +578,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = decode_value(ctx, out, da, data + 4, len, decode_ctx);
 	}
 
-	if (slen < 0) return slen;
+	if (slen < 0) goto raw;
 
 	return len + 4;
 }
