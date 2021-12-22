@@ -165,25 +165,26 @@ void fr_dict_unknown_free(fr_dict_attr_t const **da)
 	*tmp = NULL;
 }
 
-/** Copy a known or unknown attribute to produce an unknown attribute with the specified name
+/**  Allocate an unknown DA.
  *
- * Will copy the complete hierarchy down to the first known attribute.
  */
-fr_dict_attr_t *fr_dict_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
+static fr_dict_attr_t *dict_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const *da, fr_type_t type)
 {
 	fr_dict_attr_t		*n;
 	fr_dict_attr_t const	*parent;
 	fr_dict_attr_flags_t	flags = da->flags;
-	fr_type_t		type = da->type;
+
+	fr_assert(!da->flags.is_root); /* cannot copy root attributes */
 
 	/*
-	 *	Set the unknown flag, and clear other flags which are
-	 *	no longer relevant.
+	 *	Set the unknown flag, and copy only those other flags
+	 *	which we know to be correct.
 	 */
 	flags.is_unknown = 1;
 	flags.array = 0;
 	flags.has_value = 0;
-	flags.length = 0;	/* unknown length */
+	flags.length = 0;	/* not fixed length */
+	flags.extra = 0;
 
 	/*
 	 *	Allocate an attribute.
@@ -209,9 +210,32 @@ fr_dict_attr_t *fr_dict_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *
 	}
 
 	/*
-	 *	VENDOR and TLV are structural, and can have unknown
-	 *	children.  But they're left alone.  All other base
-	 *	types are mangled to OCTETs.
+	 *	Initialize the rest of the fields.
+	 */
+	dict_attr_init(&n, parent, da->name, da->attr, type, &(dict_attr_args_t){ .flags = &flags });
+	if (type != FR_TYPE_OCTETS) dict_attr_ext_copy_all(&n, da);
+	DA_VERIFY(n);
+
+	return n;
+}
+
+/** Copy a known or unknown attribute to produce an unknown attribute with the specified name
+ *
+ * Will copy the complete hierarchy down to the first known attribute.
+ */
+fr_dict_attr_t *fr_dict_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
+{
+	fr_type_t type = da->type;
+
+	/*
+	 *	VENDOR, etc. are logical containers, and can have
+	 *	unknown children, so they're left alone.  All other
+	 *	base types are mangled to OCTETs.
+	 *
+	 *	Note that we can't allocate an unknown STRUCT.  If the
+	 *	structure is malformed, then it's just a sequence of
+	 *	OCTETS.  Similarly, if a GROUP is malformed, then we
+	 *	have no idea what's inside of it, and we make it OCTETS.
 	 */
 	switch (type) {
 	case FR_TYPE_VENDOR:
@@ -224,14 +248,7 @@ fr_dict_attr_t *fr_dict_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *
 		break;
 	}
 
-	/*
-	 *	Initialize the rest of the fields.
-	 */
-	dict_attr_init(&n, parent, da->name, da->attr, type, &(dict_attr_args_t){ .flags = &flags });
-	dict_attr_ext_copy_all(&n, da);
-	DA_VERIFY(n);
-
-	return n;
+	return dict_unknown_alloc(ctx, da, type);
 }
 
 /** Build an unknown vendor, parented by a VSA attribute
@@ -343,49 +360,7 @@ fr_dict_attr_t	*fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t c
  */
 fr_dict_attr_t	*fr_dict_unknown_attr_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 {
-	fr_dict_attr_t		*n;
-	fr_dict_attr_t const	*parent;
-	fr_dict_attr_flags_t	flags = da->flags;
-
-	/*
-	 *	Set the unknown flag, and clear other flags which are
-	 *	no longer relevant.
-	 */
-	flags.is_unknown = 1;
-	flags.array = 0;
-	flags.has_value = 0;
-	flags.length = 0;	/* unknown length */
-
-	/*
-	 *	Allocate an attribute.
-	 */
-	n = dict_attr_alloc_null(ctx);
-	if (!n) return NULL;
-
-	/*
-	 *	We want to have parent / child relationships, AND to
-	 *	copy all unknown parents, AND to free the unknown
-	 *	parents when this 'da' is freed.  We therefore talloc
-	 *	the parent from the 'da'.
-	 */
-	if (da->parent && da->parent->flags.is_unknown) {
-		parent = fr_dict_unknown_afrom_da(n, da->parent);
-		if (!parent) {
-			talloc_free(n);
-			return NULL;
-		}
-
-	} else {
-		parent = da->parent;
-	}
-
-	/*
-	 *	Initialize the rest of the fields.
-	 */
-	dict_attr_init(&n, parent, da->name, da->attr, FR_TYPE_OCTETS, &(dict_attr_args_t){ .flags = &flags });
-	DA_VERIFY(n);
-
-	return n;
+	return dict_unknown_alloc(ctx, da, FR_TYPE_OCTETS);
 }
 
 /** Initialise two #fr_dict_attr_t from numbers
