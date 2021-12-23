@@ -1369,7 +1369,6 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-#if OPENSSL_VERSION_NUMBER == 0x30000000L
 	/*
 	 *	Bug in OpenSSL 3.0 - Normal handshaking behaviour
 	 *	results in spurious "BIO_R_UNSUPPORTED_METHOD"
@@ -1379,12 +1378,6 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 	 *	there are any errors in the stack.  This masks
 	 *	SSL_ERROR_WANT_ASYNC and causes the handshake to
 	 *	fail.
-	 *
-	 *	This was fixed in:
-	 *	https://github.com/openssl/openssl/commit/398ae8231650c4bd8ddff0e5efd38233c23b1ca0
-	 *
-	 *	So this code is only needed for OpenSSL 3.0.0
-	 *	and not later versions.
 	 *
 	 *	Note: We may want some version of this code
 	 *	included for all OpenSSL versions.
@@ -1409,7 +1402,6 @@ DIAG_OFF(used-but-marked-unused)
 		}
 DIAG_ON(used-but-marked-unused)
 	}
-#endif
 
 	/*
 	 *	Deal with asynchronous requests from OpenSSL.
