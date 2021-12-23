@@ -254,8 +254,6 @@ jobs:
         elif [ -d /opt/openssl ]; then
             export PATH=/opt/openssl/bin:$PATH
             build_paths="--with-openssl-lib-dir=/opt/openssl/lib64 --with-openssl-include-dir=/opt/openssl/include"
-            # Remove the following once port to the OpenSSL 3 API is complete
-            BUILD_CFLAGS="$BUILD_CFLAGS -Wno-error=deprecated-declarations"
         fi
         CFLAGS="${BUILD_CFLAGS}" ./configure -C \
             --enable-werror \
