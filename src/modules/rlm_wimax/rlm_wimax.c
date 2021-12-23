@@ -167,11 +167,11 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	fr_pair_t		*mn_nai, *ip, *fa_rk;
 	EVP_MD_CTX		*hmac_ctx;
 	EVP_PKEY		*hmac_pkey;
-	size_t			rk1_len, rk2_len, rk_len;
 	uint32_t		mip_spi;
 	uint8_t			usage_data[24];
 	uint8_t			mip_rk_1[EVP_MAX_MD_SIZE], mip_rk_2[EVP_MAX_MD_SIZE];
 	uint8_t			mip_rk[2 * EVP_MAX_MD_SIZE];
+	size_t			rk1_len = sizeof(mip_rk_1), rk2_len = sizeof(mip_rk_2), rk_len = sizeof(mip_rk);
 
 	msk = fr_pair_find_by_da_idx(&request->reply_pairs, attr_eap_msk, 0);
 	emsk = fr_pair_find_by_da_idx(&request->reply_pairs, attr_eap_emsk, 0);

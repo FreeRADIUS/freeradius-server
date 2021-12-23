@@ -244,7 +244,7 @@ static void crypto_rfc4346_p_hash(uint8_t *out, size_t out_len,
 	/*
 	 *	OpenSSL <= 1.1.1 requires a non-null pointer for len
 	 */
-	EVP_DigestSignFinal(ctx_a, a, &(size_t){ 0 });
+	EVP_DigestSignFinal(ctx_a, a, &(size_t){ sizeof(a) });
 
 	while (1) {
 		/* Calculate next part of output */
@@ -253,13 +253,13 @@ static void crypto_rfc4346_p_hash(uint8_t *out, size_t out_len,
 
 		/* Check if last part */
 		if (out_len < size) {
-			EVP_DigestSignFinal(ctx_out, a, &(size_t){ 0 });
+			EVP_DigestSignFinal(ctx_out, a, &(size_t){ sizeof(a) });
 			memcpy(out, a, out_len);
 			break;
 		}
 
 		/* Place digest in output buffer */
-		EVP_DigestSignFinal(ctx_out, out, &(size_t){ 0 });
+		EVP_DigestSignFinal(ctx_out, out, &(size_t){ EVP_MAX_MD_SIZE });
 		EVP_MD_CTX_reset(ctx_out);
 
 		EVP_DigestSignInit(ctx_out, NULL, evp_md, NULL, pkey);
@@ -270,7 +270,7 @@ static void crypto_rfc4346_p_hash(uint8_t *out, size_t out_len,
 		EVP_MD_CTX_reset(ctx_a);
 		EVP_DigestSignInit(ctx_a, NULL, evp_md, NULL, pkey);
 		EVP_DigestSignUpdate(ctx_a, a, size);
-		EVP_DigestSignFinal(ctx_a, a, &(size_t){ 0 });
+		EVP_DigestSignFinal(ctx_a, a, &(size_t){ EVP_MAX_MD_SIZE });
 	}
 
 	EVP_PKEY_free(pkey);

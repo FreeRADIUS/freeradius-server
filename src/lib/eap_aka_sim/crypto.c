@@ -289,7 +289,7 @@ ssize_t fr_aka_sim_crypto_sign_packet(uint8_t out[static AKA_SIM_MAC_DIGEST_SIZE
 	EVP_PKEY		*pkey;
 
 	uint8_t			digest[SHA256_DIGEST_LENGTH];
-	size_t			digest_len = 0;
+	size_t			digest_len = sizeof(digest);
 	uint8_t	const		*mac;
 	uint8_t			*p = eap_packet->type.data, *end = p + eap_packet->type.length;
 
@@ -644,7 +644,7 @@ int fr_aka_sim_crypto_umts_kdf_0(fr_aka_sim_keys_t *keys)
 static int ck_ik_prime_derive(fr_aka_sim_keys_t *keys)
 {
 	uint8_t		digest[sizeof(keys->ik_prime) + sizeof(keys->ck_prime)];
-	size_t		len;
+	size_t		digest_len = sizeof(digest);
 
 	uint8_t		sqn_ak_buff[MILENAGE_SQN_SIZE];
 	uint16_t	l0, l1;
@@ -730,7 +730,7 @@ static int ck_ik_prime_derive(fr_aka_sim_keys_t *keys)
 	}
 
 	if (EVP_DigestSignUpdate(md_ctx, s, s_len) != 1) goto error;
-	if (EVP_DigestSignFinal(md_ctx, digest, &len) != 1) goto error;
+	if (EVP_DigestSignFinal(md_ctx, digest, &digest_len) != 1) goto error;
 
 	memcpy(keys->ik_prime, digest, sizeof(keys->ik_prime));
 	memcpy(keys->ck_prime, digest + sizeof(keys->ik_prime), sizeof(keys->ck_prime));
@@ -799,7 +799,7 @@ static int aka_prime_prf(uint8_t *out, size_t outlen,
 	}
 
 	while (p < end) {
-		size_t len;
+		size_t digest_len = sizeof(digest);
 		size_t copy;
 
 		c++;
@@ -808,10 +808,10 @@ static int aka_prime_prf(uint8_t *out, size_t outlen,
 		if ((p != out) && EVP_DigestSignUpdate(md_ctx, digest, sizeof(digest)) != 1) goto error;/* Ingest last round */
 		if (EVP_DigestSignUpdate(md_ctx, in, in_len) != 1) goto error;				/* Ingest s */
 		if (EVP_DigestSignUpdate(md_ctx, &c, sizeof(c)) != 1) goto error;			/* Ingest round number */
-		if (EVP_DigestSignFinal(md_ctx, digest, &len) != 1) goto error;				/* Output T(i) */
+		if (EVP_DigestSignFinal(md_ctx, digest, &digest_len) != 1) goto error;			/* Output T(i) */
 
 		copy = end - p;
-		if (copy > SHA256_DIGEST_LENGTH) copy = SHA256_DIGEST_LENGTH;
+		if (copy > digest_len) copy = digest_len;
 
 		memcpy(p, digest, copy);
 		p += copy;
