@@ -97,7 +97,7 @@ int fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *in, size_t i
 	/*
 	 *	OpenSSL <= 1.1.1 requires a non-null pointer for len
 	 */
-	if (unlikely(EVP_DigestSignFinal(ctx, digest, &(size_t){ 0 }) != 1)) {
+	if (unlikely(EVP_DigestSignFinal(ctx, digest, &(size_t){ SHA1_DIGEST_LENGTH }) != 1)) {
 		fr_strerror_const("Failed finalising HMAC-SHA1");
 		goto error;
 	}
