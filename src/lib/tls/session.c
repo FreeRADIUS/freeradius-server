@@ -1369,6 +1369,7 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	/*
 	 *	Bug in OpenSSL 3.0 - Normal handshaking behaviour
 	 *	results in spurious "BIO_R_UNSUPPORTED_METHOD"
@@ -1402,6 +1403,7 @@ DIAG_OFF(used-but-marked-unused)
 		}
 DIAG_ON(used-but-marked-unused)
 	}
+#endif
 
 	/*
 	 *	Deal with asynchronous requests from OpenSSL.
