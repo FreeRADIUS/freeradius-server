@@ -55,7 +55,10 @@ RCSIDH(openssl3_h, "$Id$")
 	EVP_DigestFinal_ex(_ctx, _digest, _len)
 
 #define HMAC_CTX_free(_ctx) \
-	EVP_MD_CTX_destroy(_ctx);
+	EVP_MD_CTX_destroy(_ctx)
+
+#define HMAC_CTX_set_flags(_ctx, _flags) \
+	EVP_MD_CTX_set_flags(_ctx, _flags)
 
 #endif	/* OPENSSL_VERSION_NUMBER */
 #endif
