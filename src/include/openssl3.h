@@ -33,7 +33,7 @@ RCSIDH(openssl3_h, "$Id$")
  *
  *	This file should be included AFTER all OpenSSL header files.
  */
-#if HAVE_OPENSSL_SSL_H
+#ifdef HAVE_OPENSSL_SSL_H
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 
 #define HMAC_CTX \
