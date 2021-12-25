@@ -68,6 +68,7 @@ void	fr_md5_final(uint8_t out[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
 void	fr_md5_transform(uint32_t state[4], uint8_t const block[MD5_BLOCK_LENGTH])
 	CC_BOUNDED(__size__, 1, 4, 4)
 	CC_BOUNDED(__minbytes__, 2, MD5_BLOCK_LENGTH);
+#  define fr_md5_destroy(_x)
 #else  /* HAVE_OPENSSL_MD5_H */
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 USES_APPLE_DEPRECATED_API
@@ -79,6 +80,8 @@ USES_APPLE_DEPRECATED_API
 #  define fr_md5_copy(_dst, _src) _dst = _src
 #  define fr_md5_destroy(_x)
 #else
+#include <openssl/evp.h>
+
 /*
  *	Wrappers for OpenSSL3, so we don't have to butcher the rest of
  *	the code too much.

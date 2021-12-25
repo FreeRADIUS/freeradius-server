@@ -71,6 +71,7 @@ void	fr_md4_final(uint8_t out[MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
 void	fr_md4_transform(uint32_t buf[4], uint8_t const inc[MD4_BLOCK_LENGTH])
 	CC_BOUNDED(__size__, 1, 4, 4)
 	CC_BOUNDED(__minbytes__, 2, MD4_BLOCK_LENGTH);
+#  define fr_md4_destroy(_x)
 #else  /* HAVE_OPENSSL_MD4_H */
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 USES_APPLE_DEPRECATED_API
@@ -81,6 +82,8 @@ USES_APPLE_DEPRECATED_API
 #  define fr_md4_transform	MD4_Transform
 #  define fr_md4_destroy(_x)
 #else
+#include <openssl/evp.h>
+
 /*
  *	Wrappers for OpenSSL3, so we don't have to butcher the rest of
  *	the code too much.
