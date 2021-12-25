@@ -50,11 +50,9 @@ static void P_hash(EVP_MD const *evp_md,
 	HMAC_Init_ex(ctx_a, secret, secret_len, evp_md, NULL);
 	HMAC_Init_ex(ctx_out, secret, secret_len, evp_md, NULL);
 
-	size = HMAC_size(ctx_out);
-
 	/* Calculate A(1) */
 	HMAC_Update(ctx_a, seed, seed_len);
-	HMAC_Final(ctx_a, a, NULL);
+	HMAC_Final(ctx_a, a, &size);
 
 	while (1) {
 		/* Calculate next part of output */
