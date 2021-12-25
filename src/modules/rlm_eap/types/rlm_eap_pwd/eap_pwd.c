@@ -36,6 +36,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "eap_pwd.h"
 #include "const_time.h"
+#include <freeradius-devel/openssl3.h>
 
 static uint8_t allzero[SHA256_DIGEST_LENGTH] = { 0x00 };
 

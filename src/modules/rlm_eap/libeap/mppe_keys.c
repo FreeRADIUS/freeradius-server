@@ -28,6 +28,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "eap_tls.h"
 #include <openssl/ssl.h>
 #include <openssl/hmac.h>
+#include <freeradius-devel/openssl3.h>
 
 /*
  *	TLS P_hash from RFC 2246/5246 section 5

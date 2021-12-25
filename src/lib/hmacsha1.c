@@ -13,6 +13,7 @@ RCSID("$Id$")
 #ifdef HAVE_OPENSSL_EVP_H
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
+#include <freeradius-devel/openssl3.h>
 #endif
 
 #include <freeradius-devel/libradius.h>

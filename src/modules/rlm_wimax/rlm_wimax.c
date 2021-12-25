@@ -32,6 +32,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/hmac.h>
 #endif
 
+#include <freeradius-devel/openssl3.h>
+
 #define WIMAX_EPSAKA_RAND_SIZE	16
 #define WIMAX_EPSAKA_KI_SIZE	16
 #define WIMAX_EPSAKA_OPC_SIZE	16
