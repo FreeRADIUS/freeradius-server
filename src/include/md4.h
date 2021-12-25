@@ -72,13 +72,35 @@ void	fr_md4_transform(uint32_t buf[4], uint8_t const inc[MD4_BLOCK_LENGTH])
 	CC_BOUNDED(__size__, 1, 4, 4)
 	CC_BOUNDED(__minbytes__, 2, MD4_BLOCK_LENGTH);
 #else  /* HAVE_OPENSSL_MD4_H */
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 USES_APPLE_DEPRECATED_API
 #  define FR_MD4_CTX		MD4_CTX
 #  define fr_md4_init		MD4_Init
 #  define fr_md4_update		MD4_Update
 #  define fr_md4_final		MD4_Final
 #  define fr_md4_transform	MD4_Transform
-#endif
+#  define fr_md4_destroy(_x)
+#else
+/*
+ *	Wrappers for OpenSSL3, so we don't have to butcher the rest of
+ *	the code too much.
+ */
+typedef EVP_MD_CTX* FR_MD4_CTX;
+
+#  define fr_md4_init(_ctx) \
+	do { \
+		*_ctx = EVP_MD_CTX_new(); \
+		EVP_MD_CTX_set_flags(*_ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW); \
+		EVP_DigestInit_ex(*_ctx, EVP_md4(), NULL); \
+	} while (0)
+#  define fr_md4_update(_ctx, _str, _len) \
+        EVP_DigestUpdate(*_ctx, _str, _len)
+#  define fr_md4_final(_out, _ctx) \
+	EVP_DigestFinal_ex(*_ctx, _out, NULL)
+#  define fr_md4_destroy(_ctx)	EVP_MD_CTX_destroy(*_ctx)
+#  define fr_md4_copy(_dst, _src) EVP_MD_CTX_copy_ex(_dst, _src)
+#endif	/* OPENSSL3 */
+#endif	/* HAVE_OPENSSL_MD4_H */
 
 /* md4.c */
 void fr_md4_calc(uint8_t out[MD4_DIGEST_LENGTH], uint8_t const *in, size_t inlen);
