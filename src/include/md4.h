@@ -103,7 +103,7 @@ typedef struct FR_MD4_CTX {
 		EVP_DigestInit_ex(_ctx.ctx, _ctx.md, NULL); \
 	} while (0)
 
-#  define fr_md4_update(_ctx.ctx, _str, _len) \
+#  define fr_md4_update(_ctx, _str, _len) \
         EVP_DigestUpdate(_ctx.ctx, _str, _len)
 
 #  define fr_md4_final(_out, _ctx) \
