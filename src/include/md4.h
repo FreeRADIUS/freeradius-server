@@ -96,23 +96,23 @@ typedef struct FR_MD4_CTX {
 
 #  define fr_md4_init(_ctx) \
 	do { \
-		_ctx ## .ctx = EVP_MD_CTX_new(); \
-		_ctx ## .md = EVP_MD_fetch(NULL, "MD4", "provider=legacy");	\
+		(_ctx)->ctx = EVP_MD_CTX_new(); \
+		(_ctx)->md = EVP_MD_fetch(NULL, "MD4", "provider=legacy");	\
 		_ctx ##.len = MD4_DIGEST_LENGTH; \
-		EVP_MD_CTX_set_flags(_ctx ## .ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW); \
-		EVP_DigestInit_ex(_ctx ## .ctx, _ctx ## .md, NULL); \
+		EVP_MD_CTX_set_flags((_ctx)->ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW); \
+		EVP_DigestInit_ex((_ctx)->ctx, (_ctx)->md, NULL); \
 	} while (0)
 
 #  define fr_md4_update(_ctx, _str, _len) \
-        EVP_DigestUpdate(_ctx ## .ctx, _str, _len)
+        EVP_DigestUpdate((_ctx)->ctx, _str, _len)
 
 #  define fr_md4_final(_out, _ctx) \
-	EVP_DigestFinal_ex(_ctx ## .ctx, _out, &_ctx.len)
+	EVP_DigestFinal_ex((_ctx)->ctx, _out, &_ctx.len)
 
 #  define fr_md4_destroy(_ctx) \
 	do { \
-		EVP_MD_CTX_destroy(_ctx ## .ctx); \
-		EVP_MD_free(_ctx ## .md); \
+		EVP_MD_CTX_destroy((_ctx)->ctx); \
+		EVP_MD_free((_ctx)->md); \
 	} while (0)
 
 #endif	/* OPENSSL3 */
