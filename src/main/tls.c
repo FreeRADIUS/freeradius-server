@@ -63,6 +63,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #define LOG_PREFIX "tls"
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#define ERR_get_error_line(_file, _line) ERR_get_error_all(_file, _line, NULL, NULL)
+#endif
+
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 typedef struct libssl_defect {
 	uint64_t	high;
@@ -1743,6 +1747,7 @@ static CONF_PARSER tls_client_config[] = {
 };
 
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 /*
  *	TODO: Check for the type of key exchange * like conf->dh_key
  */
@@ -1792,6 +1797,7 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 	DH_free(dh);
 	return 0;
 }
+#endif
 
 
 /*
@@ -4720,6 +4726,8 @@ skip_list:
 		if (conf->ocsp_store == NULL) goto error;
 	}
 #endif /*HAVE_OPENSSL_OCSP_H*/
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	{
 		char *dh_file;
 
@@ -4728,6 +4736,9 @@ skip_list:
 			goto error;
 		}
 	}
+#else
+	if (!SSL_CTX_set_dh_auto(ctx, 1)) goto error;
+#endif
 
 	if (conf->verify_tmp_dir) {
 		if (chmod(conf->verify_tmp_dir, S_IRWXU) < 0) {
