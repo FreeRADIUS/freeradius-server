@@ -88,20 +88,33 @@ USES_APPLE_DEPRECATED_API
  *	Wrappers for OpenSSL3, so we don't have to butcher the rest of
  *	the code too much.
  */
-typedef EVP_MD_CTX* FR_MD4_CTX;
+typedef struct FR_MD4_CTX {
+	EVP_MD_CTX	*ctx;
+	EVP_MD		*md;
+	unsigned int	len;
+} FR_MD4_CTX;
 
 #  define fr_md4_init(_ctx) \
 	do { \
-		*_ctx = EVP_MD_CTX_new(); \
-		EVP_MD_CTX_set_flags(*_ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW); \
-		EVP_DigestInit_ex(*_ctx, EVP_md4(), NULL); \
+		_ctx.ctx = EVP_MD_CTX_new(); \
+		_ctx.md = EVP_MD_fetch(NULL, "MD4", "provider=legacy");	\
+		_ctx.len = MD4_DIGEST_LENGTH; \
+		EVP_MD_CTX_set_flags(_ctx.ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW); \
+		EVP_DigestInit_ex(_ctx.ctx, _ctx.md, NULL); \
 	} while (0)
-#  define fr_md4_update(_ctx, _str, _len) \
-        EVP_DigestUpdate(*_ctx, _str, _len)
+
+#  define fr_md4_update(_ctx.ctx, _str, _len) \
+        EVP_DigestUpdate(_ctx.ctx, _str, _len)
+
 #  define fr_md4_final(_out, _ctx) \
-	EVP_DigestFinal_ex(*_ctx, _out, NULL)
-#  define fr_md4_destroy(_ctx)	EVP_MD_CTX_destroy(*_ctx)
-#  define fr_md4_copy(_dst, _src) EVP_MD_CTX_copy_ex(_dst, _src)
+	EVP_DigestFinal_ex(_ctx.ctx, _out, &_ctx.len)
+
+#  define fr_md4_destroy(_ctx) \
+	do { \
+		EVP_MD_CTX_destroy(_ctx.ctx); \
+		EVP_MD_free(_ctx.md); \
+	} while (0)
+
 #endif	/* OPENSSL3 */
 #endif	/* HAVE_OPENSSL_MD4_H */
 
