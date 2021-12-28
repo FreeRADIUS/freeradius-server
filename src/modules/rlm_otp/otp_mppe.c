@@ -372,7 +372,7 @@ void otp_mppe(REQUEST *request, otp_pwe_t pwe, rlm_otp_t const *opt, char const 
 #else
 	case PWE_MSCHAP:
 	case PWE_MSCHAP2:
-		RERROR("MS-CHAP is unsupported for OpenSSL 3".);
+		REDEBUG("MS-CHAP is unsupported for OpenSSL 3".);
 		break;
 #endif
 	} /* switch (pwe) */
