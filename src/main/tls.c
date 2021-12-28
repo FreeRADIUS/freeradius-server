@@ -4817,7 +4817,7 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 		}
 	}
 #else
-	if (!SSL_CTX_set_dh_auto(ctx, 1)) goto error;
+	if (!SSL_CTX_set_dh_auto(conf->ctx, 1)) goto error;
 #endif
 
 	cf_data_add(cs, "tls-conf", conf, NULL);
