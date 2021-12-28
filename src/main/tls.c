@@ -64,7 +64,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define LOG_PREFIX "tls"
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-#define ERR_get_error_line(_file, _line) ERR_get_error_all(_file, _line, NULL, NULL)
+#define ERR_get_error_line(_file, _line) ERR_get_error_all(_file, _line, NULL, NULL, NULL)
 #endif
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
