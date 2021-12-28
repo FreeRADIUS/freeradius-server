@@ -33,6 +33,13 @@ RCSID("$Id$")
 #include "vmps.h"
 #include "attrs.h"
 
+/** Used as the decoder ctx
+ *
+ */
+typedef struct {
+	int		nothing;
+} fr_vmps_ctx_t;
+
 /*
  *  http://www.openbsd.org/cgi-bin/cvsweb/src/usr.sbin/tcpdump/print-vqp.c
  *
@@ -558,7 +565,6 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	test_ctx = talloc_zero(ctx, fr_vmps_ctx_t);
 	if (!test_ctx) return -1;
 
-	test_ctx->root = fr_dict_root(dict_vmps);
 	talloc_set_destructor(test_ctx, _decode_test_ctx);
 
 	*out = test_ctx;
@@ -600,7 +606,6 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	test_ctx = talloc_zero(ctx, fr_vmps_ctx_t);
 	if (!test_ctx) return -1;
 
-	test_ctx->root = fr_dict_root(dict_vmps);
 	talloc_set_destructor(test_ctx, _encode_test_ctx);
 
 	*out = test_ctx;

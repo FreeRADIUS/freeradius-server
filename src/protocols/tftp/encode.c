@@ -237,7 +237,7 @@ done:
  *	Used as the encoder ctx.
  */
 typedef struct {
-	fr_dict_attr_t const *root;
+	int		nothing;
 } fr_tftp_ctx_t;
 /*
  *	Test points for protocol encode
@@ -263,7 +263,6 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	test_ctx = talloc_zero(ctx, fr_tftp_ctx_t);
 	if (!test_ctx) return -1;
 
-	test_ctx->root = fr_dict_root(dict_tftp);
 	talloc_set_destructor(test_ctx, _encode_test_ctx);
 
 	*out = test_ctx;
