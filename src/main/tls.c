@@ -4807,6 +4807,7 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 		goto error;
 	}
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	{
 		char *dh_file;
 
@@ -4815,6 +4816,9 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 			goto error;
 		}
 	}
+#else
+	if (!SSL_CTX_set_dh_auto(ctx, 1)) goto error;
+#endif
 
 	cf_data_add(cs, "tls-conf", conf, NULL);
 
