@@ -248,30 +248,41 @@ change the attribute _value_.
 | /=       | Perform subtraction. The value of the _<attribute>_ is divided by the contents of the _<rhs>_.
 | \|=       | Perform logical "or".  The value of the _<attribute>_ is "or"ed with the contents of the _<rhs>_.
 | \&=       | Perform logical "and".  The value of the _<attribute>_ is "and"ed with the contents of the _<rhs>_.
+| \<<=       | Perform left shift (integers only).  The value of the _<attribute>_ is shifted left by the value of _<rhs>_
+| \>>=       | Perform right shift (integers only).  The value of the _<attribute>_ is shifted right by the value of _<rhs>_
 |=====
 
 The _<rhs>_ can be a reference to another attribute
 (e.g. `request.Filter-Id`).  If the field is a double-quoted string,
 it undergoes xref:xlat/index.adoc[string expansion], and the resulting
-value is processed as above.
+value is processed as described above.
+
+In most cases, the edit operations "do the right thing".  For example,
+adding a number to an `ipv4prefix` results in an `ipv4addr` data type.
+Similarly, subtracting two 'ipv4addr' data types results in a
+numerical value.
 
 The edit process is atomic, in that either all of the attributes are
 modified, or none of them are modified.  If the edit fails for any
 reason, then all of the results are discarded, and the edit does not
 affect any server attributes.
 
-Note also that the server tracks overflows, underflows, and attempts
-to divide by zero.  For example, if an attribute is of type `uint8`,
-then it can only contain 8-bit integers.  Any attempt to overflow the
-value to more than `255`, or underflow it to lower than zero (`0`), or
-to divide by zero, will result in the edit operation failing to occur.
+Note also that the server tracks overflows, underflows, and division
+by zero.  These issues are caught, and cause the problematic
+calculation to fail.
+
+For example, if an attribute is of type `uint8`, then it can only
+contain 8-bit integers.  Any attempt to overflow the value to more
+than `255`, or underflow it to lower than zero (`0`), or to divide by
+zero, will cause the edit operation to fail.
 
 Nothing bad will happen to the server, it will just encounter a
 run-time failure while editing the attribute, and the edit operation
 will not succeed.  All other packet processing will continue
 processing as normal.
 
-In short, failed edit operations are a effectively a "noop" operation.
+In short, failed edit operations are effectively a "noop" operation,
+and do not result in any changes.
 
 === Operations on `string` and `octet` Data Types
 
@@ -289,6 +300,8 @@ The operators also apply to non-integer attributes.
 | ^=       | Perform string prepend.  The contents of the _<rhs>_ are prepended to the _<attribute>_.
 | \|=       | Perform logical "or".  The value of the _<attribute>_ is "or"ed with the contents of the _<rhs>_.  Both strings must be of the same length.
 | \&=       | Perform logical "and".  The value of the _<attribute>_ is "and"ed with the contents of the _<rhs>_.  Both strings must be of the same length.
+| \<<=       | Perform left shift / truncation.  The first _<rhs>_ bytes of _<attribute>_ are dropped. i.e. shifted off of the start of the string.
+| \>>=       | Perform right shift / truncation.  The last _<rhs>_ bytes of _<attribute>_ are dropped. i.e. shifted off of the end of the string.
 |=====
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
