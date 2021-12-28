@@ -4737,7 +4737,7 @@ skip_list:
 		}
 	}
 #else
-	if (!SSL_CTX_set_dh_auto(ctx, 1)) goto error;
+	if (!SSL_CTX_set_dh_auto(conf->ctx, 1)) goto error;
 #endif
 
 	if (conf->verify_tmp_dir) {
