@@ -28,18 +28,10 @@
 RCSID("$Id$")
 
 /* avoid inclusion of these FR headers which conflict w/ OpenSSL */
-#define _FR_MD4_H
-#define _FR_SHA1_H
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include "extern.h"
-
-USES_APPLE_DEPRECATED_API
-#include <openssl/des.h>
-#include <openssl/md4.h>
-#include <openssl/md5.h>
-#include <openssl/sha.h>
 
 #include <string.h>
 

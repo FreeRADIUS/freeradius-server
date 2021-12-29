@@ -22,17 +22,13 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
-/* avoid inclusion of these FR headers which conflict w/ OpenSSL */
-#define _FR_MD4_H
-#define _FR_SHA1_H
-
 #include "extern.h"
 
 #include <string.h>
 
-#include <openssl/des.h> /* des_cblock */
 #include <openssl/md5.h>
 #include <openssl/hmac.h>
+#include <freeradius-devel/openssl3.h>
 
 /*
  * Generate the State attribute, suitable for passing to fr_pair_make().
