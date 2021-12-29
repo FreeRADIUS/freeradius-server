@@ -30,6 +30,7 @@ void fr_md5_calc(uint8_t *out, uint8_t const *in, size_t inlen)
 	fr_md5_init(&ctx);
 	fr_md5_update(&ctx, in, inlen);
 	fr_md5_final(out, &ctx);
+	fr_md5_destroy(&ctx);
 }
 
 #ifndef HAVE_OPENSSL_MD5_H

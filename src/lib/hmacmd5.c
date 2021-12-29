@@ -34,6 +34,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/md5.h>
+#include <freeradius-devel/openssl3.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
 /** Calculate HMAC using OpenSSL's MD5 implementation
@@ -49,6 +50,7 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t 
 		 uint8_t const *key, size_t key_len)
 {
 	HMAC_CTX *ctx  = HMAC_CTX_new();
+	unsigned int len = MD5_DIGEST_LENGTH;
 
 #ifdef EVP_MD_CTX_FLAG_NON_FIPS_ALLOW
 	/* Since MD5 is not allowed by FIPS, explicitly allow it. */
@@ -57,7 +59,7 @@ void fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *text, size_t 
 
 	HMAC_Init_ex(ctx, key, key_len, EVP_md5(), NULL);
 	HMAC_Update(ctx, text, text_len);
-	HMAC_Final(ctx, digest, NULL);
+	HMAC_Final(ctx, digest, &len);
 	HMAC_CTX_free(ctx);
 }
 #else
