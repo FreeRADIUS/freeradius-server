@@ -35,30 +35,72 @@ RCSIDH(openssl3_h, "$Id$")
  */
 #ifdef HAVE_OPENSSL_SSL_H
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#include <string.h>
+#include <openssl/evp.h>
+#include <openssl/core_names.h>
 
-#define HMAC_CTX \
-	EVP_MD_CTX
+typedef struct {
+	EVP_MAC		*mac;
+	EVP_MAC_CTX	*ctx;
+} HMAC3_CTX;
+#define HMAC_CTX HMAC3_CTX
 
-#define HMAC_CTX_new \
-	EVP_MD_CTX_create
+#define HMAC_CTX_new HMAC3_CTX_new
+static inline HMAC3_CTX *HMAC3_CTX_new(void)
+{
+	HMAC3_CTX *h = calloc(1, sizeof(*h));
 
-#define HMAC_Init_ex(_ctx, _str, _len, _md, _NULL) \
-	do { \
-		EVP_DigestInit_ex(_ctx, _md, _NULL); \
-		EVP_DigestUpdate(_ctx, _str, _len); \
-	} while (0)
+	return h;
+}
 
-#define HMAC_Update(_ctx, _str, _len) \
-	EVP_DigestUpdate(_ctx, _str, _len)
+#define HMAC_Init_ex(_ctx, _key, _keylen, _md, _engine) HMAC3_Init_ex(_ctx, _key, _keylen, _md, _engine)
+static inline int HMAC3_Init_ex(HMAC3_CTX *ctx, const unsigned char *key, unsigned int keylen, const EVP_MD *md, UNUSED void *engine)
+{
+	OSSL_PARAM params[2], *p = params;
+	char const *name;
+	char *unconst;
 
-#define HMAC_Final(_ctx, _digest, _len) \
-	EVP_DigestFinal_ex(_ctx, _digest, _len)
+	ctx->mac = EVP_MAC_fetch(NULL, "HMAC", NULL);
+	if (!ctx->mac) return 0;
 
-#define HMAC_CTX_free(_ctx) \
-	EVP_MD_CTX_destroy(_ctx)
+	ctx->ctx = EVP_MAC_CTX_new(ctx->mac);
+	if (!ctx->ctx) return 0;
 
-#define HMAC_CTX_set_flags(_ctx, _flags) \
-	EVP_MD_CTX_set_flags(_ctx, _flags)
+	name = EVP_MD_get0_name(md);
+	memcpy(&unconst, &name, sizeof(name)); /* const issues */
+
+	p[0] = OSSL_PARAM_construct_utf8_string(OSSL_ALG_PARAM_DIGEST, unconst, 0);
+	p[1] = OSSL_PARAM_construct_end();
+
+	return EVP_MAC_init(ctx->ctx, key, keylen, params);
+}
+
+#define HMAC_Update HMAC3_Update
+static inline int HMAC3_Update(HMAC3_CTX *ctx, const unsigned char *data, unsigned int datalen)
+{
+	return EVP_MAC_update(ctx->ctx, data, datalen);
+}
+
+#define HMAC_Final HMAC3_Final
+static inline int HMAC3_Final(HMAC3_CTX *ctx, unsigned char *out, unsigned int *len)
+{
+	size_t mylen = *len;
+
+	if (!EVP_MAC_final(ctx->ctx, out, &mylen, mylen)) return 0;
+
+	*len = mylen;
+	return 1;
+}
+
+#define HMAC_CTX_free HMAC3_CTX_free
+static inline void HMAC3_CTX_free(HMAC3_CTX *ctx)
+{
+	EVP_MAC_free(ctx->mac);
+	EVP_MAC_CTX_free(ctx->ctx);
+	free(ctx);
+}
+
+#define HMAC_CTX_set_flags(_ctx, _flags)
 
 #endif	/* OPENSSL_VERSION_NUMBER */
 #endif
