@@ -992,7 +992,6 @@ ntlm_auth_err:
 		ssize_t result_len;
 		char result[253];
 		uint8_t nt_pass_decrypted[516], old_nt_hash_expected[NT_DIGEST_LENGTH];
-		RC4_KEY key;
 
 		if (!nt_password) {
 			RDEBUG("Local MS-CHAPv2 password change requires NT-Password attribute");
@@ -1001,11 +1000,48 @@ ntlm_auth_err:
 			RDEBUG("Doing MS-CHAPv2 password change locally");
 		}
 
-		/*
-		 *  Decrypt the blob
-		 */
-		RC4_set_key(&key, nt_password->vp_length, nt_password->vp_octets);
-		RC4(&key, 516, new_nt_password, nt_pass_decrypted);
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		{
+			EVP_CIPHER_CTX *ctx;
+			EVP_CIPHER *cipher;
+			int ntlen = sizeof(nt_pass_decrypted);
+
+			ctx = EVP_CIPHER_CTX_new();
+			cipher = EVP_CIPHER_fetch(NULL, "RC4", "provider=legacy");
+			if (!ctx || !cipher) {
+				REDEBUG("Failed getting RC4 from OpenSSL");
+				return -1;
+			}
+
+			if (!EVP_CIPHER_CTX_set_key_length(ctx, nt_password->vp_length)) {
+				REDEBUG("Failed setting key length");
+				return -1;
+			}
+
+			if (!EVP_EncryptInit_ex(ctx, cipher, NULL, nt_password->vp_octets, NULL)) {
+				REDEBUG("Failed setting key value");
+				return -1;
+			}
+
+			if (!EVP_EncryptUpdate(ctx, nt_pass_decrypted, &ntlen, new_nt_password, ntlen)) {
+				REDEBUG("Failed getting output");
+				return -1;
+			}
+
+			EVP_CIPHER_free(cipher);
+			EVP_CIPHER_CTX_free(ctx);
+		}
+#else
+		{
+			RC4_KEY key;
+
+			/*
+			 *  Decrypt the blob
+			 */
+			RC4_set_key(&key, nt_password->vp_length, nt_password->vp_octets);
+			RC4(&key, 516, new_nt_password, nt_pass_decrypted);
+		}
+#endif
 
 		/*
 		 *  pwblock is
