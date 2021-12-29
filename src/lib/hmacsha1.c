@@ -36,9 +36,11 @@ void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_
 		  uint8_t const *key, size_t key_len)
 {
 	HMAC_CTX *ctx  = HMAC_CTX_new();
+	unsigned int len = SHA1_DIGEST_LENGTH;
+
 	HMAC_Init_ex(ctx, key, key_len, EVP_sha1(), NULL);
 	HMAC_Update(ctx, text, text_len);
-	HMAC_Final(ctx, digest, NULL);
+	HMAC_Final(ctx, digest, &len);
 	HMAC_CTX_free(ctx);
 }
 
