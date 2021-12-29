@@ -69,6 +69,7 @@ void	fr_md5_transform(uint32_t state[4], uint8_t const block[MD5_BLOCK_LENGTH])
 	CC_BOUNDED(__size__, 1, 4, 4)
 	CC_BOUNDED(__minbytes__, 2, MD5_BLOCK_LENGTH);
 #  define fr_md5_destroy(_x)
+#  define fr_md5_copy(_dst, _src) _dst = _src
 #else  /* HAVE_OPENSSL_MD5_H */
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 USES_APPLE_DEPRECATED_API
