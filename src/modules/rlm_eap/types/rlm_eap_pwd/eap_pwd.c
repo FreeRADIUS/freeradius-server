@@ -36,6 +36,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "eap_pwd.h"
 #include "const_time.h"
+#include <freeradius-devel/openssl3.h>
 
 static uint8_t allzero[SHA256_DIGEST_LENGTH] = { 0x00 };
 
@@ -140,7 +141,7 @@ static void do_equation(EC_GROUP *group, BIGNUM *y2, BIGNUM *x, BN_CTX *bnctx)
 	p = BN_new();
 	a = BN_new();
 	b = BN_new();
-	EC_GROUP_get_curve_GFp(group, p, a, b, bnctx);
+	EC_GROUP_get_curve(group, p, a, b, bnctx);
 
 	BN_sub(pm1, p, BN_value_one());
 
@@ -307,7 +308,7 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 		goto fail;
 	}
 
-	if (!EC_GROUP_get_curve_GFp(session->group, session->prime, NULL, NULL, NULL)) {
+	if (!EC_GROUP_get_curve(session->group, session->prime, NULL, NULL, NULL)) {
 		DEBUG("unable to get prime for GFp curve");
 		goto fail;
 	}
@@ -443,7 +444,7 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 	* now we can savely construct PWE
 	*/
 	BN_bin2bn(xbuf, primebytelen, x_candidate);
-	if (!EC_POINT_set_compressed_coordinates_GFp(session->group, session->pwe,
+	if (!EC_POINT_set_compressed_coordinates(session->group, session->pwe,
 						     x_candidate, save_is_odd, NULL)) {
 		goto fail;
 	}
@@ -561,7 +562,7 @@ int process_peer_commit(REQUEST *request, pwd_session_t *session, uint8_t *in, s
 		goto finish;
 	}
 
-	if (!EC_POINT_set_affine_coordinates_GFp(session->group, session->peer_element, x, y, bn_ctx)) {
+	if (!EC_POINT_set_affine_coordinates(session->group, session->peer_element, x, y, bn_ctx)) {
 		REDEBUG("Unable to get coordinates of peer's element");
 		goto finish;
 	}
@@ -620,7 +621,7 @@ int process_peer_commit(REQUEST *request, pwd_session_t *session, uint8_t *in, s
 		goto finish;
 	}
 
-	if (!EC_POINT_get_affine_coordinates_GFp(session->group, K, session->k, NULL, bn_ctx)) {
+	if (!EC_POINT_get_affine_coordinates(session->group, K, session->k, NULL, bn_ctx)) {
 		REDEBUG("Unable to get shared secret from K");
 		goto finish;
 	}
@@ -670,7 +671,7 @@ int compute_server_confirm(REQUEST *request, pwd_session_t *session, uint8_t *ou
 	/*
 	 * next is server element: x, y
 	 */
-	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->my_element, x, y, bn_ctx)) {
+	if (!EC_POINT_get_affine_coordinates(session->group, session->my_element, x, y, bn_ctx)) {
 		REDEBUG("Unable to get coordinates of server element");
 		goto finish;
 	}
@@ -695,7 +696,7 @@ int compute_server_confirm(REQUEST *request, pwd_session_t *session, uint8_t *ou
 	/*
 	 * next is peer element: x, y
 	 */
-	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->peer_element, x, y, bn_ctx)) {
+	if (!EC_POINT_get_affine_coordinates(session->group, session->peer_element, x, y, bn_ctx)) {
 		REDEBUG("Unable to get coordinates of peer's element");
 		goto finish;
 	}
@@ -770,7 +771,7 @@ int compute_peer_confirm(REQUEST *request, pwd_session_t *session, uint8_t *out,
 	/*
 	* then peer element: x, y
 	*/
-	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->peer_element, x, y, bn_ctx)) {
+	if (!EC_POINT_get_affine_coordinates(session->group, session->peer_element, x, y, bn_ctx)) {
 		REDEBUG("Unable to get coordinates of peer's element");
 		goto finish;
 	}
@@ -796,7 +797,7 @@ int compute_peer_confirm(REQUEST *request, pwd_session_t *session, uint8_t *out,
 	/*
 	 * then server element: x, y
 	 */
-	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->my_element, x, y, bn_ctx)) {
+	if (!EC_POINT_get_affine_coordinates(session->group, session->my_element, x, y, bn_ctx)) {
 		REDEBUG("Unable to get coordinates of server element");
 		goto finish;
 	}
