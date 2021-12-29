@@ -63,6 +63,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #define LOG_PREFIX "tls"
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#define ERR_get_error_line(_file, _line) ERR_get_error_all(_file, _line, NULL, NULL, NULL)
+#endif
+
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 typedef struct libssl_defect {
 	uint64_t	high;
@@ -1743,6 +1747,7 @@ static CONF_PARSER tls_client_config[] = {
 };
 
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 /*
  *	TODO: Check for the type of key exchange * like conf->dh_key
  */
@@ -1792,6 +1797,7 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 	DH_free(dh);
 	return 0;
 }
+#endif
 
 
 /*
@@ -3495,53 +3501,53 @@ X509_STORE *fr_init_x509_store(fr_tls_server_conf_t *conf)
 #ifndef OPENSSL_NO_ECDH
 static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve, bool disable_single_dh_use)
 {
-	int      nid;
-	EC_KEY  *ecdh;
-
 	if (!disable_single_dh_use) {
 		SSL_CTX_set_options(ctx, SSL_OP_SINGLE_ECDH_USE);
 	}
 
-	if (!ecdh_curve || !*ecdh_curve) return 0;
+	if (!ecdh_curve) return 0;
 
 #if OPENSSL_VERSION_NUMBER >= 0x1000200fL
-	if (strchr(ecdh_curve, ':') != 0) {
-		char *list = strdup(ecdh_curve);
+	/*
+	 *	A colon-separated list of curves.
+	 */
+	if (*ecdh_curve) {
+		char *list;
+
+		memcpy(&list, &ecdh_curve, sizeof(list)); /* const issues */
 
 		if (SSL_CTX_set1_curves_list(ctx, list) == 0) {
-			free(list);
 			ERROR(LOG_PREFIX ": Unknown ecdh_curve \"%s\"", ecdh_curve);
 			return -1;
 		}
-		free(list);
-
-		(void) SSL_CTX_set_ecdh_auto(ctx, 1);
-		return 0;
 	}
 
+	(void) SSL_CTX_set_ecdh_auto(ctx, 1);
+#else
 	/*
-	 *	Just pick the right curve.
+	 *	Use APIs for older versions of OpenSSL.
 	 */
-	if (ecdh_curve && !*ecdh_curve) {
-		(void) SSL_CTX_set_ecdh_auto(ctx, 1);
+	{
+		int      nid;
+		EC_KEY  *ecdh;
+
+		nid = OBJ_sn2nid(ecdh_curve);
+		if (!nid) {
+			ERROR(LOG_PREFIX ": Unknown ecdh_curve \"%s\"", ecdh_curve);
+			return -1;
+		}
+
+		ecdh = EC_KEY_new_by_curve_name(nid);
+		if (!ecdh) {
+			ERROR(LOG_PREFIX ": Unable to create new curve \"%s\"", ecdh_curve);
+			return -1;
+		}
+
+		SSL_CTX_set_tmp_ecdh(ctx, ecdh);
+
+		EC_KEY_free(ecdh);
 	}
 #endif
-
-	nid = OBJ_sn2nid(ecdh_curve);
-	if (!nid) {
-		ERROR(LOG_PREFIX ": Unknown ecdh_curve \"%s\"", ecdh_curve);
-		return -1;
-	}
-
-	ecdh = EC_KEY_new_by_curve_name(nid);
-	if (!ecdh) {
-		ERROR(LOG_PREFIX ": Unable to create new curve \"%s\"", ecdh_curve);
-		return -1;
-	}
-
-	SSL_CTX_set_tmp_ecdh(ctx, ecdh);
-
-	EC_KEY_free(ecdh);
 
 	return 0;
 }
@@ -4720,6 +4726,8 @@ skip_list:
 		if (conf->ocsp_store == NULL) goto error;
 	}
 #endif /*HAVE_OPENSSL_OCSP_H*/
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	{
 		char *dh_file;
 
@@ -4728,6 +4736,9 @@ skip_list:
 			goto error;
 		}
 	}
+#else
+	if (!SSL_CTX_set_dh_auto(conf->ctx, 1)) goto error;
+#endif
 
 	if (conf->verify_tmp_dir) {
 		if (chmod(conf->verify_tmp_dir, S_IRWXU) < 0) {
@@ -4796,6 +4807,7 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 		goto error;
 	}
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	{
 		char *dh_file;
 
@@ -4804,6 +4816,9 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 			goto error;
 		}
 	}
+#else
+	if (!SSL_CTX_set_dh_auto(conf->ctx, 1)) goto error;
+#endif
 
 	cf_data_add(cs, "tls-conf", conf, NULL);
 
