@@ -1003,7 +1003,7 @@ ntlm_auth_err:
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 		{
 			EVP_CIPHER_CTX *ctx;
-			EVP_CIPHER const *cipher;
+			EVP_CIPHER *cipher;
 			int ntlen = sizeof(nt_pass_decrypted);
 
 			ctx = EVP_CIPHER_CTX_new();
