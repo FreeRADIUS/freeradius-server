@@ -168,11 +168,6 @@ typedef void (*sig_t)(int);
 
 #define PAD(_x, _y)		(_y - ((_x) % _y))
 
-#define PRINTF_LIKE(n)		CC_HINT(format(printf, n, n+1))
-#define NEVER_RETURNS		CC_HINT(noreturn)
-#define UNUSED			CC_HINT(unused)
-#define BLANK_FORMAT		" "	/* GCC_LINT whines about empty formats */
-
 typedef struct attr_flags {
 	unsigned int 	is_unknown : 1;				//!< Attribute number or vendor is unknown.
 	unsigned int	is_tlv : 1;				//!< Is a sub attribute.
