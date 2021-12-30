@@ -95,6 +95,8 @@ static inline int HMAC3_Final(HMAC3_CTX *ctx, unsigned char *out, unsigned int *
 #define HMAC_CTX_free HMAC3_CTX_free
 static inline void HMAC3_CTX_free(HMAC3_CTX *ctx)
 {
+	if (!ctx) return;
+
 	EVP_MAC_free(ctx->mac);
 	EVP_MAC_CTX_free(ctx->ctx);
 	free(ctx);
