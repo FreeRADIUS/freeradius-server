@@ -40,7 +40,8 @@ static void P_hash(EVP_MD const *evp_md,
 {
 	HMAC_CTX *ctx_a, *ctx_out;
 	unsigned char a[EVP_MAX_MD_SIZE];
-	unsigned int size;
+	unsigned int size = EVP_MAX_MD_SIZE;
+	unsigned int digest_len;
 
 	ctx_a = HMAC_CTX_new();
 	ctx_out = HMAC_CTX_new();
@@ -62,13 +63,15 @@ static void P_hash(EVP_MD const *evp_md,
 
 		/* Check if last part */
 		if (out_len < size) {
-			HMAC_Final(ctx_out, a, NULL);
+			digest_len = EVP_MAX_MD_SIZE;
+			HMAC_Final(ctx_out, a, &digest_len);
 			memcpy(out, a, out_len);
 			break;
 		}
 
 		/* Place digest in output buffer */
-		HMAC_Final(ctx_out, out, NULL);
+		digest_len = EVP_MAX_MD_SIZE;
+		HMAC_Final(ctx_out, out, &digest_len);
 		HMAC_Init_ex(ctx_out, NULL, 0, NULL, NULL);
 		out += size;
 		out_len -= size;
@@ -76,7 +79,8 @@ static void P_hash(EVP_MD const *evp_md,
 		/* Calculate next A(i) */
 		HMAC_Init_ex(ctx_a, NULL, 0, NULL, NULL);
 		HMAC_Update(ctx_a, a, size);
-		HMAC_Final(ctx_a, a, NULL);
+		digest_len = EVP_MAX_MD_SIZE;
+		HMAC_Final(ctx_a, a, &digest_len);
 	}
 
 	HMAC_CTX_free(ctx_a);
