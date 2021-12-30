@@ -38,6 +38,16 @@ extern "C" {
 #  define MD4_DIGEST_LENGTH 16
 #endif
 
+#ifdef OPENSSL_VERSION_NUMBER
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+/*
+ *	Use our own MD4 implementation.  The one in OpenSSL either
+ *	can't be found, or crashes when we attempt to use it.
+ */
+#undef HAVE_OPENSSL_MD4_H
+#endif
+#endif
+
 #ifndef HAVE_OPENSSL_MD4_H
 /*
  * The MD5 code used here and in md4.c was originally retrieved from:
@@ -90,30 +100,36 @@ USES_APPLE_DEPRECATED_API
  */
 typedef struct FR_MD4_CTX {
 	EVP_MD_CTX	*ctx;
-	EVP_MD		*md;
+	EVP_MD const   	*md;
 	unsigned int	len;
 } FR_MD4_CTX;
 
-#  define fr_md4_init(_ctx) \
-	do { \
-		(_ctx)->ctx = EVP_MD_CTX_new(); \
-		(_ctx)->md = EVP_MD_fetch(NULL, "MD4", "provider=legacy");	\
-		(_ctx)->len = MD4_DIGEST_LENGTH;				\
-		EVP_MD_CTX_set_flags((_ctx)->ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW); \
-		EVP_DigestInit_ex((_ctx)->ctx, (_ctx)->md, NULL); \
-	} while (0)
+static inline void fr_md4_init(FR_MD4_CTX *ctx)
+{
+	ctx->ctx = EVP_MD_CTX_new();
+//	ctx->md = EVP_MD_fetch(NULL, "MD4", "provider=legacy");
+	ctx->md = EVP_md4();
+	ctx->len = MD4_DIGEST_LENGTH;
 
-#  define fr_md4_update(_ctx, _str, _len) \
-        EVP_DigestUpdate((_ctx)->ctx, _str, _len)
+	EVP_MD_CTX_set_flags(ctx->ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
+	EVP_DigestInit_ex(ctx->ctx, ctx->md, NULL);
+}
 
-#  define fr_md4_final(_out, _ctx) \
-	EVP_DigestFinal_ex((_ctx)->ctx, _out, &((_ctx)->len))
+static inline void fr_md4_update(FR_MD4_CTX *ctx, uint8_t const *in, size_t inlen)
+{
+        EVP_DigestUpdate(ctx->ctx, in, inlen);
+}
 
-#  define fr_md4_destroy(_ctx) \
-	do { \
-		EVP_MD_CTX_destroy((_ctx)->ctx); \
-		EVP_MD_free((_ctx)->md); \
-	} while (0)
+static inline void fr_md4_final(uint8_t out[MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
+{
+	EVP_DigestFinal_ex(ctx->ctx, out, &(ctx->len));
+}
+
+static inline void fr_md4_destroy(FR_MD4_CTX *ctx)
+{
+	EVP_MD_CTX_destroy(ctx->ctx);
+//	EVP_MD_free(ctx->md);
+}
 
 #endif	/* OPENSSL3 */
 #endif	/* HAVE_OPENSSL_MD4_H */
