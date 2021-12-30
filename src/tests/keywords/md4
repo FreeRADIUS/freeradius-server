@@ -1,0 +1,58 @@
+#
+# PRE: update if
+#
+update reply {
+	Filter-Id := "filter"
+}
+
+update {
+       control:Cleartext-Password := 'hello'
+       request:Tmp-String-0 := "This is a string\n"
+       request:Tmp-Octets-0 := 0x000504030201
+       request:Tmp-String-1 := "what do ya want for nothing?"
+       request:Tmp-String-2 := "Jefe"
+}
+
+#
+#  Put "This is a string" into a file and call "md5sum" on it.
+#  You should get this string.
+#
+if ("%{md4:This is a string\n}" != '1f60d5cd85e17bfbdda7c923822f060c') {
+	update reply {
+		Filter-Id += 'fail 1'
+	}
+}
+
+if ("%{md4:&Tmp-String-0}" != '1f60d5cd85e17bfbdda7c923822f060c') {
+	update reply {
+		Filter-Id += 'fail 2'
+	}
+}
+
+if ("%{md4:&request:Tmp-String-0}" != '1f60d5cd85e17bfbdda7c923822f060c') {
+	update reply {
+		Filter-Id += 'fail 3'
+	}
+}
+
+if ("%{md4:%{request:Tmp-String-0}}" != '1f60d5cd85e17bfbdda7c923822f060c') {
+	update reply {
+		Filter-Id += 'fail 4'
+	}
+}
+
+#
+#  MD4 should also be able to cope with references to octet attributes
+#
+if ("%{md4:&request:Tmp-Octets-0}" != 'ac3ed17b3cf19ec38352ec534a932fc6') {
+	update reply {
+		Filter-Id += 'fail 5'
+	}
+}
+
+if ("%{md4:&Tmp-String-1}" != 'f7b44afb9cfdc877aa99d44654fe808b') {
+	update reply {
+		Filter-Id += 'fail 6'
+	}
+}
+
