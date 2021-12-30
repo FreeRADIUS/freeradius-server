@@ -132,11 +132,11 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	tls_session_t *state = (tls_session_t *)arg;
 
 	/*
-	 *	OpenSSL 1.0.2 calls this function with 'pseudo'
-	 *	content types.  Which breaks our tracking of
-	 *	the SSL Session state.
+	 *	OpenSSL calls this function with 'pseudo' content
+	 *	types.  Which breaks our tracking of the SSL Session
+	 *	state.
 	 */
-	if ((msg_version == 0) && (content_type > UINT8_MAX)) {
+	if ((msg_version == 0) || (content_type >= UINT8_MAX)) {
 		DEBUG4("(TLS) Ignoring cbtls_msg call with pseudo content type %i, version %i",
 		       content_type, msg_version);
 		return;
