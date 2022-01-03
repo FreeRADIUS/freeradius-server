@@ -1,5 +1,6 @@
 FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	Feature improvements
+	* Add support for OpenSSL3
 	* Add dictionary.mellanox
 	* Update dictionary.aruba
 	* Removed haproxy support.  It's new and experimental,
