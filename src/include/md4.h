@@ -38,16 +38,6 @@ extern "C" {
 #  define MD4_DIGEST_LENGTH 16
 #endif
 
-#ifdef OPENSSL_VERSION_NUMBER
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-/*
- *	Use our own MD4 implementation.  The one in OpenSSL either
- *	can't be found, or crashes when we attempt to use it.
- */
-#undef HAVE_OPENSSL_MD4_H
-#endif
-#endif
-
 #ifndef HAVE_OPENSSL_MD4_H
 /*
  * The MD5 code used here and in md4.c was originally retrieved from:
