@@ -25,6 +25,8 @@
  */
 RCSIDH(bio_h, "$Id$")
 
+#include "openssl_user_macros.h"
+
 #include <openssl/bio.h>
 #include <freeradius-devel/util/dbuff.h>
 

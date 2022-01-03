@@ -18,31 +18,27 @@
 /**
  * $Id$
  *
- * @file lib/tls/utils.h
- * @brief Miscellaneous TLS utility functions
+ *  https://www.openssl.org/docs/manmaster/man7/OPENSSL_NO_DEPRECATED.html
+ *
+ * @file lib/tls/openssl_user_macros.h
+ * @brief Definitions which control which OpenSSL API functions are exposed
  *
  * @copyright 2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-RCSIDH(utils_h, "$Id$")
+RCSIDH(openssl_user_macros_h, "$Id$")
 
-#include "openssl_user_macros.h"
-
-#include <openssl/ssl.h>
-
-#include <freeradius-devel/util/time.h>
-#include <freeradius-devel/server/request.h>
-
-#ifdef __cplusplus
-extern "C" {
+/*
+ *	This changed in OpenSSL 1.1.0 (they allow deprecated interfaces)
+ *	But because we're always ahead of the curve we don't need them.
+ */
+#ifndef OPENSSL_NO_DEPRECATED
+#  define OPENSSL_NO_DEPRECATED
 #endif
 
-char const	*fr_tls_utils_x509_pkey_type(X509 *cert);
-
-int		fr_tls_utils_keyblock_size_get(request_t *request, SSL *ssl);
-
-int		fr_tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1);
-
-#ifdef __cplusplus
-}
+/*
+ *	For RH 9, which apparently needs this.
+ */
+#ifndef OPENSSL_NO_KRB5
+#  define OPENSSL_NO_KRB5
 #endif
-#endif /* WITH_TLS */
+#endif

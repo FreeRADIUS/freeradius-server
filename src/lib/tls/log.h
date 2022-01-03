@@ -26,6 +26,8 @@
  */
 RCSIDH(tls_log_h, "$Id$")
 
+#include "openssl_user_macros.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 

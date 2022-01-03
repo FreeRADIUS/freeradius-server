@@ -25,6 +25,8 @@
  */
 RCSIDH(validate_h, "$Id$")
 
+#include "openssl_user_macros.h"
+
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 

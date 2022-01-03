@@ -26,6 +26,8 @@
  */
 RCSIDH(tls_engine_h, "$Id$")
 
+#include "openssl_user_macros.h"
+
 #include <freeradius-devel/util/dlist.h>
 #include <openssl/engine.h>
 
