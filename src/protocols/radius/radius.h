@@ -172,6 +172,7 @@ typedef struct {
 	uint8_t 		vector[RADIUS_AUTH_VECTOR_LENGTH]; //!< vector for encryption / decryption of data
 	char const		*secret;		//!< shared secret.  MUST be talloc'd
 	fr_fast_rand_t		rand_ctx;		//!< for tunnel passwords
+	uint8_t const  		*end;			//!< end of the packet
 	int			salt_offset;		//!< for tunnel passwords
 	bool 			tunnel_password_zeros;  //!< check for trailing zeros on decode
 	bool			disallow_tunnel_passwords; //!< not all packets can have tunnel passwords
@@ -211,7 +212,7 @@ ssize_t		fr_radius_decode_tunnel_password(uint8_t *encpw, size_t *len, char cons
 
 ssize_t		fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *list,
 					    fr_dict_attr_t const *parent,
-					    uint8_t const *data, size_t const attr_len, size_t const packet_len,
+					    uint8_t const *data, size_t const attr_len,
 					    fr_radius_ctx_t *packet_ctx) CC_HINT(nonnull);
 
 ssize_t		fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *list,

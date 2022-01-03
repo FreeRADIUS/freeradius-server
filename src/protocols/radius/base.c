@@ -1041,6 +1041,7 @@ ssize_t fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	memset(&packet_ctx, 0, sizeof(packet_ctx));
 	packet_ctx.tmp_ctx = talloc_init_const("tmp");
 	packet_ctx.secret = secret;
+	packet_ctx.end = packet + packet_len;
 	memcpy(packet_ctx.vector, original ? original + 4 : packet + 4, sizeof(packet_ctx.vector));
 
 	attr = packet + 20;

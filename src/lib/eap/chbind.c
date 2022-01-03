@@ -206,6 +206,8 @@ fr_radius_packet_code_t chbind_process(request_t *request, CHBIND_REQ *chbind)
 	if (data_len) {
 		fr_assert(data_len <= talloc_array_length((uint8_t const *) chbind->request));
 
+		packet_ctx.end = attr_data + data_len;
+
 		while (data_len > 0) {
 			ssize_t attr_len;
 
