@@ -102,13 +102,6 @@ typedef struct {
 	fr_dict_attr_t const	*union_ref;			//!< The union da this value points into.
 } fr_dict_enum_ext_union_ref_t;
 
-/** Attribute extension - Protocol-specific
- *
- */
-typedef struct {
-	void			*uctx;				//!< Protocol specific extensions
-} fr_dict_ext_protocol_specific_t;
-
 /** @name Add extension structures to attributes
  *
  * @{

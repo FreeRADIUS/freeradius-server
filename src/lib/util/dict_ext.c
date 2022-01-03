@@ -197,8 +197,9 @@ fr_ext_t const fr_dict_attr_ext_def = {
 							.can_copy = false,	/* Same limitation as ext_children */
 						},
 		[FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC] = {
-							.min = sizeof(fr_dict_ext_protocol_specific_t),
-							.can_copy = true
+							.min = FR_EXT_ALIGNMENT,  /* allow for one byte of protocol stuff */
+							.has_hdr = true,	/* variable sized */
+							.can_copy = false	/* only the protocol can copy it */
 						},
 		[FR_DICT_ATTR_EXT_MAX]		= {}
 	}
