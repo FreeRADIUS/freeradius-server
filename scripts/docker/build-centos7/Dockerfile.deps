@@ -105,7 +105,7 @@ enabled=1\n\
 gpgcheck=1\n\
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 > /etc/yum.repos.d/ltb-project.repo
-RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
+RUN rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
 
 #
 #  Shallow clone the FreeRADIUS source
