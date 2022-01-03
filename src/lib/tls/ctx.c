@@ -66,8 +66,6 @@ static int ctx_ecdh_curve_set(SSL_CTX *ctx, char const *ecdh_curve, bool disable
 		return -1;
 	}
 	free(list);
-
-	(void) SSL_CTX_set_ecdh_auto(ctx, 1);
 	return 0;
 }
 #endif
