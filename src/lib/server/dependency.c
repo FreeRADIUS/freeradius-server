@@ -35,6 +35,8 @@ char const	*radiusd_version_short = RADIUSD_VERSION_STRING;
 static CONF_SECTION *default_feature_cs;		//!< Default configuration section to add features to.
 static CONF_SECTION *default_version_cs;		//!< Default configuration section to add features to.
 
+#include <freeradius-devel/tls/openssl_user_macros.h>
+
 #ifdef HAVE_OPENSSL_CRYPTO_H
 #  include <openssl/crypto.h>
 #  include <openssl/opensslv.h>
@@ -64,9 +66,15 @@ static long ssl_built = OPENSSL_VERSION_NUMBER;
  */
 int ssl_check_consistency(void)
 {
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	unsigned long ssl_linked;
+
+	ssl_linked = OpenSSL_version_num();
+#else
 	long ssl_linked;
 
 	ssl_linked = SSLeay();
+#endif
 
 	/*
 	 *	Major and minor versions mismatch, that's bad.
@@ -156,18 +164,6 @@ char const *ssl_version_by_num(uint32_t v)
 	return buffer;
 }
 
-/** Return the linked SSL version number as a string
- *
- * @return pointer to a static buffer containing the version string.
- */
-char const *ssl_version_num(void)
-{
-	long ssl_linked;
-
-	ssl_linked = SSLeay();
-	return ssl_version_by_num((uint32_t)ssl_linked);
-}
-
 /** Convert two openssl version numbers into a range string
  *
  * @note Not thread safe.
@@ -189,6 +185,19 @@ char const *ssl_version_range(uint32_t low, uint32_t high)
 	return buffer;
 }
 
+#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
+/** Return the linked SSL version number as a string
+ *
+ * @return pointer to a static buffer containing the version string.
+ */
+char const *ssl_version_num(void)
+{
+	unsigned long ssl_linked;
+
+	ssl_linked = OpenSSL_version_num();
+	return ssl_version_by_num((uint32_t)ssl_linked);
+}
+
 /** Print the current linked version of Openssl
  *
  * Print the currently linked version of the OpenSSL library.
@@ -200,7 +209,40 @@ char const *ssl_version(void)
 {
 	static char buffer[256];
 
-	uint32_t v = SSLeay();
+	unsigned long v = OpenSSL_version_num();
+
+	snprintf(buffer, sizeof(buffer), "%s 0x%.8lx (%s)",
+		 OpenSSL_version(OPENSSL_VERSION),		/* Not all builds include a useful version number */
+		 v,
+		 ssl_version_by_num(v));
+
+	return buffer;
+}
+#  else
+/** Return the linked SSL version number as a string
+ *
+ * @return pointer to a static buffer containing the version string.
+ */
+char const *ssl_version_num(void)
+{
+	long ssl_linked;
+
+	ssl_linked = SSLeay();
+	return ssl_version_by_num((uint32_t)ssl_linked);
+}
+
+/** Print the current linked version of Openssl
+ *
+ * Print the currently linked version of the OpenSSL library.
+ *
+ * @note Not thread safe.
+ * @return pointer to a static buffer containing libssl version information.
+ */
+char const *ssl_version(void)
+{
+	static char buffer[256];
+
+	long v = SSLeay();
 
 	snprintf(buffer, sizeof(buffer), "%s 0x%.8x (%s)",
 		 SSLeay_version(SSLEAY_VERSION),		/* Not all builds include a useful version number */
@@ -209,7 +251,8 @@ char const *ssl_version(void)
 
 	return buffer;
 }
-#  else
+#  endif
+#else
 int ssl_check_consistency(void) {
 	return 0;
 }
@@ -519,7 +562,7 @@ void dependency_version_print(void)
 	CONF_PAIR *cp;
 
 	if (DEBUG_ENABLED3) {
-#ifdef WITH_TLS
+#if defined(WITH_TLS) && (OPENSSL_VERSION_NUMBER < 0x30000000L)
 		ENGINE *engine;
 		char const *engine_id;
 #endif
@@ -547,7 +590,7 @@ void dependency_version_print(void)
 			if (max < len) max = len;
 		}
 
-#ifdef WITH_TLS
+#if defined(WITH_TLS) && (OPENSSL_VERSION_NUMBER < 0x30000000L)
 		for (engine = ENGINE_get_first();
 		     engine;
 		     engine = ENGINE_get_next(engine)) {
@@ -585,7 +628,7 @@ void dependency_version_print(void)
 		talloc_free(features);
 		talloc_free(versions);
 
-#ifdef WITH_TLS
+#if defined(WITH_TLS) && (OPENSSL_VERSION_NUMBER < 0x30000000L)
 		DEBUG3("OpenSSL engines:");
 		for (engine = ENGINE_get_first();
 		     engine;
