@@ -58,6 +58,11 @@ _Thread_local TALLOC_CTX 	*ssl_talloc_ctx;
  */
 static _Thread_local bool	*async_pool_init;
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+static OSSL_PROVIDER *openssl_default_provider = NULL;
+static OSSL_PROVIDER *openssl_legacy_provider = NULL;
+#endif
+
 fr_dict_t const *dict_freeradius;
 fr_dict_t const *dict_radius;
 fr_dict_t const *dict_tls;
@@ -395,6 +400,17 @@ void fr_openssl_free(void)
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	fr_tls_engine_free_all();
+
+#else
+	if (openssl_default_provider && !OSSL_PROVIDER_unload(openssl_default_provider)) {
+		fr_tls_log_error(NULL, "Failed unloading default provider");
+	}
+	openssl_default_provider = NULL;
+
+	if (openssl_legacy_provider && !OSSL_PROVIDER_unload(openssl_legacy_provider)) {
+		fr_tls_log_error(NULL, "Failed unloading legacy provider");
+	}
+	openssl_legacy_provider = NULL;
 #endif
 
 	OPENSSL_cleanup();
@@ -431,7 +447,8 @@ int fr_openssl_init(void)
 	/*
 	 *	Load the default provider for most algorithms
 	 */
-	if (!OSSL_PROVIDER_load(NULL, "default")) {
+	openssl_default_provider = OSSL_PROVIDER_load(NULL, "default");
+	if (!openssl_default_provider) {
 		fr_tls_log_error(NULL, "Failed loading default provider");
 		return -1;
 	}
@@ -441,7 +458,8 @@ int fr_openssl_init(void)
 	 *
 	 *	https://www.openssl.org/docs/man3.0/man7/migration_guide.html#Legacy-Algorithms
 	 */
-	if (!OSSL_PROVIDER_load(NULL, "legacy")) {
+	openssl_legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
+	if (!openssl_legacy_provider) {
 		fr_tls_log_error(NULL, "Failed loading legacy provider");
 		return -1;
 	}
