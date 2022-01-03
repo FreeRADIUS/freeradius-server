@@ -35,6 +35,17 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "log.h"
 #include "utils.h"
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+static inline unsigned long ERR_get_error_all(const char **file, int *line,
+					      const char **func,
+					      const char **data, int *flags)
+{
+	if (func != NULL) *func = "";
+
+	return ERR_get_error_line_data(file, line, data, flags);
+}
+#endif
+
 /** Holds the state of a log BIO
  *
  * Most of these fields are expected to change between uses of the BIO.
@@ -226,6 +237,7 @@ static int fr_tls_log_error_va(request_t *request, char const *msg, va_list ap)
 
 	int		line;
 	char const	*file;
+	char const	*func;
 	char const	*data;
 	int		flags = 0;
 
@@ -234,7 +246,7 @@ static int fr_tls_log_error_va(request_t *request, char const *msg, va_list ap)
 	 *	can be used to determine if there are
 	 *	multiple errors.
 	 */
-	error = ERR_get_error_line_data(&file, &line, &data, &flags);
+	error = ERR_get_error_all(&file, &line, &func, &data, &flags);
 	if (!(flags & ERR_TXT_STRING)) data = NULL;
 
 	if (msg) {
@@ -285,7 +297,7 @@ static int fr_tls_log_error_va(request_t *request, char const *msg, va_list ap)
 				  data ? ':' : '\0', data ? data : "");
 		}
 		in_stack++;
-	} while ((error = ERR_get_error_line_data(&file, &line, &data, &flags)));
+	} while ((error = ERR_get_error_all(&file, &line, &func, &data, &flags)));
 
 	return in_stack;
 }
@@ -450,6 +462,7 @@ static int tls_strerror_vasprintf(char const *msg, va_list ap)
 
 	int		line;
 	char const	*file;
+	char const	*func;
 	char const	*data;
 	int		flags = 0;
 
@@ -458,7 +471,7 @@ static int tls_strerror_vasprintf(char const *msg, va_list ap)
 	 *	can be used to determine if there are
 	 *	multiple errors.
 	 */
-	error = ERR_get_error_line_data(&file, &line, &data, &flags);
+	error = ERR_get_error_all(&file, &line, &func, &data, &flags);
 	if (!(flags & ERR_TXT_STRING)) data = NULL;
 
 	if (msg) {
@@ -488,7 +501,7 @@ static int tls_strerror_vasprintf(char const *msg, va_list ap)
 		return 0;
 	}
 
-	while ((error = ERR_get_error_line_data(&file, &line, &data, &flags))) {
+	while ((error = ERR_get_error_all(&file, &line, &func, &data, &flags))) {
 		if (!(flags & ERR_TXT_STRING)) data = NULL;
 
 		ERR_error_string_n(error, buffer, sizeof(buffer));
