@@ -1,16 +1,14 @@
 FreeRADIUS 3.2.0 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	Configuration changes
-	* "correct_escapes" has been removed, and is always set to
-	  "true" internally. Updates may be required if you are using
-	  configurations from before 3.0.5.
+	* "correct_escapes" has been removed, and is always set to "true"
+	  internally. Configuration changess ay be required if you are
+	  using configurations from before 3.0.5.  Otherwise, 3.2.x is
+	  compatible with 3.0.x, and configurations from 3.0.x can be used
+	  without change in a 3.2.x system.
 
 	Feature improvements
-	* Apart from as mentioned above, you can take the 3.0
-	  configuration files, and use them in 3.2 without any changes.
 	* Add 'reset_day' and '%%r' parameter for rlm_sqlcounter to specify which
 	  day of the month the counter should be reset.
-	* Add dictionary.mellanox
-	* Update dictionary.aruba
 	* Partial backport of rlm_json from v4, providing the json_encode xlat.
 	  See mods-available/json for documentation.
 	* Support for haproxy "PROXY" protocol.
@@ -21,7 +19,12 @@ FreeRADIUS 3.2.0 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	* It is now possible to run a virtual server when saving / loading
 	  TLS cache attributes.  See sites-available/tls-cache for
 	  more information.
+	* Removed the "cram" module.  It was undocumented, and used old
+	  and insecure authentication methods.
+	* Remove the "otp" module.  The "otpd" program it needs is no longer available,
+	  and the module has not been usable since at least 2015.
+	* All features from 3.0.x are included in the 3.2.x releases.
 
 	Bug fixes
-	* All bug fixes from v3.0.x are included in the v3.2.x release.
+	* All bug fixes from 3.0.x are included in the 3.2.x releases.
 
