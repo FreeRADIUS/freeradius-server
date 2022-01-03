@@ -61,6 +61,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #  endif
 #  include <openssl/ssl.h>
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#  include <openssl/provider.h>
+#endif
+
 #define LOG_PREFIX "tls"
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
@@ -3582,6 +3586,26 @@ int tls_global_init(bool spawn_flag, bool check)
 		ERROR("(TLS) FATAL: Failed to set up SSL mutexes");
 		return -1;
 	}
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	/*
+	 *	Load the default provider for most algorithms
+	 */
+	if (!OSSL_PROVIDER_load(NULL, "default")) {
+		ERROR("(TLS) Failed loading OpenSSL default provider");
+		return -1;
+	}
+
+	/*
+	 *	Needed for MD4
+	 *
+	 *	https://www.openssl.org/docs/man3.0/man7/migration_guide.html#Legacy-Algorithms
+	 */
+	if (!OSSL_PROVIDER_load(NULL, "legacy")) {
+		ERROR("(TLS) Failed loading OpenSSL legacy provider");
+		return -1;
+	}
+#endif
 
 	return 0;
 }
