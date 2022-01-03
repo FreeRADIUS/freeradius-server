@@ -77,8 +77,14 @@ static int ctx_ecdh_curve_set(SSL_CTX *ctx, char const *ecdh_curve, bool disable
  */
 static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 {
+	BIO	*bio;
+	int	ret;
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_PKEY *dh = NULL;
+#else
 	DH *dh = NULL;
-	BIO *bio;
+#endif
 
 	if (!file) return 0;
 
@@ -108,7 +114,11 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 		return -1;
 	}
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	dh = PEM_read_bio_Parameters(bio, &dh);
+#else
 	dh = PEM_read_bio_DHparams(bio, NULL, NULL, NULL);
+#endif
 	BIO_free(bio);
 	if (!dh) {
 		WARN("Unable to set DH parameters.  DH cipher suites may not work!");
@@ -116,13 +126,18 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 		return 0;
 	}
 
-	if (SSL_CTX_set_tmp_dh(ctx, dh) < 0) {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	ret = SSL_CTX_set0_tmp_dh_pkey(ctx, dh);
+#else
+	ret = SSL_CTX_set_tmp_dh(ctx, dh);
+	DH_free(dh);
+#endif
+
+	if (ret < 0) {
 		ERROR("Unable to set DH parameters");
-		DH_free(dh);
 		return -1;
 	}
 
-	DH_free(dh);
 	return 0;
 }
 
