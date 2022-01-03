@@ -482,7 +482,7 @@ void fr_tls_engine_free_all(void)
 {
 	TALLOC_FREE(tls_engines);
 
-#if OPENSSL_API_COMPAT < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 	/*
 	 *	Free any lingering memory
 	 *	OpenSSL man pages say to do this.
