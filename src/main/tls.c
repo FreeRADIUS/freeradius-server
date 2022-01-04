@@ -63,6 +63,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 #  include <openssl/provider.h>
+
+static OSSL_PROVIDER *openssl_default_provider = NULL;
+static OSSL_PROVIDER *openssl_legacy_provider = NULL;
 #endif
 
 #define LOG_PREFIX "tls"
@@ -3591,8 +3594,9 @@ int tls_global_init(bool spawn_flag, bool check)
 	/*
 	 *	Load the default provider for most algorithms
 	 */
-	if (!OSSL_PROVIDER_load(NULL, "default")) {
-		ERROR("(TLS) Failed loading OpenSSL default provider");
+	openssl_default_provider = OSSL_PROVIDER_load(NULL, "default");
+	if (!openssl_default_provider) {
+		ERROR("(TLS) Failed loading default provider");
 		return -1;
 	}
 
@@ -3601,8 +3605,9 @@ int tls_global_init(bool spawn_flag, bool check)
 	 *
 	 *	https://www.openssl.org/docs/man3.0/man7/migration_guide.html#Legacy-Algorithms
 	 */
-	if (!OSSL_PROVIDER_load(NULL, "legacy")) {
-		ERROR("(TLS) Failed loading OpenSSL legacy provider");
+	openssl_legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
+	if (!openssl_legacy_provider) {
+		ERROR("(TLS) Failed loading legacy provider");
 		return -1;
 	}
 #endif
@@ -3672,6 +3677,19 @@ void tls_global_cleanup(void)
 #ifndef OPENSSL_NO_ENGINE
 	ENGINE_cleanup();
 #endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (openssl_default_provider && !OSSL_PROVIDER_unload(openssl_default_provider)) {
+		ERROR("Failed unloading default provider");
+	}
+	openssl_default_provider = NULL;
+
+	if (openssl_legacy_provider && !OSSL_PROVIDER_unload(openssl_legacy_provider)) {
+		ERROR("Failed unloading legacy provider");
+	}
+	openssl_legacy_provider = NULL;
+#endif
+
 	CONF_modules_unload(1);
 	ERR_free_strings();
 	EVP_cleanup();
