@@ -353,7 +353,7 @@ int fr_atexit_trigger(fr_atexit_t func)
 	 *	Iterate over the list of thread local destructor
 	 *	lists.
 	 */
-	while ((e = fr_dlist_next(&fr_atexit_global->head, e))) {
+	while ((e = fr_dlist_next(&fr_atexit_threads->head, e))) {
 		if (!e->func) continue;	/* thread already joined */
 
 		list = talloc_get_type_abort(e->uctx, fr_atexit_list_t);
