@@ -32,8 +32,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define __STDC_WANT_LIB_EXT1__ 1
 #include <string.h>
 
-#include <openssl/hmac.h>
-
 #include <freeradius-devel/util/sha1.h>
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/tls/log.h>
@@ -41,6 +39,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "tls.h"
 #include "base.h"
 #include "attrs.h"
+
+#include <openssl/hmac.h>
 
 /** Initialize the PRF label fields
  *

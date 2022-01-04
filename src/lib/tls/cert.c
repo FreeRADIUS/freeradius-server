@@ -27,13 +27,12 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls"
-
-#include <openssl/ssl.h>
-
 #include <freeradius-devel/util/strerror.h>
 
 #include "cert.h"
 #include "utils.h"
+
+#include <openssl/ssl.h>
 
 /** Check if a certificate is currently valid
  *

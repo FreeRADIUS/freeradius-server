@@ -36,17 +36,17 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/syserror.h>
 
+#include "base.h"
+#include "utils.h"
+#include "log.h"
+#include "cert.h"
+
 #include <openssl/rand.h>
 #include <openssl/dh.h>
 #include <openssl/x509v3.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 #  include <openssl/provider.h>
 #endif
-
-#include "base.h"
-#include "utils.h"
-#include "log.h"
-#include "cert.h"
 
 #ifndef OPENSSL_NO_ECDH
 static int ctx_ecdh_curve_set(SSL_CTX *ctx, char const *ecdh_curve, bool disable_single_dh_use)

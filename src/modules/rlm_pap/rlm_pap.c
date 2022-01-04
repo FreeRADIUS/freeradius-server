@@ -48,6 +48,7 @@ USES_APPLE_DEPRECATED_API
 #include <unistd.h>	/* Contains crypt function declarations */
 
 #ifdef HAVE_OPENSSL_EVP_H
+#  include <freeradius-devel/tls/openssl_user_macros.h>
 #  include <openssl/evp.h>
 #endif
 

@@ -53,7 +53,8 @@ RCSID("$Id$")
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
-#  include	<openssl/rc4.h>
+#  include <freeradius-devel/tls/openssl_user_macros.h>
+#  include <openssl/rc4.h>
 #endif
 
 #ifdef __APPLE__

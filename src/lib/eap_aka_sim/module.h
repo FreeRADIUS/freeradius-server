@@ -28,6 +28,8 @@ RCSIDH(lib_eap_aka_sim_module_h, "$Id$")
 
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/eap/types.h>
+
+#include <freeradius-devel/tls/openssl_user_macros.h>
 #include <openssl/evp.h>
 
 #ifdef __cplusplus

@@ -44,6 +44,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/sha1.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
+#  include <freeradius-devel/tls/openssl_user_macros.h>
 #  include <openssl/evp.h>
 #endif
 

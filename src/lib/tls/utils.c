@@ -23,8 +23,8 @@
  * @copyright 2018 The FreeRADIUS server project
  */
 
-#include <openssl/ssl.h>
 #include "utils.h"
+#include <openssl/ssl.h>
 
 /** PKEY types (friendly names)
  *

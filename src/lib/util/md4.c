@@ -25,7 +25,7 @@ static _Thread_local fr_md4_ctx_t *md4_ctx;
  *	be operating in FIPS mode where MD4 digest functions are unavailable.
  */
 #ifdef HAVE_OPENSSL_EVP_H
-
+#  include <freeradius-devel/tls/openssl_user_macros.h>
 #  include <openssl/evp.h>
 #  include <openssl/crypto.h>
 #  include <openssl/err.h>

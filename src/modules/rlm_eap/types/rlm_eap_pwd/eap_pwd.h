@@ -34,6 +34,7 @@
 RCSIDH(eap_pwd_h, "$Id$")
 
 #include <freeradius-devel/eap/base.h>
+#include <freeradius-devel/tls/openssl_user_macros.h>
 #include <openssl/bn.h>
 #include <openssl/sha.h>
 #include <openssl/ec.h>

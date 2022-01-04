@@ -30,6 +30,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls"
 
+#include "log.h"
+#include "bio.h"
+
 #include <openssl/conf.h>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 #  include <openssl/provider.h>
@@ -41,9 +44,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/tls/engine.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>
-
-#include "log.h"
-#include "bio.h"
 
 static uint32_t instance_count = 0;
 
@@ -243,9 +243,10 @@ static fr_openssl_defect_t fr_openssl_defects[] =
  */
 int fr_openssl_version_check(char const *acknowledged)
 {
-	uint64_t v;
 	bool bad = false;
 	size_t i;
+	unsigned long ssl_linked;
+
 
 	/*
 	 *	Didn't get passed anything, that's an error.
@@ -258,12 +259,17 @@ int fr_openssl_version_check(char const *acknowledged)
 	if (strcmp(acknowledged, "yes") == 0) return 0;
 
 	/* Check for bad versions */
-	v = (uint64_t) SSLeay();
+
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	ssl_linked = OpenSSL_version_num();
+#else
+	ssl_linked = (unsigned long)SSLeay();
+#endif
 
 	for (i = 0; i < (NUM_ELEMENTS(fr_openssl_defects)); i++) {
 		fr_openssl_defect_t *defect = &fr_openssl_defects[i];
 
-		if ((v >= defect->low) && (v <= defect->high)) {
+		if ((ssl_linked >= defect->low) && (ssl_linked <= defect->high)) {
 			/*
 			 *	If the CVE is acknowledged, allow it.
 			 */

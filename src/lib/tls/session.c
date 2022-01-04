@@ -38,9 +38,6 @@
 
 #include <freeradius-devel/unlang/interpret.h>
 
-#include <openssl/x509v3.h>
-
-#include <openssl/ssl.h>
 #include <sys/stat.h>
 #include <ctype.h>
 #include <fcntl.h>
@@ -48,6 +45,9 @@
 #include "attrs.h"
 #include "base.h"
 #include "log.h"
+
+#include <openssl/x509v3.h>
+#include <openssl/ssl.h>
 
 static char const *tls_version_str[] = {
 	[SSL2_VERSION]				= "SSL 2.0",

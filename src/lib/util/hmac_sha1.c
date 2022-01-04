@@ -40,6 +40,7 @@ unsigned int sha1_data_problems = 0;
 #endif
 
 #ifdef HAVE_OPENSSL_EVP_H
+#  include <freeradius-devel/tls/openssl_user_macros.h>
 #  include <openssl/hmac.h>
 
 static _Thread_local EVP_MD_CTX *sha1_hmac_ctx;

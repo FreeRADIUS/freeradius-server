@@ -34,6 +34,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 /*
  *	FIXME: Add check for this header to configure.ac
  */
+#include <freeradius-devel/tls/openssl_user_macros.h>
 #include <openssl/hmac.h>
 
 /*

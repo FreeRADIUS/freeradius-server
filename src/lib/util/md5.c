@@ -36,6 +36,7 @@ typedef struct {
 } fr_md5_free_list_t;
 static _Thread_local fr_md5_free_list_t *md5_array;
 
+#  include <freeradius-devel/tls/openssl_user_macros.h>
 #  include <openssl/evp.h>
 #  include <openssl/crypto.h>
 #  include <openssl/err.h>

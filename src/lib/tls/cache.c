@@ -29,9 +29,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls"
 
-#include <openssl/ssl.h>
-#include <openssl/kdf.h>
-
 #include <freeradius-devel/internal/internal.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/module.h>
@@ -45,6 +42,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "cache.h"
 #include "log.h"
 #include "verify.h"
+
+#include <openssl/ssl.h>
+#include <openssl/kdf.h>
 
 /** Retrieve session ID (in binary form) from the session
  *

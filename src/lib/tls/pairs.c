@@ -28,9 +28,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifdef WITH_TLS
 #define LOG_PREFIX "tls"
 
-#include <openssl/x509v3.h>
-#include <openssl/ssl.h>
-
+#include <freeradius-devel/tls/openssl_user_macros.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/pair.h>
@@ -41,6 +39,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "log.h"
 #include "session.h"
 #include "utils.h"
+
+#include <openssl/x509v3.h>
+#include <openssl/ssl.h>
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */

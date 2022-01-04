@@ -17,6 +17,7 @@ extern "C" {
 #include <freeradius-devel/missing.h>
 
 #ifdef WITH_OPENSSL_SHA1
+#  include <freeradius-devel/tls/openssl_user_macros.h>
 #  include <openssl/sha.h>
 #endif
 

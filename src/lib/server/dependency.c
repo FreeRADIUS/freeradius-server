@@ -38,6 +38,7 @@ static CONF_SECTION *default_version_cs;		//!< Default configuration section to 
 #include <freeradius-devel/tls/openssl_user_macros.h>
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
+#  include <freeradius-devel/tls/openssl_user_macros.h>
 #  include <openssl/crypto.h>
 #  include <openssl/opensslv.h>
 #  include <openssl/engine.h>
@@ -66,14 +67,12 @@ static long ssl_built = OPENSSL_VERSION_NUMBER;
  */
 int ssl_check_consistency(void)
 {
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	unsigned long ssl_linked;
 
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	ssl_linked = OpenSSL_version_num();
 #else
-	long ssl_linked;
-
-	ssl_linked = SSLeay();
+	ssl_linked = (unsigned long)SSLeay();
 #endif
 
 	/*
@@ -241,12 +240,11 @@ char const *ssl_version_num(void)
 char const *ssl_version(void)
 {
 	static char buffer[256];
-
-	long v = SSLeay();
+	long ssl_linked = SSLeay();
 
 	snprintf(buffer, sizeof(buffer), "%s 0x%.8x (%s)",
 		 SSLeay_version(SSLEAY_VERSION),		/* Not all builds include a useful version number */
-		 v,
+		 ssl_linked,
 		 ssl_version_by_num(v));
 
 	return buffer;
