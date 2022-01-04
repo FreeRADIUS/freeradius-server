@@ -654,7 +654,7 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 
 static int mod_load(void)
 {
-#if defined(HAVE_OPENSSL_CRYPTO_H) && (defined(HAVE_PQINITOPENSSL) || defined(HAVE_PQINITSSL))
+#if defined(WITH_TLS) && (defined(HAVE_PQINITOPENSSL) || defined(HAVE_PQINITSSL))
 #  ifdef HAVE_PQINITOPENSSL
 	PQinitOpenSSL(0, 0);
 #  else

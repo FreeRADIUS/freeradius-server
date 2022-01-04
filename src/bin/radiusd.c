@@ -74,7 +74,7 @@ RCSID("$Id$")
 #  include <systemd/sd-daemon.h>
 #endif
 
-#if defined(HAVE_OPENSSL_CRYPTO_H) && OPENSSL_VERSION_NUMBER >= 0x30000000L
+#if defined(WITH_TLS) && OPENSSL_VERSION_NUMBER >= 0x30000000L
 #  include <openssl/provider.h>
 #endif
 
@@ -480,7 +480,7 @@ int main(int argc, char *argv[])
 
 	if (rad_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) EXIT_WITH_FAILURE;
 
-#ifdef HAVE_OPENSSL_CRYPTO_H
+#ifdef WITH_TLS
 	/*
 	 *  Mismatch between build time OpenSSL and linked SSL, better to die
 	 *  here than segfault later.
@@ -556,7 +556,7 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-#ifdef HAVE_OPENSSL_CRYPTO_H
+#ifdef WITH_TLS
 	if (fr_tls_dict_init() < 0) {
 		fr_perror("%s", program);
 		EXIT_WITH_FAILURE;
@@ -623,11 +623,11 @@ int main(int argc, char *argv[])
 	/*
 	 *  Check for vulnerabilities in the version of libssl were linked against.
 	 */
-#if defined(HAVE_OPENSSL_CRYPTO_H) && defined(ENABLE_OPENSSL_VERSION_CHECK)
+#if defined(WITH_TLS) && defined(ENABLE_OPENSSL_VERSION_CHECK)
 	if (fr_openssl_version_check(config->allow_vulnerable_openssl) < 0) EXIT_WITH_FAILURE;
 #endif
 
-#ifdef HAVE_OPENSSL_CRYPTO_H
+#ifdef WITH_TLS
 	/*
 	 *  Toggle FIPS mode
 	 */
@@ -1066,7 +1066,7 @@ cleanup:
 	 */
 	unlang_free_global();
 
-#ifdef HAVE_OPENSSL_CRYPTO_H
+#ifdef WITH_TLS
 	fr_openssl_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
 #endif
 

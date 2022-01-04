@@ -37,7 +37,7 @@ static CONF_SECTION *default_version_cs;		//!< Default configuration section to 
 
 #include <freeradius-devel/tls/openssl_user_macros.h>
 
-#ifdef HAVE_OPENSSL_CRYPTO_H
+#ifdef WITH_TLS
 #  include <freeradius-devel/tls/openssl_user_macros.h>
 #  include <openssl/crypto.h>
 #  include <openssl/opensslv.h>
@@ -264,7 +264,7 @@ char const *ssl_version()
 {
 	return "not linked";
 }
-#endif /* ifdef HAVE_OPENSSL_CRYPTO_H */
+#endif /* ifdef WITH_TLS */
 
 /** Check if the application linking to the library has the correct magic number
  *

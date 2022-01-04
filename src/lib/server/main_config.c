@@ -168,7 +168,7 @@ static const CONF_PARSER thread_config[] = {
 
 	{ FR_CONF_OFFSET("stats_interval", FR_TYPE_TIME_DELTA | FR_TYPE_HIDDEN, main_config_t, stats_interval), },
 
-#ifdef HAVE_OPENSSL_CRYPTO_H
+#ifdef WITH_TLS
 	{ FR_CONF_OFFSET("openssl_async_pool_init", FR_TYPE_SIZE, main_config_t, openssl_async_pool_init), .dflt = "64" },
 	{ FR_CONF_OFFSET("openssl_async_pool_max", FR_TYPE_SIZE, main_config_t, openssl_async_pool_max), .dflt = "1024" },
 #endif
@@ -235,7 +235,7 @@ static const CONF_PARSER security_config[] = {
 	{ FR_CONF_OFFSET("allow_vulnerable_openssl", FR_TYPE_STRING, main_config_t, allow_vulnerable_openssl), .dflt = "no" },
 #endif
 
-#ifdef HAVE_OPENSSL_CRYPTO_H
+#ifdef WITH_TLS
 	{ FR_CONF_OFFSET_IS_SET("openssl_fips_mode", FR_TYPE_BOOL, main_config_t, openssl_fips_mode), .dflt = "no" },
 #endif
 

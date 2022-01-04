@@ -52,7 +52,7 @@ RCSID("$Id$")
 #include "auth_wbclient.h"
 #endif
 
-#ifdef HAVE_OPENSSL_CRYPTO_H
+#ifdef WITH_TLS
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #  include <freeradius-devel/tls/openssl_user_macros.h>
 #  include <openssl/rc4.h>
@@ -765,7 +765,7 @@ static int write_all(int fd, char const *buf, int len) {
 
 static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t const *inst,
 						       request_t *request,
-#ifdef HAVE_OPENSSL_CRYPTO_H
+#ifdef WITH_TLS
 						       fr_pair_t *nt_password,
 #else
 						       UNUSED fr_pair_t *nt_password,
@@ -957,7 +957,7 @@ ntlm_auth_err:
 		 *
 		 */
 	} else if (inst->local_cpw) {
-#ifdef HAVE_OPENSSL_CRYPTO_H
+#ifdef WITH_TLS
 		fr_pair_t	*new_pass, *new_hash;
 		uint8_t		*p, *q;
 		char		*x;
