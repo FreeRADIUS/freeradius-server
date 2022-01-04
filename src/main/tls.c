@@ -3596,7 +3596,7 @@ int tls_global_init(bool spawn_flag, bool check)
 	 */
 	openssl_default_provider = OSSL_PROVIDER_load(NULL, "default");
 	if (!openssl_default_provider) {
-		fr_tls_log_error(NULL, "Failed loading default provider");
+		ERROR("(TLS) Failed loading default provider");
 		return -1;
 	}
 
@@ -3607,7 +3607,7 @@ int tls_global_init(bool spawn_flag, bool check)
 	 */
 	openssl_legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
 	if (!openssl_legacy_provider) {
-		fr_tls_log_error(NULL, "Failed loading legacy provider");
+		ERROR("(TLS) Failed loading legacy provider");
 		return -1;
 	}
 #endif
