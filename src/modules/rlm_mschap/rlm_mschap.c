@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/exec_legacy.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/password.h>
+#include <freeradius-devel/tls/log.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/radius/defs.h>
 
@@ -942,8 +943,6 @@ ntlm_auth_err:
 
 		return -1;
 
-	} else if (inst->local_cpw) {
-#ifdef HAVE_OPENSSL_CRYPTO_H
 		/*
 		 *  Decrypt the new password blob, add it as a temporary request
 		 *  variable, xlat the local_cpw string, then remove it
@@ -957,16 +956,19 @@ ntlm_auth_err:
 		 *  %(exec:/path/to %(mschap:User-Name) %{MS-CHAP-New-Password})"
 		 *
 		 */
-		fr_pair_t *new_pass, *new_hash;
-		uint8_t *p, *q;
-		char *x;
-		size_t i;
-		size_t passlen;
-		ssize_t result_len;
-		char result[253];
-		uint8_t nt_pass_decrypted[516], old_nt_hash_expected[NT_DIGEST_LENGTH];
-		RC4_KEY key;
-		size_t len = 0;
+	} else if (inst->local_cpw) {
+#ifdef HAVE_OPENSSL_CRYPTO_H
+		fr_pair_t	*new_pass, *new_hash;
+		uint8_t		*p, *q;
+		char		*x;
+		size_t		i;
+		size_t		passlen;
+		ssize_t		result_len;
+		char		result[253];
+		uint8_t		nt_pass_decrypted[516], old_nt_hash_expected[NT_DIGEST_LENGTH];
+		size_t		len = 0;
+		EVP_CIPHER_CTX	*evp_ctx;
+ 		int		ntlen = sizeof(nt_pass_decrypted);
 
 		if (!nt_password) {
 			RDEBUG2("Local MS-CHAPv2 password change requires NT-Password attribute");
@@ -975,11 +977,28 @@ ntlm_auth_err:
 			RDEBUG2("Doing MS-CHAPv2 password change locally");
 		}
 
-		/*
-		 *  Decrypt the blob
-		 */
-		RC4_set_key(&key, nt_password->vp_length, nt_password->vp_octets); /* lgtm [cpp/weak-cryptographic-algorithm] */
-		RC4(&key, 516, new_nt_password, nt_pass_decrypted);
+		MEM(evp_ctx = EVP_CIPHER_CTX_new());
+
+		if (unlikely(EVP_CIPHER_CTX_set_key_length(evp_ctx, nt_password->vp_length)) != 1) {
+			fr_tls_log_strerror_printf(NULL);
+			RPERROR("Failed setting key length");
+ 			return -1;
+ 		}
+
+		if (unlikely(EVP_EncryptInit_ex(evp_ctx, EVP_rc4(), NULL, nt_password->vp_octets, NULL) != 1)) {
+			fr_tls_log_strerror_printf(NULL);
+			RPERROR("Failed initialising RC4 ctx");
+			return -1;
+		}
+
+
+		if (unlikely(EVP_EncryptUpdate(evp_ctx, nt_pass_decrypted, &ntlen, new_nt_password, ntlen) != 1)) {
+			fr_tls_log_strerror_printf(NULL);
+			RPERROR("Failed ingesting new password");
+			return -1;
+		}
+
+ 		EVP_CIPHER_CTX_free(evp_ctx);
 
 		/*
 		 *  pwblock is
