@@ -20,6 +20,7 @@
  *	always need to support that.
  */
 #define LDAP_DEPRECATED 1
+USES_APPLE_DEPRECATED_API	/* Apple wants us to use OpenDirectory Framework, we don't want that */
 #include <lber.h>
 #include <ldap.h>
 #include "config.h"
