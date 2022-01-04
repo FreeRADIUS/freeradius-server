@@ -946,7 +946,7 @@ post_ca:
 	 *	message.  For every new session, there can be a
 	 *	different callback argument.
 	 */
-	 SSL_CTX_set_msg_callback(ctx, fr_tls_session_msg_cb);
+	SSL_CTX_set_msg_callback(ctx, fr_tls_session_msg_cb);
 	/* Set Info callback */
 	SSL_CTX_set_info_callback(ctx, fr_tls_session_info_cb);
 

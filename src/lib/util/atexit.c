@@ -69,6 +69,7 @@ struct fr_exit_handler_list_s {
 };
 
 static _Thread_local fr_atexit_list_t	*fr_atexit_thread_local = NULL;
+static fr_atexit_list_t			*fr_atexit_threads = NULL;
 static fr_atexit_list_t			*fr_atexit_global = NULL;
 static pthread_mutex_t			fr_atexit_global_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool				is_exiting;
@@ -168,6 +169,7 @@ static void _global_free(void)
 	is_exiting = true;
 	pthread_mutex_unlock(&fr_atexit_global_mutex);
 
+	TALLOC_FREE(fr_atexit_threads);	/* Forcefully cleanup any thread-specific memory */
 	TALLOC_FREE(fr_atexit_global);
 }
 
@@ -185,6 +187,15 @@ int fr_atexit_global_setup(void)
 
 	fr_dlist_talloc_init(&fr_atexit_global->head, fr_atexit_entry_t, entry);
 	talloc_set_destructor(fr_atexit_global, _global_list_free);
+
+	fr_atexit_threads = talloc_zero(NULL, fr_atexit_list_t);
+	if (unlikely(!fr_atexit_threads)) return -1;
+
+	THREAD_LOCAL_DEBUG("%s - Alloced threads destructor list %p", __FUNCTION__, fr_atexit_threads);
+
+	fr_dlist_talloc_init(&fr_atexit_threads->head, fr_atexit_entry_t, entry);
+	talloc_set_destructor(fr_atexit_threads, _global_list_free);
+
 	atexit(_global_free);	/* Call all remaining destructors at process exit */
 
 	return 0;
@@ -262,7 +273,7 @@ int _fr_atexit_thread_local(NDEBUG_LOCATION_ARGS
 		 */
 		pthread_mutex_lock(&fr_atexit_global_mutex);
 		list->e = atexit_entry_alloc(NDEBUG_LOCATION_VALS
-					     fr_atexit_global,
+					     fr_atexit_threads,
 					     _thread_local_free,
 					     list);
 

@@ -404,10 +404,16 @@ void fr_openssl_free(void)
 {
 	if (--instance_count > 0) return;
 
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	fr_tls_engine_free_all();
+	fr_dict_autofree(tls_dict);
 
-#else
+	fr_tls_log_free();
+
+	fr_tls_bio_free();
+}
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+static void _openssl_provider_free(void)
+{
 	if (openssl_default_provider && !OSSL_PROVIDER_unload(openssl_default_provider)) {
 		fr_tls_log_error(NULL, "Failed unloading default provider");
 	}
@@ -417,15 +423,19 @@ void fr_openssl_free(void)
 		fr_tls_log_error(NULL, "Failed unloading legacy provider");
 	}
 	openssl_legacy_provider = NULL;
+}
 #endif
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+static void _openssl_engine_free(void)
+{
+	fr_tls_engine_free_all();
+}
+#endif
+
+static void fr_openssl_cleanup(UNUSED void *uctx)
+{
 	OPENSSL_cleanup();
-
-	fr_dict_autofree(tls_dict);
-
-	fr_tls_log_free();
-
-	fr_tls_bio_free();
 }
 
 /** Add all the default ciphers and message digests to our context.
@@ -449,6 +459,16 @@ int fr_openssl_init(void)
 		return -1;
 	}
 
+	/*
+	 *	NO_ATEXIT has no effect if init is done after
+	 *	loading providers, and we need to control the
+	 *	exit handler as it needs to be executed last
+	 *	after all the EVP_MD ctx have been called, as
+	 *      they may unload elements of providers once all
+	 *	the contexts have been cleaned up.
+	 */
+	OPENSSL_init_crypto(OPENSSL_INIT_NO_ATEXIT | OPENSSL_INIT_LOAD_CONFIG, NULL);
+
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	/*
 	 *	Load the default provider for most algorithms
@@ -471,7 +491,18 @@ int fr_openssl_init(void)
 	}
 #endif
 
-	OPENSSL_init_crypto(OPENSSL_INIT_LOAD_CONFIG, NULL);
+	/*
+	 *	It's best to use OpenSSL's cleanup stack
+	 *	as then everything is cleaned up relative
+	 *	to the OPENSSL_cleanup() call.
+	 */
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	OPENSSL_atexit(_openssl_provider_free);
+#endif
+
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+	OPENSSL_atexit(_openssl_engine_free);
+#endif
 
 	/*
 	 *	SHA256 is in all versions of OpenSSL, but isn't
@@ -491,6 +522,16 @@ int fr_openssl_init(void)
 	fr_tls_log_init();
 
 	fr_tls_bio_init();
+
+	/*
+	 *	Use an atexit handler to try and ensure
+	 *	that OpenSSL gets freed last.
+	 *
+	 *	All EVP_*ctxs need to be freed before we
+	 *	de-initialise the libraries else we get
+	 *	crashes (at least with OpenSSL 3.0.1).
+	 */
+	fr_atexit_global(fr_openssl_cleanup, NULL);
 
 	instance_count++;
 
