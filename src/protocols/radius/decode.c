@@ -1,3 +1,4 @@
+
 /*
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
@@ -1170,7 +1171,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	}
 
 	if ((data + attr_len) > packet_ctx->end) {
-		fr_assert(0);
 		fr_strerror_printf("%s: input overflows packet", __FUNCTION__);
 		return -1;
 	}
