@@ -2762,7 +2762,7 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 		fr_time_delta_t diff = fr_time_sub(ev->when, now);
 
 		for (i = 0; i < NUM_ELEMENTS(decades); i++) {
-			if ((diff <= decades[i]) || (i == NUM_ELEMENTS(decades) - 1)) {
+			if ((fr_time_delta_cmp(diff, decades[i]) <= 0) || (i == NUM_ELEMENTS(decades) - 1)) {
 				fr_event_counter_t find = { .file = ev->file, .line = ev->line };
 				fr_event_counter_t *counter;
 
