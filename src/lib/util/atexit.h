@@ -26,6 +26,8 @@
  */
 RCSIDH(atexit_h, "$Id$")
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -106,11 +108,15 @@ do { \
 int	_fr_atexit_thread_local(NDEBUG_LOCATION_ARGS
 				fr_atexit_t func, void const *uctx);
 
-int	fr_atexit_thread_local_disarm(fr_atexit_t func, void const *uctx);
+unsigned int	fr_atexit_thread_local_disarm(bool uctx_scope, fr_atexit_t func, void const *uctx);
 
-void	fr_atexit_thread_local_disarm_all(void);
+void		fr_atexit_thread_local_disarm_all(void);
 
-int	fr_atexit_trigger(fr_atexit_t func);
+unsigned int	fr_atexit_disarm(bool uctx_scope, fr_atexit_t func, void const *uctx);
+
+void		fr_atexit_disarm_all(void);
+
+unsigned int	fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uctx);
 
 #ifdef __cplusplus
 }

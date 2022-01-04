@@ -775,7 +775,7 @@ static void _autofree_on_thread_exit(void *af)
  */
 static int _autofree_destructor(TALLOC_CTX *af)
 {
-	return fr_atexit_thread_local_disarm(_autofree_on_thread_exit, af);
+	return fr_atexit_thread_local_disarm(true, _autofree_on_thread_exit, af);
 }
 
 /** Get a thread-safe autofreed ctx that will be freed when the thread or process exits

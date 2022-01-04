@@ -1054,7 +1054,6 @@ static void test_partial_to_complete_states(void)
 	talloc_free(ctx);
 }
 
-#if 0
 /*
  *	Test calling reconnect with requests in each different state
  */
@@ -1098,7 +1097,7 @@ static void test_requeue_on_reconnect(void)
 	preq->treq = treq;
 
 	tconn = treq->pub.tconn;	/* Store the conn the request was assigned to */
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PENDING) == 1);
+	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PENDING), 1);
 
 	fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
 
@@ -1106,36 +1105,39 @@ static void test_requeue_on_reconnect(void)
 	 *	Should be reassigned to the other connection
 	 */
 	TEST_CHECK(tconn != treq->pub.tconn);
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PENDING) == 1);
+	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PENDING), 1);
 
 	/*
 	 *	Should be reassigned to the backlog
 	 */
 	fr_trunk_connection_signal_reconnect(treq->pub.tconn, FR_CONNECTION_FAILED);
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_BACKLOG) == 1);
+	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_BACKLOG), 1);
 	TEST_CHECK(!treq->pub.tconn);
 
 	TEST_CASE("cancel on reconnect - FR_TRUNK_REQUEST_STATE_PARTIAL");
+
+	fr_debug_lvl = 4;
 
 	/*
 	 *	Allow the connections to reconnect
 	 */
 	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
 	fr_event_corral(el, test_time_base, false);
-	fr_event_service(el);
+	fr_event_service(el);	/* run management function */
+	fr_event_service(el);	/* service any I/O callbacks */
 
 	/*
 	 *	Request should now be assigned back to one of the reconnected
 	 *	connections.
 	 */
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PENDING) == 1);
+	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PENDING), 1);
 	TEST_CHECK(treq->pub.tconn != NULL);
 
 	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
 	fr_event_corral(el, test_time_base, false);	/* Send the request (partially) */
 	fr_event_service(el);
 
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PARTIAL) == 1);
+	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PARTIAL), 1);
 
 	/*
 	 *	Reconnect the connection.
@@ -1153,7 +1155,7 @@ static void test_requeue_on_reconnect(void)
 
 	preq->cancelled = false;		/* Reset */
 
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PENDING) == 1);
+	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PENDING), 1);
 	TEST_CHECK(tconn != treq->pub.tconn);	/* Ensure it moved */
 
 	TEST_CASE("cancel on reconnect - FR_TRUNK_REQUEST_STATE_SENT");
@@ -1164,12 +1166,12 @@ static void test_requeue_on_reconnect(void)
 	fr_event_corral(el, test_time_base, false);	/* Send the request (partially) */
 	fr_event_service(el);
 
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_SENT) == 1);
+	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_SENT), 1);
 
 	tconn = treq->pub.tconn;
 	fr_trunk_connection_signal_reconnect(treq->pub.tconn, FR_CONNECTION_FAILED);
 
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PENDING) == 1);
+	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PENDING), 1);
 
 	/*
 	 *	Allow the connections to reconnect
@@ -1193,7 +1195,7 @@ static void test_requeue_on_reconnect(void)
 	 *	Signal the request should be cancelled
 	 */
 	fr_trunk_request_signal_cancel(treq);
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_CANCEL) == 1);
+	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_CANCEL), 1);
 
 	/*
 	 *	Requests in the cancel state, are
@@ -1228,7 +1230,7 @@ static void test_requeue_on_reconnect(void)
 	treq = NULL;
 	fr_trunk_request_enqueue(&treq, trunk, NULL, preq, NULL);
 
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PENDING) == 1);
+	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PENDING), 1);
 
 	/*
 	 *	Sent the request (fully)
@@ -1237,10 +1239,10 @@ static void test_requeue_on_reconnect(void)
 	fr_event_corral(el, test_time_base, false);	/* Send the request (fully) */
 	fr_event_service(el);
 
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_SENT) == 1);
+	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_SENT), 1);
 	fr_trunk_request_signal_cancel(treq);			/* Cancel the request */
 
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_CANCEL) == 1);
+	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_CANCEL), 1);
 
 	/*
 	 *	Transition to cancel partial
@@ -1249,7 +1251,7 @@ static void test_requeue_on_reconnect(void)
 	fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
 
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL) == 1);
+	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL), 1);
 
 	/*
 	 *	Trigger a reconnection
@@ -1281,7 +1283,7 @@ static void test_requeue_on_reconnect(void)
 	treq = NULL;
 	fr_trunk_request_enqueue(&treq, trunk, NULL, preq, NULL);
 
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PENDING) == 1);
+	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PENDING), 1);
 
 	/*
 	 *	Sent the request (fully)
@@ -1290,10 +1292,10 @@ static void test_requeue_on_reconnect(void)
 	fr_event_corral(el, test_time_base, false);	/* Send the request (fully) */
 	fr_event_service(el);
 
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_SENT) == 1);
+	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_SENT), 1);
 	fr_trunk_request_signal_cancel(treq);			/* Cancel the request */
 
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_CANCEL) == 1);
+	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_CANCEL), 1);
 
 	/*
 	 *	Transition to cancel
@@ -1302,7 +1304,7 @@ static void test_requeue_on_reconnect(void)
 	fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
 
-	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_CANCEL_SENT) == 1);
+	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_CANCEL_SENT), 1);
 
 	/*
 	 *	Trigger a reconnection
@@ -1322,7 +1324,6 @@ static void test_requeue_on_reconnect(void)
 
 	talloc_free(ctx);
 }
-#endif
 
 static void test_connection_start_on_enqueue(void)
 {
@@ -1889,9 +1890,7 @@ TEST_LIST = {
 	{ "Enqueue - Basic",				test_enqueue_basic },
 	{ "Enqueue - Cancellation points",		test_enqueue_cancellation_points },
 	{ "Enqueue - Partial state transitions",	test_partial_to_complete_states },
-#if 0
 	{ "Requeue - On reconnect",			test_requeue_on_reconnect },
-#endif
 
 	/*
 	 *	Rebalance

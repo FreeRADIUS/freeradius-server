@@ -85,7 +85,7 @@ EVP_CIPHER_CTX *aka_sim_crypto_cipher_ctx(void)
  */
 void aka_sim_crypto_cipher_ctx_free(void)
 {
-	fr_atexit_trigger(_evp_cipher_ctx_free_on_exit);
+	fr_atexit_trigger(false, _evp_cipher_ctx_free_on_exit, NULL);
 	evp_chipher_ctx = NULL;
 }
 

@@ -33,10 +33,10 @@ RCSID("$Id$")
 
 #include <pthread.h>
 
-#if defined(DEBUG_THREAD_LOCAL) && !defined(NDEBUG)
-#  define THREAD_LOCAL_DEBUG		FR_FAULT_LOG
+#if defined(DEBUG_ATEXIT) && !defined(NDEBUG)
+#  define ATEXIT_DEBUG		FR_FAULT_LOG
 #else
-#  define THREAD_LOCAL_DEBUG(...)
+#  define ATEXIT_DEBUG(...)
 #endif
 
 typedef struct fr_exit_handler_list_s fr_atexit_list_t;
@@ -80,7 +80,7 @@ static bool				is_exiting;
  */
 static int _atexit_entry_free(fr_atexit_entry_t *e)
 {
-	THREAD_LOCAL_DEBUG("%s - Thread %u freeing %p/%p func=%p, uctx=%p (alloced %s:%u)",
+	ATEXIT_DEBUG("%s - Thread %u freeing %p/%p func=%p, uctx=%p (alloced %s:%u)",
 			   __FUNCTION__, (unsigned int)pthread_self(),
 			   e->list, e, e->func, e->uctx, e->file, e->line);
 
@@ -115,7 +115,7 @@ static fr_atexit_entry_t *atexit_entry_alloc(NDEBUG_LOCATION_ARGS
 	e->line = line;
 #endif
 
-	THREAD_LOCAL_DEBUG("%s - Thread %u arming %p/%p func=%p, uctx=%p (alloced %s:%u)",
+	ATEXIT_DEBUG("%s - Thread %u arming %p/%p func=%p, uctx=%p (alloced %s:%u)",
 			   __FUNCTION__, (unsigned int)pthread_self(),
 			   list, e, e->func, e->uctx, e->file, e->line);
 
@@ -130,7 +130,7 @@ static fr_atexit_entry_t *atexit_entry_alloc(NDEBUG_LOCATION_ARGS
  */
 static int _thread_local_list_free(fr_atexit_list_t *list)
 {
-	THREAD_LOCAL_DEBUG("%s - Freeing _Thread_local destructor list %p",
+	ATEXIT_DEBUG("%s - Freeing _Thread_local destructor list %p",
 			   __FUNCTION__, list);
 
 	fr_dlist_talloc_free(&list->head);	/* Free in order */
@@ -152,7 +152,7 @@ static void _thread_local_free(void *list)
  */
 static int _global_list_free(fr_atexit_list_t *list)
 {
-	THREAD_LOCAL_DEBUG("%s - Freeing global destructor list %p",
+	ATEXIT_DEBUG("%s - Freeing global destructor list %p",
 			   __FUNCTION__, list);
 
 	fr_dlist_talloc_free(&list->head);	/* Free in order */
@@ -183,7 +183,7 @@ int fr_atexit_global_setup(void)
 	fr_atexit_global = talloc_zero(NULL, fr_atexit_list_t);
 	if (unlikely(!fr_atexit_global)) return -1;
 
-	THREAD_LOCAL_DEBUG("%s - Alloced global destructor list %p", __FUNCTION__, fr_atexit_global);
+	ATEXIT_DEBUG("%s - Alloced global destructor list %p", __FUNCTION__, fr_atexit_global);
 
 	fr_dlist_talloc_init(&fr_atexit_global->head, fr_atexit_entry_t, entry);
 	talloc_set_destructor(fr_atexit_global, _global_list_free);
@@ -191,7 +191,7 @@ int fr_atexit_global_setup(void)
 	fr_atexit_threads = talloc_zero(NULL, fr_atexit_list_t);
 	if (unlikely(!fr_atexit_threads)) return -1;
 
-	THREAD_LOCAL_DEBUG("%s - Alloced threads destructor list %p", __FUNCTION__, fr_atexit_threads);
+	ATEXIT_DEBUG("%s - Alloced threads destructor list %p", __FUNCTION__, fr_atexit_threads);
 
 	fr_dlist_talloc_init(&fr_atexit_threads->head, fr_atexit_entry_t, entry);
 	talloc_set_destructor(fr_atexit_threads, _global_list_free);
@@ -247,7 +247,7 @@ int _fr_atexit_thread_local(NDEBUG_LOCATION_ARGS
 		list = talloc_zero(NULL, fr_atexit_list_t);
 		if (unlikely(!list)) return -1;
 
-		THREAD_LOCAL_DEBUG("%s - Thread %u alloced _Thread_local destructor list %p",
+		ATEXIT_DEBUG("%s - Thread %u alloced _Thread_local destructor list %p",
 				   __FUNCTION__,
 				   (unsigned int)pthread_self(), list);
 
@@ -290,34 +290,48 @@ int _fr_atexit_thread_local(NDEBUG_LOCATION_ARGS
 	return 0;
 }
 
-/** Remove destructor
+/** Remove a specific destructor for this thread (without executing them)
  *
- * @return
- *	- 0 on success.
- *      - -1 if function and uctx could not be found.
+ * @note This function's primary purpose is to help diagnose issues with destructors
+ *	 from within a debugger.
+ *
+ * @param[in] uctx_scope	Only process entries where the func and scope both match.
+ * @param[in] func		Entries matching this function will be disarmed.
+ * @param[in] uctx		associated with the entry.
+ * @return How many destructors were disarmed.
  */
-int fr_atexit_thread_local_disarm(fr_atexit_t func, void const *uctx)
+unsigned int fr_atexit_thread_local_disarm(bool uctx_scope, fr_atexit_t func, void const *uctx)
 {
-	fr_atexit_entry_t *e = NULL;
+	fr_atexit_entry_t 	*e = NULL;
+	unsigned int		count = 0;
 
 	if (!fr_atexit_thread_local) return -1;
 
 	while ((e = fr_dlist_next(&fr_atexit_thread_local->head, e))) {
-		if ((e->func == func) && (e->uctx == uctx)) {
-			THREAD_LOCAL_DEBUG("%s - Thread %u disarming %p/%p func=%p, uctx=%p (alloced %s:%u)",
-					   __FUNCTION__,
-					   (unsigned int)pthread_self(),
-					   fr_atexit_thread_local, e, e->func, e->uctx, e->file, e->line);
-			fr_dlist_remove(&fr_atexit_thread_local->head, e);
-			talloc_set_destructor(e, NULL);
-			talloc_free(e);
-			return 0;
-		}
+		fr_atexit_entry_t *disarm;
+
+		if ((e->func != func) || !uctx_scope || (e->uctx != uctx)) continue;
+
+		ATEXIT_DEBUG("%s - Thread %u disarming %p/%p func=%p, uctx=%p (alloced %s:%u)",
+			     __FUNCTION__,
+			     (unsigned int)pthread_self(),
+			     fr_atexit_thread_local, e, e->func, e->uctx, e->file, e->line);
+		disarm = e;
+		e = fr_dlist_remove(&fr_atexit_thread_local->head, e);
+		talloc_set_destructor(disarm, NULL);
+		talloc_free(disarm);
+
+		count++;
 	}
 
-	return -1;
+	return count;
 }
 
+/** Remove all destructors for this thread (without executing them)
+ *
+ * @note This function's primary purpose is to help diagnose issues with destructors
+ *	 from within a debugger.
+ */
 void fr_atexit_thread_local_disarm_all(void)
 {
 	fr_atexit_entry_t *e = NULL;
@@ -325,10 +339,68 @@ void fr_atexit_thread_local_disarm_all(void)
 	if (!fr_atexit_thread_local) return;
 
 	while ((e = fr_dlist_pop_head(&fr_atexit_thread_local->head))) {
-		THREAD_LOCAL_DEBUG("%s - Thread %u disarming %p/%p func=%p, uctx=%p (alloced %s:%u)",
-				   __FUNCTION__,
-				   (unsigned int)pthread_self(),
-				   fr_atexit_thread_local, e, e->func, e->uctx, e->file, e->line);
+		ATEXIT_DEBUG("%s - Thread %u disarming %p/%p func=%p, uctx=%p (alloced %s:%u)",
+			     __FUNCTION__,
+			     (unsigned int)pthread_self(),
+			     fr_atexit_thread_local, e, e->func, e->uctx, e->file, e->line);
+		talloc_set_destructor(e, NULL);
+		talloc_free(e);
+	}
+}
+
+/** Remove a specific global destructor (without executing it)
+ *
+ * @note This function's primary purpose is to help diagnose issues with destructors
+ *	 from within a debugger.
+ *
+ * @param[in] uctx_scope	Only process entries where the func and scope both match.
+ * @param[in] func		Entries matching this function will be disarmed.
+ * @param[in] uctx		associated with the entry.
+ * @return How many global destructors were disarmed.
+ */
+unsigned int fr_atexit_disarm(bool uctx_scope, fr_atexit_t func, void const *uctx)
+{
+	fr_atexit_entry_t 	*e = NULL;
+	unsigned int		count = 0;
+
+	if (!fr_atexit_thread_local) return -1;
+
+	while ((e = fr_dlist_next(&fr_atexit_global->head, e))) {
+		fr_atexit_entry_t *disarm;
+
+		if ((e->func != func) || !uctx_scope || (e->uctx != uctx)) continue;
+
+		ATEXIT_DEBUG("%s - Disarming %p/%p func=%p, uctx=%p (alloced %s:%u)",
+			     __FUNCTION__,
+			     fr_atexit_global, e, e->func, e->uctx, e->file, e->line);
+
+		disarm = e;
+		e = fr_dlist_remove(&fr_atexit_global->head, e);
+		talloc_set_destructor(disarm, NULL);
+		talloc_free(disarm);
+
+		count++;
+	}
+
+	return count;
+}
+
+/** Remove all global destructors (without executing them)
+ *
+ * @note This function's primary purpose is to help diagnose issues with destructors
+ *	 from within a debugger.
+ */
+void fr_atexit_disarm_all(void)
+{
+	fr_atexit_entry_t *e = NULL;
+
+	if (!fr_atexit_global) return;
+
+	while ((e = fr_dlist_pop_head(&fr_atexit_global->head))) {
+		ATEXIT_DEBUG("%s - Disarming %p/%p func=%p, uctx=%p (alloced %s:%u)",
+			     __FUNCTION__,
+			     fr_atexit_global, e, e->func, e->uctx, e->file, e->line);
+
 		talloc_set_destructor(e, NULL);
 		talloc_free(e);
 	}
@@ -336,12 +408,17 @@ void fr_atexit_thread_local_disarm_all(void)
 
 /** Iterates through all thread local destructor lists, causing destructor to be triggered
  *
- * This should only be called by the main process, and not by threads.
+ * This should only be called by the main process not by threads.
  *
- * @param[in] func	Entries matching this function will be triggered.
+ * The main purpose of the function is to force cleanups at a specific time for problematic
+ * destructors.
+ *
+ * @param[in] uctx_scope	Only process entries where the func and scope both match.
+ * @param[in] func		Entries matching this function will be triggered.
+ * @param[in] uctx		associated with the entry.
  * @return How many triggers fired.
  */
-int fr_atexit_trigger(fr_atexit_t func)
+unsigned int fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uctx)
 {
 	fr_atexit_entry_t		*e = NULL, *ee;
 	fr_atexit_list_t		*list;
@@ -350,8 +427,24 @@ int fr_atexit_trigger(fr_atexit_t func)
 	if (!fr_atexit_global) return 0;
 
 	/*
-	 *	Iterate over the list of thread local destructor
-	 *	lists.
+	 *	Iterate over the global destructors
+	 */
+	while ((e = fr_dlist_next(&fr_atexit_global->head, e))) {
+		if ((e->func != func) || !uctx_scope || (e->uctx != uctx)) continue;
+
+		ATEXIT_DEBUG("%s - Triggering %p/%p func=%p, uctx=%p (alloced %s:%u)",
+			     __FUNCTION__,
+			     fr_atexit_global, e, e->func, e->uctx, e->file, e->line);
+
+		count++;
+		e = fr_dlist_talloc_free_item(&fr_atexit_global->head, e);
+	}
+	e = NULL;
+
+	/*
+	 *	Iterate over the list of thread local
+	 *	destructor lists running the
+	 *	destructors.
 	 */
 	while ((e = fr_dlist_next(&fr_atexit_threads->head, e))) {
 		if (!e->func) continue;	/* thread already joined */
@@ -359,7 +452,12 @@ int fr_atexit_trigger(fr_atexit_t func)
 		list = talloc_get_type_abort(e->uctx, fr_atexit_list_t);
 		ee = NULL;
 		while ((ee = fr_dlist_next(&list->head, ee))) {
-			if (ee->func != func) continue;
+			if ((ee->func != func) || !uctx_scope || (e->uctx != uctx)) continue;
+
+			ATEXIT_DEBUG("%s - Thread %u triggering %p/%p func=%p, uctx=%p (alloced %s:%u)",
+				     __FUNCTION__,
+				     (unsigned int)pthread_self(),
+				     list, ee, ee->func, ee->uctx, ee->file, ee->line);
 
 			count++;
 			ee = fr_dlist_talloc_free_item(&list->head, ee);
