@@ -1007,7 +1007,7 @@ ntlm_auth_err:
 			int ntlen = sizeof(nt_pass_decrypted);
 
 			ctx = EVP_CIPHER_CTX_new();
-			cipher = EVP_CIPHER_fetch(NULL, "RC4", "provider=legacy");
+			cipher = EVP_rc4();
 			if (!ctx || !cipher) {
 				REDEBUG("Failed getting RC4 from OpenSSL");
 				return -1;
@@ -1028,7 +1028,6 @@ ntlm_auth_err:
 				return -1;
 			}
 
-			EVP_CIPHER_free(cipher);
 			EVP_CIPHER_CTX_free(ctx);
 		}
 #else
