@@ -12,68 +12,68 @@ update request {
 #
 
 # Global substitution
-if ("%(sub:%{Tmp-String-0} a b)" != 'bbb') {
+if ("%(subst:%{Tmp-String-0} a b)" != 'bbb') {
 	test_fail
 }
 
 # No match
-if ("%(sub:%{Tmp-String-0} c b)" != 'aaa') {
+if ("%(subst:%{Tmp-String-0} c b)" != 'aaa') {
 	test_fail
 }
 
 # Line ending rewrite
-if ("%(sub:%{Tmp-String-1} \n \r)" != "\r\r\r") {
+if ("%(subst:%{Tmp-String-1} \n \r)" != "\r\r\r") {
 	test_fail
 }
 
 # Removal
-if ("%(sub:%{Tmp-String-0} a '')" != "") {
+if ("%(subst:%{Tmp-String-0} a '')" != "") {
 	test_fail
 }
 
 # Removal of last word only
-if ("%(sub:%{Tmp-String-2} dog '')" != "the quick brown fox jumped over the lazy ") {
+if ("%(subst:%{Tmp-String-2} dog '')" != "the quick brown fox jumped over the lazy ") {
 	test_fail
 }
 
 # Removal of first and subsequent word
-if ("%(sub:%{Tmp-String-2} the '')" != " quick brown fox jumped over  lazy dog") {
+if ("%(subst:%{Tmp-String-2} the '')" != " quick brown fox jumped over  lazy dog") {
 	test_fail
 }
 
 # Removal of middle word
-if ("%(sub:%{Tmp-String-2} jumped '')" != "the quick brown fox  over the lazy dog") {
+if ("%(subst:%{Tmp-String-2} jumped '')" != "the quick brown fox  over the lazy dog") {
 	test_fail
 }
 
 # Replacement of last word only
-if ("%(sub:%{Tmp-String-2} dog cat)" != "the quick brown fox jumped over the lazy cat") {
+if ("%(subst:%{Tmp-String-2} dog cat)" != "the quick brown fox jumped over the lazy cat") {
 	test_fail
 }
 
 # Replacement of first and subsequent word
-if ("%(sub:%{Tmp-String-2} the cat)" != "cat quick brown fox jumped over cat lazy dog") {
+if ("%(subst:%{Tmp-String-2} the cat)" != "cat quick brown fox jumped over cat lazy dog") {
 	test_fail
 }
 
 # Replacement of middle word
-if ("%(sub:%{Tmp-String-2} jumped cat)" != "the quick brown fox cat over the lazy dog") {
+if ("%(subst:%{Tmp-String-2} jumped cat)" != "the quick brown fox cat over the lazy dog") {
 	test_fail
 }
 
 if ("${feature.regex-pcre2}" == 'yes') {
 # Basic substitutions
-if ("%(sub:%{Tmp-String-0} /a/ b)" != 'baa') {
+if ("%(subst:%{Tmp-String-0} /a/ b)" != 'baa') {
 	test_fail
 }
 
 # Global substitution
-if ("%(sub:%{Tmp-String-0} /a/g b)" != 'bbb') {
+if ("%(subst:%{Tmp-String-0} /a/g b)" != 'bbb') {
 	test_fail
 }
 
 # No match
-if ("%(sub:%{Tmp-String-0} /z/ b)" != 'aaa') {
+if ("%(subst:%{Tmp-String-0} /z/ b)" != 'aaa') {
 	test_fail
 }
 
@@ -87,26 +87,26 @@ if ("%(length:%{Tmp-String-1})" != 3) {
 }
 
 # Strip out just the first newline
-if ("%(sub:%{Tmp-String-1} /^./s '')" != "\n\n") {
+if ("%(subst:%{Tmp-String-1} /^./s '')" != "\n\n") {
 	test_fail
 }
 
-if ("%(sub:%{Tmp-String-1} /\n/ '')" != "\n\n") {
+if ("%(subst:%{Tmp-String-1} /\n/ '')" != "\n\n") {
 	test_fail
 }
 
 # Strip out all the newlines
-if ("%(sub:%{Tmp-String-1} /\n/g '')" != '') {
+if ("%(subst:%{Tmp-String-1} /\n/g '')" != '') {
 	test_fail
 }
 
 # Line ending switch
-if ("%(sub:%{Tmp-String-1} /\n/g \r)" != "\r\r\r") {
+if ("%(subst:%{Tmp-String-1} /\n/g \r)" != "\r\r\r") {
 	test_fail
 }
 
 # Bad regex
-if ("%(sub:%{Tmp-String-0} /***/g .)") {
+if ("%(subst:%{Tmp-String-0} /***/g .)") {
 	test_fail
 }
 
@@ -119,7 +119,7 @@ update request {
 }
 
 # Empty regex
-if ("%(sub:%{Tmp-String-0} //g .)") {
+if ("%(subst:%{Tmp-String-0} //g .)") {
 	test_fail
 }
 

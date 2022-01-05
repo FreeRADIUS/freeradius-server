@@ -2896,7 +2896,7 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
 #ifdef HAVE_REGEX_PCRE2
 /** Perform regex substitution TODO CHECK
  *
- * Called when %(sub:) pattern begins with "/"
+ * Called when %(subst:) pattern begins with "/"
  *
 @verbatim
 %(sub:<subject> /<regex>/[flags] <replace>)
@@ -2907,11 +2907,11 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
 "%(sub:%{User-Name} /oo.*$/ un)" == "fun"
 @endverbatim
  *
- * @see #xlat_func_sub
+ * @see #xlat_func_subst
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
+static xlat_action_t xlat_func_subst_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 UNUSED xlat_ctx_t const *xctx, request_t *request,
 					 fr_value_box_list_t *in)
 {
@@ -2987,7 +2987,7 @@ static xlat_action_t xlat_func_sub_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 #endif
 
 
-static xlat_arg_parser_t const xlat_func_sub_args[] = {
+static xlat_arg_parser_t const xlat_func_subst_args[] = {
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
@@ -3005,11 +3005,11 @@ static xlat_arg_parser_t const xlat_func_sub_args[] = {
 "%(sub:%{User-Name} oo un)" == "funbar"
 @endverbatim
  *
- * @see xlat_func_sub_regex
+ * @see xlat_func_subst_regex
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
+static xlat_action_t xlat_func_subst(TALLOC_CTX *ctx, fr_dcursor_t *out,
 #ifdef HAVE_REGEX_PCRE2
 				   xlat_ctx_t const *xctx,
 #else
@@ -3031,7 +3031,7 @@ static xlat_action_t xlat_func_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	if (*pattern == '/') {
 #ifdef HAVE_REGEX_PCRE2
-		return xlat_func_sub_regex(ctx, out, xctx, request, in);
+		return xlat_func_subst_regex(ctx, out, xctx, request, in);
 #else
 		REDEBUG("regex based substitutions require libpcre2.  "
 			"Check ${features.regex-pcre2} to determine support");
@@ -3604,7 +3604,7 @@ do { \
 	XLAT_REGISTER_ARGS("debug_attr", xlat_func_debug_attr, xlat_func_debug_attr_args);
 	XLAT_REGISTER_ARGS("nexttime", xlat_func_next_time, xlat_func_next_time_args);
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, xlat_func_pairs_args);
-	XLAT_REGISTER_ARGS("sub", xlat_func_sub, xlat_func_sub_args);
+	XLAT_REGISTER_ARGS("subst", xlat_func_subst, xlat_func_subst_args);
 	XLAT_REGISTER_ARGS("trigger", trigger_xlat, trigger_xlat_args);
 
  	xlat_register(NULL, "untaint", xlat_func_untaint, NULL);
