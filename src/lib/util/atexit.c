@@ -358,7 +358,7 @@ void fr_atexit_thread_local_disarm_all(void)
  * @param[in] uctx		associated with the entry.
  * @return How many global destructors were disarmed.
  */
-unsigned int fr_atexit_disarm(bool uctx_scope, fr_atexit_t func, void const *uctx)
+unsigned int fr_atexit_global_disarm(bool uctx_scope, fr_atexit_t func, void const *uctx)
 {
 	fr_atexit_entry_t 	*e = NULL;
 	unsigned int		count = 0;
@@ -390,7 +390,7 @@ unsigned int fr_atexit_disarm(bool uctx_scope, fr_atexit_t func, void const *uct
  * @note This function's primary purpose is to help diagnose issues with destructors
  *	 from within a debugger.
  */
-void fr_atexit_disarm_all(void)
+void fr_atexit_global_disarm_all(void)
 {
 	fr_atexit_entry_t *e = NULL;
 

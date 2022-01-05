@@ -15,13 +15,13 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/** Functions to help with thread local destructors
+/** Functions to help with cleanup
  *
- * Simplifies calling thread local destructors (called when the thread exits).
+ * Simplifies cleaning up thread local and global resources
  *
  * @file lib/util/atexit.h
  *
- * @copyright 2020-2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2020-2022 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2013-2016 The FreeRADIUS server project
  */
 RCSIDH(atexit_h, "$Id$")
@@ -74,16 +74,17 @@ int _atexit_global(NDEBUG_LOCATION_ARGS fr_atexit_t func, void const *uctx);
  *				during the process lifetime.
  * @param[in] _free		function to call. Will be called once
  *				at exit.
+ * @param[in] _uctx		data to be passed to free function.
  */
-#define fr_atexit_global_once(_init, _free) \
+#define fr_atexit_global_once(_init, _free, _uctx) \
 { \
 	static atomic_bool	_init_done = false; \
 	static pthread_mutex_t	_init_mutex = PTHREAD_MUTEX_INITIALIZER; \
 	if (unlikely(!atomic_load(&_init_done))) { \
 		pthread_mutex_lock(&_init_mutex); \
 		if (!atomic_load(&_init_done)) { \
-			_init(); \
-			atexit(_free); \
+			_init(_uctx); \
+			fr_atexit_global(_free, _uctx); \
 			atomic_store(&_init_done, true); \
 		} \
 		pthread_mutex_unlock(&_init_mutex); \
@@ -96,25 +97,26 @@ int _atexit_global(NDEBUG_LOCATION_ARGS fr_atexit_t func, void const *uctx);
  *	destroyed.  So we need to store the address of the memory to free, not
  *	the address of the thread local variable.
  *
- * @param _n	Name of variable e.g. 'my_tls'.
- * @param _f	Destructor, called when the thread exits to clean up any data.
- * @param _v	Memory to free.
+ * @param[in] _name		Name of variable e.g. 'my_tls'.
+ * @param[in] _free		Destructor, called when the thread exits to clean up any data.
+ * @param[in] _uctx		Memory to free.
  */
-#  define fr_atexit_thread_local(_n, _f, _v) \
+#  define fr_atexit_thread_local(_name, _free, _uctx) \
 do { \
-	_fr_atexit_thread_local(NDEBUG_LOCATION_EXP _f, _v); \
-	_n = _v; \
+	_fr_atexit_thread_local(NDEBUG_LOCATION_EXP _free, _uctx); \
+	_name = _uctx; \
 } while (0);
-int	_fr_atexit_thread_local(NDEBUG_LOCATION_ARGS
-				fr_atexit_t func, void const *uctx);
+
+int		_fr_atexit_thread_local(NDEBUG_LOCATION_ARGS
+					fr_atexit_t func, void const *uctx);
 
 unsigned int	fr_atexit_thread_local_disarm(bool uctx_scope, fr_atexit_t func, void const *uctx);
 
 void		fr_atexit_thread_local_disarm_all(void);
 
-unsigned int	fr_atexit_disarm(bool uctx_scope, fr_atexit_t func, void const *uctx);
+unsigned int	fr_atexit_global_disarm(bool uctx_scope, fr_atexit_t func, void const *uctx);
 
-void		fr_atexit_disarm_all(void);
+void		fr_atexit_global_disarm_all(void);
 
 unsigned int	fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uctx);
 

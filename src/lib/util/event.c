@@ -2583,14 +2583,14 @@ static int _event_list_free(fr_event_list_t *el)
 /** Free any memory we allocated for indexes
  *
  */
-static void _event_free_indexes(void)
+static void _event_free_indexes(UNUSED void *uctx)
 {
 	unsigned int i;
 
 	for (i = 0; i < NUM_ELEMENTS(filter_maps); i++) talloc_free(filter_maps[i].ev_to_func);
 }
 
-static void _event_build_indexes(void)
+static void _event_build_indexes(UNUSED void *uctx)
 {
 	unsigned int i;
 
@@ -2615,7 +2615,7 @@ fr_event_list_t *fr_event_list_alloc(TALLOC_CTX *ctx, fr_event_status_cb_t statu
 	 *	Build the map indexes the first time this
 	 *	function is called.
 	 */
-	fr_atexit_global_once(_event_build_indexes, _event_free_indexes);
+	fr_atexit_global_once(_event_build_indexes, _event_free_indexes, NULL);
 
 	el = talloc_zero(ctx, fr_event_list_t);
 	if (!fr_cond_assert(el)) {
