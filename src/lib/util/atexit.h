@@ -105,8 +105,9 @@ int _atexit_global(NDEBUG_LOCATION_ARGS fr_atexit_t func, void const *uctx);
  */
 #  define fr_atexit_thread_local(_name, _free, _uctx) \
 do { \
-	_fr_atexit_thread_local(NDEBUG_LOCATION_EXP _free, _uctx); \
-	_name = _uctx; \
+	void *_our_uctx = _uctx; /* stop _uctx being evaluated multiple times, it may be a call to malloc() */ \
+	_fr_atexit_thread_local(NDEBUG_LOCATION_EXP _free, _our_uctx); \
+	_name = _our_uctx; \
 } while (0);
 
 int		_fr_atexit_thread_local(NDEBUG_LOCATION_ARGS
