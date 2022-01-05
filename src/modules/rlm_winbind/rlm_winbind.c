@@ -316,8 +316,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED fr_t
  *
  * Register pair compare function for Winbind-Group fake attribute
  *
- * @param[in] conf	Module configuration
- * @param[in] instance	This module's instance
+ * @param[in] mctx	data for this module
  *
  * @return
  *	- 0	success
@@ -349,8 +348,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 /** Instantiate this module
  *
- * @param[in] conf	Module configuration
- * @param[in] instance	This module's instance
+ * @param[in] mctx	data for this module
  *
  * @return
  *	- 0	instantiation succeeded
@@ -439,7 +437,7 @@ no_domain:
  *
  * Frees up the libwbclient connection pool.
  *
- * @param[in] instance This module's instance (unused)
+ * @param[in] mctx	data for this module
  * @return 0
  */
 static int mod_detach(module_detach_ctx_t const *mctx)
