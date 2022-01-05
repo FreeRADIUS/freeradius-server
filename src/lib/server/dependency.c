@@ -304,7 +304,7 @@ void dependency_version_numbers_init(CONF_SECTION *cs)
 	snprintf(buffer, sizeof(buffer), "%i.%i.*", talloc_version_major(), talloc_version_minor());
 	dependency_version_number_add(cs, "talloc", buffer);
 
-#if WITH_TLS
+#ifdef WITH_TLS
 	dependency_version_number_add(cs, "ssl", fr_openssl_version_basic());
 #endif
 
