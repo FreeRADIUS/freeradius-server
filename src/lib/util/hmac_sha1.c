@@ -62,7 +62,7 @@ static void _hmac_sha1_ctx_free_on_exit(void *arg)
  *      - -1 on error.
  */
 int fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *in, size_t inlen,
-		uint8_t const *key, size_t key_len)
+		 uint8_t const *key, size_t key_len)
 {
 	EVP_MD_CTX	*ctx;
  	EVP_PKEY	*pkey;
