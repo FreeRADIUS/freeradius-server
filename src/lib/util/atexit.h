@@ -27,6 +27,8 @@
 RCSIDH(atexit_h, "$Id$")
 
 #include <stdbool.h>
+#include <stdatomic.h>
+#include <pthread.h>
 
 #ifdef __cplusplus
 extern "C" {

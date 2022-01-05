@@ -639,9 +639,104 @@ fr_regmatch_t *regex_match_data_alloc(TALLOC_CTX *ctx, uint32_t count)
 #  define HAVE_PCRE_JIT_EXEC 1
 #endif
 
+/** Thread local storage for PCRE
+ *
+ */
+typedef struct {
+	TALLOC_CTX		*alloc_ctx;	//!< Context used for any allocations.
 #ifdef HAVE_PCRE_JIT_EXEC
-static _Thread_local pcre_jit_stack *fr_pcre_jit_stack;
+	pcre_jit_stack		*jit_stack;
 #endif
+} fr_pcre_tls_t;
+
+static _Thread_local fr_pcre_tls_t *fr_pcre_tls;
+static bool fr_pcre_study_flags;
+
+/*
+ *	Replace the libpcre memory allocation and freeing functions
+ *	with talloc wrappers. This allows us to use the subcapture copy
+ *	functions and just reparent the memory allocated.
+ */
+static void *_pcre_talloc(size_t to_alloc)
+{
+	return talloc_array(fr_pcre_tls->alloc_ctx, uint8_t, to_alloc);
+}
+
+static void _pcre_talloc_free(void *to_free)
+{
+	talloc_free(to_free);
+}
+
+static void _pcre_globals_reset(UNUSED void *uctx)
+{
+	pcre_malloc = NULL;
+	pcre_free = NULL;
+}
+
+static void _pcre_globals_configure(UNUSED void *uctx)
+{
+#ifdef PCRE_CONFIG_JIT
+	int *do_jit = 0;
+
+	/*
+	 *	If the headers are from >= 8.20
+	 *	check at runtime to see if this version
+	 *	of the libpcre library was compiled with
+	 *	JIT support.
+	 */
+	pcre_config(PCRE_CONFIG_JIT, &do_jit);
+
+	if (do_jit) fr_pcre_study_flags |= PCRE_STUDY_JIT_COMPILE;
+#endif
+	pcre_malloc = _pcre_talloc;		/* pcre_malloc is a global provided by libpcre */
+	pcre_free = _pcre_talloc_free;		/* pcre_free is a global provided by libpcre */
+}
+
+/** Free thread local data
+ *
+ * @param[in] tls	Thread local data to free.
+ */
+static int _pcre_tls_free(fr_pcre_tls_t *tls)
+{
+#ifdef HAVE_PCRE_JIT_EXEC
+	if (tls->jit_stack) pcre_jit_stack_free(tls->jit_stack);
+#endif
+	return 0;
+}
+
+static void _pcre_tls_free_on_exit(void *arg)
+{
+	talloc_free(arg);
+}
+
+/** Performs thread local storage initialisation for libpcre
+ *
+ */
+static inline CC_HINT(always_inline) int pcre_tls_init(void)
+{
+	fr_pcre_tls_t *tls;
+
+	if (fr_pcre_tls) return 0;
+
+	tls = talloc_zero(NULL, fr_pcre_tls_t);
+	if (unlikely(!tls)) return -1;
+	talloc_set_destructor(tls, _pcre_tls_free);
+
+	/*
+	 *	Need to set this first so that the alloc
+	 *	functions can access alloc_ctx.
+	 */
+	fr_atexit_thread_local(fr_pcre_tls, _pcre_tls_free_on_exit, tls);
+
+#ifdef HAVE_PCRE_JIT_EXEC
+	/*
+	 *	Starts at 128K, max is 512K per thread.
+	 */
+	tls->jit_stack = pcre_jit_stack_alloc(FR_PCRE_JIT_STACK_MIN, FR_PCRE_JIT_STACK_MAX);
+#endif
+
+	return 0;
+}
 
 /** Free regex_t structure
  *
@@ -659,21 +754,6 @@ static int _regex_free(regex_t *preg)
 #endif
 
 	return 0;
-}
-
-/*
- *	Replace the libpcre memory allocation and freeing functions
- *	with talloc wrappers. This allows us to use the subcapture copy
- *	functions and just reparent the memory allocated.
- */
-static void *_pcre_talloc(size_t to_alloc)
-{
-	return talloc_array(NULL, uint8_t, to_alloc);
-}
-
-static void _pcre_talloc_free(void *to_free)
-{
-	talloc_free(to_free);
 }
 
 /** Wrapper around pcre_compile
@@ -704,29 +784,9 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	int		cflags = 0;
 	regex_t		*preg;
 
-	static		bool setup;
-	static		bool study_flags;
+	fr_atexit_global_once(_pcre_globals_configure, _pcre_globals_reset, NULL);
 
-	/*
-	 *	Lets us use subcapture copy
-	 */
-	if (!setup) {
-#ifdef PCRE_CONFIG_JIT
-		int *do_jit = 0;
-
-		/*
-		 *	If the headers are from >= 8.20
-		 *	check at runtime to see if this version
-		 *	of the libpcre library was compiled with
-		 *	JIT support.
-		 */
-		pcre_config(PCRE_CONFIG_JIT, &do_jit);
-
-		if (do_jit) study_flags |= PCRE_STUDY_JIT_COMPILE;
-#endif
-		pcre_malloc = _pcre_talloc;		/* pcre_malloc is a global provided by libpcre */
-		pcre_free = _pcre_talloc_free;		/* pcre_free is a global provided by libpcre */
-	}
+	if (unlikely(pcre_tls_init() < 0)) return -1;
 
 	/*
 	 *	Check inputs
@@ -756,6 +816,10 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	if (!subcaptures) cflags |= PCRE_NO_AUTO_CAPTURE;
 
 	preg = talloc_zero(ctx, regex_t);
+	if (unlikely(preg == NULL)) {
+		fr_strerror_const("Out of memory");
+		return 0;
+	}
 	talloc_set_destructor(preg, _regex_free);
 
 	preg->compiled = pcre_compile(pattern, cflags, &error, &offset, NULL);
@@ -768,7 +832,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 
 	if (!runtime) {
 		preg->precompiled = true;
-		preg->extra = pcre_study(preg->compiled, study_flags, &error);
+		preg->extra = pcre_study(preg->compiled, fr_pcre_study_flags, &error);
 		if (error) {
 			fr_strerror_printf("Pattern study failed: %s", error);
 			talloc_free(preg);
@@ -784,7 +848,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 		 *	may not be jitable, or JIT support may have been
 		 *	disabled.
 		 */
-		if (study_flags & PCRE_STUDY_JIT_COMPILE) {
+		if (fr_pcre_study_flags & PCRE_STUDY_JIT_COMPILE) {
 			int jitd = 0;
 
 			pcre_fullinfo(preg->compiled, preg->extra, PCRE_INFO_JIT, &jitd);
@@ -837,17 +901,6 @@ static fr_table_num_ordered_t const regex_pcre_error_str[] = {
 };
 static size_t regex_pcre_error_str_len = NUM_ELEMENTS(regex_pcre_error_str);
 
-#ifdef HAVE_PCRE_JIT_EXEC
-/** Free a PCRE JIT stack on exit
- *
- * @param[in] stack to free.
- */
-static void _pcre_jit_stack_free(void *stack)
-{
-	pcre_jit_stack_free(stack);
-}
-#endif
-
 /** Wrapper around pcre_exec
  *
  * @param[in] preg	The compiled expression.
@@ -864,22 +917,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 	int	ret;
 	size_t	matches;
 
-#ifdef HAVE_PCRE_JIT_EXEC
-	/*
-	 *	Allocate thread local JIT stack
-	 */
-	if (!fr_pcre_jit_stack) {
-		/*
-		 *	Starts at 128K, max is 512K per thread.
-		 */
-		fr_atexit_thread_local(fr_pcre_jit_stack, _pcre_jit_stack_free,
-					       pcre_jit_stack_alloc(FR_PCRE_JIT_STACK_MIN, FR_PCRE_JIT_STACK_MAX));
-		if (!fr_pcre_jit_stack) {
-			fr_strerror_const("Allocating JIT stack failed");
-			return -1;
-		}
-	}
-#endif
+	if (unlikely(pcre_tls_init() < 0)) return -1;
 
 	/*
 	 *	Disable capturing
@@ -899,7 +937,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
 #ifdef HAVE_PCRE_JIT_EXEC
 	if (preg->jitd) {
 		ret = pcre_jit_exec(preg->compiled, preg->extra, subject, len, 0, 0,
-				    regmatch ? (int *)regmatch->match_data : NULL, matches * 3, fr_pcre_jit_stack);
+				    regmatch ? (int *)regmatch->match_data : NULL, matches * 3, fr_pcre_tls->jit_stack);
 	} else
 #endif
 	{
