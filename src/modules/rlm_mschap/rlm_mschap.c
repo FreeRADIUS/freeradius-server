@@ -1003,12 +1003,10 @@ ntlm_auth_err:
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 		{
 			EVP_CIPHER_CTX *ctx;
-			EVP_CIPHER *cipher;
 			int ntlen = sizeof(nt_pass_decrypted);
 
 			ctx = EVP_CIPHER_CTX_new();
-			cipher = EVP_rc4();
-			if (!ctx || !cipher) {
+			if (!ctx) {
 				REDEBUG("Failed getting RC4 from OpenSSL");
 				return -1;
 			}
@@ -1018,7 +1016,7 @@ ntlm_auth_err:
 				return -1;
 			}
 
-			if (!EVP_EncryptInit_ex(ctx, cipher, NULL, nt_password->vp_octets, NULL)) {
+			if (!EVP_EncryptInit_ex(ctx, EVP_rc4(), NULL, nt_password->vp_octets, NULL)) {
 				REDEBUG("Failed setting key value");
 				return -1;
 			}
