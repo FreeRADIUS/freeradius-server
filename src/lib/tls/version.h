@@ -14,34 +14,39 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-
 /**
  * $Id$
  *
- * @file lib/server/dependency.h
- * @brief Version checking functions
+ * @file lib/tls/version.h
+ * @brief Structures for dealing with OpenSSL library versions
  *
- * @copyright 2017 The FreeRADIUS server project
+ * @copyright 2022 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-RCSIDH(dependency_h, "$Id$")
+RCSIDH(tls_version_h, "$Id$")
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern char const	*radiusd_version;
-extern char const	*radiusd_version_short;
+#include "openssl_user_macros.h"
 
-#include <freeradius-devel/server/cf_util.h>
+#ifdef WITH_TLS
+#  include <openssl/ssl.h>
+#endif
 
-#include <stddef.h>
+/*
+ *	If we're not building with TLS, dummy functions will
+ *	be provided.
+ */
+int 		fr_openssl_version_consistent(void);
+char const	*fr_openssl_version_str_from_num(uint32_t version);
+char const	*fr_openssl_version_basic(void);
+char const	*fr_openssl_version_range(uint32_t low, uint32_t high);
+char const	*fr_openssl_version_expanded(void);
 
-int		rad_check_lib_magic(uint64_t magic);
-int		dependency_feature_add(CONF_SECTION *cs, char const *name, bool enabled);
-int		dependency_version_number_add(CONF_SECTION *cs, char const *name, char const *version);
-void		dependency_features_init(CONF_SECTION *cs) CC_HINT(nonnull);
-void		dependency_version_numbers_init(CONF_SECTION *cs);
-void		dependency_version_print(void);
+#ifdef ENABLE_OPENSSL_VERSION_CHECK
+int		fr_openssl_version_check(char const *acknowledged);
+#endif
 
 #ifdef __cplusplus
 }

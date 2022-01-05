@@ -74,8 +74,8 @@ RCSID("$Id$")
 #  include <systemd/sd-daemon.h>
 #endif
 
-#if defined(WITH_TLS) && OPENSSL_VERSION_NUMBER >= 0x30000000L
-#  include <openssl/provider.h>
+#ifdef WITH_TLS
+#  include <freeradius-devel/tls/version.h>
 #endif
 
 char const *radiusd_version = RADIUSD_VERSION_STRING_BUILD("FreeRADIUS");
@@ -485,7 +485,7 @@ int main(int argc, char *argv[])
 	 *  Mismatch between build time OpenSSL and linked SSL, better to die
 	 *  here than segfault later.
 	 */
-	if (ssl_check_consistency() < 0) EXIT_WITH_FAILURE;
+	if (fr_openssl_version_consistent() < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
@@ -623,11 +623,11 @@ int main(int argc, char *argv[])
 	/*
 	 *  Check for vulnerabilities in the version of libssl were linked against.
 	 */
-#if defined(WITH_TLS) && defined(ENABLE_OPENSSL_VERSION_CHECK)
-	if (fr_openssl_version_check(config->allow_vulnerable_openssl) < 0) EXIT_WITH_FAILURE;
-#endif
-
 #ifdef WITH_TLS
+#  ifdef ENABLE_OPENSSL_VERSION_CHECK
+	if (fr_openssl_version_check(config->allow_vulnerable_openssl) < 0) EXIT_WITH_FAILURE;
+#  endif
+
 	/*
 	 *  Toggle FIPS mode
 	 */

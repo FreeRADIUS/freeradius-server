@@ -38,233 +38,15 @@ static CONF_SECTION *default_version_cs;		//!< Default configuration section to 
 #include <freeradius-devel/tls/openssl_user_macros.h>
 
 #ifdef WITH_TLS
-#  include <freeradius-devel/tls/openssl_user_macros.h>
+#  include <freeradius-devel/tls/version.h>
 #  include <openssl/crypto.h>
 #  include <openssl/opensslv.h>
 #  include <openssl/engine.h>
+#endif
 
 #ifdef HAVE_VALGRIND_H
 #  include <valgrind.h>
 #endif
-
-static long ssl_built = OPENSSL_VERSION_NUMBER;
-
-/** Check built and linked versions of OpenSSL match
- *
- * OpenSSL version number consists of:
- * MNNFFPPS: major minor fix patch status
- *
- * Where status >= 0 && < 10 means beta, and status 10 means release.
- *
- *	https://wiki.openssl.org/index.php/Versioning
- *
- * Startup check for whether the linked version of OpenSSL matches the
- * version the server was built against.
- *
- * @return
- *	- 0 if ok.
- *	- -1 if not ok.
- */
-int ssl_check_consistency(void)
-{
-	unsigned long ssl_linked;
-
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
-	ssl_linked = OpenSSL_version_num();
-#else
-	ssl_linked = (unsigned long)SSLeay();
-#endif
-
-	/*
-	 *	Major and minor versions mismatch, that's bad.
-	 */
-	if ((ssl_linked & 0xfff00000) != (ssl_built & 0xfff00000)) goto mismatch;
-
-	/*
-	 *	1.1.0 and later export all of the APIs we need, so we
-	 *	don't care about mismatches in fix / patch / status
-	 *	fields.  If the major && minor fields match, that's
-	 *	good enough.
-	 */
-	if ((ssl_linked & 0xfff00000) >= 0x10100000) return 0;
-
-	/*
-	 *	Before 1.1.0, we need all kinds of stupid checks to
-	 *	see if it might work.
-	 */
-
-	/*
-	 *	Status mismatch always triggers error.
-	 */
-	if ((ssl_linked & 0x0000000f) != (ssl_built & 0x0000000f)) {
-	mismatch:
-		ERROR("libssl version mismatch.  built: %lx linked: %lx",
-		      (unsigned long) ssl_built,
-		      (unsigned long) ssl_linked);
-
-		return -1;
-	}
-
-	/*
-	 *	Use the OpenSSH approach and relax fix checks after version
-	 *	1.0.0 and only allow moving backwards within a patch
-	 *	series.
-	 */
-	if (ssl_built & 0xf0000000) {
-		if ((ssl_built & 0xfffff000) != (ssl_linked & 0xfffff000) ||
-		    (ssl_built & 0x00000ff0) > (ssl_linked & 0x00000ff0)) goto mismatch;
-	/*
-	 *	Before 1.0.0 we require the same major minor and fix version
-	 *	and ignore the patch number.
-	 */
-	} else if ((ssl_built & 0xfffff000) != (ssl_linked & 0xfffff000)) goto mismatch;
-
-	return 0;
-}
-
-/** Convert a version number to a text string
- *
- * @note Not thread safe.
- *
- * @param v version to convert.
- * @return pointer to a static buffer containing the version string.
- */
-char const *ssl_version_by_num(uint32_t v)
-{
-	/* 2 (%s) + 1 (.) + 2 (%i) + 1 (.) + 2 (%i) + 1 (c) + 8 (%s) + \0 */
-	static char buffer[18];
-	char *p = buffer;
-
-	p += sprintf(p, "%u.%u.%u",
-		     (0xf0000000 & v) >> 28,
-		     (0x0ff00000 & v) >> 20,
-		     (0x000ff000 & v) >> 12);
-
-	if ((0x00000ff0 & v) >> 4) {
-		*p++ =  (char) (0x60 + ((0x00000ff0 & v) >> 4));
-	}
-
-	*p++ = ' ';
-
-	/*
-	 *	Development (0)
-	 */
-	if ((0x0000000f & v) == 0) {
-		strcpy(p, "dev");
-	/*
-	 *	Beta (1-14)
-	 */
-	} else if ((0x0000000f & v) <= 14) {
-		sprintf(p, "beta %u", 0x0000000f & v);
-	} else {
-		strcpy(p, "release");
-	}
-
-	return buffer;
-}
-
-/** Convert two openssl version numbers into a range string
- *
- * @note Not thread safe.
- *
- * @param low version to convert.
- * @param high version to convert.
- * @return pointer to a static buffer containing the version range string.
- */
-char const *ssl_version_range(uint32_t low, uint32_t high)
-{
-	/* 18 (version) + 3 ( - ) + 18 (version) */
-	static char buffer[40];
-	char *p = buffer;
-
-	p += strlcpy(p, ssl_version_by_num(low), sizeof(buffer));
-	p += strlcpy(p, " - ", sizeof(buffer) - (p - buffer));
-	strlcpy(p, ssl_version_by_num(high), sizeof(buffer) - (p - buffer));
-
-	return buffer;
-}
-
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-/** Return the linked SSL version number as a string
- *
- * @return pointer to a static buffer containing the version string.
- */
-char const *ssl_version_num(void)
-{
-	unsigned long ssl_linked;
-
-	ssl_linked = OpenSSL_version_num();
-	return ssl_version_by_num((uint32_t)ssl_linked);
-}
-
-/** Print the current linked version of Openssl
- *
- * Print the currently linked version of the OpenSSL library.
- *
- * @note Not thread safe.
- * @return pointer to a static buffer containing libssl version information.
- */
-char const *ssl_version(void)
-{
-	static char buffer[256];
-
-	unsigned long v = OpenSSL_version_num();
-
-	snprintf(buffer, sizeof(buffer), "%s 0x%.8lx (%s)",
-		 OpenSSL_version(OPENSSL_VERSION),		/* Not all builds include a useful version number */
-		 v,
-		 ssl_version_by_num(v));
-
-	return buffer;
-}
-#  else
-/** Return the linked SSL version number as a string
- *
- * @return pointer to a static buffer containing the version string.
- */
-char const *ssl_version_num(void)
-{
-	long ssl_linked;
-
-	ssl_linked = SSLeay();
-	return ssl_version_by_num((uint32_t)ssl_linked);
-}
-
-/** Print the current linked version of Openssl
- *
- * Print the currently linked version of the OpenSSL library.
- *
- * @note Not thread safe.
- * @return pointer to a static buffer containing libssl version information.
- */
-char const *ssl_version(void)
-{
-	static char buffer[256];
-	long ssl_linked = SSLeay();
-
-	snprintf(buffer, sizeof(buffer), "%s 0x%.8x (%s)",
-		 SSLeay_version(SSLEAY_VERSION),		/* Not all builds include a useful version number */
-		 ssl_linked,
-		 ssl_version_by_num(v));
-
-	return buffer;
-}
-#  endif
-#else
-int ssl_check_consistency(void) {
-	return 0;
-}
-
-char const *ssl_version_num(void)
-{
-	return "not linked";
-}
-
-char const *ssl_version()
-{
-	return "not linked";
-}
-#endif /* ifdef WITH_TLS */
 
 /** Check if the application linking to the library has the correct magic number
  *
@@ -522,7 +304,9 @@ void dependency_version_numbers_init(CONF_SECTION *cs)
 	snprintf(buffer, sizeof(buffer), "%i.%i.*", talloc_version_major(), talloc_version_minor());
 	dependency_version_number_add(cs, "talloc", buffer);
 
-	dependency_version_number_add(cs, "ssl", ssl_version_num());
+#if WITH_TLS
+	dependency_version_number_add(cs, "ssl", fr_openssl_version_basic());
+#endif
 
 #ifdef HAVE_REGEX
 #  ifdef HAVE_REGEX_PCRE2

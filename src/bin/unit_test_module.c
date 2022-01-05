@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/io/listen.h>
 
 #include <freeradius-devel/tls/base.h>
+#include <freeradius-devel/tls/version.h>
 
 #include <freeradius-devel/unlang/base.h>
 
@@ -643,7 +644,7 @@ int main(int argc, char *argv[])
 	 *  Mismatch between build time OpenSSL and linked SSL, better to die
 	 *  here than segfault later.
 	 */
-	if (ssl_check_consistency() < 0) EXIT_WITH_FAILURE;
+	if (fr_openssl_version_consistent() < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
