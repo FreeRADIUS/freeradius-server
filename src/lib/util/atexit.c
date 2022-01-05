@@ -81,8 +81,8 @@ static bool				is_exiting;
 static int _atexit_entry_free(fr_atexit_entry_t *e)
 {
 	ATEXIT_DEBUG("%s - Thread %u freeing %p/%p func=%p, uctx=%p (alloced %s:%u)",
-			   __FUNCTION__, (unsigned int)pthread_self(),
-			   e->list, e, e->func, e->uctx, e->file, e->line);
+		     __FUNCTION__, (unsigned int)pthread_self(),
+		     e->list, e, e->func, e->uctx, e->file, e->line);
 
 	if (fr_dlist_entry_in_list(&e->entry)) fr_dlist_remove(&e->list->head, e);
 
@@ -116,8 +116,8 @@ static fr_atexit_entry_t *atexit_entry_alloc(NDEBUG_LOCATION_ARGS
 #endif
 
 	ATEXIT_DEBUG("%s - Thread %u arming %p/%p func=%p, uctx=%p (alloced %s:%u)",
-			   __FUNCTION__, (unsigned int)pthread_self(),
-			   list, e, e->func, e->uctx, e->file, e->line);
+		     __FUNCTION__, (unsigned int)pthread_self(),
+		     list, e, e->func, e->uctx, e->file, e->line);
 
 	fr_dlist_insert_head(&list->head, e);
 	talloc_set_destructor(e, _atexit_entry_free);
@@ -130,8 +130,7 @@ static fr_atexit_entry_t *atexit_entry_alloc(NDEBUG_LOCATION_ARGS
  */
 static int _thread_local_list_free(fr_atexit_list_t *list)
 {
-	ATEXIT_DEBUG("%s - Freeing _Thread_local destructor list %p",
-			   __FUNCTION__, list);
+	ATEXIT_DEBUG("%s - Freeing _Thread_local destructor list %p",  __FUNCTION__, list);
 
 	fr_dlist_talloc_free(&list->head);	/* Free in order */
 	list->e->func = NULL;			/* Disarm the global entry that'd free the thread-specific list */
@@ -150,10 +149,9 @@ static void _thread_local_free(void *list)
 /** Talloc destructor for freeing list elements in order
  *
  */
-static int _global_list_free(fr_atexit_list_t *list)
+static int _destructor_list_free(fr_atexit_list_t *list)
 {
-	ATEXIT_DEBUG("%s - Freeing global destructor list %p",
-			   __FUNCTION__, list);
+	ATEXIT_DEBUG("%s - Freeing destructor list %p", __FUNCTION__, list);
 
 	fr_dlist_talloc_free(&list->head);	/* Free in order */
 	return 0;
@@ -186,7 +184,7 @@ int fr_atexit_global_setup(void)
 	ATEXIT_DEBUG("%s - Alloced global destructor list %p", __FUNCTION__, fr_atexit_global);
 
 	fr_dlist_talloc_init(&fr_atexit_global->head, fr_atexit_entry_t, entry);
-	talloc_set_destructor(fr_atexit_global, _global_list_free);
+	talloc_set_destructor(fr_atexit_global, _destructor_list_free);
 
 	fr_atexit_threads = talloc_zero(NULL, fr_atexit_list_t);
 	if (unlikely(!fr_atexit_threads)) return -1;
@@ -194,7 +192,7 @@ int fr_atexit_global_setup(void)
 	ATEXIT_DEBUG("%s - Alloced threads destructor list %p", __FUNCTION__, fr_atexit_threads);
 
 	fr_dlist_talloc_init(&fr_atexit_threads->head, fr_atexit_entry_t, entry);
-	talloc_set_destructor(fr_atexit_threads, _global_list_free);
+	talloc_set_destructor(fr_atexit_threads, _destructor_list_free);
 
 	atexit(_global_free);	/* Call all remaining destructors at process exit */
 
@@ -310,7 +308,7 @@ unsigned int fr_atexit_thread_local_disarm(bool uctx_scope, fr_atexit_t func, vo
 	while ((e = fr_dlist_next(&fr_atexit_thread_local->head, e))) {
 		fr_atexit_entry_t *disarm;
 
-		if ((e->func != func) || !uctx_scope || (e->uctx != uctx)) continue;
+		if ((e->func != func) || ((e->uctx != uctx) && uctx_scope)) continue;
 
 		ATEXIT_DEBUG("%s - Thread %u disarming %p/%p func=%p, uctx=%p (alloced %s:%u)",
 			     __FUNCTION__,
@@ -368,7 +366,7 @@ unsigned int fr_atexit_global_disarm(bool uctx_scope, fr_atexit_t func, void con
 	while ((e = fr_dlist_next(&fr_atexit_global->head, e))) {
 		fr_atexit_entry_t *disarm;
 
-		if ((e->func != func) || !uctx_scope || (e->uctx != uctx)) continue;
+		if ((e->func != func) || ((e->uctx != uctx) && uctx_scope)) continue;
 
 		ATEXIT_DEBUG("%s - Disarming %p/%p func=%p, uctx=%p (alloced %s:%u)",
 			     __FUNCTION__,
@@ -424,13 +422,13 @@ unsigned int fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uc
 	fr_atexit_list_t		*list;
 	unsigned int			count = 0;
 
-	if (!fr_atexit_global) return 0;
+	if (!fr_atexit_global) goto do_threads;
 
 	/*
 	 *	Iterate over the global destructors
 	 */
 	while ((e = fr_dlist_next(&fr_atexit_global->head, e))) {
-		if ((e->func != func) || !uctx_scope || (e->uctx != uctx)) continue;
+		if ((e->func != func) || ((e->uctx != uctx) && uctx_scope)) continue;
 
 		ATEXIT_DEBUG("%s - Triggering %p/%p func=%p, uctx=%p (alloced %s:%u)",
 			     __FUNCTION__,
@@ -440,6 +438,9 @@ unsigned int fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uc
 		e = fr_dlist_talloc_free_item(&fr_atexit_global->head, e);
 	}
 	e = NULL;
+
+do_threads:
+	if (!fr_atexit_threads) return 0;
 
 	/*
 	 *	Iterate over the list of thread local
@@ -452,7 +453,7 @@ unsigned int fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uc
 		list = talloc_get_type_abort(e->uctx, fr_atexit_list_t);
 		ee = NULL;
 		while ((ee = fr_dlist_next(&list->head, ee))) {
-			if ((ee->func != func) || !uctx_scope || (e->uctx != uctx)) continue;
+			if ((ee->func != func) || ((ee->uctx != uctx) && uctx_scope)) continue;
 
 			ATEXIT_DEBUG("%s - Thread %u triggering %p/%p func=%p, uctx=%p (alloced %s:%u)",
 				     __FUNCTION__,
