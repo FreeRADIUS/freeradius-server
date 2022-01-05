@@ -7,6 +7,10 @@ on:
       - run-fuzzer**
   pull_request:
 
+env:
+  HOSTAPD_BUILD_DIR: eapol_test.ci
+  HOSTAPD_GIT_TAG: hostap_2_9
+
 jobs:
   freebsd-build:
 
@@ -38,13 +42,20 @@ jobs:
       run: git lfs pull
       working-directory: freeradius
 
+    - name: Restore eapol_test build directory from cache
+      uses: actions/cache@v2
+      id: hostapd-cache
+      with:
+        path: ${{ env.HOSTAPD_BUILD_DIR }}
+        key: hostapd-freebsd-${{ env.HOSTAPD_GIT_TAG }}-v4
+
     - name: Test using a FreeBSD VirtualBox VM
       uses: vmactions/freebsd-vm@v0.1.5
       with:
         usesh: true
-#        sync: sshfs
         sync: rsync
         mem: 4096
+        envs: 'HOSTAPD_BUILD_DIR HOSTAPD_GIT_TAG'
         prepare: |
           pkg install -y         \
             curl                 \
@@ -76,13 +87,8 @@ jobs:
           cd freeradius
           ./configure
           gmake -j `sysctl -n hw.ncpu`
-          # Disable some tests that are currently broken on FreeBSD
-          # Failing with: talloc type issue
-          echo                   > src/lib/server/trunk_tests.mk
           # Failing with: Failed to send packet for ID 123: udp_send failed: EINVAL: Invalid argument
           echo 'test.radclient:' > src/tests/radclient/all.mk
-          echo 'test.digest:'    > src/tests/digest/all.mk
-          echo 'test.radmin:'    > src/tests/radmin/all.mk
           gmake test
 
     #
