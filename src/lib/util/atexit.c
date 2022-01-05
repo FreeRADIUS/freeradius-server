@@ -246,8 +246,8 @@ int _fr_atexit_thread_local(NDEBUG_LOCATION_ARGS
 		if (unlikely(!list)) return -1;
 
 		ATEXIT_DEBUG("%s - Thread %u alloced _Thread_local destructor list %p",
-				   __FUNCTION__,
-				   (unsigned int)pthread_self(), list);
+			     __FUNCTION__,
+			     (unsigned int)pthread_self(), list);
 
 		fr_dlist_talloc_init(&list->head, fr_atexit_entry_t, entry);
 		(void) pthread_key_create(&list->key, _thread_local_free);
