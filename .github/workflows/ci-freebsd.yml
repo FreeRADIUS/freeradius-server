@@ -42,7 +42,6 @@ jobs:
       uses: vmactions/freebsd-vm@v0.1.5
       with:
         usesh: true
-#        sync: sshfs
         sync: rsync
         mem: 4096
         prepare: |
@@ -76,13 +75,8 @@ jobs:
           cd freeradius
           ./configure
           gmake -j `sysctl -n hw.ncpu`
-          # Disable some tests that are currently broken on FreeBSD
-          # Failing with: talloc type issue
-          echo                   > src/lib/server/trunk_tests.mk
           # Failing with: Failed to send packet for ID 123: udp_send failed: EINVAL: Invalid argument
           echo 'test.radclient:' > src/tests/radclient/all.mk
-          echo 'test.digest:'    > src/tests/digest/all.mk
-          echo 'test.radmin:'    > src/tests/radmin/all.mk
           gmake test
 
     #
