@@ -538,21 +538,29 @@ static void test_fr_pair_list_sort(void)
 
 static void test_fr_pair_value_copy(void)
 {
-	fr_pair_t *vp1, vp2;
+	fr_pair_t *vp1, *vp2;
 
 	TEST_CASE("Create 'vp1' with Test-Integer = 123");
 	TEST_CHECK((vp1 = fr_pair_find_by_da_idx(&test_pairs, fr_dict_attr_test_uint32, 0)) != NULL);
+	vp1->vp_uint32 = 123;
 
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp1);
 
-	vp1->vp_uint32 = 123;
+	TEST_CASE("Create 'vp2'");
+	TEST_CHECK((vp2 = fr_pair_afrom_da(autofree, fr_dict_attr_test_uint32)) != NULL);
+
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp2);
 
 	TEST_CASE("Copy 'vp1' to 'vp2' using fr_pair_value_copy()");
-	TEST_CHECK(fr_pair_value_copy(&vp2, vp1) == 0);
+	TEST_CHECK(fr_pair_value_copy(vp2, vp1) == 0);
+
+	TEST_CASE("Validating PAIR_VERIFY()");
+	PAIR_VERIFY(vp2);
 
 	TEST_CASE("Check (vp1 == vp2)");
-	TEST_CHECK(vp2.vp_uint32 == 123);
+	TEST_CHECK(vp2->vp_uint32 == 123);
 }
 
 static void test_fr_pair_value_from_str(void)
