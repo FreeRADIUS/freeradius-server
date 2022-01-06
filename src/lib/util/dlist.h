@@ -1047,6 +1047,11 @@ static inline void fr_dlist_sort(fr_dlist_head_t *list, fr_cmp_t cmp)
 	}
 }
 
+static inline void fr_dlist_noop(void)
+{
+	return;
+}
+
 /** Expands to the type name used for the entry wrapper structure
  *
  * @param[in] _name	Prefix we add to type-specific structures.
@@ -1085,7 +1090,12 @@ DIAG_OFF(unused-function) \
 	static inline	fr_dlist_head_t *fr_dlist_ ## _name ## _list_head(FR_DLIST_HEAD_TYPE(_name) const *list) \
 		{ return	UNCONST(fr_dlist_head_t *, &list->head); } \
 	static inline	void fr_dlist_ ## _name ## _entry_init(_element_type *entry) \
-		{		fr_dlist_entry_init(&entry->_element_entry.entry); } \
+		{ \
+			_Generic((&entry->_element_entry), \
+				 FR_DLIST_ENTRY_TYPE(_name) *: fr_dlist_entry_init(UNCONST(fr_dlist_t *, &entry->_element_entry.entry)), \
+				 FR_DLIST_ENTRY_TYPE(_name) const *: fr_dlist_noop()\
+			); \
+		} \
 \
 	static inline	void fr_dlist_ ## _name ## _init(FR_DLIST_HEAD_TYPE(_name) *list) \
 		{		_fr_dlist_init(&list->head, offsetof(_element_type, _element_entry), NULL); } \
