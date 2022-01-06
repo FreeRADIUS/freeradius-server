@@ -87,8 +87,6 @@ jobs:
           cd freeradius
           ./configure
           gmake -j `sysctl -n hw.ncpu`
-          # Failing with: Failed to send packet for ID 123: udp_send failed: EINVAL: Invalid argument
-          echo 'test.radclient:' > src/tests/radclient/all.mk
           gmake test
 
     #
