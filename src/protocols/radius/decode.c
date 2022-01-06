@@ -795,13 +795,13 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	the real data.
 	 */
 	{
-		end = packet_ctx->end;
+		uint8_t const *tmp = packet_ctx->end;
 		packet_ctx->end = head + fraglen;
 
 		ret = fr_radius_decode_pair_value(ctx, out,
 						  parent, head, fraglen, packet_ctx);
 
-		packet_ctx->end = end;
+		packet_ctx->end = tmp;
 	}
 
 	talloc_free(head);
@@ -977,13 +977,15 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	the real data.
 	 */
 	{
-		end = packet_ctx->end;
+		uint8_t const *tmp = packet_ctx->end;
 		packet_ctx->end = head + wimax_len;
 
+		FR_PROTO_TRACE("WiMAX decode concatenated");
+		FR_PROTO_HEX_DUMP(head, wimax_len, "%s", __FUNCTION__ );
 		ret = fr_radius_decode_pair_value(ctx, out,
-						  parent, head, wimax_len, packet_ctx);
+						  da, head, wimax_len, packet_ctx);
 
-		packet_ctx->end = end;
+		packet_ctx->end = tmp;
 	}
 
 	talloc_free(head);
