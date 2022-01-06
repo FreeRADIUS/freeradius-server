@@ -830,20 +830,32 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (!packet_ctx->tmp_ctx) return -1;
 #endif
 
+	fr_assert(packet_ctx->end != NULL);
+	fr_assert((data + attr_len) <= packet_ctx->end);
+
 	/*
 	 *	data = VID VID VID VID WiMAX-Attr WiMAX-Len Continuation ...
 	 */
-	if (attr_len < 8) return -1;
+	if (attr_len < 8) {
+		FR_PROTO_TRACE("attribute is too small to be WiMAX");
+		return -1;
+	}
 
 	/*
 	 *	WiMAX-Attr WiMAX-Len Continuation
 	 */
-	if (data[5] < 3) return -1;
+	if (data[5] < 3) {
+		FR_PROTO_TRACE("attribute is too small to be WiMAX-Attr-WiMAX-Len Continuation");
+		return -1;
+	}
 
 	/*
 	 *	The WiMAX-Len + 4 VID must exactly fill the attribute.
 	 */
-	if (((size_t) (data[5] + 4)) != attr_len) return -1;
+	if (((size_t) (data[5] + 4)) != attr_len) {
+		FR_PROTO_TRACE("WiMAX VSA does not exactly fill the attribute");
+		return -1;
+	}
 
 	da = fr_dict_attr_child_by_num(parent, data[4]);
 	if (!da) da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, data[4]);
@@ -854,6 +866,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	No continuation, just decode the attributre in place.
 	 */
 	if ((data[6] & 0x80) == 0) {
+		FR_PROTO_TRACE("WiMAX no continuation");
 		ret = fr_radius_decode_pair_value(ctx, out,
 						  da, data + 7, data[5] - 3, packet_ctx);
 		if (ret < 0) return ret;
@@ -878,18 +891,27 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	Not enough room for Attribute + length +
 		 *	continuation, it's bad.
 		 */
-		if ((end - attr) < 3) return -1;
+		if ((end - attr) < 3) {
+			FR_PROTO_TRACE("end - attr < 3");
+			return -1;
+		}
 
 		/*
 		 *	Must have non-zero data in the attribute.
 		 */
-		if (attr[1] <= 3) return -1;
+		if (attr[1] <= 3) {
+			FR_PROTO_TRACE("attr[1] <= 3");
+			return -1;
+		}
 
 		/*
 		 *	If the WiMAX attribute overflows the packet,
 		 *	it's bad.
 		 */
-		if ((attr + attr[1]) > end) return -1;
+		if ((attr + attr[1]) > end) {
+			FR_PROTO_TRACE("attr + attr[1]) > end");
+			return -1;
+		}
 
 		/*
 		 *	Check the continuation flag.
@@ -906,7 +928,10 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	There's more data, but we're at the end of the
 		 *	packet.  The attribute is malformed!
 		 */
-		if (more && ((attr + attr[1]) == end)) return -1;
+		if (more && ((attr + attr[1]) == end)) {
+			FR_PROTO_TRACE("more && ((attr + attr[1]) == end)");
+			return -1;
+		}
 
 		/*
 		 *	Add in the length of the data we need to
@@ -932,16 +957,40 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	No room for Vendor-Specific + length +
 		 *	Vendor(4) + attr + length + continuation + data
 		 */
-		if ((end - attr) < 9) return -1;
+		if ((end - attr) < 9) {
+			FR_PROTO_TRACE("(end - attr) < 9");
+			return -1;
+		}
 
-		if (attr[0] != FR_VENDOR_SPECIFIC) return -1;
-		if (attr[1] < 9) return -1;
-		if ((attr + attr[1]) > end) return -1;
-		if (memcmp(data, attr + 2, 4) != 0) return -1; /* not WiMAX Vendor ID */
+		if (attr[0] != FR_VENDOR_SPECIFIC) {
+			FR_PROTO_TRACE("attr[0] != FR_VENDOR_SPECIFIC");
+			return -1;
+		}
 
-		if (attr[1] != (attr[7] + 6)) return -1; /* WiMAX attr doesn't exactly fill the VSA */
+		if (attr[1] < 9) {
+			FR_PROTO_TRACE("attr[1] < 9");
+			return -1;
+		}
 
-		if (data[4] != attr[6]) return -1; /* different WiMAX attribute */
+		if ((attr + attr[1]) > end) {
+			FR_PROTO_TRACE("(attr + attr[1]) > end");
+			return -1;
+		}
+
+		if (memcmp(data, attr + 2, 4) != 0) {
+			FR_PROTO_TRACE("not the same vendor");
+			return -1; /* not WiMAX Vendor ID */
+		}
+
+		if (attr[1] != (attr[7] + 6)) {
+			FR_PROTO_TRACE("attr[1] != (attr[7] + 6)");
+			return -1; /* WiMAX attr doesn't exactly fill the VSA */
+		}
+
+		if (data[4] != attr[6]) {
+			FR_PROTO_TRACE("data[4] != attr[6]");
+			return -1; /* different WiMAX attribute */
+		}
 
 		/*
 		 *	Skip over the Vendor-Specific header, and
@@ -953,7 +1002,10 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	/*
 	 *	No data in the WiMAX attribute, make a "raw" one.
 	 */
-	if (!wimax_len) return -1;
+	if (!wimax_len) {
+		FR_PROTO_TRACE("!wimax_len");
+		return -1;
+	}
 
 	head = tail = talloc_array(ctx, uint8_t, wimax_len);
 	if (!head) return -1;
