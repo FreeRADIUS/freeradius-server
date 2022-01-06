@@ -291,10 +291,10 @@ certs:
 ######################################################################
 BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
 
-freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz: .git
+freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz: .git/HEAD
 	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ $(BRANCH) | gzip > $@
 
-freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: .git
+freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: .git/HEAD
 	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ $(BRANCH) | bzip2 > $@
 
 %.sig: %
