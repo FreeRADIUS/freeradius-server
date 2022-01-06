@@ -790,8 +790,20 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	FR_PROTO_HEX_DUMP(head, fraglen, "long-extended fragments");
 
-	ret = fr_radius_decode_pair_value(ctx, out,
-					  parent, head, fraglen, packet_ctx);
+	/*
+	 *	Reset the "end" pointer, because we're not passing in
+	 *	the real data.
+	 */
+	{
+		end = packet_ctx->end;
+		packet_ctx->end = head + fraglen;
+
+		ret = fr_radius_decode_pair_value(ctx, out,
+						  parent, head, fraglen, packet_ctx);
+
+		packet_ctx->end = end;
+	}
+
 	talloc_free(head);
 	if (ret < 0) return ret;
 
@@ -960,8 +972,20 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	FR_PROTO_HEX_DUMP(head, wimax_len, "Wimax fragments");
 
-	ret = fr_radius_decode_pair_value(ctx, out,
-					  da, head, wimax_len, packet_ctx);
+	/*
+	 *	Reset the "end" pointer, because we're not passing in
+	 *	the real data.
+	 */
+	{
+		end = packet_ctx->end;
+		packet_ctx->end = head + wimax_len;
+
+		ret = fr_radius_decode_pair_value(ctx, out,
+						  parent, head, wimax_len, packet_ctx);
+
+		packet_ctx->end = end;
+	}
+
 	talloc_free(head);
 	if (ret < 0) return ret;
 
