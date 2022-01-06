@@ -89,23 +89,6 @@ if ! [ -e "${HOSTAPD_DIR}/.git" ] && ! git clone --branch "${HOSTAPD_GIT_TAG}" -
     exit 1
 fi
 
-#
-#  Required for LLVM builds until 2.10 which includes commit 12388313a0
-#
-patch -d "${TMP_BUILD_DIR}/hostapd" -p1 --ignore-whitespace <<'EOF'
---- a/src/radius/radius_client.c
-+++ b/src/radius/radius_client.c
-@@ -814,7 +814,7 @@ static void radius_client_receive(int sock, void *eloop_ctx, void *sock_ctx)
- {
-        struct radius_client_data *radius = eloop_ctx;
-        struct hostapd_radius_servers *conf = radius->conf;
--       RadiusType msg_type = (RadiusType) sock_ctx;
-+       RadiusType msg_type = (uintptr_t) sock_ctx;
-        int len, roundtrip;
-        unsigned char buf[3000];
-        struct radius_msg *msg;
-EOF
-
 cp -n "$BUILD_CONF_FILE" "$WPA_SUPPLICANT_DIR/.config"
 
 if ! ${MAKE} -C "${WPA_SUPPLICANT_DIR}" -j8 eapol_test 1>&2 || [ ! -e "${WPA_SUPPLICANT_DIR}/eapol_test" ]; then
