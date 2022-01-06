@@ -52,13 +52,13 @@ jobs:
     - name: Extra repos
       if: ${{ startsWith(matrix.env.NAME, 'centos-') }}
       run: |
-        echo '[ltb-project]' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'name=LTB project packages' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'baseurl=https://ltb-project.org/rpm/$releasever/$basearch' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'enabled=1' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'gpgcheck=1' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
-        rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
+        echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
+        echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
+        echo 'baseurl=https://ltb-project.org/rpm/$releasever/$basearch'  >> /etc/yum.repos.d/ltb-project.repo
+        echo 'enabled=1'                                                  >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgcheck=1'                                                 >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgkey=https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
+        rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
         yum install -y epel-release
 
     - name: Enable PowerTools on CentOS 8
@@ -166,13 +166,13 @@ jobs:
     - name: Extra repos for CentOS
       if: ${{ startsWith(matrix.env.NAME, 'centos-') }}
       run: |
-        echo '[ltb-project]' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'name=LTB project packages' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'baseurl=https://ltb-project.org/rpm/$releasever/$basearch' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'enabled=1' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'gpgcheck=1' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
-        rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
+        echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
+        echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
+        echo 'baseurl=https://ltb-project.org/rpm/$releasever/$basearch'  >> /etc/yum.repos.d/ltb-project.repo
+        echo 'enabled=1'                                                  >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgcheck=1'                                                 >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgkey=https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
+        rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
         yum install -y epel-release
 
     - name: Enable PowerTools on CentOS 8
