@@ -1757,7 +1757,6 @@ static void test_connection_levels_alternating_edges(void)
 	talloc_free(ctx);
 }
 
-#if 0
 #undef fr_time	/* Need to the real time */
 static void test_enqueue_and_io_speed(void)
 {
@@ -1776,8 +1775,7 @@ static void test_enqueue_and_io_speed(void)
 					.manage_interval = fr_time_delta_from_nsec(NSEC * 0.5)
 				};
 	size_t			i = 0, requests = 100000;
-	fr_time_t		enqueue_start = fr_time_wrap(0), enqueue_stop = fr_time_wrap(0),
-				io_start = fr_time_wrap(0), io_stop = fr_time_wrap(0);
+	fr_time_t		enqueue_start, enqueue_stop, io_start, io_stop;
 	fr_time_delta_t		enqueue_time, io_time, total_time;
 	fr_trunk_request_t	**treq_array;
 	test_proto_request_t	**preq_array;
@@ -1830,7 +1828,7 @@ static void test_enqueue_and_io_speed(void)
 	if (acutest_verbose_level_ >= 1) {
 		INFO("Enqueue time %pV (%u rps) (%"PRIu64"/%"PRIu64")",
 		     fr_box_time_delta(enqueue_time),
-		     (uint32_t)(requests / ((float)fr_time_delta_unwrap(enqueue_time) / NSEC)),
+		     (uint32_t)(requests / ((float)(fr_time_delta_unwrap(enqueue_time)) / NSEC)),
 		     trunk->pub.req_alloc_new, trunk->pub.req_alloc_reused);
 	}
 
@@ -1840,6 +1838,7 @@ static void test_enqueue_and_io_speed(void)
 		events = fr_event_corral(el, test_time_base, false);
 		if (!events) break;
 		fr_event_service(el);
+		test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC * 0.25));
 	}
 	io_stop = fr_time();
 	io_time = fr_time_sub(io_stop, io_start);
@@ -1847,26 +1846,25 @@ static void test_enqueue_and_io_speed(void)
 	if (acutest_verbose_level_ >= 1) {
 		INFO("I/O time %pV (%u rps)",
 		     fr_box_time_delta(io_time),
-		     (uint32_t)(requests / ((float)fr_time_delta_unwrap(io_time) / NSEC)));
+		     (uint32_t)(requests / ((float)(fr_time_delta_unwrap(io_time)) / NSEC)));
 	}
 
 	if (acutest_verbose_level_ >= 1) {
 		total_time = fr_time_sub(io_stop, enqueue_start);
 		INFO("Total time %pV (%u rps)",
 		     fr_box_time_delta(total_time),
-		     (uint32_t)(requests / ((float)fr_time_delta_unwrap(total_time) / NSEC)));
+		     (uint32_t)(requests / ((float)(fr_time_delta_unwrap(total_time)) / NSEC)));
 	}
 
-	TEST_CHECK(stats.completed == requests);
-	TEST_CHECK(stats.failed == 0);
-	TEST_CHECK(stats.cancelled == 0);
-	TEST_CHECK(stats.freed == requests);
+	TEST_CHECK_LEN(stats.completed, requests);
+	TEST_CHECK_LEN(stats.failed, 0);
+	TEST_CHECK_LEN(stats.cancelled, 0);
+	TEST_CHECK_LEN(stats.freed, requests);
 
 //	ProfilerStop();
 
 	talloc_free(ctx);
 }
-#endif
 
 /*
  *	Connection spawning
@@ -1907,8 +1905,6 @@ TEST_LIST = {
 	/*
 	 *	Performance tests
 	 */
-#if 0
 	{ "Speed Test - Enqueue, and I/O",		test_enqueue_and_io_speed },
-#endif
 	{ NULL }
 };
