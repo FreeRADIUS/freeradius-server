@@ -118,13 +118,13 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx, c
 		/*
 		 *	We apply the rules in the reply items.
 		 */
-		if (!fr_dlist_map_empty(&entry->check)) {
+		if (!map_list_empty(&entry->check)) {
 			WARN("%s[%d] Check list is not empty for entry \"%s\".\n",
 			     filename, entry->lineno, entry->name);
 		}
 
 		map = NULL;
-		while ((map = fr_dlist_map_next(&entry->reply, map))) {
+		while ((map = map_list_next(&entry->reply, map))) {
 			fr_dict_attr_t const *da;
 
 			if (!tmpl_is_attr(map->lhs)) {
@@ -240,7 +240,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 
 		fr_pair_list_init(&check_list);
 
-		while ((map = fr_dlist_map_next(&pl->reply, map))) {
+		while ((map = map_list_next(&pl->reply, map))) {
 			if (map_to_vp(packet, &tmp_list, request, map, NULL) < 0) {
 				RPWARN("Failed parsing map %s for check item, skipping it", map->lhs->name);
 				continue;

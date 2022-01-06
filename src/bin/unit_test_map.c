@@ -75,7 +75,7 @@ static int process_file(char const *filename)
 	int		rcode;
 	char const	*name1, *name2;
 	CONF_SECTION	*cs;
-	fr_map_list_t	list;
+	map_list_t	list;
 	map_t		*map = NULL;
 	char		buffer[8192];
 
@@ -86,7 +86,7 @@ static int process_file(char const *filename)
 		.allow_foreign = false, /* tests are in the RADIUS dictionary */
 	};
 
-	fr_dlist_map_init(&list);
+	map_list_init(&list);
 	/*
 	 *	Must be called first, so the handler is called last
 	 */
@@ -122,7 +122,7 @@ static int process_file(char const *filename)
 		cf_log_perr(cs, "map_afrom_cs failed");
 		return EXIT_FAILURE; /* message already printed */
 	}
-	if (fr_dlist_map_empty(&list)) {
+	if (map_list_empty(&list)) {
 		cf_log_err(cs, "'update' sections cannot be empty");
 		return EXIT_FAILURE;
 	}
@@ -141,7 +141,7 @@ static int process_file(char const *filename)
 		printf("%s %s {\n", name1, name2);
 	}
 
-	while ((map = fr_dlist_map_next(&list, map))) {
+	while ((map = map_list_next(&list, map))) {
 		map_print(&FR_SBUFF_OUT(buffer + 1, sizeof(buffer) - 1), map);
 		puts(buffer);
 	}

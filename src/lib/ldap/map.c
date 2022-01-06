@@ -253,7 +253,7 @@ int fr_ldap_map_verify(map_t *map, UNUSED void *instance)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, request_t *request, fr_map_list_t const *maps)
+int fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, request_t *request, map_list_t const *maps)
 {
 	map_t const	*map = NULL;
 	unsigned int	total = 0;
@@ -262,7 +262,7 @@ int fr_ldap_map_expand(fr_ldap_map_exp_t *expanded, request_t *request, fr_map_l
 	char const	*attr;
 	char		attr_buff[1024 + 1];	/* X.501 says we need to support at least 1024 chars for attr names */
 
-	while ((map = fr_dlist_map_next(maps, map))) {
+	while ((map = map_list_next(maps, map))) {
 		if (tmpl_expand(&attr, attr_buff, sizeof(attr_buff), request, map->rhs, NULL, NULL) < 0) {
 			REDEBUG("Expansion of LDAP attribute \"%s\" failed", map->rhs->name);
 			TALLOC_FREE(ctx);
@@ -314,7 +314,7 @@ int fr_ldap_map_do(request_t *request, LDAP *handle,
 	fr_ldap_result_t	result;
 	char const		*name;
 
-	while ((map = fr_dlist_map_next(expanded->maps, map))) {
+	while ((map = map_list_next(expanded->maps, map))) {
 		int ret;
 
 		name = expanded->attrs[total++];

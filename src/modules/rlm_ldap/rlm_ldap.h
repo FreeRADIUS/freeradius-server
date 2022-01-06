@@ -36,7 +36,7 @@ typedef struct {
 	/*
 	 *	RADIUS attribute to LDAP attribute maps
 	 */
-	fr_map_list_t	user_map; 			//!< Attribute map applied to users and profiles.
+	map_list_t	user_map; 			//!< Attribute map applied to users and profiles.
 
 	/*
 	 *	Options

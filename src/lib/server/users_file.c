@@ -365,8 +365,8 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		 *	We MUST be either at a valid entry, OR at EOF.
 		 */
 		MEM(t = talloc_zero(ctx, PAIR_LIST));
-		fr_dlist_map_init(&t->check);
-		fr_dlist_map_init(&t->reply);
+		map_list_init(&t->check);
+		map_list_init(&t->reply);
 		t->filename = filename;
 		t->lineno = lineno;
 		t->order = order++;
@@ -470,7 +470,7 @@ check_item:
 
 	do_insert:
 		fr_assert(!new_map->parent);
-		fr_dlist_map_insert_tail(&t->check, new_map);
+		map_list_insert_tail(&t->check, new_map);
 
 		/*
 		 *	There can be spaces before any comma.
@@ -646,7 +646,7 @@ next_reply_item:
 
 		fr_assert(tmpl_list(new_map->lhs) == PAIR_LIST_REPLY);
 
-		if (!new_map->parent) fr_dlist_map_insert_tail(&t->reply, new_map);
+		if (!new_map->parent) map_list_insert_tail(&t->reply, new_map);
 
 		(void) fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
 

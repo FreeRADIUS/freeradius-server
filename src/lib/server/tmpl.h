@@ -375,13 +375,13 @@ typedef enum {
 /** Define entry and head types for attribute reference lists
  *
  */
-FR_DLIST_TYPES(tmpl_attr)
+FR_DLIST_TYPES(tmpl_attr_list)
 
 /** An element in a list of nested attribute references
  *
  */
 typedef struct {
-	FR_DLIST_ENTRY_TYPE(tmpl_attr)	_CONST entry;		//!< Entry in the doubly linked list
+	FR_DLIST_ENTRY(tmpl_attr_list)	_CONST entry;		//!< Entry in the doubly linked list
 							///< of attribute references.
 
 	fr_dict_attr_t const	* _CONST da;		//!< Resolved dictionary attribute.
@@ -415,18 +415,18 @@ typedef struct {
 /** Define manipulation functions for the attribute reference list
  *
  */
-FR_DLIST_FUNCS(tmpl_attr, tmpl_attr_t, entry)
+FR_DLIST_FUNCS(tmpl_attr_list, tmpl_attr_t, entry)
 
 /** Define entry and head types for tmpl request references
  *
  */
-FR_DLIST_TYPES(tmpl_request)
+FR_DLIST_TYPES(tmpl_request_list)
 
 /** An element in a list of request references
  *
  */
 typedef struct {
-	FR_DLIST_ENTRY_TYPE(tmpl_request)	_CONST entry;	//!< Entry in the doubly linked list
+	FR_DLIST_ENTRY(tmpl_request_list)	_CONST entry;	//!< Entry in the doubly linked list
 								///< of request references.
 
 	tmpl_request_ref_t			_CONST request;
@@ -435,7 +435,7 @@ typedef struct {
 /** Define manipulation functions for the attribute reference list
  *
  */
-FR_DLIST_FUNCS(tmpl_request, tmpl_request_t, entry)
+FR_DLIST_FUNCS(tmpl_request_list, tmpl_request_t, entry)
 
 /** How many additional headers to allocate in a pool for a tmpl_t
  *
@@ -506,8 +506,8 @@ struct tmpl_s {
 			tmpl_pair_list_t	list;		//!< List to search or insert in.
 								///< deprecated.
 
-			FR_DLIST_HEAD_TYPE(tmpl_request)	rr;	//!< Request to search or insert in.
-			FR_DLIST_HEAD_TYPE(tmpl_attr)		ar;	//!< Head of the attribute reference list.
+			FR_DLIST_HEAD(tmpl_request_list)	rr;	//!< Request to search or insert in.
+			FR_DLIST_HEAD(tmpl_attr_list)		ar;	//!< Head of the attribute reference list.
 
 			bool			was_oid;	//!< Was originally a numeric OID.
 		} attribute;
@@ -587,7 +587,7 @@ static inline tmpl_request_ref_t tmpl_request(tmpl_t const *vpt)
 			 tmpl_is_attr_unresolved(vpt) ||
 			 tmpl_is_list(vpt));
 
-	return ((tmpl_request_t *)fr_dlist_tmpl_request_tail(&vpt->data.attribute.rr))->request;
+	return ((tmpl_request_t *)tmpl_request_list_tail(&vpt->data.attribute.rr))->request;
 }
 
 /** The number of request references contained within a tmpl
@@ -599,7 +599,7 @@ static inline size_t tmpl_request_ref_count(tmpl_t const *vpt)
 			 tmpl_is_attr_unresolved(vpt) ||
 			 tmpl_is_list(vpt));
 
-	return fr_dlist_tmpl_request_num_elements(&vpt->data.attribute.rr);
+	return tmpl_request_list_num_elements(&vpt->data.attribute.rr);
 }
 
 /**
@@ -610,21 +610,21 @@ static inline fr_dict_attr_t const *tmpl_da(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt));
 
-	return ((tmpl_attr_t *)fr_dlist_tmpl_attr_tail(&vpt->data.attribute.ar))->ar_da;
+	return ((tmpl_attr_t *)tmpl_attr_list_tail(&vpt->data.attribute.ar))->ar_da;
 }
 
 static inline fr_dict_attr_t const *tmpl_unknown(tmpl_t const *vpt)
 {
 	tmpl_assert_type(tmpl_is_attr(vpt));
 
-	return ((tmpl_attr_t *)fr_dlist_tmpl_attr_tail(&vpt->data.attribute.ar))->ar_unknown;
+	return ((tmpl_attr_t *)tmpl_attr_list_tail(&vpt->data.attribute.ar))->ar_unknown;
 }
 
 static inline char const *tmpl_attr_unresolved(tmpl_t const *vpt)
 {
 	tmpl_assert_type(vpt->type == TMPL_TYPE_ATTR_UNRESOLVED);
 
-	return ((tmpl_attr_t *)fr_dlist_tmpl_attr_tail(&vpt->data.attribute.ar))->ar_unresolved;
+	return ((tmpl_attr_t *)tmpl_attr_list_tail(&vpt->data.attribute.ar))->ar_unresolved;
 }
 
 /** The number of attribute references contained within a tmpl
@@ -635,7 +635,7 @@ static inline size_t tmpl_attr_count(tmpl_t const *vpt)
 	tmpl_assert_type(tmpl_is_attr(vpt) ||
 			 tmpl_is_attr_unresolved(vpt));
 
-	return fr_dlist_tmpl_attr_num_elements(&vpt->data.attribute.ar);
+	return tmpl_attr_list_num_elements(&vpt->data.attribute.ar);
 }
 
 static inline int16_t tmpl_num(tmpl_t const *vpt)
@@ -644,9 +644,9 @@ static inline int16_t tmpl_num(tmpl_t const *vpt)
 			 tmpl_is_attr_unresolved(vpt) ||
 			 tmpl_is_list(vpt));
 
-	if (tmpl_is_list(vpt) && (fr_dlist_tmpl_attr_num_elements(&vpt->data.attribute.ar) == 0)) return NUM_ALL;
+	if (tmpl_is_list(vpt) && (tmpl_attr_list_num_elements(&vpt->data.attribute.ar) == 0)) return NUM_ALL;
 
-	return ((tmpl_attr_t *)fr_dlist_tmpl_attr_tail(&vpt->data.attribute.ar))->ar_num;
+	return ((tmpl_attr_t *)tmpl_attr_list_tail(&vpt->data.attribute.ar))->ar_num;
 }
 
 static inline tmpl_pair_list_t tmpl_list(tmpl_t const *vpt)
@@ -877,7 +877,7 @@ int			tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, 
 
 void			tmpl_attr_ref_debug(const tmpl_attr_t *ar, int idx);
 
-void			tmpl_attr_ref_list_debug(FR_DLIST_HEAD_TYPE(tmpl_attr) const *ar_head) CC_HINT(nonnull);
+void			tmpl_attr_ref_list_debug(FR_DLIST_HEAD(tmpl_attr_list) const *ar_head) CC_HINT(nonnull);
 
 void			tmpl_attr_debug(tmpl_t const *vpt) CC_HINT(nonnull);
 

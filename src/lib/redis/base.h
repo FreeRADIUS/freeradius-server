@@ -144,7 +144,7 @@ int			fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisRep
 						    fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 						    bool box_error, bool shallow);
 
-int			fr_redis_reply_to_map(TALLOC_CTX *ctx, fr_map_list_t *out,
+int			fr_redis_reply_to_map(TALLOC_CTX *ctx, map_list_t *out,
 					      request_t *request, redisReply *key, redisReply *op, redisReply *value);
 
 int			fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[], map_t *map);

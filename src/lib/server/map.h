@@ -30,7 +30,7 @@ RCSIDH(map_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct vp_map_s map_t;
+typedef struct map_s map_t;
 typedef struct vp_list_mod_s vp_list_mod_t;
 
 #ifdef __cplusplus
@@ -57,12 +57,12 @@ extern "C" {
 	['>'] = true, \
 	['~'] = true
 
-FR_DLIST_TYPES(map)
+FR_DLIST_TYPES(map_list)
 
 /** Given these are used in so many places, it's more friendly to have a proper type
  *
  */
-typedef FR_DLIST_HEAD_TYPE(map) fr_map_list_t;
+typedef FR_DLIST_HEAD(map_list) map_list_t;
 
 /** Value pair map
  *
@@ -74,7 +74,7 @@ typedef FR_DLIST_HEAD_TYPE(map) fr_map_list_t;
  *
  * @see tmpl_t
  */
-struct vp_map_s {
+struct map_s {
 	tmpl_t				*lhs;		//!< Typically describes the attribute to add, modify or compare.
 	tmpl_t				*rhs;   	//!< Typically describes a literal value or a src attribute
 							///< to copy or compare.
@@ -86,11 +86,12 @@ struct vp_map_s {
 							//!< logging validation errors.
 
 	map_t				*parent;	//! parent map, for nested ones
-	fr_map_list_t			child;		//!< a child map.  If it exists, `rhs` MUST be NULL
-	FR_DLIST_ENTRY_TYPE(map)	entry;		//!< List entry.
+	map_list_t			child;		//!< a child map.  If it exists, `rhs` MUST be NULL
+
+	FR_DLIST_ENTRY(map_list)	entry;		//!< List entry.
 };
 
-FR_DLIST_FUNCS(map, map_t, entry)
+FR_DLIST_FUNCS(map_list, map_t, entry)
 
 /** A list modification
  *
@@ -98,7 +99,7 @@ FR_DLIST_FUNCS(map, map_t, entry)
 struct vp_list_mod_s {
 	map_t const			*map;		//!< Original map describing the change to be made.
 
-	fr_map_list_t			mod;		//!< New map containing the destination (LHS) and
+	map_list_t			mod;		//!< New map containing the destination (LHS) and
 							///< values (RHS).
 	fr_dlist_t			entry;		//!< Entry into dlist
 };
@@ -119,7 +120,7 @@ typedef int (*radius_map_getvalue_t)(TALLOC_CTX *ctx, fr_pair_list_t *out, reque
 int		map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 			     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules);
 
-int		map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
+int		map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, CONF_SECTION *cs,
 			     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 			     map_validate_t validate, void *uctx, unsigned int max) CC_HINT(nonnull(2, 3));
 

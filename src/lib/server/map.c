@@ -69,7 +69,7 @@ static inline map_t *map_alloc(TALLOC_CTX *ctx, map_t *parent)
 	}
 	map->parent = parent;
 
-	fr_dlist_map_init(&map->child);
+	map_list_init(&map->child);
 	return map;
 }
 
@@ -624,7 +624,7 @@ check_for_child:
 	 *	caller will have to check for this!
 	 */
 	if (is_child && parent) {
-		fr_dlist_map_insert_tail(&parent->child, map);
+		map_list_insert_tail(&parent->child, map);
 	}
 
 	if (parent_p) *parent_p = new_parent;
@@ -636,7 +636,7 @@ check_for_child:
 }
 
 
-static int _map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, map_t *parent, CONF_SECTION *cs,
+static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_SECTION *cs,
 				tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 				map_validate_t validate, void *uctx,
 				unsigned int max);
@@ -658,7 +658,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, map_t *parent, CON
  *	- 0 on success.
  *	- -1 on failure.
  */
-int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
+int map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, CONF_SECTION *cs,
 		 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 		 map_validate_t validate, void *uctx,
 		 unsigned int max)
@@ -666,7 +666,7 @@ int map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, CONF_SECTION *cs,
 	return _map_afrom_cs(ctx, out, NULL, cs, lhs_rules, rhs_rules, validate, uctx, max);
 }
 
-static int _map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, map_t *parent, CONF_SECTION *cs,
+static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_SECTION *cs,
 			 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 			 map_validate_t validate, void *uctx,
 			 unsigned int max)
@@ -718,7 +718,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, map_t *parent, CON
 			 *	Free in reverse as successive entries have their
 			 *	prececessors as talloc parent contexts
 			 */
-			fr_dlist_map_talloc_reverse_free(out);
+			map_list_talloc_reverse_free(out);
 			return -1;
 		}
 
@@ -731,9 +731,9 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, map_t *parent, CON
 			fr_token_t token;
 			ssize_t slen;
 			bool qualifiers = our_lhs_rules.disallow_qualifiers;
-			fr_map_list_t child_list;
+			map_list_t child_list;
 
-			fr_dlist_map_init(&child_list);
+			map_list_init(&child_list);
 			subcs = cf_item_to_section(ci);
 			token = cf_section_name2_quote(subcs);
 
@@ -806,11 +806,11 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, map_t *parent, CON
 			 */
 			if (_map_afrom_cs(map, &child_list, map, cf_item_to_section(ci),
 					 &our_lhs_rules, rhs_rules, validate, uctx, max) < 0) {
-				fr_dlist_map_talloc_free(&child_list);
+				map_list_talloc_free(&child_list);
 				talloc_free(map);
 				goto error;
 			}
-			fr_dlist_map_move(&map->child, &child_list);
+			map_list_move(&map->child, &child_list);
 
 			our_lhs_rules.disallow_qualifiers = qualifiers;
 			MAP_VERIFY(map);
@@ -840,7 +840,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, fr_map_list_t *out, map_t *parent, CON
 
 	next:
 		parent_ctx = map;
-		fr_dlist_map_insert_tail(out, map);
+		map_list_insert_tail(out, map);
 	}
 
 	return 0;
@@ -1150,9 +1150,9 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		MEM(n = fr_pair_afrom_da(ctx, tmpl_da(map->lhs)));
 		n->op = map->op;
 
-		for (child = fr_dlist_map_next(&map->child, NULL);
+		for (child = map_list_next(&map->child, NULL);
 		     child != NULL;
-		     child = fr_dlist_map_next(&map->child, child)) {
+		     child = map_list_next(&map->child, child)) {
 			fr_pair_list_t list;
 
 			/*
@@ -1947,7 +1947,7 @@ ssize_t map_print(fr_sbuff_t *out, map_t const *map)
 	 *	If there's no child and no RHS then the
 	 *	map was invalid.
 	 */
-	if (fr_dlist_map_empty(&map->child) && !fr_cond_assert(map->rhs != NULL)) {
+	if (map_list_empty(&map->child) && !fr_cond_assert(map->rhs != NULL)) {
 		fr_sbuff_terminate(out);
 		return 0;
 	}

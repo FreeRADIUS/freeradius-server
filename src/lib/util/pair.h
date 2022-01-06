@@ -46,10 +46,10 @@ extern "C" {
 
 typedef struct value_pair_s fr_pair_t;
 
-FR_DLIST_TYPES(pair)
+FR_DLIST_TYPES(fr_pair_order_list)
 
 typedef struct {
-        FR_DLIST_HEAD_TYPE(pair)		order;			//!< Maintains the relative order of pairs in a list.
+        FR_DLIST_HEAD(fr_pair_order_list)		order;			//!< Maintains the relative order of pairs in a list.
 } fr_pair_list_t;
 
 /** Stores an attribute, a value and various bits of other data
@@ -64,7 +64,7 @@ struct value_pair_s {
 								///< Note: This should not be modified outside
 								///< of pair.c except via #fr_pair_reinit_from_da.
 
-	FR_DLIST_ENTRY_TYPE(pair) _CONST	order_entry;	//!< Entry to maintain relative order within a list
+	FR_DLIST_ENTRY(fr_pair_order_list) _CONST	order_entry;	//!< Entry to maintain relative order within a list
 								///< of pairs.  This ensures pairs within the list
 								///< are encoded in the same order as they were
 								///< received or inserted.

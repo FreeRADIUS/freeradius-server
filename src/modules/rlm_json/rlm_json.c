@@ -279,7 +279,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  * 	- -1 on failure.
  */
 static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, void *proc_inst,
-				    tmpl_t const *src, fr_map_list_t const *maps)
+				    tmpl_t const *src, map_list_t const *maps)
 {
 	rlm_json_jpath_cache_t	*cache_inst = proc_inst;
 	map_t const		*map = NULL;
@@ -292,7 +292,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 		return -1;
 	}
 
-	while ((map = fr_dlist_map_next(maps, map))) {
+	while ((map = map_list_next(maps, map))) {
 		CONF_PAIR	*cp = cf_item_to_pair(map->ci);
 		char const	*p;
 
@@ -343,7 +343,7 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 		 *	list member was pre-allocated and passed to the
 		 *	instantiation callback.
 		 */
-		if (fr_dlist_map_next(maps, map)) {
+		if (map_list_next(maps, map)) {
 			*tail = cache = talloc_zero(cache, rlm_json_jpath_cache_t);
 			tail = &cache->next;
 		}
@@ -414,7 +414,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
 static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, request_t *request,
-			      	fr_value_box_list_t *json, fr_map_list_t const *maps)
+			      	fr_value_box_list_t *json, map_list_t const *maps)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_UPDATED;
 	struct json_tokener		*tok;
@@ -454,7 +454,7 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, request_
 		goto finish;
 	}
 
-	while ((map = fr_dlist_map_next(maps, map))) {
+	while ((map = map_list_next(maps, map))) {
 		switch (map->rhs->type) {
 		/*
 		 *	Cached types

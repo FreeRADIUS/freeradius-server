@@ -56,7 +56,7 @@ typedef struct {
 	fr_edit_list_t		*el;				//!< edit list
 
 	unlang_edit_state_t	state;				//!< What we're currently doing.
-	fr_map_list_t const	*map_head;
+	map_list_t const	*map_head;
 	map_t const		*map;				//!< the map to evaluate
 
 	edit_result_t		lhs;				//!< LHS child entries
@@ -509,7 +509,7 @@ static int expand_rhs_list(NDEBUG_UNUSED unlang_frame_state_edit_t *state, reque
 		return -1;
 	}
 
-	if (!fr_dlist_map_empty(&map->child)) {
+	if (!map_list_empty(&map->child)) {
 		REDEBUG("In-place lists not yet implemented");
 		return -1;
 	}
@@ -540,7 +540,7 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 	 */
 	for (map = state->map;
 	     map != NULL;
-	     map = state->map = fr_dlist_map_next(state->map_head, map)) {
+	     map = state->map = map_list_next(state->map_head, map)) {
 	     	repeatable_set(frame);	/* Call us again when done */
 
 		switch (state->state) {
@@ -711,10 +711,10 @@ static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *
 	 *	The edit list creates a local pool which should
 	 *	generally be large enough for most edits.
 	 */
-	MEM(state->el = fr_edit_list_alloc(state, fr_dlist_map_num_elements(&edit->maps)));
+	MEM(state->el = fr_edit_list_alloc(state, map_list_num_elements(&edit->maps)));
 
 	state->map_head = &edit->maps;
-	state->map = fr_dlist_map_head(state->map_head);
+	state->map = map_list_head(state->map_head);
 	fr_pair_list_init(&state->rhs.pair_list);
 
 	/*

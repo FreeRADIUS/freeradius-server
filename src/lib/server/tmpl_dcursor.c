@@ -235,7 +235,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_dlist_head_t *list_head, fr_pair_t *curr, tmpl_d
 static inline CC_HINT(always_inline)
 void _tmpl_cursor_pair_init(TALLOC_CTX *list_ctx, fr_pair_list_t *list, tmpl_attr_t const *ar, tmpl_dcursor_ctx_t *cc)
 {
-	if (fr_dlist_next(&cc->vpt->data.attribute.ar, ar)) switch (ar->ar_da->type) {
+	if (tmpl_attr_list_next(&cc->vpt->data.attribute.ar, ar)) switch (ar->ar_da->type) {
 	case FR_TYPE_STRUCTURAL:
 		_tmpl_cursor_child_init(list_ctx, list, ar, cc);
 		break;
@@ -275,7 +275,7 @@ static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
 			vp = _tmpl_cursor_eval(list, curr, cc);
 			if (!vp) continue;
 
-			ar = fr_dlist_next(&vpt->data.attribute.ar, ar);
+			ar = tmpl_attr_list_next(&vpt->data.attribute.ar, ar);
 			if (ar) {
 				list_head = &vp->vp_group;
 				_tmpl_cursor_pair_init(vp, list_head, ar, cc);
@@ -351,7 +351,7 @@ fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 	/*
 	 *	Navigate to the correct request context
 	 */
-	while ((rr = fr_dlist_next(&vpt->data.attribute.rr, rr))) {
+	while ((rr = tmpl_request_list_next(&vpt->data.attribute.rr, rr))) {
 		if (tmpl_request_ptr(&request, rr->request) < 0) {
 			if (err) {
 				*err = -3;
@@ -396,11 +396,11 @@ fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 	 */
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
-		_tmpl_cursor_pair_init(list_ctx, cc->list, fr_dlist_head(&vpt->data.attribute.ar), cc);
+		_tmpl_cursor_pair_init(list_ctx, cc->list, tmpl_attr_list_head(&vpt->data.attribute.ar), cc);
 		break;
 
 	case TMPL_TYPE_LIST:
-		_tmpl_cursor_list_init(list_ctx, cc->list, fr_dlist_head(&vpt->data.attribute.ar), cc);
+		_tmpl_cursor_list_init(list_ctx, cc->list, tmpl_attr_list_head(&vpt->data.attribute.ar), cc);
 		break;
 
 	default:
@@ -505,7 +505,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 	/*
 	 *	Navigate to the correct request context
 	 */
-	while ((rr = fr_dlist_next(&vpt->data.attribute.rr, rr))) {
+	while ((rr = tmpl_request_list_next(&vpt->data.attribute.rr, rr))) {
 		if (tmpl_request_ptr(&request, rr->request) < 0) {
 			fr_strerror_printf("Request context \"%s\" not available",
 					   fr_table_str_by_value(tmpl_request_ref_table, rr->request, "<INVALID>"));
@@ -547,7 +547,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 	 *	treated specially.  Once lists are groups
 	 *	this can be removed.
 	 */
-	ar = fr_dlist_head(&vpt->data.attribute.ar);
+	ar = tmpl_attr_list_head(&vpt->data.attribute.ar);
 	switch (ar->ar_da->type) {
 	case FR_TYPE_STRUCTURAL:
 		break;
@@ -570,7 +570,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 	/*
 	 *	Prime the stack!
 	 */
-	_tmpl_cursor_pair_init(list_ctx, cc.list, fr_dlist_head(&vpt->data.attribute.ar), &cc);
+	_tmpl_cursor_pair_init(list_ctx, cc.list, tmpl_attr_list_head(&vpt->data.attribute.ar), &cc);
 
 	/*
 	 *	- Continue until there are no evaluation contexts
@@ -600,7 +600,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 		/*
 		 *	Evaluate the next reference
 		 */
-		n_ar = fr_dlist_next(&vpt->data.attribute.ar, ar);
+		n_ar = tmpl_attr_list_next(&vpt->data.attribute.ar, ar);
 		if (n_ar) {
 			ar = n_ar;
 			list_head = &curr->vp_group;
@@ -660,7 +660,7 @@ int tmpl_extents_build_to_leaf_parent(fr_dlist_head_t *existing, fr_dlist_head_t
 		 */
 		for (ar = extent->ar, list = extent->list, list_ctx = extent->list_ctx;
 		     ar;
-		     ar = fr_dlist_next(&vpt->data.attribute.ar, ar)) {
+		     ar = tmpl_attr_list_next(&vpt->data.attribute.ar, ar)) {
 			switch (ar->type) {
 			case TMPL_ATTR_TYPE_NORMAL:
 			case TMPL_ATTR_TYPE_UNKNOWN:

@@ -30,7 +30,7 @@ extern "C" {
 
 typedef struct {
 	unlang_t		self;
-	fr_map_list_t		maps;		//!< Head of the map list
+	map_list_t		maps;		//!< Head of the map list
 } unlang_edit_t;
 
 /** Cast a generic structure to the edit extension

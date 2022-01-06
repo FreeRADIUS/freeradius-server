@@ -585,7 +585,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
  *	Verify the result of the map.
  */
 static int ldap_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *proc_inst,
-			   tmpl_t const *src, UNUSED fr_map_list_t const *maps)
+			   tmpl_t const *src, UNUSED map_list_t const *maps)
 {
 	if (!src) {
 		cf_log_err(cs, "Missing LDAP URI");
@@ -734,7 +734,7 @@ static void _ldap_async_bind_auth_watch(fr_connection_t *conn, UNUSED fr_connect
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
 static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_t *request,
-				fr_value_box_list_t *url, fr_map_list_t const *maps)
+				fr_value_box_list_t *url, map_list_t const *maps)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_ldap_t		*inst = talloc_get_type_abort(mod_inst, rlm_ldap_t);
@@ -833,9 +833,9 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 		}
 
 		RINDENT();
-		for (map = fr_dlist_map_head(maps), i = 0;
+		for (map = map_list_head(maps), i = 0;
 		     map != NULL;
-		     map = fr_dlist_map_next(maps, map), i++) {
+		     map = map_list_next(maps, map), i++) {
 			int			ret;
 			fr_ldap_result_t	attr;
 
@@ -1418,7 +1418,7 @@ skip_edir:
 		}
 	}
 
-	if (!fr_dlist_map_empty(&inst->user_map) || inst->valuepair_attr) {
+	if (!map_list_empty(&inst->user_map) || inst->valuepair_attr) {
 		RDEBUG2("Processing user attributes");
 		RINDENT();
 		if (fr_ldap_map_do(request, handle, inst->valuepair_attr,
@@ -1888,7 +1888,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
 	CONF_SECTION	*conf = mctx->inst->conf;
 
-	fr_dlist_map_init(&inst->user_map);
+	map_list_init(&inst->user_map);
 
 	options = cf_section_find(conf, "options", NULL);
 	if (!options || !cf_pair_find(options, "chase_referrals")) {
