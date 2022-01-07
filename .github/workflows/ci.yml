@@ -162,6 +162,10 @@ jobs:
         make -j `nproc`
         make install
 
+    - name: Build eapol_test
+      run: |
+        ./scripts/ci/eapol_test-build.sh
+
     - name: Use alternative libraries
       if: ${{ matrix.env.LIBS_ALT == 'yes' }}
       run: |
