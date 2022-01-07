@@ -4198,7 +4198,7 @@ post_ca:
 	 *	Because saying "use TLS 1.1" isn't enough.  We have to
 	 *	send it flowers and cake.
 	 */
-	if ((min_version <= TLS1_1_VERSION) &&
+	if ((min_version <= TLS1_1_VERSION) && conf->cipher_list &&
 	    !strstr(conf->cipher_list, "DEFAULT@SECLEVEL=1")) {
 		WARN(LOG_PREFIX ": In order to use TLS 1.0 and/or TLS 1.1, you likely need to set: cipher_list = \"DEFAULT@SECLEVEL=1\"");
 	}
