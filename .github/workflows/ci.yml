@@ -356,12 +356,10 @@ jobs:
 #       IMAP_TEST_SERVER_PORT: 1430
 #       IMAP_TEST_SERVER_SSL_PORT: 1431
 
-    # Includes hack to disable trunk tests on MacOS which are currently broken
-    # Also, no detect_leaks support for ASAN
+    # No detect_leaks support for ASAN on MacOS
     - name: Run basic tests (MacOS)
       if: ${{ matrix.env.TEST_TYPE == 'macos' }}
       run: |
-        : > src/lib/server/trunk_tests.mk
         make test
       env:
         ASAN_OPTIONS: symbolize=1 detect_stack_use_after_return=1
