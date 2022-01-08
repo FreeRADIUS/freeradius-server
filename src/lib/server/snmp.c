@@ -887,6 +887,8 @@ static ssize_t snmp_process(fr_dcursor_t *out, request_t *request,
 			return -(ssize_t)(depth - 1);
 		}
 		snmp_next_leaf(da_stack, depth, &map[1]);
+
+		if (!fr_cond_assert(da_stack->da[depth])) return -1;
 	}
 
 	/*
