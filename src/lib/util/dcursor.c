@@ -63,6 +63,8 @@ void *fr_dcursor_intersect_head(fr_dcursor_t *a, fr_dcursor_t *b)
  * If a and b are not currently set to the same item, b will be reset,
  * and wound to the item before a's current item.
  *
+ * The purpose of this function is to return items that match both iterators.
+ *
  * @note Both cursors must operate on the same list of items.
  *
  * @param[in] a		First cursor.
@@ -73,76 +75,51 @@ void *fr_dcursor_intersect_head(fr_dcursor_t *a, fr_dcursor_t *b)
  */
 void *fr_dcursor_intersect_next(fr_dcursor_t *a, fr_dcursor_t *b)
 {
-	fr_dcursor_iter_t	b_iter;
-	void			*b_uctx;
+	void *a_next, *b_next;
 
 	if (unlikely(a->dlist != b->dlist)) return NULL;
 
 	/*
-	 *	If either of the iterators lack an iterator
-	 *	just use cursor_next...
+	 *	If either of the cursors lack an iterator
+	 *	just use cursor_next... i.e. return items
+	 *	from the list that's actually filtered.
 	 */
 	if (!a->iter) return fr_dcursor_next(b);
 	if (!b->iter) return fr_dcursor_next(a);
 
 	/*
-	 *	Both have iterators...
-	 */
-	b_iter = b->iter;
-	b_uctx = b->iter_uctx;
-
-	/*
 	 *	Deal with the case where the two iterators
 	 *	are out of sync.
 	 */
-	if (a->current != b->current) {
-		fr_dcursor_head(b);	/* reset */
+	if (a->current == b->current) {
+		a_next = fr_dcursor_next(a);
+		b_next = fr_dcursor_next(b);
+
+		/*
+		 *	Fast path...
+		 */
+		if (a_next == b_next) return a_next;
 	} else {
-		a->current = dcursor_next(a, a->current);
-		a->prev = fr_dlist_prev(a->dlist, a->current);
+		a_next = fr_dcursor_next(a);
 	}
 
+	if (!a_next) return NULL;
+
 	/*
-	 *	Use a's iterator to select the item to
-	 *	check.
+	 *	b_next doesn't match a_next, we don't know
+	 *	if b is ahead or behind a, so we rewind
+	 *	b, and compare every item to see if it
+	 *	matches a.
+	 *
+	 *	This is slow and inefficient, but there's
+	 *	nothing else we can do for stateful
+	 *      iterators.
 	 */
 	do {
-		void *a_prev = fr_dcursor_list_prev_peek(a);
-		b->iter = NULL;		/* Disable b's iterator */
-
-		/*
-		 *	Find a in b (the slow way *sigh*)
-		 */
-		while ((b->current = dcursor_next(b, b->current)) && (b->current != a_prev));
-
-		/*
-		 *	No more items...
-		 */
-		if (!b->current) {
-			fr_dcursor_copy(a, b);
-			return NULL;
-		}
-
-		/*
-		 *	We're now one item before the item
-		 *	returned by a, see if b's iterator
-		 *	returns the same item as a's.
-		 */
-		 b->iter = b_iter;
-		 b->current = dcursor_next(b, b->current);
-
-		/*
-		 *	Matched, we're done...
-		 */
-		if (a->current == b->current) return a->current;
-
-		/*
-		 *	Reset b's position to a's and try again.
-		 */
-		fr_dcursor_copy(b, a);
-		b->iter = b_iter;
-		b->iter_uctx = b_uctx;
-	} while ((a->current = dcursor_next(a, a->current)));
+		for (b_next = fr_dcursor_head(b);
+		     b_next;
+		     b_next = fr_dcursor_next(b)) if (a_next == b_next) return b_next;
+	} while ((a_next = fr_dcursor_next(a)));
 
 	return NULL;
 }

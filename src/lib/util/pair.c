@@ -841,7 +841,7 @@ fr_pair_t *_fr_pair_dcursor_iter_init(fr_dcursor_t *cursor, fr_pair_list_t const
 				      bool is_const)
 {
 	return _fr_dcursor_init(cursor, fr_pair_order_list_list_head(&list->order),
-				iter, uctx,
+				iter, NULL, uctx,
 				_pair_list_dcursor_insert, _pair_list_dcursor_remove, list, is_const);
 }
 
@@ -862,7 +862,7 @@ fr_pair_t *_fr_pair_dcursor_init(fr_dcursor_t *cursor, fr_pair_list_t const *lis
 				 bool is_const)
 {
 	return _fr_dcursor_init(cursor, fr_pair_order_list_list_head(&list->order),
-				NULL, NULL,
+				NULL, NULL, NULL,
 				_pair_list_dcursor_insert, _pair_list_dcursor_remove, list, is_const);
 }
 
@@ -882,7 +882,7 @@ fr_pair_t *_fr_pair_dcursor_by_da_init(fr_dcursor_t *cursor,
 				        bool is_const)
 {
 	return _fr_dcursor_init(cursor, fr_pair_order_list_list_head(&list->order),
-				fr_pair_iter_next_by_da, da,
+				fr_pair_iter_next_by_da, NULL, da,
 				_pair_list_dcursor_insert, _pair_list_dcursor_remove, list, is_const);
 }
 
@@ -901,7 +901,7 @@ fr_pair_t *_fr_pair_dcursor_by_ancestor_init(fr_dcursor_t *cursor,
 					     bool is_const)
 {
 	return _fr_dcursor_init(cursor, fr_pair_order_list_list_head(&list->order),
-				fr_pair_iter_next_by_ancestor, da,
+				fr_pair_iter_next_by_ancestor, NULL, da,
 				_pair_list_dcursor_insert, _pair_list_dcursor_remove, list, is_const);
 }
 

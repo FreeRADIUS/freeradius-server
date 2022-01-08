@@ -222,8 +222,8 @@ static void *fr_schedule_worker_thread(void *arg)
 	 *	Add this worker to all network threads.
 	 */
 	for (sn = fr_dlist_head(&sc->networks);
-	       sn != NULL;
-	       sn = fr_dlist_next(&sc->networks, sn)) {
+	     sn != NULL;
+	     sn = fr_dlist_next(&sc->networks, sn)) {
 		(void) fr_network_worker_add(sn->nr, sw->worker);
 	}
 
