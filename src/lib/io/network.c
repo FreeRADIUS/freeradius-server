@@ -656,6 +656,48 @@ retry:
 	return 0;
 }
 
+
+/** Send a packet to the worker.
+ *
+ *  MUST only be called from the network thread.
+ *
+ * @param nr the network
+ * @param parent the parent listener
+ * @param li the listener that the packet was "read" from.  Can be "parent"
+ * @param buffer the packet to send
+ * @param buflen size of the packet to send
+ * @param recv_time of the packet
+ * @param packet_ctx for the packet
+ * @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_network_listen_send_packet(fr_network_t *nr, fr_listen_t *parent, fr_listen_t *li,
+				  const uint8_t *buffer, size_t buflen, fr_time_t recv_time, void *packet_ctx)
+{
+	fr_channel_data_t *cd;
+	fr_network_socket_t *s;
+
+	(void) talloc_get_type_abort(nr, fr_network_t);
+	(void) talloc_get_type_abort_const(li, fr_listen_t);
+
+	s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = parent });
+	if (!s) return -1;
+
+	cd = (fr_channel_data_t *) fr_message_alloc(s->ms, NULL, buflen);
+	if (!cd) return -1;
+
+	cd->request.is_dup = false;
+	cd->priority = PRIORITY_NORMAL;
+	cd->packet_ctx = packet_ctx;
+	cd->request.recv_time = recv_time;
+	memcpy(cd->m.data, buffer, buflen);
+	cd->m.when = fr_time();
+
+	return fr_network_send_request(nr, cd);
+}
+
+
 /*
  *	Mark it as dead, but DON'T free it until all of the replies
  *	have come in.
