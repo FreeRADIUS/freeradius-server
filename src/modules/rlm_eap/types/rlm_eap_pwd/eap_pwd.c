@@ -480,7 +480,7 @@ int compute_password_element (request_t *request, pwd_session_t *session, uint16
 	mask = const_time_eq(save_is_odd, BN_is_odd(y1));
 	const_time_select_bin(mask, y1buf, y2buf, primebytelen, ybuf);
 	if (BN_bin2bn(ybuf, primebytelen, y) == NULL ||
-		!EC_POINT_set_affine_coordinates(session->group, session->pwe, x, y, bnctx)) {
+		!EC_POINT_set_affine_coordinates(session->group, session->pwe, x_candidate, y, bnctx)) {
 		DEBUG("unable to set point coordinate");
 		goto fail;
 	}
