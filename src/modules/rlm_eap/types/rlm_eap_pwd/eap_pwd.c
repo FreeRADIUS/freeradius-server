@@ -256,10 +256,10 @@ int compute_password_element (request_t *request, pwd_session_t *session, uint16
 			      char const *id_peer, int id_peer_len,
 			      uint32_t *token, BN_CTX *bnctx)
 {
-	BIGNUM		*x_candidate = NULL, *rnd = NULL, *y_sqrd = NULL, *qr = NULL, *qnr = NULL;
+	BIGNUM		*x_candidate = NULL, *rnd = NULL, *y_sqrd = NULL, *qr = NULL, *qnr = NULL, *y1 = NULL, *y2 = NULL, *y = NULL, *exp = NULL;
 	EVP_MD_CTX	*hmac_ctx;
 	EVP_PKEY	*hmac_pkey;
-	uint8_t		pwe_digest[SHA256_DIGEST_LENGTH], *prfbuf = NULL, *xbuf = NULL, *pm1buf = NULL, ctr;
+	uint8_t		pwe_digest[SHA256_DIGEST_LENGTH], *prfbuf = NULL, *xbuf = NULL, *pm1buf = NULL, *y1buf = NULL, *y2buf = NULL, *ybuf = NULL, ctr;
 	int		nid, is_odd, primebitlen, primebytelen, ret = 0, found = 0, mask;
 	int		save, i, rbits, qr_or_qnr, save_is_odd = 0, cmp;
 	unsigned int	skip;
@@ -309,7 +309,11 @@ int compute_password_element (request_t *request, pwd_session_t *session, uint16
 	    ((qr = consttime_BN()) == NULL) ||
 	    ((qnr = consttime_BN()) == NULL) ||
 	    ((x_candidate = consttime_BN()) == NULL) ||
-	    ((y_sqrd = consttime_BN()) == NULL)) {
+	    ((y_sqrd = consttime_BN()) == NULL) ||
+	    ((y1 = consttime_BN()) == NULL) ||
+	    ((y2 = consttime_BN()) == NULL) ||
+	    ((y = consttime_BN()) == NULL) ||
+        ((exp = consttime_BN()) == NULL)) {
 		DEBUG("unable to create bignums");
 		goto fail;
 	}
@@ -338,6 +342,19 @@ int compute_password_element (request_t *request, pwd_session_t *session, uint16
 		DEBUG("unable to alloc space for pm1 buffer");
 		goto fail;
 	}
+	if ((y1buf = talloc_zero_array(request, uint8_t, primebytelen)) == NULL) {
+		DEBUG("unable to alloc space for y1 buffer");
+		goto fail;
+	}
+	if ((y2buf = talloc_zero_array(request, uint8_t, primebytelen)) == NULL) {
+		DEBUG("unable to alloc space for y2 buffer");
+		goto fail;
+	}
+	if ((ybuf = talloc_zero_array(request, uint8_t, primebytelen)) == NULL) {
+		DEBUG("unable to alloc space for y buffer");
+		goto fail;
+	}
+
 
 	/*
 	* derive random quadradic residue and quadratic non-residue
@@ -407,7 +424,7 @@ int compute_password_element (request_t *request, pwd_session_t *session, uint16
 		* need to unambiguously identify the solution, if there is
 		* one..
 		*/
-		is_odd = BN_is_odd(rnd) ? 1 : 0;
+		is_odd = BN_is_odd(rnd);
 
 		/*
 		* check whether x^3 + a*x + b is a quadratic residue
@@ -450,8 +467,21 @@ int compute_password_element (request_t *request, pwd_session_t *session, uint16
 	* now we can savely construct PWE
 	*/
 	BN_bin2bn(xbuf, primebytelen, x_candidate);
-	if (!EC_POINT_set_compressed_coordinates(session->group, session->pwe,
-						 x_candidate, save_is_odd, NULL)) {
+	do_equation(session->group, y_sqrd, x_candidate, bnctx);
+	if ( !BN_add(exp, session->prime, BN_value_one()) ||
+		 !BN_rshift(exp, exp, 2) ||
+		 !BN_mod_exp_mont_consttime(y1, y_sqrd, exp, session->prime, bnctx, NULL) ||
+		 !BN_sub(y2, session->prime, y1) ||
+		 !BN_bn2bin(y1, y1buf) ||
+		 !BN_bn2bin(y2, y2buf)) {
+		DEBUG("unable to compute y");
+		goto fail;
+	}
+	mask = const_time_eq(save_is_odd, BN_is_odd(y1));
+	const_time_select_bin(mask, y1buf, y2buf, primebytelen, ybuf);
+	if (BN_bin2bn(ybuf, primebytelen, y) == NULL ||
+		!EC_POINT_set_affine_coordinates(session->group, session->pwe, x, y, bnctx)) {
+		DEBUG("unable to set point coordinate");
 		goto fail;
 	}
 
@@ -467,10 +497,17 @@ int compute_password_element (request_t *request, pwd_session_t *session, uint16
 	BN_clear_free(qr);
 	BN_clear_free(qnr);
 	BN_clear_free(rnd);
+	BN_clear_free(y1);
+	BN_clear_free(y2);
+	BN_clear_free(y);
+	BN_clear_free(exp);
 
 	if (prfbuf) talloc_free(prfbuf);
 	if (xbuf) talloc_free(xbuf);
 	if (pm1buf) talloc_free(pm1buf);
+	if (y1buf) talloc_free(y1buf);
+	if (y2buf) talloc_free(y2buf);
+	if (ybuf) talloc_free(ybuf);
 
 	EVP_MD_CTX_free(hmac_ctx);
 	EVP_PKEY_free(hmac_pkey);
