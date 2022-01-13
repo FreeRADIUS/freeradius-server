@@ -53,6 +53,7 @@ $(BUILD_PATH)/tests/eapol_test/eapol_test.mk: | $(BUILD_PATH)/tests/eapol_test
 	@echo "TLS1_3=$(shell strings "$(RADIUSD_BIN)" | grep -q '^tls13_enable$$' && \
 		strings "$(EAPOL_TEST_BIN)" | grep 'tlsv1_3' | head -n 1)" >> $@
 	@echo "OPENSSL_OK=$(shell openssl version | grep -v ' 1\.0' >/dev/null && echo yes)" >> $@
+	@echo "OPENSSL3_OK=$(shell openssl version | grep -q ' OpenSSL 3\.0' && echo yes)" >> $@
 else
 #
 #  No OpenSSL means that we don't even try to build eapol_test
@@ -74,6 +75,17 @@ ifeq "$(OPENSSL_OK)" ""
 SECLEVEL=
 else
 SECLEVEL=@SECLEVEL=1
+endif
+
+#
+#  For OpenSSL 3.0.x, as described in https://github.com/openssl/openssl/blob/master/doc/man7/migration_guide.pod
+#
+#  "The security strength of SHA1 and MD5 based signatures in TLS has been reduced.
+#   This results in SSL 3, TLS 1.0, TLS 1.1 and DTLS 1.0 no longer working at the
+#   default security level of 1 and instead requires security level 0."
+#
+ifeq "$(OPENSSL3_OK)" "yes"
+SECLEVEL=@SECLEVEL=0
 endif
 
 RADDB_PATH := $(top_builddir)/raddb/
