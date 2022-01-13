@@ -36,6 +36,8 @@ RCSID("$Id$")
 
 #include <assert.h>
 
+USES_APPLE_DEPRECATED_API
+
 typedef struct REQUEST REQUEST;	/* to shut up warnings about mschap.h */
 
 #include "smbdes.h"
