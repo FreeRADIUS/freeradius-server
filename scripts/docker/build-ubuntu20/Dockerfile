@@ -22,4 +22,4 @@ COPY --from=0 /opt/freeradius /opt/freeradius
 
 EXPOSE 1812/udp 1813/udp
 ENV LD_LIBRARY_PATH=/opt/freeradius/lib
-CMD ["/opt/freeradius/sbin/radiusd", "-X"]
+CMD ["/opt/freeradius/sbin/radiusd", "-f"]
