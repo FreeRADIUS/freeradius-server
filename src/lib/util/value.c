@@ -4672,8 +4672,8 @@ parse:
 	case FR_TYPE_IPV4_ADDR:
 	{
 		fr_ipaddr_t addr;
-		fr_sbuff_t ip_start = FR_SBUFF(in);
-		size_t name_len = fr_sbuff_adv_past_allowed(&ip_start, fr_sbuff_remaining(in), sbuff_char_class_hostname, rules->terminals);
+		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
+		if (!name_len) return 0;
 
 		if (fr_inet_pton4(&addr, fr_sbuff_current(in), name_len,
 				  fr_hostname_lookups, false, true) < 0) return -1;
@@ -4689,26 +4689,24 @@ parse:
 		}
 
 		memcpy(&dst->vb_ip, &addr, sizeof(dst->vb_ip));
-		fr_sbuff_advance(in, name_len);
 	}
 		goto finish;
 
 	case FR_TYPE_IPV4_PREFIX:
 	{
-		fr_sbuff_t ip_start = FR_SBUFF(in);
-		size_t name_len = fr_sbuff_adv_past_allowed(&ip_start, fr_sbuff_remaining(in), sbuff_char_class_hostname, rules->terminals);
+		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
+		if (!name_len) return 0;
 
 		if (fr_inet_pton4(&dst->vb_ip, fr_sbuff_current(in), name_len,
 				  fr_hostname_lookups, false, true) < 0) return -1;
-		fr_sbuff_advance(in, name_len);
 	}
 		goto finish;
 
 	case FR_TYPE_IPV6_ADDR:
 	{
 		fr_ipaddr_t addr;
-		fr_sbuff_t ip_start = FR_SBUFF(in);
-		size_t name_len = fr_sbuff_adv_past_allowed(&ip_start, fr_sbuff_remaining(in), sbuff_char_class_hostname, rules->terminals);
+		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
+		if (!name_len) return 0;
 
 		if (fr_inet_pton6(&addr, fr_sbuff_current(in), name_len,
 				  fr_hostname_lookups, false, true) < 0) return -1;
@@ -4724,18 +4722,28 @@ parse:
 		}
 
 		memcpy(&dst->vb_ip, &addr, sizeof(dst->vb_ip));
-		fr_sbuff_advance(in, name_len);
+
+		/*
+		 *	Parse scopes, too.
+		 */
+		if (fr_sbuff_next_if_char(&our_in, '%')) {
+			slen = fr_sbuff_out(NULL, &dst->vb_ip.scope_id, &our_in);
+			if (slen <= 0) {
+				fr_strerror_printf("Failed parsing scope ID");
+				return -1;
+			}
+		}
+
 	}
 		goto finish;
 
 	case FR_TYPE_IPV6_PREFIX:
 	{
-		fr_sbuff_t ip_start = FR_SBUFF(in);
-		size_t name_len = fr_sbuff_adv_past_allowed(&ip_start, fr_sbuff_remaining(in), sbuff_char_class_hostname, rules->terminals);
+		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
+		if (!name_len) return 0;
 
 		if (fr_inet_pton6(&dst->vb_ip, fr_sbuff_current(in), name_len,
 				  fr_hostname_lookups, false, true) < 0) return -1;
-		fr_sbuff_advance(in, name_len);
 	}
 		goto finish;
 
@@ -4981,7 +4989,7 @@ finish:
 	dst->enumv = dst_enumv;
 	fr_dlist_entry_init(&dst->entry);
 
-	return 0;
+	return fr_sbuff_set(in, &our_in);
 }
 
 ssize_t fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
