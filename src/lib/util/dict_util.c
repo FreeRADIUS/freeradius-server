@@ -229,9 +229,16 @@ static int8_t dict_enum_name_cmp(void const *one, void const *two)
 {
 	fr_dict_enum_value_t const *a = one;
 	fr_dict_enum_value_t const *b = two;
+	size_t len;
 	int ret;
 
-	ret = strcasecmp(a->name, b->name);
+	if (a->name_len >= b->name_len) {
+		len = a->name_len;
+	} else {
+		len = b->name_len;
+	}
+
+	ret = strncasecmp(a->name, b->name, len);
 	return CMP(ret, 0);
 }
 
