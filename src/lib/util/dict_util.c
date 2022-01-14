@@ -1270,7 +1270,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 			    fr_dict_attr_t const *child_struct)
 {
 	size_t				len;
-	fr_dict_enum_value_t			*enumv = NULL;
+	fr_dict_enum_value_t		*enumv = NULL;
 	fr_value_box_t			*enum_value = NULL;
 	fr_dict_attr_ext_enumv_t	*ext;
 
@@ -1337,7 +1337,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	talloc_set_type(enumv, fr_dict_enum_value_t);
 
 	enumv->name = talloc_typed_strdup(enumv, name);
-	enumv->name_len = strlen(name);
+	enumv->name_len = len;
 
 	if (child_struct) enumv->child_struct[0] = child_struct;
 	enum_value = fr_value_box_alloc(enumv, da->type, NULL, false);
@@ -1398,6 +1398,8 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 			talloc_free(enumv);
 			return -1;
 		}
+
+		if (enumv->name_len > ext->max_name_len) ext->max_name_len = enumv->name_len;
 	}
 
 	/*
@@ -2870,6 +2872,58 @@ fr_dict_enum_value_t *fr_dict_enum_by_name(fr_dict_attr_t const *da, char const 
 	if (len < 0) len = strlen(name);
 
 	return fr_hash_table_find(ext->value_by_name, &(fr_dict_enum_value_t){ .name = name, .name_len = len});
+}
+
+/*
+ *	Get a value by its name, keyed off of an attribute, from an sbuff
+ */
+ssize_t	fr_dict_enum_by_name_substr(fr_dict_enum_value_t **out, fr_dict_attr_t const *da, fr_sbuff_t *in)
+{
+	fr_dict_attr_ext_enumv_t	*ext;
+	fr_sbuff_t	our_in = FR_SBUFF(in);
+	fr_dict_enum_value_t *found = NULL;
+	size_t		found_len = 0;
+	uint8_t		*p;
+	uint8_t		name[FR_DICT_ENUM_MAX_NAME_LEN + 1];
+
+	/*
+	 *	No values associated with this attribute, do nothing.
+	 */
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+	if (!ext || !ext->value_by_name) return 0;
+
+	/*
+	 *	Loop until we exhaust all of the possibilities.
+	 */
+	for (p = name; (size_t) (p - name) < ext->max_name_len; p++) {
+		int len = (p - name) + 1;
+		fr_dict_enum_value_t *enumv;
+
+		*p = *fr_sbuff_current(&our_in);
+		if (!fr_dict_attr_allowed_chars[*p]) {
+			break;
+		}
+		fr_sbuff_next(&our_in);
+
+		enumv = fr_hash_table_find(ext->value_by_name, &(fr_dict_enum_value_t){ .name = (char const *) name,
+											.name_len = len});
+
+		/*
+		 *	Return the LONGEST match, as there may be
+		 *	overlaps.  e.g. "Framed", and "Framed-User".
+		 */
+		if (enumv) {
+			found = enumv;
+			found_len = len;
+		}
+	}
+
+	if (found) {
+		*out = found;
+		return fr_sbuff_set(in, found_len);
+	}
+
+	return 0;
 }
 
 int dict_dlopen(fr_dict_t *dict, char const *name)

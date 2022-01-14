@@ -559,6 +559,8 @@ fr_dict_enum_value_t		*fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_
 char const		*fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t const *value);
 
 fr_dict_enum_value_t		*fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name, ssize_t len);
+
+ssize_t			fr_dict_enum_by_name_substr(fr_dict_enum_value_t **out, fr_dict_attr_t const *da, fr_sbuff_t *in);
 /** @} */
 
 /** @name Dictionary and protocol loading

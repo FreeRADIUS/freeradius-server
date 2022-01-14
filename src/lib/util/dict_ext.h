@@ -84,6 +84,7 @@ typedef struct {
  *
  */
 typedef struct {
+	size_t			max_name_len;			//!< maximum length of a name
 	fr_hash_table_t		*value_by_name;			//!< Lookup an enumeration value by name
 	fr_hash_table_t		*name_by_value;			//!< Lookup a name by value
 } fr_dict_attr_ext_enumv_t;
