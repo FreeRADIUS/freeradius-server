@@ -1866,10 +1866,6 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 		enc_end = truncate ? cc->buffer_start + iterations++ : cc->buffer_end;
 
 		if (truncate) {
-
-		}
-
-		if (truncate) {
 #ifdef HAVE_SANITIZER_LSAN_INTERFACE_H
 			/*
 			 *	Poison the region between the subset of the buffer
