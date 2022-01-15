@@ -1691,8 +1691,45 @@ size_t fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool
 
 		end = CONSTRAINED_END(sbuff, len, total);
 		p = sbuff->p;
-		while ((p < end) && allowed[(uint8_t)*p] &&
-		       ((needle_len == 0) || !fr_sbuff_terminal_search(sbuff, p, idx, tt, needle_len))) p++;
+		while ((p < end) && allowed[(uint8_t)*p]) {
+			if (needle_len == 0) {
+				p++;
+				continue;
+			}
+
+		       /*
+			*	If this character is allowed, BUT is also listed as a one-character terminal,
+			*	then we still allow it.  This decision implements "greedy" parsing.
+			*/
+		       if (fr_sbuff_terminal_search(sbuff, p, idx, tt, 1)) {
+			       p++;
+			       continue;
+		       }
+
+		       /*
+			*	Otherwise if the next *set* of characters) is not in the terminals, then
+			*	allow the current character.
+			*/
+		       if (!fr_sbuff_terminal_search(sbuff, p, idx, tt, needle_len)) {
+			       p++;
+			       continue;
+		       }
+
+		       /*
+			*	The character is allowed, and is NOT listed as a terminal character by itself.
+			*	However, it is part of a multi-character terminal sequence.  We therefore
+			*	stop.
+			*
+			*	This decision allows us to parse things like "Framed-User", where we might
+			*	normally stop at the "-".  However, we will still stop at "Framed-=User", as
+			*	"-=" may be a terminal sequence.
+			*
+			*	There is no perfect solution here, other than to fix the input grammer so that
+			*	it has no ambiguity.  Since we can't do that, we choose to err on the side of
+			*	allowing the existing grammar, where it makes sense
+			*/
+		       break;
+		}
 
 		total += fr_sbuff_set(sbuff, p);
 		if (p != end) break;		/* stopped early, break */
