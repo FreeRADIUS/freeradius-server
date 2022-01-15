@@ -72,6 +72,12 @@ static OSSL_PROVIDER *openssl_legacy_provider = NULL;
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 #define ERR_get_error_line(_file, _line) ERR_get_error_all(_file, _line, NULL, NULL, NULL)
+
+#define FIPS_mode(_x) EVP_default_properties_is_fips_enabled(NULL)
+#define PEM_read_bio_DHparams(_bio, _x, _y, _z) PEM_read_bio_Parameters(_bio, &dh)
+#define SSL_CTX_set0_tmp_dh_pkey(_ctx, _dh) SSL_CTX_set_tmp_dh(_ctx, _dh)
+#define DH EVP_PKEY
+#define DH_free(_dh)
 #endif
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
@@ -1754,7 +1760,6 @@ static CONF_PARSER tls_client_config[] = {
 };
 
 
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
 /*
  *	TODO: Check for the type of key exchange * like conf->dh_key
  */
@@ -1778,6 +1783,10 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	if (FIPS_mode() > 0) {
 		WARN(LOG_PREFIX ": Ignoring user-selected DH parameters in FIPS mode. Using defaults.");
+		if (!SSL_CTX_set_dh_auto(ctx, 1)) {
+			ERROR(LOG_PREFIX ": Unable to set DH parameters");
+			return -1;
+		}
 		return 0;
 	}
 #endif
@@ -1804,7 +1813,6 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 	DH_free(dh);
 	return 0;
 }
-#endif
 
 
 /*
@@ -4769,18 +4777,16 @@ skip_list:
 	}
 #endif /*HAVE_OPENSSL_OCSP_H*/
 
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	{
+	if (conf->dh_file) {
 		char *dh_file;
 
 		memcpy(&dh_file, &conf->dh_file, sizeof(dh_file));
 		if (load_dh_params(conf->ctx, dh_file) < 0) {
 			goto error;
 		}
+	} else {
+		if (!SSL_CTX_set_dh_auto(conf->ctx, 1)) goto error;
 	}
-#else
-	if (!SSL_CTX_set_dh_auto(conf->ctx, 1)) goto error;
-#endif
 
 	if (conf->verify_tmp_dir) {
 		if (chmod(conf->verify_tmp_dir, S_IRWXU) < 0) {
@@ -4849,18 +4855,16 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 		goto error;
 	}
 
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	{
+	if (conf->dh_file) {
 		char *dh_file;
 
 		memcpy(&dh_file, &conf->dh_file, sizeof(dh_file));
 		if (load_dh_params(conf->ctx, dh_file) < 0) {
 			goto error;
 		}
+	} else {
+		if (!SSL_CTX_set_dh_auto(conf->ctx, 1)) goto error;
 	}
-#else
-	if (!SSL_CTX_set_dh_auto(conf->ctx, 1)) goto error;
-#endif
 
 	cf_data_add(cs, "tls-conf", conf, NULL);
 
