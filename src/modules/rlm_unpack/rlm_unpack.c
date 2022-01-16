@@ -31,22 +31,6 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-static fr_dict_t const *dict_freeradius;
-
-extern fr_dict_autoload_t rlm_unpack_dict[];
-fr_dict_autoload_t rlm_unpack_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
-};
-
-static fr_dict_attr_t const *attr_cast_base;
-
-extern fr_dict_attr_autoload_t rlm_unpack_dict_attr[];
-fr_dict_attr_autoload_t rlm_unpack_dict_attr[] = {
-	{ .out = &attr_cast_base, .name = "Cast-Base", .type = FR_TYPE_UINT8, .dict = &dict_freeradius },
-	{ NULL }
-};
-
 static xlat_arg_parser_t const unpack_xlat_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_VOID },
 	{ .required = true, .single = true, .type = FR_TYPE_UINT32 },
