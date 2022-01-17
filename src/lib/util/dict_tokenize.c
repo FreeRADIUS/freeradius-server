@@ -2543,6 +2543,8 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir, char c
 	size_t			i;
 	fr_dict_attr_flags_t	flags = { .internal = true };
 	char			*type_name;
+	fr_dict_attr_t		*cast_base;
+	fr_value_box_t		box;
 
 	if (unlikely(!dict_gctx)) {
 		fr_strerror_const("fr_dict_global_ctx_init() must be called before loading dictionary files");
@@ -2576,6 +2578,32 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir, char c
 	 *	Set the root name of the dictionary
 	 */
 	if (dict_root_set(dict, "internal", 0) < 0) goto error;
+
+	if (dict_path && dict_from_file(dict, dict_path, FR_DICTIONARY_FILE, NULL, 0) < 0) goto error;
+
+	TALLOC_FREE(dict_path);
+
+	dict_dependent_add(dict, dependent);
+
+	if (!dict_gctx->internal) {
+		dict_gctx->internal = dict;
+		dict_dependent_add(dict, "global");
+	}
+
+	/*
+	 *	Try to load libfreeradius-internal, too.  If that
+	 *	fails (i.e. fuzzers???), ignore it.
+	 */
+	(void) dict_dlopen(dict, "internal");
+
+	cast_base = dict_attr_child_by_num(dict->root, FR_CAST_BASE);
+	if (!cast_base) {
+		fr_strerror_printf("Failed to find 'Cast-Base' in internal dictionary");
+		goto error;
+	}
+
+	fr_assert(cast_base->type == FR_TYPE_UINT8);
+	fr_value_box_init(&box, FR_TYPE_UINT8, NULL, false);
 
 	/*
 	 *	Add cast attributes.  We do it this way,
@@ -2616,24 +2644,16 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir, char c
 		 *	Set up parenting for the attribute.
 		 */
 		if (dict_attr_child_add(dict->root, n) < 0) goto error;
+
+		/*
+		 *	Add the enum, too.
+		 */
+		box.vb_uint8 = p->value;
+		if (dict_attr_enum_add_name(cast_base, p->name.str, &box, false, false, NULL) < 0) {
+			fr_strerror_printf_push("Failed adding '%s' as a VALUE into internal dictionary", p->name.str);
+			goto error;
+		}
 	}
-
-	if (dict_path && dict_from_file(dict, dict_path, FR_DICTIONARY_FILE, NULL, 0) < 0) goto error;
-
-	talloc_free(dict_path);
-
-	dict_dependent_add(dict, dependent);
-
-	if (!dict_gctx->internal) {
-		dict_gctx->internal = dict;
-		dict_dependent_add(dict, "global");
-	}
-
-	/*
-	 *	Try to load libfreeradius-internal, too.  If that
-	 *	fails (i.e. fuzzers???), ignore it.
-	 */
-	(void) dict_dlopen(dict, "internal");
 
 	*out = dict;
 
