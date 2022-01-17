@@ -8,6 +8,7 @@ on:
 
 env:
   DEBIAN_FRONTEND: noninteractive
+  CC: gcc
 
 jobs:
   deb-build:
@@ -63,6 +64,13 @@ jobs:
         debian/rules debian/control
         mk-build-deps -irt"apt-get -y" debian/control
       working-directory: freeradius
+
+    - name: Show versions
+      run: |
+        $CC --version
+        make --version
+        krb5-config --all || :
+        openssl version
 
     - name: Run tests and build eapol_test
       run: |
