@@ -6,6 +6,9 @@ on:
       - coverity_scan
   pull_request:
 
+env:
+  CC: gcc
+
 jobs:
   rpm-build:
 
@@ -90,6 +93,13 @@ jobs:
     - name: Install build dependencies
       run: |
         yum-builddep -y freeradius/redhat/freeradius.spec
+
+    - name: Show versions
+      run: |
+        $CC --version
+        make --version
+        krb5-config --all || :
+        openssl version
 
     # For pkill and ps
     - name: Enable procps-ng on Fedora
