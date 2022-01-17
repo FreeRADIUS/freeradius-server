@@ -34,8 +34,8 @@
 TMP_BUILD_DIR="${BUILD_DIR}"
 : ${TMP_BUILD_DIR:="$(mktemp -d -t eapol_test.XXXXX)"}
 : ${HOSTAPD_DIR:="${TMP_BUILD_DIR}/hostapd"}
-: ${HOSTAPD_GIT_BRANCH:="master"}
-: ${HOSTAPD_GIT_COMMIT:="de4d62dbc"}
+: ${HOSTAPD_GIT_BRANCH:="hostap_2_10"}
+#: ${HOSTAPD_GIT_COMMIT:=""}
 : ${WPA_SUPPLICANT_DIR:="${HOSTAPD_DIR}/wpa_supplicant"}
 
 : ${BUILD_CONF_DIR:="$(dirname $0)/eapol_test"}
