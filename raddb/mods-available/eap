@@ -453,6 +453,12 @@ eap {
 		#  In order to enable TLS 1.0 and TLS 1.1, you may
 		#  also need to update cipher_list below to:
 		#
+		#   * OpenSSL >= 3.x
+		#
+		#	cipher_list = "DEFAULT@SECLEVEL=0"
+		#
+		#   * OpenSSL < 3.x
+		#
 		#	cipher_list = "DEFAULT@SECLEVEL=1"
 		#
 		#  The values must be in quotes.
