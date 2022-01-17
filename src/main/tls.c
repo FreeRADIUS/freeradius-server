@@ -1763,6 +1763,7 @@ static CONF_PARSER tls_client_config[] = {
 /*
  *	TODO: Check for the type of key exchange * like conf->dh_key
  */
+#if OPENSSL_VERSION_NUMBER < 0x10101000L
 static int load_dh_params(SSL_CTX *ctx, char *file)
 {
 	DH *dh = NULL;
@@ -1813,7 +1814,7 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 	DH_free(dh);
 	return 0;
 }
-
+#endif
 
 /*
  *	Print debugging messages, and free data.
@@ -4777,6 +4778,9 @@ skip_list:
 	}
 #endif /*HAVE_OPENSSL_OCSP_H*/
 
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	if (!SSL_CTX_set_dh_auto(conf->ctx, 1)) goto error;
+#else
 	if (conf->dh_file) {
 		char *dh_file;
 
@@ -4784,9 +4788,8 @@ skip_list:
 		if (load_dh_params(conf->ctx, dh_file) < 0) {
 			goto error;
 		}
-	} else {
-		if (!SSL_CTX_set_dh_auto(conf->ctx, 1)) goto error;
 	}
+#endif
 
 	if (conf->verify_tmp_dir) {
 		if (chmod(conf->verify_tmp_dir, S_IRWXU) < 0) {
@@ -4855,6 +4858,9 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 		goto error;
 	}
 
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+	if (!SSL_CTX_set_dh_auto(conf->ctx, 1)) goto error;
+#else
 	if (conf->dh_file) {
 		char *dh_file;
 
@@ -4862,9 +4868,8 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 		if (load_dh_params(conf->ctx, dh_file) < 0) {
 			goto error;
 		}
-	} else {
-		if (!SSL_CTX_set_dh_auto(conf->ctx, 1)) goto error;
 	}
+#endif
 
 	cf_data_add(cs, "tls-conf", conf, NULL);
 
