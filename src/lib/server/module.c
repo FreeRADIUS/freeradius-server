@@ -1483,7 +1483,7 @@ static int _module_instance_free(module_instance_t *mi)
 		 *	Remove any registered paircmps.
 		 */
 		paircmp_unregister_instance(mi->dl_inst->data);
-		xlat_unregister_module(mi->dl_inst->data);
+		xlat_unregister_module(mi->dl_inst);
 	}
 
 	/*

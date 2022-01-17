@@ -507,7 +507,7 @@ void xlat_unregister(char const *name)
 }
 
 
-void xlat_unregister_module(void *instance)
+void xlat_unregister_module(dl_module_inst_t const *inst)
 {
 	xlat_t				*c;
 	fr_rb_iter_inorder_t	iter;
@@ -517,7 +517,9 @@ void xlat_unregister_module(void *instance)
 	for (c = fr_rb_iter_init_inorder(&iter, xlat_root);
 	     c;
 	     c = fr_rb_iter_next_inorder(&iter)) {
-		if (c->mod_inst != instance) continue;
+		if (!c->mctx) continue;
+		if (c->mctx->inst != inst) continue;
+
 		fr_rb_iter_delete_inorder(&iter);
 	}
 }

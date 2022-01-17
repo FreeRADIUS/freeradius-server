@@ -62,7 +62,6 @@ typedef struct xlat_s {
 
 	xlat_flags_t		flags;			//!< various flags
 
-	void			*mod_inst;		//!< Module instance passed to xlat
 	xlat_input_type_t	input_type;		//!< Type of input used.
 	xlat_arg_parser_t const	*args;			//!< Definition of args consumed.
 } xlat_t;
