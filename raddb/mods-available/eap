@@ -270,12 +270,16 @@ eap {
 		#
 	#	psk_query = "%{sql:select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}'}"
 
-		#  For DH cipher suites to work, you have to
-		#  run OpenSSL to create the DH file first:
+		#  For DH cipher suites to work in OpenSSL < 1.1.0,
+		#  you have to run OpenSSL to create the DH file
+		#  first:
 		#
 		#    openssl dhparam -out certs/dh 2048
 		#
-		dh_file = ${certdir}/dh
+		#  For OpenSSL >= 1.1.0, just leave this commented
+		#  out, and OpenSSL will do the right thing.
+		#
+	#	dh_file = ${certdir}/dh
 
 		#  If your system doesn't have /dev/urandom,
 		#  you will need to create this file, and
