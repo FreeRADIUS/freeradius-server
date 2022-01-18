@@ -2901,12 +2901,12 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
  * Called when %(subst:) pattern begins with "/"
  *
 @verbatim
-%(sub:<subject> /<regex>/[flags] <replace>)
+%(subst:<subject> /<regex>/[flags] <replace>)
 @endverbatim
  *
  * Example: (User-Name = "foo")
 @verbatim
-"%(sub:%{User-Name} /oo.*$/ un)" == "fun"
+"%(subst:%{User-Name} /oo.*$/ un)" == "fun"
 @endverbatim
  *
  * @see #xlat_func_subst
