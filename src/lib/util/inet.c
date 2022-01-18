@@ -607,7 +607,8 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
  */
 int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback, bool mask)
 {
-	char const	*p, *end;
+	char		*p;
+	char const	*end;
 	unsigned int	prefix;
 	char		*eptr;
 	char		buffer[256];	/* As per RFC1035 */
@@ -622,28 +623,32 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	end = value + inlen;
 	while ((value < end) && isspace((int) *value)) value++;
 	if (value == end) {
-		fr_strerror_const("Empty IPv4 address string is invalid");
+		fr_strerror_const("Empty IPv6 address string is invalid");
 		return -1;
 	}
-	inlen = end - value;
+	inlen = end - value;	/* always >0 due to the above check for value==end */
 
 	/*
-	 *	Copy to intermediary buffer if we were given a length
+	 *	Copy to intermediary buffer.
 	 */
-	if (inlen >= 0) {
-		if (inlen >= (ssize_t)sizeof(buffer)) {
-			fr_strerror_printf("Invalid IPv6 address string \"%pV\"", fr_box_strvalue_len(value, inlen));
-			return -1;
-		}
-		memcpy(buffer, value, inlen);
-		buffer[inlen] = '\0';
-		value = buffer;
+	if (inlen >= (ssize_t)sizeof(buffer)) {
+		fr_strerror_printf("Invalid IPv6 address string \"%pV\"", fr_box_strvalue_len(value, inlen));
+		return -1;
 	}
+	memcpy(buffer, value, inlen);
+	buffer[inlen] = '\0';
+	value = buffer;
 
 	p = strchr(value, '/');
 	if (!p) {
 		out->prefix = 128;
 		out->af = AF_INET6;
+
+		/*
+		 *	Allow scopes for non-prefix values.
+		 */
+		p = strchr(value, '%');
+		if (p) *(p++) = '\0';
 
 		/*
 		 *	Allow '*' as the wildcard address
@@ -656,6 +661,30 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 				return -1;
 			}
 		} else if (fr_inet_hton(out, AF_INET6, value, fallback) < 0) return -1;
+
+		/*
+		 *	No scope, or just '%'.  That's fine.
+		 */
+		if (!p || !*p) return 0;
+
+		/*
+		 *	Parse scope.
+		 */
+		prefix = strtoul(p, &eptr, 10);
+		if (prefix > 128) {
+			fr_strerror_printf("Invalid scope ID \"%s\".  Should be between 0-2^32-1", p);
+			return -1;
+		}
+		if (eptr[0] != '\0') {
+			fr_strerror_printf("Failed to parse scope \"%s\", "
+					   "got garbage after numerical scope value \"%s\"", p, eptr);
+			return -1;
+		}
+
+		if (prefix > UINT32_MAX) {
+			fr_strerror_printf("Invalid scope ID \"%s\"", p);
+			return -1;
+		}
 
 		return 0;
 	}

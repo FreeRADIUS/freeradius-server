@@ -4708,6 +4708,13 @@ parse:
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
 		if (!name_len) return 0;
 
+		/*
+		 *	Parse scope, too.
+		 */
+		if (fr_sbuff_next_if_char(&our_in, '%')) {
+			name_len += fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, sbuff_char_class_uint);
+		}
+
 		if (fr_inet_pton6(&addr, fr_sbuff_current(in), name_len,
 				  fr_hostname_lookups, false, true) < 0) return -1;
 
@@ -4722,18 +4729,6 @@ parse:
 		}
 
 		memcpy(&dst->vb_ip, &addr, sizeof(dst->vb_ip));
-
-		/*
-		 *	Parse scopes, too.
-		 */
-		if (fr_sbuff_next_if_char(&our_in, '%')) {
-			slen = fr_sbuff_out(NULL, &dst->vb_ip.scope_id, &our_in);
-			if (slen <= 0) {
-				fr_strerror_printf("Failed parsing scope ID");
-				return -1;
-			}
-		}
-
 	}
 		goto finish;
 
