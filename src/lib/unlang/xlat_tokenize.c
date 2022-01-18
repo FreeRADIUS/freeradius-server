@@ -109,52 +109,6 @@ static fr_sbuff_parse_rules_t const xlat_multi_arg_rules = {
 	.terminals = &FR_SBUFF_TERM(")")	/* These get merged with other literal terminals */
 };
 
-/** Allocate an xlat node with no name, and no type set
- *
- * @param[in] ctx	to allocate node in.
- * @return A new xlat node.
- */
-static inline CC_HINT(always_inline) xlat_exp_t *xlat_exp_alloc_null(TALLOC_CTX *ctx)
-{
-	xlat_exp_t *node;
-
-	MEM(node = talloc_zero(ctx, xlat_exp_t));
-	node->flags.pure = true;	/* everything starts pure */
-
-	return node;
-}
-
-/** Allocate an xlat node
- *
- * @param[in] ctx	to allocate node in.
- * @param[in] type	of the node.
- * @param[in] in	original input string.
- * @param[in] inlen	the length of the original input string.
- * @return A new xlat node.
- */
-static inline CC_HINT(always_inline) xlat_exp_t *xlat_exp_alloc(TALLOC_CTX *ctx, xlat_type_t type,
-								char const *in, size_t inlen)
-{
-	xlat_exp_t *node;
-
-	node = xlat_exp_alloc_null(ctx);
-	node->type = type;
-
-	if (!in) return node;
-
-	node->fmt = talloc_bstrndup(node, in, inlen);
-	switch (type) {
-	case XLAT_BOX:
-		fr_value_box_strdup_shallow(&node->data, NULL, node->fmt, false);
-		break;
-
-	default:
-		break;
-	}
-
-	return node;
-}
-
 /** Allocate an xlat node to call an xlat function
  *
  * @param[in] ctx	to allocate the new node in.
@@ -174,17 +128,15 @@ xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t *func, xlat_exp_t const 
 	}
 	node->flags = func->flags;
 
-	return node;
-}
+	/*
+	 *	A pure function can have impure arguments, e.g. hash(sql query).
+	 */
+	while (args) {
+		node->flags.pure &= args->flags.pure;
+		args = args->next;
+	}
 
-/** Set the type of an xlat node
- *
- * @param[in] node	to set type for.
- * @param[in] type	to set.
- */
-static inline CC_HINT(always_inline) void xlat_exp_set_type(xlat_exp_t *node, xlat_type_t type)
-{
-	node->type = type;
+	return node;
 }
 
 #if 0
@@ -199,17 +151,6 @@ static inline CC_HINT(always_inline) void xlat_exp_set_name_buffer(xlat_exp_t *n
 	node->fmt = talloc_bstrdup(node, fmt);
 }
 #endif
-
-/** Set the format string for an xlat node
- *
- * @param[in] node	to set fmt for.
- * @param[in] fmt	talloced buffer to set as the fmt string.
- */
-static inline CC_HINT(always_inline) void xlat_exp_set_name_buffer_shallow(xlat_exp_t *node, char const *fmt)
-{
-	if (node->fmt) talloc_const_free(node->fmt);
-	node->fmt = fmt;
-}
 
 /** Free a linked list of xlat nodes
  *
@@ -227,16 +168,9 @@ void xlat_exp_free(xlat_exp_t **head)
 	*head = NULL;
 }
 
-static int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-				   tmpl_rules_t const *t_rules);
-
 static int xlat_tokenize_string(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
 				 fr_sbuff_t *in, bool brace,
 				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
-
-static inline int xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **head,
-					      xlat_flags_t *flags, fr_sbuff_t *in,
-					      tmpl_rules_t const *rules);
 
 static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 					    tmpl_rules_t const *t_rules, bool func_args)
@@ -512,9 +446,9 @@ int xlat_validate_function_args(xlat_exp_t *node)
  *	- 0 if the string was parsed into a function.
  *	- <0 on parse error.
  */
-static inline int xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **head,
-					      xlat_flags_t *flags, fr_sbuff_t *in,
-					      tmpl_rules_t const *rules)
+int xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **head,
+				xlat_flags_t *flags, fr_sbuff_t *in,
+				tmpl_rules_t const *rules)
 {
 	xlat_exp_t		*node;
 	xlat_t			*func;
@@ -759,8 +693,8 @@ done:
 	return 0;
 }
 
-static int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-				   tmpl_rules_t const *t_rules)
+int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+			    tmpl_rules_t const *t_rules)
 {
 	size_t			len;
 	fr_sbuff_marker_t	s_m;
