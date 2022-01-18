@@ -161,6 +161,15 @@ static inline void xlat_flags_merge(xlat_flags_t *parent, xlat_flags_t const *ch
 	parent->pure &= !parent->needs_async; /* things needing async cannot be pure */
 }
 
+/** Mark an xlat function as internal
+ *
+ * @param[in] xlat to mark as internal.
+ */
+static inline void xlat_internal(xlat_t *xlat)
+{
+	xlat->internal = true;
+}
+
 /** Walker callback for xlat_walk()
  *
  * @param[in] exp	being evaluated.

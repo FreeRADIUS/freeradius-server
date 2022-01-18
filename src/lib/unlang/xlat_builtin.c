@@ -409,15 +409,6 @@ int xlat_func_mono(xlat_t *x, xlat_arg_parser_t const *arg)
 	return 0;
 }
 
-/** Mark an xlat function as internal
- *
- * @param[in] xlat to mark as internal.
- */
-void xlat_internal(xlat_t *xlat)
-{
-	xlat->internal = true;
-}
-
 /** Set global instantiation/detach callbacks
  *
  * All functions registered must be needs_async.
@@ -3497,6 +3488,7 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 		xlat = xlat_register(NULL, buffer, protocol_decode_xlat, NULL);
 		xlat_func_args(xlat, protocol_decode_xlat_args);
 		xlat_async_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_decode_t *, NULL, tp_decode);
+		xlat_internal(xlat);
 	}
 
 	/*
@@ -3510,6 +3502,7 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 		xlat = xlat_register(NULL, buffer, protocol_encode_xlat, NULL);
 		xlat_func_args(xlat, protocol_encode_xlat_args);
 		xlat_async_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_encode_t *, NULL, tp_encode);
+		xlat_internal(xlat);
 	}
 
 	return 0;
@@ -3580,6 +3573,7 @@ int xlat_init(void)
 do { \
 	if (!(xlat = xlat_register(NULL, _xlat, _func, XLAT_FLAG_PURE))) return -1; \
 	xlat_func_args(xlat, _args); \
+	xlat_internal(xlat); \
 } while (0)
 
 	XLAT_REGISTER_ARGS("concat", xlat_func_concat, xlat_func_concat_args);
@@ -3600,6 +3594,7 @@ do { \
 do { \
 	if (!(xlat = xlat_register(NULL, _xlat, _func, NULL))) return -1; \
 	xlat_func_args(xlat, _args); \
+	xlat_internal(xlat); \
 } while (0)
 
 	XLAT_REGISTER_ARGS("debug", xlat_func_debug, xlat_func_debug_args);
@@ -3609,8 +3604,10 @@ do { \
 	XLAT_REGISTER_ARGS("subst", xlat_func_subst, xlat_func_subst_args);
 	XLAT_REGISTER_ARGS("trigger", trigger_xlat, trigger_xlat_args);
 
- 	xlat_register(NULL, "untaint", xlat_func_untaint, NULL);
- 	xlat_register(NULL, "taint", xlat_func_taint, NULL);
+	xlat = xlat_register(NULL, "untaint", xlat_func_untaint, NULL);
+	xlat_internal(xlat);
+	xlat = xlat_register(NULL, "taint", xlat_func_taint, NULL);
+	xlat_internal(xlat);
 
 	/*
 	 *	All of these functions are pure.
@@ -3619,6 +3616,7 @@ do { \
 do { \
 	if (!(xlat = xlat_register(NULL, _xlat, _func, XLAT_FLAG_PURE))) return -1; \
 	xlat_func_mono(xlat, &_arg); \
+	xlat_internal(xlat); \
 } while (0)
 
 	XLAT_REGISTER_MONO("base64", xlat_func_base64_encode, xlat_func_base64_encode_arg);
@@ -3630,7 +3628,8 @@ do { \
 	XLAT_REGISTER_MONO("md5", xlat_func_md5, xlat_func_md5_arg);
 	XLAT_REGISTER_MONO("pack", xlat_func_pack, xlat_func_pack_arg);
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
-	xlat_register(NULL, "regex", xlat_func_regex, NULL);
+	xlat = xlat_register(NULL, "regex", xlat_func_regex, NULL);
+	xlat_internal(xlat);
 #endif
 	XLAT_REGISTER_MONO("sha1", xlat_func_sha1, xlat_func_sha_arg);
 
@@ -3664,12 +3663,14 @@ do { \
 do { \
 	if (!(xlat = xlat_register(NULL, _xlat, _func, NULL))) return -1; \
 	xlat_func_mono(xlat, &_arg); \
+	xlat_internal(xlat); \
 } while (0)
 
 	XLAT_REGISTER_MONO("rand", xlat_func_rand, xlat_func_rand_arg);
 	XLAT_REGISTER_MONO("randstr", xlat_func_randstr, xlat_func_randstr_arg);
 
-	xlat_register(NULL, "module", xlat_func_module, NULL);
+	xlat = xlat_register(NULL, "module", xlat_func_module, NULL);
+	xlat_internal(xlat);
 
 	return 0;
 }
