@@ -1,6 +1,8 @@
 *~
 *.o
 *.a
+*.buildinfo
+*.changes
 *.lo
 *.loT
 *.la
