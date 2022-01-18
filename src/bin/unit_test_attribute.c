@@ -2630,6 +2630,38 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 	RETURN_OK(escaped_len);
 }
 
+/** Parse an reprint and xlat expression expansion
+ *
+ */
+static size_t command_xlat_expr(command_result_t *result, command_file_ctx_t *cc,
+				     char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	ssize_t			dec_len;
+	xlat_exp_t		*head = NULL;
+	size_t			input_len = strlen(in), escaped_len;
+//	fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
+
+	dec_len = xlat_tokenize_expression(cc->tmp_ctx, &head, NULL, &FR_SBUFF_IN(in, input_len), NULL,
+					   &(tmpl_rules_t) {
+						   .dict_def = cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict,
+							   .allow_unresolved = cc->tmpl_rules.allow_unresolved
+					   });
+	if (dec_len <= 0) {
+		fr_strerror_printf_push_head("ERROR offset %d", (int) -dec_len);
+
+	return_error:
+		RETURN_OK_WITH_ERROR();
+	}
+
+	if (((size_t) dec_len != input_len)) {
+		fr_strerror_printf_push_head("Passed in %zu characters, but only parsed %zd characters", input_len, dec_len);
+		goto return_error;
+	}
+
+	escaped_len = xlat_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), head, &fr_value_escape_double);
+	RETURN_OK(escaped_len);
+}
+
 /** Parse an reprint and xlat argv expansion
  *
  */
@@ -2873,6 +2905,13 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.usage = "xlat_argv <string>",
 					.description = "Parse then print an xlat expansion argv, writing the normalised xlat expansion arguments to the data buffer"
 				}},
+
+	{ L("xlat_expr "),	&(command_entry_t){
+					.func = command_xlat_expr,
+					.usage = "xlat_expr <string>",
+					.description = "Parse then print an xlat expression, writing the normalised xlat expansion to the data buffer"
+				}},
+
 };
 static size_t commands_len = NUM_ELEMENTS(commands);
 

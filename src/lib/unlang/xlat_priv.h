@@ -38,11 +38,20 @@ extern "C" {
 #  define XLAT_DEBUG(...)
 #endif
 
+typedef enum {
+	XLAT_EXPR_TYPE_NONE,
+	XLAT_EXPR_TYPE_UNARY,
+	XLAT_EXPR_TYPE_BINARY,
+} xlat_expr_type_t;
+
 typedef struct xlat_s {
 	fr_rb_node_t		node;			//!< Entry in the xlat function tree.
 	char const		*name;			//!< Name of xlat function.
 	xlat_func_t		func;			//!< async xlat function (async unsafe).
+
 	bool			internal;		//!< If true, cannot be redefined.
+	xlat_expr_type_t	expr_type;	       	//!< for expressions
+	fr_token_t		token;			//!< for expressions
 
 	module_inst_ctx_t const	*mctx;			//!< Original module instantiation ctx if this
 							///< xlat was registered by a module.
@@ -286,6 +295,11 @@ void		unlang_xlat_init(void);
 int xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			       request_t *request, void *decode_ctx, fr_pair_decode_t decode,
 			       fr_value_box_list_t *in);
+/*
+ *	xlat_expr.c
+ */
+int		xlat_register_expressions(void);
+
 /*
  *	xlat_tokenize.c
  */

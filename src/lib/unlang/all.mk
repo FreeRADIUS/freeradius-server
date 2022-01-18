@@ -25,6 +25,7 @@ SOURCES	:=	base.c \
 		xlat.c \
 		xlat_builtin.c \
 		xlat_eval.c \
+		xlat_expr.c \
 		xlat_inst.c \
 		xlat_tokenize.c \
 		xlat_pair.c

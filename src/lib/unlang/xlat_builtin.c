@@ -3672,7 +3672,7 @@ do { \
 	xlat = xlat_register(NULL, "module", xlat_func_module, NULL);
 	xlat_internal(xlat);
 
-	return 0;
+	return xlat_register_expressions();
 }
 
 

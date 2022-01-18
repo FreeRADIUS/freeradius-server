@@ -1149,6 +1149,35 @@ static ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff
 		FR_SBUFF_IN_CHAR_RETURN(out, '%', node->fmt[0]);
 		goto done;
 
+	case XLAT_FUNC:
+		if (node->call.func->input_type != XLAT_INPUT_ARGS) break;
+
+		if (!node->call.func->internal || (node->call.func->expr_type == XLAT_EXPR_TYPE_NONE)) break;
+
+		/*
+		 *	Expressions and comparisons.
+		 */
+		if (node->call.func->expr_type == XLAT_EXPR_TYPE_UNARY) {
+			FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
+			xlat_print_node(out, node->child, e_rules);
+
+		} else {
+			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "(");
+			xlat_print_node(out, node->child, e_rules);
+			FR_SBUFF_IN_CHAR_RETURN(out, ' ');
+
+			/*
+			 *	@todo - when things like "+" support more than 2 arguments, print them all out
+			 *	here.
+			 */
+			FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
+			FR_SBUFF_IN_CHAR_RETURN(out, ' ');
+			xlat_print_node(out, node->child->next, e_rules);
+
+			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, ")");
+		}
+		goto done;
+
 	default:
 		break;
 	}
