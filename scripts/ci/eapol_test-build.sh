@@ -19,7 +19,7 @@
 #
 
 #
-#  Extremely basic script for building eapol_test from hostapd's master branch
+#  Extremely basic script for building eapol_test from hostapd's main branch
 #
 #  On success will write progress to stderr, and a path to the eapol_test
 #  binary to stdout, exiting with 0.
@@ -34,7 +34,7 @@
 TMP_BUILD_DIR="${BUILD_DIR}"
 : ${TMP_BUILD_DIR:="$(mktemp -d -t eapol_test.XXXXX)"}
 : ${HOSTAPD_DIR:="${TMP_BUILD_DIR}/hostapd"}
-: ${HOSTAPD_GIT_BRANCH:="master"}
+: ${HOSTAPD_GIT_BRANCH:="main"}
 : ${HOSTAPD_GIT_COMMIT:="de4d62dbc"}
 : ${WPA_SUPPLICANT_DIR:="${HOSTAPD_DIR}/wpa_supplicant"}
 
