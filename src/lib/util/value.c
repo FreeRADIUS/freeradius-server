@@ -4712,7 +4712,7 @@ parse:
 		 *	Parse scope, too.
 		 */
 		if (fr_sbuff_next_if_char(&our_in, '%')) {
-			name_len += fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, sbuff_char_class_uint);
+			name_len += fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_uint, rules->terminals);
 		}
 
 		if (fr_inet_pton6(&addr, fr_sbuff_current(in), name_len,
