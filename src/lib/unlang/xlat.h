@@ -330,6 +330,9 @@ int		xlat_func_args(xlat_t *xlat, xlat_arg_parser_t const args[]) CC_HINT(nonnul
 
 int		xlat_func_mono(xlat_t *xlat, xlat_arg_parser_t const *arg) CC_HINT(nonnull);
 
+ssize_t		xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+					 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
+
 /** Set a callback for global instantiation of xlat functions
  *
  * @param[in] _xlat		function to set the callback for (as returned by xlat_register).
