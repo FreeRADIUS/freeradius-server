@@ -1768,8 +1768,6 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 	DH *dh = NULL;
 	BIO *bio;
 
-	if (!file) return 0;
-
 	/*
 	 * Prior to trying to load the file, check what OpenSSL will do with it.
 	 *
@@ -1783,13 +1781,31 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	if (FIPS_mode() > 0) {
 		WARN(LOG_PREFIX ": Ignoring user-selected DH parameters in FIPS mode. Using defaults.");
+		file = NULL;
+	}
+
+	/*
+	 *	No dh file, set auto context.
+	 */
+	if (!file) {
 		if (!SSL_CTX_set_dh_auto(ctx, 1)) {
 			ERROR(LOG_PREFIX ": Unable to set DH parameters");
 			return -1;
 		}
+
+		return 0;
+	}
+
+	WARN(LOG_PREFIX ": Setting DH parameters from %s - this is no longer necessary.", file);
+	WARN(LOG_PREFIX ": You should comment out the 'dh_file' configuration item.");
+
+#else
+	if (!file) {
+		WARN(LOG_PREFIX ": Cannot set DH parameters.  DH cipher suites may not work.");
 		return 0;
 	}
 #endif
+
 
 	if ((bio = BIO_new_file(file, "r")) == NULL) {
 		ERROR(LOG_PREFIX ": Unable to open DH file - %s", file);
@@ -4777,15 +4793,13 @@ skip_list:
 	}
 #endif /*HAVE_OPENSSL_OCSP_H*/
 
-	if (conf->dh_file) {
+	{
 		char *dh_file;
 
 		memcpy(&dh_file, &conf->dh_file, sizeof(dh_file));
 		if (load_dh_params(conf->ctx, dh_file) < 0) {
 			goto error;
 		}
-	} else {
-		if (!SSL_CTX_set_dh_auto(conf->ctx, 1)) goto error;
 	}
 
 	if (conf->verify_tmp_dir) {
@@ -4855,15 +4869,13 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 		goto error;
 	}
 
-	if (conf->dh_file) {
+	{
 		char *dh_file;
 
 		memcpy(&dh_file, &conf->dh_file, sizeof(dh_file));
 		if (load_dh_params(conf->ctx, dh_file) < 0) {
 			goto error;
 		}
-	} else {
-		if (!SSL_CTX_set_dh_auto(conf->ctx, 1)) goto error;
 	}
 
 	cf_data_add(cs, "tls-conf", conf, NULL);

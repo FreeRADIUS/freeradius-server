@@ -196,13 +196,16 @@ listen {
 		#  this configuration item.
 		ca_file = ${cadir}/ca.pem
 
+		#  For DH cipher suites to work in OpenSSL < 1.1.0,
+		#  you have to run OpenSSL to create the DH file
+		#  first:
 		#
-		#  For DH cipher suites to work, you have to
-		#  run OpenSSL to create the DH file first:
+		#    openssl dhparam -out certs/dh 2048
 		#
-		#  	openssl dhparam -out certs/dh 1024
+		#  For OpenSSL >= 1.1.0, just leave this commented
+		#  out, and OpenSSL will do the right thing.
 		#
-		dh_file = ${certdir}/dh
+	#	dh_file = ${certdir}/dh
 
 		#
 		#  If your system doesn't have /dev/urandom,
