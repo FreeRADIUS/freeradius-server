@@ -1190,6 +1190,112 @@ void xlat_debug(xlat_exp_t const *node)
 	_xlat_debug(node, 0);
 }
 
+static ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rules_t const *e_rules)
+{
+	ssize_t			slen;
+	size_t			at_in = fr_sbuff_used_total(out);
+	xlat_exp_t const	*node = head;
+	char			close;
+
+	if (!node) return 0;
+
+	switch (node->type) {
+	case XLAT_GROUP:
+		if (node->quote != T_BARE_WORD) FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->quote]);
+		xlat_print(out, node->child, fr_value_escape_by_quote[node->quote]);
+		if (node->quote != T_BARE_WORD) FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->quote]);
+		if (node->next) FR_SBUFF_IN_CHAR_RETURN(out, ' ');	/* Add ' ' between args */
+		goto done;
+
+	case XLAT_BOX:
+		FR_SBUFF_RETURN(fr_value_box_print, out, &node->data, e_rules);
+		goto done;
+
+	case XLAT_ONE_LETTER:
+		FR_SBUFF_IN_CHAR_RETURN(out, '%', node->fmt[0]);
+		goto done;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Now print %(...) or %{...}
+	 */
+	if ((node->type == XLAT_FUNC) && (node->call.func->input_type == XLAT_INPUT_ARGS)) {
+		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "%(");
+		close = ')';
+	} else {
+		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "%{");
+		close = '}';
+	}
+
+	switch (node->type) {
+	case XLAT_ATTRIBUTE:
+		slen = tmpl_attr_print(out, node->attr, TMPL_ATTR_REF_PREFIX_NO);
+		if (slen < 0) {
+		error:
+			return slen;
+		}
+		break;
+#ifdef HAVE_REGEX
+	case XLAT_REGEX:
+		FR_SBUFF_IN_SPRINTF_RETURN(out, "%i", node->regex_index);
+		break;
+#endif
+	case XLAT_VIRTUAL:
+		FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(out, node->call.func->name);
+		break;
+
+	case XLAT_VIRTUAL_UNRESOLVED:
+		FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(out, node->fmt);
+		break;
+
+	case XLAT_FUNC:
+		FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(out, node->call.func->name);
+		FR_SBUFF_IN_CHAR_RETURN(out, ':');
+
+		if (node->child) {
+			slen = xlat_print(out, node->child, &xlat_escape);
+			if (slen < 0) goto error;
+		}
+		break;
+
+	case XLAT_FUNC_UNRESOLVED:
+		FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(out, node->fmt);
+		FR_SBUFF_IN_CHAR_RETURN(out, ':');
+
+		if (node->child) {
+			slen = xlat_print(out, node->child, &xlat_escape);
+			if (slen < 0) goto error;
+		}
+		break;
+
+	case XLAT_ALTERNATE:
+		slen = xlat_print(out, node->child, &xlat_escape);
+		if (slen < 0) goto error;
+
+		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, ":-");
+		slen = xlat_print(out, node->alternate, &xlat_escape);
+		if (slen < 0) goto error;
+		break;
+
+		fr_assert_fail(NULL);
+		break;
+
+	case XLAT_INVALID:
+	case XLAT_BOX:
+	case XLAT_ONE_LETTER:
+	case XLAT_GROUP:
+		fr_assert_fail(NULL);
+		break;
+	}
+	FR_SBUFF_IN_CHAR_RETURN(out, close);
+
+done:
+	return fr_sbuff_used_total(out) - at_in;
+}
+
 /** Reconstitute an xlat expression from its constituent nodes
  *
  * @param[in] out	Where to write the output string.
@@ -1201,100 +1307,13 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rule
 	ssize_t			slen;
 	size_t			at_in = fr_sbuff_used_total(out);
 	xlat_exp_t const	*node = head;
-	char			close;
 
 	if (!node) return 0;
 
 	while (node) {
-		switch (node->type) {
-		case XLAT_GROUP:
-			if (node->quote != T_BARE_WORD) FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->quote]);
-			xlat_print(out, node->child, fr_value_escape_by_quote[node->quote]);
-			if (node->quote != T_BARE_WORD) FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->quote]);
-			if (node->next) FR_SBUFF_IN_CHAR_RETURN(out, ' ');	/* Add ' ' between args */
-			goto next;
+		slen = xlat_print_node(out, node, e_rules);
+		if (slen < 0) return slen - (fr_sbuff_used_total(out) - at_in);
 
-		case XLAT_BOX:
-			FR_SBUFF_RETURN(fr_value_box_print, out, &node->data, e_rules);
-			goto next;
-
-		case XLAT_ONE_LETTER:
-			FR_SBUFF_IN_CHAR_RETURN(out, '%', node->fmt[0]);
-			goto next;
-
-		default:
-			break;
-		}
-
-		if ((node->type == XLAT_FUNC) && (node->call.func->input_type == XLAT_INPUT_ARGS)) {
-			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "%(");
-			close = ')';
-		} else {
-			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "%{");
-			close = '}';
-		}
-		switch (node->type) {
-		case XLAT_ATTRIBUTE:
-			slen = tmpl_attr_print(out, node->attr, TMPL_ATTR_REF_PREFIX_NO);
-			if (slen < 0) {
-			error:
-				return slen;
-			}
-			break;
-#ifdef HAVE_REGEX
-		case XLAT_REGEX:
-			FR_SBUFF_IN_SPRINTF_RETURN(out, "%i", node->regex_index);
-			break;
-#endif
-		case XLAT_VIRTUAL:
-			FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(out, node->call.func->name);
-			break;
-
-		case XLAT_VIRTUAL_UNRESOLVED:
-			FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(out, node->fmt);
-			break;
-
-		case XLAT_FUNC:
-			FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(out, node->call.func->name);
-			FR_SBUFF_IN_CHAR_RETURN(out, ':');
-
-			if (node->child) {
-				slen = xlat_print(out, node->child, &xlat_escape);
-				if (slen < 0) goto error;
-			}
-			break;
-
-		case XLAT_FUNC_UNRESOLVED:
-			FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(out, node->fmt);
-			FR_SBUFF_IN_CHAR_RETURN(out, ':');
-
-			if (node->child) {
-				slen = xlat_print(out, node->child, &xlat_escape);
-				if (slen < 0) goto error;
-			}
-			break;
-
-		case XLAT_ALTERNATE:
-			slen = xlat_print(out, node->child, &xlat_escape);
-			if (slen < 0) goto error;
-
-			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, ":-");
-			slen = xlat_print(out, node->alternate, &xlat_escape);
-			if (slen < 0) goto error;
-			break;
-
-			fr_assert_fail(NULL);
-			break;
-
-		case XLAT_INVALID:
-		case XLAT_BOX:
-		case XLAT_ONE_LETTER:
-		case XLAT_GROUP:
-			fr_assert_fail(NULL);
-			break;
-		}
-		FR_SBUFF_IN_CHAR_RETURN(out, close);
-	next:
 		if (node->next) {
 			if ((node->next->type == XLAT_BOX) && (node->next->data.type != FR_TYPE_STRING)) {
 				FR_SBUFF_IN_CHAR_RETURN(out, ' ',);
@@ -1308,6 +1327,7 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rule
 
 	return fr_sbuff_used_total(out) - at_in;
 }
+
 
 /** Tokenize an xlat expansion at runtime
  *
