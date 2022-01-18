@@ -60,6 +60,7 @@ static fr_dict_attr_t const *attr_virtual_server;
 
 static fr_dict_attr_t const *attr_packet_authentication_vector;
 static fr_dict_attr_t const *attr_packet_type;
+fr_dict_attr_t const	    *attr_cast_base; /* for xlat_expr.c */
 
 static fr_dict_attr_autoload_t xlat_eval_dict_attr[] = {
 	{ .out = &attr_client_ip_address, .name = "Client-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },
@@ -76,6 +77,7 @@ static fr_dict_attr_autoload_t xlat_eval_dict_attr[] = {
 
 	{ .out = &attr_packet_authentication_vector, .name = "Packet-Authentication-Vector", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_cast_base, .name = "Cast-Base", .type = FR_TYPE_UINT8, .dict = &dict_freeradius },
 	{ NULL }
 };
 
