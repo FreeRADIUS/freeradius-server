@@ -620,6 +620,8 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	 */
 	memset(out, 0, sizeof(*out));
 
+	if (inlen < 0) inlen = strlen(value);
+
 	end = value + inlen;
 	while ((value < end) && isspace((int) *value)) value++;
 	if (value == end) {
@@ -635,6 +637,7 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 		fr_strerror_printf("Invalid IPv6 address string \"%pV\"", fr_box_strvalue_len(value, inlen));
 		return -1;
 	}
+
 	memcpy(buffer, value, inlen);
 	buffer[inlen] = '\0';
 	value = buffer;
