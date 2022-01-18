@@ -54,6 +54,7 @@ typedef enum fr_token {
 	T_DIV,				/* / */
 	T_AND,				/* & */
 	T_OR,				/* | */
+	T_NOT,				/* ! */
 
 	T_RSHIFT,			/* >> */
 	T_LSHIFT,			/* << */
