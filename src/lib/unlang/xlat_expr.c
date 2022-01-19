@@ -169,7 +169,7 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	b = fr_dlist_next(in, a);
 
 #ifdef __clang_analyzer__
-	if (!a || !b) retunr XLAT_ACTION_FAIL;
+	if (!a || !b) return XLAT_ACTION_FAIL;
 #else
 	fr_assert(a != NULL);
 	fr_assert(b != NULL);
