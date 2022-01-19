@@ -34,8 +34,8 @@
 TMP_BUILD_DIR="${BUILD_DIR}"
 : ${TMP_BUILD_DIR:="$(mktemp -d -t eapol_test.XXXXX)"}
 : ${HOSTAPD_DIR:="${TMP_BUILD_DIR}/hostapd"}
-: ${HOSTAPD_GIT_BRANCH:="main"}
-: ${HOSTAPD_GIT_COMMIT:="de4d62dbc"}
+: ${HOSTAPD_GIT_BRANCH:="hostap_2_10"}
+#: ${HOSTAPD_GIT_COMMIT:=""}
 : ${WPA_SUPPLICANT_DIR:="${HOSTAPD_DIR}/wpa_supplicant"}
 
 : ${BUILD_CONF_DIR:="$(dirname $0)/eapol_test"}
@@ -52,6 +52,16 @@ if [ -z "${FORCE_BUILD}" ]; then
         echo "${WHICH_EAPOL_TEST}"
         exit 0
     fi
+fi
+
+#
+# If OpenSSL 3.x
+#
+if openssl version | grep -q "OpenSSL 3\."; then
+    export EAPOL_TEST_CFLAGS="${EAPOL_TEST_CFLAGS} -DOPENSSL_USE_DEPRECATED -DOPENSSL_API_COMPAT=0x10101000L"
+    echo "WARNING: Building against OpenSSL 3, setting:"
+    echo "  EAPOL_TEST_CFLAGS='${EAPOL_TEST_CFLAGS}'"
+    echo "  EAPOL_TEST_LDFLAGS='${EAPOL_TEST_LDFLAGS}'"
 fi
 
 case "$OSTYPE" in
