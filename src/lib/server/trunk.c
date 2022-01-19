@@ -4608,10 +4608,14 @@ static int8_t _trunk_connection_order_by_shortest_queue(void const *one, void co
 {
 	fr_trunk_connection_t const	*a = talloc_get_type_abort_const(one, fr_trunk_connection_t);
 	fr_trunk_connection_t const	*b = talloc_get_type_abort_const(two, fr_trunk_connection_t);
+
 	uint32_t			a_count = fr_trunk_request_count_by_connection(a, FR_TRUNK_REQUEST_STATE_ALL);
 	uint32_t			b_count = fr_trunk_request_count_by_connection(b, FR_TRUNK_REQUEST_STATE_ALL);
 
-	return CMP(a_count, b_count);
+	/*
+	 *	Add a fudge factor of 1 to reduce spurious rebalancing
+	 */
+	return ((a_count > b_count) && ((a_count - b_count) > 1)) - ((b_count > a_count) && ((b_count - a_count) > 1));
 }
 
 /** Free a trunk, gracefully closing all connections.
