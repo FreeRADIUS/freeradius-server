@@ -363,12 +363,13 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 		} else {
 			memset(&our_lhs_attr_rules, 0, sizeof(our_lhs_attr_rules));
 		}
+
 		/*
 		 *	Allow for ".foo" to refer to the current
 		 *	parents list.  Allow for "..foo" to refer to
 		 *	the grandparent list.
 		 */
-		if (lhs_rules->attr.prefix == TMPL_ATTR_REF_PREFIX_NO) {
+		if (our_lhs_attr_rules.prefix == TMPL_ATTR_REF_PREFIX_NO) {
 			/*
 			 *	One '.' means "the current parent".
 			 */
