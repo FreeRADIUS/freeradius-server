@@ -34,29 +34,46 @@ RCSID("$Id$")
  *	The new tokenizer accepts most things which are accepted by the old one.  Many of the errors will be
  *	different, though.
  *
- *	@todo - add special / internal flags to xlat_t which mark it as an expression (unary, binary,
- *	operator, etc.).  These flags should be checked only by xlat_print(), so that we can print the new
- *	expressions in a sane form.
- *
  *	@todo - add a "output" fr_type_t to xlat_t, which is mainly used by the comparison functions.  Right
  *	now it will happily parse things like:
  *
  *		(1 < 2) < 3
  *
  *	though the result of (1 < 2) is a boolean, so the result is always true.  We probably want to have
- *	that as a compile-time error / check.
+ *	that as a compile-time error / check.  This can probably just be done with xlat_purify() ?  which
+ *	doesn't need to interpret the LHS, but just knows its limits.  We perhaps want a "range compare"
+ *	function, which just checks ranges on one side against values on the right.
  *
  *	@todo - Regular expressions are not handled.  This isn't a lot of work, but can be a bit finicky.
  *
  *	@todo - short-circuit && / || need to be updated.  This requires various magic in their instantiation
  *	routines, which is not yet done.
  *
- *	@todo - we should have an xlat_purify() function, but that may require other changes to the code.  See
- *	comments below.  The purify function should also be smart enough to do things like remove redundant
- *	casts.
+ *	@todo - Check for input flags->pure, and node->internal && node->token != T_INVALID && node->pure.  If
+ *	so, we call xlat_purify() to purify the results.  This capability lets us write tests for parsing
+ *	which use simple numbers, to verify that the parser is OK.
  *
- *	@todo - for existence checks, we should add a "cast to bool" node, so that the answer is returned
- *	correctly, and the caller doesn't have to do it.
+ *	The purify function should also be smart enough to do things like remove redundant casts.
+ *
+ *	And as a later optimization, lets us optimize the expressions at compile time instead of re-evaluating
+ *	them at run-time.  Just like the old-style conditions.
+ *
+ *	For now, we only do this for our functions, as they don't use the "request" pointer for anything.
+ *	Instead, they rely on fr_strerror_printf(), which is fine for parsing.
+ *
+ *	The purify function should likely also assume that "pure" functions don't use the "request" pointer
+ *	for anything, and instead call fr_strerror_printf().  This means that xlat_frame_eval_repeat() calls a
+ *	function, it will need to check for func->flags.pure after getting XLAT_FAIL.  And then call RPEDEBUG
+ *	itself.
+ *
+ *	If we really want to go crazy, we should always call pure functions with a NULL pointer for the
+ *	"request" handle, but only when the *instance* is also marked "pure".  That's because a function might
+ *	be "pure", but might depend on other functions which are not "pure", and therefore need a "request".
+ *
+ *	We probably also want a "local" purify function, which only calls our functions.  It can only be
+ *	called when the LHS/RHS are both value-boxes.  It's a little more specific than the normal
+ *	xlat_purify() function, but also ensures that we can give better errors at parse time, instead of at
+ *	run time.
  */
 
 static xlat_arg_parser_t const cast_xlat_args[] = {
@@ -64,6 +81,38 @@ static xlat_arg_parser_t const cast_xlat_args[] = {
 	{ .required = true, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
 };
+
+/*
+ *	@todo - Call this function for && / ||.  The casting rules for expressions / conditions are slightly
+ *	different than fr_value_box_cast().  Largely because that function is used to parse configuration
+ *	files, and parses "yes / no" and "true / false" strings, even if there's no fr_dict_attr_t passed to
+ *	it.
+ */
+static void cast_to_bool(fr_value_box_t *out, fr_value_box_t const *in)
+{
+	fr_value_box_init(out, FR_TYPE_BOOL, NULL, false);
+
+	switch (in->type) {
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+		out->vb_bool = (in->vb_length > 0);
+		break;
+
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+		out->vb_bool = !fr_ipaddr_is_inaddr_any(&in->vb_ip);
+		break;
+
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_PREFIX:
+		out->vb_bool = !((in->vb_ip.prefix == 0) && fr_ipaddr_is_inaddr_any(&in->vb_ip));
+		break;
+
+	default:
+		(void) fr_value_box_cast(NULL, out, FR_TYPE_BOOL, NULL, in);
+		break;
+	}
+}
 
 static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    UNUSED xlat_ctx_t const *xctx,
@@ -85,40 +134,17 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	therefore have special rules for casting them to bool.
 	 */
 	if (a->vb_uint8 == FR_TYPE_BOOL) {
-		switch (b->type) {
-		case FR_TYPE_STRING:
-		case FR_TYPE_OCTETS:
-			fr_value_box_init(dst, FR_TYPE_BOOL, NULL, false);
-			dst->vb_bool = (b->vb_length > 0);
-			goto done;
+		cast_to_bool(dst, b);
 
-		case FR_TYPE_IPV4_ADDR:
-		case FR_TYPE_IPV6_ADDR:
-			fr_value_box_init(dst, FR_TYPE_BOOL, NULL, false);
-			dst->vb_bool = fr_ipaddr_is_inaddr_any(&b->vb_ip);
-			break;
-
-		case FR_TYPE_IPV4_PREFIX:
-		case FR_TYPE_IPV6_PREFIX:
-			fr_value_box_init(dst, FR_TYPE_BOOL, NULL, false);
-			dst->vb_bool = (b->vb_ip.prefix == 0) && fr_ipaddr_is_inaddr_any(&b->vb_ip);
-			break;
-
-		default:
-			break;
-		}
+		/*
+		 *	Everything else gets cast via the value-box functions, which look for things like "yes" or
+		 *	"no" for booleans.
+		 */
+	} else if (fr_value_box_cast(ctx, dst, a->vb_uint8, NULL, b) < 0) {
+			talloc_free(dst);
+			return XLAT_ACTION_FAIL;
 	}
 
-	/*
-	 *	Everything else gets cast via the value-box functions, which look for things like "yes" or
-	 *	"no" for booleans.
-	 */
-	if (fr_value_box_cast(ctx, dst, a->vb_uint8, NULL, b) < 0) {
-		talloc_free(dst);
-		return XLAT_ACTION_FAIL;
-	}
-
-done:
 	fr_dcursor_append(out, dst);
 	return XLAT_ACTION_DONE;
 }
@@ -245,14 +271,14 @@ static xlat_action_t xlat_func_unary_not(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_arg_parser_t const unary_sub_xlat_args[] = {
+static xlat_arg_parser_t const unary_minus_xlat_args[] = {
 	{ .required = true, .concat = true },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-static xlat_action_t xlat_func_unary_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					 UNUSED xlat_ctx_t const *xctx,
-					 request_t *request, fr_value_box_list_t *in)
+static xlat_action_t xlat_func_unary_minus(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					   UNUSED xlat_ctx_t const *xctx,
+					   request_t *request, fr_value_box_list_t *in)
 {
 	int rcode;
 	fr_value_box_t	*dst, a, *b;
@@ -331,8 +357,8 @@ int xlat_register_expressions(void)
 	 *	-EXPR
 	 *	!EXPR
 	 */
-	if (!(xlat = xlat_register(NULL, "unary_minus", xlat_func_unary_sub, XLAT_FLAG_PURE))) return -1;
-	xlat_func_args(xlat, unary_sub_xlat_args);
+	if (!(xlat = xlat_register(NULL, "unary_minus", xlat_func_unary_minus, XLAT_FLAG_PURE))) return -1;
+	xlat_func_args(xlat, unary_minus_xlat_args);
 	xlat_internal(xlat);
 	xlat->token = T_SUB;
 	xlat->expr_type = XLAT_EXPR_TYPE_UNARY;
@@ -486,7 +512,7 @@ static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
  *	Look for prefix operators
  *
  *	+ = ignore
- *	- = unary_sub(next)
+ *	- = unary_minus(next)
  *	! = unary_not(next)
  *	~ = unary_xor(0, next)
  *	(expr) = recurse, and parse expr
@@ -689,17 +715,13 @@ check_more:
 	}
 
 	/*
-	 *	Else it's nothing we recognize.  Do some quick checks
-	 *	to see what it might be.
+	 *	Else it's nothing we recognize.  Do some quick checks to see what it might be.
 	 */
 	if (type == FR_TYPE_VOID) {
 		if (da) {
 			type = da->type;
 
 		} else if (fr_sbuff_is_char(&in, '"') || fr_sbuff_is_char(&in, '\'') || fr_sbuff_is_char(&in, '`')) {
-			/*
-			 *	@todo - also update the escaping rules, depending on kind of string we have.
-			 */
 			type = FR_TYPE_STRING;
 		} else {
 			type = FR_TYPE_INT64;
@@ -744,14 +766,16 @@ check_more:
 		}
 #endif
 
+		/*
+		 *	@todo - parse all this via tmpl_afrom_substr(), and set tmpl_data_rules_t to the
+		 *	appropriate cast and enumv.
+		 */
 		MEM(node = xlat_exp_alloc_null(ctx));
 		xlat_exp_set_type(node, XLAT_BOX);
 
 		/*
-		 *	'-' and '/' are allowed in dictionary names.
-		 *	But they're also tokens allowed here.  So we
-		 *	have to jump through some hoops in order to
-		 *	parse both.
+		 *	'-' and '/' are allowed in dictionary names.  But they're also tokens allowed here.
+		 *	So we have to jump through some hoops in order to parse both.
 		 *
 		 *	e.g. "Framed-User" should be parsed as that, and not as anything else.
 		 */
@@ -793,29 +817,6 @@ check_more:
 	}
 
 done:
-	/*
-	 *	@todo - keep a flag to track if we create the node via a cmp_foo / op_foo function.  And if
-	 *	so, check for input flags->pure.  If set, we call xlat_purify() to purify the results.  This
-	 *	capability lets us write tests for parsing which use simple numbers, to verify that the parser
-	 *	is OK.
-	 *
-	 *	And as a later optimization, lets us optimize the expressions at compile time instead of
-	 *	re-evaluating them at run-time.  Just like the old-style conditions.
-	 *
-	 *	For now, we only do this for our functions, as they don't use the "request" pointer for
-	 *	anything.  Instead, they rely on fr_strerror_printf(), which is fine for parsing.
-	 *
-	 *	The purify function should likely also assume that "pure" functions don't use the "request"
-	 *	pointer for anything, and instead call fr_strerror_printf().  This means that
-	 *	xlat_frame_eval_repeat() calls a function, it will need to check for func->flags.pure after
-	 *	getting XLAT_FAIL.  And then call RPEDEBUG itself.
-	 *
-	 *	If we really want to go crazy, we should always call pure functions with a NULL pointer for
-	 *	the "request" handle, but only when the *instance* is also marked "pure".  That's because a
-	 *	function might be "pure", but might depend on other functions which are not "pure", and
-	 *	therefore need a "request".
-	 */
-
 	fr_sbuff_skip_whitespace(&in);
 
 	/*
@@ -837,10 +838,10 @@ done:
 		node = cast;
 	}
 
-	/*
-	 *	@todo - if the node is an XLAT_BOX, and we have flags->pure, then purify the node.
-	 */
 check_unary:
+	/*
+	 *	@todo - purify the node.
+	 */
 	if (unary) {
 		unary->child = node;
 		xlat_flags_merge(&unary->flags, &node->flags);
@@ -1029,16 +1030,12 @@ redo:
 	fr_assert(func != NULL);
 
 	/*
-	 *	Check if we need to purify the output.
+	 *	@todo - purify the node.
 	 *
 	 *	@todo - also if the have differenting data types on the LHS and RHS, and one of them is an
 	 *	XLAT_BOX, then try to upcast the XLAT_BOX to the destination data type before returning.  This
 	 *	optimization minimizes the amount of run-time work we have to do.
 	 */
-	if (flags->pure && (lhs->type == XLAT_BOX) && (rhs->type == XLAT_BOX)) {
-		// create a fr_value_box_list from the two boxes, and call our function, which then gets us a
-		// value-box as output.  We then create free RHS, and put the box into LHS
-	}
 
 	/*
 	 *	Create the function node, with the LHS / RHS arguments.
