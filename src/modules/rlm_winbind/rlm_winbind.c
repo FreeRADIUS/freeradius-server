@@ -414,8 +414,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			          T_SINGLE_QUOTED_STRING,
 			          NULL,
 			          &(tmpl_rules_t){
-			          	.allow_unknown = true,
-			          	.allow_unresolved = true
+					  .attr = {
+						  .allow_unknown = true,
+						  .allow_unresolved = true
+					  },
 			          });
 		if (!inst->wb_domain) {
 			cf_log_perr(conf, "Bad domain");
