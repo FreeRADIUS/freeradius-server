@@ -168,8 +168,13 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	a = fr_dlist_head(in);
 	b = fr_dlist_next(in, a);
 
+#ifdef __clang_analyzer__
+	if (!a || !b) retunr XLAT_ACTION_FAIL;
+#else
 	fr_assert(a != NULL);
 	fr_assert(b != NULL);
+#endif
+
 
 	rcode = fr_value_calc_binary_op(dst, dst, FR_TYPE_NULL, a, op, b);
 	if (rcode < 0) {

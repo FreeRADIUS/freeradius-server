@@ -165,7 +165,7 @@ typedef struct {
  * For needs_async, if both the parent and the child are needs_async, the parent is
  * needs_async.
  */
-static inline void xlat_flags_merge(xlat_flags_t *parent, xlat_flags_t const *child)
+static inline CC_HINT(nonnull) void xlat_flags_merge(xlat_flags_t *parent, xlat_flags_t const *child)
 {
 	parent->needs_async |= child->needs_async;
 	parent->needs_resolving |= child->needs_resolving;
