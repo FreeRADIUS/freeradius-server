@@ -199,12 +199,24 @@ int fr_atexit_global_setup(void)
 	return 0;
 }
 
+#define CHECK_GLOBAL_SETUP() \
+do { \
+	int _ret = 0; \
+	pthread_mutex_lock(&fr_atexit_global_mutex); \
+	fr_cond_assert_msg(!is_exiting, "New atexit handlers should not be allocated whilst exiting"); \
+	if (!fr_atexit_global) _ret = fr_atexit_global_setup(); \
+	pthread_mutex_unlock(&fr_atexit_global_mutex); \
+	if (_ret < 0) return _ret; \
+} while(0)
+
 /** Add a free function to be called when the process exits
  *
  */
 int _atexit_global(NDEBUG_LOCATION_ARGS
 		  fr_atexit_t func, void const *uctx)
 {
+	CHECK_GLOBAL_SETUP();
+
 	if (unlikely(atexit_entry_alloc(NDEBUG_LOCATION_VALS fr_atexit_global, func, uctx) == NULL)) return -1;
 
 	return 0;
@@ -219,17 +231,7 @@ int _atexit_global(NDEBUG_LOCATION_ARGS
 int _fr_atexit_thread_local(NDEBUG_LOCATION_ARGS
 			    fr_atexit_t func, void const *uctx)
 {
-	int ret = 0;
-
-	/*
-	 *	Initialise the global list containing all the thread-local
-	 *	dlist destructors.
-	 */
-	pthread_mutex_lock(&fr_atexit_global_mutex);
-	fr_cond_assert_msg(!is_exiting, "New atexit handlers should not be allocated whilst exiting");
-	if (!fr_atexit_global) ret = fr_atexit_global_setup();
-	pthread_mutex_unlock(&fr_atexit_global_mutex);
-	if (ret < 0) return ret;
+	CHECK_GLOBAL_SETUP();
 
 	/*
 	 *	Initialise the thread local list, just for pthread_exit().
