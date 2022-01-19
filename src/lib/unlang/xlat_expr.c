@@ -961,6 +961,7 @@ redo:
 
 	fr_assert(precedence[op] != 0);
 
+#if 0
 	/*
 	 *	@todo - handle regexes as a special case.  The LHS ideally should be a simple xlat (i.e. not a
 	 *	comparison).  The RHS MUST be a solidus-quoted string.
@@ -986,6 +987,7 @@ redo:
 
 		goto alloc_func;
 	}
+#endif
 
 	/*
 	 *	a * b + c ... = (a * b) + c ...
@@ -1016,8 +1018,9 @@ redo:
 		talloc_free(lhs);
 		FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
 	}
+	fr_assert(rhs != NULL);
 
-alloc_func:
+//alloc_func:
 	func = xlat_func_find(binary_ops[op].str, binary_ops[op].len);
 	fr_assert(func != NULL);
 
