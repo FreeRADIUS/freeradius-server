@@ -669,16 +669,16 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 		 */
 		xlat_exp_set_type(node, XLAT_VIRTUAL_UNRESOLVED);
 		xlat_exp_set_name_buffer_shallow(node, vpt->name);
-		node->attr = vpt;
+		node->vpt = vpt;
 		node->flags.needs_resolving = true;
 	/*
 	 *	Deal with normal attribute (or list)
 	 */
 	} else {
 	do_attr:
-		xlat_exp_set_type(node, XLAT_ATTRIBUTE);
+		xlat_exp_set_type(node, XLAT_TMPL);
 		xlat_exp_set_name_buffer_shallow(node, vpt->name);
-		node->attr = vpt;
+		node->vpt = vpt;
 	}
 
 done:
@@ -1046,21 +1046,21 @@ static void _xlat_debug(xlat_exp_t const *node, int depth)
 			INFO_INDENT("percent (%c)", node->fmt[0]);
 			break;
 
-		case XLAT_ATTRIBUTE:
-			fr_assert(tmpl_da(node->attr) != NULL);
-			INFO_INDENT("attribute (%s)", tmpl_da(node->attr)->name);
+		case XLAT_TMPL:
+			fr_assert(tmpl_da(node->vpt) != NULL);
+			INFO_INDENT("attribute (%s)", tmpl_da(node->vpt)->name);
 			fr_assert(node->child == NULL);
-			if (tmpl_num(node->attr) != NUM_ANY) {
+			if (tmpl_num(node->vpt) != NUM_ANY) {
 				INFO_INDENT("{");
-				INFO_INDENT("ref  %d", tmpl_request(node->attr));
-				INFO_INDENT("list %d", tmpl_list(node->attr));
-				if (tmpl_num(node->attr) != NUM_ANY) {
-					if (tmpl_num(node->attr) == NUM_COUNT) {
+				INFO_INDENT("ref  %d", tmpl_request(node->vpt));
+				INFO_INDENT("list %d", tmpl_list(node->vpt));
+				if (tmpl_num(node->vpt) != NUM_ANY) {
+					if (tmpl_num(node->vpt) == NUM_COUNT) {
 						INFO_INDENT("[#]");
-					} else if (tmpl_num(node->attr) == NUM_ALL) {
+					} else if (tmpl_num(node->vpt) == NUM_ALL) {
 						INFO_INDENT("[*]");
 					} else {
-						INFO_INDENT("[%d]", tmpl_num(node->attr));
+						INFO_INDENT("[%d]", tmpl_num(node->vpt));
 					}
 				}
 				INFO_INDENT("}");
@@ -1194,8 +1194,8 @@ static ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff
 	}
 
 	switch (node->type) {
-	case XLAT_ATTRIBUTE:
-		slen = tmpl_attr_print(out, node->attr, TMPL_ATTR_REF_PREFIX_NO);
+	case XLAT_TMPL:
+		slen = tmpl_attr_print(out, node->vpt, TMPL_ATTR_REF_PREFIX_NO);
 		if (slen < 0) {
 		error:
 			return slen;
@@ -1774,13 +1774,13 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const 
 		 */
 		case XLAT_VIRTUAL_UNRESOLVED:
 		{
-			if (xlat_resolve_virtual_attribute(node, node->attr) == 0) break;
+			if (xlat_resolve_virtual_attribute(node, node->vpt) == 0) break;
 
 			/*
 			 *	Try and resolve (in-place) as an attribute
 			 */
-			if ((tmpl_resolve(node->attr, xr_rules->tr_rules) < 0) ||
-			    (node->attr->type != TMPL_TYPE_ATTR)) {
+			if ((tmpl_resolve(node->vpt, xr_rules->tr_rules) < 0) ||
+			    (node->vpt->type != TMPL_TYPE_ATTR)) {
 				/*
 				 *	FIXME - Produce proper error with marker
 				 */
@@ -1798,7 +1798,7 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const 
 			 *	Just need to flip the type as the tmpl
 			 *	should already have been fixed up
 			 */
-			xlat_exp_set_type(node, XLAT_ATTRIBUTE);
+			xlat_exp_set_type(node, XLAT_TMPL);
 
 			/*
 			 *	Reset node flags
@@ -1807,7 +1807,7 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const 
 		}
 			break;
 
-		case XLAT_ATTRIBUTE:
+		case XLAT_TMPL:
 			if (!xr_rules->allow_unresolved) goto error_unresolved;
 			break;
 
@@ -1837,18 +1837,18 @@ tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *node)
 {
 	tmpl_t *vpt;
 
-	if (node->next || (node->type != XLAT_ATTRIBUTE) || !tmpl_is_attr(node->attr)) return NULL;
+	if (node->next || (node->type != XLAT_TMPL) || !tmpl_is_attr(node->vpt)) return NULL;
 
 	/*
 	 *   Concat means something completely different as an attribute reference
 	 *   Count isn't implemented.
 	 */
-	if ((tmpl_num(node->attr) == NUM_COUNT) || (tmpl_num(node->attr) == NUM_ALL)) return NULL;
+	if ((tmpl_num(node->vpt) == NUM_COUNT) || (tmpl_num(node->vpt) == NUM_ALL)) return NULL;
 
 	vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, T_BARE_WORD, node->fmt, talloc_array_length(node->fmt) - 1);
 	if (!vpt) return NULL;
 
-	tmpl_attr_copy(vpt, node->attr);
+	tmpl_attr_copy(vpt, node->vpt);
 
 	TMPL_VERIFY(vpt);
 
@@ -1890,7 +1890,7 @@ int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
 				 *	the assignment of the tmpl to the new
 				 *	xlat expression
 				 */
-				node->attr = talloc_move(node, vpt_p);
+				node->vpt = talloc_move(node, vpt_p);
 				node->flags = (xlat_flags_t) { .needs_resolving = true };
 				*head = node;
 				xlat_flags_merge(flags, &node->flags);
@@ -1899,7 +1899,7 @@ int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
 
 		virtual:
 			node = xlat_exp_alloc(ctx, XLAT_VIRTUAL, vpt->name, vpt->len);
-			node->attr = talloc_move(node, vpt_p);
+			node->vpt = talloc_move(node, vpt_p);
 			node->call.func = func;
 			node->flags = func->flags;
 
@@ -1911,8 +1911,8 @@ int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
 		}
 	}
 
-	node = xlat_exp_alloc(ctx, XLAT_ATTRIBUTE, vpt->name, vpt->len);
-	node->attr = talloc_move(node, vpt_p);
+	node = xlat_exp_alloc(ctx, XLAT_TMPL, vpt->name, vpt->len);
+	node->vpt = talloc_move(node, vpt_p);
 
 	return 0;
 }
@@ -1982,8 +1982,8 @@ int xlat_copy(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t const *in)
 			if (unlikely(xlat_copy(node, &node->child, p->child) < 0)) goto error;
 			break;
 
-		case XLAT_ATTRIBUTE:
-			node->attr = tmpl_copy(node, p->attr);
+		case XLAT_TMPL:
+			node->vpt = tmpl_copy(node, p->vpt);
 			continue;
 
 #ifdef HAVE_REGEX

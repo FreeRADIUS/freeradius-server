@@ -83,9 +83,9 @@ typedef enum {
 	XLAT_FUNC_UNRESOLVED	= 0x0008,		//!< func needs resolution during pass2.
 	XLAT_VIRTUAL		= 0x0010,		//!< virtual attribute
 	XLAT_VIRTUAL_UNRESOLVED = 0x0020,		//!< virtual attribute needs resolution during pass2.
-	XLAT_ATTRIBUTE		= 0x0040,		//!< xlat attribute
+	XLAT_TMPL		= 0x0040,		//!< xlat attribute
 #ifdef HAVE_REGEX
-	XLAT_REGEX		= 0x0080,		//!< regex reference
+	XLAT_REGEX		= 0x0080,		//!< regex reference %{1}, etc.
 #endif
 	XLAT_ALTERNATE		= 0x0100,		//!< xlat conditional syntax :-
 	XLAT_GROUP		= 0x0200		//!< encapsulated string of xlats
@@ -128,11 +128,11 @@ struct xlat_exp {
 	union {
 		xlat_exp_t	*alternate;	//!< Alternative expansion if this expansion produced no values.
 
-		/** An attribute reference
+		/** An tmpl_t reference
 		 *
-		 * May be an attribute to expand, or provide context for a call.
+		 * May be an attribute to expand, or an exec reference, or a value-box, ...
 		 */
-		tmpl_t		*attr;
+		tmpl_t		*vpt;
 
 		/** A capture group, i.e. for %{1} and friends
 		 */

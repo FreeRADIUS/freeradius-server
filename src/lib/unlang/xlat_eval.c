@@ -110,7 +110,7 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 	case XLAT_ONE_LETTER:
 		return talloc_asprintf(ctx, "%%%s", node->fmt);
 
-	case XLAT_ATTRIBUTE:
+	case XLAT_TMPL:
 		return talloc_asprintf(ctx, "%%{%s}", node->fmt);
 
 	case XLAT_VIRTUAL:
@@ -1245,12 +1245,13 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 			fr_dlist_move(out->dlist, &result);
 			continue;
 
-		case XLAT_ATTRIBUTE:
+		case XLAT_TMPL:
 			XLAT_DEBUG("** [%i] %s(attribute) - %%{%s}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
 
 			xlat_debug_log_expansion(request, node, NULL);
-			if (xlat_eval_pair_real(ctx, &result, request, node->attr) == XLAT_ACTION_FAIL) goto fail;
+
+			if (xlat_eval_pair_real(ctx, &result, request, node->vpt) == XLAT_ACTION_FAIL) goto fail;
 
 			xlat_debug_log_list_result(request, &result);
 			fr_dlist_move(out->dlist, &result);

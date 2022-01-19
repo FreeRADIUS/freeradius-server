@@ -636,7 +636,7 @@ check_more:
 		tmpl_t *vpt = NULL;
 
 		MEM(node = xlat_exp_alloc_null(ctx));
-		xlat_exp_set_type(node, XLAT_ATTRIBUTE);
+		xlat_exp_set_type(node, XLAT_TMPL);
 
 		slen = tmpl_afrom_attr_substr(node, NULL, &vpt, &in, p_rules, t_rules);
 		if (slen <= 0) {
@@ -646,7 +646,7 @@ check_more:
 		}
 
 		xlat_exp_set_name_buffer_shallow(node, vpt->name);
-		node->attr = vpt;
+		node->vpt = vpt;
 
 		goto done;
 	}
@@ -818,7 +818,7 @@ done:
 	/*
 	 *	Wrap the result in a cast.
 	 *
-	 *	@todo - if the node is an XLAT_ATTR or XLAT_BOX and is already of the correct data type, then reparent
+	 *	@todo - if the node is an XLAT_TMPL or XLAT_BOX and is already of the correct data type, then reparent
 	 *	"node" to the parent of "cast", and free "cast".
 	 */
 	if (cast) {
@@ -1004,8 +1004,9 @@ redo:
 	 *	If the LHS is typed, try to parse the RHS as the given
 	 *	type.  Otherwise, don't parse the RHS using enums.
 	 */
-	if (lhs->type == XLAT_ATTRIBUTE) {
-		da = tmpl_da(lhs->attr);
+	if (lhs->type == XLAT_TMPL) {
+		fr_assert(tmpl_is_attr(lhs->vpt) || tmpl_is_list(lhs->vpt));
+		da = tmpl_da(lhs->vpt);
 	} else {
 		da = NULL;
 	}
