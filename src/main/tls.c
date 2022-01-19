@@ -4217,14 +4217,51 @@ post_ca:
 #endif
 
 	/*
+	 *	Set the cipher list if we were told to do so.  We do
+	 *	this before setting min/max TLS version.  In a sane
+	 *	world, OpenSSL would error out if we set the max TLS
+	 *	version to something which was unsupported by the
+	 *	current security level.  However, this is OpenSSL.  If
+	 *	you set conflicting options, it doesn't give an error.
+	 *	Instead, it just picks something to do.
+	 */
+	if (conf->cipher_list) {
+		if (!SSL_CTX_set_cipher_list(ctx, conf->cipher_list)) {
+			tls_error_log(NULL, "Failed setting cipher list");
+			return NULL;
+		}
+	}
+
+	/*
 	 *	Tell OpenSSL PRETTY PLEASE MAY WE USE TLS 1.1.
 	 *
 	 *	Because saying "use TLS 1.1" isn't enough.  We have to
 	 *	send it flowers and cake.
 	 */
-	if ((min_version <= TLS1_1_VERSION) && conf->cipher_list &&
-	    !strstr(conf->cipher_list, "DEFAULT@SECLEVEL=1")) {
-		WARN(LOG_PREFIX ": In order to use TLS 1.0 and/or TLS 1.1, you likely need to set: cipher_list = \"DEFAULT@SECLEVEL=1\"");
+	if (min_version <= TLS1_1_VERSION) {
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+		int seclevel = SSL_CTX_get_security_level(ctx);
+		int required;;
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		required = 0;
+#else
+		required = 1;
+#endif
+
+		if (seclevel != required) {
+			WARN(LOG_PREFIX ": In order to use TLS 1.0 and/or TLS 1.1, you likely need to set: cipher_list = \"DEFAULT@SECLEVEL=%d\"", required);
+		}
+
+#else
+		/*
+		 *	No API to get the security level.  Just guess based on the string in the cipher_list.
+		 */
+		if (conf->cipher_list &&
+		    !strstr(conf->cipher_list, "DEFAULT@SECLEVEL=1")) {
+			WARN(LOG_PREFIX ": In order to use TLS 1.0 and/or TLS 1.1, you likely need to set: cipher_list = \"DEFAULT@SECLEVEL=1\"");
+		}
+#endif
 	}
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -4428,16 +4465,6 @@ post_ca:
 		}
 	}
 #endif
-
-	/*
-	 * Set the cipher list if we were told to
-	 */
-	if (conf->cipher_list) {
-		if (!SSL_CTX_set_cipher_list(ctx, conf->cipher_list)) {
-			tls_error_log(NULL, "Failed setting cipher list");
-			return NULL;
-		}
-	}
 
 	/*
 	 *	Setup session caching
