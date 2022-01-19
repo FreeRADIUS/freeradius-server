@@ -142,6 +142,9 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	a = fr_dlist_head(in);
 	b = fr_dlist_next(in, a);
 
+	fr_assert(a != NULL);
+	fr_assert(b != NULL);
+
 	rcode = fr_value_calc_binary_op(dst, dst, FR_TYPE_NULL, a, op, b);
 	if (rcode < 0) {
 		talloc_free(dst);
@@ -893,7 +896,7 @@ static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
 				   fr_token_t prev, fr_type_t type, fr_sbuff_parse_rules_t const *bracket_rules,
 				   fr_dict_attr_t const *da)
 {
-	xlat_exp_t	*lhs, *rhs, *node;
+	xlat_exp_t	*lhs = NULL, *rhs = NULL, *node;
 	xlat_t		*func = NULL;
 	fr_token_t	op;
 	ssize_t		slen;
