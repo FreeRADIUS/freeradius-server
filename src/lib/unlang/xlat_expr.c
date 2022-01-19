@@ -59,8 +59,6 @@ RCSID("$Id$")
  *	correctly, and the caller doesn't have to do it.
  */
 
-extern fr_dict_attr_t const *attr_cast_base; /* xlat_expr.c */
-
 static xlat_arg_parser_t const cast_xlat_args[] = {
 	{ .required = true, .type = FR_TYPE_INT32 },
 	{ .required = true, .type = FR_TYPE_VOID },
@@ -156,7 +154,7 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 #define XLAT_BINARY_FUNC(_name, _op)  \
 static xlat_action_t xlat_func_ ## _name(TALLOC_CTX *ctx, fr_dcursor_t *out, \
-				   UNUSED xlat_ctx_t const *xctx, \
+				   xlat_ctx_t const *xctx, \
 				   request_t *request, fr_value_box_list_t *in)  \
 { \
 	return xlat_binary_op(ctx, out, xctx, request, in, _op); \
@@ -251,7 +249,7 @@ static xlat_arg_parser_t const unary_sub_xlat_args[] = {
 
 static xlat_action_t xlat_func_unary_sub(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 UNUSED xlat_ctx_t const *xctx,
-					 UNUSED request_t *request, fr_value_box_list_t *in)
+					 request_t *request, fr_value_box_list_t *in)
 {
 	int rcode;
 	fr_value_box_t	*dst, a, *b;
