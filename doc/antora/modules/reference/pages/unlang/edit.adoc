@@ -28,7 +28,7 @@ An edit statement has the following standard syntax:
 
 Where we have:
 
-_<lhs>_:: The name of a list or an attribute.
+_<lhs>_:: An xref:reference:unlang/attr.adoc[attribute reference], such as the name of a list or an attribute.
 
 _<op>_:: The operator such as `=`, `:=`, etc.
 
@@ -68,9 +68,11 @@ the list operations are simple, and well defined.
 | :=       | Override the list to the contents with the _<rhs>_.  If the list already exists, its value is over-written.  If the list does not exist, it is created, and the contents set to thex value of the _<rhs>_
 | +=       | Perform list append operation.  The contents of the _<rhs>_ are appended to the _<list>_.  The resulting list is _<list><rhs>_.
 | ^=       | Perform a list prepend operation.  The contents of the _<rhs>_ are prepended to the _<list>_.  The resulting list is _<rhs><list>_.
-| -=       | Remove attributes from the list which match the _<rhs>_
+| -=       | Remove attributes from the _<list>_ which match the _<rhs>_
 | \|=       | Perform a list union.  The resulting list has all of the contents of the original _<list>_, and the _<rhs>_ list.
-| \<=       | Perform a priority merge of two lists. The resulting list has all of the contents of the original _<list>_, and a copy of any _<rhs>_ list attribute which is not already in _<list>_.
+| \&=       | Perform a list intersection.  The resulting list has only the attributes which are in both the origianl _<list>_, and the _<rhs>_ list.
+| >=       | Perform a priority merge of two lists. The resulting list has all of the contents of the original _<list>_, and of all _<rhs>_ list attributes which are not already in _<list>_.
+| \<=       | Perform a priority merge of two lists. The resulting list has all of the contents of the original _<rhs>_, and of all _<list>_ list attributes which are not in _<rhs>_ are left alone..
 |=====
 
 The _<rhs>_ can be a reference to another list (e.g. `request`,
@@ -139,8 +141,6 @@ exactly as they are given.
 As a special case, where the right side is an
 xref:reference:unlang/attr.adoc[attribute reference], it is possible
 to use `+=`.
-
-This example 
 
 .Appending the `User-Name` attribute from the `request` list, to the `reply` list.
 ====
@@ -216,6 +216,35 @@ copies all of the `request` list contents to the `reply` list.
 &reply += &request
 ----
 ====
+
+=== Parsing strings as lists
+
+It is also possible to have strings on the _<rhs>_ of a list
+assignment.  This funtionality is most useful for putting attribute
+lists into a database, and then reading them back programmatically.
+
+.Assigning attributes taken from a string
+====
+[source,unlang]
+----
+&reply += "Filter-Id = \"foo\""
+----
+====
+
+The above example has the same result as the earlier example of adding
+`Filter-Id` to the `reply`, using an "in-place" list.
+
+.Append the contents of the `request` list to the `reply` list.
+====
+[source,unlang]
+----
+&reply += "%{sql:SELECT pairs FROM pair_table WHERE username = '%{User-Name}'}"
+----
+====
+
+In this example, the `pair_table` could contain two columns:
+`username` and `pairs`.  The `pairs` column could have free-form text
+strings, such as `Filter-Id = "foo"`.
 
 == Attribute Editing
 
