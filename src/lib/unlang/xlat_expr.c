@@ -76,12 +76,6 @@ RCSID("$Id$")
  *	run time.
  */
 
-static xlat_arg_parser_t const cast_xlat_args[] = {
-	{ .required = true, .type = FR_TYPE_INT32 },
-	{ .required = true, .type = FR_TYPE_VOID },
-	XLAT_ARG_PARSER_TERMINATOR
-};
-
 /*
  *	@todo - Call this function for && / ||.  The casting rules for expressions / conditions are slightly
  *	different than fr_value_box_cast().  Largely because that function is used to parse configuration
@@ -93,6 +87,10 @@ static void cast_to_bool(fr_value_box_t *out, fr_value_box_t const *in)
 	fr_value_box_init(out, FR_TYPE_BOOL, NULL, false);
 
 	switch (in->type) {
+	case FR_TYPE_BOOL:
+		out->vb_bool = in->vb_bool;
+		break;
+
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
 		out->vb_bool = (in->vb_length > 0);
@@ -113,6 +111,112 @@ static void cast_to_bool(fr_value_box_t *out, fr_value_box_t const *in)
 		break;
 	}
 }
+
+/** Basic purify, but only for expressions and comparisons.
+ *
+ */
+static int xlat_purify_expr(xlat_exp_t *node, xlat_t *func)
+{
+	int rcode = -1;
+	xlat_exp_t *child;
+	fr_value_box_t *dst = NULL, *box;
+	xlat_arg_parser_t const *arg;
+	xlat_action_t xa;
+	fr_value_box_list_t input, output;
+	fr_dcursor_t cursor;
+
+	if (!func || (node->type != XLAT_FUNC)) return 0;
+
+	if (!node->flags.pure) return 0;
+
+	if (!func->internal) return 0;
+
+	if (func->token == T_INVALID) return 0;
+
+	/*
+	 *	@todo - for &&, ||, check only the LHS operation.  If
+	 *	it satisfies the criteria, then reparent the next
+	 *	child, free the "node" node, and return the child.
+	 */
+
+	/*
+	 *	A child isn't a value-box.  We leave it alone.
+	 */
+	for (child = node->child; child != NULL; child = child->next) {
+		if (child->type != XLAT_BOX) return 0;
+	}
+
+	fr_value_box_list_init(&input);
+	fr_value_box_list_init(&output);
+
+	/*
+	 *	Loop over the boxes, checking func->args, too.  We
+	 *	have to cast the box to the correct data type (or copy
+	 *	it), and then add the box to the source list.
+	 */
+	for (child = node->child, arg = func->args;
+	     child != NULL;
+	     child = child->next, arg++) {
+		MEM(box = fr_value_box_alloc_null(node));
+
+		if ((arg->type != FR_TYPE_VOID) && (arg->type != box->type)) {
+			if (fr_value_box_cast(node, box, arg->type, NULL, &child->data) < 0) goto fail;
+
+		} else if (fr_value_box_copy(node, box, &child->data) < 0) {
+		fail:
+			talloc_free(box);
+			goto cleanup;
+		}
+
+		/*
+		 *	cast / copy over-writes the list fields.
+		 */
+		fr_dlist_insert_tail(&input, box);
+	}
+
+	/*
+	 *	We then call the function, and change the node type to
+	 *	XLAT_BOX, and copy the value there.  If there are any
+	 *	issues, we return an error, and the caller assumes
+	 *	that the error is accessible via fr_strerror().
+	 */
+	fr_dcursor_init(&cursor, &output);
+
+	xa = func->func(node, &cursor, NULL, NULL, &input);
+	if (xa == XLAT_ACTION_FAIL) {
+		goto cleanup;
+	}
+
+	while ((child = node->child) != NULL) {
+		node->child = child->next;
+		talloc_free(child);
+	}
+
+	dst = fr_dcursor_head(&cursor);
+	fr_assert(dst != NULL);
+	fr_assert(fr_dcursor_next(&cursor) == NULL);
+
+	xlat_exp_set_type(node, XLAT_BOX);
+	(void) fr_value_box_copy(node, &node->data, dst);
+
+	rcode = 0;
+
+cleanup:
+	while ((box = fr_dlist_head(&input)) != NULL) {
+		fr_dlist_remove(&input, box);
+		talloc_free(box);
+	}
+
+	talloc_free(dst);
+
+	return rcode;
+}
+
+static xlat_arg_parser_t const cast_xlat_args[] = {
+	{ .required = true, .type = FR_TYPE_INT32 },
+	{ .required = true, .type = FR_TYPE_VOID },
+	XLAT_ARG_PARSER_TERMINATOR
+};
 
 static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    UNUSED xlat_ctx_t const *xctx,
@@ -1053,6 +1157,16 @@ redo:
 
 	xlat_flags_merge(&node->flags, &lhs->flags);
 	xlat_flags_merge(&node->flags, &rhs->flags);
+
+	/*
+	 *	Purify things in place, where we can.
+	 */
+	if (flags->pure) {
+		if (xlat_purify_expr(node, func) < 0) {
+			talloc_free(node);
+			FR_SBUFF_ERROR_RETURN(&in); /* @todo m_lhs ? */
+		}
+	}
 
 	lhs = node;
 	goto redo;
