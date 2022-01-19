@@ -1124,6 +1124,7 @@ static void test_requeue_on_reconnect(void)
 	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
 	fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);	/* run management function */
+	fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);	/* service any I/O callbacks */
 
 	/*
