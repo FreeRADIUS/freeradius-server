@@ -63,10 +63,6 @@ match a
 #
 #  octets
 #
-# octets prepend
-calc octets "a" ^ octets "b" -> octets
-match 0x6261
-
 # octets append
 calc octets "a" . octets "b" -> octets
 match 0x6162
@@ -80,6 +76,10 @@ match 0x60
 
 calc octets "a" | octets "b" -> octets
 match 0x63
+
+# octets xor
+#calc octets "a" ^ octets "b" -> octets
+#match 0x03
 
 # we can "fake out" structs by just appending stuff
 calc ipaddr 127.0.0.1 . ipaddr 127.0.0.2 -> octets
@@ -155,4 +155,4 @@ calc string "2" += string "test"
 match 2test
 
 count
-match 64
+match 62

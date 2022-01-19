@@ -456,23 +456,13 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 	len = a->length + b->length;
 
 	switch (op) {
-	case T_OP_PREPEND:	/* dst = b . a */
+	case T_ADD:	/* dst = a . b */
 		buf = talloc_array(ctx, uint8_t, len);
 		if (!buf) {
 		oom:
 			fr_strerror_const("Out of memory");
 			return -1;
 		}
-
-		memcpy(buf, b->vb_octets, b->vb_length);
-		memcpy(buf + b->vb_length, a->vb_octets, a->vb_length);
-
-		fr_value_box_memdup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
-		break;
-
-	case T_ADD:	/* dst = a . b */
-		buf = talloc_array(ctx, uint8_t, len);
-		if (!buf) goto oom;
 
 		memcpy(buf, a->vb_octets, a->vb_length);
 		memcpy(buf + a->vb_length, b->vb_octets, b->vb_length);
@@ -593,25 +583,13 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 	len = a->length + b->length;
 
 	switch (op) {
-	case T_OP_PREPEND:	/* dst = b . a */
+	case T_ADD:
 		buf = talloc_array(ctx, char, len + 1);
 		if (!buf) {
 		oom:
 			fr_strerror_const("Out of memory");
 			return -1;
 		}
-
-		len = a->vb_length + b->vb_length;
-		memcpy(buf, b->vb_strvalue, b->vb_length);
-		memcpy(buf + b->vb_length, a->vb_strvalue, a->vb_length);
-		buf[len] = '\0';
-
-		fr_value_box_bstrndup_shallow(dst, dst->enumv, buf, len, a->tainted | b->tainted);
-		break;
-
-	case T_ADD:
-		buf = talloc_array(ctx, char, len + 1);
-		if (!buf) goto oom;
 
 		len = a->vb_length + b->vb_length;
 		memcpy(buf, a->vb_strvalue, a->vb_length);
@@ -1278,23 +1256,6 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	 */
 	if (hint == FR_TYPE_NULL) do {
 		switch (op) {
-		case T_OP_PREPEND:
-			/*
-			 *	Pick the existing type if we have a
-			 *	variable-sized type.  Otherwise, pick
-			 *	octets.
-			 */
-			if (fr_type_is_variable_size(a->type)) {
-				hint = a->type;
-
-			} else if (fr_type_is_variable_size(b->type)) {
-				hint = b->type;
-
-			} else {
-				hint = FR_TYPE_OCTETS;
-			}
-			break;
-
 		case T_OP_CMP_EQ:
 		case T_OP_NE:
 		case T_OP_GE:
@@ -1418,7 +1379,6 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	case T_DIV:
 	case T_AND:
 	case T_OR:
-	case T_OP_PREPEND:
 	case T_RSHIFT:
 	case T_LSHIFT:
 		fr_assert(hint != FR_TYPE_NULL);
@@ -1501,10 +1461,6 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 
 	case T_OP_SUB_EQ:
 		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_SUB, src);
-		break;
-
-	case T_OP_PREPEND:
-		rcode = fr_value_calc_binary_op(ctx, dst, dst->type, dst, op, src);
 		break;
 
 	case T_OP_AND_EQ:

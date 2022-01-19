@@ -297,7 +297,7 @@ The operators also apply to non-integer attributes.
 | :=       | Override the attribute with the contents with the _<rhs>_.  If the attribute already exists, its value is over-written.  If the attribute does not exist, it is created, and the contents set to thex value of the _<rhs>_
 | +=       | Perform string append.  The contents of the _<rhs>_ are appended to the _<attribute>_.
 | -=       | Inverse of string append. The contents of the _<rhs>_ are deleted from from the _<attribute>_, if the `_<rhs>_` is a suffix of _<attribute>_ 
-| ^=       | Perform string prepend.  The contents of the _<rhs>_ are prepended to the _<attribute>_.
+| ^=       | Perform logical "xor".  The contents of the _<rhs>_ are "xor"ed with the contents of the _<rhs>_.  Both strings must be of the same length.
 | \|=       | Perform logical "or".  The value of the _<attribute>_ is "or"ed with the contents of the _<rhs>_.  Both strings must be of the same length.
 | \&=       | Perform logical "and".  The value of the _<attribute>_ is "and"ed with the contents of the _<rhs>_.  Both strings must be of the same length.
 | \<<=       | Perform left shift / truncation.  The first _<rhs>_ bytes of _<attribute>_ are dropped. i.e. shifted off of the start of the string.
