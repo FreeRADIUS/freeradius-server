@@ -111,9 +111,11 @@ int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssi
 	while (((size_t)(p - in)) < (size_t)inlen) {
 		map_t	*map = NULL;
 		tmpl_rules_t parse_rules = {
-					.dict_def = dict,
-					.prefix = TMPL_ATTR_REF_PREFIX_NO
-				};
+			.attr = {
+				.dict_def = dict,
+				.prefix = TMPL_ATTR_REF_PREFIX_NO
+			}
+		};
 
 		q = strchr(p, '\n');
 		if (!q) break;	/* List should also be terminated with a \n */

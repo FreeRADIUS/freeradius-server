@@ -367,7 +367,7 @@ fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 	/*
 	 *	Get the right list in the specified context
 	 */
-	if (!vpt->rules.list_as_attr) {
+	if (!vpt->rules.attr.list_as_attr) {
 		list_head = tmpl_list_head(request, tmpl_list(vpt));
 		if (!list_head) {
 			fr_strerror_printf("List \"%s\" not available in this context",
@@ -513,7 +513,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 		}
 	}
 
-	if (!vpt->rules.list_as_attr) {
+	if (!vpt->rules.attr.list_as_attr) {
 		/*
 		 *	Get the right list in the specified context
 		 */

@@ -344,7 +344,9 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 	 */
 	{
 		tmpl_rules_t	parse_rules = {
-			.allow_foreign = true	/* Because we don't know where we'll be called */
+			.attr = {
+				.allow_foreign = true	/* Because we don't know where we'll be called */
+			}
 		};
 
 		rcode = map_afrom_cs(ctx, head, cs, &parse_rules, &parse_rules, unlang_fixup_update, NULL, 128);

@@ -956,8 +956,8 @@ static int dictionary_load_common(command_result_t *result, command_file_ctx_t *
 	/*
 	 *	Decrease ref count if we're loading in a new dictionary
 	 */
-	if (cc->tmpl_rules.dict_def) {
-		if (fr_dict_const_free(&cc->tmpl_rules.dict_def, __FILE__) < 0) return -1;
+	if (cc->tmpl_rules.attr.dict_def) {
+		if (fr_dict_const_free(&cc->tmpl_rules.attr.dict_def, __FILE__) < 0) return -1;
 	}
 
 	q = strchr(in, ' ');
@@ -974,12 +974,12 @@ static int dictionary_load_common(command_result_t *result, command_file_ctx_t *
 	talloc_free(tmp);
 	if (ret < 0) RETURN_COMMAND_ERROR();
 
-	cc->tmpl_rules.dict_def = dict;
+	cc->tmpl_rules.attr.dict_def = dict;
 
 	/*
 	 *	Dump the dictionary if we're in super debug mode
 	 */
-	if (fr_debug_lvl > 5) fr_dict_debug(cc->tmpl_rules.dict_def);
+	if (fr_debug_lvl > 5) fr_dict_debug(cc->tmpl_rules.attr.dict_def);
 
 	RETURN_OK(0);
 }
@@ -1133,7 +1133,7 @@ static size_t command_allow_unresolved(command_result_t *result, command_file_ct
 {
 	fr_sbuff_t	our_in = FR_SBUFF_IN(in, inlen);
 
-	if (fr_sbuff_out_bool(&cc->tmpl_rules.allow_unresolved, &our_in) == 0) {
+	if (fr_sbuff_out_bool(&cc->tmpl_rules.attr.allow_unresolved, &our_in) == 0) {
 		fr_strerror_printf("Invalid boolean value, must be \"yes\" or \"no\"");
 		RETURN_COMMAND_ERROR();
 	}
@@ -1149,7 +1149,7 @@ static size_t command_normalise_attribute(command_result_t *result, command_file
 {
 	fr_pair_list_t 	head;
 	ssize_t		slen;
-	fr_dict_t const	*dict = cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict;
+	fr_dict_t const	*dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
 
 	fr_pair_list_init(&head);
 
@@ -1516,7 +1516,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	 *	point to produce fr_pair_ts.
 	 */
 	while (to_dec < to_dec_end) {
-		slen = tp->func(cc->tmp_ctx, &head, fr_dict_root(cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict),
+		slen = tp->func(cc->tmp_ctx, &head, fr_dict_root(cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict),
 				(uint8_t *)to_dec, (to_dec_end - to_dec), decode_ctx);
 		cc->last_ret = slen;
 		if (slen <= 0) {
@@ -1693,7 +1693,7 @@ static size_t command_dictionary_attribute_parse(command_result_t *result, comma
 static size_t command_dictionary_dump(command_result_t *result, command_file_ctx_t *cc,
 				      UNUSED char *data, size_t data_used, UNUSED char *in, UNUSED size_t inlen)
 {
-	fr_dict_debug(cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict);
+	fr_dict_debug(cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict);
 
 	/*
 	 *	Don't modify the contents of the data buffer
@@ -1851,7 +1851,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 		RETURN_COMMAND_ERROR();
 	}
 
-	dict = cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict;
+	dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
 	if (fr_pair_list_afrom_str(cc->tmp_ctx, fr_dict_root(dict),
 				   p, in + inlen - p, &head) != T_EOL) {
 		CLEAR_TEST_POINT(cc);
@@ -1884,7 +1884,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 
 		for (vp = fr_pair_dcursor_iter_init(&cursor, &head,
 						    tp->next_encodable ? tp->next_encodable : fr_proto_next_encodable,
-						    cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict);
+						    cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict);
 		     vp;
 		     vp = fr_dcursor_current(&cursor)) {
 			slen = tp->func(&FR_DBUFF_TMP(enc_p, enc_end), &cursor, encode_ctx);
@@ -2010,7 +2010,7 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 		RETURN_COMMAND_ERROR();
 	}
 
-	dict = cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict;
+	dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
 	if (fr_pair_list_afrom_str(cc->tmp_ctx, fr_dict_root(dict),
 				   p, in + inlen - p, &head) != T_EOL) {
 		CLEAR_TEST_POINT(cc);
@@ -2141,7 +2141,7 @@ static size_t command_load_dictionary(command_result_t *result, command_file_ctx
 		dir = cc->path;
 	}
 
-	ret = fr_dict_read(UNCONST(fr_dict_t *, cc->tmpl_rules.dict_def), dir, name);
+	ret = fr_dict_read(UNCONST(fr_dict_t *, cc->tmpl_rules.attr.dict_def), dir, name);
 	talloc_free(tmp);
 	if (ret < 0) RETURN_COMMAND_ERROR();
 
@@ -2295,7 +2295,7 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 
 	fr_pair_list_init(&head);
 	ctx.ctx = cc->tmp_ctx;
-	ctx.parent = fr_dict_root(cc->tmpl_rules.dict_def);
+	ctx.parent = fr_dict_root(cc->tmpl_rules.attr.dict_def);
 	ctx.list = &head;
 
 	p = in;
@@ -2384,45 +2384,45 @@ typedef ssize_t(*command_tmpl_rule_func)(tmpl_rules_t *rules, fr_sbuff_t *value)
 
 static ssize_t command_tmpl_rule_allow_foreign(tmpl_rules_t *rules, fr_sbuff_t *value)
 {
-	return fr_sbuff_out_bool(&rules->allow_foreign, value);
+	return fr_sbuff_out_bool(&rules->attr.allow_foreign, value);
 }
 
 static ssize_t command_tmpl_rule_allow_unknown(tmpl_rules_t *rules, fr_sbuff_t *value)
 {
-	return fr_sbuff_out_bool(&rules->allow_unknown, value);
+	return fr_sbuff_out_bool(&rules->attr.allow_unknown, value);
 }
 
 static ssize_t command_tmpl_rule_allow_unresolved(tmpl_rules_t *rules, fr_sbuff_t *value)
 {
-	return fr_sbuff_out_bool(&rules->allow_unresolved, value);
+	return fr_sbuff_out_bool(&rules->attr.allow_unresolved, value);
 }
 
 static ssize_t command_tmpl_rule_attr_parent(tmpl_rules_t *rules, fr_sbuff_t *value)
 {
 	return fr_dict_attr_by_oid_substr(NULL,
-					  &rules->attr_parent,
-					  rules->dict_def ? fr_dict_root(rules->dict_def) :
-					  		    fr_dict_root(fr_dict_internal()),
+					  &rules->attr.parent,
+					  rules->attr.dict_def ? fr_dict_root(rules->attr.dict_def) :
+					  			 fr_dict_root(fr_dict_internal()),
 					  value, NULL);
 }
 
 static ssize_t command_tmpl_rule_disallow_internal(tmpl_rules_t *rules, fr_sbuff_t *value)
 {
-	return fr_sbuff_out_bool(&rules->disallow_internal, value);
+	return fr_sbuff_out_bool(&rules->attr.disallow_internal, value);
 }
 
 static ssize_t command_tmpl_rule_disallow_qualifiers(tmpl_rules_t *rules, fr_sbuff_t *value)
 {
-	return fr_sbuff_out_bool(&rules->disallow_qualifiers, value);
+	return fr_sbuff_out_bool(&rules->attr.disallow_qualifiers, value);
 }
 
 static ssize_t command_tmpl_rule_list_def(tmpl_rules_t *rules, fr_sbuff_t *value)
 {
 	ssize_t slen;
 
-	fr_sbuff_out_by_longest_prefix(&slen, &rules->list_def, pair_list_table, value, PAIR_LIST_UNKNOWN);
+	fr_sbuff_out_by_longest_prefix(&slen, &rules->attr.list_def, pair_list_table, value, PAIR_LIST_UNKNOWN);
 
-	if (rules->list_def == PAIR_LIST_UNKNOWN) {
+	if (rules->attr.list_def == PAIR_LIST_UNKNOWN) {
 		fr_strerror_printf("Invalid list specifier \"%pV\"",
 				   fr_box_strvalue_len(fr_sbuff_current(value), fr_sbuff_remaining(value)));
 	}
@@ -2434,9 +2434,9 @@ static ssize_t command_tmpl_rule_request_def(tmpl_rules_t *rules, fr_sbuff_t *va
 {
 	ssize_t slen;
 
-	fr_sbuff_out_by_longest_prefix(&slen, &rules->request_def, tmpl_request_ref_table, value, REQUEST_UNKNOWN);
+	fr_sbuff_out_by_longest_prefix(&slen, &rules->attr.request_def, tmpl_request_ref_table, value, REQUEST_UNKNOWN);
 
-	if (rules->request_def == REQUEST_UNKNOWN) {
+	if (rules->attr.request_def == REQUEST_UNKNOWN) {
 		fr_strerror_printf("Invalid request specifier \"%pV\"",
 				   fr_box_strvalue_len(fr_sbuff_current(value), fr_sbuff_remaining(value)));
 	}
@@ -2610,9 +2610,10 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 	fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
 
 	dec_len = xlat_tokenize(cc->tmp_ctx, &head, NULL, &FR_SBUFF_IN(in, input_len), &p_rules,
-				&(tmpl_rules_t) {
-					.dict_def = cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict,
-					.allow_unresolved = cc->tmpl_rules.allow_unresolved
+				&(tmpl_attr_rules_t) {
+					.dict_def = cc->tmpl_rules.attr.dict_def ?
+						cc->tmpl_rules.attr.dict_def : cc->config->dict,
+					.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
 				});
 	if (dec_len <= 0) {
 		fr_strerror_printf_push_head("ERROR offset %d", (int) -dec_len);
@@ -2642,9 +2643,10 @@ static size_t command_xlat_expr(command_result_t *result, command_file_ctx_t *cc
 //	fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
 
 	dec_len = xlat_tokenize_expression(cc->tmp_ctx, &head, NULL, &FR_SBUFF_IN(in, input_len), NULL,
-					   &(tmpl_rules_t) {
-						   .dict_def = cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict,
-							   .allow_unresolved = cc->tmpl_rules.allow_unresolved
+					   &(tmpl_attr_rules_t) {
+						.dict_def = cc->tmpl_rules.attr.dict_def ?
+							cc->tmpl_rules.attr.dict_def : cc->config->dict,
+						.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
 					   });
 	if (dec_len <= 0) {
 		fr_strerror_printf_push_head("ERROR offset %d", (int) -dec_len);
@@ -2679,9 +2681,10 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 
 	slen = xlat_tokenize_argv(cc->tmp_ctx, &head, NULL, &FR_SBUFF_IN(in, input_len),
 				  NULL,
-				  &(tmpl_rules_t) {
-					.dict_def = cc->tmpl_rules.dict_def ? cc->tmpl_rules.dict_def : cc->config->dict,
-					.allow_unresolved = cc->tmpl_rules.allow_unresolved
+				  &(tmpl_attr_rules_t) {
+					.dict_def = cc->tmpl_rules.attr.dict_def ?
+						cc->tmpl_rules.attr.dict_def : cc->config->dict,
+					.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
 				  });
 	if (slen <= 0) {
 		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen);
@@ -3218,7 +3221,7 @@ finish:
 	/*
 	 *	Free any residual resources we loaded.
 	 */
-	if (cc && (fr_dict_const_free(&cc->tmpl_rules.dict_def, __FILE__) < 0)) {
+	if (cc && (fr_dict_const_free(&cc->tmpl_rules.attr.dict_def, __FILE__) < 0)) {
 		fr_perror("unit_test_attribute");
 		ret = -1;
 	}

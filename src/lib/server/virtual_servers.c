@@ -735,8 +735,8 @@ static int process_instantiate(CONF_SECTION *server_cs, dl_module_inst_t *dl_ins
 		tmpl_rules_t		parse_rules;
 
 		memset(&parse_rules, 0, sizeof(parse_rules));
-		parse_rules.dict_def = dict;
-		fr_assert(parse_rules.dict_def != NULL);
+		parse_rules.attr.dict_def = dict;
+		fr_assert(parse_rules.attr.dict_def != NULL);
 
 		if (virtual_server_compile_sections(server_cs, process->compile_list, &parse_rules,
 						    dl_inst->data) < 0) {

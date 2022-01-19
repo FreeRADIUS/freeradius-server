@@ -477,7 +477,7 @@ static xlat_exp_t *xlat_expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type)
 }
 
 static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *input,
-				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
+				   fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules,
 				   fr_token_t prev, fr_type_t type, fr_sbuff_parse_rules_t const *bracket_rules,
 				   fr_dict_attr_t const *da);
 
@@ -496,7 +496,7 @@ static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
  *	int64_t.
  */
 static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *input,
-			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
+			      fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules,
 			      fr_type_t type, fr_sbuff_parse_rules_t const *bracket_rules, fr_dict_attr_t const *da)
 {
 	ssize_t		slen;
@@ -701,7 +701,7 @@ check_more:
 			 *	@todo - also update the escaping rules, depending on kind of string we have.
 			 */
 			type = FR_TYPE_STRING;
-		} else {			
+		} else {
 			type = FR_TYPE_INT64;
 		}
 	}
@@ -892,11 +892,11 @@ static size_t const expr_assignment_op_table_len = NUM_ELEMENTS(expr_assignment_
  *	A OP B
  */
 static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *input,
-				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
+				   fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules,
 				   fr_token_t prev, fr_type_t type, fr_sbuff_parse_rules_t const *bracket_rules,
 				   fr_dict_attr_t const *da)
 {
-	xlat_exp_t	*lhs = NULL, *rhs = NULL, *node;
+	xlat_exp_t	*lhs, *rhs = NULL, *node;
 	xlat_t		*func = NULL;
 	fr_token_t	op;
 	ssize_t		slen;
@@ -1082,7 +1082,7 @@ static const fr_sbuff_term_t operator_terms = FR_SBUFF_TERMS(
 );
 
 ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
+				 fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules)
 {
 	ssize_t slen;
 	fr_sbuff_parse_rules_t *bracket_rules = NULL;

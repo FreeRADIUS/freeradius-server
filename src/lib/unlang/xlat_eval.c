@@ -1520,7 +1520,12 @@ ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *reques
 	 */
 	len = xlat_tokenize_ephemeral(ctx, &node, unlang_interpret_event_list(request), NULL,
 				      &FR_SBUFF_IN(fmt, strlen(fmt)),
-				      NULL, &(tmpl_rules_t){ .dict_def = request->dict });
+				      NULL,
+				      &(tmpl_rules_t){
+				      	.attr = {
+				      		.dict_def = request->dict
+				      	}
+				      });
 	if (len == 0) {
 		if (*out) {
 			**out = '\0';

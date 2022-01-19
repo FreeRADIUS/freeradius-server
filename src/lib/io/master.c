@@ -2669,15 +2669,16 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		 *	Maybe we should?
 		 */
 		if (app_process->compile_list) {
-			tmpl_rules_t		parse_rules;
-
-			memset(&parse_rules, 0, sizeof(parse_rules));
-			parse_rules.dict_def = virtual_server_namespace(cf_section_name2(inst->server_cs));
+			tmpl_rules_t	parse_rules = {
+				.attr = {
+					.dict_def = virtual_server_namespace(cf_section_name2(inst->server_cs))
+				}
+			};
 
 			if (virtual_server_compile_sections(inst->server_cs, app_process->compile_list,
 							    &parse_rules, inst->dynamic_submodule->data) < 0) {
 				return -1;
-			}
+			};
 		}
 
 		if (app_process->instantiate && (app_process->instantiate(inst->dynamic_submodule->data, conf) < 0)) {

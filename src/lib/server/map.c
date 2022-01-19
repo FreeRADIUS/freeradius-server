@@ -97,7 +97,7 @@ static inline map_t *map_alloc(TALLOC_CTX *ctx, map_t *parent)
 int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules)
 {
-	map_t	*map;
+	map_t		*map;
 	char const	*attr, *value, *marker_subject;
 	ssize_t		slen;
 	fr_token_t	type;
@@ -146,7 +146,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		break;
 
 	default:
-		slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, attr, lhs_rules);
+		slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, attr, &lhs_rules->attr);
 		if (slen <= 0) {
 			cf_log_err(cp, "Failed parsing attribute reference %s - %s", attr, fr_strerror());
 			marker_subject = attr;
@@ -321,14 +321,14 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 			 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 			 fr_sbuff_parse_rules_t const *p_rules)
 {
-	ssize_t			slen;
-	fr_token_t		token;
-	map_t			*map;
-	bool			is_child;
-	fr_sbuff_t		our_in = FR_SBUFF(in);
-	fr_sbuff_marker_t	m_lhs, m_rhs, m_op;
-	fr_sbuff_term_t const	*tt = p_rules ? p_rules->terminals : NULL;
-	map_t			*parent, *new_parent;
+	ssize_t				slen;
+	fr_token_t			token;
+	map_t				*map;
+	bool				is_child;
+	fr_sbuff_t			our_in = FR_SBUFF(in);
+	fr_sbuff_marker_t		m_lhs, m_rhs, m_op;
+	fr_sbuff_term_t const		*tt = p_rules ? p_rules->terminals : NULL;
+	map_t				*parent, *new_parent;
 
 	if (parent_p) {
 		new_parent = parent = *parent_p;
@@ -355,14 +355,20 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 		break;
 
 	default:
+	{
+		tmpl_attr_rules_t our_lhs_attr_rules;
+
+		if (lhs_rules) {
+			our_lhs_attr_rules = lhs_rules->attr;
+		} else {
+			memset(&our_lhs_attr_rules, 0, sizeof(our_lhs_attr_rules));
+		}
 		/*
 		 *	Allow for ".foo" to refer to the current
 		 *	parents list.  Allow for "..foo" to refer to
 		 *	the grandparent list.
 		 */
-		if (lhs_rules->prefix == TMPL_ATTR_REF_PREFIX_NO) {
-			tmpl_rules_t our_lhs_rules;
-
+		if (lhs_rules->attr.prefix == TMPL_ATTR_REF_PREFIX_NO) {
 			/*
 			 *	One '.' means "the current parent".
 			 */
@@ -393,12 +399,11 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 			 *	Start looking in the correct parent, not in whatever we were handed.
 			 */
 			if (is_child) {
-				our_lhs_rules = *lhs_rules;
 				fr_assert(tmpl_is_attr(parent->lhs));
-				our_lhs_rules.attr_parent = tmpl_da(parent->lhs);
+				our_lhs_attr_rules.parent = tmpl_da(parent->lhs);
 
 				slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &our_in,
-							      &map_parse_rules_bareword_quoted, &our_lhs_rules);
+							      &map_parse_rules_bareword_quoted, &our_lhs_attr_rules);
 				break;
 			}
 
@@ -411,8 +416,9 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 		}
 
 		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &our_in,
-					      &map_parse_rules_bareword_quoted, lhs_rules);
+					      &map_parse_rules_bareword_quoted, &our_lhs_attr_rules);
 		break;
+	}
 	}
 
 	if (!map->lhs) {
@@ -635,37 +641,6 @@ check_for_child:
 	return fr_sbuff_set(in, &our_in);
 }
 
-
-static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_SECTION *cs,
-				tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
-				map_validate_t validate, void *uctx,
-				unsigned int max);
-
-
-/** Convert an 'update' config section into an attribute map.
- *
- * Uses 'name2' of section to set default request and lists.
- *
- * @param[in] ctx		for talloc.
- * @param[out] out		Where to store the allocated map.
- * @param[in] cs		the update section
- * @param[in] lhs_rules		rules for parsing LHS attribute references.
- * @param[in] rhs_rules		rules for parsing RHS attribute references.
- * @param[in] validate		map using this callback (may be NULL).
- * @param[in] uctx		to pass to callback.
- * @param[in] max		number of mappings to process.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, CONF_SECTION *cs,
-		 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
-		 map_validate_t validate, void *uctx,
-		 unsigned int max)
-{
-	return _map_afrom_cs(ctx, out, NULL, cs, lhs_rules, rhs_rules, validate, uctx, max);
-}
-
 static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_SECTION *cs,
 			 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
 			 map_validate_t validate, void *uctx,
@@ -695,14 +670,14 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 	 */
 	cs_list = p = cf_section_name2(cs);
 	if (cs_list && (strcmp(cf_section_name1(cs), "update") == 0)) {
-		p += tmpl_request_ref_by_name(&our_lhs_rules.request_def, p, REQUEST_CURRENT);
-		if (our_lhs_rules.request_def == REQUEST_UNKNOWN) {
+		p += tmpl_request_ref_by_name(&our_lhs_rules.attr.request_def, p, REQUEST_CURRENT);
+		if (our_lhs_rules.attr.request_def == REQUEST_UNKNOWN) {
 			cf_log_err(ci, "Default request specified in mapping section is invalid");
 			return -1;
 		}
 
-		our_lhs_rules.list_def = fr_table_value_by_str(pair_list_table, p, PAIR_LIST_UNKNOWN);
-		if (our_lhs_rules.list_def == PAIR_LIST_UNKNOWN) {
+		our_lhs_rules.attr.list_def = fr_table_value_by_str(pair_list_table, p, PAIR_LIST_UNKNOWN);
+		if (our_lhs_rules.attr.list_def == PAIR_LIST_UNKNOWN) {
 			cf_log_err(ci, "Default list \"%s\" specified in mapping section is invalid", p);
 			return -1;
 		}
@@ -727,11 +702,11 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 		 *	assignment operator, THEN we allow sub-maps.
 		 */
 		if (cf_item_is_section(ci)) {
-			CONF_SECTION *subcs;
-			fr_token_t token;
-			ssize_t slen;
-			bool qualifiers = our_lhs_rules.disallow_qualifiers;
-			map_list_t child_list;
+			CONF_SECTION	*subcs;
+			fr_token_t	token;
+			ssize_t		slen;
+			bool		qualifiers = our_lhs_rules.attr.disallow_qualifiers;
+			map_list_t	child_list;
 
 			map_list_init(&child_list);
 			subcs = cf_item_to_section(ci);
@@ -753,7 +728,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 			 *	them for now.  Once the functionality
 			 *	is tested and used, we can allow that.
 			 */
-			slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, cf_section_name1(subcs), &our_lhs_rules);
+			slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, cf_section_name1(subcs), &our_lhs_rules.attr);
 			if (slen <= 0) {
 				cf_log_err(ci, "Failed parsing attribute reference for list %s - %s",
 					   cf_section_name1(subcs), fr_strerror());
@@ -784,15 +759,15 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 			 *	the child attributes go into the
 			 *	parent one.
 			 */
-			our_lhs_rules.disallow_qualifiers = true;
+			our_lhs_rules.attr.disallow_qualifiers = true;
 
 			/*
 			 *	The leaf reference of the outer section
 			 *	is used as the parsing context of the
 			 *	inner section.
 			 */
-			our_lhs_rules.attr_parent = tmpl_da(map->lhs);
-			our_lhs_rules.prefix = TMPL_ATTR_REF_PREFIX_NO;
+			our_lhs_rules.attr.parent = tmpl_da(map->lhs);
+			our_lhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_NO;
 
 			/*
 			 *	This prints out any relevant error
@@ -812,7 +787,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 			}
 			map_list_move(&map->child, &child_list);
 
-			our_lhs_rules.disallow_qualifiers = qualifiers;
+			our_lhs_rules.attr.disallow_qualifiers = qualifiers;
 			MAP_VERIFY(map);
 			goto next;
 		}
@@ -845,6 +820,30 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 
 	return 0;
 
+}
+
+/** Convert an 'update' config section into an attribute map.
+ *
+ * Uses 'name2' of section to set default request and lists.
+ *
+ * @param[in] ctx		for talloc.
+ * @param[out] out		Where to store the allocated map.
+ * @param[in] cs		the update section
+ * @param[in] lhs_rules		rules for parsing LHS attribute references.
+ * @param[in] rhs_rules		rules for parsing RHS attribute references.
+ * @param[in] validate		map using this callback (may be NULL).
+ * @param[in] uctx		to pass to callback.
+ * @param[in] max		number of mappings to process.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, CONF_SECTION *cs,
+		 tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules,
+		 map_validate_t validate, void *uctx,
+		 unsigned int max)
+{
+	return _map_afrom_cs(ctx, out, NULL, cs, lhs_rules, rhs_rules, validate, uctx, max);
 }
 
 /** Convert a value box to a map
@@ -969,8 +968,8 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 	tmpl_attr_set_leaf_da(map->lhs, vp->da);
 	tmpl_attr_set_leaf_num(map->lhs, NUM_ANY);
 
-	tmpl_attr_set_request(map->lhs, rules->request_def);
-	tmpl_attr_set_list(map->lhs, rules->list_def);
+	tmpl_attr_set_request(map->lhs, rules->attr.request_def);
+	tmpl_attr_set_list(map->lhs, rules->attr.list_def);
 
 	tmpl_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), map->lhs, TMPL_ATTR_REF_PREFIX_YES, NULL);
 	tmpl_set_name(map->lhs, T_BARE_WORD, buffer, -1);
@@ -1448,9 +1447,9 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		}
 
 		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &exp_lhs, attr_str,
-					   &(tmpl_rules_t){
-					   	.dict_def = request->dict,
-					   	.prefix = TMPL_ATTR_REF_PREFIX_NO
+					   &(tmpl_attr_rules_t){
+				   		.dict_def = request->dict,
+				   		.prefix = TMPL_ATTR_REF_PREFIX_NO
 					   });
 		if (slen <= 0) {
 			RPEDEBUG("Left side expansion result \"%s\" is not an attribute reference", attr_str);

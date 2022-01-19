@@ -48,8 +48,10 @@ RCSID("$Id$")
  * Defaults are used if a NULL rules pointer is passed to the parsing function.
  */
 static tmpl_rules_t const default_attr_rules = {
-	.request_def = REQUEST_CURRENT,
-	.list_def = PAIR_LIST_REQUEST
+	.attr = {
+		.request_def = REQUEST_CURRENT,
+		.list_def = PAIR_LIST_REQUEST
+	}
 };
 
 /* clang-format off */
@@ -555,7 +557,7 @@ void tmpl_set_name(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len)
  */
 void tmpl_set_dict_def(tmpl_t *vpt, fr_dict_t const *dict)
 {
-	vpt->rules.dict_def = dict;
+	vpt->rules.attr.dict_def = dict;
 }
 
 /** Initialise a tmpl using a format string to create the name
@@ -1097,7 +1099,7 @@ static inline CC_HINT(always_inline) void tmpl_attr_insert(tmpl_t *vpt, tmpl_att
  *	- TMPL_ATTR_REF_BAD_FILTER on failure.
  */
 static tmpl_attr_filter_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
-						 fr_sbuff_t *name, tmpl_rules_t const *t_rules)
+						 fr_sbuff_t *name, tmpl_attr_rules_t const *t_rules)
 {
 	/*
 	 *	Parse array subscript (and eventually complex filters)
@@ -1191,7 +1193,7 @@ static inline CC_HINT(nonnull(3,6))
 int tmpl_attr_afrom_attr_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					   tmpl_t *vpt,
 					   fr_dict_attr_t const *parent, fr_dict_attr_t const *namespace,
-					   fr_sbuff_t *name, tmpl_rules_t const *t_rules,
+					   fr_sbuff_t *name, tmpl_attr_rules_t const *t_rules,
 					   unsigned int depth)
 {
 	tmpl_attr_t		*ar = NULL;
@@ -1306,7 +1308,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 					      tmpl_t *vpt,
 					      fr_dict_attr_t const *parent, fr_dict_attr_t const *namespace,
 					      fr_sbuff_t *name,
-					      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
+					      fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules,
 					      unsigned int depth)
 {
 	uint32_t		oid = 0;
@@ -1371,7 +1373,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		 *	Discard any errors here... It's more
 		 *	useful to have the original.
 		 */
-		if (!da && !vpt->rules.disallow_internal &&
+		if (!da && !vpt->rules.attr.disallow_internal &&
 		    (ar = tmpl_attr_list_tail(&vpt->data.attribute.ar)) &&
 		    (ar->type == TMPL_ATTR_TYPE_NORMAL) && (ar->ar_da->type == FR_TYPE_GROUP)) {
 			(void)fr_dict_attr_by_name_substr(NULL,
@@ -1690,7 +1692,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
 						     tmpl_t *vpt,
 						     fr_sbuff_t *name,
 						     fr_sbuff_parse_rules_t const *p_rules,
-						     tmpl_rules_t const **pt_rules,
+						     tmpl_attr_rules_t const **pt_rules,
 					      	     unsigned int depth)
 {
 	tmpl_request_ref_t			ref;
@@ -1698,7 +1700,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
 	tmpl_request_t				*rr;
 	FR_DLIST_HEAD(tmpl_request_list)	*list = &vpt->data.attribute.rr;
 	fr_sbuff_marker_t			s_m;
-	tmpl_rules_t const			*t_rules = *pt_rules;
+	tmpl_attr_rules_t const			*t_rules = *pt_rules;
 
 	fr_sbuff_marker(&s_m, name);
 	fr_sbuff_out_by_longest_prefix(&ref_len, &ref, tmpl_request_ref_table, name, t_rules->request_def);
@@ -1745,7 +1747,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
 		return -1;
 	}
 
-	if (t_rules->attr_parent || t_rules->disallow_qualifiers) {
+	if (t_rules->parent || t_rules->disallow_qualifiers) {
 		fr_strerror_const("It is not permitted to specify a request reference here");
 		if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
 		return -1;
@@ -1759,14 +1761,6 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
 		.request = ref
 	};
 	tmpl_request_list_insert_tail(list, rr);
-
-	/*
-	 *	Update the parsing rules if we go to the parent.
-	 */
-	 if (((ref == REQUEST_OUTER) || (ref == REQUEST_PARENT)) && t_rules->parent) {
-		t_rules = t_rules->parent;
-		*pt_rules = t_rules;
-	}
 
 	/*
 	 *	Advance past the separator (if there is one)
@@ -1829,7 +1823,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
 ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 			       tmpl_t **out, fr_sbuff_t *name,
 			       fr_sbuff_parse_rules_t const *p_rules,
-			       tmpl_rules_t const *t_rules)
+			       tmpl_attr_rules_t const *t_rules)
 {
 	int			ret;
 	size_t			list_len = 0;
@@ -1839,7 +1833,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	bool			is_raw = false;
 	fr_sbuff_marker_t	m_l;
 
-	if (!t_rules) t_rules = &default_attr_rules;	/* Use the defaults */
+	if (!t_rules) t_rules = &default_attr_rules.attr;	/* Use the defaults */
 
 	if (err) *err = TMPL_ATTR_ERROR_NONE;
 
@@ -1925,7 +1919,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 			vpt->data.attribute.list = t_rules->list_def;
 		}
 
-		if ((t_rules->attr_parent || t_rules->disallow_qualifiers) && (list_len > 0)) {
+		if ((t_rules->parent || t_rules->disallow_qualifiers) && (list_len > 0)) {
 			fr_strerror_const("It is not permitted to specify a pair list here");
 			if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
 			talloc_free(vpt);
@@ -1944,7 +1938,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	    (fr_sbuff_next_if_char(&our_name, '.') && fr_sbuff_is_in_charset(&our_name, fr_dict_attr_allowed_chars))) {
 		ret = tmpl_attr_afrom_attr_substr(vpt, err,
 						  vpt,
-						  t_rules->attr_parent, t_rules->attr_parent,
+						  t_rules->parent, t_rules->parent,
 						  &our_name, p_rules, t_rules, 0);
 		if (ret < 0) goto error;
 
@@ -2037,7 +2031,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	}
 
 	tmpl_set_name(vpt, T_BARE_WORD, fr_sbuff_start(&our_name), fr_sbuff_used(&our_name));
-	vpt->rules = *t_rules;	/* Record the rules */
+	vpt->rules.attr = *t_rules;	/* Record the rules */
 
 	if (!tmpl_substr_terminal_check(&our_name, p_rules)) {
 		fr_strerror_const("Unexpected text after attribute reference");
@@ -2068,11 +2062,11 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
  *	name string isn't parsed.
  */
 ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
-			    tmpl_t **out, char const *name, tmpl_rules_t const *t_rules)
+			    tmpl_t **out, char const *name, tmpl_attr_rules_t const *t_rules)
 {
 	ssize_t slen, name_len;
 
-	if (!t_rules) t_rules = &default_attr_rules;	/* Use the defaults */
+	if (!t_rules) t_rules = &default_attr_rules.attr;	/* Use the defaults */
 
 	name_len = strlen(name);
 	slen = tmpl_afrom_attr_substr(ctx, err, out, &FR_SBUFF_IN(name, name_len), NULL, t_rules);
@@ -2578,7 +2572,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	we find a '&' prefix.
 		 */
 		if (fr_sbuff_is_char(&our_in, '&')) return tmpl_afrom_attr_substr(ctx, NULL, out, in,
-										  p_rules, t_rules);
+										  p_rules, &t_rules->attr);
 
 		/*
 		 *	Allow bareword xlats if we
@@ -2591,10 +2585,11 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 			vpt = tmpl_alloc_null(ctx);
 			if (!t_rules->at_runtime) {
-				slen = xlat_tokenize(vpt, &head, &flags, &our_in, p_rules, t_rules);
+				slen = xlat_tokenize(vpt, &head, &flags, &our_in, p_rules, &t_rules->attr);
 			} else {
 				slen = xlat_tokenize_ephemeral(vpt, &head,
-							       t_rules->runtime_el, &flags, &our_in, p_rules, t_rules);
+							       t_rules->xlat.runtime_el, &flags, &our_in,
+							       p_rules, t_rules);
 			}
 
 			if (!head) return slen;
@@ -2674,7 +2669,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	See if it's an attribute reference
 		 *	without the prefix.
 		 */
-		slen = tmpl_afrom_attr_substr(ctx, NULL, out, &our_in, p_rules, t_rules);
+		slen = tmpl_afrom_attr_substr(ctx, NULL, out, &our_in, p_rules, &t_rules->attr);
 		if (slen > 0) goto done_bareword;
 		fr_assert(!*out);
 
@@ -2717,9 +2712,9 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		vpt = tmpl_alloc_null(ctx);
 
 		if (!t_rules->at_runtime) {
-			slen = xlat_tokenize(vpt, &head, &flags, &our_in, p_rules, t_rules);
+			slen = xlat_tokenize(vpt, &head, &flags, &our_in, p_rules, &t_rules->attr);
 		} else {
-			slen = xlat_tokenize_ephemeral(vpt, &head, t_rules->runtime_el,
+			slen = xlat_tokenize_ephemeral(vpt, &head, t_rules->xlat.runtime_el,
 						       &flags, &our_in, p_rules, t_rules);
 		}
 		if (!head) return slen;
@@ -2765,7 +2760,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	FIXME - We need an ephemeral version of this
 		 *	too.
 		 */
-		slen = xlat_tokenize_argv(vpt, &head, &flags, &our_in, p_rules, t_rules);
+		slen = xlat_tokenize_argv(vpt, &head, &flags, &our_in, p_rules, &t_rules->attr);
 		if (slen < 0) {
 			fr_sbuff_advance(&our_in, slen * -1);
 			talloc_free(vpt);
@@ -2788,7 +2783,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		vpt = tmpl_alloc_null(ctx);
 
-		slen = xlat_tokenize(vpt, &head, &flags, &our_in, p_rules, t_rules);
+		slen = xlat_tokenize(vpt, &head, &flags, &our_in, p_rules, &t_rules->attr);
 		if (!head) return slen;
 
 		/*
@@ -2801,7 +2796,6 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	The caller will need to do the compilation
 		 *	after we return.
 		 */
-
 		if (xlat_to_string(vpt, &str, &head)) {
 			tmpl_init(vpt, TMPL_TYPE_REGEX_UNCOMPILED, quote, fr_sbuff_start(&our_in), slen);
 			vpt->data.unescaped = str;	/* Store the unescaped string for compilation later */
@@ -2850,8 +2844,6 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
 	tmpl_t *vpt;
 
 	MEM(vpt = tmpl_alloc(ctx, in->type, in->quote, in->name, in->len));
-	vpt->cast = in->cast;
-	vpt->enumv = in->enumv;
 	vpt->rules = in->rules;
 
 	/*
@@ -3011,7 +3003,7 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 		 */
 	check_types:
 		if (src_type == dst_type) {
-			vpt->cast = FR_TYPE_NULL;
+			tmpl_rules_cast(vpt) = FR_TYPE_NULL;
 			return 0;
 		}
 
@@ -3025,7 +3017,7 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 	}
 
 done:
-	vpt->cast = dst_type;
+	vpt->rules.data.cast = dst_type;
 	return 0;
 }
 
@@ -3188,7 +3180,7 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 
 	case TMPL_TYPE_ATTR:	/* FIXME - We should check cast compatibility with resolved attrs */
 	case TMPL_TYPE_ATTR_UNRESOLVED:
-		vpt->cast = type;
+		vpt->rules.data.cast = type;
 		break;
 
 	default:
@@ -3222,7 +3214,7 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 
 	TMPL_VERIFY(vpt);
 
-	dict_def = vpt->rules.dict_def;
+	dict_def = vpt->rules.attr.dict_def;
 	if (!tr_rules->dict_def || tr_rules->force_dict_def) dict_def = tr_rules->dict_def;
 
 	/*
@@ -3240,8 +3232,8 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 							 &FR_SBUFF_IN(ar->ar_unresolved,
 							 	      talloc_array_length(ar->ar_unresolved) - 1),
 							 NULL,
-							 !vpt->rules.disallow_internal,
-							 vpt->rules.allow_foreign);
+							 !vpt->rules.attr.disallow_internal,
+							 vpt->rules.attr.allow_foreign);
 		if (!da) return -2;	/* Can't resolve, maybe the caller can resolve later */
 
 		ar->ar_type = TMPL_ATTR_TYPE_NORMAL;
@@ -3252,7 +3244,7 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 		 *	Record the dictionary that was
 		 *	successfully used for resolution.
 		 */
-		vpt->rules.dict_def = tr_rules->dict_def;
+		vpt->rules.attr.dict_def = tr_rules->dict_def;
 
 		/*
 		 *	Reach into the next reference
@@ -3298,7 +3290,7 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 		 */
 		if (!da) {
 			prev = tmpl_attr_list_prev(&vpt->data.attribute.ar, ar);
-			if (!vpt->rules.disallow_internal && prev && (prev->ar_da->type == FR_TYPE_GROUP)) {
+			if (!vpt->rules.attr.disallow_internal && prev && (prev->ar_da->type == FR_TYPE_GROUP)) {
 				(void)fr_dict_attr_by_name_substr(NULL,
 								  &da,
 								  fr_dict_root(fr_dict_internal()),
@@ -3392,7 +3384,7 @@ int tmpl_xlat_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 
 /** Attempt to resolve functions and attributes in xlats and attribute references
  *
- * @note If resolution is successful, the rules->dict_def field will be modified to
+ * @note If resolution is successful, the rules->attr.dict_def field will be modified to
  *	 reflect the dictionary resolution was successful in.
  *
  * @param[in,out] 	vpt		to resolve.  Should be of type TMPL_TYPE_XLAT_UNRESOLVED
@@ -3429,7 +3421,7 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 	 *	Convert unresolved tmpls into literal string values.
 	 */
 	} else if (tmpl_is_unresolved(vpt)) {
-		fr_type_t dst_type = vpt->cast;
+		fr_type_t dst_type = tmpl_rules_cast(vpt);
 
 		if (fr_type_is_null(dst_type)) dst_type = FR_TYPE_STRING;	/* Default to strings */
 

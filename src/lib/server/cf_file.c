@@ -141,16 +141,16 @@ typedef struct {
 static inline CC_HINT(always_inline) int cf_tmpl_rules_verify(CONF_SECTION *cs, tmpl_rules_t const *rules)
 {
 	if (cf_section_has_parent(cs, "policy", NULL)) {
-		if (!fr_cond_assert_msg(!rules->dict_def || (rules->dict_def == fr_dict_internal()),
+		if (!fr_cond_assert_msg(!rules->attr.dict_def || (rules->attr.dict_def == fr_dict_internal()),
 					"Protocol dictionary must be NULL not %s",
-					fr_dict_root(rules->dict_def)->name)) return -1;
+					fr_dict_root(rules->attr.dict_def)->name)) return -1;
 
 	} else {
-		if (!fr_cond_assert_msg(rules->dict_def, "No protocol dictionary set")) return -1;
-		if (!fr_cond_assert_msg(rules->dict_def != fr_dict_internal(), "rules->dict_def must not be the internal dictionary")) return -1;
+		if (!fr_cond_assert_msg(rules->attr.dict_def, "No protocol dictionary set")) return -1;
+		if (!fr_cond_assert_msg(rules->attr.dict_def != fr_dict_internal(), "rules->attr.dict_def must not be the internal dictionary")) return -1;
 	}
 
-	if (!fr_cond_assert_msg(!rules->allow_foreign, "rules->allow_foreign must be false")) return -1;
+	if (!fr_cond_assert_msg(!rules->attr.allow_foreign, "rules->allow_foreign must be false")) return -1;
 	if (!fr_cond_assert_msg(!rules->at_runtime, "rules->at_runtime must be false")) return -1;
 
 	return 0;
@@ -1190,9 +1190,11 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 */
 	while (true) {
 		tmpl_rules_t t_rules = {
-			.dict_def = dict,
-			.allow_unresolved = true,
-			.allow_unknown = true,
+			.attr = {
+				.dict_def = dict,
+				.allow_unresolved = true,
+				.allow_unknown = true
+			}
 		};
 
 		RULES_VERIFY(cs, &t_rules);

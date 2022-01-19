@@ -324,7 +324,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, module_ctx_t const *mctx, request_t *re
 		}
 
 		if (tmpl_afrom_attr_str(ctx, NULL, &dst, s1,
-					&(tmpl_rules_t){
+					&(tmpl_attr_rules_t){
 						.dict_def = request->dict,
 						.list_def = PAIR_LIST_REPLY
 					}) <= 0) {

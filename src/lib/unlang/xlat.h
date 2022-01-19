@@ -291,16 +291,20 @@ int		xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_
 
 bool		xlat_async_required(xlat_exp_t const *xlat);
 
+
+ssize_t		xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+					 fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules);
+
 ssize_t		xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head,
 					fr_event_list_t *el,
 					xlat_flags_t *flags, fr_sbuff_t *in,
 					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
 ssize_t 	xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
+				   fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules);
 
 ssize_t		xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
+			      fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules);
 
 ssize_t		xlat_print(fr_sbuff_t *in, xlat_exp_t const *node, fr_sbuff_escape_rules_t const *e_rules);
 
@@ -329,9 +333,6 @@ xlat_t		*xlat_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, xlat
 int		xlat_func_args(xlat_t *xlat, xlat_arg_parser_t const args[]) CC_HINT(nonnull);
 
 int		xlat_func_mono(xlat_t *xlat, xlat_arg_parser_t const *arg) CC_HINT(nonnull);
-
-ssize_t		xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-					 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
 /** Set a callback for global instantiation of xlat functions
  *

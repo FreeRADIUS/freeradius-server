@@ -758,7 +758,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	int		lineno;
 	FILE		*fp;
 	tmpl_rules_t	parse_rules = {
-		.allow_foreign = true	/* Because we don't know where we'll be called */
+		.attr = {
+			.allow_foreign = true	/* Because we don't know where we'll be called */
+		}
 	};
 	char buffer[8192];
 

@@ -200,16 +200,24 @@ static const unlang_actions_t default_actions[MOD_COUNT] =
 	}
 };
 
-static inline CC_HINT(always_inline) int unlang_rules_verify(tmpl_rules_t const *rules)
+static inline CC_HINT(always_inline) int unlang_attr_rules_verify(tmpl_attr_rules_t const *rules)
 {
 	if (!fr_cond_assert_msg(rules->dict_def, "No protocol dictionary set")) return -1;
-	if (!fr_cond_assert_msg(rules->dict_def != fr_dict_internal(), "rules->dict_def must not be the internal dictionary")) return -1;
-	if (!fr_cond_assert_msg(!rules->allow_foreign, "rules->allow_foreign must be false")) return -1;
-	if (!fr_cond_assert_msg(!rules->at_runtime, "rules->at_runtime must be false")) return -1;
+	if (!fr_cond_assert_msg(rules->dict_def != fr_dict_internal(), "rules->attr.dict_def must not be the internal dictionary")) return -1;
+	if (!fr_cond_assert_msg(!rules->allow_foreign, "rules->attr.allow_foreign must be false")) return -1;
 
 	return 0;
 }
 
+static inline CC_HINT(always_inline) int unlang_rules_verify(tmpl_rules_t const *rules)
+{
+	if (!fr_cond_assert_msg(!rules->at_runtime, "rules->at_runtime must be false")) return -1;
+	return unlang_attr_rules_verify(&rules->attr);
+}
+
+#if 0
+#define ATTR_RULES_VERIFY(_rules) if (unlang_attr_rules_verify(_rules) < 0) return NULL;
+#endif
 #define RULES_VERIFY(_rules) if (unlang_rules_verify(_rules) < 0) return NULL;
 
 static bool pass2_fixup_tmpl(TALLOC_CTX *ctx, tmpl_t **vpt_p, CONF_ITEM const *ci, fr_dict_t const *dict)
@@ -222,7 +230,7 @@ static bool pass2_fixup_tmpl(TALLOC_CTX *ctx, tmpl_t **vpt_p, CONF_ITEM const *c
 	 *	We may now know the correct dictionary
 	 *	where we didn't before...
 	 */
-	if (!vpt->rules.dict_def) tmpl_set_dict_def(vpt, dict);
+	if (!vpt->rules.attr.dict_def) tmpl_set_dict_def(vpt, dict);
 
 	/*
 	 *	Convert virtual &Attr-Foo to "%{Attr-Foo}"
@@ -421,7 +429,9 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *d
 					 T_DOUBLE_QUOTED_STRING,
 					 NULL,
 					 &(tmpl_rules_t){
-					 	.allow_unknown = true
+					 	.attr = {
+					 		.allow_unknown = true
+					 	}
 					 });
 		if (!vpt) {
 			char *spaces, *text;
@@ -489,7 +499,7 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *d
 		return false;
 	}
 
-	if (c->data.map->lhs->cast != FR_TYPE_NULL) {
+	if (tmpl_rules_cast(c->data.map->lhs) != FR_TYPE_NULL) {
 		cf_log_err(map->ci, "Cannot cast virtual attribute %s to %s", map->lhs->name,
 			   fr_table_str_by_value(fr_value_box_type_table, c->data.map->lhs->type, "<INVALID>"));
 		return false;
@@ -532,13 +542,13 @@ static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_
 		 *	FIXME: compile to attribute && handle
 		 *	the conversion in map_to_vp().
 		 */
-		if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, rules->dict_def)) {
+		if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, rules->attr.dict_def)) {
 			return false;
 		}
 	}
 
 	if (tmpl_is_exec(map->lhs)) {
-		if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, rules->dict_def)) {
+		if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, rules->attr.dict_def)) {
 			return false;
 		}
 	}
@@ -547,7 +557,7 @@ static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_
 	 *	Deal with undefined attributes now.
 	 */
 	if (tmpl_is_attr_unresolved(map->lhs)) {
-		if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, rules->dict_def)) return false;
+		if (!pass2_fixup_tmpl(map, &map->lhs, map->ci, rules->attr.dict_def)) return false;
 	}
 
 	/*
@@ -570,7 +580,7 @@ static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_
 			 *	FIXME: compile to attribute && handle
 			 *	the conversion in map_to_vp().
 			 */
-			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, rules->dict_def)) {
+			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, rules->attr.dict_def)) {
 				return false;
 			}
 		}
@@ -578,11 +588,11 @@ static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_
 		fr_assert(!tmpl_is_regex_xlat_unresolved(map->rhs));
 
 		if (tmpl_is_attr_unresolved(map->rhs)) {
-			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, rules->dict_def)) return false;
+			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, rules->attr.dict_def)) return false;
 		}
 
 		if (tmpl_is_exec(map->rhs)) {
-			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, rules->dict_def)) {
+			if (!pass2_fixup_tmpl(map, &map->rhs, map->ci, rules->attr.dict_def)) {
 				return false;
 			}
 		}
@@ -670,7 +680,7 @@ static bool pass2_fixup_map_rhs(unlang_group_t *g, tmpl_rules_t const *rules)
 	if (!gext->vpt) return true;
 
 	return pass2_fixup_tmpl(map_list_head(&gext->map)->ci, &gext->vpt,
-				cf_section_to_item(g->cs), rules->dict_def);
+				cf_section_to_item(g->cs), rules->attr.dict_def);
 }
 
 static void unlang_dump(unlang_t *instruction, int depth)
@@ -1314,7 +1324,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	 *	We allow unknown attributes here.
 	 */
 	t_rules = *(unlang_ctx->rules);
-	t_rules.allow_unknown = true;
+	t_rules.attr.allow_unknown = true;
 	RULES_VERIFY(&t_rules);
 
 	modules = cf_section_find(cf_root(cs), "modules", NULL);
@@ -1445,7 +1455,7 @@ static unlang_t *compile_update(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	We allow unknown attributes here.
 	 */
 	t_rules = *(unlang_ctx->rules);
-	t_rules.allow_unknown = true;
+	t_rules.attr.allow_unknown = true;
 	RULES_VERIFY(&t_rules);
 
 	g = group_allocate(parent, cs, &update_ext);
@@ -1504,7 +1514,7 @@ static unlang_t *compile_filter(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	We allow unknown attributes here.
 	 */
 	t_rules = *(unlang_ctx->rules);
-	t_rules.allow_unknown = true;
+	t_rules.attr.allow_unknown = true;
 	RULES_VERIFY(&t_rules);
 
 	g = group_allocate(parent, cs, &filter_ext);
@@ -1663,8 +1673,8 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 	 *	We allow unknown attributes here.
 	 */
 	t_rules = *(unlang_ctx->rules);
-	t_rules.allow_unknown = true;
-	t_rules.list_as_attr = true;
+	t_rules.attr.allow_unknown = true;
+	t_rules.attr.list_as_attr = true;
 	RULES_VERIFY(&t_rules);
 
 	c = *prev;
@@ -1700,7 +1710,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 
 	name = cf_section_name1(cs);
 
-	slen = tmpl_afrom_attr_str(map, NULL, &map->lhs, name, &t_rules);
+	slen = tmpl_afrom_attr_str(map, NULL, &map->lhs, name, &t_rules.attr);
 	if (slen <= 0) {
 		cf_log_err(cs, "Failed parsing list reference %s", name);
 	fail:
@@ -1755,8 +1765,8 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	 *	We allow unknown attributes here.
 	 */
 	t_rules = *(unlang_ctx->rules);
-	t_rules.allow_unknown = true;
-	t_rules.list_as_attr = true;
+	t_rules.attr.allow_unknown = true;
+	t_rules.attr.list_as_attr = true;
 	RULES_VERIFY(&t_rules);
 
 	c = *prev;
@@ -2465,7 +2475,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	We allow unknown attributes here.
 	 */
 	t_rules = *(unlang_ctx->rules);
-	t_rules.allow_unknown = true;
+	t_rules.attr.allow_unknown = true;
 	RULES_VERIFY(&t_rules);
 
 	name2 = cf_section_name2(cs);
@@ -2519,7 +2529,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	This is so that compile_case() can do attribute type
 	 *	checks / casts against us.
 	 */
-	if (!pass2_fixup_tmpl(g, &gext->vpt, cf_section_to_item(cs), unlang_ctx->rules->dict_def)) {
+	if (!pass2_fixup_tmpl(g, &gext->vpt, cf_section_to_item(cs), unlang_ctx->rules->attr.dict_def)) {
 	error:
 		talloc_free(g);
 		return NULL;
@@ -2548,8 +2558,8 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	}
 
 	type = FR_TYPE_STRING;
-	if (gext->vpt->cast) {
-		type = gext->vpt->cast;
+	if (tmpl_rules_cast(gext->vpt)) {
+		type = tmpl_rules_cast(gext->vpt);
 
 	} else if (tmpl_is_attr(gext->vpt)) {
 		type = tmpl_da(gext->vpt)->type;
@@ -2677,7 +2687,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	 *	We allow unknown attributes here.
 	 */
 	t_rules = *(unlang_ctx->rules);
-	t_rules.allow_unknown = true;
+	t_rules.attr.allow_unknown = true;
 	RULES_VERIFY(&t_rules);
 
 	if (!parent || (parent->type != UNLANG_TYPE_SWITCH)) {
@@ -2728,7 +2738,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		 *      "switch" tmpl.
 		 */
 		if (tmpl_is_unresolved(vpt)) {
-			fr_type_t cast_type = switch_gext->vpt->cast;
+			fr_type_t cast_type = tmpl_rules_cast(switch_gext->vpt);
 			fr_dict_attr_t const *da = NULL;
 
  			if (tmpl_is_attr(switch_gext->vpt)) da = tmpl_da(switch_gext->vpt);
@@ -2801,7 +2811,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	We allow unknown attributes here.
 	 */
 	t_rules = *(unlang_ctx->rules);
-	t_rules.allow_unknown = true;
+	t_rules.attr.allow_unknown = true;
 	RULES_VERIFY(&t_rules);
 
 	name2 = cf_section_name2(cs);
@@ -3054,7 +3064,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 			case COND_TYPE_TMPL:
 				fr_assert(!tmpl_is_regex_xlat_unresolved(leaf->data.vpt));
 				if (!pass2_fixup_tmpl(leaf, &leaf->data.vpt, cf_section_to_item(cs),
-						      unlang_ctx->rules->dict_def)) return false;
+						      unlang_ctx->rules->attr.dict_def)) return false;
 				break;
 
 			/*
@@ -3062,7 +3072,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 			 */
 			case COND_TYPE_MAP:
 				if (!pass2_fixup_cond_map(leaf, cf_section_to_item(cs),
-							  unlang_ctx->rules->dict_def)) return false;
+							  unlang_ctx->rules->attr.dict_def)) return false;
 				break;
 
 			default:
@@ -3216,7 +3226,7 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 	 *	We allow unknown attributes here.
 	 */
 	t_rules = *(unlang_ctx->rules);
-	t_rules.allow_unknown = true;
+	t_rules.attr.allow_unknown = true;
 	RULES_VERIFY(&t_rules);
 
 	/*
@@ -3283,7 +3293,7 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 		/*
 		 *	Fixup the templates
 		 */
-		if (!pass2_fixup_tmpl(g, &gext->vpt, cf_section_to_item(cs), unlang_ctx->rules->dict_def)) {
+		if (!pass2_fixup_tmpl(g, &gext->vpt, cf_section_to_item(cs), unlang_ctx->rules->attr.dict_def)) {
 			talloc_free(g);
 			return NULL;
 		}
@@ -3429,7 +3439,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	 */
 	name2 = cf_section_name2(cs);
 	if (!name2) {
-		dict = unlang_ctx->rules->dict_def;
+		dict = unlang_ctx->rules->attr.dict_def;
 		packet_name = name2 = unlang_ctx->section_name2;
 		goto get_packet_type;
 	}
@@ -3444,7 +3454,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 
 		slen = tmpl_afrom_attr_substr(parent, NULL, &vpt,
 					      &FR_SBUFF_IN(name2, talloc_array_length(name2) - 1),
-					      NULL, unlang_ctx->rules);
+					      NULL, &unlang_ctx->rules->attr);
 		if (slen <= 0) {
 			cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing packet-type");
 			return NULL;
@@ -3466,7 +3476,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 			return NULL;
 		}
 
-		dict = unlang_ctx->rules->dict_def;
+		dict = unlang_ctx->rules->attr.dict_def;
 		packet_name = NULL;
 		goto get_packet_type;
 	}
@@ -3478,7 +3488,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	 */
 	p = strchr(name2, '.');
 	if (!p) {
-		dict = unlang_ctx->rules->dict_def;
+		dict = unlang_ctx->rules->attr.dict_def;
 		packet_name = name2;
 
 	} else {
@@ -3585,8 +3595,8 @@ get_packet_type:
 
 	t_rules = *unlang_ctx->rules;
 	t_rules.parent = unlang_ctx->rules;
-	t_rules.dict_def = dict;
-	t_rules.allow_foreign = false;
+	t_rules.attr.dict_def = dict;
+	t_rules.attr.allow_foreign = false;
 
 	/*
 	 *	Copy over the compilation context.  This is mostly
@@ -3674,9 +3684,9 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		return NULL;
 	}
 	if ((dict != fr_dict_internal()) && fr_dict_internal() &&
-	    unlang_ctx->rules->dict_def && (unlang_ctx->rules->dict_def != dict)) {
+	    unlang_ctx->rules->attr.dict_def && (unlang_ctx->rules->attr.dict_def != dict)) {
 		cf_log_err(cs, "Cannot call server %s with namespace '%s' from namespaces '%s' - they have incompatible protocols",
-			   server, fr_dict_root(dict)->name, fr_dict_root(unlang_ctx->rules->dict_def)->name);
+			   server, fr_dict_root(dict)->name, fr_dict_root(unlang_ctx->rules->attr.dict_def)->name);
 		return NULL;
 	}
 
@@ -3745,7 +3755,7 @@ static unlang_t *compile_caller(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 */
 	memcpy(&parent_rules, unlang_ctx->rules, sizeof(parent_rules));
 	memcpy(&t_rules, unlang_ctx->rules, sizeof(t_rules));
-	parent_rules.dict_def = dict;
+	parent_rules.attr.dict_def = dict;
 	t_rules.parent = &parent_rules;
 
 	/*
@@ -3973,13 +3983,13 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	/*
 	 *	Can't use "chap" in "dhcp".
 	 */
-	if (inst->module->dict && *inst->module->dict && unlang_ctx->rules && unlang_ctx->rules->dict_def &&
-	    (unlang_ctx->rules->dict_def != fr_dict_internal()) &&
-	    (*(inst->module->dict) != unlang_ctx->rules->dict_def)) {
+	if (inst->module->dict && *inst->module->dict && unlang_ctx->rules && unlang_ctx->rules->attr.dict_def &&
+	    (unlang_ctx->rules->attr.dict_def != fr_dict_internal()) &&
+	    (*(inst->module->dict) != unlang_ctx->rules->attr.dict_def)) {
 		cf_log_err(ci, "The \"%s\" module can only used with 'namespace = %s'.  It cannot be used with 'namespace = %s'.",
 			   inst->module->name,
 			   fr_dict_root(*inst->module->dict)->name,
-			   fr_dict_root(unlang_ctx->rules->dict_def)->name);
+			   fr_dict_root(unlang_ctx->rules->attr.dict_def)->name);
 		return NULL;
 	}
 

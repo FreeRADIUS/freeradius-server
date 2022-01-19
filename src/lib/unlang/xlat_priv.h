@@ -154,6 +154,8 @@ typedef struct {
 	size_t		len;		//!< Length of the output string.
 } xlat_out_t;
 
+extern fr_dict_attr_t const	*attr_cast_base; /* for xlat_expr.c */
+
 /*
  *	Helper functions
  */
@@ -306,10 +308,10 @@ int		xlat_register_expressions(void);
  *	xlat_tokenize.c
  */
 int		xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-					tmpl_rules_t const *t_rules);
+					tmpl_attr_rules_t const *t_rules);
 
 int		xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-					    tmpl_rules_t const *rules);
+					    tmpl_attr_rules_t const *rules);
 
 
 #ifdef __cplusplus

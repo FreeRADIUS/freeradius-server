@@ -841,7 +841,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	slen = tmpl_afrom_attr_substr(ctx, NULL, &target,
 				      &FR_SBUFF_IN(attr->vb_strvalue, attr->vb_length),
 				      NULL,
-				      &(tmpl_rules_t){
+				      &(tmpl_attr_rules_t){
 				      		.dict_def = request->dict,
 				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				      });
@@ -1041,7 +1041,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 */
 	{
 		tmpl_rules_t	parse_rules = {
-			.allow_foreign = true	/* Because we don't know where we'll be called */
+			.attr = {
+				.allow_foreign = true	/* Because we don't know where we'll be called */
+			}
 		};
 
 		map_list_init(&inst->maps);

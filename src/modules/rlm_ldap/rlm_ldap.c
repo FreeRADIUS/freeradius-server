@@ -2314,7 +2314,9 @@ if (inst->handle_config.tls_min_version_str) {
 	 */
 	{
 		tmpl_rules_t	parse_rules = {
-			.allow_foreign = true	/* Because we don't know where we'll be called */
+			.attr = {
+				.allow_foreign = true	/* Because we don't know where we'll be called */
+			}
 		};
 
 		update = cf_section_find(conf, "update", NULL);

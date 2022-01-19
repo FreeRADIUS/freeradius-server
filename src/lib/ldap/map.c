@@ -65,15 +65,19 @@ int fr_ldap_map_getvalue(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reques
 			char		*attr_str;
 
 			tmpl_rules_t	lhs_rules = {
-				.dict_def = request->dict,
-				.request_def = tmpl_request(map->lhs),
-				.list_def = tmpl_list(map->lhs),
-				.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
+				.attr = {
+					.dict_def = request->dict,
+					.request_def = tmpl_request(map->lhs),
+					.list_def = tmpl_list(map->lhs),
+					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+				},
 				.at_runtime = true,
 			};
 
 			tmpl_rules_t rhs_rules = {
-				.dict_def = request->dict,
+				.attr = {
+					.dict_def = request->dict
+				},
 				.at_runtime = true,
 			};
 
@@ -369,8 +373,10 @@ int fr_ldap_map_do(request_t *request, LDAP *handle,
 			char		*value;
 
 			tmpl_rules_t parse_rules = {
-				.dict_def = request->dict,
-				.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
+				.attr = {
+					.dict_def = request->dict,
+					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+				}
 			};
 
 			value = fr_ldap_berval_to_string(request, values[i]);

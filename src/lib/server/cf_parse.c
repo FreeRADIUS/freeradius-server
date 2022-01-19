@@ -210,9 +210,11 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	if (tmpl) {
 		tmpl_t			*vpt;
 		static tmpl_rules_t	rules = {
-						.allow_unknown = true,
-						.allow_unresolved = true,
-						.allow_foreign = true
+						.attr = {
+							.allow_unknown = true,
+							.allow_unresolved = true,
+							.allow_foreign = true
+						}
 					};
 		fr_type_t		cast = FR_TYPE_NULL;
 		fr_sbuff_t		sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
@@ -1491,7 +1493,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			 */
 			slen = xlat_tokenize(cs, &xlat, NULL,
 					     &FR_SBUFF_IN(cp->value, talloc_array_length(cp->value) - 1), NULL,
-					     &(tmpl_rules_t){
+					     &(tmpl_attr_rules_t){
 						.dict_def = dict,
 						.allow_unknown = false,
 						.allow_unresolved = false,

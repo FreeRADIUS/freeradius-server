@@ -252,7 +252,7 @@ fr_type_t tmpl_expanded_type(tmpl_t const *vpt)
 	/*
 	 *	Casts take precedence over everything.
 	 */
-	if (vpt->cast != FR_TYPE_NULL) return vpt->cast;
+	if (tmpl_rules_cast(vpt) != FR_TYPE_NULL) return tmpl_rules_cast(vpt);
 
 	/*
 	 *	Anything that's not a bare word will

@@ -82,8 +82,10 @@ static int process_file(char const *filename)
 	main_config_t	*config;
 
 	tmpl_rules_t	parse_rules = {
-		.dict_def = dict_radius,
-		.allow_foreign = false, /* tests are in the RADIUS dictionary */
+		.attr = {
+			.dict_def = dict_radius,
+			.allow_foreign = false, /* tests are in the RADIUS dictionary */
+		}
 	};
 
 	map_list_init(&list);

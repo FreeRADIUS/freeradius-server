@@ -76,7 +76,7 @@ int xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name)
 	*out = NULL;
 
 	if (tmpl_afrom_attr_str(request, NULL, &vpt, name,
-				&(tmpl_rules_t){
+				&(tmpl_attr_rules_t){
 					.dict_def = request->dict,
 					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				}) <= 0) return -4;
@@ -1004,7 +1004,7 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 	fmt = attr->vb_strvalue;
 
 	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
-				&(tmpl_rules_t){
+				&(tmpl_attr_rules_t){
 					.dict_def = request->dict,
 					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				}) <= 0) {
@@ -1375,8 +1375,10 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*vb;
 
 	tmpl_rules_t	attr_rules = {
-		.dict_def = request->dict,
-		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+		.attr = {
+			.dict_def = request->dict,
+			.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+		}
 	};
 
 	if (map_afrom_attr_str(request, &map, fmt_vb->vb_strvalue, &attr_rules, &attr_rules) < 0) {
@@ -1584,12 +1586,16 @@ static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (xlat_tokenize_ephemeral(rctx,
 				    &rctx->ex, unlang_interpret_event_list(request), &flags,
 				    &FR_SBUFF_IN(arg->vb_strvalue, arg->vb_length),
-				    &(fr_sbuff_parse_rules_t){ .escapes = &escape_rules },
+				    &(fr_sbuff_parse_rules_t){
+				    	.escapes = &escape_rules
+				    },
 				    &(tmpl_rules_t){
-					.allow_unknown = false,
-					.allow_unresolved = false,
-					.allow_foreign = false,
-					.dict_def = request->dict,
+				    	.attr = {
+						.allow_unknown = false,
+						.allow_unresolved = false,
+						.allow_foreign = false,
+						.dict_def = request->dict
+					},
 					.at_runtime = true
 				    }) < 0) {
 		RPEDEBUG("Failed parsing expansion");
@@ -2339,7 +2345,7 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_pair_t *vp;
 
 	if (tmpl_afrom_attr_str(ctx, NULL, &vpt, in_head->vb_strvalue,
-				&(tmpl_rules_t){
+				&(tmpl_attr_rules_t){
 					.dict_def = request->dict,
 					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				}) <= 0) {
@@ -3394,7 +3400,7 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	memcpy(&tp_encode, xctx->inst, sizeof(tp_encode)); /* const issues */
 
 	if (tmpl_afrom_attr_str(ctx, NULL, &vpt, in_head->vb_strvalue,
-				&(tmpl_rules_t){
+				&(tmpl_attr_rules_t){
 					.dict_def = request->dict,
 					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
 				}) <= 0) {

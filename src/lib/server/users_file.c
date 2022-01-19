@@ -269,25 +269,29 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 	relative_map = NULL;
 
 	lhs_rules = (tmpl_rules_t) {
-		.dict_def = dict,
-		.request_def = REQUEST_CURRENT,
-		.prefix = TMPL_ATTR_REF_PREFIX_NO,
-		.disallow_qualifiers = true, /* for now, until more tests are made */
+		.attr = {
+			.dict_def = dict,
+			.request_def = REQUEST_CURRENT,
+			.prefix = TMPL_ATTR_REF_PREFIX_NO,
+			.disallow_qualifiers = true, /* for now, until more tests are made */
 
-		/*
-		 *	Otherwise the tmpl code returns 0 when asked
-		 *	to parse unknown names.  So we say "please
-		 *	parse unknown names as unresolved attributes",
-		 *	and then do a second pass to complain that the
-		 *	thing isn't known.
-		 */
-		.allow_unresolved = true,
+			/*
+			 *	Otherwise the tmpl code returns 0 when asked
+			 *	to parse unknown names.  So we say "please
+			 *	parse unknown names as unresolved attributes",
+			 *	and then do a second pass to complain that the
+			 *	thing isn't known.
+			 */
+			.allow_unresolved = true
+		}
 	};
 	rhs_rules = (tmpl_rules_t) {
-		.dict_def = dict,
-		.request_def = REQUEST_CURRENT,
-		.prefix = TMPL_ATTR_REF_PREFIX_YES,
-		.disallow_qualifiers = true, /* for now, until rlm_files supports it */
+		.attr = {
+			.dict_def = dict,
+			.request_def = REQUEST_CURRENT,
+			.prefix = TMPL_ATTR_REF_PREFIX_YES,
+			.disallow_qualifiers = true, /* for now, until rlm_files supports it */
+		}
 	};
 
 	while (true) {
@@ -381,7 +385,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		}
 		t->name = q;
 
-		lhs_rules.list_def = PAIR_LIST_CONTROL;
+		lhs_rules.attr.list_def = PAIR_LIST_CONTROL;
 		comma = false;
 
 check_item:
@@ -535,7 +539,7 @@ setup_reply:
 		/*
 		 *	Setup the reply items.
 		 */
-		lhs_rules.list_def = PAIR_LIST_REPLY;
+		lhs_rules.attr.list_def = PAIR_LIST_REPLY;
 		comma = false;
 
 reply_item:

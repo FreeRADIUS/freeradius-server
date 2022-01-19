@@ -170,10 +170,10 @@ void xlat_exp_free(xlat_exp_t **head)
 
 static int xlat_tokenize_string(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
 				 fr_sbuff_t *in, bool brace,
-				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
+				 fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules);
 
 static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-					    tmpl_rules_t const *t_rules, bool func_args)
+					    tmpl_attr_rules_t const *t_rules, bool func_args)
 {
 	xlat_exp_t	*node;
 
@@ -310,7 +310,7 @@ int xlat_validate_function_mono(xlat_exp_t *node)
  */
 static inline int xlat_tokenize_function_mono(TALLOC_CTX *ctx, xlat_exp_t **head,
 					      xlat_flags_t *flags, fr_sbuff_t *in,
-					      tmpl_rules_t const *rules)
+					      tmpl_attr_rules_t const *rules)
 {
 	xlat_exp_t		*node;
 	xlat_t			*func;
@@ -448,7 +448,7 @@ int xlat_validate_function_args(xlat_exp_t *node)
  */
 int xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **head,
 				xlat_flags_t *flags, fr_sbuff_t *in,
-				tmpl_rules_t const *rules)
+				tmpl_attr_rules_t const *rules)
 {
 	xlat_exp_t		*node;
 	xlat_t			*func;
@@ -569,7 +569,7 @@ static int xlat_resolve_virtual_attribute(xlat_exp_t *node, tmpl_t *vpt)
  *
  */
 static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-					  fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
+					  fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules)
 {
 	ssize_t			slen;
 	tmpl_attr_error_t	err;
@@ -587,7 +587,7 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 	 *	and instead are "virtual" attributes like
 	 *	Foreach-Variable-N.
 	 */
-	tmpl_rules_t		 our_t_rules;
+	tmpl_attr_rules_t		 our_t_rules;
 
 	if (t_rules) {
 		memcpy(&our_t_rules, t_rules, sizeof(our_t_rules));
@@ -694,7 +694,7 @@ done:
 }
 
 int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-			    tmpl_rules_t const *t_rules)
+			    tmpl_attr_rules_t const *t_rules)
 {
 	size_t			len;
 	fr_sbuff_marker_t	s_m;
@@ -864,7 +864,7 @@ int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fl
  */
 static int xlat_tokenize_string(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
 				 fr_sbuff_t *in, bool brace,
-				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
+				 fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules)
 {
 	xlat_exp_t			*node = NULL;
 	size_t				len;
@@ -1325,11 +1325,11 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head,
 
 	if (t_rules) our_t_rules = *t_rules;
 
-	our_t_rules.runtime_el = el;
+	our_t_rules.xlat.runtime_el = el;
 
 	fr_strerror_clear();	/* Clear error buffer */
 	if (xlat_tokenize_string(ctx, head, flags, &our_in,
-				 false, p_rules, &our_t_rules) < 0) return -fr_sbuff_used(&our_in);
+				 false, p_rules, &our_t_rules.attr) < 0) return -fr_sbuff_used(&our_in);
 
 	/*
 	 *	Zero length expansion, return a zero length node.
@@ -1369,7 +1369,7 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head,
  *	- >0  on success which is the number of characters parsed.
  */
 ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-			   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
+			   fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules)
 {
 	fr_sbuff_t			our_in = FR_SBUFF(in);
 	ssize_t				slen;
@@ -1541,7 +1541,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
  *	- < 0 the negative offset of the parse failure.
  */
 ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-		      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
+		      fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules)
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_flags_t	tmp_flags = {};

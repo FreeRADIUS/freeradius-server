@@ -144,7 +144,7 @@ static bool cond_eval_tmpl(request_t *request, tmpl_t const *in, fr_value_box_t 
 		/*
 		 *	No cast means that it's an existence check.
 		 */
-		if (fr_type_is_null(vpt->cast)) {
+		if (fr_type_is_null(tmpl_rules_cast(vpt))) {
 			return (tmpl_find_vp(NULL, request, vpt) == 0);
 		}
 
@@ -159,10 +159,10 @@ static bool cond_eval_tmpl(request_t *request, tmpl_t const *in, fr_value_box_t 
 		MEM(box = fr_value_box_alloc_null(request));
 		box_free = box;
 
-		if (fr_value_box_cast(box, box, vpt->cast, NULL, &vp->data) < 0) {
+		if (fr_value_box_cast(box, box, tmpl_rules_cast(vpt), NULL, &vp->data) < 0) {
 			if (request) RPEDEBUG("Failed casting %pV to type %s", box,
 					      fr_table_str_by_value(fr_value_box_type_table,
-								    vpt->cast, "??"));
+								    tmpl_rules_cast(vpt), "??"));
 			goto done;
 		}
 		break;
@@ -183,7 +183,7 @@ static bool cond_eval_tmpl(request_t *request, tmpl_t const *in, fr_value_box_t 
 		 *	We don't yet have xlats returning lists of
 		 *	value boxes, so there's an assert.
 		 */
-		if (fr_type_is_null(vpt->cast)) {
+		if (fr_type_is_null(tmpl_rules_cast(vpt))) {
 			switch (box->type) {
 			case FR_TYPE_STRING:
 			case FR_TYPE_OCTETS:
@@ -385,7 +385,7 @@ static int cond_realize_tmpl(request_t *request,
 	 *	converted to the correct thing.
 	 */
 	case TMPL_TYPE_DATA:
-		fr_assert((fr_type_is_null(in->cast)) || (in->cast == tmpl_value_type(in)));
+		fr_assert((fr_type_is_null(tmpl_rules_cast(in))) || (tmpl_rules_cast(in) == tmpl_value_type(in)));
 		*out = tmpl_value(in);
 		fr_assert(!async);
 		return 0;
@@ -411,14 +411,14 @@ static int cond_realize_tmpl(request_t *request,
 		 *	don't find that, then the *other* side MUST
 		 *	have an explicit data type.
 		 */
-		if (in->cast != FR_TYPE_NULL) {
-			cast_type = in->cast;
+		if (tmpl_rules_cast(in) != FR_TYPE_NULL) {
+			cast_type = tmpl_rules_cast(in);
 
 		} else if (!other) {
 			cast_type = FR_TYPE_STRING;
 
-		} else if (other->cast) {
-			cast_type = other->cast;
+		} else if (tmpl_rules_cast(other)) {
+			cast_type = tmpl_rules_cast(other);
 
 		} else if (tmpl_is_attr(other)) {
 			da = tmpl_da(other);
@@ -484,11 +484,11 @@ static int cond_realize_attr(request_t *request, fr_value_box_t **realized, fr_v
 	if (da) {
 		cast_type = da->type;
 
-	} else if (vpt->cast != FR_TYPE_NULL) {
+	} else if (tmpl_rules_cast(vpt) != FR_TYPE_NULL) {
 		/*
 		 *	If there's an explicit cast, use that.
 		 */
-		cast_type = vpt->cast;
+		cast_type = tmpl_rules_cast(vpt);
 
 	} else {
 		/*
@@ -510,7 +510,7 @@ static int cond_realize_attr(request_t *request, fr_value_box_t **realized, fr_v
 	if (fr_value_box_cast(request, box, cast_type, da, &vp->data) < 0) {
 		if (request) RPEDEBUG("Failed casting %pV to type %s", &vp->data,
 				      fr_table_str_by_value(fr_value_box_type_table,
-							    vpt->cast, "??"));
+							    tmpl_rules_cast(vpt), "??"));
 		return false;
 	}
 
@@ -527,7 +527,7 @@ static bool cond_compare_attrs(request_t *request, fr_value_box_t *lhs, map_t co
 	fr_value_box_t		*rhs, rhs_cast;
 	fr_dict_attr_t const	*da = NULL;
 
-	if (tmpl_is_attr(map->lhs) && fr_type_is_null(map->lhs->cast)) da = tmpl_da(map->lhs);
+	if (tmpl_is_attr(map->lhs) && fr_type_is_null(tmpl_rules_cast(map->lhs))) da = tmpl_da(map->lhs);
 
 	fr_assert(lhs != NULL);
 	rhs = NULL;		/* shut up clang scan */

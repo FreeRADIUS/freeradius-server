@@ -117,9 +117,11 @@ static int cf_table_parse_tmpl(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	tmpl_t			*vpt;
 
 	static tmpl_rules_t	rules = {
-					.allow_unknown = true,
-					.allow_unresolved = true,
-					.allow_foreign = true
+					.attr = {
+						.allow_unknown = true,
+						.allow_unresolved = true,
+						.allow_foreign = true
+					}
 				};
 
 	if (!tmpl) {
@@ -1054,10 +1056,12 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 */
 	{
 		tmpl_rules_t	parse_rules = {
-			.allow_foreign = true,	/* Because we don't know where we'll be called */
-			.allow_unknown = true,
-			.allow_unresolved = true,
-			.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
+			.attr = {
+				.allow_foreign = true,	/* Because we don't know where we'll be called */
+				.allow_unknown = true,
+				.allow_unresolved = true,
+				.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
+			}
 		};
 
 		if (map_afrom_cs(inst, &inst->header_maps, header,

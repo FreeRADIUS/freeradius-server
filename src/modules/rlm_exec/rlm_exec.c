@@ -243,9 +243,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				 &FR_SBUFF_IN(inst->program, strlen(inst->program)),
 				 T_BACK_QUOTED_STRING, NULL,
 				 &(tmpl_rules_t) {
-				 	.allow_foreign = true,
-				 	.allow_unresolved = false,
-				 	.allow_unknown = false
+				 	.attr = {
+				 		.allow_foreign = true,
+				 		.allow_unresolved = false,
+				 		.allow_unknown = false
+				 	}
 				 });
 	if (!inst->tmpl) {
 		char *spaces, *text;

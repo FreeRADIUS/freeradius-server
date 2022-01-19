@@ -198,7 +198,9 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		slen = tmpl_afrom_attr_substr(ctx, NULL, &vpt,
 					      &sbuff,
 					      &json_arg_parse_rules,
-					      &(tmpl_rules_t){ .dict_def = request->dict });
+					      &(tmpl_attr_rules_t){
+					      	.dict_def = request->dict
+					      });
 		if (slen <= 0) {
 			fr_sbuff_set(&sbuff, (size_t)(slen * -1));
 			REMARKER(fr_sbuff_start(&sbuff), fr_sbuff_used(&sbuff), "%s", fr_strerror());

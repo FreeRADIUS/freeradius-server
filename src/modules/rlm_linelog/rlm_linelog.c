@@ -524,9 +524,11 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 					 cf_pair_value_quote(cp),
 					 NULL,
 					 &(tmpl_rules_t){
-					 	.dict_def = request->dict,
-					 	.allow_unknown = true,
-					 	.allow_unresolved = false,
+					 	.attr = {
+					 		.dict_def = request->dict,
+					 		.allow_unknown = true,
+					 		.allow_unresolved = false,
+					 	},
 					 	.at_runtime = true
 					 });
 		if (!vpt) {

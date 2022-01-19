@@ -329,9 +329,9 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		}
 
 		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &map_tmp.lhs, lhs_result_head->vb_strvalue,
-					   &(tmpl_rules_t){
-					   	.dict_def = request->dict,
-					   	.prefix = TMPL_ATTR_REF_PREFIX_NO
+					   &(tmpl_attr_rules_t){
+				   		.dict_def = request->dict,
+				   		.prefix = TMPL_ATTR_REF_PREFIX_NO
 					   });
 		if (slen <= 0) {
 			RPEDEBUG("Left side expansion result \"%s\" is not an attribute reference",
@@ -727,11 +727,12 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		(void)fr_pair_dcursor_init(&from, &vp_head);
 		while ((vp = fr_dcursor_remove(&from))) {
 			map_t *mod;
-			tmpl_rules_t rules;
-
-			memset(&rules, 0, sizeof(rules));
-			rules.request_def = tmpl_request(mutated->lhs);
-			rules.list_def = tmpl_list(mutated->lhs);
+			tmpl_rules_t rules = {
+				.attr = {
+					.request_def = tmpl_request(mutated->lhs),
+					.list_def = tmpl_list(mutated->lhs)
+				}
+			};
 
 			if (map_afrom_vp(n, &mod, vp, &rules) < 0) {
 				RPEDEBUG("Failed converting VP to map");

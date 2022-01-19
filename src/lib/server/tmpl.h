@@ -249,6 +249,9 @@ extern fr_table_num_ordered_t const tmpl_type_table[];
 extern size_t tmpl_type_table_len;
 
 typedef struct tmpl_rules_s tmpl_rules_t;
+typedef struct tmpl_attr_rules_s tmpl_attr_rules_t;
+typedef struct tmpl_data_rules_s tmpl_data_rules_t;
+typedef struct tmpl_xlat_rules_s tmpl_xlat_rules_t;
 typedef struct tmpl_res_rules_s tmpl_res_rules_t;
 typedef struct tmpl_s tmpl_t;
 
@@ -278,12 +281,7 @@ typedef enum {
 	TMPL_ATTR_REF_PREFIX_AUTO 			//!< Attribute refs may have a '&' prefix.
 } tmpl_attr_prefix_t;
 
-/** Optional arguments passed to vp_tmpl functions
- *
- */
-struct tmpl_rules_s {
-	tmpl_rules_t const     	*parent;		//!< for parent / child relationships
-
+struct tmpl_attr_rules_s {
 	fr_dict_t const		*dict_def;		//!< Default dictionary to use
 							///< with unqualified attribute references.
 
@@ -293,7 +291,7 @@ struct tmpl_rules_s {
 	tmpl_pair_list_t	list_def;		//!< Default list to use with unqualified
 							///< attribute reference.
 
-	fr_dict_attr_t const	*attr_parent;		//!< Point in dictionary tree to resume parsing
+	fr_dict_attr_t const	*parent;		//!< Point in dictionary tree to resume parsing
 							///< from.  If this is provided then dict_def
 							///< request_def and list_def will be ignored
 							///< and the presence of any of those qualifiers
@@ -315,17 +313,38 @@ struct tmpl_rules_s {
 
 	bool			disallow_filters;	//!< disallow filters.
 
-	bool			at_runtime;		//!< Produce an ephemeral/runtime tmpl.
-							///< Instantiated xlats are not added to the global
-							///< trees, regexes are not JIT'd.
 	bool			list_as_attr;		//!< return #TMPL_TYPE_ATTR for lists, and not #TMPL_TYPE_LIST
-
-
-	fr_event_list_t		*runtime_el;		//!< The eventlist to use for runtime instantiation
-							///< of xlats.
 
 	tmpl_attr_prefix_t	prefix;			//!< Whether the attribute reference requires
 							///< a prefix.
+};
+
+struct tmpl_data_rules_s {
+	fr_dict_attr_t const	*enumv;			//!< Enumeration attribute used to resolve enum values.
+
+	fr_type_t		cast;			//!< Whether there was an explicit cast.
+							///< Used to determine if barewords or other values
+							///< should be converted to an internal data type.
+};
+
+struct tmpl_xlat_rules_s {
+	fr_event_list_t		*runtime_el;		//!< The eventlist to use for runtime instantiation
+							///< of xlats.
+};
+
+/** Optional arguments passed to vp_tmpl functions
+ *
+ */
+struct tmpl_rules_s {
+	tmpl_rules_t const     	*parent;		//!< for parent / child relationships
+
+	tmpl_attr_rules_t	attr;			//!< Rules/data for parsing attribute references.
+	tmpl_data_rules_t	data;			//!< Rules/data for parsing attribute data and enumerations.
+	tmpl_xlat_rules_t	xlat;			//!< Rules/data for parsing xlats.
+
+	bool			at_runtime;		//!< Produce an ephemeral/runtime tmpl.
+							///< Instantiated xlats are not added to the global
+							///< trees, regexes are not JIT'd.
 };
 
 /** Similar to tmpl_rules_t, but used to specify parameters that may change during subsequent resolution passes
@@ -542,10 +561,6 @@ struct tmpl_s {
 		};
 	} data;
 
-	fr_type_t	_CONST		cast;	//!< Type we should interpret unresolved data with.
-	fr_dict_attr_t const * _CONST	enumv;	//!< Enumeration we should use when parsing unescaped
-						///< i.e. barewords with an unknown format.
-
 	tmpl_rules_t	_CONST		rules;	//!< The rules that were used when creating the tmpl.
 						///< These are useful for multiple resolution passes as
 						///< they ensure the correct parsing rules are applied.
@@ -675,6 +690,9 @@ static inline tmpl_pair_list_t tmpl_list(tmpl_t const *vpt)
 #define tmpl_value_length(_tmpl)		(_tmpl)->data.literal.vb_length
 #define tmpl_value_type(_tmpl)			(_tmpl)->data.literal.type
 #define tmpl_value_enumv(_tmpl)			(_tmpl)->data.literal.enumv
+
+#define tmpl_rules_cast(_tmpl)			(_tmpl)->rules.data.cast
+#define tmpl_rules_enumv(_tmpl)			(_tmpl)->rules.data.enumv
 
 /*
  *	Temporary macros to track where we do assignments
@@ -907,11 +925,11 @@ int			tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list,
 ssize_t			tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					       tmpl_t **out, fr_sbuff_t *name,
 					       fr_sbuff_parse_rules_t const *p_rules,
-					       tmpl_rules_t const *t_rules);
+					       tmpl_attr_rules_t const *t_rules);
 
 ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					    tmpl_t **out, char const *name,
-					    tmpl_rules_t const *rules) CC_HINT(nonnull (3, 4));
+					    tmpl_attr_rules_t const *rules) CC_HINT(nonnull (3, 4));
 
 ssize_t			tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 					  fr_sbuff_t *in,
