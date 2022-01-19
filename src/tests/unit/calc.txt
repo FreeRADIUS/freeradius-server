@@ -78,8 +78,8 @@ calc octets "a" | octets "b" -> octets
 match 0x63
 
 # octets xor
-#calc octets "a" ^ octets "b" -> octets
-#match 0x03
+calc octets "a" ^ octets "b" -> octets
+match 0x03
 
 # we can "fake out" structs by just appending stuff
 calc ipaddr 127.0.0.1 . ipaddr 127.0.0.2 -> octets
@@ -155,4 +155,4 @@ calc string "2" += string "test"
 match 2test
 
 count
-match 62
+match 64

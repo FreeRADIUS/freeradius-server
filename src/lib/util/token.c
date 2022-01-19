@@ -89,6 +89,7 @@ char const *fr_tokens[T_TOKEN_LAST] = {
 	[T_AND]	     = "&",
 	[T_OR]	     = "|",
 	[T_NOT]	     = "!",
+	[T_XOR]	     = "^",
 
 	[T_RSHIFT]   = ">>",
 	[T_LSHIFT]   = "<<",

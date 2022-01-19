@@ -305,6 +305,10 @@ static int calc_bool(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t
 		dst->vb_bool = a->vb_bool | b->vb_bool;
 		break;
 
+	case T_XOR:
+		dst->vb_bool = a->vb_bool ^ b->vb_bool;
+		break;
+
 	default:
 		return ERR_INVALID;
 	}
@@ -518,6 +522,19 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 		for (len = 0; len < a->vb_length; len++) {
 			buf[len] = a->vb_octets[len] | b->vb_octets[len];
+		}
+
+		fr_value_box_memdup_shallow(dst, dst->enumv, buf, a->vb_length, a->tainted | b->tainted);
+		break;
+
+	case T_XOR:
+		if (a->vb_length != b->vb_length) goto length_error;
+
+		buf = talloc_array(ctx, uint8_t, a->vb_length);
+		if (!buf) goto oom;
+
+		for (len = 0; len < a->vb_length; len++) {
+			buf[len] = a->vb_octets[len] ^ b->vb_octets[len];
 		}
 
 		fr_value_box_memdup_shallow(dst, dst->enumv, buf, a->vb_length, a->tainted | b->tainted);
@@ -1068,6 +1085,10 @@ static int calc_float64(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 		dst->vb_ ## _t = in1->vb_ ## _t |  in2->vb_ ## _t; \
 		break; \
  \
+	case T_XOR: \
+		dst->vb_ ## _t = in1->vb_ ## _t ^  in2->vb_ ## _t; \
+		break; \
+ \
 	case T_RSHIFT: \
 		if (in2->vb_uint8 > (8 * sizeof(in1->vb_ ## _t))) return ERR_UNDERFLOW; \
  \
@@ -1275,6 +1296,7 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 		case T_DIV:
 		case T_AND:
 		case T_OR:
+		case T_XOR:
 		case T_RSHIFT:
 		case T_LSHIFT:
 			if (a->type == b->type) {
@@ -1379,6 +1401,7 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	case T_DIV:
 	case T_AND:
 	case T_OR:
+	case T_XOR:
 	case T_RSHIFT:
 	case T_LSHIFT:
 		fr_assert(hint != FR_TYPE_NULL);
@@ -1469,6 +1492,10 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 
 	case T_OP_OR_EQ:
 		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_OR, src);
+		break;
+
+	case T_OP_XOR_EQ:
+		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_XOR, src);
 		break;
 
 	case T_OP_RSHIFT_EQ:
