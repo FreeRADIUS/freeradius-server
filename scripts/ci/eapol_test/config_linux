@@ -9,9 +9,15 @@
 # be modified from here. In most cases, these lines should use += in order not
 # to override previous values of the variables.
 
-CFLAGS += -g3 -O0 -Wno-error=deprecated-declarations
-#CFLAGS += -I/usr/local/include/openssl
-#LIBS += -L/usr/local/lib
+CFLAGS += -g3 -O0 -Wno-error=deprecated-declarations $(EAPOL_TEST_CFLAGS)
+LIBS += $(EAPOL_TEST_LDFLAGS)
+
+#
+# Disable some warnings only against CLANG
+#
+ifeq ($(shell $(CC) -v 2>&1 | grep -c "clang version"), 1)
+CFLAGS += -Wno-error=ignored-qualifiers
+endif
 
 # Some Red Hat versions seem to include kerberos header files from OpenSSL, but
 # the kerberos files are not in the default include path. Following line can be
