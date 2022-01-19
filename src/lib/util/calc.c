@@ -1464,11 +1464,11 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 		break;
 
 	case T_OP_AND_EQ:
-		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_OR, src);
+		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_AND, src);
 		break;
 
 	case T_OP_OR_EQ:
-		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_AND, src);
+		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_OR, src);
 		break;
 
 	case T_OP_RSHIFT_EQ:
