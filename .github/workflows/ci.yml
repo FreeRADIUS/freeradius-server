@@ -177,7 +177,17 @@ jobs:
         [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
         openssl version
 
-    - name: Build
+    - name: Build eapol_test
+      run: |
+        if [ -d /opt/openssl ]; then
+          # Used by scripts/ci/eapol_test-build.sh
+          export PATH=/opt/openssl/bin:$PATH
+          export EAPOL_TEST_CFLAGS="-I/opt/openssl/include"
+          export EAPOL_TEST_LDFLAGS="-L/opt/openssl/lib64"
+        fi
+        ./scripts/ci/eapol_test-build.sh
+
+    - name: Build FreeRADIUS
       run: |
         export PATH=$(echo "$PATH" | sed -e 's#:/home/linuxbrew/[^:]\+##g')
         if [ -d /opt/openssl ]; then
