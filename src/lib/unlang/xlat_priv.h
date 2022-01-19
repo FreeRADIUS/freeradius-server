@@ -153,9 +153,6 @@ typedef struct {
 	char const	*out;		//!< Output data.
 	size_t		len;		//!< Length of the output string.
 } xlat_out_t;
-
-extern fr_dict_attr_t const	*attr_cast_base; /* for xlat_expr.c */
-
 /*
  *	Helper functions
  */
