@@ -43,9 +43,19 @@ RCSID("$Id$")
  *  sync.
  *
  *  These upcasts are for operations.
+ *
+ *
+ *  If one side is a string and the other isn't, then we try to parse
+ *  the string as the type of the other side.
+ *
+ *  If one side is an octets type and the other isn't, then we try to
+ *  parse the octets as the type of the other side.
  */
 static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	[FR_TYPE_IPV4_ADDR] = {
+		[FR_TYPE_STRING] = FR_TYPE_IPV4_ADDR,
+		[FR_TYPE_OCTETS] = FR_TYPE_IPV4_ADDR,
+
 		/*
 		 *	ipaddr + int --> prefix (generally only "and")
 		 */
@@ -61,6 +71,9 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	 *	Prefix + int --> ipaddr
 	 */
 	[FR_TYPE_IPV4_PREFIX] = {
+		[FR_TYPE_STRING] = FR_TYPE_IPV4_PREFIX,
+		[FR_TYPE_OCTETS] = FR_TYPE_IPV4_PREFIX,
+
 		[FR_TYPE_BOOL] =   FR_TYPE_IPV4_ADDR,
 
 		[FR_TYPE_UINT8] =   FR_TYPE_IPV4_ADDR,
@@ -79,7 +92,15 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 		[FR_TYPE_FLOAT64] = FR_TYPE_IPV4_ADDR,
 	},
 
+	[FR_TYPE_IPV6_ADDR] = {
+		[FR_TYPE_STRING] = FR_TYPE_IPV6_ADDR,
+		[FR_TYPE_OCTETS] = FR_TYPE_IPV6_ADDR,
+	},
+
 	[FR_TYPE_IPV6_PREFIX] = {
+		[FR_TYPE_STRING] = FR_TYPE_IPV6_PREFIX,
+		[FR_TYPE_OCTETS] = FR_TYPE_IPV6_PREFIX,
+
 		[FR_TYPE_BOOL] =   FR_TYPE_IPV6_ADDR,
 
 		[FR_TYPE_UINT8] =   FR_TYPE_IPV6_ADDR,
@@ -98,11 +119,24 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 		[FR_TYPE_FLOAT64] = FR_TYPE_IPV6_ADDR,
 	},
 
+	[FR_TYPE_IFID] = {
+		[FR_TYPE_STRING] = FR_TYPE_IFID,
+		[FR_TYPE_OCTETS] = FR_TYPE_IFID,
+	},
+
+	[FR_TYPE_ETHERNET] = {
+		[FR_TYPE_STRING] = FR_TYPE_ETHERNET,
+		[FR_TYPE_OCTETS] = FR_TYPE_ETHERNET,
+	},
+
 	/*
 	 *	Bools and to pretty much any numerical type result in
 	 *	the other integer.
 	 */
 	[FR_TYPE_BOOL] = {
+		[FR_TYPE_STRING] = FR_TYPE_BOOL,
+		[FR_TYPE_OCTETS] = FR_TYPE_BOOL,
+
 		[FR_TYPE_UINT8] = FR_TYPE_UINT8,
 		[FR_TYPE_UINT16] = FR_TYPE_UINT16,
 		[FR_TYPE_UINT32] = FR_TYPE_UINT32,
@@ -128,6 +162,9 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	 *	can hold their values.
 	 */
 	[FR_TYPE_UINT8] = {
+		[FR_TYPE_STRING] = FR_TYPE_UINT8,
+		[FR_TYPE_OCTETS] = FR_TYPE_UINT8,
+
 		[FR_TYPE_UINT16] = FR_TYPE_UINT16,
 		[FR_TYPE_UINT32] = FR_TYPE_UINT32,
 		[FR_TYPE_UINT64] = FR_TYPE_UINT64,
@@ -148,6 +185,9 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	},
 
 	[FR_TYPE_UINT16] = {
+		[FR_TYPE_STRING] = FR_TYPE_UINT16,
+		[FR_TYPE_OCTETS] = FR_TYPE_UINT16,
+
 		[FR_TYPE_UINT32] = FR_TYPE_UINT32,
 		[FR_TYPE_UINT64] = FR_TYPE_UINT64,
 
@@ -167,6 +207,9 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	},
 
 	[FR_TYPE_UINT32] = {
+		[FR_TYPE_STRING] = FR_TYPE_UINT32,
+		[FR_TYPE_OCTETS] = FR_TYPE_UINT32,
+
 		[FR_TYPE_UINT64] = FR_TYPE_UINT64,
 
 		[FR_TYPE_SIZE]   = FR_TYPE_SIZE,
@@ -185,6 +228,9 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	},
 
 	[FR_TYPE_UINT64] = {
+		[FR_TYPE_STRING] = FR_TYPE_UINT64,
+		[FR_TYPE_OCTETS] = FR_TYPE_UINT64,
+
 		[FR_TYPE_SIZE]  = FR_TYPE_SIZE,
 
 		[FR_TYPE_DATE]  = FR_TYPE_DATE,
@@ -196,6 +242,8 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	},
 
 	[FR_TYPE_SIZE] = {
+		[FR_TYPE_STRING] = FR_TYPE_SIZE,
+
 		[FR_TYPE_INT8]    = FR_TYPE_INT64,
 		[FR_TYPE_INT16]   = FR_TYPE_INT64,
 		[FR_TYPE_INT32]   = FR_TYPE_INT64,
@@ -206,6 +254,8 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	},
 
 	[FR_TYPE_DATE] = {
+		[FR_TYPE_STRING] = FR_TYPE_DATE,
+
 		[FR_TYPE_INT8]	= FR_TYPE_DATE,
 		[FR_TYPE_INT16]	= FR_TYPE_DATE,
 		[FR_TYPE_INT32] = FR_TYPE_DATE,
@@ -221,6 +271,9 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	 *	Signed ints
 	 */
 	[FR_TYPE_INT8] = {
+		[FR_TYPE_STRING] = FR_TYPE_INT8,
+		[FR_TYPE_OCTETS] = FR_TYPE_INT8,
+
 		[FR_TYPE_INT16] = FR_TYPE_INT32,
 		[FR_TYPE_INT32] = FR_TYPE_INT32,
 		[FR_TYPE_INT64] = FR_TYPE_INT64,
@@ -232,6 +285,9 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	},
 
 	[FR_TYPE_INT16] = {
+		[FR_TYPE_STRING] = FR_TYPE_INT16,
+		[FR_TYPE_OCTETS] = FR_TYPE_INT16,
+
 		[FR_TYPE_INT32] = FR_TYPE_INT64,
 		[FR_TYPE_INT64] = FR_TYPE_INT64,
 
@@ -240,6 +296,9 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	},
 
 	[FR_TYPE_INT32] = {
+		[FR_TYPE_STRING] = FR_TYPE_INT32,
+		[FR_TYPE_OCTETS] = FR_TYPE_INT32,
+
 		[FR_TYPE_INT64] = FR_TYPE_INT64,
 
 		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
@@ -247,18 +306,29 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	},
 
 	[FR_TYPE_INT64] = {
+		[FR_TYPE_STRING] = FR_TYPE_INT64,
+		[FR_TYPE_OCTETS] = FR_TYPE_INT64,
+
 		[FR_TYPE_TIME_DELTA] = FR_TYPE_TIME_DELTA,
 		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
 		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
 	},
 
 	[FR_TYPE_TIME_DELTA] = {
+		[FR_TYPE_STRING] = FR_TYPE_TIME_DELTA,
+
 		[FR_TYPE_FLOAT32] = FR_TYPE_TIME_DELTA,
 		[FR_TYPE_FLOAT64] = FR_TYPE_TIME_DELTA,
 	},
 
 	[FR_TYPE_FLOAT32] = {
+		[FR_TYPE_STRING] = FR_TYPE_FLOAT32,
+
 		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
+	},
+
+	[FR_TYPE_FLOAT64] = {
+		[FR_TYPE_STRING] = FR_TYPE_FLOAT64,
 	},
 };
 
