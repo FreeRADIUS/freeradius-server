@@ -1835,6 +1835,20 @@ done:
 	return handle_result(hint, op, rcode);
 }
 
+#define T(_x) [T_OP_ ## _x ## _EQ] = T_ ## _x
+
+static const fr_token_t assignment2op[T_TOKEN_LAST] = {
+	T(ADD),
+	T(SUB),
+	T(MUL),
+	T(DIV),
+	T(AND),
+	T(OR),
+	T(XOR),
+	T(RSHIFT),
+	T(LSHIFT),
+};
+
 /** Calculate DST OP SRC
  *
  *  e.g. "foo += bar".
@@ -1845,72 +1859,38 @@ done:
 int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t op, fr_value_box_t const *src)
 {
 	int rcode = -1;
-	fr_value_box_t out;
 
 	if (!fr_type_is_leaf(dst->type)) return invalid_type(dst->type);
 	if (!fr_type_is_leaf(src->type)) return invalid_type(src->type);
 
-	if (!fr_assignment_op[op]) goto invalid;
-
-	fr_value_box_init(&out, dst->type, dst->enumv, false);
-
-	switch (op) {
+	/*
+	 *	These operators are included here for testing and completeness.  But see comments in
+	 *	fr_edit_list_apply_pair_assignment() for what the caller should be doing.
+	 */
+	if ((op == T_OP_EQ) || (op == T_OP_SET)) {
 		/*
-		 *	These operators are included here for testing
-		 *	and completeness.  But see comments in
-		 *	fr_edit_list_apply_pair_assignment() for what
-		 *	the caller should be doing.
+		 *	Allow for unintentional mistakes.
 		 */
-	case T_OP_EQ:
-	case T_OP_SET:
+		if (src == dst) return 0;
+
 		fr_value_box_clear_value(dst);
 		fr_value_box_cast(ctx, dst, dst->type, dst->enumv, src); /* cast, as the RHS might not (yet) be the same! */
 		return 0;
-
-		/*
-		 *	Just call the binary op function.  It already
-		 *	ensures that (a) the inputs are "const", and
-		 *	(b) the output is over-written only as the
-		 *	final step
-		 */
-	case T_OP_ADD_EQ:
-		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_ADD, src);
-		break;
-
-	case T_OP_SUB_EQ:
-		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_SUB, src);
-		break;
-
-	case T_OP_AND_EQ:
-		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_AND, src);
-		break;
-
-	case T_OP_OR_EQ:
-		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_OR, src);
-		break;
-
-	case T_OP_XOR_EQ:
-		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_XOR, src);
-		break;
-
-	case T_OP_RSHIFT_EQ:
-		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_RSHIFT, src);
-		break;
-
-	case T_OP_LSHIFT_EQ:
-		rcode = fr_value_calc_binary_op(ctx, &out, dst->type, dst, T_LSHIFT, src);
-		break;
-
-	default:
-	invalid:
-		rcode = ERR_INVALID;
-		break;
 	}
 
-	if (rcode < 0) return handle_result(dst->type, op, rcode);
+	op = assignment2op[op];
+	if (op == T_INVALID) {
+		return handle_result(dst->type, op, ERR_INVALID);
+	}
 
-	fr_value_box_clear_value(dst);
-	fr_value_box_copy_shallow(NULL, dst, &out);
+	/*
+	 *	Just call the binary op function.  It already ensures that (a) the inputs are "const", and (b)
+	 *	the output is over-written only at the final step.
+	 */
+	rcode = fr_value_calc_binary_op(ctx, dst, dst->type, dst, op, src);
+
+	if (rcode < 0) handle_result(dst->type, op, rcode);
+
 	return 0;
 }
 
