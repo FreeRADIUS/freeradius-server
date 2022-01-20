@@ -41,8 +41,10 @@ RCSID("$Id$")
  *  Note that we MUST have a less than b here.  Otherwise there will
  *  be two entries for the same upcast, and the entries may get out of
  *  sync.
+ *
+ *  These upcasts are for operations.
  */
-static const fr_type_t upcast[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
+static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	[FR_TYPE_IPV4_ADDR] = {
 		/*
 		 *	ipaddr + int --> prefix (generally only "and")
@@ -231,6 +233,235 @@ static const fr_type_t upcast[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	},
 };
 
+
+/** Updates type (a,b) -> c
+ *
+ *  Note that we MUST have a less than b here.  Otherwise there will
+ *  be two entries for the same upcast, and the entries may get out of
+ *  sync.
+ *
+ *  These upcasts are for comparisons.  In some cases, we can promote
+ *  one data type to another, and then compare them.  However, this is
+ *  not always possible.
+ *
+ *  If one side is a string and the other isn't, then we try to parse
+ *  the string as the type of the other side.
+ *
+ *  If one side is an octets type and the other isn't, then we try to
+ *  parse the octets as the type of the other side.
+ */
+static const fr_type_t upcast_cmp[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
+	[FR_TYPE_IPV4_ADDR] = {
+		[FR_TYPE_STRING] = FR_TYPE_IPV4_ADDR,
+		[FR_TYPE_OCTETS] = FR_TYPE_IPV4_ADDR,
+
+		[FR_TYPE_UINT32] =  FR_TYPE_IPV4_ADDR,
+	},
+
+	[FR_TYPE_IPV4_PREFIX] = {
+		[FR_TYPE_STRING] = FR_TYPE_IPV4_PREFIX,
+		[FR_TYPE_OCTETS] = FR_TYPE_IPV4_PREFIX,
+
+		[FR_TYPE_IPV6_PREFIX] = FR_TYPE_IPV6_PREFIX,
+	},
+
+	[FR_TYPE_IPV6_ADDR] = {
+		[FR_TYPE_STRING] = FR_TYPE_IPV6_ADDR,
+		[FR_TYPE_OCTETS] = FR_TYPE_IPV6_ADDR,
+	},
+
+	[FR_TYPE_IPV6_PREFIX] = {
+		[FR_TYPE_STRING] = FR_TYPE_IPV6_PREFIX,
+		[FR_TYPE_OCTETS] = FR_TYPE_IPV6_PREFIX,
+	},
+
+	[FR_TYPE_IFID] = {
+		[FR_TYPE_STRING] = FR_TYPE_IFID,
+		[FR_TYPE_OCTETS] = FR_TYPE_IFID,
+	},
+
+	[FR_TYPE_ETHERNET] = {
+		[FR_TYPE_STRING] = FR_TYPE_ETHERNET,
+		[FR_TYPE_OCTETS] = FR_TYPE_ETHERNET,
+	},
+
+	[FR_TYPE_BOOL] = {
+		[FR_TYPE_STRING] = FR_TYPE_BOOL,
+		[FR_TYPE_OCTETS] = FR_TYPE_BOOL,
+	},
+
+	/*
+	 *	Various ints get cast to the next highest size which
+	 *	can hold their values.
+	 */
+	[FR_TYPE_UINT8] = {
+		[FR_TYPE_STRING] = FR_TYPE_UINT8,
+		[FR_TYPE_OCTETS] = FR_TYPE_UINT8,
+
+		[FR_TYPE_UINT16] = FR_TYPE_UINT16,
+		[FR_TYPE_UINT32] = FR_TYPE_UINT32,
+		[FR_TYPE_UINT64] = FR_TYPE_UINT64,
+
+		[FR_TYPE_SIZE] =   FR_TYPE_SIZE,
+
+		[FR_TYPE_DATE]  = FR_TYPE_DATE,
+
+		[FR_TYPE_INT8]   = FR_TYPE_INT16,
+		[FR_TYPE_INT16]  = FR_TYPE_INT16,
+		[FR_TYPE_INT32]  = FR_TYPE_INT32,
+		[FR_TYPE_INT64]  = FR_TYPE_INT64,
+
+		[FR_TYPE_TIME_DELTA] = FR_TYPE_TIME_DELTA,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
+		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
+	},
+
+	[FR_TYPE_UINT16] = {
+		[FR_TYPE_STRING] = FR_TYPE_UINT16,
+		[FR_TYPE_OCTETS] = FR_TYPE_UINT16,
+
+		[FR_TYPE_UINT32] = FR_TYPE_UINT32,
+		[FR_TYPE_UINT64] = FR_TYPE_UINT64,
+
+		[FR_TYPE_SIZE] =   FR_TYPE_SIZE,
+
+		[FR_TYPE_DATE]  = FR_TYPE_DATE,
+
+		[FR_TYPE_INT8]   = FR_TYPE_INT32,
+		[FR_TYPE_INT16]  = FR_TYPE_INT32,
+		[FR_TYPE_INT32]  = FR_TYPE_INT32,
+		[FR_TYPE_INT64]  = FR_TYPE_INT64,
+
+		[FR_TYPE_TIME_DELTA]  = FR_TYPE_TIME_DELTA,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
+		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
+	},
+
+	[FR_TYPE_UINT32] = {
+		[FR_TYPE_STRING] = FR_TYPE_UINT32,
+		[FR_TYPE_OCTETS] = FR_TYPE_UINT32,
+
+		[FR_TYPE_UINT64] = FR_TYPE_UINT64,
+
+		[FR_TYPE_SIZE]   = FR_TYPE_SIZE,
+
+		[FR_TYPE_DATE]   = FR_TYPE_DATE,
+
+		[FR_TYPE_INT8]   = FR_TYPE_INT64,
+		[FR_TYPE_INT16]  = FR_TYPE_INT64,
+		[FR_TYPE_INT32]  = FR_TYPE_INT64,
+		[FR_TYPE_INT64]  = FR_TYPE_INT64,
+
+		[FR_TYPE_TIME_DELTA]  = FR_TYPE_TIME_DELTA,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
+		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
+	},
+
+	[FR_TYPE_UINT64] = {
+		[FR_TYPE_STRING] = FR_TYPE_UINT64,
+		[FR_TYPE_OCTETS] = FR_TYPE_UINT64,
+
+		[FR_TYPE_SIZE]  = FR_TYPE_SIZE,
+
+		[FR_TYPE_DATE]  = FR_TYPE_DATE,
+
+		[FR_TYPE_TIME_DELTA]  = FR_TYPE_TIME_DELTA,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
+		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
+	},
+
+	[FR_TYPE_SIZE] = {
+		[FR_TYPE_STRING] = FR_TYPE_SIZE,
+
+		[FR_TYPE_INT8]    = FR_TYPE_INT64,
+		[FR_TYPE_INT16]   = FR_TYPE_INT64,
+		[FR_TYPE_INT32]   = FR_TYPE_INT64,
+		[FR_TYPE_INT64]   = FR_TYPE_INT64,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
+		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
+	},
+
+	[FR_TYPE_DATE] = {
+		[FR_TYPE_STRING] = FR_TYPE_DATE,
+
+		[FR_TYPE_INT8]	= FR_TYPE_DATE,
+		[FR_TYPE_INT16]	= FR_TYPE_DATE,
+		[FR_TYPE_INT32] = FR_TYPE_DATE,
+		[FR_TYPE_INT64] = FR_TYPE_DATE,
+
+		[FR_TYPE_TIME_DELTA]  = FR_TYPE_DATE,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_DATE,
+		[FR_TYPE_FLOAT64] = FR_TYPE_DATE,
+	},
+
+	/*
+	 *	Signed ints
+	 */
+	[FR_TYPE_INT8] = {
+		[FR_TYPE_STRING] = FR_TYPE_INT8,
+		[FR_TYPE_OCTETS] = FR_TYPE_INT8,
+
+		[FR_TYPE_INT16] = FR_TYPE_INT32,
+		[FR_TYPE_INT32] = FR_TYPE_INT32,
+		[FR_TYPE_INT64] = FR_TYPE_INT64,
+
+		[FR_TYPE_TIME_DELTA] = FR_TYPE_TIME_DELTA,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
+		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
+	},
+
+	[FR_TYPE_INT16] = {
+		[FR_TYPE_STRING] = FR_TYPE_INT16,
+		[FR_TYPE_OCTETS] = FR_TYPE_INT16,
+
+		[FR_TYPE_INT32] = FR_TYPE_INT64,
+		[FR_TYPE_INT64] = FR_TYPE_INT64,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
+		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
+	},
+
+	[FR_TYPE_INT32] = {
+		[FR_TYPE_STRING] = FR_TYPE_INT32,
+		[FR_TYPE_OCTETS] = FR_TYPE_INT32,
+
+		[FR_TYPE_INT64] = FR_TYPE_INT64,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
+		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
+	},
+
+	[FR_TYPE_INT64] = {
+		[FR_TYPE_STRING] = FR_TYPE_INT64,
+		[FR_TYPE_OCTETS] = FR_TYPE_INT64,
+
+		[FR_TYPE_TIME_DELTA] = FR_TYPE_TIME_DELTA,
+	},
+
+	[FR_TYPE_TIME_DELTA] = {
+		[FR_TYPE_STRING] = FR_TYPE_TIME_DELTA,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_TIME_DELTA,
+		[FR_TYPE_FLOAT64] = FR_TYPE_TIME_DELTA,
+	},
+
+	[FR_TYPE_FLOAT32] = {
+		[FR_TYPE_STRING] = FR_TYPE_FLOAT32,
+
+		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
+	},
+
+	[FR_TYPE_FLOAT64] = {
+		[FR_TYPE_STRING] = FR_TYPE_FLOAT64,
+	},
+};
 
 static int invalid_type(fr_type_t type)
 {
@@ -1170,18 +1401,18 @@ static int calc_integer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t con
 	 *	Perhaps we'll do that as a later step.
 	 */
 	type = dst->type;
-	if (upcast[type][a->type] != FR_TYPE_NULL) {
-		type = upcast[type][a->type];
+	if (upcast_op[type][a->type] != FR_TYPE_NULL) {
+		type = upcast_op[type][a->type];
 
-	} else if (upcast[a->type][type] != FR_TYPE_NULL) {
-		type = upcast[a->type][type];
+	} else if (upcast_op[a->type][type] != FR_TYPE_NULL) {
+		type = upcast_op[a->type][type];
 	}
 
-	if (upcast[type][b->type] != FR_TYPE_NULL) {
-		type = upcast[type][b->type];
+	if (upcast_op[type][b->type] != FR_TYPE_NULL) {
+		type = upcast_op[type][b->type];
 
-	} else if (upcast[b->type][type] != FR_TYPE_NULL) {
-		type = upcast[b->type][type];
+	} else if (upcast_op[b->type][type] != FR_TYPE_NULL) {
+		type = upcast_op[b->type][type];
 	}
 
 	if (a->type != type) {
@@ -1250,7 +1481,7 @@ static const fr_binary_op_t calc_type[FR_TYPE_MAX + 1] = {
 /** Calculate DST = A OP B
  *
  *  The result is written to DST only *after* it has been calculated.
- *  So it's safe to pass DST as either A or B.
+ *  So it's safe to pass DST as either A or B.  DST should already exist.
  *
  *  This function should arguably not take comparison operators, but
  *  whatever.  The "promote types" code is the same for all of the
@@ -1331,11 +1562,11 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 			 *	There must be only one entry per [a,b]
 			 *	pairing.  That way we're sure that [a,b]==[b,a]
 			 */
-			hint = upcast[a->type][b->type];
+			hint = upcast_op[a->type][b->type];
 			if (hint == FR_TYPE_NULL) {
-				hint = upcast[b->type][a->type];
+				hint = upcast_op[b->type][a->type];
 			} else {
-				fr_assert(upcast[b->type][a->type] == FR_TYPE_NULL);
+				fr_assert(upcast_op[b->type][a->type] == FR_TYPE_NULL);
 			}
 
 			if (hint != FR_TYPE_NULL) {
@@ -1388,10 +1619,51 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 			goto done;
 		}
 
+		fr_value_box_init(dst, FR_TYPE_BOOL, NULL, false);
+
+			/*
+			 *	Try to "up-cast" the types.  This is
+			 *	so that we can take (for example)
+			 *	uint8 < uint16, and have it make
+			 *	sense.  uint16.
+			 *
+			 *	There must be only one entry per [a,b]
+			 *	pairing.  That way we're sure that [a,b]==[b,a]
+			 */
+		if (a->type != b->type) {
+			hint = upcast_cmp[a->type][b->type];
+			if (hint == FR_TYPE_NULL) {
+				hint = upcast_cmp[b->type][a->type];
+			} else {
+				fr_assert(upcast_cmp[b->type][a->type] == FR_TYPE_NULL);
+			}
+
+			if (hint == FR_TYPE_NULL) {
+				fr_strerror_printf("Cannot compare incompatible types (%s)... %s (%s)...",
+						   fr_table_str_by_value(fr_value_box_type_table, a->type, "<INVALID>"),
+						   fr_tokens[op],
+						   fr_table_str_by_value(fr_value_box_type_table, b->type, "<INVALID>"));
+				goto done;
+			}
+
+			/*
+			 *	Cast them to the appropriate type, which may be different from either of the
+			 *	inputs.
+			 */
+			if (a->type != hint) {
+				if (fr_value_box_cast(NULL, &one, hint, NULL, a) < 0) goto done;
+				a = &one;
+			}
+
+			if (b->type != hint) {
+				if (fr_value_box_cast(NULL, &two, hint, NULL, b) < 0) goto done;
+				b = &two;
+			}
+		}
+
 		rcode = fr_value_box_cmp_op(op, a, b);
 		if (rcode < 0) goto done;
 
-		fr_value_box_init(dst, FR_TYPE_BOOL, NULL, false);
 		dst->vb_bool = (rcode > 0);
 		break;
 
