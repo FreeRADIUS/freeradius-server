@@ -424,12 +424,10 @@ int xlat_validate_function_args(xlat_exp_t *node)
 		}
 
 		/*
-		 *	The argument isn't of the correct type.  Cast it.
+		 *	All arguments MUST be put into a group, even
+		 *	if they're just one element.
 		 */
-		if ((child->type == XLAT_BOX) && (child->data.type != arg_p->type) &&
-		    (fr_value_box_cast_in_place(child, &child->data, arg_p->type, NULL) < 0)) {
-			return -1;
-		}
+		fr_assert(child->type == XLAT_GROUP);
 
 		child = child->next;
 	}
