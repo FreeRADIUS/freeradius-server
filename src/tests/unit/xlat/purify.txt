@@ -1,5 +1,8 @@
 proto-dictionary radius
 
+#xlat_purify %(op_add:4 3) + 6
+#match 13
+
 #
 #  xlat_expr, but purified
 #
@@ -48,7 +51,7 @@ match (1 + (%{Service-Type} == Framed-User))
 #  Strings of various forms
 #
 xlat_purify &Filter-Id == "foo"
-match (%{Filter-Id} == \"foo\")
+match (%{Filter-Id} == "foo")
 
 xlat_purify "foo" == "bar"
 match no
@@ -85,11 +88,15 @@ xlat_purify &Filter-Id
 match %{Filter-Id}
 
 xlat_purify %{md5:foo} + "foo"
-match  (%{md5:foo} + \"foo\")
+match  (%{md5:foo} + "foo")
 
 #  We can name the xlat's, tho we don't need to
+#
+#  And naming the xlat's means that they don't set up
+#  with the magic token field, so optimizations don't work?
+#
 xlat_purify %(op_add:4 3) + 6
-match ((4  + 3) + 6)
+match ((4 + 3) + 6)
 
 
 #

@@ -45,10 +45,10 @@ match (1 + (%{Service-Type} == Framed-User))
 #  Strings of various forms
 #
 xlat_expr &Filter-Id == "foo"
-match (%{Filter-Id} == \"foo\")
+match (%{Filter-Id} == "foo")
 
 xlat_expr "foo" == "bar"
-match (\"foo\" == \"bar\")
+match ("foo" == "bar")
 
 # note '/' is a prefix, not "divide by 24".
 # and a useless cast is removed
@@ -82,11 +82,11 @@ xlat_expr &Filter-Id
 match %{Filter-Id}
 
 xlat_expr %{md5:foo} + "foo"
-match  (%{md5:foo} + \"foo\")
+match  (%{md5:foo} + "foo")
 
 #  We can name the xlat's, tho we don't need to
 xlat_expr %(op_add:4 3) + 6
-match ((4  + 3) + 6)
+match ((4 + 3) + 6)
 
 
 #

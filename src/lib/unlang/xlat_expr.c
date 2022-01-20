@@ -49,9 +49,12 @@ RCSID("$Id$")
  *	@todo - short-circuit && / || need to be updated.  This requires various magic in their instantiation
  *	routines, which is not yet done.
  *
- *	@todo - Check for input flags->pure, and node->internal && node->token != T_INVALID && node->pure.  If
- *	so, we call xlat_purify() to purify the results.  This capability lets us write tests for parsing
- *	which use simple numbers, to verify that the parser is OK.
+ *	@todo - all function arguments should be in groups, so we need to fix that.  Right now, binary
+ *	expressions are fixed.  But unary ones are not.  We did it via a hack, but it might be better to do it
+ *	a different way in the future.  The problem is that no matter which way we choose, we'll have to
+ *	talloc_steal() something.
+ *
+ *	@todo - run xlat_purify_expr() after creating the unary node.
  *
  *	The purify function should also be smart enough to do things like remove redundant casts.
  *
@@ -213,6 +216,52 @@ cleanup:
 	talloc_free(dst);
 
 	return rcode;
+}
+
+static xlat_exp_t *xlat_groupify_node(TALLOC_CTX *ctx, xlat_exp_t *node)
+{
+	xlat_exp_t *group;
+
+	fr_assert(node->type != XLAT_GROUP);
+
+	group = xlat_exp_alloc_null(ctx);
+	xlat_exp_set_type(group, XLAT_GROUP);
+	group->quote = T_BARE_WORD;
+
+	group->child = talloc_steal(group, node);
+	group->flags = node->flags;
+
+	if (node->next) {
+		group->next = xlat_groupify_node(ctx, node->next);
+		node->next = NULL;
+	}
+
+	return group;
+}
+
+/*
+ *	Any function requires each argument to be in it's own XLAT_GROUP.  But we can't create an XLAT_GROUP
+ *	from the start of parsing, as we might need to return an XLAT_FUNC, or another type of xlat.  Instead,
+ *	we just work on the bare nodes, and then later groupify them.  For now, it's just easier to do it this way.
+ */
+static void xlat_groupify_expr(xlat_exp_t *node)
+{
+	xlat_t const *func;
+
+	if (node->type != XLAT_FUNC) return;
+
+	func = node->call.func;
+
+	if (!func->internal) return;
+
+	if (func->token == T_INVALID) return;
+
+	/*
+	 *	It's already been groupified, don't do anything.
+	 */
+	if (node->child->type == XLAT_GROUP) return;
+
+	node->child = xlat_groupify_node(node, node->child);
 }
 
 static xlat_arg_parser_t const cast_xlat_args[] = {
@@ -948,6 +997,8 @@ done:
 		cast->child->next = node;
 		xlat_flags_merge(&cast->flags, &node->flags);
 		node = cast;
+
+		xlat_groupify_expr(node);
 	}
 
 check_unary:
@@ -1188,6 +1239,11 @@ redo:
 			FR_SBUFF_ERROR_RETURN(&in); /* @todo m_lhs ? */
 		}
 	}
+
+	/*
+	 *	Ensure that the various nodes are grouped properly.
+	 */
+	xlat_groupify_expr(node);
 
 	lhs = node;
 	goto redo;

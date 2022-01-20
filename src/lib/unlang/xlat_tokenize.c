@@ -1136,10 +1136,13 @@ static ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff
 		if (node->quote != T_BARE_WORD) FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->quote]);
 		xlat_print(out, node->child, fr_value_escape_by_quote[node->quote]);
 		if (node->quote != T_BARE_WORD) FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->quote]);
-		if (node->next) FR_SBUFF_IN_CHAR_RETURN(out, ' ');	/* Add ' ' between args */
+		if (node->next) FR_SBUFF_IN_CHAR_RETURN(out, ' ');      /* Add ' ' between args */
 		goto done;
 
 	case XLAT_BOX:
+		/*
+		 *	@todo - respect node->quote here, too.  Which also means updating the parser.
+		 */
 		FR_SBUFF_RETURN(fr_value_box_print, out, &node->data, e_rules);
 		goto done;
 
@@ -1161,8 +1164,7 @@ static ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff
 
 		} else {
 			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "(");
-			xlat_print_node(out, node->child, e_rules);
-			FR_SBUFF_IN_CHAR_RETURN(out, ' ');
+			xlat_print_node(out, node->child, e_rules); /* prints a space after the first argument */
 
 			/*
 			 *	@todo - when things like "+" support more than 2 arguments, print them all out
