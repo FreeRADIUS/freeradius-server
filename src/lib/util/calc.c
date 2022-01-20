@@ -1743,17 +1743,15 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 			goto done;
 		}
 
-		fr_value_box_init(dst, FR_TYPE_BOOL, NULL, false);
-
-			/*
-			 *	Try to "up-cast" the types.  This is
-			 *	so that we can take (for example)
-			 *	uint8 < uint16, and have it make
-			 *	sense.  uint16.
-			 *
-			 *	There must be only one entry per [a,b]
-			 *	pairing.  That way we're sure that [a,b]==[b,a]
-			 */
+		/*
+		 *	Try to "up-cast" the types.  This is
+		 *	so that we can take (for example)
+		 *	uint8 < uint16, and have it make
+		 *	sense.  uint16.
+		 *
+		 *	There must be only one entry per [a,b]
+		 *	pairing.  That way we're sure that [a,b]==[b,a]
+		 */
 		if (a->type != b->type) {
 			hint = upcast_cmp[a->type][b->type];
 			if (hint == FR_TYPE_NULL) {
@@ -1788,6 +1786,7 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 		rcode = fr_value_box_cmp_op(op, a, b);
 		if (rcode < 0) goto done;
 
+		fr_value_box_init(dst, FR_TYPE_BOOL, NULL, false);
 		dst->vb_bool = (rcode > 0);
 		break;
 
