@@ -1094,6 +1094,7 @@ redo:
 	 *	No more input, we're done.
 	 */
 	if (fr_sbuff_extend(&in) == 0) {
+	done:
 		*head = lhs;
 		return fr_sbuff_set(input, &in);
 	}
@@ -1111,8 +1112,7 @@ redo:
 			FR_SBUFF_ERROR_RETURN(&in);
 		}
 
-		*head = lhs;
-		return fr_sbuff_set(input, &in);
+		goto done;
 	}
 	fr_sbuff_skip_whitespace(&in);
 
@@ -1173,8 +1173,8 @@ redo:
 	 *	take care of continuing.
 	 */
 	if (precedence[op] <= precedence[prev]) {
-		*head = lhs;
-		return fr_sbuff_set(input, &marker);
+		fr_sbuff_set(&in, &marker);
+		goto done;
 	}
 
 	/*
