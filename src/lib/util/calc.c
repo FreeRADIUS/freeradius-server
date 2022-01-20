@@ -61,6 +61,8 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	 *	Prefix + int --> ipaddr
 	 */
 	[FR_TYPE_IPV4_PREFIX] = {
+		[FR_TYPE_BOOL] =   FR_TYPE_IPV4_ADDR,
+
 		[FR_TYPE_UINT8] =   FR_TYPE_IPV4_ADDR,
 		[FR_TYPE_UINT16] =  FR_TYPE_IPV4_ADDR,
 		[FR_TYPE_UINT32] =  FR_TYPE_IPV4_ADDR,
@@ -78,6 +80,8 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	},
 
 	[FR_TYPE_IPV6_PREFIX] = {
+		[FR_TYPE_BOOL] =   FR_TYPE_IPV6_ADDR,
+
 		[FR_TYPE_UINT8] =   FR_TYPE_IPV6_ADDR,
 		[FR_TYPE_UINT16] =  FR_TYPE_IPV6_ADDR,
 		[FR_TYPE_UINT32] =  FR_TYPE_IPV6_ADDR,
@@ -92,6 +96,31 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 
 		[FR_TYPE_FLOAT32] = FR_TYPE_IPV6_ADDR,
 		[FR_TYPE_FLOAT64] = FR_TYPE_IPV6_ADDR,
+	},
+
+	/*
+	 *	Bools and to pretty much any numerical type result in
+	 *	the other integer.
+	 */
+	[FR_TYPE_BOOL] = {
+		[FR_TYPE_UINT8] = FR_TYPE_UINT8,
+		[FR_TYPE_UINT16] = FR_TYPE_UINT16,
+		[FR_TYPE_UINT32] = FR_TYPE_UINT32,
+		[FR_TYPE_UINT64] = FR_TYPE_UINT64,
+
+		[FR_TYPE_SIZE] =   FR_TYPE_SIZE,
+
+		[FR_TYPE_DATE]  = FR_TYPE_DATE,
+
+		[FR_TYPE_INT8]   = FR_TYPE_INT16,
+		[FR_TYPE_INT16]  = FR_TYPE_INT16,
+		[FR_TYPE_INT32]  = FR_TYPE_INT32,
+		[FR_TYPE_INT64]  = FR_TYPE_INT64,
+
+		[FR_TYPE_TIME_DELTA] = FR_TYPE_TIME_DELTA,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
+		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
 	},
 
 	/*
@@ -285,14 +314,39 @@ static const fr_type_t upcast_cmp[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 		[FR_TYPE_OCTETS] = FR_TYPE_ETHERNET,
 	},
 
+	/*
+	 *	Bools compared to pretty much any numerical type
+	 *	result in the other integer.
+	 */
 	[FR_TYPE_BOOL] = {
 		[FR_TYPE_STRING] = FR_TYPE_BOOL,
 		[FR_TYPE_OCTETS] = FR_TYPE_BOOL,
+
+		[FR_TYPE_UINT8] = FR_TYPE_UINT8,
+		[FR_TYPE_UINT16] = FR_TYPE_UINT16,
+		[FR_TYPE_UINT32] = FR_TYPE_UINT32,
+		[FR_TYPE_UINT64] = FR_TYPE_UINT64,
+
+		[FR_TYPE_SIZE] =   FR_TYPE_SIZE,
+
+		[FR_TYPE_DATE]  = FR_TYPE_DATE,
+
+		[FR_TYPE_INT8]   = FR_TYPE_INT16,
+		[FR_TYPE_INT16]  = FR_TYPE_INT16,
+		[FR_TYPE_INT32]  = FR_TYPE_INT32,
+		[FR_TYPE_INT64]  = FR_TYPE_INT64,
+
+		[FR_TYPE_TIME_DELTA] = FR_TYPE_TIME_DELTA,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_FLOAT32,
+		[FR_TYPE_FLOAT64] = FR_TYPE_FLOAT64,
 	},
 
 	/*
-	 *	Various ints get cast to the next highest size which
-	 *	can hold their values.
+	 *	Integers of the same sign get cast to the larger of
+	 *	the data type.  Integers of different signs get cast
+	 *	to a *different* data type which can hold all values
+	 *	from both sides.
 	 */
 	[FR_TYPE_UINT8] = {
 		[FR_TYPE_STRING] = FR_TYPE_UINT8,

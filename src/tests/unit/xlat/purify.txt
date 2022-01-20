@@ -108,7 +108,7 @@ match yes
 #  This should likely be a parse error at boot time?
 #
 xlat_purify 1 < 2 < 3
-match ERROR offset 9: Cannot compare incompatible types (bool)... < (int64)...
+match yes
 
 count
 match 51
