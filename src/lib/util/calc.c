@@ -52,10 +52,14 @@ RCSID("$Id$")
  *  parse the octets as the type of the other side.
  */
 static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
-	[FR_TYPE_IPV4_ADDR] = {
-		[FR_TYPE_STRING] = FR_TYPE_IPV4_ADDR,
-		[FR_TYPE_OCTETS] = FR_TYPE_IPV4_ADDR,
+	/*
+	 *	string / octets -> octets
+	 */
+	[FR_TYPE_STRING] = {
+		[FR_TYPE_OCTETS] = FR_TYPE_OCTETS,
+	},
 
+	[FR_TYPE_IPV4_ADDR] = {
 		/*
 		 *	ipaddr + int --> prefix (generally only "and")
 		 */
@@ -71,9 +75,6 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	 *	Prefix + int --> ipaddr
 	 */
 	[FR_TYPE_IPV4_PREFIX] = {
-		[FR_TYPE_STRING] = FR_TYPE_IPV4_PREFIX,
-		[FR_TYPE_OCTETS] = FR_TYPE_IPV4_PREFIX,
-
 		[FR_TYPE_BOOL] =   FR_TYPE_IPV4_ADDR,
 
 		[FR_TYPE_UINT8] =   FR_TYPE_IPV4_ADDR,
@@ -92,15 +93,7 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 		[FR_TYPE_FLOAT64] = FR_TYPE_IPV4_ADDR,
 	},
 
-	[FR_TYPE_IPV6_ADDR] = {
-		[FR_TYPE_STRING] = FR_TYPE_IPV6_ADDR,
-		[FR_TYPE_OCTETS] = FR_TYPE_IPV6_ADDR,
-	},
-
 	[FR_TYPE_IPV6_PREFIX] = {
-		[FR_TYPE_STRING] = FR_TYPE_IPV6_PREFIX,
-		[FR_TYPE_OCTETS] = FR_TYPE_IPV6_PREFIX,
-
 		[FR_TYPE_BOOL] =   FR_TYPE_IPV6_ADDR,
 
 		[FR_TYPE_UINT8] =   FR_TYPE_IPV6_ADDR,
@@ -117,16 +110,6 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 
 		[FR_TYPE_FLOAT32] = FR_TYPE_IPV6_ADDR,
 		[FR_TYPE_FLOAT64] = FR_TYPE_IPV6_ADDR,
-	},
-
-	[FR_TYPE_IFID] = {
-		[FR_TYPE_STRING] = FR_TYPE_IFID,
-		[FR_TYPE_OCTETS] = FR_TYPE_IFID,
-	},
-
-	[FR_TYPE_ETHERNET] = {
-		[FR_TYPE_STRING] = FR_TYPE_ETHERNET,
-		[FR_TYPE_OCTETS] = FR_TYPE_ETHERNET,
 	},
 
 	/*
@@ -721,7 +704,7 @@ static int calc_date(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t
 	return 0;
 }
 
-static int calc_time_delta(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *a, fr_token_t op, fr_value_box_t const *b)
+static int calc_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *a, fr_token_t op, fr_value_box_t const *b)
 {
 	fr_value_box_t one, two;
 	int64_t when;
@@ -751,8 +734,10 @@ static int calc_time_delta(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t 
 	}
 
 	if ((op == T_RSHIFT) || (op == T_LSHIFT)) {
-		if (fr_value_box_cast(ctx, &two, FR_TYPE_UINT8, dst->enumv, b) < 0) return -1;
-		b = &two;
+		/*
+		 *	Don't touch the RHS.
+		 */
+		fr_assert(b->type == FR_TYPE_UINT32);
 
 	} else if (b->type != FR_TYPE_TIME_DELTA) {
 		if (fr_value_box_cast(NULL, &two, FR_TYPE_TIME_DELTA, dst->enumv, b) < 0) return -1;
@@ -771,12 +756,14 @@ static int calc_time_delta(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t 
 		break;
 
 	case T_RSHIFT:
-		when = fr_time_delta_unwrap(a->vb_time_delta) >> b->vb_uint8;
+		if (b->vb_uint32 >= 64) return ERR_UNDERFLOW;
+
+		when = fr_time_delta_unwrap(a->vb_time_delta) >> b->vb_uint32;
 		dst->vb_time_delta = fr_time_delta_wrap(when);
 		break;
 
 	case T_LSHIFT:
-		if (b->vb_uint8 >= 64) return ERR_OVERFLOW;
+		if (b->vb_uint32 >= 64) return ERR_OVERFLOW;
 
 		when = fr_time_delta_unwrap(a->vb_time_delta) << b->vb_uint8;
 		dst->vb_time_delta = fr_time_delta_wrap(when);
@@ -804,8 +791,10 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 	}
 
 	if ((op == T_RSHIFT) || (op == T_LSHIFT)) {
-		if (fr_value_box_cast(ctx, &two, FR_TYPE_UINT32, dst->enumv, b) < 0) return -1;
-		b = &two;
+		/*
+		 *	Don't touch the RHS.
+		 */
+		fr_assert(b->type == FR_TYPE_UINT32);
 
 	} else if (b->type != FR_TYPE_OCTETS) {
 		if (fr_value_box_cast(ctx, &two, FR_TYPE_OCTETS, dst->enumv, b) < 0) return -1;
@@ -944,8 +933,10 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 	}
 
 	if ((op == T_RSHIFT) || (op == T_LSHIFT)) {
-		if (fr_value_box_cast(ctx, &two, FR_TYPE_UINT32, dst->enumv, b) < 0) return -1;
-		b = &two;
+		/*
+		 *	Don't touch the RHS.
+		 */
+		fr_assert(b->type == FR_TYPE_UINT32);
 
 	} else if (b->type != FR_TYPE_STRING) {
 		if (fr_value_box_cast(ctx, &two, FR_TYPE_STRING, dst->enumv, b) < 0) return -1;
@@ -1445,13 +1436,13 @@ static int calc_float64(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 		break; \
  \
 	case T_RSHIFT: \
-		if (in2->vb_uint8 > (8 * sizeof(in1->vb_ ## _t))) return ERR_UNDERFLOW; \
+		if (in2->vb_uint32 > (8 * sizeof(in1->vb_ ## _t))) return ERR_UNDERFLOW; \
  \
 		dst->vb_ ## _t = in1->vb_ ## _t >>  in2->vb_uint8; \
 		break; \
  \
 	case T_LSHIFT: \
-		if (in2->vb_uint8 >= (8 * sizeof(in1->vb_ ## _t))) return ERR_OVERFLOW; \
+		if (in2->vb_uint32 >= (8 * sizeof(in1->vb_ ## _t))) return ERR_OVERFLOW; \
  \
 		dst->vb_ ## _t = in1->vb_ ## _t <<  in2->vb_uint8; \
 		break; \
@@ -1652,22 +1643,6 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 		case T_AND:
 		case T_OR:
 		case T_XOR:
-		case T_RSHIFT:
-		case T_LSHIFT:
-			if (a->type == b->type) {
-				hint = a->type;
-				break;
-			}
-
-			/*
-			 *	Non-comparison operators: Strings of different types always
-			 *	results in octets.
-			 */
-			if (fr_type_is_variable_size(a->type) && fr_type_is_variable_size(b->type)) {
-				hint = FR_TYPE_OCTETS;
-				break;
-			}
-
 			/*
 			 *	Nothing else set it.  If the input types are
 			 *	the same, then that must be the output type.
@@ -1693,15 +1668,26 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 				fr_assert(upcast_op[b->type][a->type] == FR_TYPE_NULL);
 			}
 
-			if (hint != FR_TYPE_NULL) {
-				break;
-			}
-
 			/*
 			 *	No idea what to do. :(
 			 */
-			fr_strerror_const("Unable to automatically determine output data type");
-			goto done;
+			if (hint == FR_TYPE_NULL) {
+				fr_strerror_const("Unable to automatically determine output data type");
+				goto done;
+			}
+
+			break;
+
+			/*
+			 *	The RHS MUST be a numerical type.  We don't need to do any upcasting here.
+			 *
+			 *	@todo - the output type could be larger than the input type, if the shift is
+			 *	more than the input type can handle.  e.g. uint8 << 4 could result in uint16
+			 */
+		case T_RSHIFT:
+		case T_LSHIFT:
+			hint = a->type;
+			break;
 
 		default:
 			return ERR_INVALID;
@@ -1709,27 +1695,8 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	} while (0);
 
 	/*
-	 *	If we're doing operations between
-	 *	STRING/OCTETS and another type, then cast the
-	 *	variable sized type to the fixed size type.
-	 *	Doing this casting here makes the rest of the
-	 *	code simpler.
-	 *
-	 *	This isn't always the best thing to do, but it makes
-	 *	sense in most situations.  It allows comparisons,
-	 *	etc. to operate between strings and integers.
+	 *	Now that we've figured out the correct types, perform the operation.
 	 */
-	if (!fr_type_is_variable_size(hint)) {
-		if (fr_type_is_variable_size(a->type) && !fr_type_is_variable_size(b->type)) {
-			if (fr_value_box_cast(NULL, &one, b->type, b->enumv, a) < 0) goto done;
-			a = &one;
-
-		} else if (!fr_type_is_variable_size(a->type) && fr_type_is_variable_size(b->type)) {
-			if (fr_value_box_cast(NULL, &two, a->type, a->enumv, b) < 0) goto done;
-			b = &two;
-		}
-	}
-
 	switch (op) {
 	case T_OP_CMP_EQ:
 	case T_OP_NE:
@@ -1790,6 +1757,22 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 		dst->vb_bool = (rcode > 0);
 		break;
 
+		/*
+		 *	For shifts, the RHS value MUST be an integer.  There's no reason to have it as
+		 *	anything other than an 8-bit field.
+		 */
+	case T_LSHIFT:
+	case T_RSHIFT:
+		if (b->type != FR_TYPE_UINT32) {
+			if (fr_value_box_cast(ctx, &two, FR_TYPE_UINT32, NULL, b) < 0) {
+				fr_strerror_printf("Cannot parse shift value as integer - %s",
+						   fr_strerror());
+				goto done;
+			}
+			b = &two;
+		}
+		FALL_THROUGH;
+
 	case T_ADD:
 	case T_SUB:
 	case T_MUL:
@@ -1797,8 +1780,6 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	case T_AND:
 	case T_OR:
 	case T_XOR:
-	case T_RSHIFT:
-	case T_LSHIFT:
 		fr_assert(hint != FR_TYPE_NULL);
 
 		func = calc_type[hint];
