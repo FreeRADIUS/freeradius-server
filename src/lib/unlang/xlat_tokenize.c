@@ -1275,14 +1275,6 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rule
 		slen = xlat_print_node(out, node, e_rules);
 		if (slen < 0) return slen - (fr_sbuff_used_total(out) - at_in);
 
-		if (node->next) {
-			if ((node->type == XLAT_BOX) && (node->data.type != FR_TYPE_STRING)) {
-				FR_SBUFF_IN_CHAR_RETURN(out, ' ');
-			} else if ((node->next->type == XLAT_BOX) && (node->next->data.type != FR_TYPE_STRING)) {
-				FR_SBUFF_IN_CHAR_RETURN(out, ' ');
-			}
-		}
-
 		node = node->next;
 	}
 
