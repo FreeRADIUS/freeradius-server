@@ -1132,6 +1132,14 @@ redo:
 		talloc_free(lhs);
 		FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
 	}
+
+#ifdef __clang_analyzer__
+	if (!rhs) {
+		talloc_free(lhs);
+		FR_SBUFF_ERROR_RETURN(&in);
+	}
+#endif
+
 	fr_assert(rhs != NULL);
 
 //alloc_func:
