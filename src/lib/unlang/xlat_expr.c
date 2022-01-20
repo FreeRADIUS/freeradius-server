@@ -115,9 +115,10 @@ static void cast_to_bool(fr_value_box_t *out, fr_value_box_t const *in)
 /** Basic purify, but only for expressions and comparisons.
  *
  */
-static int xlat_purify_expr(xlat_exp_t *node, xlat_t *func)
+static int xlat_purify_expr(xlat_exp_t *node)
 {
 	int rcode = -1;
+	xlat_t const *func;
 	xlat_exp_t *child;
 	fr_value_box_t *dst = NULL, *box;
 	xlat_arg_parser_t const *arg;
@@ -125,9 +126,11 @@ static int xlat_purify_expr(xlat_exp_t *node, xlat_t *func)
 	fr_value_box_list_t input, output;
 	fr_dcursor_t cursor;
 
-	if (!func || (node->type != XLAT_FUNC)) return 0;
+	if (node->type != XLAT_FUNC) return 0;
 
 	if (!node->flags.pure) return 0;
+
+	func = node->call.func;
 
 	if (!func->internal) return 0;
 
@@ -949,6 +952,16 @@ done:
 
 check_unary:
 	/*
+	 *	Purify things in place, where we can.
+	 */
+	if (flags->pure) {
+		if (xlat_purify_expr(node) < 0) {
+			talloc_free(node);
+			FR_SBUFF_ERROR_RETURN(&in); /* @todo m_lhs ? */
+		}
+	}
+
+	/*
 	 *	@todo - purify the node.
 	 */
 	if (unary) {
@@ -1170,7 +1183,7 @@ redo:
 	 *	Purify things in place, where we can.
 	 */
 	if (flags->pure) {
-		if (xlat_purify_expr(node, func) < 0) {
+		if (xlat_purify_expr(node) < 0) {
 			talloc_free(node);
 			FR_SBUFF_ERROR_RETURN(&in); /* @todo m_lhs ? */
 		}
