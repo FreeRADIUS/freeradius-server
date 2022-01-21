@@ -1689,10 +1689,6 @@ static CONF_PARSER tls_server_config[] = {
 #endif
 	},
 
-#ifdef TLS1_3_VERSION
-	{ "tls13_enable", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, tls13_enable_magic), NULL },
-#endif
-
 	{ "realm_dir", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, realm_dir), NULL },
 
 	{ "cache", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) cache_config },
