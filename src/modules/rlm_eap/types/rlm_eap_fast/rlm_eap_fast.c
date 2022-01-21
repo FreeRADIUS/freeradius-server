@@ -575,7 +575,8 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 
 	/*
 	 *	Don't allow TLS 1.3 for us, even if it's allowed
-	 *	elsewhere.
+	 *	elsewhere.  We haven't implemented the necessary
+	 *	changes, so we don't allow it.
 	 */
 	handler->opaque = tls_session = eaptls_session(handler, inst->tls_conf, client_cert, false);
 
