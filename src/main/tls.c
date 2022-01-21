@@ -719,11 +719,10 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		WARN("!!                    FORCING MAXIMUM TLS VERSION TO TLS 1.2                  !!");
 		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		WARN("!! There is no standard for using this EAP method with TLS 1.3");
-		WARN("!! Please set tls_max_version = \"1.2\"");
-		WARN("!! FreeRADIUS only supports TLS 1.3 for special builds of wpa_supplicant and Windows");
-		WARN("!! This limitation is likely to change in late 2021.");
-		WARN("!! If you are using this version of FreeRADIUS after 2021, you will probably need to upgrade");
+		WARN("!! There is either no standard for using this EAP method with TLS 1.3,");
+		WARN("!! or FreeRADIUS does not fully support TLS 1.3 for this EAP method.");
+		WARN("!!");
+		WARN("!! This message can be removed by setting tls_max_version = \"1.2\"");
 		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
 		if (SSL_set_max_proto_version(new_tls, TLS1_2_VERSION) == 0) {
