@@ -4671,6 +4671,8 @@ static int tls_realms_load(fr_tls_server_conf_t *conf)
 		}
 	}
 
+	conf->realms = ht;
+
 	return 0;
 }
 
