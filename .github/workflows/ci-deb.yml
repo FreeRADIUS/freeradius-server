@@ -34,7 +34,6 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "ubuntu-18.04", "OS": "ubuntu:18.04"    },
               { "NAME": "ubuntu-20.04", "OS": "ubuntu:20.04"    },
               { "NAME": "debian-10",    "OS": "debian:buster"   },
               { "NAME": "debian-11",    "OS": "debian:bullseye" },
