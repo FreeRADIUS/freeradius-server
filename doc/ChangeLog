@@ -10,11 +10,16 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	  tested with wpa_supplicant and Windows 11.
 	* Add %{concat:foo[*] ;}, which concatenates a set
 	  of attributes, separated by a character.
-	* Fix for incompelete home server list after deleting a
+	* Fix for incomplete home server list after deleting a
 	  home server via radmin.
+
+	TODO before release
+	* port eap-fast issues from master
+	* remove FR_LOCATE_DIR from acinclude.m4 - see bug report
 
 	Bug fixes
 	* Ensure PBKDF2 always uses at least one iteration
+	* Actually use the certificate in "realm_dir" hinted at by SNI.
 
 FreeRADIUS 3.0.25 Thu 07 Oct 2021 12:00:00 EDT urgency=medium
 	Feature improvements
