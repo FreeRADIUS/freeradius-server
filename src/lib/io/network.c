@@ -1163,6 +1163,29 @@ static int fr_network_listen_add_self(fr_network_t *nr, fr_listen_t *listen)
 	size_t			size;
 	int			num_messages;
 
+	fr_assert(listen->app_io != NULL);
+
+	/*
+	 *	Non-socket listeners just get told about the event
+	 *	list, and nothing else.
+	 */
+	if (!listen->app_io->open) {
+		fr_assert(listen->app_io->event_list_set != NULL);
+		fr_assert(!listen->app_io->read);
+		fr_assert(!listen->app_io->write);
+		fr_assert(!listen->app_io->close);
+
+		listen->app_io->event_list_set(listen, nr->el, nr);
+
+		/*
+		 *	We use fr_log() here to avoid the "Network - " prefix.
+		 */
+		fr_log(nr->log, L_DBG, __FILE__, __LINE__, "Listener %s bound to virtual server %s",
+		       listen->name, cf_section_name2(listen->server_cs));
+
+		return 0;
+	}
+
 	s = talloc_zero(nr, fr_network_socket_t);
 	fr_assert(s != NULL);
 
