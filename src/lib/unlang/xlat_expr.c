@@ -616,13 +616,6 @@ static const int precedence[T_TOKEN_LAST] = {
 	[T_LBRACE]	= P(9,0),
 };
 
-#ifdef UPCAST
-static const fr_type_t upcast[FR_TYPE_MAX + 1] = {
-	[FR_TYPE_IPV4_ADDR] = FR_TYPE_IPV4_PREFIX,
-	[FR_TYPE_IPV6_ADDR] = FR_TYPE_IPV6_PREFIX,
-};
-#endif
-
 #define fr_sbuff_skip_whitespace(_x) \
 	do { \
 		while (isspace((int) *fr_sbuff_current(_x))) fr_sbuff_advance(_x, 1); \
@@ -691,6 +684,7 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 	xlat_exp_t	*unary = NULL;
 	xlat_exp_t	*cast = NULL;
 	xlat_t		*func = NULL;
+	fr_type_t	cast_type = FR_TYPE_VOID;
 	TALLOC_CTX	*ctx = input_ctx;
 	TALLOC_CTX	*free_ctx = NULL;
 	fr_sbuff_t	in = FR_SBUFF(input);
@@ -752,13 +746,13 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 
 		fr_sbuff_skip_whitespace(&in);
 
-		fr_sbuff_out_by_longest_prefix(&slen, &type, fr_value_box_type_table, &in, FR_TYPE_VOID);
-		if (type == FR_TYPE_VOID) {
+		fr_sbuff_out_by_longest_prefix(&slen, &cast_type, fr_value_box_type_table, &in, FR_TYPE_VOID);
+		if (cast_type == FR_TYPE_VOID) {
 			fr_sbuff_set(&in, &marker);
 			goto check_more;
 		}
 
-		if (!fr_type_is_leaf(type)) {
+		if (!fr_type_is_leaf(cast_type)) {
 			fr_strerror_printf("Cannot cast to structural data type");
 			fr_sbuff_set(&in, &marker);
 			talloc_free(unary);
@@ -774,12 +768,10 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 
 		fr_sbuff_advance(&in, 1);
 
-		MEM(cast = xlat_expr_cast_alloc(ctx, type));
+		MEM(cast = xlat_expr_cast_alloc(ctx, cast_type));
 
 		ctx = cast;
 		if (!free_ctx) free_ctx = cast;
-
-		node = NULL;
 
 		/*
 		 *	We're casting to a type which is different from the input "da".  Which means that we
@@ -789,7 +781,7 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 		 *	(yet) know if we can drop the cast, as the RHS could be an attribute, expansion, or a
 		 *	value-box.  Let's be safe and leave the cast alone until we know which one it is.
 		 */
-		if (da && (da->type != type)) {
+		if (da && (da->type != cast_type)) {
 			da = NULL;
 		}
 	}
@@ -803,8 +795,20 @@ check_more:
 	if (fr_sbuff_next_if_char(&in, '(')) {
 		/*
 		 *	Tokenize the sub-expression, ensuring that we stop at ')'.
+		 *
+		 *	Note that if we have a sub-expression, then we don't use the hinting for "type".
+		 *	That's because we're parsing a complete expression here (EXPR).  So the intermediate
+		 *	nodes in the expression can be almost anything.  And we only cast it to the final
+		 *	value when we get the output of the expression.
+		 *
+		 *	@todo - have a parser context structure, so that we can disallow things like
+		 *
+		 *		foo == (int) ((ifid) xxxx)
+		 *
+		 *	The double casting is technically invalid, and will likely cause breakages at run
+		 *	time.
 		 */
-		slen = tokenize_expression(ctx, &node, flags, &in, bracket_rules, t_rules, T_INVALID, type, bracket_rules, da);
+		slen = tokenize_expression(ctx, &node, flags, &in, bracket_rules, t_rules, T_INVALID, FR_TYPE_VOID, bracket_rules, da);
 		if (slen <= 0) {
 			talloc_free(free_ctx);
 			FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
@@ -825,6 +829,22 @@ check_more:
 	if (fr_sbuff_is_char(&in, '&')) {
 		tmpl_t *vpt = NULL;
 
+		/*
+		 *	We don't need an explicit cast, as it can be pushed into the tmpl.  So get rid of it.
+		 */
+		if (cast) {
+			TALLOC_FREE(cast);
+			if (unary) {
+				ctx = unary;
+				free_ctx = unary;
+			} else {
+				ctx = input_ctx;
+				free_ctx = NULL;
+			}
+
+			fr_assert(cast_type != FR_TYPE_VOID);
+		}
+
 		MEM(node = xlat_exp_alloc_null(ctx));
 		xlat_exp_set_type(node, XLAT_TMPL);
 
@@ -833,6 +853,14 @@ check_more:
 			talloc_free(node);
 			talloc_free(free_ctx);
 			FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
+		}
+
+		/*
+		 *	If we have a cast, then push it into the tmpl.
+		 */
+		if (cast_type != FR_TYPE_VOID) {
+			(void) tmpl_cast_set(vpt, cast_type);
+			cast_type = FR_TYPE_VOID;
 		}
 
 		xlat_exp_set_name_buffer_shallow(node, vpt->name);
@@ -876,6 +904,14 @@ check_more:
 	}
 
 	/*
+	 *	If we've been told to cast the value-box to a particular type, then try to parse it as that
+	 *	type.
+	 *
+	 *	@todo - we should allow things like (int) "123", too!
+	 */
+	if (cast_type != FR_TYPE_VOID) type = cast_type;
+
+	/*
 	 *	Else it's nothing we recognize.  Do some quick checks to see what it might be.
 	 */
 	if (type == FR_TYPE_VOID) {
@@ -884,6 +920,7 @@ check_more:
 
 		} else if (fr_sbuff_is_char(&in, '"') || fr_sbuff_is_char(&in, '\'') || fr_sbuff_is_char(&in, '`')) {
 			type = FR_TYPE_STRING;
+
 		} else {
 			type = FR_TYPE_INT64;
 		}
@@ -892,7 +929,7 @@ check_more:
 	/*
 	 *	@todo - we "upcast" IP addresses to prefixes, so that we can do things like check
 	 *
-	 *		&Framed-IP-Address < 192.168/16
+	 *		&Framed-IP-Address < 192.168.0.0/16
 	 *
 	 *	so that the user doesn't always have to specify the data types.
 	 *
@@ -900,10 +937,6 @@ check_more:
 	 *	to remember the original type.  So that for IPs, if there's no '/' in the parsed input, then
 	 *	we swap the data type from the "upcast" prefix type to the input IP address type.
 	 */
-#ifdef UPCAST
-	if (!cast && upcast[type]) type = upcast[type];
-#endif
-
 	fr_assert(fr_type_is_leaf(type));
 
 	/*
@@ -914,18 +947,6 @@ check_more:
 		fr_sbuff_marker_t marker;
 
 		fr_sbuff_marker(&marker, &in);
-
-#if 0
-		/*
-		 *	If there's a cast, then remove it.  We have a cast in "type", so the value-box MUST be
-		 *	parsed as that type, or it else parsing fails.  There's no reason to parse something
-		 *	as a particular type, and then immediately cast it to that type.
-		 */
-		if (cast) {
-			TALLOC_FREE(cast);
-			ctx = unary ? unary : input_ctx;
-		}
-#endif
 
 		/*
 		 *	@todo - parse all this via tmpl_afrom_substr(), and set tmpl_data_rules_t to the
