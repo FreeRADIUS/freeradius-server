@@ -548,6 +548,21 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	if (da->type == FR_TYPE_VSA) return decode_vsa(ctx, out, da, data + 2, data[1]);
 
+	/*
+	 *	@todo - RFC 2131 Section 4.1 says:
+	 *
+	 *	  The client concatenates the values of multiple
+	 *	  instances of the same option into a single parameter
+	 *	  list for configuration.
+	 *
+	 *	which presumably also means the same for the server on reception.
+	 *
+	 *	TBH, it would be simplest to have a thread-local array
+	 *	for temporary work.  If there are multiple options of
+	 *	the same number, then the values for those options get
+	 *	mashed into the temporary buffer.  Then, that buffer
+	 *	gets used for value decoding.
+	 */
 	ret = decode_value(ctx, out, da, data + 2, data[1]);
 	if (ret < 0) {
 		fr_dict_unknown_free(&da);

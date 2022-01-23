@@ -242,6 +242,24 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 			break;
 		}
 
+		/*
+		 *	@todo - RFC 2131 Section 4.1 says:
+		 *
+		 *	  The client concatenates the values of multiple
+		 *	  instances of the same option into a single parameter
+		 *	  list for configuration.
+		 *
+		 *	so if we have multiple options of the same
+		 *	number, then pack them as much as possible.
+		 *
+		 *	TBH, it would be simplest to have a
+		 *	thread-local array for temporary work.  If
+		 *	there are multiple options of the same number,
+		 *	then the values for those options get mashed
+		 *	into the temporary buffer.  Then, that buffer
+		 *	gets copied to the actual packet, with headers
+		 *	being added as necessary.
+		 */
 		len = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 		if (len < -1) return len;
 		if (len == -1) {
