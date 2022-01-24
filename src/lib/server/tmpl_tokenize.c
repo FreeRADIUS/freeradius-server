@@ -2620,7 +2620,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			vpt = tmpl_alloc_null(ctx);
 			slen = fr_value_box_from_substr(vpt, &tmp,
 							t_rules->data.cast, t_rules->data.enumv,
-							in, p_rules, false);
+							&our_in, p_rules, false);
 			if (slen < 0) {
 				talloc_free(vpt);
 				return slen;
