@@ -1031,7 +1031,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 		if (slen < 0) {
 			talloc_free(key);
 			DEBUG("Failed casting %pV to data type '%s'",
-			      &key, tmpl_type_to_str(inst->key_data_type));
+			      &key, fr_type_to_str(inst->key_data_type));
 			RETURN_MODULE_FAIL;
 		}
 	}
