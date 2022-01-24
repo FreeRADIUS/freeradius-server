@@ -237,7 +237,6 @@ typedef struct rlm_sigtran {
 } rlm_sigtran_t;
 
 typedef struct rlm_sigtran_thread {
-        rlm_sigtran_t const     *inst;                                  //!< Instance of rlm_sigtran
         int                     fd;                                     //!< File descriptor
 } rlm_sigtran_thread_t;
 

@@ -307,13 +307,10 @@ static int sigtran_sccp_sockaddr_from_conf(TALLOC_CTX *ctx, rlm_sigtran_t *inst,
 
 static int mod_thread_instantiate(module_thread_inst_ctx_t *mctx)
 {
-	rlm_sigtran_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sigtran_t);
 	rlm_sigtran_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_sigtran_thread_t);
 	int			fd;
 
-	t->inst = instance;
-
-	fd = sigtran_client_thread_register(el);
+	fd = sigtran_client_thread_register(mctx->el);
 	if (fd < 0) {
 		ERROR("Failed registering thread with multiplexer");
 		return -1;
