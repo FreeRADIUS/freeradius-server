@@ -1146,6 +1146,13 @@ static ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff
 		FR_SBUFF_RETURN(fr_value_box_print, out, &node->data, e_rules);
 		goto done;
 
+	case XLAT_TMPL:
+		if (tmpl_is_data(node->vpt)) {
+			FR_SBUFF_RETURN(fr_value_box_print_quoted, out, tmpl_value(node->vpt), node->vpt->quote);
+			goto done;
+		}
+		break;
+
 	case XLAT_ONE_LETTER:
 		FR_SBUFF_IN_CHAR_RETURN(out, '%', node->fmt[0]);
 		goto done;
@@ -1195,6 +1202,7 @@ static ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff
 
 	switch (node->type) {
 	case XLAT_TMPL:
+		fr_assert(tmpl_is_list(node->vpt) || tmpl_is_attr(node->vpt));
 		slen = tmpl_attr_print(out, node->vpt, TMPL_ATTR_REF_PREFIX_NO);
 		if (slen < 0) {
 		error:
