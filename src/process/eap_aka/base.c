@@ -132,9 +132,9 @@ static virtual_server_compile_t const compile_list[] = {
 	},
 	{
 		.name = "recv",
-		.name2 = "Syncronization-Failure",
+		.name2 = "Synchronization-Failure",
 		.component = MOD_AUTHORIZE,
-		.offset = offsetof(eap_aka_sim_process_conf_t, actions.recv_aka_syncronization_failure)
+		.offset = offsetof(eap_aka_sim_process_conf_t, actions.recv_aka_synchronization_failure)
 	},
 
 	/*

@@ -108,7 +108,7 @@ typedef struct {
 
 			CONF_SECTION	*recv_aka_authentication_reject;//!< Called if the supplicant rejects the
 									///< authentication attempt.
-			CONF_SECTION	*recv_aka_syncronization_failure;//!< Called if the supplicant determines
+			CONF_SECTION	*recv_aka_synchronization_failure;//!< Called if the supplicant determines
 									///< the AUTN value is invalid.
 									///< Usually used for resyncing with the HLR.
 

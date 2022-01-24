@@ -2087,13 +2087,13 @@ STATE_GUARD(common_reauthentication)
  *
  * - If 'recv Synchronization-Failure { ... }' returned a failure
  *   rcode, enter the FAILURE-NOTIFICATION state.
- * - ...or if no 'recv Syncronization-Failure { ... }' section was
+ * - ...or if no 'recv Synchronization-Failure { ... }' section was
  *   defined, then enter the FAILURE-NOTIFICATION state.
  * - ...or if the user didn't provide a new SQN value in &control.SQN
  *   then enter the FAILURE-NOTIFICATION state.
  * - ...or enter the AKA-CHALLENGE state.
  */
-RESUME(recv_aka_syncronization_failure)
+RESUME(recv_aka_synchronization_failure)
 {
 	eap_aka_sim_process_conf_t	*inst = talloc_get_type_abort(mctx->inst->data, eap_aka_sim_process_conf_t);
 	eap_aka_sim_session_t		*eap_aka_sim_session = talloc_get_type_abort(mctx->rctx, eap_aka_sim_session_t);
@@ -2109,7 +2109,7 @@ RESUME(recv_aka_syncronization_failure)
 	 *	then it's highly likely whatever user configured action was
 	 *	configured was unsuccessful, and we should just give up.
 	 */
-	if (!inst->actions.recv_aka_syncronization_failure || eap_aka_sim_session->prev_recv_sync_failure) {
+	if (!inst->actions.recv_aka_synchronization_failure || eap_aka_sim_session->prev_recv_sync_failure) {
 	failure:
 		return STATE_TRANSITION(common_failure_notification);
 	}
@@ -2227,7 +2227,7 @@ RESUME(recv_aka_challenge_response)
  *   - EAP-Response/AKA-Challenge - call 'recv Challenge-Response { ... }'.
  *   - EAP-Response/AKA-Authentication-Reject - call 'recv Authentication-Reject { ... }'  and after that
  *     send a EAP-Request/SIM-Notification indicating a General Failure.
- *   - EAP-Response/AKA-Syncronization-Failure - call 'recv Syncronization-Failure { ... }'.
+ *   - EAP-Response/AKA-Synchronization-Failure - call 'recv Syncronization-Failure { ... }'.
  *   - EAP-Response/AKA-Client-Error - call 'recv Client-Error { ... }' and after that
  *     send a EAP-Request/AKA-Notification indicating a General Failure.
  *   - Anything else, enter the FAILURE-NOTIFICATION state.
@@ -2296,7 +2296,7 @@ STATE(aka_challenge)
 			goto failure;
 		}
 
-		return CALL_SECTION(recv_aka_syncronization_failure);
+		return CALL_SECTION(recv_aka_synchronization_failure);
 	}
 
 	/*
