@@ -351,7 +351,10 @@ certs:
 BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
 
 .PHONY: freeradius-server-$(RADIUSD_VERSION_STRING).tar
-freeradius-server-$(RADIUSD_VERSION_STRING).tar: .git/HEAD
+
+# This can't depend on .git/ (dirs don't work) or .git/HEAD (not present in submodules)
+# so it's just left as a phony target.
+freeradius-server-$(RADIUSD_VERSION_STRING).tar:
 	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ $(BRANCH) > $@
 ifneq "$(EXT_MODULES)" ""
 	rm -rf build/freeradius-server-$(RADIUSD_VERSION_STRING)
