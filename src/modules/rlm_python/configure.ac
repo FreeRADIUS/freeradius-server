@@ -67,6 +67,7 @@ if test x$with_[]modname != xno; then
 		dnl # supported by clang < 11.
 		dnl # Strip -frecord-gcc-switches. We decide if this needs recording, not python.
 		dnl # Strip specs as they're only supported by GCC and cause warnings under clang
+		dnl # Strip -ffat-lto-objects, We decide if we need that, not python.
 		mod_cflags=`echo " $python_cflags" | sed -e '\
 			s/ -I/ -isystem/g;\
 			s/ -isysroot[[ =]]\{0,1\}[[^-]]*/ /g;\
@@ -76,8 +77,9 @@ if test x$with_[]modname != xno; then
 			s/ -W[[^ ]]*/ /g;\
 			s/ -DNDEBUG[[[:blank:]]]*/ /g;\
 			s/ -frecord-gcc-switches/ /g;\
-			s/ -fstack-clash-protection[[[:blank:]]]*/ /g;
-			s/ -specs=[[^ ]]*/ /g;
+			s/ -fstack-clash-protection[[[:blank:]]]*/ /g;\
+			s/ -specs=[[^ ]]*/ /g;\
+			s/ -ffat-lto-objects/ /g;
 			'`
 		AC_MSG_NOTICE([Sanitized cflags were \"${mod_cflags}\"])
 
