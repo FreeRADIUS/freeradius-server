@@ -290,7 +290,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	case FR_TYPE_VSA:		/* An attribute holding vendor definitions */
 		if (unlikely(unknown)) {
 			fr_strerror_printf("%s: %s can't be marked as unknown", __FUNCTION__,
-					   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
+					   fr_type_to_str(da->type));
 			fr_dbuff_set(&work_dbuff, &ext_field);
 			goto error;
 		}
@@ -300,7 +300,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 		if (unlikely(tainted)) {
 		bad_tainted:
 			fr_strerror_printf("%s: %s can't be marked as tainted", __FUNCTION__,
-					   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
+					   fr_type_to_str(da->type));
 			fr_dbuff_set(&work_dbuff, &enc_field);
 		error:
 			if (unknown) fr_dict_unknown_free(&da);
@@ -308,7 +308,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 		}
 
 		FR_PROTO_TRACE("Decoding %s - %s", da->name,
-			       fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
+			       fr_type_to_str(da->type));
 
 		slen = internal_decode_pair(ctx, out, parent_da, &work_dbuff, decode_ctx);
 		if (slen <= 0) goto error;

@@ -1012,14 +1012,14 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 	if (!dict_attr_can_have_children(parent)) {
 		fr_strerror_printf("Cannot add children to attribute '%s' of type %s",
 				   parent->name,
-				   fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"));
+				   fr_type_to_str(parent->type));
 		return -1;
 	}
 
 	if ((parent->type == FR_TYPE_VSA) && (child->type != FR_TYPE_VENDOR)) {
 		fr_strerror_printf("Cannot add non-vendor children to attribute '%s' of type %s",
 				   parent->name,
-				   fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"));
+				   fr_type_to_str(parent->type));
 		return -1;
 	}
 
@@ -1122,7 +1122,7 @@ int dict_attr_add_to_namespace(fr_dict_attr_t const *parent, fr_dict_attr_t *da)
 	    ((parent->type == FR_TYPE_VSA) || parent->flags.is_root)) {
 		fr_strerror_printf("Cannot insert attribute '%s' of type %s into %s",
 				   da->name,
-				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"),
+				   fr_type_to_str(da->type),
 				   parent->name);
 		goto error;
 	}
@@ -1181,9 +1181,9 @@ static int dict_attr_compatible(fr_dict_attr_t const *parent, fr_dict_attr_t con
 		fr_strerror_printf_push("Cannot add duplicate attribute with different type "
 					"(old attribute \"%s\" has type %s, new attribute \"%s\" has type %s)",
 					old->name,
-					fr_table_str_by_value(fr_value_box_type_table, old->type, "?Unknown?"),
+					fr_type_to_str(old->type),
 					n->name,
-					fr_table_str_by_value(fr_value_box_type_table, n->type, "?Unknown?"));
+					fr_type_to_str(n->type));
 		return -1;
 	}
 
@@ -1322,7 +1322,7 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
 	if (!ext) {
 		fr_strerror_printf("VALUE cannot be defined for %s attributes",
-				   fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+				   fr_type_to_str(da->type));
 		return -1;
 	}
 
@@ -1368,16 +1368,16 @@ int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 		if (!coerce) {
 			fr_strerror_printf("%s: Type mismatch between attribute (%s) and enum (%s)",
 					   __FUNCTION__,
-					   fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, value->type, "<INVALID>"));
+					   fr_type_to_str(da->type),
+					   fr_type_to_str(value->type));
 			return -1;
 		}
 
 		if (fr_value_box_cast(enumv, enum_value, da->type, NULL, value) < 0) {
 			fr_strerror_printf_push("%s: Failed coercing enum type (%s) to attribute type (%s)",
 						__FUNCTION__,
-					   	fr_table_str_by_value(fr_value_box_type_table, value->type, "<INVALID>"),
-					   	fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+					   	fr_type_to_str(value->type),
+					   	fr_type_to_str(da->type));
 
 			return -1;
 		}
@@ -1525,7 +1525,7 @@ int fr_dict_enum_add_name_next(fr_dict_attr_t *da, char const *name)
 
 	default:
 		fr_strerror_printf("Attribute is wrong type for auto-numbering, expected numeric type, got %s",
-				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
+				   fr_type_to_str(da->type));
 		return -1;
 	}
 
@@ -1779,7 +1779,7 @@ ssize_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 		fr_strerror_printf("Attribute '%s' is type %s and cannot contain child attributes.  "
 				   "Error at OID \"%.*s\"",
 				   parent->name,
-				   fr_table_str_by_value(fr_value_box_type_table, parent->type, "<UNKNOWN>"),
+				   fr_type_to_str(parent->type),
 				   (int)fr_sbuff_remaining(in),
 				   fr_sbuff_current(in));
 		if (err) *err =FR_DICT_ATTR_NO_CHILDREN;
@@ -2224,8 +2224,8 @@ fr_dict_attr_t const *fr_dict_vendor_da_by_num(fr_dict_attr_t const *vendor_root
 
 	default:
 		fr_strerror_printf("Wrong type for vendor root, expected '%s', got '%s'",
-				   fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_VSA, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, vendor_root->type, "<INVALID>"));
+				   fr_type_to_str(FR_TYPE_VSA),
+				   fr_type_to_str(vendor_root->type));
 		return NULL;
 	}
 
@@ -2237,8 +2237,8 @@ fr_dict_attr_t const *fr_dict_vendor_da_by_num(fr_dict_attr_t const *vendor_root
 
 	if (vendor->type != FR_TYPE_VENDOR) {
 		fr_strerror_printf("Wrong type for vendor, expected '%s' got '%s'",
-				   fr_table_str_by_value(fr_value_box_type_table, vendor->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_VENDOR, "<INVALID>"));
+				   fr_type_to_str(vendor->type),
+				   fr_type_to_str(FR_TYPE_VENDOR));
 		return NULL;
 	}
 
@@ -2833,7 +2833,7 @@ fr_dict_enum_value_t *fr_dict_enum_by_value(fr_dict_attr_t const *da, fr_value_b
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
 	if (!ext) {
 		fr_strerror_printf("VALUE cannot be defined for %s attributes",
-				   fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+				   fr_type_to_str(da->type));
 		return NULL;
 	}
 
@@ -2881,7 +2881,7 @@ fr_dict_enum_value_t *fr_dict_enum_by_name(fr_dict_attr_t const *da, char const 
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
 	if (!ext) {
 		fr_strerror_printf("VALUE cannot be defined for %s attributes",
-				   fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+				   fr_type_to_str(da->type));
 		return NULL;
 	}
 
@@ -3447,8 +3447,8 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 
 		if (da->type != p->type) {
 			fr_strerror_printf("Attribute '%s' should be type %s, but defined as type %s", da->name,
-					   fr_table_str_by_value(fr_value_box_type_table, p->type, "?Unknown?"),
-					   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
+					   fr_type_to_str(p->type),
+					   fr_type_to_str(da->type));
 			return -1;
 		}
 
@@ -4065,12 +4065,12 @@ void fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da)
 		fr_assert_msg(fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_CHILDREN),
 			      "CONSISTENCY CHECK FAILED %s[%u]: %s missing 'children' extension",
 			      file, line,
-			      fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+			      fr_type_to_str(da->type));
 
 		fr_assert_msg(fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_NAMESPACE),
 			      "CONSISTENCY CHECK FAILED %s[%u]: %s missing 'namespace' extension",
 			      file, line,
-			      fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+			      fr_type_to_str(da->type));
 
 		/*
 		 *	Check the namespace hash table is ok

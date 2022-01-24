@@ -353,7 +353,7 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *d
 
 					if (tmpl_cast_in_place(map->rhs, tmpl_da(map->lhs)->type, tmpl_da(map->lhs)) < 0) {
 						cf_log_err(map->ci, "Failed to parse data type %s from string: %pV",
-							   fr_table_str_by_value(fr_value_box_type_table, tmpl_da(map->lhs)->type, "<UNKNOWN>"),
+							   fr_type_to_str(tmpl_da(map->lhs)->type),
 							   fr_box_strvalue_len(map->rhs->name, map->rhs->len));
 						return false;
 					} /* else the cast was successful */
@@ -501,7 +501,7 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *d
 
 	if (tmpl_rules_cast(c->data.map->lhs) != FR_TYPE_NULL) {
 		cf_log_err(map->ci, "Cannot cast virtual attribute %s to %s", map->lhs->name,
-			   fr_table_str_by_value(fr_value_box_type_table, c->data.map->lhs->type, "<INVALID>"));
+			   fr_type_to_str(c->data.map->lhs->type));
 		return false;
 	}
 
@@ -617,7 +617,7 @@ static bool pass2_fixup_map(map_t *map, tmpl_rules_t const *rules, fr_dict_attr_
 
 		default:
 			cf_log_err(map->ci, "Sublists can only be assigned to structural attributes, not to type %s",
-				fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+				fr_type_to_str(da->type));
 			return false;
 		}
 
@@ -1037,8 +1037,8 @@ int unlang_fixup_update(map_t *map, UNUSED void *ctx)
 		 */
 		if (tmpl_cast_in_place(map->rhs, type, tmpl_da(map->lhs)) < 0) {
 			cf_log_perr(map->ci, "Cannot convert RHS value (%s) to LHS attribute type (%s)",
-				    fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
-				    fr_table_str_by_value(fr_value_box_type_table, tmpl_da(map->lhs)->type, "<INVALID>"));
+				    fr_type_to_str(FR_TYPE_STRING),
+				    fr_type_to_str(tmpl_da(map->lhs)->type));
 			return -1;
 		}
 
@@ -1164,8 +1164,8 @@ static int unlang_fixup_filter(map_t *map, UNUSED void *ctx)
 		 */
 		if (tmpl_cast_in_place(map->rhs, type, tmpl_da(map->lhs)) < 0) {
 			cf_log_perr(map->ci, "Cannot convert RHS value (%s) to LHS attribute type (%s)",
-				    fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
-				    fr_table_str_by_value(fr_value_box_type_table, tmpl_da(map->lhs)->type, "<INVALID>"));
+				    fr_type_to_str(FR_TYPE_STRING),
+				    fr_type_to_str(tmpl_da(map->lhs)->type));
 			return -1;
 		}
 	} /* else we can't precompile the data */
@@ -2568,7 +2568,7 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	htype = fr_htrie_hint(type);
 	if (htype == FR_HTRIE_INVALID) {
 		cf_log_err(cs, "Invalid data type '%s' used for 'switch' statement",
-			    fr_table_str_by_value(fr_value_box_type_table, type, "???"));
+			    fr_type_to_str(type));
 		goto error;
 	}
 

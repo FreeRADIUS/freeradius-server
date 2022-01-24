@@ -538,7 +538,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 		default:
 			cf_log_err(conf, "Invalid key data type '%s'",
-				   fr_table_str_by_value(fr_value_box_type_table, inst->key_data_type, "<INVALID>"));
+				   fr_type_to_str(inst->key_data_type));
 			return -1;
 		}
 	} else {
@@ -551,7 +551,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	htype = fr_htrie_hint(inst->key_data_type);
 	if (htype == FR_HTRIE_INVALID) {
 		cf_log_err(conf, "Invalid data type '%s' used for CSV file.",
-			   fr_table_str_by_value(fr_value_box_type_table, inst->key_data_type, "???"));
+			   fr_type_to_str(inst->key_data_type));
 		return -1;
 	}
 

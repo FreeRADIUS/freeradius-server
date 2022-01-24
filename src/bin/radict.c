@@ -157,7 +157,7 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 	       fr_dict_root(dict)->name,
 	       oid_str,
 	       da->name,
-	       fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"),
+	       fr_type_to_str(da->type),
 	       flags);
 
 	if (print_values) {
@@ -175,7 +175,7 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 					 fr_dict_root(dict)->name,
 					 oid_str,
 					 da->name,
-	       			    	 fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"),
+	       			    	 fr_type_to_str(da->type),
 	       			    	 flags,
 	       			    	 enumv->name,
 	       			    	 enumv->value);

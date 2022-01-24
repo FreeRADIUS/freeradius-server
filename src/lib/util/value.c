@@ -94,64 +94,6 @@ static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_float32) == 4,
 static_assert(SIZEOF_MEMBER(fr_value_box_t, vb_float64) == 8,
 	      "vb_float64 has unexpected length");
 
-
-/** Map data types to names representing those types
- */
-fr_table_num_ordered_t const fr_value_box_type_table[] = {
-	{ L("null"),		FR_TYPE_NULL		},
-	{ L("string"),		FR_TYPE_STRING		},
-	{ L("octets"),		FR_TYPE_OCTETS		},
-
-	{ L("ipaddr"),		FR_TYPE_IPV4_ADDR	},
-	{ L("ipv4addr"),	FR_TYPE_IPV4_ADDR	},
-	{ L("ipv4prefix"),	FR_TYPE_IPV4_PREFIX	},
-	{ L("ipv6addr"),	FR_TYPE_IPV6_ADDR	},
-	{ L("ipv6prefix"),	FR_TYPE_IPV6_PREFIX	},
-	{ L("ifid"),		FR_TYPE_IFID		},
-	{ L("combo-ip"),	FR_TYPE_COMBO_IP_ADDR	},
-	{ L("combo-prefix"),	FR_TYPE_COMBO_IP_PREFIX	},
-	{ L("ether"),		FR_TYPE_ETHERNET	},
-
-	{ L("bool"),		FR_TYPE_BOOL		},
-
-	{ L("uint8"),        	FR_TYPE_UINT8		},
-	{ L("uint16"),        	FR_TYPE_UINT16		},
-	{ L("uint32"),		FR_TYPE_UINT32		},
-	{ L("uint64"),		FR_TYPE_UINT64		},
-
-	{ L("int8"),		FR_TYPE_INT8 		},
-	{ L("int16"),		FR_TYPE_INT16		},
-	{ L("int32"),         	FR_TYPE_INT32		},
-	{ L("int64"),		FR_TYPE_INT64		},
-
-	{ L("float32"),		FR_TYPE_FLOAT32		},
-	{ L("float64"),		FR_TYPE_FLOAT64		},
-
-	{ L("date"),		FR_TYPE_DATE		},
-	{ L("time_delta"),	FR_TYPE_TIME_DELTA	},
-
-	{ L("size"),		FR_TYPE_SIZE		},
-
-	{ L("tlv"),		FR_TYPE_TLV		},
-	{ L("struct"),        	FR_TYPE_STRUCT		},
-
-	{ L("vsa"),          	FR_TYPE_VSA		},
-	{ L("vendor"),        	FR_TYPE_VENDOR		},
-	{ L("group"),        	FR_TYPE_GROUP		},
-
-	/*
-	 *	Alternative names
-	 */
-	{ L("cidr"),         	FR_TYPE_IPV4_PREFIX	},
-	{ L("byte"),		FR_TYPE_UINT8		},
-	{ L("short"),		FR_TYPE_UINT16		},
-	{ L("integer"),		FR_TYPE_UINT32		},
-	{ L("integer64"),	FR_TYPE_UINT64		},
-	{ L("decimal"),		FR_TYPE_FLOAT64		},
-	{ L("signed"),        	FR_TYPE_INT32		}
-};
-size_t fr_value_box_type_table_len = NUM_ELEMENTS(fr_value_box_type_table);
-
 /** How many bytes on-the-wire would a #fr_value_box_t value consume
  *
  * This is for the generic NETWORK format.  For field sizes in the in-memory
@@ -1388,7 +1330,7 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 	unsupported:
 		fr_strerror_printf("%s: Cannot encode type \"%s\"",
 				   __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, value->type, "<INVALID>"));
+				   fr_type_to_str(value->type));
 		return FR_VALUE_BOX_NET_ERROR;
 	}
 
@@ -1656,14 +1598,14 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	if (len < min) {
 		fr_strerror_printf("Got truncated value parsing type \"%s\". "
 				   "Expected length >= %zu bytes, got %zu bytes",
-				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"),
+				   fr_type_to_str(type),
 				   min, len);
 		return -(len);
 	}
 	if (len > max) {
 		fr_strerror_printf("Found trailing garbage parsing type \"%s\". "
 				   "Expected length <= %zu bytes, got %zu bytes",
-				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"),
+				   fr_type_to_str(type),
 				   max, len);
 		return -(max);
 	}
@@ -1898,7 +1840,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	case FR_TYPE_SIZE:
 	case FR_TYPE_NON_LEAF:
 		fr_strerror_printf("Cannot decode type \"%s\" - Is not a value",
-				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
+				   fr_type_to_str(type));
 		break;
 	}
 
@@ -1963,7 +1905,7 @@ int fr_value_box_to_key(uint8_t **out, size_t *outlen, fr_value_box_t const *val
 
 	default:
 		fr_strerror_printf("Invalid data type '%s' for getting key",
-				   fr_table_str_by_value(fr_value_box_type_table, value->type, "<INVALID>"));
+				   fr_type_to_str(value->type));
 		return -1;
 	}
 
@@ -1989,8 +1931,8 @@ static int fr_value_box_fixed_size_from_octets(fr_value_box_t *dst,
 	if (src->vb_length < network_min_size(dst_type)) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zd is smaller than "
 				   "destination type size %zd",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+				   fr_type_to_str(src->type),
+				   fr_type_to_str(dst_type),
 				   src->vb_length,
 				   network_min_size(dst_type));
 		return -1;
@@ -1999,8 +1941,8 @@ static int fr_value_box_fixed_size_from_octets(fr_value_box_t *dst,
 	if (src->vb_length > network_max_size(dst_type)) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Source length %zd is greater than "
 				   "destination type size %zd",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+				   fr_type_to_str(src->type),
+				   fr_type_to_str(dst_type),
 				   src->vb_length,
 				   network_max_size(dst_type));
 		return -1;
@@ -2217,8 +2159,8 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 		if (memcmp(src->vb_ip.addr.v6.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
 		bad_v6_prefix_map:
 			fr_strerror_printf("Invalid cast from %s to %s.  No IPv4-IPv6 mapping prefix",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+					   fr_type_to_str(src->type),
+					   fr_type_to_str(dst_type));
 			return -1;
 		}
 
@@ -2231,8 +2173,8 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 		if (src->vb_ip.prefix != 32) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Only /32 (not %i/) prefixes may be "
 					   "cast to IP address types",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+					   fr_type_to_str(src->type),
+					   fr_type_to_str(dst_type),
 					   src->vb_ip.prefix);
 			return -1;
 		}
@@ -2243,8 +2185,8 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 		if (src->vb_ip.prefix != 128) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Only /128 (not /%i) prefixes may be "
 					   "cast to IP address types",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+					   fr_type_to_str(src->type),
+					   fr_type_to_str(dst_type),
 					   src->vb_ip.prefix);
 			return -1;
 		}
@@ -2256,8 +2198,8 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 	case FR_TYPE_OCTETS:
 		if (src->vb_length != sizeof(dst->vb_ip.addr.v4.s_addr)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+					   fr_type_to_str(src->type),
+					   fr_type_to_str(dst_type),
 					   sizeof(dst->vb_ip.addr.v4.s_addr), src->vb_length);
 			return -1;
 		}
@@ -2275,8 +2217,8 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 
 	default:
 		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+				   fr_type_to_str(src->type),
+				   fr_type_to_str(dst_type));
 		return -1;
 	}
 
@@ -2332,8 +2274,8 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 		if (memcmp(src->vb_ip.addr.v6.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
 		bad_v6_prefix_map:
 			fr_strerror_printf("Invalid cast from %s to %s.  No IPv4-IPv6 mapping prefix",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+					   fr_type_to_str(src->type),
+					   fr_type_to_str(dst_type));
 			return -1;
 		}
 		memcpy(&dst->vb_ip.addr.v4.s_addr, &src->vb_ip.addr.v6.s6_addr[sizeof(v4_v6_map)],
@@ -2346,8 +2288,8 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 
 		if (src->vb_ip.prefix < (sizeof(v4_v6_map) << 3)) {
 			fr_strerror_printf("Invalid cast from %s to %s. Expected prefix >= %u bits got %u bits",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+					   fr_type_to_str(src->type),
+					   fr_type_to_str(dst_type),
 					   (unsigned int)(sizeof(v4_v6_map) << 3), src->vb_ip.prefix);
 			return -1;
 		}
@@ -2363,8 +2305,8 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 	case FR_TYPE_OCTETS:
 		if (src->vb_length != sizeof(dst->vb_ip.addr.v4.s_addr) + 1) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+					   fr_type_to_str(src->type),
+					   fr_type_to_str(dst_type),
 					   sizeof(dst->vb_ip.addr.v4.s_addr) + 1, src->vb_length);
 			return -1;
 		}
@@ -2384,8 +2326,8 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 
 	default:
 		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+				   fr_type_to_str(src->type),
+				   fr_type_to_str(dst_type));
 		return -1;
 	}
 
@@ -2452,8 +2394,8 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 		if (src->vb_ip.prefix != 32) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Only /32 (not /%i) prefixes may be "
 			   		   "cast to IP address types",
-			   		   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+			   		   fr_type_to_str(src->type),
+					   fr_type_to_str(dst_type),
 					   src->vb_ip.prefix);
 			return -1;
 		}
@@ -2470,8 +2412,8 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 		if (src->vb_ip.prefix != 128) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Only /128 (not /%i) prefixes may be "
 			   		   "cast to IP address types",
-			   		   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+			   		   fr_type_to_str(src->type),
+					   fr_type_to_str(dst_type),
 					   src->vb_ip.prefix);
 			return -1;
 		}
@@ -2483,8 +2425,8 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 	case FR_TYPE_OCTETS:
 		if (src->vb_length != sizeof(dst->vb_ip.addr.v6.s6_addr)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+					   fr_type_to_str(src->type),
+					   fr_type_to_str(dst_type),
 					   sizeof(dst->vb_ip.addr.v6.s6_addr), src->vb_length);
 			return -1;
 		}
@@ -2493,8 +2435,8 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 
 	default:
 		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+				   fr_type_to_str(src->type),
+				   fr_type_to_str(dst_type));
 		break;
 	}
 
@@ -2574,8 +2516,8 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 	case FR_TYPE_OCTETS:
 		if (src->vb_length != (sizeof(dst->vb_ip.addr.v6.s6_addr) + 2)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Needed octet string of length %zu, got %zu",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+					   fr_type_to_str(src->type),
+					   fr_type_to_str(dst_type),
 					   sizeof(dst->vb_ip.addr.v6.s6_addr) + 2, src->vb_length);
 			return -1;
 		}
@@ -2586,8 +2528,8 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 
 	default:
 		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+				   fr_type_to_str(src->type),
+				   fr_type_to_str(dst_type));
 		return -1;
 	}
 	return 0;
@@ -2647,8 +2589,8 @@ static inline int fr_value_box_cast_to_ethernet(TALLOC_CTX *ctx, fr_value_box_t 
 
 	default:
 		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+				   fr_type_to_str(src->type),
+				   fr_type_to_str(dst_type));
 		return -1;
 	}
 
@@ -2744,8 +2686,8 @@ static inline int fr_value_box_cast_to_bool(TALLOC_CTX *ctx, fr_value_box_t *dst
 
 	default:
 		fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+				   fr_type_to_str(src->type),
+				   fr_type_to_str(dst_type));
 		return -1;
 	}
 
@@ -2774,15 +2716,15 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 	 */
 	if (!fr_cond_assert_msg(len > 0, "Invalid cast from %s to %s. "
 			        "invalid source type len, expected > 0, got %zu",
-			        fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-			        fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+			        fr_type_to_str(src->type),
+			        fr_type_to_str(dst_type),
 			        len)) return -1;
 
 	if (!fr_cond_assert_msg(len <= sizeof(uint64_t),
 				"Invalid cast from %s to %s. "
 				"invalid source type len, expected <= %zu, got %zu",
-				fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+				fr_type_to_str(src->type),
+				fr_type_to_str(dst_type),
 				sizeof(uint64_t), len)) return -1;
 #endif
 
@@ -2843,8 +2785,8 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 		if ((int64_t)tmp < min) {
 			fr_strerror_printf("Invalid cast from %s to %s.  %"PRId64" "
 					   "outside value range %"PRId64"-%"PRIu64,
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+					   fr_type_to_str(src->type),
+					   fr_type_to_str(dst_type),
 					   (int64_t)tmp,
 					   min, fr_value_box_integer_max[dst_type]);
 			return -1;
@@ -2852,8 +2794,8 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 	} else if (tmp > fr_value_box_integer_max[dst_type]) {
 		fr_strerror_printf("Invalid cast from %s to %s.  %"PRIu64" "
 				   "outside value range 0-%"PRIu64,
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+				   fr_type_to_str(src->type),
+				   fr_type_to_str(dst_type),
 				   tmp, fr_value_box_integer_max[dst_type]);
 		return -1;
 	}
@@ -2998,8 +2940,8 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 
 bad_cast:
 	fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-			   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-			   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+			   fr_type_to_str(src->type),
+			   fr_type_to_str(dst_type));
 	return -1;
 }
 
@@ -3106,8 +3048,8 @@ static inline int fr_value_box_cast_to_float(UNUSED TALLOC_CTX *ctx, fr_value_bo
 
 bad_cast:
 	fr_strerror_printf("Invalid cast from %s to %s.  Unsupported",
-			   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-			   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+			   fr_type_to_str(src->type),
+			   fr_type_to_str(dst_type));
 	return -1;
 }
 
@@ -3141,8 +3083,8 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 
 	if (fr_type_is_non_leaf(dst_type)) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Can only cast simple data types",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+				   fr_type_to_str(src->type),
+				   fr_type_to_str(dst_type));
 		return -1;
 	}
 
@@ -3233,8 +3175,8 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	case FR_TYPE_VOID:
 	case FR_TYPE_MAX:
 		fr_strerror_printf("Invalid cast from %s to %s.  Invalid destination type",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+				   fr_type_to_str(src->type),
+				   fr_type_to_str(dst_type));
 		return -1;
 	}
 
@@ -3251,8 +3193,8 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		if (src->vb_length < network_min_size(dst_type)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zd is smaller than "
 					   "destination type size %zd",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+					   fr_type_to_str(src->type),
+					   fr_type_to_str(dst_type),
 					   src->vb_length,
 					   network_min_size(dst_type));
 			return -1;
@@ -3261,8 +3203,8 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		if (src->vb_length > network_max_size(dst_type)) {
 			fr_strerror_printf("Invalid cast from %s to %s.  Source length %zd is greater than "
 					   "destination type size %zd",
-					   fr_table_str_by_value(fr_value_box_type_table, src->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"),
+					   fr_type_to_str(src->type),
+					   fr_type_to_str(dst_type),
 					   src->vb_length,
 					   network_max_size(dst_type));
 			return -1;
@@ -3402,7 +3344,7 @@ int fr_value_unbox_ipaddr(fr_ipaddr_t *dst, fr_value_box_t *src)
 {
 	if (!fr_type_is_ip(src->type)) {
 		fr_strerror_printf("Unboxing failed.  Needed IPv4/6 addr/prefix, had type %s",
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "?Unknown?"));
+				   fr_type_to_str(src->type));
 		return -1;
 	}
 
@@ -4005,8 +3947,8 @@ int fr_value_box_bstrn_append(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *
 
 	if (dst->type != FR_TYPE_STRING) {
 		fr_strerror_printf("%s: Expected boxed value of type %s, got type %s", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_STRING, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
+				   fr_type_to_str(FR_TYPE_STRING),
+				   fr_type_to_str(dst->type));
 		return -1;
 	}
 
@@ -4287,8 +4229,8 @@ int fr_value_box_mem_append(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const 
 
 	if (dst->type != FR_TYPE_OCTETS) {
 		fr_strerror_printf("%s: Expected boxed value of type %s, got type %s", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_OCTETS, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, dst->type, "<INVALID>"));
+				   fr_type_to_str(FR_TYPE_OCTETS),
+				   fr_type_to_str(dst->type));
 		return -1;
 	}
 
@@ -4468,7 +4410,7 @@ fr_slen_t fr_value_box_from_numeric_substr(fr_value_box_t *dst, fr_type_t dst_ty
 
 		if (err == FR_SBUFF_PARSE_ERROR_NOT_FOUND) {
 			fr_strerror_printf("Failed parsing string as type '%s'",
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+					   fr_type_to_str(dst_type));
 		} else {
 			fr_sbuff_parse_error_to_strerror(err);
 		}
@@ -4969,7 +4911,7 @@ parse:
 		break;
 
 	default:
-		fr_strerror_printf("Cannot parse input as data type %s", fr_table_str_by_value(fr_value_box_type_table, dst_type, "<INVALID>"));
+		fr_strerror_printf("Cannot parse input as data type %s", fr_type_to_str(dst_type));
 		return -1;
 	}
 
@@ -5540,7 +5482,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 
 	default:
 		fr_strerror_printf("Invalid argument.  Can't concatenate boxes to type %s",
-				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
+				   fr_type_to_str(type));
 		return -1;
 	}
 

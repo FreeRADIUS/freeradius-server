@@ -26,6 +26,63 @@ RCSID("$Id$")
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/value.h>
 
+/** Map data types to names representing those types
+ */
+fr_table_num_ordered_t const fr_type_table[] = {
+	{ L("null"),		FR_TYPE_NULL		},
+	{ L("string"),		FR_TYPE_STRING		},
+	{ L("octets"),		FR_TYPE_OCTETS		},
+
+	{ L("ipaddr"),		FR_TYPE_IPV4_ADDR	},
+	{ L("ipv4addr"),	FR_TYPE_IPV4_ADDR	},
+	{ L("ipv4prefix"),	FR_TYPE_IPV4_PREFIX	},
+	{ L("ipv6addr"),	FR_TYPE_IPV6_ADDR	},
+	{ L("ipv6prefix"),	FR_TYPE_IPV6_PREFIX	},
+	{ L("ifid"),		FR_TYPE_IFID		},
+	{ L("combo-ip"),	FR_TYPE_COMBO_IP_ADDR	},
+	{ L("combo-prefix"),	FR_TYPE_COMBO_IP_PREFIX	},
+	{ L("ether"),		FR_TYPE_ETHERNET	},
+
+	{ L("bool"),		FR_TYPE_BOOL		},
+
+	{ L("uint8"),        	FR_TYPE_UINT8		},
+	{ L("uint16"),        	FR_TYPE_UINT16		},
+	{ L("uint32"),		FR_TYPE_UINT32		},
+	{ L("uint64"),		FR_TYPE_UINT64		},
+
+	{ L("int8"),		FR_TYPE_INT8 		},
+	{ L("int16"),		FR_TYPE_INT16		},
+	{ L("int32"),         	FR_TYPE_INT32		},
+	{ L("int64"),		FR_TYPE_INT64		},
+
+	{ L("float32"),		FR_TYPE_FLOAT32		},
+	{ L("float64"),		FR_TYPE_FLOAT64		},
+
+	{ L("date"),		FR_TYPE_DATE		},
+	{ L("time_delta"),	FR_TYPE_TIME_DELTA	},
+
+	{ L("size"),		FR_TYPE_SIZE		},
+
+	{ L("tlv"),		FR_TYPE_TLV		},
+	{ L("struct"),        	FR_TYPE_STRUCT		},
+
+	{ L("vsa"),          	FR_TYPE_VSA		},
+	{ L("vendor"),        	FR_TYPE_VENDOR		},
+	{ L("group"),        	FR_TYPE_GROUP		},
+
+	/*
+	 *	Alternative names
+	 */
+	{ L("cidr"),         	FR_TYPE_IPV4_PREFIX	},
+	{ L("byte"),		FR_TYPE_UINT8		},
+	{ L("short"),		FR_TYPE_UINT16		},
+	{ L("integer"),		FR_TYPE_UINT32		},
+	{ L("integer64"),	FR_TYPE_UINT64		},
+	{ L("decimal"),		FR_TYPE_FLOAT64		},
+	{ L("signed"),        	FR_TYPE_INT32		}
+};
+size_t fr_type_table_len = NUM_ELEMENTS(fr_type_table);
+
 #define ARRAY_BEG(_type)	{ [_type] = true,
 #define ARRAY_MID(_type)	[_type] = true,
 #define ARRAY_END(_type)	[_type] = true }
@@ -454,16 +511,16 @@ fr_type_t fr_type_promote(fr_type_t a, fr_type_t b)
 	 */
 	if (unlikely(type_promote_table[a][b] != type_promote_table[b][a])) {
 		fr_strerror_printf("Inverse type mapping inconsistent for a = %s, b = %s",
-				   fr_table_str_by_value(fr_value_box_type_table, a, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, b, "<INVALID>"));
+				   fr_type_to_str(a),
+				   fr_type_to_str(b));
 
 		return FR_TYPE_NULL;
 	}
 
 	if (unlikely(type_promote_table[a][b] == FR_TYPE_NULL)) {
 		fr_strerror_printf("No type promotions for a = %s, b = %s",
-				   fr_table_str_by_value(fr_value_box_type_table, a, "<INVALID>"),
-				   fr_table_str_by_value(fr_value_box_type_table, b, "<INVALID>"));
+				   fr_type_to_str(a),
+				   fr_type_to_str(b));
 		return FR_TYPE_NULL;
 	}
 

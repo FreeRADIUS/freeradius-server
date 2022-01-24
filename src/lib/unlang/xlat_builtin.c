@@ -1059,7 +1059,7 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 		RIDEBUG3("attr       : %u", vp->da->attr);
 		vendor = fr_dict_vendor_by_da(vp->da);
 		if (vendor) RIDEBUG2("vendor     : %i (%s)", vendor->pen, vendor->name);
-		RIDEBUG3("type       : %s", fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<INVALID>"));
+		RIDEBUG3("type       : %s", fr_type_to_str(vp->vp_type));
 
 		if (fr_box_is_variable_size(&vp->data)) {
 			RIDEBUG3("length     : %zu", vp->vp_length);
@@ -1067,12 +1067,12 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 
 		if (!RDEBUG_ENABLED4) continue;
 
-		for (i = 0; i < fr_value_box_type_table_len; i++) {
+		for (i = 0; i < fr_type_table_len; i++) {
 			int pad;
 
 			fr_value_box_t *dst = NULL;
 
-			type = &fr_value_box_type_table[i];
+			type = &fr_type_table[i];
 
 			if ((fr_type_t) type->value == vp->vp_type) goto next_type;
 
@@ -1251,7 +1251,7 @@ static xlat_action_t xlat_func_integer(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	default:
 	error:
 		RPEDEBUG("Failed converting %pV (%s) to an integer", in_vb,
-			 fr_table_str_by_value(fr_value_box_type_table, in_vb->type, "???"));
+			 fr_type_to_str(in_vb->type));
 		talloc_free(in_vb);
 		return XLAT_ACTION_FAIL;
 

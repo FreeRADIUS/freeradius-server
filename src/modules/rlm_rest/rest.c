@@ -764,7 +764,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 		fr_assert(vps);
 
 		RINDENT();
-		RDEBUG3("Type  : %s", fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+		RDEBUG3("Type  : %s", fr_type_to_str(da->type));
 
 		q = strchr(p, '&');
 		len = (!q) ? (rawlen - (p - raw)) : (unsigned)(q - p);

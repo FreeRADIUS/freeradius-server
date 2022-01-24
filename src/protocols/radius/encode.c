@@ -398,7 +398,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 	if (fr_type_is_structural(da->type)) {
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, da_stack->da[depth]->type, "?Unknown?"));
+				   fr_type_to_str(da_stack->da[depth]->type));
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
@@ -617,7 +617,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	}
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "value %s",
-			  fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<UNKNOWN>"));
+			  fr_type_to_str(vp->vp_type));
 
 	/*
 	 *	Rebuilds the TLV stack for encoding the next attribute
@@ -1110,7 +1110,7 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 
 	if (da->type != FR_TYPE_VENDOR) {
 		fr_strerror_printf("%s: Expected type \"vendor\" got \"%s\"", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
+				   fr_type_to_str(da->type));
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
@@ -1177,7 +1177,7 @@ static ssize_t encode_vsa(fr_dbuff_t *dbuff,
 
 	if (da->type != FR_TYPE_VSA) {
 		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
+				   fr_type_to_str(da->type));
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
@@ -1357,7 +1357,7 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned i
 	case FR_TYPE_VENDOR:
 		/* FR_TYPE_STRUCT is actually allowed... */
 		fr_strerror_printf("%s: Expected leaf type got \"%s\"", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, da_stack->da[depth]->type, "?Unknown?"));
+				   fr_type_to_str(da_stack->da[depth]->type));
 		return PAIR_ENCODE_FATAL_ERROR;
 
 	default:

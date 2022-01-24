@@ -1262,7 +1262,7 @@ static bool attr_valid(UNUSED fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	default:
 		fr_strerror_printf("The 'encrypt' flag cannot be used with attributes of type '%s'",
-				   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
+				   fr_type_to_str(type));
 		return false;
 	}
 

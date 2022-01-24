@@ -585,8 +585,7 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 			/*
 			 *	Add "type" to newly created keys.
 			 */
-			MEM(type_name = json_object_new_string(fr_table_str_by_value(fr_value_box_type_table,
-										     vp->vp_type, "<INVALID>")));
+			MEM(type_name = json_object_new_string(fr_type_to_str(vp->vp_type)));
 			json_object_object_add_ex(vp_object, "type", type_name, JSON_C_OBJECT_KEY_IS_CONSTANT);
 
 			/*
@@ -845,8 +844,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 			MEM(name = json_object_new_string(fr_sbuff_start(&attr_name)));
 			json_object_object_add_ex(attrobj, "name", name, JSON_C_OBJECT_KEY_IS_CONSTANT);
 
-			MEM(type_name = json_object_new_string(fr_table_str_by_value(fr_value_box_type_table,
-										     vp->vp_type, "<INVALID>")));
+			MEM(type_name = json_object_new_string(fr_type_to_str(vp->vp_type)));
 			json_object_object_add_ex(attrobj, "type", type_name, JSON_C_OBJECT_KEY_IS_CONSTANT);
 		}
 

@@ -100,8 +100,7 @@ ssize_t cond_print(fr_sbuff_t *out, fr_cond_t const *in)
 		case COND_TYPE_MAP:
 			if (tmpl_rules_cast(c->data.map->lhs)) {
 				FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "<%s>",
-							   fr_table_str_by_value(fr_value_box_type_table,
-										 tmpl_rules_cast(c->data.map->lhs), "??"));
+							   fr_type_to_str(tmpl_rules_cast(c->data.map->lhs)));
 			}
 			FR_SBUFF_RETURN(map_print, &our_out, c->data.map);
 			break;
@@ -206,8 +205,8 @@ static int cond_cast_tmpl(tmpl_t *vpt, fr_type_t type, tmpl_t *other)
 	fr_assert(tmpl_is_data(vpt));
 	fr_assert_msg(fr_type_is_null(tmpl_rules_cast(vpt)) || (tmpl_rules_cast(vpt) == tmpl_value_type(vpt)),
 		      "Cast mismatch, target was %s, but output was %s",
-		      fr_table_str_by_value(fr_value_box_type_table, tmpl_rules_cast(vpt), "<INVALID>"),
-		      fr_table_str_by_value(fr_value_box_type_table, tmpl_value_type(vpt), "<INVALID>"));
+		      fr_type_to_str(tmpl_rules_cast(vpt)),
+		      fr_type_to_str(tmpl_value_type(vpt)));
 	(void) tmpl_cast_set(vpt, FR_TYPE_NULL);
 	return 0;
 }

@@ -212,8 +212,8 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t c
 	child = unknown;		/* const issues */
 
 	FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
-		       fr_table_str_by_value(fr_value_box_type_table, parent->type, "<invalid>"), parent->name,
-		       fr_table_str_by_value(fr_value_box_type_table, child->type, "<invalid>"), child->name);
+		       fr_type_to_str(parent->type), parent->name,
+		       fr_type_to_str(child->type), child->name);
 
 	slen = decode_value(ctx, out, child, data, data_len);
 	if (slen < 0) fr_dict_unknown_free(&child);
@@ -333,8 +333,8 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t c
 			child = unknown;
 		}
 		FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
-			       fr_table_str_by_value(fr_value_box_type_table, parent->type, "<invalid>"), parent->name,
-			       fr_table_str_by_value(fr_value_box_type_table, child->type, "<invalid>"), child->name);
+			       fr_type_to_str(parent->type), parent->name,
+			       fr_type_to_str(child->type), child->name);
 
 		tlv_len = decode_value(ctx, out, child, p + 2, p[1]);
 		if (tlv_len < 0) {
@@ -543,8 +543,8 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (!da) return -1;
 	}
 	FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
-		       fr_table_str_by_value(fr_value_box_type_table, parent->type, "<invalid>"), parent->name,
-		       fr_table_str_by_value(fr_value_box_type_table, da->type, "<invalid>"), da->name);
+		       fr_type_to_str(parent->type), parent->name,
+		       fr_type_to_str(da->type), da->name);
 
 	if (da->type == FR_TYPE_VSA) return decode_vsa(ctx, out, da, data + 2, data[1]);
 

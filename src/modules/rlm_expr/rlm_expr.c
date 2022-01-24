@@ -285,7 +285,7 @@ static bool get_number(request_t *request, char const **string, int64_t *answer)
 
 			case FR_TYPE_STRUCTURAL:
 				REDEBUG("Cannot convert %s of type '%s' to integer",
-					vp->da->name, fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "?Unknown?"));
+					vp->da->name, fr_type_to_str(vp->vp_type));
 				goto error;
 
 			default:

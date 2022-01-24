@@ -142,7 +142,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_VSA:
 		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
+				   fr_type_to_str(da->type));
 		return PAIR_ENCODE_FATAL_ERROR;
 
 	default:
@@ -655,7 +655,7 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 
 	if (da_stack->da[depth]->type != FR_TYPE_TLV) {
 		fr_strerror_printf("%s: Expected type \"tlv\" got \"%s\"", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, da_stack->da[depth]->type, "?Unknown?"));
+				   fr_type_to_str(da_stack->da[depth]->type));
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
@@ -715,7 +715,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	 */
 	if (da->type != FR_TYPE_VSA) {
 		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
+				   fr_type_to_str(da->type));
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
@@ -727,7 +727,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 
 	if (dv->type != FR_TYPE_VENDOR) {
 		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
-				   fr_table_str_by_value(fr_value_box_type_table, dv->type, "?Unknown?"));
+				   fr_type_to_str(dv->type));
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 

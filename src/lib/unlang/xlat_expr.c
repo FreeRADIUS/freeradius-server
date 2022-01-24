@@ -645,8 +645,7 @@ static xlat_exp_t *xlat_expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type)
 	xlat_exp_set_type(node, XLAT_BOX);
 	xlat_exp_set_name_buffer_shallow(node,
 					 talloc_strdup(node,
-						       fr_table_str_by_value(fr_value_box_type_table,
-									     type, "<INVALID>")));
+						       fr_type_to_str(type)));
 
 	fr_value_box_init(&node->data, FR_TYPE_UINT8, attr_cast_base, false);
 	node->data.vb_uint8 = type;
@@ -746,7 +745,7 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 
 		fr_sbuff_skip_whitespace(&in);
 
-		fr_sbuff_out_by_longest_prefix(&slen, &cast_type, fr_value_box_type_table, &in, FR_TYPE_VOID);
+		fr_sbuff_out_by_longest_prefix(&slen, &cast_type, fr_type_table, &in, FR_TYPE_VOID);
 		if (cast_type == FR_TYPE_VOID) {
 			fr_sbuff_set(&in, &marker);
 			goto check_more;

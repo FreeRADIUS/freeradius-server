@@ -291,7 +291,7 @@ fr_dict_attr_t	*fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx,
 
 	default:
 		fr_strerror_printf("Unknown vendors can only be parented by a vsa, not a %s",
-				   fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"));
+				   fr_type_to_str(parent->type));
 		return NULL;
 	}
 }
@@ -315,7 +315,7 @@ fr_dict_attr_t *fr_dict_unknown_tlv_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t co
 		fr_strerror_printf("%s: Cannot allocate unknown tlv attribute (%u) with parent type %s",
 				   __FUNCTION__,
 				   num,
-				   fr_table_str_by_value(fr_value_box_type_table, parent->type, "<INVALID>"));
+				   fr_type_to_str(parent->type));
 		return NULL;
 	}
 
@@ -342,7 +342,7 @@ fr_dict_attr_t	*fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t c
 		fr_strerror_printf("%s: Cannot allocate unknown octets attribute (%u) with parent type %s",
 				   __FUNCTION__,
 				   num,
-				   fr_table_str_by_value(fr_value_box_type_table, parent->type, "<INVALID>"));
+				   fr_type_to_str(parent->type));
 		return NULL;
 	}
 
@@ -477,8 +477,7 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 			default:
 				fr_strerror_printf("Parent OID component (%s) specified a non-structural type (%s)",
 						   our_parent->name,
-						   fr_table_str_by_value(fr_value_box_type_table,
-									 our_parent->type, "<INVALID>"));
+						   fr_type_to_str(our_parent->type));
 				goto error;
 			}
 		} else {
@@ -580,8 +579,7 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 				 */
 				if (fr_sbuff_is_char(in, '.')) {
 					fr_strerror_printf("Interior OID component cannot proceed a %s type",
-							   fr_table_str_by_value(fr_value_box_type_table,
-										 our_parent->type, "<INVALID>"));
+							   fr_type_to_str(our_parent->type));
 					goto error;
 				}
 				flags.is_raw = is_raw;

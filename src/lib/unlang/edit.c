@@ -336,8 +336,8 @@ static int apply_edits(request_t *request, unlang_frame_state_edit_t *state, map
 
 		default:
 			fr_strerror_printf("Cannot assign '%s' type to structural type '%s'",
-					   fr_table_str_by_value(fr_value_box_type_table, rhs_box->type, "<INVALID>"),
-					   fr_table_str_by_value(fr_value_box_type_table, state->lhs.vp->vp_type, "<INVALID>"));
+					   fr_type_to_str(rhs_box->type),
+					   fr_type_to_str(state->lhs.vp->vp_type));
 			return -1;
 		}
 

@@ -100,7 +100,7 @@ static int fr_lua_marshall(request_t *request, lua_State *L, fr_pair_t const *vp
 		slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(buff, sizeof(buff)), vp, T_BARE_WORD);
 		if (slen < 0) {
 			REDEBUG("Cannot convert %s to Lua type, insufficient buffer space",
-				fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<INVALID>"));
+				fr_type_to_str(vp->vp_type));
 			return -1;
 		}
 
@@ -174,7 +174,7 @@ static int fr_lua_marshall(request_t *request, lua_State *L, fr_pair_t const *vp
 		break;
 
 	case FR_TYPE_NON_LEAF:
-		REDEBUG("Cannot convert %s to Lua type", fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<INVALID>"));
+		REDEBUG("Cannot convert %s to Lua type", fr_type_to_str(vp->vp_type));
 		return -1;
 	}
 	return 0;

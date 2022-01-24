@@ -65,9 +65,6 @@ extern "C" {
 #  define _CONST
 #endif
 
-extern fr_table_num_ordered_t const fr_value_box_type_table[];
-extern size_t fr_value_box_type_table_len;
-
 extern size_t const fr_value_box_field_sizes[];
 
 extern size_t const fr_value_box_offsets[];
@@ -597,8 +594,8 @@ static inline int fr_value_unbox_ethernet_addr(fr_ethernet_t *dst, fr_value_box_
 {
 	if (unlikely(src->type != FR_TYPE_ETHERNET)) { \
 		fr_strerror_printf("Unboxing failed.  Needed type %s, had type %s",
-				   fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_ETHERNET, "?Unknown?"),
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "?Unknown?"));
+				   fr_type_to_str(FR_TYPE_ETHERNET),
+				   fr_type_to_str(src->type));
 		return -1; \
 	}
 	memcpy(dst, src->vb_ether, sizeof(src->vb_ether));	/* Must be src, dst is a pointer */
@@ -609,8 +606,8 @@ static inline int fr_value_unbox_ethernet_addr(fr_ethernet_t *dst, fr_value_box_
 static inline int fr_value_unbox_##_field(_ctype *var, fr_value_box_t const *src) { \
 	if (unlikely(src->type != _type)) { \
 		fr_strerror_printf("Unboxing failed.  Needed type %s, had type %s", \
-				   fr_table_str_by_value(fr_value_box_type_table, _type, "?Unknown?"), \
-				   fr_table_str_by_value(fr_value_box_type_table, src->type, "?Unknown?")); \
+				   fr_type_to_str(_type), \
+				   fr_type_to_str(src->type)); \
 		return -1; \
 	} \
 	*var = src->vb_##_field; \

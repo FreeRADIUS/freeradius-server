@@ -79,7 +79,7 @@ void fr_proto_da_stack_print(char const *file, int line, char const *func, fr_da
 		fr_log(&default_log, L_DBG, file, line,
 		       "stk: %s [%i] %s: %s, vendor: 0x%x (%u), attr: 0x%x (%u)",
 		       (i == (int)depth) ? ">" : " ", i,
-		       fr_table_str_by_value(fr_value_box_type_table, da_stack->da[i]->type, "?Unknown?"),
+		       fr_type_to_str(da_stack->da[i]->type),
 		       da_stack->da[i]->name,
 		       fr_dict_vendor_num_by_da(da_stack->da[i]), fr_dict_vendor_num_by_da(da_stack->da[i]),
 		       da_stack->da[i]->attr, da_stack->da[i]->attr);

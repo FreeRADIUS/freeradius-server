@@ -1451,7 +1451,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	Double-check the length after decrypting the
 	 *	attribute.
 	 */
-	FR_PROTO_TRACE("Type \"%s\" (%u)", fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"), parent->type);
+	FR_PROTO_TRACE("Type \"%s\" (%u)", fr_type_to_str(parent->type), parent->type);
 
 	switch (parent->type) {
 	case FR_TYPE_LEAF:

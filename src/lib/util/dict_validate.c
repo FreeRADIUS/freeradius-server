@@ -103,7 +103,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		switch (type) {
 		default:
 			fr_strerror_printf("The 'array' flag cannot be used with attributes of type '%s'",
-					   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
+					   fr_type_to_str(type));
 			return false;
 
 		case FR_TYPE_IPV4_ADDR:
@@ -228,14 +228,14 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 		default:
 			fr_strerror_printf("Type %s cannot hold extra flags",
-					   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"));
+					   fr_type_to_str(type));
 			return false;
 		}
 
 		if ((flags->subtype == FLAG_LENGTH_UINT16) &&
 		    ((type != FR_TYPE_STRING) && (type != FR_TYPE_OCTETS) && (type != FR_TYPE_STRUCT))) {
 			fr_strerror_printf("The 'length' flag cannot be used used with type %s",
-					   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
+					   fr_type_to_str(type));
 			return false;
 		}
 
@@ -263,7 +263,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 		if ((flags->length != 2) && (flags->length != 4) && (flags->length != 8)) {
 			fr_strerror_printf("Invalid length %u for attribute of type '%s'",
-					   flags->length, fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
+					   flags->length, fr_type_to_str(type));
 			return false;
 		}
 
@@ -272,7 +272,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		    (flags->flag_time_res != FR_TIME_RES_USEC) &&
 		    (flags->flag_time_res != FR_TIME_RES_NSEC)) {
 			fr_strerror_printf("Invalid precision for attribute of type '%s'",
-					   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
+					   fr_type_to_str(type));
 			return false;
 		}
 		break;
@@ -323,7 +323,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		if (parent->type != FR_TYPE_VSA) {
 			fr_strerror_printf("Attributes of type 'vendor' MUST have a parent of type 'vsa' "
 					   "instead of '%s'",
-					   fr_table_str_by_value(fr_value_box_type_table, parent->type, "?Unknown?"));
+					   fr_type_to_str(parent->type));
 			return false;
 		}
 
@@ -382,7 +382,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		 */
 		if (!v) {
 			fr_strerror_printf("Attributes of type '%s' require a parent attribute",
-					   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"));
+					   fr_type_to_str(type));
 			return false;
 		}
 
@@ -422,7 +422,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	case FR_TYPE_NULL:
 		fr_strerror_printf("Attributes of type '%s' cannot be used in dictionaries",
-				   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"));
+				   fr_type_to_str(type));
 		return false;
 
 	default:
@@ -442,7 +442,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			    (flags->flag_time_res != FR_TIME_RES_MSEC) &&
 			    (flags->flag_time_res != FR_TIME_RES_NSEC)) {
 				fr_strerror_printf("Invalid precision for attribute of type '%s'",
-						   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
+						   fr_type_to_str(type));
 				return false;
 			}
 		} else if (!flags->extra) {
@@ -548,7 +548,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	default:
 		fr_strerror_printf("Attributes of type '%s' cannot have child attributes",
-				   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
+				   fr_type_to_str(type));
 		return false;
 	}
 

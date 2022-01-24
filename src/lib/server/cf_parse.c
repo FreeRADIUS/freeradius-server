@@ -538,7 +538,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		fr_assert(type < FR_TYPE_MAX);
 
 		cf_log_err(cp, "type '%s' (%i) is not supported in the configuration files",
-			   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"), type);
+			   fr_type_to_str(type), type);
 		goto error;
 	}
 

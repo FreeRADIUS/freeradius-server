@@ -161,8 +161,7 @@ static bool cond_eval_tmpl(request_t *request, tmpl_t const *in, fr_value_box_t 
 
 		if (fr_value_box_cast(box, box, tmpl_rules_cast(vpt), NULL, &vp->data) < 0) {
 			if (request) RPEDEBUG("Failed casting %pV to type %s", box,
-					      fr_table_str_by_value(fr_value_box_type_table,
-								    tmpl_rules_cast(vpt), "??"));
+					      fr_type_to_str(tmpl_rules_cast(vpt)));
 			goto done;
 		}
 		break;
@@ -509,8 +508,7 @@ static int cond_realize_attr(request_t *request, fr_value_box_t **realized, fr_v
 	fr_value_box_init_null(box);
 	if (fr_value_box_cast(request, box, cast_type, da, &vp->data) < 0) {
 		if (request) RPEDEBUG("Failed casting %pV to type %s", &vp->data,
-				      fr_table_str_by_value(fr_value_box_type_table,
-							    tmpl_rules_cast(vpt), "??"));
+				      fr_type_to_str(tmpl_rules_cast(vpt)));
 		return false;
 	}
 

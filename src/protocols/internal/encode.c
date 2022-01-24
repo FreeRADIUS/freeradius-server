@@ -219,7 +219,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 
 	default:
 		fr_strerror_printf("%s: Unexpected attribute type \"%s\"",
-				   __FUNCTION__, fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
+				   __FUNCTION__, fr_type_to_str(da->type));
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
@@ -250,7 +250,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff) - vlen, "header");
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&value_dbuff), vlen, "value %s",
-			  fr_table_str_by_value(fr_value_box_type_table, vp->vp_type, "<UNKNOWN>"));
+			  fr_type_to_str(vp->vp_type));
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }

@@ -995,7 +995,7 @@ static size_t parse_typed_value(command_result_t *result, fr_value_box_t *box, c
 	/*
 	 *	Parse data types
 	 */
-	type = fr_table_value_by_longest_prefix(&match_len, fr_value_box_type_table, in, inlen, FR_TYPE_NULL);
+	type = fr_table_value_by_longest_prefix(&match_len, fr_type_table, in, inlen, FR_TYPE_NULL);
 	if (fr_type_is_null(type)) {
 		RETURN_PARSE_ERROR(0);
 	}
@@ -1248,7 +1248,7 @@ static size_t command_calc(command_result_t *result, command_file_ctx_t *cc,
 			p += 2;
 			fr_skip_whitespace(p);
 
-			type = fr_table_value_by_longest_prefix(&match_len, fr_value_box_type_table, p, end - p, FR_TYPE_MAX);
+			type = fr_table_value_by_longest_prefix(&match_len, fr_type_table, p, end - p, FR_TYPE_MAX);
 			if (type == FR_TYPE_MAX) RETURN_PARSE_ERROR(0);
 			fr_value_box_init(out, type, NULL, false);
 		}

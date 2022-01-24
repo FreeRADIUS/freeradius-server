@@ -152,7 +152,7 @@ void tmpl_attr_ref_debug(const tmpl_attr_t *ar, int i)
 		FR_FAULT_LOG("\t[%u] %s %s %s%s%s%s (%p) attr %u",
 			     i,
 			     fr_table_str_by_value(attr_table, ar->type, "<INVALID>"),
-			     fr_table_str_by_value(fr_value_box_type_table, ar->da->type, "<INVALID>"),
+			     fr_type_to_str(ar->da->type),
 			     ar->da->name,
 			     ar->num != NUM_ANY ? "[" : "",
 			     ar->num != NUM_ANY ? fr_table_str_by_value(attr_num_table, ar->num, buffer) : "",
@@ -267,8 +267,7 @@ void tmpl_debug(tmpl_t const *vpt)
 		return;
 
 	case TMPL_TYPE_DATA:
-		FR_FAULT_LOG("\ttype       : %s", fr_table_str_by_value(fr_value_box_type_table,
-							    tmpl_value_type(vpt), "<INVALID>"));
+		FR_FAULT_LOG("\ttype       : %s", fr_type_to_str(tmpl_value_type(vpt)));
 		FR_FAULT_LOG("\tlen        : %zu", tmpl_value_length(vpt));
 		FR_FAULT_LOG("\tvalue      : %pV", tmpl_value(vpt));
 
@@ -1659,8 +1658,7 @@ do_suffix:
 			fr_strerror_printf("Parent type of nested attribute %s must be of type "
 					   "\"struct\", \"tlv\", \"vendor\", \"vsa\" or \"group\", got \"%s\"",
 					   da->name,
-					   fr_table_str_by_value(fr_value_box_type_table,
-					   			 da->type, "<INVALID>"));
+					   fr_type_to_str(da->type));
 			fr_sbuff_set(name, &m_s);
 			goto error;
 		}
@@ -2911,7 +2909,7 @@ ssize_t tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in)
 
 	if (fr_sbuff_next_if_char(&our_in, '<')) {
 		fr_sbuff_marker(&m, &our_in);
-		fr_sbuff_out_by_longest_prefix(&slen, &cast, fr_value_box_type_table, &our_in, FR_TYPE_NULL);
+		fr_sbuff_out_by_longest_prefix(&slen, &cast, fr_type_table, &our_in, FR_TYPE_NULL);
 		if (fr_type_is_null(cast)) {
 			fr_strerror_const("Unknown data type");
 			FR_SBUFF_ERROR_RETURN(&our_in);
@@ -2946,7 +2944,7 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 	switch (dst_type) {
 	default:
 		fr_strerror_printf("Forbidden data type '%s' in cast",
-				   fr_table_str_by_value(fr_value_box_type_table, dst_type, "??"));
+				   fr_type_to_str(dst_type));
 		return -1;
 
 	/*
@@ -3009,8 +3007,8 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 
 		if (!fr_type_cast(dst_type, src_type)) {
 			fr_strerror_printf("Cannot cast type '%s' to '%s'",
-					   fr_table_str_by_value(fr_value_box_type_table, src_type, "??"),
-					   fr_table_str_by_value(fr_value_box_type_table, dst_type, "??"));
+					   fr_type_to_str(src_type),
+					   fr_type_to_str(dst_type));
 			return -1;
 		}
 		break;
@@ -3694,8 +3692,8 @@ int tmpl_attr_unresolved_add(fr_dict_t *dict_def, tmpl_t *vpt,
 
 	if (type != da->type) {
 		fr_strerror_printf("Attribute %s of type %s already defined with type %s",
-				   da->name, fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"),
-				   fr_table_str_by_value(fr_value_box_type_table, da->type, "<UNKNOWN>"));
+				   da->name, fr_type_to_str(type),
+				   fr_type_to_str(da->type));
 		return -1;
 	}
 
@@ -4364,7 +4362,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "attribute \"%s\" (%s) not rooted in a dictionary",
 						     file, line, tmpl_da(vpt)->name,
-						     fr_table_str_by_value(fr_value_box_type_table, tmpl_da(vpt)->type, "<INVALID>"));
+						     fr_type_to_str(tmpl_da(vpt)->type));
 			}
 
 			da = tmpl_da(vpt);
@@ -4374,9 +4372,9 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 						     "and global dictionary pointer %p \"%s\" (%s) differ",
 						     file, line,
 						     tmpl_da(vpt), tmpl_da(vpt)->name,
-						     fr_table_str_by_value(fr_value_box_type_table, tmpl_da(vpt)->type, "<INVALID>"),
+						     fr_type_to_str(tmpl_da(vpt)->type),
 						     da, da->name,
-						     fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+						     fr_type_to_str(da->type));
 			}
 
 			if (tmpl_list(vpt) >= PAIR_LIST_UNKNOWN) {
@@ -4531,7 +4529,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 			/* nothing */
 		}
 
-		cast = fr_table_value_by_substr(fr_value_box_type_table, p, q - p, FR_TYPE_NULL);
+		cast = fr_table_value_by_substr(fr_type_table, p, q - p, FR_TYPE_NULL);
 		if (fr_type_is_null(cast)) {
 			return_P("Unknown data type");
 		}

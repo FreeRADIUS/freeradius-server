@@ -213,7 +213,7 @@ static xlat_action_t xlat_date_convert(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return date_convert_string(ctx, out, request, arg->vb_strvalue, inst);
 
 	default:
-		REDEBUG("Can't convert type %s into date", fr_table_str_by_value(fr_value_box_type_table, arg->type, "<INVALID>"));
+		REDEBUG("Can't convert type %s into date", fr_type_to_str(arg->type));
 	}
 
 	return XLAT_ACTION_FAIL;

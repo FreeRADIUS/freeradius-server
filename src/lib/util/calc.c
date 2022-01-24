@@ -573,7 +573,7 @@ static const fr_type_t upcast_cmp[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 static int invalid_type(fr_type_t type)
 {
 	fr_strerror_printf("Cannot perform mathematical operations on data type %s",
-			   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
+			   fr_type_to_str(type));
 	return -1;
 }
 
@@ -584,16 +584,16 @@ static int handle_result(fr_type_t type, fr_token_t op, int rcode)
 
 	} else if (rcode == ERR_UNDERFLOW) {
 		fr_strerror_printf("Value underflows '%s' when calculating result.",
-				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
+				   fr_type_to_str(type));
 
 	} else if (rcode == ERR_OVERFLOW) {
 		fr_strerror_printf("Value overflows '%s' when calculating result.",
-				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
+				   fr_type_to_str(type));
 
 	} else if (rcode == ERR_INVALID) {
 		fr_strerror_printf("Invalid assignment operator '%s' for result type '%s'.",
 				   fr_tokens[op],
-				   fr_table_str_by_value(fr_value_box_type_table, type, "<INVALID>"));
+				   fr_type_to_str(type));
 	}
 
 	return rcode;
@@ -1028,7 +1028,7 @@ static int cast_ipv4_addr(fr_value_box_t *out, fr_value_box_t const *in)
 	switch (in->type) {
 	default:
 		fr_strerror_printf("Cannot operate on ipaddr and %s",
-				   fr_table_str_by_value(fr_value_box_type_table, in->type, "<INVALID>"));
+				   fr_type_to_str(in->type));
 		return -1;
 
 	case FR_TYPE_IPV4_PREFIX:
@@ -1155,7 +1155,7 @@ static int calc_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_valu
 
 		default:
 			fr_strerror_printf("Invalid input data type '%s' for logical 'and'",
-					   fr_table_str_by_value(fr_value_box_type_table, a->type, "<INVALID>"));
+					   fr_type_to_str(a->type));
 
 			return -1;
 		}
@@ -1208,7 +1208,7 @@ static int cast_ipv6_addr(fr_value_box_t *out, fr_value_box_t const *in)
 	switch (in->type) {
 	default:
 		fr_strerror_printf("Cannot operate on ipv6addr and %s",
-				   fr_table_str_by_value(fr_value_box_type_table, in->type, "<INVALID>"));
+				   fr_type_to_str(in->type));
 		return -1;
 
 	case FR_TYPE_IPV6_PREFIX:
@@ -1706,7 +1706,7 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	case T_OP_LT:
 		if (hint != FR_TYPE_BOOL) {
 			fr_strerror_printf("Invalid destination type '%s' for comparison operator",
-					   fr_table_str_by_value(fr_value_box_type_table, hint, "<INVALID>"));
+					   fr_type_to_str(hint));
 			goto done;
 		}
 
@@ -1729,9 +1729,9 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 
 			if (hint == FR_TYPE_NULL) {
 				fr_strerror_printf("Cannot compare incompatible types (%s)... %s (%s)...",
-						   fr_table_str_by_value(fr_value_box_type_table, a->type, "<INVALID>"),
+						   fr_type_to_str(a->type),
 						   fr_tokens[op],
-						   fr_table_str_by_value(fr_value_box_type_table, b->type, "<INVALID>"));
+						   fr_type_to_str(b->type));
 				goto done;
 			}
 
@@ -1785,7 +1785,7 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 		func = calc_type[hint];
 		if (!func) {
 			fr_strerror_printf("Cannot perform any operations for destination type %s",
-					   fr_table_str_by_value(fr_value_box_type_table, hint, "<INVALID>"));
+					   fr_type_to_str(hint));
 			rcode = -1;
 			break;
 		}

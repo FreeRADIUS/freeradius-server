@@ -29,6 +29,7 @@ extern "C" {
 #endif
 
 #include <stdbool.h>
+#include <freeradius-devel/util/table.h>
 
 /** Internal data types
  */
@@ -338,6 +339,29 @@ extern bool const fr_type_non_leaf[FR_TYPE_MAX + 1];
 #define fr_type_is_leaf(_x)			(fr_type_leaf[_x])
 #define fr_type_is_non_leaf(_x)			(fr_type_non_leaf[_x])
 /** @} */
+
+extern fr_table_num_ordered_t const fr_type_table[];
+extern size_t fr_type_table_len;
+
+/** Return a static string containing the type name
+ *
+ * @param[in] type to return name for.
+ * @return name of the type
+ */
+static inline char const *fr_type_to_str(fr_type_t type)
+{
+	return fr_table_str_by_value(fr_type_table, type, "<INVALID>");
+}
+
+/** Return the constant value representing a type
+ *
+ * @param[in] type to return the constant value for.
+ * @return The constant type value or FR_TYPE_NULL if no type matches.
+ */
+static inline fr_type_t fr_type_from_str(char const *type)
+{
+	return fr_table_value_by_str(fr_type_table, type, FR_TYPE_NULL);
+}
 
 bool		fr_type_cast(fr_type_t dst, fr_type_t src);
 fr_type_t	fr_type_promote(fr_type_t a, fr_type_t b);

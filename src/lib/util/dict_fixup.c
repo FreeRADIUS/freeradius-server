@@ -476,7 +476,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 		if (fr_type_is_non_leaf(da->type) || fr_type_is_non_leaf(fixup->da->type) ||
 		    dict_attr_children(da) || dict_attr_children(fixup->da)) {
 			fr_strerror_printf("Reference MUST be to a simple data type of type '%s' at %s[%d]",
-					   fr_table_str_by_value(fr_value_box_type_table, fixup->da->type, "<UNKNOWN>"),
+					   fr_type_to_str(fixup->da->type),
 					   fr_cwd_strip(fixup->common.filename), fixup->common.line);
 			return -1;
 		}
@@ -495,7 +495,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 
 		if (!copied) {
 			fr_strerror_printf("Reference copied no VALUEs from type type '%s' at %s[%d]",
-					   fr_table_str_by_value(fr_value_box_type_table, fixup->da->type, "<UNKNOWN>"),
+					   fr_type_to_str(fixup->da->type),
 					   fr_cwd_strip(fixup->common.filename), fixup->common.line);
 			return -1;
 		}

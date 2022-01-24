@@ -1122,7 +1122,7 @@ int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_to
 
 	if (!fr_type_is_structural(dst->vp_type)) {
 		fr_strerror_printf("Cannot perform list assignment to non-structural type '%s'",
-				   fr_table_str_by_value(fr_value_box_type_table, dst->vp_type, "<INVALID>"));
+				   fr_type_to_str(dst->vp_type));
 		return -1;
 	}
 
@@ -1187,6 +1187,6 @@ int fr_edit_list_apply_list_assignment(fr_edit_list_t *el, fr_pair_t *dst, fr_to
 
 	fr_strerror_printf("Invalid assignment operator %s for destination type %s",
 			   fr_tokens[op],
-			   fr_table_str_by_value(fr_value_box_type_table, dst->vp_type, "<INVALID>"));
+			   fr_type_to_str(dst->vp_type));
 	return -1;
 }

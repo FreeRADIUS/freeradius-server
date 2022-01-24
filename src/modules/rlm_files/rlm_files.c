@@ -357,7 +357,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->key_data_type = tmpl_expanded_type(inst->key);
 	if (fr_htrie_hint(inst->key_data_type) == FR_HTRIE_INVALID) {
 		cf_log_err(mctx->inst->conf, "Invalid data type '%s' for 'files' module.",
-			   fr_table_str_by_value(fr_value_box_type_table, inst->key_data_type, "???"));
+			   fr_type_to_str(inst->key_data_type));
 		return -1;
 	}
 

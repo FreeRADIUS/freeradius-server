@@ -179,7 +179,7 @@ static int dict_attr_debug(fr_dict_attr_t const *da, void *uctx)
 		     our_uctx->prefix,
 		     da->name,
 		     da->attr,
-		     fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"),
+		     fr_type_to_str(da->type),
 		     our_uctx->flags);
 
 	dict_attr_ext_debug(our_uctx->prefix, da);	/* Print all the extension debug info */
@@ -250,7 +250,7 @@ static int dict_attr_export(fr_dict_attr_t const *da, void *uctx)
 	FR_FAULT_LOG("ATTRIBUTE\t%-40s\t%-20s\t%s\t%s",
 		     our_uctx->prefix,
 		     our_uctx->oid,
-		     fr_table_str_by_value(fr_value_box_type_table, da->type, "???"),
+		     fr_type_to_str(da->type),
 		     our_uctx->flags);
 
 	return 0;

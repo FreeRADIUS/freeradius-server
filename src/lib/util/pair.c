@@ -292,7 +292,7 @@ fr_pair_t *fr_pair_afrom_da_with_pool(TALLOC_CTX *ctx, fr_dict_attr_t const *da,
 	default:
 		fr_strerror_printf("Pooled fr_pair_t can only be allocated for "
 				   "'string' and 'octets' types not '%s'",
-				   fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+				   fr_type_to_str(da->type));
 		return NULL;
 
 	}
@@ -1916,7 +1916,7 @@ int fr_pair_value_from_str(fr_pair_t *vp, char const *value, size_t inlen,
 	switch (vp->da->type) {
 	case FR_TYPE_STRUCTURAL:
 		fr_strerror_printf("Attributes of type '%s' are not yet supported",
-				   fr_table_str_by_value(fr_value_box_type_table, vp->da->type, "<INVALID>"));
+				   fr_type_to_str(vp->da->type));
 		return -1;
 
 	default:
@@ -2629,9 +2629,9 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 					     "dictionary pointer %p \"%s\" (%s) "
 					     "and global dictionary pointer %p \"%s\" (%s) differ",
 					     file, line, vp->da, vp->da->name,
-					     fr_table_str_by_value(fr_value_box_type_table, vp->da->type, "<INVALID>"),
+					     fr_type_to_str(vp->da->type),
 					     da, da->name,
-					     fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+					     fr_type_to_str(da->type));
 		}
 	}
 
@@ -2640,8 +2640,8 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t (raw/unknown) attribute %p \"%s\" "
 					     "data type incorrect.  Expected %s, got %s",
 					     file, line, vp->da, vp->da->name,
-					     fr_table_str_by_value(fr_value_box_type_table, FR_TYPE_OCTETS, "<INVALID>"),
-					     fr_table_str_by_value(fr_value_box_type_table, vp->data.type, "<INVALID>"));
+					     fr_type_to_str(FR_TYPE_OCTETS),
+					     fr_type_to_str(vp->data.type));
 		}
 	} else if (!fr_type_is_structural(vp->da->type) && (vp->da->type != vp->data.type)) {
 		char data_type_int[10], da_type_int[10];
@@ -2652,8 +2652,8 @@ void fr_pair_verify(char const *file, int line, fr_pair_t const *vp)
 		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t attribute %p \"%s\" "
 				     "data type (%s) does not match da type (%s)",
 				     file, line, vp->da, vp->da->name,
-				     fr_table_str_by_value(fr_value_box_type_table, vp->data.type, data_type_int),
-				     fr_table_str_by_value(fr_value_box_type_table, vp->da->type, da_type_int));
+				     fr_table_str_by_value(fr_type_table, vp->data.type, data_type_int),
+				     fr_table_str_by_value(fr_type_table, vp->da->type, da_type_int));
 	}
 }
 

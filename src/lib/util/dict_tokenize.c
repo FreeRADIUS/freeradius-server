@@ -269,7 +269,7 @@ static int dict_process_type_field(dict_tokenize_ctx_t *ctx, char const *name, f
 	/*
 	 *	find the type of the attribute.
 	 */
-	type = fr_table_value_by_str(fr_value_box_type_table, name, FR_TYPE_NULL);
+	type = fr_type_from_str(name);
 	if (fr_type_is_null(type)) {
 		fr_strerror_printf("Unknown data type '%s'", name);
 		return -1;
@@ -399,11 +399,11 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			    (strncmp(key, "int", 3) == 0)) {
 				fr_type_t subtype;
 
-				subtype = fr_table_value_by_str(fr_value_box_type_table, key, FR_TYPE_NULL);
+				subtype = fr_type_from_str(key);
 				if (fr_type_is_null(subtype)) {
 				unknown_type:
 					fr_strerror_printf("Unknown or unsupported %s type '%s'",
-							   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"),
+							   fr_type_to_str(type),
 							   key);
 					return -1;
 				}
@@ -448,7 +448,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				precision = fr_table_value_by_str(fr_time_precision_table, key, -1);
 				if (precision < 0) {
 					fr_strerror_printf("Unknown %s precision '%s'",
-							   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"),
+							   fr_type_to_str(type),
 							   key);
 					return -1;
 				}
@@ -468,7 +468,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 
 			if (type != FR_TYPE_GROUP) {
 				fr_strerror_printf("The 'ref' flag cannot be used for type '%s'",
-						   fr_table_str_by_value(fr_value_box_type_table, type, "<UNKNOWN>"));
+						   fr_type_to_str(type));
 				return -1;
 			}
 
@@ -1009,7 +1009,7 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *ctx, char **argv, int arg
 
 	default:
 		fr_strerror_printf("ENUMs can only be a leaf type, not %s",
-				   fr_table_str_by_value(fr_value_box_type_table, type, "?Unknown?"));
+				   fr_type_to_str(type));
 		break;
 	}
 
@@ -1317,7 +1317,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	 */
 	if (!fr_type_is_leaf(da->type)) {
 		fr_strerror_printf_push("Cannot define VALUE for attribute '%s' of data type '%s'", da->name,
-					fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+					fr_type_to_str(da->type));
 		return -1;
 	}
 
@@ -1327,7 +1327,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 		fr_strerror_printf_push("Invalid VALUE '%s' for attribute '%s' of data type '%s'",
 					argv[2],
 					da->name,
-					fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
+					fr_type_to_str(da->type));
 		return -1;
 	}
 
@@ -2257,7 +2257,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			if (da->type != FR_TYPE_TLV) {
 				fr_strerror_printf_push("Attribute '%s' should be a 'tlv', but is a '%s'",
 							argv[1],
-							fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
+							fr_type_to_str(da->type));
 				goto error;
 			}
 
@@ -2359,7 +2359,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				if (da->type != FR_TYPE_VSA) {
 					fr_strerror_printf_push("Invalid parent for BEGIN-VENDOR.  "
 								"Attribute '%s' should be 'vsa' but is '%s'", p,
-								fr_table_str_by_value(fr_value_box_type_table, da->type, "?Unknown?"));
+								fr_type_to_str(da->type));
 					goto error;
 				}
 
@@ -2617,9 +2617,9 @@ int fr_dict_internal_afrom_file(fr_dict_t **out, char const *dict_subdir, char c
 	 *	fr_dict_attr_add(), because we know what we're doing, and
 	 *	that function does too many checks.
 	 */
-	for (i = 0; i < fr_value_box_type_table_len; i++) {
+	for (i = 0; i < fr_type_table_len; i++) {
 		fr_dict_attr_t			*n;
-		fr_table_num_ordered_t const	*p = &fr_value_box_type_table[i];
+		fr_table_num_ordered_t const	*p = &fr_type_table[i];
 
 		switch (p->value) {
 		case FR_TYPE_NULL:	/* Can't cast to NULL */
