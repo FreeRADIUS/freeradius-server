@@ -590,7 +590,33 @@ typedef struct {
  */
 #define tmpl_assert_type(_cond) \
 	fr_assert_msg(_cond, "Unexpected tmpl type '%s'", \
-		      fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"))
+		      tmpl_type_to_str(vpt->type))
+
+
+/** @name Functions for printing and parsing tmpl type names
+ *
+ * @{
+ */
+/** Return a static string containing the type name
+ *
+ * @param[in] type to return name for.
+ * @return name of the type
+ */
+static inline char const *tmpl_type_to_str(tmpl_type_t type)
+{
+	return fr_table_str_by_value(tmpl_type_table, type, "<INVALID>");
+}
+
+/** Return the constant value representing a type
+ *
+ * @param[in] type to return the constant value for.
+ * @return The constant type value or TMPL_TYPE_UNINITIALISED if no type matches.
+ */
+static inline tmpl_type_t tmpl_type_from_str(char const *type)
+{
+	return fr_table_value_by_str(tmpl_type_table, type, TMPL_TYPE_UNINITIALISED);
+}
+/** @} */
 
 /** @name Field accessors for #TMPL_TYPE_ATTR, #TMPL_TYPE_ATTR_UNRESOLVED, #TMPL_TYPE_LIST
  *

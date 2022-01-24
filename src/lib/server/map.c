@@ -49,8 +49,8 @@ RCSID("$Id$")
 static void map_dump(request_t *request, map_t const *map)
 {
 	RDEBUG2(">>> MAP TYPES LHS: %s, RHS: %s",
-	        fr_table_str_by_value(tmpl_type_table, map->lhs->type, "???"),
-	        fr_table_str_by_value(tmpl_type_table, map->rhs->type, "???"));
+	        tmpl_type_to_str(map->lhs->type),
+	        tmpl_type_to_str(map->rhs->type));
 
 	if (map->rhs) {
 		RDEBUG2(">>> MAP NAMES %s %s", map->lhs->name, map->rhs->name);
@@ -1480,7 +1480,7 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 	    !tmpl_is_attr(map->lhs)) {
 		REDEBUG("Left side \"%.*s\" of map should be an attr or list but is an %s",
 			(int)map->lhs->len, map->lhs->name,
-			fr_table_str_by_value(tmpl_type_table, map->lhs->type, "<INVALID>"));
+			tmpl_type_to_str(map->lhs->type));
 		rcode = -2;
 		goto finish;
 	}

@@ -457,7 +457,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	if (inst->requested_address) {
 		if (!tmpl_is_xlat(inst->requested_address)) {
 			cf_log_err(conf, "requested_address must be a double quoted expansion, not %s",
-				   fr_table_str_by_value(tmpl_type_table, inst->requested_address->type, "<INVALID>"));
+				   tmpl_type_to_str(inst->requested_address->type));
 		}
 	}
 

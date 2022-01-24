@@ -624,8 +624,8 @@ static bool cond_eval_map(request_t *request, fr_cond_t const *c,
 #endif
 
 	EVAL_DEBUG(">>> MAP TYPES LHS: %s, RHS: %s",
-		   fr_table_str_by_value(tmpl_type_table, map->lhs->type, "???"),
-		   fr_table_str_by_value(tmpl_type_table, map->rhs->type, "???"));
+		   tmpl_type_to_str(map->lhs->type),
+		   tmpl_type_to_str(map->rhs->type));
 #ifdef WITH_EVAL_DEBUG
 	tmpl_debug(map->lhs);
 	tmpl_debug(map->rhs);

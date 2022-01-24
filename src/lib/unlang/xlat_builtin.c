@@ -1398,7 +1398,7 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	default:
 		REDEBUG("Unexpected type %s in left hand side of expression",
-			fr_table_str_by_value(tmpl_type_table, map->lhs->type, "<INVALID>"));
+			tmpl_type_to_str(map->lhs->type));
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -1414,7 +1414,7 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	default:
 		REDEBUG("Unexpected type %s in right hand side of expression",
-			fr_table_str_by_value(tmpl_type_table, map->rhs->type, "<INVALID>"));
+			tmpl_type_to_str(map->rhs->type));
 		return XLAT_ACTION_FAIL;
 	}
 

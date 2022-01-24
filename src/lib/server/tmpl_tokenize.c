@@ -217,12 +217,12 @@ void tmpl_attr_debug(tmpl_t const *vpt)
 
 	default:
 		FR_FAULT_LOG("%s can't print tmpls of type %s", __FUNCTION__,
-			     fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"));
+			     tmpl_type_to_str(vpt->type));
 		return;
 	}
 
 	FR_FAULT_LOG("tmpl_t %s (%.8x) \"%pV\" (%p)",
-		     fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"),
+		     tmpl_type_to_str(vpt->type),
 		     vpt->type,
 		     fr_box_strvalue_len(vpt->name, vpt->len), vpt);
 
@@ -257,7 +257,7 @@ void tmpl_debug(tmpl_t const *vpt)
 	}
 
 	FR_FAULT_LOG("tmpl_t %s (%.8x) \"%pR\" (%p)",
-		     fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"),
+		     tmpl_type_to_str(vpt->type),
 		     vpt->type,
 		     fr_box_strvalue_len(vpt->name, vpt->len), vpt);
 
@@ -960,7 +960,7 @@ void tmpl_attr_rewrite_num(tmpl_t *vpt, int16_t from, int16_t to)
 void tmpl_attr_set_request(tmpl_t *vpt, tmpl_request_ref_t request)
 {
 	fr_assert_msg(tmpl_is_attr(vpt), "Expected tmpl type 'attr', got '%s'",
-		      fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"));
+		      tmpl_type_to_str(vpt->type));
 
 	if (tmpl_request_list_num_elements(&vpt->data.attribute.rr) > 0) tmpl_request_list_talloc_reverse_free(&vpt->data.attribute.rr);
 
@@ -2075,7 +2075,7 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	if (slen != name_len) {
 		/* This looks wrong, but it produces meaningful errors for unknown attrs */
 		fr_strerror_printf("Unexpected text after %s",
-				   fr_table_str_by_value(tmpl_type_table, (*out)->type, "<INVALID>"));
+				   tmpl_type_to_str((*out)->type));
 		return -slen;
 	}
 
@@ -2540,8 +2540,8 @@ static ssize_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
  * @param[in] p_rules		Formatting rules for the tmpl.
  * @param[in] t_rules		Validation rules for attribute references.
  * @return
- *	- <= 0 on error (offset as negative integer)
- *	- > 0 on success (number of bytes parsed).
+ *	- < 0 on error (offset as negative integer)
+ *	- >= 0 on success (number of bytes parsed).
  *
  * @see REMARKER to produce pretty error markers from the return value.
  *
@@ -4059,7 +4059,7 @@ ssize_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 		}
 
 		fr_assert_fail("Can't print invalid tmpl type %s",
-			       fr_table_str_by_value(tmpl_type_table, vpt->type, "<INVALID>"));
+			       tmpl_type_to_str(vpt->type));
 		break;
 	}
 

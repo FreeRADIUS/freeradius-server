@@ -501,7 +501,7 @@ static bool pass2_fixup_cond_map(fr_cond_t *c, CONF_ITEM *ci, fr_dict_t const *d
 
 	if (tmpl_rules_cast(c->data.map->lhs) != FR_TYPE_NULL) {
 		cf_log_err(map->ci, "Cannot cast virtual attribute %s to %s", map->lhs->name,
-			   fr_type_to_str(c->data.map->lhs->type));
+			   tmpl_type_to_str(c->data.map->lhs->type));
 		return false;
 	}
 
@@ -811,7 +811,7 @@ static int unlang_fixup_map(map_t *map, UNUSED void *ctx)
 	default:
 		cf_log_err(map->ci, "Left side of map must be an attribute "
 		           "or an xlat (that expands to an attribute), not a %s",
-		           fr_table_str_by_value(tmpl_type_table, map->lhs->type, "<INVALID>"));
+		           tmpl_type_to_str(map->lhs->type));
 		return -1;
 	}
 
@@ -1619,7 +1619,7 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 	default:
 		cf_log_err(map->ci, "Left side of map must be an attribute "
 		           "or an xlat (that expands to an attribute), not a %s",
-		           fr_table_str_by_value(tmpl_type_table, map->lhs->type, "<INVALID>"));
+		           tmpl_type_to_str(map->lhs->type));
 		return -1;
 	}
 
@@ -2861,7 +2861,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	if (!tmpl_is_attr(vpt) && !tmpl_is_list(vpt)) {
 		cf_log_err(cs, "MUST use attribute or list reference (not %s) in 'foreach'",
-			   fr_table_str_by_value(tmpl_type_table, vpt->type, "???"));
+			   tmpl_type_to_str(vpt->type));
 		talloc_free(vpt);
 		return NULL;
 	}
@@ -3557,7 +3557,7 @@ get_packet_type:
 
 			if (!tmpl_contains_attr(src_vpt)) {
 				cf_log_err(cs, "Invalid argument to 'subrequest' src must be an attr or list, got %s",
-					   fr_table_str_by_value(tmpl_type_table, src_vpt->type, "<INVALID>"));
+					   tmpl_type_to_str(src_vpt->type));
 				talloc_free(src_vpt);
 				goto error;
 			}
@@ -3577,7 +3577,7 @@ get_packet_type:
 				if (!tmpl_contains_attr(dst_vpt)) {
 					cf_log_err(cs, "Invalid argument to 'subrequest' dst must be an "
 						   "attr or list, got %s",
-						   fr_table_str_by_value(tmpl_type_table, src_vpt->type, "<INVALID>"));
+						   tmpl_type_to_str(src_vpt->type));
 					talloc_free(src_vpt);
 					talloc_free(dst_vpt);
 					goto error;

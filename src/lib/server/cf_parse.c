@@ -252,7 +252,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 		if (attribute && (!tmpl_is_attr(vpt) && !tmpl_is_attr_unresolved(vpt))) {
 			cf_log_err(cp, "Expected attr got %s",
-				   fr_table_str_by_value(tmpl_type_table, vpt->type, "???"));
+				   tmpl_type_to_str(vpt->type));
 			return -1;
 		}
 
@@ -1331,7 +1331,7 @@ static int cf_parse_tmpl_pass2(UNUSED CONF_SECTION *cs, tmpl_t **out, CONF_PAIR 
 
 	if (attribute && !tmpl_is_attr(vpt)) {
 		cf_log_err(cp, "Expected attr got %s",
-			   fr_table_str_by_value(tmpl_type_table, vpt->type, "???"));
+			   tmpl_type_to_str(vpt->type));
 		return -1;
 	}
 

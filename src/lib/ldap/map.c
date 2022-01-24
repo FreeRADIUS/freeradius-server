@@ -204,7 +204,7 @@ int fr_ldap_map_verify(map_t *map, UNUSED void *instance)
 
 	default:
 		cf_log_err(map->ci, "Left hand side of map must be an attribute or list, not a %s",
-			   fr_table_str_by_value(tmpl_type_table, map->lhs->type, "<INVALID>"));
+			   tmpl_type_to_str(map->lhs->type));
 		return -1;
 	}
 
@@ -225,7 +225,7 @@ int fr_ldap_map_verify(map_t *map, UNUSED void *instance)
 
 	default:
 		cf_log_err(map->ci, "Right hand side of map must be an xlat, attribute, exec, or literal, not a %s",
-			   fr_table_str_by_value(tmpl_type_table, map->rhs->type, "<INVALID>"));
+			   tmpl_type_to_str(map->rhs->type));
 		return -1;
 	}
 

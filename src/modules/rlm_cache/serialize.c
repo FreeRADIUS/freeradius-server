@@ -131,14 +131,14 @@ int cache_deserialize(rlm_cache_entry_t *c, fr_dict_t const *dict, char *in, ssi
 		if (!tmpl_is_attr(map->lhs)) {
 			fr_strerror_printf("Pair left hand side \"%s\" parsed as %s, needed attribute.  "
 					   "Check local dictionaries", map->lhs->name,
-					   fr_table_str_by_value(tmpl_type_table, map->lhs->type, "<INVALID>"));
+					   tmpl_type_to_str(map->lhs->type));
 			goto error;
 		}
 
 		if (!tmpl_is_unresolved(map->rhs)) {
 			fr_strerror_printf("Pair right hand side \"%s\" parsed as %s, needed literal.  "
 					   "Check serialized data quoting", map->rhs->name,
-					   fr_table_str_by_value(tmpl_type_table, map->rhs->type, "<INVALID>"));
+					   tmpl_type_to_str(map->rhs->type));
 			goto error;
 		}
 

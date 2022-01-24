@@ -407,7 +407,7 @@ static int csv_map_verify(map_t *map, void *instance)
 
 	default:
 		cf_log_err(map->ci, "Left hand side of map must be an attribute or list, not a %s",
-			   fr_table_str_by_value(tmpl_type_table, map->lhs->type, "<INVALID>"));
+			   tmpl_type_to_str(map->lhs->type));
 		return -1;
 	}
 
@@ -448,7 +448,7 @@ static int csv_map_verify(map_t *map, void *instance)
 
 	default:
 		cf_log_err(map->ci, "Right hand side of map must be a field name, not a %s",
-			   fr_table_str_by_value(tmpl_type_table, map->rhs->type, "<INVALID>"));
+			   tmpl_type_to_str(map->rhs->type));
 		return -1;
 	}
 
@@ -1031,7 +1031,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 		if (slen < 0) {
 			talloc_free(key);
 			DEBUG("Failed casting %pV to data type '%s'",
-			      &key, fr_table_str_by_value(tmpl_type_table, inst->key_data_type, "<INVALID>"));
+			      &key, tmpl_type_to_str(inst->key_data_type));
 			RETURN_MODULE_FAIL;
 		}
 	}
