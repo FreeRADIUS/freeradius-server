@@ -317,17 +317,25 @@ void dependency_version_numbers_init(CONF_SECTION *cs)
 #  endif
 #endif
 
-#ifdef LIBKQUEUE_VERSION_STRING
+#ifdef EVFILT_LIBKQUEUE
 	{
-		char const *libkqueue_version = LIBKQUEUE_VERSION_STRING
-#  ifdef LIBKQUEUE_VERSION_COMMIT
-		" (git #"LIBKQUEUE_VERSION_COMMIT")"
-#  endif
-#  ifdef LIBKQUEUE_VERSION_DATE
-		" ("LIBKQUEUE_VERSION_DATE") retrieved at build time"
-#  endif
-		;
-		dependency_version_number_add(cs, "libkqueue", libkqueue_version);
+		int kqfd, ret;
+		struct kevent kev, receipt;
+
+		kqfd = kqueue();
+		if (kqfd < 0) {
+		kqueue_error:
+			dependency_version_number_add(cs, "libkqueue", fr_syserror(errno));
+			goto kqueue_done;
+		}
+
+		EV_SET(&kev, 0, EVFILT_LIBKQUEUE, EV_ADD, NOTE_VERSION_STR, 0, NULL);
+		ret = kevent(kqfd, &kev, 1, &receipt, 1, &(struct timespec){}) ;
+		close(kqfd);
+		if (ret != 1) goto kqueue_error;
+
+		dependency_version_number_add(cs, "libkqueue", (char *)receipt.udata);
+kqueue_done:
 	}
 #endif
 }
