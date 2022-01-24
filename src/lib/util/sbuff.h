@@ -627,7 +627,6 @@ IS_CONST(char *, _start), true)
 DIAG_ON(maybe-uninitialized)
 #endif
 
-
 /** Initialise an sbuff around a stack allocated buffer for parsing
  *
  * @param[out] _out		Pointer to buffer.
@@ -1403,23 +1402,19 @@ do { \
 	fr_sbuff_t		sbuff; \
 	fr_sbuff_uctx_talloc_t	tctx; \
 	fr_sbuff_parse_error_t	err; \
-	ssize_t			slen; \
+	fr_slen_t		slen; \
 	fr_sbuff_init_talloc(ctx, &sbuff, &tctx, \
 			     ((_len) != SIZE_MAX) ? (_len) : 1024, \
 			     ((_len) != SIZE_MAX) ? (_len) : SIZE_MAX); \
 	slen = _func(&err, &sbuff, _in, _len, ##__VA_ARGS__); \
-	if (slen <= 0) { \
-		if (err != FR_SBUFF_PARSE_OK) { \
-			TALLOC_FREE(sbuff.buff); \
-		} else { \
-			fr_sbuff_trim_talloc(&sbuff, 0); \
-		} \
-		*out = sbuff.buff; \
-		return 0; \
+	if (slen < 0) { \
+		TALLOC_FREE(sbuff.buff); \
+		*out = NULL; \
+		return slen; \
 	} \
 	fr_sbuff_trim_talloc(&sbuff, SIZE_MAX); \
 	*out = sbuff.buff; \
-	return (size_t)slen; \
+	return slen; \
 }
 
 /** Build a talloc wrapper function for a fr_sbuff_out_* function
@@ -1433,19 +1428,19 @@ do { \
 { \
 	fr_sbuff_t		sbuff; \
 	fr_sbuff_uctx_talloc_t	tctx; \
-	ssize_t			slen; \
+	fr_slen_t		slen; \
 	fr_sbuff_init_talloc(ctx, &sbuff, &tctx, \
 			     ((_len) != SIZE_MAX) ? (_len) : 1024, \
 			     ((_len) != SIZE_MAX) ? (_len) : SIZE_MAX); \
 	slen = _func(&sbuff, _in, _len, ##__VA_ARGS__); \
-	if (slen <= 0) { \
-		fr_sbuff_trim_talloc(&sbuff, 0); \
-		*out = sbuff.buff; \
-		return 0; \
+	if (slen < 0) { \
+		TALLOC_FREE(sbuff.buff); \
+		*out = NULL; \
+		return slen; \
 	} \
 	fr_sbuff_trim_talloc(&sbuff, SIZE_MAX); \
 	*out = sbuff.buff; \
-	return (size_t)slen; \
+	return slen; \
 }
 
 /** Build a talloc wrapper function for a fr_sbuff_out_* function
@@ -1454,38 +1449,40 @@ do { \
  * @param[in] ...	additional arguments to pass to _func.
  */
 #define SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(_func, ...) \
+{ \
 	fr_sbuff_t		sbuff; \
 	fr_sbuff_uctx_talloc_t	tctx; \
-	ssize_t			slen; \
-	fr_sbuff_init_talloc(ctx, &sbuff, &tctx, 256, SIZE_MAX); \
+	fr_slen_t		slen; \
+	fr_sbuff_init_talloc(ctx, &sbuff, &tctx, 0, SIZE_MAX); \
 	slen = _func(&sbuff, ##__VA_ARGS__); \
-	if (slen <= 0) { \
-		fr_sbuff_trim_talloc(&sbuff, 0); \
-		*out = sbuff.buff; \
-		return 0; \
+	if (slen < 0) { \
+		TALLOC_FREE(sbuff.buff); \
+		*out = NULL; \
+		return slen; \
 	} \
 	fr_sbuff_trim_talloc(&sbuff, SIZE_MAX); \
 	*out = sbuff.buff; \
-	return (size_t)slen; \
+	return slen; \
+}
 
-static inline size_t fr_sbuff_out_abstrncpy(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
+static inline fr_slen_t fr_sbuff_out_abstrncpy(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy, in, len)
 
-static inline size_t fr_sbuff_out_abstrncpy_exact(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
+static inline fr_slen_t fr_sbuff_out_abstrncpy_exact(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len)
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_exact, in, len)
 
-static inline size_t fr_sbuff_out_abstrncpy_allowed(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-						    bool const allowed[static UINT8_MAX + 1])
+static inline fr_slen_t fr_sbuff_out_abstrncpy_allowed(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
+						       bool const allowed[static UINT8_MAX + 1])
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_allowed, in, len, allowed)
 
-static inline size_t fr_sbuff_out_abstrncpy_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-						  fr_sbuff_term_t const *tt,
-						  fr_sbuff_unescape_rules_t const *u_rules)
+static inline fr_slen_t fr_sbuff_out_abstrncpy_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
+						     fr_sbuff_term_t const *tt,
+						     fr_sbuff_unescape_rules_t const *u_rules)
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_bstrncpy_until, in, len, tt, u_rules)
 
-static inline size_t fr_sbuff_out_aunescape_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
-						  fr_sbuff_term_t const *tt,
-						  fr_sbuff_unescape_rules_t const *u_rules)
+static inline fr_slen_t fr_sbuff_out_aunescape_until(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t len,
+						     fr_sbuff_term_t const *tt,
+						     fr_sbuff_unescape_rules_t const *u_rules)
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_sbuff_out_unescape_until, in, len, tt, u_rules)
 /** @} */
 
