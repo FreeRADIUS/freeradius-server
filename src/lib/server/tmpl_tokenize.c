@@ -2892,6 +2892,17 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
 
 /** Parse a cast specifier
  *
+ *  Note that casts are
+ *
+ *	(foo)
+ *
+ *  and NOT
+ *
+ *	( foo )
+ *
+ *  Not for any particular reason, but to emphasize a bit that they're
+ *  not mathematical expressions.
+ *
  * @param[out] out	Where to write the cast type.
  *			Will default to FR_TYPE_NULL.
  * @param[in] in	String containing the cast marker.
@@ -2902,28 +2913,40 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
  */
 ssize_t tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in)
 {
+	char			close = '\0';
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 	fr_sbuff_marker_t	m;
-	fr_type_t		cast = FR_TYPE_NULL;
+	fr_type_t		cast;
 	ssize_t			slen;
 
 	if (fr_sbuff_next_if_char(&our_in, '<')) {
-		fr_sbuff_marker(&m, &our_in);
-		fr_sbuff_out_by_longest_prefix(&slen, &cast, fr_type_table, &our_in, FR_TYPE_NULL);
-		if (fr_type_is_null(cast)) {
-			fr_strerror_const("Unknown data type");
-			FR_SBUFF_ERROR_RETURN(&our_in);
-		}
-		if (fr_type_is_non_leaf(cast)) {
-			fr_strerror_const("Forbidden data type in cast");
-			FR_SBUFF_MARKER_ERROR_RETURN(&m);
-		}
-		if (!fr_sbuff_next_if_char(&our_in, '>')) {
-			fr_strerror_const("Unterminated cast");
-			FR_SBUFF_ERROR_RETURN(&our_in);
-		}
-		fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
+		close = '>';
+
+	} else if (fr_sbuff_next_if_char(&our_in, '(')) {
+		close = ')';
+
+	} else {
+		if (out) *out = FR_TYPE_NULL;
+		return 0;
 	}
+
+	fr_sbuff_marker(&m, &our_in);
+	fr_sbuff_out_by_longest_prefix(&slen, &cast, fr_type_table, &our_in, FR_TYPE_NULL);
+	if (fr_type_is_null(cast)) {
+		fr_strerror_const("Unknown data type");
+		FR_SBUFF_ERROR_RETURN(&our_in);
+	}
+	if (fr_type_is_non_leaf(cast)) {
+		fr_strerror_const("Forbidden data type in cast");
+		FR_SBUFF_MARKER_ERROR_RETURN(&m);
+	}
+
+	if (!fr_sbuff_next_if_char(&our_in, close)) {
+		fr_strerror_const("Unterminated cast");
+		FR_SBUFF_ERROR_RETURN(&our_in);
+	}
+	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
+
 	if (out) *out = cast;
 
 	return fr_sbuff_set(in, &our_in);
