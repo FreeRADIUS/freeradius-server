@@ -1254,6 +1254,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 {
 	fr_dict_attr_t		*da;
 	fr_value_box_t		value;
+	fr_slen_t		enum_len;
 	fr_dict_attr_t const 	*parent = ctx->stack[ctx->stack_depth].da;
 
 	if (argc != 3) {
@@ -1282,6 +1283,15 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	da = ctx->value_attr;
 
 	/*
+	 *	Verify the enum name matches the expected from.
+	 */
+	enum_len = (fr_slen_t)strlen(argv[1]);
+	if (fr_dict_enum_name_from_substr(NULL, &FR_SBUFF_IN(argv[1], enum_len), NULL) != enum_len) {
+		fr_strerror_printf_push("Invalid VALUE name '%s' for attribute '%s'", argv[1], da->name);
+		return -1;
+	}
+
+	/*
 	 *	Remember which attribute is associated with this
 	 *	value.  This allows us to define enum
 	 *	values before the attribute exists, and fix them
@@ -1303,18 +1313,12 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	}
 
 	/*
-	 *	Only a few data types can have VALUEs defined.
+	 *	Only a leaf types can have values defined.
 	 */
-	switch (da->type) {
-	case FR_TYPE_STRUCTURAL:
-	case FR_TYPE_NULL:
-	case FR_TYPE_MAX:
+	if (!fr_type_is_leaf(da->type)) {
 		fr_strerror_printf_push("Cannot define VALUE for attribute '%s' of data type '%s'", da->name,
 					fr_table_str_by_value(fr_value_box_type_table, da->type, "<INVALID>"));
 		return -1;
-
-	default:
-		break;
 	}
 
 	if (fr_value_box_from_str(NULL, &value, da->type, NULL,

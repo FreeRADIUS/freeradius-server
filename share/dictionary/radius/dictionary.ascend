@@ -815,9 +815,9 @@ VALUE	IP-TOS-Precedence		IP-TOS-Precedence-Pri-Three 96
 VALUE	IP-TOS-Precedence		IP-TOS-Precedence-Pri-Two 64
 VALUE	IPX-Header-Compression		IPX-Header-Compression-No 0
 VALUE	IPX-Header-Compression		IPX-Header-Compression-Yes 1
-VALUE	NAS-Port-Format			1_2_2			3
-VALUE	NAS-Port-Format			2_4_5_5			2
-VALUE	NAS-Port-Format			2_4_6_4			1
+VALUE	NAS-Port-Format			x_1_2_2			3
+VALUE	NAS-Port-Format			x_4_5_5			2
+VALUE	NAS-Port-Format			x_4_6_4			1
 VALUE	NAS-Port-Format			Unknown			0
 VALUE	Numbering-Plan-ID		ISDN-Numbering-Plan	1
 VALUE	Numbering-Plan-ID		Private-Numbering-Plan	9

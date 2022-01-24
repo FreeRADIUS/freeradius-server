@@ -544,10 +544,10 @@ VALUE	Event-Id			DS0s-In-Service		77
 VALUE	Event-Id			DS0s-Out-of-Service	78
 VALUE	Event-Id			T1/T1PRI/E1PRI-Call-Event 79
 VALUE	Event-Id			Psu-Incompatible	80
-VALUE	Event-Id			T1,T1-E1/PRI-Call-Arrive-Event 81
-VALUE	Event-Id			T1,T1-E1/PRI-Call-Connect-Event 82
-VALUE	Event-Id			T1,T1-E1/PRI-Call-Termina-Event 83
-VALUE	Event-Id			T1,T1-E1/PRI-Call-Failed-Event 84
+VALUE	Event-Id			T1/T1-E1/PRI-Call-Arrive-Event 81
+VALUE	Event-Id			T1/T1-E1/PRI-Call-Connect-Event 82
+VALUE	Event-Id			T1/T1-E1/PRI-Call-Termina-Event 83
+VALUE	Event-Id			T1/T1-E1/PRI-Call-Failed-Event 84
 VALUE	Event-Id			DNS-Contact-Lost	85
 VALUE	Event-Id			NTP-Contact-Lost	86
 VALUE	Event-Id			NTP-Contact-Restored	87
@@ -1390,8 +1390,8 @@ VALUE	Request-Type			Tacacs-Message		253
 VALUE	Request-Type			Reserved		255
 
 VALUE	Speed-Of-Connection		Auto			0
-VALUE	Speed-Of-Connection		56			1
-VALUE	Speed-Of-Connection		64			2
+VALUE	Speed-Of-Connection		56K			1
+VALUE	Speed-Of-Connection		64K			2
 VALUE	Speed-Of-Connection		Voice			3
 
 VALUE	Expansion-Algorithm		Constant		1

@@ -323,6 +323,11 @@ typedef struct fr_dict_gctx_s fr_dict_gctx_t;
  */
 extern bool const	fr_dict_attr_allowed_chars[UINT8_MAX + 1];
 
+/** Characters that are allowed in dictionary enumeration value names
+ *
+ */
+extern bool const	fr_dict_enum_allowed_chars[UINT8_MAX + 1];
+
 /** @name Dictionary structure extensions
  *
  * @{
@@ -561,6 +566,11 @@ char const		*fr_dict_enum_name_by_value(fr_dict_attr_t const *da, fr_value_box_t
 fr_dict_enum_value_t		*fr_dict_enum_by_name(fr_dict_attr_t const *da, char const *name, ssize_t len);
 
 ssize_t			fr_dict_enum_by_name_substr(fr_dict_enum_value_t **out, fr_dict_attr_t const *da, fr_sbuff_t *in);
+
+fr_slen_t		fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_t *in, fr_sbuff_term_t const *tt);
+
+static inline fr_slen_t fr_dict_enum_name_afrom_substr(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, fr_sbuff_term_t const *tt)
+SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_dict_enum_name_from_substr, in, tt)
 /** @} */
 
 /** @name Dictionary and protocol loading

@@ -55,6 +55,27 @@ bool const fr_dict_attr_allowed_chars[UINT8_MAX + 1] = {
 	['z'] = true
 };
 
+/** Characters allowed in enumeration value names
+ *
+ */
+bool const fr_dict_enum_allowed_chars[UINT8_MAX + 1] = {
+	['+'] = true, ['-'] = true, ['.'] = true, ['/'] = true, ['_'] = true,
+	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
+	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,
+	['A'] = true, ['B'] = true, ['C'] = true, ['D'] = true, ['E'] = true,
+	['F'] = true, ['G'] = true, ['H'] = true, ['I'] = true, ['J'] = true,
+	['K'] = true, ['L'] = true, ['M'] = true, ['N'] = true, ['O'] = true,
+	['P'] = true, ['Q'] = true, ['R'] = true, ['S'] = true, ['T'] = true,
+	['U'] = true, ['V'] = true, ['W'] = true, ['X'] = true, ['Y'] = true,
+	['Z'] = true,
+	['a'] = true, ['b'] = true, ['c'] = true, ['d'] = true, ['e'] = true,
+	['f'] = true, ['g'] = true, ['h'] = true, ['i'] = true, ['j'] = true,
+	['k'] = true, ['l'] = true, ['m'] = true, ['n'] = true, ['o'] = true,
+	['p'] = true, ['q'] = true, ['r'] = true, ['s'] = true, ['t'] = true,
+	['u'] = true, ['v'] = true, ['w'] = true, ['x'] = true, ['y'] = true,
+	['z'] = true
+};
+
 /*
  *	Create the hash of the name.
  *
@@ -2924,6 +2945,83 @@ ssize_t	fr_dict_enum_by_name_substr(fr_dict_enum_value_t **out, fr_dict_attr_t c
 	}
 
 	return 0;
+}
+
+/** Extract an enumeration name from a string
+ *
+ * This function defines the canonical format for an enumeration name.
+ *
+ * An enumeration name is made up of one or more fr_dict_attr_allowed_chars
+ * with at least one character in the sequence not being a special character
+ * i.e. [-+/_] or a number.
+ *
+ * This disambiguates enumeration identifiers from mathematical expressions.
+ *
+ * If we allowed enumeration names consisting of sequences of numbers separated
+ * by special characters it would not be possible to determine if the special
+ * character were an operator in a subexpression.
+ *
+ * For example take:
+ *
+ *    &My-Enum-Attr == 01234-5678
+ *
+ * Without having access to the enumeration values of My-Enum-Attr (which we
+ * might not have during tokenisation), we cannot tell if this is:
+ *
+ * (&My-Enum-Attr == 01234-5678)
+ *
+ * OR
+ *
+ * ((&My-Enum-Attr == 01234) - 5678)
+ *
+ * If an alpha character occurs anywhere in the string i.e:
+ *
+ *    (&My-Enum-Attr == 01234-A5678)
+ *
+ * we know 01234-A5678 can't be a mathematical sub-expression because the
+ * second potential operand can no longer be parsed as an integer constant.
+ *
+ * @param[out] out	The name string we managed to extract.
+ *			May be NULL in which case only the length of the name
+ *			will be returned.
+ * @param[in] in	The string containing the enum identifier.
+ * @param[in] tt	If non-null verify that a terminal sequence occurs
+ *			after the enumeration name.
+ * @return
+ *	- <0 the offset at which the parse error occurred.
+ *	- >1 the number of bytes parsed.
+ */
+fr_slen_t fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_t *in, fr_sbuff_term_t const *tt)
+{
+	fr_sbuff_t our_in = FR_SBUFF(in);
+	bool seen_alpha = false;
+
+	while (fr_sbuff_is_in_charset(&our_in, fr_dict_enum_allowed_chars)) {
+		if (fr_sbuff_is_alpha(&our_in)) seen_alpha = true;
+		fr_sbuff_next(&our_in);
+	}
+
+	if (!seen_alpha) {
+		if (fr_sbuff_used(&our_in) == 0) {
+			fr_strerror_const("VALUE name empty");
+			return -1;
+		}
+
+		fr_strerror_const("VALUE name must contain at least one alpha character");
+		return -1;
+	}
+
+	/*
+	 *	Check that the sequence is correctly terminated
+	 */
+	if (tt && !fr_sbuff_is_terminal(&our_in, tt)) {
+		fr_strerror_const("VALUE name has trailing text");
+		return fr_sbuff_error(&our_in);
+	}
+
+	if (out) return fr_sbuff_out_bstrncpy_exact(out, in, fr_sbuff_used(&our_in));
+
+	return fr_sbuff_set(in, &our_in);
 }
 
 int dict_dlopen(fr_dict_t *dict, char const *name)
