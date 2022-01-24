@@ -2554,7 +2554,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 
-	ssize_t		slen;
+	fr_slen_t	slen;
 	char		*str;
 
 	tmpl_t		*vpt = NULL;
@@ -2565,6 +2565,35 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 	switch (quote) {
 	case T_BARE_WORD:
+		/*
+		 *	Deal with explicit casts...
+		 */
+		if (!fr_type_is_null(t_rules->data.cast)) {
+			fr_value_box_t tmp, *actual;
+
+			if (!fr_type_is_leaf(t_rules->data.cast)) {
+				fr_strerror_printf("%s is not a valid cast type",
+						   fr_type_to_str(t_rules->data.cast));
+				return 0;
+			}
+
+			vpt = tmpl_alloc_null(ctx);
+			slen = fr_value_box_from_substr(vpt, &tmp,
+							t_rules->data.cast, t_rules->data.enumv,
+							in, p_rules, false);
+			if (slen < 0) {
+				talloc_free(vpt);
+				return slen;
+			}
+
+			tmpl_init(vpt, TMPL_TYPE_DATA, quote, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in));
+
+			actual = tmpl_value(vpt);
+			fr_value_box_copy_shallow(NULL, actual, &tmp);
+
+			return fr_sbuff_set(in, &our_in);
+		}
+
 		/*
 		 *	Skip other bareword types if
 		 *	we find a '&' prefix.
