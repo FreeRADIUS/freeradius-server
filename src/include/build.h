@@ -59,6 +59,13 @@ extern "C" {
 #endif
 
 /*
+ *	Basic headers we want everywhere
+ */
+#include <stdint.h>
+#include <stddef.h>
+#include <string.h>
+
+/*
  *	GCC will sometimes define "unix" as well as "__unix",
  *	which gets confusing and is unnecessary.
  */
@@ -89,6 +96,27 @@ do { \
 	if (_ret != 0) return _ret; \
 } while (0)
 
+/** memcmp function which has similar behaviour as strncmp
+ *
+ * @param[in] a			First thing to compare.
+ * @param[in] b			Second thing to compare.
+ * @param[in] a_len		Length of first thing.
+ * @param[in] b_len		Length of second thing.
+ * @return
+ *	- +1 if a > b
+ *	- 0 if a == b
+ *	- -1 if a < b
+ */
+static inline int8_t memcmp_return(void const *a, void const *b, size_t a_len, size_t b_len)
+{
+	size_t cmp_len = (a_len < b_len) ? a_len : b_len;
+	int8_t l_ret = CMP(a_len, b_len);
+	int8_t ret;
+	ret = CMP(memcmp(a, b, cmp_len), 0);
+	if (ret != 0) return ret;
+	return l_ret;
+}
+
 /** Return if the contents of the specified field is not identical between the specified structures
  *
  * @param[in] _a		pointer to first structure.
@@ -99,11 +127,8 @@ do { \
  */
 #define MEMCMP_RETURN(_a, _b, _field, _len_field) \
 do { \
-	int8_t _lret = CMP((_a)->_len_field, (_b)->_len_field); \
-	int8_t _ret; \
-	_ret = CMP(memcmp((_a)->_field, (_b)->_field, _lret > 0 ? (_a)->_len_field : (_b)->_len_field), 0); \
+	int8_t _ret = memcmp_return((_a)->_field, (_b)->_field, (_a)->_len_field, (_b)->_len_field); \
 	if (_ret != 0) return _ret; \
-	if (_lret != 0) return _lret; \
 } while (0)
 
 /** Remove const qualification from a pointer
