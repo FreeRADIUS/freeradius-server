@@ -2227,7 +2227,7 @@ RESUME(recv_aka_challenge_response)
  *   - EAP-Response/AKA-Challenge - call 'recv Challenge-Response { ... }'.
  *   - EAP-Response/AKA-Authentication-Reject - call 'recv Authentication-Reject { ... }'  and after that
  *     send a EAP-Request/SIM-Notification indicating a General Failure.
- *   - EAP-Response/AKA-Synchronization-Failure - call 'recv Syncronization-Failure { ... }'.
+ *   - EAP-Response/AKA-Synchronization-Failure - call 'recv Synchronization-Failure { ... }'.
  *   - EAP-Response/AKA-Client-Error - call 'recv Client-Error { ... }' and after that
  *     send a EAP-Request/AKA-Notification indicating a General Failure.
  *   - Anything else, enter the FAILURE-NOTIFICATION state.
