@@ -1524,6 +1524,10 @@ void fr_pair_validate_debug(TALLOC_CTX *ctx, fr_pair_t const *failed[2])
 	fr_pair_aprint(ctx, &value, NULL, list);
 	fr_pair_aprint(ctx, &str, NULL, filter);
 
+#ifdef __clang_analyzer__
+	if (!value || !str) return;
+#endif
+
 	fr_strerror_printf("Attribute value \"%s\" didn't match filter: %s", value, str);
 
 	talloc_free(str);
