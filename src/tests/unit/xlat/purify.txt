@@ -71,8 +71,8 @@ match (%{Framed-IP-Address} < 192.168.0.0/32)
 #  For IP addresses, the other side is automatically upcast to a prefix
 #
 
-#xlat_purify &Framed-IP-Address < 192.168.0.0/24
-#match %(cmp_lt:%{Framed-IP-Address}%(cast:ipv4prefix 192.168.0.0/32))
+xlat_purify &Framed-IP-Address < 192.168.0.0/24
+match (%{Framed-IP-Address} < 192.168.0.0/24)
 
 #  same as above, but swap the order
 xlat_purify (ipv4prefix) 192.168.0.0/24 > &Framed-IP-Address
@@ -121,4 +121,4 @@ xlat_purify 1 < 2 < 3
 match yes
 
 count
-match 51
+match 53

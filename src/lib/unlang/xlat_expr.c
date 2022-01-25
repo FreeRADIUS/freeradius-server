@@ -764,7 +764,7 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 	}
 
 	/*
-	 *	Allow for casts, if the caller hasn't already specified that.
+	 *	Allow for casts, even if we're given a hint.
 	 *
 	 *	For immediate value-boxes, the cast is an instruction on how to parse the current input
 	 *	string.  For run-time expansions, the cast is an instruction on how to parse the output of the
@@ -774,46 +774,48 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 	 *	to be correct.  We can either create a "cast" node, and then delete it when it's not needed.
 	 *	Or, create normal nodes, and then re-parent them to a "cast" node.  Either choice is
 	 *	imperfect, so we just pick one.
+	 *
+	 *	(foo) is an expression.  (uint32) is a cast.
 	 */
-	if (type == FR_TYPE_VOID) {
-		/*
-		 *	(foo) is an expression.  (uint32) is a cast.
-		 */
-		slen = tmpl_cast_from_substr(&cast_type, &in);
-		if (slen <= 0) goto check_more;
-
+	slen = tmpl_cast_from_substr(&cast_type, &in);
+	if (slen > 0) {
 		fr_assert(fr_type_is_leaf(cast_type));
+
+		/*
+		 *	Cast to the hint gets ignored.
+		 */
+		if (type == cast_type) {
+			cast_type = FR_TYPE_NULL;
+		}
 
 		/*
 		 *	&Framed-IP-Address == (ipv4addr) foo
 		 *
 		 *	We can drop the cast.  We already know that the RHS has to match the LHS data type.
 		 */
-		if (da && (cast_type == da->type)) {
-			 cast_type = FR_TYPE_NULL;
-			 goto check_more;
-		}
+		if (da) {
+			if (da->type == cast_type) {
+				cast_type = FR_TYPE_NULL;
 
-		/*
-		 *	We're casting to a type which is different from the input "da".  Which means that we
-		 *	can't parse the type using enums from that "da".
-		 *
-		 *	We MAY be casting the value to the same type as the input "da".  However, we don't
-		 *	(yet) know if we can drop the cast, as the RHS could be an attribute, expansion, or a
-		 *	value-box.  Let's be safe and leave the cast alone until we know which one it is.
-		 */
-		if (da && (da->type != cast_type)) {
-			da = NULL;
+			} else {
+				/*
+				 *	We're casting to a type which is different from the input "da".  Which means that we
+				 *	can't parse the type using enums from that "da".
+				 *
+				 *	We MAY be casting the value to the same type as the input "da".  However, we don't
+				 *	(yet) know if we can drop the cast, as the RHS could be an attribute, expansion, or a
+				 *	value-box.  Let's be safe and leave the cast alone until we know which one it is.
+				 */
+				da = NULL;
+			}
 		}
 	}
 
-	/*
-	 *	If we have '(', then recurse for other expressions
-	 */
-check_more:
 	fr_sbuff_skip_whitespace(&in);
 
 	/*
+	 *	If we have '(', then recurse for other expressions
+	 *
 	 *	Tokenize the sub-expression, ensuring that we stop at ')'.
 	 *
 	 *	Note that if we have a sub-expression, then we don't use the hinting for "type".
@@ -827,11 +829,9 @@ check_more:
 	 *
 	 *	The double casting is technically invalid, and will likely cause breakages at run
 	 *	time.
-	 *
-	 *	@todo - optimization - do we want to create a cast node here, instead of later?
 	 */
 	if (fr_sbuff_next_if_char(&in, '(')) {
-		slen = tokenize_expression(ctx, &node, flags, &in, bracket_rules, t_rules, T_INVALID, FR_TYPE_VOID, bracket_rules, da);
+		slen = tokenize_expression(ctx, &node, flags, &in, bracket_rules, t_rules, T_INVALID, FR_TYPE_NULL, bracket_rules, da);
 		if (slen <= 0) {
 			talloc_free(free_ctx);
 			FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
@@ -952,9 +952,10 @@ check_more:
 
 		} else {
 			/*
-			 *	It could be anything...
+			 *	Cast it to the data type we were asked
+			 *	to use.
 			 */
-//			my_rules.data.cast = FR_TYPE_INT64;
+			my_rules.data.cast = type;
 		}
 
 		/*
@@ -1235,20 +1236,85 @@ redo:
 		goto done;
 	}
 
+#if 1
+	/*
+	 *	By default we don't parse enums on the RHS, and we're also flexible about what we see on the
+	 *	RHS.
+	 */
+	da = NULL;
+	type = FR_TYPE_NULL;
+
+	/*
+	 *	For comparisons, if the LHS is typed, try to parse the RHS as the given type.
+	 *
+	 *	If we're doing other operations, then don't hint at the type for the RHS.
+	 */
+	switch (lhs->type) {
+	case XLAT_TMPL:
+		if (tmpl_rules_cast(lhs->vpt) != FR_TYPE_NULL) {
+			type = tmpl_rules_cast(lhs->vpt);
+
+		} else if (tmpl_contains_attr(lhs->vpt)) {
+			da = tmpl_da(lhs->vpt);
+			type = da->type;
+		}
+		break;
+
+	case XLAT_BOX:
+		/*
+		 *	Bools are too restrictive.
+		 */
+		if (lhs->data.type != FR_TYPE_BOOL) {
+			type = lhs->data.type;
+		}
+		break;
+
+	default:
+		break;
+	}
+
+#else
 	/*
 	 *	If the LHS is typed, try to parse the RHS as the given
 	 *	type.  Otherwise, don't parse the RHS using enums.
 	 */
 	if ((lhs->type == XLAT_TMPL) && (tmpl_is_attr(lhs->vpt) || tmpl_is_list(lhs->vpt))) {
 		da = tmpl_da(lhs->vpt);
+		type = da->type;
 	} else {
 		da = NULL;
 	}
+#endif
 
+	/*
+	 *	And then for network operations, upcast the RHS type to a prefix.  And then when we do the
+	 *	upcast, we can no longer parse the RHS using enums from the LHS.
+	 *
+	 *	@todo - for normalization, if we do network comparisons with /32, then it's really an equality
+	 *	comparison, isn't it?
+	 */
+	switch (op) {
+	case T_OP_LT:
+	case T_OP_LE:
+	case T_OP_GT:
+	case T_OP_GE:
+		if (type == FR_TYPE_IPV4_ADDR) {
+			type = FR_TYPE_IPV4_PREFIX;
+			da = NULL;
+		}
+		if (type == FR_TYPE_IPV6_ADDR) {
+			type = FR_TYPE_IPV6_PREFIX;
+			da = NULL;
+		}
+		break;
+
+	default:
+		break;
+	}
 	/*
 	 *	We now parse the RHS, allowing a (perhaps different) cast on the RHS.
 	 */
-	slen = tokenize_expression(ctx, &rhs, flags, &in, p_rules, t_rules, op, FR_TYPE_VOID, bracket_rules, da);
+	slen = tokenize_expression(ctx, &rhs, flags, &in, p_rules, t_rules, op, type, bracket_rules, da);
 	if (slen <= 0) {
 		talloc_free(lhs);
 		FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
@@ -1369,7 +1435,7 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 
 	if (!t_rules) t_rules = &my_rules;
 
-	slen = tokenize_expression(ctx, head, flags, in, terminal_rules, t_rules, T_INVALID, FR_TYPE_VOID,
+	slen = tokenize_expression(ctx, head, flags, in, terminal_rules, t_rules, T_INVALID, FR_TYPE_NULL,
 				   bracket_rules, NULL);
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
