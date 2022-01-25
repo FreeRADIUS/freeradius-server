@@ -56,8 +56,6 @@ RCSID("$Id$")
  *
  *	@todo - run xlat_purify_expr() after creating the unary node.
  *
- *	@todo - cast - we've removed support for explicit casts handled by xlat.  That needs fixing.
- *
  *	The purify function should also be smart enough to do things like remove redundant casts.
  *
  *	And as a later optimization, lets us optimize the expressions at compile time instead of re-evaluating
@@ -634,18 +632,14 @@ static const int precedence[T_TOKEN_LAST] = {
 		while (isspace((int) *fr_sbuff_current(_x))) fr_sbuff_advance(_x, 1); \
 	} while (0)
 
-#if 0
-static xlat_exp_t *xlat_expr_func_alloc(TALLOC_CTX *ctx, xlat_type_t type, int argc)
+static xlat_exp_t *xlat_exp_func_alloc_args(TALLOC_CTX *ctx, char const *name, size_t namelen, int argc)
 {
 	int i;
 	xlat_exp_t *node, *child, **last;
 
-	MEM(node = xlat_exp_alloc_null(ctx));
-	xlat_exp_set_type(node, type);
-
+	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, name, namelen));
 
 	last = &node->child;
-
 	for (i = 0; i < argc; i++) {
 		MEM(child = xlat_exp_alloc_null(node));
 		xlat_exp_set_type(child, XLAT_GROUP);
@@ -657,18 +651,19 @@ static xlat_exp_t *xlat_expr_func_alloc(TALLOC_CTX *ctx, xlat_type_t type, int a
 	return node;
 }
 
-static xlat_exp_t *xlat_expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type)
+
+static xlat_exp_t *xlat_exp_cast_alloc(TALLOC_CTX *ctx, fr_type_t type, xlat_exp_t *rhs)
 {
-	xlat_exp_t *cast, *node;
+	xlat_exp_t *node, *group, *lhs;
 
 	/*
 	 *	Create a "cast" node.  The LHS is a UINT8 value-box of the cast type.  The RHS is
 	 *	whatever "node" comes next.
 	 */
-	MEM(cast = xlat_exp_alloc(ctx, XLAT_FUNC, "cast", 4));
-	cast->call.func = xlat_func_find("cast_expression", 15);
-	fr_assert(cast->call.func != NULL);
-	cast->flags = cast->call.func->flags;
+	MEM(node = xlat_exp_func_alloc_args(ctx, "cast", 4, 2));
+	node->call.func = xlat_func_find("cast_expression", 15);
+	fr_assert(node->call.func != NULL);
+	node->flags = node->call.func->flags;
 
 	/*
 	 *	Create a LHS child UINT8, with "Cast-Base" as
@@ -676,20 +671,28 @@ static xlat_exp_t *xlat_expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type)
 	 *	to print the name of the type, and not the
 	 *	number.
 	 */
-	MEM(node = xlat_exp_alloc_null(cast));
-	xlat_exp_set_type(node, XLAT_BOX);
-	xlat_exp_set_name_buffer_shallow(node,
-					 talloc_strdup(node,
+	group = node->child;
+
+	MEM(lhs = xlat_exp_alloc_null(group));
+	xlat_exp_set_type(lhs, XLAT_BOX);
+	xlat_exp_set_name_buffer_shallow(lhs,
+					 talloc_strdup(lhs,
 						       fr_type_to_str(type)));
 
-	fr_value_box_init(&node->data, FR_TYPE_UINT8, attr_cast_base, false);
-	node->data.vb_uint8 = type;
+	fr_value_box_init(&lhs->data, FR_TYPE_UINT8, attr_cast_base, false);
+	lhs->data.vb_uint8 = type;
 
-	cast->child = node;
+	group->child = lhs;
+	xlat_flags_merge(&group->flags, &lhs->flags);
+	xlat_flags_merge(&node->flags, &group->flags);
 
-	return cast;
+	group = group->next;
+	group->child = talloc_steal(group, rhs);
+	xlat_flags_merge(&group->flags, &rhs->flags);
+	xlat_flags_merge(&node->flags, &group->flags);
+
+	return node;
 }
-#endif
 
 static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *input,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
@@ -810,22 +813,24 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 check_more:
 	fr_sbuff_skip_whitespace(&in);
 
+	/*
+	 *	Tokenize the sub-expression, ensuring that we stop at ')'.
+	 *
+	 *	Note that if we have a sub-expression, then we don't use the hinting for "type".
+	 *	That's because we're parsing a complete expression here (EXPR).  So the intermediate
+	 *	nodes in the expression can be almost anything.  And we only cast it to the final
+	 *	value when we get the output of the expression.
+	 *
+	 *	@todo - have a parser context structure, so that we can disallow things like
+	 *
+	 *		foo == (int) ((ifid) xxxx)
+	 *
+	 *	The double casting is technically invalid, and will likely cause breakages at run
+	 *	time.
+	 *
+	 *	@todo - optimization - do we want to create a cast node here, instead of later?
+	 */
 	if (fr_sbuff_next_if_char(&in, '(')) {
-		/*
-		 *	Tokenize the sub-expression, ensuring that we stop at ')'.
-		 *
-		 *	Note that if we have a sub-expression, then we don't use the hinting for "type".
-		 *	That's because we're parsing a complete expression here (EXPR).  So the intermediate
-		 *	nodes in the expression can be almost anything.  And we only cast it to the final
-		 *	value when we get the output of the expression.
-		 *
-		 *	@todo - have a parser context structure, so that we can disallow things like
-		 *
-		 *		foo == (int) ((ifid) xxxx)
-		 *
-		 *	The double casting is technically invalid, and will likely cause breakages at run
-		 *	time.
-		 */
 		slen = tokenize_expression(ctx, &node, flags, &in, bracket_rules, t_rules, T_INVALID, FR_TYPE_VOID, bracket_rules, da);
 		if (slen <= 0) {
 			talloc_free(free_ctx);
@@ -877,9 +882,10 @@ check_more:
 	 *	Parse %{...}
 	 *
 	 *	Use the flags as input to xlat_tokenize_expr(), which control things like "needs_resolving".
+	 *
+	 *	@todo - optimization - do we want to create a cast node here, instead of later?
 	 */
 	if (fr_sbuff_adv_past_str_literal(&in, "%{")) {
-		// @todo - cast - create a cast node
 		if (xlat_tokenize_expansion(ctx, &node, flags, &in, &t_rules->attr) < 0) {
 			talloc_free(free_ctx);
 			return -1;
@@ -898,10 +904,10 @@ check_more:
 	 *	The simple solution is to just ignore it, and give out crappy errors.  If the user wants a
 	 *	literal '%' followed by '(' to NOT be a function call, then the user can put a space between
 	 *	them.
+	 *
+	 *	@todo - optimization - do we want to create a cast node here, instead of later?
 	 */
 	if (fr_sbuff_adv_past_str_literal(&in, "%(")) {
-		// @todo - cast - create a cast node
-
 		if (xlat_tokenize_function_args(ctx, &node, flags, &in, &t_rules->attr) < 0) {
 			talloc_free(free_ctx);
 			return -1;
@@ -940,7 +946,6 @@ check_more:
 		 */
 		if (cast_type != FR_TYPE_NULL) {
 			my_rules.data.cast = cast_type;
-			cast_type = FR_TYPE_VOID;
 
 		} else if (da) {
 			my_rules.data.cast = da->type;
@@ -951,6 +956,12 @@ check_more:
 			 */
 //			my_rules.data.cast = FR_TYPE_INT64;
 		}
+
+		/*
+		 *	Casts are no longer needed.  "const" literals
+		 *	are just stored as the value, without a cast.
+		 */
+		cast_type = FR_TYPE_NULL;
 
 		/*
 		 *	Allocate the parent node for the token.
@@ -965,6 +976,11 @@ check_more:
 		 */
 		fr_sbuff_out_by_longest_prefix(&slen, &token, expr_quote_table, &in, T_BARE_WORD);
 		if (token == T_BARE_WORD) {
+			/*
+			 *	Note that we *cannot* pass value_parse_rules_quoted[T_BARE_WORD], because that
+			 *	doesn't stop at anything.  Instead, we have to pass in our bracket rules,
+			 *	which stops at any of the operators / brackets we care about.
+			 */
 			slen = tmpl_afrom_substr(node, &node->vpt, &in, token,
 						 bracket_rules, &my_rules);
 			if (slen <= 0) {
@@ -1010,9 +1026,14 @@ check_more:
 	}
 
 done:
+	/*
+	 *	Add a cast if we still need one.
+	 */
 	if (cast_type != FR_TYPE_NULL) {
-		// @todo - cast - create a cast node and reparent things
+		xlat_exp_t *cast;
 
+		MEM(cast = xlat_exp_cast_alloc(ctx, cast_type, node));
+		node = cast;
 	}
 
 	fr_sbuff_skip_whitespace(&in);

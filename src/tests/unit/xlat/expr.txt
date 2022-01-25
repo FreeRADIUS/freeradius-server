@@ -104,5 +104,8 @@ match (1 < 2)
 xlat_expr 1 < 2 < 3
 match ((1 < 2) < 3)
 
+xlat_expr (uint32) %(concat:1 2)
+match %(cast_expression:uint32 %(concat:1 2))
+
 count
 match 45
