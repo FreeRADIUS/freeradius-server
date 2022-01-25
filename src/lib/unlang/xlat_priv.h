@@ -171,6 +171,7 @@ static inline CC_HINT(nonnull) void xlat_flags_merge(xlat_flags_t *parent, xlat_
 	parent->needs_resolving |= child->needs_resolving;
 	parent->pure &= child->pure; /* purity can only be removed, never added */
 	parent->pure &= !parent->needs_async; /* things needing async cannot be pure */
+	parent->has_pure_children |= child->pure | child->has_pure_children;
 }
 
 /** Set the type of an xlat node

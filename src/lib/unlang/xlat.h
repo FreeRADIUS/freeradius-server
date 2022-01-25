@@ -109,6 +109,7 @@ typedef struct {
 	bool			needs_async;	//!< Node and all child nodes are guaranteed to not
 						///< require asynchronous expansion.
 	bool			pure;		//!< has no external side effects
+	bool			has_pure_children; //!< as the sticker says
 } xlat_flags_t;
 
 /*
