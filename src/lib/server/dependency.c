@@ -288,6 +288,28 @@ void dependency_features_init(CONF_SECTION *cs)
 	dependency_feature_add(cs, "runtime-debugger", (fr_get_debug_state() == 1));
 }
 
+#ifdef EVFILT_LIBKQUEUE
+static void dependency_libqueue_version(CONF_SECTION *cs)
+{
+	int kqfd, ret;
+	struct kevent kev, receipt;
+
+	kqfd = kqueue();
+	if (kqfd < 0) {
+	kqueue_error:
+		dependency_version_number_add(cs, "libkqueue", fr_syserror(errno));
+		return
+	}
+
+	EV_SET(&kev, 0, EVFILT_LIBKQUEUE, EV_ADD, NOTE_VERSION_STR, 0, NULL);
+	ret = kevent(kqfd, &kev, 1, &receipt, 1, &(struct timespec){});
+	close(kqfd);
+	if (ret != 1) goto kqueue_error;
+
+	dependency_version_number_add(cs, "libkqueue", (char *)receipt.udata);
+}
+#endif
+
 /** Initialise core version flags
  *
  * @param cs Where to add the CONF_PAIRS, if null pairs will be added
@@ -318,25 +340,7 @@ void dependency_version_numbers_init(CONF_SECTION *cs)
 #endif
 
 #ifdef EVFILT_LIBKQUEUE
-	{
-		int kqfd, ret;
-		struct kevent kev, receipt;
-
-		kqfd = kqueue();
-		if (kqfd < 0) {
-		kqueue_error:
-			dependency_version_number_add(cs, "libkqueue", fr_syserror(errno));
-			goto kqueue_done;
-		}
-
-		EV_SET(&kev, 0, EVFILT_LIBKQUEUE, EV_ADD, NOTE_VERSION_STR, 0, NULL);
-		ret = kevent(kqfd, &kev, 1, &receipt, 1, &(struct timespec){});
-		close(kqfd);
-		if (ret != 1) goto kqueue_error;
-
-		dependency_version_number_add(cs, "libkqueue", (char *)receipt.udata);
-	}
-kqueue_done:
+	dependency_libqueue_version(cs);
 #endif
 }
 
