@@ -29,17 +29,17 @@ match (%{NAS-Port} + 5)
 xlat_expr &Framed-IP-Address & 0xffff0000
 match (%{Framed-IP-Address} & 255.255.0.0)
 
-xlat_expr %{Framed-IP-Address} + 4
-match (%{Framed-IP-Address} + 0.0.0.4)
+#xlat_expr %{Framed-IP-Address} + 4
+#match (%{Framed-IP-Address} + 0.0.0.4)
 
 xlat_expr 1 < 4
 match (1 < 4)
 
-xlat_expr &Service-Type == Framed-User
-match (%{Service-Type} == Framed-User)
+#xlat_expr &Service-Type == Framed-User
+#match (%{Service-Type} == Framed-User)
 
-xlat_expr 1 + (&Service-Type == Framed-User)
-match (1 + (%{Service-Type} == Framed-User))
+#xlat_expr 1 + (&Service-Type == Framed-User)
+#match (1 + (%{Service-Type} == Framed-User))
 
 #
 #  Strings of various forms
@@ -105,4 +105,4 @@ xlat_expr 1 < 2 < 3
 match ((1 < 2) < 3)
 
 count
-match 51
+match 45

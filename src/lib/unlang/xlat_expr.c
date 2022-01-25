@@ -56,6 +56,8 @@ RCSID("$Id$")
  *
  *	@todo - run xlat_purify_expr() after creating the unary node.
  *
+ *	@todo - cast - we've removed support for explicit casts handled by xlat.  That needs fixing.
+ *
  *	The purify function should also be smart enough to do things like remove redundant casts.
  *
  *	And as a later optimization, lets us optimize the expressions at compile time instead of re-evaluating
@@ -115,6 +117,17 @@ static void cast_to_bool(fr_value_box_t *out, fr_value_box_t const *in)
 	}
 }
 
+#define xlat_is_box(_x) (((_x)->type == XLAT_BOX) || (((_x)->type == XLAT_TMPL) && tmpl_is_data((_x)->vpt)))
+static fr_value_box_t *xlat_box(xlat_exp_t *node)
+{
+	if (node->type == XLAT_BOX) return &node->data;
+
+	fr_assert(node->type == XLAT_TMPL);
+	fr_assert(tmpl_is_data(node->vpt));
+
+	return tmpl_value(node->vpt);
+}
+
 /** Basic purify, but only for expressions and comparisons.
  *
  */
@@ -149,7 +162,7 @@ static int xlat_purify_expr(xlat_exp_t *node)
 	 *	A child isn't a value-box.  We leave it alone.
 	 */
 	for (child = node->child; child != NULL; child = child->next) {
-		if (child->type != XLAT_BOX) return 0;
+		if (!xlat_is_box(child)) return 0;
 	}
 
 	fr_value_box_list_init(&input);
@@ -166,9 +179,9 @@ static int xlat_purify_expr(xlat_exp_t *node)
 		MEM(box = fr_value_box_alloc_null(node));
 
 		if ((arg->type != FR_TYPE_VOID) && (arg->type != box->type)) {
-			if (fr_value_box_cast(node, box, arg->type, NULL, &child->data) < 0) goto fail;
+			if (fr_value_box_cast(node, box, arg->type, NULL, xlat_box(child)) < 0) goto fail;
 
-		} else if (fr_value_box_copy(node, box, &child->data) < 0) {
+		} else if (fr_value_box_copy(node, box, xlat_box(child)) < 0) {
 		fail:
 			talloc_free(box);
 			goto cleanup;
@@ -621,6 +634,28 @@ static const int precedence[T_TOKEN_LAST] = {
 		while (isspace((int) *fr_sbuff_current(_x))) fr_sbuff_advance(_x, 1); \
 	} while (0)
 
+#if 0
+static xlat_exp_t *xlat_expr_func_alloc(TALLOC_CTX *ctx, xlat_type_t type, int argc)
+{
+	int i;
+	xlat_exp_t *node, *child, **last;
+
+	MEM(node = xlat_exp_alloc_null(ctx));
+	xlat_exp_set_type(node, type);
+
+
+	last = &node->child;
+
+	for (i = 0; i < argc; i++) {
+		MEM(child = xlat_exp_alloc_null(node));
+		xlat_exp_set_type(child, XLAT_GROUP);
+		child->quote = T_BARE_WORD;
+		*last = child;
+		last = &child->next;
+	}
+
+	return node;
+}
 
 static xlat_exp_t *xlat_expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type)
 {
@@ -654,11 +689,21 @@ static xlat_exp_t *xlat_expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type)
 
 	return cast;
 }
+#endif
 
 static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *input,
-				   fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules,
+				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 				   fr_token_t prev, fr_type_t type, fr_sbuff_parse_rules_t const *bracket_rules,
 				   fr_dict_attr_t const *da);
+
+
+static fr_table_num_sorted_t const expr_quote_table[] = {
+	{ L("\""),	T_DOUBLE_QUOTED_STRING	},	/* Don't re-order, backslash throws off ordering */
+	{ L("'"),	T_SINGLE_QUOTED_STRING	},
+	{ L("/"),	T_SOLIDUS_QUOTED_STRING	},
+	{ L("`"),	T_BACK_QUOTED_STRING	}
+};
+static size_t expr_quote_table_len = NUM_ELEMENTS(expr_quote_table);
 
 
 /*
@@ -675,15 +720,14 @@ static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
  *	int64_t.
  */
 static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *input,
-			      fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules,
+			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 			      fr_type_t type, fr_sbuff_parse_rules_t const *bracket_rules, fr_dict_attr_t const *da)
 {
 	ssize_t		slen;
 	xlat_exp_t	*node = NULL;
 	xlat_exp_t	*unary = NULL;
-	xlat_exp_t	*cast = NULL;
 	xlat_t		*func = NULL;
-	fr_type_t	cast_type = FR_TYPE_VOID;
+	fr_type_t	cast_type = FR_TYPE_NULL;
 	TALLOC_CTX	*ctx = input_ctx;
 	TALLOC_CTX	*free_ctx = NULL;
 	fr_sbuff_t	in = FR_SBUFF(input);
@@ -724,53 +768,28 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 	 *	run-time expansion.  As such, we need to save it via an xlat_cast() function.
 	 *
 	 *	But we don't know this until we parse the next thing, and we want all of the talloc parenting
-	 *	to be correct.  So we might as well always create a cast, and then reparent things later.
+	 *	to be correct.  We can either create a "cast" node, and then delete it when it's not needed.
+	 *	Or, create normal nodes, and then re-parent them to a "cast" node.  Either choice is
+	 *	imperfect, so we just pick one.
 	 */
 	if (type == FR_TYPE_VOID) {
-		char end = '\0';
-		fr_sbuff_marker_t marker;
+		/*
+		 *	(foo) is an expression.  (uint32) is a cast.
+		 */
+		slen = tmpl_cast_from_substr(&cast_type, &in);
+		if (slen <= 0) goto check_more;
 
-		fr_sbuff_marker(&marker, &in);
-		if (fr_sbuff_is_char(&in, '(')) { /* <cast> is yucky.  (cast) is friendly */
-			fr_sbuff_advance(&in, 1);
-			end = ')';
+		fr_assert(fr_type_is_leaf(cast_type));
 
-		} else if (fr_sbuff_is_char(&in, '<')) {
-			fr_sbuff_advance(&in, 1);
-			end = '>';
-
-		} else {
-			goto check_more;
+		/*
+		 *	&Framed-IP-Address == (ipv4addr) foo
+		 *
+		 *	We can drop the cast.  We already know that the RHS has to match the LHS data type.
+		 */
+		if (da && (cast_type == da->type)) {
+			 cast_type = FR_TYPE_NULL;
+			 goto check_more;
 		}
-
-		fr_sbuff_skip_whitespace(&in);
-
-		fr_sbuff_out_by_longest_prefix(&slen, &cast_type, fr_type_table, &in, FR_TYPE_VOID);
-		if (cast_type == FR_TYPE_VOID) {
-			fr_sbuff_set(&in, &marker);
-			goto check_more;
-		}
-
-		if (!fr_type_is_leaf(cast_type)) {
-			fr_strerror_printf("Cannot cast to structural data type");
-			fr_sbuff_set(&in, &marker);
-			talloc_free(unary);
-			FR_SBUFF_ERROR_RETURN(&in);
-		}
-
-		fr_sbuff_skip_whitespace(&in);
-		if (!fr_sbuff_is_char(&in, end)) {
-			fr_strerror_printf("Unexpected text after cast data type");
-			talloc_free(unary);
-			FR_SBUFF_ERROR_RETURN(&in);
-		}
-
-		fr_sbuff_advance(&in, 1);
-
-		MEM(cast = xlat_expr_cast_alloc(ctx, cast_type));
-
-		ctx = cast;
-		if (!free_ctx) free_ctx = cast;
 
 		/*
 		 *	We're casting to a type which is different from the input "da".  Which means that we
@@ -824,30 +843,16 @@ check_more:
 
 	/*
 	 *	Parse an attribute string.
+	 *
+	 *	@todo - this case is arguably handled by tmpl_afrom_substr()
 	 */
 	if (fr_sbuff_is_char(&in, '&')) {
 		tmpl_t *vpt = NULL;
 
-		/*
-		 *	We don't need an explicit cast, as it can be pushed into the tmpl.  So get rid of it.
-		 */
-		if (cast) {
-			TALLOC_FREE(cast);
-			if (unary) {
-				ctx = unary;
-				free_ctx = unary;
-			} else {
-				ctx = input_ctx;
-				free_ctx = NULL;
-			}
-
-			fr_assert(cast_type != FR_TYPE_VOID);
-		}
-
 		MEM(node = xlat_exp_alloc_null(ctx));
 		xlat_exp_set_type(node, XLAT_TMPL);
 
-		slen = tmpl_afrom_attr_substr(node, NULL, &vpt, &in, p_rules, t_rules);
+		slen = tmpl_afrom_attr_substr(node, NULL, &vpt, &in, p_rules, &t_rules->attr);
 		if (slen <= 0) {
 			talloc_free(node);
 			talloc_free(free_ctx);
@@ -857,9 +862,9 @@ check_more:
 		/*
 		 *	If we have a cast, then push it into the tmpl.
 		 */
-		if (cast_type != FR_TYPE_VOID) {
+		if (cast_type != FR_TYPE_NULL) {
 			(void) tmpl_cast_set(vpt, cast_type);
-			cast_type = FR_TYPE_VOID;
+			cast_type = FR_TYPE_NULL;
 		}
 
 		xlat_exp_set_name_buffer_shallow(node, vpt->name);
@@ -874,7 +879,8 @@ check_more:
 	 *	Use the flags as input to xlat_tokenize_expr(), which control things like "needs_resolving".
 	 */
 	if (fr_sbuff_adv_past_str_literal(&in, "%{")) {
-		if (xlat_tokenize_expansion(ctx, &node, flags, &in, t_rules) < 0) {
+		// @todo - cast - create a cast node
+		if (xlat_tokenize_expansion(ctx, &node, flags, &in, &t_rules->attr) < 0) {
 			talloc_free(free_ctx);
 			return -1;
 		}
@@ -894,35 +900,14 @@ check_more:
 	 *	them.
 	 */
 	if (fr_sbuff_adv_past_str_literal(&in, "%(")) {
-		if (xlat_tokenize_function_args(ctx, &node, flags, &in, t_rules) < 0) {
+		// @todo - cast - create a cast node
+
+		if (xlat_tokenize_function_args(ctx, &node, flags, &in, &t_rules->attr) < 0) {
 			talloc_free(free_ctx);
 			return -1;
 		}
 
 		goto done;
-	}
-
-	/*
-	 *	If we've been told to cast the value-box to a particular type, then try to parse it as that
-	 *	type.
-	 *
-	 *	@todo - we should allow things like (int) "123", too!
-	 */
-	if (cast_type != FR_TYPE_VOID) type = cast_type;
-
-	/*
-	 *	Else it's nothing we recognize.  Do some quick checks to see what it might be.
-	 */
-	if (type == FR_TYPE_VOID) {
-		if (da) {
-			type = da->type;
-
-		} else if (fr_sbuff_is_char(&in, '"') || fr_sbuff_is_char(&in, '\'') || fr_sbuff_is_char(&in, '`')) {
-			type = FR_TYPE_STRING;
-
-		} else {
-			type = FR_TYPE_INT64;
-		}
 	}
 
 	/*
@@ -936,92 +921,102 @@ check_more:
 	 *	to remember the original type.  So that for IPs, if there's no '/' in the parsed input, then
 	 *	we swap the data type from the "upcast" prefix type to the input IP address type.
 	 */
-	fr_assert(fr_type_is_leaf(type));
 
 	/*
 	 *	Parse the thing as a value-box of the given type.
 	 */
 	{
+		fr_token_t token;
 		char *p;
 		fr_sbuff_marker_t marker;
+		tmpl_rules_t my_rules;
+
+		my_rules = *t_rules;
+		my_rules.parent = t_rules;
+		my_rules.data.enumv = da;
+
+		/*
+		 *	Force parsing as a particular type.
+		 */
+		if (cast_type != FR_TYPE_NULL) {
+			my_rules.data.cast = cast_type;
+			cast_type = FR_TYPE_VOID;
+
+		} else if (da) {
+			my_rules.data.cast = da->type;
+
+		} else {
+			/*
+			 *	It could be anything...
+			 */
+//			my_rules.data.cast = FR_TYPE_INT64;
+		}
+
+		/*
+		 *	Allocate the parent node for the token.
+		 */
+		MEM(node = xlat_exp_alloc_null(ctx));
+		xlat_exp_set_type(node, XLAT_TMPL);
 
 		fr_sbuff_marker(&marker, &in);
 
 		/*
-		 *	@todo - parse all this via tmpl_afrom_substr(), and set tmpl_data_rules_t to the
-		 *	appropriate cast and enumv.
+		 *	This thing is a value of some kind.  Try to parse it as that.
 		 */
-		MEM(node = xlat_exp_alloc_null(ctx));
-		xlat_exp_set_type(node, XLAT_BOX);
-
-		/*
-		 *	'-' and '/' are allowed in dictionary names.  But they're also tokens allowed here.
-		 *	So we have to jump through some hoops in order to parse both.
-		 *
-		 *	e.g. "Framed-User" should be parsed as that, and not as anything else.
-		 */
-		if (da) {
-			fr_dict_enum_value_t *enumv;
-
-			slen = fr_dict_enum_by_name_substr(&enumv, da, &in);
-			if (slen == 0) {
-				da = NULL;
-				goto parse_other;
-			}
-			if (slen < 0) {
-				goto failed_value;
-			}
-
-			fr_value_box_copy(node, &node->data, enumv->value);
-			node->data.enumv = da;
-
-		} else {
-		parse_other:
-			/*
-			 *	Note that this allows "192.168/24" if the type-specific parser allows it, even
-			 *	if '/' is a terminal character.
-			 */
-			slen = fr_value_box_from_substr(node, &node->data, type, da, &in, p_rules, false);
+		fr_sbuff_out_by_longest_prefix(&slen, &token, expr_quote_table, &in, T_BARE_WORD);
+		if (token == T_BARE_WORD) {
+			slen = tmpl_afrom_substr(node, &node->vpt, &in, token,
+						 bracket_rules, &my_rules);
 			if (slen <= 0) {
-			failed_value:
-				fr_strerror_printf("Failed parsing value - %s", fr_strerror());
-				talloc_free(free_ctx);
 				FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
 			}
+			fr_assert(node->vpt != NULL);
+
+		} else {
+			slen = tmpl_afrom_substr(node, &node->vpt, &in, token,
+						 value_parse_rules_quoted[token], &my_rules);
+			if (slen <= 0) {
+				FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
+			}
+
+			/*
+			 *	Check for, and skip, the trailing quote if we had a leading quote.
+			 */
+			if (!fr_sbuff_is_char(&in, fr_token_quote[token])) {
+				fr_strerror_const("Unexpected end of quoted string");
+				FR_SBUFF_ERROR_RETURN(&in);
+			}
+
+			fr_sbuff_advance(&in, 1);
+			fr_assert(node->vpt != NULL);
 		}
 
-		MEM(p = talloc_array(node, char, slen + 1));
-		p[slen] = '\0';
-		memcpy(p, fr_sbuff_current(&marker), slen);
+		/*
+		 *	The tmpl code does NOT return tmpl_type_data
+		 *	for string data without xlat.  Instead, it
+		 *	creates TMPL_TYPE_UNRESOLVED.
+		 */
+		if (tmpl_resolve(node->vpt, NULL) < 0) {
+			fr_sbuff_set(&in, &marker);
+			FR_SBUFF_ERROR_RETURN(&in);
+		}
+
+		fr_assert(tmpl_value_type(node->vpt) != FR_TYPE_NULL);
+
+		(void) fr_value_box_aprint(node, &p, tmpl_value(node->vpt), fr_value_escape_by_quote[token]);
 		xlat_exp_set_name_buffer_shallow(node, p);
+
 		goto done;
 	}
 
 done:
-	fr_sbuff_skip_whitespace(&in);
+	if (cast_type != FR_TYPE_NULL) {
+		// @todo - cast - create a cast node and reparent things
 
-	/*
-	 *	Wrap the result in a cast.
-	 *
-	 *	@todo - if the node is an XLAT_TMPL or XLAT_BOX and is already of the correct data type, then reparent
-	 *	"node" to the parent of "cast", and free "cast".
-	 */
-	if (cast) {
-		if ((node->type == XLAT_BOX) && (node->data.type == cast->child->data.vb_uint8)) {
-			talloc_steal(talloc_parent(cast), node);
-			talloc_free(cast);
-			goto check_unary;
-		}
-
-		fr_assert(cast->child);
-		cast->child->next = node;
-		xlat_flags_merge(&cast->flags, &node->flags);
-		node = cast;
-
-		xlat_groupify_expr(node);
 	}
 
-check_unary:
+	fr_sbuff_skip_whitespace(&in);
+
 	/*
 	 *	Purify things in place, where we can.
 	 */
@@ -1086,7 +1081,7 @@ static size_t const expr_assignment_op_table_len = NUM_ELEMENTS(expr_assignment_
  *	A OP B
  */
 static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *input,
-				   fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules,
+				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 				   fr_token_t prev, fr_type_t type, fr_sbuff_parse_rules_t const *bracket_rules,
 				   fr_dict_attr_t const *da)
 {
@@ -1201,8 +1196,7 @@ redo:
 	 *	If the LHS is typed, try to parse the RHS as the given
 	 *	type.  Otherwise, don't parse the RHS using enums.
 	 */
-	if (lhs->type == XLAT_TMPL) {
-		fr_assert(tmpl_is_attr(lhs->vpt) || tmpl_is_list(lhs->vpt));
+	if ((lhs->type == XLAT_TMPL) && (tmpl_is_attr(lhs->vpt) || tmpl_is_list(lhs->vpt))) {
 		da = tmpl_da(lhs->vpt);
 	} else {
 		da = NULL;
@@ -1295,12 +1289,13 @@ static const fr_sbuff_term_t operator_terms = FR_SBUFF_TERMS(
 );
 
 ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-				 fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules)
+				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	ssize_t slen;
 	fr_sbuff_parse_rules_t *bracket_rules = NULL;
 	fr_sbuff_parse_rules_t *terminal_rules = NULL;
 	xlat_flags_t my_flags = { 0 };
+	tmpl_rules_t my_rules = { 0 };
 
 	/*
 	 *	Whatever the caller passes, ensure that we have a
@@ -1328,6 +1323,8 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 								 &bracket_terms));
 
 	if (!flags) flags = &my_flags;
+
+	if (!t_rules) t_rules = &my_rules;
 
 	slen = tokenize_expression(ctx, head, flags, in, terminal_rules, t_rules, T_INVALID, FR_TYPE_VOID,
 				   bracket_rules, NULL);
