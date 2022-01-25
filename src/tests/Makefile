@@ -50,8 +50,7 @@ endif
 
 $(BUILD_PATH)/tests/eapol_test/eapol_test.mk: | $(BUILD_PATH)/tests/eapol_test
 	@echo "EAPOL_TEST=$(EAPOL_TEST_BIN)" > $@
-	@echo "TLS1_3=$(shell strings "$(RADIUSD_BIN)" | grep -q '^tls13_enable$$' && \
-		strings "$(EAPOL_TEST_BIN)" | grep 'tlsv1_3' | head -n 1)" >> $@
+	@echo "TLS1_3=$(shell strings "$(EAPOL_TEST_BIN)" | grep 'tlsv1_3' | head -n 1)" >> $@
 	@echo "OPENSSL_OK=$(shell openssl version | grep -v ' 1\.0' >/dev/null && echo yes)" >> $@
 	@echo "OPENSSL3_OK=$(shell openssl version | grep -q ' OpenSSL 3\.0' && echo yes)" >> $@
 else
@@ -162,7 +161,6 @@ config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
 	     -e 's/^\(.*\)persist_dir =/  persist_dir =/' \
 	     -e 's/tls_min_version = "1.2"/tls_min_version = "1.0"/' \
 	     -e '$(if $(TLS1_3),s/tls_max_version = "1.2"/tls_max_version = "1.3"/)' \
-	     -e  '/tls_max_version/s/^//p; /tls_max_version/s/^.*/        tls13_enable=true/' \
 	     -e 's/cipher_list = "DEFAULT"/cipher_list = "DEFAULT${SECLEVEL}"/' \
 		 < $< > $@
 
