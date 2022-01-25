@@ -298,7 +298,7 @@ static void dependency_libqueue_version(CONF_SECTION *cs)
 	if (kqfd < 0) {
 	kqueue_error:
 		dependency_version_number_add(cs, "libkqueue", fr_syserror(errno));
-		return
+		return;
 	}
 
 	EV_SET(&kev, 0, EVFILT_LIBKQUEUE, EV_ADD, NOTE_VERSION_STR, 0, NULL);
