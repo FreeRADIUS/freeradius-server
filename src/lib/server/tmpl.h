@@ -886,40 +886,40 @@ typedef enum {
 #define tmpl_aexpand_type(_ctx, _out, _type, _request, _vpt, _escape, _escape_ctx) \
 			  _tmpl_to_atype(_ctx, (void *)(_out), _request, _vpt, _escape, _escape_ctx, _type)
 
-void			tmpl_debug(tmpl_t const *vpt);
+void			tmpl_debug(tmpl_t const *vpt) CC_HINT(nonnull);
 
 fr_pair_list_t		*tmpl_list_head(request_t *request, tmpl_pair_list_t list);
 
-fr_radius_packet_t	*tmpl_packet_ptr(request_t *request, tmpl_pair_list_t list_name);
+fr_radius_packet_t	*tmpl_packet_ptr(request_t *request, tmpl_pair_list_t list_name) CC_HINT(nonnull);
 
 TALLOC_CTX		*tmpl_list_ctx(request_t *request, tmpl_pair_list_t list_name);
 
-size_t			tmpl_pair_list_name(tmpl_pair_list_t *out, char const *name, tmpl_pair_list_t default_list);
+size_t			tmpl_pair_list_name(tmpl_pair_list_t *out, char const *name, tmpl_pair_list_t default_list) CC_HINT(nonnull);
 
-int			tmpl_request_ptr(request_t **request, tmpl_request_ref_t name);
+int			tmpl_request_ptr(request_t **request, tmpl_request_ref_t name) CC_HINT(nonnull);
 
-size_t			tmpl_request_ref_by_name(tmpl_request_ref_t *out, char const *name, tmpl_request_ref_t unknown);
+size_t			tmpl_request_ref_by_name(tmpl_request_ref_t *out, char const *name, tmpl_request_ref_t unknown) CC_HINT(nonnull);
 
-tmpl_t			*tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *fmt, ...);
+tmpl_t			*tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *fmt, ...) CC_HINT(nonnull(1,4));
 
 tmpl_t			*tmpl_init_shallow(tmpl_t *vpt, tmpl_type_t type,
 					   fr_token_t quote, char const *name, ssize_t len) CC_HINT(nonnull);
 
-tmpl_t			*tmpl_init(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *name, ssize_t len);
+tmpl_t			*tmpl_init(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *name, ssize_t len) CC_HINT(nonnull);
 
 tmpl_t			*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, fr_token_t quote, char const *name, ssize_t len);
 
-void			tmpl_set_name_printf(tmpl_t *vpt, fr_token_t quote, char const *fmt, ...);
+void			tmpl_set_name_printf(tmpl_t *vpt, fr_token_t quote, char const *fmt, ...) CC_HINT(nonnull(1,3));
 
 void			tmpl_set_name_shallow(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len) CC_HINT(nonnull);
 
-void			tmpl_set_name(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len);
+void			tmpl_set_name(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len) CC_HINT(nonnull);
 
-void			tmpl_set_dict_def(tmpl_t *vpt, fr_dict_t const *dict);
+void			tmpl_set_dict_def(tmpl_t *vpt, fr_dict_t const *dict) CC_HINT(nonnull);
 
-int			tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bool steal);
+int			tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bool steal) CC_HINT(nonnull);
 
-void			tmpl_attr_ref_debug(const tmpl_attr_t *ar, int idx);
+void			tmpl_attr_ref_debug(const tmpl_attr_t *ar, int idx) CC_HINT(nonnull);
 
 void			tmpl_attr_ref_list_debug(FR_DLIST_HEAD(tmpl_attr_list) const *ar_head) CC_HINT(nonnull);
 
@@ -942,7 +942,7 @@ void			tmpl_attr_set_request(tmpl_t *vpt, tmpl_request_ref_t request) CC_HINT(no
 void			tmpl_attr_set_list(tmpl_t *vpt, tmpl_pair_list_t list) CC_HINT(nonnull);
 
 int			tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list,
-					     fr_dict_attr_t const *da);
+					     fr_dict_attr_t const *da) CC_HINT(nonnull);
 
 /** @name Produce a #tmpl_t from a string or substring
  *
@@ -951,7 +951,7 @@ int			tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list,
 ssize_t			tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					       tmpl_t **out, fr_sbuff_t *name,
 					       fr_sbuff_parse_rules_t const *p_rules,
-					       tmpl_attr_rules_t const *t_rules);
+					       tmpl_attr_rules_t const *t_rules) CC_HINT(nonnull(3,4));
 
 ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					    tmpl_t **out, char const *name,
@@ -961,59 +961,59 @@ ssize_t			tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 					  fr_sbuff_t *in,
 					  fr_token_t quote,
 					  fr_sbuff_parse_rules_t const *p_rules,
-					  tmpl_rules_t const *t_rules);
+					  tmpl_rules_t const *t_rules) CC_HINT(nonnull(2,3));
 
-tmpl_t			*tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in);
+tmpl_t			*tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in) CC_HINT(nonnull);
 
-ssize_t			tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in);		/* Parses cast string */
+ssize_t			tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in) CC_HINT(nonnull(2));		/* Parses cast string */
 
 int			tmpl_cast_set(tmpl_t *vpt, fr_type_t type) CC_HINT(nonnull);	/* Sets cast type */
 
 
 #ifdef HAVE_REGEX
 ssize_t			tmpl_regex_flags_substr(tmpl_t *vpt, fr_sbuff_t *in,
-						fr_sbuff_term_t const *terminals);
+						fr_sbuff_term_t const *terminals) CC_HINT(nonnull(1,2));
 #endif
 /** @} */
 
 /** @name Change a #tmpl_t type, usually by casting or resolving a reference
  * @{
  */
-int			tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv);
+int			tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv) CC_HINT(nonnull(1));
 
 int			tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules) CC_HINT(nonnull(1));
 
 void			tmpl_unresolve(tmpl_t *vpt) CC_HINT(nonnull);
 
-int			tmpl_attr_to_xlat(TALLOC_CTX *ctx, tmpl_t **vpt_p);
+int			tmpl_attr_to_xlat(TALLOC_CTX *ctx, tmpl_t **vpt_p) CC_HINT(nonnull);
 
-void			tmpl_attr_to_raw(tmpl_t *vpt);
+void			tmpl_attr_to_raw(tmpl_t *vpt) CC_HINT(nonnull);
 
 int			tmpl_attr_unknown_add(tmpl_t *vpt);
 
 int			tmpl_attr_unresolved_add(fr_dict_t *dict, tmpl_t *vpt,
-						 fr_type_t type, fr_dict_attr_flags_t const *flags);
+						 fr_type_t type, fr_dict_attr_flags_t const *flags) CC_HINT(nonnull(1));
 
 #ifdef HAVE_REGEX
-ssize_t			tmpl_regex_compile(tmpl_t *vpt, bool subcaptures);
+ssize_t			tmpl_regex_compile(tmpl_t *vpt, bool subcaptures) CC_HINT(nonnull);
 #endif
 /** @} */
 
 /** @name Print the contents of a #tmpl_t
  * @{
  */
-ssize_t			tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix);
+ssize_t			tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix) CC_HINT(nonnull(1));
 
 ssize_t			tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
-				   tmpl_attr_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules);
+				   tmpl_attr_prefix_t ar_prefix, fr_sbuff_escape_rules_t const *e_rules) CC_HINT(nonnull(1));
 
-ssize_t			tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix);
+ssize_t			tmpl_print_quoted(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t ar_prefix) CC_HINT(nonnull);
 /** @} */
 
 /** @name Expand the tmpl, returning one or more values
  * @{
  */
-fr_type_t		tmpl_expanded_type(tmpl_t const *vpt);
+fr_type_t		tmpl_expanded_type(tmpl_t const *vpt) CC_HINT(nonnull);
 
 ssize_t			_tmpl_to_type(void *out,
 				      uint8_t *buff, size_t outlen,
@@ -1031,23 +1031,23 @@ ssize_t			_tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 			CC_HINT(nonnull (2, 3, 4));
 
 int			tmpl_copy_pairs(TALLOC_CTX *ctx, fr_pair_list_t *out,
-					request_t *request, tmpl_t const *vpt);
+					request_t *request, tmpl_t const *vpt) CC_HINT(nonnull(2,3,4));
 
 int			tmpl_copy_pair_children(TALLOC_CTX *ctx, fr_pair_list_t *out,
-						request_t *request, tmpl_t const *vpt);
+						request_t *request, tmpl_t const *vpt) CC_HINT(nonnull(2,3,4));
 
-int			tmpl_find_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt);
+int			tmpl_find_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt) CC_HINT(nonnull(2,3));
 
-int			tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt);
+int			tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt) CC_HINT(nonnull);
 
 int			tmpl_extents_find(TALLOC_CTX *ctx,
 		      			  fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
-					  request_t *request, tmpl_t const *vpt);
+					  request_t *request, tmpl_t const *vpt) CC_HINT(nonnull(5));
 
 int			tmpl_extents_build_to_leaf_parent(fr_dlist_head_t *leaf, fr_dlist_head_t *interior,
-						   tmpl_t const *vpt);
+						   tmpl_t const *vpt) CC_HINT(nonnull);
 
-void			tmpl_extents_debug(fr_dlist_head_t *head);
+void			tmpl_extents_debug(fr_dlist_head_t *head) CC_HINT(nonnull);
 /** @} */
 
 ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,
@@ -1055,9 +1055,9 @@ ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t
 				      fr_dict_attr_t const **castda, bool require_regex,
 				      bool allow_xlat) CC_HINT(nonnull(1,2,3,5));
 
-bool			tmpl_async_required(tmpl_t const *vpt);
+bool			tmpl_async_required(tmpl_t const *vpt) CC_HINT(nonnull);
 
-fr_pair_t		*tmpl_get_list(request_t *request, tmpl_t const *vpt); /* temporary hack */
+fr_pair_t		*tmpl_get_list(request_t *request, tmpl_t const *vpt) CC_HINT(nonnull(2)); /* temporary hack */
 
 #undef _CONST
 
