@@ -38,66 +38,6 @@ AC_DEFUN([FR_CHECK_TYPE_INCLUDE],
 ])
 
 dnl #
-dnl #  Locate the directory in which a particular file is found.
-dnl #
-dnl #  Usage: FR_LOCATE_DIR(MYSQLLIB_DIR, libmysqlclient.a)
-dnl #
-dnl #    Defines the variable MYSQLLIB_DIR to be the directory(s) in
-dnl #    which the file libmysqlclient.a is to be found.
-dnl #
-dnl #
-AC_DEFUN([FR_LOCATE_DIR],
-[
-dnl # If we have the program 'locate', then the problem of finding a
-dnl # particular file becomes MUCH easier.
-dnl #
-
-dnl #
-dnl #  No 'locate' defined, do NOT do anything.
-dnl #
-if test "x$LOCATE" != "x"; then
-  dnl #
-  dnl #  Root through a series of directories, looking for the given file.
-  dnl #
-  DIRS=
-  file=$2
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-    dnl #
-    dnl #  When asked for 'foo', locate will also find 'foo_bar', which we
-    dnl #  don't want.  We want that EXACT filename.
-    dnl #
-    dnl #  We ALSO want to be able to look for files like 'mysql/mysql.h',
-    dnl #  and properly match them, too.  So we try to strip off the last
-    dnl #  part of the filename, using the name of the file we're looking
-    dnl #  for.  If we CANNOT strip it off, then the name will be unchanged.
-    dnl #
-    base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-    dnl #
-    dnl #  Exclude a number of directories.
-    dnl #
-    exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-    dnl #
-    dnl #  OK, we have an exact match.  Let's be sure that we only find ONE
-    dnl #  matching directory.
-    dnl #
-    already=`echo \$$1 ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-dnl #
 dnl #  And remember the directory in which we found the file.
 dnl #
 eval "$1=\"\$$1 $DIRS\""
@@ -175,10 +115,7 @@ dnl #
 dnl #  Try to guess possible locations.
 dnl #
 if test "x$smart_lib" = "x"; then
-  FR_LOCATE_DIR(smart_lib_dir,[lib$1${libltdl_cv_shlibext}])
-  FR_LOCATE_DIR(smart_lib_dir,[lib$1.a])
-
-  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+  for try in /usr/local/lib /opt/lib; do
     AC_MSG_CHECKING([for $2 in -l$1 in $try])
     LIBS="-l$1 $old_LIBS"
     CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
@@ -305,11 +242,6 @@ dnl #
 dnl #  Try to guess possible locations.
 dnl #
 if test "x$smart_include" = "x"; then
-
-  for prefix in $smart_prefix; do
-    FR_LOCATE_DIR(_smart_include_dir,"${_prefix}/${1}")
-  done
-  FR_LOCATE_DIR(_smart_include_dir, $1)
 
   for try in $_smart_include_dir; do
     AC_MSG_CHECKING([for $1 in $try])
