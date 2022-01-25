@@ -728,9 +728,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 setup_io_submodule:
 	inst->io = (rlm_radius_io_t const *) inst->io_submodule->module->common;
-	fr_assert(inst->io->thread_inst_size > 0);
-	fr_assert(inst->io->bootstrap != NULL);
-	fr_assert(inst->io->instantiate != NULL);
 
 	/*
 	 *	Get random Proxy-State identifier for this module.
