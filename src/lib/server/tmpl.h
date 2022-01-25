@@ -911,7 +911,7 @@ tmpl_t			*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, fr_token_t quote, char c
 
 void			tmpl_set_name_printf(tmpl_t *vpt, fr_token_t quote, char const *fmt, ...);
 
-void			tmpl_set_name_shallow(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len);
+void			tmpl_set_name_shallow(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len); CC_HINT(nonnull);
 
 void			tmpl_set_name(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len);
 
