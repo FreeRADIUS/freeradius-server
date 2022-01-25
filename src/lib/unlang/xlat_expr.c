@@ -976,6 +976,28 @@ check_more:
 		 */
 		fr_sbuff_out_by_longest_prefix(&slen, &token, expr_quote_table, &in, T_BARE_WORD);
 		if (token == T_BARE_WORD) {
+			fr_dict_enum_value_t *enumv;
+
+			if (da) {
+				slen = fr_dict_enum_by_name_substr(&enumv, da, &in);
+				if (slen < 0) {
+					fr_strerror_printf("Failed parsing value - %s", fr_strerror());
+					FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
+				}
+
+				if (slen > 0) {
+					xlat_exp_set_type(node, XLAT_BOX);
+					fr_value_box_copy(node, &node->data, enumv->value);
+					node->data.enumv = da;
+					xlat_exp_set_name_buffer_shallow(node, talloc_strdup(node, enumv->name));
+					goto done;
+				}
+
+				/*
+				 *	Else try to parse it as just a value.
+				 */
+			}
+
 			/*
 			 *	Note that we *cannot* pass value_parse_rules_quoted[T_BARE_WORD], because that
 			 *	doesn't stop at anything.  Instead, we have to pass in our bracket rules,

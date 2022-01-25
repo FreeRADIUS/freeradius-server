@@ -44,17 +44,17 @@ match (%{Framed-IP-Address} + 0.0.0.4)
 xlat_purify 1 < 4
 match yes
 
-#xlat_purify &Service-Type == Framed-User
-#match (%{Service-Type} == Framed-User)
+xlat_purify &Service-Type == Framed-User
+match (%{Service-Type} == Framed-User)
 
-#xlat_purify 1 + (&Service-Type == Framed-User)
-#match (1 + (%{Service-Type} == Framed-User))
+xlat_purify 1 + (&Service-Type == Framed-User)
+match (1 + (%{Service-Type} == Framed-User))
 
 #
 #  Strings of various forms
 #
-#xlat_purify &Filter-Id == "foo"
-#match (%{Filter-Id} == "foo")
+xlat_purify &Filter-Id == "foo"
+match (%{Filter-Id} == "foo")
 
 xlat_purify "foo" == "bar"
 match no
@@ -121,4 +121,4 @@ xlat_purify 1 < 2 < 3
 match yes
 
 count
-match 45
+match 51

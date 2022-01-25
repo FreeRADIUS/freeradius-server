@@ -35,8 +35,8 @@ match (%{Framed-IP-Address} & 255.255.0.0)
 xlat_expr 1 < 4
 match (1 < 4)
 
-#xlat_expr &Service-Type == Framed-User
-#match (%{Service-Type} == Framed-User)
+xlat_expr &Service-Type == Framed-User
+match (%{Service-Type} == Framed-User)
 
 #xlat_expr 1 + (&Service-Type == Framed-User)
 #match (1 + (%{Service-Type} == Framed-User))
@@ -108,4 +108,4 @@ xlat_expr (uint32) %(concat:1 2)
 match %(cast_expression:uint32 %(concat:1 2))
 
 count
-match 45
+match 49
