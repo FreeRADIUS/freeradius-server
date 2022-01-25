@@ -903,7 +903,7 @@ size_t			tmpl_request_ref_by_name(tmpl_request_ref_t *out, char const *name, tmp
 tmpl_t			*tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *fmt, ...);
 
 tmpl_t			*tmpl_init_shallow(tmpl_t *vpt, tmpl_type_t type,
-					   fr_token_t quote, char const *name, ssize_t len);
+					   fr_token_t quote, char const *name, ssize_t len) CC_HINT(nonnull);
 
 tmpl_t			*tmpl_init(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *name, ssize_t len);
 
