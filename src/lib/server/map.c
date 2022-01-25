@@ -1926,6 +1926,10 @@ ssize_t map_print(fr_sbuff_t *out, map_t const *map)
 	/*
 	 *	Print the lhs
 	 */
+	if (tmpl_rules_cast(map->lhs)) {
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "<%s>",
+					   fr_type_to_str(tmpl_rules_cast(map->lhs)));
+	}
 	FR_SBUFF_RETURN(tmpl_print_quoted, &our_out, map->lhs, TMPL_ATTR_REF_PREFIX_YES);
 
 	/*
@@ -1950,6 +1954,11 @@ ssize_t map_print(fr_sbuff_t *out, map_t const *map)
 	if (map_list_empty(&map->child) && !fr_cond_assert(map->rhs != NULL)) {
 		fr_sbuff_terminate(out);
 		return 0;
+	}
+
+	if (tmpl_rules_cast(map->rhs)) {
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "<%s>",
+					   fr_type_to_str(tmpl_rules_cast(map->rhs)));
 	}
 
 	/*

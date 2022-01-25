@@ -98,10 +98,6 @@ ssize_t cond_print(fr_sbuff_t *out, fr_cond_t const *in)
 			break;
 
 		case COND_TYPE_MAP:
-			if (tmpl_rules_cast(c->data.map->lhs)) {
-				FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "<%s>",
-							   fr_type_to_str(tmpl_rules_cast(c->data.map->lhs)));
-			}
 			FR_SBUFF_RETURN(map_print, &our_out, c->data.map);
 			break;
 
