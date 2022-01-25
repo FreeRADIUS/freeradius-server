@@ -2895,6 +2895,57 @@ fr_dict_enum_value_t *fr_dict_enum_by_name(fr_dict_attr_t const *da, char const 
 	return fr_hash_table_find(ext->value_by_name, &(fr_dict_enum_value_t){ .name = name, .name_len = len});
 }
 
+/*
+ *	Get a value by its name, keyed off of an attribute, from an sbuff
+ */
+ssize_t	fr_dict_enum_by_name_substr(fr_dict_enum_value_t **out, fr_dict_attr_t const *da, fr_sbuff_t *in)
+{
+	fr_dict_attr_ext_enumv_t	*ext;
+	fr_sbuff_t	our_in = FR_SBUFF(in);
+	fr_dict_enum_value_t *found = NULL;
+	size_t		found_len = 0;
+	uint8_t		*p;
+	uint8_t		name[FR_DICT_ENUM_MAX_NAME_LEN + 1];
+
+	/*
+	 *	No values associated with this attribute, do nothing.
+	 */
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_ENUMV);
+	if (!ext || !ext->value_by_name) return 0;
+
+	/*
+	 *	Loop until we exhaust all of the possibilities.
+	 */
+	for (p = name; (size_t) (p - name) < ext->max_name_len; p++) {
+		int len = (p - name) + 1;
+		fr_dict_enum_value_t *enumv;
+
+		*p = *fr_sbuff_current(&our_in);
+		if (!fr_dict_attr_allowed_chars[*p]) {
+			break;
+		}
+		fr_sbuff_next(&our_in);
+
+		enumv = fr_hash_table_find(ext->value_by_name, &(fr_dict_enum_value_t){ .name = (char const *) name,
+											.name_len = len});
+
+		/*
+		 *	Return the LONGEST match, as there may be
+		 *	overlaps.  e.g. "Framed", and "Framed-User".
+		 */
+		if (enumv) {
+			found = enumv;
+			found_len = len;
+		}
+	}
+
+	if (found) {
+		*out = found;
+		return fr_sbuff_set(in, found_len);
+	}
+
+	return 0;
+}
 
 /** Extract an enumeration name from a string
  *
