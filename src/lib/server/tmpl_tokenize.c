@@ -2631,6 +2631,10 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			actual = tmpl_value(vpt);
 			fr_value_box_copy_shallow(NULL, actual, &tmp);
 
+			*out = vpt;
+
+			TMPL_VERIFY(vpt);
+
 			return fr_sbuff_set(in, &our_in);
 		}
 
