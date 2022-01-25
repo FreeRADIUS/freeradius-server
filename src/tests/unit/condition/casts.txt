@@ -1,0 +1,35 @@
+#
+#  Tests for parsing conditional expressions.
+#
+#  $Id$
+#
+
+proto-dictionary radius
+tmpl-rules allow_unresolved=yes allow_unknown=yes
+
+# Forcefully cast RHS bareword
+condition &User-Name == <ipaddr>192.168.0.1
+match <ipaddr>&User-Name == 192.168.0.1
+
+# Forcefully cast LHS bareword
+condition <ipaddr>192.168.0.1 == &User-Name
+match <ipaddr>&User-Name == 192.168.0.1
+
+# Forcefully cast RHS single quotes
+#condition &Framed-IP-Address == <ipaddr>'192.168.0.1'
+#match &Framed-IP-Address == <ipaddr>'192.168.0.1'
+
+# Forcefully cast LHS single quotes
+#condition <ipaddr>'192.168.0.1' == &Framed-IP-Address
+#match <ipaddr>'192.168.0.1' == &Framed-IP-Address
+
+# Forcefully cast RHS double quotes
+#condition &User-Name == <ipaddr>"192.168.0.1"
+#match &User-Name == <ipaddr>"192.168.0.1"
+
+# Forcefully cast LHS single quotes
+#condition <ipaddr>"192.168.0.1" == &User-Name
+#match <ipaddr>"192.168.0.1" == &User-Name
+
+count
+match 6

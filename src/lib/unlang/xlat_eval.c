@@ -209,7 +209,7 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 	 *	we print the concatenated arguments list as
 	 *	well as the original fmt string.
 	 */
-	if ((node->type == XLAT_FUNC) && !xlat_is_value_box(node->child)) {
+	if ((node->type == XLAT_FUNC) && !xlat_is_literal(node->child)) {
 		RDEBUG2("      (%%%c%s:%pM%c)",
 			(node->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
 			node->call.func->name, args,

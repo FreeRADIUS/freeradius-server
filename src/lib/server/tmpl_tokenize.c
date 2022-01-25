@@ -2084,6 +2084,56 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	return slen;
 }
 
+/** Create TMPL_TYPE_DATA from a string
+ *
+ * @param[in] ctx		to allocate tmpl to.
+ * @param[out] out		where to write tmpl.
+ * @param[in] in		sbuff to parse.
+ * @param[in] quote		surrounding the operand to parse.
+ * @param[in] d_rules		specifying the cast and any enumeration values.
+ * @param[in] allow_enum	Whether parsing the value as an enum should be allowed.
+ * @param[in] p_rules		formatting rules.
+ * @return
+ *	- <0 on error
+ *	- >=0 on success.
+ */
+static fr_slen_t tmpl_afrom_value_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
+					 fr_token_t quote,
+					 tmpl_data_rules_t const *d_rules, bool allow_enum,
+					 fr_sbuff_parse_rules_t const *p_rules)
+{
+	fr_sbuff_t	our_in = FR_SBUFF(in);
+	fr_value_box_t	tmp, *actual;
+	tmpl_t		*vpt;
+	fr_slen_t	slen;
+
+	if (!fr_type_is_leaf(d_rules->cast)) {
+		fr_strerror_printf("%s is not a valid cast type",
+				   fr_type_to_str(d_rules->cast));
+		return 0;
+	}
+
+	vpt = tmpl_alloc_null(ctx);
+	slen = fr_value_box_from_substr(vpt, &tmp,
+					d_rules->cast, allow_enum ? d_rules->enumv : NULL,
+					&our_in, p_rules, false);
+	if (slen < 0) {
+		talloc_free(vpt);
+		return slen;
+	}
+
+	tmpl_init(vpt, TMPL_TYPE_DATA, quote, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in));
+
+	actual = tmpl_value(vpt);
+	fr_value_box_copy_shallow(NULL, actual, &tmp);
+
+	*out = vpt;
+
+	TMPL_VERIFY(vpt);
+
+	return fr_sbuff_set(in, &our_in);
+}
+
 /** Parse a truth value
  *
  * @param[in] ctx	to allocate tmpl to.
@@ -2608,35 +2658,8 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		/*
 		 *	Deal with explicit casts...
 		 */
-		if (!fr_type_is_null(t_rules->data.cast)) {
-			fr_value_box_t tmp, *actual;
-
-			if (!fr_type_is_leaf(t_rules->data.cast)) {
-				fr_strerror_printf("%s is not a valid cast type",
-						   fr_type_to_str(t_rules->data.cast));
-				return 0;
-			}
-
-			vpt = tmpl_alloc_null(ctx);
-			slen = fr_value_box_from_substr(vpt, &tmp,
-							t_rules->data.cast, t_rules->data.enumv,
-							&our_in, p_rules, false);
-			if (slen < 0) {
-				talloc_free(vpt);
-				return slen;
-			}
-
-			tmpl_init(vpt, TMPL_TYPE_DATA, quote, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in));
-
-			actual = tmpl_value(vpt);
-			fr_value_box_copy_shallow(NULL, actual, &tmp);
-
-			*out = vpt;
-
-			TMPL_VERIFY(vpt);
-
-			return fr_sbuff_set(in, &our_in);
-		}
+		if (!fr_type_is_null(t_rules->data.cast)) return tmpl_afrom_value_substr(ctx, out, in, quote,
+											 &t_rules->data, true, p_rules);
 
 		/*
 		 *	See if it's a boolean value
@@ -2727,6 +2750,16 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		return fr_sbuff_set(in, &our_in);
 
 	case T_SINGLE_QUOTED_STRING:
+		/*
+		 *	Single quoted strings can be
+		 *	cast to a specific data type
+		 *	immediately as they cannot contain
+		 *	expansions.
+		 */
+		if (!fr_type_is_null(t_rules->data.cast)) return tmpl_afrom_value_substr(ctx, out, in, quote,
+											 &t_rules->data, false,
+											 p_rules);
+
 		vpt = tmpl_alloc_null(ctx);
 		slen = fr_sbuff_out_aunescape_until(vpt, &str, &our_in, SIZE_MAX,
 						    p_rules ? p_rules->terminals : NULL,
@@ -2739,6 +2772,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 	{
 		xlat_exp_t	*head = NULL;
 		xlat_flags_t	flags = {};
+		tmpl_type_t	type = TMPL_TYPE_XLAT;
 
 		vpt = tmpl_alloc_null(ctx);
 
@@ -2751,27 +2785,42 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		if (!head) return slen;
 
 		/*
-		 *	If the string doesn't contain an xlat, just
-		 *	convert the xlat expansion into an unescaped
-		 *	literal for parsing later.
+		 *	If the string doesn't contain an xlat,
+		 *	and we want to cast it as a specific
+		 *	type, then do the conversion now.
 		 */
-		if (xlat_to_string(vpt, &str, &head)) {
-			tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, quote, fr_sbuff_start(&our_in), slen);
-			vpt->data.unescaped = str;	/* Store the unescaped string for parsing later */
+		if (xlat_is_literal(head)) {
+			if (!fr_type_is_null(t_rules->data.cast)) {
+				talloc_free(vpt);		/* Also frees any nodes */
+
+				return tmpl_afrom_value_substr(ctx, out,
+							       in, quote,
+							       &t_rules->data, false, p_rules);
+			}
+
+			/*
+			 *	If the string doesn't contain an xlat
+			 *	and there's no cast, we just store
+			 *	the string for conversion later.
+			 */
+			if (xlat_to_string(vpt, &str, &head)) {
+				xlat_exp_free(&head);		/* Free up any memory */
+
+				tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, quote, fr_sbuff_start(&our_in), slen);
+				vpt->data.unescaped = str;	/* Store the unescaped string for parsing later */
+				break;
+			}
+		}
 
 		/*
 		 *	If the string actually contains an xlat
 		 *	store the compiled xlat.
 		 */
-		} else {
-			tmpl_type_t	type = TMPL_TYPE_XLAT;
+		if (flags.needs_resolving) UNRESOLVED_SET(&type);
 
-			if (flags.needs_resolving) UNRESOLVED_SET(&type);
-
-			tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen);
-			vpt->data.xlat.ex = head;
-			vpt->data.xlat.flags = flags;
-		}
+		tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen);
+		vpt->data.xlat.ex = head;
+		vpt->data.xlat.flags = flags;
 	}
 		break;
 
@@ -2811,6 +2860,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		xlat_exp_t		*head = NULL;
 		xlat_flags_t		flags = {};
+		tmpl_type_t		type = TMPL_TYPE_REGEX_XLAT;
 
 		vpt = tmpl_alloc_null(ctx);
 
@@ -2820,31 +2870,28 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		/*
 		 *	Check if the string actually contains an xlat
 		 *	if it doesn't, we unfortunately still
-		 *	can't compile it here, as we don't know if it
-		 *	should be ephemeral or what flags should be used
+		 *	can't compile the regex here, as we don't know if
+		 *	it should be ephemeral or what flags should be used
 		 *	during the compilation.
 		 *
-		 *	The caller will need to do the compilation
-		 *	after we return.
+		 *	The caller will need to do the compilation after we
+		 *	return.
 		 */
 		if (xlat_to_string(vpt, &str, &head)) {
 			tmpl_init(vpt, TMPL_TYPE_REGEX_UNCOMPILED, quote, fr_sbuff_start(&our_in), slen);
 			vpt->data.unescaped = str;	/* Store the unescaped string for compilation later */
-
+			break;
+		}
 		/*
 		 *	Mark the regex up as a regex-xlat which
 		 *	will need expanding before evaluation, and can never
 		 *	be pre-compiled.
 		 */
-		} else {
-			tmpl_type_t type = TMPL_TYPE_REGEX_XLAT;
+		if (flags.needs_resolving) UNRESOLVED_SET(&type);
 
-			if (flags.needs_resolving) UNRESOLVED_SET(&type);
-
-			tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen);
-			vpt->data.xlat.ex = head;
-			vpt->data.xlat.flags = flags;
-		}
+		tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen);
+		vpt->data.xlat.ex = head;
+		vpt->data.xlat.flags = flags;
 	}
 		break;
 

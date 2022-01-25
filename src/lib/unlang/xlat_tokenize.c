@@ -1581,7 +1581,7 @@ ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, f
  *	- true if expansion contains only literal elements.
  *	- false if expansion contains expandable elements.
  */
-bool xlat_is_value_box(xlat_exp_t const *head)
+bool xlat_is_literal(xlat_exp_t const *head)
 {
 	xlat_exp_t const *node;
 
@@ -1621,7 +1621,7 @@ bool xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_t **head)
 	 *	list until we find a non-literal.
 	 */
 	for (node = *head; node; node = node->next) {
-		if (!xlat_is_value_box(node)) return false;
+		if (!xlat_is_literal(node)) return false;
 		len += talloc_array_length(node->fmt) - 1;
 	}
 

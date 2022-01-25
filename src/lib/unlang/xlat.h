@@ -320,7 +320,7 @@ int		xlat_validate_function_args(xlat_exp_t *node);
 
 void		xlat_debug(xlat_exp_t const *node);
 
-bool		xlat_is_value_box(xlat_exp_t const *head);
+bool		xlat_is_literal(xlat_exp_t const *head);
 
 bool		xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_t **head);
 

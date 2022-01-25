@@ -409,7 +409,7 @@ match &User-Name == "foo"
 
 # This used to be expr, but expr isn't a builtin, so it failed...
 condition <integer>"%{md4: 1 + 1}" < &NAS-Port
-match &NAS-Port > "%{md4: 1 + 1}"
+match &NAS-Port > <uint32>"%{md4: 1 + 1}"
 
 #
 #  The string gets parsed as an IP address.
