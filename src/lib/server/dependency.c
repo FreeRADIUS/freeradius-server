@@ -330,13 +330,13 @@ void dependency_version_numbers_init(CONF_SECTION *cs)
 		}
 
 		EV_SET(&kev, 0, EVFILT_LIBKQUEUE, EV_ADD, NOTE_VERSION_STR, 0, NULL);
-		ret = kevent(kqfd, &kev, 1, &receipt, 1, &(struct timespec){}) ;
+		ret = kevent(kqfd, &kev, 1, &receipt, 1, &(struct timespec){});
 		close(kqfd);
 		if (ret != 1) goto kqueue_error;
 
 		dependency_version_number_add(cs, "libkqueue", (char *)receipt.udata);
-kqueue_done:
 	}
+kqueue_done:
 #endif
 }
 
