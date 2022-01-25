@@ -208,7 +208,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 /** Convert our sccp address config structure into sockaddr_sccp
  *
  * @param ctx to allocated address in.
- * @param inst of rlm_sigtran.
  * @param out Where to write the parsed data.
  * @param conf to parse.
  * @param cs specifying sccp address.
@@ -216,7 +215,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int sigtran_sccp_sockaddr_from_conf(TALLOC_CTX *ctx, rlm_sigtran_t *inst,
+static int sigtran_sccp_sockaddr_from_conf(TALLOC_CTX *ctx,
 					   struct sockaddr_sccp *out,
 					   sigtran_sccp_address_t *conf, CONF_SECTION *cs)
 {
@@ -305,7 +304,7 @@ static int sigtran_sccp_sockaddr_from_conf(TALLOC_CTX *ctx, rlm_sigtran_t *inst,
 	return 0;
 }
 
-static int mod_thread_instantiate(module_thread_inst_ctx_t *mctx)
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
 	rlm_sigtran_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_sigtran_thread_t);
 	int			fd;
@@ -321,11 +320,11 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t *mctx)
 	return 0;
 }
 
-static int mod_thread_detach(module_thread_inst_ctx_t *mctx)
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 {
 	rlm_sigtran_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_sigtran_thread_t);
 
-	sigtran_client_thread_unregister(el, t->fd);	/* Also closes our side */
+	sigtran_client_thread_unregister(mctx->el, t->fd);	/* Also closes our side */
 
 	return 0;
 }
@@ -333,6 +332,7 @@ static int mod_thread_detach(module_thread_inst_ctx_t *mctx)
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_sigtran_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_sigtran_t);
+	CONF_SECTION const *conf = mctx->inst->conf;
 
 	/*
 	 *	Translate traffic mode string to integer
@@ -341,7 +341,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 						       inst->conn_conf.m3ua_traffic_mode_str, -1);
 	if (inst->conn_conf.m3ua_traffic_mode < 0) {
 		cf_log_err(conf, "Invalid 'm3ua_traffic_mode' value \"%s\", expected 'override', "
-			      "'loadshare' or 'broadcast'", inst->conn_conf.m3ua_traffic_mode_str);
+			   "'loadshare' or 'broadcast'", inst->conn_conf.m3ua_traffic_mode_str);
 		return -1;
 	}
 
@@ -358,9 +358,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	MTP3_PC_CHECK(dpc);
 	MTP3_PC_CHECK(opc);
 
-	if (sigtran_sccp_sockaddr_from_conf(inst, inst, &inst->conn_conf.sccp_called_sockaddr,
+	if (sigtran_sccp_sockaddr_from_conf(inst, &inst->conn_conf.sccp_called_sockaddr,
 					    &inst->conn_conf.sccp_called, conf) < 0) return -1;
-	if (sigtran_sccp_sockaddr_from_conf(inst, inst, &inst->conn_conf.sccp_calling_sockaddr,
+	if (sigtran_sccp_sockaddr_from_conf(inst, &inst->conn_conf.sccp_calling_sockaddr,
 					    &inst->conn_conf.sccp_calling, conf) < 0) return -1;
 
 	/*
@@ -395,7 +395,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 /**
  * Cleanup internal state.
  */
-static int mod_detach(module_detach_ctx_t *mctx)
+static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_sigtran_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_sigtran_t);
 
