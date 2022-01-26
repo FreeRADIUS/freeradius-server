@@ -3802,7 +3802,7 @@ int fr_value_box_bstr_realloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, 
  * @param[in] ctx 	to allocate any new buffers in.
  * @param[in] dst 	to assign buffer to.
  * @param[in] enumv	Aliases for values.
- * @param[in] src 	a string.
+ * @param[in] src 	a string.  May be NULL only if len == 0.
  * @param[in] len	of src.
  * @param[in] tainted	Whether the value came from a trusted source.
  */
@@ -3810,6 +3810,12 @@ int fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 			  char const *src, size_t len, bool tainted)
 {
 	char const	*str;
+
+	if (unlikely((len > 0) && !src)) {
+		fr_strerror_printf("Invalid arguments to %s.  Len > 0 (%zu) but src string was NULL",
+				   __FUNCTION__, len);
+		return -1;
+	}
 
 	str = talloc_bstrndup(ctx, src, len);
 	if (!str) {
