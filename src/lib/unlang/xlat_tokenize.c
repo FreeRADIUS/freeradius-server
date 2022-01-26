@@ -865,7 +865,7 @@ static int xlat_tokenize_string(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 				 fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules)
 {
 	xlat_exp_t			*node = NULL;
-	size_t				len;
+	fr_slen_t			slen;
 	fr_sbuff_term_t			expansions = FR_SBUFF_TERMS(
 						L("%("),
 						L("%C"),
@@ -909,12 +909,12 @@ static int xlat_tokenize_string(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 		/*
 		 *	Find the next token
 		 */
-		len = fr_sbuff_out_aunescape_until(node, &str, in, SIZE_MAX, tokens, escapes);
+		slen = fr_sbuff_out_aunescape_until(node, &str, in, SIZE_MAX, tokens, escapes);
 
 		/*
 		 *	It's a value box, create an appropriate node
 		 */
-		if (len > 0) {
+		if (slen > 0) {
 			xlat_exp_set_type(node, XLAT_BOX);
 			xlat_exp_set_name_buffer_shallow(node, str);
 			fr_value_box_strdup_shallow(&node->data, NULL, str, false);
@@ -925,23 +925,23 @@ static int xlat_tokenize_string(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 			XLAT_HEXDUMP((uint8_t const *)str, talloc_array_length(str) - 1, " VALUE-BOX ");
 			fr_cursor_insert(&cursor, node);
 			node = NULL;
+		} else if (slen < 0) {
+		error:
+			talloc_free(node);
+			fr_cursor_head(&cursor);
+			fr_cursor_free_list(&cursor);
+
+			/*
+			 *	Free our temporary array of terminals
+			 */
+			if (tokens != &expansions) talloc_free(tokens);
+			return -1;
 		}
 
 		if (fr_sbuff_adv_past_str_literal(in, "%{")) {
-			if (len == 0) TALLOC_FREE(node); /* Free the empty node */
+			if (slen == 0) TALLOC_FREE(node); /* Free the empty node */
 
-			if (xlat_tokenize_expansion(ctx, &node, flags, in, t_rules) < 0) {
-			error:
-				talloc_free(node);
-				fr_cursor_head(&cursor);
-				fr_cursor_free_list(&cursor);
-
-				/*
-				 *	Free our temporary array of terminals
-				 */
-				if (tokens != &expansions) talloc_free(tokens);
-				return -1;
-			}
+			if (xlat_tokenize_expansion(ctx, &node, flags, in, t_rules) < 0) goto error;
 			fr_cursor_insert(&cursor, node);
 			node = NULL;
 			continue;
@@ -951,7 +951,7 @@ static int xlat_tokenize_string(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 		 *	xlat function call with discreet arguments
 		 */
 		if (fr_sbuff_adv_past_str_literal(in, "%(")) {
-			if (len == 0) TALLOC_FREE(node); /* Free the empty node */
+			if (slen == 0) TALLOC_FREE(node); /* Free the empty node */
 
 			if (xlat_tokenize_function_args(ctx, &node, flags, in, t_rules) < 0) goto error;
 			fr_cursor_insert(&cursor, node);
@@ -966,7 +966,7 @@ static int xlat_tokenize_string(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 			XLAT_DEBUG("ONE-LETTER <-- %pV",
 				   fr_box_strvalue_len(str, talloc_array_length(str) - 1));
 
-			if (len == 0) {
+			if (slen == 0) {
 				talloc_free_children(node);	/* re-use empty nodes */
 			} else {
 				node = xlat_exp_alloc_null(ctx);
@@ -990,7 +990,7 @@ static int xlat_tokenize_string(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 		 *	the end of the string before we found one.
 		 */
 		if (brace) {
-			if (len == 0) TALLOC_FREE(node); /* Free the empty node */
+			if (slen == 0) TALLOC_FREE(node); /* Free the empty node */
 
 			if (!fr_sbuff_is_char(in, '}')) {
 				fr_strerror_const("Missing closing brace");
@@ -999,7 +999,7 @@ static int xlat_tokenize_string(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 		/*
 		 *	Empty input, emit no arguments
 		 */
-		} else if (len == 0) {
+		} else if (slen == 0) {
 			talloc_free(node);
 			XLAT_DEBUG("VALUE-BOX <-- (empty)");
 		}
