@@ -2304,7 +2304,7 @@ int fr_pair_value_memdup(fr_pair_t *vp, uint8_t const *src, size_t len, bool tai
 	int ret;
 
 	if (unlikely((len > 0) && !src)) {
-		fr_strerror_printf("Invalid arguments to %s.  Len > 0 (%zu) but src string was NULL",
+		fr_strerror_printf("Invalid arguments to %s.  Len > 0 (%zu) but src was NULL",
 				   __FUNCTION__, len);
 		return -1;
 	}
