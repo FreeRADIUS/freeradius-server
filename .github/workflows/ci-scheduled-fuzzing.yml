@@ -127,13 +127,14 @@ jobs:
 
     #  Checkout, but defer pulling LFS objects until we've restored the cache
     #
-    #  We include a bit of depth since we will walk the tree until we find a
-    #  commit that builds.
+    #  We include a bit of depth because we need to see when the corpus was
+    #  last updated and because we will walk the tree until we find a commit
+    #  that builds.
     #
     - uses: actions/checkout@v2
       with:
         lfs: false
-        fetch-depth: 50
+        fetch-depth: 500
 
     #
     #  We push changes to the corpus to the GH Actions cache, and restore based
@@ -146,8 +147,12 @@ jobs:
     - name: Get the corpus age
       id: corpusparams
       run: |
-        echo "::set-output name=corpusct::$(git log -1 --format=%ct -- src/tests/fuzzer-corpus/$PROTOCOL.tar)"
-        echo "::set-output name=corpusage::$((`date +%s` - `git log -1 --format=%ct -- src/tests/fuzzer-corpus/$PROTOCOL.tar`))"
+        CORPUSCT="$(git log -1 --format=%ct -- src/tests/fuzzer-corpus/$PROTOCOL.tar)"
+        CORPUSAGE="$((`date +%s` - "$CORPUSCT"))"
+        CORPUSDAYS="$(($CORPUSAGE / 86400))"
+        echo "$PROTOCOL corpus age is $CORPUSAGE secs ($CORPUSDAYS days)"
+        echo "::set-output name=corpusct::$CORPUSCT)"
+        echo "::set-output name=corpusage::$CORPUSAGE))"
 
     - name: Restore the fuzzer corpus tar file from cache
       uses: actions/cache@v2
