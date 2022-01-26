@@ -15,11 +15,14 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 
 	TODO before release
 	* port eap-fast issues from master
-	* remove FR_LOCATE_DIR from acinclude.m4 - see bug report
 
 	Bug fixes
 	* Ensure PBKDF2 always uses at least one iteration
 	* Actually use the certificate in "realm_dir" hinted at by SNI.
+	* Removed the use of "locate" during the "configure" phase.
+	  Fixes #4318
+	* Call closedir() when reading certificates from a directory.
+	  Found by Antonio Torres.  Fixes #4378.
 
 FreeRADIUS 3.0.25 Thu 07 Oct 2021 12:00:00 EDT urgency=medium
 	Feature improvements
