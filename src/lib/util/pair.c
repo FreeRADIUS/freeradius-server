@@ -2293,23 +2293,27 @@ int fr_pair_value_mem_realloc(fr_pair_t *vp, uint8_t **out, size_t size)
  *
  * @param[in,out] vp	to update
  * @param[in] src	data to copy
- * @param[in] size	of the data.
+ * @param[in] len	of the data.
  * @param[in] tainted	Whether the value came from a trusted source.
  * @return
  *      - 0 on success.
  *	- -1 on failure.
  */
-int fr_pair_value_memdup(fr_pair_t *vp, uint8_t const *src, size_t size, bool tainted)
+int fr_pair_value_memdup(fr_pair_t *vp, uint8_t const *src, size_t len, bool tainted)
 {
 	int ret;
+
+	if (unlikely((len > 0) && !src)) {
+		fr_strerror_printf("Invalid arguments to %s.  Len > 0 (%zu) but src string was NULL",
+				   __FUNCTION__, len);
+		return -1;
+	}
 
 	if (!fr_cond_assert(vp->da->type == FR_TYPE_OCTETS)) return -1;
 
 	fr_value_box_clear(&vp->data);	/* Free any existing buffers */
-	ret = fr_value_box_memdup(vp, &vp->data, vp->da, src, size, tainted);
-	if (ret == 0) {
-		PAIR_VERIFY(vp);
-	}
+	ret = fr_value_box_memdup(vp, &vp->data, vp->da, src, len, tainted);
+	if (ret == 0) PAIR_VERIFY(vp);
 
 	return ret;
 }

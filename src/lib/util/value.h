@@ -838,7 +838,7 @@ int		fr_value_box_mem_realloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *ds
 
 int		fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				    uint8_t const *src, size_t len, bool tainted)
-		CC_HINT(nonnull(2,4));
+		CC_HINT(nonnull(2)); /* src may be NULL if len == 0 */
 
 int		fr_value_box_memdup_dbuff(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 					  fr_dbuff_t *dbuff, size_t len, bool tainted)

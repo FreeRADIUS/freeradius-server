@@ -4116,6 +4116,12 @@ int fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t con
 {
 	uint8_t *bin;
 
+	if (unlikely((len > 0) && !src)) {
+		fr_strerror_printf("Invalid arguments to %s.  Len > 0 (%zu) but src was NULL",
+				   __FUNCTION__, len);
+		return -1;
+	}
+
 	bin = talloc_memdup(ctx, src, len);
 	if (!bin) {
 		fr_strerror_const("Failed allocating octets buffer");
