@@ -47,6 +47,8 @@ define UNIT_TEST_PROTOCOLS
 $(addprefix $(OUTPUT)/,$(filter protocols/${1}/%.txt,$(FILES))): $(wildcard $(top_srcdir)/share/dictionary/${1}/dictionary*) $(BUILD_DIR)/lib/libfreeradius-${1}.la
 
 test.unit.${1}: $(addprefix $(OUTPUT)/,$(filter protocols/${1}/%.txt,$(FILES))) $(BUILD_DIR)/lib/libfreeradius-${1}.la
+
+test.unit.help: TEST_UNIT_HELP += test.unit.${1}
 endef
 $(foreach x,$(PROTOCOLS),$(eval $(call UNIT_TEST_PROTOCOLS,$x)))
 
@@ -67,3 +69,6 @@ $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_attribute
 
 $(TEST):
 	@touch $(BUILD_DIR)/tests/$@
+
+$(TEST).help:
+	@echo make $(TEST_UNIT_HELP)
