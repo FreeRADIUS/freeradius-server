@@ -44,7 +44,7 @@ the extended commit description.
 If your commit includes significant whitespace changes these should also
 be broken out into another, separate, commit.
 
-Submitting patches via GitHub
+== Submitting patches via GitHub
 
 See the following links for more details about submitting via github:
 
