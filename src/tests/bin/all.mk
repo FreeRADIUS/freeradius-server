@@ -29,7 +29,7 @@ FILES	:= \
 #
 #  Add in all of the binary tests
 #
-FILES += $(filter %_tests,$(ALL_TGTS)))
+FILES += $(filter %_tests,$(ALL_TGTS))
 
 $(eval $(call TEST_BOOTSTRAP))
 
@@ -60,3 +60,16 @@ $(BUILD_DIR)/tests/bin/%: $(BUILD_DIR)/bin/local/%
 		exit 1; \
 	fi
 	${Q}touch $@
+
+#
+#  Ensure that the protocol tests are run if any of the protocol dictionaries change
+#
+define UNIT_TEST_BIN
+test.bin.$(subst _tests,,${1}): $(addprefix $(BUILD_DIR)/tests/bin/,${1})
+
+test.bin.help: TEST_BIN_HELP += test.bin.$(subst _tests,,${1})
+endef
+$(foreach x,$(FILES),$(eval $(call UNIT_TEST_BIN,$x)))
+
+test.bin.help:
+	@echo make $(TEST_BIN_HELP)
