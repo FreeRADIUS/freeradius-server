@@ -4611,6 +4611,7 @@ static int tls_realms_load(fr_tls_server_conf_t *conf)
 	if (!dir) {
 		ERROR("Error reading directory %s: %s", conf->realm_dir, fr_syserror(errno));
 	error:
+		closedir(dir);
 		fr_hash_table_free(ht);
 		return -1;
 	}
@@ -4667,6 +4668,7 @@ static int tls_realms_load(fr_tls_server_conf_t *conf)
 	}
 
 	conf->realms = ht;
+	closedir(dir);
 
 	return 0;
 }
