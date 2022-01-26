@@ -392,7 +392,7 @@ int fr_sbuff_trim_talloc(fr_sbuff_t *sbuff, size_t len)
 
 	if (nlen != clen) {
 		new_buff = talloc_realloc(tctx->ctx, sbuff->buff, char, nlen);
-		if (!new_buff) {
+		if (unlikely(!new_buff)) {
 			fr_strerror_printf("Failed trimming buffer from %zu to %zu", clen, nlen);
 			return -1;
 		}

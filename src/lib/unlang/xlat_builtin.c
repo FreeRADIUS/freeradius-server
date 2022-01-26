@@ -2360,9 +2360,12 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		char *buff;
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
-
 		vp->op = T_OP_EQ;
-		fr_pair_aprint(vb, &buff, NULL, vp);
+		if (unlikely(fr_pair_aprint(vb, &buff, NULL, vp) < 0)) {
+			RPEDEBUG("Failed printing pair");
+			talloc_free(vb);
+			return XLAT_ACTION_FAIL;
+		}
 		vp->op = op;
 
 		fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, buff, false);

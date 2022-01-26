@@ -4506,7 +4506,10 @@ parse:
 		if (!dst_enumv) {
 			char *buff;
 
-			fr_sbuff_out_aunescape_until(ctx, &buff, &our_in, SIZE_MAX, rules->terminals, rules->escapes);
+			if (unlikely(fr_sbuff_out_aunescape_until(ctx, &buff, &our_in, SIZE_MAX,
+								  rules->terminals, rules->escapes) < 0)) {
+				return -1;
+			}
 			fr_value_box_bstrdup_buffer_shallow(NULL, dst, dst_enumv, buff, tainted);
 		/*
 		 *	We already have an unescaped version, just use that

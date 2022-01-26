@@ -385,7 +385,8 @@ extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX];
  * @param[in] list	of value boxes.
  * @return Number of boxes in the list.
  */
-static inline size_t fr_value_box_list_len(fr_value_box_list_t const *list)
+static inline CC_HINT(nonnull)
+size_t fr_value_box_list_len(fr_value_box_list_t const *list)
 {
 	return fr_dlist_num_elements(list);
 }
@@ -398,7 +399,8 @@ static inline size_t fr_value_box_list_len(fr_value_box_list_t const *list)
  *	- true if the list has at least min boxes.
  *	- false if the list has fewer than min boxes.
  */
-static inline bool fr_value_box_list_len_min(fr_value_box_list_t const *list, unsigned int min)
+static inline CC_HINT(nonnull)
+bool fr_value_box_list_len_min(fr_value_box_list_t const *list, unsigned int min)
 {
 	unsigned int i = fr_dlist_num_elements(list);
 
@@ -409,7 +411,8 @@ static inline bool fr_value_box_list_len_min(fr_value_box_list_t const *list, un
  *
  * @param[in,out] list 	to initialise
  */
-static inline void fr_value_box_list_init(fr_value_box_list_t *list)
+static inline CC_HINT(nonnull)
+void fr_value_box_list_init(fr_value_box_list_t *list)
 {
 	fr_dlist_init(list, fr_value_box_t, entry);	/* Not always talloced */
 }
@@ -432,8 +435,8 @@ static inline void fr_value_box_list_init(fr_value_box_list_t *list)
  * @param[in] enumv	Enumeration values.
  * @param[in] tainted	Whether data will come from an untrusted source.
  */
-static inline CC_HINT(always_inline) void fr_value_box_init(fr_value_box_t *vb, fr_type_t type,
-							    fr_dict_attr_t const *enumv, bool tainted)
+static inline CC_HINT(nonnull(1), always_inline)
+void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
 {
 	/*
 	 *	An inventive way of defeating const on the type
@@ -455,7 +458,8 @@ static inline CC_HINT(always_inline) void fr_value_box_init(fr_value_box_t *vb, 
 /** Initialise an empty/null box that will be filled later
  *
  */
-static inline CC_HINT(always_inline) void fr_value_box_init_null(fr_value_box_t *vb)
+static inline CC_HINT(always_inline)
+void fr_value_box_init_null(fr_value_box_t *vb)
 {
 	fr_value_box_init(vb, FR_TYPE_NULL, NULL, false);
 }
@@ -473,8 +477,8 @@ static inline CC_HINT(always_inline) void fr_value_box_init_null(fr_value_box_t 
  *	- A new fr_value_box_t.
  *	- NULL on error.
  */
-static inline CC_HINT(always_inline) fr_value_box_t *fr_value_box_alloc(TALLOC_CTX *ctx, fr_type_t type,
-									fr_dict_attr_t const *enumv, bool tainted)
+static inline CC_HINT(always_inline)
+fr_value_box_t *fr_value_box_alloc(TALLOC_CTX *ctx, fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
 {
 	fr_value_box_t *vb;
 
@@ -493,7 +497,8 @@ static inline CC_HINT(always_inline) fr_value_box_t *fr_value_box_alloc(TALLOC_C
  *	- A new fr_value_box_t.
  *	- NULL on error.
  */
-static inline CC_HINT(always_inline) fr_value_box_t *fr_value_box_alloc_null(TALLOC_CTX *ctx)
+static inline CC_HINT(always_inline)
+fr_value_box_t *fr_value_box_alloc_null(TALLOC_CTX *ctx)
 {
 	return fr_value_box_alloc(ctx, FR_TYPE_NULL, NULL, false);
 }
@@ -506,8 +511,9 @@ static inline CC_HINT(always_inline) fr_value_box_t *fr_value_box_alloc_null(TAL
  * @param[in] tainted	Whether data will come from an untrusted source.
  * @return 0 (always successful).
  */
-static inline CC_HINT(always_inline) int fr_value_box_ethernet_addr(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-								    fr_ethernet_t const *src, bool tainted)
+static inline CC_HINT(nonnull(1,3), always_inline) \
+int fr_value_box_ethernet_addr(fr_value_box_t *dst, fr_dict_attr_t const *enumv, \
+			       fr_ethernet_t const *src, bool tainted)
 {
 	fr_value_box_init(dst, FR_TYPE_ETHERNET, enumv, tainted);
 	memcpy(dst->vb_ether, src, sizeof(dst->vb_ether));
@@ -515,8 +521,9 @@ static inline CC_HINT(always_inline) int fr_value_box_ethernet_addr(fr_value_box
 }
 
 #define DEF_BOXING_FUNC(_ctype, _field, _type) \
-static inline CC_HINT(always_inline) int fr_value_box_##_field(fr_value_box_t *dst, fr_dict_attr_t const *enumv, \
-							       _ctype const value, bool tainted) { \
+static inline CC_HINT(nonnull(1), always_inline) \
+int fr_value_box_##_field(fr_value_box_t *dst, fr_dict_attr_t const *enumv, \
+			  _ctype const value, bool tainted) { \
 	fr_value_box_init(dst, _type, enumv, tainted); \
 	dst->vb_##_field = value; \
 	return 0; \
@@ -590,7 +597,8 @@ _Generic((_var), \
  *	- 0 on success.
  *	- -1 on type mismatch.
  */
-static inline int fr_value_unbox_ethernet_addr(fr_ethernet_t *dst, fr_value_box_t *src)
+static inline CC_HINT(nonnull)
+int fr_value_unbox_ethernet_addr(fr_ethernet_t *dst, fr_value_box_t *src)
 {
 	if (unlikely(src->type != FR_TYPE_ETHERNET)) { \
 		fr_strerror_printf("Unboxing failed.  Needed type %s, had type %s",
@@ -603,7 +611,8 @@ static inline int fr_value_unbox_ethernet_addr(fr_ethernet_t *dst, fr_value_box_
 }
 
 #define DEF_UNBOXING_FUNC(_ctype, _field, _type) \
-static inline int fr_value_unbox_##_field(_ctype *var, fr_value_box_t const *src) { \
+static inline CC_HINT(nonnull)  \
+int fr_value_unbox_##_field(_ctype *var, fr_value_box_t const *src) { \
 	if (unlikely(src->type != _type)) { \
 		fr_strerror_printf("Unboxing failed.  Needed type %s, had type %s", \
 				   fr_type_to_str(_type), \
@@ -653,16 +662,20 @@ _Generic((_var), \
 /*
  *	Comparison
  */
-int		fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b);
+int		fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
+		CC_HINT(nonnull);
 
-int		fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const *b);
+int		fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const *b)
+		CC_HINT(nonnull);
 
 /*
  *	Conversion
  */
-size_t		fr_value_str_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, char quote);
+size_t		fr_value_str_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, char quote)
+		CC_HINT(nonnull);
 
-size_t		fr_value_substr_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, char quote);
+size_t		fr_value_substr_unescape(fr_sbuff_t *out, fr_sbuff_t *in, size_t inlen, char quote)
+		CC_HINT(nonnull);
 
 static inline size_t fr_value_str_aunescape(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t inlen, char quote)
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_value_str_unescape, in, inlen, quote)
@@ -670,14 +683,17 @@ SBUFF_OUT_TALLOC_FUNC_DEF(fr_value_str_unescape, in, inlen, quote)
 static inline size_t fr_value_substr_aunescape(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, size_t inlen, char quote)
 SBUFF_OUT_TALLOC_FUNC_DEF(fr_value_substr_unescape, in, inlen, quote)
 
-int		fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src);
+int		fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
+		CC_HINT(nonnull);
 
-size_t		fr_value_box_network_length(fr_value_box_t const *value);
+size_t		fr_value_box_network_length(fr_value_box_t const *value)
+		CC_HINT(nonnull);
 
 ssize_t		fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value);
 #define FR_VALUE_BOX_TO_NETWORK_RETURN(_dbuff, _value) FR_DBUFF_RETURN(fr_value_box_to_network, _dbuff, _value)
 
-int		fr_value_box_to_key(uint8_t **out, size_t *outlen, fr_value_box_t const *value) CC_HINT(nonnull);
+int		fr_value_box_to_key(uint8_t **out, size_t *outlen, fr_value_box_t const *value)
+		CC_HINT(nonnull);
 
 /** Special value to indicate fr_value_box_from_network experienced a general error
  */
@@ -693,45 +709,58 @@ int		fr_value_box_to_key(uint8_t **out, size_t *outlen, fr_value_box_t const *va
 
 ssize_t		fr_value_box_from_network(TALLOC_CTX *ctx,
 					  fr_value_box_t *dst, fr_type_t type, fr_dict_attr_t const *enumv,
-					  fr_dbuff_t *dbuff, size_t len, bool tainted);
+					  fr_dbuff_t *dbuff, size_t len, bool tainted)
+		CC_HINT(nonnull(2,5));
 
 int		fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
-				  fr_value_box_t const *src) CC_HINT(nonnull(2, 5));
+				  fr_value_box_t const *src)
+		CC_HINT(nonnull(2,5));
 
 int		fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
-					   fr_type_t dst_type, fr_dict_attr_t const *dst_enumv);
+					   fr_type_t dst_type, fr_dict_attr_t const *dst_enumv)
+		CC_HINT(nonnull(1));
 
 int		fr_value_box_ipaddr(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-					 fr_ipaddr_t const *ipaddr, bool tainted);
+				    fr_ipaddr_t const *ipaddr, bool tainted)
+		CC_HINT(nonnull(1,3));
 
-int		fr_value_unbox_ipaddr(fr_ipaddr_t *dst, fr_value_box_t *src);
+int		fr_value_unbox_ipaddr(fr_ipaddr_t *dst, fr_value_box_t *src)
+		CC_HINT(nonnull);
 
-static inline CC_HINT(nonnull,always_inline) bool fr_value_box_is_safe(fr_value_box_t const *box, uint16_t safe)
+static inline CC_HINT(nonnull, always_inline)
+bool fr_value_box_is_safe(fr_value_box_t const *box, uint16_t safe)
 {
 	if (!safe) return false;
 
 	return (box->safe == safe);
 }
 
-int fr_value_box_mark_safe(fr_value_box_t *box, uint16_t safe) CC_HINT(nonnull);
+int		fr_value_box_mark_safe(fr_value_box_t *box, uint16_t safe)
+		CC_HINT(nonnull);
 
-void fr_value_box_mark_unsafe(fr_value_box_t *box) CC_HINT(nonnull);
+void		fr_value_box_mark_unsafe(fr_value_box_t *box)
+		CC_HINT(nonnull);
 
 /** @name Box to box copying
  *
  * @{
  */
-void		fr_value_box_clear_value(fr_value_box_t *data);
+void		fr_value_box_clear_value(fr_value_box_t *data)
+		CC_HINT(nonnull(1));
 
-void		fr_value_box_clear(fr_value_box_t *data);
+void		fr_value_box_clear(fr_value_box_t *data)
+		CC_HINT(nonnull(1));
 
-int		fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src);
+int		fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t *src)
+		CC_HINT(nonnull(2,3));
 
 void		fr_value_box_copy_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst,
-					  const fr_value_box_t *src);
+					  const fr_value_box_t *src)
+		CC_HINT(nonnull(2,3));
 
-int		fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *src);
+int		fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *src)
+		CC_HINT(nonnull(2,3));
 /** @} */
 
 /** @name Assign and manipulate binary-unsafe C strings
@@ -739,20 +768,23 @@ int		fr_value_box_steal(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t *sr
  * @{
  */
 int		fr_value_box_strdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				    char const *src, bool tainted);
+				    char const *src, bool tainted)
+		CC_HINT(nonnull(2,4));
 
-int		fr_value_box_strtrim(TALLOC_CTX *ctx, fr_value_box_t *vb);
+int		fr_value_box_strtrim(TALLOC_CTX *ctx, fr_value_box_t *vb)
+		CC_HINT(nonnull(1));
 
 int		fr_value_box_vasprintf(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv, bool tainted,
 				       char const *fmt, va_list ap)
-		CC_HINT(format (printf, 5, 0));
+		CC_HINT(nonnull(2,5), format(printf,5,0));
 
 int		fr_value_box_asprintf(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv, bool tainted,
 				      char const *fmt, ...)
-		CC_HINT(format (printf, 5, 6));
+		CC_HINT(format(printf,5,6), nonnull(2,5));
 
 void		fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-					    char const *src, bool tainted);
+					    char const *src, bool tainted)
+		CC_HINT(nonnull(1,3));
 /** @} */
 
 /** @name Assign and manipulate binary-safe strings
@@ -760,28 +792,37 @@ void		fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enu
  * @{
  */
 int		fr_value_box_bstr_alloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-					size_t len, bool tainted);
+					size_t len, bool tainted)
+		CC_HINT(nonnull(2,3));
 
-int		fr_value_box_bstr_realloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, size_t len);
+int		fr_value_box_bstr_realloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, size_t len)
+		CC_HINT(nonnull(3));
 
 int		fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				      char const *src, size_t len, bool tainted);
+				      char const *src, size_t len, bool tainted)
+		CC_HINT(nonnull(2,4));
 
 int		fr_value_box_bstrndup_dbuff(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-					    fr_dbuff_t *dbuff, size_t len, bool tainted);
+					    fr_dbuff_t *dbuff, size_t len, bool tainted)
+		CC_HINT(nonnull(2,4));
 
 int		fr_value_box_bstrdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-					   char const *src, bool tainted);
+					   char const *src, bool tainted)
+		CC_HINT(nonnull(2,4));
 
 void		fr_value_box_bstrndup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-					      char const *src, size_t len, bool tainted);
+					      char const *src, size_t len, bool tainted)
+		CC_HINT(nonnull(1,3));
 
 int		fr_value_box_bstrdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-						    char const *src, bool tainted);
+						    char const *src, bool tainted)
+		CC_HINT(nonnull(2,4));
 
-int		fr_value_box_bstrn_append(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, size_t len, bool tainted);
+int		fr_value_box_bstrn_append(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, size_t len, bool tainted)
+		CC_HINT(nonnull(2,3));
 
-int		fr_value_box_bstr_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, bool tainted);
+int		fr_value_box_bstr_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char const *src, bool tainted)
+		CC_HINT(nonnull(2,3));
 /** @} */
 
 /** @name Assign and manipulate octets strings
@@ -789,32 +830,42 @@ int		fr_value_box_bstr_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char 
  * @{
  */
 int		fr_value_box_mem_alloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				       size_t len, bool tainted);
+				       size_t len, bool tainted)
+		CC_HINT(nonnull(2,3));
 
-int		fr_value_box_mem_realloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, size_t len);
+int		fr_value_box_mem_realloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, size_t len)
+		CC_HINT(nonnull(3));
 
 int		fr_value_box_memdup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-				    uint8_t const *src, size_t len, bool tainted);
+				    uint8_t const *src, size_t len, bool tainted)
+		CC_HINT(nonnull(2,4));
 
 int		fr_value_box_memdup_dbuff(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-					  fr_dbuff_t *dbuff, size_t len, bool tainted);
+					  fr_dbuff_t *dbuff, size_t len, bool tainted)
+		CC_HINT(nonnull(2,4));
 
 int		fr_value_box_memdup_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-					   uint8_t const *src, bool tainted);
+					   uint8_t const *src, bool tainted)
+		CC_HINT(nonnull(2,4));
 
 void		fr_value_box_memdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-					    uint8_t const *src, size_t len, bool tainted);
+					    uint8_t const *src, size_t len, bool tainted)
+		CC_HINT(nonnull(1,3));
 
 void		fr_value_box_memdup_buffer_shallow(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-						   uint8_t const *src, bool tainted);
+						   uint8_t const *src, bool tainted)
+		CC_HINT(nonnull(2,4));
 
 int		fr_value_box_mem_append(TALLOC_CTX *ctx, fr_value_box_t *dst,
-				       uint8_t const *src, size_t len, bool tainted);
+				       uint8_t const *src, size_t len, bool tainted)
+		CC_HINT(nonnull(2,3));
 
-int		fr_value_box_mem_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, bool tainted);
+int		fr_value_box_mem_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, uint8_t const *src, bool tainted)
+		CC_HINT(nonnull(2,3));
 /** @} */
 
-void		fr_value_box_increment(fr_value_box_t *vb);
+void		fr_value_box_increment(fr_value_box_t *vb)
+		CC_HINT(nonnull);
 
 /** @name Parsing
  *
@@ -823,13 +874,13 @@ void		fr_value_box_increment(fr_value_box_t *vb);
 ssize_t		fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 					 fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 					 fr_sbuff_t *in, fr_sbuff_parse_rules_t const *rules, bool tainted)
-					 CC_HINT(nonnull(2,5));
+		CC_HINT(nonnull(2,5));
 
 ssize_t		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 				      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 				      char const *in, size_t inlen,
 				      fr_sbuff_unescape_rules_t const *erules, bool tainted)
-				      CC_HINT(nonnull(2,5));
+		CC_HINT(nonnull(2,5));
 /** @} */
 
 /** @name Work with lists of boxed values
@@ -838,43 +889,55 @@ ssize_t		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
  */
 ssize_t		fr_value_box_list_concat_as_string(bool *tainted, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
 						   char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
-						   fr_value_box_list_action_t proc_action, bool flatten);
+						   fr_value_box_list_action_t proc_action, bool flatten)
+		CC_HINT(nonnull(2,3));
 
 ssize_t		fr_value_box_list_concat_as_octets(bool *tainted, fr_dbuff_t *dbuff, fr_value_box_list_t *list,
 						   uint8_t const *sep, size_t sep_len,
-						   fr_value_box_list_action_t proc_action, bool flatten);
+						   fr_value_box_list_action_t proc_action, bool flatten)
+		CC_HINT(nonnull(2,3));
 
 int		fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 						  fr_value_box_t *out, fr_value_box_list_t *list, fr_type_t type,
 						  fr_value_box_list_action_t proc_action, bool flatten,
-						  size_t max_size);
+						  size_t max_size)
+		CC_HINT(nonnull(2,3));
 
 char		*fr_value_box_list_aprint(TALLOC_CTX *ctx, fr_value_box_list_t const *list, char const *delim,
-					  fr_sbuff_escape_rules_t const *e_rules);
+					  fr_sbuff_escape_rules_t const *e_rules)
+		CC_HINT(nonnull(2));
 
-int		fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value_box_list_t const *in);
+int		fr_value_box_list_acopy(TALLOC_CTX *ctx, fr_value_box_list_t *out, fr_value_box_list_t const *in)
+		CC_HINT(nonnull(2,3));
 
-bool		fr_value_box_list_tainted(fr_value_box_list_t const *head);
+bool		fr_value_box_list_tainted(fr_value_box_list_t const *head)
+		CC_HINT(nonnull(1));
 
-void		fr_value_box_list_taint(fr_value_box_list_t *head);
+void		fr_value_box_list_taint(fr_value_box_list_t *head)
+		CC_HINT(nonnull(1));
 
-void		fr_value_box_list_untaint(fr_value_box_list_t *head);
+void		fr_value_box_list_untaint(fr_value_box_list_t *head)
+		CC_HINT(nonnull(1));
 /** @} */
 
 /** @name Print the value of a value box as a string
  *
  * @{
  */
-ssize_t		fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff_escape_rules_t const *e_rules) CC_HINT(nonnull(1,2));
+ssize_t		fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff_escape_rules_t const *e_rules)
+		CC_HINT(nonnull(1,2));
 
-ssize_t		fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, fr_token_t quote) CC_HINT(nonnull);
+ssize_t		fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, fr_token_t quote)
+		CC_HINT(nonnull);
 
-static inline fr_slen_t fr_value_box_aprint(TALLOC_CTX *ctx, char **out,
-					    fr_value_box_t const *data, fr_sbuff_escape_rules_t const *e_rules)
+static inline CC_HINT(nonnull(2,3))
+		fr_slen_t fr_value_box_aprint(TALLOC_CTX *ctx, char **out,
+					      fr_value_box_t const *data, fr_sbuff_escape_rules_t const *e_rules)
 		SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_value_box_print, data, e_rules)
 
-static inline fr_slen_t fr_value_box_aprint_quoted(TALLOC_CTX *ctx, char **out,
-					           fr_value_box_t const *data, fr_token_t quote)
+static inline CC_HINT(nonnull(2,3))
+		fr_slen_t fr_value_box_aprint_quoted(TALLOC_CTX *ctx, char **out,
+						     fr_value_box_t const *data, fr_token_t quote)
 		SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_value_box_print_quoted, data, quote)
 
 /** @} */
@@ -886,8 +949,10 @@ uint32_t	fr_value_box_hash(fr_value_box_t const *vb);
 
 /** @} */
 
-void value_box_verify(char const *file, int line, fr_value_box_t const *vb, bool talloced);
-void value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list, bool talloced);
+void		value_box_verify(char const *file, int line, fr_value_box_t const *vb, bool talloced)
+		CC_HINT(nonnull(3));
+void		value_box_list_verify(char const *file, int line, fr_value_box_list_t const *list, bool talloced)
+		CC_HINT(nonnull(3));
 
 #ifdef WITH_VERIFY_PTR
 #  define VALUE_BOX_VERIFY(_x) value_box_verify(__FILE__, __LINE__, _x, false)

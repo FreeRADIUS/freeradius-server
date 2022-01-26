@@ -91,6 +91,8 @@ static unlang_action_t unlang_switch(rlm_rcode_t *p_result, request_t *request, 
 		tmpl_init_shallow(&vpt, TMPL_TYPE_DATA, T_SINGLE_QUOTED_STRING, p, len);
 		fr_value_box_bstrndup_shallow(&vpt.data.literal, NULL, p, len, false);
 		box = tmpl_value(&vpt);
+	} else if (!fr_cond_assert_msg(0, "Invalid tmpl type %s", tmpl_type_to_str(switch_gext->vpt->type))) {
+		return UNLANG_ACTION_FAIL;
 	}
 
 	/*

@@ -735,19 +735,19 @@ static tmpl_attr_t *tmpl_attr_add(tmpl_t *vpt, tmpl_attr_type_t type)
 int tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bool steal)
 {
 	char		*name;
-	size_t		len;
+	fr_slen_t	slen;
 	tmpl_t		*vpt;
 	fr_token_t	quote = (data->type == FR_TYPE_STRING) ? T_SINGLE_QUOTED_STRING : T_BARE_WORD;
 
 	MEM(vpt = talloc(ctx, tmpl_t));
-	len = fr_value_box_aprint(vpt, &name, data, fr_value_escape_by_quote[quote]);
-	if (len < 0) {
+	slen = fr_value_box_aprint(vpt, &name, data, fr_value_escape_by_quote[quote]);
+	if (slen < 0) {
 	error:
 		talloc_free(vpt);
 		return -1;
 	}
 
-	tmpl_init_shallow(vpt, TMPL_TYPE_DATA, quote, name, len);
+	tmpl_init_shallow(vpt, TMPL_TYPE_DATA, quote, name, slen);
 
 	if (steal) {
 		if (fr_value_box_steal(vpt, tmpl_value(vpt), data) < 0) goto error;

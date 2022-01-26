@@ -509,7 +509,7 @@ static int cond_realize_attr(request_t *request, fr_value_box_t **realized, fr_v
 	if (fr_value_box_cast(request, box, cast_type, da, &vp->data) < 0) {
 		if (request) RPEDEBUG("Failed casting %pV to type %s", &vp->data,
 				      fr_type_to_str(tmpl_rules_cast(vpt)));
-		return false;
+		return -1;
 	}
 
 	*realized = box;

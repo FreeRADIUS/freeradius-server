@@ -1402,17 +1402,21 @@ do { \
 	fr_sbuff_t		sbuff; \
 	fr_sbuff_uctx_talloc_t	tctx; \
 	fr_sbuff_parse_error_t	err; \
-	fr_slen_t		slen; \
-	fr_sbuff_init_talloc(ctx, &sbuff, &tctx, \
-			     ((_len) != SIZE_MAX) ? (_len) : 1024, \
-			     ((_len) != SIZE_MAX) ? (_len) : SIZE_MAX); \
-	slen = _func(&err, &sbuff, _in, _len, ##__VA_ARGS__); \
-	if (slen < 0) { \
+	fr_slen_t		slen = -1; \
+	if (unlikely(fr_sbuff_init_talloc(ctx, &sbuff, &tctx, \
+					  ((_len) != SIZE_MAX) ? (_len) : 1024, \
+					  ((_len) != SIZE_MAX) ? (_len) : SIZE_MAX) == NULL)) { \
+	error: \
 		TALLOC_FREE(sbuff.buff); \
 		*out = NULL; \
 		return slen; \
 	} \
-	fr_sbuff_trim_talloc(&sbuff, SIZE_MAX); \
+	slen = _func(&err, &sbuff, _in, _len, ##__VA_ARGS__); \
+	if (slen < 0) goto error; \
+	if (unlikely(fr_sbuff_trim_talloc(&sbuff, SIZE_MAX) < 0)) { \
+		slen = -1; \
+		goto error; \
+	} \
 	*out = sbuff.buff; \
 	return slen; \
 }
@@ -1428,17 +1432,21 @@ do { \
 { \
 	fr_sbuff_t		sbuff; \
 	fr_sbuff_uctx_talloc_t	tctx; \
-	fr_slen_t		slen; \
-	fr_sbuff_init_talloc(ctx, &sbuff, &tctx, \
-			     ((_len) != SIZE_MAX) ? (_len) : 1024, \
-			     ((_len) != SIZE_MAX) ? (_len) : SIZE_MAX); \
-	slen = _func(&sbuff, _in, _len, ##__VA_ARGS__); \
-	if (slen < 0) { \
+	fr_slen_t		slen = -1; \
+	if (unlikely(fr_sbuff_init_talloc(ctx, &sbuff, &tctx, \
+					  ((_len) != SIZE_MAX) ? (_len) : 1024, \
+					  ((_len) != SIZE_MAX) ? (_len) : SIZE_MAX) == NULL)) { \
+	error: \
 		TALLOC_FREE(sbuff.buff); \
 		*out = NULL; \
 		return slen; \
 	} \
-	fr_sbuff_trim_talloc(&sbuff, SIZE_MAX); \
+	slen = _func(&sbuff, _in, _len, ##__VA_ARGS__); \
+	if (slen < 0) goto error; \
+	if (unlikely(fr_sbuff_trim_talloc(&sbuff, SIZE_MAX) < 0)) { \
+		slen = -1; \
+		goto error; \
+	} \
 	*out = sbuff.buff; \
 	return slen; \
 }
@@ -1452,15 +1460,19 @@ do { \
 { \
 	fr_sbuff_t		sbuff; \
 	fr_sbuff_uctx_talloc_t	tctx; \
-	fr_slen_t		slen; \
-	fr_sbuff_init_talloc(ctx, &sbuff, &tctx, 0, SIZE_MAX); \
-	slen = _func(&sbuff, ##__VA_ARGS__); \
-	if (slen < 0) { \
+	fr_slen_t		slen = -1; \
+	if (unlikely(fr_sbuff_init_talloc(ctx, &sbuff, &tctx, 0, SIZE_MAX) == NULL)) { \
+	error: \
 		TALLOC_FREE(sbuff.buff); \
 		*out = NULL; \
 		return slen; \
 	} \
-	fr_sbuff_trim_talloc(&sbuff, SIZE_MAX); \
+	slen = _func(&sbuff, ##__VA_ARGS__); \
+	if (slen < 0) goto error; \
+	if (unlikely(fr_sbuff_trim_talloc(&sbuff, SIZE_MAX) < 0)) { \
+		slen = -1; \
+		goto error; \
+	} \
 	*out = sbuff.buff; \
 	return slen; \
 }
