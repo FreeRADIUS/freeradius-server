@@ -512,7 +512,7 @@ int		fr_pair_value_enum_box(fr_value_box_t const **out, fr_pair_t *vp) CC_HINT(n
 ssize_t   	fr_pair_print_value_quoted(fr_sbuff_t *out,
 					   fr_pair_t const *vp, fr_token_t quote) CC_HINT(nonnull);
 
-static inline size_t CC_HINT(nonnull(2,3))
+static inline fr_slen_t CC_HINT(nonnull(2,3))
 		fr_pair_aprint_value_quoted(TALLOC_CTX *ctx, char **out,
 					    fr_pair_t const *vp, fr_token_t quote)
 		SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_pair_print_value_quoted, vp, quote)
@@ -520,7 +520,7 @@ static inline size_t CC_HINT(nonnull(2,3))
 ssize_t		fr_pair_print(fr_sbuff_t *out, fr_pair_t const *parent,
 			      fr_pair_t const *vp) CC_HINT(nonnull(1,3));
 
-static inline size_t CC_HINT(nonnull(2,4))
+static inline fr_slen_t CC_HINT(nonnull(2,4))
 		fr_pair_aprint(TALLOC_CTX *ctx, char **out, fr_pair_t const *parent, fr_pair_t const *vp)
 		SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_pair_print, parent, vp)
 
