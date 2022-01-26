@@ -883,8 +883,6 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 {
 	int compare = 0;
 
-	if (!a || !b) return -1;
-
 	if (!fr_cond_assert(a->type != FR_TYPE_NULL)) return -1;
 	if (!fr_cond_assert(b->type != FR_TYPE_NULL)) return -1;
 
@@ -3732,7 +3730,7 @@ void fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enum
  *	- -1 on failure.
  */
 int fr_value_box_bstr_alloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
-			   size_t len, bool tainted)
+			    size_t len, bool tainted)
 {
 	char	*str;
 
@@ -5469,8 +5467,8 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 
 	fr_dlist_t		entry;
 
-	if (!list || fr_dlist_empty(list)) {
-		fr_strerror_const("Invalid arguments.  List was NULL");
+	if (fr_dlist_empty(list)) {
+		fr_strerror_const("Invalid arguments.  List contains no elements");
 		return -1;
 	}
 
@@ -5498,7 +5496,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 	 *	i.e. we want to merge all its siblings
 	 *	into it.
 	 */
-	if (!out || (out == head_vb)) {
+	if (out == head_vb) {
 		out = head_vb;	/* sync up out and head_vb */
 
 		switch (type) {
@@ -5757,7 +5755,14 @@ void fr_value_box_list_untaint(fr_value_box_list_t *head)
  */
 void value_box_verify(char const *file, int line, fr_value_box_t const *vb, bool talloced)
 {
+DIAG_OFF(nonnull-compare)
+	/*
+	 *	nonnull only does something if we're building
+	 *	with ubsan...  We still want to assert event
+	 *	if we're building without sanitizers.
+	 */
 	fr_fatal_assert_msg(vb, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t pointer was NULL", file, line);
+DIAG_ON(nonnull-compare)
 
 	if (talloced) vb = talloc_get_type_abort_const(vb, fr_value_box_t);
 

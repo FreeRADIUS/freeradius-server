@@ -793,7 +793,7 @@ void		fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enu
  */
 int		fr_value_box_bstr_alloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 					size_t len, bool tainted)
-		CC_HINT(nonnull(2,3));
+		CC_HINT(nonnull(3));
 
 int		fr_value_box_bstr_realloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst, size_t len)
 		CC_HINT(nonnull(3));
@@ -831,7 +831,7 @@ int		fr_value_box_bstr_append_buffer(TALLOC_CTX *ctx, fr_value_box_t *dst, char 
  */
 int		fr_value_box_mem_alloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				       size_t len, bool tainted)
-		CC_HINT(nonnull(2,3));
+		CC_HINT(nonnull(3));
 
 int		fr_value_box_mem_realloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst, size_t len)
 		CC_HINT(nonnull(3));
