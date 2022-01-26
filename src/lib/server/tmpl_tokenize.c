@@ -355,9 +355,6 @@ size_t tmpl_pair_list_name(tmpl_pair_list_t *out, char const *name, tmpl_pair_li
 	char const *p = name;
 	char const *q;
 
-	/* This should never be a NULL pointer */
-	fr_assert(name);
-
 	/*
 	 *	Try and determine the end of the token
 	 */
@@ -744,18 +741,18 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bo
 
 	MEM(vpt = talloc(ctx, tmpl_t));
 	len = fr_value_box_aprint(vpt, &name, data, fr_value_escape_by_quote[quote]);
+	if (len < 0) {
+	error:
+		talloc_free(vpt);
+		return -1;
+	}
+
 	tmpl_init_shallow(vpt, TMPL_TYPE_DATA, quote, name, len);
 
 	if (steal) {
-		if (fr_value_box_steal(vpt, tmpl_value(vpt), data) < 0) {
-			talloc_free(vpt);
-			return -1;
-		}
+		if (fr_value_box_steal(vpt, tmpl_value(vpt), data) < 0) goto error;
 	} else {
-		if (fr_value_box_copy(vpt, tmpl_value(vpt), data) < 0) {
-			talloc_free(vpt);
-			return -1;
-		}
+		if (fr_value_box_copy(vpt, tmpl_value(vpt), data) < 0) goto error;
 	}
 	*out = vpt;
 
