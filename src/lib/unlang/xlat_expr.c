@@ -44,6 +44,11 @@ RCSID("$Id$")
  *	doesn't need to interpret the LHS, but just knows its limits.  We perhaps want a "range compare"
  *	function, which just checks ranges on one side against values on the right.
  *
+ *	Even worse, when we do "((bool) 1) < 3", the RHS is cast to the type of the LHS by
+ *	tmpl_afrom_substr(). This is because we pass the LHS data type recursively down, which works most of
+ *	the time, but not all of the time.  There are currently hacks in the "upcast" code here to fix this,
+ *	but it's a hack.
+ *
  *	@todo - Regular expressions are not handled.  This isn't a lot of work, but can be a bit finicky.
  *
  *	@todo - short-circuit && / || need to be updated.  This requires various magic in their instantiation

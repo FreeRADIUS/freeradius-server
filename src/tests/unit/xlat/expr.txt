@@ -106,5 +106,16 @@ match ((1 < 2) < 3)
 xlat_expr (uint32) %(concat:1 2)
 match %(cast_expression:uint32 %(concat:1 2))
 
+#
+# Mashing multiple brackets together.  The brackets are removed as
+# part of the parsing step, because no intermediate nodes are created for them.
+#
+xlat_expr (((1 + 2)))
+match (1 + 2)
+
+xlat_expr (((1 + 2)) * ((3 + 4)))
+match ((1 + 2) * (3 + 4))
+
+
 count
-match 51
+match 55
