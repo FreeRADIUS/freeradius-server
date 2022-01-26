@@ -800,7 +800,7 @@ int		fr_value_box_bstr_realloc(TALLOC_CTX *ctx, char **out, fr_value_box_t *dst,
 
 int		fr_value_box_bstrndup(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				      char const *src, size_t len, bool tainted)
-		CC_HINT(nonnull(2,4));
+		CC_HINT(nonnull(2)); /* src may be NULL if len == 0 */
 
 int		fr_value_box_bstrndup_dbuff(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 					    fr_dbuff_t *dbuff, size_t len, bool tainted)
