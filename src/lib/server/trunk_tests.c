@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#define TRUNK_TESTS 1
 #include "trunk.c"
 
 //#include <gperftools/profiler.h>
