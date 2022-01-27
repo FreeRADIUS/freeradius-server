@@ -301,6 +301,9 @@ static CONF_PARSER const fr_trunk_config_connection[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+#ifdef TRUNK_TESTS	/* Don't export this from the trunk tests binary */
+static
+#endif
 CONF_PARSER const fr_trunk_config[] = {
 	{ FR_CONF_OFFSET("start", FR_TYPE_UINT16, fr_trunk_conf_t, start), .dflt = "5" },
 	{ FR_CONF_OFFSET("min", FR_TYPE_UINT16, fr_trunk_conf_t, min), .dflt = "1" },

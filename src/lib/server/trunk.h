@@ -341,10 +341,12 @@ struct fr_trunk_connection_pub_s {
 	fr_trunk_t		* _CONST trunk;		//!< Trunk this connection belongs to.
 };
 
+#ifndef TRUNK_TESTS
 /** Config parser definitions to populate a fr_trunk_conf_t
  *
  */
 extern CONF_PARSER const fr_trunk_config[];
+#endif
 
 /** Allocate a new connection for the trunk
  *
