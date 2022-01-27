@@ -76,9 +76,11 @@ int xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name)
 	*out = NULL;
 
 	if (tmpl_afrom_attr_str(request, NULL, &vpt, name,
-				&(tmpl_attr_rules_t){
-					.dict_def = request->dict,
-					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+				&(tmpl_rules_t){
+					.attr = {
+						.dict_def = request->dict,
+						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+					}
 				}) <= 0) return -4;
 
 	ret = tmpl_find_vp(out, request, vpt);
@@ -1004,9 +1006,11 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 	fmt = attr->vb_strvalue;
 
 	if (tmpl_afrom_attr_str(request, NULL, &vpt, fmt,
-				&(tmpl_attr_rules_t){
-					.dict_def = request->dict,
-					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+				&(tmpl_rules_t){
+					.attr = {
+						.dict_def = request->dict,
+						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+					}
 				}) <= 0) {
 		RPEDEBUG("Invalid input");
 		return XLAT_ACTION_FAIL;
@@ -2345,9 +2349,11 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_pair_t *vp;
 
 	if (tmpl_afrom_attr_str(ctx, NULL, &vpt, in_head->vb_strvalue,
-				&(tmpl_attr_rules_t){
-					.dict_def = request->dict,
-					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+				&(tmpl_rules_t){
+					.attr = {
+						.dict_def = request->dict,
+						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+					}
 				}) <= 0) {
 		RPEDEBUG("Invalid input");
 		return XLAT_ACTION_FAIL;
@@ -3403,9 +3409,11 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	memcpy(&tp_encode, xctx->inst, sizeof(tp_encode)); /* const issues */
 
 	if (tmpl_afrom_attr_str(ctx, NULL, &vpt, in_head->vb_strvalue,
-				&(tmpl_attr_rules_t){
-					.dict_def = request->dict,
-					.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+				&(tmpl_rules_t){
+					.attr = {
+						.dict_def = request->dict,
+						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+					}
 				}) <= 0) {
 		RPEDEBUG("Failed parsing attribute reference");
 		return XLAT_ACTION_FAIL;

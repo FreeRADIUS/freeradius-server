@@ -250,7 +250,6 @@ extern size_t tmpl_type_table_len;
 
 typedef struct tmpl_rules_s tmpl_rules_t;
 typedef struct tmpl_attr_rules_s tmpl_attr_rules_t;
-typedef struct tmpl_data_rules_s tmpl_data_rules_t;
 typedef struct tmpl_xlat_rules_s tmpl_xlat_rules_t;
 typedef struct tmpl_res_rules_s tmpl_res_rules_t;
 typedef struct tmpl_s tmpl_t;
@@ -319,14 +318,6 @@ struct tmpl_attr_rules_s {
 	uint8_t			list_as_attr:1;		//!< return #TMPL_TYPE_ATTR for lists, and not #TMPL_TYPE_LIST
 };
 
-struct tmpl_data_rules_s {
-	fr_dict_attr_t const	*enumv;			//!< Enumeration attribute used to resolve enum values.
-
-	fr_type_t		cast;			//!< Whether there was an explicit cast.
-							///< Used to determine if barewords or other values
-							///< should be converted to an internal data type.
-};
-
 struct tmpl_xlat_rules_s {
 	fr_event_list_t		*runtime_el;		//!< The eventlist to use for runtime instantiation
 							///< of xlats.
@@ -339,8 +330,13 @@ struct tmpl_rules_s {
 	tmpl_rules_t const     	*parent;		//!< for parent / child relationships
 
 	tmpl_attr_rules_t	attr;			//!< Rules/data for parsing attribute references.
-	tmpl_data_rules_t	data;			//!< Rules/data for parsing attribute data and enumerations.
 	tmpl_xlat_rules_t	xlat;			//!< Rules/data for parsing xlats.
+
+	fr_dict_attr_t const	*enumv;			//!< Enumeration attribute used to resolve enum values.
+
+	fr_type_t		cast;			//!< Whether there was an explicit cast.
+							///< Used to determine if barewords or other values
+							///< should be converted to an internal data type.
 
 	bool			at_runtime;		//!< Produce an ephemeral/runtime tmpl.
 							///< Instantiated xlats are not added to the global
@@ -716,8 +712,8 @@ static inline tmpl_pair_list_t tmpl_list(tmpl_t const *vpt)
 #define tmpl_value_type(_tmpl)			(_tmpl)->data.literal.type
 #define tmpl_value_enumv(_tmpl)			(_tmpl)->data.literal.enumv
 
-#define tmpl_rules_cast(_tmpl)			(_tmpl)->rules.data.cast
-#define tmpl_rules_enumv(_tmpl)			(_tmpl)->rules.data.enumv
+#define tmpl_rules_cast(_tmpl)			(_tmpl)->rules.cast
+#define tmpl_rules_enumv(_tmpl)			(_tmpl)->rules.enumv
 
 /*
  *	Temporary macros to track where we do assignments
@@ -838,7 +834,8 @@ typedef enum {
 	TMPL_ATTR_ERROR_FILTER_NOT_ALLOWED,		//!< Filters disallowed by rules.
 	TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX,		//!< Invalid array index.
 	TMPL_ATTR_ERROR_NESTING_TOO_DEEP,		//!< Too many levels of nesting.
-	TMPL_ATTR_ERROR_MISSING_TERMINATOR		//!< Unexpected text found after attribute reference
+	TMPL_ATTR_ERROR_MISSING_TERMINATOR,		//!< Unexpected text found after attribute reference
+	TMPL_ATTR_ERROR_BAD_CAST			//!< Specified cast was invalid.
 } tmpl_attr_error_t;
 
 /** Map ptr type to a boxed type
@@ -901,10 +898,13 @@ size_t			tmpl_request_ref_by_name(tmpl_request_ref_t *out, char const *name, tmp
 
 tmpl_t			*tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *fmt, ...) CC_HINT(nonnull(1,4));
 
-tmpl_t			*tmpl_init_shallow(tmpl_t *vpt, tmpl_type_t type,
-					   fr_token_t quote, char const *name, ssize_t len) CC_HINT(nonnull);
+tmpl_t			*tmpl_init_shallow(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote,
+					   char const *name, ssize_t len,
+					   tmpl_rules_t const *t_rules) CC_HINT(nonnull(1,4));
 
-tmpl_t			*tmpl_init(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *name, ssize_t len) CC_HINT(nonnull);
+tmpl_t			*tmpl_init(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote,
+				   char const *name, ssize_t len,
+				   tmpl_rules_t const *t_rules) CC_HINT(nonnull);
 
 tmpl_t			*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, fr_token_t quote, char const *name, ssize_t len);
 
@@ -950,11 +950,11 @@ int			tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list,
 ssize_t			tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					       tmpl_t **out, fr_sbuff_t *name,
 					       fr_sbuff_parse_rules_t const *p_rules,
-					       tmpl_attr_rules_t const *t_rules) CC_HINT(nonnull(3,4));
+					       tmpl_rules_t const *t_rules) CC_HINT(nonnull(3,4));
 
 ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					    tmpl_t **out, char const *name,
-					    tmpl_attr_rules_t const *rules) CC_HINT(nonnull (3, 4));
+					    tmpl_rules_t const *rules) CC_HINT(nonnull (3, 4));
 
 ssize_t			tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 					  fr_sbuff_t *in,
@@ -964,7 +964,7 @@ ssize_t			tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 tmpl_t			*tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in) CC_HINT(nonnull);
 
-ssize_t			tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in) CC_HINT(nonnull(2));		/* Parses cast string */
+ssize_t			tmpl_cast_from_substr(tmpl_rules_t *t_rules, fr_sbuff_t *in) CC_HINT(nonnull(2));		/* Parses cast string */
 
 int			tmpl_cast_set(tmpl_t *vpt, fr_type_t type) CC_HINT(nonnull);	/* Sets cast type */
 

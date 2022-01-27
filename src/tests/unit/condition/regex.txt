@@ -69,10 +69,10 @@ match <string>&Tmp-Integer-0 =~ /%{Tmp-Integer-0}/
 #  Cannot add a bad cast
 #
 condition <integer>&Tmp-String-0 =~ /foo/
-match ERROR offset 9: Invalid cast used with regular expression
+match ERROR offset 9: Casts cannot be used with regular expressions
 
 condition &Tmp-String-0 =~ <integer>/foo/
-match ERROR offset 26: Invalid cast used with regular expression
+match ERROR offset 28: Casts cannot be used with regular expressions
 
 
 xlat %{1}

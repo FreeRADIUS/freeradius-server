@@ -1286,7 +1286,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	 *	Verify the enum name matches the expected from.
 	 */
 	enum_len = (fr_slen_t)strlen(argv[1]);
-	if (fr_dict_enum_name_from_substr(NULL, &FR_SBUFF_IN(argv[1], enum_len), NULL) != enum_len) {
+	if (fr_dict_enum_name_from_substr(NULL, NULL, &FR_SBUFF_IN(argv[1], enum_len), NULL) != enum_len) {
 		fr_strerror_printf_push("Invalid VALUE name '%s' for attribute '%s'", argv[1], da->name);
 		return -1;
 	}

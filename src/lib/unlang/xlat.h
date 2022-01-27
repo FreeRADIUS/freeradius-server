@@ -50,7 +50,6 @@ typedef enum {
 
 typedef struct xlat_inst xlat_inst_t;
 typedef struct xlat_thread_inst xlat_thread_inst_t;
-typedef struct xlat_exp xlat_exp_t;
 
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/request.h>

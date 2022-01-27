@@ -736,10 +736,12 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 		RDEBUG2("Parsing attribute \"%pV\"", fr_box_strvalue_len(name, curl_len));
 
 		if (tmpl_afrom_attr_str(request, NULL, &dst, name,
-					&(tmpl_attr_rules_t){
-						.prefix = TMPL_ATTR_REF_PREFIX_NO,
-						.dict_def = request->dict,
-						.list_def = PAIR_LIST_REPLY
+					&(tmpl_rules_t){
+						.attr = {
+							.prefix = TMPL_ATTR_REF_PREFIX_NO,
+							.dict_def = request->dict,
+							.list_def = PAIR_LIST_REPLY
+						}
 					}) <= 0) {
 			RPWDEBUG("Failed parsing attribute (skipping)");
 			talloc_free(dst);
@@ -1024,10 +1026,12 @@ static int json_pair_alloc(rlm_rest_t const *instance, rlm_rest_section_t const 
 		RDEBUG2("Parsing attribute \"%s\"", name);
 
 		if (tmpl_afrom_attr_str(request, NULL, &dst, name,
-					&(tmpl_attr_rules_t){
-						.prefix = TMPL_ATTR_REF_PREFIX_NO,
-						.dict_def = request->dict,
-						.list_def = PAIR_LIST_REPLY
+					&(tmpl_rules_t){
+						.attr = {
+							.prefix = TMPL_ATTR_REF_PREFIX_NO,
+							.dict_def = request->dict,
+							.list_def = PAIR_LIST_REPLY
+						}
 					}) <= 0) {
 			RPWDEBUG("Failed parsing attribute (skipping)");
 			continue;

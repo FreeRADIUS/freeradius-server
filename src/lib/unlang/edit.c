@@ -88,9 +88,11 @@ static int templatize_lhs(TALLOC_CTX *ctx, edit_result_t *out, request_t *reques
 	 *	anything else.
 	 */
 	slen = tmpl_afrom_attr_str(ctx, NULL, &out->to_free, box->vb_strvalue,
-				   &(tmpl_attr_rules_t){
-					   .dict_def = request->dict,
-					   .prefix = TMPL_ATTR_REF_PREFIX_NO
+				   &(tmpl_rules_t){
+				   	.attr = {
+						.dict_def = request->dict,
+						.prefix = TMPL_ATTR_REF_PREFIX_NO
+					}
 				   });
 	if (slen <= 0) {
 		RPEDEBUG("Left side expansion result \"%s\" is not an attribute reference", box->vb_strvalue);

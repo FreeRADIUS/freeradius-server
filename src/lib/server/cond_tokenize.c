@@ -241,7 +241,7 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 		if (cast_type != FR_TYPE_NULL) {
 			if ((cast_type != FR_TYPE_STRING) &&
 			    (cast_type != FR_TYPE_OCTETS)) {
-				fr_strerror_const("Invalid cast used with regular expression");
+				fr_strerror_const("Casts cannot be used with regular expressions");
 				if (in) fr_sbuff_set(in, m_lhs);
 				return -1;
 			}
@@ -331,7 +331,9 @@ int fr_cond_promote_types(fr_cond_t *c, fr_sbuff_t *in, fr_sbuff_marker_t *m_lhs
 		 */
 		if (tmpl_rules_cast(c->data.map->rhs) != FR_TYPE_NULL) {
 			if (tmpl_rules_cast(c->data.map->rhs) != lhs_type) {
-				fr_strerror_const("Incompatible casts");
+				fr_strerror_printf("Incompatible casts '%s' and '%s'",
+						   fr_type_to_str(tmpl_rules_cast(c->data.map->rhs)),
+						   fr_type_to_str(lhs_type));
 				if (in) fr_sbuff_set(in, fr_sbuff_start(in));
 				return -1;
 			}
@@ -926,12 +928,12 @@ static int cond_forbid_groups(tmpl_t *vpt, fr_sbuff_t *in, fr_sbuff_marker_t *m_
 
 static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 				     fr_sbuff_marker_t *opd_start, fr_sbuff_t *in,
-				     tmpl_rules_t const *rules)
+				     tmpl_rules_t const *t_rules)
 {
 	fr_sbuff_term_t const 		bareword_terminals =
 					FR_SBUFF_TERMS(
-						L("\t"),
 						L("\n"),
+						L("\t"),
 						L(" "),
 						L("!*"),
 						L("!="),
@@ -949,6 +951,7 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 						L(">"),
 						L(">="),
 						L("||"),		/* Logical operator */
+						L("")			/* Hack for EOF */
 					);
 
 	fr_sbuff_t			our_in = FR_SBUFF(in);
@@ -959,13 +962,14 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 	fr_sbuff_parse_rules_t		tmp_p_rules;
 	fr_sbuff_parse_rules_t const	*p_rules;
 	ssize_t				slen;
+	tmpl_rules_t			our_t_rules = *t_rules;
 
 	*out = NULL;
 
 	/*
 	 *	Parse (optional) cast
 	 */
-	slen = tmpl_cast_from_substr(&cast, &our_in);
+	slen = tmpl_cast_from_substr(&our_t_rules, &our_in);
 	if (slen < 0) return slen;
 
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
@@ -1002,7 +1006,7 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 #endif
 	}
 
-	slen = tmpl_afrom_substr(c, &vpt, &our_in, type, p_rules, rules);
+	slen = tmpl_afrom_substr(c, &vpt, &our_in, type, p_rules, &our_t_rules);
 	if (!vpt) {
 		fr_sbuff_advance(&our_in, slen * -1);
 
@@ -1028,7 +1032,7 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 	 */
 	if (type == T_SOLIDUS_QUOTED_STRING) {
 		if (cast != FR_TYPE_NULL) {
-			fr_strerror_const("Invalid cast used with regular expression");
+			fr_strerror_const("Casts cannot be used with regular expressions");
 			fr_sbuff_set(&our_in, &m);
 			goto error;
 		}
@@ -1076,13 +1080,6 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 			fr_sbuff_set(&our_in, &m);
 			goto error;
 		}
-
-		cast = FR_TYPE_NULL;
-	}
-
-	if (tmpl_cast_set(vpt, cast) < 0) {
-		fr_sbuff_set(&our_in, &m);	/* Reset to start of cast */
-		goto error;
 	}
 
 	if (tmpl_is_attr_unresolved(vpt)) c->pass2_fixup = PASS2_FIXUP_ATTR;

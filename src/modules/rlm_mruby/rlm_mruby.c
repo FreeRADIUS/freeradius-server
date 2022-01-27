@@ -359,9 +359,11 @@ static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vp
 		DEBUG("%s: %s %s %s", function_name, ckey, fr_table_str_by_value(fr_tokens_table, op, "="), cval);
 
 		if (tmpl_afrom_attr_str(request, NULL, &dst, ckey,
-					&(tmpl_attr_rules_t){
-						.dict_def = request->dict,
-						.list_def = PAIR_LIST_REPLY
+					&(tmpl_rules_t){
+						.attr = {
+							.dict_def = request->dict,
+							.list_def = PAIR_LIST_REPLY
+						}
 					}) <= 0) {
 			ERROR("Failed to find attribute %s", ckey);
 			continue;

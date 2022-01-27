@@ -567,10 +567,12 @@ fr_dict_enum_value_t		*fr_dict_enum_by_name(fr_dict_attr_t const *da, char const
 
 ssize_t			fr_dict_enum_by_name_substr(fr_dict_enum_value_t **out, fr_dict_attr_t const *da, fr_sbuff_t *in);
 
-fr_slen_t		fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_t *in, fr_sbuff_term_t const *tt);
+fr_slen_t		fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_parse_error_t *err,
+						      fr_sbuff_t *in, fr_sbuff_term_t const *tt);
 
-static inline fr_slen_t fr_dict_enum_name_afrom_substr(TALLOC_CTX *ctx, char **out, fr_sbuff_t *in, fr_sbuff_term_t const *tt)
-			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_dict_enum_name_from_substr, in, tt)
+static inline fr_slen_t fr_dict_enum_name_afrom_substr(TALLOC_CTX *ctx, char **out, fr_sbuff_parse_error_t *err,
+						       fr_sbuff_t *in, fr_sbuff_term_t const *tt)
+			SBUFF_OUT_TALLOC_FUNC_NO_LEN_DEF(fr_dict_enum_name_from_substr, err, in, tt)
 /** @} */
 
 /** @name Dictionary and protocol loading

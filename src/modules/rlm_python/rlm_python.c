@@ -324,9 +324,11 @@ static void mod_vptuple(TALLOC_CTX *ctx, module_ctx_t const *mctx, request_t *re
 		}
 
 		if (tmpl_afrom_attr_str(ctx, NULL, &dst, s1,
-					&(tmpl_attr_rules_t){
-						.dict_def = request->dict,
-						.list_def = PAIR_LIST_REPLY
+					&(tmpl_rules_t){
+						.attr = {
+							.dict_def = request->dict,
+							.list_def = PAIR_LIST_REPLY
+						}
 					}) <= 0) {
 			ERROR("%s - Failed to find attribute %s.%s", funcname, list_name, s1);
 			continue;

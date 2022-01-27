@@ -226,7 +226,8 @@ void tmpl_attr_debug(tmpl_t const *vpt)
 		     vpt->type,
 		     fr_box_strvalue_len(vpt->name, vpt->len), vpt);
 
-	FR_FAULT_LOG("\tquote  : %s", fr_table_str_by_value(fr_token_quotes_table, vpt->quote, "<INVALID>"));
+	FR_FAULT_LOG("\tcast       : %s", fr_type_to_str(tmpl_rules_cast(vpt)));
+	FR_FAULT_LOG("\tquote      : %s", fr_table_str_by_value(fr_token_quotes_table, vpt->quote, "<INVALID>"));
 
 	FR_FAULT_LOG("request references:");
 
@@ -261,6 +262,7 @@ void tmpl_debug(tmpl_t const *vpt)
 		     vpt->type,
 		     fr_box_strvalue_len(vpt->name, vpt->len), vpt);
 
+	FR_FAULT_LOG("\tcast       : %s", fr_type_to_str(tmpl_rules_cast(vpt)));
 	FR_FAULT_LOG("\tquote      : %s", fr_table_str_by_value(fr_token_quotes_table, vpt->quote, "<INVALID>"));
 	switch (vpt->type) {
 	case TMPL_TYPE_NULL:
@@ -592,13 +594,16 @@ tmpl_t *tmpl_init_printf(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char c
  * @param[in] name	of the #tmpl_t.
  * @param[in] len	The length of the buffer (or a substring of the buffer) pointed to by name.
  *			If < 0 strlen will be used to determine the length.
+ * @param[in] t_rules	used during parsing.
  * @return a pointer to the initialised #tmpl_t. The same value as vpt.
  */
-tmpl_t *tmpl_init_shallow(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *name, ssize_t len)
+tmpl_t *tmpl_init_shallow(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote,
+			  char const *name, ssize_t len, tmpl_rules_t const *t_rules)
 {
 	memset(vpt, 0, sizeof(*vpt));
 	tmpl_type_init(vpt, type);
 	tmpl_set_name_shallow(vpt, quote, name, len);
+	if (t_rules) vpt->rules = *t_rules;
 
 	return vpt;
 }
@@ -611,13 +616,16 @@ tmpl_t *tmpl_init_shallow(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char 
  * @param[in] name	to set for the tmpl.
  * @param[in] len	Name length.  If < 0 strlen will be used
  *			to determine the name.
+ * @param[in] t_rules	used during parsing.
  * @return A pointer to the newly initialised tmpl.
  */
-tmpl_t *tmpl_init(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote, char const *name, ssize_t len)
+tmpl_t *tmpl_init(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote,
+		  char const *name, ssize_t len, tmpl_rules_t const *t_rules)
 {
 	memset(vpt, 0, sizeof(*vpt));
 	tmpl_type_init(vpt, type);
 	tmpl_set_name(vpt, quote, name, len);
+	if (t_rules) vpt->rules = *t_rules;
 
 	return vpt;
 }
@@ -747,7 +755,7 @@ int tmpl_afrom_value_box(TALLOC_CTX *ctx, tmpl_t **out, fr_value_box_t *data, bo
 		return -1;
 	}
 
-	tmpl_init_shallow(vpt, TMPL_TYPE_DATA, quote, name, slen);
+	tmpl_init_shallow(vpt, TMPL_TYPE_DATA, quote, name, slen, NULL);
 
 	if (steal) {
 		if (fr_value_box_steal(vpt, tmpl_value(vpt), data) < 0) goto error;
@@ -1818,17 +1826,20 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
 ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 			       tmpl_t **out, fr_sbuff_t *name,
 			       fr_sbuff_parse_rules_t const *p_rules,
-			       tmpl_attr_rules_t const *t_rules)
+			       tmpl_rules_t const *t_rules)
 {
-	int			ret;
-	size_t			list_len = 0;
-	tmpl_t			*vpt;
-	fr_sbuff_t		our_name = FR_SBUFF(name);	/* Take a local copy in case we need to back track */
-	bool			ref_prefix = false;
-	bool			is_raw = false;
-	fr_sbuff_marker_t	m_l;
+	int				ret;
+	size_t				list_len = 0;
+	tmpl_t				*vpt;
+	fr_sbuff_t			our_name = FR_SBUFF(name);	/* Take a local copy in case we need to back track */
+	bool				ref_prefix = false;
+	bool				is_raw = false;
+	tmpl_attr_rules_t const		*t_attr_rules;
+	fr_sbuff_marker_t		m_l;
 
-	if (!t_rules) t_rules = &default_attr_rules.attr;	/* Use the defaults */
+	if (!t_rules) t_rules = &default_attr_rules;	/* Use the defaults */
+
+	t_attr_rules = &t_rules->attr;
 
 	if (err) *err = TMPL_ATTR_ERROR_NONE;
 
@@ -1841,7 +1852,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	/*
 	 *	Check to see if we expect a reference prefix
 	 */
-	switch (t_rules->prefix) {
+	switch (t_attr_rules->prefix) {
 	case TMPL_ATTR_REF_PREFIX_YES:
 		if (!fr_sbuff_next_if_char(&our_name, '&')) {
 			fr_strerror_const("Invalid attribute reference, missing '&' prefix");
@@ -1878,16 +1889,17 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	/*
 	 *	Parse one or more request references
 	 */
-	ret = tmpl_request_ref_afrom_attr_substr(vpt, err, vpt, &our_name, p_rules, &t_rules, 0);
+	ret = tmpl_request_ref_afrom_attr_substr(vpt, err, vpt, &our_name, p_rules, &t_attr_rules, 0);
 	if (ret < 0) {
 	error:
+		*out = NULL;
 		talloc_free(vpt);
 		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
 
 	fr_sbuff_marker(&m_l, &our_name);
 
-	if (!t_rules->list_as_attr) {
+	if (!t_attr_rules->list_as_attr) {
 		/*
 		 *	Parse the list reference
 		 *
@@ -1895,7 +1907,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		 *	are integrated into attribute references.
 		 */
 		fr_sbuff_out_by_longest_prefix(&list_len, &vpt->data.attribute.list, pair_list_table,
-					       &our_name, t_rules->list_def);
+					       &our_name, t_attr_rules->list_def);
 
 		/*
 		 *	Check if we need to backtrack
@@ -1911,10 +1923,10 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		    !fr_sbuff_is_char(&our_name, '[') && !tmpl_substr_terminal_check(&our_name, p_rules)) {
 			fr_sbuff_set(&our_name, &m_l);
 			list_len = 0;
-			vpt->data.attribute.list = t_rules->list_def;
+			vpt->data.attribute.list = t_attr_rules->list_def;
 		}
 
-		if ((t_rules->parent || t_rules->disallow_qualifiers) && (list_len > 0)) {
+		if ((t_attr_rules->parent || t_attr_rules->disallow_qualifiers) && (list_len > 0)) {
 			fr_strerror_const("It is not permitted to specify a pair list here");
 			if (err) *err = TMPL_ATTR_ERROR_INVALID_LIST_QUALIFIER;
 			talloc_free(vpt);
@@ -1933,8 +1945,8 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	    (fr_sbuff_next_if_char(&our_name, '.') && fr_sbuff_is_in_charset(&our_name, fr_dict_attr_allowed_chars))) {
 		ret = tmpl_attr_afrom_attr_substr(vpt, err,
 						  vpt,
-						  t_rules->parent, t_rules->parent,
-						  &our_name, p_rules, t_rules, 0);
+						  t_attr_rules->parent, t_attr_rules->parent,
+						  &our_name, p_rules, t_attr_rules, 0);
 		if (ret < 0) goto error;
 
 		/*
@@ -1954,7 +1966,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		 *	and we're parsing in list_as_attr mode, then
 		 *	we need to add in a default list.
 		 */
-		if (t_rules->list_as_attr) {
+		if (t_attr_rules->list_as_attr) {
 			tmpl_attr_t *ar;
 
 			ar = tmpl_attr_list_head(&vpt->data.attribute.ar);
@@ -1971,7 +1983,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 					.ar_parent = fr_dict_root(fr_dict_internal())
 				};
 
-				switch (t_rules->list_def) {
+				switch (t_attr_rules->list_def) {
 				default:
 				case PAIR_LIST_REQUEST:
 					ar->ar_da = request_attr_request;
@@ -2009,7 +2021,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		tmpl_attr_t *ar;
 
 		MEM(ar = talloc_zero(vpt, tmpl_attr_t));
-		switch (tmpl_attr_parse_filter(err, ar, &our_name, t_rules)) {
+		switch (tmpl_attr_parse_filter(err, ar, &our_name, t_attr_rules)) {
 		case 0:						/* No filter */
 			talloc_free(ar);
 			break;
@@ -2026,14 +2038,25 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	}
 
 	tmpl_set_name(vpt, T_BARE_WORD, fr_sbuff_start(&our_name), fr_sbuff_used(&our_name));
-	vpt->rules.attr = *t_rules;	/* Record the rules */
+	vpt->rules = *t_rules;	/* Record the rules */
 
 	if (!tmpl_substr_terminal_check(&our_name, p_rules)) {
 		fr_strerror_const("Unexpected text after attribute reference");
 		if (err) *err = TMPL_ATTR_ERROR_MISSING_TERMINATOR;
-		talloc_free(vpt);
-		*out = NULL;
-		return -fr_sbuff_used(&our_name);
+		goto error;
+	}
+
+	/*
+	 *	If everything was resolved correctly
+	 *	we now need to check the cast type.
+	 */
+	if (!tmpl_needs_resolving(vpt) && !fr_type_is_null(t_rules->cast) &&
+	    !fr_type_cast(t_rules->cast, tmpl_da(vpt)->type)) {
+		fr_strerror_printf("Cannot cast type '%s' to '%s'",
+				   fr_type_to_str(tmpl_da(vpt)->type), fr_type_to_str(t_rules->cast));
+		if (err) *err = TMPL_ATTR_ERROR_BAD_CAST;
+		fr_sbuff_set_to_start(&our_name);
+		goto error;
 	}
 
 	TMPL_VERIFY(vpt);	/* Because we want to ensure we produced something sane */
@@ -2057,11 +2080,11 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
  *	name string isn't parsed.
  */
 ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
-			    tmpl_t **out, char const *name, tmpl_attr_rules_t const *t_rules)
+			    tmpl_t **out, char const *name, tmpl_rules_t const *t_rules)
 {
 	ssize_t slen, name_len;
 
-	if (!t_rules) t_rules = &default_attr_rules.attr;	/* Use the defaults */
+	if (!t_rules) t_rules = &default_attr_rules;	/* Use the defaults */
 
 	name_len = strlen(name);
 	slen = tmpl_afrom_attr_substr(ctx, err, out, &FR_SBUFF_IN(name, name_len), NULL, t_rules);
@@ -2087,7 +2110,7 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
  * @param[out] out		where to write tmpl.
  * @param[in] in		sbuff to parse.
  * @param[in] quote		surrounding the operand to parse.
- * @param[in] d_rules		specifying the cast and any enumeration values.
+ * @param[in] t_rules		specifying the cast and any enumeration values.
  * @param[in] allow_enum	Whether parsing the value as an enum should be allowed.
  * @param[in] p_rules		formatting rules.
  * @return
@@ -2096,33 +2119,32 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
  */
 static fr_slen_t tmpl_afrom_value_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 					 fr_token_t quote,
-					 tmpl_data_rules_t const *d_rules, bool allow_enum,
+					 tmpl_rules_t const *t_rules, bool allow_enum,
 					 fr_sbuff_parse_rules_t const *p_rules)
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
-	fr_value_box_t	tmp, *actual;
+	fr_value_box_t	tmp;
 	tmpl_t		*vpt;
 	fr_slen_t	slen;
 
-	if (!fr_type_is_leaf(d_rules->cast)) {
+	if (!fr_type_is_leaf(t_rules->cast)) {
 		fr_strerror_printf("%s is not a valid cast type",
-				   fr_type_to_str(d_rules->cast));
+				   fr_type_to_str(t_rules->cast));
 		return 0;
 	}
 
 	vpt = tmpl_alloc_null(ctx);
 	slen = fr_value_box_from_substr(vpt, &tmp,
-					d_rules->cast, allow_enum ? d_rules->enumv : NULL,
+					t_rules->cast, allow_enum ? t_rules->enumv : NULL,
 					&our_in, p_rules, false);
 	if (slen < 0) {
 		talloc_free(vpt);
 		return slen;
 	}
 
-	tmpl_init(vpt, TMPL_TYPE_DATA, quote, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in));
+	tmpl_init(vpt, TMPL_TYPE_DATA, quote, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
 
-	actual = tmpl_value(vpt);
-	fr_value_box_copy_shallow(NULL, actual, &tmp);
+	fr_value_box_copy_shallow(NULL, tmpl_value(vpt), &tmp);
 
 	*out = vpt;
 
@@ -2599,12 +2621,13 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			  fr_sbuff_parse_rules_t const *p_rules,
 			  tmpl_rules_t const *t_rules)
 {
-	fr_sbuff_t	our_in = FR_SBUFF(in);
+	fr_sbuff_t		our_in = FR_SBUFF(in);
 
-	fr_slen_t	slen;
-	char		*str;
+	fr_slen_t		slen;
+	fr_sbuff_parse_error_t	sberr;
+	char			*str;
 
-	tmpl_t		*vpt = NULL;
+	tmpl_t			*vpt = NULL;
 
 	if (!t_rules) t_rules = &default_attr_rules;	/* Use the defaults */
 
@@ -2617,7 +2640,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	we find a '&' prefix.
 		 */
 		if (fr_sbuff_is_char(&our_in, '&')) return tmpl_afrom_attr_substr(ctx, NULL, out, in,
-										  p_rules, &t_rules->attr);
+										  p_rules, t_rules);
 
 		/*
 		 *	Allow bareword xlats if we
@@ -2641,7 +2664,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 			if (flags.needs_resolving) UNRESOLVED_SET(&type);
 
-			tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen);
+			tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen, t_rules);
 			vpt->data.xlat.ex = head;
 			vpt->data.xlat.flags = flags;
 
@@ -2655,8 +2678,8 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		/*
 		 *	Deal with explicit casts...
 		 */
-		if (!fr_type_is_null(t_rules->data.cast)) return tmpl_afrom_value_substr(ctx, out, in, quote,
-											 &t_rules->data, true, p_rules);
+		if (!fr_type_is_null(t_rules->cast)) return tmpl_afrom_value_substr(ctx, out, in, quote,
+										    t_rules, true, p_rules);
 
 		/*
 		 *	See if it's a boolean value
@@ -2708,7 +2731,6 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 //		slen = tmpl_afrom_float_substr(ctx, out, &our_in);
 //		if (slen > 0) return fr_sbuff_set(in, &our_in);
 
-
 		/*
 		 *	See if it's a integer
 		 */
@@ -2720,10 +2742,13 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	See if it's an attribute reference
 		 *	without the prefix.
 		 */
-		slen = tmpl_afrom_attr_substr(ctx, NULL, out, &our_in, p_rules, &t_rules->attr);
+		slen = tmpl_afrom_attr_substr(ctx, NULL, out, &our_in, p_rules, t_rules);
 		if (slen > 0) goto done_bareword;
 		fr_assert(!*out);
 
+		/*
+		 *	Attempt to resolve enumeration values
+		 */
 		vpt = tmpl_alloc_null(ctx);
 
 		/*
@@ -2731,37 +2756,76 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	of bareword, assume it's an enum
 		 *	value.
 		 */
-		slen = fr_sbuff_out_aunescape_until(vpt, &str, &our_in, SIZE_MAX,
-						    p_rules ? p_rules->terminals : NULL,
-						    p_rules ? p_rules->escapes : NULL);
-		if (slen == 0) {
-			fr_strerror_const("Empty bareword is invalid");
+		slen = fr_dict_enum_name_afrom_substr(vpt, &str, &sberr, &our_in, p_rules ? p_rules->terminals : NULL);
+		if (slen < 0) {
+			/*
+			 *	Produce our own errors which make
+			 *	more sense in the context of tmpls
+			 */
+			switch (sberr) {
+			case FR_SBUFF_PARSE_ERROR_NOT_FOUND:
+				fr_strerror_const("No operand found.  Expected &ref, literal, "
+						  "'quoted literal', \"%{expansion}\", or enum value");
+				break;
+
+			case FR_SBUFF_PARSE_ERROR_FORMAT:
+				fr_strerror_const("enum values must contain at least one alpha character");
+				break;
+
+			default:
+				fr_strerror_const("Unexpected text after enum value.  Expected operator");
+				break;
+			}
+		bareword_error:
 			talloc_free(vpt);
-			return 0;
+			return slen;
 		}
 
-		tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, T_BARE_WORD, fr_sbuff_start(&our_in), slen);
-		vpt->data.unescaped = str;
+		/*
+		 *	If we have an enumv in the rules then
+		 *	do the lookup now and fail early.
+		 */
+		if (t_rules->enumv) {
+			fr_dict_enum_value_t *dv;
+
+			dv = fr_dict_enum_by_name(t_rules->enumv, str, slen);
+			if (!dv) {
+				fr_strerror_printf("enum value '%s' is not an enumeration of attribute '%s'",
+						   vpt->data.unescaped, t_rules->enumv->name);
+				goto bareword_error;
+			}
+
+			if (unlikely(fr_value_box_copy(vpt, tmpl_value(vpt), dv->value) < 0)) {
+				fr_strerror_const("Failed copying enum");
+				goto bareword_error;
+			}
+			tmpl_init(vpt, TMPL_TYPE_DATA, quote,
+				  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
+
+			talloc_free(str);
+		} else {
+			tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, quote,
+				  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
+			vpt->data.unescaped = str;
+		}
 		*out = vpt;
 
 		return fr_sbuff_set(in, &our_in);
 
 	case T_SINGLE_QUOTED_STRING:
 		/*
-		 *	Single quoted strings can be
-		 *	cast to a specific data type
-		 *	immediately as they cannot contain
-		 *	expansions.
+		 *	Single quoted strings can be cast
+		 *	to a specific data type immediately
+		 *	as they cannot contain expansions.
 		 */
-		if (!fr_type_is_null(t_rules->data.cast)) return tmpl_afrom_value_substr(ctx, out, in, quote,
-											 &t_rules->data, false,
-											 p_rules);
-
+		if (!fr_type_is_null(t_rules->cast)) return tmpl_afrom_value_substr(ctx, out, in, quote,
+										    t_rules, false,
+										    p_rules);
 		vpt = tmpl_alloc_null(ctx);
 		slen = fr_sbuff_out_aunescape_until(vpt, &str, &our_in, SIZE_MAX,
 						    p_rules ? p_rules->terminals : NULL,
 						    p_rules ? p_rules->escapes : NULL);
-		tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, quote, fr_sbuff_start(&our_in), slen);
+		tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, quote, fr_sbuff_start(&our_in), slen, t_rules);
 		vpt->data.unescaped = str;
 		break;
 
@@ -2787,12 +2851,12 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	type, then do the conversion now.
 		 */
 		if (xlat_is_literal(head)) {
-			if (!fr_type_is_null(t_rules->data.cast)) {
+			if (!fr_type_is_null(t_rules->cast)) {
 				talloc_free(vpt);		/* Also frees any nodes */
 
 				return tmpl_afrom_value_substr(ctx, out,
 							       in, quote,
-							       &t_rules->data, false, p_rules);
+							       t_rules, false, p_rules);
 			}
 
 			/*
@@ -2803,7 +2867,8 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			if (xlat_to_string(vpt, &str, &head)) {
 				xlat_exp_free(&head);		/* Free up any memory */
 
-				tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, quote, fr_sbuff_start(&our_in), slen);
+				tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, quote,
+				         fr_sbuff_start(&our_in), slen, t_rules);
 				vpt->data.unescaped = str;	/* Store the unescaped string for parsing later */
 				break;
 			}
@@ -2815,7 +2880,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 */
 		if (flags.needs_resolving) UNRESOLVED_SET(&type);
 
-		tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen);
+		tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen, t_rules);
 		vpt->data.xlat.ex = head;
 		vpt->data.xlat.flags = flags;
 	}
@@ -2846,7 +2911,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		if (flags.needs_resolving) UNRESOLVED_SET(&type);
 
-		tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen);
+		tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen, t_rules);
 		vpt->data.xlat.ex = head;
 		vpt->data.xlat.flags = flags;
 	}
@@ -2858,6 +2923,11 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		xlat_exp_t		*head = NULL;
 		xlat_flags_t		flags = {};
 		tmpl_type_t		type = TMPL_TYPE_REGEX_XLAT;
+
+		if (!fr_type_is_null(t_rules->cast)) {
+			fr_strerror_const("Casts cannot be used with regular expressions");
+			return -1;
+		}
 
 		vpt = tmpl_alloc_null(ctx);
 
@@ -2875,7 +2945,8 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	return.
 		 */
 		if (xlat_to_string(vpt, &str, &head)) {
-			tmpl_init(vpt, TMPL_TYPE_REGEX_UNCOMPILED, quote, fr_sbuff_start(&our_in), slen);
+			tmpl_init(vpt, TMPL_TYPE_REGEX_UNCOMPILED, quote,
+				  fr_sbuff_start(&our_in), slen, t_rules);
 			vpt->data.unescaped = str;	/* Store the unescaped string for compilation later */
 			break;
 		}
@@ -2886,7 +2957,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 */
 		if (flags.needs_resolving) UNRESOLVED_SET(&type);
 
-		tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen);
+		tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen, t_rules);
 		vpt->data.xlat.ex = head;
 		vpt->data.xlat.flags = flags;
 	}
@@ -2980,15 +3051,14 @@ tmpl_t *tmpl_copy(TALLOC_CTX *ctx, tmpl_t const *in)
  *  Not for any particular reason, but to emphasize a bit that they're
  *  not mathematical expressions.
  *
- * @param[out] out	Where to write the cast type.
- *			Will default to FR_TYPE_NULL.
+ * @param[out] rules	to set the cast type in.
  * @param[in] in	String containing the cast marker.
  * @return
  *	- 0 no cast specifier found.
  *	- >0 the number of bytes parsed.
  *	- <0 offset of parse error.
  */
-ssize_t tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in)
+ssize_t tmpl_cast_from_substr(tmpl_rules_t *rules, fr_sbuff_t *in)
 {
 	char			close = '\0';
 	fr_sbuff_t		our_in = FR_SBUFF(in);
@@ -3003,7 +3073,7 @@ ssize_t tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in)
 		close = ')';
 
 	} else {
-		if (out) *out = FR_TYPE_NULL;
+		if (rules) rules->cast = FR_TYPE_NULL;
 		return 0;
 	}
 
@@ -3014,7 +3084,7 @@ ssize_t tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in)
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 	if (fr_type_is_non_leaf(cast)) {
-		fr_strerror_const("Forbidden data type in cast");
+		fr_strerror_printf("Forbidden data type '%s' in cast", fr_type_to_str(cast));
 		FR_SBUFF_MARKER_ERROR_RETURN(&m);
 	}
 
@@ -3024,7 +3094,7 @@ ssize_t tmpl_cast_from_substr(fr_type_t *out, fr_sbuff_t *in)
 	}
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
-	if (out) *out = cast;
+	if (rules) rules->cast = cast;
 
 	return fr_sbuff_set(in, &our_in);
 }
@@ -3115,7 +3185,7 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 	}
 
 done:
-	vpt->rules.data.cast = dst_type;
+	vpt->rules.cast = dst_type;
 	return 0;
 }
 
@@ -3278,7 +3348,7 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 
 	case TMPL_TYPE_ATTR:	/* FIXME - We should check cast compatibility with resolved attrs */
 	case TMPL_TYPE_ATTR_UNRESOLVED:
-		vpt->rules.data.cast = type;
+		vpt->rules.cast = type;
 		break;
 
 	default:
@@ -3681,6 +3751,11 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 	tmpl_attr_t		*ar = NULL, *next = NULL;;
 
 	if (!vpt) return 1;
+
+	/*
+	 *	Can't do this for expressions parsed at runtime
+	 */
+	if (vpt->rules.at_runtime) return 1;
 
 	tmpl_assert_type(tmpl_is_attr(vpt));
 

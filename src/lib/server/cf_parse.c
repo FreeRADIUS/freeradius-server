@@ -216,7 +216,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 							.allow_foreign = true
 						}
 					};
-		fr_type_t		cast = FR_TYPE_NULL;
 		fr_sbuff_t		sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
 
 		if (!cp->printed) cf_pair_debug(cs, cp, secret);
@@ -225,7 +224,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		 *	Parse the cast operator for barewords
 		 */
 		if (cp->rhs_quote == T_BARE_WORD) {
-			slen = tmpl_cast_from_substr(&cast, &sbuff);
+			slen = tmpl_cast_from_substr(&rules, &sbuff);
 			if (slen < 0) {
 				char *spaces, *text;
 			tmpl_error:
@@ -253,11 +252,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		if (attribute && (!tmpl_is_attr(vpt) && !tmpl_is_attr_unresolved(vpt))) {
 			cf_log_err(cp, "Expected attr got %s",
 				   tmpl_type_to_str(vpt->type));
-			return -1;
-		}
-
-		if (tmpl_cast_set(vpt, cast) < 0) {
-			cf_log_perr(cp, "Failed setting tmpl type");
 			return -1;
 		}
 
@@ -431,12 +425,14 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		int		af = AF_UNSPEC;
 		fr_type_t	our_type = FR_TYPE_NULL;
 		fr_sbuff_t	sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
+		tmpl_rules_t	rules = {};
 
-		slen = tmpl_cast_from_substr(&our_type, &sbuff);
+		slen = tmpl_cast_from_substr(&rules, &sbuff);
 		if (slen < 0) {
 			cf_log_perr(cp, "Failed parsing config item");
 			goto error;
 		}
+		our_type = rules.cast;
 
 		if (slen > 0) {
 			if (type == FR_TYPE_COMBO_IP_ADDR) {

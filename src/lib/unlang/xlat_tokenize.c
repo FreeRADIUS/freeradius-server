@@ -585,16 +585,17 @@ static inline int xlat_tokenize_attribute(TALLOC_CTX *ctx, xlat_exp_t **head, xl
 	 *	and instead are "virtual" attributes like
 	 *	Foreach-Variable-N.
 	 */
-	tmpl_attr_rules_t		 our_t_rules;
+	tmpl_rules_t		 our_t_rules;
 
 	if (t_rules) {
-		memcpy(&our_t_rules, t_rules, sizeof(our_t_rules));
+		memset(&our_t_rules, 0, sizeof(our_t_rules));
+		our_t_rules.attr = *t_rules;
 	} else {
 		memset(&our_t_rules, 0, sizeof(our_t_rules));
 	}
 
-	our_t_rules.allow_unresolved = true;		/* So we can check for virtual attributes later */
-  	our_t_rules.prefix = TMPL_ATTR_REF_PREFIX_NO;	/* Must be NO to stop %{&User-Name} */
+	our_t_rules.attr.allow_unresolved = true;		/* So we can check for virtual attributes later */
+  	our_t_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_NO;	/* Must be NO to stop %{&User-Name} */
 
 	fr_sbuff_marker(&m_s, in);
 

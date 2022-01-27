@@ -329,9 +329,11 @@ int map_to_list_mod(TALLOC_CTX *ctx, vp_list_mod_t **out,
 		}
 
 		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &map_tmp.lhs, lhs_result_head->vb_strvalue,
-					   &(tmpl_attr_rules_t){
-				   		.dict_def = request->dict,
-				   		.prefix = TMPL_ATTR_REF_PREFIX_NO
+					   &(tmpl_rules_t){
+					   	.attr = {
+					   		.dict_def = request->dict,
+				   			.prefix = TMPL_ATTR_REF_PREFIX_NO
+				   		}
 					   });
 		if (slen <= 0) {
 			RPEDEBUG("Left side expansion result \"%s\" is not an attribute reference",

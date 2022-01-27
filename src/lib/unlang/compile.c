@@ -1710,7 +1710,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 
 	name = cf_section_name1(cs);
 
-	slen = tmpl_afrom_attr_str(map, NULL, &map->lhs, name, &t_rules.attr);
+	slen = tmpl_afrom_attr_str(map, NULL, &map->lhs, name, &t_rules);
 	if (slen <= 0) {
 		cf_log_err(cs, "Failed parsing list reference %s", name);
 	fail:
@@ -3454,7 +3454,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 
 		slen = tmpl_afrom_attr_substr(parent, NULL, &vpt,
 					      &FR_SBUFF_IN(name2, talloc_array_length(name2) - 1),
-					      NULL, &unlang_ctx->rules->attr);
+					      NULL, unlang_ctx->rules);
 		if (slen <= 0) {
 			cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing packet-type");
 			return NULL;

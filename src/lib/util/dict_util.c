@@ -2984,6 +2984,7 @@ ssize_t	fr_dict_enum_by_name_substr(fr_dict_enum_value_t **out, fr_dict_attr_t c
  * @param[out] out	The name string we managed to extract.
  *			May be NULL in which case only the length of the name
  *			will be returned.
+ * @param[out] err	Type of parsing error which occurred.  May be NULL.
  * @param[in] in	The string containing the enum identifier.
  * @param[in] tt	If non-null verify that a terminal sequence occurs
  *			after the enumeration name.
@@ -2991,7 +2992,8 @@ ssize_t	fr_dict_enum_by_name_substr(fr_dict_enum_value_t **out, fr_dict_attr_t c
  *	- <0 the offset at which the parse error occurred.
  *	- >1 the number of bytes parsed.
  */
-fr_slen_t fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_t *in, fr_sbuff_term_t const *tt)
+fr_slen_t fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_parse_error_t *err,
+					fr_sbuff_t *in, fr_sbuff_term_t const *tt)
 {
 	fr_sbuff_t our_in = FR_SBUFF(in);
 	bool seen_alpha = false;
@@ -3003,11 +3005,13 @@ fr_slen_t fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_t *in, fr_sbuf
 
 	if (!seen_alpha) {
 		if (fr_sbuff_used(&our_in) == 0) {
-			fr_strerror_const("VALUE name empty");
+			fr_strerror_const("VALUE name is empty");
+			if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND;
 			return -1;
 		}
 
 		fr_strerror_const("VALUE name must contain at least one alpha character");
+		if (err) *err = FR_SBUFF_PARSE_ERROR_FORMAT;
 		return -1;
 	}
 
@@ -3016,10 +3020,13 @@ fr_slen_t fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_t *in, fr_sbuf
 	 */
 	if (tt && !fr_sbuff_is_terminal(&our_in, tt)) {
 		fr_strerror_const("VALUE name has trailing text");
+		if (err) *err = FR_SBUFF_PARSE_ERROR_TRAILING;
 		return fr_sbuff_error(&our_in);
 	}
 
 	if (out) return fr_sbuff_out_bstrncpy_exact(out, in, fr_sbuff_used(&our_in));
+
+	if (err) *err = FR_SBUFF_PARSE_OK;
 
 	return fr_sbuff_set(in, &our_in);
 }

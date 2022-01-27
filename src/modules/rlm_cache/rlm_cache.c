@@ -841,9 +841,11 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	slen = tmpl_afrom_attr_substr(ctx, NULL, &target,
 				      &FR_SBUFF_IN(attr->vb_strvalue, attr->vb_length),
 				      NULL,
-				      &(tmpl_attr_rules_t){
+				      &(tmpl_rules_t){
+				      	.attr = {
 				      		.dict_def = request->dict,
 				      		.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+				      	}
 				      });
 	if (slen <= 0) {
 		RPEDEBUG("Invalid key");

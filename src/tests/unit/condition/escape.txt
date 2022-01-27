@@ -62,10 +62,10 @@ condition  0x626f62 == bob
 match true
 
 condition  \n == 0x5c6e
-match true
+match ERROR offset 1: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
 
 condition  a\n == 0x615c6e
-match true
+match ERROR offset 2: Unexpected text after enum value.  Expected operator
 
 count
 match 40

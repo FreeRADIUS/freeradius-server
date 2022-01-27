@@ -777,7 +777,17 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 	 *
 	 *	(foo) is an expression.  (uint32) is a cast.
 	 */
-	slen = tmpl_cast_from_substr(&cast_type, &in);
+	/*
+	 *	Parse (optional) cast
+	 */
+	{
+		tmpl_rules_t tmp_rules = {};
+
+		slen = tmpl_cast_from_substr(&tmp_rules, &in);
+
+		cast_type = tmp_rules.cast;
+	}
+
 	if (slen > 0) {
 		fr_assert(fr_type_is_leaf(cast_type));
 
@@ -857,7 +867,7 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 		MEM(node = xlat_exp_alloc_null(ctx));
 		xlat_exp_set_type(node, XLAT_TMPL);
 
-		slen = tmpl_afrom_attr_substr(node, NULL, &vpt, &in, p_rules, &t_rules->attr);
+		slen = tmpl_afrom_attr_substr(node, NULL, &vpt, &in, p_rules, t_rules);
 		if (slen <= 0) {
 			talloc_free(node);
 			talloc_free(free_ctx);
@@ -939,23 +949,23 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 
 		my_rules = *t_rules;
 		my_rules.parent = t_rules;
-		my_rules.data.enumv = da;
+		my_rules.enumv = da;
 
 		/*
 		 *	Force parsing as a particular type.
 		 */
 		if (cast_type != FR_TYPE_NULL) {
-			my_rules.data.cast = cast_type;
+			my_rules.cast = cast_type;
 
 		} else if (da) {
-			my_rules.data.cast = da->type;
+			my_rules.cast = da->type;
 
 		} else {
 			/*
 			 *	Cast it to the data type we were asked
 			 *	to use.
 			 */
-			my_rules.data.cast = type;
+			my_rules.cast = type;
 		}
 
 		/*

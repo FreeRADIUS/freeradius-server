@@ -6,6 +6,7 @@ SUBMAKEFILES := \
     radlock.mk \
     radsniff.mk \
     radsnmp.mk \
+    radsizes.mk \
     radwho.mk \
     radtest.mk \
     radzap.mk \

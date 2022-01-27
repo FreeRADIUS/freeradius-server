@@ -217,6 +217,9 @@ typedef struct {
 							///< that a token is not complete.
 } fr_sbuff_parse_rules_t;
 
+/** Standard parsing errors to be used by sbuff functions and other sbuff based parsing functions
+ *
+ */
 typedef enum {
 	FR_SBUFF_PARSE_OK			= 0,		//!< No error.
 	FR_SBUFF_PARSE_ERROR_NOT_FOUND		= -1,		//!< String does not contain a token

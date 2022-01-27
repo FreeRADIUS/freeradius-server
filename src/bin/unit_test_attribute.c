@@ -2671,11 +2671,11 @@ static size_t command_xlat_expr(command_result_t *result, command_file_ctx_t *cc
 
 	dec_len = xlat_tokenize_expression(cc->tmp_ctx, &head, NULL, &FR_SBUFF_IN(in, input_len), NULL,
 					   &(tmpl_rules_t) {
-						   .attr = {
+					   	.attr = {
 							.dict_def = cc->tmpl_rules.attr.dict_def ?
 							   cc->tmpl_rules.attr.dict_def : cc->config->dict,
 							.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
-						   },
+						}
 					   });
 	if (dec_len <= 0) {
 		fr_strerror_printf_push_head("ERROR offset %d", (int) -dec_len);

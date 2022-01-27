@@ -146,7 +146,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		break;
 
 	default:
-		slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, attr, &lhs_rules->attr);
+		slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, attr, lhs_rules);
 		if (slen <= 0) {
 			cf_log_err(cp, "Failed parsing attribute reference %s - %s", attr, fr_strerror());
 			marker_subject = attr;
@@ -356,12 +356,12 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 
 	default:
 	{
-		tmpl_attr_rules_t our_lhs_attr_rules;
+		tmpl_rules_t our_lhs_rules;
 
 		if (lhs_rules) {
-			our_lhs_attr_rules = lhs_rules->attr;
+			our_lhs_rules = *lhs_rules;
 		} else {
-			memset(&our_lhs_attr_rules, 0, sizeof(our_lhs_attr_rules));
+			memset(&our_lhs_rules, 0, sizeof(our_lhs_rules));
 		}
 
 		/*
@@ -369,7 +369,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 		 *	parents list.  Allow for "..foo" to refer to
 		 *	the grandparent list.
 		 */
-		if (our_lhs_attr_rules.prefix == TMPL_ATTR_REF_PREFIX_NO) {
+		if (our_lhs_rules.attr.prefix == TMPL_ATTR_REF_PREFIX_NO) {
 			/*
 			 *	One '.' means "the current parent".
 			 */
@@ -401,10 +401,10 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 			 */
 			if (is_child) {
 				fr_assert(tmpl_is_attr(parent->lhs));
-				our_lhs_attr_rules.parent = tmpl_da(parent->lhs);
+				our_lhs_rules.attr.parent = tmpl_da(parent->lhs);
 
 				slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &our_in,
-							      &map_parse_rules_bareword_quoted, &our_lhs_attr_rules);
+							      &map_parse_rules_bareword_quoted, &our_lhs_rules);
 				break;
 			}
 
@@ -417,7 +417,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 		}
 
 		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &our_in,
-					      &map_parse_rules_bareword_quoted, &our_lhs_attr_rules);
+					      &map_parse_rules_bareword_quoted, &our_lhs_rules);
 		break;
 	}
 	}
@@ -729,7 +729,7 @@ static int _map_afrom_cs(TALLOC_CTX *ctx, map_list_t *out, map_t *parent, CONF_S
 			 *	them for now.  Once the functionality
 			 *	is tested and used, we can allow that.
 			 */
-			slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, cf_section_name1(subcs), &our_lhs_rules.attr);
+			slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, cf_section_name1(subcs), &our_lhs_rules);
 			if (slen <= 0) {
 				cf_log_err(ci, "Failed parsing attribute reference for list %s - %s",
 					   cf_section_name1(subcs), fr_strerror());
@@ -1448,9 +1448,11 @@ int map_to_request(request_t *request, map_t const *map, radius_map_getvalue_t f
 		}
 
 		slen = tmpl_afrom_attr_str(tmp_ctx, NULL, &exp_lhs, attr_str,
-					   &(tmpl_attr_rules_t){
-				   		.dict_def = request->dict,
-				   		.prefix = TMPL_ATTR_REF_PREFIX_NO
+					   &(tmpl_rules_t){
+					   	.attr = {
+					   		.dict_def = request->dict,
+				   			.prefix = TMPL_ATTR_REF_PREFIX_NO
+				   		}
 					   });
 		if (slen <= 0) {
 			RPEDEBUG("Left side expansion result \"%s\" is not an attribute reference", attr_str);
