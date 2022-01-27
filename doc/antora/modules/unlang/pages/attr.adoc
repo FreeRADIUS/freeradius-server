@@ -3,7 +3,7 @@
 .Syntax
 [source,unlang]
 ----
-&Attribute-Name
+[&]Attribute-Name
 ----
 
 The `&Attribute-Name` operator returns a reference to the named
@@ -33,8 +33,8 @@ looks in the input packet list for the named attribute.
 
 [source,unlang]
 ----
-&request.User-Name
-&reply.NAS-IP-Address
+&request:User-Name
+&reply:NAS-IP-Address
 ----
 
 == Array References
@@ -42,7 +42,7 @@ looks in the input packet list for the named attribute.
 .Syntax
 [source,unlang]
 ----
-&Attribute-Name[<integer]
+&Attribute-Name[<integer>]
 ----
 
 When an attribute appears multiple times in a list, this syntax allows
@@ -55,40 +55,7 @@ etc.
 [source,unlang]
 ----
 &EAP-Message[1]
-&reply.NAS-IP-Address[2]
-----
-
-== Parent / child references
-
-.Syntax
-[source,unlang]
-----
-&Attribute-Name.Attribute-Name
-----
-
-In some cases, attributes are nested or grouped.  The child reference
-syntax is used to address a particular child attribute.  Multiple
-levels of parent / child nesting can be performed by simply appending
-the name of another child attribute, separated by the `.` character.
-
-.Examples
-
-[source,unlang]
-----
-&TLV-One.Child-one
-&TLV-One.Child-one.Child-Three
-&reply.TLV[3].Child-Two
-----
-
-== Putting it All Together
-
-All of the above syntaxes can be used interchangeably, at any nesting level.  The examples are presented
-
-.Examples
-[source,unlang]
-----
-&TLV-One.Child-one[3].Child-Three
-&reply.TLV[3].Child-Two
+&reply:NAS-IP-Address[2]
 ----
 
 == Removing ambuguity from the configuration files
