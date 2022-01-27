@@ -555,6 +555,7 @@ static int tls_log_request_bio_write_cb(BIO *bio, char const *in, int len)
 	request_t		*request = talloc_get_type_abort(lb->request, request_t);
 	log_request_func_t	func;
 	char			*le;
+	unsigned int		log_iter = 0;
 
 	/*
 	 *	Pick the right logging function based on the type
@@ -593,6 +594,8 @@ static int tls_log_request_bio_write_cb(BIO *bio, char const *in, int len)
 		}
 
 		fr_sbuff_set(&lb->logged_m, le + 1);
+
+		printf("TLS BIO log_iter %u\n", log_iter++);
 	}
 
 	/*
