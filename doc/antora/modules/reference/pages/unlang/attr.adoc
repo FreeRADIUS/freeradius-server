@@ -42,7 +42,7 @@ looks in the input packet list for the named attribute.
 .Syntax
 [source,unlang]
 ----
-&Attribute-Name[<integer]
+&Attribute-Name[<integer>]
 ----
 
 When an attribute appears multiple times in a list, this syntax allows
