@@ -151,8 +151,8 @@ jobs:
         CORPUSAGE="$((`date +%s` - "$CORPUSCT"))"
         CORPUSDAYS="$(($CORPUSAGE / 86400))"
         echo "$PROTOCOL corpus age is $CORPUSAGE secs ($CORPUSDAYS days)"
-        echo "::set-output name=corpusct::$CORPUSCT)"
-        echo "::set-output name=corpusage::$CORPUSAGE))"
+        echo "::set-output name=corpusct::$CORPUSCT"
+        echo "::set-output name=corpusage::$CORPUSAGE"
 
     - name: Restore the fuzzer corpus tar file from cache
       uses: actions/cache@v2
