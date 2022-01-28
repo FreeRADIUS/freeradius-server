@@ -991,9 +991,10 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 		 *	This thing is a value of some kind.  Try to parse it as that.
 		 */
 		fr_sbuff_out_by_longest_prefix(&slen, &token, expr_quote_table, &in, T_BARE_WORD);
-		if (token == T_BARE_WORD) {
+		switch (token) {
 			fr_dict_enum_value_t *enumv;
 
+		case T_BARE_WORD:
 			if (da) {
 				slen = fr_dict_enum_by_name_substr(&enumv, da, &in);
 				if (slen < 0) {
@@ -1024,9 +1025,11 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 			if (slen <= 0) {
 				FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
 			}
-			fr_assert(node->vpt != NULL);
+			break;
 
-		} else {
+		case T_DOUBLE_QUOTED_STRING:
+		case T_SINGLE_QUOTED_STRING:
+		case T_BACK_QUOTED_STRING:
 			slen = tmpl_afrom_substr(node, &node->vpt, &in, token,
 						 value_parse_rules_quoted[token], &my_rules);
 			if (slen <= 0) {
@@ -1043,6 +1046,17 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 
 			fr_sbuff_advance(&in, 1);
 			fr_assert(node->vpt != NULL);
+			break;
+
+		case T_SOLIDUS_QUOTED_STRING:
+			fr_strerror_const("Unexpected regular expression");
+			fr_sbuff_set(&in, &marker);
+			FR_SBUFF_ERROR_RETURN(&in);
+
+		default:
+			fr_strerror_const("Unexpected token");
+			fr_sbuff_set(&in, &marker);
+			FR_SBUFF_ERROR_RETURN(&in);
 		}
 
 		/*
@@ -1251,7 +1265,6 @@ redo:
 		goto done;
 	}
 
-#if 1
 	/*
 	 *	By default we don't parse enums on the RHS, and we're also flexible about what we see on the
 	 *	RHS.
@@ -1272,12 +1285,17 @@ redo:
 		} else if (tmpl_contains_attr(lhs->vpt)) {
 			da = tmpl_da(lhs->vpt);
 			type = da->type;
+
+		} else if (tmpl_is_data(lhs->vpt)) {
+			type = tmpl_value_type(lhs->vpt);
 		}
 		break;
 
 	case XLAT_BOX:
 		/*
 		 *	Bools are too restrictive.
+		 *
+		 *	@todo - really only for comparisons, or... ???
 		 */
 		if (lhs->data.type != FR_TYPE_BOOL) {
 			type = lhs->data.type;
@@ -1287,19 +1305,6 @@ redo:
 	default:
 		break;
 	}
-
-#else
-	/*
-	 *	If the LHS is typed, try to parse the RHS as the given
-	 *	type.  Otherwise, don't parse the RHS using enums.
-	 */
-	if ((lhs->type == XLAT_TMPL) && (tmpl_is_attr(lhs->vpt) || tmpl_is_list(lhs->vpt))) {
-		da = tmpl_da(lhs->vpt);
-		type = da->type;
-	} else {
-		da = NULL;
-	}
-#endif
 
 	/*
 	 *	And then for network operations, upcast the RHS type to a prefix.  And then when we do the
@@ -1313,14 +1318,33 @@ redo:
 	case T_OP_LE:
 	case T_OP_GT:
 	case T_OP_GE:
-		if (type == FR_TYPE_IPV4_ADDR) {
+		if (type == FR_TYPE_IPV4_ADDR) { /* allow prefix comparisons */
 			type = FR_TYPE_IPV4_PREFIX;
 			da = NULL;
 		}
-		if (type == FR_TYPE_IPV6_ADDR) {
+		if (type == FR_TYPE_IPV6_ADDR) { /* allow prefix comparisons */
 			type = FR_TYPE_IPV6_PREFIX;
 			da = NULL;
 		}
+		break;
+
+		/*
+		 *	For shifts, the RHS should really be an unsigned integer.  Hopefully a small one.
+		 */
+	case T_RSHIFT:
+	case T_LSHIFT:
+		type = FR_TYPE_UINT64;
+		break;
+
+		/*
+		 *	We're not doing inter-type operations, so we don't care what the type of the next
+		 *	thing is.  In addition, the da (if any) on the first doesn't matter when parsing the
+		 *	second expression.
+		 */
+	case T_LAND:
+	case T_LOR:
+		da = NULL;
+		type = FR_TYPE_NULL;
 		break;
 
 	default:
@@ -1344,7 +1368,6 @@ redo:
 
 	fr_assert(rhs != NULL);
 
-//alloc_func:
 	func = xlat_func_find(binary_ops[op].str, binary_ops[op].len);
 	fr_assert(func != NULL);
 
