@@ -2516,7 +2516,7 @@ static ssize_t tmpl_afrom_ether_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t
 static ssize_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 					 fr_sbuff_parse_rules_t const *p_rules)
 {
-	tmpl_t	*vpt;
+	tmpl_t		*vpt;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	ssize_t		slen;
 	fr_value_box_t	*vb;
@@ -2583,6 +2583,34 @@ static ssize_t tmpl_afrom_integer_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 			vb->vb_uint64 = (uint64_t)a_uint;
 		}
 	}
+
+	*out = vpt;
+
+	return fr_sbuff_set(in, &our_in);
+}
+
+static ssize_t tmpl_afrom_float_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
+				       fr_sbuff_parse_rules_t const *p_rules)
+{
+	tmpl_t		*vpt;
+	fr_sbuff_t	our_in = FR_SBUFF(in);
+	double		a_float;
+	ssize_t		slen;
+	fr_value_box_t	*vb;
+
+	slen = fr_sbuff_out(NULL, &a_float, &our_in);
+	if (slen <= 0) return 0;
+
+	if (!tmpl_substr_terminal_check(&our_in, p_rules)) {
+		fr_strerror_const("Unexpected text after float");
+		return fr_sbuff_error(&our_in);
+	}
+
+	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA,
+			     T_BARE_WORD, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in)));
+	vb = tmpl_value(vpt);
+	fr_value_box_init(vb, FR_TYPE_FLOAT64, NULL, false);
+	vb->vb_float64 = a_float;
 
 	*out = vpt;
 
@@ -2726,15 +2754,16 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		fr_assert(!*out);
 
 		/*
-		 *	See if it's a float
-		 */
-//		slen = tmpl_afrom_float_substr(ctx, out, &our_in);
-//		if (slen > 0) return fr_sbuff_set(in, &our_in);
-
-		/*
 		 *	See if it's a integer
 		 */
 		slen = tmpl_afrom_integer_substr(ctx, out, &our_in, p_rules);
+		if (slen > 0) goto done_bareword;
+		fr_assert(!*out);
+
+		/*
+		 *	See if it's a float
+		 */
+		slen = tmpl_afrom_float_substr(ctx, out, &our_in, p_rules);
 		if (slen > 0) goto done_bareword;
 		fr_assert(!*out);
 
