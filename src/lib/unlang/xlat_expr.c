@@ -632,68 +632,6 @@ static const int precedence[T_TOKEN_LAST] = {
 		while (isspace((int) *fr_sbuff_current(_x))) fr_sbuff_advance(_x, 1); \
 	} while (0)
 
-static xlat_exp_t *xlat_exp_func_alloc_args(TALLOC_CTX *ctx, char const *name, size_t namelen, int argc)
-{
-	int i;
-	xlat_exp_t *node, *child, **last;
-
-	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, name, namelen));
-
-	last = &node->child;
-	for (i = 0; i < argc; i++) {
-		MEM(child = xlat_exp_alloc_null(node));
-		xlat_exp_set_type(child, XLAT_GROUP);
-		child->quote = T_BARE_WORD;
-		*last = child;
-		last = &child->next;
-	}
-
-	return node;
-}
-
-
-static xlat_exp_t *xlat_exp_cast_alloc(TALLOC_CTX *ctx, fr_type_t type, xlat_exp_t *rhs)
-{
-	xlat_exp_t *node, *group, *lhs;
-
-	/*
-	 *	Create a "cast" node.  The LHS is a UINT8 value-box of the cast type.  The RHS is
-	 *	whatever "node" comes next.
-	 */
-	MEM(node = xlat_exp_func_alloc_args(ctx, "cast", 4, 2));
-	node->call.func = xlat_func_find("cast_expression", 15);
-	fr_assert(node->call.func != NULL);
-	node->flags = node->call.func->flags;
-
-	/*
-	 *	Create a LHS child UINT8, with "Cast-Base" as
-	 *	the "da".  This allows the printing routines
-	 *	to print the name of the type, and not the
-	 *	number.
-	 */
-	group = node->child;
-
-	MEM(lhs = xlat_exp_alloc_null(group));
-	xlat_exp_set_type(lhs, XLAT_BOX);
-	xlat_exp_set_name_buffer_shallow(lhs,
-					 talloc_strdup(lhs,
-						       fr_type_to_str(type)));
-
-	fr_value_box_init(&lhs->data, FR_TYPE_UINT8, attr_cast_base, false);
-	lhs->data.vb_uint8 = type;
-
-	group->child = lhs;
-	xlat_flags_merge(&group->flags, &lhs->flags);
-	xlat_flags_merge(&node->flags, &group->flags);
-
-	group = group->next;
-	group->child = talloc_steal(group, rhs);
-	xlat_flags_merge(&group->flags, &rhs->flags);
-	xlat_flags_merge(&node->flags, &group->flags);
-
-	return node;
-}
-
 static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *input,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 				   fr_token_t prev, fr_type_t type, fr_sbuff_parse_rules_t const *bracket_rules,
@@ -726,29 +664,32 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 			      fr_type_t type, fr_sbuff_parse_rules_t const *bracket_rules, fr_dict_attr_t const *da)
 {
-	ssize_t		slen;
-	xlat_exp_t	*node = NULL;
-	xlat_exp_t	*unary = NULL;
-	xlat_t		*func = NULL;
-	fr_type_t	cast_type = FR_TYPE_NULL;
-	TALLOC_CTX	*ctx = input_ctx;
-	TALLOC_CTX	*free_ctx = NULL;
-	fr_sbuff_t	in = FR_SBUFF(input);
+	ssize_t			slen;
+	xlat_exp_t		*node = NULL;
+	xlat_exp_t		*unary = NULL;
+	xlat_t			*func = NULL;
+	TALLOC_CTX		*ctx = input_ctx;
+	TALLOC_CTX		*free_ctx = NULL;
+	fr_sbuff_t		our_in = FR_SBUFF(input);
+	fr_sbuff_marker_t	opand_m;
+	tmpl_rules_t		our_t_rules = *t_rules;
+	tmpl_t			*vpt;
+	fr_token_t		quote;
 
 	/*
 	 *	Handle !-~ by adding a unary function to the xlat
 	 *	node, with the first argument being the _next_ thing
 	 *	we allocate.
 	 */
-	if (fr_sbuff_next_if_char(&in, '!')) { /* unary not */
+	if (fr_sbuff_next_if_char(&our_in, '!')) { /* unary not */
 		func = xlat_func_find("unary_not", 9);
 		fr_assert(func != NULL);
 	}
-	else if (fr_sbuff_next_if_char(&in, '-')) { /* unary minus */
+	else if (fr_sbuff_next_if_char(&our_in, '-')) { /* unary minus */
 		func = xlat_func_find("unary_minus", 11);
 		fr_assert(func != NULL);
 	}
-	else if (fr_sbuff_next_if_char(&in, '+')) { /* ignore unary + */
+	else if (fr_sbuff_next_if_char(&our_in, '+')) { /* ignore unary + */
 		/* nothing */
 	}
 
@@ -764,64 +705,24 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 	}
 
 	/*
-	 *	Allow for casts, even if we're given a hint.
+	 *	Allow for explicit casts
 	 *
-	 *	For immediate value-boxes, the cast is an instruction on how to parse the current input
-	 *	string.  For run-time expansions, the cast is an instruction on how to parse the output of the
-	 *	run-time expansion.  As such, we need to save it via an xlat_cast() function.
+	 *	For single quoted literal strings, double quoted strings (without expansions),
+	 *	and barewords, we try an immediate conversion. For everything else, we'll
+	 *	attempt the conversion at runtime.
 	 *
-	 *	But we don't know this until we parse the next thing, and we want all of the talloc parenting
-	 *	to be correct.  We can either create a "cast" node, and then delete it when it's not needed.
-	 *	Or, create normal nodes, and then re-parent them to a "cast" node.  Either choice is
-	 *	imperfect, so we just pick one.
+	 *	In both cases the cast will be stored in the tmpl rules.
 	 *
-	 *	(foo) is an expression.  (uint32) is a cast.
+	 *	We MUST NOT use the other operand as a hint for the cast type as this leads
+	 *	to expressions which are parsed correctly when the other operand is a DA and
+	 *	can be resolved, but will fail if the DA is unknown during tokenisation.
+	 *
+	 *	A common example of this, is where unlang code gets moved from virtual servers
+	 *	to policies.  The DA is usually known in the virtual server, but due to the
+	 *	nature of policies, resolution there is deferred until pass2.
 	 */
-	/*
-	 *	Parse (optional) cast
-	 */
-	{
-		tmpl_rules_t tmp_rules = {};
-
-		slen = tmpl_cast_from_substr(&tmp_rules, &in);
-
-		cast_type = tmp_rules.cast;
-	}
-
-	if (slen > 0) {
-		fr_assert(fr_type_is_leaf(cast_type));
-
-		/*
-		 *	Cast to the hint gets ignored.
-		 */
-		if (type == cast_type) {
-			cast_type = FR_TYPE_NULL;
-		}
-
-		/*
-		 *	&Framed-IP-Address == (ipv4addr) foo
-		 *
-		 *	We can drop the cast.  We already know that the RHS has to match the LHS data type.
-		 */
-		if (da) {
-			if (da->type == cast_type) {
-				cast_type = FR_TYPE_NULL;
-
-			} else {
-				/*
-				 *	We're casting to a type which is different from the input "da".  Which means that we
-				 *	can't parse the type using enums from that "da".
-				 *
-				 *	We MAY be casting the value to the same type as the input "da".  However, we don't
-				 *	(yet) know if we can drop the cast, as the RHS could be an attribute, expansion, or a
-				 *	value-box.  Let's be safe and leave the cast alone until we know which one it is.
-				 */
-				da = NULL;
-			}
-		}
-	}
-
-	fr_sbuff_skip_whitespace(&in);
+	if (tmpl_cast_from_substr(&our_t_rules, &our_in) < 0) return fr_sbuff_error(&our_in);
+	fr_sbuff_skip_whitespace(&our_in);
 
 	/*
 	 *	If we have '(', then recurse for other expressions
@@ -840,236 +741,121 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 	 *	The double casting is technically invalid, and will likely cause breakages at run
 	 *	time.
 	 */
-	if (fr_sbuff_next_if_char(&in, '(')) {
-		slen = tokenize_expression(ctx, &node, flags, &in, bracket_rules, t_rules, T_INVALID, FR_TYPE_NULL, bracket_rules, da);
+	if (fr_sbuff_next_if_char(&our_in, '(')) {
+		slen = tokenize_expression(ctx, &node, flags, &our_in, bracket_rules, t_rules,
+					   T_INVALID, FR_TYPE_NULL, bracket_rules, da);
 		if (slen <= 0) {
 			talloc_free(free_ctx);
-			FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
+			FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
 		}
 
-		if (!fr_sbuff_next_if_char(&in, ')')) {
+		if (!fr_sbuff_next_if_char(&our_in, ')')) {
 			fr_strerror_printf("Failed to find trailing ')'");
 			talloc_free(free_ctx);
-			FR_SBUFF_ERROR_RETURN_ADJ(&in, -slen);
+			FR_SBUFF_ERROR_RETURN_ADJ(&our_in, -slen);
 		}
+	}
 
-		goto done;
+	fr_sbuff_out_by_longest_prefix(&slen, &quote, expr_quote_table, &our_in, T_BARE_WORD);
+
+	/*
+	 *	Record where the operand begins for better error offsets later
+	 */
+	fr_sbuff_marker(&opand_m, &our_in);
+
+	switch (quote) {
+	default:
+	case T_BARE_WORD:
+		break;
+
+	case T_BACK_QUOTED_STRING:
+	case T_DOUBLE_QUOTED_STRING:
+	case T_SINGLE_QUOTED_STRING:
+#ifdef HAVE_REGEX
+	case T_SOLIDUS_QUOTED_STRING:
+#endif
+		p_rules = value_parse_rules_quoted[type];
+		break;
+#ifndef HAVE_REGEX
+	case T_SOLIDUS_QUOTED_STRING:
+		fr_strerror_const("Compiled without support for regexes");
+		fr_sbuff_set(&our_in, &opand_m);	/* Error points to the quoting char at the start of the string */
+		goto error;
+#endif
 	}
 
 	/*
-	 *	Parse an attribute string.
-	 *
-	 *	@todo - this case is arguably handled by tmpl_afrom_substr()
+	 *	Allocate the xlat node now so the talloc hierarchy is correct
 	 */
-	if (fr_sbuff_is_char(&in, '&')) {
-		tmpl_t *vpt = NULL;
+	MEM(node = xlat_exp_alloc_null(ctx));
+	xlat_exp_set_type(node, XLAT_TMPL);
 
-		MEM(node = xlat_exp_alloc_null(ctx));
-		xlat_exp_set_type(node, XLAT_TMPL);
+	/*
+	 *	tmpl_afrom_substr does pretty much all the work of parsing
+	 *	the operand.
+	 */
+	slen = tmpl_afrom_substr(node, &vpt, &our_in, quote, p_rules, &our_t_rules);
+	if (!vpt) {
+		fr_sbuff_advance(&our_in, slen * -1);
 
-		slen = tmpl_afrom_attr_substr(node, NULL, &vpt, &in, p_rules, t_rules);
-		if (slen <= 0) {
-			talloc_free(node);
-			talloc_free(free_ctx);
-			FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
-		}
+	error:
+		talloc_free(free_ctx);
+		return fr_sbuff_error(&our_in);
+	}
+	node->vpt = vpt;
 
-		/*
-		 *	If we have a cast, then push it into the tmpl.
-		 */
-		if (cast_type != FR_TYPE_NULL) {
-			(void) tmpl_cast_set(vpt, cast_type);
-			cast_type = FR_TYPE_NULL;
-		}
-
-		xlat_exp_set_name_buffer_shallow(node, vpt->name);
-		node->vpt = vpt;
-
-		goto done;
+	if ((quote != T_BARE_WORD) && !fr_sbuff_next_if_char(&our_in, fr_token_quote[type])) { /* Quoting */
+		fr_strerror_const("Unterminated string");
+		fr_sbuff_set(&our_in, &opand_m);	/* Error points to the quoting char at the start of the string */
+		goto error;
 	}
 
-	/*
-	 *	Parse %{...}
-	 *
-	 *	Use the flags as input to xlat_tokenize_expr(), which control things like "needs_resolving".
-	 *
-	 *	@todo - optimization - do we want to create a cast node here, instead of later?
-	 */
-	if (fr_sbuff_adv_past_str_literal(&in, "%{")) {
-		if (xlat_tokenize_expansion(ctx, &node, flags, &in, &t_rules->attr) < 0) {
-			talloc_free(free_ctx);
-			return -1;
-		}
-
-		goto done;
-	}
-
-	/*
-	 *	Parse %(xlat:...)
-	 *
-	 *	HOWEVER this use-case overlaps a bit with remainder, followed by something:
-	 *
-	 *		... foo % (bar) ...
-	 *
-	 *	The simple solution is to just ignore it, and give out crappy errors.  If the user wants a
-	 *	literal '%' followed by '(' to NOT be a function call, then the user can put a space between
-	 *	them.
-	 *
-	 *	@todo - optimization - do we want to create a cast node here, instead of later?
-	 */
-	if (fr_sbuff_adv_past_str_literal(&in, "%(")) {
-		if (xlat_tokenize_function_args(ctx, &node, flags, &in, &t_rules->attr) < 0) {
-			talloc_free(free_ctx);
-			return -1;
-		}
-
-		goto done;
-	}
-
-	/*
-	 *	@todo - we "upcast" IP addresses to prefixes, so that we can do things like check
-	 *
-	 *		&Framed-IP-Address < 192.168.0.0/16
-	 *
-	 *	so that the user doesn't always have to specify the data types.
-	 *
-	 *	However, we *don't* upcast it if the user has given us an explicit cast.  And we probably want
-	 *	to remember the original type.  So that for IPs, if there's no '/' in the parsed input, then
-	 *	we swap the data type from the "upcast" prefix type to the input IP address type.
-	 */
-
-	/*
-	 *	Parse the thing as a value-box of the given type.
-	 */
-	{
-		fr_token_t token;
-		char *p;
-		fr_sbuff_marker_t marker;
-		tmpl_rules_t my_rules;
-
-		my_rules = *t_rules;
-		my_rules.parent = t_rules;
-		my_rules.enumv = da;
-
-		/*
-		 *	Force parsing as a particular type.
-		 */
-		if (cast_type != FR_TYPE_NULL) {
-			my_rules.cast = cast_type;
-
-		} else if (da) {
-			my_rules.cast = da->type;
-
-		} else {
-			/*
-			 *	Cast it to the data type we were asked
-			 *	to use.
-			 */
-			my_rules.cast = type;
+#ifdef HAVE_REGEX
+	if (tmpl_contains_regex(vpt)) {
+		slen = tmpl_regex_flags_substr(vpt, &our_in, p_rules->terminals);
+		if (slen < 0) {
+			fr_sbuff_advance(&our_in, slen * -1);
+			goto error;
 		}
 
 		/*
-		 *	Casts are no longer needed.  "const" literals
-		 *	are just stored as the value, without a cast.
+		 *	We've now got the expressions and the flags.
+		 *	Try to compile the regex.
 		 */
-		cast_type = FR_TYPE_NULL;
-
-		/*
-		 *	Allocate the parent node for the token.
-		 */
-		MEM(node = xlat_exp_alloc_null(ctx));
-		xlat_exp_set_type(node, XLAT_TMPL);
-
-		fr_sbuff_marker(&marker, &in);
-
-		/*
-		 *	This thing is a value of some kind.  Try to parse it as that.
-		 */
-		fr_sbuff_out_by_longest_prefix(&slen, &token, expr_quote_table, &in, T_BARE_WORD);
-		if (token == T_BARE_WORD) {
-			fr_dict_enum_value_t *enumv;
-
-			if (da) {
-				slen = fr_dict_enum_by_name_substr(&enumv, da, &in);
-				if (slen < 0) {
-					fr_strerror_printf("Failed parsing value - %s", fr_strerror());
-					FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
-				}
-
-				if (slen > 0) {
-					xlat_exp_set_type(node, XLAT_BOX);
-					fr_value_box_copy(node, &node->data, enumv->value);
-					node->data.enumv = da;
-					xlat_exp_set_name_buffer_shallow(node, talloc_strdup(node, enumv->name));
-					goto done;
-				}
-
-				/*
-				 *	Else try to parse it as just a value.
-				 */
-			}
-
-			/*
-			 *	Note that we *cannot* pass value_parse_rules_quoted[T_BARE_WORD], because that
-			 *	doesn't stop at anything.  Instead, we have to pass in our bracket rules,
-			 *	which stops at any of the operators / brackets we care about.
-			 */
-			slen = tmpl_afrom_substr(node, &node->vpt, &in, token,
-						 bracket_rules, &my_rules);
+		if (tmpl_is_regex_uncompiled(vpt)) {
+			slen = tmpl_regex_compile(vpt, true);
 			if (slen <= 0) {
-				FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
+				fr_sbuff_set(&our_in, &opand_m);	/* Reset to start of expression */
+				fr_sbuff_advance(&our_in, slen * -1);
+				goto error;
 			}
-			fr_assert(node->vpt != NULL);
-
-		} else {
-			slen = tmpl_afrom_substr(node, &node->vpt, &in, token,
-						 value_parse_rules_quoted[token], &my_rules);
-			if (slen <= 0) {
-				FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
-			}
-
-			/*
-			 *	Check for, and skip, the trailing quote if we had a leading quote.
-			 */
-			if (!fr_sbuff_is_char(&in, fr_token_quote[token])) {
-				fr_strerror_const("Unexpected end of quoted string");
-				FR_SBUFF_ERROR_RETURN(&in);
-			}
-
-			fr_sbuff_advance(&in, 1);
-			fr_assert(node->vpt != NULL);
 		}
-
-		/*
-		 *	The tmpl code does NOT return tmpl_type_data
-		 *	for string data without xlat.  Instead, it
-		 *	creates TMPL_TYPE_UNRESOLVED.
-		 */
-		if (tmpl_resolve(node->vpt, NULL) < 0) {
-			fr_sbuff_set(&in, &marker);
-			FR_SBUFF_ERROR_RETURN(&in);
-		}
-
-		fr_assert(tmpl_value_type(node->vpt) != FR_TYPE_NULL);
-
-		(void) fr_value_box_aprint(node, &p, tmpl_value(node->vpt), fr_value_escape_by_quote[token]);
-		xlat_exp_set_name_buffer_shallow(node, p);
-
-		goto done;
 	}
+#endif
 
-done:
 	/*
-	 *	Add a cast if we still need one.
+	 *	Try and add any unknown attributes to the dictionary
+	 *	immediately.  This means any future references point
+	 *	to the same da.
 	 */
-	if (cast_type != FR_TYPE_NULL) {
-		xlat_exp_t *cast;
-
-		MEM(cast = xlat_exp_cast_alloc(ctx, cast_type, node));
-		node = cast;
+	if (tmpl_is_attr(vpt) && (tmpl_attr_unknown_add(vpt) < 0)) {
+		fr_strerror_printf("Failed defining attribute %s", tmpl_da(vpt)->name);
+		fr_sbuff_set(&our_in, &opand_m);
+		goto error;
 	}
 
-	fr_sbuff_skip_whitespace(&in);
+	/*
+	 *	Don't call tmpl_resolve() here, it should be called
+	 *	in pass2 or later during tokenization if we've managed
+	 *	to resolve all the operands in the expression.
+	 */
+
+	/*
+	 *	The xlat node identifier here is the same as the tmpl
+	 *	in all cases...
+	 */
+	xlat_exp_set_name_buffer_shallow(node, vpt->name);
+	fr_sbuff_skip_whitespace(&our_in);
 
 	/*
 	 *	Purify things in place, where we can.
@@ -1077,7 +863,7 @@ done:
 	if (flags->pure) {
 		if (xlat_purify_expr(node) < 0) {
 			talloc_free(node);
-			FR_SBUFF_ERROR_RETURN(&in); /* @todo m_lhs ? */
+			FR_SBUFF_ERROR_RETURN(&our_in); /* @todo m_lhs ? */
 		}
 	}
 
@@ -1092,7 +878,7 @@ done:
 
 	fr_assert(node != NULL);
 	*head = node;
-	return fr_sbuff_set(input, &in);
+	return fr_sbuff_set(input, &our_in);
 
 }
 
@@ -1139,7 +925,7 @@ static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
 				   fr_token_t prev, fr_type_t type, fr_sbuff_parse_rules_t const *bracket_rules,
 				   fr_dict_attr_t const *da)
 {
-	xlat_exp_t	*lhs, *rhs = NULL, *node;
+	xlat_exp_t	*lhs = NULL, *rhs = NULL, *node;
 	xlat_t		*func = NULL;
 	fr_token_t	op;
 	ssize_t		slen;
