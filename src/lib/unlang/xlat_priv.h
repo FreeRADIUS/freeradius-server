@@ -100,12 +100,12 @@ typedef struct {
 							///< nodes by the time they were created.
 
 	xlat_t const		*func;			//!< The xlat expansion to expand format with.
-	bool			ephemeral;		//!< Instance data is ephemeral (not inserted)
-							///< into the instance tree.
 	xlat_inst_t		*inst;			//!< Instance data for the #xlat_t.
 	xlat_thread_inst_t	*thread_inst;		//!< Thread specific instance.
 							///< ONLY USED FOR EPHEMERAL XLATS.
 
+	bool			ephemeral;		//!< Instance data is ephemeral (not inserted)
+							///< into the instance tree.
 	xlat_input_type_t	input_type;		//!< The input type used inferred from the
 							///< bracketing style.
 } xlat_call_t;

@@ -285,38 +285,38 @@ struct tmpl_attr_rules_s {
 	fr_dict_t const		*dict_def;		//!< Default dictionary to use
 							///< with unqualified attribute references.
 
-	tmpl_request_ref_t	request_def;		//!< Default request to use with
-							///< unqualified attribute references.
-
-	tmpl_pair_list_t	list_def;		//!< Default list to use with unqualified
-							///< attribute reference.
-
 	fr_dict_attr_t const	*parent;		//!< Point in dictionary tree to resume parsing
 							///< from.  If this is provided then dict_def
 							///< request_def and list_def will be ignored
 							///< and the presence of any of those qualifiers
 							///< will be treated as an error.
 
-	bool			allow_unknown;		//!< Allow unknown attributes i.e. attributes
+	tmpl_request_ref_t	request_def;		//!< Default request to use with
+							///< unqualified attribute references.
+
+	tmpl_pair_list_t	list_def;		//!< Default list to use with unqualified
+							///< attribute reference.
+
+	tmpl_attr_prefix_t	prefix;			//!< Whether the attribute reference requires
+							///< a prefix.
+
+	uint8_t			allow_unknown:1;	//!< Allow unknown attributes i.e. attributes
 							///< defined by OID string.
 
-	bool			allow_unresolved;	//!< Allow attributes that look valid but were
+	uint8_t			allow_unresolved:1;	//!< Allow attributes that look valid but were
 							///< not found in the dictionaries.
 							///< This should be used as part of a multi-pass
 							///< approach to parsing.
 
-	bool			allow_foreign;		//!< Allow arguments not found in dict_def.
+	uint8_t			allow_foreign:1;		//!< Allow arguments not found in dict_def.
 
-	bool			disallow_internal;	//!< Allow/fallback to internal attributes.
+	uint8_t			disallow_internal:1;	//!< Allow/fallback to internal attributes.
 
-	bool			disallow_qualifiers;	//!< disallow request / list qualifiers
+	uint8_t			disallow_qualifiers:1;	//!< disallow request / list qualifiers
 
-	bool			disallow_filters;	//!< disallow filters.
+	uint8_t			disallow_filters:1;	//!< disallow filters.
 
-	bool			list_as_attr;		//!< return #TMPL_TYPE_ATTR for lists, and not #TMPL_TYPE_LIST
-
-	tmpl_attr_prefix_t	prefix;			//!< Whether the attribute reference requires
-							///< a prefix.
+	uint8_t			list_as_attr:1;		//!< return #TMPL_TYPE_ATTR for lists, and not #TMPL_TYPE_LIST
 };
 
 struct tmpl_data_rules_s {
@@ -521,14 +521,13 @@ struct tmpl_s {
 		_CONST struct {
 			bool			ref_prefix;	//!< true if the reference was prefixed
 								///< with a '&'.
+			bool			was_oid;	//!< Was originally a numeric OID.
 
 			tmpl_pair_list_t	list;		//!< List to search or insert in.
 								///< deprecated.
 
 			FR_DLIST_HEAD(tmpl_request_list)	rr;	//!< Request to search or insert in.
 			FR_DLIST_HEAD(tmpl_attr_list)		ar;	//!< Head of the attribute reference list.
-
-			bool			was_oid;	//!< Was originally a numeric OID.
 		} attribute;
 
 		/*
