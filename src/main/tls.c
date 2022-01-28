@@ -4837,7 +4837,7 @@ skip_list:
 	}
 
 	if (conf->verify_client_cert_cmd && !conf->verify_tmp_dir) {
-		ERROR(LOG_PREFIX ": You MUST set the verify directory in order to use verify_client_cmd");
+		ERROR(LOG_PREFIX ": You MUST set the 'tmpdir' directory in order to use '%s' cmd", conf->verify_client_cert_cmd);
 		goto error;
 	}
 
