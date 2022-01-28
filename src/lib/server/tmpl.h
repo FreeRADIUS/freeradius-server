@@ -904,7 +904,7 @@ tmpl_t			*tmpl_init_shallow(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote,
 
 tmpl_t			*tmpl_init(tmpl_t *vpt, tmpl_type_t type, fr_token_t quote,
 				   char const *name, ssize_t len,
-				   tmpl_rules_t const *t_rules) CC_HINT(nonnull);
+				   tmpl_rules_t const *t_rules) CC_HINT(nonnull(1,4));
 
 tmpl_t			*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, fr_token_t quote, char const *name, ssize_t len);
 
