@@ -1,2 +1,4 @@
 TARGET		:= radsizes
-SOURCES		:= sizes.c
+SOURCES		:= radsizes.c
+TGT_LDLIBS	:= $(LIBS)
+TGT_LDFLAGS	:= $(LDFLAGS)
