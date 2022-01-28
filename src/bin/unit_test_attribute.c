@@ -1132,11 +1132,13 @@ static size_t command_allow_unresolved(command_result_t *result, command_file_ct
 				       UNUSED char *data, UNUSED size_t data_used, char *in, size_t inlen)
 {
 	fr_sbuff_t	our_in = FR_SBUFF_IN(in, inlen);
+	bool		res;
 
-	if (fr_sbuff_out_bool(&cc->tmpl_rules.attr.allow_unresolved, &our_in) == 0) {
+	if (fr_sbuff_out_bool(&res, &our_in) == 0) {
 		fr_strerror_printf("Invalid boolean value, must be \"yes\" or \"no\"");
 		RETURN_COMMAND_ERROR();
 	}
+	cc->tmpl_rules.attr.allow_unresolved = res;
 
 	RETURN_OK(0);
 }
@@ -2384,17 +2386,32 @@ typedef ssize_t(*command_tmpl_rule_func)(tmpl_rules_t *rules, fr_sbuff_t *value)
 
 static ssize_t command_tmpl_rule_allow_foreign(tmpl_rules_t *rules, fr_sbuff_t *value)
 {
-	return fr_sbuff_out_bool(&rules->attr.allow_foreign, value);
+	bool res;
+	ssize_t slen;
+
+	slen = fr_sbuff_out_bool(&res, value);
+	rules->attr.allow_foreign = res;
+	return slen;
 }
 
 static ssize_t command_tmpl_rule_allow_unknown(tmpl_rules_t *rules, fr_sbuff_t *value)
 {
-	return fr_sbuff_out_bool(&rules->attr.allow_unknown, value);
+	bool res;
+	ssize_t slen;
+
+	slen = fr_sbuff_out_bool(&res, value);
+	rules->attr.allow_unknown = res;
+	return slen;
 }
 
 static ssize_t command_tmpl_rule_allow_unresolved(tmpl_rules_t *rules, fr_sbuff_t *value)
 {
-	return fr_sbuff_out_bool(&rules->attr.allow_unresolved, value);
+	bool res;
+	ssize_t slen;
+
+	slen = fr_sbuff_out_bool(&res, value);
+	rules->attr.allow_unresolved = res;
+	return slen;
 }
 
 static ssize_t command_tmpl_rule_attr_parent(tmpl_rules_t *rules, fr_sbuff_t *value)
@@ -2408,12 +2425,22 @@ static ssize_t command_tmpl_rule_attr_parent(tmpl_rules_t *rules, fr_sbuff_t *va
 
 static ssize_t command_tmpl_rule_disallow_internal(tmpl_rules_t *rules, fr_sbuff_t *value)
 {
-	return fr_sbuff_out_bool(&rules->attr.disallow_internal, value);
+	bool res;
+	ssize_t slen;
+
+	slen = fr_sbuff_out_bool(&res, value);
+	rules->attr.disallow_internal = res;
+	return slen;
 }
 
 static ssize_t command_tmpl_rule_disallow_qualifiers(tmpl_rules_t *rules, fr_sbuff_t *value)
 {
-	return fr_sbuff_out_bool(&rules->attr.disallow_qualifiers, value);
+	bool res;
+	ssize_t slen;
+
+	slen = fr_sbuff_out_bool(&res, value);
+	rules->attr.disallow_qualifiers = res;
+	return slen;
 }
 
 static ssize_t command_tmpl_rule_list_def(tmpl_rules_t *rules, fr_sbuff_t *value)
