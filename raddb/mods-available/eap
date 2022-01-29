@@ -735,6 +735,20 @@ eap {
 			#
 		#	softfail = no
 		}
+
+		#
+		#  The server can present different certificates based
+		#  on the realm presented in EAP.  See
+		#  raddb/certs/realms/README.md for examples of how to
+		#  configure this.
+		#
+		#  Note that the default is to use the same set of
+		#  realm certificates for both EAP and RadSec!  If
+		#  this is not what you want, you should use different
+		#  subdirectories or each, e.g. ${certdir}/realms/radsec/,
+		#  and ${certdir}/realms/eap/
+		#
+	#	realm_dir = ${certdir}/realms/
 	}
 
 

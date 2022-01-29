@@ -418,6 +418,20 @@ listen {
 			#  returns.
 	#    		client = "/path/to/openssl verify -CApath ${..ca_path} %{TLS-Client-Cert-Filename}"
 		}
+
+		#
+		#  When the RadSec clients use SNI, the server will
+		#  automatically choose the correct certificate from
+		#  "realm_dir".  See raddb/certs/realms/README.md for
+		#  more information.
+		#
+		#  Note that the default is to use the same set of
+		#  realm certificates for both EAP and RadSec!  If
+		#  this is not what you want, you should use different
+		#  subdirectories or each, e.g. ${certdir}/realms/radsec/,
+		#  and ${certdir}/realms/eap/
+		#
+	#	realm_dir = ${certdir}/realms/
 	}
 }
 
@@ -480,13 +494,27 @@ home_server tls {
 	tls {
 		#
 		#  Similarly to HTTP, the client can use Server Name
-		#  Indication to inform the RadSec server of which
+		#  Indication to inform the RadSec server as to which
 		#  domain it is requesting.  This selection allows
 		#  multiple sites to exist at the same IP address.
 		#
-		#  For example, and identity provider could host
+		#  For example, an identity provider could host
 		#  multiple sites, but present itself with one public
-		#  IP address.
+		#  IP address.  If the RadSec clients do not use SNI,
+		#  then they must be configured with the certificate
+		#  of the identity provider.
+		#
+		#  When SNI is used, the clients can be configured
+		#  with the certificate of the hosted system that
+		#  they're connecting to.  This ability means that
+		#  there is no need to change certificates when
+		#  changing providers.  In addition, there is no need
+		#  to change the configuration of all RadSec clients
+		#  when the hosting system changes its certifiates.
+		#  Because the hosting system certificates are never used.
+		#
+		#  Instead, each hosted company is responsible for its
+		#  own certificates, and for its own clients.
 		#
 		#  SNI also permits the use of a load balancer such as
 		#  haproxy.  That load balancer can terminate the TLS
