@@ -750,17 +750,18 @@ static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, 
 
 	val = SvPV(sv, len);
 
-	da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), key);
+	da = fr_dict_attr_search_by_qualified_oid(NULL, request->dict, key, true, true);
 	if (!da) {
 		REDEBUG("Ignoring unknown attribute '%s'", key);
 		return -1;
 	}
+	fr_assert(da != NULL);
 
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) {
 	fail:
 		talloc_free(vp);
-		REDEBUG("Failed to create pair %s.%s = %s", list_name, key, val);
+		RPEDEBUG("Failed to create pair %s.%s = %s", list_name, key, val);
 		return -1;
 	}
 
