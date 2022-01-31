@@ -744,13 +744,22 @@ static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, 
 	char		*val;
 	fr_pair_t      *vp;
 	STRLEN		len;
+	fr_dict_attr_t const *da;
 
 	if (!SvOK(sv)) return -1;
 
 	val = SvPV(sv, len);
-	vp = fr_pair_make(ctx, request->dict, vps, key, NULL);
+
+	da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), key);
+	if (!da) {
+		REDEBUG("Ignoring unknown attribute '%s'", key);
+		return -1;
+	}
+
+	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) {
 	fail:
+		talloc_free(vp);
 		REDEBUG("Failed to create pair %s.%s = %s", list_name, key, val);
 		return -1;
 	}
@@ -769,6 +778,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, 
 	}
 
 	PAIR_VERIFY(vp);
+	(void) fr_pair_append(vps, vp);
 
 	RDEBUG2("&%s.%s = $%s{'%s'} -> '%s'", list_name, key, hash_name, key, val);
 	return 0;
