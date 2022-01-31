@@ -523,13 +523,41 @@ static void result_add(TALLOC_CTX *ctx, rlm_passwd_t const *inst, request_t *req
 		if (inst->pwd_fmt->field[i] && *inst->pwd_fmt->field[i] && pw->field[i] &&
 		    (i != inst->key_field) && inst->pwd_fmt->listflag[i] == when) {
 			if (!inst->ignore_empty || pw->field[i][0] != 0 ) { /* if value in key/value pair is not empty */
-				vp = fr_pair_make(ctx, request->dict,
-						  vps, inst->pwd_fmt->field[i], pw->field[i]);
-				if (vp) {
-					RDEBUG2("Added %s: '%s' to %s ", inst->pwd_fmt->field[i], pw->field[i], listname);
+				fr_dict_attr_t const *da = fr_dict_attr_by_name(NULL, fr_dict_root(request->dict), inst->pwd_fmt->field[i]);
+				size_t len;
+
+				if (!da) {
+					REDEBUG("Ignoring unknown attribute '%s'", inst->pwd_fmt->field[i]);
+					continue;
 				}
+
+				MEM(vp = fr_pair_afrom_da(ctx, da));
+
+				len = strlen(pw->field[i]);
+
+				switch (vp->vp_type) {
+				case FR_TYPE_STRING:
+					fr_pair_value_bstrndup(vp, pw->field[i], len, true);
+					break;
+
+				case FR_TYPE_OCTETS:
+					fr_pair_value_memdup(vp, (uint8_t const *) pw->field[i], len, true);
+					break;
+
+				default:
+					if (fr_pair_value_from_str(vp, pw->field[i], len, NULL, false) < 0) {
+						talloc_free(vp);
+						RPEDEBUG("Failed parsing '%s'", pw->field[i]);
+						continue;
+					}
+				}
+
+				PAIR_VERIFY(vp);
+				(void) fr_pair_append(vps, vp);
+
+				RDEBUG2("Added %s.%s: =  %s ", listname, inst->pwd_fmt->field[i], pw->field[i]);
 			} else
-				RDEBUG2("NOOP %s: '%s' to %s ", inst->pwd_fmt->field[i], pw->field[i], listname);
+				RDEBUG2("NOOP %s.%s = %s ", listname, inst->pwd_fmt->field[i], pw->field[i]);
 		}
 	}
 }
