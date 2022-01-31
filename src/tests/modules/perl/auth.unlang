@@ -35,8 +35,8 @@ if (!ok) {
 #    test_fail
 #}
 
-#update reply {
-#    &Vendor-Specific.Cisco.h323-credit-amount !* ANY
-#}
+update reply {
+    &Vendor-Specific.Cisco.h323-credit-amount !* ANY
+}
 
 test_pass
