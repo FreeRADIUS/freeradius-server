@@ -7,7 +7,6 @@ NEED_RADIUS=false
 IFS=$'\n'
 for i in $@; do
 	ATTR_DEFS+=($(grep -o -E 'FR_[[:alnum:]_]*' "$i" | sort | uniq | sed -e 's/^FR_//;s/_/-/g'))
-	ATTR_DEFS+=($(grep -E 'fr_pair_make' "$i" | cut -d ',' -f 3 | sed -e 's/"//g;s/^ *//;s/ *$//'))
 	ATTR_DEFS+=($(grep -E 'pair_make_(request|reply|config)' "$i" | cut -d ',' -f 1 | sed -e 's/^.*(//;s/"//g;s/^ *//;s/ *$//'))
 	ATTR_DEFS+=($(grep -E 'fr_dict_attr_by_name' "$i" | cut -d ',' -f 2 | sed -e 's/"//g;s/^ *//;s/ *$//;s/);//'))
 done
