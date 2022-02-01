@@ -1,0 +1,22 @@
+# -*- text -*-
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC4578 - Dynamic Host Configuration Protocol (DHCP) Options
+#            for the Intel Preboot eXecution Environment (PXE)
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	TFTP-Server-IP-Address			128	octets
+ATTRIBUTE	Call-Server-IP-address			129	octets
+ATTRIBUTE	Ethernet-Interface			130	octets
+ATTRIBUTE	Vendor-Discrimination-Str		130	octets
+ATTRIBUTE	Remote-Stats-Svr-IP-Address		131	octets
+ATTRIBUTE	IEEE-802dot1P-VLAN-ID			132	octets
+ATTRIBUTE	IEEE-802dot1Q-L2-Priority		133	octets
+ATTRIBUTE	Diffserv-Code-Point			134	octets
+ATTRIBUTE	HTTP-Proxy				135	octets

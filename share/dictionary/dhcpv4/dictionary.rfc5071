@@ -1,0 +1,16 @@
+# -*- text -*-
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC5071 - Dynamic Host Configuration Protocol Options Used by PXELINUX
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	PXELINUX-Magic				208	octets
+ATTRIBUTE	Packet-Format				209	string
+ATTRIBUTE	Path-Prefix				210	string
+ATTRIBUTE	Reboot-Time				211	date

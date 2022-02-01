@@ -181,10 +181,6 @@ ATTRIBUTE	NDS-Tree-Name				86	octets
 # Novell Directory Services
 ATTRIBUTE	NDS-Context				87	octets
 
-# RFC 4280 - Broadcast and Multicast Control Servers
-ATTRIBUTE	BCMS-Server-IPv4-FQDN			88	octets # really dns_label array
-ATTRIBUTE	BCMS-Server-IPv4-Address		89	ipaddr array
-
 # Authentication
 ATTRIBUTE	Authentication				90	octets
 
@@ -202,13 +198,6 @@ ATTRIBUTE	LDAP					95	octets
 ATTRIBUTE	UUID/GUID				97	octets
 # Open Group's User Authentication
 ATTRIBUTE	User-Auth				98	octets
-
-# RFC 4776 - Option for Civic Addresses Configuration Information
-ATTRIBUTE	GeoConf-Civic				99	octets
-
-# RFC 4833 - Timezone Options for DHCP
-ATTRIBUTE	Timezone-Posix				100	string
-ATTRIBUTE	Timezone-Database			101	string
 
 # NetInfo Parent-Server Address
 ATTRIBUTE	Netinfo-Address				112	octets
@@ -245,90 +234,16 @@ ATTRIBUTE	V-I-Vendor-Specific			125	vsa
 #ATTRIBUTE	Etherboot				128	ether
 # (for IP Phone software load)
 
-# RFC 4578 - Options for the Intel Preboot eXecution Environment
-ATTRIBUTE	TFTP-Server-IP-Address			128	octets
-ATTRIBUTE	Call-Server-IP-address			129	octets
-ATTRIBUTE	Ethernet-Interface			130	octets
-ATTRIBUTE	Vendor-Discrimination-Str		130	octets
-ATTRIBUTE	Remote-Stats-Svr-IP-Address		131	octets
-ATTRIBUTE	IEEE-802dot1P-VLAN-ID			132	octets
-ATTRIBUTE	IEEE-802dot1Q-L2-Priority		133	octets
-ATTRIBUTE	Diffserv-Code-Point			134	octets
-ATTRIBUTE	HTTP-Proxy				135	octets
-
-# RFC 5192 - PANA Authentication Agent
-ATTRIBUTE	PANA-Agent				136	ipaddr array
-
-# RFC 5223 - Discovering Location-to-Service Translation (LoST)
-ATTRIBUTE	LoST-Server				137	octets
-
-# RFC 5417 - CAPWAP Access Controller DHCP Option
-ATTRIBUTE	CAPWAP-AC-IPv4-Address			138	ipaddr array
-
-# RFC 5678 - Options for IEEE 802.21 Mobility Services (MoS)
-ATTRIBUTE	MoS-IPv4-Address			139	tlv
-ATTRIBUTE	MoS-IPv4-Address-IS			.1	ipaddr array
-ATTRIBUTE	MoS-IPv4-Address-CS			.2	ipaddr array
-ATTRIBUTE	MoS-IPv4-Address-ES			.3	ipaddr array
-
-ATTRIBUTE	MoS-IPv4-FQDN				140	tlv
-ATTRIBUTE	MoS-IPv4-FQDN-IS			.1	octets # really dns_label array
-ATTRIBUTE	MoS-IPv4-FQDN-CS			.2	octets # really dns_label array
-ATTRIBUTE	MoS-IPv4-FQDN-ES			.3	octets # really dns_label array
-
-# RFC 6011 - SIP UA Configuration Service Domains
-ATTRIBUTE	SIP-UA-Configuration-Service-Domains	141	string
-
-# RFC 6153 - Access Network Discovery and Selection Function (ANDSF)
-ATTRIBUTE	ANDSF-IPv4-Address			142	ipaddr array
-ATTRIBUTE	ANDSF-IPv6-Address			143	ipv6addr array
-
 # 144 - 149 unused
 
 ATTRIBUTE	TFTP-Server-IPv4-Address		150	ipaddr array
-
-# RFC 6926 - Bulk Lease Query
-ATTRIBUTE	Query-Status-Code			151	octets
-ATTRIBUTE	Query-Server-Base-Time			152	date
-ATTRIBUTE	Query-Start-Time-Of-State		153	integer
-ATTRIBUTE	Query-Start-Time			154	date
-ATTRIBUTE	Query-End-Time				155	date
-ATTRIBUTE	State					156	byte
-
-VALUE	State				Available		1
-VALUE	State				Active			2
-VALUE	State				Expired			3
-VALUE	State				Released		4
-VALUE	State				Abandoned		5
-VALUE	State				Reset			6
-VALUE	State				Remote			7
-VALUE	State				Transitioning		8
-
-ATTRIBUTE	Data-Source				157	byte
 
 # RFC draft-ietf-pcp-13
 ATTRIBUTE	PCP-IPv4-Server-Address			158	octets	# Complex format (not just ipaddr array)
 
 # RFC 3942 - 159-174 - Unassigned
 # RFC 3942 - 178-207 - Unassigned
-
-# RFC 5071 - PXELINUX
-ATTRIBUTE	PXELINUX-Magic				208	octets
-ATTRIBUTE	Packet-Format				209	string
-ATTRIBUTE	Path-Prefix				210	string
-ATTRIBUTE	Reboot-Time				211	date
-
-# RFC 5969 - IPv6 Rapid Deployment on IPv4 Infrastructures (6rd)
-ATTRIBUTE	6RD					212	octets
-
-# RFC 5986 - Discovering the Local Location Information Server (LIS)
-ATTRIBUTE	Access-Network-Domain-Name		213	string # really one dns_label
-
 # RFC 3942 - 214-219 - Unassigned
-
-# RFC 6656 - Subnet Allocation Option
-ATTRIBUTE	Virtual-Subnet-Allocation		220	octets	# Complex format not just tlv
-ATTRIBUTE	Virtual-Subnet-Selection		221	octets	# Complex format not just tlv
 
 # RFC 3942 - 224-253 - Site Specific
 ATTRIBUTE	Site-specific-0				224	octets
