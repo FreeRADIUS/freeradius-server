@@ -16,7 +16,7 @@ jobs:
       matrix:
         env:
           - { NAME: "centos-7",  OS: "centos:7" }
-          - { NAME: "centos-8",  OS: "centos:8" }
+          - { NAME: "rocky-8",   OS: "rockylinux/rockylinux:8" }
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -35,8 +35,8 @@ jobs:
       run: |
         yum install -y https://packages.endpointdev.com/rhel/7/os/x86_64/git-core-2.30.1-1.ep7.x86_64.rpm
 
-    - name: Install distro git for CentOS > 7
-      if: ${{ matrix.env.NAME != 'centos-7' }}
+    - name: Install distro git for Rocky 8 (CentOS 8)
+      if: ${{ matrix.env.NAME == 'rocky-8' }}
       run: |
         yum install -y git-core
 
@@ -52,8 +52,8 @@ jobs:
         mkdir rpms
         ls -la
 
-    - name: Extra repos
-      if: ${{ startsWith(matrix.env.NAME, 'centos-') }}
+    - name: Extra repos for CentOS and Rocky Linux
+      if: ${{ startsWith(matrix.env.NAME, 'centos-') || startsWith(matrix.env.NAME, 'rocky-') }}
       run: |
         echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
         echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
@@ -64,8 +64,8 @@ jobs:
         rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
         yum install -y epel-release
 
-    - name: Enable PowerTools on CentOS 8
-      if: ${{ matrix.env.NAME == 'centos-8' }}
+    - name: Enable PowerTools on Rocky 8 (Old CentOS 8)
+      if: ${{ matrix.env.NAME == 'rocky-8' }}
       run: |
         yum install -y yum-utils
         yum config-manager --enable PowerTools || :
