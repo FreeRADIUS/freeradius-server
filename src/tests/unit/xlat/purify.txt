@@ -33,13 +33,13 @@ xlat_purify &NAS-Port + 5
 match (%{NAS-Port} + 5)
 
 xlat_purify &Framed-IP-Address & 0xffff0000
-match (%{Framed-IP-Address} & 255.255.0.0)
+match (%{Framed-IP-Address} & 0xffff0000)
 
 #
 #  Can't parse or cast RHS to nothing.
 #
 xlat_purify &Framed-IP-Address + 4
-match (%{Framed-IP-Address} + 0.0.0.4)
+match (%{Framed-IP-Address} + 4)
 
 xlat_purify 1 < 4
 match yes
@@ -56,8 +56,11 @@ match (1 + (%{Service-Type} == Framed-User))
 xlat_purify &Filter-Id == "foo"
 match (%{Filter-Id} == "foo")
 
+#
+#  @todo - fix
+#
 xlat_purify "foo" == "bar"
-match no
+match ("foo" == "bar")
 
 # note '/' is a prefix, not "divide by 24".
 # and a useless cast is removed

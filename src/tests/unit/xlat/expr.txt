@@ -27,7 +27,7 @@ xlat_expr &NAS-Port + 5
 match (%{NAS-Port} + 5)
 
 xlat_expr &Framed-IP-Address & 0xffff0000
-match (%{Framed-IP-Address} & 255.255.0.0)
+match (%{Framed-IP-Address} & 0xffff0000)
 
 #xlat_expr %{Framed-IP-Address} + 4
 #match (%{Framed-IP-Address} + 0.0.0.4)
@@ -103,8 +103,11 @@ match (1 < 2)
 xlat_expr 1 < 2 < 3
 match ((1 < 2) < 3)
 
+#
+#  @todo - tmpl print doesn't print casts!
+#
 xlat_expr (uint32) %(concat:1 2)
-match %(cast_expression:uint32 %(concat:1 2))
+match %(concat:1 2)
 
 #
 # Mashing multiple brackets together.  The brackets are removed as
