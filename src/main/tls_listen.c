@@ -415,7 +415,6 @@ int dual_tls_recv(rad_listen_t *listener)
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
-redo:
 	if (!tls_socket_recv(listener)) {
 		return 0;
 	}
