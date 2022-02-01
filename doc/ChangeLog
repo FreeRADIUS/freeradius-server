@@ -23,6 +23,8 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	  Fixes #4318
 	* Call closedir() when reading certificates from a directory.
 	  Found by Antonio Torres.  Fixes #4378.
+	* If we read more than 16K of data in RadSec, then read it all.
+	  Fixes #4388, patch from Aren Sandersen.
 
 FreeRADIUS 3.0.25 Thu 07 Oct 2021 12:00:00 EDT urgency=medium
 	Feature improvements
