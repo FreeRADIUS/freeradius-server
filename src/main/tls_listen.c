@@ -266,8 +266,7 @@ check_for_setup:
 		 *      is more data to read.  Release the mutex and
 		 *      return so this function will be called again.
 		 */
-		if (!SSL_is_init_finished(sock->ssn->ssl))
-		{
+		if (!SSL_is_init_finished(sock->ssn->ssl)) {
 			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 			return 0;
 		}
