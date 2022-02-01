@@ -2802,7 +2802,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 				break;
 
 			default:
-				fr_strerror_const("Unexpected text after enum value.  Expected operator");
+				fr_strerror_printf("Unexpected text after enum value - %s.", fr_strerror());
 				break;
 			}
 		bareword_error:
