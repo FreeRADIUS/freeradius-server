@@ -372,7 +372,7 @@ XLAT_BINARY_FUNC(op_mul, T_MUL)
 XLAT_BINARY_FUNC(op_div, T_DIV)
 XLAT_BINARY_FUNC(op_and, T_AND)
 XLAT_BINARY_FUNC(op_or,  T_OR)
-XLAT_BINARY_FUNC(op_prepend,  T_OP_PREPEND)
+XLAT_BINARY_FUNC(op_xor,  T_XOR)
 
 XLAT_BINARY_FUNC(cmp_eq,  T_OP_CMP_EQ)
 XLAT_BINARY_FUNC(cmp_ne,  T_OP_NE)
@@ -506,7 +506,7 @@ int xlat_register_expressions(void)
 	XLAT_REGISTER_BINARY_OP(T_DIV, div);
 	XLAT_REGISTER_BINARY_OP(T_AND, and);
 	XLAT_REGISTER_BINARY_OP(T_OR, or);
-	XLAT_REGISTER_BINARY_OP(T_OP_PREPEND, prepend);
+	XLAT_REGISTER_BINARY_OP(T_XOR, xor);
 
 	XLAT_REGISTER_BINARY_CMP(T_OP_CMP_EQ, eq);
 	XLAT_REGISTER_BINARY_CMP(T_OP_NE, ne);
@@ -566,6 +566,7 @@ static const fr_sbuff_term_elem_t binary_ops[T_TOKEN_LAST] = {
 	[ T_DIV ]		= L("op_div"),
 	[ T_AND ]		= L("op_and"),
 	[ T_OR ]		= L("op_or"),
+	[ T_XOR ]		= L("op_xor"),
 
 	[ T_LAND ]		= L("logical_and"),
 	[ T_LOR ]		= L("logical_or"),
@@ -1200,6 +1201,7 @@ static fr_table_num_ordered_t const expr_assignment_op_table[] = {
 	{ L("+"),	T_ADD			},
 	{ L("-"),	T_SUB			},
 	{ L("/"),	T_DIV			},
+	{ L("^"),	T_XOR			},
 
 	{ L("|"),	T_OR			},
 	{ L("||"),	T_LOR			},
