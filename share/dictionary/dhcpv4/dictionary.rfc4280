@@ -1,0 +1,15 @@
+# -*- text -*-
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC4280 - Dynamic Host Configuration Protocol (DHCP) Options for
+#            Broadcast and Multicast Control Servers
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	BCMS-Server-IPv4-FQDN			88	octets # really dns_label array
+ATTRIBUTE	BCMS-Server-IPv4-Address		89	ipaddr array

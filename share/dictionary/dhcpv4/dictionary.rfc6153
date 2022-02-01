@@ -1,0 +1,15 @@
+# -*- text -*-
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC6153 - DHCPv4 and DHCPv6 Options for Access Network Discovery and
+#            Selection Function (ANDSF) Discovery
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	ANDSF-IPv4-Address			142	ipaddr array
+ATTRIBUTE	ANDSF-IPv6-Address			143	ipv6addr array

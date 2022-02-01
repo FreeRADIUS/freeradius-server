@@ -1,0 +1,29 @@
+# -*- text -*-
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC6926 - DHCPv4 Bulk Leasequery
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	Query-Status-Code			151	octets
+ATTRIBUTE	Query-Server-Base-Time			152	date
+ATTRIBUTE	Query-Start-Time-Of-State		153	integer
+ATTRIBUTE	Query-Start-Time			154	date
+ATTRIBUTE	Query-End-Time				155	date
+ATTRIBUTE	State					156	byte
+
+VALUE	State				Available		1
+VALUE	State				Active			2
+VALUE	State				Expired			3
+VALUE	State				Released		4
+VALUE	State				Abandoned		5
+VALUE	State				Reset			6
+VALUE	State				Remote			7
+VALUE	State				Transitioning		8
+
+ATTRIBUTE	Data-Source				157	byte

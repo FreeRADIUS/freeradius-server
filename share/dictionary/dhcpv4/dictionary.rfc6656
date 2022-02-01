@@ -1,0 +1,14 @@
+# -*- text -*-
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC6656 - Description of Cisco Systems' Subnet Allocation Option for DHCPv4
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	Virtual-Subnet-Allocation		220	octets	# Complex format not just tlv
+ATTRIBUTE	Virtual-Subnet-Selection		221	octets	# Complex format not just tlv

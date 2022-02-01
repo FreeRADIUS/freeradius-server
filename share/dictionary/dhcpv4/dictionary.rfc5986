@@ -1,0 +1,13 @@
+# -*- text -*-
+# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC5986 - Discovering the Local Location Information Server (LIS)
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	Access-Network-Domain-Name		213	string # really one dns_label
