@@ -210,6 +210,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		goto check_for_setup;
 	}
 
+redo:
 	rcode = read(request->packet->sockfd,
 		     sock->ssn->dirty_in.data,
 		     sizeof(sock->ssn->dirty_in.data));
@@ -262,8 +263,14 @@ check_for_setup:
 		}
 
 		/*
-		 *	Else we MUST be finished the SSL setup.
+		 *      If SSL handshake still isn't finished, then there
+		 *      is more data to read.  Release the mutex and
+		 *      return so this function will be called again
 		 */
+		if (!SSL_is_init_finished(sock->ssn->ssl)) {
+			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+			return 0;
+		}
 	}
 
 	/*
