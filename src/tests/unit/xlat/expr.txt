@@ -116,6 +116,9 @@ match (1 + 2)
 xlat_expr (((1 + 2)) * ((3 + 4)))
 match ((1 + 2) * (3 + 4))
 
+#xlat_expr &Filter-Id =~ /foo/
+#match bar
+
 
 count
 match 55

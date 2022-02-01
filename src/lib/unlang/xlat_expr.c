@@ -576,6 +576,9 @@ static const fr_sbuff_term_elem_t binary_ops[T_TOKEN_LAST] = {
 	[ T_OP_LE ]		= L("cmp_le"),
 	[ T_OP_GT ]		= L("cmp_gt"),
 	[ T_OP_GE ]		= L("cmp_ge"),
+
+	[ T_OP_REG_EQ ]		= L("reg_eq"),
+	[ T_OP_REG_NE ]		= L("reg_ne"),
 };
 
 
@@ -699,7 +702,7 @@ static xlat_exp_t *xlat_exp_cast_alloc(TALLOC_CTX *ctx, fr_type_t type, xlat_exp
 	return node;
 }
 
-static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *input,
+static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 				   fr_token_t prev, fr_type_t type, fr_sbuff_parse_rules_t const *bracket_rules,
 				   fr_dict_attr_t const *da);
@@ -712,6 +715,76 @@ static fr_table_num_sorted_t const expr_quote_table[] = {
 	{ L("`"),	T_BACK_QUOTED_STRING	}
 };
 static size_t expr_quote_table_len = NUM_ELEMENTS(expr_quote_table);
+
+#ifdef HAVE_REGEX
+static ssize_t tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, UNUSED xlat_flags_t *flags, fr_sbuff_t *in,
+			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
+{
+	ssize_t		slen;
+	char		quote = '/';
+	xlat_exp_t	*node;
+	fr_sbuff_t	our_in = FR_SBUFF(in);
+	fr_sbuff_marker_t marker;
+
+	fr_sbuff_skip_whitespace(&our_in);
+
+	fr_sbuff_marker(&marker, &our_in);
+
+	/*
+	 *	Allow m:foo:
+	 */
+	if (fr_sbuff_next_if_char(&our_in, 'm')) {
+		quote = *fr_sbuff_current(&our_in); /* screw UTF-8!  Who needs emojis? */
+		fr_sbuff_advance(&our_in, 1);
+
+		// @todo - update the terminal rules to use this character, too!
+
+	} else {
+		if (!fr_sbuff_next_if_char(&our_in, '/')) {
+			fr_strerror_const("Regular expression does not start with '/'");
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
+	}
+
+	MEM(node = xlat_exp_alloc_null(ctx));
+	xlat_exp_set_type(node, XLAT_TMPL);
+
+	slen = tmpl_afrom_substr(node, &node->vpt, &our_in, T_SOLIDUS_QUOTED_STRING,
+				 value_parse_rules_quoted[T_SOLIDUS_QUOTED_STRING], t_rules);
+	if (slen <= 0) {
+	error:
+		fr_sbuff_advance(&our_in, slen * -1);
+		talloc_free(node);
+		return -(fr_sbuff_used_total(&our_in));
+	}
+
+	/*
+	 *	Check for, and skip, the trailing quote if we had a leading quote.
+	 */
+	if (!fr_sbuff_next_if_char(&our_in, quote)) {
+		fr_strerror_printf("Regular expression does not edit with '%c'", quote);
+		FR_SBUFF_ERROR_RETURN(&our_in);
+	}
+
+	fr_assert(node->vpt != NULL);
+
+	slen = tmpl_regex_flags_substr(node->vpt, &our_in, p_rules->terminals);
+	if (slen < 0) goto error;
+
+	/*
+	 *	We've now got the expressions and
+	 *	the flags.  Try to compile the
+	 *	regex.
+	 */
+	if (tmpl_is_regex_uncompiled(node->vpt)) {
+		slen = tmpl_regex_compile(node->vpt, true);
+		if (slen <= 0) goto error;
+	}
+
+	*head = node;
+	return fr_sbuff_used(&our_in);
+}
+#endif
 
 
 /*
@@ -727,7 +800,7 @@ static size_t expr_quote_table_len = NUM_ELEMENTS(expr_quote_table);
  *	to parse the next thing we get.  Otherwise, parse the thing as
  *	int64_t.
  */
-static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *input,
+static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 			      fr_type_t type, fr_sbuff_parse_rules_t const *bracket_rules, fr_dict_attr_t const *da)
 {
@@ -738,22 +811,22 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 	fr_type_t	cast_type = FR_TYPE_NULL;
 	TALLOC_CTX	*ctx = input_ctx;
 	TALLOC_CTX	*free_ctx = NULL;
-	fr_sbuff_t	in = FR_SBUFF(input);
+	fr_sbuff_t	our_in = FR_SBUFF(in);
 
 	/*
 	 *	Handle !-~ by adding a unary function to the xlat
 	 *	node, with the first argument being the _next_ thing
 	 *	we allocate.
 	 */
-	if (fr_sbuff_next_if_char(&in, '!')) { /* unary not */
+	if (fr_sbuff_next_if_char(&our_in, '!')) { /* unary not */
 		func = xlat_func_find("unary_not", 9);
 		fr_assert(func != NULL);
 	}
-	else if (fr_sbuff_next_if_char(&in, '-')) { /* unary minus */
+	else if (fr_sbuff_next_if_char(&our_in, '-')) { /* unary minus */
 		func = xlat_func_find("unary_minus", 11);
 		fr_assert(func != NULL);
 	}
-	else if (fr_sbuff_next_if_char(&in, '+')) { /* ignore unary + */
+	else if (fr_sbuff_next_if_char(&our_in, '+')) { /* ignore unary + */
 		/* nothing */
 	}
 
@@ -788,7 +861,7 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 	{
 		tmpl_rules_t tmp_rules = {};
 
-		slen = tmpl_cast_from_substr(&tmp_rules, &in);
+		slen = tmpl_cast_from_substr(&tmp_rules, &our_in);
 
 		cast_type = tmp_rules.cast;
 	}
@@ -826,7 +899,7 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 		}
 	}
 
-	fr_sbuff_skip_whitespace(&in);
+	fr_sbuff_skip_whitespace(&our_in);
 
 	/*
 	 *	If we have '(', then recurse for other expressions
@@ -845,17 +918,17 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 	 *	The double casting is technically invalid, and will likely cause breakages at run
 	 *	time.
 	 */
-	if (fr_sbuff_next_if_char(&in, '(')) {
-		slen = tokenize_expression(ctx, &node, flags, &in, bracket_rules, t_rules, T_INVALID, FR_TYPE_NULL, bracket_rules, da);
+	if (fr_sbuff_next_if_char(&our_in, '(')) {
+		slen = tokenize_expression(ctx, &node, flags, &our_in, bracket_rules, t_rules, T_INVALID, FR_TYPE_NULL, bracket_rules, da);
 		if (slen <= 0) {
 			talloc_free(free_ctx);
-			FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
+			FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
 		}
 
-		if (!fr_sbuff_next_if_char(&in, ')')) {
+		if (!fr_sbuff_next_if_char(&our_in, ')')) {
 			fr_strerror_printf("Failed to find trailing ')'");
 			talloc_free(free_ctx);
-			FR_SBUFF_ERROR_RETURN_ADJ(&in, -slen);
+			FR_SBUFF_ERROR_RETURN_ADJ(&our_in, -slen);
 		}
 
 		goto done;
@@ -866,17 +939,17 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 	 *
 	 *	@todo - this case is arguably handled by tmpl_afrom_substr()
 	 */
-	if (fr_sbuff_is_char(&in, '&')) {
+	if (fr_sbuff_is_char(&our_in, '&')) {
 		tmpl_t *vpt = NULL;
 
 		MEM(node = xlat_exp_alloc_null(ctx));
 		xlat_exp_set_type(node, XLAT_TMPL);
 
-		slen = tmpl_afrom_attr_substr(node, NULL, &vpt, &in, p_rules, t_rules);
+		slen = tmpl_afrom_attr_substr(node, NULL, &vpt, &our_in, p_rules, t_rules);
 		if (slen <= 0) {
 			talloc_free(node);
 			talloc_free(free_ctx);
-			FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
+			FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
 		}
 
 		/*
@@ -900,8 +973,8 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 	 *
 	 *	@todo - optimization - do we want to create a cast node here, instead of later?
 	 */
-	if (fr_sbuff_adv_past_str_literal(&in, "%{")) {
-		if (xlat_tokenize_expansion(ctx, &node, flags, &in, &t_rules->attr) < 0) {
+	if (fr_sbuff_adv_past_str_literal(&our_in, "%{")) {
+		if (xlat_tokenize_expansion(ctx, &node, flags, &our_in, &t_rules->attr) < 0) {
 			talloc_free(free_ctx);
 			return -1;
 		}
@@ -922,8 +995,8 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 	 *
 	 *	@todo - optimization - do we want to create a cast node here, instead of later?
 	 */
-	if (fr_sbuff_adv_past_str_literal(&in, "%(")) {
-		if (xlat_tokenize_function_args(ctx, &node, flags, &in, &t_rules->attr) < 0) {
+	if (fr_sbuff_adv_past_str_literal(&our_in, "%(")) {
+		if (xlat_tokenize_function_args(ctx, &node, flags, &our_in, &t_rules->attr) < 0) {
 			talloc_free(free_ctx);
 			return -1;
 		}
@@ -985,21 +1058,21 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 		MEM(node = xlat_exp_alloc_null(ctx));
 		xlat_exp_set_type(node, XLAT_TMPL);
 
-		fr_sbuff_marker(&marker, &in);
+		fr_sbuff_marker(&marker, &our_in);
 
 		/*
 		 *	This thing is a value of some kind.  Try to parse it as that.
 		 */
-		fr_sbuff_out_by_longest_prefix(&slen, &token, expr_quote_table, &in, T_BARE_WORD);
+		fr_sbuff_out_by_longest_prefix(&slen, &token, expr_quote_table, &our_in, T_BARE_WORD);
 		switch (token) {
 			fr_dict_enum_value_t *enumv;
 
 		case T_BARE_WORD:
 			if (da) {
-				slen = fr_dict_enum_by_name_substr(&enumv, da, &in);
+				slen = fr_dict_enum_by_name_substr(&enumv, da, &our_in);
 				if (slen < 0) {
 					fr_strerror_printf("Failed parsing value - %s", fr_strerror());
-					FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
+					FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
 				}
 
 				if (slen > 0) {
@@ -1020,43 +1093,43 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 			 *	doesn't stop at anything.  Instead, we have to pass in our bracket rules,
 			 *	which stops at any of the operators / brackets we care about.
 			 */
-			slen = tmpl_afrom_substr(node, &node->vpt, &in, token,
+			slen = tmpl_afrom_substr(node, &node->vpt, &our_in, token,
 						 bracket_rules, &my_rules);
 			if (slen <= 0) {
-				FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
+				FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
 			}
 			break;
 
 		case T_DOUBLE_QUOTED_STRING:
 		case T_SINGLE_QUOTED_STRING:
 		case T_BACK_QUOTED_STRING:
-			slen = tmpl_afrom_substr(node, &node->vpt, &in, token,
+			slen = tmpl_afrom_substr(node, &node->vpt, &our_in, token,
 						 value_parse_rules_quoted[token], &my_rules);
 			if (slen <= 0) {
-				FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
+				FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
 			}
 
 			/*
 			 *	Check for, and skip, the trailing quote if we had a leading quote.
 			 */
-			if (!fr_sbuff_is_char(&in, fr_token_quote[token])) {
+			if (!fr_sbuff_is_char(&our_in, fr_token_quote[token])) {
 				fr_strerror_const("Unexpected end of quoted string");
-				FR_SBUFF_ERROR_RETURN(&in);
+				FR_SBUFF_ERROR_RETURN(&our_in);
 			}
 
-			fr_sbuff_advance(&in, 1);
+			fr_sbuff_advance(&our_in, 1);
 			fr_assert(node->vpt != NULL);
 			break;
 
 		case T_SOLIDUS_QUOTED_STRING:
 			fr_strerror_const("Unexpected regular expression");
-			fr_sbuff_set(&in, &marker);
-			FR_SBUFF_ERROR_RETURN(&in);
+			fr_sbuff_set(&our_in, &marker);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 
 		default:
 			fr_strerror_const("Unexpected token");
-			fr_sbuff_set(&in, &marker);
-			FR_SBUFF_ERROR_RETURN(&in);
+			fr_sbuff_set(&our_in, &marker);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		/*
@@ -1065,8 +1138,8 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 		 *	creates TMPL_TYPE_UNRESOLVED.
 		 */
 		if (tmpl_resolve(node->vpt, NULL) < 0) {
-			fr_sbuff_set(&in, &marker);
-			FR_SBUFF_ERROR_RETURN(&in);
+			fr_sbuff_set(&our_in, &marker);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		fr_assert(tmpl_value_type(node->vpt) != FR_TYPE_NULL);
@@ -1088,7 +1161,7 @@ done:
 		node = cast;
 	}
 
-	fr_sbuff_skip_whitespace(&in);
+	fr_sbuff_skip_whitespace(&our_in);
 
 	/*
 	 *	Purify things in place, where we can.
@@ -1096,7 +1169,7 @@ done:
 	if (flags->pure) {
 		if (xlat_purify_expr(node) < 0) {
 			talloc_free(node);
-			FR_SBUFF_ERROR_RETURN(&in); /* @todo m_lhs ? */
+			FR_SBUFF_ERROR_RETURN(&our_in); /* @todo m_lhs ? */
 		}
 	}
 
@@ -1111,7 +1184,7 @@ done:
 
 	fr_assert(node != NULL);
 	*head = node;
-	return fr_sbuff_set(input, &in);
+	return fr_sbuff_set(in, &our_in);
 
 }
 
@@ -1138,6 +1211,9 @@ static fr_table_num_ordered_t const expr_assignment_op_table[] = {
 	{ L("="),	T_OP_EQ			},
 	{ L("=="),	T_OP_CMP_EQ		},
 
+	{ L("=~"),	T_OP_REG_EQ		},
+	{ L("!="),	T_OP_REG_NE		},
+
 	{ L(">"),	T_OP_GT			},
 	{ L(">="),	T_OP_GE			},
 	{ L(">>"),	T_RSHIFT    		},
@@ -1153,7 +1229,7 @@ static size_t const expr_assignment_op_table_len = NUM_ELEMENTS(expr_assignment_
  *	!EXPR
  *	A OP B
  */
-static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *input,
+static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 				   fr_token_t prev, fr_type_t type, fr_sbuff_parse_rules_t const *bracket_rules,
 				   fr_dict_attr_t const *da)
@@ -1163,28 +1239,28 @@ static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
 	fr_token_t	op;
 	ssize_t		slen;
 	fr_sbuff_marker_t  marker;
-	fr_sbuff_t	in = FR_SBUFF(input);
+	fr_sbuff_t	our_in = FR_SBUFF(in);
 
-	fr_sbuff_skip_whitespace(&in);
+	fr_sbuff_skip_whitespace(&our_in);
 
 	/*
 	 *	Get the LHS of the operation.
 	 */
-	slen = tokenize_field(ctx, &lhs, flags, &in, p_rules, t_rules, type, bracket_rules, da);
+	slen = tokenize_field(ctx, &lhs, flags, &our_in, p_rules, t_rules, type, bracket_rules, da);
 	if (slen <= 0) return slen;
 
 redo:
 	fr_assert(lhs != NULL);
 
-	fr_sbuff_skip_whitespace(&in);
+	fr_sbuff_skip_whitespace(&our_in);
 
 	/*
 	 *	No more input, we're done.
 	 */
-	if (fr_sbuff_extend(&in) == 0) {
+	if (fr_sbuff_extend(&our_in) == 0) {
 	done:
 		*head = lhs;
-		return fr_sbuff_set(input, &in);
+		return fr_sbuff_set(in, &our_in);
 	}
 
 	/*
@@ -1194,65 +1270,79 @@ redo:
 	 *	If we did expect it, then we return whatever we found,
 	 *	and let the caller eat the ')'.
 	 */
-	if (fr_sbuff_is_char(&in, ')')) {
+	if (fr_sbuff_is_char(&our_in, ')')) {
 		if (!bracket_rules) {
 			fr_strerror_printf("Unexpected ')'");
-			FR_SBUFF_ERROR_RETURN(&in);
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		goto done;
 	}
-	fr_sbuff_skip_whitespace(&in);
+	fr_sbuff_skip_whitespace(&our_in);
 
 	/*
 	 *	Remember where we were after parsing the LHS.
 	 */
-	fr_sbuff_marker(&marker, &in);
+	fr_sbuff_marker(&marker, &our_in);
 
 	/*
 	 *	Get the operator.
 	 */
-	fr_sbuff_out_by_longest_prefix(&slen, &op, expr_assignment_op_table, &in, T_INVALID);
+	fr_sbuff_out_by_longest_prefix(&slen, &op, expr_assignment_op_table, &our_in, T_INVALID);
 	if (op == T_INVALID) {
 		talloc_free(lhs);
-		fr_strerror_printf("Expected operator at '%.4s'", fr_sbuff_current(&in));
-		FR_SBUFF_ERROR_RETURN(&in);
+		fr_strerror_printf("Expected operator at '%.4s'", fr_sbuff_current(&our_in));
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
-	if (!binary_ops[op].str) {
-		fr_strerror_printf("Invalid operator '%s'", fr_tokens[op]);
-		FR_SBUFF_ERROR_RETURN_ADJ(&in, -slen);
-	}
-
-	fr_assert(precedence[op] != 0);
-
-#if 0
 	/*
-	 *	@todo - handle regexes as a special case.  The LHS ideally should be a simple xlat (i.e. not a
-	 *	comparison).  The RHS MUST be a solidus-quoted string.
+	 *	Regular expressions are a special case, and have precedence over everything else.  Because it
+	 *	makes zero sense to do things like:
+	 *
+	 *		Foo-Bar =~ (a | b) ????????
+	 *
+	 *	@todo - make sure that the LHS is something "real", and isn't (for example) a comparison?  Tho
+	 *	TBH why not allow that:
+	 *
+	 *		(1 < 3) =~ /foo/
+	 *
+	 *	will get the LHS to be evaluated, then printed to a string, and then the string will be used
+	 *	for the regex.  If the user is stupid enough to do this, why not allow it?
 	 */
 	if ((op == T_OP_REG_EQ) || (op == T_OP_REG_NE)) {
+#ifdef HAVE_REGEX
 		/*
 		 *	@todo - if we have
 		 *
 		 *		&Foo =~ s/foo/bar/...
 		 *
 		 *	then do substitution, ala %(subst:...), or maybe just create a %(subst:...) node?
+		 *
+		 *	It's syntactic sugar, but it's *nice* syntactic sugar.
 		 */
-//		slen = tokenize_regex(ctx, &rhs, &in, p_rules, t_rules);
+		slen = tokenize_regex(ctx, &rhs, flags, &our_in, bracket_rules, t_rules);
 		if (slen <= 0) {
-			FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
+			FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
 		}
 
-		/*
-		 *	xlat_func_regex() takes a LHS FR_TYPE_STRING, and RHS FR_TYPE_STRING
-		 *
-		 *	or RHS FR_TYPE_VOID, which is a pre-compiled regex?
-		 */
+		fr_sbuff_advance(&our_in, slen);
 
-		goto alloc_func;
-	}
+		// @todo - get regex func!
+		fr_assert(0);
+
+#else
+		fr_sbuff_set(&our_in, &marker);
+		fr_strerror_printf("Invalid operator '%s' - regular expressions are not supported in this build.", fr_tokens[op]);
+		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, -slen);
 #endif
+	}
+
+	if (!binary_ops[op].str) {
+		fr_strerror_printf("Invalid operator '%s'", fr_tokens[op]);
+		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, -slen);
+	}
+
+	fr_assert(precedence[op] != 0);
 
 	/*
 	 *	a * b + c ... = (a * b) + c ...
@@ -1261,8 +1351,11 @@ redo:
 	 *	take care of continuing.
 	 */
 	if (precedence[op] <= precedence[prev]) {
-		fr_sbuff_set(&in, &marker);
+		fr_sbuff_set(&our_in, &marker);
 		goto done;
+	}
+
+	if ((op == T_OP_REG_EQ) || (op == T_OP_REG_NE)) {
 	}
 
 	/*
@@ -1353,16 +1446,16 @@ redo:
 	/*
 	 *	We now parse the RHS, allowing a (perhaps different) cast on the RHS.
 	 */
-	slen = tokenize_expression(ctx, &rhs, flags, &in, p_rules, t_rules, op, type, bracket_rules, da);
+	slen = tokenize_expression(ctx, &rhs, flags, &our_in, p_rules, t_rules, op, type, bracket_rules, da);
 	if (slen <= 0) {
 		talloc_free(lhs);
-		FR_SBUFF_ERROR_RETURN_ADJ(&in, slen);
+		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
 	}
 
 #ifdef __clang_analyzer__
 	if (!rhs) {
 		talloc_free(lhs);
-		FR_SBUFF_ERROR_RETURN(&in);
+		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 #endif
 
@@ -1397,7 +1490,7 @@ redo:
 	if (flags->pure) {
 		if (xlat_purify_expr(node) < 0) {
 			talloc_free(node);
-			FR_SBUFF_ERROR_RETURN(&in); /* @todo m_lhs ? */
+			FR_SBUFF_ERROR_RETURN(&our_in); /* @todo m_lhs ? */
 		}
 	}
 
@@ -1473,9 +1566,23 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 
 	if (!t_rules) t_rules = &my_rules;
 
+	*head = NULL;
+
 	slen = tokenize_expression(ctx, head, flags, in, terminal_rules, t_rules, T_INVALID, FR_TYPE_NULL,
 				   bracket_rules, NULL);
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
+
+	if (slen <= 0) return slen;
+
+	/*
+	 *	Add nodes that need to be bootstrapped to
+	 *	the registry.
+	 */
+	if (xlat_bootstrap(*head) < 0) {
+		TALLOC_FREE(*head);
+		return 0;
+	}
+
 	return slen;
 }
