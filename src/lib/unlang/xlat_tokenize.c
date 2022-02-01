@@ -1152,6 +1152,17 @@ static ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff
 			FR_SBUFF_RETURN(fr_value_box_print_quoted, out, tmpl_value(node->vpt), node->vpt->quote);
 			goto done;
 		}
+		if (tmpl_needs_resolving(node->vpt)) {
+			if (node->vpt->quote != T_BARE_WORD) {
+				FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->vpt->quote]);
+			}
+			FR_SBUFF_IN_STRCPY_RETURN(out, node->vpt->name);
+			goto done;
+		}
+		if (tmpl_is_xlat(node->vpt)) {
+			xlat_print(out, tmpl_xlat(node->vpt), fr_value_escape_by_quote[node->quote]);
+			goto done;
+		}
 		break;
 
 	case XLAT_ONE_LETTER:
