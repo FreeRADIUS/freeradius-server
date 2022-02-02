@@ -72,7 +72,7 @@ $(TEST).radiusd_stop: | ${2}
 	${Q}if [ -f ${2}/radiusd.pid ]; then \
 		if ! ps `cat ${2}/radiusd.pid` >/dev/null 2>&1; then \
 		    rm -f ${2}/radiusd.pid; \
-		    echo "FreeRADIUS terminated during test called by $(TEST).radiusd_kill"; \
+		    echo "FreeRADIUS terminated during test called by $(TEST).radiusd_stop"; \
 		    echo "GDB output was:"; \
 		    cat "${2}/gdb.log" 2> /dev/null; \
 		    echo "--------------------------------------------------"; \
