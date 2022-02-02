@@ -32,7 +32,6 @@ jobs:
           {
             "env": [
               { "NAME": "centos-7", "OS": "centos:7", "DIST": "centos"              },
-              { "NAME": "centos-8", "OS": "centos:8", "DIST": "centos"              },
               { "NAME": "rocky-8", "OS": "rockylinux/rockylinux:8", "DIST": "rocky" }
             ]
           }
@@ -42,7 +41,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "centos-8", "OS": "centos:8", "DIST": "centos"             },
+              { "NAME": "rocky-8", "OS": "rockylinux/rockylinux:8", "DIST": "rocky"             },
             ]
           }
         EOF
