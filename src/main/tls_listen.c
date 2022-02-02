@@ -210,7 +210,6 @@ static int tls_socket_recv(rad_listen_t *listener)
 		goto check_for_setup;
 	}
 
-redo:
 	rcode = read(request->packet->sockfd,
 		     sock->ssn->dirty_in.data,
 		     sizeof(sock->ssn->dirty_in.data));
@@ -415,6 +414,7 @@ int dual_tls_recv(rad_listen_t *listener)
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
+redo:
 	if (!tls_socket_recv(listener)) {
 		return 0;
 	}
