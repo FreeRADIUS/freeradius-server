@@ -1084,8 +1084,10 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 		}
 	} else {
 		RDEBUG2("(TLS) Application data.");
-		/* Its clean application data, do whatever we want */
+		/* Its clean application data, leave whatever is in the buffer */
+#if 0
 		record_init(&ssn->clean_out);
+#endif
 	}
 
 	/* We are done with dirty_in, reinitialize it */
@@ -5174,21 +5176,22 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 			RDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
 			return FR_TLS_FAIL;
 		}
+
+		record_init(&ssn->dirty_in);
 	}
 
 	/*
-	 *      Clear the dirty buffer now that we are done with it
-	 *      and init the clean_out buffer to store decrypted data
+	 *	tls_handshake_recv() may read application data.  So
+	 *	don't touch clean_out.
 	 */
-	record_init(&ssn->dirty_in);
-	record_init(&ssn->clean_out);
 
 	/*
 	 *      Read (and decrypt) the tunneled data from the
 	 *      SSL session, and put it into the decrypted
 	 *      data buffer.
 	 */
-	err = SSL_read(ssn->ssl, ssn->clean_out.data, sizeof(ssn->clean_out.data));
+	err = SSL_read(ssn->ssl, ssn->clean_out.data + ssn->clean_out.used,
+		       sizeof(ssn->clean_out.data) - ssn->clean_out.used);
 	if (err <= 0) {
 		int code;
 
@@ -5223,7 +5226,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 	/*
 	 *	Passed all checks, successfully decrypted data
 	 */
-	ssn->clean_out.used = err;
+	ssn->clean_out.used += err;
 
 	/*
 	 *	Add the certificates to intermediate packets, so that
