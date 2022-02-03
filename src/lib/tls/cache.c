@@ -731,6 +731,8 @@ again:
 
 	case FR_TLS_CACHE_LOAD_RETRIEVED:
 	{
+		SSL_SESSION	*sess;
+
 		TALLOC_FREE(tls_cache->load.id);
 
 		RDEBUG3("Setting session data");
@@ -790,10 +792,19 @@ again:
 			RDEBUG2("Certificate re-validation failed, denying session resumption via session-id");
 			goto verify_error;
 		}
+		sess = tls_cache->load.sess;
 
+		/*
+		 *	After we return it's OpenSSL's responsibility
+		 *	to free the session data, so set our copy of
+		 *	the pointer to NULL, to prevent a double free
+		 *	on cleanup.
+		 */
 		*copy = 0;
+		tls_cache->load.sess = NULL;
+		return sess;
 	}
-		return tls_cache->load.sess;
+
 
 	case FR_TLS_CACHE_LOAD_FAILED:
 		RDEBUG3("Session data load failed");
