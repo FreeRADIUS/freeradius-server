@@ -11,7 +11,7 @@
 #
 #	Due to observed poor performance of Google Secure LDAP, a number
 #	of suggested cache modules are included.  These are defined in
-#	mods-available/cache_google.
+#	mods-available/cache_auth.
 #
 #	The ttl on these caches should be tuned to match site policies
 #	- e.g. how long should a user be re-authenticated from 	a cache
@@ -57,7 +57,7 @@ authorize {
 	update control {
 		&Cache-Status-Only := 'yes'
 	}
-	cache_google_auth
+	cache_auth_accept
 
 	if (ok) {
 		update {
@@ -73,7 +73,7 @@ authorize {
 	update control {
 		&Cache-Status-Only := 'yes'
 	}
-	cache_google_reject
+	cache_auth_reject
 
 	if (ok) {
 		update {
@@ -121,7 +121,7 @@ authorize {
 		update control {
 			&Cache-Read-Only := "yes"
 		}
-		cache_google_dn
+		cache_ldap_user_dn
 
 	}
 }
@@ -155,13 +155,13 @@ post-auth {
 	#  Cache the user's DN - see the authorize section for
 	#  why this would be used
 	#
-	cache_google_dn
+	cache_ldap_user_dn
 
 	#
 	#  If a user was authenticated by ldap, put an entry in the cache.
 	#
 	if (&control:Auth-Type == ldap) {
-		cache_google_auth
+		cache_auth_accept
 	}
 
 	Post-Auth-Type REJECT {
@@ -173,7 +173,7 @@ post-auth {
 		#  clients.
 		#
 		if (&control:Auth-Type == ldap) {
-			cache_google_reject
+			cache_auth_reject
 		}
 
 		#
@@ -185,7 +185,7 @@ post-auth {
 		update control {
 			&Cache-TTL := 0
 		}
-		cache_google_dn
+		cache_ldap_user_dn
 
 	}
 }
