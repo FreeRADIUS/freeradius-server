@@ -1684,7 +1684,7 @@ static xlat_action_t xlat_func_lpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		fr_dcursor_append(out, in);
 
-		if (len > pad_len) continue;
+		if (len >= pad_len) continue;
 
 		if (fr_value_box_bstr_realloc(in, &buff, in, pad_len) < 0) {
 			RPEDEBUG("Failed reallocing input data");
@@ -1764,7 +1764,7 @@ static xlat_action_t xlat_func_rpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		fr_dcursor_append(out, in);
 
-		if (len > pad_len) continue;
+		if (len >= pad_len) continue;
 
 		if (fr_value_box_bstr_realloc(in, &buff, in, pad_len) < 0) {
 			RPEDEBUG("Failed reallocing input data");
