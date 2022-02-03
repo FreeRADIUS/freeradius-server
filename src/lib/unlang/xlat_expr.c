@@ -714,7 +714,7 @@ static ssize_t tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, UNUSED xlat_fl
  *	int64_t.
  */
 static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
-			      UNUSED fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
+			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 			      UNUSED fr_type_t type, fr_sbuff_parse_rules_t const *bracket_rules, fr_dict_attr_t const *da)
 {
 	ssize_t			slen;
