@@ -1693,8 +1693,15 @@ static xlat_action_t xlat_func_lpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		fr_sbuff_init_in(&sbuff, buff, pad_len);
 		fr_sbuff_marker(&m_data, &sbuff);
-		fr_sbuff_advance(&m_data, pad_len - len);	/* Mark where we want the data to go */
-		fr_sbuff_move(&FR_SBUFF(&m_data), &FR_SBUFF(&sbuff), len); /* Shift the data */
+
+		/*
+		 *	...nothing to move if the input
+		 *	string is empty.
+		 */
+		if (len > 0) {
+			fr_sbuff_advance(&m_data, pad_len - len);	/* Mark where we want the data to go */
+			fr_sbuff_move(&FR_SBUFF(&m_data), &FR_SBUFF(&sbuff), len); /* Shift the data */
+		}
 
 		if (fill_len == 1) {
 			memset(fr_sbuff_current(&sbuff), *fill_str, fr_sbuff_ahead(&m_data));
