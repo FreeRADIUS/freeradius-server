@@ -514,6 +514,13 @@ do {\
  	}\
 } while (0)
 
+/** Check if a debug level is set by the request (if !NULL) or by the global log
+ *
+ * @param[in] _e_request	Enabled macro to use for requests.
+ * @param[in] _e_global		Enabled macro to use for global.
+ */
+#define ROPTIONAL_ENABLED(_e_request, _e_global) ((request && _e_request) || _e_global)
+
 /** Track when a log message was last repeated
  *
  */
