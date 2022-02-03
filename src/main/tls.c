@@ -1083,8 +1083,10 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 		}
 	} else {
 		RDEBUG2("(TLS) Application data.");
-		/* Its clean application data, do whatever we want */
+		/* Its clean application data, leave whatever is in the buffer */
+#if 0
 		record_init(&ssn->clean_out);
+#endif
 	}
 
 	/* We are done with dirty_in, reinitialize it */
