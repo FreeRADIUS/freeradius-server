@@ -4764,8 +4764,14 @@ parse:
 		 *	The string gets converted to a network-order
 		 *	8-byte number, and then the lower bytes of
 		 *	that get copied to the ethernet address.
+		 *
+		 *	Note: We need to check for a terminal sequence
+		 *	after the number, else we may just end up
+		 *	parsing the first hexit and returning.
+		 *
+		 *	i.e. 1c:00:00:00:00 -> 1
 		 */
-		if ((fr_sbuff_out(NULL, &num, &our_in) > 0) && !fr_sbuff_is_char(&our_in, ':')) {
+		if ((fr_sbuff_out(NULL, &num, &our_in) > 0) && fr_sbuff_is_terminal(&our_in, rules->terminals)) {
 			num = htonll(num);
 
 			fr_dbuff_in_memcpy(&dbuff, ((uint8_t *) &num) + 2, sizeof(dst->vb_ether));
@@ -4954,7 +4960,8 @@ ssize_t fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	if (slen <= 0) return slen;
 
 	if (slen != (ssize_t)inlen) {
-		fr_strerror_printf("%zu bytes of trailing data after string value \"%pV\"",
+		fr_strerror_printf("Failed parsing '%s'.  %zu bytes of trailing data after string value \"%pV\"",
+				   fr_type_to_str(dst_type),
 				   inlen - slen,
 				   fr_box_strvalue_len(in + slen, inlen - slen));
 		return (slen - inlen) - 1;
