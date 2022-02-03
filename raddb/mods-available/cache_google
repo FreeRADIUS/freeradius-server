@@ -1,0 +1,84 @@
+# -*- text -*-
+#
+#  $Id$
+
+#  A collection of instances of the cache module designed to be used in
+#  conjunction with using Google Secure LDAP as an authentication server.
+#
+#  In scenarios where there is repeated authentication requests for the same
+#  user within a short time frame (e.g. 802.1x wifi), these can help to
+#  compensate for slow responses from the LDAP server.
+#
+
+
+#
+#  An instance of the cache module to cache accepted LDAP authentications
+#
+#  Set the TTL to suit the site policy for how often an authentication
+#  should be confirmed with the LDAP directory.
+#
+#  In addition, if group membership is used as part of the policy, the
+#  &control:LDAP-Group attribute should be added to the update section -
+#  if a user's authentication is matched in the cache any data which
+#  would have been retrieved from LDAP to run the policy must be stored
+#  in the cache.
+#
+cache cache_google_auth {
+	driver = "rlm_cache_rbtree"
+	key = "%{md5:%{Stripped-User-Name}%{User-Password}}"
+	ttl = 7200
+	update {
+		&control:Tmp-String-9 = 1
+	}
+}
+
+
+#
+#  An instance of the cache module to cache rejected LDAP authentications -
+#  preventing repeated hits on the LDAP directories from mis-configured clients
+#
+#  Use a hash of the client's MAC and the presented user name and password -
+#  so, if a user corrects their user name or password, it won't hit the cache.
+#
+#  Adjust the TTL to suit site policy for how long a combination of device /
+#  user and password should be rejected without calling the LDAP module
+#
+cache cache_google_reject {
+        driver = "rlm_cache_rbtree"
+        key = "%{md5:%{Calling-Station-Id}%{Stripped-User-Name}%{User-Password}}"
+        ttl = 3600
+        update {
+                &control:Tmp-String-9 = 1
+        }
+}
+
+
+#
+#  An instance of the cache module to cache user DN
+#
+#  If LDAP authentication is being used for a simple auth / reject without
+#  any need to retrieve other attributes (e.g. group membership), each LDAP
+#  bind authentication is three steps
+#
+#    - bind as admin user
+#    - lookup user's DN
+#    - bind as user using retrieved DN
+#
+#  By caching the DN after the first lookup, the first two steps are skipped
+#  on subsequent authentications.
+#
+#  If an alternative attribute name is being used for the user DN, amend
+#  the update section here appropriately.
+#
+#  In scenarios where DNs may change, consideration should be given as to
+#  whether use of this cache may create issues.
+#
+cache cache_google_dn {
+	driver = "rlm_cache_rbtree"
+	key = "%{Stripped-User-Name}"
+	ttl = 86400
+	update {
+		&control:LDAP-UserDN = &control:LDAP-UserDN
+	}
+}
+
