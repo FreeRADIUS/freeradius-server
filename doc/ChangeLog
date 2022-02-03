@@ -10,8 +10,9 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	  tested with wpa_supplicant and Windows 11.
 	* Add %{concat:foo[*] ;}, which concatenates a set
 	  of attributes, separated by a character.
-	* Fix for incomplete home server list after deleting a
-	  home server via radmin.
+	* Added sample configuration for using Google LDAP.
+	  See sites-available/google-ldap-auth, and
+	  mods-available/google_ldap, and mods-available/cache_auth.
 
 	TODO before release
 	* port eap-fast issues from master
@@ -21,6 +22,8 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	* Actually use the certificate in "realm_dir" hinted at by SNI.
 	* Removed the use of "locate" during the "configure" phase.
 	  Fixes #4318
+	* Fix for showing incomplete home server list after deleting a
+	  home server via radmin.
 	* Call closedir() when reading certificates from a directory.
 	  Found by Antonio Torres.  Fixes #4378.
 	* If we read more than 16K of data in RadSec, then read it all.
