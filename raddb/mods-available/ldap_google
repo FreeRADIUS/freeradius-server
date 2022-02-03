@@ -3,37 +3,58 @@
 #  $Id$
 
 #
-#  An instance of the ldap module configured for using the G Suite /
-#  Google Workspace Secure LDAP server.
+#  This file contains an instance of the ldap module which has been
+#  configured for the G Suite / Google Workspace Secure LDAP server.
+#  There are a few steps which still need to be taken, but they are
+#  documented clearly below.
 #
-#  In order to use the Google LDAP server firstly a client must be
+#  In order to use the Google LDAP server, a client must first be
 #  created. See Google's documentation for doing this:
+#
 #  https://support.google.com/a/answer/9048434?hl=en&ref_topic=9173976
 #
-#  Standard Google LDAP authenticaiton is done using a client certificate,
-#  however, FreeRADIUS does require a username and password in addition.
-#  Before downloading the client certificate, choose the option to
-#  generate access credentials in order to obtain a username and password.
+#  Google LDAP requires that any system connecting to it use a client
+#  certificate.  However, FreeRADIUS also requires a username and
+#  password in the "ldap" module configuration.  Therere before
+#  downloading the client certificate from Google, you should choose
+#  the option to generate access credentials in order to obtain a
+#  username and password.  That username and password should be used
+#  below.
 #
-#  Ensure the client which is set up for FreeRADIUS has sufficient
-#  permissions to read user information, and, if group membership is
-#  part of the FreeRADIUS policy, ensure that the client can read
-#  group information.
+#  Ensure the Goolge client configuration which is used for FreeRADIUS
+#  has sufficient permissions to read user information, and, if group
+#  membership is part of the FreeRADIUS policy, ensure that the client
+#  can read group information.  This configuration is done on Google's
+#  systems.  Please see the Google documentation for more information.
 #
-#  Importantly, the Google LDAP does not present user passwords in search
-#  results.  Therefore, if Google LDAP is to be used for authentication
-#  it has to be done using LDAP bind authentication and therefore the
-#  authentication method chosen must provide the user password in plain text.
+#  NOTE: The Google LDAP database does NOT return user passwords in
+#  the search results!
 #
-#  The Google Secure LDAP service has been observed to have poor performance
-#  compared to a dedicated LDAP services.  Therefore if it is to be used
-#  as part of a system which is likely to repeatedly be querying the same
-#  information (e.g. 802.1x WiFi where users migrate regularly between
-#  access points causing re-authentication), it is strongly advised to
-#  use the cache module to reduce LDAP queries.
+#  Therefore, if Google LDAP is being used for authentication, it will
+#  ONLY work when using "LDAP bind as user".  The authentication
+#  method used there MUST also provide the user password in plain
+#  text.  This limits the use of Google LDAP to PAP, and TTLS+PAP.
+#  Anything else simply will not work, and nothing you do will ever
+#  make it work.
 #
-#  Comments in this file are specific to using the Google Secure LDAP
-#  service.  For other details see the `ldap` sample module.
+#  The Google LDAP service has been observed to have poor
+#  performance compared to a dedicated / local LDAP server like
+#  OpenLDAP. In order to improve performance, we simply bypass it
+#  completely by caching things associated with accept and reject.
+#  See mods-available/cache_auth for the cache configuration, and
+#  sites-available/google-ldap-auth for a sample virtual server which
+#  uses this module, and the cache.
+#
+#  In addition, if you are using Google LDAP service as part of WiFi
+#  authentication (remember, only TTLS+PAP will work!), then we also
+#  recommend enabling the "cache" configuration in mods-available/eap.
+#  That cache is a separate one from mods-available/cache_auth, and
+#  both caches can be used at the same time.
+#
+#
+#  The comments in this file are specific to using the Google Secure
+#  LDAP service.  For more general LDAP module configuration, see the
+#  mods-available/ldap.
 #
 ldap ldap_google {
 	#  The standard Google LDAP server URL
@@ -44,14 +65,19 @@ ldap ldap_google {
 #	identity = 'myuser'
 #	password = 'mypass'
 
-	#  Base dn for the organisation.
+	#  Base dn for your organisation.
 	base_dn = 'dc=example,dc=org'
 
 	#
 	#  The default Google LDAP schema can be seen here
-	#  https://support.google.com/a/answer/9188164 and custom
-	#  attributes can be added to user profiles which can be accessed
-	#  in the LDAP directory https://support.google.com/a/answer/6208725
+	#
+	# 	https://support.google.com/a/answer/9188164
+	#
+	#  Custom attributes can be added to user profiles, and those
+	#  custom attributes can then be accessed in the LDAP
+	#  directory:
+	#
+	#	https://support.google.com/a/answer/6208725
 	#
 	#  You can run the 'ldapsearch' command line tool using the
 	#  parameters from this module's configuration.
@@ -61,7 +87,7 @@ ldap ldap_google {
 	#    LDAPTLS_KEY="<Google key file>" \
 	#    ldapsearch -H ${server}  -b '${base_dn}' '(uid=user)'
 	#
-	#  That will give you the LDAP information for 'user'.
+	#  That command will return the LDAP information for 'user'.
 	#
 	#  Group membership can be queried by using the above "ldapsearch" string,
 	#  and adding "memberof" qualifiers.
@@ -80,9 +106,11 @@ ldap ldap_google {
 		reply:				+= 'radiusReplyAttribute'
 	}
 
-	#  In order to use ldap bind authentication, add
-	#  following "if" statement to the authorize {} section of
-	#  the virtual server, after the "ldap" module.  For example:
+	#
+	#  In order to use LDAP "bind as user" authentication, you
+	#  should add following "if" statement to the authorize {}
+	#  section of the virtual server, after the "ldap" module.
+	#  For example:
 	#
 	#    ...
 	#    ldap_google
@@ -96,14 +124,22 @@ ldap ldap_google {
 	#  You will also need to uncomment the "Auth-Type LDAP" block in the
 	#  "authenticate" section.
 	#
+	#  Note that these configuration steps have already been done
+	#  in the sample virtual server, in
+	#  sites-available/google-ldap-auth.
+	#
 
+	#
+	#  If you change this, you will also need to update the
+	#  "cache_ldap_user_dn" module in mods-available/cache_auth.
+	#
 	user_dn = "LDAP-UserDn"
 
 	#
 	#  User object identification.
 	#
 	user {
-		#  Typical Google LDAP hierarchies have users under ou=Users...
+		#  The typical Google LDAP configuration has users under "ou=Users..."
 		base_dn = "ou=Users,${..base_dn}"
 
 		filter = "(uid=%{%{Stripped-User-Name}:-%{User-Name}})"
@@ -121,7 +157,7 @@ ldap ldap_google {
 	#  User membership checking.
 	#
 	group {
-		#  Typical Google LDAP hierarchies have groups under ou=Groups...
+		#  The typical Google LDAP configuration has groups under "ou=Groups..."
 		base_dn = "ou=Groups,${..base_dn}"
 
 		filter = '(objectClass=posixGroup)'
@@ -131,19 +167,22 @@ ldap ldap_google {
 		name_attribute = cn
 
 		#
-		#  Google Secure LDAP supports the "memberOf" attribute
-		#  which is more efficient than using this filter.  Check
-		#  permissions of the client to ensure that reading of group
-		#  data is allowed.
+		#  Google Secure LDAP supports the "memberOf"
+		#  attribute, which is more efficient than using this
+		#  filter.
+		#
+		#  You should also check the permissions of the client
+		#  in Google's systems to ensure that it is allowed to
+		#  read group information.
 		#
 #		membership_filter = "(|(member=%{control:${..user_dn}})(memberUid=%{%{Stripped-User-Name}:-%{User-Name}}))"
 
 		membership_attribute = 'memberOf'
 
 		#
-		#  If the "memberOf" attribute is used for retrieving group membership
-		#  it is advised that "cacheable_dn" is used for caching the group details.
-		#  "memberOf" is a list of fully quallified group DNs which the user belongs to
+		#  If the "memberOf" attribute is used for retrieving group membership,
+		#  then you should also use "cacheable_dn", in orser to cache the group details.
+		#  "memberOf" is a list of fully quallified group DNs which the user belongs to,
 		#  so using the DN for the cache avoids further lookups to retrieve group names.
 		#
 #		cacheable_name = 'no'
@@ -157,11 +196,16 @@ ldap ldap_google {
 	options {
 #		dereference = 'always'
 
-		#  Google Secure LDAP does not appear to do referrals
+		#  Google Secure LDAP does not appear to do referrals, so we might as well
+		#  turn this off.
 		chase_referrals = no
 #		rebind = yes
 
 		#  Some reasonable defaults for use with Google Secure LDAP
+		#
+		#  See mods-available/ldap for a complete description
+		#  of what these configuration options mean.
+		#
 		res_timeout = 10
 		srv_timelimit = 3
 		net_timeout = 3
@@ -175,38 +219,44 @@ ldap ldap_google {
 	tls {
 
 		#
-		#  The certificate and key downloaded when configuring
-		#  the client should be referenced here
+		#  The certificate and key which were downloaded from the Google
+		#  client tools are configured here.
 		#
-#		certificate_file = /path/to/google/ldap/certificate.crt
-#		private_key_file = /path/to/google/ldap/key.key
+		#  By default ${certdir} is raddb/certs/.  You can
+		#  please these files anywhere you want. The only
+		#  requirement is that they are readable by
+		#  FreeRADIUS, and NOT readable by anyone else on the
+		#  system!
+		#
+#		certificate_file = ${certdir}/google/certificate.crt
+#		private_key_file = ${certdir}/google/key.key
 #		random_file = /dev/urandom
 
 		#
 		#  Google Secure LDAP uses a self signed certificate
-		#  so this needs to be 'allow'
+		#  so this configuration needs to be set to 'allow'
 		#
-
 		require_cert	= 'allow'
 
+		#
+		#  We recommend not using TLS 1.0 or 1.1.
+		#
 #		tls_min_version = "1.2"
 	}
 
+	#
+	#  See mods-available/ldap for documentation on the "pool"
+	#  section and its configuration items.
+	#
 	pool {
 		start = ${thread[pool].start_servers}
-
 		min = ${thread[pool].min_spare_servers}
-
 		max = ${thread[pool].max_servers}
-
 		spare = ${thread[pool].max_spare_servers}
 
 		uses = 0
-
 		retry_delay = 30
-
 		lifetime = 0
-
 		idle_timeout = 60
 	}
 }
