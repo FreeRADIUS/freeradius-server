@@ -727,7 +727,7 @@ eap {
 		#  so that they are cached at the same time as the session resumption
 		#  data.
 		#
-		cache {
+		session {
 			#
 			#  mode:: What type of session caching should be allowed.
 			#
