@@ -269,10 +269,9 @@ int sigtran_client_link_down(sigtran_conn_t const **conn)
 	return 0;
 }
 
-static void sigtran_client_signal(UNUSED module_ctx_t const *mctx, UNUSED request_t *request,
-				  void *rctx, fr_state_signal_t action)
+static void sigtran_client_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_state_signal_t action)
 {
-	sigtran_transaction_t	*txn = talloc_get_type_abort(rctx, sigtran_transaction_t);
+	sigtran_transaction_t	*txn = talloc_get_type_abort(mctx->rctx, sigtran_transaction_t);
 
 	/*
 	 *	Ignore DUP signals, along with all others.
@@ -283,9 +282,9 @@ static void sigtran_client_signal(UNUSED module_ctx_t const *mctx, UNUSED reques
 	txn->ctx.request = NULL;	/* remove the link to the (now dead) request */
 }
 
-static unlang_action_t sigtran_client_map_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request, void *rctx)
+static unlang_action_t sigtran_client_map_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	sigtran_transaction_t			*txn = talloc_get_type_abort(rctx, sigtran_transaction_t);
+	sigtran_transaction_t			*txn = talloc_get_type_abort(mctx->rctx, sigtran_transaction_t);
 	rlm_rcode_t				rcode;
 	fr_assert(request == txn->ctx.request);
 
