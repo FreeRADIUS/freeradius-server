@@ -724,7 +724,7 @@ static int tls_cache_store_cb(SSL *ssl, SSL_SESSION *sess)
 	if (unlang_request_is_cancelled(request)) return 0;
 
 	id = SSL_SESSION_get_id(sess, &id_len);
-	RDEBUG3("Requested session store - ID %pV", fr_box_octets(id, id_len));
+	RDEBUG3("Session ID %pV - Requested store", fr_box_octets(id, id_len));
 	/*
 	 *	Store the session blob and session id for writing
 	 *	later, once all the authentication phases have completed.

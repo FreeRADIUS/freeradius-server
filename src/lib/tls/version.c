@@ -92,7 +92,7 @@ char const *fr_openssl_version_str_from_num(uint32_t v)
 	 *	If OpenSSL major version is less than three
 	 *	use the old version number layout.
 	 */
-	if ((v & 0xf0000000) < 3) {
+	if (((v & 0xf0000000) >> 28) < 3) {
 		p += sprintf(p, "%u.%u.%u",
 			     (0xf0000000 & v) >> 28,
 			     (0x0ff00000 & v) >> 20,
