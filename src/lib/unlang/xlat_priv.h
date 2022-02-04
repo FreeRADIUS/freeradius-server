@@ -38,6 +38,9 @@ extern "C" {
 #  define XLAT_DEBUG(...)
 #endif
 
+typedef ssize_t (*xlat_print_t)(fr_sbuff_t *in, xlat_exp_t const *self, void *inst, fr_sbuff_escape_rules_t const *e_rules);
+
+
 typedef enum {
 	XLAT_EXPR_TYPE_NONE,
 	XLAT_EXPR_TYPE_UNARY,
@@ -68,6 +71,8 @@ typedef struct xlat_s {
 	char const		*thread_inst_type;	//!< C type of thread instance structure.
 	size_t			thread_inst_size;	//!< Size of the thread instance data to pre-allocate.
 	void			*thread_uctx;		//!< uctx to pass to instantiation functions.
+
+	xlat_print_t		print;			//!< function to call when printing
 
 	xlat_flags_t		flags;			//!< various flags
 
@@ -250,6 +255,16 @@ static inline void xlat_internal(xlat_t *xlat)
 {
 	xlat->internal = true;
 }
+
+/** Set a print routine for an xlat function.
+ *
+ * @param[in] xlat to mark as internal.
+ */
+static inline void xlat_print_set(xlat_t *xlat, xlat_print_t func)
+{
+	xlat->print = func;
+}
+
 
 /** Walker callback for xlat_walk()
  *

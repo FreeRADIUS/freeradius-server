@@ -1172,6 +1172,15 @@ static ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff
 	case XLAT_FUNC:
 		if (node->call.func->input_type != XLAT_INPUT_ARGS) break;
 
+		/*
+		 *	We have a callback for printing this node, go
+		 *	call it.
+		 */
+		if (node->call.func->print) {
+			slen = node->call.func->print(out, node, node->call.inst->data, e_rules);
+			goto done;
+		}
+
 		if (!node->call.func->internal || (node->call.func->expr_type == XLAT_EXPR_TYPE_NONE)) break;
 
 		/*
