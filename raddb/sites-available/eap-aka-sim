@@ -135,11 +135,6 @@ server eap-aka-sim {
 #	}
 
 	eap-aka {
-		#
-		#  protected_success:: Send protected success messages
-		#
-#		protected_success = no
-
 		#  request_identity:: Send a AKA-Identity message to request
 		#  an additional identity to the one from the EAP-Identity-Response.
 		#
