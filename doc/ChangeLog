@@ -14,9 +14,6 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	  See sites-available/google-ldap-auth, and
 	  mods-available/google_ldap, and mods-available/cache_auth.
 
-	TODO before release
-	* port eap-fast issues from master
-
 	Bug fixes
 	* Ensure PBKDF2 always uses at least one iteration
 	* Actually use the certificate in "realm_dir" hinted at by SNI.
