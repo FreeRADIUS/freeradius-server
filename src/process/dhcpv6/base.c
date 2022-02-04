@@ -647,7 +647,7 @@ process_dhcpv6_relay_fields_t *dhcpv6_relay_fields_store(request_t *request)
 	/*
 	 *	Remember the relay fields
 	 */
-	MEM(rctx = talloc(unlang_interpret_frame_talloc_ctx(request), process_dhcpv6_relay_fields_t));
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), process_dhcpv6_relay_fields_t)); /* Safer to zero the whole thing */
 	MEM(rctx->hop_count = fr_pair_copy(rctx, hop_count));
 	MEM(rctx->link_address = fr_pair_copy(rctx, link_address));
 	MEM(rctx->peer_address = fr_pair_copy(rctx, peer_address));
