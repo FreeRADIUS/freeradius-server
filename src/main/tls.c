@@ -5171,14 +5171,14 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 			RDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
 			return FR_TLS_FAIL;
 		}
+
+		record_init(&ssn->dirty_in);
 	}
 
 	/*
-	 *      Clear the dirty buffer now that we are done with it
-	 *      and init the clean_out buffer to store decrypted data
+	 *	tls_handshake_recv() may read application data.  So
+	 *	don't touch clean_out.
 	 */
-	record_init(&ssn->dirty_in);
-	record_init(&ssn->clean_out);
 
 	/*
 	 *      Read (and decrypt) the tunneled data from the
