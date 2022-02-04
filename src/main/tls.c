@@ -5185,7 +5185,8 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 	 *      SSL session, and put it into the decrypted
 	 *      data buffer.
 	 */
-	err = SSL_read(ssn->ssl, ssn->clean_out.data, sizeof(ssn->clean_out.data));
+	err = SSL_read(ssn->ssl, ssn->clean_out.data + ssn->clean_out.used,
+		       sizeof(ssn->clean_out.data) - ssn->clean_out.used);
 	if (err <= 0) {
 		int code;
 
@@ -5220,7 +5221,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 	/*
 	 *	Passed all checks, successfully decrypted data
 	 */
-	ssn->clean_out.used = err;
+	ssn->clean_out.used += err;
 
 	/*
 	 *	Add the certificates to intermediate packets, so that
