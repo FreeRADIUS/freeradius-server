@@ -72,13 +72,13 @@ static virtual_server_compile_t compile_list[] = {
 	 */
 	{
 		.name = "send",
-		.name2 = "Start",
+		.name2 = "Start-Request",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_sim_start_request)
 	},
 	{
 		.name = "recv",
-		.name2 = "Start",
+		.name2 = "Start-Response",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.recv_sim_start_response)
 	},
