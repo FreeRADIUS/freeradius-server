@@ -124,7 +124,7 @@ void _tls_cache_load_state_reset(request_t *request, fr_tls_cache_t *cache, char
 		}
 
 		SSL_SESSION_free(cache->load.sess);
-		cache->store.sess = NULL;
+		cache->load.sess = NULL;
 	}
 	cache->load.state = FR_TLS_CACHE_LOAD_INIT;
 }
