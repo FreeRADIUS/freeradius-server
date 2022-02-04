@@ -127,6 +127,36 @@ static fr_value_box_t *xlat_box(xlat_exp_t *node)
 	return tmpl_value(node->vpt);
 }
 
+static ssize_t xlat_expr_print_unary(fr_sbuff_t *out, xlat_exp_t const *node, UNUSED void *inst, fr_sbuff_escape_rules_t const *e_rules)
+{
+	size_t	at_in = fr_sbuff_used_total(out);
+
+	FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
+	xlat_print_node(out, node->child, e_rules);
+
+	return fr_sbuff_used_total(out) - at_in;
+}
+
+static ssize_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node, UNUSED void *inst, fr_sbuff_escape_rules_t const *e_rules)
+{
+	size_t	at_in = fr_sbuff_used_total(out);
+
+	FR_SBUFF_IN_CHAR_RETURN(out, '(');
+	xlat_print_node(out, node->child, e_rules); /* prints a space after the first argument */
+
+	/*
+	 *	@todo - when things like "+" support more than 2 arguments, print them all out
+	 *	here.
+	 */
+	FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
+	FR_SBUFF_IN_CHAR_RETURN(out, ' ');
+	xlat_print_node(out, node->child->next, e_rules);
+
+	FR_SBUFF_IN_CHAR_RETURN(out, ')');
+
+	return fr_sbuff_used_total(out) - at_in;
+}
+
 /** Basic purify, but only for expressions and comparisons.
  *
  */
@@ -442,8 +472,8 @@ do { \
 	if (!(xlat = xlat_register(NULL, "op_" STRINGIFY(_name), xlat_func_op_ ## _name, XLAT_FLAG_PURE))) return -1; \
 	xlat_func_args(xlat, binary_op_xlat_args); \
 	xlat_internal(xlat); \
+	xlat_print_set(xlat, xlat_expr_print_binary); \
 	xlat->token = _op; \
-	xlat->expr_type = XLAT_EXPR_TYPE_BINARY; \
 } while (0)
 
 #undef XLAT_REGISTER_BINARY_CMP
@@ -452,8 +482,8 @@ do { \
 	if (!(xlat = xlat_register(NULL, "cmp_" STRINGIFY(_name), xlat_func_cmp_ ## _name, XLAT_FLAG_PURE))) return -1; \
 	xlat_func_args(xlat, binary_op_xlat_args); \
 	xlat_internal(xlat); \
+	xlat_print_set(xlat, xlat_expr_print_binary); \
 	xlat->token = _op; \
-	xlat->expr_type = XLAT_EXPR_TYPE_BINARY; \
 } while (0)
 
 int xlat_register_expressions(void)
@@ -481,14 +511,14 @@ int xlat_register_expressions(void)
 	if (!(xlat = xlat_register(NULL, "logical_and", xlat_func_logical_and, XLAT_FLAG_PURE))) return -1;
 	xlat_func_args(xlat, short_circuit_xlat_args);
 	xlat_internal(xlat);
+	xlat_print_set(xlat, xlat_expr_print_binary); /* @todo - fix this when we fix the instantiation */
 	xlat->token = T_LAND;
-	xlat->expr_type = XLAT_EXPR_TYPE_BINARY;
 
 	if (!(xlat = xlat_register(NULL, "logical_or", xlat_func_logical_or, XLAT_FLAG_PURE))) return -1;
 	xlat_func_args(xlat, short_circuit_xlat_args);
+	xlat_print_set(xlat, xlat_expr_print_binary); /* @todo - fix this when we fix the instantiation */
 	xlat_internal(xlat);
 	xlat->token = T_LOR;
-	xlat->expr_type = XLAT_EXPR_TYPE_BINARY;
 
 	/*
 	 *	-EXPR
@@ -497,14 +527,14 @@ int xlat_register_expressions(void)
 	if (!(xlat = xlat_register(NULL, "unary_minus", xlat_func_unary_minus, XLAT_FLAG_PURE))) return -1;
 	xlat_func_args(xlat, unary_minus_xlat_args);
 	xlat_internal(xlat);
+	xlat_print_set(xlat, xlat_expr_print_unary);
 	xlat->token = T_SUB;
-	xlat->expr_type = XLAT_EXPR_TYPE_UNARY;
 
 	if (!(xlat = xlat_register(NULL, "unary_not", xlat_func_unary_not, XLAT_FLAG_PURE))) return -1;
 	xlat_func_args(xlat, unary_not_xlat_args);
 	xlat_internal(xlat);
+	xlat_print_set(xlat, xlat_expr_print_unary);
 	xlat->token = T_NOT;
-	xlat->expr_type = XLAT_EXPR_TYPE_UNARY;
 
 	return 0;
 }

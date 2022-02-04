@@ -1123,7 +1123,7 @@ void xlat_debug(xlat_exp_t const *node)
 	_xlat_debug(node, 0);
 }
 
-static ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rules_t const *e_rules)
+ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rules_t const *e_rules)
 {
 	ssize_t			slen;
 	size_t			at_in = fr_sbuff_used_total(out);
@@ -1180,31 +1180,7 @@ static ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff
 			slen = node->call.func->print(out, node, node->call.inst->data, e_rules);
 			goto done;
 		}
-
-		if (!node->call.func->internal || (node->call.func->expr_type == XLAT_EXPR_TYPE_NONE)) break;
-
-		/*
-		 *	Expressions and comparisons.
-		 */
-		if (node->call.func->expr_type == XLAT_EXPR_TYPE_UNARY) {
-			FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
-			xlat_print_node(out, node->child, e_rules);
-
-		} else {
-			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "(");
-			xlat_print_node(out, node->child, e_rules); /* prints a space after the first argument */
-
-			/*
-			 *	@todo - when things like "+" support more than 2 arguments, print them all out
-			 *	here.
-			 */
-			FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
-			FR_SBUFF_IN_CHAR_RETURN(out, ' ');
-			xlat_print_node(out, node->child->next, e_rules);
-
-			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, ")");
-		}
-		goto done;
+		break;
 
 	default:
 		break;

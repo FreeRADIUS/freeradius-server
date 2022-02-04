@@ -41,19 +41,12 @@ extern "C" {
 typedef ssize_t (*xlat_print_t)(fr_sbuff_t *in, xlat_exp_t const *self, void *inst, fr_sbuff_escape_rules_t const *e_rules);
 
 
-typedef enum {
-	XLAT_EXPR_TYPE_NONE,
-	XLAT_EXPR_TYPE_UNARY,
-	XLAT_EXPR_TYPE_BINARY,
-} xlat_expr_type_t;
-
 typedef struct xlat_s {
 	fr_rb_node_t		node;			//!< Entry in the xlat function tree.
 	char const		*name;			//!< Name of xlat function.
 	xlat_func_t		func;			//!< async xlat function (async unsafe).
 
 	bool			internal;		//!< If true, cannot be redefined.
-	xlat_expr_type_t	expr_type;	       	//!< for expressions
 	fr_token_t		token;			//!< for expressions
 
 	module_inst_ctx_t const	*mctx;			//!< Original module instantiation ctx if this
@@ -326,6 +319,7 @@ int		xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *f
 int		xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 					    tmpl_attr_rules_t const *rules);
 
+ssize_t		xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rules_t const *e_rules);
 
 #ifdef __cplusplus
 }
