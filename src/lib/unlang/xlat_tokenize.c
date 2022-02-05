@@ -1170,8 +1170,6 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape
 		goto done;
 
 	case XLAT_FUNC:
-		if (node->call.func->input_type != XLAT_INPUT_ARGS) break;
-
 		/*
 		 *	We have a callback for printing this node, go
 		 *	call it.

@@ -85,10 +85,10 @@ match (192.168.0.0/24 > %{Framed-IP-Address})
 #  Logical && and ||
 #
 xlat_purify 1 < 2 || 4 > 3
-match yes
+match (yes || yes)
 
 xlat_purify 2 || (1 > 4)
-match yes
+match (2 || no)
 
 xlat_purify &Filter-Id
 match %{Filter-Id}

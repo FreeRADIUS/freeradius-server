@@ -182,6 +182,12 @@ static int xlat_purify_expr(xlat_exp_t *node)
 	if (func->token == T_INVALID) return 0;
 
 	/*
+	 *	@todo - logical and/or don't have args, but they still do things.  We probably need a "purify"
+	 *	callback, or else a "purify" function which takes a request_t.
+	 */
+	if (!func->args) return 0;
+
+	/*
 	 *	@todo - for &&, ||, check only the LHS operation.  If
 	 *	it satisfies the criteria, then reparent the next
 	 *	child, free the "node" node, and return the child.
@@ -371,51 +377,154 @@ XLAT_BINARY_FUNC(cmp_le,  T_OP_LE)
 XLAT_BINARY_FUNC(cmp_gt,  T_OP_GT)
 XLAT_BINARY_FUNC(cmp_ge,  T_OP_GE)
 
-static xlat_arg_parser_t const short_circuit_xlat_args[] = {
-	{ .required = true, .type = FR_TYPE_BOOL },
-	{ .required = true, .type = FR_TYPE_BOOL },
-	XLAT_ARG_PARSER_TERMINATOR
-};
+typedef struct {
+	xlat_exp_t	*args;
+	bool		sense;
+} xlat_logical_inst_t;
 
-static xlat_action_t xlat_func_logical_and(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					   UNUSED xlat_ctx_t const *xctx,
-					   UNUSED request_t *request, fr_value_box_list_t *in)
+typedef struct {
+	bool			last_success;
+	xlat_exp_t		*current;
+	fr_value_box_list_t	list;
+} xlat_logical_rctx_t;
+
+static ssize_t xlat_expr_print_logical(fr_sbuff_t *out, xlat_exp_t const *node, void *instance, fr_sbuff_escape_rules_t const *e_rules)
 {
-	fr_value_box_t	*dst, *a, *b;
-
-	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
-
-	a = fr_dlist_head(in);
-	b = fr_dlist_next(in, a);
+	size_t	at_in = fr_sbuff_used_total(out);
+	xlat_logical_inst_t *inst = instance;
+	xlat_exp_t *current = inst->args;
 
 	/*
-	 *	@todo - short-circuit stuff inside of xlat_eval, not here.
+	 *	We might get called before the node is instantiated.
 	 */
-	dst->vb_bool = a->vb_bool && b->vb_bool;
+	if (!inst->args) current = node->child;
 
-	fr_dcursor_append(out, dst);
-	return XLAT_ACTION_DONE;
+	fr_assert(current != NULL);
+
+	FR_SBUFF_IN_CHAR_RETURN(out, '(');
+
+	while (current) {
+		xlat_print_node(out, current, e_rules);
+
+		if (!current->next) break;
+
+		FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
+		FR_SBUFF_IN_CHAR_RETURN(out, ' ');
+		current = current->next;
+	}
+
+	FR_SBUFF_IN_CHAR_RETURN(out, ')');
+
+	return fr_sbuff_used_total(out) - at_in;
+}
+
+static int xlat_logical_instantiate(xlat_inst_ctx_t const *xctx)
+{
+	xlat_logical_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_logical_inst_t);
+
+	inst->args = xctx->ex->child;
+	inst->sense = (xctx->ex->call.func->token == T_LOR);
+
+	return 0;
+}
+
+static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					 xlat_ctx_t const *xctx,
+					 request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	xlat_logical_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_logical_inst_t);
+	xlat_logical_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_logical_rctx_t);
+	fr_value_box_t		*dst, *vb;
+
+	/*
+	 *	If one of the expansions fails, then we fail the
+	 *	entire thing.
+	 */
+	if (!rctx->last_success) {
+	fail:
+		talloc_free(rctx);
+		return XLAT_ACTION_FAIL;
+	}
+
+	vb = fr_dlist_head(&rctx->list);
+
+	/*
+	 *	If it's a list, smash it to a boolean
+	 */
+	if ((fr_dlist_num_elements(&rctx->list) > 1) &&
+	    (fr_value_box_list_concat_in_place(ctx, vb, &rctx->list, FR_TYPE_BOOL,
+					       FR_VALUE_BOX_LIST_FREE, true,
+					       SIZE_MAX) < 0)) {
+		RPEDEBUG("Failed concatenating arguments");
+		goto fail;
+	}
+
+	/*
+	 *	If it's not a boolean, then smash it to a boolean,
+	 *	allocated in the working list ctx.
+	 */
+	if ((vb->type != FR_TYPE_BOOL) &&
+	    (fr_value_box_cast_in_place(rctx, vb, FR_TYPE_BOOL, NULL) < 0)) {
+		RPEDEBUG("Failed casting argument result");
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	false -> false (for &&)
+	 *	true  -> true  (for ||)
+	 *	done -> whatever the last result was
+	 *
+	 *	Allocate the output box in the output ctx.
+	 */
+	if ((vb->vb_bool == inst->sense) || !rctx->current->next) {
+		MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
+		dst->vb_bool = vb->vb_bool;
+		fr_dcursor_append(out, dst);
+
+		talloc_free(rctx);
+		return XLAT_ACTION_DONE;
+	}
+
+	/*
+	 *	Free the box we don't need any more, and clear the list.
+	 */
+	talloc_free(vb);
+	fr_value_box_list_init(&rctx->list);
+
+	/*
+	 *	Go to the next one, and push the next xlat onto the stack.
+	 */
+	rctx->current = rctx->current->next;
+
+	if (unlang_xlat_yield(request, xlat_logical_resume, NULL, rctx) != XLAT_ACTION_YIELD) goto fail;
+
+	if (unlang_xlat_push(rctx, &rctx->last_success, &rctx->list,
+			     request, rctx->current, UNLANG_SUB_FRAME) < 0) goto fail;
+
+	return XLAT_ACTION_PUSH_UNLANG;
 }
 
 
-static xlat_action_t xlat_func_logical_or(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					  UNUSED xlat_ctx_t const *xctx,
-					  UNUSED request_t *request, fr_value_box_list_t *in)
+static xlat_action_t xlat_func_logical(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				       xlat_ctx_t const *xctx,
+				       request_t *request, UNUSED fr_value_box_list_t *in)
 {
-	fr_value_box_t	*dst, *a, *b;
+	xlat_logical_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_logical_inst_t);
+	xlat_logical_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_logical_rctx_t);
 
-	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
+	rctx->current = inst->args;
+	fr_value_box_list_init(&rctx->list);
 
-	a = fr_dlist_head(in);
-	b = fr_dlist_next(in, a);
+	if (unlang_xlat_yield(request, xlat_logical_resume, NULL, rctx) != XLAT_ACTION_YIELD) {
+	fail:
+		talloc_free(rctx);
+		return XLAT_ACTION_FAIL;
+	}
 
-	/*
-	 *	@todo - short-circuit stuff inside of xlat_eval, not here.
-	 */
-	dst->vb_bool = a->vb_bool || b->vb_bool;
+	if (unlang_xlat_push(ctx, &rctx->last_success, out->dlist,
+			     request, rctx->current, UNLANG_SUB_FRAME) < 0) goto fail;
 
-	fr_dcursor_append(out, dst);
-	return XLAT_ACTION_DONE;
+	return XLAT_ACTION_PUSH_UNLANG;
 }
 
 
@@ -508,15 +617,15 @@ int xlat_register_expressions(void)
 	/*
 	 *	&&, ||
 	 */
-	if (!(xlat = xlat_register(NULL, "logical_and", xlat_func_logical_and, XLAT_FLAG_PURE))) return -1;
-	xlat_func_args(xlat, short_circuit_xlat_args);
+	if (!(xlat = xlat_register(NULL, "logical_and", xlat_func_logical, XLAT_FLAG_PURE))) return -1;
+	xlat_async_instantiate_set(xlat, xlat_logical_instantiate, xlat_logical_inst_t, NULL, NULL);
 	xlat_internal(xlat);
-	xlat_print_set(xlat, xlat_expr_print_binary); /* @todo - fix this when we fix the instantiation */
+	xlat_print_set(xlat, xlat_expr_print_logical);
 	xlat->token = T_LAND;
 
-	if (!(xlat = xlat_register(NULL, "logical_or", xlat_func_logical_or, XLAT_FLAG_PURE))) return -1;
-	xlat_func_args(xlat, short_circuit_xlat_args);
-	xlat_print_set(xlat, xlat_expr_print_binary); /* @todo - fix this when we fix the instantiation */
+	if (!(xlat = xlat_register(NULL, "logical_or", xlat_func_logical, XLAT_FLAG_PURE))) return -1;
+	xlat_async_instantiate_set(xlat, xlat_logical_instantiate, xlat_logical_inst_t, NULL, NULL);
+	xlat_print_set(xlat, xlat_expr_print_logical);
 	xlat_internal(xlat);
 	xlat->token = T_LOR;
 
