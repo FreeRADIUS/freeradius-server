@@ -27,8 +27,38 @@
 #include <freeradius-devel/io/test_point.h>
 #include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/struct.h>
 #include "dhcpv4.h"
 #include "attrs.h"
+
+static ssize_t encode_value(fr_dbuff_t *dbuff,
+			    fr_da_stack_t *da_stack, unsigned int depth,
+			    fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx);
+
+static ssize_t encode_option_data(fr_dbuff_t *dbuff,
+				  fr_da_stack_t *da_stack, unsigned int depth,
+				  fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx);
+
+static ssize_t encode_tlv(fr_dbuff_t *dbuff,
+			  fr_da_stack_t *da_stack, unsigned int depth,
+			  fr_dcursor_t *cursor, void *encode_ctx);
+
+static ssize_t encode_value_trampoline(fr_dbuff_t *dbuff,
+				       fr_da_stack_t *da_stack, unsigned int depth,
+				       fr_dcursor_t *cursor, void *encode_ctx)
+{
+	fr_dict_attr_t const	*da = da_stack->da[depth];
+
+	/*
+	 *	Write out the option's value
+	 */
+	if (da->flags.array) {
+		fr_assert(0);
+//		return encode_array(dbuff, da_stack, depth, cursor, encode_ctx);
+	}
+
+	return encode_value(dbuff, da_stack, depth, cursor, encode_ctx);
+}
 
 /** Write DHCP option value into buffer
  *
@@ -49,10 +79,27 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 {
 	fr_pair_t	*vp = fr_dcursor_current(cursor);
 	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
+	fr_dict_attr_t const	*da = da_stack->da[depth];
 	ssize_t		slen;
+
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 	FR_PROTO_TRACE("%zu byte(s) available for value", fr_dbuff_remaining(dbuff));
+
+	/*
+	 *	Pack multiple attributes into into a single option
+	 */
+	if ((vp->da->type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
+		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value_trampoline, encode_tlv);
+		if (slen <= 0) return slen;
+
+		/*
+		 *	Rebuild the da_stack for the next option.
+		 */
+		vp = fr_dcursor_current(cursor);
+		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+		return fr_dbuff_set(dbuff, &work_dbuff);
+	}
 
 	switch (da_stack->da[depth]->type) {
 	case FR_TYPE_IPV6_PREFIX:
@@ -180,6 +227,43 @@ static bool extend_option(fr_dbuff_t *dbuff, fr_dbuff_marker_t *hdr, int len)
 	fr_dbuff_marker_release(&src);
 	fr_dbuff_marker_release(&hdr_io);
 	return true;
+}
+
+#define DHCPV4_OPT_HDR_LEN (2)
+
+static ssize_t encode_tlv(fr_dbuff_t *dbuff,
+			  fr_da_stack_t *da_stack, unsigned int depth,
+			  fr_dcursor_t *cursor, void *encode_ctx)
+{
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
+	fr_pair_t const	*vp = fr_dcursor_current(cursor);
+	fr_dict_attr_t const	*da = da_stack->da[depth];
+	ssize_t			len;
+	fr_dbuff_extend_status_t	status = FR_DBUFF_EXTENDABLE;
+
+	while (fr_dbuff_extend_lowat(&status, &work_dbuff, DHCPV4_OPT_HDR_LEN) > DHCPV4_OPT_HDR_LEN) {
+		FR_PROTO_STACK_PRINT(da_stack, depth);
+
+		len = encode_option_data(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
+		if (len < 0) return len;
+
+		/*
+		 *	If nothing updated the attribute, stop
+		 */
+		if (!fr_dcursor_current(cursor) || (vp == fr_dcursor_current(cursor))) break;
+
+		/*
+		 *	We can encode multiple sub TLVs, if after
+		 *	rebuilding the TLV Stack, the attribute
+		 *	at this depth is the same.
+		 */
+		if ((da != da_stack->da[depth]) || (da_stack->depth < da->depth)) break;
+		vp = fr_dcursor_current(cursor);
+	}
+
+	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Done TLV body");
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 
@@ -495,8 +579,6 @@ static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-#define DHCPV6_OPT_HDR_LEN (2)
-
 static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 			       fr_da_stack_t *da_stack, unsigned int depth,
 			       fr_dcursor_t *cursor, void *encode_ctx)
@@ -526,7 +608,7 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	 *	enterprise-number, plus the data length, plus at least
 	 *	one option header.
 	 */
-	FR_DBUFF_REMAINING_RETURN(&work_dbuff, DHCPV6_OPT_HDR_LEN + sizeof(uint32_t) + 3);
+	FR_DBUFF_REMAINING_RETURN(&work_dbuff, DHCPV4_OPT_HDR_LEN + sizeof(uint32_t) + 3);
 
 	/*
 	 *	Now process the vendor ID part (which is one attribute deeper)
@@ -583,9 +665,9 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 	}
 
 	fr_dbuff_advance(&hdr, 1);
-	fr_dbuff_in(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN));
+	fr_dbuff_in(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - DHCPV4_OPT_HDR_LEN));
 	fr_dbuff_advance(&hdr, 4);
-	fr_dbuff_in(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - DHCPV6_OPT_HDR_LEN - 4 - 1));
+	fr_dbuff_in(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - DHCPV4_OPT_HDR_LEN - 4 - 1));
 
 #ifndef NDEBUG
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done VSIO header");
