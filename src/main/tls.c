@@ -5177,8 +5177,14 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 
 	/*
 	 *	tls_handshake_recv() may read application data.  So
-	 *	don't touch clean_out.
+	 *	don't touch clean_out.  But only if the BIO_write()
+	 *	above didn't do anything.
 	 */
+	else if (ssn->clean_out.used > 0) {
+		RDEBUG("(TLS) We already have %zd bytes of application data, processing it.",
+		       (ssn->clean_out.used));
+		goto add_certs;
+	}
 
 	/*
 	 *      Read (and decrypt) the tunneled data from the
@@ -5195,13 +5201,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 		code = SSL_get_error(ssn->ssl, err);
 		switch (code) {
 		case SSL_ERROR_WANT_READ:
-			/*
-			 *	If there's already data in the buffer,
-			 *	we can ignore the WANT_READ and just
-			 *	tell the caller that the buffer has
-			 *	data.
-			 */
-			if (ssn->clean_out.used > 0) {
+			if (ssn->clean_out.used > 0) { /* just process what application data we have */
 				err = 0;
 				break;
 			}
@@ -5210,12 +5210,12 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 			return FR_TLS_MORE_FRAGMENTS;
 
 		case SSL_ERROR_WANT_WRITE:
-			if (ssn->clean_out.used > 0) {
+			if (ssn->clean_out.used > 0) { /* just process what application data we have */
 				err = 0;
 				break;
 			}
 
-			RDEBUG("(TLS) Error in fragmentation logic: SSL_WANT_WRITE");
+			REDEBUG("(TLS) Error in fragmentation logic: SSL_WANT_WRITE");
 			return FR_TLS_FAIL;
 
 		case SSL_ERROR_NONE:
@@ -5239,6 +5239,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 	 */
 	ssn->clean_out.used += err;
 
+add_certs:
 	/*
 	 *	Add the certificates to intermediate packets, so that
 	 *	the inner tunnel policies can use them.
