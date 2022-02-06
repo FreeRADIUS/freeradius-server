@@ -1156,7 +1156,10 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape
 			if (node->vpt->quote != T_BARE_WORD) {
 				FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->vpt->quote]);
 			}
-			FR_SBUFF_IN_STRCPY_RETURN(out, node->vpt->name);
+			FR_SBUFF_IN_STRCPY_RETURN(out, node->vpt->name); /* @todo - escape it? */
+			if (node->vpt->quote != T_BARE_WORD) {
+				FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->vpt->quote]);
+			}
 			goto done;
 		}
 		if (tmpl_is_xlat(node->vpt)) {
