@@ -5191,15 +5191,31 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 	if (err <= 0) {
 		int code;
 
-		RDEBUG3("SSL_read Error");
+		RDEBUG3("(TLS) SSL_read Error");
 
 		code = SSL_get_error(ssn->ssl, err);
 		switch (code) {
 		case SSL_ERROR_WANT_READ:
+			/*
+			 *	If there's already data in the buffer,
+			 *	we can ignore the WANT_READ and just
+			 *	tell the caller that the buffer has
+			 *	data.
+			 */
+			if (ssn->clean_out.used > 0) {
+				err = 0;
+				break;
+			}
+
 			RDEBUG("(TLS) OpenSSL says that it needs to read more data.");
 			return FR_TLS_MORE_FRAGMENTS;
 
 		case SSL_ERROR_WANT_WRITE:
+			if (ssn->clean_out.used > 0) {
+				err = 0;
+				break;
+			}
+
 			RDEBUG("(TLS) Error in fragmentation logic: SSL_WANT_WRITE");
 			return FR_TLS_FAIL;
 
