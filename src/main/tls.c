@@ -5167,7 +5167,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 		err = BIO_write(ssn->into_ssl, ssn->dirty_in.data,
 				ssn->dirty_in.used);
 		if (err != (int) ssn->dirty_in.used) {
-			RDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
+			REDEBUG("(TLS) Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
 			record_init(&ssn->dirty_in);
 			return FR_TLS_FAIL;
 		}
