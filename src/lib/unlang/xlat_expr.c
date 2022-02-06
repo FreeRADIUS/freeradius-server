@@ -966,6 +966,7 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 	switch (quote) {
 	default:
 	case T_BARE_WORD:
+		p_rules = bracket_rules;
 		break;
 
 	case T_BACK_QUOTED_STRING:
@@ -990,7 +991,7 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 	 *	tmpl_afrom_substr does pretty much all the work of parsing
 	 *	the operand.
 	 */
-	slen = tmpl_afrom_substr(node, &vpt, &our_in, quote, bracket_rules, &our_t_rules);
+	slen = tmpl_afrom_substr(node, &vpt, &our_in, quote, p_rules, &our_t_rules);
 	if (!vpt) {
 		fr_sbuff_advance(&our_in, slen * -1);
 
@@ -999,6 +1000,19 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 		return fr_sbuff_error(&our_in);
 	}
 	node->vpt = vpt;
+	node->quote = quote;
+
+	/*
+	 *	It would be nice if tmpl_afrom_substr() did this :(
+	 */
+	if (quote != T_BARE_WORD) {
+		if (!fr_sbuff_is_char(&our_in, fr_token_quote[quote])) {
+			fr_strerror_const("Unexpected end of quoted string");
+			goto error;
+		}
+
+		fr_sbuff_advance(&our_in, 1);
+	}
 
 	fr_sbuff_skip_whitespace(&our_in);
 
