@@ -77,6 +77,16 @@ match ((1 < 2) || (4 > 3))
 xlat_expr 2 || (1 > 4)
 match (2 || (1 > 4))
 
+#
+#  Repeated operations of the same type are mashed together into one list.
+#  This only happens where the operations are associative.
+#
+xlat_expr 1 < 2 || 4 > 3 || 4 == 4 || 1 < 2
+match ((1 < 2) || (4 > 3) || (4 == 4) || (1 < 2))
+
+#
+#  Other stuff
+#
 xlat_expr &Filter-Id
 match %{Filter-Id}
 
@@ -124,4 +134,4 @@ match ((1 + 2) * (3 + 4))
 
 
 count
-match 55
+match 57

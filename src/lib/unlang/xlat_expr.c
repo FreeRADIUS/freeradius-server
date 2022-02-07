@@ -677,6 +677,14 @@ static const fr_sbuff_term_elem_t binary_ops[T_TOKEN_LAST] = {
 	[ T_OP_REG_NE ]		= L("reg_ne"),
 };
 
+/*
+ *	These operations are N-ary.  i.e. we can concatenate all of
+ *	their arguments together.
+ */
+static const bool nary_ops[T_TOKEN_LAST] = {
+	[T_LAND] = true,
+	[T_LOR] = true,
+};
 
 /*
  *	Allow for BEDMAS ordering.  Gross ordering is first number,
@@ -1236,9 +1244,6 @@ redo:
 		goto done;
 	}
 
-	if ((op == T_OP_REG_EQ) || (op == T_OP_REG_NE)) {
-	}
-
 	/*
 	 *	By default we don't parse enums on the RHS, and we're also flexible about what we see on the
 	 *	RHS.
@@ -1324,6 +1329,7 @@ redo:
 	default:
 		break;
 	}
+
 	/*
 	 *	We now parse the RHS, allowing a (perhaps different) cast on the RHS.
 	 */
@@ -1346,6 +1352,28 @@ redo:
 	fr_assert(func != NULL);
 
 	/*
+	 *	If it's an n-ary operation, AND the LHS is the correct function, then just add "rhs" to the
+	 *	"lhs" children.
+	 */
+	if (nary_ops[op] && (lhs->type == XLAT_FUNC) && (lhs->call.func->token == op)) {
+		xlat_exp_t **last;
+		fr_assert(lhs->call.func == func);
+
+		node = xlat_groupify_node(lhs, rhs);
+		last = &lhs->child;
+
+		/*
+		 *	Find the last child.
+		 */
+		while (*last) last = &(*last)->next;
+
+		*last = node;
+		xlat_flags_merge(&node->flags, &rhs->flags);
+		xlat_flags_merge(&lhs->flags, &node->flags);
+		goto redo;
+	}
+
+	/*
 	 *	@todo - purify the node.
 	 *
 	 *	@todo - also if the have differenting data types on the LHS and RHS, and one of them is an
@@ -1355,6 +1383,8 @@ redo:
 
 	/*
 	 *	Create the function node, with the LHS / RHS arguments.
+	 *
+	 *	@todo - node->fmt is NULL.  Do we care about it at all?
 	 */
 	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, fr_tokens[op], strlen(fr_tokens[op])));
 	node->call.func = func;
