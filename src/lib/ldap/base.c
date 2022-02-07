@@ -590,6 +590,17 @@ static unlang_action_t ldap_trunk_query_start(UNUSED rlm_rcode_t *p_result, UNUS
 	return UNLANG_ACTION_YIELD;
 }
 
+/** Hack to add timeouts
+ *
+ * Here we send a cancellation signal to the trunk if the request hits the timeout limit.
+ */
+static void _ldap_search_sync_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	fr_trunk_request_t *treq = talloc_get_type_abort(uctx, fr_trunk_request_t);
+
+	fr_trunk_request_signal_cancel(treq);
+}
+
 /** Run an async or sync search LDAP query on a trunk connection
  *
  * @param[out] p_result		from synchronous evaluation.
@@ -649,7 +660,23 @@ unlang_action_t fr_ldap_trunk_search(rlm_rcode_t *p_result,
 	 *	Hack until everything is async
 	 */
 	if (!is_async) {
+		fr_event_timer_t const *ev = NULL;
+
+		fr_time_delta_t timeout = ttrunk->config.res_timeout;
+
+		/*
+		 *	Add an event that'll send a cancellation request
+		 *	to the request.
+		 */
+		if (fr_time_delta_ispos(timeout)) {
+			if (fr_event_timer_in(ctx, unlang_interpret_event_list(request), &ev, timeout,
+					      _ldap_search_sync_timeout, query->treq) < 0) goto error;
+		}
+
 		*p_result = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
+
+		talloc_const_free(ev);	/* If the timer fired this should be NULL */
+
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
