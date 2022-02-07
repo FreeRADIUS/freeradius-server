@@ -423,6 +423,7 @@ static int xlat_logical_instantiate(xlat_inst_ctx_t const *xctx)
 	xlat_logical_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_logical_inst_t);
 
 	inst->args = xctx->ex->child;
+	xctx->ex->child = NULL;
 	inst->sense = (xctx->ex->call.func->token == T_LOR);
 
 	return 0;
