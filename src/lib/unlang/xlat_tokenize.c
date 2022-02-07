@@ -1179,6 +1179,7 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape
 		 */
 		if (node->call.func->print) {
 			slen = node->call.func->print(out, node, node->call.inst->data, e_rules);
+			if (slen < 0) goto error;
 			goto done;
 		}
 		break;
