@@ -127,7 +127,7 @@ static fr_value_box_t *xlat_box(xlat_exp_t *node)
 	return tmpl_value(node->vpt);
 }
 
-static ssize_t xlat_expr_print_unary(fr_sbuff_t *out, xlat_exp_t const *node, UNUSED void *inst, fr_sbuff_escape_rules_t const *e_rules)
+static fr_slen_t xlat_expr_print_unary(fr_sbuff_t *out, xlat_exp_t const *node, UNUSED void *inst, fr_sbuff_escape_rules_t const *e_rules)
 {
 	size_t	at_in = fr_sbuff_used_total(out);
 
@@ -137,7 +137,7 @@ static ssize_t xlat_expr_print_unary(fr_sbuff_t *out, xlat_exp_t const *node, UN
 	return fr_sbuff_used_total(out) - at_in;
 }
 
-static ssize_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node, UNUSED void *inst, fr_sbuff_escape_rules_t const *e_rules)
+static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node, UNUSED void *inst, fr_sbuff_escape_rules_t const *e_rules)
 {
 	size_t	at_in = fr_sbuff_used_total(out);
 
@@ -388,7 +388,7 @@ typedef struct {
 	fr_value_box_list_t	list;
 } xlat_logical_rctx_t;
 
-static ssize_t xlat_expr_print_logical(fr_sbuff_t *out, xlat_exp_t const *node, void *instance, fr_sbuff_escape_rules_t const *e_rules)
+static fr_slen_t xlat_expr_print_logical(fr_sbuff_t *out, xlat_exp_t const *node, void *instance, fr_sbuff_escape_rules_t const *e_rules)
 {
 	size_t	at_in = fr_sbuff_used_total(out);
 	xlat_logical_inst_t *inst = instance;

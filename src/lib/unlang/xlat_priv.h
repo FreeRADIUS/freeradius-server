@@ -38,7 +38,7 @@ extern "C" {
 #  define XLAT_DEBUG(...)
 #endif
 
-typedef ssize_t (*xlat_print_t)(fr_sbuff_t *in, xlat_exp_t const *self, void *inst, fr_sbuff_escape_rules_t const *e_rules);
+typedef fr_slen_t (*xlat_print_t)(fr_sbuff_t *in, xlat_exp_t const *self, void *inst, fr_sbuff_escape_rules_t const *e_rules);
 
 
 typedef struct xlat_s {
