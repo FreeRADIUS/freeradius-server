@@ -1,0 +1,12 @@
+[submodule "src/modules/rlm_sigtran/libosmo-sccp"]
+	path = src/modules/rlm_sigtran/libosmo-sccp
+	url = https://github.com/NetworkRADIUS/libosmo-sccp.git
+[submodule "src/modules/rlm_sigtran/libosmocore"]
+	path = src/modules/rlm_sigtran/libosmocore
+	url = https://github.com/NetworkRADIUS/libosmocore.git
+[submodule "src/modules/rlm_sigtran/libosmo-netif"]
+	path = src/modules/rlm_sigtran/libosmo-netif
+	url = https://github.com/osmocom/libosmo-netif.git
+[submodule "src/modules/rlm_sigtran/libosmo-abis"]
+	path = src/modules/rlm_sigtran/libosmo-abis
+	url = https://github.com/osmocom/libosmo-abis.git

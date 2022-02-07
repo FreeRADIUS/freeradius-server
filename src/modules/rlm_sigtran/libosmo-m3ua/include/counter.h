@@ -42,7 +42,7 @@ enum {
 	MTP_LNK_SLTM_TOUT,
 };
 
-const struct rate_ctr_group_desc *mtp_link_set_rate_ctr_desc();
-const struct rate_ctr_group_desc *mtp_link_rate_ctr_desc();
+const struct rate_ctr_group_desc *mtp_link_set_rate_ctr_desc(void);
+const struct rate_ctr_group_desc *mtp_link_rate_ctr_desc(void);
 
 #endif

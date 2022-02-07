@@ -127,7 +127,7 @@ enum {
 int mtp_handle_pcap(struct mtp_link *, int dir, const uint8_t *data, int length);
 
 struct bsc_data *bsc_data_alloc(TALLOC_CTX *ctx);
-struct bsc_data *bsc_data_create();
+struct bsc_data *bsc_data_create(void);
 
 struct mtp_udp_link *mtp_udp_link_init(struct mtp_link *link);
 
