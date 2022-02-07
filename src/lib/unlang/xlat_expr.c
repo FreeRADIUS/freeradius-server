@@ -596,6 +596,17 @@ do { \
 	xlat->token = _op; \
 } while (0)
 
+#undef XLAT_REGISTER_NARY_OP
+#define XLAT_REGISTER_NARY_OP(_op, _name, _func_name) \
+do { \
+	if (!(xlat = xlat_register(NULL, STRINGIFY(_name), xlat_func_ ## _func_name, XLAT_FLAG_PURE))) return -1; \
+	xlat_async_instantiate_set(xlat, xlat_ ## _func_name ## _instantiate, xlat_ ## _func_name ## _inst_t, NULL, NULL); \
+	xlat_internal(xlat); \
+	xlat_print_set(xlat, xlat_expr_print_ ## _func_name); \
+	xlat->token = _op; \
+} while (0)
+
+
 int xlat_register_expressions(void)
 {
 	xlat_t *xlat;
@@ -618,17 +629,8 @@ int xlat_register_expressions(void)
 	/*
 	 *	&&, ||
 	 */
-	if (!(xlat = xlat_register(NULL, "logical_and", xlat_func_logical, XLAT_FLAG_PURE))) return -1;
-	xlat_async_instantiate_set(xlat, xlat_logical_instantiate, xlat_logical_inst_t, NULL, NULL);
-	xlat_internal(xlat);
-	xlat_print_set(xlat, xlat_expr_print_logical);
-	xlat->token = T_LAND;
-
-	if (!(xlat = xlat_register(NULL, "logical_or", xlat_func_logical, XLAT_FLAG_PURE))) return -1;
-	xlat_async_instantiate_set(xlat, xlat_logical_instantiate, xlat_logical_inst_t, NULL, NULL);
-	xlat_print_set(xlat, xlat_expr_print_logical);
-	xlat_internal(xlat);
-	xlat->token = T_LOR;
+	XLAT_REGISTER_NARY_OP(T_LAND, logical_and, logical);
+	XLAT_REGISTER_NARY_OP(T_LOR, logical_or, logical);
 
 	/*
 	 *	-EXPR
