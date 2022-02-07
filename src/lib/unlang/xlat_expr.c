@@ -78,44 +78,6 @@ RCSID("$Id$")
  *	xlat resolve should also run callbacks for the expressions, which will do type checks on LHS / RHS.
  */
 
-#if 0
-/*
- *	@todo - Call this function for && / ||.  The casting rules for expressions / conditions are slightly
- *	different than fr_value_box_cast().  Largely because that function is used to parse configuration
- *	files, and parses "yes / no" and "true / false" strings, even if there's no fr_dict_attr_t passed to
- *	it.
- */
-static void cast_to_bool(fr_value_box_t *out, fr_value_box_t const *in)
-{
-	fr_value_box_init(out, FR_TYPE_BOOL, NULL, false);
-
-	switch (in->type) {
-	case FR_TYPE_BOOL:
-		out->vb_bool = in->vb_bool;
-		break;
-
-	case FR_TYPE_STRING:
-	case FR_TYPE_OCTETS:
-		out->vb_bool = (in->vb_length > 0);
-		break;
-
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV6_ADDR:
-		out->vb_bool = !fr_ipaddr_is_inaddr_any(&in->vb_ip);
-		break;
-
-	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_IPV6_PREFIX:
-		out->vb_bool = !((in->vb_ip.prefix == 0) && fr_ipaddr_is_inaddr_any(&in->vb_ip));
-		break;
-
-	default:
-		(void) fr_value_box_cast(NULL, out, FR_TYPE_BOOL, NULL, in);
-		break;
-	}
-}
-#endif
-
 #define xlat_is_box(_x) (((_x)->type == XLAT_BOX) || (((_x)->type == XLAT_TMPL) && tmpl_is_data((_x)->vpt)))
 static fr_value_box_t *xlat_box(xlat_exp_t *node)
 {
@@ -377,6 +339,45 @@ XLAT_BINARY_FUNC(cmp_le,  T_OP_LE)
 XLAT_BINARY_FUNC(cmp_gt,  T_OP_GT)
 XLAT_BINARY_FUNC(cmp_ge,  T_OP_GE)
 
+/*
+ *	Cast to bool for && / ||.  The casting rules for expressions /
+ *	conditions are slightly different than fr_value_box_cast().
+ *	Largely because that function is used to parse configuration
+ *	files, and parses "yes / no" and "true / false" strings, even
+ *	if there's no fr_dict_attr_t passed to it.
+ */
+static void cast_to_bool(bool *out, fr_value_box_t const *in)
+{
+	fr_value_box_t box;
+
+	switch (in->type) {
+	case FR_TYPE_BOOL:
+		*out = in->vb_bool;
+		break;
+
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+		*out = (in->vb_length > 0);
+		break;
+
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+		*out = !fr_ipaddr_is_inaddr_any(&in->vb_ip);
+		break;
+
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_PREFIX:
+		*out = !((in->vb_ip.prefix == 0) && fr_ipaddr_is_inaddr_any(&in->vb_ip));
+		break;
+
+	default:
+		fr_value_box_init_null(&box);
+		(void) fr_value_box_cast(NULL, &box, FR_TYPE_BOOL, NULL, in);
+		*out = box.vb_bool;
+		break;
+	}
+}
+
 typedef struct {
 	xlat_exp_t	*args;
 	bool		sense;
@@ -429,13 +430,43 @@ static int xlat_logical_instantiate(xlat_inst_ctx_t const *xctx)
 	return 0;
 }
 
+static bool xlat_logical_match(bool *out, fr_value_box_list_t *in, bool sense)
+{
+	/*
+	 *	Loop over the input list.  If the box is a group, then do this recursively.
+	 *
+	 *	Empty lists don't do anything.  They _should_ arguably be falsy?
+	 */
+	fr_value_box_foreach(in, box) {
+		if (fr_box_is_group(box)) {
+			if (!xlat_logical_match(out, &box->vb_group, sense)) return false;
+			continue;
+		}
+
+		cast_to_bool(out, box);
+
+		/*
+		 *	false -> false (for &&)
+		 *	true  -> true  (for ||)
+		 */
+		if (*out == sense) return false;
+	}
+
+	/*
+	 *	Keep going.
+	 */
+
+	return true;
+}
+
 static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 xlat_ctx_t const *xctx,
 					 request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	xlat_logical_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_logical_inst_t);
 	xlat_logical_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_logical_rctx_t);
-	fr_value_box_t		*dst, *vb;
+	fr_value_box_t		*dst;
+	bool			result = false;
 
 	/*
 	 *	If one of the expansions fails, then we fail the
@@ -447,56 +478,32 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	vb = fr_dlist_head(&rctx->list);
-
 	/*
-	 *	If it's a list, smash it to a boolean
-	 */
-	if ((fr_dlist_num_elements(&rctx->list) > 1) &&
-	    (fr_value_box_list_concat_in_place(ctx, vb, &rctx->list, FR_TYPE_BOOL,
-					       FR_VALUE_BOX_LIST_FREE, true,
-					       SIZE_MAX) < 0)) {
-		RPEDEBUG("Failed concatenating arguments");
-		goto fail;
-	}
-
-	/*
-	 *	If it's not a boolean, then smash it to a boolean,
-	 *	allocated in the working list ctx.
-	 */
-	if ((vb->type != FR_TYPE_BOOL) &&
-	    (fr_value_box_cast_in_place(rctx, vb, FR_TYPE_BOOL, NULL) < 0)) {
-		RPEDEBUG("Failed casting argument result");
-		return XLAT_ACTION_FAIL;
-	}
-
-	/*
-	 *	false -> false (for &&)
-	 *	true  -> true  (for ||)
-	 *	done -> whatever the last result was
+	 *	Recursively check groups.  i.e. we effectively flatten each list.
 	 *
-	 *	Allocate the output box in the output ctx.
+	 *	(a, b, c) || (d, e, f) == a || b || c || d || e || f
 	 */
-	if ((vb->vb_bool == inst->sense) || !rctx->current->next) {
+	if (!xlat_logical_match(&result, &rctx->list, inst->sense)) {
+	done:
 		MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
-		dst->vb_bool = vb->vb_bool;
+		dst->vb_bool = result;
 		fr_dcursor_append(out, dst);
 
 		talloc_free(rctx);
 		return XLAT_ACTION_DONE;
 	}
 
-	/*
-	 *	Free the box we don't need any more, and clear the list.
-	 */
-	talloc_free(vb);
-	fr_value_box_list_init(&rctx->list);
-
-	/*
-	 *	Go to the next one, and push the next xlat onto the stack.
-	 */
+	fr_dlist_talloc_free(&rctx->list);
 	rctx->current = rctx->current->next;
 
+	/*
+	 *	Nothing to expand, return the final value we saw.
+	 */
+	if (!rctx->current) goto done;
+
+	/*
+	 *	Push the xlat onto the stack for expansion.
+	 */
 	if (unlang_xlat_yield(request, xlat_logical_resume, NULL, rctx) != XLAT_ACTION_YIELD) goto fail;
 
 	if (unlang_xlat_push(rctx, &rctx->last_success, &rctx->list,
