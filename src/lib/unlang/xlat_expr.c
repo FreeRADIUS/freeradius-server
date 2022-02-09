@@ -738,7 +738,7 @@ static const int precedence[T_TOKEN_LAST] = {
 	[T_LAND]	= P(2,1),
 
 	[T_OR]		= P(3,0),
-	// ^ (3,1)
+	[T_XOR]		= P(3,1),
 	[T_AND]		= P(3,2),
 
 	[T_OP_CMP_EQ]	= P(4,0),
