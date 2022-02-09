@@ -238,6 +238,7 @@ static xlat_exp_t *xlat_groupify_node(TALLOC_CTX *ctx, xlat_exp_t *node)
 	xlat_exp_set_type(group, XLAT_GROUP);
 	group->quote = T_BARE_WORD;
 
+	group->fmt = node->fmt;	/* not entirely correct, but good enough for now */
 	group->child = talloc_steal(group, node);
 	group->flags = node->flags;
 
@@ -455,7 +456,6 @@ static bool xlat_logical_match(bool *out, fr_value_box_list_t *in, bool sense)
 	/*
 	 *	Keep going.
 	 */
-
 	return true;
 }
 
@@ -833,11 +833,13 @@ static ssize_t tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, UNUSED xlat_fl
 	 *	Check for, and skip, the trailing quote if we had a leading quote.
 	 */
 	if (!fr_sbuff_next_if_char(&our_in, quote)) {
+		talloc_free(node);
 		fr_strerror_printf("Regular expression does not edit with '%c'", quote);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	fr_assert(node->vpt != NULL);
+	node->fmt = node->vpt->name;
 
 	slen = tmpl_regex_flags_substr(node->vpt, &our_in, p_rules->terminals);
 	if (slen < 0) goto error;
@@ -1020,6 +1022,7 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 	}
 	node->vpt = vpt;
 	node->quote = quote;
+	node->fmt = vpt->name;
 
 	/*
 	 *	It would be nice if tmpl_afrom_substr() did this :(
@@ -1391,10 +1394,9 @@ redo:
 
 	/*
 	 *	Create the function node, with the LHS / RHS arguments.
-	 *
-	 *	@todo - node->fmt is NULL.  Do we care about it at all?
 	 */
 	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, fr_tokens[op], strlen(fr_tokens[op])));
+	node->fmt = fr_tokens[op];
 	node->call.func = func;
 	node->flags = func->flags;
 	node->child = lhs;
