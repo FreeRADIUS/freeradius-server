@@ -1246,12 +1246,22 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 			continue;
 
 		case XLAT_TMPL:
-			XLAT_DEBUG("** [%i] %s(attribute) - %%{%s}", unlang_interpret_stack_depth(request), __FUNCTION__,
-				   node->fmt);
+			if (tmpl_is_data(node->vpt)) {
+				XLAT_DEBUG("** [%i] %s(value) - %s", unlang_interpret_stack_depth(request), __FUNCTION__,
+					   node->vpt->name);
 
-			xlat_debug_log_expansion(request, node, NULL);
+				MEM(value = fr_value_box_alloc(ctx, tmpl_value_type(node->vpt), NULL,
+							       tmpl_value(node->vpt)->tainted));
 
-			if (xlat_eval_pair_real(ctx, &result, request, node->vpt) == XLAT_ACTION_FAIL) goto fail;
+				fr_value_box_copy(value, value, tmpl_value(node->vpt));	/* Also dups taint */
+				fr_dlist_insert_tail(&result, value);
+			} else {
+				XLAT_DEBUG("** [%i] %s(attribute) - %%{%s}", unlang_interpret_stack_depth(request), __FUNCTION__,
+					   node->fmt);
+				xlat_debug_log_expansion(request, node, NULL);
+
+				if (xlat_eval_pair_real(ctx, &result, request, node->vpt) == XLAT_ACTION_FAIL) goto fail;
+			}
 
 			xlat_debug_log_list_result(request, &result);
 			fr_dlist_move(out->dlist, &result);
