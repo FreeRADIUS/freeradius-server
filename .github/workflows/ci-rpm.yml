@@ -73,6 +73,22 @@ jobs:
 
     steps:
 
+    #
+    # Centos 8 is EOL, so we need the below tricks to get it to work.
+    #
+    # Converting from CentOS Linux 8 to CentOS Stream 8 is the "official" process
+    # (see centos.org/centos-stream/#centos-stream-8):
+    #
+    - name: Some hacks for CentOS 8 (EOL) to work again.
+      if: ${{ matrix.env.NAME == 'centos-8' }}
+      run: |
+        sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
+        sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
+        yum upgrade -y
+        yum -y --disablerepo '*' --enablerepo extras swap centos-linux-repos centos-stream-repos
+        yum clean all && yum makecache
+        yum distro-sync -y --allowerasing
+
     # Required so that the checkout action uses git protocol rather than the GitHub REST API.
     # make rpm requires the FR directory to be a git repository.
     - name: Install recent git for CentOS 7
@@ -128,6 +144,12 @@ jobs:
       run: |
         yum config-manager --enable PowerTools || :
         yum config-manager --enable powertools || :
+
+    # For pkill
+    - name: Enable procps-ng on Fedora and Centos 8
+      if: ${{ startsWith(matrix.env.NAME, 'fedora-') || startsWith(matrix.env.NAME, 'centos-8') }}
+      run: |
+        yum install -y procps-ng
 
     #
     #  We just patch the SPEC file for Fedora since we want to use the standard
@@ -218,6 +240,22 @@ jobs:
 
     steps:
 
+    #
+    # Centos 8 is EOL, so we need the below tricks to get it to work.
+    #
+    # Converting from CentOS Linux 8 to CentOS Stream 8 is the "official" process
+    # (see centos.org/centos-stream/#centos-stream-8):
+    #
+    - name: Some hacks for CentOS 8 (EOL) to work again.
+      if: ${{ matrix.env.NAME == 'centos-8' }}
+      run: |
+        sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
+        sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
+        yum upgrade -y
+        yum -y --disablerepo '*' --enablerepo extras swap centos-linux-repos centos-stream-repos
+        yum clean all && yum makecache
+        yum distro-sync -y --allowerasing
+
     - name: Set up NetworkRADIUS extras repository
       run: |
         echo '[networkradius-extras]'                                                               >  /etc/yum.repos.d/networkradius-extras.repo
@@ -249,8 +287,8 @@ jobs:
         yum config-manager --enable powertools || :
 
     # For pkill
-    - name: Enable procps-ng on Fedora
-      if: ${{ startsWith(matrix.env.NAME, 'fedora-') }}
+    - name: Enable procps-ng on Fedora and Centos 8
+      if: ${{ startsWith(matrix.env.NAME, 'fedora-') || startsWith(matrix.env.NAME, 'centos-8') }}
       run: |
         yum install -y procps-ng
 
