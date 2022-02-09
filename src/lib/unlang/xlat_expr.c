@@ -513,7 +513,7 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 
-static xlat_action_t xlat_func_logical(TALLOC_CTX *ctx, fr_dcursor_t *out,
+static xlat_action_t xlat_func_logical(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 				       xlat_ctx_t const *xctx,
 				       request_t *request, UNUSED fr_value_box_list_t *in)
 {
@@ -530,7 +530,7 @@ static xlat_action_t xlat_func_logical(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (unlang_xlat_push(ctx, &rctx->last_success, out->dlist,
+	if (unlang_xlat_push(ctx, &rctx->last_success, &rctx->list,
 			     request, rctx->current, UNLANG_SUB_FRAME) < 0) goto fail;
 
 	return XLAT_ACTION_PUSH_UNLANG;
