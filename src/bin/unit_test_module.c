@@ -413,6 +413,50 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 		}
 
 		/*
+		 *	Look for "xlat_expr"
+		 */
+		if (strncmp(input, "xlat_expr ", 10) == 0) {
+			ssize_t			slen;
+			TALLOC_CTX		*xlat_ctx = talloc_init_const("xlat");
+			char			*fmt = talloc_typed_strdup(xlat_ctx, input + 10);
+			xlat_exp_t		*head = NULL;
+
+			slen = xlat_tokenize_ephemeral_expression(xlat_ctx, &head, el, NULL,
+								  &FR_SBUFF_IN(fmt, talloc_array_length(fmt) - 1),
+								  NULL,
+								  &(tmpl_rules_t) {
+									  .attr = {
+										  .dict_def = dict_protocol,
+										  .allow_unresolved = true,
+									  }
+										  }
+								);
+			if (slen <= 0) {
+				talloc_free(xlat_ctx);
+				snprintf(output, sizeof(output), "ERROR offset %d '%s'", (int) -slen,
+					 fr_strerror());
+				continue;
+			}
+
+			if (input[slen + 10] != '\0') {
+				talloc_free(xlat_ctx);
+				snprintf(output, sizeof(output), "ERROR offset %d Unexpected text '%s' after parsing",
+					 (int) slen, input + slen + 10);
+				continue;
+			}
+
+			len = xlat_eval_compiled(output, sizeof(output), request, head, NULL, NULL);
+			if (len < 0) {
+				talloc_free(xlat_ctx);
+				snprintf(output, sizeof(output), "ERROR expanding xlat: %s", fr_strerror());
+				continue;
+			}
+
+			TALLOC_FREE(xlat_ctx); /* also frees 'head' */
+			continue;
+		}
+
+		/*
 		 *	Look for "data".
 		 */
 		if (strncmp(input, "data ", 5) == 0) {

@@ -1456,8 +1456,8 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 	ssize_t slen;
 	fr_sbuff_parse_rules_t *bracket_rules = NULL;
 	fr_sbuff_parse_rules_t *terminal_rules = NULL;
-	xlat_flags_t my_flags = { 0 };
-	tmpl_rules_t my_rules = { 0 };
+	xlat_flags_t my_flags = { };
+	tmpl_rules_t my_rules = { };
 
 	/*
 	 *	Whatever the caller passes, ensure that we have a
@@ -1495,13 +1495,113 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
 
-	if (slen <= 0) return slen;
+	if (slen < 0) return slen;
+
+	/*
+	 *	Zero length expansion, return a zero length node.
+	 */
+	if (!*head) {
+		*head = xlat_exp_alloc(ctx, XLAT_BOX, "", 0);
+		return 0;
+	}
 
 	/*
 	 *	Add nodes that need to be bootstrapped to
 	 *	the registry.
+	 *
+	 *	@todo - can't do this for ephemeral ones!
 	 */
 	if (xlat_bootstrap(*head) < 0) {
+		TALLOC_FREE(*head);
+		return 0;
+	}
+
+	return slen;
+}
+
+/** Tokenize an xlat expression at runtime
+ *
+ * This function is only for testing.  It should be deleted when
+ * expressions are integrated into the main xlat parser.
+ *
+ * @param[in] ctx	to allocate dynamic buffers in.
+ * @param[out] head	the head of the xlat list / tree structure.
+ * @param[in] el	for registering any I/O handlers.
+ * @param[out] flags	indicating the state of the ephemeral tree.
+ * @param[in] in	the format string to expand.
+ * @param[in] p_rules	from the encompassing grammar.
+ * @param[in] t_rules	controlling how attribute references are parsed.
+ * @return
+ *	- >0 on success.
+ *	- 0 and *head == NULL - Parse failure on first char.
+ *	- 0 and *head != NULL - Zero length expansion
+ *	- <0 the negative offset of the parse failure.
+ */
+ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_t **head,
+					   fr_event_list_t *el,
+					   xlat_flags_t *flags, fr_sbuff_t *in,
+					   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
+{
+	ssize_t slen;
+	fr_sbuff_parse_rules_t *bracket_rules = NULL;
+	fr_sbuff_parse_rules_t *terminal_rules = NULL;
+	xlat_flags_t my_flags = { };
+	tmpl_rules_t my_rules = { };
+
+	/*
+	 *	Whatever the caller passes, ensure that we have a
+	 *	terminal rule which ends on operators, and a terminal
+	 *	rule which ends on ')'.
+	 */
+	MEM(bracket_rules = talloc_zero(ctx, fr_sbuff_parse_rules_t));
+	MEM(terminal_rules = talloc_zero(ctx, fr_sbuff_parse_rules_t));
+	if (p_rules) {
+		*bracket_rules = *p_rules;
+		*terminal_rules = *p_rules;
+
+		if (p_rules->terminals) {
+			MEM(terminal_rules->terminals = fr_sbuff_terminals_amerge(bracket_rules,
+										  p_rules->terminals,
+										  &operator_terms));
+		} else {
+			terminal_rules->terminals = &operator_terms;
+		}
+	} else {
+		terminal_rules->terminals = &operator_terms;
+	}
+	MEM(bracket_rules->terminals = fr_sbuff_terminals_amerge(bracket_rules,
+								 terminal_rules->terminals,
+								 &bracket_terms));
+
+	if (!flags) flags = &my_flags;
+
+	if (t_rules) {
+		my_rules = *t_rules;
+	}
+	my_rules.xlat.runtime_el = el;
+
+	*head = NULL;
+
+	slen = tokenize_expression(ctx, head, flags, in, terminal_rules, t_rules, T_INVALID, FR_TYPE_NULL,
+				   bracket_rules, NULL);
+	talloc_free(bracket_rules);
+	talloc_free(terminal_rules);
+
+	if (slen < 0) return slen;
+
+	/*
+	 *	Zero length expansion, return a zero length node.
+	 */
+	if (!*head) {
+		*head = xlat_exp_alloc(ctx, XLAT_BOX, "", 0);
+		return 0;
+	}
+
+	/*
+	 *	Create ephemeral instance data for the xlat
+	 */
+	if (xlat_instantiate_ephemeral(*head, el) < 0) {
+		fr_strerror_const("Failed performing ephemeral instantiation for xlat");
 		TALLOC_FREE(*head);
 		return 0;
 	}
