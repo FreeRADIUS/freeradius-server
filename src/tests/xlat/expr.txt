@@ -1,0 +1,5 @@
+xlat_expr 1 && 2
+match yes
+
+#xlat_expr 1 < 2
+#match yes

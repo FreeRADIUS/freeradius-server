@@ -457,12 +457,12 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 		}
 
 		/*
-		 *	Look for "data".
+		 *	Look for "match".
 		 */
-		if (strncmp(input, "data ", 5) == 0) {
-			if (strcmp(input + 5, output) != 0) {
+		if (strncmp(input, "match ", 6) == 0) {
+			if (strcmp(input + 6, output) != 0) {
 				fprintf(stderr, "Mismatch at line %d of %s\n\tgot      : %s\n\texpected : %s\n",
-					lineno, filename, output, input + 5);
+					lineno, filename, output, input + 6);
 				TALLOC_FREE(request);
 				return false;
 			}
