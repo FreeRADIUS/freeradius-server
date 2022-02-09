@@ -31,9 +31,9 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "centos-7", "OS": "centos:7", "DIST": "centos"              },
-              { "NAME": "centos-8", "OS": "centos:8", "DIST": "centos"              },
-              { "NAME": "rocky-8", "OS": "rockylinux/rockylinux:8", "DIST": "rocky" }
+              { "NAME": "centos-7", "OS": "centos:7",                "DIST": "centos" },
+              { "NAME": "centos-8", "OS": "centos:8",                "DIST": "centos" },
+              { "NAME": "rocky-8",  "OS": "rockylinux/rockylinux:8", "DIST": "rocky"  }
             ]
           }
         EOF
@@ -42,7 +42,8 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "centos-8", "OS": "centos:8", "DIST": "centos"             },
+              { "NAME": "centos-8", "OS": "centos:8",                "DIST": "centos" },
+              { "NAME": "rocky-8",  "OS": "rockylinux/rockylinux:8", "DIST": "rocky"  }
             ]
           }
         EOF
@@ -147,7 +148,7 @@ jobs:
 
     # For pkill
     - name: Enable procps-ng on Fedora and Centos 8
-      if: ${{ startsWith(matrix.env.NAME, 'fedora-') || startsWith(matrix.env.NAME, 'centos-8') }}
+      if: ${{ startsWith(matrix.env.NAME, 'fedora-') || startsWith(matrix.env.NAME, 'rocky-8') || startsWith(matrix.env.NAME, 'centos-8') }}
       run: |
         yum install -y procps-ng
 
@@ -288,7 +289,7 @@ jobs:
 
     # For pkill
     - name: Enable procps-ng on Fedora and Centos 8
-      if: ${{ startsWith(matrix.env.NAME, 'fedora-') || startsWith(matrix.env.NAME, 'centos-8') }}
+      if: ${{ startsWith(matrix.env.NAME, 'fedora-') || startsWith(matrix.env.NAME, 'rocky-8') || startsWith(matrix.env.NAME, 'centos-8') }}
       run: |
         yum install -y procps-ng
 
