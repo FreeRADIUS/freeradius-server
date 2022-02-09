@@ -283,7 +283,7 @@ static xlat_arg_parser_t const binary_op_xlat_args[] = {
 
 static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    UNUSED xlat_ctx_t const *xctx,
-				    UNUSED request_t *request, fr_value_box_list_t *in,
+				    request_t *request, fr_value_box_list_t *in,
 				    fr_token_t op)
 {
 	int rcode;
@@ -292,10 +292,7 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	MEM(dst = fr_value_box_alloc_null(ctx));
 
 	/*
-	 *	@todo - A and B must be FR_TYPE_GROUP, and the actual values are inside them.
-	 *
-	 *	This means... what, exactly?  If the types are addition / substraction, etc., then do operate
-	 *	on each list member?  If the types are comparison, do we do the same?
+	 *	Each argument is a FR_TYPE_GROUP, with one or more elements in a list.
 	 */
 	a = fr_dlist_head(in);
 	b = fr_dlist_next(in, a);
@@ -307,7 +304,24 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(b != NULL);
 #endif
 
-	rcode = fr_value_calc_binary_op(dst, dst, FR_TYPE_NULL, a, op, b);
+	fr_assert(a->type == FR_TYPE_GROUP);
+	if (fr_dlist_num_elements(&a->vb_group) != 1) {
+		REDEBUG("Expected one value as the first argument, got %d",
+			fr_dlist_num_elements(&a->vb_group));
+		return XLAT_ACTION_FAIL;
+	}
+
+
+	if (fr_dlist_num_elements(&b->vb_group) != 1) {
+		REDEBUG("Expected one value as the second argument, got %d",
+			fr_dlist_num_elements(&b->vb_group));
+		return XLAT_ACTION_FAIL;
+	}
+
+	rcode = fr_value_calc_binary_op(dst, dst, FR_TYPE_NULL,
+					fr_dlist_head(&a->vb_group),
+					op,
+					fr_dlist_head(&b->vb_group));
 	if (rcode < 0) {
 		talloc_free(dst);
 		return XLAT_ACTION_FAIL;
