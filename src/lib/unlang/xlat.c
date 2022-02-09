@@ -411,6 +411,7 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
 		return UNLANG_ACTION_YIELD;
 
 	case XLAT_ACTION_DONE:
+		if (state->success) *state->success = true;
 		*p_result = RLM_MODULE_OK;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 
@@ -423,6 +424,7 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
 		FALL_THROUGH;
 
 	case XLAT_ACTION_FAIL:
+		if (state->success) *state->success = false;
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	/* DON'T SET DEFAULT */
