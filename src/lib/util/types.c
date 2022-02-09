@@ -467,24 +467,7 @@ static fr_type_t type_promote_table[FR_TYPE_MAX][FR_TYPE_MAX] = {
  */
 fr_type_t fr_type_promote(fr_type_t a, fr_type_t b)
 {
-	/*
-	 *	Invalid types
-	 */
-	switch (a) {
-	case FR_TYPE_NON_LEAF:
-		return FR_TYPE_NULL;
-
-	default:
-		break;
-	}
-
-	switch (b) {
-	case FR_TYPE_NON_LEAF:
-		return FR_TYPE_NULL;
-
-	default:
-		break;
-	}
+	if (!fr_type_is_leaf(a) || (fr_type_is_leaf(b))) return FR_TYPE_NULL;
 
 	if (a == b) return a;
 
