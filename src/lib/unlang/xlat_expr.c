@@ -518,8 +518,9 @@ static xlat_action_t xlat_func_logical(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	xlat_logical_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_logical_inst_t);
-	xlat_logical_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_logical_rctx_t);
+	xlat_logical_rctx_t	*rctx;
 
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_logical_rctx_t));
 	rctx->current = inst->args;
 	fr_value_box_list_init(&rctx->list);
 
