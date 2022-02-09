@@ -330,7 +330,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 		}
 
 		if (!attr[1]) {
-			fr_strerror_printf("EAP-Sim attribute %d (no.%d) has no data", eapsim_attribute,
+			fr_strerror_printf("EAP-Sim attribute %d (no.%d) has no data", attr[0],
 					   es_attribute_count);
 			return 0;
 		}
