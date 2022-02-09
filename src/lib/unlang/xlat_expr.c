@@ -869,6 +869,8 @@ static ssize_t tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, UNUSED xlat_fl
 	}
 
 	*head = node;
+	xlat_flags_merge(flags, &node->flags);
+
 	return fr_sbuff_used(&our_in);
 }
 #endif
@@ -1098,6 +1100,8 @@ done:
 
 	fr_assert(node != NULL);
 	*head = node;
+	xlat_flags_merge(flags, &node->flags);
+
 	return fr_sbuff_set(in, &our_in);
 }
 
