@@ -1130,7 +1130,7 @@ static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
 				   fr_token_t prev, fr_type_t type, fr_sbuff_parse_rules_t const *bracket_rules,
 				   fr_dict_attr_t const *da)
 {
-	xlat_exp_t	*lhs, *rhs = NULL, *node;
+	xlat_exp_t	*lhs = NULL, *rhs = NULL, *node;
 	xlat_t		*func = NULL;
 	fr_token_t	op;
 	ssize_t		slen;
