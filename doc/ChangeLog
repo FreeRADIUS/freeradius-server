@@ -1,10 +1,10 @@
 FreeRADIUS 3.2.0 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	Configuration changes
 	* "correct_escapes" has been removed, and is always set to "true"
-	  internally. Configuration changess ay be required if you are
-	  using configurations from before 3.0.5.  Otherwise, 3.2.x is
-	  compatible with 3.0.x, and configurations from 3.0.x can be used
-	  without change in a 3.2.x system.
+	  internally. Configuration changes may be required if you are
+	  using configurations from before 3.0.5.  Other than this
+	  difference, 3.2.x is compatible with 3.0.x, and configurations
+	  from 3.0.x can be simply copied into a system running 3.2.x.
 
 	Feature improvements
 	* Add 'reset_day' and '%%r' parameter for rlm_sqlcounter to specify which
