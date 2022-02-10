@@ -90,15 +90,7 @@ size_t fr_type_table_len = NUM_ELEMENTS(fr_type_table);
 bool const fr_type_integer_except_bool[FR_TYPE_MAX + 1] = FR_TYPE_INTEGER_EXCEPT_BOOL_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
 bool const fr_type_integer[FR_TYPE_MAX + 1] = FR_TYPE_INTEGER_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
 bool const fr_type_numeric[FR_TYPE_MAX + 1] = FR_TYPE_NUMERIC_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
-
-#ifdef __clang__
-#pragma clang diagnostic ignored "-Wgnu-designator"
-#endif
-bool const fr_type_signed[FR_TYPE_MAX + 1] = { [ FR_TYPE_INT8 ... FR_TYPE_INT64] = true,
-					       [FR_TYPE_TIME_DELTA] = true,
-					       [FR_TYPE_FLOAT64] = true,
-					       [FR_TYPE_FLOAT32] = true
-};
+bool const fr_type_signed[FR_TYPE_MAX + 1] = FR_TYPE_SIGNED_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
 
 bool const fr_type_ip[FR_TYPE_MAX + 1] = FR_TYPE_IP_DEF(ARRAY_BEG, ARRAY_MID, ARRAY_END);
 

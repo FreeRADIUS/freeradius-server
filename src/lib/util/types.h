@@ -121,6 +121,21 @@ typedef enum {
 	_beg(FR_TYPE_BOOL) \
 	FR_TYPE_INTEGER_EXCEPT_BOOL_DEF(_mid, _mid, _end)
 
+/** Signed values
+ *
+ * - Int8, 16, 32, 64
+ * - Deltas
+ * - Floats
+ */
+#define FR_TYPE_SIGNED_DEF(_beg, _mid, _end) \
+	_beg(FR_TYPE_INT8) \
+	_mid(FR_TYPE_INT16) \
+	_mid(FR_TYPE_INT32) \
+	_mid(FR_TYPE_INT64) \
+	_mid(FR_TYPE_TIME_DELTA) \
+	_mid(FR_TYPE_FLOAT32) \
+	_end(FR_TYPE_FLOAT64)
+
 /** Naturally numeric types
  *
  * - Integers
@@ -253,6 +268,7 @@ typedef enum {
 
 #define FR_TYPE_INTEGER_EXCEPT_BOOL		FR_TYPE_INTEGER_EXCEPT_BOOL_DEF(CASE_BEG, CASE_MID, CASE_END)
 #define FR_TYPE_INTEGER				FR_TYPE_INTEGER_DEF(CASE_BEG, CASE_MID, CASE_END)
+#define FR_TYPE_SIGNED				FR_TYPE_SIGNED_DEF(CASE_BEG, CASE_MID, CASE_END)
 #define FR_TYPE_NUMERIC				FR_TYPE_NUMERIC_DEF(CASE_BEG, CASE_MID, CASE_END)
 
 #define FR_TYPE_IP				FR_TYPE_IP_DEF(CASE_BEG, CASE_MID, CASE_END)
