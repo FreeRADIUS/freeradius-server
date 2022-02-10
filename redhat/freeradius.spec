@@ -608,7 +608,6 @@ fi
 %{_libdir}/freeradius/rlm_cache_rbtree.so
 %{_libdir}/freeradius/rlm_chap.so
 %{_libdir}/freeradius/rlm_counter.so
-%{_libdir}/freeradius/rlm_cram.so
 %{_libdir}/freeradius/rlm_date.so
 %{_libdir}/freeradius/rlm_detail.so
 %{_libdir}/freeradius/rlm_dhcp.so
@@ -631,7 +630,6 @@ fi
 %{_libdir}/freeradius/rlm_linelog.so
 %{_libdir}/freeradius/rlm_logintime.so
 %{_libdir}/freeradius/rlm_mschap.so
-%{_libdir}/freeradius/rlm_otp.so
 %{_libdir}/freeradius/rlm_pam.so
 %{_libdir}/freeradius/rlm_pap.so
 %{_libdir}/freeradius/rlm_passwd.so
