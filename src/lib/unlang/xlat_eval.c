@@ -1401,7 +1401,6 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 	case RLM_MODULE_REJECT:
 	case RLM_MODULE_FAIL:
 	eval_failed:
-		RPEDEBUG("xlat evaluation failed");
 		talloc_free(pool);
 		return -1;
 	}
@@ -1444,7 +1443,6 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 
 		str = fr_value_box_list_aprint(ctx, &result, NULL, NULL);
 		if (!str) {
-			RPEDEBUG("Failed concatenating xlat result string");
 			talloc_free(pool);
 			goto error;
 		}
