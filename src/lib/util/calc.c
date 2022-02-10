@@ -1502,6 +1502,19 @@ static int calc_integer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t con
 	}
 
 	/*
+	 *	We don't do upcasts on shifting.
+	 *
+	 *	@todo - on left shift, if the RHS shift value is
+	 *	larger than the LHS data type, then promote the result
+	 *	data type to the next thing which will fit.
+	 */
+	if ((op == T_RSHIFT) || (op == T_LSHIFT)) {
+		type = a->type;
+		fr_assert(b->type == FR_TYPE_UINT32);
+		goto calc_it;
+	}
+
+	/*
 	 *	Upcast to the largest type which will handle the
 	 *	calculations.
 	 *
@@ -1550,6 +1563,7 @@ static int calc_integer(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t con
 	 *	Apparently putting the function pointer into an
 	 *	intermediate variable shuts it up.
 	 */
+calc_it:
 	calc = calc_integer_type[type];
 	if (!calc) return invalid_type(type);
 
