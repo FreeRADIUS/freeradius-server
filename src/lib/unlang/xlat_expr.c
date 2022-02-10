@@ -1423,8 +1423,12 @@ redo:
 	node->fmt = fr_tokens[op];
 	node->call.func = func;
 	node->flags = func->flags;
-	node->child = lhs;
-	lhs->next = rhs;
+
+	node->child = xlat_groupify_node(node, lhs);
+	node->child->flags = lhs->flags;
+
+	node->child->next = xlat_groupify_node(node, rhs);
+	node->child->next->flags = rhs->flags;
 
 	xlat_flags_merge(&node->flags, &lhs->flags);
 	xlat_flags_merge(&node->flags, &rhs->flags);
