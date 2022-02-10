@@ -1174,7 +1174,11 @@ static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
 	if (slen <= 0) return slen;
 
 redo:
+#ifdef __clang_analyzer__
+	if (!lhs) return 0;	/* shut up stupid analyzer */
+#else
 	fr_assert(lhs != NULL);
+#endif
 
 	fr_sbuff_skip_whitespace(&our_in);
 
