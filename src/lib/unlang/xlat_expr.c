@@ -1610,7 +1610,7 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_t **head,
 
 	*head = NULL;
 
-	slen = tokenize_expression(ctx, head, flags, in, terminal_rules, t_rules, T_INVALID, FR_TYPE_NULL,
+	slen = tokenize_expression(ctx, head, flags, in, terminal_rules, &my_rules, T_INVALID, FR_TYPE_NULL,
 				   bracket_rules, NULL);
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
