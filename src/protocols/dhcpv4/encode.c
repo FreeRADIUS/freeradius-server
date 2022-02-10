@@ -75,7 +75,7 @@ static ssize_t encode_value_trampoline(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
-			    fr_dcursor_t *cursor, UNUSED fr_dhcpv4_ctx_t *encode_ctx)
+			    fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx)
 {
 	fr_pair_t	*vp = fr_dcursor_current(cursor);
 	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);

@@ -808,7 +808,7 @@ static fr_table_num_sorted_t const expr_quote_table[] = {
 static size_t expr_quote_table_len = NUM_ELEMENTS(expr_quote_table);
 
 #ifdef HAVE_REGEX
-static ssize_t tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, UNUSED xlat_flags_t *flags, fr_sbuff_t *in,
+static ssize_t tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	ssize_t		slen;
