@@ -273,6 +273,7 @@ typedef enum {
  */
 extern bool const fr_type_integer_except_bool[FR_TYPE_MAX + 1];
 extern bool const fr_type_integer[FR_TYPE_MAX + 1];
+extern bool const fr_type_signed[FR_TYPE_MAX + 1];
 extern bool const fr_type_numeric[FR_TYPE_MAX + 1];
 
 extern bool const fr_type_ip[FR_TYPE_MAX + 1];
@@ -327,6 +328,7 @@ extern bool const fr_type_non_leaf[FR_TYPE_MAX + 1];
 #define fr_type_is_integer_except_bool(_x)	(fr_type_integer_except_bool[_x])
 #define fr_type_is_integer(_x)			(fr_type_integer[_x])
 #define fr_type_is_numeric(_x)			(fr_type_numeric[_x])
+#define fr_type_is_signed(_x)			(fr_type_signed[_x])
 
 #define fr_type_is_ip(_x)			(fr_type_ip[_x])
 
