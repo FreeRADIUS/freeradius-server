@@ -2,7 +2,7 @@ cache eap_aka_cache {
 	#
 	#  key:: Cache key.
 	#
-	key = "%{Session-ID}"
+	key = "%{eap-aka-sim.Session-ID}"
 
 	#
 	#  ttl:: TTL for cache entries.
