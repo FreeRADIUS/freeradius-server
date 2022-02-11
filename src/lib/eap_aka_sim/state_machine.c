@@ -3483,8 +3483,9 @@ RESUME(recv_common_identity_response)
 	}
 
 	/*
-	 *	We always start by requesting any ID
-	 *	initially as we can always negotiate down.
+	 *	Unless the user has told us otherwise We always
+	 *	start by requesting any ID initially as we can
+	 *	always negotiate down.
 	 */
 	if (!identity_req_set_by_user(request, eap_aka_sim_session)) {
 		if (unlang_interpret_stack_result(request) == RLM_MODULE_NOTFOUND) {
@@ -3502,11 +3503,25 @@ RESUME(recv_common_identity_response)
 	}
 
 	/*
+	 *	For EAP-SIM we _always_ request an identity
+	 *	because the state machine requires us to send
+	 *	an EAP-SIM-START packet.  EAP-AKA and EAP-AKA'
+	 *	don't have this requirement.
+	 */
+	if ((eap_aka_sim_session->type == FR_EAP_METHOD_SIM) &&
+	    (eap_aka_sim_session->id_req == AKA_SIM_NO_ID_REQ)) eap_aka_sim_session->id_req = AKA_SIM_ANY_ID_REQ;
+
+	/*
 	 *	User may want us to always request an identity
 	 *	initially.  The RFCs says this is also the
 	 *	better way to operate, as the supplicant
 	 *	can 'decorate' the identity in the identity
 	 *	response.
+	 *
+	 *	For EAP-AKA/EAP-AKA' unless we've been configured
+	 *	to always request the identity or it was set
+	 *	dynamically, we can save a round of EAP and just
+	 *	jump straight into the challenge.
 	 */
 	if (eap_aka_sim_session->id_req != AKA_SIM_NO_ID_REQ) return STATE_TRANSITION(common_identity);
 
