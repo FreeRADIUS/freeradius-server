@@ -33,15 +33,16 @@
 fr_table_num_sorted_t const fr_aka_sim_id_request_table[] = {
 	{ L("Any-Id-Req"),		AKA_SIM_ANY_ID_REQ		},
 	{ L("FullAuth-Id-Req"),		AKA_SIM_FULLAUTH_ID_REQ		},
+	{ L("Init"),			AKA_SIM_INIT_ID_REQ		},
+	{ L("Permanent-Id-Req"),	AKA_SIM_PERMANENT_ID_REQ	},
 	{ L("no"),			AKA_SIM_NO_ID_REQ		},	/* Used for config parsing */
 	{ L("none"),			AKA_SIM_NO_ID_REQ		},
-	{ L("Permanent-Id-Req"),	AKA_SIM_PERMANENT_ID_REQ	},
 };
 size_t fr_aka_sim_id_request_table_len = NUM_ELEMENTS(fr_aka_sim_id_request_table);
 
 fr_table_num_sorted_t const fr_aka_sim_id_method_table[] = {
-	{ L("AKA'"),			AKA_SIM_METHOD_HINT_AKA_PRIME	},
 	{ L("AKA"),			AKA_SIM_METHOD_HINT_AKA		},
+	{ L("AKA'"),			AKA_SIM_METHOD_HINT_AKA_PRIME	},
 	{ L("SIM"),			AKA_SIM_METHOD_HINT_SIM		},
 };
 size_t fr_aka_sim_id_method_table_len = NUM_ELEMENTS(fr_aka_sim_id_method_table);

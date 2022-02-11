@@ -226,6 +226,12 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->type = FR_EAP_METHOD_SIM;
 
+	/*
+	 *	This isn't allowed, so just munge
+	 *	it to no id request.
+	 */
+	if (inst->request_identity == AKA_SIM_INIT_ID_REQ) inst->request_identity = AKA_SIM_NO_ID_REQ;
+
 	return 0;
 }
 

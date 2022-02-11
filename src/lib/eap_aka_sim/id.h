@@ -75,7 +75,8 @@ typedef enum {
 /** Identity request types
  */
 typedef enum {
-	AKA_SIM_NO_ID_REQ = 0,			//!< We're not requesting any ID.
+	AKA_SIM_INIT_ID_REQ = 0,		//!< We've requested no ID.  This is used for last_id_req.
+	AKA_SIM_NO_ID_REQ,			//!< We're not requesting any ID.
 	AKA_SIM_ANY_ID_REQ,			//!< Request IMSI, Pseudonym or Fast-reauth.
 	AKA_SIM_FULLAUTH_ID_REQ,		//!< Request IMSI or Pseudonym.
 	AKA_SIM_PERMANENT_ID_REQ,		//!< Request IMSI.

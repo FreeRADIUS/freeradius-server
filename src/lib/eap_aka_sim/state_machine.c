@@ -351,8 +351,23 @@ static int identity_req_pairs_add(request_t *request, eap_aka_sim_session_t *eap
 	fr_pair_t *vp;
 
 	switch (eap_aka_sim_session->id_req) {
-	case AKA_SIM_ANY_ID_REQ:
-		if (eap_aka_sim_session->last_id_req != AKA_SIM_NO_ID_REQ) {
+	/*
+	 *	This is allowed for EAP-SIM.
+	 *
+	 *	The EAP-SIM-Start packet gets used both for "version negotiation" and
+	 *	for request identities, so for EAP-SIM it's perfectly acceptable
+	 *	to send four Sim-Start packets:
+	 *
+	 *	- No ID
+	 *	- Any ID
+	 *	- Fullauth ID
+	 *	- Permanent ID
+	 *
+	 *	We need to represent the starting state as separate from no id req,
+	 *	so that we can catch potential loops in the identity statate machine
+	 */
+	case AKA_SIM_NO_ID_REQ:
+		if (eap_aka_sim_session->last_id_req != AKA_SIM_INIT_ID_REQ) {
 		id_out_of_order:
 			REDEBUG("Cannot send %s, already sent %s",
 				fr_table_str_by_value(fr_aka_sim_id_request_table,
@@ -361,12 +376,24 @@ static int identity_req_pairs_add(request_t *request, eap_aka_sim_session_t *eap
 						      eap_aka_sim_session->last_id_req, "<INVALID>"));
 			return -1;
 		}
+		break;
+
+	case AKA_SIM_ANY_ID_REQ:
+		switch (eap_aka_sim_session->last_id_req) {
+		case AKA_SIM_INIT_ID_REQ:
+		case AKA_SIM_NO_ID_REQ:
+			break;
+
+		default:
+			goto id_out_of_order;
+		}
 		MEM(pair_append_reply(&vp, attr_eap_aka_sim_any_id_req) >= 0);
 		vp->vp_bool = true;
 		break;
 
 	case AKA_SIM_FULLAUTH_ID_REQ:
 		switch (eap_aka_sim_session->last_id_req) {
+		case AKA_SIM_INIT_ID_REQ:
 		case AKA_SIM_NO_ID_REQ:		/* Not sent anything before */
 		case AKA_SIM_ANY_ID_REQ:	/* Last request was for any ID, but the re-auth ID was bad */
 			break;
@@ -380,6 +407,7 @@ static int identity_req_pairs_add(request_t *request, eap_aka_sim_session_t *eap
 
 	case AKA_SIM_PERMANENT_ID_REQ:
 		switch (eap_aka_sim_session->last_id_req) {
+		case AKA_SIM_INIT_ID_REQ:
 		case AKA_SIM_NO_ID_REQ:		/* Not sent anything before */
 		case AKA_SIM_ANY_ID_REQ:	/* Last request was for any ID, but the re-auth ID was bad */
 		case AKA_SIM_FULLAUTH_ID_REQ:	/* ...didn't understand the pseudonym either */
@@ -1792,6 +1820,7 @@ static unlang_action_t common_reauthentication_request_compose(rlm_rcode_t *p_re
 			 *	If this is the *true* reauth ID, then
 			 *	there's no point in setting AKA_SIM_ANY_ID_REQ.
 			 */
+			case AKA_SIM_INIT_ID_REQ:
 			case AKA_SIM_NO_ID_REQ:
 			case AKA_SIM_ANY_ID_REQ:
 				RDEBUG2("Composing EAP-Request/Reauthentication failed.  Clearing reply attributes and "
@@ -1897,6 +1926,7 @@ RESUME(send_common_reauthentication_request)
 		 *	If this is the *true* reauth ID, then
 		 *	there's no point in setting AKA_SIM_ANY_ID_REQ.
 		 */
+		case AKA_SIM_INIT_ID_REQ:
 		case AKA_SIM_NO_ID_REQ:
 		case AKA_SIM_ANY_ID_REQ:
 			RDEBUG2("Previous section returned (%s), clearing reply attributes and "
@@ -1961,6 +1991,7 @@ RESUME(load_pseudonym)
 	 */
 	default:
 		switch (eap_aka_sim_session->last_id_req) {
+		case AKA_SIM_INIT_ID_REQ:
 		case AKA_SIM_NO_ID_REQ:
 		case AKA_SIM_ANY_ID_REQ:
 		case AKA_SIM_FULLAUTH_ID_REQ:
@@ -2024,6 +2055,7 @@ RESUME(load_session)
 		 *	If this is the *true* reauth ID, then
 		 *	there's no point in setting AKA_SIM_ANY_ID_REQ.
 		 */
+		case AKA_SIM_INIT_ID_REQ:
 		case AKA_SIM_NO_ID_REQ:
 		case AKA_SIM_ANY_ID_REQ:
 			RDEBUG2("Previous section returned (%s), clearing reply attributes and "
@@ -2804,7 +2836,8 @@ RESUME(recv_aka_identity_response)
 				eap_aka_sim_session->id_req = AKA_SIM_PERMANENT_ID_REQ;
 				break;
 
-			case AKA_SIM_NO_ID_REQ:	/* Should not happen */
+			case AKA_SIM_NO_ID_REQ:		/* We always request an ID in AKA-Identity unlike SIM-Start */
+			case AKA_SIM_INIT_ID_REQ:	/* Should not happen */
 				fr_assert(0);
 				FALL_THROUGH;
 
@@ -3061,6 +3094,10 @@ RESUME(recv_sim_start_response)
 	if ((unlang_interpret_stack_result(request) == RLM_MODULE_NOTFOUND) || user_set_id_req) {
 		if (!user_set_id_req) {
 			switch (eap_aka_sim_session->last_id_req) {
+			case AKA_SIM_NO_ID_REQ:	/* Should not happen */
+				eap_aka_sim_session->id_req = AKA_SIM_ANY_ID_REQ;
+				break;
+
 			case AKA_SIM_ANY_ID_REQ:
 				eap_aka_sim_session->id_req = AKA_SIM_FULLAUTH_ID_REQ;
 				break;
@@ -3069,7 +3106,7 @@ RESUME(recv_sim_start_response)
 				eap_aka_sim_session->id_req = AKA_SIM_PERMANENT_ID_REQ;
 				break;
 
-			case AKA_SIM_NO_ID_REQ:	/* Should not happen */
+			case AKA_SIM_INIT_ID_REQ:	/* Should not happen */
 				fr_assert(0);
 				FALL_THROUGH;
 
@@ -3176,16 +3213,22 @@ STATE(sim_start)
 	switch (subtype_vp->vp_uint16) {
 	case FR_SUBTYPE_VALUE_SIM_START:
 	{
+		eap_session_t		*eap_session = eap_session_get(request->parent);
 		fr_pair_t		*id;
 		fr_aka_sim_id_type_t	type;
 
 		id = fr_pair_find_by_da_idx(&request->request_pairs, attr_eap_aka_sim_identity, 0);
-		if (!id) {
+		if (!id && (eap_aka_sim_session->id_req != AKA_SIM_NO_ID_REQ)) {
 			/*
 			 *  RFC 4186 Section #9.2
 			 *
 			 *  The peer sends EAP-Response/SIM/Start in response to a valid
 			 *  EAP-Request/SIM/Start from the server.
+			 *
+			 *  If and only if the server's EAP-Request/SIM/Start includes one of the
+			 *  identity-requesting attributes, then the peer MUST include the
+			 *  AT_IDENTITY attribute.  The usage of AT_IDENTITY is defined in
+			 *  Section 4.2.
 			 *  The peer MUST include the AT_IDENTITY attribute.  The usage of
 			 *  AT_IDENTITY is defined in Section 4.1.
 			 */
@@ -3197,18 +3240,45 @@ STATE(sim_start)
 		 *	Add ID hint attributes to the request to help
 		 *	the user make policy decisions.
 		 */
-		identity_hint_pairs_add(&type, NULL, request, id->vp_strvalue);
-		if (type == AKA_SIM_ID_TYPE_PERMANENT) {
-			identity_to_permanent_identity(request, id,
-						       eap_aka_sim_session->type,
-						       inst->strip_permanent_identity_hint);
-		}
+		if (id) {
+			identity_hint_pairs_add(&type, NULL, request, id->vp_strvalue);
+			if (type == AKA_SIM_ID_TYPE_PERMANENT) {
+				identity_to_permanent_identity(request, id,
+							       eap_aka_sim_session->type,
+							       inst->strip_permanent_identity_hint);
+			}
 
+			/*
+			 *	Update cryptographic identity
+			 *
+			 *	We only do this if we received a new identity.
+			 */
+			crypto_identity_set(request, eap_aka_sim_session,
+					    (uint8_t const *)id->vp_strvalue, id->vp_length);
 		/*
-		 *	Update cryptographic identity
+		 *	If there's no additional identity provided, just
+		 *	use eap_session->identity again...
 		 */
-		crypto_identity_set(request, eap_aka_sim_session,
-				    (uint8_t const *)id->vp_strvalue, id->vp_length);
+		} else {
+			/*
+			 *	Copy the EAP-Identity into our Identity
+			 *	attribute to make policies easier.
+			 */
+			MEM(pair_append_request(&id, attr_eap_aka_sim_identity) >= 0);
+			fr_pair_value_bstrdup_buffer(id, eap_session->identity, true);
+
+			/*
+			 *	Add ID hint attributes to the request to help
+			 *	the user make policy decisions.
+			 */
+			identity_hint_pairs_add(&type, NULL, request, eap_session->identity);
+
+			if (type == AKA_SIM_ID_TYPE_PERMANENT) {
+				identity_to_permanent_identity(request, id,
+							       eap_aka_sim_session->type,
+							       inst->strip_permanent_identity_hint);
+			}
+		}
 
 		return unlang_module_yield_to_section(p_result,
 						      request,
@@ -3503,13 +3573,11 @@ RESUME(recv_common_identity_response)
 	}
 
 	/*
-	 *	For EAP-SIM we _always_ request an identity
-	 *	because the state machine requires us to send
-	 *	an EAP-SIM-START packet.  EAP-AKA and EAP-AKA'
-	 *	don't have this requirement.
+	 *	For EAP-SIM we _always_ start with a SIM-Start
+	 *	for "version negotiation" even if we don't need
+	 *	another identity.
 	 */
-	if ((eap_aka_sim_session->type == FR_EAP_METHOD_SIM) &&
-	    (eap_aka_sim_session->id_req == AKA_SIM_NO_ID_REQ)) eap_aka_sim_session->id_req = AKA_SIM_ANY_ID_REQ;
+	if (eap_aka_sim_session->type == FR_EAP_METHOD_SIM) return STATE_TRANSITION(sim_start);
 
 	/*
 	 *	User may want us to always request an identity
