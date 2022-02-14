@@ -245,13 +245,14 @@ static int eap_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent
  *
  */
 static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
-				  eap_type_t type,
+				  eap_type_t last_type,
 				  eap_type_data_t *nak)
 {
 	rlm_eap_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_eap_t);
-	unsigned int i;
-	fr_pair_t *vp;
+	unsigned int i, s_i = 0;
+	fr_pair_t *vp = NULL;;
 	eap_type_t method = FR_EAP_METHOD_INVALID;
+	eap_type_t sanitised[nak->length];
 
 	/*
 	 *	The NAK data is the preferred EAP type(s) of
@@ -268,10 +269,9 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 	}
 
 	/*
-	 *	Pick one type out of the one they asked for,
-	 *	as they may have asked for many.
+	 *	Do a loop over the contents of the NAK, only moving entries
+	 *	which are valid to the sanitised array.
 	 */
-	vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_eap_type, 0);
 	for (i = 0; i < nak->length; i++) {
 		/*
 		 *	Type 0 is valid, and means there are no
@@ -304,8 +304,11 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 
 		/*
 		 *	Prevent a firestorm if the client is confused.
+		 *
+		 *	FIXME: Really we should keep a list of
+		 *	methods we've already sent back.
 		 */
-		if (type == nak->data[i]) {
+		if (last_type == nak->data[i]) {
 			char const *type_str = eap_type2name(nak->data[i]);
 
 			RDEBUG2("Peer NAK'd our request for %s (%d) with a request for %s (%d), skipping...",
@@ -321,26 +324,55 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 			continue;
 		}
 
-		/*
-		 *	Enforce per-user configuration of EAP
-		 *	types.
-		 */
-		if (vp && (vp->vp_uint32 != nak->data[i])) {
-			RDEBUG2("Peer wants %s (%d), while we require %s (%d), skipping",
-				eap_type2name(nak->data[i]), nak->data[i],
-				eap_type2name(vp->vp_uint32), vp->vp_uint32);
-
-			continue;
-		}
-
-		RDEBUG2("Found mutually acceptable type %s (%d)", eap_type2name(nak->data[i]), nak->data[i]);
-
-		method = nak->data[i];
-
-		break;
+		sanitised[s_i++] = nak->data[i];
 	}
 
-	if (method == FR_EAP_METHOD_INVALID) REDEBUG("No mutually acceptable types found");
+	/*
+	 *	Loop over allowed methods and the contents
+	 *	of the NAK, attempting to find something
+	 *	we can continue with.
+	 */
+	while ((vp = fr_pair_find_by_da(&request->control_pairs, vp, attr_eap_type))) {
+		for (i = 0; i < s_i; i++) {
+			/*
+			 *	Enforce per-user configuration of EAP
+			 *	types.
+			 */
+			if (vp->vp_uint32 != sanitised[i]) continue;
+			RDEBUG2("Found mutually acceptable type %s (%d)", eap_type2name(sanitised[i]), sanitised[i]);
+			method = sanitised[i];
+
+			break;
+		}
+		if (method != FR_EAP_METHOD_INVALID) break;
+	}
+
+	/*
+	 *	Couldn't find something to continue with,
+	 *	emit a very verbose message.
+	 */
+	if (method == FR_EAP_METHOD_INVALID) {
+		fr_sbuff_t *proposed = NULL, *allowed = NULL;
+
+		FR_SBUFF_TALLOC_THREAD_LOCAL(&proposed, 256, 1024);
+		FR_SBUFF_TALLOC_THREAD_LOCAL(&allowed, 256, 1024);
+
+		for (i = 0; i < s_i; i++) {
+			fr_sbuff_in_sprintf(proposed, "%s (%d), ", eap_type2name(sanitised[i]), sanitised[i]);
+		}
+		fr_sbuff_advance(proposed, -2);
+		fr_sbuff_terminate(proposed);
+
+		vp = NULL;
+		while ((vp = fr_pair_find_by_da(&request->control_pairs, vp, attr_eap_type))) {
+			fr_sbuff_in_sprintf(allowed, "%s (%d), ", eap_type2name(vp->vp_uint32), vp->vp_uint32);
+		}
+		fr_sbuff_advance(allowed, -2);	/* Negative advance past start should be disallowed */
+		fr_sbuff_terminate(allowed);
+
+		REDEBUG("No mutually acceptable EAP types found.  Supplicant proposed: %s.  We allow: %s",
+		        fr_sbuff_start(proposed), fr_sbuff_start(allowed));
+	}
 
 	return method;
 }
@@ -730,9 +762,9 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 	 *	Allocate a new subrequest
 	 */
 	MEM(eap_session->subrequest = unlang_subrequest_alloc(request,
-								     method->submodule->namespace ?
-								     *(method->submodule->namespace) :
-								     request->dict));
+							      method->submodule->namespace ?
+							      *(method->submodule->namespace) :
+							      request->dict));
 
 	if (method->submodule->clone_parent_lists) {
 		if (fr_pair_list_copy(eap_session->subrequest->control_ctx,
