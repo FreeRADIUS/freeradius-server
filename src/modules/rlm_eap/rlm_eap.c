@@ -327,24 +327,44 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 		sanitised[s_i++] = nak->data[i];
 	}
 
-	/*
-	 *	Loop over allowed methods and the contents
-	 *	of the NAK, attempting to find something
-	 *	we can continue with.
-	 */
-	while ((vp = fr_pair_find_by_da(&request->control_pairs, vp, attr_eap_type))) {
-		for (i = 0; i < s_i; i++) {
-			/*
-			 *	Enforce per-user configuration of EAP
-			 *	types.
-			 */
-			if (vp->vp_uint32 != sanitised[i]) continue;
-			RDEBUG2("Found mutually acceptable type %s (%d)", eap_type2name(sanitised[i]), sanitised[i]);
-			method = sanitised[i];
+	if (s_i == 0) {
+		REDEBUG("Peer presented no valid EAP types in its NAK response");
+		return FR_EAP_METHOD_INVALID;
+	}
 
-			break;
-		}
-		if (method != FR_EAP_METHOD_INVALID) break;
+	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_eap_type);
+	if (vp) {
+		/*
+		 *	Loop over allowed methods and the contents
+		 *	of the NAK, attempting to find something
+		 *	we can continue with.
+		 */
+		do {
+		     	/*
+		     	 *	Provide a way of the admin potentially
+		     	 *	disabling EAP negotiation.
+		     	 */
+		     	if (vp->vp_uint32 == FR_EAP_METHOD_INVALID) continue;
+
+			for (i = 0; i < s_i; i++) {
+				/*
+				 *	Enforce per-user configuration of EAP
+				 *	types.
+				 */
+				if (vp->vp_uint32 != sanitised[i]) continue;
+				RDEBUG2("Found mutually acceptable type %s (%d)", eap_type2name(sanitised[i]), sanitised[i]);
+				method = sanitised[i];
+				break;
+			}
+
+			if (method != FR_EAP_METHOD_INVALID) break;	/* Found one1 */
+		} while ((vp = fr_pair_find_by_da(&request->control_pairs, vp, attr_eap_type)));
+	/*
+	 *	If there's no control pairs, respond with
+	 *	the first valid method in the NAK.
+	 */
+	} else {
+		method = sanitised[0];
 	}
 
 	/*
