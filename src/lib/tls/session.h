@@ -238,7 +238,7 @@ static inline CC_HINT(nonnull) void _fr_tls_session_request_unbind(char const *f
  *
  * @param[in] ssl	session containing the request pointer.
  */
-#define fr_tls_session_request_unbind(_ssl) _fr_tls_session_request_unbind(__LINE__, __FILE__, _ssl);
+#define fr_tls_session_request_unbind(_ssl) _fr_tls_session_request_unbind(__FILE__, __LINE__, _ssl);
 
 /** Add extra pairs to the temporary subrequests
  *
