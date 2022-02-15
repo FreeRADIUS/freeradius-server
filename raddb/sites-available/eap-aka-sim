@@ -484,20 +484,20 @@ server eap-aka-sim {
 	#  If retrieving triplets from the AuC, you should should provide
 	#  three sets of the following control attributes:
 	#
-	#  - `SIM-KC`::		Authentication value from the AuC.
-	#  - `SIM-RAND`::	User authentication challenge.
-	#  - `SIM-SRES`::	Signing response.
+	#  - `KC`::		Authentication value from the AuC.
+	#  - `RAND`::		User authentication challenge.
+	#  - `SRES`::		Signing response.
 	#
 	#  If retrieving quintuplets from an AuC, you should provide the
 	#  following control attributes:
 	#
-	#  - `SIM-AUTN`::	Authentication value from the AuC.
-	#  - `SIM-CK`::		Ciphering Key.
-	#  - `SIM-IK`::		Integrity Key.
-	#  - `SIM-RAND`::	User authentication challenge.
-	#  - `SIM-XRES`::	Signing response.
-	#  - `SIM-SQN`::	(optional)
-	#  - `SIM-AK`::  	(optional)
+	#  - `AUTN`::		Authentication value from the AuC.
+	#  - `CK`::		Ciphering Key.
+	#  - `IK`::		Integrity Key.
+	#  - `RAND`::		User authentication challenge.
+	#  - `XRES`::		Signing response.
+	#  - `SQN`::		(optional)
+	#  - `AK`::  		(optional)
 	#
 	#  ### Pseudonyms
 	#
