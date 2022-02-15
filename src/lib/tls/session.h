@@ -164,57 +164,11 @@ static inline fr_tls_session_t *fr_tls_session(SSL *ssl)
 	return talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TLS_SESSION), fr_tls_session_t);
 }
 
-/** Place a request pointer in the SSL * for retrieval by callbacks
- *
- * @note A request must not already be bound to the SSL *
- *
- * @param[in] ssl		to be bound.
- * @param[in] request		to bind to the tls_session.
- */
-static inline CC_HINT(nonnull) void fr_tls_session_request_bind(SSL *ssl, request_t *request)
-{
-	int ret;
-
-#ifndef NDEBUG
-	request_t *old;
-	old = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
-	if (old) {
-		(void)talloc_get_type_abort(ssl, request_t);
-		fr_assert(0);
-	}
-#endif
-	ret = SSL_set_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST, request);
-	if (unlikely(ret == 0)) {
-		fr_assert(0);
-		return;
-	}
-}
-
-/** Remove a request pointer from the tls_session
- *
- * @note A request must be bound to the tls_session
- *
- * @param[in] ssl	session containing the request pointer.
- */
-static inline CC_HINT(nonnull) void fr_tls_session_request_unbind(SSL *ssl)
-{
-	int ret;
-
-#ifndef NDEBUG
-	(void)talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), request_t);
-#endif
-	ret = SSL_set_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST, NULL);
-	if (unlikely(ret == 0)) {
-		fr_assert(0);
-		return;
-	}
-}
-
 /** Check to see if a request is bound to a session
  *
  * @param[in] ssl	session to check for requests.
  * @return
- *      - true if a request is bound to this session.
+ *	- true if a request is bound to this session.
  *	- false if a request is not bound to this session.
  */
 static inline CC_HINT(nonnull) bool fr_tls_session_request_bound(SSL *ssl)
@@ -231,6 +185,60 @@ static inline request_t *fr_tls_session_request(SSL const *ssl)
 {
 	return talloc_get_type_abort(SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST), request_t);
 }
+
+static inline CC_HINT(nonnull) void _fr_tls_session_request_bind(char const *file, int line,
+								 SSL *ssl, request_t *request)
+{
+	int ret;
+
+	RDEBUG3("%s[%u] - Binding SSL * (%p) to request (%p)", file, line, ssl, request);
+
+#ifndef NDEBUG
+	request_t *old;
+	old = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+	if (old) {
+		(void)talloc_get_type_abort(ssl, request_t);
+		fr_assert(0);
+	}
+#endif
+	ret = SSL_set_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST, request);
+	if (unlikely(ret == 0)) {
+		fr_assert(0);
+		return;
+	}
+}
+/** Place a request pointer in the SSL * for retrieval by callbacks
+ *
+ * @note A request must not already be bound to the SSL *
+ *
+ * @param[in] ssl		to be bound.
+ * @param[in] request		to bind to the tls_session.
+ */
+ #define fr_tls_session_request_bind(_ssl, _request) _fr_tls_session_request_bind(__FILE__, __LINE__, _ssl, _request)
+
+static inline CC_HINT(nonnull) void _fr_tls_session_request_unbind(char const *file, int line, SSL *ssl)
+{
+	request_t	*request = fr_tls_session_request(ssl);
+	int		ret;
+
+#ifndef NDEBUG
+	(void)talloc_get_type_abort(request, request_t);
+#endif
+
+	RDEBUG3("%s[%u] - Unbinding SSL * (%p) from request (%p)", file, line, ssl, request);
+	ret = SSL_set_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST, NULL);
+	if (unlikely(ret == 0)) {
+		fr_assert(0);
+		return;
+	}
+}
+/** Remove a request pointer from the tls_session
+ *
+ * @note A request must be bound to the tls_session
+ *
+ * @param[in] ssl	session containing the request pointer.
+ */
+#define fr_tls_session_request_unbind(_ssl) _fr_tls_session_request_unbind(__LINE__, __FILE__, _ssl);
 
 /** Add extra pairs to the temporary subrequests
  *
