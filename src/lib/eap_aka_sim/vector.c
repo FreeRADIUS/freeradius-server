@@ -204,7 +204,7 @@ static int vector_gsm_from_triplets(request_t *request, fr_pair_list_t *vps,
 		return 1;
 	}
 	if (rand->vp_length != AKA_SIM_VECTOR_GSM_RAND_SIZE) {
-		REDEBUG("&control.EAP-SIM-Rand[%i] is not " STRINGIFY(SIM_RAND_SIZE) " bytes, got %zu bytes",
+		REDEBUG("&control.RAND[%i] is not " STRINGIFY(SIM_RAND_SIZE) " bytes, got %zu bytes",
 			idx, rand->vp_length);
 		return -1;
 	}
