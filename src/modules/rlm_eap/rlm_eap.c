@@ -340,11 +340,11 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 		 *	we can continue with.
 		 */
 		do {
-		     	/*
-		     	 *	Provide a way of the admin potentially
-		     	 *	disabling EAP negotiation.
-		     	 */
-		     	if (vp->vp_uint32 == FR_EAP_METHOD_INVALID) continue;
+			/*
+			 *	Provide a way of the admin potentially
+			 *	disabling EAP negotiation.
+			 */
+			if (vp->vp_uint32 == FR_EAP_METHOD_INVALID) continue;
 
 			for (i = 0; i < s_i; i++) {
 				/*
