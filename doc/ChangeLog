@@ -25,6 +25,9 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	  Found by Antonio Torres.  Fixes #4378.
 	* If we read more than 16K of data in RadSec, then read it all.
 	  Fixes #4388, patch from Aren Sandersen.
+	* Fix information leak in compute_password_element() function
+	  of EAP-PWD.  Found by Mohamed Sabt.
+	* Fix crash in EAP-SIM when unknown attributes are sent.
 
 FreeRADIUS 3.0.25 Thu 07 Oct 2021 12:00:00 EDT urgency=medium
 	Feature improvements
