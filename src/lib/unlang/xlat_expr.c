@@ -51,9 +51,6 @@ RCSID("$Id$")
  *
  *	@todo - Regular expressions are not handled.  This isn't a lot of work, but can be a bit finicky.
  *
- *	@todo - short-circuit && / || need to be updated.  This requires various magic in their instantiation
- *	routines, which is not yet done.
- *
  *	@todo - all function arguments should be in groups, so we need to fix that.  Right now, binary
  *	expressions are fixed.  But unary ones are not.  We did it via a hack, but it might be better to do it
  *	a different way in the future.  The problem is that no matter which way we choose, we'll have to
@@ -159,7 +156,10 @@ static int xlat_purify_expr(xlat_exp_t *node)
 	 *	A child isn't a value-box.  We leave it alone.
 	 */
 	for (child = node->child; child != NULL; child = child->next) {
-		if (!xlat_is_box(child)) return 0;
+		fr_assert(child->type == XLAT_GROUP);
+
+		if (!xlat_is_box(child->child)) return 0;
+		if (child->child->next) return 0;
 	}
 
 	fr_value_box_list_init(&input);
@@ -176,9 +176,9 @@ static int xlat_purify_expr(xlat_exp_t *node)
 		MEM(box = fr_value_box_alloc_null(node));
 
 		if ((arg->type != FR_TYPE_VOID) && (arg->type != box->type)) {
-			if (fr_value_box_cast(node, box, arg->type, NULL, xlat_box(child)) < 0) goto fail;
+			if (fr_value_box_cast(node, box, arg->type, NULL, xlat_box(child->child)) < 0) goto fail;
 
-		} else if (fr_value_box_copy(node, box, xlat_box(child)) < 0) {
+		} else if (fr_value_box_copy(node, box, xlat_box(child->child)) < 0) {
 		fail:
 			talloc_free(box);
 			goto cleanup;
@@ -305,6 +305,8 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 #endif
 
 	fr_assert(a->type == FR_TYPE_GROUP);
+	fr_assert(b->type == FR_TYPE_GROUP);
+
 	if (fr_dlist_num_elements(&a->vb_group) != 1) {
 		REDEBUG("Expected one value as the first argument, got %d",
 			fr_dlist_num_elements(&a->vb_group));
@@ -795,8 +797,7 @@ static xlat_exp_t *xlat_exp_func_alloc_args(TALLOC_CTX *ctx, char const *name, s
 
 static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-				   fr_token_t prev, fr_type_t type, fr_sbuff_parse_rules_t const *bracket_rules,
-				   fr_dict_attr_t const *da);
+				   fr_token_t prev, fr_sbuff_parse_rules_t const *bracket_rules);
 
 
 static fr_table_num_sorted_t const expr_quote_table[] = {
@@ -897,7 +898,7 @@ static ssize_t tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *
  */
 static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-			      UNUSED fr_type_t type, fr_sbuff_parse_rules_t const *bracket_rules, fr_dict_attr_t const *da)
+			      fr_sbuff_parse_rules_t const *bracket_rules)
 {
 	ssize_t			slen;
 	xlat_exp_t		*node = NULL;
@@ -979,7 +980,7 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 	 *	time.
 	 */
 	if (fr_sbuff_next_if_char(&our_in, '(')) {
-		slen = tokenize_expression(ctx, &node, flags, &our_in, bracket_rules, t_rules, T_INVALID, FR_TYPE_NULL, bracket_rules, da);
+		slen = tokenize_expression(ctx, &node, flags, &our_in, bracket_rules, t_rules, T_INVALID, bracket_rules);
 		if (slen <= 0) {
 			talloc_free(free_ctx);
 			FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
@@ -1147,16 +1148,13 @@ static size_t const expr_assignment_op_table_len = NUM_ELEMENTS(expr_assignment_
 
 /** Tokenize a mathematical operation.
  *
- *  @todo - convert rlm_expr to the new API.
- *
  *	(EXPR)
  *	!EXPR
  *	A OP B
  */
 static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-				   fr_token_t prev, fr_type_t type, fr_sbuff_parse_rules_t const *bracket_rules,
-				   fr_dict_attr_t const *da)
+				   fr_token_t prev, fr_sbuff_parse_rules_t const *bracket_rules)
 {
 	xlat_exp_t	*lhs = NULL, *rhs = NULL, *node;
 	xlat_t		*func = NULL;
@@ -1170,7 +1168,7 @@ static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flag
 	/*
 	 *	Get the LHS of the operation.
 	 */
-	slen = tokenize_field(ctx, &lhs, flags, &our_in, p_rules, t_rules, type, bracket_rules, da);
+	slen = tokenize_field(ctx, &lhs, flags, &our_in, p_rules, t_rules, bracket_rules);
 	if (slen <= 0) return slen;
 
 redo:
@@ -1227,15 +1225,7 @@ redo:
 	 *	Regular expressions are a special case, and have precedence over everything else.  Because it
 	 *	makes zero sense to do things like:
 	 *
-	 *		Foo-Bar =~ (a | b) ????????
-	 *
-	 *	@todo - make sure that the LHS is something "real", and isn't (for example) a comparison?  Tho
-	 *	TBH why not allow that:
-	 *
-	 *		(1 < 3) =~ /foo/
-	 *
-	 *	will get the LHS to be evaluated, then printed to a string, and then the string will be used
-	 *	for the regex.  If the user is stupid enough to do this, why not allow it?
+	 *		Foo-Bar =~ (a | b)
 	 */
 	if ((op == T_OP_REG_EQ) || (op == T_OP_REG_NE)) {
 #ifdef HAVE_REGEX
@@ -1284,95 +1274,9 @@ redo:
 	}
 
 	/*
-	 *	By default we don't parse enums on the RHS, and we're also flexible about what we see on the
-	 *	RHS.
-	 */
-	da = NULL;
-	type = FR_TYPE_NULL;
-
-	/*
-	 *	For comparisons, if the LHS is typed, try to parse the RHS as the given type.
-	 *
-	 *	If we're doing other operations, then don't hint at the type for the RHS.
-	 */
-	switch (lhs->type) {
-	case XLAT_TMPL:
-		if (tmpl_rules_cast(lhs->vpt) != FR_TYPE_NULL) {
-			type = tmpl_rules_cast(lhs->vpt);
-
-		} else if (tmpl_contains_attr(lhs->vpt)) {
-			da = tmpl_da(lhs->vpt);
-			type = da->type;
-
-		} else if (tmpl_is_data(lhs->vpt)) {
-			type = tmpl_value_type(lhs->vpt);
-		}
-		break;
-
-	case XLAT_BOX:
-		/*
-		 *	Bools are too restrictive.
-		 *
-		 *	@todo - really only for comparisons, or... ???
-		 */
-		if (lhs->data.type != FR_TYPE_BOOL) {
-			type = lhs->data.type;
-		}
-		break;
-
-	default:
-		break;
-	}
-
-	/*
-	 *	And then for network operations, upcast the RHS type to a prefix.  And then when we do the
-	 *	upcast, we can no longer parse the RHS using enums from the LHS.
-	 *
-	 *	@todo - for normalization, if we do network comparisons with /32, then it's really an equality
-	 *	comparison, isn't it?
-	 */
-	switch (op) {
-	case T_OP_LT:
-	case T_OP_LE:
-	case T_OP_GT:
-	case T_OP_GE:
-		if (type == FR_TYPE_IPV4_ADDR) { /* allow prefix comparisons */
-			type = FR_TYPE_IPV4_PREFIX;
-			da = NULL;
-		}
-		if (type == FR_TYPE_IPV6_ADDR) { /* allow prefix comparisons */
-			type = FR_TYPE_IPV6_PREFIX;
-			da = NULL;
-		}
-		break;
-
-		/*
-		 *	For shifts, the RHS should really be an unsigned integer.  Hopefully a small one.
-		 */
-	case T_RSHIFT:
-	case T_LSHIFT:
-		type = FR_TYPE_UINT64;
-		break;
-
-		/*
-		 *	We're not doing inter-type operations, so we don't care what the type of the next
-		 *	thing is.  In addition, the da (if any) on the first doesn't matter when parsing the
-		 *	second expression.
-		 */
-	case T_LAND:
-	case T_LOR:
-		da = NULL;
-		type = FR_TYPE_NULL;
-		break;
-
-	default:
-		break;
-	}
-
-	/*
 	 *	We now parse the RHS, allowing a (perhaps different) cast on the RHS.
 	 */
-	slen = tokenize_expression(ctx, &rhs, flags, &our_in, p_rules, t_rules, op, type, bracket_rules, da);
+	slen = tokenize_expression(ctx, &rhs, flags, &our_in, p_rules, t_rules, op, bracket_rules);
 	if (slen <= 0) {
 		talloc_free(lhs);
 		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
@@ -1522,8 +1426,7 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 
 	*head = NULL;
 
-	slen = tokenize_expression(ctx, head, flags, in, terminal_rules, t_rules, T_INVALID, FR_TYPE_NULL,
-				   bracket_rules, NULL);
+	slen = tokenize_expression(ctx, head, flags, in, terminal_rules, t_rules, T_INVALID, bracket_rules);
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
 
@@ -1540,8 +1443,6 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 	/*
 	 *	Add nodes that need to be bootstrapped to
 	 *	the registry.
-	 *
-	 *	@todo - can't do this for ephemeral ones!
 	 */
 	if (xlat_bootstrap(*head) < 0) {
 		TALLOC_FREE(*head);
@@ -1614,8 +1515,7 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_t **head,
 
 	*head = NULL;
 
-	slen = tokenize_expression(ctx, head, flags, in, terminal_rules, &my_rules, T_INVALID, FR_TYPE_NULL,
-				   bracket_rules, NULL);
+	slen = tokenize_expression(ctx, head, flags, in, terminal_rules, &my_rules, T_INVALID, bracket_rules);
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
 
