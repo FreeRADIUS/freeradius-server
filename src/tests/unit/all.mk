@@ -52,6 +52,11 @@ test.unit.help: TEST_UNIT_HELP += test.unit.${1}
 endef
 $(foreach x,$(PROTOCOLS),$(eval $(call UNIT_TEST_PROTOCOLS,$x)))
 
+test.unit.xlat: $(addprefix $(OUTPUT)/,$(filter xlat/%.txt,$(FILES))) $(BUILD_DIR)/lib/libfreeradius-unlang.la
+
+test.unit.help: TEST_UNIT_HELP += test.unit.xlat
+
+
 #  This is useful, too
 test.unit.condition: $(addprefix $(OUTPUT)/,$(filter condition/%.txt,$(FILES))) $(BUILD_DIR)/lib/libfreeradius-server.la
 
