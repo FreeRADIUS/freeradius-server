@@ -119,7 +119,7 @@ static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node,
 /** Basic purify, but only for expressions and comparisons.
  *
  */
-static int xlat_purify_expr(xlat_exp_t *node)
+static int CC_HINT(nonnull) xlat_purify_expr(xlat_exp_t *node)
 {
 	int rcode = -1;
 	xlat_t const *func;
@@ -1105,7 +1105,12 @@ done:
 		node = unary;
 	}
 
+#ifdef __clang_analyzer__
+	if (!node) return 0;	/* shut up stupid analyzer */
+#else
 	fr_assert(node != NULL);
+#endif
+
 	*head = node;
 	xlat_flags_merge(flags, &node->flags);
 
