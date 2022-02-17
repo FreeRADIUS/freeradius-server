@@ -1086,6 +1086,12 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **head, xlat_fla
 	fr_sbuff_skip_whitespace(&our_in);
 
 done:
+#ifdef __clang_analyzer__
+	if (!node) return 0;	/* shut up stupid analyzer */
+#else
+	fr_assert(node != NULL);
+#endif
+
 	/*
 	 *	Purify things in place, where we can.
 	 */
@@ -1104,12 +1110,6 @@ done:
 		xlat_flags_merge(&unary->flags, &node->flags);
 		node = unary;
 	}
-
-#ifdef __clang_analyzer__
-	if (!node) return 0;	/* shut up stupid analyzer */
-#else
-	fr_assert(node != NULL);
-#endif
 
 	*head = node;
 	xlat_flags_merge(flags, &node->flags);
