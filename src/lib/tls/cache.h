@@ -105,7 +105,7 @@ uint8_t		*fr_tls_cache_id(TALLOC_CTX *ctx, SSL_SESSION *sess);
 
 unlang_action_t	fr_tls_cache_pending_push(request_t *request, fr_tls_session_t *tls_session);
 
-void		fr_tls_cache_deny(fr_tls_session_t *tls_session);
+void		fr_tls_cache_deny(request_t *request, fr_tls_session_t *tls_session);
 
 int		fr_tls_cache_disable_cb(SSL *ssl, int is_forward_secure);
 

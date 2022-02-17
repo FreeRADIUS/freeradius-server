@@ -134,6 +134,8 @@ struct fr_tls_session_s {
 	bool			invalid;			//!< Whether heartbleed attack was detected.
 
 	bool			client_cert_ok;			//!< whether or not the client certificate was validated
+	bool			can_pause;			//!< If true, it's ok to pause the request
+								///< using the OpenSSL async API.
 
 	uint8_t			alerts_sent;
 	bool			pending_alert;

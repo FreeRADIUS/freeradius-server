@@ -150,9 +150,15 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 	 *	the client can't re-use it.
 	 */
 	default:
-		fr_tls_cache_deny(tls_session);
+		fr_tls_cache_deny(request, tls_session);
+		*p_result = RLM_MODULE_REJECT;
 
-		RETURN_MODULE_REJECT;
+		/*
+		 *	We'll jump back to the caller
+		 *	in the unlang stack if this
+		 *	fails.
+		 */
+		return fr_tls_cache_pending_push(request, tls_session);	/* Run any pending cache clear operations */
 	}
 }
 

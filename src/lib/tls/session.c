@@ -1292,6 +1292,12 @@ static void tls_session_async_handshake_signal(UNUSED request_t *request, fr_sta
 	if (action != FR_SIGNAL_CANCEL) return;
 
 	/*
+	 *	We might want to set can_pause = false here
+	 *	but that would trigger asserts in the
+	 *	cache code.
+	 */
+
+	/*
 	 *	If SSL_get_error returns SSL_ERROR_WANT_ASYNC
 	 *	it means we're yielded in the middle of a
 	 *      callback.
@@ -1354,8 +1360,10 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 	 *	If acting as a server SSL_set_accept_state must have
 	 *	been called before this function.
 	 */
+	tls_session->can_pause = true;
 	tls_session->last_ret = SSL_read(tls_session->ssl, tls_session->clean_out.data + tls_session->clean_out.used,
 					 sizeof(tls_session->clean_out.data) - tls_session->clean_out.used);
+	tls_session->can_pause = false;
 	if (tls_session->last_ret > 0) {
 		tls_session->clean_out.used += tls_session->last_ret;
 
@@ -1365,6 +1373,9 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 		 */
 		tls_session->result = FR_TLS_RESULT_SUCCESS;
 	finish:
+		/*
+		 *	Was bound by caller
+		 */
 		fr_tls_session_request_unbind(tls_session->ssl);
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -1502,7 +1513,7 @@ static unlang_action_t tls_session_async_handshake(rlm_rcode_t *p_result, int *p
 
 	tls_session->result = FR_TLS_RESULT_IN_PROGRESS;
 
-	fr_tls_session_request_bind(tls_session->ssl, request);
+	fr_tls_session_request_bind(tls_session->ssl, request);		/* May be unbound in this function or asynchronously */
 
 	/*
 	 *	This is a logic error.  fr_tls_session_async_handshake
@@ -1514,7 +1525,7 @@ static unlang_action_t tls_session_async_handshake(rlm_rcode_t *p_result, int *p
 		REDEBUG("Attempted to continue TLS handshake, but handshake has completed");
 	error:
 		tls_session->result = FR_TLS_RESULT_ERROR;
-		fr_tls_session_request_unbind(tls_session->ssl);
+		fr_tls_session_request_unbind(tls_session->ssl);	/* Was bound in this function */
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
@@ -1538,7 +1549,7 @@ static unlang_action_t tls_session_async_handshake(rlm_rcode_t *p_result, int *p
 		record_init(&tls_session->dirty_in);
 	}
 
-	return tls_session_async_handshake_cont(p_result, priority, request, uctx);
+	return tls_session_async_handshake_cont(p_result, priority, request, uctx);	/* Must unbind request, possibly asynchronously */
 }
 
 /** Push a handshake call onto the stack
@@ -1629,7 +1640,7 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
 
 	request = request_alloc_internal(tls_session, NULL);
 
-	fr_tls_session_request_bind(tls_session->ssl, request);
+	fr_tls_session_request_bind(tls_session->ssl, request);		/* Is unbound in this function */
 
 	/*
 	 *	Add the message callback to identify what type of
@@ -1653,7 +1664,7 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
 	ret = SSL_connect(tls_session->ssl);
 	if (ret <= 0) {
 		fr_tls_log_io_error(NULL, SSL_get_error(tls_session->ssl, ret), "SSL_connect (%s)", __FUNCTION__);
-		fr_tls_session_request_unbind(tls_session->ssl);
+		fr_tls_session_request_unbind(tls_session->ssl);	/* Was bound in this function */
 		talloc_free(tls_session);
 
 		return NULL;
@@ -1661,7 +1672,7 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
 
 	tls_session->mtu = conf->fragment_size;
 
-	fr_tls_session_request_unbind(tls_session->ssl);
+	fr_tls_session_request_unbind(tls_session->ssl);		/* Was bound in this function */
 
 	return tls_session;
 }
@@ -1704,7 +1715,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	tls_session->ssl = ssl;
 	talloc_set_destructor(tls_session, _fr_tls_session_free);
 
-	fr_tls_session_request_bind(tls_session->ssl, request);
+	fr_tls_session_request_bind(tls_session->ssl, request);	/* Is unbound in this function */
 
 	/*
 	 *	Initialize callbacks
@@ -1765,7 +1776,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 		if (tmpl_aexpand(tls_session, &context_id, request, conf->cache.id_name, NULL, NULL) < 0) {
 			RPEDEBUG("Failed expanding session ID");
 		error:
-			fr_tls_session_request_unbind(tls_session->ssl);
+			fr_tls_session_request_unbind(tls_session->ssl);	/* Was bound in this function */
 			talloc_free(tls_session);
 			return NULL;
 		}
@@ -1872,11 +1883,11 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	}
 
 	if (conf->cache.mode != FR_TLS_CACHE_DISABLED) {
-		tls_session->allow_session_resumption = true; /* otherwise it's false */
+		tls_session->allow_session_resumption = true;	/* otherwise it's false */
 		fr_tls_cache_session_alloc(tls_session);
 	}
 
-	fr_tls_session_request_unbind(tls_session->ssl);
+	fr_tls_session_request_unbind(tls_session->ssl);	/* Was bound in this function */
 
 	return tls_session;
 }

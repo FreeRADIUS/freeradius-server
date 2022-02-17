@@ -313,10 +313,28 @@ static void tls_cache_delete_request(SSL_SESSION *sess)
 	tls_cache->clear.state = FR_TLS_CACHE_CLEAR_REQUESTED;
 
 	/*
-	 *	Go and do the delete now, instead of at some
-	 *	indeterminate point in the future.
+	 *	We store a copy of the pointer for the session
+	 *	in tls_session->session.  If the session is
+	 *	being freed then this pointer must be invalid
+	 *	so clear it to prevent crashes in other areas
+	 *	of the code.
 	 */
-	ASYNC_pause_job();	/* Jumps back to SSL_read() in session.c */
+	if (tls_session->session == sess) tls_session->session = NULL;
+
+	/*
+	 *	Previously the code called ASYNC_pause_job();
+	 *	assuming this callback would always be called
+	 *	from SSL_read() or another SSL function.
+	 *
+	 *	Unfortunately it appears that the call path
+	 *	can also be triggered with SSL_CTX_remove_session
+	 *	if the reference count on the SSL_SESSION
+	 *	drops to zero.
+	 *
+	 *	We now check the 'can_pause' flag to determine
+	 *	if we're inside a yieldable SSL_read call.
+	 */
+	if (tls_session->can_pause) ASYNC_pause_job();
 }
 
 /** Process the result of `session load { ... }`
@@ -792,7 +810,27 @@ again:
 		MEM(tls_cache->load.id = talloc_typed_memdup(tls_cache, (uint8_t const *)key, key_len));
 
 		RDEBUG3("Requested session load - ID %pV", fr_box_octets_buffer(tls_cache->load.id));
-		ASYNC_pause_job();	/* Jumps back to SSL_read() in session.c */
+
+		/*
+		 *	Cache functions are only allowed during the handshake
+		 *	FIXME: With TLS 1.3 session tickets can be sent
+		 *	later... Technically every point where we call
+		 *	SSL_read() may need to be a yield point.
+		 */
+		if (unlikely(!tls_session->can_pause)) {
+		cant_pause:
+			fr_assert_msg("Unexpected call to %s. "
+				      "tls_session_async_handshake_cont must be in call stack", __FUNCTION__);
+			return NULL;
+		}
+		/*
+		 *	Jumps back to SSL_read() in session.c
+		 *
+		 *	Be aware that if the request is cancelled
+		 *	whatever was meant to be done during the
+		 *	time we yielded may not have been completed.
+		 */
+		ASYNC_pause_job();
 
 		/*
 		 *	load cache { ... } returned, but the parent
@@ -852,7 +890,15 @@ again:
 		 */
 		fr_tls_verify_cert_request(tls_session, true);
 
-		ASYNC_pause_job();	/* Jumps back to SSL_read() in session.c */
+		if (unlikely(!tls_session->can_pause)) goto cant_pause;
+		/*
+		 *	Jumps back to SSL_read() in session.c
+		 *
+		 *	Be aware that if the request is cancelled
+		 *	whatever was meant to be done during the
+		 *	time we yielded may not have been completed.
+		 */
+		ASYNC_pause_job();
 
 		/*
 		 *	Certificate validation returned but the request
@@ -912,8 +958,6 @@ again:
  */
 static void tls_cache_delete_cb(UNUSED SSL_CTX *ctx, SSL_SESSION *sess)
 {
-
-
 	/*
 	 *	Not sure why this happens, but sometimes SSL_SESSION *s
 	 *	make it here without the correct ex data.
@@ -995,26 +1039,69 @@ int fr_tls_cache_disable_cb(SSL *ssl, int is_forward_secure)
 	return 0;
 }
 
-/** Prevent a TLS session from being cached
+/** Prevent a pending TLS session being persisted, and clear any resumed sessions
  *
- * Usually called if the session has failed for some reason.
+ * Usually called if authentication has failed for some reason.
  *
  * Will clear any serialized data out of the tls_session structure
  * and should result in tls_cache_delete_cb being called.
  *
- * @param[in] tls_session on which to prevent resumption.
+ * @note Calling this function will immediately free the memory used
+ *   by the session, but not the external persisted copy of the
+ *   session.  To clear the persisted copy #fr_tls_cache_pending_push
+ *   must be called in a place where the caller is prepared to yield.
+ *   In most cases this means whether the handshake is a success or
+ *   failure, the last thing the caller of the TLS code should do
+ *   is set the result, and call #fr_tls_cache_pending_push.
+ *
+ * @param[in] request		to use for running any async cache actions.
+ * @param[in] tls_session	on which to prevent resumption.
  */
-void fr_tls_cache_deny(fr_tls_session_t *tls_session)
+void fr_tls_cache_deny(request_t *request, fr_tls_session_t *tls_session)
 {
 	fr_tls_cache_t *tls_cache = tls_session->cache;
+	bool tmp_bind = !fr_tls_session_request_bound(tls_session->ssl);
 
 	/*
-	 *	Even for 1.1.0 we don't know when this function
-	 *	will be called, so better to remove the session
-	 *	directly.
+	 *	This is necessary to allow this function to
+	 *	be called inside and outside of OpenSSL handshake
+	 *	code.
+	 */
+	if (tmp_bind) {
+		fr_tls_session_request_bind(tls_session->ssl, request);
+	/*
+	 *	If there's already a request bound, it better be
+	 *      the one passed to this function.
+	 */
+	} else {
+		fr_assert(fr_tls_session_request(tls_session->ssl) == request);
+	}
+
+	/*
+	 *	SSL_CTX_remove_session frees the previously loaded
+	 *	session in tls_session. If the reference count reaches zero
+	 *	the SSL_CTX_sess_remove_cb is called, which in our code is
+	 *	tls_cache_delete_cb.
+	 *
+	 *	tls_cache_delete_cb calls tls_cache_delete_request
+	 *	to record the ID of tls_session->session
+	 *	in our pending cache state structure.
+	 *
+	 *	tls_cache_delete_request does NOT immediately call the
+	 *	`cache clear {}` section as that must be done in a code area
+	 *	which is prepared to yield.
+	 *
+	 *	#fr_tls_cache_pending_push MUST be called to actually
+	 *	clear external data.
 	 */
 	if (tls_session->session) SSL_CTX_remove_session(tls_session->ctx, tls_session->session);
+	if (tmp_bind) fr_tls_session_request_unbind(tls_session->ssl);
+
 	tls_session->allow_session_resumption = false;
+
+	/*
+	 *	Clear any pending store requests.
+	 */
 	tls_cache_store_state_reset(fr_tls_session_request(tls_session->ssl), tls_cache);
 }
 
@@ -1216,7 +1303,26 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 		 */
 		fr_tls_verify_cert_request(tls_session, true);
 
-		ASYNC_pause_job();	/* Jumps back to SSL_read() in session.c */
+		/*
+		 *	Cache functions are only allowed during the handshake
+		 *	FIXME: With TLS 1.3 session tickets can be sent
+		 *	later... Technically every point where we call
+		 *	SSL_read() may need to be a yield point.
+		 */
+		if (unlikely(!tls_session->can_pause)) {
+			fr_assert_msg("Unexpected call to %s. "
+				      "tls_session_async_handshake_cont must be in call stack", __FUNCTION__);
+			return SSL_TICKET_RETURN_IGNORE_RENEW;
+		}
+
+		/*
+		 *	Jumps back to SSL_read() in session.c
+		 *
+		 *	Be aware that if the request is cancelled
+		 *	whatever was meant to be done during the
+		 *	time we yielded may not have been completed.
+		 */
+		ASYNC_pause_job();
 
 		/*
 		 *	If the request was cancelled get everything back into

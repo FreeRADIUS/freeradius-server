@@ -158,6 +158,17 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 	request = fr_tls_session_request(tls_session->ssl);
 
 	/*
+	 *	If this error appears it suggests
+	 *	that OpenSSL is trying to perform post-handshake
+	 *	certificate validation which we don't support.
+	 */
+	if (!tls_session->can_pause) {
+		fr_assert_msg("Unexpected call to %s. "
+			      "tls_session_async_handshake_cont must be in call stack", __FUNCTION__);
+		return 0;
+	}
+
+	/*
 	 *	Bail out as quickly as possible, producing
 	 *	as few errors as possible.
 	 */
@@ -281,7 +292,14 @@ done:
 			 */
 			fr_tls_verify_cert_request(tls_session, SSL_session_reused(tls_session->ssl));
 
-			ASYNC_pause_job();	/* Jumps back to SSL_read() in session.c */
+			/*
+			 *	Jumps back to SSL_read() in session.c
+			 *
+			 *	Be aware that if the request is cancelled
+			 *	whatever was meant to be done during the
+			 *	time we yielded may not have been completed.
+			 */
+			ASYNC_pause_job();
 
 			/*
 			 *	Just try and bail out as quickly as possible.

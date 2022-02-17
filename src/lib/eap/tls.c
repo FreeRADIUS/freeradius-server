@@ -329,7 +329,7 @@ int eap_tls_fail(request_t *request, eap_session_t *eap_session)
 	/*
 	 *	Destroy any cached session data
 	 */
-	fr_tls_cache_deny(tls_session);
+	fr_tls_cache_deny(request, tls_session);
 
 	if (eap_tls_compose(request, eap_session, EAP_TLS_FAIL,
 			    eap_tls_session->base_flags, NULL, 0, 0) < 0) return -1;
@@ -812,7 +812,7 @@ static unlang_action_t eap_tls_handshake_resume(UNUSED rlm_rcode_t *p_result, UN
 
 	case FR_TLS_RESULT_ERROR:
 		REDEBUG("TLS receive handshake failed during operation");
-		fr_tls_cache_deny(tls_session);
+		fr_tls_cache_deny(request, tls_session);
 		eap_tls_session->state = EAP_TLS_FAIL;
 		goto finish;
 
@@ -858,7 +858,7 @@ static unlang_action_t eap_tls_handshake_resume(UNUSED rlm_rcode_t *p_result, UN
 		(void) fr_tls_session_async_handshake_push(request, tls_session);
 		if (tls_session->result != FR_TLS_RESULT_SUCCESS) {
 			REDEBUG("TLS receive handshake failed during operation");
-			fr_tls_cache_deny(tls_session);
+			fr_tls_cache_deny(request, tls_session);
 			eap_tls_session->state = EAP_TLS_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
