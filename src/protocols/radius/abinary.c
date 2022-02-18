@@ -1453,20 +1453,28 @@ ssize_t fr_radius_decode_abinary(fr_pair_t *vp, uint8_t const *data, size_t data
 
 	case ASCEND_FILTER_GENERIC:
 	{
-		int count;
+		size_t i, len;
+
+		/*
+		 *	Why is len 16 bits, when the masks are only 6 bytes?
+		 */
+		len = ntohs(filter->generic.len);
+		if (len >= sizeof(filter->generic.mask)) {
+			return -size;
+		}
 
 		FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, " %u ", (unsigned int) ntohs(filter->generic.offset));
 
 		/* show the mask */
-		for (count = 0; count < ntohs(filter->generic.len); count++) {
-			FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, "%02x", filter->generic.mask[count]);
+		for (i = 0; i < len; i++) {
+			FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, "%02x", filter->generic.mask[i]);
 		}
 
 		FR_SBUFF_IN_STRCPY_RETURN(&sbuff, " ");
 
 		/* show the value */
-		for (count = 0; count < ntohs(filter->generic.len); count++) {
-			FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, "%02x", filter->generic.value[count]);
+		for (i = 0; i < len; i++) {
+			FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, "%02x", filter->generic.value[i]);
 		}
 
 		FR_SBUFF_IN_SPRINTF_RETURN(&sbuff, " %s", (filter->generic.compNeq) ? "!=" : "==");
