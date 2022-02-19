@@ -46,7 +46,7 @@ DIAG_ON(documentation)
 #undef talloc_autofree_context
 /** The original function is deprecated, so replace it with our version
  */
-#define talloc_autofree_context talloc_autofree_context_thread_local
+#define talloc_autofree_context talloc_autofree_context_global
 
 /** Iterate over a talloced array of elements
  *
@@ -263,6 +263,7 @@ static inline void *_talloc_list_get_type_abort(void *head, size_t offset, char 
 #  define talloc_get_type_abort_const talloc_get_type_abort
 #endif
 
+TALLOC_CTX		*talloc_autofree_context_global(void);
 TALLOC_CTX		*talloc_autofree_context_thread_local(void);
 
 typedef struct talloc_child_ctx_s TALLOC_CHILD_CTX;

@@ -123,6 +123,8 @@ void		fr_atexit_global_disarm_all(void);
 
 unsigned int	fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uctx);
 
+unsigned int	fr_atexit_thread_trigger_all(void);
+
 #ifdef __cplusplus
 }
 #endif

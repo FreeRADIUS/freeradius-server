@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/atexit.h>
 
-
+static TALLOC_CTX *global_ctx;
 static _Thread_local TALLOC_CTX *thread_local_ctx;
 
 /** A wrapper that can be passed to tree or hash alloc functions that take a #fr_free_t
@@ -761,10 +761,10 @@ void **talloc_array_null_strip(void **array)
 	return new;
 }
 
-/** Callback to free the autofree ctx on thread exit
+/** Callback to free the autofree ctx on global exit
  *
  */
-static void _autofree_on_thread_exit(void *af)
+static void _autofree_on_exit(void *af)
 {
 	talloc_set_destructor(af, NULL);
 	talloc_free(af);
@@ -773,9 +773,33 @@ static void _autofree_on_thread_exit(void *af)
 /** Ensures in the autofree ctx is manually freed, things don't explode atexit
  *
  */
-static int _autofree_destructor(TALLOC_CTX *af)
+static int _autofree_global_destructor(TALLOC_CTX *af)
 {
-	return fr_atexit_thread_local_disarm(true, _autofree_on_thread_exit, af);
+	return fr_atexit_global_disarm(true, _autofree_on_exit, af);
+}
+
+TALLOC_CTX *talloc_autofree_context_global(void)
+{
+	TALLOC_CTX *af = global_ctx;
+
+	if (!af) {
+		af = talloc_init_const("global_autofree_context");
+		talloc_set_destructor(af, _autofree_global_destructor);
+		if (unlikely(!af)) return NULL;
+
+		fr_atexit_global(_autofree_on_exit, af);
+		global_ctx = af;
+	}
+
+	return af;
+}
+
+/** Ensures in the autofree ctx is manually freed, things don't explode atexit
+ *
+ */
+static int _autofree_thread_local_destructor(TALLOC_CTX *af)
+{
+	return fr_atexit_thread_local_disarm(true, _autofree_on_exit, af);
 }
 
 /** Get a thread-safe autofreed ctx that will be freed when the thread or process exits
@@ -791,14 +815,15 @@ TALLOC_CTX *talloc_autofree_context_thread_local(void)
 
 	if (!af) {
 		af = talloc_init_const("thread_local_autofree_context");
-		talloc_set_destructor(af, _autofree_destructor);
+		talloc_set_destructor(af, _autofree_thread_local_destructor);
 		if (unlikely(!af)) return NULL;
 
-		fr_atexit_thread_local(thread_local_ctx, _autofree_on_thread_exit, af);
+		fr_atexit_thread_local(thread_local_ctx, _autofree_on_exit, af);
 	}
 
 	return af;
 }
+
 
 struct talloc_child_ctx_s {
 	struct talloc_child_ctx_s *next;

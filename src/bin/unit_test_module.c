@@ -1005,6 +1005,14 @@ cleanup:
 	talloc_free(el);
 
 	/*
+	 *	Ensure all thread local memory is cleaned up
+	 *	at the appropriate time.  This emulates what's
+	 *	done with worker/network threads in the
+	 *	scheduler.
+	 */
+	fr_atexit_thread_trigger_all();
+
+	/*
 	 *	Free request specific logging infrastructure
 	 */
 	log_global_free();

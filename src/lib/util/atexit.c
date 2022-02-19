@@ -469,3 +469,42 @@ do_threads:
 
 	return count;
 }
+
+/** Cause all thread local free triggers to fire
+ *
+ * This is necessary when we're running in single threaded mode
+ * to ensure all "thread-local" memory (which isn't actually thread local)
+ * is cleaned up.
+ *
+ * One example is the OpenSSL log BIOs which must be cleaned up
+ * before fr_openssl_free is called.
+ */
+unsigned int fr_atexit_thread_trigger_all(void)
+{
+	fr_atexit_entry_t		*e = NULL, *ee;
+	fr_atexit_list_t		*list;
+	unsigned int			count = 0;
+
+	/*
+	 *	Iterate over the list of thread local
+	 *	destructor lists running the
+	 *	destructors.
+	 */
+	while ((e = fr_dlist_next(&fr_atexit_threads->head, e))) {
+		if (!e->func) continue;	/* thread already joined */
+
+		list = talloc_get_type_abort(e->uctx, fr_atexit_list_t);
+		ee = NULL;
+		while ((ee = fr_dlist_next(&list->head, ee))) {
+			ATEXIT_DEBUG("%s - Thread %u triggering %p/%p func=%p, uctx=%p (alloced %s:%u)",
+				     __FUNCTION__,
+				     (unsigned int)pthread_self(),
+				     list, ee, ee->func, ee->uctx, ee->file, ee->line);
+
+			count++;
+			ee = fr_dlist_talloc_free_item(&list->head, ee);
+		}
+	}
+
+	return count;
+}

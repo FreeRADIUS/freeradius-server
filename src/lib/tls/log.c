@@ -31,6 +31,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/atexit.h>
+#include <stdatomic.h>
 
 #include "log.h"
 #include "utils.h"
@@ -77,6 +78,16 @@ static BIO_METHOD	*tls_request_log_meth;
 /** Template for the global log BIOs
  */
 static BIO_METHOD	*tls_global_log_meth;
+
+/** Counter for users of the request log bio
+ *
+ */
+static _Atomic(uint32_t) tls_request_log_ref;
+
+/** Counter for users of the global log bio
+ *
+ */
+static _Atomic(uint32_t) tls_global_log_ref;
 
 /** Thread local request log BIO
  */
@@ -541,6 +552,15 @@ void tls_log_clear(void)
 	while (ERR_get_error() != 0);
 }
 
+/** Increment the bio meth reference counter
+ *
+ */
+static int tls_log_request_bio_create_cb(UNUSED BIO *bio)
+{
+	atomic_fetch_add(&tls_request_log_ref, 1);
+	return 1;
+}
+
 /** Converts BIO_write() calls to request log calls
  *
  * This callback is used to glue the output of OpenSSL functions into request log calls.
@@ -615,6 +635,24 @@ static int tls_log_request_bio_puts_cb(BIO *bio, char const *in)
 	return tls_log_request_bio_write_cb(bio, in, strlen(in));
 }
 
+/** Decrement the bio meth reference counter
+ *
+ */
+static int tls_log_request_bio_free_cb(UNUSED BIO *bio)
+{
+	atomic_fetch_sub(&tls_request_log_ref, 1);
+	return 1;
+}
+
+/** Increment the bio meth reference counter
+ *
+ */
+static int tls_log_global_bio_create_cb(UNUSED BIO *bio)
+{
+	atomic_fetch_add(&tls_global_log_ref, 1);
+	return 1;
+}
+
 /** Converts BIO_write() calls to global log calls
  *
  * This callback is used to glue the output of OpenSSL functions into global log calls.
@@ -677,6 +715,15 @@ static int tls_log_global_bio_write_cb(BIO *bio, char const *in, int len)
 static int tls_log_global_bio_puts_cb(BIO *bio, char const *in)
 {
 	return tls_log_global_bio_write_cb(bio, in, strlen(in));
+}
+
+/** Decrement the bio meth reference counter
+ *
+ */
+static int tls_log_global_bio_free_cb(UNUSED BIO *bio)
+{
+	atomic_fetch_sub(&tls_global_log_ref, 1);
+	return 1;
 }
 
 /** Frees a logging bio and its underlying OpenSSL BIO *
@@ -802,8 +849,10 @@ int fr_tls_log_init(void)
 	tls_request_log_meth = BIO_meth_new(BIO_get_new_index() | BIO_TYPE_SOURCE_SINK, "fr_tls_request_log");
 	if (unlikely(!tls_request_log_meth)) return -1;
 
+	BIO_meth_set_create(tls_request_log_meth, tls_log_request_bio_create_cb);
 	BIO_meth_set_write(tls_request_log_meth, tls_log_request_bio_write_cb);
 	BIO_meth_set_puts(tls_request_log_meth, tls_log_request_bio_puts_cb);
+	BIO_meth_set_destroy(tls_request_log_meth, tls_log_request_bio_free_cb);
 
 	tls_global_log_meth = BIO_meth_new(BIO_get_new_index() | BIO_TYPE_SOURCE_SINK, "fr_tls_global_log");
 	if (unlikely(!tls_global_log_meth)) {
@@ -812,8 +861,10 @@ int fr_tls_log_init(void)
 		return -1;
 	}
 
+	BIO_meth_set_create(tls_global_log_meth, tls_log_global_bio_create_cb);
 	BIO_meth_set_write(tls_global_log_meth, tls_log_global_bio_write_cb);
 	BIO_meth_set_puts(tls_global_log_meth, tls_log_global_bio_puts_cb);
+	BIO_meth_set_destroy(tls_global_log_meth, tls_log_global_bio_free_cb);
 
 	return 0;
 }
@@ -823,6 +874,14 @@ int fr_tls_log_init(void)
  */
 void fr_tls_log_free(void)
 {
+	/*
+	 *	These must be freed first else
+	 *      we get crashes in the OpenSSL
+	 *	code when we try to free them.
+	 */
+	fr_assert_msg(atomic_load(&tls_request_log_ref) == 0, "request log BIO refs remaining %u", atomic_load(&tls_request_log_ref));
+	fr_assert_msg(atomic_load(&tls_global_log_ref) == 0, "global log BIO refs remaining %u", atomic_load(&tls_global_log_ref));
+
 	if (tls_request_log_meth) {
 		BIO_meth_free(tls_request_log_meth);
 		tls_request_log_meth = NULL;

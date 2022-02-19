@@ -273,6 +273,14 @@ int main(int argc, char *argv[])
 
 cleanup:
 	/*
+	 *	Ensure all thread local memory is cleaned up
+	 *	at the appropriate time.  This emulates what's
+	 *	done with worker/network threads in the
+	 *	scheduler.
+	 */
+	fr_atexit_thread_trigger_all();
+
+	/*
 	 *	Try really hard to free any allocated
 	 *	memory, so we get clean talloc reports.
 	 */

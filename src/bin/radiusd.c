@@ -1021,7 +1021,7 @@ int main(int argc, char *argv[])
 		fr_event_loop_exit(el, 1);
 	}
 
-	main_loop_free();		/* Free the requests */
+	main_loop_free();
 
 	/*
 	 *  Send a TERM signal to all associated processes
@@ -1050,6 +1050,16 @@ cleanup:
 	 *	exiting due to a startup error.
 	 */
 	(void) fr_schedule_destroy(&sc);
+
+	/*
+	 *	Ensure all thread local memory is cleaned up
+	 *	before we start cleaning up global resources.
+	 *	This is necessay for single threaded mode
+	 *	to ensure that thread local resources that
+	 *	depend on global resources are freed at the
+	 *	appropriate time.
+	 */
+	fr_atexit_thread_trigger_all();
 
 	/*
 	 *  Frees request specific logging resources which is OK

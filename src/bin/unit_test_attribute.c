@@ -3693,6 +3693,14 @@ int main(int argc, char *argv[])
 	 *	memory, so we get clean talloc reports.
 	 */
 cleanup:
+	/*
+	 *	Ensure all thread local memory is cleaned up
+	 *	at the appropriate time.  This emulates what's
+	 *	done with worker/network threads in the
+	 *	scheduler.
+	 */
+	fr_atexit_thread_trigger_all();
+
 #ifdef WITH_TLS
 	fr_openssl_free();
 #endif
