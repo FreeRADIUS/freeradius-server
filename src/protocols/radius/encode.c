@@ -98,7 +98,7 @@ static ssize_t encode_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *input, size
 		len &= ~0x0f;
 	}
 
-	md5_ctx = fr_md5_ctx_alloc(false);
+	md5_ctx = fr_md5_ctx_alloc(true);
 	md5_ctx_old = fr_md5_ctx_alloc(true);
 
 	fr_md5_update(md5_ctx, (uint8_t const *) secret, talloc_array_length(secret) - 1);
@@ -198,7 +198,7 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 	tpasswd[1] = r & 0xff;
 	tpasswd[2] = inlen;	/* length of the password string */
 
-	md5_ctx = fr_md5_ctx_alloc(false);
+	md5_ctx = fr_md5_ctx_alloc(true);
 	md5_ctx_old = fr_md5_ctx_alloc(true);
 
 	fr_md5_update(md5_ctx, (uint8_t const *) packet_ctx->secret, talloc_array_length(packet_ctx->secret) - 1);

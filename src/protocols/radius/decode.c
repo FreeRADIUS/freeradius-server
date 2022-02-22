@@ -101,7 +101,7 @@ ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen,
 	 */
 	secretlen = talloc_array_length(secret) - 1;
 
-	md5_ctx = fr_md5_ctx_alloc(false);
+	md5_ctx = fr_md5_ctx_alloc(true);
 	md5_ctx_old = fr_md5_ctx_alloc(true);
 
 	fr_md5_update(md5_ctx, (uint8_t const *) secret, secretlen);
@@ -212,7 +212,7 @@ ssize_t fr_radius_decode_password(char *passwd, size_t pwlen, char const *secret
 	 */
 	secretlen = talloc_array_length(secret) - 1;
 
-	md5_ctx = fr_md5_ctx_alloc(false);
+	md5_ctx = fr_md5_ctx_alloc(true);
 	md5_ctx_old = fr_md5_ctx_alloc(true);
 
 	fr_md5_update(md5_ctx, (uint8_t const *) secret, secretlen);
