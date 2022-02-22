@@ -508,3 +508,13 @@ unsigned int fr_atexit_thread_trigger_all(void)
 
 	return count;
 }
+
+/** Return whether we're currently in the teardown phase
+ *
+ * When this function returns true no more thread local or global
+ * destructors can be added.
+ */
+bool fr_atexit_is_exiting(void)
+{
+	return is_exiting;
+}

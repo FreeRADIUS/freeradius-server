@@ -125,6 +125,8 @@ unsigned int	fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uc
 
 unsigned int	fr_atexit_thread_trigger_all(void);
 
+bool		fr_atexit_is_exiting(void);
+
 #ifdef __cplusplus
 }
 #endif
