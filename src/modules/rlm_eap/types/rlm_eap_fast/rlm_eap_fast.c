@@ -628,6 +628,7 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	rcode = eap_fast_tls_start(handler->eap_ds, tls_session);
 
 	if (rcode < 0) {
+	error:
 		talloc_free(tls_session);
 		return 0;
 	}
@@ -636,7 +637,7 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 
 	if (!SSL_set_session_ticket_ext_cb(tls_session->ssl, _session_ticket, tls_session)) {
 		RERROR("Failed setting SSL session ticket callback");
-		return 0;
+		goto error;
 	}
 
 	handler->stage = PROCESS;
