@@ -364,6 +364,7 @@ static void fr_md5_local_ctx_reset(fr_md5_ctx_t *ctx)
 	ctx_local->state[1] = 0xefcdab89;
 	ctx_local->state[2] = 0x98badcfe;
 	ctx_local->state[3] = 0x10325476;
+	memset(ctx_local->buffer, 0, sizeof(ctx_local->buffer));
 }
 
 /** @copydoc fr_md5_ctx_copy
