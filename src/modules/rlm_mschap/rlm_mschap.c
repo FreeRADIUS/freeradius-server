@@ -1007,8 +1007,8 @@ ntlm_auth_err:
 
 			ctx = EVP_CIPHER_CTX_new();
 			if (!ctx) {
-			error:
 				REDEBUG("Failed getting RC4 from OpenSSL");
+			error:
 				if (ctx) EVP_CIPHER_CTX_free(ctx);
 				return -1;
 			}
