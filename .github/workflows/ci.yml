@@ -132,11 +132,6 @@ jobs:
     #    MIT Kerberos -> HEIMDAL Kerberos
     #    OpenSSL 1.0  -> OpenSSL 3.0
     #
-    - name: Use alternative libraries
-      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      run: |
-        sudo apt-get install -y --no-install-recommends heimdal-dev
-
     - name: 'Fetch OpenSSL 3.0 SHA'
       id: opensslshasum
       if: ${{ matrix.env.LIBS_ALT == 'yes' }}
