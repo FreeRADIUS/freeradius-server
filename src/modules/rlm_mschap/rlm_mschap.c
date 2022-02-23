@@ -1007,23 +1007,25 @@ ntlm_auth_err:
 
 			ctx = EVP_CIPHER_CTX_new();
 			if (!ctx) {
+			error:
 				REDEBUG("Failed getting RC4 from OpenSSL");
+				if (ctx) EVP_CIPHER_CTX_free(ctx);
 				return -1;
 			}
 
 			if (!EVP_CIPHER_CTX_set_key_length(ctx, nt_password->vp_length)) {
 				REDEBUG("Failed setting key length");
-				return -1;
+				goto error;
 			}
 
 			if (!EVP_EncryptInit_ex(ctx, EVP_rc4(), NULL, nt_password->vp_octets, NULL)) {
 				REDEBUG("Failed setting key value");
-				return -1;
+				goto error;;
 			}
 
 			if (!EVP_EncryptUpdate(ctx, nt_pass_decrypted, &ntlen, new_nt_password, ntlen)) {
 				REDEBUG("Failed getting output");
-				return -1;
+				goto error;
 			}
 
 			EVP_CIPHER_CTX_free(ctx);
