@@ -157,9 +157,60 @@ static int _rc_request_free(rc_request_t *request)
 	return 0;
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#  include <openssl/provider.h>
+
+static OSSL_PROVIDER *openssl_default_provider = NULL;
+static OSSL_PROVIDER *openssl_legacy_provider = NULL;
+
+static int openssl3_init(void)
+{
+	/*
+	 *	Load the default provider for most algorithms
+	 */
+	openssl_default_provider = OSSL_PROVIDER_load(NULL, "default");
+	if (!openssl_default_provider) {
+		ERROR("(TLS) Failed loading default provider");
+		return -1;
+	}
+
+	/*
+	 *	Needed for MD4
+	 *
+	 *	https://www.openssl.org/docs/man3.0/man7/migration_guide.html#Legacy-Algorithms
+	 */
+	openssl_legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
+	if (!openssl_legacy_provider) {
+		ERROR("(TLS) Failed loading legacy provider");
+		return -1;
+	}
+
+	return 0;
+}
+
+static void openssl3_free(void)
+{
+	if (openssl_default_provider && !OSSL_PROVIDER_unload(openssl_default_provider)) {
+		ERROR("Failed unloading default provider");
+	}
+	openssl_default_provider = NULL;
+
+	if (openssl_legacy_provider && !OSSL_PROVIDER_unload(openssl_legacy_provider)) {
+		ERROR("Failed unloading legacy provider");
+	}
+	openssl_legacy_provider = NULL;
+}
+#else
+#define openssl3_init()
+#define openssl3_free()
+#endif
+
+
+
 static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 			   char const *password)
 {
+	int rcode;
 	unsigned int i;
 	uint8_t *p;
 	VALUE_PAIR *challenge, *reply;
@@ -192,9 +243,11 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 
 	p[1] = 0x01; /* NT hash */
 
-	if (mschap_ntpwdhash(nthash, password) < 0) {
-		return 0;
-	}
+	openssl3_init();
+	rcode = mschap_ntpwdhash(nthash, password);
+	openssl3_free();
+
+	if (rcode < 0) return 0;
 
 	smbdes_mschap(nthash, challenge->vp_octets, p + 26);
 	return 1;
