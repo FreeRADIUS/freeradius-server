@@ -161,7 +161,7 @@ static int _rc_request_free(rc_request_t *request)
 	return 0;
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#if defined(OPENSSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x30000000L
 #  include <openssl/provider.h>
 
 static OSSL_PROVIDER *openssl_default_provider = NULL;
