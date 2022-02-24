@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radpaths.h>
 #include <freeradius-devel/udpfromto.h>
 #include <freeradius-devel/conf.h>
+#include <freeradius-devel/openssl3.h>
 #include <ctype.h>
 
 #ifdef HAVE_GETOPT_H
