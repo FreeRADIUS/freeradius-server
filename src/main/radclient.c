@@ -243,10 +243,7 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 
 	p[1] = 0x01; /* NT hash */
 
-	openssl3_init();
 	rcode = mschap_ntpwdhash(nthash, password);
-	openssl3_free();
-
 	if (rcode < 0) return 0;
 
 	smbdes_mschap(nthash, challenge->vp_octets, p + 26);
@@ -1478,6 +1475,8 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	openssl3_init();
+
 	/*
 	 *	Bind to the first specified IP address and port.
 	 *	This means we ignore later ones.
@@ -1694,5 +1693,8 @@ int main(int argc, char **argv)
 	if ((stats.lost > 0) || (stats.failed > 0)) {
 		exit(1);
 	}
+
+	openssl3_free();
+
 	exit(0);
 }
