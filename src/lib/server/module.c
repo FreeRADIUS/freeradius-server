@@ -812,7 +812,7 @@ void modules_free(void)
 		TALLOC_FREE(module_instance_name_tree);
 	}
 	TALLOC_FREE(module_instance_data_tree);
-	modules_rlm_init();
+	modules_rlm_free();
 	TALLOC_FREE(instance_ctx);
 }
 
