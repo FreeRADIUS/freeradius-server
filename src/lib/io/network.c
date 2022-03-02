@@ -705,6 +705,7 @@ int fr_network_listen_send_packet(fr_network_t *nr, fr_listen_t *parent, fr_list
 	cd = (fr_channel_data_t *) fr_message_alloc(s->ms, NULL, buflen);
 	if (!cd) return -1;
 
+	cd->listen = parent;
 	cd->request.is_dup = false;
 	cd->priority = PRIORITY_NORMAL;
 	cd->packet_ctx = packet_ctx;
