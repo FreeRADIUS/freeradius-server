@@ -120,6 +120,11 @@ ldap_create_session_tracking_control LDAP_P((
 
 #define LDAP_VIRTUAL_DN_ATTR		"dn"		//!< 'Virtual' attribute which maps to the DN of the object.
 
+#define LDAP_SERVER_NOTIFICATION_OID	"1.2.840.113556.1.4.528"	//!< OID of Active Directory control for
+									//!< persistent search.
+#define LDAP_SERVER_SHOW_DELETED_OID	"1.2.840.113556.1.4.417"	//!< OID of Active Directory control which
+									//!< enables searching for deleted objects.
+
 typedef enum {
 	LDAP_EXT_UNSUPPORTED,				//!< Unsupported extension.
 	LDAP_EXT_BINDNAME,				//!< Specifies the user DN or name for an LDAP bind.
