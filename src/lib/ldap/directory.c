@@ -87,7 +87,7 @@ int fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 
 	if (directory->vendor_str) {
 		if (strcasestr(directory->vendor_str, "International Business Machines")) {
-			directory->type = FR_LDAP_DIRECTORY_EDIRECTORY;
+			directory->type = FR_LDAP_DIRECTORY_IBM;
 		}
 
 		goto found;
