@@ -699,7 +699,7 @@ int fr_network_listen_send_packet(fr_network_t *nr, fr_listen_t *parent, fr_list
 	(void) talloc_get_type_abort(nr, fr_network_t);
 	(void) talloc_get_type_abort_const(li, fr_listen_t);
 
-	s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = parent });
+	s = fr_rb_find(nr->sockets, &(fr_network_socket_t){ .listen = li });
 	if (!s) return -1;
 
 	cd = (fr_channel_data_t *) fr_message_alloc(s->ms, NULL, buflen);
