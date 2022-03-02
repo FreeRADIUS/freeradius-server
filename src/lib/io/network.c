@@ -712,7 +712,16 @@ int fr_network_listen_send_packet(fr_network_t *nr, fr_listen_t *parent, fr_list
 	memcpy(cd->m.data, buffer, buflen);
 	cd->m.when = fr_time();
 
-	return fr_network_send_request(nr, cd);
+	if (fr_network_send_request(nr, cd) < 0) {
+		talloc_free(cd->packet_ctx);
+		fr_message_done(&cd->m);
+		nr->stats.dropped++;
+		s->stats.dropped++;
+		return -1;
+	}
+
+	s->outstanding ++;
+	return 0;
 }
 
 
