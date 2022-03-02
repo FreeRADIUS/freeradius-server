@@ -490,7 +490,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	/* initiate connection pool */
-	inst->pool = module_connection_pool_init(conf, inst, mod_conn_create, mod_conn_alive, NULL, NULL, NULL);
+	inst->pool = module_rlm_connection_pool_init(conf, inst, mod_conn_create, mod_conn_alive, NULL, NULL, NULL);
 
 	/* check connection pool */
 	if (!inst->pool) {

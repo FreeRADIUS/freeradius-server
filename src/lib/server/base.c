@@ -72,7 +72,7 @@ int server_init(CONF_SECTION *cs)
 	 *
 	 *	After this step, all dynamic attributes, xlats, etc. are defined.
 	 */
-	if (modules_bootstrap(cs) < 0) return -1;
+	if (modules_rlm_bootstrap(cs) < 0) return -1;
 
 	/*
 	 *	And then load the virtual servers.

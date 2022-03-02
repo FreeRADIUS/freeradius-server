@@ -3915,7 +3915,7 @@ static CONF_SECTION *virtual_module_find_cs(CONF_ITEM *ci, rlm_components_t *pco
 	 *
 	 *	Return it to the caller, with the updated method.
 	 */
-	subcs = module_by_name_virtual(virtual_name);
+	subcs = module_rlm_by_name_virtual(virtual_name);
 	if (subcs) {
 		*pcomponent = method;
 		goto check_for_loop;
@@ -4253,7 +4253,7 @@ check_for_module:
 	 *	name2, etc.
 	 */
 	UPDATE_CTX2;
-	inst = module_by_name_and_method(&method, &unlang_ctx2.component,
+	inst = module_rlm_by_name_and_method(&method, &unlang_ctx2.component,
 					 &unlang_ctx2.section_name1, &unlang_ctx2.section_name2,
 					 realname);
 	if (inst) {

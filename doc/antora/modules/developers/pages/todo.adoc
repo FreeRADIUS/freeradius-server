@@ -149,7 +149,7 @@ sections.
 We will hope that the packet names are different in every protocol.
 
 The processing modules can now export a list of _additional_ methods
-that they take. The `*module_by_name_and_method()` function walks down
+that they take. The `*module_rlm_by_name_and_method()` function walks down
 that list:
 
 * if method[COMPONTENT] is set, then return that

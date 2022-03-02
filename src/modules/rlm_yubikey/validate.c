@@ -127,7 +127,7 @@ init:
 		return -1;
 	}
 
-	inst->pool = module_connection_pool_init(conf, inst, mod_conn_create, NULL, inst->name, NULL, NULL);
+	inst->pool = module_rlm_connection_pool_init(conf, inst, mod_conn_create, NULL, inst->name, NULL, NULL);
 	if (!inst->pool) {
 		ykclient_done(&inst->ykc);
 

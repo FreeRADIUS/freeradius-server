@@ -144,7 +144,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		inst->escape_func = rad_filename_make_safe;
 	}
 
-	inst->ef = module_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), inst->locking, NULL, NULL);
+	inst->ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), inst->locking, NULL, NULL);
 	if (!inst->ef) {
 		cf_log_err(conf, "Failed creating log file context");
 		return -1;

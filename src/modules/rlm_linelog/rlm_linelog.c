@@ -322,7 +322,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			return -1;
 		}
 
-		inst->file.ef = module_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
+		inst->file.ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
 		if (!inst->file.ef) {
 			cf_log_err(conf, "Failed creating log file context");
 			return -1;
@@ -375,20 +375,20 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		cf_log_err(conf, "Unix sockets are not supported on this sytem");
 		return -1;
 #else
-		inst->pool = module_connection_pool_init(cf_section_find(conf, "unix", NULL),
+		inst->pool = module_rlm_connection_pool_init(cf_section_find(conf, "unix", NULL),
 							 inst, mod_conn_create, NULL, prefix, NULL, NULL);
 		if (!inst->pool) return -1;
 #endif
 		break;
 
 	case LINELOG_DST_UDP:
-		inst->pool = module_connection_pool_init(cf_section_find(conf, "udp", NULL),
+		inst->pool = module_rlm_connection_pool_init(cf_section_find(conf, "udp", NULL),
 							 inst, mod_conn_create, NULL, prefix, NULL, NULL);
 		if (!inst->pool) return -1;
 		break;
 
 	case LINELOG_DST_TCP:
-		inst->pool = module_connection_pool_init(cf_section_find(conf, "tcp", NULL),
+		inst->pool = module_rlm_connection_pool_init(cf_section_find(conf, "tcp", NULL),
 							 inst, mod_conn_create, NULL, prefix, NULL, NULL);
 		if (!inst->pool) return -1;
 		break;

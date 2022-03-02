@@ -33,7 +33,14 @@ RCSIDH(modpriv_h, "$Id$")
 #ifdef __cplusplus
 extern "C" {
 #endif
-int			module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char const *name);
+
+extern fr_cmd_table_t	module_cmd_table[];
+
+extern fr_cmd_table_t	module_cmd_list_table[];
+
+int			module_instantiate(void *instance);
+
+int			module_rlm_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char const *name);
 
 int			unlang_fixup_update(map_t *map, void *ctx);
 

@@ -132,12 +132,6 @@ typedef int (*module_thread_detach_t)(module_thread_inst_ctx_t const *mctx);
 extern "C" {
 #endif
 
-/** Mappings between section names, and control attributes
- *
- * Defined in module.c.
- */
-extern const char *section_type_value[MOD_COUNT];
-
 /** Common fields for submodules
  *
  * This should either be the first field in the structure exported from
@@ -255,14 +249,14 @@ typedef struct {
  *
  * @{
  */
-fr_pool_t	*module_connection_pool_init(CONF_SECTION *module,
+fr_pool_t	*module_rlm_connection_pool_init(CONF_SECTION *module,
 					     void *opaque,
 					     fr_pool_connection_create_t c,
 					     fr_pool_connection_alive_t a,
 					     char const *log_prefix,
 					     char const *trigger_prefix,
 					     fr_pair_list_t *trigger_args);
-exfile_t	*module_exfile_init(TALLOC_CTX *ctx,
+exfile_t	*module_rlm_exfile_init(TALLOC_CTX *ctx,
 			     	    CONF_SECTION *module,
 				    uint32_t max_entries,
 				    fr_time_delta_t max_idle,
@@ -275,13 +269,13 @@ exfile_t	*module_exfile_init(TALLOC_CTX *ctx,
  *
  * @{
  */
-module_method_t	module_state_str_to_method(module_state_func_table_t const *table,
+module_method_t	module_rlm_state_str_to_method(module_state_func_table_t const *table,
 					   char const *name, module_method_t def);
 
-char const	*module_state_method_to_str(module_state_func_table_t const *table,
+char const	*module_rlm_state_method_to_str(module_state_func_table_t const *table,
 					    module_method_t method, char const *def);
 
-bool		module_section_type_set(request_t *request, fr_dict_attr_t const *type_da, fr_dict_enum_value_t const *enumv);
+bool		module_rlm_section_type_set(request_t *request, fr_dict_attr_t const *type_da, fr_dict_enum_value_t const *enumv);
 /** @} */
 
 /** @name Module and module thread lookup
@@ -290,7 +284,7 @@ bool		module_section_type_set(request_t *request, fr_dict_attr_t const *type_da,
  */
 module_instance_t	*module_by_name(module_instance_t const *parent, char const *asked_name);
 
-module_instance_t	*module_by_name_and_method(module_method_t *method, rlm_components_t *component,
+module_instance_t	*module_rlm_by_name_and_method(module_method_t *method, rlm_components_t *component,
 						   char const **name1, char const **name2,
 						   char const *asked_name);
 
@@ -300,7 +294,7 @@ module_thread_instance_t *module_thread(module_instance_t *mi);
 
 module_thread_instance_t *module_thread_by_data(void const *data);
 
-CONF_SECTION		*module_by_name_virtual(char const *asked_name);
+CONF_SECTION		*module_rlm_by_name_virtual(char const *asked_name);
 
 /** @} */
 
@@ -322,7 +316,7 @@ int		modules_instantiate(CONF_SECTION *root) CC_HINT(nonnull);
 
 module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTION *cs) CC_HINT(nonnull(2));
 
-int		modules_bootstrap(CONF_SECTION *root) CC_HINT(nonnull);
+int		modules_rlm_bootstrap(CONF_SECTION *root) CC_HINT(nonnull);
 /** @} */
 
 #ifdef __cplusplus

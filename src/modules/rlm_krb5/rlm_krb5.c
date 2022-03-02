@@ -222,7 +222,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	Initialize the socket pool.
 	 */
-	inst->pool = module_connection_pool_init(mctx->inst->conf, inst, krb5_mod_conn_create, NULL, NULL, NULL, NULL);
+	inst->pool = module_rlm_connection_pool_init(mctx->inst->conf, inst, krb5_mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) return -1;
 #else
 	inst->conn = krb5_mod_conn_create(inst, inst, fr_time_delta_wrap(0));

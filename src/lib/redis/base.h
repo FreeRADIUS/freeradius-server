@@ -99,7 +99,7 @@ typedef struct {
 
 /** Configuration parameters for a redis connection
  *
- * @note should be passed as instance data to #module_connection_pool_init.
+ * @note should be passed as instance data to #module_rlm_connection_pool_init.
  */
 typedef struct {
 	char const		**hostname;	//!< of Redis server.

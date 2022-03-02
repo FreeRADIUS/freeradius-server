@@ -123,7 +123,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	driver->pool = module_connection_pool_init(conf, driver, mod_conn_create, NULL,
+	driver->pool = module_rlm_connection_pool_init(conf, driver, mod_conn_create, NULL,
 						   buffer, "modules.rlm_cache.pool", NULL);
 	if (!driver->pool) return -1;
 

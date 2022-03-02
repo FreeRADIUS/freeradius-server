@@ -1200,7 +1200,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				inst->driver->sql_escape_func :
 				sql_escape_func;
 
-	inst->ef = module_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
+	inst->ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
 	if (!inst->ef) {
 		cf_log_err(conf, "Failed creating log file context");
 		return -1;
@@ -1211,7 +1211,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 */
 	INFO("Attempting to connect to database \"%s\"", inst->config.sql_db);
 
-	inst->pool = module_connection_pool_init(conf, inst, sql_mod_conn_create, NULL, NULL, NULL, NULL);
+	inst->pool = module_rlm_connection_pool_init(conf, inst, sql_mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) return -1;
 
 	return 0;

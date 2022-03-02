@@ -37,6 +37,7 @@ USES_APPLE_DEPRECATED_API
 #include "rlm_ldap.h"
 
 #include <freeradius-devel/server/map_proc.h>
+#include <freeradius-devel/server/module_rlm.h>
 
 static CONF_PARSER sasl_mech_dynamic[] = {
 	{ FR_CONF_OFFSET("mech", FR_TYPE_TMPL | FR_TYPE_NOT_EMPTY, fr_ldap_sasl_t_dynamic_t, mech) },
