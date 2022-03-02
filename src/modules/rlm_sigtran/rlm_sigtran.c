@@ -42,7 +42,7 @@ RCSID("$Id$")
 #include "libosmo-m3ua/include/sctp_m3ua.h"
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
 
 #include "sigtran.h"

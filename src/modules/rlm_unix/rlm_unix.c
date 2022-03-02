@@ -34,7 +34,7 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/sysutmp.h>
 #include <freeradius-devel/util/perm.h>
 

@@ -26,15 +26,15 @@ RCSID("$Id$")
 
 #define LOG_PREFIX mctx->inst->name
 
-#include	<freeradius-devel/server/base.h>
-#include	<freeradius-devel/server/module.h>
-#include	<freeradius-devel/util/debug.h>
-#include	<freeradius-devel/server/users_file.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/server/users_file.h>
 
-#include	<sys/stat.h>
+#include <sys/stat.h>
 
-#include	<ctype.h>
-#include	<fcntl.h>
+#include <ctype.h>
+#include <fcntl.h>
 
 /*
  *	Define a structure with the module configuration, so it can

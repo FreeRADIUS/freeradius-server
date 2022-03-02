@@ -25,7 +25,7 @@
 #define LOG_PREFIX "proto_dhcpv4"
 
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
 #include "proto_dhcpv4.h"
 

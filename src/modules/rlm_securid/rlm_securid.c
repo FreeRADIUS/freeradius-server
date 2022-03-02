@@ -27,7 +27,7 @@
 #define "rlm_securid - "
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
 #include <ctype.h>
 
 #include "rlm_securid.h"

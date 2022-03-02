@@ -25,7 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/unlang/interpret.h>
 
 static fr_dict_t const *dict_freeradius;
@@ -132,7 +132,7 @@ static ssize_t base32_decode(uint8_t *out, size_t outlen, char const *in)
 	 *	Will get converted to
 	 *
 	 *	11111222 22333334 44445555 56666677 77788888
-	 */	
+	 */
 	for (p = b = out; p < end; p += 8) {
 		b[0] = p[0] << 3;
 		b[0] |= p[1] >> 2;

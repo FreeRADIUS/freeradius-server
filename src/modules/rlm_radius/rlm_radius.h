@@ -17,7 +17,7 @@
 #include <freeradius-devel/io/atomic_queue.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/map.h>
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/trunk.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/retry.h>

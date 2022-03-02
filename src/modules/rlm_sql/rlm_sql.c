@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/exfile.h>
 #include <freeradius-devel/server/map_proc.h>
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/table.h>

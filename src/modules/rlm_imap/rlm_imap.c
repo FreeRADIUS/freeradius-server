@@ -25,7 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/curl/base.h>
 
 static fr_dict_t 	const 		*dict_radius; /*dictionary for radius protocol*/

@@ -24,7 +24,7 @@
  */
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
 #include "proto_radius.h"
 
 extern fr_app_t proto_radius;

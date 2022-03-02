@@ -22,7 +22,7 @@
  * @copyright 2018 Alan DeKok (aland@freeradius.org)
  */
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
 #include "proto_control.h"
 

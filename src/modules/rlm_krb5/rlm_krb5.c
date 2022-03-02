@@ -29,7 +29,7 @@ RCSID("$Id$")
 #define LOG_PREFIX inst->name
 
 #include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
 #include "krb5.h"
 

@@ -23,7 +23,7 @@
  * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/protocol/vmps/vmps.h>

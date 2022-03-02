@@ -24,7 +24,7 @@
  */
 
 #include "interpret_priv.h"
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
 
 typedef struct {
 	fr_heap_t		*runnable;

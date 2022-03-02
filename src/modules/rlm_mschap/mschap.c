@@ -30,16 +30,16 @@
 
 RCSID("$Id$")
 
-#include	<freeradius-devel/server/base.h>
-#include	<freeradius-devel/server/module.h>
-#include	<freeradius-devel/util/debug.h>
-#include	<freeradius-devel/util/md5.h>
-#include	<freeradius-devel/util/sha1.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/md5.h>
+#include <freeradius-devel/util/sha1.h>
 
-#include 	<ctype.h>
+#include <ctype.h>
 
-#include	"smbdes.h"
-#include	"mschap.h"
+#include "smbdes.h"
+#include "mschap.h"
 
 /** Converts Unicode password to 16-byte NT hash with MD4
  *

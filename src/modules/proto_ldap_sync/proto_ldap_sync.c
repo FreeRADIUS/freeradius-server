@@ -28,7 +28,7 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/ldap/base.h>
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/main_loop.h>

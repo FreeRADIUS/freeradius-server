@@ -25,7 +25,7 @@
  */
 RCSIDH(proto_load_h, "$Id$")
 
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/io/master.h>
 
 #ifdef __cplusplus

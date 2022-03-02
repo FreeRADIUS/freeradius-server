@@ -23,7 +23,7 @@
  */
 #include "rest.h"
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
 
 /** Handle asynchronous cancellation of a request
  *

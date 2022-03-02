@@ -30,7 +30,7 @@
 extern "C" {
 #endif
 
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/unlang/subrequest.h>
 #include <freeradius-devel/unlang/tmpl.h>

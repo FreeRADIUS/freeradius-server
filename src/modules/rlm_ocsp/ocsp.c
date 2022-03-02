@@ -30,7 +30,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifdef HAVE_OPENSSL_OCSP_H
 #define LOG_PREFIX "tls - ocsp"
 
-#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/util/debug.h>
 
