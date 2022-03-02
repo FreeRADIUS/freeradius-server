@@ -154,6 +154,13 @@ typedef enum {
 	FR_LDAP_DIRECTORY_UNBOUND_ID			//!< Directory server is Unbound ID
 } fr_ldap_directory_type_t;
 
+typedef enum {
+	FR_LDAP_SYNC_NONE = 0,				//!< No support for LDAP sync
+	FR_LDAP_SYNC_RFC4533,				//!< Directory supports RFC 4533
+	FR_LDAP_SYNC_ACTIVE_DIRECTORY,			//!< Directory supports AD style persistent search.
+	FR_LDAP_SYNC_PERSISTENT_SEARCH			//!< Directory supports persistent search
+} fr_ldap_sync_type_t;
+
 /** LDAP connection handle states
  *
  */
@@ -198,6 +205,8 @@ typedef struct {
 
 	bool			cleartext_password;	//!< Whether the server will return the user's plaintext
 							///< password.
+
+	fr_ldap_sync_type_t	sync_type;		//! <What kind of LDAP sync this directory supports.
 } fr_ldap_directory_t;
 
 /** Connection configuration
