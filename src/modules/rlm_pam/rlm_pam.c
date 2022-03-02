@@ -267,14 +267,16 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	RETURN_MODULE_OK;
 }
 
-extern module_t rlm_pam;
-module_t rlm_pam = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "pam",
-	.type		= RLM_TYPE_THREAD_UNSAFE,	/* The PAM libraries are not thread-safe */
-	.inst_size	= sizeof(rlm_pam_t),
-	.config		= module_config,
-	.instantiate	= mod_instantiate,
+extern module_rlm_t rlm_pam;
+module_rlm_t rlm_pam = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "pam",
+		.type		= MODULE_TYPE_THREAD_UNSAFE,	/* The PAM libraries are not thread-safe */
+		.inst_size	= sizeof(rlm_pam_t),
+		.config		= module_config,
+		.instantiate	= mod_instantiate
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate
 	},

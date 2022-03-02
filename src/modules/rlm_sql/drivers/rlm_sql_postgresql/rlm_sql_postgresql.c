@@ -544,9 +544,11 @@ static size_t sql_escape_func(request_t *request, char *out, size_t outlen, char
 	return ret;
 }
 
-static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_sql_postgresql_t	*inst = talloc_get_type_abort(instance, rlm_sql_postgresql_t);
+	rlm_sql_t const		*parent = talloc_get_type_abort(mctx->inst->parent->data, rlm_sql_t);
+	rlm_sql_config_t const	*config = &parent->config;
+	rlm_sql_postgresql_t	*inst = talloc_get_type_abort(mctx->inst, rlm_sql_postgresql_t);
 	char 			application_name[NAMEDATALEN];
 	char			*db_string;
 
@@ -557,7 +559,7 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 		CONF_SECTION	*cs;
 		char const	*name;
 
-		cs = cf_item_to_section(cf_parent(conf));
+		cs = cf_item_to_section(cf_parent(mctx->inst->conf));
 
 		name = cf_section_name2(cs);
 		if (!name) name = cf_section_name1(cs);
@@ -645,7 +647,7 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 	{
 		CONF_SECTION *cs;
 
-		cs = cf_section_find(conf, "states", NULL);
+		cs = cf_section_find(mctx->inst->conf, "states", NULL);
 		if (cs && (sql_state_entries_from_cs(inst->states, cs) < 0)) return -1;
 	}
 
@@ -667,13 +669,15 @@ static int mod_load(void)
 /* Exported to rlm_sql */
 extern rlm_sql_driver_t rlm_sql_postgresql;
 rlm_sql_driver_t rlm_sql_postgresql = {
-	.name				= "rlm_sql_postgresql",
-	.magic				= RLM_MODULE_INIT,
+	.common = {
+		.magic				= MODULE_MAGIC_INIT,
+		.name				= "rlm_sql_postgresql",
+		.inst_size			= sizeof(rlm_sql_postgresql_t),
+		.onload				= mod_load,
+		.config				= driver_config,
+		.instantiate			= mod_instantiate
+	},
 	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
-	.inst_size			= sizeof(rlm_sql_postgresql_t),
-	.onload				= mod_load,
-	.config				= driver_config,
-	.instantiate			= mod_instantiate,
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,

@@ -417,22 +417,24 @@ static int mod_detach(module_detach_ctx_t const *mctx)
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_sigtran;
-module_t rlm_sigtran = {
-	.magic			= RLM_MODULE_INIT,
-	.name			= "sigtran",
-	.type			= RLM_TYPE_THREAD_SAFE | RLM_TYPE_RESUMABLE,
-	.inst_size		= sizeof(rlm_sigtran_t),
-	.thread_inst_size	= sizeof(rlm_sigtran_thread_t),
-	.config			= module_config,
-	.instantiate		= mod_instantiate,
-	.detach			= mod_detach,
-	.thread_instantiate	= mod_thread_instantiate,
-	.thread_detach		= mod_thread_detach,
+extern module_rlm_t rlm_sigtran;
+module_rlm_t rlm_sigtran = {
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "sigtran",
+		.type			= MODULE_TYPE_THREAD_SAFE | MODULE_TYPE_RESUMABLE,
+		.inst_size		= sizeof(rlm_sigtran_t),
+		.thread_inst_size	= sizeof(rlm_sigtran_thread_t),
+		.config			= module_config,
+		.instantiate		= mod_instantiate,
+		.detach			= mod_detach,
+		.thread_instantiate	= mod_thread_instantiate,
+		.thread_detach		= mod_thread_detach
+	},
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 	}

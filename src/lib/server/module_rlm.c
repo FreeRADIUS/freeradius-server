@@ -432,6 +432,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, rlm_co
 	module_instance_t		*mi;
 	module_method_names_t const	*methods;
 	char const			*method_name1, *method_name2;
+	module_rlm_t const		*mrlm;
 
 	if (method) *method = NULL;
 
@@ -451,23 +452,25 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, rlm_co
 	 */
 	mi = module_by_name(NULL, name);
 	if (mi) {
-		virtual_server_method_t const *allowed_list;
+		virtual_server_method_t const	*allowed_list;
 
 		if (!method) return mi;
+
+		mrlm = module_rlm_from_module(mi->module);
 
 		/*
 		 *	We're not searching for a named method, OR the
 		 *	module has no named methods.  Try to return a
 		 *	method based on the component.
 		 */
-		if (!method_name1 || !mi->module->method_names) goto return_component;
+		if (!method_name1 || !mrlm->method_names) goto return_component;
 
 		/*
 		 *	Walk through the module, finding a matching
 		 *	method.
 		 */
-		for (j = 0; mi->module->method_names[j].name1 != NULL; j++) {
-			methods = &mi->module->method_names[j];
+		for (j = 0; mrlm->method_names[j].name1 != NULL; j++) {
+			methods = &mrlm->method_names[j];
 
 			/*
 			 *	Wildcard match name1, we're
@@ -538,8 +541,8 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, rlm_co
 			int k;
 			virtual_server_method_t const *allowed = &allowed_list[j];
 
-			for (k = 0; mi->module->method_names[k].name1 != NULL; k++) {
-				methods = &mi->module->method_names[k];
+			for (k = 0; mrlm->method_names[k].name1 != NULL; k++) {
+				methods = &mrlm->method_names[k];
 
 				fr_assert(methods->name1 != CF_IDENT_ANY); /* should have been caught above */
 
@@ -574,8 +577,8 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, rlm_co
 		 *	No matching method.  Just return a method
 		 *	based on the component.
 		 */
-		if (component && mi->module->methods[*component]) {
-			*method = mi->module->methods[*component];
+		if (component && mrlm->methods[*component]) {
+			*method = mrlm->methods[*component];
 		}
 
 		/*
@@ -625,6 +628,8 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, rlm_co
 		return NULL;
 	}
 
+	mrlm = module_rlm_from_module(mi->module);
+
 	/*
 	 *	We have a module, but the caller doesn't care about
 	 *	method or names, so just return the module.
@@ -655,7 +660,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, rlm_co
 			 */
 			if (component) {
 				*component = i;
-				if (method) *method = mi->module->methods[*component];
+				if (method) *method = mrlm->methods[*component];
 			}
 
 			/*
@@ -673,7 +678,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, rlm_co
 	/*
 	 *	We've found the module, but it has no named methods.
 	 */
-	if (!mi->module->method_names) {
+	if (!mrlm->method_names) {
 		*name1 = name + (p - inst_name);
 		*name2 = NULL;
 		talloc_free(inst_name);
@@ -686,8 +691,8 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, rlm_co
 	 *	matches anything else.
 	 */
 	if (!q) {
-		for (j = 0; mi->module->method_names[j].name1 != NULL; j++) {
-			methods = &mi->module->method_names[j];
+		for (j = 0; mrlm->method_names[j].name1 != NULL; j++) {
+			methods = &mrlm->method_names[j];
 
 			/*
 			 *	If we do not have the second $method, then ignore it!
@@ -743,8 +748,8 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, rlm_co
 	 *
 	 *	Loop over the method names, seeing if we have a match.
 	 */
-	for (j = 0; mi->module->method_names[j].name1 != NULL; j++) {
-		methods = &mi->module->method_names[j];
+	for (j = 0; mrlm->method_names[j].name1 != NULL; j++) {
+		methods = &mrlm->method_names[j];
 
 		/*
 		 *	If name1 doesn't match, skip it.
@@ -1011,7 +1016,7 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 		 *	Compile the default "actions" subsection, which includes retries.
 		 */
 		actions = cf_section_find(subcs, "actions", NULL);
-		if (actions && unlang_compile_actions(&mi->actions, actions, (mi->module->type & RLM_TYPE_RETRY) != 0)) {
+		if (actions && unlang_compile_actions(&mi->actions, actions, (mi->module->type & MODULE_TYPE_RETRY) != 0)) {
 			talloc_free(mi);
 			return -1;
 		}

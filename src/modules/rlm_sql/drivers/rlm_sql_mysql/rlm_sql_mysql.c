@@ -167,9 +167,9 @@ static int _sql_socket_destructor(rlm_sql_mysql_conn_t *conn)
 	return 0;
 }
 
-static int mod_instantiate(UNUSED rlm_sql_config_t const *config, void *instance, UNUSED CONF_SECTION *cs)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_sql_mysql_t		*inst = talloc_get_type_abort(instance, rlm_sql_mysql_t);
+	rlm_sql_mysql_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_mysql_t);
 	int			warnings;
 
 	warnings = fr_table_value_by_str(server_warnings_table, inst->warnings_str, -1);
@@ -843,14 +843,16 @@ static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outle
 /* Exported to rlm_sql */
 extern rlm_sql_driver_t rlm_sql_mysql;
 rlm_sql_driver_t rlm_sql_mysql = {
-	.name				= "rlm_sql_mysql",
-	.magic				= RLM_MODULE_INIT,
+	.common = {
+		.name				= "rlm_sql_mysql",
+		.magic				= MODULE_MAGIC_INIT,
+		.inst_size			= sizeof(rlm_sql_mysql_t),
+		.onload				= mod_load,
+		.unload				= mod_unload,
+		.config				= driver_config,
+		.instantiate			= mod_instantiate
+	},
 	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
-	.inst_size			= sizeof(rlm_sql_mysql_t),
-	.onload				= mod_load,
-	.unload				= mod_unload,
-	.config				= driver_config,
-	.instantiate			= mod_instantiate,
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,

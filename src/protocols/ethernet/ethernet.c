@@ -401,7 +401,7 @@ static int fr_ethernet_set_option(void *proto_ctx, fr_proto_opt_group_t group, i
 
 extern fr_proto_lib_t const libfreeradius_ethernet;
 fr_proto_lib_t const libfreeradius_ethernet = {
-	.magic		= RLM_MODULE_INIT,
+	.magic		= MODULE_MAGIC_INIT,
 	.name		= "ethernet",
 	.inst_size	= sizeof(fr_ethernet_proto_ctx_t),
 

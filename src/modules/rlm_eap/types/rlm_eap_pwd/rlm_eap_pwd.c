@@ -585,15 +585,15 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 extern rlm_eap_submodule_t rlm_eap_pwd;
 rlm_eap_submodule_t rlm_eap_pwd = {
-	.name		= "eap_pwd",
-	.magic		= RLM_MODULE_INIT,
-
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "eap_pwd",
+		.inst_size	= sizeof(rlm_eap_pwd_t),
+		.config		= submodule_config,
+		.instantiate	= mod_instantiate,	/* Create new submodule instance */
+		.detach		= mod_detach
+	},
 	.provides	= { FR_EAP_METHOD_PWD },
-	.inst_size	= sizeof(rlm_eap_pwd_t),
-	.config		= submodule_config,
-	.instantiate	= mod_instantiate,	/* Create new submodule instance */
-	.detach		= mod_detach,
-
 	.session_init	= mod_session_init,	/* Create the initial request */
 };
 

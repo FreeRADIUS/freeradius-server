@@ -259,7 +259,7 @@ static const virtual_server_compile_t compile_list[] = {
 
 extern fr_process_module_t process_vmps;
 fr_process_module_t process_vmps = {
-	.magic		= RLM_MODULE_INIT,
+	.magic		= MODULE_MAGIC_INIT,
 	.name		= "process_vmps",
 	.inst_size	= sizeof(process_vmps_t),
 

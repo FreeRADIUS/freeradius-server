@@ -488,17 +488,21 @@ cleanup:
 
 #endif /* MIT_KRB5 */
 
-extern module_t rlm_krb5;
-module_t rlm_krb5 = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "krb5",
+extern module_rlm_t rlm_krb5;
+module_rlm_t rlm_krb5 = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "krb5",
 #ifdef KRB5_IS_THREAD_SAFE
-	.type		= RLM_TYPE_THREAD_SAFE,
+		.type		= MODULE_TYPE_THREAD_SAFE,
+#else
+		.type		= MODULE_TYPE_THREAD_UNSAFE,
 #endif
-	.inst_size	= sizeof(rlm_krb5_t),
-	.config		= module_config,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
+		.inst_size	= sizeof(rlm_krb5_t),
+		.config		= module_config,
+		.instantiate	= mod_instantiate,
+		.detach		= mod_detach
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate
 	},

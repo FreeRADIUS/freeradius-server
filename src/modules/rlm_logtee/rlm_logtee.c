@@ -652,16 +652,17 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 /*
  *	Externally visible module definition.
  */
-extern module_t rlm_logtee;
-module_t rlm_logtee = {
-	.magic			= RLM_MODULE_INIT,
-	.name			= "logtee",
-	.inst_size		= sizeof(rlm_logtee_t),
-	.thread_inst_size	= sizeof(rlm_logtee_thread_t),
-	.config			= module_config,
-	.instantiate		= mod_instantiate,
-	.thread_instantiate	= mod_thread_instantiate,
-
+extern module_rlm_t rlm_logtee;
+module_rlm_t rlm_logtee = {
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "logtee",
+		.inst_size		= sizeof(rlm_logtee_t),
+		.thread_inst_size	= sizeof(rlm_logtee_thread_t),
+		.config			= module_config,
+		.instantiate		= mod_instantiate,
+		.thread_instantiate	= mod_thread_instantiate,
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_insert_logtee,
 		[MOD_AUTHORIZE]		= mod_insert_logtee,

@@ -36,7 +36,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/module.h>
 #include "rlm_eap.h"
 
-extern module_t rlm_eap;
+extern module_rlm_t rlm_eap;
 
 /** Resume context for calling a submodule
  *
@@ -776,7 +776,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 
 	method = &inst->methods[eap_session->type];
 
-	RDEBUG2("Calling submodule %s", method->submodule->name);
+	RDEBUG2("Calling submodule %s", method->submodule->common.name);
 
 	/*
 	 *	Allocate a new subrequest
@@ -1205,15 +1205,17 @@ static void mod_unload(void)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-module_t rlm_eap = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "eap",
-	.inst_size	= sizeof(rlm_eap_t),
-	.config		= module_config,
-	.onload		= mod_load,
-	.unload		= mod_unload,
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
+module_rlm_t rlm_eap = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "eap",
+		.inst_size	= sizeof(rlm_eap_t),
+		.config		= module_config,
+		.onload		= mod_load,
+		.unload		= mod_unload,
+		.bootstrap	= mod_bootstrap,
+		.instantiate	= mod_instantiate,
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,

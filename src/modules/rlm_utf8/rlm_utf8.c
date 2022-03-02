@@ -53,15 +53,17 @@ static unlang_action_t CC_HINT(nonnull) mod_utf8_clean(rlm_rcode_t *p_result, UN
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_utf8;
-module_t rlm_utf8 = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "utf8",
-	.type		= RLM_TYPE_THREAD_SAFE,
+extern module_rlm_t rlm_utf8;
+module_rlm_t rlm_utf8 = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "utf8",
+		.type		= MODULE_TYPE_THREAD_SAFE
+	},
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_utf8_clean,
 		[MOD_PREACCT]		= mod_utf8_clean,

@@ -1104,25 +1104,26 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_smtp;
-module_t rlm_smtp = {
-	.magic		        = RLM_MODULE_INIT,
-	.name		        = "smtp",
-	.type		        = RLM_TYPE_THREAD_SAFE,
-	.inst_size	        = sizeof(rlm_smtp_t),
-	.thread_inst_size   	= sizeof(rlm_smtp_thread_t),
-	.config		        = module_config,
-	.bootstrap 		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
-	.onload            	= mod_load,
-	.unload             	= mod_unload,
-	.thread_instantiate 	= mod_thread_instantiate,
-	.thread_detach      	= mod_thread_detach,
-
+extern module_rlm_t rlm_smtp;
+module_rlm_t rlm_smtp = {
+	.common = {
+		.magic		        = MODULE_MAGIC_INIT,
+		.name		        = "smtp",
+		.type		        = MODULE_TYPE_THREAD_SAFE,
+		.inst_size	        = sizeof(rlm_smtp_t),
+		.thread_inst_size   	= sizeof(rlm_smtp_thread_t),
+		.config		        = module_config,
+		.bootstrap 		= mod_bootstrap,
+		.instantiate		= mod_instantiate,
+		.onload            	= mod_load,
+		.unload             	= mod_unload,
+		.thread_instantiate 	= mod_thread_instantiate,
+		.thread_detach      	= mod_thread_detach,
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]         = mod_authorize,

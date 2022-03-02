@@ -309,18 +309,20 @@ static void mod_unload(void)
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_chap;
-module_t rlm_chap = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "chap",
-	.inst_size	= sizeof(rlm_chap_t),
-	.onload		= mod_load,
-	.unload		= mod_unload,
-	.instantiate	= mod_instantiate,
+extern module_rlm_t rlm_chap;
+module_rlm_t rlm_chap = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "chap",
+		.inst_size	= sizeof(rlm_chap_t),
+		.onload		= mod_load,
+		.unload		= mod_unload,
+		.instantiate	= mod_instantiate
+	},
 	.dict		= &dict_radius,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,

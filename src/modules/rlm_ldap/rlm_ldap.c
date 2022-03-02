@@ -2354,22 +2354,24 @@ static void mod_unload(void)
 }
 
 /* globally exported name */
-extern module_t rlm_ldap;
-module_t rlm_ldap = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "ldap",
-	.type		= 0,
-	.inst_size	= sizeof(rlm_ldap_t),
-	.config		= module_config,
-	.onload		= mod_load,
-	.unload		= mod_unload,
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
-	.thread_inst_size	= sizeof(fr_ldap_thread_t),
-	.thread_inst_type	= "fr_ldap_thread_t",
-	.thread_instantiate	= mod_thread_instatiate,
-	.thread_detach		= mod_thread_detach,
+extern module_rlm_t rlm_ldap;
+module_rlm_t rlm_ldap = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "ldap",
+		.type		= 0,
+		.inst_size	= sizeof(rlm_ldap_t),
+		.config		= module_config,
+		.onload		= mod_load,
+		.unload		= mod_unload,
+		.bootstrap	= mod_bootstrap,
+		.instantiate	= mod_instantiate,
+		.detach		= mod_detach,
+		.thread_inst_size	= sizeof(fr_ldap_thread_t),
+		.thread_inst_type	= "fr_ldap_thread_t",
+		.thread_instantiate	= mod_thread_instatiate,
+		.thread_detach		= mod_thread_detach,
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,

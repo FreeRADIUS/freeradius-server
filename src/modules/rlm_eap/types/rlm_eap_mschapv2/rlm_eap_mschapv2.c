@@ -893,14 +893,14 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  */
 extern rlm_eap_submodule_t rlm_eap_mschapv2;
 rlm_eap_submodule_t rlm_eap_mschapv2 = {
-	.name		= "eap_mschapv2",
-	.magic		= RLM_MODULE_INIT,
-
+	.common = {
+		.name		= "eap_mschapv2",
+		.magic		= MODULE_MAGIC_INIT,
+		.inst_size	= sizeof(rlm_eap_mschapv2_t),
+		.config		= submodule_config,
+		.instantiate	= mod_instantiate,	/* Create new submodule instance */
+	},
 	.provides	= { FR_EAP_METHOD_MSCHAPV2 },
-	.inst_size	= sizeof(rlm_eap_mschapv2_t),
-	.config		= submodule_config,
-	.instantiate	= mod_instantiate,	/* Create new submodule instance */
-
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.clone_parent_lists = false		/* HACK */
 };

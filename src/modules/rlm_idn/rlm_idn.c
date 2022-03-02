@@ -155,12 +155,14 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-extern module_t rlm_idn;
-module_t rlm_idn = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "idn",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_idn_t),
-	.config		= mod_config,
-	.bootstrap	= mod_bootstrap
+extern module_rlm_t rlm_idn;
+module_rlm_t rlm_idn = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "idn",
+		.type		= MODULE_TYPE_THREAD_SAFE,
+		.inst_size	= sizeof(rlm_idn_t),
+		.config		= mod_config,
+		.bootstrap	= mod_bootstrap
+	}
 };

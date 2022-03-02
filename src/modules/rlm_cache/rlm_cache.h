@@ -263,9 +263,7 @@ typedef int		(*cache_reconnect_t)(rlm_cache_handle_t **handle, rlm_cache_config_
 					     void *instance, request_t *request);
 
 struct rlm_cache_driver_s {
-	DL_MODULE_COMMON;					//!< Common fields for all loadable modules.
-	FR_MODULE_COMMON;					//!< Common fields for all instantiated modules.
-	FR_MODULE_THREADED_COMMON;				//!< Common fields for threaded modules.
+	module_t			common;			//!< Common fields for all loadable modules.
 
 	cache_entry_alloc_t		alloc;			//!< (optional) Allocate a new entry.
 	cache_entry_free_t		free;			//!< (optional) Free memory used by an entry.

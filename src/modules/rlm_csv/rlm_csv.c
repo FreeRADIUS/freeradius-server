@@ -1045,16 +1045,17 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	RETURN_MODULE_RCODE(rcode);
 }
 
-extern module_t rlm_csv;
-module_t rlm_csv = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "csv",
-	.type		= 0,
-	.inst_size	= sizeof(rlm_csv_t),
-	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
-
+extern module_rlm_t rlm_csv;
+module_rlm_t rlm_csv = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "csv",
+		.type		= 0,
+		.inst_size	= sizeof(rlm_csv_t),
+		.config		= module_config,
+		.bootstrap	= mod_bootstrap,
+		.instantiate	= mod_instantiate,
+	},
 	.method_names = (module_method_names_t[]){
 		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,	.method = mod_process },
 

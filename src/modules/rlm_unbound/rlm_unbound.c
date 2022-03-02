@@ -495,17 +495,19 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-extern module_t rlm_unbound;
-module_t rlm_unbound = {
-	.magic			= RLM_MODULE_INIT,
-	.name			= "unbound",
-	.type			= RLM_TYPE_THREAD_SAFE,
-	.inst_size		= sizeof(rlm_unbound_t),
-	.config			= module_config,
-	.bootstrap		= mod_bootstrap,
+extern module_rlm_t rlm_unbound;
+module_rlm_t rlm_unbound = {
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "unbound",
+		.type			= MODULE_TYPE_THREAD_SAFE,
+		.inst_size		= sizeof(rlm_unbound_t),
+		.config			= module_config,
+		.bootstrap		= mod_bootstrap,
 
-	.thread_inst_size	= sizeof(rlm_unbound_thread_t),
-	.thread_inst_type	= "rlm_unbound_thread_t",
-	.thread_instantiate	= mod_thread_instantiate,
-	.thread_detach		= mod_thread_detach,
+		.thread_inst_size	= sizeof(rlm_unbound_thread_t),
+		.thread_inst_type	= "rlm_unbound_thread_t",
+		.thread_instantiate	= mod_thread_instantiate,
+		.thread_detach		= mod_thread_detach
+	}
 };

@@ -47,9 +47,7 @@ typedef eap_type_t (*eap_type_identity_t)(void *inst, char const *id, size_t id_
  *
  */
 typedef struct {
-	DL_MODULE_COMMON;				//!< Common fields to all loadable modules.
-	FR_MODULE_COMMON;				//!< Common fields for all instantiated modules.
-	FR_MODULE_THREADED_COMMON;			//!< Common fields for threaded modules.
+	module_t			common;			//!< Common fields provided by all modules.
 
 	eap_type_t			provides[MAX_PROVIDED_METHODS];	//!< Allow the module to register itself for more
 									///< than one EAP-Method.

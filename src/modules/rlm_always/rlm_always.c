@@ -158,14 +158,16 @@ static unlang_action_t CC_HINT(nonnull) mod_always_return(rlm_rcode_t *p_result,
 	RETURN_MODULE_RCODE(inst->rcode);
 }
 
-extern module_t rlm_always;
-module_t rlm_always = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "always",
-	.inst_size	= sizeof(rlm_always_t),
-	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
+extern module_rlm_t rlm_always;
+module_rlm_t rlm_always = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "always",
+		.inst_size	= sizeof(rlm_always_t),
+		.config		= module_config,
+		.bootstrap	= mod_bootstrap,
+		.instantiate	= mod_instantiate,
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_always_return,
 		[MOD_AUTHORIZE]		= mod_always_return,

@@ -237,14 +237,13 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
  */
 extern rlm_eap_submodule_t rlm_eap_gtc;
 rlm_eap_submodule_t rlm_eap_gtc = {
-	.name		= "eap_gtc",
-	.magic		= RLM_MODULE_INIT,
-
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "eap_gtc",
+		.inst_size	= sizeof(rlm_eap_gtc_t),
+		.config		= submodule_config,
+	},
 	.provides	= { FR_EAP_METHOD_GTC },
-	.inst_size	= sizeof(rlm_eap_gtc_t),
-	.config		= submodule_config,
-
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
-
 	.clone_parent_lists = true		/* HACK */
 };

@@ -33,6 +33,22 @@ extern "C" {
 
 extern char const *section_type_value[MOD_COUNT];
 
+typedef struct {
+	module_t			common;			//!< Common fields presented by all modules.
+
+	module_method_t			methods[MOD_COUNT];	//!< Pointers to the various section callbacks.
+	module_method_names_t const	*method_names;		//!< named methods
+	fr_dict_t const			**dict;			//!< pointer to local fr_dict_t*
+} module_rlm_t;
+
+/** Cast a module_t to a module_rlm_t
+ *
+ */
+static inline module_rlm_t const *module_rlm_from_module(module_t const *module)
+{
+	return (module_rlm_t const *)module;
+}
+
 /** @name Convenience wrappers around other internal APIs to make them easier to instantiate with modules
  *
  * @{

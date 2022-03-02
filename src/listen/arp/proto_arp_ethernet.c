@@ -227,7 +227,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 
 
 fr_app_io_t proto_arp_ethernet = {
-	.magic			= RLM_MODULE_INIT,
+	.magic			= MODULE_MAGIC_INIT,
 	.name			= "arp_ethernet",
 	.config			= arp_listen_config,
 	.inst_size		= sizeof(proto_arp_ethernet_t),

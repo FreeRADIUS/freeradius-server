@@ -441,7 +441,7 @@ static void mod_unload(void)
 }
 
 fr_app_t proto_dns = {
-	.magic			= RLM_MODULE_INIT,
+	.magic			= MODULE_MAGIC_INIT,
 	.name			= "dns",
 	.config			= proto_dns_config,
 	.inst_size		= sizeof(proto_dns_t),

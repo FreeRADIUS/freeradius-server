@@ -278,17 +278,17 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  */
 extern rlm_eap_submodule_t rlm_eap_tls;
 rlm_eap_submodule_t rlm_eap_tls = {
-	.name			= "eap_tls",
-	.magic			= RLM_MODULE_INIT,
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "eap_tls",
+		.inst_size		= sizeof(rlm_eap_tls_t),
+		.config			= submodule_config,
+		.instantiate		= mod_instantiate,	/* Create new submodule instance */
 
+		.thread_inst_size	= sizeof(rlm_eap_tls_thread_t),
+		.thread_instantiate	= mod_thread_instantiate,
+		.thread_detach		= mod_thread_detach,
+	},
 	.provides		= { FR_EAP_METHOD_TLS },
-	.inst_size		= sizeof(rlm_eap_tls_t),
-	.config			= submodule_config,
-	.instantiate		= mod_instantiate,	/* Create new submodule instance */
-
-	.thread_inst_size	= sizeof(rlm_eap_tls_thread_t),
-	.thread_instantiate	= mod_thread_instantiate,
-	.thread_detach		= mod_thread_detach,
-
 	.session_init		= mod_session_init,	/* Initialise a new EAP session */
 };

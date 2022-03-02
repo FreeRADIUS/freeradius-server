@@ -204,15 +204,17 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_escape;
-module_t rlm_escape = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "escape",
-	.inst_size	= sizeof(rlm_escape_t),
-	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
+extern module_rlm_t rlm_escape;
+module_rlm_t rlm_escape = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "escape",
+		.inst_size	= sizeof(rlm_escape_t),
+		.config		= module_config,
+		.bootstrap	= mod_bootstrap
+	}
 };

@@ -53,7 +53,9 @@ extern "C" {
  */
 typedef struct fr_process_module_s {
 	DL_MODULE_COMMON;				//!< Common fields for all loadable modules.
-	FR_MODULE_COMMON;				//!< bootstrap, instantiate
+	module_instantiate_t		bootstrap;
+	module_instantiate_t		instantiate;
+	int				type;	/* flags */
 
 	module_method_t			process;	//!< Process packets
 	virtual_server_compile_t const	*compile_list;	//!< list of processing sections

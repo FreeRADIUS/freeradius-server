@@ -752,7 +752,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 }
 
 fr_app_io_t proto_cron_crontab = {
-	.magic			= RLM_MODULE_INIT,
+	.magic			= MODULE_MAGIC_INIT,
 	.name			= "cron_crontab",
 	.config			= crontab_listen_config,
 	.inst_size		= sizeof(proto_cron_crontab_t),

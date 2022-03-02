@@ -578,7 +578,7 @@ static RADCLIENT *mod_client_find(UNUSED fr_listen_t *li, fr_ipaddr_t const *ipa
 }
 
 fr_app_io_t proto_radius_tcp = {
-	.magic			= RLM_MODULE_INIT,
+	.magic			= MODULE_MAGIC_INIT,
 	.name			= "radius_tcp",
 	.config			= tcp_listen_config,
 	.inst_size		= sizeof(proto_radius_tcp_t),

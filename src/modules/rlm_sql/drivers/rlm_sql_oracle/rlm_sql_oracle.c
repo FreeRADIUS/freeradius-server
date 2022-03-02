@@ -153,16 +153,18 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	return 0;
 }
 
-static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	char  errbuff[512];
-	sb4 errcode = 0;
-	rlm_sql_oracle_t	*inst = talloc_get_type_abort(instance, rlm_sql_oracle_t);
-	OraText *sql_password = NULL;
-	OraText *sql_login = NULL;
+	rlm_sql_t const		*parent = talloc_get_type_abort(mctx->inst->parent->data, rlm_sql_t);
+	rlm_sql_config_t const	*config = &parent->config;
+	rlm_sql_oracle_t	*inst = talloc_get_type_abort(mctx->inst, rlm_sql_oracle_t);
+	char  			errbuff[512];
+	sb4 			errcode = 0;
+	OraText 		*sql_password = NULL;
+	OraText 		*sql_login = NULL;
 
-	if (!cf_section_find(conf, "spool", NULL)) {
-		ERROR("Couldn't load configuration of session pool(\"spool\" section in driver config)");
+	if (!cf_section_find(mctx->inst->conf, "spool", NULL)) {
+		ERROR("Couldn't load mctx->configuration of session pool(\"spool\" section in driver mctx->config)");
 		return RLM_SQL_ERROR;
 	}
 
@@ -202,12 +204,12 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 	memcpy(&sql_password, config->sql_password, sizeof(sql_password));
 
 	if (OCISessionPoolCreate((dvoid *)inst->env, (dvoid *)inst->error, (dvoid *)inst->pool,
-			(OraText**)&inst->pool_name, (ub4*)&inst->pool_name_len,
-			(CONST OraText *)config->sql_db, strlen(config->sql_db),
-			inst->spool_min, inst->spool_max, inst->spool_inc,
-			sql_login, strlen(config->sql_login),
-			sql_password, strlen(config->sql_password),
-			OCI_SPC_STMTCACHE | OCI_SPC_HOMOGENEOUS)) {
+				 (OraText**)&inst->pool_name, (ub4*)&inst->pool_name_len,
+				 (CONST OraText *)config->sql_db, strlen(config->sql_db),
+				 inst->spool_min, inst->spool_max, inst->spool_inc,
+				 sql_login, strlen(config->sql_login),
+				 sql_password, strlen(config->sql_password),
+				 OCI_SPC_STMTCACHE | OCI_SPC_HOMOGENEOUS)) {
 
 		errbuff[0] = '\0';
 		OCIErrorGet((dvoid *) inst->error, 1, (OraText *) NULL, &errcode, (OraText *) errbuff,
@@ -610,12 +612,14 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t const *c
 /* Exported to rlm_sql */
 extern rlm_sql_driver_t rlm_sql_oracle;
 rlm_sql_driver_t rlm_sql_oracle = {
-	.name				= "rlm_sql_oracle",
-	.magic				= RLM_MODULE_INIT,
-	.inst_size			= sizeof(rlm_sql_oracle_t),
-	.config				= driver_config,
-	.instantiate			= mod_instantiate,
-	.detach				= mod_detach,
+	.common = {
+		.name				= "rlm_sql_oracle",
+		.magic				= MODULE_MAGIC_INIT,
+		.inst_size			= sizeof(rlm_sql_oracle_t),
+		.config				= driver_config,
+		.instantiate			= mod_instantiate,
+		.detach				= mod_detach
+	},
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,

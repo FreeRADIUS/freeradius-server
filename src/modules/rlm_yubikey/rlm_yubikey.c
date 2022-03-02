@@ -450,24 +450,26 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_yubikey;
-module_t rlm_yubikey = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "yubikey",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_yubikey_t),
-	.onload		= mod_load,
-	.unload		= mod_unload,
-	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
+extern module_rlm_t rlm_yubikey;
+module_rlm_t rlm_yubikey = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "yubikey",
+		.type		= MODULE_TYPE_THREAD_SAFE,
+		.inst_size	= sizeof(rlm_yubikey_t),
+		.onload		= mod_load,
+		.unload		= mod_unload,
+		.config		= module_config,
+		.bootstrap	= mod_bootstrap,
+		.instantiate	= mod_instantiate,
 #ifdef HAVE_YKCLIENT
-	.detach		= mod_detach,
+		.detach		= mod_detach,
 #endif
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize

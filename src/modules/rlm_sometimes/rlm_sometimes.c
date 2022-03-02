@@ -153,13 +153,15 @@ static unlang_action_t CC_HINT(nonnull) mod_sometimes_reply(rlm_rcode_t *p_resul
 	return sometimes_return(p_result, mctx, request, request->reply, NULL);
 }
 
-extern module_t rlm_sometimes;
-module_t rlm_sometimes = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "sometimes",
-	.inst_size	= sizeof(rlm_sometimes_t),
-	.config		= module_config,
-	.instantiate	= mod_instantiate,
+extern module_rlm_t rlm_sometimes;
+module_rlm_t rlm_sometimes = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "sometimes",
+		.inst_size	= sizeof(rlm_sometimes_t),
+		.config		= module_config,
+		.instantiate	= mod_instantiate
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_sometimes_packet,
 		[MOD_AUTHORIZE]		= mod_sometimes_packet,

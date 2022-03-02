@@ -1067,19 +1067,21 @@ static void mod_unload(void)
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_pap;
-module_t rlm_pap = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "pap",
-	.inst_size	= sizeof(rlm_pap_t),
-	.onload		= mod_load,
-	.unload		= mod_unload,
-	.config		= module_config,
-	.instantiate	= mod_instantiate,
+extern module_rlm_t rlm_pap;
+module_rlm_t rlm_pap = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "pap",
+		.inst_size	= sizeof(rlm_pap_t),
+		.onload		= mod_load,
+		.unload		= mod_unload,
+		.config		= module_config,
+		.instantiate	= mod_instantiate
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize

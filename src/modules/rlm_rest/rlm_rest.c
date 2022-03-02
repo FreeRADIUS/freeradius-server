@@ -1231,24 +1231,26 @@ static void mod_unload(void)
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_rest;
-module_t rlm_rest = {
-	.magic			= RLM_MODULE_INIT,
-	.name			= "rest",
-	.type			= RLM_TYPE_THREAD_SAFE,
-	.inst_size		= sizeof(rlm_rest_t),
-	.thread_inst_size	= sizeof(rlm_rest_thread_t),
-	.config			= module_config,
-	.onload			= mod_load,
-	.unload			= mod_unload,
-	.bootstrap		= mod_bootstrap,
-	.instantiate		= instantiate,
-	.thread_instantiate	= mod_thread_instantiate,
-	.thread_detach		= mod_thread_detach,
+extern module_rlm_t rlm_rest;
+module_rlm_t rlm_rest = {
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "rest",
+		.type			= MODULE_TYPE_THREAD_SAFE,
+		.inst_size		= sizeof(rlm_rest_t),
+		.thread_inst_size	= sizeof(rlm_rest_thread_t),
+		.config			= module_config,
+		.onload			= mod_load,
+		.unload			= mod_unload,
+		.bootstrap		= mod_bootstrap,
+		.instantiate		= instantiate,
+		.thread_instantiate	= mod_thread_instantiate,
+		.thread_detach		= mod_thread_detach
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,

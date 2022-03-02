@@ -1179,7 +1179,7 @@ static RADCLIENT *mod_client_find(fr_listen_t *li, UNUSED fr_ipaddr_t const *ipa
 
 extern fr_app_io_t proto_control_unix;
 fr_app_io_t proto_control_unix = {
-	.magic			= RLM_MODULE_INIT,
+	.magic			= MODULE_MAGIC_INIT,
 	.name			= "control_unix",
 	.config			= unix_listen_config,
 	.inst_size		= sizeof(proto_control_unix_t),

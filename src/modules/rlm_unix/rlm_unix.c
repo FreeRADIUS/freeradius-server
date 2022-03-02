@@ -506,14 +506,16 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 }
 
 /* globally exported name */
-extern module_t rlm_unix;
-module_t rlm_unix = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "unix",
-	.type		= RLM_TYPE_THREAD_UNSAFE,
-	.inst_size	= sizeof(rlm_unix_t),
-	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
+extern module_rlm_t rlm_unix;
+module_rlm_t rlm_unix = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "unix",
+		.type		= MODULE_TYPE_THREAD_UNSAFE,
+		.inst_size	= sizeof(rlm_unix_t),
+		.config		= module_config,
+		.bootstrap	= mod_bootstrap
+	},
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_ACCOUNTING]	= mod_accounting

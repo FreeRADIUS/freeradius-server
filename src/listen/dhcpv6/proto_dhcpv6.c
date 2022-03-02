@@ -496,7 +496,7 @@ static void mod_unload(void)
 }
 
 fr_app_t proto_dhcpv6 = {
-	.magic			= RLM_MODULE_INIT,
+	.magic			= MODULE_MAGIC_INIT,
 	.name			= "dhcpv6",
 	.config			= proto_dhcpv6_config,
 	.inst_size		= sizeof(proto_dhcpv6_t),

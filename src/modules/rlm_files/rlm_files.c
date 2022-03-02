@@ -670,13 +670,15 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 
 
 /* globally exported name */
-extern module_t rlm_files;
-module_t rlm_files = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "files",
-	.inst_size	= sizeof(rlm_files_t),
-	.config		= module_config,
-	.instantiate	= mod_instantiate,
+extern module_rlm_t rlm_files;
+module_rlm_t rlm_files = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "files",
+		.inst_size	= sizeof(rlm_files_t),
+		.config		= module_config,
+		.instantiate	= mod_instantiate
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,

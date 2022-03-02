@@ -333,12 +333,14 @@ static void cache_release(UNUSED rlm_cache_config_t const *config, void *instanc
 
 extern rlm_cache_driver_t rlm_cache_rbtree;
 rlm_cache_driver_t rlm_cache_rbtree = {
-	.name		= "rlm_cache_rbtree",
-	.magic		= RLM_MODULE_INIT,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
-	.inst_size	= sizeof(rlm_cache_rbtree_t),
-	.inst_type	= "rlm_cache_rbtree_t",
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "rlm_cache_rbtree",
+		.instantiate	= mod_instantiate,
+		.detach		= mod_detach,
+		.inst_size	= sizeof(rlm_cache_rbtree_t),
+		.inst_type	= "rlm_cache_rbtree_t",
+	},
 	.alloc		= cache_entry_alloc,
 
 	.find		= cache_entry_find,

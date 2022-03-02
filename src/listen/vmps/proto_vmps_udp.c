@@ -502,7 +502,7 @@ static char const *mod_name(fr_listen_t *li)
 }
 
 fr_app_io_t proto_vmps_udp = {
-	.magic			= RLM_MODULE_INIT,
+	.magic			= MODULE_MAGIC_INIT,
 	.name			= "vmps_udp",
 	.config			= udp_listen_config,
 	.inst_size		= sizeof(proto_vmps_udp_t),

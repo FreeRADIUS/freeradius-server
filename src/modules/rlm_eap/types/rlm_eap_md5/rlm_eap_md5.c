@@ -172,9 +172,10 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, UNUSED module_ctx
  */
 extern rlm_eap_submodule_t rlm_eap_md5;
 rlm_eap_submodule_t rlm_eap_md5 = {
-	.name		= "eap_md5",
-
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "eap_md5"
+	},
 	.provides	= { FR_EAP_METHOD_MD5 },
-	.magic		= RLM_MODULE_INIT,
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 };

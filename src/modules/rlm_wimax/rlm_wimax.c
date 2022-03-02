@@ -449,17 +449,19 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_wimax;
-module_t rlm_wimax = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "wimax",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_wimax_t),
-	.config		= module_config,
+extern module_rlm_t rlm_wimax;
+module_rlm_t rlm_wimax = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "wimax",
+		.type		= MODULE_TYPE_THREAD_SAFE,
+		.inst_size	= sizeof(rlm_wimax_t),
+		.config		= module_config,
+	},
 	.dict		= &dict_radius,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,

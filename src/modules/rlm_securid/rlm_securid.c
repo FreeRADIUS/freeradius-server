@@ -546,18 +546,20 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_securid;
-module_t rlm_securid = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "securid",
-	.inst_size	= sizeof(rlm_securid_t),
-	.config		= module_config,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
+extern module_rlm_t rlm_securid;
+module_rlm_t rlm_securid = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "securid",
+		.inst_size	= sizeof(rlm_securid_t),
+		.config		= module_config,
+		.instantiate	= mod_instantiate,
+		.detach		= mod_detach
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate
 	},

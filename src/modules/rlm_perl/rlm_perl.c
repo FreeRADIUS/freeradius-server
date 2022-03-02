@@ -1230,28 +1230,29 @@ static void mod_unload(void)
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_perl;
-module_t rlm_perl = {
-	.magic			= RLM_MODULE_INIT,
-	.name			= "perl",
-	.type			= RLM_TYPE_THREAD_SAFE,
-	.inst_size		= sizeof(rlm_perl_t),
+extern module_rlm_t rlm_perl;
+module_rlm_t rlm_perl = {
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "perl",
+		.type			= MODULE_TYPE_THREAD_SAFE,
+		.inst_size		= sizeof(rlm_perl_t),
 
-	.config			= module_config,
-	.onload			= mod_load,
-	.unload			= mod_unload,
-	.bootstrap		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
-	.detach			= mod_detach,
+		.config			= module_config,
+		.onload			= mod_load,
+		.unload			= mod_unload,
+		.bootstrap		= mod_bootstrap,
+		.instantiate		= mod_instantiate,
+		.detach			= mod_detach,
 
-	.thread_inst_size	= sizeof(rlm_perl_thread_t),
-	.thread_instantiate	= mod_thread_instantiate,
-	.thread_detach		= mod_thread_detach,
-
+		.thread_inst_size	= sizeof(rlm_perl_thread_t),
+		.thread_instantiate	= mod_thread_instantiate,
+		.thread_detach		= mod_thread_detach,
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,

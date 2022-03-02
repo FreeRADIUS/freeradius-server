@@ -488,14 +488,16 @@ static int mod_load(void)
 	return 0;
 }
 
-extern module_t rlm_redis;
-module_t rlm_redis = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "redis",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_redis_t),
-	.config		= module_config,
-	.onload		= mod_load,
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
+extern module_rlm_t rlm_redis;
+module_rlm_t rlm_redis = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "redis",
+		.type		= MODULE_TYPE_THREAD_SAFE,
+		.inst_size	= sizeof(rlm_redis_t),
+		.config		= module_config,
+		.onload		= mod_load,
+		.bootstrap	= mod_bootstrap,
+		.instantiate	= mod_instantiate
+	}
 };

@@ -300,7 +300,7 @@ static void mod_unload(void)
 }
 
 fr_app_t proto_arp = {
-	.magic			= RLM_MODULE_INIT,
+	.magic			= MODULE_MAGIC_INIT,
 	.name			= "arp",
 	.config			= proto_arp_config,
 	.inst_size		= sizeof(proto_arp_t),

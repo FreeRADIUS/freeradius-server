@@ -471,14 +471,15 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 
 extern rlm_cache_driver_t rlm_cache_redis;
 rlm_cache_driver_t rlm_cache_redis = {
-	.name		= "rlm_cache_redis",
-	.magic		= RLM_MODULE_INIT,
-	.onload		= mod_load,
-	.instantiate	= mod_instantiate,
-	.inst_size	= sizeof(rlm_cache_redis_t),
-	.config		= driver_config,
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "rlm_cache_redis",
+		.onload		= mod_load,
+		.instantiate	= mod_instantiate,
+		.inst_size	= sizeof(rlm_cache_redis_t),
+		.config		= driver_config,
+	},
 	.free		= cache_entry_free,
-
 	.find		= cache_entry_find,
 	.insert		= cache_entry_insert,
 	.expire		= cache_entry_expire,

@@ -282,15 +282,17 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_totp;
-module_t rlm_totp = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "totp",
-	.type		= RLM_TYPE_THREAD_SAFE,
+extern module_rlm_t rlm_totp;
+module_rlm_t rlm_totp = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "totp",
+		.type		= MODULE_TYPE_THREAD_SAFE
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 	},

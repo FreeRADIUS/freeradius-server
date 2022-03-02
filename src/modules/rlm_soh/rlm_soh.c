@@ -291,16 +291,18 @@ static void mod_unload(void)
 	fr_soh_free();
 }
 
-extern module_t rlm_soh;
-module_t rlm_soh = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "soh",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_soh_t),
-	.config		= module_config,
-	.onload		= mod_load,
-	.unload		= mod_unload,
-	.bootstrap	= mod_bootstrap,
+extern module_rlm_t rlm_soh;
+module_rlm_t rlm_soh = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "soh",
+		.type		= MODULE_TYPE_THREAD_SAFE,
+		.inst_size	= sizeof(rlm_soh_t),
+		.config		= module_config,
+		.onload		= mod_load,
+		.unload		= mod_unload,
+		.bootstrap	= mod_bootstrap
+	},
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_POST_AUTH]		= mod_post_auth

@@ -882,7 +882,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
  */
 extern fr_app_io_t proto_detail_work;
 fr_app_io_t proto_detail_work = {
-	.magic			= RLM_MODULE_INIT,
+	.magic			= MODULE_MAGIC_INIT,
 	.name			= "detail_work",
 	.config			= file_listen_config,
 	.inst_size		= sizeof(proto_detail_work_t),

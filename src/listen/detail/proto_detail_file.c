@@ -740,7 +740,7 @@ static int mod_close(fr_listen_t *li)
  */
 extern fr_app_io_t proto_detail_file;
 fr_app_io_t proto_detail_file = {
-	.magic			= RLM_MODULE_INIT,
+	.magic			= MODULE_MAGIC_INIT,
 	.name			= "detail_file",
 	.config			= file_listen_config,
 	.inst_size		= sizeof(proto_detail_file_t),

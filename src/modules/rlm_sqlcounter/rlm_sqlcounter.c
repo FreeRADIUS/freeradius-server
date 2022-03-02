@@ -626,19 +626,21 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_sqlcounter;
-module_t rlm_sqlcounter = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "sqlcounter",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_sqlcounter_t),
-	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
+extern module_rlm_t rlm_sqlcounter;
+module_rlm_t rlm_sqlcounter = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "sqlcounter",
+		.type		= MODULE_TYPE_THREAD_SAFE,
+		.inst_size	= sizeof(rlm_sqlcounter_t),
+		.config		= module_config,
+		.bootstrap	= mod_bootstrap,
+		.instantiate	= mod_instantiate,
+	},
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize
 	},

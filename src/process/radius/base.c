@@ -1125,7 +1125,7 @@ static virtual_server_compile_t const compile_list[] = {
 
 extern fr_process_module_t process_radius;
 fr_process_module_t process_radius = {
-	.magic		= RLM_MODULE_INIT,
+	.magic		= MODULE_MAGIC_INIT,
 	.name		= "process_radius",
 	.config		= config,
 	.inst_size	= sizeof(process_radius_t),

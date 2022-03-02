@@ -253,7 +253,7 @@ static void mod_unload(void)
 
 extern fr_process_module_t process_eap_sim;
 fr_process_module_t process_eap_sim = {
-	.magic		= RLM_MODULE_INIT,
+	.magic		= MODULE_MAGIC_INIT,
 	.name		= "process_eap_sim",
 	.onload		= mod_load,
 	.unload		= mod_unload,

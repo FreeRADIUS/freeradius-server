@@ -242,7 +242,7 @@ static const virtual_server_compile_t compile_list[] = {
 
 extern fr_process_module_t process_arp;
 fr_process_module_t process_arp = {
-	.magic		= RLM_MODULE_INIT,
+	.magic		= MODULE_MAGIC_INIT,
 	.name		= "process_arp",
 	.inst_size	= sizeof(process_arp_t),
 	.process	= mod_process,

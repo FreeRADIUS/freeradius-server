@@ -683,10 +683,12 @@ static int sql_affected_rows(rlm_sql_handle_t *handle,
 	return -1;
 }
 
-static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_SECTION *cs)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
+	rlm_sql_t const		*parent = talloc_get_type_abort(mctx->inst->parent->data, rlm_sql_t);
+	rlm_sql_config_t const	*config = &parent->config;
+	rlm_sql_sqlite_t	*inst = talloc_get_type_abort(mctx->inst, rlm_sql_sqlite_t);
 	bool			exists;
-	rlm_sql_sqlite_t	*inst = talloc_get_type_abort(instance, rlm_sql_sqlite_t);
 	struct stat		buf;
 
 	if (!inst->filename) {
@@ -703,7 +705,7 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 		return -1;
 	}
 
-	if (cf_pair_find(cs, "bootstrap")) {
+	if (cf_pair_find(mctx->inst->conf, "bootstrap")) {
 		inst->bootstrap = true;
 	}
 
@@ -722,10 +724,10 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 		if (p) {
 			size_t len = (p - inst->filename) + 1;
 
-			buff = talloc_array(cs, char, len);
+			buff = talloc_array(mctx->inst->conf, char, len);
 			strlcpy(buff, inst->filename, len);
 		} else {
-			MEM(buff = talloc_typed_strdup(cs, inst->filename));
+			MEM(buff = talloc_typed_strdup(mctx->inst->conf, inst->filename));
 		}
 
 		ret = fr_mkdir(NULL, buff, -1, 0700, NULL, NULL);
@@ -758,13 +760,13 @@ static int mod_instantiate(rlm_sql_config_t const *config, void *instance, CONF_
 		/*
 		 *	Execute multiple bootstrap SQL files in order
 		 */
-		for (cp = cf_pair_find(cs, "bootstrap");
+		for (cp = cf_pair_find(mctx->inst->conf, "bootstrap");
 		     cp;
-		     cp = cf_pair_find_next(cs, cp, "bootstrap")) {
+		     cp = cf_pair_find_next(mctx->inst->conf, cp, "bootstrap")) {
 			p = cf_pair_value(cp);
 			if (!p) continue;
 
-			ret = sql_loadfile(cs, db, p);
+			ret = sql_loadfile(mctx->inst->conf, db, p);
 			if (ret < 0) goto unlink;
 		}
 
@@ -812,13 +814,15 @@ static int mod_load(void)
 /* Exported to rlm_sql */
 extern rlm_sql_driver_t rlm_sql_sqlite;
 rlm_sql_driver_t rlm_sql_sqlite = {
-	.name				= "rlm_sql_sqlite",
-	.magic				= RLM_MODULE_INIT,
+	.common = {
+		.name				= "rlm_sql_sqlite",
+		.magic				= MODULE_MAGIC_INIT,
+		.inst_size			= sizeof(rlm_sql_sqlite_t),
+		.config				= driver_config,
+		.onload				= mod_load,
+		.instantiate			= mod_instantiate
+	},
 	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
-	.inst_size			= sizeof(rlm_sql_sqlite_t),
-	.config				= driver_config,
-	.onload				= mod_load,
-	.instantiate			= mod_instantiate,
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,

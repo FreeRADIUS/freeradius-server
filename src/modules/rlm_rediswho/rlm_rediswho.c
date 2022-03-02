@@ -247,15 +247,17 @@ static int mod_load(void)
 	return 0;
 }
 
-extern module_t rlm_rediswho;
-module_t rlm_rediswho = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "rediswho",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_rediswho_t),
-	.config		= module_config,
-	.onload		= mod_load,
-	.instantiate	= mod_instantiate,
+extern module_rlm_t rlm_rediswho;
+module_rlm_t rlm_rediswho = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "rediswho",
+		.type		= MODULE_TYPE_THREAD_SAFE,
+		.inst_size	= sizeof(rlm_rediswho_t),
+		.config		= module_config,
+		.onload		= mod_load,
+		.instantiate	= mod_instantiate
+	},
 	.methods = {
 		[MOD_ACCOUNTING]	= mod_accounting
 	},

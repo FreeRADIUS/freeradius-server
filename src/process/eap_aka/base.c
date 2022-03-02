@@ -265,7 +265,7 @@ static void mod_unload(void)
 
 extern fr_process_module_t process_eap_aka;
 fr_process_module_t process_eap_aka = {
-	.magic		= RLM_MODULE_INIT,
+	.magic		= MODULE_MAGIC_INIT,
 	.name		= "process_eap_aka",
 	.onload		= mod_load,
 	.unload		= mod_unload,

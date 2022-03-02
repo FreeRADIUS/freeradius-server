@@ -1231,7 +1231,7 @@ static fr_process_state_t const process_state[] = {
 
 extern fr_process_module_t process_dhcpv6;
 fr_process_module_t process_dhcpv6 = {
-	.magic		= RLM_MODULE_INIT,
+	.magic		= MODULE_MAGIC_INIT,
 	.name		= "process_dhcpv6",
 	.config		= dhcpv6_process_config,
 	.inst_size	= sizeof(process_dhcpv6_t),

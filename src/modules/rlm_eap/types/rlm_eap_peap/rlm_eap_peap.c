@@ -419,19 +419,19 @@ static void mod_unload(void)
  */
 extern rlm_eap_submodule_t rlm_eap_peap;
 rlm_eap_submodule_t rlm_eap_peap = {
-	.name			= "eap_peap",
-	.magic			= RLM_MODULE_INIT,
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "eap_peap",
+		.inst_size		= sizeof(rlm_eap_peap_t),
+		.config			= submodule_config,
+		.onload			= mod_load,
+		.unload			= mod_unload,
+		.instantiate		= mod_instantiate,
 
+		.thread_inst_size	= sizeof(rlm_eap_peap_thread_t),
+		.thread_instantiate	= mod_thread_instantiate,
+		.thread_detach		= mod_thread_detach,
+	},
 	.provides		= { FR_EAP_METHOD_PEAP },
-	.inst_size		= sizeof(rlm_eap_peap_t),
-	.config			= submodule_config,
-	.onload			= mod_load,
-	.unload			= mod_unload,
-	.instantiate		= mod_instantiate,
-
-	.thread_inst_size	= sizeof(rlm_eap_peap_thread_t),
-	.thread_instantiate	= mod_thread_instantiate,
-	.thread_detach		= mod_thread_detach,
-
 	.session_init		= mod_session_init,	/* Initialise a new EAP session */
 };

@@ -293,8 +293,10 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t c
 /* Exported to rlm_sql */
 extern rlm_sql_driver_t rlm_sql_firebird;
 rlm_sql_driver_t rlm_sql_firebird = {
-	.name				= "rlm_sql_firebird",
-	.magic				= RLM_MODULE_INIT,
+	.common = {
+		.name				= "rlm_sql_firebird",
+		.magic				= MODULE_MAGIC_INIT
+	},
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,

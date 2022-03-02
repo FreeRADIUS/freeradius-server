@@ -557,13 +557,15 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 }
 
 /* globally exported name */
-extern module_t rlm_radutmp;
-module_t rlm_radutmp = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "radutmp",
-	.type		= RLM_TYPE_THREAD_UNSAFE,
-	.inst_size	= sizeof(rlm_radutmp_t),
-	.config		= module_config,
+extern module_rlm_t rlm_radutmp;
+module_rlm_t rlm_radutmp = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "radutmp",
+		.type		= MODULE_TYPE_THREAD_UNSAFE,
+		.inst_size	= sizeof(rlm_radutmp_t),
+		.config		= module_config
+	},
 	.methods = {
 		[MOD_ACCOUNTING]	= mod_accounting,
 	},

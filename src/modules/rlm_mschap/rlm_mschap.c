@@ -2302,16 +2302,17 @@ static int mod_detach(
 }
 
 
-extern module_t rlm_mschap;
-module_t rlm_mschap = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "mschap",
-	.type		= 0,
-	.inst_size	= sizeof(rlm_mschap_t),
-	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
+extern module_rlm_t rlm_mschap;
+module_rlm_t rlm_mschap = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "mschap",
+		.inst_size	= sizeof(rlm_mschap_t),
+		.config		= module_config,
+		.bootstrap	= mod_bootstrap,
+		.instantiate	= mod_instantiate,
+		.detach		= mod_detach
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize

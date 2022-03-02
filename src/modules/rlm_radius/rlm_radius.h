@@ -36,23 +36,13 @@
 typedef struct rlm_radius_s rlm_radius_t;
 typedef struct rlm_radius_io_s rlm_radius_io_t;
 
-/** Per-thread instance data
- *
- * Contains buffers and connection handles specific to the thread.
- */
-typedef struct {
-	void			*io_thread;		//!< thread context for the IO submodule
-} rlm_radius_thread_t;
-
 /*
  *	Define a structure for our module configuration.
  */
 struct rlm_radius_s {
 	char const		*name;
-	dl_module_inst_t	*io_submodule;		//!< As provided by the transport_parse
-	rlm_radius_io_t const	*io;			//!< Easy access to the IO handle
-	void			*io_instance;		//!< Easy access to the IO instance
-	CONF_SECTION		*io_conf;		//!< Easy access to the IO config section
+	module_instance_t	*io_submodule;
+	rlm_radius_io_t	const	*io;			//!< Public symbol exported by the submodule.
 
 	fr_time_delta_t		response_window;
 	fr_time_delta_t		zombie_period;
@@ -89,11 +79,8 @@ typedef unlang_action_t (*rlm_radius_io_enqueue_t)(rlm_rcode_t *p_result, void *
  * This structure is exported by client I/O modules e.g. rlm_radius_udp.
  */
 struct rlm_radius_io_s {
-	DL_MODULE_COMMON;				//!< Common fields to all loadable modules.
-	FR_MODULE_COMMON;
-	FR_MODULE_THREADED_COMMON;
-
-	rlm_radius_io_enqueue_t		enqueue;	//!< Enqueue a request_t with an IO submodule.
-	unlang_module_signal_t	signal;		//!< Send a signal to an IO module.
-	unlang_module_resume_t	resume;		//!< Resume a request, and get rcode.
+	module_t		common;			//!< Common fields to all loadable modules.
+	rlm_radius_io_enqueue_t	enqueue;		//!< Enqueue a request_t with an IO submodule.
+	unlang_module_signal_t	signal;			//!< Send a signal to an IO module.
+	unlang_module_resume_t	resume;			//!< Resume a request, and get rcode.
 };

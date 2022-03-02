@@ -2954,17 +2954,18 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 extern rlm_radius_io_t rlm_radius_udp;
 rlm_radius_io_t rlm_radius_udp = {
-	.magic			= RLM_MODULE_INIT,
-	.name			= "radius_udp",
-	.inst_size		= sizeof(rlm_radius_udp_t),
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "radius_udp",
+		.inst_size		= sizeof(rlm_radius_udp_t),
 
-	.thread_inst_size	= sizeof(udp_thread_t),
-	.thread_inst_type	= "udp_thread_t",
+		.thread_inst_size	= sizeof(udp_thread_t),
+		.thread_inst_type	= "udp_thread_t",
 
-	.config			= module_config,
-	.instantiate		= mod_instantiate,
-	.thread_instantiate 	= mod_thread_instantiate,
-
+		.config			= module_config,
+		.instantiate		= mod_instantiate,
+		.thread_instantiate 	= mod_thread_instantiate,
+	},
 	.enqueue		= mod_enqueue,
 	.signal			= mod_signal,
 	.resume			= mod_resume,

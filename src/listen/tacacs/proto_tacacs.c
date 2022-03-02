@@ -554,7 +554,7 @@ static void mod_unload(void)
 }
 
 fr_app_t proto_tacacs = {
-	.magic			= RLM_MODULE_INIT,
+	.magic			= MODULE_MAGIC_INIT,
 	.name			= "tacacs",
 	.config			= proto_tacacs_config,
 	.inst_size		= sizeof(proto_tacacs_t),

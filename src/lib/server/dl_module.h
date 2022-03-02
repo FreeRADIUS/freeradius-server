@@ -62,7 +62,7 @@ typedef struct dl_module_instance_s dl_module_inst_t;
 /** Stop people using different module/library/server versions together
  *
  */
-#define RLM_MODULE_INIT RADIUSD_MAGIC_NUMBER
+#define MODULE_MAGIC_INIT RADIUSD_MAGIC_NUMBER
 
 typedef enum {
 	DL_MODULE_TYPE_MODULE = 0,	//!< Standard loadable module.

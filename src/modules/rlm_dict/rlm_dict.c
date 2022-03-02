@@ -252,9 +252,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-extern module_t rlm_dict;
-module_t rlm_dict = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "dict",
-	.bootstrap	= mod_bootstrap,
+extern module_rlm_t rlm_dict;
+module_rlm_t rlm_dict = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "dict",
+		.bootstrap	= mod_bootstrap
+	}
 };

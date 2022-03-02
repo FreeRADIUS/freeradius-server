@@ -42,7 +42,7 @@ RCSID("$Id$")
 
 #include "rlm_sql.h"
 
-extern module_t rlm_sql;
+extern module_rlm_t rlm_sql;
 
 /*
  *	So we can do pass2 xlat checks on the queries.
@@ -1051,7 +1051,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	}
 	inst->driver = (rlm_sql_driver_t const *)inst->driver_inst->module->common;
 
-	fr_assert(!inst->driver->inst_size || inst->driver_inst->data);
+	fr_assert(!inst->driver->common.inst_size || inst->driver_inst->data);
 
 	/*
 	 *	Call the driver's instantiate function (if set)
@@ -1664,15 +1664,17 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 
 
 /* globally exported name */
-module_t rlm_sql = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "sql",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_sql_t),
-	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
+module_rlm_t rlm_sql = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "sql",
+		.type		= MODULE_TYPE_THREAD_SAFE,
+		.inst_size	= sizeof(rlm_sql_t),
+		.config		= module_config,
+		.bootstrap	= mod_bootstrap,
+		.instantiate	= mod_instantiate,
+		.detach		= mod_detach
+	},
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_ACCOUNTING]	= mod_accounting,

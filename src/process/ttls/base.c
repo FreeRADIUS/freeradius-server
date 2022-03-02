@@ -819,7 +819,7 @@ static virtual_server_compile_t const compile_list[] = {
 
 extern fr_process_module_t process_ttls;
 fr_process_module_t process_ttls = {
-	.magic		= RLM_MODULE_INIT,
+	.magic		= MODULE_MAGIC_INIT,
 	.name		= "process_ttls",
 	.config		= config,
 	.inst_size	= sizeof(process_ttls_t),

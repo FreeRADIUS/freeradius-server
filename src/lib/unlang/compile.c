@@ -3978,18 +3978,19 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 				CONF_ITEM *ci, module_instance_t *inst, module_method_t method,
 				char const *realname)
 {
+	module_rlm_t const *mrlm = module_rlm_from_module(inst->module);
 	unlang_t *c;
 	unlang_module_t *single;
 
 	/*
 	 *	Can't use "chap" in "dhcp".
 	 */
-	if (inst->module->dict && *inst->module->dict && unlang_ctx->rules && unlang_ctx->rules->attr.dict_def &&
+	if (mrlm->dict && *mrlm->dict && unlang_ctx->rules && unlang_ctx->rules->attr.dict_def &&
 	    (unlang_ctx->rules->attr.dict_def != fr_dict_internal()) &&
-	    (*(inst->module->dict) != unlang_ctx->rules->attr.dict_def)) {
+	    (*(mrlm->dict) != unlang_ctx->rules->attr.dict_def)) {
 		cf_log_err(ci, "The \"%s\" module can only used with 'namespace = %s'.  It cannot be used with 'namespace = %s'.",
 			   inst->module->name,
-			   fr_dict_root(*inst->module->dict)->name,
+			   fr_dict_root(*mrlm->dict)->name,
 			   fr_dict_root(unlang_ctx->rules->attr.dict_def)->name);
 		return NULL;
 	}
@@ -4045,7 +4046,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 */
 	if (cf_item_is_section(ci) &&
 	    !unlang_compile_actions(&c->actions, cf_item_to_section(ci),
-				    (inst->module->type & RLM_TYPE_RETRY) != 0)) {
+				    (inst->module->type & MODULE_TYPE_RETRY) != 0)) {
 		    talloc_free(c);
 		    return NULL;
 	}
@@ -4255,8 +4256,8 @@ check_for_module:
 	 */
 	UPDATE_CTX2;
 	inst = module_rlm_by_name_and_method(&method, &unlang_ctx2.component,
-					 &unlang_ctx2.section_name1, &unlang_ctx2.section_name2,
-					 realname);
+					     &unlang_ctx2.section_name1, &unlang_ctx2.section_name2,
+					     realname);
 	if (inst) {
 		c = compile_module(parent, &unlang_ctx2, ci, inst, method, realname);
 		goto allocate_number;

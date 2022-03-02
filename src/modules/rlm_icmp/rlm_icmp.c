@@ -542,21 +542,22 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_icmp;
-module_t rlm_icmp = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "icmp",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_icmp_t),
-	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
-
-	.thread_inst_size = sizeof(rlm_icmp_thread_t),
-	.thread_inst_type = "rlm_icmp_thread_t",
-	.thread_instantiate = mod_thread_instantiate,
-	.thread_detach	= mod_thread_detach,
+extern module_rlm_t rlm_icmp;
+module_rlm_t rlm_icmp = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "icmp",
+		.type		= MODULE_TYPE_THREAD_SAFE,
+		.inst_size	= sizeof(rlm_icmp_t),
+		.config		= module_config,
+		.bootstrap	= mod_bootstrap,
+		.thread_inst_size = sizeof(rlm_icmp_thread_t),
+		.thread_inst_type = "rlm_icmp_thread_t",
+		.thread_instantiate = mod_thread_instantiate,
+		.thread_detach	= mod_thread_detach
+	}
 };

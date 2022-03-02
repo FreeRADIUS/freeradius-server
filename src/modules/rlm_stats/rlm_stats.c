@@ -427,22 +427,24 @@ static int mod_detach(module_detach_ctx_t const *mctx)
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_stats;
+extern module_rlm_t rlm_stats;
 
-module_t rlm_stats = {
-	.magic			= RLM_MODULE_INIT,
-	.name			= "stats",
-	.inst_size		= sizeof(rlm_stats_t),
-	.thread_inst_size	= sizeof(rlm_stats_thread_t),
-	.config			= module_config,
-	.instantiate		= mod_instantiate,
-	.detach			= mod_detach,
-	.thread_instantiate	= mod_thread_instantiate,
-	.thread_detach		= mod_thread_detach,
+module_rlm_t rlm_stats = {
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "stats",
+		.inst_size		= sizeof(rlm_stats_t),
+		.thread_inst_size	= sizeof(rlm_stats_thread_t),
+		.config			= module_config,
+		.instantiate		= mod_instantiate,
+		.detach			= mod_detach,
+		.thread_instantiate	= mod_thread_instantiate,
+		.thread_detach		= mod_thread_detach
+	},
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_stats, /* @mod_stats_query */
 		[MOD_POST_AUTH]		= mod_stats,

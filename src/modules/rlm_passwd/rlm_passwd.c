@@ -608,14 +608,16 @@ static unlang_action_t CC_HINT(nonnull) mod_passwd_map(rlm_rcode_t *p_result, mo
 	RETURN_MODULE_OK;
 }
 
-extern module_t rlm_passwd;
-module_t rlm_passwd = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "passwd",
-	.inst_size	= sizeof(rlm_passwd_t),
-	.config		= module_config,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
+extern module_rlm_t rlm_passwd;
+module_rlm_t rlm_passwd = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "passwd",
+		.inst_size	= sizeof(rlm_passwd_t),
+		.config		= module_config,
+		.instantiate	= mod_instantiate,
+		.detach		= mod_detach
+	},
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_passwd_map,
 		[MOD_ACCOUNTING]	= mod_passwd_map,

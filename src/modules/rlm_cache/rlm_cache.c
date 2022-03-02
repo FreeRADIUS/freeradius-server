@@ -33,7 +33,7 @@ RCSID("$Id$")
 
 #include "rlm_cache.h"
 
-extern module_t rlm_cache;
+extern module_rlm_t rlm_cache;
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("driver", FR_TYPE_STRING, rlm_cache_config_t, driver_name), .dflt = "rlm_cache_rbtree" },
@@ -997,7 +997,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Non optional fields and callbacks
 	 */
-	fr_assert(inst->driver->name);
+	fr_assert(inst->driver->common.name);
 	fr_assert(inst->driver->find);
 	fr_assert(inst->driver->insert);
 	fr_assert(inst->driver->expire);
@@ -1397,18 +1397,20 @@ finish:
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-module_t rlm_cache = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "cache",
-	.inst_size	= sizeof(rlm_cache_t),
-	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
+module_rlm_t rlm_cache = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "cache",
+		.inst_size	= sizeof(rlm_cache_t),
+		.config		= module_config,
+		.bootstrap	= mod_bootstrap,
+		.instantiate	= mod_instantiate,
+		.detach		= mod_detach
+	},
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_cache_it,
 		[MOD_PREACCT]		= mod_cache_it,

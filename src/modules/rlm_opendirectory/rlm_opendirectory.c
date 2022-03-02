@@ -528,13 +528,15 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 }
 
 /* globally exported name */
-extern module_t rlm_opendirectory;
-module_t rlm_opendirectory = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "opendirectory",
-	.inst_size	= sizeof(rlm_opendirectory_t),
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.instantiate	= mod_instantiate,
+extern module_rlm_t rlm_opendirectory;
+module_rlm_t rlm_opendirectory = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "opendirectory",
+		.inst_size	= sizeof(rlm_opendirectory_t),
+		.type		= MODULE_TYPE_THREAD_SAFE,
+		.instantiate	= mod_instantiate
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize

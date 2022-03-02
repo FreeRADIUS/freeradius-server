@@ -95,20 +95,20 @@ static void mod_unload(void)
  *	That is, everything else should be 'static'.
  */
 rlm_eap_submodule_t rlm_eap_aka_prime = {
-	.name		= "eap_aka_prime",
-	.magic		= RLM_MODULE_INIT,
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "eap_aka_prime",
 
+		.inst_size	= sizeof(eap_aka_sim_module_conf_t),
+		.inst_type	= "eap_aka_sim_module_conf_t",
+		.config		= submodule_config,
+
+		.onload		= mod_load,
+		.unload		= mod_unload,
+
+		.instantiate	= mod_instantiate,
+	},
 	.provides	= { FR_EAP_METHOD_AKA_PRIME },
-
-	.inst_size	= sizeof(eap_aka_sim_module_conf_t),
-	.inst_type	= "eap_aka_sim_module_conf_t",
-	.config		= submodule_config,
-
-	.onload		= mod_load,
-	.unload		= mod_unload,
-
-	.instantiate	= mod_instantiate,
-
 	.type_identity	= mod_type_identity,
 	.session_init	= mod_session_init,
 	.namespace	= &dict_eap_aka_sim

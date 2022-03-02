@@ -1263,7 +1263,7 @@ static void proto_ldap_unload(void)
 
 extern rad_protocol_t proto_ldap_sync;
 rad_protocol_t proto_ldap_sync = {
-	.magic		= RLM_MODULE_INIT,
+	.magic		= MODULE_MAGIC_INIT,
 	.name		= "ldap_sync",
 	.inst_size	= sizeof(proto_ldap_inst_t),
 	.transports	= TRANSPORT_NONE,

@@ -503,19 +503,21 @@ static int mod_detach(module_detach_ctx_t const *mctx)
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_mruby;
-module_t rlm_mruby = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "mruby",
-	.type		= RLM_TYPE_THREAD_UNSAFE, /* Not sure */
-	.inst_size	= sizeof(rlm_mruby_t),
-	.config		= module_config,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
+extern module_rlm_t rlm_mruby;
+module_rlm_t rlm_mruby = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "mruby",
+		.type		= MODULE_TYPE_THREAD_UNSAFE, /* Not sure */
+		.inst_size	= sizeof(rlm_mruby_t),
+		.config		= module_config,
+		.instantiate	= mod_instantiate,
+		.detach		= mod_detach,
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,

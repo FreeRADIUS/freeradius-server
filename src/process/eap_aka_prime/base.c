@@ -266,7 +266,7 @@ static void mod_unload(void)
 
 extern fr_process_module_t process_eap_aka_prime;
 fr_process_module_t process_eap_aka_prime = {
-	.magic		= RLM_MODULE_INIT,
+	.magic		= MODULE_MAGIC_INIT,
 	.name		= "process_eap_aka_prime",
 	.onload		= mod_load,
 	.unload		= mod_unload,

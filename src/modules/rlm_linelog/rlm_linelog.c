@@ -790,14 +790,16 @@ finish:
 /*
  *	Externally visible module definition.
  */
-extern module_t rlm_linelog;
-module_t rlm_linelog = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "linelog",
-	.inst_size	= sizeof(rlm_linelog_t),
-	.config		= module_config,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
+extern module_rlm_t rlm_linelog;
+module_rlm_t rlm_linelog = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "linelog",
+		.inst_size	= sizeof(rlm_linelog_t),
+		.config		= module_config,
+		.instantiate	= mod_instantiate,
+		.detach		= mod_detach
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_do_linelog,
 		[MOD_AUTHORIZE]		= mod_do_linelog,

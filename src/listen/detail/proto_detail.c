@@ -570,7 +570,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 
 fr_app_t proto_detail = {
-	.magic			= RLM_MODULE_INIT,
+	.magic			= MODULE_MAGIC_INIT,
 	.name			= "detail",
 	.config			= proto_detail_config,
 	.inst_size		= sizeof(proto_detail_t),

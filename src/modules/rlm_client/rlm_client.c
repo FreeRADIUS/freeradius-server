@@ -371,17 +371,19 @@ static void mod_unload(void)
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_client;
-module_t rlm_client = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "dynamic_clients",
-	.type		= RLM_TYPE_THREAD_SAFE,		/* type */
-	.onload		= mod_load,
-	.unload		= mod_unload,
+extern module_rlm_t rlm_client;
+module_rlm_t rlm_client = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "dynamic_clients",
+		.type		= MODULE_TYPE_THREAD_SAFE,		/* type */
+		.onload		= mod_load,
+		.unload		= mod_unload
+	},
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize
 	},

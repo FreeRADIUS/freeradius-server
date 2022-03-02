@@ -469,7 +469,7 @@ static RADCLIENT *mod_client_find(UNUSED fr_listen_t *li, fr_ipaddr_t const *ipa
 }
 
 fr_app_io_t proto_tacacs_tcp = {
-	.magic			= RLM_MODULE_INIT,
+	.magic			= MODULE_MAGIC_INIT,
 	.name			= "tacacs_tcp",
 	.config			= tcp_listen_config,
 	.inst_size		= sizeof(proto_tacacs_tcp_t),

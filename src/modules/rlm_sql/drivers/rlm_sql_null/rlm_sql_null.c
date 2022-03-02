@@ -98,8 +98,10 @@ static int sql_affected_rows(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_co
 /* Exported to rlm_sql */
 extern rlm_sql_driver_t rlm_sql_null;
 rlm_sql_driver_t rlm_sql_null = {
-	.name				= "rlm_sql_null",
-	.magic				= RLM_MODULE_INIT,
+	.common = {
+		.magic				= MODULE_MAGIC_INIT,
+		.name				= "rlm_sql_null"
+	},
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,

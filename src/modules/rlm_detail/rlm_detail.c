@@ -464,13 +464,15 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 
 
 /* globally exported name */
-extern module_t rlm_detail;
-module_t rlm_detail = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "detail",
-	.inst_size	= sizeof(rlm_detail_t),
-	.config		= module_config,
-	.instantiate	= mod_instantiate,
+extern module_rlm_t rlm_detail;
+module_rlm_t rlm_detail = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "detail",
+		.inst_size	= sizeof(rlm_detail_t),
+		.config		= module_config,
+		.instantiate	= mod_instantiate
+	},
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_accounting,

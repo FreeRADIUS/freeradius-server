@@ -685,7 +685,7 @@ static RADCLIENT *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, in
 }
 
 fr_app_io_t proto_radius_udp = {
-	.magic			= RLM_MODULE_INIT,
+	.magic			= MODULE_MAGIC_INIT,
 	.name			= "radius_udp",
 	.config			= udp_listen_config,
 	.inst_size		= sizeof(proto_radius_udp_t),

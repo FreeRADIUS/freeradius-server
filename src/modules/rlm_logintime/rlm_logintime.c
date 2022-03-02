@@ -256,17 +256,19 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_logintime;
-module_t rlm_logintime = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "logintime",
-	.inst_size	= sizeof(rlm_logintime_t),
-	.config		= module_config,
-	.instantiate	= mod_instantiate,
+extern module_rlm_t rlm_logintime;
+module_rlm_t rlm_logintime = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "logintime",
+		.inst_size	= sizeof(rlm_logintime_t),
+		.config		= module_config,
+		.instantiate	= mod_instantiate
+	},
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_POST_AUTH]		= mod_authorize

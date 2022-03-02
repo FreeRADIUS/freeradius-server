@@ -314,19 +314,20 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	return unlang_module_yield(request, dhcpv4_resume, NULL, d);
 }
 
-extern module_t rlm_dhcpv4;
-module_t rlm_dhcpv4 = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "dhcpv4",
-	.inst_size	= sizeof(rlm_dhcpv4_t),
-	.bootstrap	= mod_bootstrap,
+extern module_rlm_t rlm_dhcpv4;
+module_rlm_t rlm_dhcpv4 = {
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "dhcpv4",
+		.inst_size		= sizeof(rlm_dhcpv4_t),
+		.bootstrap		= mod_bootstrap,
 
-	.config			= module_config,
+		.config			= module_config,
 
-	.thread_inst_size = sizeof(rlm_dhcpv4_thread_t),
-	.thread_inst_type = "rlm_dhcpv4_thread_t",
-	.thread_instantiate = mod_thread_instantiate,
-
+		.thread_inst_size	= sizeof(rlm_dhcpv4_thread_t),
+		.thread_inst_type	= "rlm_dhcpv4_thread_t",
+		.thread_instantiate	= mod_thread_instantiate
+	},
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_process,
 		[MOD_POST_AUTH]		= mod_process,

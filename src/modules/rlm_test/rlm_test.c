@@ -502,21 +502,23 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_test;
-module_t rlm_test = {
-	.magic			= RLM_MODULE_INIT,
-	.name			= "test",
-	.type			= RLM_TYPE_THREAD_SAFE | RLM_TYPE_RETRY,
-	.inst_size		= sizeof(rlm_test_t),
-	.thread_inst_size	= sizeof(rlm_test_thread_t),
-	.config			= module_config,
-	.bootstrap		= mod_bootstrap,
-	.thread_instantiate	= mod_thread_instantiate,
-	.thread_detach		= mod_thread_detach,
+extern module_rlm_t rlm_test;
+module_rlm_t rlm_test = {
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "test",
+		.type			= MODULE_TYPE_THREAD_SAFE | MODULE_TYPE_RETRY,
+		.inst_size		= sizeof(rlm_test_t),
+		.thread_inst_size	= sizeof(rlm_test_thread_t),
+		.config			= module_config,
+		.bootstrap		= mod_bootstrap,
+		.thread_instantiate	= mod_thread_instantiate,
+		.thread_detach		= mod_thread_detach
+	},
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,

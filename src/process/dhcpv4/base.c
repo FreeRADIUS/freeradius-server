@@ -451,7 +451,7 @@ static const virtual_server_compile_t compile_list[] = {
 
 extern fr_process_module_t process_dhcpv4;
 fr_process_module_t process_dhcpv4 = {
-	.magic		= RLM_MODULE_INIT,
+	.magic		= MODULE_MAGIC_INIT,
 	.name		= "process_dhcpv4",
 	.inst_size	= sizeof(process_dhcpv4_t),
 	.process	= mod_process,

@@ -1427,15 +1427,17 @@ static int mod_load(void)
 	return 0;
 }
 
-extern module_t rlm_redis_ippool;
-module_t rlm_redis_ippool = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "redis",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_redis_ippool_t),
-	.config		= module_config,
-	.onload		= mod_load,
-	.instantiate	= mod_instantiate,
+extern module_rlm_t rlm_redis_ippool;
+module_rlm_t rlm_redis_ippool = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "redis",
+		.type		= MODULE_TYPE_THREAD_SAFE,
+		.inst_size	= sizeof(rlm_redis_ippool_t),
+		.config		= module_config,
+		.onload		= mod_load,
+		.instantiate	= mod_instantiate
+	},
 	.methods = {
 		[MOD_ACCOUNTING]	= mod_accounting,
 		[MOD_AUTHORIZE]		= mod_authorize,

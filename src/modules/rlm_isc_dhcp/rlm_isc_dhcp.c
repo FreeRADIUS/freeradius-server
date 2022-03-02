@@ -2234,14 +2234,15 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	RETURN_MODULE_OK;
 }
 
-extern module_t rlm_isc_dhcp;
-module_t rlm_isc_dhcp = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "isc_dhcp",
-	.type		= 0,
-	.inst_size	= sizeof(rlm_isc_dhcp_t),
-	.config		= module_config,
-	.instantiate	= mod_instantiate,
+extern module_rlm_t rlm_isc_dhcp;
+module_rlm_t rlm_isc_dhcp = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "isc_dhcp",
+		.inst_size	= sizeof(rlm_isc_dhcp_t),
+		.config		= module_config,
+		.instantiate	= mod_instantiate
+	},
 
 	.methods = {
 		[MOD_AUTHORIZE]	= mod_authorize,

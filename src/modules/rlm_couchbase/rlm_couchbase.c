@@ -545,16 +545,18 @@ static int mod_load(void)
 /*
  * Hook into the FreeRADIUS module system.
  */
-extern module_t rlm_couchbase;
-module_t rlm_couchbase = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "couchbase",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(rlm_couchbase_t),
-	.config		= module_config,
-	.onload		= mod_load,
-	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
+extern module_rlm_t rlm_couchbase;
+module_rlm_t rlm_couchbase = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "couchbase",
+		.type		= MODULE_TYPE_THREAD_SAFE,
+		.inst_size	= sizeof(rlm_couchbase_t),
+		.config		= module_config,
+		.onload		= mod_load,
+		.instantiate	= mod_instantiate,
+		.detach		= mod_detach
+	}
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_ACCOUNTING]	= mod_accounting,

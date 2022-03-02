@@ -51,7 +51,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, UNUSED module_ctx_t co
 
 extern fr_process_module_t process_control;
 fr_process_module_t process_control = {
-	.magic		= RLM_MODULE_INIT,
+	.magic		= MODULE_MAGIC_INIT,
 	.name		= "process_control",
 	.process	= mod_process,
 	.dict		= &dict_freeradius,

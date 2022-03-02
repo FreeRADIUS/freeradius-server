@@ -435,7 +435,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 }
 
 fr_app_io_t proto_load_step = {
-	.magic			= RLM_MODULE_INIT,
+	.magic			= MODULE_MAGIC_INIT,
 	.name			= "load_step",
 	.config			= load_listen_config,
 	.inst_size		= sizeof(proto_load_step_t),

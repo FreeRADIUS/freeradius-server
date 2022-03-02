@@ -3045,7 +3045,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 
 
 fr_app_io_t fr_master_app_io = {
-	.magic			= RLM_MODULE_INIT,
+	.magic			= MODULE_MAGIC_INIT,
 	.name			= "radius_master_io",
 
 	.bootstrap		= mod_bootstrap,

@@ -467,7 +467,7 @@ static void mod_unload(void)
 }
 
 fr_app_t proto_vmps = {
-	.magic			= RLM_MODULE_INIT,
+	.magic			= MODULE_MAGIC_INIT,
 	.name			= "vmps",
 	.config			= proto_vmps_config,
 	.inst_size		= sizeof(proto_vmps_t),

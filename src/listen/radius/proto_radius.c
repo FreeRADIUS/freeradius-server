@@ -582,7 +582,7 @@ static void mod_unload(void)
 }
 
 fr_app_t proto_radius = {
-	.magic			= RLM_MODULE_INIT,
+	.magic			= MODULE_MAGIC_INIT,
 	.name			= "radius",
 	.config			= proto_radius_config,
 	.inst_size		= sizeof(proto_radius_t),

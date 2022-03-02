@@ -563,17 +563,19 @@ static int mod_load(void)
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_json;
-module_t rlm_json = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "json",
-	.type		= RLM_TYPE_THREAD_SAFE,
-	.onload		= mod_load,
-	.config		= module_config,
-	.inst_size	= sizeof(rlm_json_t),
-	.bootstrap	= mod_bootstrap,
+extern module_rlm_t rlm_json;
+module_rlm_t rlm_json = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "json",
+		.type		= MODULE_TYPE_THREAD_SAFE,
+		.onload		= mod_load,
+		.config		= module_config,
+		.inst_size	= sizeof(rlm_json_t),
+		.bootstrap	= mod_bootstrap
+	}
 };

@@ -270,14 +270,16 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-extern module_t rlm_delay;
-module_t rlm_delay = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "delay",
-	.type		= 0,
-	.inst_size	= sizeof(rlm_delay_t),
-	.config		= module_config,
-	.bootstrap	= mod_bootstrap,
+extern module_rlm_t rlm_delay;
+module_rlm_t rlm_delay = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "delay",
+		.type		= 0,
+		.inst_size	= sizeof(rlm_delay_t),
+		.config		= module_config,
+		.bootstrap	= mod_bootstrap
+	},
 	.methods = {
 		[MOD_PREACCT]		= mod_delay,
 		[MOD_AUTHORIZE]		= mod_delay,

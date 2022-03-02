@@ -367,13 +367,15 @@ RLM_AF_FUNC(preacct, packet, request)
 RLM_AF_FUNC(accounting, reply, reply)
 
 /* globally exported name */
-extern module_t rlm_attr_filter;
-module_t rlm_attr_filter = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "attr_filter",
-	.inst_size	= sizeof(rlm_attr_filter_t),
-	.config		= module_config,
-	.instantiate	= mod_instantiate,
+extern module_rlm_t rlm_attr_filter;
+module_rlm_t rlm_attr_filter = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "attr_filter",
+		.inst_size	= sizeof(rlm_attr_filter_t),
+		.config		= module_config,
+		.instantiate	= mod_instantiate,
+	},
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_PREACCT]		= mod_preacct,

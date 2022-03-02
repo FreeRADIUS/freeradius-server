@@ -41,13 +41,13 @@ typedef struct module_method_names_s		module_method_names_t;
 typedef struct module_instance_s		module_instance_t;
 typedef struct module_thread_instance_s		module_thread_instance_t;
 
-#define RLM_TYPE_THREAD_SAFE	(0 << 0) 	//!< Module is threadsafe.
-#define RLM_TYPE_THREAD_UNSAFE	(1 << 0) 	//!< Module is not threadsafe.
-						//!< Server will protect calls
-						//!< with mutex.
-#define RLM_TYPE_RESUMABLE     	(1 << 2) 	//!< does yield / resume
+#define MODULE_TYPE_THREAD_SAFE		(0 << 0) 	//!< Module is threadsafe.
+#define MODULE_TYPE_THREAD_UNSAFE	(1 << 0) 	//!< Module is not threadsafe.
+							//!< Server will protect calls
+							//!< with mutex.
+#define MODULE_TYPE_RESUMABLE     	(1 << 2) 	//!< does yield / resume
 
-#define RLM_TYPE_RETRY     	(1 << 3) 	//!< can handle retries
+#define MODULE_TYPE_RETRY     		(1 << 3) 	//!< can handle retries
 
 /** Module section callback
  *
@@ -97,24 +97,6 @@ typedef int (*module_thread_instantiate_t)(module_thread_inst_ctx_t const *mctx)
  */
 typedef int (*module_thread_detach_t)(module_thread_inst_ctx_t const *mctx);
 
-#define FR_MODULE_COMMON \
-	struct { \
-		module_instantiate_t		bootstrap;		\
-		module_instantiate_t		instantiate;		\
-		int				type;	/* flags */	\
-	}
-
-/** Common fields for the interface struct modules export
- *
- */
-#define FR_MODULE_THREADED_COMMON \
-	struct { \
-		module_thread_instantiate_t	thread_instantiate;	\
-		module_thread_detach_t		thread_detach;		\
-		char const			*thread_inst_type;	\
-		size_t				thread_inst_size;	\
-	}
-
 #ifdef __cplusplus
 }
 #endif
@@ -131,18 +113,6 @@ typedef int (*module_thread_detach_t)(module_thread_inst_ctx_t const *mctx);
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/** Common fields for submodules
- *
- * This should either be the first field in the structure exported from
- * the submodule or the submodule should export an identical set of fields
- * in the same order, preferably using the macros above.
- */
-struct submodule_s {
-	DL_MODULE_COMMON;				//!< Common fields for all loadable modules.
-	FR_MODULE_COMMON;				//!< Common fields for all instantiated modules.
-	FR_MODULE_THREADED_COMMON;			//!< Common fields for threaded modules.
-};
 
 /** Named methods exported by a module
  *
@@ -162,13 +132,15 @@ struct module_method_names_s {
  * within the module to different sections.
  */
 struct module_s {
-	DL_MODULE_COMMON;					//!< Common fields for all loadable modules.
-	FR_MODULE_COMMON;					//!< Common fields for all instantiated modules.
-	FR_MODULE_THREADED_COMMON;				//!< Common fields for threaded modules.
+	DL_MODULE_COMMON;		//!< Common fields for all loadable modules.
 
-	module_method_t			methods[MOD_COUNT];	//!< Pointers to the various section callbacks.
-	module_method_names_t const	*method_names;		//!< named methods
-	fr_dict_t const			**dict;			//!< pointer to local fr_dict_t*
+	module_instantiate_t		bootstrap;
+	module_instantiate_t		instantiate;
+	int				type;	/* flags */
+	module_thread_instantiate_t	thread_instantiate;
+	module_thread_detach_t		thread_detach;
+	char const			*thread_inst_type;
+	size_t				thread_inst_size;
 };
 
 /** Per instance data

@@ -535,7 +535,7 @@ int module_instantiate(void *instance)
 	 *
 	 *	If it isn't, we create a mutex.
 	 */
-	if ((mi->module->type & RLM_TYPE_THREAD_UNSAFE) != 0) {
+	if ((mi->module->type & MODULE_TYPE_THREAD_UNSAFE) != 0) {
 		mi->mutex = talloc_zero(mi, pthread_mutex_t);
 
 		/*
