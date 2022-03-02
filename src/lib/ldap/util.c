@@ -375,7 +375,7 @@ uint8_t *fr_ldap_berval_to_bin(TALLOC_CTX *ctx, struct berval const *in)
 {
 	uint8_t *out;
 
-	out = talloc_array(ctx, uint8_t, in->bv_len + 1);
+	out = talloc_array(ctx, uint8_t, in->bv_len);
 	if (!out) return NULL;
 
 	memcpy(out, in->bv_val, in->bv_len);
