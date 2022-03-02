@@ -979,7 +979,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Load the appropriate driver for our backend
 	 */
-	inst->driver_inst = module_bootstrap(module_by_data(inst), driver_cs);
+	inst->driver_inst = module_bootstrap(DL_MODULE_TYPE_SUBMODULE, module_by_data(inst), driver_cs);
 	if (!inst->driver_inst) {
 		cf_log_err(driver_cs, "Failed loading driver");
 		return -1;

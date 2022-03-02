@@ -1105,7 +1105,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 		if (!submodule_cs) continue;	/* Skipped as we don't have SSL support */
 
-		submodule_inst = module_bootstrap(module_by_data(inst), submodule_cs);
+		submodule_inst = module_bootstrap(DL_MODULE_TYPE_SUBMODULE, module_by_data(inst), submodule_cs);
 		if (!submodule_inst) return -1;
 		submodule = (rlm_eap_submodule_t const *)submodule_inst->dl_inst->module->common;
 

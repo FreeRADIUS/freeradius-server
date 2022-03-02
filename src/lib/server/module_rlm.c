@@ -1004,7 +1004,7 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 			continue;
 		}
 
-		mi = module_bootstrap(NULL, subcs);
+		mi = module_bootstrap(DL_MODULE_TYPE_MODULE, NULL, subcs);
 		if (!mi) return -1;
 
 		/*

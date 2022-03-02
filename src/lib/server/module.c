@@ -696,6 +696,11 @@ static int _module_instance_free(module_instance_t *mi)
  * Load the module shared library, allocate instance data for it,
  * parse the module configuration, and call the modules "bootstrap" method.
  *
+ * @param[in] type	What type of module we're loading.  Determines the prefix
+ *			added to the library name.  Should be one of:
+ *			- DL_MODULE_TYPE_MODULE - Standard backend module.
+ *			- DL_MODULE_TYPE_SUBMODULE - Usually a driver for a backend module.
+ *			- DL_MODULE_TYPE_PROCESS - Protocol state machine bound to a virtual server.
  * @param[in] parent	of the module being bootstrapped, if this is a submodule.
  *			If this is not a submodule parent must be NULL.
  * @param[in] cs	containing the configuration for this module or submodule.
@@ -704,11 +709,15 @@ static int _module_instance_free(module_instance_t *mi)
  *	  and private instance data.
  *	- NULL on error.
  */
-module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTION *cs)
+module_instance_t *module_bootstrap(dl_module_type_t type, module_instance_t const *parent, CONF_SECTION *cs)
 {
 	char			*inst_name = NULL;
 	module_instance_t	*mi;
 	char const		*name1 = cf_section_name1(cs);
+
+	fr_assert((type == DL_MODULE_TYPE_MODULE) ||
+	          (parent && (type == DL_MODULE_TYPE_SUBMODULE)) ||
+	          (type == DL_MODULE_TYPE_PROCESS));
 
 	module_instance_name(NULL, &inst_name, parent, cs);
 
@@ -731,9 +740,9 @@ module_instance_t *module_bootstrap(module_instance_t const *parent, CONF_SECTIO
 	talloc_set_destructor(mi, _module_instance_free);
 
 	if (dl_module_instance(mi, &mi->dl_inst, cs,
-			parent ? parent->dl_inst : NULL,
-			name1,
-			parent ? DL_MODULE_TYPE_SUBMODULE : DL_MODULE_TYPE_MODULE) < 0) {
+			       parent ? parent->dl_inst : NULL,
+			       name1,
+			       type) < 0) {
 	error:
 		mi->name = inst_name;	/* Assigned purely for debug log output when mi is freed */
 		talloc_free(mi);
