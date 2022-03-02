@@ -229,13 +229,16 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+static int transport_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	char const	*name = cf_pair_value(cf_item_to_pair(ci));
-	dl_module_inst_t	*parent_inst;
-	CONF_SECTION	*cs = cf_item_to_section(cf_parent(ci));
-	CONF_SECTION	*transport_cs;
+	rlm_radius_t		*inst = talloc_get_type_abort(parent, rlm_radius_t);
+	char const		*name = cf_pair_value(cf_item_to_pair(ci));
+	CONF_SECTION		*cs = cf_item_to_section(cf_parent(ci));
+	CONF_SECTION		*transport_cs;
+	module_instance_t	*mi;
+
+	fr_assert(out == &inst->io_submodule);	/* Make sure we're being told to write in the right place */
 
 	transport_cs = cf_section_find(cs, name, NULL);
 
@@ -245,12 +248,18 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	 */
 	if (!transport_cs) transport_cs = cf_section_alloc(cs, cs, name, NULL);
 
-	parent_inst = cf_data_value(cf_data_find(cs, dl_module_inst_t, "rlm_radius"));
-	fr_assert(parent_inst);
+	mi = module_bootstrap(DL_MODULE_TYPE_SUBMODULE, module_by_data(inst), transport_cs);
+	if (unlikely(mi == NULL)) {
+		cf_log_err(transport_cs, "Failed loading IO submodule");
+		return -1;
+	}
 
-	return dl_module_instance(ctx, out, transport_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE);
+	*((module_instance_t **)out) = mi;
+
+	inst->io = (rlm_radius_io_t const *)inst->io_submodule->module;	/* Public symbol exported by the module */
+
+	return 0;
 }
-
 
 /** Allow for Status-Server ping checks
  *
@@ -367,8 +376,8 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 
 static void mod_radius_signal(module_ctx_t const *mctx, request_t *request, fr_state_signal_t action)
 {
-	rlm_radius_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_radius_t);
-	rlm_radius_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_radius_thread_t);
+	rlm_radius_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_radius_t);
+	rlm_radius_io_t	const	*io = (rlm_radius_io_t const *)inst->io_submodule->module;		/* Public symbol exported by the module */
 
 	/*
 	 *	We received a duplicate packet, but we're not doing
@@ -377,21 +386,11 @@ static void mod_radius_signal(module_ctx_t const *mctx, request_t *request, fr_s
 	 */
 	if ((action == FR_SIGNAL_DUP) && !inst->synchronous) return;
 
-	if (!inst->io->signal) return;
+	if (!io->signal) return;
 
-	inst->io->signal(MODULE_CTX(inst->io_submodule, t->io_thread, mctx->rctx), request, action);
-}
-
-
-/** Continue after unlang_interpret_mark_runnable()
- *
- */
-static unlang_action_t mod_radius_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_radius_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_radius_t);
-	rlm_radius_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_radius_thread_t);
-
-	return inst->io->resume(p_result, MODULE_CTX(inst->io_submodule, t->io_thread, mctx->rctx), request);
+	io->signal(MODULE_CTX(inst->io_submodule->dl_inst,
+			      module_thread(inst->io_submodule)->data,
+			      mctx->rctx), request, action);
 }
 
 /** Do any RADIUS-layer fixups for proxying.
@@ -435,7 +434,6 @@ static void radius_fixups(rlm_radius_t const *inst, request_t *request)
 static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_radius_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_radius_t);
-	rlm_radius_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_radius_thread_t);
 	rlm_rcode_t		rcode;
 	unlang_action_t		ua;
 	RADCLIENT		*client;
@@ -488,77 +486,14 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	 *	return another code which indicates what happened to
 	 *	the request...
 	 */
-	ua = inst->io->enqueue(&rcode, &rctx, inst->io_instance, t->io_thread, request);
+	ua = inst->io->enqueue(&rcode, &rctx, inst->io_submodule->dl_inst->data,
+			       module_thread(inst->io_submodule)->data, request);
 	if (ua != UNLANG_ACTION_YIELD) {
 		fr_assert(rctx == NULL);
 		RETURN_MODULE_RCODE(rcode);
 	}
 
-	return unlang_module_yield(request, mod_radius_resume, mod_radius_signal, rctx);
-}
-
-/** Destroy thread data for the submodule.
- *
- */
-static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
-{
-	rlm_radius_t const *inst = talloc_get_type_abort(mctx->inst->data, rlm_radius_t);
-	rlm_radius_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_radius_thread_t);
-
-	/*
-	 *	Tell the submodule to shut down all of its
-	 *	connections.
-	 */
-	if (inst->io->thread_detach &&
-	    (inst->io->thread_detach(MODULE_THREAD_INST_CTX(inst->io_submodule,
-	    						    t->io_thread, mctx->el)) < 0)) {
-		return -1;
-	}
-
-	return 0;
-}
-
-/** Instantiate thread data for the submodule.
- *
- */
-static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
-{
-	rlm_radius_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_radius_t);
-	rlm_radius_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_radius_thread_t);
-
-	/*
-	 *	Allocate thread-specific data.  The connections should
-	 *	live here.
-	 */
-	if (inst->io->thread_inst_size) {
-		MEM(t->io_thread = talloc_zero_array(t, uint8_t, inst->io->thread_inst_size));
-
-		/*
-		 *	Set the name of the IO modules thread instance.
-		 */
-		if (inst->io->thread_inst_type) (void) talloc_set_name_const(t->io_thread,
-									     inst->io->thread_inst_type);
-	}
-
-	/*
-	 *	Instantiate the per-thread data.  This should open up
-	 *	sockets, set timers, etc.
-	 */
-	if (inst->io->thread_instantiate &&
-	    inst->io->thread_instantiate(MODULE_THREAD_INST_CTX(inst->io_submodule,
-	    							t->io_thread, mctx->el)) < 0) return -1;
-
-	return 0;
-}
-
-static int mod_instantiate(module_inst_ctx_t const *mctx)
-{
-	rlm_radius_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_radius_t);
-
-	if (inst->io->instantiate &&
-	    inst->io->instantiate(MODULE_INST_CTX(inst->io_submodule)) < 0) return -1;
-
-	return 0;
+	return unlang_module_yield(request, inst->io->resume, mod_radius_signal, rctx);
 }
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
@@ -727,18 +662,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	}
 
 setup_io_submodule:
-	inst->io = (rlm_radius_io_t const *) inst->io_submodule->module->common;
-
 	/*
 	 *	Get random Proxy-State identifier for this module.
 	 */
 	inst->proxy_state = fr_rand();
-
-	/*
-	 *	Bootstrap the submodule.
-	 */
-	if (inst->io->bootstrap &&
-	    inst->io->bootstrap(MODULE_INST_CTX(inst->io_submodule)) < 0) return -1;
 
 	return 0;
 }
@@ -762,36 +689,32 @@ static void mod_unload(void)
  *	That is, everything else should be 'static'.
  *
  *	If the module needs to temporarily modify it's instantiation
- *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
+ *	data, the type should be changed to MODULE_TYPE_THREAD_UNSAFE.
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-extern module_t rlm_radius;
-module_t rlm_radius = {
-	.magic		= RLM_MODULE_INIT,
-	.name		= "radius",
-	.type		= RLM_TYPE_THREAD_SAFE | RLM_TYPE_RESUMABLE,
-	.inst_size	= sizeof(rlm_radius_t),
-	.config		= module_config,
+extern module_rlm_t rlm_radius;
+module_rlm_t rlm_radius = {
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "radius",
+		.type		= MODULE_TYPE_THREAD_SAFE | MODULE_TYPE_RESUMABLE,
+		.inst_size	= sizeof(rlm_radius_t),
+		.config		= module_config,
 
-	.onload		= mod_load,
-	.unload		= mod_unload,
+		.onload		= mod_load,
+		.unload		= mod_unload,
 
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
-
-	.thread_inst_size = sizeof(rlm_radius_thread_t),
-	.thread_inst_type = "rlm_radius_thread_t",
-	.thread_instantiate = mod_thread_instantiate,
-	.thread_detach	= mod_thread_detach,
+		.bootstrap	= mod_bootstrap,
+	},
 	.methods = {
 		[MOD_PREACCT]		= mod_process,
 		[MOD_ACCOUNTING]	= mod_process,
 		[MOD_AUTHORIZE]		= mod_process,
 		[MOD_AUTHENTICATE]     	= mod_process,
 	},
-        .method_names = (module_method_names_t[]){
-                { .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,	.method = mod_process },
-                MODULE_NAME_TERMINATOR
-        },
+	.method_names = (module_method_names_t[]){
+		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,	.method = mod_process },
+		MODULE_NAME_TERMINATOR
+	},
 };
