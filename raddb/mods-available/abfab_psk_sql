@@ -21,7 +21,7 @@ sql psksql {
 	#
 	#  driver:: Database driver.
 	#
-	driver = "rlm_sql_sqlite"
+	driver = "sqlite"
 
 	#
 	#  sqlite { ... }:: Database statement based on `driver` setting.

@@ -232,10 +232,10 @@ static int _sql_socket_destructor(rlm_sql_postgres_conn_t *conn)
 	return 0;
 }
 
-static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
+static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config,
 					    UNUSED fr_time_delta_t timeout)
 {
-	rlm_sql_postgresql_t *inst = config->driver;
+	rlm_sql_postgresql_t	*inst = talloc_get_type_abort(handle->inst->driver_submodule->dl_inst->data, rlm_sql_postgresql_t);
 	rlm_sql_postgres_conn_t *conn;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_postgres_conn_t));
@@ -265,7 +265,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 					      char const *query)
 {
 	rlm_sql_postgres_conn_t	*conn = handle->conn;
-	rlm_sql_postgresql_t	*inst = config->driver;
+	rlm_sql_postgresql_t	*inst = talloc_get_type_abort(handle->inst->driver_submodule->dl_inst->data, rlm_sql_postgresql_t);
 	fr_time_delta_t		timeout = config->query_timeout;
 	fr_time_t		start;
 	int			sockfd;

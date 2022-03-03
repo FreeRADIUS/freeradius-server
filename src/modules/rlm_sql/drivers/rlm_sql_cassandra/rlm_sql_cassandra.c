@@ -386,7 +386,7 @@ static int _sql_socket_destructor(rlm_sql_cassandra_conn_t *conn)
 static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, fr_time_delta_t timeout)
 {
 	rlm_sql_cassandra_conn_t	*conn;
-	rlm_sql_cassandra_t		*inst = config->driver;
+	rlm_sql_cassandra_t		*inst = talloc_get_type_abort(handle->inst->driver_submodule->dl_inst->data, rlm_sql_cassandra_t);
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_cassandra_conn_t));
 	talloc_set_destructor(conn, _sql_socket_destructor);
@@ -435,7 +435,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, char const *query)
 {
 	rlm_sql_cassandra_conn_t	*conn = handle->conn;
-	rlm_sql_cassandra_t	*conf = config->driver;
+	rlm_sql_cassandra_t		*inst = talloc_get_type_abort(handle->inst->driver_submodule->dl_inst->data, rlm_sql_cassandra_t);
 	CassStatement			*statement;
 	CassFuture			*future;
 	CassError			ret;

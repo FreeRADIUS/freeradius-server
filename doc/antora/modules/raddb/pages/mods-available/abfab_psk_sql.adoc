@@ -26,7 +26,7 @@ sqlite { ... }:: Database statement based on `driver` setting.
 
 ```
 sql psksql {
-	driver = "rlm_sql_sqlite"
+	driver = "sqlite"
 	sqlite {
 		filename = "/var/lib/trust_router/keys"
 	}

@@ -219,8 +219,9 @@ static int mod_load(void)
 
 static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, fr_time_delta_t timeout)
 {
+	rlm_sql_mysql_t *inst = talloc_get_type_abort(handle->inst->driver_submodule->dl_inst->data, rlm_sql_mysql_t);
 	rlm_sql_mysql_conn_t *conn;
-	rlm_sql_mysql_t *inst = config->driver;
+
 	unsigned int connect_timeout = (unsigned int)fr_time_delta_to_sec(timeout);
 	unsigned long sql_flags;
 
@@ -704,8 +705,8 @@ static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen
 static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 			rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
+	rlm_sql_mysql_t		*inst = talloc_get_type_abort(handle->inst->driver_submodule->dl_inst->data, rlm_sql_mysql_t);
 	rlm_sql_mysql_conn_t	*conn = handle->conn;
-	rlm_sql_mysql_t	*inst = config->driver;
 	char const		*error;
 	size_t			i = 0;
 

@@ -26,7 +26,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX inst->name
+#define LOG_PREFIX mctx->inst->name
 
 #include <ctype.h>
 
@@ -43,6 +43,9 @@ RCSID("$Id$")
 #include "rlm_sql.h"
 
 extern module_rlm_t rlm_sql;
+
+static int driver_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
+			CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
 
 /*
  *	So we can do pass2 xlat checks on the queries.
@@ -82,7 +85,8 @@ static const CONF_PARSER postauth_config[] = {
 };
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("driver", FR_TYPE_STRING, rlm_sql_config_t, sql_driver_name), .dflt = "rlm_sql_null" },
+	{ FR_CONF_OFFSET("driver", FR_TYPE_VOID, rlm_sql_t, driver_submodule), .dflt = "rlm_sql_null",
+			 .func = driver_parse },
 	{ FR_CONF_OFFSET("server", FR_TYPE_STRING, rlm_sql_config_t, sql_server), .dflt = "" },	/* Must be zero length so drivers can determine if it was set */
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT32, rlm_sql_config_t, sql_port), .dflt = "0" },
 	{ FR_CONF_OFFSET("login", FR_TYPE_STRING, rlm_sql_config_t, sql_login), .dflt = "" },
@@ -138,6 +142,38 @@ fr_dict_attr_autoload_t rlm_sql_dict_attr[] = {
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
 };
+
+static int driver_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
+			CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	rlm_sql_t		*inst = talloc_get_type_abort(parent, rlm_sql_t);
+	char const		*name = cf_pair_value(cf_item_to_pair(ci));
+	CONF_SECTION		*cs = cf_item_to_section(cf_parent(ci));
+	CONF_SECTION		*driver_cs;
+	module_instance_t	*mi;
+
+	fr_assert(out == &inst->driver_submodule);	/* Make sure we're being told to write in the right place */
+
+	driver_cs = cf_section_find(cs, name, NULL);
+
+	/*
+	 *	Allocate an empty section if one doesn't exist
+	 *	this is so defaults get parsed.
+	 */
+	if (!driver_cs) driver_cs = cf_section_alloc(cs, cs, name, NULL);
+
+	mi = module_bootstrap(DL_MODULE_TYPE_SUBMODULE, module_by_data(parent), driver_cs);
+	if (unlikely(mi == NULL)) {
+		cf_log_err(driver_cs, "Failed loading SQL driver");
+		return -1;
+	}
+
+	*((module_instance_t **)out) = mi;
+
+	inst->driver = (rlm_sql_driver_t const *)inst->driver_submodule->module; /* Public symbol exported by the submodule */
+
+	return 0;
+}
 
 /*
  *	Fall-Through checking function from rlm_files.c
@@ -1014,61 +1050,12 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_sql_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
-	CONF_SECTION	*driver_cs;
-	char const	*name;
-	xlat_t		*xlat;
+	rlm_sql_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
+	xlat_t			*xlat;
 	xlat_arg_parser_t	*sql_xlat_arg;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	/*
-	 *	Accomodate full and partial driver names
-	 */
-	name = strrchr(inst->config.sql_driver_name, '_');
-	if (!name) {
-		name = inst->config.sql_driver_name;
-	} else {
-		name++;
-	}
-
-	/*
-	 *	Get the module's subsection or allocate one
-	 */
-	driver_cs = cf_section_find(conf, name, NULL);
-	if (!driver_cs) {
-		driver_cs = cf_section_alloc(conf, conf, name, NULL);
-		if (!driver_cs) return -1;
-	}
-
-	/*
-	 *	Load the driver
-	 */
-	if (dl_module_instance(inst, &inst->driver_inst, driver_cs, dl_module_instance_by_data(inst), name, DL_MODULE_TYPE_SUBMODULE) < 0) {
-		return -1;
-	}
-	inst->driver = (rlm_sql_driver_t const *)inst->driver_inst->module->common;
-
-	fr_assert(!inst->driver->common.inst_size || inst->driver_inst->data);
-
-	/*
-	 *	Call the driver's instantiate function (if set)
-	 */
-	if (inst->driver->instantiate && (inst->driver->instantiate(&inst->config,
-								    inst->driver_inst->data,
-								    driver_cs)) < 0) {
-	error:
-		TALLOC_FREE(inst->driver_inst);
-		return -1;
-	}
-
-	/*
-	 *	@fixme Inst should be passed to all driver callbacks
-	 *	instead of being stored here.
-	 */
-	inst->config.driver = inst->driver_inst->data;
+	inst->name = mctx->inst->name;	/* Need this for functions in sql.c */
 
 	/*
 	 *	Register the group comparison attribute
@@ -1081,7 +1068,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		if (inst->config.group_attribute) {
 			group_attribute = inst->config.group_attribute;
 		} else if (cf_section_name2(conf)) {
-			snprintf(buffer, sizeof(buffer), "%s-SQL-Group", inst->name);
+			snprintf(buffer, sizeof(buffer), "%s-SQL-Group", mctx->inst->name);
 			group_attribute = buffer;
 		} else {
 			group_attribute = "SQL-Group";
@@ -1093,7 +1080,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		if (paircmp_register_by_name(group_attribute, attr_user_name,
 						false, sql_groupcmp, inst) < 0) {
 			PERROR("Failed registering group comparison");
-			goto error;
+		error:
+			return -1;
 		}
 
 		inst->group_da = fr_dict_attr_search_by_qualified_oid(NULL, dict_freeradius, group_attribute,
@@ -1107,7 +1095,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Register the SQL xlat function
 	 */
-	xlat = xlat_register_module(inst, mctx, inst->name, sql_xlat, NULL);
+	xlat = xlat_register_module(inst, mctx, mctx->inst->name, sql_xlat, NULL);
 
 	/*
 	 *	The xlat escape function needs access to inst - so
@@ -1124,7 +1112,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Register the SQL map processor function
 	 */
-	if (inst->driver->sql_fields) map_proc_register(inst, inst->name, mod_map_proc, sql_map_verify, 0);
+	if (inst->driver->sql_fields) map_proc_register(inst, mctx->inst->name, mod_map_proc, sql_map_verify, 0);
 
 	return 0;
 }
@@ -1134,14 +1122,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_sql_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_t);
 	CONF_SECTION	*conf = mctx->inst->conf;
-
-	/*
-	 *	Sanity check for crazy people.
-	 */
-	if (strncmp(inst->config.sql_driver_name, "rlm_sql_", 8) != 0) {
-		ERROR("\"%s\" is NOT an SQL driver!", inst->config.sql_driver_name);
-		return -1;
-	}
 
 	/*
 	 *	We need authorize_group_check_query or authorize_group_reply_query

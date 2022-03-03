@@ -86,7 +86,6 @@ typedef struct {
 } sql_acct_section_t;
 
 typedef struct {
-	char const 		*sql_driver_name;		//!< SQL driver module name e.g. rlm_sql_sqlite.
 	char const 		*sql_server;			//!< Server to connect to.
 	uint32_t 		sql_port;			//!< Port to connect to.
 	char const 		*sql_login;			//!< Login credentials to use.
@@ -124,10 +123,6 @@ typedef struct {
 
 	char const		*connect_query;			//!< Query executed after establishing
 								//!< new connection.
-
-	void			*driver;			//!< Where drivers should write a
-								//!< pointer to their configurations.
-
 	/*
 	 *	@todo The rest of the queries should also be moved into
 	 *	their own sections.
@@ -221,7 +216,7 @@ struct sql_inst {
 							//!< dictionary attribute.
 	exfile_t		*ef;
 
-	dl_module_inst_t		*driver_inst;		//!< Driver's instance data.
+	module_instance_t	*driver_submodule;	//!< Driver's submodule.
 	rlm_sql_driver_t const	*driver;		//!< Driver's exported interface.
 
 	int (*sql_set_user)(rlm_sql_t const *inst, request_t *request, char const *username);

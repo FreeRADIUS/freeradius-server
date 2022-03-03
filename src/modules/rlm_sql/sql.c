@@ -337,7 +337,7 @@ sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, request
  */
 void rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, bool force_debug)
 {
-	char const	*driver;
+	char const	*driver = inst->driver_submodule->name;
 	sql_log_entry_t	log[20];
 	size_t		num, i;
 
@@ -346,8 +346,6 @@ void rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, rlm_sql_hand
 		ROPTIONAL(RERROR, ERROR, "Unknown error");
 		return;
 	}
-
-	driver = inst->config.sql_driver_name;
 
 	for (i = 0; i < num; i++) {
 		if (force_debug) goto debug;

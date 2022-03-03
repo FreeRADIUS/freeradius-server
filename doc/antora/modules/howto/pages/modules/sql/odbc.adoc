@@ -265,7 +265,7 @@ The `rlm_sql` module can be configured as follows:
 
  sql {
      dialect = "mssql"
-     driver = "rlm_sql_unixodbc"
+     driver = "unixodbc"
      server = "MSSQLdb"           # The exact "[DSN]" from odbc.ini
      login = "radius"
      password = "radPass_123"

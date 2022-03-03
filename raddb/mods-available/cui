@@ -44,7 +44,7 @@ sql cuisql {
 	#  | Log to disk | rlm_sql_null
 	#  |===
 	#
-	driver = "rlm_sql_${dialect}"
+	driver = "${dialect}"
 
 	#
 	#  [NOTE]

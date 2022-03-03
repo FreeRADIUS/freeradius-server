@@ -263,8 +263,8 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 {
 	char errbuff[512];
 
-	rlm_sql_oracle_t *inst = config->driver;
-	rlm_sql_oracle_conn_t *conn;
+	rlm_sql_oracle_t	*inst = talloc_get_type_abort(handle->inst->driver_submodule->dl_inst->data, rlm_sql_oracle_t);
+	rlm_sql_oracle_conn_t	*conn;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_oracle_conn_t));
 	talloc_set_destructor(conn, _sql_socket_destructor);

@@ -79,7 +79,7 @@ set `SQL-User-Name` to the new value.
 ```
 sql cuisql {
 	dialect = "sqlite"
-	driver = "rlm_sql_${dialect}"
+	driver = "${dialect}"
 #	server = "localhost"
 #	port = 3306
 #	login = "radius"

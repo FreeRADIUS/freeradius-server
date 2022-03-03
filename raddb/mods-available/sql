@@ -63,14 +63,14 @@ sql {
 	#  [options="header,autowidth"]
 	#  |===
 	#  | Driver            | Dialect
-	#  | rlm_sql_db2       | mssql
-	#  | rlm_sql_firebird  | mssql
-	#  | rlm_sql_freetds   | mssql
-	#  | rlm_sql_null      | any
-	#  | rlm_sql_unixodbc  | mssql
+	#  | db2               | mssql
+	#  | firebird          | mssql
+	#  | freetds           | mssql
+	#  | null              | any
+	#  | unixodbc          | mssql
 	#  |===
 	#
-	driver = "rlm_sql_${dialect}"
+	driver = "${dialect}"
 
 	#
 	#  Include driver specific configuration file if one

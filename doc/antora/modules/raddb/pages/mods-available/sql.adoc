@@ -293,7 +293,7 @@ please create them and contribute them back to the project.
 ```
 sql {
 	dialect = "sqlite"
-	driver = "rlm_sql_${dialect}"
+	driver = "${dialect}"
 	$-INCLUDE ${modconfdir}/sql/driver/${dialect}
 #	server = "localhost"
 #	port = 3306
