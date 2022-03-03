@@ -175,6 +175,8 @@ dl_module_t const	*dl_module(CONF_SECTION *conf, dl_module_t const *parent,
 
 dl_module_inst_t const	*dl_module_instance_by_data(void const *data);
 
+dl_module_inst_t const	*dl_module_instance_by_cs(CONF_SECTION const *cs);
+
 char const		*dl_module_instance_name_by_data(void const *data);
 
 void			*dl_module_parent_data_by_child_data(void const *data);

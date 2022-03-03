@@ -213,6 +213,14 @@ dl_module_inst_t const *dl_module_instance_by_data(void const *data)
 	return fr_rb_find(dl_module_loader->inst_data_tree, &(dl_module_inst_t){ .data = UNCONST(void *, data) });
 }
 
+/** Lookup a dl_module_inst_t via a config section
+ *
+ */
+dl_module_inst_t const *dl_module_instance_by_cs(CONF_SECTION const *cs)
+{
+	return cf_data_value(cf_data_find(cs, dl_module_inst_t, CF_IDENT_ANY));
+}
+
 /** Lookup instance name via instance data
  *
  */
