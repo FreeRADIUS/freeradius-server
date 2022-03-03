@@ -683,7 +683,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle,
 	return -1;
 }
 
-static int mod_instantiate(module_inst_ctx_t const *mctx)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	rlm_sql_t const		*parent = talloc_get_type_abort(mctx->inst->parent->data, rlm_sql_t);
 	rlm_sql_config_t const	*config = &parent->config;
@@ -820,7 +820,7 @@ rlm_sql_driver_t rlm_sql_sqlite = {
 		.inst_size			= sizeof(rlm_sql_sqlite_t),
 		.config				= driver_config,
 		.onload				= mod_load,
-		.instantiate			= mod_instantiate
+		.bootstrap			= mod_bootstrap
 	},
 	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
 	.sql_socket_init		= sql_socket_init,
