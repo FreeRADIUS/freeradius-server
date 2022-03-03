@@ -38,7 +38,7 @@ cache cache_tls_session {
 	#
 	#  driver:: `cache` driver.
 	#
-	driver = "rlm_cache_rbtree"
+	driver = "rbtree"
 
 	#
 	#  key:: The `cache` key.
@@ -67,7 +67,7 @@ cache cache_ocsp {
 	#
 	#  driver:: `cache` driver.
 	#
-	driver = "rlm_cache_rbtree"
+	driver = "rbtree"
 
 	#
 	#  key:: `cache` key.

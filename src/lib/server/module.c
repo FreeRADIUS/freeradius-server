@@ -267,6 +267,53 @@ static int8_t module_instance_data_cmp(void const *one, void const *two)
 	return CMP(a, b);
 }
 
+/** Generic callback for CONF_PARSER to load a submodule
+ *
+ * CONF_PARSER entry should point to a module_instance_t field in the instance data
+ *
+ * @param[in] ctx	unused.
+ * @param[out] out	A pointer to a pointer to a module_instance_t.
+ * @param[in] parent	This _must_ point to the instance data of the parent
+ *			module.
+ * @param[in] ci	The CONF_PAIR containing the name of the submodule to load.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 if we failed to load the submodule.
+ */
+int module_submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
+			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+{
+	char const		*name = cf_pair_value(cf_item_to_pair(ci));
+	CONF_SECTION		*cs = cf_item_to_section(cf_parent(ci));
+	CONF_SECTION		*submodule_cs;
+	module_instance_t	*mi;
+
+	/*
+	 *	We assume the submodule's config is the
+	 *	in a section with the same name as
+	 *	the submodule.
+	 */
+	submodule_cs = cf_section_find(cs, name, NULL);
+
+	/*
+	 *	Allocate an empty section if one doesn't exist
+	 *	this is so defaults get parsed.
+	 */
+	if (!submodule_cs) submodule_cs = cf_section_alloc(cs, cs, name, NULL);
+
+	mi = module_bootstrap(DL_MODULE_TYPE_SUBMODULE, module_by_data(parent), submodule_cs);
+	if (unlikely(mi == NULL)) {
+		cf_log_err(submodule_cs, "Failed loading submodule");
+		return -1;
+	}
+
+	*((module_instance_t **)out) = mi;
+
+	return 0;
+}
+
+
 /** Find an existing module instance by its name and parent
  *
  * @param[in] parent		to qualify search with.
@@ -783,8 +830,8 @@ module_instance_t *module_bootstrap(dl_module_type_t type, module_instance_t con
 	 *	Do this after inserting the module instance into the tree
 	 */
 	if (dl_module_conf_parse(mi->dl_inst) < 0) {
-		TALLOC_FREE(mi->dl_inst);
-		return -1;
+		TALLOC_FREE(mi);
+		return NULL;
 	}
 
 	/*

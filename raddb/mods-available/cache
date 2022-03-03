@@ -40,18 +40,18 @@ cache {
 	#  [options="header,autowidth"]
 	#  |===
 	#  | Driver                | Description
-	#  | `rlm_cache_rbtree`    | An in memory, non persistent rbtree based datastore.
+	#  | `rbtree`              | An in memory, non persistent rbtree based datastore.
 	#                            Useful for caching data locally.
-	#  | `rlm_cache_memcached` | A non persistent "webscale" distributed datastore.
+	#  | `memcached`           | A non persistent "webscale" distributed datastore.
 	#                            Useful if the cached data need to be shared between
 	#                            a cluster of RADIUS servers.
-	#  | `rlm_cache_redis`     | A persistent "webscale" clustered, sharded, data store.
+	#  | `redis`               | A persistent "webscale" clustered, sharded, data store.
 	#                            Extremely fast, and a good candidate for sharing
 	#                            data such as EAP session blobs, between a cluster of
 	#                            servers.
 	#  |===
 	#
-#	driver = "rlm_cache_rbtree"
+#	driver = "rbtree"
 
 	#
 	#  NOTE: Some drivers accept specific options, to set them a config section with the

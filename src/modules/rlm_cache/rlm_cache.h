@@ -49,7 +49,6 @@ typedef enum {
  * rlm_cache instance data.
  */
 typedef struct {
-	char const		*driver_name;		//!< Driver name.
 	tmpl_t			*key;			//!< What to expand to get the value of the key.
 	fr_time_delta_t		ttl;			//!< How long an entry is valid for.
 	uint32_t		max_entries;		//!< Maximum entries allowed.
@@ -67,7 +66,7 @@ typedef struct {
 typedef struct {
 	rlm_cache_config_t	config;			//!< Must come first because of icky hacks.
 
-	module_instance_t	*driver_inst;		//!< Driver's instance data.
+	module_instance_t	*driver_submodule;	//!< Driver's instance data.
 	rlm_cache_driver_t const *driver;		//!< Driver's exported interface.
 
 	map_list_t		maps;			//!< Attribute map applied to users.

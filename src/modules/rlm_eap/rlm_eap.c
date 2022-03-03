@@ -68,7 +68,7 @@ static const CONF_PARSER module_config[] = {
 
 	{ FR_CONF_OFFSET_IS_SET("default_eap_type", FR_TYPE_VOID, rlm_eap_t, default_method), .func = eap_type_parse },
 
-	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, rlm_eap_t, submodule_cs),
+	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, rlm_eap_t, type_submodules),
 			 .func = submodule_parse },
 
 	{ FR_CONF_OFFSET("ignore_unknown_eap_types", FR_TYPE_BOOL, rlm_eap_t, ignore_unknown_types), .dflt = "no" },
@@ -130,13 +130,11 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent,
+			   CONF_ITEM *ci, CONF_PARSER const *rule)
 {	char const	*name = cf_pair_value(cf_item_to_pair(ci));
 	char		*our_name = NULL;
 	char		*p;
-	CONF_SECTION	*eap_cs = cf_item_to_section(cf_parent(ci));
-	CONF_SECTION	*submodule_cs;
 	eap_type_t	method;
 
 	/*
@@ -150,6 +148,8 @@ static int submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 	}
 
 	method = eap_name2type(our_name);
+	talloc_free(our_name);
+
 	if (method == FR_EAP_METHOD_INVALID) {
 		talloc_free(our_name);
 		cf_log_err(ci, "Unknown EAP type %s", name);
@@ -178,12 +178,12 @@ static int submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 	case FR_EAP_METHOD_AKA:
 	case FR_EAP_METHOD_SIM:
 	{
+		CONF_SECTION	*eap_cs = cf_item_to_section(cf_parent(ci));
+
 		module_inst_ctx_t *mctx = MODULE_INST_CTX(
 			((dl_module_inst_t *)cf_data_value(cf_data_find(eap_cs,
 									dl_module_inst_t, "rlm_eap"))));
 		WARN("Ignoring EAP method %s because we don't have OpenSSL support", name);
-
-		talloc_free(our_name);
 	}
 		return 0;
 
@@ -191,23 +191,7 @@ static int submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 		break;
 	}
 #endif
-
-	/*
-	 *	A bit hacky, we should really figure out a better way
-	 *	of handling missing sections.
-	 */
-	submodule_cs = cf_section_find(eap_cs, name, NULL);
-	if (!submodule_cs) {
-		submodule_cs = cf_section_alloc(eap_cs, eap_cs, name, NULL);
-		cf_filename_set(submodule_cs, cf_filename(ci));
-		cf_lineno_set(submodule_cs, cf_lineno(ci));
-	}
-
-	*(void **)out = submodule_cs;
-
-	talloc_free(our_name);
-
-	return 0;
+ 	return module_submodule_parse(ctx, out, parent, ci, rule);
 }
 
 /** Convert EAP type strings to eap_type_t values
@@ -1086,7 +1070,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 *	Because the submodule might want to look at its parent
 	 *	and we haven't completed our own bootstrap phase yet.
 	 */
-	loaded = talloc_array_length(inst->submodule_cs);
+	loaded = talloc_array_length(inst->type_submodules);
 
 	/*
 	 *	Pre-allocate the method identity to be the number
@@ -1099,14 +1083,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	}
 
 	for (i = 0; i < loaded; i++) {
-		CONF_SECTION			*submodule_cs = inst->submodule_cs[i];
+		module_instance_t 		*submodule_inst = inst->type_submodules[i];
 		rlm_eap_submodule_t const	*submodule;
-		module_instance_t		*submodule_inst;
 
-		if (!submodule_cs) continue;	/* Skipped as we don't have SSL support */
+		if (!submodule_inst) continue;	/* Skipped as we don't have SSL support */
 
-		submodule_inst = module_bootstrap(DL_MODULE_TYPE_SUBMODULE, module_by_data(inst), submodule_cs);
-		if (!submodule_inst) return -1;
 		submodule = (rlm_eap_submodule_t const *)submodule_inst->dl_inst->module->common;
 
 		/*
@@ -1132,7 +1113,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			if (inst->methods[method].submodule) {
 				CONF_SECTION *conf = inst->methods[method].submodule_inst->dl_inst->conf;
 
-				cf_log_err(submodule_cs, "Duplicate EAP-Type %s.  Conflicting entry %s[%u]",
+				cf_log_err(submodule_inst->dl_inst->conf,
+					   "Duplicate EAP-Type %s.  Conflicting entry %s[%u]",
 					   eap_type2name(method),
 					   cf_filename(conf), cf_lineno(conf));
 

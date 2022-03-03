@@ -220,7 +220,7 @@ NOTE: All runtime configuration attributes will be removed from the
 
 ```
 cache {
-#	driver = "rlm_cache_rbtree"
+#	driver = "rbtree"
 #	memcached {
 #		options = "--SERVER=localhost"
 #		pool {

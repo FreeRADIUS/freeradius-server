@@ -31,7 +31,6 @@ RCSID("$Id$")
 
 #include "rlm_radius.h"
 
-static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int status_check_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
 static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
@@ -101,7 +100,7 @@ static CONF_PARSER disconnect_config[] = {
  */
 static CONF_PARSER const module_config[] = {
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, rlm_radius_t, io_submodule),
-	  .func = transport_parse },
+	  .func = module_submodule_parse },
 
 	{ FR_CONF_OFFSET("type", FR_TYPE_UINT32 | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY | FR_TYPE_REQUIRED, rlm_radius_t, types),
 	  .func = type_parse },
@@ -214,49 +213,6 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	cf_section_rule_push(cs, &type_interval_config[code]);
 
 	memcpy(out, &code, sizeof(code));
-
-	return 0;
-}
-
-/** Wrapper around dl_instance
- *
- * @param[in] ctx	to allocate data in (instance of proto_radius).
- * @param[out] out	Where to write a dl_module_inst_t containing the module handle and instance.
- * @param[in] parent	Base structure address.
- * @param[in] ci	#CONF_PAIR specifying the name of the type module.
- * @param[in] rule	unused.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int transport_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
-			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
-{
-	rlm_radius_t		*inst = talloc_get_type_abort(parent, rlm_radius_t);
-	char const		*name = cf_pair_value(cf_item_to_pair(ci));
-	CONF_SECTION		*cs = cf_item_to_section(cf_parent(ci));
-	CONF_SECTION		*transport_cs;
-	module_instance_t	*mi;
-
-	fr_assert(out == &inst->io_submodule);	/* Make sure we're being told to write in the right place */
-
-	transport_cs = cf_section_find(cs, name, NULL);
-
-	/*
-	 *	Allocate an empty section if one doesn't exist
-	 *	this is so defaults get parsed.
-	 */
-	if (!transport_cs) transport_cs = cf_section_alloc(cs, cs, name, NULL);
-
-	mi = module_bootstrap(DL_MODULE_TYPE_SUBMODULE, module_by_data(inst), transport_cs);
-	if (unlikely(mi == NULL)) {
-		cf_log_err(transport_cs, "Failed loading IO submodule");
-		return -1;
-	}
-
-	*((module_instance_t **)out) = mi;
-
-	inst->io = (rlm_radius_io_t const *)inst->io_submodule->module;	/* Public symbol exported by the module */
 
 	return 0;
 }
@@ -502,6 +458,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_radius_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_radius_t);
 	CONF_SECTION *conf = mctx->inst->conf;
 
+	inst->io = (rlm_radius_io_t const *)inst->io_submodule->module;	/* Public symbol exported by the module */
 	inst->name = mctx->inst->name;
 
 	/*

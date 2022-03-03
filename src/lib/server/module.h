@@ -216,6 +216,15 @@ typedef struct {
 	module_method_t			func;		//!< State function.
 } module_state_func_table_t;
 
+
+/** @name Callbacks for the CONF_PARSER
+ *
+ * @{
+ */
+int		module_submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
+				       CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+/** @} */
+
 /** @name Module and module thread lookup
  *
  * @{

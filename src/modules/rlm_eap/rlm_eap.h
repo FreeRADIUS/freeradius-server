@@ -47,8 +47,7 @@ typedef enum {
 typedef struct {
 	char const			*name;				//!< Name of this instance.
 
-	CONF_SECTION			**submodule_cs;			//!< Configuration sections for the submodules
-									///< we're going to load.
+	module_instance_t		**type_submodules;		//!< Submodules we loaded.
 	rlm_eap_method_t 		methods[FR_EAP_METHOD_MAX];	//!< Array of loaded (or not), submodules.
 
 	char const			*default_method_name;		//!< Default method to attempt to start.
@@ -67,7 +66,7 @@ typedef struct {
 
 	rlm_eap_require_realm_t		require_realm;			//!< Whether we require the outer identity
 									///< to contain a realm.
-	fr_dict_enum_value_t			*auth_type;
+	fr_dict_enum_value_t		*auth_type;
 
 	fr_randctx			rand_pool;			//!< Pool of random data.
 } rlm_eap_t;
