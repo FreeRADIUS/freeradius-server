@@ -436,14 +436,15 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *c
 {
 	rlm_sql_cassandra_conn_t	*conn = handle->conn;
 	rlm_sql_cassandra_t		*inst = talloc_get_type_abort(handle->inst->driver_submodule->dl_inst->data, rlm_sql_cassandra_t);
+
 	CassStatement			*statement;
 	CassFuture			*future;
 	CassError			ret;
 
 	statement = cass_statement_new_n(query, talloc_array_length(query) - 1, 0);
-	if (conf->consistency_str) cass_statement_set_consistency(statement, conf->consistency);
+	if (inst->consistency_str) cass_statement_set_consistency(statement, inst->consistency);
 
-	future = cass_session_execute(conf->session, statement);
+	future = cass_session_execute(inst->session, statement);
 	cass_statement_free(statement);
 
 	ret = cass_future_error_code(future);
@@ -960,14 +961,16 @@ static int mod_load(void)
 /* Exported to rlm_sql */
 extern rlm_sql_driver_t rlm_sql_cassandra;
 rlm_sql_driver_t rlm_sql_cassandra = {
-	.name				= "rlm_sql_cassandra",
-	.magic				= RLM_MODULE_INIT,
-	.inst_size			= sizeof(rlm_sql_cassandra_t),
-	.onload				= mod_load,
-	.unload				= mod_unload,
-	.config				= driver_config,
-	.instantiate			= mod_instantiate,
-	.detach				= mod_detach,
+	.common = {
+		.name				= "rlm_sql_cassandra",
+		.magic				= MODULE_MAGIC_INIT,
+		.inst_size			= sizeof(rlm_sql_cassandra_t),
+		.onload				= mod_load,
+		.unload				= mod_unload,
+		.config				= driver_config,
+		.instantiate			= mod_instantiate,
+		.detach				= mod_detach
+	},
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_query,
