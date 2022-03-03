@@ -34,12 +34,17 @@ extern "C" {
 #include <stdint.h>
 #include <sys/types.h>
 
-typedef unsigned int fr_heap_index_t;
-typedef unsigned int fr_heap_iter_t;
-
-/** How many talloc headers need to be pre-allocated for a heap
+/*
+ *	Allow public and private versions of the same structures
  */
-#define FR_HEAP_TALLOC_HEADERS 2
+#ifdef _CONST
+#  error _CONST can only be defined in the local header
+#endif
+#ifndef _HEAP_PRIVATE
+#  define _CONST const
+#else
+#  define _CONST
+#endif
 
 /** Comparator to order heap elements
  *
@@ -50,8 +55,41 @@ typedef int8_t (*fr_heap_cmp_t)(void const *a, void const *b);
 
 /** The main heap structure
  *
+ * A heap entry is made of a pointer to the object, which
+ * contains the key.  The heap itself is an array of pointers.
+ *
+ * Heaps normally support only ordered insert, and extraction
+ * of the minimum element.  The heap entry can contain an "int"
+ * field that holds the entries position in the heap.  The offset
+ * of the field is held inside of the heap structure.
+ *
+ * The reason why we have fr_heap_ext_t and fr_heap_t, is that
+ * fr_heap_t is a pointer to a fr_heap_ext_t.  This means that
+ * the heap cann be a single contiguous memory chunk, and can
+ * be reallocated during extension.
  */
-typedef struct fr_heap_s * fr_heap_t;
+typedef struct {
+	unsigned int	_CONST size;		//!< Number of nodes allocated.
+	size_t		_CONST offset;		//!< Offset of heap index in element structure.
+
+	unsigned int	_CONST num_elements;	//!< Number of nodes used.
+
+	char const	* _CONST type;		//!< Talloc type of elements.
+	fr_heap_cmp_t	_CONST cmp;		//!< Comparator function.
+
+	void		* _CONST p[];		//!< Array of nodes.
+} fr_heap_ext_t;
+
+typedef unsigned int fr_heap_index_t;
+typedef unsigned int fr_heap_iter_t;
+
+/** How many talloc headers need to be pre-allocated for a heap
+ */
+typedef fr_heap_ext_t * fr_heap_t;
+
+/** How many talloc headers need to be pre-allocated for a heap
+ */
+#define FR_HEAP_TALLOC_HEADERS 2
 
 size_t fr_heap_pre_alloc_size(unsigned int count);
 
@@ -81,25 +119,84 @@ size_t fr_heap_pre_alloc_size(unsigned int count);
  */
 #define fr_heap_talloc_alloc(_ctx, _cmp, _talloc_type, _field, _init) \
 	_fr_heap_alloc(_ctx, _cmp, #_talloc_type, (size_t)offsetof(_talloc_type, _field), _init)
-
-fr_heap_t	*_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *talloc_type, size_t offset, unsigned int init) CC_HINT(nonnull(2));
+fr_heap_t	*_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *talloc_type,
+				size_t offset, unsigned int init) CC_HINT(nonnull(2));
 
 /** Check if an entry is inserted into a heap
  *
+ * @param[in] heap_idx from object to check.
  */
 static inline bool fr_heap_entry_inserted(fr_heap_index_t heap_idx)
 {
 	return (heap_idx > 0);
 }
 
+/** Return the item from the top of the heap but don't pop it
+ *
+ * @param[in] hp	to return element from.
+ * @return
+ *	- Element at the top of the heap.
+ *	- NULL if no elements remain in the heap.
+ */
+static inline void *fr_heap_peek(fr_heap_t *hp)
+{
+	fr_heap_ext_t *h = *hp;
+
+	if (h->num_elements == 0) return NULL;
+
+	return h->p[1];
+}
+
+/** Peek at a specific index in the heap
+ *
+ * @param[in] hp	to return element from.
+ * @param[in] idx	to lookup
+ * @return
+ *	- Element at the top of the heap.
+ *	- NULL if index outside of the range of the heap.
+ */
+static inline void *fr_heap_peek_at(fr_heap_t *hp, fr_heap_index_t idx)
+{
+	fr_heap_ext_t *h = *hp;
+
+	if (unlikely(idx > h->num_elements)) return NULL;
+
+	return h->p[idx];
+}
+
+/** Peek at the last element in the heap (not necessarily the bottom)
+ *
+ * @param[in] hp	to return element from.
+ * @return
+ *	- Last element in the heap.
+ *	- NULL if no elements remain in the heap.
+ */
+static inline void *fr_heap_peek_tail(fr_heap_t *hp)
+{
+	fr_heap_ext_t *h = *hp;
+
+	if (h->num_elements == 0) return NULL;
+
+	/*
+	 *	If this is NULL, we have a problem.
+	 */
+	return h->p[h->num_elements];
+}
+
+/** Return the number of elements in the heap
+ *
+ * @param[in] hp	to return the number of elements from.
+ */
+static inline unsigned int fr_heap_num_elements(fr_heap_t *hp)
+{
+	fr_heap_ext_t *h = *hp;
+
+	return h->num_elements;
+}
+
 int		fr_heap_insert(fr_heap_t *hp, void *data) CC_HINT(nonnull);
 int		fr_heap_extract(fr_heap_t *hp, void *data) CC_HINT(nonnull);
 void		*fr_heap_pop(fr_heap_t *hp) CC_HINT(nonnull);
-void		*fr_heap_peek(fr_heap_t *hp) CC_HINT(nonnull);
-void		*fr_heap_peek_at(fr_heap_t *hp, fr_heap_index_t idx) CC_HINT(nonnull);
-void		*fr_heap_peek_tail(fr_heap_t *hp) CC_HINT(nonnull);
-
-uint32_t	fr_heap_num_elements(fr_heap_t *hp) CC_HINT(nonnull);
 
 void		*fr_heap_iter_init(fr_heap_t *hp, fr_heap_iter_t *iter) CC_HINT(nonnull);
 void		*fr_heap_iter_next(fr_heap_t *hp, fr_heap_iter_t *iter) CC_HINT(nonnull);
@@ -132,6 +229,7 @@ void fr_heap_verify(char const *file, int line, fr_heap_t *hp);
 #  define FR_HEAP_VERIFY(_heap)
 #endif
 
+#undef _CONST
 #ifdef __cplusplus
 }
 #endif

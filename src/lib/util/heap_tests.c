@@ -6,7 +6,7 @@
 static bool fr_heap_check(fr_heap_t *hp, void *data)
 {
 	unsigned int i;
-	heap_t *h = *hp;
+	fr_heap_ext_t *h = *hp;
 
 	if (!h || (h->num_elements == 0)) return false;
 
