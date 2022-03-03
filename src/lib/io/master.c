@@ -499,6 +499,12 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 			DEBUG("Failed to find proto_%s_%s", inst->app->name, inst->transport);
 			return NULL;
 		}
+
+		if (dl_module_conf_parse(dl_inst) < 0) {
+			TALLOC_FREE(dl_inst);
+			return NULL;
+		}
+
 		fr_assert(dl_inst != NULL);
 	} else {
 		dl_inst = talloc_init_const("nak");
@@ -2598,6 +2604,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		if (dl_module_instance(cs, &inst->dynamic_submodule,
 				cs, inst->dl_inst, "dynamic_client", DL_MODULE_TYPE_SUBMODULE) < 0) {
 			cf_log_err(cs, "Failed finding proto_%s_dynamic_client", inst->app->name);
+			return -1;
+		}
+
+		if (dl_module_conf_parse(inst->dynamic_submodule) < 0) {
+			TALLOC_FREE(inst->dynamic_submodule);
 			return -1;
 		}
 

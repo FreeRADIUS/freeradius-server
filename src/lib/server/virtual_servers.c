@@ -397,6 +397,11 @@ static int namespace_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 		return -1;
 	}
 
+	if (dl_module_conf_parse(server->process_module) < 0) {
+		TALLOC_FREE(server->process_module);
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -426,6 +431,11 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_IT
 
 	if (dl_module_instance(ctx, &listen->proto_module, listen_cs, NULL, value, DL_MODULE_TYPE_PROTO) < 0) {
 		cf_log_err(listen_cs, "Failed loading proto module");
+		return -1;
+	}
+
+	if (dl_module_conf_parse(listen->proto_module) < 0) {
+		TALLOC_FREE(listen->proto_module);
 		return -1;
 	}
 
@@ -532,6 +542,11 @@ int virtual_server_dynamic_clients_allow(CONF_SECTION *server_cs)
 
 	if (dl_module_instance(server_cs, &server->dynamic_client_module, server_cs, NULL, "dynamic_client", DL_MODULE_TYPE_PROCESS) < 0) {
 		cf_log_err(server_cs, "Failed loading dynamic client module");
+		return -1;
+	}
+
+	if (dl_module_conf_parse(server->dynamic_client_module) < 0) {
+		TALLOC_FREE(server->dynamic_client_module);
 		return -1;
 	}
 

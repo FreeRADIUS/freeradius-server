@@ -314,9 +314,9 @@ module_instance_t *module_by_data(void const *data)
 	module_instance_t *mi;
 
 	mi = fr_rb_find(module_instance_data_tree,
-			     &(module_instance_t){
+			&(module_instance_t){
 				.dl_inst = &(dl_module_inst_t){ .data = UNCONST(void *, data) },
-			     });
+			});
 	if (!mi) return NULL;
 
 	return talloc_get_type_abort(mi, module_instance_t);
@@ -777,6 +777,14 @@ module_instance_t *module_bootstrap(dl_module_type_t type, module_instance_t con
 	if (mi->dl_inst->data) {
 		if (!fr_cond_assert(fr_rb_insert(module_instance_data_tree, mi))) goto error;
 		mi->in_data_tree = true;
+	}
+
+	/*
+	 *	Do this after inserting the module instance into the tree
+	 */
+	if (dl_module_conf_parse(mi->dl_inst) < 0) {
+		TALLOC_FREE(mi->dl_inst);
+		return -1;
 	}
 
 	/*

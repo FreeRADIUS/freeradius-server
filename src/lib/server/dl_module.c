@@ -576,16 +576,6 @@ int dl_module_instance(TALLOC_CTX *ctx, dl_module_inst_t **out,
 	 */
 	cf_data_add(conf, dl_inst, dl_inst->module->dl->name, false);
 
-	if (dl_inst->module->common->config && conf) {
-		if ((cf_section_rules_push(conf, dl_inst->module->common->config)) < 0 ||
-		    (cf_section_parse(dl_inst->data, dl_inst->data, conf) < 0)) {
-			cf_log_err(conf, "Failed evaluating configuration for module \"%s\"",
-				   dl_inst->module->dl->name);
-			talloc_free(dl_inst);
-			return -1;
-		}
-	}
-
 	name2 = cf_section_name2(conf);
 	if (name2) {
 		dl_inst->name = talloc_typed_strdup(dl_inst, name2);
@@ -598,6 +588,19 @@ int dl_module_instance(TALLOC_CTX *ctx, dl_module_inst_t **out,
 
 	*out = dl_inst;
 
+	return 0;
+}
+
+int dl_module_conf_parse(dl_module_inst_t *dl_inst)
+{
+	if (dl_inst->module->common->config && dl_inst->conf) {
+		if ((cf_section_rules_push(dl_inst->conf, dl_inst->module->common->config)) < 0 ||
+		    (cf_section_parse(dl_inst->data, dl_inst->data, dl_inst->conf) < 0)) {
+			cf_log_err(dl_inst->conf, "Failed evaluating configuration for module \"%s\"",
+				   dl_inst->module->dl->name);
+			return -1;
+		}
+	}
 	return 0;
 }
 

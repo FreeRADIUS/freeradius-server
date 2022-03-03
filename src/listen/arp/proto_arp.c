@@ -269,6 +269,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		return -1;
 	}
 
+	if (dl_module_conf_parse(inst->io_submodule) < 0) {
+		TALLOC_FREE(inst->io_submodule);
+		return -1;
+	}
+
 	/*
 	 *	Bootstrap the I/O module
 	 */

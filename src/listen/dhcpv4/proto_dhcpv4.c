@@ -151,11 +151,12 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	char const	*name = cf_pair_value(cf_item_to_pair(ci));
+	char const		*name = cf_pair_value(cf_item_to_pair(ci));
 	dl_module_inst_t	*parent_inst;
-	proto_dhcpv4_t	*inst;
-	CONF_SECTION	*listen_cs = cf_item_to_section(cf_parent(ci));
-	CONF_SECTION	*transport_cs;
+	proto_dhcpv4_t		*inst;
+	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
+	CONF_SECTION		*transport_cs;
+	dl_module_inst_t	*dl_mod_inst;
 
 	transport_cs = cf_section_find(listen_cs, name, NULL);
 
@@ -175,7 +176,14 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	inst = talloc_get_type_abort(parent_inst->data, proto_dhcpv4_t);
 	inst->io.transport = name;
 
-	return dl_module_instance(ctx, out, transport_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE);
+	if (dl_module_instance(ctx, &dl_mod_inst, transport_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE) < 0) return -1;
+	if (dl_module_conf_parse(dl_mod_inst) < 0) {
+		talloc_free(dl_mod_inst);
+		return -1;
+	}
+	*((dl_module_inst_t **)out) = dl_mod_inst;
+
+	return 0;
 }
 
 /** Decode the packet

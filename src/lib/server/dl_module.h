@@ -187,6 +187,8 @@ int			dl_module_instance(TALLOC_CTX *ctx, dl_module_inst_t **out,
 					   CONF_SECTION *conf, dl_module_inst_t const *parent,
 					   char const *name, dl_module_type_t type);
 
+int			dl_module_conf_parse(dl_module_inst_t *dl_inst);
+
 char const		*dl_module_search_path(void);
 
 dl_loader_t		*dl_loader_from_module_loader(dl_module_loader_t *dl_module_loader);

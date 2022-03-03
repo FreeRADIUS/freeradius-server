@@ -162,10 +162,11 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
 {
-	char const	*name = cf_pair_value(cf_item_to_pair(ci));
+	char const		*name = cf_pair_value(cf_item_to_pair(ci));
 	dl_module_inst_t	*parent_inst;
-	CONF_SECTION	*listen_cs = cf_item_to_section(cf_parent(ci));
-	CONF_SECTION	*transport_cs;
+	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
+	CONF_SECTION		*transport_cs;
+	dl_module_inst_t	*dl_mod_inst;
 
 	transport_cs = cf_section_find(listen_cs, name, NULL);
 
@@ -178,7 +179,14 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_detail"));
 	fr_assert(parent_inst);
 
-	return dl_module_instance(ctx, out, transport_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE);
+	if (dl_module_instance(ctx, &dl_mod_inst, transport_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE) < 0) return -1;
+	if (dl_module_conf_parse(dl_mod_inst) < 0) {
+		talloc_free(dl_mod_inst);
+		return -1;
+	}
+	*((dl_module_inst_t **)out) = dl_mod_inst;
+
+	return 0;
 }
 
 /** Decode the packet, and set the request->process function
@@ -551,6 +559,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 			return -1;
 		}
 
+		if (dl_module_conf_parse(inst->work_submodule) < 0) {
+			TALLOC_FREE(inst->work_submodule);
+			return -1;
+		}
+
 		/*
 		 *	Boot strap the work module.
 		 */
@@ -561,6 +574,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		if (inst->work_io->bootstrap && (inst->work_io->bootstrap(inst->work_io_instance,
 									  inst->work_io_conf) < 0)) {
 			cf_log_err(inst->work_io_conf, "Bootstrap failed for \"%s\"", inst->work_io->name);
+			TALLOC_FREE(inst->work_submodule);
 			return -1;
 		}
 	}
