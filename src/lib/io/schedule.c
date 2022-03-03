@@ -704,6 +704,7 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 	unsigned int		i;
 	fr_schedule_worker_t	*sw;
 	fr_schedule_network_t	*sn;
+	int			ret;
 
 	if (!sc) return 0;
 
@@ -756,8 +757,8 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 		 *	exited before the main thread cleans up the
 		 *	module instances.
 		 */
-		if (pthread_join(sn->pthread_id, NULL) != 0) {
-			ERROR("Failed joining network %i: %s", sn->id, fr_syserror(errno));
+		if ((ret = pthread_join(sn->pthread_id, NULL)) != 0) {
+			ERROR("Failed joining network %i: %s", sn->id, fr_syserror(ret));
 		} else {
 			DEBUG2("Network %i joined (cleaned up)", sn->id);
 		}
@@ -790,8 +791,8 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 		 *	exited before the main thread cleans up the
 		 *	module instances.
 		 */
-		if (pthread_join(sw->pthread_id, NULL) != 0) {
-			ERROR("Failed joining worker %i: %s", sw->id, fr_syserror(errno));
+		if ((ret = pthread_join(sw->pthread_id, NULL)) != 0) {
+			ERROR("Failed joining worker %i: %s", sw->id, fr_syserror(ret));
 		} else {
 			DEBUG2("Worker %i joined (cleaned up)", sw->id);
 		}
