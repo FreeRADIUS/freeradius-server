@@ -268,7 +268,7 @@ static int _dl_module_instance_data_free(void *data)
  */
 static void dl_module_instance_data_alloc(dl_module_inst_t *dl_inst, dl_module_t const *module)
 {
-        void *data;
+	void *data;
 
 	/*
 	 *	If there is supposed to be instance data, allocate it now.
@@ -288,11 +288,11 @@ static void dl_module_instance_data_alloc(dl_module_inst_t *dl_inst, dl_module_t
 	}
 	dl_inst->data = data;
 
-        /*
-         *      Must be done before setting the destructor to ensure the
-         *      destructor can find the dl_module_inst_t associated
-         *      with the data.
-         */
+	/*
+	 *      Must be done before setting the destructor to ensure the
+	 *      destructor can find the dl_module_inst_t associated
+	 *      with the data.
+	 */
 	fr_assert(dl_module_loader != NULL);
 	fr_rb_insert(dl_module_loader->inst_data_tree, dl_inst);	/* Duplicates not possible */
 
@@ -448,32 +448,32 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
  */
 static int _dl_module_instance_free(dl_module_inst_t *dl_inst)
 {
-        /*
-         *	Ensure sane free order, and that all destructors
-         *	run before the .so/.dylib is unloaded.
-         *
-         *      This *MUST* be done *BEFORE* decrementing the
-         *      reference count on the module.
-         *
-         *      It also *MUST* be done before removing this struct
-         *      from the inst_data_tree, so the detach destructor
-         *      can find the dl_module_inst_t associated with
-         *      the opaque data.
-         */
-        talloc_free_children(dl_inst);
+	/*
+	 *	Ensure sane free order, and that all destructors
+	 *	run before the .so/.dylib is unloaded.
+	 *
+	 *      This *MUST* be done *BEFORE* decrementing the
+	 *      reference count on the module.
+	 *
+	 *      It also *MUST* be done before removing this struct
+	 *      from the inst_data_tree, so the detach destructor
+	 *      can find the dl_module_inst_t associated with
+	 *      the opaque data.
+	 */
+	talloc_free_children(dl_inst);
 
-        /*
-         *	Remove this instance from the tracking tree.
-         */
-        fr_assert(dl_module_loader != NULL);
-        fr_rb_delete(dl_module_loader->inst_data_tree, dl_inst);
+	/*
+	 *	Remove this instance from the tracking tree.
+	 */
+	fr_assert(dl_module_loader != NULL);
+	fr_rb_delete(dl_module_loader->inst_data_tree, dl_inst);
 
-        /*
-         *	Decrements the reference count. The module object
-         *	won't be unloaded until all instances of that module
-         *	have been destroyed.
-         */
-        talloc_decrease_ref_count(dl_inst->module);
+	/*
+	 *	Decrements the reference count. The module object
+	 *	won't be unloaded until all instances of that module
+	 *	have been destroyed.
+	 */
+	talloc_decrease_ref_count(dl_inst->module);
 
 	return 0;
 }
