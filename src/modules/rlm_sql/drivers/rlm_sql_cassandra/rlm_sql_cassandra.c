@@ -723,7 +723,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_sql_t const		*parent = talloc_get_type_abort(mctx->inst->parent->data, rlm_sql_t);
 	rlm_sql_config_t const	*config = &parent->config;
-	rlm_sql_cassandra_t	*inst = talloc_get_type_abort(mctx->inst, rlm_sql_cassandra_t);
+	rlm_sql_cassandra_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_cassandra_t);
 	bool			do_tls = false;
 	bool			do_latency_aware_routing = false;
 	CassCluster 		*cluster;
