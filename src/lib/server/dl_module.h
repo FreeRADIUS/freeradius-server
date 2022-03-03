@@ -164,6 +164,7 @@ struct dl_module_instance_s {
 	void				* _CONST data;		//!< Module instance's parsed configuration.
 	CONF_SECTION			* _CONST conf;		//!< Module's instance configuration.
 	dl_module_inst_t const		* _CONST parent;	//!< Parent module's instance (if any).
+	bool				_CONST detached;	//!< Whether the detach function has been called.
 };
 
 extern fr_table_num_sorted_t const dl_module_type_prefix[];

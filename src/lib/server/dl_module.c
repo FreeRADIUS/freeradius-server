@@ -247,18 +247,38 @@ void *dl_module_parent_data_by_child_data(void const *data)
 	return dl_inst->parent->data;
 }
 
+/** Detach the shallowest parent first
+ *
+ */
+static void dl_module_detach_parent(dl_module_inst_t *dl_inst)
+{
+	if (dl_inst->detached) return;
+
+	if (dl_inst->parent) dl_module_detach_parent(UNCONST(dl_module_inst_t *, dl_inst->parent));
+
+	if (dl_inst->module->common->detach) {
+		dl_inst->module->common->detach(&(module_detach_ctx_t){ .inst = dl_inst });
+		dl_inst->detached = true;
+	}
+}
+
 static int _dl_module_instance_data_free(void *data)
 {
-        dl_module_inst_t const *dl_inst = dl_module_instance_by_data(data);
+	dl_module_inst_t *dl_inst = UNCONST(dl_module_inst_t *, dl_module_instance_by_data(data));
 
-        if (!dl_inst) {
-                ERROR("Failed resolving data %p, to dl_module_inst_t, refusing to free", data);
-                return -1;
-        }
+	if (!dl_inst) {
+		ERROR("Failed resolving data %p, to dl_module_inst_t, refusing to free", data);
+		return -1;
+	}
 
-        if (dl_inst->module->common->detach) dl_inst->module->common->detach(&(module_detach_ctx_t){ .inst = dl_inst });
+	/*
+	 *	Ensure the shallowest parent module
+	 *	gets detached first so that it can
+	 *	still reach its children.
+	 */
+	dl_module_detach_parent(dl_inst);
 
-        return 0;
+	return 0;
 }
 
 /** Allocate module instance data, and parse the module's configuration
