@@ -259,10 +259,11 @@ static const virtual_server_compile_t compile_list[] = {
 
 extern fr_process_module_t process_vmps;
 fr_process_module_t process_vmps = {
-	.magic		= MODULE_MAGIC_INIT,
-	.name		= "process_vmps",
-	.inst_size	= sizeof(process_vmps_t),
-
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "process_vmps",
+		.inst_size	= sizeof(process_vmps_t)
+	},
 	.process	= mod_process,
 	.compile_list	= compile_list,
 	.dict		= &dict_vmps,

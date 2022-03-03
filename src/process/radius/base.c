@@ -1125,14 +1125,15 @@ static virtual_server_compile_t const compile_list[] = {
 
 extern fr_process_module_t process_radius;
 fr_process_module_t process_radius = {
-	.magic		= MODULE_MAGIC_INIT,
-	.name		= "process_radius",
-	.config		= config,
-	.inst_size	= sizeof(process_radius_t),
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "process_radius",
+		.config		= config,
+		.inst_size	= sizeof(process_radius_t),
 
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
-
+		.bootstrap	= mod_bootstrap,
+		.instantiate	= mod_instantiate
+	},
 	.process	= mod_process,
 	.compile_list	= compile_list,
 	.dict		= &dict_radius,

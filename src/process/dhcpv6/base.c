@@ -1231,13 +1231,14 @@ static fr_process_state_t const process_state[] = {
 
 extern fr_process_module_t process_dhcpv6;
 fr_process_module_t process_dhcpv6 = {
-	.magic		= MODULE_MAGIC_INIT,
-	.name		= "process_dhcpv6",
-	.config		= dhcpv6_process_config,
-	.inst_size	= sizeof(process_dhcpv6_t),
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "process_dhcpv6",
+		.config		= dhcpv6_process_config,
+		.inst_size	= sizeof(process_dhcpv6_t),
 
-	.bootstrap	= mod_bootstrap,
-
+		.bootstrap	= mod_bootstrap
+	},
 	.process	= mod_process,
 	.compile_list	= compile_list,
 	.dict		= &dict_dhcpv6

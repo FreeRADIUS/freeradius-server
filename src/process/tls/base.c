@@ -181,9 +181,11 @@ static const virtual_server_compile_t compile_list[] = {
 
 extern fr_process_module_t process_tls;
 fr_process_module_t process_tls = {
-	.magic		= MODULE_MAGIC_INIT,
-	.name		= "process_tls",
-	.inst_size	= sizeof(process_tls_t),
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "process_tls",
+		.inst_size	= sizeof(process_tls_t)
+	},
 	.process	= mod_process,
 	.compile_list	= compile_list,
 	.dict		= &dict_tls,

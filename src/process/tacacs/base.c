@@ -705,12 +705,14 @@ static virtual_server_compile_t compile_list[] = {
 
 extern fr_process_module_t process_tacacs;
 fr_process_module_t process_tacacs = {
-	.magic		= MODULE_MAGIC_INIT,
-	.name		= "process_tacacs",
-	.config		= config,
-	.inst_size	= sizeof(process_tacacs_t),
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "process_tacacs",
+		.config		= config,
+		.inst_size	= sizeof(process_tacacs_t),
+		.bootstrap	= mod_bootstrap,
+		.instantiate	= mod_instantiate
+	},
 	.process	= mod_process,
 	.compile_list	= compile_list,
 	.dict		= &dict_tacacs,

@@ -819,15 +819,16 @@ static virtual_server_compile_t const compile_list[] = {
 
 extern fr_process_module_t process_ttls;
 fr_process_module_t process_ttls = {
-	.magic		= MODULE_MAGIC_INIT,
-	.name		= "process_ttls",
-	.config		= config,
-	.inst_size	= sizeof(process_ttls_t),
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "process_ttls",
+		.config		= config,
+		.inst_size	= sizeof(process_ttls_t),
 
-	.bootstrap	= mod_bootstrap,
-	.instantiate	= mod_instantiate,
-
+		.bootstrap	= mod_bootstrap,
+		.instantiate	= mod_instantiate
+	},
 	.process	= mod_process,
 	.compile_list	= compile_list,
-	.dict		= &dict_radius,
+	.dict		= &dict_radius
 };

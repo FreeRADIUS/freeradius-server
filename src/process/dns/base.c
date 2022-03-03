@@ -190,9 +190,11 @@ static const virtual_server_compile_t compile_list[] = {
 
 extern fr_process_module_t process_dns;
 fr_process_module_t process_dns = {
-	.magic		= MODULE_MAGIC_INIT,
-	.name		= "process_dns",
-	.inst_size	= sizeof(process_dns_t),
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "process_dns",
+		.inst_size	= sizeof(process_dns_t)
+	},
 	.process	= mod_process,
 	.compile_list	= compile_list,
 	.dict		= &dict_dns,

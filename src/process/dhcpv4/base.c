@@ -451,10 +451,12 @@ static const virtual_server_compile_t compile_list[] = {
 
 extern fr_process_module_t process_dhcpv4;
 fr_process_module_t process_dhcpv4 = {
-	.magic		= MODULE_MAGIC_INIT,
-	.name		= "process_dhcpv4",
-	.inst_size	= sizeof(process_dhcpv4_t),
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "process_dhcpv4",
+		.inst_size	= sizeof(process_dhcpv4_t)
+	},
 	.process	= mod_process,
 	.compile_list	= compile_list,
-	.dict		= &dict_dhcpv4,
+	.dict		= &dict_dhcpv4
 };

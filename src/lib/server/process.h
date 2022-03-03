@@ -52,10 +52,7 @@ extern "C" {
 /** Common public symbol definition for all process modules
  */
 typedef struct fr_process_module_s {
-	DL_MODULE_COMMON;				//!< Common fields for all loadable modules.
-	module_instantiate_t		bootstrap;
-	module_instantiate_t		instantiate;
-	int				type;	/* flags */
+	module_t			common;		//!< Common fields for all loadable modules.
 
 	module_method_t			process;	//!< Process packets
 	virtual_server_compile_t const	*compile_list;	//!< list of processing sections

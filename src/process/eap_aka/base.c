@@ -265,15 +265,16 @@ static void mod_unload(void)
 
 extern fr_process_module_t process_eap_aka;
 fr_process_module_t process_eap_aka = {
-	.magic		= MODULE_MAGIC_INIT,
-	.name		= "process_eap_aka",
-	.onload		= mod_load,
-	.unload		= mod_unload,
-	.config		= submodule_config,
-	.instantiate	= mod_instantiate,
-	.inst_size	= sizeof(eap_aka_sim_process_conf_t),
-	.inst_type	= "eap_aka_sim_process_conf_t",
-
+	.common = {
+		.magic		= MODULE_MAGIC_INIT,
+		.name		= "process_eap_aka",
+		.onload		= mod_load,
+		.unload		= mod_unload,
+		.config		= submodule_config,
+		.instantiate	= mod_instantiate,
+		.inst_size	= sizeof(eap_aka_sim_process_conf_t),
+		.inst_type	= "eap_aka_sim_process_conf_t"
+	},
 	.process	= eap_aka_sim_state_machine_process,
 	.compile_list	= compile_list,
 	.dict		= &dict_eap_aka_sim,
