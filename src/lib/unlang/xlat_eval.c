@@ -1434,7 +1434,6 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 				entry = vb->entry;
 				fr_value_box_clear_value(vb);
 				fr_value_box_bstrndup(vb, vb, NULL, escaped, real_len, false);
-				FR_FAULT_LOG("ESCAPED %zu %s", real_len, escaped);
 				vb->entry = entry;
 
 				talloc_free(escaped);
