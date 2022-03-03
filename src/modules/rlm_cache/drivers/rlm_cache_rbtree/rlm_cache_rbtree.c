@@ -97,6 +97,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(mctx->inst->data, rlm_cache_rbtree_t);
+	int ret;
 
 	/*
 	 *	The cache.
@@ -116,8 +117,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	if (pthread_mutex_init(&driver->mutex, NULL) < 0) {
-		ERROR("Failed initializing mutex: %s", fr_syserror(errno));
+	if ((ret = pthread_mutex_init(&driver->mutex, NULL)) < 0) {
+		ERROR("Failed initializing mutex: %s", fr_syserror(ret));
 		return -1;
 	}
 

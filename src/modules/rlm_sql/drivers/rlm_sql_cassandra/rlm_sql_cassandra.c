@@ -728,6 +728,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	bool			do_tls = false;
 	bool			do_latency_aware_routing = false;
 	CassCluster 		*cluster;
+	int			ret;
 
 #define DO_CASS_OPTION(_opt, _x) \
 do {\
@@ -738,8 +739,8 @@ do {\
 	}\
 } while (0)
 
-	if (pthread_mutex_init(&inst->connect_mutex, NULL) < 0) {
-		ERROR("Failed initializing mutex: %s", fr_syserror(errno));
+	if ((ret = pthread_mutex_init(&inst->connect_mutex, NULL)) < 0) {
+		ERROR("Failed initializing mutex: %s", fr_syserror(ret));
 		TALLOC_FREE(inst);
 		return -1;
 	}
