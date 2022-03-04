@@ -199,13 +199,24 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			FALL_THROUGH;
 
 		case FR_TYPE_STRING:
-			if (flags->subtype != FLAG_LENGTH_UINT16) {
+			/*
+			 *	We can do arrays of variable-length types, so long as they have a "length="
+			 *	modifier.
+			 *
+			 *	But any other modifier is foridden, including the use of "length=" outside of
+			 *	the context of arrays.
+			 */
+			if (flags->array) {
+				ALLOW_FLAG(array);
+
+				if (flags->subtype != FLAG_LENGTH_UINT16) goto invalid_extra;
+			} else if (flags->subtype) {
+			invalid_extra:
 				fr_strerror_const("Invalid type for extra flag.");
 				return false;
 			}
 
 			ALLOW_FLAG(extra);
-			ALLOW_FLAG(array);
 			ALLOW_FLAG(subtype);
 			break;
 
