@@ -29,7 +29,7 @@ ldap {
 	#  for the behavioral semantics of specifying more than one host.
 	#
 	#  Depending on the `libldap` in use, server may be specified as an LDAP
-	#  URI.  In the case of `OpenLDAP` this allows additional the following
+	#  URI.  In the case of `OpenLDAP` this allows the following
 	#  additional schemes:
 	#
 	#  [options="header,autowidth"]
