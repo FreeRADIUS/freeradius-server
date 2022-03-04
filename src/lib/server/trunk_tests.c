@@ -1500,6 +1500,7 @@ static void test_connection_levels_max(void)
 	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC * 0.5));
 
 	trunk = test_setup_trunk(ctx, el, &conf, true, NULL);
+	FR_TRUNK_VERIFY(trunk);
 
 	/*
 	 *	Queuing a request should start a connection.
@@ -1507,6 +1508,7 @@ static void test_connection_levels_max(void)
 	TEST_CASE("C0, R1 - Enqueue should spawn");
 	ALLOC_REQ(a);
 	TEST_CHECK(fr_trunk_request_enqueue(&treq_a, trunk, NULL, preq_a, NULL) == FR_TRUNK_ENQUEUE_IN_BACKLOG);
+	FR_TRUNK_VERIFY(trunk);
 
 	/*
 	 *	Like test_connection_start_on_enqueue(), you have to process the backlog
@@ -1516,6 +1518,7 @@ static void test_connection_levels_max(void)
 	fr_event_service(el);
 
 	TEST_CHECK_LEN(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING), 1);
+	FR_TRUNK_VERIFY(trunk);
 
 	/*
 	 *	Queuing another request should *NOT* start another connection
@@ -1524,21 +1527,25 @@ static void test_connection_levels_max(void)
 	ALLOC_REQ(b);
 	TEST_CHECK(fr_trunk_request_enqueue(&treq_b, trunk, NULL, preq_b, NULL) == FR_TRUNK_ENQUEUE_IN_BACKLOG);
 	TEST_CHECK_LEN(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING), 1);
+	FR_TRUNK_VERIFY(trunk);
 
 	TEST_CASE("C1 connecting, R3 - MUST NOT spawn");
 	ALLOC_REQ(c);
 	TEST_CHECK(fr_trunk_request_enqueue(&treq_c, trunk, NULL, preq_c, NULL) == FR_TRUNK_ENQUEUE_IN_BACKLOG);
 	TEST_CHECK_LEN(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING), 1);
+	FR_TRUNK_VERIFY(trunk);
 
 	TEST_CASE("C1 connecting, R4 - MUST NOT spawn");
 	ALLOC_REQ(d);
 	TEST_CHECK(fr_trunk_request_enqueue(&treq_d, trunk, NULL, preq_d, NULL) == FR_TRUNK_ENQUEUE_IN_BACKLOG);
 	TEST_CHECK_LEN(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING), 1);
+	FR_TRUNK_VERIFY(trunk);
 
 	TEST_CASE("C1 connecting, R5 - MUST NOT spawn, NO CAPACITY");
 	ALLOC_REQ(e);
 	TEST_CHECK(fr_trunk_request_enqueue(&treq_e, trunk, NULL, preq_e, NULL) == FR_TRUNK_ENQUEUE_NO_CAPACITY);
 	TEST_CHECK_LEN(fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING), 1);
+	FR_TRUNK_VERIFY(trunk);
 
 	/*
 	 *	Allowing connection to open
@@ -1549,6 +1556,7 @@ static void test_connection_levels_max(void)
 	TEST_CASE("C1 active, R4 - Check pending 2");
 	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PENDING), 2);
 	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_BACKLOG), 2);
+	FR_TRUNK_VERIFY(trunk);
 
 	/*
 	 *	Sending requests
@@ -1558,6 +1566,7 @@ static void test_connection_levels_max(void)
 
 	TEST_CASE("C1 active, R4 - Check sent 2");
 	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_SENT), 2);
+	FR_TRUNK_VERIFY(trunk);
 
 	/*
 	 *	Looping I/O
@@ -1583,6 +1592,7 @@ static void test_connection_levels_max(void)
 
 	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PENDING), 2);
 	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_BACKLOG), 0);
+	FR_TRUNK_VERIFY(trunk);
 
 	TEST_CASE("C1 active, R0 - Check complete 2, pending 0");
 
@@ -1615,6 +1625,7 @@ static void test_connection_levels_max(void)
 	TEST_CHECK(preq_d->freed == true);
 
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_ALL) == 0);
+	FR_TRUNK_VERIFY(trunk);
 
 	talloc_free(trunk);
 	talloc_free(ctx);
@@ -1831,6 +1842,8 @@ static void test_enqueue_and_io_speed(void)
 	for (i = 0; i < requests; i++) fr_trunk_request_free(&treq_array[i]);
 
 	MEM(preq_array = talloc_array(ctx, test_proto_request_t *, requests));
+
+	DEBUG_LVL_SET;
 
 	TEST_CASE("Enqueue requests");
 	enqueue_start = fr_time();
