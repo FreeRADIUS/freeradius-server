@@ -71,7 +71,7 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
 	 */
 	h = (fr_heap_ext_t *)talloc_array(hp, uint8_t, sizeof(fr_heap_ext_t) + (sizeof(void *) * (init + 1)));
 	if (unlikely(!h)) return NULL;
-	talloc_set_type(h, heap_t);
+	talloc_set_type(h, fr_heap_ext_t);
 
 	*h = (fr_heap_ext_t){
 		.size = init,
@@ -171,7 +171,7 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 					   n_size, (n_size * (unsigned int)sizeof(void *)));
 			return -1;
 		}
-		talloc_set_type(h, heap_t);
+		talloc_set_type(h, fr_heap_ext_t);
 		h->size = n_size;
 		*hp = h;
 	}
