@@ -768,11 +768,11 @@ match Reconf-Msg = InformationRequest
 #
 #  option-len           0.
 #
-encode-pair Reconf-Accept = 0x
+encode-pair Reconf-Accept = true
 match 00 14 00 00
 
 decode-pair -
-match Reconf-Accept = 0x
+match Reconf-Accept = yes
 
 #
 #  21.21.  Identity Association for Prefix Delegation Option
