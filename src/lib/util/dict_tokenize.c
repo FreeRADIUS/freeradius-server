@@ -384,12 +384,23 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 			flags->subtype = FLAG_KEY_FIELD;
 
 		} else if (strcmp(key, "length") == 0) {
-			if (!value || (strcmp(value, "uint16") != 0)) {
-				fr_strerror_const("The 'length' flag can only be used with value 'uint16'");
+			if (!value) {
+				fr_strerror_const("The 'length' flag requires a value");
+				return -1;
 			}
 
-			flags->extra = 1;
-			flags->subtype = FLAG_LENGTH_UINT16;
+			if (strcmp(value, "uint8") == 0) {
+				flags->extra = 1;
+				flags->subtype = FLAG_LENGTH_UINT8;
+
+			} else if (strcmp(value, "uint16") == 0) {
+				flags->extra = 1;
+				flags->subtype = FLAG_LENGTH_UINT16;
+
+			} else {
+				fr_strerror_const("Invalid value given for the 'length' flag");
+				return -1;
+			}
 
 		} else if ((type == FR_TYPE_DATE) || (type == FR_TYPE_TIME_DELTA)) {
 			/*
@@ -1440,6 +1451,10 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	 */
 	memset(&flags, 0, sizeof(flags));
 
+	/*
+	 *	Structs can be prefixed with 16-bit lengths, but not
+	 *	with any other type of length.
+	 */
 	if (argc == 4) {
 		if (strcmp(argv[3], "length=uint16") != 0) {
 			fr_strerror_printf("Unknown option '%s'", argv[3]);

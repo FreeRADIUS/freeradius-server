@@ -165,8 +165,8 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	the data type.
 	 */
 	if (flags->extra) {
-		if ((flags->subtype != FLAG_KEY_FIELD) && (flags->subtype != FLAG_LENGTH_UINT16) &&
-		    (flags->subtype != FLAG_BIT_FIELD)) {
+		if ((flags->subtype != FLAG_KEY_FIELD) && (flags->subtype != FLAG_BIT_FIELD) &&
+		    (flags->subtype != FLAG_LENGTH_UINT8) && (flags->subtype != FLAG_LENGTH_UINT16)) {
 			fr_strerror_const("The 'key' and 'length' flags cannot be used with any other flags.");
 			return false;
 		}
@@ -209,7 +209,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			if (flags->array) {
 				ALLOW_FLAG(array);
 
-				if (flags->subtype != FLAG_LENGTH_UINT16) goto invalid_extra;
+				if ((flags->subtype != FLAG_LENGTH_UINT8) && (flags->subtype != FLAG_LENGTH_UINT16)) goto invalid_extra;
 			} else if (flags->subtype) {
 			invalid_extra:
 				fr_strerror_const("Invalid type for extra flag.");
@@ -243,7 +243,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			return false;
 		}
 
-		if ((flags->subtype == FLAG_LENGTH_UINT16) &&
+		if (((flags->subtype == FLAG_LENGTH_UINT8) || (flags->subtype == FLAG_LENGTH_UINT16)) &&
 		    ((type != FR_TYPE_STRING) && (type != FR_TYPE_OCTETS) && (type != FR_TYPE_STRUCT))) {
 			fr_strerror_printf("The 'length' flag cannot be used used with type %s",
 					   fr_type_to_str(type));

@@ -70,11 +70,15 @@ ssize_t fr_dict_attr_flags_print(fr_sbuff_t *out, fr_dict_t const *dict, fr_type
 			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "key,");
 			break;
 
-		case FLAG_LENGTH_UINT16:
+		case FLAG_BIT_FIELD:
 			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "length=uint16,");
 			break;
 
-		case FLAG_BIT_FIELD:
+		case FLAG_LENGTH_UINT8:
+			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "length=uint8,");
+			break;
+
+		case FLAG_LENGTH_UINT16:
 			FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "length=uint16,");
 			break;
 
