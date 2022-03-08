@@ -184,7 +184,6 @@ home_server tls {
 		private_key_file = ${certdir}/client.key
 		certificate_file = ${certdir}/client.pem
 		ca_file = ${certdir}/ca.pem
-		dh_file = ${certdir}/dh
 		random_file = /dev/urandom
 		fragment_size = 8192
 		ca_path = ${cadir}
