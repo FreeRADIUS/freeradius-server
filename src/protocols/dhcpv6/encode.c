@@ -441,14 +441,14 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 		 *   |       text-len                |        String                 |
 		 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...-+-+-+-+-+-+-+
 		 */
-		if (!da->flags.length) {
+		if (da_is_length_field(da)) {
 			len_field = true;
 			FR_DBUFF_ADVANCE_RETURN(&element_dbuff, sizeof(uint16_t));	/* Make room for the length field */
 		}
 
 		slen = encode_value(&element_dbuff, da_stack, depth, cursor, encode_ctx);
 		if (slen < 0) return slen;
-		if (!fr_cond_assert(slen < UINT16_MAX)) return PAIR_ENCODE_FATAL_ERROR;
+		if (slen > UINT16_MAX) return PAIR_ENCODE_FATAL_ERROR;
 
 		/*
 		 *	Ensure we always create elements of the correct length.
@@ -467,9 +467,8 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 		/*
 		 *	Populate the length field
 		 */
-		if (len_field) fr_dbuff_in(&work_dbuff, (uint16_t) slen);
+		else if (len_field) fr_dbuff_in(&work_dbuff, (uint16_t) slen);
 		fr_dbuff_set(&work_dbuff, &element_dbuff);
-
 
 		vp = fr_dcursor_current(cursor);
 		if (!vp || (vp->da != da)) break;		/* Stop if we have an attribute of a different type */

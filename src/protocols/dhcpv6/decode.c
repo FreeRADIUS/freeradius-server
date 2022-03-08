@@ -296,6 +296,7 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			 *	decode the last bit as raw data.
 			 */
 			if ((size_t) (end - p) < element_len) {
+			raw:
 				slen = decode_raw(ctx, out, parent, p, end - p , decode_ctx);
 				if (slen < 0) return slen;
 				break;
@@ -319,22 +320,20 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	If the data is variable length i.e. strings or octets
 	 *	there is a length field before each element.
 	 *
+	 *	Note that we don't bother checking if the data type is
+	 *	string or octets.  There will only be issues if
+	 *	someone edited the dictionaries and broke them.
+	 *
 	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...-+-+-+-+-+-+-+
 	 *   |       text-len                |        String                 |
 	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...-+-+-+-+-+-+-+
 	 */
 	while (p < end) {
-		if ((end - p) < 2) {
-		raw:
-			slen = decode_raw(ctx, out, parent, p, end - p , decode_ctx);
-			if (slen < 0) return slen;
-			break;
-		}
+		if ((end - p) < 2) goto raw;
 
 		element_len = fr_net_to_uint16(p);
-		if ((p + 2 + element_len) > end) {
-			goto raw;
-		}
+
+		if ((size_t) (end - p) < (((size_t) element_len) + 2)) goto raw;
 
 		p += 2;
 		slen = decode_value(ctx, out, parent, p, element_len, decode_ctx);
