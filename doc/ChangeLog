@@ -24,6 +24,7 @@ FreeRADIUS 3.2.0 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	* Remove the "otp" module.  The "otpd" program it needs is no longer available,
 	  and the module has not been usable since at least 2015.
 	* All features from 3.0.x are included in the 3.2.x releases.
+	* 3.2.0 requires OpenSSL 1.1.0 or greater.
 
 	Bug fixes
 	* All bug fixes from 3.0.x are included in the 3.2.x releases.
