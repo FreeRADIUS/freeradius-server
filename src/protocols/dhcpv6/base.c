@@ -1028,6 +1028,11 @@ static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *pare
 	 */
 	if (flags->array && ((type == FR_TYPE_STRING) || (type == FR_TYPE_OCTETS))) {
 		flags->is_known_width = true;
+
+		if (flags->extra && (flags->subtype != FLAG_LENGTH_UINT16)) {
+			fr_strerror_const("string/octets arrays require the 'length=uint16' flag");
+			return false;
+		}
 	}
 
 	/*
