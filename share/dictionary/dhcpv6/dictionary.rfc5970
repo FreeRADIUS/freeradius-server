@@ -11,7 +11,7 @@
 ##############################################################################
 
 ATTRIBUTE	Bootfile-URL				59	string
-ATTRIBUTE	Bootfile-Param				60	string array
+ATTRIBUTE	Bootfile-Param				60	string length=uint16,array
 ATTRIBUTE	Client-Arch-Type			61	uint16 array
 
 VALUE	Client-Arch-Type		x86-BIOS		0
