@@ -717,13 +717,15 @@ void **talloc_array_null_terminate(void **array)
 	size_t		len;
 	TALLOC_CTX	*ctx;
 	void		**new;
+	size_t		size;
 
 	if (!array) return NULL;
 
 	len = talloc_array_length(array);
 	ctx = talloc_parent(array);
+	size = talloc_get_size(array) / talloc_array_length(array);
 
-	new = talloc_realloc_fn(ctx, array, len + 1);
+	new = _talloc_realloc_array(ctx, array, size, len + 1, talloc_get_name(array));
 	if (!new) return NULL;
 
 	new[len] = NULL;
@@ -745,17 +747,19 @@ void **talloc_array_null_strip(void **array)
 	size_t		len;
 	TALLOC_CTX	*ctx;
 	void		**new;
+	size_t		size;
 
 	if (!array) return NULL;
 
 	len = talloc_array_length(array);
 	ctx = talloc_parent(array);
+	size = talloc_get_size(array) / talloc_array_length(array);
 
 	if ((len - 1) == 0) return NULL;
 
 	if (array[len - 1] != NULL) return NULL;
 
-	new = talloc_realloc_fn(ctx, array, len - 1);
+	new = _talloc_realloc_array(ctx, array, size, len - 1, talloc_get_name(array));
 	if (!new) return NULL;
 
 	return new;
