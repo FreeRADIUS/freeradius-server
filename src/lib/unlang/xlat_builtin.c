@@ -1929,9 +1929,16 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	end = p + len;
 
 	/*
+	 *	Look for 0x at the start of the string
+	 */
+	if ((p[0] == '0') && (p[1] == 'x')) {
+		p += 2;
+		len -=2;
+	}
+
+	/*
 	 *	Zero length octets string
 	 */
-	if ((p[0] == '0') && (p[1] == 'x')) p += 2;
 	if (p == end) goto finish;
 
 	outlen = len / 2;
