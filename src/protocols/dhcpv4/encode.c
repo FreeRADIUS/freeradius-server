@@ -286,10 +286,8 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 			      fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx)
 {
 	ssize_t			len;
-	uint8_t			option_len = 0;
-	fr_dbuff_marker_t	hdr, hdr_io;
+	fr_dbuff_marker_t	hdr;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
-	fr_pair_t		*vp = fr_dcursor_current(cursor);
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -299,84 +297,25 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	 *	is just the length of the value and hence starts out as zero).
 	 */
 	fr_dbuff_marker(&hdr, &work_dbuff);
-	fr_dbuff_marker(&hdr_io, &work_dbuff);
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da->attr, option_len);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)da->attr, (uint8_t) 0);
 
 	/*
-	 *	DHCP options with the same number (and array flag set)
-	 *	get coalesced into a single option.
-	 *
-	 *	Note: This only works with fixed length attributes,
-	 *	because there's no separate length fields.
+	 *	Write out the option's value
 	 */
-	do {
-		fr_pair_t *next;
-
-		/*
-		 *	As a quick hack, check if there's enough room
-		 *	for fixed-size attributes.  If we're encoding
-		 *	the second or later value into this option,
-		 *	AND we're encoding fixed size values, AND
-		 *	there's no room for the next fixed-size value,
-		 *	then don't encode this VP.
-		 */
-		if (vp->da->flags.array &&
-		    ((len = fr_value_box_network_length(&vp->data)) > 0) &&
-		    (option_len + len) > 255) {
-			break;
-		}
-
-		/*
-		 *	@todo - RFC 2131 Section 4.1 says:
-		 *
-		 *	  The client concatenates the values of multiple
-		 *	  instances of the same option into a single parameter
-		 *	  list for configuration.
-		 *
-		 *	so if we have multiple options of the same
-		 *	number, then pack them as much as possible.
-		 *
-		 *	TBH, it would be simplest to have a
-		 *	thread-local array for temporary work.  If
-		 *	there are multiple options of the same number,
-		 *	then the values for those options get mashed
-		 *	into the temporary buffer.  Then, that buffer
-		 *	gets copied to the actual packet, with headers
-		 *	being added as necessary.
-		 */
+	if (da->flags.array) {
+//		len = encode_array(&work_dbuff, da_stack, depth, cursor, encode_ctx);
+		len = -1;
+	} else {
 		len = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
-		if (len < -1) return len;
-		if (len == -1) {
-			FR_PROTO_TRACE("No more space in option");
-			if (option_len == 0) {
-				/*
-				 * Couldn't encode anything: don't leave behind these two octets,
-				 * or rather, don't include them when advancing dbuff.
-				 */
-				fr_dbuff_set(&work_dbuff, &hdr);
-			}
-			break; /* Packed as much as we can */
-		}
+	}
+	if (len < 0) return len;
 
-		FR_PROTO_STACK_PRINT(da_stack, depth);
-		FR_PROTO_TRACE("Encoded value is %zu byte(s)", len);
-		FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), NULL);
+	if (len > 255) return PAIR_ENCODE_FATAL_ERROR; /* todo fixme */
 
-		if ((option_len + len) <= 255) {
-			option_len += len;
-			fr_dbuff_set(&hdr_io, fr_dbuff_current(&hdr) + 1);
-			fr_dbuff_in(&hdr_io, option_len);
-			FR_PROTO_TRACE("%u byte(s) available in option", 255 - option_len);
-		} else {
-			if (!extend_option(&work_dbuff, &hdr, len)) break;
-			fr_dbuff_set(&hdr_io, fr_dbuff_current(&hdr) + 1);
-			fr_dbuff_out(&option_len, &hdr_io);
-		}
+	fr_dbuff_advance(&hdr, 1);
+	fr_dbuff_in(&hdr, (uint8_t) len);
 
-		next = fr_dcursor_current(cursor);
-		if (!next || (vp->da != next->da)) break;
-		vp = next;
-	} while (vp->da->flags.array);
+	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Done RFC header");
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
