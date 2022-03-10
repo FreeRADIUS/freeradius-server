@@ -173,7 +173,11 @@ static ssize_t encode_array(fr_dbuff_t *dbuff,
 		fr_dbuff_t	element_dbuff = FR_DBUFF(&work_dbuff);
 
 		vp = fr_dcursor_current(cursor);
-		element_len = vp->vp_length;
+
+		/*
+		 *	@todo - get correct lengths.
+		 */
+		element_len = fr_value_box_network_length(&vp->data);
 
 		/*
 		 *	If the data is variable length i.e. strings or octets
