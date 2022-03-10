@@ -304,11 +304,19 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	 */
 	if (da->flags.array) {
 //		len = encode_array(&work_dbuff, da_stack, depth, cursor, encode_ctx);
-		len = -1;
+		return -1;	/* not done yet */
 	} else {
-		len = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
+		fr_pair_t *vp;
+		
+		do {
+			len = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
+			if (len < 0) return len; /* @todo return the correct offset, but whatever */
+
+			vp = fr_dcursor_current(cursor);
+		} while (vp && (vp->da == da));
 	}
-	if (len < 0) return len;
+
+	len = fr_dbuff_used(&work_dbuff) - 2;
 
 	if (len > 255) return PAIR_ENCODE_FATAL_ERROR; /* todo fixme */
 
