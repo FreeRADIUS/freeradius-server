@@ -126,6 +126,95 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 }
 
 
+static ssize_t encode_array(fr_dbuff_t *dbuff,
+				   fr_da_stack_t *da_stack, int depth,
+				   fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx)
+{
+	ssize_t			slen;
+	size_t			element_len;
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
+	fr_pair_t		*vp;
+	fr_dict_attr_t const	*da = da_stack->da[depth];
+
+	if (!fr_cond_assert_msg(da->flags.array,
+				"%s: Internal sanity check failed, attribute \"%s\" does not have array bit set",
+				__FUNCTION__, da->name)) return PAIR_ENCODE_FATAL_ERROR;
+
+#if 0
+	/*
+	 *	DNS labels have internalized length, so we don't need
+	 *	length headers.
+	 *
+	 *	@todo - not yet functional for DHCPv4/
+	 */
+	if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype){
+		while (fr_dbuff_extend(&work_dbuff)) {
+			vp = fr_dcursor_current(cursor);
+
+			/*
+			 *	DNS labels get a special encoder.  DNS labels
+			 *	MUST NOT be compressed in DHCP.
+			 *
+			 *	https://tools.ietf.org/html/rfc8415#section-10
+			 */
+			slen = fr_dns_label_from_value_box_dbuff(&work_dbuff, false, &vp->data, NULL);
+			if (slen <= 0) return PAIR_ENCODE_FATAL_ERROR;
+
+			vp = fr_dcursor_next(cursor);
+			if (!vp || (vp->da != da)) break;		/* Stop if we have an attribute of a different type */
+		}
+
+		return fr_dbuff_set(dbuff, &work_dbuff);
+	}
+#endif
+
+	while (fr_dbuff_extend(&work_dbuff)) {
+		bool		len_field = false;
+		fr_dbuff_t	element_dbuff = FR_DBUFF(&work_dbuff);
+
+		vp = fr_dcursor_current(cursor);
+		element_len = vp->vp_length;
+
+		/*
+		 *	If the data is variable length i.e. strings or octets
+		 *	we need to include an 8-bit length field before each element.
+		 */
+		if (da_is_length_field(da)) {
+			len_field = true;
+			FR_DBUFF_ADVANCE_RETURN(&element_dbuff, sizeof(uint8_t));	/* Make room for the length field */
+		}
+
+		slen = encode_value(&element_dbuff, da_stack, depth, cursor, encode_ctx);
+		if (slen < 0) return slen;
+		if (slen > UINT8_MAX) return PAIR_ENCODE_FATAL_ERROR;
+
+		/*
+		 *	Ensure we always create elements of the correct length.
+		 *	This is mainly for fixed length octets type attributes
+		 *	containing one or more keys.
+		 */
+		if (da->flags.length) {
+			if ((size_t)slen < element_len) {
+				FR_DBUFF_MEMSET_RETURN(&element_dbuff, 0, element_len - slen);
+				slen = element_len;
+			} else if ((size_t)slen > element_len) {
+				slen = element_len;
+			}
+		}
+
+		/*
+		 *	Populate the length field
+		 */
+		else if (len_field) fr_dbuff_in(&work_dbuff, (uint8_t) slen);
+		fr_dbuff_set(&work_dbuff, &element_dbuff);
+
+		vp = fr_dcursor_current(cursor);
+		if (!vp || (vp->da != da)) break;		/* Stop if we have an attribute of a different type */
+	}
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
 /** Extend an encoded option in-place.
  *
  * @param[in] dbuff	buffer containing the option
@@ -303,8 +392,8 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	 *	Write out the option's value
 	 */
 	if (da->flags.array) {
-//		len = encode_array(&work_dbuff, da_stack, depth, cursor, encode_ctx);
-		return -1;	/* not done yet */
+		len = encode_array(&work_dbuff, da_stack, depth, cursor, encode_ctx);
+		if (len < 0) return -1;
 	} else {
 		fr_pair_t *vp;
 		
