@@ -491,7 +491,6 @@ unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs,
 {
 	fr_virtual_server_t *server;
 	fr_process_module_t const *process;
-	fr_io_track_t *track = request->async->packet_ctx;
 	module_instance_t *mi = talloc_zero(request, module_instance_t);
 
 	server = cf_data_value(cf_data_find(server_cs, fr_virtual_server_t, "vs"));
@@ -504,15 +503,8 @@ unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs,
 	mi->module = (module_t *)server->process_module;
 	mi->number = 0;	/* Hacky hack hack */
 
-	if (unlikely(track && fr_time_gt(track->dynamic, fr_time_wrap(0)) && server->dynamic_client_module)) {
-		process = (fr_process_module_t const *) server->dynamic_client_module->module->common;
-		mi->dl_inst = server->dynamic_client_module;
-
-	} else {
-		process = (fr_process_module_t const *) server->process_module->module->common;
-		mi->dl_inst = server->process_module;
-	}
-
+	process = (fr_process_module_t const *) server->process_module->module->common;
+	mi->dl_inst = server->process_module;
 	mi->instantiated = true;
 
 	/*
