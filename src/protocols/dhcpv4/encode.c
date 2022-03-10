@@ -411,10 +411,13 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 
 	len = fr_dbuff_used(&work_dbuff) - 2;
 
-	if (len > 255) return PAIR_ENCODE_FATAL_ERROR; /* todo fixme */
+	if (len <= UINT8_MAX) {
+		fr_dbuff_advance(&hdr, 1);
+		fr_dbuff_in(&hdr, (uint8_t) len);
 
-	fr_dbuff_advance(&hdr, 1);
-	fr_dbuff_in(&hdr, (uint8_t) len);
+	} else if (!extend_option(&work_dbuff, &hdr, len)) {
+		return PAIR_ENCODE_FATAL_ERROR;
+	}
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Done RFC header");
 
