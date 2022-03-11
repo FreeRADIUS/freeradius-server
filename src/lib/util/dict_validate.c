@@ -478,7 +478,18 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	case FR_TYPE_STRUCT:
 		ALLOW_FLAG(extra);
 		ALLOW_FLAG(subtype);
-		if (flags->is_known_width) ALLOW_FLAG(array);
+
+		if (flags->array) {
+			switch (type) {
+			case FR_TYPE_FIXED_SIZE:
+				ALLOW_FLAG(array);
+				break;
+
+			default:
+				if (flags->is_known_width) ALLOW_FLAG(array);
+				break;
+			}
+		}
 		if (all_flags) {
 			fr_strerror_const("Invalid flag for attribute inside of a 'struct'");
 			return false;
