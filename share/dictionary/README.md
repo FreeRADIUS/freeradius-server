@@ -15,6 +15,7 @@ PROTOCOL        ARP             8
 PROTOCOL        TFTP            9
 PROTOCOL        TLS             10
 PROTOCOL        DNS             11
+PROTOCOL        LDAP            12
 PROTOCOL        EAP-SIM         101
 PROTOCOL        EAP-AKA         102
 PROTOCOL        EAP-FAST         103
