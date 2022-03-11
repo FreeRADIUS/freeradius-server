@@ -119,7 +119,10 @@ again:
 	case FR_LDAP_STATE_ERROR:
 		STATE_TRANSITION(FR_LDAP_STATE_INIT);
 		fr_connection_signal_reconnect(c->conn, FR_CONNECTION_FAILED);
-		break;
+		/*
+		 *	The old connection has been freed, so specifically return the INIT state
+		 */
+		return FR_LDAP_STATE_INIT;
 	}
 
 	return c->state;
