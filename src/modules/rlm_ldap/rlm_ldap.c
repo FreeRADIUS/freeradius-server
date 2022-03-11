@@ -185,6 +185,8 @@ static CONF_PARSER option_config[] = {
 
 	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.idle_timeout), .dflt = "300" },
 
+	{ FR_CONF_OFFSET("reconnection_delay", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.reconnection_delay), .dflt = "10" },
+
 	CONF_PARSER_TERMINATOR
 };
 
