@@ -405,15 +405,24 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	if (da->flags.array) {
 		len = encode_array(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 		if (len < 0) return -1;
-	} else {
+
+	} else if (da->parent && (da->parent->type != FR_TYPE_VENDOR)) {
 		fr_pair_t *vp;
-		
+
 		do {
 			len = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 			if (len < 0) return len; /* @todo return the correct offset, but whatever */
 
 			vp = fr_dcursor_current(cursor);
 		} while (vp && (vp->da == da));
+
+	} else {
+		/*
+		 *	For VSAs, each vendor value is prefixed by an 8-bit length, so we don't loop over the
+		 *	input pairs.
+		 */
+		len = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
+		if (len < 0) return len; /* @todo return the correct offset, but whatever */
 	}
 
 	len = fr_dbuff_used(&work_dbuff) - 2;
