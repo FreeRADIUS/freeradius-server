@@ -114,6 +114,8 @@ ldap_create_session_tracking_control LDAP_P((
 									//!< persistent search.
 #define LDAP_SERVER_SHOW_DELETED_OID	"1.2.840.113556.1.4.417"	//!< OID of Active Directory control which
 									//!< enables searching for deleted objects.
+#define LDAP_MATCHING_RULE_BIT_AND	"1.2.840.113556.1.4.803"	//!< OID of bit-wise AND LDAP match rule
+#define LDAP_MATCHING_RULE_BIT_OR	"1.2.840.113556.1.4.804"	//!< OID of bit-wise OR LDAP match rule
 
 typedef enum {
 	LDAP_EXT_UNSUPPORTED,				//!< Unsupported extension.
