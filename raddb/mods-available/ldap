@@ -696,6 +696,13 @@ ldap {
 		#  NOTE: `LDAP_OPT_X_KEEPALIVE_INTERVAL` is set to this value.
 		#
 		interval = 3
+
+		#
+		#  reconnection_delay:: Sets the time in seconds before a failed connection
+		#  will attempt reconnection.  This includes failures to bind as the admin
+		#  user due to incorrect credentials.
+		#
+		reconnection_delay = 10
 	}
 
 	#
