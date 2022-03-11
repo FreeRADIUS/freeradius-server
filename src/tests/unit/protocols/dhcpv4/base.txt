@@ -34,14 +34,8 @@ match 8a 08 7f 00 00 01 c0 a8 03 01
 # Overflow with multiple fixed length attributes (16x16)
 encode-pair ANDSF-IPv6-Address = fe80::1, ANDSF-IPv6-Address = fe80::2, ANDSF-IPv6-Address = fe80::3, ANDSF-IPv6-Address = fe80::4, ANDSF-IPv6-Address = fe80::5, ANDSF-IPv6-Address = fe80::6, ANDSF-IPv6-Address = fe80::7, ANDSF-IPv6-Address = fe80::8, ANDSF-IPv6-Address = fe80::9, ANDSF-IPv6-Address = fe80::a, ANDSF-IPv6-Address = fe80::b, ANDSF-IPv6-Address = fe80::c, ANDSF-IPv6-Address = fe80::d, ANDSF-IPv6-Address = fe80::e, ANDSF-IPv6-Address = fe80::f, ANDSF-IPv6-Address = fe80::10
 
-#
-#  We now fill each option, instead of splitting on value boundaries.
-#
-match 8f ff fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 01 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 02 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 03 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 04 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 05 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 06 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 07 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 08 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 09 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 0a fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 0b fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 0c fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 0d fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 0e fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 0f fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 8f 01 10
+match 8f f0 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 01 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 02 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 03 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 04 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 05 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 06 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 07 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 08 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 09 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 0a fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 0b fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 0c fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 0d fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 0e fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 0f 8f 10 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 10
 
-#
-#  The decode routine is broken, as it needs concatenate and then decode, instead of decoding each value in turn.
-#
 decode-pair -
 match ANDSF-IPv6-Address = fe80::1, ANDSF-IPv6-Address = fe80::2, ANDSF-IPv6-Address = fe80::3, ANDSF-IPv6-Address = fe80::4, ANDSF-IPv6-Address = fe80::5, ANDSF-IPv6-Address = fe80::6, ANDSF-IPv6-Address = fe80::7, ANDSF-IPv6-Address = fe80::8, ANDSF-IPv6-Address = fe80::9, ANDSF-IPv6-Address = fe80::a, ANDSF-IPv6-Address = fe80::b, ANDSF-IPv6-Address = fe80::c, ANDSF-IPv6-Address = fe80::d, ANDSF-IPv6-Address = fe80::e, ANDSF-IPv6-Address = fe80::f, ANDSF-IPv6-Address = fe80::10
 

@@ -188,6 +188,13 @@ static ssize_t encode_array(fr_dbuff_t *dbuff,
 			FR_DBUFF_ADVANCE_RETURN(&element_dbuff, sizeof(uint8_t));	/* Make room for the length field */
 		}
 
+		/*
+		 *	Don't pack too many things in.
+		 *
+		 *	@todo - fix dhcpv4 decode, because the elements can, in fact, cross option boundaries.
+		 */
+		if ((fr_dbuff_used(&work_dbuff) + element_len + len_field) > 255) break;
+
 		slen = encode_value(&element_dbuff, da_stack, depth, cursor, encode_ctx);
 		if (slen < 0) return slen;
 		if (slen > UINT8_MAX) return PAIR_ENCODE_FATAL_ERROR;
