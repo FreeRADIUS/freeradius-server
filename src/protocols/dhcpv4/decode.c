@@ -504,12 +504,14 @@ next:
  * @param[in] decode_ctx	Unused.
  */
 ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
-			        uint8_t const *data, size_t data_len, UNUSED void *decode_ctx)
+			        uint8_t const *data, size_t data_len, void *decode_ctx)
 {
-	ssize_t			ret;
-	uint8_t const		*p = data;
+	ssize_t			slen;
+	uint8_t const		*p = data, *end = data + data_len;
+	uint8_t const		*next;
 	fr_dict_attr_t const	*da;
 	fr_dict_attr_t const	*parent;
+	fr_dhcpv4_ctx_t		*packet_ctx = decode_ctx;
 
 	FR_PROTO_TRACE("%s called to parse %zu byte(s)", __FUNCTION__, data_len);
 
@@ -549,6 +551,42 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (da->type == FR_TYPE_VSA) return decode_vsa(ctx, out, da, data + 2, data[1]);
 
 	/*
+	 *	Check for multiple options of the same type, and concatenate their values together.
+	 */
+	next = data + 2 + data[1];
+	if ((data[1] > 0) && (next < end) && (next[0] == data[0])) {
+		uint8_t *q;
+
+		if (!packet_ctx->buffer) {
+			packet_ctx->buffer = talloc_array(packet_ctx, uint8_t, data_len);
+			if (!packet_ctx->buffer) return -1;
+
+		} else if (talloc_array_length(packet_ctx->buffer) < data_len) {
+			/*
+			 *	We're called in a loop from fr_dhcpv4_decode(), with the full packet, so the
+			 *	needed size should only go down as we decode the packet.
+			 */
+			return -1;
+		}
+		q = packet_ctx->buffer;
+
+		for (next = data; next < end; next += 2 + next[1]) {
+			if (next[0] != data[0]) break;
+			memcpy(q, next + 2, next[1]);
+			q += next[1];
+		}
+
+		slen = decode_value(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer);
+		if (slen <= 0) return slen;
+
+		/*
+		 *	The actual amount of data we decoded, including the various headers.
+		 */
+		slen = next - data;
+		goto done;
+	}
+
+	/*
 	 *	@todo - RFC 2131 Section 4.1 says:
 	 *
 	 *	  The client concatenates the values of multiple
@@ -563,14 +601,17 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	mashed into the temporary buffer.  Then, that buffer
 	 *	gets used for value decoding.
 	 */
-	ret = decode_value(ctx, out, da, data + 2, data[1]);
-	if (ret < 0) {
+	slen = decode_value(ctx, out, da, data + 2, data[1]);
+	if (slen < 0) {
 		fr_dict_unknown_free(&da);
-		return ret;
+		return slen;
 	}
-	ret += 2; /* For header */
-	FR_PROTO_TRACE("decoding option complete, returning %zu byte(s)", ret);
-	return ret;
+
+	slen += 2; /* For header */
+
+done:
+	FR_PROTO_TRACE("decoding option complete, returning %zu byte(s)", slen);
+	return slen;
 }
 
 static int _decode_test_ctx(UNUSED fr_dhcpv4_ctx_t *test_ctx)
