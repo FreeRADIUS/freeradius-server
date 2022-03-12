@@ -142,6 +142,7 @@ extern HIDDEN fr_dict_attr_t const 	*dhcp_option_82;
  */
 typedef struct {
 	fr_dict_attr_t const *root;
+	uint8_t		*buffer;		//! for coalescing concatenated options
 } fr_dhcpv4_ctx_t;
 
 /*
@@ -162,7 +163,7 @@ void		fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
  *	decode.c
  */
 ssize_t		fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
-					uint8_t const *data, size_t len, void *decode_ctx);
+					uint8_t const *data, size_t len, void *decode_ctx) CC_HINT(nonnull);
 
 /*
  *	encode.c

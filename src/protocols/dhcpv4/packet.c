@@ -106,6 +106,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 	fr_pair_t	*vp;
 	fr_pair_t	*maxms, *mtu, *netaddr;
 	fr_value_box_t	box;
+	fr_dhcpv4_ctx_t *packet_ctx;
 
 	fr_pair_list_init(&tmp);
 
@@ -114,6 +115,9 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 		      data[1]);
 		return -1;
 	}
+
+	packet_ctx = talloc_zero(ctx, fr_dhcpv4_ctx_t);
+	if (!packet_ctx) return -1;
 
 	/*
 	 *	Decode the header.
@@ -127,6 +131,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 		error:
 			talloc_free(vp);
 			fr_pair_list_free(&tmp);
+			talloc_free(packet_ctx);
 			return -1;
 		}
 
@@ -205,9 +210,11 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 		while (p < end) {
 			if (p[0] == 0) break; /* padding */
 
-			len = fr_dhcpv4_decode_option(ctx, &tmp, p, (end - p), NULL);
+			len = fr_dhcpv4_decode_option(ctx, &tmp, p, (end - p), packet_ctx);
 			if (len <= 0) {
+			fail:
 				fr_pair_list_free(&tmp);
+				talloc_free(packet_ctx);
 				return len;
 			}
 			p += len;
@@ -237,11 +244,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 					if (p[0] == 0) break; /* padding */
 
 					len = fr_dhcpv4_decode_option(ctx, &tmp,
-								      p, end - p, NULL);
-					if (len <= 0) {
-						fr_pair_list_free(&tmp);
-						return len;
-					}
+								      p, end - p, packet_ctx);
+					if (len <= 0) goto fail;
 					p += len;
 				}
 				fr_pair_delete_by_da(&tmp, attr_dhcp_boot_filename);
@@ -256,11 +260,8 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 					if (p[0] == 0) break; /* padding */
 
 					len = fr_dhcpv4_decode_option(ctx, &tmp,
-								      p, end - p, NULL);
-					if (len <= 0) {
-						fr_pair_list_free(&tmp);
-						return len;
-					}
+								      p, end - p, packet_ctx);
+					if (len <= 0) goto fail;
 					p += len;
 				}
 				fr_pair_delete_by_da(&tmp, attr_dhcp_server_host_name);
