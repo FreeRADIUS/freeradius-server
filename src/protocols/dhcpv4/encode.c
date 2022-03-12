@@ -43,6 +43,10 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			  fr_da_stack_t *da_stack, unsigned int depth,
 			  fr_dcursor_t *cursor, void *encode_ctx);
 
+static ssize_t encode_array(fr_dbuff_t *dbuff,
+				   fr_da_stack_t *da_stack, int depth,
+				   fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx);
+
 static ssize_t encode_value_trampoline(fr_dbuff_t *dbuff,
 				       fr_da_stack_t *da_stack, unsigned int depth,
 				       fr_dcursor_t *cursor, void *encode_ctx)
@@ -53,8 +57,7 @@ static ssize_t encode_value_trampoline(fr_dbuff_t *dbuff,
 	 *	Write out the option's value
 	 */
 	if (da->flags.array) {
-		fr_assert(0);
-//		return encode_array(dbuff, da_stack, depth, cursor, encode_ctx);
+		return encode_array(dbuff, da_stack, depth, cursor, encode_ctx);
 	}
 
 	return encode_value(dbuff, da_stack, depth, cursor, encode_ctx);
