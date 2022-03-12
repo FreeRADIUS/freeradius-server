@@ -143,6 +143,7 @@ extern HIDDEN fr_dict_attr_t const 	*dhcp_option_82;
 typedef struct {
 	fr_dict_attr_t const *root;
 	uint8_t		*buffer;		//! for coalescing concatenated options
+	TALLOC_CTX	*tmp_ctx;		//!< for temporary things cleaned up during decoding
 } fr_dhcpv4_ctx_t;
 
 /*

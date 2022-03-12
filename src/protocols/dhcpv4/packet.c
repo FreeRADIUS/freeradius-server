@@ -118,6 +118,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 
 	packet_ctx = talloc_zero(ctx, fr_dhcpv4_ctx_t);
 	if (!packet_ctx) return -1;
+	packet_ctx->tmp_ctx = talloc(packet_ctx, uint8_t);
 
 	/*
 	 *	Decode the header.
