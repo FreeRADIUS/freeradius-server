@@ -589,6 +589,8 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		for (next = data; next < end; next += 2 + next[1]) {
 			if (next[0] != data[0]) break;
+			if ((next + 2 + next[1]) > end) return -1;
+
 			memcpy(q, next + 2, next[1]);
 			q += next[1];
 		}
