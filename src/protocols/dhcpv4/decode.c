@@ -569,6 +569,19 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	/*
 	 *	Check for multiple options of the same type, and concatenate their values together.
+	 *
+	 *	RFC 2131 Section 4.1 says:
+	 *
+	 *	  The client concatenates the values of multiple
+	 *	  instances of the same option into a single parameter
+	 *	  list for configuration.
+	 *
+	 *	which presumably also means the same for the server on reception.
+	 *
+	 *	We therefore peek ahead, and concatenate the values into a temporary buffer.  The buffer is
+	 *	allocated only if necessary, and is re-used for the entire packet.
+	 *
+	 *	If the options are *not* consecutive, then we don't concatenate them.  Too bad for you!
 	 */
 	next = data + 2 + data[1];
 	if ((data[1] > 0) && (next < end) && (next[0] == data[0])) {
@@ -605,21 +618,6 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		goto done;
 	}
 
-	/*
-	 *	@todo - RFC 2131 Section 4.1 says:
-	 *
-	 *	  The client concatenates the values of multiple
-	 *	  instances of the same option into a single parameter
-	 *	  list for configuration.
-	 *
-	 *	which presumably also means the same for the server on reception.
-	 *
-	 *	TBH, it would be simplest to have a thread-local array
-	 *	for temporary work.  If there are multiple options of
-	 *	the same number, then the values for those options get
-	 *	mashed into the temporary buffer.  Then, that buffer
-	 *	gets used for value decoding.
-	 */
 	slen = decode_value(ctx, out, da, data + 2, data[1], decode_ctx);
 	if (slen < 0) {
 		fr_dict_unknown_free(&da);
