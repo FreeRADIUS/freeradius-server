@@ -659,7 +659,18 @@ static fr_table_num_ordered_t const subtype_table[] = {
 static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *parent,
 		       UNUSED char const *name, UNUSED int attr, fr_type_t type, fr_dict_attr_flags_t *flags)
 {
-	if (flags->array && !flags->length) {
+	/*
+	 *	"arrays" of string/octets are encoded as a 8-bit
+	 *	length, followed by the actual data.
+	 */
+	if (flags->array && ((type == FR_TYPE_STRING) || (type == FR_TYPE_OCTETS))) {
+		flags->is_known_width = true;
+
+		if (flags->extra && (flags->subtype != FLAG_LENGTH_UINT8)) {
+			fr_strerror_const("string/octets arrays require the 'length=uint8' flag");
+			return false;
+		}
+	} else if (flags->array && !flags->length) {
 		fr_strerror_const("Variable length attributes cannot be marked as 'array'");
 		return false;
 	}
