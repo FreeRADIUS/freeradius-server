@@ -31,8 +31,15 @@
 #include "dhcpv4.h"
 #include "attrs.h"
 
+static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
+			      fr_dict_attr_t const *parent,
+			      uint8_t const *data, size_t const data_len, void *decode_ctx);
+
 static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 			  uint8_t const *data, size_t data_len, void *decode_ctx);
+
+static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+			    uint8_t const *data, size_t data_len, void *decode_ctx);
 
 static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t data_len, void *decode_ctx);
@@ -65,11 +72,12 @@ static int fr_dhcpv4_array_members(size_t *out, size_t len, fr_dict_attr_t const
 	return len / da->flags.length;
 }
 
+
 /*
  *	Decode ONE value into a VP
  */
-static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *da,
-				     uint8_t const *data, size_t data_len)
+static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *da,
+			    uint8_t const *data, size_t data_len, UNUSED void *decode_ctx)
 {
 	fr_pair_t *vp;
 	uint8_t const *p = data;
@@ -82,10 +90,15 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 	if (!vp) return -1;
 
 	/*
-	 *	string / octets can be empty.  Other data types are
+	 *	string / octets / bool can be empty.  Other data types are
 	 *	incorrect if they're empty.
 	 */
 	if (data_len == 0) {
+		if (da->type == FR_TYPE_BOOL) {
+			vp->vp_bool = true;
+			goto finish;
+		}
+
 		if (!((da->type == FR_TYPE_OCTETS) || (da->type == FR_TYPE_STRING))) goto raw;
 		goto finish;
 	}
@@ -98,7 +111,7 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 	 *	of the pair.
 	 *
 	 *	Note that we *cannot* do talloc_steal here, because
-	 *	this function is called in a loop from decode_value().
+	 *	this function is called in a loop from decode_array().
 	 *	And we cannot steal the same da into multiple parent
 	 *	VPs.  As a result, we have to copy it, and rely in the
 	 *	caller to clean up the unknown da.
@@ -106,41 +119,6 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 	if (da->flags.is_unknown) {
 		fr_pair_reinit_from_da(NULL, vp, fr_dict_unknown_attr_afrom_da(vp, da));
 		da = vp->da;
-	}
-
-	if (vp->da->type == FR_TYPE_STRING) {
-		uint8_t const *q;
-
-		/*
-		 *	Not allowed to be an array, copy the whole value
-		 */
-		if (!vp->da->flags.array) {
-			fr_pair_value_bstrndup(vp, (char const *)p, end - p, true);
-			p = end;
-			goto finish;
-		}
-
-		for (;;) {
-			q = memchr(p, '\0', end - p);
-
-			/* Malformed but recoverable */
-			if (!q) q = end;
-
-			fr_pair_value_bstrndup(vp, (char const *)p, q - p, true);
-			p = q + 1;
-			vp->vp_tainted = true;
-
-			/* Need another VP for the next round */
-			if (p < end) {
-				fr_pair_append(out, vp);
-
-				vp = fr_pair_afrom_da(ctx, da);
-				if (!vp) return -1;
-				continue;
-			}
-			break;
-		}
-		goto finish;
 	}
 
 	switch (vp->da->type) {
@@ -168,6 +146,11 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 		vp->vp_tainted = true;
 		p += sizeof(vp->vp_ipv6addr) + 1;
 		break;
+
+	case FR_TYPE_STRUCTURAL:
+		fr_strerror_printf("Cannot decode type '%s' as value", fr_type_to_str(vp->da->type));
+		talloc_free(vp);
+		return 0;
 
 	default:
 	{
@@ -282,7 +265,6 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t c
 {
 	uint8_t const		*p = data;
 	uint8_t const		*end = data + data_len;
-	fr_dict_attr_t const	*child;
 
 	/*
 	 *	Type, length, data.  If that doesn't exist, we decode
@@ -304,7 +286,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t c
 	 *	Each TLV may contain multiple children
 	 */
 	while (p < end) {
-		ssize_t tlv_len;
+		ssize_t slen;
 
 		/*
 		 *	RFC 3046 is very specific about not allowing termination
@@ -323,43 +305,26 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t c
 			 *	options" option.  Return it as random crap.
 			 */
 		raw:
-			tlv_len = decode_raw(ctx, out, parent, p, end - p, decode_ctx);
-			if (tlv_len < 0) return tlv_len;
+			slen = decode_raw(ctx, out, parent, p, end - p, decode_ctx);
+			if (slen < 0) return slen - (p - data);
 
 			return data_len;
 		}
 
 		/*
-		 *	Everything else should be real options
+		 *      Everything else should be real options
 		 */
 		if ((end - p) < 2) goto raw;
 
 		if ((p[1] + 2) > (end - p)) goto raw;
 
-		child = fr_dict_attr_child_by_num(parent, p[0]);
-		if (!child) {
-			fr_dict_attr_t const *unknown;
-
-			FR_PROTO_TRACE("failed to find child %u of TLV %s", p[0], parent->name);
-
-			/*
-			 *	Build an unknown attr
-			 */
-			unknown = fr_dict_unknown_attr_afrom_num(ctx, parent, p[0]);
-			if (!unknown) return -1;
-			child = unknown;
+		slen = decode_option(ctx, out, parent, p, p[1] + 2, decode_ctx);
+		if (slen <= 0) {
+			return slen - (p - data);
 		}
-		FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
-			       fr_type_to_str(parent->type), parent->name,
-			       fr_type_to_str(child->type), child->name);
+		fr_assert(slen <= (2 + p[1]));
 
-		tlv_len = decode_value(ctx, out, child, p + 2, p[1], decode_ctx);
-		if (tlv_len < 0) {
-			fr_dict_unknown_free(&child);
-			return tlv_len;
-		}
-		p += tlv_len + 2;
-		FR_PROTO_TRACE("decode_value returned %zu, adding 2 (for header)", tlv_len);
+		p += 2 + p[1];
 		FR_PROTO_TRACE("remaining TLV data %zu byte(s)" , end - p);
 	}
 	FR_PROTO_TRACE("tlv parsing complete, returning %zu byte(s)", p - data);
@@ -367,7 +332,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t c
 	return data_len;
 }
 
-static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t data_len, void *decode_ctx)
 {
 	unsigned int	values, i;		/* How many values we need to decode */
@@ -377,11 +342,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 
 	FR_PROTO_TRACE("%s called to parse %zu byte(s)", __FUNCTION__, data_len);
 	FR_PROTO_HEX_DUMP(data, data_len, NULL);
-
-	/*
-	 *	TLVs can't be coalesced as they're variable length
-	 */
-	if (parent->type == FR_TYPE_TLV) return decode_tlv(ctx, out, parent, data, data_len, decode_ctx);
 
 	/*
 	 *	Values with a fixed length may be coalesced into a single option
@@ -407,7 +367,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 	 */
 	for (i = 0, p = data; i < values; i++) {
 		fr_assert((p + value_len) <= (data + data_len));
-		len = decode_value_internal(ctx, out, parent, p, value_len);
+		len = decode_value(ctx, out, parent, p, value_len, decode_ctx);
 		if (len <= 0) return len;
 		if (len != (ssize_t)value_len) goto raw;
 		p += len;
@@ -512,6 +472,91 @@ next:
 	return data_len + 2;
 }
 
+
+static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
+			      fr_dict_attr_t const *parent,
+			      uint8_t const *data, size_t const data_len, void *decode_ctx)
+{
+	unsigned int   		option;
+	size_t			len;
+	ssize_t			slen;
+	fr_dict_attr_t const	*da;
+	fr_dhcpv4_ctx_t		*packet_ctx = decode_ctx;
+
+#ifdef __clang_analyzer__
+	if (!packet_ctx || !packet_ctx->tmp_ctx) return PAIR_DECODE_FATAL_ERROR;
+#endif
+
+	fr_assert(parent != NULL);
+
+	/*
+	 *	Must have at least an option header.
+	 */
+	if (data_len < 2) {
+		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
+		return -(data_len);
+	}
+
+	option = data[0];
+	len = data[1];
+	if (len > (data_len - 2)) {
+		fprintf(stderr, "FAIL %d\n", __LINE__);
+		fr_strerror_printf("%s: Option overflows input.  "
+				   "Optional length must be less than %zu bytes, got %zu bytes",
+				   __FUNCTION__, data_len - 2, len);
+		return PAIR_DECODE_FATAL_ERROR;
+	}
+
+	da = fr_dict_attr_child_by_num(parent, option);
+	if (!da) {
+		da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, option);
+		if (!da) return PAIR_DECODE_FATAL_ERROR;
+	}
+	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
+
+#if 0
+	if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype) {
+		fr_pair_list_t tmp;
+
+		fr_pair_list_init(&tmp);
+
+		slen = decode_dns_labels(ctx, &tmp, da, data + 2, len, decode_ctx);
+		if (slen < 0) goto raw;
+
+		/*
+		 *	The DNS labels may only partially fill the
+		 *	option.  If so, then it's a decode error.
+		 */
+		if ((size_t) slen != len) {
+			fr_pair_list_free(&tmp);
+			goto raw;
+		}
+
+		fr_pair_list_append(out, &tmp);
+
+	} else
+#endif
+	if (da->flags.array) {
+		slen = decode_array(ctx, out, da, data + 2, len, decode_ctx);
+
+	} else if (da->type == FR_TYPE_VSA) {
+		slen = decode_vsa(ctx, out, da, data + 2, len, decode_ctx);
+
+	} else if (da->type == FR_TYPE_TLV) {
+		slen = decode_tlv(ctx, out, da, data + 2, len, decode_ctx);
+
+	} else {
+		slen = decode_value(ctx, out, da, data + 2, len, decode_ctx);
+	}
+
+	if (slen < 0) {
+		slen = decode_raw(ctx, out, da, data + 2, len, decode_ctx);
+		if (slen <= 0) return slen;
+	}
+
+	return len + 2;
+}
+
 /** Decode DHCP option
  *
  * @param[in] ctx context	to alloc new attributes in.
@@ -526,8 +571,6 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	ssize_t			slen;
 	uint8_t const		*p = data, *end = data + data_len;
 	uint8_t const		*next;
-	fr_dict_attr_t const	*da;
-	fr_dict_attr_t const	*parent;
 	fr_dhcpv4_ctx_t		*packet_ctx = decode_ctx;
 
 	FR_PROTO_TRACE("%s called to parse %zu byte(s)", __FUNCTION__, data_len);
@@ -535,8 +578,6 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (data_len == 0) return 0;
 
 	FR_PROTO_HEX_DUMP(data, data_len, NULL);
-
-	parent = fr_dict_root(dict_dhcpv4);
 
 	/*
 	 *	Padding / End of options
@@ -551,21 +592,6 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
 		return -1;
 	}
-
-	da = fr_dict_attr_child_by_num(parent, p[0]);
-	if (!da) {
-		/*
-		 *	Unknown attribute, create an octets type
-		 *	attribute with the contents of the sub-option.
-		 */
-		da = fr_dict_unknown_attr_afrom_num(ctx, parent, p[0]);
-		if (!da) return -1;
-	}
-	FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
-		       fr_type_to_str(parent->type), parent->name,
-		       fr_type_to_str(da->type), da->name);
-
-	if (da->type == FR_TYPE_VSA) return decode_vsa(ctx, out, da, data + 2, data[1], decode_ctx);
 
 	/*
 	 *	Check for multiple options of the same type, and concatenate their values together.
@@ -582,10 +608,13 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	allocated only if necessary, and is re-used for the entire packet.
 	 *
 	 *	If the options are *not* consecutive, then we don't concatenate them.  Too bad for you!
+	 *
+	 *	Note that we don't (yet) do this for TLVs.
 	 */
 	next = data + 2 + data[1];
 	if ((data[1] > 0) && (next < end) && (next[0] == data[0])) {
 		uint8_t *q;
+		fr_dict_attr_t const *da;
 
 		if (!packet_ctx->buffer) {
 			packet_ctx->buffer = talloc_array(packet_ctx, uint8_t, data_len);
@@ -608,7 +637,25 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			q += next[1];
 		}
 
-		slen = decode_value(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx);
+		da = fr_dict_attr_child_by_num(fr_dict_root(dict_dhcpv4), p[0]);
+		if (!da) {
+			da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, fr_dict_root(dict_dhcpv4), p[0]);
+			if (!da) return -1;
+
+			slen = decode_raw(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx);
+
+		} else if (da->type == FR_TYPE_VSA) {
+			slen = decode_vsa(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx);
+
+		} else if (da->type == FR_TYPE_TLV) {
+			slen = decode_tlv(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx);
+
+		} else if (da->flags.array) {
+			slen = decode_array(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx);
+
+		} else {
+			slen = decode_value(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx);
+		}
 		if (slen <= 0) return slen;
 
 		/*
@@ -618,13 +665,10 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		goto done;
 	}
 
-	slen = decode_value(ctx, out, da, data + 2, data[1], decode_ctx);
+	slen = decode_option(ctx, out, fr_dict_root(dict_dhcpv4), data, data[1] + 2, decode_ctx);
 	if (slen < 0) {
-		fr_dict_unknown_free(&da);
 		return slen;
 	}
-
-	slen += 2; /* For header */
 
 done:
 	FR_PROTO_TRACE("decoding option complete, returning %zu byte(s)", slen);
@@ -666,7 +710,7 @@ static ssize_t fr_dhcpv4_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	return data_len;
 }
 
-static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out, NDEBUG_UNUSED fr_dict_attr_t const *parent,
+static ssize_t decode_option_wrapper(TALLOC_CTX *ctx, fr_pair_list_t *out, NDEBUG_UNUSED fr_dict_attr_t const *parent,
 			        uint8_t const *data, size_t data_len, void *decode_ctx)
 {
 	fr_assert(parent == fr_dict_root(dict_dhcpv4));
@@ -680,7 +724,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out, NDEBUG_UNUSED
 extern fr_test_point_pair_decode_t dhcpv4_tp_decode_pair;
 fr_test_point_pair_decode_t dhcpv4_tp_decode_pair = {
 	.test_ctx	= decode_test_ctx,
-	.func		= decode_option
+	.func		= decode_option_wrapper
 };
 
 extern fr_test_point_proto_decode_t dhcpv4_tp_decode_proto;
