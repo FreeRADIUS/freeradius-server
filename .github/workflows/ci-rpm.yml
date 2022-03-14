@@ -95,7 +95,7 @@ jobs:
     - name: Install recent git for CentOS 7
       if: ${{ matrix.env.NAME == 'centos-7' }}
       run: |
-        yum install -y https://packages.endpoint.com/rhel/7/os/x86_64/git-core-2.24.1-1.ep7.x86_64.rpm
+        yum install -y https://packages.endpointdev.com/rhel/7/os/x86_64/git-core-2.24.1-1.ep7.x86_64.rpm
 
     - name: Install distro git for CentOS > 7
       if: ${{ matrix.env.NAME != 'centos-7' }}
