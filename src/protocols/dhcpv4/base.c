@@ -288,6 +288,27 @@ bool fr_dhcpv4_is_encodable(void const *item, UNUSED void const *uctx)
 	return (vp->da->dict == dict_dhcpv4) && (!vp->da->flags.internal);
 }
 
+/** DHCPV4-specific iterator
+ *
+ */
+void *fr_dhcpv4_next_encodable(fr_dlist_head_t *list, void *to_eval, void *uctx)
+{
+	fr_pair_t	*c;
+	fr_dict_t	*dict = talloc_get_type_abort(uctx, fr_dict_t);
+
+	if (!to_eval) return NULL;
+
+	for (c = to_eval; c; c = fr_dlist_next(list, c)) {
+		PAIR_VERIFY(c);
+		if (c->da->dict != dict || c->da->flags.internal) continue;
+		if (c->da->type == FR_TYPE_BOOL && !c->vp_bool) continue;
+
+		break;
+	}
+
+	return c;
+}
+
 ssize_t fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original, int code, uint32_t xid, fr_pair_list_t *vps)
 {
 	return fr_dhcpv4_encode_dbuff(&FR_DBUFF_TMP(buffer, buflen), original, code, xid, vps);
@@ -481,7 +502,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	 *  operates correctly. This changes the order of the list, but never mind...
 	 */
 	fr_pair_list_sort(vps, fr_dhcpv4_attr_cmp);
-	fr_pair_dcursor_iter_init(&cursor, vps, fr_proto_next_encodable, dict_dhcpv4);
+	fr_pair_dcursor_iter_init(&cursor, vps, fr_dhcpv4_next_encodable, dict_dhcpv4);
 
 	/*
 	 *  Each call to fr_dhcpv4_encode_option will encode one complete DHCP option,

@@ -48,8 +48,8 @@ ATTRIBUTE	Swap-Server				16	ipaddr
 # Path name for root disk
 ATTRIBUTE	Root-Path				17	string
 ATTRIBUTE	Bootp-Extensions-Path			18	string
-ATTRIBUTE	IP-Forward-Enable			19	byte
-ATTRIBUTE	Source-Route-Enable			20	byte
+ATTRIBUTE	IP-Forward-Enable			19	bool
+ATTRIBUTE	Source-Route-Enable			20	bool
 # Routing Policy Filters
 ATTRIBUTE	Policy-Filter				21	octets
 ATTRIBUTE	Max-Datagram-Reassembly-Size		22	short
@@ -57,20 +57,20 @@ ATTRIBUTE	Default-IP-TTL				23	octets
 ATTRIBUTE	Path-MTU-Aging-Timeout			24	integer
 ATTRIBUTE	Path-MTU-Plateau-Table			25	short array
 ATTRIBUTE	Interface-MTU-Size			26	short
-ATTRIBUTE	All-Subnets-Are-Local			27	byte
+ATTRIBUTE	All-Subnets-Are-Local			27	bool
 ATTRIBUTE	Broadcast-Address			28	ipaddr
-ATTRIBUTE	Perform-Mask-Discovery			29	byte
-ATTRIBUTE	Provide-Mask-To-Others			30	byte
-ATTRIBUTE	Perform-Router-Discovery		31	byte
+ATTRIBUTE	Perform-Mask-Discovery			29	bool
+ATTRIBUTE	Provide-Mask-To-Others			30	bool
+ATTRIBUTE	Perform-Router-Discovery		31	bool
 ATTRIBUTE	Router-Solicitation-Address		32	ipaddr
 # first is destination address, second is router.
 ATTRIBUTE	Static-Routes				33	ipaddr array
-ATTRIBUTE	Trailer-Encapsulation			34	byte
+ATTRIBUTE	Trailer-Encapsulation			34	bool
 ATTRIBUTE	ARP-Cache-Timeout			35	integer
-ATTRIBUTE	Ethernet-Encapsulation			36	byte
+ATTRIBUTE	Ethernet-Encapsulation			36	bool
 ATTRIBUTE	Default-TCP-TTL				37	byte
 ATTRIBUTE	Keep-Alive-Interval			38	integer
-ATTRIBUTE	Keep-Alive-Garbage			39	byte
+ATTRIBUTE	Keep-Alive-Garbage			39	bool
 ATTRIBUTE	NIS-Domain-Name				40	string
 ATTRIBUTE	NIS-Servers				41	ipaddr array
 ATTRIBUTE	NTP-Servers				42	ipaddr array
@@ -144,7 +144,7 @@ ATTRIBUTE	Directory-Agent				78	octets
 # service location agent scope
 ATTRIBUTE	Service-Scope				79	octets
 # Rapid Commit
-ATTRIBUTE	Rapid-Commit				80	octets
+ATTRIBUTE	Rapid-Commit				80	bool
 # Fully Qualified Domain Name
 ATTRIBUTE	Client-FQDN				81	string
 # Relay Agent Information

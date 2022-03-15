@@ -73,7 +73,7 @@ static ssize_t encode_value_trampoline(fr_dbuff_t *dbuff,
  * @param[in,out] cursor	Current attribute we're encoding.
  * @param[in] encode_ctx	Containing DHCPv4 dictionary.
  * @return
- *	- The length of data written.
+ *	- The length of data written, may return 0 for bools
  *	< 0 if there's not enough space or option type is unsupported
  */
 static ssize_t encode_value(fr_dbuff_t *dbuff,
@@ -112,6 +112,15 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 	case FR_TYPE_IPV6_ADDR:
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)&vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+		break;
+
+		/*
+		 *	"option exists" == true.
+		 *	"option does not exist" == false
+		 *
+		 *	fr_dhcpv4_next_encodable() takes care of skipping bools which are false.
+		 */
+	case FR_TYPE_BOOL:
 		break;
 
 	default:
@@ -824,7 +833,8 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 extern fr_test_point_pair_encode_t dhcpv4_tp_encode_pair;
 fr_test_point_pair_encode_t dhcpv4_tp_encode_pair = {
 	.test_ctx	= encode_test_ctx,
-	.func		= fr_dhcpv4_encode_option
+	.func		= fr_dhcpv4_encode_option,
+	.next_encodable	= fr_dhcpv4_next_encodable,
 };
 
 
