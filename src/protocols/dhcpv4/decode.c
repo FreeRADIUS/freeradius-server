@@ -42,7 +42,7 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 			    uint8_t const *data, size_t data_len, void *decode_ctx);
 
 static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-			    uint8_t const *data, size_t data_len, void *decode_ctx);
+			    uint8_t const *data, size_t data_len, void *decode_ctx, bool exact);
 
 /** Returns the number of array members for arrays with fixed element sizes
  *
@@ -77,7 +77,7 @@ static int fr_dhcpv4_array_members(size_t *out, size_t len, fr_dict_attr_t const
  *	Decode ONE value into a VP
  */
 static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *da,
-			    uint8_t const *data, size_t data_len, UNUSED void *decode_ctx)
+			    uint8_t const *data, size_t data_len, UNUSED void *decode_ctx, bool exact)
 {
 	fr_pair_t *vp;
 	uint8_t const *p = data;
@@ -128,6 +128,8 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 	case FR_TYPE_IPV6_ADDR:
 		if ((size_t) (end - p) < sizeof(vp->vp_ipv6addr)) goto raw;
 
+		if (exact && ((size_t) (end - p) > sizeof(vp->vp_ipv6addr))) goto raw;
+
 		memcpy(&vp->vp_ipv6addr, p, sizeof(vp->vp_ipv6addr));
 		vp->vp_ip.af = AF_INET6;
 		vp->vp_ip.scope_id = 0;
@@ -138,6 +140,8 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 
 	case FR_TYPE_IPV6_PREFIX:
 		if ((size_t) (end - (p + 1)) < sizeof(vp->vp_ipv6addr)) goto raw;
+
+		if (exact && ((size_t) (end - p) > sizeof(vp->vp_ipv6addr))) goto raw;
 
 		memcpy(&vp->vp_ipv6addr, p + 1, sizeof(vp->vp_ipv6addr));
 		vp->vp_ip.af = AF_INET6;
@@ -163,8 +167,15 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 			FR_PROTO_TRACE("decoding as unknown type");
 			if (fr_pair_to_unknown(vp) < 0) return -1;
 			fr_pair_value_memdup(vp, p, end - p, true);
-			ret = data_len;
+			p = end;
+			break;
 		}
+
+		if (exact && (ret != (end - p))) {
+			talloc_free(vp);
+			goto raw;
+		}
+
 		p += (size_t) ret;
 	}
 	}
@@ -305,6 +316,10 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t c
 			 *	options" option.  Return it as random crap.
 			 */
 		raw:
+			/*
+			 *	@todo - the "goto raw" can leave partially decoded VPs in the output.  we'll
+			 *	need a temporary cursor / pair_list to fix that.
+			 */
 			slen = decode_raw(ctx, out, parent, p, end - p, decode_ctx);
 			if (slen < 0) return slen - (p - data);
 
@@ -355,6 +370,10 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 		p = data;
 
 	raw:
+		/*
+		 *	@todo - the "goto raw" can leave partially decoded VPs in the output.  we'll
+		 *	need a temporary cursor / pair_list to fix that.
+		 */
 		vp = fr_raw_from_network(ctx, parent, p, (data + data_len) - p);
 		if (!vp) return -1;
 		fr_pair_append(out, vp);
@@ -367,9 +386,11 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 	 */
 	for (i = 0, p = data; i < values; i++) {
 		fr_assert((p + value_len) <= (data + data_len));
-		len = decode_value(ctx, out, parent, p, value_len, decode_ctx);
+		len = decode_value(ctx, out, parent, p, value_len, decode_ctx, false);
 		if (len <= 0) return len;
-		if (len != (ssize_t)value_len) goto raw;
+		if (len != (ssize_t)value_len) {
+			goto raw;
+		}
 		p += len;
 	}
 
@@ -545,7 +566,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = decode_tlv(ctx, out, da, data + 2, len, decode_ctx);
 
 	} else {
-		slen = decode_value(ctx, out, da, data + 2, len, decode_ctx);
+		slen = decode_value(ctx, out, da, data + 2, len, decode_ctx, true);
 	}
 
 	if (slen < 0) {
@@ -653,7 +674,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			slen = decode_array(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx);
 
 		} else {
-			slen = decode_value(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx);
+			slen = decode_value(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx, true);
 		}
 		if (slen <= 0) return slen;
 
