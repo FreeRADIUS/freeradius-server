@@ -72,6 +72,26 @@ static int fr_dhcpv4_array_members(size_t *out, size_t len, fr_dict_attr_t const
 	return len / da->flags.length;
 }
 
+/** Handle arrays of DNS labels for fr_struct_from_network()
+ *
+ */
+static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
+				       fr_dict_attr_t const *parent,
+				       uint8_t const *data, size_t const data_len, void *decode_ctx)
+{
+#if 0
+	/*
+	 *	@todo - we might need to limit this to only one DNS label.
+	 */
+	if ((parent->type == FR_TYPE_STRING) && !parent->flags.extra && parent->flags.subtype) {
+		return decode_dns_labels(ctx, out, parent, data, data_len, decode_ctx);
+	}
+#endif
+
+	if (parent->flags.array) return decode_array(ctx, out, parent, data, data_len, decode_ctx);
+
+	return decode_value(ctx, out, parent, data, data_len, decode_ctx, true);
+}
 
 /*
  *	Decode ONE value into a VP
@@ -85,6 +105,19 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 
 	FR_PROTO_TRACE("%s called to parse %zu bytes", __FUNCTION__, data_len);
 	FR_PROTO_HEX_DUMP(data, data_len, NULL);
+
+	/*
+	 *	Structs create their own VP wrapper.
+	 */
+	if (da->type == FR_TYPE_STRUCT) {
+		ssize_t slen;
+
+		slen = fr_struct_from_network(ctx, out, da, data, data_len, true,
+					      decode_ctx, decode_value_trampoline, decode_tlv);
+		if (slen < 0) return slen;
+
+		return data_len;
+	}
 
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) return -1;
