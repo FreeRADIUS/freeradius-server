@@ -90,7 +90,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	FR_PROTO_TRACE("%zu byte(s) available for value", fr_dbuff_remaining(dbuff));
 
 	/*
-	 *	Pack multiple attributes into into a single option
+	 *	Structures are special.
 	 */
 	if ((vp->da->type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
 		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value_trampoline, encode_tlv);

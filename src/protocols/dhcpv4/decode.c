@@ -500,7 +500,6 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	option = data[0];
 	len = data[1];
 	if (len > (data_len - 2)) {
-		fprintf(stderr, "FAIL %d\n", __LINE__);
 		fr_strerror_printf("%s: Option overflows input.  "
 				   "Optional length must be less than %zu bytes, got %zu bytes",
 				   __FUNCTION__, data_len - 2, len);
@@ -661,18 +660,15 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		/*
 		 *	The actual amount of data we decoded, including the various headers.
 		 */
-		slen = next - data;
-		goto done;
+		FR_PROTO_TRACE("decoding option complete, %zu decoded, returning %zu byte(s)", slen, (size_t) (next - data));
+		return next - data;
 	}
 
 	slen = decode_option(ctx, out, fr_dict_root(dict_dhcpv4), data, data[1] + 2, decode_ctx);
-	if (slen < 0) {
-		return slen;
-	}
+	if (slen < 0) return slen;
 
-done:
-	FR_PROTO_TRACE("decoding option complete, returning %zu byte(s)", slen);
-	return slen;
+	FR_PROTO_TRACE("decoding option complete, %zu decoded, returning %u byte(s)", slen, data[1] + 2);
+	return data[1] + 2;
 }
 
 static int _decode_test_ctx(UNUSED fr_dhcpv4_ctx_t *test_ctx)
