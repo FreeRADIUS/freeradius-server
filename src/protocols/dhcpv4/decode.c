@@ -27,6 +27,7 @@
 #include <freeradius-devel/io/test_point.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/struct.h>
+#include <freeradius-devel/util/dns.h>
 
 #include "dhcpv4.h"
 #include "attrs.h"
@@ -44,6 +45,10 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t data_len, void *decode_ctx, bool exact);
 
+static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
+				 fr_dict_attr_t const *parent,
+				 uint8_t const *data, size_t const data_len, void *decode_ctx);
+
 /** Handle arrays of DNS labels for fr_struct_from_network()
  *
  */
@@ -51,14 +56,13 @@ static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				       fr_dict_attr_t const *parent,
 				       uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
-#if 0
 	/*
 	 *	@todo - we might need to limit this to only one DNS label.
 	 */
-	if ((parent->type == FR_TYPE_STRING) && !parent->flags.extra && parent->flags.subtype) {
+	if ((parent->type == FR_TYPE_STRING) && !parent->flags.extra &&
+	    (parent->flags.subtype == FLAG_ENCODE_DNS_LABEL)) {
 		return decode_dns_labels(ctx, out, parent, data, data_len, decode_ctx);
 	}
-#endif
 
 	if (parent->flags.array) return decode_array(ctx, out, parent, data, data_len, decode_ctx);
 
@@ -429,6 +433,75 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 	return data_len;
 }
 
+static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
+				 fr_dict_attr_t const *parent,
+				 uint8_t const *data, size_t const data_len, void *decode_ctx)
+{
+	ssize_t slen;
+	size_t total, labels_len;
+	fr_pair_t *vp;
+	uint8_t const *next = data;
+
+	FR_PROTO_HEX_DUMP(data, data_len, "decode_dns_labels");
+
+	/*
+	 *	This function handles both single-valued and array
+	 *	types.  It's just easier that way.
+	 */
+	if (!parent->flags.array) {
+		slen = fr_dns_label_uncompressed_length(data, data, data_len, &next, NULL);
+		if (slen <= 0) goto raw;
+
+		/*
+		 *	If the DNS label doesn't exactly fill the option, it's an error.
+		 *
+		 *	@todo - we may want to remove this check.
+		 */
+		if (next != (data + data_len)) goto raw;
+
+		labels_len = next - data; /* decode only what we've found */
+	} else {
+		/*
+		 *	Get the length of the entire set of labels, up
+		 *	to (and including) the final 0x00.
+		 *
+		 *	If any of the labels point outside of this
+		 *	area, OR they are otherwise invalid, then that's an error.
+		 */
+		slen = fr_dns_labels_network_verify(data, data, data_len, data, NULL);
+		if (slen < 0) {
+		raw:
+			return decode_raw(ctx, out, parent, data, data_len, decode_ctx);
+		}
+
+		labels_len = slen;
+	}
+
+	/*
+	 *	Loop over the input buffer, decoding the labels one by
+	 *	one.
+	 */
+	for (total = 0; total < labels_len; total += slen) {
+		vp = fr_pair_afrom_da(ctx, parent);
+		if (!vp) return PAIR_DECODE_OOM;
+
+		/*
+		 *	Having verified the input above, this next
+		 *	function should never fail unless there's a
+		 *	bug in the code.
+		 */
+		slen = fr_dns_label_to_value_box(vp, &vp->data, data, labels_len, data + total, true, NULL);
+		if (slen <= 0) {
+			talloc_free(vp);
+			goto raw;
+		}
+
+		fr_pair_append(out, vp);
+	}
+
+	return labels_len;
+}
+
 /*
  *  One VSA option may contain multiple vendors, each vendor
  *  may contain one or more sub-options.
@@ -566,29 +639,29 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	}
 	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
 
-#if 0
-	if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype) {
+	if ((da->type == FR_TYPE_STRING) && !da->flags.extra &&
+	    (da->flags.subtype == FLAG_ENCODE_DNS_LABEL)) {
 		fr_pair_list_t tmp;
 
 		fr_pair_list_init(&tmp);
 
 		slen = decode_dns_labels(ctx, &tmp, da, data + 2, len, decode_ctx);
-		if (slen < 0) goto raw;
+		if (slen < 0) {
+		raw:
+			fr_pair_list_free(&tmp);
+			slen = decode_raw(ctx, out, da, data + 2, len, decode_ctx);
+			if (slen < 0) return slen;
+		}
 
 		/*
 		 *	The DNS labels may only partially fill the
 		 *	option.  If so, then it's a decode error.
 		 */
-		if ((size_t) slen != len) {
-			fr_pair_list_free(&tmp);
-			goto raw;
-		}
+		if ((size_t) slen != len) goto raw;
 
 		fr_pair_list_append(out, &tmp);
 
-	} else
-#endif
-	if (da->flags.array) {
+	} else if (da->flags.array) {
 		slen = decode_array(ctx, out, da, data + 2, len, decode_ctx);
 
 	} else if (da->type == FR_TYPE_VSA) {

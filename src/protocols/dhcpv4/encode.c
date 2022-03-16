@@ -28,6 +28,8 @@
 #include <freeradius-devel/util/dbuff.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/struct.h>
+#include <freeradius-devel/util/dns.h>
+
 #include "dhcpv4.h"
 #include "attrs.h"
 
@@ -123,11 +125,30 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	case FR_TYPE_BOOL:
 		break;
 
+	case FR_TYPE_STRING:
+		/*
+		 *	DNS labels get a special encoder.  DNS labels
+		 *	MUST NOT be compressed in DHCP.
+		 *
+		 *	https://tools.ietf.org/html/rfc8415#section-10
+		 */
+		if (!da->flags.extra && (da->flags.subtype == FLAG_ENCODE_DNS_LABEL)) {
+			fr_dbuff_marker_t	last_byte, src;
+
+			fr_dbuff_marker(&last_byte, &work_dbuff);
+			fr_dbuff_marker(&src, &work_dbuff);
+			slen = fr_dns_label_from_value_box_dbuff(&work_dbuff, false, &vp->data, NULL);
+			if (slen < 0) return slen;
+			break;
+		}
+		FALL_THROUGH;
+
 	default:
 		slen = fr_value_box_to_network(&work_dbuff, &vp->data);
 		if (slen < 0) return slen;
 		break;
 	}
+
 	vp = fr_dcursor_next(cursor);	/* We encoded a leaf, advance the cursor */
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
@@ -152,22 +173,18 @@ static ssize_t encode_array(fr_dbuff_t *dbuff,
 				"%s: Internal sanity check failed, attribute \"%s\" does not have array bit set",
 				__FUNCTION__, da->name)) return PAIR_ENCODE_FATAL_ERROR;
 
-#if 0
 	/*
 	 *	DNS labels have internalized length, so we don't need
 	 *	length headers.
-	 *
-	 *	@todo - not yet functional for DHCPv4/
 	 */
-	if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype){
+	if ((da->type == FR_TYPE_STRING) && !da->flags.extra && (da->flags.subtype == FLAG_ENCODE_DNS_LABEL)) {
 		while (fr_dbuff_extend(&work_dbuff)) {
 			vp = fr_dcursor_current(cursor);
 
 			/*
-			 *	DNS labels get a special encoder.  DNS labels
-			 *	MUST NOT be compressed in DHCP.
-			 *
-			 *	https://tools.ietf.org/html/rfc8415#section-10
+			 *	DNS labels get a special encoder.  DNS labels are generally not compressed in
+			 *	DHCPv4.  But sometimes are compressed.  Based on whatever the RFC author
+			 *	decided was a good idea that day.
 			 */
 			slen = fr_dns_label_from_value_box_dbuff(&work_dbuff, false, &vp->data, NULL);
 			if (slen <= 0) return PAIR_ENCODE_FATAL_ERROR;
@@ -178,7 +195,6 @@ static ssize_t encode_array(fr_dbuff_t *dbuff,
 
 		return fr_dbuff_set(dbuff, &work_dbuff);
 	}
-#endif
 
 	while (fr_dbuff_extend(&work_dbuff)) {
 		bool		len_field = false;
