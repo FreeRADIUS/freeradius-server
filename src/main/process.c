@@ -1354,7 +1354,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 	}
 
 	if (rcode < 0) {
-		RATE_LIMIT(INFO("Dropping packet without response because of error: %s", fr_strerror()));
+		RATE_LIMIT(INFO("Dropping packet without response because of error: %s (from client %s)", fr_strerror(), request->client->shortname));
 		request->reply->offset = -2; /* bad authenticator */
 		return 0;
 	}
