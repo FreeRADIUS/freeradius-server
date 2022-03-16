@@ -330,6 +330,11 @@ process_error:
 		status = LDAP_PROC_TIMEOUT;
 		break;
 
+	case LDAP_SYNC_REFRESH_REQUIRED:
+		fr_strerror_const("Refresh required");
+		status = LDAP_PROC_REFRESH_REQUIRED;
+		break;
+
 	case LDAP_BUSY:
 	case LDAP_UNAVAILABLE:
 	case LDAP_SERVER_DOWN:
