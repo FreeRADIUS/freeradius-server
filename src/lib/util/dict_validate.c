@@ -440,6 +440,8 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		break;
 	}
 
+	flags->is_known_width |= (flags->length > 0); /* for fixed-size string / octets */
+
 	/*
 	 *	type_size is used to limit the maximum attribute number, so it's checked first.
 	 */
