@@ -116,7 +116,9 @@ static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	/*
 	 *	@todo - we might need to limit this to only one DNS label.
 	 */
-	if ((parent->type == FR_TYPE_STRING) && !parent->flags.extra && parent->flags.subtype) {
+	if ((parent->type == FR_TYPE_STRING) && !parent->flags.extra &&
+	    ((parent->flags.subtype == FLAG_ENCODE_DNS_LABEL) ||
+	     (parent->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL))) {
 		return decode_dns_labels(ctx, out, parent, data, data_len, decode_ctx);
 	}
 
@@ -572,7 +574,10 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		}
 
 		fr_pair_append(out, vp);
-	} else if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype) {
+
+	} else if ((da->type == FR_TYPE_STRING) && !da->flags.extra &&
+		   ((da->flags.subtype == FLAG_ENCODE_DNS_LABEL) ||
+		    (da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL))) {
 		fr_pair_list_t tmp;
 
 		fr_pair_list_init(&tmp);
