@@ -289,18 +289,27 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	Fixed-size fields get decoded with a simple decoder.
 	 */
 	element_len = fr_dhcpv6_attr_sizes[parent->type][0];
+	if (!element_len) element_len = parent->flags.length;
+
 	if (element_len > 0) {
+		size_t num_elements = (end - p) / element_len;
+
+		FR_PROTO_TRACE("decode_array %zu input expected %zd total (%zu elements * %zu size)",
+			       (size_t) (end - p), num_elements * element_len, num_elements, element_len);
+
+		if ((num_elements * element_len) != (size_t) (end - p)) {
+		raw:
+			slen = decode_raw(ctx, out, parent, p, end - p , decode_ctx);
+			if (slen < 0) return slen;
+			return data_len;
+		}
+
 		while (p < end) {
 			/*
 			 *	Not enough room for one more element,
 			 *	decode the last bit as raw data.
 			 */
-			if ((size_t) (end - p) < element_len) {
-			raw:
-				slen = decode_raw(ctx, out, parent, p, end - p , decode_ctx);
-				if (slen < 0) return slen;
-				break;
-			}
+			if ((size_t) (end - p) < element_len) goto raw;
 
 			slen = decode_value(ctx, out, parent, p, element_len, decode_ctx);
 			if (slen < 0) return slen;
