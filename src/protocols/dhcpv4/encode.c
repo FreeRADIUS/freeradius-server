@@ -184,12 +184,7 @@ static ssize_t encode_array(fr_dbuff_t *dbuff,
 		bool		len_field = false;
 		fr_dbuff_t	element_dbuff = FR_DBUFF(&work_dbuff);
 
-		vp = fr_dcursor_current(cursor);
-
-		/*
-		 *	@todo - get correct lengths.
-		 */
-		element_len = fr_value_box_network_length(&vp->data);
+		element_len = fr_dhcpv4_option_len(fr_dcursor_current(cursor));
 
 		/*
 		 *	If the data is variable length i.e. strings or octets

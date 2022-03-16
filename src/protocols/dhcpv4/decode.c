@@ -44,34 +44,6 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t data_len, void *decode_ctx, bool exact);
 
-/** Returns the number of array members for arrays with fixed element sizes
- *
- */
-static int fr_dhcpv4_array_members(size_t *out, size_t len, fr_dict_attr_t const *da)
-{
-	*out = len;
-
-	/*
-	 *	Not an array attribute.
-	 */
-	if (!da->flags.array) return 1;
-
-	/*
-	 *	Is an array, but isn't fixed size.
-	 *
-	 *	Huh?  The dictionary parser should really have caught
-	 *	this.
-	 *
-	 *	@todo - handle DNS labels, which are _delimited_ strings
-	 */
-	if (!da->flags.length) {
-		return 1;
-	}
-
-	*out = da->flags.length;
-	return len / da->flags.length;
-}
-
 /** Handle arrays of DNS labels for fr_struct_from_network()
  *
  */
@@ -383,48 +355,75 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t c
 static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t data_len, void *decode_ctx)
 {
-	unsigned int	values, i;		/* How many values we need to decode */
-	uint8_t const	*p = data;
-	size_t		value_len;
-	ssize_t		len;
+	uint8_t const  		*p = data, *end = p + data_len;
+	ssize_t			slen;
+	size_t			element_len;
 
-	FR_PROTO_TRACE("%s called to parse %zu byte(s)", __FUNCTION__, data_len);
-	FR_PROTO_HEX_DUMP(data, data_len, NULL);
+	FR_PROTO_HEX_DUMP(data, data_len, "decode_array");
+
+	if (!fr_cond_assert_msg(parent->flags.array,
+				"%s: Internal sanity check failed, attribute \"%s\" does not have array bit set",
+				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
 
 	/*
-	 *	Values with a fixed length may be coalesced into a single option
+	 *	Fixed-size fields get decoded with a simple decoder.
 	 */
-	values = fr_dhcpv4_array_members(&value_len, data_len, parent);
-	FR_PROTO_TRACE("found %u coalesced values (%zu bytes each)", values, value_len);
+	element_len = fr_dhcpv4_attr_sizes[parent->type][0];
+	if (!element_len) element_len = parent->flags.length;
 
-	if (parent->flags.array && (values * value_len) != data_len) {
-		fr_pair_t *vp;
+	if (element_len > 0) {
+		size_t num_elements = (end - p) / element_len;
 
-		p = data;
+		FR_PROTO_TRACE("decode_array %zu input expected %zd total (%zu elements * %zu size)",
+			       (size_t) (end - p), num_elements * element_len, num_elements, element_len);
 
-	raw:
+		if ((num_elements * element_len) != (size_t) (end - p)) {
+		raw:
+			slen = decode_raw(ctx, out, parent, p, end - p , decode_ctx);
+			if (slen < 0) return slen;
+			return data_len;
+		}
+
+		while (p < end) {
+			/*
+			 *	Not enough room for one more element,
+			 *	decode the last bit as raw data.
+			 */
+			if ((size_t) (end - p) < element_len) goto raw;
+
+			slen = decode_value(ctx, out, parent, p, element_len, decode_ctx, false);
+			if (slen < 0) return slen;
+			if (!fr_cond_assert((size_t) slen == element_len)) return -(p - data);
+
+			p += slen;
+		}
+
 		/*
-		 *	@todo - the "goto raw" can leave partially decoded VPs in the output.  we'll
-		 *	need a temporary cursor / pair_list to fix that.
+		 *	We MUST have decoded the entire input.  If
+		 *	not, we ignore the extra bits.
 		 */
-		vp = fr_raw_from_network(ctx, parent, p, (data + data_len) - p);
-		if (!vp) return -1;
-		fr_pair_append(out, vp);
 		return data_len;
 	}
 
 	/*
-	 *	Decode each of the (maybe) coalesced values as its own
-	 *	attribute.
+	 *	If the data is variable length i.e. strings or octets
+	 *	there is a length field before each element.
+	 *
+	 *	Note that we don't bother checking if the data type is
+	 *	string or octets.  There will only be issues if
+	 *	someone edited the dictionaries and broke them.
 	 */
-	for (i = 0, p = data; i < values; i++) {
-		fr_assert((p + value_len) <= (data + data_len));
-		len = decode_value(ctx, out, parent, p, value_len, decode_ctx, false);
-		if (len <= 0) return len;
-		if (len != (ssize_t)value_len) {
-			goto raw;
-		}
-		p += len;
+	while (p < end) {
+		if ((end - p) < 1) goto raw;
+
+		element_len = *p;
+
+		if ((size_t) (end - p) < (((size_t) element_len) + 1)) goto raw;
+
+		p += 1;
+		slen = decode_value(ctx, out, parent, p, element_len, decode_ctx, false);
+		if (slen < 0) return slen;
+		p += slen;
 	}
 
 	return data_len;
