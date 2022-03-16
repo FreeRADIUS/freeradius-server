@@ -34,6 +34,8 @@ extern "C" {
 #include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/protocol/dhcpv4/rfc2131.h>
 
+extern size_t const fr_dhcpv4_attr_sizes[FR_TYPE_MAX + 1][2];
+
 #define DHCP_CHADDR_LEN	(16)
 #define DHCP_SNAME_LEN	(64)
 #define DHCP_FILE_LEN	(128)
@@ -151,6 +153,7 @@ typedef struct {
  */
 int8_t		fr_dhcpv4_attr_cmp(void const *a, void const *b);
 
+size_t		fr_dhcpv4_option_len(fr_pair_t const *vp);
 bool		fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, uint32_t *xid);
 fr_radius_packet_t	*fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len);
 bool 		fr_dhcpv4_is_encodable(void const *item, void const *uctx);
