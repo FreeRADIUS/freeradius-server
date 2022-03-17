@@ -371,7 +371,8 @@ void *fr_dhcpv4_next_encodable(fr_dlist_head_t *list, void *to_eval, void *uctx)
 	for (c = to_eval; c; c = fr_dlist_next(list, c)) {
 		PAIR_VERIFY(c);
 		if (c->da->dict != dict || c->da->flags.internal) continue;
-		if (c->da->type == FR_TYPE_BOOL && !c->vp_bool) continue;
+
+		if (c->da->type == FR_TYPE_BOOL && da_is_bool_exists(c->da) && !c->vp_bool) continue;
 
 		break;
 	}
@@ -746,6 +747,7 @@ static fr_table_num_ordered_t const subtype_table[] = {
 	{ L("dns_label"),			FLAG_ENCODE_DNS_LABEL },
 	{ L("encode=dns_label"),		FLAG_ENCODE_DNS_LABEL },
 	{ L("prefix=split"),			FLAG_ENCODE_SPLIT_PREFIX },
+	{ L("encode=exists"),			FLAG_ENCODE_BOOL_EXISTS },
 };
 
 static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *parent,
@@ -780,6 +782,11 @@ static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *pare
 
 	if ((type != FR_TYPE_IPV4_PREFIX) && (flags->subtype == FLAG_ENCODE_SPLIT_PREFIX)) {
 		fr_strerror_const("The 'split' flag can only be used with attributes of type 'ipv4prefix'");
+		return false;
+	}
+
+	if ((type != FR_TYPE_BOOL) && (flags->subtype == FLAG_ENCODE_BOOL_EXISTS)) {
+		fr_strerror_const("The 'encode=exists' flag can only be used with attributes of type 'bool'");
 		return false;
 	}
 

@@ -125,6 +125,10 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *	Rapid-Commit does this.  Options 19/20 require encoding as one byte of 0/1.
 		 */
 	case FR_TYPE_BOOL:
+		if (da_is_bool_exists(vp->da)) {
+			break;
+		}
+		fr_dbuff_in(&work_dbuff, (uint8_t) (vp->vp_bool == true));
 		break;
 
 	case FR_TYPE_IPV4_PREFIX:

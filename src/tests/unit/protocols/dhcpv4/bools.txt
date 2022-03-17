@@ -1,0 +1,64 @@
+#
+#  Test vectors for bools, which are shit and random.
+#
+proto dhcpv4
+proto-dictionary dhcpv4
+fuzzer-out dhcpv4
+
+encode-pair Rapid-Commit = yes
+match 50 00
+
+decode-pair -
+match Rapid-Commit = yes
+
+#
+#  false is "don't encode"
+#
+encode-pair Rapid-Commit = false
+match 
+
+#
+#  Normal bools get encoded as 0/1
+#
+encode-pair IP-Forward-Enable = false
+match 13 01 00
+
+encode-pair IP-Forward-Enable = true
+match 13 01 01
+
+decode-pair -
+match IP-Forward-Enable = yes
+
+#
+#  All non-zero values are "true"
+#
+decode-pair 13 01 88
+match IP-Forward-Enable = yes
+
+#
+#  Rapid-Commit is stupid
+#
+encode-pair Rapid-Commit = yes
+match 50 00
+
+decode-pair -
+match Rapid-Commit = yes
+
+#
+#  false is "don't encode"
+#
+encode-pair Rapid-Commit = false
+match 
+
+#
+#  We allow Rapid-Commit to be normal, if it so chooses
+#
+decode-pair 50 01 00
+match Rapid-Commit = no
+
+decode-pair 50 01 01
+match Rapid-Commit = yes
+
+
+count
+match 27
