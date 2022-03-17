@@ -166,6 +166,51 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 		talloc_free(vp);
 		return 0;
 
+	case FR_TYPE_IPV4_PREFIX:
+		fr_value_box_init(&vp->data, FR_TYPE_IPV4_PREFIX, vp->da, true);
+		vp->vp_ip.af = AF_INET;
+
+		/*
+		 *	4 octets of address
+		 *	4 octets of mask
+		 */
+		if (da_is_split_prefix(da)) {
+			uint32_t ipaddr, mask;
+
+			if (data_len != 8) goto raw;
+
+			ipaddr = fr_net_to_uint32(p);
+			mask = fr_net_to_uint32(p + 4);
+			p += 8;
+
+			/*
+			 *	0/0 means a prefix of 0, too.
+			 */
+			if (!mask) {
+				break;
+			}
+
+			/*
+			 *	Try to figure out the prefix value from the mask.
+			 */
+			while (mask) {
+				vp->vp_ip.prefix++;
+				mask <<= 1;
+			}
+
+			/*
+			 *	Mash the IP based on the calculated mask.  We don't really care if the mask
+			 *	has holes, or if the IP address overlaps with the mask.  We just fix it all up
+			 *	so it's sane.
+			 */
+			mask = ~(uint32_t) 0;
+			mask <<= (32 - vp->vp_ip.prefix);
+
+			vp->vp_ipv4addr = htonl(ipaddr & mask);
+			break;
+		}
+		FALL_THROUGH;
+
 	default:
 	{
 		ssize_t ret;
@@ -375,6 +420,11 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 	 */
 	element_len = fr_dhcpv4_attr_sizes[parent->type][0];
 	if (!element_len) element_len = parent->flags.length;
+
+	/*
+	 *	Fix up insane nonsense.
+	 */
+	if (da_is_split_prefix(parent)) element_len = 8;
 
 	if (element_len > 0) {
 		size_t num_elements = (end - p) / element_len;

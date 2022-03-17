@@ -262,6 +262,10 @@ size_t fr_dhcpv4_option_len(fr_pair_t const *vp)
 		fr_assert_fail(NULL);
 		return 0;
 
+	case FR_TYPE_IPV4_PREFIX:
+		if (da_is_split_prefix(vp->da)) return 8;
+		FALL_THROUGH;
+
 	default:
 		return fr_dhcpv4_attr_sizes[vp->vp_type][0];
 	}
@@ -741,6 +745,7 @@ void fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 static fr_table_num_ordered_t const subtype_table[] = {
 	{ L("dns_label"),			FLAG_ENCODE_DNS_LABEL },
 	{ L("encode=dns_label"),		FLAG_ENCODE_DNS_LABEL },
+	{ L("prefix=split"),			FLAG_ENCODE_SPLIT_PREFIX },
 };
 
 static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *parent,
@@ -770,6 +775,11 @@ static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *pare
 
 	if ((type != FR_TYPE_STRING) && (flags->subtype == FLAG_ENCODE_DNS_LABEL)) {
 		fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
+		return false;
+	}
+
+	if ((type != FR_TYPE_IPV4_PREFIX) && (flags->subtype == FLAG_ENCODE_SPLIT_PREFIX)) {
+		fr_strerror_const("The 'split' flag can only be used with attributes of type 'ipv4prefix'");
 		return false;
 	}
 

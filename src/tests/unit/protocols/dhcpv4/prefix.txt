@@ -1,0 +1,15 @@
+#
+#  Test vectors for umpteen different stupid IPv4 prefix formats.
+#
+proto dhcpv4
+proto-dictionary dhcpv4
+fuzzer-out dhcpv4
+
+decode-pair 15 08 7f 01 02 03 ff 00 00 00
+match Policy-Filter = 127.0.0.0/8
+
+encode-pair -
+match 15 08 7f 00 00 00 ff 00 00 00
+
+count
+match 7

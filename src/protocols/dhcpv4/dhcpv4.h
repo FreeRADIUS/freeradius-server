@@ -71,10 +71,11 @@ typedef enum {
 enum {
 	FLAG_ENCODE_NONE = 0,				//!< no particular encoding for DHCPv6 strings
 	FLAG_ENCODE_DNS_LABEL,				//!< encode as DNS label
+	FLAG_ENCODE_SPLIT_PREFIX,			//!< encode IPv4 prefixes as Policy-Filter, split into IP/mask
 };
 
 #define da_is_dns_label(_da) (!(_da)->flags.extra && ((_da)->flags.subtype == FLAG_ENCODE_DNS_LABEL))
-
+#define da_is_split_prefix(_da) (!(_da)->flags.extra && ((_da)->flags.subtype == FLAG_ENCODE_SPLIT_PREFIX))
 
 typedef struct {
 	uint8_t		opcode;

@@ -51,7 +51,7 @@ ATTRIBUTE	Bootp-Extensions-Path			18	string
 ATTRIBUTE	IP-Forward-Enable			19	bool
 ATTRIBUTE	Source-Route-Enable			20	bool
 # Routing Policy Filters
-ATTRIBUTE	Policy-Filter				21	octets
+ATTRIBUTE	Policy-Filter				21	ipv4prefix	prefix=split,array
 ATTRIBUTE	Max-Datagram-Reassembly-Size		22	short
 ATTRIBUTE	Default-IP-TTL				23	octets
 ATTRIBUTE	Path-MTU-Aging-Timeout			24	integer

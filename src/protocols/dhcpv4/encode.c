@@ -121,9 +121,25 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *	"option does not exist" == false
 		 *
 		 *	fr_dhcpv4_next_encodable() takes care of skipping bools which are false.
+		 *
+		 *	Rapid-Commit does this.  Options 19/20 require encoding as one byte of 0/1.
 		 */
 	case FR_TYPE_BOOL:
 		break;
+
+	case FR_TYPE_IPV4_PREFIX:
+		if (da_is_split_prefix(vp->da)) {
+			uint32_t mask;
+
+			mask = ~((~(uint32_t) 0) >> vp->vp_ip.prefix);
+
+			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff,
+						  (uint8_t const *)&vp->vp_ipv4addr,
+						  sizeof(vp->vp_ipv4addr));
+			fr_dbuff_in(&work_dbuff, mask);
+			break;
+		}
+		goto from_network;
 
 	case FR_TYPE_STRING:
 		/*
@@ -144,6 +160,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		FALL_THROUGH;
 
 	default:
+	from_network:
 		slen = fr_value_box_to_network(&work_dbuff, &vp->data);
 		if (slen < 0) return slen;
 		break;
