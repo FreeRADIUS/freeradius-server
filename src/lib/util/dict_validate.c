@@ -117,6 +117,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		case FR_TYPE_TIME_DELTA:
 		case FR_TYPE_STRING:
 		case FR_TYPE_OCTETS:
+		case FR_TYPE_STRUCT:
 			break;
 		}
 
@@ -228,9 +229,14 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 				return false;
 			}
 
+			/*
+			 *	If we have arrays of structs, then the structure MUST be known width.
+			 */
+			flags->is_known_width |= flags->array;
+
 			ALLOW_FLAG(extra);
-			/* @todo - allow arrays of struct? */
 			ALLOW_FLAG(subtype);
+			ALLOW_FLAG(array);
 			break;
 
 		case FR_TYPE_TLV:
@@ -326,6 +332,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	case FR_TYPE_STRUCT:
 		ALLOW_FLAG(internal);
+		ALLOW_FLAG(array);
 		if (all_flags) {
 			fr_strerror_const("Invalid flag for attribute of type 'struct'");
 			return false;
@@ -483,6 +490,11 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		ALLOW_FLAG(extra);
 		ALLOW_FLAG(subtype);
 
+		if (parent->flags.is_known_width && !flags->is_known_width && !flags->length) {
+			fr_strerror_const("Variable-sized fields cannot be used within a 'struct' which is 'array'");
+			return false;
+		}
+
 		if (flags->array) {
 			switch (type) {
 			case FR_TYPE_FIXED_SIZE:
@@ -494,6 +506,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 				break;
 			}
 		}
+
 		if (all_flags) {
 			fr_strerror_const("Invalid flag for attribute inside of a 'struct'");
 			return false;
@@ -662,31 +675,6 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		return false;
 	}
 
-#if 0
-	if (parent->type == FR_TYPE_STRUCT) {
-		/*
-		 *	@todo - check PREVIOUS element.  if it's non-fixed size, then error out.
-		 *	Move validation code from dict_read_process_member() to here
-		 */
-		switch (type) {
-		case FR_TYPE_FIXED_SIZE:
-			break;
-
-		case FR_TYPE_TLV:
-		case FR_TYPE_STRING:
-		case FR_TYPE_OCTETS:
-			if (flags->length != 0) {
-				fr_strerror_const("The 'octets' type MUST be fixed-width when used inside of a 'struct'");
-				return false;
-			}
-			break;
-
-		default:
-			break;
-		}
-	}
-#endif
-
 	/*
 	 *	Initialize the length field, which is needed for the attr_valid() callback.
 	 */
@@ -696,6 +684,8 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		fr_value_box_init(&box, type, NULL, false);
 		flags->length = fr_value_box_network_length(&box);
 	}
+
+	if (type == FR_TYPE_STRUCT) flags->is_known_width |= flags->array;
 
 	/*
 	 *	Run protocol-specific validation functions, BEFORE we

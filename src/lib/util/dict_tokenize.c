@@ -1106,6 +1106,11 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 
 	memcpy(&flags, base_flags, sizeof(flags));
 
+	/*
+	 *	If our parent is a fixed-size struct, then we have to be fixed-size, too.
+	 */
+	flags.is_known_width |= ctx->stack[ctx->stack_depth].da->flags.is_known_width;
+
 	if (dict_process_type_field(ctx, argv[1], &type, &flags) < 0) return -1;
 
 	/*
