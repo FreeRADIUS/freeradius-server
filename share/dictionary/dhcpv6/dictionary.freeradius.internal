@@ -15,7 +15,7 @@
 #
 FLAGS	internal
 
-ATTRIBUTE	Packet-Type				65536	integer
+ATTRIBUTE	Packet-Type				65536	uint32
 VALUE	Packet-Type			Solicit			1
 VALUE	Packet-Type			Advertise		2
 VALUE	Packet-Type			Request			3
