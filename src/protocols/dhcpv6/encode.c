@@ -805,10 +805,12 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 	slen = fr_dhcpv6_encode(dbuff, NULL, 0, 0, &vp->vp_group);
 	if (slen <= 0) {
 		fr_dbuff_marker_release(&start_m);
+		fr_dbuff_marker_release(&len_m);
 		return slen;
 	}
 
 	fr_dbuff_in(&len_m, (uint16_t)slen);		/* Write out the length value */
+	fr_dbuff_marker_release(&len_m);
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(dbuff), fr_dbuff_behind(&start_m), "Done Relay-Message header");
 
