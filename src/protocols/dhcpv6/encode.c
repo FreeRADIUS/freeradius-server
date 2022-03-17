@@ -768,7 +768,7 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 				    fr_da_stack_t *da_stack, unsigned int depth,
 				    fr_dcursor_t *cursor, UNUSED void *encode_ctx)
 {
-	fr_dbuff_marker_t	start_m;
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_marker_t	len_m;
 	ssize_t			slen;
 
@@ -791,28 +791,22 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 	/*
 	 *	Write out the header
 	 */
-	fr_dbuff_marker(&start_m, dbuff);		/* Mark where we started */
-	FR_DBUFF_IN_RETURN(dbuff, (uint16_t)da->attr);	/* Write out the option header */
-	fr_dbuff_marker(&len_m, dbuff);			/* Mark where we'll need to put the length field */
-	FR_DBUFF_ADVANCE_RETURN(dbuff, 2);		/* Advanced past the length field */
+	FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t)da->attr);	/* Write out the option header */
+	fr_dbuff_marker(&len_m, &work_dbuff);			/* Mark where we'll need to put the length field */
+	FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 2);		/* Advanced past the length field */
 
 	vp = fr_dcursor_current(cursor);
-	slen = fr_dhcpv6_encode(dbuff, NULL, 0, 0, &vp->vp_group);
-	if (slen <= 0) {
-		fr_dbuff_marker_release(&start_m);
-		fr_dbuff_marker_release(&len_m);
-		return slen;
-	}
+	slen = fr_dhcpv6_encode(&work_dbuff, NULL, 0, 0, &vp->vp_group);
+	if (slen <= 0) return slen;
 
 	fr_dbuff_in(&len_m, (uint16_t)slen);		/* Write out the length value */
-	fr_dbuff_marker_release(&len_m);
 
-	FR_PROTO_HEX_DUMP(fr_dbuff_start(dbuff), fr_dbuff_behind(&start_m), "Done Relay-Message header");
+	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Done Relay-Message header");
 
 	vp = fr_dcursor_next(cursor);
 	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
-	return fr_dbuff_marker_release_behind(&start_m);
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 /** Encode a DHCPv6 option and any sub-options.
