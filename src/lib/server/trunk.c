@@ -978,6 +978,13 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 		break;
 	}
 
+	/*
+	 *	If the request wasn't associated with a
+	 *	connection, then there's nothing more
+	 *	to do.
+	 */
+	if (!tconn) return;
+
 	{
 		request_t *request = treq->pub.request;
 
