@@ -242,12 +242,16 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	If this field overflows the input, then *all*
 		 *	of the input is suspect.
 		 */
-		if ((p + child_length) > end) {
+		if (child_length > (size_t) (end - p)) {
 			FR_PROTO_TRACE("fr_struct_from_network - child length %zd overflows buffer", child_length);
 			goto unknown;
 		}
 
-		if (!child_length) child_length = (end - p);
+		/*
+		 *	The child is variable sized, OR it's an array.
+		 *	Eat up the rest of the data.
+		 */
+		if (!child_length || (child->flags.array)) child_length = (end - p);
 
 		/*
 		 *	Magic values get the callback called.
@@ -282,6 +286,11 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		case FR_TYPE_LEAF:
 			break;
 		}
+
+		/*
+		 *	We don't handle this yet here.
+		 */
+		fr_assert(!child->flags.array);
 
 		vp = fr_pair_afrom_da(child_ctx, child);
 		if (!vp) {
