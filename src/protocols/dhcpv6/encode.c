@@ -453,13 +453,8 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 		 *	This is mainly for fixed length octets type attributes
 		 *	containing one or more keys.
 		 */
-		if (da->flags.length) {
-			if ((size_t)slen < element_len) {
-				FR_DBUFF_MEMSET_RETURN(&element_dbuff, 0, element_len - slen);
-				slen = element_len;
-			} else if ((size_t)slen > element_len){
-				slen = element_len;
-			}
+		if (da->flags.length && (size_t)slen < element_len) {
+			FR_DBUFF_MEMSET_RETURN(&element_dbuff, 0, element_len - slen);
 		}
 
 		/*
