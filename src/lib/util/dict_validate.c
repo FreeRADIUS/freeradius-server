@@ -107,7 +107,9 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			return false;
 
 		case FR_TYPE_IPV4_ADDR:
+		case FR_TYPE_IPV4_PREFIX:
 		case FR_TYPE_IPV6_ADDR:
+		case FR_TYPE_IPV6_PREFIX:
 		case FR_TYPE_UINT8:
 		case FR_TYPE_UINT16:
 		case FR_TYPE_UINT32:
