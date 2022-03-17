@@ -14,6 +14,24 @@
 #    - 'run-fuzzer-3600':        Start fuzzing all protocols for one hour
 #    - 'run-fuzzer-radius-7200': Start fuzzing RADIUS for two hours
 #
+#  Fuzzing failures (full log output including backtraces and reproducers) are
+#  uploaded as "artifacts" for the GitHub Actions run.
+#
+#  The following script can be used to list fuzzer failures and download
+#  reproducers for local reproduction:
+#
+#      scripts/build/fuzzer-fetch-artifacts
+#
+#  If local reproduction does not recreate the failure then you may wish to
+#  attempt the reproduction within a GitHub Actions runner. To do this push to
+#  the following branch:
+#
+#    - 'debug-fuzzer-<protocol>'
+#
+#  This will perform a fuzzer-enabled build and then instead of fuzzing will
+#  launch a tmate session that can be used to access the environment. Further
+#  details at the end of this file.
+#
 
 name: Scheduled fuzzing
 
@@ -21,6 +39,7 @@ on:
   push:
     branches:
       - 'run-fuzzer**'
+      - 'debug-fuzzer-**'
 
   schedule:
     - cron: '0 4 * * *'
@@ -89,6 +108,9 @@ jobs:
           PROTOS=( "${PROTOS%-*}" )
         elif [[ "$GITHUB_REF" = refs/heads/run-fuzzer-* ]]; then
           TOTAL_RUNTIME=${GITHUB_REF#refs/heads/run-fuzzer-}
+        elif [[ "$GITHUB_REF" = refs/heads/debug-fuzzer-* ]]; then
+          PROTOS=${GITHUB_REF#refs/heads/debug-fuzzer-}
+          PROTOS=( "${PROTOS%-*}" )
         fi
         P=$(
             for i in ${!PROTOS[@]}; do
@@ -162,6 +184,7 @@ jobs:
         key: corpus-${{ matrix.env.PROTOCOL }}-${{ steps.corpusparams.outputs.corpusct }}-${{ github.run_number }}
         restore-keys: |
           corpus-${{ matrix.env.PROTOCOL }}-${{ steps.corpusparams.outputs.corpusct }}-
+      if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer-') }}
 
     - name: Package manager performance improvements
       run: |
@@ -236,6 +259,7 @@ jobs:
       env:
         GITHUB_REF: "${{ github.ref }}"
         START_TIMESTAMP: "${{ needs.set-matrix.outputs.starttimestamp }}"
+      if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer-') }}
 
     - name: "Clang libFuzzer: Store assets on failure"
       uses: actions/upload-artifact@v2
@@ -243,7 +267,7 @@ jobs:
         name: clang-fuzzer-${{ matrix.env.PROTOCOL }}-${{ steps.pick_commit.outputs.commit_id }}
         path: build/fuzzer
         retention-days: 30
-      if: ${{ failure() }}
+      if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer') && failure() }}
 
     #
     #  Merge the corpus which will be stored in the cache for the next run
@@ -251,6 +275,7 @@ jobs:
     - name: Merge the corpus
       run: |
         make test.fuzzer.$PROTOCOL.merge
+      if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer-') }}
 
     #
     #  We can push the LFS file directly, but we must use the GitHub API to
@@ -273,4 +298,43 @@ jobs:
         fi
       env:
         GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-      if: ${{ steps.corpusparams.outputs.corpusage > 2592000 && github.repository_owner == 'FreeRADIUS' }}
+      if: ${{ !startsWith(github.ref, 'refs/heads/debug-fuzzer-') && steps.corpusparams.outputs.corpusage > 2592000 && github.repository_owner == 'FreeRADIUS' }}
+
+
+    #
+    #  If we are on the 'debug-fuzzer-*' branch then we start a tmate session to
+    #  provide interactive shell access to the session so that the reproducers
+    #  can be attempted in an identical environment to which the scheduled
+    #  fuzzing occurred.
+    #
+    #  The SSH rendezvous point will be emited continuously in the job output,
+    #  which will look something like:
+    #
+    #      SSH: ssh VfuX8SrNuU5pGPMyZcz7TpJTa@sfo2.tmate.io
+    #
+    #  For example:
+    #
+    #      git push origin debug-fuzzer-radius --force
+    #
+    #  Look at the job output in: https://github.com/FreeRADIUS/freeradius-server/actions
+    #
+    #      ssh VfuX8SrNuU5pGPMyZcz7TpJTa@sfo2.tmate.io
+    #
+    #  Access requires that you have the private key corresponding to the
+    #  public key of the GitHub user that initiated the job.
+    #
+    #  Within this session you can use scripts/build/fuzzer-fetch-artifacts to
+    #  download the reproducers just as you would do locally, e.g.
+    #
+    #      export GITHUB_TOKEN=<personal-access-token>
+    #      scripts/build/fuzzer-fetch-artifacts
+    #      scripts/build/fuzzer-fetch-artifacts https://api.github.com/repos/FreeRADIUS/freeradius-server/actions/artifacts/186571481/zip
+    #      scripts/build/fuzzer build/fuzzer/radius/crash-f1536d0fa2de775038e5dab74d233487a7cde819
+    #
+    - name: "Debug: Start tmate"
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      if: ${{ startsWith(github.ref, 'refs/heads/debug-fuzzer-') && always() }}

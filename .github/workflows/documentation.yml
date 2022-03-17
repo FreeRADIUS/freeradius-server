@@ -5,6 +5,7 @@ on:
     branches-ignore:
       - coverity_scan
       - run-fuzzer**
+      - debug-fuzzer-**
   pull_request:
 
 jobs:
