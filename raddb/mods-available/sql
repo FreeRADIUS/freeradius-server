@@ -51,7 +51,7 @@ sql {
 	#
 	#  In some cases, the driver is different from the `dialect`.
 	#
-	#  The rlm_sql_null driver can be used with any `dialect`,
+	#  The null driver can be used with any `dialect`,
 	#  along with the `logfile` directive below.  It will then
 	#  write the SQL queries to a log file.
 	#
@@ -183,7 +183,7 @@ sql {
 #	logfile = ${logdir}/sqllog.sql
 
 	#
-	#  query_timeout:: Set the maximum query duration for `rlm_sql_mysql` and `rlm_sql_cassandra`.
+	#  query_timeout:: Set the maximum query duration for `mysql` and `cassandra`.
 	#
 #	query_timeout = 5
 
@@ -294,10 +294,10 @@ sql {
 		#
 		#  [options="header,autowidth"]
 		#  |===
-		#  | Driver             | Description
-		#  | rlm_sql_firebird   | Likely possible but no documentation.
-		#  | rlm_sql_oracle     | Not possible.
-		#  | rlm_sql_postgresql | Should be set via the radius_db string instead.
+		#  | Driver     | Description
+		#  | firebird   | Likely possible but no documentation.
+		#  | oracle     | Not possible.
+		#  | postgresql | Should be set via the radius_db string instead.
 		#  |===
 		#
 		connect_timeout = 3.0
