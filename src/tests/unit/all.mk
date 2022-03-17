@@ -48,6 +48,10 @@ $(addprefix $(OUTPUT)/,$(filter protocols/${1}/%.txt,$(FILES))): $(wildcard $(to
 
 test.unit.${1}: $(addprefix $(OUTPUT)/,$(filter protocols/${1}/%.txt,$(FILES))) $(BUILD_DIR)/lib/libfreeradius-${1}.la
 
+.PHONY: clean.test.unit.${1}
+clean.test.unit.${1}:
+	@rm -f $(addprefix $(OUTPUT)/,$(filter protocols/${1}/%.txt,$(FILES)))
+
 test.unit.help: TEST_UNIT_HELP += test.unit.${1}
 endef
 $(foreach x,$(PROTOCOLS),$(eval $(call UNIT_TEST_PROTOCOLS,$x)))

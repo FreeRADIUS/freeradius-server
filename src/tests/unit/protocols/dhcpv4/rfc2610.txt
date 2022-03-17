@@ -1,0 +1,15 @@
+#
+#  Test vectors for DHCP attributes
+#
+proto dhcpv4
+proto-dictionary dhcpv4
+fuzzer-out dhcpv4
+
+encode-pair Directory-Agent = { Mandatory = 1, Agent = 127.0.0.1, Agent = 127.0.0.2 }
+match 4e 09 01 7f 00 00 01 7f 00 00 02
+
+decode-pair -
+match Directory-Agent = { Mandatory = 1, Agent = 127.0.0.1, Agent = 127.0.0.2 }
+
+count
+match 7
