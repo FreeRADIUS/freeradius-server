@@ -1724,6 +1724,7 @@ static inline int tmpl_request_ref_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_
 			};
 			tmpl_request_list_insert_tail(list, rr);
 		}
+		fr_sbuff_marker_release(&s_m);
 
 		return 0;
 	}
