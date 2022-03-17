@@ -168,9 +168,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *
 		 *	https://tools.ietf.org/html/rfc8415#section-10
 		 */
-		if (!da->flags.extra &&
-		    ((da->flags.subtype == FLAG_ENCODE_DNS_LABEL) ||
-		     (da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL))) {
+		if (da_is_dns_label(da)) {
 			fr_dbuff_marker_t	last_byte, src;
 
 			fr_dbuff_marker(&last_byte, &work_dbuff);

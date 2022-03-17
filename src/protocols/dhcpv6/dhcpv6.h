@@ -117,6 +117,8 @@ enum {
 	FLAG_ENCODE_PARTIAL_DNS_LABEL, 			//!< encode as a partial DNS label
 };
 
+#define da_is_dns_label(_da) (!(_da)->flags.extra && (((_da)->flags.subtype == FLAG_ENCODE_DNS_LABEL) || ((_da)->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL)))
+
 typedef struct CC_HINT(__packed__) {
 	uint8_t		code;
 	uint8_t		transaction_id[3];

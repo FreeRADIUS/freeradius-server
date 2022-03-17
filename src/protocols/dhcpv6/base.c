@@ -147,9 +147,7 @@ size_t fr_dhcpv6_option_len(fr_pair_t const *vp)
 	switch (vp->vp_type) {
 	case FR_TYPE_VARIABLE_SIZE:
 #ifndef NDEBUG
-		if (!vp->da->flags.extra &&
-		    ((vp->da->flags.subtype == FLAG_ENCODE_DNS_LABEL) ||
-		     (vp->da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL))) {
+		if (da_is_dns_label(vp->da)) {
 			fr_assert_fail("DNS labels MUST be encoded/decoded with their own function, and not with generic 'string' functions");
 			return 0;
 		}
@@ -1041,7 +1039,7 @@ static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *pare
 	 */
 	if (flags->extra || !flags->subtype) return true;
 
-	if (type != FR_TYPE_STRING) {
+	if ((type != FR_TYPE_STRING) && ((flags->subtype == FLAG_ENCODE_DNS_LABEL) || (flags->subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL))) {
 		fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
 		return false;
 	}
