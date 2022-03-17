@@ -1084,6 +1084,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	fr_type_t      		type;
 	fr_dict_attr_flags_t	flags;
 	char			*ref = NULL;
+	fr_dict_attr_t const	*da;
 
 	if ((argc < 2) || (argc > 3)) {
 		fr_strerror_const("Invalid MEMBER syntax");
@@ -1182,8 +1183,6 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 		int i;
 
 		for (i = 0; i <= ctx->stack[ctx->stack_depth].member_num; i++) {
-			fr_dict_attr_t const *da;
-
 			da = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da, i);
 			if (!da) continue; /* really should be WTF? */
 
@@ -1209,6 +1208,15 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 			     argv[0],
 			     ++ctx->stack[ctx->stack_depth].member_num,
 			     type, &flags) < 0) return -1;
+
+	/*
+	 *	If we need to set the previous attribute, we have to
+	 *	look it up by number.  This lets us set the
+	 *	*canonical* previous attribute, and not any potential
+	 *	duplicate which was just added.
+	 */
+	da = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da, ctx->stack[ctx->stack_depth].member_num);
+	fr_assert(da != NULL);
 
 	/*
 	 *	A 'struct' can have a MEMBER of type 'tlv', but ONLY
@@ -1252,6 +1260,14 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 		talloc_free(ref);
 
 		if (ret < 0) return -1;
+	}
+
+	/*
+	 *	Adding a member of type 'struct' is an implicit BEGIN-STRUCT.
+	 */
+	if (type == FR_TYPE_STRUCT) {
+		if (dict_gctx_push(ctx, da) < 0) return -1;
+		ctx->value_attr = NULL;
 	}
 
 	return 0;
