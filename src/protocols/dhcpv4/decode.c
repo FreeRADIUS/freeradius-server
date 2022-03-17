@@ -56,6 +56,8 @@ static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				       fr_dict_attr_t const *parent,
 				       uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
+	FR_PROTO_TRACE("decode_value_trampoline of %s with %zu bytes", parent->name, data_len);
+
 	/*
 	 *	@todo - we might need to limit this to only one DNS label.
 	 */
