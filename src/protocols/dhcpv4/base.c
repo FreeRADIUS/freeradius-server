@@ -747,6 +747,7 @@ static fr_table_num_ordered_t const subtype_table[] = {
 	{ L("dns_label"),			FLAG_ENCODE_DNS_LABEL },
 	{ L("encode=dns_label"),		FLAG_ENCODE_DNS_LABEL },
 	{ L("prefix=split"),			FLAG_ENCODE_SPLIT_PREFIX },
+	{ L("prefix=bits"),			FLAG_ENCODE_BITS_PREFIX },
 	{ L("encode=exists"),			FLAG_ENCODE_BOOL_EXISTS },
 };
 
@@ -764,7 +765,8 @@ static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *pare
 			fr_strerror_const("string/octets arrays require the 'length=uint8' flag");
 			return false;
 		}
-	} else if (flags->array && !flags->length) {
+
+	} else if (flags->array && !flags->length && !flags->is_known_width) {
 		fr_strerror_const("Variable length attributes cannot be marked as 'array'");
 		return false;
 	}
@@ -780,8 +782,9 @@ static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *pare
 		return false;
 	}
 
-	if ((type != FR_TYPE_IPV4_PREFIX) && (flags->subtype == FLAG_ENCODE_SPLIT_PREFIX)) {
-		fr_strerror_const("The 'split' flag can only be used with attributes of type 'ipv4prefix'");
+	if ((type != FR_TYPE_IPV4_PREFIX) &&
+	    ((flags->subtype == FLAG_ENCODE_SPLIT_PREFIX) || (flags->subtype == FLAG_ENCODE_BITS_PREFIX))) {
+		fr_strerror_const("The 'prefix=...' flag can only be used with attributes of type 'ipv4prefix'");
 		return false;
 	}
 
