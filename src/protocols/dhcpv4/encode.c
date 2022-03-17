@@ -185,7 +185,6 @@ static ssize_t encode_array(fr_dbuff_t *dbuff,
 				   fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx)
 {
 	ssize_t			slen;
-	size_t			element_len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t		*vp;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
@@ -221,8 +220,6 @@ static ssize_t encode_array(fr_dbuff_t *dbuff,
 		bool		len_field = false;
 		fr_dbuff_t	element_dbuff = FR_DBUFF(&work_dbuff);
 
-		element_len = fr_dhcpv4_option_len(fr_dcursor_current(cursor));
-
 		/*
 		 *	If the data is variable length i.e. strings or octets
 		 *	we need to include an 8-bit length field before each element.
@@ -241,8 +238,8 @@ static ssize_t encode_array(fr_dbuff_t *dbuff,
 		 *	This is mainly for fixed length octets type attributes
 		 *	containing one or more keys.
 		 */
-		if (da->flags.length && (size_t)slen < element_len) {
-			FR_DBUFF_MEMSET_RETURN(&element_dbuff, 0, element_len - slen);
+		if (da->flags.length && (size_t)slen < da->flags.length) {
+			FR_DBUFF_MEMSET_RETURN(&element_dbuff, 0, da->flags.length - slen);
 		}
 
 		/*
