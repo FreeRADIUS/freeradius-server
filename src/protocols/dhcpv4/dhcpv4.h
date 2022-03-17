@@ -73,6 +73,9 @@ enum {
 	FLAG_ENCODE_DNS_LABEL,				//!< encode as DNS label
 };
 
+#define da_is_dns_label(_da) (!(_da)->flags.extra && ((_da)->flags.subtype == FLAG_ENCODE_DNS_LABEL))
+
+
 typedef struct {
 	uint8_t		opcode;
 	uint8_t		htype;

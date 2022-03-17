@@ -132,7 +132,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *
 		 *	https://tools.ietf.org/html/rfc8415#section-10
 		 */
-		if (!da->flags.extra && (da->flags.subtype == FLAG_ENCODE_DNS_LABEL)) {
+		if (da_is_dns_label(da)) {
 			fr_dbuff_marker_t	last_byte, src;
 
 			fr_dbuff_marker(&last_byte, &work_dbuff);
@@ -177,7 +177,7 @@ static ssize_t encode_array(fr_dbuff_t *dbuff,
 	 *	DNS labels have internalized length, so we don't need
 	 *	length headers.
 	 */
-	if ((da->type == FR_TYPE_STRING) && !da->flags.extra && (da->flags.subtype == FLAG_ENCODE_DNS_LABEL)) {
+	if ((da->type == FR_TYPE_STRING) && da_is_dns_label(da)) {
 		while (fr_dbuff_extend(&work_dbuff)) {
 			vp = fr_dcursor_current(cursor);
 
