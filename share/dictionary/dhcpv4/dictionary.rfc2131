@@ -139,10 +139,7 @@ ATTRIBUTE	StreetTalk-Server-Address		75	ipaddr array
 ATTRIBUTE	STDA-Server-Address			76	ipaddr array
 # User Class Information
 ATTRIBUTE	User-Class				77	octets
-# directory agent information
-ATTRIBUTE	Directory-Agent				78	octets
-# service location agent scope
-ATTRIBUTE	Service-Scope				79	octets
+
 # Rapid Commit
 ATTRIBUTE	Rapid-Commit				80	bool
 # Fully Qualified Domain Name
