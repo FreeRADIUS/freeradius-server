@@ -12,10 +12,10 @@
 
 ATTRIBUTE	Query-Status-Code			151	octets
 ATTRIBUTE	Query-Server-Base-Time			152	date
-ATTRIBUTE	Query-Start-Time-Of-State		153	integer
+ATTRIBUTE	Query-Start-Time-Of-State		153	uint32
 ATTRIBUTE	Query-Start-Time			154	date
 ATTRIBUTE	Query-End-Time				155	date
-ATTRIBUTE	State					156	byte
+ATTRIBUTE	State					156	uint8
 
 VALUE	State				Available		1
 VALUE	State				Active			2
@@ -26,4 +26,4 @@ VALUE	State				Reset			6
 VALUE	State				Remote			7
 VALUE	State				Transitioning		8
 
-ATTRIBUTE	Data-Source				157	byte
+ATTRIBUTE	Data-Source				157	uint8

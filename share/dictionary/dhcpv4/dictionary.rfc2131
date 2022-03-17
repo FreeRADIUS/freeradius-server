@@ -26,7 +26,7 @@
 #ATTRIBUTE	Pad				0	octets
 ATTRIBUTE	Subnet-Mask				1	ipaddr
 # Time Offset in twos-complement notation.
-ATTRIBUTE	Time-Offset				2	integer
+ATTRIBUTE	Time-Offset				2	uint32
 ATTRIBUTE	Router-Address				3	ipaddr array
 ATTRIBUTE	Time-Server				4	ipaddr array
 ATTRIBUTE	IEN-116-Name-Server			5	ipaddr array
@@ -39,8 +39,8 @@ ATTRIBUTE	Impress-Server				10	ipaddr array
 ATTRIBUTE	RLP-Server				11	ipaddr array
 # Hostname string
 ATTRIBUTE	Hostname				12	string
-# Size of boot file in 512 byte
-ATTRIBUTE	Boot-File-Size				13	short
+# Size of boot file in 512 uint8
+ATTRIBUTE	Boot-File-Size				13	uint16
 # Client to dump and name
 ATTRIBUTE	Merit-Dump-File				14	octets
 ATTRIBUTE	Domain-Name				15	string
@@ -52,11 +52,11 @@ ATTRIBUTE	IP-Forward-Enable			19	bool
 ATTRIBUTE	Source-Route-Enable			20	bool
 # Routing Policy Filters
 ATTRIBUTE	Policy-Filter				21	ipv4prefix	prefix=split,array
-ATTRIBUTE	Max-Datagram-Reassembly-Size		22	short
+ATTRIBUTE	Max-Datagram-Reassembly-Size		22	uint16
 ATTRIBUTE	Default-IP-TTL				23	octets
-ATTRIBUTE	Path-MTU-Aging-Timeout			24	integer
-ATTRIBUTE	Path-MTU-Plateau-Table			25	short array
-ATTRIBUTE	Interface-MTU-Size			26	short
+ATTRIBUTE	Path-MTU-Aging-Timeout			24	uint32
+ATTRIBUTE	Path-MTU-Plateau-Table			25	uint16 array
+ATTRIBUTE	Interface-MTU-Size			26	uint16
 ATTRIBUTE	All-Subnets-Are-Local			27	bool
 ATTRIBUTE	Broadcast-Address			28	ipaddr
 ATTRIBUTE	Perform-Mask-Discovery			29	bool
@@ -66,10 +66,10 @@ ATTRIBUTE	Router-Solicitation-Address		32	ipaddr
 # first is destination address, second is router.
 ATTRIBUTE	Static-Routes				33	ipaddr array
 ATTRIBUTE	Trailer-Encapsulation			34	bool
-ATTRIBUTE	ARP-Cache-Timeout			35	integer
+ATTRIBUTE	ARP-Cache-Timeout			35	uint32
 ATTRIBUTE	Ethernet-Encapsulation			36	bool
-ATTRIBUTE	Default-TCP-TTL				37	byte
-ATTRIBUTE	Keep-Alive-Interval			38	integer
+ATTRIBUTE	Default-TCP-TTL				37	uint8
+ATTRIBUTE	Keep-Alive-Interval			38	uint32
 ATTRIBUTE	Keep-Alive-Garbage			39	bool
 ATTRIBUTE	NIS-Domain-Name				40	string
 ATTRIBUTE	NIS-Servers				41	ipaddr array
@@ -78,16 +78,16 @@ ATTRIBUTE	NTP-Servers				42	ipaddr array
 ATTRIBUTE	Vendor					43	octets # tlv
 ATTRIBUTE	NETBIOS-Name-Servers			44	ipaddr array
 ATTRIBUTE	NETBIOS-Dgm-Dist-Servers		45	ipaddr array
-ATTRIBUTE	NETBIOS-Node-Type			46	byte
+ATTRIBUTE	NETBIOS-Node-Type			46	uint8
 # N NETBIOS Scope
 ATTRIBUTE	NETBIOS					47	octets
 ATTRIBUTE	X-Window-Font-Server			48	ipaddr array
 ATTRIBUTE	X-Window-Display-Mgr			49	ipaddr array
 ATTRIBUTE	Requested-IP-Address			50	ipaddr
-ATTRIBUTE	IP-Address-Lease-Time			51	integer
+ATTRIBUTE	IP-Address-Lease-Time			51	uint32
 # Overload "sname" or "file"
-ATTRIBUTE	Overload				52	byte
-ATTRIBUTE	Message-Type				53	byte
+ATTRIBUTE	Overload				52	uint8
+ATTRIBUTE	Message-Type				53	uint8
 
 VALUE	Message-Type			Discover		1
 VALUE	Message-Type			Offer			2
@@ -107,13 +107,13 @@ VALUE	Message-Type			Lease-Query-Done	15
 
 ATTRIBUTE	Server-Identifier			54	ipaddr
 
-# Array of 1-byte numbers indicating which options the client
+# Array of 1-uint8 numbers indicating which options the client
 # would like to see in the response.
-ATTRIBUTE	Parameter-Request-List			55	byte array
+ATTRIBUTE	Parameter-Request-List			55	uint8 array
 ATTRIBUTE	Error-Message				56	string
-ATTRIBUTE	Maximum-Msg-Size			57	short
-ATTRIBUTE	Renewal-Time				58	integer
-ATTRIBUTE	Rebinding-Time				59	integer
+ATTRIBUTE	Maximum-Msg-Size			57	uint16
+ATTRIBUTE	Renewal-Time				58	uint32
+ATTRIBUTE	Rebinding-Time				59	uint32
 ATTRIBUTE	Vendor-Class-Identifier			60	octets
 
 # Client Identifier
@@ -151,7 +151,7 @@ ATTRIBUTE	Circuit-Id				.1	octets
 ATTRIBUTE	Remote-Id				.2	octets
 
 # 3 is reserved and shouldn't be used for anything
-ATTRIBUTE	Docsis-Device-Class			.4	integer
+ATTRIBUTE	Docsis-Device-Class			.4	uint32
 ATTRIBUTE	Relay-Link-Selection			.5	ipaddr
 ATTRIBUTE	Subscriber-Id				.6	string
 
@@ -166,7 +166,7 @@ ATTRIBUTE	Authentication-Information		82.8	octets
 #
 ATTRIBUTE	Vendor-Specific-Information		82.9	octets
 
-ATTRIBUTE	Relay-Agent-Flags			82.10	byte
+ATTRIBUTE	Relay-Agent-Flags			82.10	uint8
 ATTRIBUTE	Server-Identifier-Override		82.11	ipaddr
 
 # Internet Storage Name Service
@@ -181,7 +181,7 @@ ATTRIBUTE	NDS-Context				87	octets
 # Authentication
 ATTRIBUTE	Authentication				90	octets
 
-ATTRIBUTE	Client-Last-Transaction-Time		91	integer # seconds on the past
+ATTRIBUTE	Client-Last-Transaction-Time		91	uint32 # seconds on the past
 
 ATTRIBUTE	associated-ip				92	ipaddr array
 
@@ -203,7 +203,7 @@ ATTRIBUTE	Netinfo-Tag				113	octets
 # URL
 ATTRIBUTE	URL					114	octets
 # DHCP Auto-Configuration
-ATTRIBUTE	Auto-Config				116	byte
+ATTRIBUTE	Auto-Config				116	uint8
 # Name Service Search
 ATTRIBUTE	Name-Service-Search			117	octets
 # Subnet Selection Option
@@ -275,7 +275,7 @@ ATTRIBUTE	Site-specific-28			252	octets
 ATTRIBUTE	Site-specific-29			253	octets
 ATTRIBUTE	Site-specific-30			253	octets
 
-ATTRIBUTE	End-Of-Options				255	byte
+ATTRIBUTE	End-Of-Options				255	uint8
 
 VALUE	Parameter-Request-List		Subnet-Mask		1
 VALUE	Parameter-Request-List		Time-Offset		2

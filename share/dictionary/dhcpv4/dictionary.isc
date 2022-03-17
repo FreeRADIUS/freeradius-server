@@ -16,7 +16,7 @@
 ##############################################################################
 
 ATTRIBUTE	subnet-mask				1	ipaddr
-ATTRIBUTE	time-offset				2	integer
+ATTRIBUTE	time-offset				2	uint32
 ATTRIBUTE	routers					3	ipaddr array
 ATTRIBUTE	time-servers				4	ipaddr array
 ATTRIBUTE	ien116-name-servers			5	ipaddr array
@@ -27,7 +27,7 @@ ATTRIBUTE	lpr-servers				9	ipaddr array
 ATTRIBUTE	impress-servers				10	ipaddr array
 ATTRIBUTE	resource-location-servers		11	ipaddr array
 ATTRIBUTE	host-name				12	string
-ATTRIBUTE	boot-size				13	short
+ATTRIBUTE	boot-size				13	uint16
 ATTRIBUTE	merit-dump				14	string
 ATTRIBUTE	domain-name				15	string
 ATTRIBUTE	swap-server				16	ipaddr
@@ -36,11 +36,11 @@ ATTRIBUTE	extensions-path				18	string
 ATTRIBUTE	ip-forwarding				19	bool
 ATTRIBUTE	non-local-source-routing		20	bool
 ATTRIBUTE	policy-filter				21	octets # array of (ipaddr / mask)
-ATTRIBUTE	max-dgram-reassembly			22	short
+ATTRIBUTE	max-dgram-reassembly			22	uint16
 ATTRIBUTE	default-ip-ttl				23	octets
-ATTRIBUTE	path-mtu-aging-timeout			24	integer
-ATTRIBUTE	path-mtu-plateau-table			25	short array
-ATTRIBUTE	interface-mtu				26	short
+ATTRIBUTE	path-mtu-aging-timeout			24	uint32
+ATTRIBUTE	path-mtu-plateau-table			25	uint16 array
+ATTRIBUTE	interface-mtu				26	uint16
 ATTRIBUTE	all-subnets-local			27	bool
 ATTRIBUTE	broadcast-address			28	ipaddr
 ATTRIBUTE	perform-mask-discovery			29	bool
@@ -49,10 +49,10 @@ ATTRIBUTE	router-discovery			31	bool
 ATTRIBUTE	router-solicitation-address		32	ipaddr
 ATTRIBUTE	static-routes				33	ipaddr array
 ATTRIBUTE	trailer-encapsulation			34	bool
-ATTRIBUTE	arp-cache-timeout			35	integer
+ATTRIBUTE	arp-cache-timeout			35	uint32
 ATTRIBUTE	ieee802-3-encapsulation			36	bool
 ATTRIBUTE	default-tcp-ttl				37	octets
-ATTRIBUTE	tcp-keepalive-interval			38	integer
+ATTRIBUTE	tcp-keepalive-interval			38	uint32
 ATTRIBUTE	tcp-keepalive-garbage			39	bool
 ATTRIBUTE	nis-domain				40	string
 ATTRIBUTE	nis-servers				41	ipaddr array
@@ -65,15 +65,15 @@ ATTRIBUTE	netbios-scope				47	string
 ATTRIBUTE	font-servers				48	ipaddr array
 ATTRIBUTE	x-display-manager			49	ipaddr array
 ATTRIBUTE	dhcp-requested-address			50	ipaddr
-ATTRIBUTE	dhcp-lease-time				51	integer
+ATTRIBUTE	dhcp-lease-time				51	uint32
 ATTRIBUTE	dhcp-option-overload			52	octets
-ATTRIBUTE	dhcp-message-type			53	byte
+ATTRIBUTE	dhcp-message-type			53	uint8
 ATTRIBUTE	dhcp-server-identifier			54	ipaddr
 ATTRIBUTE	dhcp-parameter-request-list		55	uint8 array
 ATTRIBUTE	dhcp-message				56	string
-ATTRIBUTE	dhcp-max-message-size			57	short
-ATTRIBUTE	dhcp-renewal-time			58	integer
-ATTRIBUTE	dhcp-rebinding-time			59	integer
+ATTRIBUTE	dhcp-max-message-size			57	uint16
+ATTRIBUTE	dhcp-renewal-time			58	uint32
+ATTRIBUTE	dhcp-rebinding-time			59	uint32
 ATTRIBUTE	vendor-class-identifier			60	octets
 ATTRIBUTE	dhcp-client-identifier			61	octets
 ATTRIBUTE	nwip-domain				62	string
@@ -99,17 +99,17 @@ ATTRIBUTE	relay-agent-information			82	tlv
 ATTRIBUTE	circuit-id				.1	octets
 ATTRIBUTE	remote-id				.2	octets
 ATTRIBUTE	agent-id				.3	ipaddr
-ATTRIBUTE	DOCSIS-device-class			.4	integer
+ATTRIBUTE	DOCSIS-device-class			.4	uint32
 ATTRIBUTE	link-selection				.5	ipaddr
-ATTRIBUTE	relay-port				.19	short
+ATTRIBUTE	relay-port				.19	uint16
 ATTRIBUTE	nds-servers				85	ipaddr array
 ATTRIBUTE	nds-tree-name				86	string
 ATTRIBUTE	nds-context				87	string
 ATTRIBUTE	bcms-controller-names			88	string
 ATTRIBUTE	bcms-controller-address			89	ipaddr array
-ATTRIBUTE	client-last-transaction-time		91	integer
+ATTRIBUTE	client-last-transaction-time		91	uint32
 ATTRIBUTE	associated-ip				92	ipaddr array
-ATTRIBUTE	pxe-system-type				93	short array
+ATTRIBUTE	pxe-system-type				93	uint16 array
 ATTRIBUTE	pxe-interface-id			94	octets array
 ATTRIBUTE	pxe-client-id				97	octets array
 ATTRIBUTE	uap-servers				98	string
@@ -120,7 +120,7 @@ ATTRIBUTE	netinfo-server-address			112	ipaddr array
 ATTRIBUTE	netinfo-server-tag			113	string
 ATTRIBUTE	default-url				114	string
 ATTRIBUTE	auto-config				116	octets
-ATTRIBUTE	name-service-search			117	short array
+ATTRIBUTE	name-service-search			117	uint16 array
 ATTRIBUTE	subnet-selection			118	ipaddr
 ATTRIBUTE	domain-search				119	string array
 ATTRIBUTE	vivco					124	octets array
@@ -136,6 +136,6 @@ ATTRIBUTE	v4-portparams				159	octets array
 ATTRIBUTE	v4-captive-portal			160	string
 ATTRIBUTE	loader-configfile			209	string
 ATTRIBUTE	loader-pathprefix			210	string
-ATTRIBUTE	loader-reboottime			211	integer
+ATTRIBUTE	loader-reboottime			211	uint32
 ATTRIBUTE	option-6rd				212	octets array
 ATTRIBUTE	v4-access-domain			213	string

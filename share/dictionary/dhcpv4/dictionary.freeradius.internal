@@ -20,17 +20,17 @@
 
 #
 FLAGS	internal
-ATTRIBUTE	Opcode					256	byte
+ATTRIBUTE	Opcode					256	uint8
 
 VALUE	Opcode				Client-Message		1
 VALUE	Opcode				Server-Message		2
 
-ATTRIBUTE	Hardware-Type				257	byte
-ATTRIBUTE	Hardware-Address-Length			258	byte
-ATTRIBUTE	Hop-Count				259	byte
-ATTRIBUTE	Transaction-Id				260	integer
-ATTRIBUTE	Number-of-Seconds			261	short
-ATTRIBUTE	Flags					262	short
+ATTRIBUTE	Hardware-Type				257	uint8
+ATTRIBUTE	Hardware-Address-Length			258	uint8
+ATTRIBUTE	Hop-Count				259	uint8
+ATTRIBUTE	Transaction-Id				260	uint32
+ATTRIBUTE	Number-of-Seconds			261	uint16
+ATTRIBUTE	Flags					262	uint16
 ATTRIBUTE	Client-IP-Address			263	ipaddr
 ATTRIBUTE	Your-IP-Address				264	ipaddr
 ATTRIBUTE	Server-IP-Address			265	ipaddr
@@ -40,7 +40,7 @@ ATTRIBUTE	Server-Host-Name			268	string	  # 64 octets
 ATTRIBUTE	Boot-Filename				269	string	  # 128 octets
 
 ATTRIBUTE	Relay-To-IP-Address			270	ipaddr
-ATTRIBUTE	Relay-Max-Hop-Count			271	integer
+ATTRIBUTE	Relay-Max-Hop-Count			271	uint32
 
 # This is copied from the request packet, giaddr, and
 # added to the reply packet by the server core.
@@ -86,7 +86,7 @@ VALUE	Hardware-Type			Pure-IP			35
 VALUE	Hardware-Type			HW-EXP1			36
 VALUE	Hardware-Type			HFI			37
 
-ATTRIBUTE	Packet-Type				273	integer
+ATTRIBUTE	Packet-Type				273	uint32
 
 VALUE	Packet-Type			Discover		1
 VALUE	Packet-Type			Offer			2
