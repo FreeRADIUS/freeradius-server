@@ -519,15 +519,18 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			}
 
 			/*
-			 *	@todo - allow dns_label encoding as
-			 *	the first member.
+			 *	Variable sized elements cannot have anything after them in a struct.
 			 */
-			if (sibling->flags.length == 0) switch (sibling->type) {
-			case FR_TYPE_LEAF:
-				break;
+			if (!sibling->flags.length && !sibling->flags.is_known_width) {
+				fr_strerror_const("No other field can follow a struct MEMBER which is variable sized");
+				return false;
+			}
 
-			default:
-				fr_strerror_const("Only the last child of a 'struct' attribute can have variable length");
+			/*
+			 *	The same goes for arrays.
+			 */
+			if (sibling->flags.array) {
+				fr_strerror_const("No other field can follow a struct MEMBER which is 'array'");
 				return false;
 			}
 
