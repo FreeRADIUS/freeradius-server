@@ -74,7 +74,7 @@ static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
  *	Decode ONE value into a VP
  */
 static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *da,
-			    uint8_t const *data, size_t data_len, UNUSED void *decode_ctx, bool exact)
+			    uint8_t const *data, size_t data_len, void *decode_ctx, bool exact)
 {
 	fr_pair_t *vp;
 	uint8_t const *p = data;
