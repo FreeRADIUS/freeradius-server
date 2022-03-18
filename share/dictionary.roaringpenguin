@@ -16,7 +16,8 @@ BEGIN-VENDOR	Roaring-Penguin
 
 # Upstream speed limit in kb/s
 ATTRIBUTE	RP-Upstream-Speed-Limit			1	integer
- # Downstream speed limit in kb/s
+
+# Downstream speed limit in kb/s
 ATTRIBUTE	RP-Downstream-Speed-Limit		2	integer
 
 # Send a HURL
