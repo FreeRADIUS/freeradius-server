@@ -152,7 +152,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			if (num_bytes) {
 				FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff,
 							  (uint8_t const *)&vp->vp_ipv4addr,
-							  num_bytes);
+							  (size_t) num_bytes);
 			}
 
 			break;
