@@ -93,6 +93,8 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 					      decode_ctx, decode_value_trampoline, decode_tlv);
 		if (slen < 0) return slen;
 
+		if (!exact) return slen;
+
 		return data_len;
 	}
 
