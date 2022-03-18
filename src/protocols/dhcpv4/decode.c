@@ -449,7 +449,7 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 			if ((size_t) (end - p) < element_len) goto raw;
 
 			slen = decode_value(ctx, out, parent, p, element_len, decode_ctx, false);
-			if (slen < 0) return slen;
+			if (slen < 0) return slen - (p - data);
 			if (!fr_cond_assert((size_t) slen == element_len)) return -(p - data);
 
 			p += slen;
@@ -479,7 +479,7 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 
 		p += 1;
 		slen = decode_value(ctx, out, parent, p, element_len, decode_ctx, false);
-		if (slen < 0) return slen;
+		if (slen < 0) return slen - (p - data);
 		p += slen;
 	}
 
