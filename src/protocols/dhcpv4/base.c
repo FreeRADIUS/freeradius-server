@@ -765,10 +765,6 @@ static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *pare
 			fr_strerror_const("string/octets arrays require the 'length=uint8' flag");
 			return false;
 		}
-
-	} else if (flags->array && !flags->length && !flags->is_known_width) {
-		fr_strerror_const("Variable length attributes cannot be marked as 'array'");
-		return false;
 	}
 
 	/*
