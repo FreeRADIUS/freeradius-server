@@ -428,6 +428,19 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 	 */
 	if (da_is_split_prefix(parent)) element_len = 8;
 
+	/*
+	 *	Array of structs.
+	 */
+	if (parent->type == FR_TYPE_STRUCT) {
+		while (p < end) {
+			slen = decode_value(ctx, out, parent, p, end - p, decode_ctx, false);
+			if (slen < 0) return slen - (p - data);
+			p += slen;
+		}
+
+		return data_len;
+	}
+
 	if (element_len > 0) {
 		size_t num_elements = (end - p) / element_len;
 
