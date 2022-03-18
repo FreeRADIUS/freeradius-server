@@ -220,6 +220,8 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 			if (exact && (data_len > 5)) goto raw;
 
 			vp->vp_ip.prefix = *p;
+			mask = ~(uint32_t) 0;
+			mask <<= (32 - vp->vp_ip.prefix);
 
 			if (*p > 24) {
 				if (data_len < 5) goto raw;
@@ -248,9 +250,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 				p++;
 				ipaddr = 0;
 			}
-
-			mask = ~(uint32_t) 0;
-			mask <<= (32 - vp->vp_ip.prefix);
 
 			vp->vp_ipv4addr = htonl(ipaddr & mask);
 			break;
