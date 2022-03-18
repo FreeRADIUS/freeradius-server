@@ -1,0 +1,19 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC3118 - Authentication for DHCP Messages
+#
+#  $Id$
+#
+##############################################################################
+
+# Authentication
+ATTRIBUTE       Authentication                          90      struct
+MEMBER          Protocol                        uint8
+MEMBER          Algorithm                       uint8
+MEMBER          RDM                             uint8
+MEMBER          Replay-Detection                uint64
+MEMBER          Authentication-Information      octets

@@ -1,0 +1,18 @@
+#
+#  Test vectors for DHCP attributes
+#
+proto dhcpv4
+proto-dictionary dhcpv4
+fuzzer-out dhcpv4
+
+#
+# Authentication
+#
+encode-pair Authentication = { Protocol = 1, Algorithm = 2, RDM = 32, Replay-Detection = 0, Authentication-Information = "123456789a123456789a123456789a"  }
+match 5a 29 01 02 20 00 00 00 00 00 00 00 00 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 61 31 32 33 34 35 36 37 38 39 61
+
+decode-pair -
+match Authentication = { Protocol = 1, Algorithm = 2, RDM = 32, Replay-Detection = 0, Authentication-Information = 0x313233343536373839613132333435363738396131323334353637383961 }
+
+count
+match 7

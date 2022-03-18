@@ -176,9 +176,6 @@ ATTRIBUTE	NDS-Tree-Name				86	octets
 # Novell Directory Services
 ATTRIBUTE	NDS-Context				87	octets
 
-# Authentication
-ATTRIBUTE	Authentication				90	octets
-
 ATTRIBUTE	Client-Last-Transaction-Time		91	uint32 # seconds on the past
 
 ATTRIBUTE	associated-ip				92	ipaddr array
