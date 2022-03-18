@@ -1,0 +1,15 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC3004 - The User Class Option for DHCP
+#
+#  $Id$
+#
+##############################################################################
+
+# User Class Information
+ATTRIBUTE	User-Class				77	string length=uint8,array
+

@@ -24,6 +24,7 @@ $INCLUDE dictionary.freeradius.internal
 # Fixme should be broken out into separate RFCs
 $INCLUDE dictionary.rfc2131
 $INCLUDE dictionary.rfc2610
+$INCLUDE dictionary.rfc3004
 $INCLUDE dictionary.rfc3442
 $INCLUDE dictionary.rfc4280
 $INCLUDE dictionary.rfc4578

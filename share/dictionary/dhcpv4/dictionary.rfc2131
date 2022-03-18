@@ -137,8 +137,6 @@ ATTRIBUTE	Finger-Server-Address			73	ipaddr array
 ATTRIBUTE	IRC-Server-Address			74	ipaddr array
 ATTRIBUTE	StreetTalk-Server-Address		75	ipaddr array
 ATTRIBUTE	STDA-Server-Address			76	ipaddr array
-# User Class Information
-ATTRIBUTE	User-Class				77	octets
 
 # Rapid Commit
 ATTRIBUTE	Rapid-Commit				80	bool		encode=exists
