@@ -212,8 +212,7 @@ ATTRIBUTE	Subnet-Selection-Option			118	ipaddr
 ATTRIBUTE	Domain-Search				119	octets # really compressed, concatenated, dns_label array
 # SIP-Servers DHCP Option
 ATTRIBUTE	SIP-Servers-Option			120	octets
-# Classless Static Route Option
-ATTRIBUTE	Classless-Static-Route			121	octets
+
 # CableLabs Client Configuration
 ATTRIBUTE	CCC					122	octets
 # 16 GeoConf Option

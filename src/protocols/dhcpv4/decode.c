@@ -211,6 +211,51 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 			vp->vp_ipv4addr = htonl(ipaddr & mask);
 			break;
 		}
+
+		if (da_is_bits_prefix(vp->da)) {
+			uint32_t ipaddr, mask;
+
+			if ((data_len == 0) || (*p > 32)) goto raw;
+
+			if (exact && (data_len > 5)) goto raw;
+
+			vp->vp_ip.prefix = *p;
+
+			if (*p > 24) {
+				if (data_len < 5) goto raw;
+				ipaddr = fr_net_to_uint32(p + 1);
+				p += 5;
+
+			} else if (*p > 16) {
+				if (data_len < 4) goto raw;
+				ipaddr = fr_net_to_uint24(p + 1);
+				ipaddr <<= 8;
+				p += 4;
+
+			} else if (*p > 8) {
+				if (data_len < 3) goto raw;
+				ipaddr = fr_net_to_uint16(p + 1);
+				ipaddr <<= 16;
+				p += 3;
+
+			} else if (*p > 0) {
+				if (data_len < 2) goto raw;
+				ipaddr = p[1];
+				ipaddr <<= 24;
+				p += 2;
+
+			} else {
+				p++;
+				ipaddr = 0;
+			}
+
+			mask = ~(uint32_t) 0;
+			mask <<= (32 - vp->vp_ip.prefix);
+
+			vp->vp_ipv4addr = htonl(ipaddr & mask);
+			break;
+		}
+
 		FALL_THROUGH;
 
 	default:

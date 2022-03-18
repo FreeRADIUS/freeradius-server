@@ -143,6 +143,21 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			fr_dbuff_in(&work_dbuff, mask);
 			break;
 		}
+
+		if (da_is_bits_prefix(vp->da)) {
+			int num_bytes = (vp->vp_ip.prefix + 0x07) >> 3;
+
+			fr_dbuff_in(&work_dbuff, (uint8_t) vp->vp_ip.prefix);
+
+			if (num_bytes) {
+				FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff,
+							  (uint8_t const *)&vp->vp_ipv4addr,
+							  num_bytes);
+			}
+
+			break;
+		}
+
 		goto from_network;
 
 	case FR_TYPE_STRING:

@@ -1,0 +1,13 @@
+proto dhcpv4
+proto-dictionary dhcpv4
+fuzzer-out dhcpv4
+
+encode-pair Classless-Static-Route = { Destination-Descriptor = { Subnet = 127.0.0.0/8, Router-IP-Address = 127.0.0.1 }, Destination-Descriptor = { Subnet = 192.168.0.0/16, Router-IP-Address = 192.168.0.1 } }
+match 79 0d 08 7f 7f 00 00 01 10 c0 a8 c0 a8 00 01
+
+decode-pair -
+match Classless-Static-Route = { Destination-Descriptor = { Subnet = 127.0.0.0/8, Router-IP-Address = 127.0.0.1 }, Destination-Descriptor = { Subnet = 192.168.0.0/16, Router-IP-Address = 192.168.0.1 } }
+
+
+count
+match 7
