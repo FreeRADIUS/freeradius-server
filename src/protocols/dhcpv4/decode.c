@@ -220,7 +220,10 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 
 			needs = 1 + ((*p + 0x07) >> 3);
 			if (data_len < needs) goto raw;
+
+#if 0
 			if (exact && (data_len > needs)) goto raw;
+#endif
 
 			vp->vp_ip.prefix = *p;
 
