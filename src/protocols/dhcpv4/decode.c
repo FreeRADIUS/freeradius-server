@@ -214,44 +214,45 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 
 		if (da_is_bits_prefix(vp->da)) {
 			uint32_t ipaddr, mask;
+			size_t needs;
 
 			if ((data_len == 0) || (*p > 32)) goto raw;
 
-			if (exact && (data_len > 5)) goto raw;
+			needs = 1 + ((*p + 0x07) >> 3);
+			if (data_len < needs) goto raw;
+			if (exact && (data_len > needs)) goto raw;
 
 			vp->vp_ip.prefix = *p;
-			mask = ~(uint32_t) 0;
-			mask <<= (32 - vp->vp_ip.prefix);
 
-			if (*p > 24) {
-				if (data_len < 5) goto raw;
-				ipaddr = fr_net_to_uint32(p + 1);
-				p += 5;
+			/*
+			 *	If the IP address is longer than necessary, then only grab the pieces we need.
+			 */
+			if (vp->vp_ip.prefix) {
+				mask = ~(uint32_t) 0;
+				mask <<= (32 - vp->vp_ip.prefix);
 
-			} else if (*p > 16) {
-				if (data_len < 4) goto raw;
-				ipaddr = fr_net_to_uint24(p + 1);
-				ipaddr <<= 8;
-				p += 4;
+				if (*p > 24) {
+					ipaddr = fr_net_to_uint32(p + 1);
 
-			} else if (*p > 8) {
-				if (data_len < 3) goto raw;
-				ipaddr = fr_net_to_uint16(p + 1);
-				ipaddr <<= 16;
-				p += 3;
+				} else if (*p > 16) {
+					ipaddr = fr_net_to_uint24(p + 1);
+					ipaddr <<= 8;
 
-			} else if (*p > 0) {
-				if (data_len < 2) goto raw;
-				ipaddr = p[1];
-				ipaddr <<= 24;
-				p += 2;
+				} else if (*p > 8) {
+					ipaddr = fr_net_to_uint16(p + 1);
+					ipaddr <<= 16;
 
-			} else {
-				p++;
+				} else { /* 1..8 */
+					ipaddr = p[1];
+					ipaddr <<= 24;
+				}
+			} else { /* prefix == 0 */
 				ipaddr = 0;
+				mask = 0;
 			}
 
 			vp->vp_ipv4addr = htonl(ipaddr & mask);
+			p += needs;
 			break;
 		}
 
