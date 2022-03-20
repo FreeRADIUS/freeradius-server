@@ -213,7 +213,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 		}
 
 		if (da_is_bits_prefix(vp->da)) {
-			uint32_t ipaddr, mask;
 			size_t needs;
 
 			if ((data_len == 0) || (*p > 32)) goto raw;
@@ -221,9 +220,9 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 			needs = 1 + ((*p + 0x07) >> 3);
 			if (data_len < needs) goto raw;
 
-#if 0
-			if (exact && (data_len > needs)) goto raw;
-#endif
+			/*
+			 *	Don't do exact checks here, as the content is variable-sized.
+			 */
 
 			vp->vp_ip.prefix = *p;
 
@@ -231,6 +230,8 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 			 *	If the IP address is longer than necessary, then only grab the pieces we need.
 			 */
 			if (vp->vp_ip.prefix) {
+				uint32_t ipaddr, mask;
+
 				mask = ~(uint32_t) 0;
 				mask <<= (32 - vp->vp_ip.prefix);
 
@@ -249,12 +250,10 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 					ipaddr = p[1];
 					ipaddr <<= 24;
 				}
-			} else { /* prefix == 0 */
-				ipaddr = 0;
-				mask = 0;
-			}
 
-			vp->vp_ipv4addr = htonl(ipaddr & mask);
+				vp->vp_ipv4addr = htonl(ipaddr & mask);
+			} /* else *p==0, and we leave ipaddr set to zero */
+
 			p += needs;
 			break;
 		}
