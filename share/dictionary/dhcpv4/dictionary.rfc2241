@@ -1,0 +1,19 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC2610 - DHCP Options for Service Location Protocol
+#
+#  $Id$
+#
+##############################################################################
+
+# Novell Directory Services
+ATTRIBUTE	NDS-Servers				85	ipaddr array
+# Novell Directory Services
+
+ATTRIBUTE	NDS-Tree-Name				86	string
+# Novell Directory Services
+ATTRIBUTE	NDS-Context				87	string

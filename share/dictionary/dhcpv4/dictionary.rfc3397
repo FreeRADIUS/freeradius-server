@@ -1,0 +1,19 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC3397 - DHCP DHCP) Domain Search Option
+#
+#  $Id$
+#
+##############################################################################
+
+
+#
+#  Unlike other options, this uses DNS compression.
+#
+#  @todo - add a "compressed" dns label flag.
+#
+ATTRIBUTE	Domain-Search				119	string	dns_label,array
