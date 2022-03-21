@@ -196,7 +196,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		case FR_TYPE_UINT32:
 		case FR_TYPE_UINT64:
 			if ((flags->subtype != FLAG_KEY_FIELD) && (flags->subtype != FLAG_BIT_FIELD)) {
-				fr_strerror_const("Invalid type for extra flag.");
+				fr_strerror_const("Invalid type (not 'key' field or 'bit' field) for extra flag.");
 				return false;
 			}
 
@@ -230,7 +230,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 				if ((flags->subtype != FLAG_LENGTH_UINT8) && (flags->subtype != FLAG_LENGTH_UINT16)) goto invalid_extra;
 			} else if (flags->subtype) {
 			invalid_extra:
-				fr_strerror_const("Invalid type for extra flag.");
+				fr_strerror_const("Invalid type (not 'length=...') for extra flag.");
 				return false;
 			}
 
@@ -239,8 +239,8 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			break;
 
 		case FR_TYPE_STRUCT:
-			if (flags->subtype != FLAG_LENGTH_UINT16) {
-				fr_strerror_const("Invalid type for extra flag.");
+			if ((flags->subtype != FLAG_LENGTH_UINT8) && (flags->subtype != FLAG_LENGTH_UINT16)) {
+				fr_strerror_const("Invalid type (not 'length=...') for extra flag.");
 				return false;
 			}
 

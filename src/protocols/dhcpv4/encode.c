@@ -238,8 +238,10 @@ static ssize_t encode_array(fr_dbuff_t *dbuff,
 		/*
 		 *	If the data is variable length i.e. strings or octets
 		 *	we need to include an 8-bit length field before each element.
+		 *
+		 *	The struct encoder adds it's own length field.
 		 */
-		if (da_is_length_field(da)) {
+		if (da_is_length_field(da) && (da->type != FR_TYPE_STRUCT)) {
 			len_field = true;
 			FR_DBUFF_ADVANCE_RETURN(&element_dbuff, sizeof(uint8_t));	/* Make room for the length field */
 		}
