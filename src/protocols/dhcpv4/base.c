@@ -767,6 +767,11 @@ static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *pare
 		}
 	}
 
+	if (flags->extra && (flags->subtype == FLAG_LENGTH_UINT16)) {
+		fr_strerror_const("The 'length=uint16' flag cannot be used for DHCPv4");
+		return false;
+	}
+
 	/*
 	 *	"extra" signifies that subtype is being used by the
 	 *	dictionaries itself.
