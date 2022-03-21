@@ -556,6 +556,22 @@ static inline void fr_ldap_berval_to_value_shallow(fr_value_box_t *value, struct
 	fr_value_box_memdup_shallow(value, NULL, (uint8_t *)berval->bv_val, berval->bv_len, true);
 }
 
+/** Inline function to copy pointer from a berval to a string value box
+ *
+ * Useful for printing contents of bervals known to contain strings in DEBUG output since
+ * they are not NULL terminated.
+ *
+ * @note This results in a shallow copy of the berval, so if the berval is freed
+ *	the value box becomes invalidated.
+ *
+ * @param[out] value	to write berval value to.
+ * @param[in] berval	top copy pointer / length from.
+ */
+static inline void fr_ldap_berval_to_value_str_shallow(fr_value_box_t *value, struct berval *berval)
+{
+	fr_value_box_bstrndup_shallow(value, NULL, berval->bv_val, berval->bv_len, true);
+}
+
 /** Compare two ldap trunk structures on connection URI / DN
  *
  * @param[in] one	first connection to compare.
