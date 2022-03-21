@@ -10,10 +10,22 @@
 #
 ##############################################################################
 
-# Authentication
-ATTRIBUTE       Authentication                          90      struct
-MEMBER          Protocol                        uint8
-MEMBER          Algorithm                       uint8
-MEMBER          RDM                             uint8
-MEMBER          Replay-Detection                uint64
-MEMBER          Authentication-Information      octets
+#
+#  This structure is also used in the relay-agent option, sub-option 8.
+#
+ATTRIBUTE	Authentication				90	struct
+MEMBER		protocol				uint8
+MEMBER		algorithm				uint8	key
+MEMBER		RDM					uint8
+MEMBER		replay-detection			uint64
+
+VALUE	RDM				monotonically-increasing 1
+
+VALUE	protocol			configuration-token	0
+VALUE	protocol			delayed-authentication	1
+VALUE	protocol			dhcpv6-delayed-authentication 2
+VALUE	protocol			dhcpv6-reconfigure-key	3
+
+STRUCT	HMAC-SHA1-keyed-hash			algorithm	1
+MEMBER		key-id				uint32
+MEMBER		hash				octets[20]
