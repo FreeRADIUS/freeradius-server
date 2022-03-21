@@ -303,6 +303,13 @@ fr_ldap_connection_t *fr_ldap_connection_alloc(TALLOC_CTX *ctx)
 
 	talloc_set_destructor(c, _ldap_connection_free);
 
+	/*
+	 *	Ensure the fd is invalid to start with, preventing
+	 *	attempts to remove fd events if the server is shut down
+	 *	before the LDAP conneciton is established
+	 */
+	c->fd = -1;
+
 	return c;
 }
 
