@@ -721,7 +721,7 @@ int fr_network_listen_send_packet(fr_network_t *nr, fr_listen_t *parent, fr_list
 		return -1;
 	}
 
-	s->outstanding ++;
+	s->outstanding++;
 	return 0;
 }
 
