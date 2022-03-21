@@ -48,8 +48,8 @@ static fr_table_num_sorted_t const fr_ldap_directory_type_table[] = {
 };
 static size_t fr_ldap_directory_type_table_len = NUM_ELEMENTS(fr_ldap_directory_type_table);
 
-static int ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
-				       LDAPMessage *result, char const *name)
+int fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
+				   LDAPMessage *result, char const *name)
 {
 	int			entry_cnt, i, num, ldap_errno;
 	LDAPMessage		*entry;
@@ -87,7 +87,7 @@ static int ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *han
 
 	if (directory->vendor_str) {
 		if (strcasestr(directory->vendor_str, "International Business Machines")) {
-			directory->type = FR_LDAP_DIRECTORY_EDIRECTORY;
+			directory->type = FR_LDAP_DIRECTORY_IBM;
 		}
 
 		goto found;
@@ -181,6 +181,34 @@ found:
 		break;
 	}
 
+	/*
+	 *	Evaluate what type of sync the directory supports
+	 */
+	values = ldap_get_values_len(handle, entry, "supportedControl");
+	if (values) {
+		num = ldap_count_values_len(values);
+		for (i = 0; i < num; i++) {
+			if (strncmp(LDAP_CONTROL_SYNC, values[i]->bv_val, values[i]->bv_len) == 0) {
+				INFO("Directory supports RFC 4533");
+				directory->sync_type = FR_LDAP_SYNC_RFC4533;
+				break;
+			}
+			if (strncmp(LDAP_SERVER_NOTIFICATION_OID, values[i]->bv_val, values[i]->bv_len) == 0) {
+				INFO("Directory supports LDAP_SERVER_NOTIFICATION_OID");
+				directory->sync_type = FR_LDAP_SYNC_ACTIVE_DIRECTORY;
+				break;
+			}
+			if (strncmp(LDAP_CONTROL_PERSIST_REQUEST, values[i]->bv_val, values[i]->bv_len) == 0) {
+				INFO("Directory supports persistent search");
+				directory->sync_type = FR_LDAP_SYNC_PERSISTENT_SEARCH;
+				break;
+			}
+		}
+		ldap_value_free_len(values);
+	} else {
+		WARN("No supportedControl returned by LDAP server");
+	}
+
 	return 0;
 }
 
@@ -194,7 +222,7 @@ static void ldap_trunk_directory_alloc_read(LDAP *handle, fr_ldap_query_t *query
 	fr_ldap_config_t const	*config = query->ldap_conn->config;
 	fr_ldap_directory_t	*directory = talloc_get_type_abort(rctx, fr_ldap_directory_t);
 
-	(void)ldap_directory_result_parse(directory, handle, result, config->name);
+	(void)fr_ldap_directory_result_parse(directory, handle, result, config->name);
 }
 
 /** Async extract useful information from the rootDSE of the LDAP server
@@ -209,13 +237,8 @@ static void ldap_trunk_directory_alloc_read(LDAP *handle, fr_ldap_query_t *query
  */
 int fr_ldap_trunk_directory_alloc_async(TALLOC_CTX *ctx, fr_ldap_thread_trunk_t *ttrunk)
 {
-	static char const	*attrs[] = { "vendorname",
-					     "vendorversion",
-					     "isGlobalCatalogReady",
-					     "objectClass",
-					     "orcldirectoryversion",
-					     NULL };
 	fr_ldap_query_t		*query;
+	static char const	*attrs[] = LDAP_DIRECTORY_ATTRS;
 
 	ttrunk->directory = talloc_zero(ctx, fr_ldap_directory_t);
 	if (!ttrunk->directory) return -1;
@@ -228,4 +251,27 @@ int fr_ldap_trunk_directory_alloc_async(TALLOC_CTX *ctx, fr_ldap_thread_trunk_t 
 	fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, NULL, query, ttrunk->directory);
 
 	return 0;
+}
+
+/** Async extract useful information from the rootDSE of the LDAP server
+ *
+ * This version is for a single connection rather than a connection trunk
+ *
+ * @param[in] ldap_conn	connection to be queried
+ * @return
+ *	- message ID on success
+ *	< 0 on failure
+ */
+int fr_ldap_conn_directory_alloc_async(fr_ldap_connection_t *ldap_conn)
+{
+	int			msgid;
+	static char const	*attrs[] = LDAP_DIRECTORY_ATTRS;
+
+	ldap_conn->directory = talloc_zero(ldap_conn, fr_ldap_directory_t);
+	if (!ldap_conn->directory) return -1;
+
+	if (fr_ldap_search_async(&msgid, NULL, &ldap_conn, "", LDAP_SCOPE_BASE, "(objectclass=*)", attrs,
+				 NULL, NULL) != LDAP_PROC_SUCCESS) return -1;
+
+	return msgid;
 }

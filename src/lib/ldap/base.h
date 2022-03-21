@@ -120,6 +120,11 @@ ldap_create_session_tracking_control LDAP_P((
 
 #define LDAP_VIRTUAL_DN_ATTR		"dn"		//!< 'Virtual' attribute which maps to the DN of the object.
 
+#define LDAP_SERVER_NOTIFICATION_OID	"1.2.840.113556.1.4.528"	//!< OID of Active Directory control for
+									//!< persistent search.
+#define LDAP_SERVER_SHOW_DELETED_OID	"1.2.840.113556.1.4.417"	//!< OID of Active Directory control which
+									//!< enables searching for deleted objects.
+
 typedef enum {
 	LDAP_EXT_UNSUPPORTED,				//!< Unsupported extension.
 	LDAP_EXT_BINDNAME,				//!< Specifies the user DN or name for an LDAP bind.
@@ -153,6 +158,13 @@ typedef enum {
 	FR_LDAP_DIRECTORY_SIEMENS_AG,			//!< Directory server is Siemens AG.
 	FR_LDAP_DIRECTORY_UNBOUND_ID			//!< Directory server is Unbound ID
 } fr_ldap_directory_type_t;
+
+typedef enum {
+	FR_LDAP_SYNC_NONE = 0,				//!< No support for LDAP sync
+	FR_LDAP_SYNC_RFC4533,				//!< Directory supports RFC 4533
+	FR_LDAP_SYNC_ACTIVE_DIRECTORY,			//!< Directory supports AD style persistent search.
+	FR_LDAP_SYNC_PERSISTENT_SEARCH			//!< Directory supports persistent search
+} fr_ldap_sync_type_t;
 
 /** LDAP connection handle states
  *
@@ -198,6 +210,8 @@ typedef struct {
 
 	bool			cleartext_password;	//!< Whether the server will return the user's plaintext
 							///< password.
+
+	fr_ldap_sync_type_t	sync_type;		//! <What kind of LDAP sync this directory supports.
 } fr_ldap_directory_t;
 
 /** Connection configuration
@@ -665,7 +679,20 @@ int		fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t 
 /*
  *	directory.c - Get directory capabilities from the remote server
  */
+#define LDAP_DIRECTORY_ATTRS { "vendorname", \
+			       "vendorversion", \
+			       "isGlobalCatalogReady", \
+			       "objectClass", \
+			       "orcldirectoryversion", \
+			       "supportedControl", \
+			       NULL }
+
+int		fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
+					       LDAPMessage *result, char const *name);
+
 int		fr_ldap_trunk_directory_alloc_async(TALLOC_CTX *ctx, fr_ldap_thread_trunk_t *ttrunk);
+
+int		fr_ldap_conn_directory_alloc_async(fr_ldap_connection_t *ldap_conn);
 
 /*
  *	edir.c - Edirectory integrations
