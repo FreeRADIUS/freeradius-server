@@ -170,9 +170,6 @@ ATTRIBUTE	Server-Identifier-Override		82.11	ipaddr
 # Internet Storage Name Service
 ATTRIBUTE	iSNS					83	octets
 
-# Authentication
-ATTRIBUTE	Authentication				90	octets
-
 ATTRIBUTE	Client-Last-Transaction-Time		91	uint32 # seconds on the past
 
 ATTRIBUTE	associated-ip				92	ipaddr array
