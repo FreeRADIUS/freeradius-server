@@ -466,10 +466,16 @@ static int8_t pair_sort_increasing(void const *a, void const *b)
 {
 	fr_pair_t const *my_a = a;
 	fr_pair_t const *my_b = b;
+	int rcode;
 
-	return (my_a->da->attr > my_b->da->attr) - (my_a->da->attr < my_b->da->attr);
+	/*
+	 *	Deeper attributes come later in the list.
+	 */
+	rcode = CMP_PREFER_SMALLER(my_a->da->depth, my_b->da->depth);
+	if (rcode != 0) return rcode;
+
+	return CMP_PREFER_SMALLER(my_a->da->attr, my_b->da->attr);
 }
-
 
 ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			     fr_da_stack_t *da_stack, unsigned int depth,
