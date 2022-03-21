@@ -42,7 +42,7 @@ ATTRIBUTE	Hostname				12	string
 # Size of boot file in 512 uint8
 ATTRIBUTE	Boot-File-Size				13	uint16
 # Client to dump and name
-ATTRIBUTE	Merit-Dump-File				14	octets
+ATTRIBUTE	Merit-Dump-File				14	string
 ATTRIBUTE	Domain-Name				15	string
 ATTRIBUTE	Swap-Server				16	ipaddr
 # Path name for root disk
@@ -53,7 +53,7 @@ ATTRIBUTE	Source-Route-Enable			20	bool
 # Routing Policy Filters
 ATTRIBUTE	Policy-Filter				21	ipv4prefix	prefix=split,array
 ATTRIBUTE	Max-Datagram-Reassembly-Size		22	uint16
-ATTRIBUTE	Default-IP-TTL				23	octets
+ATTRIBUTE	Default-IP-TTL				23	byte
 ATTRIBUTE	Path-MTU-Aging-Timeout			24	uint32
 ATTRIBUTE	Path-MTU-Plateau-Table			25	uint16 array
 ATTRIBUTE	Interface-MTU-Size			26	uint16
@@ -128,7 +128,7 @@ ATTRIBUTE	NIS-Server-Address			65	ipaddr
 ATTRIBUTE	TFTP-Server-Name			66	string
 ATTRIBUTE	Boot-File-Name				67	string
 # Home Agent Addresses
-ATTRIBUTE	Home-Agent-Address			68	octets
+ATTRIBUTE	Home-Agent-Address			68	ipaddr array
 ATTRIBUTE	SMTP-Server-Address			69	ipaddr array
 ATTRIBUTE	POP3-Server-Address			70	ipaddr array
 ATTRIBUTE	NNTP-Server-Address			71	ipaddr array
@@ -169,25 +169,14 @@ ATTRIBUTE	Server-Identifier-Override		82.11	ipaddr
 
 # Internet Storage Name Service
 ATTRIBUTE	iSNS					83	octets
-# Novell Directory Services
-ATTRIBUTE	NDS-Servers				85	octets
-# Novell Directory Services
-ATTRIBUTE	NDS-Tree-Name				86	octets
-# Novell Directory Services
-ATTRIBUTE	NDS-Context				87	octets
 
 ATTRIBUTE	Client-Last-Transaction-Time		91	uint32 # seconds on the past
 
 ATTRIBUTE	associated-ip				92	ipaddr array
 
-# Client System Architecture
-ATTRIBUTE	Client-System				93	octets
-# Client Network Device Interface
-ATTRIBUTE	Client-NDI				94	octets
 # Lightweight Directory Access Protocol
 ATTRIBUTE	LDAP					95	octets
-# UUID/GUID-based Client Identifier
-ATTRIBUTE	UUID/GUID				97	octets
+
 # Open Group's User Authentication
 ATTRIBUTE	User-Auth				98	octets
 
@@ -199,12 +188,18 @@ ATTRIBUTE	Netinfo-Tag				113	octets
 ATTRIBUTE	URL					114	octets
 # DHCP Auto-Configuration
 ATTRIBUTE	Auto-Config				116	uint8
+
 # Name Service Search
-ATTRIBUTE	Name-Service-Search			117	octets
+#
+#  Array of option numbers which should then be used, in order,
+#  to search for DNS information.
+#
+ATTRIBUTE	Name-Service-Search			117	uint16 array
+
+
 # Subnet Selection Option
 ATTRIBUTE	Subnet-Selection-Option			118	ipaddr
-# DNS domain serach list
-ATTRIBUTE	Domain-Search				119	octets # really compressed, concatenated, dns_label array
+
 # SIP-Servers DHCP Option
 ATTRIBUTE	SIP-Servers-Option			120	octets
 
@@ -228,9 +223,6 @@ ATTRIBUTE	V-I-Vendor-Specific			125	vsa
 # 144 - 149 unused
 
 ATTRIBUTE	TFTP-Server-IPv4-Address		150	ipaddr array
-
-# RFC draft-ietf-pcp-13
-ATTRIBUTE	PCP-IPv4-Server-Address			158	octets	# Complex format (not just ipaddr array)
 
 # RFC 3942 - 159-174 - Unassigned
 # RFC 3942 - 178-207 - Unassigned

@@ -435,8 +435,10 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 		 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...-+-+-+-+-+-+-+
 		 *   |       text-len                |        String                 |
 		 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...-+-+-+-+-+-+-+
+		 *
+		 *	The struct encoder already adds the length field.
 		 */
-		if (da_is_length_field(da)) {
+		if (da_is_length_field(da) && (da->type != FR_TYPE_STRUCT)) {
 			len_field = true;
 			FR_DBUFF_ADVANCE_RETURN(&element_dbuff, sizeof(uint16_t));	/* Make room for the length field */
 		}

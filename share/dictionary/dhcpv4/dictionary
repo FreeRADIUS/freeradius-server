@@ -23,9 +23,11 @@ $INCLUDE dictionary.freeradius.internal
 
 # Fixme should be broken out into separate RFCs
 $INCLUDE dictionary.rfc2131
+$INCLUDE dictionary.rfc2241
 $INCLUDE dictionary.rfc2610
 $INCLUDE dictionary.rfc3004
 $INCLUDE dictionary.rfc3118
+$INCLUDE dictionary.rfc3397
 $INCLUDE dictionary.rfc3442
 $INCLUDE dictionary.rfc4280
 $INCLUDE dictionary.rfc4578
@@ -42,6 +44,7 @@ $INCLUDE dictionary.rfc6011
 $INCLUDE dictionary.rfc6153
 $INCLUDE dictionary.rfc6656
 $INCLUDE dictionary.rfc6926
+$INCLUDE dictionary.rfc7291
 $INCLUDE dictionary.rfc8925
 
 $INCLUDE dictionary.adsl_forum

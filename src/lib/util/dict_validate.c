@@ -97,10 +97,11 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	}
 
 	/*
-	 *	Only some data types can be in arrays.
+	 *	Only some data types can be in arrays, because we need
+	 *	to be able to decode the various array members.
 	 */
 	if (flags->array) {
-		switch (type) {
+		if (!flags->is_known_width) switch (type) {
 		default:
 			fr_strerror_printf("The 'array' flag cannot be used with attributes of type '%s'",
 					   fr_type_to_str(type));
@@ -115,9 +116,23 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		case FR_TYPE_UINT32:
 		case FR_TYPE_DATE:
 		case FR_TYPE_TIME_DELTA:
+			break;
+
 		case FR_TYPE_STRING:
 		case FR_TYPE_OCTETS:
+			if (!flags->length) {
+				fr_strerror_const("Variable length attributes cannot be marked as 'array'");
+				return false;
+			}
+
+			flags->is_known_width = 1;
+			break;
+
 		case FR_TYPE_STRUCT:
+			/*
+			 *	If we have arrays of structs, then the structure MUST be known width.
+			 */
+			flags->is_known_width = 1;
 			break;
 		}
 
@@ -181,7 +196,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		case FR_TYPE_UINT32:
 		case FR_TYPE_UINT64:
 			if ((flags->subtype != FLAG_KEY_FIELD) && (flags->subtype != FLAG_BIT_FIELD)) {
-				fr_strerror_const("Invalid type for extra flag.");
+				fr_strerror_const("Invalid type (not 'key' field or 'bit' field) for extra flag.");
 				return false;
 			}
 
@@ -215,7 +230,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 				if ((flags->subtype != FLAG_LENGTH_UINT8) && (flags->subtype != FLAG_LENGTH_UINT16)) goto invalid_extra;
 			} else if (flags->subtype) {
 			invalid_extra:
-				fr_strerror_const("Invalid type for extra flag.");
+				fr_strerror_const("Invalid type (not 'length=...') for extra flag.");
 				return false;
 			}
 
@@ -224,15 +239,10 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			break;
 
 		case FR_TYPE_STRUCT:
-			if (flags->subtype != FLAG_LENGTH_UINT16) {
-				fr_strerror_const("Invalid type for extra flag.");
+			if ((flags->subtype != FLAG_LENGTH_UINT8) && (flags->subtype != FLAG_LENGTH_UINT16)) {
+				fr_strerror_const("Invalid type (not 'length=...') for extra flag.");
 				return false;
 			}
-
-			/*
-			 *	If we have arrays of structs, then the structure MUST be known width.
-			 */
-			flags->is_known_width |= flags->array;
 
 			ALLOW_FLAG(extra);
 			ALLOW_FLAG(subtype);
@@ -448,8 +458,6 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	default:
 		break;
 	}
-
-	flags->is_known_width |= (flags->length > 0); /* for fixed-size string / octets */
 
 	/*
 	 *	type_size is used to limit the maximum attribute number, so it's checked first.

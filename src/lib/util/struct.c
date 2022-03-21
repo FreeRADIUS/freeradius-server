@@ -110,26 +110,37 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	Decode structs with length prefixes.
 	 */
 	if (da_is_length_field(parent)) {
-		size_t struct_len;
+		size_t struct_len, need;
 
-		if ((end - p) < 2) {
+		if (parent->flags.subtype == FLAG_LENGTH_UINT8) {
+			need = 1;
+		} else {
+			need = 2;
+		}
+
+		if ((size_t) (end - p) < need) {
 			FR_PROTO_TRACE("Insufficient room for length header");
 			goto unknown;
 		}
 
-		struct_len = (p[0] << 8) | p[1];
-		if ((p + struct_len + 2) > end) {
+		struct_len = p[0];
+		if (need > 1) {
+			struct_len <<= 8;
+			struct_len |= p[1];
+		}
+
+		if ((p + struct_len + need) > end) {
 			FR_PROTO_TRACE("Length header is larger than remaining data");
 			goto unknown;
 		}
 
 		/*
-		 *	Skip the "length" field, and tell the decoder
-		 *	to stop at the end of the length field.
+		 *	Skip the length field, and tell the decoder to
+		 *	stop at the end of the data we're supposed to decode.
 		 */
-		p += 2;
+		p += need;
 		end = p + struct_len;
-		data_len = struct_len + 2;
+		data_len = struct_len + need;
 	}
 
 	while (p < end) {
@@ -532,7 +543,11 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	 *	Some structs are prefixed by a 16-bit length.
 	 */
 	if (da_is_length_field(parent)) {
-		FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 2);
+		if (parent->flags.subtype == FLAG_LENGTH_UINT8) {
+			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 1);
+		} else {
+			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 2);
+		}
 		do_length = true;
 	}
 
@@ -778,12 +793,30 @@ done:
 	}
 
 	if (do_length) {
-		uint32_t len = fr_dbuff_used(&work_dbuff) - 2;
-		if (len > 65535) {
+		size_t need, max, len;
+
+		/*
+		 *	@todo - maybe just limit the size of the work_dbuff.
+		 */
+		if (parent->flags.subtype == FLAG_LENGTH_UINT8) {
+			need = 1;
+			max = 256;
+		} else {
+			need = 2;
+			max = 65536;
+		}
+
+		len = fr_dbuff_used(&work_dbuff) - need;
+		if (len > max) {
 			fr_strerror_const("Structure size is too large for 16-bit length field.");
 			return -1;
 		}
-		fr_dbuff_in(&hdr_dbuff, (uint16_t)len);
+
+		if (need == 1) {
+			fr_dbuff_in(&hdr_dbuff, (uint8_t)len);
+		} else {
+			fr_dbuff_in(&hdr_dbuff, (uint16_t)len);
+		}
 	}
 
 	/*
