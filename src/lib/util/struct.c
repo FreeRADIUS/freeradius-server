@@ -515,8 +515,10 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		vp = fr_dcursor_current(&child_cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 
+		FR_PROTO_TRACE("fr_struct_to_network encoding nested with parent %s", parent->name);
 		cursor = &child_cursor;
 	} else {
+		FR_PROTO_TRACE("fr_struct_to_network encoding flat");
 		cursor = parent_cursor;
 	}
 
@@ -563,6 +565,8 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		child = fr_dict_attr_child_by_num(parent, child_num);
 		if (!child) break;
 
+		FR_PROTO_TRACE("fr_struct_to_network child %s", child->name);
+
 		/*
 		 *	Encode child TLVs at the end of a struct.
 		 *
@@ -583,6 +587,8 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		 *	Skipped a VP, or left one off at the end, fill the struct with zeros.
 		 */
 		if (!vp || (vp->da != child)) {
+			FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "    no child %s", child->name);
+
 			/*
 			 *	Zero out the bit field.
 			 */
@@ -706,6 +712,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		}
 
 	next:
+		FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "fr_struct_to_network after child %s", child->name);
 		child_num++;
 	}
 
@@ -716,6 +723,8 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	 *	Check for keyed data to encode.
 	 */
 	if (vp && key_da) {
+		FR_PROTO_TRACE("fr_struct_to_network encoding key %s", key_da->name);
+
 		/*
 		 *	If our parent is a struct, AND its parent is
 		 *	the key_da, then we have a keyed struct for
@@ -824,6 +833,8 @@ done:
 	 *	that we've encoded the parent.
 	 */
 	if (cursor != parent_cursor) (void) fr_dcursor_next(parent_cursor);
+
+	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "Done fr_struct_to_network");
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
