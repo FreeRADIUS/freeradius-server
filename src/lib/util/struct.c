@@ -477,6 +477,23 @@ static int8_t pair_sort_increasing(void const *a, void const *b)
 	return CMP_PREFER_SMALLER(my_a->da->attr, my_b->da->attr);
 }
 
+static void *struct_next_encodable(fr_dlist_head_t *list, void *to_eval, void *uctx)
+{
+	fr_pair_t	*c;
+	fr_dict_attr_t	*parent = talloc_get_type_abort(uctx, fr_dict_attr_t);
+
+	if (!to_eval) return NULL;
+
+	for (c = to_eval; c; c = fr_dlist_next(list, c)) {
+		PAIR_VERIFY(c);
+
+		if (c->da->dict != parent->dict || c->da->flags.internal) continue;
+		break;
+	}
+
+	return c;
+}
+
 ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			     fr_da_stack_t *da_stack, unsigned int depth,
 			     fr_dcursor_t *parent_cursor, void *encode_ctx,
@@ -513,7 +530,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 		fr_pair_t *sorted = fr_dcursor_current(parent_cursor); /* NOT const */
 
 		fr_pair_list_sort(&sorted->vp_group, pair_sort_increasing);
-		fr_pair_dcursor_init(&child_cursor, &sorted->vp_group);
+		fr_pair_dcursor_iter_init(&child_cursor, &sorted->vp_group, struct_next_encodable, parent);
 
 		/*
 		 *	Build the da_stack for the new structure.
