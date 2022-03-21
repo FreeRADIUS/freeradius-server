@@ -43,6 +43,7 @@ $INCLUDE dictionary.rfc6011
 $INCLUDE dictionary.rfc6153
 $INCLUDE dictionary.rfc6656
 $INCLUDE dictionary.rfc6926
+$INCLUDE dictionary.rfc7291
 $INCLUDE dictionary.rfc8925
 
 $INCLUDE dictionary.adsl_forum

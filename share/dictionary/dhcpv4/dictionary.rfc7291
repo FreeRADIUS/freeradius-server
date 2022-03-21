@@ -1,0 +1,16 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC7291 - DHCP Options for the Port Control Protocol
+#
+#  $Id$
+#
+##############################################################################
+
+
+ATTRIBUTE	PCP-IPv4-Server-Addresses		158	struct
+MEMBER		server		struct length=uint8,array
+MEMBER		ip-address	ipv4addr array

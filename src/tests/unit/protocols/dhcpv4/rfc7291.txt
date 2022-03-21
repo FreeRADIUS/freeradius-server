@@ -1,0 +1,26 @@
+proto dhcpv4
+proto-dictionary dhcpv4
+fuzzer-out dhcpv4
+
+decode-pair 9e 05 04 7f 00 00 01
+match PCP-IPv4-Server-Addresses = { server = { ip-address = 127.0.0.1 } }
+
+encode-pair -
+match 9e 05 04 7f 00 00 01
+
+# multiple in one struct
+encode-pair PCP-IPv4-Server-Addresses = { server = { ip-address = 127.0.0.1, ip-address = 127.0.0.2 } }
+match 9e 09 08 7f 00 00 01 7f 00 00 02
+
+decode-pair -
+match PCP-IPv4-Server-Addresses = { server = { ip-address = 127.0.0.1, ip-address = 127.0.0.2 } }
+
+# multiple structs
+encode-pair PCP-IPv4-Server-Addresses = { server = { ip-address = 127.0.0.1, ip-address = 127.0.0.2 }, server = { ip-address = 192.168.0.1, ip-address = 192.168.0.2 } }
+match 9e 12 08 7f 00 00 01 7f 00 00 02 08 c0 a8 00 01 c0 a8 00 02
+
+decode-pair -
+match PCP-IPv4-Server-Addresses = { server = { ip-address = 127.0.0.1, ip-address = 127.0.0.2 }, server = { ip-address = 192.168.0.1, ip-address = 192.168.0.2 } }
+
+count
+match 15

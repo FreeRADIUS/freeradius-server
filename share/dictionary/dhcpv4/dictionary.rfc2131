@@ -227,9 +227,6 @@ ATTRIBUTE	V-I-Vendor-Specific			125	vsa
 
 ATTRIBUTE	TFTP-Server-IPv4-Address		150	ipaddr array
 
-# RFC draft-ietf-pcp-13
-ATTRIBUTE	PCP-IPv4-Server-Address			158	octets	# Complex format (not just ipaddr array)
-
 # RFC 3942 - 159-174 - Unassigned
 # RFC 3942 - 178-207 - Unassigned
 # RFC 3942 - 214-219 - Unassigned
