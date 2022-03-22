@@ -121,7 +121,6 @@ DIAG_ON(unused-macros)
 	 */
 	do_ldap_option(LDAP_OPT_REFERRALS, "chase_referrals", LDAP_OPT_OFF);
 
-#ifdef LDAP_OPT_NETWORK_TIMEOUT
 	/*
 	 *	A value of zero results in an handle configuration failure.
 	 *
@@ -133,7 +132,6 @@ DIAG_ON(unused-macros)
 		       (fr_time_delta_ispos(config->net_timeout) ?
 				&fr_time_delta_to_timeval(config->net_timeout) :
 				&(struct timeval) { .tv_sec = -1, .tv_usec = 0 }));
-#endif
 
 	do_ldap_option(LDAP_OPT_TIMELIMIT, "srv_timelimit", &fr_time_delta_to_timeval(config->srv_timelimit));
 
@@ -441,7 +439,6 @@ fr_connection_t	*fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_list_t
 
 int fr_ldap_connection_timeout_set(fr_ldap_connection_t const *c, fr_time_delta_t timeout)
 {
-#ifdef LDAP_OPT_NETWORK_TIMEOUT
 	int ldap_errno;
 
 	/*
@@ -455,7 +452,6 @@ int fr_ldap_connection_timeout_set(fr_ldap_connection_t const *c, fr_time_delta_
 		       (fr_time_delta_ispos(timeout) ?
 		       		&fr_time_delta_to_timeval(timeout) :
 		       		&(struct timeval) { .tv_sec = -1, .tv_usec = 0 }));
-#endif
 
 	return 0;
 
@@ -465,8 +461,6 @@ error:
 
 int fr_ldap_connection_timeout_reset(fr_ldap_connection_t const *c)
 {
-
-#ifdef LDAP_OPT_NETWORK_TIMEOUT
 	int ldap_errno;
 
 	/*
@@ -480,7 +474,6 @@ int fr_ldap_connection_timeout_reset(fr_ldap_connection_t const *c)
 		       (fr_time_delta_ispos(c->config->net_timeout) ?
 		       		&fr_time_delta_to_timeval(c->config->net_timeout) :
 				&(struct timeval) { .tv_sec = -1, .tv_usec = 0 }));
-#endif
 
 	return 0;
 
