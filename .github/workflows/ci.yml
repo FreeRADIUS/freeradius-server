@@ -8,7 +8,7 @@ on:
 
 env:
   PANIC_ACTION: "gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
-  ALT_OPENSSL: "3.0.1"
+  ALT_OPENSSL: "3.0.2"
   CI: 1
   GH_ACTIONS: 1
 
