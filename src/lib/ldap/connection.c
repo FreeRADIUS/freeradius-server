@@ -162,11 +162,9 @@ DIAG_ON(unused-macros)
 	maybe_ldap_option(LDAP_OPT_X_TLS_CERTFILE, "certificate_file", config->tls_certificate_file);
 	maybe_ldap_option(LDAP_OPT_X_TLS_KEYFILE, "private_key_file", config->tls_private_key_file);
 
-#  ifdef LDAP_OPT_X_TLS_REQUIRE_CERT
 	if (config->tls_require_cert_str) {
 		do_ldap_option(LDAP_OPT_X_TLS_REQUIRE_CERT, "require_cert", &config->tls_require_cert);
 	}
-#  endif
 
 	if (config->tls_min_version_str) {
 		do_ldap_option(LDAP_OPT_X_TLS_PROTOCOL_MIN, "tls_min_version", &config->tls_min_version);
