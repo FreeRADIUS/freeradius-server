@@ -1596,11 +1596,10 @@ static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst
 			mod_s[total].mod_op = LDAP_MOD_DELETE;
 			break;
 
-#ifdef LDAP_MOD_INCREMENT
 		case T_OP_INCRM:
 			mod_s[total].mod_op = LDAP_MOD_INCREMENT;
 			break;
-#endif
+
 		default:
 			REDEBUG("Operator '%s' is not supported for LDAP modify operations",
 				fr_table_str_by_value(fr_tokens_table, op, "<INVALID>"));
