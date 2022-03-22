@@ -905,11 +905,8 @@ LDAP *fr_ldap_handle_thread_local(void)
 	if (!ldap_thread_local_handle) {
 		LDAP *handle;
 
-#ifdef HAVE_LDAP_INITIALIZE
 		ldap_initialize(&handle, "");
-#else
-		handle = ldap_init("", 0);
-#endif
+
 		fr_atexit_thread_local(ldap_thread_local_handle, _ldap_handle_thread_local_free, handle);
 	}
 
@@ -979,11 +976,8 @@ int fr_ldap_init(void)
 	 *
 	 *	See: https://github.com/arr2036/ldapperf/issues/2
 	 */
-#ifdef HAVE_LDAP_INITIALIZE
 	ldap_initialize(&ldap_global_handle, "");
-#else
-	ldap_global_handle = ldap_init("", 0);
-#endif
+
 	if (!ldap_global_handle) {
 		ERROR("Failed initialising global LDAP handle");
 		return -1;

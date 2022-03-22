@@ -71,21 +71,12 @@ int fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const
 
 	fr_assert(config->server);
 
-#ifdef HAVE_LDAP_INITIALIZE
 	ldap_errno = ldap_initialize(&handle, config->server);
 	if (ldap_errno != LDAP_SUCCESS) {
 		ERROR("ldap_initialize failed: %s", ldap_err2string(ldap_errno));
 	error:
 		return -1;
 	}
-#else
-	handle = ldap_init(config->server, config->port);
-	if (!handle) {
-		ERROR("ldap_init failed");
-	error:
-		return -1;
-	}
-#endif
 
 	DEBUG3("New connection %p libldap handle %p", c, handle);
 

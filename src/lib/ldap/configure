@@ -3934,12 +3934,6 @@ then :
   printf "%s\n" "#define HAVE_LDAP_START_TLS_S 1" >>confdefs.h
 
 fi
-ac_fn_c_check_func "$LINENO" "ldap_initialize" "ac_cv_func_ldap_initialize"
-if test "x$ac_cv_func_ldap_initialize" = xyes
-then :
-  printf "%s\n" "#define HAVE_LDAP_INITIALIZE 1" >>confdefs.h
-
-fi
 ac_fn_c_check_func "$LINENO" "ldap_create_sort_control" "ac_cv_func_ldap_create_sort_control"
 if test "x$ac_cv_func_ldap_create_sort_control" = xyes
 then :

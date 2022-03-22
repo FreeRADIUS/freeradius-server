@@ -1995,6 +1995,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			bool		set_port_maybe = true;
 			int		default_port = LDAP_PORT;
 			char		*p;
+			char		*url;
 
 			if (ldap_url_parse(value, &ldap_url)){
 				cf_log_err(conf, "Parsing LDAP URL \"%s\" failed", value);
@@ -2033,80 +2034,45 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				set_port_maybe = false;
 			}
 
-			/* We allow extensions */
+			/*
+			 *	Figure out the default port from the URL
+			 */
+			if (ldap_url->lud_scheme) {
+				if (strcmp(ldap_url->lud_scheme, "ldaps") == 0) {
+					if (inst->handle_config.start_tls == true) {
+						cf_log_err(conf, "ldaps:// scheme is not compatible with 'start_tls'");
+						goto ldap_url_error;
+					}
+					default_port = LDAPS_PORT;
 
-#  ifdef HAVE_LDAP_INITIALIZE
-			{
-				char *url;
+				} else if (strcmp(ldap_url->lud_scheme, "ldapi") == 0) {
+					set_port_maybe = false; /* Unix socket, no port */
+				}
+			}
+
+			if (set_port_maybe) {
+				/*
+				 *	URL port overrides configured port.
+				 */
+				ldap_url->lud_port = inst->handle_config.port;
 
 				/*
-				 *	Figure out the default port from the URL
+				 *	If there's no URL port, then set it to the default
+				 *	this is so debugging messages show explicitly
+				 *	the port we're connecting to.
 				 */
-				if (ldap_url->lud_scheme) {
-					if (strcmp(ldap_url->lud_scheme, "ldaps") == 0) {
-						if (inst->handle_config.start_tls == true) {
-							cf_log_err(conf, "ldaps:// scheme is not compatible "
-								      "with 'start_tls'");
-							goto ldap_url_error;
-						}
-						default_port = LDAPS_PORT;
-
-					} else if (strcmp(ldap_url->lud_scheme, "ldapi") == 0) {
-						set_port_maybe = false; /* Unix socket, no port */
-					}
-				}
-
-				if (set_port_maybe) {
-					/*
-					 *	URL port overrides configured port.
-					 */
-					ldap_url->lud_port = inst->handle_config.port;
-
-					/*
-					 *	If there's no URL port, then set it to the default
-					 *	this is so debugging messages show explicitly
-					 *	the port we're connecting to.
-					 */
-					if (!ldap_url->lud_port) ldap_url->lud_port = default_port;
-				}
-
-				url = ldap_url_desc2str(ldap_url);
-				if (!url) {
-					cf_log_err(conf, "Failed recombining URL components");
-					goto ldap_url_error;
-				}
-				inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server,
-										    "%s ", url);
-				free(url);
-			}
-#  else
-			/*
-			 *	No LDAP initialize function.  Can't specify a scheme.
-			 */
-			if (ldap_url->lud_scheme &&
-			    ((strcmp(ldap_url->lud_scheme, "ldaps") == 0) ||
-			    (strcmp(ldap_url->lud_scheme, "ldapi") == 0) ||
-			    (strcmp(ldap_url->lud_scheme, "cldap") == 0))) {
-				cf_log_err(conf, "%s is not supported by linked libldap",
-					      ldap_url->lud_scheme);
-				return -1;
-			}
-
-			/*
-			 *	URL port over-rides the configured
-			 *	port.  But if there's no configured
-			 *	port, we use the hard-coded default.
-			 */
-			if (set_port_maybe) {
-				ldap_url->lud_port = inst->handle_config.port;
 				if (!ldap_url->lud_port) ldap_url->lud_port = default_port;
 			}
 
-			inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server, "%s:%i ",
-									    ldap_url->lud_host ? ldap_url->lud_host :
-									   			 "localhost",
-									    ldap_url->lud_port);
-#  endif
+			url = ldap_url_desc2str(ldap_url);
+			if (!url) {
+				cf_log_err(conf, "Failed recombining URL components");
+				goto ldap_url_error;
+			}
+			inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server,
+									    "%s ", url);
+			free(url);
+
 			/*
 			 *	@todo We could set a few other top level
 			 *	directives using the URL, like base_dn
@@ -2124,7 +2090,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		 *	server as a hostname.
 		 */
 		{
-#ifdef HAVE_LDAP_INITIALIZE
 			char	const *p;
 			char	*q;
 			int	port = 0;
@@ -2160,13 +2125,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server,
 									    "ldap://%.*s:%i ",
 									    (int) len, value, port);
-#else
-			/*
-			 *	ldap_init takes port, which can be overridden by :port so
-			 *	we don't need to do any parsing here.
-			 */
-			inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server, "%s ", value);
-#endif
 		}
 	}
 

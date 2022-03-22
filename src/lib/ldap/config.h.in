@@ -20,9 +20,6 @@
 /* Define to 1 if you have the `ldap_free_sort_keylist' function. */
 #undef HAVE_LDAP_FREE_SORT_KEYLIST
 
-/* Define to 1 if you have the `ldap_initialize' function. */
-#undef HAVE_LDAP_INITIALIZE
-
 /* Define to 1 if you have the `ldap_is_ldap_url' function. */
 #undef HAVE_LDAP_IS_LDAP_URL
 
