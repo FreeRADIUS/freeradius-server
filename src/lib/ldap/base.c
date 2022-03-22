@@ -948,14 +948,12 @@ int fr_ldap_global_config(int debug_level, char const *tls_random_file)
 
 	if (debug_level) do_ldap_global_option(LDAP_OPT_DEBUG_LEVEL, "ldap_debug", &debug_level);
 
-#ifdef LDAP_OPT_X_TLS_RANDOM_FILE
 	/*
 	 *	OpenLDAP will error out if we attempt to set
 	 *	this on a handle. Presumably it's global in
 	 *	OpenSSL too.
 	 */
 	maybe_ldap_global_option(LDAP_OPT_X_TLS_RANDOM_FILE, "random_file", tls_random_file);
-#endif
 
 	done_config = true;
 
