@@ -1,0 +1,16 @@
+#
+#  Test vectors for DHCP attributes
+#
+proto dhcpv4
+proto-dictionary dhcpv4
+fuzzer-out dhcpv4
+
+
+encode-pair MoS-IPv4-FQDN = { MoS-IPv4-FQDN-IS = "mydomain1.com", MoS-IPv4-FQDN-IS = "mydomain2.lan", MoS-IPv4-FQDN-IS =  "corp.mydomain3.co", }
+match 8c 33 01 31 09 6d 79 64 6f 6d 61 69 6e 31 03 63 6f 6d 00 09 6d 79 64 6f 6d 61 69 6e 32 03 6c 61 6e 00 04 63 6f 72 70 09 6d 79 64 6f 6d 61 69 6e 33 02 63 6f 00
+
+decode-pair -
+match MoS-IPv4-FQDN.MoS-IPv4-FQDN-IS = "mydomain1.com", MoS-IPv4-FQDN.MoS-IPv4-FQDN-IS = "mydomain2.lan", MoS-IPv4-FQDN.MoS-IPv4-FQDN-IS = "corp.mydomain3.co"
+
+count
+match 7
