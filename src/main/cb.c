@@ -136,9 +136,13 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	 *	content types.  Which breaks our tracking of
 	 *	the SSL Session state.
 	 */
-	if ((msg_version == 0) && (content_type > UINT8_MAX)) {
-		DEBUG4("(TLS) Ignoring cbtls_msg call with pseudo content type %i, version %i",
-		       content_type, msg_version);
+	if (((msg_version == 0) && (content_type > UINT8_MAX))
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		|| (content_type == SSL3_RT_HEADER) || (content_type == SSL3_RT_INNER_CONTENT_TYPE)
+#endif
+		) {
+		DEBUG4("(TLS) Ignoring cbtls_msg call with pseudo content type %i (%#04x), version %i (%#04x)",
+		       content_type, content_type, msg_version, msg_version);
 		return;
 	}
 
