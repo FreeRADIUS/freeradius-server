@@ -946,11 +946,7 @@ int fr_ldap_global_config(int debug_level, char const *tls_random_file)
 #define maybe_ldap_global_option(_option, _name, _value) \
 	if (_value) do_ldap_global_option(_option, _name, _value)
 
-#ifdef LDAP_OPT_DEBUG_LEVEL
 	if (debug_level) do_ldap_global_option(LDAP_OPT_DEBUG_LEVEL, "ldap_debug", &debug_level);
-#else
-	if (debug_level) WARN("ldap_debug not honoured as LDAP_OPT_DEBUG_LEVEL is not available");
-#endif
 
 #ifdef LDAP_OPT_X_TLS_RANDOM_FILE
 	/*
