@@ -32,9 +32,6 @@
 /* Define to 1 if you have the `ldap_url_desc2str' function. */
 #undef HAVE_LDAP_URL_DESC2STR
 
-/* Define to 1 if you have the `ldap_url_parse' function. */
-#undef HAVE_LDAP_URL_PARSE
-
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 

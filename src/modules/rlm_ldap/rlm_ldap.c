@@ -1945,14 +1945,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 #endif
 
-#ifndef HAVE_LDAP_URL_PARSE
-	if (inst->handle_config.use_referral_credentials) {
-		cf_log_err(conf, "Configuration item 'use_referral_credentials' not supported.  "
-			   "Linked libldap does not support URL parsing");
-		goto error;
-	}
-#endif
-
 	/*
 	 *	Initialise server with zero length string to
 	 *	make code below simpler.

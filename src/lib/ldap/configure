@@ -3958,12 +3958,6 @@ then :
   printf "%s\n" "#define HAVE_LDAP_CREATE_SESSION_TRACKING_CONTROL 1" >>confdefs.h
 
 fi
-ac_fn_c_check_func "$LINENO" "ldap_url_parse" "ac_cv_func_ldap_url_parse"
-if test "x$ac_cv_func_ldap_url_parse" = xyes
-then :
-  printf "%s\n" "#define HAVE_LDAP_URL_PARSE 1" >>confdefs.h
-
-fi
 ac_fn_c_check_func "$LINENO" "ldap_is_ldap_url" "ac_cv_func_ldap_is_ldap_url"
 if test "x$ac_cv_func_ldap_is_ldap_url" = xyes
 then :

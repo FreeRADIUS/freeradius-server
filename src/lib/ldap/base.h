@@ -96,7 +96,7 @@ ldap_create_session_tracking_control LDAP_P((
 #  define LDAP_CONST
 #endif
 
-#if defined(HAVE_LDAP_URL_PARSE) && defined(HAVE_LDAP_IS_LDAP_URL) && defined(HAVE_LDAP_URL_DESC2STR)
+#if defined(HAVE_LDAP_IS_LDAP_URL) && defined(HAVE_LDAP_URL_DESC2STR)
 #  define LDAP_CAN_PARSE_URLS
 #endif
 
