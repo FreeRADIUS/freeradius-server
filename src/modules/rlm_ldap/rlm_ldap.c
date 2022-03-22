@@ -1688,9 +1688,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_ldap_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
 
-#ifdef HAVE_LDAP_CREATE_SORT_CONTROL
 	if (inst->userobj_sort_ctrl) ldap_control_free(inst->userobj_sort_ctrl);
-#endif
 
 	fr_pool_free(inst->pool);
 
@@ -1937,14 +1935,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 #endif
 
-#ifndef HAVE_LDAP_CREATE_SORT_CONTROL
-	if (inst->userobj_sort_by) {
-		cf_log_err(conf, "Configuration item 'sort_by' not supported.  "
-			   "Linked libldap does not provide ldap_create_sort_control function");
-		goto error;
-	}
-#endif
-
 	/*
 	 *	Initialise server with zero length string to
 	 *	make code below simpler.
@@ -2161,7 +2151,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		goto error;
 	}
 
-#ifdef HAVE_LDAP_CREATE_SORT_CONTROL
 	/*
 	 *	Build the server side sort control for user objects
 	 */
@@ -2187,7 +2176,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			goto error;
 		}
 	}
-#endif
 
 	if (inst->handle_config.tls_require_cert_str) {
 		/*

@@ -11,9 +11,6 @@
    function. */
 #undef HAVE_LDAP_CREATE_SESSION_TRACKING_CONTROL
 
-/* Define to 1 if you have the `ldap_create_sort_control' function. */
-#undef HAVE_LDAP_CREATE_SORT_CONTROL
-
 /* Define to 1 if you have the `ldap_sasl_interactive_bind' function. */
 #undef HAVE_LDAP_SASL_INTERACTIVE_BIND
 
