@@ -282,10 +282,9 @@ typedef struct {
 	/*
 	 *	For keep-alives.
 	 */
-#ifdef LDAP_OPT_X_KEEPALIVE_IDLE
 	fr_time_delta_t		keepalive_idle;		//!< Number of seconds a connections needs to remain idle
 							//!< before TCP starts sending keepalive probes.
-#endif
+
 #ifdef LDAP_OPT_X_KEEPALIVE_PROBES
 	uint32_t		keepalive_probes;	//!< Number of missed timeouts before the connection is
 							///< dropped.

@@ -67,7 +67,7 @@ static char const *ldap_msg_types[UINT8_MAX] = {
 int fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const *config)
 {
 	LDAP				*handle = NULL;
-	int				ldap_errno, ldap_version;
+	int				ldap_errno, ldap_version, keepalive;
 
 	fr_assert(config->server);
 
@@ -138,13 +138,8 @@ DIAG_ON(unused-macros)
 	ldap_version = LDAP_VERSION3;
 	do_ldap_option(LDAP_OPT_PROTOCOL_VERSION, "ldap_version", &ldap_version);
 
-#ifdef LDAP_OPT_X_KEEPALIVE_IDLE
-	{
-		int keepalive = fr_time_delta_to_sec(config->keepalive_idle);
-
-		do_ldap_option(LDAP_OPT_X_KEEPALIVE_IDLE, "keepalive_idle", &keepalive);
-	}
-#endif
+	keepalive = fr_time_delta_to_sec(config->keepalive_idle);
+	do_ldap_option(LDAP_OPT_X_KEEPALIVE_IDLE, "keepalive_idle", &keepalive);
 
 #ifdef LDAP_OPT_X_KEEPALIVE_PROBES
 	{

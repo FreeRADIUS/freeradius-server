@@ -158,9 +158,8 @@ static CONF_PARSER option_config[] = {
 	 */
 	{ FR_CONF_OFFSET("net_timeout", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.net_timeout), .dflt = "10" },
 
-#ifdef LDAP_OPT_X_KEEPALIVE_IDLE
 	{ FR_CONF_OFFSET("idle", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.keepalive_idle), .dflt = "60" },
-#endif
+
 #ifdef LDAP_OPT_X_KEEPALIVE_PROBES
 	{ FR_CONF_OFFSET("probes", FR_TYPE_UINT32, rlm_ldap_t, handle_config.keepalive_probes), .dflt = "3" },
 #endif
