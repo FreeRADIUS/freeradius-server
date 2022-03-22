@@ -52,14 +52,6 @@ ldap_create_session_tracking_control LDAP_P((
 #endif
 
 /*
- *	Ensure the have the ldap_create_sort_keylist()
- *	function too, else we can't use ldap_create_sort_control()
- */
-#if !defined(HAVE_LDAP_CREATE_SORT_KEYLIST) || !defined(HAVE_LDAP_FREE_SORT_KEYLIST)
-#  undef HAVE_LDAP_CREATE_SORT_CONTROL
-#endif
-
-/*
  *	Because the LTB people define LDAP_VENDOR_VERSION_PATCH
  *	as X, which precludes its use in printf statements *sigh*
  *

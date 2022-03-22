@@ -14,12 +14,6 @@
 /* Define to 1 if you have the `ldap_create_sort_control' function. */
 #undef HAVE_LDAP_CREATE_SORT_CONTROL
 
-/* Define to 1 if you have the `ldap_create_sort_keylist' function. */
-#undef HAVE_LDAP_CREATE_SORT_KEYLIST
-
-/* Define to 1 if you have the `ldap_free_sort_keylist' function. */
-#undef HAVE_LDAP_FREE_SORT_KEYLIST
-
 /* Define to 1 if you have the `ldap_sasl_interactive_bind' function. */
 #undef HAVE_LDAP_SASL_INTERACTIVE_BIND
 

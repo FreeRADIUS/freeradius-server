@@ -3940,18 +3940,6 @@ then :
   printf "%s\n" "#define HAVE_LDAP_CREATE_SORT_CONTROL 1" >>confdefs.h
 
 fi
-ac_fn_c_check_func "$LINENO" "ldap_create_sort_keylist" "ac_cv_func_ldap_create_sort_keylist"
-if test "x$ac_cv_func_ldap_create_sort_keylist" = xyes
-then :
-  printf "%s\n" "#define HAVE_LDAP_CREATE_SORT_KEYLIST 1" >>confdefs.h
-
-fi
-ac_fn_c_check_func "$LINENO" "ldap_free_sort_keylist" "ac_cv_func_ldap_free_sort_keylist"
-if test "x$ac_cv_func_ldap_free_sort_keylist" = xyes
-then :
-  printf "%s\n" "#define HAVE_LDAP_FREE_SORT_KEYLIST 1" >>confdefs.h
-
-fi
 ac_fn_c_check_func "$LINENO" "ldap_create_session_tracking_control" "ac_cv_func_ldap_create_session_tracking_control"
 if test "x$ac_cv_func_ldap_create_session_tracking_control" = xyes
 then :
