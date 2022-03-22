@@ -2205,26 +2205,15 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 */
 	inst->userobj_scope = fr_table_value_by_str(fr_ldap_scope, inst->userobj_scope_str, -1);
 	if (inst->userobj_scope < 0) {
-#ifdef LDAP_SCOPE_CHILDREN
 		cf_log_err(conf, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
 			   inst->userobj_scope_str);
-#else
-		cf_log_err(conf, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one' or 'children'",
-			   inst->userobj_scope_str);
-#endif
 		goto error;
 	}
 
 	inst->groupobj_scope = fr_table_value_by_str(fr_ldap_scope, inst->groupobj_scope_str, -1);
 	if (inst->groupobj_scope < 0) {
-#ifdef LDAP_SCOPE_CHILDREN
 		cf_log_err(conf, "Invalid 'group.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
 			   inst->groupobj_scope_str);
-#else
-		cf_log_err(conf, "Invalid 'group.scope' value \"%s\", expected 'sub', 'one' or 'children'",
-			   inst->groupobj_scope_str);
-#endif
-
 		goto error;
 	}
 

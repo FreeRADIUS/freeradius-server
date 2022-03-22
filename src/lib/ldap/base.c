@@ -70,9 +70,7 @@ size_t fr_ldap_supported_extensions_len = NUM_ELEMENTS(fr_ldap_supported_extensi
  */
 fr_table_num_sorted_t const fr_ldap_scope[] = {
 	{ L("base"),	LDAP_SCOPE_BASE },
-#ifdef LDAP_SCOPE_CHILDREN
 	{ L("children"),	LDAP_SCOPE_CHILDREN },
-#endif
 	{ L("one"),	LDAP_SCOPE_ONE	},
 	{ L("sub"),	LDAP_SCOPE_SUB	}
 };
