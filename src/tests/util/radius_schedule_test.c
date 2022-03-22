@@ -93,11 +93,11 @@ static ssize_t test_encode(void const *instance, request_t *request, uint8_t *bu
 
 	memcpy(buffer + 4, tpc.vector, 16);
 
-	md5_ctx = fr_md5_ctx_alloc(true);
+	md5_ctx = fr_md5_ctx_alloc_from_list();
 	fr_md5_update(md5_ctx, buffer, 20);
 	fr_md5_update(md5_ctx, (uint8_t const *) secret, strlen(secret));
 	fr_md5_final(buffer + 4, md5_ctx);
-	fr_md5_ctx_free(&md5_ctx);
+	fr_md5_ctx_free_from_list(&md5_ctx);
 
 	return 20;
 }

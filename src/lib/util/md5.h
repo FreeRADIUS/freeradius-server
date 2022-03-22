@@ -46,12 +46,11 @@ extern		fr_md5_ctx_copy_t	fr_md5_ctx_copy;
 
 /** Allocation function for MD5 digest context
  *
- * @param[in] shared	Whether we allocate a new context or use the thread local context.
  * @return
  *	- An MD5 ctx.
  *	- NULL if out of memory.
  */
-typedef		fr_md5_ctx_t *(*fr_md5_ctx_alloc_t)(bool shared);
+typedef		fr_md5_ctx_t *(*fr_md5_ctx_alloc_t)(void);
 extern		fr_md5_ctx_alloc_t	fr_md5_ctx_alloc;
 
 /** Free function for MD5 digest ctx
@@ -83,6 +82,16 @@ extern		fr_md5_final_t		fr_md5_final;
  *
  */
 void		fr_md5_calc(uint8_t out[static MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen);
+
+/** Allocate an MD5 context from a free list
+ *
+ */
+fr_md5_ctx_t	*fr_md5_ctx_alloc_from_list(void);
+
+/** Release an MD5 context back to a free list
+ *
+ */
+void		fr_md5_ctx_free_from_list(fr_md5_ctx_t **ctx);
 
 /* hmac.c */
 int		fr_hmac_md5(uint8_t digest[static MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen,

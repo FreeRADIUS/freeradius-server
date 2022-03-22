@@ -258,11 +258,11 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_smd5(rlm_rcode_t *p_result,
 		RETURN_MODULE_INVALID;
 	}
 
-	md5_ctx = fr_md5_ctx_alloc(true);
+	md5_ctx = fr_md5_ctx_alloc_from_list();
 	fr_md5_update(md5_ctx, password->vp_octets, password->vp_length);
 	fr_md5_update(md5_ctx, known_good->vp_octets + MD5_DIGEST_LENGTH, known_good->vp_length - MD5_DIGEST_LENGTH);
 	fr_md5_final(digest, md5_ctx);
-	fr_md5_ctx_free(&md5_ctx);
+	fr_md5_ctx_free_from_list(&md5_ctx);
 
 	/*
 	 *	Compare only the MD5 hash results, not the salt.

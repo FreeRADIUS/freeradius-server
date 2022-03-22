@@ -238,11 +238,11 @@ ssize_t fr_radius_ascend_secret(fr_dbuff_t *dbuff, uint8_t const *in, size_t inl
 
 	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, sizeof(digest));
 
-	md5_ctx = fr_md5_ctx_alloc(true);
+	md5_ctx = fr_md5_ctx_alloc_from_list();
 	fr_md5_update(md5_ctx, vector, RADIUS_AUTH_VECTOR_LENGTH);
 	fr_md5_update(md5_ctx, (uint8_t const *) secret, talloc_array_length(secret) - 1);
 	fr_md5_final(digest, md5_ctx);
-	fr_md5_ctx_free(&md5_ctx);
+	fr_md5_ctx_free_from_list(&md5_ctx);
 
 	if (inlen > sizeof(digest)) inlen = sizeof(digest);
 	for (i = 0; i < inlen; i++) digest[i] ^= in[i];
@@ -478,11 +478,11 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 	{
 		fr_md5_ctx_t	*md5_ctx;
 
-		md5_ctx = fr_md5_ctx_alloc(true);
+		md5_ctx = fr_md5_ctx_alloc_from_list();
 		fr_md5_update(md5_ctx, packet, packet_len);
 		fr_md5_update(md5_ctx, secret, secret_len);
 		fr_md5_final(packet + 4, md5_ctx);
-		fr_md5_ctx_free(&md5_ctx);
+		fr_md5_ctx_free_from_list(&md5_ctx);
 	}
 
 	return 0;

@@ -101,8 +101,8 @@ ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen,
 	 */
 	secretlen = talloc_array_length(secret) - 1;
 
-	md5_ctx = fr_md5_ctx_alloc(true);
-	md5_ctx_old = fr_md5_ctx_alloc(true);
+	md5_ctx = fr_md5_ctx_alloc_from_list();
+	md5_ctx_old = fr_md5_ctx_alloc_from_list();
 
 	fr_md5_update(md5_ctx, (uint8_t const *) secret, secretlen);
 	fr_md5_ctx_copy(md5_ctx_old, md5_ctx); /* save intermediate work */
@@ -163,8 +163,8 @@ ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen,
 		}
 	}
 
-	fr_md5_ctx_free(&md5_ctx);
-	fr_md5_ctx_free(&md5_ctx_old);
+	fr_md5_ctx_free_from_list(&md5_ctx);
+	fr_md5_ctx_free_from_list(&md5_ctx_old);
 
 	/*
 	 *	Check trailing bytes
@@ -212,8 +212,8 @@ ssize_t fr_radius_decode_password(char *passwd, size_t pwlen, char const *secret
 	 */
 	secretlen = talloc_array_length(secret) - 1;
 
-	md5_ctx = fr_md5_ctx_alloc(true);
-	md5_ctx_old = fr_md5_ctx_alloc(true);
+	md5_ctx = fr_md5_ctx_alloc_from_list();
+	md5_ctx_old = fr_md5_ctx_alloc_from_list();
 
 	fr_md5_update(md5_ctx, (uint8_t const *) secret, secretlen);
 	fr_md5_ctx_copy(md5_ctx_old, md5_ctx);	/* save intermediate work */
@@ -242,8 +242,8 @@ ssize_t fr_radius_decode_password(char *passwd, size_t pwlen, char const *secret
 		for (i = 0; i < AUTH_PASS_LEN; i++) passwd[i + n] ^= digest[i];
 	}
 
-	fr_md5_ctx_free(&md5_ctx);
-	fr_md5_ctx_free(&md5_ctx_old);
+	fr_md5_ctx_free_from_list(&md5_ctx);
+	fr_md5_ctx_free_from_list(&md5_ctx_old);
 
  done:
 	passwd[pwlen] = '\0';

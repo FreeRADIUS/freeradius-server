@@ -124,7 +124,7 @@ int fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *in, size_t inl
 	uint8_t		tk[16];
 	int i;
 
-	ctx = fr_md5_ctx_alloc(true);
+	ctx = fr_md5_ctx_alloc_from_list();
 
 	/* if key is longer than 64 bytes reset it to key=MD5(key) */
 	if (key_len > 64) {
@@ -175,7 +175,7 @@ int fr_hmac_md5(uint8_t digest[MD5_DIGEST_LENGTH], uint8_t const *in, size_t inl
 	fr_md5_update(ctx, digest, 16);		/* then results of 1st hash */
 	fr_md5_final(digest, ctx);		/* finish up 2nd pass */
 
-	fr_md5_ctx_free(&ctx);
+	fr_md5_ctx_free_from_list(&ctx);
 
 	return 0;
 }

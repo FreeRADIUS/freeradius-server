@@ -46,12 +46,11 @@ extern		fr_md4_ctx_copy_t	fr_md4_ctx_copy;
 
 /** Allocation function for MD4 digest context
  *
- * @param[in] shared	Whether we allocate a new context or use the thread local context.
  * @return
  *	- An MD4 ctx.
  *	- NULL if out of memory.
  */
-typedef		fr_md4_ctx_t *(*fr_md4_ctx_alloc_t)(bool shared);
+typedef		fr_md4_ctx_t *(*fr_md4_ctx_alloc_t)(void);
 extern		fr_md4_ctx_alloc_t	fr_md4_ctx_alloc;
 
 /** Free function for MD4 digest ctx
@@ -85,6 +84,15 @@ extern		fr_md4_final_t		fr_md4_final;
  */
 void		fr_md4_calc(uint8_t out[static MD4_DIGEST_LENGTH], uint8_t const *in, size_t inlen);
 
+/** Allocate an md4 context from a free list
+ *
+ */
+fr_md4_ctx_t	*fr_md4_ctx_alloc_from_list(void);
+
+/** Release an md4 context back to a free list
+ *
+ */
+void		fr_md4_ctx_free_from_list(fr_md4_ctx_t **ctx);
 #ifdef __cplusplus
 }
 #endif
