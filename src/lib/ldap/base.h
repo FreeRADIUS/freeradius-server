@@ -288,9 +288,7 @@ typedef struct {
 	uint32_t		keepalive_probes;	//!< Number of missed timeouts before the connection is
 							///< dropped.
 
-#ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
 	fr_time_delta_t		keepalive_interval;	//!< Interval between keepalive probes.
-#endif
 
 	/*
 	 *	Search timelimits

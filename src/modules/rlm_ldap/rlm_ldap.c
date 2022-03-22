@@ -162,9 +162,7 @@ static CONF_PARSER option_config[] = {
 
 	{ FR_CONF_OFFSET("probes", FR_TYPE_UINT32, rlm_ldap_t, handle_config.keepalive_probes), .dflt = "3" },
 
-#ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
 	{ FR_CONF_OFFSET("interval", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.keepalive_interval), .dflt = "30" },
-#endif
 
 	{ FR_CONF_OFFSET("dereference", FR_TYPE_STRING, rlm_ldap_t, handle_config.dereference_str) },
 

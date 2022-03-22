@@ -144,13 +144,8 @@ DIAG_ON(unused-macros)
 	probes = config->keepalive_probes;
 	do_ldap_option(LDAP_OPT_X_KEEPALIVE_PROBES, "keepalive_probes", &probes);
 
-#ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
-	{
-		int keepalive = fr_time_delta_to_sec(config->keepalive_interval);
-
-		do_ldap_option(LDAP_OPT_X_KEEPALIVE_INTERVAL, "keepalive_interval", &keepalive);
-	}
-#endif
+	keepalive = fr_time_delta_to_sec(config->keepalive_interval);
+	do_ldap_option(LDAP_OPT_X_KEEPALIVE_INTERVAL, "keepalive_interval", &keepalive);
 
 #ifdef HAVE_LDAP_START_TLS_S
 	/*
