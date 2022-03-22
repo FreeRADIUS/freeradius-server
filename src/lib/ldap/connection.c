@@ -237,7 +237,6 @@ static int _ldap_connection_free(fr_ldap_connection_t *c)
 
 	if (!c->handle) return 0;	/* Don't need to do anything else if we don't yet have a handle */
 
-#ifdef HAVE_LDAP_UNBIND_EXT_S
 	LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
 	LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
 
@@ -248,10 +247,7 @@ static int _ldap_connection_free(fr_ldap_connection_t *c)
 
 	DEBUG3("Closing connection %p libldap handle %p", c->handle, c);
 	ldap_unbind_ext(c->handle, our_serverctrls, our_clientctrls);	/* Same code as ldap_unbind_ext_s */
-#else
-	DEBUG3("Closing connection %p libldap handle %p", c->handle, c);
-	ldap_unbind(c->handle);						/* Same code as ldap_unbind_s */
-#endif
+
 	c->handle = NULL;
 
 	return 0;

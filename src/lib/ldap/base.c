@@ -887,11 +887,7 @@ fr_ldap_query_t *fr_ldap_modify_alloc(TALLOC_CTX *ctx, char const *dn,
 
 static void _ldap_handle_thread_local_free(void *handle)
 {
-#ifdef HAVE_LDAP_UNBIND_EXT_S
 	ldap_unbind_ext_s(handle, NULL, NULL);
-#else
-	ldap_unbind_s(handle);
-#endif
 }
 
 /** Get a thread local dummy LDAP handle
@@ -1053,9 +1049,5 @@ void fr_ldap_free(void)
 	 *	of the module should always work,
 	 *	irrespective of what changes happen in libldap.
 	 */
-#ifdef HAVE_LDAP_UNBIND_EXT_S
 	ldap_unbind_ext_s(ldap_global_handle, NULL, NULL);
-#else
-	ldap_unbind_s(ldap_global_handle);
-#endif
 }
