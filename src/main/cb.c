@@ -153,27 +153,6 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	 */
 	if (!state) return;
 
-#if 0
-#ifdef SSL3_RT_INNER_CONTENT_TYPE
-	/*
-	 *	https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_msg_callback.html
-	 *
-	 *	For TLS 1.3, we get called FIRST with the real
-	 *	content, but an encrypted content type.  THEN we get
-	 *	called with the real content type as 1 byte inside of
-	 *	"inbuf".
-	 */
-	if (content_type == SSL3_RT_INNER_CONTENT_TYPE) {
-		if (msg_version != TLS1_3_VERSION) return;
-
-		state->info.content_type = *buf;
-		DEBUG("(TLS) TLS 1.3 inner content type %02x", *buf);
-		tls_session_information(state);
-		return;
-	}
-#endif
-#endif
-
 	if (rad_debug_lvl > 3) {
 		size_t i, j, data_len = len;
 		char buffer[3*16 + 1];
