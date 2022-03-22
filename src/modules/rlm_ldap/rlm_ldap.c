@@ -2178,7 +2178,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		DEBUG4("rlm_ldap (%s) - LDAP server string: %s", mctx->inst->name, inst->handle_config.server);
 	}
 
-#ifdef LDAP_OPT_X_TLS_NEVER
 	/*
 	 *	Workaround for servers which support LDAPS but not START TLS
 	 */
@@ -2187,7 +2186,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	} else {
 		inst->handle_config.tls_mode = 0;
 	}
-#endif
 
 	/*
 	 *	Convert dereference strings to enumerated constants
@@ -2259,7 +2257,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 #endif
 
 	if (inst->handle_config.tls_require_cert_str) {
-#ifdef LDAP_OPT_X_TLS_NEVER
 		/*
 		 *	Convert cert strictness to enumerated constants
 		 */
@@ -2270,13 +2267,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				      "'demand', 'allow', 'try' or 'hard'", inst->handle_config.tls_require_cert_str);
 			goto error;
 		}
-#else
-		cf_log_err(conf, "Modifying 'tls.require_cert' is not supported by current "
-			      "version of libldap. Please upgrade or substitute current libldap and "
-			      "rebuild this module");
-
-		goto error;
-#endif
 	}
 
 	if (inst->handle_config.tls_min_version_str) {

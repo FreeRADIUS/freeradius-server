@@ -78,7 +78,6 @@ fr_table_num_sorted_t const fr_ldap_scope[] = {
 };
 size_t fr_ldap_scope_len = NUM_ELEMENTS(fr_ldap_scope);
 
-#ifdef LDAP_OPT_X_TLS_NEVER
 fr_table_num_sorted_t const fr_ldap_tls_require_cert[] = {
 	{ L("allow"),	LDAP_OPT_X_TLS_ALLOW	},
 	{ L("demand"),	LDAP_OPT_X_TLS_DEMAND	},
@@ -87,7 +86,6 @@ fr_table_num_sorted_t const fr_ldap_tls_require_cert[] = {
 	{ L("try"),	LDAP_OPT_X_TLS_TRY	}
 };
 size_t fr_ldap_tls_require_cert_len = NUM_ELEMENTS(fr_ldap_tls_require_cert);
-#endif
 
 fr_table_num_sorted_t const fr_ldap_dereference[] = {
 	{ L("always"),	LDAP_DEREF_ALWAYS	},
