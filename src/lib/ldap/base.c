@@ -116,11 +116,9 @@ void fr_ldap_timeout_debug(request_t *request, fr_ldap_connection_t const *conn,
 		ROPTIONAL(REDEBUG, ERROR, "Failed getting LDAP_OPT_NETWORK_TIMEOUT");
 	}
 
-#ifdef LDAP_OPT_TIMEOUT
 	if (ldap_get_option(conn->handle, LDAP_OPT_TIMEOUT, &client) != LDAP_OPT_SUCCESS) {
 		ROPTIONAL(REDEBUG, ERROR, "Failed getting LDAP_OPT_TIMEOUT");
 	}
-#endif
 
 	if (ldap_get_option(conn->handle, LDAP_OPT_TIMELIMIT, &server) != LDAP_OPT_SUCCESS) {
 		ROPTIONAL(REDEBUG, ERROR, "Failed getting LDAP_OPT_TIMELIMIT");
@@ -135,7 +133,6 @@ void fr_ldap_timeout_debug(request_t *request, fr_ldap_connection_t const *conn,
 		ROPTIONAL(RDEBUG4, DEBUG4, "Client side result timeout (ovr): unset");
 	}
 
-#ifdef LDAP_OPT_TIMEOUT
 	if (client && (client->tv_sec != -1)) {
 		ROPTIONAL(RDEBUG4, DEBUG4, "Client side result timeout (dfl): %pVs",
 			  fr_box_time_delta(fr_time_delta_from_timeval(client)));
@@ -143,7 +140,6 @@ void fr_ldap_timeout_debug(request_t *request, fr_ldap_connection_t const *conn,
 	} else {
 		ROPTIONAL(RDEBUG4, DEBUG4, "Client side result timeout (dfl): unset");
 	}
-#endif
 
 	if (net && (net->tv_sec != -1)) {
 		ROPTIONAL(RDEBUG4, DEBUG4, "Client side network I/O timeout : %pVs",
