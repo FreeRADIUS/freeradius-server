@@ -153,6 +153,7 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	 */
 	if (!state) return;
 
+#if 0
 #ifdef SSL3_RT_INNER_CONTENT_TYPE
 	/*
 	 *	https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_msg_callback.html
@@ -170,6 +171,7 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 		tls_session_information(state);
 		return;
 	}
+#endif
 #endif
 
 	if (rad_debug_lvl > 3) {
