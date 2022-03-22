@@ -66,8 +66,8 @@ static char const *ldap_msg_types[UINT8_MAX] = {
  */
 int fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const *config)
 {
-	LDAP				*handle = NULL;
-	int				ldap_errno, ldap_version, keepalive, probes;
+	LDAP	*handle = NULL;
+	int	ldap_errno, ldap_version, keepalive, probes, is_server;
 
 	fr_assert(config->server);
 
@@ -174,13 +174,10 @@ DIAG_ON(unused-macros)
 	 *	Counter intuitively the TLS context appears to need to be initialised
 	 *	after all the TLS options are set on the handle.
 	 */
-#  ifdef LDAP_OPT_X_TLS_NEWCTX
-	{
-		/* Always use the new TLS configuration context */
-		int is_server = 0;
-		do_ldap_option(LDAP_OPT_X_TLS_NEWCTX, "new TLS context", &is_server);
-	}
-#  endif
+
+	/* Always use the new TLS configuration context */
+	is_server = 0;
+	do_ldap_option(LDAP_OPT_X_TLS_NEWCTX, "new TLS context", &is_server);
 
 	if (config->sasl_secprops) do_ldap_option(LDAP_OPT_X_SASL_SECPROPS, "sasl_secprops", config->sasl_secprops);
 
