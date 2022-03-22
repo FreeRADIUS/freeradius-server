@@ -185,11 +185,9 @@ DIAG_ON(unused-macros)
 	}
 #  endif
 
-#  ifdef LDAP_OPT_X_TLS_PROTOCOL_MIN
 	if (config->tls_min_version_str) {
 		do_ldap_option(LDAP_OPT_X_TLS_PROTOCOL_MIN, "tls_min_version", &config->tls_min_version);
 	}
-#  endif
 
 	/*
 	 *	Counter intuitively the TLS context appears to need to be initialised
