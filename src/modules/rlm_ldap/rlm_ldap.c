@@ -1976,7 +1976,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			}
 		}
 
-#ifdef LDAP_CAN_PARSE_URLS
 		/*
 		 *	Split original server value out into URI, server and port
 		 *	so whatever initialization function we use later will have
@@ -2075,7 +2074,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		 *	We need to construct an LDAP URI
 		 */
 		} else
-#endif	/* HAVE_LDAP_URL_PARSE && HAVE_LDAP_IS_LDAP_URL && LDAP_URL_DESC2STR */
 		/*
 		 *	If it's not an URL, or we don't have the functions necessary
 		 *	to break apart the URL and recombine it, then just treat
@@ -2095,12 +2093,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			 */
 			if (strchr(value, '/')) {
 			bad_server_fmt:
-#ifdef LDAP_CAN_PARSE_URLS
 				cf_log_err(conf, "Invalid 'server' entry, must be in format <server>[:<port>] or "
 					      "an ldap URI (ldap|cldap|ldaps|ldapi)://<server>:<port>");
-#else
-				cf_log_err(conf, "Invalid 'server' entry, must be in format <server>[:<port>]");
-#endif
 				return -1;
 			}
 

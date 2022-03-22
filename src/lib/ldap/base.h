@@ -96,10 +96,6 @@ ldap_create_session_tracking_control LDAP_P((
 #  define LDAP_CONST
 #endif
 
-#if defined(HAVE_LDAP_URL_DESC2STR)
-#  define LDAP_CAN_PARSE_URLS
-#endif
-
 #define LDAP_MAX_CONTROLS		10		//!< Maximum number of client/server controls.
 							//!< Used to allocate static arrays of control pointers.
 #define LDAP_MAX_ATTRMAP		128		//!< Maximum number of mappings between LDAP and
