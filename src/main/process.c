@@ -2356,6 +2356,16 @@ static int insert_into_proxy_hash(REQUEST *request)
 		if (proxy_no_new_sockets) break;
 #endif
 
+		/*
+		 *	Don't try to add a new listener if it's not possible.
+		 */
+		if (fr_event_list_full(el)) {
+			RATE_LIMIT(ERROR("Cannot open a new proxy socket - too many sockets are already open"));
+			request->home_server->state = HOME_STATE_CONNECTION_FAIL;
+			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+			goto fail;
+		}
+
 		RDEBUG3("proxy: Trying to open a new listener to the home server");
 		this = proxy_new_listener(proxy_ctx, request->home_server, 0);
 		if (!this) {
