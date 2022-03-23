@@ -5293,7 +5293,8 @@ static void event_new_fd(rad_listen_t *this)
 		 */
 		this->print(this, buffer, sizeof(buffer));
 		ERROR("Failed adding event handler for socket %s: %s", buffer, fr_strerror());
-		this->status = RAD_LISTEN_STATUS_REMOVE_NOW;
+		this->status = RAD_LISTEN_STATUS_EOL;
+		goto listener_is_eol;
 	} /* end of INIT */
 
 	if (this->status == RAD_LISTEN_STATUS_PAUSE) {
@@ -5346,6 +5347,7 @@ static void event_new_fd(rad_listen_t *this)
 		 */
 		fr_event_fd_delete(el, 0, this->fd);
 
+	listener_is_eol:
 #ifdef WITH_PROXY
 		/*
 		 *	Tell all requests using this socket that the socket is dead.
