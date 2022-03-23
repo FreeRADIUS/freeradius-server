@@ -5317,23 +5317,20 @@ static void event_new_fd(rad_listen_t *this)
 		rad_assert(sock != NULL);
 		if (just_started) {
 			DEBUG("Listening on %s", buffer);
-		} else {
-			INFO(" ... adding new socket %s", buffer);
-		}
 
 #ifdef WITH_PROXY
-		if (!just_started && (this->type == RAD_LISTEN_PROXY)) {
-			home_server_t *home;
-			
-			home = sock->home;
-			if (!home || !home->limit.max_connections) {
-				INFO(" ... adding new socket %s", buffer);
-			} else {
+		} else if (this->type == RAD_LISTEN_PROXY) {
+			home_server_t *home = sock->home;
+
+			if (home && home->limit.max_connections) {
 				INFO(" ... adding new socket %s (%u of %u)", buffer,
 				     home->limit.num_connections, home->limit.max_connections);
+			} else {
+				INFO(" ... adding new socket %s", buffer);
 			}
-
 #endif
+		} else {
+			INFO(" ... adding new socket %s", buffer);
 		}
 
 		switch (this->type) {
