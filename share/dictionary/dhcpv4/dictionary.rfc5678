@@ -17,6 +17,6 @@ ATTRIBUTE	MoS-IPv4-Address-CS			.2	ipaddr array
 ATTRIBUTE	MoS-IPv4-Address-ES			.3	ipaddr array
 
 ATTRIBUTE	MoS-IPv4-FQDN				140	tlv
-ATTRIBUTE	MoS-IPv4-FQDN-IS			.1	octets # really dns_label array
-ATTRIBUTE	MoS-IPv4-FQDN-CS			.2	octets # really dns_label array
-ATTRIBUTE	MoS-IPv4-FQDN-ES			.3	octets # really dns_label array
+ATTRIBUTE	MoS-IPv4-FQDN-IS			.1	string dns_label,array
+ATTRIBUTE	MoS-IPv4-FQDN-CS			.2	string dns_label,array
+ATTRIBUTE	MoS-IPv4-FQDN-ES			.3	string dns_label,array

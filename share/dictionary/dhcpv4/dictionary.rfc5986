@@ -10,4 +10,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Access-Network-Domain-Name		213	string # really one dns_label
+ATTRIBUTE	Access-Network-Domain-Name		213	string dns_label
