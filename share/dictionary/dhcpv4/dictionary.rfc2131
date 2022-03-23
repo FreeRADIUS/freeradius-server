@@ -140,8 +140,6 @@ ATTRIBUTE	STDA-Server-Address			76	ipaddr array
 
 # Rapid Commit
 ATTRIBUTE	Rapid-Commit				80	bool		encode=exists
-# Fully Qualified Domain Name
-ATTRIBUTE	Client-FQDN				81	string
 # Relay Agent Information
 ATTRIBUTE	Relay-Agent-Information			82	tlv
 
