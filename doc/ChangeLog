@@ -2,7 +2,7 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	Feature improvements
 	* Add support for OpenSSL3
 	* Add dictionary.mellanox
-	* Update dictionary.aruba
+	* Update dictionary.aruba, dictionary.roaringpenguin
 	* Removed haproxy support.  It's new and experimental,
 	  and belongs in the v3.2 release, where it will be
 	  fully supported.
@@ -16,6 +16,7 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	* Add Dockerfiles for Rocky8.
 	* Add raduat script to the freeradius-utils package.
 	* Add Debian freeradius-freetds package.
+	* Add client short name to "dropping packet" message,
 
 	Bug fixes
 	* Ensure PBKDF2 always uses at least one iteration
@@ -31,6 +32,8 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	* Fix information leak in compute_password_element() function
 	  of EAP-PWD.  Found by Mohamed Sabt.
 	* Fix crash in EAP-SIM when unknown attributes are sent.
+	* Update linelog, etc. to allow the use of /dev/stdout
+	* Fix crash in race condition when 500+ sockets are open.
 
 FreeRADIUS 3.0.25 Thu 07 Oct 2021 12:00:00 EDT urgency=medium
 	Feature improvements
