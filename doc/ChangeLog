@@ -14,6 +14,7 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	  See sites-available/google-ldap-auth, and
 	  mods-available/google_ldap, and mods-available/cache_auth.
 	* Add Dockerfiles for Rocky8.
+	* Add raduat script to the freeradius-utils package.
 
 	Bug fixes
 	* Ensure PBKDF2 always uses at least one iteration
