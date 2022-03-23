@@ -1,0 +1,19 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC4072 - The Dynamic Host Configuration Protocol (DHCP) Client
+#            Fully Qualified Domain Name (FQDN) Option
+#
+#  $Id$
+#
+##############################################################################
+
+# Fully Qualified Domain Name
+ATTRIBUTE	Client-FQDN				81	struct
+MEMBER		Flags			uint8
+MEMBER		RCODE1			uint8
+MEMBER		RCODE2			uint8
+MEMBER		Domain-Name		string dns_label
