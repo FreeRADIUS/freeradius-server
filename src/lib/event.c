@@ -161,6 +161,11 @@ int fr_event_list_num_fds(fr_event_list_t *el)
 	return el->num_readers;
 }
 
+int fr_event_list_full(fr_event_list_t *el)
+{
+	return (el->num_readers >= FR_EV_MAX_FDS);
+}
+
 int fr_event_list_num_elements(fr_event_list_t *el)
 {
 	if (!el) return 0;

@@ -40,6 +40,7 @@ typedef void (*fr_event_fd_handler_t)(fr_event_list_t *el, int sock, void *ctx);
 fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status);
 
 int fr_event_list_num_fds(fr_event_list_t *el);
+int fr_event_list_full(fr_event_list_t *el);
 int fr_event_list_num_elements(fr_event_list_t *el);
 
 int fr_event_insert(fr_event_list_t *el,
