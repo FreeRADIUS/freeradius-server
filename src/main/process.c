@@ -2284,11 +2284,9 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 		}
 	}
 
-#ifdef WITH_TCP
 	if (request->proxy_listener) {
 		request->proxy_listener->count--;
 	}
-#endif
 	request->proxy_listener = NULL;
 
 	/*
@@ -2477,9 +2475,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	 */
 	request->home_server->currently_outstanding++;
 
-#ifdef WITH_TCP
 	request->proxy_listener->count++;
-#endif
 
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
