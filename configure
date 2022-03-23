@@ -10574,12 +10574,13 @@ fi
 
 done
 
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for OpenSSL version >= 1.1.0" >&5
-printf %s "checking for OpenSSL version >= 0.9.7... " >&6; }
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OpenSSL version >= 1.0.2" >&5
+$as_echo_n "checking for OpenSSL version >= 1.0.2... " >&6; }
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <openssl/crypto.h>
-       #if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+       #if (OPENSSL_VERSION_NUMBER >= 0x10002000L)
        yes
        #endif
 
