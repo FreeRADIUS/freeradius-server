@@ -11,4 +11,84 @@
 #
 ##############################################################################
 
-ATTRIBUTE	GeoConf-Civic				99	octets
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#   | GEOCONF_CIVIC |       N       |      what     |    country    |
+#   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#   |    code       |        civic address elements                ...
+#   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#
+ATTRIBUTE	GeoConf-Civic				99	struct
+MEMBER		what					uint8
+MEMBER		country_code				string[2]
+MEMBER		elements				tlv
+
+#
+#  "elements" are child TLVs, in any order.
+#
+#   0                   1                   2                   3
+#   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+#   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+#   |   CAtype      |   CAlength    |      CAvalue                 ...
+#  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+# RFC 4776 Section 3.4 says
+#
+#	Component values MUST be encoded as UTF-8 [7].
+#
+#  so all values are "string".
+
+#   +--------+-------+--------------------------------------------------+
+#   | CAtype | label | description                                      |
+#   +--------+-------+--------------------------------------------------+
+#   | 1      | A1    | national subdivisions (state, canton, region,    |
+#   |        |       | province, prefecture)                            |
+#   |        |       |                                                  |
+#   | 2      | A2    | county, parish, gun (JP), district (IN)          |
+#   |        |       |                                                  |
+#   | 3      | A3    | city, township, shi (JP)                         |
+#   |        |       |                                                  |
+#   | 4      | A4    | city division, borough, city district, ward,     |
+#   |        |       | chou (JP)                                        |
+#   |        |       |                                                  |
+#   | 5      | A5    | neighborhood, block                              |
+#   |        |       |                                                  |
+#   | 6      | A6    | group of streets below the neighborhood level    |
+#   +--------+-------+--------------------------------------------------+
+ATTRIBUTE	A1					.1	string
+ATTRIBUTE	A2					.2	string
+ATTRIBUTE	A3					.3	string
+ATTRIBUTE	A4					.4	string
+ATTRIBUTE	A5					.5	string
+ATTRIBUTE	A6					.6	string
+#
+# Some of the following have NENA and IDF labels, some just one or the
+# other, and some none at all. We will use the descriptions as names.
+ATTRIBUTE	Language				.0	string
+ATTRIBUTE	Leading-Street-Direction		.16	string
+ATTRIBUTE	Trailing-Street-Direction		.17	string
+ATTRIBUTE	Street-Suffix-Or-Type			.18	string
+ATTRIBUTE	House-Number				.19	string
+ATTRIBUTE	House-Number-Suffix			.20	string
+ATTRIBUTE	Landmark-Or-Vanity-Address		.21	string
+ATTRIBUTE	Additional-Location-Information		.22	string
+ATTRIBUTE	Name					.23	string
+ATTRIBUTE	Postal-Or-Zip-Code			.24	string
+ATTRIBUTE	Building				.25	string
+ATTRIBUTE	Unit					.26	string
+ATTRIBUTE	Floor					.27	string
+ATTRIBUTE	Room					.28	string
+ATTRIBUTE	Type					.29	string
+ATTRIBUTE	Postal-Community			.30	string
+ATTRIBUTE	Post-Office-Box				.31	string
+ATTRIBUTE	Additional-Code				.32	string
+ATTRIBUTE	Seat					.33	string # or desk, cubicle, or workstation
+ATTRIBUTE	Primary-Road-Name			.34	string
+ATTRIBUTE	Road-Section				.35	string
+ATTRIBUTE	Branch-Road-Name			.36	string
+ATTRIBUTE	Sub-Branch-Road-Name			.37	string
+ATTRIBUTE	Street-Name-Pre-Modifier		.38	string
+ATTRIBUTE	Street-Name-Post-Modifier		.39	string
+ATTRIBUTE	Script					.128	string
+ATTRIBUTE	Reserved				.255	string
