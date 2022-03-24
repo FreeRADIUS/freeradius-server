@@ -1,0 +1,12 @@
+proto dhcpv4
+proto-dictionary dhcpv4
+fuzzer-out dhcpv4
+
+encode-pair Client-FQDN = { mbz = 0, no_dns_updates = yes, new_dns_encoding = yes, override = no, should_do_dns_updates = no, RCODE1 = 0, RCODE2 = 0, Domain-Name = "example.co.uk" }
+match 51 12 0c 00 00 07 65 78 61 6d 70 6c 65 02 63 6f 02 75 6b 00
+
+decode-pair -
+match Client-FQDN = { mbz = 0, no_dns_updates = yes, new_dns_encoding = yes, override = no, should_do_dns_updates = no, RCODE1 = 0, RCODE2 = 0, Domain-Name = "example.co.uk" }
+
+count
+match 7

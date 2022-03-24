@@ -1,0 +1,35 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC4702 - The Dynamic Host Configuration Protocol (DHCP) Client
+#            Fully Qualified Domain Name (FQDN) Option
+#
+#  $Id$
+#
+##############################################################################
+
+#
+# RFC 4702 describes the Flags field, here the first four members of
+# Client-FQDN, as follows:
+#
+#   The format of the 1-octet Flags field is:
+#
+#        0 1 2 3 4 5 6 7
+#       +-+-+-+-+-+-+-+-+
+#       |  MBZ  |N|E|O|S|
+#       +-+-+-+-+-+-+-+-+
+#
+
+# Fully Qualified Domain Name
+ATTRIBUTE	Client-FQDN				81	struct
+MEMBER		mbz					bit[4]
+MEMBER		no_dns_updates				bit[1]
+MEMBER		new_dns_encoding			bit[1]
+MEMBER		override				bit[1]
+MEMBER		should_do_dns_updates			bit[1]
+MEMBER		RCODE1					uint8
+MEMBER		RCODE2					uint8
+MEMBER		Domain-Name				string dns_label

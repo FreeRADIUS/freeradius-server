@@ -31,6 +31,7 @@ $INCLUDE dictionary.rfc3397
 $INCLUDE dictionary.rfc3442
 $INCLUDE dictionary.rfc4280
 $INCLUDE dictionary.rfc4578
+$INCLUDE dictionary.rfc4702
 $INCLUDE dictionary.rfc4776
 $INCLUDE dictionary.rfc4833
 $INCLUDE dictionary.rfc5071
