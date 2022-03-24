@@ -239,6 +239,13 @@ fr_ldap_rcode_t fr_ldap_error_check(LDAPControl ***ctrls, fr_ldap_connection_t c
 		break;
 
 	/*
+	 *	Retrieve the controls if the message is a reference message
+	 */
+	case LDAP_RES_SEARCH_REFERENCE:
+		if (ctrls) lib_errno = ldap_parse_reference(conn->handle, msg, NULL, ctrls, 0);
+		break;
+
+	/*
 	 *	An intermediate message updating us on the result of an operation
 	 */
 	case LDAP_RES_INTERMEDIATE:
@@ -328,6 +335,11 @@ process_error:
 	case LDAP_TIMELIMIT_EXCEEDED:
 		fr_strerror_const("Time limit exceeded");
 		status = LDAP_PROC_TIMEOUT;
+		break;
+
+	case LDAP_SYNC_REFRESH_REQUIRED:
+		fr_strerror_const("Refresh required");
+		status = LDAP_PROC_REFRESH_REQUIRED;
 		break;
 
 	case LDAP_BUSY:
