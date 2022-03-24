@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -96,6 +96,10 @@ ATTRIBUTE	DPSK-AKM-Suite				.1	octets
 ATTRIBUTE	DPSK-Cipher				.2	byte
 ATTRIBUTE	DPSK-Anonce				.3	octets
 ATTRIBUTE	DPSK-EAPOL-Key-Frame			.4	octets
+
+# Ruckus SmartCell Insight Attributes
+ATTRIBUTE	SCI-Role				200	string
+ATTRIBUTE	SCI-Resource-Group			201	string
 
 #
 #  Integer Translations
