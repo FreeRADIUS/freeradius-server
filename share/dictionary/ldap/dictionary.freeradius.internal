@@ -1,0 +1,43 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+#
+#	Non Protocol Attributes used by FreeRADIUS
+#
+#	$Id$
+#
+
+#
+#	All of these attributes are internal.
+#
+FLAGS	internal
+
+ATTRIBUTE	Packet-Type				1000	integer
+
+VALUE	Packet-Type			Present			1
+VALUE	Packet-Type			Add			2
+VALUE	Packet-Type			Modify			3
+VALUE	Packet-Type			Delete			4
+VALUE	Packet-Type			Response		5
+VALUE	Packet-Type			Cookie-Load		6
+VALUE	Packet-Type			Cookie-Load-Response	7
+VALUE	Packet-Type			Cookie-Store		8
+VALUE	Packet-Type			Cookie-Store-Response	9
+VALUE	Packet-Type			Do-Not-Respond		255
+
+ATTRIBUTE	Sync-Packet-ID				1001	integer
+
+ATTRIBUTE	LDAP-Sync				1193	tlv
+BEGIN-TLV	LDAP-Sync
+ATTRIBUTE	Cookie					1	octets
+ATTRIBUTE	DN					2	string
+ATTRIBUTE	Filter					3	string
+ATTRIBUTE	Attr					4	string
+ATTRIBUTE	Scope					5	integer
+ATTRIBUTE	Entry-State				6	integer
+ATTRIBUTE	Entry-DN				7	string
+ATTRIBUTE	Entry-UUID				8	octets
+ATTRIBUTE	Original-DN				9	string
+END-TLV		LDAP-Sync
+
