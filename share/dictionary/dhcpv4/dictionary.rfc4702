@@ -4,7 +4,7 @@
 # Version $Id$
 ##############################################################################
 #
-#  RFC4072 - The Dynamic Host Configuration Protocol (DHCP) Client
+#  RFC4702 - The Dynamic Host Configuration Protocol (DHCP) Client
 #            Fully Qualified Domain Name (FQDN) Option
 #
 #  $Id$
@@ -12,7 +12,7 @@
 ##############################################################################
 
 #
-# RFC 4072 describes the Flags field, here the first four members of
+# RFC 4702 describes the Flags field, here the first four members of
 # Client-FQDN, as follows:
 #
 #   The format of the 1-octet Flags field is:
