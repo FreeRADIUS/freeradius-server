@@ -136,9 +136,6 @@ ATTRIBUTE	IRC-Server-Address			74	ipaddr array
 ATTRIBUTE	StreetTalk-Server-Address		75	ipaddr array
 ATTRIBUTE	STDA-Server-Address			76	ipaddr array
 
-# 16 GeoConf Option
-ATTRIBUTE	GeoConf-Option				123	octets
-
 #ATTRIBUTE	Etherboot				128	ether
 # (for IP Phone software load)
 
