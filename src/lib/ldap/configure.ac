@@ -109,17 +109,7 @@ if test x$with_[]modname_useropt != xno; then
 
 	if test "x$fail" = "x"; then
 		AC_CHECK_FUNCS(
-			ldap_sasl_interactive_bind \
-			ldap_unbind_ext_s \
-			ldap_start_tls_s \
-			ldap_initialize \
-			ldap_create_sort_control \
-			ldap_create_sort_keylist \
-			ldap_free_sort_keylist \
-			ldap_create_session_tracking_control \
-			ldap_url_parse \
-			ldap_is_ldap_url \
-			ldap_url_desc2str
+			ldap_create_session_tracking_control
 		)
 
 		AC_CHECK_DECLS([ldap_create_session_tracking_control], [], [], [[#include <ldap.h>]])
