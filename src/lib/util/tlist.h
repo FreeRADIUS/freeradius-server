@@ -1018,6 +1018,21 @@ DIAG_OFF(unused-function) \
 \
 	static inline	void _name ## _sort(FR_TLIST_HEAD(_name) *list, fr_cmp_t cmp) \
 		{		fr_tlist_sort(&list->head, cmp); } \
+\
+	static inline FR_TLIST_HEAD(_name) *_name ## _parent(_element_type *ptr) \
+		{		return (FR_TLIST_HEAD(_name) *) (ptr->_element_entry->list_head); } \
+\
+	static inline FR_TLIST_HEAD(_name) *_name ## _children(_element_type *ptr) \
+		{		return (FR_TLIST_HEAD(_name) *) (ptr->_element_entry->children); } \
+\
+	static inline void _name ## _init_children(_element_type *ptr, FR_TLIST_HEAD(_name) *children) \
+		{		fr_tlist_init_children(ptr->_element_entry, &children->head); } \
+\
+	static inline void _name ## _add_children(_element_type *ptr, FR_TLIST_HEAD(_name) *children) \
+		{		return fr_tlist_add_children(ptr->_element_entry, &children->head); } \
+\
+	static inline FR_TLIST_HEAD(_name) * _name ## _remove_children(_element_type *ptr) \
+		{		return FR_TLIST_HEAD(_name) *fr_tlist_remove_children(&ptr->_element_entry) }
 DIAG_ON(unused-function)
 
 
