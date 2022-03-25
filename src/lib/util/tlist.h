@@ -344,8 +344,10 @@ static inline CC_HINT(nonnull) void *fr_tlist_head(fr_tlist_head_t const *list_h
  *	- True if it does not.
  *	- False if it does.
  */
-static inline CC_HINT(nonnull) bool fr_tlist_empty(fr_tlist_head_t const *list_head)
+static inline bool fr_tlist_empty(fr_tlist_head_t const *list_head)
 {
+	if (!list_head) return true;
+
 	return fr_dlist_empty(&list_head->dlist_head);
 }
 
@@ -394,9 +396,12 @@ static inline CC_HINT(nonnull) void *fr_tlist_tail(fr_tlist_head_t const *list_h
  */
 static inline CC_HINT(nonnull(1)) void *fr_tlist_next(fr_tlist_head_t const *list_head, void const *ptr)
 {
-	fr_tlist_t *entry = fr_tlist_item_to_entry(list_head->offset, ptr);
+	fr_tlist_t *entry;
 	fr_tlist_t *next;
 
+	if (!ptr) return fr_tlist_head(list_head);
+
+	entry = fr_tlist_item_to_entry(list_head->offset, ptr);
 	next = fr_dlist_next(&list_head->dlist_head, entry);
 	if (!next) return NULL;
 
@@ -418,9 +423,12 @@ static inline CC_HINT(nonnull(1)) void *fr_tlist_next(fr_tlist_head_t const *lis
  */
 static inline CC_HINT(nonnull(1)) void *fr_tlist_prev(fr_tlist_head_t const *list_head, void const *ptr)
 {
-	fr_tlist_t *entry = fr_tlist_item_to_entry(list_head->offset, ptr);
+	fr_tlist_t *entry;
 	fr_tlist_t *prev;
 
+	if (!ptr) return fr_tlist_tail(list_head);
+
+	entry = fr_tlist_item_to_entry(list_head->offset, ptr);
 	prev = fr_dlist_prev(&list_head->dlist_head, entry);
 	if (!prev) return NULL;
 
