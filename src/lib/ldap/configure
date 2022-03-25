@@ -3922,13 +3922,7 @@ smart_prefix=
 
 
 	if test "x$fail" = "x"; then
-		ac_fn_c_check_func "$LINENO" "ldap_start_tls_s" "ac_cv_func_ldap_start_tls_s"
-if test "x$ac_cv_func_ldap_start_tls_s" = xyes
-then :
-  printf "%s\n" "#define HAVE_LDAP_START_TLS_S 1" >>confdefs.h
-
-fi
-ac_fn_c_check_func "$LINENO" "ldap_create_session_tracking_control" "ac_cv_func_ldap_create_session_tracking_control"
+		ac_fn_c_check_func "$LINENO" "ldap_create_session_tracking_control" "ac_cv_func_ldap_create_session_tracking_control"
 if test "x$ac_cv_func_ldap_create_session_tracking_control" = xyes
 then :
   printf "%s\n" "#define HAVE_LDAP_CREATE_SESSION_TRACKING_CONTROL 1" >>confdefs.h

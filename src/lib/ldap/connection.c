@@ -138,7 +138,6 @@ DIAG_ON(unused-macros)
 	keepalive = fr_time_delta_to_sec(config->keepalive_interval);
 	do_ldap_option(LDAP_OPT_X_KEEPALIVE_INTERVAL, "keepalive_interval", &keepalive);
 
-#ifdef HAVE_LDAP_START_TLS_S
 	/*
 	 *	Set all of the TLS options
 	 */
@@ -178,7 +177,6 @@ DIAG_ON(unused-macros)
 			     "configuration");
 		}
 	}
-#endif /* HAVE_LDAP_START_TLS_S */
 
 	return 0;
 }

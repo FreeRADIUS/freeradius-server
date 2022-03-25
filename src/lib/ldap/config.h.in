@@ -11,9 +11,6 @@
    function. */
 #undef HAVE_LDAP_CREATE_SESSION_TRACKING_CONTROL
 
-/* Define to 1 if you have the `ldap_start_tls_s' function. */
-#undef HAVE_LDAP_START_TLS_S
-
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 
