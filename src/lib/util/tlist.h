@@ -1035,11 +1035,19 @@ DIAG_OFF(unused-function) \
 		{		return FR_TLIST_HEAD(_name) *fr_tlist_remove_children(&ptr->_element_entry) }
 DIAG_ON(unused-function)
 
+static inline void *fr_tlist_parent(fr_tlist_head_t *list_head, void const *ptr)
+{
+	fr_tlist_t *entry;
 
-/*
- *	Functions which are specific to tlists
- */
+	if (!ptr || !list_head) return NULL;
 
+	entry = fr_tlist_item_to_entry(list_head->offset, ptr);
+	if (!entry->list_head) return NULL;
+
+	if (!entry->list_head->parent) return NULL;
+
+	return fr_tlist_entry_to_item(entry->list_head->offset, entry->list_head->parent);
+}
 
 /** Initialize a child tlist based on a parent entry
  *
