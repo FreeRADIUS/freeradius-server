@@ -119,15 +119,13 @@ static CONF_ITEM *cf_find(CONF_ITEM const *parent, CONF_ITEM_TYPE type, char con
 	 *	No ident1, iterate over the child list
 	 */
 	if (IS_WILDCARD(ident1)) {
-		CONF_ITEM *ci = NULL;
-
-		while ((ci = fr_dlist_next(&parent->children, ci))) {
+		cf_item_foreach(parent, ci) {
 			if (find->type != ci->type) continue;
 
-			if (cf_ident2_cmp(find, ci) == 0) break;
+			if (cf_ident2_cmp(find, ci) == 0) return ci;
 		}
 
-		return ci;
+		return NULL;
 	}
 
 	/*
@@ -858,7 +856,6 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 {
 	CONF_SECTION	*new, *subcs;
 	CONF_PAIR	*cp;
-	CONF_ITEM	*ci = NULL;
 
 	new = cf_section_alloc(ctx, parent, name1, name2);
 
@@ -871,7 +868,7 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 	cf_filename_set(new, cs->item.filename);
 	cf_lineno_set(new, cs->item.lineno);
 
-	while ((ci = fr_dlist_next(&cs->item.children, ci))) {
+	cf_item_foreach(&cs->item, ci) {
 		switch (ci->type) {
 		case CONF_ITEM_SECTION:
 			subcs = cf_item_to_section(ci);
@@ -2005,8 +2002,6 @@ void _cf_log_by_child(fr_log_type_t type, CONF_SECTION const *parent, char const
  */
 void _cf_debug(CONF_ITEM const *ci)
 {
-	CONF_ITEM const	*child = NULL;
-
 	/*
 	 *	Print summary of the item
 	 */
@@ -2076,7 +2071,7 @@ void _cf_debug(CONF_ITEM const *ci)
 	 */
 	DEBUG("CHILDREN");
 
-	while ((child = fr_dlist_next(&ci->children, child))) {
+	cf_item_foreach(ci, child) {
 	     	char const *in_ident1, *in_ident2;
 
 		in_ident1 = fr_rb_find(ci->ident1, child) == child? "in ident1 " : "";

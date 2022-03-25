@@ -92,6 +92,15 @@ CONF_ITEM	*_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child);
 #define		cf_item_next(_ci, _prev) _cf_item_next(CF_TO_ITEM(_ci), _prev)
 CONF_ITEM	*_cf_item_next(CONF_ITEM const *ci, CONF_ITEM const *prev);
 
+/** Iterate over the contents of a list
+ *
+ * @param[in] _ci		to iterate over.
+ * @param[in] _iter		Name of iteration variable.
+ *				Will be declared in the scope of the loop.
+ */
+#define cf_item_foreach(_ci, _iter) \
+	for (CONF_ITEM *_iter = fr_dlist_head(&(_ci)->children); _iter; _iter = fr_dlist_next(&(_ci)->children, _iter))
+
 #define		cf_root(_cf) _cf_root(CF_TO_ITEM(_cf))
 CONF_SECTION	*_cf_root(CONF_ITEM const *ci);
 
