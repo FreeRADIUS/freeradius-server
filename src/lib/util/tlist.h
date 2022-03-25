@@ -705,7 +705,302 @@ static inline unsigned int fr_tlist_num_elements(fr_tlist_head_t const *list_hea
 	return fr_dlist_num_elements(&list_head->dlist_head);
 }
 
-/* fr_dlist_sort_split() and following still need to be ported */
+/** Split phase of a merge sort of a dlist
+ *
+ * @note Only to be used within a merge sort
+ *
+ * @param[in] head	of the original list being sorted
+ * @param[in] source	first item in the section of the list to split
+ * @param[out] front	first item of the first half of the split list
+ * @param[out] back	first item of the second half of the split list
+ */
+static inline void fr_tlist_sort_split(fr_tlist_head_t *head, void **source, void **front, void **back)
+{
+	void *fast = NULL;
+	void *slow;
+	fr_tlist_t *entry = NULL;
+
+	*front = *source;
+
+	if (*source) entry = fr_tlist_item_to_entry(head->offset, *source);
+	/*
+	 *	Stopping condition - no more elements left to split
+	 */
+	if (!*source || !entry->next) {
+		*back = NULL;
+		return;
+	}
+
+	/*
+	 *	Fast advances twice as fast as slow, so when it gets to the end,
+	 *	slow will point to the middle of the linked list.
+	 */
+	slow = *source;
+	fast = fr_tlist_next(head, slow);
+	while (fast) {
+		fast = fr_tlist_next(head, fast);
+		if (fast) {
+			slow = fr_tlist_next(head, slow);
+			fast = fr_tlist_next(head, fast);
+		}
+	}
+
+	*back = fr_tlist_next(head, slow);
+
+	if (slow) {
+		entry = fr_tlist_item_to_entry(head->offset, slow);
+		entry->next = NULL;
+	}
+}
+
+/** Merge phase of a merge sort of a dlist
+ *
+ * @note Only to be used within a merge sort
+ *
+ * @param[in] head	of the original list being sorted
+ * @param[in] a		first element of first list being merged
+ * @param[in] b		first element of second list being merged
+ * @param[in] cmp	comparison function for the sort
+ * @returns pointer to first item in merged list
+ */
+static inline void *fr_tlist_sort_merge(fr_tlist_head_t *head, void **a, void **b, fr_cmp_t cmp)
+{
+	void *result = NULL;
+	void *next;
+	fr_tlist_t *result_entry;
+	fr_tlist_t *next_entry;
+
+	if (!*a) return *b;
+	if (!*b) return *a;
+
+	/*
+	 *	Compare entries in the lists
+	 */
+	if (cmp(*a, *b) <= 0) {
+		result = *a;
+		next = fr_tlist_next(head, *a);
+		next = fr_tlist_sort_merge(head, &next, b, cmp);
+	} else {
+		result = *b;
+		next = fr_tlist_next(head, *b);
+		next = fr_tlist_sort_merge(head, a, &next, cmp);
+	}
+
+	result_entry = fr_tlist_item_to_entry(head->offset, result);
+	next_entry = fr_tlist_item_to_entry(head->offset, next);
+	result_entry->next = next_entry;
+
+	return result;
+}
+
+/** Recursive sort routine for tlist
+ *
+ * @param[in] head	of the list being sorted
+ * @param[in,out] ptr	to the first item in the current section of the list being sorted.
+ * @param[in] cmp	comparison function to sort with
+ */
+static inline void fr_tlist_recursive_sort(fr_tlist_head_t *head, void **ptr, fr_cmp_t cmp)
+{
+	void *a;
+	void *b;
+	fr_tlist_t *entry = NULL;
+
+	if (*ptr) entry = fr_tlist_item_to_entry(head->offset, *ptr);
+
+	if (!*ptr || (!entry->next)) return;
+	fr_tlist_sort_split(head, ptr, &a, &b);		/* Split into sublists */
+	fr_tlist_recursive_sort(head, &a, cmp);		/* Traverse left */
+	fr_tlist_recursive_sort(head, &b, cmp);		/* Traverse right */
+
+	/*
+	 *	merge the two sorted lists together
+	 */
+	*ptr = fr_tlist_sort_merge(head, &a, &b, cmp);
+}
+
+/** Sort a tlist using merge sort
+ *
+ * @note This routine temporarily breaks the doubly linked nature of the list
+ *
+ * @param[in,out] list	to sort
+ * @param[in] cmp	comparison function to sort with
+ */
+static inline void fr_tlist_sort(fr_tlist_head_t *list, fr_cmp_t cmp)
+{
+	void *head;
+	fr_tlist_t *entry;
+
+	if (fr_tlist_num_elements(list) <= 1) return;
+
+	head = fr_tlist_head(list);
+	/* NULL terminate existing list */
+	list->entry.prev->next = NULL;
+
+	/*
+	 *	Call the recursive sort routine
+	 */
+	fr_tlist_recursive_sort(list, &head, cmp);
+
+	/*
+	 *	Reset "prev" pointers broken during sort
+	 */
+	entry = fr_tlist_item_to_entry(list->offset, head);
+	list->entry.next = entry;
+	entry->prev = &list->entry;
+
+	while (head) {
+		entry = fr_tlist_item_to_entry(list->offset, head);
+		if (entry->next) {
+			/*
+			 * There is a "next" entry, point it back to the current one
+			 */
+			entry->next->prev = entry;
+		} else {
+			/*
+			 * No next entry, this is the tail
+			 */
+			list->entry.prev = entry;
+			entry->next = &list->entry;
+		}
+		head = fr_tlist_next(list, head);
+	}
+}
+
+static inline void fr_tlist_noop(void)
+{
+	return;
+}
+
+
+/** Expands to the type name used for the entry wrapper structure
+ *
+ * @param[in] _name	Prefix we add to type-specific structures.
+ * @return fr_tlist_<name>_entry_t
+ */
+#define FR_TLIST_ENTRY(_name) _name ## _entry_t
+
+/** Expands to the type name used for the head wrapper structure
+ *
+ * @param[in] _name	Prefix we add to type-specific structures.
+ * @return fr_tlist_<name>_head_t
+ */
+#define FR_TLIST_HEAD(_name) _name ## _head_t
+
+/** Define type specific wrapper structs for tlists
+ *
+ * @note This macro should be used inside the header for the area of code
+ * which will use type specific functions.
+ */
+#define FR_TLIST_TYPES(_name) \
+	typedef struct { fr_tlist_t entry; } FR_TLIST_ENTRY(_name); \
+	typedef struct { fr_tlist_head_t head; } FR_TLIST_HEAD(_name); \
+
+
+/** Define type specific wrapper functions for tlists
+ *
+ * @note This macro should be used inside the source file that will use
+ * the type specific functions.
+ *
+ * @param[in] _name		Prefix we add to type-specific tlist functions.
+ * @param[in] _element_type	Type of structure that'll be inserted into the tlist.
+ * @param[in] _element_entry	Field in the _element_type that holds the tlist entry information.
+ */
+#define FR_TLIST_FUNCS(_name, _element_type, _element_entry) \
+DIAG_OFF(unused-function) \
+	_Static_assert(IS_FIELD_COMPATIBLE(_element_type, _element_entry, FR_TLIST_ENTRY(_name)) == 1, "Bad tlist entry field type");\
+	static inline	fr_tlist_head_t *_name ## _list_head(FR_TLIST_HEAD(_name) const *list) \
+		{ return	UNCONST(fr_tlist_head_t *, &list->head); } \
+\
+	static inline	void _name ## _entry_init(_element_type *entry) \
+		{ \
+			_Generic((&entry->_element_entry), \
+				 FR_TLIST_ENTRY(_name) *: fr_tlist_entry_init(UNCONST(fr_tlist_t *, &entry->_element_entry.entry)), \
+				 FR_TLIST_ENTRY(_name) const *: fr_tlist_noop()\
+			); \
+		} \
+\
+	static inline	void _name ## _init(FR_TLIST_HEAD(_name) *list) \
+		{		_fr_tlist_init(&list->head, offsetof(_element_type, _element_entry), NULL); } \
+\
+	static inline	void _name ## _talloc_init(FR_TLIST_HEAD(_name) *list) \
+		{		_fr_tlist_init(&list->head, offsetof(_element_type, _element_entry), #_element_type); } \
+\
+	static inline	void _name ## _clear(FR_TLIST_HEAD(_name) *list) \
+		{		fr_tlist_clear(&list->head); } \
+\
+	static inline	bool _name ## _in_list(FR_TLIST_HEAD(_name) *list, _element_type *ptr) \
+		{ return	fr_tlist_in_list(&list->head, ptr); } \
+\
+	static inline	int _name ## _insert_head(FR_TLIST_HEAD(_name) *list, _element_type *ptr) \
+		{ return	fr_tlist_insert_head(&list->head, ptr); } \
+\
+	static inline	int _name ## _insert_tail(FR_TLIST_HEAD(_name) *list, _element_type *ptr) \
+		{ return	fr_tlist_insert_tail(&list->head, ptr); } \
+\
+	static inline	int _name ## _insert_after(FR_TLIST_HEAD(_name) *list, _element_type *pos, _element_type *ptr) \
+		{ return	fr_tlist_insert_after(&list->head, pos, ptr); } \
+\
+	static inline	int _name ## _insert_before(FR_TLIST_HEAD(_name) *list, _element_type *pos, _element_type *ptr) \
+		{ return	fr_tlist_insert_before(&list->head, pos, ptr); } \
+\
+	static inline	_element_type *_name ## _head(FR_TLIST_HEAD(_name) const *list) \
+		{ return	fr_tlist_head(&list->head); } \
+\
+	static inline	bool _name ## _empty(FR_TLIST_HEAD(_name) const *list) \
+		{ return	fr_tlist_empty(&list->head); } \
+\
+	static inline	bool _name ## _initialised(FR_TLIST_HEAD(_name) const *list) \
+		{ return	fr_tlist_initialised(&list->head); } \
+\
+	static inline	_element_type *_name ## _tail(FR_TLIST_HEAD(_name) const *list) \
+		{ return	fr_tlist_tail(&list->head); } \
+\
+	static inline _element_type *_name ## _next(FR_TLIST_HEAD(_name) const *list, _element_type const *ptr) \
+		{ return	fr_tlist_next(&list->head, ptr); } \
+\
+	static inline	_element_type *_name ## _prev(FR_TLIST_HEAD(_name) const *list, _element_type const *ptr) \
+		{ return	fr_tlist_prev(&list->head, ptr); } \
+\
+	static inline	_element_type *_name ## _remove(FR_TLIST_HEAD(_name) *list, _element_type *ptr) \
+		{ return	fr_tlist_remove(&list->head, ptr); } \
+\
+	static inline	_element_type *_name ## _pop_head(FR_TLIST_HEAD(_name) *list) \
+		{ return	fr_tlist_pop_head(&list->head); } \
+\
+	static inline	_element_type *_name ## _pop_tail(FR_TLIST_HEAD(_name) *list) \
+		{ return	fr_tlist_pop_tail(&list->head); } \
+\
+	static inline	_element_type *_name ## _replace(FR_TLIST_HEAD(_name) *list, _element_type *item, _element_type *ptr) \
+		{ return	fr_tlist_replace(&list->head, item, ptr); } \
+\
+	static inline	int _name ## _move(FR_TLIST_HEAD(_name) *dst, FR_TLIST_HEAD(_name) *src) \
+		{ return	fr_tlist_move(&dst->head, &src->head); } \
+\
+	static inline	int _name ## _move_head(FR_TLIST_HEAD(_name) *dst, FR_TLIST_HEAD(_name) *src) \
+		{ return	fr_tlist_move_head(&dst->head, &src->head); } \
+\
+	static inline	void _name ## _talloc_free_head(FR_TLIST_HEAD(_name) *list) \
+		{		fr_tlist_talloc_free_head(&list->head); } \
+\
+	static inline	void _name ## _talloc_free_tail(FR_TLIST_HEAD(_name) *list) \
+		{		fr_tlist_talloc_free_tail(&list->head); } \
+\
+	static inline	void _name ## _talloc_free_item(FR_TLIST_HEAD(_name) *list, _element_type *ptr) \
+		{		fr_tlist_talloc_free_item(&list->head, ptr); } \
+\
+	static inline	void _name ## _talloc_free(FR_TLIST_HEAD(_name) *list) \
+		{		fr_tlist_talloc_free(&list->head); } \
+\
+	static inline	void _name ## _talloc_reverse_free(FR_TLIST_HEAD(_name) *list) \
+		{		fr_tlist_talloc_reverse_free(&list->head); } \
+\
+	static inline	unsigned int _name ## _num_elements(FR_TLIST_HEAD(_name) const *list) \
+		{ return	fr_tlist_num_elements(&list->head); } \
+\
+	static inline	void _name ## _sort(FR_TLIST_HEAD(_name) *list, fr_cmp_t cmp) \
+		{		fr_tlist_sort(&list->head, cmp); } \
+DIAG_ON(unused-function)
+
 
 /*
  *	Functions which are specific to tlists
