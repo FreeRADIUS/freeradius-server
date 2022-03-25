@@ -66,26 +66,17 @@ static char const *ldap_msg_types[UINT8_MAX] = {
  */
 int fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const *config)
 {
-	LDAP				*handle = NULL;
-	int				ldap_errno, ldap_version;
+	LDAP	*handle = NULL;
+	int	ldap_errno, ldap_version, keepalive, probes, is_server;
 
 	fr_assert(config->server);
 
-#ifdef HAVE_LDAP_INITIALIZE
 	ldap_errno = ldap_initialize(&handle, config->server);
 	if (ldap_errno != LDAP_SUCCESS) {
 		ERROR("ldap_initialize failed: %s", ldap_err2string(ldap_errno));
 	error:
 		return -1;
 	}
-#else
-	handle = ldap_init(config->server, config->port);
-	if (!handle) {
-		ERROR("ldap_init failed");
-	error:
-		return -1;
-	}
-#endif
 
 	DEBUG3("New connection %p libldap handle %p", c, handle);
 
@@ -121,7 +112,6 @@ DIAG_ON(unused-macros)
 	 */
 	do_ldap_option(LDAP_OPT_REFERRALS, "chase_referrals", LDAP_OPT_OFF);
 
-#ifdef LDAP_OPT_NETWORK_TIMEOUT
 	/*
 	 *	A value of zero results in an handle configuration failure.
 	 *
@@ -133,38 +123,21 @@ DIAG_ON(unused-macros)
 		       (fr_time_delta_ispos(config->net_timeout) ?
 				&fr_time_delta_to_timeval(config->net_timeout) :
 				&(struct timeval) { .tv_sec = -1, .tv_usec = 0 }));
-#endif
 
 	do_ldap_option(LDAP_OPT_TIMELIMIT, "srv_timelimit", &fr_time_delta_to_timeval(config->srv_timelimit));
 
 	ldap_version = LDAP_VERSION3;
 	do_ldap_option(LDAP_OPT_PROTOCOL_VERSION, "ldap_version", &ldap_version);
 
-#ifdef LDAP_OPT_X_KEEPALIVE_IDLE
-	{
-		int keepalive = fr_time_delta_to_sec(config->keepalive_idle);
+	keepalive = fr_time_delta_to_sec(config->keepalive_idle);
+	do_ldap_option(LDAP_OPT_X_KEEPALIVE_IDLE, "keepalive_idle", &keepalive);
 
-		do_ldap_option(LDAP_OPT_X_KEEPALIVE_IDLE, "keepalive_idle", &keepalive);
-	}
-#endif
+	probes = config->keepalive_probes;
+	do_ldap_option(LDAP_OPT_X_KEEPALIVE_PROBES, "keepalive_probes", &probes);
 
-#ifdef LDAP_OPT_X_KEEPALIVE_PROBES
-	{
-		int probes = config->keepalive_probes;
+	keepalive = fr_time_delta_to_sec(config->keepalive_interval);
+	do_ldap_option(LDAP_OPT_X_KEEPALIVE_INTERVAL, "keepalive_interval", &keepalive);
 
-		do_ldap_option(LDAP_OPT_X_KEEPALIVE_PROBES, "keepalive_probes", &probes);
-	}
-#endif
-
-#ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
-	{
-		int keepalive = fr_time_delta_to_sec(config->keepalive_interval);
-
-		do_ldap_option(LDAP_OPT_X_KEEPALIVE_INTERVAL, "keepalive_interval", &keepalive);
-	}
-#endif
-
-#ifdef HAVE_LDAP_START_TLS_S
 	/*
 	 *	Set all of the TLS options
 	 */
@@ -179,29 +152,22 @@ DIAG_ON(unused-macros)
 	maybe_ldap_option(LDAP_OPT_X_TLS_CERTFILE, "certificate_file", config->tls_certificate_file);
 	maybe_ldap_option(LDAP_OPT_X_TLS_KEYFILE, "private_key_file", config->tls_private_key_file);
 
-#  ifdef LDAP_OPT_X_TLS_REQUIRE_CERT
 	if (config->tls_require_cert_str) {
 		do_ldap_option(LDAP_OPT_X_TLS_REQUIRE_CERT, "require_cert", &config->tls_require_cert);
 	}
-#  endif
 
-#  ifdef LDAP_OPT_X_TLS_PROTOCOL_MIN
 	if (config->tls_min_version_str) {
 		do_ldap_option(LDAP_OPT_X_TLS_PROTOCOL_MIN, "tls_min_version", &config->tls_min_version);
 	}
-#  endif
 
 	/*
 	 *	Counter intuitively the TLS context appears to need to be initialised
 	 *	after all the TLS options are set on the handle.
 	 */
-#  ifdef LDAP_OPT_X_TLS_NEWCTX
-	{
-		/* Always use the new TLS configuration context */
-		int is_server = 0;
-		do_ldap_option(LDAP_OPT_X_TLS_NEWCTX, "new TLS context", &is_server);
-	}
-#  endif
+
+	/* Always use the new TLS configuration context */
+	is_server = 0;
+	do_ldap_option(LDAP_OPT_X_TLS_NEWCTX, "new TLS context", &is_server);
 
 	if (config->sasl_secprops) do_ldap_option(LDAP_OPT_X_SASL_SECPROPS, "sasl_secprops", config->sasl_secprops);
 
@@ -211,7 +177,6 @@ DIAG_ON(unused-macros)
 			     "configuration");
 		}
 	}
-#endif /* HAVE_LDAP_START_TLS_S */
 
 	return 0;
 }
@@ -261,7 +226,6 @@ static int _ldap_connection_free(fr_ldap_connection_t *c)
 
 	if (!c->handle) return 0;	/* Don't need to do anything else if we don't yet have a handle */
 
-#ifdef HAVE_LDAP_UNBIND_EXT_S
 	LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
 	LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
 
@@ -272,10 +236,7 @@ static int _ldap_connection_free(fr_ldap_connection_t *c)
 
 	DEBUG3("Closing connection %p libldap handle %p", c->handle, c);
 	ldap_unbind_ext(c->handle, our_serverctrls, our_clientctrls);	/* Same code as ldap_unbind_ext_s */
-#else
-	DEBUG3("Closing connection %p libldap handle %p", c->handle, c);
-	ldap_unbind(c->handle);						/* Same code as ldap_unbind_s */
-#endif
+
 	c->handle = NULL;
 
 	return 0;
@@ -443,7 +404,6 @@ fr_connection_t	*fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_list_t
 
 int fr_ldap_connection_timeout_set(fr_ldap_connection_t const *c, fr_time_delta_t timeout)
 {
-#ifdef LDAP_OPT_NETWORK_TIMEOUT
 	int ldap_errno;
 
 	/*
@@ -457,7 +417,6 @@ int fr_ldap_connection_timeout_set(fr_ldap_connection_t const *c, fr_time_delta_
 		       (fr_time_delta_ispos(timeout) ?
 		       		&fr_time_delta_to_timeval(timeout) :
 		       		&(struct timeval) { .tv_sec = -1, .tv_usec = 0 }));
-#endif
 
 	return 0;
 
@@ -467,8 +426,6 @@ error:
 
 int fr_ldap_connection_timeout_reset(fr_ldap_connection_t const *c)
 {
-
-#ifdef LDAP_OPT_NETWORK_TIMEOUT
 	int ldap_errno;
 
 	/*
@@ -482,7 +439,6 @@ int fr_ldap_connection_timeout_reset(fr_ldap_connection_t const *c)
 		       (fr_time_delta_ispos(c->config->net_timeout) ?
 		       		&fr_time_delta_to_timeval(c->config->net_timeout) :
 				&(struct timeval) { .tv_sec = -1, .tv_usec = 0 }));
-#endif
 
 	return 0;
 

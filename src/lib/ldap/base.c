@@ -70,15 +70,12 @@ size_t fr_ldap_supported_extensions_len = NUM_ELEMENTS(fr_ldap_supported_extensi
  */
 fr_table_num_sorted_t const fr_ldap_scope[] = {
 	{ L("base"),	LDAP_SCOPE_BASE },
-#ifdef LDAP_SCOPE_CHILDREN
 	{ L("children"),	LDAP_SCOPE_CHILDREN },
-#endif
 	{ L("one"),	LDAP_SCOPE_ONE	},
 	{ L("sub"),	LDAP_SCOPE_SUB	}
 };
 size_t fr_ldap_scope_len = NUM_ELEMENTS(fr_ldap_scope);
 
-#ifdef LDAP_OPT_X_TLS_NEVER
 fr_table_num_sorted_t const fr_ldap_tls_require_cert[] = {
 	{ L("allow"),	LDAP_OPT_X_TLS_ALLOW	},
 	{ L("demand"),	LDAP_OPT_X_TLS_DEMAND	},
@@ -87,7 +84,6 @@ fr_table_num_sorted_t const fr_ldap_tls_require_cert[] = {
 	{ L("try"),	LDAP_OPT_X_TLS_TRY	}
 };
 size_t fr_ldap_tls_require_cert_len = NUM_ELEMENTS(fr_ldap_tls_require_cert);
-#endif
 
 fr_table_num_sorted_t const fr_ldap_dereference[] = {
 	{ L("always"),	LDAP_DEREF_ALWAYS	},
@@ -116,17 +112,13 @@ void fr_ldap_timeout_debug(request_t *request, fr_ldap_connection_t const *conn,
 
 	if (request) RINDENT();
 
-#ifdef LDAP_OPT_NETWORK_TIMEOUT
 	if (ldap_get_option(conn->handle, LDAP_OPT_NETWORK_TIMEOUT, &net) != LDAP_OPT_SUCCESS) {
 		ROPTIONAL(REDEBUG, ERROR, "Failed getting LDAP_OPT_NETWORK_TIMEOUT");
 	}
-#endif
 
-#ifdef LDAP_OPT_TIMEOUT
 	if (ldap_get_option(conn->handle, LDAP_OPT_TIMEOUT, &client) != LDAP_OPT_SUCCESS) {
 		ROPTIONAL(REDEBUG, ERROR, "Failed getting LDAP_OPT_TIMEOUT");
 	}
-#endif
 
 	if (ldap_get_option(conn->handle, LDAP_OPT_TIMELIMIT, &server) != LDAP_OPT_SUCCESS) {
 		ROPTIONAL(REDEBUG, ERROR, "Failed getting LDAP_OPT_TIMELIMIT");
@@ -141,7 +133,6 @@ void fr_ldap_timeout_debug(request_t *request, fr_ldap_connection_t const *conn,
 		ROPTIONAL(RDEBUG4, DEBUG4, "Client side result timeout (ovr): unset");
 	}
 
-#ifdef LDAP_OPT_TIMEOUT
 	if (client && (client->tv_sec != -1)) {
 		ROPTIONAL(RDEBUG4, DEBUG4, "Client side result timeout (dfl): %pVs",
 			  fr_box_time_delta(fr_time_delta_from_timeval(client)));
@@ -149,9 +140,7 @@ void fr_ldap_timeout_debug(request_t *request, fr_ldap_connection_t const *conn,
 	} else {
 		ROPTIONAL(RDEBUG4, DEBUG4, "Client side result timeout (dfl): unset");
 	}
-#endif
 
-#ifdef LDAP_OPT_NETWORK_TIMEOUT
 	if (net && (net->tv_sec != -1)) {
 		ROPTIONAL(RDEBUG4, DEBUG4, "Client side network I/O timeout : %pVs",
 			  fr_box_time_delta(fr_time_delta_from_timeval(net)));
@@ -159,7 +148,7 @@ void fr_ldap_timeout_debug(request_t *request, fr_ldap_connection_t const *conn,
 		ROPTIONAL(RDEBUG4, DEBUG4, "Client side network I/O timeout : unset");
 
 	}
-#endif
+
 	ROPTIONAL(RDEBUG4, DEBUG4, "Server side result timeout      : %i", server);
 	if (request) REXDENT();
 
@@ -910,11 +899,7 @@ fr_ldap_query_t *fr_ldap_modify_alloc(TALLOC_CTX *ctx, char const *dn,
 
 static void _ldap_handle_thread_local_free(void *handle)
 {
-#ifdef HAVE_LDAP_UNBIND_EXT_S
 	ldap_unbind_ext_s(handle, NULL, NULL);
-#else
-	ldap_unbind_s(handle);
-#endif
 }
 
 /** Get a thread local dummy LDAP handle
@@ -932,11 +917,8 @@ LDAP *fr_ldap_handle_thread_local(void)
 	if (!ldap_thread_local_handle) {
 		LDAP *handle;
 
-#ifdef HAVE_LDAP_INITIALIZE
 		ldap_initialize(&handle, "");
-#else
-		handle = ldap_init("", 0);
-#endif
+
 		fr_atexit_thread_local(ldap_thread_local_handle, _ldap_handle_thread_local_free, handle);
 	}
 
@@ -969,20 +951,14 @@ int fr_ldap_global_config(int debug_level, char const *tls_random_file)
 #define maybe_ldap_global_option(_option, _name, _value) \
 	if (_value) do_ldap_global_option(_option, _name, _value)
 
-#ifdef LDAP_OPT_DEBUG_LEVEL
 	if (debug_level) do_ldap_global_option(LDAP_OPT_DEBUG_LEVEL, "ldap_debug", &debug_level);
-#else
-	if (debug_level) WARN("ldap_debug not honoured as LDAP_OPT_DEBUG_LEVEL is not available");
-#endif
 
-#ifdef LDAP_OPT_X_TLS_RANDOM_FILE
 	/*
 	 *	OpenLDAP will error out if we attempt to set
 	 *	this on a handle. Presumably it's global in
 	 *	OpenSSL too.
 	 */
 	maybe_ldap_global_option(LDAP_OPT_X_TLS_RANDOM_FILE, "random_file", tls_random_file);
-#endif
 
 	done_config = true;
 
@@ -1012,11 +988,8 @@ int fr_ldap_init(void)
 	 *
 	 *	See: https://github.com/arr2036/ldapperf/issues/2
 	 */
-#ifdef HAVE_LDAP_INITIALIZE
 	ldap_initialize(&ldap_global_handle, "");
-#else
-	ldap_global_handle = ldap_init("", 0);
-#endif
+
 	if (!ldap_global_handle) {
 		ERROR("Failed initialising global LDAP handle");
 		return -1;
@@ -1082,9 +1055,5 @@ void fr_ldap_free(void)
 	 *	of the module should always work,
 	 *	irrespective of what changes happen in libldap.
 	 */
-#ifdef HAVE_LDAP_UNBIND_EXT_S
 	ldap_unbind_ext_s(ldap_global_handle, NULL, NULL);
-#else
-	ldap_unbind_s(ldap_global_handle);
-#endif
 }

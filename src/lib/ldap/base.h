@@ -52,14 +52,6 @@ ldap_create_session_tracking_control LDAP_P((
 #endif
 
 /*
- *	Ensure the have the ldap_create_sort_keylist()
- *	function too, else we can't use ldap_create_sort_control()
- */
-#if !defined(HAVE_LDAP_CREATE_SORT_KEYLIST) || !defined(HAVE_LDAP_FREE_SORT_KEYLIST)
-#  undef HAVE_LDAP_CREATE_SORT_CONTROL
-#endif
-
-/*
  *	Because the LTB people define LDAP_VENDOR_VERSION_PATCH
  *	as X, which precludes its use in printf statements *sigh*
  *
@@ -94,10 +86,6 @@ ldap_create_session_tracking_control LDAP_P((
 
 #ifndef LDAP_CONST
 #  define LDAP_CONST
-#endif
-
-#if defined(HAVE_LDAP_URL_PARSE) && defined(HAVE_LDAP_IS_LDAP_URL) && defined(HAVE_LDAP_URL_DESC2STR)
-#  define LDAP_CAN_PARSE_URLS
 #endif
 
 #define LDAP_MAX_CONTROLS		10		//!< Maximum number of client/server controls.
@@ -282,17 +270,13 @@ typedef struct {
 	/*
 	 *	For keep-alives.
 	 */
-#ifdef LDAP_OPT_X_KEEPALIVE_IDLE
 	fr_time_delta_t		keepalive_idle;		//!< Number of seconds a connections needs to remain idle
 							//!< before TCP starts sending keepalive probes.
-#endif
-#ifdef LDAP_OPT_X_KEEPALIVE_PROBES
+
 	uint32_t		keepalive_probes;	//!< Number of missed timeouts before the connection is
 							///< dropped.
-#endif
-#ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
+
 	fr_time_delta_t		keepalive_interval;	//!< Interval between keepalive probes.
-#endif
 
 	/*
 	 *	Search timelimits

@@ -292,7 +292,6 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 			p++;
 		}
 
-#ifdef HAVE_LDAP_CREATE_SORT_CONTROL
 		/*
 		 *	Server side sort control
 		 */
@@ -329,7 +328,6 @@ int fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extens
 
 			continue;
 		}
-#endif
 
 		fr_strerror_printf("URL extension \"%s\" not supported", p);
 		return -1;

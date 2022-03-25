@@ -75,9 +75,7 @@ static CONF_PARSER tls_config[] = {
 
 	{ FR_CONF_OFFSET("require_cert", FR_TYPE_STRING, fr_ldap_config_t, tls_require_cert_str) },
 
-#ifdef LDAP_OPT_X_TLS_PROTOCOL_MIN
 	{ FR_CONF_OFFSET("tls_min_version", FR_TYPE_STRING, fr_ldap_config_t, tls_min_version_str) },
-#endif
 
 	CONF_PARSER_TERMINATOR
 };
@@ -153,24 +151,18 @@ static CONF_PARSER option_config[] = {
 
 	{ FR_CONF_OFFSET("sasl_secprops", FR_TYPE_STRING, rlm_ldap_t, handle_config.sasl_secprops) },
 
-#ifdef LDAP_OPT_NETWORK_TIMEOUT
 	/*
 	 *	We use this config option to populate libldap's LDAP_OPT_NETWORK_TIMEOUT -
 	 *	timeout on network activity - specifically libldap's initial call to "connect"
 	 *	Must be non-zero for async connections to start correctly.
 	 */
 	{ FR_CONF_OFFSET("net_timeout", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.net_timeout), .dflt = "10" },
-#endif
 
-#ifdef LDAP_OPT_X_KEEPALIVE_IDLE
 	{ FR_CONF_OFFSET("idle", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.keepalive_idle), .dflt = "60" },
-#endif
-#ifdef LDAP_OPT_X_KEEPALIVE_PROBES
+
 	{ FR_CONF_OFFSET("probes", FR_TYPE_UINT32, rlm_ldap_t, handle_config.keepalive_probes), .dflt = "3" },
-#endif
-#ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
+
 	{ FR_CONF_OFFSET("interval", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.keepalive_interval), .dflt = "30" },
-#endif
 
 	{ FR_CONF_OFFSET("dereference", FR_TYPE_STRING, rlm_ldap_t, handle_config.dereference_str) },
 
@@ -1604,11 +1596,10 @@ static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst
 			mod_s[total].mod_op = LDAP_MOD_DELETE;
 			break;
 
-#ifdef LDAP_MOD_INCREMENT
 		case T_OP_INCRM:
 			mod_s[total].mod_op = LDAP_MOD_INCREMENT;
 			break;
-#endif
+
 		default:
 			REDEBUG("Operator '%s' is not supported for LDAP modify operations",
 				fr_table_str_by_value(fr_tokens_table, op, "<INVALID>"));
@@ -1697,9 +1688,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_ldap_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
 
-#ifdef HAVE_LDAP_CREATE_SORT_CONTROL
 	if (inst->userobj_sort_ctrl) ldap_control_free(inst->userobj_sort_ctrl);
-#endif
 
 	fr_pool_free(inst->pool);
 
@@ -1946,22 +1935,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 #endif
 
-#ifndef HAVE_LDAP_CREATE_SORT_CONTROL
-	if (inst->userobj_sort_by) {
-		cf_log_err(conf, "Configuration item 'sort_by' not supported.  "
-			   "Linked libldap does not provide ldap_create_sort_control function");
-		goto error;
-	}
-#endif
-
-#ifndef HAVE_LDAP_URL_PARSE
-	if (inst->handle_config.use_referral_credentials) {
-		cf_log_err(conf, "Configuration item 'use_referral_credentials' not supported.  "
-			   "Linked libldap does not support URL parsing");
-		goto error;
-	}
-#endif
-
 	/*
 	 *	Initialise server with zero length string to
 	 *	make code below simpler.
@@ -1993,7 +1966,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			}
 		}
 
-#ifdef LDAP_CAN_PARSE_URLS
 		/*
 		 *	Split original server value out into URI, server and port
 		 *	so whatever initialization function we use later will have
@@ -2004,6 +1976,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			bool		set_port_maybe = true;
 			int		default_port = LDAP_PORT;
 			char		*p;
+			char		*url;
 
 			if (ldap_url_parse(value, &ldap_url)){
 				cf_log_err(conf, "Parsing LDAP URL \"%s\" failed", value);
@@ -2042,80 +2015,45 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				set_port_maybe = false;
 			}
 
-			/* We allow extensions */
+			/*
+			 *	Figure out the default port from the URL
+			 */
+			if (ldap_url->lud_scheme) {
+				if (strcmp(ldap_url->lud_scheme, "ldaps") == 0) {
+					if (inst->handle_config.start_tls == true) {
+						cf_log_err(conf, "ldaps:// scheme is not compatible with 'start_tls'");
+						goto ldap_url_error;
+					}
+					default_port = LDAPS_PORT;
 
-#  ifdef HAVE_LDAP_INITIALIZE
-			{
-				char *url;
+				} else if (strcmp(ldap_url->lud_scheme, "ldapi") == 0) {
+					set_port_maybe = false; /* Unix socket, no port */
+				}
+			}
+
+			if (set_port_maybe) {
+				/*
+				 *	URL port overrides configured port.
+				 */
+				ldap_url->lud_port = inst->handle_config.port;
 
 				/*
-				 *	Figure out the default port from the URL
+				 *	If there's no URL port, then set it to the default
+				 *	this is so debugging messages show explicitly
+				 *	the port we're connecting to.
 				 */
-				if (ldap_url->lud_scheme) {
-					if (strcmp(ldap_url->lud_scheme, "ldaps") == 0) {
-						if (inst->handle_config.start_tls == true) {
-							cf_log_err(conf, "ldaps:// scheme is not compatible "
-								      "with 'start_tls'");
-							goto ldap_url_error;
-						}
-						default_port = LDAPS_PORT;
-
-					} else if (strcmp(ldap_url->lud_scheme, "ldapi") == 0) {
-						set_port_maybe = false; /* Unix socket, no port */
-					}
-				}
-
-				if (set_port_maybe) {
-					/*
-					 *	URL port overrides configured port.
-					 */
-					ldap_url->lud_port = inst->handle_config.port;
-
-					/*
-					 *	If there's no URL port, then set it to the default
-					 *	this is so debugging messages show explicitly
-					 *	the port we're connecting to.
-					 */
-					if (!ldap_url->lud_port) ldap_url->lud_port = default_port;
-				}
-
-				url = ldap_url_desc2str(ldap_url);
-				if (!url) {
-					cf_log_err(conf, "Failed recombining URL components");
-					goto ldap_url_error;
-				}
-				inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server,
-										    "%s ", url);
-				free(url);
-			}
-#  else
-			/*
-			 *	No LDAP initialize function.  Can't specify a scheme.
-			 */
-			if (ldap_url->lud_scheme &&
-			    ((strcmp(ldap_url->lud_scheme, "ldaps") == 0) ||
-			    (strcmp(ldap_url->lud_scheme, "ldapi") == 0) ||
-			    (strcmp(ldap_url->lud_scheme, "cldap") == 0))) {
-				cf_log_err(conf, "%s is not supported by linked libldap",
-					      ldap_url->lud_scheme);
-				return -1;
-			}
-
-			/*
-			 *	URL port over-rides the configured
-			 *	port.  But if there's no configured
-			 *	port, we use the hard-coded default.
-			 */
-			if (set_port_maybe) {
-				ldap_url->lud_port = inst->handle_config.port;
 				if (!ldap_url->lud_port) ldap_url->lud_port = default_port;
 			}
 
-			inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server, "%s:%i ",
-									    ldap_url->lud_host ? ldap_url->lud_host :
-									   			 "localhost",
-									    ldap_url->lud_port);
-#  endif
+			url = ldap_url_desc2str(ldap_url);
+			if (!url) {
+				cf_log_err(conf, "Failed recombining URL components");
+				goto ldap_url_error;
+			}
+			inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server,
+									    "%s ", url);
+			free(url);
+
 			/*
 			 *	@todo We could set a few other top level
 			 *	directives using the URL, like base_dn
@@ -2126,14 +2064,12 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		 *	We need to construct an LDAP URI
 		 */
 		} else
-#endif	/* HAVE_LDAP_URL_PARSE && HAVE_LDAP_IS_LDAP_URL && LDAP_URL_DESC2STR */
 		/*
 		 *	If it's not an URL, or we don't have the functions necessary
 		 *	to break apart the URL and recombine it, then just treat
 		 *	server as a hostname.
 		 */
 		{
-#ifdef HAVE_LDAP_INITIALIZE
 			char	const *p;
 			char	*q;
 			int	port = 0;
@@ -2147,12 +2083,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			 */
 			if (strchr(value, '/')) {
 			bad_server_fmt:
-#ifdef LDAP_CAN_PARSE_URLS
 				cf_log_err(conf, "Invalid 'server' entry, must be in format <server>[:<port>] or "
 					      "an ldap URI (ldap|cldap|ldaps|ldapi)://<server>:<port>");
-#else
-				cf_log_err(conf, "Invalid 'server' entry, must be in format <server>[:<port>]");
-#endif
 				return -1;
 			}
 
@@ -2169,13 +2101,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server,
 									    "ldap://%.*s:%i ",
 									    (int) len, value, port);
-#else
-			/*
-			 *	ldap_init takes port, which can be overridden by :port so
-			 *	we don't need to do any parsing here.
-			 */
-			inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server, "%s ", value);
-#endif
 		}
 	}
 
@@ -2187,7 +2112,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		DEBUG4("rlm_ldap (%s) - LDAP server string: %s", mctx->inst->name, inst->handle_config.server);
 	}
 
-#ifdef LDAP_OPT_X_TLS_NEVER
 	/*
 	 *	Workaround for servers which support LDAPS but not START TLS
 	 */
@@ -2196,7 +2120,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	} else {
 		inst->handle_config.tls_mode = 0;
 	}
-#endif
 
 	/*
 	 *	Convert dereference strings to enumerated constants
@@ -2216,30 +2139,18 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 */
 	inst->userobj_scope = fr_table_value_by_str(fr_ldap_scope, inst->userobj_scope_str, -1);
 	if (inst->userobj_scope < 0) {
-#ifdef LDAP_SCOPE_CHILDREN
 		cf_log_err(conf, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
 			   inst->userobj_scope_str);
-#else
-		cf_log_err(conf, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one' or 'children'",
-			   inst->userobj_scope_str);
-#endif
 		goto error;
 	}
 
 	inst->groupobj_scope = fr_table_value_by_str(fr_ldap_scope, inst->groupobj_scope_str, -1);
 	if (inst->groupobj_scope < 0) {
-#ifdef LDAP_SCOPE_CHILDREN
 		cf_log_err(conf, "Invalid 'group.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
 			   inst->groupobj_scope_str);
-#else
-		cf_log_err(conf, "Invalid 'group.scope' value \"%s\", expected 'sub', 'one' or 'children'",
-			   inst->groupobj_scope_str);
-#endif
-
 		goto error;
 	}
 
-#ifdef HAVE_LDAP_CREATE_SORT_CONTROL
 	/*
 	 *	Build the server side sort control for user objects
 	 */
@@ -2265,10 +2176,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			goto error;
 		}
 	}
-#endif
 
 	if (inst->handle_config.tls_require_cert_str) {
-#ifdef LDAP_OPT_X_TLS_NEVER
 		/*
 		 *	Convert cert strictness to enumerated constants
 		 */
@@ -2279,17 +2188,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 				      "'demand', 'allow', 'try' or 'hard'", inst->handle_config.tls_require_cert_str);
 			goto error;
 		}
-#else
-		cf_log_err(conf, "Modifying 'tls.require_cert' is not supported by current "
-			      "version of libldap. Please upgrade or substitute current libldap and "
-			      "rebuild this module");
-
-		goto error;
-#endif
 	}
 
-if (inst->handle_config.tls_min_version_str) {
-#ifdef LDAP_OPT_X_TLS_PROTOCOL_MIN
+	if (inst->handle_config.tls_min_version_str) {
 		if (strcmp(inst->handle_config.tls_min_version_str, "1.2") == 0) {
 			inst->handle_config.tls_min_version = LDAP_OPT_X_TLS_PROTOCOL_TLS1_2;
 
@@ -2303,13 +2204,6 @@ if (inst->handle_config.tls_min_version_str) {
 			cf_log_err(conf, "Invalid 'tls.tls_min_version' value \"%s\"", inst->handle_config.tls_min_version_str);
 			goto error;
 		}
-#else
-		cf_log_err(conf, "This version of libldap does not support tls.tls_min_version."
-			      " Please upgrade or substitute current libldap and "
-			      "rebuild this module");
-		goto error;
-
-#endif
 	}
 
 	/*

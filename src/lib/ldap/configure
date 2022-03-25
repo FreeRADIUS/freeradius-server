@@ -3922,70 +3922,10 @@ smart_prefix=
 
 
 	if test "x$fail" = "x"; then
-		ac_fn_c_check_func "$LINENO" "ldap_sasl_interactive_bind" "ac_cv_func_ldap_sasl_interactive_bind"
-if test "x$ac_cv_func_ldap_sasl_interactive_bind" = xyes
-then :
-  printf "%s\n" "#define HAVE_LDAP_SASL_INTERACTIVE_BIND 1" >>confdefs.h
-
-fi
-ac_fn_c_check_func "$LINENO" "ldap_unbind_ext_s" "ac_cv_func_ldap_unbind_ext_s"
-if test "x$ac_cv_func_ldap_unbind_ext_s" = xyes
-then :
-  printf "%s\n" "#define HAVE_LDAP_UNBIND_EXT_S 1" >>confdefs.h
-
-fi
-ac_fn_c_check_func "$LINENO" "ldap_start_tls_s" "ac_cv_func_ldap_start_tls_s"
-if test "x$ac_cv_func_ldap_start_tls_s" = xyes
-then :
-  printf "%s\n" "#define HAVE_LDAP_START_TLS_S 1" >>confdefs.h
-
-fi
-ac_fn_c_check_func "$LINENO" "ldap_initialize" "ac_cv_func_ldap_initialize"
-if test "x$ac_cv_func_ldap_initialize" = xyes
-then :
-  printf "%s\n" "#define HAVE_LDAP_INITIALIZE 1" >>confdefs.h
-
-fi
-ac_fn_c_check_func "$LINENO" "ldap_create_sort_control" "ac_cv_func_ldap_create_sort_control"
-if test "x$ac_cv_func_ldap_create_sort_control" = xyes
-then :
-  printf "%s\n" "#define HAVE_LDAP_CREATE_SORT_CONTROL 1" >>confdefs.h
-
-fi
-ac_fn_c_check_func "$LINENO" "ldap_create_sort_keylist" "ac_cv_func_ldap_create_sort_keylist"
-if test "x$ac_cv_func_ldap_create_sort_keylist" = xyes
-then :
-  printf "%s\n" "#define HAVE_LDAP_CREATE_SORT_KEYLIST 1" >>confdefs.h
-
-fi
-ac_fn_c_check_func "$LINENO" "ldap_free_sort_keylist" "ac_cv_func_ldap_free_sort_keylist"
-if test "x$ac_cv_func_ldap_free_sort_keylist" = xyes
-then :
-  printf "%s\n" "#define HAVE_LDAP_FREE_SORT_KEYLIST 1" >>confdefs.h
-
-fi
-ac_fn_c_check_func "$LINENO" "ldap_create_session_tracking_control" "ac_cv_func_ldap_create_session_tracking_control"
+		ac_fn_c_check_func "$LINENO" "ldap_create_session_tracking_control" "ac_cv_func_ldap_create_session_tracking_control"
 if test "x$ac_cv_func_ldap_create_session_tracking_control" = xyes
 then :
   printf "%s\n" "#define HAVE_LDAP_CREATE_SESSION_TRACKING_CONTROL 1" >>confdefs.h
-
-fi
-ac_fn_c_check_func "$LINENO" "ldap_url_parse" "ac_cv_func_ldap_url_parse"
-if test "x$ac_cv_func_ldap_url_parse" = xyes
-then :
-  printf "%s\n" "#define HAVE_LDAP_URL_PARSE 1" >>confdefs.h
-
-fi
-ac_fn_c_check_func "$LINENO" "ldap_is_ldap_url" "ac_cv_func_ldap_is_ldap_url"
-if test "x$ac_cv_func_ldap_is_ldap_url" = xyes
-then :
-  printf "%s\n" "#define HAVE_LDAP_IS_LDAP_URL 1" >>confdefs.h
-
-fi
-ac_fn_c_check_func "$LINENO" "ldap_url_desc2str" "ac_cv_func_ldap_url_desc2str"
-if test "x$ac_cv_func_ldap_url_desc2str" = xyes
-then :
-  printf "%s\n" "#define HAVE_LDAP_URL_DESC2STR 1" >>confdefs.h
 
 fi
 
@@ -4313,12 +4253,10 @@ fi
 smart_prefix=
 
 	if test "x$ac_cv_header_sasl_sasl_h" = "xyes"; then
-	  if test x"$ac_cv_func_ldap_sasl_interactive_bind" = "xyes"; then
 
 printf "%s\n" "#define WITH_SASL 1" >>confdefs.h
 
 	    SASL="sasl_s.c sasl.c"
-	  fi
 	fi
 
 	targetname=libfreeradius-ldap
