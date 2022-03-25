@@ -1047,6 +1047,8 @@ static inline void fr_tlist_init_children(fr_tlist_t *entry, fr_tlist_head_t *ch
 	children->offset = list_head->offset;
 	children->type = list_head->type;
 	children->parent = NULL;
+
+	entry->children = children;
 }
 
 /** Add a pre-initialized child tlist to a parent entry.
