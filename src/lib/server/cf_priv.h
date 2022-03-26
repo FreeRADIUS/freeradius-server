@@ -127,6 +127,25 @@ typedef struct {
 	bool			from_dir;	//!< was read from a directory
 } cf_file_t;
 
+/** Iterate over the contents of a list
+ *
+ * @param[in] _ci		to iterate over.
+ * @param[in] _iter		Name of iteration variable.
+ *				Will be declared in the scope of the loop.
+ */
+#define cf_item_foreach(_ci, _iter) \
+	for (CONF_ITEM *_iter = fr_dlist_head(&(_ci)->children); _iter; _iter = fr_dlist_next(&(_ci)->children, _iter))
+
+/** Iterate over the contents of a list
+ *
+ * @param[in] _ci		to iterate over.
+ * @param[in] _iter		Name of iteration variable.
+ *				Will be declared in the scope of the loop.
+ * @param[in] _prev		previous pointer
+ */
+#define cf_item_foreach_prev(_ci, _iter, _prev) \
+	for (CONF_ITEM *_iter = fr_dlist_next(&(_ci)->children, _prev); _iter; _iter = fr_dlist_next(&(_ci)->children, _iter))
+
 /** Check if the CONF_ITEM has no children.
  *
  *  Which is the common use-case
