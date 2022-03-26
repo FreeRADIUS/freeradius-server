@@ -127,6 +127,18 @@ typedef struct {
 	bool			from_dir;	//!< was read from a directory
 } cf_file_t;
 
+/** Check if the CONF_ITEM has no children.
+ *
+ *  Which is the common use-case
+ *
+ * @param[in] ci		to check
+ * @return			true/false
+ */
+static inline CC_HINT(nonnull) bool cf_item_has_no_children(CONF_ITEM const *ci)
+{
+	return fr_dlist_empty(&ci->children);
+}
+
 #ifdef __cplusplus
 }
 #endif
