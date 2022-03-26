@@ -47,9 +47,7 @@ static int8_t _cf_ident2_cmp(void const *a, void const *b);
  */
 static CONF_ITEM *cf_next(CONF_ITEM const *parent, CONF_ITEM const *prev, CONF_ITEM_TYPE type)
 {
-	CONF_ITEM *ci = UNCONST(CONF_ITEM *, prev);
-
-	while ((ci = fr_dlist_next(&parent->children, ci))) {
+	cf_item_foreach_prev(parent, ci, UNCONST(CONF_ITEM *, prev)) {
 		if (ci->type == type) return ci;
 	}
 
@@ -158,7 +156,6 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 	CONF_PAIR	cp_find;
 	CONF_DATA	cd_find;
 	CONF_ITEM	*find;
-	CONF_ITEM	*ci;
 
 	if (!parent) return NULL;
 
@@ -203,28 +200,27 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 	}
 
 	if (IS_WILDCARD(ident1)) {
-		for (ci = fr_dlist_next(&parent->children, prev);
-		     ci && (cf_ident2_cmp(ci, find) != 0);
-		     ci = fr_dlist_next(&parent->children, ci));
+		cf_item_foreach_prev(parent, ci, prev) {
+			if (cf_ident2_cmp(ci, find) == 0) return ci;
+		}
 
-		return ci;
+		return NULL;
 	}
 
 	if (IS_WILDCARD(ident2)) {
-		for (ci = fr_dlist_next(&parent->children, prev);
-		     ci && (_cf_ident1_cmp(ci, find) != 0);
-		     ci = fr_dlist_next(&parent->children, ci)) {
-			fr_assert(fr_dlist_next(&parent->children, ci) != ci);
+		cf_item_foreach_prev(parent, ci, prev) {
+		     if (_cf_ident1_cmp(ci, find) == 0) return ci;
+
 		}
 
-		return ci;
+		return NULL;
 	}
 
-	for (ci = fr_dlist_next(&parent->children, prev);
-	     ci && (_cf_ident2_cmp(ci, find) != 0);
-	     ci = fr_dlist_next(&parent->children, ci));
+	cf_item_foreach_prev(parent, ci, prev) {
+		if (_cf_ident2_cmp(ci, find) == 0) return ci;
+	}
 
-	return ci;
+	return NULL;
 }
 
 /** Compare the first identifier of a child
