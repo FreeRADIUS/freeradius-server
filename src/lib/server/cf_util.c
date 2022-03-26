@@ -452,6 +452,17 @@ CONF_ITEM *_cf_item_next(CONF_ITEM const *ci, CONF_ITEM const *prev)
 	return fr_dlist_next(&ci->children, prev);
 }
 
+static void cf_item_init(CONF_ITEM *ci, CONF_ITEM_TYPE type, CONF_ITEM *parent, char const *filename, int lineno)
+{
+	ci->type = type;
+	ci->parent = parent;
+
+	fr_dlist_init(&ci->children, CONF_ITEM, entry);
+
+	if (filename) cf_filename_set(ci, filename);
+	if (lineno) cf_lineno_set(ci, lineno);
+}
+
 /** Return the top level #CONF_SECTION holding all other #CONF_ITEM
  *
  * @param[in] ci	to traverse up from.
@@ -737,11 +748,7 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 	cs = talloc_zero(ctx, CONF_SECTION);
 	if (!cs) return NULL;
 
-	cs->item.type = CONF_ITEM_SECTION;
-	cs->item.parent = cf_section_to_item(parent);
-	fr_dlist_init(&cs->item.children, CONF_ITEM, entry);
-	if (filename) cf_filename_set(cs, filename);
-	if (lineno) cf_lineno_set(cs, lineno);
+	cf_item_init(cf_section_to_item(cs), CONF_ITEM_SECTION, cf_section_to_item(parent), filename, lineno);
 
 	MEM(cs->name1 = talloc_typed_strdup(cs, name1));
 	if (name2) {
@@ -1153,13 +1160,11 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 	cp = talloc_zero(parent, CONF_PAIR);
 	if (!cp) return NULL;
 
-	cp->item.type = CONF_ITEM_PAIR;
-	cp->item.parent = cf_section_to_item(parent);
+	cf_item_init(cf_pair_to_item(cp), CONF_ITEM_PAIR, cf_section_to_item(parent), NULL, 0);
+
 	cp->lhs_quote = lhs_quote;
 	cp->rhs_quote = rhs_quote;
 	cp->op = op;
-	cf_filename_set(cp, "");		/* will be over-written if necessary */
-	fr_dlist_init(&cp->item.children, CONF_ITEM, entry);
 
 	cp->attr = talloc_typed_strdup(cp, attr);
 	if (!cp->attr) {
@@ -1453,9 +1458,7 @@ static CONF_DATA *cf_data_alloc(CONF_ITEM *parent, void const *data, char const 
 	cd = talloc_zero(parent, CONF_DATA);
 	if (!cd) return NULL;
 
-	cd->item.type = CONF_ITEM_DATA;
-	cd->item.parent = parent;
-	fr_dlist_init(&cd->item.children, CONF_ITEM, entry);
+	cf_item_init(cf_data_to_item(cd), CONF_ITEM_DATA, parent, NULL, 0);
 
 	/*
 	 *	strdup so if the data is freed, we can
