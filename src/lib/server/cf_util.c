@@ -415,18 +415,19 @@ CONF_ITEM *_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child)
 	}
 
 	/*
-	 *	Look for twins
+	 *	Look for twins.  They weren't in the tree initially,
+	 *	because "child" was there.
 	 */
 	for (found = fr_dlist_head(&parent->children);
 	     found && (in_ident1 || in_ident2);
 	     found = fr_dlist_next(&parent->children, found)) {
 		if (in_ident1 && (_cf_ident1_cmp(found, child) == 0)) {
-			fr_rb_insert(parent->ident1, child);
+			fr_rb_insert(parent->ident1, found);
 			in_ident1 = false;
 		}
 
 		if (in_ident2 && (_cf_ident2_cmp(found, child) == 0)) {
-			fr_rb_insert(parent->ident2, child);
+			fr_rb_insert(parent->ident2, found);
 			in_ident2 = false;
 		}
 	}
