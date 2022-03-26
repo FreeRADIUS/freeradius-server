@@ -390,8 +390,11 @@ CONF_ITEM *_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child)
 	if (!parent || fr_dlist_empty(&parent->children)) return NULL;
 	if (parent != child->parent) return NULL;
 
-	while ((found = fr_dlist_next(&parent->children, found))) {
-		if (child == found) break;
+	cf_item_foreach(parent, ci) {
+		if (ci == child) {
+			found = ci;
+			break;
+		}
 	}
 
 	if (!found) return NULL;
@@ -399,8 +402,7 @@ CONF_ITEM *_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child)
 	/*
 	 *	Fixup the linked list
 	 */
-	fr_dlist_remove(&parent->children, found);
-	if (!fr_cond_assert(found == child)) return NULL;
+	fr_dlist_remove(&parent->children, child);
 
 	in_ident1 = (fr_rb_find(parent->ident1, child) == child);
 	if (in_ident1 && (!fr_rb_delete(parent->ident1, child))) {
@@ -418,16 +420,16 @@ CONF_ITEM *_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child)
 	 *	Look for twins.  They weren't in the tree initially,
 	 *	because "child" was there.
 	 */
-	for (found = fr_dlist_head(&parent->children);
-	     found && (in_ident1 || in_ident2);
-	     found = fr_dlist_next(&parent->children, found)) {
-		if (in_ident1 && (_cf_ident1_cmp(found, child) == 0)) {
-			fr_rb_insert(parent->ident1, found);
+	cf_item_foreach(parent, ci) {
+		if (!in_ident1 && !in_ident2) break;
+
+		if (in_ident1 && (_cf_ident1_cmp(ci, child) == 0)) {
+			fr_rb_insert(parent->ident1, ci);
 			in_ident1 = false;
 		}
 
-		if (in_ident2 && (_cf_ident2_cmp(found, child) == 0)) {
-			fr_rb_insert(parent->ident2, found);
+		if (in_ident2 && (_cf_ident2_cmp(ci, child) == 0)) {
+			fr_rb_insert(parent->ident2, ci);
 			in_ident2 = false;
 		}
 	}
