@@ -404,17 +404,9 @@ CONF_ITEM *_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child)
 	 */
 	fr_dlist_remove(&parent->children, child);
 
-	in_ident1 = (fr_rb_find(parent->ident1, child) == child);
-	if (in_ident1 && (!fr_rb_delete(parent->ident1, child))) {
-		fr_assert(0);
-		return NULL;
-	}
+	in_ident1 = (fr_rb_remove_by_inline_node(parent->ident1, &child->ident1_node) != NULL);
+	in_ident2 = (fr_rb_remove_by_inline_node(parent->ident2, &child->ident2_node) != NULL);
 
-	in_ident2 = (fr_rb_find(parent->ident2, child) == child);
-	if (in_ident2 && (!fr_rb_delete(parent->ident2, child))) {
-		fr_assert(0);
-		return NULL;
-	}
 
 	/*
 	 *	Look for twins.  They weren't in the tree initially,
