@@ -704,6 +704,27 @@ void *fr_rb_remove(fr_rb_tree_t *tree, void const *data)
 	return node_data;
 }
 
+/** Remove an entry from the tree, using the node structure, without freeing the data
+ *
+ * This function can help where multiple items may be in the
+ * tree with the same comparator value.
+ *
+ * @param[in] tree	to remove data from.
+ * @param[in] node 	to remove.
+ * @return
+ *      - The user data we removed.
+ *	- NULL if the user data wasn't in the tree.
+ */
+void *fr_rb_remove_by_inline_node(fr_rb_tree_t *tree, fr_rb_node_t *node)
+{
+	void		*node_data;
+
+	if (!fr_rb_node_inline_in_tree(node)) return NULL;
+	node_data = node->data;
+	delete_internal(tree, node, false);	/* nullified node->data */
+	return node_data;
+}
+
 /** Remove node and free data (if a free function was specified)
  *
  * @param[in] tree	to remove data from.
@@ -721,6 +742,26 @@ bool fr_rb_delete(fr_rb_tree_t *tree, void const *data)
 	if (!node) return false;
 
 	if (unlikely(node->being_freed)) return true;
+
+	delete_internal(tree, node, true);
+
+	return true;
+}
+
+/** Remove node and free data (if a free function was specified)
+ *
+ * This function can help where multiple items may be in the
+ * tree with the same comparator value.
+ *
+ * @param[in] tree	to remove data from.
+ * @param[in] node 	to remove/free.
+ * @return
+ *	- true if we removed data.
+ *      - false if we couldn't find any matching data.
+ */
+bool fr_rb_delete_by_inline_node(fr_rb_tree_t *tree, fr_rb_node_t *node)
+{
+	if (!fr_rb_node_inline_in_tree(node)) return false;
 
 	delete_internal(tree, node, true);
 

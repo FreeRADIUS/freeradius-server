@@ -289,7 +289,11 @@ int		fr_rb_replace(void **old, fr_rb_tree_t *tree, void const *data) CC_HINT(non
 
 void		*fr_rb_remove(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
 
+void		*fr_rb_remove_by_inline_node(fr_rb_tree_t *tree, fr_rb_node_t *node) CC_HINT(nonnull);
+
 bool		fr_rb_delete(fr_rb_tree_t *tree, void const *data) CC_HINT(nonnull);
+
+bool 		fr_rb_delete_by_inline_node(fr_rb_tree_t *tree, fr_rb_node_t *node) CC_HINT(nonnull);
 
 uint32_t	fr_rb_num_elements(fr_rb_tree_t *tree) CC_HINT(nonnull);
 
@@ -308,27 +312,6 @@ uint32_t	fr_rb_num_elements(fr_rb_tree_t *tree) CC_HINT(nonnull);
 static inline bool fr_rb_node_inline_in_tree(fr_rb_node_t const *node)
 {
 	return (node->left && node->right && node->parent && !node->being_freed);
-}
-
-/** Check to see if nodes are equivalent and if they are, replace one with the other
- *
- * @param[in] tree		Used to access the comparitor.
- * @param[in] to_replace	Node to replace in the tree.
- * @param[in] replacement	Replacement.
- * @return
- *      - true on success.
- *      - false if nodes were not equivalent.
- */
-static inline bool fr_rb_node_inline_replace(fr_rb_tree_t *tree, fr_rb_node_t *to_replace, fr_rb_node_t *replacement)
-{
-	if (tree->data_cmp(to_replace->data, replacement->data) != 0) return false;
-
-	memcpy(replacement, to_replace, sizeof(*replacement));
-	memset(to_replace, 0, sizeof(*to_replace));
-
-	/* FIXME - Need to fix children and parent */
-
-	return true;
 }
 
 /** Iterator structure for in-order traversal of an rbtree
