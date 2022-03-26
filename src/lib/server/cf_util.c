@@ -444,6 +444,14 @@ CONF_ITEM *_cf_item_next(CONF_ITEM const *ci, CONF_ITEM const *prev)
 	return fr_dlist_next(&ci->children, prev);
 }
 
+/** Initialize a CONF_ITEM, so we don't have repeated code
+ *
+ * @param[in] ci	the CONF_ITEM to initialize
+ * @param[in] type	the type to set
+ * @param[in] parent	the parent node hosting this one
+ * @param[in] filename	which caused this node to be created
+ * @param[in] lineno	where in the filename
+ */
 static void cf_item_init(CONF_ITEM *ci, CONF_ITEM_TYPE type, CONF_ITEM *parent, char const *filename, int lineno)
 {
 	ci->type = type;
