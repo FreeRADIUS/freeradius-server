@@ -1278,7 +1278,7 @@ void tls_session_information(tls_session_t *tls_session)
 #endif
 
 	default:
-		sprintf(buffer, "UNKNOWN TLS VERSION '%04X'", tls_session->info.version);
+		sprintf(buffer, "UNKNOWN TLS VERSION '%04X'", SSL_version(tls_session->ssl));
 		str_version = buffer;
 		break;
 	}
