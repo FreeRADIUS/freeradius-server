@@ -168,7 +168,7 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 		uint8_t const context_tls13[] = { handler->type };
 #endif
 
-		switch (tls_session->info.version) {
+		switch (SSL_version(tls_session->ssl)) {
 #ifdef TLS1_3_VERSION
 		case TLS1_3_VERSION:
 			context = context_tls13;
@@ -765,7 +765,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 	 *	data to be sent. So this is done always for EAP-TLS but
 	 *	notibly not for PEAP even on resumption.
 	 */
-	if ((tls_session->info.version == TLS1_3_VERSION) &&
+	if ((SSL_version(tls_session->ssl) == TLS1_3_VERSION) &&
 	    (tls_session->client_cert_ok || tls_session->authentication_success || SSL_session_reused(tls_session->ssl))) {
 		if ((handler->type == PW_EAP_TLS) || SSL_session_reused(tls_session->ssl)) {
 			tls_session->authentication_success = true;

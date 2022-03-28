@@ -280,7 +280,7 @@ void eaptls_gen_eap_key(eap_handler_t *handler)
 
 	*p++ = type;
 
-	switch (tls_session->info.version) {
+	switch (SSL_version(tls_session->ssl)) {
 	case TLS1_VERSION:
 	case TLS1_1_VERSION:
 	case TLS1_2_VERSION:
