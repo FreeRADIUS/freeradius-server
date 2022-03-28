@@ -1095,14 +1095,17 @@ void fr_tls_cache_deny(request_t *request, fr_tls_session_t *tls_session)
 	 *	clear external data.
 	 */
 	if (tls_session->session) SSL_CTX_remove_session(tls_session->ctx, tls_session->session);
-	if (tmp_bind) fr_tls_session_request_unbind(tls_session->ssl);
-
 	tls_session->allow_session_resumption = false;
 
 	/*
 	 *	Clear any pending store requests.
 	 */
 	tls_cache_store_state_reset(fr_tls_session_request(tls_session->ssl), tls_cache);
+
+	/*
+	 *	Unbind the request last...
+	 */
+	if (tmp_bind) fr_tls_session_request_unbind(tls_session->ssl);
 }
 
 /** Cleanup any memory allocated by OpenSSL
