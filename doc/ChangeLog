@@ -34,6 +34,8 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	* Fix crash in EAP-SIM when unknown attributes are sent.
 	* Update linelog, etc. to allow the use of /dev/stdout
 	* Fix crash in race condition when 500+ sockets are open.
+	* Remove sample "cache_eap" module.  It does not work, and
+	  offers no benefit.
 
 FreeRADIUS 3.0.25 Thu 07 Oct 2021 12:00:00 EDT urgency=medium
 	Feature improvements
