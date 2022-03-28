@@ -204,9 +204,36 @@ int fr_tls_max_threads = 1;
  * @param len to alloc.
  * @return realloc.
  */
-static void *fr_openssl_talloc(size_t len, NDEBUG_UNUSED char const *file, NDEBUG_UNUSED int line)
+static void *fr_openssl_talloc(size_t len, char const *file, NDEBUG_UNUSED int line)
 {
+	static char const *async_file;
 	void *chunk;
+
+	/*
+	 *	Cache the filename pointer for the async_posix.c
+	 *	source file, so we can figure out when we're
+	 *	being asked for stack memory.
+	 *
+	 *	This is terrible, we're basically guessing at the
+	 *	stack size.  OpenSSL 3.1.0 will have proper
+	 *	allocation functions so we can something more
+	 *	sensible.
+	 */
+	if (!async_file) {
+		char const *sep;
+
+		sep = strrchr(file, '/');
+		if (!sep) {
+			sep = file;
+		} else {
+			sep++;
+		}
+		if (strcmp(sep, "async_posix.c") == 0) {
+			async_file = file;
+		alloc_stack:
+			len *= 4;
+		}
+	} else if (file == async_file) goto alloc_stack;
 
 	chunk = talloc_array(ssl_talloc_ctx, uint8_t, len);
 #ifndef NDEBUG
