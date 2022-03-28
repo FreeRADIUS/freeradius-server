@@ -21,7 +21,7 @@ env:
   DO_BUILD: yes
   HOSTAPD_BUILD_DIR: eapol_test.ci
   HOSTAPD_GIT_TAG: hostap_2_9
-  ALT_OPENSSL: "3.0.1"
+  ALT_OPENSSL: "3.0.2"
   DEBIAN_FRONTEND: noninteractive
   CI: 1
   GH_ACTIONS: 1
