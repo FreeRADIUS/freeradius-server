@@ -32,6 +32,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
+              { "NAME": "centos-7", "OS": "centos:7",                      "DIST": "centos" },
               { "NAME": "stream-8", "OS": "tgagor/centos-stream:stream8",  "DIST": "centos" },
               { "NAME": "rocky-8",  "OS": "rockylinux/rockylinux:8",       "DIST": "rocky"  }
             ]
@@ -42,7 +43,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "stream-8", "OS": "tgagor/centos-stream:stream8"   "DIST": "centos" },
+              { "NAME": "stream-8", "OS": "tgagor/centos-stream:stream8",  "DIST": "centos" },
               { "NAME": "rocky-8",  "OS": "rockylinux/rockylinux:8",       "DIST": "rocky"  }
             ]
           }
@@ -74,6 +75,18 @@ jobs:
 
     steps:
 
+    # Required so that the checkout action uses git protocol rather than the GitHub REST API.
+    # make rpm requires the FR directory to be a git repository.
+    - name: Install recent git for CentOS 7
+      if: ${{ matrix.env.NAME == 'centos-7' }}
+      run: |
+        yum install -y https://packages.endpointdev.com/rhel/7/os/x86_64/git-core-2.24.1-1.ep7.x86_64.rpm
+
+    - name: Install distro git for CentOS > 7
+      if: ${{ matrix.env.NAME != 'centos-7' }}
+      run: |
+        yum install -y git-core
+
     - name: Set up NetworkRADIUS extras repository
       run: |
         echo '[networkradius-extras]'                                                               >  /etc/yum.repos.d/networkradius-extras.repo
@@ -87,6 +100,14 @@ jobs:
     - name: Install common tools
       run: |
         yum install -y yum-utils rpm-build openssl make gcc perl
+
+    - name: Install SCL compiler on CentOS 7
+      if: ${{ matrix.env.NAME == 'centos-7' }}
+      run: |
+        yum install -y centos-release-scl
+        yum install -y devtoolset-8-gcc devtoolset-8-gcc-c++ devtoolset-8-make
+        rm -f /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo
+        rm -f /etc/yum.repos.d/CentOS-SCLo-scl.repo
 
     - uses: actions/checkout@v2
       with:
@@ -103,13 +124,15 @@ jobs:
         rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
         yum install -y epel-release
 
-    - name: Enable PowerTools
+    - name: Enable PowerTools on CentOS 8
+      if: ${{ matrix.env.NAME == 'stream-8' || matrix.env.NAME == 'rocky-8' }}
       run: |
         yum config-manager --enable PowerTools || :
         yum config-manager --enable powertools || :
 
     # For pkill
-    - name: Enable procps-ng
+    - name: Enable procps-ng on CentOS 8
+      if: ${{ matrix.env.NAME == 'stream-8' || matrix.env.NAME == 'rocky-8' }}
       run: |
         yum install -y procps-ng
 
@@ -214,14 +237,16 @@ jobs:
         rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
         yum install -y epel-release
 
-    - name: Enable PowerTools
+    - name: Enable PowerTools on Centos 8
+      if: ${{ matrix.env.NAME == 'stream-8' || matrix.env.NAME == 'rocky-8' }}
       run: |
         yum install -y yum-utils
         yum config-manager --enable PowerTools || :
         yum config-manager --enable powertools || :
 
     # For pkill
-    - name: Enable procps-ng on Fedora and Centos 8
+    - name: Enable procps-ng on Centos 8
+      if: ${{ matrix.env.NAME == 'stream-8' || matrix.env.NAME == 'rocky-8' }}
       run: |
         yum install -y procps-ng
 
