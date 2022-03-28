@@ -375,6 +375,11 @@ int fr_tls_bio_init(void)
 	tls_bio_talloc_meth = BIO_meth_new(BIO_get_new_index() | BIO_TYPE_SOURCE_SINK, "fr_tls_bio_dbuff_t");
 	if (unlikely(!tls_bio_talloc_meth)) return -1;
 
+	/*
+	 *	If BIO_meth_set_create is ever used here be sure to call
+	 *	BIO_set_init(bio, 1); in the create callbacks else all
+	 *	operations on the BIO will fail.
+	 */
 	BIO_meth_set_write(tls_bio_talloc_meth, _tls_bio_talloc_write_cb);
 	BIO_meth_set_puts(tls_bio_talloc_meth, _tls_bio_talloc_puts_cb);
 	BIO_meth_set_read(tls_bio_talloc_meth, _tls_bio_talloc_read_cb);

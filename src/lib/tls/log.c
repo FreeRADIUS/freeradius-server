@@ -555,9 +555,10 @@ void tls_log_clear(void)
 /** Increment the bio meth reference counter
  *
  */
-static int tls_log_request_bio_create_cb(UNUSED BIO *bio)
+static int tls_log_request_bio_create_cb(BIO *bio)
 {
 	atomic_fetch_add(&tls_request_log_ref, 1);
+	BIO_set_init(bio, 1);
 	return 1;
 }
 
@@ -638,18 +639,20 @@ static int tls_log_request_bio_puts_cb(BIO *bio, char const *in)
 /** Decrement the bio meth reference counter
  *
  */
-static int tls_log_request_bio_free_cb(UNUSED BIO *bio)
+static int tls_log_request_bio_free_cb(BIO *bio)
 {
 	atomic_fetch_sub(&tls_request_log_ref, 1);
+	BIO_set_init(bio, 0);
 	return 1;
 }
 
 /** Increment the bio meth reference counter
  *
  */
-static int tls_log_global_bio_create_cb(UNUSED BIO *bio)
+static int tls_log_global_bio_create_cb(BIO *bio)
 {
 	atomic_fetch_add(&tls_global_log_ref, 1);
+	BIO_set_init(bio, 1);
 	return 1;
 }
 
@@ -720,9 +723,10 @@ static int tls_log_global_bio_puts_cb(BIO *bio, char const *in)
 /** Decrement the bio meth reference counter
  *
  */
-static int tls_log_global_bio_free_cb(UNUSED BIO *bio)
+static int tls_log_global_bio_free_cb(BIO *bio)
 {
 	atomic_fetch_sub(&tls_global_log_ref, 1);
+	BIO_set_init(bio, 0);
 	return 1;
 }
 
