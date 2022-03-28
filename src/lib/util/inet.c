@@ -1508,12 +1508,14 @@ int fr_interface_to_ipaddr(char const *interface, fr_ipaddr_t *ipaddr, int af, b
 
 	for (i = list; i != NULL; i = i->ifa_next) {
 		fr_ipaddr_t my_ipaddr;
+		struct sockaddr_storage sa;
 
 		if (!i->ifa_addr || !i->ifa_name || ((af != AF_UNSPEC) && (af != i->ifa_addr->sa_family))) continue;
 		if (strcmp(i->ifa_name, interface) != 0) continue;
 
-		fr_ipaddr_from_sockaddr(&my_ipaddr, NULL,
-					(struct sockaddr_storage *)i->ifa_addr, sizeof(struct sockaddr_in6));
+		memcpy(&sa, i->ifa_addr,  sizeof(struct sockaddr_in6)); /* ifa->ifa_addr may not be aligned properly */
+
+		fr_ipaddr_from_sockaddr(&my_ipaddr, NULL, &sa, sizeof(struct sockaddr_in6));
 
 		/*
 		 *	If they ask for a link local address, then give
