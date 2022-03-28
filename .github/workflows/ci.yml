@@ -212,7 +212,7 @@ jobs:
         wget https://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz
         tar xzf openssl-$ALT_OPENSSL.tar.gz
         cd openssl-$ALT_OPENSSL
-        ./Configure --prefix=/opt/openssl --openssldir=.
+        ./Configure --prefix=/opt/openssl --openssldir=. --debug
         make -j `nproc`
         make install_sw
 
