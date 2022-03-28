@@ -42,7 +42,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "stream-8", "OS": tgagor/centos-stream:stream8"    "DIST": "centos" },
+              { "NAME": "stream-8", "OS": "tgagor/centos-stream:stream8"   "DIST": "centos" },
               { "NAME": "rocky-8",  "OS": "rockylinux/rockylinux:8",       "DIST": "rocky"  }
             ]
           }
