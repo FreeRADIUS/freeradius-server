@@ -994,7 +994,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 			REXDENT();
 		}
 
-		switch (ssn->info.version) {
+		switch (SSL_version(ssn->ssl)) {
 		case SSL2_VERSION:
 			str_version = "SSL 2.0";
 			break;
@@ -1250,7 +1250,7 @@ void tls_session_information(tls_session_t *tls_session)
 
 #define FROM_CLIENT (tls_session->info.origin == 0)
 
-	switch (tls_session->info.version) {
+	switch (SSL_version(tls_session->ssl)) {
 	case SSL2_VERSION:
 		str_version = "SSL 2.0 ";
 		break;
@@ -1416,7 +1416,7 @@ void tls_session_information(tls_session_t *tls_session)
 					/*
 					 *	Complain about OpenSSL bugs.
 					 */
-					if ((tls_session->info.version > tls_session->conf->max_version) &&
+					if ((SSL_version(tls_session->ssl) > tls_session->conf->max_version) &&
 					    (rad_debug_lvl > 0)) {
 						WARN("TLS 1.3 has been negotiated even though it was disabled.  This is an OpenSSL Bug.");
 						WARN("Please set: cipher_list = \"DEFAULT@SECLEVEL=1\" in the tls {...} section.");
@@ -5114,7 +5114,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			 *	OpenSSL frees the underlying session out from
 			 *	under us in TLS 1.3.
 			 */
-			if (ssn->info.version == TLS1_3_VERSION) ssn->ssl_session = SSL_get_session(ssn->ssl);
+			if (SSL_version(ssn->ssl) == TLS1_3_VERSION) ssn->ssl_session = SSL_get_session(ssn->ssl);
 #endif
 #endif
 
