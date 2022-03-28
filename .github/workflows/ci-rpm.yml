@@ -87,7 +87,7 @@ jobs:
         sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
         sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
         yum upgrade -y
-        yum -y --disablerepo '*' --enablerepo extras swap centos-linux-repos centos-stream-repos
+        yum --skip-broken -y --disablerepo '*' --enablerepo extras swap centos-linux-repos centos-stream-repos
         yum clean all && yum makecache
         yum distro-sync -y --allowerasing
 
