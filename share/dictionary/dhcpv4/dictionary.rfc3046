@@ -1,0 +1,41 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC3046 - DHCP Relay Agent Information Option
+#  RFC3256 - The DOCSIS (Data-Over-Cable Service Interface Specifications)
+#            Device Class DHCP (Dynamic Host Configuration Protocol) Relay
+#            Agent Information Sub-option
+#  RFC5010 - The Dynamic Host Configuration Protocol Version 4 (DHCPv4)
+#            Relay Agent Flags Suboption
+#
+#  $Id$
+#
+##############################################################################
+
+# Relay Agent Information
+ATTRIBUTE	Relay-Agent-Information			82	tlv
+
+ATTRIBUTE	Circuit-Id				.1	octets
+ATTRIBUTE	Remote-Id				.2	octets
+
+# 3 is reserved and shouldn't be used for anything
+ATTRIBUTE	Docsis-Device-Class			.4	uint32
+ATTRIBUTE	Relay-Link-Selection			.5	ipaddr
+ATTRIBUTE	Subscriber-Id				.6	string
+
+# AGH!  RADIUS inside of DHCP!
+ATTRIBUTE	RADIUS-Attributes			82.7	octets
+
+# Horribly complicated
+ATTRIBUTE	Authentication-Information		82.8	octets
+
+#
+#  We'll fix this later
+#
+ATTRIBUTE	Vendor-Specific-Information		82.9	octets
+
+ATTRIBUTE	Relay-Agent-Flags			82.10	uint8
+ATTRIBUTE	Server-Identifier-Override		82.11	ipaddr

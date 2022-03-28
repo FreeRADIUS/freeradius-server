@@ -1,0 +1,14 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC4388 -  Dynamic Host Configuration Protocol (DHCP) Leasequery
+#
+#  $Id$
+#
+##############################################################################
+
+ATTRIBUTE	Client-Last-Transaction-Time		91	uint32 # seconds on the past
+ATTRIBUTE	associated-ip				92	ipaddr array

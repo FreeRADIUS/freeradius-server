@@ -24,13 +24,26 @@ $INCLUDE dictionary.freeradius.internal
 # Fixme should be broken out into separate RFCs
 $INCLUDE dictionary.rfc2131
 $INCLUDE dictionary.rfc2241
+$INCLUDE dictionary.rfc2242
+$INCLUDE dictionary.rfc2485
+$INCLUDE dictionary.rfc2563
 $INCLUDE dictionary.rfc2610
+$INCLUDE dictionary.rfc2937
 $INCLUDE dictionary.rfc3004
+$INCLUDE dictionary.rfc3011
+$INCLUDE dictionary.rfc3046
 $INCLUDE dictionary.rfc3118
+$INCLUDE dictionary.rfc3361
 $INCLUDE dictionary.rfc3397
 $INCLUDE dictionary.rfc3442
+$INCLUDE dictionary.rfc3495
+$INCLUDE dictionary.rfc3679
+$INCLUDE dictionary.rfc3925
+$INCLUDE dictionary.rfc4039
 $INCLUDE dictionary.rfc4280
+$INCLUDE dictionary.rfc4388
 $INCLUDE dictionary.rfc4578
+$INCLUDE dictionary.rfc4174
 $INCLUDE dictionary.rfc4702
 $INCLUDE dictionary.rfc4776
 $INCLUDE dictionary.rfc4833
@@ -39,6 +52,7 @@ $INCLUDE dictionary.rfc5192
 $INCLUDE dictionary.rfc5223
 $INCLUDE dictionary.rfc5417
 $INCLUDE dictionary.rfc5678
+$INCLUDE dictionary.rfc5859
 $INCLUDE dictionary.rfc5969
 $INCLUDE dictionary.rfc5986
 $INCLUDE dictionary.rfc6011

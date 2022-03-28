@@ -121,8 +121,6 @@ ATTRIBUTE	Vendor-Class-Identifier			60	octets
 # e.g. MAC address. It's up to the administrator to make sense of
 # the value. We can't do anything more in the parser.
 ATTRIBUTE	Client-Identifier			61	octets
-ATTRIBUTE	Netware-Domain-Name			62	octets
-ATTRIBUTE	Netware-Sub-Options			63	octets
 ATTRIBUTE	NIS-Client-Domain-Name			64	octets
 ATTRIBUTE	NIS-Server-Address			65	ipaddr
 ATTRIBUTE	TFTP-Server-Name			66	string
@@ -138,90 +136,13 @@ ATTRIBUTE	IRC-Server-Address			74	ipaddr array
 ATTRIBUTE	StreetTalk-Server-Address		75	ipaddr array
 ATTRIBUTE	STDA-Server-Address			76	ipaddr array
 
-# Rapid Commit
-ATTRIBUTE	Rapid-Commit				80	bool		encode=exists
-
-# Relay Agent Information
-ATTRIBUTE	Relay-Agent-Information			82	tlv
-
-ATTRIBUTE	Circuit-Id				.1	octets
-ATTRIBUTE	Remote-Id				.2	octets
-
-# 3 is reserved and shouldn't be used for anything
-ATTRIBUTE	Docsis-Device-Class			.4	uint32
-ATTRIBUTE	Relay-Link-Selection			.5	ipaddr
-ATTRIBUTE	Subscriber-Id				.6	string
-
-# AGH!  RADIUS inside of DHCP!
-ATTRIBUTE	RADIUS-Attributes			82.7	octets
-
-# Horribly complicated
-ATTRIBUTE	Authentication-Information		82.8	octets
-
-#
-#  We'll fix this later
-#
-ATTRIBUTE	Vendor-Specific-Information		82.9	octets
-
-ATTRIBUTE	Relay-Agent-Flags			82.10	uint8
-ATTRIBUTE	Server-Identifier-Override		82.11	ipaddr
-
-# Internet Storage Name Service
-ATTRIBUTE	iSNS					83	octets
-
-ATTRIBUTE	Client-Last-Transaction-Time		91	uint32 # seconds on the past
-
-ATTRIBUTE	associated-ip				92	ipaddr array
-
-# Lightweight Directory Access Protocol
-ATTRIBUTE	LDAP					95	octets
-
-# Open Group's User Authentication
-ATTRIBUTE	User-Auth				98	octets
-
-# NetInfo Parent-Server Address
-ATTRIBUTE	Netinfo-Address				112	octets
-# NetInfo Parent-Server Tag
-ATTRIBUTE	Netinfo-Tag				113	octets
-# URL
-ATTRIBUTE	URL					114	octets
-# DHCP Auto-Configuration
-ATTRIBUTE	Auto-Config				116	uint8
-
-# Name Service Search
-#
-#  Array of option numbers which should then be used, in order,
-#  to search for DNS information.
-#
-ATTRIBUTE	Name-Service-Search			117	uint16 array
-
-
-# Subnet Selection Option
-ATTRIBUTE	Subnet-Selection-Option			118	ipaddr
-
-# SIP-Servers DHCP Option
-ATTRIBUTE	SIP-Servers-Option			120	octets
-
-# CableLabs Client Configuration
-ATTRIBUTE	CCC					122	octets
 # 16 GeoConf Option
 ATTRIBUTE	GeoConf-Option				123	octets
-
-# Vendor Class
-#
-# String name that defines the vendor space used for the TLV's
-# in option 125.
-#
-ATTRIBUTE	V-I-Vendor-Class			124	octets
-# Vendor-Specific
-ATTRIBUTE	V-I-Vendor-Specific			125	vsa
 
 #ATTRIBUTE	Etherboot				128	ether
 # (for IP Phone software load)
 
 # 144 - 149 unused
-
-ATTRIBUTE	TFTP-Server-IPv4-Address		150	ipaddr array
 
 # RFC 3942 - 159-174 - Unassigned
 # RFC 3942 - 178-207 - Unassigned

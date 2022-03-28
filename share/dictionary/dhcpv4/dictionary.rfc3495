@@ -1,0 +1,32 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC3495 - Dynamic Host Configuration Protocol (DHCP) Option for
+#            CableLabs Client Configuration
+#
+#  $Id$
+#
+##############################################################################
+
+# CableLabs Client Configuration
+ATTRIBUTE	CCC					122	tlv
+ATTRIBUTE	Primary-DHCP-Server			.1	ipaddr
+ATTRIBUTE	Secondary-DHCP-Server			.2	ipaddr
+ATTRIBUTE	AS-Backoff-and-Retry			.4	struct
+MEMBER		Nominal-Timeout			uint32
+MEMBER		Maximum-Timeout			uint32
+MEMBER		Maximum-Retries			uint32
+ATTRIBUTE	AP-Backoff-and-Retry			.5	struct
+MEMBER		Nominal-Timeout			uint32
+MEMBER		Maximum-Timeout			uint32
+MEMBER		Maximum-Retries			uint32
+ATTRIBUTE	Kerberos-Realm-Name			.6	string
+ATTRIBUTE	Ticket-Granting-Server-Utilization	.7	bool
+ATTRIBUTE	Provisioning-Timer-Value		.8	uint8
+# Is there a way to mark the end of nested tlv/struct?
+ATTRIBUTE	Provisioning-Server			.3	tlv
+ATTRIBUTE	FQDN				.0	string
+ATTRIBUTE	Address				.1	ipaddr

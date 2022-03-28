@@ -1,0 +1,29 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC3679 -  Unused Dynamic Host Configuration Protocol (DHCP) Option Codes
+#
+#  $Id$
+#
+##############################################################################
+
+# RFC 3679 3.2 says about these attributes:
+#
+#   The following option codes are used by devices from Apple Computer.
+#   However, none of these option codes have been described in a
+#   published RFC.
+#
+#   The DHC WG will endeavor to have specifications for these options
+#   published.
+
+# Lightweight Directory Access Protocol
+ATTRIBUTE	LDAP					95	octets
+# NetInfo Parent-Server Address
+ATTRIBUTE	Netinfo-Address				112	octets
+# NetInfo Parent-Server Tag
+ATTRIBUTE	Netinfo-Tag				113	octets
+# URL
+ATTRIBUTE	URL					114	octets
