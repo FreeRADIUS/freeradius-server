@@ -641,13 +641,19 @@ fr_unix_time_t fr_unix_time_from_tm(struct tm *tm)
 	static const uint16_t month_yday[12] = {0,   31,  59,  90,  120, 151,
 						181, 212, 243, 273, 304, 334};
 
-	uint32_t year_adj = tm->tm_year + 4800 + 1900;  /* Ensure positive year, multiple of 400. */
-	uint32_t febs = year_adj - (tm->tm_mon <= 2 ? 1 : 0);  /* Februaries since base. */
-	uint32_t leap_days = 1 + (febs / 4) - (febs / 100) + (febs / 400);
+	uint32_t year_adj;
+	uint32_t febs;
+	uint32_t leap_days;
 	uint32_t days;
 
 	/* Prevent crash if tm->tm_mon is invalid - seen in clusterfuzz */
 	if (unlikely(tm->tm_mon > (__typeof__(tm->tm_mon))NUM_ELEMENTS(month_yday))) return fr_unix_time_min();
+
+	if (unlikely(tm->tm_year > 10000)) return fr_unix_time_min();
+
+	year_adj = tm->tm_year + 4800 + 1900;  /* Ensure positive year, multiple of 400. */
+	febs = year_adj - (tm->tm_mon <= 2 ? 1 : 0);  /* Februaries since base. */
+	leap_days = 1 + (febs / 4) - (febs / 100) + (febs / 400);
 
 	days = 365 * year_adj + leap_days + month_yday[tm->tm_mon] + tm->tm_mday - 1;
 
@@ -805,6 +811,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 	char		*p;
 	char		*f[4];
 	char		*tail = NULL;
+	unsigned long	l;
 	fr_time_delta_t	gmt_delta = fr_time_delta_wrap(0);
 
 	/*
@@ -1035,10 +1042,21 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 	}
 
 	/*
-	 *  The year may be in f[1], or in f[2]
+	 *	Check for invalid text, or invalid trailing text.
 	 */
-	tm->tm_year = atoi(f[1]);
-	tm->tm_mday = atoi(f[2]);
+	l = strtoul(f[1], &tail, 10);
+	if ((l == ULONG_MAX) || (*tail != '\0')) {
+		fr_strerror_const("Invalid year string");
+		return -1;
+	}
+	tm->tm_year = l;
+
+	l = strtoul(f[2], &tail, 10);
+	if ((l == ULONG_MAX) || (*tail != '\0')) {
+		fr_strerror_const("Invalid day of month string");
+		return -1;
+	}
+	tm->tm_mday = l;
 
 	if (tm->tm_year >= 1900) {
 		tm->tm_year -= 1900;
@@ -1061,11 +1079,16 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 		tm->tm_mday = i;
 	}
 
+	if (tm->tm_year > 10000) {
+		fr_strerror_const("Invalid value for year");
+		return -1;
+	}
+
 	/*
-	 *  If the day is out of range, die.
+	 *	If the day is out of range, die.
 	 */
 	if ((tm->tm_mday < 1) || (tm->tm_mday > 31)) {
-		fr_strerror_const("Invalid day of month");
+		fr_strerror_const("Invalid value for day of month");
 		return -1;
 	}
 
