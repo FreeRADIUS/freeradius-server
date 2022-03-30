@@ -256,6 +256,7 @@ $INCLUDE dictionary.motorola
 $INCLUDE dictionary.motorola.wimax
 $INCLUDE dictionary.navini
 $INCLUDE dictionary.net
+$INCLUDE dictionary.netelastic
 $INCLUDE dictionary.netscreen
 $INCLUDE dictionary.networkphysics
 $INCLUDE dictionary.nexans
