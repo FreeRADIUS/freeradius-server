@@ -203,7 +203,7 @@ static void lst_stress_realloc(void)
 	for (unsigned int i = 0; i < INITIAL_CAPACITY; i++) {
 		TEST_CHECK((ret = fr_lst_insert(lst, &lst_array[i])) >= 0);
 		TEST_MSG("lst insert failed, iteration %d; returned %i - %s", i, ret, fr_strerror());
-		TEST_CHECK((ret = fr_heap_insert(hp, &hp_array[i])) >= 0);
+		TEST_CHECK((ret = fr_heap_insert(&hp, &hp_array[i])) >= 0);
 		TEST_MSG("heap insert failed, iteration %d; returned %i - %s", i, ret, fr_strerror());
 	}
 
@@ -211,7 +211,7 @@ static void lst_stress_realloc(void)
 	TEST_CASE("partial pop");
 	for (unsigned int i = 0; i < INITIAL_CAPACITY / 2; i++) {
 		TEST_CHECK((from_lst = fr_lst_pop(lst)) != NULL);
-		TEST_CHECK((from_hp = fr_heap_pop(hp)) != NULL);
+		TEST_CHECK((from_hp = fr_heap_pop(&hp)) != NULL);
 		TEST_CHECK(lst_cmp(from_lst, from_hp) == 0);
 	}
 
@@ -224,7 +224,7 @@ static void lst_stress_realloc(void)
 	for (unsigned int i = INITIAL_CAPACITY; i < 2 * INITIAL_CAPACITY; i++) {
 		TEST_CHECK((ret = fr_lst_insert(lst, &lst_array[i])) >= 0);
 		TEST_MSG("lst insert failed, iteration %u; returned %i - %s", i, ret, fr_strerror());
-		TEST_CHECK((ret = fr_heap_insert(hp, &hp_array[i])) >= 0);
+		TEST_CHECK((ret = fr_heap_insert(&hp, &hp_array[i])) >= 0);
 		TEST_MSG("heap insert failed, iteration %u; returned %i - %s", i, ret, fr_strerror());
 	}
 
@@ -232,7 +232,7 @@ static void lst_stress_realloc(void)
 	TEST_CASE("complete pop");
 	for (unsigned int i = 0; i < 3 * INITIAL_CAPACITY / 2; i++) {
 		TEST_CHECK((from_lst = fr_lst_pop(lst)) != NULL);
-		TEST_CHECK((from_hp = fr_heap_pop(hp)) != NULL);
+		TEST_CHECK((from_hp = fr_heap_pop(&hp)) != NULL);
 		TEST_CHECK(lst_cmp(from_lst, from_hp) == 0);
 	}
 
@@ -444,7 +444,7 @@ static CC_HINT(noinline) lst_thing *array_pop(lst_thing **array, unsigned int co
 static void queue_cmp(unsigned int count)
 {
 	fr_lst_t	*lst;
-	fr_heap_t	*heap;
+	fr_heap_t	*hp;
 
 	lst_thing	*values;
 
@@ -497,17 +497,17 @@ static void queue_cmp(unsigned int count)
 		populate_values(values, count);
 
 		start_alloc = fr_time();
-		heap = fr_heap_alloc(NULL, lst_cmp, lst_thing, idx, count);
+		hp = fr_heap_alloc(NULL, lst_cmp, lst_thing, idx, count);
 		end_alloc = fr_time();
-		TEST_CHECK(heap != NULL);
+		TEST_CHECK(hp != NULL);
 
 		start_insert = fr_time();
-		for (i = 0; i < count; i++) fr_heap_insert(heap, &values[i]);
+		for (i = 0; i < count; i++) fr_heap_insert(&hp, &values[i]);
 		end_insert = fr_time();
 
 		start_pop = fr_time();
 		for (i = 0; i < count; i++) {
-			TEST_CHECK(fr_heap_pop(heap) != NULL);
+			TEST_CHECK(fr_heap_pop(&hp) != NULL);
 			if (i == 0) end_pop_first = fr_time();
 
 			TEST_MSG("expected %u elements remaining in the heap", count - i);
@@ -521,7 +521,7 @@ static void queue_cmp(unsigned int count)
 		TEST_MSG_ALWAYS("pop-first: %"PRIu64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_pop_first, start_pop)) / 1000);
 		TEST_MSG_ALWAYS("pop: %"PRIu64" μs\n", fr_time_delta_unwrap(fr_time_sub(end_pop, start_pop)) / 1000);
 
-		talloc_free(heap);
+		talloc_free(hp);
 	}
 
 	/*

@@ -701,7 +701,7 @@ do { \
 #define REQUEST_EXTRACT_BACKLOG(_treq) \
 do { \
 	int _ret; \
-	_ret = fr_heap_extract((_treq)->pub.trunk->backlog, _treq); \
+	_ret = fr_heap_extract(&(_treq)->pub.trunk->backlog, _treq); \
 	if (!fr_cond_assert_msg(_ret == 0, "Failed extracting conn from backlog heap: %s", fr_strerror())) break; \
 } while (0)
 
@@ -711,7 +711,7 @@ do { \
 #define REQUEST_EXTRACT_PENDING(_treq) \
 do { \
 	int _ret; \
-	_ret = fr_heap_extract((_treq)->pub.tconn->pending, _treq); \
+	_ret = fr_heap_extract(&(_treq)->pub.tconn->pending, _treq); \
 	if (!fr_cond_assert_msg(_ret == 0, "Failed extracting conn from pending heap: %s", fr_strerror())) break; \
 } while (0)
 
@@ -1086,7 +1086,7 @@ static void trunk_request_enter_backlog(fr_trunk_request_t *treq, bool new)
 	}
 
 	REQUEST_STATE_TRANSITION(FR_TRUNK_REQUEST_STATE_BACKLOG);
-	fr_heap_insert(trunk->backlog, treq);	/* Insert into the backlog heap */
+	fr_heap_insert(&trunk->backlog, treq);	/* Insert into the backlog heap */
 
 	/*
 	 *	A new request has entered the trunk.
@@ -1165,7 +1165,7 @@ static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_conne
 		ROPTIONAL(RDEBUG, DEBUG3, "[%" PRIu64 "] Trunk connection assigned request %"PRIu64,
 			  tconn->pub.conn->id, treq->id);
 	}
-	fr_heap_insert(tconn->pending, treq);
+	fr_heap_insert(&tconn->pending, treq);
 
 	/*
 	 *	A new request has entered the trunk.

@@ -481,7 +481,7 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	 *	The connection pool is starting up.  Insert the
 	 *	connection into the heap.
 	 */
-	if (!in_use) fr_heap_insert(pool->heap, this);
+	if (!in_use) fr_heap_insert(&pool->heap, this);
 
 	connection_link_head(pool, this);
 
@@ -553,7 +553,7 @@ static void connection_close_internal(fr_pool_t *pool, fr_pool_connection_t *thi
 		/*
 		 *	Connection isn't used, remove it from the heap.
 		 */
-		fr_heap_extract(pool->heap, this);
+		fr_heap_extract(&pool->heap, this);
 	}
 
 	fr_pool_trigger_exec(pool, "close");
@@ -841,7 +841,7 @@ static void *connection_get_internal(fr_pool_t *pool, request_t *request, bool s
 	 *	heap and use it.
 	 */
 	if (this) {
-		fr_heap_extract(pool->heap, this);
+		fr_heap_extract(&pool->heap, this);
 		goto do_return;
 	}
 
@@ -1432,7 +1432,7 @@ void fr_pool_connection_release(fr_pool_t *pool, request_t *request, void *conn)
 	 *	gradually expired), or when we released it (allowing
 	 *	the maximum amount of time between connection use).
 	 */
-	fr_heap_insert(pool->heap, this);
+	fr_heap_insert(&pool->heap, this);
 
 	fr_assert(pool->state.active != 0);
 	pool->state.active--;

@@ -388,7 +388,7 @@ static CC_HINT(noinline) minmax_heap_thing *array_pop(minmax_heap_thing **array,
 static void queue_cmp(unsigned int count)
 {
 	fr_minmax_heap_t	*minmax;
-	fr_heap_t		*heap;
+	fr_heap_t		*hp;
 
 	minmax_heap_thing	*values;
 
@@ -440,17 +440,17 @@ static void queue_cmp(unsigned int count)
 		populate_values(values, count);
 
 		start_alloc = fr_time();
-		heap = fr_heap_alloc(NULL, minmax_heap_cmp, minmax_heap_thing, idx, count);
+		hp = fr_heap_alloc(NULL, minmax_heap_cmp, minmax_heap_thing, idx, count);
 		end_alloc = fr_time();
-		TEST_CHECK(heap != NULL);
+		TEST_CHECK(hp != NULL);
 
 		start_insert = fr_time();
-		for (i = 0; i < count; i++) fr_heap_insert(heap, &values[i]);
+		for (i = 0; i < count; i++) fr_heap_insert(&hp, &values[i]);
 		end_insert = fr_time();
 
 		start_pop = fr_time();
 		for (i = 0; i < count; i++) {
-			TEST_CHECK(fr_heap_pop(heap) != NULL);
+			TEST_CHECK(fr_heap_pop(&hp) != NULL);
 			if (i == 0) end_pop_first = fr_time();
 
 			TEST_MSG("expected %u elements remaining in the heap", count - i);
@@ -464,7 +464,7 @@ static void queue_cmp(unsigned int count)
 		TEST_MSG_ALWAYS("pop-first: %"PRIu64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_pop_first, start_pop)));
 		TEST_MSG_ALWAYS("pop: %"PRIu64" μs\n", fr_time_delta_to_usec(fr_time_sub(end_pop, start_pop)));
 
-		talloc_free(heap);
+		talloc_free(hp);
 	}
 
 	/*

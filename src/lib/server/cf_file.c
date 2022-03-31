@@ -1073,7 +1073,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 			MEM(h = talloc_zero(frame->heap, cf_file_heap_t));
 			MEM(h->filename = talloc_typed_strdup(h, stack->buff[1]));
 			h->heap_id = 0;
-			(void) fr_heap_insert(frame->heap, h);
+			(void) fr_heap_insert(&frame->heap, h);
 		}
 		closedir(dir);
 
@@ -2029,7 +2029,7 @@ static int frame_readdir(cf_stack_t *stack)
 	CONF_SECTION *parent = frame->current;
 	cf_file_heap_t *h;
 
-	h = fr_heap_pop(frame->heap);
+	h = fr_heap_pop(&frame->heap);
 	if (!h) {
 		/*
 		 *	Done reading the directory entry.  Close it, and go

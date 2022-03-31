@@ -62,14 +62,11 @@ typedef int8_t (*fr_heap_cmp_t)(void const *a, void const *b);
  * of the minimum element.  The heap entry can contain an "int"
  * field that holds the entries position in the heap.  The offset
  * of the field is held inside of the heap structure.
- *
- * The reason why we have fr_heap_ext_t and fr_heap_t, is that
- * fr_heap_t is a pointer to a fr_heap_ext_t.  This means that
- * the heap cann be a single contiguous memory chunk, and can
- * be reallocated during extension.
  */
 typedef struct {
 	unsigned int	_CONST size;		//!< Number of nodes allocated.
+	unsigned int	_CONST min;		//!< Minimum number of elements we allow
+						///< the heap to reduce down to.
 	size_t		_CONST offset;		//!< Offset of heap index in element structure.
 
 	unsigned int	_CONST num_elements;	//!< Number of nodes used.
@@ -78,14 +75,10 @@ typedef struct {
 	fr_heap_cmp_t	_CONST cmp;		//!< Comparator function.
 
 	void		* _CONST p[];		//!< Array of nodes.
-} fr_heap_ext_t;
+} fr_heap_t;
 
 typedef unsigned int fr_heap_index_t;
 typedef unsigned int fr_heap_iter_t;
-
-/** How many talloc headers need to be pre-allocated for a heap
- */
-typedef fr_heap_ext_t * fr_heap_t;
 
 /** How many talloc headers need to be pre-allocated for a heap
  */
@@ -133,15 +126,13 @@ static inline bool fr_heap_entry_inserted(fr_heap_index_t heap_idx)
 
 /** Return the item from the top of the heap but don't pop it
  *
- * @param[in] hp	to return element from.
+ * @param[in] h		to return element from.
  * @return
  *	- Element at the top of the heap.
  *	- NULL if no elements remain in the heap.
  */
-static inline void *fr_heap_peek(fr_heap_t *hp)
+static inline void *fr_heap_peek(fr_heap_t *h)
 {
-	fr_heap_ext_t *h = *hp;
-
 	if (h->num_elements == 0) return NULL;
 
 	return h->p[1];
@@ -149,16 +140,14 @@ static inline void *fr_heap_peek(fr_heap_t *hp)
 
 /** Peek at a specific index in the heap
  *
- * @param[in] hp	to return element from.
+ * @param[in] h		to return element from.
  * @param[in] idx	to lookup
  * @return
  *	- Element at the top of the heap.
  *	- NULL if index outside of the range of the heap.
  */
-static inline void *fr_heap_peek_at(fr_heap_t *hp, fr_heap_index_t idx)
+static inline void *fr_heap_peek_at(fr_heap_t *h, fr_heap_index_t idx)
 {
-	fr_heap_ext_t *h = *hp;
-
 	if (unlikely(idx > h->num_elements)) return NULL;
 
 	return h->p[idx];
@@ -166,15 +155,13 @@ static inline void *fr_heap_peek_at(fr_heap_t *hp, fr_heap_index_t idx)
 
 /** Peek at the last element in the heap (not necessarily the bottom)
  *
- * @param[in] hp	to return element from.
+ * @param[in] h		to return element from.
  * @return
  *	- Last element in the heap.
  *	- NULL if no elements remain in the heap.
  */
-static inline void *fr_heap_peek_tail(fr_heap_t *hp)
+static inline void *fr_heap_peek_tail(fr_heap_t *h)
 {
-	fr_heap_ext_t *h = *hp;
-
 	if (h->num_elements == 0) return NULL;
 
 	/*
@@ -185,18 +172,16 @@ static inline void *fr_heap_peek_tail(fr_heap_t *hp)
 
 /** Return the number of elements in the heap
  *
- * @param[in] hp	to return the number of elements from.
+ * @param[in] h		to return the number of elements from.
  */
-static inline unsigned int fr_heap_num_elements(fr_heap_t *hp)
+static inline unsigned int fr_heap_num_elements(fr_heap_t *h)
 {
-	fr_heap_ext_t *h = *hp;
-
 	return h->num_elements;
 }
 
-int		fr_heap_insert(fr_heap_t *hp, void *data) CC_HINT(nonnull);
-int		fr_heap_extract(fr_heap_t *hp, void *data) CC_HINT(nonnull);
-void		*fr_heap_pop(fr_heap_t *hp) CC_HINT(nonnull);
+int		fr_heap_insert(fr_heap_t **hp, void *data) CC_HINT(nonnull);
+int		fr_heap_extract(fr_heap_t **hp, void *data) CC_HINT(nonnull);
+void		*fr_heap_pop(fr_heap_t **hp) CC_HINT(nonnull);
 
 void		*fr_heap_iter_init(fr_heap_t *hp, fr_heap_iter_t *iter) CC_HINT(nonnull);
 void		*fr_heap_iter_next(fr_heap_t *hp, fr_heap_iter_t *iter) CC_HINT(nonnull);

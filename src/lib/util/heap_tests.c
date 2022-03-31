@@ -3,10 +3,9 @@
 
 #include "heap.c"
 
-static bool fr_heap_check(fr_heap_t *hp, void *data)
+static bool fr_heap_check(fr_heap_t *h, void *data)
 {
 	unsigned int i;
-	fr_heap_ext_t *h = *hp;
 
 	if (!h || (h->num_elements == 0)) return false;
 
@@ -74,7 +73,7 @@ static void heap_test(int skip)
 	TEST_CASE("insertions");
 	for (i = 0; i < HEAP_TEST_SIZE; i++) {
 		FR_HEAP_VERIFY(hp);
-		TEST_CHECK((ret = fr_heap_insert(hp, &array[i])) >= 0);
+		TEST_CHECK((ret = fr_heap_insert(&hp, &array[i])) >= 0);
 		TEST_MSG("insert failed, returned %i - %s", ret, fr_strerror());
 
 		TEST_CHECK(fr_heap_check(hp, &array[i]));
@@ -92,7 +91,7 @@ static void heap_test(int skip)
 			TEST_CHECK(array[entry].heap != 0);
 			TEST_MSG("element %i removed out of order", entry);
 
-			TEST_CHECK((ret = fr_heap_extract(hp, &array[entry])) >= 0);
+			TEST_CHECK((ret = fr_heap_extract(&hp, &array[entry])) >= 0);
 			TEST_MSG("element %i removal failed, returned %i - %s", entry, ret, fr_strerror());
 
 			TEST_CHECK(!fr_heap_check(hp, &array[entry]));
@@ -111,7 +110,7 @@ static void heap_test(int skip)
 		TEST_CHECK((t = fr_heap_peek(hp)) != NULL);
 		TEST_MSG("expected %i elements remaining in the heap", left - i);
 
-		TEST_CHECK(fr_heap_extract(hp, t) >= 0);
+		TEST_CHECK(fr_heap_extract(&hp, t) >= 0);
 		TEST_MSG("failed extracting %i", i);
 	}
 
@@ -168,7 +167,7 @@ static void heap_test_order(void)
 
 	TEST_CASE("insertions");
 	for (i = 0; i < HEAP_TEST_SIZE; i++) {
-		TEST_CHECK((ret = fr_heap_insert(hp, &array[i])) >= 0);
+		TEST_CHECK((ret = fr_heap_insert(&hp, &array[i])) >= 0);
 		TEST_MSG("insert failed, returned %i - %s", ret, fr_strerror());
 
 		TEST_CHECK(fr_heap_check(hp, &array[i]));
@@ -177,7 +176,7 @@ static void heap_test_order(void)
 
 	TEST_CASE("ordering");
 
-	while ((thing = fr_heap_pop(hp))) {
+	while ((thing = fr_heap_pop(&hp))) {
 		TEST_CHECK(thing->data >= data);
 		TEST_MSG("Expected data >= %i, got %i", data, thing->data);
 		if (thing->data >= data) data = thing->data;
@@ -207,7 +206,7 @@ static void heap_iter(void)
 
 	for (size_t i = 0; i < HEAP_ITER_SIZE; i++) {
 		array[i].data = i;
-		TEST_CHECK(fr_heap_insert(hp, &array[i])  >= 0);
+		TEST_CHECK(fr_heap_insert(&hp, &array[i])  >= 0);
 	}
 
 	data_set = 0;
@@ -251,7 +250,7 @@ static void heap_cycle(void)
 	start_insert = fr_time();
 	TEST_CASE("insertions");
 	for (i = 0; i < HEAP_CYCLE_SIZE; i++) {
-		TEST_CHECK((ret = fr_heap_insert(hp, &array[i])) >= 0);
+		TEST_CHECK((ret = fr_heap_insert(&hp, &array[i])) >= 0);
 		TEST_MSG("insert failed, returned %i - %s", ret, fr_strerror());
 	}
 	TEST_CHECK(fr_heap_num_elements(hp) == HEAP_CYCLE_SIZE);
@@ -269,7 +268,7 @@ static void heap_cycle(void)
 		TEST_CHECK((t = fr_heap_peek(hp)) != NULL);
 		TEST_MSG("expected %i elements remaining in the heap", to_remove - i);
 
-		TEST_CHECK(fr_heap_extract(hp, t) >= 0);
+		TEST_CHECK(fr_heap_extract(&hp, t) >= 0);
 		TEST_MSG("failed extracting %i - %s", i, fr_strerror());
 	}
 
@@ -282,11 +281,11 @@ static void heap_cycle(void)
 
 	for (i = 0; i < HEAP_CYCLE_SIZE; i++) {
 		if (!fr_heap_entry_inserted(array[i].heap)) {
-			TEST_CHECK((ret = fr_heap_insert(hp, &array[i])) >= 0);
+			TEST_CHECK((ret = fr_heap_insert(&hp, &array[i])) >= 0);
 			TEST_MSG("insert failed, returned %i - %s", ret, fr_strerror());
 			inserted++;
 		} else {
-			TEST_CHECK((ret = fr_heap_extract(hp, &array[i])) >= 0);
+			TEST_CHECK((ret = fr_heap_extract(&hp, &array[i])) >= 0);
 			TEST_MSG("element %i removal failed, returned %i - %s", i, ret, fr_strerror());
 			removed++;
 		}

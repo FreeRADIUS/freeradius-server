@@ -189,7 +189,7 @@ static int _xlat_inst_detach(xlat_inst_t *xi)
 	 *      freed.
 	 */
 	if (!call->ephemeral) {
-		if (fr_heap_entry_inserted(xi->idx)) fr_heap_extract(xlat_inst_tree, xi);
+		if (fr_heap_entry_inserted(xi->idx)) fr_heap_extract(&xlat_inst_tree, xi);
 		if (fr_heap_num_elements(xlat_inst_tree) == 0) TALLOC_FREE(xlat_inst_tree);
 	}
 
@@ -376,7 +376,7 @@ int xlat_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 		DEBUG3("Instantiating xlat \"%s\" node %p, instance %p, new thread instance %p",
 		       call->func->name, xt->node, xi->data, xt);
 
-		ret = fr_heap_insert(xlat_thread_inst_tree, xt);
+		ret = fr_heap_insert(&xlat_thread_inst_tree, xt);
 		if (!fr_cond_assert(ret == 0)) {
 		error:
 			TALLOC_FREE(xlat_thread_inst_tree);	/* Reset the tree on error */
@@ -493,7 +493,7 @@ int xlat_bootstrap_func(xlat_exp_t *node)
 	 */
 	node->call.id = call_id++;
 
-	ret = fr_heap_insert(xlat_inst_tree, call->inst);
+	ret = fr_heap_insert(&xlat_inst_tree, call->inst);
 	if (!fr_cond_assert(ret == 0)) {
 		TALLOC_FREE(call->inst);
 		return -1;
@@ -551,5 +551,5 @@ void xlat_instances_free(void)
 	 *	is freed, so we need to check there's
 	 *	still a heap to pass to fr_heap_pop.
 	 */
-	while (xlat_inst_tree && (xi = fr_heap_pop(xlat_inst_tree))) talloc_free(xi);
+	while (xlat_inst_tree && (xi = fr_heap_pop(&xlat_inst_tree))) talloc_free(xi);
 }

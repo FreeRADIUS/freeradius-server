@@ -320,7 +320,7 @@ static fr_io_pending_packet_t *pending_packet_pop(fr_io_thread_t *thread)
 	fr_io_client_t *client;
 	fr_io_pending_packet_t *pending;
 
-	client = fr_heap_pop(thread->pending_clients);
+	client = fr_heap_pop(&thread->pending_clients);
 	if (!client) {
 		/*
 		 *	99% of the time we don't have pending clients.
@@ -332,7 +332,7 @@ static fr_io_pending_packet_t *pending_packet_pop(fr_io_thread_t *thread)
 		return NULL;
 	}
 
-	pending = fr_heap_pop(client->pending);
+	pending = fr_heap_pop(&client->pending);
 	fr_assert(pending != NULL);
 
 	/*
@@ -340,7 +340,7 @@ static fr_io_pending_packet_t *pending_packet_pop(fr_io_thread_t *thread)
 	 *	the heap.
 	 */
 	if (fr_heap_num_elements(client->pending) > 0) {
-		if (fr_heap_insert(thread->pending_clients, client) < 0) {
+		if (fr_heap_insert(&thread->pending_clients, client) < 0) {
 			fr_assert(0 == 1);
 		}
 	}
@@ -1047,7 +1047,7 @@ static fr_io_pending_packet_t *fr_io_pending_alloc(fr_io_client_t *client,
 	 *	Insert the pending packet for this client.  If it
 	 *	fails, silently discard the packet.
 	 */
-	if (fr_heap_insert(client->pending, pending) < 0) {
+	if (fr_heap_insert(&client->pending, pending) < 0) {
 		talloc_free(pending);
 		return NULL;
 	}
@@ -1094,7 +1094,7 @@ static int _client_live_free(fr_io_client_t *client)
 	if (client->pending) TALLOC_FREE(client->pending);
 
 	(void) fr_trie_remove_by_key(client->thread->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix);
-	(void) fr_heap_extract(client->thread->alive_clients, client);
+	(void) fr_heap_extract(&client->thread->alive_clients, client);
 
 	return 0;
 }
@@ -1150,7 +1150,7 @@ redo:
 			return -1;
 		}
 
-		pending = fr_heap_pop(connection->client->pending);
+		pending = fr_heap_pop(&connection->client->pending);
 
 	} else if (thread->pending_clients) {
 		pending = pending_packet_pop(thread);
@@ -1510,7 +1510,7 @@ do_read:
 		 *	Track the live clients so that we can clean
 		 *	them up.
 		 */
-		(void) fr_heap_insert(thread->alive_clients, client);
+		(void) fr_heap_insert(&thread->alive_clients, client);
 		client->pending_id = -1;
 
 		/*
@@ -2485,7 +2485,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	}
 
 	fr_assert(client->pending_id < 0);
-	(void) fr_heap_insert(thread->pending_clients, client);
+	(void) fr_heap_insert(&thread->pending_clients, client);
 
 finish:
 	/*

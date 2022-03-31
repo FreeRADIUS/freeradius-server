@@ -472,7 +472,7 @@ static void worker_request_time_tracking_start(fr_worker_t *worker, request_t *r
 	worker->num_active++;
 
 	fr_assert(!fr_heap_entry_inserted(request->runnable_id));
-	(void) fr_heap_insert(worker->runnable, request);
+	(void) fr_heap_insert(&worker->runnable, request);
 
 	if (!worker->ev_cleanup) worker_max_request_timer(worker);
 }
@@ -1094,7 +1094,7 @@ static void _worker_request_stop(request_t *request, void *uctx)
 	 *	yank it back out, so it's not "runnable"
 	 *	when we call request done.
 	 */
-	if (fr_heap_entry_inserted(request->runnable_id)) fr_heap_extract(worker->runnable, request);
+	if (fr_heap_entry_inserted(request->runnable_id)) fr_heap_extract(&worker->runnable, request);
 
 	/*
 	 *	The interpreter doesn't currently fix
@@ -1112,7 +1112,7 @@ static void _worker_request_runnable(request_t *request, void *uctx)
 	fr_worker_t	*worker = uctx;
 
 	RDEBUG3("Request marked as runnable");
-	fr_heap_insert(worker->runnable, request);
+	fr_heap_insert(&worker->runnable, request);
 }
 
 /** Interpreter yielded request
@@ -1167,7 +1167,7 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
 	 *	every request.
 	 */
 	while (fr_time_delta_lt(fr_time_sub(now, start), fr_time_delta_wrap(NSEC / 100000)) &&
-	       ((request = fr_heap_pop(worker->runnable)) != NULL)) {
+	       ((request = fr_heap_pop(&worker->runnable)) != NULL)) {
 
 		REQUEST_VERIFY(request);
 		fr_assert(!fr_heap_entry_inserted(request->runnable_id));

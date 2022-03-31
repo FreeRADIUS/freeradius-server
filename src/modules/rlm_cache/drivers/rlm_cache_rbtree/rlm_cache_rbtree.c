@@ -166,7 +166,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	 */
 	c = fr_heap_peek(driver->heap);
 	if (c && (fr_unix_time_lt(c->expires, fr_time_to_unix_time(request->packet->timestamp)))) {
-		fr_heap_extract(driver->heap, c);
+		fr_heap_extract(&driver->heap, c);
 		fr_rb_delete(driver->cache, c);
 		talloc_free(c);
 	}
@@ -202,7 +202,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 	c = fr_rb_find(driver->cache, &(rlm_cache_entry_t){ .key = key, .key_len = key_len });
 	if (!c) return CACHE_MISS;
 
-	fr_heap_extract(driver->heap, c);
+	fr_heap_extract(&driver->heap, c);
 	fr_rb_delete(driver->cache, c);
 	talloc_free(c);
 
@@ -241,7 +241,7 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
 		}
 	}
 
-	if (fr_heap_insert(driver->heap, UNCONST(rlm_cache_entry_t *, c)) < 0) {
+	if (fr_heap_insert(&driver->heap, UNCONST(rlm_cache_entry_t *, c)) < 0) {
 		fr_rb_delete(driver->cache, c);
 		RERROR("Failed adding entry to expiry heap");
 
@@ -267,12 +267,12 @@ static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *confi
 	if (!request) return CACHE_ERROR;
 #endif
 
-	if (!fr_cond_assert(fr_heap_extract(driver->heap, c) == 0)) {
+	if (!fr_cond_assert(fr_heap_extract(&driver->heap, c) == 0)) {
 		RERROR("Entry not in heap");
 		return CACHE_ERROR;
 	}
 
-	if (fr_heap_insert(driver->heap, c) < 0) {
+	if (fr_heap_insert(&driver->heap, c) < 0) {
 		fr_rb_delete(driver->cache, c);	/* make sure we don't leak entries... */
 		RERROR("Failed updating entry TTL.  Entry was forcefully expired");
 		return CACHE_ERROR;

@@ -364,7 +364,7 @@ void fr_network_listen_write(fr_network_t *nr, fr_listen_t *li, uint8_t const *p
 	lm = fr_message_localize(nr, &cd.m, sizeof(cd));
 	if (!lm) return;
 
-	if (fr_heap_insert(nr->replies, lm) < 0) {
+	if (fr_heap_insert(&nr->replies, lm) < 0) {
 		fr_message_done(lm);
 	}
 }
@@ -484,7 +484,7 @@ static void fr_network_recv_reply(void *ctx, fr_channel_t *ch, fr_channel_data_t
 	 *	Ensure that heap insert works.
 	 */
 	cd->channel.heap_id = 0;
-	if (fr_heap_insert(nr->replies, cd) < 0) {
+	if (fr_heap_insert(&nr->replies, cd) < 0) {
 		fr_message_done(&cd->m);
 		fr_assert(0 == 1);
 	}
@@ -1004,7 +1004,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		s->pending = NULL;
 
 	} else {
-		cd = fr_heap_pop(s->waiting);
+		cd = fr_heap_pop(&s->waiting);
 	}
 
 	while (cd != NULL) {
@@ -1096,7 +1096,7 @@ static void fr_network_write(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUS
 		/*
 		 *	Grab the net entry.
 		 */
-		cd = fr_heap_pop(s->waiting);
+		cd = fr_heap_pop(&s->waiting);
 	}
 
 	/*
@@ -1135,7 +1135,7 @@ static int _network_socket_free(fr_network_socket_t *s)
 	/*
 	 *	Clean up any queued entries.
 	 */
-	while ((cd = fr_heap_pop(s->waiting)) != NULL) {
+	while ((cd = fr_heap_pop(&s->waiting)) != NULL) {
 		fr_message_done(&cd->m);
 	}
 
@@ -1452,7 +1452,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 	 *	Pull the replies off of our global heap, and try to
 	 *	push them to the individual sockets.
 	 */
-	while ((cd = fr_heap_pop(nr->replies)) != NULL) {
+	while ((cd = fr_heap_pop(&nr->replies)) != NULL) {
 		fr_listen_t *li;
 		fr_network_socket_t *s;
 
@@ -1508,7 +1508,7 @@ static void fr_network_post_event(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 		 */
 		if (!s->pending) {
 			fr_assert(!s->blocked);
-			(void) fr_heap_insert(s->waiting, cd);
+			(void) fr_heap_insert(&s->waiting, cd);
 			fr_network_write(nr->el, s->listen->fd, 0, s);
 		}
 	}
@@ -1559,7 +1559,7 @@ int fr_network_destroy(fr_network_t *nr)
 	 *	@todo - call transport "done" for the reply, so that
 	 *	it knows the replies are done, too.
 	 */
-	while ((cd = fr_heap_pop(nr->replies)) != NULL) {
+	while ((cd = fr_heap_pop(&nr->replies)) != NULL) {
 		fr_message_done(&cd->m);
 	}
 

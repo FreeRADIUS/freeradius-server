@@ -42,7 +42,7 @@ static void _request_init_internal(request_t *request, void *uctx)
 
 	RDEBUG3("Initialising internal synchronous request");
 	unlang_interpret_set(request, intps->intp);
-	fr_heap_insert(intps->runnable, request);
+	fr_heap_insert(&intps->runnable, request);
 }
 
 /** External request is now complete
@@ -102,7 +102,7 @@ static void _request_stop(request_t *request, void *uctx)
 
 	RDEBUG3("Stopped detached request");
 
-	fr_heap_extract(intps->runnable, request);
+	fr_heap_extract(&intps->runnable, request);
 }
 
 /** Request is now runnable
@@ -112,7 +112,7 @@ static void _request_runnable(request_t *request, void *uctx)
 {
 	unlang_interpret_synchronous_t	*intps = uctx;
 
-	fr_heap_insert(intps->runnable, request);
+	fr_heap_insert(&intps->runnable, request);
 }
 
 /** Interpreter yielded request
@@ -249,7 +249,7 @@ rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request
 		 *	request, THEN we're guaranteed that there is
 		 *	still a timer event left.
 		 */
-		sub_request = fr_heap_pop(intps->runnable);
+		sub_request = fr_heap_pop(&intps->runnable);
 		if (!sub_request) {
 			DEBUG3("No pending requests (%u yielded)", intps->yielded);
 			continue;

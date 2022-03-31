@@ -23,9 +23,10 @@
 RCSID("$Id$")
 
 #define _HEAP_PRIVATE 1
-#include <freeradius-devel/util/heap.h>
-#include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/heap.h>
+#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/strerror.h>
 
 #define INITIAL_CAPACITY	2048
 
@@ -39,7 +40,7 @@ RCSID("$Id$")
 #define HEAP_RIGHT(_x) (2 * (_x) + 1 )
 #define	HEAP_SWAP(_a, _b) { void *_tmp = _a; _a = _b; _b = _tmp; }
 
-static void fr_heap_bubble(fr_heap_ext_t *h, fr_heap_index_t child);
+static void fr_heap_bubble(fr_heap_t *h, fr_heap_index_t child);
 
 /** Return how many bytes need to be allocated to hold a heap of a given size
  *
@@ -50,18 +51,14 @@ static void fr_heap_bubble(fr_heap_ext_t *h, fr_heap_index_t child);
  */
 size_t fr_heap_pre_alloc_size(unsigned int count)
 {
-	return sizeof(fr_heap_t) + sizeof(fr_heap_ext_t) + sizeof(void *) * count;
+	return sizeof(fr_heap_t) + sizeof(void *) * count;
 }
 
 fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, size_t offset, unsigned int init)
 {
-	fr_heap_t *hp;
-	fr_heap_ext_t *h;
+	fr_heap_t *h;
 
 	if (!init) init = INITIAL_CAPACITY;
-
-	hp = talloc(ctx, fr_heap_t);
-	if (unlikely(!hp)) return NULL;
 
 	/*
 	 *	For small heaps (< 40 elements) the
@@ -69,12 +66,13 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
 	 *	a 100% performance increase
 	 *	(talloc headers are big);
 	 */
-	h = (fr_heap_ext_t *)talloc_array(hp, uint8_t, sizeof(fr_heap_ext_t) + (sizeof(void *) * (init + 1)));
+	h = (fr_heap_t *)talloc_array(ctx, uint8_t, sizeof(fr_heap_t) + (sizeof(void *) * (init + 1)));
 	if (unlikely(!h)) return NULL;
-	talloc_set_type(h, fr_heap_ext_t);
+	talloc_set_type(h, fr_heap_t);
 
-	*h = (fr_heap_ext_t){
+	*h = (fr_heap_t){
 		.size = init,
+		.min = init,
 		.type = type,
 		.cmp = cmp,
 		.offset = offset
@@ -88,23 +86,41 @@ fr_heap_t *_fr_heap_alloc(TALLOC_CTX *ctx, fr_heap_cmp_t cmp, char const *type, 
 	 */
 	h->p[0] = (void *)UINTPTR_MAX;
 
-	*hp = h;
-
-	return hp;
+	return h;
 }
 
-static inline CC_HINT(always_inline, nonnull) fr_heap_index_t index_get(fr_heap_ext_t *h, void *data)
+static inline CC_HINT(always_inline, nonnull) fr_heap_index_t index_get(fr_heap_t *h, void *data)
 {
 	return *((fr_heap_index_t const *)(((uint8_t const *)data) + h->offset));
 }
 
-static inline CC_HINT(always_inline, nonnull) void index_set(fr_heap_ext_t *h, void *data, fr_heap_index_t idx)
+static inline CC_HINT(always_inline, nonnull) void index_set(fr_heap_t *h, void *data, fr_heap_index_t idx)
 {
 	*((fr_heap_index_t *)(((uint8_t *)data) + h->offset)) = idx;
 }
 
 #define OFFSET_SET(_heap, _idx) index_set(_heap, _heap->p[_idx], _idx);
 #define OFFSET_RESET(_heap, _idx) index_set(_heap, _heap->p[_idx], 0);
+
+static inline CC_HINT(always_inline)
+int realloc_heap(fr_heap_t **hp, unsigned int n_size)
+{
+	fr_heap_t *h = *hp;
+
+	h = (fr_heap_t *)talloc_realloc(hp, h, uint8_t, sizeof(fr_heap_t) + (sizeof(void *) * (n_size + 1)));
+	if (unlikely(!h)) {
+		fr_strerror_printf("Failed expanding heap to %u elements (%u bytes)",
+				   n_size, (n_size * (unsigned int)sizeof(void *)));
+		return -1;
+	}
+	talloc_set_type(h, fr_heap_t);
+	h->size = n_size;
+
+	*hp = h;
+
+	return 0;
+}
+
 
 /** Insert a new element into the heap
  *
@@ -119,15 +135,17 @@ static inline CC_HINT(always_inline, nonnull) void index_set(fr_heap_ext_t *h, v
  * heap is also stored in the element itself at the given offset
  * in bytes.
  *
- * @param[in] hp	The heap to insert an element into.
+ * @param[in,out] hp	The heap to extract an element from.
+ *			A new pointer value will be written to hp
+ *			if the heap is resized.
  * @param[in] data	Data to insert into the heap.
  * @return
  *	- 0 on success.
  *	- -1 on failure (heap full or malloc error).
  */
-int fr_heap_insert(fr_heap_t *hp, void *data)
+int fr_heap_insert(fr_heap_t **hp, void *data)
 {
-	fr_heap_ext_t *h = *hp;
+	fr_heap_t *h = *hp;
 	fr_heap_index_t child;
 
 	child = index_get(h, data);
@@ -165,14 +183,8 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 			n_size = h->size * 2;
 		}
 
-		h = (fr_heap_ext_t *)talloc_realloc(hp, h, uint8_t, sizeof(fr_heap_ext_t) + (sizeof(void *) * (n_size + 1)));
-		if (unlikely(!h)) {
-			fr_strerror_printf("Failed expanding heap to %u elements (%u bytes)",
-					   n_size, (n_size * (unsigned int)sizeof(void *)));
-			return -1;
-		}
-		talloc_set_type(h, fr_heap_ext_t);
-		h->size = n_size;
+		if (realloc_heap(&h, n_size) < 0) return -1;
+
 		*hp = h;
 	}
 
@@ -184,7 +196,7 @@ int fr_heap_insert(fr_heap_t *hp, void *data)
 	return 0;
 }
 
-static inline CC_HINT(always_inline) void fr_heap_bubble(fr_heap_ext_t *h, fr_heap_index_t child)
+static inline CC_HINT(always_inline) void fr_heap_bubble(fr_heap_t *h, fr_heap_index_t child)
 {
 	if (!fr_cond_assert(child > 0)) return;
 
@@ -211,15 +223,17 @@ static inline CC_HINT(always_inline) void fr_heap_bubble(fr_heap_ext_t *h, fr_he
 
 /** Remove a node from the heap
  *
- * @param[in] hp	The heap to extract an element from.
+ * @param[in,out] hp	The heap to extract an element from.
+ *			A new pointer value will be written to hp
+ *			if the heap is resized.
  * @param[in] data	Data to extract from the heap.
  * @return
  *	- 0 on success.
  *	- -1 on failure (no elements or data not found).
  */
-int fr_heap_extract(fr_heap_t *hp, void *data)
+int fr_heap_extract(fr_heap_t **hp, void *data)
 {
-	fr_heap_ext_t *h = *hp;
+	fr_heap_t *h = *hp;
 	fr_heap_index_t parent, child, max;
 
 	/*
@@ -260,6 +274,16 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 	h->num_elements--;
 
 	/*
+	 *	If the number of elements in the heap is half
+	 *	what we need, shrink the heap back.
+	 */
+	if ((h->num_elements * 2) < h->size) {
+		unsigned int n_size = ROUND_UP_DIV(h->size, 2);
+
+		if ((n_size > h->min) && (realloc_heap(&h, n_size)) == 0) *hp = h;
+	}
+
+	/*
 	 *	We didn't end up at the last element in the heap.
 	 *	This element has to be re-inserted.
 	 */
@@ -276,9 +300,18 @@ int fr_heap_extract(fr_heap_t *hp, void *data)
 	return 0;
 }
 
-void *fr_heap_pop(fr_heap_t *hp)
+/** Remove a node from the heap
+ *
+ * @param[in,out] hp	The heap to pop an element from.
+ *			A new pointer value will be written to hp
+ *			if the heap is resized.
+ * @return
+ *      - The item that was popped.
+ *	- NULL on error.
+ */
+void *fr_heap_pop(fr_heap_t **hp)
 {
-	fr_heap_ext_t *h = *hp;
+	fr_heap_t *h = *hp;
 
 	void *data;
 
@@ -294,17 +327,15 @@ void *fr_heap_pop(fr_heap_t *hp)
  *
  * @note If the heap is modified the iterator should be considered invalidated.
  *
- * @param[in] hp	to iterate over.
+ * @param[in] h		to iterate over.
  * @param[in] iter	Pointer to an iterator struct, used to maintain
  *			state between calls.
  * @return
  *	- User data.
  *	- NULL if at the end of the list.
  */
-void *fr_heap_iter_init(fr_heap_t *hp, fr_heap_iter_t *iter)
+void *fr_heap_iter_init(fr_heap_t *h, fr_heap_iter_t *iter)
 {
-	fr_heap_ext_t *h = *hp;
-
 	*iter = 1;
 
 	if (h->num_elements == 0) return NULL;
@@ -316,17 +347,15 @@ void *fr_heap_iter_init(fr_heap_t *hp, fr_heap_iter_t *iter)
  *
  * @note If the heap is modified the iterator should be considered invalidated.
  *
- * @param[in] hp	to iterate over.
+ * @param[in] h		to iterate over.
  * @param[in] iter	Pointer to an iterator struct, used to maintain
  *			state between calls.
  * @return
  *	- User data.
  *	- NULL if at the end of the list.
  */
-void *fr_heap_iter_next(fr_heap_t *hp, fr_heap_iter_t *iter)
+void *fr_heap_iter_next(fr_heap_t *h, fr_heap_iter_t *iter)
 {
-	fr_heap_ext_t *h = *hp;
-
 	if ((*iter + 1) > h->num_elements) return NULL;
 	*iter += 1;
 
@@ -334,12 +363,10 @@ void *fr_heap_iter_next(fr_heap_t *hp, fr_heap_iter_t *iter)
 }
 
 #ifndef TALLOC_GET_TYPE_ABORT_NOOP
-void fr_heap_verify(char const *file, int line, fr_heap_t *hp)
+void fr_heap_verify(char const *file, int line, fr_heap_t *h)
 {
-	fr_heap_ext_t	*h;
-
-	fr_fatal_assert_msg(hp, "CONSISTENCY CHECK FAILED %s[%i]: fr_heap_t pointer was NULL", file, line);
-	(void) talloc_get_type_abort(hp, fr_heap_t);
+	fr_fatal_assert_msg(h, "CONSISTENCY CHECK FAILED %s[%i]: fr_heap_t pointer was NULL", file, line);
+	(void) talloc_get_type_abort(h, fr_heap_t);
 
 	/*
 	 *	Allocating the heap structure and the array holding the heap as described in data structure
@@ -347,9 +374,8 @@ void fr_heap_verify(char const *file, int line, fr_heap_t *hp)
 	 *	fr_heap_t * isn't realloc()ed out from under the user, hence the following (and the use of h
 	 *	rather than hp to access anything in the heap structure).
 	 */
-	h = *hp;
 	fr_fatal_assert_msg(h, "CONSISTENCY CHECK FAILED %s[%i]: heap_t pointer was NULL", file, line);
-	(void) talloc_get_type_abort(h, fr_heap_ext_t);
+	(void) talloc_get_type_abort(h, fr_heap_t);
 
 	fr_fatal_assert_msg(h->num_elements <= h->size,
 			    "CONSISTENCY CHECK FAILED %s[%i]: num_elements exceeds size", file, line);
