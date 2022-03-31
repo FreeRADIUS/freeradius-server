@@ -326,7 +326,7 @@ void *fr_heap_pop(fr_heap_t **hp)
 
 	if (unlikely(h == NULL)) {
 		fr_strerror_const("Heap pointer was NULL");
-		return -1;
+		return NULL;
 	}
 
 	if (h->num_elements == 0) return NULL;
