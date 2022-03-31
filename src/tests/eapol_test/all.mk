@@ -94,7 +94,7 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf $(if $(POST_INSTALL_MAKEFILE_ARG),,$(BUILD_DIR)/li
 	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(eval OUT := $(patsubst %.ok,%.log,$@))
 	$(eval KEY := $(shell grep key_mgmt=NONE $< | sed 's/key_mgmt=NONE/-n/'))
-	${Q}if ! $(EAPOL_TEST) -t 5 -c $< -p $(PORT) -s $(SECRET) $(KEY) > $(OUT) 2>&1; then	\
+	${Q}if ! $(EAPOL_TEST) -t 10 -c $< -p $(PORT) -s $(SECRET) $(KEY) > $(OUT) 2>&1; then	\
 		echo "Last entries in supplicant log ($(patsubst %.conf,%.log,$@)):";	\
 		tail -n 40 "$(patsubst %.conf,%.log,$@)";				\
 		echo "--------------------------------------------------";		\
