@@ -10,25 +10,21 @@
 #
 ##############################################################################
 
-
-
-#
-# Here, suboptions .1 through .4 are the "following four" suboptions referred
-# to,
-
 ATTRIBUTE	Netware-Domain-Name			62	string
 
 ATTRIBUTE	Netware-Sub-Options			63	tlv
+
 # From RFC2242:
 #
 #   One and only one of the following four sub-options must be the first
 #   sub-option to be present in option 63 encoding. Each of them is
 #   simply a type length pair with length set to zero....
 #
-ATTRIBUTE	NWIP-Does-Not-Exist			.1	octets
-ATTRIBUTE	NWIP-Exist-In-Options-Area		.2	octets
-ATTRIBUTE	NWIP-Exist-In-Same-File			.3	octets
-ATTRIBUTE	NWIP-Exist-But-Too-Big			.4	octets
+ATTRIBUTE	NWIP-Does-Not-Exist			.1	bool	encode=exists
+ATTRIBUTE	NWIP-Exist-In-Options-Area		.2	bool	encode=exists
+ATTRIBUTE	NWIP-Exist-In-Same-File			.3	bool	encode=exists
+ATTRIBUTE	NWIP-Exist-But-Too-Big			.4	bool	encode=exists
+
 # Also from RFC2242:
 #
 #   If either NWIP_EXIST_IN_OPTIONS_AREA or NWIP_EXIST_IN_SNAME_FILE
