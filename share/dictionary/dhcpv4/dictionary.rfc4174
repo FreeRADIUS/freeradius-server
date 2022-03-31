@@ -13,6 +13,7 @@
 
 # Internet Storage Name Service
 ATTRIBUTE	iSNS					83	struct
+
 # RFC 4174 describes the iSNS functions field as follows:
 #
 #                 0                   1         1
@@ -56,6 +57,7 @@ MEMBER		iSCSI-Initiator			bit[1]
 MEMBER		iSCSI-Target			bit[1]
 MEMBER		Control-Node			bit[1]
 MEMBER		DD-Access-Enabled		bit[1]
+
 #
 # The format of the Administrative Flags field:
 #
@@ -77,6 +79,7 @@ MEMBER		Default-Discovery-Domain	bit[1]
 MEMBER		Management-SCNs			bit[1]
 MEMBER		Heartbeat			bit[1]
 MEMBER		Administrative-Flags-Enabled	bit[1]
+
 #
 # The format of the Server Security bitmap:
 #
@@ -104,6 +107,7 @@ MEMBER		Aggressive-Mode			bit[1]
 MEMBER		Main-Mode			bit[1]
 MEMBER 		IKE/IPSec			bit[1]
 MEMBER		Server-Security-Enabled		bit[1]
+
 #
 # RFC 4174 describes the last portion of iSNS as follows:
 #
@@ -117,8 +121,11 @@ MEMBER		Server-Security-Enabled		bit[1]
 #   |                            . . . .                            |
 #   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 #
-# with the presence and semantics of a1-a4 and b1-b4 depending on
-# the setting of Heartbeat (see the Administrative Flags field above).
-# For now, we simply have an ipaddr array.
+#  with the presence and semantics of a1-a4 and b1-b4 depending on
+#  the setting of Heartbeat (see the Administrative Flags field above).
 #
-MEMBER		IP-Addresses			ipaddr array
+#  We really should have keyed unions here, but that's for a future version.
+#
+MEMBER		iSNS-Server-Heartbeat-Primary		ipaddr
+MEMBER		iSNS-Server-Primary-Secondary		ipaddr
+MEMBER		Secondary-iSNS-Server			ipaddr array
