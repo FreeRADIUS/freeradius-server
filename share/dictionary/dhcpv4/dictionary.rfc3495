@@ -20,15 +20,15 @@ ATTRIBUTE	Provisioning-Server			.3	tlv
 ATTRIBUTE	FQDN					.0	string	dns_label
 ATTRIBUTE	Address					.1	ipaddr
 
-ATTRIBUTE	AS-Backoff-and-Retry			122.4	struct
-MEMBER		Nominal-Timeout			uint32
-MEMBER		Maximum-Timeout			uint32
-MEMBER		Maximum-Retries			uint32
+ATTRIBUTE	AS-Backoff-and-Retry			.4	struct
+MEMBER		Nominal-Timeout				uint32
+MEMBER		Maximum-Timeout				uint32
+MEMBER		Maximum-Retries				uint32
 
 ATTRIBUTE	AP-Backoff-and-Retry			.5	struct
-MEMBER		Nominal-Timeout			uint32
-MEMBER		Maximum-Timeout			uint32
-MEMBER		Maximum-Retries			uint32
+MEMBER		Nominal-Timeout				uint32
+MEMBER		Maximum-Timeout				uint32
+MEMBER		Maximum-Retries				uint32
 
 ATTRIBUTE	Kerberos-Realm-Name			.6	string
 ATTRIBUTE	Ticket-Granting-Server-Utilization	.7	bool

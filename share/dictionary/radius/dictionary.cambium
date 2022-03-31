@@ -1,6 +1,7 @@
 # -*- text -*-
-# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
 #
 ##############################################################################
 #
@@ -21,11 +22,11 @@ BEGIN-VENDOR	Cambium
 
 ATTRIBUTE	Auth-Role				1	integer
 
-VALUE	Auth-Role	Invalid			0
-VALUE	Auth-Role	Read-Only		1
-VALUE	Auth-Role	System-Admin		2
-VALUE	Auth-Role	Security-Officer	3
-VALUE	Auth-Role	Deliberately-Bad	4
+VALUE	Auth-Role			Invalid			0
+VALUE	Auth-Role			Read-Only		1
+VALUE	Auth-Role			System-Admin		2
+VALUE	Auth-Role			Security-Officer	3
+VALUE	Auth-Role			Deliberately-Bad	4
 
 ATTRIBUTE	ePMP-Data-VLAN-Id			21	integer
 ATTRIBUTE	ePMP-Management-VLAN-Id			22	integer
@@ -35,22 +36,22 @@ ATTRIBUTE	ePMP-Max-Burst-Downlink-Rate		27	integer
 
 ATTRIBUTE	ePMP-UserLevel				50	integer
 
-VALUE	ePMP-UserLevel		Install		2
-VALUE	ePMP-UserLevel		Admin		3
-VALUE	ePMP-UserLevel		User		4
-VALUE	ePMP-UserLevel		Read-Only	5
+VALUE	ePMP-UserLevel			Install			2
+VALUE	ePMP-UserLevel			Admin			3
+VALUE	ePMP-UserLevel			User			4
+VALUE	ePMP-UserLevel			Read-Only		5
 
 ATTRIBUTE	ePMP-SM-Priority			51	integer
 
-VALUE	ePMP-SM-Priority	Normal		0
-VALUE	ePMP-SM-Priority	High		1
-VALUE	ePMP-SM-Priority	Low		2
+VALUE	ePMP-SM-Priority		Normal			0
+VALUE	ePMP-SM-Priority		High			1
+VALUE	ePMP-SM-Priority		Low			2
 
 ATTRIBUTE	ePMP-VLAN-Membersip-Set			52	integer
 ATTRIBUTE	ePMP-Management-VLAN-Priority		53	integer
 ATTRIBUTE	ePMP-Data-VLAN-Priority			54	integer
 ATTRIBUTE	ePMP-Separate-Management-VLAN-Id	55	integer
-ATTRIBUTE	ePMP-Separate-Management-VLAN-Priority 	56	integer
+ATTRIBUTE	ePMP-Separate-Management-VLAN-Priority	56	integer
 ATTRIBUTE	ePMP-Multicast-VLAN-Id			57	integer
 ATTRIBUTE	ePMP-VLAN-Mapping			58	integer
 

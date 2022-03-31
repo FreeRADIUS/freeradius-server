@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -208,8 +208,8 @@ ATTRIBUTE	IP-Address-Mask				.3	octets
 ATTRIBUTE	Port					.4	short
 # Really "uint16 start, end"
 ATTRIBUTE	Port-Range				.5	struct
-MEMBER		Start						uint16
-MEMBER		End						uint16
+MEMBER		Start					uint16
+MEMBER		End					uint16
 
 ATTRIBUTE	Inverted				.6	byte
 ATTRIBUTE	Assigned				.7	byte
@@ -217,7 +217,7 @@ VALUE	Assigned			Src-Assigned		1
 VALUE	Assigned			Dst-Assigned		2
 VALUE	Assigned			Src-Dst-Assigned	3
 
-ATTRIBUTE	Dst-Spec				28.11.6	tlv clone=Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec
+ATTRIBUTE	Dst-Spec				28.11.6	tlv clone=Vendor-Specific..Packet-Flow-Descriptor.Classifier.Src-Spec
 
 ATTRIBUTE	IP-TOS/DSCP-Range-and-Mask		28.11.7	octets
 ATTRIBUTE	VLAN-ID					28.11.8	integer
@@ -475,12 +475,12 @@ ATTRIBUTE	Priority				.2	byte
 ATTRIBUTE	Protocol				.3	byte
 ATTRIBUTE	Direction				.4	byte
 
-ATTRIBUTE	Src-Spec				84.9.5	tlv  clone=Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec
+ATTRIBUTE	Src-Spec				.5	tlv  clone=Vendor-Specific..Packet-Flow-Descriptor.Classifier.Src-Spec
 #  Add these two, also
 ATTRIBUTE	MAC-Address				.8	ether
 ATTRIBUTE	MAC-Mask				.9	ether
 
-ATTRIBUTE	Dest-Spec				84.9.6	tlv clone=Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec
+ATTRIBUTE	Dest-Spec				84.9.6	tlv clone=Vendor-Specific..Packet-Flow-Descriptor-v2.Classifier.Src-Spec
 
 ATTRIBUTE	Classifier-IP-ToS-DSCP			84.9.7	byte
 
@@ -488,15 +488,15 @@ ATTRIBUTE	Classifier-Action			84.9.8	byte
 
 ATTRIBUTE	Classifier-Eth-Option			84.9.9	tlv
 
-ATTRIBUTE	Eth-Proto-Type				84.9.9.1 tlv
+ATTRIBUTE	Eth-Proto-Type				.1	tlv
 ATTRIBUTE	Ethertype				.1	short
 ATTRIBUTE	Type-DSAP				.2	byte
 
-ATTRIBUTE	Eth-VLAN-Id				84.9.9.2	tlv
+ATTRIBUTE	Eth-VLAN-Id				.2	tlv
 ATTRIBUTE	S-VID					.1	integer
 ATTRIBUTE	C-VID					.2	integer
 
-ATTRIBUTE	Eth-Priority-Range			84.9.9.3	tlv
+ATTRIBUTE	Eth-Priority-Range			.3	tlv
 ATTRIBUTE	Low					.1	byte
 ATTRIBUTE	High					.2	byte
 ATTRIBUTE	XXX					.4	byte

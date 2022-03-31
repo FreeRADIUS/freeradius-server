@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -14,27 +14,27 @@
 # Client System Architecture
 ATTRIBUTE	Client-System				93	uint16	array
 
-VALUE	Client-System	Intel-x86PC	0
-VALUE	Client-System	NEXT-PC98	1
-VALUE	Client-System	EFI-Itanium	2
-VALUE	Client-System	DEC-Alpha	3
-VALUE	Client-System	Arc-x86		4
-VALUE	Client-System	Intel-Lean-Client 5
-VALUE	Client-System	EFI-IA32	6
-VALUE	Client-System	EFI-BC		7
-VALUE	Client-System	EFI-Xscale	8
-VALUE	Client-System	EDI-x86-64	9
+VALUE	Client-System			Intel-x86PC		0
+VALUE	Client-System			NEXT-PC98		1
+VALUE	Client-System			EFI-Itanium		2
+VALUE	Client-System			DEC-Alpha		3
+VALUE	Client-System			Arc-x86			4
+VALUE	Client-System			Intel-Lean-Client	5
+VALUE	Client-System			EFI-IA32		6
+VALUE	Client-System			EFI-BC			7
+VALUE	Client-System			EFI-Xscale		8
+VALUE	Client-System			EDI-x86-64		9
 
 # Client Network Device Interface
 ATTRIBUTE	Client-NDI				94	struct
-MEMBER		Type		uint8
-MEMBER		Major		uint8
-MEMBER		Minor		uint8
+MEMBER		Type					uint8
+MEMBER		Major					uint8
+MEMBER		Minor					uint8
 
 # UUID/GUID-based Client Identifier
 ATTRIBUTE	UUID/GUID				97	struct
-MEMBER		Type		uint8		# really key, but only one sub-structure is defined
-MEMBER		Identifier	octets[16]
+MEMBER		Type					uint8		# really key, but only one sub-structure is defined
+MEMBER		Identifier				octets[16]
 
 ATTRIBUTE	TFTP-Server-IP-Address			128	octets
 ATTRIBUTE	Call-Server-IP-address			129	octets

@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 FLAGS	internal
@@ -11,6 +11,6 @@ VALUE	Packet-Type			iquery.response		17
 VALUE	Packet-Type			status.response		18
 VALUE	Packet-Type			notify.response		20
 VALUE	Packet-Type			update.response		21
-VALUE	Packet-Type			dns-stateful-operations.response	22
+VALUE	Packet-Type			dns-stateful-operations.response 22
 
 VALUE	Packet-Type			Do-Not-Respond		256

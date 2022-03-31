@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2020 The FreeRADIUS Server project and contributors
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -15,31 +15,31 @@
 #
 #  TFTPD attributes for the packet header
 #
-ATTRIBUTE	Opcode			1	uint16
-ATTRIBUTE	Filename		2	string
-ATTRIBUTE	Mode			3	uint8
-ATTRIBUTE	Block-Size		4	uint16
+ATTRIBUTE	Opcode					1	uint16
+ATTRIBUTE	Filename				2	string
+ATTRIBUTE	Mode					3	uint8
+ATTRIBUTE	Block-Size				4	uint16
 
-ATTRIBUTE	Block			5	uint16
-ATTRIBUTE	Data			6	octets
-ATTRIBUTE	Error-Code		7	uint16
-ATTRIBUTE	Error-Message		8	string
+ATTRIBUTE	Block					5	uint16
+ATTRIBUTE	Data					6	octets
+ATTRIBUTE	Error-Code				7	uint16
+ATTRIBUTE	Error-Message				8	string
 
-VALUE  Opcode	Read-Request 		0x0001
-VALUE  Opcode	Write-Request 		0x0002
-VALUE  Opcode	Data 			0x0003
-VALUE  Opcode	Acknowledgement		0x0004
-VALUE  Opcode	Error 			0x0005
+VALUE	Opcode				Read-Request		0x0001
+VALUE	Opcode				Write-Request		0x0002
+VALUE	Opcode				Data			0x0003
+VALUE	Opcode				Acknowledgement		0x0004
+VALUE	Opcode				Error			0x0005
 
-VALUE  Mode	INVALID	0
-VALUE  Mode	ASCII	1
-VALUE  Mode	OCTET	2
+VALUE	Mode				INVALID			0
+VALUE	Mode				ASCII			1
+VALUE	Mode				OCTET			2
 
-VALUE  Error-Code		Not-Defined			0
-VALUE  Error-Code		File-Not-Found			1
-VALUE  Error-Code		Access-Violation		2
-VALUE  Error-Code		Disk-Full			3
-VALUE  Error-Code		Illegal-Operation		4
-VALUE  Error-Code		Unknown-transfer-ID		5
-VALUE  Error-Code		File-Already-Exists		6
-VALUE  Error-Code		No-Such-User			7
+VALUE	Error-Code			Not-Defined		0
+VALUE	Error-Code			File-Not-Found		1
+VALUE	Error-Code			Access-Violation	2
+VALUE	Error-Code			Disk-Full		3
+VALUE	Error-Code			Illegal-Operation	4
+VALUE	Error-Code			Unknown-transfer-ID	5
+VALUE	Error-Code			File-Already-Exists	6
+VALUE	Error-Code			No-Such-User		7

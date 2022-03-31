@@ -28,10 +28,10 @@ ATTRIBUTE	iSNS					83	struct
 #           14            DD-Based Authorization
 #           13            Security Policy Distribution
 #
-MEMBER		Functions-Reserved		bit[13]
-MEMBER		Security-Policy-Distribution	bit[1]
-MEMBER		DD-Based-Authorization		bit[1]
-MEMBER		Function-Fields-Enabled		bit[1]
+MEMBER		Functions-Reserved			bit[13]
+MEMBER		Security-Policy-Distribution		bit[1]
+MEMBER		DD-Based-Authorization			bit[1]
+MEMBER		Function-Fields-Enabled			bit[1]
 #
 # The format of the DD Access Field:
 #
@@ -50,13 +50,13 @@ MEMBER		Function-Fields-Enabled		bit[1]
 #                11     iFCP Target Port
 #                10     iFCP Initiator Port
 #
-MEMBER		DD-Access-Reserved		bit[10]
-MEMBER		iFCP-Initiator-Port		bit[1]
-MEMBER		iFCP-Target-Port		bit[1]
-MEMBER		iSCSI-Initiator			bit[1]
-MEMBER		iSCSI-Target			bit[1]
-MEMBER		Control-Node			bit[1]
-MEMBER		DD-Access-Enabled		bit[1]
+MEMBER		DD-Access-Reserved			bit[10]
+MEMBER		iFCP-Initiator-Port			bit[1]
+MEMBER		iFCP-Target-Port			bit[1]
+MEMBER		iSCSI-Initiator				bit[1]
+MEMBER		iSCSI-Target				bit[1]
+MEMBER		Control-Node				bit[1]
+MEMBER		DD-Access-Enabled			bit[1]
 
 #
 # The format of the Administrative Flags field:
@@ -74,11 +74,11 @@ MEMBER		DD-Access-Enabled		bit[1]
 #                     13          Management SCNs
 #                     12          Default Discovery Domain
 #
-MEMBER		Administrative-Flags-Reserved	bit[12]
-MEMBER		Default-Discovery-Domain	bit[1]
-MEMBER		Management-SCNs			bit[1]
-MEMBER		Heartbeat			bit[1]
-MEMBER		Administrative-Flags-Enabled	bit[1]
+MEMBER		Administrative-Flags-Reserved		bit[12]
+MEMBER		Default-Discovery-Domain		bit[1]
+MEMBER		Management-SCNs				bit[1]
+MEMBER		Heartbeat				bit[1]
+MEMBER		Administrative-Flags-Enabled		bit[1]
 
 #
 # The format of the Server Security bitmap:
@@ -99,14 +99,14 @@ MEMBER		Administrative-Flags-Enabled	bit[1]
 #                26      Transport Mode
 #                25      Tunnel Mode
 #
-MEMBER		Server-Security-Reserved	bit[25]
-MEMBER		Tunnel-Mode			bit[1]
-MEMBER		Transport-Mode			bit[1]
-MEMBER		PFS				bit[1]
-MEMBER		Aggressive-Mode			bit[1]
-MEMBER		Main-Mode			bit[1]
+MEMBER		Server-Security-Reserved		bit[25]
+MEMBER		Tunnel-Mode				bit[1]
+MEMBER		Transport-Mode				bit[1]
+MEMBER		PFS					bit[1]
+MEMBER		Aggressive-Mode				bit[1]
+MEMBER		Main-Mode				bit[1]
 MEMBER 		IKE/IPSec			bit[1]
-MEMBER		Server-Security-Enabled		bit[1]
+MEMBER		Server-Security-Enabled			bit[1]
 
 #
 # RFC 4174 describes the last portion of iSNS as follows:

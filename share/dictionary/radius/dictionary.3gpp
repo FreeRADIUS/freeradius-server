@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -38,7 +38,7 @@ ATTRIBUTE	GGSN-MCC-MNC				9	string
 ATTRIBUTE	NSAPI					10	string
 ATTRIBUTE	Session-Stop-Indicator			11	byte
 
-VALUE	Session-Stop-Indicator		Stop		255
+VALUE	Session-Stop-Indicator		Stop			255
 
 ATTRIBUTE	Selection-Mode				12	string[1]
 ATTRIBUTE	Charging-Characteristics		13	string
@@ -51,8 +51,8 @@ ATTRIBUTE	IPv6-DNS-Servers			17	ipv6addr array
 ATTRIBUTE	SGSN-MCC-MNC				18	string
 ATTRIBUTE	Teardown-Indicator			19	byte
 
-VALUE	Teardown-Indicator		This-IP-CAN	0
-VALUE	Teardown-Indicator		All-IP-CAN	1
+VALUE	Teardown-Indicator		This-IP-CAN		0
+VALUE	Teardown-Indicator		All-IP-CAN		1
 
 ATTRIBUTE	IMEISV					20	string
 ATTRIBUTE	RAT-Type				21	byte
@@ -114,7 +114,7 @@ MEMBER		TAC					uint16
 STRUCT	ECGI				Type			129
 MEMBER		ECI					octets[4]
 
-STRUCT	TAI-ECGI			Type		130
+STRUCT	TAI-ECGI				Type		130
 MEMBER		TAC					uint16
 MEMBER		PLMN-ID					octets[3]
 MEMBER		ECI					octets[4]
@@ -132,8 +132,8 @@ MEMBER		Precedence				byte
 MEMBER		Length					byte
 MEMBER		Direction				byte
 
-VALUE	Direction			Downlink	0
-VALUE	Direction			Uplink		1
+VALUE	Direction			Downlink		0
+VALUE	Direction			Uplink			1
 
 MEMBER		Packet-Filter				octets
 

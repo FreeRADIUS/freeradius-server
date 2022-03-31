@@ -27,5 +27,5 @@ VALUE	protocol			dhcpv6-delayed-authentication 2
 VALUE	protocol			dhcpv6-reconfigure-key	3
 
 STRUCT	HMAC-SHA1-keyed-hash			algorithm	1
-MEMBER		key-id				uint32
-MEMBER		hash				octets[20]
+MEMBER		key-id					uint32
+MEMBER		hash					octets[20]

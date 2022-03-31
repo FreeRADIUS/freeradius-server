@@ -10,7 +10,6 @@
 #
 ##############################################################################
 
-
 ATTRIBUTE	PCP-IPv4-Server-Addresses		158	struct
-MEMBER		server		struct length=uint8,array
-MEMBER		ip-address	ipv4addr array
+MEMBER		server					struct length=uint8,array
+MEMBER		ip-address				ipv4addr array

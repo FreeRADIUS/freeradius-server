@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -37,7 +37,6 @@ VALUE	Flags				Fwd-Up-To-Date		0x01
 VALUE	Flags				Rev-Up-To-Date		0x02
 VALUE	Flags				Synthesized-Name	0x04
 VALUE	Flags				Using-Requested-FQDN	0x08
-
 
 ATTRIBUTE	Failover-Expiration-Time		120	date
 ATTRIBUTE	Failover-Max-Unacked-BNDUPD		121	uint32

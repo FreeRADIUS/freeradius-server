@@ -1,18 +1,18 @@
 # -*- text -*-
-# Copyright (C) 2021 The FreeRADIUS Server project and contributors
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
 #
 #  dictionary.mellanox
 #
 #       Discovered by Aaron Knister <aaron.knister@gmail.com>
 #
 #
-# Version $Id$
 
-VENDOR          Mellanox 33049
+VENDOR		Mellanox			33049
 
-BEGIN-VENDOR    Mellanox
+BEGIN-VENDOR	Mellanox
 
-ATTRIBUTE       Local-User-Name                1       string
+ATTRIBUTE	Local-User-Name				1	string
 
 END-VENDOR      Mellanox
