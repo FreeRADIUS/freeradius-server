@@ -10,46 +10,46 @@
 #
 ##############################################################################
 
-VENDOR		NetElastic				54268
+VENDOR		NetElastic			54268
 
 BEGIN-VENDOR	NetElastic
 
-ATTRIBUTE	NetElastic-Input-Burst-Size		1	integer
-ATTRIBUTE	NetElastic-Input-Average-Rate		2	integer
-ATTRIBUTE	NetElastic-Input-Peak-Rate		3	integer
-ATTRIBUTE	NetElastic-Output-Burst-Size		4	integer
-ATTRIBUTE	NetElastic-Output-Average-Rate		5	integer
-ATTRIBUTE	NetElastic-Output-Peak-Rate		6	integer
-ATTRIBUTE	NetElastic-Remanent-Volume		15	integer
-ATTRIBUTE	NetElastic-ISP-ID			17	string
-ATTRIBUTE	NetElastic-PortalURL			27	string
-ATTRIBUTE	NetElastic-Qos-Profile-Name		31	string
-ATTRIBUTE	NetElastic-Lease-Time			74	integer
-ATTRIBUTE	NetElastic-Input-Peak-Burst-Size	77	integer
-ATTRIBUTE	NetElastic-Output-Peak-Burst-Size	78	integer
-ATTRIBUTE	NetElastic-Data-Filter			82	string
-ATTRIBUTE	NetElastic-Portal-Mode			85	integer
-ATTRIBUTE	NetElastic-Policy-Name			95	string
-ATTRIBUTE	NetElastic-Primary-DNS			135	ipaddr
-ATTRIBUTE	NetElastic-Secondary-DNS		136	ipaddr
-ATTRIBUTE	NetElastic-Domain-Name			138	string
-ATTRIBUTE	NetElastic-HTTP-Redirect-URL		140	string
-ATTRIBUTE	NetElastic-Acct-IPv6-Input-Octets	144	integer
-ATTRIBUTE	NetElastic-Acct-IPv6-Output-Octets	145	integer
-ATTRIBUTE	NetElastic-Acct-IPv6-Input-Packets	146	integer
-ATTRIBUTE	NetElastic-Acct-IPv6-Output-Packets	147	integer
-ATTRIBUTE	NetElastic-Acct-IPv6-Input-Gigawords	148	integer
-ATTRIBUTE	NetElastic-Acct-IPv6-Output-Gigawords	149	integer
-ATTRIBUTE	NetElastic-User-Mac			153	string
-ATTRIBUTE	NetElastic-Framed-IPv6-Address		158	ipv6addr
-ATTRIBUTE	NetElastic-NAT-Public-Address		161	ipaddr
-ATTRIBUTE	NetElastic-NAT-Start-Port		162	integer
-ATTRIBUTE	NetElastic-NAT-End-Port			163	integer
-ATTRIBUTE	NetElastic-Tariff-Input-Octets		247	string
-ATTRIBUTE	NetElastic-Tariff-Output-Octets		248	string
-ATTRIBUTE	NetElastic-Tariff-Input-Gigawords	249	string
-ATTRIBUTE	NetElastic-Tariff-Output-Gigawords	250	string
-ATTRIBUTE	NetElastic-Remanent-Volume-Type		251	integer
-ATTRIBUTE	NetElastic-Web-COA			252	integer
+ATTRIBUTE	Input-Burst-Size			1	integer
+ATTRIBUTE	Input-Average-Rate			2	integer
+ATTRIBUTE	Input-Peak-Rate				3	integer
+ATTRIBUTE	Output-Burst-Size			4	integer
+ATTRIBUTE	Output-Average-Rate			5	integer
+ATTRIBUTE	Output-Peak-Rate			6	integer
+ATTRIBUTE	Remanent-Volume				15	integer
+ATTRIBUTE	ISP-ID					17	string
+ATTRIBUTE	PortalURL				27	string
+ATTRIBUTE	Qos-Profile-Name			31	string
+ATTRIBUTE	Lease-Time				74	integer
+ATTRIBUTE	Input-Peak-Burst-Size			77	integer
+ATTRIBUTE	Output-Peak-Burst-Size			78	integer
+ATTRIBUTE	Data-Filter				82	string
+ATTRIBUTE	Portal-Mode				85	integer
+ATTRIBUTE	Policy-Name				95	string
+ATTRIBUTE	Primary-DNS				135	ipaddr
+ATTRIBUTE	Secondary-DNS				136	ipaddr
+ATTRIBUTE	Domain-Name				138	string
+ATTRIBUTE	HTTP-Redirect-URL			140	string
+ATTRIBUTE	Acct-IPv6-Input-Octets			144	integer
+ATTRIBUTE	Acct-IPv6-Output-Octets			145	integer
+ATTRIBUTE	Acct-IPv6-Input-Packets			146	integer
+ATTRIBUTE	Acct-IPv6-Output-Packets		147	integer
+ATTRIBUTE	Acct-IPv6-Input-Gigawords		148	integer
+ATTRIBUTE	Acct-IPv6-Output-Gigawords		149	integer
+ATTRIBUTE	User-Mac				153	string
+ATTRIBUTE	Framed-IPv6-Address			158	ipv6addr
+ATTRIBUTE	NAT-Public-Address			161	ipaddr
+ATTRIBUTE	NAT-Start-Port				162	integer
+ATTRIBUTE	NAT-End-Port				163	integer
+ATTRIBUTE	Tariff-Input-Octets			247	string
+ATTRIBUTE	Tariff-Output-Octets			248	string
+ATTRIBUTE	Tariff-Input-Gigawords			249	string
+ATTRIBUTE	Tariff-Output-Gigawords			250	string
+ATTRIBUTE	Remanent-Volume-Type			251	integer
+ATTRIBUTE	Web-COA					252	integer
 
 END-VENDOR	NetElastic
