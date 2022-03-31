@@ -1,0 +1,21 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC3925 - Vendor-Identifying Vendor Options for Dynamic Host Configuration
+#            Protocol version 4 (DHCPv4)
+#
+#  $Id$
+#
+##############################################################################
+
+# Vendor Class
+#
+# String name that defines the vendor space used for the TLV's
+# in option 125.
+#
+ATTRIBUTE	V-I-Vendor-Class			124	octets
+# Vendor-Specific
+ATTRIBUTE	V-I-Vendor-Specific			125	vsa

@@ -1,0 +1,14 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC2485 - DHCP Option for The Open Group's User Authentication Protocol
+#
+#  $Id$
+#
+##############################################################################
+
+# Open Group's User Authentication
+ATTRIBUTE	User-Auth				98	string # space-separated list of URLs

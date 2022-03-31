@@ -1,0 +1,44 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC2242 - NetWare/IP Domain Name and Information
+#
+#  $Id$
+#
+##############################################################################
+
+
+
+#
+# Here, suboptions .1 through .4 are the "following four" suboptions referred
+# to,
+
+ATTRIBUTE	Netware-Domain-Name			62	string
+
+ATTRIBUTE	Netware-Sub-Options			63	tlv
+# From RFC2242:
+#
+#   One and only one of the following four sub-options must be the first
+#   sub-option to be present in option 63 encoding. Each of them is
+#   simply a type length pair with length set to zero....
+#
+ATTRIBUTE	NWIP-Does-Not-Exist			.1	octets
+ATTRIBUTE	NWIP-Exist-In-Options-Area		.2	octets
+ATTRIBUTE	NWIP-Exist-In-Same-File			.3	octets
+ATTRIBUTE	NWIP-Exist-But-Too-Big			.4	octets
+# Also from RFC2242:
+#
+#   If either NWIP_EXIST_IN_OPTIONS_AREA or NWIP_EXIST_IN_SNAME_FILE
+#   sub-options is set, one or more of the following sub-options may be
+#   present.
+#
+ATTRIBUTE	NSQ-Broadcast				.5	bool
+ATTRIBUTE	Preferred-DSS				.6	ipaddr array
+ATTRIBUTE	Nearest-NWIP-Server			.7	ipaddr array
+ATTRIBUTE	Autoretries				.8	uint8
+ATTRIBUTE	Autoretry-Secs				.9	uint8
+ATTRIBUTE	NWIP-1-1				.10	bool
+ATTRIBUTE	Primary-DSS				.11	ipaddr

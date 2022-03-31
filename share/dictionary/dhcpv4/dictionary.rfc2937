@@ -1,0 +1,18 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#  RFC2937 - The Name Service Search Option for DHCP
+#
+#  $Id$
+#
+##############################################################################
+
+# Name Service Search
+#
+#  Array of option numbers which should then be used, in order,
+#  to search for DNS information.
+#
+ATTRIBUTE	Name-Service-Search			117	uint16 array
