@@ -148,6 +148,11 @@ int fr_heap_insert(fr_heap_t **hp, void *data)
 	fr_heap_t *h = *hp;
 	fr_heap_index_t child;
 
+	if (unlikely(h == NULL)) {
+		fr_strerror_const("Heap pointer was NULL");
+		return -1;
+	}
+
 	child = index_get(h, data);
 	if (fr_heap_entry_inserted(child)) {
 		fr_strerror_const("Node is already in the heap");
@@ -236,6 +241,11 @@ int fr_heap_extract(fr_heap_t **hp, void *data)
 	fr_heap_t *h = *hp;
 	fr_heap_index_t parent, child, max;
 
+	if (unlikely(h == NULL)) {
+		fr_strerror_const("Heap pointer was NULL");
+		return -1;
+	}
+
 	/*
 	 *	Extract element.
 	 */
@@ -312,8 +322,12 @@ int fr_heap_extract(fr_heap_t **hp, void *data)
 void *fr_heap_pop(fr_heap_t **hp)
 {
 	fr_heap_t *h = *hp;
-
 	void *data;
+
+	if (unlikely(h == NULL)) {
+		fr_strerror_const("Heap pointer was NULL");
+		return -1;
+	}
 
 	if (h->num_elements == 0) return NULL;
 
