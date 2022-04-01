@@ -44,6 +44,7 @@ typedef struct {
 	char		**results;	//!< Result strings from statement execution.
 	char		*error;		//!< The last error string created by one of the call backs.
 	bool		established;	//!< Set to false once the connection has been properly established.
+	CS_INT		rows_affected;	//!< Rows affected by last INSERT / UPDATE / DELETE.
 } rlm_sql_freetds_conn_t;
 
 #define	MAX_DATASTR_LEN	256
@@ -198,6 +199,12 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t c
 	CS_RETCODE	results_ret;
 	CS_INT		result_type;
 
+	/*
+	 *	Reset rows_affected in case the query fails.
+	 *	Prevents accidentally returning the rows_affected from a previous query.
+	 */
+	conn->rows_affected = -1;
+
 	if (ct_cmd_alloc(conn->db, &conn->command) != CS_SUCCEED) {
 		ERROR("Unable to allocate command structure (ct_cmd_alloc())");
 
@@ -252,6 +259,17 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t c
 
 			return RLM_SQL_ERROR;
 		}
+	}
+
+	/*
+	 *	Retrieve the number of rows affected - the later calls
+	 *	to ct_results end up resetting the underlying counter so we
+	 *	no longer have access to this.
+	 */
+	if (ct_res_info(conn->command, CS_ROW_COUNT, &conn->rows_affected, CS_UNUSED, NULL) != CS_SUCCEED) {
+		ERROR("rlm_sql_freetds: error retrieving row count");
+
+		return RLM_SQL_ERROR;
 	}
 
 	/*
@@ -553,15 +571,8 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t c
 static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_freetds_conn_t *conn = handle->conn;
-	int	num;
 
-	if (ct_res_info(conn->command, CS_ROW_COUNT, (CS_INT *)&num, CS_UNUSED, NULL) != CS_SUCCEED) {
-		ERROR("error retrieving row count");
-
-		return RLM_SQL_ERROR;
-	}
-
-	return num;
+	return (conn->rows_affected);
 }
 
 static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
@@ -629,6 +640,7 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 		return RLM_SQL_ERROR;
 	}
 	conn->command = NULL;
+	conn->rows_affected = -1;
 
 	return RLM_SQL_OK;
 }
