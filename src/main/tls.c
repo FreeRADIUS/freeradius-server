@@ -588,6 +588,9 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	}
 
 	request = request_alloc(ssn);
+	request->packet = rad_alloc(request, false);
+	request->reply = rad_alloc(request, false);
+
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_REQUEST, (void *)request);
 
 	/*
