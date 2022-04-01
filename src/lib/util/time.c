@@ -83,6 +83,10 @@ fr_table_num_ordered_t const fr_time_precision_table[] = {
 	{ L("days"),		FR_TIME_RES_DAY },
 	{ L("d"),		FR_TIME_RES_DAY }
 
+	/*
+	 *	Note that there is no TIME_RES_MONTH or TIME_RES_YEAR, because months and years have variable
+	 *	lengths.
+	 */
 };
 size_t fr_time_precision_table_len = NUM_ELEMENTS(fr_time_precision_table);
 
