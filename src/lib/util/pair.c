@@ -560,7 +560,7 @@ int fr_pair_to_unknown(fr_pair_t *vp)
  *	- Next matching fr_pair_t.
  *	- NULL if not more matching fr_pair_ts could be found.
  */
-void *fr_pair_iter_next_by_da(fr_dlist_head_t *list, void *to_eval, void *uctx)
+static void *fr_pair_iter_next_by_da(fr_dlist_head_t *list, void *to_eval, void *uctx)
 {
 	fr_pair_t	*c;
 	fr_dict_attr_t	*da = uctx;
@@ -583,7 +583,7 @@ void *fr_pair_iter_next_by_da(fr_dlist_head_t *list, void *to_eval, void *uctx)
  *	- Next matching fr_pair_t.
  *	- NULL if not more matching fr_pair_ts could be found.
  */
-void *fr_pair_iter_next_by_ancestor(fr_dlist_head_t *list, void *to_eval, void *uctx)
+static void *fr_pair_iter_next_by_ancestor(fr_dlist_head_t *list, void *to_eval, void *uctx)
 {
 	fr_pair_t	*c;
 	fr_dict_attr_t	*da = uctx;

@@ -230,12 +230,6 @@ size_t		fr_pair_list_len(fr_pair_list_t const *list) CC_HINT(nonnull);
 /* Searching and list modification */
 int		fr_pair_to_unknown(fr_pair_t *vp) CC_HINT(nonnull);
 
-void		*fr_pair_iter_next_by_da(fr_dlist_head_t *list,
-					 void *to_eval, void *uctx) CC_HINT(nonnull);
-
-void		*fr_pair_iter_next_by_ancestor(fr_dlist_head_t *list,
-					       void *to_eval, void *uctx) CC_HINT(nonnull);
-
 bool		fr_pair_matches_da(void const *item, void const *uctx) CC_HINT(nonnull);
 
 /** @hidecallergraph */
