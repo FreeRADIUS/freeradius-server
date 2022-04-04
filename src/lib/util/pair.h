@@ -17,7 +17,7 @@
 
 /** AVP manipulation and search API
  *
- * @file src/lib/util/dpair.h
+ * @file src/lib/util/pair.h
  *
  * @copyright 2020 The FreeRADIUS server project
  */
