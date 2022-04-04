@@ -519,7 +519,7 @@ static inline CC_HINT(nonnull(1)) void *fr_tlist_pop_tail(fr_tlist_head_t *list_
  *	- The item replaced
  *	- NULL if nothing replaced
  */
-static inline CC_HINT(nonnull) void *fr_tlist_replace(fr_dlist_head_t *list_head, void *item, void *ptr)
+static inline CC_HINT(nonnull) void *fr_tlist_replace(fr_tlist_head_t *list_head, void *item, void *ptr)
 {
 	fr_tlist_t *item_entry;
 	fr_tlist_t *ptr_entry;
