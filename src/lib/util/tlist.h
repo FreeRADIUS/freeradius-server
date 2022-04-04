@@ -938,6 +938,9 @@ DIAG_OFF(unused-function) \
 	static inline	fr_tlist_head_t *_name ## _list_head(FR_TLIST_HEAD(_name) const *list) \
 		{ return	UNCONST(fr_tlist_head_t *, &list->head); } \
 \
+	static inline	fr_dlist_head_t *_name ## _dlist_head(FR_TLIST_HEAD(_name) const *list) \
+		{ return	UNCONST(fr_dlist_head_t *, &list->head.dlist_head); } \
+\
 	static inline	void _name ## _entry_init(_element_type *entry) \
 		{ \
 			_Generic((&entry->_element_entry), \
