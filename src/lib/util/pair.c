@@ -1702,25 +1702,23 @@ mismatch:
  */
 int fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const *from)
 {
-	fr_pair_list_t	tmp_list;
-	fr_pair_t	*vp, *new_vp;
+	fr_pair_t	*vp, *new_vp, *first_added = NULL;
 	int		cnt = 0;
-
-	fr_pair_list_init(&tmp_list);
 
 	for (vp = fr_pair_list_head(from);
 	     vp;
 	     vp = fr_pair_list_next(from, vp), cnt++) {
 		PAIR_VERIFY(vp);
+
 		new_vp = fr_pair_copy(ctx, vp);
 		if (!new_vp) {
-			fr_pair_list_free(&tmp_list);
+			fr_pair_order_list_talloc_free_to_tail(&to->order, first_added);
 			return -1;
 		}
-		fr_pair_append(&tmp_list, new_vp);
-	}
 
-	fr_pair_list_append(to, &tmp_list);
+		if (!first_added) first_added = new_vp;
+		fr_pair_append(to, new_vp);
+	}
 
 	return cnt;
 }
@@ -1743,8 +1741,7 @@ int fr_pair_list_copy(TALLOC_CTX *ctx, fr_pair_list_t *to, fr_pair_list_t const 
 int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
 			    fr_pair_list_t const *from, fr_dict_attr_t const *da, unsigned int count)
 {
-	fr_pair_list_t	tmp_list;
-	fr_pair_t	*vp, *new_vp;
+	fr_pair_t	*vp, *new_vp, *first_added = NULL;
 	unsigned int	cnt = 0;
 
 	if (count == 0) count = UINT_MAX;
@@ -1754,23 +1751,23 @@ int fr_pair_list_copy_by_da(TALLOC_CTX *ctx, fr_pair_list_t *to,
 		return -1;
 	}
 
-	fr_pair_list_init(&tmp_list);
-
 	for (vp = fr_pair_list_head(from);
 	     vp && (cnt < count);
 	     vp = fr_pair_list_next(from, vp)) {
-		if (!fr_pair_matches_da(vp, da)) continue;
-		cnt++;
 		PAIR_VERIFY(vp);
+
+		if (!fr_pair_matches_da(vp, da)) continue;
+
+		cnt++;
 		new_vp = fr_pair_copy(ctx, vp);
 		if (!new_vp) {
-			fr_pair_list_free(&tmp_list);
+			fr_pair_order_list_talloc_free_to_tail(&to->order, first_added);
 			return -1;
 		}
-		fr_pair_append(&tmp_list, new_vp); /* fr_pair_list_copy sets next pointer to NULL */
-	}
 
-	fr_pair_list_append(to, &tmp_list);
+		if (!first_added) first_added = new_vp;
+		fr_pair_append(to, new_vp);
+	}
 
 	return cnt;
 }
