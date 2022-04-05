@@ -65,6 +65,14 @@ static inline void *fr_tlist_entry_to_item(size_t offset, fr_tlist_t const *entr
 	return (void *)(((uintptr_t) entry) - offset);
 }
 
+/** Get a fr_tlist_head_t from a fr_dlist_head_t
+ *
+ */
+static inline fr_tlist_head_t *fr_tlist_head_from_dlist(fr_dlist_head_t *dlist_head)
+{
+	return (fr_tlist_head_t *)(((uintptr_t) dlist_head) - offsetof(fr_tlist_head_t, dlist_head));
+}
+
 /** Initialise a linked list without metadata
  *
  */
