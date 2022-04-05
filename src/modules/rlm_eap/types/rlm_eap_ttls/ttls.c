@@ -220,11 +220,7 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 				}
 
 				MEM(da = fr_dict_unknown_afrom_fields(vp, attr_vendor_specific, vendor, attr));
-				if (fr_pair_reinit_from_da(NULL, vp, da) < 0) {
-					talloc_free(vp);
-					goto error;
-				}
-				goto do_value;
+				goto reinit;
 			}
 		} else {
 			our_parent = attr_radius;
@@ -235,17 +231,18 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 		 */
 		da = fr_dict_attr_child_by_num(our_parent, attr);
 		if (da) {
-			if (fr_pair_reinit_from_da(NULL, vp, da) < 0) {
-				talloc_free(vp);
-				goto error;
-			}
+			goto reinit;
+
 		} else {
 			if (flags & FR_DIAMETER_AVP_FLAG_MANDATORY) {
 				fr_strerror_printf("Mandatory bit set and no attribute %u defined for parent %s", attr, parent->name);
 				talloc_free(vp);
 				goto error;
 			}
+
 			MEM(da = fr_dict_unknown_attr_afrom_num(vp, parent, attr));
+
+		reinit:
 			if (fr_pair_reinit_from_da(NULL, vp, da) < 0) {
 				talloc_free(vp);
 				goto error;
