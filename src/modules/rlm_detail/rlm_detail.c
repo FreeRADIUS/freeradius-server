@@ -280,8 +280,8 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 	if (inst->log_srcdst) {
 		fr_pair_t src_vp, dst_vp;
 
-		memset(&src_vp, 0, sizeof(src_vp));
-		memset(&dst_vp, 0, sizeof(dst_vp));
+		fr_pair_init_null(&src_vp);
+		fr_pair_init_null(&dst_vp);
 
 		switch (packet->socket.inet.src_ipaddr.af) {
 		case AF_INET:
