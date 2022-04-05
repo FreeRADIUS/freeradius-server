@@ -1143,7 +1143,7 @@ static size_t command_allow_unresolved(command_result_t *result, command_file_ct
 	RETURN_OK(0);
 }
 
-/** Parse an print an attribute pair
+/** Parse an print an attribute pair or pair list.
  *
  */
 static size_t command_normalise_attribute(command_result_t *result, command_file_ctx_t *cc,
@@ -1151,6 +1151,8 @@ static size_t command_normalise_attribute(command_result_t *result, command_file
 {
 	fr_pair_list_t 	head;
 	ssize_t		slen;
+	char		*p, *end;
+	fr_pair_t	*vp;
 	fr_dict_t const	*dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
 
 	fr_pair_list_init(&head);
@@ -1159,15 +1161,40 @@ static size_t command_normalise_attribute(command_result_t *result, command_file
 		RETURN_OK_WITH_ERROR();
 	}
 
-	slen = fr_pair_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), NULL, fr_pair_list_head(&head));
-	fr_pair_list_free(&head);
+	/*
+	 *	Set p to be the output buffer
+	 */
+	p = data;
+	end = p + COMMAND_OUTPUT_MAX;
 
-	if (slen < 0) {
-		fr_strerror_const("Encoder output would overflow output buffer");
-		RETURN_OK_WITH_ERROR();
+	/*
+	 *	Output may be an error, and we ignore
+	 *	it if so.
+	 */
+
+	if (!fr_pair_list_empty(&head)) {
+		for (vp = fr_pair_list_head(&head);
+		     vp;
+		     vp = fr_pair_list_next(&head, vp)) {
+			if ((slen = fr_pair_print(&FR_SBUFF_OUT(p, end), NULL, vp)) < 0) {
+			oob:
+				fr_strerror_const("Out of output buffer space for printed pairs");
+				RETURN_COMMAND_ERROR();
+			}
+			p += slen;
+
+			if (fr_pair_list_next(&head, vp)) {
+				slen = strlcpy(p, ", ", end - p);
+				if (is_truncated((size_t)slen, end - p)) goto oob;
+				p += slen;
+			}
+		}
+		fr_pair_list_free(&head);
+	} else { /* zero-length to_decibute */
+		*p = '\0';
 	}
 
-	RETURN_OK(slen);
+	RETURN_OK(p - data);
 }
 
 static const fr_token_t token2op[UINT8_MAX + 1] = {
@@ -2797,7 +2824,7 @@ static fr_table_ptr_sorted_t	commands[] = {
 	{ L("attribute "),	&(command_entry_t){
 					.func = command_normalise_attribute,
 					.usage = "attribute <attr> = <value>",
-					.description = "Parse and reprint an attribute value pair, writing \"ok\" to the data buffer on success"
+					.description = "Parse and reprint an attribute value pair or list, printing the pair(s) to the data buffer on success"
 				}},
 	{ L("calc "),		&(command_entry_t){
 					.func = command_calc,
