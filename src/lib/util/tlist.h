@@ -95,44 +95,8 @@ static inline CC_HINT(nonnull) bool fr_tlist_entry_in_list(fr_tlist_t const *ent
 	return fr_dlist_entry_in_list(&entry->dlist_entry);
 }
 
-/** Link in a single entry after the current entry
- *
- * @param[in] entry	to link in entry after.
- * @param[in] to_link 	entry to link in after.
- */
-static inline CC_HINT(nonnull) void fr_tlist_entry_link_after(fr_tlist_t *entry, fr_tlist_t *to_link)
-{
-	fr_dlist_entry_link_after(&entry->dlist_entry, &to_link->dlist_entry);
-	to_link->list_head = entry->list_head;
-}
 
-/** Link in a single entry before the current entry
- *
- * @param[in] entry	to link in entry before.
- * @param[in] to_link 	entry to link in before.
- */
-static inline CC_HINT(nonnull) void fr_tlist_entry_link_before(fr_tlist_t *entry, fr_tlist_t *to_link)
-{
-	fr_dlist_entry_link_before(&entry->dlist_entry, &to_link->dlist_entry);
-	to_link->list_head = entry->list_head;
-}
-
-// no fr_dlist_entry_move()
-
-/** Replace one entry with another
- *
- * @param[in] entry		to replace.
- * @param[in] replacement	to link in.
- */
-static inline CC_HINT(nonnull) void fr_tlist_entry_replace(fr_tlist_t *entry, fr_tlist_t *replacement)
-{
-	fr_dlist_entry_replace(&entry->dlist_entry, &replacement->dlist_entry);
-	replacement->list_head = entry->list_head;
-
-	/* Reset links on replaced item */
-	fr_tlist_entry_init(entry);
-}
-
+// no fr_tlist_entry_link_after(), fr_tlist_entry_link_before(), fr_tlist_entry_move(), fr_tlist_entry_replace()
 
 /** Initialise the head structure of a tlist
  *
