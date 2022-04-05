@@ -692,6 +692,25 @@ static inline void *fr_tlist_talloc_free_item(fr_tlist_head_t *list_head, void *
 	return prev;
 }
 
+/** Free items in a doubly linked list (with talloc)
+ *
+ * @param[in] head	of list to free.
+ * @param[in] ptr	remove and free from this to the tail.
+ */
+static inline void fr_tlist_talloc_free_to_tail(fr_tlist_head_t *head, void *ptr)
+{
+	void *e = ptr, *p;
+
+	if (!ptr) return;	/* uninitialized means don't do anything */
+
+	while (e) {
+		p = fr_tlist_next(head, e);
+		(void) fr_tlist_remove(head, e);
+		talloc_free(e);
+		e = p;
+	}
+}
+
 /** Free all items in a doubly linked list (with talloc)
  *
  * @param[in] head of list to free.
@@ -1020,6 +1039,9 @@ DIAG_OFF(unused-function) \
 \
 	static inline	void _name ## _talloc_free(FR_TLIST_HEAD(_name) *list) \
 		{		fr_tlist_talloc_free(&list->head); } \
+\
+	static inline	void _name ## _talloc_free_to_tail(FR_TLIST_HEAD(_name) *list, _element_type *ptr) \
+		{		fr_tlist_talloc_free_to_tail(&list->head, ptr); } \
 \
 	static inline	void _name ## _talloc_reverse_free(FR_TLIST_HEAD(_name) *list) \
 		{		fr_tlist_talloc_reverse_free(&list->head); } \
