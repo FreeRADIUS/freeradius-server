@@ -1030,14 +1030,17 @@ DIAG_OFF(unused-function) \
 	static inline FR_TLIST_HEAD(_name) *_name ## _children(_element_type *ptr) \
 		{		return (FR_TLIST_HEAD(_name) *) (ptr->_element_entry.entry.children); } \
 \
-	static inline void _name ## _init_children(_element_type *ptr, FR_TLIST_HEAD(_name) *children) \
-		{		fr_tlist_init_children(&ptr->_element_entry.entry, &children->head); } \
+	static inline void _name ## _talloc_init_children(_element_type *ptr, FR_TLIST_HEAD(_name) *children) \
+		{		_name ## _talloc_init(children); ptr->_element_entry.entry.children = &children->head; } \
 \
 	static inline void _name ## _add_children(_element_type *ptr, FR_TLIST_HEAD(_name) *children) \
 		{		fr_tlist_add_children(&ptr->_element_entry.entry, &children->head); } \
 \
 	static inline FR_TLIST_HEAD(_name) * _name ## _remove_children(_element_type *ptr) \
-		{		return (FR_TLIST_HEAD(_name) *) fr_tlist_remove_children(&ptr->_element_entry.entry); }
+		{		return (FR_TLIST_HEAD(_name) *) fr_tlist_remove_children(&ptr->_element_entry.entry); } \
+\
+	static inline void _name ## _set_head(fr_tlist_head_t *list, _element_type *ptr) \
+		{		ptr->_element_entry.entry.list_head = list; }
 DIAG_ON(unused-function)
 
 static inline void *fr_tlist_parent(fr_tlist_head_t *list_head, void const *ptr)
