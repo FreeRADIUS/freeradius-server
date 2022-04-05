@@ -175,6 +175,13 @@ fr_pair_t *fr_pair_root_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 {
 	fr_pair_t *vp;
 
+#ifndef NDEBUG
+	if (da->type != FR_TYPE_GROUP) {
+		fr_strerror_const("Root must be a group type");
+		return NULL;
+	}
+#endif
+
 	vp = talloc_zero(ctx, fr_pair_t);
 	if (unlikely(!vp)) {
 		fr_strerror_const("Out of memory");
@@ -188,20 +195,7 @@ fr_pair_t *fr_pair_root_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 
 	vp->da = da;
 
-#ifndef NDEBUG
-	switch (da->type) {
-	case FR_TYPE_GROUP:
-#endif
-		fr_pair_list_init(&vp->children);
-
-#ifndef NDEBUG
-		break;
-
-	default:
-		fr_strerror_const("Root must be a group type");
-		return NULL;
-	}
-#endif
+	fr_pair_list_init(&vp->children);
 
 	return vp;
 }
