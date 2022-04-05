@@ -20,7 +20,7 @@ ATTRIBUTE	Provisioning-Server			.3	tlv
 ATTRIBUTE	FQDN					122.3.0	string	dns_label
 ATTRIBUTE	Address					122.3.1	ipaddr
 
-ATTRIBUTE	AS-Backoff-and-Retry			.4	struct
+ATTRIBUTE	AS-Backoff-and-Retry			122.4	struct
 MEMBER		Nominal-Timeout				uint32
 MEMBER		Maximum-Timeout				uint32
 MEMBER		Maximum-Retries				uint32
