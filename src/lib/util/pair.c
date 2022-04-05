@@ -2808,6 +2808,17 @@ size_t fr_pair_list_len(fr_pair_list_t const *list)
 	return fr_pair_order_list_num_elements(&list->order);
 }
 
+/** Get the dlist head from a pair list
+ *
+ * @param[in] list to get the head from
+ *
+ * @return number of entries in the list
+ */
+fr_dlist_head_t *fr_pair_list_dlist_head(fr_pair_list_t const *list)
+{
+	return fr_pair_order_list_list_head(&list->order);
+}
+
 /** Parse a list of VPs from a value box.
  *
  * @param[in] ctx	to allocate new VPs in

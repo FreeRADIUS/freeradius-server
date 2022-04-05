@@ -587,7 +587,7 @@ int tmpl_extents_find(TALLOC_CTX *ctx,
 
 		list_ctx = ns->list_ctx;
 		ar = ns->ar;
-		curr = _tmpl_cursor_eval(&list_head->order.head, curr, &cc);
+		curr = _tmpl_cursor_eval(fr_pair_list_dlist_head(list_head), curr, &cc);
 		if (!curr) {
 			/*
 			 *	References extend beyond current

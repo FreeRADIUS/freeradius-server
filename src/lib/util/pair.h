@@ -222,6 +222,8 @@ bool		fr_pair_list_empty(fr_pair_list_t const *list) CC_HINT(nonnull);
 
 size_t		fr_pair_list_len(fr_pair_list_t const *list) CC_HINT(nonnull);
 
+fr_dlist_head_t *fr_pair_list_dlist_head(fr_pair_list_t const *list) CC_HINT(nonnull);
+
 /* Searching and list modification */
 int		fr_pair_to_unknown(fr_pair_t *vp) CC_HINT(nonnull);
 
