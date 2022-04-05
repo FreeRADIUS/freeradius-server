@@ -186,6 +186,8 @@ DIAG_ON(nonnull-compare)
 /* Initialisation */
 void fr_pair_list_init(fr_pair_list_t *head) CC_HINT(nonnull);
 
+void fr_pair_init_null(fr_pair_t *vp) CC_HINT(nonnull);
+
 /* Allocation and management */
 fr_pair_t	*fr_pair_alloc_null(TALLOC_CTX *ctx) CC_HINT(warn_unused_result);
 

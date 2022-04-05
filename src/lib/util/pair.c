@@ -115,6 +115,17 @@ static inline CC_HINT(always_inline) void pair_init_null(fr_pair_t *vp)
 	vp->op = T_OP_EQ;
 }
 
+/** Initialise fields in an fr_pair_t without assigning a da
+ *
+ *  Used only for temporary value-pairs which are not placed in any list.
+ */
+void fr_pair_init_null(fr_pair_t *vp)
+{
+	memset(vp, 0, sizeof(*vp));
+
+	pair_init_null(vp);
+}
+
 /** Dynamically allocate a new attribute with no #fr_dict_attr_t assigned
  *
  * This is not the function you're looking for (unless you're binding
