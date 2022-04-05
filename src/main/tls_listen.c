@@ -262,8 +262,14 @@ check_for_setup:
 		}
 
 		/*
-		 *	Else we MUST be finished the SSL setup.
+		 *      If SSL handshake still isn't finished, then there
+		 *      is more data to read.  Release the mutex and
+		 *      return so this function will be called again
 		 */
+		if (!SSL_is_init_finished(sock->ssn->ssl)) {
+			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+			return 0;
+		}
 	}
 
 	/*

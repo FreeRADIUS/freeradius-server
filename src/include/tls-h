@@ -103,7 +103,6 @@ typedef struct _tls_info_t {
 
 	char 		info_description[256];
 	size_t		record_len;
-	int		version;
 } tls_info_t;
 
 #if OPENSSL_VERSION_NUMBER < 0x10001000L
@@ -367,7 +366,6 @@ struct fr_tls_server_conf_t {
 	bool		disable_tlsv1;
 	bool		disable_tlsv1_1;
 	bool		disable_tlsv1_2;
-	bool		tls13_enable_magic;
 	bool		disallow_untrusted;		//!< allow untrusted CAs to issue client certificates
 
 	int		min_version;

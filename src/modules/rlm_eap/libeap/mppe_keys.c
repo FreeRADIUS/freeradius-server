@@ -28,6 +28,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "eap_tls.h"
 #include <openssl/ssl.h>
 #include <openssl/hmac.h>
+#include <freeradius-devel/openssl3.h>
 
 /*
  *	TLS P_hash from RFC 2246/5246 section 5
@@ -39,7 +40,8 @@ static void P_hash(EVP_MD const *evp_md,
 {
 	HMAC_CTX *ctx_a, *ctx_out;
 	unsigned char a[EVP_MAX_MD_SIZE];
-	unsigned int size;
+	unsigned int size = EVP_MAX_MD_SIZE;
+	unsigned int digest_len;
 
 	ctx_a = HMAC_CTX_new();
 	ctx_out = HMAC_CTX_new();
@@ -50,11 +52,9 @@ static void P_hash(EVP_MD const *evp_md,
 	HMAC_Init_ex(ctx_a, secret, secret_len, evp_md, NULL);
 	HMAC_Init_ex(ctx_out, secret, secret_len, evp_md, NULL);
 
-	size = HMAC_size(ctx_out);
-
 	/* Calculate A(1) */
 	HMAC_Update(ctx_a, seed, seed_len);
-	HMAC_Final(ctx_a, a, NULL);
+	HMAC_Final(ctx_a, a, &size);
 
 	while (1) {
 		/* Calculate next part of output */
@@ -63,13 +63,15 @@ static void P_hash(EVP_MD const *evp_md,
 
 		/* Check if last part */
 		if (out_len < size) {
-			HMAC_Final(ctx_out, a, NULL);
+			digest_len = EVP_MAX_MD_SIZE;
+			HMAC_Final(ctx_out, a, &digest_len);
 			memcpy(out, a, out_len);
 			break;
 		}
 
 		/* Place digest in output buffer */
-		HMAC_Final(ctx_out, out, NULL);
+		digest_len = EVP_MAX_MD_SIZE;
+		HMAC_Final(ctx_out, out, &digest_len);
 		HMAC_Init_ex(ctx_out, NULL, 0, NULL, NULL);
 		out += size;
 		out_len -= size;
@@ -77,7 +79,8 @@ static void P_hash(EVP_MD const *evp_md,
 		/* Calculate next A(i) */
 		HMAC_Init_ex(ctx_a, NULL, 0, NULL, NULL);
 		HMAC_Update(ctx_a, a, size);
-		HMAC_Final(ctx_a, a, NULL);
+		digest_len = EVP_MAX_MD_SIZE;
+		HMAC_Final(ctx_a, a, &digest_len);
 	}
 
 	HMAC_CTX_free(ctx_a);
@@ -277,7 +280,7 @@ void eaptls_gen_eap_key(eap_handler_t *handler)
 
 	*p++ = type;
 
-	switch (tls_session->info.version) {
+	switch (SSL_version(tls_session->ssl)) {
 	case TLS1_VERSION:
 	case TLS1_1_VERSION:
 	case TLS1_2_VERSION:

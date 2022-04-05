@@ -15,6 +15,9 @@ linelog {
 	#
 	#  If the filename is "syslog", then the log messages will
 	#  go to syslog.
+	#
+	#  The output can be directed to stdout by using /dev/stdout
+	#
 	filename = ${logdir}/linelog
 
 	#

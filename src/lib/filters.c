@@ -1205,13 +1205,19 @@ void print_abinary(char *out, size_t outlen, uint8_t const *data, size_t len, in
 			}
 		}
 	} else if (filter->type == RAD_FILTER_GENERIC) {
-		int count;
+		size_t count, masklen;
+
+		masklen = ntohs(filter->u.generic.len);
+		if (masklen >= sizeof(filter->u.generic.mask)) {
+			*p = '\0';
+			return;
+		}
 
 		i = snprintf(p, outlen, " %u ", (unsigned int) ntohs(filter->u.generic.offset));
 		p += i;
 
 		/* show the mask */
-		for (count = 0; count < ntohs(filter->u.generic.len); count++) {
+		for (count = 0; count < masklen; count++) {
 			i = snprintf(p, outlen, "%02x", filter->u.generic.mask[count]);
 			p += i;
 			outlen -= i;
@@ -1222,7 +1228,7 @@ void print_abinary(char *out, size_t outlen, uint8_t const *data, size_t len, in
 		outlen--;
 
 		/* show the value */
-		for (count = 0; count < ntohs(filter->u.generic.len); count++) {
+		for (count = 0; count < masklen; count++) {
 			i = snprintf(p, outlen, "%02x", filter->u.generic.value[count]);
 			p += i;
 			outlen -= i;

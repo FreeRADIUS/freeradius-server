@@ -130,25 +130,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
-#ifdef TLS1_3_VERSION
-	if ((inst->tls_conf->min_version == TLS1_3_VERSION) && !inst->tls_conf->tls13_enable_magic) {
-		ERROR("There are no standards for using TLS 1.3 with TTLS.");
-		ERROR("You MUST enable TLS 1.2 for TTLS to work.");
-		return -1;
-	}
-
-	if ((inst->tls_conf->max_version == TLS1_3_VERSION) ||
-	    (inst->tls_conf->min_version == TLS1_3_VERSION)) {
-		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		WARN("!! There is no standard for using TTLS with TLS 1.3");
-		WARN("!! Please set tls_max_version = \"1.2\"");
-		WARN("!! FreeRADIUS only supports TLS 1.3 for special builds of wpa_supplicant and Windows");
-		WARN("!! This limitation is likely to change in late 2021.");
-		WARN("!! If you are using this version of FreeRADIUS after 2021, you will probably need to upgrade");
-		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-	}
-#endif
-
 	return 0;
 }
 
@@ -201,10 +182,9 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	}
 
 	/*
-	 *	Don't allow TLS 1.3 for us, even if it's allowed
-	 *	elsewhere.
+	 *	Allow TLS 1.3, it works.
 	 */
-	ssn = eaptls_session(handler, inst->tls_conf, client_cert, inst->tls_conf->tls13_enable_magic);
+	ssn = eaptls_session(handler, inst->tls_conf, client_cert, true);
 	if (!ssn) {
 		return 0;
 	}

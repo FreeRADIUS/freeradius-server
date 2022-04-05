@@ -151,13 +151,21 @@ pidfile = ${run_dir}/${name}.pid
 #
 #  correct_escapes: use correct backslash escaping
 #
+#  This setting is for compatibility with 3.0.4 and earlier.  If
+#  you're running a copy of the configuration from 3.0.4, you can
+#  change this setting to "no" in order to run a new binary using the
+#  old configuration files.
+#
+#  If you've created the configuration after 2014, this should be set
+#  to "true", and you can ignore it.
+#
 #  Prior to version 3.0.5, the handling of backslashes was a little
 #  awkward, i.e. "wrong".  In some cases, to get one backslash into
 #  a regex, you had to put 4 in the config files.
 #
-#  Version 3.0.5 fixes that.  However, for backwards compatibility,
+#  Version 3.0.5 fixed that.  However, for backwards compatibility,
 #  the new method of escaping is DISABLED BY DEFAULT.  This means
-#  that upgrading to 3.0.5 won't break your configuration.
+#  that upgrading from a 3.0.4 or below won't break your configuration.
 #
 #  If you don't have double backslashes (i.e. \\) in your configuration,
 #  this won't matter to you.  If you do have them, fix that to use only

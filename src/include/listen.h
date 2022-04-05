@@ -70,8 +70,8 @@ struct rad_listen {
 	int		fd;
 	char const	*server;
 	int		status;
-#ifdef WITH_TCP
 	int		count;
+#ifdef WITH_TCP
 	rbtree_t	*children;
 	rad_listen_t	*parent;
 

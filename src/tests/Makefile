@@ -50,9 +50,9 @@ endif
 
 $(BUILD_PATH)/tests/eapol_test/eapol_test.mk: | $(BUILD_PATH)/tests/eapol_test
 	@echo "EAPOL_TEST=$(EAPOL_TEST_BIN)" > $@
-	@echo "TLS1_3=$(shell strings "$(RADIUSD_BIN)" | grep -q '^tls13_enable$$' && \
-		strings "$(EAPOL_TEST_BIN)" | grep 'tlsv1_3' | head -n 1)" >> $@
+	@echo "TLS1_3=$(shell openssl ciphers -s -v 'ECDHE:!COMPLEMENTOFDEFAULT'| grep -q 'TLSv1.3' && echo yes)" >> $@
 	@echo "OPENSSL_OK=$(shell openssl version | grep -v ' 1\.0' >/dev/null && echo yes)" >> $@
+	@echo "OPENSSL3_OK=$(shell openssl version | grep -q ' OpenSSL 3\.0' && echo yes)" >> $@
 else
 #
 #  No OpenSSL means that we don't even try to build eapol_test
@@ -74,6 +74,17 @@ ifeq "$(OPENSSL_OK)" ""
 SECLEVEL=
 else
 SECLEVEL=@SECLEVEL=1
+endif
+
+#
+#  For OpenSSL 3.0.x, as described in https://github.com/openssl/openssl/blob/master/doc/man7/migration_guide.pod
+#
+#  "The security strength of SHA1 and MD5 based signatures in TLS has been reduced.
+#   This results in SSL 3, TLS 1.0, TLS 1.1 and DTLS 1.0 no longer working at the
+#   default security level of 1 and instead requires security level 0."
+#
+ifeq "$(OPENSSL3_OK)" "yes"
+SECLEVEL=@SECLEVEL=0
 endif
 
 RADDB_PATH := $(top_builddir)/raddb/
@@ -150,7 +161,6 @@ config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
 	     -e 's/^\(.*\)persist_dir =/  persist_dir =/' \
 	     -e 's/tls_min_version = "1.2"/tls_min_version = "1.0"/' \
 	     -e '$(if $(TLS1_3),s/tls_max_version = "1.2"/tls_max_version = "1.3"/)' \
-	     -e  '/tls_max_version/s/^//p; /tls_max_version/s/^.*/        tls13_enable=true/' \
 	     -e 's/cipher_list = "DEFAULT"/cipher_list = "DEFAULT${SECLEVEL}"/' \
 		 < $< > $@
 
@@ -192,14 +202,15 @@ radiusd.kill:
 #  Otherwise do nothing.
 #
 ifneq "$(EAPOL_TEST)" ""
-EAP_FILES	= eap-md5.conf
-EAP_TLS_FILES	= eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
+EAP_FILES        = eap-md5.conf
+EAP_TLS_FILES    = eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
 EAP_TLS_VERSIONS = 1.1 1.2
-ifneq "$(TLS1_3)" ""
-EAP_TLS_VERSIONS += 1.3
-endif
+EAP_TLS_DISABLE_STRING = tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1
 
-EAP_TLS_DISABLE_STRING=tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1 $(TLS1_3)
+ifneq "$(TLS1_3)" ""
+EAP_TLS_VERSIONS       += 1.3
+EAP_TLS_DISABLE_STRING += tls_disable_tlsv1_3=1
+endif
 
 .PHONY: $(BUILD_PATH)/tests/eap
 $(BUILD_PATH)/tests/eap:

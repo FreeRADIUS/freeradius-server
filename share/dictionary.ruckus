@@ -95,6 +95,10 @@ ATTRIBUTE	Ruckus-DPSK-Cipher			153.2	byte
 ATTRIBUTE	Ruckus-DPSK-Anonce			153.3	octets
 ATTRIBUTE	Ruckus-DPSK-EAPOL-Key-Frame		153.4	octets
 
+# Ruckus SmartCell Insight Attributes
+ATTRIBUTE Ruckus-SCI-Role		200 string
+ATTRIBUTE Ruckus-SCI-Resource-Group		201 string
+
 #
 #  Integer Translations
 #

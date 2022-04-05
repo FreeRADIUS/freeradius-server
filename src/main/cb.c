@@ -136,7 +136,17 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	 *	content types.  Which breaks our tracking of
 	 *	the SSL Session state.
 	 */
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	if ((msg_version == 0) && (content_type > UINT8_MAX)) {
+#else
+	/*
+         *      "...we do not see the need to resolve application breakage
+         *      just because the documentation now is incorrect."
+         *
+         *      https://github.com/openssl/openssl/issues/17262
+	 */
+	if ((content_type > UINT8_MAX) && (content_type != SSL3_RT_INNER_CONTENT_TYPE)) {
+#endif
 		DEBUG4("(TLS) Ignoring cbtls_msg call with pseudo content type %i, version %i",
 		       content_type, msg_version);
 		return;
@@ -179,7 +189,6 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	state->info.origin = write_p;
 	state->info.content_type = content_type;
 	state->info.record_len = len;
-	state->info.version = msg_version;
 	state->info.initialized = true;
 
 	if (content_type == SSL3_RT_ALERT) {

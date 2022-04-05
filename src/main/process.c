@@ -1354,7 +1354,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 	}
 
 	if (rcode < 0) {
-		RATE_LIMIT(INFO("Dropping packet without response because of error: %s", fr_strerror()));
+		RATE_LIMIT(INFO("Dropping packet without response because of error: %s (from client %s)", fr_strerror(), request->client->shortname));
 		request->reply->offset = -2; /* bad authenticator */
 		return 0;
 	}
@@ -2270,11 +2270,9 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 		}
 	}
 
-#ifdef WITH_TCP
 	if (request->proxy_listener) {
 		request->proxy_listener->count--;
 	}
-#endif
 	request->proxy_listener = NULL;
 
 	/*
@@ -2358,6 +2356,16 @@ static int insert_into_proxy_hash(REQUEST *request)
 		if (proxy_no_new_sockets) break;
 #endif
 
+		/*
+		 *	Don't try to add a new listener if it's not possible.
+		 */
+		if (fr_event_list_full(el)) {
+			RATE_LIMIT(ERROR("Cannot open a new proxy socket - too many sockets are already open"));
+			request->home_server->state = HOME_STATE_CONNECTION_FAIL;
+			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+			goto fail;
+		}
+
 		RDEBUG3("proxy: Trying to open a new listener to the home server");
 		this = proxy_new_listener(proxy_ctx, request->home_server, 0);
 		if (!this) {
@@ -2422,9 +2430,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	 */
 	request->home_server->currently_outstanding++;
 
-#ifdef WITH_TCP
 	request->proxy_listener->count++;
-#endif
 
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
@@ -5168,23 +5174,20 @@ static void event_new_fd(rad_listen_t *this)
 		rad_assert(sock != NULL);
 		if (just_started) {
 			DEBUG("Listening on %s", buffer);
-		} else {
-			INFO(" ... adding new socket %s", buffer);
-		}
 
 #ifdef WITH_PROXY
-		if (!just_started && (this->type == RAD_LISTEN_PROXY)) {
-			home_server_t *home;
-			
-			home = sock->home;
-			if (!home || !home->limit.max_connections) {
-				INFO(" ... adding new socket %s", buffer);
-			} else {
+		} else if (this->type == RAD_LISTEN_PROXY) {
+			home_server_t *home = sock->home;
+
+			if (home && home->limit.max_connections) {
 				INFO(" ... adding new socket %s (%u of %u)", buffer,
 				     home->limit.num_connections, home->limit.max_connections);
+			} else {
+				INFO(" ... adding new socket %s", buffer);
 			}
-
 #endif
+		} else {
+			INFO(" ... adding new socket %s", buffer);
 		}
 
 		switch (this->type) {
@@ -5297,7 +5300,8 @@ static void event_new_fd(rad_listen_t *this)
 		 */
 		this->print(this, buffer, sizeof(buffer));
 		ERROR("Failed adding event handler for socket %s: %s", buffer, fr_strerror());
-		this->status = RAD_LISTEN_STATUS_REMOVE_NOW;
+		this->status = RAD_LISTEN_STATUS_EOL;
+		goto listener_is_eol;
 	} /* end of INIT */
 
 	if (this->status == RAD_LISTEN_STATUS_PAUSE) {
@@ -5350,6 +5354,7 @@ static void event_new_fd(rad_listen_t *this)
 		 */
 		fr_event_fd_delete(el, 0, this->fd);
 
+	listener_is_eol:
 #ifdef WITH_PROXY
 		/*
 		 *	Tell all requests using this socket that the socket is dead.

@@ -430,6 +430,7 @@ perl -i -pe 's/^#group =.*$/group = radiusd/' $RADDB/radiusd.conf
 # logs
 mkdir -p $RPM_BUILD_ROOT/var/log/radius/radacct
 touch $RPM_BUILD_ROOT/var/log/radius/{radutmp,radius.log}
+install -m 755 scripts/raduat $RPM_BUILD_ROOT/%{_bindir}/raduat
 
 # For systemd based systems, that define _unitdir, install the radiusd unit
 %if %{?_unitdir:1}%{!?_unitdir:0}
@@ -816,6 +817,7 @@ fi
 /usr/bin/radtest
 /usr/bin/radsniff
 /usr/bin/radsqlrelay
+/usr/bin/raduat
 /usr/bin/radwho
 /usr/bin/radzap
 /usr/bin/rlm_ippool_tool

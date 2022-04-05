@@ -1,0 +1,225 @@
+# -*- text -*-
+#########################################################################
+#
+#	The file contains a sample virtual server which uses Google
+#	Secure LDAP for authentication
+#
+#	This file is designed to be used as an inner tunnel virtual
+#	server for EAP-TTLS-PAP authentication.
+#
+#	Use this virtual server in conjunction with the sample Google
+#	Secure LDAP module configuration, which is in
+#	mods-available/ldap_google.
+#
+#	Due to the poor performance of Google Secure LDAP, this
+#	configuration also caches information around accepts, rejects,
+#	and LDAP qeuries.  See mods-available/cache_auth for the
+#	configuration of the various "cache" modules used here.
+#
+#	The TTL on these caches should be tuned to match site policies
+#	- e.g. how long should a user be re-authenticated from a cache
+#	without performing an LDAP bind.
+#
+#	Typically the caches are beneficial when performing
+#	authentication for 802.1x wifi where repeated authentications
+#	occur as users roam.  We also recommend enabling the "cache"
+#	subsection of mods-available/eap.  Both kinds of caching can
+#	be done at the same time, and both kinds of caching will help
+#	improve system performance and stability.
+#
+#	$Id$
+#
+#########################################################################
+
+server google-ldap {
+
+#
+#  This is only for testing, and not needed in general operation.
+#
+listen {
+	ipaddr = 127.0.0.1
+	port = 18123
+	type = auth
+}
+
+authorize {
+	#
+	#  Perform sanity checks on the supplied user name
+	#
+	filter_username
+
+	#
+	#  Perform sanity checks comparing inner and outer user name
+	#
+	filter_inner_identity
+
+	#
+	#  Split up user names in the form user@domain
+	#
+	split_username_nai
+
+	#
+	#  Check the authentication cache to see if this user
+	#  recently sucessfully authenticated
+	#
+	update control {
+		&Cache-Status-Only := 'yes'
+	}
+	cache_auth_accept
+
+	#
+	#  If there's a cached User-Name / User-Password which matches
+	#  what the user sent here, then the user has been
+	#  authenticated.  We can then avoid interacting with Google's
+	#  LDAP server, which significantly improves the performance
+	#  of user authentication.
+	#
+	if (ok) {
+		update {
+			&control:Auth-Type := Accept
+		}
+		return
+	}
+
+	#
+	#  Check the reject cache to see if this user was
+	#  recently rejected
+	#
+	update control {
+		&Cache-Status-Only := 'yes'
+	}
+	cache_auth_reject
+
+	#
+	#  If there's a cached User-Name / User-Password which matches
+	#  what the user sent here, then the user has been rejected.
+	#  As with authentication above, we don't need to check
+	#  Google's LDAP server, and can improve performance.
+	#
+	#  Note that in may cases rejected users will try over and
+	#  over again.  This increased load can significantly affect
+	#  performance, and can even prevent other users from
+	#  authenticating!  The solution is to just tell the bad users
+	#  to "go away" as quickly as possible, while using minimal
+	#  resources.
+	#
+	if (ok) {
+		update {
+			&Module-Failure-Message := "Rejected by cache entry"
+		}
+		reject
+	}
+
+	#
+	#  If group membership checks are required, then ensure that
+	#  the relevant "cacheable_" option is set against the ldap
+	#  instance, and call the ldap module here.
+	#
+	#  If group membership is irrelevant, do not call ldap here
+	#  to improve performance
+	#
+	# ldap_google
+
+	#
+	#  As Google LDAP does not return user passwords,
+	#  authentication is only possible by LDAP "bind as user".  So
+	#  only PAP and TTLS+PAP will work.
+	#
+	#  If the request contains a password, then force LDAP "bind
+	#  as user".
+	#
+	if (&User-Password && !control:Auth-Type)  {
+		update {
+			&control:Auth-Type := ldap
+		}
+
+		#
+		#  Look up a user's DN in the cache.
+		#
+		#  The standard ldap auth mechanism is 3 steps
+		#    - bind as admin user
+		#    - lookup the user's DN
+		#    - bind as the user
+		#
+		#  Caching the DN removes the first two steps
+		#  during the lifetime of the cache entry.
+		#
+		#  If the ldap module is called above, then this cache
+		#  call can be commented out; the DN will have been
+		#  retrieved above by the "ldap_google" module.
+		#
+		update control {
+			&Cache-Read-Only := "yes"
+		}
+		cache_ldap_user_dn
+
+	}
+}
+
+authenticate {
+	#
+	#  Use an LDAP "bind as user" to authenticate.  Google will
+	#  check the users' password, and will return success / fail.
+	#
+	Auth-Type LDAP {
+		ldap_google
+	}
+
+}
+
+#
+#  Google LDAP has no specific session section configuration
+#
+session {
+
+}
+
+#
+#  In post-auth the various caches get updated.
+#
+#  Add in any additional policy required to set reply attributes
+#
+post-auth {
+	#
+	#  Cache the user's DN.  See the authorize section for
+	#  how and why this would be used
+	#
+	cache_ldap_user_dn
+
+	#
+	#  If a user was authenticated by ldap, add the users name /
+	#  password to the cache of successful authentications.
+	#
+	#  Otherwise the user was authenticated via the
+	#  cache_auth_accept call above, in the "authorize" section.
+	#
+	if (&control:Auth-Type == ldap) {
+		cache_auth_accept
+	}
+
+	Post-Auth-Type REJECT {
+		attr_filter.access_reject
+
+		#
+		#  Record rejects in a cache, as a protection against
+		#  repeated attempts from mis-configured clients.
+		#
+		if (&control:Auth-Type == ldap) {
+			cache_auth_reject
+		}
+
+		#
+		#  Clear the DN cache entry if it exists.
+		#  If the DN cache is in use, retaining an incorrect
+		#  DN entry could cause issues if the user's DN
+		#  has changed.
+		#
+		update control {
+			&Cache-TTL := 0
+		}
+		cache_ldap_user_dn
+
+	}
+}
+
+}

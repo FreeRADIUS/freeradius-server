@@ -174,7 +174,28 @@ For this functionality to work, the certificates for EAP and RadSec
 ### Clients
 
 RadSec clients can set the SNI to send in the `tls` subsection of the
-`home_server` definition.  See `sites-available/tls` for examples.
+`home_server` definition.  Look for "SNI" in `sites-available/tls`,
+and see the `hostname` configuration item for documentation.
+
+For example, an identity provider could host multiple sites, but
+present itself with one public IP address.  If the RadSec clients do
+not use SNI, then they must be configured with the certificate of the
+identity provider.
+
+When SNI is used, the RadSec clients can be configured with the
+certificate of the hosted system that they're connecting to.  This
+ability means that there is no need to change certificates when
+changing providers.  In addition, there is no need to change the
+configuration of all RadSec clients when the hosting system changes
+its certifiates.  Because the hosting system certificates are never
+used.
+
+Instead, each hosted company is responsible for its own certificates,
+and for its own RadSec clients.
+
+SNI also permits the use of a load balancer such as haproxy.  That
+load balancer can terminate the TLS connection, and then use SNI to
+route the underlying RADIUS TCP traffic to a particular host.
 
 ### Servers
 

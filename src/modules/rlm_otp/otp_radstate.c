@@ -22,17 +22,13 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
-/* avoid inclusion of these FR headers which conflict w/ OpenSSL */
-#define _FR_MD4_H
-#define _FR_SHA1_H
-
 #include "extern.h"
 
 #include <string.h>
 
-#include <openssl/des.h> /* des_cblock */
 #include <openssl/md5.h>
 #include <openssl/hmac.h>
+#include <freeradius-devel/openssl3.h>
 
 /*
  * Generate the State attribute, suitable for passing to fr_pair_make().
@@ -113,6 +109,7 @@ size_t otp_gen_state(char state[OTP_MAX_RADSTATE_LEN],
 	HMAC_CTX *hmac_ctx;
 	uint8_t hmac[MD5_DIGEST_LENGTH];
 	char *p;
+	unsigned int len = sizeof(hmac);
 
 	/*
 	 *	Generate the hmac.  We already have a dependency on openssl for
@@ -125,7 +122,7 @@ size_t otp_gen_state(char state[OTP_MAX_RADSTATE_LEN],
 	HMAC_Update(hmac_ctx, (uint8_t const *) challenge, clen);
 	HMAC_Update(hmac_ctx, (uint8_t *) &flags, 4);
 	HMAC_Update(hmac_ctx, (uint8_t *) &when, 4);
-	HMAC_Final(hmac_ctx, hmac, NULL);
+	HMAC_Final(hmac_ctx, hmac, &len);
 	HMAC_CTX_free(hmac_ctx);
 
 	/*

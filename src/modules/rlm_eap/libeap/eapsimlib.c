@@ -307,42 +307,77 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 	newvp->vp_length = 1;
 	fr_pair_add(&(r->vps), newvp);
 
+	/*
+	 *	EAP-SIM has a 1 octet of subtype, and 2 octets
+	 *	reserved.
+	 */
 	attr     += 3;
 	attrlen  -= 3;
 
-	/* now, loop processing each attribute that we find */
-	while(attrlen > 0) {
+	/*
+	 *	Loop over each attribute.  The format is:
+	 *
+	 *	1 octet of type
+	 *	1 octet of length (value 1..255)
+	 *	((4 * length) - 2) octets of data.
+	 */
+	while (attrlen > 0) {
 		uint8_t *p;
 
-		if(attrlen < 2) {
+		if (attrlen < 2) {
 			fr_strerror_printf("EAP-Sim attribute %d too short: %d < 2", es_attribute_count, attrlen);
+			return 0;
+		}
+
+		if (!attr[1]) {
+			fr_strerror_printf("EAP-Sim attribute %d (no.%d) has no data", attr[0],
+					   es_attribute_count);
 			return 0;
 		}
 
 		eapsim_attribute = attr[0];
 		eapsim_len = attr[1] * 4;
 
+		/*
+		 *	The length includes the 2-byte header.
+		 */
 		if (eapsim_len > attrlen) {
 			fr_strerror_printf("EAP-Sim attribute %d (no.%d) has length longer than data (%d > %d)",
 					   eapsim_attribute, es_attribute_count, eapsim_len, attrlen);
 			return 0;
 		}
 
-		if(eapsim_len > MAX_STRING_LEN) {
-			eapsim_len = MAX_STRING_LEN;
-		}
-		if (eapsim_len < 2) {
-			fr_strerror_printf("EAP-Sim attribute %d (no.%d) has length too small", eapsim_attribute,
-					   es_attribute_count);
-			return 0;
-		}
+		newvp = fr_pair_afrom_num(r, eapsim_attribute + PW_EAP_SIM_BASE, 0);
+		if (!newvp) {
+			/*
+			 *	RFC 4186 Section 8.1 says 0..127 are
+			 *	"non-skippable".  If one such
+			 *	attribute is found and we don't
+			 *	understand it, the server has to send:
+			 *
+			 *	EAP-Request/SIM/Notification packet with an
+			 *	(AT_NOTIFICATION code, which implies general failure ("General
+			 *	failure after authentication" (0), or "General failure" (16384),
+			 *	depending on the phase of the exchange), which terminates the
+			 *	authentication exchange.
+			 */
+			if (eapsim_attribute <= 127) {
+				fr_strerror_printf("Unknown mandatory attribute %d, failing",
+						   eapsim_attribute);
+				return 0;
+			}
 
-		newvp = fr_pair_afrom_num(r, eapsim_attribute+PW_EAP_SIM_BASE, 0);
-		newvp->vp_length = eapsim_len-2;
-		newvp->vp_octets = p = talloc_array(newvp, uint8_t, newvp->vp_length);
-		memcpy(p, &attr[2], eapsim_len-2);
-		fr_pair_add(&(r->vps), newvp);
-		newvp = NULL;
+		} else {
+			/*
+			 *	It's known, ccount for header, and
+			 *	copy the value over.
+			 */
+			newvp->vp_length = eapsim_len - 2;
+
+			newvp->vp_octets = p = talloc_array(newvp, uint8_t, newvp->vp_length);
+			memcpy(p, &attr[2], newvp->vp_length);
+			fr_pair_add(&(r->vps), newvp);
+		}
 
 		/* advance pointers, decrement length */
 		attr += eapsim_len;

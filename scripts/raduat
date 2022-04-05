@@ -75,7 +75,7 @@ function show_help
     echo "The directory containing the tests may have multiple subdirectories to group the tests."
 }
 
-RADCLIENT=$(which "$RADCLIENT")
+RADCLIENT=$(command -v "$RADCLIENT")
 if [ ! -x "$RADCLIENT" ]; then
     ERROR "Can't find radclient binary, modify your \$PATH or set RADCLIENT"
     exit 64

@@ -26,6 +26,8 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
+USES_APPLE_DEPRECATED_API
+
 #if defined(HAVE_MALLOPT) && defined(HAVE_MALLOC_H)
 #  include <malloc.h>
 #endif

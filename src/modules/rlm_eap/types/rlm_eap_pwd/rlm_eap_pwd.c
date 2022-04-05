@@ -829,7 +829,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		/*
 		 * element is a point, get both coordinates: x and y
 		 */
-		if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->my_element, x, y,
+		if (!EC_POINT_get_affine_coordinates(session->group, session->my_element, x, y,
 							 session->bnctx)) {
 			DEBUG2("server point assignment failed");
 			BN_clear_free(x);

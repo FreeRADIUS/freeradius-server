@@ -529,6 +529,8 @@ static void make_secret(uint8_t *digest, uint8_t const *vector,
 	for ( i = 0; i < length; i++ ) {
 		digest[i] ^= value[i];
 	}
+
+	fr_md5_destroy(&context);
 }
 
 #define MAX_PASS_LEN (128)
@@ -563,8 +565,9 @@ static void make_passwd(uint8_t *output, ssize_t *outlen,
 	*outlen = len;
 
 	fr_md5_init(&context);
+	fr_md5_init(&old);
 	fr_md5_update(&context, (uint8_t const *) secret, strlen(secret));
-	old = context;
+	fr_md5_copy(old, context);
 
 	/*
 	 *	Do first pass.
@@ -573,7 +576,7 @@ static void make_passwd(uint8_t *output, ssize_t *outlen,
 
 	for (n = 0; n < len; n += AUTH_PASS_LEN) {
 		if (n > 0) {
-			context = old;
+			fr_md5_copy(context, old);
 			fr_md5_update(&context,
 				       passwd + n - AUTH_PASS_LEN,
 				       AUTH_PASS_LEN);
@@ -586,6 +589,9 @@ static void make_passwd(uint8_t *output, ssize_t *outlen,
 	}
 
 	memcpy(output, passwd, len);
+
+	fr_md5_destroy(&old);
+	fr_md5_destroy(&context);
 }
 
 
@@ -654,8 +660,9 @@ static void make_tunnel_passwd(uint8_t *output, ssize_t *outlen,
 	output[2] = inlen;	/* length of the password string */
 
 	fr_md5_init(&context);
+	fr_md5_init(&old);
 	fr_md5_update(&context, (uint8_t const *) secret, strlen(secret));
-	old = context;
+	fr_md5_copy(old, context);
 
 	fr_md5_update(&context, vector, AUTH_VECTOR_LEN);
 	fr_md5_update(&context, &output[0], 2);
@@ -664,7 +671,7 @@ static void make_tunnel_passwd(uint8_t *output, ssize_t *outlen,
 		size_t block_len;
 
 		if (n > 0) {
-			context = old;
+			fr_md5_copy(context, old);
 			fr_md5_update(&context,
 				       output + 2 + n - AUTH_PASS_LEN,
 				       AUTH_PASS_LEN);
@@ -682,6 +689,8 @@ static void make_tunnel_passwd(uint8_t *output, ssize_t *outlen,
 			output[i + 2 + n] ^= digest[i];
 		}
 	}
+	fr_md5_destroy(&old);
+	fr_md5_destroy(&context);
 }
 
 static int do_next_tlv(VALUE_PAIR const *vp, VALUE_PAIR const *next, int nest)
@@ -2121,6 +2130,7 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			fr_md5_update(&context, (uint8_t const *) secret,
 				     strlen(secret));
 			fr_md5_final(digest, &context);
+			fr_md5_destroy(&context);
 
 			memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
 			memcpy(packet->vector, digest, AUTH_VECTOR_LEN);
@@ -2244,6 +2254,7 @@ static int calc_acctdigest(RADIUS_PACKET *packet, char const *secret)
 	fr_md5_update(&context, packet->data, packet->data_len);
 	fr_md5_update(&context, (uint8_t const *) secret, strlen(secret));
 	fr_md5_final(digest, &context);
+	fr_md5_destroy(&context);
 
 	/*
 	 *	Return 0 if OK, 2 if not OK.
@@ -2283,6 +2294,7 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	fr_md5_update(&context, packet->data, packet->data_len);
 	fr_md5_update(&context, (uint8_t const *) secret, strlen(secret));
 	fr_md5_final(calc_digest, &context);
+	fr_md5_destroy(&context);
 
 	/*
 	 *  Copy the packet's vector back to the packet.
@@ -4579,8 +4591,9 @@ int rad_pwencode(char *passwd, size_t *pwlen, char const *secret,
 	secretlen = strlen(secret);
 
 	fr_md5_init(&context);
+	fr_md5_init(&old);
 	fr_md5_update(&context, (uint8_t const *) secret, secretlen);
-	old = context;		/* save intermediate work */
+	fr_md5_copy(old, context);		/* save intermediate work */
 
 	/*
 	 *	Encrypt it in place.  Don't bother checking
@@ -4591,7 +4604,7 @@ int rad_pwencode(char *passwd, size_t *pwlen, char const *secret,
 			fr_md5_update(&context, vector, AUTH_PASS_LEN);
 			fr_md5_final(digest, &context);
 		} else {
-			context = old;
+			fr_md5_copy(context, old);
 			fr_md5_update(&context,
 				     (uint8_t *) passwd + n - AUTH_PASS_LEN,
 				     AUTH_PASS_LEN);
@@ -4602,6 +4615,9 @@ int rad_pwencode(char *passwd, size_t *pwlen, char const *secret,
 			passwd[i + n] ^= digest[i];
 		}
 	}
+
+	fr_md5_destroy(&old);
+	fr_md5_destroy(&context);
 
 	return 0;
 }
@@ -4635,8 +4651,9 @@ int rad_pwdecode(char *passwd, size_t pwlen, char const *secret,
 	secretlen = strlen(secret);
 
 	fr_md5_init(&context);
+	fr_md5_init(&old);
 	fr_md5_update(&context, (uint8_t const *) secret, secretlen);
-	old = context;		/* save intermediate work */
+	fr_md5_copy(old, context);		/* save intermediate work */
 
 	/*
 	 *	The inverse of the code above.
@@ -4646,7 +4663,7 @@ int rad_pwdecode(char *passwd, size_t pwlen, char const *secret,
 			fr_md5_update(&context, vector, AUTH_VECTOR_LEN);
 			fr_md5_final(digest, &context);
 
-			context = old;
+			fr_md5_copy(context, old);
 			if (pwlen > AUTH_PASS_LEN) {
 				fr_md5_update(&context, (uint8_t *) passwd,
 					     AUTH_PASS_LEN);
@@ -4654,7 +4671,7 @@ int rad_pwdecode(char *passwd, size_t pwlen, char const *secret,
 		} else {
 			fr_md5_final(digest, &context);
 
-			context = old;
+			fr_md5_copy(context, old);
 			if (pwlen > (n + AUTH_PASS_LEN)) {
 				fr_md5_update(&context, (uint8_t *) passwd + n,
 					     AUTH_PASS_LEN);
@@ -4667,6 +4684,9 @@ int rad_pwdecode(char *passwd, size_t pwlen, char const *secret,
 	}
 
  done:
+	fr_md5_destroy(&old);
+	fr_md5_destroy(&context);
+
 	passwd[pwlen] = '\0';
 	return strlen(passwd);
 }
@@ -4803,8 +4823,9 @@ ssize_t rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, char const *secret, 
 	secretlen = strlen(secret);
 
 	fr_md5_init(&context);
+	fr_md5_init(&old);
 	fr_md5_update(&context, (uint8_t const *) secret, secretlen);
-	old = context;		/* save intermediate work */
+	fr_md5_copy(old, context);		/* save intermediate work */
 
 	/*
 	 *	Set up the initial key:
@@ -4831,7 +4852,7 @@ ssize_t rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, char const *secret, 
 
 			fr_md5_final(digest, &context);
 
-			context = old;
+			fr_md5_copy(context, old);
 
 			/*
 			 *	A quick check: decrypt the first octet
@@ -4851,7 +4872,7 @@ ssize_t rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, char const *secret, 
 
 			fr_md5_final(digest, &context);
 
-			context = old;
+			fr_md5_copy(context, old);
 			fr_md5_update(&context, passwd + n + 2, block_len);
 		}
 
@@ -4862,6 +4883,9 @@ ssize_t rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, char const *secret, 
 
 	*pwlen = reallen;
 	passwd[reallen] = 0;
+
+	fr_md5_destroy(&old);
+	fr_md5_destroy(&context);
 
 	return reallen;
 }

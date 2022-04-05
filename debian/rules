@@ -33,7 +33,7 @@ logdir          = /var/log/$(package)
 pkgdocdir       = /usr/share/doc/$(package)
 raddbdir        = /etc/$(package)
 
-modulelist=krb5 ldap sql_mysql sql_iodbc sql_postgresql dhcp redis rest yubikey
+modulelist=krb5 ldap sql_freetds sql_mysql sql_iodbc sql_postgresql dhcp redis rest yubikey
 pkgs=$(shell dh_listpackages)
 
 # This has to be exported to make some magic below work.
@@ -168,6 +168,7 @@ install-arch: build-arch-stamp
 	dh_installdirs
 	test -d $(freeradius_dir)/usr/lib/freeradius || mkdir -p $(freeradius_dir)/usr/lib/freeradius
 	$(MAKE) install R=$(freeradius_dir) PACKAGE='debian'
+	install -m 0755 scripts/raduat $(freeradius_dir)/usr/bin/raduat
 
 	# rename radius binary to play nicely with others
 	mv $(freeradius_dir)/usr/sbin/radiusd $(freeradius_dir)/usr/sbin/$(package)

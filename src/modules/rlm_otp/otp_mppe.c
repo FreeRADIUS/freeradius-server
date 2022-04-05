@@ -39,10 +39,16 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <string.h>
 
+#if defined(OPENSSL_VERSION_NUMBER) && (OPENSSL_VERSION_NUMBER < 0x30000000L)
+#define UNUSED3
+#else
+#define UNUSED3 UNUSED
+#endif
+
 /*
  * Add MPPE attributes to a request, if required.
  */
-void otp_mppe(REQUEST *request, otp_pwe_t pwe, rlm_otp_t const *opt, char const *passcode)
+void otp_mppe(REQUEST *request, otp_pwe_t pwe, UNUSED3 rlm_otp_t const *opt, UNUSED3 char const *passcode)
 {
 	VALUE_PAIR *cvp, *rvp;
 
@@ -58,6 +64,7 @@ void otp_mppe(REQUEST *request, otp_pwe_t pwe, rlm_otp_t const *opt, char const 
 	case PWE_CHAP:
 		return;
 
+#if defined(OPENSSL_VERSION_NUMBER) && (OPENSSL_VERSION_NUMBER < 0x30000000L)
 	case PWE_MSCHAP:
 		/* First, set some related attributes. */
 		pair_make_reply("MS-MPPE-Encryption-Policy", otp_mppe_policy[opt->mschap_mppe_policy], T_OP_EQ);
@@ -368,7 +375,12 @@ void otp_mppe(REQUEST *request, otp_pwe_t pwe, rlm_otp_t const *opt, char const 
 
 		break; /* PWE_MSCHAP2 */
 	} /* PWE_MSCHAP2 */
-
+#else
+	case PWE_MSCHAP:
+	case PWE_MSCHAP2:
+		REDEBUG("MS-CHAP is unsupported for OpenSSL 3.");
+		break;
+#endif
 	} /* switch (pwe) */
 
 	return;

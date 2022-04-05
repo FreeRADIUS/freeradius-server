@@ -6,6 +6,9 @@ on:
       - coverity_scan
   pull_request:
 
+env:
+  CC: gcc
+
 jobs:
   rpm-build:
 
@@ -14,6 +17,7 @@ jobs:
         env:
           - { NAME: "centos-7",  OS: "centos:7" }
           - { NAME: "centos-8",  OS: "centos:8" }
+          - { NAME: "rocky-8",   OS: "rockylinux/rockylinux:8" }
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -25,15 +29,31 @@ jobs:
 
     steps:
 
+    #
+    # Centos9 is EOL, so we need the below tricks to get it to work.
+    #
+    # Converting from CentOS Linux 8 to CentOS Stream 8 is the "official" process
+    # (see centos.org/centos-stream/#centos-stream-8):
+    #
+    - name: Some hacks for CentOS 8 (EOL) to work again.
+      if: ${{ matrix.env.NAME == 'centos-8' }}
+      run: |
+        sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
+        sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
+        yum upgrade -y
+        yum -y --disablerepo '*' --enablerepo extras swap centos-linux-repos centos-stream-repos
+        yum clean all && yum makecache
+        yum distro-sync -y --allowerasing
+
     # Required so that the checkout action uses git protocol rather than the GitHub REST API.
     # make rpm requires the FR directory to be a git repository.
     - name: Install recent git for CentOS 7
       if: ${{ matrix.env.NAME == 'centos-7' }}
       run: |
-        yum install -y https://packages.endpoint.com/rhel/7/os/x86_64/git-core-2.24.1-1.ep7.x86_64.rpm
+        yum install -y https://packages.endpointdev.com/rhel/7/os/x86_64/git-core-2.30.1-1.ep7.x86_64.rpm
 
-    - name: Install distro git for CentOS > 7
-      if: ${{ matrix.env.NAME != 'centos-7' }}
+    - name: Install distro git for Rocky 8 and CentOS 8.
+      if: ${{ matrix.env.NAME == 'rocky-8' || matrix.env.NAME == 'centos-8' }}
       run: |
         yum install -y git-core
 
@@ -49,20 +69,20 @@ jobs:
         mkdir rpms
         ls -la
 
-    - name: Extra repos
-      if: ${{ startsWith(matrix.env.NAME, 'centos-') }}
+    - name: Extra repos for CentOS and Rocky Linux
+      if: ${{ startsWith(matrix.env.NAME, 'centos-') || startsWith(matrix.env.NAME, 'rocky-') }}
       run: |
-        echo '[ltb-project]' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'name=LTB project packages' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'baseurl=https://ltb-project.org/rpm/$releasever/$basearch' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'enabled=1' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'gpgcheck=1' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
-        rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
+        echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
+        echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
+        echo 'baseurl=https://ltb-project.org/rpm/$releasever/$basearch'  >> /etc/yum.repos.d/ltb-project.repo
+        echo 'enabled=1'                                                  >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgcheck=1'                                                 >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgkey=https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
+        rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
         yum install -y epel-release
 
-    - name: Enable PowerTools on CentOS 8
-      if: ${{ matrix.env.NAME == 'centos-8' }}
+    - name: Enable PowerTools on Rocky 8 and CentOS 8.
+      if: ${{ matrix.env.NAME == 'rocky-8' || matrix.env.NAME == 'centos-8' }}
       run: |
         yum install -y yum-utils
         yum config-manager --enable PowerTools || :
@@ -91,9 +111,16 @@ jobs:
       run: |
         yum-builddep -y freeradius/redhat/freeradius.spec
 
+    - name: Show versions
+      run: |
+        $CC --version
+        make --version
+        krb5-config --all || :
+        openssl version
+
     # For pkill and ps
-    - name: Enable procps-ng on Fedora
-      if: ${{ startsWith(matrix.env.NAME, 'fedora-') }}
+    - name: Enable procps-ng on Centos and Rocky
+      if: ${{ startsWith(matrix.env.NAME, 'centos-8') || startsWith(matrix.env.NAME, 'rocky-8') }}
       run: |
         yum install -y procps-ng
 
@@ -152,6 +179,7 @@ jobs:
         env:
           - { NAME: "centos-7", OS: "centos:7" }
           - { NAME: "centos-8", OS: "centos:8" }
+          - { NAME: "rocky-8", OS: "rockylinux/rockylinux:8" }
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -163,28 +191,44 @@ jobs:
 
     steps:
 
-    - name: Extra repos for CentOS
-      if: ${{ startsWith(matrix.env.NAME, 'centos-') }}
+    #
+    # Centos9 is EOL, so we need the below tricks to get it to work.
+    #
+    # Converting from CentOS Linux 8 to CentOS Stream 8 is the "official" process
+    # (see centos.org/centos-stream/#centos-stream-8):
+    #
+    - name: Some hacks for CentOS 8 (EOL) to work again.
+      if: ${{ matrix.env.NAME == 'centos-8' }}
       run: |
-        echo '[ltb-project]' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'name=LTB project packages' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'baseurl=https://ltb-project.org/rpm/$releasever/$basearch' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'enabled=1' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'gpgcheck=1' >> /etc/yum.repos.d/ltb-project.repo
-        echo 'gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
-        rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
+        sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
+        sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
+        yum upgrade -y
+        yum -y --disablerepo '*' --enablerepo extras swap centos-linux-repos centos-stream-repos
+        yum clean all && yum makecache
+        yum distro-sync -y --allowerasing
+
+    - name: Extra repos for CentOS and Rocky
+      if: ${{ startsWith(matrix.env.NAME, 'centos-')  || startsWith(matrix.env.NAME, 'rocky-') }}
+      run: |
+        echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
+        echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
+        echo 'baseurl=https://ltb-project.org/rpm/$releasever/$basearch'  >> /etc/yum.repos.d/ltb-project.repo
+        echo 'enabled=1'                                                  >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgcheck=1'                                                 >> /etc/yum.repos.d/ltb-project.repo
+        echo 'gpgkey=https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
+        rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
         yum install -y epel-release
 
-    - name: Enable PowerTools on CentOS 8
-      if: ${{ matrix.env.NAME == 'centos-8' }}
+    - name: Enable PowerTools on Centos 8 and Rocky 8
+      if: ${{ matrix.env.NAME == 'centos-8' || matrix.env.NAME == 'rocky-8' }}
       run: |
         yum install -y yum-utils
         yum config-manager --enable PowerTools || :
         yum config-manager --enable powertools || :
 
     # For pkill
-    - name: Enable procps-ng on Fedora
-      if: ${{ startsWith(matrix.env.NAME, 'fedora-') }}
+    - name: Enable procps-ng on Centos and Rocky
+      if: ${{ startsWith(matrix.env.NAME, 'centos-') || startsWith(matrix.env.NAME, 'rocky-') }}
       run: |
         yum install -y procps-ng
 

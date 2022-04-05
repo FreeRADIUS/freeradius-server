@@ -36,6 +36,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "eap_pwd.h"
 #include "const_time.h"
+#include <freeradius-devel/openssl3.h>
 
 static uint8_t allzero[SHA256_DIGEST_LENGTH] = { 0x00 };
 
@@ -140,7 +141,7 @@ static void do_equation(EC_GROUP *group, BIGNUM *y2, BIGNUM *x, BN_CTX *bnctx)
 	p = BN_new();
 	a = BN_new();
 	b = BN_new();
-	EC_GROUP_get_curve_GFp(group, p, a, b, bnctx);
+	EC_GROUP_get_curve(group, p, a, b, bnctx);
 
 	BN_sub(pm1, p, BN_value_one());
 
@@ -247,18 +248,16 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 			      char const *id_peer, int id_peer_len,
 			      uint32_t *token)
 {
-	BIGNUM *x_candidate = NULL, *rnd = NULL, *y_sqrd = NULL, *qr = NULL, *qnr = NULL;
-	HMAC_CTX *ctx = NULL;
-	uint8_t pwe_digest[SHA256_DIGEST_LENGTH], *prfbuf = NULL, *xbuf = NULL, *pm1buf = NULL, ctr;
-	int nid, is_odd, primebitlen, primebytelen, ret = 0, found = 0, mask;
-	int save, i, rbits, qr_or_qnr, save_is_odd = 0, cmp;
-	unsigned int skip;
+	BIGNUM		*x_candidate = NULL, *rnd = NULL, *y_sqrd = NULL, *qr = NULL, *qnr = NULL, *y1 = NULL, *y2 = NULL, *y = NULL, *exp = NULL;
+	EVP_MD_CTX	*hmac_ctx;
+	EVP_PKEY	*hmac_pkey;
+	uint8_t		pwe_digest[SHA256_DIGEST_LENGTH], *prfbuf = NULL, *xbuf = NULL, *pm1buf = NULL, *y1buf = NULL, *y2buf = NULL, *ybuf = NULL, ctr;
+	int		nid, is_odd, primebitlen, primebytelen, ret = 0, found = 0, mask;
+	int		save, i, rbits, qr_or_qnr, save_is_odd = 0, cmp;
+	unsigned int	skip;
 
-	ctx = HMAC_CTX_new();
-	if (ctx == NULL) {
-		DEBUG("failed allocating HMAC context");
-		goto fail;
-	}
+	MEM(hmac_ctx = EVP_MD_CTX_new());
+	MEM(hmac_pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL, allzero, sizeof(allzero)));
 
 	switch (grp_num) { /* from IANA registry for IKE D-H groups */
 	case 19:
@@ -302,12 +301,16 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 	    ((qr = consttime_BN()) == NULL) ||
 	    ((qnr = consttime_BN()) == NULL) ||
 	    ((x_candidate = consttime_BN()) == NULL) ||
-	    ((y_sqrd = consttime_BN()) == NULL)) {
+	    ((y_sqrd = consttime_BN()) == NULL) ||
+	    ((y1 = consttime_BN()) == NULL) ||
+	    ((y2 = consttime_BN()) == NULL) ||
+	    ((y = consttime_BN()) == NULL) ||
+        ((exp = consttime_BN()) == NULL)) {
 		DEBUG("unable to create bignums");
 		goto fail;
 	}
 
-	if (!EC_GROUP_get_curve_GFp(session->group, session->prime, NULL, NULL, NULL)) {
+	if (!EC_GROUP_get_curve(session->group, session->prime, NULL, NULL, NULL)) {
 		DEBUG("unable to get prime for GFp curve");
 		goto fail;
 	}
@@ -331,6 +334,19 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 		DEBUG("unable to alloc space for pm1 buffer");
 		goto fail;
 	}
+	if ((y1buf = talloc_zero_array(request, uint8_t, primebytelen)) == NULL) {
+		DEBUG("unable to alloc space for y1 buffer");
+		goto fail;
+	}
+	if ((y2buf = talloc_zero_array(request, uint8_t, primebytelen)) == NULL) {
+		DEBUG("unable to alloc space for y2 buffer");
+		goto fail;
+	}
+	if ((ybuf = talloc_zero_array(request, uint8_t, primebytelen)) == NULL) {
+		DEBUG("unable to alloc space for y buffer");
+		goto fail;
+	}
+
 
 	/*
 	* derive random quadradic residue and quadratic non-residue
@@ -360,13 +376,19 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 		 *	pwd-seed = H(token | peer-id | server-id | password |
 		 *		     counter)
 		 */
-		HMAC_Init_ex(ctx, allzero, SHA256_DIGEST_LENGTH, EVP_sha256(),NULL);
-		HMAC_Update(ctx, (uint8_t *)token, sizeof(*token));
-		HMAC_Update(ctx, (uint8_t const *)id_peer, id_peer_len);
-		HMAC_Update(ctx, (uint8_t const *)id_server, id_server_len);
-		HMAC_Update(ctx, (uint8_t const *)password, password_len);
-		HMAC_Update(ctx, (uint8_t *)&ctr, sizeof(ctr));
-		pwd_hmac_final(ctx, pwe_digest);
+		EVP_DigestSignInit(hmac_ctx, NULL, EVP_sha256(), NULL, hmac_pkey);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t *)token, sizeof(*token));
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *)id_peer, id_peer_len);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *)id_server, id_server_len);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t const *)password, password_len);
+		EVP_DigestSignUpdate(hmac_ctx, (uint8_t *)&ctr, sizeof(ctr));
+
+		{
+			size_t mdlen = SHA256_DIGEST_LENGTH;
+
+			EVP_DigestSignFinal(hmac_ctx, pwe_digest, &mdlen);
+			EVP_MD_CTX_reset(hmac_ctx);
+		}
 
 		BN_bin2bn(pwe_digest, SHA256_DIGEST_LENGTH, rnd);
 		eap_pwd_kdf(pwe_digest, SHA256_DIGEST_LENGTH, "EAP-pwd Hunting And Pecking",
@@ -400,7 +422,7 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 		* need to unambiguously identify the solution, if there is
 		* one..
 		*/
-		is_odd = BN_is_odd(rnd) ? 1 : 0;
+		is_odd = BN_is_odd(rnd);
 
 		/*
 		* check whether x^3 + a*x + b is a quadratic residue
@@ -443,8 +465,21 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 	* now we can savely construct PWE
 	*/
 	BN_bin2bn(xbuf, primebytelen, x_candidate);
-	if (!EC_POINT_set_compressed_coordinates_GFp(session->group, session->pwe,
-						     x_candidate, save_is_odd, NULL)) {
+	do_equation(session->group, y_sqrd, x_candidate, session->bnctx);
+	if ( !BN_add(exp, session->prime, BN_value_one()) ||
+		 !BN_rshift(exp, exp, 2) ||
+		 !BN_mod_exp_mont_consttime(y1, y_sqrd, exp, session->prime, session->bnctx, NULL) ||
+		 !BN_sub(y2, session->prime, y1) ||
+		 !BN_bn2bin(y1, y1buf) ||
+		 !BN_bn2bin(y2, y2buf)) {
+		DEBUG("unable to compute y");
+		goto fail;
+	}
+	mask = const_time_eq(save_is_odd, BN_is_odd(y1));
+	const_time_select_bin(mask, y1buf, y2buf, primebytelen, ybuf);
+	if (BN_bin2bn(ybuf, primebytelen, y) == NULL ||
+		!EC_POINT_set_affine_coordinates(session->group, session->pwe, x_candidate, y, session->bnctx)) {
+		DEBUG("unable to set point coordinate");
 		goto fail;
 	}
 
@@ -460,12 +495,20 @@ int compute_password_element (REQUEST *request, pwd_session_t *session, uint16_t
 	BN_clear_free(qr);
 	BN_clear_free(qnr);
 	BN_clear_free(rnd);
+	BN_clear_free(y1);
+	BN_clear_free(y2);
+	BN_clear_free(y);
+	BN_clear_free(exp);
 
 	if (prfbuf) talloc_free(prfbuf);
 	if (xbuf) talloc_free(xbuf);
 	if (pm1buf) talloc_free(pm1buf);
+	if (y1buf) talloc_free(y1buf);
+	if (y2buf) talloc_free(y2buf);
+	if (ybuf) talloc_free(ybuf);
 
-	HMAC_CTX_free(ctx);
+	EVP_MD_CTX_free(hmac_ctx);
+	EVP_PKEY_free(hmac_pkey);
 
 	return ret;
 }
@@ -561,7 +604,7 @@ int process_peer_commit(REQUEST *request, pwd_session_t *session, uint8_t *in, s
 		goto finish;
 	}
 
-	if (!EC_POINT_set_affine_coordinates_GFp(session->group, session->peer_element, x, y, bn_ctx)) {
+	if (!EC_POINT_set_affine_coordinates(session->group, session->peer_element, x, y, bn_ctx)) {
 		REDEBUG("Unable to get coordinates of peer's element");
 		goto finish;
 	}
@@ -620,7 +663,7 @@ int process_peer_commit(REQUEST *request, pwd_session_t *session, uint8_t *in, s
 		goto finish;
 	}
 
-	if (!EC_POINT_get_affine_coordinates_GFp(session->group, K, session->k, NULL, bn_ctx)) {
+	if (!EC_POINT_get_affine_coordinates(session->group, K, session->k, NULL, bn_ctx)) {
 		REDEBUG("Unable to get shared secret from K");
 		goto finish;
 	}
@@ -670,7 +713,7 @@ int compute_server_confirm(REQUEST *request, pwd_session_t *session, uint8_t *ou
 	/*
 	 * next is server element: x, y
 	 */
-	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->my_element, x, y, bn_ctx)) {
+	if (!EC_POINT_get_affine_coordinates(session->group, session->my_element, x, y, bn_ctx)) {
 		REDEBUG("Unable to get coordinates of server element");
 		goto finish;
 	}
@@ -695,7 +738,7 @@ int compute_server_confirm(REQUEST *request, pwd_session_t *session, uint8_t *ou
 	/*
 	 * next is peer element: x, y
 	 */
-	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->peer_element, x, y, bn_ctx)) {
+	if (!EC_POINT_get_affine_coordinates(session->group, session->peer_element, x, y, bn_ctx)) {
 		REDEBUG("Unable to get coordinates of peer's element");
 		goto finish;
 	}
@@ -770,7 +813,7 @@ int compute_peer_confirm(REQUEST *request, pwd_session_t *session, uint8_t *out,
 	/*
 	* then peer element: x, y
 	*/
-	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->peer_element, x, y, bn_ctx)) {
+	if (!EC_POINT_get_affine_coordinates(session->group, session->peer_element, x, y, bn_ctx)) {
 		REDEBUG("Unable to get coordinates of peer's element");
 		goto finish;
 	}
@@ -796,7 +839,7 @@ int compute_peer_confirm(REQUEST *request, pwd_session_t *session, uint8_t *out,
 	/*
 	 * then server element: x, y
 	 */
-	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->my_element, x, y, bn_ctx)) {
+	if (!EC_POINT_get_affine_coordinates(session->group, session->my_element, x, y, bn_ctx)) {
 		REDEBUG("Unable to get coordinates of server element");
 		goto finish;
 	}

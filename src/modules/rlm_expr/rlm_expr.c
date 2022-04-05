@@ -970,6 +970,49 @@ static ssize_t md5_xlat(UNUSED void *instance, REQUEST *request,
 	return strlen(out);
 }
 
+/** Calculate the MD4 hash of a string or attribute.
+ *
+ * Example: "%{md4:foo}" == "0ac6700c491d70fb8650940b1ca1e4b2"
+ */
+static ssize_t md4_xlat(UNUSED void *instance, REQUEST *request,
+			char const *fmt, char *out, size_t outlen)
+{
+	uint8_t digest[16];
+	ssize_t i, len, inlen;
+	uint8_t const *p;
+	FR_MD4_CTX ctx;
+
+	/*
+	 *	We need room for at least one octet of output.
+	 */
+	if (outlen < 3) {
+		*out = '\0';
+		return 0;
+	}
+
+	inlen = xlat_fmt_to_ref(&p, request, fmt);
+	if (inlen < 0) {
+		return -1;
+	}
+
+	fr_md4_init(&ctx);
+	fr_md4_update(&ctx, p, inlen);
+	fr_md4_final(digest, &ctx);
+
+	/*
+	 *	Each digest octet takes two hex digits, plus one for
+	 *	the terminating NUL.
+	 */
+	len = (outlen / 2) - 1;
+	if (len > 16) len = 16;
+
+	for (i = 0; i < len; i++) {
+		snprintf(out + i * 2, 3, "%02x", digest[i]);
+	}
+
+	return strlen(out);
+}
+
 /** Calculate the SHA1 hash of a string or attribute.
  *
  * Example: "%{sha1:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
@@ -1831,6 +1874,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	xlat_register("unescape", unescape_xlat, NULL, inst);
 	xlat_register("tolower", tolower_xlat, NULL, inst);
 	xlat_register("toupper", toupper_xlat, NULL, inst);
+	xlat_register("md4", md4_xlat, NULL, inst);
 	xlat_register("md5", md5_xlat, NULL, inst);
 	xlat_register("sha1", sha1_xlat, NULL, inst);
 #ifdef HAVE_OPENSSL_EVP_H

@@ -32,6 +32,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/hmac.h>
 #endif
 
+#include <freeradius-devel/openssl3.h>
+
 #define WIMAX_EPSAKA_RAND_SIZE	16
 #define WIMAX_EPSAKA_KI_SIZE	16
 #define WIMAX_EPSAKA_OPC_SIZE	16
@@ -307,6 +309,7 @@ static int mip_keys_generate(void *instance, REQUEST *request, VALUE_PAIR *msk, 
 	 */
 	hmac = HMAC_CTX_new();
 	HMAC_Init_ex(hmac, emsk->vp_octets, emsk->vp_length, EVP_sha256(), NULL);
+	rk1_len = SHA256_DIGEST_LENGTH;
 
 	HMAC_Update(hmac, &usage_data[0], sizeof(usage_data));
 	HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
@@ -318,6 +321,7 @@ static int mip_keys_generate(void *instance, REQUEST *request, VALUE_PAIR *msk, 
 
 	HMAC_Update(hmac, (uint8_t const *) &mip_rk_1, rk1_len);
 	HMAC_Update(hmac, &usage_data[0], sizeof(usage_data));
+	rk2_len = SHA256_DIGEST_LENGTH;
 	HMAC_Final(hmac, &mip_rk_2[0], &rk2_len);
 
 	memcpy(mip_rk, mip_rk_1, rk1_len);
@@ -330,6 +334,7 @@ static int mip_keys_generate(void *instance, REQUEST *request, VALUE_PAIR *msk, 
 	HMAC_Init_ex(hmac, mip_rk, rk_len, EVP_sha256(), NULL);
 
 	HMAC_Update(hmac, (uint8_t const *) "SPI CMIP PMIP", 12);
+	rk1_len = SHA256_DIGEST_LENGTH;
 	HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
 
 	/*
@@ -387,6 +392,7 @@ static int mip_keys_generate(void *instance, REQUEST *request, VALUE_PAIR *msk, 
 		HMAC_Update(hmac, (uint8_t const *) "PMIP4 MN HA", 11);
 		HMAC_Update(hmac, (uint8_t const *) &ip->vp_ipaddr, 4);
 		HMAC_Update(hmac, (uint8_t const *) &mn_nai->vp_strvalue, mn_nai->vp_length);
+		rk1_len = SHA1_DIGEST_LENGTH;
 		HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
 
 		/*
@@ -437,6 +443,7 @@ static int mip_keys_generate(void *instance, REQUEST *request, VALUE_PAIR *msk, 
 		HMAC_Update(hmac, (uint8_t const *) "CMIP4 MN HA", 11);
 		HMAC_Update(hmac, (uint8_t const *) &ip->vp_ipaddr, 4);
 		HMAC_Update(hmac, (uint8_t const *) &mn_nai->vp_strvalue, mn_nai->vp_length);
+		rk1_len = SHA1_DIGEST_LENGTH;
 		HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
 
 		/*
@@ -487,6 +494,7 @@ static int mip_keys_generate(void *instance, REQUEST *request, VALUE_PAIR *msk, 
 		HMAC_Update(hmac, (uint8_t const *) "CMIP6 MN HA", 11);
 		HMAC_Update(hmac, (uint8_t const *) &ip->vp_ipv6addr, 16);
 		HMAC_Update(hmac, (uint8_t const *) &mn_nai->vp_strvalue, mn_nai->vp_length);
+		rk1_len = SHA1_DIGEST_LENGTH;
 		HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
 
 		/*
@@ -533,6 +541,7 @@ static int mip_keys_generate(void *instance, REQUEST *request, VALUE_PAIR *msk, 
 
 		HMAC_Update(hmac, (uint8_t const *) "FA-RK", 5);
 
+		rk1_len = SHA1_DIGEST_LENGTH;
 		HMAC_Final(hmac, &mip_rk_1[0], &rk1_len);
 
 		fr_pair_value_memcpy(fa_rk, &mip_rk_1[0], rk1_len);
@@ -708,6 +717,7 @@ static rlm_rcode_t aka_keys_generate(REQUEST *request, rlm_wimax_t const *inst, 
 	hmac = HMAC_CTX_new();
 	HMAC_Init_ex(hmac, kk_bin, sizeof(kk_bin), EVP_sha256(), NULL);
 	HMAC_Update(hmac, ks_bin, sizeof(ks_bin));
+	kasme_len = SHA256_DIGEST_LENGTH;
 	HMAC_Final(hmac, &kasme_bin[0], &kasme_len);
 	HMAC_CTX_free(hmac);
 

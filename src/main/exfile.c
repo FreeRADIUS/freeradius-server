@@ -152,6 +152,22 @@ static int exfile_open_mkdir(exfile_t *ef, char const *filename, mode_t permissi
 {
 	int fd;
 
+	/*
+	 *	Files in /dev/ are special.  We don't try to create
+	 *	their parent directories, and we don't try to create
+	 *	the files.
+	 */
+	if (strncmp(filename, "/dev/", 5) == 0) {
+		fd = open(filename, O_RDWR, permissions);
+		if (fd < 0) {
+			fr_strerror_printf("Failed to open file %s: %s",
+					   filename, strerror(errno));
+			return -1;
+		}
+
+		return fd;
+	}
+
 	fd = open(filename, O_RDWR | O_CREAT, permissions);
 	if (fd < 0) {
 		mode_t dirperm;

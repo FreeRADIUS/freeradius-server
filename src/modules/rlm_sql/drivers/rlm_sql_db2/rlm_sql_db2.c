@@ -35,8 +35,8 @@ RCSID("$Id$")
 
 #include <sys/stat.h>
 
-#include <sql.h>
 #include <sqlcli.h>
+
 #include "rlm_sql.h"
 
 typedef struct rlm_sql_conn {
@@ -51,18 +51,18 @@ static int _sql_socket_destructor(rlm_sql_db2_conn_t *conn)
 
 	if (conn->stmt) {
 		SQLFreeHandle(SQL_HANDLE_STMT, conn->stmt);
-		conn->stmt = NULL;
+		conn->stmt = 0;
 	}
 
 	if (conn->dbc_handle) {
 		SQLDisconnect(conn->dbc_handle);
 		SQLFreeHandle(SQL_HANDLE_DBC, conn->dbc_handle);
-		conn->dbc_handle = NULL;
+		conn->dbc_handle = 0;
 	}
 
 	if (conn->env_handle) {
 		SQLFreeHandle(SQL_HANDLE_ENV, conn->env_handle);
-		conn->env_handle = NULL;
+		conn->env_handle = 0;
 	}
 
 	return RLM_SQL_OK;
@@ -123,7 +123,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 		retval = SQLExecDirect(conn->stmt, db2_query, SQL_NTS);
 		if (retval != SQL_SUCCESS) {
 			SQLFreeHandle(SQL_HANDLE_STMT, conn->stmt);
-			conn->stmt = NULL;
+			conn->stmt = 0;
 
 			/* XXX Check if retval means we should return RLM_SQL_RECONNECT */
 			ERROR("Could not execute statement \"%s\"", query);
@@ -194,7 +194,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 
 	if (conn->stmt) {
 		SQLFreeHandle(SQL_HANDLE_STMT, conn->stmt);
-		conn->stmt = NULL;
+		conn->stmt = 0;
 	}
 
 	return RLM_SQL_OK;

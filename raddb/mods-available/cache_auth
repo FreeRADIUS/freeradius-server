@@ -1,0 +1,116 @@
+# -*- text -*-
+#
+#  $Id$
+
+#  This file contains a collection of cache module configurations
+#  which have been designed to be used to cache accepts, rejects, and
+#  LDAP User DNs.  The main use of these modules is Google Secure
+#  LDAP.
+#
+#  In scenarios where there is repeated authentication requests for the same
+#  user within a short time frame (e.g. 802.1x wifi), these modules can help to
+#  compensate for slow responses from poor LDAP servers (i.e. Google).
+#
+#  See also mods-available/ldap_google, and sites-available/google-ldap-auth.
+#
+#  The configurations in this file can be used for non-Google LDAP
+#  servers, too.
+#
+
+
+#
+#  This instance of the cache module caches successful
+#  authentications.
+#
+#  The TTL controls how often the authentication will be cached.  
+#
+#  In addition, if group membership is used as part of the policy, the
+#  &control:LDAP-Group attribute should be added to the "update: section here.
+#
+#  If a user's authentication is found in the cache, then any data
+#  which is normally retrieved from LDAP for local policies must also
+#  be stored in the cache via the "update" section.
+#
+cache cache_auth_accept {
+	driver = "rlm_cache_rbtree"
+	key = "%{md5:%{%{Stripped-User-Name}:-%{User-Name}}%{User-Password}}"
+	ttl = 7200
+	update {
+		#	
+		#  We need to cache something, so we just cache
+		#  a random attribute.  This attribute is not used
+		#  for anything else, just as a "place-holder" to
+		#  contain a cache entry.
+		#
+		#  If you add other attributes to this update section, then
+		#  this attribute can be deleted.
+		#
+		&control:User-Category = "success"
+	}
+}
+
+
+#
+#  This instance of the cache module caches failed authentications.
+#
+#  In many cases, rejected users will repeatedly try to authenticate.
+#  These repeated authentication attempts can cause significant load
+#  on the system.  By caching the reject, we can avoid hitting the database.
+#
+#  We index the cache by a hash of the client's MAC and the user name
+#  and password.  If a user corrects their user name or password, then
+#  that authentication attempt won't hit the cache, and their
+#  credentials will be immediately checked against the database.
+#
+#  The TTL controls how long a combination of device / user and
+#  password wil be rejected without looking at the database.  Once the
+#  cache entry expires, the server will delete the cache entry, and
+#  contact the database.
+#
+cache cache_auth_reject {
+        driver = "rlm_cache_rbtree"
+        key = "%{md5:%{Calling-Station-Id}%{Stripped-User-Name}%{User-Password}}"
+        ttl = 3600
+        update {
+		#	
+		#  We need to cache something, so we just cache
+		#  a random attribute.  This attribute is not used
+		#  for anything else, just as a "place-holder" to
+		#  contain a cache entry.
+		#
+		&control:User-Category = "failure"
+        }
+}
+
+
+#
+#  An instance of the cache module which caches the LDAP user DN.
+#
+#  If LDAP authentication is being used for a simple auth / reject without
+#  any need to retrieve other attributes (e.g. group membership), each LDAP
+#  bind authentication is three steps
+#
+#    - bind as admin user
+#    - lookup user's DN
+#    - bind as user using retrieved DN
+#
+#  By caching the DN after the first LDAP querry, the first two steps
+#  are skipped on subsequent authentications.
+#
+#  If an alternative attribute name is being used for the user DN, you
+#  should change the update section here appropriately.  But that is
+#  likely rare.
+#
+#  In scenarios where DNs may change, consideration should be given as
+#  to whether use of this cache may create issues.  i.e. if the cache
+#  doesn't help, then don't use it.
+#
+cache cache_ldap_user_dn {
+	driver = "rlm_cache_rbtree"
+	key = "%{Stripped-User-Name}"
+	ttl = 86400
+	update {
+		&control:LDAP-UserDN = &control:LDAP-UserDN
+	}
+}
+
