@@ -331,10 +331,17 @@ int fr_pair_reinit_from_da(fr_pair_list_t *list, fr_pair_t *vp, fr_dict_attr_t c
 	fr_dict_attr_t const *to_free;
 
 	/*
+	 *	This only works for leaf nodes.
+	 */
+	if (!fr_type_is_leaf(da->type)) return -1;
+
+	/*
 	 *	vp may be created from fr_pair_alloc_null(), in which case it has no da.
 	 */
 	if (vp->da) {
 		if (vp->da == da) return 0;
+
+		if (!fr_type_is_leaf(vp->da->type)) return -1;
 
 		if ((da->type != vp->da->type) && (fr_value_box_cast_in_place(vp, &vp->data, da->type, da) < 0)) return -1;
 	} else {
