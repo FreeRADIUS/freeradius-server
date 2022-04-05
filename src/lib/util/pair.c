@@ -1085,16 +1085,12 @@ int fr_pair_insert_before(fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *to_ad
 	return 0;
 }
 
-/** Replace first matching VP
- *
- * Walks over 'list', and replaces the first VP that matches 'replace'.
- * If no match is found the replacement VP is appended to the list.
+/** Replace a given VP
  *
  * @note Memory used by the VP being replaced will be freed.
- * @note Will not work with unknown attributes.
  *
  * @param[in,out] list		pair list containing #to_replace.
- * @param[in] to_replace	pair to release.
+ * @param[in] to_replace	pair to replace and free
  * @param[in] vp		New pair to insert.
  */
 void fr_pair_replace(fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *vp)
@@ -1104,6 +1100,7 @@ void fr_pair_replace(fr_pair_list_t *list, fr_pair_t *to_replace, fr_pair_t *vp)
 
 	fr_pair_insert_after(list, to_replace, vp);
 	fr_pair_remove(list, to_replace);
+	talloc_free(to_replace);
 }
 
 /** Alloc a new fr_pair_t (and append)
