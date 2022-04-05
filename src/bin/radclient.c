@@ -220,9 +220,8 @@ static int mschapv1_encode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 
 	MEM(reply = fr_pair_afrom_da(packet, attr_ms_chap_response));
 	fr_pair_append(list, reply);
-	p = talloc_array(reply, uint8_t, 50);
+	p = talloc_zero_array(reply, uint8_t, 50); /* really reply->da->flags.length */
 	fr_pair_value_memdup_buffer_shallow(reply, p, false);
-	memset(p, 0, reply->vp_length);
 
 	p[1] = 0x01; /* NT hash */
 

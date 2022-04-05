@@ -170,9 +170,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			if (!vp) return PAIR_DECODE_OOM;
 
 			vp->vp_ip.af = AF_INET6;
-			vp->vp_ip.scope_id = 0;
-			vp->vp_ip.prefix = 0;
-			memset(&vp->vp_ipv6addr, 0, sizeof(vp->vp_ipv6addr));
 			break;
 		}
 
@@ -188,9 +185,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (!vp) return PAIR_DECODE_OOM;
 
 		vp->vp_ip.af = AF_INET6;
-		vp->vp_ip.scope_id = 0;
 		vp->vp_ip.prefix = prefix_len;
-		memset(&vp->vp_ipv6addr, 0, sizeof(vp->vp_ipv6addr));
 		memcpy(&vp->vp_ipv6addr, data + 1, data_len - 1);
 		break;
 
