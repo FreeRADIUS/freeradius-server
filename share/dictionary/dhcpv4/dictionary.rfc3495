@@ -17,8 +17,8 @@ ATTRIBUTE	Primary-DHCP-Server			.1	ipaddr
 ATTRIBUTE	Secondary-DHCP-Server			.2	ipaddr
 
 ATTRIBUTE	Provisioning-Server			.3	tlv
-ATTRIBUTE	FQDN					.0	string	dns_label
-ATTRIBUTE	Address					.1	ipaddr
+ATTRIBUTE	FQDN					122.3.0	string	dns_label
+ATTRIBUTE	Address					122.3.1	ipaddr
 
 ATTRIBUTE	AS-Backoff-and-Retry			.4	struct
 MEMBER		Nominal-Timeout				uint32
