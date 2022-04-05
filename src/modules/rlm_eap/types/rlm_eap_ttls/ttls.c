@@ -249,7 +249,6 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 			}
 		}
 
-do_value:
 		ret = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
 						&FR_DBUFF_TMP(p, (size_t)value_len), value_len, true);
 		if (ret < 0) {
