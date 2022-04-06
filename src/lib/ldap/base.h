@@ -200,7 +200,7 @@ typedef struct {
 	bool			cleartext_password;	//!< Whether the server will return the user's plaintext
 							///< password.
 
-	fr_ldap_sync_type_t	sync_type;		//! <What kind of LDAP sync this directory supports.
+	fr_ldap_sync_type_t	sync_type;		//!< What kind of LDAP sync this directory supports.
 } fr_ldap_directory_t;
 
 /** Connection configuration
