@@ -201,6 +201,8 @@ typedef struct {
 							///< password.
 
 	fr_ldap_sync_type_t	sync_type;		//!< What kind of LDAP sync this directory supports.
+
+	char const		**naming_contexts;	//!< Databases served by this directory.
 } fr_ldap_directory_t;
 
 /** Connection configuration
@@ -697,6 +699,7 @@ int		fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t 
 			       "objectClass", \
 			       "orcldirectoryversion", \
 			       "supportedControl", \
+			       "namingContexts", \
 			       NULL }
 
 int		fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
