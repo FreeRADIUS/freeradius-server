@@ -482,7 +482,6 @@ void request_data_persistable_free(request_t *request)
 void request_data_list_dump(request_t *request, fr_dlist_head_t *head)
 {
 	request_data_t	*rd = NULL;
-	int count = 0;
 
 	if (fr_dlist_empty(head)) return;
 
@@ -492,7 +491,6 @@ void request_data_list_dump(request_t *request, fr_dlist_head_t *head)
 		desc = request_data_description(NULL, rd);
 		ROPTIONAL(RDEBUG, DEBUG, "%s", desc);
 		talloc_free(desc);
-		count++;
 	}
 }
 

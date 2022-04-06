@@ -253,7 +253,6 @@ static void lst_burn_in(void)
 	lst_thing	*array = NULL;
 	static bool	done_init = false;
 	int		insert_count = 0;
-	int		element_count = 0;
 
 	if (!done_init) {
 		srand((unsigned int) time(NULL));
@@ -274,7 +273,6 @@ static void lst_burn_in(void)
 		insert:
 			TEST_CHECK((ret_insert = fr_lst_insert(lst, &array[insert_count])) >= 0);
 			insert_count++;
-			element_count++;
 		} else {
 			switch (rand() % 3) {
 			case 0: /* insert */
@@ -283,7 +281,6 @@ static void lst_burn_in(void)
 			case 1: /* pop */
 				ret_thing = fr_lst_pop(lst);
 				TEST_CHECK(ret_thing != NULL);
-				element_count--;
 				break;
 			case 2: /* peek */
 				ret_thing = fr_lst_peek(lst);

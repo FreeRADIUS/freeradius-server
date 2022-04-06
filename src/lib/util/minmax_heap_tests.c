@@ -230,7 +230,6 @@ static void minmax_heap_burn_in(void)
 	minmax_heap_thing	*array = NULL;
 	static bool		done_init = false;
 	int			insert_count = 0;
-	int			element_count = 0;
 
 	if (!done_init) {
 		srand((unsigned int) time(0));
@@ -250,7 +249,6 @@ static void minmax_heap_burn_in(void)
 		insert:
 			TEST_CHECK((ret_insert = fr_minmax_heap_insert(hp, &array[insert_count])) >= 0);
 			insert_count++;
-			element_count++;
 		} else {
 			switch (rand() % 3) {
 			case 0: /* insert */
@@ -259,7 +257,6 @@ static void minmax_heap_burn_in(void)
 			case 1: /* min pop */
 				ret_thing = fr_minmax_heap_min_pop(hp);
 				TEST_CHECK(ret_thing != NULL);
-				element_count--;
 				break;
 			case 2: /* min peek */
 				ret_thing = fr_minmax_heap_min_peek(hp);
@@ -268,7 +265,6 @@ static void minmax_heap_burn_in(void)
 			case 3: /* max pop */
 				ret_thing = fr_minmax_heap_max_pop(hp);
 				TEST_CHECK(ret_thing != NULL);
-				element_count--;
 				break;
 			case 4: /* max peek */
 				ret_thing = fr_minmax_heap_max_peek(hp);
