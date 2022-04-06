@@ -253,7 +253,6 @@ static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
 	tmpl_t const		*vpt = cc->vpt;
 
 	fr_pair_t		*vp;
-	fr_pair_list_t		*list_head;
 
 	switch (vpt->type) {
 	case TMPL_TYPE_ATTR:
@@ -277,10 +276,12 @@ static void *_tmpl_cursor_next(fr_dlist_head_t *list, void *curr, void *uctx)
 
 			ar = tmpl_attr_list_next(&vpt->data.attribute.ar, ar);
 			if (ar) {
+				fr_pair_list_t		*list_head;
+
 				list_head = &vp->vp_group;
 				_tmpl_cursor_pair_init(vp, list_head, ar, cc);
 				curr = fr_pair_list_head(list_head);
-				list = UNCONST(fr_dlist_head_t *, &list_head->order);
+				list = fr_pair_list_dlist_head(list_head);
 				continue;
 			}
 
