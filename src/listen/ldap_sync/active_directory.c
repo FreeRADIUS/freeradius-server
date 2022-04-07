@@ -172,6 +172,16 @@ int active_directory_sync_search_entry(sync_state_t *sync, LDAPMessage *msg, UNU
 	fr_assert(msg);
 
 	/*
+	 *	Implement our own filtering if the config has specified
+	 *	something other than (objectClass=*)
+	 */
+	if (sync->filter && !fr_ldap_filter_eval(sync->filter, sync->conn, msg)) {
+		DEBUG2("Discarding packet which fails LDAP filter");
+		ldap_msgfree(msg);
+		return 0;
+	}
+
+	/*
 	 *	Look for an "isDeleted" attribute - this is Active Directory's indicator
 	 *	for a deleted object - process these through the recv Delete section.
 	 */
