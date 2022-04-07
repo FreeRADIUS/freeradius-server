@@ -1019,8 +1019,6 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 		return ret;
 	}
 
-	vp->op = T_OP_EQ;
-
 	fr_pair_append(&parent->options, vp);
 
 	// @todo - print out ISC names...
@@ -1044,8 +1042,6 @@ static int parse_option(rlm_isc_dhcp_info_t *parent, rlm_isc_dhcp_tokenizer_t *s
 
 		ret = fr_pair_value_from_str(vp, state->token, state->token_len, NULL, false);
 		if (ret < 0) return ret;
-
-		vp->op = T_OP_EQ;
 
 		fr_pair_append(&parent->options, vp);
 
