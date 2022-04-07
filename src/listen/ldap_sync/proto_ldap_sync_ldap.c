@@ -34,6 +34,7 @@
 #include <freeradius-devel/ldap/conf.h>
 
 #include "proto_ldap_sync_ldap.h"
+#include "rfc4533.h"
 
 extern fr_app_io_t proto_ldap_sync_ldap;
 extern fr_app_io_t proto_ldap_sync_child;
@@ -800,6 +801,10 @@ static void _proto_ldap_socket_open_read(fr_event_list_t *el, int fd, UNUSED int
 		 */
 		switch (ldap_conn->directory->sync_type) {
 		case FR_LDAP_SYNC_RFC4533:
+			config->init = rfc4533_sync_init;
+			config->entry = rfc4533_sync_search_entry;
+			config->intermediate = rfc4533_sync_intermediate;
+			config->refresh = rfc4533_sync_refresh_required;
 			break;
 
 		case FR_LDAP_SYNC_PERSISTENT_SEARCH:
