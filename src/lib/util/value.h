@@ -103,13 +103,9 @@ struct value_box_s {
 		/*
 		 *	Variable length values
 		 */
-		struct {
-			union {
-				char const 	* _CONST strvalue;	//!< Pointer to UTF-8 string.
-				uint8_t const 	* _CONST octets;	//!< Pointer to binary string.
-				void 		* _CONST ptr;		//!< generic pointer.
-			};
-		};
+		char const 	* _CONST strvalue;	//!< Pointer to UTF-8 string.
+		uint8_t const 	* _CONST octets;	//!< Pointer to binary string.
+		void 		* _CONST ptr;		//!< generic pointer.
 
 		/*
 		 *	Fixed length values
