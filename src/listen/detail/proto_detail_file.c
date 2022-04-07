@@ -607,8 +607,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	if (!main_config->allow_core_dumps &&
 	    main_config->uid_is_set &&
 	    main_config->server_uid != 0) {
-		cf_log_err(cs, "Cannot start detail file reader due to Linux limitations.");
-		cf_log_err(cs, "Please set 'allow_core_dumps = true' in the main configuration file.");
+		cf_log_err(conf, "Cannot start detail file reader due to Linux limitations.");
+		cf_log_err(conf, "Please set 'allow_core_dumps = true' in the main configuration file.");
 		return -1;
 	}
 #endif
