@@ -22,3 +22,6 @@ VALUE           AT                      Floors  2
 MEMBER          AltRes                          bit[6]
 MEMBER          Altitude                        bit[30] # 22 bits before, 8 after radix point
 MEMBER          Datum                           uint8
+VALUE		Datum			WGS84	1
+VALUE		Datum			NAVD88	2
+VALUE		Datum			MLLW	3
