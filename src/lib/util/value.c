@@ -2766,7 +2766,7 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 		memcpy(((uint8_t *)&tmp) + (sizeof(tmp) - len),
 		       ((uint8_t const *)src) + fr_value_box_offsets[src->type], len);
 #else
-		memcpy(&tmp, src, len);
+		memcpy(&tmp, ((uint8_t const *)src) + fr_value_box_offsets[src->type], len);
 #endif
 		break;
 	}
