@@ -1,0 +1,12 @@
+proto dhcpv4
+proto-dictionary dhcpv4
+fuzzer-out dhcpv4
+
+encode-pair GeoConf-Civic = { what = 2, country_code = "US", elements = { A1 = "IA", A2 = "Polk", A3 = "Des Moines", Primary-Road-Name = "Ingersoll", Street-Suffix-Or-Type = "Avenue" } }
+match 63 2c 02 55 53 01 02 49 41 02 04 50 6f 6c 6b 03 0a 44 65 73 20 4d 6f 69 6e 65 73 22 09 49 6e 67 65 72 73 6f 6c 6c 12 06 41 76 65 6e 75 65
+
+decode-pair -
+match GeoConf-Civic = { what = 2, country_code = "US", elements.A1 = "IA", elements.A2 = "Polk", elements.A3 = "Des Moines", elements.Primary-Road-Name = "Ingersoll", elements.Street-Suffix-Or-Type = "Avenue" }
+
+count
+match 7
