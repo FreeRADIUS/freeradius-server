@@ -1029,23 +1029,20 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 		switch (vp->da->type) {
 		case FR_TYPE_STRUCTURAL:
 			if (fr_pair_list_empty(&vp->vp_group)) {
-				RIDEBUG2("&%s.%s %s {}",
+				RIDEBUG2("&%s.%s = {}",
 					 fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
-					 vp->da->name,
-					 fr_table_str_by_value(fr_tokens_table, vp->op, "<INVALID>"));
+					 vp->da->name);
 			} else {
-				RIDEBUG2("&%s.%s %s {...}", /* @todo */
+				RIDEBUG2("&%s.%s = {...}", /* @todo */
 					 fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
-					 vp->da->name,
-					 fr_table_str_by_value(fr_tokens_table, vp->op, "<INVALID>"));
+					 vp->da->name);
 			}
 			break;
 
 		default:
-			RIDEBUG2("&%s.%s %s %pV",
+			RIDEBUG2("&%s.%s = %pV",
 				 fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"),
 				 vp->da->name,
-				 fr_table_str_by_value(fr_tokens_table, vp->op, "<INVALID>"),
 				 &vp->data);
 		}
 
@@ -2376,17 +2373,14 @@ static xlat_action_t xlat_func_pairs(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	for (vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt);
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
-		fr_token_t op = vp->op;
 		char *buff;
 
 		MEM(vb = fr_value_box_alloc_null(ctx));
-		vp->op = T_OP_EQ;
 		if (unlikely(fr_pair_aprint(vb, &buff, NULL, vp) < 0)) {
 			RPEDEBUG("Failed printing pair");
 			talloc_free(vb);
 			return XLAT_ACTION_FAIL;
 		}
-		vp->op = op;
 
 		fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, buff, false);
 		fr_dcursor_append(out, vb);
