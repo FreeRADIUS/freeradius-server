@@ -90,7 +90,6 @@ static int _map_proc_client_get_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request
 			goto error;
 		}
 
-		vp->op = map->op;
 		fr_pair_append(&head, vp);
 
 		if (map->op != T_OP_ADD_EQ) break;	/* Create multiple attribute for multiple CONF_PAIRs */

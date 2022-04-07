@@ -347,7 +347,6 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		return -1;
 	}
 
-	vp->op = map->op;
 	fr_pair_append(out, vp);
 
 	return 0;
