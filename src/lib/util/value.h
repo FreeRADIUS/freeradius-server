@@ -503,6 +503,28 @@ fr_value_box_t *fr_value_box_alloc_null(TALLOC_CTX *ctx)
 	return fr_value_box_alloc(ctx, FR_TYPE_NULL, NULL, false);
 }
 
+/** Return a pointer to the "raw" value from a value-box.
+ *
+ *  This has "const" input and "unconst" output because sometimes it's used
+ *  to copy out of, and sometimes in to, a value-box.  We rely on the caller to know
+ *  the correct uses of it.
+ */
+static inline CC_HINT(always_inline)
+uint8_t *fr_value_box_raw(fr_value_box_t const *vb, fr_type_t type)
+{
+	return UNCONST(uint8_t *, vb) + fr_value_box_offsets[type];
+}
+
+/** Copy raw values out of a value box
+ *
+ */
+static inline CC_HINT(always_inline)
+void fr_value_box_memcpy_out(void *dst, fr_value_box_t const *vb, fr_type_t type)
+{
+	memcpy(dst, ((uint8_t const *)vb) + fr_value_box_offsets[type], fr_value_box_field_sizes[type]);
+}
+
+
 /** Box an ethernet value (6 bytes, network byte order)
  *
  * @param[in] dst	Where to copy the ethernet address to.

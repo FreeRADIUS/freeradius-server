@@ -1404,7 +1404,7 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_UINT8:
 	case FR_TYPE_INT8:
-		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, ((uint8_t const *)value) + fr_value_box_offsets[value->type], min);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, fr_value_box_raw(value, value->type), min);
 		break;
 
 	/*
@@ -1423,7 +1423,7 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 
 		fr_value_box_hton(&tmp, value);
 
-		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, ((uint8_t const *)&tmp) + fr_value_box_offsets[value->type], min);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, fr_value_box_raw(&tmp, value->type), min);
 	}
 		break;
 
@@ -1712,7 +1712,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
-		FR_DBUFF_OUT_MEMCPY_RETURN(((uint8_t *)dst) + fr_value_box_offsets[type], &work_dbuff, len);
+		FR_DBUFF_OUT_MEMCPY_RETURN(fr_value_box_raw(dst, type), &work_dbuff, len);
 		break;
 
 	case FR_TYPE_UINT8:
@@ -2102,14 +2102,14 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 
 		fr_value_box_hton(&tmp, src);	/* Flip any numeric representations */
 		return fr_value_box_memdup(ctx, dst, dst_enumv,
-					   ((uint8_t const *)&tmp) + fr_value_box_offsets[src->type],
+					   fr_value_box_raw(&tmp, src->type),
 					   fr_value_box_field_sizes[src->type], src->tainted);
 	}
 
 	default:
 		/* Not the same talloc_memdup call as above.  The above memdup reads data from the dst */
 		return fr_value_box_memdup(ctx, dst, dst_enumv,
-					   ((uint8_t const *)src) + fr_value_box_offsets[src->type],
+					   fr_value_box_raw(src, src->type),
 					   fr_value_box_field_sizes[src->type], src->tainted);
 	}
 }
@@ -2765,9 +2765,9 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 	default:
 #ifdef WORDS_BIGENDIAN
 		memcpy(((uint8_t *)&tmp) + (sizeof(tmp) - len),
-		       ((uint8_t const *)src) + fr_value_box_offsets[src->type], len);
+		       fr_value_box_raw(src, src->type), len);
 #else
-		memcpy(&tmp, ((uint8_t const *)src) + fr_value_box_offsets[src->type], len);
+		memcpy(&tmp, fr_value_box_raw(src, src->type), len);
 #endif
 		break;
 	}
@@ -2831,10 +2831,10 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 
 	default:
 #ifdef WORDS_BIGENDIAN
-		memcpy(((uint8_t *)dst) + fr_value_box_offsets[dst_type],
+		memcpy(fr_value_box_raw(dst, dst->type),
 		       ((uint8_t *)&tmp) + (sizeof(tmp) - len), fr_value_box_field_sizes[dst_type]);
 #else
-		memcpy(((uint8_t *)dst) + fr_value_box_offsets[dst_type],
+		memcpy(fr_value_box_raw(dst, dst->type),
 		       &tmp, fr_value_box_field_sizes[dst_type]);
 #endif
 		break;
@@ -3420,9 +3420,7 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 {
 	switch (src->type) {
 	default:
-		memcpy(((uint8_t *)dst) + fr_value_box_offsets[src->type],
-		       ((uint8_t const *)src) + fr_value_box_offsets[src->type],
-		       fr_value_box_field_sizes[src->type]);
+		fr_value_box_memcpy_out(fr_value_box_raw(dst, src->type), src, src->type);
 		fr_value_box_copy_meta(dst, src);
 		break;
 
@@ -5677,8 +5675,8 @@ uint32_t fr_value_box_hash(fr_value_box_t const *vb)
 {
 	switch (vb->type) {
 	case FR_TYPE_FIXED_SIZE:
-		return fr_hash(((uint8_t const *)vb) + fr_value_box_offsets[vb->type],
-				      fr_value_box_field_sizes[vb->type]);
+		return fr_hash(fr_value_box_raw(vb, vb->type),
+			       fr_value_box_field_sizes[vb->type]);
 
 	case FR_TYPE_STRING:
 		return fr_hash(vb->vb_strvalue, vb->vb_length);
