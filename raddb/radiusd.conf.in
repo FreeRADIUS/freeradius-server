@@ -474,6 +474,24 @@ ENV {
 #	LD_PRELOAD = /path/to/library2.so
 }
 
+#
+#  TEMPLATES
+#
+#  Template files hold common definitions that can be used in other
+#  server sections.  When a template is referenced, the configuration
+#  items within the referenced template are copied to the referencing
+#  section.
+#
+#  Using templates reduces repetition of common configuration items,
+#  which in turn makes the server configuration easier to maintain.
+#
+#  See templates.conf for examples of using templates, and the
+#  referencing syntax.
+#
+
+#  $INCLUDE templates.conf
+
+
 # SECURITY CONFIGURATION
 #
 #  There may be multiple methods of attacking on the server.  This
