@@ -116,3 +116,7 @@ typedef struct sync_refresh_packet_s sync_refresh_packet_t;
 
 extern fr_table_num_sorted_t const sync_op_table[];
 extern size_t sync_op_table_len;
+
+int8_t sync_state_cmp(void const *one, void const *two);
+
+sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, size_t sync_no, sync_config_t const *config);

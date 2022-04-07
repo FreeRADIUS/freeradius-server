@@ -105,6 +105,74 @@ typedef struct {
 	int			msgid;
 } proto_ldap_dir_ctx;
 
+/** Compare two sync state structures on msgid
+ *
+ * @param[in] one first sync to compare.
+ * @param[in] two second sync to compare.
+ * @return CMP(one, two)
+ */
+int8_t sync_state_cmp(void const *one, void const *two)
+{
+	sync_state_t const *a = one, *b = two;
+
+	return CMP(a->msgid, b->msgid);
+}
+
+/** Tell the remote server to stop the sync
+ *
+ * Terminates the search informing the remote server that we no longer want to receive results
+ * for this sync.  A RFC 4511 abandon request is used to inform the server.
+ *
+ * This allows individual syncs to be stopped without destroying the underlying connection.
+ *
+ * Removes the sync's msgid from the tree of msgids associated with the connection.
+ *
+ * @param[in] sync to abandon.
+ * @return 0
+ */
+static int sync_state_free(sync_state_t *sync)
+{
+	fr_ldap_connection_t	*conn = talloc_get_type_abort(sync->conn, fr_ldap_connection_t);
+	fr_rb_tree_t		*tree = talloc_get_type_abort(conn->uctx, fr_rb_tree_t);
+
+	DEBUG3("Abandoning sync");
+
+	if (!sync->conn->handle) return 0;	/* Handled already closed? */
+
+	/*
+	 *	Tell the remote server to stop sending results
+	 */
+	if (sync->msgid >= 0) ldap_abandon_ext(sync->conn->handle, sync->msgid, NULL, NULL);
+	fr_rb_delete(tree, &(sync_state_t){.msgid = sync->msgid});
+
+	return 0;
+}
+
+/** Allocate a sync state
+ *
+ * @param[in] ctx	to allocate the sync state in.
+ * @param[in] conn	which the sync will run on.
+ * @param[in] config	for the sync.
+ * @return new sync state.
+ */
+sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, size_t sync_no, sync_config_t const *config)
+{
+	sync_state_t	*sync;
+
+	MEM(sync = talloc_zero(ctx, sync_state_t));
+	sync->conn = conn;
+	sync->config = config;
+	sync->sync_no = sync_no;
+	sync->phase = SYNC_PHASE_INIT;
+
+	/*
+	 *	If the connection is freed, all the sync state is also freed
+	 */
+	talloc_set_destructor(sync, sync_state_free);
+
+	return sync;
+}
+
 static void _proto_ldap_socket_init(fr_connection_t *conn, UNUSED fr_connection_state_t prev,
 				    UNUSED fr_connection_state_t state, void *uctx);
 
