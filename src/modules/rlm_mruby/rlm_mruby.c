@@ -378,7 +378,6 @@ static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vp
 		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(dst)));
 		talloc_free(dst);
 
-		vp->op = op;
 		if (fr_pair_value_from_str(vp, cval, strlen(cval), NULL, false) < 0) {
 			REDEBUG("%s: %s %s %s failed", function_name, ckey, fr_table_str_by_value(fr_tokens_table, op, "="), cval);
 		} else {

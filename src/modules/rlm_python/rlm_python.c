@@ -344,7 +344,6 @@ static void mod_vptuple(TALLOC_CTX *ctx, module_ctx_t const *mctx, request_t *re
 		MEM(vp = fr_pair_afrom_da(ctx, tmpl_da(dst)));
 		talloc_free(dst);
 
-		vp->op = op;
 		if (fr_pair_value_from_str(vp, s2, strlen(s2), NULL, false) < 0) {
 			DEBUG("%s - Failed: '%s.%s' %s '%s'", funcname, list_name, s1,
 			      fr_table_str_by_value(fr_tokens_table, op, "="), s2);
