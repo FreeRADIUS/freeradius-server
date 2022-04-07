@@ -322,8 +322,6 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 		for (vp = fr_pair_list_head(list);
 		     vp;
 		     vp = fr_pair_list_next(list, vp)) {
-			fr_token_t op;
-
 			if (inst->ht && fr_hash_table_find(inst->ht, vp->da)) continue;
 
 			/*
@@ -331,13 +329,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 			 */
 			if (compat && (vp->da == attr_user_password)) continue;
 
-			/*
-			 *	Print all of the attributes, operator should always be '='.
-			 */
-			op = vp->op;
-			vp->op = T_OP_EQ;
 			fr_pair_fprint(out, vp);
-			vp->op = op;
 		}
 	}
 
