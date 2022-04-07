@@ -27,6 +27,13 @@
 #include "active_directory.h"
 #include <freeradius-devel/util/debug.h>
 
+static int active_directory_sync_attr_add(char const *attr, void *uctx)
+{
+	sync_config_t	*config = uctx;
+
+	return ldap_sync_conf_attr_add(config, attr);
+}
+
 /** Allocate a sync state structure and issue the search
  *
  * Active Directory uses its own control to mark persistent searches.
@@ -48,9 +55,11 @@ int active_directory_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no,
 	static char const	*notify_oid = LDAP_SERVER_NOTIFICATION_OID;
 	static char const	*deleted_oid = LDAP_SERVER_SHOW_DELETED_OID;
 	LDAPControl		ctrl = {0}, ctrl2 = {0}, *ctrls[3] = { &ctrl, &ctrl2, NULL };
+	fr_slen_t		ret;
 	fr_ldap_rcode_t		rcode;
 	sync_state_t		*sync;
 	fr_rb_tree_t		*tree;
+	char const		*filter = NULL;
 
 	fr_assert(conn);
 	fr_assert(config);
@@ -88,19 +97,39 @@ int active_directory_sync_state_init(fr_ldap_connection_t *conn, size_t sync_no,
 	ctrl2.ldctl_iscritical = 1;
 
 	/*
+	 *	Active Directory only takes the filter (objectClass=*) when the
+	 *	notification control is used.  To compensate for this we parse the
+	 *	filter and implement our own basic version of a filter.
+	 */
+	if (strcasecmp(sync->config->filter, "(objectClass=*)") != 0) {
+		DEBUG2("LDAP filter %s does not match Active Directory requirements, parsing for local filtering.",
+			sync->config->filter);
+		filter = "(objectClass=*)";
+		ret = fr_ldap_filter_parse(sync, &sync->filter, &FR_SBUFF_IN(config->filter, strlen(config->filter)),
+					   active_directory_sync_attr_add, UNCONST(sync_config_t *,config));
+		if (ret < 0) {
+			CONF_ITEM	*ci;
+
+			ci = (CONF_ITEM *)cf_pair_find(sync->config->cs, "filter");
+			cf_log_err(ci, "Invalid LDAP filter");
+			EMARKER(config->filter, ret + 1, fr_strerror());
+
+		error:
+			talloc_free(sync);
+			return -1;
+		}
+	}
+
+	/*
 	 *	The isDeleted attribute needs to be in the requested list
 	 *	in order to detect if a notification is because an entry is deleted
 	 */
 	ldap_sync_conf_attr_add(UNCONST(sync_config_t *, config), "isDeleted");
 
 	rcode = fr_ldap_search_async(&sync->msgid, NULL, &conn, config->base_dn, config->scope,
-				     config->filter, config->attrs, ctrls, NULL);
+				     filter ? filter : config->filter, config->attrs, ctrls, NULL);
 
-	if (rcode != LDAP_PROC_SUCCESS) {
-	error:
-		talloc_free(sync);
-		return -1;
-	}
+	if (rcode != LDAP_PROC_SUCCESS) goto error;
 
 	if (!fr_rb_insert(tree, sync)) {
 		ERROR("Duplicate sync (msgid %i)", sync->msgid);
