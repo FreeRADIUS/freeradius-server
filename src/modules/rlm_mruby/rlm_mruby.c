@@ -379,9 +379,9 @@ static void add_vp_tuple(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vp
 		talloc_free(dst);
 
 		if (fr_pair_value_from_str(vp, cval, strlen(cval), NULL, false) < 0) {
-			REDEBUG("%s: %s %s %s failed", function_name, ckey, fr_table_str_by_value(fr_tokens_table, op, "="), cval);
+			REDEBUG("%s: %s = %s failed", function_name, ckey, cval);
 		} else {
-			DEBUG("%s: %s %s %s OK", function_name, ckey, fr_table_str_by_value(fr_tokens_table, op, "="), cval);
+			DEBUG("%s: %s = %s OK", function_name, ckey, cval);
 		}
 
 		fr_pair_append(&tmp_list, vp);

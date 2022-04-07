@@ -345,11 +345,9 @@ static void mod_vptuple(TALLOC_CTX *ctx, module_ctx_t const *mctx, request_t *re
 		talloc_free(dst);
 
 		if (fr_pair_value_from_str(vp, s2, strlen(s2), NULL, false) < 0) {
-			DEBUG("%s - Failed: '%s.%s' %s '%s'", funcname, list_name, s1,
-			      fr_table_str_by_value(fr_tokens_table, op, "="), s2);
+			DEBUG("%s - Failed: '%s.%s' = '%s'", funcname, list_name, s1, s2);
 		} else {
-			DEBUG("%s - '%s.%s' %s '%s'", funcname, list_name, s1,
-			      fr_table_str_by_value(fr_tokens_table, op, "="), s2);
+			DEBUG("%s - '%s.%s' = '%s'", funcname, list_name, s1, s2);
 		}
 
 		fr_pair_append(&tmp_list, vp);
