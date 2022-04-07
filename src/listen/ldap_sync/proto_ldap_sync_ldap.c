@@ -36,6 +36,7 @@
 #include "proto_ldap_sync_ldap.h"
 
 extern fr_app_io_t proto_ldap_sync_ldap;
+extern fr_app_io_t proto_ldap_sync_child;
 
 static CONF_PARSER const proto_ldap_sync_ldap_config[] = {
 	/*
@@ -84,6 +85,16 @@ global_lib_autoinst_t const *proto_ldap_sync_ldap_lib[] = {
 	&fr_libldap_global_config,
 	GLOBAL_LIB_TERMINATOR
 };
+
+/** Operations performed on entries
+ */
+fr_table_num_sorted_t const sync_op_table[] = {
+	{ L("add"),			SYNC_OP_ADD			},
+	{ L("delete"),			SYNC_OP_DELETE			},
+	{ L("modify"),			SYNC_OP_MODIFY			},
+	{ L("present"),			SYNC_OP_PRESENT			},
+};
+size_t sync_op_table_len = NUM_ELEMENTS(sync_op_table);
 
 /** Context used when looking up Directory types
  */
@@ -148,6 +159,279 @@ static void proto_ldap_connection_init(UNUSED fr_event_list_t *el, UNUSED fr_tim
 	fr_connection_signal_init(thread->conn);
 
 	return;
+}
+
+/** Child listener mod_close
+ *
+ * Ensures the LDAP connection is signalled to close gracefully when
+ * the listener is closed.
+ */
+static int proto_ldap_child_mod_close(fr_listen_t *li)
+{
+	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_ldap_sync_ldap_thread_t);
+
+	fr_connection_signal_shutdown(thread->conn);
+	return 0;
+}
+
+/** LDAP sync mod_read for child listener
+ *
+ * Called when there is data to read on the LDAP connection
+ *
+ * Actual packets are created by the various callbacks since a single LDAP
+ * message can result in multiple packets to process e.g.:
+ *
+ *   - Sync Info Message with syncInfoValue of syncIdSet can reference
+ *     multiple directory entries.
+ *   - Various sync related messages can inculde a new cookie in
+ *     addition to their other data.
+ */
+static ssize_t proto_ldap_child_mod_read(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_time_t *recv_time_p, UNUSED uint8_t *buffer,
+					 UNUSED size_t buffer_len, UNUSED size_t *leftover, UNUSED uint32_t *priority,
+					 UNUSED bool *is_dup)
+{
+	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_ldap_sync_ldap_thread_t);
+	fr_ldap_connection_t		*conn = talloc_get_type_abort(thread->conn->h, fr_ldap_connection_t);
+	struct	timeval			poll = { 1, 0 };
+	LDAPMessage			*msg = NULL;
+	int				ret = 0;
+	fr_ldap_rcode_t			rcode;
+	sync_state_t			*sync = NULL;
+	fr_rb_tree_t			*tree;
+	int				type, msgid;
+	LDAPControl			**ctrls = NULL;
+	sync_msg_t			callback = NULL;
+
+	fr_assert(conn);
+
+	tree = talloc_get_type_abort(conn->uctx, fr_rb_tree_t);
+
+	/*
+	 *	Pull the next outstanding message from this connection.
+	 *	We process one message at a time so that the message can be
+	 *	passed to the worker, and freed once the request has been
+	 *	handled.
+	 */
+	ret = ldap_result(conn->handle, LDAP_RES_ANY, LDAP_MSG_ONE, &poll, &msg);
+
+	switch (ret) {
+	case 0:	/* timeout - shouldn't happen */
+		fr_assert(0);
+		return -2;
+
+	case -1:
+		rcode = fr_ldap_error_check(NULL, conn, NULL, NULL);
+		if (rcode == LDAP_PROC_BAD_CONN) return -2;
+		return -1;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	De-multiplex based on msgid
+	 */
+	if (!msg) return 0;
+
+	msgid = ldap_msgid(msg);
+	type = ldap_msgtype(msg);
+
+	ret = 0;
+	if (msgid == 0) {
+		WARN("Ignoring unsolicited %s message",
+		     fr_table_str_by_value(sync_ldap_msg_table, type, "<invalid>"));
+	free_msg:
+		if (ctrls) ldap_controls_free(ctrls);
+		ldap_msgfree(msg);
+		return ret;
+	}
+
+	sync = fr_rb_find(tree, &(sync_state_t){.msgid = msgid});
+	if (!sync) {
+		WARN("Ignoring msgid %i, doesn't match any outstanding syncs", msgid);
+		goto free_msg;
+	}
+
+	/*
+	 *	Check for errors contained within the message.
+	 *	This has to be per message, as multiple syncs
+	 *	are multiplexed together on one connection.
+	 */
+	switch (fr_ldap_error_check(&ctrls, conn, msg, sync->config->base_dn)) {
+	case LDAP_PROC_SUCCESS:
+		break;
+
+	/*
+	 *	The e-syncRefresRequired result code is the server informing us that
+	 *	the query needs to be restarted	for a new refresh phase to run.
+	 *	It is sent as the result code for a SearchResultsDone message.
+	 */
+	case LDAP_PROC_REFRESH_REQUIRED:
+		if (type != LDAP_RES_SEARCH_RESULT) {
+			PERROR("e-syncRefreshRequired result code received on wrong message type");
+			ret = -1;
+			goto free_msg;
+		}
+
+		DEBUG2("LDAP Server returned e-syncRefreshRequired");
+		if (sync->config->refresh) {
+			return sync->config->refresh(sync, msg, ctrls);
+		}
+		goto free_msg;
+
+	/*
+	 *	Don't think this should happen... but libldap
+	 *	is wonky sometimes...
+	 */
+	case LDAP_PROC_BAD_CONN:
+		PERROR("Connection unusable");
+		ret = -2;
+		goto free_msg;
+
+	default:
+	sync_error:
+		PERROR("Sync error");
+		ret = -1;
+		goto free_msg;
+	}
+
+	DEBUG3("Got %s message for sync (msgid %i)",
+	       fr_table_str_by_value(sync_ldap_msg_table, type, "<invalid>"), sync->msgid);
+
+	switch (type) {
+	case LDAP_RES_SEARCH_REFERENCE:
+	case LDAP_RES_SEARCH_ENTRY:
+		callback = sync->config->entry;
+		break;
+
+	case LDAP_RES_INTERMEDIATE:
+		callback = sync->config->intermediate;
+		break;
+
+	default:
+		WARN("Ignoring unexpected message type (%i)", type);
+		ret = 0;
+		goto free_msg;
+	}
+
+	if (callback) {
+		ret = callback(sync, msg, ctrls);
+	} else {
+	/*
+	 *	Callbacks are responsible for freeing the msg
+	 *	so if there is no callback, free it.
+	 */
+		ldap_msgfree(msg);
+	}
+	if (ret < 0) goto sync_error;
+
+	ldap_controls_free(ctrls);
+
+	return 0;
+}
+
+/** LDAP sync mod_write for child listener
+ *
+ * Handle any returned data after the worker has processed the packet and,
+ * for packets where tracking structures were used, ensure they are freed.
+ */
+static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t request_time,
+					  uint8_t *buffer, size_t buffer_len, UNUSED size_t written)
+{
+	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_ldap_sync_ldap_thread_t);
+	proto_ldap_sync_ldap_t const	*inst = talloc_get_type_abort_const(thread->inst, proto_ldap_sync_ldap_t);
+	fr_dbuff_t			dbuff;
+	fr_ldap_sync_packet_code_t	pcode;
+	uint32_t			packet_id;
+	fr_pair_list_t			tmp;
+	fr_pair_t			*vp = NULL;
+	ssize_t				ret;
+	TALLOC_CTX			*local;
+
+	local = talloc_new(NULL);
+	fr_dbuff_init(&dbuff, buffer, buffer_len);
+
+	/*
+	 *	Extract returned attributes into a temporary list
+	 */
+	fr_pair_list_init(&tmp);
+
+	ret = fr_internal_decode_list_dbuff(local, &tmp, fr_dict_root(dict_ldap_sync), &dbuff, NULL);
+	if (ret < 0) {
+		fr_pair_list_free(&tmp);
+		talloc_free(local);
+		return ret;
+	}
+
+	/*
+	 *	There should always be a packet ID and code
+	 */
+	vp = fr_pair_find_by_da(&tmp, NULL, attr_ldap_sync_packet_id);
+	fr_assert(vp);
+	packet_id = vp->vp_uint32;
+
+	vp = fr_pair_find_by_da(&tmp, NULL, attr_packet_type);
+	fr_assert(vp);
+	pcode = vp->vp_uint32;
+
+	switch (pcode) {
+	case FR_LDAP_SYNC_CODE_COOKIE_LOAD_RESPONSE:
+	{
+		uint8_t	*cookie = NULL;
+
+		/*
+		 *	If the received packet ID is greater than the number of syncs
+		 *	we have then something very bad has happened
+		 */
+		fr_assert (packet_id <= talloc_array_length(inst->parent->sync_config));
+
+		/*
+		 *	Look for the returned cookie.
+		 */
+		vp = fr_pair_find_by_da_nested(&tmp, NULL, attr_ldap_sync_cookie);
+		if (vp) cookie = talloc_memdup(inst, vp->vp_octets, vp->vp_length);
+
+		inst->parent->sync_config[packet_id]->init(thread->conn->h, packet_id, inst->parent->sync_config[packet_id], cookie);
+	}
+		break;
+
+	case FR_LDAP_SYNC_CODE_ENTRY_RESPONSE:
+		break;
+
+	case FR_LDAP_SYNC_CODE_COOKIE_STORE_RESPONSE:
+	{
+		sync_refresh_packet_t	*refresh_packet;
+		sync_config_t const	*sync_config;
+
+		if (!packet_ctx) break;
+
+		/*
+		 *	If there is a packet_ctx, it will be the tracking structure
+		 *	indicating that we need to refresh the sync.
+		 */
+		refresh_packet = talloc_get_type_abort(packet_ctx, sync_refresh_packet_t);
+
+		/*
+		 *	Abandon the old sync and start a new one with the relevant cookie.
+		 */
+		sync_config = refresh_packet->sync->config;
+		DEBUG3("Restarting sync with base %s", sync_config->base_dn);
+		talloc_free(refresh_packet->sync);
+		inst->parent->sync_config[packet_id]->init(thread->conn->h, packet_id, sync_config, refresh_packet->refresh_cookie);
+
+		talloc_free(refresh_packet);
+	}
+		break;
+
+	default:
+		ERROR("Invalid packet type returned %d", pcode);
+		break;
+	}
+
+	fr_pair_list_free(&tmp);
+	talloc_free(local);
+
+	return buffer_len;
 }
 
 /** Callback for socket errors when running initial root query
@@ -310,6 +594,7 @@ static void _proto_ldap_socket_init(fr_connection_t *conn, UNUSED fr_connection_
 	thread->li = li;
 	li->thread_instance = thread;
 
+	li->app_io = &proto_ldap_sync_child;
 	li->name = li->app_io->common.name;
 	li->default_message_size = li->app_io->default_message_size;
 
@@ -482,6 +767,19 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	return 0;
 }
+
+fr_app_io_t proto_ldap_sync_child = {
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "ldap_sync_child"
+	},
+	.read			= proto_ldap_child_mod_read,
+	.write			= proto_ldap_child_mod_write,
+	.close			= proto_ldap_child_mod_close,
+
+	.default_message_size	= 4096,
+	.track_duplicates	= false,
+};
 
 fr_app_io_t proto_ldap_sync_ldap = {
 	.common = {

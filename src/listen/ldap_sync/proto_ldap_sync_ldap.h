@@ -113,3 +113,6 @@ struct sync_refresh_packet_s {
 };
 
 typedef struct sync_refresh_packet_s sync_refresh_packet_t;
+
+extern fr_table_num_sorted_t const sync_op_table[];
+extern size_t sync_op_table_len;
