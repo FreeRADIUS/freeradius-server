@@ -1404,7 +1404,7 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 	case FR_TYPE_ETHERNET:
 	case FR_TYPE_UINT8:
 	case FR_TYPE_INT8:
-		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, ((uint8_t const *)&value->datum) + fr_value_box_offsets[value->type], min);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, ((uint8_t const *)value) + fr_value_box_offsets[value->type], min);
 		break;
 
 	/*
@@ -1422,7 +1422,8 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		fr_value_box_t tmp;
 
 		fr_value_box_hton(&tmp, value);
-		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, ((uint8_t const *)&tmp.datum) + fr_value_box_offsets[value->type], min);
+
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, ((uint8_t const *)&tmp) + fr_value_box_offsets[value->type], min);
 	}
 		break;
 
@@ -1711,7 +1712,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 
 	case FR_TYPE_IFID:
 	case FR_TYPE_ETHERNET:
-		FR_DBUFF_OUT_MEMCPY_RETURN(((uint8_t *)&dst->datum) + fr_value_box_offsets[type], &work_dbuff, len);
+		FR_DBUFF_OUT_MEMCPY_RETURN(((uint8_t *)dst) + fr_value_box_offsets[type], &work_dbuff, len);
 		break;
 
 	case FR_TYPE_UINT8:
@@ -2101,14 +2102,14 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 
 		fr_value_box_hton(&tmp, src);	/* Flip any numeric representations */
 		return fr_value_box_memdup(ctx, dst, dst_enumv,
-					   ((uint8_t const *)&tmp.datum) + fr_value_box_offsets[src->type],
+					   ((uint8_t const *)&tmp) + fr_value_box_offsets[src->type],
 					   fr_value_box_field_sizes[src->type], src->tainted);
 	}
 
 	default:
 		/* Not the same talloc_memdup call as above.  The above memdup reads data from the dst */
 		return fr_value_box_memdup(ctx, dst, dst_enumv,
-					   ((uint8_t const *)&src->datum) + fr_value_box_offsets[src->type],
+					   ((uint8_t const *)src) + fr_value_box_offsets[src->type],
 					   fr_value_box_field_sizes[src->type], src->tainted);
 	}
 }
