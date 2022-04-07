@@ -893,7 +893,7 @@ DIAG_OFF(unused-function) \
 	static inline	void _name ## _sort(FR_TLIST_HEAD(_name) *list, fr_cmp_t cmp) \
 		{		fr_tlist_sort(&list->head, cmp); } \
 \
-	static inline FR_TLIST_HEAD(_name) *_name ## _parent(_element_type *ptr) \
+	static inline FR_TLIST_HEAD(_name) *_name ## _parent(const _element_type *ptr) \
 		{		return (FR_TLIST_HEAD(_name) *) (ptr->_element_entry.entry.list_head); } \
 \
 	static inline FR_TLIST_HEAD(_name) *_name ## _children(_element_type *ptr) \
