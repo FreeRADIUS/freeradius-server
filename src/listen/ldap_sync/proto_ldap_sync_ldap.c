@@ -35,6 +35,7 @@
 
 #include "proto_ldap_sync_ldap.h"
 #include "rfc4533.h"
+#include "persistent_search.h"
 #include "active_directory.h"
 
 extern fr_app_io_t proto_ldap_sync_ldap;
@@ -809,6 +810,8 @@ static void _proto_ldap_socket_open_read(fr_event_list_t *el, int fd, UNUSED int
 			break;
 
 		case FR_LDAP_SYNC_PERSISTENT_SEARCH:
+			config->init = persistent_sync_state_init;
+			config->entry = persistent_sync_search_entry;
 			break;
 
 		case FR_LDAP_SYNC_ACTIVE_DIRECTORY:
