@@ -866,7 +866,7 @@ static int _pair_list_dcursor_insert(fr_dlist_head_t *list, void *to_insert, UNU
  * @return
  *	- 0 on success.
  */
-static int _pair_list_dcursor_remove(fr_dlist_head_t *list, void *to_remove, UNUSED void *uctx)
+static int _pair_list_dcursor_remove(NDEBUG_UNUSED fr_dlist_head_t *list, void *to_remove, UNUSED void *uctx)
 {
 	fr_pair_t *vp = to_remove;
 
