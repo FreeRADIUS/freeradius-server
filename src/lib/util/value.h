@@ -99,6 +99,8 @@ typedef fr_dlist_head_t	fr_value_box_list_t;
  * fr_type_t should be an enumeration of the values in this union.
  */
 struct value_box_s {
+	fr_type_t		_CONST type;			//!< Type of this value-box, at the start, see pair.h
+
 	union {
 		/*
 		 *	Variable length values
@@ -143,8 +145,6 @@ struct value_box_s {
 	} datum;
 
 	size_t				length;
-
-	fr_type_t		_CONST type;			//!< Type of this value-box.
 
 	bool				tainted;		//!< i.e. did it come from an untrusted source
 	uint16_t		 _CONST safe;			//!< more detailed safety

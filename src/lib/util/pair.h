@@ -27,6 +27,7 @@ RCSIDH(dpair_h, "$Id$")
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/dcursor.h>
 #include <freeradius-devel/util/value.h>
+#include <freeradius-devel/util/tlist.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,10 +47,10 @@ extern "C" {
 
 typedef struct value_pair_s fr_pair_t;
 
-FR_DLIST_TYPES(fr_pair_order_list)
+FR_TLIST_TYPES(fr_pair_order_list)
 
 typedef struct {
-        FR_DLIST_HEAD(fr_pair_order_list)		order;			//!< Maintains the relative order of pairs in a list.
+        FR_TLIST_HEAD(fr_pair_order_list)		order;			//!< Maintains the relative order of pairs in a list.
 } fr_pair_list_t;
 
 /** Stores an attribute, a value and various bits of other data
@@ -64,7 +65,7 @@ struct value_pair_s {
 								///< Note: This should not be modified outside
 								///< of pair.c except via #fr_pair_reinit_from_da.
 
-	FR_DLIST_ENTRY(fr_pair_order_list) _CONST	order_entry;	//!< Entry to maintain relative order within a list
+	FR_TLIST_ENTRY(fr_pair_order_list) _CONST	order_entry;	//!< Entry to maintain relative order within a list
 								///< of pairs.  This ensures pairs within the list
 								///< are encoded in the same order as they were
 								///< received or inserted.
@@ -75,7 +76,11 @@ struct value_pair_s {
 	 */
 	union {
 		fr_value_box_t		data;			//!< The value of this pair.
-		fr_pair_list_t		children;		//!< Nested attributes of this pair.
+
+		struct {
+			fr_type_t	 _CONST type;			//!< Type of this value-box, see value.h
+			fr_pair_list_t		children;		//!< Nested attributes of this pair.
+		};
 	};
 
 	/*
@@ -143,12 +148,13 @@ typedef struct {
  *
  */
 #ifdef WITH_VERIFY_PTR
-void		fr_pair_verify(char const *file, int line, fr_pair_t const *vp) CC_HINT(nonnull(3));
+void		fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_pair_t const *vp) CC_HINT(nonnull(4));
 
 void		fr_pair_list_verify(char const *file, int line,
 				    TALLOC_CTX const *expected, fr_pair_list_t const *list) CC_HINT(nonnull(4));
 
-#  define PAIR_VERIFY(_x)		fr_pair_verify(__FILE__, __LINE__, _x)
+#  define PAIR_VERIFY(_x)		fr_pair_verify(__FILE__, __LINE__, NULL, _x)
+#  define PAIR_VERIFY_WITH_LIST(_l, _x)		fr_pair_verify(__FILE__, __LINE__, _l, _x)
 #  define PAIR_LIST_VERIFY(_x)	fr_pair_list_verify(__FILE__, __LINE__, NULL, _x)
 #else
 DIAG_OFF(nonnull-compare)
