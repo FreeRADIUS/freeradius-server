@@ -88,8 +88,6 @@ struct value_pair_s {
 	 */
 	struct {
 		fr_token_t		op;			//!< Operator to use when moving or inserting
-								//!< valuepair into a list.
-		char const 		*xlat;			//!< Source string for xlat expansion.
 	};
 };
 
