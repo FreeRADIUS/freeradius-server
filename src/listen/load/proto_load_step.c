@@ -343,9 +343,10 @@ static char const *mod_name(fr_listen_t *li)
 }
 
 
-static int mod_bootstrap(void *instance, CONF_SECTION *cs)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_load_step_t	*inst = talloc_get_type_abort(instance, proto_load_step_t);
+	proto_load_step_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_load_step_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 	dl_module_inst_t const	*dl_inst;
 
 	/*
@@ -353,12 +354,11 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	so we can find out what the parent of our instance
 	 *	was.
 	 */
-	dl_inst = dl_module_instance_by_data(instance);
+	dl_inst = dl_module_instance_by_data(inst);
 	fr_assert(dl_inst);
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_load_t);
-
-	inst->cs = cs;
+	inst->cs = conf;
 
 	FR_INTEGER_BOUND_CHECK("start_pps", inst->load.start_pps, >=, 10);
 	FR_INTEGER_BOUND_CHECK("start_pps", inst->load.start_pps, <, 400000);
@@ -390,9 +390,10 @@ static RADCLIENT *mod_client_find(fr_listen_t *li, UNUSED fr_ipaddr_t const *ipa
 }
 
 
-static int mod_instantiate(void *instance, CONF_SECTION *cs)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	proto_load_step_t	*inst = talloc_get_type_abort(instance, proto_load_step_t);
+	proto_load_step_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_load_step_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 	RADCLIENT		*client;
 	fr_pair_t		*vp;
 
@@ -414,13 +415,13 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 
 		fp = fopen(inst->filename, "r");
 		if (!fp) {
-			cf_log_err(cs, "Failed opening %s - %s",
+			cf_log_err(conf, "Failed opening %s - %s",
 				   inst->filename, fr_syserror(errno));
 			return -1;
 		}
 
 		if (fr_pair_list_afrom_file(inst, inst->parent->dict, &inst->pair_list, fp, &done) < 0) {
-			cf_log_perr(cs, "Failed reading %s", inst->filename);
+			cf_log_perr(conf, "Failed reading %s", inst->filename);
 			fclose(fp);
 			return -1;
 		}
@@ -435,14 +436,15 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 }
 
 fr_app_io_t proto_load_step = {
-	.magic			= MODULE_MAGIC_INIT,
-	.name			= "load_step",
-	.config			= load_listen_config,
-	.inst_size		= sizeof(proto_load_step_t),
-	.thread_inst_size	= sizeof(proto_load_step_thread_t),
-	.bootstrap		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
-
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "load_step",
+		.config			= load_listen_config,
+		.inst_size		= sizeof(proto_load_step_t),
+		.thread_inst_size	= sizeof(proto_load_step_thread_t),
+		.bootstrap		= mod_bootstrap,
+		.instantiate		= mod_instantiate
+	},
 	.default_message_size	= 4096,
 	.track_duplicates	= false,
 

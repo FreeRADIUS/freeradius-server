@@ -814,9 +814,9 @@ static char const *mod_name(fr_listen_t *li)
 	return thread->name;
 }
 
-static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	proto_detail_work_t *inst = talloc_get_type_abort(instance, proto_detail_work_t);
+	proto_detail_work_t *inst = talloc_get_type_abort(mctx->inst->data, proto_detail_work_t);
 	RADCLIENT *client;
 
 	client = inst->client = talloc_zero(inst, RADCLIENT);
@@ -832,9 +832,10 @@ static int mod_instantiate(void *instance, UNUSED CONF_SECTION *cs)
 	return 0;
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *cs)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_detail_work_t	*inst = talloc_get_type_abort(instance, proto_detail_work_t);
+	proto_detail_work_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_detail_work_t);
+	CONF_SECTION		*cs = mctx->inst->conf;
 	dl_module_inst_t const	*dl_inst;
 
 	/*
@@ -842,7 +843,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	so we can find out what the parent of our instance
 	 *	was.
 	 */
-	dl_inst = dl_module_instance_by_data(instance);
+	dl_inst = dl_module_instance_by_data(mctx->inst->data);
 	fr_assert(dl_inst);
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_detail_t);
@@ -882,14 +883,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
  */
 extern fr_app_io_t proto_detail_work;
 fr_app_io_t proto_detail_work = {
-	.magic			= MODULE_MAGIC_INIT,
-	.name			= "detail_work",
-	.config			= file_listen_config,
-	.inst_size		= sizeof(proto_detail_work_t),
-	.thread_inst_size	= sizeof(proto_detail_work_thread_t),
-	.bootstrap		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
-
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "detail_work",
+		.config			= file_listen_config,
+		.inst_size		= sizeof(proto_detail_work_t),
+		.thread_inst_size	= sizeof(proto_detail_work_thread_t),
+		.bootstrap		= mod_bootstrap,
+		.instantiate		= mod_instantiate
+	},
 	.default_message_size	= 65536,
 	.default_reply_size	= 32,
 

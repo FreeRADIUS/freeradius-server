@@ -373,8 +373,8 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	talloc_set_destructor(li, fr_io_listen_free);
 
 	li->app_io = inst->app_io;
-	li->thread_instance = talloc_zero_array(NULL, uint8_t, li->app_io->thread_inst_size);
-	talloc_set_name(li->thread_instance, "proto_%s_thread_t", inst->app_io->name);
+	li->thread_instance = talloc_zero_array(NULL, uint8_t, li->app_io->common.thread_inst_size);
+	talloc_set_name(li->thread_instance, "proto_%s_thread_t", inst->app_io->common.name);
 	li->app_io_instance = inst->app_io_instance;
 
 	li->app = &proto_detail;
@@ -391,7 +391,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	 *	Open the file.
 	 */
 	if (inst->app_io->open(li) < 0) {
-		cf_log_err(conf, "Failed opening %s file", inst->app_io->name);
+		cf_log_err(conf, "Failed opening %s file", inst->app_io->common.name);
 		talloc_free(li);
 		return -1;
 	}
@@ -435,24 +435,22 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
  *
  * Instantiate I/O and type submodules.
  *
- * @param[in] instance	Ctx data for this application.
- * @param[in] conf	Listen section parsed to give us isntance.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	proto_detail_t		*inst = talloc_get_type_abort(instance, proto_detail_t);
+	proto_detail_t		*inst = talloc_get_type_abort(mctx->inst->data, proto_detail_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 
 	/*
 	 *	Instantiate the I/O module. But DON'T instantiate the
 	 *	work submodule.  We leave that until later.
 	 */
-	if (inst->app_io->instantiate &&
-	    (inst->app_io->instantiate(inst->app_io_instance,
-				       inst->app_io_conf) < 0)) {
-		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->name);
+	if (inst->app_io->common.instantiate &&
+	    (inst->app_io->common.instantiate(MODULE_INST_CTX(inst->io_submodule)) < 0)) {
+		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->common.name);
 		return -1;
 	}
 
@@ -476,9 +474,9 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	 *	If the IO is "file" and not the worker, instantiate the worker now.
 	 */
 	if (strcmp(inst->io_submodule->module->dl->name, "proto_detail_work") != 0) {
-		if (inst->work_io->instantiate && (inst->work_io->instantiate(inst->work_io_instance,
-									      inst->work_io_conf) < 0)) {
-			cf_log_err(inst->work_io_conf, "Instantiation failed for \"%s\"", inst->work_io->name);
+		if (inst->work_io->common.instantiate &&
+		    (inst->work_io->common.instantiate(MODULE_INST_CTX(inst->io_submodule)) < 0)) {
+			cf_log_err(inst->work_io_conf, "Instantiation failed for \"%s\"", inst->work_io->common.name);
 			return -1;
 		}
 	}
@@ -490,15 +488,14 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  *
  * Bootstrap I/O and type submodules.
  *
- * @param[in] instance	Ctx data for this application.
- * @param[in] conf	Listen section parsed to give us instance.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_detail_t 		*inst = talloc_get_type_abort(instance, proto_detail_t);
+	proto_detail_t 		*inst = talloc_get_type_abort(mctx->inst->data, proto_detail_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 
 	/*
 	 *	The listener is inside of a virtual server.
@@ -506,8 +503,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->server_cs = cf_item_to_section(cf_parent(conf));
 	inst->cs = conf;
 	inst->self = &proto_detail;
-
-	virtual_server_dict_set(inst->server_cs, inst->dict, false);
 
 	/*
 	 *	No IO module, it's an empty listener.  That's not
@@ -525,9 +520,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->app_io_instance = inst->io_submodule->data;
 	inst->app_io_conf = inst->io_submodule->conf;
 
-	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
-								inst->app_io_conf) < 0)) {
-		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->name);
+	if (inst->app_io->common.bootstrap && (inst->app_io->common.bootstrap(MODULE_INST_CTX(inst->io_submodule)) < 0)) {
+		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->common.name);
 		return -1;
 	}
 
@@ -571,9 +565,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 		inst->work_io_instance = inst->work_submodule->data;
 		inst->work_io_conf = inst->work_submodule->conf;
 
-		if (inst->work_io->bootstrap && (inst->work_io->bootstrap(inst->work_io_instance,
-									  inst->work_io_conf) < 0)) {
-			cf_log_err(inst->work_io_conf, "Bootstrap failed for \"%s\"", inst->work_io->name);
+		if (inst->work_io->common.bootstrap &&
+		    (inst->work_io->common.bootstrap(MODULE_INST_CTX(inst->work_submodule)) < 0)) {
+			cf_log_err(inst->work_io_conf, "Bootstrap failed for \"%s\"", inst->work_io->common.name);
 			TALLOC_FREE(inst->work_submodule);
 			return -1;
 		}
@@ -584,13 +578,15 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 
 
 fr_app_t proto_detail = {
-	.magic			= MODULE_MAGIC_INIT,
-	.name			= "detail",
-	.config			= proto_detail_config,
-	.inst_size		= sizeof(proto_detail_t),
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "detail",
+		.config			= proto_detail_config,
+		.inst_size		= sizeof(proto_detail_t),
 
-	.bootstrap		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
+		.bootstrap		= mod_bootstrap,
+		.instantiate		= mod_instantiate,
+	},
 	.open			= mod_open,
 	.decode			= mod_decode,
 	.encode			= mod_encode,

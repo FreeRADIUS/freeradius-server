@@ -476,15 +476,13 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
  *
  * Instantiate I/O and type submodules.
  *
- * @param[in] instance	Ctx data for this application.
- * @param[in] conf	Listen section parsed to give us instance.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	proto_radius_t		*inst = talloc_get_type_abort(instance, proto_radius_t);
+	proto_radius_t		*inst = talloc_get_type_abort(mctx->inst->data, proto_radius_t);
 
 	/*
 	 *	No IO module, it's an empty listener.
@@ -508,7 +506,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate the master io submodule
 	 */
-	return fr_master_app_io.instantiate(&inst->io, conf);
+	return fr_master_app_io.common.instantiate(MODULE_INST_CTX(inst->io.dl_inst));
 }
 
 
@@ -516,20 +514,18 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  *
  * Bootstrap I/O and type submodules.
  *
- * @param[in] instance	Ctx data for this application.
- * @param[in] conf	Listen section parsed to give us instance.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_radius_t 		*inst = talloc_get_type_abort(instance, proto_radius_t);
+	proto_radius_t 		*inst = talloc_get_type_abort(mctx->inst->data, proto_radius_t);
 
 	/*
 	 *	Ensure that the server CONF_SECTION is always set.
 	 */
-	inst->io.server_cs = cf_item_to_section(cf_parent(conf));
+	inst->io.server_cs = cf_item_to_section(cf_parent(mctx->inst->conf));
 
 	/*
 	 *	No IO module, it's an empty listener.
@@ -572,7 +568,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Bootstrap the master IO handler.
 	 */
-	return fr_master_app_io.bootstrap(&inst->io, conf);
+	return fr_master_app_io.common.bootstrap(MODULE_INST_CTX(inst->io.dl_inst));
 }
 
 static int mod_load(void)
@@ -590,16 +586,17 @@ static void mod_unload(void)
 }
 
 fr_app_t proto_radius = {
-	.magic			= MODULE_MAGIC_INIT,
-	.name			= "radius",
-	.config			= proto_radius_config,
-	.inst_size		= sizeof(proto_radius_t),
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "radius",
+		.config			= proto_radius_config,
+		.inst_size		= sizeof(proto_radius_t),
+		.onload			= mod_load,
+		.unload			= mod_unload,
+		.bootstrap		= mod_bootstrap,
+		.instantiate		= mod_instantiate
+	},
 	.dict			= &dict_radius,
-
-	.onload			= mod_load,
-	.unload			= mod_unload,
-	.bootstrap		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
 	.open			= mod_open,
 	.decode			= mod_decode,
 	.encode			= mod_encode,

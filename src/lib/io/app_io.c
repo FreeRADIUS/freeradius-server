@@ -53,20 +53,20 @@ char const *fr_app_io_socket_name(TALLOC_CTX *ctx, fr_app_io_t const *app_io,
 	if (!interface) {
 		if (!src_ipaddr) {
 			return talloc_typed_asprintf(ctx, "%s server %s port %u",
-						     app_io->name, dst_buf, dst_port);
+						     app_io->common.name, dst_buf, dst_port);
 		}
 
 
 		return talloc_typed_asprintf(ctx, "%s from client %s port %u to server %s port %u",
-					     app_io->name, src_buf, src_port, dst_buf, dst_port);
+					     app_io->common.name, src_buf, src_port, dst_buf, dst_port);
 	}
 
 	if (!src_ipaddr) {
 		return talloc_typed_asprintf(ctx, "%s server %s port %u on interface %s",
-					     app_io->name, dst_buf, dst_port, interface);
+					     app_io->common.name, dst_buf, dst_port, interface);
 		}
 
 
 		return talloc_typed_asprintf(ctx, "%s from client %s port %u to server %s port %u on interface %s",
-					     app_io->name, src_buf, src_port, dst_buf, dst_port, interface);
+					     app_io->common.name, src_buf, src_port, dst_buf, dst_port, interface);
 }

@@ -496,7 +496,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		}
 
 		if (dl_module_instance(NULL, &dl_inst, NULL, inst->dl_inst, inst->transport, DL_MODULE_TYPE_SUBMODULE) < 0) {
-			DEBUG("Failed to find proto_%s_%s", inst->app->name, inst->transport);
+			DEBUG("Failed to find proto_%s_%s", inst->app->common.name, inst->transport);
 			return NULL;
 		}
 
@@ -636,10 +636,10 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		 *	Create writable thread instance data.
 		 */
 		connection->child->thread_instance = talloc_zero_array(NULL, uint8_t,
-								       inst->app_io->thread_inst_size);
+								       inst->app_io->common.thread_inst_size);
 		talloc_set_destructor(connection->child, fr_io_listen_free);
 		talloc_set_name(connection->child->thread_instance, "proto_%s_thread_t",
-				inst->app_io->name);
+				inst->app_io->common.name);
 
 		/*
 		 *	This is "const", and the user can't
@@ -721,7 +721,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		 *	Set the new FD, and get the module to set it's connection name.
 		 */
 		if (inst->app_io->fd_set(connection->child, fd) < 0) {
-			DEBUG3("Failed setting FD to %s", inst->app_io->name);
+			DEBUG3("Failed setting FD to %s", inst->app_io->common.name);
 			close(fd);
 			return NULL;
 		}
@@ -731,7 +731,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		if (!inst->app_io->get_name) {
 			connection->name = fr_asprintf(connection, "proto_%s from client %pV port "
 						       "%u to server %pV port %u",
-						       inst->app_io->name,
+						       inst->app_io->common.name,
 						       fr_box_ipaddr(connection->address->socket.inet.src_ipaddr),
 						       connection->address->socket.inet.src_port,
 						       fr_box_ipaddr(connection->address->socket.inet.dst_ipaddr),
@@ -761,7 +761,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		if (!ret) {
 			ERROR("proto_%s - Failed inserting connection into tracking table.  "
 			      "Closing it, and discarding all packets for connection %s.",
-			      inst->app_io->name, connection->name);
+			      inst->app_io->common.name, connection->name);
 			goto cleanup;
 		}
 	}
@@ -777,12 +777,12 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		return connection;
 	}
 
-	DEBUG("proto_%s - starting connection %s", inst->app_io->name, connection->name);
+	DEBUG("proto_%s - starting connection %s", inst->app_io->common.name, connection->name);
 	connection->nr = fr_schedule_listen_add(thread->sc, connection->listen);
 	if (!connection->nr) {
 		ERROR("proto_%s - Failed inserting connection into scheduler.  "
 		      "Closing it, and diuscarding all packets for connection %s.",
-		      inst->app_io->name, connection->name);
+		      inst->app_io->common.name, connection->name);
 		pthread_mutex_lock(&client->mutex);
 		(void) fr_hash_table_delete(client->ht, connection);
 		pthread_mutex_unlock(&client->mutex);
@@ -1231,7 +1231,7 @@ redo:
 		 */
 		if (accept_fd < 0) {
 			DEBUG("proto_%s_%s - failed to accept new socket: %s",
-			      inst->app->name, inst->transport, fr_syserror(errno));
+			      inst->app->common.name, inst->transport, fr_syserror(errno));
 			return 0;
 		}
 
@@ -1307,7 +1307,7 @@ do_read:
 				 *	listener?
 				 */
 				DEBUG2("proto_%s - ignoring packet from IP %pV. It is not configured as 'type = ...'",
-				       inst->app_io->name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
+				       inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
 				return 0;
 			}
 			*priority = value;
@@ -1390,11 +1390,11 @@ do_read:
 				if (accept_fd < 0) {
 					DEBUG("proto_%s - ignoring packet from client IP address %pV - "
 					      "too many dynamic clients are defined",
-					      inst->app_io->name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
+					      inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
 				} else {
 					DEBUG("proto_%s - ignoring connection attempt from client IP address %pV "
 					      "- too many dynamic clients are defined",
-					      inst->app_io->name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
+					      inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
 					close(accept_fd);
 				}
 				return 0;
@@ -1423,10 +1423,10 @@ do_read:
 		ignore:
 			if (accept_fd < 0) {
 				DEBUG("proto_%s - ignoring packet from unknown client IP address %pV",
-				      inst->app_io->name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
+				      inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
 			} else {
 				DEBUG("proto_%s - ignoring connection attempt from unknown client IP address %pV",
-				      inst->app_io->name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
+				      inst->app_io->common.name, fr_box_ipaddr(address.socket.inet.src_ipaddr));
 				close(accept_fd);
 			}
 			return 0;
@@ -1498,7 +1498,7 @@ do_read:
 		 */
 		if (fr_trie_insert_by_key(thread->trie, &client->src_ipaddr.addr, client->src_ipaddr.prefix, client)) {
 			ERROR("proto_%s - Failed inserting client %s into tracking table.  Discarding client, and all packets for it.",
-			      inst->app_io->name, client->radclient->shortname);
+			      inst->app_io->common.name, client->radclient->shortname);
 			talloc_free(client);
 			if (accept_fd >= 0) close(accept_fd);
 			return -1;
@@ -1814,7 +1814,7 @@ static int mod_open(fr_listen_t *li)
 	 *	Set the name of the socket.
 	 */
 	if (!li->app_io->get_name) {
-		li->name = li->app_io->name;
+		li->name = li->app_io->common.name;
 	} else {
 		li->name = li->app_io->get_name(li);
 	}
@@ -2032,9 +2032,9 @@ idle_timeout:
 		 */
 		if (client->ready_to_delete) {
 			if (connection) {
-				DEBUG("proto_%s - idle timeout for connection %s", inst->app_io->name, connection->name);
+				DEBUG("proto_%s - idle timeout for connection %s", inst->app_io->common.name, connection->name);
 			} else {
-				DEBUG("proto_%s - idle timeout for client %s", inst->app_io->name, client->radclient->shortname);
+				DEBUG("proto_%s - idle timeout for client %s", inst->app_io->common.name, client->radclient->shortname);
 			}
 			goto delete_client;
 		}
@@ -2064,7 +2064,7 @@ reset_timer:
 	if (fr_event_timer_in(client, el, &client->ev,
 			      delay, client_expiry_timer, client) < 0) {
 		ERROR("proto_%s - Failed adding timeout for dynamic client %s.  It will be permanent!",
-		      inst->app_io->name, client->radclient->shortname);
+		      inst->app_io->common.name, client->radclient->shortname);
 		return;
 	}
 
@@ -2099,13 +2099,13 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		 */
 		if (fr_event_timer_at(track, el, &track->ev,
 				      track->expires, packet_expiry_timer, track) == 0) {
-			DEBUG("proto_%s - cleaning up request in %.6fs", inst->app_io->name,
+			DEBUG("proto_%s - cleaning up request in %.6fs", inst->app_io->common.name,
 			      fr_time_delta_unwrap(inst->cleanup_delay) / (double)NSEC);
 			return;
 		}
 
 		DEBUG("proto_%s - Failed adding cleanup_delay for packet.  Discarding packet immediately",
-		      inst->app_io->name);
+		      inst->app_io->common.name);
 	}
 
 	/*
@@ -2113,9 +2113,9 @@ static void packet_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	timeout ones.
 	 */
 	if (fr_time_neq(now, fr_time_wrap(0))) {
-		DEBUG2("TIMER - proto_%s - cleanup delay", inst->app_io->name);
+		DEBUG2("TIMER - proto_%s - cleanup delay", inst->app_io->common.name);
 	} else {
-		DEBUG2("proto_%s - cleaning up", inst->app_io->name);
+		DEBUG2("proto_%s - cleaning up", inst->app_io->common.name);
 	}
 
 	/*
@@ -2439,7 +2439,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	 */
 	if (radclient->use_connected && !inst->app_io->connection_set) {
 		DEBUG("proto_%s - cannot use connected sockets as underlying 'transport = %s' does not support it.",
-		      inst->app_io->name, inst->transport);
+		      inst->app_io->common.name, inst->transport);
 		goto error;
 	}
 
@@ -2550,9 +2550,10 @@ static int mod_close(fr_listen_t *li)
 }
 
 
-static int mod_bootstrap(void *instance, CONF_SECTION *cs)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	fr_io_instance_t *inst = instance;
+	fr_io_instance_t *inst = mctx->inst->data;
+	CONF_SECTION *conf = mctx->inst->conf;
 
 	/*
 	 *	Find and bootstrap the application IO handler.
@@ -2580,9 +2581,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		}
 	}
 
-	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
-								inst->app_io_conf) < 0)) {
-		cf_log_err(inst->app_io_conf, "Bootstrap failed for proto_%s", inst->app_io->name);
+	if (inst->app_io->common.bootstrap && (inst->app_io->common.bootstrap(MODULE_INST_CTX(inst->submodule)) < 0)) {
+		cf_log_err(inst->app_io_conf, "Bootstrap failed for proto_%s", inst->app_io->common.name);
 		return -1;
 	}
 
@@ -2601,9 +2601,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		/*
 		 *	Load proto_dhcpv4_dynamic_client
 		 */
-		if (dl_module_instance(cs, &inst->dynamic_submodule,
-				cs, inst->dl_inst, "dynamic_client", DL_MODULE_TYPE_SUBMODULE) < 0) {
-			cf_log_err(cs, "Failed finding proto_%s_dynamic_client", inst->app->name);
+		if (dl_module_instance(conf, &inst->dynamic_submodule,
+				       conf, inst->dl_inst, "dynamic_client", DL_MODULE_TYPE_SUBMODULE) < 0) {
+			cf_log_err(conf, "Failed finding proto_%s_dynamic_client", inst->app->common.name);
 			return -1;
 		}
 
@@ -2624,7 +2624,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	}
 
 	if (inst->ipproto && !inst->app_io->connection_set) {
-		cf_log_err(inst->app_io_conf, "Cannot set TCP for proto_%s - internal set error", inst->app_io->name);
+		cf_log_err(inst->app_io_conf, "Cannot set TCP for proto_%s - internal set error", inst->app_io->common.name);
 		return -1;
 	}
 
@@ -2646,16 +2646,16 @@ static char const *mod_name(fr_listen_t *li)
 }
 
 
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	fr_io_instance_t *inst = instance;
+	fr_io_instance_t	*inst = mctx->inst->data;
+	CONF_SECTION		*conf = mctx->inst->conf;
 
 	fr_assert(inst->app_io != NULL);
 
-	if (inst->app_io->instantiate &&
-	    (inst->app_io->instantiate(inst->app_io_instance,
-				       inst->app_io_conf) < 0)) {
-		cf_log_err(conf, "Instantiation failed for \"proto_%s\"", inst->app_io->name);
+	if (inst->app_io->common.instantiate &&
+	    (inst->app_io->common.instantiate(MODULE_INST_CTX(inst->submodule)) < 0)) {
+		cf_log_err(conf, "Instantiation failed for \"proto_%s\"", inst->app_io->common.name);
 		return -1;
 	}
 
@@ -2666,7 +2666,7 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 		fr_app_worker_t const	*app_process;
 
 		if (!inst->dynamic_submodule) {
-			cf_log_err(conf, "Instantiation failed for \"proto_%s\" - there is no way to define dynamic clients", inst->app_io->name);
+			cf_log_err(conf, "Instantiation failed for \"proto_%s\" - there is no way to define dynamic clients", inst->app_io->common.name);
 			return -1;
 		}
 
@@ -2692,8 +2692,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 			};
 		}
 
-		if (app_process->instantiate && (app_process->instantiate(inst->dynamic_submodule->data, conf) < 0)) {
-			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->name);
+		if (app_process->common.instantiate && (app_process->common.instantiate(MODULE_INST_CTX(inst->dynamic_submodule)) < 0)) {
+			cf_log_err(conf, "Instantiation failed for \"%s\"", app_process->common.name);
 			return -1;
 		}
 	}
@@ -2904,7 +2904,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 		return 0;
 	}
 
-	if (!inst->app_io->thread_inst_size) {
+	if (!inst->app_io->common.thread_inst_size) {
 		fr_strerror_const("IO modules MUST set 'thread_inst_size' when using the master IO handler.");
 		return -1;
 	}
@@ -2982,13 +2982,13 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	child->app_io = inst->app_io;
 	child->track_duplicates = inst->app_io->track_duplicates;
 
-	if (child->app_io->thread_inst_size > 0) {
+	if (child->app_io->common.thread_inst_size > 0) {
 		child->thread_instance = talloc_zero_array(NULL, uint8_t,
-							   inst->app_io->thread_inst_size);
+							   inst->app_io->common.thread_inst_size);
 		talloc_set_destructor(child, fr_io_listen_free);
 
 		talloc_set_name(child->thread_instance, "proto_%s_thread_t",
-				inst->app_io->name);
+				inst->app_io->common.name);
 
 		/*
 		 *	This is "const", and the user can't
@@ -3008,7 +3008,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	 *	socket for us.
 	 */
 	if (inst->app_io->open(child) < 0) {
-		cf_log_err(inst->app_io_conf, "Failed opening %s interface", inst->app_io->name);
+		cf_log_err(inst->app_io_conf, "Failed opening %s interface", inst->app_io->common.name);
 		talloc_free(li);
 		return -1;
 	}
@@ -3016,7 +3016,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	li->fd = child->fd;	/* copy this back up */
 
 	if (!child->app_io->get_name) {
-		child->name = child->app_io->name;
+		child->name = child->app_io->common.name;
 	} else {
 		child->name = child->app_io->get_name(child);
 	}
@@ -3056,12 +3056,13 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 
 
 fr_app_io_t fr_master_app_io = {
-	.magic			= MODULE_MAGIC_INIT,
-	.name			= "radius_master_io",
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "radius_master_io",
 
-	.bootstrap		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
-
+		.bootstrap		= mod_bootstrap,
+		.instantiate		= mod_instantiate,
+	},
 	.default_message_size	= 4096,
 	.track_duplicates	= true,
 

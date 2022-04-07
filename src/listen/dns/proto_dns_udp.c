@@ -334,22 +334,23 @@ static char const *mod_name(fr_listen_t *li)
 }
 
 
-static int mod_bootstrap(void *instance, CONF_SECTION *cs)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_dns_udp_t	*inst = talloc_get_type_abort(instance, proto_dns_udp_t);
+	proto_dns_udp_t		*inst = talloc_get_type_abort(mctx->inst->data, proto_dns_udp_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 	size_t			num;
 	CONF_ITEM		*ci;
 	CONF_SECTION		*server_cs;
 	RADCLIENT		*client;
 
-	inst->cs = cs;
+	inst->cs = conf;
 
 	/*
 	 *	Complain if no "ipaddr" is set.
 	 */
 	if (inst->ipaddr.af == AF_UNSPEC) {
 		if (!inst->interface) {
-			cf_log_err(cs, "No 'ipaddr' was specified in the 'udp' section");
+			cf_log_err(conf, "No 'ipaddr' was specified in the 'udp' section");
 			return -1;
 		}
 
@@ -360,7 +361,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		 */
 		if (inst->interface &&
 		    (fr_interface_to_ipaddr(inst->interface, &inst->ipaddr, AF_INET, true) < 0)) {
-			cf_log_err(cs, "No 'ipaddr' specified, and we cannot determine one for interface '%s'",
+			cf_log_err(conf, "No 'ipaddr' specified, and we cannot determine one for interface '%s'",
 				   inst->interface);
 				return -1;
 		}
@@ -382,7 +383,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	if (num) {
 		inst->trie = fr_master_io_network(inst, inst->ipaddr.af, inst->allow, inst->deny);
 		if (!inst->trie) {
-			cf_log_perr(cs, "Failed creating list of networks");
+			cf_log_perr(conf, "Failed creating list of networks");
 			return -1;
 		}
 	}
@@ -403,7 +404,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	if (cf_section_find_next(server_cs, NULL, "client", CF_IDENT_ANY)) {
 		inst->clients = client_list_parse_section(server_cs, IPPROTO_UDP, false);
 		if (!inst->clients) {
-			cf_log_err(cs, "Failed creating local clients");
+			cf_log_err(conf, "Failed creating local clients");
 			return -1;
 		}
 	}
@@ -444,13 +445,14 @@ static RADCLIENT *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, in
 }
 
 fr_app_io_t proto_dns_udp = {
-	.magic			= MODULE_MAGIC_INIT,
-	.name			= "dns_udp",
-	.config			= udp_listen_config,
-	.inst_size		= sizeof(proto_dns_udp_t),
-	.thread_inst_size	= sizeof(proto_dns_udp_thread_t),
-	.bootstrap		= mod_bootstrap,
-
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "dns_udp",
+		.config			= udp_listen_config,
+		.inst_size		= sizeof(proto_dns_udp_t),
+		.thread_inst_size	= sizeof(proto_dns_udp_thread_t),
+		.bootstrap		= mod_bootstrap
+	},
 	.default_message_size	= 576,
 	.track_duplicates	= false,
 

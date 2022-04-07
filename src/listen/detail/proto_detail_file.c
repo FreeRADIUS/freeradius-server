@@ -379,7 +379,7 @@ static int work_exists(proto_detail_file_thread_t *thread, int fd)
 	 *	Open the detail.work file.
 	 */
 	if (li->app_io->open(li) < 0) {
-		ERROR("Failed opening %s", li->app_io->name);
+		ERROR("Failed opening %s", li->app_io->common.name);
 		goto error;
 	}
 	opened = true;
@@ -584,9 +584,10 @@ static char const *mod_name(fr_listen_t *li)
 }
 
 
-static int mod_bootstrap(void *instance, CONF_SECTION *cs)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_detail_file_t	*inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	proto_detail_file_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_detail_file_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 	dl_module_inst_t const	*dl_inst;
 	char			*p;
 
@@ -617,7 +618,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	so we can find out what the parent of our instance
 	 *	was.
 	 */
-	dl_inst = dl_module_instance_by_data(instance);
+	dl_inst = dl_module_instance_by_data(mctx->inst->data);
 	fr_assert(dl_inst);
 
 #ifndef __linux__
@@ -629,13 +630,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	FR_INTEGER_BOUND_CHECK("poll_interval", inst->poll_interval, <=, 3600);
 
 	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_detail_t);
-	inst->cs = cs;
+	inst->cs = conf;
 
 	inst->directory = p = talloc_strdup(inst, inst->filename);
 
 	p = strrchr(p, '/');
 	if (!p) {
-		cf_log_err(cs, "Filename must contain '/'");
+		cf_log_err(conf, "Filename must contain '/'");
 		return -1;
 	}
 
@@ -672,16 +673,17 @@ static int8_t _detail_file_cmp(void const *one, void const *two)
 /*
  *	Check for multiple readers on the same set of files.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *cs)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	proto_detail_file_t *inst = talloc_get_type_abort(instance, proto_detail_file_t);
+	proto_detail_file_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_detail_file_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 
 	pthread_mutex_lock(&detail_file_mutex);
 	if (!detail_file_tree) {
-		detail_file_tree = fr_rb_inline_talloc_alloc(cs, proto_detail_file_t, filename_node, _detail_file_cmp, NULL);
+		detail_file_tree = fr_rb_inline_talloc_alloc(conf, proto_detail_file_t, filename_node, _detail_file_cmp, NULL);
 		if (!detail_file_tree) {
 			pthread_mutex_unlock(&detail_file_mutex);
-			cf_log_err(cs, "Failed initializing detail_file");
+			cf_log_err(conf, "Failed initializing detail_file");
 			return -1;
 		}
 	}
@@ -693,8 +695,8 @@ static int mod_instantiate(void *instance, CONF_SECTION *cs)
 		fr_assert(old);
 
 		pthread_mutex_unlock(&detail_file_mutex);
-		cf_log_err(cs, "Duplicate detail listener %s", inst->filename);
-		cf_log_err(cs, "Original detail listener is in virtual server %s", cf_section_name2(old->parent->server_cs));
+		cf_log_err(conf, "Duplicate detail listener %s", inst->filename);
+		cf_log_err(conf, "Original detail listener is in virtual server %s", cf_section_name2(old->parent->server_cs));
 		return -1;
 	}
 	pthread_mutex_unlock(&detail_file_mutex);
@@ -740,14 +742,15 @@ static int mod_close(fr_listen_t *li)
  */
 extern fr_app_io_t proto_detail_file;
 fr_app_io_t proto_detail_file = {
-	.magic			= MODULE_MAGIC_INIT,
-	.name			= "detail_file",
-	.config			= file_listen_config,
-	.inst_size		= sizeof(proto_detail_file_t),
-	.thread_inst_size	= sizeof(proto_detail_file_thread_t),
-	.bootstrap		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
-
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "detail_file",
+		.config			= file_listen_config,
+		.inst_size		= sizeof(proto_detail_file_t),
+		.thread_inst_size	= sizeof(proto_detail_file_thread_t),
+		.bootstrap		= mod_bootstrap,
+		.instantiate		= mod_instantiate,
+	},
 	.default_message_size	= 65536,
 	.default_reply_size	= 32,
 

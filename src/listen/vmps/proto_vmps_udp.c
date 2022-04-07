@@ -387,20 +387,21 @@ static int mod_track_compare(UNUSED void const *instance, UNUSED void *thread_in
 	return (a->opcode < b->opcode) - (a->opcode > b->opcode);
 }
 
-static int mod_bootstrap(void *instance, CONF_SECTION *cs)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_vmps_udp_t	*inst = talloc_get_type_abort(instance, proto_vmps_udp_t);
+	proto_vmps_udp_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_vmps_udp_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 	size_t			num;
 	CONF_ITEM		*ci;
 	CONF_SECTION		*server_cs;
 
-	inst->cs = cs;
+	inst->cs = conf;
 
 	/*
 	 *	Complain if no "ipaddr" is set.
 	 */
 	if (inst->ipaddr.af == AF_UNSPEC) {
-		cf_log_err(cs, "No 'ipaddr' was specified in the 'udp' section");
+		cf_log_err(conf, "No 'ipaddr' was specified in the 'udp' section");
 		return -1;
 	}
 
@@ -416,13 +417,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		struct servent *s;
 
 		if (!inst->port_name) {
-			cf_log_err(cs, "No 'port' was specified in the 'udp' section");
+			cf_log_err(conf, "No 'port' was specified in the 'udp' section");
 			return -1;
 		}
 
 		s = getservbyname(inst->port_name, "udp");
 		if (!s) {
-			cf_log_err(cs, "Unknown value for 'port_name = %s", inst->port_name);
+			cf_log_err(conf, "Unknown value for 'port_name = %s", inst->port_name);
 			return -1;
 		}
 
@@ -440,13 +441,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	num = talloc_array_length(inst->allow);
 	if (!num) {
 		if (inst->dynamic_clients) {
-			cf_log_err(cs, "The 'allow' subsection MUST contain at least one 'network' entry when 'dynamic_clients = true'.");
+			cf_log_err(conf, "The 'allow' subsection MUST contain at least one 'network' entry when 'dynamic_clients = true'.");
 			return -1;
 		}
 	} else {
 		inst->trie = fr_master_io_network(inst, inst->ipaddr.af, inst->allow, inst->deny);
 		if (!inst->trie) {
-			cf_log_perr(cs, "Failed creating list of networks");
+			cf_log_perr(conf, "Failed creating list of networks");
 			return -1;
 		}
 	}
@@ -467,7 +468,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	if (cf_section_find_next(server_cs, NULL, "client", CF_IDENT_ANY)) {
 		inst->clients = client_list_parse_section(server_cs, IPPROTO_UDP, false);
 		if (!inst->clients) {
-			cf_log_err(cs, "Failed creating local clients");
+			cf_log_err(conf, "Failed creating local clients");
 			return -1;
 		}
 	}
@@ -502,13 +503,14 @@ static char const *mod_name(fr_listen_t *li)
 }
 
 fr_app_io_t proto_vmps_udp = {
-	.magic			= MODULE_MAGIC_INIT,
-	.name			= "vmps_udp",
-	.config			= udp_listen_config,
-	.inst_size		= sizeof(proto_vmps_udp_t),
-	.thread_inst_size	= sizeof(proto_vmps_udp_thread_t),
-	.bootstrap		= mod_bootstrap,
-
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "vmps_udp",
+		.config			= udp_listen_config,
+		.inst_size		= sizeof(proto_vmps_udp_t),
+		.thread_inst_size	= sizeof(proto_vmps_udp_thread_t),
+		.bootstrap		= mod_bootstrap,
+	},
 	.default_message_size	= 4096,
 	.track_duplicates	= true,
 

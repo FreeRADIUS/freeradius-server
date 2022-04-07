@@ -453,22 +453,23 @@ static char const *mod_name(fr_listen_t *li)
 }
 
 
-static int mod_bootstrap(void *instance, CONF_SECTION *cs)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_dhcpv6_udp_t	*inst = talloc_get_type_abort(instance, proto_dhcpv6_udp_t);
+	proto_dhcpv6_udp_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_dhcpv6_udp_t);
 	size_t			num;
 	CONF_ITEM		*ci;
 	CONF_SECTION		*server_cs;
 	RADCLIENT		*client;
+	CONF_SECTION		*conf = mctx->inst->conf;
 
-	inst->cs = cs;
+	inst->cs = conf;
 
 	/*
 	 *	Complain if no "ipaddr" is set.
 	 */
 	if (inst->ipaddr.af == AF_UNSPEC) {
 		if (!inst->interface) {
-			cf_log_err(cs, "No 'ipaddr' was specified in the 'udp' section");
+			cf_log_err(conf, "No 'ipaddr' was specified in the 'udp' section");
 			return -1;
 		}
 
@@ -479,14 +480,14 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		 */
 		if (inst->interface &&
 		    (fr_interface_to_ipaddr(inst->interface, &inst->ipaddr, AF_INET6, true) < 0)) {
-			cf_log_err(cs, "No 'ipaddr' specified, and we cannot determine one for interface '%s'",
+			cf_log_err(conf, "No 'ipaddr' specified, and we cannot determine one for interface '%s'",
 				   inst->interface);
 				return -1;
 		}
 	}
 
 	if (inst->ipaddr.af != AF_INET6) {
-		cf_log_err(cs, "DHCPv6 cannot use IPv4 for 'ipaddr'");
+		cf_log_err(conf, "DHCPv6 cannot use IPv4 for 'ipaddr'");
 		return -1;
 	}
 
@@ -512,7 +513,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 				inst->interface = fr_ipaddr_to_interface(inst, &inst->ipaddr);
 				if (!inst->interface) {
 				interface_fail:
-					cf_log_err(cs, "No 'interface' specified, and we cannot "
+					cf_log_err(conf, "No 'interface' specified, and we cannot "
 						   "determine one for 'ipaddr = %pV'",
 						   fr_box_ipaddr(inst->ipaddr));
 					return -1;
@@ -526,7 +527,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			if (!inst->interface) goto interface_fail;
 
 			if (fr_interface_to_ipaddr(inst->interface, &inst->src_ipaddr, AF_INET6, true) < 0) {
-				cf_log_err(cs, "No 'src_ipaddr' specified, and we cannot determine "
+				cf_log_err(conf, "No 'src_ipaddr' specified, and we cannot determine "
 					   "one for 'ipaddr = %pV and interface '%s'",
 					   fr_box_ipaddr(inst->ipaddr), inst->interface);
 				return -1;
@@ -538,7 +539,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	 *	src_ipaddr must be of the same address family as "ipaddr"
 	 */
 	if (inst->src_ipaddr.af != inst->ipaddr.af) {
-		cf_log_err(cs, "Both 'ipaddr' and 'src_ipaddr' must be from the same address family");
+		cf_log_err(conf, "Both 'ipaddr' and 'src_ipaddr' must be from the same address family");
 		return -1;
 	}
 
@@ -560,13 +561,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		struct servent *s;
 
 		if (!inst->port_name) {
-			cf_log_err(cs, "No 'port' was specified in the 'udp' section");
+			cf_log_err(conf, "No 'port' was specified in the 'udp' section");
 			return -1;
 		}
 
 		s = getservbyname(inst->port_name, "udp");
 		if (!s) {
-			cf_log_err(cs, "Unknown value for 'port_name = %s", inst->port_name);
+			cf_log_err(conf, "Unknown value for 'port_name = %s", inst->port_name);
 			return -1;
 		}
 
@@ -580,14 +581,14 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	num = talloc_array_length(inst->allow);
 	if (!num) {
 		if (inst->dynamic_clients) {
-			cf_log_err(cs, "The 'allow' subsection MUST contain at least one 'network' entry when "
+			cf_log_err(conf, "The 'allow' subsection MUST contain at least one 'network' entry when "
 				   "'dynamic_clients = true'.");
 			return -1;
 		}
 	} else {
 		inst->trie = fr_master_io_network(inst, inst->ipaddr.af, inst->allow, inst->deny);
 		if (!inst->trie) {
-			cf_log_perr(cs, "Failed creating list of networks");
+			cf_log_perr(conf, "Failed creating list of networks");
 			return -1;
 		}
 	}
@@ -608,7 +609,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	if (cf_section_find_next(server_cs, NULL, "client", CF_IDENT_ANY)) {
 		inst->clients = client_list_parse_section(server_cs, IPPROTO_UDP, false);
 		if (!inst->clients) {
-			cf_log_err(cs, "Failed creating local clients");
+			cf_log_err(conf, "Failed creating local clients");
 			return -1;
 		}
 	}
@@ -649,13 +650,14 @@ static RADCLIENT *mod_client_find(fr_listen_t *li, fr_ipaddr_t const *ipaddr, in
 }
 
 fr_app_io_t proto_dhcpv6_udp = {
-	.magic			= MODULE_MAGIC_INIT,
-	.name			= "dhcpv6_udp",
-	.config			= udp_listen_config,
-	.inst_size		= sizeof(proto_dhcpv6_udp_t),
-	.thread_inst_size	= sizeof(proto_dhcpv6_udp_thread_t),
-	.bootstrap		= mod_bootstrap,
-
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "dhcpv6_udp",
+		.config			= udp_listen_config,
+		.inst_size		= sizeof(proto_dhcpv6_udp_t),
+		.thread_inst_size	= sizeof(proto_dhcpv6_udp_thread_t),
+		.bootstrap		= mod_bootstrap
+	},
 	.default_message_size	= 4096,
 	.track_duplicates	= true,
 

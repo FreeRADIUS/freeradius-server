@@ -802,8 +802,8 @@ int virtual_servers_instantiate(void)
 			fr_assert(listen->proto_module != NULL);
 			fr_assert(listen->app != NULL);
 
-			if (listen->app->instantiate &&
-			    listen->app->instantiate(listen->proto_module->data, listen->proto_module->conf) < 0) {
+			if (listen->app->common.instantiate &&
+			    listen->app->common.instantiate(MODULE_INST_CTX(listen->proto_module)) < 0) {
 				cf_log_err(listen->proto_module->conf, "Could not load virtual server \"%s\".",
 					    cf_section_name2(server_cs));
 				return -1;
@@ -982,8 +982,8 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 			talloc_get_type_abort(listen->proto_module, dl_module_inst_t);
 			listen->app = (fr_app_t const *)listen->proto_module->module->common;
 
-			if (listen->app->bootstrap &&
-			    listen->app->bootstrap(listen->proto_module->data, listen->proto_module->conf) < 0) {
+			if (listen->app->common.bootstrap &&
+			    listen->app->common.bootstrap(MODULE_INST_CTX(listen->proto_module)) < 0) {
 				cf_log_err(listen->proto_module->conf, "Bootstrap failed");
 				return -1;
 			}
@@ -1046,8 +1046,8 @@ int virtual_servers_open(fr_schedule_t *sc)
 			 */
 			if (listen->app->open &&
 			    listen->app->open(listen->proto_module->data, sc, listen->proto_module->conf) < 0) {
-				cf_log_err(listen->proto_module->conf, "Opening %s I/O interface failed",
-					   listen->app->name);
+				cf_log_perr(listen->proto_module->conf, "Opening %s I/O interface failed",
+					    listen->app->common.name);
 				return -1;
 			}
 
@@ -1055,7 +1055,7 @@ int virtual_servers_open(fr_schedule_t *sc)
 			 *	Socket information is printed out by
 			 *	the socket handlers.  e.g. proto_radius_udp
 			 */
-			DEBUG3("Opened listener for %s", listen->app->name);
+			DEBUG3("Opened listener for %s", listen->app->common.name);
 		}
 	}
 

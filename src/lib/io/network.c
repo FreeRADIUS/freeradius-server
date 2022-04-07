@@ -1876,7 +1876,7 @@ static int cmd_socket_list(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_c
 	     socket;
 	     socket = fr_rb_iter_next_inorder(&iter)) {
 		if (!socket->listen->app_io->get_name) {
-			fprintf(fp, "%s\n", socket->listen->app_io->name);
+			fprintf(fp, "%s\n", socket->listen->app_io->common.name);
 		} else {
 			fprintf(fp, "%d\t%s\n", socket->number, socket->listen->app_io->get_name(socket->listen));
 		}

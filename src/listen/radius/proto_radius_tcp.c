@@ -381,18 +381,19 @@ static char const *mod_name(fr_listen_t *li)
 }
 
 
-static int mod_bootstrap(void *instance, CONF_SECTION *cs)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_radius_tcp_t	*inst = talloc_get_type_abort(instance, proto_radius_tcp_t);
+	proto_radius_tcp_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_radius_tcp_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 	size_t			i, num;
 
-	inst->cs = cs;
+	inst->cs = conf;
 
 	/*
 	 *	Complain if no "ipaddr" is set.
 	 */
 	if (inst->ipaddr.af == AF_UNSPEC) {
-		cf_log_err(cs, "No 'ipaddr' was specified in the 'tcp' section");
+		cf_log_err(conf, "No 'ipaddr' was specified in the 'tcp' section");
 		return -1;
 	}
 
@@ -408,13 +409,13 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 		struct servent *s;
 
 		if (!inst->port_name) {
-			cf_log_err(cs, "No 'port' was specified in the 'tcp' section");
+			cf_log_err(conf, "No 'port' was specified in the 'tcp' section");
 			return -1;
 		}
 
 		s = getservbyname(inst->port_name, "tcp");
 		if (!s) {
-			cf_log_err(cs, "Unknown value for 'port_name = %s", inst->port_name);
+			cf_log_err(conf, "Unknown value for 'port_name = %s", inst->port_name);
 			return -1;
 		}
 
@@ -432,7 +433,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	num = talloc_array_length(inst->allow);
 	if (!num) {
 		if (inst->dynamic_clients) {
-			cf_log_err(cs, "The 'allow' subsection MUST contain at least one 'network' entry when 'dynamic_clients = true'.");
+			cf_log_err(conf, "The 'allow' subsection MUST contain at least one 'network' entry when 'dynamic_clients = true'.");
 			return -1;
 		}
 	} else {
@@ -445,7 +446,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			 *	Can't add v4 networks to a v6 socket, or vice versa.
 			 */
 			if (inst->allow[i].af != inst->ipaddr.af) {
-				cf_log_err(cs, "Address family in entry %zd - 'allow = %pV' does not match 'ipaddr'",
+				cf_log_err(conf, "Address family in entry %zd - 'allow = %pV' does not match 'ipaddr'",
 					   i + 1, fr_box_ipaddr(inst->allow[i]));
 				return -1;
 			}
@@ -456,7 +457,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			network = fr_trie_match_by_key(inst->trie,
 						&inst->allow[i].addr, inst->allow[i].prefix);
 			if (network) {
-				cf_log_err(cs, "Cannot add duplicate entry 'allow = %pV'",
+				cf_log_err(conf, "Cannot add duplicate entry 'allow = %pV'",
 					   fr_box_ipaddr(inst->allow[i]));
 				return -1;
 			}
@@ -475,9 +476,9 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			network = fr_trie_lookup_by_key(inst->trie,
 						 &inst->allow[i].addr, inst->allow[i].prefix);
 			if (network && (network->prefix <= inst->allow[i].prefix)) {
-				cf_log_err(cs, "Cannot add overlapping entry 'allow = %pV'",
+				cf_log_err(conf, "Cannot add overlapping entry 'allow = %pV'",
 					   fr_box_ipaddr(inst->allow[i]));
-				cf_log_err(cs, "Entry is completely enclosed inside of a previously defined network");
+				cf_log_err(conf, "Entry is completely enclosed inside of a previously defined network");
 				return -1;
 			}
 
@@ -489,7 +490,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			if (fr_trie_insert_by_key(inst->trie,
 					   &inst->allow[i].addr, inst->allow[i].prefix,
 					   &inst->allow[i]) < 0) {
-				cf_log_err(cs, "Failed adding 'allow = %pV' to tracking table",
+				cf_log_err(conf, "Failed adding 'allow = %pV' to tracking table",
 					   fr_box_ipaddr(inst->allow[i]));
 				return -1;
 			}
@@ -512,7 +513,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			 *	Can't add v4 networks to a v6 socket, or vice versa.
 			 */
 			if (inst->deny[i].af != inst->ipaddr.af) {
-				cf_log_err(cs, "Address family in entry %zd - 'deny = %pV' does not match 'ipaddr'",
+				cf_log_err(conf, "Address family in entry %zd - 'deny = %pV' does not match 'ipaddr'",
 					   i + 1, fr_box_ipaddr(inst->deny[i]));
 				return -1;
 			}
@@ -523,7 +524,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			network = fr_trie_match_by_key(inst->trie,
 						&inst->deny[i].addr, inst->deny[i].prefix);
 			if (network) {
-				cf_log_err(cs, "Cannot add duplicate entry 'deny = %pV'", fr_box_ipaddr(inst->deny[i]));
+				cf_log_err(conf, "Cannot add duplicate entry 'deny = %pV'", fr_box_ipaddr(inst->deny[i]));
 				return -1;
 			}
 
@@ -533,7 +534,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			network = fr_trie_lookup_by_key(inst->trie,
 						&inst->deny[i].addr, inst->deny[i].prefix);
 			if (!network) {
-				cf_log_err(cs, "The network in entry %zd - 'deny = %pV' is not contained "
+				cf_log_err(conf, "The network in entry %zd - 'deny = %pV' is not contained "
 					   "within a previous 'allow'", i + 1, fr_box_ipaddr(inst->deny[i]));
 				return -1;
 			}
@@ -544,7 +545,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			 *	adding a "deny" inside of a "deny".
 			 */
 			if (network->af != inst->ipaddr.af) {
-				cf_log_err(cs, "The network in entry %zd - 'deny = %pV' overlaps with "
+				cf_log_err(conf, "The network in entry %zd - 'deny = %pV' overlaps with "
 					   "another 'deny' rule", i + 1, fr_box_ipaddr(inst->deny[i]));
 				return -1;
 			}
@@ -557,7 +558,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 			if (fr_trie_insert_by_key(inst->trie,
 					   &inst->deny[i].addr, inst->deny[i].prefix,
 					   &inst->deny[i]) < 0) {
-				cf_log_err(cs, "Failed adding 'deny = %pV' to tracking table",
+				cf_log_err(conf, "Failed adding 'deny = %pV' to tracking table",
 					   fr_box_ipaddr(inst->deny[i]));
 				return -1;
 			}
@@ -578,13 +579,14 @@ static RADCLIENT *mod_client_find(UNUSED fr_listen_t *li, fr_ipaddr_t const *ipa
 }
 
 fr_app_io_t proto_radius_tcp = {
-	.magic			= MODULE_MAGIC_INIT,
-	.name			= "radius_tcp",
-	.config			= tcp_listen_config,
-	.inst_size		= sizeof(proto_radius_tcp_t),
-	.thread_inst_size	= sizeof(proto_radius_tcp_thread_t),
-	.bootstrap		= mod_bootstrap,
-
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "radius_tcp",
+		.config			= tcp_listen_config,
+		.inst_size		= sizeof(proto_radius_tcp_t),
+		.thread_inst_size	= sizeof(proto_radius_tcp_thread_t),
+		.bootstrap		= mod_bootstrap,
+	},
 	.default_message_size	= 4096,
 
 	.open			= mod_open,

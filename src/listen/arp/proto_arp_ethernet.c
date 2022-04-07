@@ -216,24 +216,25 @@ static char const *mod_name(fr_listen_t *li)
 }
 
 
-static int mod_bootstrap(void *instance, CONF_SECTION *cs)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_arp_ethernet_t	*inst = talloc_get_type_abort(instance, proto_arp_ethernet_t);
+	proto_arp_ethernet_t 	*inst = talloc_get_type_abort(mctx->inst->data, proto_arp_ethernet_t);
 
-	inst->cs = cs;
+	inst->cs = mctx->inst->conf;
 
 	return 0;
 }
 
 
 fr_app_io_t proto_arp_ethernet = {
-	.magic			= MODULE_MAGIC_INIT,
-	.name			= "arp_ethernet",
-	.config			= arp_listen_config,
-	.inst_size		= sizeof(proto_arp_ethernet_t),
-	.thread_inst_size	= sizeof(proto_arp_ethernet_thread_t),
-	.bootstrap		= mod_bootstrap,
-
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "arp_ethernet",
+		.config			= arp_listen_config,
+		.inst_size		= sizeof(proto_arp_ethernet_t),
+		.thread_inst_size	= sizeof(proto_arp_ethernet_thread_t),
+		.bootstrap		= mod_bootstrap,
+	},
 	.default_message_size	= FR_ARP_PACKET_SIZE,
 
 	.open			= mod_open,

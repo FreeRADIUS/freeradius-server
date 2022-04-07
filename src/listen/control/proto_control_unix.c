@@ -1105,11 +1105,12 @@ static char const *mod_name(fr_listen_t *li)
 }
 
 
-static int mod_bootstrap(void *instance, CONF_SECTION *cs)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_control_unix_t	*inst = talloc_get_type_abort(instance, proto_control_unix_t);
+	proto_control_unix_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_control_unix_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 
-	inst->cs = cs;
+	inst->cs = conf;
 
 	if (inst->recv_buff_is_set) {
 		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, 32);
@@ -1126,7 +1127,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	if (inst->uid_name) {
 		struct passwd *pwd;
 
-		if (fr_perm_getpwnam(cs, &pwd, inst->uid_name) < 0) {
+		if (fr_perm_getpwnam(conf, &pwd, inst->uid_name) < 0) {
 			PERROR("Failed getting uid for %s", inst->uid_name);
 			return -1;
 		}
@@ -1137,7 +1138,7 @@ static int mod_bootstrap(void *instance, CONF_SECTION *cs)
 	}
 
 	if (inst->gid_name) {
-		if (fr_perm_gid_from_str(cs, &inst->gid, inst->gid_name) < 0) {
+		if (fr_perm_gid_from_str(conf, &inst->gid, inst->gid_name) < 0) {
 			PERROR("Failed getting gid for %s", inst->gid_name);
 			return -1;
 		}
@@ -1179,13 +1180,14 @@ static RADCLIENT *mod_client_find(fr_listen_t *li, UNUSED fr_ipaddr_t const *ipa
 
 extern fr_app_io_t proto_control_unix;
 fr_app_io_t proto_control_unix = {
-	.magic			= MODULE_MAGIC_INIT,
-	.name			= "control_unix",
-	.config			= unix_listen_config,
-	.inst_size		= sizeof(proto_control_unix_t),
-	.thread_inst_size	= sizeof(proto_control_unix_thread_t),
-	.bootstrap		= mod_bootstrap,
-
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "control_unix",
+		.config			= unix_listen_config,
+		.inst_size		= sizeof(proto_control_unix_t),
+		.thread_inst_size	= sizeof(proto_control_unix_thread_t),
+		.bootstrap		= mod_bootstrap,
+	},
 	.default_message_size	= 4096,
 
 	.open			= mod_open,

@@ -244,15 +244,13 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
  *
  * Instantiate I/O and type submodules.
  *
- * @param[in] instance	Ctx data for this application.
- * @param[in] conf	Listen section parsed to give us isntance.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	proto_load_t		*inst = talloc_get_type_abort(instance, proto_load_t);
+	proto_load_t		*inst = talloc_get_type_abort(mctx->inst->data, proto_load_t);
 
 	fr_assert(inst->io.submodule);
 
@@ -273,22 +271,21 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Instantiate the master io submodule
 	 */
-	return fr_master_app_io.instantiate(&inst->io, conf);
+	return fr_master_app_io.common.instantiate(MODULE_INST_CTX(inst->io.dl_inst));
 }
 
 /** Bootstrap the application
  *
  * Bootstrap I/O and type submodules.
  *
- * @param[in] instance	Ctx data for this application.
- * @param[in] conf	Listen section parsed to give us instance.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_load_t 		*inst = talloc_get_type_abort(instance, proto_load_t);
+	proto_load_t 		*inst = talloc_get_type_abort(mctx->inst->data, proto_load_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 
 	/*
 	 *	Ensure that the server CONF_SECTION is always set.
@@ -316,7 +313,6 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->cs = conf;
 	inst->self = &proto_load;
 
-	virtual_server_dict_set(inst->server_cs, inst->dict, false);
 
 	/*
 	 *	We will need this for dynamic clients and connected sockets.
@@ -327,18 +323,20 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	/*
 	 *	Bootstrap the master IO handler.
 	 */
-	return fr_master_app_io.bootstrap(&inst->io, conf);
+	return fr_master_app_io.common.bootstrap(MODULE_INST_CTX(inst->io.dl_inst));
 }
 
 
 fr_app_t proto_load = {
-	.magic			= MODULE_MAGIC_INIT,
-	.name			= "load",
-	.config			= proto_load_config,
-	.inst_size		= sizeof(proto_load_t),
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "load",
+		.config			= proto_load_config,
+		.inst_size		= sizeof(proto_load_t),
 
-	.bootstrap		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
+		.bootstrap		= mod_bootstrap,
+		.instantiate		= mod_instantiate
+	},
 	.open			= mod_open,
 	.decode			= mod_decode,
 	.encode			= mod_encode,

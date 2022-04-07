@@ -175,9 +175,9 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
 
 	li->app_io = inst->app_io;
 	li->app_io_instance = inst->app_io_instance;
-	if (li->app_io->thread_inst_size) {
-		li->thread_instance = talloc_zero_array(NULL, uint8_t, li->app_io->thread_inst_size);
-		talloc_set_name(li->thread_instance, "proto_%s_thread_t", inst->app_io->name);
+	if (li->app_io->common.thread_inst_size) {
+		li->thread_instance = talloc_zero_array(NULL, uint8_t, li->app_io->common.thread_inst_size);
+		talloc_set_name(li->thread_instance, "proto_%s_thread_t", inst->app_io->common.name);
 	}
 
 	/*
@@ -209,24 +209,21 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
  *
  * Instantiate I/O and type submodules.
  *
- * @param[in] instance	Ctx data for this application.
- * @param[in] conf	Listen section parsed to give us instance.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_instantiate(void *instance, CONF_SECTION *conf)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	proto_arp_t		*inst = talloc_get_type_abort(instance, proto_arp_t);
-
+	proto_arp_t 		*inst = talloc_get_type_abort(mctx->inst->data, proto_arp_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 	/*
 	 *	Instantiate the I/O module. But DON'T instantiate the
 	 *	work submodule.  We leave that until later.
 	 */
-	if (inst->app_io->instantiate &&
-	    (inst->app_io->instantiate(inst->app_io_instance,
-				       inst->app_io_conf) < 0)) {
-		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->name);
+	if (inst->app_io->common.instantiate &&
+	    (inst->app_io->common.instantiate(MODULE_INST_CTX(inst->io_submodule)) < 0)) {
+		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->common.name);
 		return -1;
 	}
 
@@ -243,15 +240,14 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
  *
  * Bootstrap I/O and type submodules.
  *
- * @param[in] instance	Ctx data for this application.
- * @param[in] conf	Listen section parsed to give us instance.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_arp_t 		*inst = talloc_get_type_abort(instance, proto_arp_t);
+	proto_arp_t 		*inst = talloc_get_type_abort(mctx->inst->data, proto_arp_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
 	dl_module_inst_t	*parent_inst;
 
 	/*
@@ -281,9 +277,8 @@ static int mod_bootstrap(void *instance, CONF_SECTION *conf)
 	inst->app_io_instance = inst->io_submodule->data;
 	inst->app_io_conf = conf;
 
-	if (inst->app_io->bootstrap && (inst->app_io->bootstrap(inst->app_io_instance,
-								inst->app_io_conf) < 0)) {
-		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->name);
+	if (inst->app_io->common.bootstrap && (inst->app_io->common.bootstrap(MODULE_INST_CTX(inst->io_submodule)) < 0)) {
+		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->common.name);
 		return -1;
 	}
 
@@ -305,16 +300,17 @@ static void mod_unload(void)
 }
 
 fr_app_t proto_arp = {
-	.magic			= MODULE_MAGIC_INIT,
-	.name			= "arp",
-	.config			= proto_arp_config,
-	.inst_size		= sizeof(proto_arp_t),
+	.common = {
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "arp",
+		.config			= proto_arp_config,
+		.inst_size		= sizeof(proto_arp_t),
+		.onload			= mod_load,
+		.unload			= mod_unload,
+		.bootstrap		= mod_bootstrap,
+		.instantiate		= mod_instantiate
+	},
 	.dict			= &dict_arp,
-
-	.onload			= mod_load,
-	.unload			= mod_unload,
-	.bootstrap		= mod_bootstrap,
-	.instantiate		= mod_instantiate,
 	.open			= mod_open,
 	.decode			= mod_decode,
 	.encode			= mod_encode,
