@@ -35,6 +35,7 @@
 
 #include "proto_ldap_sync_ldap.h"
 #include "rfc4533.h"
+#include "active_directory.h"
 
 extern fr_app_io_t proto_ldap_sync_ldap;
 extern fr_app_io_t proto_ldap_sync_child;
@@ -811,6 +812,8 @@ static void _proto_ldap_socket_open_read(fr_event_list_t *el, int fd, UNUSED int
 			break;
 
 		case FR_LDAP_SYNC_ACTIVE_DIRECTORY:
+			config->init = active_directory_sync_state_init;
+			config->entry = active_directory_sync_search_entry;
 			break;
 
 		default:
