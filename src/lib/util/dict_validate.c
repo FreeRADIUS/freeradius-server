@@ -52,20 +52,16 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	can check them in parallel.
 	 */
 	all_flags = 0;
-	bit = 0;
+	bit = -1;
 
-#define SET_FLAG(_flag) do { shift_ ## _flag = 1 << bit; if (flags->_flag) {all_flags |= (1 << bit); } bit++; } while (0)
+#define SET_FLAG(_flag) do { shift_ ## _flag = 1 << ++bit; if (flags->_flag) all_flags |= (1 << bit); } while (0)
 	SET_FLAG(is_root);
 	SET_FLAG(internal);
 	SET_FLAG(array);
 	SET_FLAG(has_value);
 	SET_FLAG(virtual);
 	SET_FLAG(extra);
-
-	shift_subtype = (1 << bit);
-	if (flags->subtype) {
-		all_flags |= (1 << bit);
-	}
+	SET_FLAG(subtype);
 
 #define FORBID_OTHER_FLAGS(_flag) do { if (all_flags & ~shift_ ## _flag) { fr_strerror_printf("The '" STRINGIFY(_flag) "' flag cannot be used with any other flag"); return false; } } while (0)
 #define ALLOW_FLAG(_flag) do { all_flags &= ~shift_ ## _flag; } while (0)
