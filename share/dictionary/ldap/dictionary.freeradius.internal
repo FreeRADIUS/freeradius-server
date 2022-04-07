@@ -37,5 +37,6 @@ ATTRIBUTE	Scope					4	integer
 ATTRIBUTE	Entry-DN				5	string
 ATTRIBUTE	Entry-UUID				6	octets
 ATTRIBUTE	Original-DN				7	string
+ATTRIBUTE	Directory-Root-DN			8	string
 END-TLV		LDAP-Sync
 
