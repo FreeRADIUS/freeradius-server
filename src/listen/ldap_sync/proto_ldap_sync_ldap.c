@@ -173,6 +173,197 @@ sync_state_t *sync_state_alloc(TALLOC_CTX *ctx, fr_ldap_connection_t *conn, size
 	return sync;
 }
 
+/** Enque a new cookie store packet
+ *
+ * Create a new internal packet containing the cookie we received from the LDAP server.
+ * This allows the administrator to store the cookie and provide it on a future call to
+ * load Cookie.
+ *
+ * @param[in] sync	the cookie was received for.
+ * @param[in] cookie	received from the LDAP server. Can be NULL to indicate the stored cookie should be cleared.
+ * @param[in] refresh	the sync after storing this cookie.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure
+ */
+int ldap_sync_cookie_store(sync_state_t *sync, uint8_t const *cookie, bool refresh)
+{
+	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(sync->config->user_ctx, proto_ldap_sync_ldap_thread_t);
+	fr_dbuff_t			*dbuff;
+	sync_refresh_packet_t		*refresh_packet = NULL;
+	fr_pair_list_t			pairs;
+	fr_pair_t			*vp;
+	TALLOC_CTX			*local = NULL;
+
+	FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 1024, 4096);
+
+	local = talloc_new(NULL);
+	fr_pair_list_init(&pairs);
+	fr_pair_list_copy(local, &pairs, &sync->config->sync_pairs);
+
+	fr_pair_list_append_by_da(local, vp, &pairs, attr_packet_type, (uint32_t)FR_LDAP_SYNC_CODE_COOKIE_STORE, true);
+	if (!vp) {
+	error:
+		talloc_free(local);
+		return -1;
+	}
+	fr_pair_list_append_by_da(local, vp, &pairs, attr_ldap_sync_packet_id, (uint32_t)sync->sync_no, true);
+	if (!vp) goto error;
+
+	/*
+	 *	Add the cookie to the packet, if set.
+	 *	If the server has indicated a refresh is required it can do so
+	 *	with no cookie set - so we store a blank cookie to clear anything
+	 *	which was previously stored.
+	 */
+	if (cookie) {
+		fr_pair_list_append_by_da_parent_len(local, vp, &pairs, attr_ldap_sync_cookie,
+			    			     cookie, talloc_array_length(cookie), true);
+		if (!vp) goto error;
+	}
+
+	/*
+	 *	The LDAP server has indicated that the sync needs a refresh.
+	 *	Create a tracking structure to trigger the refresh once the cookie is stored.
+	 */
+	if (refresh) {
+		MEM(refresh_packet = talloc_zero(thread, sync_refresh_packet_t));
+		if (cookie) {
+			refresh_packet->refresh_cookie = talloc_memdup(refresh_packet, cookie, talloc_array_length(cookie));
+		}
+		refresh_packet->sync = sync;
+	}
+
+	if (fr_internal_encode_list(dbuff, &pairs, NULL) < 0) goto error;
+	talloc_free(local);
+
+	fr_network_listen_send_packet(thread->nr, thread->li, thread->li, fr_dbuff_buff(dbuff),
+				      fr_dbuff_used(dbuff), fr_time(), refresh_packet);
+
+	return 0;
+}
+
+static fr_ldap_sync_packet_code_t const sync_packet_code_table[4] = {
+	FR_LDAP_SYNC_CODE_PRESENT,
+	FR_LDAP_SYNC_CODE_ADD,
+	FR_LDAP_SYNC_CODE_MODIFY,
+	FR_LDAP_SYNC_CODE_DELETE
+};
+
+/** Enqueue a new entry change packet.
+ *
+ * @param[in] sync	notification has arrived for.
+ * @param[in] uuid	of the entry (RFC 4533 only).
+ * @param[in] orig_dn	original DN of the entry - provided by those directories
+ * 			implementing persistent search, when an entry is renamed.
+ * @param[in] msg	containing the entry.
+ * @param[in] op	The type of modification we need to perform to our
+ *			representation of the entry.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int ldap_sync_entry_send(sync_state_t *sync, uint8_t const uuid[SYNC_UUID_LENGTH], struct berval *orig_dn,
+			LDAPMessage *msg, sync_op_t op)
+{
+	proto_ldap_sync_ldap_thread_t	*thread = talloc_get_type_abort(sync->config->user_ctx, proto_ldap_sync_ldap_thread_t);
+	fr_dbuff_t			*dbuff;
+	fr_ldap_sync_packet_code_t	pcode;
+	fr_pair_list_t			pairs;
+	fr_pair_t			*vp;
+	TALLOC_CTX			*local = NULL;
+
+	FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 1024, 4096);
+
+	local = talloc_new(NULL);
+	fr_pair_list_init(&pairs);
+	fr_pair_list_copy(local, &pairs, &sync->config->sync_pairs);
+
+	pcode = sync_packet_code_table[op];
+
+	fr_pair_list_append_by_da(local, vp, &pairs, attr_packet_type, (uint32_t)pcode, false);
+	if (!vp) {
+	error:
+		if (msg) ldap_msgfree(msg);
+		talloc_free(local);
+		return -1;
+	}
+
+	fr_pair_list_append_by_da(local, vp, &pairs, attr_ldap_sync_packet_id, (uint32_t)sync->sync_no, false);
+	if (!vp) goto error;
+
+	/*
+	 *	Add the UUID if provided
+	 */
+	if (uuid) {
+		fr_pair_list_append_by_da_parent_len(local, vp, &pairs, attr_ldap_sync_entry_uuid,
+						     uuid, SYNC_UUID_LENGTH, true);
+		if (!vp) goto error;
+	}
+
+	/*
+	 *	Add the original DN if provided
+	 */
+	if (orig_dn && (orig_dn->bv_len > 0)) {
+		fr_pair_list_append_by_da_parent_len(local, vp, &pairs, attr_ldap_sync_orig_dn,
+		    				     orig_dn->bv_val, orig_dn->bv_len, true);
+		if (!vp) goto error;
+	}
+
+	/*
+	 *	Add the entry DN if there is an LDAP message to read
+	 */
+	if (msg) {
+		char			*entry_dn = ldap_get_dn(sync->conn->handle, msg);
+		map_t const		*map = NULL;
+		struct berval 		**values;
+		int			count, i;
+
+		fr_pair_list_append_by_da_parent_len(local, vp, &pairs, attr_ldap_sync_entry_dn,
+						     entry_dn, strlen(entry_dn), true);
+		if (!vp) goto error;
+
+		ldap_memfree(entry_dn);
+
+		/*
+		 *  Map LDAP returned attributes to pairs as per update map
+		 */
+		while ((map = map_list_next(&sync->config->entry_map, map))) {
+			values = ldap_get_values_len(fr_ldap_handle_thread_local(), msg, map->rhs->name);
+			if (!values) goto next;
+
+			count = ldap_count_values_len(values);
+
+			for (i = 0; i < count; i++) {
+				if (values[i]->bv_len == 0) continue;
+
+				if (pair_append_by_tmpl_parent(local, &vp, &pairs, map->lhs) < 0) break;
+				if (fr_value_box_from_str(vp, &vp->data, vp->da->type, NULL, values[i]->bv_val,
+							  values[i]->bv_len, NULL, true) < 0) {
+					fr_pair_remove(&pairs, vp);
+					talloc_free(vp);
+				};
+
+				/*  Only += operator adds multiple values */
+				if (map->op != T_OP_ADD_EQ) break;
+			}
+		next:
+			ldap_value_free_len(values);
+		}
+	}
+
+	ldap_msgfree(msg);
+
+	if (fr_internal_encode_list(dbuff, &pairs, NULL) < 0) goto error;
+
+	fr_network_listen_send_packet(thread->nr, thread->li, thread->li,
+				      fr_dbuff_buff(dbuff), fr_dbuff_used(dbuff), fr_time(), NULL);
+
+	talloc_free(local);
+
+	return 0;
+}
+
 static void _proto_ldap_socket_init(fr_connection_t *conn, UNUSED fr_connection_state_t prev,
 				    UNUSED fr_connection_state_t state, void *uctx);
 
