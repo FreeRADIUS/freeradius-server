@@ -55,7 +55,6 @@ typedef struct xlat_thread_inst xlat_thread_inst_t;
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/signal.h>
 
-#include <freeradius-devel/util/cursor.h>
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/pair.h>
 #include <freeradius-devel/util/sbuff.h>
