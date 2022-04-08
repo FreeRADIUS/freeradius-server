@@ -498,6 +498,9 @@ int fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp)
 	return 0;
 }
 
+#define IN_A_LIST_MSG "Pair %pV is already in a list, and cannot be moved"
+#define NOT_IN_THIS_LIST_MSG "Pair %pV is not in the given list"
+
 /** Change a vp's talloc ctx and insert it into a new list
  *
  * @param[in] list_ctx	to move vp into.
@@ -509,8 +512,8 @@ int fr_pair_steal(TALLOC_CTX *ctx, fr_pair_t *vp)
  */
 int fr_pair_steal_append(TALLOC_CTX *list_ctx, fr_pair_list_t *list, fr_pair_t *vp)
 {
-	if (fr_pair_order_list_in_list(&list->order, vp)) {
-		fr_strerror_printf("Pair %pV is a list member, cannot be moved", vp);
+	if (fr_pair_order_list_in_a_list(vp)) {
+		fr_strerror_printf(IN_A_LIST_MSG, vp);
 		return -1;
 	}
 
@@ -532,8 +535,8 @@ int fr_pair_steal_append(TALLOC_CTX *list_ctx, fr_pair_list_t *list, fr_pair_t *
  */
 int fr_pair_steal_prepend(TALLOC_CTX *list_ctx, fr_pair_list_t *list, fr_pair_t *vp)
 {
-	if (fr_pair_order_list_in_list(&list->order, vp)) {
-		fr_strerror_printf("Pair %pV is a list member, cannot be moved", vp);
+	if (fr_pair_order_list_in_a_list(vp)) {
+		fr_strerror_printf(IN_A_LIST_MSG, vp);
 		return -1;
 	}
 
@@ -1061,8 +1064,8 @@ int fr_pair_prepend(fr_pair_list_t *list, fr_pair_t *to_add)
 {
 	PAIR_VERIFY(to_add);
 
-	if (fr_pair_order_list_in_list(&list->order, to_add)) {
-		fr_strerror_printf("Pair %pV already inserted into list", to_add);
+	if (fr_pair_order_list_in_a_list(to_add)) {
+		fr_strerror_printf(IN_A_LIST_MSG, to_add);
 		return -1;
 	}
 
@@ -1085,8 +1088,8 @@ int fr_pair_append(fr_pair_list_t *list, fr_pair_t *to_add)
 {
 	PAIR_VERIFY(to_add);
 
-	if (fr_pair_order_list_in_list(&list->order, to_add)) {
-		fr_strerror_printf("Pair %pV already inserted into list", to_add);
+	if (fr_pair_order_list_in_a_list(to_add)) {
+		fr_strerror_printf(IN_A_LIST_MSG, to_add);
 		return -1;
 	}
 
@@ -1108,13 +1111,13 @@ int fr_pair_insert_after(fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *to_add
 {
 	PAIR_VERIFY(to_add);
 
-	if (fr_pair_order_list_in_list(&list->order, to_add)) {
-		fr_strerror_printf("Pair %pV already inserted into list", to_add);
+	if (fr_pair_order_list_in_a_list(to_add)) {
+		fr_strerror_printf(IN_A_LIST_MSG, to_add);
 		return -1;
 	}
 
 	if (pos && !fr_pair_order_list_in_list(&list->order, pos)) {
-		fr_strerror_printf("Pair %pV not in list", pos);
+		fr_strerror_printf(NOT_IN_THIS_LIST_MSG, pos);
 		return -1;
 	}
 
@@ -1136,13 +1139,13 @@ int fr_pair_insert_before(fr_pair_list_t *list, fr_pair_t *pos, fr_pair_t *to_ad
 {
 	PAIR_VERIFY(to_add);
 
-	if (fr_pair_order_list_in_list(&list->order, to_add)) {
-		fr_strerror_printf("Pair %pV already inserted into list", to_add);
+	if (fr_pair_order_list_in_a_list(to_add)) {
+		fr_strerror_printf(IN_A_LIST_MSG, to_add);
 		return -1;
 	}
 
 	if (pos && !fr_pair_order_list_in_list(&list->order, pos)) {
-		fr_strerror_printf("Pair %pV not in list", pos);
+		fr_strerror_printf(NOT_IN_THIS_LIST_MSG, pos);
 		return -1;
 	}
 
