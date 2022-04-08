@@ -184,6 +184,8 @@ DIAG_ON(nonnull-compare)
  *	so we can add some sneaky soft asserts.
  */
 #  define PAIR_VERIFY(_x)		fr_pair_nonnull_assert(_x)
+#  define PAIR_VERIFY_WITH_LIST(_l, _x)	fr_pair_list_nonnull_assert(_l); \
+					fr_pair_nonnull_assert(_x)
 #  define PAIR_LIST_VERIFY(_x)	fr_pair_list_nonnull_assert(_x)
 #endif
 
