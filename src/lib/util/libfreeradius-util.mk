@@ -12,7 +12,6 @@ SOURCES		:= \
 		   base64.c \
 		   calc.c \
 		   cap.c \
-		   cursor.c \
 		   dbuff.c \
 		   debug.c \
 		   dict_ext.c \

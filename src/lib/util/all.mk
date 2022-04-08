@@ -1,6 +1,5 @@
 SUBMAKEFILES := \
 	base_16_32_64_tests.mk \
-	cursor_tests.mk \
 	dbuff_tests.mk \
 	dcursor_tests.mk \
 	dlist_tests.mk \
