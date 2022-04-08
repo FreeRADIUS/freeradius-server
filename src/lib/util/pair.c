@@ -878,6 +878,9 @@ static int _pair_list_dcursor_insert(fr_dlist_head_t *list, void *to_insert, UNU
 
 	tlist = fr_tlist_head_from_dlist(list);
 
+	/*
+	 *	Mark the pair as inserted into the list.
+	 */
 	fr_pair_order_list_set_head(tlist, vp);
 
 	PAIR_VERIFY(vp);
@@ -905,6 +908,9 @@ static int _pair_list_dcursor_remove(NDEBUG_UNUSED fr_dlist_head_t *list, void *
 	fr_assert(vp->order_entry.entry.list_head == tlist);
 #endif
 
+	/*
+	 *	Mark the pair as removed from the list.
+	 */
 	fr_pair_order_list_set_head(NULL, vp);
 
 	PAIR_VERIFY(vp);
