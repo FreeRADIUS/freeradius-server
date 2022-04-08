@@ -47,6 +47,8 @@ void fr_pair_list_init(fr_pair_list_t *list)
 	 *	all of them.
 	 */
 	fr_pair_order_list_talloc_init(&list->order);
+
+	list->is_child = false;
 }
 
 /** Free a fr_pair_t
@@ -180,6 +182,7 @@ static inline CC_HINT(always_inline) void pair_init_from_da(fr_pair_t *vp, fr_di
 	} else {
 		vp->type = da->type; /* overlaps with vp->vp_type, and everyone needs it! */
 		fr_pair_list_init(&vp->vp_group);
+		vp->vp_group.is_child = true;
 		fr_pair_order_list_talloc_init_children(vp, &vp->vp_group.order);
 	}
 }
@@ -813,16 +816,6 @@ fr_pair_t *fr_pair_find_by_child_num_idx(fr_pair_list_t const *list,
 	return fr_pair_find_by_da_idx(list, da, idx);
 }
 
-/** Return a pointer to the pair list
- *
- */
-static inline CC_HINT(always_inline) CC_HINT(nonnull) fr_pair_list_t *pair_children(fr_pair_t *vp)
-{
-	if (fr_type_is_structural(vp->da->type)) return &vp->vp_group;
-
-	return NULL;
-}
-
 /** Get the child list of a group
  *
  * @param[in] vp	which MUST be of a type
@@ -833,7 +826,38 @@ static inline CC_HINT(always_inline) CC_HINT(nonnull) fr_pair_list_t *pair_child
  */
 fr_pair_list_t *fr_pair_children(fr_pair_t *vp)
 {
-	return pair_children(vp);
+	if (!fr_type_is_structural(vp->da->type)) return NULL;
+
+	return &vp->vp_group;
+}
+
+/** Return a pointer to the parent pair list
+ *
+ */
+fr_pair_list_t *fr_pair_parent_list(fr_pair_t const *vp)
+{
+	FR_TLIST_HEAD(fr_pair_order_list) *parent;
+
+	if (!vp) return NULL;
+
+	parent = fr_pair_order_list_parent(vp);
+	if (!parent) return NULL;
+
+	return (fr_pair_list_t *) (UNCONST(uint8_t *, parent) - offsetof(fr_pair_list_t, order));
+}
+
+/** Return a pointer to the parent pair.
+ *
+ */
+fr_pair_t *fr_pair_parent(fr_pair_t const *vp)
+{
+	fr_pair_list_t *list = fr_pair_parent_list(vp);
+
+	if (!list) return NULL;
+
+	if (!list->is_child) return NULL;
+
+	return (fr_pair_t *) (UNCONST(uint8_t *, list) - offsetof(fr_pair_t, vp_group));
 }
 
 /** Keep attr tree and sublists synced on cursor insert

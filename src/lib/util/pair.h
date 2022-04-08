@@ -50,7 +50,9 @@ typedef struct value_pair_s fr_pair_t;
 FR_TLIST_TYPES(fr_pair_order_list)
 
 typedef struct {
-        FR_TLIST_HEAD(fr_pair_order_list)		order;			//!< Maintains the relative order of pairs in a list.
+        FR_TLIST_HEAD(fr_pair_order_list)	order;			//!< Maintains the relative order of pairs in a list.
+
+	bool				 _CONST is_child;		//!< is a child of a VP
 } fr_pair_list_t;
 
 /** Stores an attribute, a value and various bits of other data
@@ -288,6 +290,10 @@ fr_pair_t	*fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull);
 
 /* functions for FR_TYPE_STRUCTURAL */
 fr_pair_list_t	*fr_pair_children(fr_pair_t *head) CC_HINT(nonnull);
+
+fr_pair_list_t *fr_pair_parent_list(fr_pair_t const *vp);
+
+fr_pair_t *fr_pair_parent(fr_pair_t const *vp);
 
 /** Initialises a special dcursor with callbacks that will maintain the attr sublists correctly
  *
