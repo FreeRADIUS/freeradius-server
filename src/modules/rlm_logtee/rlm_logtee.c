@@ -524,21 +524,23 @@ finish:
  */
 static unlang_action_t mod_insert_logtee(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	fr_cursor_t	cursor;
-	log_dst_t	*dst;
-	bool		exists = false;
+	log_dst_t	*dst, **last = NULL;
 
-	for (dst = fr_cursor_init(&cursor, &request->log.dst); dst; dst = fr_cursor_next(&cursor)) {
-		if (dst->uctx == mctx->thread) exists = true;
+	for (dst = request->log.dst; dst; dst = dst->next) {
+		if (dst->uctx == mctx->thread) {
+			RETURN_MODULE_NOOP;
+		}
+
+		last = &(dst->next);
 	}
 
-	if (exists) RETURN_MODULE_NOOP;
+	if (!last) RETURN_MODULE_NOOP;
 
 	dst = talloc_zero(request, log_dst_t);
 	dst->func = logtee_it;
 	dst->uctx = mctx->thread;
 
-	fr_cursor_append(&cursor, dst);
+	*last = dst;
 
 	RETURN_MODULE_OK;
 }
