@@ -256,7 +256,7 @@ static int dict_process_type_field(dict_tokenize_ctx_t *ctx, char const *name, f
 			flags->flag_byte_offset = length;
 
 		} else {
-			fr_strerror_const("Only 'octets' types can have a 'length' parameter");
+			fr_strerror_const("Only 'octets', 'string', 'struct', or 'bit' types can have a 'length' parameter");
 			return -1;
 		}
 
