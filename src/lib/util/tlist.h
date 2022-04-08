@@ -738,7 +738,7 @@ static inline void *fr_tlist_sort_merge(fr_tlist_head_t *head, void **a, void **
  */
 static inline void fr_tlist_recursive_sort(fr_tlist_head_t *head, void **ptr, fr_cmp_t cmp)
 {
-	return fr_dlist_recursive_sort(&head->dlist_head, ptr, cmp);
+	fr_dlist_recursive_sort(&head->dlist_head, ptr, cmp);
 }
 
 /** Sort a tlist using merge sort
@@ -750,7 +750,7 @@ static inline void fr_tlist_recursive_sort(fr_tlist_head_t *head, void **ptr, fr
  */
 static inline void fr_tlist_sort(fr_tlist_head_t *list, fr_cmp_t cmp)
 {
-	return fr_dlist_sort(&list->dlist_head, cmp);
+	fr_dlist_sort(&list->dlist_head, cmp);
 }
 
 static inline void fr_tlist_noop(void)
