@@ -196,6 +196,10 @@ static int dict_process_type_field(dict_tokenize_ctx_t *ctx, char const *name, f
 		}
 
 		*q = '\0';
+		if (q[1]) {
+			fr_strerror_const("length, if present, must end type field");
+			return -1;
+		}
 
 		if (!dict_read_sscanf_i(&length, p + 1)) {
 			fr_strerror_printf("Invalid length for '%s[...]'", name);
