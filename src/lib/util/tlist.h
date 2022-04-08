@@ -268,7 +268,7 @@ static inline CC_HINT(nonnull) int fr_tlist_insert_tail(fr_tlist_head_t *list_he
  * 	- 0 on success.
  *	- -1 on failure.
  */
-static inline CC_HINT(nonnull) int fr_tlist_insert_after(fr_tlist_head_t *list_head, void *pos, void *ptr)
+static inline CC_HINT(nonnull(1,3)) int fr_tlist_insert_after(fr_tlist_head_t *list_head, void *pos, void *ptr)
 {
 	fr_tlist_t *entry = fr_tlist_item_to_entry(list_head->offset, ptr);
 
@@ -290,7 +290,7 @@ static inline CC_HINT(nonnull) int fr_tlist_insert_after(fr_tlist_head_t *list_h
  * 	- 0 on success.
  *	- -1 on failure.
  */
-static inline CC_HINT(nonnull) int fr_tlist_insert_before(fr_tlist_head_t *list_head, void *pos, void *ptr)
+static inline CC_HINT(nonnull(1,3)) int fr_tlist_insert_before(fr_tlist_head_t *list_head, void *pos, void *ptr)
 {
 	fr_tlist_t *entry = fr_tlist_item_to_entry(list_head->offset, ptr);
 
