@@ -98,9 +98,9 @@ static inline CC_HINT(nonnull) void fr_tlist_entry_unlink(fr_tlist_t *entry)
  *	- True if in a list.
  *	- False otherwise.
  */
-static inline CC_HINT(nonnull) bool fr_tlist_entry_in_list(fr_tlist_t const *entry)
+static inline CC_HINT(nonnull) bool fr_tlist_entry_in_a_list(fr_tlist_t const *entry)
 {
-	return fr_dlist_entry_in_list(&entry->dlist_entry);
+	return (entry->list_head != NULL);
 }
 
 
@@ -468,16 +468,15 @@ static inline CC_HINT(nonnull) void *fr_tlist_replace(fr_tlist_head_t *list_head
 {
 	fr_tlist_t *item_entry;
 	fr_tlist_t *ptr_entry;
-	
-	item_entry = fr_tlist_item_to_entry(list_head->offset, item);
-	if (!fr_tlist_entry_in_list(item_entry)) return NULL;
+
+	if (!fr_tlist_in_list(list_head, item)) return NULL;
 
 	ptr_entry = fr_tlist_item_to_entry(list_head->offset, ptr);
-
 	fr_dlist_replace(&list_head->dlist_head, item, ptr);
-
-	item_entry->list_head = NULL;
 	ptr_entry->list_head = list_head;
+
+	item_entry = fr_tlist_item_to_entry(list_head->offset, item);
+	item_entry->list_head = NULL;
 
 	return item;
 }
@@ -820,6 +819,9 @@ DIAG_OFF(unused-function) \
 \
 	static inline	bool _name ## _in_list(FR_TLIST_HEAD(_name) *list, _element_type *ptr) \
 		{ return	fr_tlist_in_list(&list->head, ptr); } \
+\
+	static inline	bool _name ## _in_a_list(_element_type *ptr) \
+		{ return	fr_tlist_entry_in_a_list(&ptr->_element_entry.entry); } \
 \
 	static inline	int _name ## _insert_head(FR_TLIST_HEAD(_name) *list, _element_type *ptr) \
 		{ return	fr_tlist_insert_head(&list->head, ptr); } \
