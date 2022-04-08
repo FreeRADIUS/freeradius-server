@@ -554,12 +554,6 @@ static inline void *fr_dcursor_filter_current(fr_dcursor_t *cursor, fr_dcursor_e
         return item;
 }
 
-/** @hidecallergraph */
-void *fr_dcursor_intersect_head(fr_dcursor_t *a, fr_dcursor_t *b) CC_HINT(nonnull);
-
-/** @hidecallergraph */
-void *fr_dcursor_intersect_next(fr_dcursor_t *a, fr_dcursor_t *b) CC_HINT(nonnull);
-
 /** Replace the current item
  *
  * After replacing the current item, the cursor will be rewound,
