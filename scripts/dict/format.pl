@@ -214,14 +214,17 @@ while (@ARGV) {
             #  one, then just print out the child values.
             #
             #  Otherwise, remember this attribute as the new "previous"
+	    #
+	    #  @todo - these checks get things wrong, so they're commented
+	    #  out until we have time to go fix them.
             #
-            if ($value !~ /^\./) {
-                if ($value =~ /^$previous(\..+)$/) {
-                    $value = $1;
-                } else {
-                    $previous = $value;
-                }
-            }
+#            if ($value !~ /^\./) {
+#                if ($value =~ /^$previous(\..+)$/) {
+#                    $value = $1;
+#                } else {
+#                    $previous = $value;
+#                }
+#            }
 
             push @output, "ATTRIBUTE\t$name$tabs$value\t$type$stuff\n";
             next;
