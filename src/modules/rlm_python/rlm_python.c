@@ -268,11 +268,9 @@ static void mod_vptuple(TALLOC_CTX *ctx, module_ctx_t const *mctx, request_t *re
 		PyObject 	*p_tuple_element = PyTuple_GET_ITEM(p_value, i);
 		PyObject 	*p_str_1;
 		PyObject 	*p_str_2;
-		PyObject 	*p_op;
 		Py_ssize_t	pair_len;
 		char const	*s1;
 		char const	*s2;
-		fr_token_t	op = T_OP_EQ;
 
 		if (!PyTuple_CheckExact(p_tuple_element)) {
 			ERROR("%s - Tuple element %d of %s is not a tuple", funcname, i, list_name);
@@ -297,31 +295,6 @@ static void mod_vptuple(TALLOC_CTX *ctx, module_ctx_t const *mctx, request_t *re
 		}
 		s1 = PyUnicode_AsUTF8(p_str_1);
 		s2 = PyUnicode_AsUTF8(p_str_2);
-
-		if (pair_len == 3) {
-			p_op = PyTuple_GET_ITEM(p_tuple_element, 1);
-			if (PyUnicode_CheckExact(p_op)) {
-				if (!(op = fr_table_value_by_str(fr_tokens_table, PyUnicode_AsUTF8(p_op), 0))) {
-					ERROR("%s - Invalid operator %s.%s %s %s, falling back to '='",
-					      funcname, list_name, s1, PyUnicode_AsUTF8(p_op), s2);
-					op = T_OP_EQ;
-				}
-			} else if (PyNumber_Check(p_op)) {
-				long py_op;
-
-				py_op = PyLong_AsLong(p_op);
-				if (!fr_table_str_by_value(fr_tokens_table, py_op, NULL)) {
-					ERROR("%s - Invalid operator %s.%s %i %s, falling back to '='",
-					      funcname, list_name, s1, op, s2);
-					op = T_OP_EQ;
-				} else {
-					op = (fr_token_t)py_op;
-				}
-			} else {
-				ERROR("%s - Invalid operator type for %s.%s ? %s, using default '='",
-				      funcname, list_name, s1, s2);
-			}
-		}
 
 		if (tmpl_afrom_attr_str(ctx, NULL, &dst, s1,
 					&(tmpl_rules_t){
