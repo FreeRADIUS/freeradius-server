@@ -354,7 +354,6 @@ static int tmpl_arr_to_header(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struct 
 static int str_to_attachments(fr_mail_ctx_t *uctx, curl_mime *mime, char const * str, size_t len,
 			      fr_sbuff_t *path_buffer, fr_sbuff_marker_t *m)
 {
-	int 			attachments_set = 0;
 	request_t		*request = uctx->request;
 	curl_mimepart		*part;
 
@@ -378,7 +377,6 @@ static int str_to_attachments(fr_mail_ctx_t *uctx, curl_mime *mime, char const *
 	fr_sbuff_in_bstrncpy(path_buffer, str, len);
 
 	/* Add the file attachment as a mime encoded part */
-	attachments_set++;
 	part = curl_mime_addpart(mime);
 	curl_mime_encoder(part, "base64");
 	curl_mime_filedata(part, path_buffer->buff);
