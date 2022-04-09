@@ -285,10 +285,10 @@ static void fr_openssl_talloc_free(void *to_free, char const *file, int line)
 /** Cleanup async pools if the thread exits
  *
  */
-static void _openssl_thread_free(void *init)
+static int _openssl_thread_free(void *init)
 {
 	ASYNC_cleanup_thread();
-	talloc_free(init);
+	return talloc_free(init);
 }
 
 /** Perform thread-specific initialisation for OpenSSL
@@ -362,9 +362,10 @@ static void _openssl_engine_free(void)
 }
 #endif
 
-static void fr_openssl_cleanup(UNUSED void *uctx)
+static int fr_openssl_cleanup(UNUSED void *uctx)
 {
 	OPENSSL_cleanup();
+	return 0;
 }
 
 /** Add all the default ciphers and message digests to our context.

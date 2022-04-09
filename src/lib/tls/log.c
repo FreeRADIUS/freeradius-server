@@ -733,13 +733,13 @@ static int tls_log_global_bio_free_cb(BIO *bio)
 /** Frees a logging bio and its underlying OpenSSL BIO *
  *
  */
-static void _fr_tls_log_bio_free(void *log_bio)
+static int _fr_tls_log_bio_free(void *log_bio)
 {
 	fr_tls_log_bio_t	*our_log_bio = talloc_get_type_abort(log_bio, fr_tls_log_bio_t);
 
 	BIO_free(our_log_bio->bio);
 	our_log_bio->bio = NULL;
-	talloc_free(our_log_bio);
+	return talloc_free(our_log_bio);
 }
 
 /** Return a request log BIO to use with OpenSSL logging functions

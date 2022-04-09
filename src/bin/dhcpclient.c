@@ -748,7 +748,11 @@ int main(int argc, char **argv)
 	}
 
 	fr_dhcpv4_global_free();
-	fr_dict_autofree(dhcpclient_dict);
+
+	if (fr_dict_autofree(dhcpclient_dict) < 0) {
+		fr_perror("dhcpclient");
+		ret = -1;
+	}
 
 	/*
 	 *	Ensure our atexit handlers run before any other

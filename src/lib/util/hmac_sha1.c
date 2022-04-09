@@ -45,9 +45,10 @@ unsigned int sha1_data_problems = 0;
 
 static _Thread_local EVP_MD_CTX *sha1_hmac_ctx;
 
-static void _hmac_sha1_ctx_free_on_exit(void *arg)
+static int _hmac_sha1_ctx_free_on_exit(void *arg)
 {
 	EVP_MD_CTX_free(arg);
+	return 0;
 }
 
 /** Calculate HMAC using OpenSSL's SHA1 implementation

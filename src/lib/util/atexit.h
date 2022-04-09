@@ -45,7 +45,7 @@ extern "C" {
  *
  * @param[in] uctx	to free.
  */
-typedef void(*fr_atexit_t)(void *uctx);
+typedef int(*fr_atexit_t)(void *uctx);
 
 int fr_atexit_global_setup(void);
 
@@ -117,15 +117,15 @@ unsigned int	fr_atexit_thread_local_disarm(bool uctx_scope, fr_atexit_t func, vo
 
 void		fr_atexit_thread_local_disarm_all(void);
 
-unsigned int	fr_atexit_thread_trigger_all(void);
+int		fr_atexit_thread_trigger_all(void);
 
 unsigned int	fr_atexit_global_disarm(bool uctx_scope, fr_atexit_t func, void const *uctx);
 
 void		fr_atexit_global_disarm_all(void);
 
-unsigned int	fr_atexit_global_trigger_all(void);
+int		fr_atexit_global_trigger_all(void);
 
-unsigned int	fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uctx);
+int		fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uctx);
 
 bool		fr_atexit_is_exiting(void);
 

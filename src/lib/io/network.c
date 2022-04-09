@@ -193,9 +193,9 @@ static int8_t socket_num_cmp(void const *one, void const *two)
  *	Explicitly cleanup the memory allocated to the ring buffer,
  *	just in case valgrind complains about it.
  */
-static void _fr_network_rb_free(void *arg)
+static int _fr_network_rb_free(void *arg)
 {
-	talloc_free(arg);
+	return talloc_free(arg);
 }
 
 /** Initialise thread local storage

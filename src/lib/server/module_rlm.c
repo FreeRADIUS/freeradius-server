@@ -1163,15 +1163,19 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
  *
  * Automatically called on exit.
  */
-void modules_rlm_free(void)
+int modules_rlm_free(void)
 {
-	TALLOC_FREE(rlm_modules);
-	TALLOC_FREE(module_rlm_virtual_name_tree);
+	if (talloc_free(rlm_modules) < 0) return -1;
+	rlm_modules = NULL;
+	if (talloc_free(module_rlm_virtual_name_tree) < 0) return -1;
+	module_rlm_virtual_name_tree = NULL;
+
+	return 0;
 }
 
-static void _modules_rlm_free_atexit(UNUSED void *uctx)
+static int _modules_rlm_free_atexit(UNUSED void *uctx)
 {
-	modules_rlm_free();
+	return modules_rlm_free();
 }
 
 /** Initialise the module list structure

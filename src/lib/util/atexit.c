@@ -141,9 +141,18 @@ static int _thread_local_list_free(fr_atexit_list_t *list)
  *
  * @param[in] list	The thread-specific exit handler list.
  */
-static void _thread_local_free(void *list)
+static void _thread_local_pthread_free(void *list)
 {
 	talloc_free(list);
+}
+
+/** Run all the thread local destructors
+ *
+ * @param[in] list	The thread-specific exit handler list.
+ */
+static int _thread_local_free(void *list)
+{
+	return talloc_free(list);
 }
 
 /** Talloc destructor for freeing list elements in order
@@ -252,7 +261,7 @@ int _fr_atexit_thread_local(NDEBUG_LOCATION_ARGS
 			     (unsigned int)pthread_self(), list);
 
 		fr_dlist_talloc_init(&list->head, fr_atexit_entry_t, entry);
-		(void) pthread_key_create(&list->key, _thread_local_free);
+		(void) pthread_key_create(&list->key, _thread_local_pthread_free);
 
 		/*
 		 *	We need to pass in a pointer to the heap
@@ -356,10 +365,14 @@ void fr_atexit_thread_local_disarm_all(void)
  *
  * One example is the OpenSSL log BIOs which must be cleaned up
  * before fr_openssl_free is called.
+ *
+ * @return
+ *      - >= 0 The number of atexit handlers triggered on success.
+ *      - <0 the return code from any atexit handlers that returned an error.
  */
-unsigned int fr_atexit_thread_trigger_all(void)
+int fr_atexit_thread_trigger_all(void)
 {
-	fr_atexit_entry_t		*e = NULL, *ee;
+	fr_atexit_entry_t		*e = NULL, *ee, *to_free;
 	fr_atexit_list_t		*list;
 	unsigned int			count = 0;
 
@@ -380,7 +393,14 @@ unsigned int fr_atexit_thread_trigger_all(void)
 				     list, ee, ee->func, ee->uctx, ee->file, ee->line);
 
 			count++;
-			ee = fr_dlist_talloc_free_item(&list->head, ee);
+			to_free = ee;
+			ee = fr_dlist_remove(&list->head, ee);
+			if (talloc_free(to_free) < 0) {
+				fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p (alloced %s:%u)",
+							list, to_free,
+							to_free->func, to_free->uctx, to_free->file, to_free->line);
+				return -1;
+			}
 		}
 	}
 
@@ -451,10 +471,14 @@ void fr_atexit_global_disarm_all(void)
  * atexit handlers using the normal POSIX mechanism, and we need
  * to ensure all our atexit handlers fire before so any global
  * deinit is done explicitly by us.
+ *
+ * @return
+ *      - >= 0 The number of atexit handlers triggered on success.
+ *      - <0 the return code from any atexit handlers that returned an error.
  */
-unsigned int fr_atexit_global_trigger_all(void)
+int fr_atexit_global_trigger_all(void)
 {
-	fr_atexit_entry_t		*e = NULL;
+	fr_atexit_entry_t		*e = NULL, *to_free;
 	unsigned int			count = 0;
 
 	/*
@@ -468,7 +492,14 @@ unsigned int fr_atexit_global_trigger_all(void)
 			     fr_atexit_global, e, e->func, e->uctx, e->file, e->line);
 
 		count++;
-		e = fr_dlist_talloc_free_item(&fr_atexit_global->head, e);
+		to_free = e;
+		e = fr_dlist_remove(&fr_atexit_global->head, e);
+		if (talloc_free(to_free) < 0) {
+			fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p (alloced %s:%u)",
+						fr_atexit_global, to_free,
+						to_free->func, to_free->uctx, to_free->file, to_free->line);
+			return -1;
+		}
 	}
 
 	return count;
@@ -484,11 +515,13 @@ unsigned int fr_atexit_global_trigger_all(void)
  * @param[in] uctx_scope	Only process entries where the func and scope both match.
  * @param[in] func		Entries matching this function will be triggered.
  * @param[in] uctx		associated with the entry.
- * @return How many triggers fired.
+ * @return
+ *      - >= 0 The number of atexit handlers triggered on success.
+ *      - <0 the return code from any atexit handlers that returned an error.
  */
-unsigned int fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uctx)
+int fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uctx)
 {
-	fr_atexit_entry_t		*e = NULL, *ee;
+	fr_atexit_entry_t		*e = NULL, *ee, *to_free;
 	fr_atexit_list_t		*list;
 	unsigned int			count = 0;
 
@@ -505,7 +538,14 @@ unsigned int fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uc
 			     fr_atexit_global, e, e->func, e->uctx, e->file, e->line);
 
 		count++;
-		e = fr_dlist_talloc_free_item(&fr_atexit_global->head, e);
+		to_free = e;
+		e = fr_dlist_remove(&fr_atexit_global->head, e);
+		if (talloc_free(to_free) < 0) {
+			fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p (alloced %s:%u)",
+						fr_atexit_global, to_free,
+						to_free->func, to_free->uctx, to_free->file, to_free->line);
+			return -1;
+		}
 	}
 	e = NULL;
 
@@ -531,7 +571,14 @@ do_threads:
 				     list, ee, ee->func, ee->uctx, ee->file, ee->line);
 
 			count++;
-			ee = fr_dlist_talloc_free_item(&list->head, ee);
+			to_free = ee;
+			ee = fr_dlist_remove(&list->head, ee);
+			if (talloc_free(to_free) < 0) {
+				fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p (alloced %s:%u)",
+							list, to_free,
+							to_free->func, to_free->uctx, to_free->file, to_free->line);
+				return -1;
+			}
 		}
 	}
 

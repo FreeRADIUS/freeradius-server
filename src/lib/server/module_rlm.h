@@ -123,7 +123,7 @@ int		modules_rlm_bootstrap(CONF_SECTION *root) CC_HINT(nonnull);
  *
  * @{
  */
-void		modules_rlm_free(void);
+int		modules_rlm_free(void);
 
 int		modules_rlm_init(void);
 /** @} */

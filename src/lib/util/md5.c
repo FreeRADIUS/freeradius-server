@@ -464,7 +464,7 @@ void fr_md5_calc(uint8_t out[static MD5_DIGEST_LENGTH], uint8_t const *in, size_
 	fr_md5_ctx_free_from_list(&ctx);
 }
 
-static void _md5_ctx_free_on_exit(void *arg)
+static int _md5_ctx_free_on_exit(void *arg)
 {
 	int i;
 	fr_md5_free_list_t *free_list = arg;
@@ -474,7 +474,7 @@ static void _md5_ctx_free_on_exit(void *arg)
 
 		fr_md5_ctx_free(&free_list[i].md_ctx);
 	}
-	talloc_free(free_list);
+	return talloc_free(free_list);
 }
 
 /** @copydoc fr_md5_ctx_alloc

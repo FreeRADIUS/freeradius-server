@@ -201,8 +201,7 @@ static NEVER_RETURNS void exec_child_legacy(request_t *request, char **argv, cha
 	/*
 	 *	Disarm the thread local destructors
 	 *
-	 *	FIXME - Leaving them enabled causes issues in child
-	 *	execd processes, but we should really track down why.
+	 *	It's not safe to free memory between fork and exec.
 	 */
 	fr_atexit_thread_local_disarm_all();
 

@@ -564,7 +564,7 @@ static int _module_thread_inst_free(module_thread_instance_t *ti)
  *
  * All thread local module lists should have been destroyed by this point
  */
-static void _module_thread_inst_list_free(void *tilp)
+static int _module_thread_inst_list_free(void *tilp)
 {
 	module_thread_instance_t **til = talloc_get_type_abort(tilp, module_thread_instance_t *);
 	size_t i, len = talloc_array_length(til);
@@ -576,10 +576,10 @@ static void _module_thread_inst_list_free(void *tilp)
 	if (!fr_cond_assert_msg(found == 0,
 				"Thread local array has %u non-null elements remaining on exit.  This is a leak",
 				found)) {
-		return;
+		return -1;
 	}
 
-	talloc_free(til);
+	return talloc_free(til);
 }
 
 /** Creates per-thread instance data for modules which need it
@@ -1102,13 +1102,17 @@ static void _module_global_list_init(void *uctx)
 	MEM(module_global_inst_list = fr_heap_alloc(NULL, _module_instance_global_cmp, module_instance_t, inst_idx, 256));
 }
 
-static void _module_global_list_free(UNUSED void *uctx)
+static int _module_global_list_free(UNUSED void *uctx)
 {
 	if (!fr_cond_assert_msg(fr_heap_num_elements(module_global_inst_list) == 0,
 				"Global module heap has %u elements remaining on exit.  This is a leak",
-				fr_heap_num_elements(module_global_inst_list))) return;
-	TALLOC_FREE(module_global_inst_list);
-	TALLOC_FREE(dl_modules);
+				fr_heap_num_elements(module_global_inst_list))) return -1;
+	if (talloc_free(module_global_inst_list) < 0) return -1;
+	module_global_inst_list = NULL;
+
+	if (talloc_free(dl_modules) < 0) return -1;
+	dl_modules = NULL;
+	return 0;
 }
 
 /** Perform global initialisation for modules

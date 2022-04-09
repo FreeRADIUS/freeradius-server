@@ -314,8 +314,7 @@ static NEVER_RETURNS void exec_child(request_t *request, char **argv, char **env
 	/*
 	 *	Disarm the thread local destructors
 	 *
-	 *	FIXME - Leaving them enabled causes issues in child
-	 *	execd processes, but we should really track down why.
+	 *	It's not safe to free memory between fork and exec.
 	 */
 	fr_atexit_thread_local_disarm_all();
 

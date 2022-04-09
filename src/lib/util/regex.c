@@ -107,9 +107,9 @@ static int _pcre2_tls_free(fr_pcre2_tls_t *tls)
 	return 0;
 }
 
-static void _pcre2_tls_free_on_exit(void *arg)
+static int _pcre2_tls_free_on_exit(void *arg)
 {
-	talloc_free(arg);
+	return talloc_free(arg);
 }
 
 /** Thread local init for pcre2
@@ -704,9 +704,9 @@ static int _pcre_tls_free(fr_pcre_tls_t *tls)
 	return 0;
 }
 
-static void _pcre_tls_free_on_exit(void *arg)
+static int _pcre_tls_free_on_exit(void *arg)
 {
-	talloc_free(arg);
+	return talloc_free(arg);
 }
 
 /** Performs thread local storage initialisation for libpcre

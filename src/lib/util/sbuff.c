@@ -1424,9 +1424,9 @@ ssize_t fr_sbuff_in_bstrcpy_buffer(fr_sbuff_t *sbuff, char const *str)
 /** Free the scratch buffer used for printf
  *
  */
-static void _sbuff_scratch_free(void *arg)
+static int _sbuff_scratch_free(void *arg)
 {
-	talloc_free(arg);
+	return talloc_free(arg);
 }
 
 static inline CC_HINT(always_inline) int sbuff_scratch_init(TALLOC_CTX **out)

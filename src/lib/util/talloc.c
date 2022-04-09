@@ -768,10 +768,10 @@ void **talloc_array_null_strip(void **array)
 /** Callback to free the autofree ctx on global exit
  *
  */
-static void _autofree_on_exit(void *af)
+static int _autofree_on_exit(void *af)
 {
 	talloc_set_destructor(af, NULL);
-	talloc_free(af);
+	return talloc_free(af);
 }
 
 /** Ensures in the autofree ctx is manually freed, things don't explode atexit

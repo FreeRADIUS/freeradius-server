@@ -298,10 +298,11 @@ fr_log_t default_log = {
 /** Cleanup the memory pool used by vlog_request
  *
  */
-static void _fr_log_pool_free(void *arg)
+static int _fr_log_pool_free(void *arg)
 {
-	talloc_free(arg);
+	if (talloc_free(arg) < 0) return -1;
 	fr_log_pool = NULL;
+	return 0;
 }
 
 /** talloc ctx to use when composing log messages

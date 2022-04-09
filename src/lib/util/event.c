@@ -2583,11 +2583,12 @@ static int _event_list_free(fr_event_list_t *el)
 /** Free any memory we allocated for indexes
  *
  */
-static void _event_free_indexes(UNUSED void *uctx)
+static int _event_free_indexes(UNUSED void *uctx)
 {
 	unsigned int i;
 
-	for (i = 0; i < NUM_ELEMENTS(filter_maps); i++) talloc_free(filter_maps[i].ev_to_func);
+	for (i = 0; i < NUM_ELEMENTS(filter_maps); i++) if (talloc_free(filter_maps[i].ev_to_func) < 0) return -1;
+	return 0;
 }
 
 static void _event_build_indexes(UNUSED void *uctx)

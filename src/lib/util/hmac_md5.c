@@ -40,9 +40,10 @@ RCSID("$Id$")
 
 static _Thread_local EVP_MD_CTX *md5_hmac_ctx;
 
-static void _hmac_md5_ctx_free_on_exit(void *arg)
+static int _hmac_md5_ctx_free_on_exit(void *arg)
 {
 	EVP_MD_CTX_free(arg);
+	return 0;
 }
 
 /** Calculate HMAC using OpenSSL's MD5 implementation

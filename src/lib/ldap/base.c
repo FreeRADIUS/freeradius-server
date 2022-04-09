@@ -897,9 +897,10 @@ fr_ldap_query_t *fr_ldap_modify_alloc(TALLOC_CTX *ctx, char const *dn,
 	return query;
 }
 
-static void _ldap_handle_thread_local_free(void *handle)
+static int _ldap_handle_thread_local_free(void *handle)
 {
-	ldap_unbind_ext_s(handle, NULL, NULL);
+	if (ldap_unbind_ext_s(handle, NULL, NULL) < 0) return -1;
+	return 0;
 }
 
 /** Get a thread local dummy LDAP handle

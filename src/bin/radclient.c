@@ -1098,6 +1098,7 @@ packet_done:
  */
 int main(int argc, char **argv)
 {
+	int		ret = EXIT_SUCCESS;
 	int		c;
 	char		const *raddb_dir = RADDBDIR;
 	char		const *dict_dir = DICTDIR;
@@ -1621,7 +1622,10 @@ int main(int argc, char **argv)
 
 	fr_radius_free();
 
-	fr_dict_autofree(radclient_dict);
+	if (fr_dict_autofree(radclient_dict) < 0) {
+		fr_perror("radclient");
+		ret = EXIT_FAILURE;
+	}
 
 #ifndef NDEBUG
 	talloc_free(autofree);
@@ -1650,5 +1654,5 @@ int main(int argc, char **argv)
 
 	if ((stats.lost > 0) || (stats.failed > 0)) return EXIT_FAILURE;
 
-	return EXIT_SUCCESS;
+	return ret;
 }

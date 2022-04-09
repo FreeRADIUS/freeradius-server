@@ -324,11 +324,11 @@ void fr_tls_bio_dbuff_thread_local_clear(void)
 /** Frees the thread local TALLOC bio and its underlying OpenSSL BIO *
  *
  */
-static void _fr_tls_bio_dbuff_thread_local_free(void *bio_talloc_agg)
+static int _fr_tls_bio_dbuff_thread_local_free(void *bio_talloc_agg)
 {
 	fr_tls_bio_dbuff_t	*our_bio_talloc_agg = talloc_get_type_abort(bio_talloc_agg, fr_tls_bio_dbuff_t);
 
-	talloc_free(our_bio_talloc_agg);			/* Frees the #fr_tls_bio_dbuff_t and BIO */
+	return talloc_free(our_bio_talloc_agg);			/* Frees the #fr_tls_bio_dbuff_t and BIO */
 }
 
 /** Return a BIO which will aggregate data in an expandable talloc buffer

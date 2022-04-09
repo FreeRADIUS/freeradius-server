@@ -541,9 +541,9 @@ typedef struct {
 	fr_sbuff_uctx_talloc_t		tctx;		//!< Thread local tctx.
 } fr_sbuff_thread_local_t;
 
-static inline void _sbuff_thread_local_free(void *sbtl)
+static inline int _sbuff_thread_local_free(void *sbtl)
 {
-	talloc_free(sbtl);
+	return talloc_free(sbtl);
 }
 
 /** Create a function local and thread local extensible sbuff

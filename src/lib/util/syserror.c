@@ -43,10 +43,12 @@ static _Thread_local bool logging_stop;	//!< Due to ordering issues we may get e
  *	Explicitly cleanup the memory allocated to the error buffer,
  *	just in case valgrind complains about it.
  */
-static void _fr_logging_free(UNUSED void *arg)
+static int _fr_logging_free(UNUSED void *arg)
 {
-	TALLOC_FREE(fr_syserror_buffer);
+	if (talloc_free(fr_syserror_buffer) < 0) return -1;
+	fr_syserror_buffer = NULL;
 	logging_stop = true;
+	return 0;
 }
 
 /** POSIX-2008 errno macros

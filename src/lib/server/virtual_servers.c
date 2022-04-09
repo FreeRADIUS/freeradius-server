@@ -1396,18 +1396,24 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	return 0;
 }
 
-void virtual_servers_free(void)
+int virtual_servers_free(void)
 {
-	TALLOC_FREE(listen_addr_root);
-	TALLOC_FREE(server_section_name_tree);
-	TALLOC_FREE(process_modules);
-	TALLOC_FREE(proto_modules);
-	fr_dict_autofree(virtual_server_dict_autoload);
+	if (talloc_free(listen_addr_root) < 0) return -1;
+	listen_addr_root = NULL;
+	if (talloc_free(server_section_name_tree) < 0) return -1;
+	server_section_name_tree = NULL;
+	if (talloc_free(process_modules) < 0) return -1;
+	process_modules = NULL;
+	if (talloc_free(proto_modules) < 0) return -1;
+	proto_modules = NULL;
+	if (fr_dict_autofree(virtual_server_dict_autoload) < 0) return -1;
+
+	return 0;
 }
 
-static void _virtual_servers_atexit(UNUSED void *uctx)
+static int _virtual_servers_atexit(UNUSED void *uctx)
 {
-	virtual_servers_free();
+	return virtual_servers_free();
 }
 
 /** Performs global initialisation for the virtual server code

@@ -38,9 +38,9 @@ static _Thread_local char *krb5_error_buffer;
 /*
  *	Explicitly cleanup the memory allocated to the error buffer.
  */
-static void _krb5_logging_free(void *arg)
+static int _krb5_logging_free(void *arg)
 {
-	talloc_free(arg);
+	return talloc_free(arg);
 }
 
 char const *rlm_krb5_error(rlm_krb5_t const *inst, krb5_context context, krb5_error_code code)

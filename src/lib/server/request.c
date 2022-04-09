@@ -370,7 +370,7 @@ really_free:
 /** Free any free requests when the thread is joined
  *
  */
-static void _request_free_list_free_on_exit(void *arg)
+static int _request_free_list_free_on_exit(void *arg)
 {
 	fr_dlist_head_t *list = talloc_get_type_abort(arg, fr_dlist_head_t);
 	request_t		*request;
@@ -378,8 +378,8 @@ static void _request_free_list_free_on_exit(void *arg)
 	/*
 	 *	See the destructor for why this works
 	 */
-	while ((request = fr_dlist_head(list))) talloc_free(request);
-	talloc_free(list);
+	while ((request = fr_dlist_head(list))) if (talloc_free(request) < 0) return -1;
+	return talloc_free(list);
 }
 
 static inline CC_HINT(always_inline) request_t *request_alloc_pool(TALLOC_CTX *ctx)

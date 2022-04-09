@@ -56,9 +56,10 @@ RCSID("$Id$")
  */
 static _Thread_local EVP_CIPHER_CTX *evp_chipher_ctx;
 
-static void _evp_cipher_ctx_free_on_exit(void *arg)
+static int _evp_cipher_ctx_free_on_exit(void *arg)
 {
 	EVP_CIPHER_CTX_free(arg);
+	return 0;
 }
 
 /** Allocate and reset a resumable EVP_CIPHER_CTX for each thread

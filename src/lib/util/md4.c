@@ -491,7 +491,7 @@ void fr_md4_calc(uint8_t out[static MD4_DIGEST_LENGTH], uint8_t const *in, size_
 	fr_md4_ctx_free_from_list(&ctx);
 }
 
-static void _md4_ctx_free_on_exit(void *arg)
+static int _md4_ctx_free_on_exit(void *arg)
 {
 	int i;
 	fr_md4_free_list_t *free_list = arg;
@@ -501,7 +501,7 @@ static void _md4_ctx_free_on_exit(void *arg)
 
 		fr_md4_ctx_free(&free_list[i].md_ctx);
 	}
-	talloc_free(free_list);
+	return talloc_free(free_list);
 }
 
 /** @copydoc fr_md4_ctx_alloc

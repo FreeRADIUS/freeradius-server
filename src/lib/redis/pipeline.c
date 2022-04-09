@@ -152,7 +152,7 @@ struct fr_redis_trunk_s {
 /** Free any free requests when the thread is joined
  *
  */
-static void _command_set_free_list_free_on_exit(void *arg)
+static int _command_set_free_list_free_on_exit(void *arg)
 {
 	fr_dlist_head_t		*list = talloc_get_type_abort(arg, fr_dlist_head_t);
 	fr_redis_command_set_t	*cmds;
@@ -160,8 +160,8 @@ static void _command_set_free_list_free_on_exit(void *arg)
 	/*
 	 *	See the destructor for why this works
 	 */
-	while ((cmds = fr_dlist_head(list))) talloc_free(cmds);
-	talloc_free(list);
+	while ((cmds = fr_dlist_head(list))) if (talloc_free(cmds) < 0) return -1;
+	return talloc_free(list);
 }
 
 /** Free a command set

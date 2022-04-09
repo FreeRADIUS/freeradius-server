@@ -3618,9 +3618,9 @@ static int _dict_validation_onload(dl_t const *dl, void *symbol, UNUSED void *us
 	return 0;
 }
 
-static void _dict_global_free_at_exit(void *uctx)
+static int _dict_global_free_at_exit(void *uctx)
 {
-	talloc_free(uctx);
+	return talloc_free(uctx);
 }
 
 static int _dict_global_free(fr_dict_gctx_t *gctx)

@@ -243,9 +243,9 @@ inline bool log_rdebug_enabled(fr_log_lvl_t lvl, request_t const *request)
 /** Cleanup the memory pool used by vlog_request
  *
  */
-static void _fr_vlog_request_pool_free(void *arg)
+static int _fr_vlog_request_pool_free(void *arg)
 {
-	talloc_free(arg);
+	return talloc_free(arg);
 }
 
 /** Send a log message to its destination, possibly including fields from the request
@@ -709,9 +709,9 @@ void log_request_perror(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 /** Cleanup the memory pool used by the OID sbuff
  *
  */
-static void _fr_log_request_oid_buff_free(void *arg)
+static int _fr_log_request_oid_buff_free(void *arg)
 {
-	talloc_free(arg);
+	return talloc_free(arg);
 }
 
 /** Allocate an extensible sbuff for printing OID strings
