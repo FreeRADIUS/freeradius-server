@@ -419,17 +419,16 @@ module_instance_t *module_parent(module_instance_t const *child)
  */
 module_instance_t *module_root(module_instance_t const *child)
 {
-	module_instance_t *parent = NULL;
 	module_instance_t *next;
 
 	for (;;) {
 		next = module_parent(child);
 		if (!next) break;
 
-		parent = next;
+		child = next;
 	}
 
-	return parent;
+	return UNCONST(module_instance_t *, child);
 }
 
 /** Find an existing module instance by its private instance data
