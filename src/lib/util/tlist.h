@@ -52,17 +52,17 @@ struct fr_tlist_s {
 /** Find the tlist pointers within a list item
  *
  */
-static inline fr_tlist_t *fr_tlist_item_to_entry(size_t offset, void const *item)
+static inline fr_tlist_t *fr_tlist_item_to_entry(fr_tlist_head_t const *list_head, void const *item)
 {
-	return (fr_tlist_t *)(((uintptr_t) item) + offset);
+	return (fr_tlist_t *)(((uintptr_t) item) + list_head->offset);
 }
 
 /** Get the item from a fr_tlist_t
  *
  */
-static inline void *fr_tlist_entry_to_item(size_t offset, fr_tlist_t const *entry)
+static inline void *fr_tlist_entry_to_item(fr_tlist_head_t const *list_head, fr_tlist_t const *entry)
 {
-	return (void *)(((uintptr_t) entry) - offset);
+	return (void *)(((uintptr_t) entry) - list_head->offset);
 }
 
 /** Get a fr_tlist_head_t from a fr_dlist_head_t
@@ -189,7 +189,7 @@ static inline void _fr_tlist_init(fr_tlist_head_t *list_head, size_t offset, cha
 static inline void fr_tlist_clear(fr_tlist_head_t *list_head)
 {
 	fr_tlist_foreach_entry(list_head, item) {
-		fr_tlist_t *entry = fr_tlist_item_to_entry(list_head->offset, item);
+		fr_tlist_t *entry = fr_tlist_item_to_entry(list_head, item);
 
 		entry->list_head = NULL;
 	}
@@ -208,7 +208,7 @@ static inline void fr_tlist_clear(fr_tlist_head_t *list_head)
  */
 static inline CC_HINT(nonnull) bool fr_tlist_in_list(fr_tlist_head_t *list_head, void *ptr)
 {
-	fr_tlist_t *entry = fr_tlist_item_to_entry(list_head->offset, ptr);
+	fr_tlist_t *entry = fr_tlist_item_to_entry(list_head, ptr);
 
 	return (entry->list_head == list_head);
 }
@@ -226,7 +226,7 @@ static inline CC_HINT(nonnull) bool fr_tlist_in_list(fr_tlist_head_t *list_head,
  */
 static inline CC_HINT(nonnull) int fr_tlist_insert_head(fr_tlist_head_t *list_head, void *ptr)
 {
-	fr_tlist_t *entry = fr_tlist_item_to_entry(list_head->offset, ptr);
+	fr_tlist_t *entry = fr_tlist_item_to_entry(list_head, ptr);
 
 	if (fr_dlist_insert_head(&list_head->dlist_head, ptr) < 0) return -1;
 
@@ -247,7 +247,7 @@ static inline CC_HINT(nonnull) int fr_tlist_insert_head(fr_tlist_head_t *list_he
  */
 static inline CC_HINT(nonnull) int fr_tlist_insert_tail(fr_tlist_head_t *list_head, void *ptr)
 {
-	fr_tlist_t *entry = fr_tlist_item_to_entry(list_head->offset, ptr);
+	fr_tlist_t *entry = fr_tlist_item_to_entry(list_head, ptr);
 
 	if (fr_dlist_insert_tail(&list_head->dlist_head, ptr) < 0) return -1;
 
@@ -269,7 +269,7 @@ static inline CC_HINT(nonnull) int fr_tlist_insert_tail(fr_tlist_head_t *list_he
  */
 static inline CC_HINT(nonnull(1,3)) int fr_tlist_insert_after(fr_tlist_head_t *list_head, void *pos, void *ptr)
 {
-	fr_tlist_t *entry = fr_tlist_item_to_entry(list_head->offset, ptr);
+	fr_tlist_t *entry = fr_tlist_item_to_entry(list_head, ptr);
 
 	if (fr_dlist_insert_after(&list_head->dlist_head, pos, ptr) < 0) return -1;
 
@@ -291,7 +291,7 @@ static inline CC_HINT(nonnull(1,3)) int fr_tlist_insert_after(fr_tlist_head_t *l
  */
 static inline CC_HINT(nonnull(1,3)) int fr_tlist_insert_before(fr_tlist_head_t *list_head, void *pos, void *ptr)
 {
-	fr_tlist_t *entry = fr_tlist_item_to_entry(list_head->offset, ptr);
+	fr_tlist_t *entry = fr_tlist_item_to_entry(list_head, ptr);
 
 	if (fr_dlist_insert_before(&list_head->dlist_head, pos, ptr) < 0) return -1;
 
@@ -415,7 +415,7 @@ static inline CC_HINT(nonnull(1)) void *fr_tlist_prev(fr_tlist_head_t const *lis
  */
 static inline CC_HINT(nonnull(1)) void *fr_tlist_remove(fr_tlist_head_t *list_head, void *ptr)
 {
-	fr_tlist_t *entry = fr_tlist_item_to_entry(list_head->offset, ptr);
+	fr_tlist_t *entry = fr_tlist_item_to_entry(list_head, ptr);
 
 	entry->list_head = NULL;
 
@@ -470,11 +470,11 @@ static inline CC_HINT(nonnull) void *fr_tlist_replace(fr_tlist_head_t *list_head
 
 	if (!fr_tlist_in_list(list_head, item)) return NULL;
 
-	ptr_entry = fr_tlist_item_to_entry(list_head->offset, ptr);
+	ptr_entry = fr_tlist_item_to_entry(list_head, ptr);
 	fr_dlist_replace(&list_head->dlist_head, item, ptr);
 	ptr_entry->list_head = list_head;
 
-	item_entry = fr_tlist_item_to_entry(list_head->offset, item);
+	item_entry = fr_tlist_item_to_entry(list_head, item);
 	item_entry->list_head = NULL;
 
 	return item;
@@ -501,7 +501,7 @@ static inline CC_HINT(nonnull) void fr_tlist_verify(char const *file, int line, 
 	for (item = fr_tlist_head(list_head);
 	     item;
 	     item = fr_tlist_next(list_head, item)) {
-		fr_tlist_t *entry = fr_tlist_item_to_entry(list_head->offset, item);
+		fr_tlist_t *entry = fr_tlist_item_to_entry(list_head, item);
 
 		fr_assert_msg(entry->list_head == list_head, "CONSISTENCY CHECK FAILED %s[%i]: tlist entry %p has wrong parent",
 			      file, line, entry);
@@ -559,7 +559,7 @@ static inline CC_HINT(nonnull) int fr_tlist_move(fr_tlist_head_t *list_dst, fr_t
 	 *	Update new parent from the middle of the list to the end.
 	 */
 	do {
-		fr_tlist_t *entry = fr_tlist_item_to_entry(list_src->offset, item);
+		fr_tlist_t *entry = fr_tlist_item_to_entry(list_src, item);
 		entry->list_head = list_dst;
 	} while ((item = fr_dlist_next(&list_dst->dlist_head, item)) != NULL);
 
@@ -598,7 +598,7 @@ static inline CC_HINT(nonnull) int fr_tlist_move_head(fr_tlist_head_t *list_dst,
 	for (item = fr_tlist_head(list_dst);
 	     item && (item != middle);
 	     item = fr_tlist_next(list_dst, item)) {
-		fr_tlist_t *entry = fr_tlist_item_to_entry(list_src->offset, item);
+		fr_tlist_t *entry = fr_tlist_item_to_entry(list_src, item);
 		entry->list_head = list_dst;
 	}
 
@@ -919,12 +919,12 @@ static inline void *fr_tlist_parent(fr_tlist_head_t *list_head, void const *ptr)
 
 	if (!ptr || !list_head) return NULL;
 
-	entry = fr_tlist_item_to_entry(list_head->offset, ptr);
+	entry = fr_tlist_item_to_entry(list_head, ptr);
 	if (!entry->list_head) return NULL;
 
 	if (!entry->list_head->parent) return NULL;
 
-	return fr_tlist_entry_to_item(entry->list_head->offset, entry->list_head->parent);
+	return fr_tlist_entry_to_item(entry->list_head, entry->list_head->parent);
 }
 
 /** Initialize a child tlist based on a parent entry
