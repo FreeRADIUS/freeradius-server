@@ -36,11 +36,11 @@ struct fr_tlist_head_s {
 	fr_tlist_t	*parent;	//!< the parent entry which holds this list.  May be NULL.
 
 	size_t		offset;		//!< Positive offset from start of structure to #fr_tlist_t.
-	char const	*type;		//!< of items contained within the list.  Used for talloc
-					///< validation.
 
 	fr_dlist_head_t	dlist_head;
 };
+
+#define tlist_type(_list) ((_list)->dlist_head.type)
 
 struct fr_tlist_s {
 	fr_tlist_head_t	*list_head;	//!< the list which holds this entry
@@ -162,7 +162,6 @@ static inline CC_HINT(nonnull) bool fr_tlist_entry_in_a_list(fr_tlist_t const *e
 static inline void _fr_tlist_init(fr_tlist_head_t *list_head, size_t offset, char const *type)
 {
 	list_head->offset = offset;
-	list_head->type = type;
 	list_head->parent = NULL;
 
 	/*
@@ -494,7 +493,7 @@ static inline CC_HINT(nonnull) void fr_tlist_verify(char const *file, int line, 
 {
 	void *item;
 
-	if (!list_head->type) return;
+	if (!tlist_type(list_head)) return;
 
 	fr_assert_msg(fr_tlist_initialised(list_head), "CONSISTENCY CHECK FAILED %s[%i]: tlist not initialised",
 		      file, line);
@@ -507,13 +506,13 @@ static inline CC_HINT(nonnull) void fr_tlist_verify(char const *file, int line, 
 		fr_assert_msg(entry->list_head == list_head, "CONSISTENCY CHECK FAILED %s[%i]: tlist entry %p has wrong parent",
 			      file, line, entry);
 
-		item = _talloc_get_type_abort(item, list_head->type, __location__);
+		item = _talloc_get_type_abort(item, tlist_type(list_head), __location__);
 
 		if (entry->children) {
-			fr_assert_msg(entry->children->type != NULL, "CONSISTENCY CHECK FAILED %s[%i]: tlist entry %p has non-talloc'd child list",
+			fr_assert_msg(tlist_type(entry->children) != NULL, "CONSISTENCY CHECK FAILED %s[%i]: tlist entry %p has non-talloc'd child list",
 				      file, line, entry);
 			
-			fr_assert_msg(strcmp(entry->children->type, list_head->type) == 0,
+			fr_assert_msg(strcmp(tlist_type(entry->children), tlist_type(list_head)) == 0,
 				      "CONSISTENCY CHECK FAILED %s[%i]: tlist entry %p has different child type from parent",
 				      file, line, entry);
 
@@ -543,12 +542,12 @@ static inline CC_HINT(nonnull) int fr_tlist_move(fr_tlist_head_t *list_dst, fr_t
 	/*
 	 *	Must be both talloced or both not
 	 */
-	if (!fr_cond_assert((list_dst->type && list_src->type) || (!list_dst->type && !list_src->type))) return -1;
+	if (!fr_cond_assert((tlist_type(list_dst) && tlist_type(list_src)) || (!tlist_type(list_dst) && !tlist_type(list_src)))) return -1;
 
 	/*
 	 *	Must be of the same type
 	 */
-	if (!fr_cond_assert(!list_dst->type || (strcmp(list_dst->type, list_src->type) == 0))) return -1;
+	if (!fr_cond_assert(!tlist_type(list_dst) || (strcmp(tlist_type(list_dst), tlist_type(list_src)) == 0))) return -1;
 #endif
 
 	item = fr_dlist_head(&list_src->dlist_head);
@@ -581,12 +580,12 @@ static inline CC_HINT(nonnull) int fr_tlist_move_head(fr_tlist_head_t *list_dst,
 	/*
 	 *	Must be both talloced or both not
 	 */
-	if (!fr_cond_assert((list_dst->type && list_src->type) || (!list_dst->type && !list_src->type))) return -1;
+	if (!fr_cond_assert((tlist_type(list_dst) && tlist_type(list_src)) || (!tlist_type(list_dst) && !tlist_type(list_src)))) return -1;
 
 	/*
 	 *	Must be of the same type
 	 */
-	if (!fr_cond_assert(!list_dst->type || (strcmp(list_dst->type, list_src->type) == 0))) return -1;
+	if (!fr_cond_assert(!tlist_type(list_dst) || (strcmp(tlist_type(list_dst), tlist_type(list_src)) == 0))) return -1;
 #endif
 
 	middle = fr_dlist_head(&list_dst->dlist_head);
@@ -947,10 +946,9 @@ static inline void fr_tlist_init_children(fr_tlist_t *entry, fr_tlist_head_t *ch
 	 */
 	fr_dlist_init(&children->dlist_head, fr_tlist_t, dlist_entry);
 	children->dlist_head.offset += list_head->offset;
-	children->dlist_head.type = list_head->type;
+	children->dlist_head.type = list_head->dlist_head.type;
 
 	children->offset = list_head->offset;
-	children->type = list_head->type;
 	children->parent = NULL;
 
 	entry->children = children;
