@@ -255,6 +255,8 @@ int		module_submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
  */
 module_instance_t	*module_parent(module_instance_t const *child);
 
+module_instance_t	*module_root(module_instance_t const *child);
+
 module_instance_t	*module_by_name(module_list_t const *ml, module_instance_t const *parent, char const *asked_name)
 			CC_HINT(nonnull(1,3));
 

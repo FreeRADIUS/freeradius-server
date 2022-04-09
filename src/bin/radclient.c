@@ -1108,7 +1108,9 @@ int main(int argc, char **argv)
 	int		parallel = 1;
 	rc_request_t	*this;
 	int		force_af = AF_UNSPEC;
+#ifndef NDEBUG
 	TALLOC_CTX	*autofree;
+#endif
 	fr_rb_tree_t	*filename_tree = NULL;
 
 	/*
@@ -1124,9 +1126,9 @@ int main(int argc, char **argv)
 	 */
 	fr_atexit_global_setup();
 
+#ifndef NDEBUG
 	autofree = talloc_autofree_context();
 
-#ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("radclient");
 		fr_exit_now(EXIT_FAILURE);
@@ -1620,6 +1622,10 @@ int main(int argc, char **argv)
 	fr_radius_free();
 
 	fr_dict_autofree(radclient_dict);
+
+#ifndef NDEBUG
+	talloc_free(autofree);
+#endif
 
 	if (do_summary) {
 		fr_perror("Packet summary:\n"

@@ -228,8 +228,8 @@ static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cm
  */
 static int8_t _module_instance_global_cmp(void const *one, void const *two)
 {
-	module_instance_t const *a = talloc_get_type_abort(one, module_instance_t);
-	module_instance_t const *b = talloc_get_type_abort(two, module_instance_t);
+	module_instance_t const *a = talloc_get_type_abort_const(one, module_instance_t);
+	module_instance_t const *b = talloc_get_type_abort_const(two, module_instance_t);
 	int8_t ret;
 
 	fr_assert(a->ml && b->ml);
@@ -408,6 +408,28 @@ module_instance_t *module_parent(module_instance_t const *child)
 	if (!parent) return NULL;
 
 	return module_by_data(child->ml, parent->data);
+}
+
+/** Find the module's shallowest parent
+ *
+ * @param[in] child	to locate the root for.
+ * @return
+ *	- The module's shallowest parent.
+ *	- NULL on error.
+ */
+module_instance_t *module_root(module_instance_t const *child)
+{
+	module_instance_t *parent = NULL;
+	module_instance_t *next;
+
+	for (;;) {
+		next = module_parent(child);
+		if (!next) break;
+
+		parent = next;
+	}
+
+	return parent;
 }
 
 /** Find an existing module instance by its private instance data
@@ -594,7 +616,7 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, module_list_t const *ml, fr_even
 	for (instance = fr_rb_iter_init_inorder(&iter, ml->name_tree);
 	     instance;
 	     instance = fr_rb_iter_next_inorder(&iter)) {
-		module_instance_t		*mi = talloc_get_type_abort(instance, module_instance_t);
+		module_instance_t		*mi = talloc_get_type_abort(instance, module_instance_t), *rmi;
 		module_thread_instance_t	*ti;
 		TALLOC_CTX			*our_ctx = ctx;
 
@@ -611,6 +633,8 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, module_list_t const *ml, fr_even
 		if (mi->module->thread_inst_size) {
 			MEM(ti->data = talloc_zero_array(ti, uint8_t, mi->module->thread_inst_size));
 
+			rmi = module_root(mi);
+
 			/*
 			 *	Fixup the type name, incase something calls
 			 *	talloc_get_type_abort() on it...
@@ -618,7 +642,9 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, module_list_t const *ml, fr_even
 			if (!mi->module->thread_inst_type) {
 				talloc_set_name(ti->data, "%s_%s_thread_t",
 						fr_table_str_by_value(dl_module_type_prefix,
-								      mi->dl_inst->module->type, "<INVALID>"),
+								      rmi ? rmi->dl_inst->module->type :
+								            mi->dl_inst->module->type,
+								      "<INVALID>"),
 						mi->module->name);
 			} else {
 				talloc_set_name_const(ti->data, mi->module->thread_inst_type);
@@ -942,7 +968,10 @@ module_instance_t *module_alloc(module_list_t *ml,
 	 *	Takes the inst_name and adds qualifiers
 	 *	if this is a submodule.
 	 */
-	module_instance_name(NULL, &qual_inst_name, ml, parent, inst_name);
+	if (module_instance_name(NULL, &qual_inst_name, ml, parent, inst_name) < 0) {
+		ERROR("Module name too long");
+		return NULL;
+	}
 
 	/*
 	 *	See if the module already exists.
