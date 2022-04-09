@@ -3137,7 +3137,7 @@ static command_file_ctx_t *command_ctx_alloc(TALLOC_CTX *ctx,
 	 *	go in this context, and don't affect the main
 	 *	dictionary context.
 	 */
-	cc->test_gctx = fr_dict_global_ctx_init(cc, cc->config->dict_dir);
+	cc->test_gctx = fr_dict_global_ctx_init(cc, false, cc->config->dict_dir);
 	if (!cc->test_gctx) {
 		fr_perror("Failed allocating test dict_gctx");
 		return NULL;
@@ -3169,7 +3169,7 @@ static void command_ctx_reset(command_file_ctx_t *cc, TALLOC_CTX *ctx)
 
 	if (fr_dict_global_ctx_free(cc->test_gctx) < 0) fr_perror("unit_test_attribute");
 
-	cc->test_gctx = fr_dict_global_ctx_init(cc, cc->config->dict_dir);
+	cc->test_gctx = fr_dict_global_ctx_init(cc, false, cc->config->dict_dir);
 	if (fr_dict_internal_afrom_file(&cc->test_internal_dict, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
 		fr_perror("Failed loading test dict_gctx internal dictionary");
 	}
@@ -3476,7 +3476,6 @@ int main(int argc, char *argv[])
 	CONF_SECTION		*cs;
 	int			ret = EXIT_SUCCESS;
 	TALLOC_CTX		*autofree;
-	dl_module_loader_t	*dl_modules = NULL;
 	bool			exit_now = false;
 
 	command_config_t	config = {
@@ -3601,11 +3600,7 @@ int main(int argc, char *argv[])
 	fr_openssl_init();
 #endif
 
-	dl_modules = dl_module_loader_init(NULL);
-	if (!dl_modules) {
-		fr_perror("unit_test_attribute");
-		EXIT_WITH_FAILURE;
-	}
+	modules_init(NULL);
 
 	dl_loader = dl_loader_init(autofree, NULL, false, false);
 	if (!dl_loader) {
@@ -3613,7 +3608,7 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	config.dict_gctx = fr_dict_global_ctx_init(autofree, config.dict_dir);
+	config.dict_gctx = fr_dict_global_ctx_init(NULL, true, config.dict_dir);
 	if (!config.dict_gctx) {
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
@@ -3736,11 +3731,13 @@ cleanup:
 	fr_openssl_free();
 #endif
 
-	if (talloc_free(dl_modules) < 0) {
-		fr_perror("unit_test_attribute - dl_modules - ");	/* Print free order issues */
-	}
-	if (talloc_free(dl_loader) < 0) {
+	/*
+	 *	dl_loader check needed as talloc_free
+	 *	returns -1 on failure.
+	 */
+	if (dl_loader && (talloc_free(dl_loader) < 0)) {
 		fr_perror("unit_test_attribute - dl_loader - ");	/* Print free order issues */
+		ret = EXIT_FAILURE;
 	}
 	if (fr_dict_free(&config.dict, __FILE__) < 0) {
 		fr_perror("unit_test_attribute");
@@ -3748,15 +3745,6 @@ cleanup:
 	}
 
 	unlang_free_global();
-
-	/*
-	 *	Dictionaries get freed towards the end
-	 *	because it breaks "autofree".
-	 */
-	if (fr_dict_global_ctx_free(config.dict_gctx) < 0) {
-		fr_perror("unit_test_attribute");	/* Print free order issues */
-		ret = EXIT_FAILURE;
-	}
 
 	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
 		fr_perror("unit_test_attribute");

@@ -1127,7 +1127,7 @@ extern fr_process_module_t process_radius;
 fr_process_module_t process_radius = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
-		.name		= "process_radius",
+		.name		= "radius",
 		.config		= config,
 		.inst_size	= sizeof(process_radius_t),
 

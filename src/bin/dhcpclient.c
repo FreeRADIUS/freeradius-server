@@ -551,8 +551,6 @@ int main(int argc, char **argv)
 	fr_radius_packet_t	*reply = NULL;
 	fr_pair_list_t		reply_vps;
 
-	TALLOC_CTX		*autofree;
-
 	int			ret;
 
 	fr_pair_list_init(&packet_vps);
@@ -562,8 +560,6 @@ int main(int argc, char **argv)
 	 *	Must be called first, so the handler is called last
 	 */
 	fr_atexit_global_setup();
-
-	autofree = talloc_autofree_context();
 
 	fr_debug_lvl = 1;
 
@@ -611,7 +607,7 @@ int main(int argc, char **argv)
 
 	if (argc < 2) usage();
 
-	if (!fr_dict_global_ctx_init(autofree, dict_dir)) {
+	if (!fr_dict_global_ctx_init(NULL, true, dict_dir)) {
 		fr_perror("dhcpclient");
 		fr_exit(EXIT_FAILURE);
 	}

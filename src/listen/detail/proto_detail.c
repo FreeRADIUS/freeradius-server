@@ -121,7 +121,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 
 	*((char const **) out) = value;
 
-	inst->dict = virtual_server_namespace_by_ci(ci);
+	inst->dict = virtual_server_dict_by_child_ci(ci);
 	if (!inst->dict) {
 		cf_log_err(ci, "Please define 'namespace' in this virtual server");
 		return -1;
@@ -179,8 +179,9 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_detail"));
 	fr_assert(parent_inst);
 
-	if (dl_module_instance(ctx, &dl_mod_inst, transport_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE) < 0) return -1;
-	if (dl_module_conf_parse(dl_mod_inst) < 0) {
+	if (dl_module_instance(ctx, &dl_mod_inst, parent_inst,
+			       DL_MODULE_TYPE_SUBMODULE, name, dl_module_inst_name_from_conf(transport_cs)) < 0) return -1;
+	if (dl_module_conf_parse(dl_mod_inst, transport_cs) < 0) {
 		talloc_free(dl_mod_inst);
 		return -1;
 	}
@@ -547,13 +548,14 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			}
 		}
 
-		if (dl_module_instance(inst->cs, &inst->work_submodule, transport_cs,
-				parent_inst, "work", DL_MODULE_TYPE_SUBMODULE) < 0) {
+		if (dl_module_instance(inst->cs, &inst->work_submodule,
+				       parent_inst,
+				       DL_MODULE_TYPE_SUBMODULE, "work", dl_module_inst_name_from_conf(transport_cs)) < 0) {
 			cf_log_perr(inst->cs, "Failed to load proto_detail_work");
 			return -1;
 		}
 
-		if (dl_module_conf_parse(inst->work_submodule) < 0) {
+		if (dl_module_conf_parse(inst->work_submodule, transport_cs) < 0) {
 			TALLOC_FREE(inst->work_submodule);
 			return -1;
 		}

@@ -613,7 +613,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t const *c
 extern rlm_sql_driver_t rlm_sql_oracle;
 rlm_sql_driver_t rlm_sql_oracle = {
 	.common = {
-		.name				= "rlm_sql_oracle",
+		.name				= "sql_oracle",
 		.magic				= MODULE_MAGIC_INIT,
 		.inst_size			= sizeof(rlm_sql_oracle_t),
 		.config				= driver_config,

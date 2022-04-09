@@ -473,7 +473,7 @@ extern rlm_cache_driver_t rlm_cache_redis;
 rlm_cache_driver_t rlm_cache_redis = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
-		.name		= "rlm_cache_redis",
+		.name		= "cache_redis",
 		.onload		= mod_load,
 		.instantiate	= mod_instantiate,
 		.inst_size	= sizeof(rlm_cache_redis_t),

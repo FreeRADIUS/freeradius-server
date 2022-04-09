@@ -192,7 +192,7 @@ extern fr_process_module_t process_dns;
 fr_process_module_t process_dns = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
-		.name		= "process_dns",
+		.name		= "dns",
 		.inst_size	= sizeof(process_dns_t)
 	},
 	.process	= mod_process,

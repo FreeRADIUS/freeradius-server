@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/atexit.h>
 
 #ifdef HAVE_SYS_STAT_H
 #  include <sys/stat.h>
@@ -3617,11 +3618,22 @@ static int _dict_validation_onload(dl_t const *dl, void *symbol, UNUSED void *us
 	return 0;
 }
 
+static void _dict_global_free_at_exit(void *uctx)
+{
+	talloc_free(uctx);
+}
+
 static int _dict_global_free(fr_dict_gctx_t *gctx)
 {
 	fr_hash_iter_t	iter;
 	fr_dict_t	*dict;
 	bool		still_loaded = false;
+
+	/*
+	 *	Make sure this doesn't fire later and mess
+	 *	things up...
+	 */
+	if (gctx->free_at_exit) fr_atexit_global_disarm(true, _dict_global_free_at_exit, gctx);
 
 	if (gctx->internal) {
 		dict_dependent_remove(gctx->internal, "global");	/* remove our dependency */
@@ -3638,8 +3650,12 @@ static int _dict_global_free(fr_dict_gctx_t *gctx)
 	    	if (talloc_free(dict) < 0) still_loaded = true;
 	}
 
-	if (still_loaded) return -1;
-
+	if (still_loaded) {
+#ifndef NDEBUG
+		fr_dict_global_ctx_debug(gctx);
+#endif
+		return -1;
+	}
 	/*
 	 *	Set this to NULL just in case the caller tries to use
 	 *	dict_global_init() again.
@@ -3653,13 +3669,16 @@ static int _dict_global_free(fr_dict_gctx_t *gctx)
  *
  * @note Must be called before any other dictionary functions.
  *
- * @param[in] ctx	to allocate global resources in.
- * @param[in] dict_dir	the default location for the dictionaries.
+ * @param[in] ctx		to allocate global resources in.
+ * @param[in] free_at_exit	Install an at_exit handler to free the global ctx.
+ *				This is useful when dictionaries are held by other
+ *				libraries which free them using atexit handlers.
+ * @param[in] dict_dir		the default location for the dictionaries.
  * @return
  *	- A pointer to the new global context on success.
  *	- NULL on failure.
  */
-fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, char const *dict_dir)
+fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, bool free_at_exit, char const *dict_dir)
 {
 	fr_dict_gctx_t *new_ctx;
 
@@ -3696,10 +3715,13 @@ fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, char const *dict_
 
 	if (dl_symbol_init_cb_register(new_ctx->dict_loader, 0, "dict_protocol",
 				       _dict_validation_onload, NULL) < 0) goto error;
+	new_ctx->free_at_exit = free_at_exit;
 
 	talloc_set_destructor(new_ctx, _dict_global_free);
 
 	if (!dict_gctx) dict_gctx = new_ctx;	/* Set as the default */
+
+	if (free_at_exit) fr_atexit_global(_dict_global_free_at_exit, new_ctx);
 
 	return new_ctx;
 }
@@ -3783,22 +3805,24 @@ void fr_dict_global_ctx_read_only(void)
  *
  * Intended to be called from a debugger
  */
-void fr_dict_global_ctx_debug(void)
+void fr_dict_global_ctx_debug(fr_dict_gctx_t const *gctx)
 {
 	fr_hash_iter_t			dict_iter;
 	fr_dict_t			*dict;
-	fr_rb_iter_inorder_t	dep_iter;
+	fr_rb_iter_inorder_t		dep_iter;
 	fr_dict_dependent_t		*dep;
 
-	if (!dict_gctx) {
+	if (gctx == NULL) gctx = dict_gctx;
+
+	if (!gctx) {
 		FR_FAULT_LOG("gctx not initialised");
 		return;
 	}
 
 	FR_FAULT_LOG("gctx %p report", dict_gctx);
-	for (dict = fr_hash_table_iter_init(dict_gctx->protocol_by_num, &dict_iter);
+	for (dict = fr_hash_table_iter_init(gctx->protocol_by_num, &dict_iter);
 	     dict;
-	     dict = fr_hash_table_iter_next(dict_gctx->protocol_by_num, &dict_iter)) {
+	     dict = fr_hash_table_iter_next(gctx->protocol_by_num, &dict_iter)) {
 		for (dep = fr_rb_iter_init_inorder(&dep_iter, dict->dependents);
 		     dep;
 		     dep = fr_rb_iter_next_inorder(&dep_iter)) {
@@ -3806,11 +3830,11 @@ void fr_dict_global_ctx_debug(void)
 		}
 	}
 
-	if (dict_gctx->internal) {
-		for (dep = fr_rb_iter_init_inorder(&dep_iter, dict_gctx->internal->dependents);
+	if (gctx->internal) {
+		for (dep = fr_rb_iter_init_inorder(&dep_iter, gctx->internal->dependents);
 		     dep;
 		     dep = fr_rb_iter_next_inorder(&dep_iter)) {
-			FR_FAULT_LOG("\t%s refs %s (%u)", dict_gctx->internal->root->name, dep->dependent, dep->count);
+			FR_FAULT_LOG("\t%s refs %s (%u)", gctx->internal->root->name, dep->dependent, dep->count);
 		}
 	}
 }

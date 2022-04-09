@@ -391,7 +391,7 @@ extern rlm_sql_driver_t rlm_sql_unixodbc;
 rlm_sql_driver_t rlm_sql_unixodbc = {
 	.common = {
 		.magic				= MODULE_MAGIC_INIT,
-		.name				= "rlm_sql_unixodbc"
+		.name				= "sql_unixodbc"
 	},
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,

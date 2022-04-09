@@ -83,7 +83,7 @@ int server_init(CONF_SECTION *cs)
 	/*
 	 *	Instantiate the modules
 	 */
-	if (modules_instantiate(cs) < 0) return -1;
+	if (modules_rlm_instantiate() < 0) return -1;
 
 	/*
 	 *	Call xlat instantiation functions (after the xlats have been compiled)
@@ -106,11 +106,6 @@ void server_free(void)
 	xlat_instances_free();
 
 	/*
-	 *	Detach modules, connection pools, registered xlats / paircmps / maps.
-	 */
-	modules_free();
-
-	/*
 	 *	The only paircmps remaining are the ones registered by the server core.
 	 */
 	paircmp_free();
@@ -129,11 +124,6 @@ void server_free(void)
 	 *	The only maps remaining are the ones registered by the server core.
 	 */
 	map_proc_free();
-
-	/*
-	 *	Free information associated with the virtual servers.
-	 */
-	virtual_servers_free();
 
 	/*
 	 *	Now we're sure no more triggers can fire, free the

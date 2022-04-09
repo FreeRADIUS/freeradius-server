@@ -36,32 +36,19 @@ extern "C" {
 extern const CONF_PARSER virtual_servers_config[];
 extern const CONF_PARSER virtual_servers_on_read_config[];
 
-/** @name Parsing, bootstrap and instantiation
+/** @name Namespace management
  *
  * @{
  */
-void		virtual_server_dict_set(CONF_SECTION *server_cs, fr_dict_t const *dict, bool do_free) CC_HINT(nonnull);
+fr_dict_t const	*virtual_server_dict_by_name(char const *virtual_server) CC_HINT(nonnull);
 
-fr_dict_t const *virtual_server_dict(CONF_SECTION *server_cs) CC_HINT(nonnull);
+fr_dict_t const *virtual_server_dict_by_cs(CONF_SECTION const *server_cs) CC_HINT(nonnull);
 
-int		virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const *subcs_name,
-							fr_dict_attr_t const *da) CC_HINT(nonnull);
+fr_dict_t const *virtual_server_dict_by_child_ci(CONF_ITEM const *ci) CC_HINT(nonnull);
 
-int		virtual_servers_instantiate(void);
-
-int		virtual_servers_bootstrap(CONF_SECTION *config) CC_HINT(nonnull);
-
-int		virtual_servers_init(CONF_SECTION *config) CC_HINT(nonnull);
-
-int		virtual_servers_free(void);
-
-/** @} */
-
-/** @name Runtime management
- *
- * @{
- */
-int		virtual_servers_open(fr_schedule_t *sc);
+int		virtual_server_has_namespace(CONF_SECTION **out,
+					     char const *virtual_server, fr_dict_t const *namespace,
+					     CONF_ITEM *ci) CC_HINT(nonnull(2,3));
 /** @} */
 
 /** @name Lookup and namespace management
@@ -74,14 +61,6 @@ CONF_SECTION	*virtual_server_by_child(CONF_SECTION *section) CC_HINT(nonnull);
 
 int		virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent,
 					CONF_ITEM *ci, CONF_PARSER const *rule) CC_HINT(nonnull(2,4));
-
-fr_dict_t const	*virtual_server_namespace(char const *virtual_server) CC_HINT(nonnull);
-
-fr_dict_t const *virtual_server_namespace_by_ci(CONF_ITEM *ci) CC_HINT(nonnull);
-
-int		virtual_server_has_namespace(CONF_SECTION **out,
-					     char const *virtual_server, fr_dict_t const *namespace,
-					     CONF_ITEM *ci) CC_HINT(nonnull(2,3));
 /** @} */
 unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type,
 				     request_t *request, CONF_SECTION *server_cs) CC_HINT(nonnull);
@@ -128,7 +107,27 @@ virtual_server_method_t const *virtual_server_section_methods(char const *name1,
 
 unlang_action_t	virtual_server_push(request_t *request, CONF_SECTION *server_cs, bool top_frame) CC_HINT(nonnull);
 
-int		virtual_server_dynamic_clients_allow(CONF_SECTION *server_cs) CC_HINT(nonnull);
+/** @name Parsing, bootstrap and instantiation
+ *
+ * @{
+ */
+int		virtual_server_section_attribute_define(CONF_SECTION *server_cs, char const *subcs_name,
+							fr_dict_attr_t const *da) CC_HINT(nonnull);
+
+int		virtual_servers_open(fr_schedule_t *sc);
+
+void		virtual_servers_thread_detach(void);
+
+int		virtual_servers_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el) CC_HINT(nonnull);
+
+int		virtual_servers_instantiate(void) CC_HINT(nonnull);
+
+int		virtual_servers_bootstrap(CONF_SECTION *config) CC_HINT(nonnull);
+
+void		virtual_servers_free(void);
+
+int		virtual_servers_init(void) CC_HINT(nonnull);
+/** @} */
 
 #ifdef __cplusplus
 }

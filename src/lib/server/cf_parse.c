@@ -1222,9 +1222,10 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 		rule = cf_data_value(rule_cd);
 
 		/*
-		 *	Ignore ON_READ parse rules
+		 *	Ignore ON_READ parse rules if there's no subsequent
+		 *	parse functions.
 		 */
-		if (rule->on_read) continue;
+		if (!rule->func && rule->on_read) continue;
 
 		/*
 		 *	Pre-allocate the config structure to hold default values
@@ -1467,7 +1468,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		 *	Search for dictionary data somewhere in the virtual
 		 *      server.
 		 */
-		dict = virtual_server_namespace_by_ci(cf_section_to_item(cs));
+		dict = virtual_server_dict_by_child_ci(cf_section_to_item(cs));
 
 		/*
 		 *	Parse (and throw away) the xlat string (for validation).

@@ -129,7 +129,10 @@ static int talloc_config_set(main_config_t *config)
  */
 static int thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el, UNUSED void *uctx)
 {
-	if (modules_thread_instantiate(ctx, el) < 0) return -1;
+	if (modules_rlm_thread_instantiate(ctx, el) < 0) return -1;
+
+	if (virtual_servers_thread_instantiate(ctx, el) < 0) return -1;
+
 	if (xlat_thread_instantiate(ctx, el) < 0) return -1;
 #ifdef WITH_TLS
 	if (fr_openssl_thread_init(main_config->openssl_async_pool_init,
@@ -143,7 +146,10 @@ static int thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el, UNUSED void 
  */
 static void thread_detach(UNUSED void *uctx)
 {
-	modules_thread_detach();
+	virtual_servers_thread_detach();
+
+	modules_rlm_thread_detach();
+
 	xlat_thread_detach();
 }
 
@@ -233,10 +239,6 @@ int main(int argc, char *argv[])
 	size_t			pool_size = 0;
 	void			*pool_page_start = NULL, *pool_page_end = NULL;
 	bool			do_mprotect;
-
-	fr_dict_gctx_t const	*dict_gctx = NULL;
-
-	dl_module_loader_t *dl_modules = NULL;
 
 #ifndef NDEBUG
 	fr_time_delta_t	exit_after = fr_time_delta_wrap(0);
@@ -540,18 +542,13 @@ int main(int argc, char *argv[])
 	 *      config file parser.  Note that we pass an empty path
 	 *      here, as we haven't yet read the configuration file.
 	 */
-	dl_modules = dl_module_loader_init(NULL);
-	if (!dl_modules) {
-		fr_perror("%s", program);
-		EXIT_WITH_FAILURE;
-	}
+	modules_init(NULL);
 
 	/*
 	 *	Initialise the top level dictionary hashes which hold
 	 *	the protocols.
 	 */
-	dict_gctx = fr_dict_global_ctx_init(global_ctx, config->dict_dir);
-	if (!dict_gctx) {
+	if (!fr_dict_global_ctx_init(NULL, true, config->dict_dir)) {
 		fr_perror("%s", program);
 		EXIT_WITH_FAILURE;
 	}
@@ -562,6 +559,19 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 #endif
+
+	/*
+	 *	Setup the global structures for module lists
+	 */
+	if (modules_rlm_init() < 0) {
+		fr_perror("%s", program);
+		EXIT_WITH_FAILURE;
+	}
+
+	if (virtual_servers_init() < 0) {
+		fr_perror("%s", program);
+		EXIT_WITH_FAILURE;
+	}
 
 	/*
 	 *  Read the configuration files, BEFORE doing anything else.
@@ -585,16 +595,6 @@ int main(int argc, char *argv[])
 			fr_perror("%s", program);
 			EXIT_WITH_FAILURE;
 		}
-	}
-
-	if (modules_init() < 0) {
-		fr_perror("%s", program);
-		EXIT_WITH_FAILURE;
-	}
-
-	if (virtual_servers_init(config->root_cs) < 0) {
-		fr_perror("%s", program);
-		EXIT_WITH_FAILURE;
 	}
 
 	/*
@@ -1083,26 +1083,24 @@ cleanup:
 	if (config) talloc_memory_report = config->talloc_memory_report;	/* Grab this before we free the config */
 
 	/*
+	 *	Free modules, this needs to be done explicitly
+	 *	because some libraries used by modules use atexit
+	 *	handlers registered after ours, and they may deinit
+	 *	themselves before we free the modules and cause
+	 *	crashes on exit.
+	 */
+	modules_rlm_free();
+
+	/*
+	 *	Same with virtual servers and proto modules.
+	 */
+	virtual_servers_free();
+
+	/*
 	 *  And now nothing should be left anywhere except the
 	 *  parsed configuration items.
 	 */
 	main_config_free(&config);
-
-	/*
-	 *	Free the modules that we loaded.
-	 */
-	if (dl_modules) talloc_free(dl_modules);
-
-	/*
-	 *	Complain in debug builds about dictionaries
-	 *	that haven't been freed.
-	 */
-	if (fr_dict_global_ctx_free(dict_gctx) < 0) {
-#ifndef NDEBUG
-		fr_perror("radiusd");
-		ret = EXIT_FAILURE;
-#endif
-	}
 
 	/*
 	 *  Cleanup everything else

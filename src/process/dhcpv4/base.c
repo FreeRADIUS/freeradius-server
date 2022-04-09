@@ -453,7 +453,7 @@ extern fr_process_module_t process_dhcpv4;
 fr_process_module_t process_dhcpv4 = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
-		.name		= "process_dhcpv4",
+		.name		= "dhcpv4",
 		.inst_size	= sizeof(process_dhcpv4_t)
 	},
 	.process	= mod_process,

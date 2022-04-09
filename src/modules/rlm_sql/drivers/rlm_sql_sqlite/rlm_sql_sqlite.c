@@ -815,7 +815,7 @@ static int mod_load(void)
 extern rlm_sql_driver_t rlm_sql_sqlite;
 rlm_sql_driver_t rlm_sql_sqlite = {
 	.common = {
-		.name				= "rlm_sql_sqlite",
+		.name				= "sql_sqlite",
 		.magic				= MODULE_MAGIC_INIT,
 		.inst_size			= sizeof(rlm_sql_sqlite_t),
 		.config				= driver_config,

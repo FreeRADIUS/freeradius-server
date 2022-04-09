@@ -2597,7 +2597,7 @@ int main(int argc, char *argv[])
 							 conf->pcap_filter, conf->pcap_filter);
 	}
 
-	dict_gctx = fr_dict_global_ctx_init(conf, dict_dir);
+	dict_gctx = fr_dict_global_ctx_init(NULL, true, dict_dir);
 	if (!dict_gctx) {
 		fr_perror("radsniff");
 		fr_exit_now(EXIT_FAILURE);

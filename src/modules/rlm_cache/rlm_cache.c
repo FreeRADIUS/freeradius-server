@@ -37,7 +37,7 @@ extern module_rlm_t rlm_cache;
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("driver", FR_TYPE_VOID, rlm_cache_t, driver_submodule), .dflt = "rbtree",
-			 .func = module_submodule_parse },
+			 .func = module_rlm_submodule_parse },
 	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_cache_config_t, key) },
 	{ FR_CONF_OFFSET("ttl", FR_TYPE_TIME_DELTA, rlm_cache_config_t, ttl), .dflt = "500s" },
 	{ FR_CONF_OFFSET("max_entries", FR_TYPE_UINT32, rlm_cache_config_t, max_entries), .dflt = "0" },

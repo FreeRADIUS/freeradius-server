@@ -289,7 +289,7 @@ extern rlm_sql_driver_t rlm_sql_db2;
 rlm_sql_driver_t rlm_sql_db2 = {
 	.common = {
 		.magic				= MODULE_MAGIC_INIT,
-		.name				= "rlm_sql_db2",
+		.name				= "sql_db2",
 	},
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,

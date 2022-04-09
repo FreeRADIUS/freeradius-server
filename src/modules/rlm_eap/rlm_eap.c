@@ -191,7 +191,7 @@ static int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent,
 		break;
 	}
 #endif
- 	return module_submodule_parse(ctx, out, parent, ci, rule);
+ 	return module_rlm_submodule_parse(ctx, out, parent, ci, rule);
 }
 
 /** Convert EAP type strings to eap_type_t values

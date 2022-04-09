@@ -540,7 +540,7 @@ server default {
 		}
 	}
 
-	listen {
+	listen tcp_auth {
 		type = Access-Request
 		type = Status-Server
 
@@ -597,7 +597,7 @@ server default {
 	#
 	#  ### Listen for Accounting-Request packets
 	#
-	listen {
+	listen udp_acct {
 		type = Accounting-Request
 
 		transport = udp

@@ -975,7 +975,7 @@ int main(int argc, char **argv)
 		 *	Need to read in the dictionaries, else we may get
 		 *	validation errors when we try and parse the config.
 		 */
-		dict_gctx = fr_dict_global_ctx_init(autofree, dict_dir);
+		dict_gctx = fr_dict_global_ctx_init(NULL, true, dict_dir);
 		if (!dict_gctx) {
 			fr_perror("radmin");
 			fr_exit_now(64);

@@ -19,8 +19,9 @@
  * $Id$
  *
  * @file lib/server/module.h
- * @brief Interface to the RADIUS module system.
+ * @brief Interface to the FreeRADIUS module system.
  *
+ * @copyright 2022 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013 The FreeRADIUS server project
  */
 RCSIDH(modules_h, "$Id$")
@@ -40,6 +41,7 @@ typedef struct module_s				module_t;
 typedef struct module_method_names_s		module_method_names_t;
 typedef struct module_instance_s		module_instance_t;
 typedef struct module_thread_instance_s		module_thread_instance_t;
+typedef struct module_list_t			module_list_t;
 
 #define MODULE_TYPE_THREAD_SAFE		(0 << 0) 	//!< Module is threadsafe.
 #define MODULE_TYPE_THREAD_UNSAFE	(1 << 0) 	//!< Module is not threadsafe.
@@ -143,6 +145,15 @@ struct module_s {
 	size_t				thread_inst_size;
 };
 
+/** What state the module instance is currently in
+ *
+ */
+typedef enum {
+	MODULE_INSTANCE_INIT = 0,
+	MODULE_INSTANCE_BOOTSTRAPPED,
+	MODULE_INSTANCE_INSTANTIATED
+} module_instance_state_t;
+
 /** Per instance data
  *
  * Per-instance data structure, to correlate the modules with the
@@ -150,8 +161,16 @@ struct module_s {
  * data structures.
  */
 struct module_instance_s {
+	fr_heap_index_t			inst_idx;	//!< Entry in the bootstrap/instantiation heap.
+							//!< should be an identical value to the thread-specific
+							///< data for this module.
+
 	fr_rb_node_t			name_node;	//!< Entry in the name tree.
 	fr_rb_node_t			data_node;	//!< Entry in the data tree.
+
+	module_list_t			*ml;		//!< Module list this instance belongs to.
+
+	uint32_t			number;		//!< Unique module number.
 
 	char const			*name;		//!< Instance name e.g. user_database.
 
@@ -164,13 +183,10 @@ struct module_instance_s {
 							///< This exports module methods, i.e. the functions
 							///< which allow the module to perform actions.
 
-	pthread_mutex_t			*mutex;		//!< Used prevent multiple threads entering a thread
+	pthread_mutex_t			mutex;		//!< Used prevent multiple threads entering a thread
 							///< unsafe module simultaneously.
 
-	uint32_t			number;		//!< unique module number.  Used as a lookup into the
-							///< thread instance array.
-
-	bool				instantiated;	//!< Whether the module has been instantiated yet.
+	module_instance_state_t		state;		//!< What's been done with this module so far.
 
 	/** @name Return code overrides
 	 * @{
@@ -184,13 +200,6 @@ struct module_instance_s {
 	unlang_actions_t       		actions;	//!< default actions and retries.
 
 	/** @} */
-
-	/** @name Tree insertion tracking
-	 * @{
- 	 */
-	bool				in_name_tree;	//!< Whether this is in the name lookup tree.
-	bool				in_data_tree;	//!< Whether this is in the data lookup tree.
-	/** @} */
 };
 
 /** Per thread per instance data
@@ -198,6 +207,10 @@ struct module_instance_s {
  * Stores module and thread specific data.
  */
 struct module_thread_instance_s {
+	fr_heap_index_t			inst_idx;	//!< Entry in the thread-specific bootstrap heap.
+							///< Should be an identical value to the global
+							///< instance data for the same module.
+
 	void				*data;		//!< Thread specific instance data.
 
 	fr_event_list_t			*el;		//!< Event list associated with this thread.
@@ -208,6 +221,18 @@ struct module_thread_instance_s {
 	uint64_t			active_callers; //! number of active callers.  i.e. number of current yields
 };
 
+/** A list of modules
+ *
+ * This allows modules to be instantiated and freed in phases,
+ * i.e. proto modules before rlm modules.
+ */
+struct module_list_t {
+	uint32_t			last_number;	//!< Last identifier assigned to a module instance.
+	char const			*name;		//!< Friendly list identifier.
+	fr_rb_tree_t			*name_tree;	//!< Modules indexed by name.
+	fr_rb_tree_t			*data_tree;	//!< Modules indexed by data.
+};
+
 /** Map string values to module state method
  *
  */
@@ -215,7 +240,6 @@ typedef struct {
 	char const			*name;		//!< String identifier for state.
 	module_method_t			func;		//!< State function.
 } module_state_func_table_t;
-
 
 /** @name Callbacks for the CONF_PARSER
  *
@@ -229,14 +253,16 @@ int		module_submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
  *
  * @{
  */
-module_instance_t	*module_by_name(module_instance_t const *parent, char const *asked_name);
+module_instance_t	*module_parent(module_instance_t const *child);
 
-module_instance_t	*module_by_data(void const *data);
+module_instance_t	*module_by_name(module_list_t const *ml, module_instance_t const *parent, char const *asked_name)
+			CC_HINT(nonnull(1,3));
+
+module_instance_t	*module_by_data(module_list_t const *ml, void const *data);
 
 module_thread_instance_t *module_thread(module_instance_t *mi);
 
-module_thread_instance_t *module_thread_by_data(void const *data);
-
+module_thread_instance_t *module_thread_by_data(module_list_t const *ml, void const *data);
 /** @} */
 
 /** @name Module and module thread initialisation and instantiation
@@ -245,18 +271,28 @@ module_thread_instance_t *module_thread_by_data(void const *data);
  */
 void		module_free(module_instance_t *mi);
 
-int		modules_init(void);
+void		modules_thread_detach(module_list_t const *ml);
 
-void		modules_free(void);
+int		modules_thread_instantiate(TALLOC_CTX *ctx, module_list_t const *ml, fr_event_list_t *el) CC_HINT(nonnull);
 
-int		modules_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el) CC_HINT(nonnull);
+int		module_instantiate(module_instance_t *mi) CC_HINT(nonnull);
 
-void		modules_thread_detach(void);
+int		modules_instantiate(module_list_t const *ml) CC_HINT(nonnull);
 
-int		modules_instantiate(CONF_SECTION *root) CC_HINT(nonnull);
+int		module_bootstrap(module_instance_t *mi) CC_HINT(nonnull);
 
-module_instance_t *module_bootstrap(dl_module_type_t type, module_instance_t const *parent, CONF_SECTION *cs)
-		CC_HINT(nonnull(3));
+int		modules_bootstrap(module_list_t const *ml) CC_HINT(nonnull);
+
+int		module_conf_parse(module_instance_t *mi, CONF_SECTION *mod_cs) CC_HINT(nonnull);
+
+module_instance_t *module_alloc(module_list_t *ml,
+			        module_instance_t const *parent,
+			        dl_module_type_t type, char const *mod_name, char const *inst_name)
+			        CC_HINT(nonnull(1));
+
+module_list_t	*module_list_alloc(TALLOC_CTX *ctx, char const *name);
+
+void		modules_init(char const *lib_dir);
 /** @} */
 
 #ifdef __cplusplus

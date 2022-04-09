@@ -590,17 +590,17 @@ unlang_action_t unlang_module_yield(request_t *request,
 /*
  *	Lock the mutex for the module
  */
-static inline CC_HINT(always_inline) void safe_lock(module_instance_t *instance)
+static inline CC_HINT(always_inline) void safe_lock(module_instance_t *mi)
 {
-	if (instance->mutex) pthread_mutex_lock(instance->mutex);
+	if ((mi->module->type & MODULE_TYPE_THREAD_UNSAFE) != 0) pthread_mutex_lock(&mi->mutex);
 }
 
 /*
  *	Unlock the mutex for the module
  */
-static inline CC_HINT(always_inline) void safe_unlock(module_instance_t *instance)
+static inline CC_HINT(always_inline) void safe_unlock(module_instance_t *mi)
 {
-	if (instance->mutex) pthread_mutex_unlock(instance->mutex);
+	if ((mi->module->type & MODULE_TYPE_THREAD_UNSAFE) != 0) pthread_mutex_unlock(&mi->mutex);
 }
 
 /** Send a signal (usually stop) to a request

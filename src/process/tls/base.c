@@ -183,7 +183,7 @@ extern fr_process_module_t process_tls;
 fr_process_module_t process_tls = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
-		.name		= "process_tls",
+		.name		= "tls",
 		.inst_size	= sizeof(process_tls_t)
 	},
 	.process	= mod_process,

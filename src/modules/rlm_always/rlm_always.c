@@ -119,7 +119,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_always_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_always_t);
 	xlat_t		*xlat;
 
-	inst->mi = module_by_name(NULL, mctx->inst->name);
+	inst->mi = module_rlm_by_name(NULL, mctx->inst->name);
 	if (!inst->mi) {
 		cf_log_err(mctx->inst->conf, "Can't find the module instance data for this module: %s", mctx->inst->name);
 		return -1;

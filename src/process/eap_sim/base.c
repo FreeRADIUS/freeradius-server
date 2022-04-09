@@ -255,7 +255,7 @@ extern fr_process_module_t process_eap_sim;
 fr_process_module_t process_eap_sim = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
-		.name		= "process_eap_sim",
+		.name		= "eap_sim",
 		.onload		= mod_load,
 		.unload		= mod_unload,
 		.config		= submodule_config,

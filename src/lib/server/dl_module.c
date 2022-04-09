@@ -150,7 +150,6 @@ static void dl_module_unload_func(dl_t const *dl, UNUSED void *symbol, UNUSED vo
  * This is used to detect potential ABI issues caused by running with modules which
  * were built for a different version of the server.
  *
- * @param[in] cs	being parsed.
  * @param[in] module	Common fields from module's exported interface struct.
  * @returns
  *	- 0 on success.
@@ -158,7 +157,7 @@ static void dl_module_unload_func(dl_t const *dl, UNUSED void *symbol, UNUSED vo
  *	- -2 if version mismatch.
  *	- -3 if commit mismatch.
  */
-static int dl_module_magic_verify(CONF_SECTION const *cs, dl_module_common_t const *module)
+static int dl_module_magic_verify(dl_module_common_t const *module)
 {
 #ifdef HAVE_DLADDR
 	Dl_info dl_info;
@@ -167,10 +166,10 @@ static int dl_module_magic_verify(CONF_SECTION const *cs, dl_module_common_t con
 
 	if (MAGIC_PREFIX(module->magic) != MAGIC_PREFIX(RADIUSD_MAGIC_NUMBER)) {
 #ifdef HAVE_DLADDR
-		cf_log_err(cs, "Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
+		ERROR("Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
 #endif
-		cf_log_err(cs, "Application and rlm_%s magic number (prefix) mismatch."
-			      "  application: %x module: %x", module->name,
+		ERROR("Application and rlm_%s magic number (prefix) mismatch."
+		      "  application: %x module: %x", module->name,
 			      MAGIC_PREFIX(RADIUSD_MAGIC_NUMBER),
 			      MAGIC_PREFIX(module->magic));
 		return -1;
@@ -178,27 +177,35 @@ static int dl_module_magic_verify(CONF_SECTION const *cs, dl_module_common_t con
 
 	if (MAGIC_VERSION(module->magic) != MAGIC_VERSION(RADIUSD_MAGIC_NUMBER)) {
 #ifdef HAVE_DLADDR
-		cf_log_err(cs, "Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
+		ERROR("Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
 #endif
-		cf_log_err(cs, "Application and rlm_%s magic number (version) mismatch."
-			      "  application: %lx module: %lx", module->name,
-			      (unsigned long) MAGIC_VERSION(RADIUSD_MAGIC_NUMBER),
-			      (unsigned long) MAGIC_VERSION(module->magic));
+		ERROR("Application and rlm_%s magic number (version) mismatch."
+		      "  application: %lx module: %lx", module->name,
+		      (unsigned long) MAGIC_VERSION(RADIUSD_MAGIC_NUMBER),
+		      (unsigned long) MAGIC_VERSION(module->magic));
 		return -2;
 	}
 
 	if (MAGIC_COMMIT(module->magic) != MAGIC_COMMIT(RADIUSD_MAGIC_NUMBER)) {
 #ifdef HAVE_DLADDR
-		cf_log_err(cs, "Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
+		ERROR("Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
 #endif
-		cf_log_err(cs, "Application and rlm_%s magic number (commit) mismatch."
-			      "  application: %lx module: %lx", module->name,
-			      (unsigned long) MAGIC_COMMIT(RADIUSD_MAGIC_NUMBER),
-			      (unsigned long) MAGIC_COMMIT(module->magic));
+		ERROR("Application and rlm_%s magic number (commit) mismatch."
+		      "  application: %lx module: %lx", module->name,
+		      (unsigned long) MAGIC_COMMIT(RADIUSD_MAGIC_NUMBER),
+		      (unsigned long) MAGIC_COMMIT(module->magic));
 		return -3;
 	}
 
 	return 0;
+}
+
+/** Lookup a module's parent
+ *
+ */
+dl_module_inst_t const	*dl_module_parent_instance(dl_module_inst_t const *child)
+{
+	return child->parent;
 }
 
 /** Lookup a dl_module_inst_t via instance data
@@ -361,8 +368,6 @@ static int _dl_module_free(dl_module_t *dl_module)
  * When all references to the original dlhandle are freed, dlclose() will be called on the
  * dlhandle to unload the module.
  *
- * @param[in] conf	section describing the module's configuration.  This is only used
- *			to give error messages context, and for initialization.
  * @param[in] parent	The dl_module_t of the parent module, e.g. rlm_sql for rlm_sql_postgresql.
  * @param[in] name	of the module e.g. sql for rlm_sql.
  * @param[in] type	Used to determine module name prefixes.  Must be one of:
@@ -373,7 +378,7 @@ static int _dl_module_free(dl_module_t *dl_module)
  *	- Module handle holding dlhandle, and module's public interface structure.
  *	- NULL if module couldn't be loaded, or some other error occurred.
  */
-dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char const *name, dl_module_type_t type)
+dl_module_t const *dl_module(dl_module_t const *parent, char const *name, dl_module_type_t type)
 {
 	dl_module_t			*dl_module = NULL;
 	dl_t				*dl = NULL;
@@ -402,7 +407,7 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 	 *	If the module's already been loaded, increment the reference count.
 	 */
 	dl_module = fr_rb_find(dl_module_loader->module_tree,
-				    &(dl_module_t){ .dl = &(dl_t){ .name = module_name }});
+			       &(dl_module_t){ .dl = &(dl_t){ .name = module_name }});
 	if (dl_module) {
 		talloc_free(module_name);
 		talloc_increase_ref_count(dl_module);
@@ -420,9 +425,9 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 	 */
 	dl = dl_by_name(dl_module_loader->dl_loader, module_name, dl_module, false);
 	if (!dl) {
-		cf_log_perr(conf, "Failed to link to module \"%s\"", module_name);
-		cf_log_err(conf, "Make sure it (and all its dependent libraries!) are in the search path"
-			   " of your system's ld");
+		ERROR("Failed to link to module \"%s\"", module_name);
+		ERROR("Make sure it (and all its dependent libraries!) are in the search path"
+		      " of your system's ld");
 	error:
 		talloc_free(module_name);
 		talloc_free(dl_module);		/* Do not free dl explicitly, it's handled by the destructor */
@@ -434,7 +439,7 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 
 	common = dlsym(dl->handle, module_name);
 	if (!common) {
-		cf_log_err(conf, "Could not find \"%s\" symbol in module: %s", module_name, dlerror());
+		ERROR("Could not find \"%s\" symbol in module: %s", module_name, dlerror());
 		goto error;
 	}
 	dl_module->common = common;
@@ -442,23 +447,23 @@ dl_module_t const *dl_module(CONF_SECTION *conf, dl_module_t const *parent, char
 	/*
 	 *	Before doing anything else, check if it's sane.
 	 */
-	if (dl_module_magic_verify(conf, common) < 0) goto error;
+	if (dl_module_magic_verify(common) < 0) goto error;
 
 	DEBUG3("%s validated.  Handle address %p, symbol address %p", module_name, dl, common);
 
 	if (dl_symbol_init(dl_module_loader->dl_loader, dl) < 0) {
-		cf_log_perr(conf, "Failed calling initializers for module \"%s\"", module_name);
+		ERROR("Failed calling initializers for module \"%s\"", module_name);
 		goto error;
 	}
 
-	cf_log_info(conf, "Loaded module \"%s\"", module_name);
+	DEBUG2("Loaded module %s", module_name);
 
 	/*
 	 *	Add the module to the dl cache
 	 */
 	dl_module->in_tree = fr_rb_insert(dl_module_loader->module_tree, dl_module);
 	if (!dl_module->in_tree) {
-		cf_log_err(conf, "Failed caching module \"%s\"", module_name);
+		ERROR("Failed caching module \"%s\"", module_name);
 		goto error;
 	}
 
@@ -533,66 +538,67 @@ void *dl_module_instance_symbol(dl_module_inst_t const *dl_inst, char const *sym
  * @param[in] ctx	to allocate structures in.
  * @param[out] out	where to write our #dl_module_inst_t containing the module
  *			handle and instance.
- * @param[in] conf	section to parse.
  * @param[in] parent	of module instance.
- * @param[in] name	of the module to load .e.g. 'udp' for 'proto_radius_udp'
- *			if the parent were 'proto_radius'.
  * @param[in] type	of module to load.
+ * @param[in] mod_name	of the module to load .e.g. 'udp' for 'proto_radius_udp'
+ *			if the parent were 'proto_radius'.
+ * @param[in] inst_name	The name of the instance .e.g. 'sql_aws_dc01'
  *
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
 int dl_module_instance(TALLOC_CTX *ctx, dl_module_inst_t **out,
-		       CONF_SECTION *conf, dl_module_inst_t const *parent,
-		       char const *name, dl_module_type_t type)
+		       dl_module_inst_t const *parent,
+		       dl_module_type_t type, char const *mod_name, char const *inst_name)
 {
 	dl_module_inst_t	*dl_inst;
-	char const		*name2;
 
 	DL_INIT_CHECK;
 
 	MEM(dl_inst = talloc_zero(ctx, dl_module_inst_t));
 
-	/*
-	 *	Find a section with the same name as the module
-	 */
-	dl_inst->module = dl_module(conf, parent ? parent->module : NULL, name, type);
+	dl_inst->module = dl_module(parent ? parent->module : NULL, mod_name, type);
 	if (!dl_inst->module) {
 		talloc_free(dl_inst);
 		return -1;
 	}
+	dl_inst->name = talloc_typed_strdup(dl_inst, inst_name);
 
 	/*
 	 *	ctx here is the main module's instance data
 	 */
 	dl_module_instance_data_alloc(dl_inst, dl_inst->module);
-
 	talloc_set_destructor(dl_inst, _dl_module_instance_free);
 
-	/*
-	 *	Associate the module instance with the conf section
-	 *	*before* executing any parse rules that might need it.
-	 */
-	cf_data_add(conf, dl_inst, dl_inst->module->dl->name, false);
-
-	name2 = cf_section_name2(conf);
-	if (name2) {
-		dl_inst->name = talloc_typed_strdup(dl_inst, name2);
-	} else {
-		dl_inst->name = talloc_typed_strdup(dl_inst, cf_section_name1(conf));
-	}
-
-	dl_inst->conf = conf;
 	dl_inst->parent = parent;
-
 	*out = dl_inst;
 
 	return 0;
 }
 
-int dl_module_conf_parse(dl_module_inst_t *dl_inst)
+/** Avoid boilerplate when setting the module instance name
+ *
+ */
+char const *dl_module_inst_name_from_conf(CONF_SECTION *conf)
 {
+	char const *name2;
+
+	name2 = cf_section_name2(conf);
+	if (name2) return name2;
+
+	return cf_section_name1(conf);
+}
+
+int dl_module_conf_parse(dl_module_inst_t *dl_inst, CONF_SECTION *conf)
+{
+	/*
+	 *	Associate the module instance with the conf section
+	 *	*before* executing any parse rules that might need it.
+	 */
+	cf_data_add(conf, dl_inst, dl_inst->module->dl->name, false);
+	dl_inst->conf = conf;
+
 	if (dl_inst->module->common->config && dl_inst->conf) {
 		if ((cf_section_rules_push(dl_inst->conf, dl_inst->module->common->config)) < 0 ||
 		    (cf_section_parse(dl_inst->data, dl_inst->data, dl_inst->conf) < 0)) {
@@ -601,6 +607,7 @@ int dl_module_conf_parse(dl_module_inst_t *dl_inst)
 			return -1;
 		}
 	}
+
 	return 0;
 }
 

@@ -3678,7 +3678,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	/*
 	 *	The dictionaries are not compatible, forbid it.
 	 */
-	dict = virtual_server_namespace(server);
+	dict = virtual_server_dict_by_name(server);
 	if (!dict) {
 		cf_log_err(cs, "Cannot call virtual server '%s', failed retrieving its namespace",
 			   server);

@@ -244,7 +244,7 @@ extern fr_process_module_t process_arp;
 fr_process_module_t process_arp = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
-		.name		= "process_arp",
+		.name		= "arp",
 		.inst_size	= sizeof(process_arp_t)
 	},
 	.process	= mod_process,

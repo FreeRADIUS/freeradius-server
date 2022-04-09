@@ -671,7 +671,7 @@ extern rlm_sql_driver_t rlm_sql_postgresql;
 rlm_sql_driver_t rlm_sql_postgresql = {
 	.common = {
 		.magic				= MODULE_MAGIC_INIT,
-		.name				= "rlm_sql_postgresql",
+		.name				= "sql_postgresql",
 		.inst_size			= sizeof(rlm_sql_postgresql_t),
 		.onload				= mod_load,
 		.config				= driver_config,

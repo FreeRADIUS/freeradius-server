@@ -1165,7 +1165,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	buff[1] = stack->buff[1];
 	buff[2] = stack->buff[2];
 
-	dict = virtual_server_namespace_by_ci(cf_section_to_item(parent));
+	dict = virtual_server_dict_by_child_ci(cf_section_to_item(parent));
 
 	/*
 	 *	fr_cond_tokenize needs the current section, so we

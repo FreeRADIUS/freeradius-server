@@ -146,7 +146,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-	dict_gctx = fr_dict_global_ctx_init(NULL, dict_dir);
+	dict_gctx = fr_dict_global_ctx_init(NULL, true, dict_dir);
 	if (!dict_gctx) {
 		fr_perror("dict_global");
 		fr_exit_now(EXIT_FAILURE);

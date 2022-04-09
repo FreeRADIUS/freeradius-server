@@ -234,7 +234,7 @@ int fr_dict_test_init(TALLOC_CTX *ctx, fr_dict_t **dict_p, fr_dict_test_attr_t c
 	fr_dict_gctx_t const	*our_dict_gctx;
 	fr_dict_t		*dict;
 
-	our_dict_gctx = fr_dict_global_ctx_init(ctx, "share/dictionary");
+	our_dict_gctx = fr_dict_global_ctx_init(ctx, false, "share/dictionary");
 	if (!our_dict_gctx) return -1;
 
 	if (!test_defs) test_defs = fr_dict_test_attrs;

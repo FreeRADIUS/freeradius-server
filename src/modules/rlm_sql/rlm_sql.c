@@ -83,7 +83,7 @@ static const CONF_PARSER postauth_config[] = {
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("driver", FR_TYPE_VOID, rlm_sql_t, driver_submodule), .dflt = "null",
-			 .func = module_submodule_parse },
+			 .func = module_rlm_submodule_parse },
 	{ FR_CONF_OFFSET("server", FR_TYPE_STRING, rlm_sql_config_t, sql_server), .dflt = "" },	/* Must be zero length so drivers can determine if it was set */
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT32, rlm_sql_config_t, sql_port), .dflt = "0" },
 	{ FR_CONF_OFFSET("login", FR_TYPE_STRING, rlm_sql_config_t, sql_login), .dflt = "" },

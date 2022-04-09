@@ -1233,7 +1233,7 @@ extern fr_process_module_t process_dhcpv6;
 fr_process_module_t process_dhcpv6 = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
-		.name		= "process_dhcpv6",
+		.name		= "dhcpv6",
 		.config		= dhcpv6_process_config,
 		.inst_size	= sizeof(process_dhcpv6_t),
 

@@ -103,8 +103,9 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 	inst = talloc_get_type_abort(parent_inst->data, proto_control_t);
 	inst->io.transport = name;
 
-	if (dl_module_instance(ctx, &dl_mod_inst, transport_cs, parent_inst, name, DL_MODULE_TYPE_SUBMODULE) < 0) return -1;
-	if (dl_module_conf_parse(dl_mod_inst) < 0) {
+	if (dl_module_instance(ctx, &dl_mod_inst, parent_inst,
+			       DL_MODULE_TYPE_SUBMODULE, name, dl_module_inst_name_from_conf(transport_cs)) < 0) return -1;
+	if (dl_module_conf_parse(dl_mod_inst, transport_cs) < 0) {
 		talloc_free(dl_mod_inst);
 		return -1;
 	}

@@ -318,7 +318,7 @@ extern rlm_cache_driver_t rlm_cache_memcached;
 rlm_cache_driver_t rlm_cache_memcached = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
-		.name		= "rlm_cache_memcached",
+		.name		= "cache_memcached",
 		.inst_size	= sizeof(rlm_cache_memcached_t),
 		.config		= driver_config,
 

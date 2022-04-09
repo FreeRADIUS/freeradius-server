@@ -158,7 +158,7 @@ static xlat_thread_inst_t *xlat_thread_inst_alloc(TALLOC_CTX *ctx, fr_event_list
 		module_ctx_t *mctx;
 
 		mctx = module_ctx_from_inst(xt, call->func->mctx);
-		mctx->thread = module_thread_by_data(mctx->inst->data)->data;
+		mctx->thread = module_rlm_thread_by_data(mctx->inst->data)->data;
 
 		xt->mctx = mctx;
 	}

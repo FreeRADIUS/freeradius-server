@@ -1250,7 +1250,7 @@ do {\
 	if (cf_section_rules_push(cs, server_config) < 0) goto failure;
 	if (cf_section_rules_push(cs, virtual_servers_config) < 0) goto failure;
 
-	DEBUG("Parsing main configuration.");
+	DEBUG("Parsing main configuration");
 	if (cf_section_parse(config, config, cs) < 0) goto failure;
 
 	/*

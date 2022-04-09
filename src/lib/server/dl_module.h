@@ -170,8 +170,9 @@ struct dl_module_instance_s {
 extern fr_table_num_sorted_t const dl_module_type_prefix[];
 extern size_t dl_module_type_prefix_len;
 
-dl_module_t const	*dl_module(CONF_SECTION *conf, dl_module_t const *parent,
-				   char const *name, dl_module_type_t type);
+dl_module_t const	*dl_module(dl_module_t const *parent, char const *name, dl_module_type_t type);
+
+dl_module_inst_t const	*dl_module_parent_instance(dl_module_inst_t const *child);
 
 dl_module_inst_t const	*dl_module_instance_by_data(void const *data);
 
@@ -184,10 +185,12 @@ void			*dl_module_parent_data_by_child_data(void const *data);
 void			*dl_module_instance_symbol(dl_module_inst_t const *instance, char const *sym_name);
 
 int			dl_module_instance(TALLOC_CTX *ctx, dl_module_inst_t **out,
-					   CONF_SECTION *conf, dl_module_inst_t const *parent,
-					   char const *name, dl_module_type_t type);
+					   dl_module_inst_t const *parent,
+					   dl_module_type_t type, char const *name, char const *inst_name);
 
-int			dl_module_conf_parse(dl_module_inst_t *dl_inst);
+char const		*dl_module_inst_name_from_conf(CONF_SECTION *conf);
+
+int			dl_module_conf_parse(dl_module_inst_t *dl_inst, CONF_SECTION *conf);
 
 char const		*dl_module_search_path(void);
 

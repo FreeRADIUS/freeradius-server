@@ -90,20 +90,43 @@ module_instance_t	*module_rlm_by_name_and_method(module_method_t *method, rlm_co
 						   char const **name1, char const **name2,
 						   char const *asked_name);
 
+module_thread_instance_t *module_rlm_thread_by_data(void const *data);
+
+module_instance_t	*module_rlm_by_name(module_instance_t const *parent, char const *asked_name);
+
 CONF_SECTION		*module_rlm_by_name_virtual(char const *asked_name);
 
+/** @} */
+
+/** @name Support functions
+ *
+ * @{
+ */
+int			module_rlm_submodule_parse(TALLOC_CTX *ctx, void *out, void *parent,
+						   CONF_ITEM *ci, CONF_PARSER const *rule);
 /** @} */
 
 /** @name Module and module thread initialisation and instantiation
  *
  * @{
  */
+void		modules_rlm_thread_detach(void);
+
+int		modules_rlm_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el) CC_HINT(nonnull(2));
+
+int		modules_rlm_instantiate(void);
+
 int		modules_rlm_bootstrap(CONF_SECTION *root) CC_HINT(nonnull);
 /** @} */
 
-void	modules_rlm_free(void);
+/** @name Global initialisation and free functions
+ *
+ * @{
+ */
+void		modules_rlm_free(void);
 
-int	modules_rlm_init(void);
+int		modules_rlm_init(void);
+/** @} */
 
 #ifdef __cplusplus
 }

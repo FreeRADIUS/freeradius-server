@@ -307,7 +307,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	dict_gctx = fr_dict_global_ctx_init(autofree, config->dict_dir);
+	dict_gctx = fr_dict_global_ctx_init(NULL, true, config->dict_dir);
 	if (!dict_gctx) {
 		fr_perror("%s", main_config->name);
 		fr_exit_now(EXIT_FAILURE);

@@ -259,13 +259,14 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	parent_inst = cf_data_value(cf_data_find(inst->cs, dl_module_inst_t, "proto_arp"));
 	fr_assert(parent_inst);
 
-	if (dl_module_instance(inst->cs, &inst->io_submodule, inst->cs,
-			       parent_inst, "ethernet", DL_MODULE_TYPE_SUBMODULE) < 0) {
+	if (dl_module_instance(inst->cs, &inst->io_submodule,
+			       parent_inst,
+			       DL_MODULE_TYPE_SUBMODULE, "ethernet", dl_module_inst_name_from_conf(inst->cs)) < 0) {
 		cf_log_perr(inst->cs, "Failed to load proto_arp_ethernet");
 		return -1;
 	}
 
-	if (dl_module_conf_parse(inst->io_submodule) < 0) {
+	if (dl_module_conf_parse(inst->io_submodule, inst->cs) < 0) {
 		TALLOC_FREE(inst->io_submodule);
 		return -1;
 	}

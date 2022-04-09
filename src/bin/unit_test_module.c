@@ -553,7 +553,6 @@ int main(int argc, char *argv[])
 
 	char			*p;
 	main_config_t		*config;
-	dl_module_loader_t	*dl_modules = NULL;
 
 	CONF_SECTION		*server_cs;
 
@@ -722,13 +721,9 @@ int main(int argc, char *argv[])
 	 *	Initialize the DL infrastructure, which is used by the
 	 *	config file parser.
 	 */
-	dl_modules = dl_module_loader_init(config->lib_dir);
-	if (!dl_modules) {
-		fr_perror("%s", config->name);
-		EXIT_WITH_FAILURE;
-	}
+	modules_init(config->lib_dir);
 
-	dict_gctx = fr_dict_global_ctx_init(autofree, config->dict_dir);
+	dict_gctx = fr_dict_global_ctx_init(NULL, true, config->dict_dir);
 	if (!dict_gctx) {
 		fr_perror("%s", config->name);
 		EXIT_WITH_FAILURE;
@@ -785,18 +780,19 @@ int main(int argc, char *argv[])
 		setenv("PROTOCOL", PROTOCOL_NAME, true);
 	}
 
-	/*  Read the configuration files, BEFORE doing anything else.  */
+	/*
+	 *	Setup the global structures for module lists
+	 */
+	if (modules_rlm_init() < 0) {
+		fr_perror("%s", config->name);
+		EXIT_WITH_FAILURE;
+	}
+	if (virtual_servers_init() < 0) {
+		fr_perror("%s", config->name);
+		EXIT_WITH_FAILURE;
+	}
+
 	if (main_config_init(config) < 0) {
-		EXIT_WITH_FAILURE;
-	}
-
-	if (modules_init() < 0) {
-		fr_perror("%s", config->name);
-		EXIT_WITH_FAILURE;
-	}
-
-	if (virtual_servers_init(config->root_cs) < 0) {
-		fr_perror("%s", config->name);
 		EXIT_WITH_FAILURE;
 	}
 
@@ -821,7 +817,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Do some sanity checking.
 	 */
-	dict_check = virtual_server_namespace("default");
+	dict_check = virtual_server_dict_by_name("default");
 	if (!dict_check || (dict_check != dict_protocol)) {
 		ERROR("Virtual server namespace does not match requested namespace '%s'", PROTOCOL_NAME);
 		EXIT_WITH_FAILURE;
@@ -836,7 +832,8 @@ int main(int argc, char *argv[])
 	/*
 	 *	Simulate thread specific instantiation
 	 */
-	if (modules_thread_instantiate(thread_ctx, el) < 0) EXIT_WITH_FAILURE;
+	if (modules_rlm_thread_instantiate(thread_ctx, el) < 0) EXIT_WITH_FAILURE;
+	if (virtual_servers_thread_instantiate(thread_ctx, el) < 0) EXIT_WITH_FAILURE;
 	if (xlat_thread_instantiate(thread_ctx, el) < 0) EXIT_WITH_FAILURE;
 	unlang_thread_instantiate(thread_ctx);
 
@@ -995,6 +992,14 @@ cleanup:
 	talloc_free(thread_ctx);
 
 	/*
+	 *	Ensure all thread local memory is cleaned up
+	 *	at the appropriate time.  This emulates what's
+	 *	done with worker/network threads in the
+	 *	scheduler.
+	 */
+	fr_atexit_thread_trigger_all();
+
+	/*
 	 *	Give processes a chance to exit
 	 */
 	if (el) fr_event_list_reap_signal(el, fr_time_delta_from_sec(5), SIGKILL);
@@ -1025,6 +1030,20 @@ cleanup:
 	unlang_free_global();
 
 	/*
+	 *	Free modules, this needs to be done explicitly
+	 *	because some libraries used by modules use atexit
+	 *	handlers registered after ours, and they may deinit
+	 *	themselves before we free the modules and cause
+	 *	crashes on exit.
+	 */
+	modules_rlm_free();
+
+	/*
+	 *	Same with virtual servers and proto modules.
+	 */
+	virtual_servers_free();
+
+	/*
 	 *	And now nothing should be left anywhere except the
 	 *	parsed configuration items.
 	 */
@@ -1039,11 +1058,9 @@ cleanup:
 	 *	Free our explicitly loaded internal dictionary
 	 */
 	if (fr_dict_free(&dict, __FILE__) < 0) {
-		fr_perror("unit_test_module");
+		fr_perror("unit_test_module - dict");
 		ret = EXIT_FAILURE;
 	}
-
-	if (dl_modules) talloc_free(dl_modules);
 
 	/*
 	 *	Free any openssl resources and the TLS dictionary
@@ -1052,22 +1069,13 @@ cleanup:
 	fr_openssl_free();
 #endif
 
-	/*
-	 *	Free all the dictionaries, and complain/fail if
-	 *	they still have dependents.
-	 */
-	if (fr_dict_global_ctx_free(dict_gctx) < 0) {
-		fr_perror("unit_test_module");
-		ret = EXIT_FAILURE;
-	}
-
 	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
 		fr_perror("unit_test_module");
 		ret = EXIT_FAILURE;
 	}
 
 	if (talloc_free(autofree) < 0) {
-		fr_perror("unit_test_module");
+		fr_perror("unit_test_module - autofree");
 		ret = EXIT_FAILURE;
 	}
 

@@ -817,7 +817,7 @@ extern rlm_sql_driver_t rlm_sql_freetds;
 rlm_sql_driver_t rlm_sql_freetds = {
 	.common = {
 		.magic				= MODULE_MAGIC_INIT,
-		.name				= "rlm_sql_freetds"
+		.name				= "sql_freetds"
 	},
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,

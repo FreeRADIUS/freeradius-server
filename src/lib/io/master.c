@@ -46,6 +46,7 @@ typedef struct {
 	// @todo - count num_nak_clients, and num_nak_connections, too
 	uint32_t			num_connections;		//!< number of dynamic connections
 	uint32_t			num_pending_packets;   		//!< number of pending packets
+	uint64_t			client_id;			//!< Unique client identifier.
 } fr_io_thread_t;
 
 /** A saved packet
@@ -475,6 +476,8 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 *	called when the instance data is freed.
 	 */
 	if (!nak) {
+		char *inst_name;
+
 		if (inst->max_connections || client->radclient->limit.max_connections) {
 			uint32_t max_connections = inst->max_connections ? inst->max_connections : client->radclient->limit.max_connections;
 
@@ -495,16 +498,24 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 			}
 		}
 
-		if (dl_module_instance(NULL, &dl_inst, NULL, inst->dl_inst, inst->transport, DL_MODULE_TYPE_SUBMODULE) < 0) {
+		/*
+		 *	FIXME - This is not at all thread safe
+		 */
+		inst_name = talloc_asprintf(NULL, "%s%"PRIu64, inst->transport, thread->client_id++);
+		if (dl_module_instance(NULL, &dl_inst, inst->dl_inst,
+				       DL_MODULE_TYPE_SUBMODULE, inst->transport, inst_name) < 0) {
+			talloc_free(inst_name);
 			DEBUG("Failed to find proto_%s_%s", inst->app->common.name, inst->transport);
 			return NULL;
 		}
+		talloc_free(inst_name);
 
-		if (dl_module_conf_parse(dl_inst) < 0) {
+/*
+		if (dl_module_conf_parse(dl_inst, inst->server_cs) < 0) {
 			TALLOC_FREE(dl_inst);
 			return NULL;
 		}
-
+*/
 		fr_assert(dl_inst != NULL);
 	} else {
 		dl_inst = talloc_init_const("nak");
@@ -2602,12 +2613,13 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		 *	Load proto_dhcpv4_dynamic_client
 		 */
 		if (dl_module_instance(conf, &inst->dynamic_submodule,
-				       conf, inst->dl_inst, "dynamic_client", DL_MODULE_TYPE_SUBMODULE) < 0) {
+				       inst->dl_inst,
+				       DL_MODULE_TYPE_SUBMODULE, inst->app->common.name, "dynamic_client") < 0) {
 			cf_log_err(conf, "Failed finding proto_%s_dynamic_client", inst->app->common.name);
 			return -1;
 		}
 
-		if (dl_module_conf_parse(inst->dynamic_submodule) < 0) {
+		if (dl_module_conf_parse(inst->dynamic_submodule, conf) < 0) {
 			TALLOC_FREE(inst->dynamic_submodule);
 			return -1;
 		}
@@ -2682,7 +2694,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		if (app_process->compile_list) {
 			tmpl_rules_t	parse_rules = {
 				.attr = {
-					.dict_def = virtual_server_namespace(cf_section_name2(inst->server_cs))
+					.dict_def = virtual_server_dict_by_name(cf_section_name2(inst->server_cs))
 				}
 			};
 

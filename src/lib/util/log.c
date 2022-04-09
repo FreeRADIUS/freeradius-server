@@ -317,6 +317,8 @@ TALLOC_CTX *fr_log_pool_init(void)
 
 	pool = fr_log_pool;
 	if (unlikely(!pool)) {
+		if (fr_atexit_is_exiting()) return NULL;	/* No new pools if we're exiting */
+
 		pool = talloc_pool(NULL, 16384);
 		if (!pool) {
 			fr_perror("Failed allocating memory for vlog_request_pool");

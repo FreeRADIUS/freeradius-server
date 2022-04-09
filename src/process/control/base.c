@@ -53,7 +53,7 @@ extern fr_process_module_t process_control;
 fr_process_module_t process_control = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
-		.name		= "process_control"
+		.name		= "control"
 	},
 	.process	= mod_process,
 	.dict		= &dict_freeradius

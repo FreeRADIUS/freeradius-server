@@ -33,6 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/virtual_servers.h>
+#include <freeradius-devel/util/atexit.h>
 
 /** Lookup virtual module by name
  */
@@ -64,6 +65,11 @@ char const *section_type_value[MOD_COUNT] = {
 	"accounting",
 	"post-auth"
 };
+
+/** Global module list for all backend modules
+ *
+ */
+static module_list_t *rlm_modules;
 
 /** Initialise a module specific exfile handle
  *
@@ -175,14 +181,14 @@ int module_rlm_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, ch
 	 *	instantiation order issues.
 	 */
 	inst_name = cf_pair_value(cp);
-	mi = module_by_name(NULL, inst_name);
+	mi = module_by_name(rlm_modules, NULL, inst_name);
 	if (!mi) {
 		cf_log_err(cp, "Unknown module instance \"%s\"", inst_name);
 
 		return -1;
 	}
 
-	if (!mi->instantiated) {
+	if (mi->state != MODULE_INSTANCE_INSTANTIATED) {
 		CONF_SECTION *parent = module;
 
 		/*
@@ -197,14 +203,14 @@ int module_rlm_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, ch
 			parent = tmp;
 		} while (true);
 
-		module_instantiate(module_by_name(NULL, inst_name));
+		module_instantiate(module_by_name(rlm_modules, NULL, inst_name));
 	}
 
 	/*
 	 *	Remove the config data we added for loop
 	 *	detection.
 	 */
-	cf_data_remove(module, cd);
+	cf_data_remove_by_data(module, cd);
 
 	/*
 	 *	Check the module instances are of the same type.
@@ -450,7 +456,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, rlm_co
 	 *	Module names are allowed to contain '.'
 	 *	so we search for the bare module name first.
 	 */
-	mi = module_by_name(NULL, name);
+	mi = module_by_name(rlm_modules, NULL, name);
 	if (mi) {
 		virtual_server_method_t const	*allowed_list;
 
@@ -610,7 +616,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, rlm_co
 	do {
 		*p = '\0';
 
-		mi = module_by_name(NULL, inst_name);
+		mi = module_by_name(rlm_modules, NULL, inst_name);
 		if (mi) break;
 
 		/*
@@ -808,6 +814,16 @@ CONF_SECTION *module_rlm_by_name_virtual(char const *asked_name)
 	return inst->cs;
 }
 
+module_thread_instance_t *module_rlm_thread_by_data(void const *data)
+{
+	return module_thread_by_data(rlm_modules, data);
+}
+
+module_instance_t *module_rlm_by_name(module_instance_t const *parent, char const *asked_name)
+{
+	return module_by_name(rlm_modules, parent, asked_name);
+}
+
 /** Create a virtual module.
  *
  * @param[in] cs	that defines the virtual module.
@@ -852,7 +868,7 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 	/*
 	 *	Ensure that the module doesn't exist.
 	 */
-	mi = module_by_name(NULL, name);
+	mi = module_by_name(rlm_modules, NULL, name);
 	if (mi) {
 		ERROR("Duplicate module \"%s\" in file %s[%d] and file %s[%d]",
 		      name,
@@ -926,6 +942,51 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 	}
 
 	return 0;
+}
+
+/** Generic CONF_PARSER func for loading drivers
+ *
+ */
+int module_rlm_submodule_parse(TALLOC_CTX *ctx, void *out, void *parent,
+			       CONF_ITEM *ci, CONF_PARSER const *rule)
+{
+	CONF_PARSER our_rule = *rule;
+
+	our_rule.uctx = &rlm_modules;
+
+	return module_submodule_parse(ctx, out, parent, ci, &our_rule);
+}
+
+/** Frees thread-specific data for all registered backend modules
+ *
+ */
+void modules_rlm_thread_detach(void)
+{
+	modules_thread_detach(rlm_modules);
+}
+
+/** Allocates thread-specific data for all registered backend modules
+ *
+ * @param[in] ctx	To allocate any thread-specific data in.
+ * @param[in] el	to register events.
+ * @return
+ *	- 0 if all modules were instantiated successfully.
+ *	- -1 if a module failed instantiation.
+ */
+int modules_rlm_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
+{
+	return modules_thread_instantiate(ctx, rlm_modules, el);
+}
+
+/** Performs the instantiation phase for all backend modules
+ *
+ * @return
+ *	- 0 if all modules were instantiated successfully.
+ *	- -1 if a module failed instantiation.
+ */
+int modules_rlm_instantiate(void)
+{
+	return modules_instantiate(rlm_modules);
 }
 
 /** Bootstrap modules and virtual modules
@@ -1009,8 +1070,24 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 			continue;
 		}
 
-		mi = module_bootstrap(DL_MODULE_TYPE_MODULE, NULL, subcs);
-		if (!mi) return -1;
+		mi = module_alloc(rlm_modules, NULL, DL_MODULE_TYPE_MODULE, name, dl_module_inst_name_from_conf(subcs));
+		if (unlikely(mi == NULL)) {
+			cf_log_perr(subcs, "Failed loading module");
+			return -1;
+
+		}
+
+		if (module_conf_parse(mi, subcs) < 0) {
+			cf_log_perr(subcs, "Failed parsing module config");
+		error:
+			talloc_free(mi);
+			return -1;
+		}
+
+		if (module_bootstrap(mi) < 0) {
+			cf_log_perr(subcs, "Failed bootstrapping module");
+			goto error;
+		}
 
 		/*
 		 *	Compile the default "actions" subsection, which includes retries.
@@ -1018,7 +1095,7 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 		actions = cf_section_find(subcs, "actions", NULL);
 		if (actions && unlang_compile_actions(&mi->actions, actions, (mi->module->type & MODULE_TYPE_RETRY) != 0)) {
 			talloc_free(mi);
-			return -1;
+			goto error;
 		}
 	}
 
@@ -1082,14 +1159,30 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 	return 0;
 }
 
+/** Cleanup all global structures
+ *
+ * Automatically called on exit.
+ */
 void modules_rlm_free(void)
 {
+	TALLOC_FREE(rlm_modules);
 	TALLOC_FREE(module_rlm_virtual_name_tree);
 }
 
+static void _modules_rlm_free_atexit(UNUSED void *uctx)
+{
+	modules_rlm_free();
+}
+
+/** Initialise the module list structure
+ *
+ */
 int modules_rlm_init(void)
 {
+	MEM(rlm_modules = module_list_alloc(NULL, "rlm"));
 	MEM(module_rlm_virtual_name_tree = fr_rb_inline_alloc(NULL, module_rlm_virtual_t, name_node,
 							      module_rlm_virtual_name_cmp, NULL));
+	fr_atexit_global(_modules_rlm_free_atexit, NULL);
+
 	return 0;
 }

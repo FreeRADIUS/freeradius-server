@@ -733,7 +733,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, request_
 {
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	rlm_ldap_t		*inst = talloc_get_type_abort(mod_inst, rlm_ldap_t);
-	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread_by_data(inst)->data, fr_ldap_thread_t);
+	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
 
 	LDAPURLDesc		*ldap_url;
 
@@ -902,7 +902,7 @@ free_urldesc:
 static int rlm_ldap_groupcmp(void *instance, request_t *request, UNUSED fr_pair_list_t *request_list, fr_pair_t const *check)
 {
 	rlm_ldap_t const	*inst = talloc_get_type_abort_const(instance, rlm_ldap_t);
-	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread_by_data(inst)->data, fr_ldap_thread_t);
+	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
 	rlm_rcode_t		rcode;
 
 	bool			found = false;
@@ -1032,7 +1032,7 @@ cleanup:
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_ldap_t);
-	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread_by_data(inst)->data, fr_ldap_thread_t);
+	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
 	rlm_rcode_t		rcode;
 	char const		*dn;
 	fr_ldap_thread_trunk_t	*ttrunk = NULL;
@@ -1214,7 +1214,7 @@ static unlang_action_t rlm_ldap_map_profile(rlm_rcode_t *p_result, rlm_ldap_t co
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_ldap_t);
-	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread_by_data(inst)->data, fr_ldap_thread_t);
+	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	int			ldap_errno;
 	int			i;
@@ -1442,7 +1442,7 @@ static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst
 				   request_t *request, ldap_acct_section_t *section)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
-	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread_by_data(inst)->data, fr_ldap_thread_t);
+	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
 
 	fr_ldap_thread_trunk_t	*ttrunk = NULL;
 	fr_ldap_query_t		*query = NULL;

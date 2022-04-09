@@ -963,7 +963,7 @@ static int mod_load(void)
 extern rlm_sql_driver_t rlm_sql_cassandra;
 rlm_sql_driver_t rlm_sql_cassandra = {
 	.common = {
-		.name				= "rlm_sql_cassandra",
+		.name				= "sql_cassandra",
 		.magic				= MODULE_MAGIC_INIT,
 		.inst_size			= sizeof(rlm_sql_cassandra_t),
 		.onload				= mod_load,

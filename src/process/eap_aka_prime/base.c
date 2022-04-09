@@ -268,7 +268,7 @@ extern fr_process_module_t process_eap_aka_prime;
 fr_process_module_t process_eap_aka_prime = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
-		.name		= "process_eap_aka_prime",
+		.name		= "eap_aka_prime",
 		.onload		= mod_load,
 		.unload		= mod_unload,
 		.config		= submodule_config,

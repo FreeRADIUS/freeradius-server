@@ -821,7 +821,7 @@ extern fr_process_module_t process_ttls;
 fr_process_module_t process_ttls = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
-		.name		= "process_ttls",
+		.name		= "ttls",
 		.config		= config,
 		.inst_size	= sizeof(process_ttls_t),
 

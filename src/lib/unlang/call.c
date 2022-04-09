@@ -164,7 +164,7 @@ unlang_action_t unlang_call_push(request_t *request, CONF_SECTION *server_cs, bo
 	/*
 	 *	Temporary hack until packet->code is removed
 	 */
-	dict = virtual_server_dict(server_cs);
+	dict = virtual_server_dict_by_cs(server_cs);
 	if (!dict) {
 		REDEBUG("Virtual server \"%s\" not compiled", cf_section_name2(server_cs));
 		return UNLANG_ACTION_FAIL;

@@ -312,7 +312,7 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-	our_dict_gctx = fr_dict_global_ctx_init(autofree, dict_dir);
+	our_dict_gctx = fr_dict_global_ctx_init(NULL, true, dict_dir);
 	if (!our_dict_gctx) {
 		fr_perror("radict");
 		ret = 1;

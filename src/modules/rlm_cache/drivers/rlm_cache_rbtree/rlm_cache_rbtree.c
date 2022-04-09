@@ -336,7 +336,7 @@ extern rlm_cache_driver_t rlm_cache_rbtree;
 rlm_cache_driver_t rlm_cache_rbtree = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
-		.name		= "rlm_cache_rbtree",
+		.name		= "cache_rbtree",
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach,
 		.inst_size	= sizeof(rlm_cache_rbtree_t),

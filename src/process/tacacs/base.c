@@ -707,7 +707,7 @@ extern fr_process_module_t process_tacacs;
 fr_process_module_t process_tacacs = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
-		.name		= "process_tacacs",
+		.name		= "tacacs",
 		.config		= config,
 		.inst_size	= sizeof(process_tacacs_t),
 		.bootstrap	= mod_bootstrap,

@@ -845,7 +845,7 @@ static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outle
 extern rlm_sql_driver_t rlm_sql_mysql;
 rlm_sql_driver_t rlm_sql_mysql = {
 	.common = {
-		.name				= "rlm_sql_mysql",
+		.name				= "sql_mysql",
 		.magic				= MODULE_MAGIC_INIT,
 		.inst_size			= sizeof(rlm_sql_mysql_t),
 		.onload				= mod_load,

@@ -261,7 +261,7 @@ extern fr_process_module_t process_vmps;
 fr_process_module_t process_vmps = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
-		.name		= "process_vmps",
+		.name		= "vmps",
 		.inst_size	= sizeof(process_vmps_t)
 	},
 	.process	= mod_process,
