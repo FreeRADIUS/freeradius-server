@@ -1125,6 +1125,12 @@ cleanup:
 	if (!rad_suid_is_down_permanent() && (fr_get_lsan_state() == 1)) rad_suid_up();
 	fr_strerror_clear();	/* clear error buffer */
 
+	/*
+	 *	Ensure our atexit handlers run before any other
+	 *	atexit handlers registered by third party libraries.
+	 */
+	fr_atexit_global_trigger_all();
+
 	return ret;
 }
 

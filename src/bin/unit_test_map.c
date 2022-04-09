@@ -89,10 +89,6 @@ static int process_file(char const *filename)
 	};
 
 	map_list_init(&list);
-	/*
-	 *	Must be called first, so the handler is called last
-	 */
-	fr_atexit_global_setup();
 
 	config = main_config_alloc(NULL);
 	if (!config) {
@@ -168,7 +164,6 @@ int main(int argc, char *argv[])
 	char const		*receipt_file = NULL;
 
 	TALLOC_CTX		*autofree;
-	fr_dict_gctx_t const	*dict_gctx = NULL;
 
 	/*
 	 *	Must be called first, so the handler is called last
@@ -237,8 +232,7 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	dict_gctx = fr_dict_global_ctx_init(NULL, true, dict_dir);
-	if (!dict_gctx) {
+	if (!fr_dict_global_ctx_init(NULL, true, dict_dir)) {
 		fr_perror("unit_test_map");
 		EXIT_WITH_FAILURE;
 	}
@@ -299,15 +293,16 @@ cleanup:
 		ret = EXIT_FAILURE;
 	}
 
-	if (fr_dict_global_ctx_free(dict_gctx) < 0) {
-		fr_perror("unit_test_map");
-		ret = EXIT_FAILURE;
-	}
-
 	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
 		fr_perror("unit_test_map");
 		ret = EXIT_FAILURE;
 	}
+
+	/*
+	 *	Ensure our atexit handlers run before any other
+	 *	atexit handlers registered by third party libraries.
+	 */
+	fr_atexit_global_trigger_all();
 
 	return ret;
 }

@@ -548,7 +548,6 @@ int main(int argc, char *argv[])
 	char const 		*receipt_file = NULL;
 
 	TALLOC_CTX		*autofree;
-	fr_dict_gctx_t const	*dict_gctx = NULL;
 	TALLOC_CTX		*thread_ctx;
 
 	char			*p;
@@ -723,8 +722,7 @@ int main(int argc, char *argv[])
 	 */
 	modules_init(config->lib_dir);
 
-	dict_gctx = fr_dict_global_ctx_init(NULL, true, config->dict_dir);
-	if (!dict_gctx) {
+	if (!fr_dict_global_ctx_init(NULL, true, config->dict_dir)) {
 		fr_perror("%s", config->name);
 		EXIT_WITH_FAILURE;
 	}
@@ -1078,6 +1076,12 @@ cleanup:
 		fr_perror("unit_test_module - autofree");
 		ret = EXIT_FAILURE;
 	}
+
+	/*
+	 *	Ensure our atexit handlers run before any other
+	 *	atexit handlers registered by third party libraries.
+	 */
+	fr_atexit_global_trigger_all();
 
 	return ret;
 }

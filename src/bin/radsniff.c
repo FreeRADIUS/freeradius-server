@@ -2246,7 +2246,6 @@ int main(int argc, char *argv[])
 	char const		*raddb_dir = RADDBDIR;
 	char const		*dict_dir = DICTDIR;
 	TALLOC_CTX		*autofree;
-	fr_dict_gctx_t const	*dict_gctx = NULL;
 
 	rs_stats_t		*stats;
 
@@ -2597,8 +2596,7 @@ int main(int argc, char *argv[])
 							 conf->pcap_filter, conf->pcap_filter);
 	}
 
-	dict_gctx = fr_dict_global_ctx_init(NULL, true, dict_dir);
-	if (!dict_gctx) {
+	if (!fr_dict_global_ctx_init(NULL, true, dict_dir)) {
 		fr_perror("radsniff");
 		fr_exit_now(EXIT_FAILURE);
 	}
@@ -3038,10 +3036,11 @@ finish:
 	fr_dict_autofree(radsniff_dict);
 	fr_radius_free();
 
-	if (fr_dict_global_ctx_free(dict_gctx) < 0) {
-		fr_perror("radsniff");
-		ret = EXIT_FAILURE;
-	}
+	/*
+	 *	Ensure our atexit handlers run before any other
+	 *	atexit handlers registered by third party libraries.
+	 */
+	fr_atexit_global_trigger_all();
 
 	return ret;
 }

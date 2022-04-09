@@ -1642,9 +1642,13 @@ int main(int argc, char **argv)
 		);
 	}
 
-	if ((stats.lost > 0) || (stats.failed > 0)) {
-		fr_exit_now(EXIT_FAILURE);
-	}
+	/*
+	 *	Ensure our atexit handlers run before any other
+	 *	atexit handlers registered by third party libraries.
+	 */
+	fr_atexit_global_trigger_all();
 
-	fr_exit_now(EXIT_SUCCESS);
+	if ((stats.lost > 0) || (stats.failed > 0)) return EXIT_FAILURE;
+
+	return EXIT_SUCCESS;
 }

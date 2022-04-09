@@ -3760,5 +3760,11 @@ cleanup:
 		ret = EXIT_FAILURE;
 	}
 
+	/*
+	 *	Ensure our atexit handlers run before any other
+	 *	atexit handlers registered by third party libraries.
+	 */
+	fr_atexit_global_trigger_all();
+
 	return ret;
 }

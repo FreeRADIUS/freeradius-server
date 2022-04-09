@@ -248,7 +248,6 @@ int main(int argc, char *argv[])
 	char const		*protocol = NULL;
 
 	TALLOC_CTX		*autofree;
-	fr_dict_gctx_t const	*our_dict_gctx = NULL;
 
 	/*
 	 *	Must be called first, so the handler is called last
@@ -312,8 +311,7 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-	our_dict_gctx = fr_dict_global_ctx_init(NULL, true, dict_dir);
-	if (!our_dict_gctx) {
+	if (!fr_dict_global_ctx_init(NULL, true, dict_dir)) {
 		fr_perror("radict");
 		ret = 1;
 		goto finish;
@@ -399,7 +397,13 @@ finish:
 			fr_dict_free(dict_p, __FILE__);
 		} while (++dict_p < dict_end);
 	}
-	if (fr_dict_global_ctx_free(our_dict_gctx) < 0) fr_perror("radict");
 	if (talloc_free(autofree) < 0) fr_perror("radict");
+
+	/*
+	 *	Ensure our atexit handlers run before any other
+	 *	atexit handlers registered by third party libraries.
+	 */
+	fr_atexit_global_trigger_all();
+
 	return found ? ret : 64;
 }

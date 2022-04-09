@@ -7,3 +7,4 @@ Received Access-Accept Id 123 from 127.0.0.1:12340 to 0.0.0.0:1234 via lo length
         Class = 0x483d342c493d34
         raw.Vendor-Specific = 0x483d342c493d34
         raw.Vendor-Specific = 0x483d342c493d43
+(0) src/tests/radclient/auth_4.txt response code 2

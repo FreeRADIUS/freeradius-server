@@ -44,7 +44,6 @@ static dl_t			*dl = NULL;
 static dl_loader_t		*dl_loader;
 
 static fr_dict_t		*dict = NULL;
-static fr_dict_gctx_t const	*dict_gctx = NULL;
 
 int LLVMFuzzerInitialize(int *argc, char ***argv);
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
@@ -53,13 +52,17 @@ static void exitHandler(void)
 {
 	fr_dict_free(&dict, __FILE__);
 
-	if (fr_dict_global_ctx_free(dict_gctx) < 0) fr_perror("fuzzer");
-
 	if (dl && dl->handle) {
 		dlclose(dl->handle);
 		dl->handle = NULL;
 	}
 	talloc_free(dl_loader);
+
+	/*
+	 *	Ensure our atexit handlers run before any other
+	 *	atexit handlers registered by third party libraries.
+	 */
+	fr_atexit_global_trigger_all();
 }
 
 int LLVMFuzzerInitialize(int *argc, char ***argv)
@@ -146,8 +149,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-	dict_gctx = fr_dict_global_ctx_init(NULL, true, dict_dir);
-	if (!dict_gctx) {
+	if (!fr_dict_global_ctx_init(NULL, true, dict_dir)) {
 		fr_perror("dict_global");
 		fr_exit_now(EXIT_FAILURE);
 	}

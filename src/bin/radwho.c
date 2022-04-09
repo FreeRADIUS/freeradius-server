@@ -198,7 +198,6 @@ int main(int argc, char **argv)
 	int			zap = 0;
 	fr_dict_t		*dict = NULL;
 	TALLOC_CTX		*autofree;
-	fr_dict_gctx_t const	*dict_gctx = NULL;
 
 	char const		*p;
 	main_config_t		*config;
@@ -307,8 +306,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	dict_gctx = fr_dict_global_ctx_init(NULL, true, config->dict_dir);
-	if (!dict_gctx) {
+	if (!fr_dict_global_ctx_init(NULL, true, config->dict_dir)) {
 		fr_perror("%s", main_config->name);
 		fr_exit_now(EXIT_FAILURE);
 	}
@@ -563,11 +561,13 @@ int main(int argc, char **argv)
 	}
 	fclose(fp);
 
-	if (fr_dict_global_ctx_free(dict_gctx) < 0) {
-		fr_perror("radwho");
-		ret = EXIT_FAILURE;
-	}
 	main_config_free(&config);
+
+	/*
+	 *	Ensure our atexit handlers run before any other
+	 *	atexit handlers registered by third party libraries.
+	 */
+	fr_atexit_global_trigger_all();
 
 	return ret;
 }

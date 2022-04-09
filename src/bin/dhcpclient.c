@@ -750,5 +750,11 @@ int main(int argc, char **argv)
 	fr_dhcpv4_global_free();
 	fr_dict_autofree(dhcpclient_dict);
 
-	return ret < 0 ? 1 : 0;
+	/*
+	 *	Ensure our atexit handlers run before any other
+	 *	atexit handlers registered by third party libraries.
+	 */
+	fr_atexit_global_trigger_all();
+
+	return ret < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }

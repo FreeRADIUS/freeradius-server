@@ -1154,5 +1154,11 @@ finish:
 	 */
 	fr_dict_autofree(radsnmp_dict);
 
+	/*
+	 *	Ensure our atexit handlers run before any other
+	 *	atexit handlers registered by third party libraries.
+	 */
+	fr_atexit_global_trigger_all();
+
 	return ret;
 }
