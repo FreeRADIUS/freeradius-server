@@ -35,8 +35,6 @@ typedef struct fr_tlist_s fr_tlist_t;
 struct fr_tlist_head_s {
 	fr_tlist_t	*parent;	//!< the parent entry which holds this list.  May be NULL.
 
-	size_t		offset;		//!< Positive offset from start of structure to #fr_tlist_t.
-
 	fr_dlist_head_t	dlist_head;
 };
 
@@ -54,7 +52,7 @@ struct fr_tlist_s {
  */
 static inline fr_tlist_t *fr_tlist_item_to_entry(fr_tlist_head_t const *list_head, void const *item)
 {
-	return (fr_tlist_t *)(((uintptr_t) item) + list_head->offset);
+	return (fr_tlist_t *)(((uintptr_t) item) + list_head->dlist_head.offset - offsetof(fr_tlist_t, dlist_entry));
 }
 
 /** Get the item from a fr_tlist_t
@@ -62,7 +60,7 @@ static inline fr_tlist_t *fr_tlist_item_to_entry(fr_tlist_head_t const *list_hea
  */
 static inline void *fr_tlist_entry_to_item(fr_tlist_head_t const *list_head, fr_tlist_t const *entry)
 {
-	return (void *)(((uintptr_t) entry) - list_head->offset);
+	return (void *)(((uintptr_t) entry) - list_head->dlist_head.offset + offsetof(fr_tlist_t, dlist_entry));
 }
 
 /** Get a fr_tlist_head_t from a fr_dlist_head_t
@@ -161,7 +159,6 @@ static inline CC_HINT(nonnull) bool fr_tlist_entry_in_a_list(fr_tlist_t const *e
  */
 static inline void _fr_tlist_init(fr_tlist_head_t *list_head, size_t offset, char const *type)
 {
-	list_head->offset = offset;
 	list_head->parent = NULL;
 
 	/*
@@ -945,10 +942,9 @@ static inline void fr_tlist_init_children(fr_tlist_t *entry, fr_tlist_head_t *ch
 	 *	Manually re-do fr_tlist_init() here, as we copy offset/type from the parent list.
 	 */
 	fr_dlist_init(&children->dlist_head, fr_tlist_t, dlist_entry);
-	children->dlist_head.offset += list_head->offset;
+	children->dlist_head.offset = list_head->dlist_head.offset;
 	children->dlist_head.type = list_head->dlist_head.type;
 
-	children->offset = list_head->offset;
 	children->parent = NULL;
 
 	entry->children = children;
