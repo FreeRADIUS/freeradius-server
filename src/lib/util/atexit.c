@@ -396,9 +396,16 @@ int fr_atexit_thread_trigger_all(void)
 			to_free = ee;
 			ee = fr_dlist_remove(&list->head, ee);
 			if (talloc_free(to_free) < 0) {
-				fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p (alloced %s:%u)",
+				fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p"
+#ifndef NDEBUG
+							" (alloced %s:%u)",
+#endif
 							list, to_free,
-							to_free->func, to_free->uctx, to_free->file, to_free->line);
+							to_free->func, to_free->uctx
+#ifndef NDEBUG
+							, to_free->file, to_free->line
+#endif
+							);
 				return -1;
 			}
 		}
@@ -495,9 +502,16 @@ int fr_atexit_global_trigger_all(void)
 		to_free = e;
 		e = fr_dlist_remove(&fr_atexit_global->head, e);
 		if (talloc_free(to_free) < 0) {
-			fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p (alloced %s:%u)",
+			fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p"
+#ifndef NDEBUG
+						" (alloced %s:%u)",
+#endif
 						fr_atexit_global, to_free,
-						to_free->func, to_free->uctx, to_free->file, to_free->line);
+						to_free->func, to_free->uctx
+#ifndef NDEBUG
+						, to_free->file, to_free->line
+#endif
+						);
 			return -1;
 		}
 	}
@@ -541,9 +555,16 @@ int fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uctx)
 		to_free = e;
 		e = fr_dlist_remove(&fr_atexit_global->head, e);
 		if (talloc_free(to_free) < 0) {
-			fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p (alloced %s:%u)",
+			fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p"
+#ifndef NDEBUG
+						" (alloced %s:%u)",
+#endif
 						fr_atexit_global, to_free,
-						to_free->func, to_free->uctx, to_free->file, to_free->line);
+						to_free->func, to_free->uctx
+#ifndef NDEBUG
+						, to_free->file, to_free->line
+#endif
+						);
 			return -1;
 		}
 	}
@@ -574,9 +595,16 @@ do_threads:
 			to_free = ee;
 			ee = fr_dlist_remove(&list->head, ee);
 			if (talloc_free(to_free) < 0) {
-				fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p (alloced %s:%u)",
+				fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p"
+#ifndef NDEBUG
+							" (alloced %s:%u)",
+#endif
 							list, to_free,
-							to_free->func, to_free->uctx, to_free->file, to_free->line);
+							to_free->func, to_free->uctx
+#ifndef NDEBUG
+							, to_free->file, to_free->line
+#endif
+							);
 				return -1;
 			}
 		}
