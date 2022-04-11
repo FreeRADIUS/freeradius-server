@@ -312,6 +312,8 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 			 *	Set the last entry to use 'e'
 			 */
 			e->key = fr_value_box_alloc_null(e);
+			if (!e->key) goto fail;
+
 			if (fr_value_box_from_str(e->key, e->key, type, NULL,
 						  p, strlen(p), NULL, false) < 0) {
 				cf_log_err(conf, "Failed parsing key field in file %s line %d - %s", inst->filename, lineno,
