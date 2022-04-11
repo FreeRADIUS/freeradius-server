@@ -361,3 +361,225 @@ fr_slen_t fr_ldap_filter_parse(TALLOC_CTX *ctx, fr_dlist_head_t **root, fr_sbuff
 
 	return ret;
 }
+
+static bool ldap_filter_node_eval(ldap_filter_t *node, fr_ldap_connection_t *conn, LDAPMessage *msg, int depth);
+
+/** Evaluate a group of LDAP filters
+ *
+ * Groups have a logical operator of &, | or !
+ *
+ * @param[in] group	to evaluate.
+ * @param[in] conn	LDAP connection the message being filtered was returned on
+ * @param[in] msg	to filter
+ * @param[in] depth	to indent debug messages, reflecting group nesting
+ * @return true or false result of the group evaluation
+ */
+static bool ldap_filter_group_eval(ldap_filter_t *group, fr_ldap_connection_t *conn, LDAPMessage *msg, int depth)
+{
+	ldap_filter_t	*node = NULL;
+	bool		filter_state = false;
+
+	DEBUG3("%*sEvaluating LDAP filter group %s", depth, "", group->orig);
+	depth += 2;
+	while ((node = fr_dlist_next(&group->children, node))) {
+		switch (node->filter_type) {
+		case LDAP_FILTER_GROUP:
+			filter_state = ldap_filter_group_eval(node, conn, msg, depth);
+			break;
+		case LDAP_FILTER_NODE:
+			filter_state = ldap_filter_node_eval(node, conn, msg, depth);
+			break;
+		}
+
+		/*
+		 *	Short circuit the group depending on the logical operator
+		 *	and the return state of the last node
+		 */
+		if (((group->logic_op == LDAP_FILTER_LOGIC_OR) && filter_state) ||
+		    ((group->logic_op == LDAP_FILTER_LOGIC_AND) && !filter_state)) {
+			break;
+		}
+	}
+
+	filter_state = (group->logic_op == LDAP_FILTER_LOGIC_NOT ? !filter_state : filter_state);
+
+	depth -= 2;
+	DEBUG3("%*sLDAP filter group %s results in %s", depth, "", group->orig, (filter_state ? "TRUE" : "FALSE"));
+	return filter_state;
+}
+
+#define DEBUG_LDAP_ATTR_VAL if (DEBUG_ENABLED3) { \
+	fr_value_box_t	value_box; \
+	fr_ldap_berval_to_value_str_shallow(&value_box, values[i]); \
+	DEBUG3("%*s  Evaluating attribute \"%s\", value \"%pV\"", depth, "", node->attr, &value_box); \
+}
+
+/** Evaluate a single LDAP filter node
+ *
+ * @param[in] node	to evaluate.
+ * @param[in] conn	LDAP connection the message being filtered was returned on.
+ * @param[in] msg	to filter.
+ * @param[in] depth	to indent debug messages, reflecting group nesting.
+ * @return true or false result of the node evaluation.
+ */
+static bool ldap_filter_node_eval(ldap_filter_t *node, fr_ldap_connection_t *conn, LDAPMessage *msg, int depth)
+{
+	struct berval	**values;
+	int		count, i;
+	bool		filter_state = false;
+
+	switch (node->filter_type) {
+	case LDAP_FILTER_GROUP:
+		return ldap_filter_group_eval(node, conn, msg, depth);
+
+	case LDAP_FILTER_NODE:
+		DEBUG3("%*sEvaluating LDAP filter (%s)", depth, "", node->orig);
+		values = ldap_get_values_len(conn->handle, msg, node->attr);
+		count = ldap_count_values_len(values);
+
+		switch (node->op) {
+		case LDAP_FILTER_OP_PRESENT:
+			filter_state = (count > 0 ? true : false);
+			break;
+
+		case LDAP_FILTER_OP_EQ:
+			for (i = 0; i < count; i++) {
+				DEBUG_LDAP_ATTR_VAL
+				if ((node->value->length == values[i]->bv_len) &&
+				    (strncasecmp(values[i]->bv_val, node->value->vb_strvalue, values[i]->bv_len) == 0)) {
+					filter_state = true;
+					break;
+				}
+			}
+			break;
+
+		/*
+		 *	LDAP filters only use one wildcard character '*' for zero or more
+		 *	character matches.
+		 */
+		case LDAP_FILTER_OP_SUBSTR:
+		{
+			char const	*v, *t, *v_end, *t_end;
+			bool		skip;
+
+			/*
+			 *	Point t_end at the final character of the filter value
+			 *	- not the NULL - so we can check for trailing '*'
+			 */
+			t_end = node->value->vb_strvalue + node->value->length - 1;
+
+			for (i = 0; i < count; i++) {
+				DEBUG_LDAP_ATTR_VAL
+				t = node->value->vb_strvalue;
+				v = values[i]->bv_val;
+				v_end = values[i]->bv_val + values[i]->bv_len - 1;
+				skip = false;
+
+				/*
+				 *	Walk the value (v) and test (t), comparing until
+				 *	there is a mis-match or the end of one is reached.
+				 */
+				while ((v <= v_end) && (t <= t_end)) {
+					/*
+					 *	If a wildcard is found in the test,
+					 *	indicate that we can skip non-matching
+					 *	characters in the value
+					 */
+					if (*t == '*'){
+						skip = true;
+						t++;
+						continue;
+					}
+					if (skip) {
+						while ((tolower(*t) != tolower(*v)) && (v <= v_end)) v++;
+					}
+					if (tolower(*t) != tolower(*v)) break;
+					skip = false;
+					t++;
+					v++;
+				}
+
+				/*
+				 *	If we've got to the end of both the test and value,
+				 *	or we've used all of the test and the last character is '*'
+				 *	then we've matched the pattern.
+				 */
+				if (((v > v_end) && (t > t_end)) || ((t >= t_end) && (*t_end == '*'))) {
+					filter_state = true;
+					break;
+				}
+			}
+		}
+			break;
+
+		/*
+		 *	For >=, <= and bitwise operators, we assume numeric values
+		 */
+		case LDAP_FILTER_OP_GE:
+		case LDAP_FILTER_OP_LE:
+		case LDAP_FILTER_OP_BIT_AND:
+		case LDAP_FILTER_OP_BIT_OR:
+		{
+			char		buffer[11];	/* Max uint32_t + 1 */
+			uint32_t	value;
+			for (i = 0; i < count; i++) {
+				DEBUG_LDAP_ATTR_VAL
+				/*
+				 *	String too long for max uint32
+				 */
+				if (values[i]->bv_len > 10) continue;
+
+				/*
+				 *	bv_val is not NULL terminated - so copy to a
+				 *	NULL terminated string before parsing.
+				 */
+				memcpy(buffer, values[i]->bv_val, values[i]->bv_len);
+				buffer[values[i]->bv_len] = '\0';
+
+				value = (uint32_t)strtol(buffer, NULL, 10);
+				switch (node->op) {
+				case LDAP_FILTER_OP_GE:
+					if (value >= node->value->vb_uint32) filter_state = true;
+					break;
+				case LDAP_FILTER_OP_LE:
+					if (value <= node->value->vb_uint32) filter_state = true;
+					break;
+				case LDAP_FILTER_OP_BIT_AND:
+					if (value & node->value->vb_uint32) filter_state = true;
+					break;
+				case LDAP_FILTER_OP_BIT_OR:
+					if (value | node->value->vb_uint32) filter_state = true;
+					break;
+				default:
+					fr_assert(0);
+					break;
+				}
+				if (filter_state) break;
+			}
+		}
+			break;
+
+		default:
+			fr_assert(0);
+			break;
+
+		}
+
+		ldap_value_free_len(values);
+	}
+
+	DEBUG3("%*sLDAP filter returns %s", depth, "", (filter_state ? "TRUE" : "FALSE"));
+
+	return filter_state;
+}
+
+/** Evaluate an LDAP filter
+ *
+ * @param[in] root	of the LDAP filter to evaluate.
+ * @param[in] conn	LDAP connection the message being filtered was returned on.
+ * @param[in] msg	to filter.
+ * @return true or false result of the node evaluation.
+ */
+bool fr_ldap_filter_eval(fr_dlist_head_t *root, fr_ldap_connection_t *conn, LDAPMessage *msg) {
+	return ldap_filter_node_eval(fr_dlist_head(root), conn, msg, 0);
+}

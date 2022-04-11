@@ -888,3 +888,5 @@ typedef int	(*filter_attr_check_t)(char const *attr, void *uctx);
 
 fr_slen_t	fr_ldap_filter_parse(TALLOC_CTX *ctx, fr_dlist_head_t **root, fr_sbuff_t *filter,
 		filter_attr_check_t attr_check, void *uctx);
+
+bool		fr_ldap_filter_eval(fr_dlist_head_t *root, fr_ldap_connection_t *conn, LDAPMessage *msg);
