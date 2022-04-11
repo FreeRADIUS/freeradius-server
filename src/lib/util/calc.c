@@ -341,6 +341,8 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
  *
  *  If one side is an octets type and the other isn't, then we try to
  *  parse the octets as the type of the other side.
+ *
+ *  @todo - check this table against fr_type_promote()
  */
 static const fr_type_t upcast_cmp[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	[FR_TYPE_IPV4_ADDR] = {
@@ -1839,8 +1841,7 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 		if (src == dst) return 0;
 
 		fr_value_box_clear_value(dst);
-		fr_value_box_cast(ctx, dst, dst->type, dst->enumv, src); /* cast, as the RHS might not (yet) be the same! */
-		return 0;
+		return fr_value_box_cast(ctx, dst, dst->type, dst->enumv, src); /* cast, as the RHS might not (yet) be the same! */
 	}
 
 	op = assignment2op[op];
