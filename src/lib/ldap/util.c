@@ -557,3 +557,29 @@ ssize_t fr_ldap_xlat_filter(request_t *request, char const **sub, size_t sublen,
 
 	return len;
 }
+
+/** Check that a particular attribute is included in an attribute list
+ *
+ * @param[in] attrs	list to check
+ * @param[in] attr	to look for
+ * @return
+ *	- 1 if attr is in list
+ *	- 0 if attr is missing
+ *	- -1 if checks not possible
+ */
+int fr_ldap_attrs_check(char const **attrs, char const *attr)
+{
+	size_t		len, i;
+
+	if (!attr) return -1;
+
+	len = talloc_array_length(attrs);
+
+	for (i = 0; i < len; i++) {
+		if (!attrs[i]) continue;
+		if (strcasecmp(attrs[i], attr) == 0) return 1;
+		if (strcasecmp(attrs[i], "*") == 0) return 1;
+	}
+
+	return 0;
+}

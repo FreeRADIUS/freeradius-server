@@ -812,6 +812,8 @@ uint8_t		*fr_ldap_berval_to_bin(TALLOC_CTX *ctx, struct berval const *in);
 
 int		fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extensions[]);
 
+int 		fr_ldap_attrs_check(char const **attrs, char const *attr);
+
 /*
  *	referral.c - Handle LDAP referrals
  */
