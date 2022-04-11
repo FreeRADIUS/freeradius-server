@@ -36,6 +36,16 @@ RCSID("$Id$")
 #define ERR_OVERFLOW (-3)
 #define ERR_INVALID  (-2)
 
+#define COERCE(_vb, _box, _type, _enumv) do { \
+		if (_vb->type != _type) { \
+			if (fr_value_box_cast(NULL, &_box, _type, _enumv, _vb) < 0) return -1; \
+			_vb = &_box; \
+		} \
+	} while (0)
+
+#define COERCE_A(_type, _enumv) COERCE(a, one, _type, _enumv)
+#define COERCE_B(_type, _enumv) COERCE(b, two, _type, _enumv)
+
 /** Updates type (a,b) -> c
  *
  *  Note that we MUST have a less than b here.  Otherwise there will
@@ -605,15 +615,8 @@ static int calc_bool(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t
 
 	fr_assert(dst->type == FR_TYPE_BOOL);
 
-	if (a->type != FR_TYPE_BOOL) {
-		if (fr_value_box_cast(NULL, &one, FR_TYPE_BOOL, NULL, a) < 0) return -1;
-		a = &one;
-	}
-
-	if (b->type != FR_TYPE_BOOL) {
-		if (fr_value_box_cast(NULL, &two, FR_TYPE_BOOL, NULL, b) < 0) return -1;
-		b = &two;
-	}
+	COERCE_A(FR_TYPE_BOOL, NULL);
+	COERCE_B(FR_TYPE_BOOL, NULL);
 
 	switch (op) {
 	case T_ADD:
@@ -672,15 +675,8 @@ static int calc_date(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t
 	/*
 	 *	Cast dates to time delta, do the conversions.
 	 */
-	if (a->type != FR_TYPE_TIME_DELTA) {
-		if (fr_value_box_cast(NULL, &one, FR_TYPE_TIME_DELTA, NULL, a) < 0) return -1;
-		a = &one;
-	}
-
-	if (b->type != FR_TYPE_TIME_DELTA) {
-		if (fr_value_box_cast(NULL, &two, FR_TYPE_TIME_DELTA, NULL, b) < 0) return -1;
-		b = &two;
-	}
+	COERCE_A(FR_TYPE_TIME_DELTA, NULL);
+	COERCE_B(FR_TYPE_TIME_DELTA, NULL);
 
 	switch (op) {
 	case T_ADD:
@@ -728,10 +724,7 @@ static int calc_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value
 	 *
 	 *	We cast the inputs based on the destination time resolution.  So "5ms + 5" = "10ms".
 	 */
-	if (a->type != FR_TYPE_TIME_DELTA) {
-		if (fr_value_box_cast(NULL, &one, FR_TYPE_TIME_DELTA, dst->enumv, a) < 0) return -1;
-		a = &one;
-	}
+	COERCE_A(FR_TYPE_TIME_DELTA, dst->enumv);
 
 	if ((op == T_RSHIFT) || (op == T_LSHIFT)) {
 		/*
@@ -739,9 +732,8 @@ static int calc_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value
 		 */
 		fr_assert(b->type == FR_TYPE_UINT32);
 
-	} else if (b->type != FR_TYPE_TIME_DELTA) {
-		if (fr_value_box_cast(NULL, &two, FR_TYPE_TIME_DELTA, dst->enumv, b) < 0) return -1;
-		b = &two;
+	} else {
+		COERCE_B(FR_TYPE_TIME_DELTA, dst->enumv);
 	}
 
 	switch (op) {
@@ -785,10 +777,7 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 	fr_assert(dst->type == FR_TYPE_OCTETS);
 
-	if (a->type != FR_TYPE_OCTETS) {
-		if (fr_value_box_cast(ctx, &one, FR_TYPE_OCTETS, dst->enumv, a) < 0) return -1;
-		a = &one;
-	}
+	COERCE_A(FR_TYPE_OCTETS, dst->enumv);
 
 	if ((op == T_RSHIFT) || (op == T_LSHIFT)) {
 		/*
@@ -796,9 +785,8 @@ static int calc_octets(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		 */
 		fr_assert(b->type == FR_TYPE_UINT32);
 
-	} else if (b->type != FR_TYPE_OCTETS) {
-		if (fr_value_box_cast(ctx, &two, FR_TYPE_OCTETS, dst->enumv, b) < 0) return -1;
-		b = &two;
+	} else {
+		COERCE_B(FR_TYPE_OCTETS, dst->enumv);
 	}
 
 	len = a->length + b->length;
@@ -927,10 +915,7 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 
 	fr_assert(dst->type == FR_TYPE_STRING);
 
-	if (a->type != FR_TYPE_STRING) {
-		if (fr_value_box_cast(ctx, &one, FR_TYPE_STRING, dst->enumv, a) < 0) return -1;
-		a = &one;
-	}
+	COERCE_A(FR_TYPE_STRING, dst->enumv);
 
 	if ((op == T_RSHIFT) || (op == T_LSHIFT)) {
 		/*
@@ -938,9 +923,8 @@ static int calc_string(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t cons
 		 */
 		fr_assert(b->type == FR_TYPE_UINT32);
 
-	} else if (b->type != FR_TYPE_STRING) {
-		if (fr_value_box_cast(ctx, &two, FR_TYPE_STRING, dst->enumv, b) < 0) return -1;
-		b = &two;
+	} else {
+		COERCE_B(FR_TYPE_STRING, dst->enumv);
 	}
 
 	len = a->length + b->length;
@@ -1322,15 +1306,8 @@ static int calc_float32(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 	/*
 	 *	Intermediate calculations are done using increased precision.
 	 */
-	if (a->type != FR_TYPE_FLOAT64) {
-		if (fr_value_box_cast(NULL, &one, FR_TYPE_FLOAT64, NULL, a) < 0) return -1;
-		a = &one;
-	}
-
-	if (b->type != FR_TYPE_FLOAT64) {
-		if (fr_value_box_cast(NULL, &two, FR_TYPE_FLOAT64, NULL, b) < 0) return -1;
-		b = &two;
-	}
+	COERCE_A(FR_TYPE_FLOAT64, NULL);
+	COERCE_B(FR_TYPE_FLOAT64, NULL);
 
 	switch (op) {
 	case T_ADD:
@@ -1367,15 +1344,8 @@ static int calc_float64(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_bo
 
 	fr_assert(dst->type == FR_TYPE_FLOAT64);
 
-	if (a->type != FR_TYPE_FLOAT64) {
-		if (fr_value_box_cast(NULL, &one, FR_TYPE_FLOAT64, NULL, a) < 0) return -1;
-		a = &one;
-	}
-
-	if (b->type != FR_TYPE_FLOAT64) {
-		if (fr_value_box_cast(NULL, &two, FR_TYPE_FLOAT64, NULL, b) < 0) return -1;
-		b = &two;
-	}
+	COERCE_A(FR_TYPE_FLOAT64, NULL);
+	COERCE_B(FR_TYPE_FLOAT64, NULL);
 
 	switch (op) {
 	case T_ADD:
