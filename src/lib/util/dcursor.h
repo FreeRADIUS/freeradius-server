@@ -145,25 +145,31 @@ static inline void *dcursor_next(fr_dcursor_t *cursor, fr_dcursor_iter_t iter, v
 	void *next;
 
 	/*
+	 *	Fast path without custom iter
+	 */
+	if (!iter) {
+		if (likely(current != NULL)) return fr_dlist_next(cursor->dlist, current);
+
+		if (cursor->at_end) return NULL;				/* At tail of the list */
+
+		return fr_dlist_head(cursor->dlist);
+	}
+
+	/*
 	 *	First time next has been called, or potentially
 	 *	another call after we hit the end of the list.
 	 */
 	if (!current) {
 		if (cursor->at_end) return NULL;				/* At tail of the list */
 
-		if (!iter) return (fr_dlist_head(cursor->dlist));		/* Fast path without custom iter */
-
-		current = fr_dlist_head(cursor->dlist);
-		next = iter(cursor->dlist, current, cursor->iter_uctx);
+		next = iter(cursor->dlist, fr_dlist_head(cursor->dlist), cursor->iter_uctx);
 		VALIDATE(next);
 		return next;
 	}
 	VALIDATE(current);
 
-	if (!iter) return fr_dlist_next(cursor->dlist, current);		/* Fast path without custom iter */
-
 	/*
-	 *	Pre-advance current
+	 *	Get the next entry, and pass it to the iterator.
 	 */
 	next = fr_dlist_next(cursor->dlist, current);
 	if (!next) return NULL;
