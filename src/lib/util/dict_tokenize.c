@@ -237,13 +237,13 @@ static int dict_process_type_field(dict_tokenize_ctx_t *ctx, char const *name, f
 
 			if (length == 1) {
 				type = FR_TYPE_BOOL;
-			} else if (length < 8) {
+			} else if (length <= 8) {
 				type = FR_TYPE_UINT8;
-			} else if (length < 16) {
+			} else if (length <= 16) {
 				type = FR_TYPE_UINT16;
-			} else if (length < 32) {
+			} else if (length <= 32) {
 				type = FR_TYPE_UINT32;
-			} else if (length < 56) { /* for laziness in encode / decode */
+			} else if (length <= 56) { /* for laziness in encode / decode */
 				type = FR_TYPE_UINT64;
 			} else {
 				fr_strerror_const("Invalid length for bit field");
