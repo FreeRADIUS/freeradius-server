@@ -610,7 +610,7 @@ static int calc_bool(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t
 		a = &one;
 	}
 
-	if (a->type != FR_TYPE_BOOL) {
+	if (b->type != FR_TYPE_BOOL) {
 		if (fr_value_box_cast(NULL, &two, FR_TYPE_BOOL, NULL, b) < 0) return -1;
 		b = &two;
 	}
