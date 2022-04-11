@@ -398,8 +398,9 @@ int fr_atexit_thread_trigger_all(void)
 			if (talloc_free(to_free) < 0) {
 				fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p"
 #ifndef NDEBUG
-							" (alloced %s:%u)",
+							" (alloced %s:%u)"
 #endif
+							,
 							list, to_free,
 							to_free->func, to_free->uctx
 #ifndef NDEBUG
@@ -504,8 +505,9 @@ int fr_atexit_global_trigger_all(void)
 		if (talloc_free(to_free) < 0) {
 			fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p"
 #ifndef NDEBUG
-						" (alloced %s:%u)",
+						" (alloced %s:%u)"
 #endif
+						,
 						fr_atexit_global, to_free,
 						to_free->func, to_free->uctx
 #ifndef NDEBUG
@@ -557,8 +559,9 @@ int fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uctx)
 		if (talloc_free(to_free) < 0) {
 			fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p"
 #ifndef NDEBUG
-						" (alloced %s:%u)",
+						" (alloced %s:%u)"
 #endif
+						,
 						fr_atexit_global, to_free,
 						to_free->func, to_free->uctx
 #ifndef NDEBUG
@@ -597,8 +600,9 @@ do_threads:
 			if (talloc_free(to_free) < 0) {
 				fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p"
 #ifndef NDEBUG
-							" (alloced %s:%u)",
+							" (alloced %s:%u)"
 #endif
+							,
 							list, to_free,
 							to_free->func, to_free->uctx
 #ifndef NDEBUG
