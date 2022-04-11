@@ -14,6 +14,7 @@
 #include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/trunk.h>
+#include <freeradius-devel/util/dlist.h>
 
 #define LDAP_DEPRECATED 0	/* Quiet warnings about LDAP_DEPRECATED not being defined */
 
@@ -496,6 +497,57 @@ typedef struct {
 	fr_ldap_bind_ctx_t	*bind_ctx;	//!< Data relating to the user being bound.
 	fr_ldap_result_code_t	ret;		//!< Return code of bind operation.
 } fr_ldap_bind_auth_ctx_t;
+
+typedef struct ldap_filter_s ldap_filter_t;
+
+/** Types of parsed LDAP filter nodes
+ */
+typedef enum {
+	LDAP_FILTER_NODE		= 0,		//!< The filter node is an individual one
+							//!< to be evaluated against an attribute.
+	LDAP_FILTER_GROUP				//!< The filter node is a parent of a group
+							//!< which will be combined using a logical operator.
+} ldap_filter_type_t;
+
+/** Logical operators for use in LDAP filters
+ */
+typedef enum {
+	LDAP_FILTER_LOGIC_AND		= 1,
+	LDAP_FILTER_LOGIC_OR,
+	LDAP_FILTER_LOGIC_NOT
+} ldap_filter_logic_t;
+
+/** Operators for use in LDAP filters
+ */
+typedef enum {
+	LDAP_FILTER_OP_UNSET		= 0,		//!< Attribute not set yet
+	LDAP_FILTER_OP_EQ,				//!< Attribute equals value
+	LDAP_FILTER_OP_SUBSTR,				//!< Attribute matches string with wildcards
+	LDAP_FILTER_OP_PRESENT,				//!< Attribute present
+	LDAP_FILTER_OP_GE,				//!< Attribute greater than or equal to value
+	LDAP_FILTER_OP_LE,				//!< Attribute less than or equal to value
+	LDAP_FILTER_OP_BIT_AND,				//!< Bitwise AND comparison
+	LDAP_FILTER_OP_BIT_OR				//!< Bitwise OR comparison
+} ldap_filter_op_t;
+
+/** Structure to hold parsed details of LDAP filters
+ */
+struct ldap_filter_s {
+	fr_dlist_t		entry;			//!< Entry in the list of filter nodes.
+	ldap_filter_type_t	filter_type;		//!< Type of this filter node.
+	char			*orig;			//!< Text representation of filter for debug messages,
+	union {
+		struct {
+			ldap_filter_logic_t	logic_op;	//!< Logical operator for this group.
+			fr_dlist_head_t		children;	//!< List of child nodes in this group.
+		};
+		struct {
+			char			*attr;		//!< Attribute for the filter node.
+			ldap_filter_op_t	op;		//!< Operator to be used for comparison.
+			fr_value_box_t		*value;		//!< Value to compare with.
+		};
+	};
+};
 
 /** Codes returned by fr_ldap internal functions
  *
