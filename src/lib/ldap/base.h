@@ -880,3 +880,11 @@ fr_ldap_referral_t	*fr_ldap_referral_alloc(TALLOC_CTX *ctx, request_t *request);
 int 		fr_ldap_referral_follow(fr_ldap_thread_t *thread, request_t *request, fr_ldap_query_t *query);
 
 int		fr_ldap_referral_next(fr_ldap_thread_t *thread, request_t *request, fr_ldap_query_t *query);
+
+/*
+ *	filter.c - Basic filter parsing and filtering
+ */
+typedef int	(*filter_attr_check_t)(char const *attr, void *uctx);
+
+fr_slen_t	fr_ldap_filter_parse(TALLOC_CTX *ctx, fr_dlist_head_t **root, fr_sbuff_t *filter,
+		filter_attr_check_t attr_check, void *uctx);
