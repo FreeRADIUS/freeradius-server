@@ -313,6 +313,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 	 *	"ipv4prefix".
 	 */
 	vp = fr_pair_afrom_da(ctx, attr_dhcp_network_subnet);
+	if (!vp) return -1;
 
 	/*
 	 *	First look for Relay-Link-Selection
