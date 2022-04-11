@@ -674,18 +674,13 @@ int fr_inet_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 		 *	Parse scope.
 		 */
 		prefix = strtoul(p, &eptr, 10);
-		if (prefix > 128) {
+		if (prefix > UINT32_MAX) {
 			fr_strerror_printf("Invalid scope ID \"%s\".  Should be between 0-2^32-1", p);
 			return -1;
 		}
 		if (eptr[0] != '\0') {
 			fr_strerror_printf("Failed to parse scope \"%s\", "
 					   "got garbage after numerical scope value \"%s\"", p, eptr);
-			return -1;
-		}
-
-		if (prefix > UINT32_MAX) {
-			fr_strerror_printf("Invalid scope ID \"%s\"", p);
 			return -1;
 		}
 
