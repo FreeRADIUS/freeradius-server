@@ -1,6 +1,6 @@
 # The FreeRADIUS server
 
-[![CI build status][BuildStatus]][BuildStatusLink] [![OSS-Fuzz status][OssFuzz]][OssFuzzLink] [![LGTM Status][LGTMStatus]][LGTMStatusLink]
+[![CI build status][BuildStatus]][BuildStatusLink] [![Coverity status][CoverityStatus]][CoverityStatusLink] [![OSS-Fuzz status][OssFuzz]][OssFuzzLink] [![LGTM Status][LGTMStatus]][LGTMStatusLink]
 
 ## Introduction
 
