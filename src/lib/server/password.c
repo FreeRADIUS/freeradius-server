@@ -582,7 +582,7 @@ static fr_pair_t *password_process_sha3(TALLOC_CTX *ctx, request_t *request, fr_
 		return out;
 
 	case SHA384_DIGEST_LENGTH:
-		out = fr_pair_afrom_da(ctx, attr_sha3_384);
+		MEM(out = fr_pair_afrom_da(ctx, attr_sha3_384));
 		fr_pair_value_copy(out, known_good);
 		return out;
 
