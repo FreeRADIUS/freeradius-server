@@ -633,7 +633,7 @@ unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
 				     bool is_async);
 
 /*
- *	ldap.c - Wrappers arounds OpenLDAP functions.
+ *	base.c - Wrappers arounds OpenLDAP functions.
  */
 void		fr_ldap_timeout_debug(request_t *request, fr_ldap_connection_t const *conn,
 				      fr_time_delta_t timeout, char const *prefix);
