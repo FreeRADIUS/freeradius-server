@@ -667,10 +667,11 @@ static void _pcre_talloc_free(void *to_free)
 	talloc_free(to_free);
 }
 
-static void _pcre_globals_reset(UNUSED void *uctx)
+static int _pcre_globals_reset(UNUSED void *uctx)
 {
 	pcre_malloc = NULL;
 	pcre_free = NULL;
+	return 0;
 }
 
 static void _pcre_globals_configure(UNUSED void *uctx)
