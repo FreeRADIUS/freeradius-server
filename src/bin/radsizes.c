@@ -4,14 +4,22 @@
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/rb.h>
+#include <freeradius-devel/util/tlist.h>
 
 int main(UNUSED int argc, UNUSED char **argv)
 {
 #define SIZEOF(_struct)	printf("%-24s\t%zu bytes\n", STRINGIFY(_struct), sizeof(_struct))
 
+	SIZEOF(fr_dlist_t);
+	SIZEOF(fr_dlist_head_t);
+
 	SIZEOF(fr_pair_t);
 	SIZEOF(fr_pair_list_t);
 	SIZEOF(fr_rb_node_t);
+
+	SIZEOF(fr_tlist_t);
+	SIZEOF(fr_tlist_head_t);
+
 	SIZEOF(fr_value_box_t);
 
 	SIZEOF(tmpl_t);
