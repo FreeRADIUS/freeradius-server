@@ -667,7 +667,7 @@ static int8_t _detail_file_cmp(void const *one, void const *two)
 {
 	proto_detail_file_t const *a = one, *b = two;
 
-	return strcmp(a->filename, b->filename);
+	return CMP(strcmp(a->filename, b->filename), 0);
 }
 
 /*
