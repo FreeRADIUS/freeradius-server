@@ -303,7 +303,6 @@ static bool file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno, char *buff
 
 					if (!duplicate_entry(conf, inst, e, p, lineno)) goto fail;
 
-					if (!l) break;
 					p = l + 1;
 					l = strchr(p, ',');
 				}
