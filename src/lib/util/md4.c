@@ -362,6 +362,8 @@ static void fr_md4_local_ctx_free(fr_md4_ctx_t **ctx)
 	*ctx = NULL;
 }
 
+static const uint8_t *zero = (uint8_t[]){ 0x00 };
+
 /** @copydoc fr_md4_update
  *
  */
@@ -377,7 +379,7 @@ static void fr_md4_local_update(fr_md4_ctx_t *ctx, uint8_t const *in, size_t inl
 	 *	NULL pointers.
 	 */
 	if (!in) {
-		in = (uint8_t[]){ 0x00 };
+		in = zero;
 		inlen = 0;
 	}
 
