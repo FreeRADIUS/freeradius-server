@@ -339,6 +339,10 @@ static char *make_dlopen(__attribute__((unused)) char const *nm, unsigned int ar
 			if (name) {
 				FREE(name);
 			}
+
+			if (handle) {
+				dlclose(handle);
+			}
 			return NULL;
 		}
 
@@ -390,6 +394,7 @@ static char *make_dlopen(__attribute__((unused)) char const *nm, unsigned int ar
 	if (!lib) {
 		FREE(libname);
 		dlclose(handle);
+		handle = NULL;
 		goto oom;
 	}
 
