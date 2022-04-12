@@ -76,8 +76,6 @@ static ssize_t op_to_token(fr_token_t *token, char const *op, size_t oplen)
 			break;
 		}
 
-		if (oplen < 2) goto invalid_operator;
-
 		if (p[1] == '=') {
 			*token = T_OP_CMP_EQ;
 			p += 2;
