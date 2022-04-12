@@ -406,7 +406,7 @@ size_t fr_ldap_util_normalise_dn(char *out, char const *in)
 
 	for (p = in; *p != '\0'; p++) {
 		if (p[0] == '\\') {
-			char c;
+			char c = '\0';
 
 			/*
 			 *	Double backslashes get processed specially
