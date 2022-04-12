@@ -141,6 +141,8 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	 *	caller that we need to read more.
 	 */
 	packet_len = fr_tacacs_length(buffer, in_buffer);
+	if (packet_len < 0) return -1;
+
 	if (in_buffer < packet_len) {
 		*leftover = in_buffer;
 		return 0;
