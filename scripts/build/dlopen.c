@@ -577,16 +577,19 @@ static void ad_have_feature(char const *symbol)
 	ad_define_t *def, **last;
 	size_t len;
 
-	if (!symbol) return;
+	if (!symbol || !*symbol) return;
 
-	len = strlen(symbol);
+	len = strlen(symbol);	
 
-	def = malloc(sizeof(ad_define_t) + len + 5 + 2 + 1);
+	/*
+	 *	"HAVE_" foo "=1\0"
+	 */
+	def = malloc(5 + sizeof(ad_define_t) + len + 2 + 1);
 	if (!def) return;
 
 	memcpy(def->name, "HAVE_", 5);
 	memcpy(def->name + 5, symbol, len);
-	strcpy(def->name + 5 + len, "=1");
+	memcpy(def->name + 5 + len, "=1", 3);
 
 	for (p = def->name + 5; *p != '\0'; p++) {
 		if (islower((int) *p)) {
