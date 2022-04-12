@@ -613,7 +613,7 @@ static fr_connection_t *ldap_trunk_connection_alloc(fr_trunk_connection_t *tconn
 
 #define POPULATE_LDAP_CONTROLS(_dest, _src) do { \
 	int i; \
-	for (i = 0; (_src[i].control) && (i < LDAP_MAX_CONTROLS); i++) { \
+	for (i = 0; (i < LDAP_MAX_CONTROLS) && (_src[i].control); i++) { \
 		_dest[i] = _src[i].control; \
 	} \
 	_dest[i] = NULL; \
