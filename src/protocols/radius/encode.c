@@ -160,11 +160,7 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 	 *	password.
 	 */
 	encrypted_len = ROUND_UP(inlen + 1, 16);
-	if (encrypted_len > (RADIUS_MAX_STRING_LENGTH - 2)) {
-		encrypted_len = (RADIUS_MAX_STRING_LENGTH - 2);
-
-		if (encrypted_len < (inlen + 1)) goto fail;
-	}
+	if (encrypted_len > (RADIUS_MAX_STRING_LENGTH - 2)) encrypted_len = (RADIUS_MAX_STRING_LENGTH - 2);
 
 	/*
 	 *	Get the number of padding bytes in the last block.
