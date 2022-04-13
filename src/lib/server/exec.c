@@ -154,8 +154,8 @@ static int exec_pair_to_env(char **env_p, size_t env_len, fr_sbuff_t *env_sbuff,
 		 *	for the first char.
 		 */
 		p = fr_sbuff_current(&env_m[i]);
-		if (isdigit((int)*p)) *p = '_';
-		while (p++ < fr_sbuff_current(&sbuff)) {
+		if (isdigit((int)*p)) *p++ = '_';
+		for (; p < fr_sbuff_current(&sbuff); p++) {
 			if (isalpha((int)*p)) *p = toupper(*p);
 			else if (*p == '-') *p = '_';
 			else if (isdigit((int)*p)) continue;
