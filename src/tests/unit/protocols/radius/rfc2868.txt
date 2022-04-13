@@ -10,7 +10,7 @@ fuzzer-out radius
 #  In normal operation, the seed is taken from fr_rand()
 #
 encode-pair Tunnel-Password := "foo"
-match 45 15 00 8e 93 e4 f7 68 1f 3d b7 b9 25 10 83 2a 9b 19 90 33 0a
+match 45 15 00 89 73 c6 80 f6 15 54 ac 5a 0f 6d 5b c0 ad 41 f8 0f 1a
 
 decode-pair -
 match Tunnel-Password = "foo"
@@ -21,7 +21,7 @@ match Tunnel-Password = "foo"
 #  The second one has it's own salt, which includes a counter to guarantee uniqueness.
 #
 encode-pair Tunnel-Password := "foo", Tunnel-Password := "bar"
-match 45 15 00 8e 93 e4 f7 68 1f 3d b7 b9 25 10 83 2a 9b 19 90 33 0a 45 15 00 94 b0 ca bf ee 00 05 c7 b8 95 4c ef 14 d5 8a d2 d1 db
+match  45 15 00 89 73 c6 80 f6 15 54 ac 5a 0f 6d 5b c0 ad 41 f8 0f 1a 45 15 00 9d c5 c4 69 23 3a 16 57 b3 5c 97 82 3c 97 ec 6b 7e f1
 
 decode-pair -
 match Tunnel-Password = "foo", Tunnel-Password = "bar"
@@ -32,7 +32,7 @@ match Tunnel-Password = "foo", Tunnel-Password = "bar"
 #  is different.
 #
 encode-pair Tunnel-Password := "barbar"
-match 45 15 00 86 04 91 2d e8 4f 18 62 f8 2e a8 d3 09 99 e8 35 cc 7c
+match 45 15 00 80 6f 90 5f e5 ef e3 6f 0e a5 54 4d 7d 75 4d ea 04 c2
 
 decode-pair -
 match Tunnel-Password = "barbar"

@@ -132,56 +132,73 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 	uint8_t		digest[RADIUS_AUTH_VECTOR_LENGTH];
 	uint8_t		tpasswd[RADIUS_MAX_STRING_LENGTH];
 	size_t		i, n;
-	size_t		encrypted_len;
 	fr_radius_ctx_t	*packet_ctx = encode_ctx;
 	uint32_t	r;
-	size_t		len;
+	size_t		output_len, encrypted_len, padding;
 	ssize_t		slen;
 	fr_dbuff_t	work_dbuff = FR_DBUFF_MAX(dbuff, RADIUS_MAX_STRING_LENGTH);
 
 	/*
-	 *	Limit the maximum size of the in password.  2 bytes
+	 *	Limit the maximum size of the input password.  2 bytes
 	 *	are taken up by the salt, and one by the encoded
-	 *	"length" field.  Note that if we have a tag, the
-	 *	"outlen" will be 252 octets, not 253 octets.
+	 *	"length" field.
 	 */
-	if (inlen > (RADIUS_MAX_STRING_LENGTH - 3)) inlen = (RADIUS_MAX_STRING_LENGTH - 3);
-
-	/*
-	 *	If we still overflow the output, let the caller know
-	 *	how many bytes would have been needed.
-	 */
-	FR_DBUFF_SET_RETURN(&work_dbuff, inlen + 3);
-	fr_dbuff_set_to_start(&work_dbuff);
+	if (inlen > (RADIUS_MAX_STRING_LENGTH - 3)) {
+	fail:
+		fr_strerror_const("Input password is too large for tunnel password encoding");
+		return -(inlen + 3);
+	}
 
 	/*
 	 *	Length of the encrypted data is the clear-text
 	 *	password length plus one byte which encodes the length
 	 *	of the password.  We round up to the nearest encoding
-	 *	block.  Note that this can result in the encoding
-	 *	length being more than 253 octets.
+	 *	block, and bound it by the size of the output buffer,
+	 *	while accounting for 2 bytes of salt.
+	 *
+	 *	And also ensuring that we don't truncate the input
+	 *	password.
 	 */
 	encrypted_len = ROUND_UP(inlen + 1, 16);
+	if (encrypted_len > (RADIUS_MAX_STRING_LENGTH - 2)) {
+		encrypted_len = (RADIUS_MAX_STRING_LENGTH - 2);
+
+		if (encrypted_len < (inlen + 1)) goto fail;
+	}
 
 	/*
-	 *	We need 2 octets for the salt, followed by the actual
-	 *	encrypted data. By now we know the password, salt, and
-	 *	length will fit; we are willing to have a short final
-	 *	block.
+	 *	Get the number of padding bytes in the last block.
 	 */
-	slen = fr_dbuff_set(&work_dbuff, encrypted_len + 2);
-	if (slen < 0) encrypted_len -= -slen;
-	fr_dbuff_set_to_start(&work_dbuff);
+	padding = encrypted_len - (inlen + 1);
 
-	len = encrypted_len + 2;	/* account for the salt */
-	if (len > RADIUS_MAX_STRING_LENGTH) len = RADIUS_MAX_STRING_LENGTH;
+	output_len = encrypted_len + 2;	/* account for the salt */
+
+	/*
+	 *	We will have up to 253 octets of data in the output
+	 *	buffer, some of which are padding.
+	 *
+	 *	If we over-run the output buffer, see if we can drop
+	 *	some of the padding bytes.  If not, we return an error
+	 *	instead of truncating the password.
+	 *
+	 *	Otherwise we lower the amount of data we copy into the
+	 *	output buffer, because the last bit is just padding,
+	 *	and can be safely discarded.
+	 */
+	slen = fr_dbuff_set(&work_dbuff, output_len);
+	if (slen < 0) {
+		if (((size_t) -slen) > padding) goto fail;
+
+		output_len += slen;
+	}
+	fr_dbuff_set_to_start(&work_dbuff);
 
 	/*
 	 *	Copy the password over, and fill the remainder with random data.
 	 */
 	fr_dbuff_out_memcpy(tpasswd + 3, in, inlen);
 
-	for (i = 3 + inlen; i < (size_t)len; i++) {
+	for (i = 3 + inlen; i < sizeof(tpasswd); i++) {
 		tpasswd[i] = fr_fast_rand(&packet_ctx->rand_ctx);
 	}
 
@@ -208,6 +225,10 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 	fr_md5_update(md5_ctx, packet_ctx->vector, RADIUS_AUTH_VECTOR_LENGTH);
 	fr_md5_update(md5_ctx, &tpasswd[0], 2);
 
+	/*
+	 *	Do various hashing, and XOR the length+password with
+	 *	the output of the hash blocks.
+	 */
 	for (n = 0; n < encrypted_len; n += AUTH_PASS_LEN) {
 		size_t block_len;
 
@@ -226,7 +247,7 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 	fr_md5_ctx_free_from_list(&md5_ctx);
 	fr_md5_ctx_free_from_list(&md5_ctx_old);
 
-	FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, tpasswd, len);
+	FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, tpasswd, output_len);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -558,8 +579,9 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		slen = encode_tunnel_password(&work_dbuff, &value_start, fr_dbuff_used(&value_dbuff), packet_ctx);
 		if (slen < 0) {
 			fr_strerror_printf("%s too long", vp->da->name);
-			return slen;
+			return slen - flag_has_tag(&vp->da->flags);
 		}
+
 		/*
 		 *	Do this after so we don't mess up the input
 		 *	value.

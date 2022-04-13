@@ -87,17 +87,19 @@ match Tunnel-Password = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 #  249 octets left for real data.
 #
 encode-pair Tunnel-Password = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx123456789"
+match 45 ff 00 82 44 15 f2 ec c0 59 86 8c 4b 70 4f 23 85 79 36 f6 f3 fb 44 d7 a6 a5 cb 27 9c 57 f5 8e 7d 08 ef 82 bf 27 06 d4 c9 0d e8 ed d0 fd 76 ca b2 d4 24 0b 9d b5 5f 02 09 c8 25 c8 61 00 73 16 61 58 5e 29 2b fd c9 1b b9 de b1 16 04 2b bd 7a cb 70 e9 f4 f4 e7 6a e1 37 a4 62 79 32 cd ec e5 db 3a 66 75 0d 35 90 11 69 55 f3 48 ac 02 a8 a8 84 90 0e 29 e0 84 bc c6 2e d7 82 e2 42 11 38 56 1a 31 c7 2b 43 ae e0 56 47 d4 f6 27 89 6e 38 33 cf f2 98 4f 64 2e 8a 8b d6 bc 8d de 7e 4e ef 25 78 bd 51 b4 e0 f3 90 d4 33 e9 a8 32 cb f6 fe 4a f5 8c 63 12 60 b5 61 13 19 25 21 63 24 fb b7 d5 35 26 0d 77 f4 dd 7c c2 ac 93 24 90 1b 3b a5 4c fb 77 51 be fc 35 8e 35 b3 95 43 5a 37 6f a3 d8 11 b5 7e 48 dd 3c 95 53 37 71 80 f6 13 8b a0 20 18 ec 76 84 88 dd 92 1a 67 1c 56 57 ae 3e 95
+
 decode-pair -
 match Tunnel-Password = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx123456789"
 
 #
-#  250 octets results in the attribute being skipped as there's no way we
-#  can represent this value.
+#  250 octets is not OK.
 #
 encode-pair Tunnel-Password = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx123456789a"
 match Tunnel-Password too long
+
 returned
-match -1
+match -254
 
 count
-match 64
+match 65

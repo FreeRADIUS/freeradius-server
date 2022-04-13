@@ -57,7 +57,7 @@ match raw.Vendor-Specific = 0x00000009abcdef
 
 # this untagged tunnel encrypted VSA is valid in both access accepts and CoA requests
 encode-pair Vendor-Specific.Unisphere.LI-Action = off
-match 1a 1a 00 00 13 0a 3a 14 8d 31 89 6e 2e 8a f5 fa 78 fb d5 90 d8 1a 15 91 c1 f1
+match 1a 1a 00 00 13 0a 3a 14 86 2a d5 3d ac 81 44 14 10 34 bc 97 47 38 9a 18 25 e5
 
 decode-pair -
 match Vendor-Specific.Unisphere.LI-Action = off
