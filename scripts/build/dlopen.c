@@ -275,7 +275,7 @@ static char *get_filename(void *handle)
  */
 static char *make_dlopen(__attribute__((unused)) char const *nm, unsigned int argc, char **argv)
 {
-	void *handle;
+	void *handle = NULL;
 	int mode = RTLD_NOW;
 	char *p, *name, *libname;
 	char const *error = NULL;
