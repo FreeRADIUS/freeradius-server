@@ -651,7 +651,7 @@ fr_unix_time_t fr_unix_time_from_tm(struct tm *tm)
 	uint32_t days;
 
 	/* Prevent crash if tm->tm_mon is invalid - seen in clusterfuzz */
-	if (unlikely(tm->tm_mon > (__typeof__(tm->tm_mon))NUM_ELEMENTS(month_yday))) return fr_unix_time_min();
+	if (unlikely(tm->tm_mon >= (__typeof__(tm->tm_mon))NUM_ELEMENTS(month_yday))) return fr_unix_time_min();
 
 	if (unlikely(tm->tm_year > 10000)) return fr_unix_time_min();
 
