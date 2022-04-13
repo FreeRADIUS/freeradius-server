@@ -72,10 +72,9 @@ static int8_t tls_engine_cmp(void const *one, void const *two)
 {
 	tls_engine_t const *a = talloc_get_type_abort_const(one, tls_engine_t);
 	tls_engine_t const *b = talloc_get_type_abort_const(two, tls_engine_t);
-	int8_t ret;
+	uint8_t ret;
 
-	ret = strcmp(a->id, b->id);
-	ret = CMP(ret, 0);
+	ret = CMP(strcmp(a->id, b->id), 0);
 	if (ret != 0) return ret;
 
 	/*
@@ -85,8 +84,7 @@ static int8_t tls_engine_cmp(void const *one, void const *two)
 	if (!a->instance) return -1;
 	if (!b->instance) return +1;
 
-	ret = strcmp(a->instance, b->instance);
-	return CMP(ret, 0);
+	return CMP(strcmp(a->instance, b->instance), 0);
 }
 
 /** Add the list of supported engine commands to the error stack
