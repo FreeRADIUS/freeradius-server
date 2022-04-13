@@ -656,7 +656,7 @@ fr_unix_time_t fr_unix_time_from_tm(struct tm *tm)
 	if (unlikely(tm->tm_year > 10000)) return fr_unix_time_min();
 
 	year_adj = tm->tm_year + 4800 + 1900;  /* Ensure positive year, multiple of 400. */
-	febs = year_adj - (tm->tm_mon <= 2 ? 1 : 0);  /* Februaries since base. */
+	febs = year_adj - (tm->tm_mon < 2 ? 1 : 0);  /* Februaries since base. tm_mon is 0 - 11 */
 	leap_days = 1 + (febs / 4) - (febs / 100) + (febs / 400);
 
 	days = 365 * year_adj + leap_days + month_yday[tm->tm_mon] + tm->tm_mday - 1;
