@@ -2120,11 +2120,13 @@ static size_t command_fuzzer_out(command_result_t *result, command_file_ctx_t *c
 
 stat:
 	if (fstat(fd, &sdir) < 0) {
+		close(fd);
 		fr_strerror_printf("failed statting fuzzer-out \"%s\": %s", fuzzer_dir, fr_syserror(errno));
 		RETURN_PARSE_ERROR(0);
 	}
 
 	if (!(sdir.st_mode & S_IFDIR)) {
+		close(fd);
 		fr_strerror_printf("fuzzer-out \"%s\" is not a directory", fuzzer_dir);
 		RETURN_PARSE_ERROR(0);
 	}
