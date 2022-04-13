@@ -635,7 +635,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 
 		RDEBUG4("EXPAND TMPL EXEC");
 
-		fr_value_box_bstr_alloc(tmp_ctx, &buff, &value, NULL, 1024, true);
+		MEM(fr_value_box_bstr_alloc(tmp_ctx, &buff, &value, NULL, 1024, true));
 		if (radius_exec_program_legacy(request, buff, 1024, NULL, request, vpt->name, NULL,
 					true, false, fr_time_delta_from_sec(EXEC_TIMEOUT)) != 0) {
 		error:
