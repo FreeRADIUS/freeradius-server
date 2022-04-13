@@ -108,8 +108,8 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 {
 	// proto_tacacs_tcp_t const       	*inst = talloc_get_type_abort_const(li->app_io_instance, proto_tacacs_tcp_t);
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
-	ssize_t				data_size;
-	size_t				packet_len, in_buffer;
+	ssize_t				data_size, packet_len;
+	size_t				in_buffer;
 
 	/*
 	 *      Read data into the buffer.
