@@ -4450,7 +4450,7 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 	}
 
 	if (!vpt->name && (vpt->quote != T_INVALID)) {
-		char quote = vpt->quote > T_TOKEN_LAST ? '?' : fr_token_quote[vpt->quote];
+		char quote = vpt->quote >= T_TOKEN_LAST ? '?' : fr_token_quote[vpt->quote];
 
 		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: Quote type '%c' (%i) was set for NULL name",
 				     file, line, quote, vpt->quote);
