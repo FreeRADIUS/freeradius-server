@@ -395,7 +395,7 @@ static int8_t session_cmp(void const *one, void const *two)
 {
 	proto_radius_udp_state_t const *a = (proto_radius_udp_state_t const *) one;
 	proto_radius_udp_state_t const *b = (proto_radius_udp_state_t const *) two;
-	int rcode;
+	uint8_t rcode;
 
 	fr_assert(a->state != NULL);
 	fr_assert(b->state != NULL);
@@ -403,7 +403,7 @@ static int8_t session_cmp(void const *one, void const *two)
 	rcode = CMP(a->len, b->len);
 	if (!rcode) return rcode;
 
-	return memcmp(a->state, b->state, a->len);
+	return CMP(memcmp(a->state, b->state, a->len), 0);
 }
 
 
