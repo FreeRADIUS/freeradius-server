@@ -174,6 +174,7 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 	fr_dbuff_set_to_start(&work_dbuff);
 
 	len = encrypted_len + 2;	/* account for the salt */
+	if (len > RADIUS_MAX_STRING_LENGTH) len = RADIUS_MAX_STRING_LENGTH;
 
 	/*
 	 *	Copy the password over, and fill the remainder with random data.
