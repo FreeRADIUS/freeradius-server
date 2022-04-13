@@ -1,0 +1,8 @@
+#
+# ARGV: -x -H ${RFC4533_TEST_SERVER} -D "cn=admin,dc=example,dc=com" -w "secret"
+#
+dn: cn=foo,ou=groups,dc=example,dc=com
+changetype: modify
+delete: member
+member: uid=bob,ou=people,dc=example,dc=com
+

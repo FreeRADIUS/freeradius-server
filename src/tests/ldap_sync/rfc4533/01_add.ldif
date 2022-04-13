@@ -1,0 +1,18 @@
+#
+# ARGV: -x -H ${RFC4533_TEST_SERVER} -D "cn=admin,dc=example,dc=com" -w "secret"
+#
+dn: uid=fred,ou=people,dc=example,dc=com
+changeType: add
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: fred
+sn: Smith
+givenName: Fred
+cn: Fred Smith
+displayName: Fred Smith
+userPassword: testing
+uidNumber: 102
+gidNumber: 102
+homeDirectory: /home/fred
+
