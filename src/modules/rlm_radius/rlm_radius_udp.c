@@ -2273,7 +2273,7 @@ static void protocol_error_reply(udp_request_t *u, udp_result_t *r, udp_handle_t
 		h->buflen = response_length;
 		MEM(h->buffer = talloc_array(h, uint8_t, h->buflen));
 
-		memcpy(h->buffer, attr, (attr[2] << 8) | attr[3]);
+		memcpy(h->buffer, attr, end - attr);
 	}
 
 	/*
