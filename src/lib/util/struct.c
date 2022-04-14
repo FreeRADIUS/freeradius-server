@@ -413,7 +413,6 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 done:
 	if (!nested) {
-		fr_pair_list_head(child_list);
 		fr_pair_list_append(out, child_list);	/* Wind to the end of the new pairs */
 	} else {
 		fr_assert(struct_vp != NULL);
