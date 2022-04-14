@@ -412,31 +412,6 @@ check_item:
 			goto fail;
 		}
 
-		/*
-		 *	The map "succeeded", but no map was created.
-		 *	It must have hit a terminal character, OR EOF.
-		 *
-		 *	Except we've already skipped spaces, tabs,
-		 *	comments, and LFs.  So the only thing which is
-		 *	left is a comma.
-		 */
-		if (!new_map) {
-			if (fr_sbuff_is_char(&sbuff, ',')) {
-				ERROR_MARKER(&sbuff, "Unexpected extra comma reading check pair");
-
-				goto fail_entry;
-			}
-
-			/*
-			 *	Otherwise map_afrom_substr() returned
-			 *	nothing, because there's no more
-			 *	input.
-			 */
-
-		add_entry:
-			fr_dlist_insert_tail(&list->head, &t);
-			break;
-		}
 		fr_assert(new_map->lhs != NULL);
 		fr_assert(new_map->rhs != NULL);
 
@@ -532,7 +507,9 @@ check_item:
 		 *	of elimination, we must be at EOF.
 		 */
 		if (!fr_sbuff_is_char(&sbuff, '\n')) {
-			goto add_entry;
+		add_entry:
+			fr_dlist_insert_tail(&list->head, &t);
+			break;
 		}
 
 setup_reply:
@@ -601,33 +578,6 @@ next_reply_item:
 			goto fail;
 		}
 
-		/*
-		 *	The map "succeeded", but no map was created.
-		 *	Maybe we hit a terminal string, or EOF.
-		 *
-		 *	We can't have hit space/tab, as that was
-		 *	checked for at "reply_item", and again after
-		 *	map_afrom_substr(), if we actually got
-		 *	something.
-		 *
-		 *	What's left is a comment, comma, LF, or EOF.
-		 */
-		if (!new_map) {
-			(void) fr_sbuff_adv_past_blank(&sbuff, SIZE_MAX, NULL);
-			if (fr_sbuff_is_char(&sbuff, ',')) {
-				ERROR_MARKER(&sbuff, "Unexpected extra comma reading reply pair");
-				goto fail_entry;
-			}
-
-			if (fr_sbuff_is_char(&sbuff, '#')) goto reply_item_comment;
-			if (fr_sbuff_is_char(&sbuff, '\n')) goto reply_item_end;
-
-			/*
-			 *	We didn't read anything, but none of
-			 *	the terminal characters match.  It must be EOF.
-			 */
-			goto add_entry;
-		}
 		fr_assert(new_map->lhs != NULL);
 
 		if (!tmpl_is_attr(new_map->lhs)) {
@@ -671,11 +621,10 @@ next_reply_item:
 		 *	Reading the next line will cause a complaint
 		 *	if this line ended with a comma.
 		 */
-	reply_item_comment:
 		if (fr_sbuff_next_if_char(&sbuff, '#')) {
 			(void) fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, '\n');
 		}
-	reply_item_end:
+
 		if (fr_sbuff_next_if_char(&sbuff, '\n')) {
 			lineno++;
 			goto reply_item;
