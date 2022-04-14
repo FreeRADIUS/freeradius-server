@@ -132,9 +132,11 @@ static void dns_packet_debug(request_t *request, fr_radius_packet_t const *packe
 	if (!packet) return;
 	if (!RDEBUG_ENABLED) return;
 
+	if ((packet->code & 0x0f) >= FR_DNS_CODE_MAX) return;
+
 	log_request(L_DBG, L_DBG_LVL_1, request, __FILE__, __LINE__, "%s %s",
 		    received ? "Received" : "Sending",
-		    fr_dns_packet_codes[packet->code]);
+		    fr_dns_packet_codes[packet->code & 0x0f]);
 
 	if (received || request->parent) {
 		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
