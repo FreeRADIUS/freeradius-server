@@ -450,8 +450,12 @@ ssize_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 	case FR_DICT_ATTR_OK:
 		if (is_raw) {
 			*out = fr_dict_unknown_attr_afrom_da(ctx, our_parent);
-			(*out)->flags.is_raw = 1;
-			if (err) *err = *out ? FR_DICT_ATTR_OK : FR_DICT_ATTR_PARSE_ERROR;
+			if (!*out) {
+				if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+			} else {
+				(*out)->flags.is_raw = 1;
+				if (err) *err = FR_DICT_ATTR_OK;
+			}
 		} else {
 			*out = fr_dict_attr_unconst(our_parent);	/* Which is the resolved attribute in this case */
 			if (err) *err = FR_DICT_ATTR_OK;
