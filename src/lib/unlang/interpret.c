@@ -931,7 +931,7 @@ void *unlang_interpret_stack_alloc(TALLOC_CTX *ctx)
 	 *	This number is pretty arbitrary, but it seems
 	 *	like too low level to make into a tuneable.
 	 */
-	stack = talloc_zero_pooled_object(ctx, unlang_stack_t, UNLANG_STACK_MAX, 128);	/* 128 bytes per state */
+	MEM(stack = talloc_zero_pooled_object(ctx, unlang_stack_t, UNLANG_STACK_MAX, 128));	/* 128 bytes per state */
 	stack->result = RLM_MODULE_NOT_SET;
 
 	return stack;
