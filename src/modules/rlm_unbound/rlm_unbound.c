@@ -191,7 +191,7 @@ static void xlat_unbound_callback(void *mydata, int rcode, void *packet, int pac
 		fr_dbuff_out(&rdlength, &dbuff);
 		RDEBUG4("RDLENGTH is %d", rdlength);
 
-		vb = fr_value_box_alloc_null(ur->out_ctx);
+		MEM(vb = fr_value_box_alloc_null(ur->out_ctx));
 		switch (ur->return_type) {
 		case FR_TYPE_IPV4_ADDR:
 		case FR_TYPE_IPV6_ADDR:
