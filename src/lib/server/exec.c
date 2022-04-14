@@ -121,8 +121,8 @@ static int exec_value_box_list_to_argv(TALLOC_CTX *ctx, char ***argv_p, fr_value
  *      - The number of environmental variables created.
  *	- -1 on failure.
  */
-static int exec_pair_to_env(char **env_p, size_t env_len, fr_sbuff_t *env_sbuff,
-			    request_t *request, fr_pair_list_t *env_pairs, bool env_escape)
+static CC_HINT(nonnull(1,3,4,5)) int exec_pair_to_env(char **env_p, size_t env_len, fr_sbuff_t *env_sbuff,
+						      request_t *request, fr_pair_list_t *env_pairs, bool env_escape)
 {
 	char			*p;
 	size_t			i, j;
@@ -210,14 +210,14 @@ static int exec_pair_to_env(char **env_p, size_t env_len, fr_sbuff_t *env_sbuff,
 	for (j = 0; j < i; j++) {
 		env_p[j] = fr_sbuff_current(&env_m[j]);
 	}
-	if (request) {
-		da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_EXEC_EXPORT);
-		if (da) {
-			for (vp = fr_pair_dcursor_by_da_init(&cursor, &request->control_pairs, da);
-			     vp && (i < (env_len - 1));
-			     vp = fr_dcursor_next(&cursor)) {
-				env_p[i++] = UNCONST(char *, vp->vp_strvalue);
-			}
+
+
+	da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_EXEC_EXPORT);
+	if (da) {
+		for (vp = fr_pair_dcursor_by_da_init(&cursor, &request->control_pairs, da);
+		     vp && (i < (env_len - 1));
+		     vp = fr_dcursor_next(&cursor)) {
+			env_p[i++] = UNCONST(char *, vp->vp_strvalue);
 		}
 	}
 
