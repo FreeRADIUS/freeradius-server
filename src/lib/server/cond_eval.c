@@ -160,8 +160,8 @@ static bool cond_eval_tmpl(request_t *request, tmpl_t const *in, fr_value_box_t 
 		box_free = box;
 
 		if (fr_value_box_cast(box, box, tmpl_rules_cast(vpt), NULL, &vp->data) < 0) {
-			if (request) RPEDEBUG("Failed casting %pV to type %s", box,
-					      fr_type_to_str(tmpl_rules_cast(vpt)));
+			RPEDEBUG("Failed casting %pV to type %s", box,
+				 fr_type_to_str(tmpl_rules_cast(vpt)));
 			goto done;
 		}
 		break;
