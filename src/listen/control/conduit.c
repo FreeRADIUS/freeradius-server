@@ -238,8 +238,10 @@ ssize_t fr_conduit_write(int fd, fr_conduit_type_t conduit, void const *out, siz
 	 */
 	if (!outlen) return 0;
 
-	hdr.conduit = htons(conduit);
-	hdr.length = htonl(outlen);
+	hdr = (fr_conduit_hdr_t) {
+		.conduit = htons(conduit),
+		.length = htonl(outlen),
+	};
 
 #if 0
 	fprintf(stderr, "CONDUIT W %zu length %zu\n", conduit, outlen);
