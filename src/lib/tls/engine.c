@@ -72,7 +72,7 @@ static int8_t tls_engine_cmp(void const *one, void const *two)
 {
 	tls_engine_t const *a = talloc_get_type_abort_const(one, tls_engine_t);
 	tls_engine_t const *b = talloc_get_type_abort_const(two, tls_engine_t);
-	uint8_t ret;
+	int8_t ret;
 
 	ret = CMP(strcmp(a->id, b->id), 0);
 	if (ret != 0) return ret;
