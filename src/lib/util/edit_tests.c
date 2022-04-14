@@ -315,7 +315,9 @@ static void test_pair_delete_multiple_abort(void)
 	add_pairs(&local_pairs);
 
 	vp = fr_pair_list_head(&local_pairs);
+	fr_assert(vp != NULL);
 	vp = fr_pair_list_next(&local_pairs, vp);
+	fr_assert(vp != NULL);
 	TEST_CHECK(vp->da == fr_dict_attr_test_octets);
 
 	el = fr_edit_list_alloc(NULL, 5);
