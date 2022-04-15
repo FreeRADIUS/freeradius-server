@@ -16,7 +16,7 @@ BEGIN-VENDOR	FreeRADIUS	format=Extended-Vendor-Specific-5
 #
 #  https://w1.fi/cgit/hostap/commit/?id=b94371af8402f60218716552e571ca72cff4e3c0
 #
-ATTRIBUTE	FreeRADIUS-802.1X-Anonce	1	octets[32]
+ATTRIBUTE	FreeRADIUS-802.1X-Anonce	1	octets # really 32 octets
 ATTRIBUTE	FreeRADIUS-802.1X-EAPoL-Key-Msg	2	octets
 
 END-VENDOR	FreeRADIUS
