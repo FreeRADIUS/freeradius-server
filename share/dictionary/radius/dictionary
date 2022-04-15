@@ -141,6 +141,7 @@ $INCLUDE dictionary.acc
 $INCLUDE dictionary.acme
 $INCLUDE dictionary.actelis
 $INCLUDE dictionary.adtran
+$INCLUDE dictionary.adva
 $INCLUDE dictionary.airespace
 $INCLUDE dictionary.alcatel
 $INCLUDE dictionary.alcatel-lucent.aaa
