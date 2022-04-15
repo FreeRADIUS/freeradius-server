@@ -220,6 +220,7 @@ $INCLUDE dictionary.force10
 $INCLUDE dictionary.fortinet
 $INCLUDE dictionary.foundry
 $INCLUDE dictionary.freeradius
+$INCLUDE dictionary.freeradius.evs5
 $INCLUDE dictionary.freeswitch
 $INCLUDE dictionary.gandalf
 $INCLUDE dictionary.garderos
