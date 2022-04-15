@@ -795,7 +795,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		      "Closing it, and diuscarding all packets for connection %s.",
 		      inst->app_io->common.name, connection->name);
 		pthread_mutex_lock(&client->mutex);
-		(void) fr_hash_table_delete(client->ht, connection);
+		if (client->ht) (void) fr_hash_table_delete(client->ht, connection);
 		pthread_mutex_unlock(&client->mutex);
 
 	cleanup:
