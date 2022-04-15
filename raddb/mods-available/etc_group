@@ -8,6 +8,10 @@
 #  You will have to define the Etc-Group-Name in the 'dictionary' file
 #  as a 'string' type.
 #
+#  The module name "etc_group" should also be listed in the "authorize"
+#  section.  Make sure it's listed before any other part of the server
+#  tries to use the Etc-Group-Name attribute.
+#
 #  The Group and Group-Name attributes are automatically created by
 #  the Unix module, and do checking against /etc/group automatically.
 #  This means that you CANNOT use Group or Group-Name to do any other
