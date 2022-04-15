@@ -59,6 +59,7 @@ ATTRIBUTE	Test-Enum-Integer32	254.13		uint32	enum=base-enum-uint64
 ATTRIBUTE	Extended-Attribute-1			241	tlv extended
 ATTRIBUTE	Extended-Attribute-2			242	tlv extended
 ATTRIBUTE	Extended-Attribute-5			245	tlv long-extended
+ATTRIBUTE	Extended-Attribute-6			246	tlv long-extended
 ATTRIBUTE	Extended-Vendor-Specific-2		242.26	vsa
 
 VENDOR FreeRADIUS 11344
@@ -69,12 +70,12 @@ ATTRIBUTE	Unit-EVS-Octets	 2 octets
 
 END-Vendor FreeRADIUS
 
-ATTRIBUTE	Extended-Vendor-Specific-5		245.26	vsa
+ATTRIBUTE	Extended-Vendor-Specific-6		246.26	vsa
 
-BEGIN-Vendor FreeRADIUS parent=.Extended-Attribute-5.Extended-Vendor-Specific-5
+BEGIN-Vendor FreeRADIUS parent=.Extended-Attribute-6.Extended-Vendor-Specific-6
 
-ATTRIBUTE	Unit-EVS-5-Integer	1 integer
-ATTRIBUTE	Unit-EVS-5-Octets	2 octets
+ATTRIBUTE	Unit-EVS-6-Integer	1 integer
+ATTRIBUTE	Unit-EVS-6-Octets	2 octets
 
 END-Vendor FreeRADIUS
 
