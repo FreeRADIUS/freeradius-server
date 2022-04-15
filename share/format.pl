@@ -97,7 +97,7 @@ while (@ARGV) {
 	#
 	#  Remember if we did begin-vendor.
 	#
-	if (/^BEGIN-VENDOR\s+([-\w]+)/) {
+	if (/^BEGIN-VENDOR\s+([-\w]+)\s+([-=\w]+)/) {
 	    $begin_vendor = 1;
 	    if (!defined $vendor) {
 		$vendor = $1;
@@ -105,7 +105,11 @@ while (@ARGV) {
 		# do something smart
 	    }
 
-	    push @output, "BEGIN-VENDOR\t$vendor\n";
+	    if (! $2) {
+		push @output, "BEGIN-VENDOR\t$vendor\n";
+	    } else {
+		push @output, "BEGIN-VENDOR\t$vendor\t$2\n";
+	    }
 	    next;
 	}
 
