@@ -19,4 +19,25 @@ BEGIN-VENDOR	FreeRADIUS	parent=.Extended-Attribute-5.Extended-Vendor-Specific-5
 ATTRIBUTE	802_1X-Anonce			1	octets[32]
 ATTRIBUTE	802_1X-EAPoL-Key-Msg		2	octets
 
+#
+#  @todo - add support for "octets length=uint16" to the dictionaries and to RADIUS.
+#
+#  In general it's not allowed.  The RADIUS encoder/decoder doesn't support it,
+#  though dhcpv4/dhcpv6 does.
+#
+#  We should really just have dict_validate allow more things, and then move more
+#  of the sanity checks to the various protocol callbacks.
+#
+#ATTRIBUTE	802_1X-EAPoL-Key-Msg		2	struct
+#MEMBER		Type				uint8	# 3 for Key
+#MEMBER		Key-Information			uint16
+#MEMBER		Key-Length			uint16
+#MEMBER		Replay-Counter			octets[8]
+#MEMBER		WPA-Key-Nonce			octets[32]
+#MEMBER		Key-IV				octets[16]
+#MEMBER		WPA-Key-RSA			octets[8]
+#MEMBER		WPA-Key-Identifier		octets[8]
+#MEMBER		WPA-Key-MIC			octets[16]
+#MEMBER		WPA-Key-Data			octets length=uint16
+
 END-VENDOR	FreeRADIUS
