@@ -65,31 +65,6 @@ fr_dict_attr_autoload_t libfreeradius_dhcpv6_dict_attr[] = {
 	{ NULL }
 };
 
-size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2] = {
-	[FR_TYPE_NULL]		= {~0, 0},	//!< Ensure array starts at 0 (umm?)
-
-	[FR_TYPE_STRING]		= {0, ~0},
-	[FR_TYPE_OCTETS]		= {0, ~0},
-
-	[FR_TYPE_IPV4_ADDR]		= {4, 4},
-	[FR_TYPE_IPV4_PREFIX]		= {1, 5},	//!< Zero length prefix still requires one byte for prefix len.
-	[FR_TYPE_IPV6_ADDR]		= {16, 16},
-	[FR_TYPE_IPV6_PREFIX]		= {1, 17},	//!< Zero length prefix still requires one byte for prefix len.
-	[FR_TYPE_IFID]			= {8, 8},
-	[FR_TYPE_ETHERNET]		= {6, 6},
-
-	[FR_TYPE_BOOL]			= {1, 1},
-	[FR_TYPE_UINT8]			= {1, 1},
-	[FR_TYPE_UINT16]		= {2, 2},
-	[FR_TYPE_UINT32]		= {4, 4},
-	[FR_TYPE_UINT64]		= {8, 8},
-
-	[FR_TYPE_TLV]			= {2, ~0},
-	[FR_TYPE_STRUCT]		= {1, ~0},
-
-	[FR_TYPE_MAX]			= {~0, 0}	//!< Ensure array covers all types.
-};
-
 /*
  * grep VALUE share/dictionary/dhcpv6/dictionary.freeradius.internal  | awk '{print "[" $4 "] = \"" $3 "\"," }'
  */
@@ -136,47 +111,6 @@ static fr_table_num_ordered_t const subtype_table[] = {
 	{ L("dns_label"),			FLAG_ENCODE_DNS_LABEL },
 	{ L("partial_dns_label"), 		FLAG_ENCODE_PARTIAL_DNS_LABEL }
 };
-
-/** Return the on-the-wire length of an attribute value
- *
- * @param[in] vp to return the length of.
- * @return the length of the attribute.
- */
-size_t fr_dhcpv6_option_len(fr_pair_t const *vp)
-{
-	switch (vp->vp_type) {
-	case FR_TYPE_VARIABLE_SIZE:
-#ifndef NDEBUG
-		if (da_is_dns_label(vp->da)) {
-			fr_assert_fail("DNS labels MUST be encoded/decoded with their own function, and not with generic 'string' functions");
-			return 0;
-		}
-#endif
-
-		if (vp->da->flags.length) return vp->da->flags.length;	/* Variable type with fixed length */
-
-		/*
-		 *	Arrays get maxed at 2^16-1
-		 */
-		if (vp->da->flags.array && ((vp->vp_type == FR_TYPE_STRING) || (vp->vp_type == FR_TYPE_OCTETS))) {
-			if (vp->vp_length > 65535) return 65535;
-		}
-
-		return vp->vp_length;
-
-	case FR_TYPE_DATE:
-	case FR_TYPE_TIME_DELTA:
-		if (vp->data.enumv->flags.length) return vp->data.enumv->flags.length;
-		return sizeof(uint32_t);
-
-	case FR_TYPE_STRUCTURAL:
-		fr_assert_fail(NULL);
-		return 0;
-
-	default:
-		return fr_dhcpv6_attr_sizes[vp->vp_type][0];
-	}
-}
 
 static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes, int depth);
 

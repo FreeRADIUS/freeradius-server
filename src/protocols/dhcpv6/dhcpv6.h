@@ -32,8 +32,6 @@ RCSIDH(dhcpv6_h, "$Id$")
 
 #include <freeradius-devel/protocol/dhcpv6/dictionary.h>
 
-extern size_t const fr_dhcpv6_attr_sizes[FR_TYPE_MAX + 1][2];
-
 #define DHCPV6_MSG_TYPE_LEN		1U
 
 #define DHCPV6_TRANSACTION_ID_LEN	3U
@@ -147,8 +145,6 @@ typedef struct {
 /*
  *	base.c
  */
-size_t		fr_dhcpv6_option_len(fr_pair_t const *vp);
-
 uint8_t const	*fr_dhcpv6_option_find(uint8_t const *start, uint8_t const *end, unsigned int option);
 
 bool		fr_dhcpv6_ok(uint8_t const *packet, size_t packet_len,
