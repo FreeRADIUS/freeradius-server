@@ -80,19 +80,6 @@ char const *fr_vmps_codes[FR_VMPS_CODE_MAX] = {
 };
 
 
-static size_t const fr_vmps_attr_sizes[FR_TYPE_MAX + 1][2] = {
-	[FR_TYPE_NULL]	= {~0, 0},	//!< Ensure array starts at 0 (umm?)
-
-	[FR_TYPE_STRING]	= {0, ~0},
-	[FR_TYPE_OCTETS]	= {0, ~0},
-
-	[FR_TYPE_IPV4_ADDR]	= {4, 4},
-	[FR_TYPE_ETHERNET]	= {6, 6},
-
-	[FR_TYPE_MAX]		= {~0, 0}	//!< Ensure array covers all types.
-};
-
-
 bool fr_vmps_ok(uint8_t const *packet, size_t *packet_len)
 {
 	uint8_t	const	*ptr;
@@ -275,7 +262,7 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t 		*vp;
-	fr_dbuff_marker_t	hdr, io;
+	fr_dbuff_marker_t	hdr, m;
 	uint8_t			data_count = 0;
 
 	/*
@@ -283,7 +270,7 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 	 *	to let us write to to the encoding as needed.
 	 */
 	fr_dbuff_marker(&hdr, &work_dbuff);
-	fr_dbuff_marker(&io, &work_dbuff);
+	fr_dbuff_marker(&m, &work_dbuff);
 
 	/*
 	 *	Create the header
@@ -303,48 +290,32 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 	 *	Encode the VP's.
 	 */
 	while ((vp = fr_dcursor_current(cursor))) {
-		size_t len;
+		ssize_t slen;
 
 		if (vp->da == attr_packet_type) {
-			fr_dbuff_set(&io, fr_dbuff_current(&hdr) + 1);
-			fr_dbuff_in(&io, (uint8_t)vp->vp_uint32);
+			fr_dbuff_set(&m, fr_dbuff_current(&hdr) + 1);
+			fr_dbuff_in(&m, (uint8_t)vp->vp_uint32);
 			fr_dcursor_next(cursor);
 			continue;
 		}
 
 		if (vp->da == attr_error_code) {
-			fr_dbuff_set(&io, fr_dbuff_current(&hdr) + 2);
-			fr_dbuff_in(&io, vp->vp_uint8);
+			fr_dbuff_set(&m, fr_dbuff_current(&hdr) + 2);
+			fr_dbuff_in(&m, vp->vp_uint8);
 			fr_dcursor_next(cursor);
 			continue;
 		}
 
 		if (!original && (vp->da == attr_sequence_number)) {
-			fr_dbuff_set(&io, fr_dbuff_current(&hdr) + 4);
-			fr_dbuff_in(&io, vp->vp_uint32);
+			fr_dbuff_set(&m, fr_dbuff_current(&hdr) + 4);
+			fr_dbuff_in(&m, vp->vp_uint32);
 			fr_dcursor_next(cursor);
 			continue;
 		}
 
+		if (!fr_type_is_leaf(vp->da->type)) continue;
+
 		DEBUG2("&%pP", vp);
-
-		switch (vp->vp_type) {
-		case FR_TYPE_IPV4_ADDR:
-			len = fr_vmps_attr_sizes[vp->vp_type][0];
-			break;
-
-		case FR_TYPE_ETHERNET:
-			len = fr_vmps_attr_sizes[vp->vp_type][0];
-			break;
-
-		case FR_TYPE_OCTETS:
-		case FR_TYPE_STRING:
-			len = vp->vp_length;
-			break;
-
-		default:
-			return -1;
-		}
 
 		/*
 		 *	Type.  Note that we look at only the lower 8
@@ -356,26 +327,15 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0x00, 0x00, 0x0c, (vp->da->attr & 0xff));
 
 		/* Length */
-		FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t)len);
+		fr_dbuff_set(&m, fr_dbuff_current(&work_dbuff));
+		FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) 0);
 
 		/* Data */
-		switch (vp->vp_type) {
-		case FR_TYPE_IPV4_ADDR:
-			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t *)&vp->vp_ipv4addr, len);
-			break;
+		slen = fr_value_box_to_network(&work_dbuff, &vp->data);
+		if (slen < 0) return slen;
 
-		case FR_TYPE_ETHERNET:
-			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_ether, len);
-			break;
+		fr_dbuff_in(&m, (uint16_t) slen);
 
-		case FR_TYPE_OCTETS:
-		case FR_TYPE_STRING:
-			FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vp->vp_octets, len);
-			break;
-
-		default:
-			return -1;
-		}
 		data_count++;
 
 		fr_dcursor_next(cursor);
@@ -384,8 +344,8 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 	/*
 	 *	Update the Data Count
 	 */
-	fr_dbuff_set(&io, fr_dbuff_current(&hdr) + 3);
-	fr_dbuff_in(&io, data_count);
+	fr_dbuff_set(&m, fr_dbuff_current(&hdr) + 3);
+	fr_dbuff_in(&m, data_count);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
