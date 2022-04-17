@@ -405,11 +405,10 @@ int fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, uint16_t *src_port, fr_ipaddr_
 	 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
 	 *	kernel instead binds us to a 1.2.3.4.  So once the
 	 *	socket is bound, ask it what it's IP address is.
+	 *
+	 *	If the caller asks for only one, well, too bad.
 	 */
-	if (src_port) {
-		fr_ipaddr_t		my_ipaddr;
-		uint16_t		my_port;
-
+	if (src_ipaddr && src_port) {
 		salen = sizeof(salocal);
 		memset(&salocal, 0, salen);
 		if (getsockname(sockfd, (struct sockaddr *) &salocal, &salen) < 0) {
@@ -417,12 +416,6 @@ int fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, uint16_t *src_port, fr_ipaddr_
 			fr_strerror_printf("Failed getting socket name: %s", fr_syserror(errno));
 			return -1;
 		}
-
-		/*
-		 *	Return these if the caller cared.
-		 */
-		if (!src_ipaddr) src_ipaddr = &my_ipaddr;
-		if (!src_port) src_port = &my_port;
 
 		if (fr_ipaddr_from_sockaddr(src_ipaddr, src_port, &salocal, salen) < 0) {
 			close(sockfd);
