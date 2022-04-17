@@ -1220,6 +1220,7 @@ int fr_value_box_hton(fr_value_box_t *dst, fr_value_box_t const *src)
 
 	return 0;
 }
+
 /** Get the size of the value held by the fr_value_box_t
  *
  * This is the length of the NETWORK presentation
@@ -1228,8 +1229,35 @@ size_t fr_value_box_network_length(fr_value_box_t const *value)
 {
 	switch (value->type) {
 	case FR_TYPE_VARIABLE_SIZE:
+		if (value->enumv) {
+			/*
+			 *	Fixed-width fields.
+			 */
+			if (value->enumv->flags.length) {
+				return value->enumv->flags.length;
+			}
+
+			/*
+			 *	Clamp length at maximum we're allowed to encode.
+			 */
+			if (da_is_length_field(value->enumv)) {
+				if (value->enumv->flags.subtype == FLAG_LENGTH_UINT8) {
+					if (value->vb_length > 255) return 255;
+
+				} else if (value->enumv->flags.subtype == FLAG_LENGTH_UINT16) {
+					if (value->vb_length > 65535) return 65535;
+				}
+			}
+		}
+		return value->vb_length;
+
+		/*
+		 *	These can have different encodings, depending on the underlying protocol.
+		 */
 	case FR_TYPE_DATE:
 	case FR_TYPE_TIME_DELTA:
+		if (value->enumv) return value->enumv->flags.length;
+
 		return value->vb_length;
 
 	default:
@@ -1672,29 +1700,31 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 		/*
 		 *	Decode fixed-width fields.
 		 */
-		if (enumv->flags.length) {
-			newlen = enumv->flags.length;
+		if (enumv) {
+			if (enumv->flags.length) {
+				newlen = enumv->flags.length;
 
-		} else if (da_is_length_field(enumv)) {
-			/*
-			 *	Or fields with a length prefix.
-			 */
-			if (enumv->flags.subtype == FLAG_LENGTH_UINT8) {
-				uint8_t num;
+			} else if (da_is_length_field(enumv)) {
+				/*
+				 *	Or fields with a length prefix.
+				 */
+				if (enumv->flags.subtype == FLAG_LENGTH_UINT8) {
+					uint8_t num;
 
-				FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
-				newlen = num;
-				offset = 1;
+					FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
+					newlen = num;
+					offset = 1;
 
-			} else if (enumv->flags.subtype == FLAG_LENGTH_UINT16) {
-				uint16_t num;
+				} else if (enumv->flags.subtype == FLAG_LENGTH_UINT16) {
+					uint16_t num;
 
-				FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
-				newlen = num;
-				offset = 2;
+					FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
+					newlen = num;
+					offset = 2;
 
-			} else {
-				return -1;
+				} else {
+					return -1;
+				}
 			}
 		}
 
