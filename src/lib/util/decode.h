@@ -19,7 +19,7 @@
  *
  * @file src/lib/util/decode.h
  *
- * @copyright 2021 Network RADIUS SAS
+ * @copyright 2022 Network RADIUS SAS (legal@networkradius.com)
  */
 RCSIDH(decode_h, "$Id$")
 
@@ -32,15 +32,16 @@ extern "C" {
 /** Typedefs for simplifying the use and declaration of protocol decoders.
  *
  */
-typedef struct fr_proto_decode_ctx_s fr_proto_decode_ctx_t;
-
-typedef ssize_t (*fr_proto_decode_pair_t)(TALLOC_CTX *ctx, fr_pair_list_t *out,
+typedef ssize_t (*fr_pair_decode_value_t)(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					   fr_dict_attr_t const *parent,
-					   uint8_t const *data, size_t const data_len, fr_proto_decode_ctx_t *decode_ctx);
+					   uint8_t const *data, size_t const data_len, void *decode_ctx);
 
 #define PROTO_DECODE_FUNC(_name) static ssize_t _name(TALLOC_CTX *ctx, fr_pair_list_t *out, \
 					   fr_dict_attr_t const *parent, \
 					   uint8_t const *data, size_t const data_len, fr_proto_decode_ctx_t *decode_ctx); \
+
+ssize_t fr_pair_array_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+				   uint8_t const *data, size_t data_len, void *decode_ctx, fr_pair_decode_value_t decode_value);
 
 #ifdef __cplusplus
 }

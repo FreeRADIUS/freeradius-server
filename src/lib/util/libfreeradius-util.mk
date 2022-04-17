@@ -14,6 +14,7 @@ SOURCES		:= \
 		   cap.c \
 		   dbuff.c \
 		   debug.c \
+		   decode.c \
 		   dict_ext.c \
 		   dict_fixup.c \
 		   dict_print.c \

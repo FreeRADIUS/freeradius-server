@@ -82,9 +82,7 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_pair_list_t *out,
 static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t const data_len, void *decode_ctx);
-static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out,
-			    fr_dict_attr_t const *parent,
-			    uint8_t const *data, size_t const data_len, void *decode_ctx);
+
 static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				 fr_dict_attr_t const *parent,
 				 uint8_t const *data, size_t const data_len, void *decode_ctx);
@@ -100,9 +98,7 @@ static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		FR_PROTO_TRACE("decode DNS labels");
 		return decode_dns_labels(ctx, out, parent, data, data_len, decode_ctx);
 	}
-
-	if (parent->flags.array) return decode_array(ctx, out, parent, data, data_len, decode_ctx);
-
+	
 	return decode_value(ctx, out, parent, data, data_len, decode_ctx);
 }
 
@@ -211,50 +207,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	return data_len;
 }
 
-
-static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out,
-			    fr_dict_attr_t const *parent,
-			    uint8_t const *data, size_t const data_len, void *decode_ctx)
-{
-	uint8_t const  		*p = data, *end = p + data_len;
-	ssize_t			slen;
-	size_t			element_len;
-
-	FR_PROTO_HEX_DUMP(data, data_len, "decode_array");
-
-	if (!fr_cond_assert_msg(parent->flags.array,
-				"%s: Internal sanity check failed, attribute \"%s\" does not have array bit set",
-				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
-
-	/*
-	 *	If the data is variable length i.e. strings or octets
-	 *	there is a length field before each element.
-	 *
-	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...-+-+-+-+-+-+-+
-	 *   |       text-len                |        String                 |
-	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...-+-+-+-+-+-+-+
-	 */
-	while (p < end) {
-		if ((end - p) < 2) {
-		raw:
-			slen = decode_raw(ctx, out, parent, p, end - p , decode_ctx);
-			if (slen < 0) return slen;
-			break;
-		}
-
-		element_len = fr_nbo_to_uint16(p);
-		if ((p + 2 + element_len) > end) {
-			goto raw;
-		}
-
-		p += 2;
-		slen = decode_value(ctx, out, parent, p, element_len, decode_ctx);
-		if (slen < 0) return slen;
-		p += slen;
-	}
-
-	return data_len;
-}
 
 static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				 fr_dict_attr_t const *parent,
@@ -395,7 +347,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		}
 
 	} else if (da->flags.array) {
-		slen = decode_array(ctx, out, da, data + 4, len, decode_ctx);
+		slen = fr_pair_array_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_value);
 
 	} else {
 		slen = decode_value(ctx, out, da, data + 4, len, decode_ctx);

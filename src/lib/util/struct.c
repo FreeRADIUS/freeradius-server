@@ -64,7 +64,7 @@ fr_pair_t *fr_raw_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, ui
 ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
 			       bool nested, void *decode_ctx,
-			       fr_decode_value_t decode_value, fr_decode_value_t decode_tlv)
+			       fr_pair_decode_value_t decode_value, fr_pair_decode_value_t decode_tlv)
 {
 	unsigned int		child_num;
 	uint8_t const		*p = data, *end = data + data_len;
@@ -273,7 +273,11 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (decode_value) {
 			ssize_t slen;
 
-			slen = decode_value(child_ctx, child_list, child, p, child_length, decode_ctx);
+			if (child->flags.array) {
+				slen = fr_pair_array_from_network(child_ctx, child_list, child, p, child_length, decode_ctx, decode_value);
+			} else {
+				slen = decode_value(child_ctx, child_list, child, p, child_length, decode_ctx);
+			}
 			if (slen < 0) {
 				FR_PROTO_TRACE("Failed decoding value");
 				goto unknown;

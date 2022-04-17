@@ -99,9 +99,6 @@ static ssize_t decode_raw(TALLOC_CTX *ctx, fr_pair_list_t *out,
 static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t const data_len, void *decode_ctx);
-static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out,
-			    fr_dict_attr_t const *parent,
-			    uint8_t const *data, size_t const data_len, void *decode_ctx);
 static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				 fr_dict_attr_t const *parent,
 				 uint8_t const *data, size_t const data_len, void *decode_ctx);
@@ -116,8 +113,6 @@ static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if ((parent->type == FR_TYPE_STRING) && da_is_dns_label(parent)) {
 		return decode_dns_labels(ctx, out, parent, data, data_len, decode_ctx);
 	}
-
-	if (parent->flags.array) return decode_array(ctx, out, parent, data, data_len, decode_ctx);
 
 	return decode_value(ctx, out, parent, data, data_len, decode_ctx);
 }
@@ -303,33 +298,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	return data_len;
 }
 
-
-static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out,
-			    fr_dict_attr_t const *parent,
-			    uint8_t const *data, size_t const data_len, void *decode_ctx)
-{
-	uint8_t const  		*p = data, *end = p + data_len;
-	ssize_t			slen;
-
-	FR_PROTO_HEX_DUMP(data, data_len, "decode_array");
-
-	if (!fr_cond_assert_msg(parent->flags.array,
-				"%s: Internal sanity check failed, attribute \"%s\" does not have array bit set",
-				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
-
-	while (p < end) {
-		slen = decode_value(ctx, out, parent, p, (end - p), decode_ctx);
-		if (slen < 0) return slen;
-
-		p += slen;
-	}
-
-	/*
-	 *	We MUST have decoded the entire input.  If
-	 *	not, we ignore the extra bits.
-	 */
-	return data_len;
-}
 
 static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				 fr_dict_attr_t const *parent,
@@ -570,7 +538,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		fr_pair_list_append(out, &tmp);
 
 	} else if (da->flags.array) {
-		slen = decode_array(ctx, out, da, data + 4, len, decode_ctx);
+		slen = fr_pair_array_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_value);
 
 	} else if (da->type == FR_TYPE_VSA) {
 		slen = decode_vsa(ctx, out, da, data + 4, len, decode_ctx);
