@@ -256,6 +256,12 @@ static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 				strcpy(buf, tokenlist[i].name.str);
 				p += tokenlist[i].name.len;
 
+				/*
+				 *	Try to shut up Coverity, which claims fr_token_t can be between 0..63, not
+				 *	0..48???
+				 */
+				if ((tokenlist[i].value < 0) || (tokenlist[i].value >= T_TOKEN_LAST)) return T_INVALID;
+
 				token = tokenlist[i].value;
 				goto done;
 			}
