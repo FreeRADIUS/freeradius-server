@@ -45,9 +45,6 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigne
 			     fr_dcursor_t *cursor, void *encode_ctx,
 			     fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_tlv) CC_HINT(nonnull(1,2,4));
 
-fr_pair_t *fr_raw_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
-				    uint8_t const *data, size_t data_len) CC_HINT(nonnull);
-
 #ifdef __cplusplus
 }
 #endif

@@ -380,7 +380,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t c
 	if (data_len < 3) {
 		fr_pair_t *vp;
 
-		vp = fr_raw_from_network(ctx, parent, data, data_len);
+		vp = fr_pair_raw_from_network(ctx, parent, data, data_len);
 		if (!vp) return -1;
 		fr_pair_append(out, vp);
 		return data_len;
