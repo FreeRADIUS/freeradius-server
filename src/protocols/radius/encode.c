@@ -451,20 +451,6 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	fr_dbuff_marker(&src, &value_dbuff);
 	fr_dbuff_marker(&dest, &value_dbuff);
 
-	/*
-	 *	Set up the default sources for the data.
-	 */
-	len = fr_radius_attr_len(vp);
-
-	/*
-	 *	Invalid value, don't encode.
-	 */
-	if (len > RADIUS_MAX_STRING_LENGTH) {
-		fr_strerror_printf("%s length of %zu bytes exceeds maximum value length",
-				   vp->da->name, len);
-		return PAIR_ENCODE_SKIPPED;
-	}
-
 	switch (da->type) {
 		/*
 		 *	IPv4 addresses are normal, but IPv6 addresses are special to RADIUS.
@@ -872,7 +858,7 @@ static ssize_t encode_concat(fr_dbuff_t *dbuff,
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	p = vp->vp_octets;
-	data_len = fr_radius_attr_len(vp);
+	data_len = vp->vp_length;
 	fr_dbuff_marker(&hdr, &work_dbuff);
 
 	while (data_len > 0) {
@@ -1510,17 +1496,15 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 		 */
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
-		if (fr_radius_attr_len(vp) != 0) break;
-
 		/*
 		 *	Zero-length strings are allowed for CUI
 		 *	(thanks WiMAX!), and for
 		 *	Message-Authenticator, because we will
 		 *	automagically generate that one ourselves.
 		 */
-		if (!fr_dict_attr_is_top_level(vp->da) ||
-		    ((vp->da->attr != FR_CHARGEABLE_USER_IDENTITY) &&
-		     (vp->da->attr != FR_MESSAGE_AUTHENTICATOR))) {
+		if ((vp->vp_length == 0) &&
+		    (vp->da != attr_chargeable_user_identity) &&
+		    (vp->da != attr_message_authenticator)) {
 			fr_dcursor_next(cursor);
 			fr_strerror_const("Zero length string attributes not allowed");
 			return PAIR_ENCODE_SKIPPED;

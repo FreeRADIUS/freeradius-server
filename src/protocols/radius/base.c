@@ -200,27 +200,6 @@ bool const fr_request_packets[FR_RADIUS_CODE_MAX + 1] = {
 };
 
 
-/** Return the on-the-wire length of an attribute value
- *
- * @param[in] vp to return the length of.
- * @return the length of the attribute.
- */
-size_t fr_radius_attr_len(fr_pair_t const *vp)
-{
-	switch (vp->vp_type) {
-	case FR_TYPE_VARIABLE_SIZE:
-		if (vp->da->flags.length) return vp->da->flags.length;	/* Variable type with fixed length */
-		return vp->vp_length;
-
-	case FR_TYPE_STRUCTURAL:
-		fr_assert_fail(NULL);
-		return 0;
-
-	default:
-		return fr_radius_attr_sizes[vp->vp_type][0];
-	}
-}
-
 /**  Do Ascend-Send / Recv-Secret calculation.
  *
  * The secret is hidden by xoring with a MD5 digest created from

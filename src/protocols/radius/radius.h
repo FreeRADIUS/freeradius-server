@@ -108,8 +108,6 @@ enum {
 /*
  *	protocols/radius/base.c
  */
-size_t		fr_radius_attr_len(fr_pair_t const *vp);
-
 int		fr_radius_sign(uint8_t *packet, uint8_t const *original,
 			       uint8_t const *secret, size_t secret_len) CC_HINT(nonnull (1,3));
 int		fr_radius_verify(uint8_t *packet, uint8_t const *original,
