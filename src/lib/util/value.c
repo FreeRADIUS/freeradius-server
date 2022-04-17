@@ -1290,17 +1290,39 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		 *	Sometimes variable length *inside* the server
 		 *	has maximum length on the wire.
 		 */
-		if (value->enumv && value->enumv->flags.length) {
-			if (max < value->enumv->flags.length) {
-				FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)value->datum.ptr, max);
-				FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, value->enumv->flags.length - max);
-				return fr_dbuff_set(dbuff, &work_dbuff);
-			}
+		if (value->enumv) {
+			if (value->enumv->flags.length) {
+				/*
+				 *	The field is fixed size, and the data is smaller than that,  We zero-pad the field.
+				 */
+				if (max < value->enumv->flags.length) {
+					FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)value->datum.ptr, max);
+					FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, value->enumv->flags.length - max);
+					return fr_dbuff_set(dbuff, &work_dbuff);
 
-			/*
-			 *	Truncate the input to the maximum allowed length.
-			 */
-			max = value->enumv->flags.length;
+				} else if (max > value->enumv->flags.length) {
+					/*
+					 *	Truncate the input to the maximum allowed length.
+					 */
+					max = value->enumv->flags.length;
+				}
+
+			} else if (da_is_length_field(value->enumv)) {
+				/*
+				 *	Truncate the output to the max allowed for this field and encode the length.
+				 */
+				if (value->enumv->flags.subtype == FLAG_LENGTH_UINT8) {
+					if (max > 255) max = 255;
+					fr_dbuff_in(&work_dbuff, (uint8_t) max);
+
+				} else if (value->enumv->flags.subtype == FLAG_LENGTH_UINT16) {
+					if (max > 65536) max = 65535;
+					fr_dbuff_in(&work_dbuff, (uint16_t) max);
+
+				} else {
+					return -1;
+				}
+			}
 		}
 
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)value->datum.ptr, max);
@@ -1601,28 +1623,82 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 				   min, len);
 		return -(len);
 	}
+
+	/*
+	 *	For array entries, we only decode one value at a time.
+	 */
 	if (len > max) {
-		fr_strerror_printf("Found trailing garbage parsing type \"%s\". "
-				   "Expected length <= %zu bytes, got %zu bytes",
-				   fr_type_to_str(type),
+		if (!enumv->flags.array) {
+			fr_strerror_printf("Found trailing garbage parsing type \"%s\". "
+					   "Expected length <= %zu bytes, got %zu bytes",
+					   fr_type_to_str(type),
 				   max, len);
-		return -(max);
+			return -(max);
+		}
+
+		len = max;
 	}
 
-	switch (type) {
-	case FR_TYPE_STRING:
-		if (fr_value_box_bstrndup_dbuff(ctx, dst, enumv, &work_dbuff, len, tainted) < 0) {
-			return FR_VALUE_BOX_NET_OOM;
-		}
-		return fr_dbuff_set(dbuff, &work_dbuff);
+	/*
+	 *	String / octets are special.
+	 */
+	if (fr_type_is_variable_size(type)) {
+		size_t newlen = len;
+		size_t offset = 0;
 
-	case FR_TYPE_OCTETS:
-		if (fr_value_box_memdup_dbuff(ctx, dst, enumv, &work_dbuff, len, tainted) < 0) {
-			return FR_VALUE_BOX_NET_OOM;
+		/*
+		 *	Decode fixed-width fields.
+		 */
+		if (enumv->flags.length) {
+			newlen = enumv->flags.length;
+
+		} else if (da_is_length_field(enumv)) {
+			/*
+			 *	Or fields with a length prefix.
+			 */
+			if (enumv->flags.subtype == FLAG_LENGTH_UINT8) {
+				uint8_t num;
+
+				FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
+				newlen = num;
+				offset = 1;
+
+			} else if (enumv->flags.subtype == FLAG_LENGTH_UINT16) {
+				uint16_t num;
+
+				FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
+				newlen = num;
+				offset = 2;
+
+			} else {
+				return -1;
+			}
 		}
-		return fr_dbuff_set(dbuff, &work_dbuff);
-	default:
-		break;
+
+		/*
+		 *	If we need more data than exists, that's an error.
+		 *
+		 *	Otherwise, bound the decoding to the count we found.
+		 */
+		if (newlen > len) return -(newlen + offset);
+		len = newlen;
+
+		switch (type) {
+		case FR_TYPE_STRING:
+			if (fr_value_box_bstrndup_dbuff(ctx, dst, enumv, &work_dbuff, len, tainted) < 0) {
+				return FR_VALUE_BOX_NET_OOM;
+			}
+			return fr_dbuff_set(dbuff, &work_dbuff);
+
+		case FR_TYPE_OCTETS:
+			if (fr_value_box_memdup_dbuff(ctx, dst, enumv, &work_dbuff, len, tainted) < 0) {
+				return FR_VALUE_BOX_NET_OOM;
+			}
+			return fr_dbuff_set(dbuff, &work_dbuff);
+
+		default:
+			return -1;
+		}
 	}
 
 	/*

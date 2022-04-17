@@ -43,7 +43,7 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 			    uint8_t const *data, size_t data_len, void *decode_ctx);
 
 static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-			    uint8_t const *data, size_t data_len, void *decode_ctx, bool exact);
+			    uint8_t const *data, size_t data_len, void *decode_ctx);
 
 static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				 fr_dict_attr_t const *parent,
@@ -67,18 +67,20 @@ static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	if (parent->flags.array) return decode_array(ctx, out, parent, data, data_len, decode_ctx);
 
-	return decode_value(ctx, out, parent, data, data_len, decode_ctx, true);
+	return decode_value(ctx, out, parent, data, data_len, decode_ctx);
 }
 
 /*
  *	Decode ONE value into a VP
  */
 static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *da,
-			    uint8_t const *data, size_t data_len, void *decode_ctx, bool exact)
+			    uint8_t const *data, size_t data_len, void *decode_ctx)
 {
+	ssize_t slen;
 	fr_pair_t *vp;
 	uint8_t const *p = data;
 	uint8_t const *end = data + data_len;
+	bool exact = !da->flags.array;
 
 	FR_PROTO_TRACE("%s called to parse %zu bytes", __FUNCTION__, data_len);
 	FR_PROTO_HEX_DUMP(data, data_len, NULL);
@@ -87,8 +89,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 	 *	Structs create their own VP wrapper.
 	 */
 	if (da->type == FR_TYPE_STRUCT) {
-		ssize_t slen;
-
 		slen = fr_struct_from_network(ctx, out, da, data, data_len, true,
 					      decode_ctx, decode_value_trampoline, decode_tlv);
 		if (slen < 0) return slen;
@@ -179,7 +179,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 		if (da_is_split_prefix(da)) {
 			uint32_t ipaddr, mask;
 
-			if (data_len != 8) goto raw;
+			if (data_len < 8) goto raw;
 
 			ipaddr = fr_nbo_to_uint32(p);
 			mask = fr_nbo_to_uint32(p + 4);
@@ -261,12 +261,9 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 		FALL_THROUGH;
 
 	default:
-	{
-		ssize_t ret;
-
-		ret = fr_value_box_from_network(vp, &vp->data, vp->da->type, da,
+		slen = fr_value_box_from_network(vp, &vp->data, vp->da->type, da,
 						&FR_DBUFF_TMP(p, end - p), end - p, true);
-		if (ret < 0) {
+		if (slen < 0) {
 		raw:
 			FR_PROTO_TRACE("decoding as unknown type");
 			if (fr_pair_to_unknown(vp) < 0) return -1;
@@ -275,13 +272,13 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 			break;
 		}
 
-		if (exact && (ret != (end - p))) {
+		if (exact && (slen != (end - p))) {
 			talloc_free(vp);
 			goto raw;
 		}
 
-		p += (size_t) ret;
-	}
+		p += (size_t) slen;
+		break;
 	}
 
 finish:
@@ -456,7 +453,6 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 {
 	uint8_t const  		*p = data, *end = p + data_len;
 	ssize_t			slen;
-	size_t			element_len;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_array");
 
@@ -464,85 +460,17 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 				"%s: Internal sanity check failed, attribute \"%s\" does not have array bit set",
 				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
 
-	/*
-	 *	Fixed-size fields get decoded with a simple decoder.
-	 */
-	element_len = fr_dhcpv4_attr_sizes[parent->type][0];
-	if (!element_len) element_len = parent->flags.length;
-
-	/*
-	 *	Fix up insane nonsense.
-	 */
-	if (da_is_split_prefix(parent)) element_len = 8;
-
-	/*
-	 *	Array of structs.
-	 */
-	if (parent->type == FR_TYPE_STRUCT) {
-		while (p < end) {
-			slen = decode_value(ctx, out, parent, p, end - p, decode_ctx, false);
-			if (slen < 0) return slen - (p - data);
-			p += slen;
-		}
-
-		return data_len;
-	}
-
-	if (element_len > 0) {
-		size_t num_elements = (end - p) / element_len;
-
-		FR_PROTO_TRACE("decode_array %zu input expected %zd total (%zu elements * %zu size)",
-			       (size_t) (end - p), num_elements * element_len, num_elements, element_len);
-
-		if ((num_elements * element_len) != (size_t) (end - p)) {
-		raw:
-			slen = decode_raw(ctx, out, parent, p, end - p , decode_ctx);
-			if (slen < 0) return slen;
-			return data_len;
-		}
-
-		while (p < end) {
-			/*
-			 *	Not enough room for one more element,
-			 *	decode the last bit as raw data.
-			 */
-			if ((size_t) (end - p) < element_len) goto raw;
-
-			slen = decode_value(ctx, out, parent, p, element_len, decode_ctx, false);
-			if (slen < 0) return slen - (p - data);
-			if (!fr_cond_assert((size_t) slen == element_len)) return -(p - data);
-
-			p += slen;
-		}
-
-		/*
-		 *	We MUST have decoded the entire input.  If
-		 *	not, we ignore the extra bits.
-		 */
-		return data_len;
-	}
-
-	/*
-	 *	If the data is variable length i.e. strings or octets
-	 *	there is a length field before each element.
-	 *
-	 *	Note that we don't bother checking if the data type is
-	 *	string or octets.  There will only be issues if
-	 *	someone edited the dictionaries and broke them.
-	 */
 	while (p < end) {
-		if ((end - p) < 1) goto raw;
-
-		element_len = *p;
-
-		if ((size_t) (end - p) < (((size_t) element_len) + 1)) goto raw;
-
-		p += 1;
-		slen = decode_value(ctx, out, parent, p, element_len, decode_ctx, false);
+		slen = decode_value(ctx, out, parent, p, (end - p), decode_ctx);
 		if (slen < 0) return slen - (p - data);
+
 		p += slen;
 	}
 
+	/*
+	 *	We MUST have decoded the entire input.  If
+	 *	not, we ignore the extra bits.
+	 */
 	return data_len;
 }
 
@@ -783,7 +711,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = decode_tlv(ctx, out, da, data + 2, len, decode_ctx);
 
 	} else {
-		slen = decode_value(ctx, out, da, data + 2, len, decode_ctx, true);
+		slen = decode_value(ctx, out, da, data + 2, len, decode_ctx);
 	}
 
 	if (slen < 0) {
@@ -892,7 +820,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			slen = decode_array(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx);
 
 		} else {
-			slen = decode_value(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx, true);
+			slen = decode_value(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx);
 		}
 		if (slen <= 0) return slen;
 

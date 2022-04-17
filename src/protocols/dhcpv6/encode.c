@@ -401,65 +401,12 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 				"%s: Internal sanity check failed, attribute \"%s\" does not have array bit set",
 				__FUNCTION__, da->name)) return PAIR_ENCODE_FATAL_ERROR;
 
-	/*
-	 *	DNS labels have internalized length, so we don't need
-	 *	length headers.
-	 */
-	if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype){
-		while (fr_dbuff_extend(&work_dbuff)) {
-			vp = fr_dcursor_current(cursor);
-
-			/*
-			 *	DNS labels get a special encoder.  DNS labels
-			 *	MUST NOT be compressed in DHCP.
-			 *
-			 *	https://tools.ietf.org/html/rfc8415#section-10
-			 */
-			slen = fr_dns_label_from_value_box_dbuff(&work_dbuff, false, &vp->data, NULL);
-			if (slen <= 0) return PAIR_ENCODE_FATAL_ERROR;
-
-			vp = fr_dcursor_next(cursor);
-			if (!vp || (vp->da != da)) break;		/* Stop if we have an attribute of a different type */
-		}
-
-		return fr_dbuff_set(dbuff, &work_dbuff);
-	}
-
 	while (fr_dbuff_extend(&work_dbuff)) {
-		bool		len_field = false;
 		fr_dbuff_t	element_dbuff = FR_DBUFF(&work_dbuff);
-
-		/*
-		 *	If the data is variable length i.e. strings or octets
-		 *	we need to include a length field before each element.
-		 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...-+-+-+-+-+-+-+
-		 *   |       text-len                |        String                 |
-		 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...-+-+-+-+-+-+-+
-		 *
-		 *	The struct encoder already adds the length field.
-		 */
-		if (da_is_length_field(da) && (da->type != FR_TYPE_STRUCT)) {
-			len_field = true;
-			FR_DBUFF_ADVANCE_RETURN(&element_dbuff, sizeof(uint16_t));	/* Make room for the length field */
-		}
 
 		slen = encode_value(&element_dbuff, da_stack, depth, cursor, encode_ctx);
 		if (slen < 0) return slen;
-		if (slen > UINT16_MAX) return PAIR_ENCODE_FATAL_ERROR;
 
-		/*
-		 *	Ensure we always create elements of the correct length.
-		 *	This is mainly for fixed length octets type attributes
-		 *	containing one or more keys.
-		 */
-		if (da->flags.length && (size_t)slen < da->flags.length) {
-			FR_DBUFF_MEMSET_RETURN(&element_dbuff, 0, da->flags.length - slen);
-		}
-
-		/*
-		 *	Populate the length field
-		 */
-		else if (len_field) fr_dbuff_in(&work_dbuff, (uint16_t) slen);
 		fr_dbuff_set(&work_dbuff, &element_dbuff);
 
 		vp = fr_dcursor_current(cursor);

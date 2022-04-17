@@ -138,17 +138,19 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	Address MAY be shorter than 16 bytes.
 	 */
 	case FR_TYPE_IPV6_PREFIX:
-		if ((data_len == 0) || (data_len > (1 + sizeof(vp->vp_ipv6addr)))) {
+		if (data_len == 0) {
 		raw:
 			return decode_raw(ctx, out, parent, data, data_len, decode_ctx);
 
 		};
 
 		/*
-		 *	Structs used fixed length fields
+		 *	Structs used fixed length IPv6 addressews.
 		 */
 		if (parent->parent->type == FR_TYPE_STRUCT) {
-			if (data_len != (1 + sizeof(vp->vp_ipv6addr))) goto raw;
+			if (data_len != (1 + sizeof(vp->vp_ipv6addr))) {
+				goto raw;
+			}
 
 			vp = fr_pair_afrom_da(ctx, parent);
 			if (!vp) return PAIR_DECODE_OOM;
@@ -156,7 +158,8 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			vp->vp_ip.af = AF_INET6;
 			vp->vp_ip.scope_id = 0;
 			vp->vp_ip.prefix = data[0];
-			memcpy(&vp->vp_ipv6addr, data + 1, data_len - 1);
+			memcpy(&vp->vp_ipv6addr, data + 1, sizeof(vp->vp_ipv6addr));
+			slen = 1 + sizeof(vp->vp_ipv6addr);
 			break;
 		}
 
@@ -179,14 +182,19 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	If we have a /64 prefix but only 7 bytes of
 		 *	address, that's an error.
 		 */
-		if (fr_bytes_from_bits(prefix_len) > (data_len - 1)) goto raw;
+		slen = fr_bytes_from_bits(prefix_len);
+		if ((size_t) slen > (data_len - 1)) {
+			goto raw;
+		}
 
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
 
 		vp->vp_ip.af = AF_INET6;
 		vp->vp_ip.prefix = prefix_len;
-		memcpy(&vp->vp_ipv6addr, data + 1, data_len - 1);
+		memcpy(&vp->vp_ipv6addr, data + 1, slen);
+
+		slen++;
 		break;
 
 	/*
@@ -212,8 +220,9 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
 
-		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
-					      &FR_DBUFF_TMP(data, data_len), data_len, true) < 0) {
+		slen = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
+						 &FR_DBUFF_TMP(data, data_len), data_len, true);
+		if (slen < 0) {
 			talloc_free(vp);
 			goto raw;
 		}
@@ -223,7 +232,9 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	case FR_TYPE_STRUCT:
 		slen = fr_struct_from_network(ctx, out, parent, data, data_len, false,
 					      decode_ctx, decode_value_trampoline, decode_tlv_trampoline);
-		if (slen < 0) return slen;
+		if (slen < 0) goto raw;
+
+		if (parent->flags.array) return slen;
 		return data_len;
 
 	case FR_TYPE_GROUP:
@@ -241,6 +252,24 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = decode_tlvs(vp, &vp->vp_group, fr_dict_root(dict_dhcpv6), data, data_len, decode_ctx);
 		if (slen < 0) {
 			talloc_free(vp);
+			return slen;
+			goto raw;
+		}
+		break;
+
+	case FR_TYPE_IPV6_ADDR:
+		vp = fr_pair_afrom_da(ctx, parent);
+		if (!vp) return PAIR_DECODE_OOM;
+
+		/*
+		 *	Limit the IPv6 address to 16 octets, with no scope.
+		 */
+		if (data_len < sizeof(vp->vp_ipv6addr)) goto raw;
+
+		slen = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
+						 &FR_DBUFF_TMP(data,  sizeof(vp->vp_ipv6addr)),  sizeof(vp->vp_ipv6addr), true);
+		if (slen < 0) {
+			talloc_free(vp);
 			goto raw;
 		}
 		break;
@@ -249,16 +278,28 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
 
-		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
-					      &FR_DBUFF_TMP(data, data_len), data_len, true) < 0) {
+		slen = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
+						 &FR_DBUFF_TMP(data, data_len), data_len, true);
+		if (slen < 0) {
 			talloc_free(vp);
 			goto raw;
 		}
 		break;
 	}
 
+	/*
+	 *	The input is larger than the decoded value, re-do it as a raw attribute.
+	 */
+	if (!parent->flags.array && ((size_t) slen < data_len)) {
+		talloc_free(vp);
+		goto raw;
+	}
+
 	vp->vp_tainted = true;
 	fr_pair_append(out, vp);
+
+	if (parent->flags.array) return slen;
+
 	return data_len;
 }
 
@@ -269,7 +310,6 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out,
 {
 	uint8_t const  		*p = data, *end = p + data_len;
 	ssize_t			slen;
-	size_t			element_len;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_array");
 
@@ -277,71 +317,17 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				"%s: Internal sanity check failed, attribute \"%s\" does not have array bit set",
 				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
 
-	/*
-	 *	Fixed-size fields get decoded with a simple decoder.
-	 */
-	element_len = fr_dhcpv6_attr_sizes[parent->type][0];
-	if (!element_len) element_len = parent->flags.length;
-
-	if (element_len > 0) {
-		size_t num_elements = (end - p) / element_len;
-
-		FR_PROTO_TRACE("decode_array %zu input expected %zd total (%zu elements * %zu size)",
-			       (size_t) (end - p), num_elements * element_len, num_elements, element_len);
-
-		if ((num_elements * element_len) != (size_t) (end - p)) {
-		raw:
-			slen = decode_raw(ctx, out, parent, p, end - p , decode_ctx);
-			if (slen < 0) return slen;
-			return data_len;
-		}
-
-		while (p < end) {
-			/*
-			 *	Not enough room for one more element,
-			 *	decode the last bit as raw data.
-			 */
-			if ((size_t) (end - p) < element_len) goto raw;
-
-			slen = decode_value(ctx, out, parent, p, element_len, decode_ctx);
-			if (slen < 0) return slen;
-			if (!fr_cond_assert((size_t) slen == element_len)) return -(p - data);
-
-			p += slen;
-		}
-
-		/*
-		 *	We MUST have decoded the entire input.  If
-		 *	not, we ignore the extra bits.
-		 */
-		return data_len;
-	}
-
-	/*
-	 *	If the data is variable length i.e. strings or octets
-	 *	there is a length field before each element.
-	 *
-	 *	Note that we don't bother checking if the data type is
-	 *	string or octets.  There will only be issues if
-	 *	someone edited the dictionaries and broke them.
-	 *
-	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...-+-+-+-+-+-+-+
-	 *   |       text-len                |        String                 |
-	 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...-+-+-+-+-+-+-+
-	 */
 	while (p < end) {
-		if ((end - p) < 2) goto raw;
-
-		element_len = fr_nbo_to_uint16(p);
-
-		if ((size_t) (end - p) < (((size_t) element_len) + 2)) goto raw;
-
-		p += 2;
-		slen = decode_value(ctx, out, parent, p, element_len, decode_ctx);
+		slen = decode_value(ctx, out, parent, p, (end - p), decode_ctx);
 		if (slen < 0) return slen;
+
 		p += slen;
 	}
 
+	/*
+	 *	We MUST have decoded the entire input.  If
+	 *	not, we ignore the extra bits.
+	 */
 	return data_len;
 }
 
@@ -530,7 +516,6 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	option = DHCPV6_GET_OPTION_NUM(data);
 	len = DHCPV6_GET_OPTION_LEN(data);
 	if (len > (data_len - 4)) {
-		fprintf(stderr, "FAIL %d\n", __LINE__);
 		fr_strerror_printf("%s: Option overflows input.  "
 				   "Optional length must be less than %zu bytes, got %zu bytes",
 				   __FUNCTION__, data_len - 4, len);

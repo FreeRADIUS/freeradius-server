@@ -39,7 +39,7 @@ match 03 08 7f 00 00 01 7f 00 00 02
 #  But if we don't have enough data, the whole thing is corrupt.
 #
 decode-pair 03 07 7f 00 00 01 7f 00 00
-match raw.Router-Address = 0x7f0000017f0000
+match Router-Address = 127.0.0.1, raw.Router-Address = 0x7f0000
 
 count
 match 21
