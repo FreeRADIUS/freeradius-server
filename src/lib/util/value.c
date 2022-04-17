@@ -1263,8 +1263,12 @@ size_t fr_value_box_network_length(fr_value_box_t const *value)
  *
  * #FR_TYPE_SIZE is not encodable, as it is system specific.
  *
- * This function will not encode complex types (TLVs, VSAs etc...).  These are usually
+ * This function will not encode stuctural types (TLVs, VSAs etc...).  These are usually
  * specific to the protocol anyway.
+ *
+ *  All of the dictionary rules are respected.  string/octets can have
+ *  a fixed length (which is zero-padded if necessary), or can have an
+ *  8/16-bit "length" prefix.
  *
  * @param[out] dbuff	Where to write serialized data.
  * @param[in] value	to encode.
@@ -1277,6 +1281,17 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 {
 	size_t		min, max;
 	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
+
+	/*
+	 *	We cannot encode structural types here.
+	 */
+	if (!fr_type_is_leaf(value->type)) {
+	unsupported:
+		fr_strerror_printf("%s: Cannot encode type \"%s\"",
+				   __FUNCTION__,
+				   fr_type_to_str(value->type));
+		return FR_VALUE_BOX_NET_ERROR;
+	}
 
 	/*
 	 *	Variable length types
@@ -1328,6 +1343,9 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t const *)value->datum.ptr, max);
 		return fr_dbuff_set(dbuff, &work_dbuff);
 
+		/*
+		 *	The data can be encoded in a variety of widths.
+		 */
 	case FR_TYPE_DATE:
 	case FR_TYPE_TIME_DELTA:
 		if (value->enumv) {
@@ -1344,15 +1362,9 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 	}
 
 	/*
-	 *	It's an unsupported type
+	 *	We have to encode actual data here.
 	 */
-	if ((min == 0) && (max == 0)) {
-	unsupported:
-		fr_strerror_printf("%s: Cannot encode type \"%s\"",
-				   __FUNCTION__,
-				   fr_type_to_str(value->type));
-		return FR_VALUE_BOX_NET_ERROR;
-	}
+	fr_assert((min > 0) && (max > 0));
 
 	switch (value->type) {
 	case FR_TYPE_IPV4_ADDR:
@@ -1591,6 +1603,17 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
  *   on the fact that the C standards require floats to be represented in IEEE-754
  *   format in memory.
  * - Dates are decoded as 32bit unsigned UNIX timestamps.
+ *
+ *  All of the dictionary rules are respected.  string/octets can have
+ *  a fixed length, or can have an 8/16-bit "length" prefix.  If the
+ *  enumv is not an array, then the input # len MUST be the correct size
+ *  (not too large or small), otherwise an error is returned.
+ *
+ *  If the enumv is an array, then the input must have the minimum
+ *  length, and the number of bytes decoded is capped at the maximum
+ *  length allowed to be decoded.  This behavior allows the caller to
+ *  decode an array of values simply by calling this function in a
+ *  loop.
  *
  * @param[in] ctx	Where to allocate any talloc buffers required.
  * @param[out] dst	value_box to write the result to.
