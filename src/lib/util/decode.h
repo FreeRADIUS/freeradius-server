@@ -29,23 +29,30 @@ extern "C" {
 
 #include <freeradius-devel/util/pair.h>
 
-/** Typedefs for simplifying the use and declaration of protocol decoders.
+/** Decode a value from the network into an output #fr_pair_list_t
  *
+ * @param[in] ctx		context to alloc new attributes in.
+ * @param[out] out		Where to write the decoded options.
+ * @param[in] parent		of sub TLVs.
+ * @param[in] data		to parse.
+ * @param[in] data_len		of the data to parse
+ * @return
+ *	<= 0 on error
+ *	bytes successfully decoded on success (<= data_len)
  */
 typedef ssize_t (*fr_pair_decode_value_t)(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					   fr_dict_attr_t const *parent,
 					   uint8_t const *data, size_t const data_len, void *decode_ctx);
 
-#define PROTO_DECODE_FUNC(_name) static ssize_t _name(TALLOC_CTX *ctx, fr_pair_list_t *out, \
+#define PROTO_DECODE_FUNC(_name) static ssize_t decode_ ## _name(TALLOC_CTX *ctx, fr_pair_list_t *out, \
 					   fr_dict_attr_t const *parent, \
-					   uint8_t const *data, size_t const data_len, fr_proto_decode_ctx_t *decode_ctx); \
+					   uint8_t const *data, size_t const data_len, void *decode_ctx)
 
 ssize_t fr_pair_array_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 				   uint8_t const *data, size_t data_len, void *decode_ctx, fr_pair_decode_value_t decode_value) CC_HINT(nonnull(1,2,3,4,6));
 
-fr_pair_t *fr_pair_raw_from_network(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
-				    uint8_t const *data, size_t data_len) CC_HINT(nonnull);
-
+ssize_t fr_pair_raw_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
+				 uint8_t const *data, size_t data_len) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }

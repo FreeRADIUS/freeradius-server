@@ -41,6 +41,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_pair_t		*vp, *key_vp, *struct_vp = NULL;
 	unsigned int		offset = 0;
 	TALLOC_CTX		*child_ctx;
+	ssize_t			slen;
 
 	if (data_len == 0) {
 		fr_strerror_const("struct decoder was passed zero bytes of data");
@@ -61,7 +62,6 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		struct_vp = fr_pair_afrom_da(ctx, parent);
 		if (!struct_vp) {
-		oom:
 			fr_strerror_const("out of memory");
 			return -1;
 		}
@@ -190,8 +190,6 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	Decode child TLVs, according to the parent attribute.
 		 */
 		if (child->type == FR_TYPE_TLV) {
-			ssize_t slen;
-
 			fr_assert(!key_vp);
 
 			if (!decode_tlv) {
@@ -238,8 +236,6 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	the callback should deal with this.
 		 */
 		if (decode_value) {
-			ssize_t slen;
-
 			if (child->flags.array) {
 				slen = fr_pair_array_from_network(child_ctx, child_list, child, p, child_length, decode_ctx, decode_value);
 			} else {
@@ -297,13 +293,8 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				fr_pair_list_free(child_list);
 			}
 
-			vp = fr_pair_raw_from_network(ctx, parent, data, data_len);
-			if (!vp) goto oom;
-
-			/*
-			 *	And append this one VP to the output cursor.
-			 */
-			fr_pair_append(out, vp);
+			slen = fr_pair_raw_from_network(ctx, out, parent, data, data_len);
+			if (slen < 0) return slen;
 			return data_len;
 		}
 
@@ -326,7 +317,6 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	decode it.
 	 */
 	if (key_vp) {
-		ssize_t slen;
 		fr_dict_enum_value_t const *enumv;
 		child = NULL;
 
@@ -358,14 +348,13 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				goto unknown;
 			}
 
-			vp = fr_pair_raw_from_network(child_ctx, child, p, end - p);
-			if (!vp) {
+			slen = fr_pair_raw_from_network(child_ctx, child_list, child, p, end - p);
+			if (slen < 0) {
 				FR_PROTO_TRACE("Failed creating raw VP from malformed or unknown substruct");
 				fr_dict_unknown_free(&child);
-				goto oom;
+				return slen;
 			}
 
-			fr_pair_append(child_list, vp);
 			p = end;
 		} else {
 			fr_assert(child->type == FR_TYPE_STRUCT);
