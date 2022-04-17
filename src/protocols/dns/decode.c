@@ -226,38 +226,6 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				"%s: Internal sanity check failed, attribute \"%s\" does not have array bit set",
 				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
 
-#if 0
-	/*
-	 *	Fixed-size fields get decoded with a simple decoder.
-	 */
-	element_len = fr_dns_attr_sizes[parent->type][0];
-	if (element_len > 0) {
-		while (p < end) {
-			/*
-			 *	Not enough room for one more element,
-			 *	decode the last bit as raw data.
-			 */
-			if ((size_t) (end - p) < element_len) {
-				slen = decode_raw(ctx, out, parent, p, end - p , decode_ctx);
-				if (slen < 0) return slen;
-				break;
-			}
-
-			slen = decode_value(ctx, out, parent, p, element_len, decode_ctx);
-			if (slen < 0) return slen;
-			if (!fr_cond_assert((size_t) slen == element_len)) return -(p - data);
-
-			p += slen;
-		}
-
-		/*
-		 *	We MUST have decoded the entire input.  If
-		 *	not, we ignore the extra bits.
-		 */
-		return data_len;
-	}
-#endif
-
 	/*
 	 *	If the data is variable length i.e. strings or octets
 	 *	there is a length field before each element.
