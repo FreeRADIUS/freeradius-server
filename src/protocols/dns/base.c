@@ -368,44 +368,6 @@ next:
 	return true;
 }
 
-
-/** Return the on-the-wire length of an attribute value
- *
- * @param[in] vp to return the length of.
- * @return the length of the attribute.
- */
-size_t fr_dns_value_len(fr_pair_t const *vp)
-{
-	switch (vp->vp_type) {
-	case FR_TYPE_VARIABLE_SIZE:
-#ifndef NDEBUG
-		if (!vp->da->flags.extra && (vp->da->flags.subtype == FLAG_ENCODE_DNS_LABEL)) {
-			fr_assert_fail("DNS labels MUST be encoded/decoded with their own function, and not with generic 'string' functions");
-			return 0;
-		}
-#endif
-
-		if (vp->da->flags.length) return vp->da->flags.length;	/* Variable type with fixed length */
-
-		/*
-		 *	Arrays get maxed at 2^16-1
-		 */
-		if (vp->da->flags.array && ((vp->vp_type == FR_TYPE_STRING) || (vp->vp_type == FR_TYPE_OCTETS))) {
-			if (vp->vp_length > 65535) return 65535;
-		}
-
-		return vp->vp_length;
-
-	case FR_TYPE_STRUCTURAL:
-		fr_assert_fail(NULL);
-		return 0;
-
-	default:
-		return fr_value_box_network_length(&vp->data);
-	}
-}
-
-
 fr_dns_labels_t *fr_dns_labels_get(uint8_t const *packet, size_t packet_len, bool init_mark)
 {
 	fr_dns_labels_t *lb = &fr_dns_labels;

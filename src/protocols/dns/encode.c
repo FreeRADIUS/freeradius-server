@@ -252,76 +252,23 @@ static inline ssize_t encode_array(fr_dbuff_t *dbuff,
 				   fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t			slen;
-	size_t			element_len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_pair_t		*vp;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
-	fr_dns_ctx_t	*packet_ctx = encode_ctx;
+
+	FR_PROTO_STACK_PRINT(da_stack, depth);
 
 	if (!fr_cond_assert_msg(da->flags.array,
 				"%s: Internal sanity check failed, attribute \"%s\" does not have array bit set",
 				__FUNCTION__, da->name)) return PAIR_ENCODE_FATAL_ERROR;
 
-	/*
-	 *	DNS labels have internalized length, so we don't need
-	 *	length headers.
-	 */
-	if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype){
-		while (fr_dbuff_extend(&work_dbuff)) {
-			vp = fr_dcursor_current(cursor);
-
-			slen = fr_dns_label_from_value_box_dbuff(&work_dbuff, true, &vp->data, packet_ctx->lb);
-			if (slen <= 0) return PAIR_ENCODE_FATAL_ERROR;
-
-			vp = fr_dcursor_next(cursor);
-			if (!vp || (vp->da != da)) break;		/* Stop if we have an attribute of a different type */
-		}
-
-		return fr_dbuff_set(dbuff, &work_dbuff);
-	}
-
 	while (fr_dbuff_extend(&work_dbuff)) {
-		bool		len_field = false;
 		fr_dbuff_t	element_dbuff = FR_DBUFF(&work_dbuff);
-
-		element_len = fr_dns_value_len(fr_dcursor_current(cursor));
-
-		/*
-		 *	If the data is variable length i.e. strings or octets
-		 *	we need to include a length field before each element.
-		 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...-+-+-+-+-+-+-+
-		 *   |       text-len                |        String                 |
-		 *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-...-+-+-+-+-+-+-+
-		 */
-		if (!da->flags.length) {
-			len_field = true;
-			FR_DBUFF_ADVANCE_RETURN(&element_dbuff, sizeof(uint16_t));	/* Make room for the length field */
-		}
 
 		slen = encode_value(&element_dbuff, da_stack, depth, cursor, encode_ctx);
 		if (slen < 0) return slen;
-		if (!fr_cond_assert(slen < UINT16_MAX)) return PAIR_ENCODE_FATAL_ERROR;
 
-		/*
-		 *	Ensure we always create elements of the correct length.
-		 *	This is mainly for fixed length octets type attributes
-		 *	containing one or more keys.
-		 */
-		if (da->flags.length) {
-			if ((size_t)slen < element_len) {
-				FR_DBUFF_MEMSET_RETURN(&element_dbuff, 0, element_len - slen);
-				slen = element_len;
-			} else if ((size_t)slen > element_len){
-				slen = element_len;
-			}
-		}
-
-		/*
-		 *	Populate the length field
-		 */
-		if (len_field) fr_dbuff_in(&work_dbuff, (uint16_t) slen);
 		fr_dbuff_set(&work_dbuff, &element_dbuff);
-
 
 		vp = fr_dcursor_current(cursor);
 		if (!vp || (vp->da != da)) break;		/* Stop if we have an attribute of a different type */
