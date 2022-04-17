@@ -283,52 +283,6 @@ finish:
 	return p - data;
 }
 
-static ssize_t decode_raw(TALLOC_CTX *ctx, fr_pair_list_t *out,
-			  fr_dict_attr_t const *parent,
-			  uint8_t const *data, size_t const data_len, void *decode_ctx)
-{
-	fr_pair_t		*vp;
-	fr_dict_attr_t		*unknown;
-	fr_dict_attr_t const	*da;
-	fr_dhcpv4_ctx_t		*packet_ctx = decode_ctx;
-	ssize_t			slen;
-
-#ifdef __clang_analyzer__
-	if (!packet_ctx || !packet_ctx->tmp_ctx || !parent->parent) return PAIR_DECODE_FATAL_ERROR;
-#endif
-
-	FR_PROTO_HEX_DUMP(data, data_len, "decode_raw");
-
-	/*
-	 *	Re-write the attribute to be "raw".  It is
-	 *	therefore of type "octets", and will be
-	 *	handled below.
-	 */
-	unknown = fr_dict_unknown_attr_afrom_da(packet_ctx->tmp_ctx, parent);
-	if (!unknown) {
-		fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
-		return PAIR_DECODE_OOM;
-	}
-	unknown->flags.is_raw = 1;
-
-	vp = fr_pair_afrom_da(ctx, unknown);
-	if (!vp) return PAIR_DECODE_OOM;
-
-	slen = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
-					 &FR_DBUFF_TMP(data, data_len), data_len, true);
-	if (slen < 0) {
-		talloc_free(vp);
-		da = unknown;
-		fr_dict_unknown_free(&da);
-		return slen;
-	}
-
-	vp->vp_tainted = true;
-	fr_pair_append(out, vp);
-	return data_len;
-}
-
-
 /** RFC 4243 Vendor Specific Suboptions
  *
  * Vendor specific suboptions are in the format.
@@ -411,7 +365,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t c
 			 *	@todo - the "goto raw" can leave partially decoded VPs in the output.  we'll
 			 *	need a temporary cursor / pair_list to fix that.
 			 */
-			slen = decode_raw(ctx, out, parent, p, end - p, decode_ctx);
+			slen = fr_pair_raw_from_network(ctx, out, parent, p, end - p);
 			if (slen < 0) return slen - (p - data);
 
 			return data_len;
@@ -440,7 +394,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t c
 
 static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				 fr_dict_attr_t const *parent,
-				 uint8_t const *data, size_t const data_len, void *decode_ctx)
+				 uint8_t const *data, size_t const data_len, UNUSED void *decode_ctx)
 {
 	ssize_t slen;
 	size_t total, labels_len;
@@ -476,7 +430,7 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = fr_dns_labels_network_verify(data, data, data_len, data, NULL);
 		if (slen < 0) {
 		raw:
-			return decode_raw(ctx, out, parent, data, data_len, decode_ctx);
+			return fr_pair_raw_from_network(ctx, out, parent, data, data_len);
 		}
 
 		labels_len = slen;
@@ -554,7 +508,7 @@ next:
 	 *	attributes.
 	 */
 	if ((size_t)(end - p) < (sizeof(uint32_t) + 1 + 1)) {
-		len = decode_raw(ctx, out, parent, p, end - p, decode_ctx);
+		len = fr_pair_raw_from_network(ctx, out, parent, p, end - p);
 		if (len < 0) return len;
 
 		return data_len + 2; /* decoded the whole thing */
@@ -584,7 +538,7 @@ next:
 
 	option_len = p[0];
 	if ((p + 1 + option_len) > end) {
-		len = decode_raw(ctx, out, vendor, p, end - p, decode_ctx);
+		len = fr_pair_raw_from_network(ctx, out, vendor, p, end - p);
 		if (len < 0) return len;
 
 		return data_len + 2; /* decoded the whole thing */
@@ -653,17 +607,17 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (slen < 0) {
 		raw:
 			fr_pair_list_free(&tmp);
-			slen = decode_raw(ctx, out, da, data + 2, len, decode_ctx);
+			slen = fr_pair_raw_from_network(ctx, out, da, data + 2, len);
 			if (slen < 0) return slen;
+		} else {
+			/*
+			 *	The DNS labels may only partially fill the
+			 *	option.  If so, then it's a decode error.
+			 */
+			if ((size_t) slen != len) goto raw;
+
+			fr_pair_list_append(out, &tmp);
 		}
-
-		/*
-		 *	The DNS labels may only partially fill the
-		 *	option.  If so, then it's a decode error.
-		 */
-		if ((size_t) slen != len) goto raw;
-
-		fr_pair_list_append(out, &tmp);
 
 	} else if (da->flags.array) {
 		slen = fr_pair_array_from_network(ctx, out, da, data + 2, len, decode_ctx, decode_value);
@@ -679,7 +633,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	}
 
 	if (slen < 0) {
-		slen = decode_raw(ctx, out, da, data + 2, len, decode_ctx);
+		slen = fr_pair_raw_from_network(ctx, out, da, data + 2, len);
 		if (slen <= 0) return slen;
 	}
 
@@ -772,7 +726,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, fr_dict_root(dict_dhcpv4), p[0]);
 			if (!da) return -1;
 
-			slen = decode_raw(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx);
+			slen = fr_pair_raw_from_network(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer);
 
 		} else if (da->type == FR_TYPE_VSA) {
 			slen = decode_vsa(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx);

@@ -33,52 +33,6 @@
 #include "dns.h"
 #include "attrs.h"
 
-static ssize_t decode_raw(TALLOC_CTX *ctx, fr_pair_list_t *out,
-			  fr_dict_attr_t const *parent,
-			  uint8_t const *data, size_t const data_len, void *decode_ctx)
-{
-	fr_pair_t		*vp;
-	fr_dict_attr_t		*unknown;
-	fr_dict_attr_t const	*da;
-	fr_dns_ctx_t	*packet_ctx = decode_ctx;
-	ssize_t			slen;
-
-#ifdef __clang_analyzer__
-	if (!packet_ctx || !packet_ctx->tmp_ctx || !parent->parent) return PAIR_DECODE_FATAL_ERROR;
-#endif
-
-	FR_PROTO_HEX_DUMP(data, data_len, "decode_raw");
-
-	/*
-	 *	Re-write the attribute to be "raw".  It is
-	 *	therefore of type "octets", and will be
-	 *	handled below.
-	 */
-	unknown = fr_dict_unknown_attr_afrom_da(packet_ctx->tmp_ctx, parent);
-	if (!unknown) {
-		fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
-		return PAIR_DECODE_OOM;
-	}
-	unknown->flags.is_raw = 1;
-
-	vp = fr_pair_afrom_da(ctx, unknown);
-	if (!vp) return PAIR_DECODE_OOM;
-
-	slen = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
-					 &FR_DBUFF_TMP(data, data_len), data_len, true);
-	if (slen < 0) {
-		talloc_free(vp);
-		da = unknown;
-		fr_dict_unknown_free(&da);
-		return slen;
-	}
-
-	vp->vp_tainted = true;
-	fr_pair_append(out, vp);
-	return data_len;
-}
-
-
 static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t const data_len, void *decode_ctx);
@@ -120,7 +74,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	case FR_TYPE_IPV6_PREFIX:
 		if ((data_len == 0) || (data_len > (1 + sizeof(vp->vp_ipv6addr)))) {
 		raw:
-			return decode_raw(ctx, out, parent, data, data_len, decode_ctx);
+			return fr_pair_raw_from_network(ctx, out, parent, data, data_len);
 
 		};
 
@@ -385,7 +339,7 @@ static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		slen = decode_option(vp, &vp->vp_group, parent, p, (end - p), decode_ctx);
 		if (slen <= 0) {
-			slen = decode_raw(vp, &vp->vp_group, parent, p, (end - p), decode_ctx);
+			slen = fr_pair_raw_from_network(vp, &vp->vp_group, parent, p, (end - p));
 			if (slen <= 0) return slen - (p - data);
 		}
 
