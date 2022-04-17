@@ -1240,8 +1240,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_pair_t		*vp = NULL;
 	uint8_t const		*p = data;
 	uint8_t			buffer[256];
-	size_t			min = 0, max = 0;
-	int			extra;
+	size_t			extra;
 
 	if (attr_len > 128 * 1024) {
 		fr_strerror_printf("%s: packet is too large to be RADIUS", __FUNCTION__);
@@ -1455,17 +1454,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	switch (parent->type) {
 	case FR_TYPE_LEAF:
-		min = fr_radius_attr_sizes[parent->type][0];
-		max = fr_radius_attr_sizes[parent->type][1];
-
-		if (data_len < min) {
-			FR_PROTO_TRACE("Data len %zu too short, need at least %zu", data_len, min);
-			goto raw;
-		}
-		if (data_len > max) {
-			FR_PROTO_TRACE("Data len %zu too long, must be less than or equal to %zu", data_len, max);
-			goto raw;
-		}
 		break;
 
 	case FR_TYPE_VSA:
@@ -1552,25 +1540,25 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	case FR_TYPE_TLV:
 		if (!flag_extended(&parent->flags)) {
-				/*
-				 *	We presume that the TLVs all fit into one
-				 *	attribute, OR they've already been grouped
-				 *	into a contiguous memory buffer.
-				 */
-				ret = fr_radius_decode_tlv(ctx, out,  parent, p, attr_len, packet_ctx);
-				if (ret < 0) goto raw;
-				return attr_len;
+			/*
+			 *	We presume that the TLVs all fit into one
+			 *	attribute, OR they've already been grouped
+			 *	into a contiguous memory buffer.
+			 */
+			ret = fr_radius_decode_tlv(ctx, out,  parent, p, attr_len, packet_ctx);
+			if (ret < 0) goto raw;
+			return attr_len;
 		}
 
 		/*
 		 *	Extended attributes
 		 */
-		min = 1 + extra;
+		extra++;
 
 		/*
 		 *	Not enough data, just create a raw attribute.
 		 */
-		if (data_len <= min) goto raw;
+		if (data_len <= extra) goto raw;
 
 		/*
 		 *	Look up the extended type.  It's almost always
@@ -1587,7 +1575,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			 */
 			if (!extra || ((p[1] & 0x80) == 0)) {
 				ret = fr_radius_decode_pair_value(ctx, out, child,
-								  p + min, attr_len - min,
+								  p + extra, attr_len - extra,
 								  packet_ctx);
 				if (ret < 0) goto invalid_extended;
 				return attr_len;
@@ -1637,13 +1625,13 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		/*
 		 *	"long" extended.  Decode the value.
 		 */
-		if (extra) {
+		if (extra > 1) {
 			ret = decode_extended(ctx, out, child, data, attr_len, packet_ctx);
 			if (ret >= 0) return ret; /* which may be LONGER than attr_len */
 		}
 
 		ret = fr_radius_decode_pair_value(ctx, out, child,
-						  p + min, attr_len - min,
+						  p + extra, attr_len - extra,
 						  packet_ctx);
 		if (ret < 0) return -1;
 	}
@@ -1699,7 +1687,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 * RFC does not require non-masked bits to be zero.
 	 */
 	case FR_TYPE_IPV4_PREFIX:
-		if (data_len != min) goto raw;
+		if (data_len != 6) goto raw;
 		if (p[0] != 0) goto raw;
 		if ((p[1] & 0x3f) > 32) goto raw;
 
@@ -1731,12 +1719,17 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 */
 	case FR_TYPE_IPV6_PREFIX:
 	{
+		if (data_len > 18) goto raw;
+		if (data_len < 2) goto raw;
 		if (p[0] != 0) goto raw;	/* First byte is always 0 */
 		if (p[1] > 128) goto raw;
 
 		/*
 		 *	Convert prefix bits to bytes to check that
 		 *	we have sufficient data.
+		 *
+		 *	If Prefix has more data than Prefix-Length
+		 *	indicates, we just ignore the rest.
 		 */
 		if (fr_bytes_from_bits(p[1]) > (data_len - 2)) goto raw;
 
@@ -1771,8 +1764,9 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	default:
 	decode:
-		if (fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
-					      &FR_DBUFF_TMP(p, data_len), data_len, true) < 0) {
+		ret = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
+						&FR_DBUFF_TMP(p, data_len), data_len, true);
+		if (ret < 0) {
 			/*
 			 *	Paranoid loop prevention
 			 */

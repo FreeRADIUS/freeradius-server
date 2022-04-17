@@ -74,51 +74,6 @@ fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[] = {
 	{ NULL }
 };
 
-/** RADIUS on-the-wire format attribute sizes
- *
- * Holds the min/max sizes of all supported RADIUS attribute values as they
- * would be found in a RADIUS packet.
- *
- * These sizes may be different than the sizes of INTERNAL formats, PRESENTATION
- * formats and generic NETWORK formats.
- */
-size_t const fr_radius_attr_sizes[FR_TYPE_MAX + 1][2] = {
-	[FR_TYPE_NULL]		= {~0, 0},	//!< Ensure array starts at 0 (umm?)
-
-	[FR_TYPE_STRING]		= {0, ~0},
-	[FR_TYPE_OCTETS]		= {0, ~0},
-
-	[FR_TYPE_IPV4_ADDR]		= {4, 4},
-	[FR_TYPE_IPV4_PREFIX]		= {6, 6},
-	[FR_TYPE_IPV6_ADDR]		= {16, 16},
-	[FR_TYPE_IPV6_PREFIX]		= {2, 18},
-	[FR_TYPE_COMBO_IP_PREFIX]	= {6, 18},
-	[FR_TYPE_COMBO_IP_ADDR]		= {4, 16},
-	[FR_TYPE_IFID]			= {8, 8},
-	[FR_TYPE_ETHERNET]		= {6, 6},
-
-	[FR_TYPE_BOOL]			= {1, 1},
-	[FR_TYPE_UINT8]			= {1, 1},
-	[FR_TYPE_UINT16]		= {2, 2},
-	[FR_TYPE_UINT32]		= {4, 4},
-	[FR_TYPE_UINT64]		= {8, 8},
-
-	[FR_TYPE_INT8]			= {1, 1},
-	[FR_TYPE_INT16]			= {2, 2},
-	[FR_TYPE_INT32]			= {4, 4},
-	[FR_TYPE_INT64]			= {8, 8},
-
-	[FR_TYPE_DATE]			= {2, 8},
-	[FR_TYPE_TIME_DELTA]   		= {2, 8},
-
-	[FR_TYPE_TLV]			= {2, ~0},
-	[FR_TYPE_STRUCT]		= {1, ~0},
-
-	[FR_TYPE_VSA]			= {4, ~0},
-
-	[FR_TYPE_MAX]			= {~0, 0}	//!< Ensure array covers all types.
-};
-
 /*
  *	Some messages get printed out only in debugging mode.
  */
