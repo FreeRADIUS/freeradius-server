@@ -31,7 +31,7 @@ VALUE	UUM-User-Level		Root			5
 VALUE	UUM-User-Level		Admin			4
 VALUE	UUM-User-Level		Provision		3
 VALUE	UUM-User-Level		Operator		2
-VALUE	UMU-User-Level		Reserved		1
+VALUE	UUM-User-Level		Reserved		1
 VALUE	UUM-User-Level		Monitor			0
 
 # ADVA Network Manager settings
