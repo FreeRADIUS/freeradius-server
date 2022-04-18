@@ -1027,7 +1027,6 @@ module_instance_t *module_alloc(module_list_t *ml,
 	mi->name = talloc_typed_strdup(mi, qual_inst_name);
 	talloc_free(qual_inst_name);	/* Avoid stealing */
 
-
 	mi->number = ml->last_number++;
 	mi->ml = ml;
 
