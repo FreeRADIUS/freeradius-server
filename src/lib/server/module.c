@@ -996,6 +996,16 @@ module_instance_t *module_alloc(module_list_t *ml,
 	}
 
 	MEM(mi = talloc_zero(parent ? (void const *)parent : (void const *)ml, module_instance_t));
+	if (dl_module_instance(mi, &mi->dl_inst, parent ? parent->dl_inst : NULL,
+			       type, mod_name, qual_inst_name) < 0) {
+	error:
+		mi->name = qual_inst_name;	/* Assigned purely for debug log output when mi is freed */
+		talloc_free(mi);
+		talloc_free(qual_inst_name);
+		return NULL;
+	}
+	fr_assert(mi->dl_inst);
+
 	/*
 	 *	If we're threaded, check if the module is thread-safe.
 	 *
@@ -1006,16 +1016,6 @@ module_instance_t *module_alloc(module_list_t *ml,
 	 */
 	if ((mi->module->type & MODULE_TYPE_THREAD_UNSAFE) != 0) pthread_mutex_init(&mi->mutex, NULL);
 	talloc_set_destructor(mi, _module_instance_free);
-
-	if (dl_module_instance(mi, &mi->dl_inst, parent ? parent->dl_inst : NULL,
-			       type, mod_name, qual_inst_name) < 0) {
-	error:
-		mi->name = qual_inst_name;	/* Assigned purely for debug log output when mi is freed */
-		talloc_free(mi);
-		talloc_free(qual_inst_name);
-		return NULL;
-	}
-	fr_assert(mi->dl_inst);
 
 	mi->name = talloc_typed_strdup(mi, qual_inst_name);
 	talloc_free(qual_inst_name);	/* Avoid stealing */
