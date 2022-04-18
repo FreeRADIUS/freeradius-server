@@ -129,6 +129,30 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	return 0;
 }
 
+/** Check if an attribute is in the config list and add if not present
+ *
+ * @param[in,out] config	to check for attribute.
+ * @param[in] attr		to look for.
+ * @return
+ *	- 1 if attr is added
+ *	- 0 if attr was already present
+ */
+int ldap_sync_conf_attr_add(sync_config_t *config, char const * attr)
+{
+	char	**tmp;
+	size_t	len;
+
+	if (fr_ldap_attrs_check(config->attrs, attr)) return 0;
+
+	len = talloc_array_length(config->attrs);
+
+	config->attrs[len - 1] = talloc_strdup(config, attr);
+	tmp = (char **)talloc_array_null_terminate(UNCONST(void **, config->attrs));
+	memcpy(&config->attrs, &tmp, sizeof(config->attrs));
+
+	return 1;
+}
+
 /** Decode an internal LDAP sync packet
  *
  */
