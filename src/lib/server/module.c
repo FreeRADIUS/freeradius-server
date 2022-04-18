@@ -654,8 +654,8 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, module_list_t const *ml, fr_even
 		if (mi->module->thread_instantiate &&
 		    mi->module->thread_instantiate(MODULE_THREAD_INST_CTX(mi->dl_inst, ti->data, el)) < 0) {
 			PERROR("Thread instantiation failed for module \"%s\"", mi->name);
+			/* Leave module_thread_inst_list intact, other modules may need to clean up */
 			modules_thread_detach(ml);
-			TALLOC_FREE(module_thread_inst_list);
 			return -1;
 		}
 
