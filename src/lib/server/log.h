@@ -187,7 +187,7 @@ void	log_global_free(void);
 #  define _FR_LOG_PREFIX(_lvl, _fmt, ...) _FR_LOG_DST(_lvl, "%s - " _fmt, LOG_PREFIX, ## __VA_ARGS__)
 #  define _FR_LOG_PREFIX_PERROR(_lvl, _fmt, ...) _FR_LOG_DST_PERROR(_lvl, "%s - " _fmt, LOG_PREFIX, ## __VA_ARGS__)
 #  define _FR_LOG_PREFIX_FATAL(_fmt, ...) _FR_LOG_DST_FATAL("%s - " _fmt, LOG_PREFIX, ## __VA_ARGS__)
-#  define _FR_LOG_PREFIX_MARKER(_lvl, _str, _str_len, _marker_idx, _marker) _FR_LOG_DST_MARKER(_lvl, _str, _str_len, _marker_idx, _marker, "%s", LOG_PREFIX)
+#  define _FR_LOG_PREFIX_MARKER(_lvl, _str, _str_len, _marker_idx, _marker) _FR_LOG_DST_MARKER(_lvl, _str, _str_len, _marker_idx, _marker, "%s - ", LOG_PREFIX)
 #else
 #  define _FR_LOG_PREFIX(_lvl, _fmt, ...) _FR_LOG_DST(_lvl, _fmt, ## __VA_ARGS__)
 #  define _FR_LOG_PREFIX_PERROR(_lvl, _fmt, ...) _FR_LOG_DST_PERROR(_lvl, _fmt, ## __VA_ARGS__)
