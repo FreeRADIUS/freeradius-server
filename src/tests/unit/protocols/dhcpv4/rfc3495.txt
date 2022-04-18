@@ -9,7 +9,7 @@ encode-pair CCC = { Ticket-Granting-Server-Utilization = yes, Provisioning-Serve
 match 7a 1a 07 01 01 03 15 00 0d 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 01 04 c0 a8 00 01
 
 decode-pair -
-match CCC.Ticket-Granting-Server-Utilization = yes, raw.CCC.Provisioning-Server = 0x000d076578616d706c6503636f6d000104c0a80001
+match CCC.Ticket-Granting-Server-Utilization = yes, CCC.Provisioning-Server.FQDN = "example.com", CCC.Provisioning-Server.Address = 192.168.0.1
 
 count
 match 7
