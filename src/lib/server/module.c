@@ -1006,6 +1006,13 @@ module_instance_t *module_alloc(module_list_t *ml,
 	}
 	fr_assert(mi->dl_inst);
 
+	mi->module = (module_t const *)mi->dl_inst->module->common;
+	if (!mi->module) {
+		ERROR("Missing public structure for \"%s\"", qual_inst_name);
+		talloc_free(mi);
+		return NULL;
+	}
+
 	/*
 	 *	If we're threaded, check if the module is thread-safe.
 	 *
@@ -1020,12 +1027,7 @@ module_instance_t *module_alloc(module_list_t *ml,
 	mi->name = talloc_typed_strdup(mi, qual_inst_name);
 	talloc_free(qual_inst_name);	/* Avoid stealing */
 
-	mi->module = (module_t const *)mi->dl_inst->module->common;
-	if (!mi->module) {
-		ERROR("Missing public structure for \"%s\"", qual_inst_name);
-		talloc_free(mi);
-		return NULL;
-	}
+
 	mi->number = ml->last_number++;
 	mi->ml = ml;
 
