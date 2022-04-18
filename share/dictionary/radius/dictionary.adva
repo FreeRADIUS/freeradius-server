@@ -16,26 +16,26 @@ VENDOR		Adva				2544
 
 BEGIN-VENDOR	Adva
 
-ATTRIBUTE	Adva-User-Level				100	integer
+ATTRIBUTE	User-Level				100	integer
 
-VALUE	Adva-User-Level			Super			5
-VALUE	Adva-User-Level			Admin			4
-VALUE	Adva-User-Level			Provision		3
-VALUE	Adva-User-Level			Operate_Control		2
-VALUE	Adva-User-Level			Reserved		1
-VALUE	Adva-User-Level			Retrieve		0
+VALUE	User-Level			Super			5
+VALUE	User-Level			Admin			4
+VALUE	User-Level			Provision		3
+VALUE	User-Level			Operate_Control		2
+VALUE	User-Level			Reserved		1
+VALUE	User-Level			Retrieve		0
 
-ATTRIBUTE	Adva-UUM-User-Level			102	integer
+ATTRIBUTE	UUM-User-Level			102	integer
 
-VALUE	Adva-UUM-User-Level		Root			5
-VALUE	Adva-UUM-User-Level		Admin			4
-VALUE	Adva-UUM-User-Level		Provision		3
-VALUE	Adva-UUM-User-Level		Operator		2
-VALUE	Adva-UUM-User-Level		Reserved		1
-VALUE	Adva-UUM-User-Level		Monitor			0
+VALUE	UUM-User-Level		Root			5
+VALUE	UUM-User-Level		Admin			4
+VALUE	UUM-User-Level		Provision		3
+VALUE	UUM-User-Level		Operator		2
+VALUE	UM-User-Level		Reserved		1
+VALUE	UUM-User-Level		Monitor			0
 
 # ADVA Network Manager settings
-ATTRIBUTE	Adva-Auth-Level-NM			101	string
+ATTRIBUTE	Auth-Level-NM			101	string
 
 END-VENDOR	Adva
 
