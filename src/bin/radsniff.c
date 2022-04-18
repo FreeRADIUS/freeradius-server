@@ -2521,11 +2521,13 @@ int main(int argc, char *argv[])
 
 	/* Can't read from both... */
 	if (conf->from_file && conf->from_dev) {
+		ERROR("Can't read from both a file and a device");
 		usage(64);
 	}
 
 	/* Can't set stats export mode if we're not writing stats */
 	if ((conf->stats.out == RS_STATS_OUT_STDIO_CSV) && !conf->stats.interval) {
+		ERROR("CSV output requires a statistics interval (-W)");
 		usage(64);
 	}
 
