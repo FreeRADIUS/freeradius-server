@@ -712,13 +712,6 @@ int module_instantiate(module_instance_t *instance)
 			return -1;
 		}
 	}
-
-	/*
-	 *	If we're threaded, check if the module is thread-safe.
-	 *
-	 *	If it isn't, we init the mutex.
-	 */
-	if ((mi->module->type & MODULE_TYPE_THREAD_UNSAFE) != 0) pthread_mutex_init(&mi->mutex, NULL);
 	mi->state = MODULE_INSTANCE_INSTANTIATED;
 
 	return 0;
@@ -875,6 +868,8 @@ static int _module_instance_free(module_instance_t *mi)
 	 */
 	if (mi->module && ((mi->module->type & MODULE_TYPE_THREAD_UNSAFE) != 0)) {
 #ifndef NDEBUG
+		int ret;
+
 		/*
 		 *	If the mutex is locked that means
 		 *	the server exited without cleaning
@@ -882,7 +877,8 @@ static int _module_instance_free(module_instance_t *mi)
 		 *
 		 *	Assert that the mutex is not held.
 		 */
-		fr_assert(pthread_mutex_trylock(&mi->mutex) == 0);
+		fr_assert_msg((ret = pthread_mutex_trylock(&mi->mutex)) == 0,
+			      "Failed locking module mutex during exit: %s", fr_syserror(ret));
 		pthread_mutex_unlock(&mi->mutex);
 #endif
 		pthread_mutex_destroy(&mi->mutex);
@@ -1000,6 +996,15 @@ module_instance_t *module_alloc(module_list_t *ml,
 	}
 
 	MEM(mi = talloc_zero(parent ? (void const *)parent : (void const *)ml, module_instance_t));
+	/*
+	 *	If we're threaded, check if the module is thread-safe.
+	 *
+	 *	If it isn't, we init the mutex.
+	 *
+	 *	Do this here so the destructor can trylock the mutex
+	 *	correctly even if bootstrap/instantiation fails.
+	 */
+	if ((mi->module->type & MODULE_TYPE_THREAD_UNSAFE) != 0) pthread_mutex_init(&mi->mutex, NULL);
 	talloc_set_destructor(mi, _module_instance_free);
 
 	if (dl_module_instance(mi, &mi->dl_inst, parent ? parent->dl_inst : NULL,
