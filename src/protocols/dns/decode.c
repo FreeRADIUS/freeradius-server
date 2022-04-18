@@ -33,9 +33,21 @@
 #include "dns.h"
 #include "attrs.h"
 
+static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
+			      fr_dict_attr_t const *parent,
+			      uint8_t const *data, size_t const data_len, void *decode_ctx);
+
 static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t const data_len, void *decode_ctx);
+
+static ssize_t decode_tlv_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
+				     fr_dict_attr_t const *parent,
+				     uint8_t const *data, size_t const data_len, void *decode_ctx)
+{
+	return fr_pair_tlvs_from_network(ctx, out, parent, data, data_len, decode_ctx, decode_option, true);
+}
+
 
 static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				 fr_dict_attr_t const *parent,
@@ -313,43 +325,6 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	return len + 4;
 }
 
-/** Only for OPT 41
- *
- */
-static ssize_t decode_tlvs(TALLOC_CTX *ctx, fr_pair_list_t *out,
-			   fr_dict_attr_t const *parent,
-			   uint8_t const *data, size_t const data_len, void *decode_ctx)
-{
-	uint8_t const *p, *end;
-	fr_pair_t *vp;
-
-	FR_PROTO_HEX_DUMP(data, data_len, "decode_tlvs");
-
-	if (!fr_cond_assert_msg((parent->type == FR_TYPE_TLV || (parent->type == FR_TYPE_VENDOR)),
-				"%s: Internal sanity check failed, attribute \"%s\" is not of type 'tlv'",
-				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
-	p = data;
-	end = data + data_len;
-
-	vp = fr_pair_afrom_da(ctx, parent);
-	if (!vp) return PAIR_DECODE_OOM;
-
-	while (p < end) {
-		ssize_t slen;
-
-		slen = decode_option(vp, &vp->vp_group, parent, p, (end - p), decode_ctx);
-		if (slen <= 0) {
-			slen = fr_pair_raw_from_network(vp, &vp->vp_group, parent, p, (end - p));
-			if (slen <= 0) return slen - (p - data);
-		}
-
-		p += slen;
-	}
-
-	fr_pair_append(out, vp);
-	return data_len;
-}
-
 static ssize_t decode_record(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *attr,
 			     uint8_t const *rr, uint8_t const *end,
 			     fr_dns_ctx_t *packet_ctx, uint8_t const *counter)
@@ -370,7 +345,7 @@ static ssize_t decode_record(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_
 		}
 
 		slen = fr_struct_from_network(ctx, out, attr, p, end - p, true,
-					      packet_ctx, decode_value_trampoline, decode_tlvs);
+					      packet_ctx, decode_value_trampoline, decode_tlv_trampoline);
 		if (slen < 0) return slen;
 		if (!slen) break;
 		p += slen;
@@ -482,7 +457,7 @@ static ssize_t decode_rr(TALLOC_CTX *ctx, fr_pair_list_t *out, UNUSED fr_dict_at
 	}
 
 	slen = fr_struct_from_network(ctx, out, attr_dns_rr, data, data_len, true,
-				      decode_ctx, decode_value_trampoline, decode_tlvs);
+				      decode_ctx, decode_value_trampoline, decode_tlv_trampoline);
 	if (slen < 0) return slen;
 
 	FR_PROTO_TRACE("decoding option complete, returning %zd byte(s)", slen);

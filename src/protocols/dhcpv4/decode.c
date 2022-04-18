@@ -36,8 +36,12 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			      fr_dict_attr_t const *parent,
 			      uint8_t const *data, size_t const data_len, void *decode_ctx);
 
-static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-			  uint8_t const *data, size_t data_len, void *decode_ctx);
+static ssize_t decode_tlv_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
+				     fr_dict_attr_t const *parent,
+				     uint8_t const *data, size_t const data_len, void *decode_ctx)
+{
+	return fr_pair_tlvs_from_network(ctx, out, parent, data, data_len, decode_ctx, decode_option, false);
+}
 
 static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t data_len, void *decode_ctx);
@@ -85,7 +89,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 	 */
 	if (da->type == FR_TYPE_STRUCT) {
 		slen = fr_struct_from_network(ctx, out, da, data, data_len, true,
-					      decode_ctx, decode_value_trampoline, decode_tlv);
+					      decode_ctx, decode_value_trampoline, decode_tlv_trampoline);
 		if (slen < 0) return slen;
 
 		if (!exact) return slen;
@@ -310,88 +314,6 @@ finish:
  * Vendor-Specific-Information with raw octets contents.
  */
 
-/** Decode DHCP suboptions
- *
- * @param[in] ctx		context to alloc new attributes in.
- * @param[out] out		Where to write the decoded options.
- * @param[in] parent		of sub TLVs.
- * @param[in] data		to parse.
- * @param[in] data_len		of the data to parse
- * @return
- *	<= 0 on error
- *	data_len on success.
- */
-static ssize_t decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
-			  uint8_t const *data, size_t data_len, void *decode_ctx)
-{
-	uint8_t const		*p = data;
-	uint8_t const		*end = data + data_len;
-
-	/*
-	 *	Type, length, data.  If that doesn't exist, we decode
-	 *	the data as "raw" in the parents context/
-	 */
-	if (data_len < 3) {
-		return fr_pair_raw_from_network(ctx, out, parent, data, data_len);
-	}
-
-	FR_PROTO_TRACE("%s called to parse %zu byte(s)", __FUNCTION__, data_len);
-	FR_PROTO_HEX_DUMP(data, data_len, NULL);
-
-	/*
-	 *	Each TLV may contain multiple children
-	 */
-	while (p < end) {
-		ssize_t slen;
-
-		/*
-		 *	RFC 3046 is very specific about not allowing termination
-		 *	with a 255 sub-option. But it's required for decoding
-		 *	option 43, and vendors will probably screw it up
-		 *	anyway.
-		 *
-		 *	Similarly, option 0 is sometimes treated as
-		 *	"end of options".
-		 */
-		if ((p[0] == 0) || (p[0] == 255)) {
-			if ((p + 1) == end) return data_len;
-
-			/*
-			 *	There's stuff after the "end of
-			 *	options" option.  Return it as random crap.
-			 */
-		raw:
-			/*
-			 *	@todo - the "goto raw" can leave partially decoded VPs in the output.  we'll
-			 *	need a temporary cursor / pair_list to fix that.
-			 */
-			slen = fr_pair_raw_from_network(ctx, out, parent, p, end - p);
-			if (slen < 0) return slen - (p - data);
-
-			return data_len;
-		}
-
-		/*
-		 *      Everything else should be real options
-		 */
-		if ((end - p) < 2) goto raw;
-
-		if ((p[1] + 2) > (end - p)) goto raw;
-
-		slen = decode_option(ctx, out, parent, p, p[1] + 2, decode_ctx);
-		if (slen <= 0) {
-			return slen - (p - data);
-		}
-		fr_assert(slen <= (2 + p[1]));
-
-		p += 2 + p[1];
-		FR_PROTO_TRACE("remaining TLV data %zu byte(s)" , end - p);
-	}
-	FR_PROTO_TRACE("tlv parsing complete, returning %zu byte(s)", p - data);
-
-	return data_len;
-}
-
 static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				 fr_dict_attr_t const *parent,
 				 uint8_t const *data, size_t const data_len, UNUSED void *decode_ctx)
@@ -545,7 +467,7 @@ next:
 	}
 	p++;
 
-	len = decode_tlv(ctx, out, vendor, p, option_len, decode_ctx);
+	len = fr_pair_tlvs_from_network(ctx, out, vendor, p, option_len, decode_ctx, decode_option, false);
 	if (len <= 0) return len;
 
 	p += len;
@@ -573,6 +495,21 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 #endif
 
 	fr_assert(parent != NULL);
+
+	/*
+	 *      RFC 3046 is very specific about not allowing termination
+	 *      with a 255 sub-option. But it's required for decoding
+	 *      option 43, and vendors will probably screw it up
+	 *      anyway.
+	 *
+	 *      Similarly, option 0 is sometimes treated as
+	 *      "end of options".
+	 *
+	 *	@todo - this check is likely correct only when at the
+	 *	dhcpv4 root, OR inside of option 43.  It could be
+	 *	argued that it's wrong for all other TLVs.
+	 */
+	if ((data_len == 1) && ((data[0] == 0) || (data[1] == 255))) return data_len;
 
 	/*
 	 *	Must have at least an option header.
@@ -626,7 +563,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = decode_vsa(ctx, out, da, data + 2, len, decode_ctx);
 
 	} else if (da->type == FR_TYPE_TLV) {
-		slen = decode_tlv(ctx, out, da, data + 2, len, decode_ctx);
+		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 2, len, decode_ctx, decode_option, false);
 
 	} else {
 		slen = decode_value(ctx, out, da, data + 2, len, decode_ctx);
@@ -732,7 +669,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			slen = decode_vsa(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx);
 
 		} else if (da->type == FR_TYPE_TLV) {
-			slen = decode_tlv(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx);
+			slen = fr_pair_tlvs_from_network(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx, decode_option, false);
 
 		} else if (da->flags.array) {
 			slen = fr_pair_array_from_network(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx, decode_value);
