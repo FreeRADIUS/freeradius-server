@@ -232,8 +232,10 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		/*
 		 *	Magic values get the callback called.
 		 *
-		 *	Note that if this is an *array* of DNS labels,
-		 *	the callback should deal with this.
+		 *	@todo - if this is an array of DNS labels, we
+		 *	need to do decompression checks on the entire
+		 *	block, and then decode each field
+		 *	individually.
 		 */
 		if (decode_value) {
 			if (child->flags.array) {
