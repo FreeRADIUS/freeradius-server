@@ -1805,7 +1805,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
  *	check on a buffer, that's less work than a series of if / then
  *	/ else conditions.
  */
-static const bool special[UINT8_MAX] = {
+static const bool special[UINT8_MAX + 1] = {
 	[FR_NAS_FILTER_RULE]	= true,		/* magic rules */
 	[FR_DIGEST_ATTRIBUTES]	= true,		/* magic rules */
 
