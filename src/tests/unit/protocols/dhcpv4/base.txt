@@ -90,10 +90,10 @@ match Domain-Name = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # These next two tests will be broken until we start printing qualified attribute names
 decode-pair 52 07 01 03 ab cd ef 03 00
-match Relay-Agent-Information.Circuit-Id = 0xabcdef, Relay-Agent-Information.3 = 0x
+match Relay-Agent-Information.Circuit-Id = 0xabcdef, raw.Relay-Agent-Information.3 = 0x
 
 decode-pair 52 08 01 03 ab cd ef 03 01 ad
-match Relay-Agent-Information.Circuit-Id = 0xabcdef, Relay-Agent-Information.3 = 0xad
+match Relay-Agent-Information.Circuit-Id = 0xabcdef, raw.Relay-Agent-Information.3 = 0xad
 
 #
 #  And option 82 with full suboptions

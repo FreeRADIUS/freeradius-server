@@ -93,12 +93,19 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 		return data_len;
 	}
 
+	/*
+	 *	These are always raw.
+	 */
+	if (da->flags.is_unknown) {
+		return fr_pair_raw_from_network(ctx, out, da, data, data_len);
+	}
+
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) return -1;
 
 	/*
 	 *	string / octets / bool can be empty.  Other data types are
-	 *	incorrect if they're empty.
+	 *	raw if they're empty.
 	 */
 	if (data_len == 0) {
 		if (da->type == FR_TYPE_BOOL) {
@@ -106,26 +113,12 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 			goto finish;
 		}
 
-		if (!((da->type == FR_TYPE_OCTETS) || (da->type == FR_TYPE_STRING))) goto raw;
-		goto finish;
-	}
+		if ((da->type == FR_TYPE_OCTETS) || (da->type == FR_TYPE_STRING)) {
+			goto finish;
+		}
 
-	/*
-	 *	Unknown attributes always get converted to
-	 *	octet types, so there's no way there could
-	 *	be multiple attributes, so its safe to
-	 *	steal the unknown attribute into the context
-	 *	of the pair.
-	 *
-	 *	Note that we *cannot* do talloc_steal here, because
-	 *	this function is called in a loop from decode_array().
-	 *	And we cannot steal the same da into multiple parent
-	 *	VPs.  As a result, we have to copy it, and rely in the
-	 *	caller to clean up the unknown da.
-	 */
-	if (da->flags.is_unknown) {
-		fr_pair_reinit_from_da(NULL, vp, fr_dict_unknown_attr_afrom_da(vp, da));
-		da = vp->da;
+		talloc_free(vp);
+		return fr_pair_raw_from_network(ctx, out, da, data, 0);
 	}
 
 	switch (vp->da->type) {
@@ -459,13 +452,12 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	da = fr_dict_attr_child_by_num(parent, option);
 	if (!da) {
 		da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, option);
-		if (!da) return PAIR_DECODE_FATAL_ERROR;
+		if (!da) return PAIR_DECODE_OOM;
 	}
 	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
 
 	if ((da->type == FR_TYPE_STRING) && da_is_dns_label(da)) {
 		slen = fr_pair_dns_labels_from_network(ctx, out, da, data + 2, data + 2, len, NULL, true);
-		if (slen < 0) return slen;
 
 	} else if (da->flags.array) {
 		slen = fr_pair_array_from_network(ctx, out, da, data + 2, len, decode_ctx, decode_value);
@@ -549,7 +541,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		if (!packet_ctx->buffer) {
 			packet_ctx->buffer = talloc_array(packet_ctx, uint8_t, data_len);
-			if (!packet_ctx->buffer) return -1;
+			if (!packet_ctx->buffer) return PAIR_DECODE_OOM;
 
 		} else if (talloc_array_length(packet_ctx->buffer) < data_len) {
 			/*
