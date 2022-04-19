@@ -332,7 +332,7 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	while (p < end) {
 		if ((end - p) < 2) goto raw;
 
-		element_len = fr_net_to_uint16(p);
+		element_len = fr_nbo_to_uint16(p);
 
 		if ((size_t) (end - p) < (((size_t) element_len) + 2)) goto raw;
 

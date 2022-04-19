@@ -274,7 +274,7 @@ static ssize_t decode_array(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			break;
 		}
 
-		element_len = fr_net_to_uint16(p);
+		element_len = fr_nbo_to_uint16(p);
 		if ((p + 2 + element_len) > end) {
 			goto raw;
 		}
@@ -365,8 +365,8 @@ static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
 }
 
 
-#define DNS_GET_OPTION_NUM(_x)	fr_net_to_uint16(_x)
-#define DNS_GET_OPTION_LEN(_x)	fr_net_to_uint16((_x) + 2)
+#define DNS_GET_OPTION_NUM(_x)	fr_nbo_to_uint16(_x)
+#define DNS_GET_OPTION_LEN(_x)	fr_nbo_to_uint16((_x) + 2)
 
 static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			      fr_dict_attr_t const *parent,
@@ -483,7 +483,7 @@ static ssize_t decode_record(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_
 	int i, count;
 	uint8_t const *p = rr;
 
-	count = fr_net_to_uint16(counter);
+	count = fr_nbo_to_uint16(counter);
 	FR_PROTO_TRACE("Decoding %u of %s", count, attr->name);
 	for (i = 0; i < count; i++) {
 		ssize_t slen;

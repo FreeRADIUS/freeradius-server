@@ -93,7 +93,7 @@ static void test_dbuff_max(void)
  *
  * @note Passing constants to fr_dbuff_in() as it is written results in
  * 	 warnings about narrowing casts on the constants--but those casts are in
- * 	 the underlying inlined fr_net_from*() functions. They have to be there;
+ * 	 the underlying inlined fr_nbo_from*() functions. They have to be there;
  * 	 that's how those functions work. (The tests worked despite the warnings.)
  * 	 Using variables avoids the warnings, at least with the compile options
  *	 the build system uses by default.

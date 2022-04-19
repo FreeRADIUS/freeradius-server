@@ -231,7 +231,7 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	the function.
 	 */
 	vlen = fr_dbuff_used(&value_dbuff);
-	flen = (ssize_t) fr_net_from_uint64v(buff, vlen);
+	flen = (ssize_t) fr_nbo_from_uint64v(buff, vlen);
 
 	/*
 	 *	Ugh, it's a long one, need to move the data.

@@ -89,7 +89,7 @@ int fr_tftp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 	end = (data + data_len);
 
 	/* Opcode */
-	opcode = fr_net_to_uint16(p);
+	opcode = fr_nbo_to_uint16(p);
 	vp = fr_pair_afrom_da(ctx, attr_tftp_opcode);
 	if (!vp) goto error;
 
@@ -202,7 +202,7 @@ int fr_tftp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 		vp = fr_pair_afrom_da(ctx, attr_tftp_block);
 		if (!vp) goto error;
 
-		vp->vp_uint16 = fr_net_to_uint16(p);
+		vp->vp_uint16 = fr_nbo_to_uint16(p);
 
 		fr_pair_append(out, vp);
 
@@ -244,7 +244,7 @@ int fr_tftp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 		vp = fr_pair_afrom_da(ctx, attr_tftp_error_code);
 		if (!vp) goto error;
 
-		vp->vp_uint16 = fr_net_to_uint16(p);
+		vp->vp_uint16 = fr_nbo_to_uint16(p);
 
 		fr_pair_append(out, vp);
 

@@ -441,9 +441,9 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_
 		uint16_t	len;
 		fr_pair_t	*vp;
 
-		attr = fr_net_to_uint16(p) & EAP_FAST_TLV_TYPE;
+		attr = fr_nbo_to_uint16(p) & EAP_FAST_TLV_TYPE;
 		p += 2;
-		len = fr_net_to_uint16(p);
+		len = fr_nbo_to_uint16(p);
 		p += 2;
 
 		da = fr_dict_attr_child_by_num(parent, attr);

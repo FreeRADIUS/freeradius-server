@@ -32,7 +32,7 @@ extern "C" {
 #include <errno.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/net.h>
+#include <freeradius-devel/util/nbo.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -1472,7 +1472,7 @@ static inline ssize_t _fr_dbuff_in_##_type(uint8_t **pos_p, fr_dbuff_t *out, _ty
 { \
 	fr_assert(!out->is_const); \
 	_FR_DBUFF_EXTEND_LOWAT_POS_OR_RETURN(pos_p, out, sizeof(_type##_t)); \
-	fr_net_from_##_type((*pos_p), num); \
+	fr_nbo_from_##_type((*pos_p), num); \
 	return _fr_dbuff_set(pos_p, out, (*pos_p) + sizeof(_type##_t)); \
 }
 FR_DBUFF_PARSE_INT_DEF(uint16)
@@ -1546,11 +1546,12 @@ static inline ssize_t _fr_dbuff_in_double(uint8_t **pos_p, fr_dbuff_t *out, doub
 static inline ssize_t _fr_dbuff_in_uint64v(uint8_t **pos_p, fr_dbuff_t *dbuff, uint64_t num)
 {
 	size_t	ret;
+	uint8_t swapped[sizeof(uint64_t)];
 
 	ret = ROUND_UP_DIV((size_t)fr_high_bit_pos(num | 0x08), 8);
-	num = ntohll(num);
+	fr_nbo_from_uint64(swapped, num);
 
-	return _fr_dbuff_in_memcpy(pos_p, dbuff, ((uint8_t *)&num) + (sizeof(uint64_t) - ret), ret);
+	return _fr_dbuff_in_memcpy(pos_p, dbuff, (swapped + (sizeof(uint64_t) - ret)), ret);
 }
 
 /** Copy an integer value into a dbuff or marker using our internal variable length encoding
@@ -1712,7 +1713,7 @@ static inline ssize_t _fr_dbuff_out_##_type(_type##_t *out, uint8_t **pos_p, fr_
 { \
 	fr_assert(out); \
 	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(in, sizeof(_type##_t)); \
-	*out = fr_net_to_##_type((*pos_p)); \
+	*out = fr_nbo_to_##_type((*pos_p)); \
 	return _fr_dbuff_set(pos_p, in, (*pos_p) + sizeof(_type##_t)); \
 }
 
@@ -1769,7 +1770,7 @@ static inline ssize_t _fr_dbuff_out_uint64v(uint64_t *num, uint8_t **pos_p, fr_d
 	slen = _fr_dbuff_out_memcpy(((uint8_t *) num) + (8 - length), pos_p, dbuff, length);
 	if (slen <= 0) return slen;
 
-	*num = fr_net_to_uint64((uint8_t const *)num);
+	*num = fr_nbo_to_uint64((uint8_t const *)num);
 	return length;
 }
 
@@ -1808,7 +1809,7 @@ static inline ssize_t _fr_dbuff_out_int64v(int64_t *num, uint8_t **pos_p, fr_dbu
 	if (slen <= 0) return slen;
 
 	if (msb & 0x80) memset(((uint8_t *)num), 0xff, sizeof(*num) - length);
-	*num = fr_net_to_int64((uint8_t const *)num);
+	*num = fr_nbo_to_int64((uint8_t const *)num);
 
 	return length;
 }

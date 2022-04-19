@@ -597,7 +597,7 @@ static ssize_t encode_record(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, fr_pair
 		if (!vp) break;
 	}
 
-	fr_net_from_uint16(counter, count);
+	fr_nbo_from_uint16(counter, count);
 	FR_PROTO_TRACE("      %s encoded %d records", attr->name, count);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);

@@ -85,7 +85,7 @@ static bool fr_dns_tlv_ok(uint8_t const *p, uint8_t const *end, fr_dns_decode_fa
 			return false;
 		}
 
-		len = fr_net_to_uint16(p + 2);
+		len = fr_nbo_to_uint16(p + 2);
 		if ((p + 4 + len) > end) {
 			DECODE_FAIL(TLV_OVERFLOWS_RR);
 			return false;
@@ -120,7 +120,7 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 		return false;
 	}
 
-	qdcount = fr_net_to_uint16(packet + 4);
+	qdcount = fr_nbo_to_uint16(packet + 4);
 
 	if (query) {
 		/*
@@ -135,11 +135,11 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 			DECODE_FAIL(NO_QUESTIONS);
 			return false;
 		}
-		if (fr_net_to_uint16(packet + 6) != 0) {
+		if (fr_nbo_to_uint16(packet + 6) != 0) {
 			DECODE_FAIL(NS_IN_QUESTION);
 			return false;
 		}
-		if (fr_net_to_uint16(packet + 8) != 0) {
+		if (fr_nbo_to_uint16(packet + 8) != 0) {
 			DECODE_FAIL(ANSWERS_IN_QUESTION);
 			return false;
 		}
@@ -152,7 +152,7 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 		 */
 	}
 
-	expected = fr_net_to_uint16(packet + 4) + fr_net_to_uint16(packet + 6) + fr_net_to_uint16(packet + 8) + fr_net_to_uint16(packet + 10);
+	expected = fr_nbo_to_uint16(packet + 4) + fr_nbo_to_uint16(packet + 6) + fr_nbo_to_uint16(packet + 8) + fr_nbo_to_uint16(packet + 10);
 	count = 0;
 
 	p = packet + DNS_HDR_LEN;
@@ -329,7 +329,7 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 			return false;
 		}
 
-		len = fr_net_to_uint16(p);
+		len = fr_nbo_to_uint16(p);
 		if (len == 0) {
 			DECODE_FAIL(ZERO_RR_LEN);
 			return false;

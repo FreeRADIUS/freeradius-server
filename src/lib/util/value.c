@@ -2575,7 +2575,7 @@ static inline int fr_value_box_cast_to_ethernet(TALLOC_CTX *ctx, fr_value_box_t 
 	case FR_TYPE_UINT64: {
 		uint8_t array[8];
 
-		fr_net_from_uint64(array, src->vb_uint64);
+		fr_nbo_from_uint64(array, src->vb_uint64);
 
 		/*
 		 *	For OUIs in the DB.
@@ -2929,7 +2929,7 @@ static inline int fr_value_box_cast_to_integer(TALLOC_CTX *ctx, fr_value_box_t *
 		}
 
 		fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
-		dst->vb_uint64 = fr_net_to_uint64(&src->vb_ifid[0]);
+		dst->vb_uint64 = fr_nbo_to_uint64(&src->vb_ifid[0]);
 		return 0;
 	}
 

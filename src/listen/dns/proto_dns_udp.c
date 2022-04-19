@@ -172,7 +172,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 *	proto_dns sets the priority
 	 */
 
-	xid = fr_net_to_uint16(buffer);
+	xid = fr_nbo_to_uint16(buffer);
 
 	/*
 	 *	Print out what we received.

@@ -26,6 +26,7 @@ RCSIDH(dict_ext_h, "$Id$")
 
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/ext.h>
+#include <freeradius-devel/util/hash.h>
 
 #include <limits.h>
 

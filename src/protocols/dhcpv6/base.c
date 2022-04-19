@@ -352,7 +352,7 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 
 	switch (packet[0]) {
 	case FR_PACKET_TYPE_VALUE_ADVERTISE:
-		transaction_id = fr_net_to_uint24(&packet[1]);
+		transaction_id = fr_nbo_to_uint24(&packet[1]);
 		if (transaction_id != packet_ctx->transaction_id) {
 		fail_tid:
 			fr_strerror_const("Transaction ID does not match");
@@ -390,7 +390,7 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 		return true;
 
 	case FR_PACKET_TYPE_VALUE_REPLY:
-		transaction_id = fr_net_to_uint24(&packet[1]);
+		transaction_id = fr_nbo_to_uint24(&packet[1]);
 		if (transaction_id != packet_ctx->transaction_id) goto fail_tid;
 
 		if (!fr_dhcpv6_option_find(options, end, FR_SERVER_ID)) goto fail_sid;
@@ -449,7 +449,7 @@ static bool verify_to_client(uint8_t const *packet, size_t packet_len, fr_dhcpv6
 		return verify_to_client(option + 4, DHCPV6_GET_OPTION_LEN(option), packet_ctx);
 
 	case FR_DHCPV6_LEASE_QUERY_REPLY:
-		transaction_id = fr_net_to_uint24(&packet[1]);
+		transaction_id = fr_nbo_to_uint24(&packet[1]);
 		if (transaction_id != packet_ctx->transaction_id) goto fail_tid;
 
 		if (!fr_dhcpv6_option_find(options, end, FR_SERVER_ID)) goto fail_sid;
@@ -840,7 +840,7 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 			FR_DBUFF_IN_MEMCPY_RETURN(&frame_dbuff, vp->vp_octets, DHCPV6_TRANSACTION_ID_LEN);
 		} else {
 			uint8_t id[DHCPV6_TRANSACTION_ID_LEN];
-			fr_net_from_uint24(id, fr_rand());
+			fr_nbo_from_uint24(id, fr_rand());
 			FR_DBUFF_IN_MEMCPY_RETURN(&frame_dbuff, id, sizeof(id)); /* Need 24 bits of the 32bit integer */
 		}
 		break;
@@ -945,9 +945,9 @@ static void dhcpv6_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len,
 			break;
 		}
 
-		length = fr_net_to_uint16(option + 2);
+		length = fr_nbo_to_uint16(option + 2);
 		fprintf(fp, "%.*s", depth + 1, tabs);
-		fprintf(fp, "%04x %04x\t", fr_net_to_uint16(option), length);
+		fprintf(fp, "%04x %04x\t", fr_nbo_to_uint16(option), length);
 
 		if ((option + 4 + length) > end) {
 			print_hex_data(fp, option + 4, end - (option + 4), depth + 3);

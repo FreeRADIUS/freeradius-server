@@ -26,6 +26,7 @@
 #include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/log.h>
+#include <freeradius-devel/util/net.h>
 
 #include <freeradius-devel/protocol/arp/dictionary.h>
 #include <freeradius-devel/protocol/arp/rfc826.h>

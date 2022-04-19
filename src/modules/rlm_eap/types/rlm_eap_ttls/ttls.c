@@ -175,13 +175,13 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 		RDEBUG3("%04zu %02x%02x%02x%02x %02x%02x%02x%02x ...", p - data,
 			p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
 
-		attr = fr_net_to_uint32(p);
+		attr = fr_nbo_to_uint32(p);
 		p += 4;
 
 		flags = p[0];
 		p++;
 
-		value_len = fr_net_to_uint64v(p, 3);	/* Yes, that is a 24 bit length field */
+		value_len = fr_nbo_to_uint64v(p, 3);	/* Yes, that is a 24 bit length field */
 		p += 3;
 
 		if (value_len < 8) {
@@ -207,7 +207,7 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 		 *	Do we have a vendor field?
 		 */
 		if (flags & FR_DIAMETER_AVP_FLAG_VENDOR) {
-			vendor = fr_net_to_uint32(p);
+			vendor = fr_nbo_to_uint32(p);
 			p += 4;
 			value_len -= 4;	/* -= 4 for the vendor ID field */
 

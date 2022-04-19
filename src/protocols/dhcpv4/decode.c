@@ -181,8 +181,8 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 
 			if (data_len != 8) goto raw;
 
-			ipaddr = fr_net_to_uint32(p);
-			mask = fr_net_to_uint32(p + 4);
+			ipaddr = fr_nbo_to_uint32(p);
+			mask = fr_nbo_to_uint32(p + 4);
 			p += 8;
 
 			/*
@@ -236,14 +236,14 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 				mask <<= (32 - vp->vp_ip.prefix);
 
 				if (*p > 24) {
-					ipaddr = fr_net_to_uint32(p + 1);
+					ipaddr = fr_nbo_to_uint32(p + 1);
 
 				} else if (*p > 16) {
-					ipaddr = fr_net_to_uint24(p + 1);
+					ipaddr = fr_nbo_to_uint24(p + 1);
 					ipaddr <<= 8;
 
 				} else if (*p > 8) {
-					ipaddr = fr_net_to_uint16(p + 1);
+					ipaddr = fr_nbo_to_uint16(p + 1);
 					ipaddr <<= 16;
 
 				} else { /* 1..8 */
@@ -668,7 +668,7 @@ next:
 		return data_len + 2; /* decoded the whole thing */
 	}
 
-	pen = fr_net_to_uint32(p);
+	pen = fr_nbo_to_uint32(p);
 
 	/*
 	 *	Verify that the parent (which should be a VSA)

@@ -93,7 +93,7 @@ static uint16_t icmp_checksum(uint8_t *data, size_t data_len, uint16_t checksum)
 	p = data;
 	end = data + data_len;
 	while (p < end) {
-		sum += fr_net_to_uint16(p);	 /* type / code */
+		sum += fr_nbo_to_uint16(p);	 /* type / code */
 		p += 2;
 	}
 
