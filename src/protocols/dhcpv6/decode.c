@@ -116,6 +116,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			if (!vp) return PAIR_DECODE_OOM;
 
 			vp->vp_ip.af = AF_INET6;
+			slen = 1;
 			break;
 		}
 
@@ -150,6 +151,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
 		vp->vp_bool = true;
+		slen = 0;
 		break;
 
 	/*
