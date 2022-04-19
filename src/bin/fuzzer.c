@@ -213,6 +213,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 	}
 
 	tp->func(ctx, &vps, buf, len, decode_ctx);
+	if (fr_debug_lvl > 3) fr_pair_list_debug(&vps);
+
 	talloc_free(decode_ctx);
 	talloc_free(ctx);
 
