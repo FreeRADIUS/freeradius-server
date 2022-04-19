@@ -421,7 +421,7 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, fr_pair_list_t *list,
 /*
  *	Short-term hack to help clean things up.
  */
-#define decode_value ((fr_pair_decode_value_t) fr_radius_decode_pair_value)
+#define decode_value fr_radius_decode_pair_value
 
 /** decode an RFC-format TLV
  *
@@ -1332,7 +1332,7 @@ static ssize_t decode_tlv_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				    fr_dict_attr_t const *parent,
 				    uint8_t const *data, size_t const attr_len,
-				    fr_radius_ctx_t *packet_ctx)
+				    void *decode_ctx)
 {
 	int8_t			tag = 0;
 	size_t			data_len;
@@ -1342,6 +1342,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_pair_t		*vp = NULL;
 	uint8_t const		*p = data;
 	uint8_t			buffer[256];
+	fr_radius_ctx_t *packet_ctx = decode_ctx;
 
 	if (attr_len > 128 * 1024) {
 		fr_strerror_printf("%s: packet is too large to be RADIUS", __FUNCTION__);
