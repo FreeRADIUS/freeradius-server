@@ -66,7 +66,7 @@ AC_DEFUN([AX_CC_UNWINDLIB_ARG],[
     CFLAGS_SAVED=$CFLAGS
     CFLAGS="$CFLAGS -Werror --rtlib=compiler-rt --unwindlib=libunwind"
 
-    AC_RUN_IFELSE(
+    AC_COMPILE_IFELSE(
     [
       AC_LANG_SOURCE(
       [
@@ -90,7 +90,7 @@ dnl #
 AC_DEFUN([AX_CC_HAVE_C11_GENERIC],
 [
 AC_CACHE_CHECK([for _Generic support in compiler], [ax_cv_cc_c11_generic],[
-  AC_RUN_IFELSE(
+  AC_COMPILE_IFELSE(
     [
       AC_LANG_SOURCE(
       [
@@ -269,7 +269,7 @@ dnl #
 AC_DEFUN([AX_CC_BUILTIN_CHOOSE_EXPR],
 [
 AC_CACHE_CHECK([for __builtin_choose_expr support in compiler], [ax_cv_cc_builtin_choose_expr],[
-  AC_RUN_IFELSE(
+  AC_COMPILE_IFELSE(
     [
       AC_LANG_SOURCE(
       [
@@ -294,7 +294,7 @@ dnl #
 AC_DEFUN([AX_CC_BUILTIN_TYPES_COMPATIBLE_P],
 [
 AC_CACHE_CHECK([for __builtin_types_compatible_p support in compiler], [ax_cv_cc_builtin_types_compatible_p],[
-  AC_RUN_IFELSE(
+  AC_COMPILE_IFELSE(
     [
       AC_LANG_SOURCE(
       [
@@ -319,7 +319,7 @@ dnl #
 AC_DEFUN([AX_CC_BUILTIN_BSWAP64],
 [
 AC_CACHE_CHECK([for __builtin_bswap64 support in compiler], [ax_cv_cc_builtin_bswap64],[
-  AC_RUN_IFELSE(
+  AC_COMPILE_IFELSE(
     [
       AC_LANG_SOURCE([
         int main(int argc, char **argv) {
@@ -343,7 +343,7 @@ dnl #
 AC_DEFUN([AX_CC_BUILTIN_CLZLL],
 [
 AC_CACHE_CHECK([for __builtin_clzll support in compiler], [ax_cv_cc_builtin_clzll],[
-  AC_RUN_IFELSE(
+  AC_COMPILE_IFELSE(
     [
       AC_LANG_SOURCE([
         int main(int argc, char **argv) {
@@ -367,14 +367,14 @@ dnl #
 AC_DEFUN([AX_CC_SIZE_SAME_AS_UINT64],
 [
 AC_CACHE_CHECK([if size_t == uint64_t], [ax_cv_cc_size_same_as_uint64],[
-  AC_RUN_IFELSE(
+  AC_COMPILE_IFELSE(
     [
       AC_LANG_SOURCE([
         #include <stdint.h>
         #include <stddef.h>
 
         int main(int argc, char **argv) {
-          return _Generic((size_t)(0), uint64_t: 1, default: 0);
+          return _Generic((size_t)(0), uint64_t: 1, size_t: 0);
         }
       ])
     ],
@@ -393,7 +393,7 @@ dnl #
 AC_DEFUN([AX_CC_SSIZE_SAME_AS_INT64],
 [
 AC_CACHE_CHECK([if ssize_t == int64_t], [ax_cv_cc_ssize_same_as_int64],[
-  AC_RUN_IFELSE(
+  AC_COMPILE_IFELSE(
     [
       AC_LANG_SOURCE([
         #include <stdint.h>
@@ -401,7 +401,7 @@ AC_CACHE_CHECK([if ssize_t == int64_t], [ax_cv_cc_ssize_same_as_int64],[
         #include <sys/types.h>
 
         int main(int argc, char **argv) {
-          return _Generic((ssize_t)(0), int64_t: 1, default: 0);
+          return _Generic((ssize_t)(0), int64_t: 1, ssize_t: 0);
         }
       ])
     ],

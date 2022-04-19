@@ -27,8 +27,11 @@ AC_INIT([freeradius],[$]Id[$],[http://bugs.freeradius.org],,[http://www.freeradi
 AC_CONFIG_SRCDIR([src/bin/radiusd.c])
 AC_CONFIG_HEADER([src/include/autoconf.h])
 m4_include([m4/ax_cc.m4])
-m4_include([m4/ax_with_lib_args.m4])
+m4_include([m4/ax_smart_try.m4])
+m4_include([m4/ax_thread_local.m4])
+m4_include([m4/ax_type.m4])
 m4_include([m4/ax_with_feature_args.m4])
+m4_include([m4/ax_with_lib_args.m4])
 m4_include([m4/ax_prog_perl_modules.m4])
 
 dnl #############################################################
@@ -1438,7 +1441,7 @@ AC_TYPE_UID_T
 dnl #
 dnl #  Check for socklen_t
 dnl #
-FR_CHECK_TYPE_INCLUDE(
+AX_CHECK_TYPE_INCLUDE(
   [
     #ifdef HAVE_SYS_TYPES_H
     #  include <sys/types.h>
@@ -1454,7 +1457,7 @@ FR_CHECK_TYPE_INCLUDE(
 dnl #
 dnl #  Check for uint8_t
 dnl #
-FR_CHECK_TYPE_INCLUDE(
+AX_CHECK_TYPE_INCLUDE(
   [
     #ifdef HAVE_INTTYPES_H
     #  include <inttypes.h>
@@ -1470,7 +1473,7 @@ FR_CHECK_TYPE_INCLUDE(
 dnl #
 dnl #  Check for uint16_t
 dnl #
-FR_CHECK_TYPE_INCLUDE(
+AX_CHECK_TYPE_INCLUDE(
   [
     #ifdef HAVE_INTTYPES_H
     #  include <inttypes.h>
@@ -1486,7 +1489,7 @@ FR_CHECK_TYPE_INCLUDE(
 dnl #
 dnl #  Check for uint32_t
 dnl #
-FR_CHECK_TYPE_INCLUDE(
+AX_CHECK_TYPE_INCLUDE(
   [
     #ifdef HAVE_INTTYPES_H
     #  include <inttypes.h>
@@ -1502,7 +1505,7 @@ FR_CHECK_TYPE_INCLUDE(
 dnl #
 dnl #  Check for uint64_t
 dnl #
-FR_CHECK_TYPE_INCLUDE(
+AX_CHECK_TYPE_INCLUDE(
   [
     #ifdef HAVE_INTTYPES_H
     #  include <inttypes.h>
@@ -1580,7 +1583,7 @@ AC_CHECK_TYPE(struct addrinfo, AC_DEFINE(HAVE_STRUCT_ADDRINFO, 1, [Generic DNS l
 dnl #
 dnl #  Check for sig_t
 dnl #
-dnl #  FR_CHECK_TYPE_INCLUDE doesn't work for callbacks as it doesn't produce typedefs
+dnl #  AX_CHECK_TYPE_INCLUDE doesn't work for callbacks as it doesn't produce typedefs
 dnl #
 AC_MSG_CHECKING([if sig_t is defined])
 AC_LINK_IFELSE(
@@ -1668,7 +1671,7 @@ dnl #  if so, check if struct utmpx has entry ut_xtime
 dnl #  if not, set it to define ut_xtime = ut_tv.tv_sec
 dnl #
 if test "x$ac_cv_header_utmpx_h" = "xyes"; then
- FR_CHECK_STRUCT_HAS_MEMBER([#include <utmpx.h>], [struct utmpx], ut_xtime)
+ AX_CHECK_STRUCT_HAS_MEMBER([#include <utmpx.h>], [struct utmpx], ut_xtime)
  if test "x$ac_cv_type_struct_utmpx_has_ut_xtime" = "x"; then
    AC_DEFINE(ut_xtime, ut_tv.tv_sec, [define to something if you don't have ut_xtime in struct utmpx])
  fi
@@ -1677,7 +1680,7 @@ fi
 dnl #
 dnl #  struct ip_pktinfo
 dnl #
-FR_CHECK_STRUCT_HAS_MEMBER([#include <netinet/in.h>], [struct in_pktinfo], ipi_addr)
+AX_CHECK_STRUCT_HAS_MEMBER([#include <netinet/in.h>], [struct in_pktinfo], ipi_addr)
 if test "x$ac_cv_type_struct_in_pktinfo_has_ipi_addr" = "xyes"; then
   AC_DEFINE(HAVE_IP_PKTINFO, [], [define if you have IP_PKTINFO (Linux)])
 fi
@@ -1685,7 +1688,7 @@ fi
 dnl #
 dnl #  struct in6_pktinfo
 dnl #
-FR_CHECK_STRUCT_HAS_MEMBER([#include <netinet/in.h>], [struct in6_pktinfo], ipi6_addr)
+AX_CHECK_STRUCT_HAS_MEMBER([#include <netinet/in.h>], [struct in6_pktinfo], ipi6_addr)
 if test "x$ac_cv_type_struct_in6_pktinfo_has_ipi6_addr" = "xyes"; then
   AC_DEFINE(HAVE_IN6_PKTINFO, [], [define if you have IN6_PKTINFO (Linux)])
 fi
@@ -1960,7 +1963,7 @@ export EXPERIMENTAL
 dnl #
 dnl #  check for some compiler features
 dnl #
-FR_TLS
+AX_THREAD_LOCAL_SUPPORT
 AX_CC_BUILTIN_CHOOSE_EXPR
 AX_CC_BUILTIN_TYPES_COMPATIBLE_P
 AX_CC_BUILTIN_BSWAP64
