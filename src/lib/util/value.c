@@ -1377,22 +1377,21 @@ ssize_t fr_value_box_to_network(fr_dbuff_t *dbuff, fr_value_box_t const *value)
 	case FR_TYPE_DATE:
 	case FR_TYPE_TIME_DELTA:
 		if (value->enumv) {
-			min = max = value->enumv->flags.length;
+			min = value->enumv->flags.length;
 		} else {
-			min = max = 4;
+			min = 4;
 		}
 		break;
 
 	default:
 		min = network_min_size(value->type);
-		max = network_max_size(value->type);
 		break;
 	}
 
 	/*
 	 *	We have to encode actual data here.
 	 */
-	fr_assert((min > 0) && (max > 0));
+	fr_assert(min > 0);
 
 	switch (value->type) {
 	case FR_TYPE_IPV4_ADDR:
