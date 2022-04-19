@@ -478,7 +478,7 @@ static ssize_t decode_rfc(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = fr_pair_array_from_network(ctx, out, da, data + 2, len - 2, decode_ctx, decode_value);
 
 	} else if (da->type == FR_TYPE_TLV) {
-		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 2, len - 2, decode_ctx, decode_rfc, false);
+		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 2, len - 2, decode_ctx, decode_rfc, NULL, false);
 
 	} else {
 		slen = decode_value(ctx, out, da, data + 2, len - 2, decode_ctx);
@@ -623,7 +623,7 @@ static ssize_t decode_digest_attributes(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (!vp) return PAIR_DECODE_OOM;
 
 redo:
-	slen = fr_pair_tlvs_from_network(vp, &vp->vp_group, parent, p + 2, p[1] - 2, packet_ctx, decode_rfc, false);
+	slen = fr_pair_tlvs_from_network(vp, &vp->vp_group, parent, p + 2, p[1] - 2, packet_ctx, decode_rfc, NULL, false);
 	if (slen <= 0) {
 		talloc_free(vp);
 		return slen;

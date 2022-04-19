@@ -123,6 +123,7 @@ ssize_t fr_pair_raw_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
  * @param[in] data_len		of data to parse.
  * @param[in] decode_ctx	passed to decode_tlv
  * @param[in] decode_tlv	function to decode one attribute / option / tlv
+ * @param[in] verify_tlvs	simple function to see if the TLVs are even vaguely well-formed
  * @param[in] nested		whether or not we create nested VPs.
  *	<0 on error - decode error, or OOM
  *	data_len on success
@@ -138,7 +139,9 @@ ssize_t fr_pair_raw_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 ssize_t fr_pair_tlvs_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				  fr_dict_attr_t const *parent,
 				  uint8_t const *data, size_t const data_len,
-				  void *decode_ctx, fr_pair_decode_value_t decode_tlv, bool nested)
+				  void *decode_ctx, fr_pair_decode_value_t decode_tlv,
+				  fr_pair_tlvs_verify_t verify_tlvs,
+				  bool nested)
 {
 	uint8_t const *p, *end;
 	fr_pair_list_t tlvs, *list;
@@ -150,6 +153,12 @@ ssize_t fr_pair_tlvs_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (!fr_cond_assert_msg((parent->type == FR_TYPE_TLV || (parent->type == FR_TYPE_VENDOR)),
 				"%s: Internal sanity check failed, attribute \"%s\" is not of type 'tlv'",
 				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
+
+	/*
+	 *	Do a quick sanity check to see if the TLVs are at all OK.
+	 */
+	if (verify_tlvs && !verify_tlvs(data, data_len)) return fr_pair_raw_from_network(ctx, out, parent, data, data_len);
+
 	p = data;
 	end = data + data_len;
 
@@ -168,7 +177,8 @@ ssize_t fr_pair_tlvs_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		ssize_t slen;
 
 		slen = decode_tlv(child_ctx, list, parent, p, (end - p), decode_ctx);
-		if (slen <= 0) {
+		if (slen < 0) {
+			FR_PROTO_TRACE("    tlv decode failed at offset %zu - converting to raw", (size_t) (p - data));
 			fr_pair_list_free(list);
 			talloc_free(vp);
 			return fr_pair_raw_from_network(ctx, out, parent, data, data_len);

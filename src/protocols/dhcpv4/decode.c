@@ -36,11 +36,27 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			      fr_dict_attr_t const *parent,
 			      uint8_t const *data, size_t const data_len, void *decode_ctx);
 
+static bool verify_tlvs(uint8_t const *data, size_t data_len)
+{
+	uint8_t const *p = data;
+	uint8_t const *end = data + data_len;
+
+	while (p < end) {
+		if ((end - p) < 2) return false;
+
+		if ((p + p[1]) > end) return false;
+
+		p += 2 + p[1];
+	}
+
+	return true;
+}
+
 static ssize_t decode_tlv_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				     fr_dict_attr_t const *parent,
 				     uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
-	return fr_pair_tlvs_from_network(ctx, out, parent, data, data_len, decode_ctx, decode_option, false);
+	return fr_pair_tlvs_from_network(ctx, out, parent, data, data_len, decode_ctx, decode_option, verify_tlvs, false);
 }
 
 static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
@@ -388,7 +404,7 @@ next:
 	}
 	p++;
 
-	len = fr_pair_tlvs_from_network(ctx, out, vendor, p, option_len, decode_ctx, decode_option, false);
+	len = fr_pair_tlvs_from_network(ctx, out, vendor, p, option_len, decode_ctx, decode_option, verify_tlvs, false);
 	if (len <= 0) return len;
 
 	p += len;
@@ -453,10 +469,10 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (!da) {
 		da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, option);
 		if (!da) return PAIR_DECODE_OOM;
-	}
-	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
 
-	if ((da->type == FR_TYPE_STRING) && da_is_dns_label(da)) {
+		slen = fr_pair_raw_from_network(ctx, out, da, data + 2, len);
+
+	} else if ((da->type == FR_TYPE_STRING) && da_is_dns_label(da)) {
 		slen = fr_pair_dns_labels_from_network(ctx, out, da, data + 2, data + 2, len, NULL, true);
 
 	} else if (da->flags.array) {
@@ -466,7 +482,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = decode_vsa(ctx, out, da, data + 2, len, decode_ctx);
 
 	} else if (da->type == FR_TYPE_TLV) {
-		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 2, len, decode_ctx, decode_option, false);
+		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 2, len, decode_ctx, decode_option, verify_tlvs, false);
 
 	} else {
 		slen = decode_value(ctx, out, da, data + 2, len, decode_ctx);
@@ -572,7 +588,8 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			slen = decode_vsa(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx);
 
 		} else if (da->type == FR_TYPE_TLV) {
-			slen = fr_pair_tlvs_from_network(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx, decode_option, false);
+			slen = fr_pair_tlvs_from_network(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer,
+							 packet_ctx, decode_option, verify_tlvs, false);
 
 		} else if (da->flags.array) {
 			slen = fr_pair_array_from_network(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx, decode_value);
