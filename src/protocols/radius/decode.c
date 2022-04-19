@@ -654,7 +654,6 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_pair_list_t		head;
 	fr_pair_list_t		tlv_tmp;
 	fr_pair_t		*vp;
-	bool			concat;
 
 	fr_pair_list_init(&head);
 	if (data_len < 3) return -1; /* type, length, value */
@@ -668,20 +667,6 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (fr_radius_decode_tlv_ok(p, data_len, 1, 1) < 0) return -1;
 
 	vp = fr_pair_afrom_da(ctx, parent);
-	if (!vp) return PAIR_DECODE_OOM;
-
-	/*
-	 *	We don't have a "pair find in out"
-	 */
-	if (flag_concat(&parent->flags)) {
-		vp = fr_pair_find_by_da_idx(out, parent, 0);
-		concat = (vp != NULL);
-	} else {
-		vp = NULL;
-		concat = false;
-	}
-
-	if (!vp) vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return PAIR_DECODE_OOM;
 
 	/*
@@ -703,7 +688,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			child = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, p[0]);
 			if (!child) {
 			error:
-				if (!concat) talloc_free(vp);
+				talloc_free(vp);
 				return -1;
 			}
 		}
@@ -717,7 +702,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	}
 
 	fr_pair_list_append(&vp->vp_group, &tlv_tmp);
-	if (!concat) fr_pair_append(out, vp);
+	fr_pair_append(out, vp);
 
 	return data_len;
 }
@@ -2007,7 +1992,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		/*
 		 *	Concatenate consecutive top-level attributes together.
 		 */
-		if (flag_concat(&da->flags) && (da->type == FR_TYPE_OCTETS)) {
+		if (flag_concat(&da->flags)) {
 			FR_PROTO_TRACE("Concat attribute");
 			return decode_concat(ctx, out, da, data, packet_ctx->end);
 		}
