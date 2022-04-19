@@ -49,20 +49,14 @@ static ssize_t decode_tlv_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 }
 
 
-static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
-				 fr_dict_attr_t const *parent,
-				 uint8_t const *data, size_t const data_len, void *decode_ctx);
-
-/** Handle arrays of DNS labels for fr_struct_from_network()
- *
- */
 static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				       fr_dict_attr_t const *parent,
 				       uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
 	if ((parent->type == FR_TYPE_STRING) && !parent->flags.extra && parent->flags.subtype) {
-		FR_PROTO_TRACE("decode DNS labels");
-		return decode_dns_labels(ctx, out, parent, data, data_len, decode_ctx);
+		fr_dns_ctx_t		*packet_ctx = decode_ctx;
+
+		return fr_pair_dns_labels_from_network(ctx, out, parent, packet_ctx->packet, data, data_len, packet_ctx->lb, false);
 	}
 	
 	return decode_value(ctx, out, parent, data, data_len, decode_ctx);
@@ -174,83 +168,6 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 }
 
 
-static ssize_t decode_dns_labels(TALLOC_CTX *ctx, fr_pair_list_t *out,
-				 fr_dict_attr_t const *parent,
-				 uint8_t const *data, size_t const data_len, void *decode_ctx)
-{
-	ssize_t slen;
-	size_t total, labels_len;
-	fr_pair_t *vp;
-	uint8_t const *next = data;
-	fr_dns_ctx_t *packet_ctx = decode_ctx;
-
-	FR_PROTO_HEX_DUMP(data, data_len, "decode_dns_labels");
-
-	/*
-	 *	This function handles both single-valued and array
-	 *	types.  It's just easier that way.
-	 */
-	if (!parent->flags.array) {
-		/*
-		 *	Decode starting at "NEXT", but allowing decodes from the start of the packet.
-		 */
-		slen = fr_dns_label_uncompressed_length(packet_ctx->packet, data, data_len, &next, packet_ctx->lb);
-		if (slen <= 0) {
-			FR_PROTO_TRACE("length failed at %zd - %s", -slen, fr_strerror());
-			return slen;
-		}
-
-		labels_len = next - data; /* decode only what we've found */
-	} else {
-		/*
-		 *	Get the length of the entire set of labels, up
-		 *	to (and including) the final 0x00.
-		 *
-		 *	If any of the labels point outside of this
-		 *	area, OR they are otherwise invalid, then that's an error.
-		 */
-		slen = fr_dns_labels_network_verify(packet_ctx->packet, data, data_len, data, packet_ctx->lb);
-		if (slen <= 0) {
-			FR_PROTO_TRACE("verify failed");
-			return slen;
-		}
-
-		labels_len = slen;
-	}
-
-	/*
-	 *	Loop over the input buffer, decoding the labels one by
-	 *	one.
-	 *
-	 *	@todo - put the labels into a child cursor, and then
-	 *	merge them only if it succeeds.  That doesn't seem to
-	 *	work for some reason, and I don't have time to debug
-	 *	it right now.  So... let's leave it.
-	 */
-	for (total = 0; total < labels_len; total += slen) {
-		vp = fr_pair_afrom_da(ctx, parent);
-		if (!vp) return PAIR_DECODE_OOM;
-
-		/*
-		 *	Having verified the input above, this next
-		 *	function should never fail unless there's a
-		 *	bug in the code.
-		 */
-		slen = fr_dns_label_to_value_box(vp, &vp->data, data, labels_len, data + total, true, packet_ctx->lb);
-		if (slen <= 0) {
-			FR_PROTO_TRACE("Failed decoding label at %zd", slen);
-			talloc_free(vp);
-			return -1;
-		}
-
-		fr_pair_append(out, vp);
-	}
-
-	FR_PROTO_TRACE("decode_dns_labels - %zu", labels_len);
-	return labels_len;
-}
-
-
 #define DNS_GET_OPTION_NUM(_x)	fr_nbo_to_uint16(_x)
 #define DNS_GET_OPTION_LEN(_x)	fr_nbo_to_uint16((_x) + 2)
 
@@ -295,22 +212,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
 
 	if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype) {
-		slen = decode_dns_labels(ctx, out, da, data + 4, len, decode_ctx);
-		if (slen < 0) {
-			fr_dict_unknown_free(&da);
-			return slen;
-		}
-
-		/*
-		 *	The DNS labels may only partially fill the
-		 *	option.  If so, that's an error.  Point to the
-		 *	byte which caused the error, accounting for
-		 *	the option header.
-		 */
-		if ((size_t) slen != len) {
-			fr_dict_unknown_free(&da);
-			return -(4 + slen);
-		}
+		slen = fr_pair_dns_labels_from_network(ctx, out, da, packet_ctx->packet, data + 4, len, packet_ctx->lb, true);
 
 	} else if (da->flags.array) {
 		slen = fr_pair_array_from_network(ctx, out, da, data + 4, len, decode_ctx, decode_value);

@@ -28,6 +28,7 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/dns.h>
 
 /** Decode a value from the network into an output #fr_pair_list_t
  *
@@ -58,6 +59,10 @@ ssize_t fr_pair_tlvs_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				  fr_dict_attr_t const *parent,
 				  uint8_t const *data, size_t const data_len,
 				  void *decode_ctx, fr_pair_decode_value_t decode_tlv, bool nested) CC_HINT(nonnull(1,2,3,4,7));
+
+ssize_t fr_pair_dns_labels_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
+					fr_dict_attr_t const *parent, uint8_t const *start,
+					uint8_t const *data, size_t const data_len, fr_dns_labels_t *lb, bool exact);
 
 #ifdef __cplusplus
 }
