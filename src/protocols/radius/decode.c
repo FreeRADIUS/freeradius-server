@@ -1342,7 +1342,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_pair_t		*vp = NULL;
 	uint8_t const		*p = data;
 	uint8_t			buffer[256];
-	size_t			extra;
 
 	if (attr_len > 128 * 1024) {
 		fr_strerror_printf("%s: packet is too large to be RADIUS", __FUNCTION__);
@@ -1359,7 +1358,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	FR_PROTO_TRACE("Parent %s len %zu ... %zu", parent->name, attr_len, packet_ctx->end - data);
 
 	data_len = attr_len;
-	extra = flag_long_extended(&parent->flags);
 
 	/*
 	 *	Silently ignore zero-length attributes.
@@ -1641,102 +1639,13 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		}
 
 	case FR_TYPE_TLV:
-		if (!flag_extended(&parent->flags)) {
-			/*
-			 *	We presume that the TLVs all fit into one
-			 *	attribute, OR they've already been grouped
-			 *	into a contiguous memory buffer.
-			 */
-			ret = fr_radius_decode_tlv(ctx, out,  parent, p, attr_len, packet_ctx);
-			if (ret < 0) goto raw;
-			return attr_len;
-		}
-
 		/*
-		 *	Extended attributes
+		 *	We presume that the TLVs all fit into one
+		 *	attribute, OR they've already been grouped
+		 *	into a contiguous memory buffer.
 		 */
-		extra++;
-
-		/*
-		 *	Not enough data, just create a raw attribute.
-		 */
-		if (data_len <= extra) goto raw;
-
-		/*
-		 *	Look up the extended type.  It's almost always
-		 *	a known child, so we use that as the fast
-		 *	path.
-		 */
-		child = fr_dict_attr_child_by_num(parent, p[0]);
-		if (child) {
-			/*
-			 *	Normal "extended" with 0 or more bytes
-			 *	of data. OR a "long extended" with a
-			 *	flag byte, BUT the "more" flag is not
-			 *	set.  Just decode it.
-			 */
-			if (!extra || ((p[1] & 0x80) == 0)) {
-				ret = fr_radius_decode_pair_value(ctx, out, child,
-								  p + extra, attr_len - extra,
-								  packet_ctx);
-				if (ret < 0) goto invalid_extended;
-				return attr_len;
-			}
-
-			/*
-			 *	It's a "long extended" attribute with
-			 *	an attribute number, but with no flag
-			 *	byte.  It's invalid.
-			 */
-			if (data_len == 1) goto invalid_extended;
-
-			/*
-			 *	"long extended" with a flag byte.  Due
-			 *	to the above checks, the flag byte
-			 *	MUST have the "more" bit set.  So we
-			 *	don't check it again here.
-			 */
-			ret = decode_extended(ctx, out, child, data, attr_len, packet_ctx);
-			if (ret >= 0) return ret; /* which may be LONGER than attr_len */
-
-			/* Fall through to invalid extended attribute */
-		} else {
-			FR_PROTO_TRACE("Extended attribute %s has no child %i", parent->name, p[0]);
-		}
-
-	invalid_extended:
-	{
-		fr_dict_attr_t *raw;
-
-		/*
-		 *	Create an unknown attribute, and decode it as
-		 *	"octets".  Note that we have to account for
-		 *	the flag byte, too.
-		 *
-		 *	If the child was a VSA, BUT the VSA contents
-		 *	were malformed, then the recursive call to
-		 *	ourselves would create an unknown attribute
-		 *	and succeed, instead of failing.  So we don't
-		 *	need to handle that case here.
-		 */
-		child = raw = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, p[0]);
-		if (!child) goto raw;
-
-		raw->flags.is_raw = 1;
-
-		/*
-		 *	"long" extended.  Decode the value.
-		 */
-		if (extra > 1) {
-			ret = decode_extended(ctx, out, child, data, attr_len, packet_ctx);
-			if (ret >= 0) return ret; /* which may be LONGER than attr_len */
-		}
-
-		ret = fr_radius_decode_pair_value(ctx, out, child,
-						  p + extra, attr_len - extra,
-						  packet_ctx);
-		if (ret < 0) return -1;
-	}
+		ret = fr_radius_decode_tlv(ctx, out,  parent, p, attr_len, packet_ctx);
+		if (ret < 0) goto raw;
 		return attr_len;
 
 	case FR_TYPE_STRUCT:
@@ -2020,9 +1929,13 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			 */
 			child = fr_dict_attr_child_by_num(da, data[2]);
 			if (!child) {
-				FR_PROTO_TRACE("Unknown extended attribute %u.%u", data[1], data[3]);
-				child = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, da, data[3]);
-				if (!child) return -1;
+				fr_dict_attr_t *unknown;
+				FR_PROTO_TRACE("Unknown extended attribute %u.%u", data[0], data[2]);
+				unknown = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, da, data[2]);
+				if (!unknown) return -1;
+
+				unknown->flags.is_raw = true;
+				child = unknown;
 			}
 
 			/*
@@ -2056,9 +1969,12 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			}
 
 			/*
-			 *	@todo - do all of the concatenation, and fix stuff up later.
+			 *	Concatenate all of the fragments together, and decode the resulting thing.
 			 */
+			ret = decode_extended(ctx, out, child, data + 2, data[1] - 2, packet_ctx);
 			fr_dict_unknown_free(&child);
+			if (ret < 0) return ret;
+			return 2 + ret;
 		}
 
 		/*
