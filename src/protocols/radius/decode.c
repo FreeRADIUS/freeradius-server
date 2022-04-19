@@ -812,10 +812,10 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, fr_pair_list_t *out,
  *
  * But for the first fragment, we get passed a pointer to the "extended-attr"
  */
-static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
-			       fr_dict_attr_t const *parent,
-			       uint8_t const *data, size_t attr_len,
-			       fr_radius_ctx_t *packet_ctx)
+static ssize_t decode_extended_fragments(TALLOC_CTX *ctx, fr_pair_list_t *out,
+					 fr_dict_attr_t const *parent,
+					 uint8_t const *data, size_t attr_len,
+					 fr_radius_ctx_t *packet_ctx)
 {
 	ssize_t		ret;
 	size_t		fraglen;
@@ -910,6 +910,82 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (ret < 0) return ret;
 
 	return end - data;
+}
+
+/** Fast path for most extended attributes.
+ *
+ *  data_len has already been checked by the caller, so we don't care
+ *  about it here.
+ */
+static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
+			       fr_dict_attr_t const *da,
+			       uint8_t const *data, UNUSED size_t data_len,
+			       fr_radius_ctx_t *packet_ctx)
+{
+	ssize_t slen;
+	fr_dict_attr_t const *child;
+
+	/*
+	 *	They MUST have one byte of Extended-Type.  The
+	 *	case of "2" is already handled above with CUI.
+	 */
+	if (data[1] == 3) {
+		slen = fr_pair_raw_from_network(ctx, out, da, data + 2, 1);
+		if (slen <= 0) return slen;
+		return 2 + slen;
+	}
+
+	/*
+	 *	Get a new child.
+	 */
+	child = fr_dict_attr_child_by_num(da, data[2]);
+	if (!child) {
+		fr_dict_attr_t *unknown;
+		FR_PROTO_TRACE("Unknown extended attribute %u.%u", data[0], data[2]);
+		unknown = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, da, data[2]);
+		if (!unknown) return -1;
+
+		unknown->flags.is_raw = true;
+		child = unknown;
+	}
+
+	/*
+	 *	One byte of type, and N bytes of data.
+	 */
+	if (!flag_long_extended(&da->flags)) {
+		slen = fr_radius_decode_pair_value(ctx, out, child, data + 3, data[1] - 3, packet_ctx);
+		fr_dict_unknown_free(&child);
+		if (slen < 0 ) return slen;
+		return 3 + slen;
+	}
+
+	/*
+	 *	It MUST have one byte of type, and one byte of
+	 *	flags.  If there's no data here, we just
+	 *	ignore it, whether or not the "More" bit is
+	 *	set.
+	 */
+	if (data[1] == 4) {
+		fr_dict_unknown_free(&child);
+		slen = fr_pair_raw_from_network(ctx, out, da, data + 2, 2);
+		if (slen < 0) return slen;
+		return 4;
+	}
+
+	if ((data[3] & 0x80) == 0) {
+		slen = fr_radius_decode_pair_value(ctx, out, child, data + 4, data[1] - 4, packet_ctx);
+		fr_dict_unknown_free(&child);
+		if (slen < 0 ) return slen;
+		return 4 + slen;
+	}
+
+	/*
+	 *	Concatenate all of the fragments together, and decode the resulting thing.
+	 */
+	slen = decode_extended_fragments(ctx, out, child, data + 2, data[1] - 2, packet_ctx);
+	fr_dict_unknown_free(&child);
+	if (slen < 0) return slen;
+	return 2 + slen;
 }
 
 /** Convert a Vendor-Specific WIMAX to vps
@@ -1913,69 +1989,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	of the code doesn't have to.
 		 */
 		if (flag_extended(&da->flags)) {
-			fr_dict_attr_t const *child;
-
-			/*
-			 *	They MUST have one byte of Extended-Type.  The
-			 *	case of "2" is already handled above with CUI.
-			 */
-			if (data[1] == 3) {
-				ret = fr_pair_raw_from_network(ctx, out, da, data + 2, 1);
-				if (ret <= 0) return ret;
-				return 2 + ret;
-			}
-
-			/*
-			 *	Get a new child.
-			 */
-			child = fr_dict_attr_child_by_num(da, data[2]);
-			if (!child) {
-				fr_dict_attr_t *unknown;
-				FR_PROTO_TRACE("Unknown extended attribute %u.%u", data[0], data[2]);
-				unknown = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, da, data[2]);
-				if (!unknown) return -1;
-
-				unknown->flags.is_raw = true;
-				child = unknown;
-			}
-
-			/*
-			 *	One byte of type, and N bytes of data.
-			 */
-			if (!flag_long_extended(&da->flags)) {
-				ret = fr_radius_decode_pair_value(ctx, out, child, data + 3, data[1] - 3, packet_ctx);
-				fr_dict_unknown_free(&child);
-				if (ret < 0 ) return ret;
-				return 3 + ret;
-			}
-
-			/*
-			 *	It MUST have one byte of type, and one byte of
-			 *	flags.  If there's no data here, we just
-			 *	ignore it, whether or not the "More" bit is
-			 *	set.
-			 */
-			if (data[1] == 4) {
-				fr_dict_unknown_free(&child);
-				ret = fr_pair_raw_from_network(ctx, out, da, data + 2, 2);
-				if (ret < 0) return ret;
-				return 4;
-			}
-
-			if ((data[3] & 0x80) == 0) {
-				ret = fr_radius_decode_pair_value(ctx, out, child, data + 4, data[1] - 4, packet_ctx);
-				fr_dict_unknown_free(&child);
-				if (ret < 0 ) return ret;
-				return 4 + ret;
-			}
-
-			/*
-			 *	Concatenate all of the fragments together, and decode the resulting thing.
-			 */
-			ret = decode_extended(ctx, out, child, data + 2, data[1] - 2, packet_ctx);
-			fr_dict_unknown_free(&child);
-			if (ret < 0) return ret;
-			return 2 + ret;
+			return decode_extended(ctx, out, da, data, data_len, packet_ctx);
 		}
 
 		/*
