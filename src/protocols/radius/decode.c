@@ -32,6 +32,14 @@ RCSID("$Id$")
 
 #include "attrs.h"
 
+/*
+ *	For all of the concat/extended attributes.
+ */
+#include <freeradius-devel/protocol/radius/rfc2869.h>
+#include <freeradius-devel/protocol/radius/rfc5904.h>
+#include <freeradius-devel/protocol/radius/rfc6929.h>
+#include <freeradius-devel/protocol/radius/rfc7268.h>
+
 static void memcpy_bounded(void * restrict dst, const void * restrict src, size_t n, const void * restrict end)
 {
 	size_t len = n;
@@ -410,6 +418,77 @@ static ssize_t decode_concat(TALLOC_CTX *ctx, fr_pair_list_t *list,
 	return ptr - data;
 }
 
+/*
+ *	Short-term hack to help clean things up.
+ */
+#define decode_value ((fr_pair_decode_value_t) fr_radius_decode_pair_value)
+
+/** decode an RFC-format TLV
+ *
+ */
+static ssize_t decode_rfc(TALLOC_CTX *ctx, fr_pair_list_t *out,
+			      fr_dict_attr_t const *parent,
+			      uint8_t const *data, size_t const data_len, void *decode_ctx)
+{
+	unsigned int   		attr;
+	size_t			len;
+	ssize_t			slen;
+	fr_dict_attr_t const	*da;
+	fr_radius_ctx_t		*packet_ctx = decode_ctx;
+
+#ifdef __clang_analyzer__
+	if (!packet_ctx || !packet_ctx->tmp_ctx) return PAIR_DECODE_FATAL_ERROR;
+#endif
+
+	fr_assert(parent != NULL);
+
+	/*
+	 *	Must have at least a header.
+	 */
+	if ((data_len < 2) || (data[1] < 2)) {
+		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
+		return -(data_len);
+	}
+
+	/*
+	 *	Empty attributes are ignored.
+	 */
+	if (data[1] == 2) return 2;
+
+	attr = data[0];
+	len = data[1];
+	if (len > data_len) {
+		fr_strerror_printf("%s: Attribute overflows input.  "
+				   "Length must be less than %zu bytes, got %zu bytes",
+				   __FUNCTION__, data_len - 2, len - 2);
+		return PAIR_DECODE_FATAL_ERROR;
+	}
+
+	da = fr_dict_attr_child_by_num(parent, attr);
+	if (!da) {
+		da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, attr);
+		if (!da) return PAIR_DECODE_FATAL_ERROR;
+		slen = fr_pair_raw_from_network(ctx, out, da, data + 2, len - 2);
+		if (slen < 0) return slen;
+		return len;
+	}
+	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
+
+	if (da->flags.array) {
+		slen = fr_pair_array_from_network(ctx, out, da, data + 2, len - 2, decode_ctx, decode_value);
+
+	} else if (da->type == FR_TYPE_TLV) {
+		slen = fr_pair_tlvs_from_network(ctx, out, da, data + 2, len - 2, decode_ctx, decode_rfc, false);
+
+	} else {
+		slen = decode_value(ctx, out, da, data + 2, len - 2, decode_ctx);
+	}
+
+	if (slen < 0) return slen;
+
+	return len;
+}
+
 
 /** Decode NAS-Filter-Rule
  *
@@ -522,6 +601,44 @@ static ssize_t decode_nas_filter_rule(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	talloc_free(buffer);
 	return end - data;	/* end of the NAS-Filter-Rule */
+}
+
+
+/** Decode Digest-Attributes
+ *
+ *  The VPs are nested, and consecutive Digest-Attributes attributes are decoded into the same parent.
+ */
+static ssize_t decode_digest_attributes(TALLOC_CTX *ctx, fr_pair_list_t *out,
+					fr_dict_attr_t const *parent, uint8_t const *data,
+					size_t const data_len, fr_radius_ctx_t *packet_ctx)
+{
+	ssize_t slen;
+	fr_pair_t *vp;
+	uint8_t const *p = data;
+	uint8_t const *end = data + data_len;
+
+	fr_assert(parent->type == FR_TYPE_TLV);
+
+	vp = fr_pair_afrom_da(ctx, parent);
+	if (!vp) return PAIR_DECODE_OOM;
+
+redo:
+	slen = fr_pair_tlvs_from_network(vp, &vp->vp_group, parent, p + 2, p[1] - 2, packet_ctx, decode_rfc, false);
+	if (slen <= 0) {
+		talloc_free(vp);
+		return slen;
+	}
+
+	/*
+	 *	Decode consecutive ones into the same parent.
+	 */
+	p += p[1];
+	if (((p + 2) < end) && (p[0] == FR_DIGEST_ATTRIBUTES)) {
+		goto redo;
+	}
+
+	fr_pair_append(out, vp);
+	return p - data;
 }
 
 
@@ -1788,6 +1905,28 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	return attr_len;
 }
 
+/*
+ *	Let's try to help the CPU as much as possible.  If we have a
+ *	check on a buffer, that's less work than a series of if / then
+ *	/ else conditions.
+ */
+static const bool special[UINT8_MAX] = {
+	[FR_NAS_FILTER_RULE]	= true,		/* magic rules */
+	[FR_DIGEST_ATTRIBUTES]	= true,		/* magic rules */
+
+	[FR_EAP_MESSAGE]	= true,		/* concat */
+	[FR_PKM_SS_CERT]	= true,		/* concat */
+	[FR_PKM_CA_CERT]	= true,		/* concat */
+	[FR_EAPOL_ANNOUNCEMENT] = true,		/* concat */
+
+	[FR_EXTENDED_ATTRIBUTE_1] = true,
+	[FR_EXTENDED_ATTRIBUTE_2] = true,
+	[FR_EXTENDED_ATTRIBUTE_3] = true,
+	[FR_EXTENDED_ATTRIBUTE_4] = true,
+	[FR_EXTENDED_ATTRIBUTE_5] = true,
+	[FR_EXTENDED_ATTRIBUTE_6] = true,
+};
+
 /** Create a "normal" fr_pair_t from the given data
  *
  */
@@ -1823,12 +1962,8 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	/*
 	 *	Empty attributes are silently ignored, except for CUI.
 	 */
-	if (data_len == 2) {
+	if (data[1] == 2) {
 		fr_pair_t *vp;
-
-		if (!fr_dict_root(dict_radius)->flags.is_root) {
-			return 2;
-		}
 
 		if (data[0] != FR_CHARGEABLE_USER_IDENTITY) {
 			return 2;
@@ -1853,16 +1988,97 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	}
 
 	/*
-	 *	Pass the entire thing to the decoding function
+	 *	A few attributes are special, but they're rare.
 	 */
-	if ((da->type == FR_TYPE_OCTETS && flag_concat(&da->flags))) {
-		FR_PROTO_TRACE("Concat attribute");
-		return decode_concat(ctx, out, da, data, packet_ctx->end);
-	}
+	if (unlikely(special[data[0]])) {
+		if (data[0] == FR_NAS_FILTER_RULE) {
+			return decode_nas_filter_rule(ctx, out, da, data, data_len, packet_ctx);
+		}
 
-	if (data[0] == FR_NAS_FILTER_RULE) {
-		FR_PROTO_TRACE("NAS-Filter-Rule attribute");
-		return decode_nas_filter_rule(ctx, out, da, data, data_len, packet_ctx);
+		/*
+		 *	@todo - call fr_pair_tlvs_from_network(..., fr_radius_decode_pair_value)
+		 *
+		 *	And get rid of the hard-coded "concat" crap in the dictionary, and in decode_tlv().
+		 */
+		if (data[0] == FR_DIGEST_ATTRIBUTES) {
+			return decode_digest_attributes(ctx, out, da, data, data_len, packet_ctx);
+		}
+
+		/*
+		 *	Concatenate consecutive top-level attributes together.
+		 */
+		if (flag_concat(&da->flags) && (da->type == FR_TYPE_OCTETS)) {
+			FR_PROTO_TRACE("Concat attribute");
+			return decode_concat(ctx, out, da, data, packet_ctx->end);
+		}
+
+		/*
+		 *	Extended attributes have a horrible format.
+		 *	Try to deal with that here, so that the rest
+		 *	of the code doesn't have to.
+		 */
+		if (flag_extended(&da->flags)) {
+			fr_dict_attr_t const *child;
+
+			/*
+			 *	They MUST have one byte of Extended-Type.  The
+			 *	case of "2" is already handled above with CUI.
+			 */
+			if (data[1] == 3) {
+				ret = fr_pair_raw_from_network(ctx, out, da, data + 2, 1);
+				if (ret <= 0) return ret;
+				return 2 + ret;
+			}
+
+			/*
+			 *	Get a new child.
+			 */
+			child = fr_dict_attr_child_by_num(da, data[2]);
+			if (!child) {
+				FR_PROTO_TRACE("Unknown extended attribute %u.%u", data[1], data[3]);
+				child = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, da, data[3]);
+				if (!child) return -1;
+			}
+
+			/*
+			 *	One byte of type, and N bytes of data.
+			 */
+			if (!flag_long_extended(&da->flags)) {
+				ret = fr_radius_decode_pair_value(ctx, out, child, data + 3, data[1] - 3, packet_ctx);
+				fr_dict_unknown_free(&child);
+				if (ret < 0 ) return ret;
+				return 3 + ret;
+			}
+
+			/*
+			 *	It MUST have one byte of type, and one byte of
+			 *	flags.  If there's no data here, we just
+			 *	ignore it, whether or not the "More" bit is
+			 *	set.
+			 */
+			if (data[1] == 4) {
+				fr_dict_unknown_free(&child);
+				ret = fr_pair_raw_from_network(ctx, out, da, data + 2, 2);
+				if (ret < 0) return ret;
+				return 4;
+			}
+
+			if ((data[3] & 0x80) == 0) {
+				ret = fr_radius_decode_pair_value(ctx, out, child, data + 4, data[1] - 4, packet_ctx);
+				fr_dict_unknown_free(&child);
+				if (ret < 0 ) return ret;
+				return 4 + ret;
+			}
+
+			/*
+			 *	@todo - do all of the concatenation, and fix stuff up later.
+			 */
+			fr_dict_unknown_free(&child);
+		}
+
+		/*
+		 *	@todo - pre-concatenate WiMAX, if 26, and dv->continuation, too.
+		 */
 	}
 
 	/*
