@@ -1709,14 +1709,14 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 				 *	Or fields with a length prefix.
 				 */
 				if (enumv->flags.subtype == FLAG_LENGTH_UINT8) {
-					uint8_t num;
+					uint8_t num = 0;
 
 					FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
 					newlen = num;
 					offset = 1;
 
 				} else if (enumv->flags.subtype == FLAG_LENGTH_UINT16) {
-					uint16_t num;
+					uint16_t num = 0;
 
 					FR_DBUFF_OUT_RETURN(&num, &work_dbuff);
 					newlen = num;
