@@ -160,7 +160,7 @@ them.
 
 The FreeRADIUS source contains Dockerfiles for several Linux
 distributions. They are in
-[`freeradius-server/scripts/docker/<os_name>`](https://github.com/FreeRADIUS/freeradius-server/tree/v3.0.x/scripts/docker).
+[`freeradius-server/scripts/docker/<os_name>`](https://github.com/FreeRADIUS/freeradius-server/tree/v3.2.x/scripts/docker).
 
 Build an image with
 
@@ -196,5 +196,5 @@ To build the image from a specific repository and git tag, set one
 or both of these args:
 
 ```console
-$ docker build . --build-arg=release=v3.0.x --build-arg=source=https://github.com/FreeRADIUS/freeradius-server.git -t freeradius-<os_name>
+$ docker build . --build-arg=release=v3.2.x --build-arg=source=https://github.com/FreeRADIUS/freeradius-server.git -t freeradius-<os_name>
 ```

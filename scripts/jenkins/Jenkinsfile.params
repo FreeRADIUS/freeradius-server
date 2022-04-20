@@ -16,13 +16,13 @@ properties([
 		),
 		string(
 			name: 'branch',
-			defaultValue: 'v3.0.x',
+			defaultValue: 'v3.2.x',
 			description: 'Name of the git branch the packages are built from',
 			trim: true
 		),
 		string(
 			name: 'jdbranch',
-			defaultValue: 'v3.0.x',
+			defaultValue: 'v3.2.x',
 			description: 'Branch to use to get Jenkinsfile and Docker files from',
 			trim: true
 		),
@@ -40,19 +40,19 @@ centos8''',
 		string(
 			name: 'package_version',
 			defaultValue: '',
-			description: 'Version number used in the built packages, e.g. "3.0.19"',
+			description: 'Version number used in the built packages, e.g. "3.2.0"',
 			trim: true
 		),
 		string(
 			name: 'package_release',
 			defaultValue: '1',
-			description: 'Release suffix used in the built packages, e.g. "2" would create "3.0.19-2". Will use "1" if not set.',
+			description: 'Release suffix used in the built packages, e.g. "2" would create "3.2.0-2". Will use "1" if not set.',
 			trim: true
 		),
 		booleanParam(
 			name: 'use_commit',
 			defaultValue: true,
-			description: 'If enabled, uses the git commit number in the package version, e.g. 3.0.19+GIT-1 (otherwise 3.0.19-1).'
+			description: 'If enabled, uses the git commit number in the package version, e.g. 3.2.0+GIT-1 (otherwise 3.2.0-1).'
 		)
 	])
 ])

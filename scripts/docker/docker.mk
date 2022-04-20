@@ -7,10 +7,10 @@
 #  Examples:
 #
 #  Publish to Dockerhub "freeradius-server"
-#    make DOCKER_VERSION=3.0.20 DOCKER_BUILD_ARGS="--no-cache" docker-publish
+#    make DOCKER_VERSION=3.2.0 DOCKER_BUILD_ARGS="--no-cache" docker-publish
 #
 #  Build and push "freeradius-dev" image to Dockerhub (e.g. CI on every commit):
-#    make DOCKER_VERSION=latest DOCKER_COMMIT=v3.0.x DOCKER_TAG="freeradius-dev" DOCKER_BUILD_ARGS="--no-cache" docker-push
+#    make DOCKER_VERSION=latest DOCKER_COMMIT=v3.2.x DOCKER_TAG="freeradius-dev" DOCKER_BUILD_ARGS="--no-cache" docker-push
 #
 #  Push to local repository:
 #    make DOCKER_VERSION=3.0.20 DOCKER_TAG="our-freeradius-build" DOCKER_REGISTRY="docker.somewhere.example" docker-publish
@@ -21,11 +21,11 @@
 #
 #  Variables:
 #
-#  Which version to tag as, e.g. "3.0.20". If this is not an actual release
+#  Which version to tag as, e.g. "3.2.0". If this is not an actual release
 #  version, DOCKER_COMMIT _must_ also be set.
 DOCKER_VERSION := $(RADIUSD_VERSION_STRING)
 #
-#  Commit hash/tag/branch to build, will be taken from VERSION above if not overridden, e.g. "release_3_0_20"
+#  Commit hash/tag/branch to build, will be taken from VERSION above if not overridden, e.g. "release_3_2_0"
 DOCKER_COMMIT := release_$(shell echo $(DOCKER_VERSION) | tr .- __)
 #
 #  Build args, most likely "--no-cache"

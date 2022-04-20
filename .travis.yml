@@ -19,7 +19,7 @@ addons:
   coverity_scan:
     project:
       name: FreeRADIUS/freeradius-server
-      version: v3.0.x
+      version: v3.2.x
       description: The FreeRADIUS server project
     notification_email: freeradius-devel@lists.freeradius.org
     build_command_prepend: ./configure

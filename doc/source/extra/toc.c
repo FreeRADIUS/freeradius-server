@@ -32,17 +32,17 @@ git clone git@github.com:FreeRADIUS/freeradius-server.git
 @endcode
 - Web: http://github.com/FreeRADIUS/freeradius-server/tree/master
 
-@subsection branch_30x 3.0.x stable branch
+@subsection branch_32x 3.2.x stable branch
 
 Minor bug fixes, documentation updatews, etc. go into this branch.
 
 @code
 git clone git@github.com:FreeRADIUS/freeradius-server.git
 cd freeradius-server
-git fetch origin v3.0.x:v3.0.x
-git checkout v3.0.x
+git fetch origin v3.2.x:v3.2.x
+git checkout v3.2.x
 @endcode
-- Web: http://github.com/FreeRADIUS/freeradius-server/tree/v3.0.x
+- Web: http://github.com/FreeRADIUS/freeradius-server/tree/v3.2.x
 
 @subsection branch_2xx 2.x.x EOL branch
 

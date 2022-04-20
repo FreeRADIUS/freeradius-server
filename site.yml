@@ -3,7 +3,7 @@ site:
 content:
   sources:
   - url: .
-    branches: v3.0.x
+    branches: v3.2.x
     start_path: doc/antora
 asciidoc:
   attributes:

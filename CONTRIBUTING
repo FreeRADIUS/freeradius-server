@@ -36,7 +36,7 @@
   server you're working with as listed here (http://doc.freeradius.org), build the server, and attempt
   to reproduce your issue.
 
-  The ChangeLog (https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/doc/ChangeLog) for the
+  The ChangeLog (https://github.com/FreeRADIUS/freeradius-server/blob/v3.2.x/doc/ChangeLog) for the
   current stable branch may also be used to determine if your issue has already been addressed.
   The ChangeLog is updated as fixes are made to the server code, and usually reflects the state of the
   Git HEAD.
@@ -47,7 +47,7 @@
 
 3.CONTENTS OF A DEFECT REPORT
 
-  See doc/bugs (https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/doc/bugs) for information
+  See doc/bugs (https://github.com/FreeRADIUS/freeradius-server/blob/v3.2.x/doc/bugs) for information
   on what to include, and how to obtain it.
 
   When logging bug reports using the GitHub issue tracker, pay attention to formatting.  You should
