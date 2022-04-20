@@ -266,7 +266,8 @@ jobs:
             --with-udpfromto=$LIBS_OPTIONAL \
             --with-openssl=$LIBS_OPTIONAL \
             --with-pcre=$LIBS_OPTIONAL \
-        || cat ./config.log
+        echo "config.log"
+        cat config.log
         echo "Contents of src/include/autoconf.h"
         cat "./src/include/autoconf.h"
 
