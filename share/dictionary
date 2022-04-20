@@ -200,6 +200,7 @@ $INCLUDE dictionary.colubris
 $INCLUDE dictionary.columbia_university
 $INCLUDE dictionary.compatible
 $INCLUDE dictionary.cosine
+$INCLUDE dictionary.covaro
 $INCLUDE dictionary.dante
 $INCLUDE dictionary.dellemc
 $INCLUDE dictionary.digium
