@@ -983,7 +983,7 @@ found:
 
 /**  Dump definitions for Make or CPP
  *
- *	$(ad_dump_definess )
+ *	$(ad_dump_defines )
  *		dump to stdout.  Note the final space!
  *		$(ad_dump_defs) is a variable expansion, not a function call.
  *
@@ -993,50 +993,67 @@ found:
  *	$(ad_dump_defines foo.h)
  *		dump definitions in CPP format		#define HAVE_FOO (1)
  *
- *	@todo - allow multiple filenames?
+ *	$(ad_dump_defines foo.h foo.mk)
+ *		dump definitions for both files.
  */
 static char *make_ad_dump_defines(__attribute__((unused)) char const *nm, unsigned int argc, char **argv)
 {
 	ad_define_t *def;
 	FILE *fp;
+	unsigned int i;
 
 	if ((argc == 0) || !*argv[0] || isspace((int) *argv[0])) {
-		fp = stdout;
-
-	} else {
-		char *p;
-
-		fp = fopen(argv[0], "w");
-		if (!fp) {
-			fprintf(stderr, "ad_dump_defs: Failed opening %s - %s\n",
-				argv[0], strerror(errno));
-			return NULL;
+		/*
+		 *	Print Makefile rules to redefine the variables we've created.
+		 */
+		for (def = ad_define_head; def != NULL; def = def->next) {
+			fprintf(stdout, "%s\n", def->name);
 		}
+		return NULL;
+	}
+
+	/*
+	 *	Loop over all input arguments.
+	 */
+	for (i = 0; i < argc; i++) {
+		char *p;
 
 		/*
 		 *	If the file ends in ".h", it's a header file.
 		 *	So dump the definitions in C preprocessor
 		 *	format.
 		 */
-		p = strrchr(argv[0], '.');
-		if (p && (p[1] == 'h') && !p[2]) {
+		p = strrchr(argv[i], '.');
+		if (!p) {
+			fprintf(stderr, "ad_dump_defs: Unrecognized output file",
+				argv[i]);
+			return NULL;
+		}
+
+		fp = fopen(argv[i], "w");
+		if (!fp) {
+			fprintf(stderr, "ad_dump_defs: Failed opening %s - %s\n",
+				argv[i], strerror(errno));
+			return NULL;
+		}
+
+		if ((p[1] == 'h') && !p[2]) {
 			for (def = ad_define_head; def != NULL; def = def->next) {
 				fprintf(fp, "#define %.*s (1)\n", (int) def->len + 5, def->name);
 			}
 
 			fclose(fp);
-			return NULL;
+			continue;
 		}
-	}
 
-	/*
-	 *	Print Makefile rules to redefine the variables we've created.
-	 */
-	for (def = ad_define_head; def != NULL; def = def->next) {
-		fprintf(fp, "%s\n", def->name);
+		/*
+		 *	Print Makefile rules to redefine the variables we've created.
+		 */
+		for (def = ad_define_head; def != NULL; def = def->next) {
+			fprintf(fp, "%s\n", def->name);
+		}
+		fclose(fp);
 	}
-
-	if (fp != stdout) fclose(fp);
 
 	return NULL;
 }
@@ -1152,7 +1169,12 @@ static char const *ad_includes_default = \
 "# include <unistd.h>\n"
 "#endif\n";
 
-static char *make_ad_fn_c_try_cpp(__attribute__((unused)) char const *nm, __attribute__((unused)) unsigned int argc, char **argv)
+/*
+ *	Try running the C preprocessoer.
+ *
+ *	$(ad_try_cpp arg)
+ */
+static char *make_ad_try_cpp(__attribute__((unused)) char const *nm, __attribute__((unused)) unsigned int argc, char **argv)
 {
 	char *result;
 
@@ -1163,9 +1185,11 @@ static char *make_ad_fn_c_try_cpp(__attribute__((unused)) char const *nm, __attr
 
 
 /*
- *	filename, include [, includes ]
+ *	Check if "header.h" compiles, with optional other headers included.  If so, defines HAVE_HEADER_H.
+ *
+ *	$(ad_have_header header.h, include1.h [, include2.h... ])
  */
-static char *make_ad_fn_c_check_header_compile(__attribute__((unused)) char const *nm, unsigned int argc, char **argv)
+static char *make_ad_have_header(__attribute__((unused)) char const *nm, unsigned int argc, char **argv)
 {
 	unsigned int i;
 	char *result;
@@ -1236,7 +1260,12 @@ static char *next_word(char **in)
 	return *in;
 }
 
-static char *make_ad_check_headers(char const *nm, unsigned int argc, char **argv)
+/*
+ *	Check for multiple headers.  If so, defines HAVE_FOO_H, HAVE_BAR_H, etc.
+ *
+ *	$(ad_have_headers foo.h bar.h baz.h)
+ */
+static char *make_ad_have_headers(char const *nm, unsigned int argc, char **argv)
 {
 	unsigned int i;
 	char *result;
@@ -1259,7 +1288,7 @@ static char *make_ad_check_headers(char const *nm, unsigned int argc, char **arg
 		p = argv[i];
 		while (p) {
 			my_argv[1] = next_word(&p);
-			(void) make_ad_fn_c_check_header_compile(nm, 3, my_argv);
+			(void) make_ad_have_header(nm, 3, my_argv);
 		}
 	}
 
@@ -1288,9 +1317,9 @@ int dlopen_gmk_setup(void)
 	gmk_add_function("ad_search_libs", &make_ad_search_libs, 1, 0, 0);
 	gmk_add_function("ad_dump_defines", &make_ad_dump_defines, 0,1, 0);
 
-	gmk_add_function("ad_fn_c_try_cpp", &make_ad_fn_c_try_cpp, 1, 1, 0);
-	gmk_add_function("ad_fn_c_check_header_compile", &make_ad_fn_c_check_header_compile, 2, 0, 0);
-	gmk_add_function("ad_check_headers", &make_ad_check_headers, 1, 0, 0);
+	gmk_add_function("ad_try_cpp", &make_ad_try_cpp, 1, 1, 0);
+	gmk_add_function("ad_have_header", &make_ad_have_header, 2, 0, 0);
+	gmk_add_function("ad_have_headers", &make_ad_have_headers, 1, 0, 0);
 
 	return 1;
 }
