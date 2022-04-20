@@ -323,6 +323,27 @@ int		xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_
 
 ssize_t		xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rules_t const *e_rules);
 
+/** Iterate over the contents of a list, only one level
+ *
+ * @param[in] _list_head	to iterate over.
+ * @param[in] _iter		Name of iteration variable.
+ *				Will be declared in the scope of the loop.
+ */
+#define xlat_exp_foreach(_list_head, _iter) \
+	for (xlat_exp_t *_iter = UNCONST(xlat_exp_t *, _list_head); _iter; _iter = _iter->next)
+
+static inline xlat_exp_t *xlat_exp_head(xlat_exp_t const *head)
+{
+	return UNCONST(xlat_exp_t *, head);
+}
+
+static inline xlat_exp_t *xlat_exp_next(UNUSED xlat_exp_t const *head, xlat_exp_t const *item)
+{
+	if (!item->next) return NULL;
+
+	return UNCONST(xlat_exp_t *, item->next);
+}
+
 #ifdef __cplusplus
 }
 #endif

@@ -123,7 +123,6 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 
 	case XLAT_FUNC:
 	{
-		xlat_exp_t const 	*arg = node->call.args;
 		char		 	*out, *n_out;
 		TALLOC_CTX		*pool;
 		char			open = '{', close = '}';
@@ -133,11 +132,16 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 			open = '(';
 			close = ')';
 		}
-		if (!arg) return talloc_asprintf(ctx, "%%%c%s:%c", open, node->call.func->name, close);
+
+		/*
+		 *	No arguments, just print an empty function.
+		 */
+		if (!node->call.args) return talloc_asprintf(ctx, "%%%c%s:%c", open, node->call.func->name, close);
 
 		out = talloc_asprintf(ctx, "%%%c%s:", open, node->call.func->name);
 		pool = talloc_pool(NULL, 128);	/* Size of a single child (probably ok...) */
-		do {
+
+		xlat_exp_foreach(node->call.args, arg) {
 			char *arg_str;
 
 			arg_str = xlat_fmt_aprint(pool, arg);
@@ -159,7 +163,7 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 				first_done = true;
 			}
 			talloc_free_children(pool);	/* Clear pool contents */
-		} while ((arg = arg->next));
+		}
 		talloc_free(pool);
 
 		n_out = talloc_strndup_append_buffer(out, &close, 1);
@@ -1358,7 +1362,6 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 			fr_assert(0);
 			return XLAT_ACTION_FAIL;
 		}
-
 	}
 
 finish:
@@ -1600,7 +1603,7 @@ ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, request_t *request,
  * @param ctx		The talloc_ctx
  * @param[out] argv	the argv array of resulting strings, size is argc + 1
  * @param request	the request
- * @param xlat		from xlat_tokenize_argv()
+ * @param head		from xlat_tokenize_argv()
  * @param escape	escape function
  * @param escape_ctx	context for escape function
  * @return
@@ -1608,28 +1611,33 @@ ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, request_t *request,
  *	- >0 on success	which is argc to the corresponding argv
  */
 int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, request_t *request,
-			     xlat_exp_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
+			     xlat_exp_t const *head, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	int			i;
 	ssize_t			slen;
 	char			**my_argv;
 	size_t			count;
-	xlat_exp_t const	*node;
 
-	if (xlat->type != XLAT_GROUP) return -1;
+	if (head->type != XLAT_GROUP) return -1;
 
-	for (count = 0, node = xlat; node != NULL; node = node->next) count++;
+	count = 0;
+	xlat_exp_foreach(head, node) {
+		count++;
+	}
 
 	MEM(my_argv = talloc_zero_array(ctx, char *, count + 1));
 	*argv = my_argv;
 
 	fr_assert(done_init);
 
-	for (i = 0, node = xlat; node != NULL; i++, node = node->next) {
+	i = 0;
+	xlat_exp_foreach(head, node) {
 		my_argv[i] = NULL;
 
 		slen = _xlat_eval_compiled(my_argv, &my_argv[i], 0, request, node->group, escape, escape_ctx);
 		if (slen < 0) return -i;
+
+		i++;
 	}
 
 	return count;
@@ -1639,24 +1647,27 @@ int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, request_t *request,
  *
  *  This is mostly for async use.
  */
-int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_exp_t const *xlat)
+int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_exp_t const *head)
 {
 	int			i;
 	xlat_exp_t const	**my_argv;
-	xlat_exp_t const	*node;
 	size_t			count;
 
-	if (xlat->type != XLAT_GROUP) return -1;
+	if (head->type != XLAT_GROUP) return -1;
 
-	for (count = 0, node = xlat; node != NULL; node = node->next) count++;
+	count = 0;
+	xlat_exp_foreach(head, node) {
+		count++;
+	}
 
 	MEM(my_argv = talloc_zero_array(ctx, xlat_exp_t const *, count + 1));
 	*argv = my_argv;
 
 	fr_assert(done_init);
 
-	for (i = 0, node = xlat; node != NULL; i++, node = node->next) {
-		my_argv[i] = node->group;
+	i = 0;
+	xlat_exp_foreach(head, node) {
+		my_argv[i++] = node->group;
 	}
 
 	return count;
@@ -1664,7 +1675,7 @@ int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_e
 
 /** Walk over all xlat nodes (depth first) in a xlat expansion, calling a callback
  *
- * @param[in] exp	to evaluate.
+ * @param[in] head	to evaluate.
  * @param[in] walker	callback to pass nodes to.
  * @param[in] type	if > 0 a mask of types to call walker for.
  * @param[in] uctx	to pass to walker.
@@ -1672,15 +1683,14 @@ int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_e
  *	- 0 on success (walker always returned 0).
  *	- <0 if walker returned <0.
  */
-int xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_type_t type, void *uctx)
+int xlat_eval_walk(xlat_exp_t *head, xlat_walker_t walker, xlat_type_t type, void *uctx)
 {
-	xlat_exp_t	*node;
 	int		ret;
 
 	/*
 	 *	Iterate over nodes at the same depth
 	 */
-	for (node = exp; node; node = node->next) {
+	xlat_exp_foreach(head, node) {
 		switch (node->type){
 		case XLAT_FUNC:
 			if (!type || (type & XLAT_FUNC)) {
@@ -1788,18 +1798,16 @@ void xlat_eval_free(void)
  *
  *	If the xlat yields, then async is required.
  */
-bool xlat_async_required(xlat_exp_t const *xlat)
+bool xlat_async_required(xlat_exp_t const *head)
 {
-	xlat_exp_t const *node;
-
-	if (xlat->type != XLAT_GROUP) {
-		return xlat->flags.needs_async;
+	if (head->type != XLAT_GROUP) {
+		return head->flags.needs_async;
 	}
 
 	/*
 	 *	Set needs_async on the entire list.
 	 */
-	for (node = xlat; node != NULL; node = node->next) {
+	xlat_exp_foreach(head, node) {
 		if (node->flags.needs_async) return true;
 	}
 

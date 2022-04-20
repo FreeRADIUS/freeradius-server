@@ -131,9 +131,8 @@ xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t *func, xlat_exp_t const 
 	/*
 	 *	A pure function can have impure arguments, e.g. hash(sql query).
 	 */
-	while (args) {
-		node->flags.pure &= args->flags.pure;
-		args = args->next;
+	xlat_exp_foreach(args, arg) {
+		node->flags.pure &= arg->flags.pure;
 	}
 
 	return node;
@@ -429,7 +428,7 @@ int xlat_validate_function_args(xlat_exp_t *node)
 		 */
 		fr_assert(arg->type == XLAT_GROUP);
 
-		arg = arg->next;
+		arg = xlat_exp_next(node->call.args, arg);
 	}
 
 	return 0;
@@ -839,7 +838,7 @@ int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fl
 /*
  *	Temporary things until we swap to using tlists
  */
-#define xlat_append(_tail, _node) do { \
+#define xlat_exp_append(_tail, _node) do { \
 	*_tail = _node; \
 	_tail = &(_node)->next; \
 	_node = NULL; \
@@ -946,7 +945,7 @@ static int xlat_tokenize_string(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 				   escapes ? escapes->name : "(none)",
 				   fr_box_strvalue_len(str, talloc_array_length(str) - 1));
 			XLAT_HEXDUMP((uint8_t const *)str, talloc_array_length(str) - 1, " VALUE-BOX ");
-			xlat_append(tail, node);
+			xlat_exp_append(tail, node);
 		} else if (slen < 0) {
 		error:
 			talloc_free(node);
@@ -963,7 +962,7 @@ static int xlat_tokenize_string(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 			if (slen == 0) TALLOC_FREE(node); /* Free the empty node */
 
 			if (xlat_tokenize_expansion(ctx, &node, flags, in, t_rules) < 0) goto error;
-			xlat_append(tail, node);
+			xlat_exp_append(tail, node);
 			continue;
 		}
 
@@ -974,7 +973,7 @@ static int xlat_tokenize_string(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 			if (slen == 0) TALLOC_FREE(node); /* Free the empty node */
 
 			if (xlat_tokenize_function_args(ctx, &node, flags, in, t_rules) < 0) goto error;
-			xlat_append(tail, node);
+			xlat_exp_append(tail, node);
 			continue;
 		}
 
@@ -999,7 +998,7 @@ static int xlat_tokenize_string(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t
 			node->flags.needs_async = false; /* value boxes are always non-async */
 
 			xlat_flags_merge(flags, &node->flags);
-			xlat_append(tail, node);
+			xlat_exp_append(tail, node);
 			continue;
 		}
 
@@ -1039,13 +1038,13 @@ static fr_table_num_sorted_t const xlat_quote_table[] = {
 };
 static size_t xlat_quote_table_len = NUM_ELEMENTS(xlat_quote_table);
 
-static void _xlat_debug(xlat_exp_t const *node, int depth)
+static void _xlat_debug(xlat_exp_t const *head, int depth)
 {
-
 #define INFO_INDENT(_fmt, ...)  INFO("%*s"_fmt, depth * 2, " ", ## __VA_ARGS__)
 
-	fr_assert(node != NULL);
-	while (node) {
+	fr_assert(head != NULL);
+
+	xlat_exp_foreach(head, node) {
 		switch (node->type) {
 		case XLAT_BOX:
 			INFO_INDENT("value --> %pV", &node->data);
@@ -1130,7 +1129,6 @@ static void _xlat_debug(xlat_exp_t const *node, int depth)
 			DEBUG("XLAT-INVALID");
 			break;
 		}
-		node = node->next;
 	}
 }
 
@@ -1143,9 +1141,10 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape
 {
 	ssize_t			slen;
 	size_t			at_in = fr_sbuff_used_total(out);
-	xlat_exp_t const	*node = head;
+	xlat_exp_t const	*node;
 	char			close;
 
+	node = xlat_exp_head(head);
 	if (!node) return 0;
 
 	switch (node->type) {
@@ -1153,7 +1152,8 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape
 		if (node->quote != T_BARE_WORD) FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->quote]);
 		xlat_print(out, node->group, fr_value_escape_by_quote[node->quote]);
 		if (node->quote != T_BARE_WORD) FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->quote]);
-		if (node->next) FR_SBUFF_IN_CHAR_RETURN(out, ' ');      /* Add ' ' between args */
+
+		if (xlat_exp_next(head, node)) FR_SBUFF_IN_CHAR_RETURN(out, ' ');      /* Add ' ' between args */
 		goto done;
 
 	case XLAT_BOX:
@@ -1292,15 +1292,10 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rule
 {
 	ssize_t			slen;
 	size_t			at_in = fr_sbuff_used_total(out);
-	xlat_exp_t const	*node = head;
 
-	if (!node) return 0;
-
-	while (node) {
+	xlat_exp_foreach(head, node) {
 		slen = xlat_print_node(out, node, e_rules);
 		if (slen < 0) return slen - (fr_sbuff_used_total(out) - at_in);
-
-		node = node->next;
 	}
 
 	return fr_sbuff_used_total(out) - at_in;
@@ -1507,7 +1502,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 		xlat_exp_set_name_buffer_shallow(node, fmt);
 
 		xlat_flags_merge(flags, &node->flags);
-		xlat_append(tail, node);
+		xlat_exp_append(tail, node);
 
 		/*
 		 *	If we're not and the end of the string
@@ -1596,11 +1591,7 @@ ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, f
  */
 bool xlat_is_literal(xlat_exp_t const *head)
 {
-	xlat_exp_t const *node;
-
-	for (node = head;
-	     node;
-	     node = node->next) {
+	xlat_exp_foreach(head, node) {
 		if (node->type != XLAT_BOX) return false;
 	}
 
@@ -1620,7 +1611,6 @@ bool xlat_is_literal(xlat_exp_t const *head)
  */
 bool xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_t **head)
 {
-	xlat_exp_t 		*node;
 	fr_sbuff_t		out;
 	fr_sbuff_uctx_talloc_t	tctx;
 	size_t			len = 0;
@@ -1633,13 +1623,16 @@ bool xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_t **head)
 	 *	literals, so we need to walk the
 	 *	list until we find a non-literal.
 	 */
-	for (node = *head; node; node = node->next) {
+	xlat_exp_foreach(*head, node) {
 		if (!xlat_is_literal(node)) return false;
 		len += talloc_array_length(node->fmt) - 1;
 	}
 
 	fr_sbuff_init_talloc(ctx, &out, &tctx, len, SIZE_MAX);
-	for (node = *head; node; node = node->next) fr_sbuff_in_bstrcpy_buffer(&out, node->fmt);
+
+	xlat_exp_foreach(*head, node) {
+		fr_sbuff_in_bstrcpy_buffer(&out, node->fmt);
+	}
 
 	*str = fr_sbuff_buff(&out);	/* No need to trim, should be the correct length */
 
@@ -1659,7 +1652,6 @@ bool xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_t **head)
 int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const *xr_rules)
 {
 	static xlat_res_rules_t		xr_default;
-	xlat_exp_t			*node;
 	xlat_flags_t			our_flags;
 
 	if (!flags->needs_resolving) return 0;			/* Already done */
@@ -1669,7 +1661,7 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const 
 	our_flags = *flags;
 	our_flags.needs_resolving = false;			/* We flip this if not all resolutions are successful */
 
-	for (node = *head; node; node = node->next) {
+	xlat_exp_foreach(*head, node) {
 		if (!node->flags.needs_resolving) continue;	/* This node and non of its children need resolving */
 
 		switch (node->type) {
@@ -1941,7 +1933,6 @@ int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags,
  */
 int xlat_copy(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t const *in)
 {
-	xlat_exp_t const	*p;
 	xlat_exp_t **tail;
 
 	if (!in) {
@@ -1955,7 +1946,7 @@ int xlat_copy(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t const *in)
 	/*
 	 *	Copy everything in the list of nodes
 	 */
-	for (p = in; p; p = p->next) {
+	xlat_exp_foreach(in, p) {
 		xlat_exp_t *node;
 
 		MEM(node = xlat_exp_alloc(ctx, p->type, p->fmt, talloc_array_length(p->fmt) - 1));
@@ -2015,7 +2006,7 @@ int xlat_copy(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t const *in)
 			break;
 		}
 
-		xlat_append(tail, node);
+		xlat_exp_append(tail, node);
 	}
 
 	return 0;
