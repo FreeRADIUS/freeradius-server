@@ -564,6 +564,23 @@ ldap {
 	#  configuration entries can still be used, but we recommend
 	#  using these.
 	#
+	#  Note that some distributions use NSS for libldap instead
+	#  of OpenSSL.
+	#
+	#  If you see something like this in the debug output:
+	#
+	#	TLSMC: MozNSS compatibility interception begins.
+	#
+	#  Then there is a problem.
+	#
+	#	THIS LDAP INSTALLATION WILL NOT WORK WITH FREERADIUS.
+	#
+	#  You MUST install fixed LDAP libraries which use OpenSSL.
+	#
+	#  For more details, see:
+	#
+	#	http://packages.networkradius.com
+	#
 	tls {
 		# Set this to 'yes' to use TLS encrypted connections
 		# to the LDAP database by using the StartTLS extended
