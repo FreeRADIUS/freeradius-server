@@ -803,7 +803,6 @@ done:
 
 		len = fr_dbuff_used(&work_dbuff) - need;
 		if (len > max) {
-			fr_dbuff_marker_release(&hdr);
 			fr_strerror_const("Structure size is too large for 16-bit length field.");
 			return -1;
 		}
@@ -813,7 +812,6 @@ done:
 		} else {
 			fr_dbuff_in(&hdr, (uint16_t)len);
 		}
-		fr_dbuff_marker_release(&hdr);
 	}
 
 	/*
