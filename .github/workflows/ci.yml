@@ -66,6 +66,9 @@ jobs:
         fakeroot \
         firebird-dev \
         freetds-dev \
+        gawk \
+        git \
+        gnupg \
         libcap-dev \
         libcollectdclient-dev \
         libcurl4-openssl-dev \
@@ -90,6 +93,7 @@ jobs:
         libreadline-dev \
         libruby \
         libsnmp-dev \
+        libsqlite3-dev \
         libssl-dev \
         libtalloc-dev \
         libunbound-dev \
@@ -101,6 +105,8 @@ jobs:
         python-dev \
         python3-dev \
         ruby-dev \
+        snmp \
+        software-properties-common \
         quilt
 
     - name: Install LLVM 10 for 18.04
