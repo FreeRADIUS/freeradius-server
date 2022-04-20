@@ -124,7 +124,7 @@ struct xlat_exp {
 	xlat_exp_t	*child;		//!< Nested expansion, i.e. arguments for an xlat function.
 
 	union {
-		xlat_exp_t	*alternate;	//!< Alternative expansion if this expansion produced no values.
+		xlat_exp_t	*alternate[2];	//!< alternate expansions
 
 		/** An tmpl_t reference
 		 *

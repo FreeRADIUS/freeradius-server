@@ -183,14 +183,14 @@ static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, 
 	xlat_exp_set_type(node, XLAT_ALTERNATE);
 
 	if (func_args) {
-		if (xlat_tokenize_function_args(node, &node->child, &node->flags, in, t_rules) < 0) {
+		if (xlat_tokenize_function_args(node, &node->alternate[0], &node->flags, in, t_rules) < 0) {
 		error:
 			*head = NULL;
 			talloc_free(node);
 			return -1;
 		}
 	} else {
-		if (xlat_tokenize_expansion(node, &node->child, &node->flags, in, t_rules) < 0) goto error;
+		if (xlat_tokenize_expansion(node, &node->alternate[0], &node->flags, in, t_rules) < 0) goto error;
 	}
 
 	if (!fr_sbuff_adv_past_str_literal(in, ":-")) {
@@ -202,8 +202,8 @@ static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, 
 	 *	Allow the RHS to be empty as a special case.
 	 */
 	if (fr_sbuff_next_if_char(in, '}')) {
-		node->alternate = xlat_exp_alloc(node, XLAT_BOX, "", 0);
-		xlat_flags_merge(&node->flags, &node->child->flags);
+		node->alternate[1] = xlat_exp_alloc(node, XLAT_BOX, "", 0);
+		xlat_flags_merge(&node->flags, &node->alternate[1]->flags);
 		*head = node;
 		return 0;
 	}
@@ -211,10 +211,10 @@ static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **head, 
 	/*
 	 *	Parse the alternate expansion.
 	 */
-	if (xlat_tokenize_string(node, &node->alternate, &node->flags, in,
+	if (xlat_tokenize_string(node, &node->alternate[1], &node->flags, in,
 				  true, &xlat_expansion_rules, t_rules) < 0) goto error;
 
-	if (!node->alternate) {
+	if (!node->alternate[1]) {
 		talloc_free(node);
 		fr_strerror_const("Empty expansion is invalid");
 		goto error;
@@ -1119,11 +1119,12 @@ static void _xlat_debug(xlat_exp_t const *node, int depth)
 #endif
 
 		case XLAT_ALTERNATE:
+			fr_assert(node->child == NULL);
 			DEBUG("XLAT-IF {");
-			_xlat_debug(node->child, depth + 1);
+			_xlat_debug(node->alternate[0], depth + 1);
 			DEBUG("}");
 			DEBUG("XLAT-ELSE {");
-			_xlat_debug(node->alternate, depth + 1);
+			_xlat_debug(node->alternate[1], depth + 1);
 			DEBUG("}");
 			break;
 
@@ -1259,11 +1260,11 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape
 		break;
 
 	case XLAT_ALTERNATE:
-		slen = xlat_print(out, node->child, &xlat_escape);
+		slen = xlat_print(out, node->alternate[0], &xlat_escape);
 		if (slen < 0) goto error;
 
 		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, ":-");
-		slen = xlat_print(out, node->alternate, &xlat_escape);
+		slen = xlat_print(out, node->alternate[1], &xlat_escape);
 		if (slen < 0) goto error;
 		break;
 
@@ -1687,8 +1688,8 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const 
 		{
 			xlat_flags_t	child_flags = node->flags, alt_flags = node->flags;
 
-			if ((xlat_resolve(&node->child, &child_flags, xr_rules) < 0) ||
-			    (xlat_resolve(&node->alternate, &alt_flags, xr_rules) < 0)) return -1;
+			if ((xlat_resolve(&node->alternate[0], &child_flags, xr_rules) < 0) ||
+			    (xlat_resolve(&node->alternate[1], &alt_flags, xr_rules) < 0)) return -1;
 
 			xlat_flags_merge(&child_flags, &alt_flags);
 			node->flags = child_flags;
@@ -2007,7 +2008,8 @@ int xlat_copy(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t const *in)
 #endif
 
 		case XLAT_ALTERNATE:
-			if (unlikely(xlat_copy(node, &node->alternate, p->alternate) < 0)) goto error;
+			if (unlikely(xlat_copy(node, &node->alternate[0], p->alternate[0]) < 0)) goto error;
+			if (unlikely(xlat_copy(node, &node->alternate[1], p->alternate[1]) < 0)) goto error;
 			break;
 
 		case XLAT_GROUP:

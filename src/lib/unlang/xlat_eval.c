@@ -174,8 +174,8 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 	{
 		char *first, *second, *result;
 
-		first = xlat_fmt_aprint(NULL, node->child);
-		second = xlat_fmt_aprint(NULL, node->alternate);
+		first = xlat_fmt_aprint(NULL, node->alternate[0]);
+		second = xlat_fmt_aprint(NULL, node->alternate[1]);
 		result = talloc_asprintf(ctx, "%%{%s:-%s}", first, second);
 		talloc_free(first);
 		talloc_free(second);
@@ -1106,8 +1106,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			}
 
 			XLAT_DEBUG("** [%i] %s(alt-first) - string empty, evaluating alternate: %s",
-				   unlang_interpret_stack_depth(request), __FUNCTION__, (*in)->alternate->fmt);
-			*child = (*in)->alternate;
+				   unlang_interpret_stack_depth(request), __FUNCTION__, (*in)->alternate[1]->fmt);
+			*child = (*in)->alternate[1];
 			*alternate = true;
 
 			return XLAT_ACTION_PUSH_CHILD;
@@ -1328,11 +1328,12 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 
 		case XLAT_ALTERNATE:
 			XLAT_DEBUG("** [%i] %s(alternate) - %%{%%{%s}:-%%{%s}}", unlang_interpret_stack_depth(request),
-				   __FUNCTION__, node->child->fmt, node->alternate->fmt);
-			fr_assert(node->child != NULL);
-			fr_assert(node->alternate != NULL);
+				   __FUNCTION__, node->alternate[0]->fmt, node->alternate[1]->fmt);
+			fr_assert(node->child == NULL);
+			fr_assert(node->alternate[0] != NULL);
+			fr_assert(node->alternate[1] != NULL);
 
-			*child = node->child;
+			*child = node->alternate[0];
 			xa = XLAT_ACTION_PUSH_CHILD;
 			goto finish;
 
@@ -1721,13 +1722,13 @@ int xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_type_t type, void
 			/*
 			 *	Evaluate the first child
 			 */
-			ret = xlat_eval_walk(node->child, walker, type, uctx);
+			ret = xlat_eval_walk(node->alternate[0], walker, type, uctx);
 			if (ret < 0) return ret;
 
 			/*
 			 *	Evaluate the alternate expansion path
 			 */
-			ret = xlat_eval_walk(node->alternate, walker, type, uctx);
+			ret = xlat_eval_walk(node->alternate[1], walker, type, uctx);
 			if (ret < 0) return ret;
 			break;
 
