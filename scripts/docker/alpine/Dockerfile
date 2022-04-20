@@ -1,4 +1,4 @@
-ARG from=alpine:latest
+ARG from=alpine:3.13
 FROM ${from} as build
 
 #
