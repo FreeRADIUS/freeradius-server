@@ -633,7 +633,7 @@ redo:
 	 *	Decode consecutive ones into the same parent.
 	 */
 	p += p[1];
-	if (((p + 2) < end) && (p[0] == FR_DIGEST_ATTRIBUTES)) {
+	if (((p + 2) < end) && ((p[0] == FR_DIGEST_ATTRIBUTES) && (p[1] > 2))) {
 		goto redo;
 	}
 
