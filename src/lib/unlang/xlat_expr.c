@@ -91,7 +91,7 @@ static fr_slen_t xlat_expr_print_unary(fr_sbuff_t *out, xlat_exp_t const *node, 
 	size_t	at_in = fr_sbuff_used_total(out);
 
 	FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
-	xlat_print_node(out, node->child, e_rules);
+	xlat_print_node(out, node->call.args, e_rules);
 
 	return fr_sbuff_used_total(out) - at_in;
 }
@@ -101,7 +101,7 @@ static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node,
 	size_t	at_in = fr_sbuff_used_total(out);
 
 	FR_SBUFF_IN_CHAR_RETURN(out, '(');
-	xlat_print_node(out, node->child, e_rules); /* prints a space after the first argument */
+	xlat_print_node(out, node->call.args, e_rules); /* prints a space after the first argument */
 
 	/*
 	 *	@todo - when things like "+" support more than 2 arguments, print them all out
@@ -109,7 +109,7 @@ static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node,
 	 */
 	FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
 	FR_SBUFF_IN_CHAR_RETURN(out, ' ');
-	xlat_print_node(out, node->child->next, e_rules);
+	xlat_print_node(out, node->call.args->next, e_rules);
 
 	FR_SBUFF_IN_CHAR_RETURN(out, ')');
 
@@ -123,9 +123,9 @@ static int CC_HINT(nonnull) xlat_purify_expr(xlat_exp_t *node)
 {
 	int rcode = -1;
 	xlat_t const *func;
-	xlat_exp_t *child;
+	xlat_exp_t *arg;
 	fr_value_box_t *dst = NULL, *box;
-	xlat_arg_parser_t const *arg;
+	xlat_arg_parser_t const *arg_p;
 	xlat_action_t xa;
 	fr_value_box_list_t input, output;
 	fr_dcursor_t cursor;
@@ -155,11 +155,11 @@ static int CC_HINT(nonnull) xlat_purify_expr(xlat_exp_t *node)
 	/*
 	 *	A child isn't a value-box.  We leave it alone.
 	 */
-	for (child = node->child; child != NULL; child = child->next) {
-		fr_assert(child->type == XLAT_GROUP);
+	for (arg = node->call.args; arg != NULL; arg = arg->next) {
+		fr_assert(arg->type == XLAT_GROUP);
 
-		if (!xlat_is_box(child->child)) return 0;
-		if (child->child->next) return 0;
+		if (!xlat_is_box(arg->group)) return 0;
+		if (arg->group->next) return 0;
 	}
 
 	fr_value_box_list_init(&input);
@@ -170,15 +170,15 @@ static int CC_HINT(nonnull) xlat_purify_expr(xlat_exp_t *node)
 	 *	have to cast the box to the correct data type (or copy
 	 *	it), and then add the box to the source list.
 	 */
-	for (child = node->child, arg = func->args;
-	     child != NULL;
-	     child = child->next, arg++) {
+	for (arg = node->call.args, arg_p = func->args;
+	     arg != NULL;
+	     arg = arg->next, arg_p++) {
 		MEM(box = fr_value_box_alloc_null(node));
 
-		if ((arg->type != FR_TYPE_VOID) && (arg->type != box->type)) {
-			if (fr_value_box_cast(node, box, arg->type, NULL, xlat_box(child->child)) < 0) goto fail;
+		if ((arg_p->type != FR_TYPE_VOID) && (arg_p->type != box->type)) {
+			if (fr_value_box_cast(node, box, arg_p->type, NULL, xlat_box(arg->group)) < 0) goto fail;
 
-		} else if (fr_value_box_copy(node, box, xlat_box(child->child)) < 0) {
+		} else if (fr_value_box_copy(node, box, xlat_box(arg->group)) < 0) {
 		fail:
 			talloc_free(box);
 			goto cleanup;
@@ -203,9 +203,9 @@ static int CC_HINT(nonnull) xlat_purify_expr(xlat_exp_t *node)
 		goto cleanup;
 	}
 
-	while ((child = node->child) != NULL) {
-		node->child = child->next;
-		talloc_free(child);
+	while ((arg = node->call.args) != NULL) {
+		node->call.args = arg->next;
+		talloc_free(arg);
 	}
 
 	dst = fr_dcursor_head(&cursor);
@@ -239,7 +239,7 @@ static xlat_exp_t *xlat_groupify_node(TALLOC_CTX *ctx, xlat_exp_t *node)
 	group->quote = T_BARE_WORD;
 
 	group->fmt = node->fmt;	/* not entirely correct, but good enough for now */
-	group->child = talloc_steal(group, node);
+	group->group = talloc_steal(group, node);
 	group->flags = node->flags;
 
 	if (node->next) {
@@ -270,9 +270,9 @@ static void xlat_groupify_expr(xlat_exp_t *node)
 	/*
 	 *	It's already been groupified, don't do anything.
 	 */
-	if (node->child->type == XLAT_GROUP) return;
+	if (node->call.args->type == XLAT_GROUP) return;
 
-	node->child = xlat_groupify_node(node, node->child);
+	node->call.args = xlat_groupify_node(node, node->call.args);
 }
 
 static xlat_arg_parser_t const binary_op_xlat_args[] = {
@@ -417,7 +417,7 @@ static fr_slen_t xlat_expr_print_logical(fr_sbuff_t *out, xlat_exp_t const *node
 	/*
 	 *	We might get called before the node is instantiated.
 	 */
-	if (!inst->args) current = node->child;
+	if (!inst->args) current = node->call.args;
 
 	fr_assert(current != NULL);
 
@@ -442,8 +442,8 @@ static int xlat_logical_instantiate(xlat_inst_ctx_t const *xctx)
 {
 	xlat_logical_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_logical_inst_t);
 
-	inst->args = xctx->ex->child;
-	xctx->ex->child = NULL;
+	inst->args = xctx->ex->call.args;
+	xctx->ex->call.args = NULL;
 	inst->sense = (xctx->ex->call.func->token == T_LOR);
 
 	return 0;
@@ -778,17 +778,17 @@ static const int precedence[T_TOKEN_LAST] = {
 static xlat_exp_t *xlat_exp_func_alloc_args(TALLOC_CTX *ctx, char const *name, size_t namelen, int argc)
 {
 	int i;
-	xlat_exp_t *node, *child, **last;
+	xlat_exp_t *node, *arg, **last;
 
 	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, name, namelen));
 
-	last = &node->child;
+	last = &node->call.args;
 	for (i = 0; i < argc; i++) {
-		MEM(child = xlat_exp_alloc_null(node));
-		xlat_exp_set_type(child, XLAT_GROUP);
-		child->quote = T_BARE_WORD;
-		*last = child;
-		last = &child->next;
+		MEM(arg = xlat_exp_alloc_null(node));
+		xlat_exp_set_type(arg, XLAT_GROUP);
+		arg->quote = T_BARE_WORD;
+		*last = arg;
+		last = &arg->next;
 	}
 
 	return node;
@@ -1106,7 +1106,7 @@ done:
 	 *	@todo - purify the node.
 	 */
 	if (unary) {
-		unary->child = node;
+		unary->call.args = node;
 		xlat_flags_merge(&unary->flags, &node->flags);
 		node = unary;
 	}
@@ -1308,7 +1308,7 @@ redo:
 		fr_assert(lhs->call.func == func);
 
 		node = xlat_groupify_node(lhs, rhs);
-		last = &lhs->child;
+		last = &lhs->call.args;
 
 		/*
 		 *	Find the last child.
@@ -1337,11 +1337,11 @@ redo:
 	node->call.func = func;
 	node->flags = func->flags;
 
-	node->child = xlat_groupify_node(node, lhs);
-	node->child->flags = lhs->flags;
+	node->call.args = xlat_groupify_node(node, lhs);
+	node->call.args->flags = lhs->flags;
 
-	node->child->next = xlat_groupify_node(node, rhs);
-	node->child->next->flags = rhs->flags;
+	node->call.args->next = xlat_groupify_node(node, rhs);
+	node->call.args->next->flags = rhs->flags;
 
 	xlat_flags_merge(&node->flags, &lhs->flags);
 	xlat_flags_merge(&node->flags, &rhs->flags);

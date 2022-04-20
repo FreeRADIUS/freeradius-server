@@ -123,7 +123,7 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 
 	case XLAT_FUNC:
 	{
-		xlat_exp_t const 	*child = node->child;
+		xlat_exp_t const 	*arg = node->call.args;
 		char		 	*out, *n_out;
 		TALLOC_CTX		*pool;
 		char			open = '{', close = '}';
@@ -133,15 +133,15 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 			open = '(';
 			close = ')';
 		}
-		if (!child) return talloc_asprintf(ctx, "%%%c%s:%c", open, node->call.func->name, close);
+		if (!arg) return talloc_asprintf(ctx, "%%%c%s:%c", open, node->call.func->name, close);
 
 		out = talloc_asprintf(ctx, "%%%c%s:", open, node->call.func->name);
 		pool = talloc_pool(NULL, 128);	/* Size of a single child (probably ok...) */
 		do {
-			char *child_str;
+			char *arg_str;
 
-			child_str = xlat_fmt_aprint(pool, child);
-			if (child_str) {
+			arg_str = xlat_fmt_aprint(pool, arg);
+			if (arg_str) {
 				if ((first_done) && (node->call.func->input_type == XLAT_INPUT_ARGS)) {
 					n_out = talloc_strdup_append_buffer(out, " ");
 					if (!n_out) {
@@ -153,13 +153,13 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 					out = n_out;
 				}
 
-				n_out = talloc_buffer_append_buffer(ctx, out, child_str);
+				n_out = talloc_buffer_append_buffer(ctx, out, arg_str);
 				if (!n_out) goto child_error;
 				out = n_out;
 				first_done = true;
 			}
 			talloc_free_children(pool);	/* Clear pool contents */
-		} while ((child = child->next));
+		} while ((arg = arg->next));
 		talloc_free(pool);
 
 		n_out = talloc_strndup_append_buffer(out, &close, 1);
@@ -209,7 +209,7 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 	 *	we print the concatenated arguments list as
 	 *	well as the original fmt string.
 	 */
-	if ((node->type == XLAT_FUNC) && !xlat_is_literal(node->child)) {
+	if ((node->type == XLAT_FUNC) && !xlat_is_literal(node->call.args)) {
 		RDEBUG2("      (%%%c%s:%pM%c)",
 			(node->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
 			node->call.func->name, args,
@@ -1290,8 +1290,8 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 			 *	Hand back the child node to the caller
 			 *	for evaluation.
 			 */
-			if (node->child) {
-				*child = node->child;
+			if (node->call.args) {
+				*child = node->call.args;
 				xa = XLAT_ACTION_PUSH_CHILD;
 				goto finish;
 			}
@@ -1329,7 +1329,6 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 		case XLAT_ALTERNATE:
 			XLAT_DEBUG("** [%i] %s(alternate) - %%{%%{%s}:-%%{%s}}", unlang_interpret_stack_depth(request),
 				   __FUNCTION__, node->alternate[0]->fmt, node->alternate[1]->fmt);
-			fr_assert(node->child == NULL);
 			fr_assert(node->alternate[0] != NULL);
 			fr_assert(node->alternate[1] != NULL);
 
@@ -1340,13 +1339,13 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 		case XLAT_GROUP:
 			XLAT_DEBUG("** [%i] %s(child) - %%{%s ...}", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
-			if (!node->child) return XLAT_ACTION_DONE;
+			if (!node->group) return XLAT_ACTION_DONE;
 
 			/*
 			 *	Hand back the child node to the caller
 			 *	for evaluation.
 			 */
-			*child = node->child;
+			*child = node->group;
 			xa = XLAT_ACTION_PUSH_CHILD;
 			goto finish;
 
@@ -1629,7 +1628,7 @@ int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, request_t *request,
 	for (i = 0, node = xlat; node != NULL; i++, node = node->next) {
 		my_argv[i] = NULL;
 
-		slen = _xlat_eval_compiled(my_argv, &my_argv[i], 0, request, node->child, escape, escape_ctx);
+		slen = _xlat_eval_compiled(my_argv, &my_argv[i], 0, request, node->group, escape, escape_ctx);
 		if (slen < 0) return -i;
 	}
 
@@ -1657,7 +1656,7 @@ int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_e
 	fr_assert(done_init);
 
 	for (i = 0, node = xlat; node != NULL; i++, node = node->next) {
-		my_argv[i] = node->child;
+		my_argv[i] = node->group;
 	}
 
 	return count;
@@ -1692,8 +1691,8 @@ int xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_type_t type, void
 			/*
 			 *	Now evaluate the function's arguments
 			 */
-			if (node->child) {
-				ret = xlat_eval_walk(node->child, walker, type, uctx);
+			if (node->call.args) {
+				ret = xlat_eval_walk(node->call.args, walker, type, uctx);
 				if (ret < 0) return ret;
 			}
 			break;
@@ -1707,8 +1706,8 @@ int xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_type_t type, void
 			/*
 			 *	Now evaluate the function's arguments
 			 */
-			if (node->child) {
-				ret = xlat_eval_walk(node->child, walker, type, uctx);
+			if (node->call.args) {
+				ret = xlat_eval_walk(node->call.args, walker, type, uctx);
 				if (ret < 0) return ret;
 			}
 			break;
@@ -1741,7 +1740,7 @@ int xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_type_t type, void
 			/*
 			 *	Evaluate the child.
 			 */
-			ret = xlat_eval_walk(node->child, walker, type, uctx);
+			ret = xlat_eval_walk(node->group, walker, type, uctx);
 			if (ret < 0) return ret;
 			break;
 

@@ -122,7 +122,7 @@ xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t *func, xlat_exp_t const 
 
 	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, func->name, strlen(func->name)));
 	node->call.func = func;
-	if (unlikely(xlat_copy(node, &node->child, args) < 0)) {
+	if (unlikely(xlat_copy(node, &node->call.args, args) < 0)) {
 		talloc_free(node);
 		return NULL;
 	}
@@ -291,7 +291,7 @@ int xlat_validate_function_mono(xlat_exp_t *node)
 {
 	fr_assert(node->type == XLAT_FUNC);
 
-	if (node->call.func->args && node->call.func->args->required && !node->child) {
+	if (node->call.func->args && node->call.func->args->required && !node->call.args) {
 		fr_strerror_const("Missing required input");
 		return -1;
 	}
@@ -387,7 +387,7 @@ static inline int xlat_tokenize_function_mono(TALLOC_CTX *ctx, xlat_exp_t **head
 	 *	Now parse the child nodes that form the
 	 *	function's arguments.
 	 */
-	if (xlat_tokenize_string(node, &node->child, &node->flags, in, true, &xlat_expansion_rules, rules) < 0) {
+	if (xlat_tokenize_string(node, &node->call.args, &node->flags, in, true, &xlat_expansion_rules, rules) < 0) {
 		goto error;
 	}
 
@@ -410,14 +410,14 @@ static inline int xlat_tokenize_function_mono(TALLOC_CTX *ctx, xlat_exp_t **head
 int xlat_validate_function_args(xlat_exp_t *node)
 {
 	xlat_arg_parser_t const *arg_p;
-	xlat_exp_t		*child = node->child;
+	xlat_exp_t		*arg = node->call.args;
 
 	fr_assert(node->type == XLAT_FUNC);
 
 	for (arg_p = node->call.func->args; arg_p->type != FR_TYPE_NULL; arg_p++) {
 		if (!arg_p->required) break;
 
-		if (!child) {
+		if (!arg) {
 			fr_strerror_printf("Missing required arg %u",
 					   (unsigned int)(arg_p - node->call.func->args) + 1);
 			return -1;
@@ -427,9 +427,9 @@ int xlat_validate_function_args(xlat_exp_t *node)
 		 *	All arguments MUST be put into a group, even
 		 *	if they're just one element.
 		 */
-		fr_assert(child->type == XLAT_GROUP);
+		fr_assert(arg->type == XLAT_GROUP);
 
-		child = child->next;
+		arg = arg->next;
 	}
 
 	return 0;
@@ -521,7 +521,7 @@ int xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **head,
 	 *	Now parse the child nodes that form the
 	 *	function's arguments.
 	 */
-	if (xlat_tokenize_argv(node, &node->child, &node->flags, in, &xlat_multi_arg_rules, rules) < 0) {
+	if (xlat_tokenize_argv(node, &node->call.args, &node->flags, in, &xlat_multi_arg_rules, rules) < 0) {
 		goto error;
 	}
 
@@ -1054,7 +1054,7 @@ static void _xlat_debug(xlat_exp_t const *node, int depth)
 		case XLAT_GROUP:
 			INFO_INDENT("child \"%s\"", node->fmt);
 			INFO_INDENT("{");
-			_xlat_debug(node->child, depth + 1);
+			_xlat_debug(node->group, depth + 1);
 			INFO_INDENT("}");
 			break;
 
@@ -1065,7 +1065,6 @@ static void _xlat_debug(xlat_exp_t const *node, int depth)
 		case XLAT_TMPL:
 			fr_assert(tmpl_da(node->vpt) != NULL);
 			INFO_INDENT("attribute (%s)", tmpl_da(node->vpt)->name);
-			fr_assert(node->child == NULL);
 			if (tmpl_num(node->vpt) != NUM_ANY) {
 				INFO_INDENT("{");
 				INFO_INDENT("ref  %d", tmpl_request(node->vpt));
@@ -1096,18 +1095,18 @@ static void _xlat_debug(xlat_exp_t const *node, int depth)
 		case XLAT_FUNC:
 			fr_assert(node->call.func != NULL);
 			INFO_INDENT("xlat (%s)", node->call.func->name);
-			if (node->child) {
+			if (node->call.args) {
 				INFO_INDENT("{");
-				_xlat_debug(node->child, depth + 1);
+				_xlat_debug(node->call.args, depth + 1);
 				INFO_INDENT("}");
 			}
 			break;
 
 		case XLAT_FUNC_UNRESOLVED:
 			INFO_INDENT("xlat-unresolved (%s)", node->fmt);
-			if (node->child) {
+			if (node->call.args) {
 				INFO_INDENT("{");
-				_xlat_debug(node->child, depth + 1);
+				_xlat_debug(node->call.args, depth + 1);
 				INFO_INDENT("}");
 			}
 			break;
@@ -1119,7 +1118,6 @@ static void _xlat_debug(xlat_exp_t const *node, int depth)
 #endif
 
 		case XLAT_ALTERNATE:
-			fr_assert(node->child == NULL);
 			DEBUG("XLAT-IF {");
 			_xlat_debug(node->alternate[0], depth + 1);
 			DEBUG("}");
@@ -1153,7 +1151,7 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape
 	switch (node->type) {
 	case XLAT_GROUP:
 		if (node->quote != T_BARE_WORD) FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->quote]);
-		xlat_print(out, node->child, fr_value_escape_by_quote[node->quote]);
+		xlat_print(out, node->group, fr_value_escape_by_quote[node->quote]);
 		if (node->quote != T_BARE_WORD) FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->quote]);
 		if (node->next) FR_SBUFF_IN_CHAR_RETURN(out, ' ');      /* Add ' ' between args */
 		goto done;
@@ -1243,8 +1241,8 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape
 		FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(out, node->call.func->name);
 		FR_SBUFF_IN_CHAR_RETURN(out, ':');
 
-		if (node->child) {
-			slen = xlat_print(out, node->child, &xlat_escape);
+		if (node->call.args) {
+			slen = xlat_print(out, node->call.args, &xlat_escape);
 			if (slen < 0) goto error;
 		}
 		break;
@@ -1253,8 +1251,8 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape
 		FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(out, node->fmt);
 		FR_SBUFF_IN_CHAR_RETURN(out, ':');
 
-		if (node->child) {
-			slen = xlat_print(out, node->child, &xlat_escape);
+		if (node->call.args) {
+			slen = xlat_print(out, node->call.args, &xlat_escape);
 			if (slen < 0) goto error;
 		}
 		break;
@@ -1443,7 +1441,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 		 *	Barewords --may-contain=%{expansions}
 		 */
 		case T_BARE_WORD:
-			if (xlat_tokenize_string(node, &node->child, &node->flags, &our_in,
+			if (xlat_tokenize_string(node, &node->group, &node->flags, &our_in,
 						  false, our_p_rules, t_rules) < 0) {
 			error:
 				if (our_p_rules != &value_parse_rules_bareword_quoted) {
@@ -1461,7 +1459,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 		 *	"Double quoted strings may contain %{expansions}"
 		 */
 		case T_DOUBLE_QUOTED_STRING:
-			if (xlat_tokenize_string(node, &node->child, &node->flags, &our_in,
+			if (xlat_tokenize_string(node, &node->group, &node->flags, &our_in,
 						  false, &value_parse_rules_double_quoted, t_rules) < 0) goto error;
 			xlat_flags_merge(flags, &node->flags);
 			break;
@@ -1473,16 +1471,16 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
 		{
 			char		*str;
 
-			node->child = xlat_exp_alloc_null(node);
-			xlat_exp_set_type(node->child, XLAT_BOX);
+			node->group = xlat_exp_alloc_null(node);
+			xlat_exp_set_type(node->group, XLAT_BOX);
 
-			slen = fr_sbuff_out_aunescape_until(node->child, &str, &our_in, SIZE_MAX,
+			slen = fr_sbuff_out_aunescape_until(node->group, &str, &our_in, SIZE_MAX,
 							    value_parse_rules_single_quoted.terminals,
 							    value_parse_rules_single_quoted.escapes);
 			if (slen < 0) goto error;
 
-			xlat_exp_set_name_buffer_shallow(node->child, str);
-			fr_value_box_strdup_shallow(&node->child->data, NULL, str, false);
+			xlat_exp_set_name_buffer_shallow(node->group, str);
+			fr_value_box_strdup_shallow(&node->group->data, NULL, str, false);
 			xlat_flags_merge(flags, &node->flags);
 		}
 			break;
@@ -1676,7 +1674,7 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const 
 
 		switch (node->type) {
 		case XLAT_GROUP:
-			if (xlat_resolve(&node->child, &node->flags, xr_rules) < 0) return -1;
+			if (xlat_resolve(&node->group, &node->flags, xr_rules) < 0) return -1;
 			break;
 
 		/*
@@ -1700,7 +1698,7 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const 
 		 *	A resolved function with unresolved args
 		 */
 		case XLAT_FUNC:
-			if (xlat_resolve(&node->child, &node->flags, xr_rules) < 0) return -1;
+			if (xlat_resolve(&node->call.args, &node->flags, xr_rules) < 0) return -1;
 			break;
 
 		/*
@@ -1716,7 +1714,7 @@ int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const 
 			 *	We can't tell if it's just the function
 			 *	that needs resolving or its children too.
 			 */
-			if (xlat_resolve(&node->child, &child_flags, xr_rules) < 0) return -1;
+			if (xlat_resolve(&node->call.args, &child_flags, xr_rules) < 0) return -1;
 
 			/*
 			 *	Try and find the function
@@ -1994,7 +1992,7 @@ int xlat_copy(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t const *in)
 			 */
 			node->call.func = p->call.func;
 			node->call.ephemeral = p->call.ephemeral;
-			if (unlikely(xlat_copy(node, &node->child, p->child) < 0)) goto error;
+			if (unlikely(xlat_copy(node, &node->call.args, p->call.args) < 0)) goto error;
 			break;
 
 		case XLAT_TMPL:
@@ -2013,7 +2011,7 @@ int xlat_copy(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t const *in)
 			break;
 
 		case XLAT_GROUP:
-			if (unlikely(xlat_copy(node, &node->child, p->child) < 0)) goto error;
+			if (unlikely(xlat_copy(node, &node->group, p->group) < 0)) goto error;
 			break;
 		}
 

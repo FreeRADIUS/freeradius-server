@@ -746,7 +746,7 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 		 *	for the new node can operate
 		 *	correctly.
 		 */
-		MEM(node = xlat_exp_func_alloc(xri->ex, xrf->func, xctx->ex->child));
+		MEM(node = xlat_exp_func_alloc(xri->ex, xrf->func, xctx->ex->call.args));
 
 		switch (xrf->func->input_type) {
 		case XLAT_INPUT_UNPROCESSED:
@@ -790,7 +790,7 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 	 *	a copy of the original arguments with each
 	 *	function that's called.
 	 */
-	xlat_exp_free(&xctx->ex->child);
+	xlat_exp_free(&xctx->ex->call.args);
 
 	return 0;
 }

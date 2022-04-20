@@ -98,6 +98,8 @@ typedef struct {
 							///< nodes by the time they were created.
 
 	xlat_t const		*func;			//!< The xlat expansion to expand format with.
+	xlat_exp_t		*args;			//!< arguments to the function call
+
 	xlat_inst_t		*inst;			//!< Instance data for the #xlat_t.
 	xlat_thread_inst_t	*thread_inst;		//!< Thread specific instance.
 							///< ONLY USED FOR EPHEMERAL XLATS.
@@ -121,10 +123,10 @@ struct xlat_exp {
 	xlat_type_t	type;		//!< type of this expansion.
 	xlat_exp_t	*next;		//!< Next in the list.
 
-	xlat_exp_t	*child;		//!< Nested expansion, i.e. arguments for an xlat function.
-
 	union {
 		xlat_exp_t	*alternate[2];	//!< alternate expansions
+
+		xlat_exp_t	*group;		//!< children of a group
 
 		/** An tmpl_t reference
 		 *
