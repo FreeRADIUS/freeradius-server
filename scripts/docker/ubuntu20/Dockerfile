@@ -44,6 +44,8 @@ RUN make -j2 deb
 FROM ${from}
 COPY --from=build /usr/local/src/repositories/*.deb /tmp/
 
+ARG DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update \
     && apt-get install -y /tmp/*.deb \
     && apt-get clean \

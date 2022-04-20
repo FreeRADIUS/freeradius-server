@@ -10,10 +10,10 @@
 #    make DOCKER_VERSION=3.2.0 DOCKER_BUILD_ARGS="--no-cache" docker-publish
 #
 #  Build and push "freeradius-dev" image to Dockerhub (e.g. CI on every commit):
-#    make DOCKER_VERSION=latest DOCKER_COMMIT=v3.2.x DOCKER_TAG="freeradius-dev" DOCKER_BUILD_ARGS="--no-cache" docker-push
+#    make DOCKER_VERSION=latest DOCKER_COMMIT=v3.2.x DOCKER_TAG="freeradius-dev-3.2.x" DOCKER_BUILD_ARGS="--no-cache" docker-push
 #
 #  Push to local repository:
-#    make DOCKER_VERSION=3.0.20 DOCKER_TAG="our-freeradius-build" DOCKER_REGISTRY="docker.somewhere.example" docker-publish
+#    make DOCKER_VERSION=3.2.0 DOCKER_TAG="our-freeradius-build" DOCKER_REGISTRY="docker.somewhere.example" docker-publish
 #
 #  See what is going to happen:
 #    make Q=": " ...
@@ -32,7 +32,7 @@ DOCKER_COMMIT := release_$(shell echo $(DOCKER_VERSION) | tr .- __)
 DOCKER_BUILD_ARGS :=
 #
 #  Tag name, likely "freeradius-server" for releases, or "freeradius-dev" for nightlies.
-DOCKER_TAG := freeradius-server
+DOCKER_TAG := freeradius-server-3.2
 #
 #  Repository name
 DOCKER_REPO := freeradius
@@ -50,11 +50,18 @@ ifneq "$(DOCKER_REGISTRY)" ""
 endif
 
 
-.PHONY: docker
-docker:
-	@echo Building $(DOCKER_COMMIT)
-	$(Q)docker build $(DOCKER_BUILD_ARGS) scripts/docker/ubuntu18 --build-arg=release=$(DOCKER_COMMIT) -t $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)
+.PHONY: docker-ubuntu
+docker-ubuntu:
+	@echo Building ubuntu $(DOCKER_COMMIT)
+	$(Q)docker build $(DOCKER_BUILD_ARGS) scripts/docker/ubuntu20 --build-arg=release=$(DOCKER_COMMIT) -t $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)
+
+.PHONY: docker-alpine
+docker-alpine:
+	@echo Building alpine $(DOCKER_COMMIT)
 	$(Q)docker build $(DOCKER_BUILD_ARGS) scripts/docker/alpine --build-arg=release=$(DOCKER_COMMIT) -t $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)-alpine
+
+.PHONY: docker
+docker: docker-ubuntu docker-alpine
 
 .PHONY: docker-push
 docker-push: docker
