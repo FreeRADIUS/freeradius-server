@@ -290,7 +290,7 @@ int xlat_validate_function_mono(xlat_exp_t *node)
 {
 	fr_assert(node->type == XLAT_FUNC);
 
-	if (node->call.func->args && node->call.func->args->required && !node->call.args) {
+	if (node->call.func->args && node->call.func->args->required && !xlat_exp_head(node->call.args)) {
 		fr_strerror_const("Missing required input");
 		return -1;
 	}
@@ -409,7 +409,7 @@ static inline int xlat_tokenize_function_mono(TALLOC_CTX *ctx, xlat_exp_t **head
 int xlat_validate_function_args(xlat_exp_t *node)
 {
 	xlat_arg_parser_t const *arg_p;
-	xlat_exp_t		*arg = node->call.args;
+	xlat_exp_t		*arg = xlat_exp_head(node->call.args);
 
 	fr_assert(node->type == XLAT_FUNC);
 
@@ -1094,7 +1094,7 @@ static void _xlat_debug(xlat_exp_t const *head, int depth)
 		case XLAT_FUNC:
 			fr_assert(node->call.func != NULL);
 			INFO_INDENT("xlat (%s)", node->call.func->name);
-			if (node->call.args) {
+			if (xlat_exp_head(node->call.args)) {
 				INFO_INDENT("{");
 				_xlat_debug(node->call.args, depth + 1);
 				INFO_INDENT("}");
@@ -1103,7 +1103,7 @@ static void _xlat_debug(xlat_exp_t const *head, int depth)
 
 		case XLAT_FUNC_UNRESOLVED:
 			INFO_INDENT("xlat-unresolved (%s)", node->fmt);
-			if (node->call.args) {
+			if (xlat_exp_head(node->call.args)) {
 				INFO_INDENT("{");
 				_xlat_debug(node->call.args, depth + 1);
 				INFO_INDENT("}");
@@ -1241,7 +1241,7 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape
 		FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(out, node->call.func->name);
 		FR_SBUFF_IN_CHAR_RETURN(out, ':');
 
-		if (node->call.args) {
+		if (xlat_exp_head(node->call.args)) {
 			slen = xlat_print(out, node->call.args, &xlat_escape);
 			if (slen < 0) goto error;
 		}
@@ -1251,7 +1251,7 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape
 		FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(out, node->fmt);
 		FR_SBUFF_IN_CHAR_RETURN(out, ':');
 
-		if (node->call.args) {
+		if (xlat_exp_head(node->call.args)) {
 			slen = xlat_print(out, node->call.args, &xlat_escape);
 			if (slen < 0) goto error;
 		}

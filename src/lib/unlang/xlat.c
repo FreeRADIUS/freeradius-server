@@ -39,13 +39,14 @@ RCSID("$Id$")
 typedef struct {
 	TALLOC_CTX		*ctx;				//!< to allocate boxes and values in.
 	TALLOC_CTX		*event_ctx;			//!< for temporary events
-	xlat_exp_t const	*exp;
+	xlat_exp_t const	*head;		       		//!< of the xlat list
+	xlat_exp_t const	*exp;				//!< current one we're evaluating
 	fr_dcursor_t		values;				//!< Values aggregated so far.
 
 	/*
 	 *	For func and alternate
 	 */
-	fr_value_box_list_t	rhead;				//!< Head of the result of a nested
+	fr_value_box_list_t	out;				//!< Head of the result of a nested
 								///< expansion.
 	bool			alternate;			//!< record which alternate branch we
 								///< previously took.
@@ -153,6 +154,7 @@ int unlang_xlat_timeout_add(request_t *request,
 	ev->request = request;
 	ev->fd = -1;
 	ev->timeout = callback;
+	fr_assert(state->exp->type == XLAT_FUNC);
 	ev->inst = state->exp->call.inst;
 	ev->thread = xlat_thread_instance_find(state->exp);
 	ev->rctx = rctx;
@@ -224,7 +226,8 @@ int unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
 	 *	Allocate its state, and setup a cursor for the xlat nodes
 	 */
 	MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_xlat_t));
-	state->exp = talloc_get_type_abort_const(exp, xlat_exp_t);	/* Ensure the node is valid */
+	state->head = talloc_get_type_abort_const(exp, xlat_exp_t);	/* Ensure the node is valid */
+	state->exp = state->head;
 	state->success = p_success;
 	state->ctx = ctx;
 
@@ -232,7 +235,7 @@ int unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
 	 *	Initialise the input and output lists
 	 */
 	fr_dcursor_init(&state->values, out);
-	fr_value_box_list_init(&state->rhead);
+	fr_value_box_list_init(&state->out);
 
 	return 0;
 }
@@ -244,7 +247,7 @@ static unlang_action_t unlang_xlat_repeat(rlm_rcode_t *p_result, request_t *requ
 	xlat_exp_t const		*child = NULL;
 
 	xa = xlat_frame_eval_repeat(state->ctx, &state->values, &child,
-				    &state->alternate, request, &state->exp, &state->rhead);
+				    &state->alternate, request, state->head, &state->exp, &state->out);
 	switch (xa) {
 	case XLAT_ACTION_PUSH_CHILD:
 		fr_assert(child);
@@ -256,8 +259,8 @@ static unlang_action_t unlang_xlat_repeat(rlm_rcode_t *p_result, request_t *requ
 		 *	at this level.  A frame may be used to evaluate
 		 *	multiple sibling nodes.
 		 */
-		fr_dlist_talloc_free(&state->rhead);
-		if (unlang_xlat_push(state->ctx, state->success, &state->rhead, request, child, false) < 0) {
+		fr_dlist_talloc_free(&state->out);
+		if (unlang_xlat_push(state->ctx, state->success, &state->out, request, child, false) < 0) {
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
@@ -303,7 +306,7 @@ static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request, un
 	xlat_action_t			xa;
 	xlat_exp_t const		*child = NULL;
 
-	xa = xlat_frame_eval(state->ctx, &state->values, &child, request, &state->exp);
+	xa = xlat_frame_eval(state->ctx, &state->values, &child, request, state->head, &state->exp);
 	switch (xa) {
 	case XLAT_ACTION_PUSH_CHILD:
 		fr_assert(child);
@@ -315,8 +318,8 @@ static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request, un
 		 *	at this level.  A frame may be used to evaluate
 		 *	multiple sibling nodes.
 		 */
-		fr_dlist_talloc_free(&state->rhead);
-		if (unlang_xlat_push(state->ctx, state->success, &state->rhead, request, child, false) < 0) {
+		fr_dlist_talloc_free(&state->out);
+		if (unlang_xlat_push(state->ctx, state->success, &state->out, request, child, false) < 0) {
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
@@ -404,7 +407,7 @@ static unlang_action_t unlang_xlat_resume(rlm_rcode_t *p_result, request_t *requ
 
 	xa = xlat_frame_eval_resume(state->ctx, &state->values,
 				    state->resume, state->exp,
-				    request, &state->rhead, state->rctx);
+				    request, &state->out, state->rctx);
 	switch (xa) {
 	case XLAT_ACTION_YIELD:
 		repeatable_set(frame);

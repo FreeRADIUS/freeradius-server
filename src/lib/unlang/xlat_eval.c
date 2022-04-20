@@ -136,7 +136,7 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 		/*
 		 *	No arguments, just print an empty function.
 		 */
-		if (!node->call.args) return talloc_asprintf(ctx, "%%%c%s:%c", open, node->call.func->name, close);
+		if (!xlat_exp_head(node->call.args)) return talloc_asprintf(ctx, "%%%c%s:%c", open, node->call.func->name, close);
 
 		out = talloc_asprintf(ctx, "%%%c%s:", open, node->call.func->name);
 		pool = talloc_pool(NULL, 128);	/* Size of a single child (probably ok...) */
@@ -213,7 +213,7 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 	 *	we print the concatenated arguments list as
 	 *	well as the original fmt string.
 	 */
-	if ((node->type == XLAT_FUNC) && !xlat_is_literal(node->call.args)) {
+	if ((node->type == XLAT_FUNC) && !xlat_is_literal(xlat_exp_head(node->call.args))) {
 		RDEBUG2("      (%%%c%s:%pM%c)",
 			(node->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
 			node->call.func->name, args,
@@ -947,7 +947,6 @@ void xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
  * @param[in] ctx		to allocate value boxes in.
  * @param[out] out		a list of #fr_value_box_t to append to.
  * @param[in] resume		function to call.
- * @param[in] exp		Xlat node currently being processed.
  * @param[in] request		the current request.
  * @param[in] result		Previously expanded arguments to this xlat function.
  * @param[in] rctx		Opaque (to us), resume ctx provided by xlat function
@@ -1006,13 +1005,14 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
  * @param[in,out] alternate	Whether we processed, or have previously processed
  *				the alternate.
  * @param[in] request		the current request.
+ * @param[in] head		of the list to evaluate
  * @param[in,out] in		xlat node to evaluate.  Advanced as we process
  *				additional #xlat_exp_t.
  * @param[in] result		of a previous nested evaluation.
  */
 xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     xlat_exp_t const **child, bool *alternate,
-				     request_t *request, xlat_exp_t const **in,
+				     request_t *request, xlat_exp_t const *head, xlat_exp_t const **in,
 				     fr_value_box_list_t *result)
 {
 	xlat_exp_t const	*node = *in;
@@ -1158,8 +1158,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	It's easier if we get xlat_frame_eval to continue evaluating the frame.
 	 */
-	*in = (*in)->next;	/* advance */
-	return xlat_frame_eval(ctx, out, child, request, in);
+	*in = xlat_exp_next(head, *in);	/* advance */
+	return xlat_frame_eval(ctx, out, child, request, head, in);
 }
 
 /** Converts xlat nodes to value boxes
@@ -1175,6 +1175,7 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *				should call us with the same #xlat_exp_t and the
  *				result of the nested evaluation in result.
  * @param[in] request		the current request.
+ * @param[in] head		of the list to evaluate
  * @param[in,out] in		xlat node to evaluate.  Advanced as we process
  *				additional #xlat_exp_t.
  * @return
@@ -1189,10 +1190,10 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *	- XLAT_ACTION_FAIL an xlat module failed.
  */
 xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t const **child,
-			      request_t *request, xlat_exp_t const **in)
+			      request_t *request, xlat_exp_t const *head, xlat_exp_t const **in)
 {
-	xlat_exp_t const	*node = *in;
 	xlat_action_t		xa = XLAT_ACTION_DONE;
+	xlat_exp_t const       	*node;
 	fr_value_box_list_t	result;		/* tmp list so debug works correctly */
 
 	fr_value_box_list_init(&result);
@@ -1201,11 +1202,11 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 
 	*child = NULL;
 
-	if (!node) return XLAT_ACTION_DONE;
+	if (!*in) return XLAT_ACTION_DONE;
 
 	XLAT_DEBUG("** [%i] %s >> entered", unlang_interpret_stack_depth(request), __FUNCTION__);
 
-	for (node = *in; node; node = (*in)->next) {
+	for (node = *in; node; node = xlat_exp_next(head, node)) {
 	     	*in = node;		/* Update node in our caller */
 		fr_dcursor_tail(out);	/* Needed for debugging */
 		VALUE_BOX_TALLOC_LIST_VERIFY(out->dlist);
@@ -1223,7 +1224,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 			 *	If they're found anywhere else the xlat
 			 *	parser has an error.
 			 */
-			fr_assert(((node == *in) && !node->next) || (talloc_array_length(node->fmt) > 1));
+			fr_assert(((node == *in) && !xlat_exp_next(head, node)) || (talloc_array_length(node->fmt) > 1));
 
 			/*
 			 *	We unfortunately need to dup the buffer
@@ -1294,8 +1295,8 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 			 *	Hand back the child node to the caller
 			 *	for evaluation.
 			 */
-			if (node->call.args) {
-				*child = node->call.args;
+			if (xlat_exp_head(node->call.args)) {
+				*child = xlat_exp_head(node->call.args);
 				xa = XLAT_ACTION_PUSH_CHILD;
 				goto finish;
 			}
@@ -1304,7 +1305,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 			 *	If there's no children we can just
 			 *	call the function directly.
 			 */
-			xa = xlat_frame_eval_repeat(ctx, out, child, NULL, request, in, &result);
+			xa = xlat_frame_eval_repeat(ctx, out, child, NULL, request, head, in, &result);
 			if (xa != XLAT_ACTION_DONE || (!*in)) goto finish;
 			continue;
 
@@ -1701,7 +1702,7 @@ int xlat_eval_walk(xlat_exp_t *head, xlat_walker_t walker, xlat_type_t type, voi
 			/*
 			 *	Now evaluate the function's arguments
 			 */
-			if (node->call.args) {
+			if (xlat_exp_head(node->call.args)) {
 				ret = xlat_eval_walk(node->call.args, walker, type, uctx);
 				if (ret < 0) return ret;
 			}
@@ -1716,7 +1717,7 @@ int xlat_eval_walk(xlat_exp_t *head, xlat_walker_t walker, xlat_type_t type, voi
 			/*
 			 *	Now evaluate the function's arguments
 			 */
-			if (node->call.args) {
+			if (xlat_exp_head(node->call.args)) {
 				ret = xlat_eval_walk(node->call.args, walker, type, uctx);
 				if (ret < 0) return ret;
 			}

@@ -91,7 +91,7 @@ static fr_slen_t xlat_expr_print_unary(fr_sbuff_t *out, xlat_exp_t const *node, 
 	size_t	at_in = fr_sbuff_used_total(out);
 
 	FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
-	xlat_print_node(out, node->call.args, e_rules);
+	xlat_print_node(out, xlat_exp_head(node->call.args), e_rules);
 
 	return fr_sbuff_used_total(out) - at_in;
 }
@@ -101,7 +101,7 @@ static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node,
 	size_t	at_in = fr_sbuff_used_total(out);
 
 	FR_SBUFF_IN_CHAR_RETURN(out, '(');
-	xlat_print_node(out, node->call.args, e_rules); /* prints a space after the first argument */
+	xlat_print_node(out, xlat_exp_head(node->call.args), e_rules); /* prints a space after the first argument */
 
 	/*
 	 *	@todo - when things like "+" support more than 2 arguments, print them all out
@@ -109,7 +109,7 @@ static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node,
 	 */
 	FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
 	FR_SBUFF_IN_CHAR_RETURN(out, ' ');
-	xlat_print_node(out, node->call.args->next, e_rules);
+	xlat_print_node(out, xlat_exp_next(node->call.args, xlat_exp_head(node->call.args)), e_rules);
 
 	FR_SBUFF_IN_CHAR_RETURN(out, ')');
 
@@ -123,7 +123,6 @@ static int CC_HINT(nonnull) xlat_purify_expr(xlat_exp_t *node)
 {
 	int rcode = -1;
 	xlat_t const *func;
-	xlat_exp_t *arg;
 	fr_value_box_t *dst = NULL, *box;
 	xlat_arg_parser_t const *arg_p;
 	xlat_action_t xa;
@@ -155,11 +154,12 @@ static int CC_HINT(nonnull) xlat_purify_expr(xlat_exp_t *node)
 	/*
 	 *	A child isn't a value-box.  We leave it alone.
 	 */
-	for (arg = node->call.args; arg != NULL; arg = arg->next) {
+	xlat_exp_foreach(node->call.args, arg) {
 		fr_assert(arg->type == XLAT_GROUP);
 
 		if (!xlat_is_box(arg->group)) return 0;
-		if (arg->group->next) return 0;
+
+		if (xlat_exp_next(arg->group, xlat_exp_head(arg->group))) return 0;
 	}
 
 	fr_value_box_list_init(&input);
@@ -170,9 +170,8 @@ static int CC_HINT(nonnull) xlat_purify_expr(xlat_exp_t *node)
 	 *	have to cast the box to the correct data type (or copy
 	 *	it), and then add the box to the source list.
 	 */
-	for (arg = node->call.args, arg_p = func->args;
-	     arg != NULL;
-	     arg = arg->next, arg_p++) {
+	arg_p = func->args;
+	xlat_exp_foreach(node->call.args, arg) {
 		MEM(box = fr_value_box_alloc_null(node));
 
 		if ((arg_p->type != FR_TYPE_VOID) && (arg_p->type != box->type)) {
@@ -188,6 +187,7 @@ static int CC_HINT(nonnull) xlat_purify_expr(xlat_exp_t *node)
 		 *	cast / copy over-writes the list fields.
 		 */
 		fr_dlist_insert_tail(&input, box);
+		arg_p++;
 	}
 
 	/*
@@ -203,10 +203,7 @@ static int CC_HINT(nonnull) xlat_purify_expr(xlat_exp_t *node)
 		goto cleanup;
 	}
 
-	while ((arg = node->call.args) != NULL) {
-		node->call.args = arg->next;
-		talloc_free(arg);
-	}
+	xlat_exp_free(&node->call.args);
 
 	dst = fr_dcursor_head(&cursor);
 	fr_assert(dst != NULL);
@@ -412,25 +409,24 @@ static fr_slen_t xlat_expr_print_logical(fr_sbuff_t *out, xlat_exp_t const *node
 {
 	size_t	at_in = fr_sbuff_used_total(out);
 	xlat_logical_inst_t *inst = instance;
-	xlat_exp_t *current = inst->args;
+	xlat_exp_t *head = inst->args;
 
 	/*
 	 *	We might get called before the node is instantiated.
 	 */
-	if (!inst->args) current = node->call.args;
+	if (!head) head = node->call.args;
 
-	fr_assert(current != NULL);
+	fr_assert(head != NULL);
 
 	FR_SBUFF_IN_CHAR_RETURN(out, '(');
 
-	while (current) {
-		xlat_print_node(out, current, e_rules);
+	xlat_exp_foreach(head, child) {
+		xlat_print_node(out, child, e_rules);
 
-		if (!current->next) break;
+		if (!xlat_exp_next(head, child)) break;
 
 		FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
 		FR_SBUFF_IN_CHAR_RETURN(out, ' ');
-		current = current->next;
 	}
 
 	FR_SBUFF_IN_CHAR_RETURN(out, ')');
@@ -773,27 +769,6 @@ static const int precedence[T_TOKEN_LAST] = {
 	do { \
 		while (isspace((int) *fr_sbuff_current(_x))) fr_sbuff_advance(_x, 1); \
 	} while (0)
-
-#if 0
-static xlat_exp_t *xlat_exp_func_alloc_args(TALLOC_CTX *ctx, char const *name, size_t namelen, int argc)
-{
-	int i;
-	xlat_exp_t *node, *arg, **last;
-
-	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, name, namelen));
-
-	last = &node->call.args;
-	for (i = 0; i < argc; i++) {
-		MEM(arg = xlat_exp_alloc_null(node));
-		xlat_exp_set_type(arg, XLAT_GROUP);
-		arg->quote = T_BARE_WORD;
-		*last = arg;
-		last = &arg->next;
-	}
-
-	return node;
-}
-#endif
 
 static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
