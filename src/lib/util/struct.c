@@ -461,7 +461,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			     fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_tlv)
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
-	fr_dbuff_t		hdr_dbuff = FR_DBUFF(dbuff);
+	fr_dbuff_marker_t	hdr;
 	int			offset = 0;
 	unsigned int		child_num = 1;
 	bool			do_length = false;
@@ -529,6 +529,8 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	 *	Some structs are prefixed by a 16-bit length.
 	 */
 	if (da_is_length_field(parent)) {
+		fr_dbuff_marker(&hdr, &work_dbuff);
+
 		if (parent->flags.subtype == FLAG_LENGTH_UINT8) {
 			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 1);
 		} else {
@@ -801,15 +803,17 @@ done:
 
 		len = fr_dbuff_used(&work_dbuff) - need;
 		if (len > max) {
+			fr_dbuff_marker_release(&hdr);
 			fr_strerror_const("Structure size is too large for 16-bit length field.");
 			return -1;
 		}
 
 		if (need == 1) {
-			fr_dbuff_in(&hdr_dbuff, (uint8_t)len);
+			fr_dbuff_in(&hdr, (uint8_t)len);
 		} else {
-			fr_dbuff_in(&hdr_dbuff, (uint16_t)len);
+			fr_dbuff_in(&hdr, (uint16_t)len);
 		}
+		fr_dbuff_marker_release(&hdr);
 	}
 
 	/*
