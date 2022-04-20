@@ -460,7 +460,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			     fr_dcursor_t *parent_cursor, void *encode_ctx,
 			     fr_encode_dbuff_t encode_value, fr_encode_dbuff_t encode_tlv)
 {
-	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
+	fr_dbuff_t		work_dbuff;
 	fr_dbuff_marker_t	hdr;
 	int			offset = 0;
 	unsigned int		child_num = 1;
@@ -528,12 +528,18 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	/*
 	 *	Some structs are prefixed by a 16-bit length.
 	 */
-	if (da_is_length_field(parent)) {
-		fr_dbuff_marker(&hdr, &work_dbuff);
-
+	if (!da_is_length_field(parent)) {
+		work_dbuff = FR_DBUFF(dbuff);
+	} else {
 		if (parent->flags.subtype == FLAG_LENGTH_UINT8) {
+			work_dbuff = FR_DBUFF_MAX(dbuff, 256);
+			fr_dbuff_marker(&hdr, &work_dbuff);
+
 			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 1);
 		} else {
+			work_dbuff = FR_DBUFF_MAX(dbuff, 65536);
+			fr_dbuff_marker(&hdr, &work_dbuff);
+
 			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 2);
 		}
 		do_length = true;
@@ -788,29 +794,10 @@ done:
 	}
 
 	if (do_length) {
-		size_t need, max, len;
-
-		/*
-		 *	@todo - maybe just limit the size of the work_dbuff.
-		 */
 		if (parent->flags.subtype == FLAG_LENGTH_UINT8) {
-			need = 1;
-			max = 256;
+			fr_dbuff_in(&hdr, (uint8_t) (fr_dbuff_used(&work_dbuff) - 1));
 		} else {
-			need = 2;
-			max = 65536;
-		}
-
-		len = fr_dbuff_used(&work_dbuff) - need;
-		if (len > max) {
-			fr_strerror_const("Structure size is too large for 16-bit length field.");
-			return -1;
-		}
-
-		if (need == 1) {
-			fr_dbuff_in(&hdr, (uint8_t)len);
-		} else {
-			fr_dbuff_in(&hdr, (uint16_t)len);
+			fr_dbuff_in(&hdr, (uint16_t) (fr_dbuff_used(&work_dbuff) - 2));
 		}
 	}
 
