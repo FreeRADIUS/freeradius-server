@@ -1,4 +1,4 @@
-FreeRADIUS 3.2.0 Thu 07 Oct 2021 12:00:00 EDT urgency=low
+FreeRADIUS 3.2.0 Thu 21 Apr 2021 12:00:00 EDT urgency=low
 	Configuration changes
 	* "correct_escapes" has been removed, and is always set to "true"
 	  internally. Configuration changes may be required if you are
@@ -7,6 +7,7 @@ FreeRADIUS 3.2.0 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	  from 3.0.x can be simply copied into a system running 3.2.x.
 
 	Feature improvements
+	* All features from 3.0.x are included in the 3.2.x releases. In addition:
 	* Add 'reset_day' and '%%r' parameter for rlm_sqlcounter to specify which
 	  day of the month the counter should be reset.
 	* Partial backport of rlm_json from v4, providing the json_encode xlat.
@@ -15,7 +16,7 @@ FreeRADIUS 3.2.0 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	  See sites-available/tls, "proxy_protocol" and doc/antora/modules/howto/pages/protocols/proxy/
 	* Support for sending CoA-Request and Disconnect-Request packets
 	  in "reverse" down RadSec tunnels.  Experimental for now, and
-	  undocumented.  This will change before 3.2.0 is released.
+	  undocumented.
 	* It is now possible to run a virtual server when saving / loading
 	  TLS cache attributes.  See sites-available/tls-cache for
 	  more information.
@@ -24,7 +25,7 @@ FreeRADIUS 3.2.0 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	* Remove the "otp" module.  The "otpd" program it needs is no longer available,
 	  and the module has not been usable since at least 2015.
 	* All features from 3.0.x are included in the 3.2.x releases.
-	* 3.2.0 requires OpenSSL 1.1.0 or greater.
+	* 3.2.0 requires OpenSSL 1.0.2 or greater.
 
 	Bug fixes
 	* All bug fixes from 3.0.x are included in the 3.2.x releases.
