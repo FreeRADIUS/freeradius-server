@@ -374,6 +374,8 @@ size_t	_fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
 
 int	fr_dbuff_trim_talloc(fr_dbuff_t *dbuff, size_t len);
 
+int	fr_dbuff_reset_talloc(fr_dbuff_t *dbuff);
+
 /** Talloc extension structure use by #fr_dbuff_init_talloc
  * @private
  *
@@ -521,6 +523,39 @@ static inline fr_dbuff_t *fr_dbuff_init_fd(fr_dbuff_t *dbuff, fr_dbuff_uctx_fd_t
 				char *		: false, \
 				char const *	: true \
 	       		) \
+}
+
+/** Structure to encapsulate a thread local dbuff information
+ *
+ */
+typedef struct {
+	fr_dbuff_t			dbuff;		//!< Thread local dbuff.
+	fr_dbuff_uctx_talloc_t		tctx;		//!< Thread local tctx.
+} fr_dbuff_thread_local_t;
+
+static inline int _dbuff_thread_local_free(void *dbtl)
+{
+	return talloc_free(dbtl);
+}
+
+/** Create a function local and thread local extensible dbuff
+ *
+ * @param[out] _dbuff_out	Where to write a pointer to the thread local dbuff
+ * @param[in] _init		Initial size for the dbuff buffer.
+ * @param[in] _max		Maximum size of the dbuff buffer.
+ */
+#define FR_DBUFF_TALLOC_THREAD_LOCAL(_out, _init, _max) \
+{ \
+	static _Thread_local fr_dbuff_thread_local_t *_dbuff_t_local; \
+	if (!_dbuff_t_local) { \
+		fr_dbuff_thread_local_t *dbtl = talloc_zero(NULL, fr_dbuff_thread_local_t); \
+		fr_dbuff_init_talloc(dbtl, &dbtl->dbuff, &dbtl->tctx, _init, _max); \
+		fr_atexit_thread_local(_dbuff_t_local, _dbuff_thread_local_free, dbtl); \
+		*(_out) = &_dbuff_t_local->dbuff; \
+	} else { \
+		fr_dbuff_reset_talloc(&_dbuff_t_local->dbuff); \
+		*(_out) = &_dbuff_t_local->dbuff; \
+	} \
 }
 /** @} */
 

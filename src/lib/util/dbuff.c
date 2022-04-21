@@ -321,3 +321,34 @@ int fr_dbuff_trim_talloc(fr_dbuff_t *dbuff, size_t len)
 
 	return 0;
 }
+
+/** Reset a talloced buffer to its initial length, clearing any data stored
+ *
+ * @param[in] dbuff to reset.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure - markers present pointing past the end of string data.
+ */
+int fr_dbuff_reset_talloc(fr_dbuff_t *dbuff)
+{
+	fr_dbuff_uctx_talloc_t	*tctx = dbuff->uctx;
+
+	CHECK_DBUFF_INIT(dbuff);
+
+	fr_dbuff_set_to_start(dbuff);	/* Clear data */
+
+	if (fr_dbuff_used(dbuff) != tctx->init) {
+		uint8_t *new_buff;
+
+		new_buff = talloc_realloc(tctx->ctx, dbuff->buff, uint8_t, tctx->init);
+		if (!new_buff) {
+			fr_strerror_printf("Failed reallocing from %zu to %zu",
+					   talloc_array_length(dbuff->buff), tctx->init);
+			return -1;
+		}
+		dbuff->buff = new_buff;
+		fr_dbuff_update(dbuff, new_buff, tctx->init);
+	}
+
+	return 0;
+}
