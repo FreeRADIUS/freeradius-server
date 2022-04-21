@@ -534,7 +534,7 @@ struct tmpl_s {
 		struct {
 			union {
 				_CONST struct {
-					xlat_exp_t		*ex;	 	//!< pre-parsed xlat_exp_t
+					xlat_exp_head_t		*ex;	 	//!< pre-parsed xlat expansion
 					xlat_flags_t		flags;		//!< Flags controlling evaluation
 										///< and expansion.
 				} xlat;

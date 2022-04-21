@@ -1218,7 +1218,7 @@ int map_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *request, map_t co
 		/*
 		 *	We do the debug printing because xlat_aeval_compiled
 		 *	doesn't have access to the original string.  It's been
-		 *	mangled during the parsing to xlat_exp_t
+		 *	mangled during the parsing to an internal data structure
 		 */
 		RDEBUG2("EXPAND %s", map->rhs->name);
 		RINDENT();

@@ -1478,7 +1478,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 		 */
 		if (is_xlat) {
 			ssize_t		slen;
-			xlat_exp_t	*xlat;
+			xlat_exp_head_t	*xlat;
 
 		redo:
 			xlat = NULL;

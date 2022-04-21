@@ -155,9 +155,9 @@ static inline CC_HINT(always_inline) void xlat_exp_set_name_buffer(xlat_exp_t *n
  *
  * @param[in,out] head	to free.  Will be set to NULL
  */
-void xlat_exp_free(xlat_exp_t **head)
+void xlat_exp_free(xlat_exp_head_t **head)
 {
-	xlat_exp_t *to_free = *head, *next;
+	xlat_exp_t *to_free = xlat_exp_head(*head), *next;
 
 	while (to_free) {
 		next = to_free->next;
@@ -1038,7 +1038,7 @@ static fr_table_num_sorted_t const xlat_quote_table[] = {
 };
 static size_t xlat_quote_table_len = NUM_ELEMENTS(xlat_quote_table);
 
-static void _xlat_debug(xlat_exp_t const *head, int depth)
+static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 {
 #define INFO_INDENT(_fmt, ...)  INFO("%*s"_fmt, depth * 2, " ", ## __VA_ARGS__)
 
@@ -1132,19 +1132,17 @@ static void _xlat_debug(xlat_exp_t const *head, int depth)
 	}
 }
 
-void xlat_debug(xlat_exp_t const *node)
+void xlat_debug(xlat_exp_head_t const *head)
 {
-	_xlat_debug(node, 0);
+	_xlat_debug(head, 0);
 }
 
-ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rules_t const *e_rules)
+ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t const *node, fr_sbuff_escape_rules_t const *e_rules)
 {
 	ssize_t			slen;
 	size_t			at_in = fr_sbuff_used_total(out);
-	xlat_exp_t const	*node;
 	char			close;
 
-	node = xlat_exp_head(head);
 	if (!node) return 0;
 
 	switch (node->type) {
@@ -1294,7 +1292,7 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rule
 	size_t			at_in = fr_sbuff_used_total(out);
 
 	xlat_exp_foreach(head, node) {
-		slen = xlat_print_node(out, node, e_rules);
+		slen = xlat_print_node(out, head, node, e_rules);
 		if (slen < 0) return slen - (fr_sbuff_used_total(out) - at_in);
 	}
 
@@ -1320,7 +1318,7 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rule
  *	- 0 and *head != NULL - Zero length expansion
  *	- <0 the negative offset of the parse failure.
  */
-ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head,
+ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **head,
 				fr_event_list_t *el,
 				xlat_flags_t *flags, fr_sbuff_t *in,
 			        fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
@@ -1378,7 +1376,7 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_t **head,
  *	- <=0 on error.
  *	- >0  on success which is the number of characters parsed.
  */
-ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 			   fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules)
 {
 	fr_sbuff_t			our_in = FR_SBUFF(in);
@@ -1548,7 +1546,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *fla
  *	- 0 and *head != NULL - Zero length expansion
  *	- < 0 the negative offset of the parse failure.
  */
-ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 		      fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules)
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
@@ -1589,7 +1587,7 @@ ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, f
  *	- true if expansion contains only literal elements.
  *	- false if expansion contains expandable elements.
  */
-bool xlat_is_literal(xlat_exp_t const *head)
+bool xlat_is_literal(xlat_exp_head_t const *head)
 {
 	xlat_exp_foreach(head, node) {
 		if (node->type != XLAT_BOX) return false;
@@ -1609,7 +1607,7 @@ bool xlat_is_literal(xlat_exp_t const *head)
  *	- true	the tree consists of a single value node which was converted.
  *      - false the tree was more complex than a single literal, op was a noop.
  */
-bool xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_t **head)
+bool xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_head_t **head)
 {
 	fr_sbuff_t		out;
 	fr_sbuff_uctx_talloc_t	tctx;
@@ -1649,7 +1647,7 @@ bool xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_t **head)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int xlat_resolve(xlat_exp_t **head, xlat_flags_t *flags, xlat_res_rules_t const *xr_rules)
+int xlat_resolve(xlat_exp_head_t **head, xlat_flags_t *flags, xlat_res_rules_t const *xr_rules)
 {
 	static xlat_res_rules_t		xr_default;
 	xlat_flags_t			our_flags;
@@ -1871,7 +1869,7 @@ tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *node)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, tmpl_t **vpt_p)
+int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_flags_t *flags, tmpl_t **vpt_p)
 {
 	xlat_exp_t	*node;
 	xlat_t		*func;

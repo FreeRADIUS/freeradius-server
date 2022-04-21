@@ -39,7 +39,7 @@ RCSID("$Id$")
 typedef struct {
 	TALLOC_CTX		*ctx;				//!< to allocate boxes and values in.
 	TALLOC_CTX		*event_ctx;			//!< for temporary events
-	xlat_exp_t const	*head;		       		//!< of the xlat list
+	xlat_exp_head_t const	*head;		       		//!< of the xlat list
 	xlat_exp_t const	*exp;				//!< current one we're evaluating
 	fr_dcursor_t		values;				//!< Values aggregated so far.
 
@@ -178,7 +178,7 @@ int unlang_xlat_timeout_add(request_t *request,
  *				here.  If execution fails, false will be written.
  * @param[out] out		Where to write the result of the expansion.
  * @param[in] request		to push xlat onto.
- * @param[in] exp		node to evaluate.
+ * @param[in] xlat		to evaluate.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
  * @return
@@ -186,7 +186,7 @@ int unlang_xlat_timeout_add(request_t *request,
  *	- -1 on failure.
  */
 int unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
-		     request_t *request, xlat_exp_t const *exp, bool top_frame)
+		     request_t *request, xlat_exp_head_t const *xlat, bool top_frame)
 {
 	/** Static instruction for performing xlat evaluations
 	 *
@@ -226,8 +226,8 @@ int unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
 	 *	Allocate its state, and setup a cursor for the xlat nodes
 	 */
 	MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_xlat_t));
-	state->head = talloc_get_type_abort_const(exp, xlat_exp_t);	/* Ensure the node is valid */
-	state->exp = state->head;
+	state->head = talloc_get_type_abort_const(xlat, xlat_exp_t);	/* Ensure the node is valid */
+	state->exp = xlat_exp_head(state->head);
 	state->success = p_success;
 	state->ctx = ctx;
 

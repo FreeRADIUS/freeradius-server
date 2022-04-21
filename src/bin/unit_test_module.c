@@ -382,7 +382,7 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 			ssize_t			slen;
 			TALLOC_CTX		*xlat_ctx = talloc_init_const("xlat");
 			char			*fmt = talloc_typed_strdup(xlat_ctx, input + 5);
-			xlat_exp_t		*head = NULL;
+			xlat_exp_head_t		*head = NULL;
 			fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
 
 			slen = xlat_tokenize_ephemeral(xlat_ctx, &head, el, NULL,
@@ -419,7 +419,7 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 			ssize_t			slen;
 			TALLOC_CTX		*xlat_ctx = talloc_init_const("xlat");
 			char			*fmt = talloc_typed_strdup(xlat_ctx, input + 10);
-			xlat_exp_t		*head = NULL;
+			xlat_exp_head_t		*head = NULL;
 			xlat_flags_t		flags = { };
 
 			slen = xlat_tokenize_ephemeral_expression(xlat_ctx, &head, el, &flags,

@@ -185,7 +185,7 @@ bool trigger_enabled(void)
 
 typedef struct {
 	char			*command;	//!< Name of the trigger.
-	xlat_exp_t		*xlat;		//!< xlat representation of the trigger args.
+	xlat_exp_head_t		*xlat;		//!< xlat representation of the trigger args.
 	fr_value_box_list_t	args;		//!< Arguments to pass to the trigger exec.
 
 	fr_exec_state_t		exec;		//!< Used for asynchronous execution.

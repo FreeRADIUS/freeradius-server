@@ -2677,7 +2677,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 */
 		if (fr_sbuff_is_char(&our_in, '%')) {
 			tmpl_type_t	type = TMPL_TYPE_XLAT;
-			xlat_exp_t	*head = NULL;
+			xlat_exp_head_t	*head = NULL;
 			xlat_flags_t	flags = {};
 
 			vpt = tmpl_alloc_null(ctx);
@@ -2861,7 +2861,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 	case T_DOUBLE_QUOTED_STRING:
 	{
-		xlat_exp_t	*head = NULL;
+		xlat_exp_head_t	*head = NULL;
 		xlat_flags_t	flags = {};
 		tmpl_type_t	type = TMPL_TYPE_XLAT;
 
@@ -2919,7 +2919,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 	case T_BACK_QUOTED_STRING:
 	{
 		tmpl_type_t		type = TMPL_TYPE_EXEC;
-		xlat_exp_t		*head = NULL;
+		xlat_exp_head_t		*head = NULL;
 		xlat_flags_t		flags = {};
 
 		vpt = tmpl_alloc_null(ctx);
@@ -2950,7 +2950,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 	case T_SOLIDUS_QUOTED_STRING:
 	{
 
-		xlat_exp_t		*head = NULL;
+		xlat_exp_head_t		*head = NULL;
 		xlat_flags_t		flags = {};
 		tmpl_type_t		type = TMPL_TYPE_REGEX_XLAT;
 

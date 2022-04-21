@@ -211,7 +211,7 @@ static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request, un
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 	unlang_tmpl_t			*ut = unlang_generic_to_tmpl(frame->instruction);
-	xlat_exp_t const		*xlat;
+	xlat_exp_head_t const		*xlat;
 
 	/*
 	 *	If we're not called from unlang_tmpl_push(), then

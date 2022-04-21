@@ -29,6 +29,7 @@ int main(UNUSED int argc, UNUSED char **argv)
 
 	SIZEOF(xlat_call_t);
 	SIZEOF(xlat_exp_t);
+	SIZEOF(xlat_exp_head_t);
 
 	return 0;
 }

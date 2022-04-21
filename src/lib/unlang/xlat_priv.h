@@ -40,7 +40,6 @@ extern "C" {
 
 typedef fr_slen_t (*xlat_print_t)(fr_sbuff_t *in, xlat_exp_t const *self, void *inst, fr_sbuff_escape_rules_t const *e_rules);
 
-
 typedef struct xlat_s {
 	fr_rb_node_t		node;			//!< Entry in the xlat function tree.
 	char const		*name;			//!< Name of xlat function.
@@ -98,7 +97,7 @@ typedef struct {
 							///< nodes by the time they were created.
 
 	xlat_t const		*func;			//!< The xlat expansion to expand format with.
-	xlat_exp_t		*args;			//!< arguments to the function call
+	xlat_exp_head_t		*args;			//!< arguments to the function call
 
 	xlat_inst_t		*inst;			//!< Instance data for the #xlat_t.
 	xlat_thread_inst_t	*thread_inst;		//!< Thread specific instance.
@@ -124,9 +123,9 @@ struct xlat_exp {
 	xlat_exp_t	*next;		//!< Next in the list.
 
 	union {
-		xlat_exp_t	*alternate[2];	//!< alternate expansions
+		xlat_exp_head_t	*alternate[2];	//!< alternate expansions
 
-		xlat_exp_t	*group;		//!< children of a group
+		xlat_exp_head_t	*group;		//!< children of a group
 
 		/** An tmpl_t reference
 		 *
@@ -289,14 +288,14 @@ xlat_action_t	xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       request_t *request, fr_value_box_list_t *result, void *rctx);
 
 xlat_action_t	xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				       xlat_exp_t const **child, bool *alternate,
-				       request_t *request, xlat_exp_t const *head, xlat_exp_t const **in,
+				       xlat_exp_head_t const **child, bool *alternate,
+				       request_t *request, xlat_exp_head_t const *head, xlat_exp_t const **in,
 				       fr_value_box_list_t *result) CC_HINT(nonnull(1,2,3,5,6));
 
-xlat_action_t	xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t const **child,
-				request_t *request, xlat_exp_t const *head, xlat_exp_t const **in);
+xlat_action_t	xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_t const **child,
+				request_t *request, xlat_exp_head_t const *head, xlat_exp_t const **in);
 
-int		xlat_eval_walk(xlat_exp_t *exp, xlat_walker_t walker, xlat_type_t type, void *uctx);
+int		xlat_eval_walk(xlat_exp_head_t *head, xlat_walker_t walker, xlat_type_t type, void *uctx);
 
 int		xlat_eval_init(void);
 
@@ -315,13 +314,18 @@ int		xlat_register_expressions(void);
 /*
  *	xlat_tokenize.c
  */
-int		xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+int		xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 					tmpl_attr_rules_t const *t_rules);
 
-int		xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+int		xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
 					    tmpl_attr_rules_t const *rules);
 
-ssize_t		xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escape_rules_t const *e_rules);
+ssize_t		xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t const *node, fr_sbuff_escape_rules_t const *e_rules);
+
+static inline xlat_exp_t *xlat_exp_head(xlat_exp_head_t const *head)
+{
+	return UNCONST(xlat_exp_t *, head);
+}
 
 /** Iterate over the contents of a list, only one level
  *
@@ -330,18 +334,20 @@ ssize_t		xlat_print_node(fr_sbuff_t *out, xlat_exp_t const *head, fr_sbuff_escap
  *				Will be declared in the scope of the loop.
  */
 #define xlat_exp_foreach(_list_head, _iter) \
-	for (xlat_exp_t *_iter = UNCONST(xlat_exp_t *, _list_head); _iter; _iter = _iter->next)
+	for (xlat_exp_t *_iter = xlat_exp_head(_list_head); _iter; _iter = _iter->next)
 
-static inline xlat_exp_t *xlat_exp_head(xlat_exp_t const *head)
-{
-	return UNCONST(xlat_exp_t *, head);
-}
-
-static inline xlat_exp_t *xlat_exp_next(UNUSED xlat_exp_t const *head, xlat_exp_t const *item)
+static inline xlat_exp_t *xlat_exp_next(UNUSED xlat_exp_head_t const *head, xlat_exp_t const *item)
 {
 	if (!item->next) return NULL;
 
 	return UNCONST(xlat_exp_t *, item->next);
+}
+
+static inline bool xlat_exp_is_head(xlat_exp_head_t const *head)
+{
+	return (head && (head->type == XLAT_GROUP));
+
+//	return (head && head->next && (head->next->type == XLAT_GROUP));
 }
 
 #ifdef __cplusplus

@@ -89,8 +89,8 @@ fr_table_num_sorted_t const xlat_action_table[] = {
 };
 size_t xlat_action_table_len = NUM_ELEMENTS(xlat_action_table);
 
-static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, xlat_exp_t const * const head,
-			    xlat_escape_legacy_t escape, void  const *escape_ctx);
+static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, xlat_exp_head_t const * const head,
+			      xlat_escape_legacy_t escape, void  const *escape_ctx);
 
 /** Reconstruct the original expansion string from an xlat tree
  *
@@ -178,8 +178,8 @@ static char *xlat_fmt_aprint(TALLOC_CTX *ctx, xlat_exp_t const *node)
 	{
 		char *first, *second, *result;
 
-		first = xlat_fmt_aprint(NULL, node->alternate[0]);
-		second = xlat_fmt_aprint(NULL, node->alternate[1]);
+		first = xlat_fmt_aprint(NULL, xlat_exp_head(node->alternate[0]));
+		second = xlat_fmt_aprint(NULL, xlat_exp_head(node->alternate[1]));
 		result = talloc_asprintf(ctx, "%%{%s:-%s}", first, second);
 		talloc_free(first);
 		talloc_free(second);
@@ -213,7 +213,7 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 	 *	we print the concatenated arguments list as
 	 *	well as the original fmt string.
 	 */
-	if ((node->type == XLAT_FUNC) && !xlat_is_literal(xlat_exp_head(node->call.args))) {
+	if ((node->type == XLAT_FUNC) && !xlat_is_literal(node->call.args)) {
 		RDEBUG2("      (%%%c%s:%pM%c)",
 			(node->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
 			node->call.func->name, args,
@@ -1011,8 +1011,8 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
  * @param[in] result		of a previous nested evaluation.
  */
 xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				     xlat_exp_t const **child, bool *alternate,
-				     request_t *request, xlat_exp_t const *head, xlat_exp_t const **in,
+				     xlat_exp_head_t const **child, bool *alternate,
+				     request_t *request, xlat_exp_head_t const *head, xlat_exp_t const **in,
 				     fr_value_box_list_t *result)
 {
 	xlat_exp_t const	*node = *in;
@@ -1189,8 +1189,8 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *	- XLAT_ACTION_DONE we're done, pop the frame.
  *	- XLAT_ACTION_FAIL an xlat module failed.
  */
-xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t const **child,
-			      request_t *request, xlat_exp_t const *head, xlat_exp_t const **in)
+xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_t const **child,
+			      request_t *request, xlat_exp_head_t const *head, xlat_exp_t const **in)
 {
 	xlat_action_t		xa = XLAT_ACTION_DONE;
 	xlat_exp_t const       	*node;
@@ -1296,7 +1296,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_t con
 			 *	for evaluation.
 			 */
 			if (xlat_exp_head(node->call.args)) {
-				*child = xlat_exp_head(node->call.args);
+				*child = node->call.args;
 				xa = XLAT_ACTION_PUSH_CHILD;
 				goto finish;
 			}
@@ -1373,7 +1373,7 @@ finish:
 	return xa;
 }
 
-static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, xlat_exp_t const * const head,
+static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, xlat_exp_head_t const * const head,
 			      xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	fr_value_box_list_t	result;
@@ -1467,20 +1467,20 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
  * @param[out] out		Where to write pointer to output buffer.
  * @param[in] outlen		Size of out.
  * @param[in] request		current request.
- * @param[in] node		the xlat structure to expand
+ * @param[in] head		the xlat structure to expand
  * @param[in] escape		function to escape final value e.g. SQL quoting.
  * @param[in] escape_ctx	pointer to pass to escape function.
  * @return length of string written @bug should really have -1 for failure.
  */
 static ssize_t _xlat_eval_compiled(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *request,
-				   xlat_exp_t const *node, xlat_escape_legacy_t escape, void const *escape_ctx)
+				   xlat_exp_head_t const *head, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	char *buff;
 	ssize_t slen;
 
-	fr_assert(node != NULL);
+	fr_assert(head != NULL);
 
-	slen = xlat_eval_sync(ctx, &buff, request, node, escape, escape_ctx);
+	slen = xlat_eval_sync(ctx, &buff, request, head, escape, escape_ctx);
 	if (slen < 0) {
 		fr_assert(buff == NULL);
 		if (*out) **out = '\0';
@@ -1522,14 +1522,14 @@ ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *reques
 		   xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	ssize_t len;
-	xlat_exp_t *node;
+	xlat_exp_head_t *head;
 
 	RINDENT();
 
 	/*
 	 *	Give better errors than the old code.
 	 */
-	len = xlat_tokenize_ephemeral(ctx, &node, unlang_interpret_event_list(request), NULL,
+	len = xlat_tokenize_ephemeral(ctx, &head, unlang_interpret_event_list(request), NULL,
 				      &FR_SBUFF_IN(fmt, strlen(fmt)),
 				      NULL,
 				      &(tmpl_rules_t){
@@ -1554,8 +1554,8 @@ ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *reques
 		return -1;
 	}
 
-	len = _xlat_eval_compiled(ctx, out, outlen, request, node, escape, escape_ctx);
-	talloc_free(node);
+	len = _xlat_eval_compiled(ctx, out, outlen, request, head, escape, escape_ctx);
+	talloc_free(head);
 
 	REXDENT();
 
@@ -1571,7 +1571,7 @@ ssize_t xlat_eval(char *out, size_t outlen, request_t *request,
 }
 
 ssize_t xlat_eval_compiled(char *out, size_t outlen, request_t *request,
-			   xlat_exp_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
+			   xlat_exp_head_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	fr_assert(done_init);
 
@@ -1588,7 +1588,7 @@ ssize_t xlat_aeval(TALLOC_CTX *ctx, char **out, request_t *request, char const *
 }
 
 ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, request_t *request,
-			    xlat_exp_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
+			    xlat_exp_head_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	fr_assert(done_init);
 
@@ -1612,14 +1612,14 @@ ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, request_t *request,
  *	- >0 on success	which is argc to the corresponding argv
  */
 int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, request_t *request,
-			     xlat_exp_t const *head, xlat_escape_legacy_t escape, void const *escape_ctx)
+			     xlat_exp_head_t const *head, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
 	int			i;
 	ssize_t			slen;
 	char			**my_argv;
 	size_t			count;
 
-	if (head->type != XLAT_GROUP) return -1;
+	if (!xlat_exp_is_head(head)) return -1;
 
 	count = 0;
 	xlat_exp_foreach(head, node) {
@@ -1648,20 +1648,20 @@ int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, request_t *request,
  *
  *  This is mostly for async use.
  */
-int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_exp_t const *head)
+int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_head_t const ***argv, xlat_exp_head_t const *head)
 {
 	int			i;
-	xlat_exp_t const	**my_argv;
+	xlat_exp_head_t const	**my_argv;
 	size_t			count;
 
-	if (head->type != XLAT_GROUP) return -1;
+	if (!xlat_exp_is_head(head)) return -1;
 
 	count = 0;
 	xlat_exp_foreach(head, node) {
 		count++;
 	}
 
-	MEM(my_argv = talloc_zero_array(ctx, xlat_exp_t const *, count + 1));
+	MEM(my_argv = talloc_zero_array(ctx, xlat_exp_head_t const *, count + 1));
 	*argv = my_argv;
 
 	fr_assert(done_init);
@@ -1684,7 +1684,7 @@ int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_t const ***argv, xlat_e
  *	- 0 on success (walker always returned 0).
  *	- <0 if walker returned <0.
  */
-int xlat_eval_walk(xlat_exp_t *head, xlat_walker_t walker, xlat_type_t type, void *uctx)
+int xlat_eval_walk(xlat_exp_head_t *head, xlat_walker_t walker, xlat_type_t type, void *uctx)
 {
 	int		ret;
 
@@ -1799,10 +1799,15 @@ void xlat_eval_free(void)
  *
  *	If the xlat yields, then async is required.
  */
-bool xlat_async_required(xlat_exp_t const *head)
+bool xlat_async_required(xlat_exp_head_t const *head)
 {
-	if (head->type != XLAT_GROUP) {
-		return head->flags.needs_async;
+	xlat_exp_t *first;
+
+	if (head) return false;
+
+	first = xlat_exp_head(head);
+	if (first->type != XLAT_GROUP) {
+		return first->flags.needs_async;
 	}
 
 	/*

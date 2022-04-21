@@ -304,11 +304,11 @@ static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, void *uctx)
  *
  * @note This must only be used for xlats created at runtime.
  *
- * @param[in] root of xlat tree to create instance data for.
+ * @param[in] head of xlat tree to create instance data for.
  */
-int xlat_instantiate_ephemeral(xlat_exp_t *root, fr_event_list_t *el)
+int xlat_instantiate_ephemeral(xlat_exp_head_t *head, fr_event_list_t *el)
 {
-	return xlat_eval_walk(root, _xlat_instantiate_ephemeral_walker, XLAT_FUNC, el);
+	return xlat_eval_walk(head, _xlat_instantiate_ephemeral_walker, XLAT_FUNC, el);
 }
 
 /** Retrieve xlat/thread specific instance data

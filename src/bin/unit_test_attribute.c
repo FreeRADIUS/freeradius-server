@@ -2665,7 +2665,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 				     char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	ssize_t			dec_len;
-	xlat_exp_t		*head = NULL;
+	xlat_exp_head_t		*head = NULL;
 	size_t			input_len = strlen(in), escaped_len;
 	fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
 
@@ -2698,7 +2698,7 @@ static size_t command_xlat_expr(command_result_t *result, command_file_ctx_t *cc
 				     char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	ssize_t			dec_len;
-	xlat_exp_t		*head = NULL;
+	xlat_exp_head_t		*head = NULL;
 	size_t			input_len = strlen(in), escaped_len;
 //	fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
 
@@ -2733,7 +2733,7 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 				     char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	ssize_t			dec_len;
-	xlat_exp_t		*head = NULL;
+	xlat_exp_head_t		*head = NULL;
 	size_t			input_len = strlen(in), escaped_len;
 //	fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
 	xlat_flags_t		flags = {
@@ -2774,8 +2774,8 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 	int		i, argc;
 	char		*p;
 	ssize_t		slen;
-	xlat_exp_t	*head = NULL;
-	xlat_exp_t const **argv;
+	xlat_exp_head_t	*head = NULL;
+	xlat_exp_head_t const **argv;
 	size_t		len;
 	size_t		input_len = strlen(in);
 	char		buff[1024];
