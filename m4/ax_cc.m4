@@ -63,10 +63,10 @@ dnl # clang and gcc originally used different flags to specify c11 support
 dnl #
 AC_DEFUN([AX_CC_UNWINDLIB_ARG],[
   AC_CACHE_CHECK([if the compiler accepts --unwindlib], [ax_cv_cc_unwindlib_arg],[
-    CFLAGS_SAVED=$CFLAGS
-    CFLAGS="$CFLAGS -Werror --rtlib=compiler-rt --unwindlib=libunwind"
+    LDFLAGS_SAVED=$LDFLAGS
+    LDFLAGS="$LDFLAGS -Werror --rtlib=compiler-rt --unwindlib=libunwind"
 
-    AC_COMPILE_IFELSE(
+    AC_LINK_IFELSE(
     [
       AC_LANG_SOURCE(
       [
@@ -79,7 +79,7 @@ AC_DEFUN([AX_CC_UNWINDLIB_ARG],[
       [ax_cv_cc_unwindlib_arg=no]
     )
 
-    CFLAGS="$CFLAGS_SAVED"
+    LDFLAGS="$LDFLAGS_SAVED"
   ])
 ])
 
