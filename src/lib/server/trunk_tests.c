@@ -167,15 +167,15 @@ static void _conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *conn,
 		break;
 
 	case FR_TRUNK_CONN_EVENT_READ:
-		fr_event_fd_insert(conn, el, fd, _conn_io_read, NULL, _conn_io_error, tconn);
+		TEST_CHECK(fr_event_fd_insert(conn, el, fd, _conn_io_read, NULL, _conn_io_error, tconn) == 0);
 		break;
 
 	case FR_TRUNK_CONN_EVENT_WRITE:
-		fr_event_fd_insert(conn, el, fd, NULL, _conn_io_write, _conn_io_error, tconn);
+		TEST_CHECK(fr_event_fd_insert(conn, el, fd, NULL, _conn_io_write, _conn_io_error, tconn) == 0);
 		break;
 
 	case FR_TRUNK_CONN_EVENT_BOTH:
-		fr_event_fd_insert(conn, el, fd, _conn_io_read, _conn_io_write, _conn_io_error, tconn);
+		TEST_CHECK(fr_event_fd_insert(conn, el, fd, _conn_io_read, _conn_io_write, _conn_io_error, tconn) == 0);
 		break;
 
 	default:
