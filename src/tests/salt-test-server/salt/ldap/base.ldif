@@ -16,6 +16,13 @@ olcAccess: to * by dn.exact="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=
 olcAccess: to dn.base="" by * read
 olcAccess: to * by dn="cn=admin,dc=example,dc=com" write by * read
 
+dn: olcOverlay=syncprov,olcDatabase={1}mdb,cn=config
+objectClass: olcOverlayConfig
+objectClass: olcSyncProvConfig
+olcOverlay: syncprov
+olcSpCheckpoint: 100 10
+olcSpSessionlog: 100
+
 # Create top-level object in domain
 dn: dc=example,dc=com
 objectClass: top
