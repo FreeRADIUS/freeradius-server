@@ -1025,7 +1025,7 @@ static char *make_ad_dump_defines(__attribute__((unused)) char const *nm, unsign
 		 */
 		p = strrchr(argv[i], '.');
 		if (!p) {
-			fprintf(stderr, "ad_dump_defs: Unrecognized output file",
+			fprintf(stderr, "ad_dump_defs: Unrecognized output file %s",
 				argv[i]);
 			return NULL;
 		}
