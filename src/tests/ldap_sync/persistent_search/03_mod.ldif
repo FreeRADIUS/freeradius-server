@@ -1,0 +1,8 @@
+#
+# ARGV: -x -H ${PERSISTENT_SEARCH_TEST_SERVER} -D "cn=manager" -w "secret123"
+#
+dn: uid=fred,ou=people,dc=example,dc=com
+changeType: modrdn
+newrdn: uid=frederic
+deleteoldrdn: 1
+

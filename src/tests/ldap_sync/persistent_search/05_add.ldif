@@ -1,0 +1,11 @@
+#
+# ARGV: -x -H ${PERSISTENT_SEARCH_TEST_SERVER} -D "cn=manager" -w "secret123"
+#
+dn: cn=bosses,ou=groups,dc=example,dc=com
+changeType: add
+cn: bosses
+objectClass: groupOfNames
+objectClass: top
+member: uid=bob,ou=people,dc=example,dc=com
+member: uid=john,ou=people,dc=example,dc=com
+

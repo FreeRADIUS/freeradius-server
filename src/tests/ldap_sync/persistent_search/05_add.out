@@ -1,0 +1,3 @@
+Add ou=groups,dc=example,dc=com cn=bosses,ou=groups,dc=example,dc=com  
+Group member uid=bob,ou=people,dc=example,dc=com
+Group member uid=john,ou=people,dc=example,dc=com
