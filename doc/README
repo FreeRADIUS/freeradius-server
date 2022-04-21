@@ -9,7 +9,7 @@
 
 2. INSTALLATION
 
-   See the INSTALL file, in the parent directory.
+  See the INSTALL file, in the parent directory.
 
 
 3. CONFIGURATION FILES
@@ -166,7 +166,7 @@
   the server, then run it in debugging mode, as root, from the
   command line:
 
-  # radiusd -X
+    # radiusd -X
 
   It will produce a large number of messages.  The answers to many
   questions, and the solution to many problems, can usually be found in
@@ -174,7 +174,7 @@
 
   For further details, see:
 
-  https://freeradius.org/documentation/
+    https://freeradius.org/documentation/
 
   and the 'bugs' file, in this directory.
 
