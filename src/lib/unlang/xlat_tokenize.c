@@ -1624,7 +1624,7 @@ bool xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_t **head)
 	 *	list until we find a non-literal.
 	 */
 	xlat_exp_foreach(*head, node) {
-		if (!xlat_is_literal(node)) return false;
+		if (node->type != XLAT_BOX) return false;
 		len += talloc_array_length(node->fmt) - 1;
 	}
 
