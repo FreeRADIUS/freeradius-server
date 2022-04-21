@@ -7,9 +7,13 @@ RCSIDH(rlm_mschap_h, "$Id$")
 
 #include "config.h"
 
-#ifdef WITH_AUTH_WINBIND
+#ifdef HAVE_WDOCUMENTATION
 DIAG_OFF(documentation)
+#endif
+#ifdef WITH_AUTH_WINBIND
 #  include <wbclient.h>
+#endif
+#ifdef HAVE_WDOCUMENTATION
 DIAG_ON(documentation)
 #endif
 
