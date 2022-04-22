@@ -490,7 +490,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	if (slen < 0) {
 		slen = fr_pair_raw_from_network(ctx, out, da, data + 2, len);
-		if (slen <= 0) return slen;
+		if (slen < 0) return slen;
 	}
 
 	return len + 2;
