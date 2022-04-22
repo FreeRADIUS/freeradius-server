@@ -866,6 +866,10 @@ int		fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *exten
 
 int 		fr_ldap_attrs_check(char const **attrs, char const *attr);
 
+int		fr_ldap_server_url_check(fr_ldap_config_t *handle_config, char const *server, CONF_SECTION const *cs);
+
+int		fr_ldap_server_config_check(fr_ldap_config_t *handle_config, char const *server, CONF_SECTION *cs);
+
 /*
  *	referral.c - Handle LDAP referrals
  */

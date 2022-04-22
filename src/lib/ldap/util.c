@@ -583,3 +583,143 @@ int fr_ldap_attrs_check(char const **attrs, char const *attr)
 
 	return 0;
 }
+
+/** Check an LDAP server entry in URL format is valid
+ *
+ * @param[in,out] handle_config	LDAP handle config being built
+ * @param[in] server		string to parse
+ * @param[in] cs		in which the server is defined
+ * @return
+ *	- 0 for valid server definition
+ *	- -1 for invalid server definition
+ */
+int fr_ldap_server_url_check(fr_ldap_config_t *handle_config, char const *server, CONF_SECTION const *cs)
+{
+	LDAPURLDesc	*ldap_url;
+	bool		set_port_maybe = true;
+	int		default_port = LDAP_PORT;
+	char		*p, *url;
+	CONF_ITEM	*ci = (CONF_ITEM *)cf_pair_find(cs, "server");
+
+	if (ldap_url_parse(server, &ldap_url)) {
+		cf_log_err(ci, "Parsing LDAP URL \"%s\" failed", server);
+	ldap_url_error:
+		ldap_free_urldesc(ldap_url);
+		return -1;
+	}
+
+	if (ldap_url->lud_dn && (ldap_url->lud_dn[0] != '\0')) {
+		cf_log_err(ci, "Base DN cannot be specified via server URL");
+		goto ldap_url_error;
+	}
+
+	if (ldap_url->lud_attrs && ldap_url->lud_attrs[0]) {
+		cf_log_err(ci, "Attribute list cannot be speciried via server URL");
+		goto ldap_url_error;
+	}
+
+	/*
+	 *	ldap_url_parse sets this to base by default.
+	 */
+	if (ldap_url->lud_scope != LDAP_SCOPE_BASE) {
+		cf_log_err(ci, "Scope cannot be specified via server URL");
+		goto ldap_url_error;
+	}
+	ldap_url->lud_scope = -1;	/* Otherwise LDAP adds ?base */
+
+	/*
+	 *	The public ldap_url_parse function sets the default
+	 *	port, so we have to discover whether a port was
+	 *	included ourselves.
+	 */
+	if ((p = strchr(server, ']')) && (p[1] == ':')) {			/* IPv6 */
+		set_port_maybe = false;
+	} else if ((p = strchr(server, ':')) && (strchr(p+1, ':') != NULL)) {	/* IPv4 */
+		set_port_maybe = false;
+	}
+
+	/*
+	 *	Figure out the default port from the URL
+	 */
+	if (ldap_url->lud_scheme) {
+		if (strcmp(ldap_url->lud_scheme, "ldaps") == 0) {
+			if (handle_config->start_tls == true) {
+				cf_log_err(ci, "ldap:s// scheme is not compatible with 'start_tls'");
+				goto ldap_url_error;
+			}
+		} else if (strcmp(ldap_url->lud_scheme, "ldapi") == 0) {
+			set_port_maybe = false;
+		}
+	}
+
+	if (set_port_maybe) {
+		/*
+		 *	URL port overrides configured port.
+		 */
+		ldap_url->lud_port = handle_config->port;
+
+		/*
+		 *	If there's no URL port, then set it to the default
+		 *	this is so debugging messages show explicitly
+		 *	the port we're connecting to.
+		 */
+		if (!ldap_url->lud_port) ldap_url->lud_port = default_port;
+	}
+
+	url = ldap_url_desc2str(ldap_url);
+	if (!url) {
+		cf_log_err(ci, "Failed recombining URL components");
+		goto ldap_url_error;
+	}
+	handle_config->server = talloc_asprintf_append(handle_config->server, "%s ", url);
+
+	ldap_free_urldesc(ldap_url);
+	ldap_memfree(url);
+	return (0);
+}
+
+/** Check an LDAP server config in server:port format is valid
+ *
+ * @param[in,out] handle_config	LDAP handle config being built
+ * @param[in] server		string to parse
+ * @param[in] cs		in which the server is defined
+ * @return
+ *	- 0 for valid server definition
+ *	- -1 for invalid server definition
+ */
+int fr_ldap_server_config_check(fr_ldap_config_t *handle_config, char const *server, CONF_SECTION *cs)
+{
+	char	const *p;
+	char	*q;
+	int	port = 0;
+	size_t	len;
+
+	port = handle_config->port;
+
+	/*
+	 *	We don't support URLs if the library didn't provide
+	 *	URL parsing functions.
+	 */
+	if (strchr(server, '/')) {
+		CONF_ITEM	*ci;
+	bad_server_fmt:
+		ci = (CONF_ITEM *)cf_pair_find(cs, "server");
+		cf_log_err(ci, "Invalid 'server' entry, must be in format <server>[:<port>] or "
+			       "an ldap URI (ldap|cldap|ldaps|ldapi)://<server>:<port>");
+		return -1;
+	}
+
+	p = strrchr(server, ':');
+	if (p) {
+		port = (int)strtol((p + 1), &q, 10);
+		if ((p == server) || ((p + 1) == q) || (*q != '\0')) goto bad_server_fmt;
+		len = p - server;
+	} else {
+		len = strlen(server);
+	}
+	if (port == 0) port = LDAP_PORT;
+
+	handle_config->server = talloc_asprintf_append(handle_config->server, "ldap://%.*s:%i ",
+						       (int)len, server, port);
+	return 0;
+}

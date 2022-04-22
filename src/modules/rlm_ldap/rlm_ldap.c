@@ -1878,135 +1878,13 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		 *	the server information in the format it needs.
 		 */
 		if (ldap_is_ldap_url(value)) {
-			LDAPURLDesc	*ldap_url;
-			bool		set_port_maybe = true;
-			int		default_port = LDAP_PORT;
-			char		*p;
-			char		*url;
-
-			if (ldap_url_parse(value, &ldap_url)){
-				cf_log_err(conf, "Parsing LDAP URL \"%s\" failed", value);
-			ldap_url_error:
-				ldap_free_urldesc(ldap_url);
-				return -1;
-			}
-
-			if (ldap_url->lud_dn && (ldap_url->lud_dn[0] != '\0')) {
-				cf_log_err(conf, "Base DN cannot be specified via server URL");
-				goto ldap_url_error;
-			}
-
-			if (ldap_url->lud_attrs && ldap_url->lud_attrs[0]) {
-				cf_log_err(conf, "Attribute list cannot be specified via server URL");
-				goto ldap_url_error;
-			}
-
-			/*
-			 *	ldap_url_parse sets this to base by default.
-			 */
-			if (ldap_url->lud_scope != LDAP_SCOPE_BASE) {
-				cf_log_err(conf, "Scope cannot be specified via server URL");
-				goto ldap_url_error;
-			}
-			ldap_url->lud_scope = -1;	/* Otherwise LDAP adds ?base */
-
-			/*
-			 *	The public ldap_url_parse function sets the default
-			 *	port, so we have to discover whether a port was
-			 *	included ourselves.
-			 */
-			if ((p = strchr(value, ']')) && (p[1] == ':')) {			/* IPv6 */
-				set_port_maybe = false;
-			} else if ((p = strchr(value, ':')) && (strchr(p + 1, ':') != NULL)) {	/* IPv4 */
-				set_port_maybe = false;
-			}
-
-			/*
-			 *	Figure out the default port from the URL
-			 */
-			if (ldap_url->lud_scheme) {
-				if (strcmp(ldap_url->lud_scheme, "ldaps") == 0) {
-					if (inst->handle_config.start_tls == true) {
-						cf_log_err(conf, "ldaps:// scheme is not compatible with 'start_tls'");
-						goto ldap_url_error;
-					}
-					default_port = LDAPS_PORT;
-
-				} else if (strcmp(ldap_url->lud_scheme, "ldapi") == 0) {
-					set_port_maybe = false; /* Unix socket, no port */
-				}
-			}
-
-			if (set_port_maybe) {
-				/*
-				 *	URL port overrides configured port.
-				 */
-				ldap_url->lud_port = inst->handle_config.port;
-
-				/*
-				 *	If there's no URL port, then set it to the default
-				 *	this is so debugging messages show explicitly
-				 *	the port we're connecting to.
-				 */
-				if (!ldap_url->lud_port) ldap_url->lud_port = default_port;
-			}
-
-			url = ldap_url_desc2str(ldap_url);
-			if (!url) {
-				cf_log_err(conf, "Failed recombining URL components");
-				goto ldap_url_error;
-			}
-			inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server,
-									    "%s ", url);
-			free(url);
-
-			/*
-			 *	@todo We could set a few other top level
-			 *	directives using the URL, like base_dn
-			 *	and scope.
-			 */
-			ldap_free_urldesc(ldap_url);
-		/*
-		 *	We need to construct an LDAP URI
-		 */
+			if (fr_ldap_server_url_check(&inst->handle_config, value, conf) < 0) return -1;
 		} else
 		/*
-		 *	If it's not an URL, or we don't have the functions necessary
-		 *	to break apart the URL and recombine it, then just treat
-		 *	server as a hostname.
+		 *	If it's not an URL, then just treat server as a hostname.
 		 */
 		{
-			char	const *p;
-			char	*q;
-			int	port = 0;
-			size_t	len;
-
-			port = inst->handle_config.port;
-
-			/*
-			 *	We don't support URLs if the library didn't provide
-			 *	URL parsing functions.
-			 */
-			if (strchr(value, '/')) {
-			bad_server_fmt:
-				cf_log_err(conf, "Invalid 'server' entry, must be in format <server>[:<port>] or "
-					      "an ldap URI (ldap|cldap|ldaps|ldapi)://<server>:<port>");
-				return -1;
-			}
-
-			p = strrchr(value, ':');
-			if (p) {
-				port = (int)strtol((p + 1), &q, 10);
-				if ((p == value) || ((p + 1) == q) || (*q != '\0')) goto bad_server_fmt;
-				len = p - value;
-			} else {
-				len = strlen(value);
-			}
-			if (port == 0) port = LDAP_PORT;
-
-			inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server,
-									    "ldap://%.*s:%i ",
-									    (int) len, value, port);
+			if (fr_ldap_server_config_check(&inst->handle_config, value, conf) < 0) return -1;
 		}
 	}
 
