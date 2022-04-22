@@ -32,7 +32,7 @@ DOCKER_COMMIT := release_$(shell echo $(DOCKER_VERSION) | tr .- __)
 DOCKER_BUILD_ARGS :=
 #
 #  Tag name, likely "freeradius-server" for releases, or "freeradius-dev" for nightlies.
-DOCKER_TAG := freeradius-server-3.2
+DOCKER_TAG := freeradius-server
 #
 #  Repository name
 DOCKER_REPO := freeradius

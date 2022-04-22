@@ -1,3 +1,8 @@
+FreeRADIUS 3.2.1 Thu 21 Apr 2021 12:00:00 EDT urgency=low
+	Feature improvements
+
+	Bug fixes
+
 FreeRADIUS 3.2.0 Thu 21 Apr 2021 12:00:00 EDT urgency=low
 	Configuration changes
 	* "correct_escapes" has been removed, and is always set to "true"
