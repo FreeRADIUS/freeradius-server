@@ -51,9 +51,14 @@ ssize_t fr_pair_array_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict
 				"%s: Internal sanity check failed, attribute \"%s\" does not have array bit set",
 				__FUNCTION__, parent->name)) return PAIR_DECODE_FATAL_ERROR;
 
+	/*
+	 *	Catch stupidities.
+	 */
+	if (data_len == 0) return data_len;
+
 	while (p < end) {
 		slen = decode_value(ctx, out, parent, p, (end - p), decode_ctx);
-		if (slen < 0) return slen - (p - data);
+		if (slen <= 0) return slen - (p - data);
 
 		p += slen;
 	}
@@ -97,11 +102,16 @@ ssize_t fr_pair_raw_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	fr_dict_unknown_free(&child); /* const issues */
 	if (!vp) return -1;
 
-	slen = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
-					 &FR_DBUFF_TMP(data, data_len), data_len, true);
-	if (slen < 0) {
-		talloc_free(vp);
-		return slen;
+	/*
+	 *	Don't bother getting data from the network if there's no data.
+	 */
+	if (data_len > 0) {
+		slen = fr_value_box_from_network(vp, &vp->data, vp->da->type, vp->da,
+						 &FR_DBUFF_TMP(data, data_len), data_len, true);
+		if (slen < 0) {
+			talloc_free(vp);
+			return slen;
+		}
 	}
 
 	/*
@@ -177,7 +187,7 @@ ssize_t fr_pair_tlvs_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		ssize_t slen;
 
 		slen = decode_tlv(child_ctx, list, parent, p, (end - p), decode_ctx);
-		if (slen < 0) {
+		if (slen <= 0) {
 			FR_PROTO_TRACE("    tlv decode failed at offset %zu - converting to raw", (size_t) (p - data));
 			fr_pair_list_free(list);
 			talloc_free(vp);
