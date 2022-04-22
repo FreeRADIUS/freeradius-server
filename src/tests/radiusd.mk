@@ -9,13 +9,17 @@
 #
 #  - Defined by the target
 #
-#  PORT      := Run the service
 #  TEST      := test.$target
 #
 #  - Parameter
 #
 #  ${1}		config-name found in $(DIR)/config, e.g: src/tests/$target/config/${config-name}.conf
 #  ${2}		output directory
+#
+#  - Available in calling rule
+#
+#  PORT         The port the server started on
+#  RADIUSD_RUN  The server invocation
 #
 #  - How to use
 #
@@ -39,6 +43,7 @@ include Make.inc
 
 define RADIUSD_SERVICE
 $$(eval RADIUSD_BIN := $(JLIBTOOL) --silent --mode=execute $$(TEST_BIN)/radiusd)
+$$(eval PORT := $(shell echo $$(($(PORT)+1))))
 
 #
 #  Kill it.  We don't care if it failed or not.  However, we do care
@@ -91,8 +96,12 @@ $(TEST).radiusd_stop: | ${2}
 #	Start radiusd instance
 #
 ${2}/radiusd.pid: ${2}
-	$$(eval RADIUSD_RUN := TESTDIR=$(DIR) OUTPUT=$(OUTPUT) TEST_PORT=$(PORT) $$(RADIUSD_BIN) -Pxxx -d $(DIR)/config -n ${1} -D $(DICT_PATH) -l ${2}/radiusd.log)
+	$$(eval PORT=$(PORT))
+	$$(eval RADIUSD_RUN := TESTDIR=$(DIR) OUTPUT=${2} TEST_PORT=$(PORT) TEST=$(subst test.,,$(TEST)) $$(RADIUSD_BIN) -Pxxx -d $(DIR)/config -n ${1} -D $(DICT_PATH) -l ${2}/radiusd.log)
 	${Q}rm -f ${2}/radiusd.log
+	${Q}if test ! -z "$$(PRINT_PORT)"; then \
+		echo "$(PORT)"; \
+	fi
 	${Q}if ! $$(RADIUSD_RUN); then \
 		echo "FAILED STARTING RADIUSD"; \
 		grep 'Error :' "${2}/radiusd.log"; \
