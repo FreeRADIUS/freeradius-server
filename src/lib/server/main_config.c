@@ -844,7 +844,7 @@ int main_config_exclusive_proc_child(main_config_t const *config)
 	return fr_sem_take(config->multi_proc_sem_id, config->multi_proc_sem_path, true);
 }
 
-/** Check to see if we're the only process using this configuration file
+/** Check to see if we're the only process using this configuration file (or PID file if specified)
  *
  * @param[in] config	specifying the path to the main config file.
  * @return
@@ -857,11 +857,23 @@ int main_config_exclusive_proc(main_config_t *config)
 	char *path;
 	int sem_id;
 	int ret;
+	int fd = -1;
 	static bool sem_initd;
 
 	if (unlikely(sem_initd)) return 0;
 
-	MEM(path = talloc_asprintf(config, "%s/%s.conf", config->raddb_dir, config->name));
+	if (config->write_pid) {
+		fr_assert(config->pid_file);
+		fd = open(config->pid_file, O_CREAT | O_CLOEXEC);	/* May not have been created yet */
+		if (fd < 0) {
+			fr_strerror_printf("Refusing to start - Failed creating PID file at \"%s\" - %s",
+					   config->pid_file, fr_syserror(errno));
+			return -1;
+		}
+		MEM(path = talloc_typed_strdup(config, config->pid_file));
+	}  else {
+		MEM(path = talloc_asprintf(config, "%s/%s.conf", config->raddb_dir, config->name));
+	}
 	sem_id = fr_sem_get(path, 0,
 			    main_config->uid_is_set ? main_config->uid : geteuid(),
 			    main_config->gid_is_set ? main_config->gid : getegid(),
@@ -876,6 +888,7 @@ int main_config_exclusive_proc(main_config_t *config)
 	ret = fr_sem_wait(sem_id, path, true, true);
 	switch (ret) {
 	case 0:	/* we have the semaphore */
+		talloc_free(config->multi_proc_sem_path);	/* Allow this to be called multiple times */
 		config->multi_proc_sem_id = sem_id;
 		config->multi_proc_sem_path = path;
 		sem_initd = true;
@@ -896,6 +909,7 @@ int main_config_exclusive_proc(main_config_t *config)
 		break;
 	}
 
+	if (fd != -1) close(fd);
 
 	return ret;
 }
