@@ -1803,7 +1803,7 @@ bool xlat_async_required(xlat_exp_head_t const *head)
 {
 	xlat_exp_t *first;
 
-	if (head) return false;
+	if (!head) return false;
 
 	first = xlat_exp_head(head);
 	if (first->type != XLAT_GROUP) {
