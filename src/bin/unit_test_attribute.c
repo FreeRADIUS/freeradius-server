@@ -1745,7 +1745,7 @@ size_t command_encode_dns_label(command_result_t *result, command_file_ctx_t *cc
 
 	enc_p = cc->buffer_start;
 
-	while (p) {
+	while (true) {
 		fr_value_box_t *box = talloc_zero(NULL, fr_value_box_t);
 
 		fr_skip_whitespace(p);
