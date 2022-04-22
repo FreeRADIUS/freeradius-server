@@ -2,8 +2,8 @@
 #	Common test values
 #
 
-PORT := 12340
-SECRET := testing123
+PORT := $(if $(PORT),$(PORT),12340)
+SECRET := $(if $(SECRET),$(SECRET),testing123)
 DICT_PATH := $(top_srcdir)/share/dictionary
 
 #
