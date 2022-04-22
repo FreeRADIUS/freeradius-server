@@ -35,11 +35,11 @@
 
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
-			    fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx);
+			    fr_dcursor_t *cursor, void *encode_ctx);
 
 static ssize_t encode_option_data(fr_dbuff_t *dbuff,
 				  fr_da_stack_t *da_stack, unsigned int depth,
-				  fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx);
+				  fr_dcursor_t *cursor, void *encode_ctx);
 
 static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			  fr_da_stack_t *da_stack, unsigned int depth,
@@ -47,7 +47,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 
 static ssize_t encode_array(fr_dbuff_t *dbuff,
 				   fr_da_stack_t *da_stack, int depth,
-				   fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx);
+				   fr_dcursor_t *cursor, void *encode_ctx);
 
 static ssize_t encode_value_trampoline(fr_dbuff_t *dbuff,
 				       fr_da_stack_t *da_stack, unsigned int depth,
@@ -80,7 +80,7 @@ static ssize_t encode_value_trampoline(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
-			    fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx)
+			    fr_dcursor_t *cursor, void *encode_ctx)
 {
 	fr_pair_t	*vp = fr_dcursor_current(cursor);
 	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
@@ -197,7 +197,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 static ssize_t encode_array(fr_dbuff_t *dbuff,
 				   fr_da_stack_t *da_stack, int depth,
-				   fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx)
+				   fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t			slen;
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
@@ -382,7 +382,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
  */
 static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx)
+			      fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t			len;
 	fr_dbuff_marker_t	hdr;
@@ -445,11 +445,11 @@ static ssize_t encode_vsio_hdr(fr_dbuff_t *dbuff,
 
 static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx);
+			      fr_dcursor_t *cursor, void *encode_ctx);
 
 static ssize_t encode_option_data(fr_dbuff_t *dbuff,
 				  fr_da_stack_t *da_stack, unsigned int depth,
-				  fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx)
+				  fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t len;
 	fr_pair_t *vp = fr_dcursor_current(cursor);
@@ -538,7 +538,7 @@ do_child:
  */
 static ssize_t encode_tlv_hdr(fr_dbuff_t *dbuff,
 			      fr_da_stack_t *da_stack, unsigned int depth,
-			      fr_dcursor_t *cursor, fr_dhcpv4_ctx_t *encode_ctx)
+			      fr_dcursor_t *cursor, void *encode_ctx)
 {
 	ssize_t			len;
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
