@@ -29,6 +29,7 @@
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/struct.h>
 #include <freeradius-devel/util/dns.h>
+#include <freeradius-devel/util/encode.h>
 
 #include "dhcpv4.h"
 #include "attrs.h"
@@ -44,26 +45,6 @@ static ssize_t encode_option_data(fr_dbuff_t *dbuff,
 static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			  fr_da_stack_t *da_stack, unsigned int depth,
 			  fr_dcursor_t *cursor, void *encode_ctx);
-
-static ssize_t encode_array(fr_dbuff_t *dbuff,
-				   fr_da_stack_t *da_stack, int depth,
-				   fr_dcursor_t *cursor, void *encode_ctx);
-
-static ssize_t encode_value_trampoline(fr_dbuff_t *dbuff,
-				       fr_da_stack_t *da_stack, unsigned int depth,
-				       fr_dcursor_t *cursor, void *encode_ctx)
-{
-	fr_dict_attr_t const	*da = da_stack->da[depth];
-
-	/*
-	 *	Write out the option's value
-	 */
-	if (da->flags.array) {
-		return encode_array(dbuff, da_stack, depth, cursor, encode_ctx);
-	}
-
-	return encode_value(dbuff, da_stack, depth, cursor, encode_ctx);
-}
 
 /** Write DHCP option value into buffer
  *
@@ -95,7 +76,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	Structures are special.
 	 */
 	if ((vp->da->type == FR_TYPE_STRUCT) || (da->type == FR_TYPE_STRUCT)) {
-		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value_trampoline, encode_tlv);
+		slen = fr_struct_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value, encode_tlv);
 		if (slen <= 0) return slen;
 
 		/*
@@ -194,36 +175,6 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-
-static ssize_t encode_array(fr_dbuff_t *dbuff,
-				   fr_da_stack_t *da_stack, int depth,
-				   fr_dcursor_t *cursor, void *encode_ctx)
-{
-	ssize_t			slen;
-	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
-	fr_pair_t		*vp;
-	fr_dict_attr_t const	*da = da_stack->da[depth];
-
-	FR_PROTO_STACK_PRINT(da_stack, depth);
-
-	if (!fr_cond_assert_msg(da->flags.array,
-				"%s: Internal sanity check failed, attribute \"%s\" does not have array bit set",
-				__FUNCTION__, da->name)) return PAIR_ENCODE_FATAL_ERROR;
-
-	while (fr_dbuff_extend(&work_dbuff)) {
-		fr_dbuff_t	element_dbuff = FR_DBUFF(&work_dbuff);
-
-		slen = encode_value(&element_dbuff, da_stack, depth, cursor, encode_ctx);
-		if (slen < 0) return slen;
-
-		fr_dbuff_set(&work_dbuff, &element_dbuff);
-
-		vp = fr_dcursor_current(cursor);
-		if (!vp || (vp->da != da)) break;		/* Stop if we have an attribute of a different type */
-	}
-
-	return fr_dbuff_set(dbuff, &work_dbuff);
-}
 
 /** Extend an encoded option in-place.
  *
@@ -402,7 +353,7 @@ static ssize_t encode_rfc_hdr(fr_dbuff_t *dbuff,
 	 *	Write out the option's value
 	 */
 	if (da->flags.array) {
-		len = encode_array(&work_dbuff, da_stack, depth, cursor, encode_ctx);
+		len = fr_pair_array_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value);
 		if (len < 0) return -1;
 
 	} else if (da->parent && (da->parent->type != FR_TYPE_VENDOR)) {

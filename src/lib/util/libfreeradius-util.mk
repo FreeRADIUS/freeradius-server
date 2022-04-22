@@ -26,6 +26,7 @@ SOURCES		:= \
 		   dl.c \
 		   dns.c \
 		   edit.c \
+		   encode.c \
 		   event.c \
 		   ext.c \
 		   fifo.c \

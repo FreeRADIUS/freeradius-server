@@ -24,6 +24,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/struct.h>
+#include <freeradius-devel/util/encode.h>
 
 /** Convert a STRUCT to one or more VPs
  *
@@ -676,11 +677,17 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			 *	Call the protocol encoder for non-bit fields.
 			 */
 			fr_proto_da_stack_build(da_stack, child);
-			len = encode_value(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
+
+			if (child->flags.array) {
+				len = fr_pair_array_to_network(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx, encode_value);
+			} else {
+				len = encode_value(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
+			}
 			if (len < 0) return len;
 			vp = fr_dcursor_current(cursor);
 
 		} else {
+		redo:
 			/*
 			 *	Hack until we find all places that don't set data.enumv
 			 */
@@ -701,6 +708,8 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 				vp = fr_dcursor_next(cursor);
 				if (!vp || !vp->da->flags.internal) break;
 			} while (vp != NULL);
+
+			if (child->flags.array && (vp->da == child)) goto redo;
 		}
 
 	next:
