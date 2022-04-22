@@ -339,7 +339,7 @@ jobs:
             $script
         done
 
-        make -j `nproc` ci-test
+        make ci-test
 
       env:
         SQL_MYSQL_TEST_SERVER: 127.0.0.1
@@ -363,7 +363,7 @@ jobs:
     - name: Run basic tests (MacOS)
       if: ${{ matrix.env.TEST_TYPE == 'macos' }}
       run: |
-        make -j `nproc` test
+        make test
       env:
         ASAN_OPTIONS: symbolize=1 detect_stack_use_after_return=1
 
