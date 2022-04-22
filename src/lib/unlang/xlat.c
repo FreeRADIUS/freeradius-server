@@ -226,7 +226,7 @@ int unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
 	 *	Allocate its state, and setup a cursor for the xlat nodes
 	 */
 	MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_xlat_t));
-	state->head = talloc_get_type_abort_const(xlat, xlat_exp_t);	/* Ensure the node is valid */
+	state->head = talloc_get_type_abort_const(xlat, xlat_exp_head_t);	/* Ensure the node is valid */
 	state->exp = xlat_exp_head(state->head);
 	state->success = p_success;
 	state->ctx = ctx;
@@ -244,7 +244,7 @@ static unlang_action_t unlang_xlat_repeat(rlm_rcode_t *p_result, request_t *requ
 {
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_action_t			xa;
-	xlat_exp_t const		*child = NULL;
+	xlat_exp_head_t const		*child = NULL;
 
 	xa = xlat_frame_eval_repeat(state->ctx, &state->values, &child,
 				    &state->alternate, request, state->head, &state->exp, &state->out);
@@ -304,7 +304,7 @@ static unlang_action_t unlang_xlat(rlm_rcode_t *p_result, request_t *request, un
 {
 	unlang_frame_state_xlat_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_xlat_t);
 	xlat_action_t			xa;
-	xlat_exp_t const		*child = NULL;
+	xlat_exp_head_t const		*child = NULL;
 
 	xa = xlat_frame_eval(state->ctx, &state->values, &child, request, state->head, &state->exp);
 	switch (xa) {
