@@ -90,11 +90,13 @@ $(foreach x, $(filter sql_%,$(FILES)), $(eval $$(OUTPUT.$(TEST))/$x: $(patsubst 
 #  Otherwise, check the log file for a parse error which matches the
 #  ERROR line in the input.
 #
+$(OUTPUT)/%: TEST=$(lastword $(subst /, ,$(dir $@))) $(basename $(notdir $@))
+
 $(OUTPUT)/%: $(DIR)/%.unlang $(TEST_BIN_DIR)/unit_test_module | build.raddb
-	@echo "MODULE-TEST $(lastword $(subst /, ,$(dir $@))) $(basename $(notdir $@))"
+	@echo "MODULE-TEST $(TEST)"
 	${Q}mkdir -p $(dir $@)
 	${Q}cp $(if $(wildcard $(basename $<).attrs),$(basename $<).attrs,src/tests/modules/default-input.attrs) $@.attrs
-	${Q}if ! MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xxx > "$@.log" 2>&1 || ! test -f "$@"; then \
+	${Q}if ! MODULE_TEST_DIR=$(dir $<) MODULE_TEST_UNLANG=$< TEST="$(TEST)" $(TEST_BIN)/unit_test_module -D share/dictionary -d src/tests/modules/ -i "$@.attrs" -f "$@.attrs" -r "$@" -xxx > "$@.log" 2>&1 || ! test -f "$@"; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat "$@.log"; \
 			echo "# $@.log"; \
