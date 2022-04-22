@@ -40,6 +40,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
 	$(eval ARGV     := $(shell grep "#.*ARGV:" $< | cut -f2 -d ':'))
 	$(eval IGNORE_ERROR := $(shell grep -q "#.*IGNORE_ERROR:.*1" $< && echo 1 || echo 0))
+	$(eval RADCLIENT_CLIENT_PORT := $(shell echo $$(($(RADCLIENT_CLIENT_PORT)+1))))
 
 	$(Q)echo "RADCLIENT-TEST INPUT=$(TARGET) ARGV=\"$(ARGV)\""
 	$(Q)[ -f $(dir $@)/radiusd.pid ] || exit 1
@@ -72,14 +73,14 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 #	or
 #	2. call the script src/test/radclient/$test.cmd to validate the build/test/radclient/$test.out
 #
-	$(Q)if [ -e "$(EXPECTED)" ] && ! cmp -s $(FOUND) $(EXPECTED); then  \
+	$(Q)if [ -e "$(EXPECTED)" ] && ! diff -I 'Sent' -I 'Received' $(EXPECTED) $(FOUND); then  \
 		echo "RADCLIENT FAILED $@";                                 \
 		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
 		echo "RADCLIENT: $(TEST_BIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(PORT) $(TYPE) $(SECRET)"; \
 		echo "ERROR: File $(FOUND) is not the same as $(EXPECTED)"; \
 		echo "If you did some update on the radclient code, please be sure to update the unit tests."; \
 		echo "e.g: $(EXPECTED)";                                    \
-		diff $(EXPECTED) $(FOUND);                                  \
+		diff -I 'Sent' -I 'Received' $(EXPECTED) $(FOUND);                                  \
 		rm -f $(BUILD_DIR)/tests/test.radclient;		    \
 		$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
 		exit 1;                                                     \
