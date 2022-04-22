@@ -50,11 +50,18 @@ ifneq "$(DOCKER_REGISTRY)" ""
 endif
 
 
-.PHONY: docker
-docker:
-	@echo Building $(DOCKER_COMMIT)
-	$(Q)docker build $(DOCKER_BUILD_ARGS) scripts/docker/ubuntu18 --build-arg=release=$(DOCKER_COMMIT) -t $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)
+.PHONY: docker-ubuntu
+docker-ubuntu:
+	@echo Building ubuntu $(DOCKER_COMMIT)
+	$(Q)docker build $(DOCKER_BUILD_ARGS) scripts/docker/ubuntu20 --build-arg=release=$(DOCKER_COMMIT) -t $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)
+
+.PHONY: docker-alpine
+docker-alpine:
+	@echo Building alpine $(DOCKER_COMMIT)
 	$(Q)docker build $(DOCKER_BUILD_ARGS) scripts/docker/alpine --build-arg=release=$(DOCKER_COMMIT) -t $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)-alpine
+
+.PHONY: docker
+docker: docker-ubuntu docker-alpine
 
 .PHONY: docker-push
 docker-push: docker
