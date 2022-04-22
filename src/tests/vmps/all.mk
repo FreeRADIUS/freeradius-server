@@ -35,13 +35,13 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval ARGV     := $(shell grep "#.*ARGV:" $< | cut -f2 -d ':'))
 	$(Q)echo "VMPS-TEST INPUT=$(TARGET) VMPS_ARGV=\"$(ARGV)\""
 	$(Q)[ -f $(dir $@)/radiusd.pid ] || exit 1
-	$(Q)if ! $(VQCLI) -s 127.0.0.1 -p $(PORT) $(ARGV) 1> $(FOUND) 2>&1; then \
+	$(Q)if ! $(VQCLI) -s 127.0.0.1 -p $(vmps_port) $(ARGV) 1> $(FOUND) 2>&1; then \
 		echo "FAILED";                                            \
 		cat $(FOUND);                                             \
 		rm -f $(BUILD_DIR)/tests/test.vmps;                       \
 		$(MAKE) --no-print-directory test.vmps.radiusd_kill;      \
 		echo "RADIUSD: $(RADIUSD_RUN)";                           \
-		echo "VQCLI:   $(VQCLI) -s 127.0.0.1 -p $(PORT) $(ARGV)"; \
+		echo "VQCLI:   $(VQCLI) -s 127.0.0.1 -p $(vmps_port) $(ARGV)"; \
 		exit 1;                                                   \
 	fi
 #

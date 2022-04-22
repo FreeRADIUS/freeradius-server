@@ -103,18 +103,19 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf $(if $(POST_INSTALL_MAKEFILE_ARG),,$(BUILD_DIR)/li
 	$(eval METHOD := $(notdir $(patsubst %.conf,%,$<)))
 	$(eval KEY := $(shell grep key_mgmt=NONE $< | sed 's/key_mgmt=NONE/-n/'))
 	$(eval RADIUS_LOG := $(dir $@)/test.$(METHOD)/radiusd.log)
+	$(eval TEST_PORT := $($(METHOD)_port))
 	@echo "EAPOL-TEST $(METHOD)"
 	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_kill
-	${Q}PORT=`PRINT_PORT=1 $(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_start`; \
-	if ! $(EAPOL_TEST) -t 10 -c $< -p $${PORT} -s $(SECRET) $(KEY) > $(EAPOL_TEST_LOG) 2>&1; then	\
+	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_start
+	${Q}if ! $(EAPOL_TEST) -t 10 -c $< -p $(TEST_PORT) -s $(SECRET) $(KEY) > $(EAPOL_TEST_LOG) 2>&1; then	\
 		echo "Last entries in supplicant log ($(EAPOL_TEST_LOG):";	\
 		tail -n 40 "$(EAPOL_TEST_LOG)";							\
 		echo "--------------------------------------------------";		\
 		tail -n 40 "$(RADIUS_LOG)";						\
 		echo "Last entries in server log ($(RADIUS_LOG)):";			\
 		echo "--------------------------------------------------";		\
-		echo "RADIUSD :  OUTPUT=$(dir $@) TESTDIR=$(dir $<) TEST=$(METHOD) TEST_PORT=$(PORT) $(RADIUSD_BIN) -fxxx -n servers -d $(dir $<)config -D $(DICT_PATH) -lstdout -f";\";\
-		echo "EAPOL   :  $(EAPOL_TEST) -c \"$<\" -p $${PORT} -s $(SECRET) $(KEY) "; \
+		echo "RADIUSD :  OUTPUT=$(dir $@) TESTDIR=$(dir $<) TEST=$(METHOD) TEST_PORT=$(TEST_PORT) $(RADIUSD_BIN) -fxxx -n servers -d $(dir $<)config -D $(DICT_PATH) -lstdout -f";\";\
+		echo "EAPOL   :  $(EAPOL_TEST) -c \"$<\" -p $(TEST_PORT) -s $(SECRET) $(KEY) "; \
 		echo "           log is in $(OUT)"; \
 		rm -f $(BUILD_DIR)/tests/test.eap;                                      \
 		$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_kill;			\

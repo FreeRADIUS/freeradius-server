@@ -54,13 +54,13 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval ARGV     := $(shell grep "#.*ARGV:" $< | cut -f2 -d ':'))
 	$(Q)echo "TACACS-TEST INPUT=$(TARGET) TACACS_ARGV=\"$(ARGV)\""
 	$(Q)[ -f $(dir $@)/radiusd.pid ] || exit 1
-	$(Q)if ! $(TACCLIENT) --return-0-if-failed -v -k $(SECRET) -p $(PORT) -H localhost -r 192.168.69.1 -P pegapilha/0 --timeout 2 $(ARGV) 1> $(FOUND) 2>&1; then \
+	$(Q)if ! $(TACCLIENT) --return-0-if-failed -v -k $(SECRET) -p $(tacacs_port) -H localhost -r 192.168.69.1 -P pegapilha/0 --timeout 2 $(ARGV) 1> $(FOUND) 2>&1; then \
 		echo "FAILED";                                              \
 		cat $(FOUND);                                               \
 		rm -f $(BUILD_DIR)/tests/test.tacacs;                       \
 		$(MAKE) --no-print-directory test.tacacs.radiusd_kill;      \
 		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
-		echo "TACCLIENT: $(TACCLIENT) --return-0-if-failed -v -k $(SECRET) -p $(PORT) -H localhost -r 192.168.69.1 -P pegapilha/0 --timeout 2 $(ARGV)"; \
+		echo "TACCLIENT: $(TACCLIENT) --return-0-if-failed -v -k $(SECRET) -p $(tacacs_port) -H localhost -r 192.168.69.1 -P pegapilha/0 --timeout 2 $(ARGV)"; \
 		exit 1;                                                     \
 	fi
 #
@@ -71,7 +71,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(Q)if [ -e "$(EXPECTED)" ] && ! cmp -s $(FOUND) $(EXPECTED); then  \
 		echo "TACCLIENT FAILED $@";                                 \
 		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
-		echo "TACCLIENT: $(TACCLIENT) --return-0-if-failed -v -k $(SECRET) -p $(PORT) -H localhost -r 192.168.69.1 -P pegapilha/0 --timeout 2 $(ARGV)"; \
+		echo "TACCLIENT: $(TACCLIENT) --return-0-if-failed -v -k $(SECRET) -p $(tacacs_port) -H localhost -r 192.168.69.1 -P pegapilha/0 --timeout 2 $(ARGV)"; \
 		echo "ERROR: File $(FOUND) is not the same as $(EXPECTED)"; \
 		echo "If you did some update on the proto_tacacs code, please be sure to update the unit tests."; \
 		echo "e.g: $(EXPECTED)";                                    \
