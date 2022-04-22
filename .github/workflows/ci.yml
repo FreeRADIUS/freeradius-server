@@ -339,7 +339,7 @@ jobs:
             $script
         done
 
-        make ci-test
+        make -j `nproc` ci-test
 
       env:
         SQL_MYSQL_TEST_SERVER: 127.0.0.1
@@ -363,7 +363,7 @@ jobs:
     - name: Run basic tests (MacOS)
       if: ${{ matrix.env.TEST_TYPE == 'macos' }}
       run: |
-        make test
+        make -j `nproc` test
       env:
         ASAN_OPTIONS: symbolize=1 detect_stack_use_after_return=1
 
@@ -375,7 +375,7 @@ jobs:
         # For fuzzing we won't be needing eapol_test
         mkdir -p build/tests/eapol_test
         : > build/tests/eapol_test/eapol_test.mk
-        make -j 8 test.fuzzer FUZZER_TIMEOUT=720
+        make -j `nproc` test.fuzzer FUZZER_TIMEOUT=720
         find build/fuzzer -type f ! -path 'build/fuzzer/*.log' | grep . && exit 1 || :
 
     - name: "Clang libFuzzer: Store assets on failure"
