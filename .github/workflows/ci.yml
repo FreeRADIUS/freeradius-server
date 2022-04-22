@@ -12,6 +12,7 @@ env:
   CI: 1
   GH_ACTIONS: 1
   DEBIAN_FRONTEND: noninteractive
+  APT_OPTS: "-y --no-install-recommends"
   LDAP_TEST_SERVER: 127.0.0.1
   LDAP_TEST_SERVER_PORT: 3890
 #
@@ -105,11 +106,12 @@ jobs:
         ln -fs /usr/bin/env /usr/local/bin/sudo
 
     - name: Package manager performance improvements
-      if: ${{ env.USE_DOCKER != 1 }}
       run: |
         sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
-        echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
-        sudo dpkg-reconfigure man-db
+        if command -v mandb >/dev/null; then
+          echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
+          sudo dpkg-reconfigure man-db
+        fi
 
     - name: Freshen APT repo metadata
       run: |
@@ -117,7 +119,7 @@ jobs:
 
     - name: Install common build dependencies
       run: |
-        sudo apt-get install -y --no-install-recommends \
+        sudo apt-get install ${APT_OPTS} \
         autoconf \
         build-essential \
         debhelper \
@@ -174,7 +176,7 @@ jobs:
       run: |
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
         sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
-        sudo apt-get install -y --no-install-recommends clang-10 llvm-10 gdb
+        sudo apt-get install ${APT_OPTS} clang-10 llvm-10 gdb
         sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10
         sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10
 
@@ -183,14 +185,14 @@ jobs:
       run: |
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
         sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-10 main"
-        sudo apt-get install -y --no-install-recommends clang-10 llvm-10 gdb
+        sudo apt-get install ${APT_OPTS} clang-10 llvm-10 gdb
         sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10
         sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10
 
     - name: Install GCC
       if: ${{ matrix.env.CC == 'gcc' }}
       run: |
-        sudo apt-get install -y --no-install-recommends gcc gdb
+        sudo apt-get install ${APT_OPTS} gcc gdb
 
     #
     #  Build using some alternative libraries
@@ -228,7 +230,7 @@ jobs:
       run: |
         echo /opt/openssl/lib64 | sudo tee /etc/ld.so.conf.d/openssl3.conf >/dev/null
         sudo ldconfig
-        sudo apt-get install -y --no-install-recommends heimdal-dev
+        sudo apt-get install ${APT_OPTS} heimdal-dev
 
     - name: Show versions
       run: |
@@ -258,11 +260,11 @@ jobs:
           CONFIG_OPENSSL="--with-openssl-lib-dir=/opt/openssl/lib64 --with-openssl-include-dir=/opt/openssl/include"
         fi
         CFLAGS="${BUILD_CFLAGS}" ./configure -C --enable-developer --enable-werror --prefix=$HOME/freeradius --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL --with-pcre=$LIBS_OPTIONAL --enable-reproducible-builds=${REPRODUCIBLE} $CONFIG_OPENSSL
-        make -j `nproc`
+        make -j $(($(nproc) + 1))
 
     - name: clang scan
       run: |
-        make -j `nproc` scan && [ "$(find build/plist/ -name *.html)" = '' ]
+        make -j $(($(nproc) + 1)) scan && [ "$(find build/plist/ -name *.html)" = '' ]
       if: ${{ matrix.env.CC == 'clang' }}
 
     - name: "Clang Static Analyzer: Store assets on failure"
@@ -281,7 +283,7 @@ jobs:
         sudo sh -c 'echo "shift && cp -v \$@" >> /usr/bin/ucf'
         sudo chmod +x /usr/bin/ucf
 
-        sudo apt-get install -y --no-install-recommends \
+        sudo apt-get install ${APT_OPTS} \
           apparmor-utils \
           ldap-utils \
           slapd
@@ -305,7 +307,7 @@ jobs:
     - name: Database dependencies (containers)
       if: ${{ env.USE_DOCKER == 1 }}
       run: |
-        sudo apt-get install -y --no-install-recommends \
+        sudo apt-get install ${APT_OPTS} \
           mariadb-client \
           postgresql-client
 
@@ -333,6 +335,10 @@ jobs:
     - name: Run tests
       run: |
         [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
+
+        openssl dhparam -out ./raddb/certs/dh -2 128 || \
+          openssl dhparam -out ./raddb/certs/dh -2 512 || \
+          true
 
         make ci-test
 
