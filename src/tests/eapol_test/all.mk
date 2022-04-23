@@ -106,7 +106,7 @@ $(OUTPUT)/%.ok: $(DIR)/%.conf $(if $(POST_INSTALL_MAKEFILE_ARG),,$(BUILD_DIR)/li
 	$(eval TEST_PORT := $($(METHOD)_port))
 	@echo "EAPOL-TEST $(METHOD)"
 	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_kill
-	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_start
+	${Q}$(MAKE) $(POST_INSTALL_MAKEFILE_ARG) --no-print-directory test.$(METHOD).radiusd_start $(POST_INSTALL_RADIUSD_BIN_ARG)
 	${Q}if ! $(EAPOL_TEST) -t 10 -c $< -p $(TEST_PORT) -s $(SECRET) $(KEY) > $(EAPOL_TEST_LOG) 2>&1; then	\
 		echo "Last entries in supplicant log ($(EAPOL_TEST_LOG):";	\
 		tail -n 40 "$(EAPOL_TEST_LOG)";							\
