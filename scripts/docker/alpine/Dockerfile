@@ -77,6 +77,8 @@ RUN apk update \
 
 COPY docker-entrypoint.sh /
 
+RUN chmod +x docker-entrypoint.sh
+
 EXPOSE 1812/udp 1813/udp
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["radiusd"]
