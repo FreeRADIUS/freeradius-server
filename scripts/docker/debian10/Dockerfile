@@ -52,6 +52,7 @@ RUN apt-get update \
     && ln -s /etc/freeradius /etc/raddb
 
 COPY docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 1812/udp 1813/udp
 ENTRYPOINT ["/docker-entrypoint.sh"]
