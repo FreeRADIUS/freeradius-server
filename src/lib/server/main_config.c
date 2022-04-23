@@ -857,15 +857,15 @@ int main_config_exclusive_proc(main_config_t *config)
 	char *path;
 	int sem_id;
 	int ret;
-	int fd = -1;
+	FILE *fp = NULL;
 	static bool sem_initd;
 
 	if (unlikely(sem_initd)) return 0;
 
 	if (config->write_pid) {
 		fr_assert(config->pid_file);
-		fd = open(config->pid_file, O_CREAT | O_CLOEXEC);	/* May not have been created yet */
-		if (fd < 0) {
+		fp = fopen(config->pid_file, "w");
+		if (!fp) {
 			fr_strerror_printf("Refusing to start - Failed creating PID file at \"%s\" - %s",
 					   config->pid_file, fr_syserror(errno));
 			return -1;
@@ -909,7 +909,7 @@ int main_config_exclusive_proc(main_config_t *config)
 		break;
 	}
 
-	if (fd != -1) close(fd);
+	if (fp != NULL) fclose(fp);
 
 	return ret;
 }
