@@ -30,8 +30,8 @@ ifneq "$(NOCACHE)" ""
     NO_CACHE=--no-cache
 endif
 
-CB_CPREFIX:=fr-crossbuild-
-CB_IPREFIX:=freeradius-build
+CB_CPREFIX:=fr40x-crossbuild-
+CB_IPREFIX:=freeradius40x-build
 
 #
 #  This Makefile is included in-line, and not via the "boilermake"
