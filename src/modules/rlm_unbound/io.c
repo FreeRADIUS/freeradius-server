@@ -202,7 +202,7 @@ static void _unbound_io_service_writable(fr_event_list_t *el, int fd, UNUSED int
 	/*
 	 *	Remove IO events
 	 */
-	if (!(ev->events | UB_EV_PERSIST)) {
+	if (!(ev->events & UB_EV_PERSIST)) {
 		DEBUG4("unbound event %p - UB_EV_PERSIST not set - Removing events for FD %i", ev, ev->fd);
 		if (fr_event_fd_delete(el, ev->fd, FR_EVENT_FILTER_IO) < 0) {
 			PERROR("unbound event %p - De-registration failed for FD %i", ev, ev->fd);
