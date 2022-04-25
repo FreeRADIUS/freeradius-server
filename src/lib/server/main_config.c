@@ -880,7 +880,8 @@ int main_config_exclusive_proc(main_config_t *config)
 			    true, false);
 	if (sem_id < 0) {
 		talloc_free(path);
-		return -1;
+		ret = -1;
+		goto done;
 	}
 
 	config->multi_proc_sem_id = -1;
@@ -909,6 +910,7 @@ int main_config_exclusive_proc(main_config_t *config)
 		break;
 	}
 
+done:
 	if (fp != NULL) fclose(fp);
 
 	return ret;
