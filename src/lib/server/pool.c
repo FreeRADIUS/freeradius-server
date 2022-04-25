@@ -1341,6 +1341,7 @@ void fr_pool_free(fr_pool_t *pool)
 	fr_assert(pool->tail == NULL);
 	fr_assert(pool->state.num == 0);
 
+	pthread_mutex_unlock(&pool->mutex);
 	pthread_mutex_destroy(&pool->mutex);
 	pthread_cond_destroy(&pool->done_spawn);
 	pthread_cond_destroy(&pool->done_reconnecting);
