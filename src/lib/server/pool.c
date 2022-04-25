@@ -274,7 +274,7 @@ static inline void fr_pool_trigger_exec(fr_pool_t *pool, char const *event)
  */
 static fr_pool_connection_t *connection_find(fr_pool_t *pool, void *conn)
 {
-	fr_pool_connection_t *this;
+	fr_pool_connection_t *this = NULL;
 
 	if (!pool || !conn) return NULL;
 
@@ -296,12 +296,13 @@ static fr_pool_connection_t *connection_find(fr_pool_t *pool, void *conn)
 
 			fr_assert(this->in_use == true);
 			/* coverity[missing_unlock] */
-			return this;
+			break;
 		}
 	}
 
 	pthread_mutex_unlock(&pool->mutex);
-	return NULL;
+
+	return this;
 }
 
 /** Spawns a new connection
