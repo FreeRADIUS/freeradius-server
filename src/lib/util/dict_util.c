@@ -1957,12 +1957,14 @@ ssize_t dict_by_protocol_substr(fr_dict_attr_err_t *err,
 	fr_dict_t		*dict;
 	size_t			len;
 	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 1];	/* +1 \0 +1 for "too long" */
-	fr_sbuff_t		our_name = FR_SBUFF(name);
+	fr_sbuff_t		our_name;
 
 	if (!dict_gctx || !name || !out) {
 		if (err) *err = FR_DICT_ATTR_EINVAL;
 		return 0;
 	}
+
+	our_name = FR_SBUFF(name);
 
 	memset(&root, 0, sizeof(root));
 
