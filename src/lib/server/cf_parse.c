@@ -773,14 +773,12 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			int		ret;
 			cf_parse_t	func;
 			void		*entry;
-			TALLOC_CTX	*value_ctx = array ? array : ctx;
+			TALLOC_CTX	*value_ctx = array;
 
 			/*
 			 *	Figure out where to write the output
 			 */
-			if (!array) {
-				entry = NULL;
-			} else if ((FR_BASE_TYPE(type) == FR_TYPE_VOID) || (type & FR_TYPE_TMPL)) {
+			if ((FR_BASE_TYPE(type) == FR_TYPE_VOID) || (type & FR_TYPE_TMPL)) {
 				entry = &array[i];
 			} else {
 				entry = ((uint8_t *) array) + (i * fr_value_box_field_sizes[FR_BASE_TYPE(type)]);
