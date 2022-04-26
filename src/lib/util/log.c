@@ -1207,7 +1207,7 @@ int fr_log_close(fr_log_t *log)
 			fr_strerror_printf("Failed closing file handle: %s", fr_syserror(errno));
 			return -1;
 		}
-		FALL_THROUGH;
+		return 0;
 
 	case L_DST_NUM_DEST:
 		break;
