@@ -135,13 +135,14 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_
 	     other = fr_dlist_next(&t->inst->list, other)) {
 		int i;
 
-		pthread_mutex_lock(&other->mutex);
-
 		if (other == t) continue;
 
 		tree = (fr_rb_tree_t **) (((uint8_t *) other) + tree_offset);
+		pthread_mutex_lock(&other->mutex);
 		stats = fr_rb_find(*tree, mydata);
+
 		if (!stats) {
+			pthread_mutex_unlock(&other->mutex);
 			continue;
 		}
 		memcpy(&local_stats, stats->stats, sizeof(stats->stats));
