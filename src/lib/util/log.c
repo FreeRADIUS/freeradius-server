@@ -1096,6 +1096,7 @@ int fr_log_init_file(fr_log_t *log, char const *file)
 	}
 
 	setlinebuf(log->handle);
+	log->fd = fileno(log->handle);
 
 	return 0;
 }
