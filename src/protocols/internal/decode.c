@@ -94,7 +94,7 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 	 *	we need to do an intermediary TLV
 	 *	VP to retain the nesting structure.
 	 */
-	if (fr_pair_dcursor_init(&cursor, &children) && fr_dcursor_next(&cursor)) {
+	if (fr_pair_dcursor_init(&cursor, &children) && fr_dcursor_next_peek(&cursor)) {
 		fr_pair_t	*tlv;
 
 		tlv = fr_pair_afrom_da(ctx, parent_da);
@@ -108,7 +108,7 @@ static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dic
 
 		fr_pair_append(head, tlv);
 	} else {
-		fr_pair_append(head, fr_dcursor_head(&cursor));
+		fr_pair_append(head, fr_dcursor_remove(&cursor));
 	}
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -324,8 +324,9 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	case FR_TYPE_TLV:
 	case FR_TYPE_STRUCT:
 		if (unlikely(tainted)) goto bad_tainted;
-
+WARN("Decode TLV");
 		slen = internal_decode_tlv(ctx, out, da, &work_dbuff, decode_ctx);
+WARN("We have %pP", fr_pair_list_tail(out));
 		if (slen <= 0) goto error;
 		break;
 
@@ -339,6 +340,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 		 *	It's ok for this function to return 0
 		 *	we can have zero length strings.
 		 */
+WARN("Decode default");
 		slen = internal_decode_pair_value(ctx, out, da, &work_dbuff, tainted, decode_ctx);
 		if (slen < 0) goto error;
 	}
