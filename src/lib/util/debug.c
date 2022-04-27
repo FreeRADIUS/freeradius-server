@@ -1304,8 +1304,12 @@ int fr_fault_setup(TALLOC_CTX *ctx, char const *cmd, char const *program)
 		 *  uninitialised and freed memory, to make memory issues easier
 		 *  to track down.
 		 */
+#  ifdef M_PERTURB
 		if (!getenv("TALLOC_FREE_FILL")) mallopt(M_PERTURB, 0x42);
+#  endif
+#  ifdef M_CHECK_ACTION
 		mallopt(M_CHECK_ACTION, 3);
+#  endif
 #endif
 
 #if defined(HAVE_EXECINFO) && defined(__GNUC__) && !defined(NDEBUG)
