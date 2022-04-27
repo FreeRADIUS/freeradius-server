@@ -1,6 +1,7 @@
 *~
 *.o
 *.a
+*.wasm
 *.lo
 *.loT
 *.la
