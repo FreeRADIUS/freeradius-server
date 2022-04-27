@@ -5,7 +5,7 @@ SOURCES		:= dlopen.c log.c
 #  This target is NOT built with static analyzer flags.
 #
 $(TARGET): CC	    := $(HOST_CC)
-$(TARGET): CFLAGS   := $(filter-out -fsanitize%,$(CFLAGS))
+$(TARGET): CFLAGS   := $(filter-out -W%,$(filter-out -fsanitize%,$(CFLAGS)))
 $(TARGET): CPPFLAGS := $(filter-out -W%,$(CPPFLAGS))
 $(TARGET): LDFLAGS  := $(filter-out -fsanitize%,$(LDFLAGS))
 
