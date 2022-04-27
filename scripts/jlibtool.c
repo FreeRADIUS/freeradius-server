@@ -179,6 +179,27 @@
 #  define EXE_EXT			".exe"
 #endif
 
+#if defined(__EMSCRIPTEN__)
+#  define SHELL_CMD 			"/bin/sh"
+#  define DYNAMIC_LIB_EXT		"wasm"
+#  define MODULE_LIB_EXT		"wasm"
+#  define STATIC_LIB_EXT		"a"
+#  define OBJECT_EXT			"o"
+#  define LIBRARIAN			"ar"
+#  define LIBRARIAN_OPTS		"cr"
+#  define RANLIB			"ranlib"
+#  define PIC_FLAG			"-fPIC"
+#  define RPATH				"-rpath"
+#  define SHARED_OPTS			"-shared"
+#  define MODULE_OPTS			"-shared"
+#  define LINKER_FLAG_PREFIX		"-Wl,"
+#  define DYNAMIC_LINK_OPTS		LINKER_FLAG_PREFIX "-export-dynamic"
+#  define ADD_MINUS_L
+#  define LD_RUN_PATH			"LD_RUN_PATH"
+#  define LD_LIBRARY_PATH		"LD_LIBRARY_PATH"
+#  define LD_LIBRARY_PATH_LOCAL		"LD_LIBRARY_PATH"
+#endif
+
 #ifndef CC
 #define CC				"clang"
 #endif
