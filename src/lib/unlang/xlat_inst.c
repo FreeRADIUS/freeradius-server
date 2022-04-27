@@ -513,9 +513,9 @@ static int _xlat_bootstrap_walker(xlat_exp_t *node, UNUSED void *uctx)
  *	 IF THIS IS CALLED FOR XLATS TOKENIZED AT RUNTIME YOU WILL LEAK LARGE AMOUNTS OF MEMORY.
  *	 USE xlat_instantiate_request() INSTEAD.
  *
- * @param[in] root of xlat tree to create instance data for.
+ * @param[in] head of xlat tree to create instance data for.
  */
-int xlat_bootstrap(xlat_exp_t *root)
+int xlat_bootstrap(xlat_exp_head_t *head)
 {
 	/*
 	 *	If thread instantiate has been called, it's too late to
@@ -533,7 +533,7 @@ int xlat_bootstrap(xlat_exp_t *root)
 	 *	Walk an expression registering all the function calls
 	 *	so that we can instantiate them later.
 	 */
-	return xlat_eval_walk(root, _xlat_bootstrap_walker, XLAT_FUNC, NULL);
+	return xlat_eval_walk(head, _xlat_bootstrap_walker, XLAT_FUNC, NULL);
 }
 
 /** Walk over all registered instance data and free them explicitly

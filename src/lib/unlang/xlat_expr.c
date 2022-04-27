@@ -30,6 +30,13 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/calc.h>
 
+#undef XLAT_DEBUG
+#ifdef DEBUG_XLAT
+#  define XLAT_DEBUG(_fmt, ...)			DEBUG3("%s[%i] "_fmt, __FILE__, __LINE__, ##__VA_ARGS__)
+#else
+#  define XLAT_DEBUG(...)
+#endif
+
 /*
  *	The new tokenizer accepts most things which are accepted by the old one.  Many of the errors will be
  *	different, though.
@@ -99,9 +106,10 @@ static fr_slen_t xlat_expr_print_unary(fr_sbuff_t *out, xlat_exp_t const *node, 
 static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node, UNUSED void *inst, fr_sbuff_escape_rules_t const *e_rules)
 {
 	size_t	at_in = fr_sbuff_used_total(out);
+	xlat_exp_t *child = xlat_exp_head(node->call.args);
 
 	FR_SBUFF_IN_CHAR_RETURN(out, '(');
-	xlat_print_node(out, node->call.args, xlat_exp_head(node->call.args), e_rules); /* prints a space after the first argument */
+	xlat_print_node(out, node->call.args, child, e_rules); /* prints a space after the first argument */
 
 	/*
 	 *	@todo - when things like "+" support more than 2 arguments, print them all out
@@ -109,7 +117,8 @@ static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node,
 	 */
 	FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
 	FR_SBUFF_IN_CHAR_RETURN(out, ' ');
-	xlat_print_node(out, node->call.args, xlat_exp_next(node->call.args, xlat_exp_head(node->call.args)), e_rules);
+	child = xlat_exp_next(node->call.args, child);
+	xlat_print_node(out, node->call.args, child, e_rules);
 
 	FR_SBUFF_IN_CHAR_RETURN(out, ')');
 
@@ -157,7 +166,7 @@ static int CC_HINT(nonnull) xlat_purify_expr(xlat_exp_t *node)
 	xlat_exp_foreach(node->call.args, arg) {
 		fr_assert(arg->type == XLAT_GROUP);
 
-		if (!xlat_is_box(arg->group)) return 0;
+		if (!xlat_is_box(xlat_exp_head(arg->group))) return 0;
 
 		if (xlat_exp_next(arg->group, xlat_exp_head(arg->group))) return 0;
 	}
@@ -175,9 +184,9 @@ static int CC_HINT(nonnull) xlat_purify_expr(xlat_exp_t *node)
 		MEM(box = fr_value_box_alloc_null(node));
 
 		if ((arg_p->type != FR_TYPE_VOID) && (arg_p->type != box->type)) {
-			if (fr_value_box_cast(node, box, arg_p->type, NULL, xlat_box(arg->group)) < 0) goto fail;
+			if (fr_value_box_cast(node, box, arg_p->type, NULL, xlat_box(xlat_exp_head(arg->group))) < 0) goto fail;
 
-		} else if (fr_value_box_copy(node, box, xlat_box(arg->group)) < 0) {
+		} else if (fr_value_box_copy(node, box, xlat_box(xlat_exp_head(arg->group))) < 0) {
 		fail:
 			talloc_free(box);
 			goto cleanup;
@@ -236,7 +245,8 @@ static xlat_exp_t *xlat_groupify_node(TALLOC_CTX *ctx, xlat_exp_t *node)
 	group->quote = T_BARE_WORD;
 
 	group->fmt = node->fmt;	/* not entirely correct, but good enough for now */
-	group->group = talloc_steal(group, node);
+	MEM(group->group = xlat_exp_head_alloc(group));
+	group->group->next = talloc_steal(group->group, node);
 	group->flags = node->flags;
 
 	if (node->next) {
@@ -247,30 +257,6 @@ static xlat_exp_t *xlat_groupify_node(TALLOC_CTX *ctx, xlat_exp_t *node)
 	return group;
 }
 
-/*
- *	Any function requires each argument to be in it's own XLAT_GROUP.  But we can't create an XLAT_GROUP
- *	from the start of parsing, as we might need to return an XLAT_FUNC, or another type of xlat.  Instead,
- *	we just work on the bare nodes, and then later groupify them.  For now, it's just easier to do it this way.
- */
-static void xlat_groupify_expr(xlat_exp_t *node)
-{
-	xlat_t const *func;
-
-	if (node->type != XLAT_FUNC) return;
-
-	func = node->call.func;
-
-	if (!func->internal) return;
-
-	if (func->token == T_INVALID) return;
-
-	/*
-	 *	It's already been groupified, don't do anything.
-	 */
-	if (node->call.args->type == XLAT_GROUP) return;
-
-	node->call.args = xlat_groupify_node(node, node->call.args);
-}
 
 static xlat_arg_parser_t const binary_op_xlat_args[] = {
 	{ .required = true, .type = FR_TYPE_VOID },
@@ -395,13 +381,14 @@ static void cast_to_bool(bool *out, fr_value_box_t const *in)
 }
 
 typedef struct {
-	xlat_exp_t	*args;
 	bool		sense;
+	int		argc;
+	xlat_exp_head_t	**argv;
 } xlat_logical_inst_t;
 
 typedef struct {
 	bool			last_success;
-	xlat_exp_t		*current;
+	int			current;
 	fr_value_box_list_t	list;
 } xlat_logical_rctx_t;
 
@@ -409,24 +396,36 @@ static fr_slen_t xlat_expr_print_logical(fr_sbuff_t *out, xlat_exp_t const *node
 {
 	size_t	at_in = fr_sbuff_used_total(out);
 	xlat_logical_inst_t *inst = instance;
-	xlat_exp_head_t *head = inst->args;
+	xlat_exp_head_t *head;
+
+	FR_SBUFF_IN_CHAR_RETURN(out, '(');
 
 	/*
 	 *	We might get called before the node is instantiated.
 	 */
-	if (!head) head = node->call.args;
+	if (!inst->argv) {
+		head = node->call.args;
 
-	fr_assert(head != NULL);
+		fr_assert(head != NULL);
 
-	FR_SBUFF_IN_CHAR_RETURN(out, '(');
+		xlat_exp_foreach(head, child) {
+			xlat_print_node(out, head, child, e_rules);
 
-	xlat_exp_foreach(head, child) {
-		xlat_print_node(out, head, child, e_rules);
+			if (!xlat_exp_next(head, child)) break;
 
-		if (!xlat_exp_next(head, child)) break;
+			FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
+			FR_SBUFF_IN_CHAR_RETURN(out, ' ');
+		}
+	} else {
+		int i;
 
-		FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
-		FR_SBUFF_IN_CHAR_RETURN(out, ' ');
+		for (i = 0; i < inst->argc; i++) {
+			xlat_print(out, inst->argv[i], e_rules);
+			if (i == (inst->argc - 1)) break;
+
+			FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
+			FR_SBUFF_IN_CHAR_RETURN(out, ' ');
+		}
 	}
 
 	FR_SBUFF_IN_CHAR_RETURN(out, ')');
@@ -434,12 +433,37 @@ static fr_slen_t xlat_expr_print_logical(fr_sbuff_t *out, xlat_exp_t const *node
 	return fr_sbuff_used_total(out) - at_in;
 }
 
+/*
+ *	Each argument is it's own head, because we do NOT always want
+ *	to go to the next argument.
+ */
 static int xlat_logical_instantiate(xlat_inst_ctx_t const *xctx)
 {
 	xlat_logical_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_logical_inst_t);
+	int i;
 
-	inst->args = xctx->ex->call.args;
-	xctx->ex->call.args = NULL;
+	xlat_exp_foreach(xctx->ex->call.args, arg) {
+		inst->argc++;
+	}
+
+	inst->argv = talloc_array(inst, xlat_exp_head_t *, inst->argc);
+
+	i = 0;
+	xlat_exp_foreach(xctx->ex->call.args, arg) {
+		MEM(inst->argv[i] = xlat_exp_head_alloc(inst->argv));
+		inst->argv[i++]->next = talloc_steal(inst->argv[i], arg);
+		fr_assert(arg->type == XLAT_GROUP);
+	}
+
+	/*
+	 *	The arguments are in a linked list, so unlink them,
+	 */
+	for (i = 0; i < inst->argc; i++) {
+		inst->argv[i]->next->next = NULL;
+	}
+
+	xctx->ex->call.args->next = NULL;
+	TALLOC_FREE(xctx->ex->call.args);
 	inst->sense = (xctx->ex->call.func->token == T_LOR);
 
 	return 0;
@@ -508,12 +532,12 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	fr_dlist_talloc_free(&rctx->list);
-	rctx->current = rctx->current->next;
+	rctx->current++;
 
 	/*
 	 *	Nothing to expand, return the final value we saw.
 	 */
-	if (!rctx->current) goto done;
+	if (rctx->current >= inst->argc) goto done;
 
 	/*
 	 *	Push the xlat onto the stack for expansion.
@@ -521,7 +545,7 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (unlang_xlat_yield(request, xlat_logical_resume, NULL, rctx) != XLAT_ACTION_YIELD) goto fail;
 
 	if (unlang_xlat_push(rctx, &rctx->last_success, &rctx->list,
-			     request, rctx->current, UNLANG_SUB_FRAME) < 0) goto fail;
+			     request, inst->argv[rctx->current], UNLANG_SUB_FRAME) < 0) goto fail;
 
 	return XLAT_ACTION_PUSH_UNLANG;
 }
@@ -535,7 +559,7 @@ static xlat_action_t xlat_func_logical(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out
 	xlat_logical_rctx_t	*rctx;
 
 	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_logical_rctx_t));
-	rctx->current = inst->args;
+	rctx->current = 0;
 	fr_value_box_list_init(&rctx->list);
 
 	if (unlang_xlat_yield(request, xlat_logical_resume, NULL, rctx) != XLAT_ACTION_YIELD) {
@@ -545,7 +569,7 @@ static xlat_action_t xlat_func_logical(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out
 	}
 
 	if (unlang_xlat_push(ctx, &rctx->last_success, &rctx->list,
-			     request, rctx->current, UNLANG_SUB_FRAME) < 0) goto fail;
+			     request, inst->argv[rctx->current], UNLANG_SUB_FRAME) < 0) goto fail;
 
 	return XLAT_ACTION_PUSH_UNLANG;
 }
@@ -770,7 +794,7 @@ static const int precedence[T_TOKEN_LAST] = {
 		while (isspace((int) *fr_sbuff_current(_x))) fr_sbuff_advance(_x, 1); \
 	} while (0)
 
-static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_flags_t *flags, fr_sbuff_t *in,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 				   fr_token_t prev, fr_sbuff_parse_rules_t const *bracket_rules);
 
@@ -784,7 +808,7 @@ static fr_table_num_sorted_t const expr_quote_table[] = {
 static size_t expr_quote_table_len = NUM_ELEMENTS(expr_quote_table);
 
 #ifdef HAVE_REGEX
-static ssize_t tokenize_regex(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+static ssize_t tokenize_regex(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_flags_t *flags, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	ssize_t		slen;
@@ -850,7 +874,7 @@ static ssize_t tokenize_regex(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_flag
 		if (slen <= 0) goto error;
 	}
 
-	*head = node;
+	*out = node;
 	xlat_flags_merge(flags, &node->flags);
 
 	return fr_sbuff_used(&our_in);
@@ -871,7 +895,7 @@ static ssize_t tokenize_regex(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_flag
  *	to parse the next thing we get.  Otherwise, parse the thing as
  *	int64_t.
  */
-static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_head_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_t **out, xlat_flags_t *flags, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 			      fr_sbuff_parse_rules_t const *bracket_rules)
 {
@@ -886,6 +910,8 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_head_t **head, xla
 	tmpl_rules_t		our_t_rules = *t_rules;
 	tmpl_t			*vpt;
 	fr_token_t		quote;
+
+	XLAT_DEBUG("FIELD <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
 	/*
 	 *	Handle !-~ by adding a unary function to the xlat
@@ -1076,12 +1102,17 @@ done:
 	 *	@todo - purify the node.
 	 */
 	if (unary) {
-		unary->call.args = node;
+		xlat_exp_head_t *head;
+
+		MEM(head = xlat_exp_head_alloc(unary));
+
+		unary->call.args = head;
+		head->next = xlat_groupify_node(unary, node);
 		xlat_flags_merge(&unary->flags, &node->flags);
 		node = unary;
 	}
 
-	*head = node;
+	*out = node;
 	xlat_flags_merge(flags, &node->flags);
 
 	return fr_sbuff_set(in, &our_in);
@@ -1127,7 +1158,7 @@ static size_t const expr_assignment_op_table_len = NUM_ELEMENTS(expr_assignment_
  *	!EXPR
  *	A OP B
  */
-static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_flags_t *flags, fr_sbuff_t *in,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 				   fr_token_t prev, fr_sbuff_parse_rules_t const *bracket_rules)
 {
@@ -1137,6 +1168,9 @@ static ssize_t tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat
 	ssize_t		slen;
 	fr_sbuff_marker_t  marker;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
+	xlat_exp_head_t *head;
+
+	XLAT_DEBUG("EXPRESSION <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
 	fr_sbuff_skip_whitespace(&our_in);
 
@@ -1160,7 +1194,7 @@ redo:
 	 */
 	if (fr_sbuff_extend(&our_in) == 0) {
 	done:
-		*head = lhs;
+		*out = lhs;
 		return fr_sbuff_set(in, &our_in);
 	}
 
@@ -1189,6 +1223,7 @@ redo:
 	/*
 	 *	Get the operator.
 	 */
+	XLAT_DEBUG("    operator <-- %pV", fr_box_strvalue_len(fr_sbuff_current(&our_in), fr_sbuff_remaining(&our_in)));
 	fr_sbuff_out_by_longest_prefix(&slen, &op, expr_assignment_op_table, &our_in, T_INVALID);
 	if (op == T_INVALID) {
 		talloc_free(lhs);
@@ -1251,6 +1286,7 @@ redo:
 	/*
 	 *	We now parse the RHS, allowing a (perhaps different) cast on the RHS.
 	 */
+	XLAT_DEBUG("    recurse RHS <-- %pV", fr_box_strvalue_len(fr_sbuff_current(&our_in), fr_sbuff_remaining(&our_in)));
 	slen = tokenize_expression(ctx, &rhs, flags, &our_in, p_rules, t_rules, op, bracket_rules);
 	if (slen <= 0) {
 		talloc_free(lhs);
@@ -1278,7 +1314,9 @@ redo:
 		fr_assert(lhs->call.func == func);
 
 		node = xlat_groupify_node(lhs, rhs);
-		last = &lhs->call.args;
+
+		fr_assert(lhs->call.args != NULL);
+		last = &lhs->call.args->next;
 
 		/*
 		 *	Find the last child.
@@ -1307,11 +1345,12 @@ redo:
 	node->call.func = func;
 	node->flags = func->flags;
 
-	node->call.args = xlat_groupify_node(node, lhs);
+	MEM(node->call.args = head = xlat_exp_head_alloc(node));
+	head->next = xlat_groupify_node(node, lhs);
 	node->call.args->flags = lhs->flags;
 
-	node->call.args->next = xlat_groupify_node(node, rhs);
-	node->call.args->next->flags = rhs->flags;
+	head->next->next = xlat_groupify_node(node, rhs);
+	head->next->next->flags = rhs->flags;
 
 	xlat_flags_merge(&node->flags, &lhs->flags);
 	xlat_flags_merge(&node->flags, &rhs->flags);
@@ -1325,11 +1364,6 @@ redo:
 			FR_SBUFF_ERROR_RETURN(&our_in); /* @todo m_lhs ? */
 		}
 	}
-
-	/*
-	 *	Ensure that the various nodes are grouped properly.
-	 */
-	xlat_groupify_expr(node);
 
 	lhs = node;
 	goto redo;
@@ -1361,7 +1395,7 @@ static const fr_sbuff_term_t operator_terms = FR_SBUFF_TERMS(
 	L("<"),
 );
 
-ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t *flags, fr_sbuff_t *in,
 				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	ssize_t slen;
@@ -1369,6 +1403,7 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_f
 	fr_sbuff_parse_rules_t *terminal_rules = NULL;
 	xlat_flags_t my_flags = { };
 	tmpl_rules_t my_rules = { };
+	xlat_exp_head_t *head;
 
 	/*
 	 *	Whatever the caller passes, ensure that we have a
@@ -1399,9 +1434,9 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_f
 
 	if (!t_rules) t_rules = &my_rules;
 
-	*head = NULL;
+	MEM(head = xlat_exp_head_alloc(ctx));
 
-	slen = tokenize_expression(ctx, head, flags, in, terminal_rules, t_rules, T_INVALID, bracket_rules);
+	slen = tokenize_expression(head, &head->next, flags, in, terminal_rules, t_rules, T_INVALID, bracket_rules);
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
 
@@ -1410,8 +1445,8 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_f
 	/*
 	 *	Zero length expansion, return a zero length node.
 	 */
-	if (!*head) {
-		*head = xlat_exp_alloc(ctx, XLAT_BOX, "", 0);
+	if (!head->next) {
+		*out = head;
 		return 0;
 	}
 
@@ -1419,11 +1454,12 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_f
 	 *	Add nodes that need to be bootstrapped to
 	 *	the registry.
 	 */
-	if (xlat_bootstrap(*head) < 0) {
-		TALLOC_FREE(*head);
+	if (xlat_bootstrap(head) < 0) {
+		talloc_free(head);
 		return 0;
 	}
 
+	*out = head;
 	return slen;
 }
 
@@ -1433,7 +1469,7 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_f
  * expressions are integrated into the main xlat parser.
  *
  * @param[in] ctx	to allocate dynamic buffers in.
- * @param[out] head	the head of the xlat list / tree structure.
+ * @param[out] out	the head of the xlat list / tree structure.
  * @param[in] el	for registering any I/O handlers.
  * @param[out] flags	indicating the state of the ephemeral tree.
  * @param[in] in	the format string to expand.
@@ -1445,7 +1481,7 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_f
  *	- 0 and *head != NULL - Zero length expansion
  *	- <0 the negative offset of the parse failure.
  */
-ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head,
+ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out,
 					   fr_event_list_t *el,
 					   xlat_flags_t *flags, fr_sbuff_t *in,
 					   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
@@ -1455,6 +1491,7 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **he
 	fr_sbuff_parse_rules_t *terminal_rules = NULL;
 	xlat_flags_t my_flags = { };
 	tmpl_rules_t my_rules = { };
+	xlat_exp_head_t *head;
 
 	/*
 	 *	Whatever the caller passes, ensure that we have a
@@ -1488,9 +1525,9 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **he
 	}
 	my_rules.xlat.runtime_el = el;
 
-	*head = NULL;
+	MEM(head = xlat_exp_head_alloc(ctx));
 
-	slen = tokenize_expression(ctx, head, flags, in, terminal_rules, &my_rules, T_INVALID, bracket_rules);
+	slen = tokenize_expression(head, &head->next, flags, in, terminal_rules, &my_rules, T_INVALID, bracket_rules);
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
 
@@ -1499,19 +1536,20 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **he
 	/*
 	 *	Zero length expansion, return a zero length node.
 	 */
-	if (!*head) {
-		*head = xlat_exp_alloc(ctx, XLAT_BOX, "", 0);
+	if (!head->next) {
+		*out = head;
 		return 0;
 	}
 
 	/*
 	 *	Create ephemeral instance data for the xlat
 	 */
-	if (xlat_instantiate_ephemeral(*head, el) < 0) {
+	if (xlat_instantiate_ephemeral(head, el) < 0) {
 		fr_strerror_const("Failed performing ephemeral instantiation for xlat");
-		TALLOC_FREE(*head);
+		talloc_free(head);
 		return 0;
 	}
 
+	*out = head;
 	return slen;
 }

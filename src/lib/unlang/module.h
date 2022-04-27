@@ -122,7 +122,7 @@ unlang_action_t	unlang_module_yield_to_section(rlm_rcode_t *p_result,
 					       unlang_module_signal_t signal, void *rctx);
 
 unlang_action_t	unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
-					    request_t *request, xlat_exp_t const *xlat,
+					    request_t *request, xlat_exp_head_t const *xlat,
 					    unlang_module_resume_t resume,
 					    unlang_module_signal_t signal, void *rctx);
 

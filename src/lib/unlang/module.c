@@ -442,7 +442,7 @@ int unlang_module_set_resume(request_t *request, unlang_module_resume_t resume)
  *	- UNLANG_ACTION_YIELD
  */
 unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
-					    request_t *request, xlat_exp_t const *exp,
+					    request_t *request, xlat_exp_head_t const *exp,
 					    unlang_module_resume_t resume,
 					    unlang_module_signal_t signal, void *rctx)
 {

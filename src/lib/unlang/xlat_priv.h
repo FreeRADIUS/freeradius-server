@@ -148,6 +148,13 @@ struct xlat_exp {
 	};
 };
 
+struct xlat_exp_head {
+	char const	*fmt;		//!< The original format string (a talloced buffer).
+	xlat_flags_t	flags;		//!< Flags that control resolution and evaluation.
+	xlat_exp_t	*next;		//!< Next in the list.
+};
+
+
 typedef struct {
 	char const	*out;		//!< Output data.
 	size_t		len;		//!< Length of the output string.
@@ -314,17 +321,21 @@ int		xlat_register_expressions(void);
 /*
  *	xlat_tokenize.c
  */
-int		xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+int		xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_flags_t *flags, fr_sbuff_t *in,
 					tmpl_attr_rules_t const *t_rules);
 
-int		xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+int		xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_flags_t *flags, fr_sbuff_t *in,
 					    tmpl_attr_rules_t const *rules);
 
 ssize_t		xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t const *node, fr_sbuff_escape_rules_t const *e_rules);
 
+
+
 static inline xlat_exp_t *xlat_exp_head(xlat_exp_head_t const *head)
 {
-	return UNCONST(xlat_exp_t *, head);
+	if (!head || !head->next) return NULL;
+
+	return UNCONST(xlat_exp_t *, (head->next));
 }
 
 /** Iterate over the contents of a list, only one level
@@ -343,11 +354,9 @@ static inline xlat_exp_t *xlat_exp_next(UNUSED xlat_exp_head_t const *head, xlat
 	return UNCONST(xlat_exp_t *, item->next);
 }
 
-static inline bool xlat_exp_is_head(xlat_exp_head_t const *head)
+static inline xlat_exp_head_t *xlat_exp_head_alloc(TALLOC_CTX *ctx)
 {
-	return (head && (head->type == XLAT_GROUP));
-
-//	return (head && head->next && (head->next->type == XLAT_GROUP));
+	return talloc_zero(ctx, xlat_exp_head_t);
 }
 
 #ifdef __cplusplus

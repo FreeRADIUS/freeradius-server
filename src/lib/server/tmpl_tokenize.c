@@ -2895,7 +2895,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			 *	the string for conversion later.
 			 */
 			if (xlat_to_string(vpt, &str, &head)) {
-				xlat_exp_free(&head);		/* Free up any memory */
+				TALLOC_FREE(head);
 
 				tmpl_init(vpt, TMPL_TYPE_UNRESOLVED, quote,
 				         fr_sbuff_start(&our_in), slen, t_rules);
@@ -3568,7 +3568,7 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 static inline CC_HINT(always_inline)
 int tmpl_xlat_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 {
-	if (xlat_resolve(&vpt->data.xlat.ex, &vpt->data.xlat.flags,
+	if (xlat_resolve(vpt->data.xlat.ex, &vpt->data.xlat.flags,
 			 &(xlat_res_rules_t){
 			 	.tr_rules = tr_rules,
 			 	.allow_unresolved = false
@@ -3682,7 +3682,7 @@ void tmpl_unresolve(tmpl_t *vpt)
 	case TMPL_TYPE_EXEC_UNRESOLVED:
 	case TMPL_TYPE_XLAT_UNRESOLVED:
 	case TMPL_TYPE_REGEX_XLAT_UNRESOLVED:
-		xlat_exp_free(&vpt->data.xlat.ex);
+		TALLOC_FREE(vpt->data.xlat.ex);
 		break;
 
 	case TMPL_TYPE_REGEX:

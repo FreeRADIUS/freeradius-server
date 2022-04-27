@@ -1619,8 +1619,6 @@ int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, request_t *request,
 	char			**my_argv;
 	size_t			count;
 
-	if (!xlat_exp_is_head(head)) return -1;
-
 	count = 0;
 	xlat_exp_foreach(head, node) {
 		count++;
@@ -1653,8 +1651,6 @@ int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_head_t const ***argv, x
 	int			i;
 	xlat_exp_head_t const	**my_argv;
 	size_t			count;
-
-	if (!xlat_exp_is_head(head)) return -1;
 
 	count = 0;
 	xlat_exp_foreach(head, node) {

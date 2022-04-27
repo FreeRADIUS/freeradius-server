@@ -548,7 +548,7 @@ typedef struct {
 
 typedef struct {
 	xlat_redundant_t		*xr;		//!< Information about the redundant xlat.
-	xlat_exp_t			**ex;		//!< Array of xlat expressions created by
+	xlat_exp_head_t			**ex;		//!< Array of xlat expressions created by
 							///< tokenizing the arguments to the redundant
 							///< xlat, then duplicating them multiple times,
 							///< one for each xlat function that may be called.
@@ -557,9 +557,9 @@ typedef struct {
 typedef struct {
 	bool				last_success;	//!< Did the last call succeed?
 
-	xlat_exp_t			**first;	//!< First function called.
+	xlat_exp_head_t			**first;	//!< First function called.
 							///< Used for redundant-load-balance.
-	xlat_exp_t			**current;	//!< Last function called, used for redundant xlats.
+	xlat_exp_head_t			**current;	//!< Last function called, used for redundant xlats.
 } xlat_redundant_rctx_t;
 
 /** Pass back the result from a single redundant child call
@@ -682,12 +682,12 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 	xlat_redundant_t		*xr = talloc_get_type_abort(xctx->uctx, xlat_redundant_t);
 	xlat_redundant_inst_t		*xri = talloc_get_type_abort(xctx->inst, xlat_redundant_inst_t);
 	unsigned int			num = 0;
-	xlat_redundant_func_t const	*head;
+	xlat_redundant_func_t const	*first;
 
-	MEM(xri->ex = talloc_array(xri, xlat_exp_t *, fr_dlist_num_elements(&xr->funcs)));
+	MEM(xri->ex = talloc_array(xri, xlat_exp_head_t *, fr_dlist_num_elements(&xr->funcs)));
 	xri->xr = xr;
 
-	head = talloc_get_type_abort(fr_dlist_head(&xr->funcs), xlat_redundant_func_t);
+	first = talloc_get_type_abort(fr_dlist_head(&xr->funcs), xlat_redundant_func_t);
 
 	/*
 	 *	Check the calling style matches the first
@@ -702,7 +702,7 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 		break;
 
 	case XLAT_INPUT_MONO:
-		if (head->func->input_type == XLAT_INPUT_ARGS) {
+		if (first->func->input_type == XLAT_INPUT_ARGS) {
 			PERROR("Expansion function \"%s\" takes defined arguments and should "
 			       "be called using %%(func:args) syntax",
 				xctx->ex->call.func->name);
@@ -712,7 +712,7 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 		break;
 
 	case XLAT_INPUT_ARGS:
-		if (head->func->input_type == XLAT_INPUT_MONO) {
+		if (first->func->input_type == XLAT_INPUT_MONO) {
 			PERROR("Expansion function \"%s\" should be called using %%{func:arg} syntax",
 			       xctx->ex->call.func->name);
 			return -1;
@@ -726,15 +726,16 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 	 */
 	fr_dlist_foreach(&xr->funcs, xlat_redundant_func_t, xrf) {
 		xlat_exp_t *node;
+		xlat_exp_head_t *head;
 
 		/*
 		 *	We have to do this here as it only
 		 *	becomes an error when the user tries
 		 *	to use the redundant xlat.
 		 */
-		if (head->func->input_type != xrf->func->input_type) {
+		if (first->func->input_type != xrf->func->input_type) {
 			cf_log_err(xr->cs, "Expansion functions \"%s\" and \"%s\" use different argument styles "
-				   "cannot be used in the same redundant section", head->func->name, xrf->func->name);
+				   "cannot be used in the same redundant section", first->func->name, xrf->func->name);
 		error:
 			talloc_free(xri->ex);
 			return -1;
@@ -746,7 +747,8 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 		 *	for the new node can operate
 		 *	correctly.
 		 */
-		MEM(node = xlat_exp_func_alloc(xri->ex, xrf->func, xctx->ex->call.args));
+		MEM(head = xlat_exp_head_alloc(xri->ex));
+		MEM(head->next = node = xlat_exp_func_alloc(head, xrf->func, xctx->ex->call.args));
 
 		switch (xrf->func->input_type) {
 		case XLAT_INPUT_UNPROCESSED:
@@ -775,8 +777,8 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 		 *	they'll get called at some point after
 		 *	we return.
 		 */
-		xlat_bootstrap(node);
-		xri->ex[num++] = node;
+		xlat_bootstrap(head);
+		xri->ex[num++] = head;
 	}
 
 	/*
@@ -1523,7 +1525,7 @@ static xlat_action_t xlat_func_next_time(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 typedef struct {
 	bool		last_success;
-	xlat_exp_t	*ex;
+	xlat_exp_head_t	*ex;
 } xlat_eval_rctx_t;
 
 /** Just serves to push the result up the stack
@@ -1611,7 +1613,7 @@ static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	unresolved.
 	 */
 	if (flags.needs_resolving &&
-	    (xlat_resolve(&rctx->ex, &flags, &(xlat_res_rules_t){ .allow_unresolved = false }) < 0)) {
+	    (xlat_resolve(rctx->ex, &flags, &(xlat_res_rules_t){ .allow_unresolved = false }) < 0)) {
 		RPEDEBUG("Unresolved expansion functions in expansion");
 		goto error;
 

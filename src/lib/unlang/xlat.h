@@ -326,7 +326,7 @@ bool		xlat_is_literal(xlat_exp_head_t const *head);
 
 bool		xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_head_t **head);
 
-int		xlat_resolve(xlat_exp_head_t **head, xlat_flags_t *flags, xlat_res_rules_t const *xr_rules);
+int		xlat_resolve(xlat_exp_head_t *head, xlat_flags_t *flags, xlat_res_rules_t const *xr_rules);
 
 xlat_t		*xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 				      char const *name, xlat_func_t func, xlat_flags_t const *flags);
@@ -384,7 +384,7 @@ tmpl_t		*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t *xlat);
 
 int		xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_flags_t *flags, tmpl_t **vpt_p);
 
-int		xlat_copy(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t const *in);
+int		xlat_copy(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_exp_head_t const *in);
 
 /*
  *	xlat_inst.c
@@ -401,7 +401,7 @@ void		xlat_thread_detach(void);
 
 int		xlat_bootstrap_func(xlat_exp_t *node);
 
-int		xlat_bootstrap(xlat_exp_t *root);
+int		xlat_bootstrap(xlat_exp_head_t *root);
 
 void		xlat_instances_free(void);
 
