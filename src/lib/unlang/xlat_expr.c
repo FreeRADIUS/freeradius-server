@@ -1053,11 +1053,6 @@ static ssize_t tokenize_field(TALLOC_CTX *input_ctx, xlat_exp_head_t **head, xla
 	 *	to resolve all the operands in the expression.
 	 */
 
-	/*
-	 *	The xlat node identifier here is the same as the tmpl
-	 *	in all cases...
-	 */
-	xlat_exp_set_name_buffer_shallow(node, vpt->name);
 	fr_sbuff_skip_whitespace(&our_in);
 
 done:
