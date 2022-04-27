@@ -135,7 +135,8 @@ static int socket_inaddr_any_v6only(int sockfd, fr_ipaddr_t const *ipaddr)
 	 */
 	if (ipaddr->af == AF_INET6) {
 #  ifdef IPV6_V6ONLY
-		if (IN6_IS_ADDR_UNSPECIFIED(&ipaddr->addr.v6)) {
+		/* unconst for emscripten/musl */
+		if (IN6_IS_ADDR_UNSPECIFIED(UNCONST(struct in6_addr *, &ipaddr->addr.v6))) {
 			int on = 1;
 
 			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY,

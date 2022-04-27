@@ -34,7 +34,9 @@
 
 #ifndef SIOCGIFHWADDR
 #  include <ifaddrs.h>
-#  include <net/if_dl.h>
+#  ifdef HAVE_NET_IF_DL_H
+#    include <net/if_dl.h>
+#  endif
 #else
 #  include <net/if.h>
 #endif

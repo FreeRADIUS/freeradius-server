@@ -951,8 +951,10 @@ AC_CHECK_HEADERS( \
   limits.h \
   linux/if_packet.h \
   malloc.h \
+  net/if_dl.h \
   netdb.h \
   netinet/in.h \
+  netpacket/packet.h \
   prot.h \
   pwd.h \
   resource.h \

@@ -131,7 +131,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			uint64_t value;
 
 			num_bits = offset + child->flags.length;
-			if ((end - p) < fr_bytes_from_bits(num_bits)) {
+			if ((size_t)(end - p) < fr_bytes_from_bits(num_bits)) {
 				FR_PROTO_TRACE("not enough data for bit decoder?");
 				goto unknown;
 			}

@@ -28,19 +28,24 @@
 
 #include <stdlib.h>
 #include <ifaddrs.h>
-
-#ifdef HAVE_LINUX_IF_PACKET_H
-#  include <linux/if_packet.h>
-#  include <linux/if_ether.h>
-#endif
-
 #include <net/if_arp.h>
 
 /*
+ *	Linux
+ */
+#if defined(HAVE_LINUX_IF_PACKET_H)
+#  include <linux/if_packet.h>
+#  include <linux/if_ether.h>
+/*
  *	Apple, *BSD
  */
-#ifndef __linux__
-#include <net/if_dl.h>
+#elif defined(HAVE_NET_IF_DL_H)
+#  include <net/if_dl.h>		 /* Needed for struct sockaddr_ll def */
+/*
+ *	emscripten/musl
+ */
+#elif defined(HAVE_NETPACKET_PACKET_H)
+#  include <netpacket/packet.h>	 	/* Needed for struct sockaddr_ll def */
 #endif
 
 bool fr_reverse_lookups = false;		//!< IP -> hostname lookups?
@@ -64,7 +69,8 @@ int fr_ipaddr_is_inaddr_any(fr_ipaddr_t const *ipaddr)
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	} else if (ipaddr->af == AF_INET6) {
-		if (IN6_IS_ADDR_UNSPECIFIED(&(ipaddr->addr.v6))) {
+		/* Unconst for emscripten/musl */
+		if (IN6_IS_ADDR_UNSPECIFIED(UNCONST(struct in6_addr *, &(ipaddr->addr.v6)))) {
 			return 1;
 		}
 #endif
@@ -94,7 +100,8 @@ int fr_ipaddr_is_multicast(fr_ipaddr_t const *ipaddr)
 		if ((ipaddr->addr.v4.s_addr >= 3758096384) && (ipaddr->addr.v4.s_addr <= 4026531839)) return 1;
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	} else if (ipaddr->af == AF_INET6) {
-		if (IN6_IS_ADDR_MULTICAST(&(ipaddr->addr.v6))) {
+		/* Unconst for emscripten/musl */
+		if (IN6_IS_ADDR_MULTICAST(UNCONST(struct in6_addr *, &(ipaddr->addr.v6)))) {
 			return 1;
 		}
 #endif
@@ -1550,7 +1557,7 @@ int fr_interface_to_ethernet(char const *interface, fr_ethernet_t *ethernet)
 		if (!i->ifa_addr || !i->ifa_name || (i->ifa_addr->sa_family != AF_LINK)) continue;
 		if (strcmp(i->ifa_name, interface) != 0) continue;
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__EMSCRIPTEN__)
 		struct sockaddr_ll *ll;
 
 		ll = (struct sockaddr_ll *) i->ifa_addr;

@@ -9061,6 +9061,12 @@ then :
   printf "%s\n" "#define HAVE_MALLOC_H 1" >>confdefs.h
 
 fi
+ac_fn_c_check_header_compile "$LINENO" "net/if_dl.h" "ac_cv_header_net_if_dl_h" "$ac_includes_default"
+if test "x$ac_cv_header_net_if_dl_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_NET_IF_DL_H 1" >>confdefs.h
+
+fi
 ac_fn_c_check_header_compile "$LINENO" "netdb.h" "ac_cv_header_netdb_h" "$ac_includes_default"
 if test "x$ac_cv_header_netdb_h" = xyes
 then :
@@ -9071,6 +9077,12 @@ ac_fn_c_check_header_compile "$LINENO" "netinet/in.h" "ac_cv_header_netinet_in_h
 if test "x$ac_cv_header_netinet_in_h" = xyes
 then :
   printf "%s\n" "#define HAVE_NETINET_IN_H 1" >>confdefs.h
+
+fi
+ac_fn_c_check_header_compile "$LINENO" "netpacket/packet.h" "ac_cv_header_netpacket_packet_h" "$ac_includes_default"
+if test "x$ac_cv_header_netpacket_packet_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_NETPACKET_PACKET_H 1" >>confdefs.h
 
 fi
 ac_fn_c_check_header_compile "$LINENO" "prot.h" "ac_cv_header_prot_h" "$ac_includes_default"
