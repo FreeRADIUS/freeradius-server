@@ -36,11 +36,11 @@ RCSID("$Id$")
 
 #include "log.h"
 
-#if defined(__linux__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__EMSCRIPTEN__)
 #include <link.h>
 #endif
 
-#ifdef __APPLE__
+#if defined(__APPLE__)
 /*
  *	<link.h> is buried somewhere.  The fields below are known to
  *	be correct.
@@ -52,8 +52,12 @@ struct link_map {
 };
 
 #  define DL_EXTENSION ".dylib"
-#else
+#elif defined(__linux__)
 #  define DL_EXTENSION ".so"
+#elif defined(__EMSCRIPTEN__)
+#  define DL_EXTENSION ".wasm"
+#else
+#  error Unsupported platform
 #endif
 
 #ifndef _POSIX_C_SOURCE
@@ -579,7 +583,7 @@ static void ad_have_feature(char const *symbol)
 
 	if (!symbol || !*symbol) return;
 
-	len = strlen(symbol);	
+	len = strlen(symbol);
 
 	/*
 	 *	"HAVE_" foo "=1\0"
