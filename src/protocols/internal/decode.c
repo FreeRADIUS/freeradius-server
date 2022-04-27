@@ -324,9 +324,8 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	case FR_TYPE_TLV:
 	case FR_TYPE_STRUCT:
 		if (unlikely(tainted)) goto bad_tainted;
-WARN("Decode TLV");
+
 		slen = internal_decode_tlv(ctx, out, da, &work_dbuff, decode_ctx);
-WARN("We have %pP", fr_pair_list_tail(out));
 		if (slen <= 0) goto error;
 		break;
 
@@ -340,7 +339,6 @@ WARN("We have %pP", fr_pair_list_tail(out));
 		 *	It's ok for this function to return 0
 		 *	we can have zero length strings.
 		 */
-WARN("Decode default");
 		slen = internal_decode_pair_value(ctx, out, da, &work_dbuff, tainted, decode_ctx);
 		if (slen < 0) goto error;
 	}
