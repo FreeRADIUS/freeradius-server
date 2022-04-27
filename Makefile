@@ -89,6 +89,7 @@ PROTOCOLS    := \
 ifneq "$(MAKECMDGOALS)" "deb"
 ifneq "$(MAKECMDGOALS)" "rpm"
 ifeq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
+ifeq "$(findstring wasm,$(TARGET_SYSTEM))" ""
 #
 #  Include all of the autoconf definitions into the Make variable space
 #
@@ -122,6 +123,7 @@ ifneq "$(findstring Darwin,$(shell hostinfo 2>/dev/null))" ""
 LIBRARY_EXT := dylib
 else
 LIBRARY_EXT := so
+endif
 endif
 endif
 
