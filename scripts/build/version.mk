@@ -4,6 +4,7 @@ SOURCES		:= version.c log.c
 #
 #  This target is NOT built with static analyzer flags.
 #
+$(TARGET): CC	   := $(HOST_CC)
 $(TARGET): CFLAGS  :=$(filter-out -fsanitize%,$(CFLAGS))
 $(TARGET): LDFLAGS :=$(filter-out -fsanitize%,$(LDFLAGS))
 
