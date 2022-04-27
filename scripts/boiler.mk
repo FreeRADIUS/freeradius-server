@@ -38,6 +38,13 @@ else
     Q=
 endif
 
+ifeq "${HOST_CC}" ""
+   HOST_CC := $(shell which cc)
+   ifeq "${HOST_CC}" ""
+     HOST_CC := ${CC}
+   endif
+endif
+
 #
 #  If you want HTML output of the scanner to be rendered to the terminal:
 #
