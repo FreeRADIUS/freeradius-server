@@ -11204,8 +11204,7 @@ printf "%s\n" "$as_me: WARNING: talloc headers not found. Use --with-talloc-incl
   as_fn_error $? "FreeRADIUS requires libtalloc" "$LINENO" 5
 fi
 
-if test "x$ac_cv_header_sys_event_h" != "xyes"; then
-  smart_try_dir="${kqueue_include_dir:-/usr/include/kqueue}"
+smart_try_dir="${kqueue_include_dir:-/usr/include/kqueue}"
 
 
 ac_safe=`echo "sys/event.h" | sed 'y%./+-%__pm%'`
@@ -11436,11 +11435,10 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_sys_event_h" != "xyes"; then
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: kqueue headers not found. Use --with-kqueue-include-dir=<path>." >&5
+if test "x$ac_cv_header_sys_event_h" != "xyes"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: kqueue headers not found. Use --with-kqueue-include-dir=<path>." >&5
 printf "%s\n" "$as_me: WARNING: kqueue headers not found. Use --with-kqueue-include-dir=<path>." >&2;}
-    as_fn_error $? "FreeRADIUS requires libkqueue (or system kqueue)" "$LINENO" 5
-  fi
+  as_fn_error $? "FreeRADIUS requires libkqueue (or system kqueue)" "$LINENO" 5
 fi
 
 case "$target" in

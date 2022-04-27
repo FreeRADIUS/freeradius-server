@@ -1173,13 +1173,11 @@ fi
 dnl #
 dnl # Check for kqueue header files
 dnl #
+smart_try_dir="${kqueue_include_dir:-/usr/include/kqueue}"
+FR_SMART_CHECK_INCLUDE([sys/event.h])
 if test "x$ac_cv_header_sys_event_h" != "xyes"; then
-  smart_try_dir="${kqueue_include_dir:-/usr/include/kqueue}"
-  FR_SMART_CHECK_INCLUDE([sys/event.h])
-  if test "x$ac_cv_header_sys_event_h" != "xyes"; then
-    AC_MSG_WARN([kqueue headers not found. Use --with-kqueue-include-dir=<path>.])
-    AC_MSG_ERROR([FreeRADIUS requires libkqueue (or system kqueue)])
-  fi
+  AC_MSG_WARN([kqueue headers not found. Use --with-kqueue-include-dir=<path>.])
+  AC_MSG_ERROR([FreeRADIUS requires libkqueue (or system kqueue)])
 fi
 
 dnl #
