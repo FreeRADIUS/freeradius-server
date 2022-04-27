@@ -1674,6 +1674,8 @@ static int parse_input(cf_stack_t *stack)
 	buff[2] = stack->buff[2];
 	buff[3] = stack->buff[3];
 
+	fr_assert(parent != NULL);
+
 	/*
 	 *	Catch end of a subsection.
 	 */
@@ -1888,7 +1890,7 @@ static int parse_input(cf_stack_t *stack)
 		/*
 		 *	As a hack, allow any operators when using &foo=bar
 		 */
-		if ((!parent || !frame->special) && (buff[1][0] != '&')) {
+		if (!frame->special && (buff[1][0] != '&')) {
 			ERROR("%s[%d]: Invalid operator in assignment for %s ...",
 			      frame->filename, frame->lineno, buff[1]);
 			return -1;
