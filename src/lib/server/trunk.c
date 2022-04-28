@@ -2362,7 +2362,7 @@ fr_trunk_request_t *fr_trunk_request_alloc(fr_trunk_t *trunk, request_t *request
 	if (trunk->conf.max_req_per_conn && trunk->conf.max) {
 		uint64_t limit;
 
-		limit = trunk->conf.max_req_per_conn * trunk->conf.max;
+		limit = (uint64_t) trunk->conf.max_req_per_conn * trunk->conf.max;
 		if (trunk->pub.req_alloc >= limit) {
 			RATE_LIMIT_LOCAL_ROPTIONAL(&trunk->limit_max_requests_alloc_log,
 						   RWARN, WARN, "Refusing to alloc requests - "
