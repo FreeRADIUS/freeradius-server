@@ -44,6 +44,8 @@ RUN make -j2 deb
 FROM ${from}
 COPY --from=build /usr/local/src/repositories/*.deb /tmp/
 
+ARG DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update \
     && apt-get install -y /tmp/*.deb \
     && apt-get clean \
@@ -52,6 +54,7 @@ RUN apt-get update \
     && ln -s /etc/freeradius /etc/raddb
 
 COPY docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 1812/udp 1813/udp
 ENTRYPOINT ["/docker-entrypoint.sh"]

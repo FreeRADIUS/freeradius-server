@@ -1,4 +1,4 @@
-ARG from=alpine:latest
+ARG from=alpine:3.13
 FROM ${from} as build
 
 #
@@ -76,6 +76,7 @@ RUN apk update \
     && ln -s /opt/etc/raddb /etc/raddb
 
 COPY docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 1812/udp 1813/udp
 ENTRYPOINT ["/docker-entrypoint.sh"]

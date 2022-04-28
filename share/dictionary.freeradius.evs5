@@ -1,0 +1,22 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#	The FreeRADIUS Extended-Vendor-Specific-5 dictionary.
+#
+# Version:	$Id$
+#
+
+BEGIN-VENDOR	FreeRADIUS	format=Extended-Vendor-Specific-5
+
+#
+#  The next two attributes are for sending EAPoL keys to a RADIUS server.
+#
+#  See:
+#
+#  https://w1.fi/cgit/hostap/commit/?id=b94371af8402f60218716552e571ca72cff4e3c0
+#
+ATTRIBUTE	FreeRADIUS-802.1X-Anonce	1	octets # really 32 octets
+ATTRIBUTE	FreeRADIUS-802.1X-EAPoL-Key-Msg	2	octets
+
+END-VENDOR	FreeRADIUS

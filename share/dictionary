@@ -144,6 +144,7 @@ $INCLUDE dictionary.acc
 $INCLUDE dictionary.acme
 $INCLUDE dictionary.actelis
 $INCLUDE dictionary.adtran
+$INCLUDE dictionary.adva
 $INCLUDE dictionary.aerohive
 $INCLUDE dictionary.airespace
 $INCLUDE dictionary.alcatel
@@ -199,6 +200,7 @@ $INCLUDE dictionary.colubris
 $INCLUDE dictionary.columbia_university
 $INCLUDE dictionary.compatible
 $INCLUDE dictionary.cosine
+$INCLUDE dictionary.covaro
 $INCLUDE dictionary.dante
 $INCLUDE dictionary.dellemc
 $INCLUDE dictionary.digium
@@ -219,6 +221,7 @@ $INCLUDE dictionary.force10
 $INCLUDE dictionary.fortinet
 $INCLUDE dictionary.foundry
 $INCLUDE dictionary.freeradius
+$INCLUDE dictionary.freeradius.evs5
 $INCLUDE dictionary.freeswitch
 $INCLUDE dictionary.gandalf
 $INCLUDE dictionary.garderos

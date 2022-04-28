@@ -679,10 +679,12 @@ finish:
 
 static void python_interpreter_free(PyThreadState *interp)
 {
+DIAG_OFF(deprecated-declarations)
 	PyEval_AcquireLock();
 	PyThreadState_Swap(interp);
 	Py_EndInterpreter(interp);
 	PyEval_ReleaseLock();
+DIAG_ON(deprecated-declarations)
 }
 
 /** Destroy a thread state

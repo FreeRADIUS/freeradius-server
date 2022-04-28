@@ -1,7 +1,7 @@
 FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	Feature improvements
 	* Add support for OpenSSL3
-	* Add dictionary.mellanox
+	* Add dictionary.mellanox, dictionary.netelastic
 	* Update dictionary.aruba, dictionary.roaringpenguin
 	* Removed haproxy support.  It's new and experimental,
 	  and belongs in the v3.2 release, where it will be
@@ -17,6 +17,8 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	* Add raduat script to the freeradius-utils package.
 	* Add Debian freeradius-freetds package.
 	* Add client short name to "dropping packet" message,
+	* Update MS-SQL queries to avoid using column which was
+	  deleted years ago.
 
 	Bug fixes
 	* Ensure PBKDF2 always uses at least one iteration
@@ -36,6 +38,7 @@ FreeRADIUS 3.0.26 Thu 07 Oct 2021 12:00:00 EDT urgency=low
 	* Fix crash in race condition when 500+ sockets are open.
 	* Remove sample "cache_eap" module.  It does not work, and
 	  offers no benefit.
+	* Fix crash in RadSec with expired server certificate. #4447.
 
 FreeRADIUS 3.0.25 Thu 07 Oct 2021 12:00:00 EDT urgency=medium
 	Feature improvements

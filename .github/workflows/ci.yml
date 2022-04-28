@@ -11,18 +11,52 @@ env:
   ALT_OPENSSL: "3.0.2"
   CI: 1
   GH_ACTIONS: 1
+  DEBIAN_FRONTEND: noninteractive
+  APT_OPTS: "-y --no-install-recommends"
+  LDAP_TEST_SERVER: 127.0.0.1
+  LDAP_TEST_SERVER_PORT: 3890
+#
+# Update between running in a container (GitHub runner and
+# self-hosted runner), or directly on the VM (currently GitHub
+# runner only, as our runners don't get root access). Remember to
+# comment/uncomment other sections below as well.
+#
+# Container:
+  USE_DOCKER: 1
+  SQL_MYSQL_TEST_SERVER: mariadb
+  SQL_POSTGRESQL_TEST_SERVER: postgres
+# Hosted:
+#  USE_DOCKER: 0
+#  SQL_MYSQL_TEST_SERVER: 127.0.0.1
+#  SQL_POSTGRESQL_TEST_SERVER: 127.0.0.1
 
 jobs:
   ci:
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os.runs_on }}
+
+# Comment out when not using containers:
+    container:
+      image: ${{ matrix.os.docker }}
 
     strategy:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-18.04
-#          - ubuntu-20.04
+#
+# runs_on - where GitHub will spin up the runner, either
+#           "self-hosted", or the name of a GitHub VM image.
+# code    - the name/version of the OS (for step evaluations below)
+# docker  - the docker image name, if containers are being used
+# name    - used in the job name only
+#
+# Self-hosted runner (must set USE_DOCKER=1 above):
+          - { runs_on: "self-hosted", code: "ubuntu1804", docker: "ubuntu:18.04", name: "self-ubuntu18" }
+#          - { runs_on: "self-hosted", code: "ubuntu2004", docker: "ubuntu:20.04", name: "self-ubuntu20" }
+# GitHub runner (may set USE_DOCKER=0 or 1 above):
+#          - { runs_on: "ubuntu-18.04", code: "ubuntu1804", docker: "ubuntu:18.04", name: "gh18-ubuntu18" }
+#          - { runs_on: "ubuntu-18.04", code: "ubuntu2004", docker: "ubuntu:20.04", name: "gh18-ubuntu20" }
+
         env:
           - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_ALT: no,  REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-gcc-lean           }
           - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: yes, LIBS_ALT: no,  REPRODUCIBLE: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-gcc                }
@@ -39,17 +73,45 @@ jobs:
     # Test names are used in the branch protection rules in GitHub
     # If you change the names here, or add additional matrix entries, you
     # must also amend the branch protection fules.
-    name: "v3.0.x-${{ matrix.env.NAME }}"
+    name: "v3.0.x-${{ matrix.os.name }}-${{ matrix.env.NAME }}"
+
+    # The standard GitHub environment contains PostgreSQL and
+    # MySQL already. However when running on hosted GitHub runners
+    # we need to run separate database containers to provide these.
+#
+# Comment out the "services" section when USE_DOCKER=0
+#
+    services:
+      mariadb:
+        image: mariadb
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: yes
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval 10s --health-timeout 5s --health-retries 10
+
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
 
-    - uses: actions/checkout@v2
+    - name: Self-hosted runner container fixes
+      if: ${{ env.USE_DOCKER == 1 }}
+      run: |
+        ln -fs /usr/bin/env /usr/local/bin/sudo
 
     - name: Package manager performance improvements
       run: |
         sudo sh -c 'echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/02speedup'
-        echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
-        sudo dpkg-reconfigure man-db
+        if command -v mandb >/dev/null; then
+          echo 'man-db man-db/auto-update boolean false' | sudo debconf-set-selections
+          sudo dpkg-reconfigure man-db
+        fi
 
     - name: Freshen APT repo metadata
       run: |
@@ -57,7 +119,7 @@ jobs:
 
     - name: Install common build dependencies
       run: |
-        sudo apt-get install -y --no-install-recommends \
+        sudo apt-get install ${APT_OPTS} \
         autoconf \
         build-essential \
         debhelper \
@@ -66,6 +128,9 @@ jobs:
         fakeroot \
         firebird-dev \
         freetds-dev \
+        gawk \
+        git \
+        gnupg \
         libcap-dev \
         libcollectdclient-dev \
         libcurl4-openssl-dev \
@@ -90,6 +155,7 @@ jobs:
         libreadline-dev \
         libruby \
         libsnmp-dev \
+        libsqlite3-dev \
         libssl-dev \
         libtalloc-dev \
         libunbound-dev \
@@ -101,30 +167,32 @@ jobs:
         python-dev \
         python3-dev \
         ruby-dev \
+        snmp \
+        software-properties-common \
         quilt
 
     - name: Install LLVM 10 for 18.04
-      if: ${{ matrix.os == 'ubuntu-18.04' && matrix.env.CC == 'clang' }}
+      if: ${{ matrix.os.code == 'ubuntu1804' && matrix.env.CC == 'clang' }}
       run: |
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
         sudo apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main"
-        sudo apt-get install -y --no-install-recommends clang-10 llvm-10 gdb
+        sudo apt-get install ${APT_OPTS} clang-10 llvm-10 gdb
         sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10
         sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10
 
     - name: Install LLVM 10 for 20.04
-      if: ${{ matrix.os == 'ubuntu-20.04' && matrix.env.CC == 'clang' }}
+      if: ${{ matrix.os.code == 'ubuntu2004' && matrix.env.CC == 'clang' }}
       run: |
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add
         sudo apt-add-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-10 main"
-        sudo apt-get install -y --no-install-recommends clang-10 llvm-10 gdb
+        sudo apt-get install ${APT_OPTS} clang-10 llvm-10 gdb
         sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-10 60 && sudo update-alternatives --set clang /usr/bin/clang-10
         sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer /usr/bin/llvm-symbolizer-10 60 && sudo update-alternatives --set llvm-symbolizer /usr/bin/llvm-symbolizer-10
 
     - name: Install GCC
       if: ${{ matrix.env.CC == 'gcc' }}
       run: |
-        sudo apt-get install -y --no-install-recommends gcc gdb
+        sudo apt-get install ${APT_OPTS} gcc gdb
 
     #
     #  Build using some alternative libraries
@@ -162,7 +230,7 @@ jobs:
       run: |
         echo /opt/openssl/lib64 | sudo tee /etc/ld.so.conf.d/openssl3.conf >/dev/null
         sudo ldconfig
-        sudo apt-get install -y --no-install-recommends heimdal-dev
+        sudo apt-get install ${APT_OPTS} heimdal-dev
 
     - name: Show versions
       run: |
@@ -171,6 +239,8 @@ jobs:
         krb5-config --all || :
         [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
         openssl version
+
+    - uses: actions/checkout@v2
 
     - name: Build eapol_test
       run: |
@@ -189,12 +259,12 @@ jobs:
           export PATH=/opt/openssl/bin:$PATH
           CONFIG_OPENSSL="--with-openssl-lib-dir=/opt/openssl/lib64 --with-openssl-include-dir=/opt/openssl/include"
         fi
-        CFLAGS="${BUILD_CFLAGS}" ./configure -C --enable-werror --prefix=$HOME/freeradius --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL --with-pcre=$LIBS_OPTIONAL --enable-reproducible-builds=${REPRODUCIBLE} $CONFIG_OPENSSL
-        make -j `nproc`
+        CFLAGS="${BUILD_CFLAGS}" ./configure -C --enable-developer --enable-werror --prefix=$HOME/freeradius --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL --with-pcre=$LIBS_OPTIONAL --enable-reproducible-builds=${REPRODUCIBLE} $CONFIG_OPENSSL
+        make -j $(($(nproc) + 1))
 
     - name: clang scan
       run: |
-        make -j `nproc` scan && [ "$(find build/plist/ -name *.html)" = '' ]
+        make -j $(($(nproc) + 1)) scan && [ "$(find build/plist/ -name *.html)" = '' ]
       if: ${{ matrix.env.CC == 'clang' }}
 
     - name: "Clang Static Analyzer: Store assets on failure"
@@ -204,31 +274,47 @@ jobs:
         path: build/plist/**/*.html
       if: ${{ matrix.env.CC == 'clang' && failure() }}
 
-    - name: Test
+    - name: Install test requisites
       run: |
-        [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
-
         # Temporarily replace ucf (for config merge) with cp since it's
         # terribly slow!
         sudo mv /usr/bin/ucf /usr/bin/ucf.disabled
         sudo sh -c 'echo "#!/bin/sh"          >  /usr/bin/ucf'
         sudo sh -c 'echo "shift && cp -v \$@" >> /usr/bin/ucf'
         sudo chmod +x /usr/bin/ucf
-        sudo apt-get install -y --no-install-recommends \
-          apparmor-utils \
-          slapd ldap-utils
-        sudo mv -f /usr/bin/ucf.disabled /usr/bin/ucf
-        sudo systemctl stop slapd
-        sudo aa-complain /usr/sbin/slapd
 
-        export PG_VER=14
+        sudo apt-get install ${APT_OPTS} \
+          apparmor-utils \
+          ldap-utils \
+          slapd
+
+        sudo mv -f /usr/bin/ucf.disabled /usr/bin/ucf
+
+    - name: Database dependencies (GitHub runner)
+      if: ${{ env.USE_DOCKER != 1 }}
+      run: |
+        export PG_VER=$(cd /etc/postgresql ; ls | head )
         sudo sh -c "echo host  all all 127.0.0.1/32 trust >  /etc/postgresql/$PG_VER/main/pg_hba.conf"
         sudo sh -c "echo local all all              trust >> /etc/postgresql/$PG_VER/main/pg_hba.conf"
 
+        sudo systemctl stop slapd
+        sudo aa-complain /usr/sbin/slapd
+
         sudo systemctl start mysql postgresql
 
-        mysql -h 127.0.0.1 -uroot -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '';"
+        sudo mysql -h 127.0.0.1 -uroot -proot -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '';"
 
+    - name: Database dependencies (containers)
+      if: ${{ env.USE_DOCKER == 1 }}
+      run: |
+        sudo apt-get install ${APT_OPTS} \
+          mariadb-client \
+          postgresql-client
+
+        slapd
+
+    - name: Setup test databases
+      run: |
         for i in \
             postgresql-setup.sh \
             mysql-setup.sh \
@@ -240,13 +326,27 @@ jobs:
             $script
         done
 
+    - name: Configure test database access (containers)
+      if: ${{ env.USE_DOCKER == 1 }}
+      run: |
+        mysql -h mariadb -uroot  -e "CREATE USER 'radius'@'%' IDENTIFIED BY 'radpass';"
+        mysql -u root -h mariadb -e "GRANT ALL ON radius.* TO 'radius'; FLUSH PRIVILEGES;"
+
+    - name: Run tests
+      run: |
+        [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
+
+        openssl dhparam -out ./raddb/certs/dh -2 128 || \
+          openssl dhparam -out ./raddb/certs/dh -2 512 || \
+          true
+
         make ci-test
 
-      env:
-        SQL_MYSQL_TEST_SERVER: 127.0.0.1
-        SQL_POSTGRESQL_TEST_SERVER: 127.0.0.1
-        LDAP_TEST_SERVER: 127.0.0.1
-        LDAP_TEST_SERVER_PORT: 3890
+    - name: Show debug logs on failure
+      if: ${{ failure() }}
+      run: |
+        cat src/tests/radius.log || :
+
     #
     #  If the CI has failed and the branch is ci-debug then start a tmate
     #  session. SSH rendezvous point is emited continuously in the job output.
