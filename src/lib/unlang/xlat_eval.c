@@ -1642,30 +1642,34 @@ int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, request_t *request,
 	return count;
 }
 
-/** Turn xlat_tokenize_argv() into an argv[] array
+/** Turn xlat_tokenize_argv() into an argv[] array, and nuke the input list.
  *
  *  This is mostly for async use.
  */
-int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_head_t const ***argv, xlat_exp_head_t const *head)
+int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_exp_head_t **head)
 {
 	int			i;
-	xlat_exp_head_t const	**my_argv;
+	xlat_exp_head_t		**my_argv;
 	size_t			count;
 
 	count = 0;
-	xlat_exp_foreach(head, node) {
+	xlat_exp_foreach(*head, node) {
 		count++;
 	}
 
-	MEM(my_argv = talloc_zero_array(ctx, xlat_exp_head_t const *, count + 1));
+	MEM(my_argv = talloc_zero_array(ctx, xlat_exp_head_t *, count + 1));
 	*argv = my_argv;
 
 	fr_assert(done_init);
 
 	i = 0;
-	xlat_exp_foreach(head, node) {
-		my_argv[i++] = node->group;
+	xlat_exp_foreach(*head, node) {
+		fr_assert(node->type == XLAT_GROUP);
+		my_argv[i++] = talloc_steal(my_argv, node->group);
 	}
+
+	talloc_free(*head);
+	*head = NULL;
 
 	return count;
 }

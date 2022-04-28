@@ -440,30 +440,8 @@ static fr_slen_t xlat_expr_print_logical(fr_sbuff_t *out, xlat_exp_t const *node
 static int xlat_logical_instantiate(xlat_inst_ctx_t const *xctx)
 {
 	xlat_logical_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_logical_inst_t);
-	int i;
 
-	xlat_exp_foreach(xctx->ex->call.args, arg) {
-		inst->argc++;
-	}
-
-	inst->argv = talloc_array(inst, xlat_exp_head_t *, inst->argc);
-
-	i = 0;
-	xlat_exp_foreach(xctx->ex->call.args, arg) {
-		MEM(inst->argv[i] = xlat_exp_head_alloc(inst->argv));
-		inst->argv[i++]->next = talloc_steal(inst->argv[i], arg);
-		fr_assert(arg->type == XLAT_GROUP);
-	}
-
-	/*
-	 *	The arguments are in a linked list, so unlink them,
-	 */
-	for (i = 0; i < inst->argc; i++) {
-		inst->argv[i]->next->next = NULL;
-	}
-
-	xctx->ex->call.args->next = NULL;
-	TALLOC_FREE(xctx->ex->call.args);
+	inst->argc = xlat_flatten_compiled_argv(inst, &inst->argv, &xctx->ex->call.args);
 	inst->sense = (xctx->ex->call.func->token == T_LOR);
 
 	return 0;

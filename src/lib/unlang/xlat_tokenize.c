@@ -1218,6 +1218,7 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 	switch (node->type) {
 	case XLAT_TMPL:
 		fr_assert(tmpl_is_list(node->vpt) || tmpl_is_attr(node->vpt));
+		fr_assert(talloc_parent(node->vpt) == node);
 		slen = tmpl_attr_print(out, node->vpt, TMPL_ATTR_REF_PREFIX_NO);
 		if (slen < 0) {
 		error:

@@ -2775,7 +2775,7 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 	char		*p;
 	ssize_t		slen;
 	xlat_exp_head_t	*head = NULL;
-	xlat_exp_head_t const **argv;
+	xlat_exp_head_t **argv;
 	size_t		len;
 	size_t		input_len = strlen(in);
 	char		buff[1024];
@@ -2792,7 +2792,7 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 		RETURN_OK_WITH_ERROR();
 	}
 
-	argc = xlat_flatten_compiled_argv(cc->tmp_ctx, &argv, head);
+	argc = xlat_flatten_compiled_argv(cc->tmp_ctx, &argv, &head);
 	if (argc <= 0) {
 		fr_strerror_printf_push("ERROR in argument %d", (int) -argc);
 		RETURN_OK_WITH_ERROR();
