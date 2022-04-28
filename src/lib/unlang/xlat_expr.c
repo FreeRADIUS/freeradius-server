@@ -250,7 +250,7 @@ static xlat_exp_t *xlat_groupify_node(TALLOC_CTX *ctx, xlat_exp_t *node)
 	group->flags = node->flags;
 
 	if (node->next) {
-		group->next = xlat_groupify_node(ctx, node->next);
+		group->next = xlat_groupify_node(group, node->next);
 		node->next = NULL;
 	}
 

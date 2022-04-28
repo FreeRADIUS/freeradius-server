@@ -1440,7 +1440,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t 
 		 *	Barewords --may-contain=%{expansions}
 		 */
 		case T_BARE_WORD:
-			if (xlat_tokenize_string(node, &node->group->next, &node->flags, &our_in,
+			if (xlat_tokenize_string(node->group, &node->group->next, &node->flags, &our_in,
 						  false, our_p_rules, t_rules) < 0) {
 			error:
 				if (our_p_rules != &value_parse_rules_bareword_quoted) {
@@ -1457,7 +1457,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t 
 		 *	"Double quoted strings may contain %{expansions}"
 		 */
 		case T_DOUBLE_QUOTED_STRING:
-			if (xlat_tokenize_string(node, &node->group->next, &node->flags, &our_in,
+			if (xlat_tokenize_string(node->group, &node->group->next, &node->flags, &our_in,
 						  false, &value_parse_rules_double_quoted, t_rules) < 0) goto error;
 			xlat_flags_merge(flags, &node->flags);
 			break;
@@ -1470,7 +1470,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t 
 			char		*str;
 			xlat_exp_t	*child;
 
-			node->group->next = child = xlat_exp_alloc_null(node);
+			node->group->next = child = xlat_exp_alloc_null(node->group);
 			xlat_exp_set_type(child, XLAT_BOX);
 
 			slen = fr_sbuff_out_aunescape_until(child, &str, &our_in, SIZE_MAX,
