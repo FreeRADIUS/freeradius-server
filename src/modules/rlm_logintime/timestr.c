@@ -210,7 +210,7 @@ int timestr_match(fr_time_delta_t *out, char const *tmstr, fr_time_t when)
 	time_t t = fr_time_to_sec(when);
 
 	tm = localtime_r(&t, &s_tm);
-	now = tm->tm_wday * DAYMIN + tm->tm_hour * 60 + tm->tm_min;
+	now = (int64_t) (tm->tm_wday) * DAYMIN + (int64_t) (tm->tm_hour) * 60 + tm->tm_min;
 	tot = 0;
 	memset(bitmap, 0, sizeof(bitmap));
 	week_fill(bitmap, tmstr);
