@@ -340,6 +340,8 @@ ATTRIBUTE	EAP-Pwd-Password-Hash			1220	octets
 ATTRIBUTE	EAP-Pwd-Password-Salt			1221	octets
 ATTRIBUTE	EAP-Pwd-Password-Prep			1222	byte
 
+ATTRIBUTE	EAP-Serialized-Handler			1223	octets
+ATTRIBUTE	EAP-Serialized-Opaque			1224	octets
 #
 #	Range:	1280 - 1535
 #		EAP-type specific attributes
