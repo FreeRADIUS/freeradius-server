@@ -1379,7 +1379,6 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_fl
 	ssize_t slen;
 	fr_sbuff_parse_rules_t *bracket_rules = NULL;
 	fr_sbuff_parse_rules_t *terminal_rules = NULL;
-	xlat_flags_t my_flags = { };
 	tmpl_rules_t my_rules = { };
 	xlat_exp_head_t *head;
 
@@ -1408,36 +1407,31 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_fl
 								 terminal_rules->terminals,
 								 &bracket_terms));
 
-	if (!flags) flags = &my_flags;
-
 	if (!t_rules) t_rules = &my_rules;
 
 	MEM(head = xlat_exp_head_alloc(ctx));
 
-	slen = tokenize_expression(head, &head->next, flags, in, terminal_rules, t_rules, T_INVALID, bracket_rules);
+	slen = tokenize_expression(head, &head->next, &head->flags, in, terminal_rules, t_rules, T_INVALID, bracket_rules);
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
 
-	if (slen < 0) return slen;
-
-	/*
-	 *	Zero length expansion, return a zero length node.
-	 */
-	if (!head->next) {
-		*out = head;
-		return 0;
+	if (slen < 0) {
+		talloc_free(head);
+		return slen;
 	}
 
 	/*
 	 *	Add nodes that need to be bootstrapped to
 	 *	the registry.
 	 */
-	if (xlat_bootstrap(head) < 0) {
+	if (xlat_exp_head(head) && (xlat_bootstrap(head) < 0)) {
 		talloc_free(head);
 		return 0;
 	}
 
 	*out = head;
+	if (flags) xlat_flags_merge(flags, &head->flags);
+
 	return slen;
 }
 
@@ -1467,7 +1461,6 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **ou
 	ssize_t slen;
 	fr_sbuff_parse_rules_t *bracket_rules = NULL;
 	fr_sbuff_parse_rules_t *terminal_rules = NULL;
-	xlat_flags_t my_flags = { };
 	tmpl_rules_t my_rules = { };
 	xlat_exp_head_t *head;
 
@@ -1496,8 +1489,6 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **ou
 								 terminal_rules->terminals,
 								 &bracket_terms));
 
-	if (!flags) flags = &my_flags;
-
 	if (t_rules) {
 		my_rules = *t_rules;
 	}
@@ -1505,29 +1496,25 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **ou
 
 	MEM(head = xlat_exp_head_alloc(ctx));
 
-	slen = tokenize_expression(head, &head->next, flags, in, terminal_rules, &my_rules, T_INVALID, bracket_rules);
+	slen = tokenize_expression(head, &head->next, &head->flags, in, terminal_rules, &my_rules, T_INVALID, bracket_rules);
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
 
-	if (slen < 0) return slen;
-
-	/*
-	 *	Zero length expansion, return a zero length node.
-	 */
-	if (!head->next) {
-		*out = head;
-		return 0;
+	if (slen < 0) {
+		talloc_free(head);
+		return slen;
 	}
 
 	/*
 	 *	Create ephemeral instance data for the xlat
 	 */
-	if (xlat_instantiate_ephemeral(head, el) < 0) {
+	if (xlat_exp_head(head) && (xlat_instantiate_ephemeral(head, el) < 0)) {
 		fr_strerror_const("Failed performing ephemeral instantiation for xlat");
 		talloc_free(head);
 		return 0;
 	}
 
 	*out = head;
+	if (flags) xlat_flags_merge(flags, &head->flags);
 	return slen;
 }

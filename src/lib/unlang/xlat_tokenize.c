@@ -200,11 +200,7 @@ static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **out, x
 	/*
 	 *	Allow the RHS to be empty as a special case.
 	 */
-	if (fr_sbuff_next_if_char(in, '}')) {
-		xlat_flags_merge(&node->flags, &node->alternate[1]->flags);
-		*out = node;
-		return 0;
-	}
+	if (fr_sbuff_next_if_char(in, '}')) goto done;
 
 	/*
 	 *	Parse the alternate expansion.
@@ -223,6 +219,7 @@ static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **out, x
 		goto error;
 	}
 
+done:
 	xlat_flags_merge(flags, &node->flags);
 	*out = node;
 
@@ -1328,10 +1325,7 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	tmpl_rules_t	our_t_rules = {};
-	xlat_flags_t	tmp_flags = {};
 	xlat_exp_head_t *head;
-
-	if (!flags) flags = &tmp_flags;
 
 	MEM(head = xlat_exp_head_alloc(ctx));
 
@@ -1340,14 +1334,18 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
 	our_t_rules.xlat.runtime_el = el;
 
 	fr_strerror_clear();	/* Clear error buffer */
-	if (xlat_tokenize_string(head, &head->next, flags, &our_in,
-				 false, p_rules, &our_t_rules.attr) < 0) return -fr_sbuff_used(&our_in);
+	if (xlat_tokenize_string(head, &head->next, &head->flags, &our_in,
+				 false, p_rules, &our_t_rules.attr) < 0) {
+		talloc_free(head);
+		return -fr_sbuff_used(&our_in);
+	}
 
 	/*
 	 *	Zero length expansion, return a zero length node.
 	 */
 	if (!head->next) {
 		*out = head;
+		if (flags) xlat_flags_merge(flags, &head->flags);
 		return 0;
 	}
 
@@ -1361,6 +1359,8 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
 	}
 
 	*out = head;
+	if (flags) xlat_flags_merge(flags, &head->flags);
+
 	return fr_sbuff_set(in, &our_in);
 }
 
@@ -1389,11 +1389,8 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t 
 	fr_sbuff_marker_t		m;
 	fr_sbuff_parse_rules_t const	*our_p_rules;	/* Bareword parse rules */
 	fr_sbuff_parse_rules_t		tmp_p_rules;
-	xlat_flags_t			tmp_flags = {};
 	xlat_exp_t			**tail;
 	xlat_exp_head_t			*head;
-
-	if (!flags) flags = &tmp_flags;
 
 	MEM(head = xlat_exp_head_alloc(ctx));
 	tail = &head->next;
@@ -1451,7 +1448,6 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t 
 
 				return -fr_sbuff_used(&our_in);	/* error */
 			}
-			xlat_flags_merge(flags, &node->flags);
 			break;
 
 		/*
@@ -1460,7 +1456,6 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t 
 		case T_DOUBLE_QUOTED_STRING:
 			if (xlat_tokenize_string(node->group, &node->group->next, &node->flags, &our_in,
 						  false, &value_parse_rules_double_quoted, t_rules) < 0) goto error;
-			xlat_flags_merge(flags, &node->flags);
 			break;
 
 		/*
@@ -1481,7 +1476,6 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t 
 
 			xlat_exp_set_name_buffer_shallow(child, str);
 			fr_value_box_strdup_shallow(&child->data, NULL, str, false);
-			xlat_flags_merge(flags, &node->flags);
 		}
 			break;
 
@@ -1506,7 +1500,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t 
 		fmt = talloc_bstrndup(node, fr_sbuff_current(&m), fr_sbuff_behind(&m));
 		xlat_exp_set_name_buffer_shallow(node, fmt);
 
-		xlat_flags_merge(flags, &node->flags);
+		xlat_flags_merge(&head->flags, &node->flags);
 		xlat_exp_append(tail, node);
 
 		/*
@@ -1536,6 +1530,8 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t 
 	if (our_p_rules != &value_parse_rules_bareword_quoted) talloc_const_free(our_p_rules->terminals);
 
 	*out = head;
+	if (flags) xlat_flags_merge(flags, &head->flags);
+
 	return fr_sbuff_set(in, &our_in);
 }
 
@@ -1558,36 +1554,30 @@ ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t *flag
 		      fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules)
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
-	xlat_flags_t	tmp_flags = {};
 	xlat_exp_head_t	*head;
-
-	if (!flags) flags = &tmp_flags;
 
 	MEM(head = xlat_exp_head_alloc(ctx));
 
 	fr_strerror_clear();	/* Clear error buffer */
 
-	if (xlat_tokenize_string(head, &head->next, flags, &our_in,
-				  false, p_rules, t_rules) < 0) return -fr_sbuff_used(&our_in);
-
-	/*
-	 *	Zero length expansion, return a zero length node.
-	 */
-	if (!head->next) {
-		*out = head;
-		return fr_sbuff_set(in, &our_in);
+	if (xlat_tokenize_string(head, &head->next, &head->flags, &our_in,
+				  false, p_rules, t_rules) < 0) {
+		talloc_free(head);
+		return -fr_sbuff_used(&our_in);
 	}
 
 	/*
 	 *	Add nodes that need to be bootstrapped to
 	 *	the registry.
 	 */
-	if (xlat_bootstrap(head) < 0) {
+	if (xlat_exp_head(head) && (xlat_bootstrap(head) < 0)) {
 		talloc_free(head);
 		return 0;
 	}
 
 	*out = head;
+	if (flags) xlat_flags_merge(flags, &head->flags);
+
 	return fr_sbuff_set(in, &our_in);
 }
 
