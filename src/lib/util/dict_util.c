@@ -624,8 +624,8 @@ static int _dict_attr_free(fr_dict_attr_t *da)
  *
  * @param[in] ctx		to allocate attribute in.
  * @return
- *	- 0 on success.
- *	- -1 on failure (memory allocation error).
+ *	- A new, partially completed, fr_dict_attr_t on success.
+ *	- NULL on failure (memory allocation error).
  */
 fr_dict_attr_t *dict_attr_alloc_null(TALLOC_CTX *ctx)
 {

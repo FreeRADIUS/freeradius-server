@@ -263,8 +263,8 @@ fr_dict_attr_t *fr_dict_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *
  * @param[in] parent		of the VSA attribute.
  * @param[in] vendor		id.
  * @return
- *	- 0 on success.
- *	- -1 on failure.
+ *	- An fr_dict_attr_t on success.
+ *	- NULL on failure.
  */
 fr_dict_attr_t	*fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx,
 						  fr_dict_attr_t const *parent, unsigned int vendor)
@@ -302,8 +302,8 @@ fr_dict_attr_t	*fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx,
  * @param[in] parent		of the unknown attribute (may also be unknown).
  * @param[in] num		of the unknown attribute.
  * @return
- *	- 0 on success.
- *	- -1 on failure.
+ *	- An fr_dict_attr_t on success.
+ *	- NULL on failure.
  */
 fr_dict_attr_t *fr_dict_unknown_tlv_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int num)
 {
@@ -329,8 +329,8 @@ fr_dict_attr_t *fr_dict_unknown_tlv_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t co
  * @param[in] parent		of the unknown attribute (may also be unknown).
  * @param[in] num		of the unknown attribute.
  * @return
- *	- 0 on success.
- *	- -1 on failure.
+ *	- An fr_dict_attr_t on success.
+ *	- NULL on failure.
  */
 fr_dict_attr_t	*fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int num)
 {
