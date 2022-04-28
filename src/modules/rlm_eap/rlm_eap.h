@@ -71,6 +71,7 @@ typedef struct rlm_eap {
 #endif
 
 	char const	*xlat_name; /* no xlat's yet */
+	char const	*cache_virtual_server;
 	fr_randctx	rand_pool;
 } rlm_eap_t;
 
