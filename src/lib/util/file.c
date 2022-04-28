@@ -236,6 +236,8 @@ char *fr_realpath(TALLOC_CTX *ctx, char const *path, ssize_t len)
 		return NULL;
 	}
 
+	talloc_free(tmp_path);
+
 	talloc_abs_path = talloc_strdup(ctx, abs_path);
 	free(abs_path);
 	if (!talloc_abs_path) {
