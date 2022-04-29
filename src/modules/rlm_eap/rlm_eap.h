@@ -29,6 +29,7 @@ RCSIDH(rlm_eap_h, "$Id$")
 #include <freeradius-devel/modpriv.h>
 #include "eap.h"
 #include "eap_types.h"
+#include "cache.h"
 
 /*
  * Keep track of which sub modules we've loaded.

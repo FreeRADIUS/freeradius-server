@@ -1,5 +1,5 @@
 TARGET		:= rlm_eap.a
-SOURCES		:= rlm_eap.c eap.c mem.c
+SOURCES		:= rlm_eap.c eap.c mem.c cache.c
 
 SRC_INCDIRS	:= . libeap
 
