@@ -877,8 +877,8 @@ static int _module_instance_free(module_instance_t *mi)
 		 *
 		 *	Assert that the mutex is not held.
 		 */
-		fr_assert_msg((ret = pthread_mutex_trylock(&mi->mutex)) == 0,
-			      "Failed locking module mutex during exit: %s", fr_syserror(ret));
+		ret = pthread_mutex_trylock(&mi->mutex);
+		fr_assert_msg(ret == 0, "Failed locking module mutex during exit: %s", fr_syserror(ret));
 		pthread_mutex_unlock(&mi->mutex);
 #endif
 		pthread_mutex_destroy(&mi->mutex);
