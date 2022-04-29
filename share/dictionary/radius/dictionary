@@ -170,6 +170,7 @@ $INCLUDE dictionary.camiant
 $INCLUDE dictionary.centec
 $INCLUDE dictionary.checkpoint
 $INCLUDE dictionary.chillispot
+$INCLUDE dictionary.ciena
 $INCLUDE dictionary.cisco
 $INCLUDE dictionary.cisco.asa
 #
