@@ -34,9 +34,14 @@ ATTRIBUTE	Cookie					1	octets
 ATTRIBUTE	DN					2	string
 ATTRIBUTE	Filter					3	string
 ATTRIBUTE	Scope					4	integer
+
+VALUE	Scope				base			0
+VALUE	Scope				one			1
+VALUE	Scope				sub			2
+VALUE	Scope				children		3
+
 ATTRIBUTE	Entry-DN				5	string
 ATTRIBUTE	Entry-UUID				6	octets
 ATTRIBUTE	Original-DN				7	string
 ATTRIBUTE	Directory-Root-DN			8	string
 END-TLV		LDAP-Sync
-
