@@ -52,7 +52,7 @@ struct link_map {
 };
 
 #  define DL_EXTENSION ".dylib"
-#elif defined(__linux__)
+#elif defined(__linux__) || defined(__FreeBSD__)
 #  define DL_EXTENSION ".so"
 #elif defined(__EMSCRIPTEN__)
 #  define DL_EXTENSION ".wasm"
