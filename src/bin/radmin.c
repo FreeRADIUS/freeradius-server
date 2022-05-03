@@ -688,7 +688,7 @@ static int tab_expand_config_thing(TALLOC_CTX *talloc_ctx, UNUSED void *ctx, fr_
 		if (!fr_command_strncmp(text, check)) continue;
 
 	add:
-		expansions[count] = str = malloc(reflen + strlen(check) + offset + 1);
+		MEM(expansions[count] = str = malloc(reflen + strlen(check) + offset + 1));
 		memcpy(str, ref, reflen);
 		str[reflen] = '.';
 		strcpy(str + reflen + offset, check);
