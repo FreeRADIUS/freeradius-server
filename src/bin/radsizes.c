@@ -10,6 +10,10 @@ int main(UNUSED int argc, UNUSED char **argv)
 {
 #define SIZEOF(_struct)	printf("%-24s\t%zu bytes\n", STRINGIFY(_struct), sizeof(_struct))
 
+	SIZEOF(fr_dict_attr_t);
+	SIZEOF(fr_dict_attr_flags_t);
+	SIZEOF(fr_dict_enum_value_t);
+
 	SIZEOF(fr_dlist_t);
 	SIZEOF(fr_dlist_head_t);
 
