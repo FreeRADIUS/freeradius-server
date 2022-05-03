@@ -115,7 +115,7 @@ build/autoconf.mk: src/include/autoconf.h
 #
 ifeq "$(findstring clean,$(MAKECMDGOALS))" ""
 ifeq "$(findstring libfreeradius-make,$(MAKECMDGOALS))" ""
-_:=$(shell $(MAKE) libfreeradius-make-dlopen.a libfreeradius-make-version.a)
+_:=$(shell $(MAKE) VERBOSE=$(VERBOSE) libfreeradius-make-dlopen.a libfreeradius-make-version.a)
 
 ifeq "${LIBRARY_EXT}" ""
 ifneq "$(findstring Darwin,$(shell hostinfo 2>/dev/null))" ""
