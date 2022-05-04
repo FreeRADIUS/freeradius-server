@@ -115,11 +115,24 @@ build/autoconf.mk: src/include/autoconf.h
 #
 ifeq "$(findstring clean,$(MAKECMDGOALS))" ""
 ifeq "$(findstring libfreeradius-make,$(MAKECMDGOALS))" ""
+
+#
+#  Avoid calling shell if we don't need to build support libraries
+#
+ifeq "$(wildcard build/lib/.libs/libfreeradius-make-dlopen.${LIBRARY_EXT})",""
+BUILD_MAKE_LIBS=yes
+endif
+ifeq "$(wildcard build/lib/.libs/libfreeradius-make-version.${LIBRARY_EXT})",""
+BUILD_MAKE_LIBS=yes
+endif
+
+ifdef BUILD_MAKE_LIBS
 define n
 
 
 endef
-$(info $(subst  CC,$nCC,$(shell $(MAKE) VERBOSE=$(VERBOSE) libfreeradius-make-dlopen.a libfreeradius-make-version.a)))
+$(info $(subst CC,$nCC,$(shell $(MAKE) VERBOSE=$(VERBOSE) libfreeradius-make-dlopen.a libfreeradius-make-version.a)))
+endif
 
 ifeq "${LIBRARY_EXT}" ""
 ifneq "$(findstring Darwin,$(shell hostinfo 2>/dev/null))" ""
