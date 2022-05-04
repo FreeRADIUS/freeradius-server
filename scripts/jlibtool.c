@@ -439,6 +439,7 @@ static const target_map_t target_map[] = {
 	TARGET("emx",		emx),
 	TARGET("ming32",	ming32),
 	TARGET("emscripten",	emscripten),
+	TARGET("wasm",		emscripten),
 };
 
 #ifndef LIBDIR
@@ -583,7 +584,6 @@ static void usage(int code)
 	printf("  --silent	   don't print informational messages\n");
 	printf("  --tag=TAG	   Ignored for libtool compatibility\n");
 	printf("  --version	   print version information\n");
-
 
 	printf("  --shared	   Build shared libraries when using --mode=link\n");
 	printf("  --export-all	   Try to export 'def' file on some platforms\n");
@@ -1020,6 +1020,7 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 		     p < end;
 		     p++) {
 			if (strcasecmp(value, p->name) == 0) {
+			found_target:
 				/*
 				 *	This is cross-compilation target
 				 *	switch out the toolset too.
@@ -1028,7 +1029,7 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 					toolset = &toolset_target;
 					target = p->target;
 				}
-				DEBUG("Switching target to %s, and toolset to toolset_target", p->name);
+				DEBUG("Switching target to %s, and toolset to toolset_target\n", p->name);
 				break;
 			}
 		}
@@ -1036,6 +1037,16 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 		 *	Invalid target
 		 */
 		if (p == end) {
+			/*
+			 *	Can we find a partial match, if so
+			 *	use that in preference to failing...
+			 */
+			for (p = target_map, end = target_map + (sizeof(target_map) / sizeof(*target_map));
+			     p < end;
+			     p++) {
+				if (strstr(value, p->name)) goto found_target;
+			}
+
 			ERROR("Unrecognised --target, valid targets are:\n");
 
 			for (p = target_map, end = target_map + (sizeof(target_map) / sizeof(*target_map));
