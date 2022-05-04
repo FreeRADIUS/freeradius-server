@@ -119,10 +119,10 @@ ifeq "$(findstring libfreeradius-make,$(MAKECMDGOALS))" ""
 #
 #  Avoid calling shell if we don't need to build support libraries
 #
-ifeq "$(wildcard build/lib/.libs/libfreeradius-make-dlopen.${LIBRARY_EXT})",""
+ifeq "$(wildcard build/lib/.libs/libfreeradius-make-dlopen.${LIBRARY_EXT})" ""
 BUILD_MAKE_LIBS=yes
 endif
-ifeq "$(wildcard build/lib/.libs/libfreeradius-make-version.${LIBRARY_EXT})",""
+ifeq "$(wildcard build/lib/.libs/libfreeradius-make-version.${LIBRARY_EXT})" ""
 BUILD_MAKE_LIBS=yes
 endif
 
