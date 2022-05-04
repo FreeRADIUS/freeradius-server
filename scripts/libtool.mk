@@ -70,12 +70,13 @@ clean.libs:
 
 # Re-define compilers and linkers
 #
+LIBTOOL_VERBOSE=$(if ${VERBOSE},--debug,--silent)
 OBJ_EXT = lo
-COMPILE.c = ${LIBTOOL} --silent --mode=compile ${CC}
-COMPILE.cxx = ${LIBTOOL} --mode=compile ${CXX}
-LINK.c = ${LIBTOOL} --silent --mode=link ${CC}
-LINK.cxx = ${LIBTOOL} --mode=link ${CXX}
-PROGRAM_INSTALL = ${LIBTOOL} --silent --mode=install ${INSTALL}
+COMPILE.c = ${LIBTOOL} ${LIBTOOL_VERBOSE} --mode=compile ${CC}
+COMPILE.cxx = ${LIBTOOL} ${LIBTOOL_VERBOSE} --mode=compile ${CXX}
+LINK.c = ${LIBTOOL} ${LIBTOOL_VERBOSE} --mode=link ${CC}
+LINK.cxx = ${LIBTOOL} ${LIBTOOL_VERBOSE} --mode=link ${CXX}
+PROGRAM_INSTALL = ${LIBTOOL} ${LIBTOOL_VERBOSE} --mode=install ${INSTALL}
 
 
 # LIBTOOL_ENDINGS - Given a library ending in ".a" or ".so", replace that
