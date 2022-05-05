@@ -1276,7 +1276,7 @@ static char const *file_name(char const *path)
  * @param path to check
  * @return pointer in path.
  */
-static char const *file_name_stripped(char const *path)
+static char const *file_name_stripped(char const *path, bool *allocated)
 {
 	char const *name;
 	char const *ext;
@@ -1291,9 +1291,11 @@ static char const *file_name_stripped(char const *path)
 		strncpy(trimmed, name, ext - name);
 		trimmed[ext-name] = 0;
 
+		*allocated = true;
 		return trimmed;
 	}
 
+	*allocated = false;
 	return name;
 }
 
@@ -2224,10 +2226,15 @@ static void generate_def_file(command_t *cmd)
 		hDef = fopen(def_file, "w");
 
 		if (hDef != NULL) {
-			fprintf(hDef, "LIBRARY '%s' INITINSTANCE\n", file_name_stripped(cmd->output_name));
+			bool stripped_allocated;
+			char const *stripped;
+
+			stripped = file_name_stripped(cmd->output_name, &stripped_allocated);
+			fprintf(hDef, "LIBRARY '%s' INITINSTANCE\n", stripped);
 			fprintf(hDef, "DATA NONSHARED\n");
 			fprintf(hDef, "EXPORTS\n");
 			fclose(hDef);
+			if (stripped_allocated) lt_const_free(stripped);
 
 #if 0	/* No num_obj_files ? */
 			for (a = 0; a < cmd->num_obj_files; a++) {
