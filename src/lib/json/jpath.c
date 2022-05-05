@@ -349,7 +349,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, fr_value_box_list_t *tail,
 	 *	we now attempt conversion of the leaf to
 	 *	the specified value.
 	 */
-	value = fr_value_box_alloc_null(ctx);
+	MEM(value = fr_value_box_alloc_null(ctx));
 	if (fr_json_object_to_value_box(value, value, object, dst_enumv, true) < 0) {
 		talloc_free(value);
 		return -1;
