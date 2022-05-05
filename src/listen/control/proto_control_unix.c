@@ -49,8 +49,8 @@ typedef struct {
 
 
 	fr_io_data_read_t		read;			//!< function to process data *after* reading
-	FILE				*stdout;
-	FILE				*stderr;
+	FILE				*stdout_fp;
+	FILE				*stderr_fp;
 
 	fr_conduit_type_t      		misc_conduit;
 	FILE				*misc;
@@ -167,7 +167,7 @@ static ssize_t mod_read_command(fr_listen_t *li, UNUSED void **packet_ctx, UNUSE
 	 *	Content is the string we need help for.
 	 */
 	if (htons(hdr->conduit) == FR_CONDUIT_HELP) {
-		fr_radmin_help(thread->stdout, string);
+		fr_radmin_help(thread->stdout_fp, string);
 		// @todo - have in-band signalling saying that the help is done?
 		// we want to be able to say that *this* help is done.
 		// the best way to do that is to have a token, and every command
@@ -201,7 +201,7 @@ static ssize_t mod_read_command(fr_listen_t *li, UNUSED void **packet_ctx, UNUSE
 
 	DEBUG("radmin-remote> %.*s", (int) hdr->length, cmd);
 
-	rcode = fr_radmin_run(thread->info, thread->stdout, thread->stderr, string, inst->read_only);
+	rcode = fr_radmin_run(thread->info, thread->stdout_fp, thread->stderr_fp, string, inst->read_only);
 	if (rcode < 0) {
 fail:
 		status = FR_CONDUIT_FAIL;
@@ -993,8 +993,8 @@ static int getpeereid(int s, uid_t *euid, gid_t *egid)
 
 static int _close_cookies(proto_control_unix_thread_t *thread)
 {
-	if (thread->stdout) fclose(thread->stdout);
-	if (thread->stderr) fclose(thread->stderr);
+	if (thread->stdout_fp) fclose(thread->stdout_fp);
+	if (thread->stderr_fp) fclose(thread->stderr_fp);
 	if (thread->misc) fclose(thread->misc);
 
 	return 0;
@@ -1071,10 +1071,10 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	io.close = NULL;
 	io.write = write_stdout;
 
-	thread->stdout = fopencookie(thread, "w", io);
+	thread->stdout_fp = fopencookie(thread, "w", io);
 
 	io.write = write_stderr;
-	thread->stderr = fopencookie(thread, "w", io);
+	thread->stderr_fp = fopencookie(thread, "w", io);
 
 	io.write = write_misc;
 	thread->misc = fopencookie(thread, "w", io);
@@ -1087,8 +1087,8 @@ static int mod_fd_set(fr_listen_t *li, int fd)
 	 *	data should be sent over to the remote side as quickly
 	 *	as possible.
 	 */
-	(void) setvbuf(thread->stdout, NULL, _IOLBF, 0);
-	(void) setvbuf(thread->stderr, NULL, _IOLBF, 0);
+	(void) setvbuf(thread->stdout_fp, NULL, _IOLBF, 0);
+	(void) setvbuf(thread->stderr_fp, NULL, _IOLBF, 0);
 	(void) setvbuf(thread->misc, NULL, _IOLBF, 0);
 
 	thread->info = talloc_zero(thread, fr_cmd_info_t);
