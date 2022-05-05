@@ -1016,6 +1016,8 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 		target_map_t const *p;
 		target_map_t const *end;
 
+		if (!strlen(value) || (strcmp(value, "default") == 0)) return 1;
+
 		for (p = target_map, end = target_map + (sizeof(target_map) / sizeof(*target_map));
 		     p < end;
 		     p++) {
@@ -1056,7 +1058,6 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 			}
 			exit(1);
 		}
-
 	} else if (strcmp(var, "mode") == 0) {
 		if (cmd->mode != MODE_UNKNOWN) {
 			ERROR("Cannot set --mode twice\n");
