@@ -1688,11 +1688,9 @@ static void add_dylink_noinstall(count_chars *cc, char const *arg, int pathlen,
 	int i_p_len, c_p_len, name_len, dyext_len, cur_len;
 
 	install_path = load_install_path(arg);
-	current_path = load_noinstall_path(arg, pathlen);
+	if (!install_path) return;
 
-	if (!install_path || !current_path) {
-		return;
-	}
+	current_path = load_noinstall_path(arg, pathlen);
 
 	push_count_chars(cc, target->dynamic_link_no_install);
 
@@ -1725,6 +1723,8 @@ static void add_dylink_noinstall(count_chars *cc, char const *arg, int pathlen,
 	cur_len += dyext_len;
 
 	push_count_chars(cc, exp_argument);
+	lt_const_free(install_path);
+	lt_const_free(current_path);
 }
 
 /* use -L -llibname to allow to use installed libraries */
