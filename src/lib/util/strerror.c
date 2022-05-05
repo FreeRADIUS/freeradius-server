@@ -538,11 +538,10 @@ char const *fr_strerror(void)
  */
 void fr_strerror_clear(void)
 {
-	fr_log_buffer_t		*buffer;
+	fr_log_buffer_t		*buffer = fr_strerror_buffer;
 
-	if (unlikely(!fr_strerror_buffer)) return;
+	if (unlikely(!buffer)) return;
 
-	buffer = fr_strerror_init();
 	fr_dlist_clear(&buffer->entries);
 	talloc_free_children(buffer->pool_a);
 	talloc_free_children(buffer->pool_b);
