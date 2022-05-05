@@ -115,11 +115,11 @@ static TALLOC_CTX *talloc_autofree_ctx;
  * process stopped. Specifying NULL there leads to a crash because
  * process resumes at address 0.
  */
-#ifdef HAVE_SYS_PTRACE_H
+#if defined(HAVE_SYS_PTRACE_H)
 #  ifdef __linux__
 #    define _PTRACE(_x, _y) ptrace(_x, _y, NULL, NULL)
 #    define _PTRACE_DETACH(_x) ptrace(PT_DETACH, _x, NULL, NULL)
-#  elif !defined(__APPLE__) && !defined(HAVE_SYS_PROCCTL_H)
+#  elif !defined(__APPLE__) && !defined(__EMSCRIPTEN__) && !defined(HAVE_SYS_PROCCTL_H)
 #    define _PTRACE(_x, _y) ptrace(_x, _y, NULL, 0)
 #    define _PTRACE_DETACH(_x) ptrace(PT_DETACH, _x, (void *)1, 0)
 #endif
@@ -326,7 +326,7 @@ int fr_get_debug_state(void)
 	/* We're being debugged if the P_TRACED flag is set */
 	return ((info.kp_proc.p_flag & P_TRACED) != 0);
 }
-#elif defined(HAVE_SYS_PTRACE_H)
+#elif defined(HAVE_SYS_PTRACE_H) && !defined(__EMSCRIPTEN__)
 /** Determine if we're running under a debugger by attempting to attach using pattach
  *
  * @return
@@ -482,7 +482,7 @@ DIAG_ON(deprecated-declarations)
 	}
 }
 #else
-static int fr_get_debug_state(void)
+int fr_get_debug_state(void)
 {
 	fr_strerror_const("PTRACE not available");
 
@@ -697,7 +697,7 @@ void fr_panic_on_free(TALLOC_CTX *ctx)
  *
  * @param dumpable whether we should allow core dumping
  */
-#if defined(HAVE_SYS_PRCTL_H) && defined(PR_SET_DUMPABLE)
+#if defined(HAVE_SYS_PRCTL_H) && defined(PR_SET_DUMPABLE) && !defined(__EMSCRIPTEN__)
 static int fr_set_pr_dumpable_flag(bool dumpable)
 {
 	if (prctl(PR_SET_DUMPABLE, dumpable ? 1 : 0) < 0) {
@@ -732,7 +732,7 @@ static int fr_set_pr_dumpable_flag(UNUSED bool dumpable)
 /** Get the processes dumpable flag
  *
  */
-#if defined(HAVE_SYS_PRCTL_H) && defined(PR_GET_DUMPABLE)
+#if defined(HAVE_SYS_PRCTL_H) && defined(PR_GET_DUMPABLE) && !defined(__EMSCRIPTEN__)
 static int fr_get_pr_dumpable_flag(void)
 {
 	int ret;
