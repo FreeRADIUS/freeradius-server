@@ -24,10 +24,12 @@
  */
 RCSIDH(sem_h, "$Id$")
 
-#ifndef __EMSCRIPTEN__
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#ifndef __EMSCRIPTEN__
+#define HAVE_SEMAPHORES
 
 int	fr_sem_pid(pid_t *pid, int sem_id);
 
@@ -48,8 +50,9 @@ int	fr_sem_wait(int sem_id, char const *file, bool undo_on_exit, bool nonblock);
 int	fr_sem_close(int sem_id, char const *file);
 
 int	fr_sem_get(char const *file, int proj_id, uid_t uid, gid_t gid, bool check_perm, bool must_exist);
+#endif
 
 #ifdef __cplusplus
 }
 #endif
-#endif
+

@@ -827,9 +827,15 @@ void main_config_raddb_dir_set(main_config_t *config, char const *name)
  * running the process under something like systemd and running it under
  * debug mode.
  */
-void main_config_exclusive_proc_done(main_config_t const *config)
+void main_config_exclusive_proc_done(
+#ifndef HAVE_SEMAPHORES
+				      UNUSED
+#endif
+				      main_config_t const *config)
 {
+#ifdef HAVE_SEMAPHORES
 	if (config->multi_proc_sem_id >= 0) fr_sem_close(config->multi_proc_sem_id, NULL);
+#endif
 }
 
 /** Increment the semaphore in the child process so that it's not released when the parent exits
@@ -839,9 +845,17 @@ void main_config_exclusive_proc_done(main_config_t const *config)
  *	- 0 on success.
  *      - -1 on failure.
  */
-int main_config_exclusive_proc_child(main_config_t const *config)
+int main_config_exclusive_proc_child(
+#ifndef HAVE_SEMAPHORES
+				      UNUSED
+#endif
+				      main_config_t const *config)
 {
+#ifdef HAVE_SEMAPHORES
 	return fr_sem_take(config->multi_proc_sem_id, config->multi_proc_sem_path, true);
+#else
+	return 0;
+#endif
 }
 
 /** Check to see if we're the only process using this configuration file (or PID file if specified)
@@ -855,8 +869,12 @@ int main_config_exclusive_proc_child(main_config_t const *config)
 int main_config_exclusive_proc(main_config_t *config)
 {
 	char *path;
+
+#ifdef HAVE_SEMAPHORES
 	int sem_id;
-	int ret;
+#endif
+
+	int ret = 0;
 	FILE *fp = NULL;
 	static bool sem_initd;
 
@@ -874,6 +892,8 @@ int main_config_exclusive_proc(main_config_t *config)
 	}  else {
 		MEM(path = talloc_asprintf(config, "%s/%s.conf", config->raddb_dir, config->name));
 	}
+
+#ifdef HAVE_SEMAPHORES
 	sem_id = fr_sem_get(path, 0,
 			    main_config->uid_is_set ? main_config->uid : geteuid(),
 			    main_config->gid_is_set ? main_config->gid : getegid(),
@@ -909,8 +929,8 @@ int main_config_exclusive_proc(main_config_t *config)
 		talloc_free(path);
 		break;
 	}
-
 done:
+#endif
 	if (fp != NULL) fclose(fp);
 
 	return ret;
