@@ -1,13 +1,19 @@
-TARGET		:= libfreeradius-make-dlopen.a
-SOURCES		:= dlopen.c log.c
+TARGET				:= libfreeradius-make-dlopen.a
+SOURCES				:= dlopen.c log.c
 
 #
 #  This target is NOT built with static analyzer flags.
 #
-$(TARGET): CC	    := $(HOST_CC)
-$(TARGET): CFLAGS   := $(filter-out -W%,$(filter-out -fsanitize%,$(CFLAGS)))
-$(TARGET): CPPFLAGS := $(filter-out -W%,$(CPPFLAGS))
-$(TARGET): LDFLAGS  := $(filter-out -fsanitize%,$(LDFLAGS))
+$(TARGET): CFLAGS		:= $(filter-out -W%,$(filter-out -fsanitize%,$(CFLAGS)))
+$(TARGET): CPPFLAGS		:= $(filter-out -W%,$(CPPFLAGS))
+$(TARGET): LDFLAGS		:= $(filter-out -fsanitize%,$(LDFLAGS))
+
+#
+#  This gets built with the HOST_CC i.e. the one we use to bootstrap
+#  this build system.
+#
+SRC_CC := ${HOST_COMPILE.c}
+TGT_LINKER := ${HOST_LINK.c}
 
 #
 #  If we're building this target, then don't try to use it until we know

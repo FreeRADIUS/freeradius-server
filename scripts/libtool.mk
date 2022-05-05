@@ -97,12 +97,19 @@ clean.libs:
 # Re-define compilers and linkers
 #
 LIBTOOL_VERBOSE=$(if ${VERBOSE},--debug,--silent)
+
 OBJ_EXT = lo
-COMPILE.c = ${LIBTOOL} ${LIBTOOL_VERBOSE} --mode=compile ${CC}
-COMPILE.cxx = ${LIBTOOL} ${LIBTOOL_VERBOSE} --mode=compile ${CXX}
-LINK.c = ${LIBTOOL} ${LIBTOOL_VERBOSE} --mode=link ${CC}
-LINK.cxx = ${LIBTOOL} ${LIBTOOL_VERBOSE} --mode=link ${CXX}
-PROGRAM_INSTALL = ${LIBTOOL} ${LIBTOOL_VERBOSE} --mode=install ${INSTALL}
+
+COMPILE.c = ${LIBTOOL} ${LIBTOOL_VERBOSE} --target=${TARGET_SYSTEM} --mode=compile ${TARGET_CC}
+HOST_COMPILE.c = ${LIBTOOL} ${LIBTOOL_VERBOSE} --mode=compile ${HOST_CC}
+
+LINK.c = ${LIBTOOL} ${LIBTOOL_VERBOSE} --target=${TARGET_SYSTEM} --mode=link ${TARGET_CC}
+HOST_LINK.c = ${LIBTOOL} ${LIBTOOL_VERBOSE} --mode=link ${HOST_CC}
+
+COMPILE.cxx = ${LIBTOOL} ${LIBTOOL_VERBOSE} --target=${TARGET_SYSTEM} --mode=compile ${CXX}
+LINK.cxx = ${LIBTOOL} ${LIBTOOL_VERBOSE} --target=${TARGET_SYSTEM} --mode=link ${CXX}
+
+PROGRAM_INSTALL = ${LIBTOOL} ${LIBTOOL_VERBOSE} --target=${TARGET_SYSTEM} --mode=install ${INSTALL}
 
 
 # LIBTOOL_ENDINGS - Given a library ending in ".a" or ".so", replace that
