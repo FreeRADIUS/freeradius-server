@@ -575,40 +575,41 @@ static void usage(int code)
 	printf("Usage: jlibtool [OPTIONS...] COMMANDS...\n");
 	printf("jlibtool is a replacement for GNU libtool with similar functionality.\n\n");
 
-	printf("  --config	   show all configuration variables\n");
-	printf("  --debug	   enable verbose shell tracing\n");
-	printf("  --dry-run	   display commands without modifying any files\n");
-	printf("  --help	   display this help message and exit\n");
-	printf("  --target=TARGET  specify a target for crosscompilation\n");
-	printf("  --mode=MODE	   use operational mode MODE (you *must* set mode)\n");
+	printf("  --config	            show all configuration variables\n");
+	printf("  --debug	            enable verbose shell tracing\n");
+	printf("  --dry-run	            display commands without modifying any files\n");
+	printf("  --help	            display this help message and exit\n");
+	printf("  --target=TARGET           specify a target for cross-compilation\n");
+	printf("  --toolset=(host|target)   which set of utilities we use\n");
+	printf("  --mode=MODE	            use operational mode MODE (you *must* set mode)\n");
 
-	printf("  --silent	   don't print informational messages\n");
-	printf("  --tag=TAG	   Ignored for libtool compatibility\n");
-	printf("  --version	   print version information\n");
+	printf("  --silent	           don't print informational messages\n");
+	printf("  --tag=TAG	           Ignored for libtool compatibility\n");
+	printf("  --version	           print version information\n");
 
-	printf("  --shared	   Build shared libraries when using --mode=link\n");
-	printf("  --export-all	   Try to export 'def' file on some platforms\n");
+	printf("  --shared	           Build shared libraries when using --mode=link\n");
+	printf("  --export-all	           Try to export 'def' file on some platforms\n");
 
 	printf("\nMODE must be one of the following:\n\n");
-	printf("  compile	   compile a source file into a jlibtool object\n");
-	printf("  execute	   automatically set library path, then run a program\n");
-	printf("  install	   install libraries or executables\n");
-	printf("  link	           create a library or an executable\n");
+	printf("  compile	           compile a source file into a jlibtool object\n");
+	printf("  execute	           automatically set library path, then run a program\n");
+	printf("  install	           install libraries or executables\n");
+	printf("  link	                   create a library or an executable\n");
 
 	printf("\nMODE-ARGS can be the following:\n\n");
-	printf("  -export-dynamic  accepted and ignored\n");
-	printf("  -module	   create a module when linking\n");
-	printf("  -shared	   create a shared library when linking\n");
-	printf("  -prefer-pic      prefer position-independent-code when compiling\n");
-	printf("  -prefer-non-pic  prefer non position-independent-code when compiling\n");
-	printf("  -static	   create a static library when linking\n");
-	printf("  -no-install      link libraries locally\n");
-	printf("  -rpath arg	   Set install path for shared libraries\n");
-	printf("  -l arg	   pass '-l arg' to the link stage\n");
-	printf("  -L arg	   pass '-L arg' to the link stage\n");
-	printf("  -R dir	   add 'dir' to runtime library search path.\n");
-	printf("  -Zexe	    accepted and ignored\n");
-	printf("  -avoid-version   accepted and ignored\n");
+	printf("  -export-dynamic          accepted and ignored\n");
+	printf("  -module	           create a module when linking\n");
+	printf("  -shared	           create a shared library when linking\n");
+	printf("  -prefer-pic              prefer position-independent-code when compiling\n");
+	printf("  -prefer-non-pic          prefer non position-independent-code when compiling\n");
+	printf("  -static	           create a static library when linking\n");
+	printf("  -no-install              link libraries locally\n");
+	printf("  -rpath arg	           Set install path for shared libraries\n");
+	printf("  -l arg	           pass '-l arg' to the link stage\n");
+	printf("  -L arg	           pass '-L arg' to the link stage\n");
+	printf("  -R dir	           add 'dir' to runtime library search path.\n");
+	printf("  -Zexe	                   accepted and ignored\n");
+	printf("  -avoid-version           accepted and ignored\n");
 
 	exit(code);
 }
@@ -972,6 +973,8 @@ static void print_config(char const *value)
 	printc(target->librarian, "AR");
 	printc(target->librarian_opts, "AR_FLAGS");
 	printc(target->linker_flag_prefix, "wl");
+	printc(toolset->cc, "cc");
+	printc(toolset->link_c, "link_c");
 	printc(toolset->ranlib, "ranlib");
 }
 /*
@@ -992,6 +995,7 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 	char *equal_pos = strchr(arg, '=');
 	char var[50];
 	char value[500];
+	static bool toolset_set = false;
 
 	if (equal_pos) {
 		strncpy(var, arg, equal_pos - arg);
@@ -1036,10 +1040,11 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 			found_target:
 				/*
 				 *	This is cross-compilation target
-				 *	switch out the toolset too.
+				 *	switch out the toolset too unless
+				 *	explicitly specified.
 				 */
 				if (p->target != target) {
-					toolset = &toolset_target;
+					if (!toolset_set) toolset = &toolset_target;
 					target = p->target;
 				}
 				DEBUG("Switching target to %s, and toolset to toolset_target\n", p->name);
@@ -1069,6 +1074,26 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 			}
 			exit(1);
 		}
+	/*
+	 *	Manual override for the set of compilers/linkers etc. we use
+	 */
+	} else if (strcmp(var, "toolset") == 0) {
+		size_t len;
+
+		len = strlen(value);
+		if (!len) return 1;
+
+		if (strcasecmp(value, "host") == 0) {
+			toolset = &toolset_host;
+			toolset_set = true;
+		} else if (strcasecmp(value, "target") == 0) {
+			toolset = &toolset_target;
+			toolset_set = true;
+		} else {
+			ERROR("Invalid --toolset value \"%s\"", value);
+			exit(1);
+		}
+
 	} else if (strcmp(var, "mode") == 0) {
 		if (cmd->mode != MODE_UNKNOWN) {
 			ERROR("Cannot set --mode twice\n");
