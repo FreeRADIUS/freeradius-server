@@ -3171,11 +3171,8 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 	 *	By default, tmpl types cannot be cast to anything.
 	 */
 	default:
-		if (dst_type != FR_TYPE_NULL) {
-			fr_strerror_const("Cannot use cast here.");
-			return -1;
-		}
-		break;
+		fr_strerror_const("Cannot use cast here.");
+		return -1;
 
 	/*
 	 *	These tmpl types are effectively of data type
