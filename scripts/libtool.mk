@@ -33,6 +33,32 @@ ifneq "${LIBTOOL}" ""
 
 ifeq "${LIBTOOL}" "JLIBTOOL"
     JLIBTOOL := ${BUILD_DIR}/make/jlibtool
+    JLIBTOOL_DEFS := -DPROGRAM_VERSION=$(RADIUSD_VERSION_STRING)
+
+    # Pass compiler and ranlib paths through to jlibtool if they're
+    # defined in the environment.  This lets us define a separate
+    # compiler to build the toolchain and
+    ifdef HOST_CC
+        JLIBTOOL_DEFS += -DHOST_CC=\"${HOST_CC}\" -DHOST_LINK_C=\"${HOST_CC}\"
+    endif
+
+    ifdef HOST_RANLIB
+        JLIBTOOL_DEFS += -DHOST_RANLIB=\"${HOST_RANLIB}\"
+    endif
+
+    ifndef TARGET_CC
+        ifdef CC
+            TARGET_CC := '${CC}'
+        endif
+    endif
+
+    ifdef TARGET_CC
+        JLIBTOOL_DEFS += -DTARGET_CC=\"${TARGET_CC}\" -DTARGET_LINK_C=\"${TARGET_CC}\"
+    endif
+
+    ifdef TARGET_RANLIB
+        JLIBTOOL_DEFS += -DTARGET_RANLIB=\"${TARGET_RANLIB}\"
+    endif
 
     # Add a rule to build jlibtool BEFORE any other targets.  This
     # means that we can use it to build the later targets.
@@ -44,7 +70,7 @@ ifeq "${LIBTOOL}" "JLIBTOOL"
     ${JLIBTOOL}: ${top_makedir}/jlibtool.c
 	$(Q)mkdir -p $(dir $@)
 	$(Q)echo CC jlibtool.c
-	$(Q)${HOST_CC} $< -o $@ -DPROGRAM_VERSION=$(RADIUSD_VERSION_STRING)
+	$(Q)${HOST_CC} $< -o $@ ${JLIBTOOL_DEFS}
 
     jlibtool: ${JLIBTOOL}
 
