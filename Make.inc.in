@@ -46,9 +46,12 @@ MAKE		= @MAKE@
 # flags set on the command line and the environmental variables
 MAKEFLAGS	= @FR_MAKEFLAGS@
 
+HOST_CC		= @HOST_CC@
+HOST_RANLIB	= @HOST_RANLIB@
+
 TARGET_SYSTEM	= @TARGET_SYSTEM@
-CC		= @CC@
-RANLIB		= @RANLIB@
+TARGET_CC       = @TARGET_CC@
+TARGET_RANLIB   = @TARGET_RANLIB@
 INCLUDE		= -I. -Isrc \
 		  -include src/freeradius-devel/autoconf.h \
 		  -include src/freeradius-devel/build.h \

@@ -231,10 +231,36 @@ esac
 
 AC_SUBST(LIBRARY_EXT, "$library_ext")
 
-dnl #  Check for GNU cc
+
 dnl #
+dnl #  If TARGET_CC is set, then that's the CC we use for the rest of the tests.
+dnl #  We don't check HOST_CC for anything as it's only used to build our make libs
+dnl #  and jlibtool.
+dnl #
+if test "x$TARGET_CC" != "x"; then
+  CC="${TARGET_CC}"
+fi
+
 AC_PROG_CC
-AC_PROG_CXX
+
+dnl #
+dnl #  If HOST_CC (the build system compiler) isn't set it defaults to the compiler
+dnl #  we found.
+dnl #
+if test "x$HOST_CC" = "x"; then
+  HOST_CC="${CC}"
+fi
+
+dnl #
+dnl #  If TARGET_CC (the target system compiler) isn't set it defaults to the compiler
+dnl #  we found.
+dnl #
+if test "x$TARGET_CC" = "x"; then
+  TARGET_CC="${CC}"
+fi
+
+AC_SUBST(HOST_CC)
+AC_SUBST(TARGET_CC)
 
 dnl #
 dnl #  check for AIX, to allow us to use some BSD functions
@@ -245,6 +271,17 @@ AC_AIX
 AC_PROG_GCC_TRADITIONAL
 AC_PROG_CC_SUNPRO
 AC_PROG_RANLIB
+
+if test "x$HOST_RANLIB" = "x"; then
+  HOST_RANLIB="${RANLIB}"
+fi
+
+if test "x$TARGET_RANLIB" = "x"; then
+  TARGET_RANLIB="${RANLIB}"
+fi
+
+AC_SUBST(HOST_RANLIB)
+AC_SUBST(TARGET_RANLIB)
 
 dnl #
 dnl #  Definitive check for whether the compiler is clang
