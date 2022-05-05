@@ -325,7 +325,7 @@ ifeq "$(CPPCHECK)" ""
 define COMPILE_C_CMDS
 	$(Q)mkdir -p $(dir $@)
 	$(Q)$(ECHO) CC $<
-	$(Q)$(strip ${COMPILE.c} -o $@ -c -MD ${CPPFLAGS} ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
+	$(Q)$(strip ${SRC_CC} -o $@ -c -MD ${CPPFLAGS} ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
 	    $(addprefix -I, ${SRC_INCDIRS}) ${SRC_DEFS} ${DEFS} $<)
 endef
 else
@@ -391,6 +391,7 @@ define INCLUDE_SUBMAKEFILE
 
     SOURCES :=
     HEADERS :=
+    SRC_CC := $(COMPILE.c)
     SRC_CFLAGS :=
     SRC_CXXFLAGS :=
     SRC_DEFS :=
@@ -524,6 +525,7 @@ define INCLUDE_SUBMAKEFILE
         # A "hook" to define variables needed by the "legacy" makefiles.
         $$(eval $$(call ADD_LEGACY_VARIABLES,$$(dir ${1}),$${TGT}))
 
+        $${OBJS}: SRC_CC := $${SRC_CC}
         $${OBJS}: SRC_CFLAGS := $${SRC_CFLAGS}
         $${OBJS}: SRC_CXXFLAGS := $${SRC_CXXFLAGS}
         $${OBJS}: SRC_DEFS := $$(addprefix -D,$${SRC_DEFS})
