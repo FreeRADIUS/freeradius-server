@@ -179,18 +179,18 @@ endef
 # By default, if libdir is defined, we build shared libraries.
 # However, we can disable shared libraries if explicitly told to.
 ifneq "${libdir}" ""
-    ifneq "${bm_shared_libs}" "no"
-        bm_shared_libs := yes
+    ifneq "${USE_SHARED_LIBS}" "no"
+        USE_SHARED_LIBS := yes
     endif
 endif
 
 # Default to building static libraries, too.
-ifneq "${bm_static_libs}" "no"
-    bm_static_libs := yes
+ifneq "${USE_STATIC_LIBS}" "no"
+    USE_STATIC_LIBS := yes
 endif
 
 # Check if we build shared libraries.
-ifeq "${bm_shared_libs}" "yes"
+ifeq "${USE_SHARED_LIBS}" "yes"
     LOCAL := local/
 
     # RPATH  : flags use to build executables that are installed,
@@ -202,12 +202,12 @@ ifeq "${bm_shared_libs}" "yes"
 
     LOCAL_FLAGS_MIN := -rpath ${libdir}
 
-    ifneq "${bm_static_libs}" "yes"
+    ifneq "${USE_STATIC_LIBS}" "yes"
         RPATH_FLAGS += --shared
         LOCAL_FLAGS += --shared
     endif
 else
-    ifneq "${bm_static_libs}" "yes"
+    ifneq "${USE_STATIC_LIBS}" "yes"
         $(error Building without static libraries requires you to set 'INSTALL' or 'libdir')
     endif
 
