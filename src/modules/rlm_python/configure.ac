@@ -1,5 +1,6 @@
-AC_PREREQ([2.53])
-AC_INIT(rlm_python.c)
+AC_PREREQ([2.71])
+AC_INIT
+AC_CONFIG_SRCDIR([rlm_python.c])
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_python])
 
@@ -39,7 +40,10 @@ if test x$with_[]modname != xno; then
 		dnl # It is necessary due to a weird behavior with 'python-config'
 		dnl #
 		old_CFLAGS="$CFLAGS"
+		old_LDFLAGS="$LDFLAGS"
+
 		unset CFLAGS
+		unset LDFLAGS
 
 		dnl #
 		dnl # Not all python3-config versions have --embed.  If doesn't
@@ -53,7 +57,7 @@ if test x$with_[]modname != xno; then
 		fi
 
 		python_cflags=`${PYTHON_CONFIG_BIN} --cflags ${PYTHON_CONFIG_EMBED}`
-		AC_MSG_NOTICE([${PYTHON_CONFIG_BIN}'s cflags were \"${python_cflags}\"])
+		AC_MSG_NOTICE([${PYTHON_CONFIG_BIN}'s cflags were "${python_cflags}"])
 
 		dnl # Convert -I to -isystem to get rid of warnings about issues in Python headers
 		dnl # Strip -systemroot
@@ -81,10 +85,10 @@ if test x$with_[]modname != xno; then
 			s/ -specs=[[^ ]]*/ /g;\
 			s/ -ffat-lto-objects/ /g;
 			'`
-		AC_MSG_NOTICE([Sanitized cflags were \"${mod_cflags}\"])
+		AC_MSG_NOTICE([Sanitized cflags were "${mod_cflags}"])
 
 		python_ldflags=`${PYTHON_CONFIG_BIN} --ldflags ${PYTHON_CONFIG_EMBED}`
-		AC_MSG_NOTICE([${PYTHON_CONFIG_BIN}'s ldflags were \"$python_ldflags}\"])
+		AC_MSG_NOTICE([${PYTHON_CONFIG_BIN}'s ldflags were "${python_ldflags}"])
 
 		dnl # Strip -Wl,-O1... Is -O even a valid linker flag??
 		dnl # Strip -Wl,-Bsymbolic-functions as thats not always supported or required
@@ -96,9 +100,35 @@ if test x$with_[]modname != xno; then
 			s/-Xlinker -export-dynamic//g;\
 			s/-Wl,-stack_size,[[[:digit:]]]*[[[:blank:]]]//g;
 			'`
-		AC_MSG_NOTICE([Sanitized ldflags were \"${mod_ldflags}\"])
+		AC_MSG_NOTICE([Sanitized ldflags were "${mod_ldflags}"])
+
+		python_lib=`echo "${mod_ldflags}" | grep -o -E '\-lpython[[0-9.]]+' | sed -e 's/-l//'`
+
+		AC_MSG_NOTICE([Python library is "${python_lib}"])
+
+		AC_MSG_CHECKING([we can link to python libraries])
+
+		CFLAGS=${mod_cflags}
+		LDFLAGS=${mod_ldflags}
+		AC_LINK_IFELSE(
+		  [AC_LANG_PROGRAM([[
+		    #include <Python.h>
+		  ]],
+		  [[
+		    Py_SetProgramName("test")
+		  ]])],
+		  [LINKS="yes"],
+		  [LINKS="no"]
+	        )
+
+		AC_MSG_RESULT($LINKS)
+		if test "x$LINKS" = "xno"; then
+			fail="$fail working python libraries"
+			targetname=
+		fi
 
 		CFLAGS=$old_CFLAGS
+		LDFLAGS=$old_LDFLAGS
 
 		targetname="rlm_python"
 	fi
@@ -120,4 +150,5 @@ fi
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT
