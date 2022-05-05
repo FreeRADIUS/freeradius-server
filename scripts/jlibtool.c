@@ -116,6 +116,7 @@ static const toolset_t *toolset = &toolset_host;
  *
  */
 typedef struct {
+	char const			*name;		//!< Canonical name for this target.
 	char const			*shell_cmd;
 	char const			*gen_exports;
 	char const			*def2implib_cmd;
@@ -156,6 +157,7 @@ typedef struct {
 static char const *darwin_dynamic_link_function(char const *version_info);
 
 static const target_t target_macos = {
+	.name				= "macos",
 	.shell_cmd			= "/bin/sh",
 	.dynamic_lib_ext		= "dylib",
 	.module_lib_ext			= "bundle",
@@ -179,6 +181,7 @@ static const target_t target_macos = {
 };
 
 static const target_t target_linux_and_bsd = {
+	.name				= "linux_and_bsd",
 	.shell_cmd			= "/bin/sh",
 	.dynamic_lib_ext		= "so",
 	.module_lib_ext			= "so",
@@ -199,6 +202,7 @@ static const target_t target_linux_and_bsd = {
 };
 
 static const target_t target_solaris_gnu = {
+	.name				= "solaris_gnu",
 	.shell_cmd			= "/bin/sh",
 	.dynamic_lib_ext		= "so",
 	.module_lib_ext			= "so",
@@ -219,6 +223,7 @@ static const target_t target_solaris_gnu = {
 };
 
 static const target_t target_solaris = {
+	.name				= "solaris",
 	.shell_cmd			= "/bin/sh",
 	.dynamic_lib_ext		= "so",
 	.module_lib_ext			= "so",
@@ -240,6 +245,7 @@ static const target_t target_solaris = {
 };
 
 static const target_t target_osd_posix = {
+	.name				= "osd_posix",
 	.shell_cmd			= "/usr/bin/sh",
 	.dynamic_lib_ext		= "so",
 	.module_lib_ext			= "so",
@@ -253,6 +259,7 @@ static const target_t target_osd_posix = {
 };
 
 static const target_t target_sinix_mips = {
+	.name				= "sinix_mips",
 	.shell_cmd			= "/usr/bin/sh",
 	.dynamic_lib_ext		= "so",
 	.module_lib_ext			= "so",
@@ -271,6 +278,7 @@ static const target_t target_sinix_mips = {
 };
 
 static const target_t target_emx_omf = {
+	.name				= "emx_omf",
 	.shell_cmd			= "sh",
 	.gen_exports			= "emxexp",
 	.def2implib_cmd			= "emximp",
@@ -288,6 +296,7 @@ static const target_t target_emx_omf = {
 };
 
 static const target_t target_emx = {
+	.name				= "emx",
 	.shell_cmd			= "sh",
 	.gen_exports			= "emxexp",
 	.def2implib_cmd			= "emximp",
@@ -302,6 +311,7 @@ static const target_t target_emx = {
 };
 
 static const target_t target_ming32 = {
+	.name				= "ming32",
 	.shell_cmd			= "sh",
 	.dynamic_lib_ext		= "dll",
 	.module_lib_ext			= "dll",
@@ -316,6 +326,7 @@ static const target_t target_ming32 = {
 };
 
 static const target_t target_emscripten = {
+	.name				= "emscripten",
 	.shell_cmd			= "/bin/sh",
 	.dynamic_lib_ext		= "wasm",
 	.module_lib_ext			= "wasm",
@@ -426,20 +437,21 @@ typedef struct {
  * These allow the users to specify a target system when cross-compiling
  */
 static const target_map_t target_map[] = {
-	TARGET("macos",		macos),
-	TARGET("linux",		linux_and_bsd),
+	TARGET("bsd",		linux_and_bsd),
+	TARGET("emscripten",	emscripten),
+	TARGET("emx",		emx),
+	TARGET("emx-omf",	emx_omf),
 	TARGET("freebsd",	linux_and_bsd),
+	TARGET("linux",		linux_and_bsd),
+	TARGET("macos",		macos),
+	TARGET("darwin",	macos),
+	TARGET("ming32",	ming32),
 	TARGET("netbsd",	linux_and_bsd),
 	TARGET("openbsd",	linux_and_bsd),
-	TARGET("bsd",		linux_and_bsd),
-	TARGET("solaris-gnuc",	solaris_gnu),
-	TARGET("solaris",	solaris),
 	TARGET("osd-posix",	osd_posix),
 	TARGET("sinix",		sinix_mips),
-	TARGET("emx-omf",	emx_omf),
-	TARGET("emx",		emx),
-	TARGET("ming32",	ming32),
-	TARGET("emscripten",	emscripten),
+	TARGET("solaris",	solaris),
+	TARGET("solaris-gnuc",	solaris_gnu),
 	TARGET("wasm",		emscripten),
 };
 
@@ -1070,7 +1082,7 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 			for (p = target_map, end = target_map + (sizeof(target_map) / sizeof(*target_map));
 			     p < end;
 			     p++) {
-				ERROR("  %s\n", p->name);
+				ERROR("  %s (%s)\n", p->name, p->target->name);
 			}
 			exit(1);
 		}
