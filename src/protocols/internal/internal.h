@@ -43,6 +43,8 @@
 
 ssize_t fr_internal_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx);
 
+ssize_t fr_internal_encode_list(fr_dbuff_t *dbuff, fr_pair_list_t const *list, void *encode_ctx);
+
 ssize_t fr_internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t const *parent,
 				uint8_t const *data, size_t data_len, void *decode_ctx);
 

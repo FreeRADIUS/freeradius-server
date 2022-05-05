@@ -279,6 +279,32 @@ ssize_t fr_internal_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 	return internal_encode(dbuff, &da_stack, 0, cursor, encode_ctx);
 }
 
+/** Encode a list of pairs using the internal encoder
+ *
+ * @param[out] dbuff		Where to write encoded data.
+ * @param[in] list		List of attributes to encode.
+ * @param[in] encode_ctx	Additional data to be used by the encoder.
+ * @return
+ *	- length of encoded data on success
+ *	- < 0 on failure
+ */
+ssize_t fr_internal_encode_list(fr_dbuff_t *dbuff, fr_pair_list_t const *list, void *encode_ctx)
+{
+	fr_pair_t	*vp;
+	fr_dcursor_t	dcursor;
+	ssize_t		ret, len = 0;
+
+	for (vp = fr_pair_dcursor_init(&dcursor, list);
+	     vp;
+	     vp = fr_dcursor_current(&dcursor)) {
+		ret = fr_internal_encode_pair(dbuff, &dcursor, encode_ctx);
+		if (ret < 0) return ret;
+		len += ret;
+	}
+
+	return len;
+}
+
 /*
  *	Test points
  */
