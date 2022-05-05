@@ -450,9 +450,11 @@ static int json_afrom_value_box(TALLOC_CTX *ctx, json_object **out,
  */
 static inline ssize_t attr_name_with_prefix(fr_sbuff_t *out, fr_dict_attr_t const *da, fr_json_format_t const *format)
 {
-	fr_sbuff_t our_out = FR_SBUFF(out);
+	fr_sbuff_t our_out;
 
 	if (!out) return 0;
+
+	our_out = FR_SBUFF(out);
 
 	if (format->attr.prefix) {
 		FR_SBUFF_IN_STRCPY_RETURN(&our_out, format->attr.prefix);
