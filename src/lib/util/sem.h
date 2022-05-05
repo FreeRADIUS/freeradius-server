@@ -24,6 +24,7 @@
  */
 RCSIDH(sem_h, "$Id$")
 
+#ifndef __EMSCRIPTEN__
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -50,4 +51,5 @@ int	fr_sem_get(char const *file, int proj_id, uid_t uid, gid_t gid, bool check_p
 
 #ifdef __cplusplus
 }
+#endif
 #endif

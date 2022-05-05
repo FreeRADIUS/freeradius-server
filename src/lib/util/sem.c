@@ -22,6 +22,12 @@
  */
 RCSID("$Id$")
 
+/*
+ * Semaphore functions missing in musl/emscripten.
+ *
+ * This isn't really needed for browser functionality anyway
+ */
+#ifndef __EMSCRIPTEN__
 #include <sys/ipc.h>
 #include <sys/sem.h>
 #include <sys/stat.h>
@@ -517,3 +523,4 @@ again:
 
 	return sem_id;
 }
+#endif /* __EMSCRIPTEN__ */
