@@ -42,8 +42,10 @@ RCSID("$Id$")
  * on different CPU cores.
  */
 typedef struct CC_HINT(packed, aligned(CACHE_LINE_SIZE)) {
+	atomic_int64_t					seq;		//!< Must be seq then data to ensure
+									///< seq is 64bit aligned for 32bit address
+									///< spaces.
 	void						*data;
-	atomic_int64_t					seq;
 } fr_atomic_queue_entry_t;
 
 /** Structure to hold the atomic queue
