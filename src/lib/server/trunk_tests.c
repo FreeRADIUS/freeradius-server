@@ -288,7 +288,7 @@ static fr_connection_state_t _conn_open(fr_event_list_t *el, void *h, UNUSED voi
 	/*
 	 *	This always needs to be inserted
 	 */
-	fr_event_fd_insert(our_h, el, our_h[1], _conn_io_loopback, NULL, NULL, our_h);
+	TEST_CHECK(fr_event_fd_insert(our_h, el, our_h[1], _conn_io_loopback, NULL, NULL, our_h) == 0);
 
 	return FR_CONNECTION_STATE_CONNECTED;
 }
