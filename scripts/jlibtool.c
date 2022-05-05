@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
+#include <ctype.h>
+#include <libgen.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <libgen.h>
 
 #if !defined(__MINGW32__)
 #  include <sys/wait.h>
@@ -947,9 +948,9 @@ static int run_command(command_t *cmd, count_chars *cc)
  * print configuration
  * shlibpath_var is used in configure.
  */
-#define printc(_var, _id) if (!value || !strcmp(value, _id)) if (_var) printf(_id "=\"%s\"\n", _var)
+#define printc(_var, _id) if (!*value || !strcmp(value, _id)) if (_var) printf(_id "=\"%s\"\n", _var)
 
-#define printc_ext(_var, _id, _ext) if (!value || !strcmp(value, _id)) if (_var) printf(_id "=\"%s%s\"\n", _ext, _var)
+#define printc_ext(_var, _id, _ext) if (!*value || !strcmp(value, _id)) if (_var) printf(_id "=\"%s%s\"\n", _ext, _var)
 
 static void print_config(char const *value)
 {
@@ -1015,13 +1016,23 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 	} else if (strcmp(var, "target") == 0) {
 		target_map_t const *p;
 		target_map_t const *end;
+		size_t i, len;
 
-		if (!strlen(value) || (strcmp(value, "default") == 0)) return 1;
+		/*
+		 *	Zero length len is fine, it just means we use the default.
+		 */
+		len = strlen(value);
+		if (!len) return 1;
+
+		/*
+		 *	Smash the target to lower case
+		 */
+		for (i = 0; i < len; i++) value[i] = tolower(value[i]);
 
 		for (p = target_map, end = target_map + (sizeof(target_map) / sizeof(*target_map));
 		     p < end;
 		     p++) {
-			if (strcasecmp(value, p->name) == 0) {
+			if (strcmp(value, p->name) == 0) {
 			found_target:
 				/*
 				 *	This is cross-compilation target
