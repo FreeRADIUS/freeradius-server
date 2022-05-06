@@ -4581,8 +4581,6 @@ ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	char				buffer[256];
 	fr_slen_t			slen;
 
-	if (!fr_cond_assert(dst_type != FR_TYPE_NULL)) return -1;
-
 	if (!rules) rules = &default_rules;
 
 	fr_strerror_clear();
