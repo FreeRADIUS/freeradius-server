@@ -27,6 +27,7 @@
 #include <freeradius-devel/modcall.h>
 #include <freeradius-devel/md5.h>
 #include <freeradius-devel/channel.h>
+#include <freeradius-devel/connection.h>
 
 #include <libgen.h>
 #ifdef HAVE_INTTYPES_H
@@ -2647,6 +2648,46 @@ static int command_stats_socket(rad_listen_t *listener, int argc, char *argv[])
 
 	return command_print_stats(listener, &sock->stats, auth, 0);
 }
+
+static int command_stats_pool(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
+{
+	CONF_SECTION *cs;
+	module_instance_t *mi;
+	fr_connection_pool_stats_t const *stats;
+
+	if (argc < 1) {
+		cprintf_error(listener, "Must specify <name>\n");
+		return CMD_FAIL;
+	}
+
+	cs = cf_section_find("modules");
+	if (!cs) return CMD_FAIL;
+
+	mi = module_find(cs, argv[0]);
+	if (!mi) {
+		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
+		return CMD_FAIL;
+	}
+
+	stats = fr_connection_pool_stats(mi->cs);
+	if (!stats) {
+		cprintf_error(listener, "Module %s has no pool statistics", argv[0]);
+		return CMD_FAIL;
+	}
+
+	cprintf(listener, "last_checked\t\t%zu\n", stats->last_checked);
+	cprintf(listener, "last_opened\t\t%zu\n", stats->last_opened);
+	cprintf(listener, "last_closed\t\t%zu\n", stats->last_closed);
+	cprintf(listener, "last_failed\t\t%zu\n", stats->last_failed);
+	cprintf(listener, "last_throttled\t\t%zu\n", stats->last_throttled);
+	cprintf(listener, "total_opened\t\t%" PRIu64 "\n", stats->opened);
+	cprintf(listener, "total_closed\t\t%" PRIu64 "\n", stats->closed);
+	cprintf(listener, "total_failed\t\t%" PRIu64 "\n", stats->failed);
+	cprintf(listener, "num_open\t\t%u\n", stats->num);
+	cprintf(listener, "num_in_use\t\t%u\n", stats->active);
+
+	return CMD_OK;
+}
 #endif	/* WITH_STATS */
 
 
@@ -2847,6 +2888,11 @@ static fr_command_table_t command_table_stats[] = {
 	  "stats home_server [<ipaddr>|auth|acct|coa|disconnect] <port> [udp|tcp] [src <ipaddr>] - show statistics for given home server (ipaddr and port), or for all home servers (auth or acct)",
 	  command_stats_home_server, NULL },
 #endif
+
+	{ "pool", FR_READ,
+	  "pool <name> "
+	  "- show pool statistics for given module",
+	  command_stats_pool, NULL },
 
 #ifdef HAVE_PTHREAD_H
 	{ "queue", FR_READ,
