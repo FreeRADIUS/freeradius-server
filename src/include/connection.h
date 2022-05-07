@@ -100,6 +100,28 @@ void	*fr_connection_reconnect(fr_connection_pool_t *pool, void *conn);
 
 int	fr_connection_close(fr_connection_pool_t *pool, void *conn, char const *msg);
 
+typedef struct {
+	time_t		last_checked;		//!< Last time we pruned the connection pool.
+	time_t		last_opened;		//!< Last time we opened a connection.
+	time_t		last_closed;		//!< Last time we closed a connection.
+	time_t		last_failed;		//!< Last time we tried to spawn a connection but failed.
+	time_t		last_throttled;		//!< Last time we refused to spawn a connection because
+						//!< the last connection failed, or we were already spawning
+						//!< a connection.
+	time_t		last_at_max;		//!< Last time we hit the maximum number of allowed
+						//!< connections.
+
+	uint64_t	opened;	       		//!< Number of connections opened over the lifetime
+						//!< of the pool.
+	uint64_t	closed;			//!< Number of connections which were closed for this pool
+	uint64_t	failed;			//!< Number of failed connections for this pool.
+
+	uint32_t       	num;			//!< Number of connections in the pool.
+	uint32_t	active;	 		//!< Number of currently reserved connections.
+} fr_connection_pool_stats_t;
+
+fr_connection_pool_stats_t const *fr_connection_pool_stats(CONF_SECTION *cs);
+
 #ifdef __cplusplus
 }
 #endif

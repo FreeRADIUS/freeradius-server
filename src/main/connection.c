@@ -116,22 +116,7 @@ struct fr_connection_pool_t {
 	bool		spread;			//!< If true we spread requests over the connections,
 						//!< using the connection released longest ago, first.
 
-	time_t		last_checked;		//!< Last time we pruned the connection pool.
-	time_t		last_spawned;		//!< Last time we spawned a connection.
-	time_t		last_failed;		//!< Last time we tried to spawn a connection but failed.
-	time_t		last_throttled;		//!< Last time we refused to spawn a connection because
-						//!< the last connection failed, or we were already spawning
-						//!< a connection.
-	time_t		last_at_max;		//!< Last time we hit the maximum number of allowed
-						//!< connections.
-
-	uint64_t	opened;	       		//!< Number of connections opened over the lifetime
-						//!< of the pool.
-	uint64_t	closed;			//!< Number of connections which were closed for this pool
-	uint64_t	failed;			//!< Number of failed connections for this pool.
-
-	uint32_t       	num;			//!< Number of connections in the pool.
-	uint32_t	active;	 		//!< Number of currently reserved connections.
+	fr_connection_pool_stats_t stats;		//!< various statistics
 
 	fr_heap_t	*heap;			//!< For the next connection heap
 
@@ -356,15 +341,15 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 	 *	opening connections, don't open multiple connections until
 	 *	we successfully open at least one.
 	 */
-	if ((pool->num == 0) && pool->pending && pool->last_failed) return NULL;
+	if ((pool->stats.num == 0) && pool->pending && pool->stats.last_failed) return NULL;
 
 	pthread_mutex_lock(&pool->mutex);
-	rad_assert(pool->num <= pool->max);
+	rad_assert(pool->stats.num <= pool->max);
 
 	/*
 	 *	Don't spawn too many connections at the same time.
 	 */
-	if ((pool->num + pool->pending) >= pool->max) {
+	if ((pool->stats.num + pool->pending) >= pool->max) {
 		pthread_mutex_unlock(&pool->mutex);
 
 		ERROR("%s: Cannot open new connection, already at max", pool->log_prefix);
@@ -375,13 +360,13 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 	 *	If the last attempt failed, wait a bit before
 	 *	retrying.
 	 */
-	if (pool->last_failed && ((pool->last_failed + pool->retry_delay) > now)) {
+	if (pool->stats.last_failed && ((pool->stats.last_failed + pool->retry_delay) > now)) {
 		bool complain = false;
 
-		if (pool->last_throttled != now) {
+		if (pool->stats.last_throttled != now) {
 			complain = true;
 
-			pool->last_throttled = now;
+			pool->stats.last_throttled = now;
 		}
 
 		pthread_mutex_unlock(&pool->mutex);
@@ -405,7 +390,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 	}
 
 	pool->pending++;
-	number = pool->opened++;
+	number = pool->stats.opened++;
 
 	/*
 	 *	Unlock the mutex while we try to open a new
@@ -420,7 +405,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 	 *	The true value for max_pending is the smaller of
 	 *	free connection slots, or pool->max_pending.
 	 */
-	max_pending = (pool->max - pool->num);
+	max_pending = (pool->max - pool->stats.num);
 	if (pool->max_pending < max_pending) max_pending = pool->max_pending;
 	INFO("%s: Opening additional connection (%" PRIu64 "), %u of %u pending slots used",
 	     pool->log_prefix, number, pool->pending, max_pending);
@@ -442,11 +427,11 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 	if (!conn) {
 		ERROR("%s: Opening connection failed (%" PRIu64 ")", pool->log_prefix, number);
 
-		pool->last_failed = now;
+		pool->stats.last_failed = now;
 		pthread_mutex_lock(&pool->mutex);
 		pool->max_pending = 1;
 		pool->pending--;
-		pool->failed++;
+		pool->stats.failed++;
 		pthread_mutex_unlock(&pool->mutex);
 
 		talloc_free(ctx);
@@ -490,7 +475,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 	 *	done when the connection is released.
 	 */
 
-	pool->num++;
+	pool->stats.num++;
 
 	rad_assert(pool->pending > 0);
 	pool->pending--;
@@ -501,10 +486,10 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 	 */
 	if (pool->max_pending < pool->max) pool->max_pending++;
 
-	pool->last_spawned = time(NULL);
+	pool->stats.last_opened = time(NULL);
 	pool->delay_interval = pool->cleanup_interval;
 	pool->next_delay = pool->cleanup_interval;
-	pool->last_failed = 0;
+	pool->stats.last_failed = 0;
 
 	pthread_mutex_unlock(&pool->mutex);
 
@@ -547,8 +532,8 @@ static void fr_connection_close_internal(fr_connection_pool_t *pool, fr_connecti
 
 		this->in_use = false;
 
-		rad_assert(pool->active != 0);
-		pool->active--;
+		rad_assert(pool->stats.active != 0);
+		pool->stats.active--;
 
 	} else {
 		/*
@@ -561,9 +546,10 @@ static void fr_connection_close_internal(fr_connection_pool_t *pool, fr_connecti
 
 	fr_connection_unlink(pool, this);
 
-	rad_assert(pool->num > 0);
-	pool->num--;
-	pool->closed++;
+	rad_assert(pool->stats.num > 0);
+	pool->stats.num--;
+	pool->stats.closed++;
+	pool->stats.last_closed = time(NULL);
 	talloc_free(this);
 }
 
@@ -602,7 +588,7 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 		msg = "Hit max_uses limit";
 
 	do_delete:
-		if (pool->num <= pool->min) {
+		if (pool->stats.num <= pool->min) {
 			DEBUG("%s: You probably need to lower \"min\"", pool->log_prefix);
 		}
 		fr_connection_close_internal(pool, this, reason, msg);
@@ -652,7 +638,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	time_t now = time(NULL);
 	fr_connection_t *this, *next;
 
-	if (pool->last_checked == now) {
+	if (pool->stats.last_checked == now) {
 		pthread_mutex_unlock(&pool->mutex);
 		return 1;
 	}
@@ -661,8 +647,8 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	 *	Get "real" number of connections, and count pending
 	 *	connections as spare.
 	 */
-	num = pool->num + pool->pending;
-	spare = pool->pending + (pool->num - pool->active);
+	num = pool->stats.num + pool->pending;
+	spare = pool->pending + (pool->stats.num - pool->stats.active);
 
 	/*
 	 *	The other end can close connections.  If so, we'll
@@ -731,7 +717,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 		 *	Don't close connections too often, in order to
 		 *	prevent flapping.
 		 */
-		if (now < (pool->last_spawned + pool->delay_interval)) goto manage_connections;
+		if (now < (pool->stats.last_opened + pool->delay_interval)) goto manage_connections;
 
 		/*
 		 *	Find a connection to close.
@@ -803,7 +789,7 @@ manage_connections:
 		fr_connection_manage(pool, this, now, false);
 	}
 
-	pool->last_checked = now;
+	pool->stats.last_checked = now;
 	pthread_mutex_unlock(&pool->mutex);
 
 	return 1;
@@ -865,15 +851,15 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 	 */
 	if (!spawn) return NULL;
 
-	if (pool->num == pool->max) {
+	if (pool->stats.num == pool->max) {
 		bool complain = false;
 
 		/*
 		 *	Rate-limit complaints.
 		 */
-		if (pool->last_at_max != now) {
+		if (pool->stats.last_at_max != now) {
 			complain = true;
-			pool->last_at_max = now;
+			pool->stats.last_at_max = now;
 		}
 
 		pthread_mutex_unlock(&pool->mutex);
@@ -888,14 +874,14 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 	pthread_mutex_unlock(&pool->mutex);
 
 	DEBUG("%s: %i of %u connections in use.  You  may need to increase \"spare\"", pool->log_prefix,
-	      pool->active, pool->num);
+	      pool->stats.active, pool->stats.num);
 	this = fr_connection_spawn(pool, now, true); /* MY connection! */
 	if (!this) return NULL;
 
 	pthread_mutex_lock(&pool->mutex);
 
 do_return:
-	pool->active++;
+	pool->stats.active++;
 	this->num_uses++;
 	gettimeofday(&this->last_reserved, NULL);
 	this->in_use = true;
@@ -1268,7 +1254,47 @@ fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
  */
 int fr_connection_pool_get_num(fr_connection_pool_t *pool)
 {
-	return pool->num;
+	return pool->stats.num;
+}
+
+
+/** Get the number of connections currently in the pool
+ *
+ * @param module the module configuration which should contain the pool
+ * @return the stats, or NULL on "not found"
+ */
+fr_connection_pool_stats_t const *fr_connection_pool_stats(CONF_SECTION *module)
+{
+	fr_connection_pool_t *pool = NULL;
+	CONF_SECTION *cs;
+
+	cs = cf_section_sub_find(module, "pool");
+	if (!cs) {
+		CONF_PAIR *cp;
+		module_instance_t *mi;
+		char const *value;
+
+		/*
+		 *	This is the name of the module, not a
+		 *	reference.  <sigh>.
+		 */
+		cp = cf_pair_find(module, "pool");
+		if (!cp) return NULL;
+
+		value = cf_pair_value(cp);
+		if (!value) return NULL;
+
+		mi = module_find(cf_item_parent(cf_section_to_item(module)), value);
+		if (!mi) return NULL;
+
+		cs = cf_section_sub_find(mi->cs, "pool");
+		if (!cs) return NULL;
+	}
+
+	pool = cf_data_find(cs, CONNECTION_POOL_CF_KEY);
+	if (!pool) return NULL;
+
+	return &pool->stats;
 }
 
 
@@ -1315,7 +1341,7 @@ void fr_connection_pool_free(fr_connection_pool_t *pool)
 
 	rad_assert(pool->head == NULL);
 	rad_assert(pool->tail == NULL);
-	rad_assert(pool->num == 0);
+	rad_assert(pool->stats.num == 0);
 
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_destroy(&pool->mutex);
@@ -1381,8 +1407,8 @@ void fr_connection_release(fr_connection_pool_t *pool, void *conn)
 	 */
 	fr_heap_insert(pool->heap, this);
 
-	rad_assert(pool->active != 0);
-	pool->active--;
+	rad_assert(pool->stats.active != 0);
+	pool->stats.active--;
 
 	DEBUG("%s: Released connection (%" PRIu64 ")", pool->log_prefix, this->number);
 
