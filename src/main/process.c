@@ -1827,14 +1827,33 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 			      client->shortname,
 			      packet->src_port, packet->id,
 			      old_module);
-		}
 
-		/*
-		 *	Mark the old request as done.  If there's no
-		 *	child, the request will be cleaned up
-		 *	immediately.  If there is a child, we'll set a
-		 *	timer to go clean up the request.
-		 */
+#ifdef WITH_STATS
+			switch (packet->code) {
+			case PW_CODE_ACCESS_REQUEST:
+				FR_STATS_INC(auth, total_conflicts);
+				break;
+
+#ifdef WITH_ACCOUNTING
+			case PW_CODE_ACCOUNTING_REQUEST:
+				FR_STATS_INC(acct, total_conflicts);
+				break;
+#endif
+#ifdef WITH_COA
+			case PW_CODE_COA_REQUEST:
+				FR_STATS_INC(coa, total_conflicts);
+				break;
+
+			case PW_CODE_DISCONNECT_REQUEST:
+				FR_STATS_INC(dsc, total_conflicts);
+				break;
+#endif
+
+			default:
+				break;
+			}
+#endif	/* WITH_STATS */
+		}
 	} /* else the new packet is unique */
 
 	/*

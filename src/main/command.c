@@ -2365,6 +2365,8 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 
 	if (server) {
 		cprintf(listener, "timeouts\t%" PRIu64 "\n", stats->total_timeouts);
+	} else {
+		cprintf(listener, "conflicts\t%" PRIu64 "\n", stats->total_conflicts);
 	}
 
 	cprintf(listener, "last_packet\t%" PRId64 "\n", (int64_t) stats->last_packet);
