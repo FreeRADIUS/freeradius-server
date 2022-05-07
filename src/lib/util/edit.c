@@ -60,6 +60,8 @@ struct fr_edit_list_s {
 	 */
 	fr_dlist_head_t	undo;
 
+	fr_dlist_head_t	ignore;		//!< lists to ignore
+
 	/*
 	 *	VPs which were inserted, and then over-written by a
 	 *	later edit.
@@ -86,6 +88,10 @@ typedef struct {
 	};
 } fr_edit_t;
 
+typedef struct {
+	fr_dlist_t	entry;		//!< linked list of edits
+	fr_pair_list_t	*list;		//!< list to ignore (never dereferenced)
+} fr_edit_ignore_t;
 
 /** Undo one particular edit.
  */
@@ -197,6 +203,34 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 
 	fr_assert(el != NULL);
 	fr_assert(vp != NULL);
+
+	/*
+	 *	When we insert a structural type, we also want to
+	 *	ignore edits to it's children.  The "ignore list"
+	 *	allows us to track that.
+	 */
+	fr_dlist_foreach(&el->ignore, fr_edit_ignore_t, i) {
+		if (i->list == list) {
+			/*
+			 *	We only need to check inserts for
+			 *	lists which are marked "ignore"
+			 */
+			if (op != FR_EDIT_INSERT) return 0;
+
+			/*
+			 *	And then only if it's a structural type.
+			 */
+			if (!fr_type_is_structural(vp->da->type)) return 0;
+
+			/*
+			 *	Otherwise we're inserting a VP which
+			 *	has a child list.  Remember that we
+			 *	need to ignore edits to this list,
+			 *	too.
+			 */
+			goto insert_ignore;
+		}
+	}
 
 	/*
 	 *	Search for previous edits.
@@ -396,6 +430,21 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 	}
 
 	fr_dlist_insert_tail(&el->undo, e);
+
+	/*
+	 *	Insert an "ignore" entry.
+	 */
+	if ((op == FR_EDIT_INSERT) && fr_type_is_structural(vp->da->type)) {
+		fr_edit_ignore_t *i;
+
+	insert_ignore:
+		i = talloc_zero(el, fr_edit_ignore_t);
+		if (!i) return 0;
+
+		i->list = list;
+		fr_dlist_insert_tail(&el->ignore, i);
+	}
+
 	return 0;
 }
 
@@ -581,6 +630,7 @@ fr_edit_list_t *fr_edit_list_alloc(TALLOC_CTX *ctx, int hint)
 	if (!el) return NULL;
 
 	fr_dlist_init(&el->undo, fr_edit_t, entry);
+	fr_dlist_init(&el->ignore, fr_edit_ignore_t, entry);
 
 	fr_pair_list_init(&el->deleted_pairs);
 
