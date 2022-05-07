@@ -78,8 +78,10 @@ typedef struct {
 	fr_pair_t	*vp;		//!< pair edited, deleted, or inserted
 
 	union {
-		fr_value_box_t	data;	//!< original data
-		fr_pair_list_t	children;  //!< original child list, for "clear"
+		union {
+			fr_value_box_t	data;	//!< original data
+			fr_pair_list_t	children;  //!< original child list, for "clear"
+		};
 
 		struct {
 			fr_pair_list_t	*list; //!< parent list
@@ -89,7 +91,7 @@ typedef struct {
 } fr_edit_t;
 
 typedef struct {
-	fr_dlist_t	entry;		//!< linked list of edits
+	fr_dlist_t	entry;
 	fr_pair_list_t	*list;		//!< list to ignore (never dereferenced)
 } fr_edit_ignore_t;
 
