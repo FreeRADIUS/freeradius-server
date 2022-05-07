@@ -361,6 +361,7 @@ static fr_stats2vp authvp[] = {
 	{ PW_FREERADIUS_TOTAL_AUTH_INVALID_REQUESTS, offsetof(fr_stats_t, total_bad_authenticators) },
 	{ PW_FREERADIUS_TOTAL_AUTH_DROPPED_REQUESTS, offsetof(fr_stats_t, total_packets_dropped) },
 	{ PW_FREERADIUS_TOTAL_AUTH_UNKNOWN_TYPES, offsetof(fr_stats_t, total_unknown_types) },
+	{ PW_FREERADIUS_TOTAL_AUTH_CONFLICTS, offsetof(fr_stats_t, total_conflicts) },
 	{ 0, 0 }
 };
 
@@ -397,6 +398,7 @@ static fr_stats2vp acctvp[] = {
 	{ PW_FREERADIUS_TOTAL_ACCT_INVALID_REQUESTS, offsetof(fr_stats_t, total_bad_authenticators) },
 	{ PW_FREERADIUS_TOTAL_ACCT_DROPPED_REQUESTS, offsetof(fr_stats_t, total_packets_dropped) },
 	{ PW_FREERADIUS_TOTAL_ACCT_UNKNOWN_TYPES, offsetof(fr_stats_t, total_unknown_types) },
+	{ PW_FREERADIUS_TOTAL_ACCT_CONFLICTS, offsetof(fr_stats_t, total_conflicts) },
 	{ 0, 0 }
 };
 

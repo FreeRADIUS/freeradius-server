@@ -185,4 +185,9 @@ ATTRIBUTE	FreeRADIUS-Stats-Error			187	string
 ATTRIBUTE	FreeRADIUS-Stats-Client-IPv6-Address	188	ipv6addr
 ATTRIBUTE	FreeRADIUS-Stats-Server-IPv6-Address	189	ipv6addr
 
+# 190 is reserved
+
+ATTRIBUTE	FreeRADIUS-Total-Auth-Conflicts		191	integer
+ATTRIBUTE	FreeRADIUS-Total-Acct-Conflicts		192	integer
+
 END-VENDOR FreeRADIUS
