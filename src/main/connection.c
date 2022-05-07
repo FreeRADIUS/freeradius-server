@@ -111,6 +111,8 @@ struct fr_connection_pool_t {
 	uint32_t       	idle_timeout;		//!< How long a connection can be idle before
 						//!< being closed.
 
+	uint32_t	max_pending;		//!< Max number of connections to open.
+
 	bool		spread;			//!< If true we spread requests over the connections,
 						//!< using the connection released longest ago, first.
 
@@ -123,10 +125,11 @@ struct fr_connection_pool_t {
 	time_t		last_at_max;		//!< Last time we hit the maximum number of allowed
 						//!< connections.
 
-	uint32_t	max_pending;		//!< Max number of connections to open.
-
-	uint64_t	count;			//!< Number of connections spawned over the lifetime
+	uint64_t	opened;	       		//!< Number of connections opened over the lifetime
 						//!< of the pool.
+	uint64_t	closed;			//!< Number of connections which were closed for this pool
+	uint64_t	failed;			//!< Number of failed connections for this pool.
+
 	uint32_t       	num;			//!< Number of connections in the pool.
 	uint32_t	active;	 		//!< Number of currently reserved connections.
 
@@ -402,7 +405,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 	}
 
 	pool->pending++;
-	number = pool->count++;
+	number = pool->opened++;
 
 	/*
 	 *	Unlock the mutex while we try to open a new
@@ -443,6 +446,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 		pthread_mutex_lock(&pool->mutex);
 		pool->max_pending = 1;
 		pool->pending--;
+		pool->failed++;
 		pthread_mutex_unlock(&pool->mutex);
 
 		talloc_free(ctx);
@@ -559,6 +563,7 @@ static void fr_connection_close_internal(fr_connection_pool_t *pool, fr_connecti
 
 	rad_assert(pool->num > 0);
 	pool->num--;
+	pool->closed++;
 	talloc_free(this);
 }
 
