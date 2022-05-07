@@ -1,7 +1,14 @@
 FreeRADIUS 3.2.1 Thu 21 Apr 2021 12:00:00 EDT urgency=low
 	Feature improvements
+	* Add dictionary.ciena.
+	* Add simultaneous-use queries for MS SQL.
+	* Add radmin command for "stats pool <module-name>"
+	  Which prints out statistics about the connection pools
+	* Client statistics now shows "conflicts", to count conflicting
+	  packets.
 
 	Bug fixes
+	* Correct test for open sessions in radacct for MS SQL.
 
 FreeRADIUS 3.2.0 Thu 21 Apr 2021 12:00:00 EDT urgency=low
 	Configuration changes
