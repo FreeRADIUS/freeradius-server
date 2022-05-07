@@ -569,11 +569,11 @@ define INCLUDE_SUBMAKEFILE
         # Choose the correct linker.
         ifeq "$$(strip $$(filter $${CXX_SRC_EXTS},$${$${TGT}_SOURCES}))" ""
             ifeq "$${$${TGT}_LINKER}" ""
-                $${TGT}_LINKER := ${LL}$${LINK.c}
+                $${TGT}_LINKER := $${LINK.c}
             endif
         else
             ifeq "$${$${TGT}_LINKER}" ""
-                $${TGT}_LINKER := ${LL}$${LINK.cxx}
+                $${TGT}_LINKER := $${LINK.cxx}
             endif
         endif
 
