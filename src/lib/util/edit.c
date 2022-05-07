@@ -56,9 +56,9 @@ static const char *edit_names[4] = {
  */
 struct fr_edit_list_s {
 	/*
-	 *	List of edits to be made, in order.
+	 *	List of undo changes to be made, in order.
 	 */
-	fr_dlist_head_t	list;
+	fr_dlist_head_t	undo;
 
 	/*
 	 *	VPs which were inserted, and then over-written by a
@@ -165,7 +165,7 @@ void fr_edit_list_abort(fr_edit_list_t *el)
 	 *	same VP, but we can create a VP, and then later edit
 	 *	its children.
 	 */
-	while ((e = fr_dlist_pop_tail(&el->list)) != NULL) {
+	while ((e = fr_dlist_pop_tail(&el->undo)) != NULL) {
 		edit_undo(e);
 		/*
 		 *	Don't free "e", it will be cleaned up when we
@@ -206,9 +206,9 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 	 *	record FR_EDIT_VALUE changes to the children.  It's
 	 *	not yet clear how best to track this.
 	 */
-	for (e = fr_dlist_head(&el->list);
+	for (e = fr_dlist_head(&el->undo);
 	     e != NULL;
-	     e = fr_dlist_next(&el->list, e)) {
+	     e = fr_dlist_next(&el->undo, e)) {
 		fr_assert(e->vp != NULL);
 
 		if (e->vp != vp) continue;
@@ -308,7 +308,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 				fr_pair_remove(list, vp);
 				fr_pair_append(&el->deleted_pairs, vp);
 
-				fr_dlist_remove(&el->list, e);
+				fr_dlist_remove(&el->undo, e);
 				talloc_free(e);
 				return 0;
 			}
@@ -336,7 +336,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 			 *	which has been deleted!
 			 */
 			e->op = FR_EDIT_DELETE;
-			fr_dlist_remove(&el->list, e);
+			fr_dlist_remove(&el->undo, e);
 			goto delete;
 		}
 	} /* loop over existing edits */
@@ -395,7 +395,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 		break;
 	}
 
-	fr_dlist_insert_tail(&el->list, e);
+	fr_dlist_insert_tail(&el->undo, e);
 	return 0;
 }
 
@@ -492,7 +492,7 @@ int fr_edit_list_replace_pair(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_
 	 *	and errors if so.
 	 */
 	if (edit_record(el, FR_EDIT_DELETE, to_replace, list, NULL) < 0) {
-		fr_edit_t *e = fr_dlist_pop_tail(&el->list);
+		fr_edit_t *e = fr_dlist_pop_tail(&el->undo);
 
 		fr_assert(e != NULL);
 		fr_assert(e->vp == vp);
@@ -539,9 +539,9 @@ static int _edit_list_destructor(fr_edit_list_t *el)
 
 	fr_assert(el != NULL);
 
-	for (e = fr_dlist_head(&el->list);
+	for (e = fr_dlist_head(&el->undo);
 	     e != NULL;
-	     e = fr_dlist_next(&el->list, e)) {
+	     e = fr_dlist_next(&el->undo, e)) {
 		switch (e->op) {
 		case FR_EDIT_INVALID:
 			fr_assert(0);
@@ -580,7 +580,7 @@ fr_edit_list_t *fr_edit_list_alloc(TALLOC_CTX *ctx, int hint)
 	el = talloc_zero_pooled_object(ctx, fr_edit_list_t, hint, hint * sizeof(fr_edit_t));
 	if (!el) return NULL;
 
-	fr_dlist_init(&el->list, fr_edit_t, entry);
+	fr_dlist_init(&el->undo, fr_edit_t, entry);
 
 	fr_pair_list_init(&el->deleted_pairs);
 
