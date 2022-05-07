@@ -987,13 +987,13 @@ static fr_connection_t *fr_connection_reconnect_internal(fr_connection_pool_t *p
  *	- New connection pool.
  *	- NULL on error.
  */
-fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
-					      CONF_SECTION *cs,
-					      void *opaque,
-					      fr_connection_create_t c,
-					      fr_connection_alive_t a,
-					      char const *log_prefix,
-					      char const *trigger_prefix)
+static fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
+						     CONF_SECTION *cs,
+						     void *opaque,
+						     fr_connection_create_t c,
+						     fr_connection_alive_t a,
+						     char const *log_prefix,
+						     char const *trigger_prefix)
 {
 	uint32_t i;
 	fr_connection_pool_t *pool;
@@ -1254,21 +1254,6 @@ fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
 	}
 
 	return pool;
-}
-
-/** Allocate a new pool using an existing one as a template
- *
- * @param ctx to allocate new pool in.
- * @param pool to copy.
- * @param opaque data to pass to connection function.
- * @return
- *	- New connection pool.
- *	- NULL on error.
- */
-fr_connection_pool_t *fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_pool_t *pool, void *opaque)
-{
-	return fr_connection_pool_init(ctx, pool->cs, opaque, pool->create,
-				       pool->alive, pool->log_prefix, pool->trigger_prefix);
 }
 
 /** Get the number of connections currently in the pool
