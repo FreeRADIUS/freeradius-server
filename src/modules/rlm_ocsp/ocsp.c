@@ -157,7 +157,7 @@ static int ocsp_staple_to_pair(fr_pair_t **out, request_t *request, OCSP_RESPONS
 	}
 
 	MEM(pair_update_request(&vp, attr_tls_ocsp_response) >= 0);
-	MEM(fr_pair_value_mem_alloc(vp, &p, len, true));
+	MEM(fr_pair_value_mem_alloc(vp, &p, len, true) == 0);
 	len = i2d_OCSP_RESPONSE(resp, &p);
 	if (len <= 0) {
 		REDEBUG("Failed serialising OCSP response");
