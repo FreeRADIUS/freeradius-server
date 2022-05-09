@@ -397,7 +397,7 @@ unlang_action_t eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *m
 			uint8_t		*buff;
 
 			MEM(pair_append_control(&vp, attr_eap_aka_sim_mac) >= 0);
-			fr_pair_value_mem_alloc(vp, &buff, AKA_SIM_MAC_DIGEST_SIZE, false);
+			MEM(fr_pair_value_mem_alloc(vp, &buff, AKA_SIM_MAC_DIGEST_SIZE, false) == 0);
 
 			slen = fr_aka_sim_crypto_sign_packet(buff, eap_session->this_round->response, true,
 							     mod_session->ctx.hmac_md,
