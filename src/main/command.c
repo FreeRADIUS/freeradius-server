@@ -1906,15 +1906,21 @@ static rad_listen_t *get_socket(rad_listen_t *listener, int argc,
 
 static int command_inject_to(rad_listen_t *listener, int argc, char *argv[])
 {
-	fr_command_socket_t *sock = listener->data;
+	fr_command_socket_t *sock;
 	listen_socket_t *data;
 	rad_listen_t *found;
+
+	if (listener->recv == command_tcp_recv) {
+		cprintf_error(listener, "Cannot inject from command socket over TCP");
+		return CMD_FAIL;
+	}
 
 	found = get_socket(listener, argc, argv, NULL);
 	if (!found) {
 		return 0;
 	}
 
+	sock = listener->data;
 	data = found->data;
 	sock->inject_listener = found;
 	sock->dst_ipaddr = data->my_ipaddr;
@@ -1926,13 +1932,19 @@ static int command_inject_to(rad_listen_t *listener, int argc, char *argv[])
 static int command_inject_from(rad_listen_t *listener, int argc, char *argv[])
 {
 	RADCLIENT *client;
-	fr_command_socket_t *sock = listener->data;
+	fr_command_socket_t *sock;
 
 	if (argc < 1) {
 		cprintf_error(listener, "No <ipaddr> was given\n");
 		return 0;
 	}
 
+	if (listener->recv == command_tcp_recv) {
+		cprintf_error(listener, "Cannot inject from command socket over TCP");
+		return CMD_FAIL;
+	}
+
+	sock = listener->data;
 	if (!sock->inject_listener) {
 		cprintf_error(listener, "You must specify \"inject to\" before using \"inject from\"\n");
 		return 0;
@@ -1961,7 +1973,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 	static int inject_id = 0;
 	int ret;
 	bool filedone;
-	fr_command_socket_t *sock = listener->data;
+	fr_command_socket_t *sock;
 	rad_listen_t *fake;
 	RADIUS_PACKET *packet;
 	vp_cursor_t cursor;
@@ -1975,6 +1987,12 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 		return 0;
 	}
 
+	if (listener->recv == command_tcp_recv) {
+		cprintf_error(listener, "Cannot inject from command socket over TCP");
+		return CMD_FAIL;
+	}
+
+	sock = listener->data;
 	if (!sock->inject_listener) {
 		cprintf_error(listener, "You must specify \"inject to\" before using \"inject file\"\n");
 		return 0;
@@ -2367,6 +2385,7 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 		cprintf(listener, "timeouts\t%" PRIu64 "\n", stats->total_timeouts);
 	} else {
 		cprintf(listener, "conflicts\t%" PRIu64 "\n", stats->total_conflicts);
+		cprintf(listener, "unresponsive_child\t%" PRIu64 "\n", stats->unresponsive_child);
 	}
 
 	cprintf(listener, "last_packet\t%" PRId64 "\n", (int64_t) stats->last_packet);

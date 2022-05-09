@@ -45,6 +45,7 @@ typedef struct fr_stats_t {
 	uint64_t	total_unknown_types;
 	uint64_t	total_timeouts;
 	uint64_t	total_conflicts;
+	uint64_t	unresponsive_child;
 	time_t		last_packet;
 	uint64_t	elapsed[8];
 } fr_stats_t;
