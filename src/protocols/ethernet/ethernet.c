@@ -265,28 +265,28 @@ static int fr_ethernet_get_option(fr_value_box_t *out, void const *proto_ctx, fr
 	case PROTO_OPT_GROUP_CUSTOM:
 		switch (opt) {
 		case PROTO_OPT_ETHERNET_SVLAN_TPID:
-			return fr_value_box_shallow(out, ether_ctx->svlan_tpid, true);
+			return fr_value_box(out, ether_ctx->svlan_tpid, true);
 
 		case PROTO_OPT_ETHERNET_SVLAN_PCP:
-			return fr_value_box_shallow(out, ether_ctx->svlan_pcp, true);
+			return fr_value_box(out, ether_ctx->svlan_pcp, true);
 
 		case PROTO_OPT_ETHERNET_SVLAN_DEI:
-			return fr_value_box_shallow(out, ether_ctx->svlan_dei, true);
+			return fr_value_box(out, ether_ctx->svlan_dei, true);
 
 		case PROTO_OPT_ETHERNET_SVLAN_VID:
-			return fr_value_box_shallow(out, ether_ctx->svlan_vid, true);
+			return fr_value_box(out, ether_ctx->svlan_vid, true);
 
 		case PROTO_OPT_ETHERNET_CVLAN_TPID:
-			return fr_value_box_shallow(out, ether_ctx->cvlan_tpid, true);
+			return fr_value_box(out, ether_ctx->cvlan_tpid, true);
 
 		case PROTO_OPT_ETHERNET_CVLAN_PCP:
-			return fr_value_box_shallow(out, ether_ctx->cvlan_pcp, true);
+			return fr_value_box(out, ether_ctx->cvlan_pcp, true);
 
 		case PROTO_OPT_ETHERNET_CVLAN_DEI:
-			return fr_value_box_shallow(out, ether_ctx->cvlan_dei, true);
+			return fr_value_box(out, ether_ctx->cvlan_dei, true);
 
 		case PROTO_OPT_ETHERNET_CVLAN_VID:
-			return fr_value_box_shallow(out, ether_ctx->cvlan_vid, true);
+			return fr_value_box(out, ether_ctx->cvlan_vid, true);
 
 		default:
 			fr_strerror_printf("Option %i group %i not implemented", opt, group);
@@ -307,7 +307,7 @@ static int fr_ethernet_get_option(fr_value_box_t *out, void const *proto_ctx, fr
 			return fr_value_box_ethernet_addr(out, NULL, &ether_ctx->dst_addr, true);
 
 		case PROTO_OPT_L2_NEXT_PROTOCOL:
-			return fr_value_box_shallow(out, ether_ctx->ether_type, true);
+			return fr_value_box(out, ether_ctx->ether_type, true);
 
 		default:
 			fr_strerror_printf("Option %i group %i not implemented", opt, group);

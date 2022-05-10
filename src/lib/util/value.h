@@ -578,7 +578,7 @@ DEF_BOXING_FUNC(fr_unix_time_t, date, FR_TYPE_DATE)
  * @param[in] _var	C variable to assign value from.
  * @param[in] _tainted	Whether the value came from an untrusted source.
  */
-#define fr_value_box_shallow(_box, _var, _tainted) \
+#define fr_value_box(_box, _var, _tainted) \
 _Generic((_var), \
 	fr_ipaddr_t *		: fr_value_box_ipaddr, \
 	fr_ipaddr_t const *	: fr_value_box_ipaddr, \

@@ -697,8 +697,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, requ
 			if (tmpl_da(ip_map.lhs)->type != FR_TYPE_IPV4_ADDR) {
 				fr_value_box_t tmp;
 
-				fr_value_box_shallow(&tmp,
-						     (uint32_t)ntohl((uint32_t)reply->element[1]->integer), true);
+				fr_value_box(&tmp, (uint32_t)ntohl((uint32_t)reply->element[1]->integer), true);
 				if (fr_value_box_cast(NULL, tmpl_value(ip_map.rhs), FR_TYPE_IPV4_ADDR,
 						      NULL, &tmp)) {
 					RPEDEBUG("Failed converting integer to IPv4 address");
@@ -706,8 +705,8 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, requ
 					goto finish;
 				}
 			} else {
-				fr_value_box_shallow(&ip_map.rhs->data.literal,
-						     (uint32_t)ntohl((uint32_t)reply->element[1]->integer), true);
+				fr_value_box(&ip_map.rhs->data.literal,
+					     (uint32_t)ntohl((uint32_t)reply->element[1]->integer), true);
 			}
 		}
 			goto do_ip_map;
@@ -787,7 +786,7 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t const *inst, requ
 			goto finish;
 		}
 
-		fr_value_box_shallow(&expiry_map.rhs->data.literal, (uint32_t)reply->element[3]->integer, true);
+		fr_value_box(&expiry_map.rhs->data.literal, (uint32_t)reply->element[3]->integer, true);
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
 			ret = IPPOOL_RCODE_FAIL;
 			goto finish;
@@ -927,7 +926,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t const *inst, reques
 
 		tmpl_init_shallow(&expiry_rhs, TMPL_TYPE_DATA, T_DOUBLE_QUOTED_STRING, "", 0, NULL);
 
-		fr_value_box_shallow(&expiry_map.rhs->data.literal, expires, false);
+		fr_value_box(&expiry_map.rhs->data.literal, expires, false);
 		if (map_to_request(request, &expiry_map, map_to_vp, NULL) < 0) {
 			ret = IPPOOL_RCODE_FAIL;
 			goto finish;
