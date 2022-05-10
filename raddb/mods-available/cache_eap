@@ -1,0 +1,18 @@
+cache cache_eap {
+	#
+	#  key:: Cache key.
+	#
+	key = "%{reply.State}"
+
+	#
+	#  ttl:: TTL for cache entries.
+	#
+	ttl = 15
+
+	#
+	#  update <section> { ... }::
+	#
+	update reply {
+		&reply += &reply
+	}
+}
