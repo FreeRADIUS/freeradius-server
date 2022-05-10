@@ -1028,35 +1028,7 @@ static bool request_max_time(REQUEST *request)
 			      request->number,
 			      request->component ? request->component : "<core>",
 			      request->module ? request->module : "<core>");
-
-#ifdef WITH_STATS
-			rad_listen_t *listener = request->listener;
-			RADCLIENT *client = request->client;
-
-			switch (request->packet->code) {
-			case PW_CODE_ACCESS_REQUEST:
-				FR_STATS_INC(auth, unresponsive_child);
-				break;
-
-#ifdef WITH_ACCOUNTING
-			case PW_CODE_ACCOUNTING_REQUEST:
-				FR_STATS_INC(acct, unresponsive_child);
-				break;
-#endif
-#ifdef WITH_COA
-			case PW_CODE_COA_REQUEST:
-				FR_STATS_INC(coa, unresponsive_child);
-				break;
-
-			case PW_CODE_DISCONNECT_REQUEST:
-				FR_STATS_INC(dsc, unresponsive_child);
-				break;
-#endif
-
-			default:
-				break;
-			}
-#endif	/* WITH_STATS */
+			request->max_time = true;
 
 			exec_trigger(request, NULL, "server.thread.unresponsive", true);
 		}
@@ -4908,6 +4880,7 @@ static bool coa_max_time(REQUEST *request)
 	 */
 	if (request->child_state == REQUEST_DONE) {
 	done:
+		request->max_time = true;
 		request_done(request, FR_ACTION_MAX_TIME);
 		return true;
 	}
@@ -4944,7 +4917,8 @@ static bool coa_max_time(REQUEST *request)
 					 buffer, sizeof(buffer)),
 			       request->proxy->dst_port,
 			       mrd);
-			goto done;
+			request_done(request, FR_ACTION_DONE);
+			return true;
 		}
 
 #ifdef HAVE_PTHREAD_H

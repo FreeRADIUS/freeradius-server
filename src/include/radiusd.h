@@ -277,6 +277,8 @@ struct rad_request {
 
 	RAD_LISTEN_TYPE		priority;
 
+	bool			max_time;	//!< did we hit max time?
+
 	bool			in_request_hash;
 #ifdef WITH_PROXY
 	bool			in_proxy_hash;

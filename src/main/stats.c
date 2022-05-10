@@ -339,6 +339,36 @@ void request_stats_final(REQUEST *request)
  done:
 #endif /* WITH_PROXY */
 
+
+	if (request->max_time) {
+		rad_listen_t *listener = request->listener;
+		RADCLIENT *client = request->client;
+
+		switch (request->packet->code) {
+		case PW_CODE_ACCESS_REQUEST:
+			FR_STATS_INC(auth, unresponsive_child);
+			break;
+
+#ifdef WITH_ACCOUNTING
+		case PW_CODE_ACCOUNTING_REQUEST:
+			FR_STATS_INC(acct, unresponsive_child);
+			break;
+#endif
+#ifdef WITH_COA
+		case PW_CODE_COA_REQUEST:
+			FR_STATS_INC(coa, unresponsive_child);
+			break;
+
+		case PW_CODE_DISCONNECT_REQUEST:
+			FR_STATS_INC(dsc, unresponsive_child);
+			break;
+#endif
+
+		default:
+			break;
+		}
+	}
+
 	request->master_state = REQUEST_COUNTED;
 }
 
