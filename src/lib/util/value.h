@@ -607,6 +607,22 @@ _Generic((_var), \
 	double const		: fr_value_box_float64 \
 )(_box, NULL, _var, _tainted)
 
+/** Automagically fill in a box, for types with length
+ *
+ * @param[in] _ctx	to allocate value in.
+ * @param[in] _box	to assign value to.
+ * @param[in] _var	C variable to assign value from.
+ * @param[in] _len	of C variable.
+ * @param[in] _tainted	Whether the value came from an untrusted source.
+ */
+#define fr_value_box_len(_ctx, _box, _var, _len, _tainted) \
+_Generic((_var), \
+	char *			: fr_value_box_bstrndup, \
+	char const *		: fr_value_box_bstrndup, \
+	uint8_t *		: fr_value_box_memdup, \
+	uint8_t const *		: fr_value_box_memdup \
+)(_ctx, _box, NULL, _var, _len, _tainted)
+
 /** Unbox an ethernet value (6 bytes, network byte order)
  *
  * @param[in] dst	Where to copy the ethernet address to.
