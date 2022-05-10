@@ -14,26 +14,26 @@ VENDOR		Ciena				1271
 
 BEGIN-VENDOR	Ciena
 
-ATTRIBUTE	Ciena_CN4200_Priv_Level			1	integer
+ATTRIBUTE	Ciena-CN4200-Priv-Level			1	integer
 
-VALUE	Ciena_CN4200_Priv_Level		limited			1
-VALUE	Ciena_CN4200_Priv_Level		admin			2
-VALUE	Ciena_CN4200_Priv_Level		super-user		3
-VALUE	Ciena_CN4200_Priv_Level		diag			4
+VALUE	Ciena-CN4200-Priv-Level		limited			1
+VALUE	Ciena-CN4200-Priv-Level		admin			2
+VALUE	Ciena-CN4200-Priv-Level		super-user		3
+VALUE	Ciena-CN4200-Priv-Level		diag			4
 
-ATTRIBUTE	Ciena_CES_Priv_Level			10	integer
+ATTRIBUTE	Ciena-CES-Priv-Level			10	integer
 
-VALUE	Ciena_CES_Priv_Level		limited			1
-VALUE	Ciena_CES_Priv_Level		admin			2
-VALUE	Ciena_CES_Priv_Level		super-user		3
-VALUE	Ciena_CES_Priv_Level		diag			4
+VALUE	Ciena-CES-Priv-Level		limited			1
+VALUE	Ciena-CES-Priv-Level		admin			2
+VALUE	Ciena-CES-Priv-Level		super-user		3
+VALUE	Ciena-CES-Priv-Level		diag			4
 
-ATTRIBUTE	Ciena_BP_Role				220	string
-ATTRIBUTE	Ciena_NCS_Role				240	integer
-ATTRIBUTE	Ciena_OC_Role				250	string
-ATTRIBUTE	Ciena_CS_Client_IP			253	ipaddr
-ATTRIBUTE	Ciena_CS_Acc_Level			254	integer
-ATTRIBUTE	Ciena_CS_Priv_Level			255	integer
+ATTRIBUTE	Ciena-BP-Role				220	string
+ATTRIBUTE	Ciena-NCS-Role				240	integer
+ATTRIBUTE	Ciena-OC-Role				250	string
+ATTRIBUTE	Ciena-CS-Client-IP			253	ipaddr
+ATTRIBUTE	Ciena-CS-Acc-Level			254	integer
+ATTRIBUTE	Ciena-CS-Priv-Level			255	integer
 
 END-VENDOR	Ciena
 
