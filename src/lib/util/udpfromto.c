@@ -91,7 +91,7 @@ RCSID("$Id$")
 
 int udpfromto_init(int s)
 {
-	int proto, flag = 0, opt = 1;
+	int proto = 0, flag = 0, opt = 1;
 	struct sockaddr_storage si;
 	socklen_t si_len = sizeof(si);
 
