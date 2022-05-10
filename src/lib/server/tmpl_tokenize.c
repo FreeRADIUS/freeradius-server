@@ -2691,11 +2691,13 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 			if (!head) return slen;
 
-			if (flags.needs_resolving) UNRESOLVED_SET(&type);
+			if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
 
 			tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen, t_rules);
 			vpt->data.xlat.ex = head;
 			vpt->data.xlat.flags = flags;
+
+			fr_assert(xlat_needs_resolving(head) == flags.needs_resolving);
 
 			*out = vpt;
 
@@ -2908,7 +2910,9 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	If the string actually contains an xlat
 		 *	store the compiled xlat.
 		 */
-		if (flags.needs_resolving) UNRESOLVED_SET(&type);
+		if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
+
+		fr_assert(xlat_needs_resolving(head) == flags.needs_resolving);
 
 		tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen, t_rules);
 		vpt->data.xlat.ex = head;
@@ -2932,14 +2936,16 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	FIXME - We need an ephemeral version of this
 		 *	too.
 		 */
-		slen = xlat_tokenize_argv(vpt, &head, &flags, &our_in, p_rules, &t_rules->attr);
+		slen = xlat_tokenize_argv(vpt, &head, &our_in, p_rules, &t_rules->attr);
 		if (slen < 0) {
 			fr_sbuff_advance(&our_in, slen * -1);
 			talloc_free(vpt);
 			return slen;
 		}
 
-		if (flags.needs_resolving) UNRESOLVED_SET(&type);
+		if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
+
+		fr_assert(xlat_needs_resolving(head) == flags.needs_resolving);
 
 		tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen, t_rules);
 		vpt->data.xlat.ex = head;
@@ -2985,7 +2991,9 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	will need expanding before evaluation, and can never
 		 *	be pre-compiled.
 		 */
-		if (flags.needs_resolving) UNRESOLVED_SET(&type);
+		if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
+
+		fr_assert(xlat_needs_resolving(head) == flags.needs_resolving);
 
 		tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen, t_rules);
 		vpt->data.xlat.ex = head;
@@ -3721,7 +3729,9 @@ int tmpl_attr_to_xlat(TALLOC_CTX *ctx, tmpl_t **vpt_p)
 		return -1;
 	}
 
-	if (vpt->data.xlat.flags.needs_resolving) UNRESOLVED_SET(&vpt->type);
+	if (xlat_needs_resolving(vpt->data.xlat.ex)) UNRESOLVED_SET(&vpt->type);
+
+	fr_assert(xlat_needs_resolving(vpt->data.xlat.ex) == vpt->data.xlat.flags.needs_resolving);
 
 	*vpt_p = vpt;
 
@@ -4484,14 +4494,15 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
 		break;
 
 	case TMPL_TYPE_XLAT_UNRESOLVED:
-		if (!tmpl_xlat_flags(vpt)->needs_resolving) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_XLAT_UNRESOLVED "
-					     "does not have xlat_flags_t -> need_pass2 set", file, line);
-		}
-		if (!tmpl_xlat(vpt)) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_XLAT_UNRESOLVED "
+		if (!vpt->data.xlat.ex) {
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_XLAT "
 					     "has a NULL xlat.ex field", file, line);
 
+		}
+
+		if (!xlat_needs_resolving(vpt->data.xlat.ex)) {
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_XLAT_UNRESOLVED "
+					     "does not have 'needs resolving' flag set", file, line);
 		}
 		break;
 

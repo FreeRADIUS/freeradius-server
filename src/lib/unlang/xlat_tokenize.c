@@ -516,9 +516,10 @@ int xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **out,
 	 *	Now parse the child nodes that form the
 	 *	function's arguments.
 	 */
-	if (xlat_tokenize_argv(node, &node->call.args, &node->flags, in, &xlat_multi_arg_rules, rules) < 0) {
+	if (xlat_tokenize_argv(node, &node->call.args, in, &xlat_multi_arg_rules, rules) < 0) {
 		goto error;
 	}
+	xlat_flags_merge(&node->flags, &node->call.args->flags);
 
 	/*
 	 *	Check we have all the required arguments
@@ -1371,8 +1372,6 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
  *				manipulation by xlat instantiation functions
  *				later.
  * @param[out] out		the head of the xlat list / tree structure.
- * @param[out] flags		Populated with parameters that control xlat
- *				evaluation and multi-pass parsing.
  * @param[in] in		the format string to expand.
  * @param[in] p_rules		controlling how to parse the string outside of
  *				any expansions.
@@ -1381,7 +1380,7 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
  *	- <=0 on error.
  *	- >0  on success which is the number of characters parsed.
  */
-ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t *flags, fr_sbuff_t *in,
+ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 			   fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules)
 {
 	fr_sbuff_t			our_in = FR_SBUFF(in);
@@ -1530,7 +1529,6 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t 
 	if (our_p_rules != &value_parse_rules_bareword_quoted) talloc_const_free(our_p_rules->terminals);
 
 	*out = head;
-	if (flags) xlat_flags_merge(flags, &head->flags);
 
 	return fr_sbuff_set(in, &our_in);
 }
@@ -1595,6 +1593,18 @@ bool xlat_is_literal(xlat_exp_head_t const *head)
 	}
 
 	return true;
+}
+
+/** Check to see if the expansion needs resolving
+ *
+ * @param[in] head	to check.
+ * @return
+ *	- true if expansion needs resolving
+ *	- false otherwise
+ */
+bool xlat_needs_resolving(xlat_exp_head_t const *head)
+{
+	return head->flags.needs_resolving;
 }
 
 /** Convert an xlat node to an unescaped literal string and free the original node

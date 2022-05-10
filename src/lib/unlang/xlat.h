@@ -304,7 +304,7 @@ ssize_t		xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **head,
 					xlat_flags_t *flags, fr_sbuff_t *in,
 					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
-ssize_t 	xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+ssize_t 	xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules);
 
 ssize_t		xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
@@ -323,6 +323,8 @@ int		xlat_validate_function_args(xlat_exp_t *node);
 void		xlat_debug(xlat_exp_head_t const *head);
 
 bool		xlat_is_literal(xlat_exp_head_t const *head);
+
+bool		xlat_needs_resolving(xlat_exp_head_t const *head);
 
 bool		xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_head_t **head);
 
