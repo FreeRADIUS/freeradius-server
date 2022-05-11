@@ -1922,6 +1922,7 @@ int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t *fl
 
 done:
 	head->next = node;
+	head->flags = node->flags;
 	xlat_flags_merge(flags, &node->flags);
 
 	*out = head;
