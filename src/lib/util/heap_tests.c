@@ -1,5 +1,6 @@
 #include <freeradius-devel/util/acutest.h>
 #include <freeradius-devel/util/time.h>
+#include <freeradius-devel/util/rand.h>
 
 #include "heap.c"
 
@@ -45,11 +46,12 @@ static void heap_test(int skip)
 	heap_thing	*array;
 	int		left;
 	int		ret;
-
+	fr_fast_rand_t	rand_ctx;
 	static bool	done_init = false;
 
 	if (!done_init) {
-		srand((unsigned int)time(NULL));
+		rand_ctx.a = fr_rand();
+		rand_ctx.b = fr_rand();
 		done_init = true;
 	}
 
@@ -61,7 +63,7 @@ static void heap_test(int skip)
 	/*
 	 *	Initialise random values
 	 */
-	for (i = 0; i < HEAP_TEST_SIZE; i++) array[i].data = rand() % 65537;
+	for (i = 0; i < HEAP_TEST_SIZE; i++) array[i].data = fr_fast_rand(&rand_ctx) % 65537;
 
 #if 0
 	for (i = 0; i < HEAP_TEST_SIZE; i++) {
@@ -147,11 +149,12 @@ static void heap_test_order(void)
 	int		data = 0;
 	unsigned int	count = 0;
 	int		ret;
-
+	fr_fast_rand_t	rand_ctx;
 	static bool	done_init = false;
 
 	if (!done_init) {
-		srand((unsigned int)time(NULL));
+		rand_ctx.a = fr_rand();
+		rand_ctx.b = fr_rand();
 		done_init = true;
 	}
 
@@ -163,7 +166,7 @@ static void heap_test_order(void)
 	/*
 	 *	Initialise random values
 	 */
-	for (i = 0; i < HEAP_TEST_SIZE; i++) array[i].data = rand() % 65537;
+	for (i = 0; i < HEAP_TEST_SIZE; i++) array[i].data = fr_fast_rand(&rand_ctx) % 65537;
 
 	TEST_CASE("insertions");
 	for (i = 0; i < HEAP_TEST_SIZE; i++) {
@@ -229,11 +232,12 @@ static void heap_cycle(void)
 	int		inserted, removed;
 	int		ret;
 	fr_time_t	start_insert, start_remove, start_swap, end;
-
+	fr_fast_rand_t	rand_ctx;
 	static bool	done_init = false;
 
 	if (!done_init) {
-		srand((unsigned int)time(NULL));
+		rand_ctx.a = fr_rand();
+		rand_ctx.b = fr_rand();
 		done_init = true;
 	}
 
@@ -245,7 +249,7 @@ static void heap_cycle(void)
 	/*
 	 *	Initialise random values
 	 */
-	for (i = 0; i < HEAP_CYCLE_SIZE; i++) array[i].data = rand() % 65537;
+	for (i = 0; i < HEAP_CYCLE_SIZE; i++) array[i].data = fr_fast_rand(&rand_ctx) % 65537;
 
 	start_insert = fr_time();
 	TEST_CASE("insertions");

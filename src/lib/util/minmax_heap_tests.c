@@ -131,14 +131,12 @@ static void minmax_heap_test(int skip)
 	minmax_heap_thing	*array;
 	int			left;
 	int			ret;
-
+	fr_fast_rand_t		rand_ctx;
 	static bool		done_init = false;
 
 	if (!done_init) {
-		unsigned int	seed = /* 1634677281 */ (unsigned int) time(NULL);
-
-		// fprintf(stderr, "seed %u\n", seed);
-		srand(seed);
+		rand_ctx.a = fr_rand();
+		rand_ctx.b = fr_rand();
 		done_init = true;
 	}
 
@@ -150,7 +148,7 @@ static void minmax_heap_test(int skip)
 	/*
 	 *	Initialise random values
 	 */
-	for (i = 0; i < MINMAX_HEAP_TEST_SIZE; i++) array[i].data = rand() % 65537;
+	for (i = 0; i < MINMAX_HEAP_TEST_SIZE; i++) array[i].data = fr_fast_rand(&rand_ctx) % 65537;
 
 	TEST_CASE("insertions");
 	for (i = 0; i < MINMAX_HEAP_TEST_SIZE; i++) {
@@ -228,16 +226,18 @@ static void minmax_heap_burn_in(void)
 {
 	fr_minmax_heap_t	*hp = NULL;
 	minmax_heap_thing	*array = NULL;
+	fr_fast_rand_t		rand_ctx;
 	static bool		done_init = false;
 	int			insert_count = 0;
 
 	if (!done_init) {
-		srand((unsigned int) time(0));
+		rand_ctx.a = fr_rand();
+		rand_ctx.b = fr_rand();
 		done_init = true;
 	}
 
 	array = calloc(BURN_IN_OPS, sizeof(minmax_heap_thing));
-	for (unsigned int i = 0; i < BURN_IN_OPS; i++) array[i].data = rand() % 65537;
+	for (unsigned int i = 0; i < BURN_IN_OPS; i++) array[i].data = fr_fast_rand(&rand_ctx) % 65537;
 
 	hp = fr_minmax_heap_alloc(NULL, minmax_heap_cmp, minmax_heap_thing, idx, 0);
 
@@ -289,11 +289,12 @@ static void minmax_heap_test_order(void)
 	unsigned int		data;
 	unsigned int		count;
 	int			ret;
-
+	fr_fast_rand_t		rand_ctx;
 	static bool	done_init = false;
 
 	if (!done_init) {
-		srand((unsigned int)time(NULL));
+		rand_ctx.a = fr_rand();
+		rand_ctx.b = fr_rand();
 		done_init = true;
 	}
 
@@ -305,7 +306,7 @@ static void minmax_heap_test_order(void)
 	/*
 	 *	Initialise random values
 	 */
-	for (i = 0; i < MINMAX_HEAP_TEST_SIZE; i++) array[i].data = rand() % 65537;
+	for (i = 0; i < MINMAX_HEAP_TEST_SIZE; i++) array[i].data = fr_fast_rand(&rand_ctx) % 65537;
 
 	TEST_CASE("insertions for min");
 	for (i = 0; i < MINMAX_HEAP_TEST_SIZE; i++) {
@@ -527,11 +528,12 @@ static void minmax_heap_cycle(void)
 	int			inserted, removed;
 	int			ret;
 	fr_time_t		start_insert, start_remove, start_swap, end;
-
+	fr_fast_rand_t		rand_ctx;
 	static bool		done_init = false;
 
 	if (!done_init) {
-		srand((unsigned int)time(NULL));
+		rand_ctx.a = fr_rand();
+		rand_ctx.b = fr_rand();
 		done_init = true;
 	}
 
@@ -543,7 +545,7 @@ static void minmax_heap_cycle(void)
 	/*
 	 *	Initialise random values
 	 */
-	for (i = 0; i < MINMAX_HEAP_CYCLE_SIZE; i++) array[i].data = rand() % 65537;
+	for (i = 0; i < MINMAX_HEAP_CYCLE_SIZE; i++) array[i].data = fr_fast_rand(&rand_ctx) % 65537;
 
 	start_insert = fr_time();
 	TEST_CASE("insertions");

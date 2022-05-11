@@ -48,6 +48,7 @@ static void pair_list_perf_init(void);
 
 #include <freeradius-devel/util/dict_test.h>
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/util/rand.h>
 
 /*
  *      Global variables
@@ -306,8 +307,11 @@ static void do_test_fr_pair_append(unsigned int len, unsigned int perc, unsigned
 	fr_time_t	start, end;
 	fr_time_delta_t	used = fr_time_delta_wrap(0);
 	size_t		input_count = talloc_array_length(source_vps);
+	fr_fast_rand_t	rand_ctx;
 
 	fr_pair_list_init(&test_vps);
+	rand_ctx.a = fr_rand();
+	rand_ctx.b = fr_rand();
 
 	/*
 	 *  Only use up to the number of pairs needed from the source to maintain ratio
@@ -320,7 +324,7 @@ static void do_test_fr_pair_append(unsigned int len, unsigned int perc, unsigned
 	 */
 	for (i = 0; i < reps; i++) {
 		for (j = 0; j < len; j++) {
-			int idx = rand() % input_count;
+			int idx = fr_fast_rand(&rand_ctx) % input_count;
 			new_vp = fr_pair_copy(autofree, source_vps[idx]);
 			start = fr_time();
 			fr_pair_append(&test_vps, new_vp);
@@ -346,15 +350,18 @@ static void do_test_fr_pair_find_by_da_idx(unsigned int len, unsigned int perc, 
 	fr_time_delta_t		used = fr_time_delta_wrap(0);
 	fr_dict_attr_t const	*da;
 	size_t			input_count = talloc_array_length(source_vps);
+	fr_fast_rand_t		rand_ctx;
 
 	fr_pair_list_init(&test_vps);
 	if (input_count > len) input_count = len;
+	rand_ctx.a = fr_rand();
+	rand_ctx.b = fr_rand();
 
 	/*
 	 *  Initialise the test list
 	 */
 	for (i = 0; i < len; i++) {
-		int idx = rand() % input_count;
+		int idx = fr_fast_rand(&rand_ctx) % input_count;
 		new_vp = fr_pair_copy(autofree, source_vps[idx]);
 		fr_pair_append(&test_vps, new_vp);
 	}
@@ -364,7 +371,7 @@ static void do_test_fr_pair_find_by_da_idx(unsigned int len, unsigned int perc, 
 	 */
 	for (i = 0; i < reps; i++) {
 		for (j = 0; j < len; j++) {
-			int idx = rand() % input_count;
+			int idx = fr_fast_rand(&rand_ctx) % input_count;
 			da = source_vps[idx]->da;
 			start = fr_time();
 			(void) fr_pair_find_by_da_idx(&test_vps, da, 0);
@@ -389,15 +396,18 @@ static void do_test_find_nth(unsigned int len, unsigned int perc, unsigned int r
 	fr_time_delta_t		used = fr_time_delta_wrap(0);
 	fr_dict_attr_t const	*da;
 	size_t			input_count = talloc_array_length(source_vps);
+	fr_fast_rand_t		rand_ctx;
 
 	fr_pair_list_init(&test_vps);
 	if (input_count > len) input_count = len;
+	rand_ctx.a = fr_rand();
+	rand_ctx.b = fr_rand();
 
 	/*
 	 *  Initialise the test list
 	 */
 	for (i = 0; i < len; i++) {
-		int idx = rand() % input_count;
+		int idx = fr_fast_rand(&rand_ctx) % input_count;
 		new_vp = fr_pair_copy(autofree, source_vps[idx]);
 		fr_pair_append(&test_vps, new_vp);
 	}
@@ -409,7 +419,7 @@ static void do_test_find_nth(unsigned int len, unsigned int perc, unsigned int r
 	nth_item = perc == 0 ? 1 : (unsigned int)(len * perc / 100);
 	for (i = 0; i < reps; i++) {
 		for (j = 0; j < len; j++) {
-			int idx = rand() % input_count;
+			int idx = fr_fast_rand(&rand_ctx) % input_count;
 
 			da = source_vps[idx]->da;
 			start = fr_time();
@@ -434,13 +444,16 @@ static void do_test_fr_pair_list_free(unsigned int len, unsigned int perc, unsig
 	fr_time_t	start, end;
 	fr_time_delta_t	used = fr_time_delta_wrap(0);
 	size_t		input_count = talloc_array_length(source_vps);
+	fr_fast_rand_t	rand_ctx;
 
 	fr_pair_list_init(&test_vps);
 	if (input_count > len) input_count = len;
+	rand_ctx.a = fr_rand();
+	rand_ctx.b = fr_rand();
 
 	for (i = 0; i < reps; i++) {
 		for (j = 0; j < len; j++) {
-			int idx = rand() % input_count;
+			int idx = fr_fast_rand(&rand_ctx) % input_count;
 			new_vp = fr_pair_copy(autofree, source_vps[idx]);
 			fr_pair_append(&test_vps, new_vp);
 		}

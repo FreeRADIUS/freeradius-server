@@ -177,12 +177,14 @@ static void lst_stress_realloc(void)
 	fr_lst_t	*lst;
 	fr_heap_t	*hp;
 	lst_thing	*lst_array, *hp_array;
+	fr_fast_rand_t	rand_ctx;
 	static bool	done_init = false;
 	int		ret;
 	lst_thing	*from_lst, *from_hp;
 
 	if (!done_init) {
-		srand((unsigned int) time(NULL));
+		rand_ctx.a = fr_rand();
+		rand_ctx.b = fr_rand();
 		done_init = true;
 	}
 
@@ -196,7 +198,9 @@ static void lst_stress_realloc(void)
 	/*
 	 *	Initialise random values
 	 */
-	for (unsigned int i = 0; i < 2 * INITIAL_CAPACITY; i++) lst_array[i].data = hp_array[i].data = rand() % 65537;
+	for (unsigned int i = 0; i < 2 * INITIAL_CAPACITY; i++) {
+		lst_array[i].data = hp_array[i].data = fr_fast_rand(&rand_ctx) % 65537;
+	}
 
 	/* Add the first INITIAL_CAPACITY values to lst and to hp */
 	TEST_CASE("partial fill");
@@ -251,16 +255,18 @@ static void lst_burn_in(void)
 {
 	fr_lst_t	*lst = NULL;
 	lst_thing	*array = NULL;
+	fr_fast_rand_t	rand_ctx;
 	static bool	done_init = false;
 	int		insert_count = 0;
 
 	if (!done_init) {
-		srand((unsigned int) time(NULL));
+		rand_ctx.a = fr_rand();
+		rand_ctx.b = fr_rand();
 		done_init = true;
 	}
 
 	array = calloc(BURN_IN_OPS, sizeof(lst_thing));
-	for (unsigned int i = 0; i < BURN_IN_OPS; i++) array[i].data = rand() % 65537;
+	for (unsigned int i = 0; i < BURN_IN_OPS; i++) array[i].data = fr_fast_rand(&rand_ctx) % 65537;
 
 	/* Make init small to exercise growing the pivot stack. */
 	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 32);
