@@ -1675,7 +1675,8 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_flags_t *flags, xlat_res_rules_t co
 
 		switch (node->type) {
 		case XLAT_GROUP:
-			if (xlat_resolve(node->group, &node->flags, xr_rules) < 0) return -1;
+			if (xlat_resolve(node->group, NULL, xr_rules) < 0) return -1;
+			node->flags = node->group->flags;
 			break;
 
 		/*
@@ -1684,22 +1685,20 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_flags_t *flags, xlat_res_rules_t co
 		 *	Do resolution for a OR b
 		 */
 		case XLAT_ALTERNATE:
-		{
-			xlat_flags_t	child_flags = node->flags, alt_flags = node->flags;
+			if ((xlat_resolve(node->alternate[0], NULL, xr_rules) < 0) ||
+			    (xlat_resolve(node->alternate[1], NULL, xr_rules) < 0)) return -1;
 
-			if ((xlat_resolve(node->alternate[0], &child_flags, xr_rules) < 0) ||
-			    (xlat_resolve(node->alternate[1], &alt_flags, xr_rules) < 0)) return -1;
-
-			xlat_flags_merge(&child_flags, &alt_flags);
-			node->flags = child_flags;
-		}
+			node->flags = node->alternate[0]->flags;
+			xlat_flags_merge(&node->flags, &node->alternate[1]->flags);
 			break;
 
 		/*
 		 *	A resolved function with unresolved args
 		 */
 		case XLAT_FUNC:
-			if (xlat_resolve(node->call.args, &node->flags, xr_rules) < 0) return -1;
+			if (xlat_resolve(node->call.args, NULL, xr_rules) < 0) return -1;
+			node->flags = node->call.func->flags;
+			xlat_flags_merge(&node->flags, &node->call.args->flags);
 			break;
 
 		/*
@@ -1708,14 +1707,12 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_flags_t *flags, xlat_res_rules_t co
 		case XLAT_FUNC_UNRESOLVED:
 		{
 			xlat_t		*func;
-			xlat_flags_t	child_flags = node->flags;
-
 
 			/*
 			 *	We can't tell if it's just the function
 			 *	that needs resolving or its children too.
 			 */
-			if (xlat_resolve(node->call.args, &child_flags, xr_rules) < 0) return -1;
+			if (xlat_resolve(node->call.args, NULL, xr_rules) < 0) return -1;
 
 			/*
 			 *	Try and find the function
@@ -1773,7 +1770,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_flags_t *flags, xlat_res_rules_t co
 			 *	Merge the result of trying to resolve
 			 *	the child nodes.
 			 */
-			xlat_flags_merge(&node->flags, &child_flags);
+			xlat_flags_merge(&node->flags, &node->call.args->flags);
 
 			/*
 			 *	Add the freshly resolved function
