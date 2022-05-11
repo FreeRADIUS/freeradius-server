@@ -1557,8 +1557,6 @@ static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    UNUSED xlat_ctx_t const *xctx,
 				    request_t *request, fr_value_box_list_t *in)
 {
-
-	xlat_flags_t		flags = {};
 	xlat_eval_rctx_t	*rctx;
 	fr_value_box_t		*arg = fr_dlist_head(in);
 
@@ -1587,7 +1585,7 @@ static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Parse the input as a literal expansion
 	 */
 	if (xlat_tokenize_ephemeral(rctx,
-				    &rctx->ex, unlang_interpret_event_list(request), &flags,
+				    &rctx->ex, unlang_interpret_event_list(request), NULL,
 				    &FR_SBUFF_IN(arg->vb_strvalue, arg->vb_length),
 				    &(fr_sbuff_parse_rules_t){
 				    	.escapes = &escape_rules
@@ -1612,8 +1610,8 @@ static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	good errors about what function was
 	 *	unresolved.
 	 */
-	if (flags.needs_resolving &&
-	    (xlat_resolve(rctx->ex, &flags, &(xlat_res_rules_t){ .allow_unresolved = false }) < 0)) {
+	if (rctx->ex->flags.needs_resolving &&
+	    (xlat_resolve(rctx->ex, NULL, &(xlat_res_rules_t){ .allow_unresolved = false }) < 0)) {
 		RPEDEBUG("Unresolved expansion functions in expansion");
 		goto error;
 

@@ -420,9 +420,8 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 			TALLOC_CTX		*xlat_ctx = talloc_init_const("xlat");
 			char			*fmt = talloc_typed_strdup(xlat_ctx, input + 10);
 			xlat_exp_head_t		*head = NULL;
-			xlat_flags_t		flags = { };
 
-			slen = xlat_tokenize_ephemeral_expression(xlat_ctx, &head, el, &flags,
+			slen = xlat_tokenize_ephemeral_expression(xlat_ctx, &head, el, NULL,
 								  &FR_SBUFF_IN(fmt, talloc_array_length(fmt) - 1),
 								  NULL,
 								  &(tmpl_rules_t) {
@@ -446,7 +445,7 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 				continue;
 			}
 
-			if (xlat_resolve(head, &flags, NULL) < 0) {
+			if (xlat_resolve(head, NULL, NULL) < 0) {
 				talloc_free(xlat_ctx);
 				snprintf(output, sizeof(output), "ERROR resolving xlat: %s", fr_strerror());
 				continue;
