@@ -2678,14 +2678,13 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		if (fr_sbuff_is_char(&our_in, '%')) {
 			tmpl_type_t	type = TMPL_TYPE_XLAT;
 			xlat_exp_head_t	*head = NULL;
-			xlat_flags_t	flags = {};
 
 			vpt = tmpl_alloc_null(ctx);
 			if (!t_rules->at_runtime) {
-				slen = xlat_tokenize(vpt, &head, &flags, &our_in, p_rules, &t_rules->attr);
+				slen = xlat_tokenize(vpt, &head, NULL, &our_in, p_rules, &t_rules->attr);
 			} else {
 				slen = xlat_tokenize_ephemeral(vpt, &head,
-							       t_rules->xlat.runtime_el, &flags, &our_in,
+							       t_rules->xlat.runtime_el, NULL, &our_in,
 							       p_rules, t_rules);
 			}
 
@@ -2695,9 +2694,6 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 			tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen, t_rules);
 			vpt->data.xlat.ex = head;
-			vpt->data.xlat.flags = flags;
-
-			fr_assert(xlat_needs_resolving(head) == flags.needs_resolving);
 
 			*out = vpt;
 
@@ -2864,16 +2860,15 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 	case T_DOUBLE_QUOTED_STRING:
 	{
 		xlat_exp_head_t	*head = NULL;
-		xlat_flags_t	flags = {};
 		tmpl_type_t	type = TMPL_TYPE_XLAT;
 
 		vpt = tmpl_alloc_null(ctx);
 
 		if (!t_rules->at_runtime) {
-			slen = xlat_tokenize(vpt, &head, &flags, &our_in, p_rules, &t_rules->attr);
+			slen = xlat_tokenize(vpt, &head, NULL, &our_in, p_rules, &t_rules->attr);
 		} else {
 			slen = xlat_tokenize_ephemeral(vpt, &head, t_rules->xlat.runtime_el,
-						       &flags, &our_in, p_rules, t_rules);
+						       NULL, &our_in, p_rules, t_rules);
 		}
 		if (!head) return slen;
 
@@ -2912,11 +2907,8 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 */
 		if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
 
-		fr_assert(xlat_needs_resolving(head) == flags.needs_resolving);
-
 		tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen, t_rules);
 		vpt->data.xlat.ex = head;
-		vpt->data.xlat.flags = flags;
 	}
 		break;
 
@@ -2924,7 +2916,6 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 	{
 		tmpl_type_t		type = TMPL_TYPE_EXEC;
 		xlat_exp_head_t		*head = NULL;
-		xlat_flags_t		flags = {};
 
 		vpt = tmpl_alloc_null(ctx);
 
@@ -2945,11 +2936,8 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
 
-		fr_assert(xlat_needs_resolving(head) == flags.needs_resolving);
-
 		tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen, t_rules);
 		vpt->data.xlat.ex = head;
-		vpt->data.xlat.flags = flags;
 	}
 		break;
 
@@ -2957,7 +2945,6 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 	{
 
 		xlat_exp_head_t		*head = NULL;
-		xlat_flags_t		flags = {};
 		tmpl_type_t		type = TMPL_TYPE_REGEX_XLAT;
 
 		if (!fr_type_is_null(t_rules->cast)) {
@@ -2967,7 +2954,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		vpt = tmpl_alloc_null(ctx);
 
-		slen = xlat_tokenize(vpt, &head, &flags, &our_in, p_rules, &t_rules->attr);
+		slen = xlat_tokenize(vpt, &head, NULL, &our_in, p_rules, &t_rules->attr);
 		if (!head) return slen;
 
 		/*
@@ -2993,11 +2980,8 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 */
 		if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
 
-		fr_assert(xlat_needs_resolving(head) == flags.needs_resolving);
-
 		tmpl_init(vpt, type, quote, fr_sbuff_start(&our_in), slen, t_rules);
 		vpt->data.xlat.ex = head;
-		vpt->data.xlat.flags = flags;
 	}
 		break;
 
@@ -3573,8 +3557,6 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 static inline CC_HINT(always_inline)
 int tmpl_xlat_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 {
-	fr_assert(xlat_needs_resolving(vpt->data.xlat.ex) == vpt->data.xlat.flags.needs_resolving);
-
 	if (xlat_resolve(vpt->data.xlat.ex, NULL,
 			 &(xlat_res_rules_t){
 			 	.tr_rules = tr_rules,
@@ -3582,7 +3564,6 @@ int tmpl_xlat_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 			 }) < 0) return -1;
 
 	fr_assert(!xlat_needs_resolving(vpt->data.xlat.ex));
-	vpt->data.xlat.flags.needs_resolving = false;
 
 	RESOLVED_SET(&vpt->type);
 	TMPL_VERIFY(vpt);
@@ -3729,14 +3710,12 @@ int tmpl_attr_to_xlat(TALLOC_CTX *ctx, tmpl_t **vpt_p)
 	 *	...then wrap the old tmpl_t in an xlat expansion
 	 *	doing conversion to a virtual attribute if necessary.
 	 */
-	if (xlat_from_tmpl_attr(vpt, &vpt->data.xlat.ex, &vpt->data.xlat.flags, vpt_p) < 0) {
+	if (xlat_from_tmpl_attr(vpt, &vpt->data.xlat.ex, vpt_p) < 0) {
 		talloc_free(vpt);
 		return -1;
 	}
 
 	if (xlat_needs_resolving(vpt->data.xlat.ex)) UNRESOLVED_SET(&vpt->type);
-
-	fr_assert(xlat_needs_resolving(vpt->data.xlat.ex) == vpt->data.xlat.flags.needs_resolving);
 
 	*vpt_p = vpt;
 

@@ -535,7 +535,6 @@ struct tmpl_s {
 			union {
 				_CONST struct {
 					xlat_exp_head_t		*ex;	 	//!< pre-parsed xlat expansion
-					xlat_flags_t		flags;		//!< Flags controlling evaluation
 										///< and expansion.
 				} xlat;
 #ifdef HAVE_REGEX
@@ -700,7 +699,6 @@ static inline tmpl_pair_list_t tmpl_list(tmpl_t const *vpt)
  * @{
  */
 #define tmpl_xlat(_tmpl)			(_tmpl)->data.xlat.ex
-#define tmpl_xlat_flags(_tmpl)			(&(_tmpl)->data.xlat.flags)
 /** @} */
 
 /** @name Field accessors for #TMPL_TYPE_DATA

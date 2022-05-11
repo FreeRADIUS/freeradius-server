@@ -1875,14 +1875,13 @@ tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t *head)
  *
  * @param[in] ctx	to allocate new expansion in.
  * @param[out] out	Where to write new xlat node.
- * @param[out] flags	Where to write xlat resolution flags.
  * @param[in,out] vpt_p	to convert to xlat expansion.
  *			Will be set to NULL on completion
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t *flags, tmpl_t **vpt_p)
+int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **out, tmpl_t **vpt_p)
 {
 	xlat_exp_t	*node;
 	xlat_t		*func;
@@ -1934,7 +1933,6 @@ int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t *fl
 done:
 	head->next = node;
 	head->flags = node->flags;
-	xlat_flags_merge(flags, &node->flags);
 
 	*out = head;
 	return 0;
