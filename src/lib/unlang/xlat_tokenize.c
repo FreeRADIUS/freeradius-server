@@ -1663,11 +1663,11 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_flags_t *flags, xlat_res_rules_t co
 	static xlat_res_rules_t		xr_default;
 	xlat_flags_t			our_flags;
 
-	if (!flags->needs_resolving) return 0;			/* Already done */
+	if (!head->flags.needs_resolving && flags && !flags->needs_resolving) return 0;			/* Already done */
 
 	if (!xr_rules) xr_rules = &xr_default;
 
-	our_flags = *flags;
+	our_flags = head->flags;
 	our_flags.needs_resolving = false;			/* We flip this if not all resolutions are successful */
 
 	xlat_exp_foreach(head, node) {
@@ -1833,7 +1833,8 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_flags_t *flags, xlat_res_rules_t co
 		xlat_flags_merge(&our_flags, &node->flags);
 	}
 
-	*flags = our_flags;	/* Update parent flags - not merge, replacement */
+	head->flags = our_flags;
+	if (flags) *flags = our_flags;	/* Update parent flags - not merge, replacement */
 
 	return 0;
 }
