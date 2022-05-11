@@ -250,7 +250,7 @@ static void minmax_heap_burn_in(void)
 			TEST_CHECK((ret_insert = fr_minmax_heap_insert(hp, &array[insert_count])) >= 0);
 			insert_count++;
 		} else {
-			switch (rand() % 5) {
+			switch (fr_fast_rand(&rand_ctx) % 5) {
 			case 0: /* insert */
 				goto insert;
 

@@ -280,7 +280,7 @@ static void lst_burn_in(void)
 			TEST_CHECK((ret_insert = fr_lst_insert(lst, &array[insert_count])) >= 0);
 			insert_count++;
 		} else {
-			switch (rand() % 3) {
+			switch (fr_fast_rand(&rand_ctx) % 3) {
 			case 0: /* insert */
 				goto insert;
 
