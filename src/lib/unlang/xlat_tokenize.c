@@ -696,7 +696,6 @@ int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_flags_t *fla
 	size_t			len;
 	fr_sbuff_marker_t	s_m;
 	char			hint;
-	int			ret;
 	fr_sbuff_term_t		hint_tokens = FR_SBUFF_TERMS(
 					L(" "),		/* First special token is a ' ' - Likely a syntax error */
 					L(":"),		/* First special token is a ':' i.e. '%{func:' */
@@ -735,11 +734,15 @@ int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_flags_t *fla
 
 #ifdef HAVE_REGEX
 	/*
-	 *	Handle regex's %{<num>} specially.
+	 *	Handle regex's %{<num>} specially.  But '3GPP-Foo' is an attribute.  :(
 	 */
 	if (fr_sbuff_is_digit(in)) {
+		int ret;
+
 		ret = xlat_tokenize_regex(ctx, out, flags, in);
 		if (ret <= 0) return ret;
+
+		/* ret==1 means "nope, it's an attribute" */
 	}
 #endif /* HAVE_REGEX */
 
@@ -811,8 +814,7 @@ int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_flags_t *fla
 		fr_sbuff_set(in, &s_m);		/* backtrack */
 		fr_sbuff_marker_release(&s_m);
 
-		if (xlat_tokenize_attribute(ctx, out, flags, in, &attr_p_rules, t_rules) < 0) return -1;
-		break;
+		return xlat_tokenize_attribute(ctx, out, flags, in, &attr_p_rules, t_rules);
 
 	/*
 	 *	Hint token was whitespace
@@ -820,14 +822,14 @@ int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_flags_t *fla
 	 *	e.g. '%{my '
 	 */
 	default:
-		/*
-		 *	Box print is so we get \t \n etc..
-		 */
-		fr_strerror_printf("Invalid char '%pV' in expression", fr_box_strvalue_len(fr_sbuff_current(in), 1));
-		return -1;
+		break;
 	}
 
-	return 0;
+	/*
+	 *	Box print is so we get \t \n etc..
+	 */
+	fr_strerror_printf("Invalid char '%pV' in expression", fr_box_strvalue_len(fr_sbuff_current(in), 1));
+	return -1;
 }
 
 /*
