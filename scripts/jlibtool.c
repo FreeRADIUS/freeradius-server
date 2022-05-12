@@ -1233,21 +1233,27 @@ static char *truncate_dll_name(char const *path)
 	char *tmppath = strdup(path);
 	char *newname = strrchr(tmppath, '/') + 1;
 	char *ext = strrchr(newname, '.');
-	int len;
+	int len, ext_len;
 
-	if (ext == NULL) {
-		return tmppath;
-	}
+	if (ext == NULL) return tmppath;
+
+	/*
+	 *	About the removals: they can't be done with strcpy() because
+	 *	there is necessarily overlap, which for strcpy() is undefined
+	 *	behavior. Only memmove() is guaranteed to work in the presence
+	 *	of overlap.
+	 */
 
 	len = ext - newname;
+	ext_len = strlen(ext);
 
 	if (strncmp(newname, "mod_", 4) == 0) {
-		strcpy(newname, newname + 4);
+		memmove(newname, newname + 4, len + ext_len - 4 + 1);
 		len -= 4;
 	}
 
 	if (len > 8) {
-		strcpy(newname + 8, strchr(newname, '.'));
+		memmove(newname + 8, strchr(newname, '.'), ext_len + 1);
 	}
 
 	return tmppath;
