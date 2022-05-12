@@ -3557,7 +3557,7 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 static inline CC_HINT(always_inline)
 int tmpl_xlat_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 {
-	if (xlat_resolve(vpt->data.xlat.ex, NULL,
+	if (xlat_resolve(vpt->data.xlat.ex,
 			 &(xlat_res_rules_t){
 			 	.tr_rules = tr_rules,
 			 	.allow_unresolved = false

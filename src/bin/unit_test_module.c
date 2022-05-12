@@ -445,7 +445,7 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 				continue;
 			}
 
-			if (xlat_resolve(head, NULL, NULL) < 0) {
+			if (xlat_resolve(head, NULL) < 0) {
 				talloc_free(xlat_ctx);
 				snprintf(output, sizeof(output), "ERROR resolving xlat: %s", fr_strerror());
 				continue;

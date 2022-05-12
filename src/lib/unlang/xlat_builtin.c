@@ -1611,7 +1611,7 @@ static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	unresolved.
 	 */
 	if (rctx->ex->flags.needs_resolving &&
-	    (xlat_resolve(rctx->ex, NULL, &(xlat_res_rules_t){ .allow_unresolved = false }) < 0)) {
+	    (xlat_resolve(rctx->ex, &(xlat_res_rules_t){ .allow_unresolved = false }) < 0)) {
 		RPEDEBUG("Unresolved expansion functions in expansion");
 		goto error;
 

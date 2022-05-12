@@ -1651,19 +1651,18 @@ bool xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_head_t **head)
 /** Walk over an xlat tree recursively, resolving any unresolved functions or references
  *
  * @param[in,out] head		of xlat tree to resolve.
- * @param[in,out] flags		that control evaluation and parsing.
  * @param[in] xr_rules		Specifies rules to use for resolution passes after initial
  *      			tokenization.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int xlat_resolve(xlat_exp_head_t *head, xlat_flags_t *flags, xlat_res_rules_t const *xr_rules)
+int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 {
 	static xlat_res_rules_t		xr_default;
 	xlat_flags_t			our_flags;
 
-	if (!head->flags.needs_resolving && flags && !flags->needs_resolving) return 0;			/* Already done */
+	if (!head->flags.needs_resolving) return 0;			/* Already done */
 
 	if (!xr_rules) xr_rules = &xr_default;
 
@@ -1675,7 +1674,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_flags_t *flags, xlat_res_rules_t co
 
 		switch (node->type) {
 		case XLAT_GROUP:
-			if (xlat_resolve(node->group, NULL, xr_rules) < 0) return -1;
+			if (xlat_resolve(node->group, xr_rules) < 0) return -1;
 			node->flags = node->group->flags;
 			break;
 
@@ -1685,8 +1684,8 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_flags_t *flags, xlat_res_rules_t co
 		 *	Do resolution for a OR b
 		 */
 		case XLAT_ALTERNATE:
-			if ((xlat_resolve(node->alternate[0], NULL, xr_rules) < 0) ||
-			    (xlat_resolve(node->alternate[1], NULL, xr_rules) < 0)) return -1;
+			if ((xlat_resolve(node->alternate[0], xr_rules) < 0) ||
+			    (xlat_resolve(node->alternate[1], xr_rules) < 0)) return -1;
 
 			node->flags = node->alternate[0]->flags;
 			xlat_flags_merge(&node->flags, &node->alternate[1]->flags);
@@ -1696,7 +1695,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_flags_t *flags, xlat_res_rules_t co
 		 *	A resolved function with unresolved args
 		 */
 		case XLAT_FUNC:
-			if (xlat_resolve(node->call.args, NULL, xr_rules) < 0) return -1;
+			if (xlat_resolve(node->call.args, xr_rules) < 0) return -1;
 			node->flags = node->call.func->flags;
 			xlat_flags_merge(&node->flags, &node->call.args->flags);
 			break;
@@ -1712,7 +1711,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_flags_t *flags, xlat_res_rules_t co
 			 *	We can't tell if it's just the function
 			 *	that needs resolving or its children too.
 			 */
-			if (xlat_resolve(node->call.args, NULL, xr_rules) < 0) return -1;
+			if (xlat_resolve(node->call.args, xr_rules) < 0) return -1;
 
 			/*
 			 *	Try and find the function
@@ -1831,7 +1830,6 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_flags_t *flags, xlat_res_rules_t co
 	}
 
 	head->flags = our_flags;
-	if (flags) *flags = our_flags;	/* Update parent flags - not merge, replacement */
 
 	return 0;
 }

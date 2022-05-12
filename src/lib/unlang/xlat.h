@@ -328,7 +328,7 @@ bool		xlat_needs_resolving(xlat_exp_head_t const *head);
 
 bool		xlat_to_string(TALLOC_CTX *ctx, char **str, xlat_exp_head_t **head);
 
-int		xlat_resolve(xlat_exp_head_t *head, xlat_flags_t *flags, xlat_res_rules_t const *xr_rules);
+int		xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules);
 
 xlat_t		*xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 				      char const *name, xlat_func_t func, xlat_flags_t const *flags);
