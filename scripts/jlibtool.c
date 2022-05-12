@@ -1249,12 +1249,11 @@ static char *truncate_dll_name(char const *path)
 
 	if (strncmp(newname, "mod_", 4) == 0) {
 		memmove(newname, newname + 4, len + ext_len - 4 + 1);
+		ext -= 4;
 		len -= 4;
 	}
 
-	if (len > 8) {
-		memmove(newname + 8, strchr(newname, '.'), ext_len + 1);
-	}
+	if (len > 8) memmove(newname + 8, ext, ext_len + 1);
 
 	return tmppath;
 }
