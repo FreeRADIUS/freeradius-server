@@ -191,6 +191,166 @@ DIAG_ON(nonnull-compare)
 #  define PAIR_LIST_VERIFY(_x)	fr_pair_list_nonnull_assert(_x)
 #endif
 
+/*
+ *	Helper macros for adding pairs to lists and assigning a value to them
+ */
+
+/** Check a pair's data type matches the DA data type
+ *
+ * @param[in] vp	to check consistency of.
+ * @return
+ *	- true for match
+ *	- false for error
+ */
+static inline bool vp_da_data_type_check(fr_pair_t *vp)
+{
+	if (vp->data.type == vp->da->type) return true;
+
+	fr_strerror_printf("fr_pair_t attribute %p \"%s\" data type (%s) does not match da type (%s)",
+			   vp->da, vp->da->name,
+			   fr_table_str_by_value(fr_type_table, vp->data.type, "invalid"),
+			   fr_table_str_by_value(fr_type_table, vp->da->type, "invalid"));
+	return false;
+}
+
+/** Append a pair to a list, assigning its value.
+ *
+ * Version for simple C data types
+ *
+ * @param[in] _ctx	to allocate the pair in
+ * @param[out] _vp	the allocated pair
+ * @param[in] _list	to append the pair to
+ * @param[in] _attr	to use when creating pair
+ * @param[in] _val	to assign to the pair
+ * @param[in] _tainted	does the value come from a trusted source
+ */
+#define fr_pair_list_append_by_da(_ctx, _vp, _list, _attr, _val, _tainted) \
+do { \
+	_vp = NULL; \
+	if (fr_pair_append_by_da(_ctx, &_vp, _list, _attr) < 0) break; \
+	fr_value_box(&_vp->data, _val, _tainted); \
+	if (!vp_da_data_type_check(_vp)) { \
+		fr_pair_delete(_list, _vp); \
+		_vp = NULL; \
+	} \
+} while (0)
+
+/** Append a pair to a list, assigning its value.
+ *
+ * Version for char* and uint8_t*
+ *
+ * @param[in] _ctx	to allocate the pair in
+ * @param[out] _vp	the allocated pair
+ * @param[in] _list	to append the pair to
+ * @param[in] _attr	to use when creating pair
+ * @param[in] _val	to assign to the pair
+ * @param[in] _len	of value
+ * @param[in] _tainted	does the value come from a trusted source
+ */
+#define fr_pair_list_append_by_da_len(_ctx, _vp, _list, _attr, _val, _len, _tainted) \
+do { \
+	_vp = NULL; \
+	if (fr_pair_append_by_da(_ctx, &_vp, _list, _attr) < 0) break; \
+	fr_value_box_len(_ctx, &_vp->data, _val, _len, _tainted); \
+	if (!vp_da_data_type_check(_vp)) { \
+		fr_pair_delete(_list, _vp); \
+		_vp = NULL; \
+	} \
+} while (0)
+
+/** Prepend a pair to a list, assigning its value
+ *
+ * Version for simple C data types
+ *
+ * @param[in] _ctx	to allocate the pair in
+ * @param[out] _vp	the allocated pair
+ * @param[in] _list	to prepend the pair to
+ * @param[in] _attr	to use when creating pair
+ * @param[in] _val	to assign to the pair
+ * @param[in] _tainted	does the value come from a trusted source
+ */
+#define fr_pair_list_prepend_by_da(_ctx, _vp, _list, _attr, _val, _tainted) \
+do { \
+	_vp = NULL; \
+	if (fr_pair_prepend_by_da(_ctx, &_vp, _list, _attr) < 0) break; \
+	fr_value_box(&_vp->data, _val, _tainted); \
+	if (!vp_da_data_type_check(_vp)) { \
+		fr_pair_delete(_list, _vp); \
+		_vp = NULL; \
+	} \
+} while (0)
+
+/** Prepend a pair to a list, assigning its value.
+ *
+ * Version for char* and uint8_t*
+ *
+ * @param[in] _ctx	to allocate the pair in
+ * @param[out] _vp	the allocated pair
+ * @param[in] _list	to prepend the pair to
+ * @param[in] _attr	to use when creating pair
+ * @param[in] _val	to assign to the pair
+ * @param[in] _len	of value
+ * @param[in] _tainted	does the value come from a trusted source
+ */
+#define fr_pair_list_prepend_by_da_len(_ctx, _vp, _list, _attr, _val, _len, _tainted) \
+do { \
+	_vp = NULL; \
+	if (fr_pair_prepend_by_da(_ctx, &_vp, _list, _attr) < 0) break; \
+	fr_value_box_len(_ctx, &_vp->data, _val, _len, _tainted); \
+	if (!vp_da_data_type_check(_vp)) { \
+		fr_pair_delete(_list, _vp); \
+		_vp = NULL; \
+	} \
+} while (0)
+
+/** Replace a pair in a list, assigning its value
+ *
+ * Version for simple C data types.
+ * If the pair does not already exist, a new one is allocated.
+ *
+ * @param[in] _ctx	to allocate the pair in
+ * @param[out] _vp	the allocated pair
+ * @param[in] _list	to append the pair to
+ * @param[in] _attr	to use when creating pair
+ * @param[in] _val	to assign to the pair
+ * @param[in] _tainted	does the value come from a trusted source
+ */
+#define fr_pair_list_replace_by_da(_ctx, _vp, _list, _attr, _val, _tainted) \
+do { \
+	fr_pair_update_by_da(_ctx, _vp, _list, _attr, 0); \
+	if (!vp) break; \
+	fr_value_box(&_vp->data, _val, _tainted); \
+	if (!vp_da_data_type_check(_vp)) { \
+		fr_pair_delete(_list, _vp); \
+		_vp = NULL; \
+	} \
+} while (0)
+
+/** Replace a pair in a list, assigning its value
+ *
+ * Version for char* and uint8_t*
+ * If the pair does not already exist, a new one is allocated.
+ *
+ * @param[in] _ctx	to allocate the pair in
+ * @param[out] _vp	the allocated pair
+ * @param[in] _list	to append the pair to
+ * @param[in] _attr	to use when creating pair
+ * @param[in] _val	to assign to the pair
+ * @param[in] _len	of value
+ * @param[in] _tainted	does the value come from a trusted source
+ */
+#define fr_pair_list_replace_by_da_len(_ctx, _vp, _list, _attr, _val, _len, _tainted) \
+do { \
+	fr_pair_t *oldvp = fr_pair_find_by_da(_list, NULL, _attr); \
+	fr_pair_list_append_by_da_len(_ctx, _vp_, _list, _attr, _val, _len, _tainted) \
+	if (!vp_da_data_type_check(_vp)) { \
+		fr_pair_delete(_list, _vp); \
+		_vp = NULL; \
+	} \
+	if (!_vp) break; \
+	if (oldvp) fr_pair_delete(_list, oldvp); \
+} while (0)
+
 /* Initialisation */
 void fr_pair_list_init(fr_pair_list_t *head) CC_HINT(nonnull);
 
