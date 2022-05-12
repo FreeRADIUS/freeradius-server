@@ -656,6 +656,9 @@ static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_s
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 				   fr_token_t prev, fr_sbuff_parse_rules_t const *bracket_rules);
 
+static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
+			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
+			      fr_sbuff_parse_rules_t const *bracket_rules);
 
 static fr_table_num_sorted_t const expr_quote_table[] = {
 	{ L("\""),	T_DOUBLE_QUOTED_STRING	},	/* Don't re-order, backslash throws off ordering */
@@ -753,23 +756,16 @@ static ssize_t tokenize_regex(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
  *	to parse the next thing we get.  Otherwise, parse the thing as
  *	int64_t.
  */
-static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
+static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
 			      fr_sbuff_parse_rules_t const *bracket_rules)
 {
 	ssize_t			slen;
-	xlat_exp_t		*node = NULL;
 	xlat_exp_t		*unary = NULL;
 	xlat_t			*func = NULL;
-	TALLOC_CTX		*ctx = head;
-	TALLOC_CTX		*free_ctx = NULL;
 	fr_sbuff_t		our_in = FR_SBUFF(in);
-	fr_sbuff_marker_t	opand_m;
-	tmpl_rules_t		our_t_rules = *t_rules;
-	tmpl_t			*vpt;
-	fr_token_t		quote;
 
-	XLAT_DEBUG("FIELD <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+	XLAT_DEBUG("UNARY <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
 	/*
 	 *	Handle !-~ by adding a unary function to the xlat
@@ -792,12 +788,43 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 *	Maybe we have a unary not / etc.  If so, make sure
 	 *	that we return that, and not the child node
 	 */
-	if (func) {
-		MEM(unary = xlat_exp_alloc(ctx, XLAT_FUNC, func->name, strlen(func->name)));
-		unary->call.func = func;
-		unary->flags = func->flags;
-		free_ctx = ctx = unary;
+	if (!func) {
+		return tokenize_field(head, out, in, p_rules, t_rules, bracket_rules);
 	}
+	
+	MEM(unary = xlat_exp_alloc(head, XLAT_FUNC, func->name, strlen(func->name)));
+	MEM(unary->call.args = xlat_exp_head_alloc(unary));
+	unary->call.func = func;
+	unary->flags = func->flags;
+
+	slen = tokenize_field(unary->call.args, &unary->call.args->next, &our_in, p_rules, t_rules, bracket_rules);
+	if (slen <= 0) {
+		talloc_free(unary);
+		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
+	}
+
+	*out = unary;
+	xlat_flags_merge(&head->flags, &unary->flags);
+
+	return fr_sbuff_set(in, &our_in);
+}
+
+/*
+ *	Tokenize a field without unary operators.
+ */
+static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
+			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
+			      fr_sbuff_parse_rules_t const *bracket_rules)
+{
+	ssize_t			slen;
+	xlat_exp_t		*node = NULL;
+	fr_sbuff_t		our_in = FR_SBUFF(in);
+	fr_sbuff_marker_t	opand_m;
+	tmpl_rules_t		our_t_rules = *t_rules;
+	tmpl_t			*vpt;
+	fr_token_t		quote;
+
+	XLAT_DEBUG("FIELD <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
 	/*
 	 *	Allow for explicit casts
@@ -841,13 +868,11 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	if (fr_sbuff_next_if_char(&our_in, '(')) {
 		slen = tokenize_expression(head, &node, &our_in, bracket_rules, t_rules, T_INVALID, bracket_rules);
 		if (slen <= 0) {
-			talloc_free(free_ctx);
 			FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
 		}
 
 		if (!fr_sbuff_next_if_char(&our_in, ')')) {
 			fr_strerror_printf("Failed to find trailing ')'");
-			talloc_free(free_ctx);
 			FR_SBUFF_ERROR_RETURN_ADJ(&our_in, -slen);
 		}
 
@@ -887,7 +912,7 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	/*
 	 *	Allocate the xlat node now so the talloc hierarchy is correct
 	 */
-	MEM(node = xlat_exp_alloc_null(ctx));
+	MEM(node = xlat_exp_alloc_null(head));
 	xlat_exp_set_type(node, XLAT_TMPL);
 
 	/*
@@ -899,7 +924,6 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		fr_sbuff_advance(&our_in, slen * -1);
 
 	error:
-		talloc_free(free_ctx);
 		return fr_sbuff_error(&our_in);
 	}
 	node->vpt = vpt;
@@ -945,20 +969,6 @@ done:
 #else
 	fr_assert(node != NULL);
 #endif
-
-	/*
-	 *	@todo - purify the node.
-	 */
-	if (unary) {
-		xlat_exp_head_t *args;
-
-		MEM(args = xlat_exp_head_alloc(unary));
-
-		unary->call.args = args;
-		args->next = xlat_groupify_node(unary, node);
-		xlat_flags_merge(&unary->flags, &node->flags);
-		node = unary;
-	}
 
 	*out = node;
 	xlat_flags_merge(&head->flags, &node->flags);
@@ -1025,7 +1035,7 @@ static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_s
 	/*
 	 *	Get the LHS of the operation.
 	 */
-	slen = tokenize_field(head, &lhs, &our_in, p_rules, t_rules, bracket_rules);
+	slen = tokenize_unary(head, &lhs, &our_in, p_rules, t_rules, bracket_rules);
 	if (slen <= 0) return slen;
 
 redo:
@@ -1154,7 +1164,7 @@ redo:
 	fr_assert(func != NULL);
 
 	/*
-	 *	If it's an n-ary operation, AND the LHS is the correct function, then just add "rhs" to the
+	 *	If it's an n-ary operation, AND the LHS is the function we're currently using, then just add "rhs" to the
 	 *	"lhs" children.
 	 */
 	if (nary_ops[op] && (lhs->type == XLAT_FUNC) && (lhs->call.func->token == op)) {
