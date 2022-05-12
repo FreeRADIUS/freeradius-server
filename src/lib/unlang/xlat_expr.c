@@ -114,27 +114,30 @@ static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node,
 	return fr_sbuff_used_total(out) - at_in;
 }
 
-static xlat_exp_t *xlat_groupify_node(TALLOC_CTX *ctx, xlat_exp_t *node)
+static void xlat_func_append_arg(xlat_exp_t *head, xlat_exp_t *node)
 {
-	xlat_exp_t *group;
+	xlat_exp_t *group, **tail;
 
+	fr_assert(head->type == XLAT_FUNC);
 	fr_assert(node->type != XLAT_GROUP);
 
-	group = xlat_exp_alloc_null(ctx);
+	group = xlat_exp_alloc_null(head->call.args);
 	xlat_exp_set_type(group, XLAT_GROUP);
 	group->quote = T_BARE_WORD;
 
 	group->fmt = node->fmt;	/* not entirely correct, but good enough for now */
+
 	MEM(group->group = xlat_exp_head_alloc(group));
 	group->group->next = talloc_steal(group->group, node);
+
 	group->flags = node->flags;
+	xlat_flags_merge(&head->call.args->flags, &group->flags);
+	xlat_flags_merge(&head->flags, &group->flags);
 
-	if (node->next) {
-		group->next = xlat_groupify_node(group, node->next);
-		node->next = NULL;
-	}
+	tail = &head->call.args->next;
+	while (*tail) tail = &((*tail)->next);
 
-	return group;
+	*tail = group;
 }
 
 
@@ -803,6 +806,11 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
 	}
 
+	if (!xlat_exp_head(unary->call.args)) {
+		fr_strerror_const("Empty expression is invalid");
+		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, -slen);
+	}
+
 	*out = unary;
 	xlat_flags_merge(&head->flags, &unary->flags);
 
@@ -1168,22 +1176,7 @@ redo:
 	 *	"lhs" children.
 	 */
 	if (nary_ops[op] && (lhs->type == XLAT_FUNC) && (lhs->call.func->token == op)) {
-		xlat_exp_t **last;
-		fr_assert(lhs->call.func == func);
-
-		node = xlat_groupify_node(lhs, rhs);
-
-		fr_assert(lhs->call.args != NULL);
-		last = &lhs->call.args->next;
-
-		/*
-		 *	Find the last child.
-		 */
-		while (*last) last = &(*last)->next;
-
-		*last = node;
-		xlat_flags_merge(&node->flags, &rhs->flags);
-		xlat_flags_merge(&lhs->flags, &node->flags);
+		xlat_func_append_arg(lhs, rhs);
 		goto redo;
 	}
 
@@ -1199,21 +1192,13 @@ redo:
 	 *	Create the function node, with the LHS / RHS arguments.
 	 */
 	MEM(node = xlat_exp_alloc(head, XLAT_FUNC, fr_tokens[op], strlen(fr_tokens[op])));
+	MEM(node->call.args = args = xlat_exp_head_alloc(node));
 	node->fmt = fr_tokens[op];
 	node->call.func = func;
 	node->flags = func->flags;
 
-	MEM(node->call.args = args = xlat_exp_head_alloc(node));
-	args->next = xlat_groupify_node(node, lhs);
-	args->flags = lhs->flags;
-
-	args->next->next = xlat_groupify_node(node, rhs);
-	args->next->next->flags = rhs->flags;
-
-	xlat_flags_merge(&node->flags, &lhs->flags);
-	xlat_flags_merge(&node->flags, &rhs->flags);
-	xlat_flags_merge(&head->flags, &node->flags);
-
+	xlat_func_append_arg(node, lhs);
+	xlat_func_append_arg(node, rhs);
 
 	lhs = node;
 	goto redo;
