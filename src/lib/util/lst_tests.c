@@ -98,13 +98,6 @@ static void lst_test(int skip)
 	unsigned int	left;
 	int		ret;
 
-	static bool	done_init = false;
-
-	if (!done_init) {
-		srand((unsigned int)time(NULL));
-		done_init = true;
-	}
-
 	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 0);
 	TEST_CHECK(lst != NULL);
 
@@ -178,15 +171,11 @@ static void lst_stress_realloc(void)
 	fr_heap_t	*hp;
 	lst_thing	*lst_array, *hp_array;
 	fr_fast_rand_t	rand_ctx;
-	static bool	done_init = false;
 	int		ret;
 	lst_thing	*from_lst, *from_hp;
 
-	if (!done_init) {
-		rand_ctx.a = fr_rand();
-		rand_ctx.b = fr_rand();
-		done_init = true;
-	}
+	rand_ctx.a = fr_rand();
+	rand_ctx.b = fr_rand();
 
 	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 0);
 	TEST_CHECK(lst != NULL);
@@ -256,14 +245,10 @@ static void lst_burn_in(void)
 	fr_lst_t	*lst = NULL;
 	lst_thing	*array = NULL;
 	fr_fast_rand_t	rand_ctx;
-	static bool	done_init = false;
 	int		insert_count = 0;
 
-	if (!done_init) {
-		rand_ctx.a = fr_rand();
-		rand_ctx.b = fr_rand();
-		done_init = true;
-	}
+	rand_ctx.a = fr_rand();
+	rand_ctx.b = fr_rand();
 
 	array = calloc(BURN_IN_OPS, sizeof(lst_thing));
 	for (unsigned int i = 0; i < BURN_IN_OPS; i++) array[i].data = fr_fast_rand(&rand_ctx) % 65537;
@@ -311,13 +296,6 @@ static void lst_cycle(void)
 	int 		inserted, removed;
 	int		ret;
 	fr_time_t	start_insert, start_remove, start_swap, end;
-
-	static bool	done_init = false;
-
-	if (!done_init) {
-		srand((unsigned int)time(NULL));
-		done_init = true;
-	}
 
 	lst = fr_lst_alloc(NULL, lst_cmp, lst_thing, idx, 0);
 	TEST_CHECK(lst != NULL);
