@@ -321,10 +321,10 @@ int		xlat_register_expressions(void);
 /*
  *	xlat_tokenize.c
  */
-int		xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_flags_t *flags, fr_sbuff_t *in,
+int		xlat_tokenize_expansion(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 					tmpl_attr_rules_t const *t_rules);
 
-int		xlat_tokenize_function_args(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_flags_t *flags, fr_sbuff_t *in,
+int		xlat_tokenize_function_args(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 					    tmpl_attr_rules_t const *rules);
 
 ssize_t		xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t const *node, fr_sbuff_escape_rules_t const *e_rules);
