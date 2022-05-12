@@ -1482,7 +1482,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			/*
 			 *	xlat expansions should be parseable.
 			 */
-			slen = xlat_tokenize(cs, &xlat, NULL,
+			slen = xlat_tokenize(cs, &xlat,
 					     &FR_SBUFF_IN(cp->value, talloc_array_length(cp->value) - 1), NULL,
 					     &(tmpl_attr_rules_t){
 						.dict_def = dict,

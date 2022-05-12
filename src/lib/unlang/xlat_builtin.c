@@ -1586,7 +1586,7 @@ static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Parse the input as a literal expansion
 	 */
 	if (xlat_tokenize_ephemeral(rctx,
-				    &rctx->ex, unlang_interpret_event_list(request), NULL,
+				    &rctx->ex, unlang_interpret_event_list(request),
 				    &FR_SBUFF_IN(arg->vb_strvalue, arg->vb_length),
 				    &(fr_sbuff_parse_rules_t){
 				    	.escapes = &escape_rules

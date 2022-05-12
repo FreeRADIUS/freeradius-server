@@ -1373,7 +1373,7 @@ static const fr_sbuff_term_t operator_terms = FR_SBUFF_TERMS(
 	L("<"),
 );
 
-ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t *flags, fr_sbuff_t *in,
+ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	ssize_t slen;
@@ -1430,8 +1430,6 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_fl
 	}
 
 	*out = head;
-	if (flags) xlat_flags_merge(flags, &head->flags);
-
 	return slen;
 }
 
@@ -1443,7 +1441,6 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_fl
  * @param[in] ctx	to allocate dynamic buffers in.
  * @param[out] out	the head of the xlat list / tree structure.
  * @param[in] el	for registering any I/O handlers.
- * @param[out] flags	indicating the state of the ephemeral tree.
  * @param[in] in	the format string to expand.
  * @param[in] p_rules	from the encompassing grammar.
  * @param[in] t_rules	controlling how attribute references are parsed.
@@ -1454,8 +1451,7 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_fl
  *	- <0 the negative offset of the parse failure.
  */
 ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out,
-					   fr_event_list_t *el,
-					   xlat_flags_t *flags, fr_sbuff_t *in,
+					   fr_event_list_t *el, fr_sbuff_t *in,
 					   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	ssize_t slen;
@@ -1515,6 +1511,5 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **ou
 	}
 
 	*out = head;
-	if (flags) xlat_flags_merge(flags, &head->flags);
 	return slen;
 }

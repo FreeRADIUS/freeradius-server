@@ -2681,10 +2681,10 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 			vpt = tmpl_alloc_null(ctx);
 			if (!t_rules->at_runtime) {
-				slen = xlat_tokenize(vpt, &head, NULL, &our_in, p_rules, &t_rules->attr);
+				slen = xlat_tokenize(vpt, &head, &our_in, p_rules, &t_rules->attr);
 			} else {
 				slen = xlat_tokenize_ephemeral(vpt, &head,
-							       t_rules->xlat.runtime_el, NULL, &our_in,
+							       t_rules->xlat.runtime_el, &our_in,
 							       p_rules, t_rules);
 			}
 
@@ -2865,10 +2865,10 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		vpt = tmpl_alloc_null(ctx);
 
 		if (!t_rules->at_runtime) {
-			slen = xlat_tokenize(vpt, &head, NULL, &our_in, p_rules, &t_rules->attr);
+			slen = xlat_tokenize(vpt, &head, &our_in, p_rules, &t_rules->attr);
 		} else {
 			slen = xlat_tokenize_ephemeral(vpt, &head, t_rules->xlat.runtime_el,
-						       NULL, &our_in, p_rules, t_rules);
+						       &our_in, p_rules, t_rules);
 		}
 		if (!head) return slen;
 
@@ -2954,7 +2954,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		vpt = tmpl_alloc_null(ctx);
 
-		slen = xlat_tokenize(vpt, &head, NULL, &our_in, p_rules, &t_rules->attr);
+		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, &t_rules->attr);
 		if (!head) return slen;
 
 		/*

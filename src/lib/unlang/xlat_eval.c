@@ -1529,7 +1529,7 @@ ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *reques
 	/*
 	 *	Give better errors than the old code.
 	 */
-	len = xlat_tokenize_ephemeral(ctx, &head, unlang_interpret_event_list(request), NULL,
+	len = xlat_tokenize_ephemeral(ctx, &head, unlang_interpret_event_list(request),
 				      &FR_SBUFF_IN(fmt, strlen(fmt)),
 				      NULL,
 				      &(tmpl_rules_t){

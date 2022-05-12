@@ -291,23 +291,22 @@ int		xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_e
 bool		xlat_async_required(xlat_exp_head_t const *xlat);
 
 
-ssize_t		xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+ssize_t		xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
 					 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
 ssize_t		xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head,
 						   fr_event_list_t *el,
-						   xlat_flags_t *flags, fr_sbuff_t *in,
+						   fr_sbuff_t *in,
 						   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
 ssize_t		xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **head,
-					fr_event_list_t *el,
-					xlat_flags_t *flags, fr_sbuff_t *in,
+					fr_event_list_t *el, fr_sbuff_t *in,
 					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
 ssize_t 	xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules);
 
-ssize_t		xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **head, xlat_flags_t *flags, fr_sbuff_t *in,
+ssize_t		xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules);
 
 ssize_t		xlat_print(fr_sbuff_t *in, xlat_exp_head_t const *node, fr_sbuff_escape_rules_t const *e_rules);

@@ -1305,7 +1305,6 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_head_t const *head, fr_sbuff_escape
  * @param[in] ctx	to allocate dynamic buffers in.
  * @param[out] out	the head of the xlat list / tree structure.
  * @param[in] el	for registering any I/O handlers.
- * @param[out] flags	indicating the state of the ephemeral tree.
  * @param[in] in	the format string to expand.
  * @param[in] p_rules	from the encompassing grammar.
  * @param[in] t_rules	controlling how attribute references are parsed.
@@ -1316,8 +1315,7 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_head_t const *head, fr_sbuff_escape
  *	- <0 the negative offset of the parse failure.
  */
 ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
-				fr_event_list_t *el,
-				xlat_flags_t *flags, fr_sbuff_t *in,
+				fr_event_list_t *el, fr_sbuff_t *in,
 			        fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
@@ -1342,7 +1340,6 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
 	 */
 	if (!head->next) {
 		*out = head;
-		if (flags) xlat_flags_merge(flags, &head->flags);
 		return 0;
 	}
 
@@ -1356,7 +1353,6 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
 	}
 
 	*out = head;
-	if (flags) xlat_flags_merge(flags, &head->flags);
 
 	return fr_sbuff_set(in, &our_in);
 }
@@ -1534,7 +1530,6 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *i
  *
  * @param[in] ctx	to allocate dynamic buffers in.
  * @param[out] out	the head of the xlat list / tree structure.
- * @param[in,out] flags	that control evaluation and parsing.
  * @param[in] in	the format string to expand.
  * @param[in] p_rules	controlling how the string containing the xlat
  *			expansions should be parsed.
@@ -1545,7 +1540,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *i
  *	- 0 and *head != NULL - Zero length expansion
  *	- < 0 the negative offset of the parse failure.
  */
-ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t *flags, fr_sbuff_t *in,
+ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 		      fr_sbuff_parse_rules_t const *p_rules, tmpl_attr_rules_t const *t_rules)
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
@@ -1571,7 +1566,6 @@ ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_flags_t *flag
 	}
 
 	*out = head;
-	if (flags) xlat_flags_merge(flags, &head->flags);
 
 	return fr_sbuff_set(in, &our_in);
 }

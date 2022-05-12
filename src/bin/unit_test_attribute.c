@@ -2669,7 +2669,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 	size_t			input_len = strlen(in), escaped_len;
 	fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
 
-	dec_len = xlat_tokenize(cc->tmp_ctx, &head, NULL, &FR_SBUFF_IN(in, input_len), &p_rules,
+	dec_len = xlat_tokenize(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), &p_rules,
 				&(tmpl_attr_rules_t) {
 					.dict_def = cc->tmpl_rules.attr.dict_def ?
 						cc->tmpl_rules.attr.dict_def : cc->config->dict,
@@ -2702,7 +2702,7 @@ static size_t command_xlat_expr(command_result_t *result, command_file_ctx_t *cc
 	size_t			input_len = strlen(in), escaped_len;
 //	fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
 
-	dec_len = xlat_tokenize_expression(cc->tmp_ctx, &head, NULL, &FR_SBUFF_IN(in, input_len), NULL,
+	dec_len = xlat_tokenize_expression(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), NULL,
 					   &(tmpl_rules_t) {
 					   	.attr = {
 							.dict_def = cc->tmpl_rules.attr.dict_def ?
@@ -2736,11 +2736,8 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 	xlat_exp_head_t		*head = NULL;
 	size_t			input_len = strlen(in), escaped_len;
 //	fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
-	xlat_flags_t		flags = {
-		.pure = true,
-	};
 
-	dec_len = xlat_tokenize_expression(cc->tmp_ctx, &head, &flags, &FR_SBUFF_IN(in, input_len), NULL,
+	dec_len = xlat_tokenize_expression(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), NULL,
 					   &(tmpl_rules_t) {
 						   .attr = {
 							.dict_def = cc->tmpl_rules.attr.dict_def ?
