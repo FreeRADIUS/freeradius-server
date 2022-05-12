@@ -1265,6 +1265,9 @@ static SSL_TICKET_RETURN tls_cache_session_ticket_app_data_get(SSL *ssl, SSL_SES
 	switch (status) {
 	case SSL_TICKET_EMPTY:
 	case SSL_TICKET_NO_DECRYPT:
+	case SSL_TICKET_FATAL_ERR_MALLOC:
+	case SSL_TICKET_FATAL_ERR_OTHER:
+	case SSL_TICKET_NONE:
 #ifdef __clang_analyzer__
 	default:
 #endif
