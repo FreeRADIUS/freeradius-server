@@ -131,7 +131,7 @@ xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t *func, xlat_exp_head_t c
 	 *	A pure function can have impure arguments, e.g. hash(sql query).
 	 */
 	xlat_exp_foreach(args, arg) {
-		node->flags.pure &= arg->flags.pure;
+		xlat_flags_merge(&node->flags, &arg->flags);
 	}
 
 	return node;
@@ -183,19 +183,20 @@ static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **out, x
 	MEM(node->alternate[1] = xlat_exp_head_alloc(node));
 
 	if (func_args) {
-		if (xlat_tokenize_function_args(node, &node->alternate[0]->next, &node->flags, in, t_rules) < 0) {
+		if (xlat_tokenize_function_args(node->alternate[0], &node->alternate[0]->next, &node->alternate[0]->flags, in, t_rules) < 0) {
 		error:
 			talloc_free(node);
 			return -1;
 		}
 	} else {
-		if (xlat_tokenize_expansion(node, &node->alternate[0]->next, &node->flags, in, t_rules) < 0) goto error;
+		if (xlat_tokenize_expansion(node->alternate[0], &node->alternate[0]->next, &node->alternate[0]->flags, in, t_rules) < 0) goto error;
 	}
 
 	if (!fr_sbuff_adv_past_str_literal(in, ":-")) {
 		fr_strerror_const("Expected ':-' after first expansion");
 		goto error;
 	}
+	node->flags = node->alternate[0]->flags;
 
 	/*
 	 *	Allow the RHS to be empty as a special case.
@@ -205,7 +206,7 @@ static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **out, x
 	/*
 	 *	Parse the alternate expansion.
 	 */
-	if (xlat_tokenize_string(node, &node->alternate[1]->next, &node->flags, in,
+	if (xlat_tokenize_string(node->alternate[1], &node->alternate[1]->next, &node->alternate[1]->flags, in,
 				  true, &xlat_expansion_rules, t_rules) < 0) goto error;
 
 	if (!node->alternate[1]->next) {
@@ -218,6 +219,7 @@ static inline int xlat_tokenize_alternation(TALLOC_CTX *ctx, xlat_exp_t **out, x
 		fr_strerror_const("Missing closing brace");
 		goto error;
 	}
+	xlat_flags_merge(&node->flags, &node->alternate[1]->flags);
 
 done:
 	xlat_flags_merge(flags, &node->flags);
@@ -382,7 +384,7 @@ static inline int xlat_tokenize_function_mono(TALLOC_CTX *ctx, xlat_exp_t **out,
 	 *	Now parse the child nodes that form the
 	 *	function's arguments.
 	 */
-	if (xlat_tokenize_string(node, &node->call.args->next, &node->flags, in, true, &xlat_expansion_rules, rules) < 0) {
+	if (xlat_tokenize_string(node->call.args, &node->call.args->next, &node->call.args->flags, in, true, &xlat_expansion_rules, rules) < 0) {
 		goto error;
 	}
 
@@ -396,6 +398,7 @@ static inline int xlat_tokenize_function_mono(TALLOC_CTX *ctx, xlat_exp_t **out,
 		goto error;
 	}
 
+	xlat_flags_merge(&node->flags, &node->call.args->flags);
 	xlat_flags_merge(flags, &node->flags);
 	*out = node;
 
@@ -793,14 +796,10 @@ int xlat_tokenize_expansion(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_flags_t *fla
 	 */
 	switch (hint) {
 	case ':':
-	{
 		fr_sbuff_set(in, &s_m);		/* backtrack */
 		fr_sbuff_marker_release(&s_m);
 
-		ret = xlat_tokenize_function_mono(ctx, out, flags, in, t_rules);
-		if (ret <= 0) return ret;
-	}
-		break;
+		return xlat_tokenize_function_mono(ctx, out, flags, in, t_rules);
 
 	/*
 	 *	Hint token is a:
@@ -1437,7 +1436,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *i
 		 *	Barewords --may-contain=%{expansions}
 		 */
 		case T_BARE_WORD:
-			if (xlat_tokenize_string(node->group, &node->group->next, &node->flags, &our_in,
+			if (xlat_tokenize_string(node->group, &node->group->next, &node->group->flags, &our_in,
 						  false, our_p_rules, t_rules) < 0) {
 			error:
 				if (our_p_rules != &value_parse_rules_bareword_quoted) {
@@ -1453,7 +1452,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *i
 		 *	"Double quoted strings may contain %{expansions}"
 		 */
 		case T_DOUBLE_QUOTED_STRING:
-			if (xlat_tokenize_string(node->group, &node->group->next, &node->flags, &our_in,
+			if (xlat_tokenize_string(node->group, &node->group->next, &node->group->flags, &our_in,
 						  false, &value_parse_rules_double_quoted, t_rules) < 0) goto error;
 			break;
 
@@ -1499,6 +1498,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *i
 		fmt = talloc_bstrndup(node, fr_sbuff_current(&m), fr_sbuff_behind(&m));
 		xlat_exp_set_name_buffer_shallow(node, fmt);
 
+		node->flags = node->group->flags;
 		xlat_flags_merge(&head->flags, &node->flags);
 		xlat_exp_append(tail, node);
 
@@ -1953,6 +1953,7 @@ int xlat_copy(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_exp_head_t const *in)
 	}
 
 	head = xlat_exp_head_alloc(ctx);
+	head->flags = in->flags;
 	tail = &head->next;
 
 	/*

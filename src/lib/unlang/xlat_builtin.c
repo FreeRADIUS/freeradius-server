@@ -777,6 +777,7 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 		 *	they'll get called at some point after
 		 *	we return.
 		 */
+		head->flags = node->flags;
 		xlat_bootstrap(head);
 		xri->ex[num++] = head;
 	}
