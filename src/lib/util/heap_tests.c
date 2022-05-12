@@ -47,13 +47,9 @@ static void heap_test(int skip)
 	int		left;
 	int		ret;
 	fr_fast_rand_t	rand_ctx;
-	static bool	done_init = false;
 
-	if (!done_init) {
-		rand_ctx.a = fr_rand();
-		rand_ctx.b = fr_rand();
-		done_init = true;
-	}
+	rand_ctx.a = fr_rand();
+	rand_ctx.b = fr_rand();
 
 	hp = fr_heap_alloc(NULL, heap_cmp, heap_thing, heap, 0);
 	TEST_CHECK(hp != NULL);
@@ -150,13 +146,9 @@ static void heap_test_order(void)
 	unsigned int	count = 0;
 	int		ret;
 	fr_fast_rand_t	rand_ctx;
-	static bool	done_init = false;
 
-	if (!done_init) {
-		rand_ctx.a = fr_rand();
-		rand_ctx.b = fr_rand();
-		done_init = true;
-	}
+	rand_ctx.a = fr_rand();
+	rand_ctx.b = fr_rand();
 
 	hp = fr_heap_alloc(NULL, heap_cmp, heap_thing, heap, 0);
 	TEST_CHECK(hp != NULL);
@@ -233,13 +225,9 @@ static void heap_cycle(void)
 	int		ret;
 	fr_time_t	start_insert, start_remove, start_swap, end;
 	fr_fast_rand_t	rand_ctx;
-	static bool	done_init = false;
 
-	if (!done_init) {
-		rand_ctx.a = fr_rand();
-		rand_ctx.b = fr_rand();
-		done_init = true;
-	}
+	rand_ctx.a = fr_rand();
+	rand_ctx.b = fr_rand();
 
 	hp = fr_heap_alloc(NULL, heap_cmp, heap_thing, heap, 0);
 	TEST_CHECK(hp != NULL);

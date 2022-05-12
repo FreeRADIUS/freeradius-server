@@ -132,13 +132,9 @@ static void minmax_heap_test(int skip)
 	int			left;
 	int			ret;
 	fr_fast_rand_t		rand_ctx;
-	static bool		done_init = false;
 
-	if (!done_init) {
-		rand_ctx.a = fr_rand();
-		rand_ctx.b = fr_rand();
-		done_init = true;
-	}
+	rand_ctx.a = fr_rand();
+	rand_ctx.b = fr_rand();
 
 	hp = fr_minmax_heap_alloc(NULL, minmax_heap_cmp, minmax_heap_thing, idx, 0);
 	TEST_CHECK(hp != NULL);
@@ -227,14 +223,10 @@ static void minmax_heap_burn_in(void)
 	fr_minmax_heap_t	*hp = NULL;
 	minmax_heap_thing	*array = NULL;
 	fr_fast_rand_t		rand_ctx;
-	static bool		done_init = false;
 	int			insert_count = 0;
 
-	if (!done_init) {
-		rand_ctx.a = fr_rand();
-		rand_ctx.b = fr_rand();
-		done_init = true;
-	}
+	rand_ctx.a = fr_rand();
+	rand_ctx.b = fr_rand();
 
 	array = calloc(BURN_IN_OPS, sizeof(minmax_heap_thing));
 	for (unsigned int i = 0; i < BURN_IN_OPS; i++) array[i].data = fr_fast_rand(&rand_ctx) % 65537;
@@ -290,13 +282,9 @@ static void minmax_heap_test_order(void)
 	unsigned int		count;
 	int			ret;
 	fr_fast_rand_t		rand_ctx;
-	static bool	done_init = false;
 
-	if (!done_init) {
-		rand_ctx.a = fr_rand();
-		rand_ctx.b = fr_rand();
-		done_init = true;
-	}
+	rand_ctx.a = fr_rand();
+	rand_ctx.b = fr_rand();
 
 	hp = fr_minmax_heap_alloc(NULL, minmax_heap_cmp, minmax_heap_thing, idx, 0);
 	TEST_CHECK(hp != NULL);
@@ -529,13 +517,9 @@ static void minmax_heap_cycle(void)
 	int			ret;
 	fr_time_t		start_insert, start_remove, start_swap, end;
 	fr_fast_rand_t		rand_ctx;
-	static bool		done_init = false;
 
-	if (!done_init) {
-		rand_ctx.a = fr_rand();
-		rand_ctx.b = fr_rand();
-		done_init = true;
-	}
+	rand_ctx.a = fr_rand();
+	rand_ctx.b = fr_rand();
 
 	hp = fr_minmax_heap_alloc(NULL, minmax_heap_cmp, minmax_heap_thing, idx, 0);
 	TEST_CHECK(hp != NULL);
