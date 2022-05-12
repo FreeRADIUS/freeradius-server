@@ -180,7 +180,11 @@ xlat_t *xlat_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 		return NULL;
 	}
 
-	if (!flags) flags = &default_flags;
+	if (!flags) {
+		flags = &default_flags;
+	} else {
+		fr_assert(!flags->needs_resolving);
+	}
 
 	/*
 	 *	If it already exists, replace the instance.
