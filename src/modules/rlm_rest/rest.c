@@ -874,12 +874,12 @@ static fr_pair_t *json_pair_alloc_leaf(UNUSED rlm_rest_t const *instance, UNUSED
 	switch (json_object_get_type(leaf)) {
 	case json_type_int:
 		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'int', attribute \"%s\"", da->name);
-		fr_value_box_shallow(&src, (int32_t)json_object_get_int(leaf), true);
+		fr_value_box(&src, (int32_t)json_object_get_int(leaf), true);
 		break;
 
 	case json_type_double:
 		if (flags->do_xlat) RWDEBUG("Ignoring do_xlat on 'double', attribute \"%s\"", da->name);
-		fr_value_box_shallow(&src, (double)json_object_get_double(leaf), true);
+		fr_value_box(&src, (double)json_object_get_double(leaf), true);
 		break;
 
 	case json_type_string:

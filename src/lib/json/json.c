@@ -125,7 +125,7 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 		break;
 
 	case json_type_double:
-		fr_value_box_shallow(out, json_object_get_double(object), tainted);
+		fr_value_box(out, json_object_get_double(object), tainted);
 		break;
 
 	case json_type_int:
@@ -141,30 +141,30 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 #else
 		num = json_object_get_int64(object);
 		if (num < INT32_MIN) {			/* 64bit signed*/
-			fr_value_box_shallow(out, (int64_t)num, tainted);
+			fr_value_box(out, (int64_t)num, tainted);
 		} else if (num > UINT32_MAX) {		/* 64bit unsigned */
-			fr_value_box_shallow(out, (uint64_t)num, tainted);
+			fr_value_box(out, (uint64_t)num, tainted);
 		} else
 #endif
 		if (num < INT16_MIN) {			/* 32bit signed */
-			fr_value_box_shallow(out, (int32_t)num, tainted);
+			fr_value_box(out, (int32_t)num, tainted);
 		} else if (num < INT8_MIN) {		/* 16bit signed */
-			fr_value_box_shallow(out, (int16_t)num, tainted);
+			fr_value_box(out, (int16_t)num, tainted);
 		} else if (num < 0) {			/* 8bit signed */
-			fr_value_box_shallow(out, (int8_t)num, tainted);
+			fr_value_box(out, (int8_t)num, tainted);
 		} else if (num > UINT16_MAX) {		/* 32bit unsigned */
-			fr_value_box_shallow(out, (uint32_t)num, tainted);
+			fr_value_box(out, (uint32_t)num, tainted);
 		} else if (num > UINT8_MAX) {		/* 16bit unsigned */
-			fr_value_box_shallow(out, (int16_t)num, tainted);
+			fr_value_box(out, (int16_t)num, tainted);
 		} else {				/* 8bit unsigned */
-			fr_value_box_shallow(out, (int8_t)num, tainted);
+			fr_value_box(out, (int8_t)num, tainted);
 		}
 	}
 		break;
 
 	case json_type_boolean:
 		/* Must be cast to bool for correct generic case selection */
-		fr_value_box_shallow(out, ((bool)(json_object_get_boolean(object) > 0)), tainted);
+		fr_value_box(out, ((bool)(json_object_get_boolean(object) > 0)), tainted);
 		break;
 
 	case json_type_null:
