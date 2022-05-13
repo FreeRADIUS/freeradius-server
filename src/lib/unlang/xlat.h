@@ -286,7 +286,7 @@ ssize_t		xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, request_t *request,
 int		xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, request_t *request,
 					 xlat_exp_head_t const *head, xlat_escape_legacy_t escape, void const *escape_ctx);
 
-int		xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_exp_head_t **head);
+int		xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_exp_head_t *head);
 
 bool		xlat_async_required(xlat_exp_head_t const *xlat);
 

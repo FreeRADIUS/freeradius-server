@@ -1646,14 +1646,14 @@ int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, request_t *request,
  *
  *  This is mostly for async use.
  */
-int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_exp_head_t **head)
+int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_exp_head_t *head)
 {
 	int			i;
 	xlat_exp_head_t		**my_argv;
 	size_t			count;
 
 	count = 0;
-	xlat_exp_foreach(*head, node) {
+	xlat_exp_foreach(head, node) {
 		count++;
 	}
 
@@ -1663,13 +1663,12 @@ int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_ex
 	fr_assert(done_init);
 
 	i = 0;
-	xlat_exp_foreach(*head, node) {
+	xlat_exp_foreach(head, node) {
 		fr_assert(node->type == XLAT_GROUP);
 		my_argv[i++] = talloc_steal(my_argv, node->group);
 	}
 
-	talloc_free(*head);
-	*head = NULL;
+	fr_dlist_talloc_free(&head->dlist);
 
 	return count;
 }
