@@ -379,7 +379,7 @@ static void lst_iter(void)
 
 	populate_values(values, NUM_ELEMENTS(values));
 
-	for (unsigned int i = 0; i < NUM_ELEMENTS(values); i++) fr_lst_insert(lst, &values[i]);
+	for (unsigned int i = 0; i < NUM_ELEMENTS(values); i++) TEST_CHECK(fr_lst_insert(lst, &values[i]) == 0);
 
 	data = fr_lst_iter_init(lst, &iter);
 
@@ -447,7 +447,7 @@ static void queue_cmp(unsigned int count)
 		TEST_CHECK(lst != NULL);
 
 		start_insert = fr_time();
-		for (i = 0; i < count; i++) fr_lst_insert(lst, &values[i]);
+		for (i = 0; i < count; i++) TEST_CHECK(fr_lst_insert(lst, &values[i]) == 0);
 		end_insert = fr_time();
 
 		start_pop = fr_time();
