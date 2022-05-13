@@ -267,6 +267,8 @@ fail:
 	 */
 	sem_post(&sc->worker_sem);
 
+	talloc_free(ctx);
+
 	return NULL;
 }
 
@@ -349,6 +351,8 @@ fail:
 	 *	Tell the scheduler we're done.
 	 */
 	sem_post(&sc->network_sem);
+
+	talloc_free(ctx);
 
 	return NULL;
 }
