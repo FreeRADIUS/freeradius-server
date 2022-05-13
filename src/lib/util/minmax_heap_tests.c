@@ -232,6 +232,7 @@ static void minmax_heap_burn_in(void)
 	for (unsigned int i = 0; i < BURN_IN_OPS; i++) array[i].data = fr_fast_rand(&rand_ctx) % 65537;
 
 	hp = fr_minmax_heap_alloc(NULL, minmax_heap_cmp, minmax_heap_thing, idx, 0);
+	TEST_CHECK(hp != NULL);
 
 	for (unsigned int i = 0; i < BURN_IN_OPS; i++) {
 		minmax_heap_thing	*ret_thing = NULL;
