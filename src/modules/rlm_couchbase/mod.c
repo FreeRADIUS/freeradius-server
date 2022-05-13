@@ -70,11 +70,11 @@ int mod_free_api_opts(void *instance)
 	DEBUG("Releasing the couchbase api options");
 
 	for (; opts != NULL; opts = opts->next) {
-		if (opts->key) talloc_free(opts->key);
-		if (opts->val) talloc_free(opts->val);
+		TALLOC_FREE(opts->key);
+		TALLOC_FREE(opts->val);
 	}
 
-	talloc_free(opts);
+	TALLOC_FREE(opts);
 
 	/* return */
 	return 0;
