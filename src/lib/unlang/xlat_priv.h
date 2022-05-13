@@ -120,7 +120,7 @@ struct xlat_exp {
 	xlat_flags_t	flags;		//!< Flags that control resolution and evaluation.
 
 	xlat_type_t	type;		//!< type of this expansion.
-	xlat_exp_t	*next;		//!< Next in the list.
+	fr_dlist_t	entry;
 
 	union {
 		xlat_exp_head_t	*alternate[2];	//!< alternate expansions
@@ -151,7 +151,7 @@ struct xlat_exp {
 struct xlat_exp_head {
 	char const	*fmt;		//!< The original format string (a talloced buffer).
 	xlat_flags_t	flags;		//!< Flags that control resolution and evaluation.
-	xlat_exp_t	*next;		//!< Next in the list.
+	fr_dlist_head_t	dlist;
 };
 
 
@@ -321,10 +321,10 @@ int		xlat_register_expressions(void);
 /*
  *	xlat_tokenize.c
  */
-int		xlat_tokenize_expansion(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
+int		xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 					tmpl_attr_rules_t const *t_rules);
 
-int		xlat_tokenize_function_args(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
+int		xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 					    tmpl_attr_rules_t const *rules);
 
 ssize_t		xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t const *node, fr_sbuff_escape_rules_t const *e_rules);
@@ -333,9 +333,9 @@ ssize_t		xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_
 
 static inline xlat_exp_t *xlat_exp_head(xlat_exp_head_t const *head)
 {
-	if (!head || !head->next) return NULL;
+	if (!head) return NULL;
 
-	return UNCONST(xlat_exp_t *, (head->next));
+	return fr_dlist_head(&head->dlist);
 }
 
 /** Iterate over the contents of a list, only one level
@@ -344,19 +344,28 @@ static inline xlat_exp_t *xlat_exp_head(xlat_exp_head_t const *head)
  * @param[in] _iter		Name of iteration variable.
  *				Will be declared in the scope of the loop.
  */
-#define xlat_exp_foreach(_list_head, _iter) \
-	for (xlat_exp_t *_iter = xlat_exp_head(_list_head); _iter; _iter = _iter->next)
+#define xlat_exp_foreach(_list_head, _iter) fr_dlist_foreach(&((_list_head)->dlist), xlat_exp_t, _iter)
 
-static inline xlat_exp_t *xlat_exp_next(UNUSED xlat_exp_head_t const *head, xlat_exp_t const *item)
+static inline xlat_exp_t *xlat_exp_next(xlat_exp_head_t const *head, xlat_exp_t const *node)
 {
-	if (!item->next) return NULL;
+	return fr_dlist_next(&head->dlist, node);
+}
 
-	return UNCONST(xlat_exp_t *, item->next);
+static inline int xlat_exp_insert_tail(xlat_exp_head_t *head, xlat_exp_t *node)
+{
+	xlat_flags_merge(&head->flags, &node->flags);
+	return fr_dlist_insert_tail(&head->dlist, node);
 }
 
 static inline xlat_exp_head_t *xlat_exp_head_alloc(TALLOC_CTX *ctx)
 {
-	return talloc_zero(ctx, xlat_exp_head_t);
+	xlat_exp_head_t *head;
+
+	head = talloc_zero(ctx, xlat_exp_head_t);
+	if (!head) return NULL;
+
+	fr_dlist_init(&head->dlist, xlat_exp_t, entry);
+	return head;
 }
 
 #ifdef __cplusplus

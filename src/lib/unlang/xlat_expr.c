@@ -97,6 +97,8 @@ static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node,
 	size_t	at_in = fr_sbuff_used_total(out);
 	xlat_exp_t *child = xlat_exp_head(node->call.args);
 
+	fr_assert(child != NULL);
+
 	FR_SBUFF_IN_CHAR_RETURN(out, '(');
 	xlat_print_node(out, node->call.args, child, e_rules); /* prints a space after the first argument */
 
@@ -106,7 +108,10 @@ static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node,
 	 */
 	FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
 	FR_SBUFF_IN_CHAR_RETURN(out, ' ');
+
 	child = xlat_exp_next(node->call.args, child);
+	fr_assert(child != NULL);
+
 	xlat_print_node(out, node->call.args, child, e_rules);
 
 	FR_SBUFF_IN_CHAR_RETURN(out, ')');
@@ -116,7 +121,7 @@ static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node,
 
 static void xlat_func_append_arg(xlat_exp_t *head, xlat_exp_t *node)
 {
-	xlat_exp_t *group, **tail;
+	xlat_exp_t *group;
 
 	fr_assert(head->type == XLAT_FUNC);
 	fr_assert(node->type != XLAT_GROUP);
@@ -128,16 +133,12 @@ static void xlat_func_append_arg(xlat_exp_t *head, xlat_exp_t *node)
 	group->fmt = node->fmt;	/* not entirely correct, but good enough for now */
 
 	MEM(group->group = xlat_exp_head_alloc(group));
-	group->group->next = talloc_steal(group->group, node);
+	talloc_steal(group->group, node);
+	xlat_exp_insert_tail(group->group, node);
 
-	group->flags = node->flags;
-	xlat_flags_merge(&head->call.args->flags, &group->flags);
-	xlat_flags_merge(&head->flags, &group->flags);
+	xlat_exp_insert_tail(head->call.args, group);
 
-	tail = &head->call.args->next;
-	while (*tail) tail = &((*tail)->next);
-
-	*tail = group;
+	xlat_flags_merge(&head->flags, &head->call.args->flags);
 }
 
 
@@ -764,8 +765,9 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 			      fr_sbuff_parse_rules_t const *bracket_rules)
 {
 	ssize_t			slen;
-	xlat_exp_t		*unary = NULL;
+	xlat_exp_t		*node, *unary = NULL;
 	xlat_t			*func = NULL;
+	char const		*fmt = NULL;
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 
 	XLAT_DEBUG("UNARY <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
@@ -776,10 +778,12 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 *	we allocate.
 	 */
 	if (fr_sbuff_next_if_char(&our_in, '!')) { /* unary not */
+		fmt = "!";
 		func = xlat_func_find("unary_not", 9);
 		fr_assert(func != NULL);
 	}
 	else if (fr_sbuff_next_if_char(&our_in, '-')) { /* unary minus */
+		fmt = "-";
 		func = xlat_func_find("unary_minus", 11);
 		fr_assert(func != NULL);
 	}
@@ -797,23 +801,29 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	
 	MEM(unary = xlat_exp_alloc(head, XLAT_FUNC, func->name, strlen(func->name)));
 	MEM(unary->call.args = xlat_exp_head_alloc(unary));
+	unary->fmt = fmt;
 	unary->call.func = func;
 	unary->flags = func->flags;
 
-	slen = tokenize_field(unary->call.args, &unary->call.args->next, &our_in, p_rules, t_rules, bracket_rules);
+	slen = tokenize_field(unary->call.args, &node, &our_in, p_rules, t_rules, bracket_rules);
 	if (slen <= 0) {
 		talloc_free(unary);
 		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
 	}
 
-	if (!xlat_exp_head(unary->call.args)) {
+	if (!node) {
 		fr_strerror_const("Empty expression is invalid");
 		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, -slen);
 	}
 
-	*out = unary;
-	xlat_flags_merge(&head->flags, &unary->flags);
+	xlat_exp_insert_tail(unary->call.args, node);
+	xlat_flags_merge(&unary->flags, &unary->call.args->flags);
 
+	/*
+	 *	Don't add it to head->flags, that will be done when it's actually inserted.
+	 */
+
+	*out = unary;
 	return fr_sbuff_set(in, &our_in);
 }
 
@@ -979,7 +989,6 @@ done:
 #endif
 
 	*out = node;
-	xlat_flags_merge(&head->flags, &node->flags);
 
 	return fr_sbuff_set(in, &our_in);
 }
@@ -1023,6 +1032,9 @@ static size_t const expr_assignment_op_table_len = NUM_ELEMENTS(expr_assignment_
  *	(EXPR)
  *	!EXPR
  *	A OP B
+ *
+ *	If "out" is NULL then the expression is added to "head".
+ *	Otherwise, it's returned to the caller.
  */
 static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
@@ -1060,7 +1072,13 @@ redo:
 	 */
 	if (fr_sbuff_extend(&our_in) == 0) {
 	done:
-		*out = lhs;
+
+		if (!out) {
+			xlat_exp_insert_tail(head, lhs);
+		} else {
+			*out = lhs;
+		}
+
 		return fr_sbuff_set(in, &our_in);
 	}
 
@@ -1181,8 +1199,6 @@ redo:
 	}
 
 	/*
-	 *	@todo - purify the node.
-	 *
 	 *	@todo - also if the have differenting data types on the LHS and RHS, and one of them is an
 	 *	XLAT_BOX, then try to upcast the XLAT_BOX to the destination data type before returning.  This
 	 *	optimization minimizes the amount of run-time work we have to do.
@@ -1199,6 +1215,8 @@ redo:
 
 	xlat_func_append_arg(node, lhs);
 	xlat_func_append_arg(node, rhs);
+
+	fr_assert(xlat_exp_head(node->call.args) != NULL);
 
 	lhs = node;
 	goto redo;
@@ -1268,7 +1286,7 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuf
 
 	MEM(head = xlat_exp_head_alloc(ctx));
 
-	slen = tokenize_expression(head, &head->next, in, terminal_rules, t_rules, T_INVALID, bracket_rules);
+	slen = tokenize_expression(head, NULL, in, terminal_rules, t_rules, T_INVALID, bracket_rules);
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
 
@@ -1349,7 +1367,7 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **ou
 
 	MEM(head = xlat_exp_head_alloc(ctx));
 
-	slen = tokenize_expression(head, &head->next, in, terminal_rules, &my_rules, T_INVALID, bracket_rules);
+	slen = tokenize_expression(head, NULL, in, terminal_rules, &my_rules, T_INVALID, bracket_rules);
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
 
