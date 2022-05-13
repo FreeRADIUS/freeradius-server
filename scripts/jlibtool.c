@@ -1640,10 +1640,12 @@ static char *load_noinstall_path(char const *arg, int pathlen)
 
 	if (target->has_realpath) {
 		expanded_path = lt_malloc(PATH_MAX);
-		expanded_path = realpath(newarg, expanded_path);
 		/* Uh, oh.  There was an error.  Fall back on our first guess. */
-		if (!expanded_path) {
+		if (!realpath(newarg, expanded_path)) {
+			lt_const_free(expanded_path);
 			expanded_path = newarg;
+		} else {
+			lt_const_free(newarg);
 		}
 	} else {
 		/* We might get ../ or something goofy.  Oh, well. */
