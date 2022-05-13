@@ -57,12 +57,11 @@ static int _mod_conn_free(rlm_couchbase_handle_t *chandle)
  *
  * Release the underlying mod_build_api_opts() objects
  *
- * @param  instance The module instance.
+ * @param  inst    The module instance.
  * @return 0.
  */
-int mod_free_api_opts(void *instance)
+int mod_free_api_opts(rlm_couchbase_t *inst)
 {
-	rlm_couchbase_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_couchbase_t);	/* our module instance */
 	couchbase_opts_t *opts = inst->api_opts;
 
 	if (!opts) return 0;
@@ -86,14 +85,13 @@ int mod_free_api_opts(void *instance)
  * as a couchbase_opts_t object (key/value list).
  *
  * @param  conf     Configuration list.
- * @param  instance The module instance.
+ * @param  inst     The module instance.
  * @return
  *	 - 0 on success.
  *	- -1 on failure.
  */
-int mod_build_api_opts(CONF_SECTION *conf, void *instance)
+int mod_build_api_opts(CONF_SECTION *conf, rlm_couchbase_t *inst)
 {
-	rlm_couchbase_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_couchbase_t);	/* our module instance */
 	CONF_SECTION *cs;                	/* module config list */
 	CONF_ITEM *ci;                   	/* config item */
 	CONF_PAIR *cp;                   	/* config pair */
@@ -155,7 +153,7 @@ int mod_build_api_opts(CONF_SECTION *conf, void *instance)
  */
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
-	rlm_couchbase_t const *inst = talloc_get_type_abort_const(instance, rlm_couchbase_t);           /* module instance pointer */
+	rlm_couchbase_t	*inst = talloc_get_type_abort(instance, rlm_couchbase_t); /* module instance pointer */
 	rlm_couchbase_handle_t *chandle = NULL;     	  /* connection handle pointer */
 	cookie_t *cookie = NULL;                          /* couchbase cookie */
 	lcb_t cb_inst;                                    /* couchbase connection instance */
@@ -201,15 +199,15 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
  * a cluster statistics report.  Mark the connection as failed if the request
  * returns anything other than success.
  *
- * @param  instance The module instance (currently unused).
- * @param  handle   The connection handle.
+ * @param  opaque       The module instance (currently unused).
+ * @param  connection   The connection handle.
  * @return
  *	- 0 on success (alive).
  *	- -1 on failure (unavailable).
  */
-int mod_conn_alive(UNUSED void *instance, void *handle)
+int mod_conn_alive(UNUSED void *opaque, void *connection)
 {
-	rlm_couchbase_handle_t *chandle = handle;   /* connection handle pointer */
+	rlm_couchbase_handle_t *chandle = connection;   /* connection handle pointer */
 	lcb_t cb_inst = chandle->handle;            /* couchbase instance */
 	lcb_error_t cb_error = LCB_SUCCESS;         /* couchbase error status */
 
@@ -231,14 +229,13 @@ int mod_conn_alive(UNUSED void *instance, void *handle)
  * used to lookup and map attributes for all incoming accounting requests.
  *
  * @param  conf     Configuration list.
- * @param  instance The module instance.
+ * @param  inst     The module instance.
  * @return
  *	 - 0 on success.
  *	- -1 on failure.
  */
-int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
+int mod_build_attribute_element_map(CONF_SECTION *conf, rlm_couchbase_t *inst)
 {
-	rlm_couchbase_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_couchbase_t);   /* our module instance */
 	CONF_SECTION *cs;                   /* module config list */
 	CONF_ITEM *ci;                      /* config item */
 	CONF_PAIR *cp;                      /* conig pair */
@@ -484,8 +481,10 @@ int mod_json_object_to_map(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *reques
 			if (map_afrom_value_box(ctx, &map,
 						attr_name, T_BARE_WORD,
 						&(tmpl_rules_t){
-							.dict_def = request->dict,
-							.list_def = list,
+							.attr = {
+								.dict_def = request->dict,
+								.list_def = list
+							}
 						},
 						op,
 						&tmp, true) < 0) {
@@ -629,7 +628,7 @@ int mod_ensure_start_timestamp(json_object *json, fr_pair_list_t *vps)
 	/* get current event timestamp */
 	if ((vp = fr_pair_find_by_da_idx(vps, attr_event_timestamp, 0)) != NULL) {
 		/* get seconds value from attribute */
-		ts = fr_time_to_sec(vp->vp_date);
+		ts = fr_unix_time_to_sec(vp->vp_date);
 	} else {
 		/* debugging */
 		DEBUG("failed to find event timestamp in current request");

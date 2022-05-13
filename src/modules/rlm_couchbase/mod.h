@@ -74,11 +74,11 @@ typedef struct {
 } rlm_couchbase_handle_t;
 
 /* define functions */
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);
+void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, fr_time_delta_t timeout);
 
-int mod_conn_alive(UNUSED void *instance, void *handle);
+int mod_conn_alive(void *opaque, void *connection);
 
-int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance);
+int mod_build_attribute_element_map(CONF_SECTION *conf, rlm_couchbase_t *inst);
 
 int mod_attribute_to_element(const char *name, json_object *map, void *buf);
 
@@ -92,7 +92,7 @@ int mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map, json_o
 
 int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SECTION *map);
 
-int mod_build_api_opts(CONF_SECTION *conf, void *instance);
+int mod_build_api_opts(CONF_SECTION *conf, rlm_couchbase_t *inst);
 
-int mod_free_api_opts(void *instance);
+int mod_free_api_opts(rlm_couchbase_t *inst);
 

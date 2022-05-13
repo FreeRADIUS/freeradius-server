@@ -26,7 +26,7 @@
 
 RCSID("$Id$")
 
-#define LOG_PREFIX inst->name
+#define LOG_PREFIX "couchbase - "
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/map.h>
@@ -149,11 +149,10 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 		TALLOC_CTX	*pool = talloc_pool(request, 1024);	/* We need to do lots of allocs */
 		fr_dcursor_t	maps;
 		map_t		*map = NULL;
-		map_list_t	map_head;
+		fr_dlist_head_t	map_head;
 		vp_list_mod_t	*vlm;
 		fr_dlist_head_t	vlm_head;
 
-		map_list_init(&map_head);
 		fr_dcursor_init(&maps, &map_head);
 
 		/*
@@ -419,10 +418,10 @@ finish:
  *
  * Detach the module instance and free any allocated resources.
  *
- * @param  instance The module instance.
+ * @param  mctx The module instance.
  * @return Returns 0 (success) in all conditions.
  */
-static int mod_detach(void *instance)
+static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_couchbase_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_couchbase_t);
 
@@ -437,8 +436,7 @@ static int mod_detach(void *instance)
  *
  * Intialize the module and create the initial Couchbase connection pool.
  *
- * @param  conf     The module configuration.
- * @param  instance The module instance.
+ * @param  mctx     The module instance.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -446,6 +444,7 @@ static int mod_detach(void *instance)
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_couchbase_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_couchbase_t);   /* our module instance */
+	CONF_SECTION	*conf = mctx->inst->conf;
 
 	{
 		char *server, *p;
@@ -556,7 +555,7 @@ module_rlm_t rlm_couchbase = {
 		.onload		= mod_load,
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach
-	}
+	},
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_ACCOUNTING]	= mod_accounting,
