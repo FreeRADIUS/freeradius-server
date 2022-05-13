@@ -69,7 +69,7 @@ void	fr_md5_transform(uint32_t state[4], uint8_t const block[MD5_BLOCK_LENGTH])
 	CC_BOUNDED(__size__, 1, 4, 4)
 	CC_BOUNDED(__minbytes__, 2, MD5_BLOCK_LENGTH);
 #  define fr_md5_destroy(_x)
-#  define fr_md5_copy(_dst, _src) _dst = _src
+#  define fr_md5_copy(_dst, _src) *(_dst) = *(_src)
 #else  /* HAVE_OPENSSL_MD5_H */
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 USES_APPLE_DEPRECATED_API
@@ -78,29 +78,73 @@ USES_APPLE_DEPRECATED_API
 #  define fr_md5_update		MD5_Update
 #  define fr_md5_final		MD5_Final
 #  define fr_md5_transform	MD5_Transform
-#  define fr_md5_copy(_dst, _src) _dst = _src
+#  define fr_md5_copy(_dst, _src) *(_dst) = *(_src)
 #  define fr_md5_destroy(_x)
 #else
 #include <openssl/evp.h>
+#include <openssl/provider.h>
 
 /*
  *	Wrappers for OpenSSL3, so we don't have to butcher the rest of
  *	the code too much.
  */
-typedef EVP_MD_CTX* FR_MD5_CTX;
+typedef struct FR_MD5_CTX {
+	EVP_MD_CTX	*ctx;
+	EVP_MD const  	*md;
+	unsigned int	len;
 
-#  define fr_md5_init(_ctx) \
-	do { \
-		*_ctx = EVP_MD_CTX_new(); \
-		EVP_MD_CTX_set_flags(*_ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW); \
-		EVP_DigestInit_ex(*_ctx, EVP_md5(), NULL); \
-	} while (0)
-#  define fr_md5_update(_ctx, _str, _len) \
-        EVP_DigestUpdate(*_ctx, _str, _len)
-#  define fr_md5_final(_out, _ctx) \
-	EVP_DigestFinal_ex(*_ctx, _out, NULL)
-#  define fr_md5_destroy(_ctx)	EVP_MD_CTX_destroy(*_ctx)
-#  define fr_md5_copy(_dst, _src) EVP_MD_CTX_copy_ex(_dst, _src)
+	OSSL_PROVIDER	*default_provider;
+	OSSL_PROVIDER	*legacy_provider;
+	OSSL_LIB_CTX	*libctx;
+} FR_MD5_CTX;
+
+static inline void fr_md5_init(FR_MD5_CTX *ctx)
+{
+	ctx->ctx = EVP_MD_CTX_new();
+
+	if (EVP_default_properties_is_fips_enabled(NULL)) {
+		ctx->libctx = OSSL_LIB_CTX_new();
+		ctx->default_provider = OSSL_PROVIDER_load(ctx->libctx, "default");
+		ctx->md = EVP_MD_fetch(ctx->libctx, "MD5", NULL);
+	} else {
+		ctx->md = EVP_md5();
+	}
+
+	ctx->len = MD5_DIGEST_LENGTH;
+
+	EVP_DigestInit_ex(ctx->ctx, ctx->md, NULL);
+}
+
+static inline void fr_md5_update(FR_MD5_CTX *ctx, uint8_t const *in, size_t inlen)
+{
+        EVP_DigestUpdate(ctx->ctx, in, inlen);
+}
+
+static inline void fr_md5_final(uint8_t out[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
+{
+	EVP_DigestFinal_ex(ctx->ctx, out, &(ctx->len));
+}
+
+static inline void fr_md5_destroy(FR_MD5_CTX *ctx)
+{
+	if (EVP_default_properties_is_fips_enabled(NULL) && ctx->default_provider) {
+		EVP_MD *md;
+
+		OSSL_PROVIDER_unload(ctx->default_provider);
+		OSSL_LIB_CTX_free(ctx->libctx);
+
+		memcpy(&md, &ctx->md, sizeof(md)); /* const issues */
+		EVP_MD_free(md);
+	}
+
+	EVP_MD_CTX_destroy(ctx->ctx);
+}
+
+static inline void fr_md5_copy(FR_MD5_CTX *dst, FR_MD5_CTX *src)
+{
+	// other fields, too
+	EVP_MD_CTX_copy_ex(dst->ctx, src->ctx);
+}
 #endif	/* OPENSSL3 */
 #endif	/* HAVE_OPENSSL_MD5_H */
 

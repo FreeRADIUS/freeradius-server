@@ -40,7 +40,7 @@ extern "C" {
 
 #ifndef HAVE_OPENSSL_MD4_H
 /*
- * The MD5 code used here and in md4.c was originally retrieved from:
+ * The MD4 code used here and in md4.c was originally retrieved from:
  *   http://www.openbsd.org/cgi-bin/cvsweb/src/include/md4.h?rev=1.12
  *
  * This code implements the MD4 message-digest algorithm.
@@ -83,6 +83,7 @@ USES_APPLE_DEPRECATED_API
 #  define fr_md4_destroy(_x)
 #else
 #include <openssl/evp.h>
+#include <openssl/provider.h>
 
 /*
  *	Wrappers for OpenSSL3, so we don't have to butcher the rest of
@@ -90,18 +91,28 @@ USES_APPLE_DEPRECATED_API
  */
 typedef struct FR_MD4_CTX {
 	EVP_MD_CTX	*ctx;
-	EVP_MD const   	*md;
+	EVP_MD const  	*md;
 	unsigned int	len;
+
+	OSSL_PROVIDER	*default_provider;
+	OSSL_PROVIDER	*legacy_provider;
+	OSSL_LIB_CTX	*libctx;
 } FR_MD4_CTX;
 
 static inline void fr_md4_init(FR_MD4_CTX *ctx)
 {
 	ctx->ctx = EVP_MD_CTX_new();
-//	ctx->md = EVP_MD_fetch(NULL, "MD4", "provider=legacy");
-	ctx->md = EVP_md4();
+
+	if (EVP_default_properties_is_fips_enabled(NULL)) {
+		ctx->libctx = OSSL_LIB_CTX_new();
+		ctx->legacy_provider = OSSL_PROVIDER_load(ctx->libctx, "legacy");
+		ctx->md = EVP_MD_fetch(ctx->libctx, "MD4", NULL);
+	} else {
+		ctx->md = EVP_md4();
+	}
+
 	ctx->len = MD4_DIGEST_LENGTH;
 
-	EVP_MD_CTX_set_flags(ctx->ctx, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
 	EVP_DigestInit_ex(ctx->ctx, ctx->md, NULL);
 }
 
@@ -117,8 +128,16 @@ static inline void fr_md4_final(uint8_t out[MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
 
 static inline void fr_md4_destroy(FR_MD4_CTX *ctx)
 {
+	if (EVP_default_properties_is_fips_enabled(NULL) && ctx->legacy_provider) {
+		EVP_MD *md;
+
+		OSSL_PROVIDER_unload(ctx->legacy_provider);
+		OSSL_LIB_CTX_free(ctx->libctx);
+
+		memcpy(&md, &ctx->md, sizeof(md)); /* const issues */
+		EVP_MD_free(md);
+	}
 	EVP_MD_CTX_destroy(ctx->ctx);
-//	EVP_MD_free(ctx->md);
 }
 
 #endif	/* OPENSSL3 */
