@@ -185,6 +185,19 @@ dnl #
 AC_CANONICAL_SYSTEM
 
 dnl #
+dnl #  clang etc. on OSX no longer searches the default paths for things,
+dnl #  so we have to add them back in.
+dnl #
+case "$host" in
+  *-darwin*)
+    CFLAGS="$CFLAGS -DDARWIN"
+    LDFLAGS="-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib $LDFLAGS"
+    LIBS="-F /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/ -framework DirectoryService $LIBS"
+    ;;
+esac
+
+
+dnl #
 dnl #  Check for GNU cc
 dnl #
 AC_PROG_CC
@@ -1258,13 +1271,13 @@ dnl #
 dnl #  Interix requires us to set -D_ALL_SOURCE, otherwise
 dnl #  getopt will be #included, but won't link.  <sigh>
 dnl #
+dnl #  On the other hand, it's 20222.  Interix has likely been dead for a decade. :(
+dnl #
 case "$host" in
   *-interix*)
     CFLAGS="$CFLAGS -D_ALL_SOURCE"
     ;;
   *-darwin*)
-    CFLAGS="$CFLAGS -DDARWIN"
-    LIBS="-framework DirectoryService $LIBS"
     AC_DEFINE([__APPLE_USE_RFC_3542], 1, [Force OSX >= 10.7 Lion to use RFC2292 IPv6 socket options])
     ;;
 esac
