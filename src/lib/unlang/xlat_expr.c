@@ -765,7 +765,7 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 			      fr_sbuff_parse_rules_t const *bracket_rules)
 {
 	ssize_t			slen;
-	xlat_exp_t		*node, *unary = NULL;
+	xlat_exp_t		*node = NULL, *unary = NULL;
 	xlat_t			*func = NULL;
 	char const		*fmt = NULL;
 	fr_sbuff_t		our_in = FR_SBUFF(in);
