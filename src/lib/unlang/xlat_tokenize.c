@@ -1784,7 +1784,7 @@ tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t *head)
 	tmpl_t *vpt;
 	xlat_exp_t *node = xlat_exp_head(head);
 
-	if (node || (node->type != XLAT_TMPL) || !tmpl_is_attr(node->vpt)) return NULL;
+	if (!node || (node->type != XLAT_TMPL) || !tmpl_is_attr(node->vpt)) return NULL;
 
 	/*
 	 *   Concat means something completely different as an attribute reference
