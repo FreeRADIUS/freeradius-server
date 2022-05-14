@@ -219,6 +219,18 @@ dnl #
 AC_CANONICAL_SYSTEM
 AC_SUBST(TARGET_SYSTEM, "$target")
 
+dnl #
+dnl #  clang etc. on OSX no longer searches the default paths for things,
+dnl #  so we have to add them back in.
+dnl #
+case "$host" in
+  *-darwin*)
+    CFLAGS="$CFLAGS -DDARWIN"
+    LDFLAGS="-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib $LDFLAGS"
+    LIBS="-F /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/ -framework DirectoryService $LIBS"
+    ;;
+esac
+
 case "$target" in
   *-darwin*)
     library_ext="dylib"
@@ -1228,9 +1240,6 @@ case "$target" in
     CFLAGS="$CFLAGS -D_ALL_SOURCE"
     ;;
   *-darwin*)
-    CFLAGS="$CFLAGS -DDARWIN -mmacosx-version-min=$(sw_vers -productVersion)"
-    LDFLAGS="$LDFLAGS -mmacosx-version-min=$(sw_vers -productVersion)"
-    LIBS="-framework DirectoryService $LIBS"
     AC_DEFINE([__APPLE_USE_RFC_3542], 1, [Force OSX >= 10.7 Lion to use RFC2292 IPv6 socket options])
     ;;
 esac
