@@ -60,6 +60,11 @@ ifeq "${LIBTOOL}" "JLIBTOOL"
         JLIBTOOL_DEFS += -DTARGET_RANLIB=\"${TARGET_RANLIB}\"
     endif
 
+    # clang on OSX sometimes doesn't know where things are. <sigh>
+    ifeq "$(findstring darwin,$(TARGET_SYSTEM))" "darwin"
+	JLIBTOOL_DEFS += -L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
+    endif
+
     # Add a rule to build jlibtool BEFORE any other targets.  This
     # means that we can use it to build the later targets.
     all install: ${JLIBTOOL}

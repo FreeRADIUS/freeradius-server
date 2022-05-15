@@ -73,7 +73,7 @@ if test x$with_[]modname != xno; then
     if test "x$ac_cv_header_membership_h" = "xyes"; then
         AC_DEFINE([HAVE_MEMBERSHIP_H],[1],[Build with Apple Open Directory support])
         mschap_sources="$mschap_sources opendir.c"
-        mod_ldflags="-framework DirectoryService"
+        mod_ldflags="-F /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks -framework DirectoryService"
     fi
 
     smart_try_dir="$winbind_include_dir /usr/include/samba-4.0"
