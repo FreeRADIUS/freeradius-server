@@ -3053,7 +3053,7 @@ smart_prefix=
 $as_echo "#define HAVE_MEMBERSHIP_H 1" >>confdefs.h
 
         mschap_sources="$mschap_sources opendir.c"
-        mod_ldflags="-framework DirectoryService"
+        mod_ldflags="-F /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks -framework DirectoryService"
     fi
 
     smart_try_dir="$winbind_include_dir /usr/include/samba-4.0"
