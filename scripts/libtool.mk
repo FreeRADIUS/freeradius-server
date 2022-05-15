@@ -27,6 +27,11 @@ endif
 # Add these rules only when LIBTOOL is being used.
 ifneq "${LIBTOOL}" ""
 
+    # clang on OSX sometimes doesn't know where things are. <sigh>
+    ifeq "$(findstring darwin,$(HOSTINFO))" "darwin"
+	JLIBTOOL_DEFS += -L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib
+    endif
+
 # JLIBTOOL - check if we're using the local (fast) jlibtool, rather
 #   than the GNU (slow) libtool shell script.  If so, add rules
 #   to build it.
@@ -44,7 +49,7 @@ ifeq "${LIBTOOL}" "JLIBTOOL"
     ${JLIBTOOL}: ${top_makedir}/jlibtool.c
 	$(Q)mkdir -p $(dir $@)
 	$(Q)echo CC jlibtool.c
-	$(Q)${CC} $< -o $@
+	$(Q)${CC} $< -o $@ ${JLIBTOOL_DEFS}
 
     clean: jlibtool_clean
 
