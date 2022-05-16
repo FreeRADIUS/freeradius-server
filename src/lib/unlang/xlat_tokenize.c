@@ -1886,7 +1886,7 @@ int xlat_copy(TALLOC_CTX *ctx, xlat_exp_head_t **out, xlat_exp_head_t const *in)
 		return 0;
 	}
 
-	head = xlat_exp_head_alloc(ctx);
+	MEM(head = xlat_exp_head_alloc(ctx));
 	head->flags = in->flags;
 
 	/*
