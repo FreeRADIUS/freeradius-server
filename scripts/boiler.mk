@@ -38,10 +38,10 @@ else
     Q=
 endif
 
-ifeq "${HOST_CC}" ""
-   HOST_CC := $(shell which cc)
-   ifeq "${HOST_CC}" ""
-     HOST_CC := ${CC}
+ifeq "${BUILD_CC}" ""
+   BUILD_CC := $(shell which cc)
+   ifeq "${BUILD_CC}" ""
+     BUILD_CC := ${CC}
    endif
 endif
 

@@ -694,13 +694,13 @@ MAKE
 GMAKE
 clang_path
 TARGET_RANLIB
-HOST_RANLIB
+BUILD_RANLIB
 RANLIB
 EGREP
 GREP
 CPP
 TARGET_CC
-HOST_CC
+BUILD_CC
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -708,8 +708,12 @@ CPPFLAGS
 LDFLAGS
 CFLAGS
 CC
-LIBRARY_EXT
+BUILD_EXE_EXT
+BUILD_LIB_EXT
+TARGET_EXE_EXT
+TARGET_LIB_EXT
 TARGET_SYSTEM
+BUILD_SYSTEM
 target_os
 target_vendor
 target_cpu
@@ -3557,10 +3561,12 @@ test -n "$target_alias" &&
     NONENONEs,x,x, &&
   program_prefix=${target_alias}-
 
+BUILD_SYSTEM="$build"
+
 TARGET_SYSTEM="$target"
 
 
-case "$host" in
+case "$target" in
   *-darwin*)
     CFLAGS="$CFLAGS -DDARWIN -mmacosx-version-min=$(sw_vers -productVersion)"
     LDFLAGS="$LDFLAGS -L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib -mmacosx-version-min=$(sw_vers -productVersion)"
@@ -3569,17 +3575,40 @@ case "$host" in
 esac
 
 case "$target" in
+  *wasm*)
+    library_ext="wasm"
+    exe_ext="js"
+    ;;
+
   *-darwin*)
     library_ext="dylib"
+    exe_ext=""
     ;;
 
   *)
     library_ext="so"
+    exe_ext=""
     ;;
 esac
+TARGET_LIB_EXT="$library_ext"
 
-LIBRARY_EXT="$library_ext"
+TARGET_EXE_EXT="$exe_ext"
 
+
+case "$build" in
+  *-darwin*)
+    library_ext="dylib"
+    exe_ext=""
+    ;;
+
+  *)
+    library_ext="so"
+    exe_ext=""
+    ;;
+esac
+BUILD_LIB_EXT="$library_ext"
+
+BUILD_EXE_EXT="$exe_ext"
 
 
 if test "x$TARGET_CC" != "x"; then
@@ -4582,8 +4611,8 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-if test "x$HOST_CC" = "x"; then
-  HOST_CC="${CC}"
+if test "x$BUILD_CC" = "x"; then
+  BUILD_CC="${CC}"
 fi
 
 if test "x$TARGET_CC" = "x"; then
@@ -5213,8 +5242,8 @@ else
 fi
 
 
-if test "x$HOST_RANLIB" = "x"; then
-  HOST_RANLIB="${RANLIB}"
+if test "x$BUILD_RANLIB" = "x"; then
+  BUILD_RANLIB="${RANLIB}"
 fi
 
 if test "x$TARGET_RANLIB" = "x"; then

@@ -45,8 +45,8 @@ typedef struct {
 	char const			*ranlib;	//!< Archiver/indexer.
 } toolset_t;
 
-#ifndef HOST_CC
-#  define HOST_CC 			"clang"
+#ifndef BUILD_CC
+#  define BUILD_CC 			"clang"
 #endif
 
 #ifndef HOST_CXX
@@ -61,14 +61,14 @@ typedef struct {
 #  define HOST_LINK_CXX			"g++"
 #endif
 
-#ifndef HOST_RANLIB
+#ifndef BUILD_RANLIB
 #  if !defined(__EMX__) && !defined(_OSD_POSIX)
-#    define HOST_RANLIB			"ranlib"
+#    define BUILD_RANLIB			"ranlib"
 #  endif
 #endif
 
 #ifndef TARGET_CC
-#  define TARGET_CC			HOST_CC
+#  define TARGET_CC			BUILD_CC
 #endif
 
 #ifndef TARGET_CXX
@@ -88,12 +88,12 @@ typedef struct {
 #endif
 
 static const toolset_t toolset_host = {
-	.cc				= HOST_CC,
+	.cc				= BUILD_CC,
 	.cxx				= HOST_CXX,
 	.link_c				= HOST_LINK_C,
 	.link_cxx			= HOST_LINK_CXX,
-#ifdef HOST_RANLIB
-	.ranlib				= HOST_RANLIB
+#ifdef BUILD_RANLIB
+	.ranlib				= BUILD_RANLIB
 #endif
 };
 
@@ -336,7 +336,6 @@ static const target_t target_emscripten = {
 	.librarian			= "emar",
 	.librarian_opts			= "cr",
 	.pic_flag			= "-fPIC",
-	.rpath				= "-rpath",
 	.shared_opts			= "-shared",
 	.module_opts			= "-shared",
 	.linker_flag_prefix		= "-Wl,",

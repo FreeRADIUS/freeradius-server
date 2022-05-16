@@ -216,14 +216,19 @@ dnl #############################################################
 dnl #
 dnl #  Get system information
 dnl #
-AC_CANONICAL_SYSTEM
+dnl #  AC_CANONICAL_SYSTEM is obsolete, AC_CANONICAL_TARGET figures
+dnl #  out build and host as well.
+dnl #
+AC_CANONICAL_TARGET
+
+AC_SUBST(BUILD_SYSTEM, "$build")
 AC_SUBST(TARGET_SYSTEM, "$target")
 
 dnl #
 dnl #  clang etc. on OSX no longer searches the default paths for things,
 dnl #  so we have to add them back in.
 dnl #
-case "$host" in
+case "$target" in
   *-darwin*)
     CFLAGS="$CFLAGS -DDARWIN -mmacosx-version-min=$(sw_vers -productVersion)"
     LDFLAGS="$LDFLAGS -L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib -mmacosx-version-min=$(sw_vers -productVersion)"
@@ -231,22 +236,51 @@ case "$host" in
     ;;
 esac
 
+dnl #
+dnl #  Figure out executable extensions and library extensions
+dnl #  for our build target.
+dnl #
 case "$target" in
+  *wasm*)
+    library_ext="wasm"
+    exe_ext="js"
+    ;;
+
   *-darwin*)
     library_ext="dylib"
+    exe_ext=""
     ;;
 
   *)
     library_ext="so"
+    exe_ext=""
     ;;
 esac
+AC_SUBST(TARGET_LIB_EXT, "$library_ext")
+AC_SUBST(TARGET_EXE_EXT, "$exe_ext")
 
-AC_SUBST(LIBRARY_EXT, "$library_ext")
+dnl #
+dnl #  Figure out executable extensions and library extensions
+dnl #  for the build system, i.e. binaries we create to help
+dnl #  with the build process.
+dnl #
+case "$build" in
+  *-darwin*)
+    library_ext="dylib"
+    exe_ext=""
+    ;;
 
+  *)
+    library_ext="so"
+    exe_ext=""
+    ;;
+esac
+AC_SUBST(BUILD_LIB_EXT, "$library_ext")
+AC_SUBST(BUILD_EXE_EXT, "$exe_ext")
 
 dnl #
 dnl #  If TARGET_CC is set, then that's the CC we use for the rest of the tests.
-dnl #  We don't check HOST_CC for anything as it's only used to build our make libs
+dnl #  We don't check BUILD_CC for anything as it's only used to build our make libs
 dnl #  and jlibtool.
 dnl #
 if test "x$TARGET_CC" != "x"; then
@@ -256,11 +290,11 @@ fi
 AC_PROG_CC
 
 dnl #
-dnl #  If HOST_CC (the build system compiler) isn't set it defaults to the compiler
+dnl #  If BUILD_CC (the build system compiler) isn't set it defaults to the compiler
 dnl #  we found.
 dnl #
-if test "x$HOST_CC" = "x"; then
-  HOST_CC="${CC}"
+if test "x$BUILD_CC" = "x"; then
+  BUILD_CC="${CC}"
 fi
 
 dnl #
@@ -271,7 +305,7 @@ if test "x$TARGET_CC" = "x"; then
   TARGET_CC="${CC}"
 fi
 
-AC_SUBST(HOST_CC)
+AC_SUBST(BUILD_CC)
 AC_SUBST(TARGET_CC)
 
 dnl #
@@ -284,15 +318,15 @@ AC_PROG_GCC_TRADITIONAL
 AC_PROG_CC_SUNPRO
 AC_PROG_RANLIB
 
-if test "x$HOST_RANLIB" = "x"; then
-  HOST_RANLIB="${RANLIB}"
+if test "x$BUILD_RANLIB" = "x"; then
+  BUILD_RANLIB="${RANLIB}"
 fi
 
 if test "x$TARGET_RANLIB" = "x"; then
   TARGET_RANLIB="${RANLIB}"
 fi
 
-AC_SUBST(HOST_RANLIB)
+AC_SUBST(BUILD_RANLIB)
 AC_SUBST(TARGET_RANLIB)
 
 dnl #
