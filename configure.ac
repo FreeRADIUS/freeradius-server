@@ -225,9 +225,9 @@ dnl #  so we have to add them back in.
 dnl #
 case "$host" in
   *-darwin*)
-    CFLAGS="$CFLAGS -DDARWIN"
-    LDFLAGS="-L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib $LDFLAGS"
-    LIBS="-F /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/ -framework DirectoryService $LIBS"
+    CFLAGS="$CFLAGS -DDARWIN -mmacosx-version-min=$(sw_vers -productVersion)"
+    LDFLAGS="$LDFLAGS -L/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib -mmacosx-version-min=$(sw_vers -productVersion)"
+    LIBS="$LIBS -F /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks/ -framework DirectoryService"
     ;;
 esac
 
