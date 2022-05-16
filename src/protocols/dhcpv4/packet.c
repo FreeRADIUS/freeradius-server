@@ -332,23 +332,23 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 		 *	the data type matches the pair, i.e address to prefix
 		 *	conversion.
 		 */
-		fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &netaddr->data);
+		if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &netaddr->data) < 0) return -1;
 
 	} else if (giaddr != htonl(INADDR_ANY)) {
 		/*
 		 *	Gateway address is set - use that one
 		 */
-		fr_value_box_from_network(vp, &box, FR_TYPE_IPV4_ADDR, NULL,
-					  &FR_DBUFF_TMP(data + 24, 4), 4, true);
-		fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &box);
+		if (fr_value_box_from_network(vp, &box, FR_TYPE_IPV4_ADDR, NULL,
+					  &FR_DBUFF_TMP(data + 24, 4), 4, true) < 0) return -1;
+		if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &box) < 0) return -1;
 
 	} else {
 		/*
 		 *	else, store client address whatever it is
 		 */
-		fr_value_box_from_network(vp, &box, FR_TYPE_IPV4_ADDR, NULL,
-					  &FR_DBUFF_TMP(data + 12, 4), 4, true);
-		fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &box);
+		if (fr_value_box_from_network(vp, &box, FR_TYPE_IPV4_ADDR, NULL,
+					  &FR_DBUFF_TMP(data + 12, 4), 4, true) < 0) return -1;
+		if (fr_value_box_cast(vp, &vp->data, vp->da->type, vp->da, &box) < 0) return -1;
 	}
 
 	fr_pair_append(&tmp, vp);
