@@ -38,12 +38,12 @@ ifeq "${LIBTOOL}" "JLIBTOOL"
     # Pass compiler and ranlib paths through to jlibtool if they're
     # defined in the environment.  This lets us define a separate
     # compiler to build the toolchain and
-    ifdef HOST_CC
-        JLIBTOOL_DEFS += -DHOST_CC=\"${HOST_CC}\" -DHOST_LINK_C=\"${HOST_CC}\"
+    ifdef BUILD_CC
+        JLIBTOOL_DEFS += -DBUILD_CC=\"${BUILD_CC}\" -DHOST_LINK_C=\"${BUILD_CC}\"
     endif
 
-    ifdef HOST_RANLIB
-        JLIBTOOL_DEFS += -DHOST_RANLIB=\"${HOST_RANLIB}\"
+    ifdef BUILD_RANLIB
+        JLIBTOOL_DEFS += -DBUILD_RANLIB=\"${BUILD_RANLIB}\"
     endif
 
     ifndef TARGET_CC
@@ -75,7 +75,7 @@ ifeq "${LIBTOOL}" "JLIBTOOL"
     ${JLIBTOOL}: ${top_makedir}/jlibtool.c
 	$(Q)mkdir -p $(dir $@)
 	$(Q)echo CC jlibtool.c
-	$(Q)${HOST_CC} $< -o $@ ${JLIBTOOL_DEFS}
+	$(Q)${BUILD_CC} $< -o $@ ${JLIBTOOL_DEFS}
 
     jlibtool: ${JLIBTOOL}
 
@@ -106,10 +106,10 @@ LIBTOOL_VERBOSE=$(if ${VERBOSE},--debug,--silent)
 OBJ_EXT = lo
 
 COMPILE.c = ${LIBTOOL} ${LIBTOOL_VERBOSE} --target=${TARGET_SYSTEM} --mode=compile ${TARGET_CC}
-HOST_COMPILE.c = ${LIBTOOL} ${LIBTOOL_VERBOSE} --mode=compile ${HOST_CC}
+HOST_COMPILE.c = ${LIBTOOL} ${LIBTOOL_VERBOSE} --mode=compile ${BUILD_CC}
 
 LINK.c = ${LIBTOOL} ${LIBTOOL_VERBOSE} --target=${TARGET_SYSTEM} --mode=link ${TARGET_CC}
-HOST_LINK.c = ${LIBTOOL} ${LIBTOOL_VERBOSE} --mode=link ${HOST_CC}
+HOST_LINK.c = ${LIBTOOL} ${LIBTOOL_VERBOSE} --mode=link ${BUILD_CC}
 
 COMPILE.cxx = ${LIBTOOL} ${LIBTOOL_VERBOSE} --target=${TARGET_SYSTEM} --mode=compile ${CXX}
 LINK.cxx = ${LIBTOOL} ${LIBTOOL_VERBOSE} --target=${TARGET_SYSTEM} --mode=link ${CXX}
@@ -138,6 +138,74 @@ define ADD_TARGET_RULE.la
 	    $(Q)$(strip mkdir -p $(dir $${${1}_BUILD}/${1}))
 	    @$(ECHO) LINK $${${1}_BUILD}/${1}
 	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/${1} $${RPATH_FLAGS} $${LDFLAGS} \
+                $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS} \
+                $${${1}_PRLIBS}
+	    $(Q)$${${1}_POSTMAKE}
+
+    ifneq "${ANALYZE.c}" ""
+        scan.${1}: $${${1}_PLISTS}
+    endif
+
+    .PHONY: $(DIR)
+    $(DIR)/: ${1}
+endef
+
+# ADD_TARGET_RULE.so - Build a ".so" target.
+#
+#   USE WITH EVAL
+#
+define ADD_TARGET_RULE.so
+    # So "make ${1}" works
+    .PHONY: ${1}
+    ${1}: $${${1}_BUILD}/${1}
+
+    # Create libtool library ${1}
+    $${${1}_BUILD}/${1}: $${${1}_OBJS} $${${1}_PRLIBS}
+	    $(Q)$(strip mkdir -p $(dir $${${1}_BUILD}/${1}))
+	    @$(ECHO) LINK $${${1}_BUILD}/${1}
+	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/${1} -rpath ${libdir} $${LDFLAGS} \
+                $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS} \
+                $${${1}_PRLIBS}
+	    $(Q)$${${1}_POSTMAKE}
+
+    ifneq "${ANALYZE.c}" ""
+        scan.${1}: $${${1}_PLISTS}
+    endif
+
+    .PHONY: $(DIR)
+    $(DIR)/: ${1}
+endef
+
+# ADD_TARGET_RULE.dll - Build a ".dll" target.
+#
+#   USE WITH EVAL
+#
+define ADD_TARGET_RULE.dll
+$(ADD_TARGET_RULE.so)
+endef
+
+# ADD_TARGET_RULE.dylib - Build a ".dylib" target.
+#
+#   USE WITH EVAL
+#
+define ADD_TARGET_RULE.dylib
+$(ADD_TARGET_RULE.so)
+endef
+
+# ADD_TARGET_RULE.wasm - Build a ".wasm" target.
+#
+#   USE WITH EVAL
+#
+define ADD_TARGET_RULE.wasm
+    # So "make ${1}" works
+    .PHONY: ${1}
+    ${1}: $${${1}_BUILD}/${1}
+
+    # Create libtool library ${1}
+    $${${1}_BUILD}/${1}: $${${1}_OBJS} $${${1}_PRLIBS}
+	    $(Q)$(strip mkdir -p $(dir $${${1}_BUILD}/${1}))
+	    @$(ECHO) LINK $${${1}_BUILD}/${1}
+	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/${1} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS} \
                 $${${1}_PRLIBS}
 	    $(Q)$${${1}_POSTMAKE}

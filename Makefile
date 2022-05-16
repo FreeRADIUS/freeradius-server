@@ -119,10 +119,10 @@ ifeq "$(findstring libfreeradius-make,$(MAKECMDGOALS))" ""
 #
 #  Avoid calling shell if we don't need to build support libraries
 #
-ifeq "$(wildcard build/lib/.libs/libfreeradius-make-dlopen.${LIBRARY_EXT})" ""
+ifeq "$(wildcard build/lib/.libs/libfreeradius-make-dlopen.${BUILD_LIB_EXT})" ""
 BUILD_MAKE_LIBS=yes
 endif
-ifeq "$(wildcard build/lib/.libs/libfreeradius-make-version.${LIBRARY_EXT})" ""
+ifeq "$(wildcard build/lib/.libs/libfreeradius-make-version.${BUILD_LIB_EXT})" ""
 BUILD_MAKE_LIBS=yes
 endif
 
@@ -131,19 +131,11 @@ define n
 
 
 endef
-$(info $(subst CC,$nCC,$(shell $(MAKE) VERBOSE=$(VERBOSE) libfreeradius-make-dlopen.a libfreeradius-make-version.a)))
+$(info $(subst CC,$nCC,$(shell $(MAKE) VERBOSE=$(VERBOSE) libfreeradius-make-dlopen.${BUILD_LIB_EXT} libfreeradius-make-version.${BUILD_LIB_EXT})))
 endif
 
-ifeq "${HOST_LIBRARY_EXT}" ""
-ifneq "$(findstring Darwin,$(shell hostinfo 2>/dev/null))" ""
-HOST_LIBRARY_EXT := dylib
-else
-HOST_LIBRARY_EXT := so
-endif
-endif
-
-load build/lib/.libs/libfreeradius-make-dlopen.${HOST_LIBRARY_EXT}(dlopen_gmk_setup)
-load build/lib/.libs/libfreeradius-make-version.${HOST_LIBRARY_EXT}(version_gmk_setup)
+load build/lib/.libs/libfreeradius-make-dlopen.${BUILD_LIB_EXT}(dlopen_gmk_setup)
+load build/lib/.libs/libfreeradius-make-version.${BUILD_LIB_EXT}(version_gmk_setup)
 
 else
 #

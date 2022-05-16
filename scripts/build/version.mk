@@ -1,4 +1,4 @@
-TARGET				:= libfreeradius-make-version.a
+TARGET				:= libfreeradius-make-version.$(BUILD_LIB_EXT)
 SOURCES				:= version.c log.c
 
 #
@@ -9,7 +9,7 @@ $(TARGET): CPPFLAGS		:= $(filter-out -W%,$(CPPFLAGS))
 $(TARGET): LDFLAGS		:= $(filter-out -fsanitize%,$(LDFLAGS))
 
 #
-#  This gets built with the HOST_CC i.e. the one we use to bootstrap
+#  This gets built with the BUILD_CC i.e. the one we use to bootstrap
 #  this build system.
 #
 SRC_CC := ${HOST_COMPILE.c}
@@ -20,7 +20,7 @@ TGT_LINKER := ${HOST_LINK.c}
 #  that building the target succeeds.
 #
 #ifneq "$(MAKECMDGOALS)" "$(TARGET)"
-#load ${BUILD_DIR}/lib/.libs/libfreeradius-make-version.${LIBRARY_EXT}(version_gmk_setup)
+#load ${BUILD_DIR}/lib/.libs/libfreeradius-make-version.$(BUILD_LIB_EXT)(version_gmk_setup)
 
 #$(info $(dlopen /home/foo/libcrypto,ASN1_verify,/home/user,/foo,/usr/local/Cellar/openssl@1.1/1.1.1d/lib))
 #$(info $(dlsym libcrypto,ASN1_verify))

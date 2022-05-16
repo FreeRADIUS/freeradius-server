@@ -46,12 +46,31 @@ MAKE		= @MAKE@
 # flags set on the command line and the environmental variables
 MAKEFLAGS	= @FR_MAKEFLAGS@
 
-HOST_CC		= @HOST_CC@
-HOST_RANLIB	= @HOST_RANLIB@
+BUILD_SYSTEM	= @BUILD_SYSTEM@
+BUILD_CC	= @BUILD_CC@
+BUILD_RANLIB	= @BUILD_RANLIB@
+BUILD_EXE_EXT	= @BUILD_EXE_EXT@
+BUILD_LIB_EXT	= @BUILD_LIB_EXT@
 
 TARGET_SYSTEM	= @TARGET_SYSTEM@
 TARGET_CC       = @TARGET_CC@
 TARGET_RANLIB   = @TARGET_RANLIB@
+TARGET_EXE_EXT	= @TARGET_EXE_EXT@
+TARGET_LIB_EXT	= @TARGET_LIB_EXT@
+
+# Lazy alias seeing as it's used everywhere
+L		= .$(TARGET_LIB_EXT)
+
+ifneq "${TARGET_EXE_EXT}" ""
+E		= .$(TARGET_EXE_EXT)
+else
+E		=
+endif
+
+ifneq (,$(findstring wasm,${TARGET_SYSTEM}))
+TARGET_IS_WASM  = yes
+endif
+
 INCLUDE		= -I. -Isrc \
 		  -include src/freeradius-devel/autoconf.h \
 		  -include src/freeradius-devel/build.h \
@@ -60,8 +79,6 @@ INCLUDE		= -I. -Isrc \
 CFLAGS		= $(INCLUDE) -fno-strict-aliasing @CFLAGS@
 CPPFLAGS	= @CPPFLAGS@
 LIBPREFIX	= @LIBPREFIX@
-LIBRARY_EXT	= @LIBRARY_EXT@
-EXEEXT		= @EXEEXT@
 
 LIBTOOL		= JLIBTOOL
 ACLOCAL		= @ACLOCAL@
