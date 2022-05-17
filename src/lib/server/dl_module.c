@@ -425,7 +425,7 @@ dl_module_t const *dl_module(dl_module_t const *parent, char const *name, dl_mod
 	 */
 	dl = dl_by_name(dl_module_loader->dl_loader, module_name, dl_module, false);
 	if (!dl) {
-		ERROR("Failed to link to module \"%s\"", module_name);
+		PERROR("Failed to link to module \"%s\"", module_name);
 		ERROR("Make sure it (and all its dependent libraries!) are in the search path"
 		      " of your system's ld");
 	error:
