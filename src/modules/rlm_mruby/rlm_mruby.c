@@ -195,11 +195,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	status = mrb_load_file(mrb, f);
+	fclose(f);
 	if (mrb_undef_p(status)) {
 		ERROR("Parsing file failed");
 		return -1;
 	}
-	fclose(f);
 
 	status = mrb_funcall(mrb, mrb_obj_value(inst->mruby_module), "instantiate", 0);
 	if (mrb_undef_p(status)) {
