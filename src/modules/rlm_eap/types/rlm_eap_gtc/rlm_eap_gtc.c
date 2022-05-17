@@ -99,7 +99,7 @@ static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 /*
  *	Keep processing the Auth-Type until it doesn't return YIELD.
  */
-static unlang_action_t gtc_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,  request_t *request)
+static unlang_action_t gtc_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,  request_t *request)
 {
 	rlm_rcode_t	rcode;
 
