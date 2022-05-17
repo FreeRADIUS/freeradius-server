@@ -942,7 +942,7 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		fr_sbuff_advance(&our_in, slen * -1);
 
 	error:
-		return fr_sbuff_error(&our_in);
+		return -fr_sbuff_used(&our_in);
 	}
 	node->vpt = vpt;
 	node->quote = quote;
