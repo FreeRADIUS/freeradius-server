@@ -2325,9 +2325,6 @@ do_frame:
 	 *	See if EOF was unexpected.
 	 */
 	if (feof(frame->fp) && (parent != frame->parent)) {
-		fclose(frame->fp);
-		frame->fp = NULL;
-
 		ERROR("%s[%d]: EOF reached without closing brace for section %s starting at line %d",
 		      frame->filename, frame->lineno, cf_section_name1(parent), cf_lineno(parent));
 		return -1;
