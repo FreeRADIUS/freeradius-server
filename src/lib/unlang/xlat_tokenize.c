@@ -1270,7 +1270,10 @@ ssize_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
 
 	MEM(head = xlat_exp_head_alloc(ctx));
 
-	if (t_rules) our_t_rules = *t_rules;
+	if (t_rules) {
+		head->dict = t_rules->attr.dict_def;
+		our_t_rules = *t_rules;
+	}
 
 	our_t_rules.xlat.runtime_el = el;
 
@@ -1329,6 +1332,7 @@ ssize_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *i
 	xlat_exp_head_t			*head;
 
 	MEM(head = xlat_exp_head_alloc(ctx));
+	if (t_rules) head->dict = t_rules->dict_def;
 
 	if (p_rules && p_rules->terminals) {
 		tmp_p_rules = (fr_sbuff_parse_rules_t){	/* Stack allocated due to CL scope */
@@ -1492,6 +1496,7 @@ ssize_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 	xlat_exp_head_t	*head;
 
 	MEM(head = xlat_exp_head_alloc(ctx));
+	if (t_rules) head->dict = t_rules->dict_def;
 
 	fr_strerror_clear();	/* Clear error buffer */
 

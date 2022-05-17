@@ -1282,9 +1282,12 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuf
 								 terminal_rules->terminals,
 								 &bracket_terms));
 
-	if (!t_rules) t_rules = &my_rules;
-
 	MEM(head = xlat_exp_head_alloc(ctx));
+	if (t_rules) {
+		head->dict = t_rules->attr.dict_def;
+	} else {
+		t_rules = &my_rules;
+	}
 
 	slen = tokenize_expression(head, NULL, in, terminal_rules, t_rules, T_INVALID, bracket_rules);
 	talloc_free(bracket_rules);
@@ -1359,13 +1362,15 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **ou
 	MEM(bracket_rules->terminals = fr_sbuff_terminals_amerge(bracket_rules,
 								 terminal_rules->terminals,
 								 &bracket_terms));
+	MEM(head = xlat_exp_head_alloc(ctx));
+
 
 	if (t_rules) {
 		my_rules = *t_rules;
+		head->dict = t_rules->attr.dict_def;
 	}
-	my_rules.xlat.runtime_el = el;
 
-	MEM(head = xlat_exp_head_alloc(ctx));
+	my_rules.xlat.runtime_el = el;
 
 	slen = tokenize_expression(head, NULL, in, terminal_rules, &my_rules, T_INVALID, bracket_rules);
 	talloc_free(bracket_rules);
