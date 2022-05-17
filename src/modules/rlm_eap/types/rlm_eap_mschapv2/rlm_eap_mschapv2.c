@@ -348,15 +348,19 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 #endif
 
 
-static unlang_action_t mschap_finalize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request,
-				       eap_session_t *eap_session, rlm_rcode_t rcode)
+static unlang_action_t mschap_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
+	eap_session_t			*eap_session = mctx->rctx;
 	mschapv2_opaque_t		*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
 	eap_round_t			*eap_round = eap_session->this_round;
 	fr_pair_list_t			response;
  	rlm_eap_mschapv2_t const	*inst = mctx->inst->data;
+	rlm_rcode_t			rcode;
 
 	fr_pair_list_init(&response);
+
+	rcode = unlang_interpret_stack_result(request);
+
 	/*
 	 *	Delete MPPE keys & encryption policy.  We don't
 	 *	want these here.
@@ -428,23 +432,6 @@ static unlang_action_t mschap_finalize(rlm_rcode_t *p_result, module_ctx_t const
 	RETURN_MODULE_OK;
 }
 
-#if 0
-/*
- *	Keep processing the Auth-Type until it doesn't return YIELD.
- */
-static unlang_action_t mod_process_auth_type(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_rcode_t			rcode;
-	eap_session_t			*eap_session = eap_session_get(request->parent);
-
-	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
-
-	if (request->master_state == REQUEST_STOP_PROCESSING) return UNLANG_ACTION_STOP_PROCESSING;
-
-	return mschap_finalize(p_result, mctx, request, eap_session, rcode);
-}
-#endif
-
 /*
  *	Authenticate a previously sent challenge.
  */
@@ -458,7 +445,6 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	fr_pair_t			*auth_challenge, *response, *name;
 
 	CONF_SECTION			*unlang;
-	rlm_rcode_t			rcode;
 	int				ccode;
 	uint8_t				*p;
 	size_t				length;
@@ -747,20 +733,19 @@ packet_ready:
 #endif
 
 	/*
-	 *	This is a wild & crazy hack.
+	 *	Look for "authenticate foo" in the current virtual
+	 *	server.  If not there, then in the parent one.
 	 */
-	unlang = cf_section_find(unlang_call_current(request), "authenticate", inst->auth_type->name);
+	RDEBUG("Looking for authenticate %s { ... }", inst->auth_type->name);
+	unlang = cf_section_find(unlang_call_current(parent), "authenticate", inst->auth_type->name);
+	if (!unlang) unlang = cf_section_find(unlang_call_current(request->parent), "authenticate", inst->auth_type->name);
 	if (!unlang) {
-		process_authenticate(&rcode, inst->auth_type->value->vb_uint32,
-				     request, unlang_call_current(request->parent));
-	} else {
-		if (unlang_interpret_push_section(request, unlang, RLM_MODULE_FAIL, UNLANG_TOP_FRAME) < 0) {
-			RETURN_MODULE_FAIL;
-		}
-		rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
+		RDEBUG2("authenticate %s { ... } sub-section not found.",
+			inst->auth_type->name);
+		RETURN_MODULE_FAIL;
 	}
 
-	return mschap_finalize(p_result, mctx, request, eap_session, rcode);
+	return unlang_module_yield_to_section(p_result, request, unlang, RLM_MODULE_FAIL, mschap_resume, NULL, eap_session);
 }
 
 /*

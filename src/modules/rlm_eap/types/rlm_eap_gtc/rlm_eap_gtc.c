@@ -99,16 +99,14 @@ static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 /*
  *	Keep processing the Auth-Type until it doesn't return YIELD.
  */
-static unlang_action_t mod_process_auth_type(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,  request_t *request)
+static unlang_action_t gtc_resume(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx,  request_t *request)
 {
 	rlm_rcode_t	rcode;
 
-	eap_session_t	*eap_session = eap_session_get(request->parent);
+	eap_session_t	*eap_session = mctx->rctx;
 	eap_round_t	*eap_round = eap_session->this_round;
 
-	rcode = unlang_interpret_synchronous(unlang_interpret_event_list(request), request);
-
-	if (request->master_state == REQUEST_STOP_PROCESSING) return UNLANG_ACTION_STOP_PROCESSING;
+	rcode = unlang_interpret_stack_result(request);
 
 	if (rcode != RLM_MODULE_OK) {
 		eap_round->request->code = FR_EAP_CODE_FAILURE;
@@ -125,7 +123,6 @@ static unlang_action_t mod_process_auth_type(rlm_rcode_t *p_result, UNUSED modul
 static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_gtc_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_gtc_t);
-	rlm_rcode_t		rcode;
 
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_round_t		*eap_round = eap_session->this_round;
@@ -166,28 +163,15 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	vp->vp_tainted = true;
 
 	unlang = cf_section_find(unlang_call_current(request), "authenticate", inst->auth_type->name);
+	if (!unlang) unlang = cf_section_find(unlang_call_current(request->parent), "authenticate", inst->auth_type->name);
 	if (!unlang) {
-		/*
-		 *	Call the authenticate section of the *current* virtual server.
-		 */
-		process_authenticate(&rcode, inst->auth_type->value->vb_uint32,
-				     request, unlang_call_current(request->parent));
-		if (rcode != RLM_MODULE_OK) {
-			eap_round->request->code = FR_EAP_CODE_FAILURE;
-			RETURN_MODULE_RCODE(rcode);
-		}
-
-		eap_round->request->code = FR_EAP_CODE_SUCCESS;
-		RETURN_MODULE_OK;
-	}
-
-	if (unlang_interpret_push_section(request, unlang, RLM_MODULE_FAIL, UNLANG_TOP_FRAME) < 0) {
+		RDEBUG2("authenticate %s { ... } sub-section not found.",
+			inst->auth_type->name);
+		eap_round->request->code = FR_EAP_CODE_FAILURE;
 		RETURN_MODULE_FAIL;
 	}
 
-	eap_session->process = mod_process_auth_type;
-
-	return eap_session->process(p_result, mctx, request);
+	return unlang_module_yield_to_section(p_result, request, unlang, RLM_MODULE_FAIL, gtc_resume, NULL, eap_session);
 }
 
 

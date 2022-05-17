@@ -62,13 +62,6 @@ CONF_SECTION	*virtual_server_by_child(CONF_SECTION *section) CC_HINT(nonnull);
 int		virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent,
 					CONF_ITEM *ci, CONF_PARSER const *rule) CC_HINT(nonnull(2,4));
 /** @} */
-unlang_action_t process_authenticate(rlm_rcode_t *p_result, int auth_type,
-				     request_t *request, CONF_SECTION *server_cs) CC_HINT(nonnull);
-
-rlm_rcode_t	virtual_server_process_auth(request_t *request, CONF_SECTION *virtual_server,
-					    rlm_rcode_t default_rcode,
-					    unlang_module_resume_t resume,
-					    unlang_module_signal_t signal, void *rctx) CC_HINT(nonnull);
 
 fr_listen_t *  	listen_find_any(fr_listen_t *li) CC_HINT(nonnull);
 bool		listen_record(fr_listen_t *li) CC_HINT(nonnull);
