@@ -26,6 +26,7 @@
 
 RCSID("$Id$")
 
+#include <fcntl.h>
 #include <time.h>
 #include <math.h>
 
@@ -33,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radius/list.h>
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/event.h>
+#include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/pair_legacy.h>
@@ -56,6 +58,7 @@ static fr_rb_tree_t *request_tree = NULL;
 static fr_rb_tree_t *link_tree = NULL;
 static fr_event_list_t *events;
 static bool cleanup;
+static int packets_count = 1; // Used in '$PATH/${packet}.txt.${count}'
 
 static int self_pipe[2] = {-1, -1};		//!< Signals from sig handlers
 
@@ -463,13 +466,63 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 			char vector[(RADIUS_AUTH_VECTOR_LENGTH * 2) + 1];
 
 			fr_pair_list_sort(list, fr_pair_cmp_by_da);
-			fr_pair_list_log(&default_log, list);
+			fr_pair_list_log(&default_log, 4, list);
 
 			fr_base16_encode(&FR_SBUFF_OUT(vector, sizeof(vector)),
 					 &FR_DBUFF_TMP(packet->vector, RADIUS_AUTH_VECTOR_LENGTH));
 			INFO("\tAuthenticator-Field = 0x%s", vector);
 		}
 	}
+}
+
+static void rs_packet_save_in_output_dir(uint64_t count, UNUSED rs_status_t status, UNUSED fr_pcap_t *handle,
+				  fr_radius_packet_t *packet, fr_pair_list_t *list,
+				  UNUSED struct timeval *elapsed, UNUSED struct timeval *latency, bool response, bool body)
+{
+	fr_log_t output_file;
+	char vector[(RADIUS_AUTH_VECTOR_LENGTH * 2) + 1];
+	char const *packet_type = response ? "reply" : "request";
+	char filename[2048];
+
+	if (!body) return;
+
+	snprintf(filename, sizeof(filename), "%s/%s.%d.txt", conf->output_dir, packet_type, packets_count);
+
+	if (fr_debug_lvl > 0) {
+		DEBUG2("Saving %s in %s", packet_type, filename);
+	}
+
+	/* ensure to remove existing file */
+	fr_unlink(filename);
+
+	if (fr_log_init_file(&output_file, filename) < 0) {
+		ERROR("Failed opening %s output file.", filename);
+		usage(64);
+	}
+
+	output_file.print_level = false;
+	output_file.timestamp = L_TIMESTAMP_OFF;
+
+	/* dump the packet into filesystem */
+	fr_pair_list_sort(list, fr_pair_cmp_by_da);
+	fr_pair_list_log(&output_file, 0, list);
+
+	/* then append the Authenticator-Field */
+	fr_base16_encode(&FR_SBUFF_OUT(vector, sizeof(vector)),
+			 &FR_DBUFF_TMP(packet->vector, RADIUS_AUTH_VECTOR_LENGTH));
+
+	fprintf(output_file.handle, "Authenticator-Field = 0x%s\n", vector);
+
+	if (fr_log_close(&output_file) < 0) {
+		ERROR("Failed closing %s output file.", filename);
+		usage(64);
+	}
+
+	/*
+	 * We need to have $PATH/{request,reply}.txt with the same ID
+	 * to be possible cross the packets.
+	 */
+	if ((count % 2) == 0) packets_count++;
 }
 
 static inline void rs_packet_print(rs_request_t *request, uint64_t count, rs_status_t status, fr_pcap_t *handle,
@@ -2224,6 +2277,7 @@ static NEVER_RETURNS void usage(int status)
 	fprintf(output, "  -N <prefix>           The instance name passed to the collectd plugin.\n");
 	fprintf(output, "  -O <server>           Write statistics to this collectd server.\n");
 #endif
+	fprintf(output, "  -Z <output_dir>       Dump the packets in <output_dir>/{requests,reply}.${count}.txt\n");
 	fr_exit_now(status);
 }
 
@@ -2297,7 +2351,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((c = getopt(argc, argv, "ab:c:C:d:D:e:Ef:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != -1) {
+	while ((c = getopt(argc, argv, "ab:c:C:d:D:e:Ef:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:Z:")) != -1) {
 		switch (c) {
 		case 'a':
 		{
@@ -2467,6 +2521,25 @@ int main(int argc, char *argv[])
 			}
 			break;
 
+		case 'Z':
+		{
+			char *p = optarg;
+			size_t len = strlen(p);
+
+			conf->to_output_dir = true;
+
+			/* Strip the last '/' */
+			if (p[len-1] == '/') p[len-1] = '\0';
+
+			conf->output_dir = p;
+
+			if (fr_mkdir(NULL, conf->output_dir, -1, 0755, NULL, NULL) < 0) {
+				ERROR("Failed to create directory %s: %s", conf->output_dir, fr_syserror(errno));
+				usage(64);
+			}
+			break;
+		}
+
 		case 'T':
 			conf->stats.timeout = atoi(optarg);
 			if (conf->stats.timeout <= 0) {
@@ -2575,6 +2648,8 @@ int main(int argc, char *argv[])
 
 	if (conf->list_attributes) {
 		conf->logger = rs_packet_print_csv;
+	} else if (conf->to_output_dir) {
+		conf->logger = rs_packet_save_in_output_dir;
 	} else if (fr_debug_lvl > 0) {
 		conf->logger = rs_packet_print_fancy;
 	}
@@ -2786,16 +2861,20 @@ int main(int argc, char *argv[])
 
 		if (!fr_pair_list_empty(&conf->filter_request_vps)){
 			DEBUG2("  RADIUS request filter   :");
-			fr_pair_list_log(&default_log, &conf->filter_request_vps);
+			fr_pair_list_log(&default_log, 4, &conf->filter_request_vps);
 		}
 
 		if (conf->filter_response_code) {
 			DEBUG2("  RADIUS response code    : [%s]", fr_packet_codes[conf->filter_response_code]);
 		}
 
+		if (conf->to_output_dir) {
+			DEBUG2("  Writing packets in      : [%s/{requests,reply}.${count}.txt]", conf->output_dir);
+		}
+
 		if (!fr_pair_list_empty(&conf->filter_response_vps)){
 			DEBUG2("  RADIUS response filter  :");
-			fr_pair_list_log(&default_log, &conf->filter_response_vps);
+			fr_pair_list_log(&default_log, 4, &conf->filter_response_vps);
 		}
 	}
 

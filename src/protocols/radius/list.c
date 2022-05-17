@@ -798,7 +798,7 @@ void fr_packet_header_log(fr_log_t const *log, fr_radius_packet_t *packet, bool 
 void fr_packet_log(fr_log_t const *log, fr_radius_packet_t *packet, fr_pair_list_t *list, bool received)
 {
 	fr_packet_header_log(log, packet, received);
-	if (fr_debug_lvl >= L_DBG_LVL_1) fr_pair_list_log(log, list);
+	if (fr_debug_lvl >= L_DBG_LVL_1) fr_pair_list_log(log, 4, list);
 #ifndef NDEBUG
 	if (fr_debug_lvl >= L_DBG_LVL_4) fr_radius_packet_log_hex(log, packet);
 #endif

@@ -263,6 +263,9 @@ struct rs {
 	bool			to_file;		//!< Were writing pcap data to files.
 	bool			to_stdout;		//!< Were writing pcap data to stdout.
 
+	bool			to_output_dir;		//!< Were writing attributes into directory.
+	char const 		*output_dir;		//!< Where we should save the files $PATH/requests.txt and $PATH/reply.txt
+
 	bool			daemonize;		//!< Daemonize and write PID out to file.
 	char const		*pidfile;		//!< File to write PID to.
 
