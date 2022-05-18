@@ -118,25 +118,17 @@ static void _request_runnable(request_t *request, void *uctx)
 /** Interpreter yielded request
  *
  */
-static void _request_yield(request_t *request, void *uctx)
+static void _request_yield(request_t *request, UNUSED void *uctx)
 {
-	unlang_interpret_synchronous_t	*intps = uctx;
-
 	RDEBUG3("synchronous request yielded");
-
-	intps->yielded++;
 }
 
 /** Interpreter is starting to work on request again
  *
  */
-static void _request_resume(request_t *request, void *uctx)
+static void _request_resume(request_t *request, UNUSED void *uctx)
 {
-	unlang_interpret_synchronous_t	*intps = uctx;
-
 	RDEBUG3("synchronous request resumed");
-
-	intps->yielded--;
 }
 
 static bool _request_scheduled(request_t const *request, UNUSED void *uctx)
@@ -261,6 +253,8 @@ rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request
 			continue;
 		}
 
+		if (unlang_interpret_is_resumable(sub_request)) intps->yielded--;
+
 		/*
 		 *	Continue interpretation until there's nothing
 		 *	in the backlog.  If this request YIELDs, then
@@ -270,6 +264,8 @@ rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request
 		sub_rcode = unlang_interpret(sub_request);
 		RDEBUG4("<<< interpreter (iteration %i) - %s", iterations,
 			fr_table_str_by_value(rcode_table, sub_rcode, "<INVALID>"));
+
+		if (unlang_interpret_is_resumable(sub_request)) intps->yielded++;
 
 		if (sub_request == request) {
 			rcode = sub_rcode;
