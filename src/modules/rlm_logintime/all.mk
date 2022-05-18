@@ -1,3 +1,6 @@
-TARGET		:= rlm_logintime.a
-SOURCES		:= rlm_logintime.c timestr.c
+TARGETNAME	:= rlm_logintime
+
+TARGET		:= $(TARGETNAME)$(L)
+SOURCES		:= $(TARGETNAME).c timestr.c
+
 LOG_ID_LIB	= 28

@@ -1,10 +1,7 @@
 TARGETNAME	:= rlm_stats
 
-ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
-endif
+TARGET		:= $(TARGETNAME)$(L)
+SOURCES		:= $(TARGETNAME).c
 
-SOURCES		:= rlm_stats.c
-
-TGT_PREREQS	:= libfreeradius-radius.a
+TGT_PREREQS	:= libfreeradius-radius$(L)
 LOG_ID_LIB	= 51

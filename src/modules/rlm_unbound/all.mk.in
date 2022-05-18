@@ -2,7 +2,7 @@ TARGETNAME	:= @targetname@
 
 ifneq "$(OPENSSL_LIBS)" ""
 ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME)$(L)
 endif
 endif
 

@@ -1,7 +1,7 @@
 TARGETNAME	:= @targetname@
 
 ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME)$(L)
 endif
 
 SOURCES		:= $(TARGETNAME).c \

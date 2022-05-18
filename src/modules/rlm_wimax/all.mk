@@ -1,7 +1,7 @@
 TARGETNAME	:= rlm_wimax
 
 ifneq "$(OPENSSL_LIBS)" ""
-TARGET		:= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME)$(L)
 endif
 
 SOURCES		:= $(TARGETNAME).c

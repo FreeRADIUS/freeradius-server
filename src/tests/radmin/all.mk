@@ -57,7 +57,7 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
-	$(eval TARGET   := $(patsubst %.txt,%,$(notdir $@)))
+	$(eval TARGET   := $(patsubst %.txt,%,$(notdir $@)$(E)))
 	${Q}if ! $(TEST_BIN)/radmin -q -f $(RADMIN_SOCKET_FILE) < $< > $(FOUND) 2>&1; then\
 		echo "--------------------------------------------------"; \
 		tail -n 20 "$(RADMIN_RADIUS_LOG)"; \

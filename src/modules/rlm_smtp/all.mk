@@ -23,17 +23,18 @@ TARGET		:=
 
 ifneq "$(TARGETNAME)" ""
 
-#load ${BUILD_DIR}/lib/.libs/libfreeradius-make-version.${LIBRARY_EXT}
+#load ${BUILD_DIR}/lib/.libs/libfreeradius-make-version.${LIB_EXT}
 
 #  Require cURL >= 7.56.0
 CURL_TOO_OLD := $(call ver.lt,$(VERSION),7.56.0)
 
 ifneq "$(CURL_TOO_OLD)" "T"
-TARGET		:= rlm_smtp.a
-TGT_PREREQS	+= libfreeradius-curl.a
+TARGETNAME	:= rlm_smtp
+TARGET		:= $(TARGETNAME)$(L)
+TGT_PREREQS	+= libfreeradius-curl$(L)
 endif
 
 endif
 
-SOURCES		:= rlm_smtp.c
+SOURCES		:= $(TARGETNAME).c
 LOG_ID_LIB	= 47

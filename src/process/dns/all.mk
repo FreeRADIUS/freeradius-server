@@ -1,6 +1,6 @@
 TARGETNAME := process_dns
 
-TARGET		:= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME)$(L)
 
 SOURCES		:= base.c
-TGT_PREREQS	:= libfreeradius-dns.a
+TGT_PREREQS	:= libfreeradius-dns$(L)

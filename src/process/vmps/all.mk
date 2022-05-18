@@ -1,9 +1,9 @@
 TARGETNAME	:= process_vmps
 
 ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME)$(L)
 endif
 
 SOURCES		:= base.c
 
-TGT_PREREQS	:= libfreeradius-vmps.a
+TGT_PREREQS	:= libfreeradius-vmps$(L)

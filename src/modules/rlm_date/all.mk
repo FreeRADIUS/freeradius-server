@@ -1,3 +1,6 @@
-TARGET		:= rlm_date.a
-SOURCES		:= rlm_date.c
+TARGETNAME	:= rlm_date
+
+TARGET		:= $(TARGETNAME)$(L)
+SOURCES		:= $(TARGETNAME).c
+
 LOG_ID_LIB	= 9

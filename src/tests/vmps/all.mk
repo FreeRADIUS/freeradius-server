@@ -28,7 +28,7 @@ $(eval $(call RADIUSD_SERVICE,radiusd,$(OUTPUT)))
 #	Run the VMPS commands against the radiusd.
 #
 $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
-	$(eval TARGET   := $(notdir $<))
+	$(eval TARGET   := $(notdir $<))$(E)
 	$(eval CMD_TEST := $(patsubst %.txt,%.cmd,$<))
 	$(eval EXPECTED := $(patsubst %.txt,%.out,$<))
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))

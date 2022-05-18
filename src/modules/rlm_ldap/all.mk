@@ -6,11 +6,11 @@ TARGETNAME=
 
 ifneq "${TARGETNAME}" ""
   TARGETNAME	:= rlm_ldap
-  TARGET	:= $(TARGETNAME).a
+  TARGET	:= $(TARGETNAME)$(L)
 endif
 
 SOURCES		:= $(TARGETNAME).c groups.c user.c
 
 SRC_CFLAGS	+= -I$(top_builddir)/src/modules/rlm_ldap
-TGT_PREREQS	:= libfreeradius-ldap.a
+TGT_PREREQS	:= libfreeradius-ldap$(L)
 LOG_ID_LIB	= 26

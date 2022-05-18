@@ -2,14 +2,13 @@
 
 ifneq "${TARGETNAME}" ""
   TARGETNAME	:= rlm_sqlippool
-  TARGET	:= $(TARGETNAME).a
+  TARGET	:= $(TARGETNAME)$(L)
 
   # Be sure to NOT include the rlm_sql drivers
-  SUBMAKEFILES	:= 
+  SUBMAKEFILES	:=
 endif
 
 SOURCES		:= $(TARGETNAME).c
 
-SRC_CFLAGS	:= 
-SRC_CFLAGS	+= -I$(top_builddir)/src/modules/rlm_sql
-TGT_LDLIBS	:= 
+SRC_CFLAGS	:= -I$(top_builddir)/src/modules/rlm_sql
+TGT_LDLIBS	:=

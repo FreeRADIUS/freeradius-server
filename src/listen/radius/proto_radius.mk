@@ -1,9 +1,9 @@
 TARGETNAME	:= proto_radius
 
 ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME)$(L)
 endif
 
 SOURCES		:= proto_radius.c
 
-TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-radius.a libfreeradius-io.a
+TGT_PREREQS	:= $(LIBFREERADIUS_SERVER) libfreeradius-radius$(L) libfreeradius-io$(L)

@@ -6,8 +6,8 @@ TARGETNAME=
 
 ifneq "${TARGETNAME}" ""
   TARGETNAME	:= proto_ldap_sync
-  TARGET	:= $(TARGETNAME).a
+  TARGET	:= $(TARGETNAME)$(L)
 endif
 
 SOURCES		:= $(TARGETNAME).c sync.c
-TGT_PREREQS	:= libfreeradius-ldap.a
+TGT_PREREQS	:= libfreeradius-ldap$(L)

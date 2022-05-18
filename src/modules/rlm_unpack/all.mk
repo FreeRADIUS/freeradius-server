@@ -1,3 +1,6 @@
-TARGET		:= rlm_unpack.a
-SOURCES		:= rlm_unpack.c
+TARGETNAME	:= rlm_unpack
+
+TARGET		:= $(TARGETNAME)$(L)
+SOURCES		:= $(TARGETNAME).c
+
 LOG_ID_LIB	= 56

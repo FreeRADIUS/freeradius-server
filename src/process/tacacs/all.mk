@@ -1,9 +1,9 @@
 TARGETNAME	:= process_tacacs
 
 ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME)$(L)
 endif
 
 SOURCES		:= base.c
 
-TGT_PREREQS	:= libfreeradius-tacacs.a
+TGT_PREREQS	:= libfreeradius-tacacs$(L)

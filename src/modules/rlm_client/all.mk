@@ -1,3 +1,6 @@
-TARGET		:= rlm_client.a
-SOURCES		:= rlm_client.c
-LOG_ID_LIB	= 6
+TARGETNAME	:= rlm_client
+
+TARGET		:= $(TARGETNAME)$(L)
+SOURCES		:= $(TARGETNAME).c
+
+LOG_ID_LIB	= 5

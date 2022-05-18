@@ -10,4 +10,4 @@ ifneq "${TARGETNAME}" ""
 endif
 
 SOURCES		:= $(TARGETNAME).c
-TGT_PREREQS	:= libfreeradius-util.a libfreeradius-ldap.a
+TGT_PREREQS	:= libfreeradius-util$(L) libfreeradius-ldap$(L)

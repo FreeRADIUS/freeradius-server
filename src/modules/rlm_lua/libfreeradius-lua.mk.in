@@ -14,7 +14,7 @@
 TARGETNAME	:= @targetname@
 
 ifneq "$(TARGETNAME)" ""
-TARGET		:= libfreeradius-lua.a
+TARGET		:= libfreeradius-lua$(L)
 endif
 
 SOURCES		:= util.c

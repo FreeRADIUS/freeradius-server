@@ -1,9 +1,9 @@
 TARGETNAME	:= proto_detail_file
 
 ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME)$(L)
 endif
 
 SOURCES		:= proto_detail_file.c
 
-TGT_PREREQS	:= libfreeradius-util.a
+TGT_PREREQS	:= libfreeradius-util$(L)

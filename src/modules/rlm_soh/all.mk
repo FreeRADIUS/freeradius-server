@@ -1,5 +1,7 @@
-TARGET		:= rlm_soh.a
-SOURCES		:= rlm_soh.c
+TARGETNAME	:= rlm_soh
 
-TGT_PREREQS	:= libfreeradius-soh.a
+TARGET		:= $(TARGETNAME)$(L)
+SOURCES		:= $(TARGETNAME).c
+
+TGT_PREREQS	:= libfreeradius-soh$(L)
 LOG_ID_LIB	= 48

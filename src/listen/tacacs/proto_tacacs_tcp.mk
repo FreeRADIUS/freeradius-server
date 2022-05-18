@@ -1,9 +1,9 @@
 TARGETNAME	:= proto_tacacs_tcp
 
 ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME)$(L)
 endif
 
 SOURCES		:= proto_tacacs_tcp.c
 
-TGT_PREREQS	:= libfreeradius-tacacs.a
+TGT_PREREQS	:= libfreeradius-tacacs$(L)

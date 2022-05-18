@@ -2,7 +2,7 @@ TARGETNAME	:= @targetname@
 VERSION		:= @version@
 
 ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME)$(L)
 endif
 
 SOURCES		:= base.c io.c

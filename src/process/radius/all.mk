@@ -1,10 +1,10 @@
 TARGETNAME	:= process_radius
 
 ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME)$(L)
 endif
 
 SOURCES		:= base.c
 
-TGT_PREREQS	:= libfreeradius-radius.a
+TGT_PREREQS	:= libfreeradius-radius$(L)
 
