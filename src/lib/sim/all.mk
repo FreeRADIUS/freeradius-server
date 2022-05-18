@@ -1,5 +1,5 @@
 ifneq "$(OPENSSL_LIBS)" ""
-TARGET := libfreeradius-sim.a
+TARGET		:= libfreeradius-sim$(L)
 endif
 
 SOURCES	:= \
@@ -7,4 +7,4 @@ SOURCES	:= \
 	milenage.c \
 	ts_34_108.c
 
-TGT_PREREQS	:= libfreeradius-util.a
+TGT_PREREQS	:= libfreeradius-util$(L)

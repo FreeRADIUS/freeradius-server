@@ -40,7 +40,7 @@ $(OUTPUT)/%.pcap: $(DIR)/%.pcap.gz
 #	Run the radsniff commands
 #
 $(OUTPUT)/%.txt: $(DIR)/%.txt $(TEST_BIN_DIR)/radsniff $(PCAP_IN)
-	$(eval TARGET   := $(notdir $@))
+	$(eval TARGET   := $(notdir $@)$(E))
 	$(eval FOUND    := $(patsubst %.txt,%.out,$@))
 	$(eval CMD_TEST := $(patsubst %.txt,%.cmd,$<))
 	$(eval EXPECTED := $<)

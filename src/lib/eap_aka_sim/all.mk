@@ -1,5 +1,5 @@
 ifneq "$(OPENSSL_LIBS)" ""
-TARGET := libfreeradius-eap-aka-sim.a
+TARGET := libfreeradius-eap-aka-sim$(L)
 endif
 
 SOURCES	:= \
@@ -14,4 +14,4 @@ SOURCES	:= \
 	vector.c \
 	xlat.c
 
-TGT_PREREQS	:= libfreeradius-util.la $(LIBFREERADIUS_SERVER) libfreeradius-eap.a libfreeradius-sim.a
+TGT_PREREQS	:= libfreeradius-util$(L) $(LIBFREERADIUS_SERVER) libfreeradius-eap$(L) libfreeradius-sim$(L)

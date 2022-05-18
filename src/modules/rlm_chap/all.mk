@@ -1,5 +1,7 @@
-TARGET		:= rlm_chap.a
-SOURCES		:= rlm_chap.c
+TARGETNAME	:= rlm_chap
 
-TGT_PREREQS	:= libfreeradius-radius.a
+TARGET		:= $(TARGETNAME)$(L)
+SOURCES		:= $(TARGETNAME).c
+
+TGT_PREREQS	:= libfreeradius-radius$(L)
 LOG_ID_LIB	= 4

@@ -1,3 +1,6 @@
-TARGET		:= rlm_icmp.a
-SOURCES		:= rlm_icmp.c
+TARGETNAME	:= rlm_icmp
+
+TARGET		:= $(TARGETNAME)$(L)
+SOURCES		:= $(TARGETNAME).c
+
 LOG_ID_LIB	= 20

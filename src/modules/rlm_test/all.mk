@@ -1,4 +1,4 @@
-TARGET		:= rlm_test.a
+TARGET		:= rlm_test$(L)
 SOURCES		:= rlm_test.c
 
 #

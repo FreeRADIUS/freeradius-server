@@ -1,7 +1,6 @@
-TARGET		:= hmac_tests
-
+TARGET		:= hmac_tests$(E)
 SOURCES		:= hmac_tests.c
 
 TGT_LDLIBS	:= $(LIBS)
 TGT_LDFLAGS	:= $(LDFLAGS)
-TGT_PREREQS	:= libfreeradius-util.a
+TGT_PREREQS	:= libfreeradius-util$(L)

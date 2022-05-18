@@ -1,4 +1,4 @@
-TARGET		:= libfreeradius-server.a
+TARGET		:= libfreeradius-server$(L)
 
 SOURCES	:= \
 	auth.c \
@@ -52,10 +52,10 @@ TGT_LDLIBS	:= $(LIBS) $(SYSTEMD_LIBS) $(GPERFTOOLS_LIBS) $(LCRYPT)
 TGT_LDFLAGS	:= $(LDFLAGS) $(SYSTEMD_LDFLAGS) $(GPERFTOOLS_LDFLAGS)
 
 ifneq ($(OPENSSL_LIBS),)
-TGT_PREREQS	:= libfreeradius-tls.a
+TGT_PREREQS	:= libfreeradius-tls$(L)
 endif
 
-TGT_PREREQS	+= libfreeradius-util.a
+TGT_PREREQS	+= libfreeradius-util$(L)
 
 ifneq ($(MAKECMDGOALS),scan)
 SRC_CFLAGS	+= -DBUILT_WITH_CPPFLAGS=\"$(CPPFLAGS)\" -DBUILT_WITH_CFLAGS=\"$(CFLAGS)\" -DBUILT_WITH_LDFLAGS=\"$(LDFLAGS)\" -DBUILT_WITH_LIBS=\"$(LIBS)\"

@@ -1,4 +1,6 @@
-TARGET		:= rlm_cache.a
-SOURCES		:= rlm_cache.c
-TGT_LDLIBS	:= $(LIBS)
+TARGETNAME	:= rlm_cache
+
+TARGET		:= $(TARGETNAME)$(L)
+SOURCES		:= $(TARGETNAME).c
+
 LOG_ID_LIB	= 3

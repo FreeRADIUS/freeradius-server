@@ -13,7 +13,7 @@ $(eval $(call TEST_BOOTSTRAP))
 #
 #  Ensure that the digest tests are run if the server or rlm_digest module changes
 #
-$(FILES.$(TEST)): $(BUILD_DIR)/lib/rlm_digest.la $(BUILD_DIR)/bin/radiusd $(BUILD_DIR)/bin/radclient
+$(FILES.$(TEST)): $(BUILD_DIR)/lib/rlm_digest.la $(BUILD_DIR)/bin/radiusd$(E) $(BUILD_DIR)/bin/radclient$(E)
 
 #
 #	Config settings
@@ -34,7 +34,7 @@ $(eval $(call RADIUSD_SERVICE,digest,$(OUTPUT)))
 #
 $(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
 	${Q} [ -f $(dir $@)/radiusd.pid ] || exit 1
-	$(eval TARGET := $(patsubst %.txt,%,$(notdir $@)))
+	$(eval TARGET := $(patsubst %.txt,%,$(notdir $@)$(E)))
 	${Q}for _num in $$(sed '/^#.*TESTS/!d; s/.*TESTS//g' $<); do	\
 		echo "DIGEST-TEST $(TARGET)_$${_num}";			\
 		cp -f $< $@.request;					\

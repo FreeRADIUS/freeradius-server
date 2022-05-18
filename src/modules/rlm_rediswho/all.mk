@@ -6,7 +6,7 @@ TARGETNAME	:=
 
 ifneq "${TARGETNAME}" ""
   TARGETNAME	:= rlm_rediswho
-  TARGET        := $(TARGETNAME).a
+  TARGET        := $(TARGETNAME)$(L)
 endif
 
 SOURCES		:= $(TARGETNAME).c
@@ -15,5 +15,5 @@ SOURCES		:= $(TARGETNAME).c
 #  Append SRC_CFLAGS and leave TGT_LDLIBS alone
 #
 SRC_CFLAGS	+= -I$(top_builddir)/src/lib/redis
-TGT_PREREQS	:= libfreeradius-redis.a
+TGT_PREREQS	:= libfreeradius-redis$(L)
 LOG_ID_LIB	= 43

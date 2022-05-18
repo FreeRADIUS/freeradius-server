@@ -3,7 +3,7 @@
 #
 # Version:      $Id$
 #
-TARGET		:= libfreeradius-util.a
+TARGET		:= libfreeradius-util$(L)
 
 SOURCES		:= \
 		   atexit.c \
@@ -104,3 +104,9 @@ SRC_CFLAGS	:= -D_LIBRADIUS -DNO_ASSERT -I$(top_builddir)/src
 # like pthread and the regexp libraries.
 TGT_LDLIBS	:= $(LIBS) $(PCAP_LIBS)
 TGT_LDFLAGS	:= $(LDFLAGS) $(PCAP_LDFLAGS)
+
+ifeq "$(TARGET_IS_WASM)" "yes"
+SRC_CFLAGS      += -sMAIN_MODULE=1 -sUSE_PTHREADS=1
+TGT_LDLIBS      += --no-entry
+endif
+

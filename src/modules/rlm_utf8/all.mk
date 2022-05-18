@@ -1,3 +1,6 @@
-TARGET		:= rlm_utf8.a
-SOURCES		:= rlm_utf8.c
+TARGETNAME	:= rlm_utf8
+
+TARGET		:= $(TARGETNAME)$(L)
+SOURCES		:= $(TARGETNAME).c
+
 LOG_ID_LIB	= 57

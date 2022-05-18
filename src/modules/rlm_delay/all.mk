@@ -1,3 +1,6 @@
-SOURCES		:= rlm_delay.c
-TARGET		:= rlm_delay.a
+TARGETNAME	:= rlm_delay
+
+TARGET		:= $(TARGETNAME)$(L)
+SOURCES		:= $(TARGETNAME).c
+
 LOG_ID_LIB	= 10

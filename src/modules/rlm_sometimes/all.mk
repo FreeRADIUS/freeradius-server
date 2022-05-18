@@ -1,3 +1,6 @@
-TARGET		:= rlm_sometimes.a
-SOURCES		:= rlm_sometimes.c
+TARGETNAME	:= rlm_sometimes
+
+TARGET		:= $(TARGETNAME)$(L)
+SOURCES		:= $(TARGETNAME).c
+
 LOG_ID_LIB	= 49

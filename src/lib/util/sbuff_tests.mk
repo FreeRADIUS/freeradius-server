@@ -1,7 +1,6 @@
-TARGET		:= sbuff_tests
-
+TARGET		:= sbuff_tests$(E)
 SOURCES		:= sbuff_tests.c
 
 TGT_LDLIBS	:= $(LIBS) $(GPERFTOOLS_LIBS)
 TGT_LDFLAGS	:= $(LDFLAGS) $(GPERFTOOLS_LDFLAGS)
-TGT_PREREQS	:= libfreeradius-util.a
+TGT_PREREQS	:= libfreeradius-util$(L)

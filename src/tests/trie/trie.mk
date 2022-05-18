@@ -1,9 +1,9 @@
-TARGET		:= trie
+TARGET		:= trie$(E)
 
 SRC_CFLAGS	:= -DTESTING -DWITH_PATH_COMPRESSION
 SOURCES		:= trie.c
 TGT_LDLIBS	:= $(LIBS)
-TGT_PREREQS	:= libfreeradius-util.a
+TGT_PREREQS	:= libfreeradius-util$(L)
 
 #
 #  The build system maps one source file to one object file.  So in

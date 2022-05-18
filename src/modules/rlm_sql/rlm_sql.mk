@@ -1,4 +1,4 @@
-TARGET		:= rlm_sql.a
+TARGET		:= rlm_sql$(L)
 SOURCES		:= rlm_sql.c sql.c sql_state.c
 
 SRC_CFLAGS	:= $(rlm_sql_CFLAGS)

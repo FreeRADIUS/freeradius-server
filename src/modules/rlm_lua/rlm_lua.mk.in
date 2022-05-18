@@ -1,7 +1,7 @@
 TARGETNAME	:= @targetname@
 
 ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME)$(L)
 endif
 
 SOURCES		:= $(TARGETNAME).c lua.c
@@ -9,7 +9,7 @@ SOURCES		:= $(TARGETNAME).c lua.c
 SRC_CFLAGS	:= @lua_cflags@
 TGT_LDLIBS	:= @lua_ldflags@
 
-TGT_PREREQS	:= libfreeradius-lua.a
+TGT_PREREQS	:= libfreeradius-lua$(L)
 
 install: $(R)$(modconfdir)/lua/example.lua
 

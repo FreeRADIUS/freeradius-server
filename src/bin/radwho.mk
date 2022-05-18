@@ -1,4 +1,4 @@
-TARGET		:= radwho
+TARGET		:= radwho$(E)
 SOURCES		:= radwho.c
 
 TGT_PREREQS	:= $(LIBFREERADIUS_SERVER)

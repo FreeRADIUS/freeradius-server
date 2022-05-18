@@ -1,3 +1,6 @@
-TARGET		:= rlm_passwd.a
-SOURCES		:= rlm_passwd.c
+TARGETNAME	:= rlm_passwd
+
+TARGET		:= $(TARGETNAME)$(L)
+SOURCES		:= $(TARGETNAME).c
+
 LOG_ID_LIB	= 36

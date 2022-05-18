@@ -5,8 +5,8 @@ TARGETNAME	:=
 TARGET		:=
 
 ifneq "$(TARGETNAME)" ""
-TARGET		:= rlm_imap.a
-TGT_PREREQS	+= libfreeradius-curl.a
+TARGET		:= rlm_imap$(L)
+TGT_PREREQS	+= libfreeradius-curl$(L)
 endif
 
 SOURCES		:= rlm_imap.c

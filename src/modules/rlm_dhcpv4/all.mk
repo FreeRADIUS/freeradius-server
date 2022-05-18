@@ -1,5 +1,7 @@
-TARGET		:= rlm_dhcpv4.a
-SOURCES		:= rlm_dhcpv4.c
+TARGETNAME	:= rlm_dhcpv4
 
-TGT_PREREQS	:= libfreeradius-dhcpv4.a
+TARGET		:= $(TARGETNAME)$(L)
+SOURCES		:= $(TARGETNAME).c
+
+TGT_PREREQS	:= libfreeradius-dhcpv4$(L)
 LOG_ID_LIB	= 12

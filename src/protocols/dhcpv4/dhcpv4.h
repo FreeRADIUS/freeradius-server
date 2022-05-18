@@ -116,12 +116,12 @@ typedef struct {
 #ifndef INADDR_BROADCAST
 #  define INADDR_BROADCAST INADDR_NONE
 #endif
+#define ETH_ADDR_LEN   6
 
 #if defined(HAVE_LIBPCAP) || defined(HAVE_LINUX_IF_PACKET_H)
 #  define ETH_TYPE_IP    0x0800
 #  define IP_HDR_SIZE    20
 #  define UDP_HDR_SIZE   8
-#  define ETH_ADDR_LEN   6
 #endif
 
 extern fr_dict_attr_t const		**dhcp_header_attrs[];

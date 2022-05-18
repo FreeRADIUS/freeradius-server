@@ -17,10 +17,10 @@
 #  then magically turns into different fuzzers.
 #
 
-TARGET			:= fuzzer_$(PROTOCOL)
+TARGET			:= fuzzer_$(PROTOCOL)$(E)
 SOURCES			:= fuzzer.c
 
-TGT_PREREQS		:= libfreeradius-$(PROTOCOL).a
+TGT_PREREQS		:= libfreeradius-$(PROTOCOL)$(L)
 
 TGT_CFLAGS		:= -fsanitize=fuzzer
 TGT_LDFLAGS		:= -fsanitize=fuzzer

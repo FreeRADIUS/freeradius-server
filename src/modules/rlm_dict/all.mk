@@ -1,5 +1,6 @@
-TARGET		:= rlm_dict.a
-SOURCES		:= rlm_dict.c
+TARGETNAME	:= rlm_dict
 
+TARGET		:= $(TARGETNAME)$(L)
+SOURCES		:= $(TARGETNAME).c
 
 LOG_ID_LIB	= 13

@@ -1,3 +1,6 @@
-TARGET		:= rlm_expr.a
-SOURCES		:= rlm_expr.c
+TARGETNAME	:= rlm_expr
+
+TARGET		:= $(TARGETNAME)$(L)
+SOURCES		:= $(TARGETNAME).c
+
 LOG_ID_LIB	= 18

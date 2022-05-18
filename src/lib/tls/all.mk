@@ -1,7 +1,7 @@
 TARGETNAME	:= libfreeradius-tls
 
 ifneq ($(OPENSSL_LIBS),)
-TARGET		:= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME)$(L)
 endif
 
 SOURCES	:= \
@@ -20,7 +20,7 @@ SOURCES	:= \
 	version.c \
 	virtual_server.c
 
-TGT_PREREQS := libfreeradius-internal.a libfreeradius-util.a
+TGT_PREREQS := libfreeradius-internal$(L) libfreeradius-util$(L)
 
 # This lets the linker determine which version of the SSLeay functions to use.
 TGT_LDLIBS  := $(LIBS) $(OPENSSL_LIBS) $(GPERFTOOLS_LIBS)

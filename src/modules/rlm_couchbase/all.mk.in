@@ -12,7 +12,7 @@ ifneq "$(TARGETNAME)" ""
 
   #  Check the targetname from the local configure script
   ifneq "$(TARGETNAME)" ""
-    TARGET		:= $(TARGETNAME).a
+    TARGET		:= $(TARGETNAME)$(L)
   endif
 endif
 

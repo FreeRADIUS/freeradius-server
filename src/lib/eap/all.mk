@@ -1,4 +1,4 @@
-TARGET := libfreeradius-eap.a
+TARGET := libfreeradius-eap$(L)
 
 SOURCES	:=		\
 	base.c		\
@@ -11,5 +11,5 @@ ifneq (${OPENSSL_LIBS},)
 SOURCES		+= tls.c crypto.c
 endif
 
-TGT_PREREQS	:= libfreeradius-util.la libfreeradius-radius.a
+TGT_PREREQS	:= libfreeradius-util$(L) libfreeradius-radius$(L)
 SRC_CFLAGS	:= -DEAPLIB

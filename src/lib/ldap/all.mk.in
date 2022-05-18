@@ -1,7 +1,7 @@
 TARGETNAME	:= @targetname@
 
 ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME)$(L)
 endif
 
 SOURCES		:= base.c bind.c connection.c control.c directory.c edir.c map.c referral.c start_tls.c state.c util.c @SASL@

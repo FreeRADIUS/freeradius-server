@@ -1,5 +1,5 @@
-TARGET		:= libfreeradius-control.a
+TARGET		:= libfreeradius-control$(L)
 
 SOURCES		:= conduit.c
 
-SRC_CFLAGS	:= 
+SRC_CFLAGS	:=
