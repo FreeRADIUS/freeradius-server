@@ -457,10 +457,11 @@ int trigger_exec(unlang_interpret_t *intp,
 		 *	shutting down.
 		 */
 		unlang_interpret_synchronous(NULL, request);
+		talloc_free(request);
 	}
 
 	/*
-	 *	Otherwise the worker cleans up the request.
+	 *	Otherwise the worker cleans up the request request.
 	 */
 	return 0;
 }
