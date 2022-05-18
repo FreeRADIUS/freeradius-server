@@ -121,7 +121,7 @@ PROGRAM_INSTALL = ${LIBTOOL} ${LIBTOOL_VERBOSE} --target=${TARGET_SYSTEM} --mode
 #   extension with ".la".
 #
 define LIBTOOL_ENDINGS
-$(patsubst %.a,%.la,$(patsubst %.so,%.la,${1}))
+$(patsubst %.a,%.la,$(patsubst %.$(TARGET_LIB_EXT),%.la,${1}))
 endef
 
 # ADD_TARGET_RULE.la - Build a ".la" target.
@@ -236,6 +236,10 @@ define ADD_LOCAL_RULE.exe
 
     .PHONY: $(DIR)
     $(DIR)/: ${1}
+endef
+
+define ADD_LOCAL_RULE.js
+${ADD_LOCAL_RULE.exe}
 endef
 
 # ADD_LOCAL_RULE.la - Parametric "function" that adds a rule to build
