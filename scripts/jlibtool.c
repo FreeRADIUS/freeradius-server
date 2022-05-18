@@ -331,15 +331,16 @@ static const target_t target_emscripten = {
 	.dynamic_lib_ext		= "wasm",
 	.module_lib_ext			= "wasm",
 	.static_lib_ext			= "a",
+	.exe_ext			= ".js",
 	.object_ext			= "o",
-	.librarian			= "ar",
+	.librarian			= "emar",
 	.librarian_opts			= "cr",
 	.pic_flag			= "-fPIC",
 	.rpath				= "-rpath",
 	.shared_opts			= "-shared",
 	.module_opts			= "-shared",
 	.linker_flag_prefix		= "-Wl,",
-	.dynamic_link_opts		= "-Wl,-export-dynamic",
+	.dynamic_link_opts		= "",
 	.add_minus_l			= true,
 	.ld_run_path			= "LD_RUN_PATH",
 	.ld_library_path		= "LD_LIBRARY_PATH",
@@ -1287,7 +1288,7 @@ static void safe_mkdir(command_t *cmd, char const *path)
 	status = mkdir(path, ~old_umask);
 #endif
 	if ((status < 0) && (errno != EEXIST)) {
-		NOTICE("Warning: mkdir of %s failed\n", path);
+		NOTICE("Warning: mkdir of %s failed: %s\n", path, strerror(errno));
 	}
 }
 
