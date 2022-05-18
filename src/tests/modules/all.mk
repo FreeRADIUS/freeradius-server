@@ -119,10 +119,15 @@ $(OUTPUT)/%: $(DIR)/%.unlang $(TEST_BIN_DIR)/unit_test_module | build.raddb
 #  Allow running individual tests.
 #
 define UNIT_TEST_MODULES
+$(TEST).help: HELP+=$(TEST).${1}
+
 $(TEST).${1}: $(addprefix $(OUTPUT)/,$(filter ${1}/%,$(FILES)))
 endef
 $(foreach x,$(subst /,,$(sort $(dir $(FILES)))),$(eval $(call UNIT_TEST_MODULES,$x)))
 
+.PHONY: $(TEST).help
+$(TEST).help:
+	@echo $(HELP)
 
 $(TEST):
 	@touch $(BUILD_DIR)/tests/$@
