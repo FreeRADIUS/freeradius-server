@@ -4975,17 +4975,15 @@ parse:
 
 	/*
 	 *	It's a fixed size src->dst_type, copy to a temporary buffer and
-	 *	\0 terminate if insize >= 0.
+	 *	\0 terminate.
 	 */
-	if (fr_sbuff_remaining(in) > 0) {
-		if (fr_sbuff_remaining(in) >= sizeof(buffer)) {
-			fr_strerror_const("Temporary buffer too small");
-			return -1;
-		}
-
-		memcpy(buffer, fr_sbuff_current(in), fr_sbuff_remaining(in));
-		buffer[fr_sbuff_remaining(in)] = '\0';
+	if (fr_sbuff_remaining(in) >= sizeof(buffer)) {
+		fr_strerror_const("Temporary buffer too small");
+		return -1;
 	}
+
+	memcpy(buffer, fr_sbuff_current(in), fr_sbuff_remaining(in));
+	buffer[fr_sbuff_remaining(in)] = '\0';
 
 	switch (dst_type) {
 	case FR_TYPE_SIZE:
