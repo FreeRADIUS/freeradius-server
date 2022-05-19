@@ -111,6 +111,15 @@ jobs:
       run: |
         yum-builddep -y freeradius/redhat/freeradius.spec
 
+    #
+    #  It has been observed that sometimes not all the dependencies are
+    #  installed on the first go.  Give it a second chance.
+    #
+    - name: Second run of install build dependencies
+      run: |
+        yum-builddep -y redhat/freeradius.spec
+      working-directory: freeradius
+
     - name: Show versions
       run: |
         $CC --version
