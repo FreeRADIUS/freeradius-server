@@ -182,14 +182,6 @@ static inline int xlat_tokenize_alternation(xlat_exp_head_t *head, fr_sbuff_t *i
 	node->flags = node->alternate[0]->flags;
 
 	/*
-	 *	If the first argument is pure, then we can purify this
-	 *	node.  If the first argument isn't pure, but the
-	 *	second one is, then we can still purify the second
-	 *	argument.
-	 */
-	node->flags.can_purify |= node->alternate[0]->flags.pure;
-
-	/*
 	 *	Allow the RHS to be empty as a special case.
 	 */
 	if (fr_sbuff_next_if_char(in, '}')) goto done;
@@ -211,7 +203,6 @@ static inline int xlat_tokenize_alternation(xlat_exp_head_t *head, fr_sbuff_t *i
 		goto error;
 	}
 	xlat_flags_merge(&node->flags, &node->alternate[1]->flags);
-	node->flags.can_purify |= node->alternate[1]->flags.pure;
 
 done:
 	xlat_exp_insert_tail(head, node);
