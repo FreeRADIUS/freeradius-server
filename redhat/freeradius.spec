@@ -159,6 +159,7 @@ Group: System Environment/Daemons
 Summary: FreeRADIUS config files
 Provides: freeradius-config
 Requires: make
+Requires: util-linux
 
 %description config
 FreeRADIUS default config files
