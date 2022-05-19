@@ -97,6 +97,7 @@ static int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			break;
 			
 		case XLAT_FUNC:
+			fr_value_box_list_init(&list);
 			if (unlang_xlat_push_node(node->call.args, &success, &list, request, node) < 0) {
 				return -1;
 			}
@@ -116,6 +117,7 @@ static int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			fr_dlist_talloc_free(&group->dlist);
 			node->type = XLAT_GROUP;
 			node->group = group;
+			node->quote = T_BARE_WORD;
 
 			xlat_value_list_to_xlat(group, &list);
 			break;
