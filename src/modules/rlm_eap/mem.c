@@ -290,6 +290,8 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 	int		status = 0;
 	VALUE_PAIR	*state;
 	REQUEST		*request = handler->request;
+	int cache_enabled = eap_cache_enabled(inst, handler->type);
+	RDEBUG("Cache is enabled %d", cache_enabled);
 
 	/*
 	 *	Generate State, since we've been asked to add it to
@@ -312,13 +314,12 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 	 *	Playing with a data structure shared among threads
 	 *	means that we need a lock, to avoid conflict.
 	 */
-	if (inst->cache_virtual_server == NULL)
+	if (!cache_enabled) {
 		PTHREAD_MUTEX_LOCK(&(inst->session_mutex));
 
 	/*
 	 *	If we have a DoS attack, discard new sessions.
 	 */
-	if (inst->cache_virtual_server == NULL) {
 		if (rbtree_num_elements(inst->session_tree) >= inst->max_sessions) {
 			status = -1;
 			eaplist_expire(inst, request, handler->timestamp);
@@ -357,7 +358,7 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 	/*
 	 *	Big-time failure.
 	 */
-	if (!eap_cache_enabled(inst, handler->type)) {
+	if (!cache_enabled) {
 		status = rbtree_insert(inst->session_tree, handler);
 		if (status) {
 			eap_handler_t *prev;
@@ -389,7 +390,7 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 	 */
 	if (status > 0) handler->request = NULL;
 
-	if (inst->cache_virtual_server == NULL)
+	if (!cache_enabled)
 		PTHREAD_MUTEX_UNLOCK(&(inst->session_mutex));
 
 	if (status <= 0) {
