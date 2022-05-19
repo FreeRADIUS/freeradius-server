@@ -2,7 +2,7 @@ cache cache_eap {
 	#
 	#  key:: Cache key.
 	#
-	key = "%{reply.State}"
+	key = "%{reply:State}"
 
 	#
 	#  ttl:: TTL for cache entries.

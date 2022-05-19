@@ -29,7 +29,6 @@ RCSIDH(rlm_eap_h, "$Id$")
 #include <freeradius-devel/modpriv.h>
 #include "eap.h"
 #include "eap_types.h"
-#include "cache.h"
 
 /*
  * Keep track of which sub modules we've loaded.
@@ -108,6 +107,12 @@ void	    	eap_ds_free(EAP_DS **eap_ds);
 int 	    	eaplist_add(rlm_eap_t *inst, eap_handler_t *handler) CC_HINT(nonnull);
 eap_handler_t 	*eaplist_find(rlm_eap_t *inst, REQUEST *request, eap_packet_raw_t *eap_packet);
 void		eaplist_free(rlm_eap_t *inst);
+
+/* Cache */
+REQUEST * eap_cache_init_fake_request(rlm_eap_t *inst);
+int eap_cache_save(REQUEST *request, rlm_eap_t *inst, eap_handler_t *handler);
+eap_handler_t* eap_cache_find(rlm_eap_t *inst, eap_handler_t *handler);
+int eap_cache_enabled(rlm_eap_t *inst, int type);
 
 /* State */
 void	    	generate_key(void);

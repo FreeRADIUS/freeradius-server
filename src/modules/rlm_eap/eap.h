@@ -133,6 +133,8 @@ typedef struct rlm_eap_module {
 	int (*instantiate)(CONF_SECTION *conf, void **instance);	//!< Create a new submodule instance.
 	int (*session_init)(void *instance, eap_handler_t *handler);	//!< Initialise a new EAP session.
 	int (*process)(void *instance, eap_handler_t *handler);		//!< Continue an EAP session.
+	int (*serialize)(void *instance, REQUEST *request, eap_handler_t *handler);	//!< serialize eap session.
+	int (*deserialize)(void *instance, REQUEST *request, eap_handler_t *handler);	//!< deserialize eap session.
 	int (*detach)(void *instance);					//!< Destroy a submodule instance.
 } rlm_eap_module_t;
 
