@@ -376,6 +376,8 @@ static inline xlat_exp_head_t *xlat_exp_head_alloc(TALLOC_CTX *ctx)
 	if (!head) return NULL;
 
 	fr_dlist_init(&head->dlist, xlat_exp_t, entry);
+	head->flags.pure = true;
+
 	return head;
 }
 
