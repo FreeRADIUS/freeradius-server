@@ -31,6 +31,7 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/io/pair.h>
+#include <freeradius-devel/unlang/interpret.h>
 
 #ifdef DEBUG_XLAT
 #  define XLAT_DEBUG RDEBUG3
@@ -333,6 +334,10 @@ int		xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 
 ssize_t		xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t const *node, fr_sbuff_escape_rules_t const *e_rules);
 
+/*
+ *	xlat_purify.c
+ */
+int		xlat_purify(xlat_exp_head_t *head, unlang_interpret_t *intp);
 
 
 static inline xlat_exp_t *xlat_exp_head(xlat_exp_head_t const *head)
