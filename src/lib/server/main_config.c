@@ -496,7 +496,7 @@ static int xlat_config_escape(UNUSED request_t *request, fr_value_box_t *vb, UNU
 	 */
 	if (outlen > vb->vb_length) {
 		char	*outbuff;
-		fr_value_box_bstr_realloc(vb, &outbuff, vb, outlen);
+		if (fr_value_box_bstr_realloc(vb, &outbuff, vb, outlen) < 0) return -1;
 		memcpy(outbuff, escaped, outlen);
 	}
 
