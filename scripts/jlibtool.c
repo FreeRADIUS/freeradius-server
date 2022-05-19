@@ -2384,7 +2384,11 @@ static void link_fixup(command_t *cmd)
 				{
 					char *tmp = lt_malloc(PATH_MAX + 30);
 
-					strcpy(tmp, cmd->install_path);
+					if (cmd->install_path) {
+						strcpy(tmp, cmd->install_path);
+					} else {
+						strcpy(tmp, "");
+					}
 
 					if (cmd->shared_name.install) {
 						strcat(tmp, strrchr(cmd->shared_name.install, '/'));
