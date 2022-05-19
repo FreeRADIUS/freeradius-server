@@ -126,13 +126,7 @@ xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t *func, xlat_exp_head_t c
 		return NULL;
 	}
 	node->flags = func->flags;
-
-	/*
-	 *	A pure function can have impure arguments, e.g. hash(sql query).
-	 */
-	xlat_exp_foreach(args, arg) {
-		xlat_flags_merge(&node->flags, &arg->flags);
-	}
+	xlat_flags_merge(&node->flags, &args->flags);
 
 	return node;
 }
