@@ -740,6 +740,7 @@ static ssize_t tokenize_regex(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	}
 
 	*out = node;
+	node->flags.pure = tmpl_is_data(node->vpt);
 	xlat_flags_merge(&head->flags, &node->flags);
 
 	return fr_sbuff_used(&our_in);
@@ -818,6 +819,7 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 
 	xlat_exp_insert_tail(unary->call.args, node);
 	xlat_flags_merge(&unary->flags, &unary->call.args->flags);
+	unary->flags.can_purify = unary->call.func->flags.pure && unary->call.args->flags.pure;
 
 	/*
 	 *	Don't add it to head->flags, that will be done when it's actually inserted.
@@ -1217,6 +1219,8 @@ redo:
 	xlat_func_append_arg(node, rhs);
 
 	fr_assert(xlat_exp_head(node->call.args) != NULL);
+
+	node->flags.can_purify = node->call.func->flags.pure && node->call.args->flags.pure;
 
 	lhs = node;
 	goto redo;
