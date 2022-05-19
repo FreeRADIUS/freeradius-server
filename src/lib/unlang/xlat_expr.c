@@ -131,6 +131,7 @@ static void xlat_func_append_arg(xlat_exp_t *head, xlat_exp_t *node)
 	group->quote = T_BARE_WORD;
 
 	group->fmt = node->fmt;	/* not entirely correct, but good enough for now */
+	group->flags = node->flags;
 
 	MEM(group->group = xlat_exp_head_alloc(group));
 	talloc_steal(group->group, node);
@@ -741,6 +742,7 @@ static ssize_t tokenize_regex(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 
 	*out = node;
 	node->flags.pure = tmpl_is_data(node->vpt);
+	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
 	xlat_flags_merge(&head->flags, &node->flags);
 
 	return fr_sbuff_used(&our_in);
@@ -949,6 +951,9 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	node->vpt = vpt;
 	node->quote = quote;
 	node->fmt = vpt->name;
+	node->flags.pure = tmpl_is_data(node->vpt);
+	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
+	/* don't merge flags.  That will happen when the node is added to the head */
 
 	/*
 	 *	It would be nice if tmpl_afrom_substr() did this :(
@@ -1375,6 +1380,7 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **ou
 	}
 
 	my_rules.xlat.runtime_el = el;
+	my_rules.at_runtime = true;
 
 	slen = tokenize_expression(head, NULL, in, terminal_rules, &my_rules, T_INVALID, bracket_rules);
 	talloc_free(bracket_rules);
@@ -1385,10 +1391,25 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **ou
 		return slen;
 	}
 
+	if (!xlat_exp_head(head)) {
+		*out = head;
+		return slen;
+	}
+
+	/*
+	 *	Ensure that everything is resolved otherwise we have
+	 *	no idea what to do.
+	 */
+	if (head->flags.needs_resolving &&
+	    (xlat_resolve(head, &(xlat_res_rules_t){ .allow_unresolved = false }) < 0)) {
+		talloc_free(head);
+		return -1;
+	}
+
 	/*
 	 *	Create ephemeral instance data for the xlat
 	 */
-	if (xlat_exp_head(head) && (xlat_instantiate_ephemeral(head, el) < 0)) {
+	if (xlat_instantiate_ephemeral(head, el) < 0) {
 		fr_strerror_const("Failed performing ephemeral instantiation for xlat");
 		talloc_free(head);
 		return 0;
