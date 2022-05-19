@@ -178,15 +178,16 @@ int unlang_xlat_timeout_add(request_t *request,
  *				here.  If execution fails, false will be written.
  * @param[out] out		Where to write the result of the expansion.
  * @param[in] request		to push xlat onto.
- * @param[in] xlat		to evaluate.
+ * @param[in] xlat		head of list
+ * @param[in] node		to evaluate.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
-		     request_t *request, xlat_exp_head_t const *xlat, bool top_frame)
+static int unlang_xlat_push_internal(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
+				     request_t *request, xlat_exp_head_t const *xlat, xlat_exp_t *node, bool top_frame)
 {
 	/** Static instruction for performing xlat evaluations
 	 *
@@ -226,8 +227,8 @@ int unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
 	 *	Allocate its state, and setup a cursor for the xlat nodes
 	 */
 	MEM(frame->state = state = talloc_zero(stack, unlang_frame_state_xlat_t));
-	state->head = talloc_get_type_abort_const(xlat, xlat_exp_head_t);	/* Ensure the node is valid */
-	state->exp = xlat_exp_head(state->head);
+	state->head = xlat;
+	state->exp = node;
 	state->success = p_success;
 	state->ctx = ctx;
 
@@ -238,6 +239,46 @@ int unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
 	fr_value_box_list_init(&state->out);
 
 	return 0;
+}
+
+/** Push a pre-compiled xlat onto the stack for evaluation
+ *
+ * @param[in] ctx		To allocate value boxes and values in.
+ * @param[out] p_success	If set, and execution succeeds, true will be written
+ *				here.  If execution fails, false will be written.
+ * @param[out] out		Where to write the result of the expansion.
+ * @param[in] request		to push xlat onto.
+ * @param[in] xlat		to evaluate.
+ * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
+ *				Set to UNLANG_SUB_FRAME if the interprer should continue.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int unlang_xlat_push(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
+		     request_t *request, xlat_exp_head_t const *xlat, bool top_frame)
+{
+	(void) talloc_get_type_abort_const(xlat, xlat_exp_head_t);
+
+	return unlang_xlat_push_internal(ctx, p_success, out, request, xlat, xlat_exp_head(xlat), top_frame);
+}
+
+/** Push a pre-compiled xlat onto the stack for evaluation
+ *
+ * @param[in] ctx		To allocate value boxes and values in.
+ * @param[out] p_success	If set, and execution succeeds, true will be written
+ *				here.  If execution fails, false will be written.
+ * @param[out] out		Where to write the result of the expansion.
+ * @param[in] request		to push xlat onto.
+ * @param[in] node		to evaluate.  Only this node will be evaluated.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int unlang_xlat_push_node(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
+			  request_t *request, xlat_exp_t *node)
+{
+	return unlang_xlat_push_internal(ctx, p_success, out, request, NULL, node, UNLANG_TOP_FRAME);
 }
 
 static unlang_action_t unlang_xlat_repeat(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)

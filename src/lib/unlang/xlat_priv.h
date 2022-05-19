@@ -311,6 +311,9 @@ void		xlat_eval_free(void);
 
 void		unlang_xlat_init(void);
 
+int		unlang_xlat_push_node(TALLOC_CTX *ctx, bool *p_success, fr_value_box_list_t *out,
+				      request_t *request, xlat_exp_t *node);
+
 int xlat_decode_value_box_list(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			       request_t *request, void *decode_ctx, fr_pair_decode_t decode,
 			       fr_value_box_list_t *in);
@@ -349,6 +352,8 @@ static inline xlat_exp_t *xlat_exp_head(xlat_exp_head_t const *head)
 
 static inline xlat_exp_t *xlat_exp_next(xlat_exp_head_t const *head, xlat_exp_t const *node)
 {
+	if (!head) return NULL;
+
 	return fr_dlist_next(&head->dlist, node);
 }
 
