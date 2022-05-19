@@ -128,6 +128,12 @@ xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t *func, xlat_exp_head_t c
 	node->flags = func->flags;
 	xlat_flags_merge(&node->flags, &args->flags);
 
+	/*
+	 *	If the function is pure, AND it's arguments are pure,
+	 *	then remember that we need to call a pure function.
+	 */
+	node->flags.can_purify = func->flags.pure && args->flags.pure;
+
 	return node;
 }
 
@@ -176,6 +182,14 @@ static inline int xlat_tokenize_alternation(xlat_exp_head_t *head, fr_sbuff_t *i
 	node->flags = node->alternate[0]->flags;
 
 	/*
+	 *	If the first argument is pure, then we can purify this
+	 *	node.  If the first argument isn't pure, but the
+	 *	second one is, then we can still purify the second
+	 *	argument.
+	 */
+	node->flags.can_purify |= node->alternate[0]->flags.pure;
+
+	/*
 	 *	Allow the RHS to be empty as a special case.
 	 */
 	if (fr_sbuff_next_if_char(in, '}')) goto done;
@@ -197,6 +211,7 @@ static inline int xlat_tokenize_alternation(xlat_exp_head_t *head, fr_sbuff_t *i
 		goto error;
 	}
 	xlat_flags_merge(&node->flags, &node->alternate[1]->flags);
+	node->flags.can_purify |= node->alternate[1]->flags.pure;
 
 done:
 	xlat_exp_insert_tail(head, node);
@@ -498,7 +513,11 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 	/*
 	 *	Check we have all the required arguments
 	 */
-	if ((node->type == XLAT_FUNC) && (xlat_validate_function_args(node) < 0)) goto error;
+	if (node->type == XLAT_FUNC) {
+		if (xlat_validate_function_args(node) < 0) goto error;
+
+		node->flags.can_purify = node->call.func->flags.pure && node->call.args->flags.pure;
+	}
 
 	if (!fr_sbuff_next_if_char(in, ')')) {
 		fr_strerror_const("Missing closing brace");
@@ -931,8 +950,11 @@ static int xlat_tokenize_string(xlat_exp_head_t *head,
 			xlat_exp_set_type(node, XLAT_ONE_LETTER);
 			xlat_exp_set_name_buffer_shallow(node, str);
 
-			node->flags.pure = true;	 /* value boxes are always pure */
-			node->flags.needs_async = false; /* value boxes are always non-async */
+			/*
+			 *	%% is pure.  Everything else is not.
+			 */
+			node->flags.pure = (node->fmt[0] == '%');
+			node->flags.needs_async = false;
 
 			xlat_exp_insert_tail(head, node);
 			continue;
@@ -1633,6 +1655,8 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			if (xlat_resolve(node->call.args, xr_rules) < 0) return -1;
 			node->flags = node->call.func->flags;
 			xlat_flags_merge(&node->flags, &node->call.args->flags);
+
+			node->flags.can_purify = node->call.func->flags.pure && node->call.args->flags.pure;
 			break;
 
 		/*
@@ -1705,6 +1729,8 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			 *	the child nodes.
 			 */
 			xlat_flags_merge(&node->flags, &node->call.args->flags);
+
+			node->flags.can_purify = node->call.func->flags.pure && node->call.args->flags.pure;
 
 			/*
 			 *	Add the freshly resolved function
