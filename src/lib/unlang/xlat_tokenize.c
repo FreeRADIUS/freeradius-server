@@ -998,13 +998,19 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 	fr_assert(head != NULL);
 
 	xlat_exp_foreach(head, node) {
+		INFO_INDENT("flags = { %s %s %s %s }",
+			    node->flags.needs_resolving ? "need_resolving" : "",
+			    node->flags.needs_async ? "need_async" : "",
+			    node->flags.pure ? "pure" : "",
+			    node->flags.can_purify ? "can_purify" : "");
+
 		switch (node->type) {
 		case XLAT_BOX:
 			INFO_INDENT("value --> %pV", &node->data);
 			break;
 
 		case XLAT_GROUP:
-			INFO_INDENT("child \"%s\"", node->fmt);
+			INFO_INDENT("group");
 			INFO_INDENT("{");
 			_xlat_debug(node->group, depth + 1);
 			INFO_INDENT("}");
@@ -1015,22 +1021,25 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 			break;
 
 		case XLAT_TMPL:
-			fr_assert(tmpl_da(node->vpt) != NULL);
-			INFO_INDENT("attribute (%s)", tmpl_da(node->vpt)->name);
-			if (tmpl_num(node->vpt) != NUM_ANY) {
-				INFO_INDENT("{");
-				INFO_INDENT("ref  %d", tmpl_request(node->vpt));
-				INFO_INDENT("list %d", tmpl_list(node->vpt));
+			if (tmpl_is_attr(node->vpt)) {
+				INFO_INDENT("attribute (%s)", tmpl_da(node->vpt)->name);
 				if (tmpl_num(node->vpt) != NUM_ANY) {
-					if (tmpl_num(node->vpt) == NUM_COUNT) {
-						INFO_INDENT("[#]");
-					} else if (tmpl_num(node->vpt) == NUM_ALL) {
-						INFO_INDENT("[*]");
-					} else {
-						INFO_INDENT("[%d]", tmpl_num(node->vpt));
+					INFO_INDENT("{");
+					INFO_INDENT("ref  %d", tmpl_request(node->vpt));
+					INFO_INDENT("list %d", tmpl_list(node->vpt));
+					if (tmpl_num(node->vpt) != NUM_ANY) {
+						if (tmpl_num(node->vpt) == NUM_COUNT) {
+							INFO_INDENT("[#]");
+						} else if (tmpl_num(node->vpt) == NUM_ALL) {
+							INFO_INDENT("[*]");
+						} else {
+							INFO_INDENT("[%d]", tmpl_num(node->vpt));
+						}
 					}
+					INFO_INDENT("}");
 				}
-				INFO_INDENT("}");
+			} else {
+				INFO_INDENT("tmpl (%s)", node->fmt);
 			}
 			break;
 
