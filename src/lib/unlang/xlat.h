@@ -405,6 +405,12 @@ int		xlat_bootstrap(xlat_exp_head_t *root);
 void		xlat_instances_free(void);
 
 /*
+ *	xlat_purify.c
+ */
+typedef struct unlang_interpret_s unlang_interpret_t;
+int		xlat_purify(xlat_exp_head_t *head, unlang_interpret_t *intp);
+
+/*
  *	xlat.c
  */
 int		unlang_xlat_timeout_add(request_t *request, fr_unlang_xlat_timeout_t callback,
