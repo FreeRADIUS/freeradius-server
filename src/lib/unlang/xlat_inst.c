@@ -81,12 +81,12 @@ static int _xlat_thread_inst_detach(xlat_thread_inst_t *xt)
 
 	DEBUG4("Cleaning up xlat thread instance (%p/%p)", xt, xt->data);
 
-	if (call->func->thread_detach) {
-		(void) call->func->thread_detach(XLAT_THREAD_INST_CTX(call->inst->data,
-								      xt->data, xt->node, xt->mctx,
-								      xt->el,
-								      call->func->thread_uctx));
-	}
+	fr_assert(call->func->thread_detach);
+
+	(void) call->func->thread_detach(XLAT_THREAD_INST_CTX(call->inst->data,
+							      xt->data, xt->node, xt->mctx,
+							      xt->el,
+							      call->func->thread_uctx));
 
 	return 0;
 }
@@ -135,7 +135,7 @@ static xlat_thread_inst_t *xlat_thread_inst_alloc(TALLOC_CTX *ctx, fr_event_list
 
 	fr_assert(xi->node->type == XLAT_FUNC);
 
-	talloc_set_destructor(xt, _xlat_thread_inst_detach);
+	if (call->func->thread_detach) talloc_set_destructor(xt, _xlat_thread_inst_detach);
 
 	if (call->func->thread_inst_size) {
 		MEM(xt->data = talloc_zero_array(xt, uint8_t, call->func->thread_inst_size));
@@ -178,10 +178,14 @@ static xlat_thread_inst_t *xlat_thread_inst_alloc(TALLOC_CTX *ctx, fr_event_list
  */
 static int _xlat_inst_detach(xlat_inst_t *xi)
 {
-	xlat_call_t const *call = &((xlat_exp_t const *)talloc_get_type_abort_const(xi->node, xlat_exp_t))->call;
+	xlat_call_t const *call;
 
 	fr_assert(xlat_inst_tree);		/* xlat_inst_init must have been called */
+
+	talloc_get_type_abort_const(xi->node, xlat_exp_t);
 	fr_assert(xi->node->type == XLAT_FUNC);
+
+	call = &xi->node->call;
 
 	/*
 	 *	Remove permanent data from the instance tree
@@ -228,7 +232,10 @@ static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
 	 *	Instance data is freed when the
 	 *	node is freed.
 	 */
-	talloc_set_destructor(xi, _xlat_inst_detach);
+	if (call->func->detach || !call->ephemeral) {
+		talloc_set_destructor(xi, _xlat_inst_detach);
+	}
+
 	if (call->func->inst_size) {
 		MEM(xi->data = talloc_zero_array(xi, uint8_t, call->func->inst_size));
 		if (call->func->inst_type) {
@@ -260,6 +267,12 @@ static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, void *uctx)
 
 	fr_assert(!call->inst && !call->thread_inst);
 
+	/*
+	 *	Mark this up as an ephemeral node, so the destructors
+	 *	don't search for it in the xlat_inst_tree.
+	 */
+	call->ephemeral = true;
+
 	xi = call->inst = xlat_inst_alloc(node);
 	if (!xi) return -1;
 
@@ -290,12 +303,6 @@ static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, void *uctx)
 	    					 		 xt->mctx,
 	    					 		 el,
 	    					 		 call->func->thread_uctx)) < 0)) goto error;
-
-	/*
-	 *	Mark this up as an ephemeral node, so the destructors
-	 *	don't search for it in the xlat_inst_tree.
-	 */
-	call->ephemeral = true;
 
 	return 0;
 }
