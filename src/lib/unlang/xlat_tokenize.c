@@ -941,6 +941,10 @@ static int xlat_tokenize_string(xlat_exp_head_t *head,
 			xlat_exp_set_type(node, XLAT_ONE_LETTER);
 			xlat_exp_set_name_buffer_shallow(node, str);
 
+#ifdef __clang_analyzer__
+			if (!node->fmt) goto error;
+#endif
+
 			/*
 			 *	%% is pure.  Everything else is not.
 			 */
