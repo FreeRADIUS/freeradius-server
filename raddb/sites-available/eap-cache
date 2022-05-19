@@ -1,0 +1,93 @@
+# -*- text -*-
+######################################################################
+#
+#	This is a virtual server which handles EAP caching.
+#
+#	$Id$
+#
+######################################################################
+#
+#  In mods-enabled/eap
+#  Set cache_virtual_server = "eap-cache"
+#  In order to enable caching the EAP session.
+#
+
+#
+#  This virtual server SHOULD NOT have any "listen" sections.
+#
+#  All of the cache sections key off of &reply:State
+#
+#  The cache sections also run the "post-auth" section of any
+#  module which they use.
+#
+#  These sections do not need to return any specific codes (e.g. ok /
+#  fail /etc.).  The cache functionality depends only on which
+#  attributes are saved / loaded.
+#
+#  For example, if the "cache save" process fails, there is nothing
+#  that the server can do about that.  The users authentication
+#  session will still succeed.  The only difference from a successful
+#  "cache save" is that the user will be unable to resume their
+#  session.  Instead, they will need to do a full re-authentication
+#  process.
+#
+#  Similarly for "cache load".  If the session (and/or) the VPs are
+#  not loaded from the cache, then the user will do a full
+#  re-authentication.
+#
+#  Whilst any store can be used for eap caching, whatever is
+#  chosen should be faster than performing a full re-authentication
+server eap-cache {
+
+cache clear {
+	#  clear the cache entry by keying off of &reply:State
+
+	#  An example using redis
+#	"%{redis:DEL %{reply:State}}"
+
+	#  An example using SQL
+#	"%{sql:DELETE FROM eap WHERE session_id = '%{reply:State}'}"
+}
+
+cache save {
+	#  use the key &reply:State
+	#  save &reply:EAP-Serialized-Handler
+	#  save &reply:EAP-Serialized-Opaque
+
+	#  The &reply: list is initialized to the attributes
+	#  which should be saved.  This includes attributes
+	#  mentioned in the "store" subsection of the "cache"
+	#  section configuration.  This is the same set of
+	#  attributes which is saved when the 'persist_dir'
+	#  configuration is used.
+	#
+	#  Note the "store" subsection will only copy matching
+	#  attributes from the &reply: list at the time that
+	#  eap authentication succeeds.
+	#
+	#  Other attributes can be saved by referring to them
+	#  e.g. &outer.request:...
+
+	#  An example using redis
+#	update {
+#		&Tmp-String-0 := "%{session-state:TLS-Session-Data}|%{escape:%{reply:Tunnel-Private-Group-ID}}"
+#	}
+#	"%{redis: SET %{reply:State} \"%{Tmp-String-0}\" EX 86400}"
+
+	#  An example using SQL
+#	"%{sql: INSERT INTO eap_cache (session_id, session_data, vlan, expiry) VALUES ('%{reply:State}', '%{session-state:TLS-Session-Data}', '%{escape:%{reply:Tunnel-Private-Group-ID}}', DATE_ADD(NOW(), INTERVAL 24 HOUR))}"
+}
+
+cache load {
+	#  use the key &reply:State
+	#  load &reply:EAP-Serialized-Handler
+	#  load &reply:EAP-Serialized-Opaque
+	
+}
+
+cache refresh {
+	#  refresh the cache entry by keying off of &reply:State
+
+}
+
+}
