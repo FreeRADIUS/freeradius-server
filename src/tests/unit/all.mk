@@ -65,13 +65,18 @@ test.unit.help: TEST_UNIT_HELP += test.unit.xlat
 test.unit.condition: $(addprefix $(OUTPUT)/,$(filter condition/%.txt,$(FILES))) $(BUILD_DIR)/lib/libfreeradius-server.la
 
 #
+#  Add special command-line flag for purify tests.
+#
+$(BUILD_DIR)/tests/unit/xlat/purify.txt: PURIFY=-p
+
+#
 #  And the actual script to run each test.
 #
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_attribute
 	$(eval DIR:=${top_srcdir}/src/tests/unit)
 	@echo "UNIT-TEST $(lastword $(subst /, ,$(dir $@))) $(basename $(notdir $@))"
-	${Q}if ! $(TEST_BIN)/unit_test_attribute -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r "$@" $<; then \
-		echo "TZ=GMT $(TEST_BIN)/unit_test_attribute -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r \"$@\" $<"; \
+	${Q}if ! $(TEST_BIN)/unit_test_attribute $(PURIFY) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r "$@" $<; then \
+		echo "TZ=GMT $(TEST_BIN)/unit_test_attribute $(PURIFY) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r \"$@\" $<"; \
 		rm -f $(BUILD_DIR)/tests/test.unit; \
 		exit 1; \
 	fi

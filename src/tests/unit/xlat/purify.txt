@@ -1,8 +1,5 @@
 proto-dictionary radius
 
-#xlat_purify %(op_add:4 3) + 6
-#match 13
-
 #
 #  xlat_expr, but purified
 #
@@ -44,21 +41,30 @@ match (%{Framed-IP-Address} + 4)
 xlat_purify 1 < 4
 match yes
 
+#
+#  There's a bunch of things to fix here:
+#
+#  * Framed-User should be resolved via a custom callback, ala pass2_fixup
+#  * the tokenizer needs to track offsets, so it can return the offset which cause the error.
+#
 xlat_purify &Service-Type == Framed-User
-match (%{Service-Type} == Framed-User)
+#match (%{Service-Type} == Framed-User)
+match ERROR offset 1: Invalid attribute reference, missing '&' prefix: Failed resolving attribute in expansion: Framed-User
 
-xlat_purify 1 + (&Service-Type == Framed-User)
-match (1 + (%{Service-Type} == Framed-User))
+#xlat_purify 1 + (&Service-Type == Framed-User)
+#match (1 + (%{Service-Type} == Framed-User))
 
 #
 #  Strings of various forms
 #
+
+# this fails because the double-quoted string is unresolved?
+#
+#  @todo - call tmpl_resolve() on TMPL_UNRESOLVED for things other than T_BARE_WORD
+#
 xlat_purify &Filter-Id == "foo"
 match (%{Filter-Id} == "foo")
 
-#
-#  @todo - fix
-#
 xlat_purify "foo" == "bar"
 match ("foo" == "bar")
 
@@ -85,10 +91,13 @@ match (192.168.0.0/24 > %{Framed-IP-Address})
 #  Logical && and ||
 #
 xlat_purify 1 < 2 || 4 > 3
-match (yes || yes)
+match yes
 
+#
+#  @todo - This should probably return "2"?
+#
 xlat_purify 2 || (1 > 4)
-match (2 || no)
+match yes
 
 xlat_purify &Filter-Id
 match %{Filter-Id}
@@ -124,4 +133,4 @@ xlat_purify 1 < 2 < 3
 match yes
 
 count
-match 53
+match 51

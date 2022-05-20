@@ -261,6 +261,8 @@ static char		proto_name_prev[128];
 static dl_t		*dl;
 static dl_loader_t	*dl_loader;
 
+static fr_event_list_t	*el = NULL;
+
 size_t process_line(command_result_t *result, command_file_ctx_t *cc, char *data, size_t data_used, char *in, size_t inlen);
 static int process_file(bool *exit_now, TALLOC_CTX *ctx,
 			command_config_t const *config, const char *root_dir, char const *filename, fr_dlist_head_t *lines);
@@ -2735,9 +2737,13 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 	ssize_t			dec_len;
 	xlat_exp_head_t		*head = NULL;
 	size_t			input_len = strlen(in), escaped_len;
-//	fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
 
-	dec_len = xlat_tokenize_expression(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), NULL,
+	if (!el) {
+		fr_strerror_const("Flag '-p' not used.  xlat_purify is disabled");
+		goto return_error;
+	}
+
+	dec_len = xlat_tokenize_ephemeral_expression(cc->tmp_ctx, &head, el, &FR_SBUFF_IN(in, input_len), NULL,
 					   &(tmpl_rules_t) {
 						   .attr = {
 							.dict_def = cc->tmpl_rules.attr.dict_def ?
@@ -2756,6 +2762,8 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 		fr_strerror_printf_push_head("Passed in %zu characters, but only parsed %zd characters", input_len, dec_len);
 		goto return_error;
 	}
+
+	(void) xlat_purify(head, NULL);
 
 	escaped_len = xlat_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), head, &fr_value_escape_double);
 	RETURN_OK(escaped_len);
@@ -3348,6 +3356,7 @@ static void usage(char const *name)
 	INFO("  -c                 Print commands.");
 	INFO("  -h                 Print help text.");
 	INFO("  -M                 Show talloc memory report.");
+	INFO("  -p                 Allow xlat_purify");
 	INFO("  -r <receipt_file>  Create the <receipt_file> as a 'success' exit.");
 	INFO("Where <filename> is a file containing one or more commands and '-' indicates commands should be read from stdin.");
 	INFO("Ranges of <lines> may be specified in the format <start>[-[<end>]][,]");
@@ -3475,6 +3484,7 @@ int main(int argc, char *argv[])
 	CONF_SECTION		*cs;
 	int			ret = EXIT_SUCCESS;
 	TALLOC_CTX		*autofree;
+	TALLOC_CTX		*thread_ctx;
 	bool			exit_now = false;
 
 	command_config_t	config = {
@@ -3486,6 +3496,7 @@ int main(int argc, char *argv[])
 	bool			do_features = false;
 	bool			do_commands = false;
 	bool			do_usage = false;
+	bool			allow_purify = false;
 
 	/*
 	 *	Must be called first, so the handler is called last
@@ -3493,6 +3504,7 @@ int main(int argc, char *argv[])
 	fr_atexit_global_setup();
 
 	autofree = talloc_autofree_context();
+	thread_ctx = talloc_new(autofree);
 
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
@@ -3527,7 +3539,7 @@ int main(int argc, char *argv[])
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
 
-	while ((c = getopt(argc, argv, "cd:D:F:fxMhr:")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "cd:D:F:fxMhpr:")) != -1) switch (c) {
 		case 'c':
 			do_commands = true;
 			break;
@@ -3559,6 +3571,10 @@ int main(int argc, char *argv[])
 
 		case 'r':
 			receipt_file = optarg;
+			break;
+
+		case 'p':
+			allow_purify = true;
 			break;
 
 		case 'h':
@@ -3626,6 +3642,13 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
+	if (allow_purify) {
+		if (request_global_init() < 0) {
+			fr_perror("unit_test_attribute");
+			EXIT_WITH_FAILURE;
+		}
+	}
+
 	/*
 	 *	Initialise the interpreter, registering operations.
 	 *	Needed because some keywords also register xlats.
@@ -3635,7 +3658,21 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	unlang_thread_instantiate(autofree);
+	/*
+	 *	Create a dummy event list
+	 */
+	if (allow_purify) {
+		el = fr_event_list_alloc(autofree, NULL, NULL);
+		fr_assert(el != NULL);
+
+		/*
+		 *	Simulate thread specific instantiation
+		 */
+		if (xlat_instantiate() < 0) EXIT_WITH_FAILURE;
+		if (xlat_thread_instantiate(thread_ctx, el) < 0) EXIT_WITH_FAILURE;
+	}
+
+	unlang_thread_instantiate(thread_ctx);
 
 	if (!xlat_register(NULL, "test", xlat_test, NULL)) {
 		ERROR("Failed registering xlat");
@@ -3744,6 +3781,8 @@ cleanup:
 	}
 
 	unlang_free_global();
+
+	if (allow_purify) request_global_free();
 
 	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
 		fr_perror("unit_test_attribute");
