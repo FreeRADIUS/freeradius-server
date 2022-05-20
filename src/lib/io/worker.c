@@ -658,7 +658,7 @@ static inline CC_HINT(always_inline)
 void worker_request_name_number(request_t *request)
 {
 	request->number = atomic_fetch_add_explicit(&request_number, 1, memory_order_seq_cst);
-	if (request->name) talloc_free(UNCONST(char *, request->name));
+	if (request->name) talloc_const_free(request->name);
 	request->name = itoa_internal(request, request->number);
 }
 
