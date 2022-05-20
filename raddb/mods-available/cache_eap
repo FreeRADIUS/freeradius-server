@@ -37,6 +37,7 @@ cache cache_eap {
 	#  update <section> { ... }::
 	#
 	update reply {
-		&reply += &reply
+		&reply:EAP-Serialized-Handler := &reply:EAP-Serialized-Handler
+		&reply:EAP-Serialized-Opaque  := &reply:EAP-Serialized-Opaque
 	}
 }
