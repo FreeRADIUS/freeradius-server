@@ -133,6 +133,8 @@ Provides: freeradius-config
 FreeRADIUS default config files
 This package should be used as a base for a site local package
 to configure the FreeRADIUS server.
+Requires: make
+Requires: util-linux
 
 %package utils
 Group: System Environment/Daemons
