@@ -1,0 +1,46 @@
+# -*- text -*-
+######################################################################
+#
+#  A sample virtual server which handles "health checks" from Amazon
+#  elastic load balancer.
+#
+#  https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/elb-healthchecks.html
+#
+#  In the Amazon system, configure "proto" as "tcp", and "port" as the port
+#  given below in the "listen" section.
+#
+#	$Id$
+#
+server aws-nlb {
+
+#
+#  This should be the IP address of the Amazon load balancer.
+#
+#  If TCP checks come from multiple IP addresses, just list each IP in a separate "client" section.
+#
+client aws-nlb {
+	ipaddr = 192.0.2.1
+	proto = tcp
+	secret = "this-will-never-be-used"
+}
+
+#
+#  Listen on a port.  Don't use 80, as that requires root permissions,
+#  and you don't want to run radiusd as root.
+#
+listen {
+	type = status
+	proto = tcp
+	ipaddr = *
+	port = 8000
+}
+
+#
+#  This will never get used, but it's here just in case we actually
+#  get sent RADIUS packets.
+#
+authorize {
+	reject
+}
+
+}
