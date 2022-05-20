@@ -56,30 +56,12 @@ RCSID("$Id$")
  *	the time, but not all of the time.  There are currently hacks in the "upcast" code here to fix this,
  *	but it's a hack.
  *
- *	@todo - Regular expressions are not handled.  This isn't a lot of work, but can be a bit finicky.
- *
- *	@todo - all function arguments should be in groups, so we need to fix that.  Right now, binary
- *	expressions are fixed.  But unary ones are not.  We did it via a hack, but it might be better to do it
- *	a different way in the future.  The problem is that no matter which way we choose, we'll have to
- *	talloc_steal() something.
- *
- *	@todo - all functions take a value-box group for each argument.  So they need fixing, along with the
- *	purify routinges.
- *
- *	@todo - run xlat_purify_expr() after creating the unary node.
- *
- *	And as a later optimization, lets us optimize the expressions at compile time instead of re-evaluating
- *	them at run-time.  Just like the old-style conditions.
- *
  *	@todo - tmpl_aprint doesn't print casts!  Changing that would likely mean changing many, many, tests.
  *	So we'll leave that later.
  *
  *	@todo - add instantiation routines for regex and assignment operations.  This lets us do things
  *	like:
  *		if ((&foo += 4) > 6) ...
- *
- *	@todo - call xlat_resolve() when we're done, in order to convert all of the nodes to real data types.
- *	xlat resolve should also run callbacks for the expressions, which will do type checks on LHS / RHS.
  */
 
 static fr_slen_t xlat_expr_print_unary(fr_sbuff_t *out, xlat_exp_t const *node, UNUSED void *inst, fr_sbuff_escape_rules_t const *e_rules)
