@@ -1260,12 +1260,14 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 
 				fr_value_box_copy(value, value, tmpl_value(node->vpt));	/* Also dups taint */
 				fr_dlist_insert_tail(&result, value);
-			} else if (tmpl_is_attr(node->vpt)) {
+
+			} else if (tmpl_is_attr(node->vpt) ||  tmpl_is_list(node->vpt)) {
 				XLAT_DEBUG("** [%i] %s(attribute) - %%{%s}", unlang_interpret_stack_depth(request), __FUNCTION__,
 					   node->fmt);
 				xlat_debug_log_expansion(request, node, NULL);
 
 				if (xlat_eval_pair_real(ctx, &result, request, node->vpt) == XLAT_ACTION_FAIL) goto fail;
+
 			} else {
 				/*
 				 *	@todo - write code here!
