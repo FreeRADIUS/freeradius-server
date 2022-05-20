@@ -229,7 +229,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 		 */
 		vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_eap_aka_sim_k_encr, 0);
 		if (vp) {
-			talloc_free(mod_session->ctx.k_encr);
+			talloc_free(UNCONST(void *, mod_session->ctx.k_encr));
 			MEM(mod_session->ctx.k_encr = talloc_memdup(mod_session, vp->vp_octets, vp->vp_length));
 		}
 
@@ -238,7 +238,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 		 */
 		vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_eap_aka_sim_k_aut, 0);
 		if (vp) {
-			talloc_free(mod_session->ctx.k_aut);
+			talloc_free(UNCONST(void *, mod_session->ctx.k_aut));
 			MEM(mod_session->ctx.k_aut = talloc_memdup(mod_session, vp->vp_octets, vp->vp_length));
 			mod_session->ctx.k_aut_len = vp->vp_length;
 		}
