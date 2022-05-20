@@ -26,6 +26,10 @@ RCSIDH(md4_h, "$Id$")
 
 #include <string.h>
 
+#ifdef WITH_FIPS
+#undef HAVE_OPENSSL_MD4_H
+#endif
+
 #ifdef HAVE_OPENSSL_MD4_H
 #  include <openssl/md4.h>
 #endif
