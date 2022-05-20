@@ -202,6 +202,7 @@ static inline xlat_exp_t *xlat_exp_alloc_null(TALLOC_CTX *ctx)
 
 	MEM(node = talloc_zero(ctx, xlat_exp_t));
 	node->flags.pure = true;	/* everything starts pure */
+	node->quote = T_BARE_WORD;
 
 	return node;
 }
