@@ -30,6 +30,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/hmac.h>
 #include <freeradius-devel/openssl3.h>
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+#include <openssl/provider.h>
+#endif
+
 /*
  *	TLS P_hash from RFC 2246/5246 section 5
  */
@@ -45,10 +49,6 @@ static void P_hash(EVP_MD const *evp_md,
 
 	ctx_a = HMAC_CTX_new();
 	ctx_out = HMAC_CTX_new();
-#ifdef EVP_MD_CTX_FLAG_NON_FIPS_ALLOW
-	HMAC_CTX_set_flags(ctx_a, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
-	HMAC_CTX_set_flags(ctx_out, EVP_MD_CTX_FLAG_NON_FIPS_ALLOW);
-#endif
 	HMAC_Init_ex(ctx_a, secret, secret_len, evp_md, NULL);
 	HMAC_Init_ex(ctx_out, secret, secret_len, evp_md, NULL);
 
@@ -102,12 +102,53 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 	uint8_t const *s1 = secret;
 	uint8_t const *s2 = secret + (secret_len - len);
 
-	P_hash(EVP_md5(),  s1, len, seed, seed_len, out, out_len);
+	EVP_MD *md5 = NULL;
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	/*
+	 *	If we are using OpenSSL >= 3.0 and FIPS mode is
+	 *	enabled, we need to load the default provider in a
+	 *	standalone context in order to access MD5.
+	 */
+	OSSL_LIB_CTX	*libctx = NULL;
+	OSSL_PROVIDER	*default_provider = NULL;
+
+	if (EVP_default_properties_is_fips_enabled(NULL)) {
+		libctx = OSSL_LIB_CTX_new();
+		default_provider = OSSL_PROVIDER_load(libctx, "default");
+
+		if (!default_provider) {
+			ERROR("Failed loading OpenSSL default provider.");
+			return;
+		}
+
+		md5 = EVP_MD_fetch(libctx, "MD5", NULL);
+		if (!md5) {
+			ERROR("Failed loading OpenSSL MD5 function.");
+			return;
+		}
+
+	} else {
+		md5 = EVP_md5();
+	}
+#else
+	md5 = EVP_md5();
+#endif
+
+	P_hash(md5, s1, len, seed, seed_len, out, out_len);
 	P_hash(EVP_sha1(), s2, len, seed, seed_len, buf, out_len);
 
 	for (i = 0; i < out_len; i++) {
 		out[i] ^= buf[i];
 	}
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	if (libctx) {
+		OSSL_PROVIDER_unload(default_provider);
+		OSSL_LIB_CTX_free(libctx);
+		EVP_MD_free(md5);
+	}
+#endif
 }
 
 /*
