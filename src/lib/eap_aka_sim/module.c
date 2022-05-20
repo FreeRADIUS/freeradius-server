@@ -206,7 +206,20 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 		 */
 		vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_eap_aka_sim_hmac_extra_response, 0);
 		if (vp) {
-			fr_assert(!mod_session->response_hmac_extra);
+			/*
+			 *	We may attempt to challenge the supplicant
+			 *	twice when performing a resynchronisation.
+			 *
+			 *	We previously asserted that the following were NULL:
+			 *
+			 *	mod_session->response_hmac_extra
+			 *	mod_session->ctx.k_encr
+			 *	mod_session->ctx.k_aut
+			 *
+			 *	but that is incorrect, as these fields need to be
+			 *	updated if new vectors are available.
+			 */
+			talloc_free(mod_session->response_hmac_extra);
 			MEM(mod_session->response_hmac_extra = talloc_memdup(mod_session,
 										vp->vp_octets, vp->vp_length));
 			mod_session->response_hmac_extra_len = vp->vp_length;
@@ -216,7 +229,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 		 */
 		vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_eap_aka_sim_k_encr, 0);
 		if (vp) {
-			fr_assert(!mod_session->ctx.k_encr);
+			talloc_free(mod_session->ctx.k_encr);
 			MEM(mod_session->ctx.k_encr = talloc_memdup(mod_session, vp->vp_octets, vp->vp_length));
 		}
 
@@ -225,7 +238,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 		 */
 		vp = fr_pair_find_by_da_idx(&request->control_pairs, attr_eap_aka_sim_k_aut, 0);
 		if (vp) {
-			fr_assert(!mod_session->ctx.k_aut);
+			talloc_free(mod_session->ctx.k_aut);
 			MEM(mod_session->ctx.k_aut = talloc_memdup(mod_session, vp->vp_octets, vp->vp_length));
 			mod_session->ctx.k_aut_len = vp->vp_length;
 		}
