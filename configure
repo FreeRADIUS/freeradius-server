@@ -770,6 +770,7 @@ ac_user_opts='
 enable_option_checking
 enable_developer
 enable_verify_ptr
+enable_fips_workaround
 enable_largefile
 enable_strict_dependencies
 enable_werror
@@ -1455,6 +1456,7 @@ Optional Features:
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-developer      enables features of interest to developers.
   --disable-verify-ptr    disables WITH_VERIFY_PTR developer build option.
+  --enable-fips-workaround    enables local MD4, MD5, etc. functionality to avoid OpenSSL FIPS issues.
   --disable-largefile     omit support for large files
   --enable-strict-dependencies  fail configure on lack of module dependancy.
   --enable-werror         causes the build to fail if any warnings are generated.
@@ -3528,6 +3530,21 @@ then :
   esac
 else $as_nop
    verify_ptr="-DWITH_VERIFY_PTR=1"
+fi
+
+
+# Check whether --enable-fips-workaround was given.
+if test ${enable_fips_workaround+y}
+then :
+  enableval=$enable_fips_workaround;  case "$enableval" in
+  no)
+    fips=""
+    ;;
+  *)
+    fips="-DWITH_FIPS=1"
+  esac
+else $as_nop
+   fips=""
 fi
 
 
@@ -12482,10 +12499,10 @@ fi
 printf "%s\n" "$ax_cv_cc_weverything_flag" >&6; }
 
   if test "x$ax_cv_cc_weverything_flag" = "xyes"; then
-    devcflags="$devcflags -W -Weverything -Wformat=2 -Wno-missing-field-initializers -Wno-date-time -Wno-padded -Wno-gnu-zero-variadic-macro-arguments -Wno-shorten-64-to-32 -Wno-sign-conversion -Wno-conversion -Wno-switch-enum -Wno-gnu-statement-expression -Wno-extended-offsetof -Wno-cast-align -Wno-documentation-unknown-command -Wno-covered-switch-default -Wno-packed $verify_ptr"
+    devcflags="$devcflags -W -Weverything -Wformat=2 -Wno-missing-field-initializers -Wno-date-time -Wno-padded -Wno-gnu-zero-variadic-macro-arguments -Wno-shorten-64-to-32 -Wno-sign-conversion -Wno-conversion -Wno-switch-enum -Wno-gnu-statement-expression -Wno-extended-offsetof -Wno-cast-align -Wno-documentation-unknown-command -Wno-covered-switch-default -Wno-packed $verify_ptr $fips"
   else
     if test "x$GCC" = "xyes"; then
-      devcflags="$devcflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 $verify_ptr"
+      devcflags="$devcflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 $verify_ptr $fips"
       INSTALLSTRIP=""
     fi
   fi
