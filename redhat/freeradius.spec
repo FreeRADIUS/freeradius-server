@@ -819,6 +819,9 @@ fi
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/driver/mysql
 %dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/main/mysql
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/main/mysql/*
+%dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/main/mysql/extras
+%dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/main/mysql/extras/wimax
+%attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/main/mysql/extras/wimax/*
 
 %dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/counter/mysql
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/counter/mysql/*
@@ -839,6 +842,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/driver/postgresql
 %dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/main/postgresql
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/main/postgresql/*
+%dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/main/postgresql/extras
+%attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/main/postgresql/extras/*
 
 %dir %attr(750,root,radiusd)			%{_sysconfdir}/raddb/mods-config/sql/counter/postgresql
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/counter/postgresql/*
