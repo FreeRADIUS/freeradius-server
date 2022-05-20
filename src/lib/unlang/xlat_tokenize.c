@@ -1761,8 +1761,13 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 				 */
 				if (!xr_rules->allow_unresolved) {
 				error_unresolved:
-					fr_strerror_printf_push("Failed resolving attribute in expansion %%{%s}",
-								node->fmt);
+					if (node->quote == T_BARE_WORD) {
+						fr_strerror_printf_push("Failed resolving attribute in expansion: %s",
+									node->fmt);
+					} else {
+						fr_strerror_printf_push("Failed resolving attribute in expansion: %c%s%c",
+									fr_token_quote[node->quote], node->fmt, fr_token_quote[node->quote]);
+					}
 					return -1;
 				}
 				our_flags.needs_resolving = true;	/* Still unresolved nodes */
@@ -1783,6 +1788,16 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			break;
 
 		case XLAT_TMPL:
+			/*
+			 *	Double-quoted etc. strings may contain xlats, so we try to resolve them now.
+			 *	Or, convert them to data.
+			 */
+			if (node->quote != T_BARE_WORD) {
+				if (tmpl_resolve(node->vpt, xr_rules->tr_rules) < 0) return -1;
+
+				break;
+			}
+
 			if (!xr_rules->allow_unresolved) goto error_unresolved;
 			break;
 
