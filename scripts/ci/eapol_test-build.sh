@@ -59,9 +59,9 @@ fi
 #
 if openssl version | grep -q "OpenSSL 3\."; then
     export EAPOL_TEST_CFLAGS="${EAPOL_TEST_CFLAGS} -DOPENSSL_USE_DEPRECATED -DOPENSSL_API_COMPAT=0x10101000L"
-    echo "WARNING: Building against OpenSSL 3, setting:"
-    echo "  EAPOL_TEST_CFLAGS='${EAPOL_TEST_CFLAGS}'"
-    echo "  EAPOL_TEST_LDFLAGS='${EAPOL_TEST_LDFLAGS}'"
+    echo "WARNING: Building against OpenSSL 3, setting:" 1>&2
+    echo "  EAPOL_TEST_CFLAGS='${EAPOL_TEST_CFLAGS}'" 1>&2
+    echo "  EAPOL_TEST_LDFLAGS='${EAPOL_TEST_LDFLAGS}'" 1>&2
 fi
 
 case "$OSTYPE" in
