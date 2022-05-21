@@ -3605,10 +3605,10 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 	 *	resolution passes, or it wasn't available at
 	 *	parse-time, but now is.
 	 */
-	if (t_rules->enumv && tmpl_rules_enumv(vpt) && !tmpl_rules_enumv(vpt)->flags.is_unknown &&
-	    (t_rules->enumv != tmpl_rules_enumv(vpt))) {
+	if (tr_rules->enumv && tmpl_rules_enumv(vpt) && !tmpl_rules_enumv(vpt)->flags.is_unknown &&
+	    (tr_rules->enumv != tmpl_rules_enumv(vpt))) {
 	    	fr_strerror_printf("mismatch between parse-time enumv '%s' and resolution-time enumv '%s'",
-	    			   tmpl_rules_enumv(vpt)->name, t_rules->enumv->name);
+	    			   tmpl_rules_enumv(vpt)->name, tr_rules->enumv->name);
 
 	    	return -1;
 	}
