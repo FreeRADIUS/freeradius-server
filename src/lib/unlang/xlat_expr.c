@@ -803,7 +803,7 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 
 	xlat_exp_insert_tail(unary->call.args, node);
 	xlat_flags_merge(&unary->flags, &unary->call.args->flags);
-	unary->flags.can_purify = unary->call.func->flags.pure && unary->call.args->flags.pure;
+	unary->flags.can_purify = (unary->call.func->flags.pure && unary->call.args->flags.pure) | unary->call.args->flags.can_purify;
 
 	/*
 	 *	Don't add it to head->flags, that will be done when it's actually inserted.
@@ -1207,7 +1207,7 @@ redo:
 
 	fr_assert(xlat_exp_head(node->call.args) != NULL);
 
-	node->flags.can_purify = node->call.func->flags.pure && node->call.args->flags.pure;
+	node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
 
 	lhs = node;
 	goto redo;

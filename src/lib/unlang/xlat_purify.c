@@ -97,6 +97,13 @@ static int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			break;
 			
 		case XLAT_FUNC:
+			if (!node->flags.pure && node->flags.can_purify) {
+				if (xlat_purify_list(node->call.args, request) < 0) return -1;
+				break;
+			}
+
+			fr_assert(node->flags.pure);
+
 			fr_value_box_list_init(&list);
 			if (unlang_xlat_push_node(node->call.args, &success, &list, request, node) < 0) {
 				return -1;

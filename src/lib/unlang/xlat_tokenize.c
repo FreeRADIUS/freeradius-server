@@ -132,7 +132,7 @@ xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t *func, xlat_exp_head_t c
 	 *	If the function is pure, AND it's arguments are pure,
 	 *	then remember that we need to call a pure function.
 	 */
-	node->flags.can_purify = func->flags.pure && args->flags.pure;
+	node->flags.can_purify = (func->flags.pure && args->flags.pure) | args->flags.can_purify;
 
 	return node;
 }
@@ -507,7 +507,7 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 	if (node->type == XLAT_FUNC) {
 		if (xlat_validate_function_args(node) < 0) goto error;
 
-		node->flags.can_purify = node->call.func->flags.pure && node->call.args->flags.pure;
+		node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
 	}
 
 	if (!fr_sbuff_next_if_char(in, ')')) {
@@ -1660,7 +1660,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			node->flags = node->call.func->flags;
 			xlat_flags_merge(&node->flags, &node->call.args->flags);
 
-			node->flags.can_purify = node->call.func->flags.pure && node->call.args->flags.pure;
+			node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
 			break;
 
 		/*
@@ -1734,7 +1734,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			 */
 			xlat_flags_merge(&node->flags, &node->call.args->flags);
 
-			node->flags.can_purify = node->call.func->flags.pure && node->call.args->flags.pure;
+			node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
 
 			/*
 			 *	Add the freshly resolved function
