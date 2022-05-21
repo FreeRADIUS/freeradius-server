@@ -2702,6 +2702,9 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			return fr_sbuff_set(in, &our_in);
 		}
 
+		DEBUG2("TMPL_TOKENIZE <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
+
+
 		/*
 		 *	Deal with explicit casts...
 		 */
@@ -3596,10 +3599,20 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 	if (!tr_rules) tr_rules = &default_tr_rules;
 
 	/*
+	 *	We may now know the correct dictionary
+	 *	where we didn't before...
+	 */
+	if (!vpt->rules.attr.dict_def) tmpl_set_dict_def(vpt, tr_rules->dict_def);
+
+	/*
 	 *	The xlat component of the #tmpl_t needs resolving.
+	 *
+	 *	This includes exec tmpls, which are largely xlats
+	 *	"under the hood".
 	 */
 	if (tmpl_contains_xlat(vpt)) {
 		ret = tmpl_xlat_resolve(vpt, tr_rules);
+
 	/*
 	 *	The attribute reference needs resolving.
 	 */
@@ -3607,14 +3620,32 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 		ret = tmpl_attr_resolve(vpt, tr_rules);
 
 	/*
-	 *	Convert unresolved tmpls into literal string values.
+	 *	Convert unresolved tmpls int enumvs, or failing that, string values.
 	 */
-	} else if (tmpl_is_unresolved(vpt)) {
+	} else {
 		fr_type_t dst_type = tmpl_rules_cast(vpt);
+		fr_dict_attr_t const *enumv = tmpl_rules_enumv(vpt);
 
-		if (fr_type_is_null(dst_type)) dst_type = FR_TYPE_STRING;	/* Default to strings */
+		fr_assert(tmpl_is_unresolved(vpt));
 
-		if (tmpl_cast_in_place(vpt, dst_type, NULL) < 0) return -1;
+		if (fr_type_is_null(dst_type)) {
+			if (!enumv) enumv = tr_rules->enumv;
+
+			if (enumv) {				
+				dst_type = enumv->type;
+			} else {
+				dst_type = FR_TYPE_STRING;	/* Default to strings */
+			}
+		} else {
+			/*
+			 *	If there is a cast, then we parse the
+			 *	tmpl according to the cast.  Otherwise
+			 *	we would need to parse it as the
+			 *	enumv, and then cast it?
+			 */
+		}
+
+		if (tmpl_cast_in_place(vpt, dst_type, enumv) < 0) return -1;
 
 		TMPL_VERIFY(vpt);
 	}

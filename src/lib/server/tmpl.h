@@ -363,6 +363,8 @@ struct tmpl_res_rules_s {
 
 	bool			force_dict_def;		//!< Use supplied dict_def even if original
 							///< vpt->rules->dict_def was not NULL.
+
+	fr_dict_attr_t const	*enumv;			//!< for resolving T_BARE_WORD
 };
 
 typedef enum {
