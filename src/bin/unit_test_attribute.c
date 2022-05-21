@@ -2763,6 +2763,11 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 		goto return_error;
 	}
 
+	if (fr_debug_lvl > 2) {
+		DEBUG("----------------------------------------------------------------------\n");
+		xlat_debug(head);
+	}
+
 	(void) xlat_purify(head, NULL);
 
 	escaped_len = xlat_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), head, &fr_value_escape_double);
