@@ -48,8 +48,7 @@ match yes
 #  * the tokenizer needs to track offsets, so it can return the offset which cause the error.
 #
 xlat_purify &Service-Type == Framed-User
-#match (%{Service-Type} == Framed-User)
-match ERROR offset 1: Invalid attribute reference, missing '&' prefix: Failed resolving attribute in expansion: Framed-User
+match (%{Service-Type} == Framed-User)
 
 #xlat_purify 1 + (&Service-Type == Framed-User)
 #match (1 + (%{Service-Type} == Framed-User))
@@ -132,5 +131,20 @@ match yes
 xlat_purify 1 < 2 < 3
 match yes
 
+xlat_purify &Service-Type == 1
+match (%{Service-Type} == 1)
+
+#
+#  Convert the RHS to a simpler version
+#
+xlat_purify &Service-Type == (1 + 2)
+match (%{Service-Type} == 3)
+
+#
+#  This is so wrong...
+#
+xlat_purify &Reply-Message == "foo"
+match ERROR offset 1: Failed resolving attribute in expansion: Message
+
 count
-match 51
+match 57

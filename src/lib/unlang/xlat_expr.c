@@ -101,6 +101,72 @@ static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node,
 	return fr_sbuff_used_total(out) - at_in;
 }
 
+static int xlat_expr_resolve_binary(xlat_exp_t *self, UNUSED void *inst, xlat_res_rules_t const *xr_rules)
+{
+	xlat_exp_t *arg1, *arg2;
+	xlat_exp_t *a, *b;
+	tmpl_res_rules_t	my_tr_rules;
+
+	arg1 = xlat_exp_head(self->call.args);
+	fr_assert(arg1);
+	fr_assert(arg1->type == XLAT_GROUP);
+
+	arg2 = xlat_exp_next(self->call.args, arg1);
+	fr_assert(arg2);
+	fr_assert(arg2->type == XLAT_GROUP);
+
+	a = xlat_exp_head(arg1->group);
+	b = xlat_exp_head(arg2->group);
+
+	/*
+	 *	We have many things here, just call resolve recursively.
+	 */
+	if (xlat_exp_next(arg1->group, a) || (xlat_exp_next(arg2->group, b))) {
+		return xlat_resolve(self->call.args, xr_rules);
+	}
+
+	/*
+	 *	Anything else must get resolved at run time.
+	 */
+	if ((a->type != XLAT_TMPL) || (b->type != XLAT_TMPL)) {
+		return xlat_resolve(self->call.args, xr_rules);
+	}
+
+	/*
+	 *	The tr_rules should always contain dict_def
+	 */
+	fr_assert(xr_rules); /* always set by xlat_resolve() */
+	if (xr_rules->tr_rules) {
+		my_tr_rules = *xr_rules->tr_rules;
+	} else {
+		my_tr_rules = (tmpl_res_rules_t) { };
+	}
+
+	/*
+	 *	The LHS attribute dictates the enumv for the RHS one.
+	 */
+	if (tmpl_contains_attr(a->vpt)) {
+		if (tmpl_resolve(a->vpt, &my_tr_rules) < 0) return -1;
+
+		my_tr_rules.enumv = tmpl_da(a->vpt);
+
+		return tmpl_resolve(b->vpt, &my_tr_rules);
+	}
+
+	if (tmpl_contains_attr(b->vpt)) {
+		if (tmpl_resolve(b->vpt, &my_tr_rules) < 0) return -1;
+
+		my_tr_rules.enumv = tmpl_da(b->vpt);
+
+		return tmpl_resolve(a->vpt, &my_tr_rules);
+	}
+
+	if (tmpl_resolve(a->vpt, xr_rules->tr_rules) < 0) return -1;
+
+	return tmpl_resolve(b->vpt, xr_rules->tr_rules);
+}
+
+
 static void xlat_func_append_arg(xlat_exp_t *head, xlat_exp_t *node)
 {
 	xlat_exp_t *group;
@@ -484,6 +550,7 @@ do { \
 	xlat_func_args(xlat, binary_op_xlat_args); \
 	xlat_internal(xlat); \
 	xlat_print_set(xlat, xlat_expr_print_binary); \
+	xlat_resolve_set(xlat, xlat_expr_resolve_binary); \
 	xlat->token = _op; \
 } while (0)
 

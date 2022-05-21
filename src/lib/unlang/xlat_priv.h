@@ -39,6 +39,7 @@ extern "C" {
 #endif
 
 typedef fr_slen_t (*xlat_print_t)(fr_sbuff_t *in, xlat_exp_t const *self, void *inst, fr_sbuff_escape_rules_t const *e_rules);
+typedef int (*xlat_resolve_t)(xlat_exp_t *self, void *inst, xlat_res_rules_t const *xr_rules);
 
 typedef struct xlat_s {
 	fr_rb_node_t		node;			//!< Entry in the xlat function tree.
@@ -65,6 +66,7 @@ typedef struct xlat_s {
 	void			*thread_uctx;		//!< uctx to pass to instantiation functions.
 
 	xlat_print_t		print;			//!< function to call when printing
+	xlat_resolve_t		resolve;       		//!< function to call when resolving
 
 	xlat_flags_t		flags;			//!< various flags
 
@@ -261,11 +263,21 @@ static inline void xlat_internal(xlat_t *xlat)
 
 /** Set a print routine for an xlat function.
  *
- * @param[in] xlat to mark as internal.
+ * @param[in] xlat to set
  */
 static inline void xlat_print_set(xlat_t *xlat, xlat_print_t func)
 {
 	xlat->print = func;
+}
+
+
+/** Set a resolve routine for an xlat function.
+ *
+ * @param[in] xlat to set
+ */
+static inline void xlat_resolve_set(xlat_t *xlat, xlat_resolve_t func)
+{
+	xlat->resolve = func;
 }
 
 

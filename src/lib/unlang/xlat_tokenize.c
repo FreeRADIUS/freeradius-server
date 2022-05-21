@@ -1656,7 +1656,13 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 		 *	A resolved function with unresolved args
 		 */
 		case XLAT_FUNC:
-			if (xlat_resolve(node->call.args, xr_rules) < 0) return -1;
+			if (node->call.func->resolve) {
+				void *inst = node->call.inst ? node->call.inst->data : NULL;
+
+				if (node->call.func->resolve(node, inst, xr_rules) < 0) return -1;
+			} else {
+				if (xlat_resolve(node->call.args, xr_rules) < 0) return -1;
+			}
 			node->flags = node->call.func->flags;
 			xlat_flags_merge(&node->flags, &node->call.args->flags);
 
