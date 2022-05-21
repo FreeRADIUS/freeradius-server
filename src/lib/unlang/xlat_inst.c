@@ -182,7 +182,7 @@ static int _xlat_inst_detach(xlat_inst_t *xi)
 
 	fr_assert(xlat_inst_tree);		/* xlat_inst_init must have been called */
 
-	talloc_get_type_abort_const(xi->node, xlat_exp_t);
+	(void) talloc_get_type_abort_const(xi->node, xlat_exp_t);
 	fr_assert(xi->node->type == XLAT_FUNC);
 
 	call = &xi->node->call;
