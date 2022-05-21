@@ -325,7 +325,7 @@ static bool get_number(request_t *request, char const **string, int64_t *answer)
 		tmpl_dursor_clear(&cc);
 
 		if (err != 0) {
-			RWDEBUG("Can't find &%.*s.  Using 0 as operand value", (int)vpt->len, vpt->name);
+			RWDEBUG("Can't find %.*s.  Using 0 as operand value", (int)vpt->len, vpt->name);
 			goto done;
 		}
 
