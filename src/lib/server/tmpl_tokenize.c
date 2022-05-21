@@ -2702,9 +2702,6 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			return fr_sbuff_set(in, &our_in);
 		}
 
-		DEBUG2("TMPL_TOKENIZE <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
-
-
 		/*
 		 *	Deal with explicit casts...
 		 */
@@ -3599,10 +3596,22 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 	if (!tr_rules) tr_rules = &default_tr_rules;
 
 	/*
-	 *	We may now know the correct dictionary
-	 *	where we didn't before...
+	 *	Sanity check.  There shouldn't be conflicting
+	 *	enumvs between the original rules and resolution
+	 *	rules.
+	 *
+	 *	Either the enumv was available during parsing
+	 *	and shouldn't have changed during subsequent
+	 *	resolution passes, or it wasn't available at
+	 *	parse-time, but now is.
 	 */
-	if (!vpt->rules.attr.dict_def) tmpl_set_dict_def(vpt, tr_rules->dict_def);
+	if (t_rules->enumv && tmpl_rules_enumv(vpt) && !tmpl_rules_enumv(vpt)->flags.is_unknown &&
+	    (t_rules->enumv != tmpl_rules_enumv(vpt))) {
+	    	fr_strerror_printf("mismatch between parse-time enumv '%s' and resolution-time enumv '%s'",
+	    			   tmpl_rules_enumv(vpt)->name, t_rules->enumv->name);
+
+	    	return -1;
+	}
 
 	/*
 	 *	The xlat component of the #tmpl_t needs resolving.
@@ -3622,32 +3631,52 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 	/*
 	 *	Convert unresolved tmpls int enumvs, or failing that, string values.
 	 */
-	} else {
-		fr_type_t dst_type = tmpl_rules_cast(vpt);
-		fr_dict_attr_t const *enumv = tmpl_rules_enumv(vpt);
+	} else if (tmpl_is_unresolved(vpt)) {
+		fr_type_t		dst_type = tmpl_rules_cast(vpt);
+		fr_dict_attr_t const	*enumv = tmpl_rules_enumv(vpt);
 
-		fr_assert(tmpl_is_unresolved(vpt));
+		/*
+		 *	If there wasn't an enumv set in the
+		 *	original rules, and we now have one
+		 *	(possibly because the other side of a
+		 *	binary expression has been resolved),
+		 *	then use the new enumv.
+		 */
+		if (!enumv) enumv = tr_rules->enumv;
 
+		/*
+		 *	If we've got no explicit casting to do
+		 *	check if we've got either an existing
+		 *	enumv, or one which came in from the
+		 *	resolution rules, and infer our data type
+		 *	from that.
+		 */
 		if (fr_type_is_null(dst_type)) {
-			if (!enumv) enumv = tr_rules->enumv;
-
-			if (enumv) {				
+			/*
+			 *	Infer the cast from the enumv type.
+			 */
+			if (enumv) {
 				dst_type = enumv->type;
 			} else {
 				dst_type = FR_TYPE_STRING;	/* Default to strings */
 			}
-		} else {
-			/*
-			 *	If there is a cast, then we parse the
-			 *	tmpl according to the cast.  Otherwise
-			 *	we would need to parse it as the
-			 *	enumv, and then cast it?
-			 */
 		}
 
+		/*
+		 *	tmpl_cast_in_place first resolves using
+		 *	the enumv, _then_ casts using the type.
+		 */
 		if (tmpl_cast_in_place(vpt, dst_type, enumv) < 0) return -1;
 
 		TMPL_VERIFY(vpt);
+	/*
+	 *	Catch any other cases of unresolved things
+	 *	we need to address.  We put the assert here
+	 *	so we don't end up running inappropriate
+	 *	code for non-debug builds.
+	 */
+	} else {
+		fr_assert(0);
 	}
 
 	return ret;
