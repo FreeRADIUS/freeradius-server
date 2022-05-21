@@ -75,7 +75,7 @@ ifeq "${LIBTOOL}" "JLIBTOOL"
     ${JLIBTOOL}: ${top_makedir}/jlibtool.c
 	$(Q)mkdir -p $(dir $@)
 	$(Q)echo CC jlibtool.c
-	$(Q)${BUILD_CC} $< -o $@ ${JLIBTOOL_DEFS}
+	$(Q)${BUILD_CC} $< -g3 -o $@ ${JLIBTOOL_DEFS}
 
     jlibtool: ${JLIBTOOL}
 
