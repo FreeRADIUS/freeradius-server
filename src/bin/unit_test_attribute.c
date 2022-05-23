@@ -2764,11 +2764,16 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 	}
 
 	if (fr_debug_lvl > 2) {
-		DEBUG("----------------------------------------------------------------------\n");
+		DEBUG("Before purify --------------------------------------------------");
 		xlat_debug(head);
 	}
 
 	(void) xlat_purify(head, NULL);
+
+	if (fr_debug_lvl > 2) {
+		DEBUG("After purify --------------------------------------------------");
+		xlat_debug(head);
+	}
 
 	escaped_len = xlat_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), head, &fr_value_escape_double);
 	RETURN_OK(escaped_len);
