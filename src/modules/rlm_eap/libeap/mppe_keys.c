@@ -102,8 +102,6 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 	uint8_t const *s1 = secret;
 	uint8_t const *s2 = secret + (secret_len - len);
 
-	EVP_MD *md5 = NULL;
-
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	/*
 	 *	If we are using OpenSSL >= 3.0 and FIPS mode is
@@ -112,6 +110,7 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 	 */
 	OSSL_LIB_CTX	*libctx = NULL;
 	OSSL_PROVIDER	*default_provider = NULL;
+	EVP_MD *md5 = NULL;
 
 	if (EVP_default_properties_is_fips_enabled(NULL)) {
 		libctx = OSSL_LIB_CTX_new();
@@ -132,7 +131,7 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 		md5 = EVP_md5();
 	}
 #else
-	md5 = EVP_md5();
+	const EVP_MD *md5 = EVP_md5();
 #endif
 
 	P_hash(md5, s1, len, seed, seed_len, out, out_len);
