@@ -1028,7 +1028,7 @@ int fr_snmp_process(request_t *request)
 			fr_sbuff_t	oid_str_sbuff = FR_SBUFF_OUT(oid_str, sizeof(oid_str));
 			fr_pair_list_free(&head);
 
-			fr_sbuff_in_char(&oid_str_sbuff, '.');
+			(void) fr_sbuff_in_char(&oid_str_sbuff, '.');
 
 			/* Get the length of the matching part */
 			oid_len = fr_dict_attr_oid_print(&oid_str_sbuff, attr_snmp_root, da_stack.da[-(ret)], false);

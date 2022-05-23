@@ -717,7 +717,7 @@ static int attachments_source(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, curl_mi
 	/* Make sure the template_directory path ends in a "/" */
 	if (inst->template_dir[talloc_array_length(inst->template_dir)-2] != '/'){
 		RDEBUG2("Adding / to end of template_dir");
-		fr_sbuff_in_char(&path_buffer, '/');
+		(void) fr_sbuff_in_char(&path_buffer, '/');
 	}
 
 	/* Mark the buffer so we only re-write after the template_dir component */
