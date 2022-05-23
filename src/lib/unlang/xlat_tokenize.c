@@ -516,7 +516,6 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 	}
 
 	xlat_exp_insert_tail(head, node);
-
 	return 0;
 }
 
@@ -1629,9 +1628,16 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 
 	our_flags = head->flags;
 	our_flags.needs_resolving = false;			/* We flip this if not all resolutions are successful */
+	our_flags.pure = true;					/* we flip this if the children are not pure */
 
 	xlat_exp_foreach(head, node) {
-		if (!node->flags.needs_resolving) continue;	/* This node and non of its children need resolving */
+		/*
+		 *	This node and none of its children need resolving
+		 */
+		if (!node->flags.needs_resolving) {
+			xlat_flags_merge(&our_flags, &node->flags);
+			continue;
+		}
 
 		switch (node->type) {
 		case XLAT_GROUP:
@@ -1663,6 +1669,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			} else {
 				if (xlat_resolve(node->call.args, xr_rules) < 0) return -1;
 			}
+
 			node->flags = node->call.func->flags;
 			xlat_flags_merge(&node->flags, &node->call.args->flags);
 
@@ -1695,7 +1702,6 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 							   fr_box_strvalue_buffer(node->fmt));
 					return -1;
 				}
-				our_flags.needs_resolving = true;	/* Still unresolved nodes */
 				break;
 			}
 
@@ -1749,6 +1755,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			if (xlat_bootstrap_func(node) < 0) return -1;
 		}
 			break;
+
 		/*
 		 *	This covers unresolved attributes as well as
 		 *	unresolved functions.
@@ -1776,18 +1783,16 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 					}
 					return -1;
 				}
-				our_flags.needs_resolving = true;	/* Still unresolved nodes */
 				break;
 			}
 
 			/*
-			 *	Just need to flip the type as the tmpl
-			 *	should already have been fixed up
+			 *	Just need to flip the type as the tmpl should already have been fixed up
 			 */
 			xlat_exp_set_type(node, XLAT_TMPL);
 
 			/*
-			 *	Reset node flags
+			 *	Reset node flags.  Attributes aren't pure, and don't need further resolving.
 			 */
 			node->flags = (xlat_flags_t){ };
 		}
@@ -1801,16 +1806,19 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			if (node->quote != T_BARE_WORD) {
 				if (tmpl_resolve(node->vpt, xr_rules->tr_rules) < 0) return -1;
 
+				node->flags.needs_resolving = false;
+				node->flags.pure = tmpl_is_data(node->vpt);
 				break;
 			}
 
-			if (!xr_rules->allow_unresolved) goto error_unresolved;
 			break;
 
 		default:
 			fr_assert(0);	/* Should not have been marked as unresolved */
 			return -1;
 		}
+
+		if (node->flags.needs_resolving && !xr_rules->allow_unresolved) goto error_unresolved;
 
 		xlat_flags_merge(&our_flags, &node->flags);
 	}
