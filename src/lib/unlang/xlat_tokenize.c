@@ -992,12 +992,14 @@ static size_t xlat_quote_table_len = NUM_ELEMENTS(xlat_quote_table);
 
 static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 {
+	int i = 0;
+
 #define INFO_INDENT(_fmt, ...)  INFO("%*s"_fmt, depth * 2, " ", ## __VA_ARGS__)
 
 	fr_assert(head != NULL);
 
 	xlat_exp_foreach(head, node) {
-		INFO_INDENT("flags = { %s %s %s %s }",
+		INFO_INDENT("[%d] flags = { %s %s %s %s }", i++,
 			    node->flags.needs_resolving ? "need_resolving" : "",
 			    node->flags.needs_async ? "need_async" : "",
 			    node->flags.pure ? "pure" : "",
