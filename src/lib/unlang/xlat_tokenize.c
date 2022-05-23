@@ -379,6 +379,13 @@ static inline int xlat_tokenize_function_mono(xlat_exp_head_t *head,
 	}
 
 	xlat_flags_merge(&node->flags, &node->call.args->flags);
+
+	if (!func) {
+		node->flags.can_purify = node->call.args->flags.can_purify;
+	} else {
+		node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
+	}
+
 	xlat_exp_insert_tail(head, node);
 
 	return 0;
