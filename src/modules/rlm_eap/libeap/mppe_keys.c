@@ -102,9 +102,11 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 	uint8_t const *s1 = secret;
 	uint8_t const *s2 = secret + (secret_len - len);
 
-	EVP_MD *md5 = NULL;
+	EVP_MD const *md5 = NULL;
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_MD *md5_to_free = NULL;
+
 	/*
 	 *	If we are using OpenSSL >= 3.0 and FIPS mode is
 	 *	enabled, we need to load the default provider in a
@@ -122,12 +124,13 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 			return;
 		}
 
-		md5 = EVP_MD_fetch(libctx, "MD5", NULL);
-		if (!md5) {
+		md5_to_free = EVP_MD_fetch(libctx, "MD5", NULL);
+		if (!md5_to_free) {
 			ERROR("Failed loading OpenSSL MD5 function.");
 			return;
 		}
 
+		md5 = md5_to_free;
 	} else {
 		md5 = EVP_md5();
 	}
@@ -146,7 +149,7 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 	if (libctx) {
 		OSSL_PROVIDER_unload(default_provider);
 		OSSL_LIB_CTX_free(libctx);
-		EVP_MD_free(md5);
+		EVP_MD_free(md5_to_free);
 	}
 #endif
 }
