@@ -1268,6 +1268,12 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 
 				if (xlat_eval_pair_real(ctx, &result, request, node->vpt) == XLAT_ACTION_FAIL) goto fail;
 
+			} else if (tmpl_is_xlat(node->vpt)) {
+				fr_assert(0);
+
+			} else if (tmpl_contains_xlat(node->vpt)) {
+				fr_assert(0);
+
 			} else {
 				/*
 				 *	@todo - write code here!
