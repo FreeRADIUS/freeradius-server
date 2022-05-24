@@ -2681,7 +2681,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 			vpt = tmpl_alloc_null(ctx);
 			if (!t_rules->at_runtime) {
-				slen = xlat_tokenize(vpt, &head, &our_in, p_rules, &t_rules->attr);
+				slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
 			} else {
 				slen = xlat_tokenize_ephemeral(vpt, &head,
 							       t_rules->xlat.runtime_el, &our_in,
@@ -2865,7 +2865,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		vpt = tmpl_alloc_null(ctx);
 
 		if (!t_rules->at_runtime) {
-			slen = xlat_tokenize(vpt, &head, &our_in, p_rules, &t_rules->attr);
+			slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
 		} else {
 			slen = xlat_tokenize_ephemeral(vpt, &head, t_rules->xlat.runtime_el,
 						       &our_in, p_rules, t_rules);
@@ -2927,7 +2927,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	FIXME - We need an ephemeral version of this
 		 *	too.
 		 */
-		slen = xlat_tokenize_argv(vpt, &head, &our_in, p_rules, &t_rules->attr);
+		slen = xlat_tokenize_argv(vpt, &head, &our_in, p_rules, t_rules);
 		if (slen < 0) {
 			fr_sbuff_advance(&our_in, slen * -1);
 			talloc_free(vpt);
@@ -2954,7 +2954,7 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		vpt = tmpl_alloc_null(ctx);
 
-		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, &t_rules->attr);
+		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
 		if (!head) return slen;
 
 		/*

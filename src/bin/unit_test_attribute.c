@@ -2672,10 +2672,12 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 	fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
 
 	dec_len = xlat_tokenize(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), &p_rules,
-				&(tmpl_attr_rules_t) {
-					.dict_def = cc->tmpl_rules.attr.dict_def ?
+				&(tmpl_rules_t) {
+					.attr = {
+						.dict_def = cc->tmpl_rules.attr.dict_def ?
 						cc->tmpl_rules.attr.dict_def : cc->config->dict,
-					.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
+						.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
+					},
 				});
 	if (dec_len <= 0) {
 		fr_strerror_printf_push_head("ERROR offset %d", (int) -dec_len);
@@ -2797,10 +2799,12 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 
 	slen = xlat_tokenize_argv(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len),
 				  NULL,
-				  &(tmpl_attr_rules_t) {
-					.dict_def = cc->tmpl_rules.attr.dict_def ?
-						cc->tmpl_rules.attr.dict_def : cc->config->dict,
-					.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
+				  &(tmpl_rules_t) {
+					  .attr = {
+						  .dict_def = cc->tmpl_rules.attr.dict_def ?
+						  cc->tmpl_rules.attr.dict_def : cc->config->dict,
+						  .allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
+					  },
 				  });
 	if (slen <= 0) {
 		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen);
