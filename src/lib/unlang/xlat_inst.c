@@ -265,6 +265,16 @@ static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, void *uctx)
 	xlat_inst_t		*xi;
 	xlat_thread_inst_t	*xt;
 
+	/*
+	 *	tmpl_tokenize() instantiates ephemeral xlats.  So for
+	 *	now, just ignore ones which are already instantiated.
+	 */
+	if (node->type == XLAT_GROUP) {
+		return node->group->instantiated; /* prune on 1, continue on 0 */
+	}
+
+	if (node->type != XLAT_FUNC) return 0; /* skip it */
+
 	fr_assert(!call->inst && !call->thread_inst);
 
 	/*
@@ -315,7 +325,16 @@ static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, void *uctx)
  */
 int xlat_instantiate_ephemeral(xlat_exp_head_t *head, fr_event_list_t *el)
 {
-	return xlat_eval_walk(head, _xlat_instantiate_ephemeral_walker, XLAT_FUNC, el);
+	int ret;
+
+	if (head->instantiated) return 0;
+
+	ret = xlat_eval_walk(head, _xlat_instantiate_ephemeral_walker, XLAT_INVALID, el);
+	if (ret < 0) return ret;
+
+	head->instantiated = true;
+
+	return 0;
 }
 
 /** Retrieve xlat/thread specific instance data
@@ -511,6 +530,17 @@ int xlat_bootstrap_func(xlat_exp_t *node)
 
 static int _xlat_bootstrap_walker(xlat_exp_t *node, UNUSED void *uctx)
 {
+	/*
+	 *	tmpl_tokenize() instantiates ephemeral xlats.  So for
+	 *	now, just ignore ones which are already instantiated.
+	 */
+	if (node->type == XLAT_GROUP) {
+		return node->group->instantiated; /* prune on 1, continue on 0 */
+	}
+
+	if (node->type != XLAT_FUNC) return 0; /* skip it */
+
+
 	return xlat_bootstrap_func(node);
 }
 
@@ -524,6 +554,8 @@ static int _xlat_bootstrap_walker(xlat_exp_t *node, UNUSED void *uctx)
  */
 int xlat_bootstrap(xlat_exp_head_t *head)
 {
+	int ret;
+
 	/*
 	 *	If thread instantiate has been called, it's too late to
 	 *	bootstrap new xlats.
@@ -536,11 +568,17 @@ int xlat_bootstrap(xlat_exp_head_t *head)
 	 */
 	if (unlikely(!xlat_inst_tree)) xlat_instantiate_init();
 
+	if (head->instantiated) return 0;
+
 	/*
 	 *	Walk an expression registering all the function calls
 	 *	so that we can instantiate them later.
 	 */
-	return xlat_eval_walk(head, _xlat_bootstrap_walker, XLAT_FUNC, NULL);
+	ret = xlat_eval_walk(head, _xlat_bootstrap_walker, XLAT_INVALID, NULL);
+	if (ret < 0) return ret;
+
+	head->instantiated = true;
+	return 0;
 }
 
 /** Walk over all registered instance data and free them explicitly
