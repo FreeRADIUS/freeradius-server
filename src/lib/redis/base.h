@@ -39,7 +39,7 @@ extern "C" {
 #endif
 
 #define MAX_REDIS_COMMAND_LEN		4096
-#define MAX_REDIS_ARGS			32
+#define MAX_REDIS_ARGS			256
 
 #define REDIS_ERROR_MOVED_STR		"MOVED"
 #define REDIS_ERROR_ASK_STR		"ASK"
