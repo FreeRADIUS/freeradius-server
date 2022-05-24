@@ -260,8 +260,8 @@ static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
  */
 static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, void *uctx)
 {
-	fr_event_list_t		*el = talloc_get_type_abort(uctx, fr_event_list_t);
-	xlat_call_t		*call = &node->call;
+	fr_event_list_t		*el;
+	xlat_call_t		*call;
 	xlat_inst_t		*xi;
 	xlat_thread_inst_t	*xt;
 
@@ -274,6 +274,9 @@ static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, void *uctx)
 	}
 
 	if (node->type != XLAT_FUNC) return 0; /* skip it */
+
+	el = talloc_get_type_abort(uctx, fr_event_list_t);
+	call = &node->call;
 
 	fr_assert(!call->inst && !call->thread_inst);
 
@@ -322,6 +325,7 @@ static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, void *uctx)
  * @note This must only be used for xlats created at runtime.
  *
  * @param[in] head of xlat tree to create instance data for.
+ * @param[in] el event list used to run any instantiate data
  */
 int xlat_instantiate_ephemeral(xlat_exp_head_t *head, fr_event_list_t *el)
 {
