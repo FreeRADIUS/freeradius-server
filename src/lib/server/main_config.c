@@ -459,28 +459,18 @@ static int xlat_config_escape(UNUSED request_t *request, fr_value_box_t *vb, UNU
 		 *	mime-encoded equivalents.
 		 */
 		if ((in[0] < 32)) {
-			if (outlen >= (outmax - 3)) return -1;
-
 			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
 			out += 3;
 			outlen += 3;
 			continue;
-
-		} else if (strchr(disallowed, *in) != NULL) {
-			if (outlen >= (outmax - 2)) return -1;
-
+		}
+		if (strchr(disallowed, *in) != NULL) {
 			out[0] = '\\';
 			out[1] = *in;
 			out += 2;
 			outlen += 2;
 			continue;
 		}
-
-		/*
-		 *	Only one byte left.
-		 */
-		if (outlen >= (outmax - 1)) return -1;
-
 		/*
 		 *	Allowed character.
 		 */
