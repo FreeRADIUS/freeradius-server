@@ -286,6 +286,7 @@ static inline void xlat_resolve_set(xlat_t *xlat, xlat_resolve_t func)
  * @param[in] exp	being evaluated.
  * @param[in] uctx	passed to xlat_walk.
  * @return
+ *	- 1 for "prune walk here".
  *	- 0 on success.
  *	- <0 if node evaluation failed.  Causes xlat_walk to return the negative integer.
  */
