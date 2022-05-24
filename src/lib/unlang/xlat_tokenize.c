@@ -1014,7 +1014,7 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 
 		switch (node->type) {
 		case XLAT_BOX:
-			INFO_INDENT("value --> %pV", &node->data);
+			INFO_INDENT("value %s --> %pV", fr_type_to_str(node->data.type), &node->data);
 			break;
 
 		case XLAT_GROUP:
