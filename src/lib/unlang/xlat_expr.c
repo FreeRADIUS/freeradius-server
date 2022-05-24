@@ -101,17 +101,19 @@ static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node,
 	return fr_sbuff_used_total(out) - at_in;
 }
 
-static int xlat_expr_resolve_binary(xlat_exp_t *self, UNUSED void *inst, xlat_res_rules_t const *xr_rules)
+static int xlat_expr_resolve_binary(xlat_exp_t *node, UNUSED void *inst, xlat_res_rules_t const *xr_rules)
 {
 	xlat_exp_t *arg1, *arg2;
 	xlat_exp_t *a, *b;
-	tmpl_res_rules_t	my_tr_rules;
+	tmpl_res_rules_t my_tr_rules;
 
-	arg1 = xlat_exp_head(self->call.args);
+	XLAT_DEBUG("RESOLVE %s\n", node->fmt);
+
+	arg1 = xlat_exp_head(node->call.args);
 	fr_assert(arg1);
 	fr_assert(arg1->type == XLAT_GROUP);
 
-	arg2 = xlat_exp_next(self->call.args, arg1);
+	arg2 = xlat_exp_next(node->call.args, arg1);
 	fr_assert(arg2);
 	fr_assert(arg2->type == XLAT_GROUP);
 
@@ -121,16 +123,12 @@ static int xlat_expr_resolve_binary(xlat_exp_t *self, UNUSED void *inst, xlat_re
 	/*
 	 *	We have many things here, just call resolve recursively.
 	 */
-	if (xlat_exp_next(arg1->group, a) || (xlat_exp_next(arg2->group, b))) {
-		return xlat_resolve(self->call.args, xr_rules);
-	}
+	if (xlat_exp_next(arg1->group, a) || (xlat_exp_next(arg2->group, b))) goto resolve;
 
 	/*
 	 *	Anything else must get resolved at run time.
 	 */
-	if ((a->type != XLAT_TMPL) || (b->type != XLAT_TMPL)) {
-		return xlat_resolve(self->call.args, xr_rules);
-	}
+	if ((a->type != XLAT_TMPL) || (b->type != XLAT_TMPL)) goto resolve;
 
 	/*
 	 *	The tr_rules should always contain dict_def
@@ -146,24 +144,60 @@ static int xlat_expr_resolve_binary(xlat_exp_t *self, UNUSED void *inst, xlat_re
 	 *	The LHS attribute dictates the enumv for the RHS one.
 	 */
 	if (tmpl_contains_attr(a->vpt)) {
-		if (tmpl_resolve(a->vpt, &my_tr_rules) < 0) return -1;
+		XLAT_DEBUG("\ta - %s %s\n", a->fmt, b->fmt);
+
+		if (a->flags.needs_resolving) {
+			XLAT_DEBUG("\tresolve attr a\n");
+			if (tmpl_resolve(a->vpt, &my_tr_rules) < 0) return -1;
+			a->flags.needs_resolving = false;
+			arg1->flags = a->flags;
+		}
 
 		my_tr_rules.enumv = tmpl_da(a->vpt);
 
-		return tmpl_resolve(b->vpt, &my_tr_rules);
+		XLAT_DEBUG("\tresolve other b\n");
+		if (tmpl_resolve(b->vpt, &my_tr_rules) < 0) return -1;
+
+		b->flags.needs_resolving = false;
+		b->flags.pure = tmpl_is_data(b->vpt);
+		arg2->flags = b->flags;
+		goto flags;
 	}
 
 	if (tmpl_contains_attr(b->vpt)) {
-		if (tmpl_resolve(b->vpt, &my_tr_rules) < 0) return -1;
+		XLAT_DEBUG("\tb -  %s %s\n", a->fmt, b->fmt);
+
+		if (b->flags.needs_resolving) {
+			XLAT_DEBUG("\tresolve attr b\n");
+			if (tmpl_resolve(b->vpt, &my_tr_rules) < 0) return -1;
+
+			b->flags.needs_resolving = false;
+			arg2->flags = b->flags;
+		}
 
 		my_tr_rules.enumv = tmpl_da(b->vpt);
 
-		return tmpl_resolve(a->vpt, &my_tr_rules);
+		XLAT_DEBUG("\tresolve other a\n");
+		if (tmpl_resolve(a->vpt, &my_tr_rules) < 0) return -1;
+
+		a->flags.needs_resolving = false;
+		a->flags.pure = tmpl_is_data(b->vpt);
+		arg1->flags = a->flags;
+
+		goto flags;
 	}
 
-	if (tmpl_resolve(a->vpt, xr_rules->tr_rules) < 0) return -1;
+resolve:
+	if (xlat_resolve(node->call.args, xr_rules) < 0) return -1;
 
-	return tmpl_resolve(b->vpt, xr_rules->tr_rules);
+flags:
+	node->flags = node->call.func->flags;
+	node->call.args->flags.needs_resolving = false;
+	xlat_flags_merge(&node->flags, &node->call.args->flags);
+
+	node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
+
+	return 0;
 }
 
 
@@ -172,7 +206,12 @@ static void xlat_func_append_arg(xlat_exp_t *head, xlat_exp_t *node)
 	xlat_exp_t *group;
 
 	fr_assert(head->type == XLAT_FUNC);
-	fr_assert(node->type != XLAT_GROUP);
+
+	if (node->type == XLAT_GROUP) {
+		xlat_exp_insert_tail(head->call.args, node);
+		xlat_flags_merge(&head->flags, &head->call.args->flags);
+		return;
+	}
 
 	group = xlat_exp_alloc_null(head->call.args);
 	xlat_exp_set_type(group, XLAT_GROUP);
@@ -997,11 +1036,34 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	error:
 		return -fr_sbuff_used(&our_in);
 	}
+
 	node->vpt = vpt;
 	node->quote = quote;
 	node->fmt = vpt->name;
+
 	node->flags.pure = tmpl_is_data(node->vpt);
 	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
+
+	/*
+	 *	@todo - this doesn't quite work yet.  We really want
+	 *	to start out this node as "pure", and merge in the
+	 *	child flags.  But if we do that, then the xlat_eval()
+	 *	code dies, because we don't (yet) handle TMPL_XLAT or TMPL_EXEC
+	 */
+	if (tmpl_contains_xlat(node->vpt)) {
+		xlat_exp_head_t *xlat = tmpl_xlat(node->vpt);
+
+		talloc_steal(node, xlat);
+		node->fmt = talloc_typed_strdup(node, node->fmt);
+		talloc_free(node->vpt);
+
+		node->type = XLAT_GROUP;
+		node->group = xlat;
+
+		node->flags = xlat->flags;
+	}
+
+
 	/* don't merge flags.  That will happen when the node is added to the head */
 
 	/*

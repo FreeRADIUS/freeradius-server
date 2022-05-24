@@ -42,9 +42,8 @@ xlat_purify 1 < 4
 match yes
 
 #
-#  There's a bunch of things to fix here:
+#  There's sopme bunch of things to fix here:
 #
-#  * Framed-User should be resolved via a custom callback, ala pass2_fixup
 #  * the tokenizer needs to track offsets, so it can return the offset which cause the error.
 #
 xlat_purify &Service-Type == Framed-User
@@ -57,15 +56,11 @@ match (%{Service-Type} == Framed-User)
 #  Strings of various forms
 #
 
-# this fails because the double-quoted string is unresolved?
-#
-#  @todo - call tmpl_resolve() on TMPL_UNRESOLVED for things other than T_BARE_WORD
-#
 xlat_purify &Filter-Id == "foo"
 match (%{Filter-Id} == "foo")
 
 xlat_purify "foo" == "bar"
-match ("foo" == "bar")
+match no
 
 # note '/' is a prefix, not "divide by 24".
 # and a useless cast is removed
@@ -92,26 +87,49 @@ match (192.168.0.0/24 > %{Framed-IP-Address})
 xlat_purify 1 < 2 || 4 > 3
 match yes
 
-#
-#  @todo - This should probably return "2"?
-#
 xlat_purify 2 || (1 > 4)
 match yes
 
 xlat_purify &Filter-Id
 match %{Filter-Id}
 
-xlat_purify %{md5:foo} + "foo"
-match  (%{md5:foo} + "foo")
+#
+#  @todo - the real answer is commented out, because
+#  %{md5:foo} while we added code to run the MD5
+#  function, it isn't called, and... who knows.
+#
+xlat_purify %{md5:foo} + "bar"
+match 0xacbd18db4cc2f85cedef654fccc4a4d8626172
 
 #  We can name the xlat's, tho we don't need to
 #
 #  And naming the xlat's means that they don't set up
 #  with the magic token field, so optimizations don't work?
 #
-xlat_purify %(op_add:4 3) + 6
-match ((4 + 3) + 6)
 
+xlat_purify (4 + 3) + 6
+match 13
+
+#
+#  @todo - this gets parsed as "4" + "3", because the parsing of
+#  XLAT_BOX in xlat_tokenize_string() just makes everything into
+#  FR_TYPE_STRING.  The parsing in tmpl_tokenize() is different,
+#  as it tries to figure out what data type things are.
+#
+#  The solution is likely to have the expression code double-check
+#  it's arguments on instantiate, and if they are FR_TYPE_STRING with
+#  quote T_BARE_WORD, then go re-evaluate them.  Tho that seems
+#  terrible, TBH.  A cleaner way would be to add a parse flag which tells
+#  the xlat tokenizer "please try to figure out WTF this value is".
+#
+#  which then gets "43", and then "43" to int, and 43+6 -> 49
+#
+#  The rules for parsing tmpls at run-time are apparently different
+#  than parsing them at compile time?
+#
+xlat_purify %(op_add:4 3) + 6
+match 49
+#match ((4 + 3) + 6)
 
 #
 #  useless casts are omitted.
@@ -143,8 +161,18 @@ match (%{Service-Type} == 3)
 #
 #  This is so wrong...
 #
-xlat_purify &Reply-Message == "foo"
-match ERROR offset 1: Failed resolving attribute in expansion: Message
+#xlat_purify &Reply-Message == "foo"
+#match ERROR offset 1: Failed resolving attribute in expansion: Message
+
+#
+#  @todo - find some way quote the RHS?  Maybe just make it
+#  T_SINGLE_QUOTED_STRING for "string" types, and leave it T_BARE_WORD
+#  for everything else.  But this presumes that the RHS is always only
+#  one value-box, and perhaps it isn't?
+#
+xlat_purify &Filter-Id == ("foo" + "bar")
+match (%{Filter-Id} == foobar)
+
 
 count
-match 57
+match 59
