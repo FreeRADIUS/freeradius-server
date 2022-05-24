@@ -51,7 +51,7 @@ jobs:
         key: hostapd-freebsd-${{ env.HOSTAPD_GIT_TAG }}-v4
 
     - name: Test using a FreeBSD VirtualBox VM
-      uses: vmactions/freebsd-vm@v0.1.5
+      uses: vmactions/freebsd-vm@v0.1.6
       with:
         usesh: true
         sync: rsync
@@ -89,6 +89,9 @@ jobs:
           ./configure
           gmake -j `sysctl -n hw.ncpu`
           gmake test
+          # Minimise rsync pushback as it often fails with "ssh_dispatch_run_fatal: Connection to A.B.C.D: message authentication code incorrect"
+          git config --global --add safe.directory $(pwd)
+          git clean -fxd --exclude="$HOSTAPD_BUILD_DIR"
 
     #
     #  If the CI has failed and the branch is ci-debug then we start a tmate
