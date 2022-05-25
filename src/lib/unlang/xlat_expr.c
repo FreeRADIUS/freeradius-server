@@ -907,8 +907,7 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, -slen);
 	}
 
-	xlat_exp_insert_tail(unary->call.args, node);
-	xlat_flags_merge(&unary->flags, &unary->call.args->flags);
+	xlat_func_append_arg(unary, node);
 	unary->flags.can_purify = (unary->call.func->flags.pure && unary->call.args->flags.pure) | unary->call.args->flags.can_purify;
 
 	/*
