@@ -572,6 +572,51 @@ static xlat_action_t xlat_func_unary_minus(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+/** Convert XLAT_BOX arguments to XLAT_TMPL
+ *
+ *  xlat_tokenize() just makes all unknown arguments into XLAT_BOX, of data type FR_TYPE_STRING.  Whereas
+ *  xlat_tokenize_expr() calls tmpl_afrom_substr(), which tries hard to create a particular data type.
+ *
+ *  This function fixes up calls of the form %(op_add: 3 4), which normally passes 2 arguments of "3" and "4",
+ *  so that the arguments are instead passed as integers 3 and 4.
+ *
+ *  This fixup isn't *strictly* necessary, but it's good to have no surprises in the code, if the user creates
+ *  an expression manually.
+ */
+static int xlat_function_args_to_tmpl(xlat_inst_ctx_t const *xctx)
+{
+	xlat_exp_foreach(xctx->ex->call.args, arg) {
+		ssize_t slen;
+		xlat_exp_t *node;
+		tmpl_t *vpt;
+
+		fr_assert(arg->type == XLAT_GROUP);
+
+		node = xlat_exp_head(arg->group);
+		if (!node) continue;
+		if (node->type != XLAT_BOX) continue;
+		if (node->data.type != FR_TYPE_STRING) continue;
+
+		/*
+		 *	Try to parse it.  If we can't, leave it for a run-time error.
+		 */
+		slen = tmpl_afrom_substr(node, &vpt, &FR_SBUFF_IN(node->data.vb_strvalue, node->data.vb_length),
+					 node->quote, NULL, NULL);
+		if (slen <= 0) continue;
+		if ((size_t) slen < node->data.vb_length) continue;
+
+		/*
+		 *	Leave it as XLAT_BOX, but with the (guessed) new data type.
+		 */
+		fr_value_box_clear(&node->data);
+		fr_value_box_copy(node, &node->data, tmpl_value(vpt));
+		talloc_free(vpt);
+	}
+
+	return 0;
+}
+
+
 #undef XLAT_REGISTER_BINARY_OP
 #define XLAT_REGISTER_BINARY_OP(_op, _name) \
 do { \
@@ -579,6 +624,7 @@ do { \
 	xlat_func_args(xlat, binary_op_xlat_args); \
 	xlat_internal(xlat); \
 	xlat_print_set(xlat, xlat_expr_print_binary); \
+	xlat_async_instantiate_set(xlat, xlat_function_args_to_tmpl, NULL, NULL, NULL); \
 	xlat->token = _op; \
 } while (0)
 

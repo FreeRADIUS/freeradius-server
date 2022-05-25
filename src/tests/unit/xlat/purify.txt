@@ -106,25 +106,12 @@ xlat_purify (4 + 3) + 6
 match 13
 
 #
-#  @todo - this gets parsed as "4" + "3", because the parsing of
-#  XLAT_BOX in xlat_tokenize_string() just makes everything into
-#  FR_TYPE_STRING.  The parsing in tmpl_tokenize() is different,
-#  as it tries to figure out what data type things are.
-#
-#  The solution is likely to have the expression code double-check
-#  it's arguments on instantiate, and if they are FR_TYPE_STRING with
-#  quote T_BARE_WORD, then go re-evaluate them.  Tho that seems
-#  terrible, TBH.  A cleaner way would be to add a parse flag which tells
-#  the xlat tokenizer "please try to figure out WTF this value is".
-#
-#  which then gets "43", and then "43" to int, and 43+6 -> 49
-#
-#  The rules for parsing tmpls at run-time are apparently different
-#  than parsing them at compile time?
+#  xlat_tokenize() parses it's arguments as XLAT_BOX,
+#  of FR_TYPE_STRING.  The binary op instantiation function
+#  fixes those up via tmpl_afrom_substr().
 #
 xlat_purify %(op_add:4 3) + 6
-match 49
-#match ((4 + 3) + 6)
+match 13
 
 #
 #  useless casts are omitted.
@@ -160,10 +147,7 @@ match (%{Service-Type} == 3)
 #match ERROR offset 1: Failed resolving attribute in expansion: Message
 
 #
-#  @todo - find some way quote the RHS?  Maybe just make it
-#  T_SINGLE_QUOTED_STRING for "string" types, and leave it T_BARE_WORD
-#  for everything else.  But this presumes that the RHS is always only
-#  one value-box, and perhaps it isn't?
+#  Strings are single quoted
 #
 xlat_purify &Filter-Id == ("foo" + "bar")
 match (%{Filter-Id} == 'foobar')
