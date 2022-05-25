@@ -146,3 +146,11 @@ CREATE TABLE nas (
 	description varchar(200) DEFAULT 'RADIUS Client'
 );
 CREATE INDEX nasname ON nas(nasname);
+
+--
+-- Table structure for table 'nasreload'
+--
+CREATE TABLE IF NOT EXISTS nasreload (
+	nasipaddress varchar(15) PRIMARY KEY,
+	reloadtime datetime NOT NULL
+);
