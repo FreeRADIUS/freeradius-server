@@ -1,6 +1,6 @@
 #  -*- text -*-
 #
-#  main/sqlite/process-radacct.sql -- Schema extensions and script for processing radacct entries
+#  main/sqlite/process-radacct.sql -- Schema extensions for processing radacct entries
 #
 #  $Id$
 
@@ -12,7 +12,7 @@
 --  for arbitrary periods.
 --
 --  The data_usage_by_period table is populated by periodically calling the
---  process-radacct-refresh.sh script.
+--  process-radacct-new-data-usage-period.sh script.
 --
 --  This table can be queried in various ways to produce reports of aggregate
 --  data use over time. For example, if the refresh script is invoked once per
@@ -50,3 +50,46 @@ CREATE TABLE data_usage_by_period (
 );
 CREATE INDEX idx_data_usage_by_period_period_start ON data_usage_by_period(period_start);
 CREATE INDEX idx_data_usage_by_period_period_end ON data_usage_by_period(period_end);
+
+
+--  ------------------------------------------------------
+--  - "Lightweight" Accounting-On/Off strategy resources -
+--  ------------------------------------------------------
+--
+--  The following resources are for use only when the "lightweight"
+--  Accounting-On/Off strategy is enabled in queries.conf.
+--
+--  Instead of bulk closing the radacct sessions belonging to a reloaded NAS,
+--  this strategy leaves them open and records the NAS reload time in the
+--  nasreload table.
+--
+--  Where applicable, the onus is on the administator to:
+--
+--    * Consider the nas reload times when deriving a list of
+--      active/inactive sessions, and when determining the duration of sessions
+--      interrupted by a NAS reload. (Refer to the view below.)
+--
+--    * Close the affected sessions out of band. (Refer to the
+--      process-radacct-close-after_reload.pl script.)
+--
+--  The radacct_with_reloads view presents the radacct table with two additional
+--  columns: acctstoptime_with_reloads and acctsessiontime_with_reloads
+--
+--  Where the session isn't closed (acctstoptime IS NULL), yet it started before
+--  the last reload of the NAS (radacct.acctstarttime < nasreload.reloadtime),
+--  the derived columns are set based on the reload time of the NAS (effectively
+--  the point in time that the session was interrupted.)
+--
+CREATE VIEW radacct_with_reloads AS
+SELECT
+    a.*,
+    COALESCE(a.AcctStopTime,
+        CASE WHEN a.AcctStartTime < n.ReloadTime THEN n.ReloadTime END
+    ) AS AcctStopTime_With_Reloads,
+    COALESCE(a.AcctSessionTime,
+        CASE WHEN a.AcctStopTime IS NULL AND a.AcctStartTime < n.ReloadTime THEN
+            CAST((julianday(n.ReloadTime) - julianday(a.AcctStartTime)) * 86400 AS integer)
+        END
+    ) AS AcctSessionTime_With_Reloads
+FROM radacct a
+LEFT OUTER JOIN nasreload n USING (nasipaddress);

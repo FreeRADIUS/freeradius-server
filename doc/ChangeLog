@@ -6,6 +6,9 @@ FreeRADIUS 3.2.1 Thu 21 Apr 2021 12:00:00 EDT urgency=low
 	  Which prints out statistics about the connection pools
 	* Client statistics now shows "conflicts", to count conflicting
 	  packets.
+	* New optional "lightweight accounting-on/off" strategy.  When
+	  refreshing queries.conf you should also add the new nasreload table
+	  and corresponding GRANTs to your DB schema.
 
 	Bug fixes
 	* Correct test for open sessions in radacct for MS SQL.

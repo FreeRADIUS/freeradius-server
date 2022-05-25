@@ -167,4 +167,13 @@ CREATE TABLE IF NOT EXISTS nas (
   description varchar(200) DEFAULT 'RADIUS Client',
   PRIMARY KEY (id),
   KEY nasname (nasname)
-);
+) ENGINE = INNODB;
+
+#
+# Table structure for table 'nasreload'
+#
+CREATE TABLE IF NOT EXISTS nasreload (
+  nasipaddress varchar(15) NOT NULL,
+  reloadtime datetime NOT NULL,
+  PRIMARY KEY (nasipaddress)
+) ENGINE = INNODB;

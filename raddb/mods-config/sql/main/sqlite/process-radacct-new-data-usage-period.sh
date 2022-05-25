@@ -1,6 +1,7 @@
 #!/bin/sh
 #
-#  main/sqlite/process-radacct-refresh.sh -- Schema extensions and script for processing radacct entries
+#  main/sqlite/process-radacct-new-data-usage-period.sh -- Script for
+#    processing radacct entries to extract daily usage
 #
 #  $Id$
 
@@ -9,7 +10,7 @@
 #
 
 if [ "$#" -ne 1 ]; then
-    echo "Usage: process-radacct-refresh.sh SQLITE_DB_FILE" 2>&1
+    echo "Usage: process-radacct-new-data-usage-period.sh SQLITE_DB_FILE" 2>&1
     exit 1
 fi
 
