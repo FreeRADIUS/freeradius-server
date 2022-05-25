@@ -391,14 +391,69 @@ static inline int xlat_tokenize_function_mono(xlat_exp_head_t *head,
 	return 0;
 }
 
+static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t *arg)
+{
+	ssize_t slen;
+	xlat_exp_t *node;
+	fr_value_box_t box;
+
+	/*
+	 *	The caller doesn't care about the type, OR the type is string, which it already is.
+	 */
+	if ((arg_p->type == FR_TYPE_VOID) || (arg_p->type == FR_TYPE_STRING)) {
+		return 0;
+	}
+
+	node = xlat_exp_head(arg->group);
+
+	/*
+	 *	@todo - check arg_p->single, and complain.
+	 */
+	if (xlat_exp_next(arg->group, node)) return 0;
+
+	/*
+	 *	@todo - These checks are relatively basic.  We should do better checks, such as if the
+	 *	expected type is not string/octets, and the passed arguments are multiple things, then
+	 *	die?
+	 *
+	 *	And check also the 'concat' flag?
+	 */
+	if (node->type != XLAT_BOX) return 0;
+
+	/*
+	 *	Boxes are always strings, because of xlat_tokenize_string()
+	 */
+	fr_assert(node->data.type == FR_TYPE_STRING);
+
+	fr_value_box_init_null(&box);
+
+	/*
+	 *	The entire string must be parseable as the data type we expect.
+	 */
+	slen = fr_value_box_from_str(node, &box, arg_p->type, NULL, /* no enum */
+				     node->data.vb_strvalue, node->data.vb_length,
+				     NULL, /* no parse rules */
+				     node->data.tainted);
+	if (slen <= 0) return -1;
+
+	/*
+	 *	Replace the string value with the parsed data type.
+	 */
+	fr_value_box_clear(&node->data);
+	fr_value_box_copy(node, &node->data, &box);
+
+	return 0;
+}
+
 int xlat_validate_function_args(xlat_exp_t *node)
 {
 	xlat_arg_parser_t const *arg_p;
 	xlat_exp_t		*arg = xlat_exp_head(node->call.args);
+	int			i = 0;
 
 	fr_assert(node->type == XLAT_FUNC);
 
-	for (arg_p = node->call.func->args; arg_p->type != FR_TYPE_NULL; arg_p++) {
+	for (arg_p = node->call.func->args, i = 0; arg_p->type != FR_TYPE_NULL; arg_p++) {
 		if (!arg_p->required) break;
 
 		if (!arg) {
@@ -413,7 +468,13 @@ int xlat_validate_function_args(xlat_exp_t *node)
 		 */
 		fr_assert(arg->type == XLAT_GROUP);
 
+		if (xlat_validate_function_arg(arg_p, arg) < 0) {
+			fr_strerror_printf("Failed parsing argument %d as type '%s'", i, fr_type_to_str(arg_p->type));
+			return -1;
+		}
+
 		arg = xlat_exp_next(node->call.args, arg);
+		i++;
 	}
 
 	return 0;
