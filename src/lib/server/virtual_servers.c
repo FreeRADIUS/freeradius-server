@@ -311,19 +311,11 @@ static int namespace_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 	}
 
 	if (module_conf_parse(mi, process_cs) < 0) {
-	error:
 		cf_log_perr(ci, "Failed bootstrapping process module");
 		cf_data_remove(server_cs, mi, "process_module");
 		TALLOC_FREE(server->process_mi);
 		return -1;
 	}
-
-	/*
-	 *	Pass server_cs, even though it's wrong.  We don't have
-	 *	anything else to pass, and the dl_module() function
-	 *	only uses the CONF_SECTION for printing.
-	 */
-	if (module_bootstrap(server->process_mi) < 0) goto error;
 
 	/*
 	 *	Pull the list of sections we need to compile out of
@@ -442,19 +434,8 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, 
 
 	if (module_conf_parse(mi, listener_cs) < 0) {
 		cf_log_perr(ci, "Failed parsing config for listener");
-	error:
 		talloc_free(mi);
 		return -1;
-	}
-
-	/*
-	 *	Pass server_cs, even though it's wrong.  We don't have
-	 *	anything else to pass, and the dl_module() function
-	 *	only uses the CONF_SECTION for printing.
-	 */
-	if (module_bootstrap(mi) < 0) {
-		cf_log_perr(ci, "Failed bootstrapping listener");
-		goto error;
 	}
 
 	listener->proto_mi = mi;
