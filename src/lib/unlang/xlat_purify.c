@@ -37,9 +37,17 @@ static void xlat_value_list_to_xlat(xlat_exp_head_t *head, fr_value_box_list_t *
 	while ((box = fr_dlist_pop_head(list)) != NULL) {
 		MEM(node = xlat_exp_alloc_null(head));
 		node->type = XLAT_BOX;
-		node->fmt = "";	/* @todo - fixme? */
+
 		fr_value_box_copy(node, &node->data, box);
 		talloc_free(box);
+
+		if (node->data.type == FR_TYPE_STRING) {
+			node->quote = T_SINGLE_QUOTED_STRING;
+			node->fmt = node->data.vb_strvalue;
+		} else {
+			node->quote = T_BARE_WORD;
+			node->fmt = ""; /* @todo - fixme? */
+		}
 
 		xlat_exp_insert_tail(head, node);
 	}
@@ -124,7 +132,6 @@ static int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			fr_dlist_talloc_free(&group->dlist);
 			node->type = XLAT_GROUP;
 			node->group = group;
-			node->quote = T_BARE_WORD;
 
 			xlat_value_list_to_xlat(group, &list);
 			break;

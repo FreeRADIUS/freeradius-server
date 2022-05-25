@@ -1072,6 +1072,7 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 			    node->flags.needs_async ? "need_async" : "",
 			    node->flags.pure ? "pure" : "",
 			    node->flags.can_purify ? "can_purify" : "");
+		if (node->quote != T_BARE_WORD) INFO_INDENT("quote = %c", fr_token_quote[node->quote]);
 
 		switch (node->type) {
 		case XLAT_BOX:
@@ -1189,7 +1190,13 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		/*
 		 *	@todo - respect node->quote here, too.  Which also means updating the parser.
 		 */
-		FR_SBUFF_RETURN(fr_value_box_print, out, &node->data, e_rules);
+		if (node->quote == T_BARE_WORD) {
+			FR_SBUFF_RETURN(fr_value_box_print, out, &node->data, e_rules);
+		} else {
+			FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->quote]);
+			FR_SBUFF_RETURN(fr_value_box_print, out, &node->data, fr_value_escape_by_quote[node->quote]);
+			FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->quote]);
+		}
 		goto done;
 
 	case XLAT_TMPL:

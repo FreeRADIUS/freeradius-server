@@ -166,7 +166,7 @@ match (%{Service-Type} == 3)
 #  one value-box, and perhaps it isn't?
 #
 xlat_purify &Filter-Id == ("foo" + "bar")
-match (%{Filter-Id} == foobar)
+match (%{Filter-Id} == 'foobar')
 
 xlat_purify !&User-Name
 match !%{User-Name}
