@@ -1,0 +1,83 @@
+# -*- text -*-
+######################################################################
+#
+#  This is a virtual server which caches packets DURING an EAP authentication.
+#
+#  It does NOT do EAP session caching.  See the main "eap" module, and
+#  the "cache" section for EAP session resumption and caching.
+#
+#  This module is intended to be used when you have a load-balancer
+#  which is not aware of RADIUS, and cannot bind IP "flows" via
+#  src/dst IP/port to a particular back-end RADIUS server.
+#
+#  That situation is very rare, and is likely not what you want.
+#  In almost all cases, the correct solution is to use a load balancer
+#  can load balance RADIUS, or UDP flows.
+#	$Id$
+#
+######################################################################
+#
+#  You will also need to enable mods-enabled/cache_intermediate_eap
+#
+#  And then modify mods-enabled/eap to set:
+#
+#	cache_virtual_server = "cache-intermediate-eap"
+#
+#  Put that configuration after the "default_eap_type" entry.
+#
+
+#
+#  This virtual server SHOULD NOT have any "listen" sections.
+#
+#  The cache is keyed off of &reply:State
+#
+#  The cache sections also run the "post-auth" section of any
+#  module which they use.
+#
+#  These sections do not need to return any specific codes (e.g. ok /
+#  fail /etc.).  The cache functionality depends only on which
+#  attributes are saved / loaded.
+#
+#  For example, if the "cache save" process fails, there is nothing
+#  that the server can do about that.  The users authentication
+#  session will still succeed.  The only difference from a successful
+#  "cache save" is that the user will be unable to resume their
+#  session.  Instead, they will need to do a full re-authentication
+#  process.
+#
+#  Similarly for "cache load".  If the session (and/or) the VPs are
+#  not loaded from the cache, then the user will do a full
+#  re-authentication.
+#
+#  Whilst any store can be used for eap caching, whatever is
+#  chosen should be faster than performing a full re-authentication
+server cache-intermediate-eap {
+
+cache clear {
+	#  clear the cache entry by keying off of &reply:State
+
+	update control {
+		&Cache-TTL := 0
+	}
+	cache_intermediate_eap
+}
+
+cache save {
+	cache_intermediate_eap
+}
+
+cache load {
+	update control {
+		&Cache-Read-Only := yes
+	}
+	cache_intermediate_eap
+}
+
+cache refresh {
+	update control {
+		&Cache-Read-Only := yes
+	}
+	cache_intermediate_eap
+}
+
+}

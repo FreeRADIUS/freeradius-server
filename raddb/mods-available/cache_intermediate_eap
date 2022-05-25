@@ -1,0 +1,54 @@
+#
+#  This module will cache the packets DURING an EAP authentication.
+#
+#  It does NOT do EAP session caching.  See the main "eap" module, and
+#  the "cache" section for EAP session resumption and caching.
+#
+#  This module is intended to be used when you have a load-balancer
+#  which is not aware of RADIUS, and cannot bind IP "flows" via
+#  src/dst IP/port to a particular back-end RADIUS server.
+#
+#  That situation is very rare, and is likely not what you want.
+#  In almost all cases, the correct solution is to use a load balancer
+#  can load balance RADIUS, or UDP flows.
+#
+cache cache_intermediate_eap {
+	#
+	#  See the main "cache" module configuration file
+	#  for documentation on the "cache" module.
+	#
+	driver = "rlm_cache_memcached"
+
+	memcached {
+		# Memcached configuration options, as documented here:
+		#    http://docs.libmemcached.org/libmemcached_configuration.html#memcached
+		options = "--SERVER=localhost"
+
+		pool {
+			start = ${thread[pool].start_servers}
+			min = ${thread[pool].min_spare_servers}
+			max = ${thread[pool].max_servers}
+			spare = ${thread[pool].max_spare_servers}
+			uses = 0
+			lifetime = 0
+			idle_timeout = 60
+		}
+	}
+	#
+	#  key:: Cache key.
+	#
+	key = "%{reply:State}"
+
+	#
+	#  ttl:: TTL for cache entries.
+	#
+	ttl = 30
+
+	#
+	#  Cache the serialized EAP data.
+	#
+	update reply {
+		&reply:EAP-Serialized-Handler := &reply:EAP-Serialized-Handler
+		&reply:EAP-Serialized-Opaque  := &reply:EAP-Serialized-Opaque
+	}
+}
