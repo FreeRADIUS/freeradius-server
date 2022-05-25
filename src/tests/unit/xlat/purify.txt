@@ -93,11 +93,6 @@ match yes
 xlat_purify &Filter-Id
 match %{Filter-Id}
 
-#
-#  @todo - the real answer is commented out, because
-#  %{md5:foo} while we added code to run the MD5
-#  function, it isn't called, and... who knows.
-#
 xlat_purify %{md5:foo} + "bar"
 match 0xacbd18db4cc2f85cedef654fccc4a4d8626172
 
@@ -173,6 +168,17 @@ match (%{Service-Type} == 3)
 xlat_purify &Filter-Id == ("foo" + "bar")
 match (%{Filter-Id} == foobar)
 
+xlat_purify !&User-Name
+match !%{User-Name}
+
+xlat_purify (1 < 2)
+match yes
+
+xlat_purify !(1 < 2)
+match no
+
+xlat_purify !true
+match no
 
 count
-match 59
+match 67

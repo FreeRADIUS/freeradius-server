@@ -526,7 +526,7 @@ static xlat_action_t xlat_func_logical(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out
 
 
 static xlat_arg_parser_t const unary_not_xlat_args[] = {
-	{ .required = true, .type = FR_TYPE_BOOL },
+	{ .required = true, .single = true, .type = FR_TYPE_BOOL },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
