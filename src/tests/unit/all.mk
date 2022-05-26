@@ -67,7 +67,7 @@ test.unit.condition: $(addprefix $(OUTPUT)/,$(filter condition/%.txt,$(FILES))) 
 #
 #  Add special command-line flag for purify tests.
 #
-$(BUILD_DIR)/tests/unit/xlat/purify.txt: PURIFY=-p
+$(BUILD_DIR)/tests/unit/xlat/purify.txt $(BUILD_DIR)/tests/unit/xlat/cond_base.txt: PURIFY=-p
 
 #
 #  And the actual script to run each test.

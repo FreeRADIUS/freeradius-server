@@ -56,9 +56,6 @@ RCSID("$Id$")
  *	the time, but not all of the time.  There are currently hacks in the "upcast" code here to fix this,
  *	but it's a hack.
  *
- *	@todo - tmpl_aprint doesn't print casts!  Changing that would likely mean changing many, many, tests.
- *	So we'll leave that later.
- *
  *	@todo - add instantiation routines for regex and assignment operations.  This lets us do things
  *	like:
  *		if ((&foo += 4) > 6) ...
@@ -414,6 +411,11 @@ static int xlat_logical_instantiate(xlat_inst_ctx_t const *xctx)
 {
 	xlat_logical_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_logical_inst_t);
 
+	/*
+	 *	@todo - set the 'can purify' flag
+	 *
+	 *	@todo - have a special "purify" callback, or a *partial* evaluation function?
+	 */
 	inst->argc = xlat_flatten_compiled_argv(inst, &inst->argv, xctx->ex->call.args);
 	inst->sense = (xctx->ex->call.func->token == T_LOR);
 
@@ -1105,10 +1107,7 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
 
 	/*
-	 *	@todo - this doesn't quite work yet.  We really want
-	 *	to start out this node as "pure", and merge in the
-	 *	child flags.  But if we do that, then the xlat_eval()
-	 *	code dies, because we don't (yet) handle TMPL_XLAT or TMPL_EXEC
+	 *	Don't keep an intermediate tmpl.
 	 */
 	if (tmpl_contains_xlat(node->vpt)) {
 		xlat_exp_head_t *xlat = tmpl_xlat(node->vpt);
@@ -1122,7 +1121,6 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 
 		node->flags = xlat->flags;
 	}
-
 
 	/* don't merge flags.  That will happen when the node is added to the head */
 
@@ -1418,7 +1416,6 @@ static const fr_sbuff_term_t operator_terms = FR_SBUFF_TERMS(
 	L("-"),
 	L("/"),
 	L("*"),
-	L(":"),
 	L("="),
 	L("%"),
 	L("!"),

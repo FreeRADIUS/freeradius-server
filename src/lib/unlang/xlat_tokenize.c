@@ -1200,6 +1200,12 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		goto done;
 
 	case XLAT_TMPL:
+		if (node->vpt->rules.cast != FR_TYPE_NULL) {
+			FR_SBUFF_IN_CHAR_RETURN(out, '(');
+			FR_SBUFF_IN_STRCPY_RETURN(out, fr_type_to_str(node->vpt->rules.cast));
+			FR_SBUFF_IN_CHAR_RETURN(out, ')');
+		}
+
 		if (tmpl_is_data(node->vpt)) {
 			FR_SBUFF_RETURN(fr_value_box_print_quoted, out, tmpl_value(node->vpt), node->vpt->quote);
 			goto done;
