@@ -132,7 +132,7 @@ condition !&User-Name != &User-Password
 match &User-Name == &User-Password
 
 condition <ipv6addr>::1
-match ERROR offset 0: Cannot do cast for existence check
+match ERROR offset 0: Invalid cast from ipv6addr to bool.  Unsupported
 
 condition <ipaddr>&Filter-Id == &Framed-IP-Address
 match <ipaddr>&Filter-Id == &Framed-IP-Address
@@ -154,7 +154,7 @@ match ERROR offset 1: Unknown data type
 #  Normalize things
 #
 condition <ipaddr>127.0.0.1 < &Framed-IP-Address
-match &Framed-IP-Address > <ipaddr>127.0.0.1
+match &Framed-IP-Address > 127.0.0.1
 
 # =* and !* are only for attrs / lists
 condition "foo" !* bar
@@ -232,22 +232,22 @@ condition <ipaddr>127.0.0.1 == "127.0.0.1"
 match true
 
 condition <ipaddr>127.0.0.1 == "%{md4: 127.0.0.1}"
-match <ipaddr>127.0.0.1 == "%{md4: 127.0.0.1}"
+match 127.0.0.1 == "%{md4: 127.0.0.1}"
 
 #
 #  Bare %{...} is allowed.
 #
 condition <ipaddr>127.0.0.1 == %{md4:127.0.0.1}
-match <ipaddr>127.0.0.1 == %{md4:127.0.0.1}
+match 127.0.0.1 == %{md4:127.0.0.1}
 
 condition <ipaddr>127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
-match <ipaddr>127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
+match 127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
 
 condition <ether> 00:11:22:33:44:55 == "00:11:22:33:44:55"
 match true
 
 condition <ether>00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
-match <ether>00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
+match 00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
 
 condition <ether> 00:XX:22:33:44:55 == 00:11:22:33:44:55
 match ERROR offset 12: Missing separator, expected ':'
@@ -405,7 +405,7 @@ match ERROR offset 2: Forbidden data type 'vsa' in cast
 #  is on the LHS of the condition.
 #
 condition <string>"foo" == &User-Name
-match &User-Name == <string>"foo"
+match &User-Name == "foo"
 
 # This used to be expr, but expr isn't a builtin, so it failed...
 condition <integer>"%{md4: 1 + 1}" < &NAS-Port
@@ -418,7 +418,7 @@ condition &Filter-Id == &Framed-IP-Address
 match <ipaddr>&Filter-Id == &Framed-IP-Address
 
 condition <ipaddr>127.0.0.1 == &Filter-Id
-match <ipaddr>&Filter-Id == <ipaddr>127.0.0.1
+match <ipaddr>&Filter-Id == 127.0.0.1
 
 condition &Tmp-uint64-0 == &request.Foo-Stuff-Bar
 match &Tmp-uint64-0 == &Foo-Stuff-Bar
@@ -594,7 +594,7 @@ match <ipv4prefix>&NAS-IP-Address == 192.168.0.0/24
 #  is parsed as ipv4prefix
 #
 condition <ipv4prefix>192.168.0.0/24 > &NAS-IP-Address
-match <ipv4prefix>&NAS-IP-Address < <ipv4prefix>192.168.0.0/24
+match <ipv4prefix>&NAS-IP-Address < 192.168.0.0/24
 
 #
 #  This is allowed and means "the list is not empty"

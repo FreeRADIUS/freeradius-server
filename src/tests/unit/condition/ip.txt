@@ -11,7 +11,7 @@ condition &Packet-Src-IPv6-Address == ::
 match &Packet-Src-IPv6-Address == ::
 
 condition &Packet-Src-IP-Address == <ipaddr>*
-match &Packet-Src-IP-Address == <ipaddr>0.0.0.0
+match &Packet-Src-IP-Address == 0.0.0.0
 
 condition &Packet-Src-IP-Address == 0.0.0.0
 match &Packet-Src-IP-Address == 0.0.0.0

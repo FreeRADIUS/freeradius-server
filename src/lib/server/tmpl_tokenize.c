@@ -1686,8 +1686,9 @@ do_suffix:
 		tmpl_attr_insert(vpt, ar);
 	}
 
-	fr_sbuff_marker_release(&m_s);
+	if (tmpl_is_attr(vpt) && (tmpl_rules_cast(vpt) == tmpl_da(vpt)->type)) vpt->rules.cast = FR_TYPE_NULL;
 
+	fr_sbuff_marker_release(&m_s);
 	return 0;
 }
 
@@ -2040,6 +2041,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 
 	tmpl_set_name(vpt, T_BARE_WORD, fr_sbuff_start(&our_name), fr_sbuff_used(&our_name));
 	vpt->rules = *t_rules;	/* Record the rules */
+	if (tmpl_is_attr(vpt) && (tmpl_da(vpt)->type == tmpl_rules_cast(vpt))) vpt->rules.cast = FR_TYPE_NULL;
 
 	if (!tmpl_substr_terminal_check(&our_name, p_rules)) {
 		fr_strerror_const("Unexpected text after attribute reference");
@@ -2148,6 +2150,8 @@ static fr_slen_t tmpl_afrom_value_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 	fr_value_box_copy_shallow(NULL, tmpl_value(vpt), &tmp);
 
 	*out = vpt;
+
+	if (tmpl_rules_cast(vpt) == tmpl_value_type(vpt)) vpt->rules.cast = FR_TYPE_NULL;
 
 	TMPL_VERIFY(vpt);
 
@@ -3337,6 +3341,11 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 		vpt->quote = tmpl_cast_quote(vpt->quote, type, enumv,
 					     unescaped, talloc_array_length(unescaped) - 1);
 		talloc_free(unescaped);
+
+		/*
+		 *	The data is now of the correct type, so we don't need to keep a cast.
+		 */
+		vpt->rules.cast = FR_TYPE_NULL;
 	}
 		break;
 
@@ -3362,10 +3371,24 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 		} else {
 			vpt->quote = T_BARE_WORD;
 		}
+
+		/*
+		 *	The data is now of the correct type, so we don't need to keep a cast.
+		 */
+		vpt->rules.cast = FR_TYPE_NULL;
 	}
 		break;
 
-	case TMPL_TYPE_ATTR:	/* FIXME - We should check cast compatibility with resolved attrs */
+	case TMPL_TYPE_ATTR:
+		/*
+		 *	Suppress casts to the same type.
+		 */
+		if (tmpl_da(vpt)->type == type) {
+			vpt->rules.cast = FR_TYPE_NULL;
+			break;
+		}
+		FALL_THROUGH;
+
 	case TMPL_TYPE_ATTR_UNRESOLVED:
 		vpt->rules.cast = type;
 		break;
@@ -3626,7 +3649,15 @@ int tmpl_resolve(tmpl_t *vpt, tmpl_res_rules_t const *tr_rules)
 	 *	The attribute reference needs resolving.
 	 */
 	} else if (tmpl_contains_attr(vpt)) {
+		fr_type_t		dst_type = tmpl_rules_cast(vpt);
+
 		ret = tmpl_attr_resolve(vpt, tr_rules);
+		if (ret < 0) return ret;
+
+		if (dst_type == tmpl_da(vpt)->type) {
+			vpt->rules.cast = FR_TYPE_NULL;
+		}
+
 
 	/*
 	 *	Convert unresolved tmpls int enumvs, or failing that, string values.
