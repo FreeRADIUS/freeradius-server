@@ -357,10 +357,6 @@ ATTRIBUTE	Tmp-Date-7				1757	date
 ATTRIBUTE	Tmp-Date-8				1758	date
 ATTRIBUTE	Tmp-Date-9				1759	date
 
-#
-#  Attributes 1850 through 1850 + FR_TYPE_MAX are reserved.
-#
-
 ATTRIBUTE	Tmp-uint64-0				1760	uint64
 ATTRIBUTE	Tmp-uint64-1				1761	uint64
 ATTRIBUTE	Tmp-uint64-2				1762	uint64
@@ -399,8 +395,27 @@ ATTRIBUTE	Tmp-Ethernet-1				1791	ether
 ATTRIBUTE	Tmp-Ethernet-2				1792	ether
 ATTRIBUTE	Tmp-Ethernet-3				1793	ether
 ATTRIBUTE	Tmp-Ethernet-4				1794	ether
+ATTRIBUTE	Tmp-Ethernet-5				1795	ether
+ATTRIBUTE	Tmp-Ethernet-6				1796	ether
+ATTRIBUTE	Tmp-Ethernet-7				1797	ether
+ATTRIBUTE	Tmp-Ethernet-8				1798	ether
+ATTRIBUTE	Tmp-Ethernet-9				1799	ether
 
 ATTRIBUTE	Tmp-Float-0				1880	float32
+ATTRIBUTE	Tmp-Float-1				1881	float32
+ATTRIBUTE	Tmp-Float-2				1882	float32
+ATTRIBUTE	Tmp-Float-3				1883	float32
+ATTRIBUTE	Tmp-Float-4				1884	float32
+ATTRIBUTE	Tmp-Float-5				1885	float32
+ATTRIBUTE	Tmp-Float-6				1886	float32
+ATTRIBUTE	Tmp-Float-7				1887	float32
+ATTRIBUTE	Tmp-Float-8				1888	float32
+ATTRIBUTE	Tmp-Float-9				1889	float32
+
+#  Used by xlat expressions to print true/false instead of yes/no
+ATTRIBUTE	Expr-Bool-Enum				1890	bool
+VALUE	Expr-Bool-Enum			true			1
+VALUE	Expr-Bool-Enum			false			0
 
 ATTRIBUTE	Log-Message				1894	string
 ATTRIBUTE	Log-Level				1895	integer

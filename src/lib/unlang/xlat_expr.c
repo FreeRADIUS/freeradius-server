@@ -236,7 +236,8 @@ static xlat_arg_parser_t const binary_op_xlat_args[] = {
 static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				    UNUSED xlat_ctx_t const *xctx,
 				    request_t *request, fr_value_box_list_t *in,
-				    fr_token_t op)
+				    fr_token_t op,
+				    fr_type_t default_type, fr_dict_attr_t const *enumv)
 {
 	int rcode;
 	fr_value_box_t	*dst, *a, *b;
@@ -272,7 +273,7 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	rcode = fr_value_calc_binary_op(dst, dst, FR_TYPE_NULL,
+	rcode = fr_value_calc_binary_op(dst, dst, default_type,
 					fr_dlist_head(&a->vb_group),
 					op,
 					fr_dlist_head(&b->vb_group));
@@ -280,6 +281,12 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		talloc_free(dst);
 		return XLAT_ACTION_FAIL;
 	}
+
+	/*
+	 *	Over-write, but only if it's present.  Otherwise leave
+	 *	any existing enum alone.
+	 */
+	if (enumv) dst->enumv = enumv;
 
 	fr_dcursor_append(out, dst);
 	return XLAT_ACTION_DONE;
@@ -290,7 +297,7 @@ static xlat_action_t xlat_func_ ## _name(TALLOC_CTX *ctx, fr_dcursor_t *out, \
 				   xlat_ctx_t const *xctx, \
 				   request_t *request, fr_value_box_list_t *in)  \
 { \
-	return xlat_binary_op(ctx, out, xctx, request, in, _op); \
+	return xlat_binary_op(ctx, out, xctx, request, in, _op, FR_TYPE_NULL, NULL); \
 }
 
 XLAT_BINARY_FUNC(op_add, T_ADD)
@@ -303,12 +310,20 @@ XLAT_BINARY_FUNC(op_xor,  T_XOR)
 XLAT_BINARY_FUNC(op_rshift, T_RSHIFT)
 XLAT_BINARY_FUNC(op_lshift, T_LSHIFT)
 
-XLAT_BINARY_FUNC(cmp_eq,  T_OP_CMP_EQ)
-XLAT_BINARY_FUNC(cmp_ne,  T_OP_NE)
-XLAT_BINARY_FUNC(cmp_lt,  T_OP_LT)
-XLAT_BINARY_FUNC(cmp_le,  T_OP_LE)
-XLAT_BINARY_FUNC(cmp_gt,  T_OP_GT)
-XLAT_BINARY_FUNC(cmp_ge,  T_OP_GE)
+#define XLAT_CMP_FUNC(_name, _op)  \
+static xlat_action_t xlat_func_ ## _name(TALLOC_CTX *ctx, fr_dcursor_t *out, \
+				   xlat_ctx_t const *xctx, \
+				   request_t *request, fr_value_box_list_t *in)  \
+{ \
+	return xlat_binary_op(ctx, out, xctx, request, in, _op, FR_TYPE_BOOL, attr_expr_bool_enum); \
+}
+
+XLAT_CMP_FUNC(cmp_eq,  T_OP_CMP_EQ)
+XLAT_CMP_FUNC(cmp_ne,  T_OP_NE)
+XLAT_CMP_FUNC(cmp_lt,  T_OP_LT)
+XLAT_CMP_FUNC(cmp_le,  T_OP_LE)
+XLAT_CMP_FUNC(cmp_gt,  T_OP_GT)
+XLAT_CMP_FUNC(cmp_ge,  T_OP_GE)
 
 /*
  *	Cast to bool for && / ||.  The casting rules for expressions /
@@ -476,7 +491,7 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (!xlat_logical_match(&result, &rctx->list, inst->sense)) {
 	done:
-		MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, false));
+		MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
 		dst->vb_bool = result;
 		fr_dcursor_append(out, dst);
 
@@ -540,7 +555,7 @@ static xlat_action_t xlat_func_unary_not(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t *dst, *a;
 
 	a = fr_dlist_head(in);
-	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL, a->tainted));
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, a->tainted));
 	dst->vb_bool = !a->vb_bool;
 
 	fr_dcursor_append(out, dst);

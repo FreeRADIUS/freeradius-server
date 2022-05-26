@@ -39,7 +39,7 @@ xlat_purify &Framed-IP-Address + 4
 match (&Framed-IP-Address + 4)
 
 xlat_purify 1 < 4
-match yes
+match true
 
 #
 #  There's sopme bunch of things to fix here:
@@ -60,7 +60,7 @@ xlat_purify &Filter-Id == "foo"
 match (&Filter-Id == "foo")
 
 xlat_purify "foo" == "bar"
-match no
+match false
 
 # note '/' is a prefix, not "divide by 24".
 # and a useless cast is removed
@@ -85,10 +85,10 @@ match (192.168.0.0/24 > &Framed-IP-Address)
 #  Logical && and ||
 #
 xlat_purify 1 < 2 || 4 > 3
-match yes
+match true
 
 xlat_purify 2 || (1 > 4)
-match yes
+match true
 
 xlat_purify &Filter-Id
 match &Filter-Id
@@ -117,7 +117,7 @@ match 13
 #  useless casts are omitted.
 #
 xlat_purify 1 < (uint32) 2
-match yes
+match true
 
 #
 #  @todo - for exec, xlat, etc., if we're doing an existence check of
@@ -129,7 +129,7 @@ match yes
 #  This should likely be a parse error at boot time?
 #
 xlat_purify 1 < 2 < 3
-match yes
+match true
 
 xlat_purify &Service-Type == 1
 match (&Service-Type == 1)
@@ -153,13 +153,13 @@ xlat_purify !&User-Name
 match !&User-Name
 
 xlat_purify (1 < 2)
-match yes
+match true
 
 xlat_purify !(1 < 2)
-match no
+match false
 
 xlat_purify !true
-match no
+match false
 
 count
 match 69

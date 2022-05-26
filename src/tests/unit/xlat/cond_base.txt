@@ -250,7 +250,7 @@ match ERROR offset 1: Failed parsing string as type 'uint32'
 #  and then statically evaluated.
 #
 xlat_purify <ipaddr>127.0.0.1 == "127.0.0.1"
-match yes
+match true
 
 #  @todo - why isn't the RHS being purified?
 xlat_purify <ipaddr>127.0.0.1 == "%{md4: 127.0.0.1}"
@@ -269,7 +269,7 @@ xlat_purify <ipaddr>127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{Use
 match (127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{Request[0].User-Name}'})
 
 xlat_purify <ether> 00:11:22:33:44:55 == "00:11:22:33:44:55"
-match yes
+match true
 
 #  @todo - why isn't the RHS being purified?
 xlat_purify <ether>00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
@@ -281,6 +281,7 @@ match ERROR offset 12: Missing separator, expected ':'
 #
 #  Tests for boolean data types.
 #
+# @todo - we probably want this to use "true", too.
 xlat_purify true
 match yes
 
@@ -314,22 +315,22 @@ match (yes || (&User-Name == "bob"))
 #  Both sides static data with a cast: evaluate at parse time.
 #
 xlat_purify <integer>20 < 100
-match yes
+match true
 
 #
 #  Both sides literal: evaluate at parse time
 #
 xlat_purify ('foo' == 'bar')
-match no
+match false
 
 xlat_purify ('foo' < 'bar')
-match no
+match false
 
 xlat_purify ('foo' > 'bar')
-match yes
+match true
 
 xlat_purify ('foo' == 'foo')
-match yes
+match true
 
 #
 #  @todo - why isn't the RHS being purified?
@@ -346,10 +347,10 @@ xlat_purify ("foo bar" == "%{md4: foo}")
 match ("foo bar" == "%{md4: foo}")
 
 xlat_purify ("foo" == "bar")
-match no
+match false
 
 xlat_purify ("foo" == 'bar')
-match no
+match false
 
 #
 #  The RHS gets parsed as a VPT_TYPE_DATA, which is
@@ -363,17 +364,17 @@ xlat_purify (&User-Name == "%{md4: blah}")
 match (&User-Name == "0x544924d05ec4481925ba3749a096a0a7")
 
 xlat_purify <ipaddr>127.0.0.1 == 2130706433
-match yes
+match true
 
 # /32 suffix should be trimmed for this type
 xlat_purify <ipaddr>127.0.0.1/32 == 127.0.0.1
-match yes
+match true
 
 xlat_purify <ipaddr>127.0.0.1/327 == 127.0.0.1
 match ERROR offset 9: Invalid IPv4 mask length "/327".  Should be between 0-32
 
 xlat_purify <ipaddr>127.0.0.1/32 == 127.0.0.1
-match yes
+match true
 
 xlat_purify (/foo/)
 match ERROR offset 1: Unexpected regular expression
@@ -594,7 +595,7 @@ match ERROR offset 1: Attribute 'not' not found.  Searched in: RADIUS, internal:
 #  The LHS is a string with ASCII 5C 30 30 30 inside of it vs the RHS which should contain ASCII 0.
 #
 xlat_purify ('i have scary embedded things\000 inside me' == "i have scary embedded things\000 inside me")
-match no
+match false
 
 #
 #  'Unknown' attributes which are defined in the main dictionary
@@ -657,7 +658,7 @@ match &reply
 #  and empty strings
 #
 xlat_purify ("$ENV{SOMETHING_OR_OTHER}" == '')
-match no
+match false
 
 #
 #  Attributes with a protocol namespace
@@ -670,10 +671,10 @@ match (&radius.User-Name == 'bob')
 #match &User-Name == 'bob'
 
 xlat_purify !(!(0))
-match no
+match false
 
 xlat_purify (true) && (false)
-match no
+match false
 
 #
 #  More short-circuit evaluations
