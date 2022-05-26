@@ -395,8 +395,9 @@ static fr_slen_t xlat_expr_print_logical(fr_sbuff_t *out, xlat_exp_t const *node
 			xlat_print(out, inst->argv[i], e_rules);
 			if (i == (inst->argc - 1)) break;
 
-			FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
 			FR_SBUFF_IN_CHAR_RETURN(out, ' ');
+			FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
+			if ((i + 1) < inst->argc) FR_SBUFF_IN_CHAR_RETURN(out, ' ');
 		}
 	}
 
