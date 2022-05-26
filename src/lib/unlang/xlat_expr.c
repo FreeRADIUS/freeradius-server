@@ -906,6 +906,7 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	xlat_t			*func = NULL;
 	char const		*fmt = NULL;
 	fr_sbuff_t		our_in = FR_SBUFF(in);
+	char			c;
 
 	XLAT_DEBUG("UNARY <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
@@ -918,14 +919,27 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		fmt = "!";
 		func = xlat_func_find("unary_not", 9);
 		fr_assert(func != NULL);
+		c = '!';
+		goto check_for_double;
+
 	}
 	else if (fr_sbuff_next_if_char(&our_in, '-')) { /* unary minus */
 		fmt = "-";
 		func = xlat_func_find("unary_minus", 11);
 		fr_assert(func != NULL);
+		c = '-';
+		goto check_for_double;
+
 	}
 	else if (fr_sbuff_next_if_char(&our_in, '+')) { /* ignore unary + */
-		/* nothing */
+		c = '+';
+
+	check_for_double:
+		fr_sbuff_skip_whitespace(&our_in);
+		if (fr_sbuff_next_if_char(&our_in, c)) {
+			fr_strerror_const("Double operator is invalid");
+			return (-fr_sbuff_used(&our_in) + 1);
+		}
 	}
 
 	/*
@@ -1116,7 +1130,8 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 */
 	if (quote != T_BARE_WORD) {
 		if (!fr_sbuff_is_char(&our_in, fr_token_quote[quote])) {
-			fr_strerror_const("Unexpected end of quoted string");
+			fr_strerror_const("Unterminated string");
+			fr_sbuff_advance(&our_in, slen * -1);
 			goto error;
 		}
 
@@ -1274,7 +1289,7 @@ redo:
 	fr_sbuff_out_by_longest_prefix(&slen, &op, expr_assignment_op_table, &our_in, T_INVALID);
 	if (op == T_INVALID) {
 		talloc_free(lhs);
-		fr_strerror_printf("Expected operator at '%.4s'", fr_sbuff_current(&our_in));
+		fr_strerror_printf("Invalid operator");
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
@@ -1313,8 +1328,9 @@ redo:
 	}
 
 	if (!binary_ops[op].str) {
-		fr_strerror_printf("Invalid operator '%s'", fr_tokens[op]);
-		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, -slen);
+		fr_strerror_printf("Invalid operator");
+		fr_sbuff_set(&our_in, &marker);
+		return -fr_sbuff_used(&our_in);
 	}
 
 	fr_assert(precedence[op] != 0);
