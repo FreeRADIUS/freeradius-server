@@ -140,6 +140,15 @@ jobs:
       if: ${{ matrix.env.OS == 'ubuntu-18.04' }}
       run: sudo ./scripts/ci/cassandra-install.sh
 
+    - name: Install Couchbase driver
+      if: ${{ runner.os != 'macOS' }}
+      run: |
+        wget -4 -O /tmp/couchbase.key https://packages.couchbase.com/clients/c/repos/deb/couchbase.key
+        sudo apt-key add /tmp/couchbase.key
+        echo "deb https://packages.couchbase.com/clients/c/repos/deb/ubuntu2004 focal focal/main" | sudo tee /etc/apt/sources.list.d/couchbase.list
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends libcouchbase-dev libcouchbase3-tools
+
     - name: Install dependencies (macOS)
       if: ${{ runner.os == 'macOS' }}
       run: |
@@ -148,6 +157,7 @@ jobs:
           gperftools \
           hiredis \
           json-c \
+          libcouchbase@2 \
           libidn \
           libmemcached \
           luajit \

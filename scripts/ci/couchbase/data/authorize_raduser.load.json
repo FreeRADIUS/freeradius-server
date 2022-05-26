@@ -1,0 +1,22 @@
+[
+  {
+    "docType": "raduser",
+    "userName": "bob",
+    "control": {
+      "NAS-Port": {
+        "op": ":=",
+        "value": "12345"
+      }
+    },
+    "reply": {
+      "Reply-Message": {
+        "op": "=",
+        "value": "Hidey Ho!"
+      },
+      "Called-Station-Id": {
+        "op": "=",
+        "value": "Over-my-Tapioca-NAS"
+      }
+    }
+  }
+]

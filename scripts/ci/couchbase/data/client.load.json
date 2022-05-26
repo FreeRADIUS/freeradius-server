@@ -1,0 +1,16 @@
+[
+  {
+    "clientIdentifier": "192.168.100.44",
+    "shortname": "nastest01",
+    "clientSecret": "testing123",
+    "clientShortname": "nashare",
+    "nasType": "couchtest"
+  },
+  {
+    "clientIdentifier": "1.2.3.4",
+    "shortname": "whatever02",
+    "clientSecret": "testSecret",
+    "clientShortname": "testShortName",
+    "nasType": "nasTypeTest"
+  }
+]
