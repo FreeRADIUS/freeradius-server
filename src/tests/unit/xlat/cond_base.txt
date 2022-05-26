@@ -34,7 +34,7 @@ match ERROR offset 4: Unexpected text after enum value.  Expected operator
 #  @todo - this is an error somehow?
 #
 xlat_purify (Service-Type == 000-111)
-match ERROR offset 1: No IPv6 component separator: Failed resolving attribute in expansion: Service-Type
+match ERROR offset 0: No IPv6 component separator: Failed resolving attribute in expansion: Service-Type
 #match (&Service-Type == (0 - 111))
 
 xlat_purify (ok FOO handled)
@@ -230,7 +230,7 @@ match (&Event-Timestamp == "January 1, 2012 %{Request[0].User-Name}")
 #  @todo - can't parse years?
 #
 xlat_purify &Event-Timestamp == 'January 1, 2012'
-match ERROR offset 1: Invalid year string
+match ERROR offset 0: Invalid year string
 #match (&Event-Timestamp == 'Jan  1 2012 00:00:00 EST')
 
 # literals are parsed when the conditions are parsed
@@ -242,7 +242,7 @@ match ERROR offset 10: Failed parsing string as type 'uint32'
 #  string the RHS is. 
 #
 xlat_purify &NAS-Port == X
-match ERROR offset 1: Failed parsing string as type 'uint32'
+match ERROR offset 0: Failed parsing string as type 'uint32'
 #match ERROR offset 13: Failed parsing string as type 'uint32'
 
 #
@@ -582,12 +582,12 @@ match ERROR offset 11: Invalid array index '-1' (should be between 0-1000)
 #  The attribute/xlat_purify parser does not fall back to bare words
 #
 xlat_purify request.Foo == 'request.Foo'
-match ERROR offset 1: Invalid attribute reference, missing '&' prefix: Failed resolving attribute in expansion: request.Foo
+match ERROR offset 0: Invalid attribute reference, missing '&' prefix: Failed resolving attribute in expansion: request.Foo
 
 xlat_purify &not-a-list.User-Name == &not-a-list.User-Name
 match ERROR offset 1: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 
-# . is a valid dictionarxy name attribute, so we can't error out in pass1
+# . is a valid dictionary name attribute, so we can't error out in pass1
 xlat_purify &not-a-packet.User-Name == &not-a-packet.User-Name
 match ERROR offset 1: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here
 

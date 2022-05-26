@@ -1582,20 +1582,9 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **ou
 	}
 
 	/*
-	 *	Ensure that everything is resolved otherwise we have
-	 *	no idea what to do.
-	 */
-	if (head->flags.needs_resolving &&
-	    (xlat_resolve(head, &(xlat_res_rules_t){ .allow_unresolved = false }) < 0)) {
-		talloc_free(head);
-		return -1;
-	}
-
-	/*
 	 *	Create ephemeral instance data for the xlat
 	 */
 	if (xlat_instantiate_ephemeral(head, el) < 0) {
-		fr_strerror_const("Failed performing ephemeral instantiation for xlat");
 		talloc_free(head);
 		return 0;
 	}

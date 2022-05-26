@@ -331,6 +331,15 @@ int xlat_instantiate_ephemeral(xlat_exp_head_t *head, fr_event_list_t *el)
 {
 	int ret;
 
+	/*
+	 *	The caller MAY resolve it, or may not.  If the caller
+	 *	hasn't resolved it, then we can't allow any unresolved
+	 *	functions or attributes.
+	 */
+	if (head->flags.needs_resolving) {
+		if (xlat_resolve(head, &(xlat_res_rules_t){ .allow_unresolved = false }) < 0) return -1;
+	}
+
 	if (head->instantiated) return 0;
 
 	ret = xlat_eval_walk(head, _xlat_instantiate_ephemeral_walker, XLAT_INVALID, el);
