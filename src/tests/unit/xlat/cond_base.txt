@@ -122,14 +122,14 @@ match ('handled' && (&Packet-Type == Access-Challenge))
 #
 #  @todo - fix list comparisons
 #
-#xlat_purify &reply == &request
-#match ERROR offset 0: Cannot use list references in condition
+xlat_purify &reply == &request
+match ERROR offset 0: Cannot use list references in condition
 
-#xlat_purify &reply == "hello"
-#match ERROR offset 0: Cannot use list references in condition
+xlat_purify &reply == "hello"
+match ERROR offset 0: Cannot use list references in condition
 
-#xlat_purify "hello" == &reply
-#match ERROR offset 11: Cannot use list references in condition
+xlat_purify "hello" == &reply
+match ERROR offset 11: Cannot use list references in condition
 
 
 #
@@ -174,7 +174,7 @@ match ((ipaddr)&Filter-Id == &Framed-IP-Address)
 #  @todo - perhaps better errors for casts?
 #
 xlat_purify <ipaddr>&Filter-Id == <blerg>&Framed-IP-Address
-match ERROR offset 22: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+match ERROR offset 23: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
 
 xlat_purify <blerg>&Filter-Id == "foo"
 match ERROR offset 1: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
@@ -565,9 +565,8 @@ match ERROR offset 17: Unknown attributes not allowed here
 xlat_purify &User-Name[a] == 'bob'
 match ERROR offset 11: Invalid array index
 
-# @todo - really 25?
 xlat_purify &User-Name == &Filter-Id[a]
-match ERROR offset 24: Invalid array index
+match ERROR offset 25: Invalid array index
 
 #
 #  Bounds checks...
@@ -695,4 +694,4 @@ xlat_purify (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
 match ((&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message))
 
 count
-match 261
+match 267

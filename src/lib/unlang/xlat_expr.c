@@ -1219,6 +1219,32 @@ static fr_table_num_ordered_t const expr_assignment_op_table[] = {
 };
 static size_t const expr_assignment_op_table_len = NUM_ELEMENTS(expr_assignment_op_table);
 
+static bool valid_type(xlat_exp_t *node)
+{
+	fr_dict_attr_t const *da;
+
+	if (node->type != XLAT_TMPL) return true;
+
+	if (tmpl_is_list(node->vpt)) {
+	list:
+		fr_strerror_const("Cannot use list references in condition");
+		return false;
+	}
+
+	if (!tmpl_is_attr(node->vpt)) return true;
+
+	da = tmpl_da(node->vpt);
+	if (fr_type_is_structural(da->type)) {
+		if (da->dict == fr_dict_internal()) goto list;
+
+		fr_strerror_const("Cannot use structural types in condition");
+		fprintf(stderr, "FAIL %d\n", __LINE__);
+		return false;
+	}
+
+	return true;
+}
+
 /** Tokenize a mathematical operation.
  *
  *	(EXPR)
@@ -1236,13 +1262,15 @@ static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_s
 	xlat_t		*func = NULL;
 	fr_token_t	op;
 	ssize_t		slen;
-	fr_sbuff_marker_t  marker;
+	fr_sbuff_marker_t  m_lhs, m_op, m_rhs;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_exp_head_t *args;
 
 	XLAT_DEBUG("EXPRESSION <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
 	fr_sbuff_skip_whitespace(&our_in);
+
+	fr_sbuff_marker(&m_lhs, &our_in);
 
 	/*
 	 *	Get the LHS of the operation.
@@ -1294,7 +1322,7 @@ redo:
 	/*
 	 *	Remember where we were after parsing the LHS.
 	 */
-	fr_sbuff_marker(&marker, &our_in);
+	fr_sbuff_marker(&m_op, &our_in);
 
 	/*
 	 *	Get the operator.
@@ -1335,7 +1363,7 @@ redo:
 		fr_assert(0);
 
 #else
-		fr_sbuff_set(&our_in, &marker);
+		fr_sbuff_set(&our_in, &m_op);
 		fr_strerror_printf("Invalid operator '%s' - regular expressions are not supported in this build.", fr_tokens[op]);
 		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, -slen);
 #endif
@@ -1343,7 +1371,7 @@ redo:
 
 	if (!binary_ops[op].str) {
 		fr_strerror_printf("Invalid operator");
-		fr_sbuff_set(&our_in, &marker);
+		fr_sbuff_set(&our_in, &m_op);
 		return -fr_sbuff_used(&our_in);
 	}
 
@@ -1356,9 +1384,12 @@ redo:
 	 *	take care of continuing.
 	 */
 	if (precedence[op] <= precedence[prev]) {
-		fr_sbuff_set(&our_in, &marker);
+		fr_sbuff_set(&our_in, &m_op);
 		goto done;
 	}
+
+	fr_sbuff_skip_whitespace(&our_in);
+	fr_sbuff_marker(&m_rhs, &our_in);
 
 	/*
 	 *	We now parse the RHS, allowing a (perhaps different) cast on the RHS.
@@ -1396,6 +1427,21 @@ redo:
 	 *	XLAT_BOX, then try to upcast the XLAT_BOX to the destination data type before returning.  This
 	 *	optimization minimizes the amount of run-time work we have to do.
 	 */
+
+	/*
+	 *	Remove invalid comparisons.
+	 */
+	if (fr_equality_op[op]) {
+		if (!valid_type(lhs)) {
+			fr_sbuff_set(&our_in, &m_lhs);
+			return -fr_sbuff_used(&our_in);
+		}
+
+		if (!valid_type(rhs)) {
+			fr_sbuff_set(&our_in, &m_rhs);
+			return -fr_sbuff_used(&our_in);
+		}
+	}
 
 	/*
 	 *	Create the function node, with the LHS / RHS arguments.
