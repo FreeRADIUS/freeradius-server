@@ -1218,6 +1218,20 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 			xlat_print(out, tmpl_xlat(node->vpt), fr_value_escape_by_quote[node->quote]);
 			goto done;
 		}
+
+		// attr or list
+		fr_assert(tmpl_is_list(node->vpt) || tmpl_is_attr(node->vpt));
+		fr_assert(talloc_parent(node->vpt) == node);
+
+		/*
+		 *	We prefer the name from the configuration file, otherwise when we get
+		 *	&User-Name on input, the tmpl_printer will print the full path, as
+		 *	&request[0].User-Name.
+		 */
+		if (node->vpt->name[0] == '&') {
+			FR_SBUFF_IN_STRCPY_RETURN(out, node->fmt);
+			goto done;
+		}
 		break;
 
 	case XLAT_ONE_LETTER:
@@ -1231,7 +1245,7 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		 */
 		if (node->call.func->print) {
 			slen = node->call.func->print(out, node, node->call.inst->data, e_rules);
-			if (slen < 0) goto error;
+			if (slen < 0) return slen;
 			goto done;
 		}
 		break;
@@ -1253,13 +1267,8 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 
 	switch (node->type) {
 	case XLAT_TMPL:
-		fr_assert(tmpl_is_list(node->vpt) || tmpl_is_attr(node->vpt));
-		fr_assert(talloc_parent(node->vpt) == node);
 		slen = tmpl_attr_print(out, node->vpt, TMPL_ATTR_REF_PREFIX_NO);
-		if (slen < 0) {
-		error:
-			return slen;
-		}
+		if (slen < 0) return slen;
 		break;
 #ifdef HAVE_REGEX
 	case XLAT_REGEX:
@@ -1280,7 +1289,7 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 
 		if (xlat_exp_head(node->call.args)) {
 			slen = xlat_print(out, node->call.args, &xlat_escape);
-			if (slen < 0) goto error;
+			if (slen < 0) return slen;
 		}
 		break;
 
@@ -1290,17 +1299,17 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 
 		if (xlat_exp_head(node->call.args)) {
 			slen = xlat_print(out, node->call.args, &xlat_escape);
-			if (slen < 0) goto error;
+			if (slen < 0) return slen;
 		}
 		break;
 
 	case XLAT_ALTERNATE:
 		slen = xlat_print(out, node->alternate[0], &xlat_escape);
-		if (slen < 0) goto error;
+		if (slen < 0) return slen;
 
 		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, ":-");
 		slen = xlat_print(out, node->alternate[1], &xlat_escape);
-		if (slen < 0) goto error;
+		if (slen < 0) return slen;
 		break;
 
 		fr_assert_fail(NULL);

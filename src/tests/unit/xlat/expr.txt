@@ -24,10 +24,10 @@ xlat_expr (2 + 3) * 4 + 5
 match (((2 + 3) * 4) + 5)
 
 xlat_expr &NAS-Port + 5
-match (%{NAS-Port} + 5)
+match (&NAS-Port + 5)
 
 xlat_expr &Framed-IP-Address & 0xffff0000
-match (%{Framed-IP-Address} & 0xffff0000)
+match (&Framed-IP-Address & 0xffff0000)
 
 #xlat_expr %{Framed-IP-Address} + 4
 #match (%{Framed-IP-Address} + 0.0.0.4)
@@ -36,16 +36,16 @@ xlat_expr 1 < 4
 match (1 < 4)
 
 xlat_expr &Service-Type == Framed-User
-match (%{Service-Type} == Framed-User)
+match (&Service-Type == Framed-User)
 
-#xlat_expr 1 + (&Service-Type == Framed-User)
-#match (1 + (%{Service-Type} == Framed-User))
+xlat_expr 1 + (&Service-Type == Framed-User)
+match (1 + (&Service-Type == Framed-User))
 
 #
 #  Strings of various forms
 #
 xlat_expr &Filter-Id == "foo"
-match (%{Filter-Id} == "foo")
+match (&Filter-Id == "foo")
 
 xlat_expr "foo" == "bar"
 match ("foo" == "bar")
@@ -53,20 +53,20 @@ match ("foo" == "bar")
 # note '/' is a prefix, not "divide by 24".
 # and a useless cast is removed
 xlat_expr &Framed-IP-Address < (ipv4prefix) 192.168.0.0/24
-match (%{Framed-IP-Address} < 192.168.0.0/24)
+match (&Framed-IP-Address < 192.168.0.0/24)
 
 xlat_expr &Framed-IP-Address < (ipv4prefix) 192.168.0.0
-match (%{Framed-IP-Address} < 192.168.0.0/32)
+match (&Framed-IP-Address < 192.168.0.0/32)
 
 #
 #  For IP addresses, the other side is automatically upcast to a prefix
 #
 xlat_expr &Framed-IP-Address < 192.168.0.0/24
-match  (%{Framed-IP-Address} < 192.168.0.0/24)
+match  (&Framed-IP-Address < 192.168.0.0/24)
 
 #  same as above, but swap the order
 xlat_expr (ipv4prefix) 192.168.0.0/24 > &Framed-IP-Address
-match (192.168.0.0/24 > %{Framed-IP-Address})
+match (192.168.0.0/24 > &Framed-IP-Address)
 
 #
 #  Logical && and ||
@@ -88,7 +88,7 @@ match ((1 < 2) || (4 > 3) || (4 == 4) || (1 < 2))
 #  Other stuff
 #
 xlat_expr &Filter-Id
-match %{Filter-Id}
+match &Filter-Id
 
 xlat_expr %{md5:foo} + "foo"
 match  (%{md5:foo} + "foo")
@@ -134,4 +134,4 @@ match ((1 + 2) * (3 + 4))
 
 
 count
-match 57
+match 59

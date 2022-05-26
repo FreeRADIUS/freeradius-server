@@ -27,16 +27,16 @@ xlat_purify (2 + 3) * 4 + 5
 match 25
 
 xlat_purify &NAS-Port + 5
-match (%{NAS-Port} + 5)
+match (&NAS-Port + 5)
 
 xlat_purify &Framed-IP-Address & 0xffff0000
-match (%{Framed-IP-Address} & 0xffff0000)
+match (&Framed-IP-Address & 0xffff0000)
 
 #
 #  Can't parse or cast RHS to nothing.
 #
 xlat_purify &Framed-IP-Address + 4
-match (%{Framed-IP-Address} + 4)
+match (&Framed-IP-Address + 4)
 
 xlat_purify 1 < 4
 match yes
@@ -47,17 +47,17 @@ match yes
 #  * the tokenizer needs to track offsets, so it can return the offset which cause the error.
 #
 xlat_purify &Service-Type == Framed-User
-match (%{Service-Type} == Framed-User)
+match (&Service-Type == Framed-User)
 
 #xlat_purify 1 + (&Service-Type == Framed-User)
-#match (1 + (%{Service-Type} == Framed-User))
+#match (1 + (&Service-Type == Framed-User))
 
 #
 #  Strings of various forms
 #
 
 xlat_purify &Filter-Id == "foo"
-match (%{Filter-Id} == "foo")
+match (&Filter-Id == "foo")
 
 xlat_purify "foo" == "bar"
 match no
@@ -65,21 +65,21 @@ match no
 # note '/' is a prefix, not "divide by 24".
 # and a useless cast is removed
 xlat_purify &Framed-IP-Address < (ipv4prefix) 192.168.0.0/24
-match (%{Framed-IP-Address} < 192.168.0.0/24)
+match (&Framed-IP-Address < 192.168.0.0/24)
 
 xlat_purify &Framed-IP-Address < (ipv4prefix) 192.168.0.0
-match (%{Framed-IP-Address} < 192.168.0.0/32)
+match (&Framed-IP-Address < 192.168.0.0/32)
 
 #
 #  For IP addresses, the other side is automatically upcast to a prefix
 #
 
 xlat_purify &Framed-IP-Address < 192.168.0.0/24
-match (%{Framed-IP-Address} < 192.168.0.0/24)
+match (&Framed-IP-Address < 192.168.0.0/24)
 
 #  same as above, but swap the order
 xlat_purify (ipv4prefix) 192.168.0.0/24 > &Framed-IP-Address
-match (192.168.0.0/24 > %{Framed-IP-Address})
+match (192.168.0.0/24 > &Framed-IP-Address)
 
 #
 #  Logical && and ||
@@ -91,7 +91,7 @@ xlat_purify 2 || (1 > 4)
 match yes
 
 xlat_purify &Filter-Id
-match %{Filter-Id}
+match &Filter-Id
 
 xlat_purify %{md5:foo} + "bar"
 match 0xacbd18db4cc2f85cedef654fccc4a4d8626172
@@ -132,28 +132,25 @@ xlat_purify 1 < 2 < 3
 match yes
 
 xlat_purify &Service-Type == 1
-match (%{Service-Type} == 1)
+match (&Service-Type == 1)
 
 #
 #  Convert the RHS to a simpler version
 #
 xlat_purify &Service-Type == (1 + 2)
-match (%{Service-Type} == 3)
+match (&Service-Type == 3)
 
-#
-#  This is so wrong...
-#
-#xlat_purify &Reply-Message == "foo"
-#match ERROR offset 1: Failed resolving attribute in expansion: Message
+xlat_purify &Reply-Message == "foo"
+match (&Reply-Message == "foo")
 
 #
 #  Strings are single quoted
 #
 xlat_purify &Filter-Id == ("foo" + "bar")
-match (%{Filter-Id} == 'foobar')
+match (&Filter-Id == 'foobar')
 
 xlat_purify !&User-Name
-match !%{User-Name}
+match !&User-Name
 
 xlat_purify (1 < 2)
 match yes
@@ -165,4 +162,4 @@ xlat_purify !true
 match no
 
 count
-match 67
+match 69
