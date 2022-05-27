@@ -574,14 +574,8 @@ void fr_state_discard(REQUEST *request, RADIUS_PACKET *original)
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 	entry = fr_state_find(state, request->server, original);
-	if (!entry) {
-		PTHREAD_MUTEX_UNLOCK(&state->mutex);
-		return;
-	}
-
-	state_entry_free(state, entry);
+	if (entry) state_entry_free(state, entry);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
-	return;
 }
 
 /*
