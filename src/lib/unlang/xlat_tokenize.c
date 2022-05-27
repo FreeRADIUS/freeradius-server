@@ -726,6 +726,11 @@ static inline int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	}
 
 done:
+	/*
+	 *	Attributes and module calls aren't pure.
+	 */
+	node->flags.pure = false;
+
 	if (!fr_sbuff_next_if_char(in, '}')) {
 		fr_strerror_const("Missing closing brace");
 		goto error;
@@ -1092,6 +1097,7 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 
 		case XLAT_TMPL:
 			if (tmpl_is_attr(node->vpt)) {
+				fr_assert(!node->flags.pure);
 				INFO_INDENT("attribute (%s)", tmpl_da(node->vpt)->name);
 				if (tmpl_num(node->vpt) != NUM_ANY) {
 					INFO_INDENT("{");
@@ -1228,6 +1234,7 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		// attr or list
 		fr_assert(tmpl_is_list(node->vpt) || tmpl_is_attr(node->vpt));
 		fr_assert(talloc_parent(node->vpt) == node);
+		fr_assert(!node->flags.pure);
 
 		/*
 		 *	We prefer the name from the configuration file, otherwise when we get
@@ -2010,6 +2017,7 @@ int xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **out, tmpl_t **vpt_p)
 
 	node = xlat_exp_alloc(head, XLAT_TMPL, vpt->name, vpt->len);
 	node->vpt = talloc_move(node, vpt_p);
+	fr_assert(!node->flags.pure);
 
 done:
 	xlat_exp_insert_tail(head, node);
