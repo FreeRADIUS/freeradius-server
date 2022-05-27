@@ -31,11 +31,10 @@ xlat_purify (ok\ foo || handled)
 match ERROR offset 4: Unexpected text after enum value.  Expected operator
 
 #
-#  @todo - this is an error somehow?
+#  0 - 111 is smaller than zero, and Service-Type is uint32.
 #
-xlat_purify (Service-Type == 000-111)
-match ERROR offset 0: No IPv6 component separator: Failed resolving attribute in expansion: Service-Type
-#match (&Service-Type == (0 - 111))
+xlat_purify (&Service-Type == 000-111)
+match (&Service-Type == NULL)
 
 xlat_purify (ok FOO handled)
 match ERROR offset 4: Invalid operator
@@ -119,9 +118,6 @@ match ('handled' && (&Packet-Type == Access-Challenge))
 xlat_purify 'handled' &&&Packet-Type == Access-Challenge
 match ('handled' && (&Packet-Type == Access-Challenge))
 
-#
-#  @todo - fix list comparisons
-#
 xlat_purify &reply == &request
 match ERROR offset 0: Cannot use list references in condition
 
@@ -133,23 +129,19 @@ match ERROR offset 11: Cannot use list references in condition
 
 
 #
-#  Convert != to !(COND) for normal checks
-#
-#  @todo - xlat doesn't do this, maybe that needs fixing?
+#  We don't need to convert != to !(COND) for normal checks
 #
 xlat_purify &User-Name == &User-Password
 match (&User-Name == &User-Password)
 
 xlat_purify &User-Name != &User-Password
 match (&User-Name != &User-Password)
-#match !&User-Name == &User-Password
 
 xlat_purify !&User-Name != &User-Password
 match (!&User-Name != &User-Password)
-#match &User-Name == &User-Password
 
 #
-#  We allow a cast for the existence check?
+#  We allow a cast for the existence check.  Why not?
 #
 xlat_purify <ipv6addr>::1
 match ::1
@@ -226,11 +218,7 @@ xlat_purify &Event-Timestamp == "January 1, 2012 %{User-Name}"
 match (&Event-Timestamp == "January 1, 2012 %{Request[0].User-Name}")
 
 # This one is NOT an expansion, so it's parsed into normal form
-#
-#  @todo - can't parse years?
-#
-xlat_purify &Event-Timestamp == 'January 1, 2012'
-match ERROR offset 0: Invalid year string
+xlat_purify &Event-Timestamp == 'January 1 2012'
 #match (&Event-Timestamp == 'Jan  1 2012 00:00:00 EST')
 
 # literals are parsed when the conditions are parsed
@@ -252,17 +240,16 @@ match ERROR offset 0: Failed parsing string as type 'uint32'
 xlat_purify <ipaddr>127.0.0.1 == "127.0.0.1"
 match true
 
-#  @todo - why isn't the RHS being purified?
+# Invalid cast from octets to ipaddr.
 xlat_purify <ipaddr>127.0.0.1 == "%{md4: 127.0.0.1}"
-match (127.0.0.1 == "%{md4: 127.0.0.1}")
+match NULL
 
 #
 #  Bare %{...} is allowed.
 #
 
-#  @todo - why isn't the RHS being purified?
 xlat_purify <ipaddr>127.0.0.1 == %{md4:127.0.0.1}
-match (127.0.0.1 == %{md4:127.0.0.1})
+match NULL
 
 # @todo - yuck, don't print full path?
 xlat_purify <ipaddr>127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
@@ -271,9 +258,9 @@ match (127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{Request[0].User-
 xlat_purify <ether> 00:11:22:33:44:55 == "00:11:22:33:44:55"
 match true
 
-#  @todo - why isn't the RHS being purified?
+# Invalid cast from octets to ether.
 xlat_purify <ether>00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
-match (00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}")
+match NULL
 
 xlat_purify <ether> 00:XX:22:33:44:55 == 00:11:22:33:44:55
 match ERROR offset 12: Missing separator, expected ':'
@@ -332,18 +319,18 @@ xlat_purify ('foo' == 'foo')
 match true
 
 #
-#  @todo - why isn't the RHS being purified?
+#  @todo - if the types are incompatible, what to do?
 #
-#  @todo - why isn't the RHS being purified?
+# Cannot compare incompatible types
 xlat_purify ("foo" == "%{md4: foo}")
-match ("foo" == "%{md4: foo}")
+match NULL
 
 #
-#  @todo - why isn't the RHS being purified?
+#  @todo - maybe we just want to allow this?
 #
-#  @todo - why isn't the RHS being purified?
+# Cannot compare incompatible types
 xlat_purify ("foo bar" == "%{md4: foo}")
-match ("foo bar" == "%{md4: foo}")
+match NULL
 
 xlat_purify ("foo" == "bar")
 match false
@@ -623,11 +610,9 @@ match (&User-Name != "foo\nbar")
 #
 #  We infer that the LHS is a prefix and the RHS is
 #  and ipaddr without requiring an explicit cast.
-#
-# @todo - fix up cast!
 xlat_purify 192.168.0.0/16 > 192.168.1.2
-match (192.168.0.0/16 > 192.168.1.2)
-#match true
+match true
+
 
 # @todo - fix up cast!
 #xlat_purify <ipv4prefix>192.168.0.0/16 > 192.168.1.2
@@ -693,4 +678,4 @@ xlat_purify (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
 match ((&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message))
 
 count
-match 267
+match 266

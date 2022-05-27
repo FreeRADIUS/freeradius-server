@@ -278,8 +278,8 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					op,
 					fr_dlist_head(&b->vb_group));
 	if (rcode < 0) {
-		talloc_free(dst);
-		return XLAT_ACTION_FAIL;
+		RPEDEBUG("Failed calculating result, returning NULL");
+		goto done;
 	}
 
 	/*
@@ -288,6 +288,7 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (enumv) dst->enumv = enumv;
 
+done:
 	fr_dcursor_append(out, dst);
 	return XLAT_ACTION_DONE;
 }
@@ -581,9 +582,7 @@ static xlat_action_t xlat_func_unary_minus(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	rcode = fr_value_calc_binary_op(dst, dst, FR_TYPE_NULL, &a, T_SUB, b);
 	if (rcode < 0) {
-		talloc_free(dst);
-		RPEDEBUG("Failed calculating result");
-		return XLAT_ACTION_FAIL;
+		RPEDEBUG("Failed calculating result, returning NULL");
 	}
 
 	fr_dcursor_append(out, dst);
@@ -1170,10 +1169,13 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 *	immediately.  This means any future references point
 	 *	to the same da.
 	 */
-	if (tmpl_is_attr(vpt) && (tmpl_attr_unknown_add(vpt) < 0)) {
-		fr_strerror_printf("Failed defining attribute %s", tmpl_da(vpt)->name);
-		fr_sbuff_set(&our_in, &opand_m);
-		goto error;
+	if (tmpl_is_attr(vpt)) {
+		fr_assert(!node->flags.pure);
+		if (tmpl_attr_unknown_add(vpt) < 0) {
+			fr_strerror_printf("Failed defining attribute %s", tmpl_da(vpt)->name);
+			fr_sbuff_set(&our_in, &opand_m);
+			goto error;
+		}
 	}
 
 	if (tmpl_is_data(vpt)) {
