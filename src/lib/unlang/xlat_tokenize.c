@@ -1114,6 +1114,8 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 					}
 					INFO_INDENT("}");
 				}
+			} else if (tmpl_is_data(node->vpt)) {
+				INFO_INDENT("tmpl (%s) type %s", node->fmt, fr_type_to_str(tmpl_value_type(node->vpt)));
 			} else {
 				INFO_INDENT("tmpl (%s)", node->fmt);
 			}
