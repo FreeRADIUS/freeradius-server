@@ -101,7 +101,7 @@ match (!(&User-Name == &User-Password) || (&Filter-Id == &Reply-Message))
 #  @todo - add a flag which says to parse the FULL thing, or only parse part of it?
 #
 xlat_purify ((&User-Name == &Filter-Id) || (&Reply-Message == &User-Password)))
-match Passed in 67 characters, but only parsed 66 characters: Unknown data type
+match Passed in 67 characters, but only parsed 66 characters
 
 #
 #  @todo - the first argument is truthy, so we should replace the
@@ -426,9 +426,8 @@ match &User-Name
 #
 #  Forbidden data types in cast
 #
-# @todo - this should arguably be allowed?
 xlat_purify (<vsa>"foo" == &User-Name)
-match ERROR offset 2: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
+match ERROR offset 2: Invalid data type 'vsa' in cast
 
 #
 #  If the LHS is a cast to a type, and the RHS is an attribute

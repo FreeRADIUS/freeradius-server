@@ -995,6 +995,43 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	return fr_sbuff_set(in, &our_in);
 }
 
+static ssize_t expr_cast_from_substr(fr_type_t *cast, fr_sbuff_t *in)
+{
+	char			close = '\0';
+	fr_sbuff_t		our_in = FR_SBUFF(in);
+	fr_sbuff_marker_t	m;
+	ssize_t			slen;
+
+	if (fr_sbuff_next_if_char(&our_in, '<')) {
+		close = '>';
+
+	} else if (fr_sbuff_next_if_char(&our_in, '(')) {
+		close = ')';
+
+	} else {
+	no_cast:
+		*cast = FR_TYPE_NULL;
+		return 0;
+	}
+
+	fr_sbuff_marker(&m, &our_in);
+	fr_sbuff_out_by_longest_prefix(&slen, cast, fr_type_table, &our_in, FR_TYPE_NULL);
+	if (fr_type_is_null(*cast)) goto no_cast;
+
+	if (!fr_type_is_leaf(*cast)) {
+		fr_strerror_printf("Invalid data type '%s' in cast", fr_type_to_str(*cast));
+		return -1;
+	}
+
+	if (!fr_sbuff_next_if_char(&our_in, close)) {
+		fr_strerror_const("Unterminated cast");
+		return -1;
+	}
+	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
+
+	return fr_sbuff_set(in, &our_in);
+}
+
 /*
  *	Tokenize a field without unary operators.
  */
@@ -1013,29 +1050,12 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	XLAT_DEBUG("FIELD <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
 	/*
-	 *	Allow for explicit casts
-	 *
-	 *	For single quoted literal strings, double quoted strings (without expansions),
-	 *	and barewords, we try an immediate conversion. For everything else, we'll
-	 *	attempt the conversion at runtime.
-	 *
-	 *	In both cases the cast will be stored in the tmpl rules.
-	 *
-	 *	We MUST NOT use the other operand as a hint for the cast type as this leads
-	 *	to expressions which are parsed correctly when the other operand is a DA and
-	 *	can be resolved, but will fail if the DA is unknown during tokenisation.
-	 *
-	 *	A common example of this, is where unlang code gets moved from virtual servers
-	 *	to policies.  The DA is usually known in the virtual server, but due to the
-	 *	nature of policies, resolution there is deferred until pass2.
-	 *
-	 *	Ignore invalid casts.  (uint32) is a cast.  (1 + 2) is an expression.
+	 *	Allow for explicit casts.  Non-leaf types are forbidden.
 	 */
-	(void) tmpl_cast_from_substr(&our_t_rules, &our_in);
-	fr_sbuff_skip_whitespace(&our_in);
+	if (expr_cast_from_substr(&our_t_rules.cast, &our_in) < 0) return -1;
 
 	/*
-	 *	If we have '(', then recurse for other expressions
+	 *	If we still have '(', then recurse for other expressions
 	 *
 	 *	Tokenize the sub-expression, ensuring that we stop at ')'.
 	 *
@@ -1102,8 +1122,10 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	xlat_exp_set_type(node, XLAT_TMPL);
 
 	/*
-	 *	tmpl_afrom_substr does pretty much all the work of parsing
-	 *	the operand.
+	 *	tmpl_afrom_substr does pretty much all the work of
+	 *	parsing the operand.  It pays attention to the cast on
+	 *	our_t_rules, and will try to parse any data there as
+	 *	of the correct type.
 	 */
 	slen = tmpl_afrom_substr(node, &vpt, &our_in, quote, p_rules, &our_t_rules);
 	if (!vpt) {
