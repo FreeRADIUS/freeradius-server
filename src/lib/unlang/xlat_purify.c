@@ -113,7 +113,7 @@ static int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			fr_assert(node->flags.pure);
 
 			fr_value_box_list_init(&list);
-			if (unlang_xlat_push_node(node->call.args, &success, &list, request, node) < 0) {
+			if (unlang_xlat_push_node(head, &success, &list, request, node) < 0) {
 				return -1;
 			}
 
