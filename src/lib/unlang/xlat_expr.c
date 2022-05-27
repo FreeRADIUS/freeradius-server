@@ -1114,6 +1114,19 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		return -fr_sbuff_used(&our_in);
 	}
 
+	/*
+	 *	It would be nice if tmpl_afrom_substr() did this :(
+	 */
+	if (quote != T_BARE_WORD) {
+		if (!fr_sbuff_is_char(&our_in, fr_token_quote[quote])) {
+			fr_strerror_const("Unterminated string");
+			fr_sbuff_advance(&our_in, slen * -1);
+			goto error;
+		}
+
+		fr_sbuff_advance(&our_in, 1);
+	}
+
 	node->vpt = vpt;
 	node->quote = quote;
 	node->fmt = vpt->name;
@@ -1121,8 +1134,23 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	node->flags.pure = tmpl_is_data(node->vpt);
 	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
 
+	/* don't merge flags.  That will happen when the node is added to the head */
+
 	/*
-	 *	Don't keep an intermediate tmpl.
+	 *	Don't call tmpl_resolve() here, it should be called
+	 *	in pass2 or later during tokenization if we've managed
+	 *	to resolve all the operands in the expression.
+	 */
+
+	fr_sbuff_skip_whitespace(&our_in);
+
+	/*
+	 *	Do various tmpl fixups.
+	 */
+
+	/*
+	 *	Don't keep an intermediate tmpl for xlats.  Just hoist
+	 *	the xlat to be a child of this node.
 	 */
 	if (tmpl_contains_xlat(node->vpt)) {
 		xlat_exp_head_t *xlat = tmpl_xlat(node->vpt);
@@ -1137,23 +1165,6 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		node->flags = xlat->flags;
 	}
 
-	/* don't merge flags.  That will happen when the node is added to the head */
-
-	/*
-	 *	It would be nice if tmpl_afrom_substr() did this :(
-	 */
-	if (quote != T_BARE_WORD) {
-		if (!fr_sbuff_is_char(&our_in, fr_token_quote[quote])) {
-			fr_strerror_const("Unterminated string");
-			fr_sbuff_advance(&our_in, slen * -1);
-			goto error;
-		}
-
-		fr_sbuff_advance(&our_in, 1);
-	}
-
-	fr_sbuff_skip_whitespace(&our_in);
-
 	/*
 	 *	Try and add any unknown attributes to the dictionary
 	 *	immediately.  This means any future references point
@@ -1165,13 +1176,14 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		goto error;
 	}
 
-	/*
-	 *	Don't call tmpl_resolve() here, it should be called
-	 *	in pass2 or later during tokenization if we've managed
-	 *	to resolve all the operands in the expression.
-	 */
-
-	fr_sbuff_skip_whitespace(&our_in);
+	if (tmpl_is_data(vpt)) {
+		/*
+		 *	Print "true" and "false" instead of "yes" and "no".
+		 */
+		if ((tmpl_value_type(vpt) == FR_TYPE_BOOL) && !tmpl_value_enumv(vpt)) {
+			tmpl_value_enumv(vpt) = attr_expr_bool_enum;
+		}
+	}
 
 done:
 #ifdef __clang_analyzer__

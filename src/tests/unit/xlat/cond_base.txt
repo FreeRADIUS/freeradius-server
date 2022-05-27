@@ -281,16 +281,15 @@ match ERROR offset 12: Missing separator, expected ':'
 #
 #  Tests for boolean data types.
 #
-# @todo - we probably want this to use "true", too.
 xlat_purify true
-match yes
+match true
 
-# @todo - for conditions, this should evaluate to "yes"
+# @todo - for conditions, this should evaluate to "true"
 xlat_purify 1
 match 1
 
 xlat_purify false
-match no
+match false
 
 xlat_purify 0
 match 0
@@ -299,17 +298,17 @@ match 0
 #  @todo - purify logical operators.  The instantiation function should update the "can_purify" flags.
 #
 xlat_purify true && (&User-Name == "bob")
-match (yes && (&User-Name == "bob"))
+match (true && (&User-Name == "bob"))
 #match &User-Name == "bob"
 
 xlat_purify false && (&User-Name == "bob")
-match (no && (&User-Name == "bob"))
+match (false && (&User-Name == "bob"))
 
 xlat_purify false || (&User-Name == "bob")
-match (no || (&User-Name == "bob"))
+match (false || (&User-Name == "bob"))
 
 xlat_purify true || (&User-Name == "bob")
-match (yes || (&User-Name == "bob"))
+match (true || (&User-Name == "bob"))
 
 #
 #  Both sides static data with a cast: evaluate at parse time.
@@ -389,10 +388,10 @@ xlat_purify (0)
 match 0
 
 xlat_purify (true)
-match yes
+match true
 
 xlat_purify (false)
-match no
+match false
 
 xlat_purify ('')
 match ''
@@ -679,10 +678,10 @@ match false
 #  More short-circuit evaluations
 #
 xlat_purify (&User-Name == "bob") && (false)
-match ((&User-Name == "bob") && no)
+match ((&User-Name == "bob") && false)
 
 xlat_purify (&User-Name == "bob") || (true)
-match ((&User-Name == "bob") || yes)
+match ((&User-Name == "bob") || true)
 
 #
 #  A && (B || C) is not the same as (A && B) || C, for 0/1/1
