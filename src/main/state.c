@@ -65,6 +65,8 @@ struct fr_state_t {
 
 static fr_state_t global_state;
 
+#define STATE_FREE(_x) if (_x != &global_state) talloc_free(_x)
+
 #ifdef HAVE_PTHREAD_H
 
 #define PTHREAD_MUTEX_LOCK pthread_mutex_lock
@@ -182,14 +184,14 @@ fr_state_t *fr_state_init(TALLOC_CTX *ctx)
 
 #ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&state->mutex, NULL) != 0) {
-		talloc_free(state);
+		STATE_FREE(state);
 		return NULL;
 	}
 #endif
 
 	state->tree = rbtree_create(NULL, state_entry_cmp, NULL, 0);
 	if (!state->tree) {
-		talloc_free(state);
+		STATE_FREE(state);
 		return NULL;
 	}
 
@@ -214,7 +216,7 @@ void fr_state_delete(fr_state_t *state)
 	rbtree_free(my_tree);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
-	if (state != &global_state) talloc_free(state);
+	STATE_FREE(state);
 }
 
 /*
