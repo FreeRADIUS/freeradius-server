@@ -445,10 +445,8 @@ match ("0x002ade8665c69219ca16bd108d92c8d5" < &NAS-Port)
 #
 #  The string gets parsed as an IP address.
 #
-#  @todo - cast strings to the other data type? Or just rely on the comparisons to do the right thing?
 xlat_purify &Filter-Id == &Framed-IP-Address
 match (&Filter-Id == &Framed-IP-Address)
-#match (ipv4addr)&Filter-Id == &Framed-IP-Address
 
 xlat_purify <ipaddr>127.0.0.1 == &Filter-Id
 match (127.0.0.1 == &Filter-Id)
@@ -503,15 +501,6 @@ match (&User-Name[n] == "bob")
 #xlat_purify &Foo-Bar
 #match &Foo-Bar
 
-#  Same types are optimized
-#
-#  @todo- what does this mean?  Check for later...
-#
-#  FIXME: the tests don't currently run the "pass2" checks.
-#  This test should really be:
-#
-#	xlat_purify &Acct-Input-Octets > &Session-Timeout
-#
 xlat_purify &Acct-Input-Octets > "%{Session-Timeout}"
 match (&Acct-Input-Octets > "%{Request[0].Session-Timeout}")
 
