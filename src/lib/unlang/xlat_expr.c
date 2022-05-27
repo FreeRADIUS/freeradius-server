@@ -338,6 +338,11 @@ static void cast_to_bool(bool *out, fr_value_box_t const *in)
 	fr_value_box_t box;
 
 	switch (in->type) {
+	case FR_TYPE_NULL:
+	case FR_TYPE_STRUCTURAL:
+		*out = false;
+		break;
+
 	case FR_TYPE_BOOL:
 		*out = in->vb_bool;
 		break;
