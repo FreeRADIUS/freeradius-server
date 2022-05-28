@@ -656,6 +656,12 @@ match ((&User-Name == "bob") && false)
 xlat_purify (&User-Name == "bob") || (true)
 match ((&User-Name == "bob") || true)
 
+xlat_purify 1 || 2
+match 1
+
+xlat_purify 1 && 2
+match 2
+
 #
 #  A && (B || C) is not the same as (A && B) || C, for 0/1/1
 #
@@ -666,4 +672,4 @@ xlat_purify (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
 match ((&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message))
 
 count
-match 266
+match 270

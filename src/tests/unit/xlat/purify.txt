@@ -87,8 +87,9 @@ match (192.168.0.0/24 > &Framed-IP-Address)
 xlat_purify 1 < 2 || 4 > 3
 match true
 
+#  Returns the LHS as a "truthy" value.
 xlat_purify 2 || (1 > 4)
-match true
+match 2
 
 xlat_purify &Filter-Id
 match &Filter-Id

@@ -326,58 +326,54 @@ XLAT_CMP_FUNC(cmp_le,  T_OP_LE)
 XLAT_CMP_FUNC(cmp_gt,  T_OP_GT)
 XLAT_CMP_FUNC(cmp_ge,  T_OP_GE)
 
-/*
- *	Cast to bool for && / ||.  The casting rules for expressions /
- *	conditions are slightly different than fr_value_box_cast().
- *	Largely because that function is used to parse configuration
- *	files, and parses "yes / no" and "true / false" strings, even
- *	if there's no fr_dict_attr_t passed to it.
+/** Check truthiness of values.
+ *
+ *	The casting rules for expressions / conditions are slightly
+ *	different than fr_value_box_cast().  Largely because that
+ *	function is used to parse configuration files, and parses "yes
+ *	/ no" and "true / false" strings, even if there's no
+ *	fr_dict_attr_t passed to it.
  */
-static void cast_to_bool(bool *out, fr_value_box_t const *in)
+static bool truthiness(fr_value_box_t const *in)
 {
 	fr_value_box_t box;
 
 	switch (in->type) {
 	case FR_TYPE_NULL:
 	case FR_TYPE_STRUCTURAL:
-		*out = false;
-		break;
+		return false;
 
 	case FR_TYPE_BOOL:
-		*out = in->vb_bool;
-		break;
+		return in->vb_bool;
 
 	case FR_TYPE_STRING:
 	case FR_TYPE_OCTETS:
-		*out = (in->vb_length > 0);
-		break;
+		return (in->vb_length > 0);
 
 	case FR_TYPE_IPV4_ADDR:
 	case FR_TYPE_IPV6_ADDR:
-		*out = !fr_ipaddr_is_inaddr_any(&in->vb_ip);
-		break;
+		return !fr_ipaddr_is_inaddr_any(&in->vb_ip);
 
 	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_IPV6_PREFIX:
-		*out = !((in->vb_ip.prefix == 0) && fr_ipaddr_is_inaddr_any(&in->vb_ip));
-		break;
+		return !((in->vb_ip.prefix == 0) && fr_ipaddr_is_inaddr_any(&in->vb_ip));
 
 	default:
 		fr_value_box_init_null(&box);
 		(void) fr_value_box_cast(NULL, &box, FR_TYPE_BOOL, NULL, in);
-		*out = box.vb_bool;
-		break;
+		return box.vb_bool;
 	}
 }
 
 typedef struct {
-	bool		sense;
+	bool		stop;
 	int		argc;
 	xlat_exp_head_t	**argv;
 } xlat_logical_inst_t;
 
 typedef struct {
 	bool			last_success;
+	fr_value_box_t		*box;		//!< output value-box
 	int			current;
 	fr_value_box_list_t	list;
 } xlat_logical_rctx_t;
@@ -438,13 +434,15 @@ static int xlat_logical_instantiate(xlat_inst_ctx_t const *xctx)
 	 *	@todo - have a special "purify" callback, or a *partial* evaluation function?
 	 */
 	inst->argc = xlat_flatten_compiled_argv(inst, &inst->argv, xctx->ex->call.args);
-	inst->sense = (xctx->ex->call.func->token == T_LOR);
+	inst->stop = (xctx->ex->call.func->token == T_LOR);
 
 	return 0;
 }
 
-static bool xlat_logical_match(bool *out, fr_value_box_list_t *in, bool sense)
+static bool xlat_logical_match(fr_value_box_t **dst, fr_value_box_list_t *in, bool logical_or)
 {
+	fr_value_box_t *last = NULL;
+
 	/*
 	 *	Loop over the input list.  If the box is a group, then do this recursively.
 	 *
@@ -452,33 +450,52 @@ static bool xlat_logical_match(bool *out, fr_value_box_list_t *in, bool sense)
 	 */
 	fr_value_box_foreach(in, box) {
 		if (fr_box_is_group(box)) {
-			if (!xlat_logical_match(out, &box->vb_group, sense)) return false;
+			if (!xlat_logical_match(dst, &box->vb_group, logical_or)) return false;
 			continue;
 		}
 
-		cast_to_bool(out, box);
+		if (logical_or) {
+			if (truthiness(box)) {
+				DEBUG("True || %pV", box);
+				last = box; /* stop at the first matching one, and return it. */
+				break;
+			}
+
+			DEBUG("False || %pV", box);
+			continue;
+		}
 
 		/*
-		 *	false -> false (for &&)
-		 *	true  -> true  (for ||)
+		 *	Must be logical &&
 		 */
-		if (*out == sense) return false;
+		if (truthiness(box)) {
+			DEBUG("True && %pV", box);
+			last = box;
+			continue;
+		}
+
+		/*
+		 *	Stop on the first "false"
+		 */
+		DEBUG("False && %pV", box);
+		return false;
 	}
 
-	/*
-	 *	Keep going.
-	 */
+	if (last) {
+		DEBUG("RETURN %pV", last);
+		fr_value_box_clear(*dst);
+		fr_value_box_copy(*dst, *dst, last);
+	}
+
 	return true;
 }
 
-static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
+static xlat_action_t xlat_logical_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 xlat_ctx_t const *xctx,
 					 request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	xlat_logical_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_logical_inst_t);
 	xlat_logical_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_logical_rctx_t);
-	fr_value_box_t		*dst;
-	bool			result = false;
 
 	/*
 	 *	If one of the expansions fails, then we fail the
@@ -486,6 +503,7 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (!rctx->last_success) {
 	fail:
+		talloc_free(rctx->box);
 		talloc_free(rctx);
 		return XLAT_ACTION_FAIL;
 	}
@@ -495,11 +513,21 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *
 	 *	(a, b, c) || (d, e, f) == a || b || c || d || e || f
 	 */
-	if (!xlat_logical_match(&result, &rctx->list, inst->sense)) {
+	if (!xlat_logical_match(&rctx->box, &rctx->list, inst->stop)) {
+		/*
+		 *	If nothing matches, we return a "false" box.
+		 */
+		if (rctx->box->type != FR_TYPE_BOOL) {
+			fr_value_box_clear(rctx->box);
+			fr_value_box_init(rctx->box, FR_TYPE_BOOL, NULL, false);
+		}
+		rctx->box->vb_bool = false;
+
+		/*
+		 *	If we do have a match, then we return the last matching thing.
+		 */
 	done:
-		MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
-		dst->vb_bool = result;
-		fr_dcursor_append(out, dst);
+		fr_dcursor_append(out, rctx->box);
 
 		talloc_free(rctx);
 		return XLAT_ACTION_DONE;
@@ -511,7 +539,7 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Nothing to expand, return the final value we saw.
 	 */
-	if (rctx->current >= inst->argc) goto done;
+	if (inst->stop || (rctx->current >= inst->argc)) goto done;
 
 	/*
 	 *	Push the xlat onto the stack for expansion.
@@ -534,10 +562,12 @@ static xlat_action_t xlat_func_logical(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out
 
 	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_logical_rctx_t));
 	rctx->current = 0;
+	MEM(rctx->box = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
 	fr_value_box_list_init(&rctx->list);
 
 	if (unlang_xlat_yield(request, xlat_logical_resume, NULL, rctx) != XLAT_ACTION_YIELD) {
 	fail:
+		talloc_free(rctx->box);
 		talloc_free(rctx);
 		return XLAT_ACTION_FAIL;
 	}
