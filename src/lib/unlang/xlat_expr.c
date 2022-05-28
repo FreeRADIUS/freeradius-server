@@ -1281,7 +1281,7 @@ static fr_table_num_ordered_t const expr_assignment_op_table[] = {
 	{ L("=="),	T_OP_CMP_EQ		},
 
 	{ L("=~"),	T_OP_REG_EQ		},
-	{ L("!="),	T_OP_REG_NE		},
+	{ L("!~"),	T_OP_REG_NE		},
 
 	{ L(">"),	T_OP_GT			},
 	{ L(">="),	T_OP_GE			},
