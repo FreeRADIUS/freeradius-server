@@ -2958,7 +2958,14 @@ ssize_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		vpt = tmpl_alloc_null(ctx);
 
-		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
+		if (!t_rules->at_runtime) {
+			slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
+		} else {
+			slen = xlat_tokenize_ephemeral(vpt, &head,
+						       t_rules->xlat.runtime_el, &our_in,
+						       p_rules, t_rules);
+		}
+
 		if (!head) return slen;
 
 		/*
