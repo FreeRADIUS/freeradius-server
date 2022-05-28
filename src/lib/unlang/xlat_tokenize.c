@@ -1233,6 +1233,14 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 			goto done;
 		}
 
+		/*
+		 *	Regexes need their own print routine, as they need to print the flags, too.
+		 *
+		 *	Regexes should also "eat" their arguments into their instance data, so that we should
+		 *	never try to print a regex.
+		 */
+		fr_assert(!tmpl_contains_regex(node->vpt));
+
 		// attr or list
 		fr_assert(tmpl_is_list(node->vpt) || tmpl_is_attr(node->vpt));
 		fr_assert(talloc_parent(node->vpt) == node);

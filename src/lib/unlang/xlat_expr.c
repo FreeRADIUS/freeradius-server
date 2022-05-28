@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/calc.h>
 
 #undef XLAT_DEBUG
+#define DEBUG_XLAT
 #ifdef DEBUG_XLAT
 #  define XLAT_DEBUG(_fmt, ...)			DEBUG3("%s[%i] "_fmt, __FILE__, __LINE__, ##__VA_ARGS__)
 #else
@@ -325,6 +326,31 @@ XLAT_CMP_FUNC(cmp_lt,  T_OP_LT)
 XLAT_CMP_FUNC(cmp_le,  T_OP_LE)
 XLAT_CMP_FUNC(cmp_gt,  T_OP_GT)
 XLAT_CMP_FUNC(cmp_ge,  T_OP_GE)
+
+static xlat_arg_parser_t const regex_op_xlat_args[] = {
+	{ .required = true, .type = FR_TYPE_VOID },
+	{ .required = true, .type = FR_TYPE_VOID },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+static xlat_action_t xlat_regex_op(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+				   UNUSED xlat_ctx_t const *xctx,
+				   UNUSED request_t *request, UNUSED fr_value_box_list_t *in,
+				   UNUSED fr_token_t op)
+{
+	return XLAT_ACTION_FAIL;
+}
+
+#define XLAT_REGEX_FUNC(_name, _op)  \
+static xlat_action_t xlat_func_ ## _name(TALLOC_CTX *ctx, fr_dcursor_t *out, \
+				   xlat_ctx_t const *xctx, \
+				   request_t *request, fr_value_box_list_t *in)  \
+{ \
+	return xlat_regex_op(ctx, out, xctx, request, in, _op); \
+}
+
+XLAT_REGEX_FUNC(reg_eq,  T_OP_REG_EQ)
+XLAT_REGEX_FUNC(reg_ne,  T_OP_REG_NE)
 
 /** Check truthiness of values.
  *
@@ -701,6 +727,14 @@ do { \
 	xlat->token = _op; \
 } while (0)
 
+#undef XLAT_REGISTER_REGEX_OP
+#define XLAT_REGISTER_REGEX_OP(_op, _name) \
+do { \
+	if (!(xlat = xlat_register(NULL, STRINGIFY(_name), xlat_func_ ## _name, XLAT_FLAG_PURE))) return -1; \
+	xlat_func_args(xlat, regex_op_xlat_args); \
+	xlat_internal(xlat); \
+	xlat->token = _op; \
+} while (0)
 
 int xlat_register_expressions(void)
 {
@@ -722,6 +756,9 @@ int xlat_register_expressions(void)
 	XLAT_REGISTER_BINARY_CMP(T_OP_LE, le);
 	XLAT_REGISTER_BINARY_CMP(T_OP_GT, gt);
 	XLAT_REGISTER_BINARY_CMP(T_OP_GE, ge);
+
+	XLAT_REGISTER_REGEX_OP(T_OP_REG_EQ, reg_eq);
+	XLAT_REGISTER_REGEX_OP(T_OP_REG_NE, reg_ne);
 
 	/*
 	 *	&&, ||
@@ -848,11 +885,11 @@ static const int precedence[T_TOKEN_LAST] = {
 
 static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-				   fr_token_t prev, fr_sbuff_parse_rules_t const *bracket_rules);
+				   fr_token_t prev, fr_sbuff_parse_rules_t const *bracket_rules, bool allow_regex);
 
 static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-			      fr_sbuff_parse_rules_t const *bracket_rules);
+			      fr_sbuff_parse_rules_t const *bracket_rules, bool allow_regex);
 
 static fr_table_num_sorted_t const expr_quote_table[] = {
 	{ L("\""),	T_DOUBLE_QUOTED_STRING	},	/* Don't re-order, backslash throws off ordering */
@@ -861,82 +898,6 @@ static fr_table_num_sorted_t const expr_quote_table[] = {
 	{ L("`"),	T_BACK_QUOTED_STRING	}
 };
 static size_t expr_quote_table_len = NUM_ELEMENTS(expr_quote_table);
-
-#ifdef HAVE_REGEX
-static ssize_t tokenize_regex(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
-			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
-{
-	ssize_t		slen;
-	char		quote = '/';
-	xlat_exp_t	*node;
-	fr_sbuff_t	our_in = FR_SBUFF(in);
-	fr_sbuff_marker_t marker;
-
-	fr_sbuff_skip_whitespace(&our_in);
-
-	fr_sbuff_marker(&marker, &our_in);
-
-	/*
-	 *	Allow m:foo:
-	 */
-	if (fr_sbuff_next_if_char(&our_in, 'm')) {
-		quote = *fr_sbuff_current(&our_in); /* screw UTF-8!  Who needs emojis? */
-		fr_sbuff_advance(&our_in, 1);
-
-		// @todo - update the terminal rules to use this character, too!
-
-	} else {
-		if (!fr_sbuff_next_if_char(&our_in, '/')) {
-			fr_strerror_const("Regular expression does not start with '/'");
-			FR_SBUFF_ERROR_RETURN(&our_in);
-		}
-	}
-
-	MEM(node = xlat_exp_alloc_null(head));
-	xlat_exp_set_type(node, XLAT_TMPL);
-
-	slen = tmpl_afrom_substr(node, &node->vpt, &our_in, T_SOLIDUS_QUOTED_STRING,
-				 value_parse_rules_quoted[T_SOLIDUS_QUOTED_STRING], t_rules);
-	if (slen <= 0) {
-	error:
-		fr_sbuff_advance(&our_in, slen * -1);
-		talloc_free(node);
-		return -(fr_sbuff_used_total(&our_in));
-	}
-
-	/*
-	 *	Check for, and skip, the trailing quote if we had a leading quote.
-	 */
-	if (!fr_sbuff_next_if_char(&our_in, quote)) {
-		talloc_free(node);
-		fr_strerror_printf("Regular expression does not edit with '%c'", quote);
-		FR_SBUFF_ERROR_RETURN(&our_in);
-	}
-
-	fr_assert(node->vpt != NULL);
-	node->fmt = node->vpt->name;
-
-	slen = tmpl_regex_flags_substr(node->vpt, &our_in, p_rules->terminals);
-	if (slen < 0) goto error;
-
-	/*
-	 *	We've now got the expressions and
-	 *	the flags.  Try to compile the
-	 *	regex.
-	 */
-	if (tmpl_is_regex_uncompiled(node->vpt)) {
-		slen = tmpl_regex_compile(node->vpt, true);
-		if (slen <= 0) goto error;
-	}
-
-	*out = node;
-	node->flags.pure = tmpl_is_data(node->vpt);
-	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
-	xlat_flags_merge(&head->flags, &node->flags);
-
-	return fr_sbuff_used(&our_in);
-}
-#endif
 
 
 /*
@@ -954,7 +915,7 @@ static ssize_t tokenize_regex(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
  */
 static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-			      fr_sbuff_parse_rules_t const *bracket_rules)
+			      fr_sbuff_parse_rules_t const *bracket_rules, bool allow_regex)
 {
 	ssize_t			slen;
 	xlat_exp_t		*node = NULL, *unary = NULL;
@@ -1002,7 +963,7 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 *	that we return that, and not the child node
 	 */
 	if (!func) {
-		return tokenize_field(head, out, in, p_rules, t_rules, bracket_rules);
+		return tokenize_field(head, out, in, p_rules, t_rules, bracket_rules, allow_regex);
 	}
 	
 	MEM(unary = xlat_exp_alloc(head, XLAT_FUNC, func->name, strlen(func->name)));
@@ -1011,7 +972,7 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	unary->call.func = func;
 	unary->flags = func->flags;
 
-	slen = tokenize_field(unary->call.args, &node, &our_in, p_rules, t_rules, bracket_rules);
+	slen = tokenize_field(unary->call.args, &node, &our_in, p_rules, t_rules, bracket_rules, allow_regex);
 	if (slen <= 0) {
 		talloc_free(unary);
 		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
@@ -1075,7 +1036,7 @@ static ssize_t expr_cast_from_substr(fr_type_t *cast, fr_sbuff_t *in)
  */
 static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-			      fr_sbuff_parse_rules_t const *bracket_rules)
+			      fr_sbuff_parse_rules_t const *bracket_rules, bool allow_regex)
 {
 	ssize_t			slen;
 	xlat_exp_t		*node = NULL;
@@ -1110,7 +1071,7 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 *	time.
 	 */
 	if (fr_sbuff_next_if_char(&our_in, '(')) {
-		slen = tokenize_expression(head, &node, &our_in, bracket_rules, t_rules, T_INVALID, bracket_rules);
+		slen = tokenize_expression(head, &node, &our_in, bracket_rules, t_rules, T_INVALID, bracket_rules, false);
 		if (slen <= 0) {
 			FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
 		}
@@ -1141,16 +1102,19 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		p_rules = bracket_rules;
 		break;
 
+	case T_SOLIDUS_QUOTED_STRING:
+		if (!allow_regex) {
+			fr_strerror_const("Unexpected regular expression");
+			fr_sbuff_set(&our_in, &opand_m);	/* Error points to the quoting char at the start of the string */
+			goto error;
+		}
+		FALL_THROUGH;
+
 	case T_BACK_QUOTED_STRING:
 	case T_DOUBLE_QUOTED_STRING:
 	case T_SINGLE_QUOTED_STRING:
 		p_rules = value_parse_rules_quoted[quote];
 		break;
-
-	case T_SOLIDUS_QUOTED_STRING:
-		fr_strerror_const("Unexpected regular expression");
-		fr_sbuff_set(&our_in, &opand_m);	/* Error points to the quoting char at the start of the string */
-		goto error;
 	}
 
 	/*
@@ -1192,6 +1156,19 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 
 	node->flags.pure = tmpl_is_data(node->vpt);
 	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
+
+	/*
+	 *	Parse the regex flags if necessary.
+	 */
+	if (quote == T_SOLIDUS_QUOTED_STRING) {
+		slen = tmpl_regex_flags_substr(node->vpt, &our_in, p_rules->terminals);
+		if (slen < 0) goto error;
+	}
+
+	*out = node;
+	node->flags.pure = tmpl_is_data(node->vpt);
+	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
+	xlat_flags_merge(&head->flags, &node->flags);
 
 	/* don't merge flags.  That will happen when the node is added to the head */
 
@@ -1245,6 +1222,15 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		if ((tmpl_value_type(vpt) == FR_TYPE_BOOL) && !tmpl_value_enumv(vpt)) {
 			tmpl_value_enumv(vpt) = attr_expr_bool_enum;
 		}
+	}
+
+	/*
+	 *	Try to compile regular expressions, but only if
+	 *	they're not being dynamically expanded.
+	 */
+	if (tmpl_is_regex_uncompiled(node->vpt) && !tmpl_is_regex_xlat(node->vpt)) {
+		slen = tmpl_regex_compile(node->vpt, true);
+		if (slen <= 0) goto error;
 	}
 
 done:
@@ -1330,7 +1316,7 @@ static bool valid_type(xlat_exp_t *node)
  */
 static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
-				   fr_token_t prev, fr_sbuff_parse_rules_t const *bracket_rules)
+				   fr_token_t prev, fr_sbuff_parse_rules_t const *bracket_rules, bool allow_regex)
 {
 	xlat_exp_t	*lhs = NULL, *rhs = NULL, *node;
 	xlat_t		*func = NULL;
@@ -1349,8 +1335,13 @@ static ssize_t tokenize_expression(xlat_exp_head_t *head, xlat_exp_t **out, fr_s
 	/*
 	 *	Get the LHS of the operation.
 	 */
-	slen = tokenize_unary(head, &lhs, &our_in, p_rules, t_rules, bracket_rules);
+	if (allow_regex) {
+		slen = tokenize_field(head, &lhs, &our_in, p_rules, t_rules, bracket_rules, allow_regex);
+	} else {
+		slen = tokenize_unary(head, &lhs, &our_in, p_rules, t_rules, bracket_rules, false);
+	}
 	if (slen <= 0) return slen;
+
 
 redo:
 #ifdef __clang_analyzer__
@@ -1409,6 +1400,29 @@ redo:
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
+	if (!binary_ops[op].str) {
+		fr_strerror_printf("Invalid operator");
+		fr_sbuff_set(&our_in, &m_op);
+		return -fr_sbuff_used(&our_in);
+	}
+
+	fr_assert(precedence[op] != 0);
+
+	/*
+	 *	a * b + c ... = (a * b) + c ...
+	 *
+	 *	Feed the current expression to the caller, who will
+	 *	take care of continuing.
+	 */
+	if (precedence[op] <= precedence[prev]) {
+		fr_sbuff_set(&our_in, &m_op);
+		goto done;
+	}
+
+	fr_sbuff_skip_whitespace(&our_in);
+	fr_sbuff_marker(&m_rhs, &our_in);
+
+#if 0
 	/*
 	 *	Regular expressions are a special case, and have precedence over everything else.  Because it
 	 *	makes zero sense to do things like:
@@ -1433,48 +1447,24 @@ redo:
 
 		fr_sbuff_advance(&our_in, slen);
 
-		// @todo - get regex func!
-		fr_assert(0);
-
 #else
 		fr_sbuff_set(&our_in, &m_op);
 		fr_strerror_printf("Invalid operator '%s' - regular expressions are not supported in this build.", fr_tokens[op]);
 		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, -slen);
 #endif
 	}
-
-	if (!binary_ops[op].str) {
-		fr_strerror_printf("Invalid operator");
-		fr_sbuff_set(&our_in, &m_op);
-		return -fr_sbuff_used(&our_in);
-	}
-
-	fr_assert(precedence[op] != 0);
-
-	/*
-	 *	a * b + c ... = (a * b) + c ...
-	 *
-	 *	Feed the current expression to the caller, who will
-	 *	take care of continuing.
-	 */
-	if (precedence[op] <= precedence[prev]) {
-		fr_sbuff_set(&our_in, &m_op);
-		goto done;
-	}
-
-	fr_sbuff_skip_whitespace(&our_in);
-	fr_sbuff_marker(&m_rhs, &our_in);
+#endif
 
 	/*
 	 *	We now parse the RHS, allowing a (perhaps different) cast on the RHS.
 	 */
 	XLAT_DEBUG("    recurse RHS <-- %pV", fr_box_strvalue_len(fr_sbuff_current(&our_in), fr_sbuff_remaining(&our_in)));
-	slen = tokenize_expression(head, &rhs, &our_in, p_rules, t_rules, op, bracket_rules);
+	slen = tokenize_expression(head, &rhs, &our_in, p_rules, t_rules, op, bracket_rules, ((op == T_OP_REG_EQ) || (op == T_OP_REG_NE)));
 	if (slen <= 0) {
 		talloc_free(lhs);
 		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
 	}
-
+	
 #ifdef __clang_analyzer__
 	if (!rhs) {
 		talloc_free(lhs);
@@ -1603,7 +1593,7 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuf
 		t_rules = &my_rules;
 	}
 
-	slen = tokenize_expression(head, NULL, in, terminal_rules, t_rules, T_INVALID, bracket_rules);
+	slen = tokenize_expression(head, NULL, in, terminal_rules, t_rules, T_INVALID, bracket_rules, false);
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
 
@@ -1687,7 +1677,7 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **ou
 	my_rules.xlat.runtime_el = el;
 	my_rules.at_runtime = true;
 
-	slen = tokenize_expression(head, NULL, in, terminal_rules, &my_rules, T_INVALID, bracket_rules);
+	slen = tokenize_expression(head, NULL, in, terminal_rules, &my_rules, T_INVALID, bracket_rules, false);
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
 
