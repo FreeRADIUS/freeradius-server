@@ -835,7 +835,10 @@ static const int precedence[T_TOKEN_LAST] = {
 	[T_MUL]		= P(8,0),
 	[T_DIV]		= P(8,1),
 
-	[T_LBRACE]	= P(9,0),
+	[T_OP_REG_EQ]	= P(9,0),
+	[T_OP_REG_NE]	= P(9,0),
+
+	[T_LBRACE]	= P(10,0),
 };
 
 #define fr_sbuff_skip_whitespace(_x) \
