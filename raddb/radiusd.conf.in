@@ -561,6 +561,16 @@ thread pool {
 #$INCLUDE trigger.conf
 
 #
+#  .Global Library Settings
+#
+#  Each library which has global settings will have its own configuration
+#  file in global.d
+#
+global {
+	$INCLUDE global.d/
+}
+
+#
 #  .Module Configuration
 #
 #  The names and configuration of each module is located in this section.
