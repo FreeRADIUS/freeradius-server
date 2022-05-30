@@ -21,29 +21,40 @@
  * Copyright 2022  Akamai/Inverse
  */
 
+#ifdef WITH_CACHE_EAP
 #include "rlm_eap.h"
 #include "serialize.h"
 #include <json-c/json.h>
-
-int eap_cache_add_vp(REQUEST *fake);
 
 #define CACHE_SAVE (1)
 #define CACHE_LOAD (2)
 #define CACHE_CLEAR (3)
 #define CACHE_REFRESH (4)
 
-REQUEST * eap_cache_init_fake_request(rlm_eap_t *inst) {
+static REQUEST *eap_cache_init_fake_request(rlm_eap_t *inst)
+{
 	REQUEST	*fake;
+
 	fake = request_alloc(NULL);
 	fake->packet = rad_alloc(fake, false);
 	fake->reply = rad_alloc(fake, false);
 	fake->server = inst->cache_virtual_server;
+
 	return fake;
 }
 
-static json_object *eap_packet_t_to_obj(eap_packet_t *pkt) {
-	char buff[2048];
+int eap_cache_enabled(rlm_eap_t *inst, int type)
+{
+	eap_module_t *module = inst->methods[type];
+
+	return inst->cache_virtual_server && module && module->type->deserialize && module->type->serialize;
+}
+
+static json_object *eap_packet_t_to_obj(eap_packet_t *pkt)
+{
 	struct json_object *obj, *val;
+	char buff[2048];
+
 	MEM(obj = json_object_new_object());
 
 	MEM(val = json_object_new_int(pkt->code));
@@ -70,8 +81,10 @@ static json_object *eap_packet_t_to_obj(eap_packet_t *pkt) {
 	return obj;
 }
 
-static json_object *eap_ds_to_obj(EAP_DS * ds) {
+static json_object *eap_ds_to_obj(EAP_DS *ds)
+{
 	struct json_object *obj, *val;
+
 	MEM(obj = json_object_new_object());
 
 	MEM(val = eap_packet_t_to_obj(ds->response));
@@ -82,15 +95,18 @@ static json_object *eap_ds_to_obj(EAP_DS * ds) {
 
 	MEM(val = json_object_new_int(ds->set_request_id));
 	json_object_object_add(obj, "set_request_id", val);
+
 	return obj;
 }
 
-static int serialized_handler(REQUEST *request, REQUEST * fake, UNUSED rlm_eap_t *inst, eap_handler_t *handler) {
-	char buff[64];
+static int serialized_handler(REQUEST *request, REQUEST *fake, UNUSED rlm_eap_t *inst, eap_handler_t *handler)
+{
 	VALUE_PAIR *vp = NULL;
 	const char *json_str;
 	size_t len;
 	struct json_object *obj, *val;
+	char buff[64];
+
 	MEM(obj = json_object_new_object());
 	len = fr_bin2hex(buff, handler->state, EAP_STATE_LEN);
 	MEM(val = json_object_new_string_len(buff, len));
@@ -141,22 +157,25 @@ static int serialized_handler(REQUEST *request, REQUEST * fake, UNUSED rlm_eap_t
 
 	json_str = json_object_to_json_string_length(obj, 0, &len);
 	vp = fr_pair_afrom_num(fake->reply, PW_EAP_SERIALIZED_HANDLER, 0);
-	if (!vp) goto error;
+	if (!vp) {
+		json_object_put(obj);
+		return 0;
+	}
+
 	RDEBUG("Serializing: %s\n", json_str);
 	fr_pair_value_memcpy(vp, (const uint8_t *) json_str, len);
 	fr_pair_add(&(fake->reply->vps), vp);
 	json_object_put(obj);
-	return 1;
 
-error:
-	json_object_put(obj);
-	return 0;
+	return 1;
 }
 
-static int obj_to_eap_packet_t(json_object *obj, eap_packet_t *pkt) {
+static int obj_to_eap_packet_t(json_object *obj, eap_packet_t *pkt)
+{
 	json_object *val;
 	const char* str;
 	size_t len;
+
 	if (!json_object_object_get_ex(obj, "code", &val)) {
 		return 0;
 	}
@@ -191,11 +210,14 @@ static int obj_to_eap_packet_t(json_object *obj, eap_packet_t *pkt) {
 	}
 	
 	pkt->type.num = json_object_get_int64(val);
+
 	return 1;
 }
 
-static int deserialize_eap_ds(EAP_DS *eap_ds, json_object *obj) {
+static int deserialize_eap_ds(EAP_DS *eap_ds, json_object *obj)
+{
 	json_object *val;
+
 	if (!json_object_object_get_ex(obj, "set_request_id", &val)) {
 		return 0;
 	}
@@ -213,25 +235,30 @@ static int deserialize_eap_ds(EAP_DS *eap_ds, json_object *obj) {
 			return 0;
 		}
 	}
+
 	return 1;
 }
 
-static int deserialized_handler(REQUEST * request, REQUEST * fake, UNUSED rlm_eap_t *inst, eap_handler_t *handler) {
+static int deserialized_handler(REQUEST *request, REQUEST *fake, UNUSED rlm_eap_t *inst, eap_handler_t *handler)
+{
 	VALUE_PAIR *vp = NULL;
 	json_object *obj, *val;
 	const char* str;
 	size_t len;
 	enum json_tokener_error err;
+	json_tokener* token;
+
 	vp = fr_pair_find_by_num(fake->reply->vps, PW_EAP_SERIALIZED_HANDLER, 0, TAG_ANY);
 	if (!vp) {
 		RERROR("Cannot find EAP-Serialized-Handler");
 		return 0;
 	}
-	json_tokener* token;
+
 	MEM(token = json_tokener_new());
 	RDEBUG("Deserializing: %*s\n", (int) vp->vp_length, vp->vp_octets);
 	obj = json_tokener_parse_ex(token, (const char*) vp->vp_octets, vp->vp_length);
 	err = json_tokener_get_error(token);
+
 	if (err != json_tokener_success) {
 		RERROR("Error EAP-Serialized-Handler: %s %d", json_tokener_error_desc(err), err);
 error:
@@ -313,23 +340,34 @@ error:
 
 	handler->status = json_object_get_int64(obj);
 	json_tokener_free(token);
+
 	return 1;
 }
 
-static int add_state(REQUEST * fake, eap_handler_t *handler) {
+static int add_state(REQUEST *fake, eap_handler_t *handler)
+{
 	VALUE_PAIR *vp = NULL;
+
 	vp = fr_pair_afrom_num(fake->reply, PW_STATE, 0);
 	if (!vp) return 0;
+
 	fr_pair_value_memcpy(vp, handler->state, EAP_STATE_LEN);
 	fr_pair_add(&fake->reply->vps, vp);
+
 	return 1;
 }
 
-int eap_cache_save(REQUEST *request, rlm_eap_t *inst, eap_handler_t *handler) {
-	REQUEST * fake = eap_cache_init_fake_request(inst);
+int eap_cache_save(REQUEST *request, rlm_eap_t *inst, eap_handler_t *handler)
+{
+	REQUEST *fake = eap_cache_init_fake_request(inst);
+
 	if (!fake) return 0;
 
-	if (!add_state(fake, handler)) goto error;
+	if (!add_state(fake, handler)) {
+	error:
+		talloc_free(fake);
+		return -1;
+	}
 
 	if (!serialized_handler(request, fake, inst, handler)) {
 		goto error;
@@ -341,23 +379,24 @@ int eap_cache_save(REQUEST *request, rlm_eap_t *inst, eap_handler_t *handler) {
 
 	(void) process_post_auth(CACHE_SAVE, fake);
 	talloc_free(fake);
+
 	return 1;
-
-error:
-	talloc_free(fake);
-	return -1;
 }
 
-int eap_cache_enabled(rlm_eap_t *inst, int type) {
-	eap_module_t *module = inst->methods[type];
-	return inst->cache_virtual_server != NULL && module != NULL && module->type->deserialize != NULL && module->type->serialize != NULL;
-}
-
-eap_handler_t* eap_cache_find(rlm_eap_t *inst, eap_handler_t *handler) {
+eap_handler_t *eap_cache_find(rlm_eap_t *inst, eap_handler_t *handler)
+{
 	REQUEST *request = eap_cache_init_fake_request(inst);
-	eap_handler_t *new_handler;
-	if (!request) return 0;
-	if (!add_state(request, handler)) goto error;
+	eap_handler_t *new_handler = NULL;
+
+	if (!request) return NULL;
+
+	if (!add_state(request, handler)) {
+	error:
+		talloc_free(new_handler);
+		talloc_free(request);
+		return NULL;
+	}
+
 	(void) process_post_auth(CACHE_LOAD, request);
 
 	new_handler = eap_handler_alloc(inst);
@@ -371,33 +410,36 @@ eap_handler_t* eap_cache_find(rlm_eap_t *inst, eap_handler_t *handler) {
 	}
 
 	return new_handler;
-error:
-	if (new_handler)
-		talloc_free(new_handler);
-	talloc_free(request);
-	return NULL;
 }
 
-int serialize_fixed(UNUSED void *instance, REQUEST *fake, eap_handler_t *handler, size_t len) {
+int serialize_fixed(UNUSED void *instance, REQUEST *fake, eap_handler_t *handler, size_t len)
+{
 	VALUE_PAIR *vp;
+
 	vp = fr_pair_afrom_num(fake->reply, PW_EAP_SERIALIZED_OPAQUE, 0);
 	fr_pair_value_memcpy(vp, handler->opaque, len);
 	fr_pair_add(&fake->reply->vps, vp);
+
 	return 1;
 }
 
-int deserialize_fixed(UNUSED void *instance, REQUEST *fake, eap_handler_t *handler, size_t len) {
+int deserialize_fixed(UNUSED void *instance, REQUEST *fake, eap_handler_t *handler, size_t len)
+{
 	VALUE_PAIR *vp;
 	uint8_t * p;
+
 	vp = fr_pair_find_by_num(fake->reply->vps, PW_EAP_SERIALIZED_OPAQUE, 0, TAG_ANY);
 	if (!vp) return 0;
     if ( vp->vp_length != len) return 0;
 	p = talloc_memdup(handler, vp->vp_octets, vp->vp_length);
 	if (!p) return 0;
 	handler->opaque = p;
+
 	return 1;
 }
 
-int serialize_noop(UNUSED void *instance, REQUEST *fake, eap_handler_t *handler, size_t len) {
+int serialize_noop(UNUSED void *instance, REQUEST *fake, eap_handler_t *handler, size_t len)
+{
 	return 1;
 }
+#endif
