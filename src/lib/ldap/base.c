@@ -93,6 +93,54 @@ fr_table_num_sorted_t const fr_ldap_dereference[] = {
 };
 size_t fr_ldap_dereference_len = NUM_ELEMENTS(fr_ldap_dereference);
 
+static fr_libldap_global_config_t libldap_global_config = {
+	.ldap_debug = 0x00,
+	.tls_random_file = ""
+};
+
+static CONF_PARSER const ldap_global_config[] = {
+	{ FR_CONF_OFFSET("random_file", FR_TYPE_FILE_EXISTS, fr_libldap_global_config_t, tls_random_file) },
+	{ FR_CONF_OFFSET("ldap_debug", FR_TYPE_UINT32, fr_libldap_global_config_t, ldap_debug), .dflt = "0x0000" },
+	CONF_PARSER_TERMINATOR
+};
+
+/** Initialise libldap library and set global options
+ *
+ * Used as a callback from global library initialisation.
+ */
+static int libldap_init(void)
+{
+	if (fr_ldap_init() < 0) return -1;
+
+	fr_ldap_global_config(libldap_global_config.ldap_debug, libldap_global_config.tls_random_file);
+
+	return 0;
+}
+
+/** Free any global libldap resources
+ *
+ */
+static void libldap_free(void)
+{
+	/*
+	 *	Keeping the dummy ld around for the lifetime
+	 *	of the module should always work,
+	 *	irrespective of what changes happen in libldap.
+	 */
+	ldap_unbind_ext_s(ldap_global_handle, NULL, NULL);
+}
+
+/*
+ *	Public symbol modules can reference to auto instantiate libldap
+ */
+global_lib_autoinst_t fr_libldap_global_config = {
+	 .name="ldap",
+	 .config=(const CONF_PARSER *)ldap_global_config,
+	 .inst=&libldap_global_config,
+	 .init=libldap_init,
+	 .free=libldap_free
+};
+
 typedef struct {
 	fr_ldap_query_t	*query;
 	LDAPMessage	**result;

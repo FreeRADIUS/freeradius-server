@@ -11,6 +11,7 @@
  */
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/connection.h>
+#include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/trunk.h>
 
@@ -301,6 +302,17 @@ typedef struct {
 
 	fr_time_delta_t		idle_timeout;		//!< How long to wait before closing unused connections.
 } fr_ldap_config_t;
+
+/** libldap global configuration data
+ *
+ */
+typedef struct {
+	uint32_t		ldap_debug;		//!< LDAP debug level
+	char const		*tls_random_file;	//!< Path to the ramdon file if /dev/random and /dev/urandom
+							//!< are unavailable
+} fr_libldap_global_config_t;
+
+extern global_lib_autoinst_t fr_libldap_global_config;
 
 typedef struct fr_ldap_thread_trunk_s fr_ldap_thread_trunk_t;
 
