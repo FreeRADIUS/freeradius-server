@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <stdlib.h>
 
 #include "../../eap.h"
+#include "../../serialize.h"
 #include "eap_types.h"
 #include "eap_sim.h"
 #include "comp128.h"
@@ -42,6 +43,14 @@ typedef struct eap_sim_server_state {
 	struct eapsim_keys keys;
 	int  sim_id;
 } eap_sim_state_t;
+
+static int mod_serialize(UNUSED void *instance, REQUEST *fake, eap_handler_t *handler) {
+	return serialize_fixed(instance, fake, handler, sizeof(eap_sim_state_t));
+}
+
+static int mod_deserialize(UNUSED void *instance, REQUEST *fake, eap_handler_t *handler) {
+	return deserialize_fixed(instance, fake, handler, sizeof(eap_sim_state_t));
+}
 
 static int eap_sim_sendstart(eap_handler_t *handler)
 {
@@ -694,4 +703,6 @@ rlm_eap_module_t rlm_eap_sim = {
 	.name		= "eap_sim",
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.process	= mod_process,		/* Process next round of EAP method */
+	.serialize	= mod_serialize,	/* serialize the opaque data*/
+	.deserialize	= mod_deserialize,	/* serialize the opaque data*/
 };

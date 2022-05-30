@@ -53,11 +53,20 @@
 #include <freeradius-devel/rad_assert.h>
 
 #include "eap.h"
+#include "../../serialize.h"
 #include <naaeap/naaeap.h>
 #include <netinet/in.h>
 
 #define VERSION "0.7.0"
 #define SET_START(x) 		((x) | (0x20))
+
+static int mod_serialize(UNUSED void *instance, REQUEST *fake, eap_handler_t *handler) {
+	return serialize_fixed(instance, fake, handler, sizeof(TNC_ConnectionID));
+}
+
+static int mod_deserialize(UNUSED void *instance, REQUEST *fake, eap_handler_t *handler) {
+	return deserialize_fixed(instance, fake, handler, sizeof(TNC_ConnectionID));
+}
 
 typedef struct rlm_eap_tnc {
 	char const	*connection_string;
@@ -353,5 +362,7 @@ rlm_eap_module_t rlm_eap_tnc = {
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.process	= mod_process,		/* Process next round of EAP method */
+	.serialize	= mod_serialize,	/* serialize the opaque data*/
+	.deserialize	= mod_deserialize,	/* serialize the opaque data*/
 	.detach		= mod_detach		/* detach */
 };
