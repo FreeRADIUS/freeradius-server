@@ -574,9 +574,19 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	Setup the global structure for libraries
+	 */
+	if (global_lib_init() < 0) EXIT_WITH_FAILURE;
+
+	/*
 	 *  Read the configuration files, BEFORE doing anything else.
 	 */
 	if (main_config_init(config) < 0) EXIT_WITH_FAILURE;
+
+	/*
+	 *	Instantiate any libraries loaded by config parsing
+	 */
+	if (global_lib_instantiate() < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *  Check we're the only process using this config.
