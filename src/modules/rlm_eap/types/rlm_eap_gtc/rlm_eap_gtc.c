@@ -26,6 +26,7 @@ RCSID("$Id$")
 #include <stdlib.h>
 
 #include "eap.h"
+#include "../../serialize.h"
 
 #include <freeradius-devel/rad_assert.h>
 
@@ -246,5 +247,7 @@ rlm_eap_module_t rlm_eap_gtc = {
 	.name		= "eap_gtc",
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
-	.process	= mod_process		/* Process next round of EAP method */
+	.process	= mod_process,		/* Process next round of EAP method */
+	.mod_deserialize  = serialize_noop,
+	.mod_serialize	= serialize_noop,
 };
