@@ -3080,8 +3080,14 @@ int home_server_afrom_file(char const *filename)
 
 	home->dynamic = true;
 
-	if (home->virtual_server || home->dual) {
-		fr_strerror_printf("Dynamic home_server '%s' cannot have 'server' or 'auth+acct'", p);
+	if (home->virtual_server) {
+		fr_strerror_printf("Dynamic home_server '%s' cannot have 'server = %s' configuration item", p, home->virtual_server);
+		talloc_free(home);
+		goto error;
+	}
+
+	if (home->dual) {
+		fr_strerror_printf("Dynamic home_server '%s' is missing 'type', or it is set to 'auth+acct'.  Please specify 'type = auth' or 'type = acct', etc.", p);
 		talloc_free(home);
 		goto error;
 	}
