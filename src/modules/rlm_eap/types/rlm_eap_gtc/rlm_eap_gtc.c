@@ -248,6 +248,8 @@ rlm_eap_module_t rlm_eap_gtc = {
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */
 	.session_init	= mod_session_init,	/* Initialise a new EAP session */
 	.process	= mod_process,		/* Process next round of EAP method */
+#ifdef WITH_EAP_CACHE
 	.mod_deserialize  = serialize_noop,
 	.mod_serialize	= serialize_noop,
+#endif
 };

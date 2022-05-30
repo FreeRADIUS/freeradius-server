@@ -1,8 +1,11 @@
 TARGET		:= rlm_eap.a
-SOURCES		:= rlm_eap.c eap.c mem.c cache.c
+SOURCES		:= rlm_eap.c eap.c mem.c
 
 SRC_INCDIRS	:= . libeap
 
 TGT_PREREQS	:= libfreeradius-eap.a
 
-TGT_LDLIBS	:= -ljson-c 
+ifneq "$(WITH_CACHE_EAP)" ""
+SOURCES		+= cache.c
+TGT_LDLIBS	:= -ljson-c
+endif

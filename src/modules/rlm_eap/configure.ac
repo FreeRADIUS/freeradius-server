@@ -2,6 +2,7 @@ AC_PREREQ([2.53])
 AC_INIT(rlm_eap.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_eap])
+AC_CONFIG_HEADER(config.h)
 
 fail=
 SMART_LIBS=
@@ -55,6 +56,8 @@ if test x"$fail" != x""; then
 		targetname=""
 	    eapsubdirs=""
 	fi
+else
+    AC_DEFINE([HAVE_EAP_CACHE],[1],[Build with EAP cache support])
 fi
 
 eaptypes=types
