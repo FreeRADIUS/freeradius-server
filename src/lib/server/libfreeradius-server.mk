@@ -16,6 +16,7 @@ SOURCES	:= \
 	exec.c \
 	exec_legacy.c \
 	exfile.c \
+	global_lib.c \
 	log.c \
 	main_config.c \
 	main_loop.c \
