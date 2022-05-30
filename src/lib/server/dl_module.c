@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/dl_module.h>
 
 #include <freeradius-devel/server/log.h>
+#include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/dl.h>
@@ -731,6 +732,14 @@ dl_module_loader_t *dl_module_loader_init(char const *lib_dir)
 				   DL_PRIORITY_DICT, "dict", fr_dl_dict_autoload, NULL);
 	dl_symbol_free_cb_register(dl_module_loader->dl_loader,
 				   DL_PRIORITY_DICT, "dict", fr_dl_dict_autofree, NULL);
+
+	/*
+	 *	Register library autoload callbacks
+	 */
+	dl_symbol_init_cb_register(dl_module_loader->dl_loader,
+				   DL_PRIORITY_LIB, "lib", global_lib_auto_instantiate, NULL);
+	dl_symbol_free_cb_register(dl_module_loader->dl_loader,
+				   DL_PRIORITY_LIB, "lib", global_lib_autofree, NULL);
 
 	talloc_set_destructor(dl_module_loader, _dl_module_loader_free);
 
