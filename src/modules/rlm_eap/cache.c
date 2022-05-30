@@ -22,6 +22,7 @@
  */
 
 #include "rlm_eap.h"
+#include "serialize.h"
 #include <json-c/json.h>
 
 int eap_cache_add_vp(REQUEST *fake);
@@ -228,7 +229,7 @@ static int deserialized_handler(REQUEST * request, REQUEST * fake, UNUSED rlm_ea
 	}
 	json_tokener* token;
 	MEM(token = json_tokener_new());
-	RDEBUG("Deserializing: %*s\n",  vp->vp_length, vp->vp_octets);
+	RDEBUG("Deserializing: %*s\n", (int) vp->vp_length, vp->vp_octets);
 	obj = json_tokener_parse_ex(token, (const char*) vp->vp_octets, vp->vp_length);
 	err = json_tokener_get_error(token);
 	if (err != json_tokener_success) {
@@ -281,12 +282,14 @@ error:
 	handler->identity = talloc_strdup(handler, str);
 
 #define SET_INT(f) do {\
+	uint64_t num;\
 	if (!json_object_object_get_ex(obj, #f, &val)) {\
 		RERROR("Cannot find " #f);\
 		goto error;\
 	}\
-	handler->f = json_object_get_int64(val);\
-	RDEBUG("Setting " #f "with %ld ", handler->f);\
+	num = json_object_get_int64(val);\
+	handler->f = num;\
+	RDEBUG("Setting " #f "with %ld ", num);\
 } while(0)
 
 #define SET_BOOL(f) do {\
@@ -373,4 +376,28 @@ error:
 		talloc_free(new_handler);
 	talloc_free(request);
 	return NULL;
+}
+
+int serialize_fixed(UNUSED void *instance, REQUEST *fake, eap_handler_t *handler, size_t len) {
+	VALUE_PAIR *vp;
+	vp = fr_pair_afrom_num(fake->reply, PW_EAP_SERIALIZED_OPAQUE, 0);
+	fr_pair_value_memcpy(vp, handler->opaque, len);
+	fr_pair_add(&fake->reply->vps, vp);
+	return 1;
+}
+
+int deserialize_fixed(UNUSED void *instance, REQUEST *fake, eap_handler_t *handler, size_t len) {
+	VALUE_PAIR *vp;
+	uint8_t * p;
+	vp = fr_pair_find_by_num(fake->reply->vps, PW_EAP_SERIALIZED_OPAQUE, 0, TAG_ANY);
+	if (!vp) return 0;
+    if ( vp->vp_length != len) return 0;
+	p = talloc_memdup(handler, vp->vp_octets, vp->vp_length);
+	if (!p) return 0;
+	handler->opaque = p;
+	return 1;
+}
+
+int serialize_noop(UNUSED void *instance, REQUEST *fake, eap_handler_t *handler, size_t len) {
+	return 1;
 }
