@@ -611,3 +611,37 @@ void xlat_instances_free(void)
 	 */
 	while (xlat_inst_tree && (xi = fr_heap_pop(&xlat_inst_tree))) talloc_free(xi);
 }
+
+/** Remove a node from the list of xlat instance data
+ *
+ */
+int xlat_inst_remove(xlat_exp_t *node)
+{
+	int ret;
+
+	fr_assert(node->type == XLAT_FUNC);
+	fr_assert(!node->call.func->detach);
+	fr_assert(!node->call.func->thread_detach);
+
+	if (node->call.inst) {
+		ret = fr_heap_extract(&xlat_inst_tree, node->call.inst);
+		if (ret < 0) return ret;
+
+		talloc_set_destructor(node->call.inst, NULL);
+		TALLOC_FREE(node->call.inst);
+	}
+
+	if (node->call.thread_inst) {
+		if (!node->call.ephemeral) {
+			ret = fr_heap_extract(&xlat_thread_inst_tree, node->call.thread_inst);
+			if (ret < 0) return ret;
+		}
+
+		talloc_set_destructor(node->call.thread_inst, NULL);
+		TALLOC_FREE(node->call.inst);
+	}
+
+
+	node->type = XLAT_INVALID;
+	return 0;
+}
