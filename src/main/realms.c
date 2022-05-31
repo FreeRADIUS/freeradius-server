@@ -345,8 +345,9 @@ static ssize_t xlat_home_server_dynamic(UNUSED void *instance, REQUEST *request,
 					char const *fmt, char *out, size_t outlen)
 {
 	int type;
-	char const *p;
+	char const *p, *name;
 	home_server_t *home;
+	char buffer[1024];
 
 	if (outlen < 2) return 0;
 
@@ -376,7 +377,29 @@ static ssize_t xlat_home_server_dynamic(UNUSED void *instance, REQUEST *request,
 	p = fmt;
 	while (isspace((int) *p)) p++;
 
-	home = home_server_byname(p, type);
+	/*
+	 *	Allow for dynamic strings as arguments.
+	 */
+	if (*p == '&') {
+		VALUE_PAIR *vp;
+
+		if ((radius_get_vp(&vp, request, p) < 0) || !vp ||
+		    (vp->da->type != PW_TYPE_STRING)) {
+			return -1;
+		}
+		name = vp->vp_strvalue;
+
+	} else if (*p == '%') {
+		if (radius_xlat(buffer, sizeof(buffer), request, p, NULL, NULL) < 0) {
+			return -1;
+		}
+		name = buffer;
+
+	} else {
+		name = p;
+	}
+
+	home = home_server_byname(name, type);
 	if (!home) {
 		*out = '\0';
 		return 0;
