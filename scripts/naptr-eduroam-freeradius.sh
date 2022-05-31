@@ -1,8 +1,9 @@
 #!/bin/bash
 # $1 is the realm to look up
 # $2 is the $prefix of FreeRADIUS
+# $3 is the optional NAPTR tag to look up
 DIRECTORY=$2
-TARGET1=`$DIRECTORY/bin/naptr-eduroam.sh $1 | \
+TARGET1=`$DIRECTORY/bin/naptr-eduroam.sh $1 $3 | \
 	sed s/'^server dynamic_radsec.'/'home_server '/g | \
 	sed s/host/'ipaddr = '/g | sed s/':'/'\n\tport = '/g | \
 	sed s/'\}'//g`
