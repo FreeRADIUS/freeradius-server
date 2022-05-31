@@ -8,7 +8,7 @@
 # For host command this is column 5, for dig it is column 1.
 
 usage() {
-    echo "Usage: ${0} <realm>"
+    echo "Usage: ${0} <realm> <optional NAPTR tag>"
     exit 1
 }
 
@@ -17,6 +17,8 @@ test -n "${1}" || usage
 DIGCMD=$(command -v dig)
 HOSTCMD=$(command -v host)
 PRINTCMD=$(command -v printf)
+test -n "${2}" && NAPTRTAG="${2}" || NAPTRTAG="x-eduroam:radius.tls"
+
 
 validate_host() {
          echo ${@} | tr -d '\n\t\r' | grep -E '^[_0-9a-zA-Z][-._0-9a-zA-Z]*$'
@@ -37,7 +39,7 @@ dig_it_srv() {
 }
 
 dig_it_naptr() {
-    ${DIGCMD} +short naptr "${REALM}" | grep x-eduroam:radius.tls | sort -n -k1 |
+    ${DIGCMD} +short naptr "${REALM}" | grep $NAPTRTAG | sort -n -k1 |
     while read line; do
         set $line ; TYPE=$3 ; HOST=$(validate_host $6)
         if ( [ "$TYPE" = "\"s\"" ] || [ "$TYPE" = "\"S\"" ] ) && [ -n "${HOST}" ]; then
@@ -58,7 +60,7 @@ host_it_srv() {
 }
 
 host_it_naptr() {
-    ${HOSTCMD} -t naptr "${REALM}" | grep x-eduroam:radius.tls | sort -n -k5 |
+    ${HOSTCMD} -t naptr "${REALM}" | grep $NAPTRTAG | sort -n -k5 |
     while read line; do
         set $line ; TYPE=$7 ; HOST=$(validate_host ${10})
         if ( [ "$TYPE" = "\"s\"" ] || [ "$TYPE" = "\"S\"" ] ) && [ -n "${HOST}" ]; then
