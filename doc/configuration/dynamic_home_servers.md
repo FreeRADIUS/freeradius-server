@@ -182,23 +182,27 @@ authorize {
 
 			case "0" {
 				# Proxy with home server pool, failover, etc.
+				# Attention: only works if the name of a home_server is defined with a name matching the realm of the request
 				update control {
 					&Proxy-To-Realm := "%{1}"
 				}
 			}
 
 			case {
-				# no home server exists, ask DNS
-				update control {
-					# you can add a third parameter for the NAPTR tag to look up, e.g. "aaa+auth:radius.tls.tcp" (RFC7585, OpenRoaming)
-					# if the third parameter is omitted, defaults to "x-eduroam:radius.tls"
-					&Temp-Home-Server-String := `%{config:prefix}/bin/naptr-eduroam-freeradius.sh %{1} %{config:prefix}`
-				}
-				if ("%{control:Temp-Home-Server-String}" == "" ) {
-					reject
-				} else {
+				if (!control:Proxy-To-Realm) {
+					# no home server exists, ask DNS
 					update control {
-						&Home-Server-Name := "%{1}"
+						# you can add a third parameter for the NAPTR tag to look up, e.g. "aaa+auth:radius.tls.tcp" (RFC7585, OpenRoaming)
+						# if the third parameter is omitted, defaults to "x-eduroam:radius.tls"
+						&Temp-Home-Server-String := `%{config:prefix}/bin/naptr-eduroam-freeradius.sh %{1} %{config:prefix}`
+					}
+					if ("%{control:Temp-Home-Server-String}" == "" ) {
+						# consider proxying to some DEFAULT fallback here
+						reject
+					} else {
+						update control {
+							&Home-Server-Name := "%{1}"
+						}
 					}
 				}
 			}
