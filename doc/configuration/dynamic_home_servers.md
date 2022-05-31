@@ -211,13 +211,13 @@ authorize {
 ## Regular dynamic realm hygiene
 
 Dynamic home servers are discovered from DNS, and DNS has TTLs. Discovered realms
-should regularly be deleted and re-discovered. The server should be restarted with
-a blank home_server directory regularly, for two reasons
+should regularly be deleted and re-discovered. The server should be restarted regularly,
+for two reasons:
 * Entries in DNS may change over time, or be removed, and the server should learn this
 * dynamic home servers are often RADIUS/TLS based with client and server certificates,
   and the server should refresh CRL information regularly
-So, emptying the home_servers directory, refreshing CRLs and subsequently restarting
-the server once per day is suggested.
+So, regularly removing entries from the home_servers directory (say, older than 1d), 
+refreshing CRLs and subsequently restarting the server once per day is suggested.
 
 ## Adding a new home server for a new realm
 
