@@ -198,7 +198,7 @@ authorize {
 					reject
 				} else {
 					update control {
-						&Home-Server-Name := %{1}
+						&Home-Server-Name := "%{1}"
 					}
 				}
 			}
