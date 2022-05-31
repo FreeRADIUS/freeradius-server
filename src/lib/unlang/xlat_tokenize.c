@@ -1071,6 +1071,12 @@ static void _xlat_debug(xlat_exp_head_t const *head, int depth)
 
 	fr_assert(head != NULL);
 
+	INFO_INDENT("head flags = { %s %s %s %s }",
+		    head->flags.needs_resolving ? "need_resolving" : "",
+		    head->flags.needs_async ? "need_async" : "",
+		    head->flags.pure ? "pure" : "",
+		    head->flags.can_purify ? "can_purify" : "");
+
 	xlat_exp_foreach(head, node) {
 		INFO_INDENT("[%d] flags = { %s %s %s %s }", i++,
 			    node->flags.needs_resolving ? "need_resolving" : "",
