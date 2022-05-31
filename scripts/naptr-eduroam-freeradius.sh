@@ -12,9 +12,9 @@ TARGET1=`$DIRECTORY/bin/naptr-eduroam.sh $1 $3 | \
 	type = auth
 	secret = radsec
 	tls {
-		certificate_file = $DIRECTORY/raddb/certs/server.pem
-		private_key_file = $DIRECTORY/raddb/certs/server.key
-		ca_path = $DIRECTORY/raddb/certs/ca/
+		certificate_file = $DIRECTORY/etc/raddb/certs/server.pem
+		private_key_file = $DIRECTORY/etc/raddb/certs/server.key
+		ca_path = $DIRECTORY/etc/raddb/certs/
 	}
 }"
 echo "$TARGET"
