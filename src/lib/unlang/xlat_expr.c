@@ -465,6 +465,146 @@ static int xlat_logical_instantiate(xlat_inst_ctx_t const *xctx)
 	return 0;
 }
 
+static bool xlat_node_matches_bool(xlat_exp_t *parent, xlat_exp_head_t *head, bool sense, bool *result)
+{
+	fr_value_box_t *box;
+	xlat_exp_t *node;
+
+	if (!head->flags.pure) return false;
+
+	node = xlat_exp_head(head);
+	if (!node || xlat_exp_next(head, node)) {
+		return false;
+	}
+
+	if (node->type == XLAT_BOX) {
+		box = &node->data;
+		goto check;
+	}
+
+	if (node->type != XLAT_TMPL) {
+		return false;
+	}
+
+	if (!tmpl_is_data(node->vpt)) {
+		return false;
+	}
+
+	box = tmpl_value(node->vpt);
+
+check:
+	/*
+	 *	On "true", replace the entire logical operation with the value-box.
+	 *
+	 *	On "false", omit this argument, and go to the next one.
+	 */
+	*result = (truthiness(box) == sense);
+
+	if (!*result) return true;
+
+	xlat_inst_remove(parent);
+
+	parent->type = XLAT_BOX;
+	fr_value_box_copy(parent, &parent->data, box);
+	parent->flags = (xlat_flags_t) { .pure = true, };
+
+	talloc_free_children(parent);
+
+	return true;
+}
+
+/** Any argument resolves to inst->stop, the entire thing is a bool of inst->stop
+ *
+ *  @todo - for now, this does very simple checks, and doesn't purify
+ *  its arguments.  We also need a standard way to deregister xlat functions
+ */
+static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance)
+{
+	int i, j;
+	int deleted = 0;
+	bool result;
+	xlat_logical_inst_t *inst = talloc_get_type_abort_const(instance, xlat_logical_inst_t);
+	xlat_exp_head_t *group;
+
+	fr_assert(node->type == XLAT_FUNC);
+
+	/*
+	 *	Don't check the last argument.  If everything else gets deleted, then we just return the last
+	 *	argument.
+	 */
+	for (i = 0; i < inst->argc; i++) {
+		if (!xlat_node_matches_bool(node, inst->argv[i], inst->stop, &result)) continue;
+
+		/*
+		 *	0 && EXPR --> 0.
+		 *	1 || EXPR --> 1
+		 *
+		 *	Parent is now an XLAT_BOX, so we're done.
+		 */
+		if (result) return 0;
+
+		/*
+		 *	We're at the last argument, we should just return that, if it's 
+		 */
+		if ((i + 1) == inst->argc) break;
+
+		TALLOC_FREE(inst->argv[i]);
+		deleted++;
+	}
+
+	if (!deleted) return 0;
+
+	/*
+	 *	Pack the array.  We insert at i, and read from j.  We don't need to read the deleted entries,
+	 *	as they all MUST be NULL.
+	 */
+	i = 0, j = -1;
+	while (i < (inst->argc - deleted)) {
+		if (inst->argv[i]) {
+			i++;
+			continue;
+		}
+
+		/*
+		 *	Start searching from the next entry, OR start seaching from where we left off before.
+		 */
+		if (j < 0) j = i + 1;
+
+		/*
+		 *	Find the first non-NULL entry, and insert it in argv[i].  We search here until the end
+		 *	of the array, because we may have deleted entries from the start of the array.
+		 */
+		while (j < inst->argc) {
+			if (inst->argv[j]) break;
+			j++;
+		}
+
+		/*
+		 *	Move the entry down, and clear out the tail end of the array.
+		 */
+		inst->argv[i++] = inst->argv[j];
+		inst->argv[j++] = NULL;
+	}
+
+	inst->argc -= deleted;
+
+	if (inst->argc > 1) return 0;
+
+	/*
+	 *	Only one argument left/  We can hoist the child into ourselves, and omit the logical operation.
+	 */
+	group = inst->argv[0];
+	fr_assert(group != NULL);
+	talloc_steal(node, group);
+
+	xlat_inst_remove(node);
+	node->type = XLAT_GROUP;
+	node->group = group;
+	node->flags = group->flags;
+
+	return 0;
+}
+
 static bool xlat_logical_match(fr_value_box_t **dst, fr_value_box_list_t *in, bool logical_or)
 {
 	fr_value_box_t *last = NULL;
@@ -724,6 +864,7 @@ do { \
 	xlat_async_instantiate_set(xlat, xlat_ ## _func_name ## _instantiate, xlat_ ## _func_name ## _inst_t, NULL, NULL); \
 	xlat_internal(xlat); \
 	xlat_print_set(xlat, xlat_expr_print_ ## _func_name); \
+	xlat_purify_set(xlat, xlat_expr_logical_purify); \
 	xlat->token = _op; \
 } while (0)
 
@@ -1298,7 +1439,6 @@ static bool valid_type(xlat_exp_t *node)
 		if (da->dict == fr_dict_internal()) goto list;
 
 		fr_strerror_const("Cannot use structural types in condition");
-		fprintf(stderr, "FAIL %d\n", __LINE__);
 		return false;
 	}
 

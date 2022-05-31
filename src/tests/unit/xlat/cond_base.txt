@@ -284,18 +284,18 @@ match 0
 #
 #  @todo - purify logical operators.  The instantiation function should update the "can_purify" flags.
 #
+xlat_purify true || (&User-Name == "bob")
+match true
+
 xlat_purify true && (&User-Name == "bob")
-match (true && (&User-Name == "bob"))
-#match &User-Name == "bob"
+match (&User-Name == "bob")
 
 xlat_purify false && (&User-Name == "bob")
-match (false && (&User-Name == "bob"))
+match false
 
 xlat_purify false || (&User-Name == "bob")
-match (false || (&User-Name == "bob"))
+match (&User-Name == "bob")
 
-xlat_purify true || (&User-Name == "bob")
-match (true || (&User-Name == "bob"))
 
 #
 #  Both sides static data with a cast: evaluate at parse time.
@@ -651,12 +651,28 @@ match false
 #  More short-circuit evaluations
 #
 xlat_purify (&User-Name == "bob") && (false)
-match ((&User-Name == "bob") && false)
+match false
+
+xlat_purify (&User-Name == "bob") && (false) && (&User-Password == "hello")
+match false
+
+xlat_purify (&User-Name == "bob") && (&User-Password == "hello") && false
+match false
+
+# @todo - last argument isn't purified!
+xlat_purify (&User-Name == "bob") && (&User-Password == "hello") && (1 > 2)
+match ((&User-Name == "bob") && (&User-Password == "hello") && (1 > 2))
 
 xlat_purify (&User-Name == "bob") || (true)
-match ((&User-Name == "bob") || true)
+match true
 
 xlat_purify 1 || 2
+match 1
+
+xlat_purify 1 || 2 || (&User-Name == "bob")
+match 1
+
+xlat_purify (&User-Name == "bob") || 1 || 2
 match 1
 
 xlat_purify 1 && 2
@@ -672,4 +688,4 @@ xlat_purify (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
 match ((&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message))
 
 count
-match 270
+match 280
