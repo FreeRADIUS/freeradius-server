@@ -1242,6 +1242,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		return -1; \
 	} \
 	errno = 0; /* this is needed as parsing functions don't reset errno */ \
+	/* coverity[uninit] */ \
 	res = _func(buff, &end); \
 	if (errno == ERANGE) { \
 		if (res > 0) { \

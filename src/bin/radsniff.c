@@ -511,6 +511,7 @@ static void rs_packet_save_in_output_dir(uint64_t count, UNUSED rs_status_t stat
 	fr_base16_encode(&FR_SBUFF_OUT(vector, sizeof(vector)),
 			 &FR_DBUFF_TMP(packet->vector, RADIUS_AUTH_VECTOR_LENGTH));
 
+	/* coverity[uninit] */
 	fprintf(output_file.handle, "Authenticator-Field = 0x%s\n", vector);
 
 	if (fr_log_close(&output_file) < 0) {
