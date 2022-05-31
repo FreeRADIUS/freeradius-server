@@ -105,11 +105,24 @@ static int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			break;
 			
 		case XLAT_FUNC:
-			if (!node->flags.pure && node->flags.can_purify) {
-				if (xlat_purify_list(node->call.args, request) < 0) return -1;
+			/*
+			 *	If the node is not pure, then maybe there's a callback to purify it, OR maybe
+			 *	we can purify the function arguments.
+			 */
+			if (!node->flags.pure) {
+				if (node->call.func->purify) {
+					if (node->call.func->purify(node, node->call.inst->data) < 0) return -1;
+
+				} else {
+					if (xlat_purify_list(node->call.args, request) < 0) return -1;
+				}
 				break;
 			}
 
+			/*
+			 *	The node is entirely pure, we don't worry about any callbacks, we just
+			 *	evaluate the entire thing to purify it.
+			 */
 			fr_assert(node->flags.pure);
 
 			fr_value_box_list_init(&list);
