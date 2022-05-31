@@ -23,9 +23,9 @@ $(R)$(bindir)/rlm_sqlippool_tool: scripts/sql/rlm_sqlippool_tool
 	@$(INSTALL) -m 755 $< $@
 
 $(R)$(bindir)/naptr-eduroam.sh: scripts/naptr-eduroam.sh
-        @mkdir -p $(dir $@)
-        @$(INSTALL) -m 755 $< $@
+	@mkdir -p $(dir $@)
+	@$(INSTALL) -m 755 $< $@
 
 $(R)$(bindir)/naptr-eduroam-freeradius.sh: scripts/naptr-eduroam-freeradius.sh
-        @mkdir -p $(dir $@)
-        @$(INSTALL) -m 755 $< $@
+	@mkdir -p $(dir $@)
+	@$(INSTALL) -m 755 $< $@
