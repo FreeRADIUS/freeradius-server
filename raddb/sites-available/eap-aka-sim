@@ -366,6 +366,25 @@ server eap-aka-sim {
 	#  to execute the `load session { ... }` section next.  This is
 	#  sometimes useful when dealing with non-standard fastauth identities.
 	#
+	#  #### Custom identity schemes
+	#
+	#  Multiple identity privacy schemes have been proposed for
+	#  EAP-SIM/AKA/AKA'.  Instead of hard coding implementations in the server
+	#  source we've provided the necessary cryptographic functions for them to be
+	#  implemented in policy.
+	#
+	#  The notable exception to this is the scheme described in
+	#  3GPP TS 33.234 which is supported via the following expansions functions:
+	#
+	#  - 3gpp_temporary_id_key_index
+	#  - 3gpp_temporary_id_decrypt
+	#  - 3gpp_temporary_id_encrypt
+	#
+	#  The rlm_cipher module and the &control.KDF-Identity attribute override
+	#  (see notes below) are provided to allow the "Privacy Protection for EAP-AKA"
+	#  scheme described by 3GPP S3-170116 and the Wireless Broadband Allowance
+	#  document "IMSI PRIVACY PROTECTION FOR WI-FI".
+	#
 	recv Identity-Response {
 		ok
 	}
@@ -556,7 +575,18 @@ server eap-aka-sim {
 	#  message, or sent as an AT_IDENTITY value. One such identity privacy
 	#  scheme described by 3GPP S3-170116 "Privacy Protection for EAP-AKA",
 	#  where the cryptographic identity is the plaintext extracted from
-	#  the encrypted identity blob.
+	#  the encrypted identity blob.  The same behaviour is required for the
+	#  evolution of that standard published by the WBA
+	#  "IMSI PRIVACY PROTECTION FOR WI-FI".
+	#
+	#  Both standards as implemented in iOS and Android violate RFC 4186,
+	#  RFC 4187,and RFC 5448 in requiring that the Identity input to the
+	#  cryptographic function used to derive the MK for the session be set
+	#  to the decrypted identity, not the last value of AT_IDENTITY as
+	#  stated by the original RFCs.
+	#
+	#  No where is this mentioned in either the original 3GPP proposal or the
+	#  WBA document.
 	#
 	#  If you need to implement one of these identity privacy schemes, the
 	#  cryptographic identity can be specified with `&control.KDF-Identity`.
