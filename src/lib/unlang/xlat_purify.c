@@ -60,6 +60,7 @@ static int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 	bool success;
 	xlat_exp_head_t *group;
 	fr_value_box_list_t list;
+	xlat_flags_t our_flags;
 
 	if (!head->flags.can_purify) return 0;
 
@@ -67,6 +68,9 @@ static int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 	 *	We can't purify things which need resolving,
 	 */
 	if (head->flags.needs_resolving) return -1;
+
+	our_flags = head->flags;
+	our_flags.pure = true;					/* we flip this if the children are not pure */
 
 	xlat_exp_foreach(head, node) {
 		if (!node->flags.can_purify) continue;
@@ -80,7 +84,7 @@ static int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			rcode = xlat_purify_list(node->group, request);
 			if (rcode < 0) return rcode;
 
-			xlat_flags_merge(&node->flags, &node->group->flags);
+			node->flags = node->group->flags;
 			break;
 
 
@@ -89,6 +93,7 @@ static int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 				rcode = xlat_purify_list(node->alternate[0], request);
 				if (rcode < 0) return rcode;
 			}
+			node->flags = node->alternate[0]->flags;
 
 			/*
 			 *	@todo - If the RHS of the alternation
@@ -102,6 +107,7 @@ static int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 				rcode = xlat_purify_list(node->alternate[1], request);
 				if (rcode < 0) return rcode;
 			}
+			xlat_flags_merge(&node->flags, &node->alternate[1]->flags);
 			break;
 			
 		case XLAT_FUNC:
@@ -115,6 +121,17 @@ static int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 
 				} else {
 					if (xlat_purify_list(node->call.args, request) < 0) return -1;
+				}
+
+				/*
+				 *	It may have been purified into an XLAT_BOX.  But if not, ensure that
+				 *	the flags are all correct.
+				 */
+				if (node->type == XLAT_FUNC) {
+					node->flags = node->call.func->flags;
+					xlat_exp_foreach(node->call.args, arg) {
+						xlat_flags_merge(&node->flags, &arg->flags);
+					}
 				}
 				break;
 			}
@@ -149,14 +166,23 @@ static int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			node->group = group;
 
 			xlat_value_list_to_xlat(group, &list);
+			node->flags = group->flags;
 			break;
 		}
 
 		node->flags.can_purify = false;
-		xlat_flags_merge(&head->flags, &node->flags);
+		xlat_flags_merge(&our_flags, &node->flags);
 	}
 
-	head->flags.can_purify = false;
+	/*
+	 *	Let's not call xlat_purify() repeatedly, so we clear the flag.
+	 *
+	 *	@todo - if all of the children of "head" are "pure", then at the end of the purification
+	 *	process, there should only be one child, of type XLAT_BOX.
+	 */
+	our_flags.can_purify = false;
+	head->flags = our_flags;
+
 	return 0;
 }
 
