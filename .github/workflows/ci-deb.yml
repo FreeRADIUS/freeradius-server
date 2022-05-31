@@ -144,9 +144,7 @@ jobs:
     - name: Build eapol_test
       run: |
         apt-get install -y libnl-3-dev libnl-genl-3-dev
-        echo "top_srcdir:=$(pwd)" > Make.inc
-        echo "BUILD_DIR:=build" >> Make.inc
-        make -j `nproc` eapol_test
+        scripts/ci/eapol_test-build.sh
         mv scripts/ci/eapol_test/eapol_test ../debs
       working-directory: freeradius
 
