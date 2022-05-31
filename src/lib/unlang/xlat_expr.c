@@ -1483,6 +1483,9 @@ redo:
 	 */
 	if (nary_ops[op] && (lhs->type == XLAT_FUNC) && (lhs->call.func->token == op)) {
 		xlat_func_append_arg(lhs, rhs);
+
+		lhs->call.args->flags.can_purify |= rhs->flags.can_purify | rhs->flags.pure;
+		lhs->flags.can_purify = lhs->call.args->flags.can_purify;
 		goto redo;
 	}
 
@@ -1521,7 +1524,16 @@ redo:
 
 	fr_assert(xlat_exp_head(node->call.args) != NULL);
 
-	node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
+	if (nary_ops[op]) {
+		xlat_exp_foreach(node->call.args, arg) {
+			node->call.args->flags.can_purify |= arg->flags.can_purify | arg->flags.pure;
+			if (node->call.args->flags.can_purify) break;
+		}
+		node->flags.can_purify = node->call.args->flags.can_purify;
+
+	} else {
+		node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
+	}
 
 	lhs = node;
 	goto redo;
