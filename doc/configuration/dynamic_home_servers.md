@@ -190,9 +190,9 @@ authorize {
 			case {
 				# no home server exists, ask DNS
 				update control {
-					&My-Local-String := `%{config:prefix}/bin/naptr-eduroam-freeradius.sh %{1} %{config:prefix}`
+					&Temp-Home-Server-String := `%{config:prefix}/bin/naptr-eduroam-freeradius.sh %{1} %{config:prefix}`
 				}
-				if ("%{control:My-Local-String}" == "" ) {
+				if ("%{control:Temp-Home-Server-String}" == "" ) {
 					reject
 				} else {
 					update control {

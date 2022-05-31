@@ -296,6 +296,7 @@ ATTRIBUTE	TOTP-Password				1196	string
 ATTRIBUTE	Proxy-Tunneled-Request-As-EAP		1197	integer
 VALUE	Proxy-Tunneled-Request-As-EAP	No			0
 VALUE	Proxy-Tunneled-Request-As-EAP	Yes			1
+ATTRIBUTE	Temp-Home-Server-String			1198	string
 
 #
 #	Range:	1200-1279
