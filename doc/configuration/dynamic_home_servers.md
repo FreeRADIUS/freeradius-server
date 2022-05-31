@@ -188,8 +188,17 @@ authorize {
 			}
 
 			case {
-				# the home server does not exist
-				reject
+				# no home server exists, ask DNS
+				update control {
+					&My-Local-String := `%{config:prefix}/bin/naptr-eduroam-freeradius.sh %{1} %{config:prefix}`
+				}
+				if ("%{control:My-Local-String}" == "" ) {
+					reject
+				} else {
+					update control {
+						&Home-Server-Name := %{1}
+					}
+				}
 			}
 		}
 	}
@@ -197,6 +206,16 @@ authorize {
 }
 ```
 
+## Regular dynamic realm hygiene
+
+Dynamic home servers are discovered from DNS, and DNS has TTLs. Discovered realms
+should regularly be deleted and re-discovered. The server should be restarted with
+a blank home_server directory regularly, for two reasons
+* Entries in DNS may change over time, or be removed, and the server should learn this
+* dynamic home servers are often RADIUS/TLS based with client and server certificates,
+  and the server should refresh CRL information regularly
+So, emptying the home_servers directory, refreshing CRLs and subsequently restarting
+the server once per day is suggested.
 
 ## Adding a new home server for a new realm
 
