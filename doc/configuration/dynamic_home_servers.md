@@ -190,6 +190,8 @@ authorize {
 			case {
 				# no home server exists, ask DNS
 				update control {
+					# you can add a third parameter for the NAPTR tag to look up, e.g. "aaa+auth:radius.tls.tcp" (RFC7585, OpenRoaming)
+					# if the third parameter is omitted, defaults to "x-eduroam:radius.tls"
 					&Temp-Home-Server-String := `%{config:prefix}/bin/naptr-eduroam-freeradius.sh %{1} %{config:prefix}`
 				}
 				if ("%{control:Temp-Home-Server-String}" == "" ) {
