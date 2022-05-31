@@ -19,6 +19,6 @@ TARGET1=`$DIRECTORY/bin/naptr-eduroam.sh $1 $3 | \
 }"
 echo "$TARGET"
 if [ "$TARGET" != "" ]; then 
-	echo "$TARGET" >$DIRECTORY/etc/raddb/home_servers2/$1; 
+	echo "$TARGET" >$DIRECTORY/etc/raddb/home_servers/$1; 
 	$DIRECTORY/sbin/radmin -e "add home_server file $DIRECTORY/etc/raddb/home_servers/$1"&
 fi
