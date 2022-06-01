@@ -53,6 +53,11 @@ couchbase {
 	}
 
 	#
+	#  user_key:: Couchbase document key for user documents (`unlang` supported).
+	#
+	user_key = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"
+
+	#
 	#  acct_key:: Couchbase accounting document key.
 	#
 	#  This key is dynamically expanded at run time.
@@ -78,38 +83,33 @@ couchbase {
 	#  Attributes not in this map will not be recorded.
 	#
 	update {
-		&Acct-Session-Id	= 'sessionId'
-		&Acct-Unique-Session-Id	= 'uniqueId'
-		&Acct-Status-Type	= 'lastStatus'
-		&Acct-Authentic		= 'authentic'
-		&User-Name		= 'userName'
-		&Stripped-User-Name	= 'strippedUserName'
-		&Stripped-User-Domain	= 'strippedUserDomain'
-		&Realm			= 'realm'
-		&NAS-IP-Address		= 'nasIpAddress'
-		&NAS-Identifier		= 'nasIdentifier'
-		&NAS-Port		= 'nasPort'
-		&Called-Station-Id	= 'calledStationId'
-		&Called-Station-SSID	= 'calledStationSSID'
-		&Calling-Station-Id	= 'callingStationId'
-		&Framed-Protocol	= 'framedProtocol'
-		&Framed-IP-Address	= 'framedIpAddress'
-		&NAS-Port-Type		= 'nasPortType'
-		&Connect-Info		= 'connectInfo'
-		&Acct-Session-Time	= 'sessionTime'
-		&Acct-Input-Packets	= 'inputPackets'
-		&Acct-Output-Packets	= 'outputPackets'
-		&Acct-Input-Octets	= 'inputOctets'
-		&Acct-Output-Octets	= 'outputOctets'
-		&Acct-Input-Gigawords	= 'inputGigawords'
-		&Acct-Output-Gigawords	= 'outputGigawords'
-		&Event-Timestamp	= 'lastUpdated'
+		Acct-Session-Id		= 'sessionId'
+		Acct-Unique-Session-Id	= 'uniqueId'
+		Acct-Status-Type	= 'lastStatus'
+		Acct-Authentic		= 'authentic'
+		User-Name		= 'userName'
+		Stripped-User-Name	= 'strippedUserName'
+		Stripped-User-Domain	= 'strippedUserDomain'
+		Realm			= 'realm'
+		NAS-IP-Address		= 'nasIpAddress'
+		NAS-Identifier		= 'nasIdentifier'
+		NAS-Port		= 'nasPort'
+		Called-Station-Id	= 'calledStationId'
+		Called-Station-SSID	= 'calledStationSSID'
+		Calling-Station-Id	= 'callingStationId'
+		Framed-Protocol		= 'framedProtocol'
+		Framed-IP-Address	= 'framedIpAddress'
+		NAS-Port-Type		= 'nasPortType'
+		Connect-Info		= 'connectInfo'
+		Acct-Session-Time	= 'sessionTime'
+		Acct-Input-Packets	= 'inputPackets'
+		Acct-Output-Packets	= 'outputPackets'
+		Acct-Input-Octets	= 'inputOctets'
+		Acct-Output-Octets	= 'outputOctets'
+		Acct-Input-Gigawords	= 'inputGigawords'
+		Acct-Output-Gigawords	= 'outputGigawords'
+		Event-Timestamp		= 'lastUpdated'
 	}
-
-	#
-	#  user_key:: Couchbase document key for user documents (`unlang` supported).
-	#
-	user_key = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"
 
 	#
 	#  read_clients:: Set to `yes` to read radius clients from the Couchbase view specified below.

@@ -21,11 +21,11 @@
  * @file mod.c
  *
  * @author Aaron Hurt (ahurt@anbcs.com)
- * @copyright 2013-2014 The FreeRADIUS Server Project.
+ * @copyright 2013-2022 The FreeRADIUS Server Project.
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "couchbase"
+#define LOG_PREFIX "couchbase - "
 
 #include <freeradius-devel/json/base.h>
 #include <freeradius-devel/server/base.h>
@@ -44,7 +44,7 @@ RCSID("$Id$")
  */
 static int _mod_conn_free(rlm_couchbase_handle_t *chandle)
 {
-	lcb_t cb_inst = chandle->handle;                /* couchbase instance */
+	lcb_INSTANCE *cb_inst = (lcb_INSTANCE *)chandle->handle;                /* couchbase instance */
 
 	/* destroy/free couchbase instance */
 	lcb_destroy(cb_inst);
@@ -153,11 +153,11 @@ int mod_build_api_opts(CONF_SECTION *conf, rlm_couchbase_t *inst)
  */
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 {
-	rlm_couchbase_t	*inst = talloc_get_type_abort(instance, rlm_couchbase_t); /* module instance pointer */
+	rlm_couchbase_t *inst = talloc_get_type_abort(instance, rlm_couchbase_t); /* module instance pointer */
 	rlm_couchbase_handle_t *chandle = NULL;     	  /* connection handle pointer */
 	cookie_t *cookie = NULL;                          /* couchbase cookie */
-	lcb_t cb_inst;                                    /* couchbase connection instance */
-	lcb_error_t cb_error;			          /* couchbase error status */
+	lcb_INSTANCE *cb_inst = NULL;                     /* couchbase connection instance */
+	lcb_STATUS cb_error;                              /* couchbase error status */
 	couchbase_opts_t const *opts = inst->api_opts;	  /* couchbase extra API settings */
 
 	/* create instance */
@@ -166,10 +166,8 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 
 	/* check couchbase instance */
 	if (cb_error != LCB_SUCCESS) {
-		ERROR("failed to initiate couchbase connection: %s (0x%x)",
-		      lcb_strerror(NULL, cb_error), cb_error);
-		/* destroy/free couchbase instance */
-		lcb_destroy(cb_inst);
+		ERROR("failed to initiate couchbase connection: %s (0x%x)", lcb_strerror_long(cb_error), cb_error);
+
 		/* fail */
 		return NULL;
 	}
@@ -207,18 +205,18 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
  */
 int mod_conn_alive(UNUSED void *opaque, void *connection)
 {
-	rlm_couchbase_handle_t *chandle = connection;   /* connection handle pointer */
-	lcb_t cb_inst = chandle->handle;            /* couchbase instance */
-	lcb_error_t cb_error = LCB_SUCCESS;         /* couchbase error status */
+	rlm_couchbase_handle_t *chandle = talloc_get_type_abort(connection, rlm_couchbase_handle_t);;   /* connection handle pointer */
+	lcb_INSTANCE *cb_inst = talloc_get_type_abort(chandle->handle, lcb_INSTANCE);            /* couchbase instance */
+	lcb_STATUS cb_error = LCB_SUCCESS;         /* couchbase error status */
 
 	/* attempt to get server stats */
 	if ((cb_error = couchbase_server_stats(cb_inst, NULL)) != LCB_SUCCESS) {
 		/* log error */
-		ERROR("failed to get couchbase server stats: %s (0x%x)",
-		      lcb_strerror(NULL, cb_error), cb_error);
+		ERROR("failed to get couchbase server stats: %s (0x%x)", lcb_strerror_long(cb_error), cb_error);
 		/* error out */
 		return -1;
 	}
+
 	return 0;
 }
 
@@ -308,22 +306,23 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, rlm_couchbase_t *inst)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int mod_attribute_to_element(const char *name, json_object *map, void *buf)
+int mod_attribute_to_element(const char *name, json_object *map, char *buf, size_t buflen)
 {
 	json_object *j_value;  /* json object values */
 
 	/* clear buffer */
-	memset((char *) buf, 0, MAX_KEY_SIZE);
+	memset((char *) buf, 0, sizeof(buf));
 
 	/* attempt to map attribute */
 	if (json_object_object_get_ex(map, name, &j_value)) {
 		/* copy and check size */
-		if (strlcpy(buf, json_object_get_string(j_value), MAX_KEY_SIZE) >= MAX_KEY_SIZE) {
+		if (strlcpy(buf, json_object_get_string(j_value), buflen) >= buflen) {
 			/* oops ... this value is bigger than our buffer ... error out */
-			ERROR("json map value larger than MAX_KEY_SIZE - %d", MAX_KEY_SIZE);
+			ERROR("json map value larger than buflen - %zu", buflen);
 			/* return fail */
 			return -1;
 		}
+
 		/* looks good */
 		return 0;
 	}
@@ -707,16 +706,20 @@ static int _get_client_value(char **out, CONF_PAIR const *cp, void *data)
  */
 int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SECTION *map)
 {
-	rlm_couchbase_handle_t *handle = NULL; /* connection pool handle */
+	rlm_couchbase_handle_t *handle = NULL;                   /* connection pool handle */
 	char vpath[256], vid[MAX_KEY_SIZE], vkey[MAX_KEY_SIZE];  /* view path and fields */
 	char error[512];                                         /* view error return */
 	int idx = 0;                                             /* row array index counter */
 	int retval = 0;                                          /* return value */
-	lcb_error_t cb_error = LCB_SUCCESS;                      /* couchbase error holder */
-	json_object *json, *j_value;                                /* json object holders */
+	lcb_STATUS cb_error = LCB_SUCCESS;                       /* couchbase error holder */
+	lcb_INSTANCE *cb_inst;
+	json_object *json, *j_value;                             /* json object holders */
 	json_object *jrows = NULL;                               /* json object to hold view rows */
 	CONF_SECTION *client;                                    /* freeradius config list */
 	RADCLIENT *c;                                            /* freeradius client */
+	cookie_t *cookie;
+	char client_key[64];
+	uint16_t client_count = 1;
 
 	/* get handle */
 	handle = fr_pool_connection_get(inst->pool, NULL);
@@ -725,10 +728,10 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	if (!handle) return -1;
 
 	/* set couchbase instance */
-	lcb_t cb_inst = handle->handle;
+	cb_inst = handle->handle;
 
 	/* set cookie */
-	cookie_t *cookie = handle->cookie;
+	cookie = handle->cookie;
 
 	/* build view path */
 	snprintf(vpath, sizeof(vpath), "%s?stale=false", inst->client_view);
@@ -740,8 +743,10 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	if (cb_error != LCB_SUCCESS || cookie->jerr != json_tokener_success || !cookie->jobj) {
 		/* log error */
 		ERROR("failed to execute view request or parse return");
+
 		/* set return */
 		retval = -1;
+
 		/* return */
 		goto free_and_return;
 	}
@@ -753,6 +758,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	if (json_object_object_get_ex(cookie->jobj, "error", &json)) {
 		/* build initial error buffer */
 		strlcpy(error, json_object_get_string(json), sizeof(error));
+
 		/* get error reason */
 		if (json_object_object_get_ex(cookie->jobj, "reason", &json)) {
 			/* append divider */
@@ -760,10 +766,13 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 			/* append reason */
 			strlcat(error, json_object_get_string(json), sizeof(error));
 		}
+
 		/* log error */
 		ERROR("view request failed with error: %s", error);
+
 		/* set return */
 		retval = -1;
+
 		/* return */
 		goto free_and_return;
 	}
@@ -772,8 +781,10 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	if (!json_object_object_get_ex(cookie->jobj, "rows", &json)) {
 		/* log error */
 		ERROR("failed to fetch rows from view payload");
+
 		/* set return */
 		retval = -1;
+
 		/* return */
 		goto free_and_return;
 	}
@@ -794,8 +805,10 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	if (!json_object_is_type(jrows, json_type_array) || json_object_array_length(jrows) < 1) {
 		/* log error */
 		ERROR("no valid rows returned from view: %s", vpath);
+
 		/* set return */
 		retval = -1;
+
 		/* return */
 		goto free_and_return;
 	}
@@ -809,6 +822,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 		if (json_object_object_get_ex(json, "id", &j_value)) {
 			/* clear view id */
 			memset(vid, 0, sizeof(vid));
+
 			/* copy and check length */
 			if (strlcpy(vid, json_object_get_string(j_value), sizeof(vid)) >= sizeof(vid)) {
 				ERROR("id from row longer than MAX_KEY_SIZE (%d)",
@@ -824,6 +838,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 		if (json_object_object_get_ex(json, "key", &j_value)) {
 			/* clear view key */
 			memset(vkey, 0, sizeof(vkey));
+
 			/* copy and check length */
 			if (strlcpy(vkey, json_object_get_string(j_value), sizeof(vkey)) >= sizeof(vkey)) {
 				ERROR("key from row longer than MAX_KEY_SIZE (%d)",
@@ -842,8 +857,10 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 		if (cb_error != LCB_SUCCESS || cookie->jerr != json_tokener_success || !cookie->jobj) {
 			/* log error */
 			ERROR("failed to execute get request or parse return");
+
 			/* set return */
 			retval = -1;
+
 			/* return */
 			goto free_and_return;
 		}
@@ -852,14 +869,17 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 		DEBUG3("cookie->jobj == %s", json_object_to_json_string(cookie->jobj));
 
 		/* allocate conf list */
-		client = tmpl ? cf_section_dup(NULL, NULL, tmpl, "client", vkey, true) :
-				cf_section_alloc(NULL, NULL, "client", vkey);
+		snprintf(client_key, sizeof(client_key), "couchbase%03d_%s", client_count++, vkey);
+		client = tmpl ? cf_section_dup(NULL, NULL, tmpl, "client", client_key, true) :
+				cf_section_alloc(NULL, NULL, "client", client_key);
 
 		if (client_map_section(client, map, _get_client_value, cookie->jobj) < 0) {
 			/* free config setion */
 			talloc_free(client);
+
 			/* set return */
 			retval = -1;
+
 			/* return */
 			goto free_and_return;
 		}
@@ -870,10 +890,13 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 		c = client_afrom_cs(NULL, client, false);
 		if (!c) {
 			ERROR("failed to allocate client");
+
 			/* free config setion */
 			talloc_free(client);
+
 			/* set return */
 			retval = -1;
+
 			/* return */
 			goto free_and_return;
 		}
@@ -886,10 +909,13 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 		/* attempt to add client */
 		if (!client_add(NULL, c)) {
 			ERROR("failed to add client '%s' from '%s', possible duplicate?", vkey, vid);
+
 			/* free client */
 			client_free(c);
+
 			/* set return */
 			retval = -1;
+
 			/* return */
 			goto free_and_return;
 		}
@@ -904,7 +930,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 		}
 	}
 
-	free_and_return:
+free_and_return:
 
 	/* free rows */
 	if (jrows) {

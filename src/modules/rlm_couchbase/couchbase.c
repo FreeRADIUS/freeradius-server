@@ -21,80 +21,95 @@
  * @file couchbase.c
  *
  * @author Aaron Hurt (ahurt@anbcs.com)
- * @copyright 2013-2014 The FreeRADIUS Server Project.
+ * @copyright 2013-2022 The FreeRADIUS Server Project.
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "couchbase"
+#define LOG_PREFIX "couchbase - "
+
+#include <freeradius-devel/util/version.h>
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/json/base.h>
 
 #include "couchbase.h"
 
-/** Couchbase callback for cluster statistics requests
+/** Couchbase callback for cluster statistics requests.
  *
- * @param instance Couchbase connection instance.
- * @param cookie   Couchbase cookie for returning information from callbacks.
- * @param error    Couchbase error object.
- * @param resp     Couchbase statistics response object.
+ * @param instance  Couchbase connection instance.
+ * @param cbtype    Couchbase callback type.
+ * @param rb        Couchbase response base.
  */
-void couchbase_stat_callback(lcb_t instance, const void *cookie, lcb_error_t error, const lcb_server_stat_resp_t *resp)
+#if 0
+void couchbase_stats_callback(UNUSED lcb_INSTANCE *instance, UNUSED int cbtype, const lcb_RESPBASE *rb)
 {
-	if (error != LCB_SUCCESS) {
+	const lcb_RESPSTATS *resp = (const lcb_RESPSTATS *)rb;
+	lcb_STATUS rc = lcb_respstats_status(resp);
+
+	if (rc != LCB_SUCCESS) {
 		/* log error */
-		ERROR("(stats_callback) %s (0x%x)", lcb_strerror(instance, error), error);
+		ERROR("(stats_callback) %s (0x%x)", lcb_strerror_long(rc), rc);
 	}
-	/* silent compiler */
-	(void)cookie;
-	(void)resp;
 }
+#endif
 
 /** Couchbase callback for store (write) operations
  *
  * @param instance  Couchbase connection instance.
- * @param cookie    Couchbase cookie for returning information from callbacks.
- * @param operation Couchbase storage operation object.
- * @param error     Couchbase error object.
- * @param resp      Couchbase store operation response object.
+ * @param cbtype    Couchbase callback type.
+ * @param rb        Couchbase response base.
  */
-void couchbase_store_callback(lcb_t instance, const void *cookie, lcb_storage_t operation,
-			      lcb_error_t error, const lcb_store_resp_t *resp)
+void couchbase_store_callback(UNUSED lcb_INSTANCE *instance, UNUSED int cbtype, const lcb_RESPBASE *rb)
 {
-	if (error != LCB_SUCCESS) {
+	const lcb_RESPSTORE *resp = (const lcb_RESPSTORE *)rb;
+	lcb_STATUS rc = lcb_respstore_status(resp);
+
+	if (rc != LCB_SUCCESS) {
 		/* log error */
-		ERROR("(store_callback) %s (0x%x)", lcb_strerror(instance, error), error);
+		ERROR("(store_callback) %s (0x%x)", lcb_strerror_long(rc), rc);
 	}
-	/* silent compiler */
-	(void)cookie;
-	(void)operation;
-	(void)resp;
 }
 
 /** Couchbase callback for get (read) operations
  *
- * @param instance Couchbase connection instance.
- * @param cookie   Couchbase cookie for returning information from callbacks.
- * @param error    Couchbase error object.
- * @param resp     Couchbase get operation response object.
+ * @param instance  Couchbase connection instance.
+ * @param cbtype    Couchbase callback type.
+ * @param rb        Couchbase response base.
  */
-void couchbase_get_callback(lcb_t instance, const void *cookie, lcb_error_t error, const lcb_get_resp_t *resp)
+void couchbase_get_callback(UNUSED lcb_INSTANCE *instance, UNUSED int cbtype, const lcb_RESPBASE *rb)
 {
-	cookie_u cu;                            /* union of const and non const pointers */
-	cu.cdata = cookie;                      /* set const union member to cookie passed from couchbase */
-	cookie_t *c = (cookie_t *) cu.data;     /* set our cookie struct using non-const member */
-	const char *bytes = resp->v.v0.bytes;   /* the payload of this chunk */
-	lcb_size_t nbytes = resp->v.v0.nbytes;  /* length of this data chunk */
+	const lcb_RESPGET *resp = (const lcb_RESPGET *)rb;
+	lcb_STATUS rc = lcb_respget_status(resp);
 
 	/* check error */
-	switch (error) {
+	switch (rc) {
 	case LCB_SUCCESS:
+	{
+		const char *bytes;
+		size_t nbytes;
+		cookie_u cu;                           /* union of const and non const pointers */
+		cookie_t *c;                           /* set our cookie struct using non-const member */
+		uint8_t datatype;
+
+		lcb_respget_datatype(resp, &datatype);
+		if (!(datatype & LCB_VALUE_F_JSON)) {
+			ERROR("(get_callback) object must be JSON");
+			return;
+		}
+
 		/* check for valid bytes */
+		lcb_respget_value(resp, &bytes, &nbytes);
+
 		if (bytes && nbytes > 1) {
 			/* debug */
 			DEBUG("(get_callback) got %zu bytes", nbytes);
+
+			lcb_respget_cookie(resp, &cu.data);
+			c = (cookie_t *)cu.data;           /* set our cookie struct using non-const member */
+
 			/* parse string to json object */
 			c->jobj = json_tokener_parse_ex(c->jtok, bytes, nbytes);
+
 			/* switch on tokener error */
 			switch ((c->jerr = json_tokener_get_error(c->jtok))) {
 			case json_tokener_continue:
@@ -114,45 +129,59 @@ void couchbase_get_callback(lcb_t instance, const void *cookie, lcb_error_t erro
 			}
 		}
 		break;
+	}
 
-	case LCB_KEY_ENOENT:
+	case LCB_ERR_DOCUMENT_NOT_FOUND:
 		/* ignored */
 		DEBUG("(get_callback) key does not exist");
 		break;
 
 	default:
 		/* log error */
-		ERROR("(get_callback) %s (0x%x)", lcb_strerror(instance, error), error);
+		ERROR("(get_callback) %s (0x%x)", lcb_strerror_long(rc), rc);
 		break;
 	}
 }
 
 /** Couchbase callback for http (view) operations
  *
- * @param request  Couchbase http request object.
- * @param instance Couchbase connection instance.
- * @param cookie   Couchbase cookie for returning information from callbacks.
- * @param error    Couchbase error object.
- * @param resp     Couchbase http response object.
+ * @param instance  Couchbase connection instance.
+ * @param cbtype    Couchbase callback type.
+ * @param rb        Couchbase response base.
  */
-void couchbase_http_data_callback(lcb_http_request_t request, lcb_t instance, const void *cookie,
-				  lcb_error_t error, const lcb_http_resp_t *resp)
+void couchbase_http_data_callback(UNUSED lcb_INSTANCE *instance, UNUSED int cbtype, const lcb_RESPBASE *rb)
 {
-	cookie_u cu;                            /* union of const and non const pointers */
-	cu.cdata = cookie;                      /* set const union member to cookie passed from couchbase */
-	cookie_t *c = (cookie_t *) cu.data;     /* set our cookie struct using non-const member */
-	const char *bytes = resp->v.v0.bytes;   /* the payload of this chunk */
-	lcb_size_t nbytes = resp->v.v0.nbytes;  /* length of this data chunk */
+	const lcb_RESPHTTP *resp = (const lcb_RESPHTTP *)rb;
+	lcb_STATUS rc = lcb_resphttp_status(resp);
 
 	/* check error */
-	switch (error) {
+	switch (rc) {
 	case LCB_SUCCESS:
+	{
+		char const *bytes;
+		size_t nbytes;
+		uint16_t http_status = 0;
+
+		/* debug */
+		lcb_resphttp_http_status(resp, &http_status);
+
+		DEBUG("(http_data_callback) Got HTTP Status: %d", http_status);
+
 		/* check for valid bytes */
+		lcb_resphttp_body(resp, &bytes, &nbytes);
 		if (bytes && nbytes > 1) {
+			cookie_u cu;     /* union of const and non const pointers */
+			cookie_t *c;     /* set our cookie struct using non-const member */
+
 			/* debug */
-			DEBUG("(http_data_callback) got %zu bytes", nbytes);
+			DEBUG("(http_data_callback) Got %zu bytes", nbytes);
+
+			lcb_resphttp_cookie(resp, &cu.data);
+			c = (cookie_t *)cu.data;
+
 			/* parse string to json object */
 			c->jobj = json_tokener_parse_ex(c->jtok, bytes, nbytes);
+
 			/* switch on tokener error */
 			switch ((c->jerr = json_tokener_get_error(c->jtok))) {
 			case json_tokener_continue:
@@ -169,14 +198,13 @@ void couchbase_http_data_callback(lcb_http_request_t request, lcb_t instance, co
 			}
 		}
 		break;
+	}
 
 	default:
 		/* log error */
-		ERROR("(http_data_callback) %s (0x%x)", lcb_strerror(instance, error), error);
+		ERROR("(http_data_callback) %s (0x%x)", lcb_strerror_long(rc), rc);
 		break;
 	}
-	/* silent compiler */
-	(void)request;
 }
 
 /** Initialize a Couchbase connection instance
@@ -193,52 +221,104 @@ void couchbase_http_data_callback(lcb_http_request_t request, lcb_t instance, co
  * @param opts       Extra options to configure the libcouchbase.
  * @return           Couchbase error object.
  */
-lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const char *bucket, const char *user, const char *pass,
-				      lcb_uint32_t timeout, const couchbase_opts_t *opts)
+lcb_STATUS couchbase_init_connection(lcb_INSTANCE **instance, const char *host, const char *bucket, const char *user, const char *pass,
+				      int64_t timeout, const couchbase_opts_t *opts)
 {
-	lcb_error_t error;                      /* couchbase command return */
-	struct lcb_create_st options;           /* init create struct */
+	lcb_INSTANCE *cb_inst;
+	lcb_CREATEOPTS *options = NULL;  /* init create struct */
+	lcb_STATUS rc;                  /* couchbase command return */
+	char str_timeout[10];
+	char str_client[64];
 
-	/* init options */
-	memset(&options, 0, sizeof(options));
+	snprintf(str_timeout, sizeof(str_timeout), "%lld", timeout);
+	snprintf(str_client, sizeof(str_client), "(FreeRADIUS/%s%s%s)", RADIUSD_VERSION_STRING,
+			RADIUSD_VERSION_RELEASE_STRING, RADIUSD_VERSION_COMMIT_STRING);
 
 	/* assign couchbase create options */
-	options.v.v0.host = host;
-	options.v.v0.bucket = bucket;
-	options.v.v0.user = user;
-	options.v.v0.passwd = pass;
+	rc = lcb_createopts_create(&options, LCB_TYPE_BUCKET);
+	if (rc != LCB_SUCCESS) {
+		ERROR("Failed to call lcb_createopts_create()");
+		return rc;
+	}
+
+	rc = lcb_createopts_connstr(options, host, strlen(host));
+	if (rc != LCB_SUCCESS) {
+		ERROR("Failed to call lcb_createopts_connstr() using host '%s'", host);
+	err1:
+		lcb_createopts_destroy(options);
+		return rc;
+	}
+
+	rc = lcb_createopts_bucket(options, bucket, strlen(bucket));
+	if (rc != LCB_SUCCESS) {
+		ERROR("Failed to call lcb_createopts_bucket() using bucket '%s'", bucket);
+		goto err1;
+	}
+
+	rc = lcb_createopts_credentials(options, user, strlen(user), pass, strlen(pass));
+	if (rc != LCB_SUCCESS) {
+		ERROR("Failed to call lcb_createopts_credentials() using user '%s' and pass '%s'", user, pass);
+		goto err1;
+	}
 
 	/* create couchbase connection instance */
-	error = lcb_create(instance, &options);
-	if (error != LCB_SUCCESS) return error;
+	rc = lcb_create(&cb_inst, options);
+	lcb_createopts_destroy(options);
+	if (rc != LCB_SUCCESS) return rc;
 
-	error = lcb_cntl(*instance, LCB_CNTL_SET, LCB_CNTL_CONFIGURATION_TIMEOUT, &timeout);
-	if (error != LCB_SUCCESS) return error;
+	rc = lcb_cntl_string(cb_inst, "client_string", str_client);
+	if (rc != LCB_SUCCESS) {
+	err2:
+		lcb_destroy(cb_inst);
+		return rc;
+	}
+
+	rc = lcb_cntl_string(cb_inst, "operation_timeout", str_timeout);
+	if (rc != LCB_SUCCESS) {
+		ERROR("Failed to set timeout '%s'", str_timeout);
+		goto err2;
+	}
 
 	/* Couchbase extra api settings */
 	if (opts != NULL) {
 		const couchbase_opts_t *o = opts;
 
 		for (; o != NULL; o = o->next) {
-			error = lcb_cntl_string(*instance, o->key, o->val);
-			if (error != LCB_SUCCESS) {
+			rc = lcb_cntl_string(cb_inst, o->key, o->val);
+			if (rc != LCB_SUCCESS) {
 				ERROR("Failed to configure the couchbase with %s=%s", o->key, o->val);
-				return error;
+				goto err2;
 			}
 		}
 	}
 
 	/* initiate connection */
-	error = lcb_connect(*instance);
-	if (error != LCB_SUCCESS) return error;
+	rc = lcb_connect(cb_inst);
+	if (rc != LCB_SUCCESS) {
+		ERROR("Failed to call lcb_wait()");
+		goto err2;
+	}
+
+	/* wait on connection */
+	rc = lcb_wait(cb_inst, LCB_WAIT_DEFAULT);
+	if (rc != LCB_SUCCESS) {
+		ERROR("Failed to call lcb_wait()");
+		goto err2;
+	}
+
+	rc = lcb_get_bootstrap_status(cb_inst);
+	if (rc != LCB_SUCCESS) {
+		ERROR("Unable to bootstrap cluster: %s", lcb_strerror_short(rc));
+		goto err2;
+	}
 
 	/* set general method callbacks */
-	lcb_set_stat_callback(*instance, couchbase_stat_callback);
-	lcb_set_store_callback(*instance, couchbase_store_callback);
-	lcb_set_get_callback(*instance, couchbase_get_callback);
-	lcb_set_http_data_callback(*instance, couchbase_http_data_callback);
-	/* wait on connection */
-	lcb_wait(*instance);
+	// lcb_install_callback(cb_inst, LCB_CALLBACK_STATS, couchbase_stats_callback);
+	lcb_install_callback(cb_inst, LCB_CALLBACK_STORE, couchbase_store_callback);
+	lcb_install_callback(cb_inst, LCB_CALLBACK_GET, couchbase_get_callback);
+	lcb_install_callback(cb_inst, LCB_CALLBACK_HTTP, couchbase_http_data_callback);
+
+	*instance = cb_inst;
 
 	return LCB_SUCCESS;
 }
@@ -251,9 +331,13 @@ lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const c
  * @param  cookie   Couchbase cookie for returning information from callbacks.
  * @return          Couchbase error object.
  */
-lcb_error_t couchbase_server_stats(lcb_t instance, const void *cookie)
+lcb_STATUS couchbase_server_stats(lcb_INSTANCE *instance, const void *cookie)
 {
-	lcb_error_t error;                         /* couchbase command return */
+	/*
+	 * the 'stats' calls was removed from libcouchbase 3.3.0, let's see further versions.
+	 */
+#if 0
+	lcb_STATUS rc;                             /* couchbase command return */
 	lcb_server_stats_cmd_t cmd;                /* server stats command stuct */
 	const lcb_server_stats_cmd_t *commands[1]; /* server stats commands array */
 
@@ -266,13 +350,18 @@ lcb_error_t couchbase_server_stats(lcb_t instance, const void *cookie)
 	cmd.v.v0.nname = strlen(cmd.v.v0.name);
 
 	/* get statistics */
-	if ((error = lcb_server_stats(instance, cookie, 1, commands)) == LCB_SUCCESS) {
+	if ((rc = lcb_server_stats(instance, cookie, 1, commands)) == LCB_SUCCESS) {
 		/* enter event look on success */
 		lcb_wait(instance);
 	}
 
 	/* return error */
-	return error;
+	return rc;
+#else
+	(void)cookie;
+	(void)instance;
+	return LCB_SUCCESS;
+#endif
 }
 
 /** Store a document by key in Couchbase
@@ -285,32 +374,29 @@ lcb_error_t couchbase_server_stats(lcb_t instance, const void *cookie)
  * @param  expire   Expiration time for the document (0 = never)
  * @return          Couchbase error object.
  */
-lcb_error_t couchbase_set_key(lcb_t instance, const char *key, const char *document, int expire)
+lcb_STATUS couchbase_store_key(lcb_INSTANCE *instance, const char *key, const char *document, int expire)
 {
-	lcb_error_t error;                  /* couchbase command return */
-	lcb_store_cmd_t cmd;                /* store command stuct */
-	const lcb_store_cmd_t *commands[1]; /* store commands array */
+	lcb_STATUS rc;                      /* couchbase command return */
+	lcb_CMDSTORE *cmd;                  /* store command stuct */
 
 	/* init commands */
-	commands[0] = &cmd;
-	memset(&cmd, 0, sizeof(cmd));
+	lcb_cmdstore_create(&cmd, LCB_STORE_UPSERT);
 
 	/* populate command struct */
-	cmd.v.v0.key = key;
-	cmd.v.v0.nkey = strlen(cmd.v.v0.key);
-	cmd.v.v0.bytes = document;
-	cmd.v.v0.nbytes = strlen(cmd.v.v0.bytes);
-	cmd.v.v0.exptime = expire;
-	cmd.v.v0.operation = LCB_SET;
+	lcb_cmdstore_key(cmd, key, strlen(key));
+	lcb_cmdstore_value(cmd, document, strlen(document));
+	lcb_cmdstore_expiry(cmd, expire);
 
 	/* store key/document in couchbase */
-	if ((error = lcb_store(instance, NULL, 1, commands)) == LCB_SUCCESS) {
+	if ((rc = lcb_store(instance, NULL, cmd)) == LCB_SUCCESS) {
 		/* enter event loop on success */
-		lcb_wait(instance);
+		lcb_wait(instance, LCB_WAIT_DEFAULT);
 	}
 
 	/* return error */
-	return error;
+	lcb_cmdstore_destroy(cmd);
+
+	return rc;
 }
 
 /** Retrieve a document by key from Couchbase
@@ -322,22 +408,19 @@ lcb_error_t couchbase_set_key(lcb_t instance, const char *key, const char *docum
  * @param  key      Document key to fetch.
  * @return          Couchbase error object.
  */
-lcb_error_t couchbase_get_key(lcb_t instance, const void *cookie, const char *key)
+lcb_STATUS couchbase_get_key(lcb_INSTANCE *instance, const void *cookie, const char *key)
 {
 	cookie_u cu;                         /* union of const and non const pointers */
 	cu.cdata = cookie;                   /* set const union member to cookie passed from couchbase */
 	cookie_t *c = (cookie_t *) cu.data;  /* set our cookie struct using non-const member */
-	lcb_error_t error;                   /* couchbase command return */
-	lcb_get_cmd_t cmd;                   /* get command struct */
-	const lcb_get_cmd_t *commands[1];    /* get commands array */
+	lcb_STATUS rc;                   /* couchbase command return */
+	lcb_CMDGET *cmd;                   /* get command struct */
 
 	/* init commands */
-	commands[0] = &cmd;
-	memset(&cmd, 0, sizeof(cmd));
+	lcb_cmdget_create(&cmd);
 
 	/* populate command struct */
-	cmd.v.v0.key = key;
-	cmd.v.v0.nkey = strlen(cmd.v.v0.key);
+ 	lcb_cmdget_key(cmd, key, strlen(key));
 
 	/* clear cookie */
 	memset(c, 0, sizeof(cookie_t));
@@ -352,16 +435,18 @@ lcb_error_t couchbase_get_key(lcb_t instance, const void *cookie, const char *ke
 	DEBUG3("fetching document %s", key);
 
 	/* get document */
-	if ((error = lcb_get(instance, c, 1, commands)) == LCB_SUCCESS) {
+	if ((rc = lcb_get(instance, c, cmd)) == LCB_SUCCESS) {
 		/* enter event loop on success */
-		lcb_wait(instance);
+		lcb_wait(instance, LCB_WAIT_DEFAULT);
 	}
 
 	/* free token */
 	json_tokener_free(c->jtok);
 
+	lcb_cmdget_destroy(cmd);
+
 	/* return error */
-	return error;
+	return rc;
 }
 
 /** Query a Couchbase design document view
@@ -374,26 +459,29 @@ lcb_error_t couchbase_get_key(lcb_t instance, const void *cookie, const char *ke
  * @param  post     The post payload (NULL for none).
  * @return          Couchbase error object.
  */
-lcb_error_t couchbase_query_view(lcb_t instance, const void *cookie, const char *path, const char *post)
+lcb_STATUS couchbase_query_view(lcb_INSTANCE *instance, const void *cookie, const char *path, const char *post)
 {
 	cookie_u cu;                         /* union of const and non const pointers */
 	cu.cdata = cookie;                   /* set const union member to cookie passed from couchbase */
 	cookie_t *c = (cookie_t *) cu.data;  /* set our cookie struct using non-const member */
-	lcb_error_t error;                   /* couchbase command return */
-	lcb_http_cmd_t cmd;                  /* http command struct */
-	const lcb_http_cmd_t *commands;      /* http commands array */
-
-	commands = &cmd;
-	memset(&cmd, 0, sizeof(cmd));
+	lcb_STATUS rc;                       /* couchbase command return */
+	lcb_CMDHTTP *cmd;                    /* http command struct */
+	lcb_HTTP_METHOD method = LCB_HTTP_METHOD_GET;
+	char const *content_type = "application/json";
 
 	/* populate command struct */
-	cmd.v.v0.path = path;
-	cmd.v.v0.npath = strlen(cmd.v.v0.path);
-	cmd.v.v0.body = post;
-	cmd.v.v0.nbody = post ? strlen(post) : 0;
-	cmd.v.v0.method = post ? LCB_HTTP_METHOD_POST : LCB_HTTP_METHOD_GET;
-	cmd.v.v0.chunked = 1;
-	cmd.v.v0.content_type = "application/json";
+	lcb_cmdhttp_create(&cmd, LCB_HTTP_TYPE_VIEW);
+
+	lcb_cmdhttp_path(cmd, path, strlen(path));
+
+	if (post) {
+		method = LCB_HTTP_METHOD_POST;
+		lcb_cmdhttp_body(cmd, post, strlen(post));
+	}
+
+	lcb_cmdhttp_method(cmd, method);
+	lcb_cmdhttp_streaming(cmd, true);
+	lcb_cmdhttp_content_type(cmd, content_type, strlen(content_type));
 
 	/* clear cookie */
 	memset(c, 0, sizeof(cookie_t));
@@ -408,14 +496,16 @@ lcb_error_t couchbase_query_view(lcb_t instance, const void *cookie, const char 
 	DEBUG3("fetching view %s", path);
 
 	/* query the view */
-	if ((error = lcb_make_http_request(instance, c, LCB_HTTP_TYPE_VIEW, commands, NULL)) == LCB_SUCCESS) {
+	if ((rc = lcb_http(instance, c, cmd)) == LCB_SUCCESS) {
 		/* enter event loop on success */
-		lcb_wait(instance);
+		lcb_wait(instance, LCB_WAIT_DEFAULT);
 	}
 
 	/* free token */
 	json_tokener_free(c->jtok);
 
+	lcb_cmdhttp_destroy(cmd);
+
 	/* return error */
-	return error;
+	return rc;
 }

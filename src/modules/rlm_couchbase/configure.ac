@@ -25,7 +25,7 @@ if test x$with_[]modname != xno; then
 	libcouchbase_include_dir=
 	AC_ARG_WITH(libcouchbase-include-dir,
 		[AS_HELP_STRING([--with-libcouchbase-include-dir=DIR],
-		[Directory where the libcouchbase includes may be found])],
+		[Directory where the libcouchbase >= 3.3.x includes may be found])],
 		[case "$withval" in
 			no)
 				AC_MSG_ERROR(Need libcouchbase-include-dir)
@@ -41,7 +41,7 @@ if test x$with_[]modname != xno; then
 	libcouchbase_lib_dir=
 	AC_ARG_WITH(libcouchbase-lib-dir,
 	[AS_HELP_STRING([--with-libcouchbase-lib-dir=DIR],
-		[Directory where the libcouchbase libraries may be found])],
+		[Directory where the libcouchbase >= 3.3.x libraries may be found])],
 		[case "$withval" in
 			no)
 				AC_MSG_ERROR(Need libcouchbase-lib-dir)
@@ -56,7 +56,7 @@ if test x$with_[]modname != xno; then
 	dnl extra argument: --with-libcouchbase-dir=DIR
 	AC_ARG_WITH(libcouchbase-dir,
 	[AS_HELP_STRING([--with-libcouchbase-dir=DIR],
-		[Base directory where libcouchbase is installed])],
+		[Base directory where libcouchbase >= 3.3.x is installed])],
 		[case "$withval" in
 			no)
 				AC_MSG_ERROR(Need libcouchbase-dir)
@@ -78,7 +78,7 @@ if test x$with_[]modname != xno; then
 	FR_SMART_CHECK_INCLUDE([libcouchbase/couchbase.h])
 	if test "x$ac_cv_header_libcouchbase_couchbase_h" != "xyes"; then
 		have_couchbase="no"
-		AC_MSG_WARN([libcouchbase headers not found. Use --with-libcouchbase-include-dir=<path>.])
+		AC_MSG_WARN([libcouchbase >= 3.3.x headers not found. Use --with-libcouchbase-include-dir=<path>.])
 	fi
 
 	dnl ############################################################
@@ -95,6 +95,36 @@ if test x$with_[]modname != xno; then
 	if test x"$have_couchbase" != x"yes"; then
 		fail="$fail libcouchbase"
 	fi
+
+    dnl #
+    dnl #  Now check that the header versions match the library
+    dnl #
+    AC_MSG_CHECKING([libcouchbase 3.3.x library and header version consistency])
+    AC_RUN_IFELSE(
+      [AC_LANG_PROGRAM(
+        [[
+          #include <libcouchbase/couchbase.h>
+        ]],
+        [[
+          printf("library: %#lx ", (unsigned long) LCB_VERSION);
+          if (LCB_VERSION >= 0x030300) {
+            return 0;
+          } else {
+            return 1;
+          }
+        ]]
+      )],
+      [
+        AC_MSG_RESULT(yes)
+      ],
+      [
+        AC_MSG_RESULT(no)
+        AC_MSG_FAILURE([libcouchbase 3.3.x library version does not match header version])
+      ],
+      [
+        AC_MSG_RESULT([cross-compiling (assuming yes)])
+      ]
+    )
 
 	dnl ############################################################
 	dnl # Checks done - set targetname
