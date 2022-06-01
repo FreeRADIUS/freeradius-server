@@ -1777,6 +1777,7 @@ static xlat_action_t xlat_func_rpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (len >= pad_len) continue;
 
 		if (fr_value_box_bstr_realloc(in, &buff, in, pad_len) < 0) {
+		fail:
 			RPEDEBUG("Failed reallocing input data");
 			return XLAT_ACTION_FAIL;
 		}
@@ -1793,7 +1794,9 @@ static xlat_action_t xlat_func_rpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 		 *	Copy fill as a repeating pattern
 		 */
 		while ((remaining = fr_sbuff_remaining(&sbuff))) {
-			fr_sbuff_in_bstrncpy(&sbuff, fill_str, remaining >= fill_len ? fill_len : remaining);
+			if (fr_sbuff_in_bstrncpy(&sbuff, fill_str, remaining >= fill_len ? fill_len : remaining) < 0) {
+				goto fail;
+			}
 		}
 	}
 
