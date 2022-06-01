@@ -728,7 +728,7 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
 	int i, j;
 	int deleted = 0;
 	bool result;
-	xlat_logical_inst_t *inst = talloc_get_type_abort_const(instance, xlat_logical_inst_t);
+	xlat_logical_inst_t *inst = talloc_get_type_abort(instance, xlat_logical_inst_t);
 	xlat_exp_head_t *group;
 
 	fr_assert(node->type == XLAT_FUNC);
