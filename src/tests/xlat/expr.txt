@@ -61,3 +61,18 @@ match NULL
 xlat_expr 00:01:02:03:04:05 ^ 11:22:33:44:55:66
 match NULL
 #match ERROR expanding xlat: Cannot perform any operations for destination type ether
+
+#
+#  Execute external programs.
+#
+xlat_expr `/bin/echo foo %n`
+match foo 0
+
+#
+#  Linux has /bin/false, and /usr/bin/test
+#  OSX has /usr/bin/false, and /bin/test
+#
+#  However, they both have /bin/rm !
+#
+xlat_expr `/bin/rm this_file_should_not_exist_if_it_does_too_bad_for_you`
+match ERROR expanding xlat: Program failed with status 1

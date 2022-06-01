@@ -925,6 +925,28 @@ done:
 	return ret;
 }
 
+typedef struct {
+	int			status;
+	fr_value_box_list_t	list;
+} xlat_exec_rctx_t;
+
+static xlat_action_t xlat_exec_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+				      xlat_ctx_t const *xctx,
+				      UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	xlat_exec_rctx_t *rctx = talloc_get_type_abort(xctx->rctx, xlat_exec_rctx_t);
+
+	if (rctx->status != 0) {
+		fr_strerror_printf("Program failed with status %d", rctx->status);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_dlist_move(out->dlist, &rctx->list);
+
+	return XLAT_ACTION_DONE;
+}
+
+
 /** Signal an xlat function
  *
  * @param[in] signal		function to call.
@@ -956,7 +978,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     xlat_func_t resume, xlat_exp_t const *exp,
 				     request_t *request, fr_value_box_list_t *result, void *rctx)
 {
-	xlat_thread_inst_t	*t = xlat_thread_instance_find(exp);
+	xlat_thread_inst_t	*t;
 	xlat_action_t		xa;
 
 	/*
@@ -966,6 +988,11 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	and don't remove them from the list.
 	 */
 	VALUE_BOX_TALLOC_LIST_VERIFY(result);
+
+
+	if (exp->type != XLAT_FUNC) return resume(ctx, out, XLAT_CTX(NULL, NULL, NULL, rctx), request, result);
+
+	t = xlat_thread_instance_find(exp);
 	xa = resume(ctx, out, XLAT_CTX(exp->call.inst->data, t->data, t->mctx, rctx), request, result);
 	VALUE_BOX_TALLOC_LIST_VERIFY(result);
 
@@ -1150,6 +1177,16 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 		break;
 
+	case XLAT_TMPL:
+		fr_assert(tmpl_is_exec(node->vpt));
+
+		/*
+		 *	First entry is the command to run.  Subsequent entries are the options to pass to the
+		 *	command.
+		 */
+		fr_dlist_move(out->dlist, result);
+		break;
+
 	default:
 		fr_assert(0);
 		return XLAT_ACTION_FAIL;
@@ -1268,15 +1305,34 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 
 				if (xlat_eval_pair_real(ctx, &result, request, node->vpt) == XLAT_ACTION_FAIL) goto fail;
 
-			} else if (tmpl_is_xlat(node->vpt)) { /* should have been hoisted during the parse phase */
-				fr_assert(0);
+			} else if (tmpl_is_exec(node->vpt)) { /* exec only */
+				xlat_exec_rctx_t *rctx;
 
-			} else if (tmpl_contains_xlat(node->vpt)) { /* exec only */
-				fr_assert(0);
+				/*
+				 *
+				 */
+				MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_exec_rctx_t));
+				fr_value_box_list_init(&rctx->list);
+
+				xlat_debug_log_expansion(request, node, NULL);
+
+				if (unlang_xlat_yield(request, xlat_exec_resume, NULL, rctx) != XLAT_ACTION_YIELD) goto fail;
+
+				if (unlang_tmpl_push(ctx, &rctx->list, request, node->vpt,
+						     TMPL_ARGS_EXEC(NULL, fr_time_delta_from_sec(1), false, &rctx->status)) < 0) goto fail;
+
+				xa = XLAT_ACTION_PUSH_UNLANG;
+				goto finish;
 
 			} else {
+#ifdef NDEBUG
+				xa = XLAT_ACTION_FAIL;
+				goto finish;
+#endif
+
 				/*
-				 *	@todo - write code here!
+				 *	Either this should have been handled previously, or we need to write
+				 *	code to deal with this case.
 				 */
 				fr_assert(0);
 			}
