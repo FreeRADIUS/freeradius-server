@@ -539,7 +539,7 @@ static xlat_action_t xlat_regex_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   request_t *request, fr_value_box_list_t *in,
 				   fr_token_t op)
 {
-	xlat_regex_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_regex_inst_t);
+	xlat_regex_inst_t const	*inst = talloc_get_type_abort_const(xctx->inst, xlat_regex_inst_t);
 	xlat_regex_rctx_t	*rctx;
 	regex_t			*preg;
 	fr_value_box_t		*lhs;
