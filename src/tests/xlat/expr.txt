@@ -10,20 +10,13 @@ match 3
 xlat_expr (ipv4prefix) 192.168.0.0/16 + 4
 match 192.168.0.4
 
-#
-#  This crashes right now, because "foo" is marked up as needing xlat expansion.  it doesn't, but
-#  the rest of the code tries to bootstrap it, and unit_test_module doesn't do thread
-#  instantiation of xlats.
-#
-#  and if that's fixed, xlat_eval() needs to be fixed to handle this data type.
-#
-#xlat_expr "foo"
-#match "foo"
+# @todo - quotes?
+xlat_expr "foo"
+match foo
 
-#  This crashes, too.
-#
-#xlat_expr "foo" + "bar"
-#match "foobar"
+# @todo - quotes?
+xlat_expr "foo" + "bar"
+match foobar
 
 xlat_expr 0xabcdef + 0x1234
 match 0xabcdef1234
