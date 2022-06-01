@@ -331,9 +331,15 @@ XLAT_CMP_FUNC(cmp_gt,  T_OP_GT)
 XLAT_CMP_FUNC(cmp_ge,  T_OP_GE)
 
 typedef struct {
+	fr_token_t	op;
 	xlat_exp_t	*regex;		//!< precompiled regex
 	xlat_exp_t	*xlat;		//!< to expand
 } xlat_regex_inst_t;
+
+typedef struct {
+	bool			last_success;
+	fr_value_box_list_t	list;
+} xlat_regex_rctx_t;
 
 static fr_slen_t xlat_expr_print_regex(fr_sbuff_t *out, xlat_exp_t const *node, void *instance, fr_sbuff_escape_rules_t const *e_rules)
 {
@@ -394,6 +400,8 @@ static int xlat_instantiate_regex(xlat_inst_ctx_t const *xctx)
 	fr_assert(rhs->type == XLAT_GROUP);
 	regex = xlat_exp_head(rhs->group);
 
+	inst->op = xctx->ex->call.func->token;
+
 	/*
 	 *	The RHS is more then just one regex node, it has to be dynamically expanded.
 	 */
@@ -426,8 +434,8 @@ static int xlat_instantiate_regex(xlat_inst_ctx_t const *xctx)
 }
 
 static xlat_arg_parser_t const regex_op_xlat_args[] = {
-	{ .required = true, .type = FR_TYPE_STRING },
-	{ .required = true, .type = FR_TYPE_STRING },
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -495,12 +503,44 @@ static xlat_action_t xlat_regex_match(TALLOC_CTX *ctx, request_t *request, fr_va
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				       xlat_ctx_t const *xctx,
+				       request_t *request, fr_value_box_list_t *in)
+{
+	xlat_regex_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_regex_inst_t);
+	xlat_regex_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_regex_rctx_t);
+	ssize_t			slen;
+	fr_value_box_t		*lhs, *rhs;
+	regex_t			*preg = NULL;
+
+	/*
+	 *	If the expansions fails, then we fail the entire thing.
+	 */
+	if (!rctx->last_success) {
+		talloc_free(rctx);
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	LHS should already have been expanded.  RHS was just expanded by us.
+	 */
+	lhs = fr_dlist_head(in);
+	rhs = fr_dlist_head(&rctx->list);
+
+	slen = regex_compile(rctx, &preg, rhs->vb_strvalue, rhs->vb_length,
+			     NULL, true, true); /* no flags, allow subcaptures, at runtime */
+	if (slen <= 0) return XLAT_ACTION_FAIL;
+
+	return xlat_regex_match(ctx, request, lhs, &preg, out, inst->op);
+}
+
 static xlat_action_t xlat_regex_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   xlat_ctx_t const *xctx,
 				   request_t *request, fr_value_box_list_t *in,
 				   fr_token_t op)
 {
 	xlat_regex_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_regex_inst_t);
+	xlat_regex_rctx_t	*rctx;
 	regex_t			*preg;
 	fr_value_box_t		*lhs;
 
@@ -515,7 +555,19 @@ static xlat_action_t xlat_regex_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return xlat_regex_match(ctx, request, lhs, &preg, out, op);
 	}
 
-	return XLAT_ACTION_FAIL;
+	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_regex_rctx_t));
+	fr_value_box_list_init(&rctx->list);
+
+	if (unlang_xlat_yield(request, xlat_regex_resume, NULL, rctx) != XLAT_ACTION_YIELD) {
+	fail:
+		talloc_free(rctx);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (unlang_xlat_push(ctx, &rctx->last_success, &rctx->list,
+			     request, inst->xlat->group, UNLANG_SUB_FRAME) < 0) goto fail;
+
+	return XLAT_ACTION_PUSH_UNLANG;
 }
 
 #define XLAT_REGEX_FUNC(_name, _op)  \
@@ -1417,6 +1469,11 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	XLAT_DEBUG("FIELD <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
 	/*
+	 *	Regexes cannot have casts or subgroups.
+	 */
+	if (expect_regex && !fr_sbuff_is_char(&our_in, '/')) goto expected_regex_error;
+
+	/*
 	 *	Allow for explicit casts.  Non-leaf types are forbidden.
 	 */
 	if (expr_cast_from_substr(&our_t_rules.cast, &our_in) < 0) return -1;
@@ -1504,6 +1561,7 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	if (expect_regex) {
 		if (quote != T_SOLIDUS_QUOTED_STRING) {
 			fr_sbuff_advance(&our_in, -(slen + 1)); /* account for quote */
+		expected_regex_error:
 			fr_strerror_const("Expected regular expression");
 			goto error;
 		}

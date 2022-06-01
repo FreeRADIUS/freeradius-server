@@ -1,0 +1,77 @@
+proto-dictionary radius
+
+xlat_purify &User-Name !~ /^foo\nbar$/
+match (&User-Name !~ /^foo\nbar$/)
+
+xlat_purify &User-Name !~ /^foo\nbar$/i
+match (&User-Name !~ /^foo\nbar$/i)
+
+xlat_purify (&User-Name =~ "handled")
+match ERROR offset 15: Expected regular expression
+
+xlat_purify (&User-Name == /foo/)
+match ERROR offset 15: Unexpected regular expression
+
+# @todo - this should be allowed?
+xlat_purify &User-Name =~ &Filter-Id
+match ERROR offset 14: Expected regular expression
+
+xlat_expr &User-Name =~ (/foo/)
+match ERROR offset 14: Expected regular expression
+
+#
+#  Flags
+#
+xlat_purify &User-Name =~ /bar/i
+match (&User-Name =~ /bar/i)
+
+xlat_purify &User-Name =~ /bar/m
+match (&User-Name =~ /bar/m)
+
+xlat_purify &User-Name =~ /bar/im
+match (&User-Name =~ /bar/im)
+
+xlat_purify &User-Name =~ /bar/ima
+match ERROR offset 19: Unsupported regex flag 'a'
+
+xlat_purify &User-Name =~ /bar/ii
+match ERROR offset 19: Duplicate regex flag 'i'
+
+xlat_purify &User-Name =~ /bar/iia
+match ERROR offset 19: Duplicate regex flag 'i'
+
+#
+#  Escape the backslashes correctly
+#  And print them correctly
+#
+
+xlat_purify &User-Name =~ /@|./
+match (&User-Name =~ /@|./)
+
+xlat_purify &User-Name =~ /@|\\/
+match (&User-Name =~ /@|\\/)
+
+xlat_purify &User-Name =~ /^([^\\]*)\\(.*)$/
+match (&User-Name =~ /^([^\\]*)\\(.*)$/)
+
+xlat_purify &Tmp-Integer-0 =~ /%{Tmp-Integer-1} foo/
+match (&Tmp-Integer-0=~ /%{Request[0].Tmp-Integer-1} foo/)
+
+#
+#  If they're dumb enough to add a cast, then it will be just cast again
+#  to "string" before the regular expression is evaluated.
+#
+xlat_purify <integer>&Tmp-String-0 =~ /foo/
+match ((uint32)&Tmp-String-0 =~ /foo/)
+
+xlat_purify &Tmp-String-0 =~ <integer>/foo/
+match ERROR offset 17: Expected regular expression
+
+xlat_expr %{33}
+match ERROR offset 2: Invalid regex reference.  Must be in range 0-32
+
+xlat_purify &User-Name == /foo/
+match ERROR offset 14: Unexpected regular expression
+
+count
+match 41
