@@ -320,7 +320,7 @@ static int tmpl_arr_to_header(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struct 
 	/* Initialize the buffer for the recipients. Used for TO */
 	fr_sbuff_init_talloc(uctx, &sbuff, &sbuff_ctx, 256, SIZE_MAX);
 	/* Add the preposition for the header element */
-	fr_sbuff_in_strcpy(&sbuff, preposition);
+	(void) fr_sbuff_in_strcpy(&sbuff, preposition);
 
 	talloc_foreach(tmpl, vpt) {
 		/* If there have already been elements added, keep them comma separated */
@@ -482,7 +482,7 @@ static int generate_from_header(rlm_smtp_thread_t *t, fr_mail_ctx_t *uctx, struc
 	fr_sbuff_init_talloc(uctx, &sbuff, &sbuff_ctx, 256, SIZE_MAX);
 
 	/* Add the preposition for the header element */
-	fr_sbuff_in_strcpy(&sbuff, from);
+	(void) fr_sbuff_in_strcpy(&sbuff, from);
 
 	/* Copy the envelope address as the FROM: source */
 	fr_sbuff_in_bstrncpy(&sbuff, inst->envelope_address, strlen(inst->envelope_address));

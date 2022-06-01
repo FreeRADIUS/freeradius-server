@@ -1873,7 +1873,10 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		break;
 
 	case TMPL_ATTR_REF_PREFIX_AUTO:
-		fr_sbuff_next_if_char(&our_name, '&');
+		/*
+		 *	'&' prefix can be there, but doesn't have to be
+		 */
+		(void) fr_sbuff_next_if_char(&our_name, '&');
 		break;
 	}
 

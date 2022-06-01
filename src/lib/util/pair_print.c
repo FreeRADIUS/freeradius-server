@@ -133,7 +133,7 @@ void fr_pair_fprint(FILE *fp, fr_pair_t const *vp)
 
 	PAIR_VERIFY(vp);
 
-	fr_sbuff_in_char(&sbuff, '\t');
+	(void) fr_sbuff_in_char(&sbuff, '\t');
 	fr_pair_print(&sbuff, NULL, vp);
 	fr_sbuff_in_char(&sbuff, '\n');
 
@@ -151,7 +151,7 @@ static void fr_pair_list_log_sbuff(fr_log_t const *log, int lvl, fr_pair_t *pare
 
 		fr_sbuff_set_to_start(sbuff);
 
-		if (vp->da->flags.is_raw) fr_sbuff_in_strcpy(sbuff, "raw.");
+		if (vp->da->flags.is_raw) (void) fr_sbuff_in_strcpy(sbuff, "raw.");
 
 		if (parent && (parent->da->type != FR_TYPE_GROUP)) parent_da = parent->da;
 		if (fr_dict_attr_oid_print(sbuff, parent_da, vp->da, false) <= 0) return;
