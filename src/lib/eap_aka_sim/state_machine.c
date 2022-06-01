@@ -722,7 +722,7 @@ RESUME(store_pseudonym)
 
 			fr_value_box_bstrdup_buffer_shallow(NULL, &vp->data, NULL, identity, false);
 		}
-		pair_update_request(&new, attr_session_id);
+		MEM(pair_update_request(&new, attr_session_id) >= 0);
 		fr_pair_value_memdup(new, (uint8_t const *)vp->vp_strvalue, vp->vp_length, vp->vp_tainted);
 
 		MEM(eap_aka_sim_session->fastauth_sent = talloc_bstrndup(eap_aka_sim_session,
@@ -852,7 +852,7 @@ static unlang_action_t session_and_pseudonym_store(rlm_rcode_t *p_result, module
 			identity[talloc_array_length(identity) - 1] = '\0';
 			fr_value_box_bstrdup_buffer_shallow(NULL, &vp->data, NULL, identity, false);
 		}
-		pair_update_request(&new, attr_eap_aka_sim_next_pseudonym);
+		MEM(pair_update_request(&new, attr_eap_aka_sim_next_pseudonym) >= 0);
 		fr_pair_value_copy(new, vp);
 
 		MEM(eap_aka_sim_session->pseudonym_sent = talloc_bstrndup(eap_aka_sim_session,

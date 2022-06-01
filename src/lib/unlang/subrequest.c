@@ -109,7 +109,7 @@ static unlang_action_t unlang_subrequest_parent_resume(rlm_rcode_t *p_result, re
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 		while ((extent = fr_dlist_tail(&leaf))) {
-			fr_pair_list_copy(extent->list_ctx, extent->list, &child->reply_pairs);
+			MEM(fr_pair_list_copy(extent->list_ctx, extent->list, &child->reply_pairs) >= 0);
 			fr_dlist_talloc_free_tail(&leaf);
 		}
 	}
