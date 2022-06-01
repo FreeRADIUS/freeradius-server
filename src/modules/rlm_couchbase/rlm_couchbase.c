@@ -21,12 +21,11 @@
  * @file rlm_couchbase.c
  *
  * @author Aaron Hurt (ahurt@anbcs.com)
- * @copyright 2013-2014 The FreeRADIUS Server Project.
+ * @copyright 2013-2022 The FreeRADIUS Server Project.
  */
-
 RCSID("$Id$")
 
-#define LOG_PREFIX "couchbase - "
+#define LOG_PREFIX "couchbase"
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/map.h>
@@ -38,11 +37,15 @@ RCSID("$Id$")
 #include "mod.h"
 #include "couchbase.h"
 
+#if ! LCB_VERSION >= 0x030300
+    #error "The rlm_couchbase only supports libcouchbase3 >= 3.3.x"
+#endif
+
 /**
  * Client Configuration
  */
 static const CONF_PARSER client_config[] = {
-	{ FR_CONF_OFFSET("view", FR_TYPE_STRING, rlm_couchbase_t, client_view), .dflt = "_design/client/_view/by_name" },
+	{ FR_CONF_OFFSET("view", FR_TYPE_STRING, rlm_couchbase_t, client_view), .dflt = "_design/client/_view/by_id" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -102,12 +105,17 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 	rlm_couchbase_handle_t	*handle = NULL;			/* connection pool handle */
 	char			buffer[MAX_KEY_SIZE];
 	char const		*dockey;			/* our document key */
-	lcb_error_t		cb_error = LCB_SUCCESS;		/* couchbase error holder */
+	lcb_STATUS		cb_error = LCB_SUCCESS;		/* couchbase error holder */
+	lcb_INSTANCE    	*cb_inst;
 	rlm_rcode_t		rcode = RLM_MODULE_OK;		/* return code */
 	ssize_t			slen;
+	cookie_t        	*cookie;
 
 	/* assert packet as not null */
 	fr_assert(request->packet != NULL);
+
+	/* set request instance */
+	fr_couchbase_set_request(request);
 
 	/* attempt to build document key */
 	slen = tmpl_expand(&dockey, buffer, sizeof(buffer), request, inst->user_key, NULL, NULL);
@@ -118,16 +126,16 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 	}
 
 	/* get handle */
-	handle = fr_pool_connection_get(inst->pool, request);
+	handle = talloc_get_type_abort(fr_pool_connection_get(inst->pool, request), rlm_couchbase_handle_t);
 
 	/* check handle */
 	if (!handle) RETURN_MODULE_FAIL;
 
 	/* set couchbase instance */
-	lcb_t cb_inst = handle->handle;
+	cb_inst = (lcb_INSTANCE *)handle->handle;
 
 	/* set cookie */
-	cookie_t *cookie = handle->cookie;
+	cookie = handle->cookie;
 
 	/* fetch document */
 	cb_error = couchbase_get_key(cb_inst, cookie, dockey);
@@ -135,9 +143,9 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 	/* check error */
 	if (cb_error != LCB_SUCCESS || !cookie->jobj) {
 		/* log error */
-		RERROR("failed to fetch document or parse return");
+		RWARN("failed to fetch document or parse return");
 		/* set return */
-		rcode = RLM_MODULE_FAIL;
+		rcode = RLM_MODULE_NOTFOUND;
 		/* return */
 		goto finish;
 	}
@@ -147,13 +155,10 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 
 	{
 		TALLOC_CTX	*pool = talloc_pool(request, 1024);	/* We need to do lots of allocs */
-		fr_dcursor_t	maps;
-		map_t		*map = NULL;
-		fr_dlist_head_t	map_head;
-		vp_list_mod_t	*vlm;
-		fr_dlist_head_t	vlm_head;
+		map_t const	*map = NULL;
+		map_list_t 	maps;
 
-		fr_dcursor_init(&maps, &map_head);
+		map_list_init(&maps);
 
 		/*
 		 *	Convert JSON data into maps
@@ -168,36 +173,18 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 			goto finish;
 		}
 
-		fr_dlist_init(&vlm_head, vp_list_mod_t, entry);
-
 		/*
 		 *	Convert all the maps into list modifications,
 		 *	which are guaranteed to succeed.
 		 */
-		while ((map = fr_dlist_next(&map_head, map))) {
-			if (map_to_list_mod(pool, &vlm, request, map, NULL, NULL) < 0) goto invalid;
-			fr_dlist_insert_tail(&vlm_head, vlm);
-		}
-
-		if (fr_dlist_empty(&vlm_head)) {
-			RDEBUG2("Nothing to update");
-			talloc_free(pool);
-			rcode = RLM_MODULE_NOOP;
-			goto finish;
-		}
-
-		/*
-		 *	Apply the list of modifications
-		 */
-		while ((vlm = fr_dlist_next(&vlm_head, vlm))) {
-			int ret;
-
-			ret = map_list_mod_apply(request, vlm);	/* SHOULD NOT FAIL */
-			if (!fr_cond_assert(ret == 0)) {
-				talloc_free(pool);
-				rcode = RLM_MODULE_FAIL;
-				goto finish;
+		while ((map = map_list_next(&maps, map))) {
+			if (map_to_request(request, map, map_to_vp, NULL) < 0) {
+				goto invalid;
 			}
+		}
+
+		if (!map_list_empty(&maps)) {
+			rcode = RLM_MODULE_UPDATED;
 		}
 
 		talloc_free(pool);
@@ -235,20 +222,23 @@ static unlang_action_t mod_accounting(rlm_rcode_t *p_result, module_ctx_t const 
 	rlm_couchbase_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_couchbase_t);       /* our module instance */
 	rlm_couchbase_handle_t *handle = NULL;  /* connection pool handle */
 	rlm_rcode_t rcode = RLM_MODULE_OK;      /* return code */
-	fr_pair_t *vp;                         /* radius value pair linked list */
+	fr_pair_t *vp;                          /* radius value pair linked list */
 	char buffer[MAX_KEY_SIZE];
 	char const *dockey;			/* our document key */
 	char document[MAX_VALUE_SIZE];          /* our document body */
 	char element[MAX_KEY_SIZE];             /* mapped radius attribute to element name */
 	int status = 0;                         /* account status type */
-	int docfound = 0;                       /* document found toggle */
-	lcb_error_t cb_error = LCB_SUCCESS;     /* couchbase error holder */
+	bool docfound = false;                  /* document found toggle */
+	lcb_STATUS cb_error = LCB_SUCCESS;      /* couchbase error holder */
+	lcb_INSTANCE *cb_inst;
 	ssize_t slen;
-
 
 	/* assert packet as not null */
 	fr_assert(request->packet != NULL);
 
+	/* set request instance */
+	fr_couchbase_set_request(request);
+	
 	/* sanity check */
 	if ((vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_acct_status_type, 0)) == NULL) {
 		/* log debug */
@@ -275,7 +265,7 @@ static unlang_action_t mod_accounting(rlm_rcode_t *p_result, module_ctx_t const 
 	if (!handle) RETURN_MODULE_FAIL;
 
 	/* set couchbase instance */
-	lcb_t cb_inst = handle->handle;
+	cb_inst = handle->handle;
 
 	/* set cookie */
 	cookie_t *cookie = handle->cookie;
@@ -297,7 +287,7 @@ static unlang_action_t mod_accounting(rlm_rcode_t *p_result, module_ctx_t const 
 	cb_error = couchbase_get_key(cb_inst, cookie, dockey);
 
 	/* check error and object */
-	if (cb_error != LCB_SUCCESS || cookie->jerr != json_tokener_success || !cookie->jobj) {
+	if (cb_error != LCB_SUCCESS) {
 		/* log error */
 		RERROR("failed to execute get request or parse returned json object");
 		/* free and reset json object */
@@ -305,16 +295,25 @@ static unlang_action_t mod_accounting(rlm_rcode_t *p_result, module_ctx_t const 
 			json_object_put(cookie->jobj);
 			cookie->jobj = NULL;
 		}
+		rcode = RLM_MODULE_FAIL;
+		/* return */
+		goto finish;
 	/* check cookie json object */
+	} else if (cookie->jerr != json_tokener_success || !cookie->jobj) {
+		/* log error */
+		RWARN("Document key %s not found", dockey);
+		rcode = RLM_MODULE_OK;
+		/* set doc found */
+		docfound = false;
 	} else if (cookie->jobj) {
 		/* set doc found */
-		docfound = 1;
+		docfound = true;
 		/* debugging */
 		RDEBUG3("parsed json body from couchbase: %s", json_object_to_json_string(cookie->jobj));
 	}
 
 	/* start json document if needed */
-	if (docfound != 1) {
+	if (!docfound) {
 		/* debugging */
 		RDEBUG2("no existing document found - creating new json document");
 		/* create new json object */
@@ -331,7 +330,7 @@ static unlang_action_t mod_accounting(rlm_rcode_t *p_result, module_ctx_t const 
 	switch (status) {
 	case FR_STATUS_START:
 		/* add start time */
-		if ((vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_acct_status_type, 0)) != NULL) {
+		if ((vp = fr_pair_find_by_da_idx(&request->request_pairs, attr_event_timestamp, 0)) != NULL) {
 			/* add to json object */
 			json_object_object_add_ex(cookie->jobj, "startTimestamp",
 						  mod_value_pair_to_json_object(request, vp),
@@ -367,8 +366,9 @@ static unlang_action_t mod_accounting(rlm_rcode_t *p_result, module_ctx_t const 
 	for (vp = fr_pair_list_head(&request->request_pairs);
 	     vp;
 	     vp = fr_pair_list_next(&request->request_pairs, vp)) {
+
 		/* map attribute to element */
-		if (mod_attribute_to_element(vp->da->name, inst->map, &element) == 0) {
+		if (mod_attribute_to_element(vp->da->name, inst->map, element, sizeof(element)) == 0) {
 			/* debug */
 			RDEBUG3("mapped attribute %s => %s", vp->da->name, element);
 			/* add to json object with mapped name */
@@ -390,11 +390,11 @@ static unlang_action_t mod_accounting(rlm_rcode_t *p_result, module_ctx_t const 
 	RDEBUG3("setting '%s' => '%s'", dockey, document);
 
 	/* store document/key in couchbase */
-	cb_error = couchbase_set_key(cb_inst, dockey, document, inst->expire);
+	cb_error = couchbase_store_key(cb_inst, dockey, document, inst->expire);
 
 	/* check return */
 	if (cb_error != LCB_SUCCESS) {
-		RERROR("failed to store document (%s): %s (0x%x)", dockey, lcb_strerror(NULL, cb_error), cb_error);
+		RERROR("failed to store document (%s): %s (0x%x)", dockey, lcb_strerror_short(cb_error), cb_error);
 	}
 
 finish:
@@ -412,7 +412,6 @@ finish:
 	/* return */
 	RETURN_MODULE_RCODE(rcode);
 }
-
 
 /** Detach the module
  *

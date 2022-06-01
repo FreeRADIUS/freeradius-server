@@ -22,7 +22,7 @@
  * @file couchbase.h
  *
  * @author Aaron Hurt (ahurt@anbcs.com)
- * @copyright 2013-2014 The FreeRADIUS Server Project.
+ * @copyright 2013-2022 The FreeRADIUS Server Project.
  */
 RCSIDH(couchbase_h, "$Id$")
 
@@ -75,33 +75,35 @@ extern HIDDEN fr_dict_attr_t const *attr_acct_session_time;
 extern HIDDEN fr_dict_attr_t const *attr_event_timestamp;
 
 /* couchbase statistics callback */
-void couchbase_stat_callback(lcb_t instance, const void *cookie, lcb_error_t error,
-	const lcb_server_stat_resp_t *resp);
+// void couchbase_stats_callback(UNUSED lcb_INSTANCE *instance, UNUSED lcb_CALLBACK_TYPE cbtype, const lcb_RESPBASE *rb);
 
 /* store a key/document in couchbase */
-void couchbase_store_callback(lcb_t instance, const void *cookie, lcb_storage_t operation,
-	lcb_error_t error, const lcb_store_resp_t *item);
+void couchbase_store_callback(UNUSED lcb_INSTANCE *instance, UNUSED int cbtype, const lcb_RESPBASE *rb);
 
 /* get a document by key from couchbase */
-void couchbase_get_callback(lcb_t instance, const void *cookie, lcb_error_t error,
-	const lcb_get_resp_t *item);
+void couchbase_get_callback(UNUSED lcb_INSTANCE *instance, UNUSED int cbtype, const lcb_RESPBASE *rb);
 
 /* couchbase http callback for data chunks */
-void couchbase_http_data_callback(lcb_http_request_t request, lcb_t instance,
-	const void *cookie, lcb_error_t error, const lcb_http_resp_t *resp);
+void couchbase_http_data_callback(UNUSED lcb_INSTANCE *instance, UNUSED int cbtype, const lcb_RESPBASE *rb);
 
 /* create a couchbase instance and connect to the cluster */
-lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const char *bucket, const char *user,
-					const char *pass, lcb_uint32_t timeout, const couchbase_opts_t *opts);
+lcb_STATUS couchbase_init_connection(lcb_INSTANCE **instance, const char *host, const char *bucket, const char *user,
+					const char *pass, int64_t timeout, const couchbase_opts_t *opts);
 
 /* get server statistics */
-lcb_error_t couchbase_server_stats(lcb_t instance, const void *cookie);
+lcb_STATUS couchbase_server_stats(lcb_INSTANCE *instance, const void *cookie);
 
 /* store document/key in couchbase */
-lcb_error_t couchbase_set_key(lcb_t instance, const char *key, const char *document, int expire);
+lcb_STATUS couchbase_store_key(lcb_INSTANCE *instance, const char *key, const char *document, int expire);
 
 /* pull document from couchbase by key */
-lcb_error_t couchbase_get_key(lcb_t instance, const void *cookie, const char *key);
+lcb_STATUS couchbase_get_key(lcb_INSTANCE *instance, const void *cookie, const char *key);
 
 /* query a couchbase view via http */
-lcb_error_t couchbase_query_view(lcb_t instance, const void *cookie, const char *path, const char *post);
+lcb_STATUS couchbase_query_view(lcb_INSTANCE *instance, const void *cookie, const char *path, const char *post);
+
+/* Set the thread local request */
+void fr_couchbase_set_request(request_t *request);
+
+/* Get the thread local request */
+request_t *fr_couchbase_get_request(void);

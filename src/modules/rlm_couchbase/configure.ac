@@ -2,7 +2,6 @@ AC_PREREQ([2.53])
 AC_INIT(rlm_couchbase.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_couchbase])
-AC_CONFIG_HEADER(config.h)
 
 AC_ARG_WITH([]modname,
 [AS_HELP_STRING([--without-[]modname],[build without module])]
@@ -25,7 +24,7 @@ if test x$with_[]modname != xno; then
 	libcouchbase_include_dir=
 	AC_ARG_WITH(libcouchbase-include-dir,
 		[AS_HELP_STRING([--with-libcouchbase-include-dir=DIR],
-		[Directory where the libcouchbase includes may be found])],
+		[Directory where the libcouchbase >= 3.3.x includes may be found])],
 		[case "$withval" in
 			no)
 				AC_MSG_ERROR(Need libcouchbase-include-dir)
@@ -41,7 +40,7 @@ if test x$with_[]modname != xno; then
 	libcouchbase_lib_dir=
 	AC_ARG_WITH(libcouchbase-lib-dir,
 	[AS_HELP_STRING([--with-libcouchbase-lib-dir=DIR],
-		[Directory where the libcouchbase libraries may be found])],
+		[Directory where the libcouchbase >= 3.3.x libraries may be found])],
 		[case "$withval" in
 			no)
 				AC_MSG_ERROR(Need libcouchbase-lib-dir)
@@ -56,7 +55,7 @@ if test x$with_[]modname != xno; then
 	dnl extra argument: --with-libcouchbase-dir=DIR
 	AC_ARG_WITH(libcouchbase-dir,
 	[AS_HELP_STRING([--with-libcouchbase-dir=DIR],
-		[Base directory where libcouchbase is installed])],
+		[Base directory where libcouchbase >= 3.3.x is installed])],
 		[case "$withval" in
 			no)
 				AC_MSG_ERROR(Need libcouchbase-dir)
@@ -78,7 +77,7 @@ if test x$with_[]modname != xno; then
 	FR_SMART_CHECK_INCLUDE([libcouchbase/couchbase.h])
 	if test "x$ac_cv_header_libcouchbase_couchbase_h" != "xyes"; then
 		have_couchbase="no"
-		AC_MSG_WARN([libcouchbase headers not found. Use --with-libcouchbase-include-dir=<path>.])
+		AC_MSG_WARN([libcouchbase >= 3.3.x headers not found. Use --with-libcouchbase-include-dir=<path>.])
 	fi
 
 	dnl ############################################################
@@ -89,21 +88,50 @@ if test x$with_[]modname != xno; then
 	FR_SMART_CHECK_LIB([couchbase], [lcb_get_version])
 	if test "x$ac_cv_lib_couchbase_lcb_get_version" != "xyes"; then
 		have_couchbase="no"
-		AC_MSG_WARN([libcouchbase libraries not found. Use --with-libcouchbase-lib-dir=<path>.])
+		AC_MSG_WARN([libcouchbase >= 3.3.x libraries not found. Use --with-libcouchbase-lib-dir=<path>.])
 	fi
 
 	if test x"$have_couchbase" != x"yes"; then
-		fail="$fail libcouchbase"
+		fail="$fail libcouchbase >= 3.3.x"
 	fi
 
+	if test "x$have_couchbase" = "xyes"; then
+	  dnl #
+	  dnl #  Now check that the header versions match the library
+	  dnl #
+	  AC_MSG_CHECKING([libcouchbase 3.3.x library and header version consistency])
+	  AC_RUN_IFELSE(
+	    [AC_LANG_PROGRAM(
+	      [[
+	        #include <libcouchbase/couchbase.h>
+	      ]],
+	      [[
+	        printf("library: %#lx ", (unsigned long) LCB_VERSION);
+	        if (LCB_VERSION >= 0x030300) {
+	          return 0;
+	        } else {
+	          return 1;
+	        }
+	      ]]
+	    )],
+	    [
+	      AC_MSG_RESULT(yes)
+	    ],
+	    [
+	      AC_MSG_RESULT(no)
+	      AC_MSG_FAILURE([libcouchbase 3.3.x library version does not match header version])
+	    ]
+	  )
+	fi
+ 
 	dnl ############################################################
 	dnl # Checks done - set targetname
 	dnl ############################################################
 
-	targetname=modname
+	targetname=modname     # keep this!  Don't change!
 else
-	targetname=
-	echo \*\*\* module modname is disabled.
+	targetname=            # keep this!  Don't change!
+	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
 fi
 
 dnl  Don't change this section.

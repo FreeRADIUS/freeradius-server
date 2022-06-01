@@ -22,7 +22,7 @@
  * @file mod.h
  *
  * @author Aaron Hurt (ahurt@anbcs.com)
- * @copyright 2013-2014 The FreeRADIUS Server Project.
+ * @copyright 2013-2022 The FreeRADIUS Server Project.
  */
 RCSIDH(mod_h, "$Id$")
 
@@ -80,9 +80,9 @@ int mod_conn_alive(void *opaque, void *connection);
 
 int mod_build_attribute_element_map(CONF_SECTION *conf, rlm_couchbase_t *inst);
 
-int mod_attribute_to_element(const char *name, json_object *map, void *buf);
+int mod_attribute_to_element(const char *name, json_object *map, char *buf, size_t buflen);
 
-int mod_json_object_to_map(TALLOC_CTX *ctx, fr_dcursor_t *out, request_t *request, json_object *json, tmpl_pair_list_t list);
+int mod_json_object_to_map(TALLOC_CTX *ctx, map_list_t *out, request_t *request, json_object *json, tmpl_pair_list_t list);
 
 json_object *mod_value_pair_to_json_object(request_t *request, fr_pair_t *vp);
 
@@ -95,4 +95,3 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 int mod_build_api_opts(CONF_SECTION *conf, rlm_couchbase_t *inst);
 
 int mod_free_api_opts(rlm_couchbase_t *inst);
-
