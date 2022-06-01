@@ -137,6 +137,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, RADCLIENT *client
 	 *	Create and initialize the new request.
 	 */
 	request = request_local_alloc_external(ctx, NULL);
+
 	/*
 	 *	FIXME - Should be less RADIUS centric, but everything
 	 *	else assumes RADIUS at the moment so we can fix this later.
@@ -340,6 +341,34 @@ static bool do_xlats(fr_event_list_t *el, char const *filename, FILE *fp)
 	 *	Create and initialize the new request.
 	 */
 	request = request_alloc_internal(NULL, NULL);
+	if (!request->packet) request->packet = fr_radius_packet_alloc(request, false);
+	if (!request->reply) request->reply = fr_radius_packet_alloc(request, false);
+
+	request->packet->socket = (fr_socket_t){
+		.proto = IPPROTO_UDP,
+		.inet = {
+			.src_ipaddr = {
+				.af = AF_INET,
+				.prefix = 32,
+				.addr = {
+					.v4 = {
+						.s_addr = htonl(INADDR_LOOPBACK)
+					}
+				}
+			},
+			.src_port = 18120,
+			.dst_ipaddr = {
+				.af = AF_INET,
+				.prefix = 32,
+				.addr = {
+					.v4 = {
+						.s_addr = htonl(INADDR_LOOPBACK)
+					}
+				}
+			},
+			.dst_port = 1812
+		}
+	};
 
 	request->log.dst = talloc_zero(request, log_dst_t);
 	request->log.dst->func = vlog_request;
