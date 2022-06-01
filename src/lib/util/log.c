@@ -656,7 +656,7 @@ void fr_vlog_perror(fr_log_t const *log, fr_log_type_t type, char const *file, i
 	/*
 	 *	Add the prefix for the first line
 	 */
-	if (f_rules->first_prefix) fr_sbuff_in_strcpy(&sbuff, f_rules->first_prefix);
+	if (f_rules->first_prefix) (void) fr_sbuff_in_strcpy(&sbuff, f_rules->first_prefix);
 
 	/*
 	 *	Add the (optional) message, and/or (optional) error

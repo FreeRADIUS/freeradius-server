@@ -1880,7 +1880,7 @@ ssize_t fr_dict_attr_by_oid_substr(fr_dict_attr_err_t *err,
 #if 0
 	if (!fr_sbuff_next_if_char(in, '.')) our_parent = fr_dict_root(fr_dict_by_da(parent));
 #else
-	fr_sbuff_next_if_char(in, '.');
+	(void) fr_sbuff_next_if_char(in, '.');
 #endif
 	*out = NULL;
 
