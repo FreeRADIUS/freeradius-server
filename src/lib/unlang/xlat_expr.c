@@ -450,7 +450,7 @@ static fr_slen_t xlat_expr_print_logical(fr_sbuff_t *out, xlat_exp_t const *node
  *	Each argument is it's own head, because we do NOT always want
  *	to go to the next argument.
  */
-static int xlat_logical_instantiate(xlat_inst_ctx_t const *xctx)
+static int xlat_instantiate_logical(xlat_inst_ctx_t const *xctx)
 {
 	xlat_logical_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_logical_inst_t);
 
@@ -915,7 +915,7 @@ do { \
 #define XLAT_REGISTER_NARY_OP(_op, _name, _func_name) \
 do { \
 	if (!(xlat = xlat_register(NULL, STRINGIFY(_name), xlat_func_ ## _func_name, XLAT_FLAG_PURE))) return -1; \
-	xlat_async_instantiate_set(xlat, xlat_ ## _func_name ## _instantiate, xlat_ ## _func_name ## _inst_t, NULL, NULL); \
+	xlat_async_instantiate_set(xlat, xlat_instantiate_ ## _func_name, xlat_ ## _func_name ## _inst_t, NULL, NULL); \
 	xlat_internal(xlat); \
 	xlat_print_set(xlat, xlat_expr_print_ ## _func_name); \
 	xlat_purify_set(xlat, xlat_expr_logical_purify); \
