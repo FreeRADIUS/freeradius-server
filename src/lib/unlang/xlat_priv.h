@@ -40,7 +40,7 @@ extern "C" {
 
 typedef fr_slen_t (*xlat_print_t)(fr_sbuff_t *in, xlat_exp_t const *self, void *inst, fr_sbuff_escape_rules_t const *e_rules);
 typedef int (*xlat_resolve_t)(xlat_exp_t *self, void *inst, xlat_res_rules_t const *xr_rules);
-typedef int (*xlat_purify_t)(xlat_exp_t *self, void *inst);
+typedef int (*xlat_purify_t)(xlat_exp_t *self, void *inst, request_t *request);
 
 typedef struct xlat_s {
 	fr_rb_node_t		node;			//!< Entry in the xlat function tree.
@@ -293,6 +293,10 @@ static inline void xlat_purify_set(xlat_t *xlat, xlat_purify_t func)
 	xlat->purify = func;
 }
 
+/*
+ *	xlat_purify.c
+ */
+int xlat_purify_list(xlat_exp_head_t *head, request_t *request);
 
 /** Walker callback for xlat_walk()
  *

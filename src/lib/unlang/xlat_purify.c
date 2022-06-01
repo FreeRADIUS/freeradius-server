@@ -54,7 +54,7 @@ static void xlat_value_list_to_xlat(xlat_exp_head_t *head, fr_value_box_list_t *
 }
 
 
-static int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
+int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 {
 	int rcode;
 	bool success;
@@ -117,7 +117,7 @@ static int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			 */
 			if (!node->flags.pure) {
 				if (node->call.func->purify) {
-					if (node->call.func->purify(node, node->call.inst->data) < 0) return -1;
+					if (node->call.func->purify(node, node->call.inst->data, request) < 0) return -1;
 
 				} else {
 					if (xlat_purify_list(node->call.args, request) < 0) return -1;
