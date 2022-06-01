@@ -150,11 +150,12 @@ ldap {
 	#  verify user authorization.
 #	edir_autz = no
 
-	#  Note: set_auth_type was removed in v3.x.x
+	#  LDAP "bind as user" configuration to check PAP passwords.
 	#
-	#  Equivalent functionality can be achieved by adding the
-	#  following "if" statement to the authorize {} section of
-	#  the virtual server, after the "ldap" module.  For example:
+	#  Active Directory needs "bind as user", which can be done by
+	#  adding the following "if" statement to the authorize {} section
+	#  of the virtual server, after the "ldap" module.  For
+	#  example:
 	#
 	#    ...
 	#    ldap
@@ -167,6 +168,11 @@ ldap {
 	#
 	#  You will also need to uncomment the "Auth-Type LDAP" block in the
 	#  "authenticate" section.
+	#
+	#  This configuration is required because AD will not return the users
+	#  "known good" password to FreeRADIUS.  Instead, FreeRADIUS has to run
+	#  "Auth-Type LDAP" in order to do an LDAP "bind as user", which will hand
+	#  the user name / password to AD for verification.
 	#
 
 	#
