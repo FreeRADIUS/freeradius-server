@@ -30,6 +30,21 @@ match 2
 xlat_expr (uint32) 1 << 31
 match 2147483648
 
+xlat_expr %n
+match {0}
+
+xlat_expr &Packet-Src-IP-Address =~ /^127.0/
+match true
+
+xlat_expr &Packet-Src-IP-Address =~ /^128.0/
+match false
+
+xlat_expr &Packet-Src-IP-Address =~ /foo %{Packet-Dst-IP-Address} foo/
+match false
+
+xlat_expr &Packet-Src-IP-Address =~ /%{Packet-Dst-IP-Address}/
+match true
+
 # @todo - failure?
 xlat_expr (uint32) 1 << 32
 match NULL

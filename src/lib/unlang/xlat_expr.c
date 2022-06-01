@@ -405,7 +405,7 @@ static int xlat_instantiate_regex(xlat_inst_ctx_t const *xctx)
 	/*
 	 *	The RHS is more then just one regex node, it has to be dynamically expanded.
 	 */
-	if (xlat_exp_next(rhs->group, regex)) {
+	if (xlat_exp_next(rhs->group, regex) || !tmpl_contains_regex(regex->vpt)) {
 		inst->xlat = talloc_steal(inst, rhs);
 		return 0;
 	}
@@ -525,7 +525,20 @@ static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	LHS should already have been expanded.  RHS was just expanded by us.
 	 */
 	lhs = fr_dlist_head(in);
+
+	/*
+	 *	Because we expanded the RHS ourselves, the "concat"
+	 *	flag to the RHS argument is ignored.  So we just
+	 *	concatenate it here.
+	 */
 	rhs = fr_dlist_head(&rctx->list);
+	if (fr_value_box_list_concat_in_place(rctx, rhs, &rctx->list, FR_TYPE_STRING,
+					      FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
+		RPEDEBUG("Failed concatenating regular expression string");
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_assert(rhs != NULL);
 
 	slen = regex_compile(rctx, &preg, rhs->vb_strvalue, rhs->vb_length,
 			     NULL, true, true); /* no flags, allow subcaptures, at runtime */
@@ -549,7 +562,7 @@ static xlat_action_t xlat_regex_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Just run precompiled regexes.
 	 */
-	if (!tmpl_is_regex_xlat(inst->regex->vpt)) {
+	if (inst->regex) {
 		preg = tmpl_regex(inst->regex->vpt);
 
 		return xlat_regex_match(ctx, request, lhs, &preg, out, op);
