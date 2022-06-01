@@ -57,9 +57,12 @@ RCSID("$Id$")
  *	the time, but not all of the time.  There are currently hacks in the "upcast" code here to fix this,
  *	but it's a hack.
  *
- *	@todo - add instantiation routines for regex and assignment operations.  This lets us do things
+ *	@todo - add instantiation routines for assignment operations.  This lets us do things
  *	like:
  *		if ((&foo += 4) > 6) ...
+ *
+ *	However, this would also require us adding an edit list pointer to the xlat evaluation functions,
+ *	which is not trivial.  Or, maybe we attach it to the request somehow?
  */
 
 static fr_slen_t xlat_expr_print_unary(fr_sbuff_t *out, xlat_exp_t const *node, UNUSED void *inst, fr_sbuff_escape_rules_t const *e_rules)
@@ -628,11 +631,6 @@ static int xlat_instantiate_logical(xlat_inst_ctx_t const *xctx)
 {
 	xlat_logical_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_logical_inst_t);
 
-	/*
-	 *	@todo - set the 'can purify' flag
-	 *
-	 *	@todo - have a special "purify" callback, or a *partial* evaluation function?
-	 */
 	inst->argc = xlat_flatten_compiled_argv(inst, &inst->argv, xctx->ex->call.args);
 	inst->stop = (xctx->ex->call.func->token == T_LOR);
 
@@ -718,10 +716,9 @@ static void xlat_ungroup(xlat_exp_head_t *head)
 	head->flags = node->flags;
 }
 
-/** Any argument resolves to inst->stop, the entire thing is a bool of inst->stop
+/** If any argument resolves to inst->stop, the entire thing is a bool of inst->stop.
  *
- *  @todo - for now, this does very simple checks, and doesn't purify
- *  its arguments.  We also need a standard way to deregister xlat functions
+ *  If any argument resolves to !inst->stop, it is removed.
  */
 static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t *request)
 {
@@ -1433,13 +1430,6 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 *	That's because we're parsing a complete expression here (EXPR).  So the intermediate
 	 *	nodes in the expression can be almost anything.  And we only cast it to the final
 	 *	value when we get the output of the expression.
-	 *
-	 *	@todo - have a parser context structure, so that we can disallow things like
-	 *
-	 *		foo == (int) ((ifid) xxxx)
-	 *
-	 *	The double casting is technically invalid, and will likely cause breakages at run
-	 *	time.
 	 */
 	if (fr_sbuff_next_if_char(&our_in, '(')) {
 		slen = tokenize_expression(head, &node, &our_in, bracket_rules, t_rules, T_INVALID, bracket_rules, false);
@@ -1843,12 +1833,6 @@ redo:
 	}
 
 	/*
-	 *	@todo - also if the have differenting data types on the LHS and RHS, and one of them is an
-	 *	XLAT_BOX, then try to upcast the XLAT_BOX to the destination data type before returning.  This
-	 *	optimization minimizes the amount of run-time work we have to do.
-	 */
-
-	/*
 	 *	Remove invalid comparisons.
 	 */
 	if (fr_equality_op[op]) {
@@ -1877,7 +1861,10 @@ redo:
 
 	fr_assert(xlat_exp_head(node->call.args) != NULL);
 
-	if (nary_ops[op]) {
+	/*
+	 *	Logical operations can be purified if ANY of their arguments can be purified.
+	 */
+	if ((op == T_LAND) || (op == T_LOR)) {
 		xlat_exp_foreach(node->call.args, arg) {
 			node->call.args->flags.can_purify |= arg->flags.can_purify | arg->flags.pure;
 			if (node->call.args->flags.can_purify) break;
