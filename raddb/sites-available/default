@@ -438,6 +438,18 @@ authorize {
 	-ldap
 
 	#
+	#  If you're using Active Directory and PAP, then uncomment
+	#  the following lines, and the "Auth-Type LDAP" section below.
+	#
+	#  This will let you do PAP authentication to AD.
+	#
+#	if ((ok || updated) && User-Password && !control:Auth-Type) {
+#		update {
+#			control:Auth-Type := ldap
+#		}
+#	}
+
+	#
 	#  Enforce daily limits on time spent logged in.
 #	daily
 
@@ -562,6 +574,9 @@ authenticate {
 	#  They are NOT authentication servers.  FreeRADIUS is an
 	#  authentication server, and knows what to do with authentication.
 	#  LDAP servers do not.
+	#
+	#  However, it is necessary for Active Directory, because
+	#  Active Directory won't give the passwords to FreeRADIUS.
 	#
 #	Auth-Type LDAP {
 #		ldap
