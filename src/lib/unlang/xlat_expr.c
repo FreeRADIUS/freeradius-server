@@ -465,6 +465,12 @@ static int xlat_logical_instantiate(xlat_inst_ctx_t const *xctx)
 	return 0;
 }
 
+/*
+ *	This returns "false" for "ignore this argument"
+ *
+ *	result is "false" for "delete this argument"
+ *	result is "true" for "return this argument".
+ */
 static bool xlat_node_matches_bool(xlat_exp_t *parent, xlat_exp_head_t *head, bool sense, bool *result)
 {
 	fr_value_box_t *box;
@@ -513,12 +519,37 @@ check:
 	return true;
 }
 
+/** Undo work which shouldn't have been done.  :(
+ *
+ */
+static void xlat_ungroup(xlat_exp_head_t *head)
+{
+	xlat_exp_t *group, *node;
+
+	group = xlat_exp_head(head);
+	if (!group || xlat_exp_next(head, group)) return;
+
+	if (group->type != XLAT_GROUP) return;
+
+	node = xlat_exp_head(group->group);
+	if (!node || xlat_exp_next(group->group, node)) return;
+
+	(void) fr_dlist_remove(&head->dlist, group);
+	(void) fr_dlist_remove(&group->group->dlist, node);
+	(void) talloc_steal(head, node);
+
+	talloc_free(group);
+
+	fr_dlist_insert_tail(&head->dlist, node);
+	head->flags = node->flags;
+}
+
 /** Any argument resolves to inst->stop, the entire thing is a bool of inst->stop
  *
  *  @todo - for now, this does very simple checks, and doesn't purify
  *  its arguments.  We also need a standard way to deregister xlat functions
  */
-static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance)
+static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t *request)
 {
 	int i, j;
 	int deleted = 0;
@@ -533,7 +564,29 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance)
 	 *	argument.
 	 */
 	for (i = 0; i < inst->argc; i++) {
-		if (!xlat_node_matches_bool(node, inst->argv[i], inst->stop, &result)) continue;
+		/*
+		 *	The argument is pure, so we purify it before
+		 *	doing any other checks.
+		 */
+		if (inst->argv[i]->flags.can_purify) {
+			if (xlat_purify_list(inst->argv[i], request) < 0) return -1;
+
+			/*
+			 *	xlat_purify_list expects that its outputs will be arguments to functions, so
+			 *	they're grouped.  We con't need that, so we ungroup them here.
+			 */
+			xlat_ungroup(inst->argv[i]);
+		}
+
+		/*
+		 *	This returns "false" for "ignore".
+		 *
+		 *	result is "false" for "delete this argument"
+		 *	result is "true" for "return this argument".
+		 */
+		if (!xlat_node_matches_bool(node, inst->argv[i], inst->stop, &result)) {
+			continue;
+		}
 
 		/*
 		 *	0 && EXPR --> 0.
@@ -544,9 +597,10 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance)
 		if (result) return 0;
 
 		/*
-		 *	We're at the last argument, we should just return that, if it's 
+		 *	We're at the last argument.  If we've deleted everything else, then just leave the
+		 *	last argument alone.  Otherwise some arguments remain, so we can delete the last one.
 		 */
-		if ((i + 1) == inst->argc) break;
+		if (((i + 1) == inst->argc) && (deleted == i)) break;
 
 		TALLOC_FREE(inst->argv[i]);
 		deleted++;

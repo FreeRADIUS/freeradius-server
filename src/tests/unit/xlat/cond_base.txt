@@ -271,7 +271,8 @@ match ERROR offset 12: Missing separator, expected ':'
 xlat_purify true
 match true
 
-# @todo - for conditions, this should evaluate to "true"
+# @todo - for conditions, this should evaluate to "true".  However, this evaluation
+#  only occurs in the condition code, and not in the xlat code!
 xlat_purify 1
 match 1
 
@@ -280,22 +281,6 @@ match false
 
 xlat_purify 0
 match 0
-
-#
-#  @todo - purify logical operators.  The instantiation function should update the "can_purify" flags.
-#
-xlat_purify true || (&User-Name == "bob")
-match true
-
-xlat_purify true && (&User-Name == "bob")
-match (&User-Name == "bob")
-
-xlat_purify false && (&User-Name == "bob")
-match false
-
-xlat_purify false || (&User-Name == "bob")
-match (&User-Name == "bob")
-
 
 #
 #  Both sides static data with a cast: evaluate at parse time.
@@ -648,8 +633,23 @@ xlat_purify (true) && (false)
 match false
 
 #
-#  More short-circuit evaluations
+#  Purify logical operators:
 #
+#  * TRUE OP EXPR --> TRUE
+#  * FALSE OP EXPR --> EXPR
+#
+xlat_purify true || (&User-Name == "bob")
+match true
+
+xlat_purify true && (&User-Name == "bob")
+match (&User-Name == "bob")
+
+xlat_purify false && (&User-Name == "bob")
+match false
+
+xlat_purify false || (&User-Name == "bob")
+match (&User-Name == "bob")
+
 xlat_purify (&User-Name == "bob") && (false)
 match false
 
@@ -659,9 +659,8 @@ match false
 xlat_purify (&User-Name == "bob") && (&User-Password == "hello") && false
 match false
 
-# @todo - last argument isn't purified!
 xlat_purify (&User-Name == "bob") && (&User-Password == "hello") && (1 > 2)
-match ((&User-Name == "bob") && (&User-Password == "hello") && (1 > 2))
+match false
 
 xlat_purify (&User-Name == "bob") || (true)
 match true
@@ -672,11 +671,34 @@ match 1
 xlat_purify 1 || 2 || (&User-Name == "bob")
 match 1
 
+#
+#  @todo - this is arguably incorrect.  It could return
+#  "true", or "1".
+#
 xlat_purify (&User-Name == "bob") || 1 || 2
 match 1
 
 xlat_purify 1 && 2
 match 2
+
+#
+#  Cases which always match should be omitted
+#
+xlat_purify (&User-Name == "bob") && true
+match (&User-Name == "bob")
+
+xlat_purify (&User-Name == "bob") && (&User-Password == "hello") && true
+match ((&User-Name == "bob") && (&User-Password == "hello"))
+
+xlat_purify (&User-Name == "bob") || true
+match true
+
+xlat_purify (&User-Name == "bob") && (&User-Password == "hello") && ((&User-Name == "bob") || true)
+match ((&User-Name == "bob") && (&User-Password == "hello"))
+
+xlat_purify (&User-Name == "bob") && (&User-Password == "hello") && ((&User-Name == "bob") || (1 < 2))
+match ((&User-Name == "bob") && (&User-Password == "hello"))
+
 
 #
 #  A && (B || C) is not the same as (A && B) || C, for 0/1/1
@@ -688,4 +710,4 @@ xlat_purify (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
 match ((&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message))
 
 count
-match 280
+match 290
