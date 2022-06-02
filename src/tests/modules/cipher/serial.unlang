@@ -7,9 +7,3 @@ if ("%(length:%{Tmp-Octets-0})" != 1) {
 } else {
 	test_pass
 }
-
-if ("%{hex:%{Tmp-Octets-0}}" != "01") {
-	test_fail
-} else {
-	test_pass
-}
