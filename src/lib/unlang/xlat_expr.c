@@ -1754,7 +1754,7 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 *	Parse the regex flags if necessary.
 	 */
 	if (quote == T_SOLIDUS_QUOTED_STRING) {
-		slen = tmpl_regex_flags_substr(node->vpt, &our_in, p_rules->terminals);
+		slen = tmpl_regex_flags_substr(node->vpt, &our_in, bracket_rules->terminals);
 		if (slen < 0) goto error;
 	}
 
