@@ -437,7 +437,7 @@ define INCLUDE_SUBMAKEFILE
         $${TGT}_POSTMAKE := $${TGT_POSTMAKE}
         $${TGT}_POSTCLEAN := $${TGT_POSTCLEAN}
         $${TGT}_POSTINSTALL := $${TGT_POSTINSTALL}
-        $${TGT}_PRBIN := $$(addprefix $${BUILD_DIR}/bin/,$$(filter-out %.a %.${TARGET_LIB_EXT} %.la,$${TGT_PREREQS}))
+        $${TGT}_PRBIN := $$(addprefix $${BUILD_DIR}/bin/,$$(filter-out %.a %.la %.${TARGET_LIB_EXT},$${TGT_PREREQS}))
         $${TGT}_DEPS :=
         $${TGT}_OBJS :=
         $${TGT}_SOURCES :=
@@ -453,7 +453,7 @@ define INCLUDE_SUBMAKEFILE
         # If it's an EXE, ensure that transitive library linking works.
         # i.e. we build libfoo.a which in turn requires -lbar.  So, the executable
         # has to be linked to both libfoo.a and -lbar.
-	ifeq "$${$${TGT}_SUFFIX}" ".exe"
+	ifeq "$${$${TGT}_SUFFIX}" ".${TARGET_EXE_EXT}"
 		$${TGT}_LDLIBS += $$(filter-out %.a %.la %.${TARGET_LIB_EXT},$${$${TGT_PREREQS}_LDLIBS})
 
 		#
