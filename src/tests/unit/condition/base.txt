@@ -158,23 +158,23 @@ match &Framed-IP-Address > 127.0.0.1
 
 # =* and !* are only for attrs / lists
 condition "foo" !* bar
-match ERROR offset 6: Cannot use !* on a string
+match ERROR offset 6: Invalid operator !*
 
 condition "foo" =* bar
-match ERROR offset 6: Cannot use =* on a string
+match ERROR offset 6: Invalid operator =*
 
 # existence checks don't need the RHS
 condition &User-Name =* bar
-match &User-Name
+match ERROR offset 11: Invalid operator =*
 
 condition &User-Name !* bar
-match !&User-Name
+match ERROR offset 11: Invalid operator !*
 
 condition !&User-Name =* bar
-match !&User-Name
+match ERROR offset 12: Invalid operator =*
 
 condition !&User-Name !* bar
-match &User-Name
+match ERROR offset 12: Invalid operator !*
 
 # redundant casts get squashed
 condition <ipaddr>&Framed-IP-Address == 127.0.0.1

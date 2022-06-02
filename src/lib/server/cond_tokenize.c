@@ -594,35 +594,6 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 			break;
 
 		/*
-		 *	FOO =* BAR --> FOO
-		 *	FOO !* BAR --> !FOO
-		 *
-		 *	FOO may be a string, or a delayed attribute
-		 *	reference.
-		 */
-		case T_OP_CMP_TRUE:
-		case T_OP_CMP_FALSE:
-		{
-			tmpl_t *vpt;
-
-			vpt = talloc_steal(c, c->data.map->lhs);
-			c->data.map->lhs = NULL;
-
-			/*
-			 *	Invert the negation bit.
-			 */
-			if (c->data.map->op == T_OP_CMP_FALSE) {
-				c->negate = !c->negate;
-			}
-
-			TALLOC_FREE(c->data.map);
-
-			c->type = COND_TYPE_TMPL;
-			c->data.vpt = vpt;
-			goto check_tmpl;
-		}
-
-		/*
 		 *	Don't do any other re-writing.
 		 */
 		default:
@@ -672,7 +643,6 @@ static int cond_normalise(TALLOC_CTX *ctx, fr_token_t lhs_type, fr_cond_t **c_ou
 	 *	"foo" is NOT the same as 'foo' or a bare foo.
 	 */
 	if (c->type == COND_TYPE_TMPL) {
-	check_tmpl:
 		switch (c->data.vpt->type) {
 		case TMPL_TYPE_XLAT:
 		case TMPL_TYPE_XLAT_UNRESOLVED:
@@ -1310,21 +1280,13 @@ static ssize_t cond_tokenize(TALLOC_CTX *ctx, fr_cond_t **out,
 		c->type = COND_TYPE_MAP;
 
 		switch (op) {
-#ifdef HAVE_REGEX
-		case T_OP_REG_NE:
-		case T_OP_REG_EQ:
-			break;
-#endif
-
 		case T_OP_CMP_FALSE:
 		case T_OP_CMP_TRUE:
-			if (lhs->quote != T_BARE_WORD) {
-				fr_strerror_printf("Cannot use %s on a string",
-						   fr_table_str_by_value(cond_cmp_op_table, op, "<INVALID>"));
-				fr_sbuff_set(&our_in, &m_op);
-				goto error;
-			}
-			break;
+			fr_strerror_printf("Invalid operator %s",
+					   fr_table_str_by_value(cond_cmp_op_table, op, "<INVALID>"));
+			fr_sbuff_set(&our_in, &m_op);
+			goto error;
+
 		default:
 			break;
 		}
@@ -1538,7 +1500,7 @@ ssize_t fr_cond_tokenize(CONF_SECTION *cs, fr_cond_t **head, tmpl_rules_t const 
 
 	diff = fr_sbuff_remaining(in) - strlen(buffer); /* Hack so that we appear to consume more of the string */
 	slen = cond_tokenize(cs, head, cs, &FR_SBUFF_IN(buffer, strlen(buffer)), 0, rules);
-	if (slen < 0) return slen;
+	if (slen <= 0) return slen;
 
 	/*
 	 *	Now that everything has been normalized, reparent the children.
