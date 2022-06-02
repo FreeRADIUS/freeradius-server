@@ -78,6 +78,7 @@ typedef enum {
 #define DL_PRIORITY_DICT	30		//!< Callback priority for dictionary autoloading
 #define DL_PRIORITY_DICT_ATTR	29		//!< Callback priority for attribute resolution
 #define DL_PRIORITY_DICT_ENUM	28		//!< Callback priority for enum resolution
+#define DL_PRIORITY_LIB		20		//!< Callback priority for library config
 #define DL_PRIORITY_BOOTSTRAP	10		//!< Callback priority for bootstrap callback
 
 typedef struct dl_module_loader_s dl_module_loader_t;

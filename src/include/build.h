@@ -378,3 +378,8 @@ do { \
 #ifdef __cplusplus
 }
 #endif
+
+/*
+ *	For closing macros which open a code block e.g. fr_rb_inorder_foreach
+ */
+#define endforeach }
