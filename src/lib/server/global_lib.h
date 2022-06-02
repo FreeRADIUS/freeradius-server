@@ -41,12 +41,14 @@ typedef struct {
 	void			*inst;			//!<  Module data to parse global config into
 	lib_init_t		init;			//!<  Callback to initialise library
 	lib_free_t		free;			//!<  Callback to free library
-} global_lib_autoinit_t;
+} global_lib_autoinst_t;
+
+extern const global_lib_autoinst_t global_lib_terminator;
 
 /*
- *	To be used as terminator in an array of fr_lib_autoinit_t
+ *	To be used as terminator in an array of global_lib_autoinst_t
  */
-extern const global_lib_autoinit_t lib_autoinit_terminator;
+#define GLOBAL_LIB_TERMINATOR &global_lib_terminator
 
 int global_lib_auto_instantiate(dl_t const *module, void *symbol, void *user_ctx);
 

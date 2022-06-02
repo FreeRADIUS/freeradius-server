@@ -27,9 +27,9 @@
 #include <freeradius-devel/util/atexit.h>
 
 /*
- *  Terminator for array of global_lib_autoinit_t
+ *  Terminator for array of global_lib_autoinst_t
  */
-global_lib_autoinit_t const lib_autoinit_terminator = { .name = NULL };
+global_lib_autoinst_t const global_lib_terminator = { .name = NULL };
 
 /*
  *  Global list of libraries
@@ -45,7 +45,7 @@ static global_lib_list_t *lib_list;
  */
 typedef struct {
 	fr_rb_node_t			entry;			//!<  Entry in tree of libraries
-	global_lib_autoinit_t const	*autoinit;		//!<  Autoinit structure used to manage this library
+	global_lib_autoinst_t const	*autoinit;		//!<  Autoinit structure used to manage this library
 	uint32_t			instance_count;		//!<  Number of current uses of this library
 	bool				initialised;		//!<  Has the init callback been run for this library
 } global_lib_inst_t;
@@ -95,11 +95,11 @@ static int lib_init_call(global_lib_inst_t *lib)
  *	- 0 on succcess
  *	- -1 on failure
  */
-static int lib_auto_instantiate(global_lib_autoinit_t * const *to_init)
+static int lib_auto_instantiate(global_lib_autoinst_t * const *to_init)
 {
-	global_lib_autoinit_t * const *p;
+	global_lib_autoinst_t * const *p;
 
-	for (p = to_init; *p != &lib_autoinit_terminator; p++) {
+	for (p = to_init; *p != &global_lib_terminator; p++) {
 		global_lib_inst_t	*lib = NULL;
 
 		lib = fr_rb_find(&lib_list->libs, &(global_lib_inst_t){ .autoinit = *p });
@@ -136,7 +136,7 @@ static int lib_auto_instantiate(global_lib_autoinit_t * const *to_init)
  */
 int global_lib_auto_instantiate(UNUSED dl_t const *module, void *symbol, UNUSED void *user_ctx)
 {
-	if (lib_auto_instantiate((global_lib_autoinit_t **)symbol) < 0) return -1;
+	if (lib_auto_instantiate((global_lib_autoinst_t **)symbol) < 0) return -1;
 
 	return 0;
 }
@@ -145,11 +145,11 @@ int global_lib_auto_instantiate(UNUSED dl_t const *module, void *symbol, UNUSED 
  *
  * @param[in] to_free	Array of autoinit structures detailing libraries to free
  */
-static void lib_autofree(global_lib_autoinit_t * const *to_free)
+static void lib_autofree(global_lib_autoinst_t * const *to_free)
 {
-	global_lib_autoinit_t * const *p;
+	global_lib_autoinst_t * const *p;
 
-	for (p = to_free; *p != &lib_autoinit_terminator; p++) {
+	for (p = to_free; *p != &global_lib_terminator; p++) {
 		global_lib_inst_t	*lib = NULL;
 
 		lib = fr_rb_find(&lib_list->libs, &(global_lib_inst_t){ .autoinit = *p });
@@ -173,7 +173,7 @@ static void lib_autofree(global_lib_autoinit_t * const *to_free)
  */
 void global_lib_autofree(UNUSED dl_t const *module, void *symbol, UNUSED void *user_ctx)
 {
-	lib_autofree((global_lib_autoinit_t **)symbol);
+	lib_autofree((global_lib_autoinst_t **)symbol);
 }
 
 /** Compare two fr_lib_t
@@ -203,7 +203,7 @@ static int _lib_list_free_atexit(UNUSED void *uctx)
  */
 int global_lib_init(void)
 {
-	if (lib_list) return;
+	if (lib_list) return 0;
 
 	MEM(lib_list = talloc_zero(NULL, global_lib_list_t));
 	fr_rb_inline_init(&lib_list->libs, global_lib_inst_t, entry, _lib_cmp, NULL);
