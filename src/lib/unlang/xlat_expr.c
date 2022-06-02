@@ -2212,7 +2212,7 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuf
 	fr_sbuff_parse_rules_t *terminal_rules = NULL;
 	tmpl_rules_t my_rules = { };
 	xlat_exp_head_t *head;
-	xlat_exp_t *node;
+	xlat_exp_t *node = NULL;
 
 	/*
 	 *	Whatever the caller passes, ensure that we have a
@@ -2309,7 +2309,7 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **ou
 	fr_sbuff_parse_rules_t *terminal_rules = NULL;
 	tmpl_rules_t my_rules = { };
 	xlat_exp_head_t *head;
-	xlat_exp_t *node;
+	xlat_exp_t *node = NULL;
 
 	/*
 	 *	Whatever the caller passes, ensure that we have a
