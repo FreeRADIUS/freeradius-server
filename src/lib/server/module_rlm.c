@@ -1005,6 +1005,12 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 	module_rlm_virtual_t	*vm;
 	fr_rb_iter_inorder_t	iter;
 	CONF_SECTION		*actions;
+
+	/*
+	 *	Ensure any libraries the modules depend on are instantiated
+	 */
+	global_lib_instantiate();
+
 	/*
 	 *	Remember where the modules were stored.
 	 */

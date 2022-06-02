@@ -1277,6 +1277,11 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 {
 	virtual_server_root = config;
 
+	/*
+	 *	Ensure any libraries the modules depend on are instantiated
+	 */
+	global_lib_instantiate();
+
 	if (modules_bootstrap(process_modules) < 0) return -1;
 	if (modules_bootstrap(proto_modules) < 0) return -1;
 

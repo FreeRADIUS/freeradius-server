@@ -1106,10 +1106,17 @@ static void _module_global_list_init(void *uctx)
 {
 	dl_modules = dl_module_loader_init(uctx);
 	MEM(module_global_inst_list = fr_heap_alloc(NULL, _module_instance_global_cmp, module_instance_t, inst_idx, 256));
+
+	/*
+	 *	Ensure the common library tracking
+	 *	tree is in place...
+	 */
+	global_lib_init();
 }
 
 static int _module_global_list_free(UNUSED void *uctx)
 {
+
 	if (!fr_cond_assert_msg(fr_heap_num_elements(module_global_inst_list) == 0,
 				"Global module heap has %u elements remaining on exit.  This is a leak",
 				fr_heap_num_elements(module_global_inst_list))) return -1;

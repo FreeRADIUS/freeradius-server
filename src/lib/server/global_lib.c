@@ -203,6 +203,8 @@ static int _lib_list_free_atexit(UNUSED void *uctx)
  */
 int global_lib_init(void)
 {
+	if (lib_list) return;
+
 	MEM(lib_list = talloc_zero(NULL, global_lib_list_t));
 	fr_rb_inline_init(&lib_list->libs, global_lib_inst_t, entry, _lib_cmp, NULL);
 
