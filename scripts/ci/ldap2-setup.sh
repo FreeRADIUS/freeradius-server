@@ -33,11 +33,13 @@ rm -rf /tmp/ldap2/certs
 # Create certificate directory
 mkdir -p /tmp/ldap2/certs
 
+make -C raddb/certs
+
 # Copy certificates - whilst not stricltly LDAP certs they work fine for these tests
-cp src/tests/certs/rsa/ca.pem /tmp/ldap2/certs/cacert.pem
-cp src/tests/certs/rsa/server.pem /tmp/ldap2/certs/servercert.pem
+cp raddb/certs/rsa/ca.pem /tmp/ldap2/certs/cacert.pem
+cp raddb/certs/rsa/server.pem /tmp/ldap2/certs/servercert.pem
 # OpenLDAP wants an un-encrypted key
-openssl rsa -in src/tests/certs/rsa/server.key -out /tmp/ldap2/certs/serverkey.pem -passin pass:whatever
+openssl rsa -in raddb/certs/rsa/server.key -out /tmp/ldap2/certs/serverkey.pem -passin pass:whatever
 
 # Start slapd
 slapd -h "ldap://127.0.0.1:3891/ ldaps://127.0.0.1:6360" -f scripts/ci/ldap/slapd2.conf &

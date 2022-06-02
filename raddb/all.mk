@@ -154,29 +154,37 @@ ${top_srcdir}/raddb/certs/ecc:
 ${top_srcdir}/raddb/certs/passwords.mk: $(wildcard ${top_srcdir}/raddb/certs/*cnf)
 	${Q}$(MAKE) -C $(dir $@) $(notdir $@)
 
+
+#
+#  We used to have cached certificates in src/test/certs which would regularly
+#  expire and break CI.
+#  We now generate fresh certificates on every CI run, because generating
+#  the certificates takes less than a second, and there is zero benefit in
+#  caching them.
+#
+#  If there's an actual requirement to cache certificates then it should be
+#  done with the CI environment's caching features and not committed to the
+#  git repository.
+#
 define BUILD_CERT
 ${1}/${2}/${3}.key: ${1}/${3}.cnf ${1}/passwords.mk | ${1}/${2}
 	$${Q}echo CERT-KEY ${2}/${3}
-#	$${Q}$$(MAKE) -C ${1} ${2}/${3}.key
-	$${Q}cp src/tests/certs/${2}/${3}.key $$@
+	$${Q}$$(MAKE) -C ${1} ${2}/${3}.key
 	@touch $$@
 
 ${1}/${2}/${3}.csr: ${1}/${2}/${3}.key
 	$${Q}echo CERT-CSR ${2}/${3}
-#	$${Q}$$(MAKE) -C ${1} ${2}/${3}.csr
-	$${Q}cp src/tests/certs/${2}/${3}.csr $$@
+	$${Q}$$(MAKE) -C ${1} ${2}/${3}.csr
 	@touch $$@
 
 ${1}/${2}/${3}.pem: ${1}/${2}/${3}.key
-	$${Q}echo CERT-PEM$= ${2}/${3}
-#	$${Q}$$(MAKE) -C ${1} ${2}/${3}.pem
-	$${Q}cp src/tests/certs/${2}/${3}.pem $$@
+	$${Q}echo CERT-PEM ${2}/${3}
+	$${Q}$$(MAKE) -C ${1} ${2}/${3}.pem
 	@touch $$@
 
 ${1}/${2}/${3}.crt: ${1}/${2}/${3}.pem
 	$${Q}echo CERT-CRT ${2}/${3}
-#	$${Q}$$(MAKE) -C ${1} ${2}/${3}.crt
-	$${Q}cp src/tests/certs/${2}/${3}.crt $$@
+	$${Q}$$(MAKE) -C ${1} ${2}/${3}.crt
 	@touch $$@
 
 ifneq "${3}" "ca"
