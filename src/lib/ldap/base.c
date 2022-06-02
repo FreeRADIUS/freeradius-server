@@ -41,8 +41,6 @@ LDAP *ldap_global_handle;			//!< Hack for OpenLDAP libldap global initialisation
 static _Thread_local LDAP *ldap_thread_local_handle;	//!< Hack for functions which require an ldap handle
 						///< but don't actually use it for anything.
 
-static uint32_t instance_count = 0;
-
 /** Used to set the global log prefix for functions which don't operate on connections
  *
  */
@@ -1026,11 +1024,6 @@ int fr_ldap_init(void)
 	static LDAPAPIInfo	info = { .ldapai_info_version = LDAP_API_INFO_VERSION };	/* static to quiet valgrind about this being uninitialised */
 	fr_ldap_config_t	*handle_config = &ldap_global_handle_config;
 
-	if (instance_count > 0) {
-		instance_count++;
-		return 0;
-	}
-
 	/*
 	 *	Only needs to be done once, prevents races in environment
 	 *	initialisation within libldap.
@@ -1087,22 +1080,5 @@ int fr_ldap_init(void)
 		     LDAP_VENDOR_VERSION_MAJOR, LDAP_VENDOR_VERSION_MINOR, LDAP_VENDOR_VERSION_PATCH);
 	}
 
-	instance_count++;
-
 	return 0;
-}
-
-/** Free any global libldap resources
- *
- */
-void fr_ldap_free(void)
-{
-	if (--instance_count > 0) return;
-
-	/*
-	 *	Keeping the dummy ld around for the lifetime
-	 *	of the module should always work,
-	 *	irrespective of what changes happen in libldap.
-	 */
-	ldap_unbind_ext_s(ldap_global_handle, NULL, NULL);
 }
