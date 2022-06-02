@@ -48,7 +48,6 @@ static fr_dict_autoload_t xlat_eval_dict[] = {
 
 static fr_dict_attr_t const *attr_client_ip_address;
 static fr_dict_attr_t const *attr_client_shortname;
-static fr_dict_attr_t const *attr_module_return_code;
 static fr_dict_attr_t const *attr_packet_dst_ip_address;
 static fr_dict_attr_t const *attr_packet_dst_ipv6_address;
 static fr_dict_attr_t const *attr_packet_dst_port;
@@ -61,6 +60,7 @@ static fr_dict_attr_t const *attr_virtual_server;
 static fr_dict_attr_t const *attr_packet_authentication_vector;
 static fr_dict_attr_t const *attr_packet_type;
 fr_dict_attr_t const	    *attr_expr_bool_enum; /* xlat_expr.c */
+fr_dict_attr_t const		*attr_module_return_code; /* xlat_expr.c */
 
 static fr_dict_attr_autoload_t xlat_eval_dict_attr[] = {
 	{ .out = &attr_client_ip_address, .name = "Client-IP-Address", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_freeradius },

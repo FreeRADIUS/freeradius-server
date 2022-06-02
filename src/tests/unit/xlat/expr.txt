@@ -104,18 +104,9 @@ match ((4 + 3) + 6)
 xlat_expr 1 < (uint32) 2
 match (1 < 2)
 
-#
-#  @todo - for exec, xlat, etc., if we're doing an existence check of
-#  string / octets, then the check is for "length>0", NOT for parsing
-#  the contents of the data type.
-#
-
 xlat_expr 1 < 2 < 3
 match ((1 < 2) < 3)
 
-#
-#  @todo - tmpl print doesn't print casts!
-#
 xlat_expr (uint32) %(concat:1 2)
 match %(concat:1 2)
 

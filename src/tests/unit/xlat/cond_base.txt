@@ -110,6 +110,9 @@ match Passed in 67 characters, but only parsed 66 characters
 xlat_purify ('handled' && (&Packet-Type == Access-Challenge))
 match  ('handled' && (&Packet-Type == Access-Challenge))
 
+xlat_purify (handled && (&Packet-Type == Access-Challenge))
+match (%{rcode:'handled'} && (&Packet-Type == Access-Challenge))
+
 # This is OK, without the braces
 xlat_purify 'handled' && &Packet-Type == Access-Challenge
 match ('handled' && (&Packet-Type == Access-Challenge))
@@ -709,5 +712,21 @@ match ((&User-Name == "bob") && (&User-Password == "hello"))
 xlat_purify (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
 match ((&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message))
 
+#
+#  rcode tests
+#
+xlat_purify handled && (&User-Name == "bob")
+match (%{rcode:'handled'} && (&User-Name == "bob"))
+
+xlat_purify (&User-Name == "bob") && (&User-Password == "bob") && handled
+match ((&User-Name == "bob") && (&User-Password == "bob") && %{rcode:'handled'})
+
+xlat_purify handledx
+match ERROR offset 0: Unexpected text - attribute names must prefixed with '&'
+
+xlat_purify handled
+match %{rcode:'handled'}
+
+
 count
-match 290
+match 300

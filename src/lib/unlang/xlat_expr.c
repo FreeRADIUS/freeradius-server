@@ -1192,6 +1192,48 @@ static int xlat_function_args_to_tmpl(xlat_inst_ctx_t const *xctx)
 }
 
 
+static xlat_arg_parser_t const xlat_func_rcode_arg = {
+	.concat = true, .type = FR_TYPE_STRING,
+};
+
+/** Return the rcode as a string, or bool match if the argument is an rcode name
+ *
+ * Example:
+@verbatim
+"%{rcode:}" == "handled"
+"%{rcode:handled}" == true
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_rcode(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				     UNUSED xlat_ctx_t const *xctx,
+				     request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t	*vb;
+	fr_value_box_t	*in = fr_dlist_head(args);
+
+	/*
+	 *	Query the rcode if there's no argument.  Otherwise do a boolean check if the passed string
+	 *	matches the current rcode.
+	 */
+	if (!in) {
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_UINT32, attr_module_return_code, false));
+		vb->datum.int32 = request->rcode;
+	} else {
+		rlm_rcode_t rcode;
+
+		rcode = fr_table_value_by_str(rcode_table, in->vb_strvalue, RLM_MODULE_NOT_SET);
+
+		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
+		vb->vb_bool = (request->rcode == rcode);
+	}
+
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
 #undef XLAT_REGISTER_BINARY_OP
 #define XLAT_REGISTER_BINARY_OP(_op, _name) \
 do { \
@@ -1234,6 +1276,13 @@ do { \
 	xlat_print_set(xlat, xlat_expr_print_regex); \
 	xlat_internal(xlat); \
 	xlat->token = _op; \
+} while (0)
+
+#define XLAT_REGISTER_MONO(_xlat, _func, _arg) \
+do { \
+	if (!(xlat = xlat_register(NULL, _xlat, _func, NULL))) return -1; \
+	xlat_func_mono(xlat, &_arg); \
+	xlat_internal(xlat); \
 } while (0)
 
 int xlat_register_expressions(void)
@@ -1282,6 +1331,8 @@ int xlat_register_expressions(void)
 	xlat_print_set(xlat, xlat_expr_print_unary);
 	xlat->token = T_NOT;
 
+	XLAT_REGISTER_MONO("rcode", xlat_func_rcode, xlat_func_rcode_arg);
+
 	return 0;
 }
 
@@ -1316,8 +1367,18 @@ static const fr_sbuff_term_elem_t binary_ops[T_TOKEN_LAST] = {
 /*
  *	These operations are N-ary.  i.e. we can concatenate all of
  *	their arguments together.
+ *
+ *	@todo - add T_ADD
  */
 static const bool nary_ops[T_TOKEN_LAST] = {
+	[T_LAND] = true,
+	[T_LOR] = true,
+};
+
+/*
+ *	Which are logical operations
+ */
+static const bool logical_ops[T_TOKEN_LAST] = {
 	[T_LAND] = true,
 	[T_LOR] = true,
 };
@@ -1819,6 +1880,69 @@ static bool valid_type(xlat_exp_t *node)
 	return true;
 }
 
+static int reparse_rcode(TALLOC_CTX *ctx, xlat_exp_t **p_arg)
+{
+	rlm_rcode_t rcode;
+	ssize_t slen;
+	size_t len;
+	xlat_t *func;
+	xlat_exp_t *arg = *p_arg;
+	xlat_exp_t *node;
+
+	if ((arg->type != XLAT_TMPL) || (arg->quote != T_BARE_WORD)) return 0;
+
+	if (!tmpl_is_unresolved(arg->vpt)) return 0;
+
+	len = talloc_array_length(arg->vpt->name) - 1;
+
+	/*
+	 *	Check for module return codes.  If we find one,
+	 *	replace it with a function call that returns "true" if
+	 *	the current module code matches what we supplied here.
+	 */
+	fr_sbuff_out_by_longest_prefix(&slen, &rcode, rcode_table,
+				       &FR_SBUFF_IN(arg->vpt->name, len), T_BARE_WORD);
+	if (slen < 0) return 0;
+
+	/*
+	 *	It did match, so it must match exactly.
+	 *
+	 *	@todo - what about (ENUM == &Attr), where the ENUM starts with "ok"?
+	 *	Maybe just fix that later. Or, if it's a typo such as
+	 */
+	if (((size_t) slen) != len) {
+		fr_strerror_const("Unexpected text - attribute names must prefixed with '&'");
+		return -1;
+	}
+
+	func = xlat_func_find("rcode", 5);
+	fr_assert(func != NULL);
+
+	/*
+	 *	@todo - free the arg, and replace it with XLAT_BOX of uint32.  Then also update func_rcode()
+	 *	to take UINT32 or string...
+	 */
+	if (tmpl_cast_in_place(arg->vpt, FR_TYPE_STRING, NULL) < 0) {
+		return -1;
+	}
+
+	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, arg->vpt->name, len));
+	MEM(node->call.args = xlat_exp_head_alloc(node));
+	node->call.func = func;
+	node->flags = func->flags;
+
+	/*
+	 *	Doesn't need resolving, isn't pure, doesn't need anything else.
+	 */
+	arg->flags = (xlat_flags_t) { };
+
+	xlat_func_append_arg(node, arg);
+
+	*p_arg = node;
+
+	return 0;
+}
+
 /** Tokenize a mathematical operation.
  *
  *	(EXPR)
@@ -1940,7 +2064,8 @@ redo:
 	 *	We now parse the RHS, allowing a (perhaps different) cast on the RHS.
 	 */
 	XLAT_DEBUG("    recurse RHS <-- %pV", fr_box_strvalue_len(fr_sbuff_current(&our_in), fr_sbuff_remaining(&our_in)));
-	slen = tokenize_expression(head, &rhs, &our_in, p_rules, t_rules, op, bracket_rules, ((op == T_OP_REG_EQ) || (op == T_OP_REG_NE)));
+	slen = tokenize_expression(head, &rhs, &our_in, p_rules, t_rules, op, bracket_rules,
+				   ((op == T_OP_REG_EQ) || (op == T_OP_REG_NE)));
 	if (slen <= 0) {
 		talloc_free(lhs);
 		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
@@ -1963,6 +2088,14 @@ redo:
 	 *	"lhs" children.
 	 */
 	if (nary_ops[op] && (lhs->type == XLAT_FUNC) && (lhs->call.func->token == op)) {
+		/*
+		 *	Reparse module return codes if necessary.
+		 */
+		if (logical_ops[op] && (reparse_rcode(head, &rhs) < 0)) {
+			fr_sbuff_set(&our_in, &m_rhs);
+			return -fr_sbuff_used(&our_in);
+		}
+
 		xlat_func_append_arg(lhs, rhs);
 
 		lhs->call.args->flags.can_purify |= rhs->flags.can_purify | rhs->flags.pure;
@@ -1985,6 +2118,18 @@ redo:
 		}
 	}
 
+	if (logical_ops[op]) {
+		if (reparse_rcode(head, &lhs) < 0) {
+			fr_sbuff_set(&our_in, &m_lhs);
+			return -fr_sbuff_used(&our_in);
+		}
+
+		if (reparse_rcode(head, &rhs) < 0) {
+			fr_sbuff_set(&our_in, &m_rhs);
+			return -fr_sbuff_used(&our_in);
+		}
+	}
+
 	/*
 	 *	Create the function node, with the LHS / RHS arguments.
 	 */
@@ -2002,7 +2147,7 @@ redo:
 	/*
 	 *	Logical operations can be purified if ANY of their arguments can be purified.
 	 */
-	if ((op == T_LAND) || (op == T_LOR)) {
+	if (logical_ops[op]) {
 		xlat_exp_foreach(node->call.args, arg) {
 			node->call.args->flags.can_purify |= arg->flags.can_purify | arg->flags.pure;
 			if (node->call.args->flags.can_purify) break;
@@ -2050,6 +2195,7 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuf
 	fr_sbuff_parse_rules_t *terminal_rules = NULL;
 	tmpl_rules_t my_rules = { };
 	xlat_exp_head_t *head;
+	xlat_exp_t *node;
 
 	/*
 	 *	Whatever the caller passes, ensure that we have a
@@ -2083,7 +2229,7 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuf
 		t_rules = &my_rules;
 	}
 
-	slen = tokenize_expression(head, NULL, in, terminal_rules, t_rules, T_INVALID, bracket_rules, false);
+	slen = tokenize_expression(head, &node, in, terminal_rules, t_rules, T_INVALID, bracket_rules, false);
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
 
@@ -2092,11 +2238,26 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuf
 		return slen;
 	}
 
+	if (!node) {
+		*out = head;
+		return slen;
+	}
+
+	/*
+	 *	Convert raw rcodes to xlat's.
+	 */
+	if (reparse_rcode(head, &node) < 0) {
+		talloc_free(head);
+		return 0;
+	}
+
+	xlat_exp_insert_tail(head, node);
+
 	/*
 	 *	Add nodes that need to be bootstrapped to
 	 *	the registry.
 	 */
-	if (xlat_exp_head(head) && (xlat_bootstrap(head) < 0)) {
+	if (xlat_bootstrap(head) < 0) {
 		talloc_free(head);
 		return 0;
 	}
@@ -2131,6 +2292,7 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **ou
 	fr_sbuff_parse_rules_t *terminal_rules = NULL;
 	tmpl_rules_t my_rules = { };
 	xlat_exp_head_t *head;
+	xlat_exp_t *node;
 
 	/*
 	 *	Whatever the caller passes, ensure that we have a
@@ -2167,7 +2329,7 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **ou
 	my_rules.xlat.runtime_el = el;
 	my_rules.at_runtime = true;
 
-	slen = tokenize_expression(head, NULL, in, terminal_rules, &my_rules, T_INVALID, bracket_rules, false);
+	slen = tokenize_expression(head, &node, in, terminal_rules, &my_rules, T_INVALID, bracket_rules, false);
 	talloc_free(bracket_rules);
 	talloc_free(terminal_rules);
 
@@ -2176,10 +2338,20 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **ou
 		return slen;
 	}
 
-	if (!xlat_exp_head(head)) {
+	if (!node) {
 		*out = head;
 		return slen;
 	}
+
+	/*
+	 *	Convert raw rcodes to xlat's.
+	 */
+	if (reparse_rcode(head, &node) < 0) {
+		talloc_free(head);
+		return 0;
+	}
+
+	xlat_exp_insert_tail(head, node);
 
 	/*
 	 *	Create ephemeral instance data for the xlat
