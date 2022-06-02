@@ -29,6 +29,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_file.h>
+#include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/pair.h>

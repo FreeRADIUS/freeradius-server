@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/curl/base.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cf_priv.h>
+#include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/util/talloc.h>
@@ -57,6 +58,12 @@ fr_dict_attr_autoload_t rlm_smtp_dict_attr[] = {
 	{ .out = &attr_smtp_header, .name = "SMTP-Mail-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_smtp_body, .name = "SMTP-Mail-Body", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ NULL },
+};
+
+extern global_lib_autoinst_t const * const rlm_smtp_lib[];
+global_lib_autoinst_t const * const rlm_smtp_lib[] = {
+	&fr_curl_autoinst,
+	GLOBAL_LIB_TERMINATOR
 };
 
 typedef struct {
@@ -1002,23 +1009,6 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 	return unlang_module_yield(request, mod_authenticate_resume, NULL, randle);
 }
 
-/*
- *	Initialize global curl instance
- */
-static int mod_load(void)
-{
-	if (fr_curl_init() < 0) return -1;
-	return 0;
-}
-
-/*
- *	Close global curl instance
- */
-static void mod_unload(void)
-{
-	fr_curl_free();
-}
-
 /** Verify that a map in the header section makes sense
  *
  */
@@ -1117,8 +1107,6 @@ module_rlm_t rlm_smtp = {
 		.config		        = module_config,
 		.bootstrap 		= mod_bootstrap,
 		.instantiate		= mod_instantiate,
-		.onload            	= mod_load,
-		.unload             	= mod_unload,
 		.thread_instantiate 	= mod_thread_instantiate,
 		.thread_detach      	= mod_thread_detach,
 	},

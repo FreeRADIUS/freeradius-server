@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/curl/base.h>
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/tls/base.h>
@@ -171,6 +172,12 @@ fr_dict_attr_autoload_t rlm_rest_dict_attr[] = {
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
+};
+
+extern global_lib_autoinst_t const * const rlm_rest_lib[];
+global_lib_autoinst_t const * const rlm_rest_lib[] = {
+	&fr_curl_autoinst,
+	GLOBAL_LIB_TERMINATOR
 };
 
 /** Update the status attribute
@@ -1208,22 +1215,11 @@ static int mod_load(void)
 	/* developer sanity */
 	fr_assert((NUM_ELEMENTS(http_body_type_supported)) == REST_HTTP_BODY_NUM_ENTRIES);
 
-	if (fr_curl_init() < 0) return -1;
-
 #ifdef HAVE_JSON
 	fr_json_version_print();
 #endif
 
 	return 0;
-}
-
-/** Called to free resources held by libcurl
- *
- * @see mod_load
- */
-static void mod_unload(void)
-{
-	fr_curl_free();
 }
 
 /*
@@ -1245,7 +1241,6 @@ module_rlm_t rlm_rest = {
 		.thread_inst_size	= sizeof(rlm_rest_thread_t),
 		.config			= module_config,
 		.onload			= mod_load,
-		.unload			= mod_unload,
 		.bootstrap		= mod_bootstrap,
 		.instantiate		= instantiate,
 		.thread_instantiate	= mod_thread_instantiate,

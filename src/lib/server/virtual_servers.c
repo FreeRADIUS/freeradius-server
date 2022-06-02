@@ -27,15 +27,16 @@
 
 RCSID("$Id$")
 
+#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/command.h>
-#include <freeradius-devel/server/dl_module.h>
-#include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/cond.h>
-#include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/dl_module.h>
+#include <freeradius-devel/server/global_lib.h>
+#include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/process.h>
+#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/virtual_servers.h>
-#include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/master.h>

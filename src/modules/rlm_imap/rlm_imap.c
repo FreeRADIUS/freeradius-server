@@ -24,9 +24,10 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/base.h>
-#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/curl/base.h>
+#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/global_lib.h>
+#include <freeradius-devel/server/module_rlm.h>
 
 static fr_dict_t 	const 		*dict_radius; /*dictionary for radius protocol*/
 
@@ -44,6 +45,12 @@ fr_dict_attr_autoload_t rlm_imap_dict_attr[] = {
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL },
+};
+
+extern global_lib_autoinst_t const * const rlm_imap_lib[];
+global_lib_autoinst_t const * const rlm_imap_lib[] = {
+	&fr_curl_autoinst,
+	GLOBAL_LIB_TERMINATOR
 };
 
 typedef struct {
@@ -165,23 +172,6 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 }
 
 /*
- *	Initialize global curl instance
- */
-static int mod_load(void)
-{
-	if (fr_curl_init() < 0) return -1;
-	return 0;
-}
-
-/*
- *	Close global curl instance
- */
-static void mod_unload(void)
-{
-	fr_curl_free();
-}
-
-/*
  *	Initialize a new thread with a curl instance
  */
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
@@ -225,8 +215,6 @@ module_rlm_t rlm_imap = {
 		.inst_size	        = sizeof(rlm_imap_t),
 		.thread_inst_size   	= sizeof(rlm_imap_thread_t),
 		.config		        = module_config,
-		.onload            	= mod_load,
-		.unload             	= mod_unload,
 		.thread_instantiate 	= mod_thread_instantiate,
 		.thread_detach      	= mod_thread_detach,
 	},

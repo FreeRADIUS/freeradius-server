@@ -30,8 +30,6 @@
 
 #include "attrs.h"
 
-static uint32_t instance_count = 0;
-
 fr_dict_attr_t const *attr_tls_certificate;
 static fr_dict_t const *dict_freeradius; /*internal dictionary for server*/
 
@@ -73,72 +71,6 @@ CONF_PARSER fr_curl_tls_config[] = {
 	{ FR_CONF_OFFSET("extract_cert_attrs", FR_TYPE_BOOL, fr_curl_tls_t, extract_cert_attrs), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
-
-/** Initialise global curl options
- *
- * libcurl is meant to performa reference counting, but still seems to
- * leak lots of memory if we call curl_global_init many times.
- */
-int fr_curl_init(void)
-{
-	CURLcode ret;
-	curl_version_info_data *curlversion;
-
-	if (instance_count > 0) {
-		instance_count++;
-		return 0;
-	}
-
-#ifdef WITH_TLS
-	/*
-	 *	Use our OpenSSL init with the hope that
-	 *	the free function will also free the
-	 *	memory allocated during SSL init.
-	 */
-	if (fr_openssl_init() < 0) return -1;
-#endif
-
-	if (fr_dict_autoload(curl_dict) < 0) {
-		PERROR("Failed loading dictionaries for curl");
-		return -1;
-	}
-
-	if (fr_dict_attr_autoload(curl_attr) < 0) {
-		PERROR("Failed loading dictionaries for curl");
-		return -1;
-	}
-
-	ret = curl_global_init(CURL_GLOBAL_ALL);
-	if (ret != CURLE_OK) {
-		ERROR("CURL init returned error: %i - %s", ret, curl_easy_strerror(ret));
-		fr_dict_autofree(curl_dict);
-		return -1;
-	}
-
-	curlversion = curl_version_info(CURLVERSION_NOW);
-	if (strcmp(LIBCURL_VERSION, curlversion->version) != 0) {
-		WARN("libcurl version changed since the server was built");
-		WARN("linked: %s built: %s", curlversion->version, LIBCURL_VERSION);
-	}
-
-	INFO("libcurl version: %s", curl_version());
-
-	instance_count++;
-
-	return 0;
-}
-
-void fr_curl_free(void)
-{
-	if (--instance_count > 0) return;
-
-	fr_dict_autofree(curl_dict);
-
-#ifdef WITH_TLS
-	fr_openssl_free();
-#endif
-	curl_global_cleanup();
-}
 
 int fr_curl_easy_tls_init(fr_curl_io_request_t *randle, fr_curl_tls_t const *conf)
 {
@@ -241,3 +173,70 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 	}
 	return 0;
 }
+
+
+/** Initialise global curl options
+ *
+ * libcurl is meant to performa reference counting, but still seems to
+ * leak lots of memory if we call curl_global_init many times.
+ */
+static int fr_curl_init(void)
+{
+	CURLcode ret;
+	curl_version_info_data *curlversion;
+
+#ifdef WITH_TLS
+	/*
+	 *	Use our OpenSSL init with the hope that
+	 *	the free function will also free the
+	 *	memory allocated during SSL init.
+	 */
+	if (fr_openssl_init() < 0) return -1;
+#endif
+
+	if (fr_dict_autoload(curl_dict) < 0) {
+		PERROR("Failed loading dictionaries for curl");
+		return -1;
+	}
+
+	if (fr_dict_attr_autoload(curl_attr) < 0) {
+		PERROR("Failed loading dictionaries for curl");
+		return -1;
+	}
+
+	ret = curl_global_init(CURL_GLOBAL_ALL);
+	if (ret != CURLE_OK) {
+		ERROR("CURL init returned error: %i - %s", ret, curl_easy_strerror(ret));
+		fr_dict_autofree(curl_dict);
+		return -1;
+	}
+
+	curlversion = curl_version_info(CURLVERSION_NOW);
+	if (strcmp(LIBCURL_VERSION, curlversion->version) != 0) {
+		WARN("libcurl version changed since the server was built");
+		WARN("linked: %s built: %s", curlversion->version, LIBCURL_VERSION);
+	}
+
+	INFO("libcurl version: %s", curl_version());
+
+	return 0;
+}
+
+static void fr_curl_free(void)
+{
+	fr_dict_autofree(curl_dict);
+
+#ifdef WITH_TLS
+	fr_openssl_free();
+#endif
+	curl_global_cleanup();
+}
+
+/*
+ *	Public symbol modules can reference to auto instantiate libcurl
+ */
+global_lib_autoinst_t fr_curl_autoinst = {
+	.name = "curl",
+	.init = fr_curl_init,
+	.free = fr_curl_free
+};

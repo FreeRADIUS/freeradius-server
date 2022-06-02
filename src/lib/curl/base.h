@@ -32,9 +32,10 @@ extern "C" {
 #define CURL_NO_OLDIES 1
 
 #include <curl/curl.h>
+#include <freeradius-devel/server/global_lib.h>
+#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/event.h>
-#include <freeradius-devel/server/module.h>
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(disabled-macro-expansion)
@@ -116,7 +117,8 @@ typedef struct {
 	bool			extract_cert_attrs;
 } fr_curl_tls_t;
 
-extern CONF_PARSER	 fr_curl_tls_config[];
+extern CONF_PARSER	 	fr_curl_tls_config[];
+extern global_lib_autoinst_t	fr_curl_autoinst;
 
 int			fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle,
 						   request_t *request, fr_curl_io_request_t *creq);
@@ -124,10 +126,6 @@ int			fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle,
 fr_curl_io_request_t	*fr_curl_io_request_alloc(TALLOC_CTX *ctx);
 
 fr_curl_handle_t	*fr_curl_io_init(TALLOC_CTX *ctx, fr_event_list_t *el, bool multiplex);
-
-int			fr_curl_init(void);
-
-void			fr_curl_free(void);
 
 int			fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle);
 
