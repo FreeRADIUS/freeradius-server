@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/calc.h>
+#include <freeradius-devel/server/tmpl_dcursor.h>
 
 #undef XLAT_DEBUG
 #define DEBUG_XLAT
@@ -898,14 +899,28 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
 	return 0;
 }
 
-static bool xlat_logical_match(fr_value_box_t **dst, fr_value_box_list_t *in, bool logical_or)
+/** See if the input is truthy or not.
+ *
+ *  @param[in,out] dst	pre-initialized value-box containing the output box
+ *  @param[in]     in   list of value-boxes to check
+ *  @param[in] logical_or whether or not we're checking for ||.  false is &&
+ *  @return
+ *	- false if no match.
+ *	- true for match, with dst updated to contain the relevant box.
+ *
+ *  Empty lists are not truthy.
+ */
+static bool xlat_logical_match(fr_value_box_t **dst, fr_value_box_list_t const *in, bool logical_or)
 {
 	fr_value_box_t *last = NULL;
 
 	/*
+	 *	Empty lists are !truthy.
+	 */
+	if (!fr_dlist_num_elements(in)) return false;
+
+	/*
 	 *	Loop over the input list.  If the box is a group, then do this recursively.
-	 *
-	 *	Empty lists don't do anything.  They _should_ arguably be falsy?
 	 */
 	fr_value_box_foreach(in, box) {
 		if (fr_box_is_group(box)) {
@@ -949,6 +964,71 @@ static bool xlat_logical_match(fr_value_box_t **dst, fr_value_box_list_t *in, bo
 	return true;
 }
 
+static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					 xlat_ctx_t const *xctx,
+					 request_t *request, fr_value_box_list_t *in);
+
+/** Process one argument of a logical operation.
+ *
+ *  If we see a list in a truthy context, then we DON'T expand the list.  Instead, we return a bool which
+ *  indicates if the list was empty (or not).  This prevents us from returning a whole mess of value-boxes
+ *  when the user just wanted to see if the list existed.
+ *
+ *  Otherwise, we expand the xlat, and continue.
+ */
+static xlat_action_t xlat_logical_process_arg(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					      xlat_ctx_t const *xctx,
+					      request_t *request, fr_value_box_list_t *in)
+{
+	xlat_logical_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_logical_inst_t);
+	xlat_logical_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_logical_rctx_t);
+	xlat_exp_t *node;
+
+	node = xlat_exp_head(inst->argv[rctx->current]);
+	if (!xlat_exp_next(inst->argv[rctx->current], node) &&
+	    (node->type == XLAT_TMPL) &&
+	    (tmpl_is_list(node->vpt) || (tmpl_is_attr(node->vpt) && fr_type_is_structural(tmpl_da(node->vpt)->type)))) {
+		fr_pair_t		*vp;
+		fr_dcursor_t		cursor;
+		tmpl_dcursor_ctx_t	cc;
+
+		if (rctx->box->type != FR_TYPE_BOOL) {
+			fr_value_box_clear(rctx->box);
+			fr_value_box_init(rctx->box, FR_TYPE_BOOL, NULL, false);
+		}
+
+		vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, node->vpt);
+		if (!vp) {
+			rctx->box->vb_bool = false;
+		} else {
+			rctx->box->vb_bool = !fr_pair_list_empty(&vp->vp_group);
+		}
+
+		tmpl_dursor_clear(&cc);
+		rctx->last_success = true;
+
+		return xlat_logical_resume(ctx, out, xctx, request, in);
+	}
+
+	/*
+	 *	Push the xlat onto the stack for expansion.
+	 */
+	if (unlang_xlat_yield(request, xlat_logical_resume, NULL, rctx) != XLAT_ACTION_YIELD) {
+	fail:
+		talloc_free(rctx->box);
+		talloc_free(rctx);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (unlang_xlat_push(rctx, &rctx->last_success, &rctx->list,
+			     request, inst->argv[rctx->current], UNLANG_SUB_FRAME) < 0) goto fail;
+
+	return XLAT_ACTION_PUSH_UNLANG;
+}
+
+/*
+ *  We've evaluated an expression.  Let's see if we need to continue.
+ */
 static xlat_action_t xlat_logical_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 xlat_ctx_t const *xctx,
 					 request_t *request, UNUSED fr_value_box_list_t *in)
@@ -961,7 +1041,6 @@ static xlat_action_t xlat_logical_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *o
 	 *	entire thing.
 	 */
 	if (!rctx->last_success) {
-	fail:
 		talloc_free(rctx->box);
 		talloc_free(rctx);
 		return XLAT_ACTION_FAIL;
@@ -1000,23 +1079,16 @@ static xlat_action_t xlat_logical_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *o
 	 */
 	if (inst->stop || (rctx->current >= inst->argc)) goto done;
 
-	/*
-	 *	Push the xlat onto the stack for expansion.
-	 */
-	if (unlang_xlat_yield(request, xlat_logical_resume, NULL, rctx) != XLAT_ACTION_YIELD) goto fail;
-
-	if (unlang_xlat_push(rctx, &rctx->last_success, &rctx->list,
-			     request, inst->argv[rctx->current], UNLANG_SUB_FRAME) < 0) goto fail;
-
-	return XLAT_ACTION_PUSH_UNLANG;
+	return xlat_logical_process_arg(ctx, out, xctx, request, in);
 }
 
-
-static xlat_action_t xlat_func_logical(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+/** Process logical &&, ||
+ *
+ */
+static xlat_action_t xlat_func_logical(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       xlat_ctx_t const *xctx,
-				       request_t *request, UNUSED fr_value_box_list_t *in)
+				       request_t *request, fr_value_box_list_t *in)
 {
-	xlat_logical_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_logical_inst_t);
 	xlat_logical_rctx_t	*rctx;
 
 	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_logical_rctx_t));
@@ -1024,17 +1096,9 @@ static xlat_action_t xlat_func_logical(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out
 	MEM(rctx->box = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
 	fr_value_box_list_init(&rctx->list);
 
-	if (unlang_xlat_yield(request, xlat_logical_resume, NULL, rctx) != XLAT_ACTION_YIELD) {
-	fail:
-		talloc_free(rctx->box);
-		talloc_free(rctx);
-		return XLAT_ACTION_FAIL;
-	}
+	(UNCONST(xlat_ctx_t *, xctx))->rctx = rctx; /* ensure it's there before a resume! */
 
-	if (unlang_xlat_push(ctx, &rctx->last_success, &rctx->list,
-			     request, inst->argv[rctx->current], UNLANG_SUB_FRAME) < 0) goto fail;
-
-	return XLAT_ACTION_PUSH_UNLANG;
+	return xlat_logical_process_arg(ctx, out, xctx, request, in);
 }
 
 
