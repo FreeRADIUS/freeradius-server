@@ -608,7 +608,10 @@ static bool truthiness(fr_value_box_t const *in)
 
 	switch (in->type) {
 	case FR_TYPE_NULL:
+		return false;
+
 	case FR_TYPE_STRUCTURAL:
+		if (in->type == FR_TYPE_GROUP) return (fr_value_box_list_len(&in->vb_group) > 0);
 		return false;
 
 	case FR_TYPE_BOOL:
