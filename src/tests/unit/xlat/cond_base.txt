@@ -104,22 +104,21 @@ xlat_purify ((&User-Name == &Filter-Id) || (&Reply-Message == &User-Password)))
 match Passed in 67 characters, but only parsed 66 characters
 
 #
-#  @todo - the first argument is truthy, so we should replace the
-#  "&&" node with just the RHS.
+#  Truthy strings get omitted.
 #
 xlat_purify ('handled' && (&Packet-Type == Access-Challenge))
-match  ('handled' && (&Packet-Type == Access-Challenge))
+match  (&Packet-Type == Access-Challenge)
 
 xlat_purify (handled && (&Packet-Type == Access-Challenge))
 match (%{rcode:'handled'} && (&Packet-Type == Access-Challenge))
 
 # This is OK, without the braces
 xlat_purify 'handled' && &Packet-Type == Access-Challenge
-match ('handled' && (&Packet-Type == Access-Challenge))
+match (&Packet-Type == Access-Challenge)
 
 # and this, though it's not a good idea.
 xlat_purify 'handled' &&&Packet-Type == Access-Challenge
-match ('handled' && (&Packet-Type == Access-Challenge))
+match (&Packet-Type == Access-Challenge)
 
 xlat_purify &reply == &request
 match ERROR offset 0: Cannot use list references in condition
@@ -209,8 +208,12 @@ xlat_purify &Session-Timeout == 10
 match (&Session-Timeout == 10)
 
 # Automatic type inference means this is fine
+
+#
+#  @todo - in binary resolve, cast the RHS to the type of the LHS.
+#
 xlat_purify &Session-Timeout == '10'
-match (&Session-Timeout == 10)
+match (&Session-Timeout == '10')
 
 # Except for dates, which can be humanly readable!
 # This one is be an expansion, so it's left as-is.
@@ -543,7 +546,7 @@ match ERROR offset 11: Invalid array index '-1' (should be between 0-1000)
 #  The attribute/xlat_purify parser does not fall back to bare words
 #
 xlat_purify request.Foo == 'request.Foo'
-match ERROR offset 0: Invalid attribute reference, missing '&' prefix: Failed resolving attribute in expansion: request.Foo
+match ERROR offset 0: Failed resolving attribute in expansion: request.Foo
 
 xlat_purify &not-a-list.User-Name == &not-a-list.User-Name
 match ERROR offset 1: Attribute 'not' not found.  Searched in: RADIUS, internal: Unresolved attributes are not allowed here

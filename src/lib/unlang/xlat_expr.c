@@ -1730,6 +1730,23 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	node->quote = quote;
 	node->fmt = vpt->name;
 
+	/*
+	 *	Quoted strings just get resolved now.
+	 *
+	 *	@todo - this means that things like
+	 *
+	 *		&Session-Timeout == '10'
+	 *
+	 *	are run-time errors, instead of load-time parse errors.
+	 *
+	 *	On the other hand, if people assign static strings to non-string
+	 *	attributes... they sort of deserve what they get.
+	 */
+	if ((quote != T_BARE_WORD) && tmpl_is_unresolved(node->vpt)) {
+		fr_assert(quote != T_BACK_QUOTED_STRING);
+		if (tmpl_resolve(node->vpt, NULL) < 0) return -1;
+	}
+
 	node->flags.pure = tmpl_is_data(node->vpt);
 	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
 
