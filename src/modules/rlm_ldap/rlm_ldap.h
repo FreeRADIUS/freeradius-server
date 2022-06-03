@@ -136,14 +136,6 @@ typedef struct {
 	fr_pool_t	*pool;				//!< Connection pool instance.
 	fr_ldap_config_t handle_config;			//!< Connection configuration instance.
 	fr_trunk_conf_t	trunk_conf;			//!< Trunk configuration
-
-	/*
-	 *	Global config
-	 */
-	char const	*tls_random_file;		//!< Path to the random file if /dev/random and /dev/urandom
-							//!< are unavailable.
-
-	uint32_t	ldap_debug;			//!< Debug flag for the SDK.
 } rlm_ldap_t;
 
 extern HIDDEN fr_dict_attr_t const *attr_cleartext_password;

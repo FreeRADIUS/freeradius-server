@@ -29,6 +29,7 @@ case "$1" in
           /etc/freeradius/mods-enabled \
           /etc/freeradius/mods-config/attr_filter \
           /etc/freeradius/mods-config \
+          /etc/freeradius/global.d \
           /etc/freeradius/policy.d \
           /var/run/freeradius \
           /var/log/freeradius

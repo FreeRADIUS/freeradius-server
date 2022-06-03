@@ -47,6 +47,7 @@ case "$1" in
             /etc/freeradius/sites-available \
             /etc/freeradius/sites-enabled \
             /etc/freeradius/mods-config/attr_filter \
+            /etc/freeradius/global.d \
             /etc/freeradius/policy.d
           do
             if ! dpkg-statoverride --list | grep -qw $dir$; then

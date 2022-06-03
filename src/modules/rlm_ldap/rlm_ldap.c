@@ -182,14 +182,6 @@ static CONF_PARSER option_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER global_config[] = {
-	{ FR_CONF_OFFSET("random_file", FR_TYPE_FILE_EXISTS, rlm_ldap_t, tls_random_file) },
-
-	{ FR_CONF_OFFSET("ldap_debug", FR_TYPE_UINT32, rlm_ldap_t, ldap_debug), .dflt = "0x0000" },		/* Debugging flags to the server */
-
-	CONF_PARSER_TERMINATOR
-};
-
 static const CONF_PARSER module_config[] = {
 	/*
 	 *	Pool config items
@@ -227,8 +219,6 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_POINTER("profile", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) profile_config },
 
 	{ FR_CONF_POINTER("options", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) option_config },
-
-	{ FR_CONF_POINTER("global", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) global_config },
 
 	{ FR_CONF_OFFSET("tls", FR_TYPE_SUBSECTION, rlm_ldap_t, handle_config), .subcs = (void const *) tls_config },
 
@@ -268,6 +258,12 @@ fr_dict_attr_autoload_t rlm_ldap_dict_attr[] = {
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 
 	{ NULL }
+};
+
+extern global_lib_autoinst_t const *rlm_ldap_lib[];
+global_lib_autoinst_t const *rlm_ldap_lib[] = {
+	&fr_libldap_global_config,
+	GLOBAL_LIB_TERMINATOR
 };
 
 
@@ -2224,29 +2220,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		}
 	}
 
-	/*
-	 *	Set global options
-	 */
-	if (fr_ldap_init() < 0) goto error;
-
-	fr_ldap_global_config(inst->ldap_debug, inst->tls_random_file);
-
 	return 0;
 
 error:
 	return -1;
-}
-
-static int mod_load(void)
-{
-	fr_ldap_init();
-
-	return 0;
-}
-
-static void mod_unload(void)
-{
-	fr_ldap_free();
 }
 
 /* globally exported name */
@@ -2258,8 +2235,6 @@ module_rlm_t rlm_ldap = {
 		.type		= 0,
 		.inst_size	= sizeof(rlm_ldap_t),
 		.config		= module_config,
-		.onload		= mod_load,
-		.unload		= mod_unload,
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach,

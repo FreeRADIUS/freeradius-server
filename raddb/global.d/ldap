@@ -1,0 +1,47 @@
+ldap {
+	#
+	#  random_file:: Provides random number generator.
+	#
+#	random_file = /dev/urandom
+
+	#
+	#  ldap_debug:: Debug flags for libldap (see OpenLDAP documentation).
+	#  Set this to enable debugging output from different code areas within libldap.
+	#
+	#  NOTE: These debugging options can produce significant amounts of logging output.
+	#
+	#  [options="header,autowidth"]
+	#  |===
+	#  | Option             | Value
+	#  | LDAP_DEBUG_TRACE   | 0x0001
+	#  | LDAP_DEBUG_PACKETS | 0x0002
+	#  | LDAP_DEBUG_ARGS    | 0x0004
+	#  | LDAP_DEBUG_CONNS   | 0x0008
+	#  | LDAP_DEBUG_BER     | 0x0010
+	#  | LDAP_DEBUG_FILTER  | 0x0020
+	#  | LDAP_DEBUG_CONFIG  | 0x0040
+	#  | LDAP_DEBUG_ACL     | 0x0080
+	#  | LDAP_DEBUG_STATS   | 0x0100
+	#  | LDAP_DEBUG_STATS2  | 0x0200
+	#  | LDAP_DEBUG_SHELL   | 0x0400
+	#  | LDAP_DEBUG_PARSE   | 0x0800
+	#  | LDAP_DEBUG_SYNC    | 0x4000
+	#  | LDAP_DEBUG_NONE    | 0x8000
+	#  | LDAP_DEBUG_ANY     | (-1)
+	#  |===
+	#
+	#  e.g:
+	#
+	#  If you want to see the LDAP logs only for `trace` and `parse`,
+	#  facilities you should use:
+	#
+	#    (LDAP_DEBUG_TRACE + LDAP_DEBUG_PARSE) = 0x0801
+	#
+	#  Setting the `ldap_debug` configuration item as follows:
+	#
+	#     ldap_debug = 0x0801
+	#
+	#  Default: 0x0000 (no debugging messages)
+	#
+	ldap_debug = 0x0000
+}
