@@ -2343,3 +2343,46 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **ou
 	*out = head;
 	return slen;
 }
+
+/**  Allow callers to see if an xlat is truthy
+ *
+ *  So the caller can cache it, and needs to check fewer things at run
+ *  time.
+ *
+ *  @param[in] head	of the xlat to check
+ *  @param[out] out	truthiness of the box
+ *  @return
+ *	- false - xlat is not truthy, *out is unchanged.
+ *	- true - xlat is truthy, *out is the result of fr_value_box_is_truthy()
+ */
+bool xlat_is_truthy(xlat_exp_head_t const *head, bool *out)
+{
+	xlat_exp_t const *node;
+	fr_value_box_t const *box;
+
+	/*
+	 *	Only pure / constant things can be truthy.
+	 */
+	if (!head->flags.pure) return false;
+
+	node = xlat_exp_head(head);
+	if (!node) {
+		*out = false;
+		return true;
+	}
+
+	if (xlat_exp_next(head, node)) return false;
+
+	if (node->type == XLAT_BOX) {
+		box = &node->data;
+
+	} else if ((node->type == XLAT_TMPL) && tmpl_is_data(node->vpt)) {
+		box = tmpl_value(node->vpt);
+
+	} else {
+		return false;
+	}
+
+	*out = fr_value_box_is_truthy(box);
+	return true;
+}
