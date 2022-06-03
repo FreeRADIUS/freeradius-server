@@ -595,48 +595,6 @@ static xlat_action_t xlat_func_ ## _name(TALLOC_CTX *ctx, fr_dcursor_t *out, \
 XLAT_REGEX_FUNC(reg_eq,  T_OP_REG_EQ)
 XLAT_REGEX_FUNC(reg_ne,  T_OP_REG_NE)
 
-/** Check truthiness of values.
- *
- *	The casting rules for expressions / conditions are slightly
- *	different than fr_value_box_cast().  Largely because that
- *	function is used to parse configuration files, and parses "yes
- *	/ no" and "true / false" strings, even if there's no
- *	fr_dict_attr_t passed to it.
- */
-static bool truthiness(fr_value_box_t const *in)
-{
-	fr_value_box_t box;
-
-	switch (in->type) {
-	case FR_TYPE_NULL:
-		return false;
-
-	case FR_TYPE_STRUCTURAL:
-		if (in->type == FR_TYPE_GROUP) return (fr_value_box_list_len(&in->vb_group) > 0);
-		return false;
-
-	case FR_TYPE_BOOL:
-		return in->vb_bool;
-
-	case FR_TYPE_STRING:
-	case FR_TYPE_OCTETS:
-		return (in->vb_length > 0);
-
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV6_ADDR:
-		return !fr_ipaddr_is_inaddr_any(&in->vb_ip);
-
-	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_IPV6_PREFIX:
-		return !((in->vb_ip.prefix == 0) && fr_ipaddr_is_inaddr_any(&in->vb_ip));
-
-	default:
-		fr_value_box_init_null(&box);
-		(void) fr_value_box_cast(NULL, &box, FR_TYPE_BOOL, NULL, in);
-		return box.vb_bool;
-	}
-}
-
 typedef struct {
 	bool		stop;
 	int		argc;
@@ -745,7 +703,7 @@ check:
 	 *
 	 *	On "false", omit this argument, and go to the next one.
 	 */
-	*result = (truthiness(box) == sense);
+	*result = (fr_value_box_is_truthy(box) == sense);
 
 	if (!*result) return true;
 
@@ -930,7 +888,7 @@ static bool xlat_logical_match(fr_value_box_t **dst, fr_value_box_list_t const *
 		}
 
 		if (logical_or) {
-			if (truthiness(box)) {
+			if (fr_value_box_is_truthy(box)) {
 				DEBUG("True || %pV", box);
 				last = box; /* stop at the first matching one, and return it. */
 				break;
@@ -943,7 +901,7 @@ static bool xlat_logical_match(fr_value_box_t **dst, fr_value_box_list_t const *
 		/*
 		 *	Must be logical &&
 		 */
-		if (truthiness(box)) {
+		if (fr_value_box_is_truthy(box)) {
 			DEBUG("True && %pV", box);
 			last = box;
 			continue;

@@ -5877,3 +5877,45 @@ void fr_value_box_mark_unsafe(fr_value_box_t *box)
 {
 	box->safe = 0;
 }
+
+/** Check truthiness of values.
+ *
+ *	The casting rules for expressions / conditions are slightly
+ *	different than fr_value_box_cast().  Largely because that
+ *	function is used to parse configuration files, and parses "yes
+ *	/ no" and "true / false" strings, even if there's no
+ *	fr_dict_attr_t passed to it.
+ */
+bool fr_value_box_is_truthy(fr_value_box_t const *in)
+{
+	fr_value_box_t box;
+
+	switch (in->type) {
+	case FR_TYPE_NULL:
+		return false;
+
+	case FR_TYPE_STRUCTURAL:
+		if (in->type == FR_TYPE_GROUP) return (fr_value_box_list_len(&in->vb_group) > 0);
+		return false;
+
+	case FR_TYPE_BOOL:
+		return in->vb_bool;
+
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+		return (in->vb_length > 0);
+
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_IPV6_ADDR:
+		return !fr_ipaddr_is_inaddr_any(&in->vb_ip);
+
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_IPV6_PREFIX:
+		return !((in->vb_ip.prefix == 0) && fr_ipaddr_is_inaddr_any(&in->vb_ip));
+
+	default:
+		fr_value_box_init_null(&box);
+		(void) fr_value_box_cast(NULL, &box, FR_TYPE_BOOL, NULL, in);
+		return box.vb_bool;
+	}
+}

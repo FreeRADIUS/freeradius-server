@@ -780,6 +780,9 @@ int		fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 					   fr_type_t dst_type, fr_dict_attr_t const *dst_enumv)
 		CC_HINT(nonnull(1));
 
+bool		fr_value_box_is_truthy(fr_value_box_t const *box)
+		CC_HINT(nonnull(1));
+
 int		fr_value_box_ipaddr(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 				    fr_ipaddr_t const *ipaddr, bool tainted)
 		CC_HINT(nonnull(1,3));
