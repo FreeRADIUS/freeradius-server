@@ -150,3 +150,130 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+
+--  ------------------------------------------------------
+--  - "Lightweight" Accounting-On/Off strategy resources -
+--  ------------------------------------------------------
+--
+--  The following resources are for use only when the "lightweight"
+--  Accounting-On/Off strategy is enabled in queries.conf.
+--
+--  Instead of bulk closing the radacct sessions belonging to a reloaded NAS,
+--  this strategy leaves them open and records the NAS reload time in the
+--  nasreload table.
+--
+--  Where applicable, the onus is on the administator to:
+--
+--    * Consider the nas reload times when deriving a list of
+--      active/inactive sessions, and when determining the duration of sessions
+--      interrupted by a NAS reload. (Refer to the view below.)
+--
+--    * Close the affected sessions out of band. (Refer to the SP below.)
+--
+--
+--  The radacct_with_reloads view presents the radacct table with two additional
+--  columns: acctstoptime_with_reloads and acctsessiontime_with_reloads
+--
+--  Where the session isn't closed (acctstoptime IS NULL), yet it started before
+--  the last reload of the NAS (radacct.acctstarttime < nasreload.reloadtime),
+--  the derived columns are set based on the reload time of the NAS (effectively
+--  the point in time that the session was interrupted.)
+--
+CREATE VIEW radacct_with_reloads AS
+SELECT
+    a.*,
+    COALESCE(a.acctstoptime,
+        IF(a.acctstarttime < n.reloadtime, n.reloadtime, NULL)
+    ) AS acctstoptime_with_reloads,
+    COALESCE(a.acctsessiontime,
+        IF(a.acctstoptime IS NULL AND a.acctstarttime < n.reloadtime,
+            UNIX_TIMESTAMP(n.reloadtime) - UNIX_TIMESTAMP(a.acctstarttime), NULL)
+    ) AS acctsessiontime_with_reloads
+FROM radacct a
+LEFT OUTER JOIN nasreload n USING (nasipaddress);
+
+
+--
+--  It may be desirable to periodically "close" radacct sessions belonging to a
+--  reloaded NAS, replicating the "bulk close" Accounting-On/Off behaviour,
+--  just not in real time.
+--
+--  The fr_radacct_close_after_reload SP will set radacct.acctstoptime to
+--  nasreload.reloadtime, calculate the corresponding radacct.acctsessiontime,
+--  and set acctterminatecause to "NAS reboot" for interrupted sessions. It
+--  does so in batches, which avoids long-lived locks on the affected rows.
+--
+--  It can be invoked as follows:
+--
+--      CALL fr_radacct_close_after_reload();
+--
+--  Note: This SP walks radacct in strides of v_batch_size. It will typically
+--  skip closed and ongoing sessions at a rate significantly faster than
+--  100,000 rows per second and process batched updates faster than 20,000
+--  orphaned sessions per second. If this isn't fast enough then you should
+--  really consider using a custom schema that includes partitioning by
+--  nasipaddress or acct{start,stop}time.
+--
+DELIMITER $$
+
+DROP PROCEDURE IF EXISTS fr_radacct_close_after_reload;
+CREATE PROCEDURE fr_radacct_close_after_reload ()
+SQL SECURITY INVOKER
+BEGIN
+
+    DECLARE v_a BIGINT(21);
+    DECLARE v_z BIGINT(21);
+    DECLARE v_updated BIGINT(21) DEFAULT 0;
+    DECLARE v_last_report DATETIME DEFAULT 0;
+    DECLARE v_last BOOLEAN DEFAULT FALSE;
+    DECLARE v_batch_size INT(12);
+
+    --
+    --  This works for many circumstances
+    --
+    SET v_batch_size = 2500;
+
+    SELECT MIN(radacctid) INTO v_a FROM radacct WHERE acctstoptime IS NULL;
+
+    update_loop: LOOP
+
+        SET v_z = NULL;
+        SELECT radacctid INTO v_z FROM radacct WHERE radacctid > v_a ORDER BY radacctid LIMIT v_batch_size,1;
+
+        IF v_z IS NULL THEN
+            SELECT MAX(radacctid) INTO v_z FROM radacct;
+            SET v_last = TRUE;
+        END IF;
+
+        UPDATE radacct a INNER JOIN nasreload n USING (nasipaddress)
+        SET
+            acctstoptime = n.reloadtime,
+            acctsessiontime = UNIX_TIMESTAMP(n.reloadtime) - UNIX_TIMESTAMP(acctstarttime),
+            acctterminatecause = 'NAS reboot'
+        WHERE
+            radacctid BETWEEN v_a AND v_z
+            AND acctstoptime IS NULL
+            AND acctstarttime < n.reloadtime;
+
+        SET v_updated = v_updated + ROW_COUNT();
+
+        SET v_a = v_z + 1;
+
+        --
+        --  Periodically report how far we've got
+        --
+        IF v_last_report != NOW() OR v_last THEN
+            SELECT v_z AS latest_radacctid, v_updated AS sessions_closed;
+            SET v_last_report = NOW();
+        END IF;
+
+        IF v_last THEN
+            LEAVE update_loop;
+        END IF;
+
+    END LOOP;
+
+END$$
+
+DELIMITER ;
