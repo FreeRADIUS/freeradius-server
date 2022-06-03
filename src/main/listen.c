@@ -590,7 +590,16 @@ static int dual_tcp_recv(rad_listen_t *listener)
 
 #ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_REQUEST:
-		if (listener->type != RAD_LISTEN_ACCT) goto bad_packet;
+		if (listener->type != RAD_LISTEN_ACCT) {
+			/*
+			 *	Allow auth + dual.  Disallow
+			 *	everything else.
+			 */
+			if (!((listener->type == RAD_LISTEN_AUTH) &&
+			      (listener->dual))) {
+				    goto bad_packet;
+			}
+		}
 		FR_STATS_INC(acct, total_requests);
 		fun = rad_accounting;
 		break;
