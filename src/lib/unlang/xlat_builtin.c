@@ -1668,7 +1668,7 @@ static xlat_action_t xlat_func_lpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Fill is optional
 	 */
-	if (fill->type != FR_TYPE_NULL) {
+	if (fill) {
 		fill_str = fill->vb_strvalue;
 		fill_len = talloc_array_length(fill_str) - 1;
 	}
@@ -1756,7 +1756,7 @@ static xlat_action_t xlat_func_rpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Fill is optional
 	 */
-	if (fill->type != FR_TYPE_NULL) {
+	if (fill) {
 		fill_str = fill->vb_strvalue;
 		fill_len = talloc_array_length(fill_str) - 1;
 	}

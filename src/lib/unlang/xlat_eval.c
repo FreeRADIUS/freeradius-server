@@ -415,10 +415,9 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, requ
 				}
 
 				/*
-				 *	Add a placeholder 'null' box
+				 *	The argument isn't required.  Just omit it.  xlat_func_args() enforces
+				 *	that optional arguments are at the end of the argument list.
 				 */
-				MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_NULL, NULL, false));
-				fr_dlist_insert_tail(list, vb);
 				return XLAT_ACTION_DONE;
 			}
 
