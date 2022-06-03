@@ -468,8 +468,8 @@ static xlat_action_t xlat_regex_match(TALLOC_CTX *ctx, request_t *request, fr_va
 	fr_regmatch_t	*regmatch;
 	fr_value_box_t	*dst;
 
-	if (!fr_cond_assert(subject != NULL)) return -1;
-	if (!fr_cond_assert(subject->type == FR_TYPE_STRING)) return -1;
+	if (!fr_cond_assert(subject != NULL)) return XLAT_ACTION_FAIL;
+	if (!fr_cond_assert(subject->type == FR_TYPE_STRING)) return XLAT_ACTION_FAIL;
 
 	subcaptures = regex_subcapture_count(*preg);
 	if (!subcaptures) subcaptures = REQUEST_MAX_REGEX + 1;	/* +1 for %{0} (whole match) capture group */
@@ -2135,6 +2135,15 @@ redo:
 		}
 	}
 
+	/*
+	 *	Convert a bare
+	 *
+	 *		handled
+	 *
+	 *	to
+	 *
+	 *		%{rcode:handled}
+	 */
 	if (logical_ops[op]) {
 		if (reparse_rcode(head, &lhs) < 0) {
 			fr_sbuff_set(&our_in, &m_lhs);
