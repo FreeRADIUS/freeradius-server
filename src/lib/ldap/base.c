@@ -132,11 +132,11 @@ static void libldap_free(void)
  *	Public symbol modules can reference to auto instantiate libldap
  */
 global_lib_autoinst_t fr_libldap_global_config = {
-	 .name="ldap",
-	 .config=(const CONF_PARSER *)ldap_global_config,
-	 .inst=&libldap_global_config,
-	 .init=libldap_init,
-	 .free=libldap_free
+	 .name = "ldap",
+	 .config = (const CONF_PARSER *)ldap_global_config,
+	 .inst = &libldap_global_config,
+	 .init = libldap_init,
+	 .free = libldap_free
 };
 
 typedef struct {
