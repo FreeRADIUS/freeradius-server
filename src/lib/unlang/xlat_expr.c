@@ -852,7 +852,8 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
 	 *	Pack the array.  We insert at i, and read from j.  We don't need to read the deleted entries,
 	 *	as they all MUST be NULL.
 	 */
-	i = 0, j = -1;
+	i = 0;
+	j = -1;
 	while (i < (inst->argc - deleted)) {
 		if (inst->argv[i]) {
 			i++;
@@ -1029,9 +1030,9 @@ static xlat_action_t xlat_logical_process_arg(TALLOC_CTX *ctx, fr_dcursor_t *out
 /*
  *  We've evaluated an expression.  Let's see if we need to continue.
  */
-static xlat_action_t xlat_logical_resume(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 xlat_ctx_t const *xctx,
-					 request_t *request, UNUSED fr_value_box_list_t *in)
+					 request_t *request, fr_value_box_list_t *in)
 {
 	xlat_logical_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_logical_inst_t);
 	xlat_logical_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_logical_rctx_t);
@@ -2012,13 +2013,7 @@ redo:
 	 */
 	if (fr_sbuff_extend(&our_in) == 0) {
 	done:
-
-		if (!out) {
-			xlat_exp_insert_tail(head, lhs);
-		} else {
-			*out = lhs;
-		}
-
+		*out = lhs;
 		return fr_sbuff_set(in, &our_in);
 	}
 
