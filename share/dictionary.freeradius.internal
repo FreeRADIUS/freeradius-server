@@ -577,7 +577,7 @@ VALUE	TLS-Cache-Method		clear			3
 VALUE	TLS-Cache-Method		refresh			4
 
 
-# 1939: reserved for future cert attributes
+ATTRIBUTE	TLS-Client-Cert-X509v3-Certificate-Policies	1939 string
 
 # 1940 - 1959: reserved for TLS session caching, mostly in 4.0
 
