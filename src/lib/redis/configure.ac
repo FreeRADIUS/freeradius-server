@@ -1,8 +1,11 @@
-AC_PREREQ([2.61])
-AC_INIT(redis.c)
+AC_PREREQ([2.71])
+AC_INIT
+AC_CONFIG_SRCDIR([redis.c])
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[libfreeradius-redis])
 AC_DEFUN(modname_useropt,[m4_bpatsubst([]modname,[[-+.]],[_])])
+
+m4_include([m4/ax_smart_try.m4])
 
 AC_ARG_WITH([]modname,
 [AS_HELP_STRING([--without-[]modname],[build without redis support])]
@@ -115,4 +118,5 @@ mod_cflags="$SMART_CPPFLAGS"
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT

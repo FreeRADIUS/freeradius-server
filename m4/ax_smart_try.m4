@@ -131,15 +131,14 @@ for try in $smart_try_dir; do
   AC_MSG_CHECKING([for $2 in -l$1 in $try])
   LIBS="-l$1 $old_LIBS"
   CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
-  AC_TRY_LINK([extern char $2();],
-		[$2()],
-		[
-		 smart_lib="-l$1"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 AC_MSG_RESULT(yes)
-		 break
-		],
-		[AC_MSG_RESULT(no)])
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[extern char $2();]], [[$2()]])],
+		 [
+		   smart_lib="-l$1"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   AC_MSG_RESULT(yes)
+		   break
+		 ],
+		 [AC_MSG_RESULT(no)])
 done
 LIBS="$old_LIBS"
 CPPFLAGS="$old_CPPFLAGS"
@@ -151,13 +150,12 @@ dnl #
 if test "x$smart_lib" = "x"; then
 AC_MSG_CHECKING([for $2 in -l$1])
 LIBS="-l$1 $old_LIBS"
-AC_TRY_LINK([extern char $2();],
-	      [$2()],
-	      [
-	        smart_lib="-l$1"
-	        AC_MSG_RESULT(yes)
-	      ],
-	      [AC_MSG_RESULT(no)])
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[extern char $2();]], [[$2()]])],
+	         [
+	           smart_lib="-l$1"
+	           AC_MSG_RESULT(yes)
+	         ],
+	         [AC_MSG_RESULT(no)])
 LIBS="$old_LIBS"
 fi
 
@@ -172,15 +170,14 @@ for try in $smart_lib_dir /usr/local/lib /opt/lib; do
   AC_MSG_CHECKING([for $2 in -l$1 in $try])
   LIBS="-l$1 $old_LIBS"
   CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
-  AC_TRY_LINK([extern char $2();],
-		[$2()],
-		[
-		  smart_lib="-l$1"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  AC_MSG_RESULT(yes)
-		  break
-		],
-		[AC_MSG_RESULT(no)])
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[extern char $2();]], [[$2()]])],
+		 [
+		   smart_lib="-l$1"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   AC_MSG_RESULT(yes)
+		   break
+		 ],
+		 [AC_MSG_RESULT(no)])
 done
 LIBS="$old_LIBS"
 CPPFLAGS="$old_CPPFLAGS"
@@ -233,18 +230,24 @@ if test "x$_smart_try_dir" != "x"; then
 for try in $_smart_try_dir; do
   AC_MSG_CHECKING([for $1 in $try])
   CPPFLAGS="-isystem $try $old_CPPFLAGS"
-  AC_TRY_COMPILE([$2
-		    #include <$1>],
-		   [int a = 1;],
-		   [
-		     smart_include="-isystem $try"
-		     AC_MSG_RESULT(yes)
-		     break
-		   ],
-		   [
-		     smart_include=
-		     AC_MSG_RESULT(no)
-		   ])
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+  		                        $2
+		                        #include <$1>
+		                     ]],
+                                     [[
+                                        int a = 1;
+                                     ]]
+                                     )
+                    ],
+		    [
+		      smart_include="-isystem $try"
+		      AC_MSG_RESULT(yes)
+		      break
+		    ],
+		    [
+		      smart_include=
+		      AC_MSG_RESULT(no)
+		    ])
 done
 CPPFLAGS="$old_CPPFLAGS"
 fi
@@ -256,18 +259,24 @@ if test "x$smart_include" = "x"; then
 for _prefix in $smart_prefix; do
   AC_MSG_CHECKING([for ${_prefix}/$1])
 
-  AC_TRY_COMPILE([$2
-		    #include <$1>],
-		   [int a = 1;],
-		   [
-		     smart_include="-isystem ${_prefix}/"
-		     AC_MSG_RESULT(yes)
-		     break
-		   ],
-		   [
-		     smart_include=
-		     AC_MSG_RESULT(no)
-		   ])
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+  		                        $2
+		                        #include <$1>
+		                     ]],
+                                     [[
+                                        int a = 1;
+                                     ]]
+                                     )
+                    ],
+		    [
+		      smart_include="-isystem ${_prefix}/"
+		      AC_MSG_RESULT(yes)
+		      break
+		    ],
+		    [
+		      smart_include=
+		      AC_MSG_RESULT(no)
+		    ])
 done
 fi
 
@@ -277,18 +286,24 @@ dnl #
 if test "x$smart_include" = "x"; then
   AC_MSG_CHECKING([for $1])
 
-  AC_TRY_COMPILE([$2
-		    #include <$1>],
-		   [int a = 1;],
-		   [
-		     smart_include=" "
-		     AC_MSG_RESULT(yes)
-		     break
-		   ],
-		   [
-		     smart_include=
-		     AC_MSG_RESULT(no)
-		   ])
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+  		                        $2
+		                        #include <$1>
+		                     ]],
+                                     [[
+                                        int a = 1;
+                                     ]]
+                                     )
+                    ],
+		    [
+		      smart_include=" "
+		      AC_MSG_RESULT(yes)
+		      break
+		    ],
+		    [
+		      smart_include=
+		      AC_MSG_RESULT(no)
+		    ])
 fi
 
 dnl #
@@ -304,18 +319,24 @@ FR_LOCATE_DIR(_smart_include_dir, $1)
 for try in $_smart_include_dir; do
   AC_MSG_CHECKING([for $1 in $try])
   CPPFLAGS="-isystem $try $old_CPPFLAGS"
-  AC_TRY_COMPILE([$2
-		    #include <$1>],
-		   [int a = 1;],
-		   [
-		     smart_include="-isystem $try"
-		     AC_MSG_RESULT(yes)
-		     break
-		   ],
-		   [
-		     smart_include=
-		     AC_MSG_RESULT(no)
-		   ])
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+  		                        $2
+		                        #include <$1>
+		                     ]],
+                                     [[
+                                        int a = 1;
+                                     ]]
+                                     )
+                    ],
+		    [
+		      smart_include="-isystem $try"
+		      AC_MSG_RESULT(yes)
+		      break
+		    ],
+		    [
+		      smart_include=
+		      AC_MSG_RESULT(no)
+		    ])
 done
 CPPFLAGS="$old_CPPFLAGS"
 fi

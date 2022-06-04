@@ -8750,11 +8750,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		 smart_lib="-ltalloc"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-ltalloc"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		 break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -8771,7 +8771,7 @@ if test "x$smart_lib" = "x"; then
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for _talloc in -ltalloc" >&5
 printf %s "checking for _talloc in -ltalloc... " >&6; }
 LIBS="-ltalloc $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char _talloc();
 int
@@ -8785,8 +8785,8 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-	        smart_lib="-ltalloc"
-	        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-ltalloc"
+	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
 else $as_nop
@@ -8873,11 +8873,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		  smart_lib="-ltalloc"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-ltalloc"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		  break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -8955,11 +8955,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		 smart_lib="-lkqueue"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lkqueue"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		 break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -8976,7 +8976,7 @@ if test "x$smart_lib" = "x"; then
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for kqueue in -lkqueue" >&5
 printf %s "checking for kqueue in -lkqueue... " >&6; }
 LIBS="-lkqueue $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char kqueue();
 int
@@ -8990,8 +8990,8 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-	        smart_lib="-lkqueue"
-	        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lkqueue"
+	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
 else $as_nop
@@ -9078,11 +9078,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		  smart_lib="-lkqueue"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lkqueue"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		  break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -9146,11 +9146,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		 smart_lib="-lpcap"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lpcap"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		 break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -9167,7 +9167,7 @@ if test "x$smart_lib" = "x"; then
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for pcap_open_live in -lpcap" >&5
 printf %s "checking for pcap_open_live in -lpcap... " >&6; }
 LIBS="-lpcap $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char pcap_open_live();
 int
@@ -9181,8 +9181,8 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-	        smart_lib="-lpcap"
-	        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lpcap"
+	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
 else $as_nop
@@ -9269,11 +9269,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		  smart_lib="-lpcap"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lpcap"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		  break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -9359,11 +9359,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		 smart_lib="-lcollectdclient"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lcollectdclient"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		 break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -9380,7 +9380,7 @@ if test "x$smart_lib" = "x"; then
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for lcc_connect in -lcollectdclient" >&5
 printf %s "checking for lcc_connect in -lcollectdclient... " >&6; }
 LIBS="-lcollectdclient $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char lcc_connect();
 int
@@ -9394,8 +9394,8 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-	        smart_lib="-lcollectdclient"
-	        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lcollectdclient"
+	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
 else $as_nop
@@ -9482,11 +9482,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		  smart_lib="-lcollectdclient"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lcollectdclient"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		  break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -9546,11 +9546,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		 smart_lib="-lcap"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lcap"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		 break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -9567,7 +9567,7 @@ if test "x$smart_lib" = "x"; then
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for cap_get_proc in -lcap" >&5
 printf %s "checking for cap_get_proc in -lcap... " >&6; }
 LIBS="-lcap $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char cap_get_proc();
 int
@@ -9581,8 +9581,8 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-	        smart_lib="-lcap"
-	        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lcap"
+	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
 else $as_nop
@@ -9669,11 +9669,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		  smart_lib="-lcap"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lcap"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		  break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -9735,11 +9735,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		 smart_lib="-lprofiler"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lprofiler"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		 break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -9756,7 +9756,7 @@ if test "x$smart_lib" = "x"; then
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for ProfilerStart in -lprofiler" >&5
 printf %s "checking for ProfilerStart in -lprofiler... " >&6; }
 LIBS="-lprofiler $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char ProfilerStart();
 int
@@ -9770,8 +9770,8 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-	        smart_lib="-lprofiler"
-	        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lprofiler"
+	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
 else $as_nop
@@ -9858,11 +9858,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		  smart_lib="-lprofiler"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lprofiler"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		  break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -9924,11 +9924,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		 smart_lib="-lsystemd"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lsystemd"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		 break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -9945,7 +9945,7 @@ if test "x$smart_lib" = "x"; then
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for sd_notify in -lsystemd" >&5
 printf %s "checking for sd_notify in -lsystemd... " >&6; }
 LIBS="-lsystemd $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char sd_notify();
 int
@@ -9959,8 +9959,8 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-	        smart_lib="-lsystemd"
-	        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lsystemd"
+	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
 else $as_nop
@@ -10047,11 +10047,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		  smart_lib="-lsystemd"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lsystemd"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		  break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -10120,11 +10120,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		 smart_lib="-lsystemd"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lsystemd"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		 break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -10141,7 +10141,7 @@ if test "x$smart_lib" = "x"; then
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for sd_watchdog_enabled in -lsystemd" >&5
 printf %s "checking for sd_watchdog_enabled in -lsystemd... " >&6; }
 LIBS="-lsystemd $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char sd_watchdog_enabled();
 int
@@ -10155,8 +10155,8 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-	        smart_lib="-lsystemd"
-	        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lsystemd"
+	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
 else $as_nop
@@ -10243,11 +10243,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		  smart_lib="-lsystemd"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lsystemd"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		  break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -10438,27 +10438,33 @@ printf %s "checking for talloc.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <talloc.h>
+
+		                        #include <talloc.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -10475,27 +10481,33 @@ printf %s "checking for ${_prefix}/talloc.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <talloc.h>
+
+		                        #include <talloc.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -10510,27 +10522,33 @@ printf %s "checking for talloc.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <talloc.h>
+
+		                        #include <talloc.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include=" "
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -10603,27 +10621,33 @@ printf %s "checking for talloc.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <talloc.h>
+
+		                        #include <talloc.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -10675,27 +10699,33 @@ printf %s "checking for sys/event.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <sys/event.h>
+
+		                        #include <sys/event.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -10712,27 +10742,33 @@ printf %s "checking for ${_prefix}/sys/event.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <sys/event.h>
+
+		                        #include <sys/event.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -10747,27 +10783,33 @@ printf %s "checking for sys/event.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <sys/event.h>
+
+		                        #include <sys/event.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include=" "
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -10840,27 +10882,33 @@ printf %s "checking for sys/event.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <sys/event.h>
+
+		                        #include <sys/event.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -10931,11 +10979,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		 smart_lib="-lcrypto"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lcrypto"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		 break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -10952,7 +11000,7 @@ if test "x$smart_lib" = "x"; then
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for DH_new in -lcrypto" >&5
 printf %s "checking for DH_new in -lcrypto... " >&6; }
 LIBS="-lcrypto $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char DH_new();
 int
@@ -10966,8 +11014,8 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-	        smart_lib="-lcrypto"
-	        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lcrypto"
+	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
 else $as_nop
@@ -11054,11 +11102,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		  smart_lib="-lcrypto"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lcrypto"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		  break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -11115,11 +11163,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		 smart_lib="-lssl"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lssl"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		 break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -11136,7 +11184,7 @@ if test "x$smart_lib" = "x"; then
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for SSL_new in -lssl" >&5
 printf %s "checking for SSL_new in -lssl... " >&6; }
 LIBS="-lssl $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char SSL_new();
 int
@@ -11150,8 +11198,8 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-	        smart_lib="-lssl"
-	        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lssl"
+	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
 else $as_nop
@@ -11238,11 +11286,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		  smart_lib="-lssl"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lssl"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		  break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -11315,27 +11363,33 @@ printf %s "checking for openssl/ssl.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <openssl/ssl.h>
+
+		                        #include <openssl/ssl.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -11352,27 +11406,33 @@ printf %s "checking for ${_prefix}/openssl/ssl.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <openssl/ssl.h>
+
+		                        #include <openssl/ssl.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -11387,27 +11447,33 @@ printf %s "checking for openssl/ssl.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <openssl/ssl.h>
+
+		                        #include <openssl/ssl.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include=" "
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -11480,27 +11546,33 @@ printf %s "checking for openssl/ssl.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <openssl/ssl.h>
+
+		                        #include <openssl/ssl.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -11675,27 +11747,33 @@ printf %s "checking for pcap.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <pcap.h>
+
+		                        #include <pcap.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -11712,27 +11790,33 @@ printf %s "checking for ${_prefix}/pcap.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <pcap.h>
+
+		                        #include <pcap.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -11747,27 +11831,33 @@ printf %s "checking for pcap.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <pcap.h>
+
+		                        #include <pcap.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include=" "
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -11840,27 +11930,33 @@ printf %s "checking for pcap.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <pcap.h>
+
+		                        #include <pcap.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -11922,27 +12018,33 @@ printf %s "checking for collectd/client.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <collectd/client.h>
+
+		                        #include <collectd/client.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -11959,27 +12061,33 @@ printf %s "checking for ${_prefix}/collectd/client.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <collectd/client.h>
+
+		                        #include <collectd/client.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -11994,27 +12102,33 @@ printf %s "checking for collectd/client.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <collectd/client.h>
+
+		                        #include <collectd/client.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include=" "
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -12087,27 +12201,33 @@ printf %s "checking for collectd/client.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <collectd/client.h>
+
+		                        #include <collectd/client.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -12169,27 +12289,33 @@ printf %s "checking for sys/capability.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <sys/capability.h>
+
+		                        #include <sys/capability.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -12206,27 +12332,33 @@ printf %s "checking for ${_prefix}/sys/capability.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <sys/capability.h>
+
+		                        #include <sys/capability.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -12241,27 +12373,33 @@ printf %s "checking for sys/capability.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <sys/capability.h>
+
+		                        #include <sys/capability.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include=" "
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -12334,27 +12472,33 @@ printf %s "checking for sys/capability.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <sys/capability.h>
+
+		                        #include <sys/capability.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -12414,27 +12558,33 @@ printf %s "checking for gperftools/profiler.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <gperftools/profiler.h>
+
+		                        #include <gperftools/profiler.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -12451,27 +12601,33 @@ printf %s "checking for ${_prefix}/gperftools/profiler.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <gperftools/profiler.h>
+
+		                        #include <gperftools/profiler.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -12486,27 +12642,33 @@ printf %s "checking for gperftools/profiler.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <gperftools/profiler.h>
+
+		                        #include <gperftools/profiler.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include=" "
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -12579,27 +12741,33 @@ printf %s "checking for gperftools/profiler.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <gperftools/profiler.h>
+
+		                        #include <gperftools/profiler.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -12661,27 +12829,33 @@ printf %s "checking for systemd/sd-daemon.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <systemd/sd-daemon.h>
+
+		                        #include <systemd/sd-daemon.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -12698,27 +12872,33 @@ printf %s "checking for ${_prefix}/systemd/sd-daemon.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <systemd/sd-daemon.h>
+
+		                        #include <systemd/sd-daemon.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -12733,27 +12913,33 @@ printf %s "checking for systemd/sd-daemon.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <systemd/sd-daemon.h>
+
+		                        #include <systemd/sd-daemon.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include=" "
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -12826,27 +13012,33 @@ printf %s "checking for systemd/sd-daemon.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <systemd/sd-daemon.h>
+
+		                        #include <systemd/sd-daemon.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -12904,27 +13096,33 @@ printf %s "checking for gnumake.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <gnumake.h>
+
+		                        #include <gnumake.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -12941,27 +13139,33 @@ printf %s "checking for ${_prefix}/gnumake.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <gnumake.h>
+
+		                        #include <gnumake.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -12976,27 +13180,33 @@ printf %s "checking for gnumake.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <gnumake.h>
+
+		                        #include <gnumake.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include=" "
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -13069,27 +13279,33 @@ printf %s "checking for gnumake.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <gnumake.h>
+
+		                        #include <gnumake.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -15103,27 +15319,33 @@ printf %s "checking for execinfo.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <execinfo.h>
+
+		                        #include <execinfo.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -15140,27 +15362,33 @@ printf %s "checking for ${_prefix}/execinfo.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <execinfo.h>
+
+		                        #include <execinfo.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -15175,27 +15403,33 @@ printf %s "checking for execinfo.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <execinfo.h>
+
+		                        #include <execinfo.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include=" "
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -15268,27 +15502,33 @@ printf %s "checking for execinfo.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <execinfo.h>
+
+		                        #include <execinfo.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -15338,11 +15578,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		 smart_lib="-lexecinfo"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lexecinfo"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		 break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -15359,7 +15599,7 @@ if test "x$smart_lib" = "x"; then
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for backtrace_symbols in -lexecinfo" >&5
 printf %s "checking for backtrace_symbols in -lexecinfo... " >&6; }
 LIBS="-lexecinfo $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char backtrace_symbols();
 int
@@ -15373,8 +15613,8 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-	        smart_lib="-lexecinfo"
-	        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lexecinfo"
+	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
 else $as_nop
@@ -15461,11 +15701,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		  smart_lib="-lexecinfo"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lexecinfo"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		  break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -15558,28 +15798,34 @@ printf %s "checking for pcre2.h in $try... " >&6; }
   CPPFLAGS="-isystem $try $old_CPPFLAGS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-#define PCRE2_CODE_UNIT_WIDTH (8)
-		    #include <pcre2.h>
+
+  		                        #define PCRE2_CODE_UNIT_WIDTH (8)
+		                        #include <pcre2.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -15595,28 +15841,34 @@ printf %s "checking for ${_prefix}/pcre2.h... " >&6; }
 
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-#define PCRE2_CODE_UNIT_WIDTH (8)
-		    #include <pcre2.h>
+
+  		                        #define PCRE2_CODE_UNIT_WIDTH (8)
+		                        #include <pcre2.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -15630,28 +15882,34 @@ printf %s "checking for pcre2.h... " >&6; }
 
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-#define PCRE2_CODE_UNIT_WIDTH (8)
-		    #include <pcre2.h>
+
+  		                        #define PCRE2_CODE_UNIT_WIDTH (8)
+		                        #include <pcre2.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include=" "
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -15723,28 +15981,34 @@ printf %s "checking for pcre2.h in $try... " >&6; }
   CPPFLAGS="-isystem $try $old_CPPFLAGS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-#define PCRE2_CODE_UNIT_WIDTH (8)
-		    #include <pcre2.h>
+
+  		                        #define PCRE2_CODE_UNIT_WIDTH (8)
+		                        #include <pcre2.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -15794,11 +16058,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		 smart_lib="-lpcre2-8"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lpcre2-8"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		 break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -15815,7 +16079,7 @@ if test "x$smart_lib" = "x"; then
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for pcre2_compile_8 in -lpcre2-8" >&5
 printf %s "checking for pcre2_compile_8 in -lpcre2-8... " >&6; }
 LIBS="-lpcre2-8 $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char pcre2_compile_8();
 int
@@ -15829,8 +16093,8 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-	        smart_lib="-lpcre2-8"
-	        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lpcre2-8"
+	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
 else $as_nop
@@ -15917,11 +16181,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		  smart_lib="-lpcre2-8"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lpcre2-8"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		  break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -15980,27 +16244,33 @@ printf %s "checking for pcre.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <pcre.h>
+
+		                        #include <pcre.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -16017,27 +16287,33 @@ printf %s "checking for ${_prefix}/pcre.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <pcre.h>
+
+		                        #include <pcre.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -16052,27 +16328,33 @@ printf %s "checking for pcre.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <pcre.h>
+
+		                        #include <pcre.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include=" "
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -16145,27 +16427,33 @@ printf %s "checking for pcre.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <pcre.h>
+
+		                        #include <pcre.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -16215,11 +16503,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		 smart_lib="-lpcre"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lpcre"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		 break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -16236,7 +16524,7 @@ if test "x$smart_lib" = "x"; then
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for pcre_compile in -lpcre" >&5
 printf %s "checking for pcre_compile in -lpcre... " >&6; }
 LIBS="-lpcre $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char pcre_compile();
 int
@@ -16250,8 +16538,8 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-	        smart_lib="-lpcre"
-	        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-lpcre"
+	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
 else $as_nop
@@ -16338,11 +16626,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		  smart_lib="-lpcre"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-lpcre"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		  break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -16466,27 +16754,33 @@ printf %s "checking for regex.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <regex.h>
+
+		                        #include <regex.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -16503,27 +16797,33 @@ printf %s "checking for ${_prefix}/regex.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <regex.h>
+
+		                        #include <regex.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -16538,27 +16838,33 @@ printf %s "checking for regex.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <regex.h>
+
+		                        #include <regex.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include=" "
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -16631,27 +16937,33 @@ printf %s "checking for regex.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <regex.h>
+
+		                        #include <regex.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi

@@ -1,9 +1,12 @@
-AC_PREREQ([2.53])
-AC_INIT(json.c)
+AC_PREREQ([2.71])
+AC_INIT
+AC_CONFIG_SRCDIR([json.c])
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[libfreeradius-json])
 AC_DEFUN(modname_useropt,[m4_bpatsubst([]modname,[[-+.]],[_])])
-AC_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADERS([config.h])
+
+m4_include([m4/ax_smart_try.m4])
 
 AC_ARG_WITH([]modname,
 [AS_HELP_STRING([--without-[]modname],[build without JSON support from json-c])]
@@ -150,6 +153,7 @@ AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)
 
 AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT
 AH_BOTTOM([#include <freeradius-devel/automask.h>])
 

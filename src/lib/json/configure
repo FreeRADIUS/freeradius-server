@@ -2258,7 +2258,19 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 ac_config_headers="$ac_config_headers config.h"
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -3488,27 +3500,33 @@ printf %s "checking for json/json.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <json/json.h>
+
+		                        #include <json/json.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -3525,27 +3543,33 @@ printf %s "checking for ${_prefix}/json/json.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <json/json.h>
+
+		                        #include <json/json.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -3560,27 +3584,33 @@ printf %s "checking for json/json.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <json/json.h>
+
+		                        #include <json/json.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include=" "
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -3653,27 +3683,33 @@ printf %s "checking for json/json.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <json/json.h>
+
+		                        #include <json/json.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -3720,27 +3756,33 @@ printf %s "checking for json-c/json.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <json-c/json.h>
+
+		                        #include <json-c/json.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -3757,27 +3799,33 @@ printf %s "checking for ${_prefix}/json-c/json.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <json-c/json.h>
+
+		                        #include <json-c/json.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem ${_prefix}/"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem ${_prefix}/"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -3792,27 +3840,33 @@ printf %s "checking for json-c/json.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <json-c/json.h>
+
+		                        #include <json-c/json.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include=" "
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include=" "
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -3885,27 +3939,33 @@ printf %s "checking for json-c/json.h in $try... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <json-c/json.h>
+
+		                        #include <json-c/json.h>
+
 int
 main (void)
 {
-int a = 1;
+
+                                        int a = 1;
+
+
   ;
   return 0;
 }
+
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"
 then :
 
-		     smart_include="-isystem $try"
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		      smart_include="-isystem $try"
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		     break
+		      break
 
 else $as_nop
 
-		     smart_include=
-		     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+		      smart_include=
+		      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
 fi
@@ -3971,11 +4031,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		 smart_lib="-ljson-c"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-ljson-c"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		 break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -3992,7 +4052,7 @@ if test "x$smart_lib" = "x"; then
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for json_object_object_add_ex in -ljson-c" >&5
 printf %s "checking for json_object_object_add_ex in -ljson-c... " >&6; }
 LIBS="-ljson-c $old_LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char json_object_object_add_ex();
 int
@@ -4006,8 +4066,8 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-	        smart_lib="-ljson-c"
-	        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+	           smart_lib="-ljson-c"
+	           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 
 else $as_nop
@@ -4094,11 +4154,11 @@ _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
 
-		  smart_lib="-ljson-c"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+		   smart_lib="-ljson-c"
+		   smart_ldflags="-L$try -Wl,-rpath,$try"
+		   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
-		  break
+		   break
 
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -4209,11 +4269,11 @@ mod_cflags="$SMART_CPPFLAGS"
 
 
 
+ac_config_files="$ac_config_files all.mk"
+
 
 unset ac_cv_env_LIBS_set
 unset ac_cv_env_LIBS_value
-
-ac_config_files="$ac_config_files all.mk"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure

@@ -1,8 +1,11 @@
-AC_PREREQ([2.53])
-AC_INIT(base.c)
+AC_PREREQ([2.71])
+AC_INIT
+AC_CONFIG_SRCDIR([base.c])
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[libfreeradius-ldap])
 AC_DEFUN(modname_useropt,[m4_bpatsubst([]modname,[[-+.]],[_])])
+
+m4_include([m4/ax_smart_try.m4])
 
 AC_ARG_WITH([]modname,
 [AS_HELP_STRING([--without-[]modname],[build without LDAP support])]
@@ -76,12 +79,12 @@ if test x$with_[]modname_useropt != xno; then
 	dnl #  or packagers that only ship libldap in their OpenLDAP
 	dnl #  client packages, we're forced to switch to just libldap.
 	dnl #
-	
+
 	dnl #
 	dnl #  FreeRADIUS 4.0 also has a requirement that libldap
 	dnl #  exports OpenLDAP specific functions to managing async
 	dnl #  I/O.
-	dnl # 
+	dnl #
 	smart_try_dir="$libfreeradius_ldap_lib_dir /usr/local/opt/openldap/lib"
 	FR_SMART_CHECK_LIB(ldap, ldap_install_tls)
 	if test "x$ac_cv_lib_ldap_ldap_install_tls" != "xyes"; then
@@ -157,9 +160,10 @@ AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(SASL)
 AC_SUBST(targetname)
-AC_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADERS([config.h])
 
 dnl # This is needed so that all.mk is not created unless configure is run
 dnl # so that it doesn't attempt to include libfreeradius-redis.mk which
 dnl # is also dependent on configure being run.
-AC_OUTPUT(all.mk)
+AC_CONFIG_FILES([all.mk])
+AC_OUTPUT
