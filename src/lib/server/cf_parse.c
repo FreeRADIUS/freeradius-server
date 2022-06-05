@@ -46,11 +46,22 @@ static char const parse_spaces[] = "                                            
 #define PAIR_SPACE(_cs) ((_cs->depth + 1) * 2)
 #define SECTION_SPACE(_cs) (_cs->depth * 2)
 
-static void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, fr_type_t type, bool secret)
+static void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, CONF_PARSER const *rule)
 {
 	char const	*value;
 	char		*tmp = NULL;
 	char const	*quote = "";
+	bool		secret = (rule->type & FR_TYPE_SECRET);
+	fr_type_t	base_type;
+
+	/*
+	 *	tmpls are special, they just need to get printed as string
+	 */
+	if (rule->type == FR_TYPE_TMPL) {
+		base_type = FR_TYPE_STRING;
+	} else {
+		base_type = FR_BASE_TYPE(rule->type);
+	}
 
 	if (secret && (fr_debug_lvl < L_DBG_LVL_3)) {
 		cf_log_debug(cs, "%.*s%s = <<< secret >>>", PAIR_SPACE(cs), parse_spaces, cp->attr);
@@ -60,13 +71,13 @@ static void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, fr_type_t
 	/*
 	 *	Print the strings with the correct quotation character and escaping.
 	 */
-	if (fr_type_is_string(type)) {
+	if (fr_type_is_string(base_type)) {
 		value = tmp = fr_asprint(NULL, cp->value, talloc_array_length(cp->value) - 1, cp->rhs_quote);
 	} else {
 		value = cf_pair_value(cp);
 	}
 
-	if (fr_type_is_quoted(type)) {
+	if (fr_type_is_quoted(base_type)) {
 		switch (cf_pair_value_quote(cp)) {
 		default:
 			break;
@@ -91,7 +102,7 @@ static void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, fr_type_t
 
 	cf_log_debug(cs, "%.*s%s = %s%s%s", PAIR_SPACE(cs), parse_spaces, cp->attr, quote, value, quote);
 
-	talloc_free(tmp);;
+	talloc_free(tmp);
 }
 
 /** Parses a #CONF_PAIR into a C data type
@@ -112,7 +123,7 @@ static void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, fr_type_t
 int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int		ret = 0;
-	bool		attribute, required, secret, file_input, cant_be_empty, tmpl, file_exists, nonblock;
+	bool		attribute, required, file_input, cant_be_empty, tmpl, file_exists, nonblock;
 
 	ssize_t		slen;
 
@@ -122,7 +133,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 	attribute = (type & FR_TYPE_ATTRIBUTE);
 	required = (type & FR_TYPE_REQUIRED);
-	secret = (type & FR_TYPE_SECRET);
 	file_input = (type == FR_TYPE_FILE_INPUT);	/* check, not and */
 	file_exists = (type == FR_TYPE_FILE_EXISTS);	/* check, not and */
 	cant_be_empty = (type & FR_TYPE_NOT_EMPTY);
@@ -174,7 +184,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 					};
 		fr_sbuff_t		sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
 
-		if (!cp->printed) cf_pair_debug(cs, cp, FR_TYPE_STRING, secret);
+		if (!cp->printed) cf_pair_debug(cs, cp, rule);
 
 		/*
 		 *	Parse the cast operator for barewords
@@ -249,7 +259,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 			return -1;
 		}
 
-		if (!cp->printed) cf_pair_debug(cs, cp, type, secret);
+		if (!cp->printed) cf_pair_debug(cs, cp, rule);
 
 		/*
 		 *	Strings can be file paths...
@@ -361,7 +371,7 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, CONF_PARSER const 
 static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, void *base,
 							CONF_SECTION *cs, CONF_PARSER const *rule)
 {
-	bool		multi, required, deprecated, secret;
+	bool		multi, required, deprecated;
 	size_t		count = 0;
 	CONF_PAIR	*cp, *dflt_cp = NULL;
 
@@ -374,7 +384,6 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 	multi = (type & FR_TYPE_MULTI);
 	required = (type & FR_TYPE_REQUIRED);
 	deprecated = (type & FR_TYPE_DEPRECATED);
-	secret = (type & FR_TYPE_SECRET);
 
 	/*
 	 *	If the item is multi-valued we allocate an array
@@ -483,9 +492,8 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			 *	and the standard value parsing function.
 			 */
 			if (rule->func) {
-				cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces,
-					     cp->attr, cp->value);
 				func = rule->func;
+				cf_pair_debug(cs, cp, rule);
 			} else {
 				func = cf_pair_parse_value;
 			}
@@ -537,7 +545,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 		cp->parsed = true;
 
 		if (rule->func) {
-			cf_pair_debug(cs, cp, type, secret);
+			cf_pair_debug(cs, cp, rule);
 			cp->printed = true;
 			func = rule->func;
 		}
