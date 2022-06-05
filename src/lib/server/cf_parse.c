@@ -283,61 +283,58 @@ finish:
  *
  * The pair created by this function should fed to #cf_pair_parse for parsing.
  *
- * @param[out] out Where to write the CONF_PAIR we created with the default value.
- * @param[in] cs to parent the CONF_PAIR from.
- * @param[in] name of the CONF_PAIR to create.
- * @param[in] type of conf item being parsed (determines default quoting).
- * @param[in] dflt value to assign the CONF_PAIR.
- * @param[in] dflt_quote surrounding the CONF_PAIR.
+ * @param[out] out	Where to write the CONF_PAIR we created with the default value.
+ * @param[in] cs	to parent the CONF_PAIR from.
+ * @param[in] rule	to use to create the default.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
-			   int type, char const *dflt, fr_token_t dflt_quote)
+static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, CONF_PARSER const *rule)
+
 {
 	int		lineno = 0;
 	char const	*expanded;
 	CONF_PAIR	*cp;
 	char		buffer[8192];
+	int		type;
+	fr_token_t	dflt_quote = rule->quote;
 
-	fr_assert(dflt);
+	fr_assert(rule->dflt || rule->dflt_func);
 
-	type = FR_BASE_TYPE(type);
-
-	/*
-	 *	Defaults may need their values expanding
-	 */
-	expanded = cf_expand_variables("<internal>", lineno, cs, buffer, sizeof(buffer), dflt, -1, NULL);
-	if (!expanded) {
-		cf_log_err(cs, "Failed expanding variable %s", name);
-		return -1;
-	}
+	type = FR_BASE_TYPE(rule->type);
 
 	/*
 	 *	If no default quote was set, determine it from the type
 	 */
 	if (dflt_quote == T_INVALID) {
-		switch (type) {
-		case FR_TYPE_STRING:
+		if (fr_type_is_quoted(type)) {
 			dflt_quote = T_DOUBLE_QUOTED_STRING;
-			break;
-
-		case FR_TYPE_FILE_INPUT:
-		case FR_TYPE_FILE_OUTPUT:
-			dflt_quote = T_DOUBLE_QUOTED_STRING;
-			break;
-
-		default:
+		} else {
 			dflt_quote = T_BARE_WORD;
-			break;
 		}
 	}
 
-	cp = cf_pair_alloc(cs, name, expanded, T_OP_EQ, T_BARE_WORD, dflt_quote);
-	if (!cp) return -1;
+	/*
+	 *	Use the dynamic default function if set
+	 */
+	if (rule->dflt_func) {
+		if (rule->dflt_func(out, cs, dflt_quote, rule) < 0) {
+			cf_log_perr(cs, "Failed producing default for %s", rule->name);
+			return -1;
+		}
 
-	cp->parsed = true;
+		return 0;
+	}
+
+	expanded = cf_expand_variables("<internal>", lineno, cs, buffer, sizeof(buffer), rule->dflt, -1, NULL);
+	if (!expanded) {
+		cf_log_err(cs, "Failed expanding variable %s", rule->name);
+		return -1;
+	}
+
+	cp = cf_pair_alloc(cs, rule->name, expanded, T_OP_EQ, T_BARE_WORD, dflt_quote);
+	if (!cp) return -1;
 
 	/*
 	 *	Set the ret to indicate we used a default value
@@ -364,7 +361,7 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
 static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, void *base,
 							CONF_SECTION *cs, CONF_PARSER const *rule)
 {
-	bool		multi, required, deprecated;
+	bool		multi, required, deprecated, secret;
 	size_t		count = 0;
 	CONF_PAIR	*cp, *dflt_cp = NULL;
 
@@ -377,6 +374,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 	multi = (type & FR_TYPE_MULTI);
 	required = (type & FR_TYPE_REQUIRED);
 	deprecated = (type & FR_TYPE_DEPRECATED);
+	secret = (type & FR_TYPE_SECRET);
 
 	/*
 	 *	If the item is multi-valued we allocate an array
@@ -415,7 +413,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 				return 1;
 			}
 
-			if (cf_pair_default(&dflt_cp, cs, rule->name, type, dflt, dflt_quote) < 0) return -1;
+			if (cf_pair_default(&dflt_cp, cs, rule) < 0) return -1;
 			cp = dflt_cp;
 			count = 1;	/* Need one to hold the default */
 		} else {
@@ -518,7 +516,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 				return 1;
 			}
 
-			if (cf_pair_default(&dflt_cp, cs, rule->name, type, dflt, dflt_quote) < 0) return -1;
+			if (cf_pair_default(&dflt_cp, cs, rule) < 0) return -1;
 			cp = dflt_cp;
 
 		} else if (cp->parsed) {
@@ -539,7 +537,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 		cp->parsed = true;
 
 		if (rule->func) {
-			cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
+			cf_pair_debug(cs, cp, type, secret);
 			cp->printed = true;
 			func = rule->func;
 		}

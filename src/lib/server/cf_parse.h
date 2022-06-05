@@ -366,7 +366,19 @@ typedef struct CONF_PARSER CONF_PARSER;
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (* cf_parse_t)(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+typedef int (*cf_parse_t)(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+
+/** Callback for producing dynamic defaults from 3rd party libraries
+ *
+ * @param[out] out	Where to write default conf pair.
+ * @param[in] cs	to allocate pair in.
+ * @param[in] quote	to use when allocing the pair.  Provided as a convenience.
+ * @param[in] rule	to produce default for.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+typedef int (*cf_dflt_t)(CONF_PAIR **out, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule);
 
 /** Defines a #CONF_PAIR to C data type mapping
  *
@@ -434,10 +446,14 @@ struct CONF_PARSER {
 	};
 
 	union {
-		char const	*dflt;		//!< Default as it would appear in radiusd.conf.
+		struct {
+			char const	*dflt;		//!< Default as it would appear in radiusd.conf.
+
+			cf_dflt_t	dflt_func;	//!< Function to produce dynamic defaults.
+		};
 
 		struct {
-			struct CONF_PARSER const *subcs;	//!< When type is set to #FR_TYPE_SUBSECTION, should
+			struct CONF_PARSER const *subcs;//!< When type is set to #FR_TYPE_SUBSECTION, should
 							//!< be a pointer to the start of another array of
 							//!< #CONF_PARSER structs, forming the subsection.
 			size_t		subcs_size;	//!< If non-zero, allocate structs of this size to hold
