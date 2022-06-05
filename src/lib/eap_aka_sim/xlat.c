@@ -245,7 +245,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_decrypt_xlat(TALLOC_CTX *ctx, fr_
 	fr_value_box_t	*vb;
 	fr_pair_t	*eap_type;
 
-	if (!fr_type_is_null(tag_vb->type)) include_tag = tag_vb->vb_bool;
+	if (tag_vb) include_tag = tag_vb->vb_bool;
 
 	if (id_len != (AKA_SIM_3GPP_PSEUDONYM_LEN)) {
 		REDEBUG2("3gpp pseudonym incorrect length, expected %i bytes, got %zu bytes",
@@ -384,7 +384,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 	/*
 	 *	Check for the optional type argument
 	 */
-	if (!fr_type_is_null(type_vb->type)) {
+	if (type_vb) {
 		fr_dict_enum_value_t const		*type_enum;
 
 		type_enum = fr_dict_enum_by_name(attr_eap_aka_sim_identity_type,

@@ -240,7 +240,7 @@ static xlat_action_t xlat_client(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*client_ip = fr_dlist_next(in, field);
 	fr_value_box_t	*vb;
 
-	if (!fr_box_is_null(client_ip)) {
+	if (client_ip) {
 		if (fr_inet_pton(&ip, client_ip->vb_strvalue, -1, AF_UNSPEC, false, true) < 0) {
 			RDEBUG("Invalid client IP address \"%s\"", client_ip->vb_strvalue);
 			return XLAT_ACTION_FAIL;

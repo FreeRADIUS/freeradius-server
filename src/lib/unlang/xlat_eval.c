@@ -410,6 +410,7 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, requ
 			 */
 			if (!vb) {
 				if (arg_p->required) {
+				missing:
 					REDEBUG("Missing required argument %u", (unsigned int)((arg_p - args) + 1));
 					return XLAT_ACTION_FAIL;
 				}
@@ -437,26 +438,60 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list, requ
 			if (xa != XLAT_ACTION_DONE) return xa;
 
 			/*
-			 *	In some cases we replace the current
-			 *	argument with the head of the group.
+			 *	This argument doesn't exist.  That might be OK, or it may be a fatal error.
 			 */
-			if (arg_p->single || arg_p->concat) {
+			if (fr_dlist_empty(&vb->vb_group)) {
 				/*
-				 *	If the group is empty, convert
-				 *	it to a null box to maintain
-				 *	correct ordering in the argument
-				 *	list.
+				 *	Empty groups for optional arguments are OK, we can just stop processing the list.
 				 */
-				if (fr_dlist_empty(&vb->vb_group)) {
-					fr_value_box_t *prev = fr_dlist_remove(list, vb);
-					fr_value_box_init_null(vb);
-					fr_dlist_insert_after(list, prev, vb);
-				} else {
-					fr_dlist_replace(list, vb, fr_dlist_pop_head(&vb->vb_group));
+				if (!arg_p->required) {
+					fr_assert(!next);
+
+					/*
+					 *	If the caller doesn't care about the type, then we leave the
+					 *	empty group there.
+					 */
+					if (arg_p->type == FR_TYPE_VOID) goto do_next;
+
+					/*
+					 *	The caller does care about the type, and we don't have any
+					 *	matching data.  Omit this argument, and all arguments after it.
+					 *
+					 *	i.e. if the caller has 3 optional arguments, all
+					 *	FR_TYPE_UINT8, and the first one is missing, then we MUST
+					 *	either supply boxes all of FR_TYPE_UINT8, OR we supply nothing.
+					 *
+					 *	We can't supply a box of any other type, because the caller
+					 *	has declared that it wants FR_TYPE_UINT8, and is naively
+					 *	accessing the box as vb_uint8, hoping that it's being passed
+					 *	the right thing.
+					 */
+					fr_dlist_remove(list, vb);
 					talloc_free(vb);
+					break;
 				}
+
+				/*
+				 *	If the caller is expecting a particular type, then getting nothing is
+				 *	an error.
+				 *
+				 *	If the caller manually checks the input type, then we can leave it as
+				 *	an empty group.
+				 */
+				if (arg_p->type != FR_TYPE_VOID) goto missing;
 			}
 
+			/*
+			 *	In some cases we replace the current argument with the head of the group.
+			 *
+			 *	xlat_process_arg_list() has already done concatenations for us.
+			 */
+			if (arg_p->single || arg_p->concat) {
+				fr_dlist_replace(list, vb, fr_dlist_pop_head(&vb->vb_group));
+				talloc_free(vb);
+			}
+
+		do_next:
 			if (arg_p->variadic) {
 				if (!next) break;
 			} else {
