@@ -34,6 +34,8 @@
 
 extern fr_app_io_t proto_tacacs_tcp;
 
+#define TACACS_MAX_ATTRIBUTES 256
+
 typedef struct {
 	char const			*name;			//!< socket name
 	int				sockfd;
