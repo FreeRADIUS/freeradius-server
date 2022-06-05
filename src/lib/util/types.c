@@ -608,7 +608,7 @@ fr_type_t fr_type_promote(fr_type_t a, fr_type_t b)
  */
 void **fr_type_array_alloc(TALLOC_CTX *ctx, fr_type_t type, size_t count)
 {
-	char *c_type;
+	char const *c_type;
 
 	c_type = fr_type_to_c_type[type];
 	if (c_type == NULL) {
