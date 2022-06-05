@@ -87,7 +87,7 @@ size_t fr_type_table_len = NUM_ELEMENTS(fr_type_table);
  *
  * Useful for setting talloc types correctly.
  */
-static size_t const fr_type_to_c_type[] = {
+static char const *fr_type_to_c_type[] = {
 	[FR_TYPE_STRING]			= "char *",
 	[FR_TYPE_OCTETS]			= "uint8_t *",
 
