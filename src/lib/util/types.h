@@ -28,8 +28,9 @@ RCSIDH(types_h, "$Id$")
 extern "C" {
 #endif
 
-#include <stdbool.h>
 #include <freeradius-devel/util/table.h>
+#include <freeradius-devel/util/talloc.h>
+#include <stdbool.h>
 
 /** Internal data types
  */
@@ -383,6 +384,8 @@ static inline fr_type_t fr_type_from_str(char const *type)
 
 bool		fr_type_cast(fr_type_t dst, fr_type_t src);
 fr_type_t	fr_type_promote(fr_type_t a, fr_type_t b);
+
+void		**fr_type_array_alloc(TALLOC_CTX *ctx, fr_type_t type, size_t count);
 
 #ifdef __cplusplus
 }

@@ -445,62 +445,25 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 		 */
 		else if (type & FR_TYPE_TMPL) {
 			array = (void **)talloc_zero_array(ctx, tmpl_t *, count);
+			if (unlikely(array == NULL)) {
+				cf_log_perr(cp, "Failed allocating value array");
+				return -1;
+			}
+
 		/*
 		 *	Allocate an array of values.
 		 *
 		 *	We don't NULL terminate.  Consumer must use
 		 *	talloc_array_length().
 		 */
-		} else switch (FR_BASE_TYPE(type)) {
-		case FR_TYPE_BOOL:
-			array = (void **)talloc_zero_array(ctx, bool, count);
-			break;
-
-		case FR_TYPE_UINT32:
-			array = (void **)talloc_zero_array(ctx, uint32_t, count);
-			break;
-
-		case FR_TYPE_UINT16:
-			array = (void **)talloc_zero_array(ctx, uint16_t, count);
-			break;
-
-		case FR_TYPE_UINT64:
-			array = (void **)talloc_zero_array(ctx, uint64_t, count);
-			break;
-
-		case FR_TYPE_INT32:
-			array = (void **)talloc_zero_array(ctx, int32_t, count);
-			break;
-
-		case FR_TYPE_STRING:
-			array = (void **)talloc_zero_array(ctx, char *, count);
-			break;
-
-		case FR_TYPE_IPV4_ADDR:
-		case FR_TYPE_IPV4_PREFIX:
-		case FR_TYPE_IPV6_ADDR:
-		case FR_TYPE_IPV6_PREFIX:
-		case FR_TYPE_COMBO_IP_ADDR:
-		case FR_TYPE_COMBO_IP_PREFIX:
-			array = (void **)talloc_zero_array(ctx, fr_ipaddr_t, count);
-			break;
-
-		case FR_TYPE_TIME_DELTA:
-			array = (void **)talloc_zero_array(ctx, fr_time_delta_t, count);
-			break;
-
-		case FR_TYPE_VOID:
-			fr_assert(rule->func);
-			array = (void **)talloc_zero_array(ctx, void *, count);
-			break;
-
-		default:
-			cf_log_err(cp, "Unsupported type %i (%i)", type, FR_BASE_TYPE(type));
-			fr_assert_fail(NULL);
-			return -1;	/* Unsupported type */
+		} else {
+			array = fr_type_array_alloc(ctx, FR_BASE_TYPE(type), count);
+			if (unlikely(array == NULL)) {
+				cf_log_perr(cp, "Failed allocating value array");
+				return -1;
+			}
 		}
 
-		if (!array) return -1;
 
 		for (i = 0; i < count; i++, cp = cf_pair_find_next(cs, cp, rule->name)) {
 			int		ret;

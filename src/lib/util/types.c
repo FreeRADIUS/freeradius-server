@@ -83,6 +83,87 @@ fr_table_num_ordered_t const fr_type_table[] = {
 };
 size_t fr_type_table_len = NUM_ELEMENTS(fr_type_table);
 
+/** Table of all the direct mappings between types and C types
+ *
+ * Useful for setting talloc types correctly.
+ */
+static size_t const fr_type_to_c_type[] = {
+	[FR_TYPE_STRING]			= "char *",
+	[FR_TYPE_OCTETS]			= "uint8_t *",
+
+	[FR_TYPE_IPV4_ADDR]			= "fr_ipaddr_t",
+	[FR_TYPE_IPV4_PREFIX]			= "fr_ipaddr_t",
+	[FR_TYPE_IPV6_ADDR]			= "fr_ipaddr_t",
+	[FR_TYPE_IPV6_PREFIX]			= "fr_ipaddr_t",
+	[FR_TYPE_COMBO_IP_ADDR]			= "fr_ipaddr_t",
+	[FR_TYPE_COMBO_IP_PREFIX]	       	= "fr_ipaddr_t",
+	[FR_TYPE_IFID]				= "fr_ifid_t",
+	[FR_TYPE_ETHERNET]			= "fr_ethernet_t",
+
+	[FR_TYPE_BOOL]				= "bool",
+	[FR_TYPE_UINT8]				= "uint8_t",
+	[FR_TYPE_UINT16]			= "uint16_t",
+	[FR_TYPE_UINT32]			= "uint32_t",
+	[FR_TYPE_UINT64]			= "uint64_t",
+
+	[FR_TYPE_INT8]				= "int8_t",
+	[FR_TYPE_INT16]				= "int16_t",
+	[FR_TYPE_INT32]				= "int32_t",
+	[FR_TYPE_INT64]				= "int64_t",
+
+	[FR_TYPE_FLOAT32]			= "float",
+	[FR_TYPE_FLOAT64]			= "double",
+
+	[FR_TYPE_DATE]				= "fr_unix_time_t",
+
+	[FR_TYPE_TIME_DELTA]			= "fr_time_delta_t",
+	[FR_TYPE_SIZE]				= "size_t",
+	[FR_TYPE_VALUE_BOX]			= "fr_value_box_t",
+	[FR_TYPE_VOID]				= "void *",
+
+	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
+};
+
+/** Table of all the direct mappings between types and C type sizes
+ *
+ */
+static size_t const fr_type_to_c_size[] = {
+	[FR_TYPE_STRING]			= sizeof(char *),
+	[FR_TYPE_OCTETS]			= sizeof(uint8_t *),
+
+	[FR_TYPE_IPV4_ADDR]			= sizeof(fr_ipaddr_t),
+	[FR_TYPE_IPV4_PREFIX]			= sizeof(fr_ipaddr_t),
+	[FR_TYPE_IPV6_ADDR]			= sizeof(fr_ipaddr_t),
+	[FR_TYPE_IPV6_PREFIX]			= sizeof(fr_ipaddr_t),
+	[FR_TYPE_COMBO_IP_ADDR]			= sizeof(fr_ipaddr_t),
+	[FR_TYPE_COMBO_IP_PREFIX]	       	= sizeof(fr_ipaddr_t),
+	[FR_TYPE_IFID]				= sizeof(fr_ifid_t),
+	[FR_TYPE_ETHERNET]			= sizeof(fr_ethernet_t),
+
+	[FR_TYPE_BOOL]				= sizeof(bool),
+	[FR_TYPE_UINT8]				= sizeof(uint8_t),
+	[FR_TYPE_UINT16]			= sizeof(uint16_t),
+	[FR_TYPE_UINT32]			= sizeof(uint32_t),
+	[FR_TYPE_UINT64]			= sizeof(uint64_t),
+
+	[FR_TYPE_INT8]				= sizeof(int8_t),
+	[FR_TYPE_INT16]				= sizeof(int16_t),
+	[FR_TYPE_INT32]				= sizeof(int32_t),
+	[FR_TYPE_INT64]				= sizeof(int64_t),
+
+	[FR_TYPE_FLOAT32]			= sizeof(float),
+	[FR_TYPE_FLOAT64]			= sizeof(double),
+
+	[FR_TYPE_DATE]				= sizeof(fr_unix_time_t),
+
+	[FR_TYPE_TIME_DELTA]			= sizeof(fr_time_delta_t),
+	[FR_TYPE_SIZE]				= sizeof(size_t),
+	[FR_TYPE_VALUE_BOX]			= sizeof(fr_value_box_t),
+	[FR_TYPE_VOID]				= sizeof(void *),
+
+	[FR_TYPE_MAX]				= 0	//!< Ensure array covers all types.
+};
+
 #define ARRAY_BEG(_type)	{ [_type] = true,
 #define ARRAY_MID(_type)	[_type] = true,
 #define ARRAY_END(_type)	[_type] = true }
@@ -515,3 +596,25 @@ fr_type_t fr_type_promote(fr_type_t a, fr_type_t b)
 	 */
 	return type_promote_table[a][b];
 }
+
+/** Allocate an array of a given type
+ *
+ * @param[in] ctx	to allocate array in.
+ * @param[in] type	array to allocate.
+ * @param[in] count	The number of elements to allocate.
+ * @return
+ *	- NULL on error.
+ *	- A new talloc array.
+ */
+void **fr_type_array_alloc(TALLOC_CTX *ctx, fr_type_t type, size_t count)
+{
+	char *c_type;
+
+	c_type = fr_type_to_c_type[type];
+	if (c_type == NULL) {
+		fr_strerror_printf("Type %s does not have a C type equivalent", fr_type_to_str(type));
+		return NULL;
+	}
+
+	return _talloc_array(ctx, fr_type_to_c_size[type], count, c_type);
+ }
