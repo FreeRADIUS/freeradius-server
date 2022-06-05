@@ -46,13 +46,15 @@ static char const parse_spaces[] = "                                            
 #define PAIR_SPACE(_cs) ((_cs->depth + 1) * 2)
 #define SECTION_SPACE(_cs) (_cs->depth * 2)
 
-void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, CONF_PARSER const *rule)
+void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR *cp, CONF_PARSER const *rule)
 {
 	char const	*value;
 	char		*tmp = NULL;
 	char const	*quote = "";
 	bool		secret = (rule->type & FR_TYPE_SECRET);
 	fr_type_t	base_type;
+
+	if (cp->printed) return;
 
 	/*
 	 *	tmpls are special, they just need to get printed as string
@@ -103,6 +105,8 @@ void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, CONF_PARSER cons
 	cf_log_debug(cs, "%.*s%s = %s%s%s", PAIR_SPACE(cs), parse_spaces, cp->attr, quote, value, quote);
 
 	talloc_free(tmp);
+
+	cp->printed = true;
 }
 
 /** Parses a #CONF_PAIR into a boxed value
@@ -130,8 +134,6 @@ int cf_pair_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, CONF_PAIR *cp, CO
 
 		return -1;
 	}
-
-	if (!cp->printed) cf_pair_debug(cs, cp, rule);
 
 	/*
 	 *	Strings can be file paths...
@@ -178,18 +180,17 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 
 	int		type = rule->type;
 	CONF_PAIR	*cp = cf_item_to_pair(ci);
-	CONF_SECTION	*cs = cf_item_to_section(cf_parent(ci));
 
 	cant_be_empty = fr_rule_not_empty(rule);
-	tmpl = fr_rule_tmpl(rule);
+	tmpl = fr_rule_is_tmpl(rule);
 	nonblock = fr_rule_non_blocking(rule);
 
 	fr_assert(cp);
-	fr_assert(!fr_rule_attribute(rule) || tmpl);	 /* Attribute flag only valid for templates */
+	fr_assert(!fr_rule_is_attribute(rule) || tmpl);		/* Attribute flag only valid for templates */
 
-	if (fr_rule_required(rule)) cant_be_empty = true;		/* May want to review this in the future... */
+	if (fr_rule_required(rule)) cant_be_empty = true;	/* May want to review this in the future... */
 
-	type = FR_BASE_TYPE(type);			/* normal types are small */
+	type = FR_BASE_TYPE(type);				/* normal types are small */
 
 	/*
 	 *	Everything except templates must have a base type.
@@ -229,8 +230,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 					};
 		fr_sbuff_t		sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
 
-		if (!cp->printed) cf_pair_debug(cs, cp, rule);
-
 		/*
 		 *	Parse the cast operator for barewords
 		 */
@@ -250,7 +249,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 				goto error;
 			}
 			fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
-		} else if (fr_rule_attribute(rule)) {
+		} else if (fr_rule_is_attribute(rule)) {
 			cf_log_err(cp, "Invalid quoting.  Unquoted attribute reference is required");
 			goto error;
 		}
@@ -260,7 +259,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 					 &rules);
 		if (!vpt) goto tmpl_error;
 
-		if (fr_rule_attribute(rule) && (!tmpl_is_attr(vpt) && !tmpl_is_attr_unresolved(vpt))) {
+		if (fr_rule_is_attribute(rule) && (!tmpl_is_attr(vpt) && !tmpl_is_attr_unresolved(vpt))) {
 			cf_log_err(cp, "Expected attr got %s",
 				   tmpl_type_to_str(vpt->type));
 			return -1;
@@ -305,8 +304,6 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	}
 
 finish:
-	cp->parsed = true;
-	cp->printed = true;
 
 	return ret;
 }
@@ -380,6 +377,7 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, CONF_PARSER const 
  *
  * @param[in] ctx	To allocate arrays and values in.
  * @param[out] out	Where to write the result.
+ *			Must not be NULL unless rule->runc is provided.
  * @param[in] base	address of the structure out points into.
  *			May be NULL in the case of manual parsing.
  * @param[in] cs	to search for matching #CONF_PAIR in.
@@ -391,27 +389,38 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, CONF_PARSER const 
  *	- -2 if deprecated.
  */
 static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, void *base,
-							CONF_SECTION *cs, CONF_PARSER const *rule)
+						        CONF_SECTION *cs, CONF_PARSER const *rule)
 {
-	bool		multi, required, deprecated;
+	bool		required, deprecated;
 	size_t		count = 0;
 	CONF_PAIR	*cp, *dflt_cp = NULL;
 
 	unsigned int	type = rule->type;
 	char const	*dflt = rule->dflt;
 	fr_token_t	dflt_quote = rule->quote;
+	cf_parse_t	func = rule->func ? rule->func : cf_pair_parse_value;
 
-	fr_assert(!(type & FR_TYPE_TMPL) || !dflt || (dflt_quote != T_INVALID)); /* We ALWAYS need a quoting type for templates */
+	fr_assert(!fr_rule_is_tmpl(rule) || !dflt || (dflt_quote != T_INVALID)); /* We ALWAYS need a quoting type for templates */
 
-	multi = (type & FR_TYPE_MULTI);
-	required = (type & FR_TYPE_REQUIRED);
-	deprecated = (type & FR_TYPE_DEPRECATED);
+	/*
+	 *	Functions don't necessarily *need* to write
+	 *	anywhere, so their data pointer can be NULL.
+	 */
+	if (!out) {
+		if (!rule->func) {
+			cf_log_err(cs, "Rule doesn't specify output destination");
+			return -1;
+		}
+	}
+
+	required = fr_rule_required(rule);
+	deprecated = fr_rule_deprecated(rule);
 
 	/*
 	 *	If the item is multi-valued we allocate an array
 	 *	to hold the multiple values.
 	 */
-	if (multi) {
+	if (fr_rule_multi(rule)) {
 		CONF_PAIR	*first;
 		void		**array;
 		size_t		i;
@@ -435,7 +444,8 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 		 */
 		if (!count) {
 			if (deprecated) return 0;
-			if (!dflt) {
+
+			if (!fr_rule_dflt(rule)) {
 				if (required) {
 			need_value:
 					cf_log_err(cs, "Configuration item \"%s\" must have a value", rule->name);
@@ -457,27 +467,17 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			return -2;
 		}
 
-		array = NULL;
-
 		/*
-		 *	Functions don't necessarily *need* to write
-		 *	anywhere, so their data pointer can be NULL.
+		 *	No output, so don't bother allocing the array
 		 */
 		if (!out) {
-			if (!rule->func) {
-				cf_log_err(cs, "Rule doesn't specify output destination");
-				return -1;
-			}
-		}
+			array = NULL;
+
 		/*
 		 *	Tmpl is outside normal range
 		 */
-		else if (type & FR_TYPE_TMPL) {
-			array = (void **)talloc_zero_array(ctx, tmpl_t *, count);
-			if (unlikely(array == NULL)) {
-				cf_log_perr(cp, "Failed allocating value array");
-				return -1;
-			}
+		} else if (fr_rule_is_tmpl(rule)) {
+			MEM(array = (void **)talloc_zero_array(ctx, tmpl_t *, count));
 
 		/*
 		 *	Allocate an array of values.
@@ -493,17 +493,17 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			}
 		}
 
-
 		for (i = 0; i < count; i++, cp = cf_pair_find_next(cs, cp, rule->name)) {
 			int		ret;
-			cf_parse_t	func;
 			void		*entry;
 			TALLOC_CTX	*value_ctx = array;
 
 			/*
 			 *	Figure out where to write the output
 			 */
-			if ((FR_BASE_TYPE(type) == FR_TYPE_VOID) || (type & FR_TYPE_TMPL)) {
+			if (!array) {
+				entry = NULL;
+			} else if ((FR_BASE_TYPE(type) == FR_TYPE_VOID) || (type & FR_TYPE_TMPL)) {
 				entry = &array[i];
 			} else {
 				entry = ((uint8_t *) array) + (i * fr_value_box_field_sizes[FR_BASE_TYPE(type)]);
@@ -513,13 +513,9 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			 *	Switch between custom parsing function
 			 *	and the standard value parsing function.
 			 */
-			if (rule->func) {
-				func = rule->func;
-				cf_pair_debug(cs, cp, rule);
-			} else {
-				func = cf_pair_parse_value;
-			}
+			cf_pair_debug(cs, cp, rule);
 
+			if (cp->parsed) return 0;
 			ret = func(value_ctx, entry, base, cf_pair_to_item(cp), rule);
 			if (ret < 0) {
 				talloc_free(array);
@@ -527,8 +523,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			}
 			cp->parsed = true;
 		}
-
-		if (out) *(void **)out = array;
+		if (array) *(void **)out = array;
 	/*
 	 *	Single valued config item gets written to
 	 *	the data pointer directly.
@@ -536,44 +531,33 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 	} else {
 		CONF_PAIR	*next;
 		int		ret;
-		cf_parse_t	func = cf_pair_parse_value;
 
 		cp = cf_pair_find(cs, rule->name);
 		if (!cp) {
 			if (deprecated) return 0;
-			if (!dflt) {
+
+			if (!fr_rule_dflt(rule)) {
 				if (required) goto need_value;
 				return 1;
 			}
 
 			if (cf_pair_default(&dflt_cp, cs, rule) < 0) return -1;
 			cp = dflt_cp;
-
-		} else if (cp->parsed) {
-			/*
-			 *	Don't re-parse things which have already been parsed.
-			 */
-			return 0;
 		}
 
 		next = cf_pair_find_next(cs, cp, rule->name);
 		if (next) {
-			cf_log_err(&(next->item), "Invalid duplicate configuration item '%s'", rule->name);
+			cf_log_err(cf_pair_to_item(next), "Invalid duplicate configuration item '%s'", rule->name);
 			return -1;
 		}
-
 		if (deprecated) goto deprecated;
 
-		cp->parsed = true;
+		cf_pair_debug(cs, cp, rule);
 
-		if (rule->func) {
-			cf_pair_debug(cs, cp, rule);
-			cp->printed = true;
-			func = rule->func;
-		}
-
+		if (cp->parsed) return 0;
 		ret = func(ctx, out, base, cf_pair_to_item(cp), rule);
 		if (ret < 0) return -1;
+		cp->parsed = true;
 	}
 
 	return 0;
@@ -936,9 +920,12 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 		cf_log_debug(cs, "%.*s%s %s {", SECTION_SPACE(cs), parse_spaces, cs->name1, cs->name2);
 	}
 
+	/*
+	 *	Loop over all the children of the section
+	 */
 	while ((rule_cd = cf_data_find_next(cs, rule_cd, CONF_PARSER, CF_IDENT_ANY))) {
-		CONF_PARSER *rule;
-		bool *is_set = NULL;
+		CONF_PARSER	*rule;
+		bool		*is_set = NULL;
 
 		rule = cf_data_value(rule_cd);
 

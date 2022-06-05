@@ -321,17 +321,12 @@ _Generic((_ct), \
 
 #define fr_rule_required(_rule)		((_rule)->type & FR_TYPE_REQUIRED)
 
-#define fr_rule_attribute(_rule)	((_rule)->type & FR_TYPE_ATTRIBUTE)
-
 #define fr_rule_secret(_rule)		((_rule)->type & FR_TYPE_SECRET)
 
 #define fr_rule_file_input(_rule)	(((_rule)->type & FR_TYPE_FILE_INPUT) == FR_TYPE_FILE_INPUT)
 
 #define fr_rule_file_output(_rule)	(((_rule)->type & FR_TYPE_FILE_OUTPUT) == FR_TYPE_FILE_OUTPUT)
 
-#define fr_rule_xlat(_rule)		((_rule)->type & FR_TYPE_XLAT)
-
-#define fr_rule_tmpl(_rule)		((_rule)->type & FR_TYPE_TMPL)
 
 #define fr_rule_multi(_rule)		((_rule)->type & FR_TYPE_MULTI)
 
@@ -344,6 +339,14 @@ _Generic((_ct), \
 #define fr_rule_non_blocking(_rule)	((_rule)->type & FR_TYPE_NON_BLOCKING)
 
 #define fr_rule_file_exists(_rule)	(((_rule)->type & FR_TYPE_FILE_EXISTS) == FR_TYPE_FILE_EXISTS)
+
+#define fr_rule_dflt(_rule)		((_rule)->dflt || (_rule)->dflt_func)
+
+#define fr_rule_is_attribute(_rule)	((_rule)->type & FR_TYPE_ATTRIBUTE)
+
+#define fr_rule_is_xlat(_rule)		((_rule)->type & FR_TYPE_XLAT)
+
+#define fr_rule_is_tmpl(_rule)		((_rule)->type & FR_TYPE_TMPL)
 /** @} */
 
 #define FR_SIZE_COND_CHECK(_name, _var, _cond, _new)\
@@ -515,7 +518,7 @@ typedef struct {
 #define CF_FILE_CONFIG (1 << 2)
 #define CF_FILE_MODULE (1 << 3)
 
-void		cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, CONF_PARSER const *rule);
+void		cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR *cp, CONF_PARSER const *rule);
 
 /*
  *	Type validation and conversion
