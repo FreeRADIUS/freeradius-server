@@ -46,96 +46,52 @@ static char const parse_spaces[] = "                                            
 #define PAIR_SPACE(_cs) ((_cs->depth + 1) * 2)
 #define SECTION_SPACE(_cs) (_cs->depth * 2)
 
-/** Validation function for ipaddr conf_file types
- *
- */
-static inline int CC_HINT(nonnull) fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name,
-							   fr_type_t type, char const *value,
-							   fr_ipaddr_t *ipaddr)
+static void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, fr_type_t type, bool secret)
 {
-	char ipbuf[128];
+	char const	*value;
+	char		*tmp = NULL;
+	char const	*quote = "";
 
-	if (strcmp(value, "*") == 0) {
-		cf_log_debug(cs, "%.*s%s = *", PAIR_SPACE(cs), parse_spaces, name);
-	} else if (strspn(value, ".0123456789abdefABCDEF:%[]/") == strlen(value)) {
-		cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, name, value);
-	} else {
-		cf_log_debug(cs, "%.*s%s = %s IPv%s address [%s]", PAIR_SPACE(cs), parse_spaces, name, value,
-			    (ipaddr->af == AF_INET ? "4" : " 6"), fr_inet_ntoh(ipaddr, ipbuf, sizeof(ipbuf)));
-	}
-
-	switch (type) {
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV6_ADDR:
-	case FR_TYPE_COMBO_IP_ADDR:
-		switch (ipaddr->af) {
-		case AF_INET:
-		if (ipaddr->prefix != 32) {
-			ERROR("Invalid IPv4 mask length \"/%i\".  Only \"/32\" permitted for non-prefix types",
-			      ipaddr->prefix);
-
-			return -1;
-		}
-			break;
-
-		case AF_INET6:
-		if (ipaddr->prefix != 128) {
-			ERROR("Invalid IPv6 mask length \"/%i\".  Only \"/128\" permitted for non-prefix types",
-			      ipaddr->prefix);
-
-			return -1;
-		}
-			break;
-
-		default:
-			return -1;
-		}
-		return 0;
-
-	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_IPV6_PREFIX:
-	case FR_TYPE_COMBO_IP_PREFIX:
-		return 0;
-
-	default:
-		fr_assert(0);
-		return -1;
-	}
-}
-
-static void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, bool secret)
-{
 	if (secret && (fr_debug_lvl < L_DBG_LVL_3)) {
 		cf_log_debug(cs, "%.*s%s = <<< secret >>>", PAIR_SPACE(cs), parse_spaces, cp->attr);
+		return;
+	}
 
-	} else if (cp->rhs_quote == T_BARE_WORD) {
-		cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
-
+	/*
+	 *	Print the strings with the correct quotation character and escaping.
+	 */
+	if (fr_type_is_string(type)) {
+		value = tmp = fr_asprint(NULL, cp->value, talloc_array_length(cp->value) - 1, cp->rhs_quote);
 	} else {
-		/*
-		 *	Print the strings with the correct quotation character and escaping.
-		 */
-		char *tmp = fr_asprint(NULL, cp->value, talloc_array_length(cp->value) - 1, cp->rhs_quote);
-		char quote;
+		value = cf_pair_value(cp);
+	}
 
-		switch (cp->rhs_quote) {
+	if (fr_type_is_quoted(type)) {
+		switch (cf_pair_value_quote(cp)) {
 		default:
+			break;
+
 		case T_DOUBLE_QUOTED_STRING:
-			quote = '"';
+			quote = "\"";
 			break;
 
 		case T_SINGLE_QUOTED_STRING:
-			quote = '\'';
+			quote = "'";
 			break;
 
 		case T_BACK_QUOTED_STRING:
-			quote = '`';
+			quote = "`";
+			break;
+
+		case T_SOLIDUS_QUOTED_STRING:
+			quote = "/";
 			break;
 		}
-
-		cf_log_debug(cs, "%.*s%s = %c%s%c", PAIR_SPACE(cs), parse_spaces, cp->attr, quote, tmp, quote);
-		talloc_free(tmp);
 	}
+
+	cf_log_debug(cs, "%.*s%s = %s%s%s", PAIR_SPACE(cs), parse_spaces, cp->attr, quote, value, quote);
+
+	talloc_free(tmp);;
 }
 
 /** Parses a #CONF_PAIR into a C data type
@@ -218,7 +174,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 					};
 		fr_sbuff_t		sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
 
-		if (!cp->printed) cf_pair_debug(cs, cp, secret);
+		if (!cp->printed) cf_pair_debug(cs, cp, FR_TYPE_STRING, secret);
 
 		/*
 		 *	Parse the cast operator for barewords
@@ -276,266 +232,44 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		goto finish;
 	}
 
-	switch (type) {
-	case FR_TYPE_BOOL:
-		/*
-		 *	Allow yes/no, true/false, and on/off
-		 */
-		if ((strcasecmp(cp->value, "yes") == 0) ||
-		    (strcasecmp(cp->value, "true") == 0) ||
-		    (strcasecmp(cp->value, "on") == 0)) {
-			*(bool *)out = true;
-		} else if ((strcasecmp(cp->value, "no") == 0) ||
-			   (strcasecmp(cp->value, "false") == 0) ||
-			   (strcasecmp(cp->value, "off") == 0)) {
-			*(bool *)out = false;
-		} else {
-			cf_log_err(cs, "Invalid value \"%s\" for boolean variable %s",
-				   cp->value, cp->attr);
-			goto error;
-		}
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, cp->value);
-		break;
-
-	case FR_TYPE_UINT32:
+	/*
+	 *	Parse as a boxed value out of sheer laziness...
+	 *
+	 *	Then we get all the internal types for free, and only need to add
+	 *	one set of printing and parsing functions for new types...
+	 */
 	{
-		unsigned long v = strtoul(cp->value, 0, 0);
+		fr_value_box_t	vb;
+
+		if (fr_value_box_from_str(ctx, &vb, type, NULL,
+					  cf_pair_value(cp), strlen(cf_pair_value(cp)), NULL, false) < 0) {
+			cf_log_perr(cs, "Invalid value \"%s\" for config item %s",
+				    cp->value, cp->attr);
+
+			return -1;
+		}
+
+		if (!cp->printed) cf_pair_debug(cs, cp, type, secret);
 
 		/*
-		 *	Restrict integer values to 0-INT32_MAX, this means
-		 *	it will always be safe to cast them to a signed type
-		 *	for comparisons, and imposes the same range limit as
-		 *	before we switched to using an unsigned type to
-		 *	represent config item integers.
+		 *	Strings can be file paths...
 		 */
-		if (v > INT32_MAX) {
-			cf_log_err(cs, "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
-				   cp->attr, INT32_MAX);
-			goto error;
-		}
-
-		*(uint32_t *)out = v;
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cp->attr, *(uint32_t *)out);
-	}
-		break;
-
-	case FR_TYPE_UINT8:
-	{
-		unsigned long v = strtoul(cp->value, 0, 0);
-
-		if (v > UINT8_MAX) {
-			cf_log_err(cs, "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
-				   cp->attr, UINT8_MAX);
-			goto error;
-		}
-		*(uint8_t *)out = (uint8_t) v;
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cp->attr, *(uint8_t *)out);
-	}
-		break;
-
-	case FR_TYPE_UINT16:
-	{
-		unsigned long v = strtoul(cp->value, 0, 0);
-
-		if (v > UINT16_MAX) {
-			cf_log_err(cs, "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
-				   cp->attr, UINT16_MAX);
-			goto error;
-		}
-		*(uint16_t *)out = (uint16_t) v;
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %u", PAIR_SPACE(cs), parse_spaces, cp->attr, *(uint16_t *)out);
-	}
-		break;
-
-	case FR_TYPE_UINT64:
-		*(uint64_t *)out = strtoull(cp->value, NULL, 0);
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %" PRIu64, PAIR_SPACE(cs), parse_spaces, cp->attr, *(uint64_t *)out);
-		break;
-
-	case FR_TYPE_SIZE:
-	{
-		if (fr_size_from_str((size_t *)out, cp->value) < 0) {
-			cf_log_perr(cs, "Invalid value \"%s\" for variable %s", cp->value, cp->attr);
-			goto error;
-		}
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %zu", PAIR_SPACE(cs), parse_spaces, cp->attr, *(size_t *)out);
-		break;
-	}
-
-	case FR_TYPE_INT32:
-		*(int32_t *)out = strtol(cp->value, NULL, 10);
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %d", PAIR_SPACE(cs), parse_spaces, cp->attr, *(int32_t *)out);
-		break;
-
-	case FR_TYPE_STRING:
-	{
-		char **str = out;
-
-		if (!cp->printed) cf_pair_debug(cs, cp, secret);
-
-		/*
-		 *	If there's out AND it's an input file, check
-		 *	that we can read it.  This check allows errors
-		 *	to be caught as early as possible, during
-		 *	server startup.
-		 */
-		if (file_input && !cf_file_check(cs, cp->value, true)) goto error;
-		if (file_exists && !cf_file_check(cs, cp->value, false)) goto error;
-
-		/*
-		 *	Free any existing buffers
-		 */
-		talloc_free(*str);
-		*str = talloc_typed_strdup(cs, cp->value);
-	}
-		break;
-
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV4_PREFIX:
-	{
-		fr_ipaddr_t *ipaddr = out;
-
-		if (fr_inet_pton4(ipaddr, cp->value, -1, true, false, true) < 0) {
-			cf_log_perr(cp, "Failed parsing config item");
-			goto error;
-		}
-		/* Also prints the IP to the log */
-		if (fr_item_validate_ipaddr(cs, cp->attr, type, cp->value, ipaddr) < 0) goto error;
-	}
-		break;
-
-	case FR_TYPE_IPV6_ADDR:
-	case FR_TYPE_IPV6_PREFIX:
-	{
-		fr_ipaddr_t *ipaddr = out;
-
-		if (fr_inet_pton6(ipaddr, cp->value, -1, true, false, true) < 0) {
-			cf_log_perr(cp, "Failed parsing config item");
-			goto error;
-		}
-		/* Also prints the IP to the log */
-		if (fr_item_validate_ipaddr(cs, cp->attr, type, cp->value, ipaddr) < 0) goto error;
-	}
-		break;
-
-	case FR_TYPE_COMBO_IP_ADDR:
-	case FR_TYPE_COMBO_IP_PREFIX:
-	{
-		fr_ipaddr_t	*ipaddr = out;
-		int		af = AF_UNSPEC;
-		fr_type_t	our_type = FR_TYPE_NULL;
-		fr_sbuff_t	sbuff = FR_SBUFF_IN(cp->value, strlen(cp->value));
-		tmpl_rules_t	rules = {};
-
-		slen = tmpl_cast_from_substr(&rules, &sbuff);
-		if (slen < 0) {
-			cf_log_perr(cp, "Failed parsing config item");
-			goto error;
-		}
-		our_type = rules.cast;
-
-		if (slen > 0) {
-			if (type == FR_TYPE_COMBO_IP_ADDR) {
-				switch (our_type) {
-				case FR_TYPE_IPV4_ADDR:
-					af = AF_INET;
-					break;
-
-				case FR_TYPE_IPV6_ADDR:
-					af = AF_INET6;
-					break;
-
-				default:
-					cf_log_perr(cp, "Invalid cast, expecting 'ipv4addr' or 'ipv6addr'");
-					goto error;
-				}
-			} else if (type == FR_TYPE_COMBO_IP_PREFIX) {
-				switch (our_type) {
-				case FR_TYPE_IPV4_PREFIX:
-					af = AF_INET;
-					break;
-
-				case FR_TYPE_IPV6_PREFIX:
-					af = AF_INET6;
-					break;
-
-				default:
-					cf_log_perr(cp, "Invalid cast, expecting 'ipv4prefix' or 'ipv6prefix'");
-					goto error;
-				}
+		if (fr_type_is_string(type)) {
+			/*
+			 *	If there's out AND it's an input file, check
+			 *	that we can read it.  This check allows errors
+			 *	to be caught as early as possible, during
+			 *	server startup.
+			 */
+			if (file_input && !cf_file_check(cs, cp->value, true)) {
+			value_error:
+				fr_value_box_clear_value(&vb);
+				goto error;
 			}
+			if (file_exists && !cf_file_check(cs, cp->value, false)) goto value_error;
 		}
 
-		if (fr_inet_pton(ipaddr, cp->value, -1, af, true, true) < 0) {
-			cf_log_perr(cp, "Failed parsing config item");
-			goto error;
-		}
-		/* Also prints the IP to the log */
-		if (fr_item_validate_ipaddr(cs, cp->attr, type, cp->value, ipaddr) < 0) {
-			goto error;
-		}
-	}
-		break;
-
-	case FR_TYPE_TIME_DELTA:
-	{
-		fr_time_delta_t delta;
-
-		if (fr_time_delta_from_str(&delta, cp->value, strlen(cp->value), FR_TIME_RES_SEC) < 0) {
-			cf_log_perr(cp, "Failed parsing config item");
-			goto error;
-		}
-
-		if (!cp->printed) {
-			char *p;
-			fr_value_box_aprint(NULL, &p, fr_box_time_delta(delta), NULL);
-			cf_log_debug(cs, "%.*s%s = %s", PAIR_SPACE(cs), parse_spaces, cp->attr, p);
-			talloc_free(p);
-		}
-
-		memcpy(out, &delta, sizeof(delta));
-	}
-		break;
-
-	case FR_TYPE_FLOAT32:
-	{
-		float num;
-
-		if (sscanf(cp->value, "%f", &num) != 1) {
-			cf_log_err(cp, "Failed parsing floating point number");
-			goto error;
-		}
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cp->attr,
-					       (double) num);
-		memcpy(out, &num, sizeof(num));
-	}
-		break;
-
-	case FR_TYPE_FLOAT64:
-	{
-		double num;
-
-		if (sscanf(cp->value, "%lf", &num) != 1) {
-			cf_log_err(cp, "Failed parsing floating point number");
-			goto error;
-		}
-		if (!cp->printed) cf_log_debug(cs, "%.*s%s = %f", PAIR_SPACE(cs), parse_spaces, cp->attr, num);
-		memcpy(out, &num, sizeof(num));
-	}
-		break;
-
-	default:
-		/*
-		 *	If we get here, it's a sanity check error.
-		 *	It's not an error parsing the configuration
-		 *	file.
-		 */
-		fr_assert(type > FR_TYPE_NULL);
-		fr_assert(type < FR_TYPE_MAX);
-
-		cf_log_err(cp, "type '%s' (%i) is not supported in the configuration files",
-			   fr_type_to_str(type), type);
-		goto error;
+		if (fr_value_box_memcpy_out(out, &vb) < 0) goto value_error;
 	}
 
 finish:

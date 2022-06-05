@@ -1974,7 +1974,7 @@ ssize_t fr_value_box_from_network(TALLOC_CTX *ctx,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-/* Get a key from a value box
+/** Get a key from a value box
  *
  * @param[in,out] out - set to a small buffer on input.  If the callback has more data
  *		  than is available here, the callback can update "out" to point elsewhere
@@ -2038,7 +2038,6 @@ int fr_value_box_to_key(uint8_t **out, size_t *outlen, fr_value_box_t const *val
 
 	return 0;
 }
-
 
 /** Convert octets to a fixed size value box value
  *
@@ -3548,7 +3547,7 @@ int fr_value_box_copy(TALLOC_CTX *ctx, fr_value_box_t *dst, const fr_value_box_t
 {
 	switch (src->type) {
 	default:
-		fr_value_box_memcpy_out(fr_value_box_raw(dst, src->type), src, src->type);
+		fr_value_box_memcpy_out(fr_value_box_raw(dst, src->type), src);
 		fr_value_box_copy_meta(dst, src);
 		break;
 

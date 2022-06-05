@@ -559,7 +559,7 @@ ssize_t _tmpl_to_type(void *out,
 	RDEBUG4("Copying %zu bytes to %p from offset %zu",
 		fr_value_box_field_sizes[dst_type], *((void **)out), fr_value_box_offsets[dst_type]);
 
-	fr_value_box_memcpy_out(out, from_cast, dst_type);
+	fr_value_box_memcpy_out(out, from_cast);
 
 	return from_cast->vb_length;
 }
@@ -810,7 +810,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 	RDEBUG4("Copying %zu bytes to %p from offset %zu",
 		fr_value_box_field_sizes[dst_type], *((void **)out), fr_value_box_offsets[dst_type]);
 
-	fr_value_box_memcpy_out(out, &from_cast, dst_type);
+	fr_value_box_memcpy_out(out, &from_cast);
 
 	/*
 	 *	Frees any memory allocated for temporary buffers

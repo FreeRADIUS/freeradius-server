@@ -511,13 +511,38 @@ uint8_t *fr_value_box_raw(fr_value_box_t const *vb, fr_type_t type)
 	return UNCONST(uint8_t *, vb) + fr_value_box_offsets[type];
 }
 
-/** Copy raw values out of a value box
+/** Copy the value of a value box to a field in a C struct
  *
+ * This is useful when interacting with 3rd party libraries, and doing configuration parsing
+ * as it allows us to use standard parsing and casting functions and then emit the result
+ * as a C value.
+ *
+ * The field pointed to by out must be of the same type as we use to represent the value boxe's
+ * value in its datum union, or at least the same size.
+ *
+ * No checks are done to ensure this is the case, so if you get this wrong it'll lead to silent
+ * memory corruption.
+ *
+ * @param[out] out	Field in struct to write variable to.
+ * @param[in] vb	to copy value from.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 static inline CC_HINT(always_inline)
-void fr_value_box_memcpy_out(void *dst, fr_value_box_t const *vb, fr_type_t type)
+int fr_value_box_memcpy_out(void *out, fr_value_box_t const *vb)
 {
-	memcpy(dst, ((uint8_t const *)vb) + fr_value_box_offsets[type], fr_value_box_field_sizes[type]);
+	size_t len;
+
+	len = fr_value_box_field_sizes[vb->type];
+	if (len == 0) {
+		fr_strerror_printf("Type %s not supported for conversion to C type", fr_type_to_str(vb->type));
+		return -1;
+	}
+
+	memcpy(out, ((uint8_t const *)vb) + fr_value_box_offsets[vb->type], len);
+
+	return 0;
 }
 
 
