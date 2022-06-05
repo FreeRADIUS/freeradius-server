@@ -51,7 +51,7 @@ int		cf_file_read(CONF_SECTION *cs, char const *file);
 int		cf_section_pass2(CONF_SECTION *cs);
 void		cf_file_free(CONF_SECTION *cs);
 
-bool		cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms);
+bool		cf_file_check(CONF_PAIR *cp, bool check_perms);
 void		cf_file_check_user(uid_t uid, gid_t gid);
 
 /*

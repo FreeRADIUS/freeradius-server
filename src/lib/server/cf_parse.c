@@ -145,12 +145,12 @@ int cf_pair_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, CONF_PAIR *cp, CO
 		 *	to be caught as early as possible, during
 		 *	server startup.
 		 */
-		if (fr_rule_file_input(rule) && !cf_file_check(cs, cp->value, true)) {
+		if (fr_rule_file_input(rule) && !cf_file_check(cp, true)) {
 		error:
 			fr_value_box_clear(out);
 			return -1;
 		}
-		if (fr_rule_file_exists(rule) && !cf_file_check(cs, cp->value, false)) goto error;
+		if (fr_rule_file_exists(rule) && !cf_file_check(cp, false)) goto error;
 	}
 
 	return 0;

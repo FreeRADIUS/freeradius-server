@@ -593,22 +593,22 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
  *
  * @note Must be called with super user privileges.
  *
- * @param cs		currently being processed.
- * @param filename	to check.
+ * @param cp		currently being processed.
  * @param check_perms	If true - will return false if file is world readable,
  *			or not readable by the unprivileged user/group.
  * @return
  *	- true if permissions are OK, or the file exists.
  *	- false if the file does not exist or the permissions are incorrect.
  */
-bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
+bool cf_file_check(CONF_PAIR *cp, bool check_perms)
 {
 	cf_file_t	*file;
 	CONF_SECTION	*top;
 	fr_rb_tree_t	*tree;
+	char const 	*filename = cf_pair_value(cp);
 	int		fd = -1;
 
-	top = cf_root(cs);
+	top = cf_root(cp);
 	tree = cf_data_value(cf_data_find(top, fr_rb_tree_t, "filename"));
 	if (!tree) return false;
 
@@ -616,13 +616,13 @@ bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 	if (!file) return false;
 
 	file->filename = talloc_strdup(file, filename);	/* The rest of the code expects this to be talloced */
-	file->cs = cs;
+	file->cs = cf_item_to_section(cf_parent(cp));
 
 	if (!check_perms) {
 		if (stat(filename, &file->buf) < 0) {
 		perm_error:
 			fr_perm_file_error(errno);	/* Write error and euid/egid to error buff */
-			PERROR("Unable to open file \"%s\"", filename);
+			cf_log_perr(cp, "Unable to open file \"%s\"", filename);
 		error:
 			if (fd >= 0) close(fd);
 			talloc_free(file);
@@ -643,31 +643,30 @@ bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 
 		if ((conf_check_gid != (gid_t)-1) && ((egid = getegid()) != conf_check_gid)) {
 			if (setegid(conf_check_gid) < 0) {
-				ERROR("Failed setting effective group ID (%i) for file check: %s",
-				      conf_check_gid, fr_syserror(errno));
+				cf_log_perr(cp, "Failed setting effective group ID (%i) for file check: %s",
+					    conf_check_gid, fr_syserror(errno));
 				goto error;
 			}
 		}
 		if ((conf_check_uid != (uid_t)-1) && ((euid = geteuid()) != conf_check_uid)) {
 			if (seteuid(conf_check_uid) < 0) {
-				ERROR("Failed setting effective user ID (%i) for file check: %s",
-				      conf_check_uid, fr_syserror(errno));
+				cf_log_perr(cp, "Failed setting effective user ID (%i) for file check: %s",
+					    conf_check_uid, fr_syserror(errno));
 				goto error;
 			}
 		}
 		fd = open(filename, O_RDONLY);
 		if (conf_check_uid != euid) {
 			if (seteuid(euid) < 0) {
-				ERROR("Failed restoring effective user ID (%i) after file check: %s",
-				      euid, fr_syserror(errno));
-
+				cf_log_perr(cp, "Failed restoring effective user ID (%i) after file check: %s",
+					    euid, fr_syserror(errno));
 				goto error;
 			}
 		}
 		if (conf_check_gid != egid) {
 			if (setegid(egid) < 0) {
-				ERROR("Failed restoring effective group ID (%i) after file check: %s",
-				      egid, fr_syserror(errno));
+				cf_log_perr(cp, "Failed restoring effective group ID (%i) after file check: %s",
+					    egid, fr_syserror(errno));
 				goto error;
 			}
 		}
@@ -680,8 +679,8 @@ bool cf_file_check(CONF_SECTION *cs, char const *filename, bool check_perms)
 
 #ifdef S_IWOTH
 	if ((file->buf.st_mode & S_IWOTH) != 0) {
-		ERROR("Configuration file %s is globally writable.  "
-		      "Refusing to start due to insecure configuration.", filename);
+		cf_log_perr(cp, "Configuration file %s is globally writable.  "
+		            "Refusing to start due to insecure configuration.", filename);
 		talloc_free(file);
 		return false;
 	}
