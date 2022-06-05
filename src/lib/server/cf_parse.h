@@ -325,9 +325,9 @@ _Generic((_ct), \
 
 #define fr_rule_secret(_rule)		((_rule)->type & FR_TYPE_SECRET)
 
-#define fr_rule_file_input(_rule)	((_rule)->type & FR_TYPE_FILE_INPUT)
+#define fr_rule_file_input(_rule)	(((_rule)->type & FR_TYPE_FILE_INPUT) == FR_TYPE_FILE_INPUT)
 
-#define fr_rule_file_output(_rule)	((_rule)->type & FR_TYPE_FILE_OUTPUT)
+#define fr_rule_file_output(_rule)	(((_rule)->type & FR_TYPE_FILE_OUTPUT) == FR_TYPE_FILE_OUTPUT)
 
 #define fr_rule_xlat(_rule)		((_rule)->type & FR_TYPE_XLAT)
 
@@ -343,7 +343,7 @@ _Generic((_ct), \
 
 #define fr_rule_non_blocking(_rule)	((_rule)->type & FR_TYPE_NON_BLOCKING)
 
-#define fr_rule_file_exists(_rule)	((_rule)->type & FR_TYPE_FILE_EXISTS)
+#define fr_rule_file_exists(_rule)	(((_rule)->type & FR_TYPE_FILE_EXISTS) == FR_TYPE_FILE_EXISTS)
 /** @} */
 
 #define FR_SIZE_COND_CHECK(_name, _var, _cond, _new)\
