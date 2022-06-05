@@ -295,7 +295,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	{
 		fr_value_box_t	vb;
 
-		 if (cf_pair_to_value_box(ctx, &vb, cf_item_to_pair(ci), rule) < 0) goto error;
+		if (cf_pair_to_value_box(ctx, &vb, cf_item_to_pair(ci), rule) < 0) goto error;
 
 		if (fr_value_box_memcpy_out(out, &vb) < 0) {
 			fr_value_box_clear_value(&vb);
