@@ -30,8 +30,9 @@ RCSIDH(cf_parse_h, "$Id$")
 #include <stdbool.h>
 #include <unistd.h>
 #include <sys/time.h>
-#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/rb.h>
+#include <freeradius-devel/util/table.h>
+#include <freeradius-devel/util/value.h>
 #include <freeradius-devel/server/cf_util.h>
 
 #ifdef __cplusplus
@@ -312,6 +313,39 @@ _Generic((_ct), \
 #define FR_BASE_TYPE(_t)		(0xff & (_t))
 /** @} */
 
+/** @name #CONF_PARSER flags checks
+ *
+ * @{
+ */
+#define fr_rule_deprecated(_rule)	((_rule)->type & FR_TYPE_DEPRECATED)
+
+#define fr_rule_required(_rule)		((_rule)->type & FR_TYPE_REQUIRED)
+
+#define fr_rule_attribute(_rule)	((_rule)->type & FR_TYPE_ATTRIBUTE)
+
+#define fr_rule_secret(_rule)		((_rule)->type & FR_TYPE_SECRET)
+
+#define fr_rule_file_input(_rule)	((_rule)->type & FR_TYPE_FILE_INPUT)
+
+#define fr_rule_file_output(_rule)	((_rule)->type & FR_TYPE_FILE_OUTPUT)
+
+#define fr_rule_xlat(_rule)		((_rule)->type & FR_TYPE_XLAT)
+
+#define fr_rule_tmpl(_rule)		((_rule)->type & FR_TYPE_TMPL)
+
+#define fr_rule_multi(_rule)		((_rule)->type & FR_TYPE_MULTI)
+
+#define fr_rule_not_empty(_rule)	((_rule)->type & FR_TYPE_NOT_EMPTY)
+
+#define fr_rule_is_set(_rule)		((_rule)->type & FR_TYPE_IS_SET)
+
+#define fr_rule_ok_missing(_rule)	((_rule)->type & FR_TYPE_OK_MISSING)
+
+#define fr_rule_non_blocking(_rule)	((_rule)->type & FR_TYPE_NON_BLOCKING)
+
+#define fr_rule_file_exists(_rule)	((_rule)->type & FR_TYPE_FILE_EXISTS)
+/** @} */
+
 #define FR_SIZE_COND_CHECK(_name, _var, _cond, _new)\
 do {\
 	if (!(_cond)) {\
@@ -481,11 +515,17 @@ typedef struct {
 #define CF_FILE_CONFIG (1 << 2)
 #define CF_FILE_MODULE (1 << 3)
 
+void		cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, CONF_PARSER const *rule);
+
 /*
  *	Type validation and conversion
  */
+int		cf_pair_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, CONF_PAIR *cp, CONF_PARSER const *rule)
+		CC_HINT(nonnull(2, 3, 4));
+
 int		cf_pair_parse_value(TALLOC_CTX *ctx, void *out, void *base, CONF_ITEM *ci, CONF_PARSER const *rule)
 		CC_HINT(nonnull(2, 4, 5));
+
 int		cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs, char const *name,
 			      unsigned int type, void *data, char const *dflt, fr_token_t dflt_quote) CC_HINT(nonnull(2,3));
 int		cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs);

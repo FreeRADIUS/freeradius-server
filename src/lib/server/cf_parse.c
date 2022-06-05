@@ -46,7 +46,7 @@ static char const parse_spaces[] = "                                            
 #define PAIR_SPACE(_cs) ((_cs->depth + 1) * 2)
 #define SECTION_SPACE(_cs) (_cs->depth * 2)
 
-static void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, CONF_PARSER const *rule)
+void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, CONF_PARSER const *rule)
 {
 	char const	*value;
 	char		*tmp = NULL;
@@ -105,6 +105,55 @@ static void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, CONF_PARS
 	talloc_free(tmp);
 }
 
+/** Parses a #CONF_PAIR into a boxed value
+ *
+ * @copybrief cf_pair_value
+ * @see cf_pair_value
+ *
+ * @param[in] ctx	to allocate any dynamic buffers in.
+ * @param[out] out	Where to write the parsed value.
+ * @param[in] cp	to parse.
+ * @param[in] rule	to parse to.  May contain flags.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int cf_pair_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, CONF_PAIR *cp, CONF_PARSER const *rule)
+{
+	CONF_SECTION	*cs = cf_item_to_section(cf_parent(cp));
+	fr_type_t	type = FR_BASE_TYPE(rule->type);
+
+	if (fr_value_box_from_str(ctx, out, type, NULL,
+				  cf_pair_value(cp), strlen(cf_pair_value(cp)), NULL, false) < 0) {
+		cf_log_perr(cs, "Invalid value \"%s\" for config item %s",
+			    cp->value, cp->attr);
+
+		return -1;
+	}
+
+	if (!cp->printed) cf_pair_debug(cs, cp, rule);
+
+	/*
+	 *	Strings can be file paths...
+	 */
+	if (fr_type_is_string(type)) {
+		/*
+		 *	If there's out AND it's an input file, check
+		 *	that we can read it.  This check allows errors
+		 *	to be caught as early as possible, during
+		 *	server startup.
+		 */
+		if (fr_rule_file_input(rule) && !cf_file_check(cs, cp->value, true)) {
+		error:
+			fr_value_box_clear(out);
+			return -1;
+		}
+		if (fr_rule_file_exists(rule) && !cf_file_check(cs, cp->value, false)) goto error;
+	}
+
+	return 0;
+}
+
 /** Parses a #CONF_PAIR into a C data type
  *
  * @copybrief cf_pair_value
@@ -123,7 +172,7 @@ static void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR const *cp, CONF_PARS
 int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM *ci, CONF_PARSER const *rule)
 {
 	int		ret = 0;
-	bool		attribute, required, file_input, cant_be_empty, tmpl, file_exists, nonblock;
+	bool		cant_be_empty, tmpl, nonblock;
 
 	ssize_t		slen;
 
@@ -131,18 +180,14 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	CONF_PAIR	*cp = cf_item_to_pair(ci);
 	CONF_SECTION	*cs = cf_item_to_section(cf_parent(ci));
 
-	attribute = (type & FR_TYPE_ATTRIBUTE);
-	required = (type & FR_TYPE_REQUIRED);
-	file_input = (type == FR_TYPE_FILE_INPUT);	/* check, not and */
-	file_exists = (type == FR_TYPE_FILE_EXISTS);	/* check, not and */
-	cant_be_empty = (type & FR_TYPE_NOT_EMPTY);
-	tmpl = (type & FR_TYPE_TMPL);
-	nonblock = (type & FR_TYPE_NON_BLOCKING);
+	cant_be_empty = fr_rule_not_empty(rule);
+	tmpl = fr_rule_tmpl(rule);
+	nonblock = fr_rule_non_blocking(rule);
 
 	fr_assert(cp);
-	fr_assert(!(type & FR_TYPE_ATTRIBUTE) || tmpl);	 /* Attribute flag only valid for templates */
+	fr_assert(!fr_rule_attribute(rule) || tmpl);	 /* Attribute flag only valid for templates */
 
-	if (required) cant_be_empty = true;		/* May want to review this in the future... */
+	if (fr_rule_required(rule)) cant_be_empty = true;		/* May want to review this in the future... */
 
 	type = FR_BASE_TYPE(type);			/* normal types are small */
 
@@ -167,7 +212,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	 */
 	if ((cp->value[0] == '\0') && cant_be_empty) {
 		cf_log_err(cp, "Configuration pair \"%s\" must not be empty (zero length)", cp->attr);
-		if (!required) cf_log_err(cp, "Comment item to silence this message");
+		if (!fr_rule_required(rule)) cf_log_err(cp, "Comment item to silence this message");
 	error:
 		ret = -1;
 		return ret;
@@ -205,7 +250,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 				goto error;
 			}
 			fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);
-		} else if (attribute) {
+		} else if (fr_rule_attribute(rule)) {
 			cf_log_err(cp, "Invalid quoting.  Unquoted attribute reference is required");
 			goto error;
 		}
@@ -215,7 +260,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 					 &rules);
 		if (!vpt) goto tmpl_error;
 
-		if (attribute && (!tmpl_is_attr(vpt) && !tmpl_is_attr_unresolved(vpt))) {
+		if (fr_rule_attribute(rule) && (!tmpl_is_attr(vpt) && !tmpl_is_attr_unresolved(vpt))) {
 			cf_log_err(cp, "Expected attr got %s",
 				   tmpl_type_to_str(vpt->type));
 			return -1;
@@ -251,35 +296,12 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 	{
 		fr_value_box_t	vb;
 
-		if (fr_value_box_from_str(ctx, &vb, type, NULL,
-					  cf_pair_value(cp), strlen(cf_pair_value(cp)), NULL, false) < 0) {
-			cf_log_perr(cs, "Invalid value \"%s\" for config item %s",
-				    cp->value, cp->attr);
+		 if (cf_pair_to_value_box(ctx, &vb, cf_item_to_pair(ci), rule) < 0) goto error;
 
-			return -1;
+		if (fr_value_box_memcpy_out(out, &vb) < 0) {
+			fr_value_box_clear_value(&vb);
+			goto error;
 		}
-
-		if (!cp->printed) cf_pair_debug(cs, cp, rule);
-
-		/*
-		 *	Strings can be file paths...
-		 */
-		if (fr_type_is_string(type)) {
-			/*
-			 *	If there's out AND it's an input file, check
-			 *	that we can read it.  This check allows errors
-			 *	to be caught as early as possible, during
-			 *	server startup.
-			 */
-			if (file_input && !cf_file_check(cs, cp->value, true)) {
-			value_error:
-				fr_value_box_clear_value(&vb);
-				goto error;
-			}
-			if (file_exists && !cf_file_check(cs, cp->value, false)) goto value_error;
-		}
-
-		if (fr_value_box_memcpy_out(out, &vb) < 0) goto value_error;
 	}
 
 finish:
