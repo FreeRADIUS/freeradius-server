@@ -515,13 +515,13 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			 */
 			cf_pair_debug(cs, cp, rule);
 
-			if (cp->parsed) return 0;
+			if (cf_pair_is_parsed(cp)) continue;
 			ret = func(value_ctx, entry, base, cf_pair_to_item(cp), rule);
 			if (ret < 0) {
 				talloc_free(array);
 				return -1;
 			}
-			cp->parsed = true;
+			cf_pair_mark_parsed(cp);
 		}
 		if (array) *(void **)out = array;
 	/*
@@ -554,10 +554,10 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 		cf_pair_debug(cs, cp, rule);
 
-		if (cp->parsed) return 0;
+		if (cf_pair_is_parsed(cp)) return 0;
 		ret = func(ctx, out, base, cf_pair_to_item(cp), rule);
 		if (ret < 0) return -1;
-		cp->parsed = true;
+		cf_pair_mark_parsed(cp);
 	}
 
 	return 0;

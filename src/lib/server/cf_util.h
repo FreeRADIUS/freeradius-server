@@ -175,6 +175,9 @@ CONF_PAIR	*cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 CONF_PAIR	*cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp);
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value);
 void		cf_pair_mark_parsed(CONF_PAIR *cp);
+
+bool		cf_pair_is_parsed(CONF_PAIR *cp);
+
 CONF_PAIR	*cf_pair_next(CONF_SECTION const *cs, CONF_PAIR const *prev);
 CONF_PAIR	*cf_pair_find(CONF_SECTION const *cs, char const *name);
 CONF_PAIR	*cf_pair_find_next(CONF_SECTION const *cs, CONF_PAIR const *prev, char const *name);

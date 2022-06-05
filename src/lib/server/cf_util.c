@@ -1252,6 +1252,18 @@ void cf_pair_mark_parsed(CONF_PAIR *cp)
 	cp->parsed = true;
 }
 
+/** Return whether a pair has already been parsed
+ *
+ * @param[in] cp	to check.
+ * @return
+ *	- true if pair has been parsed.
+ *	- false if the pair hasn't been parsed.
+ */
+bool cf_pair_is_parsed(CONF_PAIR *cp)
+{
+	return cp->parsed;
+}
+
 /** Return the next child that's a #CONF_PAIR
  *
  * @param[in] cs	to return children from.
