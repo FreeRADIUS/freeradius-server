@@ -396,8 +396,10 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 	CONF_PAIR	*cp, *dflt_cp = NULL;
 
 	unsigned int	type = rule->type;
+#ifndef NDEBUG
 	char const	*dflt = rule->dflt;
 	fr_token_t	dflt_quote = rule->quote;
+#endif
 	cf_parse_t	func = rule->func ? rule->func : cf_pair_parse_value;
 
 	fr_assert(!fr_rule_is_tmpl(rule) || !dflt || (dflt_quote != T_INVALID)); /* We ALWAYS need a quoting type for templates */
