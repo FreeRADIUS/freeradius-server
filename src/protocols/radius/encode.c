@@ -89,7 +89,7 @@ static ssize_t encode_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *input, size
 
 	if (len > RADIUS_MAX_PASS_LENGTH) len = RADIUS_MAX_PASS_LENGTH;
 
-	fr_dbuff_out_memcpy(passwd, input, len);
+	(void) fr_dbuff_out_memcpy(passwd, input, len);
 	if (len < sizeof(passwd)) memset(passwd + len, 0, sizeof(passwd) - len);
 
 	if (len == 0) len = AUTH_PASS_LEN;

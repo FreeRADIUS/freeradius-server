@@ -334,7 +334,7 @@ static inline CC_HINT(always_inline) int dict_attr_name_set(fr_dict_attr_t **da_
 		fr_sbuff_t unknown_name = FR_SBUFF_OUT(buffer, sizeof(buffer));
 
 
-		fr_sbuff_in_sprintf(&unknown_name, "%u", da->attr);
+		(void) fr_sbuff_in_sprintf(&unknown_name, "%u", da->attr);
 
 		name = fr_sbuff_buff(&unknown_name);
 		name_len = fr_sbuff_used(&unknown_name);
