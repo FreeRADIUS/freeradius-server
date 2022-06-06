@@ -483,8 +483,8 @@ fr_slen_t fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_tim
  * @param[in] inlen	Length of string.
  * @param[in] hint	scale for the parsing.  Default is "seconds"
  * @return
- *	- 0 on success.
- *	- -1 on failure.
+ *	- >0 on success.
+ *	- <0 on failure.
  */
 fr_slen_t fr_time_delta_from_str(fr_time_delta_t *out, char const *in, size_t inlen, fr_time_res_t hint)
 {
@@ -497,6 +497,67 @@ fr_slen_t fr_time_delta_from_str(fr_time_delta_t *out, char const *in, size_t in
 		return -(inlen + 1);
 	}
 	return slen;
+}
+
+/** Print fr_time_delta_t to a string with an appropriate suffix
+ *
+ * @param[out] out		Where to write the string version of the time delta.
+ * @param[in] delta		to print.
+ * @param[in] res		to print resolution with.
+ * @param[in] is_unsigned	whether the value should be printed unsigned.
+ * @return
+ *	- >0 the number of bytes written to out.
+ *      - <0 how many additional bytes would have been required.
+ */
+fr_slen_t fr_time_delta_to_str(fr_sbuff_t *out, fr_time_delta_t delta, fr_time_res_t res, bool is_unsigned)
+{
+	fr_sbuff_t	our_out = FR_SBUFF(out);
+	char		*q;
+	int64_t		lhs = 0;
+	uint64_t	rhs = 0;
+
+/*
+ *	The % operator can return a _signed_ value.  This macro is
+ *	correct for both positive and negative inputs.
+ */
+#define MOD(a,b) (((a<0) ? (-a) : (a))%(b))
+
+	lhs = fr_time_delta_to_integer(delta, res);
+	rhs = MOD(fr_time_delta_unwrap(delta), fr_time_multiplier_by_res[res]);
+
+	if (!is_unsigned) {
+		/*
+		 *	0 is unsigned, but we want to print
+		 *	"-0.1" if necessary.
+		 */
+		if ((lhs == 0) && fr_time_delta_isneg(delta)) {
+			FR_SBUFF_IN_CHAR_RETURN(&our_out, '-');
+		}
+
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRIi64 ".%09" PRIu64, lhs, rhs);
+	} else {
+		if (fr_time_delta_isneg(delta)) lhs = rhs = 0;
+
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRIu64 ".%09" PRIu64, lhs, rhs);
+	}
+	q = fr_sbuff_current(&our_out) - 1;
+
+	/*
+	 *	Truncate trailing zeros.
+	 */
+	while (*q == '0') *(q--) = '\0';
+
+	/*
+	 *	If there's nothing after the decimal point,
+	 *	trunctate the decimal point.  i.e. Don't print
+	 *	"5."
+	 */
+	if (*q == '.') {
+		*q = '\0';
+	} else {
+		q++;	/* to account for q-- above */
+	}
+	return fr_sbuff_set(&our_out, q);
 }
 
 DIAG_OFF(format-nonliteral)
@@ -1122,4 +1183,86 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
 	*date = fr_unix_time_add(fr_unix_time_from_tm(tm), gmt_delta);
 
 	return 0;
+}
+
+/** Convert unix time to string
+ *
+ * @param[out] out	Where to write the string.
+ * @param[in] time	to convert.
+ * @param[in] res	What base resolution to print the time as.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+fr_slen_t fr_unix_time_to_str(fr_sbuff_t *out, fr_unix_time_t time, fr_time_res_t res)
+{
+	fr_sbuff_t	our_out = FR_SBUFF(out);
+	int64_t 	subseconds;
+	time_t		t;
+	struct tm	s_tm;
+	size_t		len;
+	char		buf[128];
+
+	t = fr_unix_time_to_sec(time);
+	(void) gmtime_r(&t, &s_tm);
+
+	if (res == FR_TIME_RES_SEC) {
+		len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S UTC", &s_tm);
+		FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, buf, len);
+		return fr_sbuff_set(out, &our_out);
+	}
+
+	len = strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &s_tm);
+	FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, buf, len);
+	subseconds = fr_unix_time_unwrap(time) % NSEC;
+
+	/*
+	 *	Use RFC 3339 format, which is a
+	 *	profile of ISO8601.  The ISO standard
+	 *	allows a much more complex set of date
+	 *	formats.  The RFC is much stricter.
+	 */
+	switch (res) {
+	case FR_TIME_RES_INVALID:
+	case FR_TIME_RES_DAY:
+	case FR_TIME_RES_HOUR:
+	case FR_TIME_RES_MIN:
+	case FR_TIME_RES_SEC:
+		break;
+
+	case FR_TIME_RES_CSEC:
+		subseconds /= (NSEC / CSEC);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, ".%02" PRIi64, subseconds);
+		break;
+
+	case FR_TIME_RES_MSEC:
+		subseconds /= (NSEC / MSEC);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, ".%03" PRIi64, subseconds);
+		break;
+
+	case FR_TIME_RES_USEC:
+		subseconds /= (NSEC / USEC);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, ".%06" PRIi64, subseconds);
+		break;
+
+	case FR_TIME_RES_NSEC:
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, ".%09" PRIi64, subseconds);
+		break;
+	}
+
+	/*
+	 *	And time zone.
+	 */
+	if (s_tm.tm_gmtoff != 0) {
+		int hours, minutes;
+
+		hours = s_tm.tm_gmtoff / 3600;
+		minutes = (s_tm.tm_gmtoff / 60) % 60;
+
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%+03d:%02u", hours, minutes);
+	} else {
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, 'Z');
+	}
+
+	return fr_sbuff_set(out, &our_out);
 }

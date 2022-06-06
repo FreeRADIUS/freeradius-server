@@ -5211,70 +5211,11 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 
 	case FR_TYPE_DATE:
 	{
-		int64_t 	subseconds;
-		time_t		t;
-		struct tm	s_tm;
-		size_t		len;
+		fr_time_res_t	res = FR_TIME_RES_SEC;
 
-		t = fr_unix_time_to_sec(data->vb_date);
-		(void) gmtime_r(&t, &s_tm);
+		if (data->enumv) res = data->enumv->flags.flag_time_res;
 
-		if (!data->enumv || (data->enumv->flags.flag_time_res == FR_TIME_RES_SEC)) {
-			len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S UTC", &s_tm);
-			FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, buf, len);
-			goto done;
-		}
-
-		len = strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &s_tm);
-		FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, buf, len);
-		subseconds = fr_unix_time_unwrap(data->vb_date) % NSEC;
-
-		/*
-		 *	Use RFC 3339 format, which is a
-		 *	profile of ISO8601.  The ISO standard
-		 *	allows a much more complex set of date
-		 *	formats.  The RFC is much stricter.
-		 */
-		switch (data->enumv->flags.flag_time_res) {
-		case FR_TIME_RES_DAY:
-		case FR_TIME_RES_HOUR:
-		case FR_TIME_RES_MIN:
-		case FR_TIME_RES_SEC:
-			break;
-
-		case FR_TIME_RES_CSEC:
-			subseconds /= (NSEC / CSEC);
-			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, ".%02" PRIi64, subseconds);
-			break;
-
-		case FR_TIME_RES_MSEC:
-			subseconds /= (NSEC / MSEC);
-			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, ".%03" PRIi64, subseconds);
-			break;
-
-		case FR_TIME_RES_USEC:
-			subseconds /= (NSEC / USEC);
-			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, ".%06" PRIi64, subseconds);
-			break;
-
-		case FR_TIME_RES_NSEC:
-			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, ".%09" PRIi64, subseconds);
-			break;
-		}
-
-		/*
-		 *	And time zone.
-		 */
-		if (s_tm.tm_gmtoff != 0) {
-			int hours, minutes;
-
-			hours = s_tm.tm_gmtoff / 3600;
-			minutes = (s_tm.tm_gmtoff / 60) % 60;
-
-			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%+03d:%02u", hours, minutes);
-		} else {
-			FR_SBUFF_IN_CHAR_RETURN(&our_out, 'Z');
-		}
+		FR_SBUFF_RETURN(fr_unix_time_to_str, &our_out, data->vb_date, res);
 		break;
 	}
 
@@ -5284,54 +5225,16 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 
 	case FR_TYPE_TIME_DELTA:
 	{
-		char		*q;
-		int64_t		lhs = 0;
-		uint64_t	rhs = 0;
 		fr_time_res_t	res = FR_TIME_RES_SEC;
-		if (data->enumv) res = data->enumv->flags.flag_time_res;
+		bool		is_unsigned = false;
 
-/*
- *	The % operator can return a _signed_ value.  This macro is
- *	correct for both positive and negative inputs.
- */
-#define MOD(a,b) (((a<0) ? (-a) : (a))%(b))
-
-		lhs = fr_time_delta_to_integer(data->datum.time_delta, res);
-		rhs = MOD(fr_time_delta_unwrap(data->datum.time_delta), fr_time_multiplier_by_res[res]);
-
-		if (!data->enumv || !data->enumv->flags.is_unsigned) {
-			/*
-			 *	0 is unsigned, but we want to print
-			 *	"-0.1" if necessary.
-			 */
-			if ((lhs == 0) && fr_time_delta_isneg(data->datum.time_delta)) {
-				FR_SBUFF_IN_CHAR_RETURN(&our_out, '-');
-			}
-
-			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRIi64 ".%09" PRIu64, lhs, rhs);
-		} else {
-			if (fr_time_delta_isneg(data->datum.time_delta)) lhs = rhs = 0;
-
-			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%" PRIu64 ".%09" PRIu64, lhs, rhs);
+		if (data->enumv) {
+			res = data->enumv->flags.flag_time_res;
+			is_unsigned = data->enumv->flags.is_unsigned;
 		}
-		q = fr_sbuff_current(&our_out) - 1;
 
-		/*
-		 *	Truncate trailing zeros.
-		 */
-		while (*q == '0') *(q--) = '\0';
 
-		/*
-		 *	If there's nothing after the decimal point,
-		 *	trunctate the decimal point.  i.e. Don't print
-		 *	"5."
-		 */
-		if (*q == '.') {
-			*q = '\0';
-		} else {
-			q++;	/* to account for q-- above */
-		}
-		fr_sbuff_set(&our_out, q);
+		FR_SBUFF_RETURN(fr_time_delta_to_str, &our_out, data->vb_time_delta, res, is_unsigned);
 	}
 		break;
 

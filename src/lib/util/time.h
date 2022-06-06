@@ -964,20 +964,39 @@ int		fr_time_sync(void);
 
 int64_t		fr_time_scale(int64_t t, fr_time_res_t hint);
 
-int		fr_time_delta_from_time_zone(char const *tz, fr_time_delta_t *delta) CC_HINT(nonnull);
+int		fr_time_delta_from_time_zone(char const *tz, fr_time_delta_t *delta)
+		CC_HINT(nonnull);
 
 fr_slen_t	fr_time_delta_from_substr(fr_time_delta_t *out, fr_sbuff_t *in, fr_time_res_t hint,
-					  bool no_trailing, fr_sbuff_term_t const *tt) CC_HINT(nonnull(1,2));
-fr_slen_t	fr_time_delta_from_str(fr_time_delta_t *out, char const *in, size_t inlen, fr_time_res_t hint) CC_HINT(nonnull);
+					  bool no_trailing, fr_sbuff_term_t const *tt)
+		CC_HINT(nonnull(1,2));
 
-size_t		fr_time_strftime_local(fr_sbuff_t *out, fr_time_t time, char const *fmt) CC_HINT(format(strftime, 3, 0));
-size_t		fr_time_strftime_utc(fr_sbuff_t *out, fr_time_t time, char const *fmt)  CC_HINT(format(strftime, 3, 0));
+fr_slen_t	fr_time_delta_from_str(fr_time_delta_t *out, char const *in, size_t inlen, fr_time_res_t hint)
+		CC_HINT(nonnull);
 
-void		fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end) CC_HINT(nonnull);
-void		fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char const *prefix, int tabs) CC_HINT(nonnull(1,2));
+fr_slen_t	fr_time_delta_to_str(fr_sbuff_t *out, fr_time_delta_t delta, fr_time_res_t res, bool is_unsigned)
+		CC_HINT(nonnull);
 
-fr_unix_time_t	fr_unix_time_from_tm(struct tm *tm) CC_HINT(nonnull);
-int		fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_res_t hint);
+size_t		fr_time_strftime_local(fr_sbuff_t *out, fr_time_t time, char const *fmt)
+		CC_HINT(format(strftime, 3, 0));
+
+size_t		fr_time_strftime_utc(fr_sbuff_t *out, fr_time_t time, char const *fmt)
+		CC_HINT(format(strftime, 3, 0));
+
+void		fr_time_elapsed_update(fr_time_elapsed_t *elapsed, fr_time_t start, fr_time_t end)
+		CC_HINT(nonnull);
+
+void		fr_time_elapsed_fprint(FILE *fp, fr_time_elapsed_t const *elapsed, char const *prefix, int tabs)
+		CC_HINT(nonnull(1,2));
+
+fr_unix_time_t	fr_unix_time_from_tm(struct tm *tm)
+		CC_HINT(nonnull);
+
+int		fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_res_t hint)
+		CC_HINT(nonnull);
+
+fr_slen_t	fr_unix_time_to_str(fr_sbuff_t *out, fr_unix_time_t time, fr_time_res_t res)
+		CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }
