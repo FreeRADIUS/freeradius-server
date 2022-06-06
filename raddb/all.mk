@@ -41,8 +41,6 @@ LOCAL_CERT_FILES :=	dh \
 			ecc/server.key \
 			ecc/server.pem
 
-GENERATED_CERT_FILES := $(addprefix ${top_srcdir}/raddb/certs/,$(LOCAL_CERT_FILES))
-
 INSTALL_CERT_PRODUCTS := $(addprefix $(R)$(raddbdir)/certs/,$(INSTALL_CERT_FILES))
 
 ifeq ("$(TEST_CERTS)","yes")
@@ -141,22 +139,6 @@ ifeq ("$(PACKAGE)","")
 #
 #  Always create the test certs for normal development.
 #
-build.raddb: $(GENERATED_CERT_FILES)
-
-
-.PHONY: ${top_srcdir}/raddb/certs/rsa
-${top_srcdir}/raddb/certs/rsa:
-	@mkdir -p $@
-
-.PHONY: ${top_srcdir}/raddb/certs/ecc
-${top_srcdir}/raddb/certs/ecc:
-	@mkdir -p $@
-
-${top_srcdir}/raddb/certs/passwords.mk: $(wildcard ${top_srcdir}/raddb/certs/*cnf)
-	${Q}$(MAKE) -C $(dir $@) $(notdir $@)
-
-
-#
 #  We used to have cached certificates in src/test/certs which would regularly
 #  expire and break CI.
 #  We now generate fresh certificates on every CI run, because generating
@@ -167,46 +149,13 @@ ${top_srcdir}/raddb/certs/passwords.mk: $(wildcard ${top_srcdir}/raddb/certs/*cn
 #  done with the CI environment's caching features and not committed to the
 #  git repository.
 #
-define BUILD_CERT
-${1}/${2}/${3}.key: ${1}/${3}.cnf ${1}/passwords.mk | ${1}/${2}
-	$${Q}echo CERT-KEY ${2}/${3}
-	$${Q}$$(MAKE) -C ${1} ${2}/${3}.key
-	@touch $$@
-
-${1}/${2}/${3}.csr: ${1}/${2}/${3}.key
-	$${Q}echo CERT-CSR ${2}/${3}
-	$${Q}$$(MAKE) -C ${1} ${2}/${3}.csr
-	@touch $$@
-
-${1}/${2}/${3}.pem: ${1}/${2}/${3}.key
-	$${Q}echo CERT-PEM ${2}/${3}
-	$${Q}$$(MAKE) -C ${1} ${2}/${3}.pem
-	@touch $$@
-
-${1}/${2}/${3}.crt: ${1}/${2}/${3}.pem
-	$${Q}echo CERT-CRT ${2}/${3}
-	$${Q}$$(MAKE) -C ${1} ${2}/${3}.crt
-	@touch $$@
-
-ifneq "${3}" "ca"
-#  client, server, and OCSP certs need the CA cert.
-${1}/${2}/${3}.crt: ${1}/${2}/ca.crt
-
-${1}/${2}/${3}.crt: ${1}/${2}/${3}.csr
-endif
-
-endef
-
+#  To avoid race conditions when calling `openssl ca` the submake is called
+#  with -j1
 #
-#  Generate local certificate products when doing a non-package
-#  (i.e. developer) build.
-#
-$(foreach dir,rsa ecc,$(foreach file,ca server client ocsp,$(eval $(call BUILD_CERT,${top_srcdir}/raddb/certs,${dir},${file}))))
+build.raddb: ${top_srcdir}/raddb/certs/ecc/ocsp.pem
 
-${top_srcdir}/raddb/certs/dh: ${top_srcdir}/raddb/certs/passwords.mk
-	${Q}echo CERT-DH $@
-	${Q}$(MAKE) -C ${top_srcdir}/raddb/certs/ $(notdir $@)
-	${Q}touch $@
+${top_srcdir}/raddb/certs/ecc/ocsp.pem:
+	${Q}$(MAKE) -j1 -C ${top_srcdir}/raddb/certs/
 
 #
 #  If we're not packaging the server, install the various
