@@ -1288,9 +1288,14 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		if (b->type != FR_TYPE_UINT64) return ERR_INVALID;
 
 		/*
+		 *	If we're adding a UINT64, the prefix can't be shorter than 64.
+		 */
+		if (a->vb_ip.prefix <= 64) return ERR_OVERFLOW;
+
+		/*
 		 *	Trying to add a number outside of the given prefix.  That's not allowed.
 		 */
-		if (b->vb_uint64 >= (((uint64_t) 1) << a->vb_ip.prefix)) return ERR_OVERFLOW;
+		if (b->vb_uint64 >= (((uint64_t) 1) << (128 - a->vb_ip.prefix))) return ERR_OVERFLOW;
 
 		/*
 		 *	Add in the relevant low bits.
@@ -1304,6 +1309,87 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		dst->vb_ip.af = AF_INET6;
 		dst->vb_ip.prefix = 0;
 		dst->vb_ip.scope_id = a->vb_ip.scope_id;
+		break;
+
+	default:
+		return ERR_INVALID;
+	}
+
+	return 0;
+}
+
+static int get_ipv6_prefix(uint8_t const *in)
+{
+	int i, j, prefix;
+
+	prefix = 128;
+	for (i = 15; i >= 0; i--) {
+		if (!in[i]) {
+			prefix -= 8;
+			continue;
+		}
+
+		for (j = 0; j < 8; j++) {
+			if ((in[i] & (1 << j)) == 0) {
+				prefix--;
+				continue;
+			}
+			return prefix;
+		}
+	}
+
+	return prefix;
+}
+
+static int calc_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *a, fr_token_t op, fr_value_box_t const *b)
+{
+	int i, prefix = 128;
+	uint8_t const *pa, *pb;
+	uint8_t *pdst;
+
+	fr_assert(dst->type == FR_TYPE_IPV6_PREFIX);
+
+	if (a->type == FR_TYPE_OCTETS) {
+		if (a->vb_length != (128 / 8)) {
+			fr_strerror_printf("Invalid length %zu for octets network mask", a->vb_length);
+			return -1;
+		}
+		pa = a->vb_octets;
+		prefix = get_ipv6_prefix(pa);
+
+	} else if (a->type == FR_TYPE_IPV6_ADDR) {
+		pa = (const uint8_t *) &a->vb_ip.addr.v6.s6_addr;
+
+	} else {
+		return ERR_INVALID;
+	}
+
+	if (b->type == FR_TYPE_OCTETS) {
+		if (b->vb_length != (128 / 8)) {
+			fr_strerror_printf("Invalid length %zu for octets network mask", b->vb_length);
+			return -1;
+		}
+		pb = b->vb_octets;
+		prefix = get_ipv6_prefix(pb);
+
+	} else if (a->type == FR_TYPE_IPV6_ADDR) {
+		pb = (const uint8_t *) &b->vb_ip.addr.v6;
+
+	} else {
+		return ERR_INVALID;
+	}
+
+	switch (op) {
+	case T_AND:
+		fr_value_box_init(dst, FR_TYPE_IPV6_PREFIX, NULL, a->tainted | b->tainted);
+		pdst = (uint8_t *) &dst->vb_ip.addr.v6;
+
+		for (i = 0; i < 16; i++) {
+			pdst[i] = pa[i] & pb[i];
+		}
+
+		dst->vb_ip.af = AF_INET6;
+		dst->vb_ip.prefix = prefix;
 		break;
 
 	default:
@@ -1575,6 +1661,7 @@ static const fr_binary_op_t calc_type[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_IPV4_ADDR]	= calc_ipv4_addr,
 	[FR_TYPE_IPV4_PREFIX]	= calc_ipv4_prefix,
 	[FR_TYPE_IPV6_ADDR]	= calc_ipv6_addr,
+	[FR_TYPE_IPV6_PREFIX]	= calc_ipv6_prefix,
 
 	[FR_TYPE_UINT8]		= calc_integer,
 	[FR_TYPE_UINT16]       	= calc_integer,
@@ -1650,12 +1737,26 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 			hint = FR_TYPE_BOOL;
 			break;
 
+		case T_AND:
+			/*
+			 *	Get mask from IP + number
+			 */
+			if ((a->type == FR_TYPE_IPV4_ADDR) || (b->type == FR_TYPE_IPV4_ADDR)) {
+				hint = FR_TYPE_IPV4_PREFIX;
+				break;
+			}
+
+			if ((a->type == FR_TYPE_IPV6_ADDR) || (b->type == FR_TYPE_IPV6_ADDR)) {
+				hint = FR_TYPE_IPV6_PREFIX;
+				break;
+			}
+			FALL_THROUGH;
+
+		case T_OR:
 		case T_ADD:
 		case T_SUB:
 		case T_MUL:
 		case T_DIV:
-		case T_AND:
-		case T_OR:
 		case T_XOR:
 			/*
 			 *	Nothing else set it.  If the input types are

@@ -131,6 +131,15 @@ match 192.168.0.0/16
 calc ipv4addr 192.168.2.1 & uint32 0xffff0080 -> ipv4prefix
 match Invalid network mask '0xffff0080'
 
+calc ipv6addr 2001:DB8::1 & octets 0xffff0000000000000000000000000000
+match 2001::/16
+
+calc ipv6addr 2001:DB8::1 & octets 0xffffff00000000000000000000000000
+match 2001:d00::/24
+
+calc ipv6addr 2001:DB8::1 & octets 0xffffffff000000000000000000000000
+match 2001:db8::/32
+
 ######################################################################
 #
 #  Float
@@ -155,4 +164,4 @@ calc string "2" += string "test"
 match 2test
 
 count
-match 64
+match 70
