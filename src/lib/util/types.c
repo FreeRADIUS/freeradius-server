@@ -616,5 +616,5 @@ void **fr_type_array_alloc(TALLOC_CTX *ctx, fr_type_t type, size_t count)
 		return NULL;
 	}
 
-	return _talloc_array(ctx, fr_type_to_c_size[type], count, c_type);
+	return _talloc_zero_array(ctx, fr_type_to_c_size[type], count, c_type);
  }
