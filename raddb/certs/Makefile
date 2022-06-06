@@ -153,7 +153,7 @@ rsa/server.pem: rsa/server.p12
 	openssl pkcs12 -in rsa/server.p12 -out rsa/server.pem -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
 
 .PHONY: rsa/server.vrfy
-rsa/server.vrfy: rsa/ca.pem
+rsa/server.vrfy: rsa/ca.pem rsa/server.pem
 	@openssl verify $(PARTIAL) -CAfile rsa/ca.pem rsa/server.pem
 
 ######################################################################
@@ -177,7 +177,7 @@ ecc/server.pem: ecc/server.p12
 	openssl pkcs12 -in ecc/server.p12 -out ecc/server.pem -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
 
 .PHONY: ecc/server.vrfy
-ecc/server.vrfy: ecc/ca.pem
+ecc/server.vrfy: ecc/ca.pem ecc/server.pem
 	@openssl verify $(PARTIAL) -CAfile ecc/ca.pem ecc/server.pem
 
 ######################################################################
@@ -198,7 +198,7 @@ rsa/ocsp.pem: rsa/ocsp.p12
 	openssl pkcs12 -in rsa/ocsp.p12 -out rsa/ocsp.pem -passin pass:$(PASSWORD_OCSP) -passout pass:$(PASSWORD_OCSP)
 
 .PHONY: rsa/ocsp.vrfy
-rsa/ocsp.vrfy: rsa/ca.pem
+rsa/ocsp.vrfy: rsa/ca.pem rsa/ocsp.pem
 	@openssl verify $(PARTIAL) -CAfile rsa/ca.pem rsa/ocsp.pem
 
 ######################################################################
@@ -222,7 +222,7 @@ ecc/ocsp.pem: ecc/ocsp.p12
 	openssl pkcs12 -in ecc/ocsp.p12 -out ecc/ocsp.pem -passin pass:$(PASSWORD_OCSP) -passout pass:$(PASSWORD_OCSP)
 
 .PHONY: ecc/ocsp.vrfy
-ecc/ocsp.vrfy: ecc/ca.pem
+ecc/ocsp.vrfy: ecc/ca.pem ecc/ocsp.pem
 	@openssl verify $(PARTIAL) -CAfile ecc/ca.pem ecc/ocsp.pem
 
 ######################################################################
