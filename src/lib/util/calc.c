@@ -1890,78 +1890,101 @@ int fr_value_calc_unary_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op)
 {
 	int rcode = -1;
 	fr_value_box_t one;
-	fr_token_t new_op;
 
-	if (!fr_type_is_leaf(box->type)) return invalid_type(box->type);
+	if (!fr_type_is_numeric(box->type)) return invalid_type(box->type);
 
-	if (op != T_OP_INCRM) goto invalid;
+	if (op == T_OP_INCRM) {
+		/*
+		 *	Add 1 or subtract 1 means RHS is always 1.
+		 */
+		fr_value_box_init(&one, box->type, NULL, false);
+		switch (box->type) {
+		case FR_TYPE_UINT8:
+			one.vb_uint8 = 1;
+			break;
 
-	switch (op) {
-	case T_OP_INCRM:
-		new_op = T_ADD;
-		break;
+		case FR_TYPE_UINT16:
+			one.vb_uint16 = 1;
+			break;
 
-	default:
-		goto invalid;
-	}
+		case FR_TYPE_UINT32:
+			one.vb_uint32 = 1;
+			break;
 
-	/*
-	 *	Add 1 or subtract 1 means RHS is always 1.
-	 */
-	fr_value_box_init(&one, box->type, NULL, false);
-	switch (box->type) {
-	case FR_TYPE_UINT8:
-		one.vb_uint8 = 1;
-		break;
+		case FR_TYPE_UINT64:
+			one.vb_uint64 = 1;
+			break;
 
-	case FR_TYPE_UINT16:
-		one.vb_uint16 = 1;
-		break;
+		case FR_TYPE_SIZE:
+			one.vb_size = 1;
+			break;
 
-	case FR_TYPE_UINT32:
-		one.vb_uint32 = 1;
-		break;
+		case FR_TYPE_INT8:
+			one.vb_int8 = 1;
+			break;
 
-	case FR_TYPE_UINT64:
-		one.vb_uint64 = 1;
-		break;
+		case FR_TYPE_INT16:
+			one.vb_int16 = 1;
+			break;
 
-	case FR_TYPE_SIZE:
-		one.vb_size = 1;
-		break;
+		case FR_TYPE_INT32:
+			one.vb_int32 = 1;
+			break;
 
-	case FR_TYPE_INT8:
-		one.vb_int8 = 1;
-		break;
+		case FR_TYPE_INT64:
+			one.vb_int64 = 1;
+			break;
 
-	case FR_TYPE_INT16:
-		one.vb_int16 = 1;
-		break;
+		case FR_TYPE_FLOAT32:
+			one.vb_float32 = 1;
+			break;
 
-	case FR_TYPE_INT32:
-		one.vb_int32 = 1;
-		break;
+		case FR_TYPE_FLOAT64:
+			one.vb_float64 = 1;
+			break;
 
-	case FR_TYPE_INT64:
-		one.vb_int64 = 1;
-		break;
+		default:
+			fr_assert(0);
+			return -1;
+		}
 
-	case FR_TYPE_FLOAT32:
-		one.vb_float32 = 1;
-		break;
+		rcode = fr_value_calc_binary_op(ctx, box, box->type, box, T_ADD, &one);
 
-	case FR_TYPE_FLOAT64:
-		one.vb_float64 = 1;
-		break;
+		return handle_result(box->type, op, rcode);
 
-	default:
+	} else if (op == T_COMPLEMENT) {
+#undef COMP
+#define COMP(_type, _field) case FR_TYPE_ ## _type: box->vb_ ##_field = ~box->vb_ ##_field; break
+		switch (box->type) {
+			COMP(UINT8, uint8);
+			COMP(UINT16, uint16);
+			COMP(UINT32, uint32);
+			COMP(UINT64, uint64);
+			COMP(SIZE, size);
+
+			COMP(INT8, int8);
+			COMP(INT16, int16);
+			COMP(INT32, int32);
+			COMP(INT64, int64);
+
+		default:
+			goto invalid;
+		}
+
+		return 0;
+
+	} else if (op == T_SUB) {
+		fr_value_box_init(&one, box->type, NULL, box->tainted); /* init to zero */
+
+		rcode = fr_value_calc_binary_op(ctx, box, box->type, &one, T_SUB, box);
+
+		return handle_result(box->type, op, rcode);
+
+	} else {
 	invalid:
 		return handle_result(box->type, op, ERR_INVALID);
 	}
 
-	rcode = fr_value_calc_binary_op(ctx, box, box->type, box, new_op, &one);
-
-	return handle_result(box->type, op, rcode);
 }
 
 /** Apply a set of operations in order to create an output box.
