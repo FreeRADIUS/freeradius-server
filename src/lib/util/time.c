@@ -557,7 +557,8 @@ fr_slen_t fr_time_delta_to_str(fr_sbuff_t *out, fr_time_delta_t delta, fr_time_r
 	} else {
 		q++;	/* to account for q-- above */
 	}
-	return fr_sbuff_set(&our_out, q);
+
+	return fr_sbuff_set(out, q);
 }
 
 DIAG_OFF(format-nonliteral)
