@@ -804,9 +804,9 @@ done:
 
 	if (do_length) {
 		if (parent->flags.subtype == FLAG_LENGTH_UINT8) {
-			fr_dbuff_in(&hdr, (uint8_t) (fr_dbuff_used(&work_dbuff) - 1));
+			(void) fr_dbuff_in(&hdr, (uint8_t) (fr_dbuff_used(&work_dbuff) - 1));
 		} else {
-			fr_dbuff_in(&hdr, (uint16_t) (fr_dbuff_used(&work_dbuff) - 2));
+			(void) fr_dbuff_in(&hdr, (uint16_t) (fr_dbuff_used(&work_dbuff) - 2));
 		}
 	}
 

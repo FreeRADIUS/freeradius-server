@@ -152,7 +152,7 @@ static xlat_action_t unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (*p != '=') {
 		next:
 
-			fr_sbuff_in_char(&sbuff, *p++);
+			(void) fr_sbuff_in_char(&sbuff, *p++);
 			continue;
 		}
 
@@ -163,7 +163,7 @@ static xlat_action_t unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		    !(c2 = memchr(hextab, tolower(*(p + 2)), 16))) goto next;
 		c3 = ((c1 - hextab) << 4) + (c2 - hextab);
 
-		fr_sbuff_in_char(&sbuff, c3);
+		(void) fr_sbuff_in_char(&sbuff, c3);
 		p += 3;
 	}
 
