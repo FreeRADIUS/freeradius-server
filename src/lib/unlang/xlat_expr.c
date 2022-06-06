@@ -1061,49 +1061,76 @@ static xlat_action_t xlat_func_logical(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 
-static xlat_arg_parser_t const unary_not_xlat_args[] = {
-	{ .required = true, .single = true, .type = FR_TYPE_BOOL },
+static xlat_arg_parser_t const unary_op_xlat_args[] = {
+	{ .required = true, .single = true, .concat = true },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-static xlat_action_t xlat_func_unary_not(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					 UNUSED xlat_ctx_t const *xctx,
-					 UNUSED request_t *request, fr_value_box_list_t *in)
+static xlat_action_t xlat_func_unary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					UNUSED xlat_ctx_t const *xctx,
+					request_t *request, fr_value_box_list_t *in, fr_token_t op)
 {
-	fr_value_box_t *dst, *a;
+	int rcode;
+	fr_value_box_t *dst, *group, *vb;
 
-	a = fr_dlist_head(in);
-	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, a->tainted));
-	dst->vb_bool = !a->vb_bool;
+	/*
+	 *	We do some basic type checks here.
+	 */
+	group = fr_dlist_head(in);
+	vb = fr_dlist_head(&group->vb_group);
+
+	if (!fr_type_is_leaf(vb->type) || fr_type_is_variable_size(vb->type)) {
+		REDEBUG("Cannot perform operation on data type %s", fr_type_to_str(vb->type));
+		return XLAT_ACTION_FAIL;
+	}
+
+	MEM(dst = fr_value_box_alloc_null(ctx));
+
+	/*
+	 *	We rely on this function to do the remainder of the type checking.
+	 */
+	rcode = fr_value_calc_unary_op(dst, dst, op, vb);
+	if ((rcode < 0) || fr_type_is_null(dst->type)) {
+		RPEDEBUG("Failed calculating result, returning NULL");
+		fr_value_box_init_null(dst);
+	}
 
 	fr_dcursor_append(out, dst);
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_arg_parser_t const unary_minus_xlat_args[] = {
-	{ .required = true, .concat = true },
-	XLAT_ARG_PARSER_TERMINATOR
-};
 
-static xlat_action_t xlat_func_unary_minus(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					   UNUSED xlat_ctx_t const *xctx,
-					   request_t *request, fr_value_box_list_t *in)
+static xlat_action_t xlat_func_unary_not(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					 UNUSED xlat_ctx_t const *xctx,
+					 UNUSED request_t *request, fr_value_box_list_t *in)
 {
-	int rcode;
-	fr_value_box_t	*dst, a, *b;
+	fr_value_box_t *dst, *group, *vb;
 
-	MEM(dst = fr_value_box_alloc_null(ctx));
+	group = fr_dlist_head(in);
+	vb = fr_dlist_head(&group->vb_group);
 
-	fr_value_box_init(&a, FR_TYPE_INT64, NULL, false);
-	b = fr_dlist_head(in);
-
-	rcode = fr_value_calc_binary_op(dst, dst, FR_TYPE_NULL, &a, T_SUB, b);
-	if (rcode < 0) {
-		RPEDEBUG("Failed calculating result, returning NULL");
-	}
+	/*
+	 *	Don't call calc_unary_op(), because we want the enum names.
+	 */
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
+	dst->vb_bool = !fr_value_box_is_truthy(vb);
 
 	fr_dcursor_append(out, dst);
 	return XLAT_ACTION_DONE;
+}
+
+static xlat_action_t xlat_func_unary_minus(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					   xlat_ctx_t const *xctx,
+					   request_t *request, fr_value_box_list_t *in)
+{
+	return xlat_func_unary_op(ctx, out, xctx, request, in, T_SUB);
+}
+
+static xlat_action_t xlat_func_unary_complement(TALLOC_CTX *ctx, fr_dcursor_t *out,
+						UNUSED xlat_ctx_t const *xctx,
+						request_t *request, fr_value_box_list_t *in)
+{
+	return xlat_func_unary_op(ctx, out, xctx, request, in, T_COMPLEMENT);
 }
 
 /** Convert XLAT_BOX arguments to XLAT_TMPL
@@ -1244,6 +1271,15 @@ do { \
 	xlat_internal(xlat); \
 } while (0)
 
+#define XLAT_REGISTER_UNARY(_op, _xlat, _func) \
+do { \
+	if (!(xlat = xlat_register(NULL, _xlat, _func, XLAT_FLAG_PURE))) return -1; \
+	xlat_func_args(xlat, unary_op_xlat_args); \
+	xlat_internal(xlat); \
+	xlat_print_set(xlat, xlat_expr_print_unary); \
+	xlat->token = _op; \
+} while (0)
+
 int xlat_register_expressions(void)
 {
 	xlat_t *xlat;
@@ -1274,23 +1310,16 @@ int xlat_register_expressions(void)
 	XLAT_REGISTER_NARY_OP(T_LAND, logical_and, logical);
 	XLAT_REGISTER_NARY_OP(T_LOR, logical_or, logical);
 
+	XLAT_REGISTER_MONO("rcode", xlat_func_rcode, xlat_func_rcode_arg);
+
 	/*
 	 *	-EXPR
+	 *	~EXPR
 	 *	!EXPR
 	 */
-	if (!(xlat = xlat_register(NULL, "unary_minus", xlat_func_unary_minus, XLAT_FLAG_PURE))) return -1;
-	xlat_func_args(xlat, unary_minus_xlat_args);
-	xlat_internal(xlat);
-	xlat_print_set(xlat, xlat_expr_print_unary);
-	xlat->token = T_SUB;
-
-	if (!(xlat = xlat_register(NULL, "unary_not", xlat_func_unary_not, XLAT_FLAG_PURE))) return -1;
-	xlat_func_args(xlat, unary_not_xlat_args);
-	xlat_internal(xlat);
-	xlat_print_set(xlat, xlat_expr_print_unary);
-	xlat->token = T_NOT;
-
-	XLAT_REGISTER_MONO("rcode", xlat_func_rcode, xlat_func_rcode_arg);
+	XLAT_REGISTER_UNARY(T_SUB, "unary_minus", xlat_func_unary_minus);
+	XLAT_REGISTER_UNARY(T_COMPLEMENT, "unary_complement", xlat_func_unary_complement);
+	XLAT_REGISTER_UNARY(T_NOT, "unary_not", xlat_func_unary_not);
 
 	return 0;
 }
@@ -1464,6 +1493,14 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		func = xlat_func_find("unary_minus", 11);
 		fr_assert(func != NULL);
 		c = '-';
+		goto check_for_double;
+
+	}
+	else if (fr_sbuff_next_if_char(&our_in, '~')) { /* unary complement */
+		fmt = "~";
+		func = xlat_func_find("unary_complement", 16);
+		fr_assert(func != NULL);
+		c = '~';
 		goto check_for_double;
 
 	}

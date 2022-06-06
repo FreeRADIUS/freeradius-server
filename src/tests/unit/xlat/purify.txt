@@ -1,5 +1,23 @@
 proto-dictionary radius
 
+xlat_purify ~(uint8) 1
+match 254
+
+xlat_purify ~(uint8) 2
+match 253
+
+#
+#  Signed!
+#
+xlat_purify -(int8) 1
+match -1
+
+xlat_purify !1
+match false
+
+xlat_purify (uint8) 1 + -(int8) 1
+match 0
+
 #
 #  xlat_expr, but purified
 #
@@ -163,4 +181,4 @@ xlat_purify !true
 match false
 
 count
-match 69
+match 79

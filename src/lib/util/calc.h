@@ -36,7 +36,7 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 
 int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t op, fr_value_box_t const *src) CC_HINT(nonnull(2,4));
 
-int fr_value_calc_unary_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op) CC_HINT(nonnull(1));
+int fr_value_calc_unary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t op, fr_value_box_t const *src) CC_HINT(nonnull(1));
 
 int fr_value_calc_list_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op, fr_value_box_list_t const *list);
 

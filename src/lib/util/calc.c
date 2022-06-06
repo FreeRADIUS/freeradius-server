@@ -589,6 +589,15 @@ static const fr_type_t upcast_cmp[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 	},
 };
 
+static const fr_type_t upcast_unsigned[FR_TYPE_MAX + 1] = {
+	[FR_TYPE_BOOL] = FR_TYPE_INT8,
+	[FR_TYPE_UINT8] = FR_TYPE_INT16,
+	[FR_TYPE_UINT16] = FR_TYPE_INT32,
+	[FR_TYPE_UINT32] = FR_TYPE_INT64,
+	[FR_TYPE_UINT64] = FR_TYPE_INT64,
+	[FR_TYPE_SIZE] = FR_TYPE_INT64,
+};
+
 static int invalid_type(fr_type_t type)
 {
 	fr_strerror_printf("Cannot perform mathematical operations on data type %s",
@@ -1879,26 +1888,23 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 	return 0;
 }
 
-/** Calculate DST OP
+/** Calculate unary operations
  *
- *  e.g. "foo ++".
- *
- *  This is done by doing some sanity checks, and then just calling
- *  the "binary operation" function.
+ *  e.g. "foo++", or "-foo".
  */
-int fr_value_calc_unary_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op)
+int fr_value_calc_unary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t op, fr_value_box_t const *src)
 {
 	int rcode = -1;
 	fr_value_box_t one;
 
-	if (!fr_type_is_numeric(box->type)) return invalid_type(box->type);
+	if (!fr_type_is_numeric(src->type)) return invalid_type(src->type);
 
 	if (op == T_OP_INCRM) {
 		/*
 		 *	Add 1 or subtract 1 means RHS is always 1.
 		 */
-		fr_value_box_init(&one, box->type, NULL, false);
-		switch (box->type) {
+		fr_value_box_init(&one, src->type, NULL, false);
+		switch (src->type) {
 		case FR_TYPE_UINT8:
 			one.vb_uint8 = 1;
 			break;
@@ -1948,14 +1954,15 @@ int fr_value_calc_unary_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op)
 			return -1;
 		}
 
-		rcode = fr_value_calc_binary_op(ctx, box, box->type, box, T_ADD, &one);
-
-		return handle_result(box->type, op, rcode);
+		rcode = fr_value_calc_binary_op(ctx, dst, src->type, src, T_ADD, &one);
+		return handle_result(dst->type, op, rcode);
 
 	} else if (op == T_COMPLEMENT) {
+		if (dst != src) fr_value_box_init(dst, src->type, src->enumv, src->tainted);
+
 #undef COMP
-#define COMP(_type, _field) case FR_TYPE_ ## _type: box->vb_ ##_field = ~box->vb_ ##_field; break
-		switch (box->type) {
+#define COMP(_type, _field) case FR_TYPE_ ## _type: dst->vb_ ##_field = (_field ## _t) ~src->vb_ ##_field; break
+		switch (src->type) {
 			COMP(UINT8, uint8);
 			COMP(UINT16, uint16);
 			COMP(UINT32, uint32);
@@ -1974,15 +1981,33 @@ int fr_value_calc_unary_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op)
 		return 0;
 
 	} else if (op == T_SUB) {
-		fr_value_box_init(&one, box->type, NULL, box->tainted); /* init to zero */
+		fr_type_t type = src->type;
 
-		rcode = fr_value_calc_binary_op(ctx, box, box->type, &one, T_SUB, box);
+		if ((dst != src) && !fr_type_is_signed(src->type)) {
+			type = upcast_unsigned[src->type];
 
-		return handle_result(box->type, op, rcode);
+			if (type == FR_TYPE_NULL) {
+				type = src->type; /* hope for the best */
+			}
+		}
+
+		fr_value_box_init(&one, type, NULL, src->tainted); /* init to zero */
+		rcode = fr_value_calc_binary_op(ctx, dst, type, &one, T_SUB, src);
+
+		return handle_result(dst->type, op, rcode);
+
+	} else if (op == T_NOT) {
+		bool value = fr_value_box_is_truthy(src);
+
+		fr_value_box_clear(dst);
+		fr_value_box_init(dst, FR_TYPE_BOOL, NULL, false); // @todo - add enum!
+		dst->vb_bool = !value;
+
+		return 0;
 
 	} else {
 	invalid:
-		return handle_result(box->type, op, ERR_INVALID);
+		return handle_result(src->type, op, ERR_INVALID);
 	}
 
 }
