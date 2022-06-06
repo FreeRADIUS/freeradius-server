@@ -85,12 +85,12 @@ update reply {
 }
 ----
 
-== String Expansions
+== Dynamic Expansions
 
-xref:xlat/index.adoc[String expansion] Using `%{...}` to perform dynamic
-string expansions. (also known as xref:xlat/index.adoc[xlat])
+xref:xlat/index.adoc[Dynamic expansion] Using `%{...}` to perform dynamic
+expansions. (also known as xref:xlat/index.adoc[xlat])
 
-String expansions are usually performed in order to get additional
+Dynamic expansions are usually performed in order to get additional
 information which is not immediately available to the policy.  This
 information can be taken from almost any source, including other
 attributes, databases, and scripts.

@@ -1,10 +1,10 @@
-= String Expansion
+= Dynamic Expansion
 
-String expansion is a feature that allows strings to dynamically
-define their value at run time. For historical reasons, these string
-expansions are called "xlats".
+Dynamic expansion is a feature that allows values to be dynamically
+expanded at run time. For historical reasons, these string expansions
+are called "xlats".
 
-String expansion is performed via the following syntax:
+Dynamioc expansion is performed via the following syntax:
 
 `%{...}`
 
@@ -12,7 +12,7 @@ Where the `%{` signals the start of a dynamic expansion, and `}`
 signals the end of the dynamic expansion.  The contents of the
 expansion can be many things:
 
-.String Expansions
+.Types of Expansions
 [options="header"]
 |=====
 | Keyword                                           | Description
@@ -29,13 +29,13 @@ refers to the User-Name in a request, via:
 
 `%{User-Name}`
 
-This string expansion is done only for double-quoted strings and for
+This expansion is done only for double-quoted strings and for
 the back-tick operator.
 
 == Caveats
 
 Unlike other languages, there is no way to define new variables.  All
-of the string expansions must refer to attributes that already exist,
+of the expansions must refer to attributes that already exist,
 or to modules that will return a string value.
 
 == Character Escaping

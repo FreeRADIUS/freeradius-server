@@ -33,6 +33,7 @@
 
 *** xref:unlang/condition/index.adoc[Conditional Expressions]
 **** xref:unlang/condition/cmp.adoc[Comparisons]
+**** xref:unlang/expressions.adoc[expressions]
 **** xref:unlang/condition/operands.adoc[Operands]
 **** xref:unlang/condition/return_code.adoc[The Return Code Operator]
 **** xref:unlang/condition/eq.adoc[The '==' Operator]
@@ -55,7 +56,7 @@
 *** xref:type/string/backticks.adoc[Backtick-quoted string]
 *** xref:type/string/unquoted.adoc[Unquoted Strings]
 
-** xref:xlat/index.adoc[String Expansion]
+** xref:xlat/index.adoc[Dynamic Expansion]
 *** xref:xlat/alternation.adoc[Alternation Syntax]
 *** xref:xlat/builtin.adoc[Built-in Expansions]
 *** xref:xlat/character.adoc[Single Letter Expansions]

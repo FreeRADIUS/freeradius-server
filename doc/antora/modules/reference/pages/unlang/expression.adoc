@@ -1,0 +1,110 @@
+= Expressions
+
+Expressions can be used inside of xref:xlat/index.adoc[dynamic expansions], or inside of xref:condition/index.adoc[conditions].
+
+The following operators are supported (in order of precedence).
+
+[options="header,autowidth"]
+|===
+| Operator  | Description
+| &         | binary AND
+| \|        | binary OR
+| <<	    | left shift
+| >>        | right shift
+| +         | addition
+| -         | subtraction
+| *         | multiplication
+| /         | division
+| %%        | remainder TODO
+| ^         | xor
+| (...)     | sub-expression
+|===
+
+The following unary operators are also supported:
+
+[options="header,autowidth"]
+|===
+| Operator  | Description
+| -         | unary minus
+| ~         | unary complement
+| !         | unary not
+|===
+
+Operator precedence follows the normal rules.
+Division by zero means that the entire expression is invalid.
+
+== Conditions
+
+xref:condition/index.adoc[Conditions] in expressions are also
+supported.  For example:
+
+[source,unlang]
+----
+&NAS-Port = 5 + (&User-Name == "bob")
+----
+
+This expression will return `6` if the users name is `bob`, and `5` otherwise.
+
+Similarly, expressions are also supported in conditions.  There is no
+need to use `%{expr:...}` in conditions, as was needed in earlier
+versions of the server.
+
+== Data Types
+
+The new expression parser accepts significantly more data types than
+the old `rlm_expr` module.  The `rlm_expr` module assumed that all
+inputs were signed 64-bit integers.  Any attempt to use other data
+types resulted in an error.
+
+For example, the `+` operator can be applied to `string` and `octet`
+data types.  (And incidentally, `-` is the inverse of `+`!)
+
+[source,unlang]
+----
+&Reply-Message := "foo" + "bar"
+----
+
+Will result in `&Reply-Message == "foobar"`.
+
+The suffix can then be "subtracted" off, with:
+
+[source,unlang]
+----
+&Reply-Message -= "bar"
+----
+
+Will result in `&Reply-Message == "foo"` !.
+
+Other data types will generally yield results which make sense.  For
+example:
+
+* adding an integer to an `ipv4prefix` type will result in an `ipv4addr` data type,
+* `&` and `|` will work on `string` and `octets` data types,
+* Using `&` with `ipv4addr` data types an `uint32` will result in an `ipv4prefix` data type,
+* `ipv4addr`s can be subtracted, and will return a number,
+* `date`s can be subtracted, and will return a `time_delta`,
+* operations on integers are upgraded to the next largest integer size when necessary,
+* the logical operators `&&` and `||` return the value which caused them to succeed, e.g. `&Foo := (&User-Password || "help")` will return the contents of `&User-Name` if it exists, otherwise it will return the string `help`.
+
+In most cases, the data types are derived from the attribute
+dictionaries.  However, it is sometimes necessary to force the fields
+(or output) of an expression to be parsed in a particular manner.
+
+== Casts
+
+xref:type/index.adoc[Type casting] is supported via the `(type)`
+syntax.  The old-style syntax of `<type>` is accepted, but is
+deprecated.
+
+[source,unlang]
+----
+&NAS-Port-Id = (uint32) "%{sql: SELECT...}" + 4
+----
+
+== Errors
+
+Mathematical operations which cause overflow, underflow, or division
+by zero will return a `null` result.  This result will propagate
+through any calculations, so that an expression which relies on `null`
+will also return `null`.
+

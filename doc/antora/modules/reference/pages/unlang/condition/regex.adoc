@@ -142,7 +142,7 @@ When the server starts any regular expressions comparisons it finds will be
 pre-compiled, and if support is available, JIT'd (converted to machine code)
 to ensure fast execution.
 
-If a pattern contains a xref:xlat/index.adoc[string expansion], the pattern
+If a pattern contains a xref:xlat/index.adoc[dynamic expansion], the pattern
 cannot be compiled on startup, and will be compiled at runtime each time the
 expression is evaluated. The server will also turn off JITing for runtime
 compiled expressions, as the overhead is greater than the time that would be
@@ -159,11 +159,11 @@ if (&User-Name =~ /^@%{Tmp-String-0}$/) {
 ====
 
 To ensure optimal performance you should limit the number of patterns
-containing xref:xlat/index.adoc[string expansions], and if using PCRE, combine
+containing xref:xlat/index.adoc[dynamic expansions], and if using PCRE, combine
 multiple expressions operating on the same subject into a single expression
 using the PCRE alternation '|' operator.
 
-.Using multiple string expansions and the PCRE alternation operator
+.Using multiple dynamic expansions and the PCRE alternation operator
 ====
 [source,unlang]
 ----

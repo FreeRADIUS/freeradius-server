@@ -947,6 +947,70 @@ Debug :   pcre2                    : 10.33 (2019-04-16) - retrieved at build tim
 ....
 ====
 
+=== +%(eval:<string>)+
+
+Evaluates the string as an expansion, and returns the result.  The main difference between using this expansion and just using `%{...}` is that the string being evaluated can be dynamically changed.
+
+.Return: _data_
+
+.Example:
+
+[source,unlang]
+----
+if (&User-Name == "bob") {
+    update request {
+        &Tmp-String-0 := "&User-Name"
+   }
+} else {
+    update request {
+        &Tmp-String-0 := "not bob!"
+   }
+}
+
+update reply {
+    &Reply-Message := "%{eval:&Tmp-String-0}"
+}
+
+----
+
+.Output when `&User-Name == bob`
+
+```
+bob
+```
+
+.Output when `&User-Name == not bob`
+
+```
+not bob!
+```
+
+
+=== +%(expr:<string>)+
+
+Evaluates the string as an xref:reference:unlang/expression.adoc[Unlang expression], and returns the result.  Please see the
+xref:reference:unlang/expression.adoc[Unlang expression] page for full
+documentation on expressions.
+
+.Return: _data_
+
+.Example:
+
+[source,unlang]
+----
+update reply
+        &Tmp-String-0 := "%{expr: 1 + 2}"
+   }
+}
+
+----
+
+.Output
+
+```
+3
+```
+
 === +%(nexttime:<time>)+
 
 Calculate number of seconds until next n hour(`s`), day(`s`), week(`s`), year(`s`).

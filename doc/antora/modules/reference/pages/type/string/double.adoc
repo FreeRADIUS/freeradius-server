@@ -13,7 +13,7 @@ that the double quoted strings can be dynamically expanded. The syntax
 run-time expansion. The difference between the two methods is that the
 `${...}` form is expanded when the server loads the configuration
 files and is valid anywhere in the configuration files. The `%{...}`
-xref:xlat/index.adoc[string expansion] form is valid only in conditional
+xref:xlat/index.adoc[dynamic expansion] form is valid only in conditional
 expressions and attribute assignments.
 
 The output of the dynamic expansion can be interpreted as a string,

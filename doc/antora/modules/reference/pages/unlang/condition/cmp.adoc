@@ -68,16 +68,16 @@ configuration files.
 .Syntax
 [source,unlang]
 ----
-<cast>lhs OP rhs
+(cast)lhs OP rhs
 ----
 
-The `cast` text can be any one of the standard RADIUS dictionary data
+The `cast` text can be any one of the supported data
 types, as with the following example:
 
 .Example
 [source,unlang]
 ----
-<ipaddr>&Class == 127.0.0.1
+(ipaddr)&Class == 127.0.0.1
 ----
 
 In this example, the `Class` attribute is treated as if it was an IPv4
@@ -90,7 +90,7 @@ done in a type-safe manner, instead of performing a string comparison.
 .Example
 [source,unlang]
 ----
-<integer>`/bin/echo 00` == 0
+(integer)`/bin/echo 00` == 0
 ----
 
 In this example, the string output of the `echo` program is interpreted as an
@@ -99,6 +99,11 @@ comparisons.  Since the integer `00` is equivalent to the integer `0`,
 the comparison will match.  If the comparison had been performed via
 string equality checks, then the comparison would fail, because the
 strings `00` and `0` are different.
+
+=== Compatibility
+
+For compatibility with version 3, the `<cast>` syntax is also
+supported.  We recommend, however, that people use the new syntax.
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // Development of this documentation was sponsored by Network RADIUS SAS.
