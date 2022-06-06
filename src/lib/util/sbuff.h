@@ -38,6 +38,7 @@ extern "C" {
 #include <string.h>
 #include <sys/types.h>
 
+#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/talloc.h>
