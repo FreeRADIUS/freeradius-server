@@ -194,7 +194,6 @@ _Generic((_ct), \
 	.name = _n, \
 	.type = _t, \
 	.data = FR_CONF_TYPE_CHECK((_t), (_p), _p)
-
 #  define FR_CONF_POINTER_IS_SET(_n, _t, _p) \
 	.name = _n, \
 	.type = (_t) | FR_TYPE_IS_SET, \
@@ -257,6 +256,18 @@ _Generic((_ct), \
 	.subcs_size = sizeof(**(((_s *)0)->_f))
 #endif
 
+/** CONF_PARSER entry which doesn't fill in a pointer or offset, but relies on functions to record values
+ *
+ * @param[in] _n		name of pair to search for.
+ * @param[in] _t		base type to parse pair as.
+ * @param[in] _func		to use to record value.
+ * @param[in] _dflt_func	to use to get defaults from a 3rd party library.
+ */
+#  define FR_CONF_FUNC(_n, _t, _func, _dflt_func) \
+	.name = _n, \
+	.type = _t, \
+	.func = _func, \
+	.dflt_func = _dflt_func
 
 #define FR_CONF_DEPRECATED(_n, _t, _p, _f) \
 	.name = _n, \
