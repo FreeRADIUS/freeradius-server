@@ -953,7 +953,7 @@ static xlat_action_t xlat_logical_process_arg(TALLOC_CTX *ctx, fr_dcursor_t *out
 
 		if (rctx->box->type != FR_TYPE_BOOL) {
 			fr_value_box_clear(rctx->box);
-			fr_value_box_init(rctx->box, FR_TYPE_BOOL, NULL, false);
+			fr_value_box_init(rctx->box, FR_TYPE_BOOL, attr_expr_bool_enum, false);
 		}
 
 		vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, node->vpt);
