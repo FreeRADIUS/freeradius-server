@@ -14,6 +14,7 @@
 #include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/trunk.h>
+#include <freeradius-devel/util/dlist.h>
 
 #define LDAP_DEPRECATED 0	/* Quiet warnings about LDAP_DEPRECATED not being defined */
 
@@ -113,6 +114,8 @@ ldap_create_session_tracking_control LDAP_P((
 									//!< persistent search.
 #define LDAP_SERVER_SHOW_DELETED_OID	"1.2.840.113556.1.4.417"	//!< OID of Active Directory control which
 									//!< enables searching for deleted objects.
+#define LDAP_MATCHING_RULE_BIT_AND	"1.2.840.113556.1.4.803"	//!< OID of bit-wise AND LDAP match rule
+#define LDAP_MATCHING_RULE_BIT_OR	"1.2.840.113556.1.4.804"	//!< OID of bit-wise OR LDAP match rule
 
 typedef enum {
 	LDAP_EXT_UNSUPPORTED,				//!< Unsupported extension.
@@ -200,7 +203,9 @@ typedef struct {
 	bool			cleartext_password;	//!< Whether the server will return the user's plaintext
 							///< password.
 
-	fr_ldap_sync_type_t	sync_type;		//! <What kind of LDAP sync this directory supports.
+	fr_ldap_sync_type_t	sync_type;		//!< What kind of LDAP sync this directory supports.
+
+	char const		**naming_contexts;	//!< Databases served by this directory.
 } fr_ldap_directory_t;
 
 /** Connection configuration
@@ -495,6 +500,57 @@ typedef struct {
 	fr_ldap_result_code_t	ret;		//!< Return code of bind operation.
 } fr_ldap_bind_auth_ctx_t;
 
+typedef struct ldap_filter_s ldap_filter_t;
+
+/** Types of parsed LDAP filter nodes
+ */
+typedef enum {
+	LDAP_FILTER_NODE		= 0,		//!< The filter node is an individual one
+							//!< to be evaluated against an attribute.
+	LDAP_FILTER_GROUP				//!< The filter node is a parent of a group
+							//!< which will be combined using a logical operator.
+} ldap_filter_type_t;
+
+/** Logical operators for use in LDAP filters
+ */
+typedef enum {
+	LDAP_FILTER_LOGIC_AND		= 1,
+	LDAP_FILTER_LOGIC_OR,
+	LDAP_FILTER_LOGIC_NOT
+} ldap_filter_logic_t;
+
+/** Operators for use in LDAP filters
+ */
+typedef enum {
+	LDAP_FILTER_OP_UNSET		= 0,		//!< Attribute not set yet
+	LDAP_FILTER_OP_EQ,				//!< Attribute equals value
+	LDAP_FILTER_OP_SUBSTR,				//!< Attribute matches string with wildcards
+	LDAP_FILTER_OP_PRESENT,				//!< Attribute present
+	LDAP_FILTER_OP_GE,				//!< Attribute greater than or equal to value
+	LDAP_FILTER_OP_LE,				//!< Attribute less than or equal to value
+	LDAP_FILTER_OP_BIT_AND,				//!< Bitwise AND comparison
+	LDAP_FILTER_OP_BIT_OR				//!< Bitwise OR comparison
+} ldap_filter_op_t;
+
+/** Structure to hold parsed details of LDAP filters
+ */
+struct ldap_filter_s {
+	fr_dlist_t		entry;			//!< Entry in the list of filter nodes.
+	ldap_filter_type_t	filter_type;		//!< Type of this filter node.
+	char			*orig;			//!< Text representation of filter for debug messages,
+	union {
+		struct {
+			ldap_filter_logic_t	logic_op;	//!< Logical operator for this group.
+			fr_dlist_head_t		children;	//!< List of child nodes in this group.
+		};
+		struct {
+			char			*attr;		//!< Attribute for the filter node.
+			ldap_filter_op_t	op;		//!< Operator to be used for comparison.
+			fr_value_box_t		*value;		//!< Value to compare with.
+		};
+	};
+};
+
 /** Codes returned by fr_ldap internal functions
  *
  */
@@ -631,7 +687,7 @@ unlang_action_t fr_ldap_trunk_modify(rlm_rcode_t *p_result,
 				     bool is_async);
 
 /*
- *	ldap.c - Wrappers arounds OpenLDAP functions.
+ *	base.c - Wrappers arounds OpenLDAP functions.
  */
 void		fr_ldap_timeout_debug(request_t *request, fr_ldap_connection_t const *conn,
 				      fr_time_delta_t timeout, char const *prefix);
@@ -697,6 +753,7 @@ int		fr_ldap_control_add_session_tracking(fr_ldap_connection_t *conn, request_t 
 			       "objectClass", \
 			       "orcldirectoryversion", \
 			       "supportedControl", \
+			       "namingContexts", \
 			       NULL }
 
 int		fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
@@ -809,6 +866,12 @@ uint8_t		*fr_ldap_berval_to_bin(TALLOC_CTX *ctx, struct berval const *in);
 
 int		fr_ldap_parse_url_extensions(LDAPControl **sss, size_t sss_len, char *extensions[]);
 
+int 		fr_ldap_attrs_check(char const **attrs, char const *attr);
+
+int		fr_ldap_server_url_check(fr_ldap_config_t *handle_config, char const *server, CONF_SECTION const *cs);
+
+int		fr_ldap_server_config_check(fr_ldap_config_t *handle_config, char const *server, CONF_SECTION *cs);
+
 /*
  *	referral.c - Handle LDAP referrals
  */
@@ -817,3 +880,13 @@ fr_ldap_referral_t	*fr_ldap_referral_alloc(TALLOC_CTX *ctx, request_t *request);
 int 		fr_ldap_referral_follow(fr_ldap_thread_t *thread, request_t *request, fr_ldap_query_t *query);
 
 int		fr_ldap_referral_next(fr_ldap_thread_t *thread, request_t *request, fr_ldap_query_t *query);
+
+/*
+ *	filter.c - Basic filter parsing and filtering
+ */
+typedef int	(*filter_attr_check_t)(char const *attr, void *uctx);
+
+fr_slen_t	fr_ldap_filter_parse(TALLOC_CTX *ctx, fr_dlist_head_t **root, fr_sbuff_t *filter,
+		filter_attr_check_t attr_check, void *uctx);
+
+bool		fr_ldap_filter_eval(fr_dlist_head_t *root, fr_ldap_connection_t *conn, LDAPMessage *msg);

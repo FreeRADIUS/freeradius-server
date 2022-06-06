@@ -35,6 +35,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/util/uri.h>
 
 #include "rlm_ldap.h"
+#include <freeradius-devel/ldap/conf.h>
 
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module_rlm.h>
@@ -45,41 +46,6 @@ static CONF_PARSER sasl_mech_dynamic[] = {
 	{ FR_CONF_OFFSET("realm", FR_TYPE_TMPL, fr_ldap_sasl_t_dynamic_t, realm) },
 	CONF_PARSER_TERMINATOR
 };
-
-static CONF_PARSER sasl_mech_static[] = {
-	{ FR_CONF_OFFSET("mech", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY, fr_ldap_sasl_t, mech) },
-	{ FR_CONF_OFFSET("proxy", FR_TYPE_STRING, fr_ldap_sasl_t, proxy) },
-	{ FR_CONF_OFFSET("realm", FR_TYPE_STRING, fr_ldap_sasl_t, realm) },
-	CONF_PARSER_TERMINATOR
-};
-
-/*
- *	TLS Configuration
- */
-static CONF_PARSER tls_config[] = {
-	/*
-	 *	Deprecated attributes
-	 */
-	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, fr_ldap_config_t, tls_ca_file) },
-
-	{ FR_CONF_OFFSET("ca_path", FR_TYPE_FILE_INPUT, fr_ldap_config_t, tls_ca_path) },
-
-	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT, fr_ldap_config_t, tls_certificate_file) },
-
-	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, fr_ldap_config_t, tls_private_key_file) },
-
-	/*
-	 *	LDAP Specific TLS attributes
-	 */
-	{ FR_CONF_OFFSET("start_tls", FR_TYPE_BOOL, fr_ldap_config_t, start_tls), .dflt = "no" },
-
-	{ FR_CONF_OFFSET("require_cert", FR_TYPE_STRING, fr_ldap_config_t, tls_require_cert_str) },
-
-	{ FR_CONF_OFFSET("tls_min_version", FR_TYPE_STRING, fr_ldap_config_t, tls_min_version_str) },
-
-	CONF_PARSER_TERMINATOR
-};
-
 
 static CONF_PARSER profile_config[] = {
 	{ FR_CONF_OFFSET("filter", FR_TYPE_TMPL, rlm_ldap_t, profile_filter), .dflt = "(&)", .quote = T_SINGLE_QUOTED_STRING },	//!< Correct filter for when the DN is known.
@@ -132,68 +98,16 @@ static const CONF_PARSER acct_section_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-/*
- *	Various options that don't belong in the main configuration.
- *
- *	Note that these overlap a bit with the connection pool code!
- */
-static CONF_PARSER option_config[] = {
-	/*
-	 *	Pool config items
-	 */
-	{ FR_CONF_OFFSET("chase_referrals", FR_TYPE_BOOL, rlm_ldap_t, handle_config.chase_referrals) },
-
-	{ FR_CONF_OFFSET("use_referral_credentials", FR_TYPE_BOOL, rlm_ldap_t, handle_config.use_referral_credentials), .dflt = "no" },
-
-	{ FR_CONF_OFFSET("referral_depth", FR_TYPE_UINT16, rlm_ldap_t, handle_config.referral_depth), .dflt = "5" },
-
-	{ FR_CONF_OFFSET("rebind", FR_TYPE_BOOL, rlm_ldap_t, handle_config.rebind) },
-
-	{ FR_CONF_OFFSET("sasl_secprops", FR_TYPE_STRING, rlm_ldap_t, handle_config.sasl_secprops) },
-
-	/*
-	 *	We use this config option to populate libldap's LDAP_OPT_NETWORK_TIMEOUT -
-	 *	timeout on network activity - specifically libldap's initial call to "connect"
-	 *	Must be non-zero for async connections to start correctly.
-	 */
-	{ FR_CONF_OFFSET("net_timeout", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.net_timeout), .dflt = "10" },
-
-	{ FR_CONF_OFFSET("idle", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.keepalive_idle), .dflt = "60" },
-
-	{ FR_CONF_OFFSET("probes", FR_TYPE_UINT32, rlm_ldap_t, handle_config.keepalive_probes), .dflt = "3" },
-
-	{ FR_CONF_OFFSET("interval", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.keepalive_interval), .dflt = "30" },
-
-	{ FR_CONF_OFFSET("dereference", FR_TYPE_STRING, rlm_ldap_t, handle_config.dereference_str) },
-
-	/* allow server unlimited time for search (server-side limit) */
-	{ FR_CONF_OFFSET("srv_timelimit", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.srv_timelimit), .dflt = "20" },
-
-	/*
-	 *	Instance config items
-	 */
-	/* timeout for search results */
-	{ FR_CONF_OFFSET("res_timeout", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.res_timeout), .dflt = "20" },
-
-	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.idle_timeout), .dflt = "300" },
-
-	{ FR_CONF_OFFSET("reconnection_delay", FR_TYPE_TIME_DELTA, rlm_ldap_t, handle_config.reconnection_delay), .dflt = "10" },
-
-	CONF_PARSER_TERMINATOR
-};
-
 static const CONF_PARSER module_config[] = {
 	/*
 	 *	Pool config items
 	 */
 	{ FR_CONF_OFFSET("server", FR_TYPE_STRING | FR_TYPE_MULTI, rlm_ldap_t, handle_config.server_str) },	/* Do not set to required */
 
-	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, rlm_ldap_t, handle_config.port) },
-
-	{ FR_CONF_OFFSET("identity", FR_TYPE_STRING, rlm_ldap_t, handle_config.admin_identity) },
-	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_SECRET, rlm_ldap_t, handle_config.admin_password) },
-
-	{ FR_CONF_OFFSET("sasl", FR_TYPE_SUBSECTION, rlm_ldap_t, handle_config.admin_sasl), .subcs = (void const *) sasl_mech_static },
+	/*
+	 *	Common LDAP conf parsers
+	 */
+	FR_LDAP_COMMON_CONF(rlm_ldap_t),
 
 	{ FR_CONF_OFFSET("valuepair_attribute", FR_TYPE_STRING, rlm_ldap_t, valuepair_attr) },
 
@@ -217,10 +131,6 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_POINTER("group", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) group_config },
 
 	{ FR_CONF_POINTER("profile", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) profile_config },
-
-	{ FR_CONF_POINTER("options", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) option_config },
-
-	{ FR_CONF_OFFSET("tls", FR_TYPE_SUBSECTION, rlm_ldap_t, handle_config), .subcs = (void const *) tls_config },
 
 	{ FR_CONF_OFFSET("pool", FR_TYPE_SUBSECTION, rlm_ldap_t, trunk_conf), .subcs = (void const *) fr_trunk_config },
 
@@ -1968,135 +1878,13 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		 *	the server information in the format it needs.
 		 */
 		if (ldap_is_ldap_url(value)) {
-			LDAPURLDesc	*ldap_url;
-			bool		set_port_maybe = true;
-			int		default_port = LDAP_PORT;
-			char		*p;
-			char		*url;
-
-			if (ldap_url_parse(value, &ldap_url)){
-				cf_log_err(conf, "Parsing LDAP URL \"%s\" failed", value);
-			ldap_url_error:
-				ldap_free_urldesc(ldap_url);
-				return -1;
-			}
-
-			if (ldap_url->lud_dn && (ldap_url->lud_dn[0] != '\0')) {
-				cf_log_err(conf, "Base DN cannot be specified via server URL");
-				goto ldap_url_error;
-			}
-
-			if (ldap_url->lud_attrs && ldap_url->lud_attrs[0]) {
-				cf_log_err(conf, "Attribute list cannot be specified via server URL");
-				goto ldap_url_error;
-			}
-
-			/*
-			 *	ldap_url_parse sets this to base by default.
-			 */
-			if (ldap_url->lud_scope != LDAP_SCOPE_BASE) {
-				cf_log_err(conf, "Scope cannot be specified via server URL");
-				goto ldap_url_error;
-			}
-			ldap_url->lud_scope = -1;	/* Otherwise LDAP adds ?base */
-
-			/*
-			 *	The public ldap_url_parse function sets the default
-			 *	port, so we have to discover whether a port was
-			 *	included ourselves.
-			 */
-			if ((p = strchr(value, ']')) && (p[1] == ':')) {			/* IPv6 */
-				set_port_maybe = false;
-			} else if ((p = strchr(value, ':')) && (strchr(p + 1, ':') != NULL)) {	/* IPv4 */
-				set_port_maybe = false;
-			}
-
-			/*
-			 *	Figure out the default port from the URL
-			 */
-			if (ldap_url->lud_scheme) {
-				if (strcmp(ldap_url->lud_scheme, "ldaps") == 0) {
-					if (inst->handle_config.start_tls == true) {
-						cf_log_err(conf, "ldaps:// scheme is not compatible with 'start_tls'");
-						goto ldap_url_error;
-					}
-					default_port = LDAPS_PORT;
-
-				} else if (strcmp(ldap_url->lud_scheme, "ldapi") == 0) {
-					set_port_maybe = false; /* Unix socket, no port */
-				}
-			}
-
-			if (set_port_maybe) {
-				/*
-				 *	URL port overrides configured port.
-				 */
-				ldap_url->lud_port = inst->handle_config.port;
-
-				/*
-				 *	If there's no URL port, then set it to the default
-				 *	this is so debugging messages show explicitly
-				 *	the port we're connecting to.
-				 */
-				if (!ldap_url->lud_port) ldap_url->lud_port = default_port;
-			}
-
-			url = ldap_url_desc2str(ldap_url);
-			if (!url) {
-				cf_log_err(conf, "Failed recombining URL components");
-				goto ldap_url_error;
-			}
-			inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server,
-									    "%s ", url);
-			free(url);
-
-			/*
-			 *	@todo We could set a few other top level
-			 *	directives using the URL, like base_dn
-			 *	and scope.
-			 */
-			ldap_free_urldesc(ldap_url);
-		/*
-		 *	We need to construct an LDAP URI
-		 */
+			if (fr_ldap_server_url_check(&inst->handle_config, value, conf) < 0) return -1;
 		} else
 		/*
-		 *	If it's not an URL, or we don't have the functions necessary
-		 *	to break apart the URL and recombine it, then just treat
-		 *	server as a hostname.
+		 *	If it's not an URL, then just treat server as a hostname.
 		 */
 		{
-			char	const *p;
-			char	*q;
-			int	port = 0;
-			size_t	len;
-
-			port = inst->handle_config.port;
-
-			/*
-			 *	We don't support URLs if the library didn't provide
-			 *	URL parsing functions.
-			 */
-			if (strchr(value, '/')) {
-			bad_server_fmt:
-				cf_log_err(conf, "Invalid 'server' entry, must be in format <server>[:<port>] or "
-					      "an ldap URI (ldap|cldap|ldaps|ldapi)://<server>:<port>");
-				return -1;
-			}
-
-			p = strrchr(value, ':');
-			if (p) {
-				port = (int)strtol((p + 1), &q, 10);
-				if ((p == value) || ((p + 1) == q) || (*q != '\0')) goto bad_server_fmt;
-				len = p - value;
-			} else {
-				len = strlen(value);
-			}
-			if (port == 0) port = LDAP_PORT;
-
-			inst->handle_config.server = talloc_asprintf_append(inst->handle_config.server,
-									    "ldap://%.*s:%i ",
-									    (int) len, value, port);
+			if (fr_ldap_server_config_check(&inst->handle_config, value, conf) < 0) return -1;
 		}
 	}
 
