@@ -78,7 +78,7 @@ static unlang_action_t unlang_tmpl_resume(rlm_rcode_t *p_result, request_t *requ
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 
-	if (state->out) fr_dlist_move(state->out, &state->box);
+	if (state->out) fr_dlist_move(state->out, &state->list);
 
 	if (state->resume) return state->resume(p_result, request, state->rctx);
 
@@ -101,14 +101,14 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 	 *	care about output, and we don't care about the programs exit status.
 	 */
 	if (state->exec.failed) {
-		fr_dlist_talloc_free(&state->box);
+		fr_dlist_talloc_free(&state->list);
 		goto resume;
 	}
 
 	fr_assert(state->exec.pid < 0);	/* Assert this has been cleaned up */
 
 	if (!state->args.exec.stdout_on_error && (state->exec.status != 0)) {
-		fr_assert(fr_dlist_empty(&state->box));
+		fr_assert(fr_dlist_empty(&state->list));
 		goto resume;
 	}
 
@@ -131,7 +131,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 		 */
 		fr_sbuff_trim(&state->exec.stdout_buff, sbuff_char_line_endings);
 
-		fr_value_box_list_init(&state->box);
+		fr_value_box_list_init(&state->list);
 		MEM(box = fr_value_box_alloc(state->ctx, FR_TYPE_STRING, NULL, true));
 		if (fr_value_box_from_str(state->ctx, box, type, NULL,
 					  fr_sbuff_start(&state->exec.stdout_buff),
@@ -141,7 +141,7 @@ static unlang_action_t unlang_tmpl_exec_wait_final(rlm_rcode_t *p_result, reques
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
-		fr_dlist_insert_head(&state->box, box);
+		fr_dlist_insert_head(&state->list, box);
 	}
 
 resume:
@@ -167,7 +167,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 
 	if (fr_exec_start(state->ctx, &state->exec, request,
-			  &state->box,
+			  &state->list,
 			  state->args.exec.env, false, false,
 			  false,
 			  (state->out != NULL), state,
@@ -176,7 +176,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	fr_dlist_talloc_free(&state->box); /* this is the xlat expansion, and not the output string we want */
+	fr_dlist_talloc_free(&state->list); /* this is the xlat expansion, and not the output string we want */
 	frame_repeat(frame, unlang_tmpl_exec_wait_final);
 
 	return UNLANG_ACTION_YIELD;
@@ -190,7 +190,7 @@ static unlang_action_t unlang_tmpl_exec_nowait_resume(rlm_rcode_t *p_result, req
 {
 	unlang_frame_state_tmpl_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_tmpl_t);
 
-	if (fr_exec_fork_nowait(request, &state->box, state->exec.env_pairs, false, false) < 0) {
+	if (fr_exec_fork_nowait(request, &state->list, state->exec.env_pairs, false, false) < 0) {
 		RPEDEBUG("Failed executing program");
 		*p_result = RLM_MODULE_FAIL;
 
@@ -220,12 +220,12 @@ static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request, un
 	 */
 	if (!state->ctx) {
 		state->ctx = state;
-		fr_value_box_list_init(&state->box);
+		fr_value_box_list_init(&state->list);
 	}
 
 	if (!tmpl_async_required(ut->tmpl)) {
 		if (!ut->inline_exec) {
-			if (tmpl_aexpand_type(state->ctx, &state->box, FR_TYPE_STRING, request, ut->tmpl, NULL, NULL) < 0) {
+			if (tmpl_aexpand_type(state->ctx, &state->list, FR_TYPE_STRING, request, ut->tmpl, NULL, NULL) < 0) {
 				RPEDEBUG("Failed expanding %s", ut->tmpl->name);
 				*p_result = RLM_MODULE_FAIL;
 			}
@@ -239,7 +239,7 @@ static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request, un
 		 *	text in the configuration files.
 		 */
 		frame_repeat(frame, unlang_tmpl_exec_nowait_resume);
-		if (unlang_xlat_push(state->ctx, NULL, &state->box, request, tmpl_xlat(ut->tmpl), false) < 0) {
+		if (unlang_xlat_push(state->ctx, NULL, &state->list, request, tmpl_xlat(ut->tmpl), false) < 0) {
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
@@ -251,7 +251,7 @@ static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request, un
 	 */
 	if (ut->tmpl->type == TMPL_TYPE_XLAT) {
 		frame_repeat(frame, unlang_tmpl_resume);
-		if (unlang_xlat_push(state->ctx, NULL, &state->box, request, tmpl_xlat(ut->tmpl), false) < 0) {
+		if (unlang_xlat_push(state->ctx, NULL, &state->list, request, tmpl_xlat(ut->tmpl), false) < 0) {
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_STOP_PROCESSING;
 		}
@@ -280,7 +280,7 @@ static unlang_action_t unlang_tmpl(rlm_rcode_t *p_result, request_t *request, un
 	 *	Expand the arguments to the program we're executing.
 	 */
 	frame_repeat(frame, unlang_tmpl_exec_wait_resume);
-	if (unlang_xlat_push(state->ctx, NULL, &state->box, request, xlat, false) < 0) {
+	if (unlang_xlat_push(state->ctx, NULL, &state->list, request, xlat, false) < 0) {
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_STOP_PROCESSING;
 	}
@@ -354,7 +354,7 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 	 */
 	if (!fr_time_delta_ispos(state->args.exec.timeout)) state->args.exec.timeout = fr_time_delta_from_sec(EXEC_TIMEOUT);
 
-	fr_value_box_list_init(&state->box);
+	fr_value_box_list_init(&state->list);
 
 	return 0;
 }
