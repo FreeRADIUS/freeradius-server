@@ -1078,6 +1078,13 @@ static xlat_action_t xlat_func_unary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	group = fr_dlist_head(in);
 	vb = fr_dlist_head(&group->vb_group);
 
+	/*
+	 *	-NULL is an error
+	 *	~NULL is an error
+	 *	!NULL is handled by xlat_func_unary_not
+	 */
+	if (!vb) return XLAT_ACTION_FAIL;
+
 	if (!fr_type_is_leaf(vb->type) || fr_type_is_variable_size(vb->type)) {
 		REDEBUG("Cannot perform operation on data type %s", fr_type_to_str(vb->type));
 		return XLAT_ACTION_FAIL;
@@ -1112,7 +1119,15 @@ static xlat_action_t xlat_func_unary_not(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Don't call calc_unary_op(), because we want the enum names.
 	 */
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
-	dst->vb_bool = !fr_value_box_is_truthy(vb);
+
+	/*
+	 *	!NULL = true
+	 */
+	if (!vb) {
+		dst->vb_bool = true;
+	} else {
+		dst->vb_bool = !fr_value_box_is_truthy(vb);
+	}
 
 	fr_dcursor_append(out, dst);
 	return XLAT_ACTION_DONE;
