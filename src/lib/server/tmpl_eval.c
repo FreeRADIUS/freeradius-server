@@ -1000,3 +1000,26 @@ int tmpl_find_or_add_vp(fr_pair_t **out, request_t *request, tmpl_t const *vpt)
 		return err;
 	}
 }
+
+/** Insert a value-box to a list, with casting.
+ *
+ * @param list	to append to
+ * @param box	box to cast / append
+ * @param vpt	tmpl with cast.
+ * @return
+ *	- <0 for "cast failed"
+ *	- 0 for success
+ */
+int tmpl_value_list_insert_tail(fr_value_box_list_t *list, fr_value_box_t *box, tmpl_t const *vpt)
+{
+	if (fr_type_is_null(tmpl_rules_cast(vpt)) ||
+	    (box->type == tmpl_rules_cast(vpt))) {
+		fr_dlist_insert_tail(list, box);
+		return 0;
+	}
+
+	if (fr_value_box_cast_in_place(box, box, tmpl_rules_cast(vpt), tmpl_rules_enumv(vpt)) < 0) return -1;
+
+	fr_dlist_insert_tail(list, box);
+	return 0;
+}

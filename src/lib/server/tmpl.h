@@ -1058,6 +1058,8 @@ bool			tmpl_async_required(tmpl_t const *vpt) CC_HINT(nonnull);
 
 fr_pair_t		*tmpl_get_list(request_t *request, tmpl_t const *vpt) CC_HINT(nonnull(2)); /* temporary hack */
 
+int			tmpl_value_list_insert_tail(fr_value_box_list_t *list, fr_value_box_t *vb, tmpl_t const *vpt) CC_HINT(nonnull);
+
 #undef _CONST
 
 #ifdef __cplusplus
