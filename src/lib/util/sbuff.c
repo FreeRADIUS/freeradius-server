@@ -614,7 +614,7 @@ fr_sbuff_term_t *fr_sbuff_terminals_amerge(TALLOC_CTX *ctx, fr_sbuff_term_t cons
 
 	j = 0;	/* Tmp index */
 	k = 0;	/* How many non-nulls we've found */
-	while (j < i) {
+	while (k < i) {
 		if (tmp[j] == NULL) {
 			j++;
 			continue;

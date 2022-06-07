@@ -730,6 +730,70 @@ static void test_eof_terminal(void)
 	TEST_CHECK(fr_sbuff_is_terminal(&sbuff, &tt) == false);
 }
 
+static void test_terminal_merge(void)
+{
+	size_t i;
+	fr_sbuff_term_t a = FR_SBUFF_TERMS(
+				L(""),
+				L("\t"),
+				L("\r"),
+				L("\n"),
+				L(" "),
+				L("!"),
+				L("%"),
+				L("&"),
+				L("*"),
+				L("+"),
+				L("-"),
+				L("/"),
+				L("<"),
+				L("="),
+				L(">"),
+				L("^"),
+				L("{"),
+				L("|"),
+				L("~")
+			    );
+	fr_sbuff_term_t b = FR_SBUFF_TERMS(
+				L(")"),
+				L("")
+			    );
+
+	fr_sbuff_term_t expect =
+			    FR_SBUFF_TERMS(
+				L(""),
+				L("\t"),
+				L("\n"),
+				L("\r"),
+				L(" "),
+				L("!"),
+				L("%"),
+				L("&"),
+				L(")"),
+				L("*"),
+				L("+"),
+				L("-"),
+				L("/"),
+				L("<"),
+				L("="),
+				L(">"),
+				L("^"),
+				L("{"),
+				L("|"),
+				L("~")
+			    );
+	fr_sbuff_term_t *result;
+
+	result = fr_sbuff_terminals_amerge(NULL, &a, &b);
+	TEST_CHECK_LEN(result->len, expect.len);
+
+	for (i = 0; i < result->len; i++) {
+		TEST_CHECK_STRCMP(result->elem[i].str, expect.elem[i].str);
+	}
+
+	talloc_free(result);
+}
+
 static void test_no_advance(void)
 {
 	char const	*in = "i am a test string";
@@ -1442,6 +1506,7 @@ TEST_LIST = {
 	{ "multi-char terminals",		test_unescape_multi_char_terminals },
 	{ "fr_sbuff_out_unescape_until",	test_unescape_until },
 	{ "fr_sbuff_terminal_eof",		test_eof_terminal },
+	{ "terminal merge",			test_terminal_merge },
 
 	/*
 	 *	Extending buffer
