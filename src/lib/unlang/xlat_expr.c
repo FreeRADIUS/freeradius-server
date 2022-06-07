@@ -1632,7 +1632,7 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 
 		if (!fr_sbuff_next_if_char(&our_in, ')')) {
 			fr_strerror_printf("Failed to find trailing ')'");
-			FR_SBUFF_ERROR_RETURN_ADJ(&our_in, -slen);
+			FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
 		}
 
 		/*
