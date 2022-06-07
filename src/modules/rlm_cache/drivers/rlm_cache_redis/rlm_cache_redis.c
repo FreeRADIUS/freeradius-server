@@ -17,7 +17,7 @@
 /**
  * $Id$
  * @file rlm_cache_redis.c
- * @brief memcached based cache.
+ * @brief redis based cache.
  *
  * @copyright 2014 The FreeRADIUS server project
  */
@@ -53,7 +53,7 @@ static const CONF_PARSER driver_config[] = {
 
 /** Free a connection handle
  *
- * @param mandle to free.
+ * @param randle to free.
  */
 static int _mod_conn_free(rlm_cache_redis_handle_t *randle)
 {
@@ -65,7 +65,7 @@ static int _mod_conn_free(rlm_cache_redis_handle_t *randle)
 	return 0;
 }
 
-/** Create a new memcached handle
+/** Create a new redis handle
  *
  * @param ctx to allocate handle in.
  * @param instance data.
@@ -102,7 +102,6 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 
 	if (driver->password) {
 		snprintf(buffer, sizeof(buffer), "AUTH %s", driver->password);
-
 		reply = redisCommand(conn, buffer);
 		if (!reply) {
 			ERROR("rlm_redis (%s): Failed to run AUTH", inst->name);
@@ -112,7 +111,6 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 			redisFree(conn);
 			return NULL;
 		}
-
 
 		switch (reply->type) {
 		case REDIS_REPLY_STATUS:
@@ -152,7 +150,7 @@ static int _mod_detach(rlm_cache_redis_t *driver)
 
 /** Create a new rlm_cache_redis instance
  *
- * @param conf memcached specific conf section.
+ * @param conf redis specific conf section.
  * @param inst main rlm_cache instance.
  * @return 0 on success, -1 on failure.
  */
@@ -165,7 +163,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_cache_t *inst)
 	buffer[0] = '\0';
 
 	/*
-	 *	Get version info from the libmemcached API.
+	 *	Get version info from the libredis API.
 	 */
 	if (!version_done) {
 		version_done = true;
@@ -177,9 +175,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_cache_t *inst)
 	if (cf_section_parse(conf, driver, driver_config) < 0) return -1;
 
 	inst->driver = driver;
-
 	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", inst->name);
-
 	driver->pool = fr_connection_pool_module_init(conf, inst, mod_conn_create, NULL, buffer);
 	if (!driver->pool) return -1;
 
@@ -193,12 +189,12 @@ static void cache_entry_free(rlm_cache_entry_t *c)
 	talloc_free(c);
 }
 
-/** Locate a cache entry in memcached
+/** Locate a cache entry in redis
  *
  * @param out Where to write the pointer to the cach entry.
  * @param inst main rlm_cache instance.
  * @param request The current request.
- * @param handle Pointer to memcached handle.
+ * @param handle Pointer to redis handle.
  * @param key to search for.
  * @return CACHE_OK on success CACHE_MISS if no entry found, CACHE_ERROR on error.
  */
@@ -251,7 +247,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out, UNUSED rlm_cache
  *
  * @param inst main rlm_cache instance.
  * @param request The current request.
- * @param handle Pointer to memcached handle.
+ * @param handle Pointer to redis handle.
  * @param c entry to insert.
  * @return CACHE_OK on success else CACHE_ERROR on error.
  */
@@ -303,11 +299,11 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_t *inst, REQUEST *requ
 	return CACHE_OK;
 }
 
-/** Call delete the cache entry from memcached
+/** Call delete the cache entry from redis
  *
  * @param inst main rlm_cache instance.
  * @param request The current request.
- * @param handle Pointer to memcached handle.
+ * @param handle Pointer to redis handle.
  * @param c entry to expire.
  * @return CACHE_OK on success else CACHE_ERROR.
  */
@@ -342,7 +338,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_t *inst, REQUEST *requ
 	return CACHE_OK;
 }
 
-/** Get a memcached handle
+/** Get a redis handle
  *
  * @param out Where to write the handle.
  * @param inst rlm_cache instance.
@@ -351,16 +347,16 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_t *inst, REQUEST *requ
 static int mod_conn_get(rlm_cache_handle_t **out, rlm_cache_t *inst, UNUSED REQUEST *request)
 {
 	rlm_cache_redis_t *driver = inst->driver;
-	rlm_cache_handle_t *mandle;
+	rlm_cache_handle_t *randle;
 
 	*out = NULL;
-	mandle = fr_connection_get(driver->pool);
-	if (!mandle) {
+	randle = fr_connection_get(driver->pool);
+	if (!randle) {
 		*out = NULL;
 		return -1;
 	}
 
-	*out = mandle;
+	*out = randle;
 
 	return 0;
 }
@@ -388,15 +384,15 @@ static void mod_conn_release(rlm_cache_t *inst, UNUSED REQUEST *request, rlm_cac
 static int mod_conn_reconnect(rlm_cache_t *inst, UNUSED REQUEST *request, rlm_cache_handle_t **handle)
 {
 	rlm_cache_redis_t *driver = inst->driver;
-	rlm_cache_handle_t *mandle;
+	rlm_cache_handle_t *randle;
 
-	mandle = fr_connection_reconnect(driver->pool, *handle);
-	if (!mandle) {
+	randle = fr_connection_reconnect(driver->pool, *handle);
+	if (!randle) {
 		*handle = NULL;
 		return -1;
 	}
 
-	*handle = mandle;
+	*handle = randle;
 
 	return 0;
 }
