@@ -1127,7 +1127,7 @@ static xlat_action_t xlat_func_unary_minus(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 static xlat_action_t xlat_func_unary_complement(TALLOC_CTX *ctx, fr_dcursor_t *out,
-						UNUSED xlat_ctx_t const *xctx,
+						xlat_ctx_t const *xctx,
 						request_t *request, fr_value_box_list_t *in)
 {
 	return xlat_func_unary_op(ctx, out, xctx, request, in, T_COMPLEMENT);
