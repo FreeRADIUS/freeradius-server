@@ -65,6 +65,8 @@ RCSID("$Id$")
  *	which is not trivial.  Or, maybe we attach it to the request somehow?
  */
 
+static int reparse_rcode(TALLOC_CTX *ctx, xlat_exp_t **p_arg, bool allow);
+
 static fr_slen_t xlat_expr_print_unary(fr_sbuff_t *out, xlat_exp_t const *node, UNUSED void *inst, fr_sbuff_escape_rules_t const *e_rules)
 {
 	size_t	at_in = fr_sbuff_used_total(out);
@@ -1554,6 +1556,14 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, -slen);
 	}
 
+	/*
+	 *	Convert raw rcodes to xlat's.
+	 */
+	if (reparse_rcode(head, &node, (c == '!')) < 0) {
+		talloc_free(unary);
+		FR_SBUFF_ERROR_RETURN_ADJ(&our_in, -slen);
+	}
+
 	xlat_func_append_arg(unary, node);
 	unary->flags.can_purify = (unary->call.func->flags.pure && unary->call.args->flags.pure) | unary->call.args->flags.can_purify;
 
@@ -1907,7 +1917,7 @@ static bool valid_type(xlat_exp_t *node)
 	return true;
 }
 
-static int reparse_rcode(TALLOC_CTX *ctx, xlat_exp_t **p_arg)
+static int reparse_rcode(TALLOC_CTX *ctx, xlat_exp_t **p_arg, bool allow)
 {
 	rlm_rcode_t rcode;
 	ssize_t slen;
@@ -1939,6 +1949,18 @@ static int reparse_rcode(TALLOC_CTX *ctx, xlat_exp_t **p_arg)
 	 */
 	if (((size_t) slen) != len) {
 		fr_strerror_const("Unexpected text - attribute names must prefixed with '&'");
+		return -1;
+	}
+
+	/*
+	 *	For unary operations.
+	 *
+	 *	-RCODE is not allowed.
+	 *	~RCODE is not allowed.
+	 *	!RCODE is allowed.
+	 */
+	if (!allow) {
+		fr_strerror_const("Invalid operation on module return code");
 		return -1;
 	}
 
@@ -2112,7 +2134,7 @@ redo:
 		/*
 		 *	Reparse module return codes if necessary.
 		 */
-		if (logical_ops[op] && (reparse_rcode(head, &rhs) < 0)) {
+		if (logical_ops[op] && (reparse_rcode(head, &rhs, true) < 0)) {
 			fr_sbuff_set(&our_in, &m_rhs);
 			return -fr_sbuff_used(&our_in);
 		}
@@ -2149,12 +2171,12 @@ redo:
 	 *		%{rcode:handled}
 	 */
 	if (logical_ops[op]) {
-		if (reparse_rcode(head, &lhs) < 0) {
+		if (reparse_rcode(head, &lhs, true) < 0) {
 			fr_sbuff_set(&our_in, &m_lhs);
 			return -fr_sbuff_used(&our_in);
 		}
 
-		if (reparse_rcode(head, &rhs) < 0) {
+		if (reparse_rcode(head, &rhs, true) < 0) {
 			fr_sbuff_set(&our_in, &m_rhs);
 			return -fr_sbuff_used(&our_in);
 		}
@@ -2276,7 +2298,7 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuf
 	/*
 	 *	Convert raw rcodes to xlat's.
 	 */
-	if (reparse_rcode(head, &node) < 0) {
+	if (reparse_rcode(head, &node, true) < 0) {
 		talloc_free(head);
 		return 0;
 	}
@@ -2376,7 +2398,7 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **ou
 	/*
 	 *	Convert raw rcodes to xlat's.
 	 */
-	if (reparse_rcode(head, &node) < 0) {
+	if (reparse_rcode(head, &node, true) < 0) {
 		talloc_free(head);
 		return 0;
 	}
