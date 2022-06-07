@@ -2178,8 +2178,8 @@ redo:
 }
 
 static const fr_sbuff_term_t bracket_terms = FR_SBUFF_TERMS(
-	L(")"),
 	L(""),
+	L(")"),
 );
 
 static const fr_sbuff_term_t operator_terms = FR_SBUFF_TERMS(
