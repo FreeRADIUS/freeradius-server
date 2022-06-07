@@ -229,7 +229,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out, UNUSED rlm_cache
 		freeReplyObject(reply);
 		return CACHE_MISS;
 	case REDIS_REPLY_ERROR:
-		RERROR("Failed retrieving entry for key \"%s\": %s", key, randle->conn->errstr);
+		RERROR("Failed retrieving entry for key \"%s\": %s", key, reply->str);
 		goto error;
 	default:
 		RERROR("Failed retrieving entry for key \"%s\": invalid type", key);
@@ -286,7 +286,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_t *inst, REQUEST *requ
 	case REDIS_REPLY_STATUS:
 		break;
 	case REDIS_REPLY_ERROR:
-		RERROR("Failed insert for key \"%s\": %s", c->key, randle->conn->errstr);
+		RERROR("Failed insert for key \"%s\": %s", c->key, reply->str);
 		goto error;
 	default:
 		RERROR("Failed insert for key \"%s\" %d", c->key, reply->type);
@@ -326,7 +326,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_t *inst, REQUEST *requ
 		RERROR("Failed expire for key \"%s\"", c->key);
 		goto error;
 	case REDIS_REPLY_ERROR:
-		RERROR("Failed expire for key \"%s\": %s", c->key, randle->conn->errstr);
+		RERROR("Failed expire for key \"%s\": %s", c->key, reply->str);
 		goto error;
 	case REDIS_REPLY_INTEGER:
 		if (reply->integer == 0) RWARN("key \"%s\" is already expired", c->key);
