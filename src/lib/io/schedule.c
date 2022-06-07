@@ -766,7 +766,6 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 		} else {
 			DEBUG2("Network %i joined (cleaned up)", sn->id);
 		}
-		talloc_free(sn->ctx);
 	}
 
 	/*
@@ -800,7 +799,6 @@ int fr_schedule_destroy(fr_schedule_t **sc_to_free)
 		} else {
 			DEBUG2("Worker %i joined (cleaned up)", sw->id);
 		}
-		talloc_free(sw->ctx);
 	}
 
 	sem_destroy(&sc->network_sem);
