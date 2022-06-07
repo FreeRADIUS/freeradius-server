@@ -573,6 +573,17 @@ static inline int8_t terminal_cmp(void const *one, void const *two)
 	return 0;
 }
 
+#if 0
+static void fr_sbuff_terminal_debug_tmp(fr_sbuff_term_elem_t const *elem[], size_t len)
+{
+	size_t i;
+
+	FR_FAULT_LOG("Terminal count %zu", len);
+
+	for (i = 0; i < len; i++) FR_FAULT_LOG("\t\"%s\" (%zu)", elem[i] ? elem[i]->str : "NULL", elem[i] ? elem[i]->len : 0);
+}
+#endif
+
 /** Merge two sets of terminal strings
  *
  * @param[in] ctx	to allocate the new terminal array in.
@@ -588,6 +599,28 @@ fr_sbuff_term_t *fr_sbuff_terminals_amerge(TALLOC_CTX *ctx, fr_sbuff_term_t cons
 
 	for (i = 0; i < a->len; i++) tmp[i] = &a->elem[i];
 	for (j = 0; j < b->len; i++, j++) tmp[i] = &b->elem[j];
+
+	/*
+	 *	Check all inputs are pre-sorted.  It doesn't break this
+	 *	function, but it's useful in case the terminal arrays
+	 *	are used elsewhere without merging.
+	 */
+#if !defined(NDEBUG) && defined(SBUFF_CHECK_TERM_ORDER)
+	{
+		size_t l;
+
+		if (a->len) {
+			fr_quick_sort((void const **)tmp, 0, a->len - 1, terminal_cmp);
+			for (l = 0; l < a->len; l++) fr_assert(tmp[l] == &a->elem[l]);
+		}
+
+		if (b->len) {
+			fr_quick_sort((void const **)tmp, a->len, b->len - 1, terminal_cmp);
+			for (l = 0; l < b->len; l++) fr_assert(tmp[l + a->len] == &a->elem[l + a->len]);
+		}
+	}
+#endif
+
 
 	if (likely(i > 1)) {
 		fr_quick_sort((void const **)tmp, 0, i - 1, terminal_cmp);
