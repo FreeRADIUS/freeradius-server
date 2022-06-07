@@ -32,7 +32,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/tmpl_dcursor.h>
 
 #undef XLAT_DEBUG
-#define DEBUG_XLAT
 #ifdef DEBUG_XLAT
 #  define XLAT_DEBUG(_fmt, ...)			DEBUG3("%s[%i] "_fmt, __FILE__, __LINE__, ##__VA_ARGS__)
 #else
