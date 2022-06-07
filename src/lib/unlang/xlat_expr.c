@@ -2239,7 +2239,7 @@ ssize_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuf
 		*terminal_rules = *p_rules;
 
 		if (p_rules->terminals) {
-			MEM(terminal_rules->terminals = fr_sbuff_terminals_amerge(bracket_rules,
+			MEM(terminal_rules->terminals = fr_sbuff_terminals_amerge(terminal_rules,
 										  p_rules->terminals,
 										  &operator_terms));
 		} else {
@@ -2336,7 +2336,7 @@ ssize_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **ou
 		*terminal_rules = *p_rules;
 
 		if (p_rules->terminals) {
-			MEM(terminal_rules->terminals = fr_sbuff_terminals_amerge(bracket_rules,
+			MEM(terminal_rules->terminals = fr_sbuff_terminals_amerge(terminal_rules,
 										  p_rules->terminals,
 										  &operator_terms));
 		} else {
