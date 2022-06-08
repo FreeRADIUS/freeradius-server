@@ -33,10 +33,11 @@ RCSID("$Id$")
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module.h>
-#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/radmin.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/virtual_servers.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/size.h>
 
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/tls/log.h>
@@ -272,7 +273,7 @@ int main(int argc, char *argv[])
 		 */
 		env = getenv("FR_GLOBAL_POOL");
 		if (env) {
-			if (fr_size_from_str(&pool_size, env) < 0) {
+			if (fr_size_from_str(&pool_size, &FR_SBUFF_IN(env, strlen(env))) < 0) {
 				fr_perror("Invalid pool size string \"%s\"", env);
 				EXIT_WITH_FAILURE;
 			}

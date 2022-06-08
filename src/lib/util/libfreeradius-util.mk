@@ -68,6 +68,7 @@ SOURCES		:= \
 		   sbuff.c \
 		   sem.c \
 		   sha1.c \
+		   size.c \
 		   snprintf.c \
 		   socket.c \
 		   strerror.c \

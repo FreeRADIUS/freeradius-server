@@ -52,6 +52,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/dcursor.h>
+#include <freeradius-devel/util/size.h>
 #include <freeradius-devel/util/time.h>
 
 #include <math.h>
@@ -4808,6 +4809,10 @@ parse:
 	case FR_TYPE_FLOAT64:
 		return fr_value_box_from_numeric_substr(dst, dst_type, dst_enumv, in, rules, tainted);
 
+	case FR_TYPE_SIZE:
+		if (fr_size_from_str(&dst->datum.size, &our_in) < 0) return -1;
+		goto finish;
+
 	case FR_TYPE_BOOL:
 		fr_value_box_init(dst, dst_type, dst_enumv, tainted);
 
@@ -4960,10 +4965,6 @@ parse:
 	buffer[fr_sbuff_remaining(in)] = '\0';
 
 	switch (dst_type) {
-	case FR_TYPE_SIZE:
-		if (fr_size_from_str(&dst->datum.size, buffer) < 0) return -1;
-		break;
-
 	case FR_TYPE_DATE:
 	{
 		if (dst_enumv) {

@@ -491,68 +491,6 @@ size_t fr_snprint_uint128(char *out, size_t outlen, uint128_t const num)
 
 	return strlcpy(out, p, outlen);
 }
-int fr_size_from_str(size_t *out, char const *str)
-{
-	char		*q = NULL;
-	uint64_t	size;
-
-	*out = 0;
-
-	size = strtoull(str, &q, 10);
-	switch (tolower(q[0])) {
-	case 'n':		/* nibble */
-		if (size & 0x01) {
-			fr_strerror_const("Sizes specified in nibbles must be an even number");
-			return -1;
-		}
-		size /= 2;
-		break;
-
-	case '\0':
-	case 'b':		/* byte */
-		break;
-
-	case 'k':		/* kilobyte */
-		if (!fr_multiply(&size, size, 1024)) {
-		overflow:
-			fr_strerror_printf("Value must be less than %zu", (size_t)SIZE_MAX);
-			return -1;
-		}
-		break;
-
-	case 'm':		/* megabyte */
-		if (!fr_multiply(&size, size, (1024 * 1024))) goto overflow;
-		break;
-
-	case 'g':		/* gigabyte */
-		if (!fr_multiply(&size, size, (1024 * 1024 * 1024))) goto overflow;
-		break;
-
-	case 't':		/* terabyte */
-		if (!fr_multiply(&size, size, ((uint64_t)1024 * 1024 * 1024 * 1024))) goto overflow;
-		break;
-
-	default:
-		fr_strerror_printf("Unknown unit '%c'", *q);
-		return -1;
-	}
-
-	if ((q[0] != '\0') && (q[1] != '\0')) {
-		fr_strerror_printf("Trailing garbage in size string \"%s\"", str);
-		return -1;
-	}
-
-	if (size > SIZE_MAX) {
-		fr_strerror_printf("Value %" PRIu64 " is greater than the maximum "
-				   "file/memory size of this system (%zu)", size, (size_t)SIZE_MAX);
-
-		goto overflow;
-	}
-
-	*out = (size_t)size;
-
-	return 0;
-}
 
 /** Multiply with modulo wrap
  *

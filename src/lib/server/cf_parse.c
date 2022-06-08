@@ -298,6 +298,7 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		if (cf_pair_to_value_box(ctx, &vb, cf_item_to_pair(ci), rule) < 0) goto error;
 
 		if (fr_value_box_memcpy_out(out, &vb) < 0) {
+			cf_log_perr(cp, "Failed unboxing parsed configuration item value");
 			fr_value_box_clear_value(&vb);
 			goto error;
 		}

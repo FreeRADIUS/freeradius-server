@@ -198,7 +198,7 @@ static inline bool is_zero(char const *value)
 	return true;
 }
 
-/** Find the highest order bit in an unsigned 64 bit integer
+/** Find the highest order high bit in an unsigned 64 bit integer
  *
  * @return 0-64 indicating the position of the highest bit,
  *	with 0 indicating no high bits, 1 indicating the 1st
@@ -213,6 +213,30 @@ static inline uint8_t fr_high_bit_pos(uint64_t num)
 #else
 	uint8_t ret = 1;
 	while (num >>= 1) ret++;
+	return ret;
+#endif
+}
+
+/** Find the lowest order high bit in an unsigned 64 bit integer
+ *
+ * @return 0-64 indicating the position of the lowest bit,
+ *	with 0 indicating no high bits, 1 indicating the 1st
+ *	bit and 64 indicating the last bit.
+ */
+static inline uint8_t fr_low_bit_pos(uint64_t num)
+{
+	if (num == 0) return 0;
+
+#ifdef HAVE_BUILTIN_CLZLL
+	return __builtin_ctzll(num) + 1;
+#else
+	uint8_t ret = 1;
+
+	do {
+		if (num & 0x01) break;
+		ret++;
+	} while (num >>= 1);
+
 	return ret;
 #endif
 }
@@ -235,7 +259,6 @@ size_t		fr_snprint_uint128(char *out, size_t outlen, uint128_t const num);
 
 uint64_t	fr_multiply_mod(uint64_t lhs, uint64_t rhs, uint64_t mod);
 
-int		fr_size_from_str(size_t *out, char const *str);
 int8_t		fr_pointer_cmp(void const *a, void const *b);
 void		fr_quick_sort(void const *to_sort[], int min_idx, int max_idx, fr_cmp_t cmp);
 int		fr_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length) CC_HINT(nonnull);
