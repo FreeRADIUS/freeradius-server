@@ -543,7 +543,7 @@ static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(rhs != NULL);
 
 	slen = regex_compile(rctx, &preg, rhs->vb_strvalue, rhs->vb_length,
-			     NULL, true, true); /* no flags, allow subcaptures, at runtime */
+			     tmpl_regex_flags(inst->xlat->vpt), true, true); /* flags, allow subcaptures, at runtime */
 	if (slen <= 0) return XLAT_ACTION_FAIL;
 
 	return xlat_regex_match(ctx, request, lhs, &preg, out, inst->op);
