@@ -1813,7 +1813,6 @@ int xlat_eval_walk(xlat_exp_head_t *head, xlat_walker_t walker, xlat_type_t type
 			if (!type || (type & XLAT_FUNC)) {
 				ret = walker(node, uctx);
 				if (ret < 0) return ret;
-				if (ret > 0) return 0;
 			}
 			break;
 
@@ -1826,7 +1825,6 @@ int xlat_eval_walk(xlat_exp_head_t *head, xlat_walker_t walker, xlat_type_t type
 			if (!type || (type & XLAT_FUNC_UNRESOLVED)) {
 				ret = walker(node, uctx);
 				if (ret < 0) return ret;
-				if (ret > 0) return 0;
 			}
 			break;
 
@@ -1834,7 +1832,7 @@ int xlat_eval_walk(xlat_exp_head_t *head, xlat_walker_t walker, xlat_type_t type
 			if (!type || (type & XLAT_ALTERNATE)) {
 				ret = walker(node, uctx);
 				if (ret < 0) return ret;
-				if (ret > 0) return 0;
+				if (ret > 0) continue;
 			}
 
 			/*
@@ -1854,7 +1852,7 @@ int xlat_eval_walk(xlat_exp_head_t *head, xlat_walker_t walker, xlat_type_t type
 			if (!type || (type & XLAT_GROUP)) {
 				ret = walker(node, uctx);
 				if (ret < 0) return ret;
-				if (ret > 0) return 0;
+				if (ret > 0) continue;
 			}
 
 			/*
@@ -1868,8 +1866,8 @@ int xlat_eval_walk(xlat_exp_head_t *head, xlat_walker_t walker, xlat_type_t type
 			if (!type || (type & node->type)) {
 				ret = walker(node, uctx);
 				if (ret < 0) return ret;
-				if (ret > 0) return 0;
 			}
+			break;
 		}
 	}
 
