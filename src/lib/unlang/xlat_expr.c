@@ -334,8 +334,9 @@ XLAT_CMP_FUNC(cmp_ge,  T_OP_GE)
 
 typedef struct {
 	fr_token_t	op;
-	xlat_exp_t	*regex;		//!< precompiled regex
+	regex_t		*regex;		//!< precompiled regex
 	xlat_exp_t	*xlat;		//!< to expand
+	fr_regex_flags_t *regex_flags;
 } xlat_regex_inst_t;
 
 typedef struct {
@@ -358,27 +359,19 @@ static fr_slen_t xlat_expr_print_regex(fr_sbuff_t *out, xlat_exp_t const *node, 
 	 *	A space is printed after the first argument only if
 	 *	there's a second one.  So add one if we "ate" the second argument.
 	 */
-	if (inst->regex) FR_SBUFF_IN_CHAR_RETURN(out, ' ');
+	FR_SBUFF_IN_CHAR_RETURN(out, ' ');
 
 	FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
 	FR_SBUFF_IN_CHAR_RETURN(out, ' ');
 
-	if (inst->regex) {
-		fr_assert(tmpl_is_regex(inst->regex->vpt));
+	fr_assert(tmpl_contains_regex(inst->xlat->vpt));
 
-		FR_SBUFF_IN_CHAR_RETURN(out, '/');
-		FR_SBUFF_IN_STRCPY_RETURN(out, inst->regex->vpt->name);
-		FR_SBUFF_IN_CHAR_RETURN(out, '/');
+	FR_SBUFF_IN_CHAR_RETURN(out, '/');
+	FR_SBUFF_IN_STRCPY_RETURN(out, inst->xlat->vpt->name);
+	FR_SBUFF_IN_CHAR_RETURN(out, '/');
 
-		FR_SBUFF_RETURN(regex_flags_print, out, tmpl_regex_flags(inst->regex->vpt));
+	FR_SBUFF_RETURN(regex_flags_print, out, inst->regex_flags);
 
-	} else {
-		fr_assert(inst->xlat->type == XLAT_GROUP);
-
-		FR_SBUFF_IN_CHAR_RETURN(out, '/');
-		xlat_print(out, inst->xlat->group, e_rules);
-		FR_SBUFF_IN_CHAR_RETURN(out, '/');
-	}
 	FR_SBUFF_IN_CHAR_RETURN(out, ')');
 
 	return fr_sbuff_used_total(out) - at_in;
@@ -401,21 +394,20 @@ static int xlat_instantiate_regex(xlat_inst_ctx_t const *xctx)
 
 	fr_assert(rhs->type == XLAT_GROUP);
 	regex = xlat_exp_head(rhs->group);
+	fr_assert(tmpl_contains_regex(regex->vpt));
 
 	inst->op = xctx->ex->call.func->token;
+	inst->regex_flags = tmpl_regex_flags(regex->vpt);
+
+	inst->xlat = talloc_steal(inst, regex);
+	talloc_free(rhs);	/* group wrapper is no longer needed */
 
 	/*
 	 *	The RHS is more then just one regex node, it has to be dynamically expanded.
 	 */
-	if (xlat_exp_next(rhs->group, regex) || !tmpl_contains_regex(regex->vpt)) {
-		inst->xlat = talloc_steal(inst, rhs);
+	if (tmpl_contains_xlat(regex->vpt)) {
 		return 0;
 	}
-
-	fr_assert(tmpl_contains_regex(regex->vpt));
-
-	inst->regex = talloc_steal(inst, regex);
-	talloc_free(rhs);	/* group wrapper is no longer needed */
 
 	if (tmpl_is_unresolved(regex->vpt)) {
 		fr_strerror_const("Regex must be resolved before instantiation");
@@ -423,14 +415,11 @@ static int xlat_instantiate_regex(xlat_inst_ctx_t const *xctx)
 	}
 
 	/*
-	 *	Must be dynamically expanded at run time.
-	 */
-	if (tmpl_is_regex_xlat(regex->vpt)) return 0;
-
-	/*
 	 *	Must have been caught in the parse phase.
 	 */
 	fr_assert(tmpl_is_regex(regex->vpt));
+
+	inst->regex = tmpl_regex(regex->vpt);
 
 	return 0;
 }
@@ -482,7 +471,7 @@ static xlat_action_t xlat_regex_match(TALLOC_CTX *ctx, request_t *request, fr_va
 	ret = regex_exec(*preg, subject->vb_strvalue, subject->vb_length, regmatch);
 	switch (ret) {
 	default:
-		RPEDEBUG("regex failed");
+		RPEDEBUG("REGEX failed");
 		return XLAT_ACTION_FAIL;
 
 	case 0:
@@ -542,6 +531,8 @@ static xlat_action_t xlat_regex_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	fr_assert(rhs != NULL);
 
+	fr_assert(inst->regex == NULL);
+
 	slen = regex_compile(rctx, &preg, rhs->vb_strvalue, rhs->vb_length,
 			     tmpl_regex_flags(inst->xlat->vpt), true, true); /* flags, allow subcaptures, at runtime */
 	if (slen <= 0) return XLAT_ACTION_FAIL;
@@ -565,7 +556,7 @@ static xlat_action_t xlat_regex_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Just run precompiled regexes.
 	 */
 	if (inst->regex) {
-		preg = tmpl_regex(inst->regex->vpt);
+		preg = tmpl_regex(inst->xlat->vpt);
 
 		return xlat_regex_match(ctx, request, lhs, &preg, out, op);
 	}
@@ -580,7 +571,7 @@ static xlat_action_t xlat_regex_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	}
 
 	if (unlang_xlat_push(ctx, &rctx->last_success, &rctx->list,
-			     request, inst->xlat->group, UNLANG_SUB_FRAME) < 0) goto fail;
+			     request, tmpl_xlat(inst->xlat->vpt), UNLANG_SUB_FRAME) < 0) goto fail;
 
 	return XLAT_ACTION_PUSH_UNLANG;
 }
@@ -1799,9 +1790,10 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 
 	/*
 	 *	Don't keep an intermediate tmpl for xlats.  Just hoist
-	 *	the xlat to be a child of this node, unless it's an exec.
+	 *	the xlat to be a child of this node. Exec and regexes
+	 *	are left alone, as they are handled by different code.
 	 */
-	if (tmpl_contains_xlat(node->vpt) && !tmpl_is_exec(node->vpt)) {
+	if (tmpl_is_xlat(node->vpt)) {
 		xlat_exp_head_t *xlat = tmpl_xlat(node->vpt);
 
 		talloc_steal(node, xlat);
