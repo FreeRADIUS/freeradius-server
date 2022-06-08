@@ -2040,6 +2040,81 @@ finish:
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_cast_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_VOID },
+	{ .required = true, .variadic = true, .type = FR_TYPE_VOID },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Cast one or more output value-boxes to the given type
+ *
+ * First argument of is type to cast to.
+ *
+ * Example:
+@verbatim
+%(cast:string %{request[*]}) results in all of the input boxes being cast to string/
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_cast(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+				    UNUSED xlat_ctx_t const *xctx,
+				    request_t *request, fr_value_box_list_t *in)
+{
+	fr_value_box_t	*name = fr_dlist_head(in);
+	fr_value_box_t	*arg;
+	fr_type_t	type;
+
+	/*
+	 *	Get the type, which can be in one of a few formats.
+	 */
+	if (fr_type_is_numeric(name->type)) {
+		if (fr_value_box_cast_in_place(name, name, FR_TYPE_UINT8, NULL) < 0) {
+			RPEDEBUG("Failed parsing '%pV' as a numerical data type", name);
+			return XLAT_ACTION_FAIL;
+		}
+		type = name->vb_uint8;
+
+	} else {
+		if (name->type != FR_TYPE_STRING) {
+			if (fr_value_box_cast_in_place(name, name, FR_TYPE_STRING, NULL) < 0) {
+				RPEDEBUG("Failed parsing '%pV' as a string data type", name);
+				return XLAT_ACTION_FAIL;
+			}
+		}
+
+		type = fr_table_value_by_str(fr_type_table, name->vb_strvalue, FR_TYPE_NULL);
+		if (type == FR_TYPE_NULL) {
+			RDEBUG("Unknown data type '%s'", name->vb_strvalue);
+			return XLAT_ACTION_FAIL;
+		}
+	}
+
+	/*
+	 *	Copy inputs to outputs, casting them along the way.
+	 */
+	arg = name;
+	while ((arg = fr_dlist_next(in, arg)) != NULL) {
+		fr_value_box_t	*vb, *p;
+
+		fr_assert(arg->type == FR_TYPE_GROUP);
+
+		vb = fr_dlist_head(&arg->vb_group);
+		while (vb) {
+			p = fr_dlist_remove(&arg->vb_group, vb);
+
+			if (fr_value_box_cast_in_place(vb, vb, type, NULL) < 0) {
+				RPEDEBUG("Failed casting %pV to data type %s", vb, fr_type_to_str(type));
+				return XLAT_ACTION_FAIL;
+			}
+			fr_dcursor_append(out, vb);
+			vb = fr_dlist_next(&arg->vb_group, p);
+		}
+	}
+
+	return XLAT_ACTION_DONE;
+}
+
 static xlat_arg_parser_t const xlat_func_concat_args[] = {
 	{ .required = true, .type = FR_TYPE_VOID },
 	{ .concat = true, .type = FR_TYPE_STRING },
@@ -3686,6 +3761,7 @@ do { \
 	xlat_internal(xlat); \
 } while (0)
 
+	XLAT_REGISTER_ARGS("cast", xlat_func_cast, xlat_func_cast_args);
 	XLAT_REGISTER_ARGS("concat", xlat_func_concat, xlat_func_concat_args);
 	XLAT_REGISTER_ARGS("explode", xlat_func_explode, xlat_func_explode_args);
 	XLAT_REGISTER_ARGS("hmacmd5", xlat_func_hmac_md5, xlat_hmac_args);
