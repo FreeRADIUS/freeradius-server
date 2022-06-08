@@ -1818,18 +1818,15 @@ int xlat_eval_walk(xlat_exp_head_t *head, xlat_walker_t walker, xlat_type_t type
 			break;
 
 		case XLAT_FUNC_UNRESOLVED:
+			if (xlat_exp_head(node->call.args)) {
+				ret = xlat_eval_walk(node->call.args, walker, type, uctx);
+				if (ret < 0) return ret;
+			}
+
 			if (!type || (type & XLAT_FUNC_UNRESOLVED)) {
 				ret = walker(node, uctx);
 				if (ret < 0) return ret;
 				if (ret > 0) return 0;
-			}
-
-			/*
-			 *	Now evaluate the function's arguments
-			 */
-			if (xlat_exp_head(node->call.args)) {
-				ret = xlat_eval_walk(node->call.args, walker, type, uctx);
-				if (ret < 0) return ret;
 			}
 			break;
 
