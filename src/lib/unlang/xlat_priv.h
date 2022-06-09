@@ -319,6 +319,7 @@ xlat_t	*xlat_func_find(char const *name, ssize_t namelen);
  */
 extern fr_dict_attr_t const *attr_expr_bool_enum;
 extern fr_dict_attr_t const *attr_module_return_code;
+extern fr_dict_attr_t const *attr_cast_base;
 
 void		xlat_signal(xlat_func_signal_t signal, xlat_exp_t const *exp,
 			    request_t *request, void *rctx, fr_state_signal_t action);

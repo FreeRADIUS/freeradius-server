@@ -1076,7 +1076,10 @@ static xlat_action_t xlat_func_unary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	~NULL is an error
 	 *	!NULL is handled by xlat_func_unary_not
 	 */
-	if (!vb) return XLAT_ACTION_FAIL;
+	if (!vb) {
+		fr_strerror_printf("Input is empty");
+		return XLAT_ACTION_FAIL;
+	}
 
 	if (!fr_type_is_leaf(vb->type) || fr_type_is_variable_size(vb->type)) {
 		REDEBUG("Cannot perform operation on data type %s", fr_type_to_str(vb->type));
@@ -1569,6 +1572,47 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	return fr_sbuff_set(in, &our_in);
 }
 
+/** Allocate a specific cast node.
+ *
+ *  With the first argument being a UINT8 of the data type.
+ *  See xlat_func_cast() for the implementation.
+ *
+ */
+static xlat_exp_t *expr_cast_alloc(TALLOC_CTX *ctx, fr_type_t type)
+{
+	xlat_exp_t *cast, *node;
+
+	/*
+	 *	Create a "cast" node.  The first argument is a UINT8 value-box of the cast type.  The RHS is
+	 *	whatever "node" comes next.
+	 */
+	MEM(cast = xlat_exp_alloc(ctx, XLAT_FUNC, "cast", 4));
+	MEM(cast->call.args = xlat_exp_head_alloc(cast));
+	MEM(cast->call.func = xlat_func_find("cast", 4));
+	fr_assert(cast->call.func != NULL);
+	cast->flags = cast->call.func->flags;
+
+	/*
+	 *	Create argv[0] UINT8, with "Cast-Base" as
+	 *	the "da".  This allows the printing routines
+	 *	to print the name of the type, and not the
+	 *	number.
+	 */
+	MEM(node = xlat_exp_alloc_null(cast));
+	xlat_exp_set_type(node, XLAT_BOX);
+	xlat_exp_set_name_buffer_shallow(node,
+					 talloc_strdup(node,
+						       fr_table_str_by_value(fr_type_table,
+									     type, "<INVALID>")));
+
+	fr_value_box_init(&node->data, FR_TYPE_UINT8, attr_cast_base, false);
+	node->data.vb_uint8 = type;
+
+	xlat_func_append_arg(cast, node);
+
+	return cast;
+}
+
 static ssize_t expr_cast_from_substr(fr_type_t *cast, fr_sbuff_t *in)
 {
 	char			close = '\0';
@@ -1645,14 +1689,32 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 *	value when we get the output of the expression.
 	 */
 	if (fr_sbuff_next_if_char(&our_in, '(')) {
-		slen = tokenize_expression(head, &node, &our_in, bracket_rules, t_rules, T_INVALID, bracket_rules, input_rules, false, depth + 1);
+		xlat_exp_t *cast = NULL;
+		xlat_exp_head_t *my_head = head;
+
+		if (!fr_type_is_null(our_t_rules.cast)) {
+			MEM(cast = expr_cast_alloc(head, our_t_rules.cast));
+			my_head = cast->call.args;
+		}
+
+		slen = tokenize_expression(my_head, &node, &our_in, bracket_rules, t_rules, T_INVALID, bracket_rules, input_rules, false, depth + 1);
 		if (slen <= 0) {
+			talloc_free(cast);
 			FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
 		}
 
 		if (!fr_sbuff_next_if_char(&our_in, ')')) {
+			talloc_free(cast);
 			fr_strerror_printf("Failed to find trailing ')'");
-			FR_SBUFF_ERROR_RETURN_ADJ(&our_in, slen);
+			FR_SBUFF_ERROR_RETURN_ADJ(&our_in, -slen);
+		}
+
+		/*
+		 *	Wrap the entire sub-expression in a "cast", and then return the cast as the parsed node.
+		 */
+		if (cast) {
+			xlat_func_append_arg(cast, node);
+			node = cast;
 		}
 
 		/*

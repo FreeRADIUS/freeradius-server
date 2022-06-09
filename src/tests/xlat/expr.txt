@@ -76,3 +76,12 @@ match foo 0
 #
 xlat_expr `/bin/rm this_file_should_not_exist_if_it_does_too_bad_for_you`
 match ERROR expanding xlat: Program failed with status 1
+
+#
+#  NAS-IP-Address doesn't exist.
+#
+xlat_expr -&NAS-IP-Address
+match ERROR expanding xlat: Input is empty
+
+xlat_expr (uint16) ((uint32) 1 + (uint8) 2)
+match 3

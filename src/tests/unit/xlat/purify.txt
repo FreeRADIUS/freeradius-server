@@ -180,5 +180,14 @@ match false
 xlat_purify !true
 match false
 
+xlat_purify -fail
+match ERROR offset 9: Invalid operation on module return code
+
+xlat_purify ~fail
+match ERROR offset 9: Invalid operation on module return code
+
+xlat_purify !fail
+match !%{rcode:'fail'}
+
 count
-match 79
+match 85
