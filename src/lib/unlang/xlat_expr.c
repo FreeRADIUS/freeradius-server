@@ -1793,7 +1793,7 @@ static ssize_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	 *	the xlat to be a child of this node. Exec and regexes
 	 *	are left alone, as they are handled by different code.
 	 */
-	if (tmpl_is_xlat(node->vpt)) {
+	if (tmpl_contains_xlat(node->vpt) && !tmpl_is_exec(node->vpt) && !tmpl_contains_regex(node->vpt)) {
 		xlat_exp_head_t *xlat = tmpl_xlat(node->vpt);
 
 		talloc_steal(node, xlat);
