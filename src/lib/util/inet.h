@@ -63,7 +63,10 @@ typedef struct {
 typedef struct {
 	int		af;			//!< Address family.
 	union {
-		struct in_addr	v4;		//!< IPv4 address.
+		struct {
+			struct in_addr	v4;		//!< IPv4 address.
+			uint8_t v4_padding[sizeof(struct in6_addr) - sizeof(struct in_addr)];
+		};
 		struct in6_addr v6;		//!< IPv6 address.
 	} addr;
 	uint8_t		prefix;	        	//!< Prefix length - Between 0-32 for IPv4 and 0-128 for IPv6.
