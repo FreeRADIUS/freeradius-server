@@ -593,12 +593,13 @@ static void fr_sbuff_terminal_debug_tmp(fr_sbuff_term_elem_t const *elem[], size
  */
 fr_sbuff_term_t *fr_sbuff_terminals_amerge(TALLOC_CTX *ctx, fr_sbuff_term_t const *a, fr_sbuff_term_t const *b)
 {
-	size_t				i, j, k;
-	fr_sbuff_term_t			*new;
+	size_t				i, num, used, check;
+	fr_sbuff_term_t			*out;
 	fr_sbuff_term_elem_t const	*tmp[UINT8_MAX + 1];
 
-	for (i = 0; i < a->len; i++) tmp[i] = &a->elem[i];
-	for (j = 0; j < b->len; i++, j++) tmp[i] = &b->elem[j];
+	num = 0;
+	for (i = 0; i < a->len; i++) tmp[num++] = &a->elem[i];
+	for (i = 0; i < b->len; i++) tmp[num++] = &b->elem[i];
 
 	/*
 	 *	Check all inputs are pre-sorted.  It doesn't break this
@@ -606,60 +607,55 @@ fr_sbuff_term_t *fr_sbuff_terminals_amerge(TALLOC_CTX *ctx, fr_sbuff_term_t cons
 	 *	are used elsewhere without merging.
 	 */
 #if !defined(NDEBUG) && defined(SBUFF_CHECK_TERM_ORDER)
-	{
-		size_t l;
-
-		if (a->len) {
-			fr_quick_sort((void const **)tmp, 0, a->len - 1, terminal_cmp);
-			for (l = 0; l < a->len; l++) fr_assert(tmp[l] == &a->elem[l]);
+	if (a->len > 1) {
+		for (i = 0; i < a->len - 1; i++) {
+			fr_assert(terminal_cmp(&a->elem[i], &a->elem[i + 1]) < 0);
 		}
+	}
 
-		if (b->len) {
-			fr_quick_sort((void const **)tmp, a->len, b->len - 1, terminal_cmp);
-			for (l = 0; l < b->len; l++) fr_assert(tmp[l + a->len] == &a->elem[l + a->len]);
+	if (b->len > 1) {
+		for (i = 0; i < b->len - 1; i++) {
+			fr_assert(terminal_cmp(&b->elem[i], &b->elem[i + 1]) < 0);
 		}
 	}
 #endif
 
+	used = num;
+	if (likely(num > 1)) {
+		fr_quick_sort((void const **)tmp, 0, num - 1, terminal_cmp);
 
-	if (likely(i > 1)) {
-		fr_quick_sort((void const **)tmp, 0, i - 1, terminal_cmp);
+		for (i = 0; i < (num - 1); i++) {
+			fr_assert(tmp[i] != NULL);
 
-		for (j = 0; j < (i - 1); j++) {
 			/*
-			 *	Duplicate
+			 *	Duplicates are adjacent, and can be omitted.
 			 */
-			if (terminal_cmp(tmp[j], tmp[j + 1]) == 0) {
-				i--;
-				tmp[j] = NULL;
+			if (terminal_cmp(tmp[i], tmp[i + 1]) == 0) {
+				used--;
+				tmp[i] = NULL;
 			}
 		}
 	}
 
-	new = talloc_pooled_object(ctx, fr_sbuff_term_t, i, i * sizeof(fr_sbuff_term_elem_t));
-	if (unlikely(!new)) return NULL;
+	out = talloc_pooled_object(ctx, fr_sbuff_term_t, used, used * sizeof(fr_sbuff_term_elem_t));
+	if (unlikely(!out)) return NULL;
 
-	new->elem = talloc_array(new, fr_sbuff_term_elem_t, i);
-	if (unlikely(!new->elem)) {
-		talloc_free(new);
+	out->elem = talloc_array(out, fr_sbuff_term_elem_t, num);
+	if (unlikely(!out->elem)) {
+		talloc_free(out);
 		return NULL;
 	}
+	out->len = used;
 
-	j = 0;	/* Tmp index */
-	k = 0;	/* How many non-nulls we've found */
-	while (k < i) {
-		if (tmp[j] == NULL) {
-			j++;
-			continue;
-		}
+	check = 0;	/* How many non-nulls we've found */
+	for (i = 0; i < num; i++) {
+		if (!tmp[i]) continue;
 
-		new->elem[k] = *tmp[j];
-		j++;
-		k++;
+		out->elem[check++] = *tmp[i];
 	}
-	new->len = i;
+	fr_assert(check == used);
 
-	return new;
+	return out;
 }
 
 /** Copy as many bytes as possible from a sbuff to a sbuff
