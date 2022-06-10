@@ -491,7 +491,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	} else if (strncasecmp(arg->vb_strvalue, "Domain-Name", 11) == 0) {
 		char *p;
 
-		vb = fr_value_box_alloc_null(ctx);
+		MEM(vb = fr_value_box_alloc_null(ctx));
 
 		user_name = mschap_identity_find(request);
 		if (!user_name) return XLAT_ACTION_FAIL;
@@ -541,7 +541,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	} else if (strncasecmp(arg->vb_strvalue, "NT-Domain", 9) == 0) {
 		char *p, *q;
 
-		vb = fr_value_box_alloc_null(ctx);
+		MEM(vb = fr_value_box_alloc_null(ctx));
 
 		user_name = mschap_identity_find(request);
 		if (!user_name) return XLAT_ACTION_FAIL;
@@ -600,7 +600,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		user_name = mschap_identity_find(request);
 		if (!user_name) return XLAT_ACTION_FAIL;
 
-		vb = fr_value_box_alloc_null(ctx);
+		MEM(vb = fr_value_box_alloc_null(ctx));
 
 		/*
 		 *	First check to see if this is a host/ style User-Name
@@ -656,7 +656,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			return XLAT_ACTION_FAIL;
 		}
 
-		vb = fr_value_box_alloc_null(ctx);
+		MEM(vb = fr_value_box_alloc_null(ctx));
 		fr_value_box_memdup(ctx, vb, NULL, buffer, NT_DIGEST_LENGTH, false);
 		RDEBUG2("NT-Hash of \"known-good\" password: %pV", vb);
 		fr_dcursor_append(out, vb);
@@ -672,7 +672,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		smbdes_lmpwdhash(arg->vb_strvalue, buffer);
 
-		vb = fr_value_box_alloc_null(ctx);
+		MEM(vb = fr_value_box_alloc_null(ctx));
 		fr_value_box_memdup(ctx, vb, NULL, buffer, LM_DIGEST_LENGTH, false);
 		RDEBUG2("LM-Hash of %s = %pV", arg->vb_strvalue, vb);
 		fr_dcursor_append(out, vb);
@@ -690,7 +690,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	vb = fr_value_box_alloc_null(ctx);
+	MEM(vb = fr_value_box_alloc_null(ctx));
 	fr_value_box_memdup(ctx, vb, NULL, data, data_len, tainted);
 
 	fr_dcursor_append(out, vb);
