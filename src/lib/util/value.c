@@ -660,13 +660,14 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		/*
 		 *	Short-hand for simplicity.
 		 */
-#define CHECK(_type) do { \
-			if (a->datum._type < b->datum._type)   { compare = -1; \
-			} else if (a->datum._type > b->datum._type) { compare = +1; } \
-		     } while (0)
+#undef RETURN
+#define RETURN(_type) return CMP(a->datum._type, b->datum._type)
+
+#undef COMPARE
+#define COMPARE(_type) compare = memcmp(&a->_type, &b->_type, sizeof(a->_type))
 
 	case FR_TYPE_BOOL:
-		CHECK(boolean);
+		RETURN(boolean);
 		break;
 
 	case FR_TYPE_DATE:
@@ -674,39 +675,39 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		break;
 
 	case FR_TYPE_UINT8:
-		CHECK(uint8);
+		RETURN(uint8);
 		break;
 
 	case FR_TYPE_UINT16:
-		CHECK(uint16);
+		RETURN(uint16);
 		break;
 
 	case FR_TYPE_UINT32:
-		CHECK(uint32);
+		RETURN(uint32);
 		break;
 
 	case FR_TYPE_UINT64:
-		CHECK(uint64);
+		RETURN(uint64);
 		break;
 
 	case FR_TYPE_INT8:
-		CHECK(int8);
+		RETURN(int8);
 		break;
 
 	case FR_TYPE_INT16:
-		CHECK(int16);
+		RETURN(int16);
 		break;
 
 	case FR_TYPE_INT32:
-		CHECK(int32);
+		RETURN(int32);
 		break;
 
 	case FR_TYPE_INT64:
-		CHECK(int64);
+		RETURN(int64);
 		break;
 
 	case FR_TYPE_SIZE:
-		CHECK(size);
+		RETURN(size);
 		break;
 
 	case FR_TYPE_TIME_DELTA:
@@ -714,28 +715,53 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		break;
 
 	case FR_TYPE_FLOAT32:
-		CHECK(float32);
+		RETURN(float32);
 		break;
 
 	case FR_TYPE_FLOAT64:
-		CHECK(float64);
+		RETURN(float64);
 		break;
 
 	case FR_TYPE_ETHERNET:
-		compare = memcmp(a->vb_ether, b->vb_ether, sizeof(a->vb_ether));
+		COMPARE(vb_ether);
 		break;
 
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_IPV6_ADDR:
-	case FR_TYPE_IPV6_PREFIX:
 	case FR_TYPE_COMBO_IP_ADDR:
+		if (a->vb_ip.af == AF_INET) goto ipv4addr;
+		if (a->vb_ip.af == AF_INET6) goto ipv6addr;
+		return -2;
+
 	case FR_TYPE_COMBO_IP_PREFIX:
-		compare = memcmp(&a->vb_ip, &b->vb_ip, sizeof(a->vb_ip));
+		if (a->vb_ip.af == AF_INET) goto ipv4prefix;
+		if (a->vb_ip.af == AF_INET6) goto ipv6prefix;
+		return -2;
+
+	case FR_TYPE_IPV4_ADDR:
+	ipv4addr:
+		COMPARE(vb_ip.addr.v4.s_addr);
+		break;
+
+	case FR_TYPE_IPV4_PREFIX:
+	ipv4prefix:
+		CMP_RETURN(a, b, vb_ip.prefix);
+		COMPARE(vb_ip.addr.v4.s_addr);
+		break;
+
+	case FR_TYPE_IPV6_ADDR:
+	ipv6addr:
+		CMP_RETURN(a, b, vb_ip.scope_id);
+		COMPARE(vb_ip.addr.v6.s6_addr);
+		break;
+
+	case FR_TYPE_IPV6_PREFIX:
+	ipv6prefix:
+		CMP_RETURN(a, b, vb_ip.prefix);
+		CMP_RETURN(a, b, vb_ip.scope_id);
+		COMPARE(vb_ip.addr.v6.s6_addr);
 		break;
 
 	case FR_TYPE_IFID:
-		compare = memcmp(a->vb_ifid, b->vb_ifid, sizeof(a->vb_ifid));
+		COMPARE(vb_ifid);
 		break;
 
 	/*
