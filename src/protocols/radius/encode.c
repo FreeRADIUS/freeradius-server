@@ -1245,6 +1245,9 @@ static ssize_t encode_nas_filter_rule(fr_dbuff_t *dbuff,
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
+	fr_assert(vp);
+	fr_assert(vp->da);
+
 	fr_dbuff_marker(&hdr, &work_dbuff);
 	fr_dbuff_marker(&frag_hdr, &work_dbuff);
 	fr_dbuff_advance(&hdr, 1);
@@ -1252,7 +1255,7 @@ static ssize_t encode_nas_filter_rule(fr_dbuff_t *dbuff,
 
 	fr_assert(vp->da == attr_nas_filter_rule);
 
-	while (vp) {
+	while (true) {
 		size_t data_len = vp->vp_length;
 		size_t frag_len;
 		char const *p = vp->vp_strvalue;
