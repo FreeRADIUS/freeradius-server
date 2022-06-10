@@ -120,12 +120,10 @@ typedef struct {
 	CONF_SECTION	*release;
 	CONF_SECTION	*inform;
 	CONF_SECTION	*force_renew;
-#if 0
 	CONF_SECTION	*lease_query;
 	CONF_SECTION	*lease_unassigned;
 	CONF_SECTION	*lease_unknown;
 	CONF_SECTION	*lease_active;
-#endif
 	CONF_SECTION	*do_not_respond;
 } process_dhcpv4_sections_t;
 
@@ -284,6 +282,82 @@ static fr_process_state_t const process_state[] = {
 		.section_offset = PROCESS_CONF_OFFSET(request),
 	},
 
+	[FR_DHCP_LEASE_QUERY] = {
+		.packet_type = {
+			[RLM_MODULE_OK] =	FR_DHCP_LEASE_ACTIVE,
+			[RLM_MODULE_NOOP] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_UPDATED] =	FR_DHCP_LEASE_ACTIVE,
+
+			[RLM_MODULE_REJECT] =	FR_DHCP_LEASE_UNKNOWN,
+			[RLM_MODULE_FAIL] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND] =	FR_DHCP_LEASE_UNASSIGNED,
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.default_reply = FR_DHCP_DO_NOT_RESPOND,
+		.recv = recv_generic,
+		.resume = resume_recv_generic,
+		.section_offset = PROCESS_CONF_OFFSET(lease_query),
+	},
+
+	[FR_DHCP_LEASE_UNASSIGNED] = {
+		.packet_type = {
+			[RLM_MODULE_OK] =	FR_DHCP_LEASE_UNASSIGNED,
+			[RLM_MODULE_NOOP] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_UPDATED] =	FR_DHCP_LEASE_UNASSIGNED,
+
+			[RLM_MODULE_REJECT] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_FAIL] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.default_reply = FR_DHCP_DO_NOT_RESPOND,
+		.send = send_generic,
+		.resume = resume_send_generic,
+		.section_offset = PROCESS_CONF_OFFSET(lease_unassigned),
+	},
+
+	[FR_DHCP_LEASE_UNKNOWN] = {
+		.packet_type = {
+			[RLM_MODULE_OK] =	FR_DHCP_LEASE_UNKNOWN,
+			[RLM_MODULE_NOOP] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_UPDATED] =	FR_DHCP_LEASE_UNKNOWN,
+
+			[RLM_MODULE_REJECT] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_FAIL] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.default_reply = FR_DHCP_DO_NOT_RESPOND,
+		.send = send_generic,
+		.resume = resume_send_generic,
+		.section_offset = PROCESS_CONF_OFFSET(lease_unknown),
+	},
+
+	[FR_DHCP_LEASE_ACTIVE] = {
+		.packet_type = {
+			[RLM_MODULE_OK] =	FR_DHCP_LEASE_ACTIVE,
+			[RLM_MODULE_NOOP] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_UPDATED] =	FR_DHCP_LEASE_ACTIVE,
+
+			[RLM_MODULE_REJECT] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_FAIL] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW] =	FR_DHCP_DO_NOT_RESPOND,
+			[RLM_MODULE_NOTFOUND] =	FR_DHCP_DO_NOT_RESPOND,
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.default_reply = FR_DHCP_DO_NOT_RESPOND,
+		.send = send_generic,
+		.resume = resume_send_generic,
+		.section_offset = PROCESS_CONF_OFFSET(lease_active),
+	},
+
 	[FR_DHCP_DO_NOT_RESPOND] = {
 		.packet_type = {
 			[RLM_MODULE_OK] =	FR_DHCP_DO_NOT_RESPOND,
@@ -408,10 +482,6 @@ static const virtual_server_compile_t compile_list[] = {
 		.offset = PROCESS_CONF_OFFSET(inform),
 	},
 
-#if 0
-	/*
-	 *	These are for TCP transport.
-	 */
 	{
 		.name = "recv",
 		.name2 = "Lease-Query",
@@ -436,7 +506,6 @@ static const virtual_server_compile_t compile_list[] = {
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(lease_active),
 	},
-#endif
 
 	{
 		.name = "send",
