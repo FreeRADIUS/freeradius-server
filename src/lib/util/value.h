@@ -448,7 +448,39 @@ void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const 
 		.tainted = tainted
 	}, sizeof(*vb));
 	fr_dlist_entry_init(&vb->entry);
-	if (type == FR_TYPE_GROUP) fr_value_box_list_init(&vb->vb_group);
+
+	/*
+	 *	The majority of types are fine to initialise to
+	 *	all zeros, the following are the exceptions.
+	 */
+	switch (type) {
+	case FR_TYPE_GROUP:
+		fr_value_box_list_init(&vb->vb_group);
+		break;
+
+	case FR_TYPE_IPV4_ADDR:
+	case FR_TYPE_COMBO_IP_ADDR:	/* Default to the smaller type */
+		vb->vb_ip.af = AF_INET;
+		vb->vb_ip.prefix = 32;
+		break;
+
+	case FR_TYPE_IPV4_PREFIX:
+	case FR_TYPE_COMBO_IP_PREFIX:	/* Default to the samaller type */
+		vb->vb_ip.af = AF_INET;
+		break;
+
+	case FR_TYPE_IPV6_ADDR:
+		vb->vb_ip.af = AF_INET6;
+		vb->vb_ip.prefix = 128;
+		break;
+
+	case FR_TYPE_IPV6_PREFIX:
+		vb->vb_ip.af = AF_INET6;
+		break;
+
+	default:
+		break;
+	}
 }
 
 /** Initialise an empty/null box that will be filled later
@@ -721,7 +753,7 @@ _Generic((_var), \
 /*
  *	Comparison
  */
-int		fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
+int8_t		fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		CC_HINT(nonnull);
 
 int		fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t const *b)
