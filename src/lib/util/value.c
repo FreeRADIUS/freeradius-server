@@ -615,10 +615,8 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
  *	- 1 if a is more than b.
  *	- < -1 on failure.
  */
-int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
+int8_t fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 {
-	int compare = 0;
-
 	if (!fr_cond_assert(a->type != FR_TYPE_NULL)) return -1;
 	if (!fr_cond_assert(b->type != FR_TYPE_NULL)) return -1;
 
@@ -643,8 +641,8 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		}
 
 		if (length) {
-			compare = memcmp(a->vb_octets, b->vb_octets, length);
-			if (compare != 0) break;
+			int cmp = memcmp(a->datum.ptr, b->datum.ptr, length);
+			if (cmp != 0) return CMP(cmp, 0);
 		}
 
 		/*
@@ -653,116 +651,70 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 		 *
 		 *	i.e. "0x00" is smaller than "0x0000"
 		 */
-		compare = a->vb_length - b->vb_length;
+		return CMP(a->vb_length, b->vb_length);
 	}
-		break;
 
-		/*
-		 *	Short-hand for simplicity.
-		 */
-#undef RETURN
+	/*
+	 *	Short-hand for simplicity.
+	 */
 #define RETURN(_type) return CMP(a->datum._type, b->datum._type)
-
-#undef COMPARE
-#define COMPARE(_type) compare = memcmp(&a->_type, &b->_type, sizeof(a->_type))
+#define COMPARE(_type) return CMP(memcmp(&a->datum._type, &b->datum._type, sizeof(a->datum._type)), 0);
 
 	case FR_TYPE_BOOL:
 		RETURN(boolean);
-		break;
 
 	case FR_TYPE_DATE:
-		compare = fr_unix_time_cmp(a->datum.date, b->datum.date);
-		break;
+		return fr_unix_time_cmp(a->datum.date, b->datum.date);
 
 	case FR_TYPE_UINT8:
 		RETURN(uint8);
-		break;
 
 	case FR_TYPE_UINT16:
 		RETURN(uint16);
-		break;
 
 	case FR_TYPE_UINT32:
 		RETURN(uint32);
-		break;
 
 	case FR_TYPE_UINT64:
 		RETURN(uint64);
-		break;
 
 	case FR_TYPE_INT8:
 		RETURN(int8);
-		break;
 
 	case FR_TYPE_INT16:
 		RETURN(int16);
-		break;
 
 	case FR_TYPE_INT32:
 		RETURN(int32);
-		break;
 
 	case FR_TYPE_INT64:
 		RETURN(int64);
-		break;
 
 	case FR_TYPE_SIZE:
 		RETURN(size);
-		break;
 
 	case FR_TYPE_TIME_DELTA:
-		compare = fr_time_delta_cmp(a->datum.time_delta, b->datum.time_delta);
-		break;
+		return fr_time_delta_cmp(a->datum.time_delta, b->datum.time_delta);
 
 	case FR_TYPE_FLOAT32:
 		RETURN(float32);
-		break;
 
 	case FR_TYPE_FLOAT64:
 		RETURN(float64);
-		break;
 
 	case FR_TYPE_ETHERNET:
-		COMPARE(vb_ether);
-		break;
+		COMPARE(ether);
 
 	case FR_TYPE_COMBO_IP_ADDR:
-		if (a->vb_ip.af == AF_INET) goto ipv4addr;
-		if (a->vb_ip.af == AF_INET6) goto ipv6addr;
-		return -2;
-
 	case FR_TYPE_COMBO_IP_PREFIX:
-		if (a->vb_ip.af == AF_INET) goto ipv4prefix;
-		if (a->vb_ip.af == AF_INET6) goto ipv6prefix;
-		return -2;
-
 	case FR_TYPE_IPV4_ADDR:
-	ipv4addr:
-		COMPARE(vb_ip.addr.v4.s_addr);
-		break;
-
 	case FR_TYPE_IPV4_PREFIX:
-	ipv4prefix:
-		CMP_RETURN(a, b, vb_ip.prefix);
-		COMPARE(vb_ip.addr.v4.s_addr);
-		break;
-
 	case FR_TYPE_IPV6_ADDR:
-	ipv6addr:
-		CMP_RETURN(a, b, vb_ip.scope_id);
-		COMPARE(vb_ip.addr.v6.s6_addr);
-		break;
-
 	case FR_TYPE_IPV6_PREFIX:
-	ipv6prefix:
-		CMP_RETURN(a, b, vb_ip.prefix);
-		CMP_RETURN(a, b, vb_ip.scope_id);
-		COMPARE(vb_ip.addr.v6.s6_addr);
-		break;
+		return fr_ipaddr_cmp(&a->vb_ip, &b->vb_ip);
 
 	case FR_TYPE_IFID:
-		COMPARE(vb_ifid);
-		break;
+		COMPARE(ifid);
 
 	/*
 	 *	These should be handled at some point
@@ -776,9 +728,6 @@ int fr_value_box_cmp(fr_value_box_t const *a, fr_value_box_t const *b)
 	 *	static analysis will warn us they're not handled
 	 */
 	}
-
-	if (compare > 0) return 1;
-	if (compare < 0) return -1;
 	return 0;
 }
 
