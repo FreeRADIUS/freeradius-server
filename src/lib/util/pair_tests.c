@@ -605,7 +605,7 @@ static void test_fr_pair_value_strdup(void)
 
 static void test_fr_pair_value_strdup_shallow(void)
 {
-	fr_pair_t *vp;
+	fr_pair_t *vp, *nvp;
 	char      *copy_test_string;
 
 	TEST_CASE("Find 'Test-String'");
@@ -614,19 +614,21 @@ static void test_fr_pair_value_strdup_shallow(void)
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
 
- 	copy_test_string = talloc_strdup(vp, test_string);
+	MEM(nvp = fr_pair_copy(NULL, vp));
+
+ 	copy_test_string = talloc_strdup(nvp, test_string);
 	talloc_set_type(copy_test_string, char);
 
 	TEST_CASE("Copy content of 'test_string' to attribute value using fr_pair_value_strdup_shallow()");
-	TEST_CHECK(fr_pair_value_strdup_shallow(vp, copy_test_string, true) == 0);
+	TEST_CHECK(fr_pair_value_strdup_shallow(nvp, copy_test_string, true) == 0);
 
 	TEST_CASE("Validating PAIR_VERIFY()");
-	PAIR_VERIFY(vp);
+	PAIR_VERIFY(nvp);
 
 	TEST_CASE("Check (vp->vp_string == copy_test_string)");
-	TEST_CHECK(vp && strncmp(vp->vp_strvalue, test_string, strlen(copy_test_string)) == 0);
+	TEST_CHECK(nvp && strncmp(nvp->vp_strvalue, test_string, strlen(copy_test_string)) == 0);
 
-	talloc_free(copy_test_string);
+	talloc_free(nvp);
 }
 
 static void test_fr_pair_value_strtrim(void)

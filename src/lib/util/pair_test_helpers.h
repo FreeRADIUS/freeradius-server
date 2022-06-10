@@ -53,6 +53,8 @@ static inline int fr_pair_test_list_alloc(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	     p->attr != -1;
 	     p++) if (fr_pair_prepend_by_da(ctx, NULL, out, *p->da) < 0) return -1;
 
+	PAIR_LIST_VERIFY(out);
+
 	return 0;
 }
 
