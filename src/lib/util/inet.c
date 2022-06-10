@@ -1321,33 +1321,45 @@ int fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int ifindex)
 
 /** Compare two ip addresses
  *
+ * @param[in] a		First ip to compare.
+ * @param[in] b		Second ip to compare.
+ * @return
+ *	- 1 if a > b
+ *	- 0 if a == b
+ *	- -1 if a < b
+ *	- -2 on error.
  */
 int8_t fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 {
 	int ret;
+	size_t len;
 
 	CMP_RETURN(a, b, af);
 	CMP_RETURN(a, b, prefix);
 
+	/*
+	 *	We only care about prefix bytes.
+	 *
+	 *	Host bytes should be masked on ingestion
+	 *	for prefix types.
+	 */
+	len = ((a->prefix + 7) & -8) >> 3;
 	switch (a->af) {
 	case AF_INET:
-		ret = memcmp(&a->addr.v4,
-			     &b->addr.v4,
-			     sizeof(a->addr.v4));
+		ret = memcmp(&a->addr.v4, &b->addr.v4, len);
 		return CMP(ret, 0);
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	case AF_INET6:
 		CMP_RETURN(a, b, scope_id);
-		ret = memcmp(&a->addr.v6, &b->addr.v6, sizeof(a->addr.v6));
+		ret = memcmp(&a->addr.v6, &b->addr.v6, len);
 		return CMP(ret, 0);
 #endif
 
 	default:
-		break;
+		fr_strerror_printf("Invalid address family %u", a->af);
+		return -2;
 	}
-
-	return -1;
 }
 
 /** Convert our internal ip address representation to a sockaddr
