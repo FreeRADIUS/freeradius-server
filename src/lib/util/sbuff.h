@@ -138,6 +138,8 @@ typedef struct {
 
 /** Set of terminal elements
  *
+ *  The elements MUST be listed in sorted order.  If the inputs are
+ *  not sorted, then all kinds of things will break.
  */
 typedef struct {
 	size_t			len;			//!< Length of the list.

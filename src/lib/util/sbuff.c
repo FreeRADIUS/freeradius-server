@@ -560,15 +560,12 @@ static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
 
 /** Compare two terminal elements for ordering purposes
  *
- * @param[in] one      	first terminal to compare.
- * @param[in] two	second terminal to compare.
- * @return CMP(one, two)
+ * @param[in] a      	first terminal to compare.
+ * @param[in] b		second terminal to compare.
+ * @return CMP(a,b)
  */
-static inline int8_t terminal_cmp(void const *one, void const *two)
+static inline int8_t terminal_cmp(fr_sbuff_term_elem_t const *a, fr_sbuff_term_elem_t const *b)
 {
-	fr_sbuff_term_elem_t const	*a = one;
-	fr_sbuff_term_elem_t const	*b = two;
-
 	MEMCMP_RETURN(a, b, str, len);
 	return 0;
 }
@@ -593,51 +590,48 @@ static void fr_sbuff_terminal_debug_tmp(fr_sbuff_term_elem_t const *elem[], size
  */
 fr_sbuff_term_t *fr_sbuff_terminals_amerge(TALLOC_CTX *ctx, fr_sbuff_term_t const *a, fr_sbuff_term_t const *b)
 {
-	size_t				i, num, used, check;
+	size_t				i, j, num;
 	fr_sbuff_term_t			*out;
 	fr_sbuff_term_elem_t const	*tmp[UINT8_MAX + 1];
-
-	num = 0;
-	for (i = 0; i < a->len; i++) tmp[num++] = &a->elem[i];
-	for (i = 0; i < b->len; i++) tmp[num++] = &b->elem[i];
 
 	/*
 	 *	Check all inputs are pre-sorted.  It doesn't break this
 	 *	function, but it's useful in case the terminal arrays
-	 *	are used elsewhere without merging.
+	 *	are defined elsewhere without merging.
 	 */
-#if !defined(NDEBUG) && defined(SBUFF_CHECK_TERM_ORDER)
-	if (a->len > 1) {
-		for (i = 0; i < a->len - 1; i++) {
-			fr_assert(terminal_cmp(&a->elem[i], &a->elem[i + 1]) < 0);
-		}
-	}
-
-	if (b->len > 1) {
-		for (i = 0; i < b->len - 1; i++) {
-			fr_assert(terminal_cmp(&b->elem[i], &b->elem[i + 1]) < 0);
-		}
-	}
+#if !defined(NDEBUG) && defined(WITH_VERIFY_PTR)
+	for (i = 0; i < a->len - 1; i++) fr_assert(terminal_cmp(&a->elem[i], &a->elem[i + 1]) < 0);
+	for (i = 0; i < b->len - 1; i++) fr_assert(terminal_cmp(&b->elem[i], &b->elem[i + 1]) < 0);
 #endif
 
-	used = num;
-	if (likely(num > 1)) {
-		fr_quick_sort((void const **)tmp, 0, num - 1, terminal_cmp);
+	/*
+	 *	Since the inputs are sorted, we can just do an O(n+m)
+	 *	walk through the arrays, comparing entries across the
+	 *	two arrays.
+	 *
+	 *	If there are duplicates, we prefer "a", for no particular reason.
+	 */
+	num = i = j = 0;
+	while ((i < a->len) && (j < b->len)) {
+		int8_t cmp;
 
-		for (i = 0; i < (num - 1); i++) {
-			fr_assert(tmp[i] != NULL);
-
-			/*
-			 *	Duplicates are adjacent, and can be omitted.
-			 */
-			if (terminal_cmp(tmp[i], tmp[i + 1]) == 0) {
-				used--;
-				tmp[i] = NULL;
-			}
+		cmp = terminal_cmp(&a->elem[i], &b->elem[j]);
+		if (cmp <= 0) {
+			tmp[num++] = &a->elem[i++];
+		} else {
+			tmp[num++] = &b->elem[j++];
 		}
+
+		fr_assert(num <= UINT8_MAX);
 	}
 
-	out = talloc_pooled_object(ctx, fr_sbuff_term_t, used, used * sizeof(fr_sbuff_term_elem_t));
+	/*
+	 *	Only one of these will be hit, and it's simpler than nested "if" statements.
+	 */
+	while (i < a->len) tmp[num++] = &a->elem[i++];
+	while (j < b->len) tmp[num++] = &b->elem[j++];
+
+	out = talloc_pooled_object(ctx, fr_sbuff_term_t, num, num * sizeof(fr_sbuff_term_elem_t));
 	if (unlikely(!out)) return NULL;
 
 	out->elem = talloc_array(out, fr_sbuff_term_elem_t, num);
@@ -645,15 +639,13 @@ fr_sbuff_term_t *fr_sbuff_terminals_amerge(TALLOC_CTX *ctx, fr_sbuff_term_t cons
 		talloc_free(out);
 		return NULL;
 	}
-	out->len = used;
+	out->len = num;
 
-	check = 0;	/* How many non-nulls we've found */
-	for (i = 0; i < num; i++) {
-		if (!tmp[i]) continue;
+	for (i = 0; i < num; i++) out->elem[i] = *tmp[i]; /* copy merged results back */
 
-		out->elem[check++] = *tmp[i];
-	}
-	fr_assert(check == used);
+#if !defined(NDEBUG) && defined(WITH_VERIFY_PTR)
+	for (i = 0; i < num - 1; i++) fr_assert(terminal_cmp(&out->elem[i], &out->elem[i + 1]) < 0);
+#endif
 
 	return out;
 }
