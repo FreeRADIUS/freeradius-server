@@ -616,9 +616,14 @@ fr_sbuff_term_t *fr_sbuff_terminals_amerge(TALLOC_CTX *ctx, fr_sbuff_term_t cons
 		int8_t cmp;
 
 		cmp = terminal_cmp(&a->elem[i], &b->elem[j]);
-		if (cmp <= 0) {
+		if (cmp == 0) {
+			j++;
 			tmp[num++] = &a->elem[i++];
-		} else {
+
+		} else if (cmp < 0) {
+			tmp[num++] = &a->elem[i++];
+
+		} else if (cmp > 0) {
 			tmp[num++] = &b->elem[j++];
 		}
 
