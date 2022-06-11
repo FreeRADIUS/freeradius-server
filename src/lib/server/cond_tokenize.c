@@ -902,8 +902,9 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 {
 	fr_sbuff_term_t const 		bareword_terminals =
 					FR_SBUFF_TERMS(
-						L("\n"),
+						L(""),			/* Hack for EOF */
 						L("\t"),
+						L("\n"),
 						L(" "),
 						L("!*"),
 						L("!="),
@@ -921,7 +922,6 @@ static ssize_t cond_tokenize_operand(fr_cond_t *c, tmpl_t **out,
 						L(">"),
 						L(">="),
 						L("||"),		/* Logical operator */
-						L("")			/* Hack for EOF */
 					);
 
 	fr_sbuff_t			our_in = FR_SBUFF(in);
