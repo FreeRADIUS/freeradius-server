@@ -736,8 +736,8 @@ static void test_terminal_merge(void)
 	fr_sbuff_term_t a = FR_SBUFF_TERMS(
 				L(""),
 				L("\t"),
-				L("\r"),
 				L("\n"),
+				L("\r"),
 				L(" "),
 				L("!"),
 				L("%"),
@@ -755,8 +755,8 @@ static void test_terminal_merge(void)
 				L("~")
 			    );
 	fr_sbuff_term_t b = FR_SBUFF_TERMS(
+				L(""),
 				L(")"),
-				L("")
 			    );
 
 	fr_sbuff_term_t expect =
