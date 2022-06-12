@@ -881,12 +881,9 @@ static bool xlat_logical_match(fr_value_box_t **dst, fr_value_box_list_t const *
 
 		if (logical_or) {
 			if (fr_value_box_is_truthy(box)) {
-				DEBUG("True || %pV", box);
 				last = box; /* stop at the first matching one, and return it. */
 				break;
 			}
-
-			DEBUG("False || %pV", box);
 			continue;
 		}
 
@@ -894,7 +891,6 @@ static bool xlat_logical_match(fr_value_box_t **dst, fr_value_box_list_t const *
 		 *	Must be logical &&
 		 */
 		if (fr_value_box_is_truthy(box)) {
-			DEBUG("True && %pV", box);
 			last = box;
 			continue;
 		}
@@ -902,12 +898,10 @@ static bool xlat_logical_match(fr_value_box_t **dst, fr_value_box_list_t const *
 		/*
 		 *	Stop on the first "false"
 		 */
-		DEBUG("False && %pV", box);
 		return false;
 	}
 
 	if (last) {
-		DEBUG("RETURN %pV", last);
 		fr_value_box_clear(*dst);
 		fr_value_box_copy(*dst, *dst, last);
 	}
@@ -942,22 +936,25 @@ static xlat_action_t xlat_logical_process_arg(TALLOC_CTX *ctx, fr_dcursor_t *out
 		fr_pair_t		*vp;
 		fr_dcursor_t		cursor;
 		tmpl_dcursor_ctx_t	cc;
+		fr_value_box_t		*dst;
 
-		if (rctx->box->type != FR_TYPE_BOOL) {
-			fr_value_box_clear(rctx->box);
-			fr_value_box_init(rctx->box, FR_TYPE_BOOL, attr_expr_bool_enum, false);
-		}
+		MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum, false));
 
 		vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, node->vpt);
 		if (!vp) {
-			rctx->box->vb_bool = false;
+			dst->vb_bool = false;
+
+		} else if (fr_type_is_leaf(vp->da->type)) {
+			dst->vb_bool = true;
+
 		} else {
-			rctx->box->vb_bool = !fr_pair_list_empty(&vp->vp_group);
+			dst->vb_bool = !fr_pair_list_empty(&vp->vp_group);
 		}
 
 		tmpl_dursor_clear(&cc);
 		rctx->last_success = true;
 
+		fr_dlist_insert_tail(&rctx->list, dst);
 		return xlat_logical_resume(ctx, out, xctx, request, in);
 	}
 
