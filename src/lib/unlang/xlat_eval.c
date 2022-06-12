@@ -950,6 +950,7 @@ xlat_eval_pair_real(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reques
 		value = fr_value_box_alloc(ctx, vp->data.type, vp->da, vp->data.tainted);
 		if (!value) goto oom;
 
+		fr_assert(fr_type_is_leaf(vp->da->type));
 		fr_value_box_copy(value, value, &vp->data);	/* Also dups taint */
 		fr_dlist_insert_tail(out, value);
 		break;
