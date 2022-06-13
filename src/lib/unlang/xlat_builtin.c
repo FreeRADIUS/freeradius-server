@@ -1206,7 +1206,7 @@ static xlat_action_t xlat_func_explode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 */
 				if (fr_sbuff_behind(&m_start) == 0) goto advance;
 
-				vb = fr_value_box_alloc_null(ctx);
+				MEM(vb = fr_value_box_alloc_null(ctx));
 				fr_value_box_bstrndup(ctx, vb, NULL, fr_sbuff_current(&m_start),
 						      fr_sbuff_behind(&m_start), string->tainted);
 				fr_dcursor_append(out, vb);
@@ -1217,7 +1217,7 @@ static xlat_action_t xlat_func_explode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				continue;
 			}
 			fr_sbuff_set_to_end(&sbuff);
-			vb = fr_value_box_alloc_null(ctx);
+			MEM(vb = fr_value_box_alloc_null(ctx));
 			fr_value_box_bstrndup(ctx, vb, NULL, fr_sbuff_current(&m_start),
 					      fr_sbuff_behind(&m_start), string->tainted);
 			fr_dcursor_append(out, vb);
