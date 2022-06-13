@@ -939,6 +939,7 @@ sync_config_t const *sync_state_config_get(fr_ldap_connection_t *conn, int msgid
 	find.msgid = msgid;
 
 	sync = fr_rb_find(tree, &find);
+	if (!sync) return NULL;
 	return sync->config;
 }
 
