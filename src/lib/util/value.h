@@ -454,7 +454,7 @@ void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const 
 	 *	all zeros, the following are the exceptions.
 	 */
 	switch (type) {
-	case FR_TYPE_GROUP:
+	case FR_TYPE_STRUCTURAL:
 		fr_value_box_list_init(&vb->vb_group);
 		break;
 
