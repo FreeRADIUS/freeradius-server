@@ -228,7 +228,7 @@ static inline int xlat_tokenize_regex(xlat_exp_head_t *head, fr_sbuff_t *in)
 
 	fr_sbuff_marker(&m_s, in);
 
-	fr_sbuff_out(&err, &num, in);
+	(void) fr_sbuff_out(&err, &num, in);
 	if (err != FR_SBUFF_PARSE_OK) {
 	invalid_ref:
 		fr_strerror_printf("Invalid regex reference.  Must be in range 0-%u", REQUEST_MAX_REGEX);
@@ -1052,7 +1052,7 @@ static int xlat_tokenize_string(xlat_exp_head_t *head,
 	 *	Free our temporary array of terminals
 	 */
 	if (tokens != &expansions) talloc_free(tokens);
-	
+
 	return 0;
 }
 
