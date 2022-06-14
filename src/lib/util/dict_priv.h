@@ -113,6 +113,9 @@ struct fr_dict {
 struct fr_dict_gctx_s {
 	bool			free_at_exit;		//!< This gctx will be freed on exit.
 
+	bool			perm_check;		//!< Whether we should check dictionary
+							///< file permissions as they're loaded.
+
 	bool			read_only;
 
 	char			*dict_dir_default;	//!< The default location for loading dictionaries if one

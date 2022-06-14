@@ -3680,7 +3680,7 @@ static int _dict_global_free(fr_dict_gctx_t *gctx)
  *	- A pointer to the new global context on success.
  *	- NULL on failure.
  */
-fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, bool free_at_exit, char const *dict_dir)
+fr_dict_gctx_t *fr_dict_global_ctx_init(TALLOC_CTX *ctx, bool free_at_exit, char const *dict_dir)
 {
 	fr_dict_gctx_t *new_ctx;
 
@@ -3694,6 +3694,7 @@ fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, bool free_at_exit
 		fr_strerror_const("Out of Memory");
 		return NULL;
 	}
+	new_ctx->perm_check = true;	/* Check file permissions by default */
 
 	new_ctx->protocol_by_name = fr_hash_table_alloc(new_ctx, dict_protocol_name_hash, dict_protocol_name_cmp, NULL);
 	if (!new_ctx->protocol_by_name) {
@@ -3726,6 +3727,16 @@ fr_dict_gctx_t const *fr_dict_global_ctx_init(TALLOC_CTX *ctx, bool free_at_exit
 	if (free_at_exit) fr_atexit_global(_dict_global_free_at_exit, new_ctx);
 
 	return new_ctx;
+}
+
+/** Set whether we check dictionary file permissions
+ *
+ * @param[in] gctx	to alter.
+ * @param[in] enable	Whether we should check file permissions as they're loaded.
+ */
+void fr_dict_global_ctx_perm_check(fr_dict_gctx_t *gctx, bool enable)
+{
+	gctx->perm_check = enable;
 }
 
 /** Set a new, active, global dictionary context

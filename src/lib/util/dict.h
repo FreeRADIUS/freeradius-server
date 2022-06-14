@@ -631,7 +631,9 @@ int			fr_dict_const_free(fr_dict_t const **dict, char const *dependent) CC_HINT(
  *
  * @{
  */
-fr_dict_gctx_t const	*fr_dict_global_ctx_init(TALLOC_CTX *ctx, bool free_at_exit, char const *dict_dir);
+fr_dict_gctx_t		*fr_dict_global_ctx_init(TALLOC_CTX *ctx, bool free_at_exit, char const *dict_dir);
+
+void			fr_dict_global_ctx_perm_check(fr_dict_gctx_t *gctx, bool enable);
 
 void			fr_dict_global_ctx_set(fr_dict_gctx_t const *gctx);
 
