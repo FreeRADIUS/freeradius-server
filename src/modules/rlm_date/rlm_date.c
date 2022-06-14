@@ -175,6 +175,8 @@ static xlat_action_t xlat_date_convert(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	memset(&tminfo, 0, sizeof(tminfo));
 
+	if (!arg) goto now;
+
 	/*
 	 *	Certain strings have magical meanings.
 	 */
@@ -185,6 +187,7 @@ static xlat_action_t xlat_date_convert(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		}
 
 		if (strcmp(arg->vb_strvalue, "now") == 0) {
+		now:
 			return date_encode_strftime(ctx, out, inst, request, fr_time_to_sec(fr_time()));
 		}
 	}
