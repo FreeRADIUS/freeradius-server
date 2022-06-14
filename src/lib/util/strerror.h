@@ -111,6 +111,9 @@ char const	*fr_strerror_marker_pop(char const **subject, size_t *offset) CC_HINT
 
 /** @hidecallergraph */
 void		fr_perror(char const *, ...) CC_HINT(format (printf, 1, 2));
+
+/** @hidecallergraph */
+char const	*fr_perror_to_str(char const *line_sep, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 /** @} */
 
 #ifdef __cplusplus

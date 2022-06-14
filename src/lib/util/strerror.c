@@ -720,3 +720,49 @@ void fr_perror(char const *fmt, ...)
 	}
 	talloc_free(prefix);
 }
+
+/** Print the stack of string buffers to a thread local buffer
+ *
+ * Used by utility functions lacking their own logging infrastructure
+ *
+ * @hidecallergraph
+ *
+ * @param[in] line_sep	to insert between the log lines.
+ * @param[in] fmt	to prefix all log messages with.
+ * @return
+ *	- A thread local string buffer containing the concatenated messages.
+ */
+char const *fr_perror_to_str(char const *line_sep, char const *fmt, ...)
+{
+	char const	*error;
+	char const	*subject;
+	size_t		offset;
+	char		*prefix;
+	va_list		ap;
+	fr_sbuff_t	*agg;
+
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 256, SIZE_MAX);
+
+	va_start(ap, fmt);
+	prefix = talloc_vasprintf(NULL, fmt, ap);
+	if (unlikely(!prefix)) return NULL;
+	va_end(ap);
+
+	error = fr_strerror_marker_pop(&subject, &offset);
+	if (error) {
+		if (fr_sbuff_in_sprintf(agg, "%s: %s%s", prefix, error, line_sep) < 0) return NULL;
+	} else {
+		if (fr_sbuff_in_sprintf(agg, "%s%s", prefix, error, line_sep) < 0) return NULL;
+		talloc_free(prefix);
+		return NULL;
+	}
+
+	while ((error = fr_strerror_marker_pop(&subject, &offset))) {
+		if (error && (error[0] != '\0')) {
+			if (fr_sbuff_in_sprintf(agg, "%s: %s%s", prefix, error, line_sep) < 0) return NULL;
+		}
+	}
+	talloc_free(prefix);
+
+	return fr_sbuff_start(agg);
+}
