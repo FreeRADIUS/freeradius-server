@@ -107,7 +107,7 @@ static xlat_action_t date_convert_string(TALLOC_CTX *ctx, fr_dcursor_t *out, req
 }
 
 static xlat_action_t date_encode_strftime(TALLOC_CTX *ctx, fr_dcursor_t *out, rlm_date_t const *inst,
-					  request_t *request, time_t date)
+					  request_t *request, char const *fmt, time_t date)
 {
 	struct tm	tminfo;
 	char		buff[64];
@@ -125,7 +125,7 @@ static xlat_action_t date_encode_strftime(TALLOC_CTX *ctx, fr_dcursor_t *out, rl
 		}
 	}
 
-	if (strftime(buff, sizeof(buff), inst->fmt, &tminfo) == 0) return XLAT_ACTION_FAIL;
+	if (strftime(buff, sizeof(buff), fmt, &tminfo) == 0) return XLAT_ACTION_FAIL;
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
 	MEM(fr_value_box_strdup(ctx, vb, NULL, buff, false) == 0);
@@ -182,13 +182,20 @@ static xlat_action_t xlat_date_convert(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (arg->type == FR_TYPE_STRING) {
 		if (strcmp(arg->vb_strvalue, "request") == 0) {
-			return date_encode_strftime(ctx, out, inst, request,
+			return date_encode_strftime(ctx, out, inst, request, inst->fmt,
 						    fr_time_to_sec(request->packet->timestamp));
 		}
 
 		if (strcmp(arg->vb_strvalue, "now") == 0) {
 		now:
-			return date_encode_strftime(ctx, out, inst, request, fr_time_to_sec(fr_time()));
+			return date_encode_strftime(ctx, out, inst, request, inst->fmt, fr_time_to_sec(fr_time()));
+		}
+
+		/*
+		 *	%{date:'+%A'} == "Monday", to mirror the behavior of the `date` command.
+		 */
+		if (arg->vb_strvalue[0] == '+') {
+			return date_encode_strftime(ctx, out, inst, request, arg->vb_strvalue + 1, fr_time_to_sec(fr_time()));
 		}
 	}
 
@@ -199,13 +206,13 @@ static xlat_action_t xlat_date_convert(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	format as a string.
 	 */
 	case FR_TYPE_DATE:
-		return date_encode_strftime(ctx, out, inst, request, fr_unix_time_to_sec(arg->vb_date));
+		return date_encode_strftime(ctx, out, inst, request, inst->fmt, fr_unix_time_to_sec(arg->vb_date));
 
 	case FR_TYPE_UINT32:
-		return date_encode_strftime(ctx, out, inst, request, (time_t) arg->vb_uint32);
+		return date_encode_strftime(ctx, out, inst, request, inst->fmt, (time_t) arg->vb_uint32);
 
 	case FR_TYPE_UINT64:
-		return date_encode_strftime(ctx, out, inst, request, (time_t) arg->vb_uint64);
+		return date_encode_strftime(ctx, out, inst, request, inst->fmt, (time_t) arg->vb_uint64);
 
 	/*
 	 *	These are 'from' types, i.e. we'll convert the input string

@@ -7,64 +7,34 @@
 #
 #  = Date Module
 #
-#  The `date` module xlat does convert time formats.
+#  The `date` module parses dates, and prints them.
+#
+#  The server will normally print dates in its own pre-defined format.
+#  It will also parse dates in a few limited formats.  However, these
+#  operations are for full dates (e.g. January 1, 2020 12:34pm).  The
+#  server does not print dates in other formats, and does not parse
+#  dates in other formats.
+#
+#  The `date` module adds that functionality.  It allows you to print
+#  dates in almost any format you want.  It allows you to parse dates
+#  in almost any format, so long as you know what the fields are, and
+#  how they are defined.
 #
 
 #
 #  ## Configuration Settings
 #
-
-#
-#  ### Simple date
-#
 date {
 	#
-	#  format::
+	#  format:: Formatting of the output string.
 	#
-	#  The `xlat` performs in three modes depending on the input it
-	#  is passed.
-	#
-	#  The input string can be:
-	#
-	#    - an expanded date or integer attribute;
-	#    - an expanded string attribute;
-	#    - the fixed strings `request` or `now`.
-	#
-	#  ."Attribute" mode:
-	#
-	#  If the given attribute is of `date` or `integer` type, the date
-	#  xlat will convert it to a `time` string in the format of the
-	#  format config item.
-	#
-	#  If the given attribute is a `string` type, the `xlat` will attempt
-	#  to parse it in the format specified by the format config item,
-	#  and will expand to a Unix timestamp (seconds since the epoch).
-	#
-	#  ."Get time" mode:
-	#
-	#  If the input is the string `request`, the `xlat` will format the
-	#  time the current request packet arrived according to the format
-	#  string, and return it as a string.
-	#
-	#  If the input is the string `now`, the `xlat` will behave as
-	#  above, for the current time.
-	#
-	#  See also the core provided expansions which are equivalent to
-	#  `request` and `now`, but return numerical values:
-	#
-	#  [options="header,autowidth"]
-	#  |===
-	#  | Parameter | Description
-	#  | %l        | request time in seconds since the epoch.
-	#  | %M        | request time microsecond component.
-	#  | %c        | current time in seconds since the epoch.
-	#  | %C        | current time microsecond component.
-	#  |===
+	#  The format arguments are the same as for the system
+	#  `strftime` call.  See `man strftime` for documentation.
 	#
 	format = "%b %e %Y %H:%M:%S %Z"
 
 	#
-	#  utc::
+	#  utc:: Whether conversions are in UTC or local time.
 	#
 	#  If `utc` is enabled then any conversions will be made
 	#  as UTC, not localtime.
@@ -87,3 +57,58 @@ date date_iso {
 	format = "%Y-%m-%dT%H:%M:%SZ"
 	utc = yes
 }
+
+#
+# ### xlat expansions
+#
+#  The `date` module defines an expansion `%{date:}` When the
+#  expansion is not passed an argument, it returns the current date
+#  printed according to the `format` string defined above.
+#
+#  ."Attribute" mode:
+#
+#  If the argument to `%{date:...}` is an attribute of `date` or
+#  `integer` type, the date used will be the time given by the
+#  relevant attribute.
+#
+#  For example, `%{date:&Event-Timestamp}` will use the date from the
+#  `Event-Timestamp` attribute as the source of the date for printing.
+#
+#  ."Get time" mode:
+#
+#  If the input is the string `request`, the `xlat` will format the
+#  time the current request packet arrived according to the format
+#  string, and return it as a string.
+#
+#  If the input is the string `now`, the `xlat` will behave as
+#  above, for the current time.
+#
+#  If the input string begins with `+`, then the remainder of the
+#  string is interpreted as if the string had been given in the
+#  `format` configuration item.
+#
+#  For example `%{date:'+%A'}` will return `Monday` if today is Monday.
+#
+#  Note that the `%` character is special for xlat expansions, and therefore
+#  either has to be "protected" by string quotation, or the `%` character has
+#  to be escaped itself, as in `%{date:+%%A}`
+#
+#  ."Integer output"
+#
+#  In some cases, it is useful for the module to parse dates instead
+#  of printing them.  In this mode, the format string is ignored.
+#  Instead, the input arguments are parsed, and the output is an
+#  integer containg the requested value.
+#
+#  The following expansions return integer numbers:
+#
+#  [options="header,autowidth"]
+#  |===
+#  | Parameter       | Description
+#  | %l              | request time in seconds since the epoch.
+#  | %M              | request time microsecond component.
+#  | %c              | current time in seconds since the epoch.
+#  | %C              | current time microsecond component.
+#  | &Attribute-Name | for string attributes, parse the string according to `format`, and return the integer value as a Unix timestamp.
+#  |===
+#
