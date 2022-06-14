@@ -967,6 +967,8 @@ static int run_command(command_t *cmd, count_chars *cc)
 
 static void print_config(char const *value)
 {
+	assert(value != NULL);
+
 	printc(target->ld_run_path, "runpath_var");
 	printc(target->ld_library_path, "shlibpath_var");
 	printc(target->ld_library_path_local, "shlocallibpath_var");
