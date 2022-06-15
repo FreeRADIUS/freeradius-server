@@ -294,6 +294,9 @@ static void test_size_print_base10(void)
 	TEST_CHECK_SLEN(fr_size_to_str(test_out(buff), (size_t)1000 * 1000), 3);
 	TEST_CHECK_STRCMP(buff, "1MB");
 
+	TEST_CHECK_SLEN(fr_size_to_str(test_out(buff), (size_t)1000 * 1000 + 64000), 6);
+	TEST_CHECK_STRCMP(buff, "1064KB");
+
 	TEST_CHECK_SLEN(fr_size_to_str(test_out(buff), (size_t)1000 * 1000 * 1000), 3);
 	TEST_CHECK_STRCMP(buff, "1GB");
 
