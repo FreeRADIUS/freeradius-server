@@ -91,6 +91,7 @@ BuildRequires: net-snmp-utils
 BuildRequires: systemd-devel
 %endif
 BuildRequires: pam-devel
+BuildRequires: pcre2-devel
 BuildRequires: readline-devel
 BuildRequires: zlib-devel
 

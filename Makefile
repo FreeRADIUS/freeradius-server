@@ -443,7 +443,7 @@ rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: freeradius
 	@cp $< $@
 
 rpm: rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
-	@if ! yum-builddep -q -C --assumeno redhat/freeradius.spec 1> /dev/null 2>&1; then \
+	@if ! sudo yum-builddep -q -C --assumeno redhat/freeradius.spec 1> /dev/null 2>&1; then \
 		echo "ERROR: Required depdendencies not found, install them with: yum-builddep redhat/freeradius.spec"; \
 		exit 1; \
 	fi
