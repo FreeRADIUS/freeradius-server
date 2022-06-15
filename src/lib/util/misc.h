@@ -27,39 +27,6 @@ RCSIDH(misc_h, "$Id$")
 extern "C" {
 #endif
 
-/** Multiplies two integers together
- *
- * @param[in] _out	Where to store the result.
- * @param[in] _a	first argument to multiply.
- * @param[in] _b	second argument to multiply.
- * @return
- *      - false on overflow.
- *      - true if there was no overflow.
- */
-#define fr_multiply(_out, _a, _b) !__builtin_mul_overflow(_a, _b, _out)
-
-/** Adds two integers
- *
- * @param[in] _out	Where to store the result.
- * @param[in] _a	first argument to add.
- * @param[in] _b	second argument to add.
- * @return
- *      - false on overflow.
- *      - true if there was no overflow.
- */
-#define fr_add(_out, _a, _b) !__builtin_add_overflow(_a, _b, _out)
-
-/** Subtraces two integers
- *
- * @param[in] _out	Where to store the result.
- * @param[in] _a	first argument to subtract.
- * @param[in] _b	second argument to subtract.
- * @return
- *      - false on overflow.
- *      - true if there was no overflow.
- */
-#define fr_sub(_out, _a, _b) !__builtin_sub_overflow(_a, _b, _out)
-
 #include <freeradius-devel/build.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/print.h>
@@ -84,19 +51,6 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
 #else
 #  define VERIFY_ALL_TALLOC
 #endif
-
-/** Round up - Only works if _mul is a power of 2 but avoids division
- */
-#define ROUND_UP_POW2(_num, _mul)	(((_num) + ((_mul) - 1)) & ~((_mul) - 1))
-
-/** Round up - Works in all cases, but is slower
- */
-#define ROUND_UP(_num, _mul)		(((((_num) + ((_mul) - 1))) / (_mul)) * (_mul))
-
-/** Get the ceiling value of integer division
- *
- */
-#define ROUND_UP_DIV(_x, _y)	(1 + (((_x) - 1) / (_y)))
 
 /** Skip whitespace ('\\t', '\\n', '\\v', '\\f', '\\r', ' ')
  *
@@ -196,49 +150,6 @@ static inline bool is_zero(char const *value)
 	} while (*++value);
 
 	return true;
-}
-
-/** Find the highest order high bit in an unsigned 64 bit integer
- *
- * @return 0-64 indicating the position of the highest bit,
- *	with 0 indicating no high bits, 1 indicating the 1st
- *	bit and 64 indicating the last bit.
- */
-static inline uint8_t fr_high_bit_pos(uint64_t num)
-{
-	if (num == 0) return 0;	/* num being zero is undefined behaviour for __builtin_clzll */
-
-#ifdef HAVE_BUILTIN_CLZLL
-	return (64 - __builtin_clzll(num));
-#else
-	uint8_t ret = 1;
-	while (num >>= 1) ret++;
-	return ret;
-#endif
-}
-
-/** Find the lowest order high bit in an unsigned 64 bit integer
- *
- * @return 0-64 indicating the position of the lowest bit,
- *	with 0 indicating no high bits, 1 indicating the 1st
- *	bit and 64 indicating the last bit.
- */
-static inline uint8_t fr_low_bit_pos(uint64_t num)
-{
-	if (num == 0) return 0;
-
-#ifdef HAVE_BUILTIN_CLZLL
-	return __builtin_ctzll(num) + 1;
-#else
-	uint8_t ret = 1;
-
-	do {
-		if (num & 0x01) break;
-		ret++;
-	} while (num >>= 1);
-
-	return ret;
-#endif
 }
 
 int		fr_set_signal(int sig, sig_t func);

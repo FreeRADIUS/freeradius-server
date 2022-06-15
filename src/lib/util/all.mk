@@ -14,5 +14,6 @@ SUBMAKEFILES := \
 	pair_tests.mk \
 	rb_tests.mk \
 	sbuff_tests.mk \
+	size_tests.mk \
 	strerror_tests.mk
 

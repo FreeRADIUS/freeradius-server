@@ -96,7 +96,7 @@ typedef struct fr_unix_time_s {
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/sbuff.h>
-#include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/math.h>
 
 #ifdef __cplusplus
 extern "C" {

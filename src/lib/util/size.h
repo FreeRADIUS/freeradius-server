@@ -23,7 +23,17 @@
  */
 RCSIDH(size_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdint.h>
+#include <freeradius-devel/util/sbuff.h>
 
 fr_slen_t fr_size_from_str(size_t *out, fr_sbuff_t *in);
 
 fr_slen_t fr_size_to_str(fr_sbuff_t *out, size_t in);
+
+#ifdef __cplusplus
+}
+#endif
