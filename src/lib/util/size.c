@@ -97,7 +97,8 @@ fr_slen_t fr_size_from_str(size_t *out, fr_sbuff_t *in)
 
 		fr_sbuff_next(&our_in);
 		is_base2 = fr_sbuff_next_if_char(&our_in, 'i') || fr_sbuff_next_if_char(&our_in, 'I');
-		fr_sbuff_next_if_char(&our_in, 'b') || fr_sbuff_next_if_char(&our_in, 'B');	/* Optional */
+
+		if (!fr_sbuff_next_if_char(&our_in, 'b')) (void)fr_sbuff_next_if_char(&our_in, 'B');	/* Optional */
 
 		if (is_base2) {
 			units = base2_units;
