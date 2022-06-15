@@ -79,7 +79,7 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 		default:
 			fr_strerror_printf("Internal error - cannot purify xlat");
 			return -1;
-			
+
 		case XLAT_GROUP:
 			rcode = xlat_purify_list(node->group, request);
 			if (rcode < 0) return rcode;
@@ -102,14 +102,14 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			 *	with the children.  But only if the
 			 *	child list is not empty.
 			 */
-			
+
 			if (node->alternate[1]->flags.can_purify) {
 				rcode = xlat_purify_list(node->alternate[1], request);
 				if (rcode < 0) return rcode;
 			}
 			xlat_flags_merge(&node->flags, &node->alternate[1]->flags);
 			break;
-			
+
 		case XLAT_FUNC:
 			/*
 			 *	If the node is not pure, then maybe there's a callback to purify it, OR maybe
@@ -152,6 +152,7 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			 */
 			success = false;
 			(void) unlang_interpret_synchronous(NULL, request);
+			/* coverity[deadcode] */
 			if (!success) return -1;
 
 			/*
