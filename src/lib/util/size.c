@@ -66,6 +66,8 @@ fr_slen_t fr_size_from_str(size_t *out, fr_sbuff_t *in)
 	*out = 0;
 
 	if (fr_sbuff_out(NULL, &size, &our_in) < 0) return fr_sbuff_error(&our_in);
+	if (!fr_sbuff_extend(&our_in)) goto done;
+
 	c = tolower(*fr_sbuff_current(&our_in));
 
 	/*
@@ -129,6 +131,7 @@ fr_slen_t fr_size_from_str(size_t *out, fr_sbuff_t *in)
 		goto overflow;
 	}
 
+done:
 	*out = (size_t)size;
 
 	return fr_sbuff_set(in, &our_in);
