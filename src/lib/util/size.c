@@ -176,21 +176,22 @@ fr_slen_t fr_size_to_str(fr_sbuff_t *out, size_t in)
 				};
 	fr_size_unit_t const *unit = &base10_units[0];
 
-	int8_t pos2 = fr_low_bit_pos(in) - 1;
-	int8_t pos10;
+	uint8_t pos2 = fr_low_bit_pos(in);
+	uint8_t pos10;
 	size_t tmp;
 
 	/*
 	 *	Fast path - Won't be divisible by a power of 1000 or a power of 1024
 	 */
 	if (pos2 < 3) goto done;
+	pos--;
 
 	/*
 	 *	Get a count of trailing decimal zeroes.
 	 */
-	for (tmp = in, pos10 = 0; tmp && ((tmp % 10) == 0); pos10++) tmp /= 10;
+	for (tmp = in, pos10 = 0; tmp && ((tmp % 1000) == 0); pos10++) tmp /= 1000;
 
-	if (pos10 >= 3) unit = &base10_units[(pos10) / 3];
+	if (pos10 > 0) unit = &base10_units[pos10];
 	else if (pos2 >= 10) unit = &base2_units[pos2 / 10];
 
 done:
