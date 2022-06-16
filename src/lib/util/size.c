@@ -173,28 +173,22 @@ fr_slen_t fr_size_to_str(fr_sbuff_t *out, size_t in)
 				};
 	fr_size_unit_t const *unit = &base10_units[0];
 
-	uint8_t pos = fr_low_bit_pos(in);
+	int8_t pos2 = fr_low_bit_pos(in) - 1;
+	int8_t pos10;
+	size_t temp;
 
 	/*
-	 *	Fast path - Won't be divisible by 1000
+	 *	Fast path - Won't be divisible by a power of 1000 or a power of 1024
 	 */
-	if (pos < 3) {
-		goto done;
-	} else if ((in % 1000) == 0) {
-		 /*
-		  *	For powers of 10, exp equals the
-		  *	number of contiguous zero low order bits.
-		  */
-		unit = &base10_units[(pos - 1) / 3];
+	if (pos2 < 3) goto done;
 
 	/*
-	 *	Fast path - Won't be divisible by 1024
+	 *	Get a count of trailing decimal zeroes.
 	 */
-	} else if (pos < 10) {
-		goto done;
-	} else if ((in % 1024) == 0) {
-		unit = &base2_units[(pos - 1) / 10];
-	}
+	for (temp = in, pos10 = 0; temp && temp % 10 == 0; pos10++) temp /= 10;
+
+	if (pos10 >= 3) unit = &base10_units[(pos10) / 3];
+	else if (pos2 >= 10) unit = &base2_units[pos2 / 10];
 
 done:
 	return fr_sbuff_in_sprintf(&our_out, "%zu%s", in / unit->mul, unit->suffix);
