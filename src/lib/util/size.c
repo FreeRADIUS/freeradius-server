@@ -184,7 +184,7 @@ fr_slen_t fr_size_to_str(fr_sbuff_t *out, size_t in)
 	 *	Fast path - Won't be divisible by a power of 1000 or a power of 1024
 	 */
 	if (pos2 < 3) goto done;
-	pos--;
+	pos2--;
 
 	/*
 	 *	Get a count of trailing decimal zeroes.
