@@ -1133,11 +1133,11 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
-	if ((num > (_max)) || ((errno == EINVAL) && (num == 0)) || ((errno == ERANGE) && (num == LLONG_MAX))) { \
+	if (_signed_overflow(out, num, _max)) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
 		*out = (_type)(_max); \
 		return -1; \
-	} else if ((num < (_min)) || ((errno == ERANGE) && (num == LLONG_MIN))) { \
+	} else if (_signed_underflow(out, num, _min)) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_UNDERFLOW; \
 		*out = (_type)(_min); \
 		return -1; \
@@ -1155,6 +1155,20 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	} \
 	return fr_sbuff_advance(in, end - buff); /* Advance by the length strtoll gives us */ \
 }
+
+#define _strtoll_underflow(_num) (((errno == ERANGE) && (_num == LLONG_MIN)))
+#define _signed_underflow(_out, _num, _min) \
+_Generic((_out), \
+	long long *	: _strtoll_underflow(_num), \
+	default		: ((_num < (_min)) || _strtoll_underflow(_num)) \
+)
+
+#define _strtoll_overflow(_num) (((errno == EINVAL) && (_num == 0)) || ((errno == ERANGE) && (_num == LLONG_MAX)))
+#define _signed_overflow(_out, _num, _max) \
+_Generic((_out), \
+	long long *	: _strtoll_overflow(_num), \
+	default		: ((_num > (_max)) || _strtoll_overflow(_num)) \
+)
 
 SBUFF_PARSE_INT_DEF(int8, int8_t, INT8_MIN, INT8_MAX, 4, 0)
 SBUFF_PARSE_INT_DEF(int16, int16_t, INT16_MIN, INT16_MAX, 6, 0)
@@ -1196,7 +1210,7 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NOT_FOUND; \
 		return -1; \
 	} \
-	if ((num > (_max)) || ((errno == EINVAL) && (num == 0)) || ((errno == ERANGE) && (num == ULLONG_MAX))) { \
+	if (_unsigned_overflow(out, num, _max)) { \
 		if (err) *err = FR_SBUFF_PARSE_ERROR_NUM_OVERFLOW; \
 		*out = (_type)(_max); \
 		return -1; \
@@ -1215,6 +1229,13 @@ fr_slen_t fr_sbuff_out_##_name(fr_sbuff_parse_error_t *err, _type *out, fr_sbuff
 	} \
 	return fr_sbuff_advance(in, end - buff); /* Advance by the length strtoull gives us */ \
 }
+
+#define _strtoull_overflow(_num) (((errno == EINVAL) && (_num == 0)) || ((errno == ERANGE) && (_num == ULLONG_MAX)))
+#define _unsigned_overflow(_out, _num, _max) \
+_Generic((_out), \
+	long long *	: _strtoull_overflow(_num), \
+	default		: ((_num > (_max)) || _strtoull_overflow(_num)) \
+)
 
 /* max chars here is the octal string value with prefix */
 SBUFF_PARSE_UINT_DEF(uint8, uint8_t, UINT8_MAX, 4, 0)
