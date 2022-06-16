@@ -443,7 +443,7 @@ static int xlat_config_escape(UNUSED request_t *request, fr_value_box_t *vb, UNU
 	static char const	disallowed[] = "%{}\\'\"`";
 	size_t 			outmax = vb->vb_length * 3;
 	size_t			outlen = 0;
-	char 			escaped[outmax];
+	char 			escaped[outmax + 1];
 	char const		*in, *end;
 	char			*out = escaped;
 
