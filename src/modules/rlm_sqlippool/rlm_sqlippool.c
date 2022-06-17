@@ -105,7 +105,7 @@ static CONF_PARSER message_config[] = {
 };
 
 static CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("sql_module_instance", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_sqlippool_t, sql_instance_name), .dflt = "sql" },
+	{ FR_CONF_OFFSET("sql_module_instance", FR_TYPE_STRING, rlm_sqlippool_t, sql_instance_name), .dflt = "sql" },
 
 	{ FR_CONF_OFFSET("lease_duration", FR_TYPE_UINT32, rlm_sqlippool_t, lease_duration), .dflt = "86400" },
 

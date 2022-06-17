@@ -69,7 +69,7 @@ typedef struct {
 } rlm_detail_t;
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_REQUIRED | FR_TYPE_XLAT, rlm_detail_t, filename), .dflt = "%A/%{Packet-Src-IP-Address}/detail" },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_XLAT, rlm_detail_t, filename), .dflt = "%A/%{Packet-Src-IP-Address}/detail" },
 	{ FR_CONF_OFFSET("header", FR_TYPE_TMPL | FR_TYPE_XLAT | FR_TYPE_NON_BLOCKING, rlm_detail_t, header),
 	  .dflt = "%t", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32, rlm_detail_t, perm), .dflt = "0600" },
