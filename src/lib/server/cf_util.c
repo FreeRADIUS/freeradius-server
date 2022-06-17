@@ -1351,13 +1351,66 @@ static void _pair_count(int *count, CONF_SECTION const *cs)
  * @param[in] cs to search for items in.
  * @return The number of pairs nested within section.
  */
-int cf_pair_count(CONF_SECTION const *cs)
+unsigned int cf_pair_count_descendents(CONF_SECTION const *cs)
 {
 	int count = 0;
 
 	_pair_count(&count, cs);
 
 	return count;
+}
+
+/** Count the number of times an attribute occurs in a parent section
+ *
+ * @param[in] cs	to search for items in.
+ * @param[in] attr	to search for.
+ * @return The number of pairs of that attribute type.
+ */
+unsigned int cf_pair_count(CONF_SECTION const *cs, char const *attr)
+{
+	size_t		i;
+	CONF_PAIR	*cp = NULL;
+
+	for (i = 0; (cp = cf_pair_find_next(cs, cp, attr)); i++);
+
+	return i;
+}
+
+/** Concatenate the values of any pairs with name attr
+ *
+ * @param[out] out	where to write the concatenated values.
+ * @param[in] cs	to search in.
+ * @param[in] attr	to search for.
+ * @param[in] sep	to use to separate values
+ * @return
+ *      - Length of the data written to out on success.
+ *	- < 0 on failure.  Number of additional bytes required in buffer.
+ */
+fr_slen_t cf_pair_values_concat(fr_sbuff_t *out, CONF_SECTION const *cs, char const *attr, char const *sep)
+{
+	fr_sbuff_t		our_out = FR_SBUFF(out);
+	CONF_PAIR		*cp;
+	fr_slen_t		slen = 0;
+	fr_sbuff_escape_rules_t	e_rules = {
+					.name = __FUNCTION__,
+					.chr = '\\'
+				};
+
+	if (sep) e_rules.subs[(uint8_t)*sep] = *sep;
+
+	for (cp = cf_pair_find(cs, attr); cp;) {
+		slen = fr_sbuff_in_escape(&our_out, cf_pair_value(cp),
+	     				  strlen(cf_pair_value(cp)), &e_rules);
+		if (slen < 0) return slen;
+
+		cp = cf_pair_find_next(cs, cp, attr);
+		if (cp && sep) {
+			slen = fr_sbuff_in_strcpy(&our_out, sep);
+			if (slen < 0) return slen;
+		}
+	}
+
+	return fr_sbuff_set(out, &our_out);
 }
 
 /** Return the attr of a #CONF_PAIR
