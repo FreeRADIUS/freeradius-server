@@ -334,6 +334,11 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, CONF_PARSER const 
 
 	type = FR_BASE_TYPE(rule->type);
 
+	if (fr_rule_required(rule)) {
+		cf_log_err(cs, "Configuration pair \"%s\" must have a value", rule->name);
+		return -1;
+	}
+
 	/*
 	 *	If no default quote was set, determine it from the type
 	 */
@@ -350,7 +355,7 @@ static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, CONF_PARSER const 
 	 */
 	if (rule->dflt_func) {
 		if (rule->dflt_func(out, cs, dflt_quote, rule) < 0) {
-			cf_log_perr(cs, "Failed producing default for %s", rule->name);
+			cf_log_perr(cs, "Failed producing default for \"%s\"", rule->name);
 			return -1;
 		}
 
@@ -394,7 +399,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 {
 	bool		required, deprecated;
 	size_t		count = 0;
-	CONF_PAIR	*cp, *dflt_cp = NULL;
+	CONF_PAIR	*cp = NULL, *dflt_cp = NULL;
 
 	unsigned int	type = rule->type;
 #ifndef NDEBUG
@@ -424,22 +429,13 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 	 *	to hold the multiple values.
 	 */
 	if (fr_rule_multi(rule)) {
-		CONF_PAIR	*first;
 		void		**array;
-		size_t		i;
-
-		/*
-		 *	Don't re-parse things which have already been parsed.
-		 */
-		first = cf_pair_find(cs, rule->name);
-		if (first && first->parsed) return 0;
+		size_t		i = 0;
 
 		/*
 		 *	Easier than re-allocing
 		 */
-		for (cp = first;
-		     cp;
-		     cp = cf_pair_find_next(cs, cp, rule->name)) count++;
+		count = cf_pair_count(cs, rule->name);
 
 		/*
 		 *	Multivalued, but there's no value, create a
@@ -458,13 +454,24 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			}
 
 			if (cf_pair_default(&dflt_cp, cs, rule) < 0) return -1;
-			cp = dflt_cp;
-			count = 1;	/* Need one to hold the default */
-		} else {
-			cp = first;	/* reset */
+			count = cf_pair_count(cs, rule->name);	/* Dynamic functions can add multiple defaults */
+			if (!count) {
+				if (fr_rule_not_empty(rule)) {
+					cf_log_err(cs, "Configuration item \"%s\" cannot be empty", rule->name);
+					return -1;
+				}
+				return 0;
+			}
 		}
 
 		if (deprecated) {
+			/*
+			 *	Emit the deprecated warning in the
+			 *	context of the first pair.
+			 */
+			cp = cf_pair_find(cs, rule->name);
+			fr_assert(cp);
+
 		deprecated:
 			cf_log_err(cp, "Configuration pair \"%s\" is deprecated", cp->attr);
 			return -2;
@@ -496,7 +503,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			}
 		}
 
-		for (i = 0; i < count; i++, cp = cf_pair_find_next(cs, cp, rule->name)) {
+		while ((cp = cf_pair_find_next(cs, cp, rule->name))) {
 			int		ret;
 			void		*entry;
 			TALLOC_CTX	*value_ctx = array;
@@ -507,9 +514,9 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			if (!array) {
 				entry = NULL;
 			} else if ((FR_BASE_TYPE(type) == FR_TYPE_VOID) || (type & FR_TYPE_TMPL)) {
-				entry = &array[i];
+				entry = &array[i++];
 			} else {
-				entry = ((uint8_t *) array) + (i * fr_value_box_field_sizes[FR_BASE_TYPE(type)]);
+				entry = ((uint8_t *) array) + (i++ * fr_value_box_field_sizes[FR_BASE_TYPE(type)]);
 			}
 
 			/*
@@ -546,6 +553,14 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 			if (cf_pair_default(&dflt_cp, cs, rule) < 0) return -1;
 			cp = dflt_cp;
+			if (!cp) {
+				if (fr_rule_not_empty(rule)) {
+					cf_log_err(cs, "Configuration item \"%s\" cannot be empty", rule->name);
+					return -1;
+				}
+
+				return 0;
+			}
 		}
 
 		next = cf_pair_find_next(cs, cp, rule->name);
@@ -706,6 +721,16 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const
 		 */
 		if (DEBUG_ENABLED4) cf_log_debug(cs, "Allocating fake section \"%s\"", rule->name);
 
+		/*
+		 *	If name1 is CF_IDENT_ANY, then don't
+		 *	alloc the section as we have no idea
+		 *	what it should be called.
+		 */
+		if (rule->name == CF_IDENT_ANY) return 0;
+
+		/*
+		 *	Don't specify name2 if it's CF_IDENT_ANY
+		 */
 		if (rule->ident2 != CF_IDENT_ANY) name2 = rule->ident2;
 		subcs = cf_section_alloc(cs, cs, rule->name, name2);
 		if (!subcs) return -1;
@@ -1159,7 +1184,17 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 
 		/*
 		 *	Non-xlat expansions shouldn't have xlat!
+		 *
+		 *	Except other libraries like libkafka may be the ones
+		 *	doing the actual expansion, so we don't _know_
+		 *	if the xlatlike value is destined for use in FreeRADIUS
+		 *	or not, so we can't definitely determine if this is an
+		 *	error.
+		 *
+		 *	Code left in place to warn other people off re-adding
+		 *	this check in future.
 		 */
+#if 0
 		if (!is_xlat && !is_tmpl) {
 			/*
 			 *	Ignore %{... in shared secrets.
@@ -1168,12 +1203,13 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 			if ((rule->type & FR_TYPE_SECRET) != 0) continue;
 
 			if (strstr(cp->value, "%{") != NULL) {
-				cf_log_err(&cp->item, "Found dynamic expansion in string which "
+				cf_log_err(cp, "Found dynamic expansion in string which "
 					   "will not be dynamically expanded");
 				return -1;
 			}
 			continue;
 		}
+#endif
 
 		/*
 		 *	Search for dictionary data somewhere in the virtual
@@ -1272,12 +1308,17 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
  */
 int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const *filename, int lineno)
 {
+	char const *name1, *name2;
+
 	if (!cs || !rule) return 0;
+
+	name1 = rule->name == CF_IDENT_ANY ? "__any__" : rule->name;
+	name2 = rule->ident2 == CF_IDENT_ANY ? "__any__" : rule->ident2;
 
 	if (DEBUG_ENABLED4) {
 		cf_log_debug(cs, "Pushed parse rule to %s section: %s %s",
 			     cf_section_name1(cs),
-			     rule->name, FR_BASE_TYPE(rule->type) & FR_TYPE_SUBSECTION ? "{}": "");
+			     name1, FR_BASE_TYPE(rule->type) & FR_TYPE_SUBSECTION ? "{}": "");
 	}
 
 	/*
@@ -1285,11 +1326,11 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
 	 *
 	 *	Fixme maybe?.. Can't have a section and pair with the same name.
 	 */
-	if (!_cf_data_add_static(CF_TO_ITEM(cs), rule, "CONF_PARSER", rule->name, filename, lineno)) {
+	if (!_cf_data_add_static(CF_TO_ITEM(cs), rule, "CONF_PARSER", name1, filename, lineno)) {
 		CONF_DATA const *cd;
 		CONF_PARSER *old;
 
-		cd = cf_data_find(CF_TO_ITEM(cs), CONF_PARSER, rule->name);
+		cd = cf_data_find(CF_TO_ITEM(cs), CONF_PARSER, name1);
 		old = cf_data_value(cd);
 		fr_assert(old != NULL);
 
@@ -1331,9 +1372,9 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
 		if (FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION) {
 			CONF_SECTION *subcs;
 
-			subcs = cf_section_find(cs, rule->name, rule->ident2);
+			subcs = cf_section_find(cs, name1, name2);
 			if (!subcs) {
-				cf_log_err(cs, "Failed finding '%s' subsection", rule->name);
+				cf_log_err(cs, "Failed finding '%s' subsection", name1);
 				cf_debug(cs);
 				return -1;
 			}
@@ -1341,8 +1382,9 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
 			return cf_section_rules_push(subcs, rule->subcs);
 		}
 
-		cf_log_err(cs, "Data of type %s with name \"%s\" already exists.  Existing data added %s[%i]", "CONF_PARSER",
-			   rule->name, cd->item.filename, cd->item.lineno);
+		cf_log_err(cs, "Data of type %s with name \"%s\" already exists. "
+		           "Existing data added %s[%i]", "CONF_PARSER",
+			   name1, cd->item.filename, cd->item.lineno);
 
 		cf_debug(cs);
 		return -1;

@@ -269,6 +269,17 @@ _Generic((_ct), \
 	.func = _func, \
 	.dflt_func = _dflt_func
 
+/** CONF_PARSER entry which runs CONF_PARSER entries for a subsection without any output
+ *
+ * @param[in] _n		name of pair to search for.
+ * @param[in] _flags		any extra flags to add.
+ * @param[in] _subcs		to use to get defaults from a 3rd party library.
+ */
+#  define FR_CONF_SUBSECTION_GLOBAL(_n, _flags, _subcs) \
+	.name = _n, \
+	.type = FR_TYPE_SUBSECTION | 0, \
+	.subcs = _subcs
+
 #define FR_CONF_DEPRECATED(_n, _t, _p, _f) \
 	.name = _n, \
 	.type = (_t) | FR_TYPE_DEPRECATED
