@@ -32,6 +32,23 @@ RCSID("$Id$")
 #define ELEM_STR(_offset) (*((fr_table_elem_t const *)(_offset))).str
 #define ELEM_LEN(_offset) (*((fr_table_elem_t const *)(_offset))).len
 
+/** Brute force search a sorted or ordered ptr table, assuming the pointers are strings
+ *
+ * @param[in] table		to search in.
+ * @param[in] str_val		to compare against the ptr field.
+ * @param[in] def		default value.
+ */
+char const *_fr_table_ptr_by_str_value(fr_table_ptr_sorted_t const *table, size_t table_len, char const *str_val, char const *def)
+{
+	size_t		i;
+
+	if (!str_val) return NULL;
+
+	for (i = 0; i < table_len; i++) if (strcasecmp(str_val, table[i].value) == 0) return table[i].name.str;
+
+	return def;
+}
+
 /** Create type specific string to value functions
  *
  * @param[in] _func		used for searching.

@@ -95,6 +95,20 @@ typedef struct {
  */
 #define NAME_NUMBER_NOT_FOUND	INT32_MIN
 
+char const *_fr_table_ptr_by_str_value(fr_table_ptr_sorted_t const *table, size_t table_len, char const *str_val, char const *def);
+
+/** Brute force search a sorted or ordered ptr table, assuming the pointers are strings
+ *
+ * @param[in] _table		to search in.
+ * @param[in] _str_value	to compare against the ptr field.
+ * @param[in] _def		default value.
+ */
+#define fr_table_str_by_str_value(_table, _str_value, _def) \
+_Generic((_table), \
+	 fr_table_ptr_sorted_t const *		: _fr_table_ptr_by_str_value((fr_table_ptr_sorted_t const *)_table, _table ## _len, _str_value, _def), \
+	 fr_table_ptr_ordered_t const *		: _fr_table_ptr_by_str_value((fr_table_ptr_sorted_t const *)_table, _table ## _len, _str_value, _def), \
+	 fr_table_ptr_sorted_t *		: _fr_table_ptr_by_str_value((fr_table_ptr_sorted_t const *)_table, _table ## _len, _str_value, _def), \
+	 fr_table_ptr_ordered_t *		: _fr_table_ptr_by_str_value((fr_table_ptr_sorted_t const *)_table, _table ## _len, _str_value, _def))
 
 int		fr_table_sorted_num_by_str(fr_table_num_sorted_t const *table, size_t table_len,
 					   char const *name, int def);
