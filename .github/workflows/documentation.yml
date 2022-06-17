@@ -6,7 +6,19 @@ on:
       - coverity_scan
       - run-fuzzer**
       - debug-fuzzer-**
+    paths:
+      - '.github/workflows/documentation.yml'
+      - 'doc/*'
+      - 'man/*'
+      - 'raddb/*'
+      - 'share/*'
   pull_request:
+    paths:
+      - '.github/workflows/documentation.yml'
+      - 'doc/*'
+      - 'man/*'
+      - 'raddb/*'
+      - 'share/*'
 
 jobs:
   documentation:
