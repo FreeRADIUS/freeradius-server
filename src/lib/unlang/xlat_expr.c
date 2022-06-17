@@ -1552,6 +1552,10 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 
 	/*
 	 *	Convert raw rcodes to xlat's.
+	 *
+	 *	@todo - if it's '!', and the node is tmpl_is_list, or tmpl_contains_attr
+	 *	re-write it to an existence check function, with node->fmt the node->vpt->name.
+	 *
 	 */
 	if (reparse_rcode(head, &node, (c == '!')) < 0) {
 		talloc_free(unary);
