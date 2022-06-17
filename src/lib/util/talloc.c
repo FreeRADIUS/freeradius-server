@@ -23,10 +23,11 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/atexit.h>
 
 static TALLOC_CTX *global_ctx;
 static _Thread_local TALLOC_CTX *thread_local_ctx;
@@ -763,6 +764,41 @@ void **talloc_array_null_strip(void **array)
 	if (!new) return NULL;
 
 	return new;
+}
+
+/** Concat an array of strings (not NULL terminated), with a string separator
+ *
+ * @param[out] out	Where to write the resulting string.
+ * @param[in] array	of strings to concat.
+ * @param[in] sep	to insert between elements.  May be NULL.
+ * @return
+ *      - >= 0 on success - length of the string created.
+ *	- <0 on failure.  How many bytes we would need.
+ */
+fr_slen_t talloc_array_concat(fr_sbuff_t *out, char const * const *array, char const *sep)
+{
+	fr_sbuff_t		our_out = FR_SBUFF(out);
+	size_t			len = talloc_array_length(array);
+	char const * const *	p;
+	char const * const *	end;
+	fr_sbuff_escape_rules_t	e_rules = {
+					.name = __FUNCTION__,
+					.chr = '\\'
+				};
+
+	if (sep) e_rules.subs[(uint8_t)*sep] = *sep;
+
+	for (p = array, end = array + len;
+	     (p < end);
+	     p++) {
+		if (*p) FR_SBUFF_RETURN(fr_sbuff_in_escape, &our_out, *p, strlen(*p), &e_rules);
+
+		if (sep && ((p + 1) < end)) {
+			FR_SBUFF_RETURN(fr_sbuff_in_strcpy, &our_out, sep);
+		}
+	}
+
+	return fr_sbuff_set(out, &our_out);
 }
 
 /** Callback to free the autofree ctx on global exit

@@ -28,9 +28,6 @@ RCSIDH(talloc_h, "$Id$")
 extern "C" {
 #endif
 
-#include <freeradius-devel/autoconf.h>	/* Very easy to miss including in special builds */
-#include <freeradius-devel/build.h>
-#include <freeradius-devel/missing.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -42,6 +39,11 @@ DIAG_OFF(documentation)
 #ifdef HAVE_WDOCUMENTATION
 DIAG_ON(documentation)
 #endif
+
+#include <freeradius-devel/autoconf.h>	/* Very easy to miss including in special builds */
+#include <freeradius-devel/build.h>
+#include <freeradius-devel/missing.h>
+#include <freeradius-devel/util/sbuff.h>
 
 #undef talloc_autofree_context
 /** The original function is deprecated, so replace it with our version
@@ -197,6 +199,8 @@ int		talloc_decrease_ref_count(void const *ptr);
 void		**talloc_array_null_terminate(void **array);
 
 void		**talloc_array_null_strip(void **array);
+
+fr_slen_t	talloc_array_concat(fr_sbuff_t *out, char const * const *array, char const *sep);
 
 /** Free const'd memory
  *
