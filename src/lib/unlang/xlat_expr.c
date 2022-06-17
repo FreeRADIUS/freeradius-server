@@ -1478,7 +1478,7 @@ static ssize_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_
 	xlat_t			*func = NULL;
 	char const		*fmt = NULL;
 	fr_sbuff_t		our_in = FR_SBUFF(in);
-	char			c;
+	char			c = '\0';
 
 	XLAT_DEBUG("UNARY <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
 
