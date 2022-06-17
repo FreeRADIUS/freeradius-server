@@ -38,11 +38,6 @@ extern "C" {
 #include <string.h>
 #include <sys/types.h>
 
-#include <freeradius-devel/util/atexit.h>
-#include <freeradius-devel/util/strerror.h>
-#include <freeradius-devel/util/table.h>
-#include <freeradius-devel/util/talloc.h>
-
 /** Represents number of bytes parsed or location of parse error
  *
  * Number of bytes parsed will be >= 0.
@@ -56,8 +51,12 @@ extern "C" {
 typedef ssize_t fr_slen_t;
 typedef struct fr_sbuff_s fr_sbuff_t;
 typedef struct fr_sbuff_ptr_s fr_sbuff_marker_t;
-
 typedef size_t(*fr_sbuff_extend_t)(fr_sbuff_t *sbuff, size_t req_extenison);
+
+#include <freeradius-devel/util/atexit.h>
+#include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/table.h>
+#include <freeradius-devel/util/talloc.h>
 
 struct fr_sbuff_ptr_s {
 	union {
@@ -175,7 +174,7 @@ typedef struct {
 	char const	*name;				//!< Name for rule set to aid we debugging.
 
 	char		chr;				//!< Character at the start of an escape sequence.
-	char const	subs[UINT8_MAX + 1];		//!< Special characters and their substitutions.
+	char		subs[UINT8_MAX + 1];		//!< Special characters and their substitutions.
 							///< Indexed by the printable representation i.e.
 							///< 'n' for \n.
 	bool		skip[UINT8_MAX + 1];		//!< Characters that are escaped, but left in the
@@ -197,7 +196,7 @@ typedef struct {
 
 	char		chr;				//!< Character at the start of an escape sequence.
 
-	char const	subs[UINT8_MAX + 1];		//!< Special characters and their substitutions.
+	char		subs[UINT8_MAX + 1];		//!< Special characters and their substitutions.
 							///< Indexed by the binary representation i.e.
 							///< 0x0a for \n.
 	bool		esc[UINT8_MAX + 1];		//!< Characters that should be translated to hex or
