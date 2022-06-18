@@ -1,41 +1,42 @@
 Source: freeradius
 Build-Depends: @BUILDDEPS@ debhelper (>= 9),
- quilt,
- dpkg-dev (>= 1.13.19),
- dh-systemd (>= 1.5) | debhelper (>= 13.3.0),
+ asciidoctor,
  autotools-dev,
+ dh-systemd (>= 1.5) | debhelper (>= 13.3.0),
+ dpkg-dev (>= 1.13.19),
  freetds-dev,
- libcurl4-openssl-dev | libcurl4-gnutls-dev,
  libcap-dev,
+ libcurl4-openssl-dev | libcurl4-gnutls-dev,
  libgdbm-dev,
+ libhiredis-dev,
  libidn11-dev,
- libjson-perl,
  libjson-c (>= 1.13) | libjson-c4 | libjson-c5,
  libjson-c-dev,
- libkrb5-dev | heimdal-dev,
+ libjson-perl,
  libkqueue-dev,
+ libkrb5-dev | heimdal-dev,
  libldap2-dev,
+ libmemcached-dev,
+ libmysqlclient-dev | default-libmysqlclient-dev,
  libpam0g-dev,
  libpcap-dev,
  libpcre2-dev | libpcre3-dev,
  libperl-dev,
- libmysqlclient-dev | default-libmysqlclient-dev,
  libpq-dev,
+ librdkafka-dev,
  libreadline-dev,
  libsasl2-dev,
  libsqlite3-dev,
  libssl-dev,
  libtalloc-dev,
  libwbclient-dev,
- libyubikey-dev,
  libykclient-dev,
- libmemcached-dev,
- libhiredis-dev,
+ libyubikey-dev,
+ pandoc,
  python-dev | python3-dev,
+ quilt,
  samba-dev,
- unixodbc-dev,
- asciidoctor,
- pandoc
+ unixodbc-dev
 Section: net
 Priority: optional
 Maintainer: Network RADIUS SARL <info@networkradius.com>
@@ -137,6 +138,12 @@ Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, $
 Description: kerberos module for FreeRADIUS server
  The FreeRADIUS server can use Kerberos to authenticate users, and this module
  is necessary for that.
+
+Package: freeradius-kafka
+Architecture: any
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Description: Kafka module for FreeRADIUS server
+ This module allows FreeRADIUS to send messages to a Kafka cluster.
 
 Package: freeradius-ldap
 Architecture: any

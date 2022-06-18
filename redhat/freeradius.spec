@@ -143,18 +143,6 @@ more.  Using RADIUS allows authentication and authorization for a network to
 be centralized, and minimizes the amount of re-configuration which has to be
 done when adding or deleting new users.
 
-%if %{?_with_rlm_cache_memcached:1}%{?!_with_rlm_cache_memcached:0}
-%package memcached
-Summary: Memcached support for freeRADIUS
-Group: System Environment/Daemons
-Requires: %{name}%{?_isa} = %{version}-%{release}
-Requires: libmemcached
-BuildRequires: libmemcached-devel
-
-%description memcached
-Adds support for rlm_memcached as a cache driver.
-%endif
-
 %package config
 Group: System Environment/Daemons
 Summary: FreeRADIUS config files
@@ -200,6 +188,76 @@ Requires: perl-Net-IP
 This package provides Perl utilities for managing IP pools stored in
 SQL databases.
 
+#
+# BEGIN 3rd party utility library packages
+#
+%package libfreeradius-curl
+Summary: curl wrapper library for FreeRADIUS
+Requires: %{name}%{?_isa} = %{version}-%{release}
+Requires: freeradius-libfreeradius-util = %{version}-%{release}
+Requires: libcurl >= 7.24.0
+BuildRequires: libcurl-devel >= 7.24.0
+
+%description libfreeradius-curl
+Integrates libcurl with FreeRADIUS' internal event loop.
+
+%package libfreeradius-json
+Summary: Internal support library for FreeRADIUS modules using json-c
+Group: System Environment/Daemons
+Requires: %{name}%{?_isa} = %{version}-%{release}
+%if 0%{?rhel}%{?fedora} < 8
+Requires: nwkrad-json-c >= 0.13
+BuildRequires: nwkrad-json-c-devel >= 0.13
+%else
+Requires: json-c >= 0.13
+BuildRequires: json-c-devel >= 0.13
+%endif
+
+%description libfreeradius-json
+Internal support library for FreeRADIUS modules using json-c, required by all modules that use json-c.
+
+%include kafka.inc
+
+%package libfreeradius-radius
+Summary: RADIUS protocol library for FreeRADIUS
+Requires: %{name}%{?_isa} = %{version}-%{release}
+Requires: freeradius-libfreeradius-util = %{version}-%{release}
+
+%description libfreeradius-radius
+Provides protocol encoders and decoders for the RADIUS protocol.
+
+%package libfreeradius-redis
+Summary: Internal support library for FreeRADIUS modules using hiredis
+Group: System Environment/Daemons
+Requires: %{name}%{?_isa} = %{version}-%{release}
+Requires: hiredis >= 0.10
+BuildRequires: hiredis-devel >= 0.10
+
+%description libfreeradius-redis
+Internal support library for FreeRADIUS modules using hiredis, required by all modules that use hiredis.
+
+%package libfreeradius-util
+Summary: Utility library used by all other FreeRADIUS libraries
+
+%description libfreeradius-util
+Provides common functions used by other FreeRADIUS libraries and modules.
+
+#
+# END 3rd party utility library packages
+#
+
+%if %{?_with_rlm_cache_memcached:1}%{?!_with_rlm_cache_memcached:0}
+%package memcached
+Summary: Memcached support for freeRADIUS
+Group: System Environment/Daemons
+Requires: %{name}%{?_isa} = %{version}-%{release}
+Requires: libmemcached
+BuildRequires: libmemcached-devel
+
+%description memcached
+Adds support for rlm_memcached as a cache driver.
+%endif
+
 %package json
 Summary: JSON support for FreeRADIUS
 Requires: %{name}%{?_isa} = %{version}-%{release}
@@ -207,6 +265,9 @@ Requires: freeradius-libfreeradius-json = %{version}-%{release}
 
 %description json
 This plugin provides JSON tree mapping, and JSON string escaping for the FreeRADIUS server project.
+
+%description krb5
+This plugin provides Kerberos 5 support for the FreeRADIUS server project.
 
 %package krb5
 Summary: Kerberos 5 support for FreeRADIUS
@@ -229,55 +290,6 @@ BuildRequires: openldap-ltb
 %description ldap
 This plugin provides LDAP support for the FreeRADIUS server project.
 %endif
-
-%package libfreeradius-curl
-Summary: curl wrapper library for FreeRADIUS
-Requires: %{name}%{?_isa} = %{version}-%{release}
-Requires: freeradius-libfreeradius-util = %{version}-%{release}
-Requires: libcurl >= 7.24.0
-BuildRequires: libcurl-devel >= 7.24.0
-
-%description libfreeradius-curl
-Integrates libcurl with FreeRADIUS' internal event loop.
-
-%package libfreeradius-util
-Summary: Utility library used by all other FreeRADIUS libraries
-
-%description libfreeradius-util
-Provides common functions used by other FreeRADIUS libraries and modules.
-
-%package libfreeradius-radius
-Summary: RADIUS protocol library for FreeRADIUS
-Requires: %{name}%{?_isa} = %{version}-%{release}
-Requires: freeradius-libfreeradius-util = %{version}-%{release}
-
-%description libfreeradius-radius
-Provides protocol encoders and decoders for the RADIUS protocol.
-
-%package libfreeradius-json
-Summary: Internal support library for FreeRADIUS modules using json-c
-Group: System Environment/Daemons
-Requires: %{name}%{?_isa} = %{version}-%{release}
-%if 0%{?rhel}%{?fedora} < 8
-Requires: nwkrad-json-c >= 0.13
-BuildRequires: nwkrad-json-c-devel >= 0.13
-%else
-Requires: json-c >= 0.13
-BuildRequires: json-c-devel >= 0.13
-%endif
-
-%description libfreeradius-json
-Internal support library for FreeRADIUS modules using json-c, required by all modules that use json-c.
-
-%package libfreeradius-redis
-Summary: Internal support library for FreeRADIUS modules using hiredis
-Group: System Environment/Daemons
-Requires: %{name}%{?_isa} = %{version}-%{release}
-Requires: hiredis >= 0.10
-BuildRequires: hiredis-devel >= 0.10
-
-%description libfreeradius-redis
-Internal support library for FreeRADIUS modules using hiredis, required by all modules that use hiredis.
 
 %package perl
 Summary: Perl support for FreeRADIUS
@@ -943,21 +955,21 @@ fi
 %defattr(-,root,root)
 %{_libdir}/freeradius/libfreeradius-curl.so
 
-%files libfreeradius-util
+%files libfreeradius-json
 %defattr(-,root,root)
-%{_libdir}/freeradius/libfreeradius-util.so
+%{_libdir}/freeradius/libfreeradius-json.so
 
 %files libfreeradius-radius
 %defattr(-,root,root)
 %{_libdir}/freeradius/libfreeradius-radius.so
 
-%files libfreeradius-json
-%defattr(-,root,root)
-%{_libdir}/freeradius/libfreeradius-json.so
-
 %files libfreeradius-redis
 %defattr(-,root,root)
 %{_libdir}/freeradius/libfreeradius-redis.so
+
+%files libfreeradius-util
+%defattr(-,root,root)
+%{_libdir}/freeradius/libfreeradius-util.so
 
 %if %{?_with_rlm_cache_memcached:1}%{!?_with_rlm_cache_memcached:0}
 %files memcached
