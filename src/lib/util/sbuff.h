@@ -267,6 +267,7 @@ extern bool const sbuff_char_class_float[UINT8_MAX + 1];
 extern bool const sbuff_char_class_zero[UINT8_MAX + 1];
 extern bool const sbuff_char_class_hex[UINT8_MAX + 1];
 extern bool const sbuff_char_alpha_num[UINT8_MAX + 1];
+extern bool const sbuff_char_word[UINT8_MAX + 1];
 extern bool const sbuff_char_whitespace[UINT8_MAX + 1];
 extern bool const sbuff_char_line_endings[UINT8_MAX + 1];
 extern bool const sbuff_char_blank[UINT8_MAX + 1];
