@@ -25,7 +25,6 @@ if (&Tmp-String-0 == 'hello') {
 	test_fail
 }
 
-if (0) { # XXX
 #
 #  Try updating an attribute specified by an OID string
 #  for an unknown vendor
@@ -63,7 +62,5 @@ update {
 if (&Tmp-String-1 != 'hello2') {
 	test_fail
 }
-
-} # XXX
 
 success
