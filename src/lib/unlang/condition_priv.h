@@ -32,6 +32,9 @@ extern "C" {
 typedef struct {
 	unlang_group_t	group;
 	fr_cond_t	*cond;
+	xlat_exp_head_t	*head;
+	bool		is_truthy;
+	bool		value;
 } unlang_cond_t;
 
 /** Cast a group structure to the cond keyword extension

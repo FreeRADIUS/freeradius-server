@@ -2301,7 +2301,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 		case UNLANG_TYPE_IF:
 			was_if = true;
 			{
-				unlang_group_t		*f;
+				unlang_group_t	*f;
 				unlang_cond_t	*gext;
 
 				f = unlang_generic_to_group(single);
@@ -3038,6 +3038,8 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	unlang_cond_t		*gext;
 
 	fr_cond_t		*cond;
+	xlat_exp_head_t		*head;
+	bool			is_truthy, value;
 
 	if (!cf_section_name2(cs)) {
 		cf_log_err(cs, "'%s' without condition", unlang_ops[ext->type].name);
@@ -3047,10 +3049,28 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	cond = cf_data_value(cf_data_find(cs, fr_cond_t, NULL));
 	fr_assert(cond != NULL);
 
+	head = cf_data_value(cf_data_find(cs, xlat_exp_head_t, NULL));
+	fr_assert(head != NULL);
+
+	/*
+	 *	Resolve the xlat first.
+	 */
+	if (xlat_resolve(head, NULL) < 0) {
+		cf_log_err(cs, "Failed resolving condition - %s", fr_strerror());
+		return NULL;
+	}
+
+	is_truthy = xlat_is_truthy(head, &value);
+
 	if (cond->type == COND_TYPE_FALSE) {
 		cf_log_debug_prefix(cs, "Skipping contents of '%s' as it is always 'false'",
 				    unlang_ops[ext->type].name);
+
+		c = compile_section(parent, unlang_ctx, cs, ext);
+		talloc_free(c);
+
 		c = compile_empty(parent, unlang_ctx, cs, ext);
+
 	} else {
 		fr_cond_iter_t	iter;
 		fr_cond_t	*leaf;
@@ -3082,6 +3102,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 		}
 
 		fr_cond_async_update(cond);
+
 		c = compile_section(parent, unlang_ctx, cs, ext);
 	}
 	if (!c) return NULL;
@@ -3090,6 +3111,9 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 	g = unlang_generic_to_group(c);
 	gext = unlang_group_to_cond(g);
 	gext->cond = cond;
+	gext->head = head;
+	gext->is_truthy = is_truthy;
+	gext->value = value;
 
 	return c;
 }

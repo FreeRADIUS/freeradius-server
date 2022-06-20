@@ -1146,10 +1146,16 @@ static int process_template(cf_stack_t *stack)
 
 static int cf_file_fill(cf_stack_t *stack);
 
+static const fr_sbuff_term_t if_terminals = FR_SBUFF_TERMS(
+	L(""),
+	L("{"),
+);
+
 static CONF_ITEM *process_if(cf_stack_t *stack)
 {
 	ssize_t		slen = 0;
 	fr_cond_t	*cond = NULL;
+	xlat_exp_head_t *head = NULL;
 	fr_dict_t const	*dict = NULL;
 	CONF_SECTION	*cs;
 	char		*p;
@@ -1158,6 +1164,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	CONF_SECTION	*parent = frame->current;
 	char		*buff[4];
 	tmpl_rules_t	t_rules;
+	fr_sbuff_parse_rules_t p_rules = { };
 
 	/*
 	 *	Short names are nicer.
@@ -1175,6 +1182,9 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 			.allow_unknown = true
 		}
 	};
+
+	p_rules.terminals = &if_terminals;
+
 	/*
 	 *	fr_cond_tokenize needs the current section, so we
 	 *	create it first.  We don't pass a name2, as it hasn't
@@ -1274,6 +1284,14 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 			slen = my_slen;
 			goto parse_error;
 		}
+
+		my_slen = xlat_tokenize_expression(cs, &head, &FR_SBUFF_IN(buff[3], strlen(buff[3])), &p_rules, &t_rules);
+		fr_assert(my_slen > 0);
+	} else {
+		ssize_t my_slen;
+
+		my_slen = xlat_tokenize_expression(cs, &head, &FR_SBUFF_IN(buff[2], strlen(buff[2])), &p_rules, &t_rules);
+		fr_assert(my_slen > 0);
 	}
 
 	MEM(cs->name2 = talloc_typed_strdup(cs, buff[2]));
@@ -1294,6 +1312,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 *	the condition to the CONF_SECTION.
 	 */
 	cf_data_add(cs, cond, NULL, false);
+	cf_data_add(cs, head, NULL, false);
 	stack->ptr = ptr;
 
 	cs->allow_unlang = true;
