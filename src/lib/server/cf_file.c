@@ -1155,7 +1155,9 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 {
 	ssize_t		slen = 0;
 	fr_cond_t	*cond = NULL;
+#ifdef WITH_XLAT_COND
 	xlat_exp_head_t *head = NULL;
+#endif
 	fr_dict_t const	*dict = NULL;
 	CONF_SECTION	*cs;
 	char		*p;
@@ -1285,6 +1287,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 			goto parse_error;
 		}
 
+#ifdef WITH_XLAT_COND
 		my_slen = xlat_tokenize_expression(cs, &head, &FR_SBUFF_IN(buff[3], strlen(buff[3])), &p_rules, &t_rules);
 		if (my_slen <= 0) {
 			ptr = buff[3];
@@ -1300,6 +1303,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 			slen = my_slen;
 			goto parse_error;
 		}
+#endif
 	}
 
 	MEM(cs->name2 = talloc_typed_strdup(cs, buff[2]));
@@ -1320,7 +1324,9 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 	 *	the condition to the CONF_SECTION.
 	 */
 	cf_data_add(cs, cond, NULL, false);
+#ifdef WITH_XLAT_COND
 	cf_data_add(cs, head, NULL, false);
+#endif
 	stack->ptr = ptr;
 
 	cs->allow_unlang = true;
