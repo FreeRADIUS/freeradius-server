@@ -1286,12 +1286,20 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		}
 
 		my_slen = xlat_tokenize_expression(cs, &head, &FR_SBUFF_IN(buff[3], strlen(buff[3])), &p_rules, &t_rules);
-		fr_assert(my_slen > 0);
+		if (my_slen <= 0) {
+			ptr = buff[3];
+			slen = my_slen;
+			goto parse_error;
+		}
 	} else {
 		ssize_t my_slen;
 
 		my_slen = xlat_tokenize_expression(cs, &head, &FR_SBUFF_IN(buff[2], strlen(buff[2])), &p_rules, &t_rules);
-		fr_assert(my_slen > 0);
+		if (my_slen <= 0) {
+			ptr = buff[2];
+			slen = my_slen;
+			goto parse_error;
+		}
 	}
 
 	MEM(cs->name2 = talloc_typed_strdup(cs, buff[2]));
