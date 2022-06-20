@@ -373,6 +373,7 @@ fr_pair_t *tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 		if (!list_head) {
 			fr_strerror_printf("List \"%s\" not available in this context",
 					   fr_table_str_by_value(pair_list_table, tmpl_list(vpt), "<INVALID>"));
+			if (err) *err = -2;
 			goto error;
 		}
 		list_ctx = tmpl_list_ctx(request, tmpl_list(vpt));
