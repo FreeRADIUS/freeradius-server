@@ -2506,7 +2506,7 @@ bool xlat_is_truthy(xlat_exp_head_t const *head, bool *out)
 	/*
 	 *	Only pure / constant things can be truthy.
 	 */
-	if (!head->flags.pure) return false;
+	if (!head->flags.pure) goto return_false;
 
 	node = xlat_exp_head(head);
 	if (!node) {
@@ -2514,7 +2514,7 @@ bool xlat_is_truthy(xlat_exp_head_t const *head, bool *out)
 		return true;
 	}
 
-	if (xlat_exp_next(head, node)) return false;
+	if (xlat_exp_next(head, node)) goto return_false;
 
 	if (node->type == XLAT_BOX) {
 		box = &node->data;
@@ -2523,6 +2523,8 @@ bool xlat_is_truthy(xlat_exp_head_t const *head, bool *out)
 		box = tmpl_value(node->vpt);
 
 	} else {
+	return_false:
+		*out = false;
 		return false;
 	}
 
