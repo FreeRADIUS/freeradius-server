@@ -39,7 +39,7 @@ if (&Tmp-String-0 != "") {
         test_fail
 }
 
-if (&Module-Failure-Message = "") {
+if (&Module-Failure-Message == "") {
         test_fail
 }
 
