@@ -90,7 +90,7 @@ static const CONF_PARSER udp_listen_config[] = {
 	{ FR_CONF_POINTER("networks", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) networks_config },
 
 	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_dns_udp_t, max_packet_size), .dflt = "576" } ,
-	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, proto_dns_udp_t, max_attributes), .dflt = STRINGIFY(DHCPV4_MAX_ATTRIBUTES) } ,
+	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, proto_dns_udp_t, max_attributes), .dflt = STRINGIFY(DNS_MAX_ATTRIBUTES) } ,
 
 	CONF_PARSER_TERMINATOR
 };

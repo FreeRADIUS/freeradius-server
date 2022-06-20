@@ -32,6 +32,8 @@ extern "C" {
 #include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/dns.h>
 
+#define DNS_MAX_ATTRIBUTES	255
+
 typedef struct {
 	uint16_t	id;
 #ifdef WORDS_BIGENDIAN

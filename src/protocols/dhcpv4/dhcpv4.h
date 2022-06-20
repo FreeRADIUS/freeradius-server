@@ -104,6 +104,7 @@ typedef struct {
 #define MIN_PACKET_SIZE		(244)
 #define DEFAULT_PACKET_SIZE	(300)
 #define MAX_PACKET_SIZE		(1500 - 40)
+#define DHCPV4_MAX_ATTRIBUTES	255
 
 #define DHCP_OPTION_FIELD	(0)
 #define DHCP_FILE_FIELD	  	(1)
